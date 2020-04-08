@@ -1044,14 +1044,15 @@ bool MemTableSnapshot::DumpSnapshotIndexData(std::shared_ptr<Table>& table, cons
                 ::rtidb::base::Slice new_record(entry_str);
                 ::rtidb::base::Status status = whs[index_pid]->Write(new_record);
                 if (!status.ok()) {
-                    PDLOG(WARNING, "fail to dump index entrylog in snapshot to pid[%u].", index_pid);
+                    PDLOG(WARNING, "fail to dump index entrylog in snapshot to pid[%u]. tid %u pid %u",
+                            index_pid, tid_, pid_);
                     return false;
                 } else {
                     PDLOG(DEBUG, "dump entry key[%s] into pid[%u]", cur_key.c_str(), index_pid);
                 }
             }
         }
-    }while(0);
+    } while(0);
     return true;
 }
 

@@ -4567,40 +4567,8 @@ void TabletImpl::DumpIndexData(RpcController* controller,
                 break;
             }
         }
-        std::string db_root_path;
-        bool ok = ChooseDBRootPath(tid, pid, table->GetStorageMode(), db_root_path);
-        if (!ok) {
-            PDLOG(WARNING, "fail to find db root path for table tid %u pid %u", tid, pid);
-            response->set_code(::rtidb::base::ReturnCode::kFailToGetDbRootPath);
-            response->set_msg("fail to get db root path");
-            break;
-        }
-        std::string index_path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid) + "/index/";
-        if (!::rtidb::base::MkdirRecur(index_path)) {
-            PDLOG(WARNING, "fail to create path %s. tid %u pid %u", 
-                    index_path.c_str(), tid, pid);
-            response->set_code(::rtidb::base::ReturnCode::kFailToCreateFile);
-            response->set_msg("fail to create path");
-            break;
-        }
-        std::string binlog_path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid) + "/binlog/";
-        std::vector<::rtidb::log::WriteHandle*> whs;
-        for (uint32_t i = 0; i < request->partition_num(); i++) {
-            std::string index_file_name = std::to_string(pid) + "_" + std::to_string(i) + "_index.data";
-            std::string index_data_path = index_path + index_file_name;
-            FILE* fd = fopen(index_data_path.c_str(), "wb+");
-            if (fd == NULL) {
-                PDLOG(WARNING, "fail to create file %s. tid %u pid %u", 
-                        index_data_path.c_str(), tid, pid);
-                response->set_code(::rtidb::base::ReturnCode::kFailToGetDbRootPath);
-                response->set_msg("fail to get db root path");
-                break;
-            }
-            ::rtidb::log::WriteHandle* wh = new ::rtidb::log::WriteHandle(index_file_name, fd);
-            whs.push_back(wh);
-        }
         std::shared_ptr<::rtidb::storage::MemTableSnapshot> memtable_snapshot = std::static_pointer_cast<::rtidb::storage::MemTableSnapshot>(snapshot);
-        task_pool_.AddTask(boost::bind(&TabletImpl::DumpIndexDataInternal, this, table, memtable_snapshot, replicator, binlog_path, request->column_key(), request->idx(), whs, task_ptr));
+        task_pool_.AddTask(boost::bind(&TabletImpl::DumpIndexDataInternal, this, table, memtable_snapshot, replicator, request->partition_num(), request->column_key(), request->idx(), task_ptr));
         response->set_code(::rtidb::base::ReturnCode::kOk);
         response->set_msg("ok");
         PDLOG(INFO, "dump index tid[%u] pid[%u]", tid, pid);
@@ -4610,16 +4578,53 @@ void TabletImpl::DumpIndexData(RpcController* controller,
 }
 
 void TabletImpl::DumpIndexDataInternal(std::shared_ptr<::rtidb::storage::Table> table, 
-    std::shared_ptr<::rtidb::storage::MemTableSnapshot> memtable_snapshot, std::shared_ptr<::rtidb::replica::LogReplicator> replicator, 
-    std::string& binlog_path, ::rtidb::common::ColumnKey& column_key, 
-    uint32_t idx, std::vector<::rtidb::log::WriteHandle*> whs, std::shared_ptr<::rtidb::api::TaskInfo> task) {
+        std::shared_ptr<::rtidb::storage::MemTableSnapshot> memtable_snapshot, 
+        std::shared_ptr<::rtidb::replica::LogReplicator> replicator, 
+        uint32_t partition_num,
+        ::rtidb::common::ColumnKey& column_key, 
+        uint32_t idx, 
+        std::shared_ptr<::rtidb::api::TaskInfo> task) {
+    uint32_t tid = table->GetId();
+    uint32_t pid = table->GetPid();
+    std::string db_root_path;
+    if (!ChooseDBRootPath(tid, pid, table->GetStorageMode(), db_root_path)) {
+        PDLOG(WARNING, "fail to find db root path for table tid %u pid %u", tid, pid);
+        SetTaskStatus(task, ::rtidb::api::kFailed);
+        return;
+    }
+    std::string index_path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid) + "/index/";
+    if (!::rtidb::base::MkdirRecur(index_path)) {
+        PDLOG(WARNING, "fail to create path %s. tid %u pid %u", 
+                index_path.c_str(), tid, pid);
+        SetTaskStatus(task, ::rtidb::api::kFailed);
+        return;
+    }
+    std::string binlog_path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid) + "/binlog/";
+    std::vector<::rtidb::log::WriteHandle*> whs;
+    for (uint32_t i = 0; i < partition_num; i++) {
+        std::string index_file_name = std::to_string(pid) + "_" + std::to_string(i) + "_index.data";
+        std::string index_data_path = index_path + index_file_name;
+        FILE* fd = fopen(index_data_path.c_str(), "wb+");
+        if (fd == NULL) {
+            PDLOG(WARNING, "fail to create file %s. tid %u pid %u", 
+                    index_data_path.c_str(), tid, pid);
+            SetTaskStatus(task, ::rtidb::api::kFailed);
+            for (auto& wh : whs) {
+                delete wh;
+                wh = NULL;
+            }
+            return;
+        }
+        ::rtidb::log::WriteHandle* wh = new ::rtidb::log::WriteHandle(index_file_name, fd);
+        whs.push_back(wh);
+    }
     ::rtidb::storage::Binlog binlog(replicator->GetLogPart(), binlog_path);
     uint64_t offset = 0;
     if (memtable_snapshot->DumpSnapshotIndexData(table, column_key, idx, whs, offset) && binlog.DumpBinlogIndexData(table, column_key, idx, whs, offset)) {
-        PDLOG(INFO, "dump index on table tid[%u] pid[%u] succeed", table->GetId(), table->GetPid());
+        PDLOG(INFO, "dump index on table tid[%u] pid[%u] succeed", tid, pid);
         SetTaskStatus(task, ::rtidb::api::kDone);
     } else {
-        PDLOG(WARNING, "fail to dump index on table tid[%u] pid[%u]", table->GetId(), table->GetPid());
+        PDLOG(WARNING, "fail to dump index on table tid[%u] pid[%u]", tid, pid);
         SetTaskStatus(task, ::rtidb::api::kFailed);
     }
     for (auto& wh : whs) {

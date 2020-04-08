@@ -8438,7 +8438,6 @@ void NameServerImpl::DeleteIndex(RpcController* controller,
     }
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info;
     uint32_t index_pos = 0;
-    bool has_column_key = true;
     std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>> tablet_client_map;
     {
         std::lock_guard<std::mutex> lock(mu_);
@@ -8450,27 +8449,23 @@ void NameServerImpl::DeleteIndex(RpcController* controller,
             return;
         }
         table_info = table_iter->second;
-        bool flag = true;
         if (table_info->column_key_size() == 0) {
-            has_column_key = false;
-            for (int i = 0; i < table_info->column_desc_v1_size(); i++) {
-                if (table_info->column_desc_v1(i).name() == request->idx_name() && table_info->column_desc_v1(i).add_ts_idx()) {
-                    index_pos = i;
-                    flag = false;
-                    break;
+            response->set_code(::rtidb::base::ReturnCode::kHasNotColumnKey);
+            response->set_msg("table has not column key");
+            PDLOG(WARNING, "table %s has not column key", request->table_name().c_str());
+            return;
+        } 
+        bool has_index = false;
+        for (int i = 0; i < table_info->column_key_size(); i++) {
+            if (table_info->column_key(i).index_name() == request->idx_name()) {
+                if (table_info->column_key(i).flag() == 0) {
+                    has_index = true;
                 }
-            }
-        } else {
-            for (int i = 0; i < table_info->column_key_size(); i++) {
-                if (table_info->column_key(i).index_name() == request->idx_name() &&
-                    !table_info->column_key(i).flag()) {
-                    index_pos = i;
-                    flag = false;
-                    break;
-                }
+                index_pos = i;
+                break;
             }
         }
-        if (flag) {
+        if (!has_index) {
             response->set_code(::rtidb::base::ReturnCode::kIdxNameNotFound);
             response->set_msg("index doesn't exist!");
             PDLOG(WARNING, "index[%s]  doesn't exist!", request->idx_name().c_str());
@@ -8509,11 +8504,7 @@ void NameServerImpl::DeleteIndex(RpcController* controller,
             return;
         }
     }
-    if (has_column_key) {
-        table_info->mutable_column_key(index_pos)->set_flag(1);
-    } else {
-        table_info->mutable_column_desc_v1(index_pos)->set_add_ts_idx(false);
-    }
+    table_info->mutable_column_key(index_pos)->set_flag(1);
     std::string table_value;
     table_info->SerializeToString(&table_value);
     if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + request->table_name(), table_value)) {
@@ -8542,7 +8533,7 @@ void NameServerImpl::AddIndex(RpcController* controller,
         return;
     }
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info;
-    uint32_t index_pos = 0;
+    int32_t index_pos = 0;
     std::string index_name = request->column_key().index_name();
     std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>> tablet_client_map;
     {
@@ -8555,33 +8546,28 @@ void NameServerImpl::AddIndex(RpcController* controller,
             return;
         }
         table_info = table_iter->second;
-        bool has_index = false;
         if (table_info->column_key_size() == 0) {
-            for (int i = 0; i < table_info->column_desc_v1_size(); i++) {
-                if (table_info->column_desc_v1(i).name() == index_name) {
-                    if (table_info->column_desc_v1(i).add_ts_idx()) {
-                        has_index = true;
-                    }
-                    index_pos = i;
-                    break;
-                }
-            }
-        } else {
-            for (int i = 0; i < table_info->column_key_size(); i++) {
-                if (table_info->column_key(i).index_name() == index_name) {
-                    has_index = true;
-                    break;
-                }
-            }
-        }
-        if (has_index) {
-            response->set_code(::rtidb::base::ReturnCode::kIndexAlreadyExists);
-            response->set_msg("index has already exist!");
-            PDLOG(WARNING, "index %s has already exist! table name %s", 
-                index_name.c_str(), request->name().c_str());
+            response->set_code(::rtidb::base::ReturnCode::kHasNotColumnKey);
+            response->set_msg("table has not column key");
+            PDLOG(WARNING, "table %s has not column key", request->name().c_str());
             return;
         }
-        for (const auto& kv : tablets_) {
+        for (index_pos = 0; index_pos < table_info->column_key_size(); index_pos++) {
+            if (table_info->column_key(index_pos).index_name() == index_name) {
+                if (table_info->column_key(index_pos).flag() == 0) {
+                    response->set_code(::rtidb::base::ReturnCode::kIndexAlreadyExists);
+                    response->set_msg("index has already exist!");
+                    PDLOG(WARNING, "index %s has already exist! table name %s", 
+                        index_name.c_str(), request->name().c_str());
+                    return;
+                }
+                break;
+            }
+        }
+        for (uint32_t pid = 0; pid < (uint32_t)table_info->table_partition_size(); pid++) {
+            CreateAddIndexOP(request->name(), pid, request->column_key(), index_pos);
+        }
+        /*for (const auto& kv : tablets_) {
             if (kv.second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
                 response->set_code(::rtidb::base::ReturnCode::kTabletIsNotHealthy);
                 response->set_msg("tablet is offline!");
@@ -8589,9 +8575,9 @@ void NameServerImpl::AddIndex(RpcController* controller,
                 return;
             }
             tablet_client_map.insert(std::make_pair(kv.second->client_->GetEndpoint(), kv.second->client_));
-        }
+        }*/
     }
-    std::set<std::string> tablets;
+    /*std::set<std::string> tablets;
     for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
         for (int meta_idx = 0; meta_idx < table_info->table_partition(idx).partition_meta_size(); meta_idx++) {
             if (table_info->table_partition(idx).partition_meta(meta_idx).is_alive()) {
@@ -8615,16 +8601,199 @@ void NameServerImpl::AddIndex(RpcController* controller,
             return;
         }
     }
-    if (table_info->column_key_size() > 0) {
+    if (index_pos < table_info->column_key_size()) {
+        ::rtidb::common::ColumnKey* column_key = table_info->mutable_column_key(index_pos);
+        column_key->set_flag(0);
+    } else {
         ::rtidb::common::ColumnKey* column_key = table_info->add_column_key();
         column_key->CopyFrom(request->column_key());
-    } else {
-        table_info->mutable_column_desc_v1(index_pos)->set_add_ts_idx(true);
-    }
+    }*/
     PDLOG(INFO, "add index ok. table[%s] index[%s]", 
             request->name().c_str(), index_name.c_str());
     response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
+}
+
+int NameServerImpl::CreateAddIndexOP(const std::string& name, uint32_t pid,
+                const ::rtidb::common::ColumnKey& column_key, uint32_t idx) {
+    auto pos = table_info_.find(name);
+    if (pos == table_info_.end()) {
+        PDLOG(WARNING, "table[%s] is not exist!", name.c_str());
+        return -1;
+    }
+    std::shared_ptr<OPData> op_data;
+    AddIndexMeta add_index_meta;
+    add_index_meta.set_name(name);
+    add_index_meta.set_pid(pid);
+    add_index_meta.set_idx(idx);
+    ::rtidb::common::ColumnKey* cur_column_key = add_index_meta.mutable_column_key();
+    cur_column_key->CopyFrom(column_key);
+    std::string value;
+    add_index_meta.SerializeToString(&value);
+    if (CreateOPData(::rtidb::api::OPType::kAddIndexOP, value, op_data, name, pid) < 0) {
+        PDLOG(WARNING, "create AddIndexOP data error. table %s pid %u", name.c_str(), pid);
+        return -1;
+    }
+    if (CreateAddIndexOPTask(op_data) < 0) {
+        PDLOG(WARNING, "create AddIndexOP task failed. table[%s] pid[%u]",
+                        name.c_str(), pid);
+        return -1;
+    }
+
+    if (AddOPData(op_data, FLAGS_name_server_task_concurrency) < 0) {
+        PDLOG(WARNING, "add op data failed. name[%s] pid[%u]", name.c_str(), pid);
+        return -1;
+    }
+    PDLOG(INFO, "create AddIndexOP op ok. op_id[%lu] name[%s] pid[%u]",
+                 op_data->op_info_.op_id(), name.c_str(), pid);
+    return 0;
+}
+
+int NameServerImpl::CreateAddIndexOPTask(std::shared_ptr<OPData> op_data) {
+    AddIndexMeta add_index_meta;
+    if (!add_index_meta.ParseFromString(op_data->op_info_.data())) {
+        PDLOG(WARNING, "parse AddIndexMeta failed. data[%s]", op_data->op_info_.data().c_str());
+        return -1;
+    }
+    std::string name = op_data->op_info_.name();
+    uint32_t pid = op_data->op_info_.pid();
+    auto iter = table_info_.find(name);
+    if (iter == table_info_.end()) {
+        PDLOG(WARNING, "get table info failed! name[%s]", name.c_str());
+        return -1;
+    }
+    std::shared_ptr<::rtidb::nameserver::TableInfo> table_info = iter->second;
+    uint32_t tid = table_info->tid();
+    std::string leader_endpoint;
+    std::string follower_endpoint;
+    std::map<uint32_t, std::string> pid_endpoint_map;
+    for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
+        for (int meta_idx = 0; meta_idx < table_info->table_partition(idx).partition_meta_size(); meta_idx++) {
+            const ::rtidb::nameserver::PartitionMeta& partition_meta =
+                table_info->table_partition(idx).partition_meta(meta_idx);
+            if (partition_meta.is_alive()) {
+                if (partition_meta.is_leader()) {
+                    if (table_info->table_partition(idx).pid() == pid) {
+                        leader_endpoint = partition_meta.endpoint();
+                    } else {
+                        pid_endpoint_map.insert(std::make_pair(
+                                    table_info->table_partition(idx).pid(), partition_meta.endpoint()));
+                    }
+                } else if (table_info->table_partition(idx).pid() == pid &&
+                        follower_endpoint.empty()) {
+                    follower_endpoint = partition_meta.endpoint();
+                }
+            }
+        }
+    }
+    if (leader_endpoint.empty()) {
+        PDLOG(WARNING, "get leader failed. table[%s] pid[%u]", name.c_str(), pid);
+        return -1;
+    }
+    auto it = tablets_.find(leader_endpoint);
+    if (it == tablets_.end() || it->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+        PDLOG(WARNING, "leader[%s] is not online", leader_endpoint.c_str());
+        return -1;
+    }
+    uint64_t op_index = op_data->op_info_.op_id();
+    std::shared_ptr<Task> task = CreateDumpIndexDataTask(op_index, ::rtidb::api::OPType::kAddIndexOP,
+                 tid, pid, leader_endpoint, table_info->table_partition_size(),
+                 add_index_meta.column_key(), add_index_meta.idx());
+    if (!task) {
+        PDLOG(WARNING, "create dump index task failed. tid[%u] pid[%u] endpoint[%s]",
+                        tid, pid, leader_endpoint.c_str());
+        return -1;
+    }
+    op_data->task_list_.push_back(task);
+    task = CreateSendIndexDataTask(op_index, ::rtidb::api::OPType::kAddIndexOP,
+                 tid, pid, leader_endpoint, pid_endpoint_map);
+    if (!task) {
+        PDLOG(WARNING, "create send index data task failed. tid[%u] pid[%u] endpoint[%s]",
+                        tid, pid, leader_endpoint.c_str());
+        return -1;
+    }
+    task = CreateLoadIndexDataTask(op_index, ::rtidb::api::OPType::kAddIndexOP,
+                 tid, pid, leader_endpoint, table_info->table_partition_size());
+    if (!task) {
+        PDLOG(WARNING, "create load index data task failed. tid[%u] pid[%u] endpoint[%s]",
+                        tid, pid, leader_endpoint.c_str());
+        return -1;
+    }
+    op_data->task_list_.push_back(task);
+    task = CreateCheckBinlogSyncProgressTask(op_index,
+                ::rtidb::api::OPType::kAddIndexOP, name, pid, follower_endpoint, FLAGS_check_binlog_sync_progress_delta);
+    if (!task) {
+        PDLOG(WARNING, "create CheckBinlogSyncProgressTask failed. name[%s] pid[%u]", name.c_str(), pid);
+        return -1;
+    }
+    op_data->task_list_.push_back(task);
+    return 0;
+}
+
+std::shared_ptr<Task> NameServerImpl::CreateDumpIndexDataTask(uint64_t op_index,
+        ::rtidb::api::OPType op_type,
+        uint32_t tid,
+        uint32_t pid,
+        const std::string& endpoint,
+        uint32_t partition_num,
+        const ::rtidb::common::ColumnKey& column_key,
+        uint32_t idx) {
+
+    std::shared_ptr<Task> task = std::make_shared<Task>(endpoint, std::make_shared<::rtidb::api::TaskInfo>());
+    auto it = tablets_.find(endpoint);
+    if (it == tablets_.end() || it->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+        return std::shared_ptr<Task>();
+    }
+    task->task_info_->set_op_id(op_index);
+    task->task_info_->set_op_type(op_type);
+    task->task_info_->set_task_type(::rtidb::api::TaskType::kDumpIndexData);
+    task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
+    task->task_info_->set_endpoint(endpoint);
+    boost::function<bool ()> fun = boost::bind(&TabletClient::DumpIndexData, it->second->client_, tid, pid, partition_num, column_key, idx, task->task_info_);
+    task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
+    return task;
+}
+
+std::shared_ptr<Task> NameServerImpl::CreateSendIndexDataTask(uint64_t op_index,
+        ::rtidb::api::OPType op_type,
+        uint32_t tid,
+        uint32_t pid,
+        const std::string& endpoint,
+        const std::map<uint32_t, std::string>& pid_endpoint_map) {
+    std::shared_ptr<Task> task = std::make_shared<Task>(endpoint, std::make_shared<::rtidb::api::TaskInfo>());
+    auto it = tablets_.find(endpoint);
+    if (it == tablets_.end() || it->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+        return std::shared_ptr<Task>();
+    }
+    task->task_info_->set_op_id(op_index);
+    task->task_info_->set_op_type(op_type);
+    task->task_info_->set_task_type(::rtidb::api::TaskType::kSendIndexData);
+    task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
+    task->task_info_->set_endpoint(endpoint);
+    boost::function<bool ()> fun = boost::bind(&TabletClient::SendIndexData, it->second->client_, tid, pid, pid_endpoint_map, task->task_info_);
+    task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
+    return task;
+}
+
+std::shared_ptr<Task> NameServerImpl::CreateLoadIndexDataTask(uint64_t op_index,
+        ::rtidb::api::OPType op_type,
+        uint32_t tid,
+        uint32_t pid,
+        const std::string& endpoint,
+        uint32_t partition_num) {
+    std::shared_ptr<Task> task = std::make_shared<Task>(endpoint, std::make_shared<::rtidb::api::TaskInfo>());
+    auto it = tablets_.find(endpoint);
+    if (it == tablets_.end() || it->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+        return std::shared_ptr<Task>();
+    }
+    task->task_info_->set_op_id(op_index);
+    task->task_info_->set_op_type(op_type);
+    task->task_info_->set_task_type(::rtidb::api::TaskType::kLoadIndexData);
+    task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
+    task->task_info_->set_endpoint(endpoint);
+    boost::function<bool ()> fun = boost::bind(&TabletClient::LoadIndexData, it->second->client_, tid, pid, partition_num, task->task_info_);
+    task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
+    return task;
 }
 
 }

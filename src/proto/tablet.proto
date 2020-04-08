@@ -73,6 +73,7 @@ enum OPType {
     kAddReplicaSimplyRemoteOP = 17; 
     kDelReplicaRemoteOP = 18; 
     kAddReplicaRemoteOP = 19; 
+    kAddIndexOP = 20; 
 }
 
 enum TaskType {
@@ -754,4 +755,5 @@ service TabletServer {
     rpc SendIndexData(SendIndexDataRequest) returns(GeneralResponse);
     rpc DeleteIndex(DeleteIndexRequest) returns (GeneralResponse);
     rpc DumpIndexData(DumpIndexDataRequest) returns (GeneralResponse);
+    rpc LoadIndexData(LoadIndexDataRequest) returns (GeneralResponse);
 }

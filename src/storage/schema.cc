@@ -33,15 +33,6 @@ void TableIndex::ReSet() {
     size_ = 0;
 }
 
-int TableIndex::SetAllIndex(const std::vector<std::shared_ptr<IndexDef>>& index_vec) {
-    if (index_vec.size() > MAX_INDEX_NUM) {
-        return -1;
-    }
-    ReSet();
-    std::copy(index_vec.begin(), index_vec.end(), indexs_.begin());
-    size_ = index_vec.size();
-}
-
 std::shared_ptr<IndexDef> TableIndex::GetIndex(uint32_t idx) {
     if (idx < size_) {
         return indexs_.at(idx);
@@ -68,6 +59,7 @@ int TableIndex::AddIndex(std::shared_ptr<IndexDef> index_def) {
     }
     indexs_[size_] = index_def;
     size_++;
+    return 0;
 }
 
 }

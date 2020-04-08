@@ -348,13 +348,12 @@ private:
                         uint32_t remote_tid, std::shared_ptr<::rtidb::api::TaskInfo> task);
 
     void DumpIndexDataInternal(std::shared_ptr<::rtidb::storage::Table> table, 
-        std::shared_ptr<::rtidb::storage::MemTableSnapshot> memtable_snapshot, 
-        std::shared_ptr<::rtidb::replica::LogReplicator> replicator, 
-        std::string& binlog_path, 
-        ::rtidb::common::ColumnKey& column_key, 
-        uint32_t idx, 
-        std::vector<::rtidb::log::WriteHandle*> whs, 
-        std::shared_ptr<::rtidb::api::TaskInfo> task);
+            std::shared_ptr<::rtidb::storage::MemTableSnapshot> memtable_snapshot, 
+            std::shared_ptr<::rtidb::replica::LogReplicator> replicator, 
+            uint32_t partition_num,
+            ::rtidb::common::ColumnKey& column_key, 
+            uint32_t idx, 
+            std::shared_ptr<::rtidb::api::TaskInfo> task);
 
     void SendIndexDataInternal(std::shared_ptr<::rtidb::storage::Table> table,
         const std::map<uint32_t, std::string>& pid_endpoint_map,
