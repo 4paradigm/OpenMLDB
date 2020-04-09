@@ -76,9 +76,14 @@ void HttpImpl::Get(RpcController* controller,
         cntl->http_response().set_status_code(brpc::HTTP_STATUS_BAD_REQUEST);
         return;
     }
-    cntl->response_attachment().append("Getting file: ");
-    cntl->response_attachment().append(table);
-    cntl->response_attachment().append(" " + *pic_id);
+    std::shared_ptr<TableHandler> th = client->GetTableHandler(table);
+    if (!th) {
+        cntl->http_response().set_status_code(brpc::HTTP_STATUS_NOT_FOUND);
+        return;
+    }
+    unsigned char fileheader[] = {0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a};
+    std::string ss(reinterpret_cast<char*>(fileheader), 8);
+    cntl->response_attachment().append(ss);
 }
 
 }  // namespace http
