@@ -9,9 +9,12 @@ mkdir -p build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release -DBENCHMARK_ENABLE_LTO=true -DCOVERAGE_ENABLE=OFF -DTESTING_ENABLE=OFF
 make fesql_proto
 make fesql_parser
-make -j16 udf_bm engine_bm fesql_client_batch_run_bm
+make -j16 udf_bm runner_bm engine_bm fesql_client_batch_run_bm
 echo "udf benchmark:"
 src/bm/udf_bm 2>/dev/null
+
+echo "runner benchmark:"
+src/bm/runner_bm 2>/dev/null
 
 echo "engine benchmark:"
 src/bm/engine_bm 2>/dev/null
