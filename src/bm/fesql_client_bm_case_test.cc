@@ -12,7 +12,6 @@
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/TargetSelect.h"
 using namespace llvm;       // NOLINT
-using namespace llvm::orc;  // NOLINT
 namespace fesql {
 namespace bm {
 class FeSQL_CASE_Test : public ::testing::Test {

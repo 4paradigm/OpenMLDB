@@ -231,7 +231,6 @@ TEST_P(TabletSdkTest, test_normal) {
 
 TEST_P(TabletSdkTest, test_create_and_query) {
     usleep(4000 * 1000);
-    ParamType mode = GetParam();
     const std::string endpoint = "127.0.0.1:" + std::to_string(base_dbms_port_);
     std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk =
         ::fesql::sdk::CreateDBMSSdk(endpoint);
@@ -390,7 +389,6 @@ TEST_P(TabletSdkTest, test_create_and_query) {
 
 TEST_P(TabletSdkTest, test_udf_query) {
     usleep(2000 * 1000);
-    ParamType mode = GetParam();
     const std::string endpoint = "127.0.0.1:" + std::to_string(base_dbms_port_);
     std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk =
         ::fesql::sdk::CreateDBMSSdk(endpoint);

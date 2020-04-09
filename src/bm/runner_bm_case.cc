@@ -84,7 +84,7 @@ static void RequestUnionRunnerCase(const std::string& sql, int runner_id,
             ASSERT_TRUE(RunnerRun(start_runner, table, limit_cnt, res));
             ASSERT_EQ(res.size(), static_cast<size_t>(limit_cnt));
             for (auto data : res) {
-                ASSERT_EQ(1 + size, data->GetCount());
+                ASSERT_EQ(static_cast<int64_t >(1 + size), data->GetCount());
                 LOG(INFO) << "res size : " << data->GetCount();
             }
         }
