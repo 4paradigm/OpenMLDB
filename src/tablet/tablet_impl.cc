@@ -2385,7 +2385,7 @@ void TabletImpl::SendData(RpcController* controller,
         std::lock_guard<std::mutex> lock(mu_);
         auto iter = file_receiver_map_.find(combine_key);
         if (request->block_id() == 0) {
-            if (table) {
+            if (table && request->dir_name() != "index") {
                 PDLOG(WARNING, "table already exists. tid %u, pid %u", tid, pid);
                 response->set_code(::rtidb::base::ReturnCode::kTableAlreadyExists);
                 response->set_msg("table already exists");
@@ -4510,6 +4510,7 @@ void TabletImpl::SendIndexDataInternal(std::shared_ptr<::rtidb::storage::Table> 
                     index_file_name.c_str(), kv.second.c_str(), tid, pid);
         }
     }
+    SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kDone);
 }
 
 void TabletImpl::DumpIndexData(RpcController* controller,

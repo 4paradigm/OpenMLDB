@@ -1252,7 +1252,9 @@ bool TabletClient::DeleteIndex(uint32_t tid, const std::string& idx_name) {
     return true;
 }
 
-bool TabletClient::AddIndex(uint32_t tid, uint32_t pid, const ::rtidb::common::ColumnKey& column_key) {
+bool TabletClient::AddIndex(uint32_t tid, uint32_t pid, 
+        const ::rtidb::common::ColumnKey& column_key,
+        std::shared_ptr<TaskInfo> task_info) {
     ::rtidb::api::AddIndexRequest request;
     ::rtidb::api::GeneralResponse response;
     request.set_tid(tid);
@@ -1263,6 +1265,7 @@ bool TabletClient::AddIndex(uint32_t tid, uint32_t pid, const ::rtidb::common::C
     if (!ok || response.code() != 0) {
         return false;
     }
+    task_info->set_status(::rtidb::api::TaskStatus::kDone);
     return true;
 }
 
