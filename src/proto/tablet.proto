@@ -102,6 +102,7 @@ enum TaskType {
     kSendIndexData = 23;
     kLoadIndexData = 24;
     kExtractIndexData = 25;
+    kAddIndexToTablet = 26;
 }
 
 enum TaskStatus {
@@ -756,4 +757,5 @@ service TabletServer {
     rpc DeleteIndex(DeleteIndexRequest) returns (GeneralResponse);
     rpc DumpIndexData(DumpIndexDataRequest) returns (GeneralResponse);
     rpc LoadIndexData(LoadIndexDataRequest) returns (GeneralResponse);
+    rpc ExtractIndexData(ExtractIndexDataRequest) returns (GeneralResponse);
 }

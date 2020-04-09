@@ -1324,7 +1324,27 @@ bool TabletClient::LoadIndexData(uint32_t tid, uint32_t pid, uint32_t partition_
         return false;
     }
     return true;
+}
 
+bool TabletClient::ExtractIndexData(uint32_t tid, uint32_t pid, uint32_t partition_num,
+        const ::rtidb::common::ColumnKey& column_key, uint32_t idx,
+        std::shared_ptr<TaskInfo> task_info) {
+    ::rtidb::api::ExtractIndexDataRequest request;
+    ::rtidb::api::GeneralResponse response;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    request.set_partition_num(partition_num);
+    request.set_idx(idx);
+    ::rtidb::common::ColumnKey* cur_column_key = request.mutable_column_key();
+    cur_column_key->CopyFrom(column_key);
+    if (task_info) {
+        request.mutable_task_info()->CopyFrom(*task_info);
+    }
+    bool ok = client_.SendRequest(&rtidb::api::TabletServer_Stub::ExtractIndexData, &request, &response, FLAGS_request_timeout_ms, 1);
+    if (!ok || response.code() != 0) {
+        return false;
+    }
+    return true;
 }
 
 }

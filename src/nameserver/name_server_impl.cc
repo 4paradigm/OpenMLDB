@@ -47,7 +47,7 @@ const std::string OFFLINE_LEADER_ENDPOINT = "OFFLINE_LEADER_ENDPOINT";
 const uint8_t MAX_ADD_TABLE_FIELD_COUNT = 63;
 
 ClusterInfo::ClusterInfo(const ::rtidb::nameserver::ClusterAddress& cd) : client_(),
-    last_status(), zk_client_(), session_term_(), task_id_() {
+    last_status(), zk_client_(), session_term_() {
     cluster_add_.CopyFrom(cd);
     state_ = kClusterOffline;
     ctime_ = ::baidu::common::timer::get_micros() / 1000;
@@ -1467,21 +1467,70 @@ int NameServerImpl::UpdateTask(const std::list<std::shared_ptr<OPData>>& op_list
         if (op_data->op_info_.op_id() == response.task(idx).op_id() &&
                 task->task_info_->task_type() == response.task(idx).task_type()) {
             has_op_task = true;
-            if (response.task(idx).status() != ::rtidb::api::kInited &&
-                    task->task_info_->status() != response.task(idx).status()) {
-                PDLOG(INFO, "update task status from[%s] to[%s]. op_id[%lu], task_type[%s]", 
-                        ::rtidb::api::TaskStatus_Name(task->task_info_->status()).c_str(), 
-                        ::rtidb::api::TaskStatus_Name(response.task(idx).status()).c_str(), 
-                        response.task(idx).op_id(), 
-                        ::rtidb::api::TaskType_Name(task->task_info_->task_type()).c_str());
-                task->task_info_->set_status(response.task(idx).status());
-                
+            if (response.task(idx).status() != ::rtidb::api::kInited) {
+                if (!task->sub_task_.empty()) {
+                    uint32_t done_num = 0;
+                    for (auto& sub_task : task->sub_task_) {
+                        if (sub_task->task_info_->has_endpoint() &&
+                            sub_task->task_info_->endpoint() == endpoint &&
+                            sub_task->task_info_->status() != response.task(idx).status()) {
+                            PDLOG(INFO, "update sub task status from[%s] to[%s]. op_id[%lu], task_type[%s]", 
+                                    ::rtidb::api::TaskStatus_Name(sub_task->task_info_->status()).c_str(), 
+                                    ::rtidb::api::TaskStatus_Name(response.task(idx).status()).c_str(), 
+                                    response.task(idx).op_id(), 
+                                    ::rtidb::api::TaskType_Name(sub_task->task_info_->task_type()).c_str());
+                            sub_task->task_info_->set_status(response.task(idx).status());
+                            if (response.task(idx).status() == ::rtidb::api::kFailed) {
+                                task->task_info_->set_status(::rtidb::api::kFailed);
+                                PDLOG(INFO, "update task status from[%s] to[kFailed]. op_id[%lu], task_type[%s]", 
+                                        ::rtidb::api::TaskStatus_Name(task->task_info_->status()).c_str(), 
+                                        response.task(idx).op_id(), 
+                                        ::rtidb::api::TaskType_Name(task->task_info_->task_type()).c_str());
+                                break;
+                            }
+                        }
+                        if (sub_task->task_info_->status() == ::rtidb::api::kDone) {
+                            done_num++;
+                        }
+                    }
+                    if (done_num == task->sub_task_.size()) {
+                        PDLOG(INFO, "update task status from[%s] to[kDone]. op_id[%lu], task_type[%s]", 
+                                ::rtidb::api::TaskStatus_Name(task->task_info_->status()).c_str(), 
+                                response.task(idx).op_id(), 
+                                ::rtidb::api::TaskType_Name(task->task_info_->task_type()).c_str());
+                        task->task_info_->set_status(::rtidb::api::kDone);
+                    }
+                } else if (task->task_info_->status() != response.task(idx).status()) {
+                    PDLOG(INFO, "update task status from[%s] to[%s]. op_id[%lu], task_type[%s]", 
+                            ::rtidb::api::TaskStatus_Name(task->task_info_->status()).c_str(), 
+                            ::rtidb::api::TaskStatus_Name(response.task(idx).status()).c_str(), 
+                            response.task(idx).op_id(), 
+                            ::rtidb::api::TaskType_Name(task->task_info_->task_type()).c_str());
+                    task->task_info_->set_status(response.task(idx).status());
+                }
             }
             break;
         }
     }
     if (!has_op_task && (is_recover_op || task->task_info_->is_rpc_send())) {
-        if (task->task_info_->has_endpoint() && task->task_info_->endpoint() == endpoint) {
+        if (!task->sub_task_.empty()) {
+            for (auto& sub_task : task->sub_task_) {
+                if (sub_task->task_info_->has_endpoint() && sub_task->task_info_->endpoint() == endpoint) {
+                    if (sub_task->task_info_->status() == ::rtidb::api::kDoing ||
+                            sub_task->task_info_->status() == ::rtidb::api::kInited) {
+                        PDLOG(WARNING, "not found op in [%s]. update sub task status from[kDoing] to[kFailed]. " 
+                                "op_id[%lu], task_type[%s] endpoint[%s]", 
+                                msg.c_str(),
+                                op_data->op_info_.op_id(),
+                                ::rtidb::api::TaskType_Name(task->task_info_->task_type()).c_str(),
+                                endpoint.c_str());
+                        sub_task->task_info_->set_status(::rtidb::api::kFailed);
+                        task->task_info_->set_status(::rtidb::api::kFailed);
+                    }
+                    break;
+                }
+            }
+        } else if (task->task_info_->has_endpoint() && task->task_info_->endpoint() == endpoint) {
             PDLOG(WARNING, "not found op in [%s]. update task status from[kDoing] to[kFailed]. " 
                     "op_id[%lu], task_type[%s] endpoint[%s]", 
                     msg.c_str(),
@@ -1505,7 +1554,7 @@ int NameServerImpl::UpdateZKTaskStatus() {
             continue;
         }
         std::shared_ptr<Task> task = op_data->task_list_.front();
-        if (task->task_info_->status() == ::rtidb::api::kDone) {
+        if (task->task_info_->status() != ::rtidb::api::kDone) {
             uint32_t cur_task_index = op_data->op_info_.task_index();
             op_data->op_info_.set_task_index(cur_task_index + 1);
             std::string value;
@@ -8667,6 +8716,7 @@ int NameServerImpl::CreateAddIndexOPTask(std::shared_ptr<OPData> op_data) {
     std::string leader_endpoint;
     std::string follower_endpoint;
     std::map<uint32_t, std::string> pid_endpoint_map;
+    std::vector<std::string> endpoints;
     for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
         for (int meta_idx = 0; meta_idx < table_info->table_partition(idx).partition_meta_size(); meta_idx++) {
             const ::rtidb::nameserver::PartitionMeta& partition_meta =
@@ -8679,9 +8729,12 @@ int NameServerImpl::CreateAddIndexOPTask(std::shared_ptr<OPData> op_data) {
                         pid_endpoint_map.insert(std::make_pair(
                                     table_info->table_partition(idx).pid(), partition_meta.endpoint()));
                     }
-                } else if (table_info->table_partition(idx).pid() == pid &&
-                        follower_endpoint.empty()) {
-                    follower_endpoint = partition_meta.endpoint();
+                }
+                if (table_info->table_partition(idx).pid() == pid) {
+                    if (!partition_meta.is_leader() && follower_endpoint.empty()) {
+                        follower_endpoint = partition_meta.endpoint();
+                    }
+                    endpoints.push_back(partition_meta.endpoint());
                 }
             }
         }
@@ -8712,6 +8765,19 @@ int NameServerImpl::CreateAddIndexOPTask(std::shared_ptr<OPData> op_data) {
                         tid, pid, leader_endpoint.c_str());
         return -1;
     }
+    task = CreateAddIndexToTabletTask(op_index, ::rtidb::api::OPType::kAddIndexOP,
+                 tid, pid, endpoints, add_index_meta.column_key());
+    if (!task) {
+        PDLOG(WARNING, "create add index task failed. tid[%u] pid[%u]", tid, pid);
+        return -1;
+    }
+    task = CreateExtractIndexDataTask(op_index, ::rtidb::api::OPType::kAddIndexOP,
+                 tid, pid, endpoints, table_info->table_partition_size(),
+                 add_index_meta.column_key(), add_index_meta.idx());
+    if (!task) {
+        PDLOG(WARNING, "create extract index data task failed. tid[%u] pid[%u]", tid, pid);
+        return -1;
+    }
     task = CreateLoadIndexDataTask(op_index, ::rtidb::api::OPType::kAddIndexOP,
                  tid, pid, leader_endpoint, table_info->table_partition_size());
     if (!task) {
@@ -8738,7 +8804,6 @@ std::shared_ptr<Task> NameServerImpl::CreateDumpIndexDataTask(uint64_t op_index,
         uint32_t partition_num,
         const ::rtidb::common::ColumnKey& column_key,
         uint32_t idx) {
-
     std::shared_ptr<Task> task = std::make_shared<Task>(endpoint, std::make_shared<::rtidb::api::TaskInfo>());
     auto it = tablets_.find(endpoint);
     if (it == tablets_.end() || it->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
@@ -8781,11 +8846,11 @@ std::shared_ptr<Task> NameServerImpl::CreateLoadIndexDataTask(uint64_t op_index,
         uint32_t pid,
         const std::string& endpoint,
         uint32_t partition_num) {
-    std::shared_ptr<Task> task = std::make_shared<Task>(endpoint, std::make_shared<::rtidb::api::TaskInfo>());
     auto it = tablets_.find(endpoint);
     if (it == tablets_.end() || it->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
         return std::shared_ptr<Task>();
     }
+    std::shared_ptr<Task> task = std::make_shared<Task>(endpoint, std::make_shared<::rtidb::api::TaskInfo>());
     task->task_info_->set_op_id(op_index);
     task->task_info_->set_op_type(op_type);
     task->task_info_->set_task_type(::rtidb::api::TaskType::kLoadIndexData);
@@ -8793,6 +8858,78 @@ std::shared_ptr<Task> NameServerImpl::CreateLoadIndexDataTask(uint64_t op_index,
     task->task_info_->set_endpoint(endpoint);
     boost::function<bool ()> fun = boost::bind(&TabletClient::LoadIndexData, it->second->client_, tid, pid, partition_num, task->task_info_);
     task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
+    return task;
+}
+
+std::shared_ptr<Task> NameServerImpl::CreateExtractIndexDataTask(uint64_t op_index,
+        ::rtidb::api::OPType op_type,
+        uint32_t tid,
+        uint32_t pid,
+        const std::vector<std::string>& endpoints,
+        uint32_t partition_num,
+        const ::rtidb::common::ColumnKey& column_key,
+        uint32_t idx) {
+    std::shared_ptr<Task> task = std::make_shared<Task>("", std::make_shared<::rtidb::api::TaskInfo>());
+    for (const auto& endpoint : endpoints) {
+        auto it = tablets_.find(endpoint);
+        if (it == tablets_.end() || it->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+            return std::shared_ptr<Task>();
+        }
+        std::shared_ptr<Task> sub_task = std::make_shared<Task>(endpoint, std::make_shared<::rtidb::api::TaskInfo>());
+        sub_task->task_info_->set_op_id(op_index);
+        sub_task->task_info_->set_op_type(op_type);
+        sub_task->task_info_->set_task_type(::rtidb::api::TaskType::kExtractIndexData);
+        sub_task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
+        sub_task->task_info_->set_endpoint(endpoint);
+        boost::function<bool ()> fun = boost::bind(&TabletClient::ExtractIndexData, it->second->client_, 
+                tid, pid, partition_num, column_key, idx, task->task_info_);
+        sub_task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
+        task->sub_task_.push_back(sub_task);
+    }
+    task->task_info_->set_op_id(op_index);
+    task->task_info_->set_op_type(op_type);
+    task->task_info_->set_task_type(::rtidb::api::TaskType::kExtractIndexData);
+    task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
+    task->fun_ = boost::bind(&NameServerImpl::RunSubTask, this, task);
+    return task;
+}
+
+void NameServerImpl::RunSubTask(std::shared_ptr<Task> task) {
+    task->task_info_->set_status(::rtidb::api::TaskStatus::kDoing);
+    for (const auto& cur_task : task->sub_task_) {
+        cur_task->task_info_->set_status(::rtidb::api::TaskStatus::kDoing);
+        cur_task->fun_();
+    }
+}
+
+std::shared_ptr<Task> NameServerImpl::CreateAddIndexToTabletTask(uint64_t op_index,
+        ::rtidb::api::OPType op_type,
+        uint32_t tid,
+        uint32_t pid,
+        const std::vector<std::string>& endpoints,
+        const ::rtidb::common::ColumnKey& column_key) {
+    std::shared_ptr<Task> task = std::make_shared<Task>("", std::make_shared<::rtidb::api::TaskInfo>());
+    for (const auto& endpoint : endpoints) {
+        auto it = tablets_.find(endpoint);
+        if (it == tablets_.end() || it->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+            return std::shared_ptr<Task>();
+        }
+        std::shared_ptr<Task> sub_task = std::make_shared<Task>(endpoint, std::make_shared<::rtidb::api::TaskInfo>());
+        sub_task->task_info_->set_op_id(op_index);
+        sub_task->task_info_->set_op_type(op_type);
+        sub_task->task_info_->set_task_type(::rtidb::api::TaskType::kAddIndexToTablet);
+        sub_task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
+        sub_task->task_info_->set_endpoint(endpoint);
+        boost::function<bool ()> fun = boost::bind(&TabletClient::AddIndex, it->second->client_, 
+                tid, pid, column_key);
+        sub_task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
+        task->sub_task_.push_back(sub_task);
+    }
+    task->task_info_->set_op_id(op_index);
+    task->task_info_->set_op_type(op_type);
+    task->task_info_->set_task_type(::rtidb::api::TaskType::kAddIndexToTablet);
+    task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
+    task->fun_ = boost::bind(&NameServerImpl::RunSubTask, this, task);
     return task;
 }
 

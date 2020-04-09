@@ -259,6 +259,7 @@ public:
     bool SetMode(bool mode);
 
     bool DeleteIndex(uint32_t tid, const std::string& idx_name);
+
     bool AddIndex(uint32_t tid, uint32_t pid, const ::rtidb::common::ColumnKey& column_key);
 
     bool DumpIndexData(uint32_t tid, uint32_t pid, uint32_t partition_num, 
@@ -270,6 +271,10 @@ public:
             std::shared_ptr<TaskInfo> task_info);
 
     bool LoadIndexData(uint32_t tid, uint32_t pid, uint32_t partition_num,
+            std::shared_ptr<TaskInfo> task_info);
+
+    bool ExtractIndexData(uint32_t tid, uint32_t pid, uint32_t partition_num,
+            const ::rtidb::common::ColumnKey& column_key, uint32_t idx,
             std::shared_ptr<TaskInfo> task_info);
     
 private:

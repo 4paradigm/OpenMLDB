@@ -76,7 +76,6 @@ public:
 private:
     std::shared_ptr<ZkClient> zk_client_;
     uint64_t session_term_;
-    int64_t task_id_;
     // todo :: add statsus variable show replicas status
 };
 
@@ -91,6 +90,7 @@ struct Task {
     ~Task() {}
     std::string endpoint_;
     std::shared_ptr<::rtidb::api::TaskInfo> task_info_;
+    std::vector<std::shared_ptr<Task>> sub_task_;
     TaskFun fun_;
 };
 
@@ -587,6 +587,21 @@ private:
             const std::string& endpoint,
             uint32_t partition_num);
 
+    std::shared_ptr<Task> CreateExtractIndexDataTask(uint64_t op_index,
+            ::rtidb::api::OPType op_type,
+            uint32_t tid,
+            uint32_t pid,
+            const std::vector<std::string>& endpoints,
+            uint32_t partition_num,
+            const ::rtidb::common::ColumnKey& column_key,
+            uint32_t idx);
+
+    std::shared_ptr<Task> CreateAddIndexToTabletTask(uint64_t op_index,
+            ::rtidb::api::OPType op_type,
+            uint32_t tid,
+            uint32_t pid,
+            const std::vector<std::string>& endpoints,
+            const ::rtidb::common::ColumnKey& column_key);
 
     std::shared_ptr<TableInfo> GetTableInfo(const std::string& name);
 
@@ -658,6 +673,8 @@ private:
                                  std::shared_ptr<::rtidb::api::TaskInfo> task_info);
 
     void WrapTaskFun(const boost::function<bool ()>& fun, std::shared_ptr<::rtidb::api::TaskInfo> task_info);
+
+    void RunSubTask(std::shared_ptr<Task> task);
 
     // get tablet info
     std::shared_ptr<TabletInfo> GetTabletInfo(const std::string& endpoint);
