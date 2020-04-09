@@ -17,6 +17,7 @@
 #include "codec/row_codec.h"
 #include "tablet/tablet_catalog.h"
 #include "vm/catalog.h"
+#include "vm/mem_catalog.h"
 namespace fesql {
 namespace bm {
 using base::Slice;
