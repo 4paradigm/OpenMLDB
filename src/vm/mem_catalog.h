@@ -57,7 +57,7 @@ class MemSegmentIterator : public SliceIterator {
     void Seek(uint64_t ts);
     void SeekToFirst();
     const uint64_t GetKey();
-    const base::Slice GetValue();
+    const Slice& GetValue();
     void Next();
     bool Valid();
 
@@ -78,7 +78,7 @@ class MemTableIterator : public SliceIterator {
     void Seek(uint64_t ts);
     void SeekToFirst();
     const uint64_t GetKey();
-    const base::Slice GetValue();
+    const Slice& GetValue();
     void Next();
     bool Valid();
 

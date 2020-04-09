@@ -39,7 +39,7 @@ class TableIterator : public IteratorV<uint64_t, base::Slice> {
     void Next();
     void NextTs();
     void NextTsInPks();
-    const Slice GetValue();
+    const Slice& GetValue();
     const uint64_t GetKey();
     const Slice GetPK();
     void SeekToFirst();
@@ -53,6 +53,7 @@ class TableIterator : public IteratorV<uint64_t, base::Slice> {
     uint32_t seg_idx_ = 0;
     base::Iterator<Slice, void*>* pk_it_ = NULL;
     base::Iterator<uint64_t, DataBlock*>* ts_it_ = NULL;
+    base::Slice value_;
 };
 
 class Table {

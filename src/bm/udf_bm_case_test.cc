@@ -42,10 +42,35 @@ TEST_F(UDFBMCaseTest, CopyMemTable_TEST) {
     CopyMemTable(nullptr, TEST, 1000L);
 }
 
+
 TEST_F(UDFBMCaseTest, CopyArrayList_TEST) {
     CopyArrayList(nullptr, TEST, 10L);
     CopyArrayList(nullptr, TEST, 100L);
     CopyArrayList(nullptr, TEST, 1000L);
+}
+
+TEST_F(UDFBMCaseTest, TabletTableIterate_TEST) {
+    TabletFullIterate(nullptr, TEST, 10L);
+    TabletFullIterate(nullptr, TEST, 100L);
+    TabletFullIterate(nullptr, TEST, 1000L);
+}
+
+TEST_F(UDFBMCaseTest, TabletWindowIterate_TEST) {
+    TabletWindowIterate(nullptr, TEST, 10L);
+    TabletWindowIterate(nullptr, TEST, 100L);
+    TabletWindowIterate(nullptr, TEST, 1000L);
+}
+
+TEST_F(UDFBMCaseTest, MemSegmentIterate_TEST) {
+    MemSegmentIterate(nullptr, TEST, 10L);
+    MemSegmentIterate(nullptr, TEST, 100L);
+    MemSegmentIterate(nullptr, TEST, 1000L);
+}
+
+TEST_F(UDFBMCaseTest, MemTableIterate_TEST) {
+    MemTableIterate(nullptr, TEST, 10L);
+    MemTableIterate(nullptr, TEST, 100L);
+    MemTableIterate(nullptr, TEST, 1000L);
 }
 }  // namespace bm
 }  // namespace fesql

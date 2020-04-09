@@ -52,7 +52,7 @@ class CSVSegmentIterator : public SliceIterator {
 
     const uint64_t GetKey();
 
-    const base::Slice GetValue();
+    const base::Slice& GetValue();
 
     void Next();
 
@@ -69,6 +69,7 @@ class CSVSegmentIterator : public SliceIterator {
     uint32_t buf_size_;
     std::map<uint64_t, RowLocation>::const_reverse_iterator it_;
     std::map<uint64_t, RowLocation>::const_reverse_iterator rend_;
+    base::Slice value_;
 };
 
 class CSVTableIterator : public SliceIterator {
@@ -83,7 +84,7 @@ class CSVTableIterator : public SliceIterator {
 
     const uint64_t GetKey();
 
-    const base::Slice GetValue();
+    const base::Slice& GetValue();
 
     void Next();
 
@@ -100,6 +101,7 @@ class CSVTableIterator : public SliceIterator {
     int8_t* buf_;
     codec::RowBuilder rb_;
     uint32_t buf_size_;
+    base::Slice value_;
 };
 
 }  // namespace vm

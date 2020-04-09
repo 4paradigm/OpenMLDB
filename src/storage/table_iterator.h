@@ -29,6 +29,7 @@
 
 namespace fesql {
 namespace storage {
+using fesql::base::Slice;
 using fesql::codec::IteratorV;
 using fesql::codec::WindowIterator;
 class WindowTableIterator;
@@ -50,7 +51,7 @@ class EmptyWindowIterator : public IteratorV<uint64_t, base::Slice> {
 
     inline void Next() {}
 
-    inline const base::Slice GetValue() { return value_; }
+    inline const base::Slice& GetValue() { return value_; }
 
     inline const uint64_t GetKey() { return 0; }
 
@@ -72,12 +73,13 @@ class WindowInternalIterator : public IteratorV<uint64_t, base::Slice> {
 
     void Next();
 
-    const base::Slice GetValue();
+    const base::Slice& GetValue();
 
     const uint64_t GetKey();
 
  private:
     std::unique_ptr<base::Iterator<uint64_t, DataBlock*>> ts_it_;
+    base::Slice value_;
 };
 
 class WindowTableIterator : public WindowIterator {
@@ -117,7 +119,6 @@ class FullTableIterator : public IteratorV<uint64_t, base::Slice> {
                                std::shared_ptr<Table> table);
 
     ~FullTableIterator() {
-        DLOG(INFO) << "~FullTableIterator()";
     }
 
     inline void Seek(uint64_t ts) {}
@@ -128,7 +129,7 @@ class FullTableIterator : public IteratorV<uint64_t, base::Slice> {
 
     void Next();
 
-    const base::Slice GetValue();
+    const Slice& GetValue();
 
     // the key maybe the row num
     const uint64_t GetKey() { return 0; }
@@ -144,6 +145,7 @@ class FullTableIterator : public IteratorV<uint64_t, base::Slice> {
     std::unique_ptr<base::Iterator<uint64_t, DataBlock*>> ts_it_;
     std::unique_ptr<base::Iterator<base::Slice, void*>> pk_it_;
     std::shared_ptr<Table> table_;
+    Slice value_;
 };
 
 }  // namespace storage

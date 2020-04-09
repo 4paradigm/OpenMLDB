@@ -27,15 +27,17 @@ static void BuildData(type::TableDef& table_def,      // NOLINT
                       vm::MemSegmentHandler& window,  // NOLINT
                       int64_t data_size);
 
-static void DeleteData(vm::MemSegmentHandler& window);       // NOLINT
-static void DeleteData(vm::MemTableHandler& window);         // NOLINT
-int64_t RunCopyArrayList(MemSegmentHandler& window,          // NOLINT
-                         type::TableDef& table_def);         // NOLINT
-int32_t RunCopyTable(MemTableHandler& table,                 // NOLINT
-                     type::TableDef& table_def);             // NOLINT
-int32_t RunCopySegment(MemSegmentHandler& segment,           // NOLINT
-                       type::TableDef& table_def);           // NOLINT
-
+static void DeleteData(vm::MemSegmentHandler& window);        // NOLINT
+static void DeleteData(vm::MemTableHandler& window);          // NOLINT
+int64_t RunCopyArrayList(MemSegmentHandler& window,           // NOLINT
+                         type::TableDef& table_def);          // NOLINT
+int32_t RunCopyTable(vm::TableHandler* table,                 // NOLINT
+                     const vm::Schema* schema);               // NOLINT
+int32_t RunCopySegment(MemSegmentHandler& segment,            // NOLINT
+                       type::TableDef& table_def);            // NOLINT
+int32_t TableHanlderIterate(vm::TableHandler* table_hander);  // NOLINT
+const int64_t PartitionHandlerIterate(vm::PartitionHandler* partition_handler,
+                                      const std::string& key);
 static void DeleteData(vm::MemSegmentHandler& window) {  // NOLINT
     auto iter = window.GetIterator();
     while (iter->Valid()) {
@@ -132,22 +134,119 @@ void CopyArrayList(benchmark::State* state, MODE mode, int64_t data_size) {
     }
 }
 void CopyMemTable(benchmark::State* state, MODE mode, int64_t data_size) {
-    vm::MemTableHandler table;
+    vm::MemSegmentHandler table;
     type::TableDef table_def;
     BuildData(table_def, table, data_size);
     switch (mode) {
         case BENCHMARK: {
             for (auto _ : *state) {
-                benchmark::DoNotOptimize(RunCopyTable(table, table_def));
+                benchmark::DoNotOptimize(
+                    RunCopyTable(&table, &(table_def.columns())));
             }
             DeleteData(table);
             break;
         }
         case TEST: {
-            if (data_size == RunCopyTable(table, table_def)) {
+            if (data_size == RunCopyTable(&table, &(table_def.columns()))) {
                 DeleteData(table);
             } else {
                 DeleteData(table);
+                FAIL();
+            }
+        }
+    }
+}
+void TabletFullIterate(benchmark::State* state, MODE mode, int64_t data_size) {
+    auto catalog = Data_WindowCase1(data_size);
+    auto table_hanlder = catalog->GetTable("db", "t1");
+    switch (mode) {
+        case BENCHMARK: {
+            for (auto _ : *state) {
+                benchmark::DoNotOptimize(
+                    TableHanlderIterate(table_hanlder.get()));
+            }
+            break;
+        }
+        case TEST: {
+            if (data_size != TableHanlderIterate(table_hanlder.get())) {
+                FAIL();
+            }
+        }
+    }
+}
+
+void TabletWindowIterate(benchmark::State* state, MODE mode,
+                         int64_t data_size) {
+    auto catalog = Data_WindowCase1(data_size);
+    auto table_hanlder = catalog->GetTable("db", "t1");
+    auto partition_handler =
+        table_hanlder->GetPartition(table_hanlder, "index1");
+    if (!partition_handler) {
+        FAIL();
+    }
+    switch (mode) {
+        case BENCHMARK: {
+            for (auto _ : *state) {
+                benchmark::DoNotOptimize(
+                    PartitionHandlerIterate(partition_handler.get(), "hello"));
+            }
+            break;
+        }
+        case TEST: {
+            if (data_size !=
+                PartitionHandlerIterate(partition_handler.get(), "hello")) {
+                FAIL();
+            }
+        }
+    }
+}
+
+const int64_t PartitionHandlerIterate(vm::PartitionHandler* partition_handler,
+                                      const std::string& key) {
+    int64_t cnt = 0;
+    auto p_iter = partition_handler->GetWindowIterator();
+    p_iter->Seek(key);
+    auto iter = p_iter->GetValue();
+    iter->SeekToFirst();
+    while (iter->Valid()) {
+        iter->Next();
+        cnt++;
+    }
+    return cnt;
+}
+
+void MemTableIterate(benchmark::State* state, MODE mode, int64_t data_size) {
+    vm::MemTableHandler table_hanlder;
+    type::TableDef table_def;
+    BuildData(table_def, table_hanlder, data_size);
+    switch (mode) {
+        case BENCHMARK: {
+            for (auto _ : *state) {
+                benchmark::DoNotOptimize(TableHanlderIterate(&table_hanlder));
+            }
+            break;
+        }
+        case TEST: {
+            if (data_size != TableHanlderIterate(&table_hanlder)) {
+                FAIL();
+            }
+        }
+    }
+}
+
+void MemSegmentIterate(benchmark::State* state, MODE mode, int64_t data_size) {
+    vm::MemSegmentHandler table_hanlder;
+    type::TableDef table_def;
+    BuildData(table_def, table_hanlder, data_size);
+    switch (mode) {
+        case BENCHMARK: {
+            for (auto _ : *state) {
+                benchmark::DoNotOptimize(TableHanlderIterate(&table_hanlder));
+            }
+            break;
+        }
+        case TEST: {
+            if (data_size != TableHanlderIterate(&table_hanlder)) {
                 FAIL();
             }
         }
@@ -186,11 +285,11 @@ int64_t RunCopyArrayList(MemSegmentHandler& window,    // NOLINT
     }
     return window_table.size();
 }
-int32_t RunCopyTable(MemTableHandler& window,      // NOLINT
-                     type::TableDef& table_def) {  // NOLINT
-    auto window_table = std::shared_ptr<vm::MemTableHandler>(
-        new MemTableHandler(&table_def.columns()));
-    auto from_iter = window.GetIterator();
+int32_t RunCopyTable(vm::TableHandler* table_hander,  // NOLINT
+                     const vm::Schema* schema) {      // NOLINT
+    auto window_table =
+        std::shared_ptr<vm::MemTableHandler>(new MemTableHandler(schema));
+    auto from_iter = table_hander->GetIterator();
     while (from_iter->Valid()) {
         window_table->AddRow(from_iter->GetValue());
         from_iter->Next();
@@ -207,6 +306,16 @@ int32_t RunCopySegment(MemSegmentHandler& window,    // NOLINT
         from_iter->Next();
     }
     return window_table->GetCount();
+}
+
+int32_t TableHanlderIterate(vm::TableHandler* table_hander) {  // NOLINT
+    int64_t cnt = 0;
+    auto from_iter = table_hander->GetIterator();
+    while (from_iter->Valid()) {
+        from_iter->Next();
+        cnt++;
+    }
+    return cnt;
 }
 
 void SumArrayListCol(benchmark::State* state, MODE mode, int64_t data_size,
