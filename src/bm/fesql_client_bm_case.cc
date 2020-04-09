@@ -11,10 +11,15 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "bm/base_bm.h"
+#include "brpc/server.h"
+#include "dbms/dbms_server_impl.h"
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-
+#include "sdk/dbms_sdk.h"
+#include "sdk/tablet_sdk.h"
+#include "tablet/tablet_server_impl.h"
 DECLARE_string(dbms_endpoint);
 DECLARE_string(endpoint);
 DECLARE_int32(port);

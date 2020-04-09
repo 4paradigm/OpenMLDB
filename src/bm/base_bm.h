@@ -104,7 +104,7 @@ std::shared_ptr<tablet::TabletCatalog> BuildCommonCatalog(
     return catalog;
 }
 
-static void BuildTableDef(::fesql::type::TableDef& table) {  // NOLINT
+void BuildTableDef(::fesql::type::TableDef& table) {  // NOLINT
     table.set_name("t1");
     table.set_catalog("db");
     {
@@ -146,7 +146,7 @@ static void BuildTableDef(::fesql::type::TableDef& table) {  // NOLINT
     }
 }
 
-static void BuildBuf(int8_t** buf, uint32_t* size,
+void BuildBuf(int8_t** buf, uint32_t* size,
                      ::fesql::type::TableDef& table) {  // NOLINT
     BuildTableDef(table);
     ::fesql::type::IndexDef* index = table.add_indexes();
@@ -168,7 +168,7 @@ static void BuildBuf(int8_t** buf, uint32_t* size,
     *size = total_size;
 }
 
-static std::shared_ptr<tablet::TabletCatalog> Data_WindowCase1(
+std::shared_ptr<tablet::TabletCatalog> Data_WindowCase1(
     int32_t data_size) {
     DLOG(INFO) << "insert window data";
     type::TableDef table_def;
