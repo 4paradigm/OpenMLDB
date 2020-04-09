@@ -2,13 +2,13 @@ include_directories(${INCLUDE_DIRECTORIES}
         ${PROJECT_SOURCE_DIR}/src
         ${PROJECT_BINARY_DIR}/src)
 
-add_library(fesql_vm STATIC jit.cc sql_compiler.cc engine.cc mem_catalog.cc  transform.cc physical_op.cc)
+add_library(fesql_vm STATIC jit.cc runner.cc sql_compiler.cc engine.cc mem_catalog.cc transform.cc physical_op.cc)
 
 add_library(fesql_csv_catalog STATIC csv_catalog.cc csv_table_iterator.cc
         csv_window_iterator.cc)
 
-set(vm_deps_libs fesql_tablet fesql_vm fesql_udf fesql_vm fesql_parser fesql_planner  fesql_codegen fesql_storage fesql_codec fesql_proto
-    fesql_node fesql_base)
+set(vm_deps_libs fesql_tablet fesql_vm fesql_udf fesql_vm fesql_parser fesql_planner fesql_codegen fesql_storage fesql_codec fesql_proto
+        fesql_node fesql_base)
 
 
 add_executable(physical_op_test physical_op_test.cc)
@@ -47,12 +47,17 @@ list(APPEND logical_graph_test logical_graph_test)
 #list(APPEND test_list csv_catalog_test)
 
 
-
 add_executable(jit_test jit_test.cc)
 target_link_libraries(jit_test ${vm_deps_libs} protobuf ${llvm_libs} ${COMMON_LIBS} gtest pthread)
 add_test(jit_test jit_test --gtest_output=xml:${CMAKE_BINARY_DIR}/jit_test.xml)
 list(APPEND test_list jit_test)
 
+add_executable(runner_test runner_test.cc)
+target_link_libraries(runner_test ${vm_deps_libs}
+        protobuf ${llvm_libs} ${COMMON_LIBS} gtest pthread)
+add_test(sql_compiler_test runner_test
+        --gtest_output=xml:${CMAKE_BINARY_DIR}/runner_test.xml)
+list(APPEND test_list runner_test)
 
 add_executable(sql_compiler_test sql_compiler_test.cc)
 target_link_libraries(sql_compiler_test ${vm_deps_libs}
@@ -61,6 +66,7 @@ add_test(sql_compiler_test sql_compiler_test
         --gtest_output=xml:${CMAKE_BINARY_DIR}/sql_compiler_test.xml)
 list(APPEND test_list sql_compiler_test)
 
+
 add_executable(engine_test engine_test.cc)
 target_link_libraries(engine_test ${vm_deps_libs}
         protobuf ${llvm_libs} ${COMMON_LIBS} gtest pthread)
@@ -68,9 +74,7 @@ add_test(engine_test engine_test
         --gtest_output=xml:${CMAKE_BINARY_DIR}/engine_test.xml)
 list(APPEND test_list engine_test)
 
-add_executable(engine_bm engine_bm.cc)
-target_link_libraries(engine_bm ${vm_deps_libs}
-        benchmark protobuf ${llvm_libs} ${COMMON_LIBS} tcmalloc profiler gtest pthread rt)
+
 
 add_executable(csv_db csv_db.cc)
 target_link_libraries(csv_db fesql_csv_catalog ${vm_deps_libs} ${llvm_libs} ${g_libs} ${arrow_libs} ${COMMON_LIBS} protobuf gtest pthread)

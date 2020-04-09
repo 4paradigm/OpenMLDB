@@ -1,5 +1,5 @@
 /*
- * sql_compiler_test.cc
+ * runner_test.cc
  * Copyright (C) 4paradigm.com 2019 wangtaize <wangtaize@4paradigm.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,7 +15,6 @@
  * limitations under the License.
  */
 
-#include "vm/sql_compiler.h"
 #include <memory>
 #include <utility>
 #include "boost/algorithm/string.hpp"
@@ -36,6 +35,7 @@
 #include "parser/parser.h"
 #include "plan/planner.h"
 #include "tablet/tablet_catalog.h"
+#include "vm/sql_compiler.h"
 #include "vm/test_base.h"
 
 using namespace llvm;       // NOLINT
@@ -77,13 +77,19 @@ void BuildTableDef(::fesql::type::TableDef& table_def) {  // NOLINT
         column->set_name("col15");
     }
 }
-class SQLCompilerTest : public ::testing::TestWithParam<std::string> {};
+class RunnerTest : public ::testing::TestWithParam<std::string> {};
 
 INSTANTIATE_TEST_CASE_P(
-    WindowSqlTest, SQLCompilerTest,
+    SqlSimpleProject, RunnerTest,
     testing::Values(
-        "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return "
-        "d\nend\n%%sql\nSELECT test(col1,col1) FROM t1 limit 10;",
+        "SELECT COL1 as c1 FROM t1;", "SELECT t1.COL1 c1 FROM t1 limit 10;",
+        "SELECT COL1 as c1, col2  FROM t1;",
+        "SELECT col1-col2 as col1_2, *, col1+col2 as col12 FROM t1 limit 10;",
+        "SELECT *, col1+col2 as col12 FROM t1 limit 10;"));
+
+INSTANTIATE_TEST_CASE_P(
+    SqlWindowProjectPlanner, RunnerTest,
+    testing::Values(
         "SELECT COL1, COL2, `COL15`, AVG(COL3) OVER w, SUM(COL3) OVER w FROM "
         "t1 \n"
         "WINDOW w AS (PARTITION BY COL2\n"
@@ -97,8 +103,29 @@ INSTANTIATE_TEST_CASE_P(
         "WINDOW w1 AS (PARTITION BY col15 ORDER BY `col15` RANGE BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;"));
 
-void Compiler_Runner_Check(std::shared_ptr<Catalog> catalog,
-                           const std::string sql, const bool is_batch) {
+INSTANTIATE_TEST_CASE_P(
+    SqlWherePlan, RunnerTest,
+    testing::Values(
+        "SELECT COL1 FROM t1 where COL1+COL2;",
+        "SELECT COL1 FROM t1 where COL1;",
+        "SELECT COL1 FROM t1 where COL1 > 10 and COL2 = 20 or COL1 =0;",
+        "SELECT COL1 FROM t1 where COL1 > 10 and COL2 = 20;",
+        "SELECT COL1 FROM t1 where COL1 > 10;"));
+
+INSTANTIATE_TEST_CASE_P(
+    SqlGroupPlan, RunnerTest,
+    testing::Values(
+        "SELECT sum(col1) as col1sum FROM t1 group by col1, col2;",
+        "SELECT sum(col1) as col1sum FROM t1 group by col1, col2, col3;",
+        "SELECT sum(col1) as col1sum FROM t1 group by col3, col2, col1;",
+        "SELECT sum(COL1) FROM t1 group by COL1+COL2;",
+        "SELECT sum(COL1) FROM t1 group by COL1;",
+        "SELECT sum(COL1) FROM t1 group by COL1 > 10 and COL2 = 20 or COL1 =0;",
+        "SELECT sum(COL1) FROM t1 group by COL1, COL2;",
+        "SELECT sum(COL1) FROM t1 group by COL1;"));
+
+void Runner_Check(std::shared_ptr<Catalog> catalog, const std::string sql,
+                  const bool is_batch) {
     node::NodeManager nm;
     SQLCompiler sql_compiler(catalog, &nm);
     SQLContext sql_context;
@@ -116,21 +143,18 @@ void Compiler_Runner_Check(std::shared_ptr<Catalog> catalog,
     ASSERT_TRUE(nullptr != sql_context.runner);
     std::ostringstream runner_oss;
     sql_context.runner->Print(runner_oss, "");
-    std::cout << "runner: \n" << oss.str() << std::endl;
+    std::cout << "runner: \n" << runner_oss.str() << std::endl;
 
     std::ostringstream oss_schema;
     PrintSchema(oss_schema, sql_context.schema);
     std::cout << "schema:\n" << oss_schema.str();
 }
 
-TEST_P(SQLCompilerTest, compile_request_mode_test) {
+TEST_P(RunnerTest, request_mode_test) {
     std::string sqlstr = GetParam();
-    LOG(INFO) << sqlstr;
-
     const fesql::base::Status exp_status(::fesql::common::kOk, "ok");
     boost::to_lower(sqlstr);
     LOG(INFO) << sqlstr;
-    std::cout << sqlstr << std::endl;
 
     fesql::type::TableDef table_def;
     fesql::type::TableDef table_def2;
@@ -177,7 +201,6 @@ TEST_P(SQLCompilerTest, compile_request_mode_test) {
     AddTable(catalog, table_def4, table4);
     AddTable(catalog, table_def5, table5);
     AddTable(catalog, table_def6, table6);
-
 
     fesql::type::TableDef request_def;
     BuildTableDef(request_def);
@@ -187,17 +210,14 @@ TEST_P(SQLCompilerTest, compile_request_mode_test) {
         new ::fesql::storage::Table(1, 1, request_def));
     AddTable(catalog, request_def, request);
 
-    Compiler_Runner_Check(catalog, sqlstr, false);
+    Runner_Check(catalog, sqlstr, false);
 }
 
-TEST_P(SQLCompilerTest, compile_batch_mode_test) {
+TEST_P(RunnerTest, batch_mode_test) {
     std::string sqlstr = GetParam();
-    LOG(INFO) << sqlstr;
-
     const fesql::base::Status exp_status(::fesql::common::kOk, "ok");
     boost::to_lower(sqlstr);
     LOG(INFO) << sqlstr;
-    std::cout << sqlstr << std::endl;
 
     fesql::type::TableDef table_def;
     fesql::type::TableDef table_def2;
@@ -245,8 +265,7 @@ TEST_P(SQLCompilerTest, compile_batch_mode_test) {
     AddTable(catalog, table_def5, table5);
     AddTable(catalog, table_def6, table6);
 
-
-    Compiler_Runner_Check(catalog, sqlstr, true);
+    Runner_Check(catalog, sqlstr, true);
 }
 
 }  // namespace vm

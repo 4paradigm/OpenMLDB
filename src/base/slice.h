@@ -61,6 +61,9 @@ class Slice {
     Slice(const Slice& s)
         : need_free_(false), size_(s.size()), data_(s.data()) {}
 
+    Slice(const Slice& s, bool need_free)
+        : need_free_(need_free), size_(s.size()), data_(s.data()) {}
+
     // Change this slice to refer to an empty array
     void clear() {
         data_ = "";

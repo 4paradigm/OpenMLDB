@@ -152,7 +152,7 @@ TEST_F(MemCataLogTest, mem_table_handler_test) {
     std::vector<storage::Slice> rows;
     ::fesql::type::TableDef table;
     BuildRows(table, rows);
-    vm::MemTableHandler table_handler("t1", "temp", &(table.columns()));
+    vm::MemSegmentHandler table_handler("t1", "temp", &(table.columns()));
     for (auto row : rows) {
         table_handler.AddRow(row);
     }
@@ -196,7 +196,7 @@ TEST_F(MemCataLogTest, mem_table_iterator_test) {
     std::vector<storage::Slice> rows;
     ::fesql::type::TableDef table;
     BuildRows(table, rows);
-    vm::MemTableHandler table_handler("t1", "temp", &(table.columns()));
+    vm::MemSegmentHandler table_handler("t1", "temp", &(table.columns()));
     uint64_t ts = 1;
     for (auto row : rows) {
         table_handler.AddRow(ts++, row);

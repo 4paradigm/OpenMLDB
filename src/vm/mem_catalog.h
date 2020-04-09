@@ -44,15 +44,16 @@ struct DescComparor {
 };
 
 typedef std::vector<std::pair<uint64_t, base::Slice>> MemSegment;
+typedef std::vector<base::Slice> MemTable;
 typedef std::map<std::string, MemSegment, std::greater<std::string>>
     MemSegmentMap;
 
-class MemTableIterator : public SliceIterator {
+class MemSegmentIterator : public SliceIterator {
  public:
-    MemTableIterator(const MemSegment* table, const vm::Schema* schema);
-    MemTableIterator(const MemSegment* table, const vm::Schema* schema,
-                     int32_t start, int32_t end);
-    ~MemTableIterator();
+    MemSegmentIterator(const MemSegment* table, const vm::Schema* schema);
+    MemSegmentIterator(const MemSegment* table, const vm::Schema* schema,
+                       int32_t start, int32_t end);
+    ~MemSegmentIterator();
     void Seek(uint64_t ts);
     void SeekToFirst();
     const uint64_t GetKey();
@@ -66,6 +67,27 @@ class MemTableIterator : public SliceIterator {
     const MemSegment::const_iterator start_iter_;
     const MemSegment::const_iterator end_iter_;
     MemSegment::const_iterator iter_;
+};
+
+class MemTableIterator : public SliceIterator {
+ public:
+    MemTableIterator(const MemTable* table, const vm::Schema* schema);
+    MemTableIterator(const MemTable* table, const vm::Schema* schema,
+                     int32_t start, int32_t end);
+    ~MemTableIterator();
+    void Seek(uint64_t ts);
+    void SeekToFirst();
+    const uint64_t GetKey();
+    const base::Slice GetValue();
+    void Next();
+    bool Valid();
+
+ private:
+    const MemTable* table_;
+    const Schema* schema_;
+    const MemTable::const_iterator start_iter_;
+    const MemTable::const_iterator end_iter_;
+    MemTable::const_iterator iter_;
 };
 
 class MemWindowIterator : public WindowIterator {
@@ -114,8 +136,43 @@ class MemTableHandler : public TableHandler {
     explicit MemTableHandler(const Schema* schema);
     MemTableHandler(const std::string& table_name, const std::string& db,
                     const Schema* schema);
-    const Types& GetTypes() override;
     ~MemTableHandler() override;
+
+    const Types& GetTypes() override { return types_; }
+    inline const Schema* GetSchema() { return schema_; }
+    inline const std::string& GetName() { return table_name_; }
+    inline const IndexHint& GetIndex() { return index_hint_; }
+    inline const std::string& GetDatabase() { return db_; }
+
+    std::unique_ptr<IteratorV<uint64_t, base::Slice>> GetIterator() const;
+    IteratorV<uint64_t, base::Slice>* GetIterator(int8_t* addr) const;
+    std::unique_ptr<WindowIterator> GetWindowIterator(
+        const std::string& idx_name);
+
+    void AddRow(const base::Slice& row);
+    void Reverse();
+    virtual const uint64_t GetCount() { return table_.size(); }
+    virtual Slice At(uint64_t pos) {
+        return pos >= 0 && pos < table_.size() ? table_.at(pos) : base::Slice();
+    }
+
+ protected:
+    const std::string table_name_;
+    const std::string db_;
+    const Schema* schema_;
+    Types types_;
+    IndexHint index_hint_;
+    MemTable table_;
+};
+
+class MemSegmentHandler : public TableHandler {
+ public:
+    MemSegmentHandler();
+    explicit MemSegmentHandler(const Schema* schema);
+    MemSegmentHandler(const std::string& table_name, const std::string& db,
+                      const Schema* schema);
+    const Types& GetTypes() override;
+    ~MemSegmentHandler() override;
     inline const Schema* GetSchema() { return schema_; }
     inline const std::string& GetName() { return table_name_; }
     inline const IndexHint& GetIndex() { return index_hint_; }
@@ -124,9 +181,10 @@ class MemTableHandler : public TableHandler {
     inline const std::string& GetDatabase() { return db_; }
     std::unique_ptr<WindowIterator> GetWindowIterator(
         const std::string& idx_name);
-    void AddRow(const base::Slice& v);
     void AddRow(const uint64_t key, const base::Slice& v);
+    void AddRow(const base::Slice& v);
     void Sort(const bool is_asc);
+    void Reverse();
     virtual const uint64_t GetCount() { return table_.size(); }
     virtual Slice At(uint64_t pos) {
         return pos >= 0 && pos < table_.size() ? table_.at(pos).second
@@ -142,17 +200,17 @@ class MemTableHandler : public TableHandler {
     MemSegment table_;
 };
 
-class Window : public MemTableHandler {
+class Window : public MemSegmentHandler {
  public:
     Window(int64_t start_offset, int64_t end_offset)
-        : MemTableHandler(),
+        : MemSegmentHandler(),
           start_(0),
           end_(0),
           start_offset_(start_offset),
           end_offset_(end_offset),
           max_size_(0) {}
     Window(int64_t start_offset, int64_t end_offset, uint32_t max_size)
-        : MemTableHandler(),
+        : MemSegmentHandler(),
           start_(0),
           end_(0),
           start_offset_(start_offset),
@@ -162,17 +220,17 @@ class Window : public MemTableHandler {
 
     std::unique_ptr<vm::IteratorV<uint64_t, Slice>> GetIterator()
         const override {
-        std::unique_ptr<vm::MemTableIterator> it(
-            new vm::MemTableIterator(&table_, schema_, start_, end_));
+        std::unique_ptr<vm::MemSegmentIterator> it(
+            new vm::MemSegmentIterator(&table_, schema_, start_, end_));
         return std::move(it);
     }
 
     vm::IteratorV<uint64_t, Slice>* GetIterator(int8_t* addr) const override {
         if (nullptr == addr) {
-            return new vm::MemTableIterator(&table_, schema_, start_, end_);
+            return new vm::MemSegmentIterator(&table_, schema_, start_, end_);
         } else {
             return new (addr)
-                vm::MemTableIterator(&table_, schema_, start_, end_);
+                vm::MemSegmentIterator(&table_, schema_, start_, end_);
         }
     }
     virtual void BufferData(uint64_t key, const Slice& row) = 0;
@@ -226,7 +284,7 @@ class CurrentHistoryUnboundWindow : public Window {
 };
 
 typedef std::map<std::string,
-                 std::map<std::string, std::shared_ptr<MemTableHandler>>>
+                 std::map<std::string, std::shared_ptr<MemSegmentHandler>>>
     MemTables;
 typedef std::map<std::string, std::shared_ptr<type::Database>> Databases;
 
@@ -246,6 +304,7 @@ class MemPartitionHandler : public PartitionHandler {
     virtual std::unique_ptr<WindowIterator> GetWindowIterator();
     bool AddRow(const std::string& key, uint64_t ts, const Slice& row);
     void Sort(const bool is_asc);
+    void Reverse();
     void Print();
     virtual const uint64_t GetCount() { return partitions_.size(); }
 

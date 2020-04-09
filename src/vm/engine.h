@@ -26,9 +26,9 @@
 #include "base/spin_lock.h"
 #include "codec/list_iterator_codec.h"
 #include "codec/row_codec.h"
-#include "vm/mem_catalog.h"
 #include "proto/common.pb.h"
 #include "vm/catalog.h"
+#include "vm/mem_catalog.h"
 #include "vm/sql_compiler.h"
 
 namespace fesql {
@@ -55,6 +55,10 @@ class RunSession {
     virtual inline vm::PhysicalOpNode* GetPhysicalPlan() {
         return compile_info_->sql_ctx.plan;
     }
+    virtual inline vm::Runner* GetRunner() {
+        return compile_info_->sql_ctx.runner;
+    }
+
 
     virtual const bool IsBatchRun() const = 0;
 
@@ -67,50 +71,6 @@ class RunSession {
     std::shared_ptr<CompileInfo> compile_info_;
     std::shared_ptr<Catalog> cl_;
     friend Engine;
-    std::shared_ptr<DataHandler> RunPhysicalPlan(const PhysicalOpNode* node,
-                                                 const Slice* in_row = nullptr);
-    Slice WindowProject(const int8_t* fn, const uint64_t key, const Slice slice,
-                        Window* window);
-    Slice RowProject(const int8_t* fn, const Slice slice);
-    Slice AggProject(const int8_t* fn,
-                     const std::shared_ptr<DataHandler> table);
-    std::string GetColumnString(RowView* view, int pos, type::Type type);
-    int64_t GetColumnInt64(RowView* view, int pos, type::Type type);
-    std::shared_ptr<DataHandler> TableGroup(
-        const std::shared_ptr<DataHandler> table, const Schema& schema,
-        const int8_t* fn, const std::vector<int>& idxs);
-    std::shared_ptr<DataHandler> PartitionGroup(
-        const std::shared_ptr<DataHandler> partitions, const Schema& schema,
-        const int8_t* fn, const std::vector<int>& idxs);
-    std::shared_ptr<DataHandler> TableSortGroup(
-        std::shared_ptr<DataHandler> table,
-        const PhysicalGroupAndSortNode* grouo_sort_op);
-    std::shared_ptr<DataHandler> PartitionSort(
-        std::shared_ptr<DataHandler> table, const Schema& schema,
-        const int8_t* fn, std::vector<int> idxs, const bool is_asc);
-    std::shared_ptr<DataHandler> TableSort(std::shared_ptr<DataHandler> table,
-                                           const Schema& schema,
-                                           const int8_t* fn,
-                                           std::vector<int> idxs,
-                                           const bool is_asc);
-    std::shared_ptr<DataHandler> TableProject(
-        const int8_t* fn, std::shared_ptr<DataHandler> table,
-        const int32_t limit_cnt, Schema output_schema);
-    std::shared_ptr<DataHandler> WindowAggProject(
-        const PhysicalWindowAggrerationNode* op,
-        std::shared_ptr<DataHandler> input, const int32_t limit_cnt);
-    std::string GenerateKeys(RowView* row_view, const Schema& schema,
-                             const std::vector<int>& idxs);
-    std::shared_ptr<DataHandler> IndexSeek(
-        std::shared_ptr<DataHandler> left, std::shared_ptr<DataHandler> right,
-        const PhysicalSeekIndexNode* seek_op);
-    std::shared_ptr<DataHandler> RequestUnion(
-        std::shared_ptr<DataHandler> left, std::shared_ptr<DataHandler> right,
-        const PhysicalRequestUnionNode* request_union_op);
-    std::shared_ptr<DataHandler> Group(std::shared_ptr<DataHandler> input,
-                                       const PhysicalGroupNode* op);
-    std::shared_ptr<DataHandler> Limit(std::shared_ptr<DataHandler> input,
-                                       const PhysicalLimitNode* op);
 };
 
 class BatchRunSession : public RunSession {
@@ -119,7 +79,7 @@ class BatchRunSession : public RunSession {
         : RunSession(), mini_batch_(mini_batch) {}
     ~BatchRunSession() {}
     virtual int32_t Run(std::vector<int8_t*>& buf, uint64_t limit);  // NOLINT
-    std::shared_ptr<TableHandler> Run();
+    virtual std::shared_ptr<TableHandler> Run();  // NOLINT
     const bool IsBatchRun() const override { return true; }
 
  private:
