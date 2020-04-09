@@ -32,7 +32,6 @@ using vm::TableHandler;
 
 using namespace ::llvm;  // NOLINT
 
-static int64_t DeleteData(std::shared_ptr<DataHandler> data_handler);
 static Runner* GetRunner(Runner* root, int id);
 static bool RunnerRun(
     Runner* runner, std::shared_ptr<TableHandler> table_handler,
@@ -178,7 +177,7 @@ void AggRunnerCase(const std::string sql, int runner_id,
                 benchmark::DoNotOptimize(
                     RunnerRun(start_runner, table, limit_cnt, res));
                 for (auto data : res) {
-                    DeleteData(data);
+                    DeleteData(data.get());
                 }
             }
         }
@@ -186,7 +185,7 @@ void AggRunnerCase(const std::string sql, int runner_id,
             std::vector<std::shared_ptr<DataHandler>> res;
             ASSERT_TRUE(RunnerRun(start_runner, table, limit_cnt, res));
             for (auto data : res) {
-                DeleteData(data);
+                DeleteData(data.get());
             }
         }
     }
@@ -208,48 +207,7 @@ static bool RunnerRun(
     return true;
 }
 
-static int64_t DeleteData(std::shared_ptr<DataHandler> data_handler) {
-    if (!data_handler) {
-        return 0;
-    }
-    switch (data_handler->GetHanlderType()) {
-        case vm::kRowHandler: {
-            auto row =
-                std::dynamic_pointer_cast<vm::MemRowHandler>(data_handler);
-            delete row->GetValue().buf();
-            return 1;
-        }
-        case vm::kTableHandler: {
-            auto table =
-                std::dynamic_pointer_cast<vm::MemTableHandler>(data_handler);
-            auto iter = table->GetIterator();
-            int64_t cnt = 0;
-            while (iter->Valid()) {
-                delete iter->GetValue().buf();
-                iter->Next();
-                cnt++;
-            }
-            return cnt;
-        }
-        case vm::kPartitionHandler: {
-            auto partition = std::dynamic_pointer_cast<vm::MemPartitionHandler>(
-                data_handler);
-            auto iter = partition->GetWindowIterator();
-            int64_t group_cnt = 0;
-            while (iter->Valid()) {
-                auto seg_iter = iter->GetValue();
-                while (seg_iter->Valid()) {
-                    delete seg_iter->GetValue().buf();
-                    seg_iter->Next();
-                }
-                iter->Next();
-                group_cnt++;
-            }
-            return group_cnt;
-        }
-    }
-    return 0;
-}
+
 static Runner* GetRunner(Runner* root, int id) {
     if (nullptr == root) {
         return nullptr;

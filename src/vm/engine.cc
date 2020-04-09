@@ -104,15 +104,13 @@ int32_t RequestRunSession::Run(const Slice& in_row, Slice* out_row) {
             auto iter =
                 std::dynamic_pointer_cast<TableHandler>(output)->GetIterator();
             if (iter->Valid()) {
-                Slice row(iter->GetValue());
-                *out_row = row;
+                *out_row = iter->GetValue();
             }
             return 0;
         }
         case kRowHandler: {
-            Slice row(
-                std::dynamic_pointer_cast<RowHandler>(output)->GetValue());
-            *out_row = row;
+            *out_row =
+                std::dynamic_pointer_cast<RowHandler>(output)->GetValue();
             return 0;
         }
         case kPartitionHandler: {
@@ -166,8 +164,6 @@ int32_t BatchRunSession::Run(std::vector<int8_t*>& buf, uint64_t limit) {
             return 0;
         }
         case kRowHandler: {
-            Slice row(
-                std::dynamic_pointer_cast<RowHandler>(output)->GetValue());
             buf.push_back(std::dynamic_pointer_cast<RowHandler>(output)
                               ->GetValue()
                               .buf());

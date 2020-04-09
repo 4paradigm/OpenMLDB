@@ -122,7 +122,9 @@ static void EngineBatchMode(const std::string sql, MODE mode, int64_t limit_cnt,
     switch (mode) {
         case BENCHMARK: {
             for (auto _ : *state) {
-                benchmark::DoNotOptimize(session.Run());
+                std::shared_ptr<vm::TableHandler> res;
+                benchmark::DoNotOptimize(res = session.Run());
+                DeleteData(res.get());
             }
             break;
         }
@@ -132,6 +134,7 @@ static void EngineBatchMode(const std::string sql, MODE mode, int64_t limit_cnt,
                 FAIL();
             }
             ASSERT_EQ(static_cast<uint64_t>(limit_cnt), res->GetCount());
+            DeleteData(res.get());
             break;
         }
     }

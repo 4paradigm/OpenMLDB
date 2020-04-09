@@ -12,8 +12,8 @@
 
 #include <memory>
 #include <random>
-#include <vector>
 #include <string>
+#include <vector>
 #include "codec/row_codec.h"
 #include "tablet/tablet_catalog.h"
 #include "vm/catalog.h"
@@ -75,7 +75,6 @@ class RealRepeater : public NumberRepeater<T> {
         }
     }
 };
-
 
 bool AddTable(const std::shared_ptr<tablet::TabletCatalog>& catalog,
               const fesql::type::TableDef& table_def,
@@ -147,7 +146,7 @@ void BuildTableDef(::fesql::type::TableDef& table) {  // NOLINT
 }
 
 void BuildBuf(int8_t** buf, uint32_t* size,
-                     ::fesql::type::TableDef& table) {  // NOLINT
+              ::fesql::type::TableDef& table) {  // NOLINT
     BuildTableDef(table);
     ::fesql::type::IndexDef* index = table.add_indexes();
     index->set_name("index1");
@@ -168,8 +167,7 @@ void BuildBuf(int8_t** buf, uint32_t* size,
     *size = total_size;
 }
 
-std::shared_ptr<tablet::TabletCatalog> Data_WindowCase1(
-    int32_t data_size) {
+std::shared_ptr<tablet::TabletCatalog> Data_WindowCase1(int32_t data_size) {
     DLOG(INFO) << "insert window data";
     type::TableDef table_def;
     BuildTableDef(table_def);
@@ -230,6 +228,47 @@ std::shared_ptr<tablet::TabletCatalog> Data_WindowCase1(
         free(ptr);
     }
     return catalog;
+}
+
+int64_t DeleteData(vm::DataHandler* data_handler) {
+    if (!data_handler) {
+        return 0;
+    }
+    switch (data_handler->GetHanlderType()) {
+        case vm::kRowHandler: {
+            auto row = dynamic_cast<vm::RowHandler*>(data_handler);
+            delete row->GetValue().buf();
+            return 1;
+        }
+        case vm::kTableHandler: {
+            auto table = dynamic_cast<vm::TableHandler*>(data_handler);
+            auto iter = table->GetIterator();
+            int64_t cnt = 0;
+            while (iter->Valid()) {
+                delete iter->GetValue().buf();
+                iter->Next();
+                cnt++;
+            }
+            return cnt;
+        }
+        case vm::kPartitionHandler: {
+            auto partition =
+                dynamic_cast<vm::PartitionHandler*>(data_handler);
+            auto iter = partition->GetWindowIterator();
+            int64_t group_cnt = 0;
+            while (iter->Valid()) {
+                auto seg_iter = iter->GetValue();
+                while (seg_iter->Valid()) {
+                    delete seg_iter->GetValue().buf();
+                    seg_iter->Next();
+                }
+                iter->Next();
+                group_cnt++;
+            }
+            return group_cnt;
+        }
+    }
+    return 0;
 }
 }  // namespace bm
 }  // namespace fesql

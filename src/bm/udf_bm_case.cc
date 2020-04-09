@@ -27,8 +27,6 @@ static void BuildData(type::TableDef& table_def,      // NOLINT
                       vm::MemSegmentHandler& window,  // NOLINT
                       int64_t data_size);
 
-static void DeleteData(vm::MemSegmentHandler& window);        // NOLINT
-static void DeleteData(vm::MemTableHandler& window);          // NOLINT
 int64_t RunCopyArrayList(MemSegmentHandler& window,           // NOLINT
                          type::TableDef& table_def);          // NOLINT
 int32_t RunCopyTable(vm::TableHandler* table,                 // NOLINT
@@ -38,20 +36,6 @@ int32_t RunCopySegment(MemSegmentHandler& segment,            // NOLINT
 int32_t TableHanlderIterate(vm::TableHandler* table_hander);  // NOLINT
 const int64_t PartitionHandlerIterate(vm::PartitionHandler* partition_handler,
                                       const std::string& key);
-static void DeleteData(vm::MemSegmentHandler& window) {  // NOLINT
-    auto iter = window.GetIterator();
-    while (iter->Valid()) {
-        delete iter->GetValue().buf();
-        iter->Next();
-    }
-}
-static void DeleteData(vm::MemTableHandler& window) {  // NOLINT
-    auto iter = window.GetIterator();
-    while (iter->Valid()) {
-        delete iter->GetValue().buf();
-        iter->Next();
-    }
-}
 
 static void BuildData(type::TableDef& table_def,   // NOLINT
                       std::vector<Slice>& buffer,  // NOLINT
@@ -120,14 +104,14 @@ void CopyArrayList(benchmark::State* state, MODE mode, int64_t data_size) {
             for (auto _ : *state) {
                 benchmark::DoNotOptimize(RunCopyArrayList(window, table_def));
             }
-            DeleteData(window);
+            DeleteData(&window);
             break;
         }
         case TEST: {
             if (data_size == RunCopyArrayList(window, table_def)) {
-                DeleteData(window);
+                DeleteData(&window);
             } else {
-                DeleteData(window);
+                DeleteData(&window);
                 FAIL();
             }
         }
@@ -143,14 +127,14 @@ void CopyMemTable(benchmark::State* state, MODE mode, int64_t data_size) {
                 benchmark::DoNotOptimize(
                     RunCopyTable(&table, &(table_def.columns())));
             }
-            DeleteData(table);
+            DeleteData(&table);
             break;
         }
         case TEST: {
             if (data_size == RunCopyTable(&table, &(table_def.columns()))) {
-                DeleteData(table);
+                DeleteData(&table);
             } else {
-                DeleteData(table);
+                DeleteData(&table);
                 FAIL();
             }
         }
@@ -200,21 +184,6 @@ void TabletWindowIterate(benchmark::State* state, MODE mode,
         }
     }
 }
-
-const int64_t PartitionHandlerIterate(vm::PartitionHandler* partition_handler,
-                                      const std::string& key) {
-    int64_t cnt = 0;
-    auto p_iter = partition_handler->GetWindowIterator();
-    p_iter->Seek(key);
-    auto iter = p_iter->GetValue();
-    iter->SeekToFirst();
-    while (iter->Valid()) {
-        iter->Next();
-        cnt++;
-    }
-    return cnt;
-}
-
 void MemTableIterate(benchmark::State* state, MODE mode, int64_t data_size) {
     vm::MemTableHandler table_hanlder;
     type::TableDef table_def;
@@ -261,14 +230,14 @@ void CopyMemSegment(benchmark::State* state, MODE mode, int64_t data_size) {
             for (auto _ : *state) {
                 benchmark::DoNotOptimize(RunCopySegment(table, table_def));
             }
-            DeleteData(table);
+            DeleteData(&table);
             break;
         }
         case TEST: {
             if (data_size == RunCopySegment(table, table_def)) {
-                DeleteData(table);
+                DeleteData(&table);
             } else {
-                DeleteData(table);
+                DeleteData(&table);
                 FAIL();
             }
         }
@@ -318,6 +287,19 @@ int32_t TableHanlderIterate(vm::TableHandler* table_hander) {  // NOLINT
     return cnt;
 }
 
+const int64_t PartitionHandlerIterate(vm::PartitionHandler* partition_handler,
+                                      const std::string& key) {
+    int64_t cnt = 0;
+    auto p_iter = partition_handler->GetWindowIterator();
+    p_iter->Seek(key);
+    auto iter = p_iter->GetValue();
+    iter->SeekToFirst();
+    while (iter->Valid()) {
+        iter->Next();
+        cnt++;
+    }
+    return cnt;
+}
 void SumArrayListCol(benchmark::State* state, MODE mode, int64_t data_size,
                      const std::string& col_name) {
     vm::MemSegmentHandler window;
@@ -389,28 +371,28 @@ void SumArrayListCol(benchmark::State* state, MODE mode, int64_t data_size,
                 switch (type) {
                     case node::kInt32: {
                         if (fesql::udf::v1::sum_list<int32_t>(col) <= 0) {
-                            DeleteData(window);
+                            DeleteData(&window);
                             FAIL();
                         }
                         break;
                     }
                     case node::kInt64: {
                         if (fesql::udf::v1::sum_list<int64_t>(col) <= 0) {
-                            DeleteData(window);
+                            DeleteData(&window);
                             FAIL();
                         }
                         break;
                     }
                     case node::kDouble: {
                         if (fesql::udf::v1::sum_list<double>(col) <= 0) {
-                            DeleteData(window);
+                            DeleteData(&window);
                             FAIL();
                         }
                         break;
                     }
                     case node::kFloat: {
                         if (fesql::udf::v1::sum_list<float>(col) <= 0) {
-                            DeleteData(window);
+                            DeleteData(&window);
                             FAIL();
                         }
                         break;
@@ -422,7 +404,7 @@ void SumArrayListCol(benchmark::State* state, MODE mode, int64_t data_size,
             }
         }
     }
-    DeleteData(window);
+    DeleteData(&window);
 }
 void SumMemTableCol(benchmark::State* state, MODE mode, int64_t data_size,
                     const std::string& col_name) {
@@ -486,28 +468,28 @@ void SumMemTableCol(benchmark::State* state, MODE mode, int64_t data_size,
                 switch (type) {
                     case node::kInt32: {
                         if (fesql::udf::v1::sum_list<int32_t>(col) <= 0) {
-                            DeleteData(window);
+                            DeleteData(&window);
                             FAIL();
                         }
                         break;
                     }
                     case node::kInt64: {
                         if (fesql::udf::v1::sum_list<int64_t>(col) <= 0) {
-                            DeleteData(window);
+                            DeleteData(&window);
                             FAIL();
                         }
                         break;
                     }
                     case node::kDouble: {
                         if (fesql::udf::v1::sum_list<double>(col) <= 0) {
-                            DeleteData(window);
+                            DeleteData(&window);
                             FAIL();
                         }
                         break;
                     }
                     case node::kFloat: {
                         if (fesql::udf::v1::sum_list<float>(col) <= 0) {
-                            DeleteData(window);
+                            DeleteData(&window);
                             FAIL();
                         }
                         break;
@@ -519,7 +501,7 @@ void SumMemTableCol(benchmark::State* state, MODE mode, int64_t data_size,
             }
         }
     }
-    DeleteData(window);
+    DeleteData(&window);
 }
 
 }  // namespace bm
