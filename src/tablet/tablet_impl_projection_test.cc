@@ -475,8 +475,74 @@ void CompareRow(base::RowView* left, base::RowView* right, Schema& schema) {
     }
 }
 
+TEST_P(TabletProjectTest, get_case) { 
+    auto args = GetParam();
+    // create table 
+    std::string name = ::rtidb::tablet::GenRand();
+    int tid = rand() % 100000 ;
+    MockClosure closure;
+    // create a table
+    {
+        ::rtidb::api::CreateTableRequest crequest;
+        ::rtidb::api::TableMeta* table_meta = crequest.mutable_table_meta();
+        table_meta->set_name(name);
+        table_meta->set_tid(tid);
+        table_meta->set_pid(0);
+        table_meta->set_ttl(0);
+        table_meta->set_seg_cnt(8);
+        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
+        table_meta->set_key_entry_max_height(8);
+        table_meta->set_format_version(1);
+        table_meta->set_table_type(type::kTimeSeries);
+        Schema* schema = table_meta->mutable_column_desc();
+        schema->CopyFrom(args->schema);
+        ::rtidb::common::ColumnKey* ck = table_meta->add_column_key();
+        ck->CopyFrom(args->ckey);
+        ::rtidb::api::CreateTableResponse cresponse;
+        tablet_.CreateTable(NULL, &crequest, &cresponse,
+                    &closure);
+        ASSERT_EQ(0, cresponse.code());
+    }
+    // put a record
+    {
+        ::rtidb::api::PutRequest request;
+        request.set_tid(tid);
+        request.set_pid(0);
+        ::rtidb::api::Dimension* dim = request.add_dimensions();
+        dim->set_idx(0);
+        std::string key = args->pk;
+        dim->set_key(key);
+        ::rtidb::api::TSDimension* ts = request.add_ts_dimensions();
+        ts->set_idx(0);
+        ts->set_ts(args->ts);
+        request.set_value(reinterpret_cast<char*>(args->row_ptr), args->row_size);
+        ::rtidb::api::PutResponse response;
+        tablet_.Put(NULL, &request, &response,
+                &closure);
+        ASSERT_EQ(0, response.code());
+    }
+    // get with projectlist
+    {
+        ::rtidb::api::GetRequest sr;
+        sr.set_tid(tid);
+        sr.set_pid(0);
+        sr.set_key(args->pk);
+        sr.set_ts(args->ts);
+        sr.set_et(0);
+        sr.mutable_projection()->CopyFrom(args->plist);
+        ::rtidb::api::GetResponse srp;
+        tablet_.Get(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(srp.value().size(), args->out_size);
+        base::RowView left(args->output_schema);
+        left.Reset(reinterpret_cast<const int8_t*>(srp.value().c_str()), srp.value().size());
+        base::RowView right(args->output_schema);
+        right.Reset(reinterpret_cast<int8_t*>(args->out_ptr), args->out_size);
+        CompareRow(&left, &right, args->output_schema);
+    }
+}
 
-TEST_P(TabletProjectTest, common_case) {
+TEST_P(TabletProjectTest, scan_case) {
     auto args = GetParam();
     // create table 
     std::string name = ::rtidb::tablet::GenRand();
@@ -549,6 +615,7 @@ TEST_P(TabletProjectTest, common_case) {
 
 INSTANTIATE_TEST_CASE_P(TabletProjectPrefix, TabletProjectTest,
                        testing::ValuesIn(GenCommonCase()));
+
 
 }
 }

@@ -286,6 +286,7 @@ public:
                           ::rtidb::api::TTLType ttl_type,
                           ::rtidb::storage::TableIterator* it,
                           const ::rtidb::api::GetRequest* request,
+                          const ::rtidb::api::TableMeta& meta,
                           std::string* value,
                           uint64_t* ts);
 

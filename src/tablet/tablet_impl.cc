@@ -289,6 +289,7 @@ int32_t TabletImpl::GetIndex(uint64_t expire_time, uint64_t expire_cnt,
                                 ::rtidb::api::TTLType ttl_type,
                                  ::rtidb::storage::TableIterator* it,
                                  const ::rtidb::api::GetRequest* request,
+                                 const ::rtidb::api::TableMeta& meta,
                                  std::string* value,
                                  uint64_t* ts) {
     uint64_t st = request->ts();
@@ -318,6 +319,20 @@ int32_t TabletImpl::GetIndex(uint64_t expire_time, uint64_t expire_cnt,
         st_type != ::rtidb::api::GetType::kSubKeyGe) {
         PDLOG(WARNING, "invalid st type %s", ::rtidb::api::GetType_Name(st_type).c_str());
         return -2;
+    }
+    bool enable_project = false;
+    ::rtidb::base::RowProject row_project(meta.column_desc(), request->projection());
+    if (request->projection().size() > 0 && meta.format_version() == 1) {
+        if (meta.compress_type() == api::kSnappy) {
+            PDLOG(WARNING, "project on compress row data do not being supported");
+            return -1;
+        }
+        bool ok = row_project.Init();
+        if (!ok) {
+            PDLOG(WARNING, "invalid project list");
+            return -1;
+        }
+        enable_project = true;
     }
     uint32_t cnt = 0;
     if (st > 0) {
@@ -363,9 +378,21 @@ int32_t TabletImpl::GetIndex(uint64_t expire_time, uint64_t expire_cnt,
         if (st_type == ::rtidb::api::GetType::kSubKeyGe ||
             st_type == ::rtidb::api::GetType::kSubKeyGt) {
             ::rtidb::base::Slice it_value = it->GetValue();
-            value->assign(it_value.data(), it_value.size());
             *ts = it->GetKey();
-            return 0;
+            if (enable_project) {
+                int8_t* ptr = nullptr;
+                uint32_t size = 0;
+                bool ok = row_project.Project(reinterpret_cast<const int8_t*>(it->GetValue().data()), it->GetValue().size(), &ptr, &size);
+                if (!ok) {
+                    PDLOG(WARNING, "fail to make a projection");
+                    return -4;
+                }
+                value->assign(reinterpret_cast<char*>(ptr), size);
+                delete[] ptr;
+            }else {
+                value->assign(it_value.data(), it_value.size());
+                return 0;
+            }
         }
         switch(real_et_type) {
             case ::rtidb::api::GetType::kSubKeyEq:
@@ -393,8 +420,19 @@ int32_t TabletImpl::GetIndex(uint64_t expire_time, uint64_t expire_cnt,
         if (jump_out) {
             return 1;
         }
-        ::rtidb::base::Slice it_value = it->GetValue();
-        value->assign(it_value.data(), it_value.size());
+        if (enable_project) {
+            int8_t* ptr = nullptr;
+            uint32_t size = 0;
+            bool ok = row_project.Project(reinterpret_cast<const int8_t*>(it->GetValue().data()), it->GetValue().size(), &ptr, &size);
+            if (!ok) {
+                PDLOG(WARNING, "fail to make a projection");
+                return -4;
+            }
+            value->assign(reinterpret_cast<char*>(ptr), size);
+            delete[] ptr;
+        }else {
+            value->assign(it->GetValue().data(), it->GetValue().size());
+        }
         *ts = it->GetKey();
         return 0;
     }
@@ -404,9 +442,9 @@ int32_t TabletImpl::GetIndex(uint64_t expire_time, uint64_t expire_cnt,
 
 
 void TabletImpl::Get(RpcController* controller,
-             const ::rtidb::api::GetRequest* request,
-             ::rtidb::api::GetResponse* response,
-             Closure* done) {
+                     const ::rtidb::api::GetRequest* request,
+                     ::rtidb::api::GetResponse* response,
+                     Closure* done) {
     brpc::ClosureGuard done_guard(done);
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     std::shared_ptr<RelationalTable> r_table;
@@ -471,7 +509,8 @@ void TabletImpl::Get(RpcController* controller,
         uint64_t ts = 0;
         int32_t code = 0;
         code = GetIndex(table->GetExpireTime(ttl.abs_ttl*60*1000), ttl.lat_ttl,
-                table->GetTTLType(), it, request, value, &ts);
+                table->GetTTLType(), it, request, 
+                table->GetTableMeta(), value, &ts);
         delete it;
         response->set_ts(ts);
         response->set_code(code);
