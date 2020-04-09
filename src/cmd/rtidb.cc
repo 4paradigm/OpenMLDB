@@ -258,10 +258,12 @@ void StartHttp() {
         PDLOG(INFO, "start tablet on endpoint %s with version %d.%d.%d.%d",
               FLAGS_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM, RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
     }
+    /*
     if (!http->RegisterZk()) {
         PDLOG(WARNING, "Fail to register zk");
         exit(1);
     }
+     */
     std::ostringstream oss;
     oss << RTIDB_VERSION_MAJOR << "." << RTIDB_VERSION_MEDIUM << "." << RTIDB_VERSION_MINOR << "." << RTIDB_VERSION_BUG;
     server.set_version(oss.str());

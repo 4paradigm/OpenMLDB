@@ -8,6 +8,7 @@
 #include <string>
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/classification.hpp>
+#include <fcntl.h>
 
 DECLARE_string(endpoint);
 DECLARE_string(zk_cluster);
@@ -17,11 +18,11 @@ DECLARE_int32(zk_keep_alive_check_interval);
 
 namespace rtidb {
 namespace http {
-HttpImpl::HttpImpl() : mu_(), zk_client_(NULL), server_(NULL), client(NULL) {}
+HttpImpl::HttpImpl() : mu_(), zk_client_(NULL), server_(NULL), client_(NULL) {}
 
 HttpImpl::~HttpImpl() {
-    if (client != NULL) {
-        delete client;
+    if (client_ != NULL) {
+        delete client_;
     }
 }
 
@@ -31,11 +32,11 @@ bool HttpImpl::Init() {
         PDLOG(WARNING, "zk cluster disabled");
         return false;
     }
-    client = new BaseClient(FLAGS_zk_cluster, FLAGS_zk_root_path,
+    client_ = new BaseClient(FLAGS_zk_cluster, FLAGS_zk_root_path,
                             FLAGS_endpoint, FLAGS_zk_session_timeout,
                             FLAGS_zk_keep_alive_check_interval);
     std::string msg;
-    bool ok = client->Init(&msg);
+    bool ok = client_->Init(&msg);
     if (!ok) {
         PDLOG(WARNING, "%s", msg.c_str());
         return false;
@@ -45,7 +46,7 @@ bool HttpImpl::Init() {
 
 bool HttpImpl::RegisterZk() {
     std::string msg;
-    bool ok = client->RegisterZK(&msg);
+    bool ok = client_->RegisterZK(&msg);
     if (!ok) {
         PDLOG(WARNING, "register zk error: %s", msg.c_str());
     }
@@ -76,14 +77,56 @@ void HttpImpl::Get(RpcController* controller,
         cntl->http_response().set_status_code(brpc::HTTP_STATUS_BAD_REQUEST);
         return;
     }
-    std::shared_ptr<TableHandler> th = client->GetTableHandler(table);
+    auto& response_writer = cntl->response_attachment();
+    std::shared_ptr<TableHandler> th = client_->GetTableHandler(table);
     if (!th) {
         cntl->http_response().set_status_code(brpc::HTTP_STATUS_NOT_FOUND);
+        response_writer.append("tablet not found");
         return;
     }
-    unsigned char fileheader[] = {0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a};
-    std::string ss(reinterpret_cast<char*>(fileheader), 8);
-    cntl->response_attachment().append(ss);
+    std::string err_msg;
+    auto tablet = client_->GetTabletClient(th->partition[0].leader, &err_msg);
+    if (!tablet) {
+        cntl->http_response().set_status_code(brpc::HTTP_STATUS_INTERNAL_SERVER_ERROR);
+        response_writer.append(err_msg);
+        return;
+    }
+    uint64_t ts;
+    std::string value;
+    bool ok = tablet->Get(th->table_info->tid(), 0, *pic_id, 0, "", "", value, ts, err_msg);
+    if (!ok) {
+        cntl->http_response().set_status_code(brpc::HTTP_STATUS_INTERNAL_SERVER_ERROR);
+        response_writer.append(err_msg);
+        return;
+    }
+    rtidb::base::RowView rv(*(th->columns));
+    const char* buffer = value.c_str();
+    rv.Reset(reinterpret_cast<int8_t*>(const_cast<char*>(buffer)), value.length());
+    int i = 0;
+    /*
+    for (; i < th->columns->size(); i++) {
+        auto& cur_col = th->columns->Get(i);
+        if (cur_col.data_type() == rtidb::type::kBlob) {
+            break;
+        }
+    }
+    if (i >= th->columns->size()) {
+        cntl->http_response().set_status_code(brpc::HTTP_STATUS_NOT_FOUND);
+        response_writer.append("not found blob field");
+        return;
+    }
+     */
+    i = 1; // current do not process blob
+    char* ch = NULL;
+    uint32_t length = 0;
+    int ret = rv.GetString(i, &ch, &length);
+    if (ret != 0) {
+        cntl->http_response().set_status_code(brpc::HTTP_STATUS_INTERNAL_SERVER_ERROR);
+        response_writer.append("get blob failed");
+        return;
+    }
+
+    response_writer.append(ch, length);
 }
 
 }  // namespace http

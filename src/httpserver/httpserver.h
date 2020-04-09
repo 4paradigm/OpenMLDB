@@ -38,7 +38,7 @@ class HttpImpl : public ::rtidb::httpserver::HTTPServer {
     std::mutex mu_;
     ZkClient* zk_client_;
     brpc::Server* server_;
-    BaseClient* client;
+    BaseClient* client_;
 };
 }  // namespace http
 }  // namespace rtidb
