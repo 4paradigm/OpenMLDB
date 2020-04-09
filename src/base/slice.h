@@ -28,18 +28,18 @@ class Slice {
     Slice(const char* d, size_t n, bool need_free)
         : need_free_(need_free), size_(n), data_(d) {}
     // Return a pointer to the beginning of the referenced data
-    const char* data() const { return data_; }
-    int8_t* buf() const {
+    inline const char* data() const { return data_; }
+    inline int8_t* buf() const {
         return reinterpret_cast<int8_t*>(const_cast<char*>(data_));
     }
 
     // Return the length (in bytes) of the referenced data
-    size_t size() const { return size_; }
+    inline size_t size() const { return size_; }
 
     // Return true if the length of the referenced data is zero
-    bool empty() const { return 0 == size_; }
+    inline bool empty() const { return 0 == size_; }
 
-    void reset(const char* d, size_t size) {
+    inline void reset(const char* d, size_t size) {
         // TODO(wangtaize) if need free is true, reset is forbidden
         data_ = d;
         size_ = size;

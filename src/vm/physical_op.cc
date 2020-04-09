@@ -229,7 +229,7 @@ bool PhysicalDataProviderNode::InitSchema() {
             PrintSchema();
             return true;
         } else {
-            LOG(WARNING) << "InitSchema fail: table shcme ais null";
+            LOG(WARNING) << "InitSchema fail: table schema is null";
             return false;
         }
     } else {
