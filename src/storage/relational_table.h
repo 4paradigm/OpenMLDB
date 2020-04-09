@@ -86,8 +86,10 @@ public:
 
     bool Put(const std::string& value); 
 
-    bool Get(const std::string& idx_name, const std::string& idx_val, rtidb::base::Slice& slice); 
-    bool Get(const std::shared_ptr<IndexDef> index_def, const std::string& key, rtidb::base::Slice& slice); 
+    bool Query(const ::google::protobuf::RepeatedPtrField< ::rtidb::api::ReadOption >& ros,
+            std::string* pairs);
+    bool Query(const std::string& idx_name, const std::string& idx_val, std::vector<rtidb::base::Slice>* vec); 
+    bool Query(const std::shared_ptr<IndexDef> index_def, const std::string& key, std::vector<rtidb::base::Slice>* vec); 
 
     bool Delete(const std::string& pk, uint32_t idx);
 

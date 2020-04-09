@@ -509,21 +509,9 @@ void TabletImpl::Get(RpcController* controller,
                 return;
         }
     } else {
+        /**
         std::string * value = response->mutable_value(); 
         bool ok = false;
-        /**
-        if (request->has_idx_name() && request->idx_name().size() > 0) {
-            std::map<std::string, uint32_t>::iterator iit = r_table->GetMapping().find(request->idx_name());
-            if (iit == r_table->GetMapping().end()) {
-                PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
-                        request->tid(), request->pid());
-                response->set_code(::rtidb::base::ReturnCode::kIdxNameNotFound);
-                response->set_msg("idx name not found");
-                return;
-            }
-            index = iit->second;
-        }
-        */
         rtidb::base::Slice slice;
         ok = r_table->Get(request->idx_name(), request->key(), slice);
         if (!ok) {
@@ -534,6 +522,7 @@ void TabletImpl::Get(RpcController* controller,
         value->assign(slice.data(), slice.size());
         response->set_code(::rtidb::base::ReturnCode::kOk);
         response->set_msg("ok");
+        */
     }
 }
 
@@ -1702,19 +1691,13 @@ void TabletImpl::BatchQuery(RpcController* controller,
         response->set_is_finish(is_finish);
         response->set_count(scount);
     } else {
-        const ::rtidb::api::ReadOption& ro = request->read_option(0);
-        const std::string& idx_name = ro.index(0).name(0);
-        const std::string& idx_value = ro.index(0).value();
-
-        rtidb::base::Slice slice;
-        bool ok = r_table->Get(idx_name, idx_value, slice);
+        std::string* pairs = response->mutable_pairs();
+        bool ok = r_table->Query(request->read_option(), pairs);
         if (!ok) {
-            response->set_code(::rtidb::base::ReturnCode::kKeyNotFound);
-            response->set_msg("key not found");
+            response->set_code(::rtidb::base::ReturnCode::kQueryFailed);
+            response->set_msg("query failed");
             return;
         }
-        std::string * value = response->mutable_pairs(); 
-        value->assign(slice.data(), slice.size());
         response->set_code(::rtidb::base::ReturnCode::kOk);
         response->set_msg("ok");
         response->set_is_finish(true);
