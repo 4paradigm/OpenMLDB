@@ -27,7 +27,6 @@ MemSegmentIterator::MemSegmentIterator(const MemSegment* table,
       end_iter_(table_->begin() + end),
       iter_(start_iter_) {}
 MemSegmentIterator::~MemSegmentIterator() {
-    //    DLOG(INFO) << "MemSegmentIteratoror()";
 }
 
 // TODO(chenjing): speed up seek for memory iterator
@@ -42,7 +41,7 @@ void MemSegmentIterator::Seek(uint64_t ts) {
 }
 void MemSegmentIterator::SeekToFirst() { iter_ = start_iter_; }
 const uint64_t MemSegmentIterator::GetKey() { return iter_->first; }
-const base::Slice fesql::vm::MemSegmentIterator::GetValue() {
+const Slice& fesql::vm::MemSegmentIterator::GetValue() {
     return iter_->second;
 }
 void MemSegmentIterator::Next() { iter_++; }
@@ -57,7 +56,6 @@ MemWindowIterator::MemWindowIterator(const MemSegmentMap* partitions,
       iter_(partitions->cbegin()) {}
 
 MemWindowIterator::~MemWindowIterator() {
-    //    DLOG(INFO) << "~MemWindowIterator()";
 }
 
 void MemWindowIterator::Seek(const std::string& key) {
@@ -277,7 +275,7 @@ const uint64_t MemTableIterator::GetKey() {
 }
 bool MemTableIterator::Valid() { return end_iter_ != iter_; }
 void MemTableIterator::Next() { iter_++; }
-const base::Slice MemTableIterator::GetValue() { return *iter_; }
+const Slice& MemTableIterator::GetValue() { return *iter_; }
 
 }  // namespace vm
 }  // namespace fesql

@@ -325,10 +325,11 @@ void TableIterator::Next() {
     }
 }
 
-const Slice TableIterator::GetValue() {
-    return Slice(ts_it_->GetValue()->data,
+const Slice& TableIterator::GetValue() {
+    value_ = Slice(ts_it_->GetValue()->data,
                  codec::RowView::GetSize(
                      reinterpret_cast<int8_t*>(ts_it_->GetValue()->data)));
+    return value_;
 }
 
 const uint64_t TableIterator::GetKey() { return ts_it_->GetKey(); }

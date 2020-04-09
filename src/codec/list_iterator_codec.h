@@ -40,7 +40,7 @@ class IteratorV {
     virtual void SeekToFirst() = 0;
     virtual bool Valid() = 0;
     virtual void Next() = 0;
-    virtual const V GetValue() = 0;
+    virtual const V& GetValue() = 0;
     virtual const K GetKey() = 0;
 };
 
@@ -193,7 +193,7 @@ class ArrayListIterator : public IteratorV<uint64_t, V> {
           iter_end_(impl.iter_start_ + end),
           iter_(iter_start_) {}
 
-    ~ArrayListIterator() { DLOG(INFO) << "~ArrayListIterator()"; }
+    ~ArrayListIterator() { }
     void Seek(uint64_t key) override {
         iter_ =
             (iter_start_ + key) >= iter_end_ ? iter_end_ : iter_start_ + key;
@@ -203,7 +203,7 @@ class ArrayListIterator : public IteratorV<uint64_t, V> {
 
     void Next() override { iter_++; }
 
-    const V GetValue() override { return *iter_; }
+    const V& GetValue() override { return *iter_; }
 
     const uint64_t GetKey() override { return iter_ - iter_start_; }
 
@@ -233,20 +233,21 @@ class ColumnIterator : public IteratorV<uint64_t, V> {
         row_iter_ = list->GetIterator();
     }
     ~ColumnIterator() {
-        //        DLOG(INFO) << "~ColumnIterator()";
     }
     void Seek(uint64_t key) override { row_iter_->Seek(key); }
     void SeekToFirst() override { row_iter_->SeekToFirst(); }
     bool Valid() override { return row_iter_->Valid(); }
     void Next() override { row_iter_->Next(); }
-    const V GetValue() override {
-        return column_impl_->GetField(row_iter_->GetValue());
+    const V& GetValue() override {
+        value_ = column_impl_->GetField(row_iter_->GetValue());
+        return value_;
     }
     const uint64_t GetKey() override { return row_iter_->GetKey(); }
 
  private:
-    std::unique_ptr<IteratorV<uint64_t, Slice>> row_iter_;
     const ColumnImpl<V> *column_impl_;
+    std::unique_ptr<IteratorV<uint64_t, Slice>> row_iter_;
+    V value_;
 };
 
 }  // namespace codec

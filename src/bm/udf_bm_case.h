@@ -18,6 +18,10 @@ void SumMemTableCol(benchmark::State* state, MODE mode, int64_t data_size,
             const std::string& col_name);
 void SumArrayListCol(benchmark::State* state, MODE mode, int64_t data_size,
                     const std::string& col_name);
+void TabletFullIterate(benchmark::State* state, MODE mode, int64_t data_size);
+void TabletWindowIterate(benchmark::State* state, MODE mode, int64_t data_size);
+void MemTableIterate(benchmark::State* state, MODE mode, int64_t data_size);
+void MemSegmentIterate(benchmark::State* state, MODE mode, int64_t data_size);
 void CopyMemTable(benchmark::State* state, MODE mode, int64_t data_size);
 void CopyMemSegment(benchmark::State* state, MODE mode, int64_t data_size);
 void CopyArrayList(benchmark::State* state, MODE mode, int64_t data_size);

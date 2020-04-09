@@ -47,24 +47,51 @@ static void BM_CopyMemTable(benchmark::State& state) {  // NOLINT
 static void BM_CopyArrayList(benchmark::State& state) {  // NOLINT
     CopyArrayList(&state, BENCHMARK, state.range(0));
 }
-BENCHMARK(BM_MemSumColInt)
+
+static void BM_TabletFullIterate(benchmark::State& state) {  // NOLINT
+    TabletFullIterate(&state, BENCHMARK, state.range(0));
+}
+
+static void BM_TabletWindowIterate(benchmark::State& state) {  // NOLINT
+    TabletWindowIterate(&state, BENCHMARK, state.range(0));
+}
+static void BM_MemTableIterate(benchmark::State& state) {  // NOLINT
+    MemTableIterate(&state, BENCHMARK, state.range(0));
+}
+
+static void BM_MemSegmentIterate(benchmark::State& state) {  // NOLINT
+    MemSegmentIterate(&state, BENCHMARK, state.range(0));
+}
+
+BENCHMARK(BM_TabletFullIterate)
     ->Args({10})
     ->Args({100})
     ->Args({1000})
     ->Args({10000});
 
-BENCHMARK(BM_MemSumColDouble)
+BENCHMARK(BM_TabletWindowIterate)
     ->Args({10})
     ->Args({100})
     ->Args({1000})
     ->Args({10000});
 
-BENCHMARK(BM_ArraySumColInt)
+BENCHMARK(BM_MemTableIterate)
     ->Args({10})
     ->Args({100})
     ->Args({1000})
     ->Args({10000});
 
+BENCHMARK(BM_MemSegmentIterate)
+    ->Args({10})
+    ->Args({100})
+    ->Args({1000})
+    ->Args({10000});
+
+BENCHMARK(BM_CopyArrayList)
+    ->Args({10})
+    ->Args({100})
+    ->Args({1000})
+    ->Args({10000});
 BENCHMARK(BM_CopyMemSegment)
     ->Args({10})
     ->Args({100})
@@ -77,17 +104,29 @@ BENCHMARK(BM_CopyMemTable)
     ->Args({1000})
     ->Args({10000});
 
+BENCHMARK(BM_ArraySumColInt)
+    ->Args({10})
+    ->Args({100})
+    ->Args({1000})
+    ->Args({10000});
 BENCHMARK(BM_ArraySumColDouble)
     ->Args({10})
     ->Args({100})
     ->Args({1000})
     ->Args({10000});
 
-BENCHMARK(BM_CopyArrayList)
+BENCHMARK(BM_MemSumColInt)
     ->Args({10})
     ->Args({100})
     ->Args({1000})
     ->Args({10000});
+
+BENCHMARK(BM_MemSumColDouble)
+    ->Args({10})
+    ->Args({100})
+    ->Args({1000})
+    ->Args({10000});
+
 }  // namespace bm
 }  // namespace fesql
 

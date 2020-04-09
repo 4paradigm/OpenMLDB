@@ -647,6 +647,10 @@ std::shared_ptr<DataHandler> WindowAggRunner::Run(RunnerContext& ctx) {
 std::shared_ptr<DataHandler> IndexSeekRunner::Run(RunnerContext& ctx) {
     auto left = producers_[0]->RunWithCache(ctx);
     auto right = producers_[1]->RunWithCache(ctx);
+    if (!left || !right) {
+        LOG(WARNING) << "Index seek fail: left or right input is null";
+        return std::shared_ptr<DataHandler>();
+    }
     if (kRowHandler != left->GetHanlderType()) {
         return std::shared_ptr<DataHandler>();
     }
@@ -759,7 +763,6 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(RunnerContext& ctx) {
 
     auto output_schema = left->GetSchema();
     auto request = std::dynamic_pointer_cast<RowHandler>(left)->GetValue();
-
     auto table = std::dynamic_pointer_cast<TableHandler>(right);
     std::shared_ptr<DataHandler> output = right;
     auto request_fn_row = Slice(RowProject(fn_, request), true);
@@ -794,12 +797,12 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(RunnerContext& ctx) {
     // build window with start and end offset
     auto window_table =
         std::shared_ptr<MemTableHandler>(new MemTableHandler(output_schema));
-    row_view_.Reset(request_fn_row.buf(), request_fn_row.size());
 
     uint64_t start = 0;
     uint64_t end = UINT64_MAX;
 
     if (!keys_idxs_.empty()) {
+        row_view_.Reset(request_fn_row.buf(), request_fn_row.size());
         auto ts_idx = keys_idxs_[0];
         int64_t key =
             GetColumnInt64(&row_view_, ts_idx, fn_schema_.Get(ts_idx).type());
@@ -807,6 +810,7 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(RunnerContext& ctx) {
         start = (key + start_offset_) < 0 ? 0 : (key + start_offset_);
 
         end = (key + end_offset_) < 0 ? 0 : (key + end_offset_);
+
         DLOG(INFO) << "request key: " << key;
     }
 
@@ -819,11 +823,9 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(RunnerContext& ctx) {
         if (table_iter) {
             table_iter->Seek(end);
             while (table_iter->Valid()) {
-                DLOG(INFO) << table_iter->GetKey() << " should >= " << start;
                 if (table_iter->GetKey() <= start) {
                     break;
                 }
-                DLOG(INFO) << table_iter->GetKey() << " add row ";
                 window_table->AddRow(table_iter->GetValue());
                 table_iter->Next();
             }
