@@ -14,16 +14,16 @@ style_check:
         reports:
             junit:
                 - ./style.xml
-#
-#build_py3sdk_and_case:
-#    stage: build
-#    script:
-#        - ln -sf /depends/thirdparty thirdparty
-#        - source /opt/rh/devtoolset-7/enable && bash tools/run_py3_ut.sh
-#    artifacts:
-#        reports:
-#            junit:
-#                - python/test/*.xml
+
+build_py3sdk_and_case:
+    stage: build
+    script:
+        - ln -sf /depends/thirdparty thirdparty
+        - source /opt/rh/devtoolset-7/enable && bash tools/run_py3_ut.sh
+    artifacts:
+        reports:
+            junit:
+                - python/test/*.xml
 
 build_fesql_and_case:
     stage: build
