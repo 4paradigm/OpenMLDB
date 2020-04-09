@@ -86,6 +86,7 @@ public class SingleColumnCodec {
                 return convert((Float) data);
             case Double:
                 return convert((Double) data);
+            case String:
             case Varchar:
             case Blob:
                 return convert((String) data);

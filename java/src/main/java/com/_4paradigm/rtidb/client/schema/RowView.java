@@ -55,8 +55,8 @@ public class RowView {
         for (int idx = 0; idx < schema.size(); idx++) {
             ColumnDesc column = schema.get(idx);
             if (column.getDataType() == DataType.Varchar || column.getDataType() == DataType.String) {
-                offset_vec.add(string_field_cnt);
-                string_field_cnt++;
+                offsetVec.add(stringFieldCnt);
+                stringFieldCnt++;
             } else {
                 if (RowCodecCommon.TYPE_SIZE_MAP.get(column.getDataType()) == null) {
                     isValid = false;

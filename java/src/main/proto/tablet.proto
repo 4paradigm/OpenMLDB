@@ -667,7 +667,6 @@ message BatchQueryRequest {
     optional uint32 tid = 1;
     optional uint32 pid = 2;
     repeated ReadOption read_option = 3;
-    repeated string query_key = 4;
 }
 
 message BatchQueryResponse {

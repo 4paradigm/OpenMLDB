@@ -346,7 +346,6 @@ public class TableSyncClientTest extends TestCaseBase {
         return name;
     }
 
->>>>>>> origin/develop
     @Test
     public void testPut() {
         String name = createKvTable();
@@ -924,6 +923,42 @@ public class TableSyncClientTest extends TestCaseBase {
                 queryMap = it.getDecodedValue();
                 Assert.assertEquals(queryMap.size(), 5);
                 Assert.assertEquals(queryMap.get("id"), 12l);
+                Assert.assertEquals(queryMap.get("attribute"), "a2");
+                Assert.assertEquals(queryMap.get("image"), "i2");
+                Assert.assertEquals(queryMap.get("memory"), 12);
+                Assert.assertEquals(queryMap.get("price"), 12.2);
+            }
+
+            //put second
+            data.clear();
+            data.put("id", 13l);
+            data.put("attribute", "a2");
+            data.put("image", "i2");
+            data.put("memory", 12);
+            data.put("price", 12.2);
+            tableSyncClient.put(name, data, wo);
+
+            {
+                //query no unique
+                Map<String, Object> index3 = new HashMap<>();
+                index3.put("memory", 12);
+                ro = new ReadOption(index3, null, null, 1);
+                it = tableSyncClient.query(name, ro);
+                Assert.assertTrue(it.valid());
+
+                queryMap = it.getDecodedValue();
+                Assert.assertEquals(queryMap.size(), 5);
+                Assert.assertEquals(queryMap.get("id"), 12l);
+                Assert.assertEquals(queryMap.get("attribute"), "a2");
+                Assert.assertEquals(queryMap.get("image"), "i2");
+                Assert.assertEquals(queryMap.get("memory"), 12);
+                Assert.assertEquals(queryMap.get("price"), 12.2);
+
+                it.next();
+                Assert.assertTrue(it.valid());
+                queryMap = it.getDecodedValue();
+                Assert.assertEquals(queryMap.size(), 5);
+                Assert.assertEquals(queryMap.get("id"), 13l);
                 Assert.assertEquals(queryMap.get("attribute"), "a2");
                 Assert.assertEquals(queryMap.get("image"), "i2");
                 Assert.assertEquals(queryMap.get("memory"), 12);

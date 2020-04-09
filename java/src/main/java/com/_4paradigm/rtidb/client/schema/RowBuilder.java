@@ -31,8 +31,8 @@ public class RowBuilder {
         for (int idx = 0; idx < schema.size(); idx++) {
             ColumnDesc column = schema.get(idx);
             if (column.getDataType() == DataType.Varchar || column.getDataType() == DataType.String) {
-                offset_vec.add(str_field_cnt);
-                str_field_cnt++;
+                offsetVec.add(strFieldCnt);
+                strFieldCnt++;
             } else {
                 if (RowCodecCommon.TYPE_SIZE_MAP.get(column.getDataType()) == null) {
                     logger.warn("type is not supported");
@@ -104,7 +104,7 @@ public class RowBuilder {
         buf.put(index, (byte) (bt | (1 << (cnt & 0x07))));
         ColumnDesc column = schema.get(cnt);
         if (column.getDataType() == DataType.Varchar || column.getDataType() == DataType.String) {
-            index = str_field_start_offset + str_addr_length * offset_vec.get(cnt);
+            index = strFieldStartOffset + strAddrLength * offsetVec.get(cnt);
             buf.position(index);
             if (strAddrLength == 1) {
                 buf.put((byte) (strOffset & 0xFF));
