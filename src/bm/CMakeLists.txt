@@ -21,6 +21,19 @@ add_executable(udf_bm udf_bm.cc)
 target_link_libraries(udf_bm udf_bm_case ${vm_deps_libs}
         benchmark protobuf ${llvm_libs} ${COMMON_LIBS} tcmalloc profiler gtest pthread rt)
 
+add_library(runner_bm_case STATIC runner_bm_case.cc)
+add_executable(runner_bm_case_test runner_bm_case_test.cc)
+target_link_libraries(runner_bm_case_test runner_bm_case ${vm_deps_libs}
+        benchmark protobuf ${llvm_libs} ${COMMON_LIBS} tcmalloc profiler gtest pthread rt)
+
+add_test(runner_bm_case_test runner_bm_case_test --gtest_output=xml:${CMAKE_BINARY_DIR}/runner_bm_case_test.xml)
+list(APPEND test_list runner_bm_case_test)
+add_executable(runner_bm runner_bm.cc)
+target_link_libraries(runner_bm runner_bm_case ${vm_deps_libs}
+        benchmark protobuf ${llvm_libs} ${COMMON_LIBS} tcmalloc profiler gtest pthread rt)
+
+
+
 add_library(engine_bm_case STATIC engine_bm_case.cc)
 add_executable(engine_bm_case_test engine_bm_case_test.cc)
 target_link_libraries(engine_bm_case_test engine_bm_case ${vm_deps_libs}

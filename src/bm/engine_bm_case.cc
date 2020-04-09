@@ -39,145 +39,16 @@
 #include "parser/parser.h"
 #include "tablet/tablet_catalog.h"
 #include "vm/engine.h"
-#include "vm/test_base.h"
 
 namespace fesql {
 namespace bm {
 using vm::Engine;
 using vm::BatchRunSession;
 using vm::RequestRunSession;
-using vm::Slice;
-using vm::AddTable;
-using vm::BuildCommonCatalog;
+using base::Slice;
 
 using namespace ::llvm;                                      // NOLINT
-static void BuildTableDef(::fesql::type::TableDef& table) {  // NOLINT
-    table.set_name("t1");
-    table.set_catalog("db");
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kVarchar);
-        column->set_name("col0");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt32);
-        column->set_name("col1");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt16);
-        column->set_name("col2");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kFloat);
-        column->set_name("col3");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kDouble);
-        column->set_name("col4");
-    }
 
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt64);
-        column->set_name("col5");
-    }
-
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kVarchar);
-        column->set_name("col6");
-    }
-}
-
-static void BuildBuf(int8_t** buf, uint32_t* size,
-                     ::fesql::type::TableDef& table) {  // NOLINT
-    BuildTableDef(table);
-    ::fesql::type::IndexDef* index = table.add_indexes();
-    index->set_name("index1");
-    index->add_first_keys("col6");
-    index->set_second_key("col5");
-    codec::RowBuilder builder(table.columns());
-    uint32_t total_size = builder.CalTotalLength(2);
-    int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
-    builder.SetBuffer(ptr, total_size);
-    builder.AppendString("0", 1);
-    builder.AppendInt32(32);
-    builder.AppendInt16(16);
-    builder.AppendFloat(2.1f);
-    builder.AppendDouble(3.1);
-    builder.AppendInt64(64);
-    builder.AppendString("1", 1);
-    *buf = ptr;
-    *size = total_size;
-}
-
-static std::shared_ptr<tablet::TabletCatalog> Data_WindowCase1(
-    int32_t data_size) {
-    DLOG(INFO) << "insert window data";
-    type::TableDef table_def;
-    BuildTableDef(table_def);
-    // Build index
-    ::fesql::type::IndexDef* index = table_def.add_indexes();
-    index->set_name("index1");
-    index->add_first_keys("col0");
-    index->set_second_key("col5");
-
-    std::shared_ptr<::fesql::storage::Table> table(
-        new ::fesql::storage::Table(1, 1, table_def));
-
-    table->Init();
-
-    auto catalog = BuildCommonCatalog(table_def, table);
-
-    // add request
-    {
-        fesql::type::TableDef request_def;
-        BuildTableDef(request_def);
-        request_def.set_name("t1");
-        request_def.set_catalog("request");
-        std::shared_ptr<::fesql::storage::Table> request(
-            new ::fesql::storage::Table(1, 1, request_def));
-        AddTable(catalog, request_def, request);
-    }
-    ::fesql::bm::Repeater<std::string> col0(
-        std::vector<std::string>({"hello"}));
-    ::fesql::bm::IntRepeater<int32_t> col1;
-    col1.Range(1, 100, 1);
-    ::fesql::bm::IntRepeater<int16_t> col2;
-    col2.Range(1u, 100u, 2);
-    ::fesql::bm::RealRepeater<float> col3;
-    col3.Range(1.0, 100.0, 3.0f);
-    ::fesql::bm::RealRepeater<double> col4;
-    col4.Range(100.0, 10000.0, 10.0);
-    ::fesql::bm::IntRepeater<int64_t> col5;
-    col5.Range(1576571615000 - 100000000, 1576571615000, 1000);
-    ::fesql::bm::Repeater<std::string> col6({"astring", "bstring", "cstring",
-                                             "dstring", "estring", "fstring",
-                                             "gstring", "hstring"});
-
-    for (int i = 0; i < data_size; ++i) {
-        std::string str1 = col0.GetValue();
-        std::string str2 = col6.GetValue();
-        codec::RowBuilder builder(table_def.columns());
-        uint32_t total_size = builder.CalTotalLength(str1.size() + str2.size());
-        int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
-        builder.SetBuffer(ptr, total_size);
-        builder.AppendString(str1.c_str(), str1.size());
-        builder.AppendInt32(col1.GetValue());
-        builder.AppendInt16(col2.GetValue());
-        builder.AppendFloat(col3.GetValue());
-        builder.AppendDouble(col4.GetValue());
-        builder.AppendInt64(col5.GetValue());
-        builder.AppendString(str2.c_str(), str2.size());
-        table->Put(reinterpret_cast<char*>(ptr), total_size);
-        free(ptr);
-    }
-    return catalog;
-}
 static int64_t RunTableRequest(RequestRunSession& session,  // NOLINT
                                std::shared_ptr<vm::TableHandler> table_handler,
                                int64_t limit_cnt) {

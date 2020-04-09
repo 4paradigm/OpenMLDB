@@ -35,47 +35,6 @@ int32_t RunCopyTable(MemTableHandler& table,                 // NOLINT
                      type::TableDef& table_def);             // NOLINT
 int32_t RunCopySegment(MemSegmentHandler& segment,           // NOLINT
                        type::TableDef& table_def);           // NOLINT
-static void BuildTableDef(::fesql::type::TableDef& table) {  // NOLINT
-    table.set_name("t1");
-    table.set_catalog("db");
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kVarchar);
-        column->set_name("col0");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt32);
-        column->set_name("col1");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt16);
-        column->set_name("col2");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kFloat);
-        column->set_name("col3");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kDouble);
-        column->set_name("col4");
-    }
-
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt64);
-        column->set_name("col5");
-    }
-
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kVarchar);
-        column->set_name("col6");
-    }
-}
 
 static void DeleteData(vm::MemSegmentHandler& window) {  // NOLINT
     auto iter = window.GetIterator();
