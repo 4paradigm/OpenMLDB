@@ -71,7 +71,7 @@ void HttpImpl::Get(RpcController* controller,
         }
     } else if (vec.size() == 2) {
         table = vec[0];
-        pic_id = &vec[2];
+        pic_id = &vec[1];
     } else {
         cntl->http_response().set_status_code(brpc::HTTP_STATUS_BAD_REQUEST);
         return;
