@@ -91,7 +91,7 @@ void Physical_Plan_Check(const std::shared_ptr<tablet::TabletCatalog>& catalog,
     ::fesql::node::PlanNodeList plan_trees;
     ::fesql::base::Status base_status;
     {
-        ::fesql::plan::SimplePlanner planner(&manager);
+        ::fesql::plan::SimplePlanner planner(&manager, false);
         ::fesql::parser::FeSQLParser parser;
         ::fesql::node::NodePointVector parser_trees;
         parser.parse(sql, parser_trees, &manager, base_status);
@@ -114,16 +114,16 @@ void Physical_Plan_Check(const std::shared_ptr<tablet::TabletCatalog>& catalog,
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
     ::fesql::udf::RegisterUDFToModule(m.get());
-    TransformRequestMode transform(&manager, "db", catalog, m.get());
+    RequestModeransformer transform(&manager, "db", catalog, m.get());
     transform.AddDefaultPasses();
     PhysicalOpNode* physical_plan = nullptr;
-    ASSERT_TRUE(transform.TransformPhysicalPlan(
-        dynamic_cast<node::PlanNode*>(plan_trees[0]), &physical_plan,
-        base_status));
+    ASSERT_TRUE(transform.TransformPhysicalPlan(plan_trees, &physical_plan,
+                                                base_status));
+    //    m->print(::llvm::errs(), NULL);
     std::ostringstream oss;
     physical_plan->Print(oss, "");
     std::cout << "physical plan:\n" << sql << "\n" << oss.str() << std::endl;
-    std::stringstream ss;
+    std::ostringstream ss;
     PrintSchema(ss, physical_plan->output_schema);
     std::cout << "schema:\n" << ss.str() << std::endl;
     ASSERT_EQ(oss.str(), exp);
@@ -360,7 +360,7 @@ TEST_P(TransformRequestModeTest, transform_physical_plan) {
     ::fesql::node::PlanNodeList plan_trees;
     ::fesql::base::Status base_status;
     {
-        ::fesql::plan::SimplePlanner planner(&manager);
+        ::fesql::plan::SimplePlanner planner(&manager, false);
         ::fesql::parser::FeSQLParser parser;
         ::fesql::node::NodePointVector parser_trees;
         parser.parse(sqlstr, parser_trees, &manager, base_status);
@@ -381,17 +381,17 @@ TEST_P(TransformRequestModeTest, transform_physical_plan) {
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
     ::fesql::udf::RegisterUDFToModule(m.get());
-    TransformRequestMode transform(&manager, "db", catalog, m.get());
+    RequestModeransformer transform(&manager, "db", catalog, m.get());
     PhysicalOpNode* physical_plan = nullptr;
-    ASSERT_TRUE(transform.TransformPhysicalPlan(
-        dynamic_cast<node::PlanNode*>(plan_trees[0]), &physical_plan,
-        base_status));
+    ASSERT_TRUE(transform.TransformPhysicalPlan(plan_trees, &physical_plan,
+                                                base_status));
     std::ostringstream oss;
     physical_plan->Print(oss, "");
     std::cout << "physical plan:\n" << sqlstr << "\n" << oss.str() << std::endl;
-    std::stringstream ss;
+    std::ostringstream ss;
     PrintSchema(ss, physical_plan->output_schema);
     std::cout << "schema:\n" << ss.str() << std::endl;
+    //    m->print(::llvm::errs(), NULL);
 }
 
 TEST_F(TransformRequestModeTest, pass_group_optimized_test) {
@@ -399,27 +399,35 @@ TEST_F(TransformRequestModeTest, pass_group_optimized_test) {
     in_outs.push_back(std::make_pair(
         "SELECT sum(col1) as col1sum FROM t1 group by col1;",
         "PROJECT(type=Aggregation)\n"
-        "  REQUEST_UNION(groups=() ,orders=)\n"
+        "  REQUEST_UNION(groups=(), orders=, keys=, start=-1, end=-1)\n"
         "    DATA_PROVIDER(request=t1)\n"
-        "    DATA_PROVIDER(type=IndexScan, table=t1, index=index1)"));
+        "    INDEX_SEEK(keys=(col1))\n"
+        "      DATA_PROVIDER(request=t1)\n"
+        "      DATA_PROVIDER(type=IndexScan, table=t1, index=index1)"));
     in_outs.push_back(std::make_pair(
         "SELECT sum(col1) as col1sum FROM t1 group by col1, col2;",
         "PROJECT(type=Aggregation)\n"
-        "  REQUEST_UNION(groups=() ,orders=)\n"
+        "  REQUEST_UNION(groups=(), orders=, keys=, start=-1, end=-1)\n"
         "    DATA_PROVIDER(request=t1)\n"
-        "    DATA_PROVIDER(type=IndexScan, table=t1, index=index12)"));
+        "    INDEX_SEEK(keys=(col1,col2))\n"
+        "      DATA_PROVIDER(request=t1)\n"
+        "      DATA_PROVIDER(type=IndexScan, table=t1, index=index12)"));
     in_outs.push_back(std::make_pair(
         "SELECT sum(col1) as col1sum FROM t1 group by col1, col2, col3;",
         "PROJECT(type=Aggregation)\n"
-        "  REQUEST_UNION(groups=(col3) ,orders=)\n"
+        "  REQUEST_UNION(groups=(col3), orders=, keys=, start=-1, end=-1)\n"
         "    DATA_PROVIDER(request=t1)\n"
-        "    DATA_PROVIDER(type=IndexScan, table=t1, index=index12)"));
+        "    INDEX_SEEK(keys=(col1,col2))\n"
+        "      DATA_PROVIDER(request=t1)\n"
+        "      DATA_PROVIDER(type=IndexScan, table=t1, index=index12)"));
     in_outs.push_back(std::make_pair(
         "SELECT sum(col1) as col1sum FROM t1 group by col3, col2, col1;",
         "PROJECT(type=Aggregation)\n"
-        "  REQUEST_UNION(groups=(col3) ,orders=)\n"
+        "  REQUEST_UNION(groups=(col3), orders=, keys=, start=-1, end=-1)\n"
         "    DATA_PROVIDER(request=t1)\n"
-        "    DATA_PROVIDER(type=IndexScan, table=t1, index=index12)"));
+        "    INDEX_SEEK(keys=(col1,col2))\n"
+        "      DATA_PROVIDER(request=t1)\n"
+        "      DATA_PROVIDER(type=IndexScan, table=t1, index=index12)"));
     fesql::type::TableDef table_def;
     BuildTableDef(table_def);
     table_def.set_name("t1");
@@ -463,11 +471,14 @@ TEST_F(TransformRequestModeTest, pass_sort_optimized_test) {
         "sum(col2) OVER w1 as w1_col2_sum "
         "FROM t1 WINDOW w1 AS (PARTITION BY col1 ORDER BY col15 ROWS BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;",
-        "LIMIT(limit=10)\n"
-        "  PROJECT(type=Aggregation)\n"
-        "    REQUEST_UNION(groups=() ,orders=() ASC)\n"
+        "LIMIT(limit=10, optimized)\n"
+        "  PROJECT(type=Aggregation, limit=10)\n"
+        "    REQUEST_UNION(groups=(), orders=() ASC, keys=(col15) ASC, "
+        "start=-3, end=0)\n"
         "      DATA_PROVIDER(request=t1)\n"
-        "      DATA_PROVIDER(type=IndexScan, table=t1, index=index1)"));
+        "      INDEX_SEEK(keys=(col1))\n"
+        "        DATA_PROVIDER(request=t1)\n"
+        "        DATA_PROVIDER(type=IndexScan, table=t1, index=index1)"));
     in_outs.push_back(std::make_pair(
         "SELECT "
         "col1, "
@@ -475,11 +486,14 @@ TEST_F(TransformRequestModeTest, pass_sort_optimized_test) {
         "sum(col2) OVER w1 as w1_col2_sum "
         "FROM t1 WINDOW w1 AS (PARTITION BY col2, col1 ORDER BY col15 ROWS "
         "BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;",
-        "LIMIT(limit=10)\n"
-        "  PROJECT(type=Aggregation)\n"
-        "    REQUEST_UNION(groups=() ,orders=() ASC)\n"
+        "LIMIT(limit=10, optimized)\n"
+        "  PROJECT(type=Aggregation, limit=10)\n"
+        "    REQUEST_UNION(groups=(), orders=() ASC, keys=(col15) ASC, "
+        "start=-3, end=0)\n"
         "      DATA_PROVIDER(request=t1)\n"
-        "      DATA_PROVIDER(type=IndexScan, table=t1, index=index12)"));
+        "      INDEX_SEEK(keys=(col1,col2))\n"
+        "        DATA_PROVIDER(request=t1)\n"
+        "        DATA_PROVIDER(type=IndexScan, table=t1, index=index12)"));
     in_outs.push_back(std::make_pair(
         "SELECT "
         "col1+col2 as col12, "
@@ -488,9 +502,10 @@ TEST_F(TransformRequestModeTest, pass_sort_optimized_test) {
         "sum(col2) OVER w1 as w1_col2_sum "
         "FROM t1 WINDOW w1 AS (PARTITION BY col3 ORDER BY col15 ROWS BETWEEN 3"
         "PRECEDING AND CURRENT ROW) limit 10;",
-        "LIMIT(limit=10)\n"
-        "  PROJECT(type=Aggregation)\n"
-        "    REQUEST_UNION(groups=(col3) ,orders=(col15) ASC)\n"
+        "LIMIT(limit=10, optimized)\n"
+        "  PROJECT(type=Aggregation, limit=10)\n"
+        "    REQUEST_UNION(groups=(col3), orders=(col15) ASC, keys=(col15) "
+        "ASC, start=-3, end=0)\n"
         "      DATA_PROVIDER(request=t1)\n"
         "      DATA_PROVIDER(table=t1)"));
 

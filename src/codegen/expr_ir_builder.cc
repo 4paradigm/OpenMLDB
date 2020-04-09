@@ -34,6 +34,7 @@ namespace codegen {
 ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var)
     : block_(block),
       sv_(scope_var),
+      schema_(nullptr),
       row_mode_(true),
       row_ptr_name_(""),
       window_ptr_name_(""),
@@ -52,7 +53,7 @@ ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
                              ::llvm::Module* module)
     : block_(block),
       sv_(scope_var),
-      schema_(schema),
+      schema_(&schema),
       row_mode_(row_mode),
       row_ptr_name_(row_ptr_name),
       window_ptr_name_(window_ptr_name),
@@ -260,7 +261,7 @@ bool ExprIRBuilder::BuildStructExpr(const ::fesql::node::StructExpr* node,
     if (nullptr != node->GetFileds() && !node->GetFileds()->children.empty()) {
         for (auto each : node->GetFileds()->children) {
             node::FnParaNode* field = dynamic_cast<node::FnParaNode*>(each);
-            ::llvm::Type* type;
+            ::llvm::Type* type = nullptr;
             if (ConvertFeSQLType2LLVMType(field->GetParaType(), module_,
                                           &type)) {
                 members.push_back(type);
@@ -528,7 +529,7 @@ bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
             }
             switch (left_type) {
                 case fesql::node::kList: {
-                    ::llvm::Value* at_value;
+                    ::llvm::Value* at_value = nullptr;
                     ListIRBuilder list_ir_builder(block_, sv_);
                     if (false == list_ir_builder.BuildAt(left, right, &at_value,
                                                          status)) {

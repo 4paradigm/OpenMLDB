@@ -24,15 +24,18 @@
 #include <string>
 #include <vector>
 #include "base/spin_lock.h"
+#include "codec/list_iterator_codec.h"
+#include "codec/row_codec.h"
 #include "proto/common.pb.h"
 #include "vm/catalog.h"
+#include "vm/mem_catalog.h"
 #include "vm/sql_compiler.h"
-#include "codec/window.h"
 
 namespace fesql {
 namespace vm {
 
-using ::fesql::codec::Row;
+using ::fesql::base::Slice;
+using ::fesql::codec::RowView;
 
 class Engine;
 
@@ -46,28 +49,51 @@ class RunSession {
 
     ~RunSession();
 
-    inline const Schema& GetSchema() const {
+    virtual inline const Schema& GetSchema() const {
         return compile_info_->sql_ctx.schema;
     }
+    virtual inline vm::PhysicalOpNode* GetPhysicalPlan() {
+        return compile_info_->sql_ctx.plan;
+    }
+    virtual inline vm::Runner* GetRunner() {
+        return compile_info_->sql_ctx.runner;
+    }
 
-    int32_t Run(std::vector<int8_t*>& buf, uint64_t limit);  // NOLINT
 
-    int32_t RunOne(const Row& in_row, Row& out_row);  // NOLINT
+    virtual const bool IsBatchRun() const = 0;
 
-    int32_t RunBatch(std::vector<int8_t*>& buf, uint64_t limit);  // NOLINT
-
- private:
+ protected:
     inline void SetCompileInfo(
         const std::shared_ptr<CompileInfo>& compile_info) {
         compile_info_ = compile_info;
     }
-
     inline void SetCatalog(const std::shared_ptr<Catalog>& cl) { cl_ = cl; }
-
- private:
     std::shared_ptr<CompileInfo> compile_info_;
     std::shared_ptr<Catalog> cl_;
     friend Engine;
+};
+
+class BatchRunSession : public RunSession {
+ public:
+    explicit BatchRunSession(bool mini_batch = false)
+        : RunSession(), mini_batch_(mini_batch) {}
+    ~BatchRunSession() {}
+    virtual int32_t Run(std::vector<int8_t*>& buf, uint64_t limit);  // NOLINT
+    virtual std::shared_ptr<TableHandler> Run();  // NOLINT
+    const bool IsBatchRun() const override { return true; }
+
+ private:
+    const bool mini_batch_;
+};
+
+class RequestRunSession : public RunSession {
+ public:
+    RequestRunSession() : RunSession() {}
+    ~RequestRunSession() {}
+    virtual int32_t Run(const Slice& in_row, Slice* output);  // NOLINT
+    const bool IsBatchRun() const override { return false; }
+    std::shared_ptr<TableHandler> RunRequestPlan(const Slice& request,
+                                                 PhysicalOpNode* node);
 };
 
 typedef std::map<std::string,
@@ -90,6 +116,7 @@ class Engine {
     const std::shared_ptr<Catalog> cl_;
     base::SpinMutex mu_;
     EngineCache cache_;
+    ::fesql::node::NodeManager nm_;
 };
 
 }  // namespace vm

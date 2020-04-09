@@ -128,6 +128,7 @@ INSTANTIATE_TEST_CASE_P(
         "SELECT COL1 FROM t1 where COL1;",
         "SELECT COL1 FROM t1 where COL1 > 10 and COL2 = 20 or COL1 =0;",
         "SELECT COL1 FROM t1 where COL1 > 10 and COL2 = 20;",
+        "SELECT COL1 FROM t1 where COL1 > 10 and COL2 = 20 limit 10;",
         "SELECT COL1 FROM t1 where COL1 > 10;"));
 INSTANTIATE_TEST_CASE_P(
     SqlLikePlan, TransformTest,
@@ -166,6 +167,7 @@ INSTANTIATE_TEST_CASE_P(
         "SELECT COL1 FROM t1 having COL1;",
         "SELECT COL1 FROM t1 HAVING COL1 > 10 and COL2 = 20 or COL1 =0;",
         "SELECT COL1 FROM t1 HAVING COL1 > 10 and COL2 = 20;",
+        "SELECT COL1 FROM t1 HAVING COL1 > 10 and COL2 = 20 limit 10;",
         "SELECT COL1 FROM t1 HAVING COL1 > 10;"));
 
 INSTANTIATE_TEST_CASE_P(
@@ -173,6 +175,7 @@ INSTANTIATE_TEST_CASE_P(
     testing::Values("SELECT COL1 FROM t1 order by COL1 + COL2 - COL3;",
                     "SELECT COL1 FROM t1 order by COL1, COL2, COL3;",
                     "SELECT COL1 FROM t1 order by COL1, COL2;",
+                    "SELECT COL1 FROM t1 order by COL1, COL2 limit 10;",
                     "SELECT COL1 FROM t1 order by COL1;"));
 
 INSTANTIATE_TEST_CASE_P(
@@ -187,15 +190,16 @@ INSTANTIATE_TEST_CASE_P(
         "SELECT sum(COL1) as col1sum FROM t1 where col2 > 10 group by COL1, "
         "COL2 having col1sum > 0;",
         "SELECT sum(COL1) as col1sum FROM t1 group by COL1, COL2 having "
-        "sum(COL1) > 0;",
+        "sum(COL1) > 0 limit 10;",
         "SELECT sum(COL1) as col1sum FROM t1 group by COL1, COL2 having "
         "col1sum > 0;"));
 
 INSTANTIATE_TEST_CASE_P(
     SqlJoinPlan, TransformTest,
-    testing::Values("SELECT * FROM t1 full join t2 on t1.col1 = t2.col2;",
-                    "SELECT * FROM t1 right join t2 on t1.col1 = t2.col2;",
-                    "SELECT * FROM t1 inner join t2 on t1.col1 = t2.col2;"));
+    testing::Values(
+        "SELECT * FROM t1 full join t2 on t1.col1 = t2.col2;",
+        "SELECT * FROM t1 right join t2 on t1.col1 = t2.col2;",
+        "SELECT * FROM t1 inner join t2 on t1.col1 = t2.col2 limit 10;"));
 
 INSTANTIATE_TEST_CASE_P(
     SqlLeftJoinWindowPlan, TransformTest,
@@ -346,12 +350,13 @@ TEST_P(TransformTest, transform_physical_plan) {
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
     ::fesql::udf::RegisterUDFToModule(m.get());
-    Transform transform(&manager, "db", catalog, m.get());
+    BatchModeTransformer transform(&manager, "db", catalog, m.get());
+    transform.AddDefaultPasses();
     PhysicalOpNode* physical_plan = nullptr;
-    ASSERT_TRUE(transform.TransformPhysicalPlan(
-        dynamic_cast<node::PlanNode*>(plan_trees[0]), &physical_plan,
-        base_status));
+    ASSERT_TRUE(transform.TransformPhysicalPlan(plan_trees, &physical_plan,
+                                                base_status));
     physical_plan->Print(std::cout, "");
+    m->print(::llvm::errs(), NULL);
 }
 
 void Physical_Plan_Check(const std::shared_ptr<tablet::TabletCatalog>& catalog,
@@ -385,13 +390,12 @@ void Physical_Plan_Check(const std::shared_ptr<tablet::TabletCatalog>& catalog,
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
     ::fesql::udf::RegisterUDFToModule(m.get());
-    Transform transform(&manager, "db", catalog, m.get());
+    BatchModeTransformer transform(&manager, "db", catalog, m.get());
     transform.AddDefaultPasses();
     PhysicalOpNode* physical_plan = nullptr;
 
-    bool ok = transform.TransformPhysicalPlan(
-        dynamic_cast<node::PlanNode*>(plan_trees[0]), &physical_plan,
-        base_status);
+    bool ok = transform.TransformPhysicalPlan(plan_trees, &physical_plan,
+                                              base_status);
     std::cout << base_status.msg << std::endl;
     ASSERT_TRUE(ok);
 
@@ -399,7 +403,7 @@ void Physical_Plan_Check(const std::shared_ptr<tablet::TabletCatalog>& catalog,
     physical_plan->Print(oos, "");
     std::cout << oos.str() << std::endl;
 
-    std::stringstream ss;
+    std::ostringstream ss;
     PrintSchema(ss, physical_plan->output_schema);
     std::cout << "schema:\n" << ss.str() << std::endl;
 
@@ -460,10 +464,11 @@ TEST_F(TransformTest, pass_sort_optimized_test) {
         "sum(col2) OVER w1 as w1_col2_sum "
         "FROM t1 WINDOW w1 AS (PARTITION BY col1 ORDER BY col15 ROWS BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;",
-        "LIMIT(limit=10)\n"
+        "LIMIT(limit=10, optimized)\n"
         "  PROJECT(type=WindowAggregation, groups=(col1), orders=(col15) ASC, "
-        "start=-3, end=0)\n"
-        "    DATA_PROVIDER(type=IndexScan, table=t1, index=index1)"));
+        "start=-3, end=0, limit=10)\n"
+        "    GROUP_AND_SORT_BY(groups=(), orders=() ASC)\n"
+        "      DATA_PROVIDER(type=IndexScan, table=t1, index=index1)"));
     in_outs.push_back(std::make_pair(
         "SELECT "
         "col1, "
@@ -472,21 +477,23 @@ TEST_F(TransformTest, pass_sort_optimized_test) {
         "FROM t1 WINDOW w1 AS (PARTITION BY col2, col1 ORDER BY col15 ROWS "
         "BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;",
-        "LIMIT(limit=10)\n"
+        "LIMIT(limit=10, optimized)\n"
         "  PROJECT(type=WindowAggregation, groups=(col2,col1), orders=(col15) "
-        "ASC, start=-3, end=0)\n"
-        "    DATA_PROVIDER(type=IndexScan, table=t1, index=index12)"));
-    //    in_outs.push_back(std::make_pair(
-    //        "SELECT "
-    //        "col1, "
-    //        "sum(col3) OVER w1 as w1_col3_sum, "
-    //        "sum(col2) OVER w1 as w1_col2_sum "
-    //        "FROM t1 WINDOW w1 AS (PARTITION BY col3 ORDER BY col15 ROWS
-    //        BETWEEN 3 " "PRECEDING AND CURRENT ROW) limit 10;",
-    //        "LIMIT(limit=10)\n"
-    //        "  PROJECT(type=WindowAggregation, groups=(col3), orders=(col15)
-    //        ASC, " "start=-3, end=0)\n" "    GROUP_AND_SORT_BY(groups=(col3),
-    //        orders=(col15) ASC)\n" "      DATA_PROVIDER(table=t1)"));
+        "ASC, start=-3, end=0, limit=10)\n"
+        "    GROUP_AND_SORT_BY(groups=(), orders=() ASC)\n"
+        "      DATA_PROVIDER(type=IndexScan, table=t1, index=index12)"));
+    in_outs.push_back(std::make_pair(
+        "SELECT "
+        "col1, "
+        "sum(col3) OVER w1 as w1_col3_sum, "
+        "sum(col2) OVER w1 as w1_col2_sum "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col3 ORDER BY col15 ROWS BETWEEN 3 "
+        "PRECEDING AND CURRENT ROW) limit 10;",
+        "LIMIT(limit=10, optimized)\n"
+        "  PROJECT(type=WindowAggregation, groups=(col3), orders=(col15) ASC, "
+        "start=-3, end=0, limit=10)\n"
+        "    GROUP_AND_SORT_BY(groups=(col3), orders=(col15) ASC)\n"
+        "      DATA_PROVIDER(table=t1)"));
 
     fesql::type::TableDef table_def;
     BuildTableDef(table_def);
@@ -524,11 +531,12 @@ TEST_F(TransformTest, pass_join_optimized_test) {
         "FROM t1 left join t2 on t1.col1 = t2.col1 "
         "WINDOW w1 AS (PARTITION BY col1 ORDER BY col15 ROWS BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;",
-        "LIMIT(limit=10)\n"
+        "LIMIT(limit=10, optimized)\n"
         "  PROJECT(type=WindowAggregation, groups=(col1), orders=(col15) ASC, "
-        "start=-3, end=0)\n"
+        "start=-3, end=0, limit=10)\n"
         "    JOIN(type=LeftJoin, condition=t1.col1 = t2.col1)\n"
-        "      DATA_PROVIDER(type=IndexScan, table=t1, index=index1)\n"
+        "      GROUP_AND_SORT_BY(groups=(), orders=() ASC)\n"
+        "        DATA_PROVIDER(type=IndexScan, table=t1, index=index1)\n"
         "      DATA_PROVIDER(table=t2)"));
     in_outs.push_back(std::make_pair(
         "SELECT "
@@ -538,11 +546,12 @@ TEST_F(TransformTest, pass_join_optimized_test) {
         "FROM t1 left join t2 on t1.col1 = t2.col1 "
         "WINDOW w1 AS (PARTITION BY col1, col2 ORDER BY col15 ROWS BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;",
-        "LIMIT(limit=10)\n"
+        "LIMIT(limit=10, optimized)\n"
         "  PROJECT(type=WindowAggregation, groups=(col1,col2), orders=(col15) "
-        "ASC, start=-3, end=0)\n"
+        "ASC, start=-3, end=0, limit=10)\n"
         "    JOIN(type=LeftJoin, condition=t1.col1 = t2.col1)\n"
-        "      DATA_PROVIDER(type=IndexScan, table=t1, index=index12)\n"
+        "      GROUP_AND_SORT_BY(groups=(), orders=() ASC)\n"
+        "        DATA_PROVIDER(type=IndexScan, table=t1, index=index12)\n"
         "      DATA_PROVIDER(table=t2)"));
     fesql::type::TableDef table_def;
     BuildTableDef(table_def);

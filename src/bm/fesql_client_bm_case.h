@@ -12,13 +12,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "benchmark/benchmark.h"
-#include "bm/base_bm.h"
-#include "brpc/server.h"
-#include "dbms/dbms_server_impl.h"
-#include "glog/logging.h"
-#include "sdk/dbms_sdk.h"
-#include "sdk/tablet_sdk.h"
-#include "tablet/tablet_server_impl.h"
 namespace fesql {
 namespace bm {
 enum MODE { BENCHMARK, TEST };

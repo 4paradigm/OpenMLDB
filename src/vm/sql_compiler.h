@@ -27,7 +27,7 @@
 #include "proto/common.pb.h"
 #include "vm/catalog.h"
 #include "vm/jit.h"
-#include "vm/op_generator.h"
+#include "vm/runner.h"
 
 namespace fesql {
 namespace vm {
@@ -35,28 +35,30 @@ namespace vm {
 using fesql::base::Status;
 
 struct SQLContext {
+    // mode: batch|request
     // the sql content
+    bool is_batch_mode;
     std::string sql;
     // the database
     std::string db;
-    // the operators
-    OpVector ops;
+    // the physical plan
+    PhysicalOpNode* plan;
     // TODO(wangtaize) add a light jit engine
     // eg using bthead to compile ir
     std::unique_ptr<FeSQLJIT> jit;
     Schema schema;
+    Runner *runner;
     uint32_t row_size;
     std::string ir;
 };
 
-void InitCodecSymbol(::llvm::orc::JITDylib& jd,             // NOLINT
+void InitCodecSymbol(::llvm::orc::JITDylib& jd,            // NOLINT
                      ::llvm::orc::MangleAndInterner& mi);  // NOLINT
-
 
 class SQLCompiler {
  public:
-    explicit SQLCompiler(const std::shared_ptr<Catalog>& cl,
-                         bool keep_ir = false);
+    SQLCompiler(const std::shared_ptr<Catalog>& cl,
+                ::fesql::node::NodeManager* nm, bool keep_ir = false);
 
     ~SQLCompiler();
 
@@ -64,16 +66,18 @@ class SQLCompiler {
                  Status& status);  // NOLINT
 
  private:
-    void KeepIR(SQLContext& ctx, llvm::Module* m); // NOLINT
- private:
+    void KeepIR(SQLContext& ctx, llvm::Module* m);                     // NOLINT
     bool Parse(SQLContext& ctx, ::fesql::node::NodeManager& node_mgr,  // NOLINT
                ::fesql::node::PlanNodeList& trees, Status& status);    // NOLINT
+    bool ResolvePlanFnAddress(PhysicalOpNode* node,
+                              std::unique_ptr<FeSQLJIT>& jit,  // NOLINT
+                              Status& status);                 // NOLINT
 
  private:
     const std::shared_ptr<Catalog> cl_;
+    ::fesql::node::NodeManager* nm_;
     bool keep_ir_;
 };
-
 }  // namespace vm
 }  // namespace fesql
 #endif  // SRC_VM_SQL_COMPILER_H_

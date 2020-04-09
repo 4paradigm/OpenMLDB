@@ -20,13 +20,13 @@
 #include <cstdlib>
 #include <memory>
 #include <vector>
+#include "codec/list_iterator_codec.h"
+#include "codec/row_codec.h"
+#include "codec/type_codec.h"
 #include "codegen/codegen_base_test.h"
 #include "codegen/ir_base_builder.h"
 #include "codegen/window_ir_builder.h"
 #include "gtest/gtest.h"
-#include "codec/row_codec.h"
-#include "codec/type_codec.h"
-#include "codec/window.h"
 #include "vm/sql_compiler.h"
 
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
@@ -77,11 +77,11 @@ T PrintList(int8_t* input) {
         reinterpret_cast<::fesql::codec::ListRef*>(input);
     ::fesql::codec::ColumnImpl<T>* column =
         reinterpret_cast<::fesql::codec::ColumnImpl<T>*>(list_ref->list);
-    fesql::codec::IteratorImpl<T> iter(*column);
-    ::fesql::codec::IteratorImpl<T>* col = &iter;
+    auto col = column->GetIterator();
     std::cout << "[";
     while (col->Valid()) {
-        T v = col->Next();
+        T v = col->GetValue();
+        col->Next();
         std::cout << v << ",";
         sum += v;
     }
@@ -105,11 +105,11 @@ int32_t PrintListString(int8_t* input) {
         reinterpret_cast<::fesql::codec::ListRef*>(input);
     ::fesql::codec::StringColumnImpl* column =
         reinterpret_cast<::fesql::codec::StringColumnImpl*>(list_ref->list);
-    fesql::codec::IteratorImpl<::fesql::codec::StringRef> iter(*column);
-    ::fesql::codec::IteratorImpl<::fesql::codec::StringRef>* col = &iter;
+    auto col = column->GetIterator();
     std::cout << "[";
     while (col->Valid()) {
-        ::fesql::codec::StringRef v = col->Next();
+        ::fesql::codec::StringRef v = col->GetValue();
+        col->Next();
         std::string str(v.data, v.size);
         std::cout << str << ", ";
         cnt++;
@@ -590,7 +590,7 @@ TEST_F(BufIRBuilderTest, encode_ir_builder) {
 
 TEST_F(BufIRBuilderTest, native_test_load_int16_col) {
     int8_t* ptr = NULL;
-    std::vector<fesql::codec::Row> rows;
+    std::vector<Slice> rows;
     BuildWindow(rows, &ptr);
     RunColCase<int16_t>(16 * 5, ::fesql::type::kInt16, "col2", ptr);
     free(ptr);
@@ -598,7 +598,7 @@ TEST_F(BufIRBuilderTest, native_test_load_int16_col) {
 
 TEST_F(BufIRBuilderTest, native_test_load_int32_col) {
     int8_t* ptr = NULL;
-    std::vector<fesql::codec::Row> rows;
+    std::vector<Slice> rows;
     BuildWindow(rows, &ptr);
     RunColCase<int32_t>(32 * 5, ::fesql::type::kInt32, "col1", ptr);
     free(ptr);
@@ -606,7 +606,7 @@ TEST_F(BufIRBuilderTest, native_test_load_int32_col) {
 
 TEST_F(BufIRBuilderTest, native_test_load_int64_col) {
     int8_t* ptr = NULL;
-    std::vector<fesql::codec::Row> rows;
+    std::vector<Slice> rows;
     BuildWindow(rows, &ptr);
     RunColCase<int64_t>(64 * 5, ::fesql::type::kInt64, "col5", ptr);
     free(ptr);
@@ -614,7 +614,7 @@ TEST_F(BufIRBuilderTest, native_test_load_int64_col) {
 
 TEST_F(BufIRBuilderTest, native_test_load_float_col) {
     int8_t* ptr = NULL;
-    std::vector<fesql::codec::Row> rows;
+    std::vector<Slice> rows;
     BuildWindow(rows, &ptr);
     RunColCase<float>(2.1f * 5, ::fesql::type::kFloat, "col3", ptr);
     free(ptr);
@@ -622,7 +622,7 @@ TEST_F(BufIRBuilderTest, native_test_load_float_col) {
 
 TEST_F(BufIRBuilderTest, native_test_load_double_col) {
     int8_t* ptr = NULL;
-    std::vector<fesql::codec::Row> rows;
+    std::vector<Slice> rows;
     BuildWindow(rows, &ptr);
     RunColCase<double>(3.1f * 5, ::fesql::type::kDouble, "col4", ptr);
     free(ptr);
@@ -630,7 +630,7 @@ TEST_F(BufIRBuilderTest, native_test_load_double_col) {
 
 TEST_F(BufIRBuilderTest, native_test_load_string_col) {
     int8_t* ptr = NULL;
-    std::vector<fesql::codec::Row> rows;
+    std::vector<Slice> rows;
     BuildWindow(rows, &ptr);
     RunColCase<int32_t>(5, ::fesql::type::kVarchar, "col6", ptr);
     free(ptr);

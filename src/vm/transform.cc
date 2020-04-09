@@ -10,6 +10,7 @@
 #include <set>
 #include <stack>
 #include <unordered_map>
+#include "codegen/fn_ir_builder.h"
 #include "codegen/fn_let_ir_builder.h"
 #include "vm/physical_op.h"
 
@@ -53,20 +54,20 @@ bool TransformLogicalTreeToLogicalGraph(
     return true;
 }
 
-Transform::Transform(node::NodeManager* node_manager, const std::string& db,
-                     const std::shared_ptr<Catalog>& catalog,
-                     ::llvm::Module* module)
+BatchModeTransformer::BatchModeTransformer(
+    node::NodeManager* node_manager, const std::string& db,
+    const std::shared_ptr<Catalog>& catalog, ::llvm::Module* module)
     : node_manager_(node_manager),
       db_(db),
       catalog_(catalog),
       module_(module),
       id_(0) {}
 
-Transform::~Transform() {}
+BatchModeTransformer::~BatchModeTransformer() {}
 
-bool Transform::TransformPlanOp(const ::fesql::node::PlanNode* node,
-                                ::fesql::vm::PhysicalOpNode** ouput,
-                                ::fesql::base::Status& status) {
+bool BatchModeTransformer::TransformPlanOp(const ::fesql::node::PlanNode* node,
+                                           ::fesql::vm::PhysicalOpNode** ouput,
+                                           ::fesql::base::Status& status) {
     if (nullptr == node || nullptr == ouput) {
         status.msg = "input node or output node is null";
         status.code = common::kPlanError;
@@ -155,9 +156,184 @@ bool Transform::TransformPlanOp(const ::fesql::node::PlanNode* node,
     return true;
 }
 
-bool Transform::TransformLimitOp(const node::LimitPlanNode* node,
-                                 PhysicalOpNode** output,
-                                 base::Status& status) {
+bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
+                                       base::Status& status) {
+    if (nullptr == node) {
+        status.msg = "input node is null";
+        status.code = common::kPlanError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+
+    for (auto producer : node->GetProducers()) {
+        if (!GenPlanNode(producer, status)) {
+            return false;
+        }
+    }
+
+    if (!node->GetFnName().empty()) {
+        DLOG(INFO) << "already gen code for node";
+        return true;
+    }
+    std::string fn_name = "";
+    vm::Schema fn_schema;
+    switch (node->type_) {
+        case kPhysicalOpIndexSeek: {
+            auto seek_op = dynamic_cast<PhysicalSeekIndexNode*>(node);
+            std::vector<int32_t> keys_idxs;
+            int32_t idx = 0;
+            if (!node::ExprListNullOrEmpty(seek_op->keys_)) {
+                int32_t size =
+                    static_cast<int32_t>(seek_op->keys_->children_.size());
+                while (idx < size) {
+                    keys_idxs.push_back(idx++);
+                }
+                CodeGenExprList((node->GetProducers()[0]->output_schema),
+                                seek_op->keys_, true, fn_name, &fn_schema,
+                                status);
+                seek_op->SetKeysIdxs(keys_idxs);
+            }
+
+            break;
+        }
+        case kPhysicalOpGroupBy: {
+            auto group_op = dynamic_cast<PhysicalGroupNode*>(node);
+            std::vector<int32_t> idxs;
+            int32_t idx = 0;
+            if (!node::ExprListNullOrEmpty(group_op->groups_)) {
+                int32_t size =
+                    static_cast<int32_t>(group_op->groups_->children_.size());
+                while (idx < size) {
+                    idxs.push_back(idx++);
+                }
+                CodeGenExprList((node->GetProducers()[0]->output_schema),
+                                group_op->groups_, true, fn_name, &fn_schema,
+                                status);
+
+                group_op->SetGroupsIdxs(idxs);
+            }
+
+            break;
+        }
+        case kPhysicalOpSortBy: {
+            auto order_op = dynamic_cast<PhysicalSortNode*>(node);
+            if (nullptr != order_op->order_) {
+                std::vector<int32_t> idxs;
+                int32_t idx = 0;
+                if (!node::ExprListNullOrEmpty(order_op->order_->order_by_)) {
+                    int32_t size = static_cast<int32_t>(
+                        order_op->order_->order_by_->children_.size());
+                    while (idx < size) {
+                        idxs.push_back(idx++);
+                    }
+                    CodeGenExprList((node->GetProducers()[0]->output_schema),
+                                    order_op->order_->order_by_, true, fn_name,
+                                    &fn_schema, status);
+                    order_op->SetOrdersIdxs(idxs);
+                }
+            }
+            break;
+        }
+        case kPhysicalOpGroupAndSort: {
+            auto group_sort_op = dynamic_cast<PhysicalGroupAndSortNode*>(node);
+            node::ExprListNode expr_list;
+            std::vector<int32_t> groups_idxs;
+            std::vector<int32_t> orders_idxs;
+            int32_t idx = 0;
+            if (!node::ExprListNullOrEmpty(group_sort_op->groups_)) {
+                for (auto expr : group_sort_op->groups_->children_) {
+                    expr_list.AddChild(expr);
+                    groups_idxs.push_back(idx++);
+                }
+            }
+            if (nullptr != group_sort_op->orders_ &&
+                !node::ExprListNullOrEmpty(group_sort_op->orders_->order_by_)) {
+                for (auto expr : group_sort_op->orders_->order_by_->children_) {
+                    expr_list.AddChild(expr);
+                    orders_idxs.push_back(idx++);
+                }
+            }
+            if (!expr_list.children_.empty()) {
+                CodeGenExprList((node->GetProducers()[0]->output_schema),
+                                &expr_list, true, fn_name, &fn_schema, status);
+                group_sort_op->SetGroupsIdxs(groups_idxs);
+                group_sort_op->SetOrdersIdxs(orders_idxs);
+            }
+
+            break;
+        }
+        case kPhysicalOpFilter: {
+            auto filter_op = dynamic_cast<PhysicalFliterNode*>(node);
+            node::ExprListNode expr_list;
+            expr_list.AddChild(
+                const_cast<node::ExprNode*>(filter_op->condition_));
+            CodeGenExprList((node->GetProducers()[0]->output_schema),
+                            &expr_list, true, fn_name, &fn_schema, status);
+            filter_op->SetConditionIdxs({0});
+            break;
+        }
+        case kPhysicalOpJoin: {
+            auto join_op = dynamic_cast<PhysicalJoinNode*>(node);
+            node::ExprListNode expr_list;
+            expr_list.AddChild(
+                const_cast<node::ExprNode*>(join_op->condition_));
+            CodeGenExprList((node->GetProducers()[0]->output_schema),
+                            &expr_list, true, fn_name, &fn_schema, status);
+            join_op->SetConditionIdxs({0});
+            break;
+        }
+        case kPhysicalOpRequestUnoin: {
+            auto request_union = dynamic_cast<PhysicalRequestUnionNode*>(node);
+            node::ExprListNode expr_list;
+            std::vector<int32_t> groups_idxs;
+            std::vector<int32_t> orders_idxs;
+            std::vector<int32_t> keys_idxs;
+            int32_t idx = 0;
+            if (!node::ExprListNullOrEmpty(request_union->groups_)) {
+                for (auto expr : request_union->groups_->children_) {
+                    expr_list.AddChild(expr);
+                    groups_idxs.push_back(idx++);
+                }
+            }
+            if (nullptr != request_union->keys_ &&
+                !node::ExprListNullOrEmpty(request_union->keys_->order_by_)) {
+                for (auto expr : request_union->keys_->order_by_->children_) {
+                    expr_list.AddChild(expr);
+                    keys_idxs.push_back(idx++);
+                }
+            }
+            if (nullptr != request_union->orders_ &&
+                !node::ExprListNullOrEmpty(request_union->orders_->order_by_)) {
+                for (auto expr : request_union->orders_->order_by_->children_) {
+                    for (int32_t key_idx : keys_idxs) {
+                        if (node::ExprEquals(expr_list.children_.at(key_idx),
+                                             expr)) {
+                            orders_idxs.push_back(key_idx);
+                            break;
+                        }
+                    }
+                }
+            }
+            if (!expr_list.children_.empty()) {
+                CodeGenExprList((node->GetProducers()[0]->output_schema),
+                                &expr_list, true, fn_name, &fn_schema, status);
+                request_union->SetGroupsIdxs(groups_idxs);
+                request_union->SetOrdersIdxs(orders_idxs);
+                request_union->SetKeysIdxs(keys_idxs);
+            }
+            break;
+        }
+        default: {
+            return true;
+        }
+    }
+    node->SetFnSchema(fn_schema);
+    node->SetFnName(fn_name);
+    return true;
+}
+bool BatchModeTransformer::TransformLimitOp(const node::LimitPlanNode* node,
+                                            PhysicalOpNode** output,
+                                            base::Status& status) {
     if (nullptr == node || nullptr == output) {
         status.msg = "input node or output node is null";
         status.code = common::kPlanError;
@@ -173,9 +349,9 @@ bool Transform::TransformLimitOp(const node::LimitPlanNode* node,
     return true;
 }
 
-bool Transform::TransformProjecPlantOp(const node::ProjectPlanNode* node,
-                                       PhysicalOpNode** output,
-                                       base::Status& status) {
+bool BatchModeTransformer::TransformProjecPlantOp(
+    const node::ProjectPlanNode* node, PhysicalOpNode** output,
+    base::Status& status) {
     if (nullptr == node || nullptr == output) {
         status.msg = "input node or output node is null";
         status.code = common::kPlanError;
@@ -214,7 +390,7 @@ bool Transform::TransformProjecPlantOp(const node::ProjectPlanNode* node,
                 node_manager_->MakeAllNode("")));
         }
 
-        PhysicalOpNode* project_op;
+        PhysicalOpNode* project_op = nullptr;
         if (!TransformProjectOp(project_list, depend, &project_op, status)) {
             return false;
         }
@@ -254,17 +430,26 @@ bool Transform::TransformProjecPlantOp(const node::ProjectPlanNode* node,
     return CreatePhysicalProjectNode(kTableProject, depend, project_list,
                                      output, status);
 }
-bool Transform::TransformGroupAndSortOp(PhysicalOpNode* depend,
-                                        const node::ExprListNode* groups,
-                                        const node::OrderByNode* orders,
-                                        PhysicalOpNode** output,
-                                        base::Status& status) {
-    if (nullptr == depend || nullptr == output) {
+bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
+                                             const node::WindowPlanNode* w_ptr,
+                                             PhysicalOpNode** output,
+                                             base::Status& status) {
+    if (nullptr == depend || nullptr == w_ptr || nullptr == output) {
         status.msg = "depend node or output node is null";
         status.code = common::kPlanError;
         LOG(WARNING) << status.msg;
         return false;
     }
+    node::OrderByNode* orders = nullptr;
+    node::ExprListNode* groups = nullptr;
+    if (!w_ptr->ExtractWindowGroupsAndOrders(&groups, &orders)) {
+        status.msg =
+            "fail to transform window aggeration: gourps and orders is "
+            "null";
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+
     if (kPhysicalOpDataProvider == depend->type_) {
         auto data_op = dynamic_cast<PhysicalDataProviderNode*>(depend);
         if (kProviderTypeRequest == data_op->provider_type_) {
@@ -273,14 +458,15 @@ bool Transform::TransformGroupAndSortOp(PhysicalOpNode* depend,
             if (table) {
                 auto right = new PhysicalTableProviderNode(table);
                 node_manager_->RegisterNode(right);
-                *output =
-                    new PhysicalRequestUnionNode(depend, right, groups, orders);
+                *output = new PhysicalRequestUnionNode(
+                    depend, right, groups, orders, orders,
+                    w_ptr->GetStartOffset(), w_ptr->GetEndOffset());
                 node_manager_->RegisterNode(*output);
                 return true;
             } else {
                 status.code = common::kPlanError;
                 status.msg = "fail to transform data provider op: table " +
-                    name + "not exists";
+                             name + "not exists";
                 LOG(WARNING) << status.msg;
                 return false;
             }
@@ -293,8 +479,9 @@ bool Transform::TransformGroupAndSortOp(PhysicalOpNode* depend,
     *output = group_sort_op;
     return true;
 }
-bool Transform::TransformJoinOp(const node::JoinPlanNode* node,
-                                PhysicalOpNode** output, base::Status& status) {
+bool BatchModeTransformer::TransformJoinOp(const node::JoinPlanNode* node,
+                                           PhysicalOpNode** output,
+                                           base::Status& status) {
     if (nullptr == node || nullptr == output) {
         status.msg = "input node or output node is null";
         status.code = common::kPlanError;
@@ -314,9 +501,9 @@ bool Transform::TransformJoinOp(const node::JoinPlanNode* node,
     node_manager_->RegisterNode(*output);
     return true;
 }
-bool Transform::TransformUnionOp(const node::UnionPlanNode* node,
-                                 PhysicalOpNode** output,
-                                 base::Status& status) {
+bool BatchModeTransformer::TransformUnionOp(const node::UnionPlanNode* node,
+                                            PhysicalOpNode** output,
+                                            base::Status& status) {
     if (nullptr == node || nullptr == output) {
         status.msg = "input node or output node is null";
         status.code = common::kPlanError;
@@ -335,9 +522,9 @@ bool Transform::TransformUnionOp(const node::UnionPlanNode* node,
     node_manager_->RegisterNode(*output);
     return true;
 }
-bool Transform::TransformGroupOp(const node::GroupPlanNode* node,
-                                 PhysicalOpNode** output,
-                                 base::Status& status) {
+bool BatchModeTransformer::TransformGroupOp(const node::GroupPlanNode* node,
+                                            PhysicalOpNode** output,
+                                            base::Status& status) {
     PhysicalOpNode* left = nullptr;
     if (!TransformPlanOp(node->GetChildren()[0], &left, status)) {
         return false;
@@ -351,25 +538,27 @@ bool Transform::TransformGroupOp(const node::GroupPlanNode* node,
             if (table) {
                 auto right = new PhysicalTableProviderNode(table);
                 node_manager_->RegisterNode(right);
-                *output = new PhysicalRequestUnionNode(left, right,
-                                                       node->by_list_, nullptr);
+                *output = new PhysicalRequestUnionNode(
+                    left, right, node->by_list_, nullptr, nullptr, -1, -1);
                 node_manager_->RegisterNode(*output);
                 return true;
             } else {
                 status.code = common::kPlanError;
                 status.msg = "fail to transform data provider op: table " +
-                    name + "not exists";
+                             name + "not exists";
                 LOG(WARNING) << status.msg;
                 return false;
             }
         }
     }
+
     *output = new PhysicalGroupNode(left, node->by_list_);
     node_manager_->RegisterNode(*output);
     return true;
 }
-bool Transform::TransformSortOp(const node::SortPlanNode* node,
-                                PhysicalOpNode** output, base::Status& status) {
+bool BatchModeTransformer::TransformSortOp(const node::SortPlanNode* node,
+                                           PhysicalOpNode** output,
+                                           base::Status& status) {
     if (nullptr == node || nullptr == output) {
         status.msg = "input node or output node is null";
         status.code = common::kPlanError;
@@ -384,9 +573,9 @@ bool Transform::TransformSortOp(const node::SortPlanNode* node,
     node_manager_->RegisterNode(*output);
     return true;
 }
-bool Transform::TransformFilterOp(const node::FilterPlanNode* node,
-                                  PhysicalOpNode** output,
-                                  base::Status& status) {
+bool BatchModeTransformer::TransformFilterOp(const node::FilterPlanNode* node,
+                                             PhysicalOpNode** output,
+                                             base::Status& status) {
     if (nullptr == node || nullptr == output) {
         status.msg = "input node or output node is null";
         status.code = common::kPlanError;
@@ -402,8 +591,9 @@ bool Transform::TransformFilterOp(const node::FilterPlanNode* node,
     return true;
 }
 
-bool Transform::TransformScanOp(const node::TablePlanNode* node,
-                                PhysicalOpNode** output, base::Status& status) {
+bool BatchModeTransformer::TransformScanOp(const node::TablePlanNode* node,
+                                           PhysicalOpNode** output,
+                                           base::Status& status) {
     if (nullptr == node || nullptr == output) {
         status.msg = "input node or output node is null";
         status.code = common::kPlanError;
@@ -438,9 +628,9 @@ bool Transform::TransformScanOp(const node::TablePlanNode* node,
     return true;
 }
 
-bool Transform::TransformRenameOp(const node::RenamePlanNode* node,
-                                  PhysicalOpNode** output,
-                                  base::Status& status) {
+bool BatchModeTransformer::TransformRenameOp(const node::RenamePlanNode* node,
+                                             PhysicalOpNode** output,
+                                             base::Status& status) {
     if (nullptr == node || nullptr == output) {
         status.msg = "input node or output node is null";
         status.code = common::kPlanError;
@@ -454,19 +644,10 @@ bool Transform::TransformRenameOp(const node::RenamePlanNode* node,
     node_manager_->RegisterNode(*output);
     return true;
 }
-bool Transform::TransformQueryPlan(const node::QueryPlanNode* node,
-                                   PhysicalOpNode** output,
-                                   base::Status& status) {
-    if (nullptr == node || nullptr == output) {
-        status.msg = "input node or output node is null";
-        status.code = common::kPlanError;
-        return false;
-    }
-    return TransformPlanOp(node->GetChildren()[0], output, status);
-}
-bool Transform::TransformDistinctOp(const node::DistinctPlanNode* node,
-                                    PhysicalOpNode** output,
-                                    base::Status& status) {
+
+bool BatchModeTransformer::TransformDistinctOp(
+    const node::DistinctPlanNode* node, PhysicalOpNode** output,
+    base::Status& status) {
     if (nullptr == node || nullptr == output) {
         status.msg = "input node or output node is null";
         status.code = common::kPlanError;
@@ -480,27 +661,29 @@ bool Transform::TransformDistinctOp(const node::DistinctPlanNode* node,
     node_manager_->RegisterNode(*output);
     return true;
 }
-bool Transform::TransformPhysicalPlan(::fesql::node::PlanNode* node,
-                                      ::fesql::vm::PhysicalOpNode** output,
-                                      ::fesql::base::Status& status) {
-    PhysicalOpNode* physical_plan;
-    if (!TransformPlanOp(node, &physical_plan, status)) {
+bool BatchModeTransformer::TransformQueryPlan(
+    const ::fesql::node::PlanNode* node, ::fesql::vm::PhysicalOpNode** output,
+    ::fesql::base::Status& status) {
+    if (nullptr == node || nullptr == output) {
+        status.msg = "input node or output node is null";
+        status.code = common::kPlanError;
         return false;
     }
-
-    ApplyPasses(physical_plan, output);
+    if (!TransformPlanOp(node->GetChildren()[0], output, status)) {
+        return false;
+    }
     return true;
 }
-bool Transform::AddPass(PhysicalPlanPassType type) {
+bool BatchModeTransformer::AddPass(PhysicalPlanPassType type) {
     passes.push_back(type);
     return true;
 }
-bool Transform::GenProjects(const Schema& input_schema,
-                            const node::PlanNodeList& projects,
-                            const bool row_project,
-                            std::string& fn_name,    // NOLINT
-                            Schema& output_schema,   // NOLINT
-                            base::Status& status) {  // NOLINT
+bool BatchModeTransformer::GenProjects(const Schema& input_schema,
+                                       const node::PlanNodeList& projects,
+                                       const bool row_project,
+                                       std::string& fn_name,    // NOLINT
+                                       Schema* output_schema,   // NOLINT
+                                       base::Status& status) {  // NOLINT
     // TODO(wangtaize) use ops end op output schema
     ::fesql::codegen::RowFnLetIRBuilder builder(input_schema, module_);
     fn_name = "__internal_sql_codegen_" + std::to_string(id_++);
@@ -513,17 +696,17 @@ bool Transform::GenProjects(const Schema& input_schema,
     }
     return true;
 }
-bool Transform::AddDefaultPasses() {
+bool BatchModeTransformer::AddDefaultPasses() {
     AddPass(kPassLeftJoinOptimized);
     AddPass(kPassGroupAndSortOptimized);
+    AddPass(kPassLimitOptimized);
     return false;
 }
 
-bool Transform::CreatePhysicalProjectNode(const ProjectType project_type,
-                                          PhysicalOpNode* node,
-                                          node::ProjectListNode* project_list,
-                                          PhysicalOpNode** output,
-                                          base::Status& status) {
+bool BatchModeTransformer::CreatePhysicalProjectNode(
+    const ProjectType project_type, PhysicalOpNode* node,
+    node::ProjectListNode* project_list, PhysicalOpNode** output,
+    base::Status& status) {
     if (nullptr == project_list || nullptr == output) {
         status.msg = "project node or output node is null";
         status.code = common::kPlanError;
@@ -570,24 +753,18 @@ bool Transform::CreatePhysicalProjectNode(const ProjectType project_type,
     switch (project_type) {
         case kRowProject:
         case kTableProject: {
-            if (!GenProjects(node->output_schema, projects, true, fn_name,
-                             output_schema, status)) {
+            if (!GenProjects((node->output_schema), projects, true, fn_name,
+                             &output_schema, status)) {
                 return false;
             }
             break;
         }
         case kAggregation:
-        case kGroupAggregation: {
-            if (!GenProjects(node->output_schema, projects, false, fn_name,
-                             output_schema, status)) {
-                return false;
-            }
-            break;
-        }
+        case kGroupAggregation:
         case kWindowAggregation: {
             // TODO(chenjing): gen window aggregation
-            if (!GenProjects(node->output_schema, projects, false, fn_name,
-                             output_schema, status)) {
+            if (!GenProjects((node->output_schema), projects, false, fn_name,
+                             &output_schema, status)) {
                 return false;
             }
             break;
@@ -626,117 +803,14 @@ bool Transform::CreatePhysicalProjectNode(const ProjectType project_type,
     node_manager_->RegisterNode(op);
     *output = op;
     return true;
-}
+}  // namespace vm
 
-bool TransformRequestMode::TransformPhysicalPlan(
-    ::fesql::node::PlanNode* node, ::fesql::vm::PhysicalOpNode** output,
-    ::fesql::base::Status& status) {
-    // return false if Primary path check fail
-    ::fesql::node::PlanNode* primary_node;
-    if (!ValidatePrimaryPath(node, &primary_node, status)) {
-        return false;
-    }
-    dynamic_cast<node::TablePlanNode*>(primary_node)->SetIsPrimary(true);
-    DLOG(INFO) << "plan after primary check:\n" << *node << "\n";
-
-    PhysicalOpNode* physical_plan;
-    if (!TransformPlanOp(node, &physical_plan, status)) {
-        return false;
-    }
-
-    ApplyPasses(physical_plan, output);
-    return true;
-}
-bool Transform::ValidatePrimaryPath(node::PlanNode* node,
-                                    node::PlanNode** output,
-                                    base::Status& status) {
-    if (nullptr == node) {
-        status.msg = "primary path validate fail: node or output is null";
-        status.code = common::kPlanError;
-        LOG(WARNING) << status.msg;
-        return false;
-    }
-
-    switch (node->type_) {
-        case node::kPlanTypeJoin:
-        case node::kPlanTypeUnion: {
-            auto binary_op = dynamic_cast<node::BinaryPlanNode*>(node);
-            node::PlanNode* left_primary_table = nullptr;
-            if (!ValidatePrimaryPath(binary_op->GetLeft(), &left_primary_table,
-                                     status)) {
-                status.msg =
-                    "primary path validate fail: left path isn't valid";
-                status.code = common::kPlanError;
-                LOG(WARNING) << status.msg;
-                return false;
-            }
-
-            if (node::kPlanTypeTable == binary_op->GetRight()->type_) {
-                *output = left_primary_table;
-                return true;
-            }
-            node::PlanNode* right_primary_table = nullptr;
-            if (!ValidatePrimaryPath(binary_op->GetRight(),
-                                     &right_primary_table, status)) {
-                status.msg =
-                    "primary path validate fail: right path isn't valid";
-                status.code = common::kPlanError;
-                LOG(WARNING) << status.msg;
-                return false;
-            }
-
-            if (node::PlanEquals(left_primary_table, right_primary_table)) {
-                *output = left_primary_table;
-                return true;
-            } else {
-                status.msg =
-                    "primary path validate fail: left path and right path has "
-                    "different source";
-                status.code = common::kPlanError;
-                LOG(WARNING) << status.msg;
-                return false;
-            }
-        }
-        case node::kPlanTypeTable: {
-            *output = node;
-            return true;
-        }
-        case node::kPlanTypeCreate:
-        case node::kPlanTypeInsert:
-        case node::kPlanTypeCmd:
-        case node::kPlanTypeWindow:
-        case node::kProjectList:
-        case node::kProjectNode: {
-            status.msg =
-                "primary path validate fail: invalid node of primary path";
-            status.code = common::kPlanError;
-            LOG(WARNING) << status.msg;
-            return false;
-        }
-        default: {
-            auto unary_op = dynamic_cast<const node::UnaryPlanNode*>(node);
-            return ValidatePrimaryPath(unary_op->GetDepend(), output, status);
-        }
-    }
-}
-bool Transform::TransformProjectOp(node::ProjectListNode* project_list,
-                                   PhysicalOpNode* node,
-                                   PhysicalOpNode** output,
-                                   base::Status& status) {
+bool BatchModeTransformer::TransformProjectOp(
+    node::ProjectListNode* project_list, PhysicalOpNode* node,
+    PhysicalOpNode** output, base::Status& status) {
     auto depend = node;
     if (nullptr != project_list->w_ptr_) {
-        node::OrderByNode* orders = nullptr;
-        node::ExprListNode* groups = nullptr;
-
-        if (!project_list->w_ptr_->ExtractWindowGroupsAndOrders(&groups,
-                                                                &orders)) {
-            status.msg =
-                "fail to transform window aggeration: gourps and orders is "
-                "null";
-            LOG(WARNING) << status.msg;
-            return false;
-        }
-        if (!TransformGroupAndSortOp(depend, groups, orders, &depend, status)) {
+        if (!TransformWindowOp(depend, project_list->w_ptr_, &depend, status)) {
             return false;
         }
     }
@@ -764,13 +838,14 @@ bool Transform::TransformProjectOp(node::ProjectListNode* project_list,
     }
     return false;
 }
-void Transform::ApplyPasses(PhysicalOpNode* node, PhysicalOpNode** output) {
+void BatchModeTransformer::ApplyPasses(PhysicalOpNode* node,
+                                       PhysicalOpNode** output) {
     auto physical_plan = node;
     for (auto type : passes) {
         switch (type) {
             case kPassGroupAndSortOptimized: {
                 GroupAndSortOptimized pass(node_manager_, db_, catalog_);
-                PhysicalOpNode* new_op;
+                PhysicalOpNode* new_op = nullptr;
                 if (pass.Apply(physical_plan, &new_op)) {
                     physical_plan = new_op;
                 }
@@ -778,7 +853,15 @@ void Transform::ApplyPasses(PhysicalOpNode* node, PhysicalOpNode** output) {
             }
             case kPassLeftJoinOptimized: {
                 LeftJoinOptimized pass(node_manager_, db_, catalog_);
-                PhysicalOpNode* new_op;
+                PhysicalOpNode* new_op = nullptr;
+                if (pass.Apply(physical_plan, &new_op)) {
+                    physical_plan = new_op;
+                }
+                break;
+            }
+            case kPassLimitOptimized: {
+                LimitOptimized pass(node_manager_, db_, catalog_);
+                PhysicalOpNode* new_op = nullptr;
                 if (pass.Apply(physical_plan, &new_op)) {
                     physical_plan = new_op;
                 }
@@ -792,6 +875,91 @@ void Transform::ApplyPasses(PhysicalOpNode* node, PhysicalOpNode** output) {
     }
     *output = physical_plan;
 }
+bool BatchModeTransformer::TransformPhysicalPlan(
+    const ::fesql::node::PlanNodeList& trees,
+    ::fesql::vm::PhysicalOpNode** output, base::Status& status) {
+    if (nullptr == module_ || trees.empty()) {
+        status.msg = "module or logical trees is empty";
+        status.code = common::kPlanError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+
+    auto it = trees.begin();
+    for (; it != trees.end(); ++it) {
+        const ::fesql::node::PlanNode* node = *it;
+        switch (node->GetType()) {
+            case ::fesql::node::kPlanTypeFuncDef: {
+                const ::fesql::node::FuncDefPlanNode* func_def_plan =
+                    dynamic_cast<const ::fesql::node::FuncDefPlanNode*>(node);
+                if (!GenFnDef(func_def_plan, status)) {
+                    return false;
+                }
+                break;
+            }
+            case ::fesql::node::kPlanTypeUnion:
+            case ::fesql::node::kPlanTypeQuery: {
+                PhysicalOpNode* physical_plan = nullptr;
+                if (!TransformQueryPlan(node, &physical_plan, status)) {
+                    return false;
+                }
+                ApplyPasses(physical_plan, output);
+                if (!GenPlanNode(*output, status)) {
+                    LOG(WARNING) << "fail to gen plan";
+
+                    return false;
+                }
+                break;
+            }
+            default: {
+                LOG(WARNING) << "not supported";
+                return false;
+            }
+        }
+    }
+    return true;
+}
+bool BatchModeTransformer::GenFnDef(const node::FuncDefPlanNode* fn_plan,
+                                    base::Status& status) {
+    if (nullptr == module_ || nullptr == fn_plan ||
+        nullptr == fn_plan->fn_def_) {
+        status.msg = "fail to codegen function: module or fn_def node is null";
+        status.code = common::kOpGenError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+
+    ::fesql::codegen::FnIRBuilder builder(module_);
+    bool ok = builder.Build(fn_plan->fn_def_, status);
+    if (!ok) {
+        status.msg = "fail to codegen function: " + status.msg;
+        status.code = common::kCodegenError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+    return true;
+}
+
+bool BatchModeTransformer::CodeGenExprList(const Schema& input_schema,
+                                           const node::ExprListNode* expr_list,
+                                           bool row_mode, std::string& fn_name,
+                                           Schema* output_schema,
+                                           base::Status& status) {
+    if (node::ExprListNullOrEmpty(expr_list)) {
+        status.msg = "fail to codegen expr list: null or empty list";
+        status.code = common::kCodegenError;
+        return false;
+    }
+    node::PlanNodeList projects;
+    int32_t pos = 0;
+    for (auto expr : expr_list->children_) {
+        projects.push_back(node_manager_->MakeRowProjectNode(
+            pos++, node::ExprString(expr), expr));
+    }
+
+    return GenProjects(input_schema, projects, true, fn_name, output_schema,
+                       status);
+}
 
 bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                                       PhysicalOpNode** output) {
@@ -804,15 +972,18 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                 if (kProviderTypeTable == scan_op->provider_type_) {
                     std::string index_name;
                     const node::ExprListNode* new_groups = nullptr;
+                    const node::ExprListNode* keys = nullptr;
                     if (!TransformGroupExpr(group_op->groups_,
                                             scan_op->table_handler_->GetIndex(),
-                                            &index_name, &new_groups)) {
+                                            &index_name, &keys, &new_groups)) {
                         return false;
                     }
 
                     PhysicalScanIndexNode* scan_index_op =
-                        new PhysicalScanIndexNode(scan_op->table_handler_,
-                                                  index_name);
+                        new PhysicalScanIndexNode(
+                            scan_op->table_handler_->GetPartition(
+                                scan_op->table_handler_, index_name),
+                            index_name);
                     node_manager_->RegisterNode(scan_index_op);
 
                     if (nullptr == new_groups || new_groups->IsEmpty()) {
@@ -836,34 +1007,30 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                 if (kProviderTypeTable == scan_op->provider_type_) {
                     std::string index_name;
                     const node::ExprListNode* new_groups = nullptr;
+                    const node::ExprListNode* keys = nullptr;
                     const node::OrderByNode* new_orders = nullptr;
                     auto& index_hint = scan_op->table_handler_->GetIndex();
                     if (!TransformGroupExpr(group_sort_op->groups_, index_hint,
-                                            &index_name, &new_groups)) {
+                                            &index_name, &keys, &new_groups)) {
                         return false;
                     }
 
                     auto index_st = index_hint.at(index_name);
                     TransformOrderExpr(group_sort_op->orders_,
-                                       scan_op->table_handler_->GetSchema(),
+                                       *(scan_op->table_handler_->GetSchema()),
                                        index_st, &new_orders);
 
                     PhysicalScanIndexNode* scan_index_op =
-                        new PhysicalScanIndexNode(scan_op->table_handler_,
-                                                  index_name);
+                        new PhysicalScanIndexNode(
+                            scan_op->table_handler_->GetPartition(
+                                scan_op->table_handler_, index_name),
+                            index_name);
                     node_manager_->RegisterNode(scan_index_op);
 
-                    if ((nullptr == new_groups || new_groups->IsEmpty()) &&
-                        (nullptr == new_orders ||
-                         nullptr == new_orders->order_by_ ||
-                         new_orders->order_by_->IsEmpty())) {
-                        *output = scan_index_op;
-                    } else {
-                        PhysicalGroupAndSortNode* new_group_sort_op =
-                            new PhysicalGroupAndSortNode(
-                                scan_index_op, new_groups, new_orders);
-                        *output = new_group_sort_op;
-                    }
+                    PhysicalGroupAndSortNode* new_group_sort_op =
+                        new PhysicalGroupAndSortNode(scan_index_op, new_groups,
+                                                     new_orders);
+                    *output = new_group_sort_op;
                     return true;
                 }
             }
@@ -878,27 +1045,35 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                 if (kProviderTypeTable == scan_op->provider_type_) {
                     std::string index_name;
                     const node::ExprListNode* new_groups = nullptr;
+                    const node::ExprListNode* keys = nullptr;
                     const node::OrderByNode* new_orders = nullptr;
                     auto& index_hint = scan_op->table_handler_->GetIndex();
                     if (!TransformGroupExpr(union_op->groups_, index_hint,
-                                            &index_name, &new_groups)) {
+                                            &index_name, &keys, &new_groups)) {
                         return false;
                     }
 
                     auto index_st = index_hint.at(index_name);
                     TransformOrderExpr(union_op->orders_,
-                                       scan_op->table_handler_->GetSchema(),
+                                       *(scan_op->table_handler_->GetSchema()),
                                        index_st, &new_orders);
 
                     PhysicalScanIndexNode* scan_index_op =
-                        new PhysicalScanIndexNode(scan_op->table_handler_,
-                                                  index_name);
+                        new PhysicalScanIndexNode(
+                            scan_op->table_handler_->GetPartition(
+                                scan_op->table_handler_, index_name),
+                            index_name);
+                    PhysicalSeekIndexNode* seek_index_op =
+                        new PhysicalSeekIndexNode(union_op->GetProducers()[0],
+                                                  scan_index_op, keys);
                     node_manager_->RegisterNode(scan_index_op);
 
                     PhysicalRequestUnionNode* new_group_sort_op =
                         new PhysicalRequestUnionNode(
-                            union_op->GetProducers()[0], scan_index_op,
-                            new_groups, new_orders);
+                            union_op->GetProducers()[0], seek_index_op,
+                            new_groups, new_orders, union_op->keys_,
+                            union_op->start_offset_, union_op->end_offset_);
+
                     *output = new_group_sort_op;
                     return true;
                 }
@@ -913,7 +1088,8 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
 }
 bool GroupAndSortOptimized::TransformGroupExpr(
     const node::ExprListNode* groups, const IndexHint& index_hint,
-    std::string* index_name, const node::ExprListNode** output) {
+    std::string* index_name, const node::ExprListNode** keys_expr,
+    const node::ExprListNode** output) {
     if (nullptr == groups || nullptr == output || nullptr == index_name) {
         LOG(WARNING) << "fail to transform group expr : group exor or output "
                         "or index_name ptr is null";
@@ -945,6 +1121,32 @@ bool GroupAndSortOptimized::TransformGroupExpr(
              iter++) {
             keys.insert(iter->name);
         }
+
+        // generate index keys expr
+        auto key_expr_list = node_manager_->MakeExprList();
+        for (auto iter = index.keys.cbegin(); iter != index.keys.cend();
+             iter++) {
+            for (auto group : groups->children_) {
+                switch (group->expr_type_) {
+                    case node::kExprColumnRef: {
+                        std::string column =
+                            dynamic_cast<node::ColumnRefNode*>(group)
+                                ->GetColumnName();
+                        // skip group when match index keys
+                        if (column == iter->name) {
+                            key_expr_list->AddChild(group);
+                            break;
+                        }
+                        break;
+                    }
+                    default: {
+                        new_groups->AddChild(group);
+                    }
+                }
+            }
+        }
+
+        // generate new groups expr
         for (auto group : groups->children_) {
             switch (group->expr_type_) {
                 case node::kExprColumnRef: {
@@ -962,6 +1164,7 @@ bool GroupAndSortOptimized::TransformGroupExpr(
                 }
             }
         }
+        *keys_expr = key_expr_list;
         *output = new_groups;
         return true;
     } else {
@@ -1024,6 +1227,53 @@ bool GroupAndSortOptimized::MatchBestIndex(
     return succ;
 }
 
+bool LimitOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
+    *output = in;
+    if (kPhysicalOpLimit != in->type_) {
+        return false;
+    }
+
+    auto limit_op = dynamic_cast<PhysicalLimitNode*>(in);
+
+    if (ApplyLimitCnt(in->GetProducers()[0], limit_op->GetLimitCnt())) {
+        limit_op->SetLimitOptimized(true);
+        return true;
+    } else {
+        return false;
+    }
+}
+
+bool LimitOptimized::ApplyLimitCnt(PhysicalOpNode* node, int32_t limit_cnt) {
+    if (kPhysicalOpLimit == node->type_) {
+        auto limit_op = dynamic_cast<PhysicalLimitNode*>(node);
+        if (0 == node->GetLimitCnt() || limit_op->GetLimitCnt() > limit_cnt) {
+            if (limit_op->GetLimitOptimized()) {
+                return ApplyLimitCnt(node->GetProducers()[0], limit_cnt);
+            } else {
+                limit_op->SetLimitCnt(limit_cnt);
+            }
+        }
+        return true;
+    }
+    if (node->GetProducers().empty()) {
+        return false;
+    }
+    if (node->is_block_) {
+        if (0 == node->GetLimitCnt() || node->GetLimitCnt() > limit_cnt) {
+            node->SetLimitCnt(limit_cnt);
+        }
+        return true;
+    } else {
+        if (false == ApplyLimitCnt(node->GetProducers()[0], limit_cnt)) {
+            if (0 == node->GetLimitCnt() || node->GetLimitCnt() > limit_cnt) {
+                node->SetLimitCnt(limit_cnt);
+            }
+        } else {
+            return true;
+        }
+    }
+    return false;
+}
 // This is primarily intended to be used on top-level WHERE (or JOIN/ON)
 // clauses.  It can also be used on top-level CHECK constraints, for which
 // pass is_check = true.  DO NOT call it on any expression that is not known
@@ -1043,7 +1293,7 @@ bool TransformUpPysicalPass::Apply(PhysicalOpNode* in, PhysicalOpNode** out) {
     }
     auto producer = in->GetProducers();
     for (size_t j = 0; j < producer.size(); ++j) {
-        PhysicalOpNode* output;
+        PhysicalOpNode* output = nullptr;
         if (Apply(producer[j], &output)) {
             in->UpdateProducer(j, output);
         }
@@ -1055,9 +1305,9 @@ bool GroupAndSortOptimized::TransformOrderExpr(
     const node::OrderByNode* order, const Schema& schema,
     const IndexSt& index_st, const node::OrderByNode** output) {
     if (nullptr == order || nullptr == output) {
-        LOG(WARNING)
-            << "fail to transform order expr : order expr or data_provider op "
-               "or output is null";
+        LOG(WARNING) << "fail to transform order expr : order expr or "
+                        "data_provider op "
+                        "or output is null";
         return false;
     }
 
@@ -1131,7 +1381,7 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
                 }
                 if (!CheckExprListFromSchema(
                         group_op->groups_,
-                        join_op->GetProducers()[0]->output_schema)) {
+                        (join_op->GetProducers()[0]->output_schema))) {
                     return false;
                 }
                 auto group_expr = group_op->groups_;
@@ -1210,13 +1460,13 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
 
                     if (!CheckExprListFromSchema(
                             group_sort_op->groups_,
-                            join_op->GetProducers()[0]->output_schema)) {
+                            (join_op->GetProducers()[0]->output_schema))) {
                         return false;
                     }
 
                     if (!CheckExprListFromSchema(
                             group_sort_op->orders_->order_by_,
-                            join_op->GetProducers()[0]->output_schema)) {
+                            (join_op->GetProducers()[0]->output_schema))) {
                         return false;
                     }
 
@@ -1276,15 +1526,15 @@ bool LeftJoinOptimized::CheckExprListFromSchema(
     return true;
 }
 
-TransformRequestMode::TransformRequestMode(
+RequestModeransformer::RequestModeransformer(
     node::NodeManager* node_manager, const std::string& db,
     const std::shared_ptr<Catalog>& catalog, ::llvm::Module* module)
-    : Transform(node_manager, db, catalog, module) {}
+    : BatchModeTransformer(node_manager, db, catalog, module) {}
 
-TransformRequestMode::~TransformRequestMode() {}
+RequestModeransformer::~RequestModeransformer() {}
 
 // transform project plan in request mode
-bool TransformRequestMode::TransformProjecPlantOp(
+bool RequestModeransformer::TransformProjecPlantOp(
     const node::ProjectPlanNode* node, PhysicalOpNode** output,
     base::Status& status) {
     if (nullptr == node || nullptr == output) {
@@ -1304,7 +1554,7 @@ bool TransformRequestMode::TransformProjecPlantOp(
         fesql::node::ProjectListNode* project_list =
             dynamic_cast<fesql::node::ProjectListNode*>(*iter);
 
-        PhysicalOpNode* project_op;
+        PhysicalOpNode* project_op = nullptr;
         if (!TransformProjectOp(project_list, depend, &project_op, status)) {
             return false;
         }
@@ -1370,5 +1620,6 @@ bool TransformRequestMode::TransformProjecPlantOp(
                                          output, status);
     }
 }
+
 }  // namespace vm
 }  // namespace fesql

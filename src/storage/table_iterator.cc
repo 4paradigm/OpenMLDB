@@ -16,7 +16,6 @@
  */
 
 #include "storage/table_iterator.h"
-
 #include <memory>
 #include <string>
 #include <utility>
@@ -25,6 +24,8 @@
 
 namespace fesql {
 namespace storage {
+
+using fesql::vm::SliceIterator;
 
 static constexpr uint32_t SEED = 0xe17a1465;
 
@@ -41,10 +42,11 @@ bool WindowInternalIterator::Valid() { return ts_it_->Valid(); }
 
 void WindowInternalIterator::Next() { ts_it_->Next(); }
 
-const base::Slice WindowInternalIterator::GetValue() {
-    return base::Slice(ts_it_->GetValue()->data,
+const base::Slice& WindowInternalIterator::GetValue() {
+    value_ = base::Slice(ts_it_->GetValue()->data,
                        codec::RowView::GetSize(reinterpret_cast<int8_t*>(
                            ts_it_->GetValue()->data)));
+    return value_;
 }
 
 const uint64_t WindowInternalIterator::GetKey() { return ts_it_->GetKey(); }
@@ -79,7 +81,7 @@ void WindowTableIterator::Seek(const std::string& key) {
 
 void WindowTableIterator::SeekToFirst() {}
 
-std::unique_ptr<vm::Iterator> WindowTableIterator::GetValue() {
+std::unique_ptr<SliceIterator> WindowTableIterator::GetValue() {
     if (!pk_it_)
         return std::move(
             std::unique_ptr<EmptyWindowIterator>(new EmptyWindowIterator()));
@@ -232,10 +234,11 @@ bool FullTableIterator::Valid() {
 
 void FullTableIterator::Next() { GoToNext(); }
 
-const base::Slice FullTableIterator::GetValue() {
-    return base::Slice(ts_it_->GetValue()->data,
-                       codec::RowView::GetSize(reinterpret_cast<int8_t*>(
-                           ts_it_->GetValue()->data)));
+const Slice& FullTableIterator::GetValue() {
+    value_ = Slice(ts_it_->GetValue()->data,
+                   codec::RowView::GetSize(
+                       reinterpret_cast<int8_t*>(ts_it_->GetValue()->data)));
+    return value_;
 }
 
 }  // namespace storage

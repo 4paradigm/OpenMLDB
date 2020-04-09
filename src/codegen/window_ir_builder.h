@@ -37,6 +37,8 @@ class WindowDecodeIRBuilder {
 
     virtual bool BuildGetCol(const std::string& name, ::llvm::Value* window_ptr,
                              ::llvm::Value** output) = 0;
+    virtual bool GetColOffsetType(const std::string& name, uint32_t* offset_ptr,
+                                  node::DataType* type_ptr) = 0;
 };
 
 class MemoryWindowDecodeIRBuilder : public WindowDecodeIRBuilder {
@@ -48,6 +50,8 @@ class MemoryWindowDecodeIRBuilder : public WindowDecodeIRBuilder {
 
     bool BuildGetCol(const std::string& name, ::llvm::Value* window_ptr,
                      ::llvm::Value** output);
+    virtual bool GetColOffsetType(const std::string& name, uint32_t* offset_ptr,
+                                  node::DataType* type_ptr);
 
  private:
     bool BuildGetPrimaryCol(const std::string& fn_name, ::llvm::Value* row_ptr,

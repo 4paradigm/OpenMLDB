@@ -79,6 +79,7 @@ class TransformPass {
     TransformPass(node::NodeManager* node_manager, const std::string& db,
                   const std::shared_ptr<Catalog>& catalog)
         : db_(db), catalog_(catalog), node_manager_(node_manager) {}
+    virtual ~TransformPass() {}
     const std::string db_;
     const std::shared_ptr<Catalog> catalog_;
 
@@ -93,6 +94,7 @@ class TransformUpPysicalPass : public TransformPass<PhysicalOpNode*> {
                            const std::string& db,
                            const std::shared_ptr<Catalog>& catalog)
         : TransformPass<PhysicalOpNode*>(node_manager, db, catalog) {}
+    ~TransformUpPysicalPass() {}
     virtual bool Apply(PhysicalOpNode* in, PhysicalOpNode** out);
 };
 
@@ -101,6 +103,7 @@ class ExprTransformPass : public TransformPass<node::ExprNode*> {
     ExprTransformPass(node::NodeManager* node_manager, const std::string& db,
                       const std::shared_ptr<Catalog>& catalog)
         : TransformPass<node::ExprNode*>(node_manager, db, catalog) {}
+    ~ExprTransformPass() {}
 };
 
 class CanonicalizeExprTransformPass : public ExprTransformPass {
@@ -109,6 +112,7 @@ class CanonicalizeExprTransformPass : public ExprTransformPass {
                                   const std::string& db,
                                   const std::shared_ptr<Catalog>& catalog)
         : ExprTransformPass(node_manager, db, catalog) {}
+    ~CanonicalizeExprTransformPass() {}
     virtual bool Transform(node::ExprNode* in, node::ExprNode** output);
 };
 
@@ -119,11 +123,14 @@ class GroupAndSortOptimized : public TransformUpPysicalPass {
                           const std::shared_ptr<Catalog>& catalog)
         : TransformUpPysicalPass(node_manager, db, catalog) {}
 
+    ~GroupAndSortOptimized() {}
+
  private:
     virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
 
     bool TransformGroupExpr(const node::ExprListNode* group,
                             const IndexHint& index_hint, std::string* index,
+                            const node::ExprListNode** keys,
                             const node::ExprListNode** output);
     bool TransformOrderExpr(const node::OrderByNode* order,
                             const Schema& schema, const IndexSt& index_st,
@@ -133,6 +140,18 @@ class GroupAndSortOptimized : public TransformUpPysicalPass {
                         std::string* index_name);  // NOLINT
 };
 
+class LimitOptimized : public TransformUpPysicalPass {
+ public:
+    LimitOptimized(node::NodeManager* node_manager, const std::string& db,
+                   const std::shared_ptr<Catalog>& catalog)
+        : TransformUpPysicalPass(node_manager, db, catalog) {}
+    ~LimitOptimized() {}
+
+ private:
+    virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
+
+    static bool ApplyLimitCnt(PhysicalOpNode* node, int32_t limit_cnt);
+};
 class LeftJoinOptimized : public TransformUpPysicalPass {
  public:
     LeftJoinOptimized(node::NodeManager* node_manager, const std::string& db,
@@ -150,7 +169,8 @@ typedef fesql::base::Graph<LogicalOp, HashLogicalOp, EqualLogicalOp>
 
 enum PhysicalPlanPassType {
     kPassGroupAndSortOptimized,
-    kPassLeftJoinOptimized
+    kPassLeftJoinOptimized,
+    kPassLimitOptimized
 };
 
 inline std::string PhysicalPlanPassTypeName(PhysicalPlanPassType type) {
@@ -159,20 +179,26 @@ inline std::string PhysicalPlanPassTypeName(PhysicalPlanPassType type) {
             return "PassGroupByOptimized";
         case kPassLeftJoinOptimized:
             return "PassLeftJoinOptimized";
+        case kPassLimitOptimized:
+            return "PassLimitOptimized";
         default:
             return "unknowPass";
     }
     return "";
 }
-class Transform {
+class BatchModeTransformer {
  public:
-    Transform(node::NodeManager* node_manager, const std::string& db,
-              const std::shared_ptr<Catalog>& catalog, ::llvm::Module* module);
-    virtual ~Transform();
+    BatchModeTransformer(node::NodeManager* node_manager, const std::string& db,
+                         const std::shared_ptr<Catalog>& catalog,
+                         ::llvm::Module* module);
+    virtual ~BatchModeTransformer();
     bool AddDefaultPasses();
-    bool TransformPhysicalPlan(::fesql::node::PlanNode* node,
+    bool TransformPhysicalPlan(const ::fesql::node::PlanNodeList& trees,
                                ::fesql::vm::PhysicalOpNode** output,
                                ::fesql::base::Status& status);  // NOLINT
+    virtual bool TransformQueryPlan(const ::fesql::node::PlanNode* node,
+                                    ::fesql::vm::PhysicalOpNode** output,
+                                    ::fesql::base::Status& status);  // NOLINT
 
     bool AddPass(PhysicalPlanPassType type);
 
@@ -191,11 +217,10 @@ class Transform {
     virtual bool TransformProjecPlantOp(const node::ProjectPlanNode* node,
                                         PhysicalOpNode** output,
                                         base::Status& status);  // NOLINT
-    virtual bool TransformGroupAndSortOp(PhysicalOpNode* depend,
-                                         const node::ExprListNode* groups,
-                                         const node::OrderByNode* orders,
-                                         PhysicalOpNode** output,
-                                         base::Status& status);  // NOLINT
+    virtual bool TransformWindowOp(PhysicalOpNode* depend,
+                                   const node::WindowPlanNode* w_ptr,
+                                   PhysicalOpNode** output,
+                                   base::Status& status);  // NOLINT
 
     virtual bool TransformJoinOp(const node::JoinPlanNode* node,
                                  PhysicalOpNode** output,
@@ -218,9 +243,6 @@ class Transform {
     virtual bool TransformRenameOp(const node::RenamePlanNode* node,
                                    PhysicalOpNode** output,
                                    base::Status& status);  // NOLINT
-    virtual bool TransformQueryPlan(const node::QueryPlanNode* node,
-                                    PhysicalOpNode** output,
-                                    base::Status& status);  // NOLINT
     virtual bool TransformDistinctOp(const node::DistinctPlanNode* node,
                                      PhysicalOpNode** output,
                                      base::Status& status);  // NOLINT
@@ -229,14 +251,18 @@ class Transform {
                                            node::ProjectListNode* project_list,
                                            PhysicalOpNode** output,
                                            base::Status& status);  // NOLINT
-    virtual bool ValidatePrimaryPath(node::PlanNode* node,
-                                     node::PlanNode** output,
-                                     base::Status& status);  // NOLINT
     virtual bool TransformProjectOp(node::ProjectListNode* node,
                                     PhysicalOpNode* depend,
                                     PhysicalOpNode** output,
                                     base::Status& status);  // NOLINT
     virtual void ApplyPasses(PhysicalOpNode* node, PhysicalOpNode** output);
+    bool GenFnDef(const node::FuncDefPlanNode* fn_plan,
+                  base::Status& status);  // NOLINT
+    bool CodeGenExprList(const Schema& input_schema,
+                         const node::ExprListNode* expr_list, bool row_mode,
+                         std::string& fn_name, Schema* output_schema,  // NOLINT
+                         base::Status& status);                        // NOLINT
+    bool GenPlanNode(PhysicalOpNode* node, base::Status& status);      // NOLINT
 
     node::NodeManager* node_manager_;
     const std::string db_;
@@ -246,7 +272,7 @@ class Transform {
     bool GenProjects(const Schema& input_schema,
                      const node::PlanNodeList& projects, const bool row_mode,
                      std::string& fn_name,   // NOLINT
-                     Schema& output_schema,  // NOLINT
+                     Schema* output_schema,  // NOLINT
                      base::Status& status);  // NOLINT
 
     ::llvm::Module* module_;
@@ -255,15 +281,13 @@ class Transform {
     LogicalOpMap op_map_;
 };
 
-class TransformRequestMode : public Transform {
+class RequestModeransformer : public BatchModeTransformer {
  public:
-    TransformRequestMode(node::NodeManager* node_manager, const std::string& db,
-                         const std::shared_ptr<Catalog>& catalog,
-                         ::llvm::Module* module);
-    virtual ~TransformRequestMode();
-    virtual bool TransformPhysicalPlan(
-        ::fesql::node::PlanNode* node, ::fesql::vm::PhysicalOpNode** output,
-        ::fesql::base::Status& status);  // NOLINT
+    RequestModeransformer(node::NodeManager* node_manager,
+                          const std::string& db,
+                          const std::shared_ptr<Catalog>& catalog,
+                          ::llvm::Module* module);
+    virtual ~RequestModeransformer();
 
  protected:
     virtual bool TransformProjecPlantOp(const node::ProjectPlanNode* node,

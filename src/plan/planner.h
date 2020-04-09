@@ -30,14 +30,19 @@ using node::SQLNode;
 
 class Planner {
  public:
-    explicit Planner(node::NodeManager *manager) : node_manager_(manager) {}
+    Planner(node::NodeManager *manager, const bool is_batch_mode)
+        : is_batch_mode_(is_batch_mode), node_manager_(manager) {}
     virtual ~Planner() {}
     virtual int CreatePlanTree(
         const NodePointVector &parser_trees,
         PlanNodeList &plan_trees,  // NOLINT (runtime/references)
         Status &status) = 0;       // NOLINT (runtime/references)
+    const bool is_batch_mode_;
 
  protected:
+    bool ValidatePrimaryPath(
+        node::PlanNode *node, node::PlanNode **output,
+        base::Status &status);  // NOLINT (runtime/references)
     void CreatePlanRecurse(const node::SQLNode *root, PlanNode *plan_tree,
                            Status &status);  // NOLINT (runtime/references)
     bool CreateQueryPlan(const node::QueryNode *root, PlanNode **plan_tree,
@@ -75,7 +80,10 @@ class Planner {
 
 class SimplePlanner : public Planner {
  public:
-    explicit SimplePlanner(node::NodeManager *manager) : Planner(manager) {}
+    explicit SimplePlanner(node::NodeManager *manager)
+        : Planner(manager, true) {}
+    explicit SimplePlanner(node::NodeManager *manager, bool is_batch_mode)
+        : Planner(manager, is_batch_mode) {}
     int CreatePlanTree(const NodePointVector &parser_trees,
                        PlanNodeList &plan_trees,
                        Status &status);  // NOLINT (runtime/references)

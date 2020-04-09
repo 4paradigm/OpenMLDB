@@ -159,14 +159,16 @@ bool CSVSegmentIterator::Valid() {
         GetRow(schema_, table_, it_->second.chunk_offset,
                it_->second.array_offset, &rb_);
     }
+    return valid;
 }
 
 void CSVSegmentIterator::Next() { ++it_; }
 
 const uint64_t CSVSegmentIterator::GetKey() { return it_->first; }
 
-const base::Slice CSVSegmentIterator::GetValue() {
-    return base::Slice(reinterpret_cast<char*>(buf_), buf_size_);
+const base::Slice& CSVSegmentIterator::GetValue() {
+    value_ = base::Slice(reinterpret_cast<char*>(buf_), buf_size_);
+    return value_;
 }
 
 CSVTableIterator::CSVTableIterator(const std::shared_ptr<arrow::Table>& table,
@@ -189,8 +191,9 @@ void CSVTableIterator::SeekToFirst() {}
 
 const uint64_t CSVTableIterator::GetKey() { return 0; }
 
-const base::Slice CSVTableIterator::GetValue() {
-    return base::Slice(reinterpret_cast<char*>(buf_), buf_size_);
+const base::Slice& CSVTableIterator::GetValue() {
+    value_ = base::Slice(reinterpret_cast<char*>(buf_), buf_size_);
+    return value_;
 }
 
 void CSVTableIterator::Next() {

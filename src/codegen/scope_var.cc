@@ -50,6 +50,16 @@ bool ScopeVar::Exit() {
     return true;
 }
 
+bool ScopeVar::AddIteratorValue(::llvm::Value* value) {
+    if (scopes_.size() <= 0) {
+        LOG(WARNING) << "no scope exists ";
+        return false;
+    }
+    Scope& exist_scope = scopes_.back();
+    exist_scope.scope_iterators.push_back(value);
+    return true;
+}
+
 bool ScopeVar::AddVar(const std::string& name, ::llvm::Value* value,
                       bool is_register) {
     if (scopes_.size() <= 0) {
@@ -80,20 +90,41 @@ bool ScopeVar::FindVar(const std::string& name, ::llvm::Value** value,
         return false;
     }
 
-    Scope& exist_scope = scopes_.back();
-    std::map<std::string, std::pair<::llvm::Value*, bool>>::iterator it =
-        exist_scope.scope_map.find(name);
-
-    if (it == exist_scope.scope_map.end()) {
-        DLOG(INFO) << "var with name " << name << " does not exist ";
-        return false;
+    for (auto scope_iter = scopes_.rbegin(); scope_iter != scopes_.rend();
+         scope_iter++) {
+        Scope& exist_scope = *scope_iter;
+        std::map<std::string, std::pair<::llvm::Value*, bool>>::iterator it =
+            exist_scope.scope_map.find(name);
+        if (it != exist_scope.scope_map.end()) {
+            *value = it->second.first;
+            *is_register = it->second.second;
+            return true;
+        }
     }
-
-    *value = it->second.first;
-    *is_register = it->second.second;
-    return true;
+    DLOG(INFO) << "var with name " << name << " does not exist ";
+    return false;
 }
+std::vector<const std::vector<::llvm::Value*>*> ScopeVar::GetIteratorValues() {
+    std::vector<const std::vector<::llvm::Value*>*> values;
+    if (scopes_.size() <= 0) {
+        LOG(WARNING) << "no scope exists ";
+        return values;
+    }
+    for (auto iter = scopes_.cbegin(); iter != scopes_.cend(); iter++) {
+        values.push_back(&(iter->scope_iterators));
+    }
+    return values;
+}
+bool ScopeVar::ScopeExist() { return !scopes_.empty(); }
 
+const std::vector<::llvm::Value*>* ScopeVar::GetScopeIteratorValues() {
+    if (scopes_.size() <= 0) {
+        LOG(WARNING) << "no scope exists ";
+        return nullptr;
+    }
+    Scope& exist_scope = scopes_.back();
+    return &(exist_scope.scope_iterators);
+}
 
 }  // namespace codegen
 }  // namespace fesql

@@ -19,8 +19,8 @@
 #define SRC_VM_CSV_CATALOG_H_
 
 #include <map>
-#include <string>
 #include <memory>
+#include <string>
 #include "vm/catalog.h"
 
 #include "arrow/array.h"
@@ -68,23 +68,25 @@ class CSVTableHandler : public TableHandler {
     CSVTableHandler(const std::string& table_dir, const std::string& table_name,
                     const std::string& db,
                     std::shared_ptr<::arrow::fs::FileSystem> fs);
-
     ~CSVTableHandler();
 
     bool Init();
 
-    inline const Schema& GetSchema() { return schema_; }
+    inline const Schema* GetSchema() { return &schema_; }
     inline const std::string& GetName() { return table_name_; }
     inline const Types& GetTypes() { return types_; }
 
     inline const IndexHint& GetIndex() { return index_hint_; }
 
-    std::unique_ptr<Iterator> GetIterator();
-
     inline const std::string& GetDatabase() { return db_; }
 
     std::unique_ptr<WindowIterator> GetWindowIterator(
         const std::string& idx_name);
+    const uint64_t GetCount() override;
+    base::Slice At(uint64_t pos) override;
+    std::unique_ptr<IteratorV<uint64_t, base::Slice>> GetIterator()
+        const override;
+    IteratorV<uint64_t, base::Slice>* GetIterator(int8_t* addr) const override;
 
  private:
     bool InitConfig();

@@ -7,11 +7,11 @@
  *--------------------------------------------------------------------------
  **/
 #include "bm/fesql_client_bm_case.h"
+#include "gperftools/heap-profiler.h"
 #include "gtest/gtest.h"
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/TargetSelect.h"
 using namespace llvm;       // NOLINT
-using namespace llvm::orc;  // NOLINT
 namespace fesql {
 namespace bm {
 class FeSQL_CASE_Test : public ::testing::Test {
@@ -21,6 +21,7 @@ class FeSQL_CASE_Test : public ::testing::Test {
 };
 
 TEST_F(FeSQL_CASE_Test, SIMPLE_QUERY_CASE1_TEST) {
+    SIMPLE_CASE1_QUERY(nullptr, TEST, false, 1, 1000);
     SIMPLE_CASE1_QUERY(nullptr, TEST, false, 10, 10);
     SIMPLE_CASE1_QUERY(nullptr, TEST, false, 2, 1000);
 }
@@ -53,6 +54,7 @@ TEST_F(FeSQL_CASE_Test, WINDOW_CASE1_QUERY_BATCH_TEST) {
 TEST_F(FeSQL_CASE_Test, WINDOW_CASE2_QUERY_BATCH_TEST) {
     WINDOW_CASE2_QUERY(nullptr, TEST, true, 10, 10);
     WINDOW_CASE2_QUERY(nullptr, TEST, true, 2, 1000);
+    WINDOW_CASE2_QUERY(nullptr, TEST, true, 1, 10000);
 }
 }  // namespace bm
 }  // namespace fesql

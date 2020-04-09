@@ -10,23 +10,23 @@
 #include <stdint.h>
 #include <utility>
 #include <vector>
+#include "base/slice.h"
+#include "codec/list_iterator_codec.h"
+#include "codec/type_codec.h"
 #include "codegen/ir_base_builder.h"
 #include "proto/type.pb.h"
-#include "codec/window.h"
-#include "codec/type_codec.h"
 
 namespace fesql {
 namespace udf {
 namespace v1 {
+using fesql::base::Slice;
 using fesql::codec::ColumnImpl;
-using fesql::codec::IteratorImpl;
 using fesql::codec::IteratorRef;
 using fesql::codec::ListRef;
 using fesql::codec::ListV;
-using fesql::codec::Row;
+using fesql::codec::IteratorV;
 using fesql::codec::StringColumnImpl;
 using fesql::codec::StringRef;
-using fesql::codec::WindowIteratorImpl;
 
 template <class V>
 int32_t current_time() {
@@ -48,9 +48,10 @@ V sum_list(int8_t *input) {
     ::fesql::codec::ListRef *list_ref = (::fesql::codec::ListRef *)(input);
     ::fesql::codec::ListV<V> *col =
         (::fesql::codec::ListV<V> *)(list_ref->list);
-    IteratorImpl<V> iter(*col);
-    while (iter.Valid()) {
-        result += iter.Next();
+    auto iter = col->GetIterator();
+    while (iter->Valid()) {
+        result += iter->GetValue();
+        iter->Next();
     }
     return result;
 }
@@ -62,12 +63,13 @@ double avg_list(int8_t *input) {
         return result;
     }
     ::fesql::codec::ListRef *list_ref = (::fesql::codec::ListRef *)(input);
-    ::fesql::codec::ListV<V> *col =
-        (::fesql::codec::ListV<V> *)(list_ref->list);
-    IteratorImpl<V> iter(*col);
+    ListV<V> *col =
+        (ListV<V> *)(list_ref->list);
+    auto iter = col->GetIterator();
     int32_t cnt = 0;
-    while (iter.Valid()) {
-        result += iter.Next();
+    while (iter->Valid()) {
+        result += iter->GetValue();
+        iter->Next();
         cnt++;
     }
     return static_cast<double>(result) / cnt;
@@ -77,10 +79,11 @@ int64_t count_list(int8_t *input) {
     if (nullptr == input) {
         return 0L;
     }
+
     ::fesql::codec::ListRef *list_ref = (::fesql::codec::ListRef *)(input);
-    ::fesql::codec::ListV<V> *col =
-        (::fesql::codec::ListV<V> *)(list_ref->list);
-    return col->Count();
+    ListV<V> *col =
+        (ListV<V> *)(list_ref->list);
+    return int64_t(col->GetCount());
 }
 
 template <class V>
@@ -90,15 +93,17 @@ V max_list(int8_t *input) {
         return result;
     }
     ::fesql::codec::ListRef *list_ref = (::fesql::codec::ListRef *)(input);
-    ::fesql::codec::ListV<V> *col =
-        (::fesql::codec::ListV<V> *)(list_ref->list);
-    IteratorImpl<V> iter(*col);
+    ListV<V> *col =
+        (ListV<V> *)(list_ref->list);
+    auto iter = col->GetIterator();
 
-    if (iter.Valid()) {
-        result = iter.Next();
+    if (iter->Valid()) {
+        result = iter->GetValue();
+        iter->Next();
     }
-    while (iter.Valid()) {
-        V v = iter.Next();
+    while (iter->Valid()) {
+        V v = iter->GetValue();
+        iter->Next();
         if (v > result) {
             result = v;
         }
@@ -113,15 +118,17 @@ V min_list(int8_t *input) {
         return result;
     }
     ::fesql::codec::ListRef *list_ref = (::fesql::codec::ListRef *)(input);
-    ::fesql::codec::ListV<V> *col =
-        (::fesql::codec::ListV<V> *)(list_ref->list);
-    IteratorImpl<V> iter(*col);
+    ListV<V> *col =
+        (ListV<V> *)(list_ref->list);
+    auto iter = col->GetIterator();
 
-    if (iter.Valid()) {
-        result = iter.Next();
+    if (iter->Valid()) {
+        result = iter->GetValue();
+        iter->Next();
     }
-    while (iter.Valid()) {
-        V v = iter.Next();
+    while (iter->Valid()) {
+        V v = iter->GetValue();
+        iter->Next();
         if (v < result) {
             result = v;
         }
@@ -132,8 +139,8 @@ V min_list(int8_t *input) {
 template <class V>
 V at_list(int8_t *input, int32_t pos) {
     ::fesql::codec::ListRef *list_ref = (::fesql::codec::ListRef *)(input);
-    ::fesql::codec::ListV<V> *list =
-        (::fesql::codec::ListV<V> *)(list_ref->list);
+    ListV<V> *list =
+        (ListV<V> *)(list_ref->list);
     return list->At(pos);
 }
 
@@ -145,11 +152,9 @@ bool iterator_list(int8_t *input, int8_t *output) {
     ::fesql::codec::ListRef *list_ref = (::fesql::codec::ListRef *)(input);
     ::fesql::codec::IteratorRef *iterator_ref =
         (::fesql::codec::IteratorRef *)(output);
-    ::fesql::codec::ListV<V> *col =
-        (::fesql::codec::ListV<V> *)(list_ref->list);
-    ::fesql::codec::IteratorImpl<V> *iter =
-        (::fesql::codec::IteratorImpl<V> *)(iterator_ref->iterator);
-    new (iter) IteratorImpl<V>(*col);
+    ListV<V> *col = (ListV<V> *)(list_ref->list);
+    iterator_ref->iterator =
+        reinterpret_cast<int8_t *>(col->GetIterator(nullptr));
     return true;
 }
 
@@ -160,8 +165,8 @@ bool has_next_iterator(int8_t *input) {
     }
     ::fesql::codec::IteratorRef *iter_ref =
         (::fesql::codec::IteratorRef *)(input);
-    ::fesql::codec::IteratorImpl<V> *iter =
-        (::fesql::codec::IteratorImpl<V> *)(iter_ref->iterator);
+    IteratorV<uint64_t, V> *iter =
+        (IteratorV<uint64_t, V> *)(iter_ref->iterator);
     return iter == nullptr ? false : iter->Valid();
 }
 
@@ -169,9 +174,21 @@ template <class V>
 V next_iterator(int8_t *input) {
     ::fesql::codec::IteratorRef *iter_ref =
         (::fesql::codec::IteratorRef *)(input);
-    ::fesql::codec::IteratorImpl<V> *iter =
-        (::fesql::codec::IteratorImpl<V> *)(iter_ref->iterator);
-    return iter->Next();
+    IteratorV<uint64_t, V> *iter =
+        (IteratorV<uint64_t, V> *)(iter_ref->iterator);
+    V v = iter->GetValue();
+    iter->Next();
+    return v;
+}
+template <class V>
+void delete_iterator(int8_t *input) {
+    ::fesql::codec::IteratorRef *iter_ref =
+        (::fesql::codec::IteratorRef *)(input);
+    IteratorV<uint64_t, V> *iter =
+        (IteratorV<uint64_t, V> *)(iter_ref->iterator);
+    if (iter) {
+        delete iter;
+    }
 }
 
 }  // namespace v1
@@ -205,7 +222,7 @@ void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
     AddSymbol(jd, mi, "count_list_float",
               reinterpret_cast<void *>(&v1::count_list<float>));
     AddSymbol(jd, mi, "count_list_row",
-              reinterpret_cast<void *>(&v1::count_list<fesql::codec::Row>));
+              reinterpret_cast<void *>(&v1::count_list<fesql::base::Slice>));
 
     AddSymbol(jd, mi, "avg_list_int16",
               reinterpret_cast<void *>(&v1::avg_list<int16_t>));
@@ -283,6 +300,17 @@ void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
               reinterpret_cast<void *>(&v1::next_iterator<float>));
     AddSymbol(jd, mi, "next_iterator_double",
               reinterpret_cast<void *>(&v1::next_iterator<double>));
+
+    AddSymbol(jd, mi, "delete_iterator_int16",
+              reinterpret_cast<void *>(&v1::delete_iterator<int16_t>));
+    AddSymbol(jd, mi, "delete_iterator_int32",
+              reinterpret_cast<void *>(&v1::delete_iterator<int32_t>));
+    AddSymbol(jd, mi, "delete_iterator_int64",
+              reinterpret_cast<void *>(&v1::delete_iterator<int64_t>));
+    AddSymbol(jd, mi, "delete_iterator_float",
+              reinterpret_cast<void *>(&v1::delete_iterator<float>));
+    AddSymbol(jd, mi, "delete_iterator_double",
+              reinterpret_cast<void *>(&v1::delete_iterator<double>));
 }
 bool AddSymbol(::llvm::orc::JITDylib &jd,           // NOLINT
                ::llvm::orc::MangleAndInterner &mi,  // NOLINT
@@ -291,6 +319,7 @@ bool AddSymbol(::llvm::orc::JITDylib &jd,           // NOLINT
 }
 
 void RegisterUDFToModule(::llvm::Module *m) {
+    ::llvm::Type *v_ty = ::llvm::Type::getVoidTy(m->getContext());
     ::llvm::Type *i1_ty = ::llvm::Type::getInt1Ty(m->getContext());
     ::llvm::Type *i16_ty = ::llvm::Type::getInt16Ty(m->getContext());
     ::llvm::Type *i32_ty = ::llvm::Type::getInt32Ty(m->getContext());
@@ -395,6 +424,17 @@ void RegisterUDFToModule(::llvm::Module *m) {
             ::fesql::codegen::GetLLVMIteratorType(m, type.first, &llvm_type);
             m->getOrInsertFunction(prefix + (node::DataTypeName(type.first)),
                                    type.second, llvm_type->getPointerTo());
+        }
+    }
+
+    {
+        std::string prefix =
+            "delete_" + node::DataTypeName(fesql::node::kIterator) + "_";
+        for (auto type : number_types) {
+            ::llvm::Type *llvm_type;
+            ::fesql::codegen::GetLLVMIteratorType(m, type.first, &llvm_type);
+            m->getOrInsertFunction(prefix + (node::DataTypeName(type.first)),
+                                   v_ty, llvm_type->getPointerTo());
         }
     }
     {

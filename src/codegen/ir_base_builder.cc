@@ -18,8 +18,8 @@
 #include "codegen/ir_base_builder.h"
 #include <string>
 #include <vector>
+#include "codec/list_iterator_codec.h"
 #include "glog/logging.h"
-#include "codec/window.h"
 
 namespace fesql {
 namespace codegen {
@@ -99,47 +99,7 @@ bool GetLLVMType(::llvm::Module* m, const ::fesql::node::DataType& type,
     return true;
 }
 
-bool GetLLVMIteratorSize(const ::fesql::node::DataType& v_type,
-                         uint32_t* size) {
-    if (nullptr == size) {
-        LOG(WARNING) << "the size ptr is NULL ";
-        return false;
-    }
 
-    switch (v_type) {
-        case ::fesql::node::kInt16: {
-            *size = sizeof(::fesql::codec::IteratorImpl<int16_t>);
-            break;
-        }
-        case ::fesql::node::kInt32: {
-            *size = sizeof(::fesql::codec::IteratorImpl<int32_t>);
-            break;
-        }
-        case ::fesql::node::kInt64: {
-            *size = sizeof(::fesql::codec::IteratorImpl<int64_t>);
-            break;
-        }
-        case ::fesql::node::kDouble: {
-            *size = sizeof(::fesql::codec::IteratorImpl<double>);
-            break;
-        }
-        case ::fesql::node::kFloat: {
-            *size = sizeof(::fesql::codec::IteratorImpl<float>);
-            break;
-        }
-        case ::fesql::node::kVarchar: {
-            *size = sizeof(
-                ::fesql::codec::IteratorImpl<fesql::codec::StringRef>);
-            break;
-        }
-        default: {
-            LOG(WARNING) << "not supported type "
-                         << ::fesql::node::DataTypeName(v_type);
-            return false;
-        }
-    }
-    return true;
-}
 
 bool GetLLVMColumnSize(const ::fesql::node::DataType& v_type, uint32_t* size) {
     if (nullptr == size) {
@@ -305,7 +265,7 @@ bool GetLLVMType(::llvm::Module* m, const fesql::node::TypeNode* data_type,
                                     data_type->generics_.size();
                 return false;
             }
-            ::llvm::Type* list_type;
+            ::llvm::Type* list_type = nullptr;
             if (false ==
                 GetLLVMListType(m, data_type->generics_[0], &list_type)) {
                 return false;
@@ -321,7 +281,7 @@ bool GetLLVMType(::llvm::Module* m, const fesql::node::TypeNode* data_type,
                            data_type->generics_.size();
                 return false;
             }
-            ::llvm::Type* list_type;
+            ::llvm::Type* list_type = nullptr;
             if (false ==
                 GetLLVMIteratorType(m, data_type->generics_[0], &list_type)) {
                 return false;

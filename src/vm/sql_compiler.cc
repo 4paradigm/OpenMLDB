@@ -16,7 +16,6 @@
  */
 
 #include "vm/sql_compiler.h"
-
 #include <memory>
 #include <utility>
 #include <vector>
@@ -28,7 +27,8 @@
 #include "parser/parser.h"
 #include "plan/planner.h"
 #include "udf/udf.h"
-#include "vm/op_generator.h"
+#include "vm/transform.h"
+#include "vm/runner.h"
 
 namespace fesql {
 namespace vm {
@@ -101,8 +101,9 @@ void InitCodecSymbol(vm::FeSQLJIT* jit_ptr) {
 
 using ::fesql::base::Status;
 
-SQLCompiler::SQLCompiler(const std::shared_ptr<Catalog>& cl, bool keep_ir)
-    : cl_(cl), keep_ir_(keep_ir) {}
+SQLCompiler::SQLCompiler(const std::shared_ptr<Catalog>& cl,
+                         ::fesql::node::NodeManager* nm, bool keep_ir)
+    : cl_(cl), nm_(nm), keep_ir_(keep_ir) {}
 
 SQLCompiler::~SQLCompiler() {}
 
@@ -119,20 +120,40 @@ void SQLCompiler::KeepIR(SQLContext& ctx, llvm::Module* m) {
 
 bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     DLOG(INFO) << "start to compile sql " << ctx.sql;
-    ::fesql::node::NodeManager nm;
     ::fesql::node::PlanNodeList trees;
-    bool ok = Parse(ctx, nm, trees, status);
+    bool ok = Parse(ctx, (*nm_), trees, status);
     if (!ok) {
         return false;
     }
-    OpGenerator op_generator(cl_);
+
     auto llvm_ctx = ::llvm::make_unique<::llvm::LLVMContext>();
     auto m = ::llvm::make_unique<::llvm::Module>("sql", *llvm_ctx);
     ::fesql::udf::RegisterUDFToModule(m.get());
-    ok = op_generator.Gen(trees, ctx.db, m.get(), &ctx.ops, status);
-    // TODO(wangtaize) clean ctx
-    if (!ok) {
-        LOG(WARNING) << "fail to generate operators for sql: \n" << ctx.sql;
+
+    if (ctx.is_batch_mode) {
+        vm::BatchModeTransformer transformer(nm_, ctx.db, cl_, m.get());
+        transformer.AddDefaultPasses();
+        if (!transformer.TransformPhysicalPlan(trees, &ctx.plan, status)) {
+            LOG(WARNING) << "fail to generate physical plan (batch mode): "
+                         << status.msg << " for sql: \n"
+                         << ctx.sql;
+            return false;
+        }
+    } else {
+        vm::RequestModeransformer transformer(nm_, ctx.db, cl_, m.get());
+        transformer.AddDefaultPasses();
+        if (!transformer.TransformPhysicalPlan(trees, &ctx.plan, status)) {
+            LOG(WARNING) << "fail to generate physical plan (request mode) "
+                            "for sql: \n"
+                         << ctx.sql;
+            return false;
+        }
+    }
+
+    if (nullptr == ctx.plan) {
+        status.msg = "error: generate null physical plan";
+        status.code = common::kPlanError;
+        LOG(WARNING) << status.msg;
         return false;
     }
 
@@ -154,6 +175,8 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         return false;
     }
 
+
+    m->print(::llvm::errs(), NULL);
     if (keep_ir_) {
         KeepIR(ctx, m.get());
     }
@@ -167,22 +190,20 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
 
     InitCodecSymbol(ctx.jit.get());
     udf::InitUDFSymbol(ctx.jit.get());
-    std::vector<OpNode*>::iterator it = ctx.ops.ops.begin();
-    for (; it != ctx.ops.ops.end(); ++it) {
-        OpNode* op_node = *it;
-        if (op_node->type == kOpProject) {
-            ProjectOp* pop = reinterpret_cast<ProjectOp*>(op_node);
-            ::llvm::Expected<::llvm::JITEvaluatedSymbol> symbol(
-                ctx.jit->lookup(pop->fn_name));
-            if (symbol.takeError()) {
-                LOG(WARNING) << "fail to find fn with name  " << pop->fn_name
-                             << " for sql:\n"
-                             << ctx.sql;
-            }
-            pop->fn = reinterpret_cast<int8_t*>(symbol->getAddress());
-            ctx.schema = pop->output_schema;
-        }
+
+    if (!ResolvePlanFnAddress(ctx.plan, ctx.jit, status)) {
+        return false;
     }
+
+    RunnerBuilder runner_builder;
+    Runner* runner = runner_builder.Build(ctx.plan, status);
+    if (nullptr == runner) {
+        status.msg = "fail to build runner: " + status.msg;
+        status.code = common::kOpGenError;
+        return false;
+    }
+    ctx.schema = ctx.plan->output_schema;
+    ctx.runner = runner;
     return true;
 }
 
@@ -191,7 +212,7 @@ bool SQLCompiler::Parse(SQLContext& ctx, ::fesql::node::NodeManager& node_mgr,
                         ::fesql::base::Status& status) {          // NOLINT
     ::fesql::node::NodePointVector parser_trees;
     ::fesql::parser::FeSQLParser parser;
-    ::fesql::plan::SimplePlanner planer(&node_mgr);
+    ::fesql::plan::SimplePlanner planer(&node_mgr, ctx.is_batch_mode);
 
     int ret = parser.parse(ctx.sql, parser_trees, &node_mgr, status);
     if (ret != 0) {
@@ -208,6 +229,34 @@ bool SQLCompiler::Parse(SQLContext& ctx, ::fesql::node::NodeManager& node_mgr,
 
     return true;
 }
+bool SQLCompiler::ResolvePlanFnAddress(PhysicalOpNode* node,
+                                       std::unique_ptr<FeSQLJIT>& jit,
+                                       Status& status) {
+    if (nullptr == node) {
+        status.msg = "fail to resolve project fn address: node is null";
+    }
+
+    if (!node->GetProducers().empty()) {
+        for (auto iter = node->GetProducers().cbegin();
+             iter != node->GetProducers().cend(); iter++) {
+            if (!ResolvePlanFnAddress(*iter, jit, status)) {
+                return false;
+            }
+        }
+    }
+
+    if (!node->GetFnName().empty()) {
+        ::llvm::Expected<::llvm::JITEvaluatedSymbol> symbol(
+            jit->lookup(node->GetFnName()));
+        if (symbol.takeError()) {
+            LOG(WARNING) << "fail to resolve fn address " << node->GetFnName()
+                         << " not found in jit";
+        }
+        node->SetFn(reinterpret_cast<int8_t*>(symbol->getAddress()));
+    }
+    return true;
+}
+
 
 }  // namespace vm
 }  // namespace fesql

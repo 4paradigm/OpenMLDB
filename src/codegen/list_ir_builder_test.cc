@@ -13,11 +13,12 @@
 #include <memory>
 #include <utility>
 #include <vector>
+#include "codec/list_iterator_codec.h"
+#include "codec/row_codec.h"
 #include "codegen/arithmetic_expr_ir_builder.h"
 #include "codegen/buf_ir_builder.h"
 #include "codegen/codegen_base_test.h"
 #include "codegen/ir_base_builder.h"
-#include "vm/sql_compiler.h"
 #include "codegen/window_ir_builder.h"
 #include "gtest/gtest.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
@@ -33,9 +34,8 @@
 #include "llvm/Transforms/InstCombine/InstCombine.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/GVN.h"
-#include "codec/row_codec.h"
-#include "codec/window.h"
 #include "udf/udf.h"
+#include "vm/sql_compiler.h"
 
 using namespace llvm;       // NOLINT
 using namespace llvm::orc;  // NOLINT
@@ -44,7 +44,7 @@ ExitOnError ExitOnErr;
 
 struct TestString {
     int32_t size;
-    char* data;
+    char* data = nullptr;
 };
 
 void AssertStrEq(std::string exp, int8_t* ptr) {
@@ -58,6 +58,8 @@ void AssertStrEq(std::string exp, int8_t* ptr) {
 namespace fesql {
 namespace codegen {
 
+using fesql::codec::ListV;
+using fesql::codec::IteratorV;
 class ListIRBuilderTest : public ::testing::Test {
  public:
     ListIRBuilderTest() {}
@@ -74,10 +76,11 @@ V IteratorSum(int8_t* input) {
     V result = 0;
     ::fesql::codec::IteratorRef* iter_ref =
         (::fesql::codec::IteratorRef*)(input);
-    ::fesql::codec::IteratorImpl<V>* iter =
-        (::fesql::codec::IteratorImpl<V>*)(iter_ref->iterator);
+    IteratorV<uint64_t, V>* iter =
+        (IteratorV<uint64_t, V>*)(iter_ref->iterator);
     while (iter->Valid()) {
-        result += iter->Next();
+        result += iter->GetValue();
+        iter->Next();
     }
     return result;
 }
@@ -172,7 +175,7 @@ void GetListAtPos(T* result, const ::fesql::type::Type& type,
     bool ok = buf_builder.BuildGetCol(col, arg0, &column);
     ASSERT_TRUE(ok);
 
-    ::llvm::Value* val;
+    ::llvm::Value* val = nullptr;
     base::Status status;
     ASSERT_TRUE(
         list_builder.BuildAt(column, builder.getInt32(pos), &val, status));
@@ -281,11 +284,11 @@ void GetListIterator(T expected, const ::fesql::type::Type& type,
     bool ok = buf_builder.BuildGetCol(col, arg0, &column);
     ASSERT_TRUE(ok);
 
-    ::llvm::Value* val;
+    ::llvm::Value* iterator = nullptr;
     base::Status status;
-    ASSERT_TRUE(list_builder.BuildIterator(column, &val, status));
+    ASSERT_TRUE(list_builder.BuildIterator(column, &iterator, status));
     ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
-    ::llvm::Value* i8_ptr = builder.CreatePointerCast(val, i8_ptr_ty);
+    ::llvm::Value* i8_ptr = builder.CreatePointerCast(iterator, i8_ptr_ty);
     llvm::FunctionCallee callee;
     switch (type) {
         case fesql::type::kInt16:
@@ -318,6 +321,9 @@ void GetListIterator(T expected, const ::fesql::type::Type& type,
     }
     ::llvm::Value* ret_val =
         builder.CreateCall(callee, ::llvm::ArrayRef<Value*>(i8_ptr));
+
+    ::llvm::Value* ret_delete = nullptr;
+    list_builder.BuildIteratorDelete(iterator, &ret_delete, status);
     builder.CreateRet(ret_val);
 
     m->print(::llvm::errs(), NULL);
@@ -469,7 +475,7 @@ void GetListIteratorNext(T expected, const ::fesql::type::Type& type,
     bool ok = buf_builder.BuildGetCol(col, arg0, &column);
     ASSERT_TRUE(ok);
 
-    ::llvm::Value* iter;
+    ::llvm::Value* iter = nullptr;
     base::Status status;
     ASSERT_TRUE(list_builder.BuildIterator(column, &iter, status));
     ::llvm::Value* next1;
@@ -478,7 +484,7 @@ void GetListIteratorNext(T expected, const ::fesql::type::Type& type,
     ASSERT_TRUE(list_builder.BuildIteratorNext(iter, &next2, status));
 
     ArithmeticIRBuilder arithmetic_ir_builder(builder.GetInsertBlock());
-    ::llvm::Value* res;
+    ::llvm::Value* res = nullptr;
     ASSERT_TRUE(arithmetic_ir_builder.BuildAddExpr(next1, next2, &res, status));
     ::llvm::Value* next3;
     ASSERT_TRUE(list_builder.BuildIteratorNext(iter, &next3, status));
@@ -492,6 +498,8 @@ void GetListIteratorNext(T expected, const ::fesql::type::Type& type,
     ASSERT_TRUE(list_builder.BuildIteratorNext(iter, &next5, status));
     ASSERT_TRUE(arithmetic_ir_builder.BuildAddExpr(res, next5, &res, status));
 
+    ::llvm::Value* ret_delete = nullptr;
+    list_builder.BuildIteratorDelete(iter, &ret_delete, status);
     builder.CreateRet(res);
 
     m->print(::llvm::errs(), NULL);
@@ -534,7 +542,7 @@ void RunListIteratorNextCase(V expected, const ::fesql::type::Type& type,
 
 TEST_F(ListIRBuilderTest, list_int16_at_test) {
     int8_t* ptr = NULL;
-    std::vector<fesql::codec::Row> rows;
+    std::vector<Slice> rows;
     BuildWindow2(rows, &ptr);
     RunListAtCase<int16_t>(2, ::fesql::type::kInt16, "col2", ptr, 0);
     RunListAtCase<int16_t>(22, ::fesql::type::kInt16, "col2", ptr, 1);
@@ -546,7 +554,7 @@ TEST_F(ListIRBuilderTest, list_int16_at_test) {
 
 TEST_F(ListIRBuilderTest, list_int32_at_test) {
     int8_t* ptr = NULL;
-    std::vector<fesql::codec::Row> rows;
+    std::vector<Slice> rows;
     BuildWindow2(rows, &ptr);
     RunListAtCase<int32_t>(1, ::fesql::type::kInt32, "col1", ptr, 0);
     RunListAtCase<int32_t>(11, ::fesql::type::kInt32, "col1", ptr, 1);
@@ -558,7 +566,7 @@ TEST_F(ListIRBuilderTest, list_int32_at_test) {
 
 TEST_F(ListIRBuilderTest, list_int64_at_test) {
     int8_t* ptr = NULL;
-    std::vector<fesql::codec::Row> rows;
+    std::vector<Slice> rows;
     BuildWindow2(rows, &ptr);
     RunListAtCase<int64_t>(5, ::fesql::type::kInt32, "col5", ptr, 0);
     RunListAtCase<int64_t>(55, ::fesql::type::kInt32, "col5", ptr, 1);
@@ -569,7 +577,7 @@ TEST_F(ListIRBuilderTest, list_int64_at_test) {
 }
 TEST_F(ListIRBuilderTest, list_float_at_test) {
     int8_t* ptr = NULL;
-    std::vector<fesql::codec::Row> rows;
+    std::vector<Slice> rows;
     BuildWindow2(rows, &ptr);
     RunListAtCase<float>(3.1f, ::fesql::type::kFloat, "col3", ptr, 0);
     RunListAtCase<float>(33.1f, ::fesql::type::kFloat, "col3", ptr, 1);
@@ -578,7 +586,7 @@ TEST_F(ListIRBuilderTest, list_float_at_test) {
 
 TEST_F(ListIRBuilderTest, list_double_at_test) {
     int8_t* ptr = NULL;
-    std::vector<fesql::codec::Row> rows;
+    std::vector<Slice> rows;
     BuildWindow2(rows, &ptr);
     RunListAtCase<double>(4.1, ::fesql::type::kDouble, "col4", ptr, 0);
     RunListAtCase<double>(44.1, ::fesql::type::kDouble, "col4", ptr, 1);
@@ -588,7 +596,7 @@ TEST_F(ListIRBuilderTest, list_double_at_test) {
 // TODO(chenjing): support list string at operation
 // TEST_F(ListIRBuilderTest, list_string_at_test) {
 //    int8_t* ptr = NULL;
-//    std::vector<fesql::codec::Row> rows;
+//    std::vector<Slice> rows;
 //    BuildWindow(rows, &ptr);
 //    std::string str("1");
 //
@@ -598,25 +606,25 @@ TEST_F(ListIRBuilderTest, list_double_at_test) {
 
 TEST_F(ListIRBuilderTest, list_int32_iterator_sum_test) {
     int8_t* ptr = NULL;
-    std::vector<fesql::codec::Row> rows;
+    std::vector<Slice> rows;
     BuildWindow2(rows, &ptr);
     RunListIteratorCase<int32_t>(1 + 11 + 111 + 1111 + 11111,
-                                 ::fesql::type::kInt16, "col1", ptr);
+                                 ::fesql::type::kInt32, "col1", ptr);
     free(ptr);
 }
 
 TEST_F(ListIRBuilderTest, list_int16_iterator_sum_test) {
     int8_t* ptr = NULL;
-    std::vector<fesql::codec::Row> rows;
+    std::vector<Slice> rows;
     BuildWindow2(rows, &ptr);
     RunListIteratorCase<int16_t>(2 + 22 + 222 + 2222 + 22222,
-                                 ::fesql::type::kInt32, "col2", ptr);
+                                 ::fesql::type::kInt16, "col2", ptr);
     free(ptr);
 }
 
 TEST_F(ListIRBuilderTest, list_int64_iterator_sum_test) {
     int8_t* ptr = NULL;
-    std::vector<fesql::codec::Row> rows;
+    std::vector<Slice> rows;
     BuildWindow2(rows, &ptr);
     RunListIteratorCase<int64_t>(5L + 55L + 555L + 5555L + 55555L,
                                  ::fesql::type::kInt64, "col5", ptr);
@@ -625,7 +633,7 @@ TEST_F(ListIRBuilderTest, list_int64_iterator_sum_test) {
 
 TEST_F(ListIRBuilderTest, list_float_iterator_sum_test) {
     int8_t* ptr = NULL;
-    std::vector<fesql::codec::Row> rows;
+    std::vector<Slice> rows;
     BuildWindow2(rows, &ptr);
     RunListIteratorCase<float>(3.1f + 33.1f + 333.1f + 3333.1f + 33333.1f,
                                ::fesql::type::kFloat, "col3", ptr);
@@ -634,7 +642,7 @@ TEST_F(ListIRBuilderTest, list_float_iterator_sum_test) {
 
 TEST_F(ListIRBuilderTest, list_double_iterator_sum_test) {
     int8_t* ptr = NULL;
-    std::vector<fesql::codec::Row> rows;
+    std::vector<Slice> rows;
     BuildWindow2(rows, &ptr);
     RunListIteratorCase<double>(4.1 + 44.1 + 444.1 + 4444.1 + 44444.1,
                                 ::fesql::type::kDouble, "col4", ptr);
@@ -643,7 +651,7 @@ TEST_F(ListIRBuilderTest, list_double_iterator_sum_test) {
 
 TEST_F(ListIRBuilderTest, list_int32_iterator_next_test) {
     int8_t* ptr = NULL;
-    std::vector<fesql::codec::Row> rows;
+    std::vector<Slice> rows;
     BuildWindow2(rows, &ptr);
     RunListIteratorNextCase<int32_t>(1 + 11 + 111 + 1111 + 11111,
                                      ::fesql::type::kInt16, "col1", ptr);
@@ -652,7 +660,7 @@ TEST_F(ListIRBuilderTest, list_int32_iterator_next_test) {
 
 TEST_F(ListIRBuilderTest, list_int16_iterator_next_test) {
     int8_t* ptr = NULL;
-    std::vector<fesql::codec::Row> rows;
+    std::vector<Slice> rows;
     BuildWindow2(rows, &ptr);
     RunListIteratorNextCase<int16_t>(2 + 22 + 222 + 2222 + 22222,
                                      ::fesql::type::kInt32, "col2", ptr);
@@ -661,7 +669,7 @@ TEST_F(ListIRBuilderTest, list_int16_iterator_next_test) {
 
 TEST_F(ListIRBuilderTest, list_int64_iterator_next_test) {
     int8_t* ptr = NULL;
-    std::vector<fesql::codec::Row> rows;
+    std::vector<Slice> rows;
     BuildWindow2(rows, &ptr);
     RunListIteratorNextCase<int64_t>(5L + 55L + 555L + 5555L + 55555L,
                                      ::fesql::type::kInt64, "col5", ptr);
@@ -670,7 +678,7 @@ TEST_F(ListIRBuilderTest, list_int64_iterator_next_test) {
 
 TEST_F(ListIRBuilderTest, list_float_iterator_next_test) {
     int8_t* ptr = NULL;
-    std::vector<fesql::codec::Row> rows;
+    std::vector<Slice> rows;
     BuildWindow2(rows, &ptr);
     RunListIteratorNextCase<float>(3.1f + 33.1f + 333.1f + 3333.1f + 33333.1f,
                                    ::fesql::type::kFloat, "col3", ptr);
@@ -679,7 +687,7 @@ TEST_F(ListIRBuilderTest, list_float_iterator_next_test) {
 
 TEST_F(ListIRBuilderTest, list_double_iterator_next_test) {
     int8_t* ptr = NULL;
-    std::vector<fesql::codec::Row> rows;
+    std::vector<Slice> rows;
     BuildWindow2(rows, &ptr);
     RunListIteratorNextCase<double>(4.1 + 44.1 + 444.1 + 4444.1 + 44444.1,
                                     ::fesql::type::kDouble, "col4", ptr);

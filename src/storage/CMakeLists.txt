@@ -26,4 +26,3 @@ target_link_libraries(table_test fesql_storage fesql_codec fesql_proto glog
     gflags gtest protobuf pthread unwind lzma)
 add_test(table_test table_test --gtest_output=xml:${CMAKE_BINARY_DIR}/table_test.xml)
 list(APPEND test_list table_test)
-
