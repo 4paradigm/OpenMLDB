@@ -41,23 +41,17 @@ static void BM_WindowSumFeature1_Aggregation(
 }
 // request engine window bm
 BENCHMARK(BM_WindowSumFeature1_IndexSeek)
-    //->Args({1, 2})
-    //    ->Args({1, 10})
-    //    ->Args({1, 100})
-    //    ->Args({1, 1000})
+    ->Args({1, 100})
+    ->Args({1, 1000})
     ->Args({1, 10000});
 // request engine window bm
 BENCHMARK(BM_WindowSumFeature1_RequestUnion)
-    //    ->Args({1, 2})
-    //    ->Args({1, 10})
-    //    ->Args({1, 100})
-    //    ->Args({1, 1000})
+    ->Args({1, 100})
+    ->Args({1, 1000})
     ->Args({1, 10000});
 BENCHMARK(BM_WindowSumFeature1_Aggregation)
-    //    ->Args({1, 2})
-    //    ->Args({1, 10})
-    //    ->Args({1, 100})
-    //    ->Args({1, 1000})
+    ->Args({1, 100})
+    ->Args({1, 1000})
     ->Args({1, 10000});
 }  // namespace bm
 }  // namespace fesql

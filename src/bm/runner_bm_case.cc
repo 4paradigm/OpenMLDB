@@ -7,6 +7,10 @@
  *--------------------------------------------------------------------------
  **/
 #include "bm/runner_bm_case.h"
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 #include "bm/base_bm.h"
 #include "gtest/gtest.h"
 #include "llvm/IR/IRBuilder.h"
@@ -16,21 +20,24 @@
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/TargetSelect.h"
 #include "vm/engine.h"
+
 namespace fesql {
 namespace bm {
-using namespace ::llvm;
 using vm::DataHandler;
 using vm::Engine;
 using vm::RequestRunSession;
 using vm::Runner;
 using vm::RunnerContext;
 using vm::TableHandler;
+
+using namespace ::llvm;  // NOLINT
+
 static int64_t DeleteData(std::shared_ptr<DataHandler> data_handler);
 static Runner* GetRunner(Runner* root, int id);
-static bool RunnerRun(Runner* runner,
-                      std::shared_ptr<TableHandler> table_handler,
-                      int64_t limit_cnt,
-                      std::vector<std::shared_ptr<DataHandler>>& result);
+static bool RunnerRun(
+    Runner* runner, std::shared_ptr<TableHandler> table_handler,
+    int64_t limit_cnt,
+    std::vector<std::shared_ptr<DataHandler>>& result);  // NOLINT
 static void RequestUnionRunnerCase(const std::string& sql, int runner_id,
                                    benchmark::State* state, MODE mode,
                                    int64_t limit_cnt, int64_t size);
@@ -185,10 +192,10 @@ void AggRunnerCase(const std::string sql, int runner_id,
     }
 }
 
-static bool RunnerRun(Runner* runner,
-                      std::shared_ptr<TableHandler> table_handler,
-                      int64_t limit_cnt,
-                      std::vector<std::shared_ptr<DataHandler>>& result) {
+static bool RunnerRun(
+    Runner* runner, std::shared_ptr<TableHandler> table_handler,
+    int64_t limit_cnt,
+    std::vector<std::shared_ptr<DataHandler>>& result) {  // NOLINT
     auto iter = table_handler->GetIterator();
     int64_t cnt = 0;
     while (cnt < limit_cnt && iter->Valid()) {
