@@ -819,7 +819,7 @@ bool MemTableTraverseIterator::IsExpired() {
     } else if (ttl_type_ == ::rtidb::api::TTLType::kAbsAndLat) {
         return it_->GetKey() <= expire_value_.abs_ttl && record_idx_ > expire_value_.lat_ttl;
     } else {
-        return it_->GetKey() <= expire_value_.abs_ttl || record_idx_ > expire_value_.lat_ttl;
+        return ((it_->GetKey() <= expire_value_.abs_ttl) && (expire_value_.abs_ttl != 0)) || ((record_idx_ > expire_value_.lat_ttl) && (expire_value_.lat_ttl != 0));
     }
 }
 
