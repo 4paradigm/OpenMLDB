@@ -146,7 +146,6 @@ bool Binlog::DumpBinlogIndexData(std::shared_ptr<Table>& table, const ::rtidb::c
     uint64_t failed_cnt = 0;
     uint64_t consumed = ::baidu::common::timer::now_time();
     int last_log_index = log_reader.GetLogIndex();
-    bool reach_end_log = true;
     uint32_t partition_num = whs.size();
     std::string schema = table->GetSchema();
     std::vector<::rtidb::base::ColumnDesc> columns;
@@ -192,7 +191,6 @@ bool Binlog::DumpBinlogIndexData(std::shared_ptr<Table>& table, const ::rtidb::c
             consumed = ::baidu::common::timer::now_time() - consumed;
             PDLOG(INFO, "table tid %u pid %u completed, succ_cnt %lu, failed_cnt %lu, consumed %us",
                        tid, pid, succ_cnt, failed_cnt, consumed);
-            reach_end_log = false;
             break;
         }
         if (status.IsEof()) {
@@ -224,7 +222,6 @@ bool Binlog::DumpBinlogIndexData(std::shared_ptr<Table>& table, const ::rtidb::c
             PDLOG(WARNING, "missing log entry cur_offset %lu , new entry offset %lu for tid %u, pid %u",
                   cur_offset, entry.log_index(), tid, pid);
         }
-        
         std::set<uint32_t> pid_set;
         bool has_main_index = false;
         for (const auto& dim : entry.dimensions()) {
@@ -255,6 +252,7 @@ bool Binlog::DumpBinlogIndexData(std::shared_ptr<Table>& table, const ::rtidb::c
         uint32_t index_pid = ::rtidb::base::hash64(cur_key)%partition_num;
         if (!pid_set.count(index_pid)) {
             std::string entry_str;
+            entry.clear_dimensions();
             ::rtidb::api::Dimension* dim = entry.add_dimensions();
             dim->set_key(cur_key);
             dim->set_idx(idx);

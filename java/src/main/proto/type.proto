@@ -15,11 +15,12 @@ enum DataType {
     kDate = 8;
     kTimestamp = 9;
     kBlob = 10;
+    kString = 11;
 }
 
 enum TableType {
-     kTimeSeries = 1;
-     kRelational = 2;
+    kTimeSeries = 1; 
+    kRelational = 2;
 }
 
 enum IndexType {
@@ -28,4 +29,5 @@ enum IndexType {
     kPrimaryKey = 3;
     kAutoGen = 4;  // auto gen primary key
     kIncrement = 5; // auto gen increment id primary key
+    kTimeSerise = 6;
 }

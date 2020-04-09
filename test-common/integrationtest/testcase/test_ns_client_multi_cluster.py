@@ -143,6 +143,8 @@ class TestMultiCluster(TestCaseBase):
         rs = self.showtable(self.ns_leader_r, name)
         self.assertEqual(0, len(rs))
 
+        self.remove_replica_cluster(self.ns_leader, self.alias)
+        time.sleep(3)
 
     @ddt.data(
         ['kMemory'],
@@ -271,6 +273,8 @@ class TestMultiCluster(TestCaseBase):
         rs = self.showtable(self.ns_leader_r, name)
         self.assertEqual(0, len(rs))
 
+        self.remove_replica_cluster(self.ns_leader, self.alias)
+        time.sleep(3)
 
     @ddt.data(
         ['kMemory'],
@@ -420,6 +424,9 @@ class TestMultiCluster(TestCaseBase):
         time.sleep(3)
         rs = self.showtable(self.ns_leader_r, name)
         self.assertEqual(0, len(rs))
+
+        self.remove_replica_cluster(self.ns_leader, self.alias)
+        time.sleep(3)
 
     @ddt.data(
         ['kMemory'],
@@ -591,6 +598,9 @@ class TestMultiCluster(TestCaseBase):
         time.sleep(3)
         rs = self.showtable(self.ns_leader_r, name)
         self.assertEqual(0, len(rs))
+
+        self.remove_replica_cluster(self.ns_leader, self.alias)
+        time.sleep(3)
 
     @ddt.data(
         ['kMemory'],
@@ -764,6 +774,8 @@ class TestMultiCluster(TestCaseBase):
         time.sleep(3)
         rs = self.showtable(self.ns_leader_r, name)
         self.assertEqual(0, len(rs))
+        self.remove_replica_cluster(self.ns_leader, self.alias)
+        time.sleep(3)
 
     @ddt.data(
         ['kMemory'],
@@ -986,6 +998,8 @@ class TestMultiCluster(TestCaseBase):
         time.sleep(3)
         rs = self.showtable(self.ns_leader_r, name)
         self.assertEqual(0, len(rs))
+        self.remove_replica_cluster(self.ns_leader, self.alias)
+        time.sleep(3)
   
 
 if __name__ == "__main__":

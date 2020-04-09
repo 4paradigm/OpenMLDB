@@ -54,9 +54,9 @@ public class RowView {
         strFieldStartOffset = RowCodecCommon.HEADER_LENGTH + RowCodecCommon.getBitMapSize(schema.size());
         for (int idx = 0; idx < schema.size(); idx++) {
             ColumnDesc column = schema.get(idx);
-            if (column.getDataType() == DataType.Varchar) {
-                offsetVec.add(stringFieldCnt);
-                stringFieldCnt++;
+            if (column.getDataType() == DataType.Varchar || column.getDataType() == DataType.String) {
+                offset_vec.add(string_field_cnt);
+                string_field_cnt++;
             } else {
                 if (RowCodecCommon.TYPE_SIZE_MAP.get(column.getDataType()) == null) {
                     isValid = false;
@@ -231,6 +231,7 @@ public class RowView {
             case Double:
                 val = row.getDouble(offset);
                 break;
+            case String:
             case Varchar:
                 int fieldOffset = offset;
                 int nextStrFieldOffset = 0;

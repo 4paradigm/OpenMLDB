@@ -252,7 +252,7 @@ public:
                 const std::string& pk, uint64_t ts, uint32_t limit, uint32_t& count);
 
     bool Traverse(uint32_t tid, uint32_t pid, const std::string& pk, uint32_t limit,
-                uint32_t* count, std::string* msg, std::string* data, bool* is_finish);
+                uint32_t* count, std::string* msg, std::string* data, bool* is_finish, uint64_t* snapshot_id);
 
     void ShowTp();
 

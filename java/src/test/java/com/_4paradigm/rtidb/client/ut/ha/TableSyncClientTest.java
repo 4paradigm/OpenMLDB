@@ -252,7 +252,7 @@ public class TableSyncClientTest extends TestCaseBase {
         return name;
     }
 
-    private String createRelationalTableStringKey() {
+    private String createRelationalTableVarcharKey() {
         String name = String.valueOf(id.incrementAndGet());
         nsc.dropTable(name);
         TableDesc tableDesc = new TableDesc();
@@ -299,6 +299,54 @@ public class TableSyncClientTest extends TestCaseBase {
         return name;
     }
 
+    private String createRelationalTableStringKey() {
+        String name = String.valueOf(id.incrementAndGet());
+        nsc.dropTable(name);
+        TableDesc tableDesc = new TableDesc();
+        tableDesc.setName(name);
+        tableDesc.setTableType(TableType.kRelational);
+        List<com._4paradigm.rtidb.client.schema.ColumnDesc> list = new ArrayList<>();
+        {
+            com._4paradigm.rtidb.client.schema.ColumnDesc col = new com._4paradigm.rtidb.client.schema.ColumnDesc();
+            col.setName("id");
+            col.setDataType(DataType.String);
+            col.setNotNull(true);
+            list.add(col);
+        }
+        {
+            com._4paradigm.rtidb.client.schema.ColumnDesc col = new com._4paradigm.rtidb.client.schema.ColumnDesc();
+            col.setName("attribute");
+            col.setDataType(DataType.Varchar);
+            col.setNotNull(true);
+            list.add(col);
+        }
+        {
+            com._4paradigm.rtidb.client.schema.ColumnDesc col = new com._4paradigm.rtidb.client.schema.ColumnDesc();
+            col.setName("image");
+            col.setDataType(DataType.Varchar);
+            col.setNotNull(true);
+            list.add(col);
+        }
+        tableDesc.setColumnDescList(list);
+
+        List<IndexDef> indexs = new ArrayList<>();
+        IndexDef indexDef = new IndexDef();
+        indexDef.setIndexName("id");
+        indexDef.setIndexType(IndexType.PrimaryKey);
+        List<String> colNameList = new ArrayList<>();
+        colNameList.add("id");
+        indexDef.setColNameList(colNameList);
+        indexs.add(indexDef);
+
+        tableDesc.setIndexs(indexs);
+        boolean ok = nsc.createTable(tableDesc);
+        Assert.assertTrue(ok);
+        client.refreshRouteTable();
+
+        return name;
+    }
+
+>>>>>>> origin/develop
     @Test
     public void testPut() {
         String name = createKvTable();
@@ -937,8 +985,8 @@ public class TableSyncClientTest extends TestCaseBase {
     }
 
     @Test
-    public void testRelationalTableTraverseStringKey() {
-        String name = createRelationalTableStringKey();
+    public void testRelationalTableTraverseVarcharKey() {
+        String name = createRelationalTableVarcharKey();
         try {
             List<com._4paradigm.rtidb.client.schema.ColumnDesc> schema = tableSyncClient.getSchema(name);
             Assert.assertEquals(schema.size(), 3);
@@ -981,8 +1029,72 @@ public class TableSyncClientTest extends TestCaseBase {
     }
 
     @Test
-    public void testRelationalTableBatchQueryStringKey() {
-        String name = createRelationalTableStringKey();
+    public void testRelationalTableTraverseStringKey() {
+        String name = createRelationalTableVarcharKey();
+        try {
+            List<com._4paradigm.rtidb.client.schema.ColumnDesc> schema = tableSyncClient.getSchema(name);
+            Assert.assertEquals(schema.size(), 3);
+
+            //put
+            WriteOption wo = new WriteOption();
+            Map<String, Object> data = new HashMap<String, Object>();
+            for (long i = 1; i < 1000; i++) {
+                data.put("id", String.format("%04d", i));
+                data.put("attribute", "a" + i);
+                data.put("image", "i" + i);
+                boolean ok = tableSyncClient.put(name, data, wo);
+                data.clear();
+                Assert.assertTrue(ok);
+            }
+
+            Set<String> colSet = new HashSet<>();
+            colSet.add("id");
+            colSet.add("image");
+            ReadOption ro = new ReadOption(null, null, colSet, 1);
+
+            //traverse
+            RelationalIterator trit = tableSyncClient.traverse(name, ro);
+            trit.next();
+            //update key
+            {
+                data.clear();
+                Map<String, Object> conditionColumns = new HashMap<>();
+                conditionColumns.put("id", "0110");
+                data.put("attribute", "aup1110");
+                data.put("image", "iup1110");
+                boolean ok = tableSyncClient.update(name, conditionColumns, data, wo);
+                Assert.assertTrue(ok);
+
+                ro = new ReadOption(conditionColumns, null,  null, 1);
+                RelationalIterator it = tableSyncClient.query(name, ro);
+                Map<String, Object> valueMap = new HashMap<>();
+                valueMap = it.getDecodedValue();
+                Assert.assertEquals(valueMap.size(), 3);
+                Assert.assertEquals(valueMap.get("id"), "0110");
+                Assert.assertEquals(valueMap.get("attribute"), "aup1110");
+                Assert.assertEquals(valueMap.get("image"), "iup1110");
+            }
+            for (long i = 1; i < 1000; i++) {
+                Assert.assertTrue(trit.valid());
+                Map<String, Object> TraverseMap = trit.getDecodedValue();
+                Assert.assertEquals(TraverseMap.size(), 2);
+                Assert.assertEquals(TraverseMap.get("id"), String.format("%04d", i));
+                Assert.assertEquals(TraverseMap.get("image"), "i" + i);
+                trit.next();
+            }
+            trit.next();
+            Assert.assertFalse(trit.valid());
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.assertTrue(false);
+        } finally {
+            nsc.dropTable(name);
+        }
+    }
+
+    @Test
+    public void testRelationalTableBatchQueryVarcharKey() {
+        String name = createRelationalTableVarcharKey();
         try {
             List<com._4paradigm.rtidb.client.schema.ColumnDesc> schema = tableSyncClient.getSchema(name);
             Assert.assertEquals(schema.size(), 3);

@@ -597,6 +597,10 @@ NameServerImpl::~NameServerImpl() {
     running_.store(false, std::memory_order_release);
     thread_pool_.Stop(true);
     task_thread_pool_.Stop(true);
+    if (dist_lock_ != NULL) {
+        dist_lock_->Stop();
+        delete dist_lock_;
+    }
     delete zk_client_;
 }
 
@@ -2206,7 +2210,7 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::Tab
         ::rtidb::base::SchemaCodec codec;
         bool codec_ok = codec.Encode(columns, schema);
         if (!codec_ok) {
-            return false;
+            return -1;
         }
     }
     table_meta.set_name(table_info->name());
@@ -8554,9 +8558,11 @@ void NameServerImpl::AddIndex(RpcController* controller,
         bool has_index = false;
         if (table_info->column_key_size() == 0) {
             for (int i = 0; i < table_info->column_desc_v1_size(); i++) {
-                if (table_info->column_desc_v1(i).name() == index_name && table_info->column_desc_v1(i).add_ts_idx()) {
+                if (table_info->column_desc_v1(i).name() == index_name) {
+                    if (table_info->column_desc_v1(i).add_ts_idx()) {
+                        has_index = true;
+                    }
                     index_pos = i;
-                    has_index = true;
                     break;
                 }
             }
@@ -8613,7 +8619,7 @@ void NameServerImpl::AddIndex(RpcController* controller,
         ::rtidb::common::ColumnKey* column_key = table_info->add_column_key();
         column_key->CopyFrom(request->column_key());
     } else {
-        table_info->mutable_column_desc_v1(index_pos)->set_add_ts_idx(false);
+        table_info->mutable_column_desc_v1(index_pos)->set_add_ts_idx(true);
     }
     PDLOG(INFO, "add index ok. table[%s] index[%s]", 
             request->name().c_str(), index_name.c_str());

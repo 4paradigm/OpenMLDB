@@ -37,10 +37,13 @@ using Schema = ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>
 
 namespace rtidb {
 namespace storage {
+
+class RelationalTable;
+
 class RelationalTableTraverseIterator {
  public:
-    RelationalTableTraverseIterator(rocksdb::DB* db, rocksdb::Iterator* it,
-                                    const rocksdb::Snapshot* snapshot);
+    RelationalTableTraverseIterator(RelationalTable* table, rocksdb::Iterator* it,
+                                    uint64_t id);
     ~RelationalTableTraverseIterator();
     bool Valid();
     void Next();
@@ -48,12 +51,21 @@ class RelationalTableTraverseIterator {
     void Seek(const std::string& pk);
     uint64_t GetCount();
     rtidb::base::Slice GetValue();
+    uint64_t GetSeq();
+    rocksdb::Slice GetKey();
+    void SetFinish(bool finish);
 
  private:
-    rocksdb::DB* db_;
+    RelationalTable* table_;
     rocksdb::Iterator* it_;
-    const rocksdb::Snapshot* snapshot_;
     uint64_t traverse_cnt_;
+    bool finish_;
+    uint64_t id_;
+};
+
+struct SnapshotInfo {
+    const rocksdb::Snapshot* snapshot;
+    uint64_t atime;
 };
 
 class RelationalTable {
@@ -79,7 +91,11 @@ public:
 
     bool Delete(const std::string& pk, uint32_t idx);
 
-    rtidb::storage::RelationalTableTraverseIterator* NewTraverse(uint32_t idx);
+    rtidb::storage::RelationalTableTraverseIterator* NewTraverse(uint32_t idx, uint64_t snapshot_id);
+
+    void ReleaseSnpashot(uint64_t seq, bool finish);
+
+    void TTLSnapshot();
 
     bool Update(const ::rtidb::api::Columns& cd_columns, 
             const ::rtidb::api::Columns& col_columns);
@@ -188,6 +204,8 @@ private:
 
     ::rtidb::base::IdGenerator id_generator_;
 
+    std::map<uint64_t, std::shared_ptr<SnapshotInfo>> snapshots_;
+    uint64_t snapshot_index_; // 0 is invalid snapshot_index
 };
 
 }

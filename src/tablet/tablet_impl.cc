@@ -74,6 +74,10 @@ DECLARE_int32(binlog_delete_interval);
 DECLARE_uint32(absolute_ttl_max);
 DECLARE_uint32(latest_ttl_max);
 DECLARE_uint32(max_traverse_cnt);
+DECLARE_uint32(snapshot_ttl_time);
+DECLARE_uint32(snapshot_ttl_check_interval);
+DECLARE_uint32(put_slow_log_threshold);
+DECLARE_uint32(query_slow_log_threshold);
 
 namespace rtidb {
 namespace tablet {
@@ -421,6 +425,7 @@ void TabletImpl::Get(RpcController* controller,
         }
     }
     if (table) {
+        uint64_t start_time = ::baidu::common::timer::get_micros();
         if (table->GetTableStat() == ::rtidb::storage::kLoading) {
             PDLOG(WARNING, "table is loading. tid %u, pid %u", 
                     request->tid(), request->pid());
@@ -476,6 +481,15 @@ void TabletImpl::Get(RpcController* controller,
         delete it;
         response->set_ts(ts);
         response->set_code(code);
+        uint64_t end_time = ::baidu::common::timer::get_micros();
+        if (start_time + FLAGS_query_slow_log_threshold < end_time) {
+            std::string index_name;
+            if (request->has_idx_name() && request->idx_name().size() > 0) {
+                index_name = request->idx_name();
+            }
+            PDLOG(INFO, "slow log[get]. key %s index_name %s time %lu. tid %u, pid %u", 
+                    request->key().c_str(), index_name.c_str(), end_time - start_time, request->tid(), request->pid());
+        }
         switch(code) {
             case 1:
                 response->set_code(::rtidb::base::ReturnCode::kKeyNotFound);
@@ -565,6 +579,7 @@ void TabletImpl::Put(RpcController* controller,
         done->Run();
         return;
     }
+    uint64_t start_time = ::baidu::common::timer::get_micros();
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     std::shared_ptr<RelationalTable> r_table;
     if (!table) {
@@ -648,6 +663,24 @@ void TabletImpl::Put(RpcController* controller,
             }
             replicator->AppendEntry(entry);
         } while(false);
+        uint64_t end_time = ::baidu::common::timer::get_micros();
+        if (start_time + FLAGS_put_slow_log_threshold < end_time) {
+            std::string key;
+            if (request->dimensions_size() > 0) {
+                for (int idx = 0; idx < request->dimensions_size(); idx++) {
+                    if (!key.empty()) {
+                        key.append(", ");
+                    }
+                    key.append(std::to_string(request->dimensions(idx).idx()));
+                    key.append(":");
+                    key.append(request->dimensions(idx).key());
+                }
+            } else {
+                key = request->pk();
+            }
+            PDLOG(INFO, "slow log[put]. key %s time %lu. tid %u, pid %u", 
+                    key.c_str(), end_time - start_time, request->tid(), request->pid());
+        }
         done->Run();
         if (replicator) {
             if (FLAGS_binlog_notify_on_put) {
@@ -822,11 +855,8 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
     if (et < expire_time && et_type == ::rtidb::api::GetType::kSubKeyGt) {
         real_et_type = ::rtidb::api::GetType::kSubKeyGe;
     }
-    uint64_t real_et = 0;
     if (ttl_type == ::rtidb::api::TTLType::kAbsoluteTime || ttl_type == ::rtidb::api::TTLType::kAbsOrLat) {
-        real_et = std::max(et, expire_time);
-    } else {
-        real_et = et;
+        et = std::max(et, expire_time);
     }
     if (st_type == ::rtidb::api::GetType::kSubKeyEq) {
         real_st_type = ::rtidb::api::GetType::kSubKeyLe;
@@ -839,7 +869,7 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
     }
     uint32_t cnt = 0;
     if (st > 0) {
-        if (st < expire_time || st < et) {
+        if (st < et) {
             PDLOG(WARNING, "invalid args for st %lu less than et %lu or expire time %lu", st, et, expire_time);
             return -1;
         }
@@ -901,17 +931,17 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
             bool jump_out = false;
             switch(real_et_type) {
                 case ::rtidb::api::GetType::kSubKeyEq:
-                    if (it->GetKey() != real_et) {
+                    if (it->GetKey() != et) {
                         jump_out = true;
                     }
                     break;
                 case ::rtidb::api::GetType::kSubKeyGt:
-                    if (it->GetKey() <= real_et) {
+                    if (it->GetKey() <= et) {
                         jump_out = true;
                     }
                     break;
                 case ::rtidb::api::GetType::kSubKeyGe:
-                    if (it->GetKey() < real_et) {
+                    if (it->GetKey() < et) {
                         jump_out = true;
                     }
                     break;
@@ -1063,6 +1093,7 @@ void TabletImpl::Scan(RpcController* controller,
         ::rtidb::api::ScanResponse* response,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
+    uint64_t start_time = ::baidu::common::timer::get_micros();
     if (request->st() < request->et()) {
         response->set_code(::rtidb::base::ReturnCode::kStLessThanEt);
         response->set_msg("starttime less than endtime");
@@ -1132,6 +1163,15 @@ void TabletImpl::Scan(RpcController* controller,
     delete it;
     response->set_code(code);
     response->set_count(count);
+    uint64_t end_time = ::baidu::common::timer::get_micros();
+    if (start_time + FLAGS_query_slow_log_threshold < end_time) {
+        std::string index_name;
+        if (request->has_idx_name() && request->idx_name().size() > 0) {
+            index_name = request->idx_name();
+        }
+        PDLOG(INFO, "slow log[scan]. key %s index_name %s time %lu. tid %u, pid %u", 
+                request->pk().c_str(), index_name.c_str(), end_time - start_time, request->tid(), request->pid());
+    }
     switch(code) {
         case 0:
             return;
@@ -1412,11 +1452,21 @@ void TabletImpl::Traverse(RpcController* controller,
         response->set_is_finish(is_finish);
     } else {
         uint32_t index = 0;
-        rtidb::storage::RelationalTableTraverseIterator* it =
-            r_table->NewTraverse(index);
+        rtidb::storage::RelationalTableTraverseIterator* it;
+        if (request->has_snapshot_id() && request->snapshot_id() > 0) {
+            it = r_table->NewTraverse(index, request->snapshot_id());
+        } else {
+            it = r_table->NewTraverse(index, 0);
+        }
         if (it == NULL) {
+            delete it;
             response->set_code(::rtidb::base::ReturnCode::kIdxNameNotFound);
             response->set_msg("idx name not found");
+            if (request->has_snapshot_id()) {
+                response->set_code(rtidb::base::ReturnCode::kSnapshotRecycled);
+                response->set_msg("snapshot has been recycled");
+            }
+            return;
         }
         if (request->has_pk()) {
             it->Seek(request->pk());
@@ -1446,8 +1496,9 @@ void TabletImpl::Traverse(RpcController* controller,
         bool is_finish = false;
         if (!it->Valid()) {
             is_finish = true;
+        } else {
+            response->set_snapshot_id(it->GetSeq());
         }
-        delete it;
         uint32_t total_size = scount * 4 + total_block_size;
         std::string* pairs = response->mutable_pairs();
         if (scount <= 0) {
@@ -1462,6 +1513,7 @@ void TabletImpl::Traverse(RpcController* controller,
             offset += (4 + value.size());
         }
         PDLOG(DEBUG, "tid %u pid %u, traverse count %d.", request->tid(), request->pid(), scount);
+        delete it;
         response->set_code(0);
         response->set_count(scount);
         response->set_is_finish(is_finish);
@@ -1593,7 +1645,7 @@ void TabletImpl::BatchQuery(RpcController* controller,
     if (request->query_key_size() > 0) {
         uint32_t index = 0;
         rtidb::storage::RelationalTableTraverseIterator* it =
-            r_table->NewTraverse(index);
+            r_table->NewTraverse(index, 0);
         if (it == NULL) {
             response->set_code(::rtidb::base::ReturnCode::kIdxNameNotFound);
             response->set_msg("idx name not found");
@@ -1621,8 +1673,6 @@ void TabletImpl::BatchQuery(RpcController* controller,
                 break;
             }
         }
-
-        delete it;
         if (total_block_size == 0) {
             PDLOG(DEBUG, "tid %u pid %u, batchQuery not key found.", request->tid(), request->pid());
             response->set_code(rtidb::base::ReturnCode::kOk);
@@ -1646,6 +1696,8 @@ void TabletImpl::BatchQuery(RpcController* controller,
             offset += (4 + value.size());
         }
         PDLOG(DEBUG, "tid %u pid %u, batchQuery count %d.", request->tid(), request->pid(), scount);
+        it->SetFinish(true);
+        delete it;
         response->set_code(rtidb::base::ReturnCode::kOk);
         response->set_is_finish(is_finish);
         response->set_count(scount);
@@ -1806,10 +1858,7 @@ void TabletImpl::AddReplica(RpcController* controller,
         }
         return;
     } while(0);
-    if (task_ptr) {
-        std::lock_guard<std::mutex> lock(mu_);
-        task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
-    }
+    SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kFailed);
 }
 
 void TabletImpl::DelReplica(RpcController* controller, 
@@ -1868,10 +1917,7 @@ void TabletImpl::DelReplica(RpcController* controller,
         }
         return;
     } while (0);
-    if (task_ptr) {
-        std::lock_guard<std::mutex> lock(mu_);
-        task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
-    }
+    SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kFailed);
 }
 
 void TabletImpl::AppendEntries(RpcController* controller,
@@ -2273,19 +2319,12 @@ void TabletImpl::MakeSnapshot(RpcController* controller,
                 break;
             }
         }
-        std::lock_guard<std::mutex> lock(mu_);
-        if (task_ptr) {
-            task_ptr->set_status(::rtidb::api::TaskStatus::kDoing);
-        }    
         snapshot_pool_.AddTask(boost::bind(&TabletImpl::MakeSnapshotInternal, this, tid, pid, offset, task_ptr));
         response->set_code(::rtidb::base::ReturnCode::kOk);
         response->set_msg("ok");
         return;
     } while (0);
-    if (task_ptr) {       
-        std::lock_guard<std::mutex> lock(mu_);
-        task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
-    }
+    SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kFailed);
 }
 
 void TabletImpl::SchedMakeSnapshot() {
@@ -2367,15 +2406,6 @@ void TabletImpl::SendData(RpcController* controller,
     }
     std::string combine_key = std::to_string(tid) + "_" + std::to_string(pid) + "_" + request->file_name();
     std::shared_ptr<FileReceiver> receiver;
-    std::string path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid) + "/";
-    if (request->file_name() != "table_meta.txt") {
-        path.append("snapshot/");
-    }
-    std::string dir_name;
-    if (request->has_dir_name() && request->dir_name().size() > 0) {
-        dir_name = request->dir_name();
-        path.append(request->dir_name() + "/");
-    }
     std::shared_ptr<Table> table;
     if (request->block_id() == 0) {
         table = GetTable(tid, pid);
@@ -2391,6 +2421,17 @@ void TabletImpl::SendData(RpcController* controller,
                 return;
             }
             if (iter == file_receiver_map_.end()) {
+                std::string path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid) + "/";
+                std::string dir_name;
+                if (request->has_dir_name() && request->dir_name().size() > 0) {
+                    dir_name = request->dir_name();
+                    if (dir_name != "index") {
+                        path.append("snapshot/");
+                    }
+                    path.append(request->dir_name() + "/");
+                } else if (request->file_name() != "table_meta.txt") {
+                    path.append("snapshot/");
+                }
                 file_receiver_map_.insert(std::make_pair(combine_key, 
                             std::make_shared<FileReceiver>(request->file_name(), dir_name, path)));
                 iter = file_receiver_map_.find(combine_key);
@@ -2502,9 +2543,6 @@ void TabletImpl::SendSnapshot(RpcController* controller,
             response->set_msg("snapshot is sending");
             break;
         }
-        if (task_ptr) {
-            task_ptr->set_status(::rtidb::api::TaskStatus::kDoing);
-        }    
         sync_snapshot_set_.insert(sync_snapshot_key);
         task_pool_.AddTask(boost::bind(&TabletImpl::SendSnapshotInternal, this, 
                     request->endpoint(), tid, pid, request->remote_tid(), task_ptr));
@@ -2512,10 +2550,7 @@ void TabletImpl::SendSnapshot(RpcController* controller,
         response->set_msg("ok");
         return;
     } while(0);
-    if (task_ptr) {
-        std::lock_guard<std::mutex> lock(mu_);
-        task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
-    }
+    SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kFailed);
 }
 
 void TabletImpl::SendSnapshotInternal(const std::string& endpoint, uint32_t tid, uint32_t pid, 
@@ -2644,10 +2679,7 @@ void TabletImpl::PauseSnapshot(RpcController* controller,
         response->set_msg("ok");
         return;
     } while(0);
-    if (task_ptr) {
-        std::lock_guard<std::mutex> lock(mu_);
-        task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
-    }
+    SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kFailed);
 }
 
 void TabletImpl::RecoverSnapshot(RpcController* controller,
@@ -2697,10 +2729,7 @@ void TabletImpl::RecoverSnapshot(RpcController* controller,
         response->set_msg("ok");
         return;
     } while(0);
-    if (task_ptr) {       
-        std::lock_guard<std::mutex> lock(mu_);
-        task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
-    }
+    SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kFailed);
 }
 
 void TabletImpl::LoadTable(RpcController* controller,
@@ -2785,10 +2814,7 @@ void TabletImpl::LoadTable(RpcController* controller,
         response->set_msg("ok");
         return;
     } while(0);
-    if (task_ptr) {
-        std::lock_guard<std::mutex> lock(mu_);
-        task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
-    }
+    SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kFailed);
 }
 
 int TabletImpl::LoadDiskTableInternal(uint32_t tid, uint32_t pid, 
@@ -2870,6 +2896,9 @@ int TabletImpl::LoadDiskTableInternal(uint32_t tid, uint32_t pid,
             gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid, false));
             io_pool_.DelayTask(FLAGS_binlog_sync_to_disk_interval, boost::bind(&TabletImpl::SchedSyncDisk, this, tid, pid));
             task_pool_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&TabletImpl::SchedDelBinlog, this, tid, pid));
+            if (table_meta.has_table_type() && table_meta.table_type() == rtidb::type::kRelational) {
+                gc_pool_.DelayTask(FLAGS_snapshot_ttl_check_interval * 60 * 1000, boost::bind(&TabletImpl::GcTableSnapshot, this, tid, pid));
+            }
             PDLOG(INFO, "load table success. tid %u pid %u", tid, pid);
             MakeSnapshotInternal(tid, pid, 0, std::shared_ptr<::rtidb::api::TaskInfo>());
             if (task_ptr) {
@@ -2881,10 +2910,7 @@ int TabletImpl::LoadDiskTableInternal(uint32_t tid, uint32_t pid,
             DeleteTableInternal(tid, pid, std::shared_ptr<::rtidb::api::TaskInfo>());
         }
     } while (0);
-    if (task_ptr) {
-        std::lock_guard<std::mutex> lock(mu_);
-        task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
-    }
+    SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kFailed);
     return -1;
 }
 
@@ -2939,11 +2965,8 @@ int TabletImpl::LoadTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::
         } else {
             DeleteTableInternal(tid, pid, std::shared_ptr<::rtidb::api::TaskInfo>());
         }
-    } while (0);    
-    if (task_ptr) {
-        std::lock_guard<std::mutex> lock(mu_);
-        task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
-    }
+    } while (0);
+    SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kFailed);
     return -1;
 }
 
@@ -3058,10 +3081,7 @@ int32_t TabletImpl::DeleteRelationalTableInternal(uint32_t tid, uint32_t pid, st
         code = 0;
     } while (0);
     if (code < 0) {
-        if (task_ptr) {
-            std::lock_guard<std::mutex> lock(mu_);
-            task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
-        }
+        SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kFailed);
         return code;
     }
 
@@ -3148,6 +3168,7 @@ void TabletImpl::CreateTable(RpcController* controller,
             response->set_msg(msg.c_str());
             return;
         }
+        gc_pool_.DelayTask(FLAGS_snapshot_ttl_check_interval * 60 * 1000, boost::bind(&TabletImpl::GcTableSnapshot, this, tid, pid));
     } else if (table_meta->storage_mode() != rtidb::common::kMemory) {
         std::string msg;
         if (CreateDiskTableInternal(table_meta, false, msg) < 0) {
@@ -3460,15 +3481,17 @@ void TabletImpl::CheckFile(RpcController* controller,
     }
     std::string file_name = request->file();
     std::string full_path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid) + "/";
-    if (file_name != "table_meta.txt") {
-        full_path += "snapshot/";
-    }
     if (request->has_dir_name() && request->dir_name().size() > 0) {
+        if (request->dir_name() != "index") {
+            full_path.append("snapshot/");
+        }
         full_path.append(request->dir_name() + "/");
+    } else if (file_name != "table_meta.txt") {
+        full_path.append("snapshot/");
     }
     full_path += file_name;
     uint64_t size = 0;
-    if (::rtidb::base::GetSize(full_path, size) < 0) {
+    if (!::rtidb::base::GetFileSize(full_path, size)) {
         response->set_code(-1);
         response->set_msg("get size failed");
         PDLOG(WARNING, "get size failed. file[%s]", full_path.c_str());
@@ -3814,10 +3837,7 @@ void TabletImpl::DropTable(RpcController* controller,
         response->set_msg("ok");
         return;
     } while (0);
-    if (task_ptr) {       
-        std::lock_guard<std::mutex> lock(mu_);
-        task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
-    }
+    SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kFailed);
 }
 
 void TabletImpl::GetTaskStatus(RpcController* controller,
@@ -3913,6 +3933,14 @@ void TabletImpl::SetConcurrency(RpcController* ctrl,
     }
     response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
+}
+
+void TabletImpl::SetTaskStatus(std::shared_ptr<::rtidb::api::TaskInfo>& task_ptr, ::rtidb::api::TaskStatus status) {
+    if (!task_ptr) {
+        return;
+    }
+    std::lock_guard<std::mutex> lock(mu_);
+    task_ptr->set_status(status);
 }
 
 int TabletImpl::AddOPTask(const ::rtidb::api::TaskInfo& task_info, ::rtidb::api::TaskType task_type,
@@ -4016,6 +4044,14 @@ void TabletImpl::GcTable(uint32_t tid, uint32_t pid, bool execute_once) {
     }
 }
 
+void TabletImpl::GcTableSnapshot(uint32_t tid, uint32_t pid) {
+    std::shared_ptr<RelationalTable> table = GetRelationalTable(tid, pid);
+    if (table) {
+        table->TTLSnapshot();
+        gc_pool_.DelayTask(FLAGS_snapshot_ttl_check_interval * 60 * 1000, boost::bind(&TabletImpl::GcTableSnapshot, this, tid, pid));
+    }
+}
+
 std::shared_ptr<Snapshot> TabletImpl::GetSnapshot(uint32_t tid, uint32_t pid) {
     std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
     return GetSnapshotUnLock(tid, pid);
@@ -4073,6 +4109,11 @@ std::shared_ptr<RelationalTable> TabletImpl::GetRelationalTableUnLock(uint32_t t
         }
     }
     return std::shared_ptr<RelationalTable>();
+}
+
+std::shared_ptr<RelationalTable> TabletImpl::GetRelationalTable(uint32_t tid, uint32_t pid) {
+    std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+    return  GetRelationalTableUnLock(tid, pid);
 }
 
 void TabletImpl::ShowMemPool(RpcController* controller,
@@ -4396,14 +4437,132 @@ void TabletImpl::DeleteIndex(RpcController* controller,
     response->set_msg("ok");
 }
 
+void TabletImpl::SendIndexData(RpcController* controller,
+        const ::rtidb::api::SendIndexDataRequest* request,
+        ::rtidb::api::GeneralResponse* response,
+        Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
+    if (request->has_task_info() && request->task_info().IsInitialized()) {
+        if (AddOPTask(request->task_info(), ::rtidb::api::TaskType::kSendIndexData, task_ptr) < 0) {
+            response->set_code(-1);
+            response->set_msg("add task failed");
+            return;
+        }
+    }
+    do {
+        std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
+        if (!table) {
+            PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
+            response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
+            response->set_msg("table is not exist");
+            break;
+        }
+        MemTable* mem_table = dynamic_cast<MemTable*>(table.get());
+        if (mem_table == NULL) {
+            PDLOG(WARNING, "table is not memtable. tid %u, pid %u", request->tid(), request->pid());
+            response->set_code(::rtidb::base::ReturnCode::kTableTypeMismatch);
+            response->set_msg("table is not memtable");
+            break;
+        }
+        std::map<uint32_t, std::string> pid_endpoint_map;
+        for (int idx = 0; idx < request->pairs_size(); idx++) {
+            pid_endpoint_map.insert(std::make_pair(request->pairs(idx).pid(), request->pairs(idx).endpoint()));
+        }
+        if (pid_endpoint_map.empty()) {
+            PDLOG(WARNING, "pid and endpoint pair is empty. tid %u, pid %u", request->tid(), request->pid());
+            response->set_code(::rtidb::base::ReturnCode::kInvalidParameter);
+            response->set_msg("pid and endpoint pair is empty");
+            break;
+        }
+        task_pool_.AddTask(boost::bind(&TabletImpl::SendIndexDataInternal, this, table, pid_endpoint_map, task_ptr));
+        response->set_code(::rtidb::base::ReturnCode::kOk);
+        response->set_msg("ok");
+    } while (0);
+    SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kFailed);
+}
+
+void TabletImpl::SendIndexDataInternal(std::shared_ptr<::rtidb::storage::Table> table, 
+    const std::map<uint32_t, std::string>& pid_endpoint_map, 
+    std::shared_ptr<::rtidb::api::TaskInfo> task_ptr) {
+    uint32_t tid = table->GetId();
+    uint32_t pid = table->GetPid();
+    std::string db_root_path;
+    if (!ChooseDBRootPath(tid, pid, table->GetStorageMode(), db_root_path)) {
+        PDLOG(WARNING, "fail to find db root path for table tid %u pid %u", tid, pid);
+        SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kFailed);
+        return;
+    }
+    std::string index_path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid) + "/index/";
+    for (const auto& kv : pid_endpoint_map) {
+        if (kv.first == pid) {
+            continue;
+        }
+        std::string index_file_name = std::to_string(pid) + "_" + std::to_string(kv.first) + "_index.data";
+        std::string src_file = index_path + index_file_name;
+        if (!::rtidb::base::IsExists(src_file)) {
+            PDLOG(WARNING, "file %s is not exist. tid %u pid %u", src_file.c_str(), tid, pid);
+            continue;
+        }
+        if (kv.second == FLAGS_endpoint) {
+            std::shared_ptr<Table> des_table = GetTable(tid, kv.first);
+            if (!table) {
+                PDLOG(WARNING, "table is not exist. tid %u pid %u", tid, kv.first);
+                SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kFailed);
+                return;
+            }
+            std::string des_db_root_path;
+            if (!ChooseDBRootPath(tid, kv.first, table->GetStorageMode(), des_db_root_path)) {
+                PDLOG(WARNING, "fail to find db root path for table tid %u pid %u", tid, kv.first);
+                SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kFailed);
+                return;
+            }
+            std::string des_index_path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(kv.first) + "/index/";
+            if (!::rtidb::base::IsExists(des_index_path) && !::rtidb::base::MkdirRecur(des_index_path)) {
+                PDLOG(WARNING, "mkdir failed. tid %u pid %u path %s", tid, pid, des_index_path.c_str());
+                SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kFailed);
+                return; 
+            }
+            if (db_root_path == des_db_root_path) {
+                if (!::rtidb::base::Rename(src_file, des_index_path + index_file_name)) {
+                    PDLOG(WARNING, "rename dir failed. tid %u pid %u file %s", tid, pid, index_file_name.c_str());
+                    SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kFailed);
+                    return; 
+                }
+                PDLOG(INFO, "rename file %s success. tid %u pid %u", index_file_name.c_str(), tid, pid);
+            } else {
+                if (!::rtidb::base::CopyFile(src_file, des_index_path + index_file_name)) {
+                    PDLOG(WARNING, "copy failed. tid %u pid %u file %s", tid, pid, index_file_name.c_str());
+                    SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kFailed);
+                    return; 
+                }
+                PDLOG(INFO, "copy file %s success. tid %u pid %u", index_file_name.c_str(), tid, pid);
+            }
+        } else {
+            FileSender sender(tid, pid, table->GetStorageMode(), kv.second);
+            if (!sender.Init()) {
+                PDLOG(WARNING, "Init FileSender failed. tid[%u] pid[%u] endpoint[%s]", 
+                        tid, pid, kv.second.c_str());
+                SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kFailed);
+                return;
+            }
+            if (sender.SendFile(index_file_name, std::string("index"), index_path + index_file_name) < 0) {
+                PDLOG(WARNING, "send file %s failed. tid[%u] pid[%u]", 
+                        index_file_name.c_str(), tid, pid);
+                SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kFailed);
+                return;
+            }
+            PDLOG(INFO, "send file %s to endpoint %s success. tid %u pid %u", 
+                    index_file_name.c_str(), kv.second.c_str(), tid, pid);
+        }
+    }
+}
+
 void TabletImpl::DumpIndexData(RpcController* controller,
         const ::rtidb::api::DumpIndexDataRequest* request,
         ::rtidb::api::GeneralResponse* response,
         Closure* done) {
-    std::shared_ptr<Table> table;
-    std::shared_ptr<Snapshot> snapshot;
-    std::shared_ptr<LogReplicator> replicator;
-    std::string db_root_path;
+    brpc::ClosureGuard done_guard(done);
     std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
     if (request->has_task_info() && request->task_info().IsInitialized()) {
         if (AddOPTask(request->task_info(), ::rtidb::api::TaskType::kDumpIndexData, task_ptr) < 0) {
@@ -4412,79 +4571,88 @@ void TabletImpl::DumpIndexData(RpcController* controller,
             return;
         }
     }
-    if (task_ptr) {
-        task_ptr->set_status(::rtidb::api::TaskStatus::kDoing);
-    }
-    {
-        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-        table = GetTableUnLock(request->tid(), request->pid());
-        if (!table) {
-            PDLOG(WARNING, "table is not exist. tid[%u] pid[%u]", request->tid(), request->pid());
-            response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
-            response->set_msg("table is not exist");
-            return;
+    uint32_t tid = request->tid();
+    uint32_t pid = request->pid();
+    do {
+        std::shared_ptr<Table> table;
+        std::shared_ptr<Snapshot> snapshot;
+        std::shared_ptr<LogReplicator> replicator;
+        {
+            std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+            table = GetTableUnLock(tid, pid);
+            if (!table) {
+                PDLOG(WARNING, "table is not exist. tid[%u] pid[%u]", tid, pid);
+                response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
+                response->set_msg("table is not exist");
+                break;
+            }
+            if (table->GetStorageMode() != ::rtidb::common::kMemory) {
+                response->set_code(::rtidb::base::ReturnCode::kOperatorNotSupport);
+                response->set_msg("only support mem_table");
+                break;
+            }
+            if (table->GetTableStat() != ::rtidb::storage::kNormal) {
+                PDLOG(WARNING, "table state is %d, cannot dump index data. %u, pid %u", 
+                        table->GetTableStat(), tid, pid);
+                response->set_code(::rtidb::base::ReturnCode::kTableStatusIsNotKnormal);
+                response->set_msg("table status is not kNormal");
+                break;
+            }
+            snapshot = GetSnapshotUnLock(tid, pid);
+            if (!snapshot) {
+                PDLOG(WARNING, "snapshot is not exist. tid[%u] pid[%u]", tid, pid);
+                response->set_code(::rtidb::base::ReturnCode::kSnapshotIsNotExist);
+                response->set_msg("table snapshot is not exist");
+                break;
+            }
+            replicator = GetReplicatorUnLock(tid, pid);
+            if (!replicator) {
+                PDLOG(WARNING, "fail to find table tid %u pid %u leader's log replicator", tid, pid);
+                response->set_code(::rtidb::base::ReturnCode::kReplicatorIsNotExist);
+                response->set_msg("replicator is not exist");
+                break;
+            }
         }
-        if (table->GetStorageMode() != ::rtidb::common::kMemory) {
-            response->set_code(::rtidb::base::ReturnCode::kOperatorNotSupport);
-            response->set_msg("only support mem_table");
-            return;
-        }
-        if (table->GetTableStat() != ::rtidb::storage::kNormal) {
-            PDLOG(WARNING, "table state is %d, cannot dump index data. %u, pid %u", 
-                    table->GetTableStat(), request->tid(), request->pid());
-            response->set_code(::rtidb::base::ReturnCode::kTableStatusIsNotKnormal);
-            response->set_msg("table status is not kNormal");
-            return;
-        }
-        snapshot = GetSnapshotUnLock(request->tid(), request->pid());
-        if (!snapshot) {
-            PDLOG(WARNING, "snapshot is not exist. tid[%u] pid[%u]", request->tid(), request->pid());
-            response->set_code(::rtidb::base::ReturnCode::kSnapshotIsNotExist);
-            response->set_msg("table snapshot is not exist");
-            return;
-        }
-        replicator = GetReplicatorUnLock(request->tid(), request->pid());
-        if (!replicator) {
-            PDLOG(WARNING, "fail to find table tid %u pid %u leader's log replicator", 
-                request->tid(),request->pid());
-            response->set_code(::rtidb::base::ReturnCode::kReplicatorIsNotExist);
-            response->set_msg("replicator is not exist");
-            return;
-        }
-        bool ok = ChooseDBRootPath(request->tid(), request->pid(), table->GetStorageMode(), db_root_path);
+        std::string db_root_path;
+        bool ok = ChooseDBRootPath(tid, pid, table->GetStorageMode(), db_root_path);
         if (!ok) {
-            PDLOG(WARNING, "fail to find db root path for table tid %u pid %u", request->tid(), request->pid());
+            PDLOG(WARNING, "fail to find db root path for table tid %u pid %u", tid, pid);
             response->set_code(::rtidb::base::ReturnCode::kFailToGetDbRootPath);
             response->set_msg("fail to get db root path");
-            return;
+            break;
         }
-    }
-    std::string index_path = db_root_path + "/" + std::to_string(request->tid()) + "_" + std::to_string(request->pid()) + "/index/";
-    if (!::rtidb::base::MkdirRecur(index_path)) {
-        PDLOG(WARNING, "fail to create path %s", index_path.c_str());
-        response->set_code(::rtidb::base::ReturnCode::kFailToCreateFile);
-        response->set_msg("fail to create path");
+        std::string index_path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid) + "/index/";
+        if (!::rtidb::base::MkdirRecur(index_path)) {
+            PDLOG(WARNING, "fail to create path %s. tid %u pid %u", 
+                    index_path.c_str(), tid, pid);
+            response->set_code(::rtidb::base::ReturnCode::kFailToCreateFile);
+            response->set_msg("fail to create path");
+            break;
+        }
+        std::string binlog_path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid) + "/binlog/";
+        std::vector<::rtidb::log::WriteHandle*> whs;
+        for (uint32_t i = 0; i < request->partition_num(); i++) {
+            std::string index_file_name = std::to_string(pid) + "_" + std::to_string(i) + "_index.data";
+            std::string index_data_path = index_path + index_file_name;
+            FILE* fd = fopen(index_data_path.c_str(), "wb+");
+            if (fd == NULL) {
+                PDLOG(WARNING, "fail to create file %s. tid %u pid %u", 
+                        index_data_path.c_str(), tid, pid);
+                response->set_code(::rtidb::base::ReturnCode::kFailToGetDbRootPath);
+                response->set_msg("fail to get db root path");
+                break;
+            }
+            ::rtidb::log::WriteHandle* wh = new ::rtidb::log::WriteHandle(index_file_name, fd);
+            whs.push_back(wh);
+        }
+        std::shared_ptr<::rtidb::storage::MemTableSnapshot> memtable_snapshot = std::static_pointer_cast<::rtidb::storage::MemTableSnapshot>(snapshot);
+        task_pool_.AddTask(boost::bind(&TabletImpl::DumpIndexDataInternal, this, table, memtable_snapshot, replicator, binlog_path, request->column_key(), request->idx(), whs, task_ptr));
+        response->set_code(::rtidb::base::ReturnCode::kOk);
+        response->set_msg("ok");
+        PDLOG(INFO, "dump index tid[%u] pid[%u]", tid, pid);
         return;
-    }
-    std::string binlog_path = db_root_path + "/" + std::to_string(request->tid()) + "_" + std::to_string(request->pid()) + "/binlog/";
-    std::vector<::rtidb::log::WriteHandle*> whs;
-    for (int i=0;i<request->partition_num();++i) {
-        std::string index_file_name = std::to_string(request->pid()) + "_" + std::to_string(i) + "_index.data";
-        std::string index_data_path = index_path + index_file_name;
-        FILE* fd = fopen(index_data_path.c_str(), "wb+");
-        if (fd == NULL) {
-            PDLOG(WARNING, "fail to create file %s", index_data_path.c_str());
-            response->set_code(::rtidb::base::ReturnCode::kFailToGetDbRootPath);
-            response->set_msg("fail to get db root path");
-            return;
-        }
-        ::rtidb::log::WriteHandle* wh = new ::rtidb::log::WriteHandle(index_file_name, fd);
-        whs.push_back(wh);
-    }
-    std::shared_ptr<::rtidb::storage::MemTableSnapshot> memtable_snapshot = std::static_pointer_cast<::rtidb::storage::MemTableSnapshot>(snapshot);
-    task_pool_.AddTask(boost::bind(&TabletImpl::DumpIndexDataInternal, this, table, memtable_snapshot, replicator, binlog_path, request->column_key(), request->idx(), whs, task_ptr));
-    response->set_code(::rtidb::base::ReturnCode::kOk);
-    response->set_msg("ok");
+    } while (0);
+    SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kFailed);
 }
 
 void TabletImpl::DumpIndexDataInternal(std::shared_ptr<::rtidb::storage::Table> table, 
@@ -4495,21 +4663,202 @@ void TabletImpl::DumpIndexDataInternal(std::shared_ptr<::rtidb::storage::Table> 
     uint64_t offset = 0;
     if (memtable_snapshot->DumpSnapshotIndexData(table, column_key, idx, whs, offset) && binlog.DumpBinlogIndexData(table, column_key, idx, whs, offset)) {
         PDLOG(INFO, "dump index on table tid[%u] pid[%u] succeed", table->GetId(), table->GetPid());
-        if (task) {
-            std::lock_guard<std::mutex> lock(mu_);
-            task->set_status(::rtidb::api::kDone);
-        }
+        SetTaskStatus(task, ::rtidb::api::kDone);
     } else {
         PDLOG(WARNING, "fail to dump index on table tid[%u] pid[%u]", table->GetId(), table->GetPid());
-        if (task) {
-            std::lock_guard<std::mutex> lock(mu_);
-            task->set_status(::rtidb::api::kFailed);
-        }
+        SetTaskStatus(task, ::rtidb::api::kFailed);
     }
     for (auto& wh : whs) {
         wh->EndLog();
         delete wh;
         wh = NULL;
+    }
+}
+
+void TabletImpl::LoadIndexData(RpcController* controller,
+        const ::rtidb::api::LoadIndexDataRequest* request,
+        ::rtidb::api::GeneralResponse* response,
+        Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    std::shared_ptr<Table> table;
+    std::shared_ptr<LogReplicator> replicator;
+    std::string db_root_path;
+    std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
+    if (request->has_task_info() && request->task_info().IsInitialized()) {
+        if (AddOPTask(request->task_info(), ::rtidb::api::TaskType::kLoadIndexData, task_ptr) < 0) {
+            response->set_code(-1);
+            response->set_msg("add task failed");
+            return;
+        }
+    }
+    do {
+        {
+            std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+            table = GetTableUnLock(request->tid(), request->pid());
+            if (!table) {
+                PDLOG(WARNING, "table is not exist. tid[%u] pid[%u]", request->tid(), request->pid());
+                response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
+                response->set_msg("table is not exist");
+                break;
+            }
+            if (table->GetStorageMode() != ::rtidb::common::kMemory) {
+                response->set_code(::rtidb::base::ReturnCode::kOperatorNotSupport);
+                response->set_msg("only support mem_table");
+                break;
+            }
+            if (table->GetTableStat() != ::rtidb::storage::kNormal) {
+                PDLOG(WARNING, "table state is %d, cannot load index data. %u, pid %u", 
+                        table->GetTableStat(), request->tid(), request->pid());
+                response->set_code(::rtidb::base::ReturnCode::kTableStatusIsNotKnormal);
+                response->set_msg("table status is not kNormal");
+                break;
+            }
+            replicator = GetReplicatorUnLock(request->tid(), request->pid());
+            if (!replicator) {
+                PDLOG(WARNING, "fail to find table tid %u pid %u leader's log replicator", 
+                    request->tid(),request->pid());
+                response->set_code(::rtidb::base::ReturnCode::kReplicatorIsNotExist);
+                response->set_msg("replicator is not exist");
+                break;
+            }
+        }
+        task_pool_.AddTask(boost::bind(&TabletImpl::LoadIndexDataInternal, this, table, replicator, request->partition_num(), task_ptr));
+        response->set_code(::rtidb::base::ReturnCode::kOk);
+        response->set_msg("ok");
+        return;
+    } while (0);
+    SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kFailed);
+}
+
+void TabletImpl::LoadIndexDataInternal(std::shared_ptr<::rtidb::storage::Table> table, 
+        std::shared_ptr<::rtidb::replica::LogReplicator> replicator, uint32_t partition_num, 
+        std::shared_ptr<::rtidb::api::TaskInfo> task) {
+    std::string db_root_path;
+    uint32_t tid = table->GetId();
+    uint32_t pid = table->GetPid();
+    bool ok = ChooseDBRootPath(tid, pid, table->GetStorageMode(), db_root_path);
+    if (!ok) {
+        PDLOG(WARNING, "fail to find db root path for table tid %u pid %u", tid, pid);
+        SetTaskStatus(task, ::rtidb::api::TaskStatus::kFailed);
+        return;
+    }
+    std::string binlog_path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid) + "/binlog/";
+    std::string index_path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid) + "/index/";
+    for (uint32_t i = 0; i < partition_num; ++i) {
+        std::string index_file_path = index_path = index_path + std::to_string(i) + "_" + std::to_string(pid) + "_index.data";
+        FILE* fd = fopen(index_file_path.c_str(), "rb");
+        if (fd == NULL) {
+            PDLOG(WARNING, "fail to open index file %s, tid %u, pid %u", index_file_path.c_str(), tid, pid);
+            continue;
+        }
+        ::rtidb::log::SequentialFile* seq_file = ::rtidb::log::NewSeqFile(index_file_path, fd);
+        ::rtidb::log::Reader reader(seq_file, NULL, false, 0);
+        std::string buffer;
+        std::atomic<uint64_t> succ_cnt, failed_cnt;
+        succ_cnt = failed_cnt = 0;
+        while (true) {
+            buffer.clear();
+            ::rtidb::base::Slice record;
+            ::rtidb::base::Status status = reader.ReadRecord(&record, &buffer);
+            if (status.IsWaitRecord() || status.IsEof()) {
+                PDLOG(INFO, "read path %s for table tid %u pid %u completed, succ_cnt %lu, failed_cnt %lu",
+                      index_file_path.c_str(), tid, pid, succ_cnt.load(std::memory_order_relaxed), failed_cnt.load(std::memory_order_relaxed));
+                break;
+            }
+            if (!status.ok()) {
+                PDLOG(WARNING, "fail to read record for tid %u, pid %u with error %s", tid, pid, status.ToString().c_str());
+                failed_cnt.fetch_add(1, std::memory_order_relaxed);
+                continue;
+            }
+            ::rtidb::api::LogEntry entry;
+            entry.ParseFromString(std::string(record.data(), record.size()));
+            table->Put(entry);
+            replicator->AppendEntry(entry);
+        }
+        if (failed_cnt.load(std::memory_order_release)) {
+            PDLOG(WARNING, "fail to load index. tid %u pid %u", tid, pid);
+            SetTaskStatus(task, ::rtidb::api::TaskStatus::kFailed);
+            return;
+        }
+    }
+    PDLOG(INFO, "load index success. tid %u pid %u", tid, pid);
+    SetTaskStatus(task, ::rtidb::api::TaskStatus::kDone);
+}
+
+void TabletImpl::ExtractIndexData(RpcController* controller,
+        const ::rtidb::api::ExtractIndexDataRequest* request,
+        ::rtidb::api::GeneralResponse* response,
+        Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
+    if (request->has_task_info() && request->task_info().IsInitialized()) {
+        if (AddOPTask(request->task_info(), ::rtidb::api::TaskType::kExtractIndexData, task_ptr) < 0) {
+            response->set_code(-1);
+            response->set_msg("add task failed");
+            return;
+        }
+    }
+    do {
+        uint32_t tid = request->tid();
+        uint32_t pid = request->pid();
+        std::shared_ptr<Table> table;
+        std::shared_ptr<Snapshot> snapshot;
+        {
+            std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+            table = GetTableUnLock(tid, pid);
+            if (!table) {
+                PDLOG(WARNING, "table is not exist. tid %u pid %u", tid, pid);
+                response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
+                response->set_msg("table is not exist");
+                break;
+            }
+            if (table->GetStorageMode() != ::rtidb::common::kMemory) {
+                response->set_code(::rtidb::base::ReturnCode::kOperatorNotSupport);
+                PDLOG(WARNING, "only support mem_table. tid %u pid %u", tid, pid);
+                response->set_msg("only support mem_table");
+                break;
+            }
+            if (table->GetTableStat() != ::rtidb::storage::kNormal) {
+                PDLOG(WARNING, "table state is %d, cannot extract index data. tid %u, pid %u", 
+                        table->GetTableStat(), tid, pid);
+                response->set_code(::rtidb::base::ReturnCode::kTableStatusIsNotKnormal);
+                response->set_msg("table status is not kNormal");
+                break;
+            }
+            snapshot = GetSnapshotUnLock(tid, pid);
+            if (!snapshot) {
+                PDLOG(WARNING, "snapshot is not exist. tid %u pid %u", tid, pid);
+                response->set_code(::rtidb::base::ReturnCode::kSnapshotIsNotExist);
+                response->set_msg("table snapshot is not exist");
+                break;
+            }
+        }
+        std::shared_ptr<::rtidb::storage::MemTableSnapshot> memtable_snapshot = std::static_pointer_cast<::rtidb::storage::MemTableSnapshot>(snapshot);
+        task_pool_.AddTask(boost::bind(&TabletImpl::ExtractIndexDataInternal, this, table, memtable_snapshot, request->column_key(), request->idx(), request->partition_num(), task_ptr));
+        response->set_code(::rtidb::base::ReturnCode::kOk);
+        response->set_msg("ok");
+        return;
+    } while (0);
+    SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kFailed);
+}
+
+void TabletImpl::ExtractIndexDataInternal(std::shared_ptr<::rtidb::storage::Table> table,
+        std::shared_ptr<::rtidb::storage::MemTableSnapshot> memtable_snapshot,
+        ::rtidb::common::ColumnKey& column_key, uint32_t idx,
+        uint32_t partition_num, std::shared_ptr<::rtidb::api::TaskInfo> task) {
+    uint64_t offset = 0;
+    uint32_t tid = table->GetId();
+    uint32_t pid = table->GetPid();
+    if (memtable_snapshot->ExtractIndexData(table, column_key, idx, partition_num, offset)) {
+        PDLOG(INFO, "extract index success. tid %u pid %u", tid, pid);
+        std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
+        if (replicator) {
+            replicator->SetSnapshotLogPartIndex(offset);
+        }
+        SetTaskStatus(task, ::rtidb::api::TaskStatus::kDone);
+    } else {
+        PDLOG(WARNING, "fail to extract index. tid %u pid %u", tid, pid);
+        SetTaskStatus(task, ::rtidb::api::TaskStatus::kFailed);
     }
 }
 
@@ -4526,6 +4875,13 @@ void TabletImpl::AddIndex(RpcController* controller,
         return;
     }
     MemTable* mem_table = dynamic_cast<MemTable*>(table.get());
+    if (mem_table == NULL) {
+        PDLOG(WARNING, "table is not memtable. tid %u, pid %u", 
+                request->column_key().index_name(), request->tid(), request->pid());
+        response->set_code(::rtidb::base::ReturnCode::kTableTypeMismatch);
+        response->set_msg("table is not memtable");
+        return;
+    }
     if (!mem_table->AddIndex(request->column_key())) {
         PDLOG(WARNING, "add index %s failed. tid %u, pid %u", 
                 request->column_key().index_name(), request->tid(), request->pid());
