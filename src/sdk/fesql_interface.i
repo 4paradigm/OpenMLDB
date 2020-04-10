@@ -1,4 +1,4 @@
-%module fesql
+%module fesql_interface
 
 %include std_string.i
 %include std_shared_ptr.i
@@ -6,6 +6,8 @@
 namespace std {
     %template(StringVector) vector<string>;
 }
+
+%typemap(javaimports) SWIGTYPE "import com._4paradigm.*;"
 
 %shared_ptr(fesql::sdk::DBMSSdk);
 %shared_ptr(fesql::sdk::TabletSdk);
@@ -43,7 +45,7 @@ using fesql::base::Slice;
 using fesql::node::PlanType;
 %}
 
-%nspace;
+// %nspace;
 
 %ignore MakeExprWithTable; // TODO: avoid return object with share pointer
 %ignore WindowIterator;
