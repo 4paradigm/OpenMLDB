@@ -56,9 +56,9 @@ TEST_F(UDFBMCaseTest, TabletTableIterate_TEST) {
 }
 
 TEST_F(UDFBMCaseTest, TabletWindowIterate_TEST) {
-    TabletWindowIterate(nullptr, TEST, 10L);
+//    TabletWindowIterate(nullptr, TEST, 10L);
     TabletWindowIterate(nullptr, TEST, 100L);
-    TabletWindowIterate(nullptr, TEST, 1000L);
+//    TabletWindowIterate(nullptr, TEST, 1000L);
 }
 
 TEST_F(UDFBMCaseTest, MemSegmentIterate_TEST) {

@@ -69,7 +69,7 @@ static void EngineRequestMode(const std::string sql, MODE mode,
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
     // prepare data into table
-    auto catalog = Data_WindowCase1(size);
+    auto catalog = BuildOnePkTableStorage(size);
     Engine engine(catalog);
     RequestRunSession session;
     base::Status query_status;
@@ -111,7 +111,7 @@ static void EngineBatchMode(const std::string sql, MODE mode, int64_t limit_cnt,
     // prepare data into table
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
-    auto catalog = Data_WindowCase1(size);
+    auto catalog = BuildOnePkTableStorage(size);
     Engine engine(catalog);
     BatchRunSession session;
     base::Status query_status;

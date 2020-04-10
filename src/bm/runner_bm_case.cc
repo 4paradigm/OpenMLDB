@@ -47,7 +47,7 @@ static void RequestUnionRunnerCase(const std::string& sql, int runner_id,
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
     // prepare data into table
-    auto catalog = Data_WindowCase1(size);
+    auto catalog = BuildOnePkTableStorage(size);
     Engine engine(catalog);
     RequestRunSession session;
     base::Status status;
@@ -104,7 +104,7 @@ void IndexSeekRunnerCase(const std::string sql, int runner_id,
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
     // prepare data into table
-    auto catalog = Data_WindowCase1(size);
+    auto catalog = BuildOnePkTableStorage(size);
     Engine engine(catalog);
     RequestRunSession session;
     base::Status status;
@@ -147,7 +147,7 @@ void AggRunnerCase(const std::string sql, int runner_id,
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
     // prepare data into table
-    auto catalog = Data_WindowCase1(size);
+    auto catalog = BuildOnePkTableStorage(size);
     Engine engine(catalog);
     RequestRunSession session;
     base::Status status;

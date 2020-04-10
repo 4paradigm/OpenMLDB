@@ -59,7 +59,6 @@ class RunSession {
         return compile_info_->sql_ctx.runner;
     }
 
-
     virtual const bool IsBatchRun() const = 0;
 
  protected:
@@ -79,7 +78,7 @@ class BatchRunSession : public RunSession {
         : RunSession(), mini_batch_(mini_batch) {}
     ~BatchRunSession() {}
     virtual int32_t Run(std::vector<int8_t*>& buf, uint64_t limit);  // NOLINT
-    virtual std::shared_ptr<TableHandler> Run();  // NOLINT
+    virtual std::shared_ptr<TableHandler> Run();                     // NOLINT
     const bool IsBatchRun() const override { return true; }
 
  private:
@@ -108,11 +107,10 @@ class Engine {
     bool Get(const std::string& sql, const std::string& db,
              RunSession& session,    // NOLINT
              base::Status& status);  // NOLINT
-
+ private:
     std::shared_ptr<CompileInfo> GetCacheLocked(const std::string& db,
                                                 const std::string& sql);
 
- private:
     const std::shared_ptr<Catalog> cl_;
     base::SpinMutex mu_;
     EngineCache cache_;
