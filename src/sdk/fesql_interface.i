@@ -1,8 +1,12 @@
 %module fesql_interface
 
+#ifdef SWIGJAVA
 #define SWIG_SHARED_PTR_TYPEMAPS(CONST, TYPE...) SWIG_SHARED_PTR_TYPEMAPS_IMPLEMENTATION(public, public, CONST, TYPE)
+#endif
+
 SWIG_JAVABODY_TYPEWRAPPER(public, public, public, SWIGTYPE)
 SWIG_JAVABODY_PROXY(public, public, SWIGTYPE)
+
 
 
 %include std_string.i
