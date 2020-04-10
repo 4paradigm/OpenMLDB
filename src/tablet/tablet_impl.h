@@ -359,9 +359,9 @@ private:
         const std::map<uint32_t, std::string>& pid_endpoint_map,
         std::shared_ptr<::rtidb::api::TaskInfo> task);
 
-    void LoadIndexDataInternal(std::shared_ptr<::rtidb::storage::Table> table, 
-        std::shared_ptr<::rtidb::replica::LogReplicator> replicator, 
-        uint32_t partition_num, std::shared_ptr<::rtidb::api::TaskInfo> task);
+    void LoadIndexDataInternal(uint32_t tid, uint32_t pid, uint32_t cur_pid,
+        uint32_t partition_num, uint64_t last_time,
+        std::shared_ptr<::rtidb::api::TaskInfo> task);
 
     void ExtractIndexDataInternal(std::shared_ptr<::rtidb::storage::Table> table,
         std::shared_ptr<::rtidb::storage::MemTableSnapshot> memtable_snapshot,
@@ -395,6 +395,9 @@ private:
 
     void SetTaskStatus(std::shared_ptr<::rtidb::api::TaskInfo>& task_ptr, 
             ::rtidb::api::TaskStatus status);
+
+    int GetTaskStatus(std::shared_ptr<::rtidb::api::TaskInfo>& task_ptr,
+            ::rtidb::api::TaskStatus* status);
 
     std::shared_ptr<::rtidb::api::TaskInfo> FindTask(
             uint64_t op_id, ::rtidb::api::TaskType task_type);
