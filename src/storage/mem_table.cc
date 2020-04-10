@@ -683,13 +683,13 @@ bool MemTable::GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) {
 
 bool MemTable::AddIndex(const ::rtidb::common::ColumnKey& column_key) {
     std::shared_ptr<IndexDef> index_def = GetIndex(column_key.index_name());
+    bool exist = index_def != NULL;
     if (index_def) {
         if (index_def->GetStatus() != IndexStatus::kDeleted) {
             PDLOG(WARNING, "index %s is exist. tid %u pid %u", 
                     column_key.index_name().c_str(), id_, pid_);
             return false;
         }
-        index_def->SetStatus(IndexStatus::kReady);
     } else {
         index_def = std::make_shared<IndexDef>(column_key.index_name(), table_index_.Size());
         std::vector<uint32_t> ts_vec;
@@ -708,10 +708,6 @@ bool MemTable::AddIndex(const ::rtidb::common::ColumnKey& column_key) {
             ts_vec.push_back(ts_iter->second);
         }
         index_def->SetTsColumn(ts_vec);
-        if (table_index_.AddIndex(index_def) < 0) {
-            PDLOG(WARNING, "add index failed. tid %u pid %u", id_, pid_);
-            return false;
-        }
     }
     uint32_t index_id = index_def->GetId();
     const std::vector<uint32_t> ts_vec =  index_def->GetTsColumn();
@@ -733,6 +729,14 @@ bool MemTable::AddIndex(const ::rtidb::common::ColumnKey& column_key) {
         delete segments_[index_id];
     }
     segments_[index_id] = seg_arr;
+    if (exist) {
+        index_def->SetStatus(IndexStatus::kReady);
+    } else {
+        if (table_index_.AddIndex(index_def) < 0) {
+            PDLOG(WARNING, "add index failed. tid %u pid %u", id_, pid_);
+            return false;
+        }
+    }
     return true;
 }
 
