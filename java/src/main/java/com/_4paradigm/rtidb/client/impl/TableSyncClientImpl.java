@@ -9,6 +9,7 @@ import com._4paradigm.rtidb.client.ha.RTIDBClient;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.schema.*;
+import com._4paradigm.rtidb.client.type.DataType;
 import com._4paradigm.rtidb.ns.NS;
 import com._4paradigm.rtidb.tablet.Tablet;
 import com._4paradigm.rtidb.utils.Compress;
@@ -644,17 +645,48 @@ public class TableSyncClientImpl implements TableSyncClient {
             throw new TabletException("no table with name " + tableName);
         }
         String idxName = "";
-        String idxValue = "";
+        Object idxValue = "";
         Iterator<Map.Entry<String, Object>> iter = conditionColumns.entrySet().iterator();
         while (iter.hasNext()) {
             Map.Entry<String, Object> entry = iter.next();
             idxName = entry.getKey();
-            idxValue = entry.getValue().toString();
+            idxValue = entry.getValue();
             break;
         }
-        idxValue = validateKey(idxValue);
-        int pid = TableClientCommon.computePidByKey(idxValue, th.getPartitions().length);
-        return delete(th.getTableInfo().getTid(), pid, idxValue, idxName, th);
+//        idxValue = validateKey(idxValue);
+        int pid = TableClientCommon.computePidByKey(String.valueOf(idxValue), th.getPartitions().length);
+        return deleteRelational(th.getTableInfo().getTid(), pid, idxValue, idxName, th);
+    }
+
+    private boolean deleteRelational(int tid, int pid, Object key, String idxName, TableHandler th) throws TimeoutException, TabletException {
+        PartitionHandler ph = th.getHandler(pid);
+        TabletServer ts = ph.getLeader();
+        if (ts == null) {
+            throw new TabletException("Cannot find available tabletServer with tid " + tid);
+        }
+        Tablet.DeleteRequest.Builder builder = Tablet.DeleteRequest.newBuilder();
+        builder.setTid(tid);
+        builder.setPid(pid);
+        {
+            Map<String, DataType> nameTypeMap = th.getNameTypeMap();
+            if (!nameTypeMap.containsKey(idxName)) {
+                throw new TabletException("index name not found with tid " + tid);
+            }
+            DataType dataType = nameTypeMap.get(idxName);
+            ByteBuffer buffer = SingleColumnCodec.convert(dataType, key);
+            String idxVal = ByteBufferNoCopy.wrap(buffer).toString(RowCodecCommon.CHARSET);
+            builder.setKey(idxVal);
+        }
+        builder.setIdxName(idxName);
+        Tablet.DeleteRequest request = builder.build();
+        Tablet.GeneralResponse response = ts.delete(request);
+        if (response != null && response.getCode() == 0) {
+            return true;
+        }
+        if (response != null) {
+            throw new TabletException(response.getCode(), response.getMsg());
+        }
+        return false;
     }
 
     @Override
