@@ -578,11 +578,6 @@ TableIterator* MemTable::NewIterator(const std::string& pk, Ticket& ticket) {
 }
 
 TableIterator* MemTable::NewIterator(uint32_t index, const std::string& pk, Ticket& ticket) {
-    if (index >= segments_.size()) {
-        PDLOG(WARNING, "invalid idx %u, segment size %u", 
-                        index, segments_.size());
-        return NULL;
-    }
     std::shared_ptr<IndexDef> index_def = GetIndex(index);
     if (!index_def || !index_def->IsReady()) {
         PDLOG(WARNING, "index %d not found in table, tid %u pid %u", index, id_, pid_);
@@ -639,7 +634,7 @@ uint64_t MemTable::GetRecordIdxCnt() {
     uint64_t record_idx_cnt = 0;
     const std::vector<std::shared_ptr<IndexDef>> indexs = GetAllIndex();
     for (const auto& index_def : indexs) {
-        if (index_def->IsReady() && index_def->GetId() < segments_.size()) {
+        if (index_def && index_def->IsReady()) {
             for (uint32_t j = 0; j < seg_cnt_; j++) {
                 record_idx_cnt += segments_[index_def->GetId()][j]->GetIdxCnt(); 
             }
@@ -652,7 +647,7 @@ uint64_t MemTable::GetRecordPkCnt() {
     uint64_t record_pk_cnt = 0;
     const std::vector<std::shared_ptr<IndexDef>> index_vec = GetAllIndex();
     for (const auto& index_def : index_vec) {
-        if (index_def->IsReady() && index_def->GetId() < segments_.size()) {
+        if (index_def && index_def->IsReady()) {
             for (uint32_t j = 0; j < seg_cnt_; j++) {
                 record_pk_cnt += segments_[index_def->GetId()][j]->GetPkCnt(); 
             }
@@ -663,9 +658,6 @@ uint64_t MemTable::GetRecordPkCnt() {
 
 bool MemTable::GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) {
     if (stat == NULL) {
-        return false;
-    }
-    if (idx >= segments_.size()) {
         return false;
     }
     std::shared_ptr<IndexDef> index_def = GetIndex(idx);
@@ -683,13 +675,14 @@ bool MemTable::GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) {
 
 bool MemTable::AddIndex(const ::rtidb::common::ColumnKey& column_key) {
     std::shared_ptr<IndexDef> index_def = GetIndex(column_key.index_name());
-    bool exist = index_def != NULL;
+    bool exist = false;
     if (index_def) {
         if (index_def->GetStatus() != IndexStatus::kDeleted) {
             PDLOG(WARNING, "index %s is exist. tid %u pid %u", 
                     column_key.index_name().c_str(), id_, pid_);
             return false;
         }
+        exist = true;
     } else {
         index_def = std::make_shared<IndexDef>(column_key.index_name(), table_index_.Size());
         std::vector<uint32_t> ts_vec;
