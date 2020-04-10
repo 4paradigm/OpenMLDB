@@ -1,5 +1,10 @@
 %module fesql_interface
 
+#define SWIG_SHARED_PTR_TYPEMAPS(CONST, TYPE...) SWIG_SHARED_PTR_TYPEMAPS_IMPLEMENTATION(public, public, CONST, TYPE)
+SWIG_JAVABODY_TYPEWRAPPER(public, public, public, SWIGTYPE)
+SWIG_JAVABODY_PROXY(public, public, SWIGTYPE)
+
+
 %include std_string.i
 %include std_shared_ptr.i
 %include stl.i
@@ -15,6 +20,9 @@ namespace std {
 %shared_ptr(fesql::sdk::Table);
 %shared_ptr(fesql::sdk::TableSet);
 %shared_ptr(fesql::sdk::ResultSet);
+
+%nspace;
+
 
 %{
 #include "sdk/base.h"
@@ -45,7 +53,8 @@ using fesql::base::Slice;
 using fesql::node::PlanType;
 %}
 
-// %nspace;
+
+%typemap(javaimports) SWIGTYPE "import com._4paradigm.*;"
 
 %ignore MakeExprWithTable; // TODO: avoid return object with share pointer
 %ignore WindowIterator;
@@ -54,6 +63,7 @@ using fesql::node::PlanType;
 %ignore fesql::vm::TableHandler;
 %ignore fesql::vm::PartitionHandler;
 %ignore DataTypeName; // TODO: Geneerate duplicated class
+%ignore fesql::vm::RequestRunSession::RunRequestPlan;
 
 %include "sdk/result_set.h"
 %include "sdk/base.h"

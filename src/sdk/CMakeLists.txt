@@ -37,9 +37,11 @@ add_test(result_set_impl_test result_set_impl_test --gtest_output=xml:${CMAKE_BI
 list(APPEND test_list result_set_impl_test)
 
 set_property(SOURCE fesql_interface.i PROPERTY CPLUSPLUS ON)
-set_property(SOURCE fesql_interface.i PROPERTY COMPILE_OPTIONS
-    -py3
-)
+if (CMAKE_SYSTEM_NAME MATCHES "Darwin")
+	set_property(SOURCE fesql_interface.i PROPERTY COMPILE_OPTIONS -python)
+else()
+	set_property(SOURCE fesql_interface.i PROPERTY COMPILE_OPTIONS -py3)
+endif()
 
 set (UseSWIG_TARGET_NAME_PREFERENCE STANDARD)
 swig_add_library(fesql_pysdk
@@ -50,9 +52,8 @@ swig_add_library(fesql_pysdk
 target_include_directories(fesql_pysdk PRIVATE ${PYTHON_INCLUDE_DIRS})
 target_link_libraries(fesql_pysdk PRIVATE fesql_sdk)
 
-set_property(SOURCE fesql_interface.i PROPERTY COMPILE_OPTIONS 
-    -package com._4paradigm.fesql
-)
+
+set_property(SOURCE fesql_interface.i PROPERTY COMPILE_OPTIONS -package com._4paradigm)
 swig_add_library(fesql_jsdk
   TYPE SHARED
   LANGUAGE java
