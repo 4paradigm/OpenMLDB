@@ -10,7 +10,15 @@ target_link_libraries(base_bm_test ${vm_deps_libs} protobuf ${llvm_libs} ${COMMO
 add_test(base_bm_test base_bm_test --gtest_output=xml:${CMAKE_BINARY_DIR}/base_bm_test.xml)
 list(APPEND test_list base_bm_test)
 
-
+add_library(storage_bm_case STATIC storage_bm_case.cc)
+add_executable(storage_bm_case_test storage_bm_case_test.cc)
+target_link_libraries(storage_bm_case_test storage_bm_case ${vm_deps_libs}
+        benchmark protobuf ${llvm_libs} ${COMMON_LIBS} tcmalloc profiler gtest pthread rt)
+add_test(storage_bm_case_test storage_bm_case_test --gtest_output=xml:${CMAKE_BINARY_DIR}/storage_bm_case_test.xml)
+list(APPEND test_list storage_bm_case_test)
+add_executable(storage_bm storage_bm.cc)
+target_link_libraries(storage_bm storage_bm_case ${vm_deps_libs}
+        benchmark protobuf ${llvm_libs} ${COMMON_LIBS} tcmalloc profiler gtest pthread rt)
 
 add_library(udf_bm_case STATIC udf_bm_case.cc)
 add_executable(udf_bm_case_test udf_bm_case_test.cc)
