@@ -16,7 +16,7 @@
 
 const std::set<rtidb::type::DataType> pk_type_set = {
     rtidb::type::kSmallInt, rtidb::type::kInt, rtidb::type::kBigInt,
-    rtidb::type::kVarchar};
+    rtidb::type::kVarchar, rtidb::type::kString};
 
 struct WriteOption {
     WriteOption() {
@@ -183,17 +183,27 @@ public:
 
     std::string GetKey() {
         std::string key = "";
-        if (data_type_ == rtidb::type::kSmallInt) {
-            int16_t val = GetInt16(pk_idx_);
-            key = std::to_string(val);
-        } else if (data_type_ == rtidb::type::kInt) {
-            int32_t val = GetInt32(pk_idx_);
-            key = std::to_string(val);
-        } else if (data_type_ == rtidb::type::kBigInt) {
-            int64_t val = GetInt64(pk_idx_);
-            key = std::to_string(val);
-        } else if (data_type_ == rtidb::type::kVarchar) {
-            key = GetString(pk_idx_);
+        switch (data_type_) {
+            case rtidb::type::kSmallInt: {
+                int16_t val = GetInt16(pk_idx_);
+                key = std::to_string(val);
+                break;
+            }
+            case  rtidb::type::kInt: {
+                int32_t val = GetInt32(pk_idx_);
+                key = std::to_string(val);
+                break;
+            }
+            case rtidb::type::kBigInt: {
+                int64_t val = GetInt64(pk_idx_);
+                key = std::to_string(val);
+                break;
+            }
+            case rtidb::type::kVarchar:
+            case rtidb::type::kString: {
+                key = GetString(pk_idx_);
+                break;
+            }
         }
         return key;
     }
@@ -278,7 +288,7 @@ public:
         msg_ = err_msg;
     }
 
-    void Init(RtidbClient* client, std::string* table_name, struct ReadOption* ro, uint32_t count);
+    void Init(RtidbClient* client, std::string* table_name, struct ReadOption* ro, uint32_t count, uint64_t snapshot_id);
 
     ~TraverseResult();
 
@@ -304,6 +314,7 @@ private:
     std::shared_ptr<std::string> table_name_;
     uint32_t count_;
     std::string last_pk_;
+    uint64_t snapshot_id_;
 };
 
 class BatchQueryResult: public ViewResult {
@@ -392,7 +403,7 @@ public:
     GeneralResult Delete(const std::string& name, const std::map<std::string, std::string>& values);
     TraverseResult Traverse(const std::string& name, const struct ReadOption& ro);
     bool Traverse(const std::string& name, const struct ReadOption& ro, std::string* data, uint32_t* count,
-                               const std::string& last_key, bool* is_finish);
+                               const std::string& last_key, bool* is_finish, uint64_t* snapshot_id_);
     BatchQueryResult BatchQuery(const std::string& name, const std::vector<ReadOption>& ros);
     bool BatchQuery(const std::string& name, const std::vector<std::string>& keys, std::string* data, bool* is_finish, uint32_t* count);
     void SetZkCheckInterval(int32_t interval);

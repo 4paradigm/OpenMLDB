@@ -31,12 +31,13 @@ int64_t ViewResult::GetInt(uint32_t idx) {
 }
 
 void TraverseResult::Init(RtidbClient* client, std::string* table_name,
-                          struct ReadOption* ro, uint32_t count) {
+                          struct ReadOption* ro, uint32_t count, uint64_t snapshot_id) {
     client_ = client;
     table_name_.reset(table_name);
     ro_.reset(ro);
     offset_ = 0;
     count_ = count;
+    snapshot_id_ = snapshot_id;
 }
 
 void  BatchQueryResult::Init(RtidbClient* client, std::string* table_name, const std::vector<std::string>& keys, uint32_t count) {
@@ -55,7 +56,7 @@ BatchQueryResult::~BatchQueryResult() {
 
 bool TraverseResult::TraverseNext() {
     bool ok = client_->Traverse(*table_name_, *ro_, value_.get(), &count_,
-                                last_pk_, &is_finish_);
+                                last_pk_, &is_finish_, &snapshot_id_);
     return ok;
 }
 
@@ -413,7 +414,8 @@ TraverseResult RtidbClient::Traverse(const std::string& name, const struct ReadO
         pk = ro.index.begin()->second;
     }
     bool is_finish = true;
-    bool ok = Traverse(name, ro, raw_data, &count, pk, &is_finish);
+    uint64_t snapshot_id = 0;
+    bool ok = Traverse(name, ro, raw_data, &count, pk, &is_finish, &snapshot_id);
     if (!ok) {
         delete raw_data;
         result.code_ = -1;
@@ -422,7 +424,7 @@ TraverseResult RtidbClient::Traverse(const std::string& name, const struct ReadO
     }
     std::string* table_name = new std::string(name);
     struct ReadOption* ro_ptr = new ReadOption(ro);
-    result.Init(this, table_name, ro_ptr, count);
+    result.Init(this, table_name, ro_ptr, count, snapshot_id);
     result.SetRv(th);
     result.SetValue(raw_data, is_finish);
     return result;
@@ -430,8 +432,8 @@ TraverseResult RtidbClient::Traverse(const std::string& name, const struct ReadO
 
 bool RtidbClient::Traverse(const std::string& name, const struct ReadOption& ro,
                            std::string* data, uint32_t* count,
-                           const std::string& last_key, bool* is_finish) {
-    std::shared_ptr<TableHandler> th = client_->GetTableHandler(name);
+                           const std::string& last_key, bool* is_finish, uint64_t* snapshot_id) {
+    std::shared_ptr<TableHandler> th = GetTableHandler(name);
     if (th == NULL) {
         return false;
     }
@@ -440,7 +442,7 @@ bool RtidbClient::Traverse(const std::string& name, const struct ReadOption& ro,
     if (tablet == NULL) {
         return false;
     }
-    bool ok = tablet->Traverse(th->table_info->tid(), 0, last_key, 1000, count, &err_msg, data, is_finish);
+    bool ok = tablet->Traverse(th->table_info->tid(), 0, last_key, 1000, count, &err_msg, data, is_finish, snapshot_id);
     return ok;
 }
 

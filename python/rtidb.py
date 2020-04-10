@@ -15,7 +15,7 @@ def return_None(x):
 def return_EmptyStr(x):
   return str()
 
-type_map = {1:bool,2:int,3:int,4:int,5:float,6:float,7:str,8:int,9:int,100:return_None};
+type_map = {1:bool,2:int,3:int,4:int,5:float,6:float,7:str,8:int,9:int,11:str,100:return_None};
 # todo: current do not have blob type process function
 '''
   kBool = 1,
@@ -28,6 +28,7 @@ type_map = {1:bool,2:int,3:int,4:int,5:float,6:float,7:str,8:int,9:int,100:retur
   kDate = 8,
   kTimestamp = 9,
   kBlob = 10
+  kString = 11
 '''
 
 NONETOKEN="None#*@!"
