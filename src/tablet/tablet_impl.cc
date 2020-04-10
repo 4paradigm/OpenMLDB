@@ -4432,6 +4432,7 @@ void TabletImpl::SendIndexData(RpcController* controller,
         task_pool_.AddTask(boost::bind(&TabletImpl::SendIndexDataInternal, this, table, pid_endpoint_map, task_ptr));
         response->set_code(::rtidb::base::ReturnCode::kOk);
         response->set_msg("ok");
+        return;
     } while (0);
     SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kFailed);
 }
