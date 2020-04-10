@@ -433,7 +433,7 @@ TraverseResult RtidbClient::Traverse(const std::string& name, const struct ReadO
 bool RtidbClient::Traverse(const std::string& name, const struct ReadOption& ro,
                            std::string* data, uint32_t* count,
                            const std::string& last_key, bool* is_finish, uint64_t* snapshot_id) {
-    std::shared_ptr<TableHandler> th = GetTableHandler(name);
+    std::shared_ptr<TableHandler> th = client_->GetTableHandler(name);
     if (th == NULL) {
         return false;
     }

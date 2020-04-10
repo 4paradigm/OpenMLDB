@@ -204,6 +204,8 @@ public:
                 key = GetString(pk_idx_);
                 break;
             }
+            default:
+                return "";
         }
         return key;
     }
