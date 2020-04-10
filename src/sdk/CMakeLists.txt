@@ -42,7 +42,7 @@ set_property(SOURCE fesql.i PROPERTY COMPILE_OPTIONS
     -py3
 )
 
-
+set (UseSWIG_TARGET_NAME_PREFERENCE STANDARD)
 swig_add_library(fesql_pysdk
   TYPE SHARED
   LANGUAGE python
@@ -52,15 +52,15 @@ target_include_directories(fesql_pysdk PRIVATE ${PYTHON_INCLUDE_DIRS})
 target_link_libraries(fesql_pysdk PRIVATE fesql_sdk)
 
 set_property(SOURCE fesql.i PROPERTY COMPILE_OPTIONS 
-    -package com._4paradigm.fesql
+    -package com._4paradigm
 )
 swig_add_library(fesql_jsdk
   TYPE SHARED
   LANGUAGE java
-  OUTPUT_DIR ${PROJECT_SOURCE_DIR}/java/fesql-native/src/main/java/com/_4paradigm/fesql
+  OUTPUT_DIR ${PROJECT_SOURCE_DIR}/java/fesql-native/src/main/java/com/_4paradigm/
   SOURCES fesql.i)
 target_include_directories(fesql_jsdk PRIVATE ${JNI_INCLUDE_DIRS})
-target_link_libraries(fesql_jsdk PRIVATE fesql_sdk)
+target_link_libraries(fesql_jsdk PRIVATE fesql_sdk fesql_vm fesql_codegen fesql_udf ${llvm_libs} ${COMMON_LIBS})
 if(APPLE)
   set_target_properties(fesql_pysdk PROPERTIES
            SUFFIX ".so")
