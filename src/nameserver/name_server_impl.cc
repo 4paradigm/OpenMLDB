@@ -1545,13 +1545,23 @@ int NameServerImpl::UpdateZKTaskStatus() {
         std::shared_ptr<Task> task = op_data->task_list_.front();
         if (!task->sub_task_.empty()) {
             bool has_done = true;
+            bool has_failed = false;
             for (const auto& cur_task : task->sub_task_) {
-                if (cur_task->task_info_->status() != ::rtidb::api::kDone) {
+                if (cur_task->task_info_->status() == ::rtidb::api::kFailed) {
+                    has_failed = true;
+                    break;
+                } else if (cur_task->task_info_->status() != ::rtidb::api::kDone) {
                     has_done = false;
                     break;
                 }
             }
-            if (has_done) {
+            if (has_failed) {
+                PDLOG(INFO, "update task status from[%s] to[kFailed]. op_id[%lu], task_type[%s]", 
+                        ::rtidb::api::TaskStatus_Name(task->task_info_->status()).c_str(), 
+                        op_data->op_info_.op_id(), 
+                        ::rtidb::api::TaskType_Name(task->task_info_->task_type()).c_str());
+                task->task_info_->set_status(::rtidb::api::kFailed);
+            } else if (has_done) {
                 PDLOG(INFO, "update task status from[%s] to[kDone]. op_id[%lu], task_type[%s]", 
                         ::rtidb::api::TaskStatus_Name(task->task_info_->status()).c_str(), 
                         op_data->op_info_.op_id(), 
