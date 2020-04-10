@@ -1545,13 +1545,23 @@ int NameServerImpl::UpdateZKTaskStatus() {
         std::shared_ptr<Task> task = op_data->task_list_.front();
         if (!task->sub_task_.empty()) {
             bool has_done = true;
+            bool has_failed = false;
             for (const auto& cur_task : task->sub_task_) {
-                if (cur_task->task_info_->status() != ::rtidb::api::kDone) {
+                if (cur_task->task_info_->status() == ::rtidb::api::kFailed) {
+                    has_failed = true;
+                    break;
+                } else if (cur_task->task_info_->status() != ::rtidb::api::kDone) {
                     has_done = false;
                     break;
                 }
             }
-            if (has_done) {
+            if (has_failed) {
+                PDLOG(INFO, "update task status from[%s] to[kFailed]. op_id[%lu], task_type[%s]", 
+                        ::rtidb::api::TaskStatus_Name(task->task_info_->status()).c_str(), 
+                        op_data->op_info_.op_id(), 
+                        ::rtidb::api::TaskType_Name(task->task_info_->task_type()).c_str());
+                task->task_info_->set_status(::rtidb::api::kFailed);
+            } else if (has_done) {
                 PDLOG(INFO, "update task status from[%s] to[kDone]. op_id[%lu], task_type[%s]", 
                         ::rtidb::api::TaskStatus_Name(task->task_info_->status()).c_str(), 
                         op_data->op_info_.op_id(), 
@@ -8598,8 +8608,8 @@ void NameServerImpl::AddIndex(RpcController* controller,
         table_info = table_iter->second;
         if (table_info->column_key_size() == 0) {
             response->set_code(::rtidb::base::ReturnCode::kHasNotColumnKey);
-            response->set_msg("table has not column key");
-            PDLOG(WARNING, "table %s has not column key", request->name().c_str());
+            response->set_msg("table has no column key");
+            PDLOG(WARNING, "table %s has no column key", request->name().c_str());
             return;
         }
         for (index_pos = 0; index_pos < table_info->column_key_size(); index_pos++) {
@@ -8613,6 +8623,42 @@ void NameServerImpl::AddIndex(RpcController* controller,
                 }
                 break;
             }
+        }
+        std::map<std::string, const ::rtidb::common::ColumnDesc&> col_map;
+        std::map<std::string, const ::rtidb::common::ColumnDesc&> ts_map;
+        for (const auto&column_desc : table_info->column_desc_v1()) {
+            if (column_desc.is_ts_col()) {
+                ts_map.insert(std::make_pair(column_desc.name(), column_desc));
+            } else {
+                col_map.insert(std::make_pair(column_desc.name(), column_desc));
+            }
+        }
+        for (const auto& col_name : request->column_key().col_name()) {
+            auto it = col_map.find(col_name);
+            if (it == col_map.end()) {
+                response->set_code(::rtidb::base::ReturnCode::kWrongColumnKey);
+                response->set_msg("wrong column key!");
+                PDLOG(WARNING, "column_desc %s not exist, table name %s", 
+                    col_name.c_str(), request->name().c_str());
+                return;
+            }
+        }
+        for (const auto& ts_name : request->column_key().ts_name()) {
+            auto it = ts_map.find(ts_name);
+            if (it == ts_map.end()) {
+                response->set_code(::rtidb::base::ReturnCode::kWrongColumnKey);
+                response->set_msg("wrong column key!");
+                PDLOG(WARNING, "ts %s not exist, table name %s", 
+                    ts_name.c_str(), request->name().c_str());
+                return;
+            }
+        }
+        if (request->column_key().ts_name().empty() && !ts_map.empty()) {
+            response->set_code(::rtidb::base::ReturnCode::kWrongColumnKey);
+            response->set_msg("wrong column key!");
+            PDLOG(WARNING, "column key %s should contain ts_col, table name %s", 
+                request->column_key().index_name().c_str(), request->name().c_str());
+            return;
         }
         if ((uint32_t)table_info->table_partition_size() > FLAGS_name_server_task_max_concurrency) {
             response->set_code(::rtidb::base::ReturnCode::kTooManyPartition);
