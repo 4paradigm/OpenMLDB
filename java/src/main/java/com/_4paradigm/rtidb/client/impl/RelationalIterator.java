@@ -150,6 +150,10 @@ public class RelationalIterator {
         return schema;
     }
 
+    public int getCount() {
+        return count;
+    }
+
     public boolean valid() {
         if (offset <= totalSize && totalSize != 0) {
             return true;
@@ -277,6 +281,7 @@ public class RelationalIterator {
                 bb = bs.asReadOnlyByteBuffer();
                 totalSize = this.bs.size();
                 offset = 0;
+                count = response.getCount();
                 if (response.hasIsFinish() && response.getIsFinish()) {
                     isFinished = true;
                 }
