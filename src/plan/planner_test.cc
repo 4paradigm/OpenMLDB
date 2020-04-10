@@ -157,10 +157,19 @@ INSTANTIATE_TEST_CASE_P(
 
 INSTANTIATE_TEST_CASE_P(
     SqlJoinPlan, PlannerTest,
-    testing::Values("SELECT * FROM t1 full join t2 on t1.col1 = t2.col2;",
-                    "SELECT * FROM t1 left join t2 on t1.col1 = t2.col2;",
-                    "SELECT * FROM t1 right join t2 on t1.col1 = t2.col2;",
-                    "SELECT * FROM t1 inner join t2 on t1.col1 = t2.col2;"));
+    testing::Values(
+        "SELECT * FROM t1 full join t2 on t1.col1 = t2.col2;",
+        "SELECT * FROM t1 left join t2 on t1.col1 = t2.col2;",
+        "SELECT * FROM t1 right join t2 on t1.col1 = t2.col2;",
+        "SELECT * FROM t1 inner join t2 on t1.col1 = t2.col2;",
+        "SELECT * FROM t1 last join t2 on t1.col1 = t2.col2;",
+        "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t2 left join t2 on "
+        "t1.col1 = t2.col2 and t2.col15 >= t1.col15;",
+        "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t2 last join t2 on "
+        "t1.col1 = t2.col2 and t2.col15 >= t1.col15;",
+        "SELECT t1.col1 as t1_col1, t2.col1 as t2_col2 from t1 LAST JOIN t2 on "
+        "t1.col1 = t2.col1 and t2.col15 between t1.col15 - 30d and t1.col15 "
+        "- 1d;"));
 
 INSTANTIATE_TEST_CASE_P(
     SqlUnionPlan, PlannerTest,
@@ -590,6 +599,100 @@ TEST_F(PlannerTest, MultiProjectListPlanPostTest) {
     node::TablePlanNode *relation_node =
         reinterpret_cast<node::TablePlanNode *>(plan_ptr);
     ASSERT_EQ("t1", relation_node->table_);
+    delete planner_ptr;
+}
+TEST_F(PlannerTest, LastJoinPlanTest) {
+    node::NodePointVector list;
+    node::PlanNodeList trees;
+    base::Status status;
+    const std::string sql =
+        "SELECT t1.col1 as t1_col1, t2.col1 as t2_col2 from t1 LAST JOIN t2 on "
+        "t1.col1 = t2.col1 and t2.col15 between t1.col15 - 30d and t1.col15 "
+        "- 1d limit 10;";
+    int ret = parser_->parse(sql, list, manager_, status);
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(1u, list.size());
+
+    std::cout << *(list[0]) << std::endl;
+    Planner *planner_ptr = new SimplePlanner(manager_);
+    ASSERT_EQ(0, planner_ptr->CreatePlanTree(list, trees, status));
+    ASSERT_EQ(1u, trees.size());
+
+    PlanNode *plan_ptr = trees[0];
+    ASSERT_TRUE(NULL != plan_ptr);
+
+    std::cout << *plan_ptr << std::endl;
+    // validate select plan
+    ASSERT_EQ(node::kPlanTypeQuery, plan_ptr->GetType());
+    plan_ptr = plan_ptr->GetChildren()[0];
+
+    // validate limit node
+    ASSERT_EQ(node::kPlanTypeLimit, plan_ptr->GetType());
+    node::LimitPlanNode *limit_ptr = (node::LimitPlanNode *)plan_ptr;
+    ASSERT_EQ(10, limit_ptr->limit_cnt_);
+
+    // validate project list based on current row
+    ASSERT_EQ(node::kPlanTypeProject,
+              limit_ptr->GetChildren().at(0)->GetType());
+
+    node::ProjectPlanNode *project_plan_node =
+        (node::ProjectPlanNode *)limit_ptr->GetChildren().at(0);
+    plan_ptr = project_plan_node;
+    ASSERT_EQ(1u, project_plan_node->project_list_vec_.size());
+
+    const std::vector<std::pair<uint32_t, uint32_t>> pos_mapping =
+        project_plan_node->pos_mapping_;
+    ASSERT_EQ(2u, pos_mapping.size());
+    ASSERT_EQ(std::make_pair(0u, 0u), pos_mapping[0]);
+    ASSERT_EQ(std::make_pair(0u, 1u), pos_mapping[1]);
+
+    // validate projection 0: window agg over w1
+    {
+        node::ProjectListNode *project_list =
+            dynamic_cast<node::ProjectListNode *>(
+                project_plan_node->project_list_vec_.at(0));
+
+        ASSERT_EQ(2u, project_list->GetProjects().size());
+        ASSERT_TRUE(nullptr == project_list->GetW());
+        // validate t1_col1 pos 0
+        {
+            node::ProjectNode *project = dynamic_cast<node::ProjectNode *>(
+                project_list->GetProjects()[0]);
+            ASSERT_EQ(0u, project->GetPos());
+        }
+        // validate t2_col1 pos 1
+        {
+            node::ProjectNode *project = dynamic_cast<node::ProjectNode *>(
+                project_list->GetProjects()[1]);
+            ASSERT_EQ(1u, project->GetPos());
+        }
+    }
+
+    plan_ptr = plan_ptr->GetChildren()[0];
+    ASSERT_EQ(node::kPlanTypeJoin, plan_ptr->GetType());
+    auto join = dynamic_cast<node::JoinPlanNode *>(plan_ptr);
+    ASSERT_EQ(node::kJoinTypeLast, join->join_type_);
+    ASSERT_EQ(
+        "t1.col1 = t2.col1 AND t2.col15 between t1.col15 - 30d and t1.col15 - "
+        "1d",
+        join->condition_->GetExprString());
+
+    auto left = plan_ptr->GetChildren()[0];
+    ASSERT_EQ(node::kPlanTypeTable, left->GetType());
+    {
+        node::TablePlanNode *relation_node =
+            reinterpret_cast<node::TablePlanNode *>(left);
+        ASSERT_EQ("t1", relation_node->table_);
+    }
+
+    auto right = plan_ptr->GetChildren()[1];
+    ASSERT_EQ(node::kPlanTypeTable, right->GetType());
+    {
+        node::TablePlanNode *relation_node =
+            reinterpret_cast<node::TablePlanNode *>(right);
+        ASSERT_EQ("t2", relation_node->table_);
+    }
+
     delete planner_ptr;
 }
 
