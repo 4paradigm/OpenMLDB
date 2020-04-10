@@ -31,9 +31,12 @@
 #include "base/memcomparable_format.h"
 #include <snappy.h>
 #include "base/single_column_codec.h"
+#include <thread>
+#include "base/spinlock.h"
 
 typedef google::protobuf::RepeatedPtrField<::rtidb::api::Dimension> Dimensions;
 using Schema = ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
+using ::rtidb::base::SpinMutex;
 
 namespace rtidb {
 namespace storage {
@@ -91,7 +94,7 @@ public:
     bool Query(const std::string& idx_name, const std::string& idx_val, std::vector<rtidb::base::Slice>* vec); 
     bool Query(const std::shared_ptr<IndexDef> index_def, const std::string& key, std::vector<rtidb::base::Slice>* vec); 
 
-    bool Delete(const std::string& pk, uint32_t idx);
+    bool Delete(const std::string& idx_name, const std::string& key);
 
     rtidb::storage::RelationalTableTraverseIterator* NewTraverse(uint32_t idx, uint64_t snapshot_id);
 
@@ -186,6 +189,7 @@ private:
     bool ConvertIndex(const std::string& name, const std::string& value, 
             std::string* out_val); 
 
+    SpinMutex spin_mutex_;
     std::mutex mu_;
     ::rtidb::common::StorageMode storage_mode_;
     std::string name_;

@@ -1587,7 +1587,6 @@ void TabletImpl::Delete(RpcController* controller,
         }
         return;
     } else {
-        uint32_t idx = 0;
         /**
         if (request->has_idx_name() && request->idx_name().size() > 0) {
             std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
@@ -1601,10 +1600,11 @@ void TabletImpl::Delete(RpcController* controller,
             idx = iit->second;
         }
         */
-        if (r_table->Delete(request->key(), idx)) {
+        if (r_table->Delete(request->idx_name(), request->key())) {
             response->set_code(::rtidb::base::ReturnCode::kOk);
             response->set_msg("ok");
-            PDLOG(DEBUG, "delete ok. tid %u, pid %u, key %s", request->tid(), request->pid(), request->key().c_str());
+            PDLOG(DEBUG, "delete ok. tid %u, pid %u, key %s, idx_name %s", 
+                    request->tid(), request->pid(), request->key().c_str(), request->idx_name().c_str());
         } else {
             response->set_code(::rtidb::base::ReturnCode::kDeleteFailed);
             response->set_msg("delete failed");

@@ -245,8 +245,14 @@ bool RelationalTable::PutDB(const std::string &pk, const char *data, uint32_t si
     rocksdb::Status s;
     rocksdb::Slice spk = rocksdb::Slice(pk);
     std::shared_ptr<IndexDef> index_def = table_index_.GetPkIndex();
-    batch.Put(cf_hs_[index_def->GetId() + 1], spk, rocksdb::Slice(data, size));
-
+    if (table_meta_.compress_type() == ::rtidb::api::kSnappy) {
+        std::string compressed;
+        ::snappy::Compress(data, size, &compressed);
+        batch.Put(cf_hs_[index_def->GetId() + 1], spk, 
+                rocksdb::Slice(compressed.data(), compressed.size()));
+    } else {
+        batch.Put(cf_hs_[index_def->GetId() + 1], spk, rocksdb::Slice(data, size));
+    }
     const Schema& schema = table_meta_.column_desc(); 
     ::rtidb::base::RowView view(schema, reinterpret_cast<int8_t*>(const_cast<char*>(data)), size);
     for (int i = 0; i < (int)(table_index_.Size()); i++) {
@@ -395,7 +401,13 @@ bool RelationalTable::ConvertIndex(const std::string& name, const std::string& v
     return true;
 }
 
-bool RelationalTable::Delete(const std::string& pk, uint32_t idx) {
+bool RelationalTable::Delete(const std::string& idx_name, 
+        const std::string& key) {
+    std::shared_ptr<IndexDef> index_def = table_index_.GetIndex(idx_name);
+    if (!index_def) return false;
+    std::string pk = "";
+    if (!ConvertIndex(idx_name, key, &pk)) return false;
+    uint32_t idx = index_def->GetId();
     rocksdb::WriteBatch batch;
     batch.Delete(cf_hs_[idx+1], rocksdb::Slice(pk));
     rocksdb::Status s = db_->Write(write_opts_, &batch);
@@ -581,44 +593,13 @@ bool RelationalTable::UpdateDB(const std::map<std::string, int>& cd_idx_map, con
     //TODO if condition columns size is more than 1
     for (int i = 0; i < condition_schema.size(); i++) {
         pk_data_type = condition_schema.Get(i).data_type();
-        switch(pk_data_type) {
-            case ::rtidb::type::kSmallInt: {
-                int16_t val1 = 0;
-                cd_view.GetInt16(i, &val1);
-                pk = std::to_string(val1);
-                break;
-            }
-            case ::rtidb::type::kInt: {
-                int32_t val2 = 0;
-                cd_view.GetInt32(i, &val2);
-                pk = std::to_string(val2);
-                break;
-            }
-            case ::rtidb::type::kBigInt: {
-                int64_t val3 = 0;
-                cd_view.GetInt64(i, &val3);
-                pk = std::to_string(val3);
-                break;
-            }
-            case ::rtidb::type::kString:
-            case ::rtidb::type::kVarchar: {
-                char* ch = NULL;
-                uint32_t length = 0;
-                cd_view.GetString(i, &ch, &length);
-                pk.assign(ch, length);
-                break;
-            }
-            default: {
-                PDLOG(WARNING, "unsupported data type %s", 
-                    rtidb::type::DataType_Name(pk_data_type).c_str());
-                return false;
-            }
-                //TODO: other data type
+        if (!GetStr(cd_view, i, pk_data_type, &pk)) {
+            return false;
         }
-        break;
+        //TODO combined key
     }
 
-    std::lock_guard<std::mutex> lock(mu_);
+    std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
     std::vector<rtidb::base::Slice> value_vec;
     std::shared_ptr<IndexDef> index_def = table_index_.GetPkIndex();
     bool ok = Query(index_def, pk, &value_vec);
@@ -627,12 +608,8 @@ bool RelationalTable::UpdateDB(const std::map<std::string, int>& cd_idx_map, con
         return false;
     }
     rtidb::base::Slice slice = value_vec.at(0);
-    const char* ch = slice.data();
-    ch += 4;
-    uint32_t value_size = 0;
-    memcpy(static_cast<void*>(&value_size), ch, 4);
-    memrev32ifbe(static_cast<void*>(value_size));
-    ::rtidb::base::RowView row_view(schema, reinterpret_cast<int8_t*>(const_cast<char*>(ch)), value_size);
+
+    ::rtidb::base::RowView row_view(schema, reinterpret_cast<int8_t*>(const_cast<char*>(slice.data())), slice.size());
     uint32_t col_value_size = col_value.length();
     ::rtidb::base::RowView value_view(value_schema, reinterpret_cast<int8_t*>(const_cast<char*>(&(col_value[0]))), col_value_size);
     uint32_t string_length = 0; 
@@ -661,7 +638,7 @@ bool RelationalTable::UpdateDB(const std::map<std::string, int>& cd_idx_map, con
         auto col_iter = col_idx_map.find(schema.Get(i).name());
         if (col_iter != col_idx_map.end()) {
             if (schema.Get(i).not_null() && value_view.IsNULL(col_iter->second)) {
-                PDLOG(WARNING, "not_null is true but value is null ,update table tid %u pid %u failed", id_, pid_);
+                PDLOG(WARNING, "not_null is true but value is null, update table tid %u pid %u failed", id_, pid_);
                 return false;
             } else if (value_view.IsNULL(col_iter->second)) {
                 builder.AppendNULL(); 
@@ -699,6 +676,7 @@ bool RelationalTable::UpdateDB(const std::map<std::string, int>& cd_idx_map, con
                 value_view.GetInt64(col_iter->second, &val);
             } else {
                 row_view.GetInt64(i, &val);
+                PDLOG(DEBUG, "id: %lu", val);
             }
             builder.AppendInt64(val);
         } else if (cur_type == rtidb::type::kTimestamp) {
