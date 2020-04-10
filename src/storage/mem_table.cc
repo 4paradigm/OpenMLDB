@@ -100,7 +100,8 @@ bool MemTable::Init() {
             key_entry_max_height_ = FLAGS_absolute_default_skiplist_height;
         }
     }
-    for (uint32_t i = 0; i < idx_cnt_; i++) {
+    uint32_t idx_cnt = GetIdxCnt();
+    for (uint32_t i = 0; i < idx_cnt; i++) {
         std::shared_ptr<IndexDef> index_def = GetIndex(i);
         if (!index_def || !index_def->IsReady()) {
             PDLOG(WARNING, "init failed, index %u is not exist. tid %u pid %u",
@@ -259,7 +260,7 @@ bool MemTable::Put(const Slice& pk,
                 uint64_t time, 
                 DataBlock* row,
                 uint32_t idx) {
-    if (idx >= idx_cnt_) {
+    if (idx >= GetIdxCnt()) {
         return false;
     }
     uint32_t seg_idx = 0;
@@ -272,7 +273,7 @@ bool MemTable::Put(const Slice& pk,
 }
 
 bool MemTable::Delete(const std::string& pk, uint32_t idx) {
-    if (idx >= idx_cnt_) {
+    if (idx >= GetIdxCnt()) {
         return false;
     }
     Slice spk(pk);
@@ -318,7 +319,8 @@ void MemTable::SchedGc() {
     uint64_t gc_idx_cnt = 0;
     uint64_t gc_record_cnt = 0;
     uint64_t gc_record_byte_size = 0;
-    for (uint32_t i = 0; i < idx_cnt_; i++) {
+    uint32_t idx_cnt = GetIdxCnt();
+    for (uint32_t i = 0; i < idx_cnt; i++) {
         std::map<uint32_t, TTLDesc> cur_ttl_map;
         std::shared_ptr<IndexDef> index_def = GetIndex(i);
         if (!index_def) {
@@ -531,9 +533,6 @@ bool MemTable::IsExpire(const LogEntry& entry) {
 }
 
 int MemTable::GetCount(uint32_t index, const std::string& pk, uint64_t& count) {
-    if (index >= idx_cnt_) {
-        return -1;
-    }
     std::shared_ptr<IndexDef> index_def = GetIndex(index);
     if (index_def && !index_def->IsReady()) {
         return -1;
@@ -577,9 +576,9 @@ TableIterator* MemTable::NewIterator(const std::string& pk, Ticket& ticket) {
 }
 
 TableIterator* MemTable::NewIterator(uint32_t index, const std::string& pk, Ticket& ticket) {
-    if (index >= idx_cnt_ || index >= segments_.size()) {
-        PDLOG(WARNING, "invalid idx %u, the max idx cnt %u, segment size %u", 
-                        index, idx_cnt_, segments_.size());
+    if (index >= segments_.size()) {
+        PDLOG(WARNING, "invalid idx %u, segment size %u", 
+                        index, segments_.size());
         return NULL;
     }
     std::shared_ptr<IndexDef> index_def = GetIndex(index);
@@ -664,7 +663,7 @@ bool MemTable::GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) {
     if (stat == NULL) {
         return false;
     }
-    if (idx >= idx_cnt_ || idx >= segments_.size()) {
+    if (idx >= segments_.size()) {
         return false;
     }
     std::shared_ptr<IndexDef> index_def = GetIndex(idx);

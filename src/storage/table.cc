@@ -20,7 +20,7 @@ Table::Table(::rtidb::common::StorageMode storage_mode, const std::string& name,
             uint64_t ttl, bool is_leader, uint64_t ttl_offset,
             const std::map<std::string, uint32_t>& mapping,
             ::rtidb::api::TTLType ttl_type, ::rtidb::api::CompressType compress_type) :
-        storage_mode_(storage_mode), name_(name), id_(id), pid_(pid), idx_cnt_(mapping.size()),
+        storage_mode_(storage_mode), name_(name), id_(id), pid_(pid),
         ttl_offset_(ttl_offset), is_leader_(is_leader),
         ttl_type_(ttl_type), compress_type_(compress_type) {
     ::rtidb::api::TTLDesc* ttl_desc = table_meta_.mutable_ttl_desc();
@@ -234,7 +234,6 @@ bool Table::InitFromMeta() {
     }
     if (table_meta_.has_schema()) schema_ = table_meta_.schema();
     if (table_meta_.has_compress_type()) compress_type_ = table_meta_.compress_type();
-    idx_cnt_ = table_index_.Size();
     return true;
 }
 

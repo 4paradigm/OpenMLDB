@@ -712,7 +712,7 @@ int MemTableSnapshot::ExtractIndexData(std::shared_ptr<Table> table, ::rtidb::co
     } else {
         PDLOG(INFO, "schema is empty. tid %u, pid %u", tid, pid);
         making_snapshot_.store(false, std::memory_order_release);
-        return true;
+        return 0;
     }
 
     std::set<uint32_t> deleted_index;
@@ -741,7 +741,7 @@ int MemTableSnapshot::ExtractIndexData(std::shared_ptr<Table> table, ::rtidb::co
             PDLOG(WARNING, "fail to find column_desc %s. tid %u, pid %u", 
                     name.c_str(), tid, pid);
             making_snapshot_.store(false, std::memory_order_release);
-            return false;
+            return -1;
         }
     }
 

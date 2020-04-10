@@ -101,7 +101,7 @@ public:
     std::shared_ptr<IndexDef> GetIndex(const std::string& name);
     int AddIndex(std::shared_ptr<IndexDef> index_def);
     std::vector<std::shared_ptr<IndexDef>> GetAllIndex();
-    inline uint32_t Size() {
+    inline uint32_t Size() const {
         return size_;
     }
 

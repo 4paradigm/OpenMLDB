@@ -4704,10 +4704,13 @@ void TabletImpl::LoadIndexDataInternal(std::shared_ptr<::rtidb::storage::Table> 
     std::string binlog_path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid) + "/binlog/";
     std::string index_path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid) + "/index/";
     for (uint32_t i = 0; i < partition_num; ++i) {
-        std::string index_file_path = index_path = index_path + std::to_string(i) + "_" + std::to_string(pid) + "_index.data";
+        if (i == pid) {
+            continue;
+        }
+        std::string index_file_path = index_path + std::to_string(i) + "_" + std::to_string(pid) + "_index.data";
         FILE* fd = fopen(index_file_path.c_str(), "rb");
         if (fd == NULL) {
-            PDLOG(WARNING, "fail to open index file %s, tid %u, pid %u", index_file_path.c_str(), tid, pid);
+            PDLOG(WARNING, "fail to open index file %s. tid %u, pid %u", index_file_path.c_str(), tid, pid);
             continue;
         }
         ::rtidb::log::SequentialFile* seq_file = ::rtidb::log::NewSeqFile(index_file_path, fd);
@@ -4805,17 +4808,17 @@ void TabletImpl::ExtractIndexDataInternal(std::shared_ptr<::rtidb::storage::Tabl
     uint64_t offset = 0;
     uint32_t tid = table->GetId();
     uint32_t pid = table->GetPid();
-    if (memtable_snapshot->ExtractIndexData(table, column_key, idx, partition_num, offset)) {
-        PDLOG(INFO, "extract index success. tid %u pid %u", tid, pid);
-        std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
-        if (replicator) {
-            replicator->SetSnapshotLogPartIndex(offset);
-        }
-        SetTaskStatus(task, ::rtidb::api::TaskStatus::kDone);
-    } else {
+    if (memtable_snapshot->ExtractIndexData(table, column_key, idx, partition_num, offset) < 0) {
         PDLOG(WARNING, "fail to extract index. tid %u pid %u", tid, pid);
         SetTaskStatus(task, ::rtidb::api::TaskStatus::kFailed);
+        return;
     }
+    PDLOG(INFO, "extract index success. tid %u pid %u", tid, pid);
+    std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
+    if (replicator) {
+        replicator->SetSnapshotLogPartIndex(offset);
+    }
+    SetTaskStatus(task, ::rtidb::api::TaskStatus::kDone);
 }
 
 void TabletImpl::AddIndex(RpcController* controller,
