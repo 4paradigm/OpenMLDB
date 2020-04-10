@@ -50,9 +50,6 @@ public class RelationalIterator {
     private long snapshot_id = 0;
     private List<ReadOption> ros = null;
 
-    public RelationalIterator() {
-    }
-
     public RelationalIterator(RTIDBClient client, TableHandler th, Set<String> colSet) {
         this.offset = 0;
         this.totalSize = 0;
@@ -70,41 +67,42 @@ public class RelationalIterator {
             }
         }
         this.rowView = new RowView(th.getSchema());
-//        String idxName = "";
-//        for (int i = 0; i < th.getTableInfo().getColumnKeyCount(); i++) {
-//            Common.ColumnKey key = th.getTableInfo().getColumnKey(i);
-//            if (key.hasIndexType() && key.getIndexType() == IndexType.valueFrom(IndexType.PrimaryKey)) {
-//                idxName = key.getIndexName();
-//            }
-//        }
-//        for (int i = 0; i < schema.size(); i++) {
-//            if (schema.get(i).getName().equals(idxName)) {
-//                key_type = schema.get(i).getDataType();
-//                key_idx = i;
-//            }
-//        }
-        continue_update = true;
-    }
-
-    public RelationalIterator(ByteString bs, TableHandler th, Set<String> colSet) {
-        this.bs = bs;
-        this.bb = this.bs.asReadOnlyByteBuffer();
-        this.offset = 0;
-        this.totalSize = this.bs.size();
-        this.schema = th.getSchema();
-        this.th = th;
-
-        if (colSet != null && !colSet.isEmpty()) {
-            for (int i = 0; i < this.getSchema().size(); i++) {
-                ColumnDesc columnDesc = this.getSchema().get(i);
-                if (colSet.contains(columnDesc.getName())) {
-                    this.idxDescMap.put(i, columnDesc);
-                }
+        String idxName = "";
+        for (int i = 0; i < th.getTableInfo().getColumnKeyCount(); i++) {
+            Common.ColumnKey key = th.getTableInfo().getColumnKey(i);
+            if (key.hasIndexType() && key.getIndexType() == IndexType.valueFrom(IndexType.PrimaryKey)) {
+                idxName = key.getIndexName();
             }
         }
-        rowView = new RowView(th.getSchema());
+        for (int i = 0; i < schema.size(); i++) {
+            if (schema.get(i).getName().equals(idxName)) {
+                key_type = schema.get(i).getDataType();
+                key_idx = i;
+            }
+        }
+        continue_update = true;
         next();
     }
+
+//    public RelationalIterator(ByteString bs, TableHandler th, Set<String> colSet) {
+//        this.bs = bs;
+//        this.bb = this.bs.asReadOnlyByteBuffer();
+//        this.offset = 0;
+//        this.totalSize = this.bs.size();
+//        this.schema = th.getSchema();
+//        this.th = th;
+//
+//        if (colSet != null && !colSet.isEmpty()) {
+//            for (int i = 0; i < this.getSchema().size(); i++) {
+//                ColumnDesc columnDesc = this.getSchema().get(i);
+//                if (colSet.contains(columnDesc.getName())) {
+//                    this.idxDescMap.put(i, columnDesc);
+//                }
+//            }
+//        }
+//        rowView = new RowView(th.getSchema());
+//        next();
+//    }
 
     public RelationalIterator(RTIDBClient client, TableHandler th, List<ReadOption> ros) {
         this.offset = 0;
@@ -207,10 +205,10 @@ public class RelationalIterator {
                 throw new RuntimeException("row view reset failed");
             }
         } else {
-            slice = this.bb.slice().asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN);
-            slice.position(0);
-            slice.limit(bs.size());
-            rowView.reset(slice, bs.size());
+//            slice = this.bb.slice().asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN);
+//            slice.position(0);
+//            slice.limit(bs.size());
+//            rowView.reset(slice, bs.size());
         }
     }
 
