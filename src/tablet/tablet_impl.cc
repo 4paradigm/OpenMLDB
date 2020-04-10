@@ -4455,13 +4455,13 @@ void TabletImpl::SendIndexDataInternal(std::shared_ptr<::rtidb::storage::Table> 
         std::string index_file_name = std::to_string(pid) + "_" + std::to_string(kv.first) + "_index.data";
         std::string src_file = index_path + index_file_name;
         if (!::rtidb::base::IsExists(src_file)) {
-            PDLOG(WARNING, "file %s is not exist. tid %u pid %u", src_file.c_str(), tid, pid);
+            PDLOG(WARNING, "file %s is not exist. tid[%u] pid[%u]", src_file.c_str(), tid, pid);
             continue;
         }
         if (kv.second == FLAGS_endpoint) {
             std::shared_ptr<Table> des_table = GetTable(tid, kv.first);
             if (!table) {
-                PDLOG(WARNING, "table is not exist. tid %u pid %u", tid, kv.first);
+                PDLOG(WARNING, "table is not exist. tid[%u] pid[%u]", tid, kv.first);
                 SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kFailed);
                 return;
             }
@@ -4471,43 +4471,43 @@ void TabletImpl::SendIndexDataInternal(std::shared_ptr<::rtidb::storage::Table> 
                 SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kFailed);
                 return;
             }
-            std::string des_index_path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(kv.first) + "/index/";
+            std::string des_index_path = des_db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(kv.first) + "/index/";
             if (!::rtidb::base::IsExists(des_index_path) && !::rtidb::base::MkdirRecur(des_index_path)) {
-                PDLOG(WARNING, "mkdir failed. tid %u pid %u path %s", tid, pid, des_index_path.c_str());
+                PDLOG(WARNING, "mkdir failed. tid[%u] pid[%u] path[%s]", tid, pid, des_index_path.c_str());
                 SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kFailed);
                 return; 
             }
             if (db_root_path == des_db_root_path) {
                 if (!::rtidb::base::Rename(src_file, des_index_path + index_file_name)) {
-                    PDLOG(WARNING, "rename dir failed. tid %u pid %u file %s", tid, pid, index_file_name.c_str());
+                    PDLOG(WARNING, "rename dir failed. tid[%u] pid[%u] file[%s]", tid, pid, index_file_name.c_str());
                     SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kFailed);
                     return; 
                 }
-                PDLOG(INFO, "rename file %s success. tid %u pid %u", index_file_name.c_str(), tid, pid);
+                PDLOG(INFO, "rename file %s success. tid[%u] pid[%u]", index_file_name.c_str(), tid, pid);
             } else {
                 if (!::rtidb::base::CopyFile(src_file, des_index_path + index_file_name)) {
-                    PDLOG(WARNING, "copy failed. tid %u pid %u file %s", tid, pid, index_file_name.c_str());
+                    PDLOG(WARNING, "copy failed. tid[%u] pid[%u] file[%s]", tid, pid, index_file_name.c_str());
                     SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kFailed);
                     return; 
                 }
-                PDLOG(INFO, "copy file %s success. tid %u pid %u", index_file_name.c_str(), tid, pid);
+                PDLOG(INFO, "copy file %s success. tid[%u] pid[%u]", index_file_name.c_str(), tid, pid);
             }
         } else {
-            FileSender sender(tid, pid, table->GetStorageMode(), kv.second);
+            FileSender sender(tid, kv.first, table->GetStorageMode(), kv.second);
             if (!sender.Init()) {
-                PDLOG(WARNING, "Init FileSender failed. tid[%u] pid[%u] endpoint[%s]", 
-                        tid, pid, kv.second.c_str());
+                PDLOG(WARNING, "Init FileSender failed. tid[%u] pid[%u] des_pid[%u] endpoint[%s]", 
+                        tid, pid, kv.first, kv.second.c_str());
                 SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kFailed);
                 return;
             }
             if (sender.SendFile(index_file_name, std::string("index"), index_path + index_file_name) < 0) {
-                PDLOG(WARNING, "send file %s failed. tid[%u] pid[%u]", 
-                        index_file_name.c_str(), tid, pid);
+                PDLOG(WARNING, "send file %s failed. tid[%u] pid[%u] des_pid[%u]", 
+                        index_file_name.c_str(), tid, pid, kv.first);
                 SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kFailed);
                 return;
             }
-            PDLOG(INFO, "send file %s to endpoint %s success. tid %u pid %u", 
-                    index_file_name.c_str(), kv.second.c_str(), tid, pid);
+            PDLOG(INFO, "send file %s to endpoint %s success. tid[%u] pid[%u] des_pid[%u]", 
+                    index_file_name.c_str(), kv.second.c_str(), tid, pid, kv.first);
         }
     }
     SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kDone);

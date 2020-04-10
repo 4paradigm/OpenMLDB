@@ -1033,7 +1033,7 @@ bool MemTableSnapshot::DumpSnapshotIndexData(std::shared_ptr<Table>& table, cons
                     cur_key += "|" + row[i];
                 }
             }
-            uint32_t index_pid = ::rtidb::base::hash64(cur_key)%partition_num;
+            uint32_t index_pid = ::rtidb::base::hash64(cur_key) % partition_num;
             if (!pid_set.count(index_pid)) {
                 std::string entry_str;
                 entry.clear_dimensions();
