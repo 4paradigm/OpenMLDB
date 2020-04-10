@@ -1263,6 +1263,7 @@ bool TabletClient::AddIndex(uint32_t tid, uint32_t pid,
     cur_column_key->CopyFrom(column_key);
     bool ok = client_.SendRequest(&rtidb::api::TabletServer_Stub::AddIndex, &request, &response, FLAGS_request_timeout_ms, 1);
     if (!ok || response.code() != 0) {
+        task_info->set_status(::rtidb::api::TaskStatus::kFailed);
         return false;
     }
     task_info->set_status(::rtidb::api::TaskStatus::kDone);

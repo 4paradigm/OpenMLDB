@@ -2766,22 +2766,18 @@ void NameServerImpl::CancelOP(RpcController* controller,
         if (op_list.empty()) {
             continue;
         }
-        auto iter = op_list.begin();
-        for ( ; iter != op_list.end(); iter++) {
+        for (auto iter = op_list.begin(); iter != op_list.end(); iter++) {
             if ((*iter)->op_info_.op_id() == request->op_id()) {
-                break;
+                (*iter)->op_info_.set_task_status(::rtidb::api::kCanceled);
+                for (auto& task : (*iter)->task_list_) {
+                    task->task_info_->set_status(::rtidb::api::kCanceled);
+                }
+                response->set_code(::rtidb::base::ReturnCode::kOk);
+                response->set_msg("ok");
+                PDLOG(INFO, "op[%lu] is canceled! op_type[%s]",
+                            request->op_id(), ::rtidb::api::OPType_Name((*iter)->op_info_.op_type()).c_str());
+                return;
             }
-        }
-        if (iter != op_list.end()) {
-            (*iter)->op_info_.set_task_status(::rtidb::api::kCanceled);
-            for (auto& task : (*iter)->task_list_) {
-                task->task_info_->set_status(::rtidb::api::kCanceled);
-            }
-            response->set_code(::rtidb::base::ReturnCode::kOk);
-            response->set_msg("ok");
-            PDLOG(INFO, "op[%lu] is canceled! op_type[%s]",
-                        request->op_id(), ::rtidb::api::OPType_Name((*iter)->op_info_.op_type()).c_str());
-            return;
         }
     }
     response->set_code(::rtidb::base::ReturnCode::kOpStatusIsNotKdoingOrKinited);
@@ -8618,6 +8614,15 @@ void NameServerImpl::AddIndex(RpcController* controller,
                 break;
             }
         }
+        if ((uint32_t)table_info->table_partition_size() > FLAGS_name_server_task_max_concurrency) {
+            response->set_code(::rtidb::base::ReturnCode::kTooManyPartition);
+            response->set_msg("partition num is greater than name_server_task_max_concurrency");
+            PDLOG(WARNING, "partition num[%d] is greater than name_server_task_max_concurrency[%u]. table name %s", 
+                table_info->table_partition_size(), 
+                FLAGS_name_server_task_max_concurrency,
+                request->name().c_str());
+            return;
+        }
         for (uint32_t pid = 0; pid < (uint32_t)table_info->table_partition_size(); pid++) {
             if (CreateAddIndexOP(request->name(), pid, request->column_key(), index_pos) < 0) {
                 PDLOG(INFO, "create AddIndexOP failed. table %s pid %u", 
@@ -8672,7 +8677,7 @@ int NameServerImpl::CreateAddIndexOP(const std::string& name, uint32_t pid,
                         name.c_str(), pid);
         return -1;
     }
-    if (AddOPData(op_data, FLAGS_name_server_task_concurrency) < 0) {
+    if (AddOPData(op_data, FLAGS_name_server_task_max_concurrency) < 0) {
         PDLOG(WARNING, "add op data failed. name[%s] pid[%u]", name.c_str(), pid);
         return -1;
     }

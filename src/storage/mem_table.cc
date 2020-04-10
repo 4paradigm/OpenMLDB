@@ -182,7 +182,7 @@ bool MemTable::Put(uint64_t time,
     for (;it != dimensions.end(); ++it) {
         std::shared_ptr<IndexDef> index_def = GetIndex(it->idx());
         if (!index_def || !index_def->IsReady()) {
-            block->dim_cnt_down --;
+            block->dim_cnt_down--;
             continue;
         }
         Slice spk(it->key());
@@ -260,7 +260,8 @@ bool MemTable::Put(const Slice& pk,
                 uint64_t time, 
                 DataBlock* row,
                 uint32_t idx) {
-    if (idx >= GetIdxCnt()) {
+    std::shared_ptr<IndexDef> index_def = GetIndex(idx);
+    if (!index_def || !index_def->IsReady()) {
         return false;
     }
     uint32_t seg_idx = 0;
@@ -273,7 +274,8 @@ bool MemTable::Put(const Slice& pk,
 }
 
 bool MemTable::Delete(const std::string& pk, uint32_t idx) {
-    if (idx >= GetIdxCnt()) {
+    std::shared_ptr<IndexDef> index_def = GetIndex(idx);
+    if (!index_def || !index_def->IsReady()) {
         return false;
     }
     Slice spk(pk);

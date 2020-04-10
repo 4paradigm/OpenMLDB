@@ -237,6 +237,7 @@ enum ReturnCode {
     kRequestHasNoZoneInfoOrTaskInfo = 515,
     kCurNameserverIsLeaderCluster = 516,
     kHasNotColumnKey = 517,
+    kTooManyPartition = 517,
     kOperatorNotSupport = 701,
 };
 
