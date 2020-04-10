@@ -1,7 +1,7 @@
 package com._4paradigm.fesql.jdbc;
-import com._4paradigm.fesql.DBMSSdk;
-import com._4paradigm.fesql.Status;
-import com._4paradigm.fesql.fesql_interface;
+import com._4paradigm.fesql.sdk.DBMSSdk;
+import com._4paradigm.fesql.sdk.Status;
+import com._4paradigm.fesql_interface;
 
 public class TestDBMS {
     public static void main(String[] args) {
