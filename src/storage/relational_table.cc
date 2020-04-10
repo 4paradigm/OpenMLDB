@@ -236,6 +236,7 @@ bool RelationalTable::Put(const std::string& value) {
             }
         }
     }
+    //PDLOG(DEBUG, "put pk: %s, pk size %u", pk.c_str(), pk.size());
     return PutDB(pk, value.c_str(), value.size());
 }
 
@@ -302,7 +303,8 @@ bool RelationalTable::GetStr(::rtidb::base::RowView& view, uint32_t idx,
         key->resize(sizeof(int64_t));
         char* to = const_cast<char*>(key->data());
         ret = ::rtidb::base::PackInteger(&bi_val, sizeof(int64_t), false, to);
-    } else if (data_type == ::rtidb::type::kVarchar) {  
+    } else if (data_type == ::rtidb::type::kVarchar ||
+            data_type == ::rtidb::type::kString) {  
         char* ch = NULL;
         uint32_t length = 0;
         view.GetString(idx, &ch, &length);
@@ -374,7 +376,8 @@ bool RelationalTable::ConvertIndex(const std::string& name, const std::string& v
         out_val->resize(sizeof(double));
         char* to = const_cast<char*>(out_val->data());
         ret = ::rtidb::base::PackDouble(&val, to);
-    } else if (type == ::rtidb::type::kVarchar) {
+    } else if (type == ::rtidb::type::kVarchar 
+            || type == ::rtidb::type::kString) {
         int32_t dst_len = ::rtidb::base::GetDstStrSize(value.length());
         out_val->resize(dst_len);
         char* dst = const_cast<char*>(out_val->data());
@@ -388,6 +391,7 @@ bool RelationalTable::ConvertIndex(const std::string& name, const std::string& v
         PDLOG(WARNING, "pack error, tid %u pid %u", id_, pid_);
         return false;
     }
+    //PDLOG(DEBUG, "query pk: %s", out_val->c_str());
     return true;
 }
 
@@ -404,8 +408,9 @@ bool RelationalTable::Delete(const std::string& pk, uint32_t idx) {
     }
 }
 
-RelationalTableTraverseIterator* RelationalTable::Seek(uint32_t idx, const std::string& key) {
-    RelationalTableTraverseIterator* it = NewTraverse(idx, 0);
+RelationalTableTraverseIterator* RelationalTable::Seek(uint32_t idx, const std::string& key, 
+        const uint64_t snapshot_id) {
+    RelationalTableTraverseIterator* it = NewTraverse(idx, snapshot_id);
     if (it == NULL) {
         PDLOG(WARNING, "key not found. tid %u pid %u", id_, pid_);
         return NULL;
@@ -467,7 +472,7 @@ bool RelationalTable::Query(const std::shared_ptr<IndexDef> index_def, const std
 
     if (index_type == ::rtidb::type::kPrimaryKey ||
             index_type == ::rtidb::type::kAutoGen) {
-        RelationalTableTraverseIterator* it = Seek(idx, key);
+        RelationalTableTraverseIterator* it = Seek(idx, key, 0);
         if (it == NULL) {
             delete it;
             return false;
@@ -482,7 +487,7 @@ bool RelationalTable::Query(const std::shared_ptr<IndexDef> index_def, const std
         it->SetFinish(true);
         delete it;
     } else if (index_type == ::rtidb::type::kUnique) {
-        RelationalTableTraverseIterator* it = Seek(idx, key);
+        RelationalTableTraverseIterator* it = Seek(idx, key, 0);
         if (it == NULL) {
             delete it;
             return false;
@@ -498,7 +503,7 @@ bool RelationalTable::Query(const std::shared_ptr<IndexDef> index_def, const std
         delete it;
     } else if (index_type == ::rtidb::type::kNoUnique) {
         //TODO multi records
-        RelationalTableTraverseIterator* it = Seek(idx, key);
+        RelationalTableTraverseIterator* it = Seek(idx, key, 0);
         if (it == NULL) {
             delete it;
             return false;

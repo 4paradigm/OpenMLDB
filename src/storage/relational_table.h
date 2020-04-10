@@ -135,6 +135,10 @@ public:
     void SetOffset(uint64_t offset) {
         offset_.store(offset, std::memory_order_relaxed);
     }
+    
+    std::shared_ptr<IndexDef> GetPkIndex() {
+        return table_index_.GetPkIndex();
+    }
 
 private:
     static inline std::string CombineNoUniqueAndPk(const std::string& no_unique, 
@@ -167,7 +171,8 @@ private:
     int InitColumnDesc();
     bool InitFromMeta();
     static void initOptionTemplate();
-    RelationalTableTraverseIterator* Seek(uint32_t idx, const std::string& key); 
+    RelationalTableTraverseIterator* Seek(uint32_t idx, const std::string& key, 
+            const uint64_t snapshot_id); 
     bool PutDB(const std::string& pk, const char* data, uint32_t size);
     void UpdateInternel(const ::rtidb::api::Columns& cd_columns, 
             std::map<std::string, int>& cd_idx_map, 
