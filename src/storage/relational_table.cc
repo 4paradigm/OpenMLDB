@@ -404,19 +404,15 @@ bool RelationalTable::Delete(const std::string& pk, uint32_t idx) {
     }
 }
 
-rocksdb::Iterator* RelationalTable::Seek(uint32_t idx, const std::string& key) {
-    rocksdb::ReadOptions ro = rocksdb::ReadOptions();
-    const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
-    ro.snapshot = snapshot;
-    ro.prefix_same_as_start = true;
-    ro.pin_data = true;
-
-    rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[idx + 1]);
+RelationalTableTraverseIterator* RelationalTable::Seek(uint32_t idx, const std::string& key) {
+    RelationalTableTraverseIterator* it = NewTraverse(idx, 0);
     if (it == NULL) {
+        PDLOG(WARNING, "key not found. tid %u pid %u", id_, pid_);
         return NULL;
     }
-    it->Seek(rocksdb::Slice(key));
+    it->Seek(key);
     if (!it->Valid()) {
+        PDLOG(WARNING, "iterator not valid. tid %u pid %u", id_, pid_);
         return NULL;
     }
     return it;
@@ -424,7 +420,7 @@ rocksdb::Iterator* RelationalTable::Seek(uint32_t idx, const std::string& key) {
 
 bool RelationalTable::Query(
         const ::google::protobuf::RepeatedPtrField< ::rtidb::api::ReadOption >& ros,
-        std::string* pairs) {
+        std::string* pairs, uint32_t* count) {
     std::vector<rtidb::base::Slice> value_vec;
     uint32_t total_block_size = 0;
     for (auto& ro : ros) {
@@ -439,6 +435,7 @@ bool RelationalTable::Query(
         total_block_size += value.size();
     }
     uint32_t scount = value_vec.size();
+    *count = scount;
     uint32_t total_size = scount * 4 + total_block_size;
     if (scount == 0) {
         pairs->resize(0);
@@ -470,34 +467,38 @@ bool RelationalTable::Query(const std::shared_ptr<IndexDef> index_def, const std
 
     if (index_type == ::rtidb::type::kPrimaryKey ||
             index_type == ::rtidb::type::kAutoGen) {
-        rocksdb::Iterator* it = Seek(idx, key);
+        RelationalTableTraverseIterator* it = Seek(idx, key);
         if (it == NULL) {
             delete it;
             return false;
         }
-        if (it->key() != key) {
+        if (it->GetKey() != ::rtidb::base::Slice(key)) {
+            it->SetFinish(true);
             delete it;
             return false;
         }
-        rtidb::base::Slice slice = rtidb::base::Slice(it->value().data(), it->value().size());
+        rtidb::base::Slice slice = ::rtidb::base::Slice(it->GetValue().data(), it->GetValue().size());
         vec->push_back(slice);
+        it->SetFinish(true);
         delete it;
     } else if (index_type == ::rtidb::type::kUnique) {
-        rocksdb::Iterator* it = Seek(idx, key);
+        RelationalTableTraverseIterator* it = Seek(idx, key);
         if (it == NULL) {
             delete it;
             return false;
         }
-        if (it->key() != key) {
+        if (it->GetKey() != ::rtidb::base::Slice(key)) {
+            it->SetFinish(true);
             delete it;
             return false;
         }
-        const std::string& pk = std::string(it->value().data(), it->value().size());
+        const std::string& pk = std::string(it->GetValue().data(), it->GetValue().size());
         Query(table_index_.GetPkIndex(), pk, vec); 
+        it->SetFinish(true);
         delete it;
     } else if (index_type == ::rtidb::type::kNoUnique) {
         //TODO multi records
-        rocksdb::Iterator* it = Seek(idx, key);
+        RelationalTableTraverseIterator* it = Seek(idx, key);
         if (it == NULL) {
             delete it;
             return false;
@@ -505,12 +506,14 @@ bool RelationalTable::Query(const std::shared_ptr<IndexDef> index_def, const std
         int count = 0;
         while (it->Valid()) {
             std::string pk = "";
-            int ret = ParsePk(it->key(), key, &pk);
+            int ret = ParsePk(rocksdb::Slice(it->GetKey().data(), it->GetKey().size()), key, &pk);
             if (ret == -1) {
                 PDLOG(WARNING,"ParsePk failed, tid %u pid %u", id_, pid_);
+                it->SetFinish(true);
                 delete it;
                 return false;
             } else if (ret == -2) {
+                it->SetFinish(true);
                 delete it;
                 if (count == 0) return false;
                 else return true;
@@ -519,6 +522,7 @@ bool RelationalTable::Query(const std::shared_ptr<IndexDef> index_def, const std
             it->Next();
             count++;
         }
+        it->SetFinish(true);
         delete it;
     }
     return true;
@@ -772,6 +776,7 @@ RelationalTableTraverseIterator* RelationalTable::NewTraverse(uint32_t idx, uint
         return NULL;
     }
     rocksdb::ReadOptions ro = rocksdb::ReadOptions();
+    ro.prefix_same_as_start = true;
     ro.pin_data = true;
     std::shared_ptr<SnapshotInfo> sc;
     if (snapshot_id > 0) {
@@ -835,6 +840,11 @@ uint64_t RelationalTableTraverseIterator::GetCount() {
 rtidb::base::Slice RelationalTableTraverseIterator::GetValue() {
     rocksdb::Slice spk = it_->value();
     return rtidb::base::Slice(spk.data(), spk.size());
+}
+
+rtidb::base::Slice RelationalTableTraverseIterator::GetKey() {
+    rocksdb::Slice key = it_->key();
+    return rtidb::base::Slice(key.data(), key.size());
 }
 
 uint64_t RelationalTableTraverseIterator::GetSeq() {

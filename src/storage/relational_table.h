@@ -52,7 +52,7 @@ class RelationalTableTraverseIterator {
     uint64_t GetCount();
     rtidb::base::Slice GetValue();
     uint64_t GetSeq();
-    rocksdb::Slice GetKey();
+    rtidb::base::Slice GetKey();
     void SetFinish(bool finish);
 
  private:
@@ -87,7 +87,7 @@ public:
     bool Put(const std::string& value); 
 
     bool Query(const ::google::protobuf::RepeatedPtrField< ::rtidb::api::ReadOption >& ros,
-            std::string* pairs);
+            std::string* pairs, uint32_t* count);
     bool Query(const std::string& idx_name, const std::string& idx_val, std::vector<rtidb::base::Slice>* vec); 
     bool Query(const std::shared_ptr<IndexDef> index_def, const std::string& key, std::vector<rtidb::base::Slice>* vec); 
 
@@ -167,7 +167,7 @@ private:
     int InitColumnDesc();
     bool InitFromMeta();
     static void initOptionTemplate();
-    rocksdb::Iterator* Seek(uint32_t idx, const std::string& key); 
+    RelationalTableTraverseIterator* Seek(uint32_t idx, const std::string& key); 
     bool PutDB(const std::string& pk, const char* data, uint32_t size);
     void UpdateInternel(const ::rtidb::api::Columns& cd_columns, 
             std::map<std::string, int>& cd_idx_map, 
