@@ -626,7 +626,7 @@ uint64_t MemTable::GetRecordIdxByteSize() {
     uint64_t record_idx_byte_size = 0;
     const std::vector<std::shared_ptr<IndexDef>> indexs = GetAllIndex();
     for (const auto& index_def : indexs) {
-        if (index_def->IsReady() && index_def->GetId() < segments_.size()) {
+        if (index_def && index_def->IsReady()) {
             for (uint32_t j = 0; j < seg_cnt_; j++) {
                 record_idx_byte_size += segments_[index_def->GetId()][j]->GetIdxByteSize(); 
             }

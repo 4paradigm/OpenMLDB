@@ -290,6 +290,10 @@ class TestCaseBase(unittest.TestCase):
         cmd = 'addtablefield {} {} {}'.format(name, col_name, col_type);
         return self.run_client(endpoint, cmd, 'ns_client')
 
+    def ns_addindex(self, endpoint, name, index_name, col_name='', ts_name=''):
+        cmd = 'addindex {} {} {} {}'.format(name, index_name, col_name, ts_name)
+        return self.run_client(endpoint, cmd, 'ns_client')
+
     def parse_scan_result(self, result):    
         arr = result.split("\n")
         key_arr = re.sub(' +', ' ', arr[0]).strip().split(" ")
