@@ -88,7 +88,7 @@ enum QueryType {
 enum ExprType {
     kExprBinary,
     kExprUnary,
-    kExprIn,
+    kExprBetween,
     kExprCall,
     kExprCase,
     kExprCast,
@@ -153,12 +153,14 @@ enum FnOperator {
     kFnOpDot,
     kFnOpAt,
     kFnOpLike,
+    kFnOpIn,
     kFnOpBracket,
     kFnOpNone
 };
 
 enum JoinType {
     kJoinTypeFull,
+    kJoinTypeLast,
     kJoinTypeLeft,
     kJoinTypeRight,
     kJoinTypeInner,
@@ -201,7 +203,6 @@ enum PlanType {
     kPlanTypeDistinct,
     kPlanTypeProject,
     kPlanTypeRename,
-
     kProjectList,
     kPlanTypeWindow,
     kProjectNode,

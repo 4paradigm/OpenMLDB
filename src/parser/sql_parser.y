@@ -218,6 +218,7 @@ typedef void* yyscan_t;
 %token KEY
 %token KEYS
 %token KILL
+%token LAST
 %token LEADING
 %token LEAVE
 %token LEFT
@@ -1031,6 +1032,10 @@ join_type:
 		{
 			$$ = fesql::node::kJoinTypeFull;
 		}
+		|LAST join_outer
+		{
+			$$ = fesql::node::kJoinTypeLast;
+		}
 		|LEFT join_outer
 		{
 			$$ = fesql::node::kJoinTypeLeft;
@@ -1185,6 +1190,7 @@ fun_expr:
 sql_expr:
      column_ref			{ $$ = $1; }
      | expr_const 	{ $$ = $1; }
+     | primary_time	{ $$ = $1; }
      | sql_call_expr  	{ $$ = $1; }
      | sql_expr '+' sql_expr
      {
@@ -1263,13 +1269,17 @@ sql_expr:
      }
      | sql_expr IN '(' sql_expr_list ')'
      {
-     	$$ = node_manager->MakeBinaryExprNode($1, $4, ::fesql::node::kFnOpLike);
+     	$$ = node_manager->MakeBinaryExprNode($1, $4, ::fesql::node::kFnOpIn);
      }
      | sql_expr NOT IN '(' sql_expr_list ')'
      {
      	$$ = node_manager->MakeUnaryExprNode(
-     		node_manager->MakeBinaryExprNode($1, $5, ::fesql::node::kFnOpLike),
+     		node_manager->MakeBinaryExprNode($1, $5, ::fesql::node::kFnOpIn),
      		::fesql::node::kFnOpNot);
+     }
+     | sql_expr BETWEEN sql_expr AND sql_expr
+     {
+     	$$ = node_manager->MakeBetweenExpr($1, $3, $5);
      }
      | '(' sql_expr ')'
      {

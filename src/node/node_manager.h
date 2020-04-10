@@ -146,6 +146,7 @@ class NodeManager {
                                 const std::string &db_name);
     ExprNode *MakeColumnRefNode(const std::string &column_name,
                                 const std::string &relation_name);
+    ExprNode *MakeBetweenExpr(ExprNode *expr, ExprNode *left, ExprNode *right);
     ExprNode *MakeBinaryExprNode(ExprNode *left, ExprNode *right,
                                  FnOperator op);
     ExprNode *MakeUnaryExprNode(ExprNode *left, FnOperator op);

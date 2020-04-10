@@ -171,10 +171,18 @@ INSTANTIATE_TEST_CASE_P(
 
 INSTANTIATE_TEST_CASE_P(
     SqlJoinParse, SqlParserTest,
-    testing::Values("SELECT * FROM t1 full join t2 on t1.col1 = t2.col2;",
-                    "SELECT * FROM t1 left join t2 on t1.col1 = t2.col2;",
-                    "SELECT * FROM t1 right join t2 on t1.col1 = t2.col2;",
-                    "SELECT * FROM t1 inner join t2 on t1.col1 = t2.col2;"));
+    testing::Values(
+        "SELECT * FROM t1 full join t2 on t1.col1 = t2.col2;",
+        "SELECT * FROM t1 left join t2 on t1.col1 = t2.col2;",
+        "SELECT * FROM t1 last join t2 on t1.col1 = t2.col2;",
+        "SELECT * FROM t1 right join t2 on t1.col1 = t2.col2;",
+        "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t2 left join t2 on "
+        "t1.col1 = t2.col2 and t2.col15 >= t1.col15;",
+        "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t2 last join t2 on "
+        "t1.col1 = t2.col2 and t2.col15 >= t1.col15;",
+        "SELECT t1.col1 as t1_col1, t2.col1 as t2_col2 from t1 LAST JOIN t2 on "
+        "t1.col1 = t2.col1 and t2.std_ts between t1.std_ts - 30d and t1.std_ts "
+        "- 1d;"));
 
 INSTANTIATE_TEST_CASE_P(
     SqlUnionParse, SqlParserTest,
@@ -429,10 +437,9 @@ INSTANTIATE_TEST_CASE_P(SQLCmdParserTest, SqlParserTest,
                                         "SHOW TABLES;", "SHOW DATABASES;"));
 INSTANTIATE_TEST_CASE_P(
     SQLExplainParserTest, SqlParserTest,
-    testing::Values(
-        "explain SELECT * FROM t1 WHERE COL1 > (select "
-        "avg(COL1) from t1) limit 10;",
-        "explain logical SELECT * FROM t1 WHERE COL1 > (select "
+    testing::Values("explain SELECT * FROM t1 WHERE COL1 > (select "
+                    "avg(COL1) from t1) limit 10;",
+                    "explain logical SELECT * FROM t1 WHERE COL1 > (select "
                     "avg(COL1) from t1) limit 10;"));
 
 INSTANTIATE_TEST_CASE_P(
@@ -606,18 +613,6 @@ TEST_F(SqlParserTest, Parser_Insert_Stmt) {
     ASSERT_STREQ(
         dynamic_cast<node::ConstNode *>(insert_stmt->values_[3])->GetStr(),
         "string");
-    //
-    //
-    //    ASSERT_EQ(false, insert_stmt->is_all_);
-    //    ASSERT_EQ(std::vector<std::string>({"col1", "col2", "col3"}),
-    //              insert_stmt->columns_);
-    //
-    //    ASSERT_EQ(dynamic_cast<ConstNode*>(insert_stmt->values_[0])->GetInt(),
-    //    1);
-    //    ASSERT_EQ(dynamic_cast<ConstNode*>(insert_stmt->values_[1])->GetFloat(),
-    //    2.3f);
-    //    ASSERT_EQ(dynamic_cast<ConstNode*>(insert_stmt->values_[2])->GetDouble(),
-    //    2.3);
 }
 
 TEST_F(SqlParserTest, Parser_Create_Stmt) {

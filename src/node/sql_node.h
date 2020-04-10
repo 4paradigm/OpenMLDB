@@ -71,6 +71,8 @@ inline const std::string JoinTypeName(const JoinType &type) {
     switch (type) {
         case kJoinTypeFull:
             return "FullJoin";
+        case kJoinTypeLast:
+            return "LastJoin";
         case kJoinTypeLeft:
             return "LeftJoin";
         case kJoinTypeRight:
@@ -122,6 +124,8 @@ inline const std::string ExprOpTypeName(const FnOperator &op) {
             return ".";
         case kFnOpLike:
             return "LIKE";
+        case kFnOpIn:
+            return "IN";
         case kFnOpBracket:
             return "()";
         case kFnOpNone:
@@ -170,8 +174,8 @@ inline const std::string ExprTypeName(const ExprType &type) {
             return "function";
         case kExprCase:
             return "case";
-        case kExprIn:
-            return "in";
+        case kExprBetween:
+            return "between";
         case kExprColumnRef:
             return "column ref";
         case kExprCast:
@@ -885,6 +889,20 @@ class ColumnRefNode : public ExprNode {
     std::string db_name_;
 };
 
+class BetweenExpr : public ExprNode {
+ public:
+    BetweenExpr(ExprNode *expr, ExprNode *left, ExprNode *right)
+        : ExprNode(kExprBetween), expr_(expr), left_(left), right_(right) {}
+    ~BetweenExpr() {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const std::string GetExprString() const;
+    virtual bool Equals(const ExprNode *node) const;
+
+ private:
+    ExprNode *expr_;
+    ExprNode *left_;
+    ExprNode *right_;
+};
 class ResTarget : public SQLNode {
  public:
     ResTarget() : SQLNode(kResTarget, 0, 0), name_(""), val_(nullptr) {}

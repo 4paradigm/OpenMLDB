@@ -796,5 +796,11 @@ ExprNode *NodeManager::MakeExprFrom(const node::ExprNode *expr,
         }
     }
 }
+
+ExprNode *NodeManager::MakeBetweenExpr(ExprNode *expr, ExprNode *left,
+                                       ExprNode *right) {
+    ExprNode *node_ptr = new BetweenExpr(expr, left, right);
+    return RegisterNode(node_ptr);
+}
 }  // namespace node
 }  // namespace fesql

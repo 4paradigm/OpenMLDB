@@ -208,6 +208,7 @@ INDEX   { return INDEX; }
 KEY	{ return KEY; }
 KEYS	{ return KEYS; }
 KILL	{ return KILL; }
+LAST    { return LAST; }
 LEADING	{ return LEADING; }
 LEAVE	{ return LEAVE; }
 LEFT	{ return LEFT; }

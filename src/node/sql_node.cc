@@ -237,6 +237,14 @@ const std::string ConstNode::GetExprString() const {
             return std::to_string(val_.vfloat);
         case fesql::node::kDouble:
             return std::to_string(val_.vdouble);
+        case fesql::node::kDay:
+            return std::to_string(val_.vlong).append("d");
+        case fesql::node::kHour:
+            return std::to_string(val_.vlong).append("h");
+        case fesql::node::kMinute:
+            return std::to_string(val_.vlong).append("m");
+        case fesql::node::kSecond:
+            return std::to_string(val_.vlong).append("s");
         case fesql::node::kNull:
             return "null";
             break;
@@ -1056,6 +1064,8 @@ void JoinNode::Print(std::ostream &output, const std::string &org_tab) const {
     PrintSQLNode(output, tab, left_, "left", false);
     output << "\n";
     PrintSQLNode(output, tab, right_, "right", true);
+    output << "\n";
+    PrintSQLNode(output, tab, condition_, "on", true);
 }
 bool JoinNode::Equals(const SQLNode *node) const {
     if (!TableRefNode::Equals(node)) {
@@ -1147,6 +1157,34 @@ bool NameNode::Equals(const SQLNode *node) const {
     }
     const NameNode *that = dynamic_cast<const NameNode *>(node);
     return this->name_ == that->name_;
+}
+void BetweenExpr::Print(std::ostream &output,
+                        const std::string &org_tab) const {
+    ExprNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintSQLNode(output, tab, expr_, "value", false);
+    output << "\n";
+    PrintSQLNode(output, tab, left_, "left", false);
+    output << "\n";
+    PrintSQLNode(output, tab, right_, "right", true);
+}
+const std::string BetweenExpr::GetExprString() const {
+    std::string str = "";
+    str.append(ExprString(expr_))
+        .append(" between ")
+        .append(ExprString(left_))
+        .append(" and ")
+        .append(ExprString(right_));
+    return str;
+}
+bool BetweenExpr::Equals(const ExprNode *node) const {
+    if (!SQLNode::Equals(node)) {
+        return false;
+    }
+    const BetweenExpr *that = dynamic_cast<const BetweenExpr *>(node);
+    return ExprEquals(expr_, that->expr_) && ExprEquals(left_, that->left_) &&
+           ExprEquals(right_, that->right_);
 }
 }  // namespace node
 }  // namespace fesql
