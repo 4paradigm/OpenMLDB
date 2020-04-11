@@ -4857,6 +4857,7 @@ void TabletImpl::ExtractIndexDataInternal(std::shared_ptr<::rtidb::storage::Tabl
         replicator->SetSnapshotLogPartIndex(offset);
     }
     SetTaskStatus(task, ::rtidb::api::TaskStatus::kDone);
+    table->SetIndexReady(idx);
 }
 
 void TabletImpl::AddIndex(RpcController* controller,

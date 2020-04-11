@@ -55,11 +55,12 @@ struct TTLDesc {
     uint64_t lat_ttl;
 };
 
-enum IndexStatus {
+enum class IndexStatus {
     kReady = 0,
     kWaiting,
     kDeleting,
-    kDeleted
+    kDeleted,
+    kLoading
 };
 
 class IndexDef {
@@ -102,12 +103,11 @@ public:
     int AddIndex(std::shared_ptr<IndexDef> index_def);
     std::vector<std::shared_ptr<IndexDef>> GetAllIndex();
     inline uint32_t Size() const {
-        return size_;
+        return std::atomic_load_explicit(&indexs_, std::memory_order_relaxed)->size();
     }
 
 private:
-    std::vector<std::shared_ptr<IndexDef>> indexs_;
-    uint32_t size_;
+    std::shared_ptr<std::vector<std::shared_ptr<IndexDef>>> indexs_;
 };
 
 }

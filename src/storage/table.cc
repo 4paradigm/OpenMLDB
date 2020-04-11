@@ -97,13 +97,13 @@ int Table::InitColumnDesc() {
                     return -1;
                 }
                 if (column_key.flag()) {
-                    if (table_index_.AddIndex(
-                                std::make_shared<IndexDef>(name, key_idx, ::rtidb::storage::kDeleted)) < 0) {
+                    if (table_index_.AddIndex(std::make_shared<IndexDef>(
+                                    name, key_idx, ::rtidb::storage::IndexStatus::kDeleted)) < 0) {
                         return -1;
                     }
                 } else {
-                    if (table_index_.AddIndex(
-                                std::make_shared<IndexDef>(name, key_idx, ::rtidb::storage::kReady)) < 0) {
+                    if (table_index_.AddIndex(std::make_shared<IndexDef>(
+                                    name, key_idx, ::rtidb::storage::IndexStatus::kReady)) < 0) {
                         return -1;
                     }
                 }

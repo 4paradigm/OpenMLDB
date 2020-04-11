@@ -155,6 +155,13 @@ public:
         return table_index_.GetIndex(idx);
     }
 
+    void SetIndexReady(uint32_t idx) {
+        std::shared_ptr<IndexDef> index = table_index_.GetIndex(idx);
+        if (index) {
+            index->SetStatus(IndexStatus::kReady);
+        }
+    }
+
     inline std::map<std::string, uint8_t>& GetTSMapping() {
         return ts_mapping_;
     }

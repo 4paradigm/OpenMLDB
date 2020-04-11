@@ -21,44 +21,49 @@ IndexDef::IndexDef(const std::string& name, uint32_t id, IndexStatus status) :
 IndexDef::~IndexDef() {
 }
 
-TableIndex::TableIndex() : indexs_(MAX_INDEX_NUM, std::shared_ptr<IndexDef>()), size_(0) {
+TableIndex::TableIndex() {
+    indexs_ = std::make_shared<std::vector<std::shared_ptr<IndexDef>>>();
 }
 
 TableIndex::~TableIndex() {
-    indexs_.clear();
+    indexs_->clear();
 }
 
 void TableIndex::ReSet() {
-    indexs_ = std::vector<std::shared_ptr<IndexDef>>(MAX_INDEX_NUM, std::shared_ptr<IndexDef>());
-    size_ = 0;
+    auto new_indexs = std::make_shared<std::vector<std::shared_ptr<IndexDef>>>();
+    std::atomic_store_explicit(&indexs_, new_indexs, std::memory_order_relaxed);
 }
 
 std::shared_ptr<IndexDef> TableIndex::GetIndex(uint32_t idx) {
-    if (idx < size_) {
-        return indexs_.at(idx);
+    auto indexs = std::atomic_load_explicit(&indexs_, std::memory_order_relaxed);
+    if (idx < indexs->size()) {
+        return indexs->at(idx);
     }
     return std::shared_ptr<IndexDef>();
 }
 
 std::shared_ptr<IndexDef> TableIndex::GetIndex(const std::string& name) {
-    for (uint32_t idx = 0; idx < size_; idx++) {
-        if (indexs_[idx]->GetName() == name) {
-            return indexs_[idx];
+    auto indexs = std::atomic_load_explicit(&indexs_, std::memory_order_relaxed);
+    for (const auto& index : *indexs) {
+        if (index->GetName() == name) {
+            return index;
         }
     }
     return std::shared_ptr<IndexDef>();
 }
 
 std::vector<std::shared_ptr<IndexDef>> TableIndex::GetAllIndex() {
-    return std::vector<std::shared_ptr<IndexDef>>(indexs_.begin(), indexs_.begin() + size_);
+    return *std::atomic_load_explicit(&indexs_, std::memory_order_relaxed);
 }
 
 int TableIndex::AddIndex(std::shared_ptr<IndexDef> index_def) {
-    if (size_ >= MAX_INDEX_NUM) {
+    auto old_indexs = std::atomic_load_explicit(&indexs_, std::memory_order_relaxed);
+    if (old_indexs->size() >= MAX_INDEX_NUM) {
         return -1;
     }
-    indexs_[size_] = index_def;
-    size_++;
+    auto new_indexs = std::make_shared<std::vector<std::shared_ptr<IndexDef>>>(*old_indexs);
+    new_indexs->push_back(index_def);
+    std::atomic_store_explicit(&indexs_, new_indexs, std::memory_order_relaxed);
     return 0;
 }
 
