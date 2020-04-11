@@ -40,6 +40,8 @@ public class TableHandler {
                 com._4paradigm.rtidb.common.Common.ColumnDesc cd = tableInfo.getColumnDescV1(i);
                 ColumnDesc ncd = new ColumnDesc();
                 ncd.setName(cd.getName());
+                ncd.setDataType(DataType.valueFrom(cd.getDataType()));
+                ncd.setNotNull(cd.getNotNull());
                 if (!tableInfo.hasTableType() ||
                         tableInfo.getTableType() == Type.TableType.kTimeSeries) {
                     ncd.setAddTsIndex(cd.getAddTsIdx());
@@ -49,9 +51,6 @@ public class TableHandler {
                     }
                     ncd.setTsCol(cd.getIsTsCol());
                     ncd.setType(ColumnType.valueFrom(cd.getType()));
-                } else {
-                    ncd.setDataType(DataType.valueFrom(cd.getDataType()));
-                    ncd.setNotNull(cd.getNotNull());
                 }
                 schema.add(ncd);
                 if (cd.getAddTsIdx()) {

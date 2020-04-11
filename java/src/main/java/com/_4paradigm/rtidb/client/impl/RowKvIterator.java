@@ -3,8 +3,7 @@ package com._4paradigm.rtidb.client.impl;
 import com._4paradigm.rtidb.client.KvIterator;
 import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
-import com._4paradigm.rtidb.client.schema.RowCodec;
-import com._4paradigm.rtidb.client.schema.RowView;
+import com._4paradigm.rtidb.client.schema.RowSliceView;
 import com._4paradigm.rtidb.ns.NS;
 import com.google.protobuf.ByteString;
 
@@ -25,16 +24,16 @@ public class RowKvIterator implements KvIterator {
     private int count;
     private long key;
     private NS.CompressType compressType = NS.CompressType.kNoCompress;
-    private RowView rv;
+    private RowSliceView rv;
     public RowKvIterator(ByteString bs, List<ColumnDesc> schema, int count) {
         this.bs = bs;
-        this.bb = this.bs.asReadOnlyByteBuffer();
+        this.bb = this.bs.asReadOnlyByteBuffer().order(ByteOrder.LITTLE_ENDIAN);;
         this.offset = 0;
         this.totalSize = this.bs.size();
         this.count = count;
         next();
         this.schema = schema;
-        rv = new RowView(schema);
+        rv = new RowSliceView(schema);
     }
 
     public int getCount() {
@@ -91,16 +90,16 @@ public class RowKvIterator implements KvIterator {
             offset += 4;
             return;
         }
-        slice = this.bb.slice().asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN);
-        slice.position(offset);
-        int size = slice.getInt();
-        key = slice.getLong();
+        bb.position(offset);
+        int size = bb.getInt();
+        key = bb.getLong();
         length = size - 8;
         if (length < 0) {
             throw new RuntimeException("bad frame data");
         }
         offset += (4 + size);
-        slice.limit(offset);
+        slice = bb.slice().order(ByteOrder.LITTLE_ENDIAN);
+        slice.limit(length);
     }
 
     @Override
@@ -108,10 +107,6 @@ public class RowKvIterator implements KvIterator {
         if (schema == null) {
             throw new TabletException("get decoded value is not supported");
         }
-        rv.reset(slice, length);
-        int index = start;
-        for (int i = 0; i < schema.size() && i < length; i ++) {
-            row[index] = rv.getValue(slice, i);
-        }
+        rv.read(slice, row, start, length);
     }
 }
