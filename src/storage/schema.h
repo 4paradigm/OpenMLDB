@@ -73,7 +73,7 @@ public:
         ts_column_ = ts_vec;
     }
     inline bool IsReady() { 
-        return status_.load(std::memory_order_relaxed) == IndexStatus::kReady;
+        return status_.load(std::memory_order_acquire) == IndexStatus::kReady;
     }
     inline uint32_t GetId() { return index_id_; }
     void SetStatus(IndexStatus status) {
