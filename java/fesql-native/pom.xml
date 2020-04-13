@@ -9,7 +9,6 @@
 		<relativePath>../pom.xml</relativePath>
 	</parent>
 	<modelVersion>4.0.0</modelVersion>
-	<groupId>com._4paradigm.fesql</groupId>
 	<artifactId>fesql-native</artifactId>
 	<packaging>jar</packaging>
 	<name>fesql-native</name>
