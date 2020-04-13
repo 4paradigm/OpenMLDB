@@ -23,7 +23,10 @@ namespace std {
 %shared_ptr(fesql::sdk::TableSet);
 %shared_ptr(fesql::sdk::ResultSet);
 
+#ifdef SWIGJAVA
 %nspace;
+#endif
+
 
 
 %{
