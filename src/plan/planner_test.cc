@@ -19,9 +19,6 @@ using fesql::node::NodeManager;
 using fesql::node::PlanNode;
 using fesql::node::SQLNode;
 using fesql::node::SQLNodeList;
-// TODO(chenjing): add ut: 检查SQL的语法树节点预期 2019.10.23
-// TODO(chenjing): add ut batch mode plan and request mode plan
-// TODO(chenjing): add ut for validate primary path
 class PlannerTest : public ::testing::TestWithParam<std::string> {
  public:
     PlannerTest() {
