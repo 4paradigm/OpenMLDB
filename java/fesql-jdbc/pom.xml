@@ -13,6 +13,7 @@
 	<artifactId>fesql-jdbc</artifactId>
 	<packaging>jar</packaging>
 	<name>fesql-jdbc</name>
+	<version>0.0.1-SNAPSHOT</version>
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

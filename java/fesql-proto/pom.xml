@@ -11,6 +11,7 @@
 	<artifactId>fesql-proto</artifactId>
 	<packaging>jar</packaging>
 	<name>fesql-proto</name>
+	<version>0.0.1-SNAPSHOT</version>
 
     <dependencies>
         <dependency>
