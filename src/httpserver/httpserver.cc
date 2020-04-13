@@ -44,15 +44,6 @@ bool HttpImpl::Init() {
     return true;
 }
 
-bool HttpImpl::RegisterZk() {
-    std::string msg;
-    bool ok = client_->RegisterZK(&msg);
-    if (!ok) {
-        PDLOG(WARNING, "register zk error: %s", msg.c_str());
-    }
-    return ok;
-}
-
 void HttpImpl::Get(RpcController* controller,
                 const ::rtidb::httpserver::HttpRequest* request,
                 ::rtidb::httpserver::HttpResponse* response, Closure* done) {

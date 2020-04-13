@@ -26,8 +26,6 @@ class HttpImpl : public ::rtidb::httpserver::HTTPServer {
 
     bool Init();
 
-    bool RegisterZk();
-
     void Get(RpcController* controller,
                     const ::rtidb::httpserver::HttpRequest* request,
                     ::rtidb::httpserver::HttpResponse* response, Closure* done);
