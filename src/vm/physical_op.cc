@@ -281,6 +281,30 @@ bool PhysicalRequestUnionNode::InitSchema() {
     return true;
 }
 
+void PhysicalRequestJoinNode::Print(std::ostream& output,
+                                    const std::string& tab) const {
+    PhysicalOpNode::Print(output, tab);
+    output << "(condition=" << node::ExprString(condition_);
+    if (limit_cnt_ > 0) {
+        output << ", limit=" << limit_cnt_;
+    }
+    output << ")";
+    output << "\n";
+    PrintChildren(output, tab);
+}
+
+bool PhysicalRequestJoinNode::InitSchema() {
+    if (2 != producers_.size() || nullptr == producers_[0] ||
+        nullptr == producers_[1]) {
+        LOG(WARNING) << "InitSchema fail: producers size isn't 2 or left/right "
+                        "producer is null";
+        return false;
+    }
+    output_schema.CopyFrom(producers_[0]->output_schema);
+    output_schema.MergeFrom(producers_[1]->output_schema);
+    PrintSchema();
+    return true;
+}
 void PhysicalSeekIndexNode::Print(std::ostream& output,
                                   const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);

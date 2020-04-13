@@ -293,6 +293,9 @@ class RequestModeransformer : public BatchModeTransformer {
     virtual bool TransformProjecPlantOp(const node::ProjectPlanNode* node,
                                         PhysicalOpNode** output,
                                         base::Status& status);  // NOLINT
+    virtual bool TransformJoinOp(const node::JoinPlanNode* node,
+                                 PhysicalOpNode** output,
+                                 base::Status& status);  // NOLINT
 };
 bool TransformLogicalTreeToLogicalGraph(const ::fesql::node::PlanNode* node,
                                         LogicalGraph* graph,

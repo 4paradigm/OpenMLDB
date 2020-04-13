@@ -35,6 +35,7 @@ enum PhysicalOpType {
     kPhysicalOpUnoin,
     kPhysicalOpIndexSeek,
     kPhysicalOpRequestUnoin,
+    kPhysicalOpRequestJoin,
     kPhysicalOpRequestGroup,
     kPhysicalOpRequestGroupAndSort,
 };
@@ -70,6 +71,8 @@ inline const std::string PhysicalOpTypeName(const PhysicalOpType &type) {
             return "UNION";
         case kPhysicalOpRequestUnoin:
             return "REQUEST_UNION";
+        case kPhysicalOpRequestJoin:
+            return "REQUEST_JOIN";
         case kPhysicalOpIndexSeek:
             return "INDEX_SEEK";
         default:
@@ -479,6 +482,31 @@ class PhysicalSeekIndexNode : public PhysicalBinaryNode {
     std::vector<int32_t> keys_idxs_;
 };
 
+class PhysicalRequestJoinNode : public PhysicalBinaryNode {
+ public:
+    PhysicalRequestJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
+                            const node::JoinType join_type,
+                            const node::ExprNode *condition)
+        : PhysicalBinaryNode(left, right, kPhysicalOpRequestJoin, false, true),
+          join_type_(join_type),
+          condition_(condition) {
+        output_type = kSchemaTypeTable;
+    }
+    virtual ~PhysicalRequestJoinNode() {}
+    bool InitSchema() override;
+    virtual void Print(std::ostream &output, const std::string &tab) const;
+    const node::JoinType join_type_;
+    const node::ExprNode *condition_;
+    void SetConditionIdxs(const std::vector<int32_t> &idxs) {
+        condition_idxs_ = idxs;
+    }
+    const std::vector<int32_t> &GetConditionIdxs() const {
+        return condition_idxs_;
+    }
+
+ private:
+    std::vector<int32_t> condition_idxs_;
+};
 class PhysicalRequestUnionNode : public PhysicalBinaryNode {
  public:
     PhysicalRequestUnionNode(PhysicalOpNode *left, PhysicalOpNode *right,

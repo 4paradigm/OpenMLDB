@@ -1620,6 +1620,27 @@ bool RequestModeransformer::TransformProjecPlantOp(
                                          output, status);
     }
 }
+bool RequestModeransformer::TransformJoinOp(const node::JoinPlanNode* node,
+                                            PhysicalOpNode** output,
+                                            base::Status& status) {
+    if (nullptr == node || nullptr == output) {
+        status.msg = "input node or output node is null";
+        status.code = common::kPlanError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+    PhysicalOpNode* left = nullptr;
+    PhysicalOpNode* right = nullptr;
+    if (!TransformPlanOp(node->GetChildren()[0], &left, status)) {
+        return false;
+    }
+    if (!TransformPlanOp(node->GetChildren()[1], &right, status)) {
+        return false;
+    }
+    *output = new PhysicalRequestJoinNode(left, right, node->join_type_,
+                                          node->condition_);
+    node_manager_->RegisterNode(*output);
+}
 
 }  // namespace vm
 }  // namespace fesql
