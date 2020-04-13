@@ -4930,13 +4930,17 @@ void TabletImpl::CancelOP(RpcController* controller,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
     uint64_t op_id = request->op_id();
-    auto iter = task_map_.find(op_id);
-    if (iter != task_map_.end()) {
-        for (auto& task : iter->second) {
-            if (task->status() == ::rtidb::api::TaskStatus::kInited ||
-                    task->status() == ::rtidb::api::TaskStatus::kDoing) {
-                task->set_status(::rtidb::api::TaskStatus::kCanceled);
-                PDLOG(INFO, "cancel op %lu on tablet[%s]", op_id, FLAGS_endpoint.c_str());
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        auto iter = task_map_.find(op_id);
+        if (iter != task_map_.end()) {
+            for (auto& task : iter->second) {
+                if (task->status() == ::rtidb::api::TaskStatus::kInited ||
+                        task->status() == ::rtidb::api::TaskStatus::kDoing) {
+                    task->set_status(::rtidb::api::TaskStatus::kCanceled);
+                    PDLOG(INFO, "cancel op [%lu] task_type[%s] ", op_id,
+                        ::rtidb::api::TaskType_Name(task->task_type()).c_str());
+                }
             }
         }
     }

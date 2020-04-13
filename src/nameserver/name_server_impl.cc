@@ -2790,18 +2790,15 @@ void NameServerImpl::CancelOP(RpcController* controller,
                 }
             }
         }
+        for (auto iter = tablets_.begin(); iter != tablets_.end(); ++iter) {
+            if (iter->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+                PDLOG(DEBUG, "tablet[%s] is not Healthy", iter->first.c_str());
+                continue;
+            }
+            client_vec.push_back(iter->second->client_);
+        }
     }
     if (find_op) {
-        {
-            std::lock_guard<std::mutex> lock(mu_);
-            for (auto iter = tablets_.begin(); iter != tablets_.end(); ++iter) {
-                if (iter->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
-                    PDLOG(DEBUG, "tablet[%s] is not Healthy", iter->first.c_str());
-                    continue;
-                }
-                client_vec.push_back(iter->second->client_);
-            }
-        }
         for (const auto& client : client_vec) {
             if (!client->CancelOP(request->op_id())) {
                 PDLOG(WARNING, "tablet[%s] cancel op failed", client->GetEndpoint().c_str());
