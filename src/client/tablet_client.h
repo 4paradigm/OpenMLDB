@@ -278,6 +278,8 @@ public:
     bool ExtractIndexData(uint32_t tid, uint32_t pid, uint32_t partition_num,
             const ::rtidb::common::ColumnKey& column_key, uint32_t idx,
             std::shared_ptr<TaskInfo> task_info);
+
+    bool CancelOP(const uint64_t op_id);
     
 private:
     std::string endpoint_;

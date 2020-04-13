@@ -4924,5 +4924,25 @@ void TabletImpl::AddIndex(RpcController* controller,
     response->set_msg("ok");
 }
 
+void TabletImpl::CancelOP(RpcController* controller,
+        const rtidb::api::CancelOPRequest* request,
+        rtidb::api::GeneralResponse* response,
+        Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    uint64_t op_id = request->op_id();
+    auto iter = task_map_.find(op_id);
+    if (iter != task_map_.end()) {
+        for (auto& task : iter->second) {
+            if (task->status() == ::rtidb::api::TaskStatus::kInited ||
+                    task->status() == ::rtidb::api::TaskStatus::kDoing) {
+                task->set_status(::rtidb::api::TaskStatus::kCanceled);
+                PDLOG(INFO, "cancel op %lu on tablet[%s]", op_id, FLAGS_endpoint.c_str());
+            }
+        }
+    }
+    response->set_code(::rtidb::base::ReturnCode::kOk);
+    response->set_msg("ok");
+}
+
 }
 }

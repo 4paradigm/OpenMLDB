@@ -1697,7 +1697,7 @@ int NameServerImpl::DeleteTask() {
     }
     DeleteTaskRemote(done_task_vec_remote, has_failed);
     if (!has_failed) {
-        DeleteTask(done_task_vec);        
+        DeleteTask(done_task_vec);
     }
     return 0;
 }
@@ -2771,29 +2771,52 @@ void NameServerImpl::CancelOP(RpcController* controller,
         PDLOG(WARNING, "auto_failover is enabled");
         return;
     }
-    std::lock_guard<std::mutex> lock(mu_);
-    for (auto& op_list : task_vec_) {
-        if (op_list.empty()) {
-            continue;
-        }
-        for (auto iter = op_list.begin(); iter != op_list.end(); iter++) {
-            if ((*iter)->op_info_.op_id() == request->op_id()) {
-                (*iter)->op_info_.set_task_status(::rtidb::api::kCanceled);
-                for (auto& task : (*iter)->task_list_) {
-                    task->task_info_->set_status(::rtidb::api::kCanceled);
+    bool find_op = false;
+    std::vector<std::shared_ptr<TabletClient>> client_vec;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        for (auto& op_list : task_vec_) {
+            if (op_list.empty()) {
+                continue;
+            }
+            for (auto iter = op_list.begin(); iter != op_list.end(); iter++) {
+                if ((*iter)->op_info_.op_id() == request->op_id()) {
+                    (*iter)->op_info_.set_task_status(::rtidb::api::kCanceled);
+                    for (auto& task : (*iter)->task_list_) {
+                        task->task_info_->set_status(::rtidb::api::kCanceled);
+                    }
+                    find_op = true;
+                    break;
                 }
-                response->set_code(::rtidb::base::ReturnCode::kOk);
-                response->set_msg("ok");
-                PDLOG(INFO, "op[%lu] is canceled! op_type[%s]",
-                            request->op_id(), ::rtidb::api::OPType_Name((*iter)->op_info_.op_type()).c_str());
-                return;
             }
         }
     }
-    response->set_code(::rtidb::base::ReturnCode::kOpStatusIsNotKdoingOrKinited);
-    response->set_msg("op status is not kDoing or kInited");
-    PDLOG(WARNING, "op[%lu] status is not kDoing or kInited", request->op_id());
-    return;
+    if (find_op) {
+        {
+            std::lock_guard<std::mutex> lock(mu_);
+            for (auto iter = tablets_.begin(); iter != tablets_.end(); ++iter) {
+                if (iter->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+                    PDLOG(DEBUG, "tablet[%s] is not Healthy", iter->first.c_str());
+                    continue;
+                }
+                client_vec.push_back(iter->second->client_);
+            }
+        }
+        for (const auto& client : client_vec) {
+            if (!client->CancelOP(request->op_id())) {
+                PDLOG(WARNING, "tablet[%s] cancel op failed", client->GetEndpoint().c_str());
+                continue;
+            }
+            PDLOG(DEBUG, "tablet[%s] cancel op success", client->GetEndpoint().c_str());
+        }
+        response->set_code(::rtidb::base::ReturnCode::kOk);
+        response->set_msg("ok");
+        PDLOG(INFO, "op[%lu] is canceled!", request->op_id());
+    } else {
+        response->set_code(::rtidb::base::ReturnCode::kOpStatusIsNotKdoingOrKinited);
+        response->set_msg("op status is not kDoing or kInited");
+        PDLOG(WARNING, "op[%lu] status is not kDoing or kInited", request->op_id());
+    }
 }
 
 void NameServerImpl::ShowOPStatus(RpcController* controller,
