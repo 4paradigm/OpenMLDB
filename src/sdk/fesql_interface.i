@@ -16,6 +16,11 @@ namespace std {
 
 %typemap(javaimports) SWIGTYPE "import com._4paradigm.*;"
 
+
+%include "swig_library/java/protobuf.i"
+%protobuf_enum(fesql::type::Type, com._4paradigm.fesql.type.TypeOuterClass.Type);
+%protobuf(fesql::type::TableDef, com._4paradigm.fesql.type.TypeOuterClass.TableDef);
+
 %shared_ptr(fesql::sdk::DBMSSdk);
 %shared_ptr(fesql::sdk::TabletSdk);
 %shared_ptr(fesql::sdk::Schema);
