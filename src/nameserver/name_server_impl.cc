@@ -8655,10 +8655,10 @@ void NameServerImpl::AddIndex(RpcController* controller,
         }
         for (const auto& col_name : request->column_key().col_name()) {
             auto it = col_map.find(col_name);
-            if (it == col_map.end()) {
+            if (it == col_map.end() || (it->second.type() == "float") || (it->second.type() == "double")) {
                 response->set_code(::rtidb::base::ReturnCode::kWrongColumnKey);
                 response->set_msg("wrong column key!");
-                PDLOG(WARNING, "column_desc %s not exist, table name %s", 
+                PDLOG(WARNING, "column_desc %s has wrong type or not exist, table name %s", 
                     col_name.c_str(), request->name().c_str());
                 return;
             }
@@ -8699,7 +8699,7 @@ void NameServerImpl::AddIndex(RpcController* controller,
     }
     if (index_pos < table_info->column_key_size()) {
         ::rtidb::common::ColumnKey* column_key = table_info->mutable_column_key(index_pos);
-        column_key->set_flag(0);
+        column_key->CopyFrom(request->column_key());
     } else {
         ::rtidb::common::ColumnKey* column_key = table_info->add_column_key();
         column_key->CopyFrom(request->column_key());
