@@ -843,16 +843,6 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.get("image"), null);
             }
 
-            //delete
-            {
-                Map<String, Object> conditionColumns2 = new HashMap<>();
-                conditionColumns2.put("id", 12l);
-                ok = tableSyncClient.delete(name, conditionColumns2);
-                Assert.assertTrue(ok);
-                it = tableSyncClient.query(name, ro);
-                Assert.assertFalse(it.valid());
-            }
-
         } catch (Exception e) {
             e.printStackTrace();
             Assert.assertTrue(false);
@@ -985,10 +975,23 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertFalse(it.valid());
             }
 
-            //put second
+            //put second repeated
             data.clear();
             data.put("id", 13l);
             data.put("attribute", "a2");
+            data.put("image", "i2");
+            data.put("memory", 12);
+            data.put("price", 12.2);
+            try {
+                tableSyncClient.put(name, data, wo);
+                Assert.assertTrue(false);
+            } catch (TabletException e) {
+                Assert.assertTrue(true);
+            }
+
+            data.clear();
+            data.put("id", 13l);
+            data.put("attribute", "a3");
             data.put("image", "i2");
             data.put("memory", 12);
             data.put("price", 12.2);
@@ -1016,7 +1019,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 queryMap = it.getDecodedValue();
                 Assert.assertEquals(queryMap.size(), 5);
                 Assert.assertEquals(queryMap.get("id"), 13l);
-                Assert.assertEquals(queryMap.get("attribute"), "a2");
+                Assert.assertEquals(queryMap.get("attribute"), "a3");
                 Assert.assertEquals(queryMap.get("image"), "i2");
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 12.2);
@@ -1066,7 +1069,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 queryMap = it.getDecodedValue();
                 Assert.assertEquals(queryMap.size(), 5);
                 Assert.assertEquals(queryMap.get("id"), 13l);
-                Assert.assertEquals(queryMap.get("attribute"), "a2");
+                Assert.assertEquals(queryMap.get("attribute"), "a3");
                 Assert.assertEquals(queryMap.get("image"), "i2");
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 12.2);
@@ -1074,7 +1077,130 @@ public class TableSyncClientTest extends TestCaseBase {
                 it.next();
                 Assert.assertFalse(it.valid());
             }
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.assertTrue(false);
+        } finally {
+            nsc.dropTable(name);
+        }
+    }
 
+    @Test
+    public void testRelationalDelete() {
+        String name = "";
+        try {
+            name = createRelationalTableMultiIndex();
+            List<com._4paradigm.rtidb.client.schema.ColumnDesc> schema = tableSyncClient.getSchema(name);
+            Assert.assertEquals(schema.size(), 5);
+
+            //put
+            WriteOption wo = new WriteOption();
+            Map<String, Object> data = new HashMap<String, Object>();
+            data.put("id", 11l);
+            data.put("attribute", "a1");
+            data.put("image", "i1");
+            data.put("memory", 11);
+            data.put("price", 11.1);
+            boolean ok = tableSyncClient.put(name, data, wo);
+            Assert.assertTrue(ok);
+
+            //traverse
+            ReadOption ro = new ReadOption(null, null, null, 1);
+            RelationalIterator it = tableSyncClient.traverse(name, ro);
+            Assert.assertEquals(it.getCount(), 1);
+
+            //delete pk
+            {
+                Map<String, Object> conditionColumns2 = new HashMap<>();
+                conditionColumns2.put("id", 11l);
+                ok = tableSyncClient.delete(name, conditionColumns2);
+                Assert.assertTrue(ok);
+                ro = new ReadOption(conditionColumns2, null, null, 1);
+                it = tableSyncClient.query(name, ro);
+                Assert.assertFalse(it.valid());
+            }
+            //traverse
+            it = tableSyncClient.traverse(name, ro);
+            Assert.assertEquals(it.getCount(), 0);
+
+            data.clear();
+            data.put("id", 11l);
+            data.put("attribute", "a1");
+            data.put("image", "i1");
+            data.put("memory", 11);
+            data.put("price", 11.1);
+            ok = tableSyncClient.put(name, data, wo);
+            Assert.assertTrue(ok);
+
+            data.clear();
+            data.put("id", 12l);
+            data.put("attribute", "a2");
+            data.put("image", "i2");
+            data.put("memory", 12);
+            data.put("price", 12.2);
+            tableSyncClient.put(name, data, wo);
+
+            data.clear();
+            data.put("id", 13l);
+            data.put("attribute", "a3");
+            data.put("image", "i2");
+            data.put("memory", 12);
+            data.put("price", 12.2);
+            tableSyncClient.put(name, data, wo);
+
+            //traverse
+            ro = new ReadOption(null, null, null, 1);
+            it = tableSyncClient.traverse(name, ro);
+            Assert.assertEquals(it.getCount(), 3);
+
+            //delete unique
+            {
+                Map<String, Object> conditionColumns2 = new HashMap<>();
+                conditionColumns2.put("attribute", "a3");
+                ok = tableSyncClient.delete(name, conditionColumns2);
+                Assert.assertTrue(ok);
+                ro = new ReadOption(conditionColumns2, null, null, 1);
+                it = tableSyncClient.query(name, ro);
+                Assert.assertFalse(it.valid());
+            }
+            it = tableSyncClient.traverse(name, ro);
+            Assert.assertEquals(it.getCount(), 2);
+            Assert.assertTrue(it.valid());
+            Map queryMap = it.getDecodedValue();
+            Assert.assertEquals(queryMap.get("attribute"), "a1");
+
+            it.next();
+            Assert.assertTrue(it.valid());
+            queryMap = it.getDecodedValue();
+            Assert.assertEquals(queryMap.get("attribute"), "a2");
+
+            data.clear();
+            data.put("id", 13l);
+            data.put("attribute", "a3");
+            data.put("image", "i2");
+            data.put("memory", 12);
+            data.put("price", 12.2);
+            tableSyncClient.put(name, data, wo);
+
+            //traverse
+            it = tableSyncClient.traverse(name, ro);
+            Assert.assertEquals(it.getCount(), 3);
+
+            //delete no unique
+            {
+                Map<String, Object> conditionColumns2 = new HashMap<>();
+                conditionColumns2.put("memory", 12);
+                ok = tableSyncClient.delete(name, conditionColumns2);
+                Assert.assertTrue(ok);
+                ro = new ReadOption(conditionColumns2, null, null, 1);
+                it = tableSyncClient.query(name, ro);
+                Assert.assertFalse(it.valid());
+            }
+            it = tableSyncClient.traverse(name, ro);
+            Assert.assertEquals(it.getCount(), 1);
+            Assert.assertTrue(it.valid());
+            queryMap = it.getDecodedValue();
+            Assert.assertEquals(queryMap.get("memory"), 11);
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -1111,15 +1237,15 @@ public class TableSyncClientTest extends TestCaseBase {
 
             //traverse
             RelationalIterator trit = tableSyncClient.traverse(name, ro);
+            Assert.assertEquals(trit.getCount(), 10);
             for (long i = 0; i < 10; i++) {
-                trit.next();
                 Assert.assertTrue(trit.valid());
                 Map<String, Object> TraverseMap = trit.getDecodedValue();
                 Assert.assertEquals(TraverseMap.size(), 2);
                 Assert.assertEquals(TraverseMap.get("id"), i);
                 Assert.assertEquals(TraverseMap.get("image"), "i" + i);
+                trit.next();
             }
-            trit.next();
             Assert.assertFalse(trit.valid());
         } catch (Exception e) {
             e.printStackTrace();

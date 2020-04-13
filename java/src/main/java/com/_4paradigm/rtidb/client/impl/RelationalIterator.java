@@ -318,6 +318,7 @@ public class RelationalIterator {
                 bs = response.getPairs();
                 bb = bs.asReadOnlyByteBuffer();
                 totalSize = this.bs.size();
+                count += response.getCount();
                 if (response.hasSnapshotId()) {
                     snapshot_id = response.getSnapshotId();
                 }

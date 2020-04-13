@@ -290,7 +290,12 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (th == null) {
             throw new TabletException("no table with name " + tableName);
         }
-        Set<String> colSet = ro.getColSet();
+        Set<String> colSet;
+        if (ro != null) {
+            colSet = ro.getColSet();
+        } else {
+            colSet = null;
+        }
         return new RelationalIterator(client, th, colSet);
     }
 
@@ -309,7 +314,7 @@ public class TableSyncClientImpl implements TableSyncClient {
 
     @Override
     public RelationalIterator query(String tableName, ReadOption ro) throws TimeoutException, TabletException {
-        if (ro == null) {
+        if (ro == null || ro.getIndex().isEmpty()) {
             throw new TabletException("ro should not be null with name" + tableName);
         }
         TableHandler th = client.getHandler(tableName);
@@ -676,6 +681,7 @@ public class TableSyncClientImpl implements TableSyncClient {
             ByteBuffer buffer = SingleColumnCodec.convert(dataType, key);
             String idxVal = ByteBufferNoCopy.wrap(buffer).toString(RowCodecCommon.CHARSET);
             builder.setKey(idxVal);
+
         }
         builder.setIdxName(idxName);
         Tablet.DeleteRequest request = builder.build();
