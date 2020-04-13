@@ -157,7 +157,7 @@ public:
 
     void SetIndexReady(uint32_t idx) {
         std::shared_ptr<IndexDef> index = table_index_.GetIndex(idx);
-        if (index) {
+        if (index && index->GetStatus == IndexStatus::kLoading) {
             index->SetStatus(IndexStatus::kReady);
         }
     }

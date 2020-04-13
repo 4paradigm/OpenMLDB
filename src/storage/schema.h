@@ -76,6 +76,10 @@ public:
     inline bool IsReady() { 
         return status_.load(std::memory_order_relaxed) == IndexStatus::kReady;
     }
+    inline bool Removable() {
+        IndexStatus st = status_.load(std::memory_order_relaxed)
+        return st == IndexStatus::kReady || st == IndexStatus::kLoading;
+    }
     inline uint32_t GetId() { return index_id_; }
     void SetStatus(IndexStatus status) {
         status_.store(status, std::memory_order_relaxed);

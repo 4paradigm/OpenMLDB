@@ -2904,7 +2904,7 @@ int TabletImpl::LoadDiskTableInternal(uint32_t tid, uint32_t pid,
 int TabletImpl::LoadTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task_ptr) {
     do {
         // load snapshot data
-        std::shared_ptr<Table> table = GetTable(tid, pid);        
+        std::shared_ptr<Table> table = GetTable(tid, pid);
         if (!table) {
             PDLOG(WARNING, "table with tid %u and pid %u does not exist", tid, pid);
             break; 

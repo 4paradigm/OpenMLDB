@@ -202,7 +202,7 @@ int MemTableSnapshot::TTLSnapshot(std::shared_ptr<Table> table, const ::rtidb::a
         }
         if (!status.ok()) {
             PDLOG(WARNING, "fail to read record for tid %u, pid %u with error %s", tid_, pid_, status.ToString().c_str());
-            has_error = true;        
+            has_error = true;
             break;
         }
         if (!entry.ParseFromString(record.ToString())) {

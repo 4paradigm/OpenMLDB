@@ -741,8 +741,8 @@ bool MemTable::DeleteIndex(std::string idx_name) {
                 idx_name.c_str(), id_, pid_);
         return false;
     }
-    if (!index_def->IsReady()) {
-        PDLOG(WARNING, "index %s status is not ready. tid %u pid %u", 
+    if (!index_def->Removable()) {
+        PDLOG(WARNING, "index %s can't delete. tid %u pid %u", 
                 idx_name.c_str(), id_, pid_);
         return false;
     }
