@@ -284,9 +284,6 @@ void BaseClient::RefreshTable() {
 }
 
 void BaseClient::SetZkCheckInterval(int32_t interval) {
-    if (interval <= 1000) {
-        return;
-    }
     zk_keep_alive_check_ = interval;
 }
 
@@ -345,10 +342,14 @@ std::shared_ptr<TableHandler> BaseClient::GetTableHandler(const std::string& nam
     return iter->second;
 }
 
-RtidbClient::RtidbClient(): client_(NULL), mu_() {
+RtidbClient::RtidbClient(): client_(NULL) {
 }
 
-RtidbClient::~RtidbClient() { delete client_; }
+RtidbClient::~RtidbClient() { 
+    if (client_ != NULL) {
+        delete client_;
+    }
+}
 
 
 void RtidbClient::SetZkCheckInterval(int32_t interval) {
@@ -364,7 +365,7 @@ GeneralResult RtidbClient::Init(const std::string& zk_cluster, const std::string
         result.SetError(-1, "initial failed! not set zk_cluster");
         return result;
     }
-    client_ = new BaseClient(zk_cluster, zk_path, "", 1000, 1000);
+    client_ = new BaseClient(zk_cluster, zk_path, "", 1000, 15000);
 
     std::string msg;
     bool ok = client_->Init(&msg);

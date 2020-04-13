@@ -416,5 +416,4 @@ public:
 
 private:
     BaseClient* client_;
-    std::mutex mu_;
 };

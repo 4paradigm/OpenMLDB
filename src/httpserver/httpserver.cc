@@ -50,20 +50,20 @@ void HttpImpl::Get(RpcController* controller,
     brpc::ClosureGuard done_guard(done);
     brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
     std::string table;
-    const std::string* pic_id;
+    const std::string* blob_id;
     std::string unresolve_path = cntl->http_request().unresolved_path();
     std::vector<std::string> vec;
     boost::split(vec, unresolve_path, boost::is_any_of("/"));
     if (vec.size() == 1) {
         table = unresolve_path;
-        pic_id = cntl->http_request().uri().GetQuery("pic_id");
-        if (pic_id == NULL) {
+        blob_id = cntl->http_request().uri().GetQuery("blob_id");
+        if (blob_id == NULL) {
             cntl->http_response().set_status_code(brpc::HTTP_STATUS_BAD_REQUEST);
             return;
         }
     } else if (vec.size() == 2) {
         table = vec[0];
-        pic_id = &vec[1];
+        blob_id = &vec[1];
     } else {
         cntl->http_response().set_status_code(brpc::HTTP_STATUS_BAD_REQUEST);
         return;
@@ -84,7 +84,7 @@ void HttpImpl::Get(RpcController* controller,
     }
     uint64_t ts;
     std::string value;
-    bool ok = tablet->Get(th->table_info->tid(), 0, *pic_id, 0, "", "", value, ts, err_msg);
+    bool ok = tablet->Get(th->table_info->tid(), 0, *blob_id, 0, "", "", value, ts, err_msg);
     if (!ok) {
         cntl->http_response().set_status_code(brpc::HTTP_STATUS_INTERNAL_SERVER_ERROR);
         response_writer.append(err_msg);
