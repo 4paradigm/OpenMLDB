@@ -13,6 +13,7 @@
 	<artifactId>fesql-spark</artifactId>
 	<packaging>jar</packaging>
 	<name>fesql-spark</name>
+	<version>0.0.1-SNAPSHOT</version>
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -40,6 +41,11 @@
 		<dependency>
 			<groupId>com._4paradigm.fesql</groupId>
 			<artifactId>fesql-native</artifactId>
+			<version>0.0.1-SNAPSHOT</version>
+		</dependency>
+		<dependency>
+			<groupId>com._4paradigm.fesql</groupId>
+			<artifactId>fesql-proto</artifactId>
 			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
 	</dependencies>
