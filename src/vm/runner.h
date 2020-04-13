@@ -89,9 +89,11 @@ class Runner {
     Slice WindowProject(const int8_t* fn, const uint64_t key, const Slice slice,
                         Window* window);
     Slice RowProject(const int8_t* fn, const Slice slice);
+    Slice MultiRowsProject(const int8_t* fn, std::vector<const Slice>* slices_ptr);
 
     std::string GetColumnString(RowView* view, int pos, type::Type type);
     int64_t GetColumnInt64(RowView* view, int pos, type::Type type);
+    bool GetColumnBool(RowView* view, int idx, type::Type type);
     std::string GenerateKeys(RowView* row_view, const Schema& schema,
                              const std::vector<int>& idxs);
     std::shared_ptr<DataHandler> TableGroup(
@@ -311,6 +313,22 @@ class RequestUnionRunner : public Runner {
     const std::vector<int32_t> keys_idxs_;
     const int64_t start_offset_;
     const int64_t end_offset_;
+};
+
+class RequestLastJoinRunner : public Runner {
+ public:
+    RequestLastJoinRunner(const int32_t id, const int8_t* fn,
+                       const Schema& fn_schema, const int32_t limit_cnt,
+                       const std::vector<int32_t>& condition_idxs)
+        : Runner(id, fn, fn_schema, limit_cnt),
+          condition_idxs_(condition_idxs) {}
+    ~RequestLastJoinRunner() {}
+    virtual void Print(std::ostream& output, const std::string& tab) const {
+        output << tab <<"[" << id_ << "]" << "REQUEST_LASTJOIN";
+        Runner::Print(output, tab);
+    }
+    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
+    const std::vector<int32_t> condition_idxs_;
 };
 
 class LimitRunner : public Runner {

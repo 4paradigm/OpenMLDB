@@ -141,6 +141,23 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             runner->AddProducer(right);
             return runner;
         }
+        case kPhysicalOpRequestJoin: {
+            auto left = Build(node->GetProducers().at(0), status);
+            if (nullptr == left) {
+                return nullptr;
+            }
+            auto right = Build(node->GetProducers().at(1), status);
+            if (nullptr == right) {
+                return nullptr;
+            }
+            auto op = dynamic_cast<const PhysicalRequestJoinNode*>(node);
+            auto runner = new RequestLastJoinRunner(
+                id_++, op->GetFn(), op->GetFnSchema(), op->GetLimitCnt(),
+                op->GetConditionIdxs());
+            runner->AddProducer(left);
+            runner->AddProducer(right);
+            return runner;
+        }
         case kPhysicalOpGroupBy: {
             auto input = Build(node->GetProducers().at(0), status);
             if (nullptr == input) {
@@ -235,6 +252,21 @@ Slice Runner::RowProject(const int8_t* fn, const Slice slice) {
     return Slice(reinterpret_cast<char*>(buf), RowView::GetSize(buf));
 }
 
+Slice Runner::MultiRowsProject(const int8_t* fn,
+                               std::vector<const Slice>* slices_ptr) {
+    if (nullptr == slices_ptr || slices_ptr->empty()) {
+        return Slice();
+    }
+    int32_t (*udf)(int8_t*, int8_t*, int8_t**) =
+        (int32_t(*)(int8_t*, int8_t*, int8_t**))(fn);
+    int8_t* buf = nullptr;
+    uint32_t ret = udf(reinterpret_cast<int8_t*>(slices_ptr), nullptr, &buf);
+    if (ret != 0) {
+        LOG(WARNING) << "fail to run udf " << ret;
+        return Slice();
+    }
+    return Slice(reinterpret_cast<char*>(buf), RowView::GetSize(buf));
+}
 std::string Runner::GetColumnString(RowView* row_view, int key_idx,
                                     type::Type key_type) {
     std::string key = "";
@@ -281,6 +313,58 @@ std::string Runner::GetColumnString(RowView* row_view, int key_idx,
                 key = std::string(str, str_size);
             }
             break;
+        }
+        default: {
+            LOG(WARNING) << "fail to get partition for "
+                            "current row";
+            break;
+        }
+    }
+    return key;
+}
+bool Runner::GetColumnBool(RowView* row_view, int idx, type::Type type) {
+    int64_t key = -1;
+    switch (type) {
+        case fesql::type::kInt32: {
+            int32_t value;
+            if (0 == row_view->GetInt32(idx, &value)) {
+                return value == 0 ? false : true;
+            }
+            break;
+        }
+        case fesql::type::kInt64: {
+            int64_t value;
+            if (0 == row_view->GetInt64(idx, &value)) {
+                return value == 0 ? false : true;
+            }
+            break;
+        }
+        case fesql::type::kInt16: {
+            int16_t value;
+            if (0 == row_view->GetInt16(idx, &value)) {
+                return value == 0 ? false : true;
+            }
+            break;
+        }
+        case fesql::type::kFloat: {
+            float value;
+            if (0 == row_view->GetFloat(idx, &value)) {
+                return value == 0 ? false : true;
+            }
+            break;
+        }
+        case fesql::type::kDouble: {
+            double value;
+            if (0 == row_view->GetDouble(idx, &value)) {
+                return value == 0 ? false : true;
+            }
+            break;
+        }
+        case fesql::type::kBool: {
+            bool value;
+            if (0 == row_view->GetBool(idx, &value)) {
+                return value;
+            }
         }
         default: {
             LOG(WARNING) << "fail to get partition for "
@@ -508,6 +592,7 @@ std::shared_ptr<DataHandler> Runner::RunWithCache(RunnerContext& ctx) {
     }
     return res;
 }
+
 std::shared_ptr<DataHandler> DataRunner::Run(RunnerContext& ctx) {
     return data_handler_;
 }
@@ -668,6 +753,97 @@ std::shared_ptr<DataHandler> IndexSeekRunner::Run(RunnerContext& ctx) {
 
     std::string key = GenerateKeys(&row_view_, fn_schema_, keys_idxs_);
     return partition->GetSegment(partition, key);
+}
+std::shared_ptr<DataHandler> RequestLastJoinRunner::Run(
+    RunnerContext& ctx) {  // NOLINT
+    auto left = producers_[0]->RunWithCache(ctx);
+    auto right = producers_[1]->RunWithCache(ctx);
+    if (!left || !right) {
+        return std::shared_ptr<DataHandler>();
+    }
+    if (kRowHandler != left->GetHanlderType()) {
+        return std::shared_ptr<DataHandler>();
+    }
+    if (kPartitionHandler == right->GetHanlderType()) {
+        return std::shared_ptr<DataHandler>();
+    }
+
+    auto output_schema = left->GetSchema();
+    auto request = std::dynamic_pointer_cast<RowHandler>(left)->GetValue();
+    auto table = std::dynamic_pointer_cast<TableHandler>(right);
+    std::shared_ptr<DataHandler> output = right;
+    //    auto request_fn_row = Slice(RowProject(fn_, request), true);
+    // filter by keys if need
+    if (!condition_idxs_.empty()) {
+        auto condition_idx = condition_idxs_[0];
+        if (GetColumnBool(&row_view_, condition_idx,
+                          fn_schema_.Get(condition_idx).type())) {
+        }
+
+        auto mem_table = std::shared_ptr<MemTableHandler>(
+            new MemTableHandler(output_schema));
+        auto iter = table->GetIterator();
+        std::vector<const Slice&> rows;
+        auto condition_type = fn_schema_.Get(condition_idx).type();
+        rows.reserve(2);
+        rows.push_back(request);
+        while (iter->Valid()) {
+            rows[1] = iter->GetValue();
+            auto row = Slice(MultiRowsProject(fn_, &rows), true);
+            row_view_.Reset(row.buf(), row.size());
+            if (GetColumnBool(&row_view_, condition_idx, condition_type)) {
+                mem_table->AddRow(iter->GetValue());
+                break;
+            }
+            iter->Next();
+        }
+        output = std::shared_ptr<TableHandler>(mem_table);
+    }
+
+    // sort by orders if need
+    if (!orders_idxs_.empty()) {
+        output = TableSort(std::shared_ptr<DataHandler>(output), fn_schema_,
+                           fn_, orders_idxs_, false, &row_view_);
+    }
+
+    // build window with start and end offset
+    auto window_table =
+        std::shared_ptr<MemTableHandler>(new MemTableHandler(output_schema));
+
+    uint64_t start = 0;
+    uint64_t end = UINT64_MAX;
+
+    if (!keys_idxs_.empty()) {
+        row_view_.Reset(request_fn_row.buf(), request_fn_row.size());
+        auto ts_idx = keys_idxs_[0];
+        int64_t key =
+            GetColumnInt64(&row_view_, ts_idx, fn_schema_.Get(ts_idx).type());
+
+        start = (key + start_offset_) < 0 ? 0 : (key + start_offset_);
+
+        end = (key + end_offset_) < 0 ? 0 : (key + end_offset_);
+
+        DLOG(INFO) << "request key: " << key;
+    }
+
+    window_table->AddRow(request);
+
+    DLOG(INFO) << "start make window ";
+    if (output) {
+        auto table_output = std::dynamic_pointer_cast<TableHandler>(output);
+        auto table_iter = table_output->GetIterator();
+        if (table_iter) {
+            table_iter->Seek(end);
+            while (table_iter->Valid()) {
+                if (table_iter->GetKey() <= start) {
+                    break;
+                }
+                window_table->AddRow(table_iter->GetValue());
+                table_iter->Next();
+            }
+        }
+    }
+    return window_table;
 }
 std::shared_ptr<DataHandler> LimitRunner::Run(RunnerContext& ctx) {
     auto input = producers_[0]->RunWithCache(ctx);
