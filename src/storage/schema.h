@@ -87,7 +87,7 @@ public:
     inline ::rtidb::type::IndexType GetType() {
         return type_;
     }
-    inline std::map<uint32_t, ::rtidb::common::ColumnDesc>& GetColumnIdxMap() {
+    inline const std::map<uint32_t, ::rtidb::common::ColumnDesc>& GetColumnIdxMap() {
         return column_idx_map_;
     }
 

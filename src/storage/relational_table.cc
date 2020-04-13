@@ -533,7 +533,7 @@ RelationalTableTraverseIterator* RelationalTable::Seek(uint32_t idx, const std::
 }
 
 bool RelationalTable::Query(
-        const ::google::protobuf::RepeatedPtrField< ::rtidb::api::ReadOption >& ros,
+        const ::google::protobuf::RepeatedPtrField<::rtidb::api::ReadOption>& ros,
         std::string* pairs, uint32_t* count) {
     std::vector<rtidb::base::Slice> value_vec;
     uint32_t total_block_size = 0;

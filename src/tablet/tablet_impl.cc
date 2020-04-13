@@ -1587,19 +1587,6 @@ void TabletImpl::Delete(RpcController* controller,
         }
         return;
     } else {
-        /**
-        if (request->has_idx_name() && request->idx_name().size() > 0) {
-            std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
-            if (iit == table->GetMapping().end()) {
-                PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
-                        request->tid(), request->pid());
-                response->set_code(::rtidb::base::ReturnCode::kIdxNameNotFound);
-                response->set_msg("idx name not found");
-                return;
-            }
-            idx = iit->second;
-        }
-        */
         if (r_table->Delete(request->idx_name(), request->key())) {
             response->set_code(::rtidb::base::ReturnCode::kOk);
             response->set_msg("ok");
