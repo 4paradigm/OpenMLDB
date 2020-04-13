@@ -193,5 +193,60 @@ class TestSchema(TestCaseBase):
         self.assertEqual(len(schema_map), 0)
         self.assertEqual(len(column_key), 0)
 
+    def test_addindex(self):
+        name = 'tname{}'.format(time.time())
+        metadata_path = '{}/metadata.txt'.format(self.testpath)
+        table_meta = {
+                "name": name,
+                "ttl": 14400,
+                "column_desc":[
+                    {"name": "card", "type": "string", "add_ts_idx": "false"},
+                    {"name": "mcc", "type": "string", "add_ts_idx": "false"},
+                    {"name": "amt", "type": "double", "add_ts_idx": "false"},
+                    ],
+                "column_key":[
+                    {"index_name":"card"},
+                    ]
+                }
+        utils.gen_table_meta_file(table_meta, metadata_path)
+        rs = self.ns_create(self.ns_leader, metadata_path)
+        self.assertIn('Create table ok', rs)
+        (schema, column_key) = self.ns_showschema(self.ns_leader, name)
+        self.assertEqual(len(schema), 3)
+        self.assertEqual(schema[0], ['0', 'card', 'string'])
+        self.assertEqual(schema[2], ['2', 'amt', 'double'])
+        self.assertEqual(len(column_key), 1)
+        self.assertEqual(column_key[0], ["0", "card", "card", "-", "14400min"])
+        row = ['card0', 'mcc0', '1.3']
+        self.ns_put_multi(self.ns_leader, name, self.now(), row)
+        row = ['card0', 'mcc1', '1.4']
+        self.ns_put_multi(self.ns_leader, name, self.now(), row)
+        row = ['card1', 'mcc1', '1.5']
+        self.ns_put_multi(self.ns_leader, name, self.now(), row)
+
+        rs = self.ns_scan_multi(self.ns_leader, name, 'mcc0', 'mcc', self.now() + 100, 0)
+        self.assertEqual(len(rs), 0)
+
+        rs = self.ns_addindex(self.ns_leader, name, "mcc")
+        self.assertIn('addindex ok', rs)
+
+        time.sleep(2)
+        self.wait_op_done(name)
+
+        (schema, column_key) = self.ns_showschema(self.ns_leader, name)
+        self.assertEqual(len(schema), 3)
+        self.assertEqual(schema[0], ['0', 'card', 'string'])
+        self.assertEqual(schema[2], ['2', 'amt', 'double'])
+        self.assertEqual(len(column_key), 2)
+        self.assertEqual(column_key[0], ["0", "card", "card", "-", "14400min"])
+        self.assertEqual(column_key[1], ["1", "mcc", "mcc", "-", "14400min"])
+
+        rs = self.ns_scan_multi(self.ns_leader, name, 'mcc0', 'mcc', self.now() + 100, 0)
+        self.assertEqual(len(rs), 1)
+        self.assertEqual(rs[0]['card'], 'card0')
+        self.assertEqual(rs[0]['mcc'], 'mcc0')
+
+        self.ns_drop(self.ns_leader, name)
+
 if __name__ == "__main__":
     load(TestSchema)

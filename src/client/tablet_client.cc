@@ -1256,7 +1256,9 @@ bool TabletClient::DeleteIndex(uint32_t tid, const std::string& idx_name) {
     return true;
 }
 
-bool TabletClient::AddIndex(uint32_t tid, uint32_t pid, const ::rtidb::common::ColumnKey& column_key) {
+bool TabletClient::AddIndex(uint32_t tid, uint32_t pid, 
+        const ::rtidb::common::ColumnKey& column_key,
+        std::shared_ptr<TaskInfo> task_info) {
     ::rtidb::api::AddIndexRequest request;
     ::rtidb::api::GeneralResponse response;
     request.set_tid(tid);
@@ -1264,6 +1266,89 @@ bool TabletClient::AddIndex(uint32_t tid, uint32_t pid, const ::rtidb::common::C
     ::rtidb::common::ColumnKey* cur_column_key = request.mutable_column_key();
     cur_column_key->CopyFrom(column_key);
     bool ok = client_.SendRequest(&rtidb::api::TabletServer_Stub::AddIndex, &request, &response, FLAGS_request_timeout_ms, 1);
+    if (!ok || response.code() != 0) {
+        task_info->set_status(::rtidb::api::TaskStatus::kFailed);
+        return false;
+    }
+    task_info->set_status(::rtidb::api::TaskStatus::kDone);
+    return true;
+}
+
+bool TabletClient::DumpIndexData(uint32_t tid, uint32_t pid, uint32_t partition_num,
+        const ::rtidb::common::ColumnKey& column_key, uint32_t idx,
+        std::shared_ptr<TaskInfo> task_info) {
+    ::rtidb::api::DumpIndexDataRequest request;
+    ::rtidb::api::GeneralResponse response;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    request.set_partition_num(partition_num);
+    request.set_idx(idx);
+    ::rtidb::common::ColumnKey* cur_column_key = request.mutable_column_key();
+    cur_column_key->CopyFrom(column_key);
+    if (task_info) {
+        request.mutable_task_info()->CopyFrom(*task_info);
+    }
+    bool ok = client_.SendRequest(&rtidb::api::TabletServer_Stub::DumpIndexData, &request, &response, FLAGS_request_timeout_ms, 1);
+    if (!ok || response.code() != 0) {
+        return false;
+    }
+    return true;
+}
+
+bool TabletClient::SendIndexData(uint32_t tid, uint32_t pid,
+        const std::map<uint32_t, std::string>& pid_endpoint_map,
+        std::shared_ptr<TaskInfo> task_info) {
+    ::rtidb::api::SendIndexDataRequest request;
+    ::rtidb::api::GeneralResponse response;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    for (const auto& kv : pid_endpoint_map) {
+        auto pair = request.add_pairs();
+        pair->set_pid(kv.first);
+        pair->set_endpoint(kv.second);
+    }
+    if (task_info) {
+        request.mutable_task_info()->CopyFrom(*task_info);
+    }
+    bool ok = client_.SendRequest(&rtidb::api::TabletServer_Stub::SendIndexData, &request, &response, FLAGS_request_timeout_ms, 1);
+    if (!ok || response.code() != 0) {
+        return false;
+    }
+    return true;
+}
+
+bool TabletClient::LoadIndexData(uint32_t tid, uint32_t pid, uint32_t partition_num,
+        std::shared_ptr<TaskInfo> task_info) {
+    ::rtidb::api::LoadIndexDataRequest request;
+    ::rtidb::api::GeneralResponse response;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    request.set_partition_num(partition_num);
+    if (task_info) {
+        request.mutable_task_info()->CopyFrom(*task_info);
+    }
+    bool ok = client_.SendRequest(&rtidb::api::TabletServer_Stub::LoadIndexData, &request, &response, FLAGS_request_timeout_ms, 1);
+    if (!ok || response.code() != 0) {
+        return false;
+    }
+    return true;
+}
+
+bool TabletClient::ExtractIndexData(uint32_t tid, uint32_t pid, uint32_t partition_num,
+        const ::rtidb::common::ColumnKey& column_key, uint32_t idx,
+        std::shared_ptr<TaskInfo> task_info) {
+    ::rtidb::api::ExtractIndexDataRequest request;
+    ::rtidb::api::GeneralResponse response;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    request.set_partition_num(partition_num);
+    request.set_idx(idx);
+    ::rtidb::common::ColumnKey* cur_column_key = request.mutable_column_key();
+    cur_column_key->CopyFrom(column_key);
+    if (task_info) {
+        request.mutable_task_info()->CopyFrom(*task_info);
+    }
+    bool ok = client_.SendRequest(&rtidb::api::TabletServer_Stub::ExtractIndexData, &request, &response, FLAGS_request_timeout_ms, 1);
     if (!ok || response.code() != 0) {
         return false;
     }
