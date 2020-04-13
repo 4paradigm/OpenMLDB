@@ -2,13 +2,16 @@ package com._4paradigm.rtidb.client;
 
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.TableHandler;
-import com._4paradigm.rtidb.client.schema.RowCodec;
+import com._4paradigm.rtidb.client.schema.*;
 import com._4paradigm.rtidb.ns.NS;
 import com._4paradigm.rtidb.tablet.Tablet;
 import com._4paradigm.rtidb.tablet.Tablet.GetResponse;
 import com._4paradigm.rtidb.utils.Compress;
 import com.google.protobuf.ByteString;
 
+import java.nio.ByteOrder;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -16,9 +19,9 @@ import java.util.concurrent.TimeoutException;
 
 public class GetFuture implements Future<ByteString>{
 	private Future<Tablet.GetResponse> f;
-	private TableHandler t;
-	private RTIDBClientConfig config = null;
-
+	private TableHandler th;
+	private RowSliceView rv;
+	private List<ColumnDesc> projection;
 	public static GetFuture wrappe(Future<Tablet.GetResponse> f, RTIDBClientConfig config) {
 		return new GetFuture(f, config);
 	}
@@ -29,14 +32,25 @@ public class GetFuture implements Future<ByteString>{
 
 	public GetFuture(Future<Tablet.GetResponse> f, TableHandler t, RTIDBClientConfig config) {
 		this.f = f;
-		this.t = t;
-		this.config = config;
+		this.th = t;
+		if (t.getTableInfo().getFormatVersion() == 1) {
+			rv = new RowSliceView(t.getSchema());
+		}
+	}
+
+	public GetFuture(Future<Tablet.GetResponse> f, TableHandler t, RTIDBClientConfig config, List<ColumnDesc> projection) {
+		this.f = f;
+		this.th = t;
+		if (t.getTableInfo().getFormatVersion() == 1) {
+			rv = new RowSliceView(projection);
+			this.projection = projection;
+		}
 	}
 
 	public GetFuture(Future<Tablet.GetResponse> f,  RTIDBClientConfig config) {
 		this.f = f;
-		this.config = config;
 	}
+
 
 	public static GetFuture wrappe(Future<Tablet.GetResponse> f, long _, RTIDBClientConfig config) {
 		return new GetFuture(f, config);
@@ -44,13 +58,14 @@ public class GetFuture implements Future<ByteString>{
 
 	public GetFuture(Future<Tablet.GetResponse> f, TableHandler t, long _, RTIDBClientConfig config) {
 		this.f = f;
-		this.t = t;
-		this.config = config;
+		this.th = t;
+		if (t.getTableInfo().getFormatVersion() == 1) {
+			rv = new RowSliceView(t.getSchema());
+		}
 	}
 
 	public GetFuture(Future<Tablet.GetResponse> f, long _, RTIDBClientConfig config) {
 		this.f = f;
-		this.config = config;
 	}
 
 	@Override
@@ -69,53 +84,67 @@ public class GetFuture implements Future<ByteString>{
 	}
 
 	public Object[] getRow(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TabletException, TimeoutException {
-		if (t == null || t.getSchema().isEmpty()) {
-			throw new TabletException("no schema for table " + t);
+		if (th.getSchema() == null || th.getSchema().isEmpty()) {
+			throw new TabletException("no schema for table " + th.getTableInfo().getName());
 		}
 		ByteString raw = get(timeout, unit);
 		if (raw == null || raw.isEmpty()) {
 			return null;
 		}
-		Object[] row = new Object[t.getSchema().size() + t.getSchemaMap().size()];
+		int rowLength =0;
+		if (projection != null) {
+			rowLength = projection.size();
+		}else {
+			rowLength = th.getSchema().size();
+			if (th.getSchemaMap() != null) {
+				rowLength += th.getSchemaMap().size();
+			}
+		}
+		Object[] row = new Object[rowLength];
 		decode(raw, row, 0, row.length);
 		return row;
 	}
 
 	public Object[] getRow() throws InterruptedException, ExecutionException, TabletException{
-		if (t == null || t.getSchema().isEmpty()) {
-			throw new TabletException("no schema for table " + t);
+		if (th.getSchema() == null || th.getSchema().isEmpty()) {
+			throw new TabletException("no schema for table " + th.getTableInfo().getName());
 		}
 		ByteString raw = get();
 		if (raw == null || raw.isEmpty()) {
 			return null;
-
 		}
-		Object[] row = new Object[t.getSchema().size() + t.getSchemaMap().size()];
+		int rowLength = th.getSchema().size();
+		if (th.getSchemaMap() != null) {
+			rowLength += th.getSchemaMap().size();
+		}
+		Object[] row = new Object[rowLength];
 		decode(raw, row, 0, row.length);
 		return row;
 	}
 
 	@Deprecated
 	public void getRow(Object[] row, int start, int length) throws TabletException, InterruptedException, ExecutionException {
-		if (t == null || t.getSchema().isEmpty()) {
-			throw new TabletException("no schema for table " + t);
+		if (th.getSchema() == null || th.getSchema().isEmpty()) {
+			throw new TabletException("no schema for table " + th.getTableInfo().getName());
 		}
 		ByteString raw = get();
-		if (raw == null) {
-			return ;
-		}
 		decode(raw, row, start, length);
 	}
 
 	private void decode(ByteString raw, Object[] row, int start, int length) throws TabletException {
-		RowCodec.decode(raw.asReadOnlyByteBuffer(), t.getSchema(), row, start, length);
+	    switch (th.getTableInfo().getFormatVersion()) {
+			case 1:
+				rv.read(raw.asReadOnlyByteBuffer().order(ByteOrder.LITTLE_ENDIAN), row, start, length);
+			default:
+				RowCodec.decode(raw.asReadOnlyByteBuffer(), th.getSchema(), row, start, length);
+		}
 	}
 
 	@Override
 	public ByteString get() throws InterruptedException, ExecutionException {
 		GetResponse response = f.get();
 		if (response != null && response.getCode() == 0) {
-			if (t.getTableInfo().hasCompressType() && t.getTableInfo().getCompressType() == NS.CompressType.kSnappy) {
+			if (th.getTableInfo().hasCompressType()  && th.getTableInfo().getCompressType() == NS.CompressType.kSnappy) {
 				byte[] uncompressed = Compress.snappyUnCompress(response.getValue().toByteArray());
 				return ByteString.copyFrom(uncompressed);
 			} else {
@@ -137,7 +166,7 @@ public class GetFuture implements Future<ByteString>{
 	public ByteString get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
 		GetResponse response = f.get(timeout, unit);
 		if (response != null && response.getCode() == 0) {
-			if (t.getTableInfo().hasCompressType() && t.getTableInfo().getCompressType() == NS.CompressType.kSnappy) {
+			if (th.getTableInfo().hasCompressType()  && th.getTableInfo().getCompressType() == NS.CompressType.kSnappy) {
 				byte[] uncompressed = Compress.snappyUnCompress(response.getValue().toByteArray());
 				return ByteString.copyFrom(uncompressed);
 			} else {
