@@ -30,7 +30,6 @@ namespace base {
 static inline void Encode(uint64_t time, const char* data, const size_t size, char* buffer, uint32_t offset) {
     buffer += offset;
     uint32_t total_size = 8 + size;
-    PDLOG(DEBUG, "encode size %d", total_size);
     memcpy(buffer, static_cast<const void*>(&total_size), 4);
     memrev32ifbe(buffer);
     buffer += 4;

@@ -971,13 +971,15 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
                 PDLOG(WARNING, "fail to make a projection");
                 return -4;
             }
+            PDLOG(INFO, "size %u", size);
             std::unique_ptr<::rtidb::base::Slice> value(new ::rtidb::base::Slice(reinterpret_cast<char*>(ptr), size, true));
             tmp.push_back(std::make_pair(it->GetKey(), std::move(value)));
             total_block_size += size;
         }else {
             std::unique_ptr<::rtidb::base::Slice> value(new ::rtidb::base::Slice(it->GetValue()));
-            tmp.push_back(std::make_pair(it->GetKey(), std::move(value)));
+            PDLOG(INFO, "legcy size %u", value->size());
             total_block_size += value->size();
+            tmp.push_back(std::make_pair(it->GetKey(), std::move(value)));
         }
         it->Next();
         if (total_block_size > FLAGS_scan_max_bytes_size) {
@@ -2814,8 +2816,8 @@ void TabletImpl::LoadTable(RpcController* controller,
             if (table_meta.seg_cnt() > 0) {
                 seg_cnt = table_meta.seg_cnt();
             }
-            PDLOG(INFO, "start to recover table with id %u pid %u name %s seg_cnt %d idx_cnt %u schema_size %u ttl %llu", tid, 
-                    pid, name.c_str(), seg_cnt, table_meta.dimensions_size(), table_meta.schema().size(), ttl);
+            PDLOG(INFO, "start to recover table with id %u pid %u name %s seg_cnt %d idx_cnt %u schema_size %u ttl %llu format version %u", tid, 
+                    pid, name.c_str(), seg_cnt, table_meta.dimensions_size(), table_meta.schema().size(), ttl, table_meta.format_version());
             task_pool_.AddTask(boost::bind(&TabletImpl::LoadTableInternal, this, tid, pid, task_ptr));
         } else {
             task_pool_.AddTask(boost::bind(&TabletImpl::LoadDiskTableInternal, this, tid, pid, table_meta, task_ptr));
