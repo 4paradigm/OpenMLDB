@@ -45,11 +45,11 @@ bool Engine::Get(const std::string& sql, const std::string& db,
     }
 
     std::shared_ptr<CompileInfo> info(new CompileInfo());
-    info->getSqlCtx().sql = sql;
-    info->getSqlCtx().db = db;
-    info->getSqlCtx().is_batch_mode = session.IsBatchRun();
+    info->get_sql_context().sql = sql;
+    info->get_sql_context().db = db;
+    info->get_sql_context().is_batch_mode = session.IsBatchRun();
     SQLCompiler compiler(cl_, &nm_);
-    bool ok = compiler.Compile(info->getSqlCtx(), status);
+    bool ok = compiler.Compile(info->get_sql_context(), status);
     if (!ok || 0 != status.code) {
         // do clean
         return false;
@@ -94,7 +94,7 @@ RunSession::~RunSession() {}
 
 int32_t RequestRunSession::Run(const Slice& in_row, Slice* out_row) {
     RunnerContext ctx(in_row);
-    auto output = compile_info_->getSqlCtx().runner->RunWithCache(ctx);
+    auto output = compile_info_->get_sql_context().runner->RunWithCache(ctx);
     if (!output) {
         LOG(WARNING) << "run batch plan output is null";
         return -1;
@@ -123,7 +123,7 @@ int32_t RequestRunSession::Run(const Slice& in_row, Slice* out_row) {
 
 std::shared_ptr<TableHandler> BatchRunSession::Run() {
     RunnerContext ctx;
-    auto output = compile_info_->getSqlCtx().runner->RunWithCache(ctx);
+    auto output = compile_info_->get_sql_context().runner->RunWithCache(ctx);
     if (!output) {
         LOG(WARNING) << "run batch plan output is null";
         return std::shared_ptr<TableHandler>();
@@ -148,7 +148,7 @@ std::shared_ptr<TableHandler> BatchRunSession::Run() {
 }
 int32_t BatchRunSession::Run(std::vector<int8_t*>& buf, uint64_t limit) {
     RunnerContext ctx;
-    auto output = compile_info_->getSqlCtx().runner->RunWithCache(ctx);
+    auto output = compile_info_->get_sql_context().runner->RunWithCache(ctx);
     if (!output) {
         LOG(WARNING) << "run batch plan output is null";
         return -1;

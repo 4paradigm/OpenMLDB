@@ -41,7 +41,7 @@ class Engine;
 
 class CompileInfo {
  public:
-    SQLContext& getSqlCtx() {
+    SQLContext& get_sql_context() {
         return this->sql_ctx;
     }
 
@@ -56,14 +56,15 @@ class RunSession {
     ~RunSession();
 
     virtual inline const Schema& GetSchema() const {
-        return compile_info_->getSqlCtx().schema;
+        return compile_info_->get_sql_context().schema;
     }
     virtual inline vm::PhysicalOpNode* GetPhysicalPlan() {
-        return compile_info_->getSqlCtx().plan;
+        return compile_info_->get_sql_context().plan;
     }
     virtual inline vm::Runner* GetRunner() {
-        return compile_info_->getSqlCtx().runner;
+        return compile_info_->get_sql_context().runner;
     }
+
 
     virtual const bool IsBatchRun() const = 0;
 
