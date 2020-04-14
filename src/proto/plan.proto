@@ -4,6 +4,7 @@ import "common.proto";
 package fesql.batch;
 
 option cc_generic_services = true;
+option java_package = "com._4paradigm.fesql.batch";
 
 enum PlanOpType {
     kPartitionOp = 1;

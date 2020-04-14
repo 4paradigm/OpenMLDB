@@ -3,6 +3,7 @@ import "common.proto";
 import "plan.proto";
 
 package fesql.batch;
+option java_package = "com._4paradigm.fesql.batch";
 option cc_generic_services = true;
 
 message DataSet {

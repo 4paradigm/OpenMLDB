@@ -52,3 +52,10 @@ ADD_CUSTOM_TARGET(run_gen_proto DEPENDS ${TABLET_PB_CC} ${DBMS_PB_CC}
 
 add_library(fesql_proto STATIC ${TYPE_PB_CC} ${COMMON_PB_CC} ${DBMS_PB_CC}
     ${TABLET_PB_CC} ${BATCH_PB_CC} ${PLAN_PB_CC})
+
+
+add_custom_target(fesql_proto_java
+    COMMAND ${PROJECT_SOURCE_DIR}/thirdparty/bin/protoc
+        -I ${PROJECT_SOURCE_DIR}/src/proto
+        --java_out=${PROJECT_SOURCE_DIR}/java/fesql-proto/src/main/java
+        ${PROJECT_SOURCE_DIR}/src/proto/*.proto)

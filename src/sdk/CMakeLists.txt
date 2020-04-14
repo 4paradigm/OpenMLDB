@@ -36,31 +36,31 @@ target_link_libraries(result_set_impl_test
 add_test(result_set_impl_test result_set_impl_test --gtest_output=xml:${CMAKE_BINARY_DIR}/result_set_impl_test.xml)
 list(APPEND test_list result_set_impl_test)
 
-set_property(SOURCE fesql.i PROPERTY CPLUSPLUS ON)
-set_property(SOURCE fesql.i PROPERTY SWIG_MODULE_NAME fesql)
-set_property(SOURCE fesql.i PROPERTY COMPILE_OPTIONS
-    -py3
-)
+set_property(SOURCE fesql_interface.i PROPERTY CPLUSPLUS ON)
+if (CMAKE_SYSTEM_NAME MATCHES "Darwin")
+	set_property(SOURCE fesql_interface.i PROPERTY COMPILE_OPTIONS -python)
+else()
+	set_property(SOURCE fesql_interface.i PROPERTY COMPILE_OPTIONS -py3)
+endif()
 
-
+set (UseSWIG_TARGET_NAME_PREFERENCE STANDARD)
 swig_add_library(fesql_pysdk
   TYPE SHARED
   LANGUAGE python
   OUTPUT_DIR ${CMAKE_BINARY_DIR}/python/fesql/
-  SOURCES fesql.i)
+  SOURCES fesql_interface.i)
 target_include_directories(fesql_pysdk PRIVATE ${PYTHON_INCLUDE_DIRS})
-target_link_libraries(fesql_pysdk PRIVATE fesql_sdk)
+target_link_libraries(fesql_pysdk PRIVATE fesql_sdk fesql_vm fesql_codegen fesql_udf ${llvm_libs} ${COMMON_LIBS})
 
-set_property(SOURCE fesql.i PROPERTY COMPILE_OPTIONS 
-    -package com._4paradigm.fesql
-)
+
+set_property(SOURCE fesql_interface.i PROPERTY COMPILE_OPTIONS -package com._4paradigm)
 swig_add_library(fesql_jsdk
   TYPE SHARED
   LANGUAGE java
-  OUTPUT_DIR ${PROJECT_SOURCE_DIR}/java/fesql-native/src/main/java/com/_4paradigm/fesql
-  SOURCES fesql.i)
+  OUTPUT_DIR ${PROJECT_SOURCE_DIR}/java/fesql-native/src/main/java/com/_4paradigm/
+  SOURCES fesql_interface.i)
 target_include_directories(fesql_jsdk PRIVATE ${JNI_INCLUDE_DIRS})
-target_link_libraries(fesql_jsdk PRIVATE fesql_sdk)
+target_link_libraries(fesql_jsdk PRIVATE fesql_sdk fesql_vm fesql_codegen fesql_udf ${llvm_libs} ${COMMON_LIBS})
 if(APPLE)
   set_target_properties(fesql_pysdk PROPERTIES
            SUFFIX ".so")
@@ -165,3 +165,4 @@ add_custom_target(java_package ALL
     COMMAND ${MAVEN_EXECUTABLE} package
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/java
   )
+add_dependencies(java_package fesql_proto_java)
