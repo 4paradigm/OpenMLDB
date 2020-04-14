@@ -34,10 +34,14 @@ namespace codegen {
 class RowFnLetIRBuilder {
  public:
     RowFnLetIRBuilder(const vm::Schema& schema, ::llvm::Module* module);
+    RowFnLetIRBuilder(
+        std::vector<std::pair<const std::string&, const vm::Schema&>>&
+            table_schema_list,
+        ::llvm::Module* module);
 
     ~RowFnLetIRBuilder();
 
-    bool Build(const std::string& name, const node::ProjectListNode* projects,
+    bool Build(const std::string& name, const node::PlanNodeList& projects,
                vm::Schema* output_schema);  // NOLINT (runtime/references)
 
  private:
@@ -65,7 +69,7 @@ class RowFnLetIRBuilder {
 
  private:
     // input schema
-    vm::Schema schema_;
+    std::vector<RowIRInfo> row_info_list_;
     ::llvm::Module* module_;
 };
 

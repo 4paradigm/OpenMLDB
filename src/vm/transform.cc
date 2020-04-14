@@ -687,7 +687,7 @@ bool BatchModeTransformer::GenProjects(const Schema& input_schema,
     // TODO(wangtaize) use ops end op output schema
     ::fesql::codegen::RowFnLetIRBuilder builder(input_schema, module_);
     fn_name = "__internal_sql_codegen_" + std::to_string(id_++);
-    bool ok = builder.Build(fn_name, projects, row_project, output_schema);
+    bool ok = builder.Build(fn_name, projects, output_schema);
     if (!ok) {
         status.code = common::kCodegenError;
         status.msg = "fail to codegen projects node";
@@ -1640,6 +1640,7 @@ bool RequestModeransformer::TransformJoinOp(const node::JoinPlanNode* node,
     *output = new PhysicalRequestJoinNode(left, right, node->join_type_,
                                           node->condition_);
     node_manager_->RegisterNode(*output);
+    return true;
 }
 
 }  // namespace vm

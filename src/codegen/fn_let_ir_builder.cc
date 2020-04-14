@@ -26,17 +26,36 @@ namespace codegen {
 
 RowFnLetIRBuilder::RowFnLetIRBuilder(const vm::Schema& schema,
                                      ::llvm::Module* module)
-    : schema_(schema), module_(module) {}
+    : row_info_list_(), module_(module) {
+    row_info_list_.push_back(RowIRInfo{.row_ptr_name_ = "row_ptr_name",
+                                       .row_size_name_ = "row_size_name",
+                                       .window_ptr_name_ = "window_ptr_name",
+                                       .table_name_ = "",
+                                       .schema_ = schema});
+}
 
+RowFnLetIRBuilder::RowFnLetIRBuilder(
+    std::vector<std::pair<const std::string&, const vm::Schema&>>&
+        table_schema_list,
+    ::llvm::Module* module)
+    : row_info_list_(), module_(module) {
+    uint32_t idx = 0;
+    for (auto iter = table_schema_list.cbegin();
+         iter != table_schema_list.cend(); iter++) {
+        row_info_list_.push_back(RowIRInfo{
+            .row_ptr_name_ = "row_ptr_name_" + std::to_string(idx),
+            .row_size_name_ = "row_size_name_" + std::to_string(idx),
+            .window_ptr_name_ = "window_ptr_name_" + std::to_string(idx),
+            .table_name_ = iter->first,
+            .schema_ = iter->second});
+    }
+}
 RowFnLetIRBuilder::~RowFnLetIRBuilder() {}
 
 bool RowFnLetIRBuilder::Build(
     const std::string& name, const node::PlanNodeList& projects,
     vm::Schema* output_schema) {  // NOLINT (runtime/references)
     ::llvm::Function* fn = NULL;
-    std::string row_ptr_name = "row_ptr_name";
-    std::string window_ptr_name = "window_ptr_name";
-    std::string row_size_name = "row_size_name";
     std::string output_ptr_name = "output_ptr_name";
     ::llvm::StringRef name_ref(name);
     if (module_->getFunction(name_ref) != NULL) {
@@ -55,8 +74,14 @@ bool RowFnLetIRBuilder::Build(
     ScopeVar sv;
     sv.Enter(name);
 
-    std::vector<std::string> args = {row_ptr_name, window_ptr_name,
-                                     row_size_name, output_ptr_name};
+    std::vector<std::string> args;
+
+    for (auto info : row_info_list_) {
+        args.push_back(info.row_ptr_name_);
+        args.push_back(info.window_ptr_name_);
+        args.push_back(info.row_size_name_);
+    }
+    args.push_back(output_ptr_name);
     ok = FillArgs(args, fn, sv);
 
     if (!ok) {
@@ -66,8 +91,7 @@ bool RowFnLetIRBuilder::Build(
     ::llvm::BasicBlock* block =
         ::llvm::BasicBlock::Create(module_->getContext(), "entry", fn);
     VariableIRBuilder variable_ir_builder(block, &sv);
-    ExprIRBuilder expr_ir_builder(block, &sv, schema_, true, row_ptr_name,
-                                  window_ptr_name, row_size_name, module_);
+    ExprIRBuilder expr_ir_builder(block, &sv, row_info_list_, true, module_);
 
     ::fesql::node::PlanNodeList::const_iterator it = projects.cbegin();
     std::map<uint32_t, ::llvm::Value*> outputs;
@@ -126,8 +150,6 @@ bool RowFnLetIRBuilder::Build(
     ir_builder.CreateRet(ret);
     return true;
 }
-
-
 
 bool RowFnLetIRBuilder::EncodeBuf(
     const std::map<uint32_t, ::llvm::Value*>* values, const vm::Schema& schema,

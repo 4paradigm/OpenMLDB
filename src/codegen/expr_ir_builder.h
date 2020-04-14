@@ -35,6 +35,26 @@
 namespace fesql {
 namespace codegen {
 
+struct RowIRInfo{
+    const std::string row_ptr_name_;
+    const std::string row_size_name_;
+    const std::string window_ptr_name_;
+    const std::string table_name_;
+    const vm::Schema& schema_;
+};
+
+class RowIRContext{
+ public:
+    RowIRContext(::llvm::BasicBlock* block, ScopeVar* scope_var,
+                     const RowIRInfo& info)
+        : info_(info),
+          row_ir_builder_(new BufNativeIRBuilder(info_.schema_, block, scope_var)),
+          window_ir_builder_(new MemoryWindowDecodeIRBuilder(info_.schema_, block)) {}
+    RowIRInfo info_;
+    std::unique_ptr<RowDecodeIRBuilder> row_ir_builder_;
+    std::unique_ptr<WindowDecodeIRBuilder> window_ir_builder_;
+};
+
 class ExprIRBuilder {
  public:
     ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var);
@@ -44,6 +64,10 @@ class ExprIRBuilder {
                   const std::string& row_ptr_name,
                   const std::string& window_ptr_name,
                   const std::string& row_size_name, ::llvm::Module* module);
+    ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
+                  const std::vector<RowIRInfo>&
+                      row_ir_info_list,
+                  const bool row_mode, ::llvm::Module* module);
 
     ~ExprIRBuilder();
 
@@ -51,9 +75,11 @@ class ExprIRBuilder {
                ::fesql::base::Status& status);  // NOLINT
 
  private:
-    bool BuildColumnIterator(const std::string& col, ::llvm::Value** output,
+    bool BuildColumnIterator(const std::string& relation_name,
+                             const std::string& col, ::llvm::Value** output,
                              ::fesql::base::Status& status);  // NOLINT
-    bool BuildColumnItem(const std::string& col, ::llvm::Value** output,
+    bool BuildColumnItem(const std::string& relation_name,
+                         const std::string& col, ::llvm::Value** output,
                          ::fesql::base::Status& status);  // NOLINT
     bool BuildColumnRef(const ::fesql::node::ColumnRefNode* node,
                         ::llvm::Value** output,
@@ -82,19 +108,22 @@ class ExprIRBuilder {
  private:
     ::llvm::BasicBlock* block_;
     ScopeVar* sv_;
-    const vm::Schema* schema_;
     bool row_mode_;
-    std::string row_ptr_name_;
-    std::string window_ptr_name_;
-    std::string row_size_name_;
     VariableIRBuilder variable_ir_builder_;
     // TODO(chenjing): remove following ir builder member
     ArithmeticIRBuilder arithmetic_ir_builder_;
     PredicateIRBuilder predicate_ir_builder_;
     ::llvm::Module* module_;
-    std::unique_ptr<RowDecodeIRBuilder> row_ir_builder_;
-    std::unique_ptr<WindowDecodeIRBuilder> window_ir_builder_;
+
+    // row ir context list
+    std::vector<std::unique_ptr<RowIRContext>> row_ir_context_list_;
+    // column_name -> [context_id1, context_id2]
+    std::map<std::string, std::vector<uint32_t>> col_context_id_map_;
+    // table_name -> context_id1
+    std::map<std::string, uint32_t> table_context_id_map_;
     bool IsUADF(std::string function_name);
+    bool FindRowIRContext(const std::string& relation_name,
+                          const std::string& col_name, RowIRContext** ctx);
 };
 }  // namespace codegen
 }  // namespace fesql
