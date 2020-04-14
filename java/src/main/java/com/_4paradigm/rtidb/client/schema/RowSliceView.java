@@ -58,7 +58,10 @@ public class RowSliceView {
         int index = start;
         int strAddrLength = RowCodecCommon.getAddrLength(size);
         for (int i = 0; i < schema.size() && i < length ; i++) {
-            if (isNull(buf, i)) continue;
+            if (isNull(buf, i)) {
+                index ++;
+                continue;
+            }
             ColumnDesc column = schema.get(i);
             int offset = offsetVec.get(i);
             switch (column.getDataType()) {
