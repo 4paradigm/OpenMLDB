@@ -18,7 +18,7 @@
 %}
 
 %typemap(javaout) TYPE { 
-	return $typemap(jstype, TYPE).forNumber($jnicall);
+    return $typemap(jstype, TYPE).valueOf($jnicall);
 }
 
 %enddef
@@ -32,22 +32,22 @@
 %typemap(jstype) TYPE "JTYPE"
 
 %typemap(in) TYPE %{
-	if(!$input) {
-    	if (!jenv->ExceptionCheck()) {
-       		SWIG_JavaThrowException(jenv, SWIG_JavaNullPointerException, "null string");
-     	}
-     	return $null;
-   	}
-   	jsize $1_bytes_size = jenv->GetArrayLength($input);
-   	jbyte* $1_bytes = (jbyte *)jenv->GetByteArrayElements($input, NULL);
-   	($1).ParseFromArray($1_bytes, $1_bytes_size);
-	jenv->ReleaseByteArrayElements($input, $1_bytes, 0);
+    if(!$input) {
+        if (!jenv->ExceptionCheck()) {
+        SWIG_JavaThrowException(jenv, SWIG_JavaNullPointerException, "null string");
+        }
+        return $null;
+    }
+    jsize $1_bytes_size = jenv->GetArrayLength($input);
+    jbyte* $1_bytes = (jbyte *)jenv->GetByteArrayElements($input, NULL);
+    ($1).ParseFromArray($1_bytes, $1_bytes_size);
+    jenv->ReleaseByteArrayElements($input, $1_bytes, 0);
 %}
 
 %typemap(javain) TYPE "($javainput).toByteArray()"
 
 %typemap(out) TYPE %{
-	jsize $1_bytes_size = ($1).ByteSize();
+    jsize $1_bytes_size = ($1).ByteSize();
     $result = jenv->NewByteArray($1_bytes_size);
     jbyte* $1_bytes = (jbyte *)jenv->GetByteArrayElements($result, NULL);
     ($1).SerializeToArray($1_bytes, $1_bytes_size);
@@ -57,9 +57,9 @@
 %typemap(javaout) TYPE { 
     JTYPE result = null;
     try {
-		result = JTYPE.parseFrom($jnicall); 
+        result = JTYPE.parseFrom($jnicall); 
     } catch (com.google.protobuf.InvalidProtocolBufferException e) {
-        e.printStackTrace();  	
+        e.printStackTrace();
     }
     return result;
 }

@@ -1,20 +1,21 @@
 %module fesql_interface
 
+// Enable public interfaces for Java
 #ifdef SWIGJAVA
-#define SWIG_SHARED_PTR_TYPEMAPS(CONST, TYPE...) SWIG_SHARED_PTR_TYPEMAPS_IMPLEMENTATION(public, public, CONST, TYPE)
+#define SWIG_SHARED_PTR_TYPEMAPS(CONST, TYPE...) \
+	SWIG_SHARED_PTR_TYPEMAPS_IMPLEMENTATION(public, public, CONST, TYPE)
 SWIG_JAVABODY_TYPEWRAPPER(public, public, public, SWIGTYPE)
 SWIG_JAVABODY_PROXY(public, public, SWIGTYPE)
 #endif
 
 
+// Enable string and shared pointers
 %include std_string.i
 %include std_shared_ptr.i
 %include stl.i
 namespace std {
     %template(StringVector) vector<string>;
 }
-
-%typemap(javaimports) SWIGTYPE "import com._4paradigm.*;"
 
 %shared_ptr(fesql::sdk::DBMSSdk);
 %shared_ptr(fesql::sdk::TabletSdk);
@@ -23,9 +24,15 @@ namespace std {
 %shared_ptr(fesql::sdk::TableSet);
 %shared_ptr(fesql::sdk::ResultSet);
 
+
 #ifdef SWIGJAVA
+// Enable namespace feature for Java
 %nspace;
 
+// Fix for wrapper class imports
+%typemap(javaimports) SWIGTYPE "import com._4paradigm.*;"
+
+// Enable protobuf interfaces
 %include "swig_library/java/protobuf.i"
 %protobuf_enum(fesql::type::Type, com._4paradigm.fesql.type.TypeOuterClass.Type);
 %protobuf(fesql::type::TableDef, com._4paradigm.fesql.type.TypeOuterClass.TableDef);
@@ -52,7 +59,6 @@ using fesql::sdk::DBMSSdk;
 using fesql::sdk::TabletSdk;
 
 using namespace fesql::node;
-//using namespace fesql::vm;
 using fesql::vm::SQLContext;
 using fesql::vm::Catalog;
 using fesql::vm::PhysicalOpNode;
@@ -62,8 +68,6 @@ using fesql::base::Slice;
 using fesql::node::PlanType;
 %}
 
-
-%typemap(javaimports) SWIGTYPE "import com._4paradigm.*;"
 
 %ignore MakeExprWithTable; // TODO: avoid return object with share pointer
 %ignore WindowIterator;

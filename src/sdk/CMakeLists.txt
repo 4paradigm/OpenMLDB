@@ -165,3 +165,4 @@ add_custom_target(java_package ALL
     COMMAND ${MAVEN_EXECUTABLE} package
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/java
   )
+add_dependencies(java_package fesql_proto_java)
