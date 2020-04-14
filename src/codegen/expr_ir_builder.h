@@ -41,7 +41,7 @@ struct RowIRInfo {
     const std::string row_size_name_;
     const std::string window_ptr_name_;
     const std::string table_name_;
-    const vm::Schema& schema_;
+    const vm::Schema* schema_;
 };
 
 class RowIRContext {
@@ -50,9 +50,9 @@ class RowIRContext {
                  const RowIRInfo& info)
         : info_(info),
           row_ir_builder_(
-              new BufNativeIRBuilder(info_.schema_, block, scope_var)),
+              new BufNativeIRBuilder(*info_.schema_, block, scope_var)),
           window_ir_builder_(
-              new MemoryWindowDecodeIRBuilder(info_.schema_, block)) {}
+              new MemoryWindowDecodeIRBuilder(*info_.schema_, block)) {}
     RowIRInfo info_;
     std::unique_ptr<RowDecodeIRBuilder> row_ir_builder_;
     std::unique_ptr<WindowDecodeIRBuilder> window_ir_builder_;

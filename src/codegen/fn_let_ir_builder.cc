@@ -26,19 +26,19 @@ namespace codegen {
 
 RowFnLetIRBuilder::RowFnLetIRBuilder(const vm::Schema& schema,
                                      ::llvm::Module* module)
-    : row_info_list_(), module_(module) {
+    : module_(module) {
     row_info_list_.push_back(RowIRInfo{.row_ptr_name_ = "row_ptr_name",
                                        .row_size_name_ = "row_size_name",
                                        .window_ptr_name_ = "window_ptr_name",
                                        .table_name_ = "",
-                                       .schema_ = schema});
+                                       .schema_ = &schema});
 }
 
 RowFnLetIRBuilder::RowFnLetIRBuilder(
-    std::vector<std::pair<const std::string&, const vm::Schema&>>&
+    std::vector<std::pair<const std::string, const vm::Schema*>>&
         table_schema_list,
     ::llvm::Module* module)
-    : row_info_list_(), module_(module) {
+    : module_(module) {
     uint32_t idx = 0;
     for (auto iter = table_schema_list.cbegin();
          iter != table_schema_list.cend(); iter++) {
@@ -48,6 +48,7 @@ RowFnLetIRBuilder::RowFnLetIRBuilder(
             .window_ptr_name_ = "window_ptr_name_" + std::to_string(idx),
             .table_name_ = iter->first,
             .schema_ = iter->second});
+        idx++;
     }
 }
 RowFnLetIRBuilder::~RowFnLetIRBuilder() {}
@@ -102,6 +103,10 @@ bool RowFnLetIRBuilder::Build(
     ::llvm::BasicBlock* block =
         ::llvm::BasicBlock::Create(module_->getContext(), "entry", fn);
     VariableIRBuilder variable_ir_builder(block, &sv);
+    if (row_info_list_.empty()) {
+        LOG(WARNING) << "fail to build fn: row info list is empty";
+        return false;
+    }
     ExprIRBuilder expr_ir_builder(block, &sv, row_info_list_, true, module_);
 
     ::fesql::node::PlanNodeList::const_iterator it = projects.cbegin();

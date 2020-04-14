@@ -104,15 +104,24 @@ bool fesql::codegen::VariableIRBuilder::StoreValue(
     fesql::base::Status& status) {
     return StoreValue(name, value, true, status);
 }
-bool fesql::codegen::VariableIRBuilder::LoadRowPtr(
-    std::string name, ::llvm::Value** output, fesql::base::Status& status) {
-    return LoadValue("row_ptr_" + name, output, status);
+bool fesql::codegen::VariableIRBuilder::LoadColumnRef(
+    const std::string& relation_name, const std::string& name,
+    ::llvm::Value** output, fesql::base::Status& status) {
+    return LoadValue("col." + relation_name + "." + name, output, status);
 }
-bool fesql::codegen::VariableIRBuilder::LoadWindowPtr(
-    std::string name, ::llvm::Value** output, fesql::base::Status& status) {
-    return LoadValue("window_ptr_" + name, output, status);
+bool fesql::codegen::VariableIRBuilder::LoadColumnItem(
+    const std::string& relation_name, const std::string& name,
+    ::llvm::Value** output, fesql::base::Status& status) {
+    return LoadValue("item." + relation_name + "." + name, output, status);
 }
-bool fesql::codegen::VariableIRBuilder::LoadRowSizePtr(
-    std::string name, ::llvm::Value** output, fesql::base::Status& status) {
-    return LoadValue("row_size_" + name, output, status);
+bool fesql::codegen::VariableIRBuilder::StoreColumnRef(
+    const std::string& relation_name, const std::string& name,
+    ::llvm::Value* value, fesql::base::Status& status) {
+    return StoreValue("col." + relation_name + "." + name, value, status);
+}
+bool fesql::codegen::VariableIRBuilder::StoreColumnItem(
+    const std::string &relation_name,
+    const std::string& name, ::llvm::Value* value,
+    fesql::base::Status& status) {
+    return StoreValue("item." + relation_name + "." + name, value, status);
 }

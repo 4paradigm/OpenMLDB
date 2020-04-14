@@ -35,7 +35,7 @@ class RowFnLetIRBuilder {
  public:
     RowFnLetIRBuilder(const vm::Schema& schema, ::llvm::Module* module);
     RowFnLetIRBuilder(
-        std::vector<std::pair<const std::string&, const vm::Schema&>>&
+        std::vector<std::pair<const std::string, const vm::Schema*>>&
             table_schema_list,
         ::llvm::Module* module);
 
@@ -45,7 +45,6 @@ class RowFnLetIRBuilder {
                vm::Schema* output_schema);  // NOLINT (runtime/references)
 
  private:
-
     bool BuildFnHeader(const std::string& name,
                        const std::vector<::llvm::Type*>& args_type,
                        ::llvm::Type* ret_type, ::llvm::Function** fn);
