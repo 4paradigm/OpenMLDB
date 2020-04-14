@@ -731,7 +731,7 @@ void ExplainNode::Print(std::ostream &output,
     SQLNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
-    PrintValue(output, tab, ExplainTypeName(type_), "explain_type", false);
+    PrintValue(output, tab, ExplainTypeName(explain_type_), "explain_type", false);
     output << "\n";
     PrintSQLNode(output, tab, query_, "query", true);
 }
