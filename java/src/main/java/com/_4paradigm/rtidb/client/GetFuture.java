@@ -42,7 +42,11 @@ public class GetFuture implements Future<ByteString>{
 		this.f = f;
 		this.th = t;
 		if (t.getTableInfo().getFormatVersion() == 1) {
-			rv = new RowSliceView(projection);
+			if (projection != null) {
+				rv = new RowSliceView(projection);
+			}else {
+				rv = new RowSliceView(t.getSchema());
+			}
 			this.projection = projection;
 		}
 	}
@@ -113,9 +117,14 @@ public class GetFuture implements Future<ByteString>{
 		if (raw == null || raw.isEmpty()) {
 			return null;
 		}
-		int rowLength = th.getSchema().size();
-		if (th.getSchemaMap() != null) {
-			rowLength += th.getSchemaMap().size();
+		int rowLength = 0;
+		if (projection != null && projection.size() > 0) {
+		    rowLength = projection.size();
+		}else {
+			rowLength = th.getSchema().size();
+			if (th.getSchemaMap() != null) {
+				rowLength += th.getSchemaMap().size();
+			}
 		}
 		Object[] row = new Object[rowLength];
 		decode(raw, row, 0, row.length);
@@ -135,6 +144,7 @@ public class GetFuture implements Future<ByteString>{
 	    switch (th.getTableInfo().getFormatVersion()) {
 			case 1:
 				rv.read(raw.asReadOnlyByteBuffer().order(ByteOrder.LITTLE_ENDIAN), row, start, length);
+				break;
 			default:
 				RowCodec.decode(raw.asReadOnlyByteBuffer(), th.getSchema(), row, start, length);
 		}

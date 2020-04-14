@@ -130,7 +130,13 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         Map<Integer, List<Tablet.Dimension>> mapping = TableClientCommon.fillPartitionTabletDimension(row, th, client.getConfig().isHandleNull());
         ByteBuffer buffer = null;
         if (row.length == th.getSchema().size()) {
-            buffer = RowCodec.encode(row, th.getSchema());
+            switch (th.getTableInfo().getFormatVersion()) {
+                case 1:
+                    buffer = RowBuilder.encode(row, th.getSchema());
+                    break;
+                default:
+                    buffer = RowCodec.encode(row, th.getSchema());
+            }
         } else {
             List<ColumnDesc> columnDescs = th.getSchemaMap().get(row.length);
             if (columnDescs == null) {
