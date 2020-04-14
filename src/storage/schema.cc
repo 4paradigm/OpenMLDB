@@ -113,11 +113,6 @@ TableColumn::~TableColumn() {
     column_map_->clear();
 }
 
-void TableColumn::Reset() {
-    std::atomic_load_explicit(&columns_, std::memory_order_relaxed)->clear();
-    std::atomic_load_explicit(&column_map_, std::memory_order_relaxed)->clear();
-}
-
 void TableColumn::SetAllColumn(const std::vector<std::shared_ptr<ColumnDef>>& column_def) {
     auto new_columns = std::make_shared<std::vector<std::shared_ptr<ColumnDef>>>(column_def);
     std::atomic_store_explicit(&columns_, new_columns, std::memory_order_relaxed);
@@ -133,12 +128,12 @@ std::shared_ptr<ColumnDef> TableColumn::GetColumn(uint32_t idx) {
 
 std::shared_ptr<ColumnDef> TableColumn::GetColumn(const std::string& name) {
     auto map = std::atomic_load_explicit(&column_map_, std::memory_order_relaxed);
-    for (const auto& kv : *map) {
-        if (kv.first == name) {
-            return kv.second;
-        }
+    auto it = (*map).find(name);
+    if (it != (*map).end()) {
+        return it->second;
+    } else {
+        return std::shared_ptr<ColumnDef>();
     }
-    return std::shared_ptr<ColumnDef>();
 }
 
 std::vector<std::shared_ptr<ColumnDef>> TableColumn::GetAllColumn() {
@@ -146,22 +141,15 @@ std::vector<std::shared_ptr<ColumnDef>> TableColumn::GetAllColumn() {
 }
 
 void TableColumn::AddColumn(std::shared_ptr<ColumnDef> column_def) {
-    {
         auto old_columns = std::atomic_load_explicit(&columns_, std::memory_order_relaxed);
         auto new_columns = std::make_shared<std::vector<std::shared_ptr<ColumnDef>>>(*old_columns);
         new_columns->push_back(column_def);
         std::atomic_store_explicit(&columns_, new_columns, std::memory_order_relaxed);
-    }
-    {
+
         auto old_map = std::atomic_load_explicit(&column_map_, std::memory_order_relaxed);
         auto new_map = std::make_shared<std::map<std::string, std::shared_ptr<ColumnDef>>>(*old_map);
         new_map->insert(std::make_pair(column_def->GetName(), column_def));
         std::atomic_store_explicit(&column_map_, new_map, std::memory_order_relaxed);
-    }
-}
-
-std::map<std::string, std::shared_ptr<ColumnDef>> TableColumn::GetColumnMap() {
-    return *std::atomic_load_explicit(&column_map_, std::memory_order_relaxed);
 }
 
 }

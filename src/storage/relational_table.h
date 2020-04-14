@@ -22,7 +22,6 @@
 #include "base/slice.h"
 #include "base/endianconv.h"
 #include "storage/iterator.h"
-#include "storage/table.h"
 #include <boost/lexical_cast.hpp>
 #include "timer.h"
 #include "base/codec.h"
@@ -139,30 +138,25 @@ public:
     void SetOffset(uint64_t offset) {
         offset_.store(offset, std::memory_order_relaxed);
     }
-    
+
     std::shared_ptr<IndexDef> GetPkIndex() {
         return table_index_.GetPkIndex();
     }
 
 private:
-    static inline std::string CombineNoUniqueAndPk(const std::string& no_unique, 
-            const std::string& pk) {
-        std::string result;
-        result.resize(no_unique.size() + pk.size());
-        char* buf = const_cast<char*>(&(result[0]));
+    inline void CombineNoUniqueAndPk(const std::string& no_unique, 
+            const std::string& pk, std::string* result) {
+        result->resize(no_unique.size() + pk.size());
+        char* buf = const_cast<char*>(result->data());
         memcpy(buf, no_unique.c_str(), no_unique.size());
         memcpy(buf + no_unique.size(), pk.c_str(), pk.size());
-        return result;
     }
-    static inline int ParsePk(const rocksdb::Slice& value, const std::string& key, std::string* pk) {
+    inline int ParsePk(const rocksdb::Slice& value, const std::string& key, std::string* pk) {
         if (value.size() < key.size()) {
             return -1;
         }
-        std::string real_key;
-        real_key.resize(key.size());
-        char* rk = const_cast<char*>(real_key.c_str());
-        memcpy(rk, value.data(), key.size());
-        if (real_key != key) {
+        if (memcmp(reinterpret_cast<void*>(const_cast<char*>(key.c_str())), 
+                    reinterpret_cast<void*>(const_cast<char*>(value.data())), key.size()) != 0) {
             return -2;
         }
 

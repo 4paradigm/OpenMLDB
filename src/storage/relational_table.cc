@@ -255,7 +255,7 @@ bool RelationalTable::PutDB(const std::string &pk, const char *data, uint32_t si
     }
     const Schema& schema = table_meta_.column_desc(); 
     ::rtidb::base::RowView view(schema, reinterpret_cast<int8_t*>(const_cast<char*>(data)), size);
-    for (int i = 0; i < (int)(table_index_.Size()); i++) {
+    for (uint32_t i = 0; i < table_index_.Size(); i++) {
         std::shared_ptr<IndexDef> index_def = table_index_.GetIndex(i);
         for (auto& kv : index_def->GetColumnIdxMap()) {
             uint32_t idx = kv.first;
@@ -281,7 +281,8 @@ bool RelationalTable::PutDB(const std::string &pk, const char *data, uint32_t si
                 if (!GetStr(view, idx, data_type, &key)) {
                     return false;
                 }
-                std::string no_unique = CombineNoUniqueAndPk(key, pk);
+                std::string no_unique = "";
+                CombineNoUniqueAndPk(key, pk, &no_unique);
                 batch.Put(cf_hs_[index_def->GetId() + 1], rocksdb::Slice(no_unique), rocksdb::Slice());
             }
             //TODO: combine key
@@ -354,13 +355,12 @@ bool RelationalTable::GetStr(::rtidb::base::RowView& view, uint32_t idx,
 
 bool RelationalTable::ConvertIndex(const std::string& name, const std::string& value, 
         std::string* out_val) {
-    const std::map<std::string, std::shared_ptr<ColumnDef>>& col_map = table_column_.GetColumnMap();
-    auto it = col_map.find(name);
-    if (it == col_map.end()) {
-        PDLOG(WARNING, "col name not exist, tid %u pid %u", id_, pid_);
+    std::shared_ptr<ColumnDef> column_def = table_column_.GetColumn(name);
+    if (!column_def) {
+        PDLOG(WARNING, "col name %s not exist, tid %u pid %u", name.c_str(), id_, pid_);
         return false;
     }
-    ::rtidb::type::DataType type = it->second->GetType();
+    ::rtidb::type::DataType type = column_def->GetType();
     int ret = 0;
     if (type == ::rtidb::type::kSmallInt) {
         int16_t val = 0;
@@ -443,8 +443,12 @@ bool RelationalTable::DeleteInternel(const std::string& comparable_key, const st
             } else if (ret == -2) {
                 it->SetFinish(true);
                 delete it;
-                if (count == 0) return false;
-                else return true;
+                if (count == 0) {
+                    PDLOG(WARNING,"no unique %s not exist, tid %u pid %u", comparable_key.c_str(), id_, pid_);
+                    return false;
+                } else {
+                    return true;
+                }
             }
             batch.Delete(cf_hs_[pk_id + 1], rocksdb::Slice(pk));
             batch.Delete(cf_hs_[idx + 1], rocksdb::Slice(it->GetKey().data(), it->GetKey().size()));
@@ -492,6 +496,11 @@ bool RelationalTable::DeleteInternel(const std::string& comparable_key, const st
             if (index_def->GetType() == ::rtidb::type::kUnique ||
                     index_def->GetType() == ::rtidb::type::kNoUnique) {
                 std::shared_ptr<ColumnDef> col = table_column_.GetColumn(index_def->GetName());
+                if (!col) {
+                    PDLOG(WARNING, "col name %s not exist, tid %u pid %u", 
+                            index_def->GetName().c_str(), id_, pid_);
+                    return false;
+                }
                 std::string second_key = "";
                 if (!GetStr(view, col->GetId(), col->GetType(), &second_key)) {
                     return false;
@@ -563,6 +572,7 @@ bool RelationalTable::Query(
         rtidb::base::Encode(value.data(), value.size(), rbuffer, offset);
         offset += (4 + value.size());
     }
+    return true;
 }
 
 bool RelationalTable::Query(const std::string& idx_name, const std::string& idx_val, 
@@ -629,8 +639,12 @@ bool RelationalTable::Query(const std::shared_ptr<IndexDef> index_def, const std
             } else if (ret == -2) {
                 it->SetFinish(true);
                 delete it;
-                if (count == 0) return false;
-                else return true;
+                if (count == 0) {
+                    PDLOG(WARNING,"no unique %s not exist, tid %u pid %u", key.c_str(), id_, pid_);
+                    return false;
+                } else {
+                    return true;
+                }
             }
             Query(table_index_.GetPkIndex(), pk, vec); 
             it->Next();

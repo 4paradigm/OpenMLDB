@@ -139,13 +139,11 @@ class TableColumn {
  public:
     TableColumn();
     ~TableColumn();
-    void Reset();
     std::shared_ptr<ColumnDef> GetColumn(uint32_t idx);
     std::shared_ptr<ColumnDef> GetColumn(const std::string& name);
     void AddColumn(std::shared_ptr<ColumnDef> column_def);
     void SetAllColumn(const std::vector<std::shared_ptr<ColumnDef>>& column_def);
     std::vector<std::shared_ptr<ColumnDef>> GetAllColumn();
-    std::map<std::string, std::shared_ptr<ColumnDef>> GetColumnMap();
     inline uint32_t Size() {
         return std::atomic_load_explicit(&columns_, std::memory_order_relaxed)->size();
     }
