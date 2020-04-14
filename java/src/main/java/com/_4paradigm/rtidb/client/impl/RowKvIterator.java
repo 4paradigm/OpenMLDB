@@ -25,9 +25,11 @@ public class RowKvIterator implements KvIterator {
     private long key;
     private NS.CompressType compressType = NS.CompressType.kNoCompress;
     private RowSliceView rv;
+
     public RowKvIterator(ByteString bs, List<ColumnDesc> schema, int count) {
         this.bs = bs;
-        this.bb = this.bs.asReadOnlyByteBuffer().order(ByteOrder.LITTLE_ENDIAN);;
+        this.bb = this.bs.asReadOnlyByteBuffer().order(ByteOrder.LITTLE_ENDIAN);
+        ;
         this.offset = 0;
         this.totalSize = this.bs.size();
         this.count = count;
@@ -37,12 +39,12 @@ public class RowKvIterator implements KvIterator {
     }
 
     public int getCount() {
-		return count;
-	}
+        return count;
+    }
 
-	public void setCount(int count) {
-		this.count = count;
-	}
+    public void setCount(int count) {
+        this.count = count;
+    }
 
     public NS.CompressType getCompressType() {
         return compressType;
@@ -54,9 +56,9 @@ public class RowKvIterator implements KvIterator {
 
     public List<ColumnDesc> getSchema() {
         return schema;
-	}
+    }
 
-	public boolean valid() {
+    public boolean valid() {
         if (offset <= totalSize) {
             return true;
         }
@@ -71,6 +73,7 @@ public class RowKvIterator implements KvIterator {
     public String getPK() {
         return null;
     }
+
     // no copy
     public ByteBuffer getValue() {
         return slice;
