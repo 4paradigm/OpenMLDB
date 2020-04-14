@@ -25,6 +25,7 @@ import org.joda.time.DateTime;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.nio.ByteBuffer;
@@ -47,6 +48,7 @@ public class TableSyncClientTest extends TestCaseBase {
     public void tearDown() {
         super.tearDown();
     }
+
 
     private String createKvTable() {
         String name = String.valueOf(id.incrementAndGet());
@@ -172,7 +174,99 @@ public class TableSyncClientTest extends TestCaseBase {
         return name;
     }
 
-    private String createRelationalTableMultiIndex() throws TabletException {
+    class RelationTestArgs {
+        TableDesc tableDesc;
+        List<Map<String, Object>> projectionList;
+        Object[] row;
+        Object[] expected;
+    }
+
+    ;
+
+    private RelationTestArgs createRelationalArgs(Object[] input, List<Map<String, Object>> projectList, Object[] expect) {
+        String name = String.valueOf(id.incrementAndGet());
+        nsc.dropTable(name);
+        TableDesc tableDesc = new TableDesc();
+        tableDesc.setName(name);
+        tableDesc.setTableType(TableType.kRelational);
+        List<com._4paradigm.rtidb.client.schema.ColumnDesc> list = new ArrayList<>();
+        {
+            com._4paradigm.rtidb.client.schema.ColumnDesc col = new com._4paradigm.rtidb.client.schema.ColumnDesc();
+            col.setName("id");
+            col.setDataType(DataType.BigInt);
+            col.setNotNull(true);
+            list.add(col);
+        }
+        {
+            com._4paradigm.rtidb.client.schema.ColumnDesc col = new com._4paradigm.rtidb.client.schema.ColumnDesc();
+            col.setName("attribute");
+            col.setDataType(DataType.Varchar);
+            col.setNotNull(true);
+            list.add(col);
+        }
+        {
+            com._4paradigm.rtidb.client.schema.ColumnDesc col = new com._4paradigm.rtidb.client.schema.ColumnDesc();
+            col.setName("image");
+            col.setDataType(DataType.Blob);
+            col.setNotNull(false);
+            list.add(col);
+        }
+        {
+            com._4paradigm.rtidb.client.schema.ColumnDesc col = new com._4paradigm.rtidb.client.schema.ColumnDesc();
+            col.setName("memory");
+            col.setDataType(DataType.Int);
+            col.setNotNull(false);
+            list.add(col);
+        }
+        {
+            com._4paradigm.rtidb.client.schema.ColumnDesc col = new com._4paradigm.rtidb.client.schema.ColumnDesc();
+            col.setName("price");
+            col.setDataType(DataType.Double);
+            col.setNotNull(false);
+            list.add(col);
+        }
+        tableDesc.setColumnDescList(list);
+
+        List<IndexDef> indexs = new ArrayList<>();
+        {
+            IndexDef indexDef = new IndexDef();
+            indexDef.setIndexName("id");
+            indexDef.setIndexType(IndexType.PrimaryKey);
+            List<String> colNameList = new ArrayList<>();
+            colNameList.add("id");
+            indexDef.setColNameList(colNameList);
+            indexs.add(indexDef);
+        }
+        {
+            IndexDef indexDef = new IndexDef();
+            indexDef.setIndexName("attribute");
+            indexDef.setIndexType(IndexType.Unique);
+            List<String> colNameList = new ArrayList<>();
+            colNameList.add("attribute");
+            indexDef.setColNameList(colNameList);
+            indexs.add(indexDef);
+        }
+        {
+            IndexDef indexDef = new IndexDef();
+            indexDef.setIndexName("memory");
+            indexDef.setIndexType(IndexType.NoUnique);
+            List<String> colNameList = new ArrayList<>();
+            colNameList.add("memory");
+            indexDef.setColNameList(colNameList);
+            indexs.add(indexDef);
+        }
+        tableDesc.setIndexs(indexs);
+
+        RelationTestArgs args = new RelationTestArgs();
+        args.tableDesc = tableDesc;
+        args.row = input;
+        args.expected = expect;
+        args.projectionList = projectList;
+
+        return args;
+    }
+
+    private String createRelationalTableMultiIndex() {
         String name = String.valueOf(id.incrementAndGet());
         nsc.dropTable(name);
         TableDesc tableDesc = new TableDesc();
@@ -252,7 +346,7 @@ public class TableSyncClientTest extends TestCaseBase {
         return name;
     }
 
-    private String createRelationalTableVarcharKey() {
+    private String createRelationalTable(DataType pkDataType) {
         String name = String.valueOf(id.incrementAndGet());
         nsc.dropTable(name);
         TableDesc tableDesc = new TableDesc();
@@ -262,54 +356,7 @@ public class TableSyncClientTest extends TestCaseBase {
         {
             com._4paradigm.rtidb.client.schema.ColumnDesc col = new com._4paradigm.rtidb.client.schema.ColumnDesc();
             col.setName("id");
-            col.setDataType(DataType.Varchar);
-            col.setNotNull(true);
-            list.add(col);
-        }
-        {
-            com._4paradigm.rtidb.client.schema.ColumnDesc col = new com._4paradigm.rtidb.client.schema.ColumnDesc();
-            col.setName("attribute");
-            col.setDataType(DataType.Varchar);
-            col.setNotNull(true);
-            list.add(col);
-        }
-        {
-            com._4paradigm.rtidb.client.schema.ColumnDesc col = new com._4paradigm.rtidb.client.schema.ColumnDesc();
-            col.setName("image");
-            col.setDataType(DataType.Varchar);
-            col.setNotNull(true);
-            list.add(col);
-        }
-        tableDesc.setColumnDescList(list);
-
-        List<IndexDef> indexs = new ArrayList<>();
-        IndexDef indexDef = new IndexDef();
-        indexDef.setIndexName("id");
-        indexDef.setIndexType(IndexType.PrimaryKey);
-        List<String> colNameList = new ArrayList<>();
-        colNameList.add("id");
-        indexDef.setColNameList(colNameList);
-        indexs.add(indexDef);
-
-        tableDesc.setIndexs(indexs);
-        boolean ok = nsc.createTable(tableDesc);
-        Assert.assertTrue(ok);
-        client.refreshRouteTable();
-
-        return name;
-    }
-
-    private String createRelationalTableStringKey() {
-        String name = String.valueOf(id.incrementAndGet());
-        nsc.dropTable(name);
-        TableDesc tableDesc = new TableDesc();
-        tableDesc.setName(name);
-        tableDesc.setTableType(TableType.kRelational);
-        List<com._4paradigm.rtidb.client.schema.ColumnDesc> list = new ArrayList<>();
-        {
-            com._4paradigm.rtidb.client.schema.ColumnDesc col = new com._4paradigm.rtidb.client.schema.ColumnDesc();
-            col.setName("id");
-            col.setDataType(DataType.String);
+            col.setDataType(pkDataType);
             col.setNotNull(true);
             list.add(col);
         }
@@ -1085,6 +1132,70 @@ public class TableSyncClientTest extends TestCaseBase {
         }
     }
 
+    @DataProvider(name = "relational_delete_case")
+    public Object[][] genCase() {
+        Object[] arr = new Object[3];
+        Map data = new HashMap<String, Object>();
+        data.put("id", 11l);
+        data.put("attribute", "a1");
+        data.put("image", "i1");
+        data.put("memory", 11);
+        data.put("price", 11.1);
+        arr[0] = new HashMap<>(data);
+
+        List<Map<String, Object>> list = new ArrayList<>();
+        Map<String, Object> conditionColumns = new HashMap<>();
+        conditionColumns.put("id", 11l);
+        list.add(conditionColumns);
+
+        return new Object[][]{
+                new Object[]{createRelationalArgs(arr, list, new Object[]{5, 1, 0})},
+        };
+    }
+
+    @Test(dataProvider = "relational_delete_case")
+    public void testRelationalPkDelete(RelationTestArgs args) {
+        nsc.dropTable(args.tableDesc.getName());
+        boolean ok = nsc.createTable(args.tableDesc);
+        Assert.assertTrue(ok);
+        client.refreshRouteTable();
+        String name = args.tableDesc.getName();
+
+        try {
+            List<com._4paradigm.rtidb.client.schema.ColumnDesc> schema = tableSyncClient.getSchema(name);
+            Assert.assertEquals(schema.size(), args.expected[0]);
+
+            //put
+            WriteOption wo = new WriteOption();
+            Map<String, Object> data = new HashMap<String, Object>();
+            ok = tableSyncClient.put(args.tableDesc.getName(), (Map) (args.row[0]), wo);
+            Assert.assertTrue(ok);
+
+            //traverse
+            ReadOption ro = new ReadOption(null, null, null, 1);
+            RelationalIterator it = tableSyncClient.traverse(name, ro);
+            Assert.assertEquals(it.getCount(), args.expected[1]);
+
+            //delete pk
+            {
+                ok = tableSyncClient.delete(name, args.projectionList.get(0));
+                Assert.assertTrue(ok);
+                ro = new ReadOption(args.projectionList.get(0), null, null, 1);
+                it = tableSyncClient.query(name, ro);
+                Assert.assertFalse(it.valid());
+            }
+            //traverse
+            it = tableSyncClient.traverse(name, ro);
+            Assert.assertEquals(it.getCount(), args.expected[2]);
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.assertTrue(false);
+        } finally {
+            nsc.dropTable(name);
+        }
+    }
+
+
     @Test
     public void testRelationalDelete() {
         String name = "";
@@ -1257,7 +1368,7 @@ public class TableSyncClientTest extends TestCaseBase {
 
     @Test
     public void testRelationalTableTraverseVarcharKey() {
-        String name = createRelationalTableVarcharKey();
+        String name = createRelationalTable(DataType.Varchar);
         try {
             List<com._4paradigm.rtidb.client.schema.ColumnDesc> schema = tableSyncClient.getSchema(name);
             Assert.assertEquals(schema.size(), 3);
@@ -1300,7 +1411,7 @@ public class TableSyncClientTest extends TestCaseBase {
 
     @Test
     public void testRelationalTableTraverseStringKey() {
-        String name = createRelationalTableStringKey();
+        String name = createRelationalTable(DataType.String);
         try {
             List<com._4paradigm.rtidb.client.schema.ColumnDesc> schema = tableSyncClient.getSchema(name);
             Assert.assertEquals(schema.size(), 3);
@@ -1325,24 +1436,24 @@ public class TableSyncClientTest extends TestCaseBase {
             //traverse
             RelationalIterator trit = tableSyncClient.traverse(name, ro);
             //update key
-//            {
-//                data.clear();
-//                Map<String, Object> conditionColumns = new HashMap<>();
-//                conditionColumns.put("id", "0110");
-//                data.put("attribute", "aup1110");
-//                data.put("image", "iup1110");
-//                boolean ok = tableSyncClient.update(name, conditionColumns, data, wo);
-//                Assert.assertTrue(ok);
-//
-//                ro = new ReadOption(conditionColumns, null, null, 1);
-//                RelationalIterator it = tableSyncClient.query(name, ro);
-//                Map<String, Object> valueMap = new HashMap<>();
-//                valueMap = it.getDecodedValue();
-//                Assert.assertEquals(valueMap.size(), 3);
-//                Assert.assertEquals(valueMap.get("id"), "0110");
-//                Assert.assertEquals(valueMap.get("attribute"), "aup1110");
-//                Assert.assertEquals(valueMap.get("image"), "iup1110");
-//            }
+            {
+                data.clear();
+                Map<String, Object> conditionColumns = new HashMap<>();
+                conditionColumns.put("id", "0110");
+                data.put("attribute", "aup1110");
+                data.put("image", "iup1110");
+                boolean ok = tableSyncClient.update(name, conditionColumns, data, wo);
+                Assert.assertTrue(ok);
+
+                ro = new ReadOption(conditionColumns, null, null, 1);
+                RelationalIterator it = tableSyncClient.query(name, ro);
+                Map<String, Object> valueMap = new HashMap<>();
+                valueMap = it.getDecodedValue();
+                Assert.assertEquals(valueMap.size(), 3);
+                Assert.assertEquals(valueMap.get("id"), "0110");
+                Assert.assertEquals(valueMap.get("attribute"), "aup1110");
+                Assert.assertEquals(valueMap.get("image"), "iup1110");
+            }
             for (long i = 1; i < 1000; i++) {
                 Assert.assertTrue(trit.valid());
                 Map<String, Object> TraverseMap = trit.getDecodedValue();
@@ -1362,7 +1473,7 @@ public class TableSyncClientTest extends TestCaseBase {
 
     @Test
     public void testRelationalTableBatchQueryVarcharKey() {
-        String name = createRelationalTableVarcharKey();
+        String name = createRelationalTable(DataType.String);
         try {
             List<com._4paradigm.rtidb.client.schema.ColumnDesc> schema = tableSyncClient.getSchema(name);
             Assert.assertEquals(schema.size(), 3);
@@ -1459,7 +1570,6 @@ public class TableSyncClientTest extends TestCaseBase {
             //traverse
             ReadOption ro = new ReadOption(null, null, null, 1);
             RelationalIterator it = tableSyncClient.traverse(name, ro);
-            it.next();
             Assert.assertTrue(it.valid());
             Map<String, Object> map = it.getDecodedValue();
             Assert.assertEquals(map.size(), 3);
