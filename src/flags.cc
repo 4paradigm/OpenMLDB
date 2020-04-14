@@ -58,6 +58,9 @@ DEFINE_int32(binlog_name_length, 8, "binlog name length");
 DEFINE_uint32(check_binlog_sync_progress_delta, 100000, "config the delta of check binlog sync progress");
 DEFINE_uint32(go_back_max_try_cnt, 10, "config max try time of go back");
 
+DEFINE_uint32(put_slow_log_threshold, 50000, "config the threshold of put slow log");
+DEFINE_uint32(query_slow_log_threshold, 50000, "config the threshold of query slow log");
+
 // local db config
 DEFINE_string(db_root_path, "/tmp/", "the root path of db");
 DEFINE_string(ssd_root_path, "", "the root ssd path of db");
@@ -74,6 +77,8 @@ DEFINE_int32(request_sleep_time, 1000, "the sleep time when request error");
 
 DEFINE_uint32(max_traverse_cnt, 50000, "max traverse iter loop cnt");
 
+DEFINE_uint32(task_check_interval, 1000, "config the check interval of task");
+
 DEFINE_int32(send_file_max_try, 3, "the max retry time when send file failed");
 DEFINE_int32(retry_send_file_wait_time_ms, 3000, "conf the wait time when retry send file");
 DEFINE_int32(stream_close_wait_time_ms, 1000, "the wait time before close stream");
@@ -87,6 +92,10 @@ DEFINE_int32(make_snapshot_check_interval, 1000*60*10, "config the interval to c
 DEFINE_int32(make_snapshot_threshold_offset, 100000, "config the offset to reach the threshold");
 DEFINE_uint32(make_snapshot_max_deleted_keys, 1000000, "config the max deleted keys store when make snapshot");
 DEFINE_uint32(make_snapshot_offline_interval, 60*60*24, "config tablet self makesnapshot when how long time do not makesnapshot from ns. unit is second");
+DEFINE_uint32(snapshot_ttl_time, 6*60, "config relational table snapshot TTL time in minutes");
+DEFINE_uint32(snapshot_ttl_check_interval, 60, "config relational table snapshot TTL time in minutes");
+
+DEFINE_uint32(load_index_max_wait_time, 120 * 60 * 1000, "config the max wait time of load index");
 
 DEFINE_string(recycle_bin_root_path, "/tmp/recycle", "specify the root path of recycle bin");
 DEFINE_string(recycle_ssd_bin_root_path, "/tmp/ssd_recycle", "specify the ssd root path of recycle bin");

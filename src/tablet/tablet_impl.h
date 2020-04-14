@@ -267,8 +267,23 @@ public:
             ::rtidb::api::GeneralResponse* response,
             Closure* done);
 
+    void LoadIndexData(RpcController* controller,
+            const ::rtidb::api::LoadIndexDataRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done);
+
+    void ExtractIndexData(RpcController* controller,
+            const ::rtidb::api::ExtractIndexDataRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done);
+
     void AddIndex(RpcController* controller,
             const ::rtidb::api::AddIndexRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done);
+
+    void SendIndexData(RpcController* controller,
+            const ::rtidb::api::SendIndexDataRequest* request,
             ::rtidb::api::GeneralResponse* response,
             Closure* done);
 
@@ -314,12 +329,15 @@ private:
     //std::shared_ptr<DiskTable> GetDiskTable(uint32_t tid, uint32_t pid);
     //std::shared_ptr<DiskTable> GetDiskTableUnLock(uint32_t tid, uint32_t pid);
     std::shared_ptr<RelationalTable> GetRelationalTableUnLock(uint32_t tid, uint32_t pid);
+    std::shared_ptr<RelationalTable> GetRelationalTable(uint32_t tid, uint32_t pid);
 
     std::shared_ptr<LogReplicator> GetReplicator(uint32_t tid, uint32_t pid);
     std::shared_ptr<LogReplicator> GetReplicatorUnLock(uint32_t tid, uint32_t pid);
     std::shared_ptr<Snapshot> GetSnapshot(uint32_t tid, uint32_t pid);
     std::shared_ptr<Snapshot> GetSnapshotUnLock(uint32_t tid, uint32_t pid);
     void GcTable(uint32_t tid, uint32_t pid, bool execute_once);
+
+    void GcTableSnapshot(uint32_t tid, uint32_t pid);
 
     int CheckTableMeta(const rtidb::api::TableMeta* table_meta, std::string& msg);
 
@@ -335,9 +353,25 @@ private:
                         uint32_t remote_tid, std::shared_ptr<::rtidb::api::TaskInfo> task);
 
     void DumpIndexDataInternal(std::shared_ptr<::rtidb::storage::Table> table, 
-    std::shared_ptr<::rtidb::storage::MemTableSnapshot> memtable_snapshot, std::shared_ptr<::rtidb::replica::LogReplicator> replicator, 
-    std::string& binlog_path, ::rtidb::common::ColumnKey& column_key, 
-    uint32_t idx, std::vector<::rtidb::log::WriteHandle*> whs, std::shared_ptr<::rtidb::api::TaskInfo> task);
+            std::shared_ptr<::rtidb::storage::MemTableSnapshot> memtable_snapshot, 
+            std::shared_ptr<::rtidb::replica::LogReplicator> replicator, 
+            uint32_t partition_num,
+            ::rtidb::common::ColumnKey& column_key, 
+            uint32_t idx, 
+            std::shared_ptr<::rtidb::api::TaskInfo> task);
+
+    void SendIndexDataInternal(std::shared_ptr<::rtidb::storage::Table> table,
+        const std::map<uint32_t, std::string>& pid_endpoint_map,
+        std::shared_ptr<::rtidb::api::TaskInfo> task);
+
+    void LoadIndexDataInternal(uint32_t tid, uint32_t pid, uint32_t cur_pid,
+        uint32_t partition_num, uint64_t last_time,
+        std::shared_ptr<::rtidb::api::TaskInfo> task);
+
+    void ExtractIndexDataInternal(std::shared_ptr<::rtidb::storage::Table> table,
+        std::shared_ptr<::rtidb::storage::MemTableSnapshot> memtable_snapshot,
+        ::rtidb::common::ColumnKey& column_key, uint32_t idx,
+        uint32_t partition_num, std::shared_ptr<::rtidb::api::TaskInfo> task);
 
     void SchedMakeSnapshot();
 
@@ -363,6 +397,12 @@ private:
 
     int AddOPTask(const ::rtidb::api::TaskInfo& task_info, ::rtidb::api::TaskType task_type,
             std::shared_ptr<::rtidb::api::TaskInfo>& task_ptr);
+
+    void SetTaskStatus(std::shared_ptr<::rtidb::api::TaskInfo>& task_ptr, 
+            ::rtidb::api::TaskStatus status);
+
+    int GetTaskStatus(std::shared_ptr<::rtidb::api::TaskInfo>& task_ptr,
+            ::rtidb::api::TaskStatus* status);
 
     std::shared_ptr<::rtidb::api::TaskInfo> FindTask(
             uint64_t op_id, ::rtidb::api::TaskType task_type);

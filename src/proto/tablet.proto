@@ -73,6 +73,7 @@ enum OPType {
     kAddReplicaSimplyRemoteOP = 17; 
     kDelReplicaRemoteOP = 18; 
     kAddReplicaRemoteOP = 19; 
+    kAddIndexOP = 20; 
 }
 
 enum TaskType {
@@ -98,6 +99,10 @@ enum TaskType {
     kDropTableRemote = 20; 
     kAddReplicaNSRemote = 21; 
     kDumpIndexData = 22;
+    kSendIndexData = 23;
+    kLoadIndexData = 24;
+    kExtractIndexData = 25;
+    kAddIndexToTablet = 26;
 }
 
 enum TaskStatus {
@@ -274,6 +279,7 @@ message TraverseRequest {
     optional uint64 ts = 6;
     optional bool enable_remove_duplicated_record = 7 [default=false];
     optional string ts_name = 8;
+    optional uint64 snapshot_id = 9;
 }
 
 message TraverseResponse {
@@ -284,6 +290,7 @@ message TraverseResponse {
     optional string pk = 5;
     optional uint64 ts = 6;
     optional bool is_finish = 7;
+    optional uint64 snapshot_id = 8;
 }
 
 message ScanResponse {
@@ -457,6 +464,19 @@ message SendSnapshotRequest {
     required string endpoint = 3;
     optional TaskInfo task_info = 4;
     optional uint32 remote_tid = 5;
+}
+
+message SendIndexDataRequest {
+
+    message EndpointPair {
+        optional uint32 pid = 1;
+        optional string endpoint = 2;
+    }
+
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    repeated EndpointPair pairs = 3;
+    optional TaskInfo task_info = 4;
 }
 
 message SendDataRequest {
@@ -645,6 +665,22 @@ message DumpIndexDataRequest {
     optional TaskInfo task_info = 6;
 }
 
+message LoadIndexDataRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    optional uint32 partition_num = 3;
+    optional TaskInfo task_info = 4;
+}
+
+message ExtractIndexDataRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    optional uint32 partition_num = 3;
+    optional uint32 idx = 4;
+    optional rtidb.common.ColumnKey column_key = 5;
+    optional TaskInfo task_info = 6;
+}
+
 message Columns {
     repeated string name = 1;
     optional bytes value = 2;
@@ -723,6 +759,9 @@ service TabletServer {
     rpc SetMode(SetModeRequest) returns (GeneralResponse);
     rpc GetAllSnapshotOffset(EmptyRequest) returns(TableSnapshotOffsetResponse);
     rpc AddIndex(AddIndexRequest) returns(GeneralResponse);
+    rpc SendIndexData(SendIndexDataRequest) returns(GeneralResponse);
     rpc DeleteIndex(DeleteIndexRequest) returns (GeneralResponse);
     rpc DumpIndexData(DumpIndexDataRequest) returns (GeneralResponse);
+    rpc LoadIndexData(LoadIndexDataRequest) returns (GeneralResponse);
+    rpc ExtractIndexData(ExtractIndexDataRequest) returns (GeneralResponse);
 }

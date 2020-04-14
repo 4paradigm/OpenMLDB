@@ -252,14 +252,32 @@ public:
                 const std::string& pk, uint64_t ts, uint32_t limit, uint32_t& count);
 
     bool Traverse(uint32_t tid, uint32_t pid, const std::string& pk, uint32_t limit,
-                uint32_t* count, std::string* msg, std::string* data, bool* is_finish);
+                uint32_t* count, std::string* msg, std::string* data, bool* is_finish, uint64_t* snapshot_id);
 
     void ShowTp();
 
     bool SetMode(bool mode);
 
     bool DeleteIndex(uint32_t tid, const std::string& idx_name);
-    bool AddIndex(uint32_t tid, uint32_t pid, const ::rtidb::common::ColumnKey& column_key);
+
+    bool AddIndex(uint32_t tid, uint32_t pid, 
+            const ::rtidb::common::ColumnKey& column_key,
+            std::shared_ptr<TaskInfo> task_info);
+
+    bool DumpIndexData(uint32_t tid, uint32_t pid, uint32_t partition_num, 
+            const ::rtidb::common::ColumnKey& column_key, uint32_t idx,
+            std::shared_ptr<TaskInfo> task_info);
+
+    bool SendIndexData(uint32_t tid, uint32_t pid,
+            const std::map<uint32_t, std::string>& pid_endpoint_map,
+            std::shared_ptr<TaskInfo> task_info);
+
+    bool LoadIndexData(uint32_t tid, uint32_t pid, uint32_t partition_num,
+            std::shared_ptr<TaskInfo> task_info);
+
+    bool ExtractIndexData(uint32_t tid, uint32_t pid, uint32_t partition_num,
+            const ::rtidb::common::ColumnKey& column_key, uint32_t idx,
+            std::shared_ptr<TaskInfo> task_info);
     
 private:
     std::string endpoint_;

@@ -55,7 +55,7 @@ public class RowView {
         str_field_start_offset = RowCodecCommon.HEADER_LENGTH + RowCodecCommon.getBitMapSize(schema.size());
         for (int idx = 0; idx < schema.size(); idx++) {
             ColumnDesc column = schema.get(idx);
-            if (column.getDataType() == DataType.Varchar) {
+            if (column.getDataType() == DataType.Varchar || column.getDataType() == DataType.String) {
                 offset_vec.add(string_field_cnt);
                 string_field_cnt++;
             } else {
@@ -305,6 +305,7 @@ public class RowView {
                 int year = date >> 8;
                 val = new Date(year, month, day);
                 break;
+            case String:
             case Varchar:
                 int field_offset = offset;
                 int next_str_field_offset = 0;

@@ -1362,6 +1362,223 @@ void HandleNSUpdate(const std::vector<std::string>& parts, ::rtidb::client::NsCl
 
 }
 
+bool ParseCondAndOp(const std::string& source, uint64_t& first_end, uint64_t& value_begin, int32_t& get_type) {
+    for (uint64_t i = 0; i < source.length(); i++) {
+        switch (source[i]) {
+            case '=':
+                first_end = i;
+                value_begin = i + 1;
+                get_type = rtidb::api::kSubKeyEq;
+                return true;
+            case '<':
+                first_end = i;
+                if (source[i+1] == '=') {
+                    value_begin = i + 2;
+                    get_type = rtidb::api::kSubKeyLe;
+                } else {
+                    value_begin = i + 1;
+                    get_type = rtidb::api::kSubKeyLt;
+                }
+                return true;
+            case '>':
+                first_end = i;
+                if (source[i+1] == '=') {
+                    value_begin = i + 2;
+                    get_type = rtidb::api::kSubKeyGe;
+                } else {
+                    value_begin = i + 1;
+                    get_type = rtidb::api::kSubKeyGt;
+                }
+                return true;
+            default:
+                continue;
+        }
+    }
+    return false;
+}
+
+bool GetCondAndPrintColumns(const std::vector<std::string>& parts, std::map<std::string, std::string>& condition_columns_map,
+                  std::vector<std::string>& print_column, rtidb::api::GetType& get_type) {
+    uint64_t size = parts.size();
+    uint64_t i = 2;
+    if (parts[i] == "*") {
+        print_column.clear();
+        i+=1;
+    } else {
+        for (; i < size; i++) {
+            if (parts[i] == "where") {
+                break;
+            }
+            print_column.push_back(parts[i]);
+        }
+    }
+    if (i + 1 >= size) {
+        std::cerr << "not found where condition" << std::endl;
+        return false;
+    }
+    int32_t first_type = 0;
+    bool first_parse = true;
+    for (i++; i < size; i++) {
+        int32_t col_type;
+        uint64_t col_end = 0, value_begin = 0;
+        bool ok = ParseCondAndOp(parts[i], col_end, value_begin, col_type);
+        if (!ok) {
+            std::cerr << "parse " << parts[i] << " error" << std::endl;
+            return false;
+        }
+        if (first_parse) {
+            first_type = col_type;
+            first_parse = false;
+        }
+        if (col_type != first_type) {
+            std::cerr << "all relational operator must same" << std::endl;
+            return false;
+        }
+        auto beginner = parts[i].begin();
+        std::string col(beginner, beginner+=col_end);
+        std::string val(beginner+=value_begin, parts[i].end());
+        condition_columns_map.insert(std::make_pair(col, val));
+    }
+    get_type = static_cast<rtidb::api::GetType>(first_type);
+    return true;
+}
+
+void HandleNSQuery(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    if (parts.size() < 5) {
+        std::cout << "query format error. eg: query table_name=xxx col1 col2 ... where coln=xxx" << std::endl;
+        std::cout << "                    eg: query table_name=xxx * where coln=xxx" << std::endl;
+        return;
+    }
+    std::string table_name;
+    std::vector<std::string> temp_vec;
+    ::rtidb::base::SplitString(parts[1], "=", temp_vec);
+    if (temp_vec.size() == 2 && temp_vec[0] == "table_name" && !temp_vec[1].empty()) {
+        table_name = temp_vec[1];
+    } else {
+        std::cout << "query format error. eg: query table_name=xxx col1 col2 ... where coln=xxx" << std::endl;
+        std::cout << "                    eg: query table_name=xxx * where coln=xxx" << std::endl;
+        return;
+    }
+    std::map<std::string, std::string> condition_columns_map;
+    std::vector<std::string> print_column;
+    rtidb::api::GetType get_type;
+    if (!GetCondAndPrintColumns(parts, condition_columns_map, print_column, get_type)) {
+        std::cout << "query format error. eg: query table_name=xxx col1 col2 ... where coln=xxx" << std::endl;
+        std::cout << "                    eg: query table_name=xxx * where coln=xxx" << std::endl;
+        return;
+    }
+    if (condition_columns_map.empty()) {
+        std::cout << "query format error. eg: query table_name=xxx col1 col2 ... where coln=xxx" << std::endl;
+        std::cout << "                    eg: query table_name=xxx * where coln=xxx" << std::endl;
+        return;
+    }
+    if (get_type != rtidb::api::GetType::kSubKeyEq) {
+        std::cerr << "current only support equal operator" << std::endl;
+        return;
+    }
+    // TODO(kongquan): process multi columns key, and support other operator
+    auto cd_iter = condition_columns_map.begin();
+    std::string pk = cd_iter->second;
+    std::vector<::rtidb::nameserver::TableInfo> tables;
+    std::string msg;
+    bool ret = client->ShowTable(table_name, tables, msg);
+    if (!ret) {
+        std::cout << "failed to get table info. error msg: " << msg << std::endl;
+        return;
+    }
+    if (tables.empty()) {
+        printf("get failed! table %s is not exist\n", parts[1].c_str());
+        return;
+    }
+    if (tables[0].column_desc_v1_size() == 0) {
+        std::cout << "column_desc_v1_size is 0"<< std::endl;
+        return;
+    }
+    uint32_t tid = tables[0].tid();
+    uint32_t pid = (uint32_t)(::rtidb::base::hash64(pk) % tables[0].table_partition_size());
+    std::shared_ptr<::rtidb::client::TabletClient> tablet_client = GetTabletClient(tables[0], pid, msg);
+    if (!tablet_client) {
+        std::cout << "failed to get. error msg: " << msg << std::endl;
+        return;
+    }
+    Schema  schema;
+    rtidb::base::RowSchemaCodec::ConvertColumnDesc(tables[0].column_desc_v1(), schema, tables[0].added_column_desc());
+    if (print_column.size() > 0) {
+        std::set<std::string> columns;
+        for (int i = 0; i < schema.size(); i++) {
+            columns.insert(schema.Get(i).name());
+        }
+        for (uint64_t i = 0; i < print_column.size(); i++) {
+            if (columns.find(print_column[i]) == columns.end()) {
+                std::cerr << "query error, because column " << print_column[i] << " is not member of table columns" << std::endl;
+                return;
+            }
+        }
+    }
+    std::string value;
+    uint64_t ts;
+    bool ok = tablet_client->Get(tid, pid, pk, 0, "", "", value, ts, msg);
+    if (!ok) {
+        std::cout << "query error: " << msg << std::endl;
+        return;
+    }
+    if (tables[0].compress_type() == ::rtidb::nameserver::kSnappy) {
+        std::string compressed;
+        ::snappy::Compress(value.c_str(), value.length(), &compressed);
+        value = compressed;
+    }
+    std::vector<std::string> value_vec;
+    rtidb::base::RowSchemaCodec::Decode(schema, value, value_vec);
+    std::vector<std::string> row;
+    row.push_back("#");
+    ::baidu::common::TPrinter* tp;
+    if (print_column.size() == 0) {
+        tp = new baidu::common::TPrinter(schema.size() + 1, FLAGS_max_col_display_length);
+        for (int i = 0; i < schema.size(); i++) {
+            row.push_back(schema.Get(i).name());
+        }
+        tp->AddRow(row);
+        row.clear();
+        row.push_back("1");
+        for (int i = 0; i < schema.size(); i++) {
+            std::string val = "null";
+            if (value_vec[i] != rtidb::base::NONETOKEN) {
+                val = value_vec[i];
+            }
+            row.push_back(val);
+        }
+    } else {
+        tp = new baidu::common::TPrinter(print_column.size() + 1, FLAGS_max_col_display_length);
+        std::map<std::string, uint64_t> column_position;
+        int index_array[print_column.size()];
+        for (uint64_t i = 0; i < print_column.size(); i++) {
+            row.push_back(print_column[i]);
+            column_position.insert(std::make_pair(print_column[i], i));
+        }
+        tp->AddRow(row);
+        row.clear();
+        row.push_back("1");
+        for (int i = 0; i < schema.size(); i++) {
+            auto iter = column_position.find(schema.Get(i).name());
+            if (iter == column_position.end()) {
+                continue;
+            }
+            index_array[iter->second] = i;
+        }
+        for (uint64_t i = 0; i < print_column.size(); i++) {
+            int schema_index = index_array[i];
+            std::string val = "null";
+            if (value_vec[schema_index] != rtidb::base::NONETOKEN) {
+                val = value_vec[i];
+            }
+            row.push_back(val);
+        }
+    }
+    tp->AddRow(row);
+    tp->Print(true);
+    delete tp;
+}
+
 void HandleNSGet(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     if (parts.size() < 4) {
         std::cout << "get format error. eg: get table_name key ts | get table_name key idx_name ts | get table_name=xxx key=xxx index_name=xxx ts=xxx ts_name=xxx " << std::endl;
@@ -1830,6 +2047,79 @@ void HandleNSPreview(const std::vector<std::string>& parts, ::rtidb::client::NsC
         return;
     }
     uint32_t tid = tables[0].tid();
+    if (tables[0].table_type() == rtidb::type::kRelational) {
+        Schema schema;
+        rtidb::base::RowSchemaCodec::ConvertColumnDesc(tables[0].column_desc_v1(), schema, tables[0].added_column_desc());
+        rtidb::base::RowView rv(schema);
+        std::vector<std::string> row;
+        row.push_back("#");
+        std::string pk_col_name;
+        for (const auto& column_key : tables[0].column_key()) {
+            if (column_key.index_type() == rtidb::type::kPrimaryKey) {
+                pk_col_name = column_key.index_name();
+                break;
+            }
+        }
+        int pk_index = 0;
+        for(int i = 0; i < schema.size(); i++) {
+            row.push_back(schema.Get(i).name());
+            if(schema.Get(i).name() == pk_col_name) {
+                pk_index = i;
+            }
+        }
+        baidu::common::TPrinter tp(row.size(), FLAGS_max_col_display_length);
+        uint64_t seq = 0;
+        std::string data;
+        std::string last_pk = "";
+        for (int pid = 0; pid < tables[0].table_partition_size(); pid++) {
+            if (limit == 0) {
+                break;
+            }
+            std::shared_ptr<::rtidb::client::TabletClient> tablet_client = GetTabletClient(tables[0], pid, msg);
+            if (!tablet_client) {
+                std::cout << "failed to preview. error msg: " << msg << std::endl;
+                return;
+            }
+            uint32_t count = 0;
+            bool is_finish = false;
+            std::string err_msg;
+            uint64_t snapshot_id = 0;
+            bool ok = tablet_client->Traverse(tid, pid, last_pk, limit, &count, &err_msg, &data, &is_finish, &snapshot_id);
+            if (!ok) {
+                std::cerr << "Fail to preview table" << std::endl;
+            }
+            limit -= count;
+            uint32_t offset = 0;
+            for (uint32_t i = 0; i < count; i++) {
+                const char* ch = data.c_str();
+                ch += offset;
+                row.push_back(std::to_string(seq++));
+                uint32_t value_size = 0;
+                memcpy(static_cast<void*>(&value_size), ch, 4);
+                ch += 4;
+                ok = rv.Reset(reinterpret_cast<int8_t*>(const_cast<char*>(ch)), value_size);
+                if (!ok) {
+                    std::cerr << "reset decode data error" << std::endl;
+                    return;
+                }
+                offset += 4 + value_size;
+                rtidb::base::RowSchemaCodec::Decode(schema, rv, row);
+                for (uint64_t i = 0; i < row.size(); i++) {
+                    if (row[i] == rtidb::base::NONETOKEN) {
+                        row[i] = "null";
+                    }
+                }
+                last_pk = row[pk_index];
+                tp.AddRow(row);
+                row.clear();
+            }
+            data.clear();
+            last_pk = "";
+        }
+        tp.Print(true);
+        return;
+    }
+
     std::vector<::rtidb::base::ColumnDesc> columns;
     if (tables[0].column_desc_v1_size() > 0 || tables[0].column_desc_size() > 0) {
         if (tables[0].added_column_desc_size() > 0) {
@@ -2837,6 +3127,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
         printf("synctable - synctable from leader cluster to replica cluster\n");
         printf("deleteindx - delete index of specified table");
         printf("update - update record of specified table");
+        printf("query - query record from relational table");
     } else if (parts.size() == 2) {
         if (parts[1] == "create") {
             printf("desc: create table\n");
@@ -3048,6 +3339,11 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
             printf("desc: update record of table\n");
             printf("usage: update table_name=xxx col1=xxx col2=xxx where col=xxx\n");
             printf("eg: update table_name=test1 mcc=mcc2 where card=card0\n");
+        } else if (parts[1] == "query") {
+            printf("desc: query record from relation table\n");
+            printf("usage: query table_name=xxx col1 col2 where col3=xxx\n");
+            printf("eg: query table_name=test1 card mcc where card=card0\n");
+            printf("eg: query table_name=test1 * where card=card0\n");
         } else {
             printf("unsupport cmd %s\n", parts[1].c_str());
         }
@@ -5255,6 +5551,8 @@ void StartNsClient() {
             HandleNSClientDeleteIndex(parts, &client);
         } else if (parts[0] == "update") {
             HandleNSUpdate(parts, &client);
+        } else if (parts[0] == "query") {
+            HandleNSQuery(parts, &client);
         } else if (parts[0] == "exit" || parts[0] == "quit") {
             std::cout << "bye" << std::endl;
             return;
