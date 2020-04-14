@@ -12,6 +12,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <utility>
 #include "base/graph.h"
 #include "node/plan_node.h"
 #include "vm/catalog.h"

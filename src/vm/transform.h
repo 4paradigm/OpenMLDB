@@ -11,6 +11,7 @@
 #define SRC_VM_TRANSFORM_H_
 #include <memory>
 #include <string>
+#include <utility>
 #include <unordered_map>
 #include <vector>
 #include "base/graph.h"

@@ -42,7 +42,7 @@ bool PhysicalUnaryNode::InitSchema() {
         return false;
     }
     output_schema_.CopyFrom(producers_[0]->output_schema_);
-    for(auto pair : producers_[0]->output_name_schema_list_) {
+    for (auto pair : producers_[0]->output_name_schema_list_) {
         output_name_schema_list_.push_back(pair);
     }
     PrintSchema();
@@ -54,7 +54,7 @@ bool PhysicalBinaryNode::InitSchema() {
         return false;
     }
     output_schema_.CopyFrom(producers_[0]->output_schema_);
-    for(auto pair : producers_[0]->output_name_schema_list_) {
+    for (auto pair : producers_[0]->output_name_schema_list_) {
         output_name_schema_list_.push_back(pair);
     }
     PrintSchema();
@@ -185,10 +185,10 @@ bool PhysicalJoinNode::InitSchema() {
     }
     output_schema_.CopyFrom(producers_[0]->output_schema_);
     output_schema_.MergeFrom(producers_[1]->output_schema_);
-    for(auto pair : producers_[0]->output_name_schema_list_) {
+    for (auto pair : producers_[0]->output_name_schema_list_) {
         output_name_schema_list_.push_back(pair);
     }
-    for(auto right_pair: producers_[1]->output_name_schema_list_) {
+    for (auto right_pair : producers_[1]->output_name_schema_list_) {
         output_name_schema_list_.push_back(right_pair);
     }
     PrintSchema();
@@ -238,8 +238,8 @@ bool PhysicalDataProviderNode::InitSchema() {
         auto schema = table_handler_->GetSchema();
         if (schema) {
             output_schema_.CopyFrom(*schema);
-            output_name_schema_list_.push_back(
-                std::make_pair(table_handler_->GetName(), table_handler_->GetSchema()));
+            output_name_schema_list_.push_back(std::make_pair(
+                table_handler_->GetName(), table_handler_->GetSchema()));
             PrintSchema();
             return true;
         } else {
@@ -264,7 +264,7 @@ void PhysicalOpNode::PrintSchema() {
 }
 bool PhysicalUnionNode::InitSchema() {
     output_schema_.CopyFrom(producers_[0]->output_schema_);
-    for(auto pair : producers_[0]->output_name_schema_list_) {
+    for (auto pair : producers_[0]->output_name_schema_list_) {
         output_name_schema_list_.push_back(pair);
     }
     PrintSchema();
@@ -294,7 +294,7 @@ void PhysicalRequestUnionNode::Print(std::ostream& output,
 }
 bool PhysicalRequestUnionNode::InitSchema() {
     output_schema_.CopyFrom(producers_[0]->output_schema_);
-    for(auto pair : producers_[0]->output_name_schema_list_) {
+    for (auto pair : producers_[0]->output_name_schema_list_) {
         output_name_schema_list_.push_back(pair);
     }
     PrintSchema();
@@ -322,10 +322,10 @@ bool PhysicalRequestJoinNode::InitSchema() {
     }
     output_schema_.CopyFrom(producers_[0]->output_schema_);
     output_schema_.MergeFrom(producers_[1]->output_schema_);
-    for(auto pair : producers_[0]->output_name_schema_list_) {
+    for (auto pair : producers_[0]->output_name_schema_list_) {
         output_name_schema_list_.push_back(pair);
     }
-    for(auto right_pair: producers_[1]->output_name_schema_list_) {
+    for (auto right_pair : producers_[1]->output_name_schema_list_) {
         output_name_schema_list_.push_back(right_pair);
     }
     PrintSchema();
@@ -344,7 +344,7 @@ void PhysicalSeekIndexNode::Print(std::ostream& output,
 }
 bool PhysicalSeekIndexNode::InitSchema() {
     output_schema_.CopyFrom(producers_[1]->output_schema_);
-    for(auto pair : producers_[1]->output_name_schema_list_) {
+    for (auto pair : producers_[1]->output_name_schema_list_) {
         output_name_schema_list_.push_back(pair);
     }
     PrintSchema();
