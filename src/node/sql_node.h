@@ -1136,8 +1136,7 @@ class ExplainNode : public SQLNode {
         : SQLNode(kExplainSmt, 0, 0), type_(type), query_(query) {}
     void Print(std::ostream &output, const std::string &org_tab) const;
 
- private:
-    const node::ExplainType type_;
+    const node::ExplainType explain_type_;
     const node::QueryNode *query_;
 };
 
