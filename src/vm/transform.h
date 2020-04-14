@@ -258,18 +258,21 @@ class BatchModeTransformer {
     virtual void ApplyPasses(PhysicalOpNode* node, PhysicalOpNode** output);
     bool GenFnDef(const node::FuncDefPlanNode* fn_plan,
                   base::Status& status);  // NOLINT
-    bool CodeGenExprList(const Schema& input_schema,
-                         const node::ExprListNode* expr_list, bool row_mode,
-                         std::string& fn_name, Schema* output_schema,  // NOLINT
-                         base::Status& status);                        // NOLINT
-    bool GenPlanNode(PhysicalOpNode* node, base::Status& status);      // NOLINT
+    bool CodeGenExprList(
+        std::vector<std::pair<const std::string, const Schema*>>&
+            input_name_schema_list,
+        const node::ExprListNode* expr_list, bool row_mode,
+        std::string& fn_name, Schema* output_schema,               // NOLINT
+        base::Status& status);                                     // NOLINT
+    bool GenPlanNode(PhysicalOpNode* node, base::Status& status);  // NOLINT
 
     node::NodeManager* node_manager_;
     const std::string db_;
     const std::shared_ptr<Catalog> catalog_;
 
  private:
-    bool GenProjects(const Schema& input_schema,
+    bool GenProjects(std::vector<std::pair<const std::string, const Schema*>>&
+                         input_name_schema_list,
                      const node::PlanNodeList& projects, const bool row_mode,
                      std::string& fn_name,   // NOLINT
                      Schema* output_schema,  // NOLINT

@@ -34,6 +34,16 @@ RowFnLetIRBuilder::RowFnLetIRBuilder(const vm::Schema& schema,
                                        .schema_ = &schema});
 }
 
+RowFnLetIRBuilder::RowFnLetIRBuilder(const std::string& table_name,
+                                     const vm::Schema& schema,
+                                     ::llvm::Module* module)
+    : module_(module) {
+    row_info_list_.push_back(RowIRInfo{.row_ptr_name_ = "row_ptr_name",
+                                       .row_size_name_ = "row_size_name",
+                                       .window_ptr_name_ = "window_ptr_name",
+                                       .table_name_ = table_name,
+                                       .schema_ = &schema});
+}
 RowFnLetIRBuilder::RowFnLetIRBuilder(
     std::vector<std::pair<const std::string, const vm::Schema*>>&
         table_schema_list,

@@ -34,6 +34,8 @@ namespace codegen {
 class RowFnLetIRBuilder {
  public:
     RowFnLetIRBuilder(const vm::Schema& schema, ::llvm::Module* module);
+    RowFnLetIRBuilder(const std::string& table_name, const vm::Schema& schema,
+                      ::llvm::Module* module);
     RowFnLetIRBuilder(
         std::vector<std::pair<const std::string, const vm::Schema*>>&
             table_schema_list,
