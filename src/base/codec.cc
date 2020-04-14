@@ -769,6 +769,12 @@ bool RowProject::Project(const int8_t* row_ptr, uint32_t size,
                 if (ret == 0) row_builder_->AppendInt32(val);
                 break;
             }
+            case ::rtidb::type::kDate:{
+                uint32_t val = 0;
+                ret = row_view_->GetDate(idx, &val);
+                if (ret == 0) row_builder_->AppendDate(val);
+                break;
+            }
             case ::rtidb::type::kTimestamp:
             case ::rtidb::type::kBigInt:{
                 int64_t val = 0;
