@@ -30,7 +30,7 @@
 #include "base/id_generator.h"
 #include "base/memcomparable_format.h"
 #include <snappy.h>
-#include "base/single_column_codec.h"
+#include "base/field_codec.h"
 #include <thread>
 #include "base/spinlock.h"
 

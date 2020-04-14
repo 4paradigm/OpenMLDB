@@ -118,8 +118,8 @@ target_link_libraries(nameserver_create_remote_test  gtest pthread tablet namese
 add_executable(memcomparable_format_test base/memcomparable_format_test.cc)
 target_link_libraries(memcomparable_format_test gtest pthread)
 
-add_executable(single_column_codec_test base/single_column_codec_test.cc)
-target_link_libraries(single_column_codec_test gtest pthread)
+add_executable(field_codec_test base/field_codec_test.cc)
+target_link_libraries(field_codec_test gtest pthread)
 
 add_executable(rtidb cmd/rtidb.cc base/status.cc proto/client.pb.cc base/linenoise.cc)
 
