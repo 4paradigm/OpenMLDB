@@ -645,7 +645,9 @@ TEST_F(TabletImplTest, GetRelationalTable) {
     cols->add_name("card");
     int64_t int64_val = 10;
     std::string tmp = "";
-    ::rtidb::base::Convert(int64_val, &tmp);
+    tmp.resize(8);
+    char* buf = const_cast<char*>(tmp.data());
+    ::rtidb::base::Convert(int64_val, buf);
     cols->set_value(tmp);
     request.set_tid(id);
     request.set_pid(1);
@@ -708,7 +710,9 @@ TEST_F(TabletImplTest, GetRelationalTable) {
         cols->add_name("card");
         int64_t int64_val = 10;
         std::string tmp = "";
-        ::rtidb::base::Convert(int64_val, &tmp);
+        tmp.resize(8);
+        char* buf = const_cast<char*>(tmp.data());
+        ::rtidb::base::Convert(int64_val, buf);
         cols->set_value(tmp);
         batchQuery_request.set_tid(id);
         batchQuery_request.set_pid(1);

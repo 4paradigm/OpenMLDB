@@ -364,31 +364,31 @@ bool RelationalTable::ConvertIndex(const std::string& name, const std::string& v
     int ret = 0;
     if (type == ::rtidb::type::kSmallInt) {
         int16_t val = 0;
-        ::rtidb::base::GetInt16(value, &val); 
+        ::rtidb::base::GetInt16(value.data(), &val); 
         out_val->resize(sizeof(int16_t));
         char* to = const_cast<char*>(out_val->data());
         ret = ::rtidb::base::PackInteger(&val, sizeof(int16_t), false, to);
     } else if (type == ::rtidb::type::kInt) {
         int32_t val = 0;
-        ::rtidb::base::GetInt32(value, &val); 
+        ::rtidb::base::GetInt32(value.data(), &val); 
         out_val->resize(sizeof(int32_t));
         char* to = const_cast<char*>(out_val->data());
         ret = ::rtidb::base::PackInteger(&val, sizeof(int32_t), false, to);
     } else if (type == ::rtidb::type::kBigInt) {
         int64_t val = 0;
-        ::rtidb::base::GetInt64(value, &val); 
+        ::rtidb::base::GetInt64(value.data(), &val); 
         out_val->resize(sizeof(int64_t));
         char* to = const_cast<char*>(out_val->data());
         ret = ::rtidb::base::PackInteger(&val, sizeof(int64_t), false, to);
     } else if (type == ::rtidb::type::kFloat) {
         float val = 0.0;
-        ::rtidb::base::GetFloat(value, &val);  
+        ::rtidb::base::GetFloat(value.data(), &val);  
         out_val->resize(sizeof(float));
         char* to = const_cast<char*>(out_val->data());
         ret = ::rtidb::base::PackFloat(&val, to);
     } else if (type == ::rtidb::type::kDouble) {
         double val = 0.0;
-        ::rtidb::base::GetDouble(value, &val);  
+        ::rtidb::base::GetDouble(value.data(), &val);  
         out_val->resize(sizeof(double));
         char* to = const_cast<char*>(out_val->data());
         ret = ::rtidb::base::PackDouble(&val, to);
