@@ -16,6 +16,7 @@
 #include "storage/mem_table.h"
 #include "storage/disk_table.h"
 #include "storage/relational_table.h"
+#include "storage/object_store.h"
 #include "tablet/file_receiver.h"
 #include "thread_pool.h"
 #include "base/set.h"
@@ -34,6 +35,7 @@ using ::rtidb::storage::MemTable;
 using ::rtidb::storage::DiskTable;
 using ::rtidb::storage::RelationalTable;
 using ::rtidb::storage::Snapshot;
+using ::rtidb::storage::ObjectStore;
 using ::rtidb::replica::LogReplicator;
 using ::rtidb::replica::ReplicatorRole;
 using ::rtidb::zk::ZkClient;
@@ -345,6 +347,8 @@ private:
 
     int CreateRelationalTableInternal(const ::rtidb::api::TableMeta* table_meta, std::string& msg);
 
+    int CreateObjectStore(const ::rtidb::api::TableMeta* table_meta, std::string& msg);
+
     void MakeSnapshotInternal(uint32_t tid, uint32_t pid, uint64_t end_offset, std::shared_ptr<::rtidb::api::TaskInfo> task);
 
     void SendSnapshotInternal(const std::string& endpoint, uint32_t tid, uint32_t pid,
@@ -470,6 +474,8 @@ private:
     std::map<::rtidb::common::StorageMode, std::vector<std::string>> mode_root_paths_;
     std::map<::rtidb::common::StorageMode, std::vector<std::string>> mode_recycle_root_paths_;
     std::atomic<bool> follower_;
+    ObjectStore* object_store_;
+    bool has_object_store_;
 };
 
 }

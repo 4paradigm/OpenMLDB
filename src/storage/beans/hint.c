@@ -36,7 +36,6 @@
 #endif
 
 #include "mfile.h"
-#include "log.h"
 
 // for build hint
 struct param
@@ -85,7 +84,7 @@ void write_hint_file(char *buf, int size, const char *path)
     FILE *hf = fopen(tmp, "wb");
     if (NULL == hf)
     {
-        PDLOG(ERROR, "open %s failed", tmp);
+        printf("open %s failed", tmp);
         return;
     }
     int n = fwrite(dst, 1, size, hf);
@@ -99,7 +98,7 @@ void write_hint_file(char *buf, int size, const char *path)
     }
     else
     {
-        PDLOG(ERROR, "write to %s failed", tmp);
+        printf("write to %s failed", tmp);
     }
 }
 
@@ -138,7 +137,7 @@ HintFile *open_hint(const char *path, const char *new_path)
         int vsize = qlz_decompress(hint->buf, buf, wbuf);
         if (vsize != size)
         {
-            PDLOG(ERROR, "decompress %s failed: %d < %d, remove it\n", path, vsize, size);
+            printf("decompress %s failed: %d < %d, remove it\n", path, vsize, size);
             mgr_unlink(path);
             exit(1);
         }
@@ -169,7 +168,7 @@ void scanHintFile(HTree *tree, int bucket, const char *path, const char *new_pat
     HintFile *hint = open_hint(path, new_path);
     if (hint == NULL) return;
 
-    PDLOG(INFO, "scan hint: %s", path);
+    printf("scan hint: %s", path);
 
     char *p = hint->buf, *end = hint->buf + hint->size;
     while (p < end)
@@ -178,7 +177,7 @@ void scanHintFile(HTree *tree, int bucket, const char *path, const char *new_pat
         p += sizeof(HintRecord) - NAME_IN_RECORD + r->ksize + 1;
         if (p > end)
         {
-            PDLOG(ERROR, "scan %s: unexpected end, need %ld byte", path, p - end);
+            printf("scan %s: unexpected end, need %ld byte", path, p - end);
             break;
         }
         uint32_t pos = (r->pos << 8) | (bucket & 0xff);
@@ -209,7 +208,7 @@ int count_deleted_record(HTree *tree, int bucket, const char *path, int *total, 
         p += sizeof(HintRecord) - NAME_IN_RECORD + r->ksize + 1;
         if (p > end)
         {
-            PDLOG(ERROR, "scan %s: unexpected end, need %ld byte", path, p - end);
+            printf("scan %s: unexpected end, need %ld byte", path, p - end);
             break;
         }
         (*total)++;

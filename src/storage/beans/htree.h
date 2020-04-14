@@ -21,6 +21,7 @@
 #include <errno.h>
 
 #include "util.h"
+#include <unistd.h>
 
 typedef struct t_item Item;
 struct t_item

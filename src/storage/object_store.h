@@ -2,8 +2,15 @@
 // Created by kongsys on 4/13/20.
 //
 #pragma once
-#include "storage/beans/hstore.h"
 #include <string>
+#ifdef __cplusplus
+extern "C" {
+#endif
+#include "storage/beans/hstore.h"
+#ifdef __cplusplus
+};
+#endif
+#include <base/slice.h>
 #include "proto/tablet.pb.h"
 
 namespace rtidb {
@@ -15,15 +22,19 @@ public:
 
     bool Init();
 
+    uint32_t tid() { return tid_; };
+
     ObjectStore(const ObjectStore&) = delete;
     ObjectStore& operator=(const ObjectStore&) = delete;
-    ~ObjectStore() {
-        if (db_ != NULL) {
-            hs_close(db_);
-            delete db_;
-        }
-    }
+    ~ObjectStore();
+
+    bool Store(const std::string& key, const std::string& value);
+
+    rtidb::base::Slice Get(const std::string& key);
+
 private:
+    void DoFlash();
+
     HStore* db_;
     uint32_t tid_;
     uint32_t pid_;

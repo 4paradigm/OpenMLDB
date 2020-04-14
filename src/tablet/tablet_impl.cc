@@ -91,7 +91,8 @@ TabletImpl::TabletImpl():tables_(),mu_(), gc_pool_(FLAGS_gc_pool_size),
     replicators_(), snapshots_(), zk_client_(NULL),
     keep_alive_pool_(1), task_pool_(FLAGS_task_pool_size),
     io_pool_(FLAGS_io_pool_size), snapshot_pool_(1), server_(NULL),
-    mode_root_paths_(), mode_recycle_root_paths_(){
+    mode_root_paths_(), mode_recycle_root_paths_(), object_store_(NULL),
+    has_object_store_(false) {
     follower_.store(false);
 }
 
@@ -510,6 +511,16 @@ void TabletImpl::Get(RpcController* controller,
             default:
                 return;
         }
+    } else if (object_store_ != NULL && request->tid() == object_store_->tid()) {
+        rtidb::base::Slice slice = object_store_->Get(request->key());
+        if (slice.size() > 0) {
+            std::string* value = response->mutable_value();
+            value->assign(slice.data(), slice.size());
+            response->set_code(::rtidb::base::ReturnCode::kOk);
+        } else {
+            response->set_code(::rtidb::base::ReturnCode::kKeyNotFound);
+            response->set_msg("key not found");
+        }
     } else {
         std::string * value = response->mutable_value(); 
         bool ok = false;
@@ -576,10 +587,10 @@ void TabletImpl::Put(RpcController* controller,
         const ::rtidb::api::PutRequest* request,
         ::rtidb::api::PutResponse* response,
         Closure* done) {
+    brpc::ClosureGuard done_guard(done);
     if (follower_.load(std::memory_order_relaxed)) {
         response->set_code(::rtidb::base::ReturnCode::kIsFollowerCluster);
         response->set_msg("is follower cluster");
-        done->Run();
         return;
     }
     uint64_t start_time = ::baidu::common::timer::get_micros();
@@ -592,7 +603,6 @@ void TabletImpl::Put(RpcController* controller,
             PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
             response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
             response->set_msg("table is not exist");
-            done->Run();
             return;
         }
     }
@@ -600,14 +610,12 @@ void TabletImpl::Put(RpcController* controller,
         if (request->time() == 0 && request->ts_dimensions_size() == 0) {
             response->set_code(::rtidb::base::ReturnCode::kTsMustBeGreaterThanZero);
             response->set_msg("ts must be greater than zero");
-            done->Run();
             return;
         }
 
         if (!table->IsLeader()) {
             response->set_code(::rtidb::base::ReturnCode::kTableIsFollower);
             response->set_msg("table is follower");
-            done->Run();
             return;
         }
         if (table->GetTableStat() == ::rtidb::storage::kLoading) {
@@ -615,7 +623,6 @@ void TabletImpl::Put(RpcController* controller,
                     request->tid(), request->pid());
             response->set_code(::rtidb::base::ReturnCode::kTableIsLoading);
             response->set_msg("table is loading");
-            done->Run();
             return;
         }
         bool ok = false;
@@ -624,7 +631,6 @@ void TabletImpl::Put(RpcController* controller,
             if (ret_code != 0) {
                 response->set_code(::rtidb::base::ReturnCode::kInvalidDimensionParameter);
                 response->set_msg("invalid dimension parameter");
-                done->Run();
                 return;
             }
             if (request->ts_dimensions_size() > 0) {
@@ -641,7 +647,6 @@ void TabletImpl::Put(RpcController* controller,
         if (!ok) {
             response->set_code(::rtidb::base::ReturnCode::kPutFailed);
             response->set_msg("put failed");
-            done->Run();
             return;
         }
         response->set_code(::rtidb::base::ReturnCode::kOk);
@@ -684,21 +689,26 @@ void TabletImpl::Put(RpcController* controller,
             PDLOG(INFO, "slow log[put]. key %s time %lu. tid %u, pid %u", 
                     key.c_str(), end_time - start_time, request->tid(), request->pid());
         }
-        done->Run();
         if (replicator) {
             if (FLAGS_binlog_notify_on_put) {
                 replicator->Notify(); 
             }
+        }
+    } else if (object_store_ != NULL && request->tid() == object_store_->tid()) {
+        bool ok = object_store_->Store(request->pk(), request->value());
+        if (!ok) {
+            response->set_code(::rtidb::base::ReturnCode::kPutFailed);
+            response->set_msg("put failed");
+        } else {
+            response->set_code(::rtidb::base::ReturnCode::kOk);
         }
     } else {
         bool ok = r_table->Put(request->value());
         if (!ok) {
             response->set_code(::rtidb::base::ReturnCode::kPutFailed);
             response->set_msg("put failed");
-            done->Run();
             return;
         }
-        done->Run();
         response->set_code(::rtidb::base::ReturnCode::kOk);
     }
 }
@@ -3148,14 +3158,29 @@ void TabletImpl::CreateTable(RpcController* controller,
         response->set_msg("write data failed");
         return;
     }
-    if (table_meta->has_table_type() && table_meta->table_type() == rtidb::type::kRelational) {
-        std::string msg;
-        if (CreateRelationalTableInternal(table_meta, msg) < 0) {
-            response->set_code(::rtidb::base::ReturnCode::kCreateTableFailed);
-            response->set_msg(msg.c_str());
+    if (table_meta->has_table_type()) {
+        if (table_meta->table_type() == rtidb::type::kRelational) {
+            std::string msg;
+            if (CreateRelationalTableInternal(table_meta, msg) < 0) {
+                response->set_code(::rtidb::base::ReturnCode::kCreateTableFailed);
+                response->set_msg(msg.c_str());
+                return;
+            }
+            gc_pool_.DelayTask(FLAGS_snapshot_ttl_check_interval * 60 * 1000,
+                               boost::bind(&TabletImpl::GcTableSnapshot, this, tid, pid));
+        } else if (table_meta->table_type() == rtidb::type::kObjectStore) {
+            std::string msg;
+            if (CreateObjectStore(table_meta, msg) < 0) {
+                response->set_code(::rtidb::base::ReturnCode::kCreateTableFailed);
+                response->set_msg(msg);
+                return;
+            }
+        } else {
+            response->set_code(::rtidb::base::ReturnCode::kUnkownTableType);
+            response->set_msg("unkown table type");
             return;
+
         }
-        gc_pool_.DelayTask(FLAGS_snapshot_ttl_check_interval * 60 * 1000, boost::bind(&TabletImpl::GcTableSnapshot, this, tid, pid));
     } else if (table_meta->storage_mode() != rtidb::common::kMemory) {
         std::string msg;
         if (CreateDiskTableInternal(table_meta, false, msg) < 0) {
@@ -3772,6 +3797,33 @@ int TabletImpl::CreateRelationalTableInternal(const ::rtidb::api::TableMeta* tab
     table.reset(table_ptr);
     relational_tables_[table_meta->tid()].insert(std::make_pair(table_meta->pid(), table));
     return 0;
+}
+
+int TabletImpl::CreateObjectStore(const ::rtidb::api::TableMeta* table_meta, std::string& msg) {
+    {
+        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+        if (has_object_store_) {
+            msg.assign("already have object store");
+        }
+        return -1;
+    }
+    uint32_t tid = table_meta->tid();
+    uint32_t pid = table_meta->pid();
+    std::string db_root_path;
+    bool ok = ChooseDBRootPath(table_meta->tid(), table_meta->pid(), table_meta->storage_mode(), db_root_path);
+    if (!ok) {
+        msg.assign("fail to get table db root path");
+        PDLOG(WARNING, "fail to get table db root path");
+        return -1;
+    }
+
+    ObjectStore* table_ptr = new ObjectStore(*table_meta, db_root_path);
+    if (!table_ptr->Init()) {
+        return -1;
+    }
+    PDLOG(INFO, "create object store. tid %u pid %u", tid, pid);
+    std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+    has_object_store_ = true;
 }
 
 void TabletImpl::DropTable(RpcController* controller,

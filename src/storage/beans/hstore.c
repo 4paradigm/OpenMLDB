@@ -39,7 +39,7 @@
 #endif
 
 #include "const.h"
-#include "log.h"
+#include <unistd.h>
 
 #define NUM_OF_MUTEX 37
 #define MAX_PATHS 20
@@ -103,7 +103,7 @@ static void *scan_thread(void *_args)
     pthread_cond_signal(&scan_cond);
     pthread_mutex_unlock(&scan_lock);
 
-    PDLOG(DEBUG, "thread %d completed", index);
+    printf("thread %d completed", index);
     return NULL;
 }
 
@@ -126,7 +126,7 @@ static void parallelize(HStore *store, BC_FUNC func)
         args[i].func = func;
         if ((ret = pthread_create(thread_ids + i, &attr, scan_thread, args + i)) != 0)
         {
-            PDLOG(ERROR, "Can't create thread: %s", strerror(ret));
+            printf("Can't create thread: %s", strerror(ret));
             exit(1);
         }
     }
@@ -152,19 +152,19 @@ HStore *hs_open(char *path, int height, time_t before, int scan_threads)
     if (NULL == path) return NULL;
     if (height < 0 || height > 3)
     {
-        PDLOG(ERROR, "invalid db height: %d", height);
+        printf("invalid db height: %d", height);
         return NULL;
     }
     if (before != 0)
     {
         if (before<0)
         {
-            PDLOG(ERROR, "invalid time:%ld", before);
+            printf("invalid time:%ld", before);
             return NULL;
         }
         else
         {
-            PDLOG(ERROR, "serve data modified before %s", ctime(&before));
+            printf("serve data modified before %s", ctime(&before));
         }
     }
 
@@ -179,12 +179,12 @@ HStore *hs_open(char *path, int height, time_t before, int scan_threads)
         path = paths[npath];
         if (strlen(path) > MAX_HOME_PATH_LEN)
         {
-            PDLOG(ERROR, "path %s logger then %d", path, MAX_HOME_PATH_LEN);
+            printf("path %s logger then %d", path, MAX_HOME_PATH_LEN);
             return NULL;
         }
         if (0 != access(path, F_OK) && 0 != mkdir(path, 0755))
         {
-            PDLOG(ERROR, "mkdir %s failed", path);
+            printf("mkdir %s failed", path);
             return NULL;
         }
         if (height > 1)
@@ -454,7 +454,7 @@ bool hs_append(HStore *store, char *key, char *value, unsigned int vlen)
     char *body = hs_get(store, key, &rlen, &flag);
     if (body != NULL && flag != APPEND_FLAG)
     {
-        PDLOG(ERROR, "try to append %s with flag=%x", key, flag);
+        printf("try to append %s with flag=%x", key, flag);
         goto APPEND_END;
     }
     body = (char*)safe_realloc(body, rlen + vlen);
@@ -485,7 +485,7 @@ int64_t hs_incr(HStore *store, char *key, int64_t value)
     {
         if (flag != INCR_FLAG || rlen > 22)
         {
-            PDLOG(ERROR, "try to incr %s but flag=0x%x, len=%u", key, flag, rlen);
+            printf("try to incr %s but flag=0x%x, len=%u", key, flag, rlen);
             goto INCR_END;
         }
 
@@ -494,7 +494,7 @@ int64_t hs_incr(HStore *store, char *key, int64_t value)
         result = strtoll(body, NULL, 10);
         if (result == 0 && errno == EINVAL)
         {
-            PDLOG(ERROR, "incr %s failed: %s", key, buf);
+            printf("incr %s failed: %s", key, buf);
             goto INCR_END;
         }
     }
@@ -518,7 +518,7 @@ void *do_optimize(void *arg)
     pthread_detach(pthread_self());
     HStore *store = (HStore *) arg;
     time_t st = time(NULL);
-    PDLOG(INFO, "start to optimize from 0x%x to 0x%x, limit %d",
+    printf("start to optimize from 0x%x to 0x%x, limit %d",
             store->op_start, store->op_end - 1 , store->op_limit);
     store->op_laststat = 0;
     for (; store->op_start < store->op_end && store->op_laststat == 0; ++(store->op_start))
@@ -526,7 +526,7 @@ void *do_optimize(void *arg)
         store->op_laststat = bc_optimize(store->bitcasks[store->op_start], store->op_limit);
     }
     store->op_start = store->op_end = 0;
-    PDLOG(INFO, "optimization %s in %lld seconds",
+    printf("optimization %s in %lld seconds",
            store->op_laststat >=0 ?"completed":"failed",  (long long)(time(NULL) - st));
     return NULL;
 }

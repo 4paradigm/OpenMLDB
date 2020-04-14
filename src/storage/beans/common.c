@@ -13,7 +13,7 @@ void settings_init(void)
     settings.flush_limit = 1024; // 1M
     settings.flush_period = 60 * 10; // 10 min
     settings.slow_cmd_time = 0.1; // 100ms
-    settings.max_bucket_size  = (uint32_t)(4000 << 20); // 4G
+    settings.max_bucket_size  = (u_int32_t)(4000 << 20); // 4G
     settings.check_file_size = false;
     settings.autolink = true;
 }

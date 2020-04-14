@@ -42,7 +42,6 @@
 #include "diskmgr.h"
 #include "hint.h"
 #include "const.h"
-#include "log.h"
 
 
 #define MAX_BUCKET_COUNT 256
@@ -93,7 +92,7 @@ static inline char *new_path_real(char *dst, int dst_size, Mgr *mgr, const char 
     char name[16];
     safe_snprintf(name, 16, fmt + 3, i);
     safe_snprintf(dst, dst_size, "%s/%s",  mgr_alloc(mgr, name), name);
-    PDLOG(INFO, "mgr_alloc %s", dst);
+    printf("mgr_alloc %s", dst);
     return dst;
 }
 
@@ -114,7 +113,7 @@ static inline char *new_data(char *dst, int dst_size, Bitcask *bc, const char *f
     struct stat st;
     if (stat(path, &st) == 0)
     {
-        PDLOG(ERROR, "Bug: %s should not exist, exit!", path);
+        printf("Bug: %s should not exist, exit!", path);
         exit(-1);
     }
     bc->buckets[i] = 0;
@@ -132,25 +131,25 @@ int load_buckets(const char *base, int64_t *buckets, int *last)
     struct stat  st;
     if (0 != stat(path, &st))
     {
-        PDLOG(DEBUG, "file %s not exist, no data!", path);
+        printf("file %s not exist, no data!", path);
         return 0;
     }
-    PDLOG(INFO, "loading buckets %s", path);
+    printf("loading buckets %s", path);
     if (st.st_size > MAX_BUCKETS_FILE_SIZE)
     {
-        PDLOG(ERROR, "file %s too large", path);
+        printf("file %s too large", path);
         return -1;
     }
     FILE *f = fopen(path,"r");
     if (f == NULL)
     {
-        PDLOG(ERROR, "fail to open file %s, err:%s", path, strerror(errno));
+        printf("fail to open file %s, err:%s", path, strerror(errno));
         return -1;
     }
     int n = fread(buf, 1, st.st_size, f);
     if (n < st.st_size)
     {
-        PDLOG(ERROR, "fail to open file %s, err:%s", path, strerror(errno));
+        printf("fail to open file %s, err:%s", path, strerror(errno));
         return -1;
     }
 
@@ -164,7 +163,7 @@ int load_buckets(const char *base, int64_t *buckets, int *last)
             continue;
         if (bucket < 0 || bucket > 255 || bucket <= *last)
         {
-            PDLOG(ERROR, "bad bucket: %ld", bucket);
+            printf("bad bucket: %ld", bucket);
             return -1;
         }
         *last = bucket;
@@ -173,10 +172,10 @@ int load_buckets(const char *base, int64_t *buckets, int *last)
         long long size = strtoll(p, &endptr, 10);
         if (p == endptr)
         {
-            PDLOG(ERROR, "bad file %s\n", path);
+            printf("bad file %s\n", path);
             return -1;
         }
-        PDLOG(DEBUG, "buckets[%ld] = %lld", bucket, size);
+        printf("buckets[%ld] = %lld", bucket, size);
         buckets[bucket] = size;
         p = endptr + 1;
     }
@@ -204,22 +203,22 @@ int dump_buckets(Bitcask *bc)
     safe_snprintf(path, MAX_PATH_LEN, "%s/buckets.txt", mgr_base(bc->mgr));
     if (p == buf)
     {
-        PDLOG(DEBUG, "no data, delete %s", path);
+        printf("no data, delete %s", path);
         unlink(path);
         return -1;
     }
-    PDLOG(DEBUG, "dumping buckets");
+    printf("dumping buckets");
 
     FILE *f = fopen(path,"w");
     if (f == NULL)
     {
-        PDLOG(ERROR, "fail to open %s", path);
+        printf("fail to open %s", path);
         return -1;
     }
     int n = fwrite(buf, 1, p - buf, f);
     if (n < p - buf)
     {
-        PDLOG(ERROR, "fail to write %s", path);
+        printf("fail to write %s", path);
         fclose(f);
         return -1;
     }
@@ -234,7 +233,7 @@ int get_bucket_by_name(char *dir, char *name, long *bucket)
 
     if (strlen(name) + strlen(dir) > MAX_PATH_LEN)
     {
-        PDLOG(WARNING, "find long name %s/%s", dir, name);
+        printf("find long name %s/%s", dir, name);
         return -1;
     }
 
@@ -248,13 +247,13 @@ int get_bucket_by_name(char *dir, char *name, long *bucket)
         char tmp[MAX_PATH_LEN];
         snprintf(tmp, MAX_PATH_LEN, "%s/%s", dir, name);
         if (0 != stat(tmp, &sb) || ((sb.st_mode & S_IFMT) != S_IFDIR))
-            PDLOG(WARNING, "find unexpect file %s/%s", dir, name);
+            printf("find unexpect file %s/%s", dir, name);
         return -1;
     }
     char *suffix = name + 3;
     if (0 == strcmp(name + strlen(name) - 3, "tmp"))
     {
-        PDLOG(WARNING, "find tmp file %s/%s", dir, name);
+        printf("find tmp file %s/%s", dir, name);
         return -1;
     }
     int i;
@@ -265,7 +264,7 @@ int get_bucket_by_name(char *dir, char *name, long *bucket)
             return i;
         }
     }
-    PDLOG(WARNING, "find unexpect file %s/%s", dir, name);
+    printf("find unexpect file %s/%s", dir, name);
     return -1;
 }
 
@@ -281,7 +280,7 @@ int check_buckets(Mgr *mgr, int64_t *sizes, int locations[][3])
         DIR* dp = opendir(disks[i]);
         if (dp == NULL)
         {
-            PDLOG(ERROR, "opendir failed: %s!", disks[i]);
+            printf("opendir failed: %s!", disks[i]);
             return -1;
         }
 
@@ -306,13 +305,13 @@ int check_buckets(Mgr *mgr, int64_t *sizes, int locations[][3])
                             || (type_real = get_bucket_by_name(disks[i], simple_basename(real), &bucket_real)) < 0
                             || type_real != type || bucket_real != bucket)
                     {
-                        PDLOG(ERROR, "find bad symlink %s->%s, type = %d, bucket = %ld", path, real, type_real, bucket_real);
+                        printf("find bad symlink %s->%s, type = %d, bucket = %ld", path, real, type_real, bucket_real);
                         return -1;
                     }
                     if (stat(real, &sb) != 0)
                     {
                         locations[bucket][type] = -2;
-                        PDLOG(WARNING, "find empty symlink %s", real);
+                        printf("find empty symlink %s", real);
                     }
                     else
                     {
@@ -340,7 +339,7 @@ int check_buckets(Mgr *mgr, int64_t *sizes, int locations[][3])
             {
                 if ((sb.st_mode & S_IFMT) != S_IFREG)
                 {
-                    PDLOG(ERROR, "find non-regule file on non-zero disk %s/%s", disks[i], name);
+                    printf("find non-regule file on non-zero disk %s/%s", disks[i], name);
                     return -1;
                 }
                 int old_loc = locations[bucket][type];
@@ -351,24 +350,24 @@ int check_buckets(Mgr *mgr, int64_t *sizes, int locations[][3])
                         safe_snprintf(sym, MAX_PATH_LEN, "%s/%s", disks[0], name);
                         if (symlink(path, sym) != 0)
                         {
-                            PDLOG(ERROR, "symlink failed %s -> %s, err: %s !", sym, path, strerror(errno));
+                            printf("symlink failed %s -> %s, err: %s !", sym, path, strerror(errno));
                             return -1;
                         }
                         else
                         {
-                            PDLOG(DEBUG, "auto link for %s", path);
+                            printf("auto link for %s", path);
                             locations[bucket][type] = i;
                         }
                     }
                     else
                     {
-                        PDLOG(ERROR, "file not linked %s!", path);
+                        printf("file not linked %s!", path);
                         return -1;
                     }
                 }
                 else if (old_loc != i)
                 {
-                    PDLOG(ERROR, "find dup files %s in both %s and %s ",  name, disks[i], disks[old_loc]);
+                    printf("find dup files %s in both %s and %s ",  name, disks[i], disks[old_loc]);
                     return -1;
                 }
             }
@@ -379,17 +378,17 @@ int check_buckets(Mgr *mgr, int64_t *sizes, int locations[][3])
                     sizes[bucket] =  sb.st_size;
                     if (sb.st_size % 256 != 0)
                     {
-                        PDLOG(WARNING, "size of %s is 0x%llx, not aligned", path, (long long)sb.st_size);
+                        printf("size of %s is 0x%llx, not aligned", path, (long long)sb.st_size);
                     }
                 }
                 else
                 {
                     sizes[bucket] =  0;
-                    //PDLOG(WARNING, "find empty link %s, unlink!", path);
+                    //printf("find empty link %s, unlink!", path);
                     //unlink(path);
                 }
             }
-            //PDLOG(DEBUG, "bucket = %ld, type = %d, size = %"PRIu64"", bucket, type, sizes[bucket]);
+            //printf("bucket = %ld, type = %d, size = %"PRIu64"", bucket, type, sizes[bucket]);
         }//end while readdir
         (void) closedir(dp);
     }
@@ -402,7 +401,7 @@ Bitcask* bc_open(const char *path, int depth, int pos, time_t before)
     if (path == NULL || depth > 4) return NULL;
     if (0 != access(path, F_OK) && 0 != mkdir(path, 0750))
     {
-        PDLOG(ERROR, "mkdir %s failed", path);
+        printf("mkdir %s failed", path);
         return NULL;
     }
     const char *t[] = {path};
@@ -436,7 +435,7 @@ static void init_buckets(Bitcask *bc)
     memset(locations, -1, sizeof(int)*256*3);
     if (check_buckets(bc->mgr, bc->buckets, locations) != 0 )
     {
-        PDLOG(ERROR, "bitcask 0x%x check failed, exit!", bc->pos);
+        printf("bitcask 0x%x check failed, exit!", bc->pos);
         exit(-1);
     }
     //print_buckets(bc->buckets);
@@ -448,14 +447,14 @@ static void init_buckets(Bitcask *bc)
         int ret = load_buckets(mgr_base(bc->mgr), buckets, &last);
         if (ret < 0)
         {
-            PDLOG(ERROR, "load_buckets fail, bc %0x, exit", bc->pos);
+            printf("load_buckets fail, bc %0x, exit", bc->pos);
             exit(1);
         }
         else if (ret == 0 )
         {
             if (bc->buckets[0] >= 0)
             {
-                PDLOG(WARNING, "bucket.txt not exist , bc %0x", bc->pos);
+                printf("bucket.txt not exist , bc %0x", bc->pos);
             }
         }
         else
@@ -467,15 +466,15 @@ static void init_buckets(Bitcask *bc)
                 {
                     if (i > last && bc->buckets[i] >= 0) //buckets[last] = -1
                     {
-                        PDLOG(WARNING, "last file not in buckets.txt (bc %0x, bucket %d)", bc->pos, i);
+                        printf("last file not in buckets.txt (bc %0x, bucket %d)", bc->pos, i);
                     }
                     else if (i == last && buckets[i] >= 0 && bc->buckets[i] >= 0)
                     {
-                        PDLOG(WARNING, "last file size not match (bc %0x, bucket %d)", bc->pos, i);
+                        printf("last file size not match (bc %0x, bucket %d)", bc->pos, i);
                     }
                     else
                     {
-                        PDLOG(ERROR, "bucket size not match (bc %0x, bucket %d), exit", bc->pos, i);
+                        printf("bucket size not match (bc %0x, bucket %d), exit", bc->pos, i);
                         exit(1);
                     }
                 }
@@ -490,10 +489,10 @@ static void init_buckets(Bitcask *bc)
         if (-1 == locations[i][0])
         {
             if (locations[i][1] != -1)
-                PDLOG(WARNING, " unused file: %s",gen_path(path, MAX_PATH_LEN, mgr_base(bc->mgr), HINT_FILE, i));
+                printf(" unused file: %s",gen_path(path, MAX_PATH_LEN, mgr_base(bc->mgr), HINT_FILE, i));
 
             if (locations[i][2] != -1)
-                PDLOG(WARNING, " unused file: %s",gen_path(path, MAX_PATH_LEN, mgr_base(bc->mgr), HTREE_FILE, i));
+                printf(" unused file: %s",gen_path(path, MAX_PATH_LEN, mgr_base(bc->mgr), HTREE_FILE, i));
         }
     }
     //print_buckets(bc->buckets);
@@ -557,12 +556,12 @@ static void skip_empty_file(Bitcask *bc)
             struct stat sb;
             if (lstat(opath, &sb) != 0)
             {
-                PDLOG(WARNING, "%s(either link or file) should exist on disk0 at least, exit", opath);
+                printf("%s(either link or file) should exist on disk0 at least, exit", opath);
                 exit(1);
             }
             if (stat(opath, &sb) == 0 && sb.st_size > 0)
             {
-                PDLOG(WARNING, "Bug: size of %s should be 0, but is %lld!", opath, (long long)sb.st_size);
+                printf("Bug: size of %s should be 0, but is %lld!", opath, (long long)sb.st_size);
                 exit(1);
             }
 
@@ -573,7 +572,7 @@ static void skip_empty_file(Bitcask *bc)
             //      gc failed
             //  normal empty file:
             //      gc result
-            PDLOG(WARNING, "rm empty bucket %s", opath);
+            printf("rm empty bucket %s", opath);
             bc->buckets[i] = -1;
             mgr_unlink(opath);
             mgr_unlink(gen_path(opath, MAX_PATH_LEN, base, HINT_FILE, i));
@@ -608,7 +607,7 @@ void bc_scan(Bitcask *bc)
             }
             else
             {
-                PDLOG(ERROR, "open HTree from %s failed", datapath);
+                printf("open HTree from %s failed", datapath);
                 mgr_unlink(datapath);
             }
         }
@@ -664,14 +663,14 @@ void bc_scan(Bitcask *bc)
         }
         else
         {
-            PDLOG(ERROR, "save HTree to %s failed", datapath);
+            printf("save HTree to %s failed", datapath);
         }
     }
 
     bc->curr = i;
     if (i > 0)
     {
-        PDLOG(INFO, "bitcask %x loaded, curr = %d", bc->pos , i);
+        printf("bitcask %x loaded, curr = %d", bc->pos , i);
     }
 }
 
@@ -723,7 +722,7 @@ void bc_close(Bitcask *bc)
         }
         else
         {
-            PDLOG(ERROR, "save HTree to %s failed", datapath);
+            printf("save HTree to %s failed", datapath);
         }
     }
     ht_destroy(bc->tree);
@@ -800,7 +799,7 @@ int bc_optimize(Bitcask *bc, int limit)
         {
             if (stat(datapath, &st) == 0)
             {
-                PDLOG(ERROR, "data file: %s should not exist", datapath);
+                printf("data file: %s should not exist", datapath);
             }
             continue; // skip empty file
         }
@@ -808,7 +807,7 @@ int bc_optimize(Bitcask *bc, int limit)
         {
             if (stat(datapath, &st) != 0)
             {
-                PDLOG(ERROR, "data file: %s lost", datapath);
+                printf("data file: %s lost", datapath);
                 return -1;
             }
         }
@@ -816,7 +815,7 @@ int bc_optimize(Bitcask *bc, int limit)
         if (st.st_mtime > limit_time)
         {
             skipped = true;
-            PDLOG(INFO, "optimize skip %s", datapath);
+            printf("optimize skip %s", datapath);
 
             ++last;
             if (last != i)   // rotate data file
@@ -824,7 +823,7 @@ int bc_optimize(Bitcask *bc, int limit)
                 // update HTree to use new index
                 if (stat(hintpath, &st) != 0)
                 {
-                    PDLOG(ERROR, "no hint file: %s, skip it", hintpath);
+                    printf("no hint file: %s, skip it", hintpath);
                     last = i;
                     continue;
                 }
@@ -833,7 +832,7 @@ int bc_optimize(Bitcask *bc, int limit)
                 gen_path(npath, MAX_PATH_LEN, base, DATA_FILE, last);
                 if (symlink(datapath, npath) != 0)
                 {
-                    PDLOG(ERROR, "symlink failed: %s -> %s, err:%s", datapath, npath, strerror(errno));
+                    printf("symlink failed: %s -> %s, err:%s", datapath, npath, strerror(errno));
                     bc->optimize_flag = 0;
                     return -1;
                 }
@@ -874,7 +873,7 @@ int bc_optimize(Bitcask *bc, int limit)
             struct stat sb;
             if ((bc->buckets[last]>= 0) !=  (lstat(ldpath,&sb)==0))
             {
-                PDLOG(ERROR, "buckets mismatch!");
+                printf("buckets mismatch!");
                 bc->optimize_flag = 0;
                 return -1;
             }
@@ -898,7 +897,7 @@ int bc_optimize(Bitcask *bc, int limit)
                     dump_buckets(bc);
                 }
                 else{
-                    PDLOG(ERROR, "last %s not exist after gc:", ldpath);
+                    printf("last %s not exist after gc:", ldpath);
                     bc->optimize_flag = 0;
                     return -1;
                 }
@@ -913,12 +912,12 @@ int bc_optimize(Bitcask *bc, int limit)
             {
                 if (last < i)
                 {
-                    PDLOG(WARNING, "fail to optimize %s into %d, try next", datapath, last);
+                    printf("fail to optimize %s into %d, try next", datapath, last);
                     last ++;
                 }
                 else
                 {
-                    PDLOG(WARNING, "Bug: fail to optimize %s into %d self, return", datapath, last);
+                    printf("Bug: fail to optimize %s into %d self, return", datapath, last);
                     bc->optimize_flag = 0;
                     return -1;
                 }
@@ -942,7 +941,7 @@ int bc_optimize(Bitcask *bc, int limit)
         {
             gen_path(npath, MAX_PATH_LEN, base, DATA_FILE, last);
             if (symlink(opath, npath) != 0)
-                PDLOG(ERROR, "symlink failed: %s -> %s, err:%s", opath, npath, strerror(errno));
+                printf("symlink failed: %s -> %s, err:%s", opath, npath, strerror(errno));
         }
 
         struct update_args args;
@@ -965,7 +964,7 @@ int bc_optimize(Bitcask *bc, int limit)
     pthread_mutex_unlock(&bc->flush_lock);
     pthread_mutex_unlock(&bc->write_lock);
     if (last > 0)
-        PDLOG(INFO, "bitcask %x optimization done, curr = %d, last = %d", bc->pos, bc->curr, last);
+        printf("bitcask %x optimization done, curr = %d, last = %d", bc->pos, bc->curr, last);
     bc->optimize_flag = 0;
     return 0;
 }
@@ -991,7 +990,7 @@ DataRecord* bc_get(Bitcask *bc, const char *key, uint32_t *ret_pos, bool return_
 
     if (bucket > (uint32_t)(bc->curr))
     {
-        PDLOG(ERROR, "Bug: invalid bucket %d > %d, bitcask %x, key = %s", bucket, bc->curr, bc->pos, key);
+        printf("Bug: invalid bucket %d > %d, bitcask %x, key = %s", bucket, bc->curr, bc->pos, key);
         ht_remove(bc->tree, key);
         return NULL;
     }
@@ -1009,7 +1008,7 @@ DataRecord* bc_get(Bitcask *bc, const char *key, uint32_t *ret_pos, bool return_
         {
             if (bc->flush_buffer == NULL)
             {
-                PDLOG(ERROR, "Bug: flush_buf is NULL");
+                printf("Bug: flush_buf is NULL");
                 pthread_mutex_unlock(&bc->buffer_lock);
                 return NULL;
             }
@@ -1034,7 +1033,7 @@ DataRecord* bc_get(Bitcask *bc, const char *key, uint32_t *ret_pos, bool return_
         int tmp_fd = open(tmp_path, O_RDONLY);
         if (-1 != tmp_fd)
         {
-            PDLOG(DEBUG, "success to open TMP file %s (to get %s)", tmp_path, key);
+            printf("success to open TMP file %s (to get %s)", tmp_path, key);
             r = fast_read_record(tmp_fd, pos, true, tmp_path, key);
             close(tmp_fd);
             if (NULL == r || strcmp(key, r->key) != 0)
@@ -1049,7 +1048,7 @@ DataRecord* bc_get(Bitcask *bc, const char *key, uint32_t *ret_pos, bool return_
         }
         else
         {
-            PDLOG(WARNING, "fail to open TMP file %s (to get %s), will try to read the non-tmp", tmp_path, key);
+            printf("fail to open TMP file %s (to get %s), will try to read the non-tmp", tmp_path, key);
         }
     }
 
@@ -1059,9 +1058,9 @@ RETRY_READ:
     if (-1 == fd)
     {
         if (bc->buckets[bucket] > 0)
-            PDLOG(ERROR, "fail to open %s, which should exist (to get key: %s), err:%s", datapath, key, strerror(errno));
+            printf("fail to open %s, which should exist (to get key: %s), err:%s", datapath, key, strerror(errno));
         else
-           PDLOG(ERROR, "Bug: try read non-exist file %s (to get key %s)", datapath, key);
+           printf("Bug: try read non-exist file %s (to get key %s)", datapath, key);
     }
     else
     {
@@ -1079,28 +1078,28 @@ RETRY_READ:
             if (new_pos != pos)
             {
                 pos = new_pos;
-                PDLOG(WARNING, "get new pos, retry read %s (key %s)", datapath, key);
+                printf("get new pos, retry read %s (key %s)", datapath, key);
                 goto RETRY_READ;
             }
             else
             {
-                PDLOG(DEBUG, "get same pos = %d, path = %s, key = %s, ", item->pos, datapath, key);
+                printf("get same pos = %d, path = %s, key = %s, ", item->pos, datapath, key);
             }
         }
         else
         {
-            PDLOG(WARNING, "Bug: retry %s key = %s, get NULL", datapath, key);
+            printf("Bug: retry %s key = %s, get NULL", datapath, key);
         }
     }
 
 READ_FAIL:
     if (NULL == r)
     {
-        PDLOG(ERROR, "Bug: get %s failed in %s @ %u", key, datapath, pos);
+        printf("Bug: get %s failed in %s @ %u", key, datapath, pos);
     }
     else if (strcmp(key, r->key) != 0)
     {
-        PDLOG(ERROR, "Bug: record %s is not expected %s in %s @ %u", r->key, key, datapath, pos);
+        printf("Bug: record %s is not expected %s in %s @ %u", r->key, key, datapath, pos);
         free_record(&r);
     }
 
@@ -1156,7 +1155,7 @@ void bc_flush(Bitcask *bc, unsigned int limit, int flush_period)
 {
     if (bc->curr >= MAX_BUCKET_COUNT)
     {
-        PDLOG(ERROR, "reach max bucket count");
+        printf("reach max bucket count");
         exit(1);
     }
 
@@ -1195,7 +1194,7 @@ void bc_flush(Bitcask *bc, unsigned int limit, int flush_period)
 
         if (bc->wbuf_start_pos + bc->wbuf_size > settings.max_bucket_size)
         {
-            PDLOG(INFO, "bitcask 0x%x bc_rotate after buffer write : curr %d -> %d, wbuf_size = %d, limit = %d, file size= %u, last_flush =  %d",
+            printf("bitcask 0x%x bc_rotate after buffer write : curr %d -> %d, wbuf_size = %d, limit = %d, file size= %u, last_flush =  %d",
                     bc->pos, bc->curr, bc->curr+1, bc->wbuf_size, limit, bc->wbuf_start_pos, size);
             bc_rotate(bc);
         }
@@ -1207,21 +1206,21 @@ void bc_flush(Bitcask *bc, unsigned int limit, int flush_period)
         FILE *f = fopen(buf, "ab");
         if (f == NULL)
         {
-            PDLOG(ERROR, "open file %s for flushing failed. exit!", buf);
+            printf("open file %s for flushing failed. exit!", buf);
             exit(1);
         }
         // check file size
         uint64_t file_size = ftello(f);
         if (last_pos > 0 && last_pos != file_size)
         {
-            PDLOG(ERROR, "last pos not match: %"PRIu64" != %u in %s. exit!", file_size, last_pos, buf);
+            printf("last pos not match: %"PRIu64" != %u in %s. exit!", file_size, last_pos, buf);
             exit(1);
         }
 
         size_t n = fwrite(bc->flush_buffer, 1, size, f);
         if (n < size)
         {
-            PDLOG(ERROR, "write failed: return %zu. exit!", n);
+            printf("write failed: return %zu. exit!", n);
             exit(1);
         }
         bc->buckets[bc->flushing_bucket] = file_size + size;
@@ -1246,13 +1245,13 @@ bool bc_set(Bitcask *bc, const char *key, char *value, size_t vlen, int flag, in
 {
     if ((version < 0 && vlen > 0) || vlen > MAX_VALUE_LEN || !check_key(key, strlen(key)))
     {
-        PDLOG(ERROR, "invalid set cmd, key %s, version %d, vlen %ld", key, version, vlen);
+        printf("invalid set cmd, key %s, version %d, vlen %ld", key, version, vlen);
         return false;
     }
     else
     {
         if (vlen > MAX_VALUE_LEN_WARN)
-            PDLOG(WARNING, "set large value for key %s, version %d, vlen %ld", key, version, vlen);
+            printf("set large value for key %s, version %d, vlen %ld", key, version, vlen);
     }
 
     bool suc = false;
@@ -1332,7 +1331,7 @@ bool bc_set(Bitcask *bc, const char *key, char *value, size_t vlen, int flag, in
     char *rbuf = encode_record(r, &rlen);
     if (rbuf == NULL || (rlen & 0xff) != 0)
     {
-        PDLOG(ERROR, "encode_record() failed with %d", rlen);
+        printf("encode_record() failed with %d", rlen);
         if (rbuf != NULL) free(rbuf);
         goto SET_FAIL;
     }
@@ -1353,7 +1352,7 @@ bool bc_set(Bitcask *bc, const char *key, char *value, size_t vlen, int flag, in
         }
         if (bc->wbuf_start_pos + bc->wbuf_size > settings.max_bucket_size)
         {
-            PDLOG(INFO, "bitcask 0x%x bc_rotate for large record: curr %d -> %d, record size = %d",
+            printf("bitcask 0x%x bc_rotate for large record: curr %d -> %d, record size = %d",
                     bc->pos, bc->curr, bc->curr+1, rlen);
             bc_rotate(bc);
         }

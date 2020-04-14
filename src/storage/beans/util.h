@@ -38,15 +38,13 @@
 #endif
 
 
-#include "log.h"
-
 inline static void*
 _safe_malloc(size_t s, const char *file, int line, const char *func)
 {
     void *p = malloc(s);
     if (unlikely(p == NULL))
     {
-        PDLOG(ERROR, "Out of memory: %d, %zu bytes in %s (%s:%i)", errno, s, func, file, line);
+        printf("Out of memory: %d, %zu bytes in %s (%s:%i)", errno, s, func, file, line);
         /*
         * memset will make debug easier
         */
@@ -64,7 +62,7 @@ _try_malloc(size_t s, const char *file, int line, const char *func)
     void *p = malloc(s);
     if (unlikely(p == NULL))
     {
-        PDLOG(WARNING, "Out of memory: %d, %zu bytes in %s (%s:%i) but continue working.", errno, s, func, file, line);
+        printf("Out of memory: %d, %zu bytes in %s (%s:%i) but continue working.", errno, s, func, file, line);
     }
     return p;
 }
@@ -78,7 +76,7 @@ _safe_realloc(void *ptr, size_t s, const char *file, int line, const char *func)
     if (unlikely(p == NULL))
     {
         free(p);
-        PDLOG(ERROR, "Realloc failed: %d, %zu bytes in %s (%s:%i)", errno, s, func, file, line);
+        printf("Realloc failed: %d, %zu bytes in %s (%s:%i)", errno, s, func, file, line);
         exit(1);
     }
     return p;
@@ -93,7 +91,7 @@ _try_realloc(void *ptr, size_t s, const char *file, int line, const char *func)
     if (unlikely(p == NULL))
     {
         free(p);
-        PDLOG(WARNING, "Realloc failed: %d, %zu bytes in %s (%s:%i), but continue working", errno, s, func, file, line);
+        printf("Realloc failed: %d, %zu bytes in %s (%s:%i), but continue working", errno, s, func, file, line);
     }
     return p;
 }
@@ -106,7 +104,7 @@ _safe_calloc(size_t num, size_t size, const char *file, int line, const char *fu
     void *p = calloc(num, size);
     if (unlikely(p == NULL))
     {
-        PDLOG(ERROR, "Calloc failed: %d, %zu bytes in %s (%s:%i)", errno, num * size, func, file, line);
+        printf("Calloc failed: %d, %zu bytes in %s (%s:%i)", errno, num * size, func, file, line);
         exit(1);
     }
     return p;
@@ -120,7 +118,7 @@ _try_calloc(size_t num, size_t size, const char *file, int line, const char *fun
     void *p = calloc(num, size);
     if (unlikely(p == NULL))
     {
-        PDLOG(WARNING, "Calloc failed: %d, %zu bytes in %s (%s:%i)", errno, num * size, func, file, line);
+        printf("Calloc failed: %d, %zu bytes in %s (%s:%i)", errno, num * size, func, file, line);
     }
     return p;
 }
@@ -136,7 +134,7 @@ _check_snprintf(const char *file, int line, const char *func, char *s, size_t n,
     result_len = vsnprintf(s, n, format, args);
     if (unlikely(result_len >= n))
     {
-        PDLOG(ERROR, "Truncation: content truncated while calling snprintf \
+        printf("Truncation: content truncated while calling snprintf \
                 in %s (%s:%i), %zu content print to %zu length buffer.", file, func, line, result_len, n);
         exit(1);
     }
@@ -151,7 +149,7 @@ _check_memcpy(const char *file, int line, const char *func, void *dst, size_t ds
 {
     if (unlikely(dst_num < src_num))
     {
-        PDLOG(ERROR, "_check_memcpy try to use lower dst buffer: %zu than src size: %zu. \
+        printf("_check_memcpy try to use lower dst buffer: %zu than src size: %zu. \
                 in %s (%s:%i).", dst_num, src_num, file, func, line);
         exit(1);
     }
@@ -160,8 +158,8 @@ _check_memcpy(const char *file, int line, const char *func, void *dst, size_t ds
 
 #define safe_memcpy(DST, DST_NUM, SRC, SRC_NUM) _check_memcpy(__FILE__, __LINE__, __FUNCTION__, DST, DST_NUM, SRC, SRC_NUM)
 
-#define min(a,b) ((a)<(b)?(a):(b))
-#define max(a,b) ((a)>(b)?(a):(b))
+#define calc_min(a,b) ((a)<(b)?(a):(b))
+#define calc_max(a,b) ((a)>(b)?(a):(b))
 
 inline static int safe_strtol(const char *str, int base, long *out)
 {

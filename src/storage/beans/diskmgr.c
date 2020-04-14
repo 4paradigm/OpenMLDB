@@ -19,6 +19,7 @@
 #include <sys/stat.h>
 #include <sys/statvfs.h>
 #include <libgen.h>
+#include <zconf.h>
 
 #include "diskmgr.h"
 
@@ -31,20 +32,19 @@
 #endif
 
 #include "const.h"
-#include "log.h"
 
 ssize_t mgr_readlink(const char *path, char *buf, size_t bufsiz)
 {
     int n = readlink(path, buf, bufsiz);
     if (n < 0)
     {
-        PDLOG(ERROR, "readlink fail %s", path);
+        printf("readlink fail %s", path);
         return -1;
     }
     buf[n] = 0;
     if (strncmp(simple_basename(path), simple_basename(buf), bufsiz) != 0 )
     {
-        PDLOG(ERROR, "basename not match %s->%s", path, buf);
+        printf("basename not match %s->%s", path, buf);
         return -2;
     }
     return n;
@@ -77,7 +77,7 @@ Mgr *mgr_create(const char **disks, int ndisks)
     {
         if (0 != access(disks[i], F_OK) && 0 != mkdir(disks[i], 0755))
         {
-            PDLOG(ERROR, "access %s failed", disks[i]);
+            printf("access %s failed", disks[i]);
             free(mgr->disks);
             free(mgr);
             free(cwd);
@@ -165,7 +165,7 @@ const char *mgr_alloc(Mgr *mgr, const char *name)
         }
         if (symlink(target, path) != 0)
         {
-            PDLOG(ERROR, "create symlink failed: %s -> %s", path, target);
+            printf("create symlink failed: %s -> %s", path, target);
             exit(1);
         }
     }
@@ -177,7 +177,7 @@ void _mgr_unlink(const char *path, const char *file, int line, const char *func)
     struct stat sb;
     if (0 != lstat(path, &sb))
         return;
-    PDLOG(INFO, "mgr_unlink %s, in %s (%s:%i)", path, func, file, line);
+    printf("mgr_unlink %s, in %s (%s:%i)", path, func, file, line);
     if ((sb.st_mode & S_IFMT) == S_IFLNK)
     {
         char buf[MAX_PATH_LEN];
@@ -194,7 +194,7 @@ void _mgr_unlink(const char *path, const char *file, int line, const char *func)
 //caller guarantee newpath not exist
 void mgr_rename(const char *oldpath, const char *newpath)
 {
-    PDLOG(INFO, "mgr_rename %s -> %s", oldpath, newpath);
+    printf("mgr_rename %s -> %s", oldpath, newpath);
     struct stat sb;
     char ropath[MAX_PATH_LEN];
     char rnpath[MAX_PATH_LEN];
@@ -209,13 +209,13 @@ void mgr_rename(const char *oldpath, const char *newpath)
 
             if (symlink(rnpath, newpath) != 0)
             {
-                PDLOG(ERROR, "symlink failed: %s -> %s, err: %s, exit!", rnpath, newpath, strerror(errno));
+                printf("symlink failed: %s -> %s, err: %s, exit!", rnpath, newpath, strerror(errno));
                 exit(-1);
             }
-            PDLOG(INFO, "mgr_rename real %s -> %s", ropath, rnpath);
+            printf("mgr_rename real %s -> %s", ropath, rnpath);
             if (rename(ropath, rnpath) != 0)
             {
-                PDLOG(ERROR, "rename failed: %s -> %s, err: %s, exit!", ropath, rnpath, strerror(errno));
+                printf("rename failed: %s -> %s, err: %s, exit!", ropath, rnpath, strerror(errno));
                 exit(-1);
             };
             unlink(oldpath);
@@ -225,7 +225,7 @@ void mgr_rename(const char *oldpath, const char *newpath)
     {
         if (rename(oldpath, newpath) != 0)
         {
-            PDLOG(ERROR, "rename failed: %s -> %s, err:%s, exit!", oldpath, newpath, strerror(errno));
+            printf("rename failed: %s -> %s, err:%s, exit!", oldpath, newpath, strerror(errno));
             exit(-1);
         };
     }

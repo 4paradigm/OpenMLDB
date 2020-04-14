@@ -28,7 +28,6 @@
 #include "htree.h"
 #include "codec.h"
 #include "const.h"
-#include "log.h"
 #include "diskmgr.h"
 
 const int BUCKET_SIZE = 16;
@@ -38,7 +37,7 @@ static const long long g_index[] = {0, 1, 17, 273, 4369, 69905, 1118481, 1789569
 
 const char HTREE_VERSION[] = "HTREE001";
 #define TREE_BUF_SIZE 512
-#define max(a,b) ((a)>(b)?(a):(b))
+#define calc_max(a,b) ((a)>(b)?(a):(b))
 #define INDEX(it) (0x0f & (keyhash >> ((7 - node->depth - tree->depth) * 4)))
 #define ITEM_LENGTH(it) ((it)->ksz + sizeof(Item) - ITEM_PADDING)
 #define HASH(it) ((it)->hash * ((it)->ver>0))
@@ -101,7 +100,7 @@ static inline bool check_version(Item *oldit, Item *newit, HTree *tree, uint32_t
     {
         char key[KEY_BUF_LEN];
         dc_decode(tree->dc, key, KEY_BUF_LEN, oldit->key, oldit->ksz);
-        PDLOG(WARNING, "BUG: bad version, oldv=%d, newv=%d, key=%s, keyhash = 0x%x, oldpos = %u",  oldit->ver, newit->ver, key, keyhash, oldit->pos);
+        printf("BUG: bad version, oldv=%d, newv=%d, key=%s, keyhash = 0x%x, oldpos = %u",  oldit->ver, newit->ver, key, keyhash, oldit->pos);
         return false;
     }
 }
@@ -172,7 +171,7 @@ static void enlarge_pool(HTree *tree)
     int old_size = g_index[tree->height];
     int new_size = g_index[tree->height + 1];
 
-    PDLOG(INFO, "enlarge pool %d -> %d, new_height = %d", old_size, new_size, tree->height + 1);
+    printf("enlarge pool %d -> %d, new_height = %d", old_size, new_size, tree->height + 1);
 
     tree->root = (Node*)safe_realloc(tree->root, sizeof(Node) * new_size);
     memset(tree->root + old_size, 0, sizeof(Node) * (new_size - old_size));
@@ -240,8 +239,8 @@ static void add_item(HTree *tree, Node *node, Item *it, uint32_t keyhash, bool e
         }
         else
         {
-            int size = max(last->used + it_len, last->size);
-            size = min(size, tree->block_size);
+            int size = calc_max(last->used + it_len, last->size);
+            size = calc_min(size, tree->block_size);
             data = (Data*)safe_realloc(last, size);
             data->size = size;
 
@@ -639,14 +638,14 @@ HTree *ht_open(int depth, int pos, const char *path)
     FILE *f = fopen(path, "rb");
     if (f == NULL)
     {
-        PDLOG(ERROR, "open %s failed", path);
+        printf("open %s failed", path);
         return NULL;
     }
 
     if (fread(version, sizeof(HTREE_VERSION), 1, f) != 1
             || memcmp(version, HTREE_VERSION, sizeof(HTREE_VERSION)) != 0)
     {
-        PDLOG(ERROR, "the version %s is not expected", version);
+        printf("the version %s is not expected", version);
         fclose(f);
         return NULL;
     }
@@ -655,7 +654,7 @@ HTree *ht_open(int depth, int pos, const char *path)
     if (fread(&fsize, sizeof(fsize), 1, f) != 1 ||
             fseeko(f, 0, 2) != 0 || ftello(f) != fsize)
     {
-        PDLOG(ERROR, "the size %lld is not expected", (long long int)fsize);
+        printf("the size %lld is not expected", (long long int)fsize);
         fclose(f);
         return NULL;
     }
@@ -663,7 +662,7 @@ HTree *ht_open(int depth, int pos, const char *path)
 #if _XOPEN_SOURCE >= 600 || _POSIX_C_SOURCE >= 200112L
     if (posix_fadvise(fileno(f), 0, fsize, POSIX_FADV_SEQUENTIAL) != 0)
     {
-        PDLOG(ERROR, "posix_favise() failed");
+        printf("posix_favise() failed");
     }
 #endif
 
@@ -678,7 +677,7 @@ HTree *ht_open(int depth, int pos, const char *path)
     if (fread(&tree->height, sizeof(int), 1, f) != 1 ||
             tree->height + depth < 0 || tree->height + depth > 9)
     {
-        PDLOG(ERROR, "invalid height: %d", tree->height);
+        printf("invalid height: %d", tree->height);
         goto FAIL;
     }
 
@@ -706,12 +705,12 @@ HTree *ht_open(int depth, int pos, const char *path)
             data = (Data*)safe_malloc(size + sizeof(Data*));
             if (fread(DATA_file_start(data), size, 1, f) != 1)
             {
-                PDLOG(ERROR, "load data: size %d fail", size);
+                printf("load data: size %d fail", size);
                 goto FAIL;
             }
             if (data->used != size)
             {
-                PDLOG(ERROR, "broken data: %d != %d", data->used, size);
+                printf("broken data: %d != %d", data->used, size);
                 goto FAIL;
             }
             data->used = data->size = size + sizeof(Data*);
@@ -723,7 +722,7 @@ HTree *ht_open(int depth, int pos, const char *path)
         }
         else
         {
-            PDLOG(ERROR, "unexpected size: %d", size);
+            printf("unexpected size: %d", size);
             goto FAIL;
         }
         tree->root[i].data = data;
@@ -735,19 +734,19 @@ HTree *ht_open(int depth, int pos, const char *path)
     if (fread(&size, sizeof(int), 1, f) != 1
             || size < 0 || size > (10<<20))
     {
-        PDLOG(ERROR, "bad codec size: %d", size);
+        printf("bad codec size: %d", size);
         goto FAIL;
     }
     buf = (char*)safe_malloc(size);
     if (fread(buf, size, 1, f) != 1)
     {
-        PDLOG(ERROR, "read codec failed");
+        printf("read codec failed");
         goto FAIL;
     }
     tree->dc = dc_new();
     if (dc_load(tree->dc, buf, size) != 0)
     {
-        PDLOG(ERROR, "load codec failed");
+        printf("load codec failed");
         goto FAIL;
     }
     free(buf);
@@ -784,7 +783,7 @@ static int ht_save2(HTree *tree, FILE *f)
     if (fwrite(HTREE_VERSION, sizeof(HTREE_VERSION), 1, f) != 1 ||
             fwrite(&pos, sizeof(off_t), 1, f) != 1)
     {
-        PDLOG(ERROR, "write version failed");
+        printf("write version failed");
         return -1;
     }
 
@@ -792,7 +791,7 @@ static int ht_save2(HTree *tree, FILE *f)
     if (fwrite(&tree->height, sizeof(int), 1, f) != 1 ||
             fwrite(tree->root, sizeof(Node) * pool_size, 1, f) != 1 )
     {
-        PDLOG(ERROR, "write nodes failed");
+        printf("write nodes failed");
         return -1;
     }
 
@@ -814,7 +813,7 @@ static int ht_save2(HTree *tree, FILE *f)
 
             if (fwrite(&(new_data.used), sizeof(int), 1, f) != 1 || fwrite(DATA_file_start(&new_data), DATA_HEAD_SIZE - sizeof(Data*), 1, f) != 1)
             {
-                PDLOG(ERROR, "write data head failed");
+                printf("write data head failed");
                 return -1;
             }
 
@@ -824,7 +823,7 @@ static int ht_save2(HTree *tree, FILE *f)
                     continue;
                 if ( fwrite(((char*)data) + DATA_HEAD_SIZE, data->used - DATA_HEAD_SIZE, 1, f) != 1)
                 {
-                    PDLOG(ERROR, "write data failed");
+                    printf("write data failed");
                     return -1;
                 }
             }
@@ -834,7 +833,7 @@ static int ht_save2(HTree *tree, FILE *f)
         {
             if (fwrite(&zero, sizeof(int), 1, f) != 1)
             {
-                PDLOG(ERROR, "write zero failed");
+                printf("write zero failed");
                 return -1;
             }
         }
@@ -845,13 +844,13 @@ static int ht_save2(HTree *tree, FILE *f)
     *(int*)buf = s;
     if (dc_dump(tree->dc, buf + sizeof(int), s) != s)
     {
-        PDLOG(ERROR, "dump Codec failed");
+        printf("dump Codec failed");
         free(buf);
         return -1;
     }
     if (fwrite(buf, s + sizeof(int), 1, f) != 1)
     {
-        PDLOG(ERROR, "write Codec failed");
+        printf("write Codec failed");
         free(buf);
         return -1;
     }
@@ -861,7 +860,7 @@ static int ht_save2(HTree *tree, FILE *f)
     fseeko(f, sizeof(HTREE_VERSION), 0);
     if (fwrite(&pos, sizeof(off_t), 1, f) != 1)
     {
-        PDLOG(ERROR, "write size failed");
+        printf("write size failed");
         return -1;
     }
 
@@ -880,7 +879,7 @@ int ht_save(HTree *tree, const char *path)
     FILE *f = fopen(tmp, "wb");
     if (f == NULL)
     {
-        PDLOG(ERROR, "open %s failed", tmp);
+        printf("open %s failed", tmp);
         return -1;
     }
 
@@ -908,7 +907,7 @@ int ht_save(HTree *tree, const char *path)
     {
         gettimeofday(&save_end, NULL);
         float save_secs = (save_end.tv_sec - save_start.tv_sec) + (save_end.tv_usec - save_start.tv_usec) / 1e6;
-        PDLOG(INFO, "save HTree to %s, size = %"PRIu64", in %f secs", path, file_size, save_secs);
+        printf("save HTree to %s, size = %"PRIu64", in %f secs", path, file_size, save_secs);
         mgr_rename(tmp, path);
     }
     else
@@ -945,12 +944,12 @@ bool check_key(const char *key, int len)
     if (!key) return false;
     if (len == 0 || len > MAX_KEY_LEN)
     {
-        PDLOG(ERROR, "bad key len=%d", len);
+        printf("bad key len=%d", len);
         return false;
     }
     if (key[0] <= ' ')
     {
-        PDLOG(ERROR, "bad key len=%d %x", len, key[0]);
+        printf("bad key len=%d %x", len, key[0]);
         return false;
     }
     int k;
@@ -958,7 +957,7 @@ bool check_key(const char *key, int len)
     {
         if (isspace(key[k]) || iscntrl(key[k]))
         {
-            PDLOG(ERROR, "bad key len=%d %s", len, key);
+            printf("bad key len=%d %s", len, key);
             return false;
         }
     }
@@ -970,7 +969,7 @@ bool check_bucket(HTree *tree, const char* key, int len)
     uint32_t h = keyhash(key, len);
     if (tree->depth > 0 && h >> ((8-tree->depth) * 4) != (unsigned int)(tree->pos))
     {
-        PDLOG(ERROR, "key %s (#%x) should not in this tree (%d:%0x)", key, h >> ((8-tree->depth) * 4), tree->depth, tree->pos);
+        printf("key %s (#%x) should not in this tree (%d:%0x)", key, h >> ((8-tree->depth) * 4), tree->depth, tree->pos);
         return false;
     }
 
@@ -1071,7 +1070,7 @@ void ht_visit2(HTree *tree, fun_visitor visitor, void *param)
 
 void ht_set_updating_bucket(HTree *tree, int bucket, HTree *updating_tree)
 {
-    PDLOG(INFO, "updating bucket %d for htree 0x%x", bucket, tree->pos);
+    printf("updating bucket %d for htree 0x%x", bucket, tree->pos);
     pthread_mutex_lock(&tree->lock);
     tree->updating_bucket = bucket;
     tree->updating_tree = updating_tree;
@@ -1113,13 +1112,13 @@ Item *ht_get_maybe_tmp(HTree *tree, const char *key, int *is_tmp, char *buf)
             pthread_mutex_lock(&tree->lock);
             if (tree->updating_bucket == bucket)
             {
-                PDLOG(DEBUG, "get tmp for %s", key);
+                printf("get tmp for %s", key);
                 *is_tmp = 1;
                 item = ht_get_withbuf(tree->updating_tree, key, strlen(key), buf, false);
             }
             else
             {
-                PDLOG(INFO, "get again for %s", key);
+                printf("get again for %s", key);
                 item = ht_get_withbuf(tree, key, strlen(key), buf, false);
             }
             pthread_mutex_unlock(&tree->lock);

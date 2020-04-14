@@ -14,6 +14,7 @@
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
 
 #include <stdint.h>
+#include <stddef.h>
 
 
 /* Table computed with Mark Adler's makecrc.c utility.  */
@@ -74,7 +75,7 @@ static const uint32_t crc32_table[256] =
 };
 
 uint32_t
-crc32 (uint32_t crc, unsigned char *buf, size_t len)
+beans_crc32(uint32_t crc, unsigned char *buf, size_t len)
 {
     unsigned char *end;
 
