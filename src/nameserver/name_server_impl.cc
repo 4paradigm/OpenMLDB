@@ -956,7 +956,7 @@ bool NameServerImpl::RecoverOPTask() {
                 break;
             case ::rtidb::api::OPType::kAddIndexOP:
                 if (CreateAddIndexOPTask(op_data) < 0) {
-                    PDLOG(WARNING, "add index op [%s] failed. op_id[%lu]",
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]",
                                 ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(),
                                 op_data->op_info_.op_id());
                     continue;
