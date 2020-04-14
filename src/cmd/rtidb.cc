@@ -2894,6 +2894,8 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
         ns_table_info.set_table_type(rtidb::type::TableType::kTimeSeries);
     } else if (table_type == "krelational" || table_type == "relational") {
         ns_table_info.set_table_type(rtidb::type::TableType::kRelational);
+    } else if (table_type == "kobjectstore" || table_type == "objectstore"){
+        ns_table_info.set_table_type(rtidb::type::TableType::kObjectStore);
     } else {
         printf("table_type mode %s is invalid\n", table_info.table_type().c_str());
         return -1;
