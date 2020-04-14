@@ -8652,8 +8652,8 @@ void NameServerImpl::AddIndex(RpcController* controller,
                 break;
             }
         }
-        std::map<std::string, const ::rtidb::common::ColumnDesc> col_map;
-        std::map<std::string, const ::rtidb::common::ColumnDesc> ts_map;
+        std::map<std::string, ::rtidb::common::ColumnDesc> col_map;
+        std::map<std::string, ::rtidb::common::ColumnDesc> ts_map;
         for (const auto&column_desc : table_info->column_desc_v1()) {
             if (column_desc.is_ts_col()) {
                 ts_map.insert(std::make_pair(column_desc.name(), column_desc));
