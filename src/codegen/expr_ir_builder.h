@@ -18,6 +18,7 @@
 #ifndef SRC_CODEGEN_EXPR_IR_BUILDER_H_
 #define SRC_CODEGEN_EXPR_IR_BUILDER_H_
 
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -35,7 +36,7 @@
 namespace fesql {
 namespace codegen {
 
-struct RowIRInfo{
+struct RowIRInfo {
     const std::string row_ptr_name_;
     const std::string row_size_name_;
     const std::string window_ptr_name_;
@@ -43,13 +44,15 @@ struct RowIRInfo{
     const vm::Schema& schema_;
 };
 
-class RowIRContext{
+class RowIRContext {
  public:
     RowIRContext(::llvm::BasicBlock* block, ScopeVar* scope_var,
-                     const RowIRInfo& info)
+                 const RowIRInfo& info)
         : info_(info),
-          row_ir_builder_(new BufNativeIRBuilder(info_.schema_, block, scope_var)),
-          window_ir_builder_(new MemoryWindowDecodeIRBuilder(info_.schema_, block)) {}
+          row_ir_builder_(
+              new BufNativeIRBuilder(info_.schema_, block, scope_var)),
+          window_ir_builder_(
+              new MemoryWindowDecodeIRBuilder(info_.schema_, block)) {}
     RowIRInfo info_;
     std::unique_ptr<RowDecodeIRBuilder> row_ir_builder_;
     std::unique_ptr<WindowDecodeIRBuilder> window_ir_builder_;
@@ -65,8 +68,7 @@ class ExprIRBuilder {
                   const std::string& window_ptr_name,
                   const std::string& row_size_name, ::llvm::Module* module);
     ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
-                  const std::vector<RowIRInfo>&
-                      row_ir_info_list,
+                  const std::vector<RowIRInfo>& row_ir_info_list,
                   const bool row_mode, ::llvm::Module* module);
 
     ~ExprIRBuilder();

@@ -17,6 +17,7 @@
 
 #include "codegen/expr_ir_builder.h"
 #include <string>
+#include <utility>
 #include <vector>
 #include "codegen/buf_ir_builder.h"
 #include "codegen/ir_base_builder.h"
@@ -92,7 +93,8 @@ ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
 
         // init table -> context idx map
         if (!iter->table_name_.empty()) {
-            table_context_id_map_.insert(std::make_pair(iter->table_name_, idx));
+            table_context_id_map_.insert(
+                std::make_pair(iter->table_name_, idx));
         }
 
         // init col -> context idx map

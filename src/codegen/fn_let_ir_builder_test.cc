@@ -49,8 +49,8 @@ ExitOnError ExitOnErr;
 
 namespace fesql {
 namespace codegen {
-using fesql::codec::ArrayListV;
 using fesql::base::Slice;
+using fesql::codec::ArrayListV;
 static node::NodeManager manager;
 
 /// Check E. If it's in a success state then return the contained value. If
@@ -174,7 +174,8 @@ TEST_F(FnLetIRBuilderTest, test_primary) {
     // function will have a return type of "int" and take an argument of "int".
     RowFnLetIRBuilder ir_builder(table_.columns(), m.get());
     vm::Schema schema;
-    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr->GetProjects(), &schema);
+    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr->GetProjects(),
+                               &schema);
     ASSERT_TRUE(ok);
     ASSERT_EQ(4, schema.size());
     m->print(::llvm::errs(), NULL);
@@ -233,7 +234,8 @@ TEST_F(FnLetIRBuilderTest, test_udf) {
     // function will have a return type of "int" and take an argument of "int".
     RowFnLetIRBuilder ir_builder(table_.columns(), m.get());
     vm::Schema schema;
-    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr->GetProjects(), &schema);
+    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr->GetProjects(),
+                               &schema);
     ASSERT_TRUE(ok);
     ASSERT_EQ(2, schema.size());
     m->print(::llvm::errs(), NULL);
@@ -286,7 +288,8 @@ TEST_F(FnLetIRBuilderTest, test_simple_project) {
     // function will have a return type of "int" and take an argument of "int".
     RowFnLetIRBuilder ir_builder(table_.columns(), m.get());
     vm::Schema schema;
-    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr->GetProjects(), &schema);
+    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr->GetProjects(),
+                               &schema);
     ASSERT_TRUE(ok);
     ASSERT_EQ(1, schema.size());
     m->print(::llvm::errs(), NULL);
@@ -337,7 +340,8 @@ TEST_F(FnLetIRBuilderTest, test_extern_udf_project) {
     ::fesql::udf::RegisterUDFToModule(m.get());
     RowFnLetIRBuilder ir_builder(table_.columns(), m.get());
     vm::Schema schema;
-    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr->GetProjects(), &schema);
+    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr->GetProjects(),
+                               &schema);
     ASSERT_TRUE(ok);
     ASSERT_EQ(1, schema.size());
     m->print(::llvm::errs(), NULL);
@@ -517,7 +521,8 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_sum_project) {
     ::fesql::udf::RegisterUDFToModule(m.get());
     RowFnLetIRBuilder ir_builder(table_.columns(), m.get());
     vm::Schema schema;
-    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr->GetProjects(), &schema);
+    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr->GetProjects(),
+                               &schema);
     ASSERT_TRUE(ok);
     ASSERT_EQ(5, schema.size());
     m->print(::llvm::errs(), NULL);
@@ -594,7 +599,8 @@ TEST_F(FnLetIRBuilderTest, test_simple_window_project_mix) {
     ::fesql::udf::RegisterUDFToModule(m.get());
     RowFnLetIRBuilder ir_builder(table_.columns(), m.get());
     vm::Schema schema;
-    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr->GetProjects(), &schema);
+    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr->GetProjects(),
+                               &schema);
     ASSERT_TRUE(ok);
     ASSERT_EQ(8, schema.size());
     m->print(::llvm::errs(), NULL);
@@ -670,7 +676,8 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_min_project) {
     ::fesql::udf::RegisterUDFToModule(m.get());
     RowFnLetIRBuilder ir_builder(table_.columns(), m.get());
     vm::Schema schema;
-    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr->GetProjects(), &schema);
+    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr->GetProjects(),
+                               &schema);
     ASSERT_TRUE(ok);
     ASSERT_EQ(5, schema.size());
     m->print(::llvm::errs(), NULL);
@@ -737,7 +744,8 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_max_project) {
     ::fesql::udf::RegisterUDFToModule(m.get());
     RowFnLetIRBuilder ir_builder(table_.columns(), m.get());
     vm::Schema schema;
-    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr->GetProjects(), &schema);
+    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr->GetProjects(),
+                               &schema);
     ASSERT_TRUE(ok);
     ASSERT_EQ(5, schema.size());
     m->print(::llvm::errs(), NULL);
@@ -826,7 +834,8 @@ TEST_F(FnLetIRBuilderTest, test_col_at_udf) {
 
     RowFnLetIRBuilder ir_builder(table_.columns(), m.get());
     vm::Schema schema;
-    bool ok = ir_builder.Build("test_at_fn", pp_node_ptr->GetProjects(), &schema);
+    bool ok =
+        ir_builder.Build("test_at_fn", pp_node_ptr->GetProjects(), &schema);
     ASSERT_TRUE(ok);
     LOG(INFO) << "fn let ir build ok";
     ASSERT_EQ(3, schema.size());
