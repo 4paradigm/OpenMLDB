@@ -290,7 +290,12 @@ public:
     void BatchQuery(RpcController* controller,
             const rtidb::api::BatchQueryRequest* request,
             rtidb::api::BatchQueryResponse* response,
-            Closure*done);
+            Closure* done);
+
+    void CancelOP(RpcController* controller,
+            const rtidb::api::CancelOPRequest* request,
+            rtidb::api::GeneralResponse* response,
+            Closure* done);
 
     inline void SetServer(brpc::Server* server) {
         server_ = server;

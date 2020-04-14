@@ -2904,7 +2904,7 @@ int TabletImpl::LoadDiskTableInternal(uint32_t tid, uint32_t pid,
 int TabletImpl::LoadTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task_ptr) {
     do {
         // load snapshot data
-        std::shared_ptr<Table> table = GetTable(tid, pid);        
+        std::shared_ptr<Table> table = GetTable(tid, pid);
         if (!table) {
             PDLOG(WARNING, "table with tid %u and pid %u does not exist", tid, pid);
             break; 
@@ -4888,7 +4888,6 @@ void TabletImpl::ExtractIndexDataInternal(std::shared_ptr<::rtidb::storage::Tabl
         replicator->SetSnapshotLogPartIndex(offset);
     }
     SetTaskStatus(task, ::rtidb::api::TaskStatus::kDone);
-    table->SetIndexReady(idx);
 }
 
 void TabletImpl::AddIndex(RpcController* controller,
@@ -4896,9 +4895,11 @@ void TabletImpl::AddIndex(RpcController* controller,
         ::rtidb::api::GeneralResponse* response,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
+    uint32_t tid = request->tid();
+    uint32_t pid = request->pid();
+    std::shared_ptr<Table> table = GetTable(tid, pid);
     if (!table) {
-        PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
+        PDLOG(WARNING, "table is not exist. tid %u, pid %u", tid, pid);
         response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
         response->set_msg("table is not exist");
         return;
@@ -4906,20 +4907,66 @@ void TabletImpl::AddIndex(RpcController* controller,
     MemTable* mem_table = dynamic_cast<MemTable*>(table.get());
     if (mem_table == NULL) {
         PDLOG(WARNING, "table is not memtable. tid %u, pid %u", 
-                request->column_key().index_name(), request->tid(), request->pid());
+                request->column_key().index_name().c_str(), tid, pid);
         response->set_code(::rtidb::base::ReturnCode::kTableTypeMismatch);
         response->set_msg("table is not memtable");
         return;
     }
     if (!mem_table->AddIndex(request->column_key())) {
         PDLOG(WARNING, "add index %s failed. tid %u, pid %u", 
-                request->column_key().index_name().c_str(), request->tid(), request->pid());
+                request->column_key().index_name().c_str(), tid, pid);
         response->set_code(::rtidb::base::ReturnCode::kAddIndexFailed);
         response->set_msg("add index failed");
         return;
     }
+    std::string db_root_path;
+    bool ok = ChooseDBRootPath(tid, pid, ::rtidb::common::StorageMode::kMemory, db_root_path);
+    if (!ok) {
+        response->set_code(::rtidb::base::ReturnCode::kFailToGetDbRootPath);
+        response->set_msg("fail to get db root path");
+        PDLOG(WARNING, "fail to get table db root path for tid %u, pid %u", tid, pid);
+        return;
+    }
+    std::string db_path = db_root_path + "/" + std::to_string(tid) + 
+        "_" + std::to_string(pid);
+    if (!::rtidb::base::IsExists(db_path)) {
+        PDLOG(WARNING, "table db path doesn't exist. tid %u, pid %u", tid, pid);
+        response->set_code(::rtidb::base::ReturnCode::kTableDbPathIsNotExist);
+        response->set_msg("table db path is not exist");
+        return;
+    }
+    if (WriteTableMeta(db_path, &(table->GetTableMeta())) < 0) {
+        PDLOG(WARNING, "write table_meta failed. tid[%u] pid[%u]", tid, pid);
+        response->set_code(::rtidb::base::ReturnCode::kWriteDataFailed);
+        response->set_msg("write data failed");
+        return;
+    }
     PDLOG(INFO, "add index %s ok. tid %u pid %u", 
             request->column_key().index_name().c_str(), request->tid(), request->pid());
+    response->set_code(::rtidb::base::ReturnCode::kOk);
+    response->set_msg("ok");
+}
+
+void TabletImpl::CancelOP(RpcController* controller,
+        const rtidb::api::CancelOPRequest* request,
+        rtidb::api::GeneralResponse* response,
+        Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    uint64_t op_id = request->op_id();
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        auto iter = task_map_.find(op_id);
+        if (iter != task_map_.end()) {
+            for (auto& task : iter->second) {
+                if (task->status() == ::rtidb::api::TaskStatus::kInited ||
+                        task->status() == ::rtidb::api::TaskStatus::kDoing) {
+                    task->set_status(::rtidb::api::TaskStatus::kCanceled);
+                    PDLOG(INFO, "cancel op [%lu] task_type[%s] ", op_id,
+                        ::rtidb::api::TaskType_Name(task->task_type()).c_str());
+                }
+            }
+        }
+    }
     response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
