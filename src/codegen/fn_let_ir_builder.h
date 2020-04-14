@@ -45,7 +45,6 @@ class RowFnLetIRBuilder {
                vm::Schema* output_schema);  // NOLINT (runtime/references)
 
  private:
-    bool BuildFnHeader(const std::string& name, ::llvm::Function** fn);
 
     bool BuildFnHeader(const std::string& name,
                        const std::vector<::llvm::Type*>& args_type,

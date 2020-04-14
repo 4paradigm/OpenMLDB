@@ -63,8 +63,27 @@ bool RowFnLetIRBuilder::Build(
         return false;
     }
 
+    std::vector<std::string> args;
+    std::vector<::llvm::Type*> args_llvm_type;
+    for (auto info : row_info_list_) {
+        args_llvm_type.push_back(
+            ::llvm::Type::getInt8PtrTy(module_->getContext()));
+        args_llvm_type.push_back(
+            ::llvm::Type::getInt8PtrTy(module_->getContext()));
+        args_llvm_type.push_back(
+            ::llvm::Type::getInt32Ty(module_->getContext()));
+        args.push_back(info.row_ptr_name_);
+        args.push_back(info.window_ptr_name_);
+        args.push_back(info.row_size_name_);
+    }
+    args_llvm_type.push_back(
+        ::llvm::Type::getInt8PtrTy(module_->getContext())->getPointerTo());
+    args.push_back(output_ptr_name);
+
     base::Status status;
-    bool ok = BuildFnHeader(name, &fn);
+    bool ok =
+        BuildFnHeader(name, args_llvm_type,
+                      ::llvm::Type::getInt32Ty(module_->getContext()), &fn);
 
     if (!ok || fn == NULL) {
         LOG(WARNING) << "fail to build fn header for name " << name;
@@ -74,14 +93,6 @@ bool RowFnLetIRBuilder::Build(
     ScopeVar sv;
     sv.Enter(name);
 
-    std::vector<std::string> args;
-
-    for (auto info : row_info_list_) {
-        args.push_back(info.row_ptr_name_);
-        args.push_back(info.window_ptr_name_);
-        args.push_back(info.row_size_name_);
-    }
-    args.push_back(output_ptr_name);
     ok = FillArgs(args, fn, sv);
 
     if (!ok) {
@@ -188,24 +199,6 @@ bool RowFnLetIRBuilder::BuildFnHeader(
     DLOG(INFO) << "create fn header " << name << " done";
     return true;
 }
-
-// Build function header with two int8 pointer and return int32
-// param name
-// param fn
-// return
-bool RowFnLetIRBuilder::BuildFnHeader(const std::string& name,
-                                      ::llvm::Function** fn) {
-    std::vector<::llvm::Type*> args_type;
-    args_type.push_back(::llvm::Type::getInt8PtrTy(module_->getContext()));
-    args_type.push_back(::llvm::Type::getInt8PtrTy(module_->getContext()));
-    args_type.push_back(::llvm::Type::getInt32Ty(module_->getContext()));
-    args_type.push_back(
-        ::llvm::Type::getInt8PtrTy(module_->getContext())->getPointerTo());
-
-    return BuildFnHeader(name, args_type,
-                         ::llvm::Type::getInt32Ty(module_->getContext()), fn);
-}
-
 bool RowFnLetIRBuilder::FillArgs(const std::vector<std::string>& args,
                                  ::llvm::Function* fn,
                                  ScopeVar& sv) {  // NOLINT
