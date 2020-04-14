@@ -732,12 +732,12 @@ void ExplainNode::Print(std::ostream &output,
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
     PrintValue(output, tab, ExplainTypeName(explain_type_), "explain_type",
-                                            false);
+               false);
     output << "\n";
     PrintSQLNode(output, tab, query_, "query", true);
 }
 void InsertStmt::Print(std::ostream &output, const std::string &org_tab) const {
-    SQLNode::Print(output, org_tab)
+    SQLNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
     PrintValue(output, tab, table_name_, "table_name", false);
