@@ -28,15 +28,10 @@ RowFnLetIRBuilder::RowFnLetIRBuilder(const vm::Schema& schema,
                                      ::llvm::Module* module)
     : schema_(schema), module_(module) {}
 
-RowFnLetIRBuilder::RowFnLetIRBuilder(const vm::Schema& schema,
-                                     ::llvm::Module* module, bool is_window_agg)
-    : schema_(schema), module_(module) {}
-
 RowFnLetIRBuilder::~RowFnLetIRBuilder() {}
 
 bool RowFnLetIRBuilder::Build(
     const std::string& name, const node::PlanNodeList& projects,
-    const bool row_mode,
     vm::Schema* output_schema) {  // NOLINT (runtime/references)
     ::llvm::Function* fn = NULL;
     std::string row_ptr_name = "row_ptr_name";
@@ -132,12 +127,7 @@ bool RowFnLetIRBuilder::Build(
     return true;
 }
 
-bool RowFnLetIRBuilder::Build(const std::string& name,
-                              const node::ProjectListNode* projects,
-                              vm::Schema* output_schema) {
-    return Build(name, projects->GetProjects(), !projects->is_window_agg_,
-                 output_schema);
-}
+
 
 bool RowFnLetIRBuilder::EncodeBuf(
     const std::map<uint32_t, ::llvm::Value*>* values, const vm::Schema& schema,

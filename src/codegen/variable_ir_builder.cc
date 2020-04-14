@@ -104,3 +104,15 @@ bool fesql::codegen::VariableIRBuilder::StoreValue(
     fesql::base::Status& status) {
     return StoreValue(name, value, true, status);
 }
+bool fesql::codegen::VariableIRBuilder::LoadRowPtr(
+    std::string name, ::llvm::Value** output, fesql::base::Status& status) {
+    return LoadValue("row_ptr_" + name, output, status);
+}
+bool fesql::codegen::VariableIRBuilder::LoadWindowPtr(
+    std::string name, ::llvm::Value** output, fesql::base::Status& status) {
+    return LoadValue("window_ptr_" + name, output, status);
+}
+bool fesql::codegen::VariableIRBuilder::LoadRowSizePtr(
+    std::string name, ::llvm::Value** output, fesql::base::Status& status) {
+    return LoadValue("row_size_" + name, output, status);
+}

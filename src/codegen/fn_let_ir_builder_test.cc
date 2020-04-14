@@ -172,7 +172,7 @@ TEST_F(FnLetIRBuilderTest, test_primary) {
     fesql::node::ProjectListNode* pp_node_ptr = GetPlanNodeList(trees);
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
-    RowFnLetIRBuilder ir_builder(table_.columns(), m.get(), false);
+    RowFnLetIRBuilder ir_builder(table_.columns(), m.get());
     vm::Schema schema;
     bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, &schema);
     ASSERT_TRUE(ok);
@@ -231,7 +231,7 @@ TEST_F(FnLetIRBuilderTest, test_udf) {
     fesql::node::ProjectListNode* pp_node_ptr = GetPlanNodeList(trees);
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
-    RowFnLetIRBuilder ir_builder(table_.columns(), m.get(), false);
+    RowFnLetIRBuilder ir_builder(table_.columns(), m.get());
     vm::Schema schema;
     bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, &schema);
     ASSERT_TRUE(ok);
@@ -284,7 +284,7 @@ TEST_F(FnLetIRBuilderTest, test_simple_project) {
     auto m = make_unique<Module>("test_project", *ctx);
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
-    RowFnLetIRBuilder ir_builder(table_.columns(), m.get(), false);
+    RowFnLetIRBuilder ir_builder(table_.columns(), m.get());
     vm::Schema schema;
     bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, &schema);
     ASSERT_TRUE(ok);
@@ -335,7 +335,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_udf_project) {
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
     ::fesql::udf::RegisterUDFToModule(m.get());
-    RowFnLetIRBuilder ir_builder(table_.columns(), m.get(), false);
+    RowFnLetIRBuilder ir_builder(table_.columns(), m.get());
     vm::Schema schema;
     bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, &schema);
     ASSERT_TRUE(ok);
@@ -515,7 +515,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_sum_project) {
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
     ::fesql::udf::RegisterUDFToModule(m.get());
-    RowFnLetIRBuilder ir_builder(table_.columns(), m.get(), false);
+    RowFnLetIRBuilder ir_builder(table_.columns(), m.get());
     vm::Schema schema;
     bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, &schema);
     ASSERT_TRUE(ok);
@@ -592,7 +592,7 @@ TEST_F(FnLetIRBuilderTest, test_simple_window_project_mix) {
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
     ::fesql::udf::RegisterUDFToModule(m.get());
-    RowFnLetIRBuilder ir_builder(table_.columns(), m.get(), false);
+    RowFnLetIRBuilder ir_builder(table_.columns(), m.get());
     vm::Schema schema;
     bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, &schema);
     ASSERT_TRUE(ok);
@@ -668,7 +668,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_min_project) {
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
     ::fesql::udf::RegisterUDFToModule(m.get());
-    RowFnLetIRBuilder ir_builder(table_.columns(), m.get(), false);
+    RowFnLetIRBuilder ir_builder(table_.columns(), m.get());
     vm::Schema schema;
     bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, &schema);
     ASSERT_TRUE(ok);
@@ -735,7 +735,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_max_project) {
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
     ::fesql::udf::RegisterUDFToModule(m.get());
-    RowFnLetIRBuilder ir_builder(table_.columns(), m.get(), false);
+    RowFnLetIRBuilder ir_builder(table_.columns(), m.get());
     vm::Schema schema;
     bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, &schema);
     ASSERT_TRUE(ok);
@@ -824,7 +824,7 @@ TEST_F(FnLetIRBuilderTest, test_col_at_udf) {
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
 
-    RowFnLetIRBuilder ir_builder(table_.columns(), m.get(), false);
+    RowFnLetIRBuilder ir_builder(table_.columns(), m.get());
     vm::Schema schema;
     bool ok = ir_builder.Build("test_at_fn", pp_node_ptr, &schema);
     ASSERT_TRUE(ok);
