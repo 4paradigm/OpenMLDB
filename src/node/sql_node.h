@@ -1133,7 +1133,8 @@ class CmdNode : public SQLNode {
 class ExplainNode : public SQLNode {
  public:
     explicit ExplainNode(const QueryNode *query, node::ExplainType explain_type)
-        : SQLNode(kExplainSmt, 0, 0), explain_type_(explain_type), query_(query) {}
+        : SQLNode(kExplainSmt, 0, 0), explain_type_(explain_type),
+                  query_(query) {}
     void Print(std::ostream &output, const std::string &org_tab) const;
 
     const node::ExplainType explain_type_;
