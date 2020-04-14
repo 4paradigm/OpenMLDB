@@ -42,8 +42,7 @@ ExitOnError ExitOnErr;
 
 namespace fesql {
 namespace vm {
-class Tra
-    nsformTest : public ::testing::TestWithParam<std::string> {
+class TransformTest : public ::testing::TestWithParam<std::string> {
  public:
     TransformTest() {}
     ~TransformTest() {}
