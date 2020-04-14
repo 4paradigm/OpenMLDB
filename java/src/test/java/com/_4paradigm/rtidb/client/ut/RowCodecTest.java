@@ -742,32 +742,32 @@ public class RowCodecTest {
             /**
              * encode part
              */
-            list.add(SingleColumnCodec.convert(false));
-            list.add(SingleColumnCodec.convert(true));
+            list.add(FieldCodec.convert(false));
+            list.add(FieldCodec.convert(true));
             short int16Val = 33;
-            list.add(SingleColumnCodec.convert(int16Val));
+            list.add(FieldCodec.convert(int16Val));
             int int32Val = 44;
-            list.add(SingleColumnCodec.convert(int32Val));
+            list.add(FieldCodec.convert(int32Val));
             long int64Val = 55;
-            list.add(SingleColumnCodec.convert(int64Val));
+            list.add(FieldCodec.convert(int64Val));
             float fVal = 3.3f;
-            list.add(SingleColumnCodec.convert(fVal));
+            list.add(FieldCodec.convert(fVal));
             double dVal = 4.4;
-            list.add(SingleColumnCodec.convert(dVal));
-            list.add(SingleColumnCodec.convert("123"));
+            list.add(FieldCodec.convert(dVal));
+            list.add(FieldCodec.convert("123"));
         }
         {
             /**
              * decode part
              */
-            Assert.assertEquals(SingleColumnCodec.GetBool(ByteBufferNoCopy.wrap(list.get(0))), false);
-            Assert.assertEquals(SingleColumnCodec.GetBool(ByteBufferNoCopy.wrap(list.get(1))), true);
-            Assert.assertEquals(SingleColumnCodec.GetShort(ByteBufferNoCopy.wrap(list.get(2))), 33);
-            Assert.assertEquals(SingleColumnCodec.GetInt(ByteBufferNoCopy.wrap(list.get(3))), 44);
-            Assert.assertEquals(SingleColumnCodec.GetLong(ByteBufferNoCopy.wrap(list.get(4))), 55);
-            Assert.assertEquals(SingleColumnCodec.GetFloat(ByteBufferNoCopy.wrap(list.get(5))), 3.3f);
-            Assert.assertEquals(SingleColumnCodec.GetDouble(ByteBufferNoCopy.wrap(list.get(6))), 4.4);
-            Assert.assertEquals(SingleColumnCodec.GetString(ByteBufferNoCopy.wrap(list.get(7))), "123");
+            Assert.assertEquals(FieldCodec.GetBool(ByteBufferNoCopy.wrap(list.get(0))), false);
+            Assert.assertEquals(FieldCodec.GetBool(ByteBufferNoCopy.wrap(list.get(1))), true);
+            Assert.assertEquals(FieldCodec.GetShort(ByteBufferNoCopy.wrap(list.get(2))), 33);
+            Assert.assertEquals(FieldCodec.GetInt(ByteBufferNoCopy.wrap(list.get(3))), 44);
+            Assert.assertEquals(FieldCodec.GetLong(ByteBufferNoCopy.wrap(list.get(4))), 55);
+            Assert.assertEquals(FieldCodec.GetFloat(ByteBufferNoCopy.wrap(list.get(5))), 3.3f);
+            Assert.assertEquals(FieldCodec.GetDouble(ByteBufferNoCopy.wrap(list.get(6))), 4.4);
+            Assert.assertEquals(FieldCodec.GetString(ByteBufferNoCopy.wrap(list.get(7))), "123");
         }
     }
 }

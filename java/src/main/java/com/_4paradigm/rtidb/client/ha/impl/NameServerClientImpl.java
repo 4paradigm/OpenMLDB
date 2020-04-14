@@ -244,7 +244,7 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
             }
         }
         TableInfo tableInfo = builder.build();
-        if (!indexName.equals("")) {
+        if (!indexName.isEmpty()) {
             for (int i = 0; i < tableInfo.getColumnDescV1List().size(); i++) {
                 Common.ColumnDesc columnDesc = tableInfo.getColumnDescV1List().get(i);
                 if (columnDesc.getName().equals(indexName)) {

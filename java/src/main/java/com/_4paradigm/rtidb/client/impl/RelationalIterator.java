@@ -5,9 +5,9 @@ import com._4paradigm.rtidb.client.ha.PartitionHandler;
 import com._4paradigm.rtidb.client.ha.RTIDBClient;
 import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
+import com._4paradigm.rtidb.client.schema.FieldCodec;
 import com._4paradigm.rtidb.client.schema.ReadOption;
 import com._4paradigm.rtidb.client.schema.RowView;
-import com._4paradigm.rtidb.client.schema.SingleColumnCodec;
 import com._4paradigm.rtidb.client.type.DataType;
 import com._4paradigm.rtidb.client.type.IndexType;
 import com._4paradigm.rtidb.common.Common;
@@ -263,7 +263,7 @@ public class RelationalIterator {
                             throw new TabletException("index name not found with tid " + tid);
                         }
                         DataType dataType = nameTypeMap.get(idxName);
-                        ByteBuffer buffer = SingleColumnCodec.convert(dataType, idxValue);
+                        ByteBuffer buffer = FieldCodec.convert(dataType, idxValue);
                         if (buffer != null) {
                             indexBuilder.setValue(ByteBufferNoCopy.wrap(buffer));
                         }

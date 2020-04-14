@@ -368,7 +368,7 @@ public class TableSyncClientImpl implements TableSyncClient {
 //                throw new TabletException("index name not found with tid " + tid);
 //            }
 //            DataType dataType = nameTypeMap.get(idxName);
-//            ByteBuffer buffer = SingleColumnCodec.convert(dataType, idxValue);
+//            ByteBuffer buffer = FieldCodec.convert(dataType, idxValue);
 //            if (buffer != null) {
 //                indexBuilder.setValue(ByteBufferNoCopy.wrap(buffer));
 //            }
@@ -678,7 +678,7 @@ public class TableSyncClientImpl implements TableSyncClient {
                 throw new TabletException("index name not found with tid " + tid);
             }
             DataType dataType = nameTypeMap.get(idxName);
-            ByteBuffer buffer = SingleColumnCodec.convert(dataType, key);
+            ByteBuffer buffer = FieldCodec.convert(dataType, key);
             String idxVal = ByteBufferNoCopy.wrap(buffer).toString(RowCodecCommon.CHARSET);
             builder.setKey(idxVal);
 
