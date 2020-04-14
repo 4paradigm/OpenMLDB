@@ -19,7 +19,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class TableSyncProjectionTest extends TestCaseBase {
+public class TableSyncDateTest extends TestCaseBase {
     private static AtomicInteger id = new AtomicInteger(20000);
     @BeforeClass
     public void setUp() {
@@ -32,7 +32,6 @@ public class TableSyncProjectionTest extends TestCaseBase {
     }
     class TestArgs {
         TableInfo tableInfo;
-        ArrayList<String> projectionList;
         Object[] row;
         Object[] expected;
         String key;
@@ -40,8 +39,7 @@ public class TableSyncProjectionTest extends TestCaseBase {
     };
 
 
-
-    private TestArgs createArg(Object[] input, ArrayList<String> projectList, Object[] expect, String key, long ts)  {
+    private TestArgs createArg(Object[] input, Object[] expect, String key, long ts)  {
         String name = String.valueOf(id.incrementAndGet());
         TableInfo.Builder tbuilder = TableInfo.newBuilder();
         Common.ColumnDesc col0 = Common.ColumnDesc.newBuilder().setName("card").setDataType(Type.DataType.kVarchar).setType("string").build();
@@ -63,51 +61,26 @@ public class TableSyncProjectionTest extends TestCaseBase {
         args.tableInfo = table;
         args.row = input;
         args.expected = expect;
-        args.projectionList = projectList;
         args.key = key;
         args.ts = ts;
         return args;
     }
 
-    @DataProvider(name="projection_case")
+    @DataProvider(name="date_case")
     public Object[][] genCase() {
         Date now = new Date(System.currentTimeMillis());
         return new Object[][] {
-                new Object[]{createArg(new Object[] {"card0", "mcc0", 10000l, new Date(now.getYear(), now.getMonth(), now.getDate())}, new ArrayList<String>(Arrays.asList("card")), new Object[]{"card0"},
+                new Object[]{createArg(new Object[] {"card0", "mcc0", 10000l, new Date(now.getYear(), now.getMonth(), now.getDate())},
+                new Object[] {"card0", "mcc0", 10000l, new Date(now.getYear(), now.getMonth(), now.getDate())},
                         "card0", 10000l)},
-                new Object[]{createArg(new Object[] {"card1", null, 10000l, new Date(now.getYear(), now.getMonth(), now.getDate())}, new ArrayList<String>(Arrays.asList("mcc")), new Object[]{null},
-                                "card1", 10000l)},
-                new Object[]{createArg(new Object[] {"card2", null, 10000l, new Date(now.getYear(), now.getMonth(), now.getDate())}, new ArrayList<String>(Arrays.asList("ts")), new Object[]{10000l},
-                        "card2", 10000l)},
-                new Object[]{createArg(new Object[] {"card3", null, 10000l, new Date(now.getYear(), now.getMonth(), now.getDate())}, new ArrayList<String>(Arrays.asList("date")), new Object[]{new Date(now.getYear(), now.getMonth(), now.getDate())},
-                        "card3", 10000l)},
-                new Object[]{createArg(new Object[] {"card4", "mcc0", 10000l, new Date(now.getYear(), now.getMonth(), now.getDate())}, new ArrayList<String>(Arrays.asList("mcc", "card", "mcc")), new Object[]{"mcc0", "card4", "mcc0"},
-                        "card4", 10000l)},
-                new Object[]{createArg(new Object[] {"card5", "mcc0", 10000l, new Date(now.getYear(), now.getMonth(), now.getDate())}, new ArrayList<String>(Arrays.asList("date", "card")), new Object[]{new Date(now.getYear(), now.getMonth(), now.getDate()), "card5"},
-                        "card5", 10000l)}
-
+                new Object[] {createArg(new Object[] {"card1", "mcc0", 10000l, null},
+                                new Object[] {"card1", "mcc0", 10000l, null},
+                                "card1", 10000l)}
         };
     }
 
-    @Test(dataProvider = "projection_case")
-    public void testScanCase(TestArgs args) throws Exception{
-        nsc.dropTable(args.tableInfo.getName());
-        boolean ok = nsc.createTable(args.tableInfo);
-        Assert.assertTrue(ok);
-        List<TableInfo> tables = nsc.showTable(args.tableInfo.getName());
-        client.refreshRouteTable();
-        ok = tableSyncClient.put(args.tableInfo.getName(), args.row);
-        Assert.assertTrue(ok);
-        ScanOption option = new ScanOption();
-        option.setProjection(args.projectionList);
-        KvIterator it = tableSyncClient.scan(args.tableInfo.getName(), args.key, args.ts, 0l, option);
-        Assert.assertEquals(1, it.getCount());
-        Assert.assertTrue(it.valid());
-        Assert.assertEquals(args.expected, it.getDecodedValue());
-    }
-
-    @Test(dataProvider = "projection_case")
-    public void testGetCase(TestArgs args) throws Exception{
+    @Test(dataProvider = "date_case")
+    public void testDateCase(TestArgs args) throws Exception{
         nsc.dropTable(args.tableInfo.getName());
         boolean ok = nsc.createTable(args.tableInfo);
         Assert.assertTrue(ok);
@@ -116,8 +89,8 @@ public class TableSyncProjectionTest extends TestCaseBase {
         ok = tableSyncClient.put(args.tableInfo.getName(), args.row);
         Assert.assertTrue(ok);
         GetOption option = new GetOption();
-        option.setProjection(args.projectionList);
         Object[] row = tableSyncClient.getRow(args.tableInfo.getName(), args.key, args.ts, option);
-        Assert.assertEquals(args.expected, row);
+        Assert.assertEquals(row, args.expected);
     }
+
 }

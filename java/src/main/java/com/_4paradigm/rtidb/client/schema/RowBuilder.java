@@ -201,7 +201,7 @@ public class RowBuilder {
     public boolean appendDate(Date date) {
         int year = date.getYear();
         int month = date.getMonth();
-        int day = date.getDay();
+        int day = date.getDate();
         int data = year << 16;
         data = data | (month << 8);
         data = data | day;
