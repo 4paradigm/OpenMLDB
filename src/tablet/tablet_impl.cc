@@ -971,13 +971,11 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
                 PDLOG(WARNING, "fail to make a projection");
                 return -4;
             }
-            PDLOG(INFO, "size %u", size);
             std::unique_ptr<::rtidb::base::Slice> value(new ::rtidb::base::Slice(reinterpret_cast<char*>(ptr), size, true));
             tmp.push_back(std::make_pair(it->GetKey(), std::move(value)));
             total_block_size += size;
         }else {
             std::unique_ptr<::rtidb::base::Slice> value(new ::rtidb::base::Slice(it->GetValue()));
-            PDLOG(INFO, "legcy size %u", value->size());
             total_block_size += value->size();
             tmp.push_back(std::make_pair(it->GetKey(), std::move(value)));
         }
