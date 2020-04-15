@@ -99,7 +99,6 @@ class BufNativeIRBuilder : public RowDecodeIRBuilder {
  private:
     vm::Schema schema_;
     ::llvm::BasicBlock* block_;
-
     ScopeVar* sv_;
     VariableIRBuilder variable_ir_builder_;
     typedef std::map<std::string, std::pair<::fesql::node::DataType, int32_t>>

@@ -33,21 +33,20 @@ namespace codegen {
 
 class RowFnLetIRBuilder {
  public:
-    RowFnLetIRBuilder(const vm::Schema& schema, ::llvm::Module* module,
-                      bool is_window_agg);
     RowFnLetIRBuilder(const vm::Schema& schema, ::llvm::Module* module);
+    RowFnLetIRBuilder(const std::string& table_name, const vm::Schema& schema,
+                      ::llvm::Module* module);
+    RowFnLetIRBuilder(
+        std::vector<std::pair<const std::string, const vm::Schema*>>&
+            table_schema_list,
+        ::llvm::Module* module);
 
     ~RowFnLetIRBuilder();
 
-    bool Build(const std::string& name, const node::ProjectListNode* projects,
-               vm::Schema* output_schema);  // NOLINT (runtime/references)
     bool Build(const std::string& name, const node::PlanNodeList& projects,
-               const bool row_mode,
                vm::Schema* output_schema);  // NOLINT (runtime/references)
 
  private:
-    bool BuildFnHeader(const std::string& name, ::llvm::Function** fn);
-
     bool BuildFnHeader(const std::string& name,
                        const std::vector<::llvm::Type*>& args_type,
                        ::llvm::Type* ret_type, ::llvm::Function** fn);
@@ -70,7 +69,7 @@ class RowFnLetIRBuilder {
 
  private:
     // input schema
-    vm::Schema schema_;
+    std::vector<RowIRInfo> row_info_list_;
     ::llvm::Module* module_;
 };
 

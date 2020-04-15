@@ -19,9 +19,9 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include "codec/row_codec.h"
 #include "codegen/ir_base_builder.h"
 #include "glog/logging.h"
-#include "codec/row_codec.h"
 
 namespace fesql {
 namespace codegen {
@@ -29,9 +29,11 @@ namespace codegen {
 BufNativeIRBuilder::BufNativeIRBuilder(const vm::Schema& schema,
                                        ::llvm::BasicBlock* block,
                                        ScopeVar* scope_var)
-    : schema_(schema), block_(block), sv_(scope_var),
-variable_ir_builder_(block, scope_var),
- types_() {
+    : schema_(schema),
+      block_(block),
+      sv_(scope_var),
+      variable_ir_builder_(block, scope_var),
+      types_() {
     uint32_t offset = codec::GetStartOffset(schema_.size());
     uint32_t string_field_cnt = 0;
     for (int32_t i = 0; i < schema_.size(); i++) {
@@ -39,7 +41,7 @@ variable_ir_builder_(block, scope_var),
         fesql::node::DataType data_type;
         if (!SchemaType2DataType(column.type(), &data_type)) {
             LOG(WARNING) << "fail to convert schema type to data type " +
-                             fesql::type::Type_Name(column.type());
+                                fesql::type::Type_Name(column.type());
             return;
         }
         if (data_type == ::fesql::node::kVarchar) {
@@ -239,7 +241,6 @@ bool BufNativeIRBuilder::BuildGetStringField(uint32_t offset,
     return true;
 }
 
-
 BufNativeEncoderIRBuilder::BufNativeEncoderIRBuilder(
     const std::map<uint32_t, ::llvm::Value*>* outputs, const vm::Schema& schema,
     ::llvm::BasicBlock* block)
@@ -354,7 +355,7 @@ bool BufNativeEncoderIRBuilder::BuildEncode(::llvm::Value* output_ptr) {
             }
             default: {
                 LOG(WARNING) << "unsuported type, append val for output col "
-                             <<  Type_Name(column.type());
+                             << Type_Name(column.type());
                 return false;
             }
         }

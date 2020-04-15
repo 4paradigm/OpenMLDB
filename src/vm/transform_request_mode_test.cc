@@ -124,7 +124,7 @@ void Physical_Plan_Check(const std::shared_ptr<tablet::TabletCatalog>& catalog,
     physical_plan->Print(oss, "");
     std::cout << "physical plan:\n" << sql << "\n" << oss.str() << std::endl;
     std::ostringstream ss;
-    PrintSchema(ss, physical_plan->output_schema);
+    PrintSchema(ss, physical_plan->output_schema_);
     std::cout << "schema:\n" << ss.str() << std::endl;
     ASSERT_EQ(oss.str(), exp);
 }
@@ -389,7 +389,7 @@ TEST_P(TransformRequestModeTest, transform_physical_plan) {
     physical_plan->Print(oss, "");
     std::cout << "physical plan:\n" << sqlstr << "\n" << oss.str() << std::endl;
     std::ostringstream ss;
-    PrintSchema(ss, physical_plan->output_schema);
+    PrintSchema(ss, physical_plan->output_schema_);
     std::cout << "schema:\n" << ss.str() << std::endl;
     //    m->print(::llvm::errs(), NULL);
 }
