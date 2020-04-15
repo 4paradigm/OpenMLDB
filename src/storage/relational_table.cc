@@ -231,7 +231,7 @@ bool RelationalTable::Put(const std::string& value) {
         for (auto& kv : index_def->GetColumnIdxMap()) {
             uint32_t idx = kv.first;
             ::rtidb::type::DataType data_type = kv.second.data_type();
-            if (!GetStr(view, idx, data_type, &pk)) {
+            if (!GetPackedField(view, idx, data_type, &pk)) {
                 return false;
             }
         }
@@ -262,15 +262,14 @@ bool RelationalTable::PutDB(const std::string &pk, const char *data, uint32_t si
             ::rtidb::type::DataType data_type = kv.second.data_type();
             std::string key = "";
             if (index_def->GetType() == ::rtidb::type::kUnique) {
-                if (!GetStr(view, idx, data_type, &key)) {
+                if (!GetPackedField(view, idx, data_type, &key)) {
                     return false;
                 }
-                RelationalTableTraverseIterator* it = NewTraverse(idx, 0);
+                rocksdb::Iterator* it = GetRocksdbIterator(idx);
                 if (it != NULL) {
-                    it->Seek(key);
-                    if (it->Valid() && it->GetKey() == ::rtidb::base::Slice(key)) {
+                    it->Seek(rocksdb::Slice(key));
+                    if (it->Valid() && it->key() == rocksdb::Slice(key)) {
                         PDLOG(DEBUG, "Put failed because unique key repeated. tid %u pid %u", id_, pid_);
-                        it->SetFinish(true);
                         delete it;
                         return false;
                     }
@@ -278,7 +277,7 @@ bool RelationalTable::PutDB(const std::string &pk, const char *data, uint32_t si
                 rocksdb::Slice unique = rocksdb::Slice(key);
                 batch.Put(cf_hs_[index_def->GetId() + 1], unique, spk);
             } else if (index_def->GetType() == ::rtidb::type::kNoUnique) {
-                if (!GetStr(view, idx, data_type, &key)) {
+                if (!GetPackedField(view, idx, data_type, &key)) {
                     return false;
                 }
                 std::string no_unique = "";
@@ -299,52 +298,66 @@ bool RelationalTable::PutDB(const std::string &pk, const char *data, uint32_t si
     }
 }
 
-bool RelationalTable::GetStr(::rtidb::base::RowView& view, uint32_t idx, 
+bool RelationalTable::GetPackedField(::rtidb::base::RowView& view, uint32_t idx, 
         const ::rtidb::type::DataType& data_type, std::string* key) {
     int ret = 0;
-    if (data_type == ::rtidb::type::kSmallInt) {  
-        int16_t si_val = 0;
-        view.GetInt16(idx, &si_val);
-        key->resize(sizeof(int16_t));
-        char* to = const_cast<char*>(key->data());
-        ret = ::rtidb::base::PackInteger(&si_val, sizeof(int16_t), false, to);
-    } else if (data_type == ::rtidb::type::kInt) { 
-        int32_t i_val = 0;
-        view.GetInt32(idx, &i_val);
-        key->resize(sizeof(int32_t));
-        char* to = const_cast<char*>(key->data());
-        ret = ::rtidb::base::PackInteger(&i_val, sizeof(int32_t), false, to);
-    } else if (data_type == ::rtidb::type::kBigInt) { 
-        int64_t bi_val = 0;
-        view.GetInt64(idx, &bi_val);
-        key->resize(sizeof(int64_t));
-        char* to = const_cast<char*>(key->data());
-        ret = ::rtidb::base::PackInteger(&bi_val, sizeof(int64_t), false, to);
-    } else if (data_type == ::rtidb::type::kVarchar ||
-            data_type == ::rtidb::type::kString) {  
-        char* ch = NULL;
-        uint32_t length = 0;
-        view.GetString(idx, &ch, &length);
-        int32_t dst_len = ::rtidb::base::GetDstStrSize(length);
-        key->resize(dst_len);
-        char* dst = const_cast<char*>(key->data());
-        ret = ::rtidb::base::PackString(ch, length, (void**)&dst);
-    } else if (data_type == ::rtidb::type::kFloat) {
-        float val = 0.0;
-        view.GetFloat(idx, &val);
-        key->resize(sizeof(float));
-        char* to = const_cast<char*>(key->data());
-        ret = ::rtidb::base::PackFloat(&val, to);
-    } else if (data_type == ::rtidb::type::kDouble) {
-        double val = 0.0;
-        view.GetDouble(idx, &val);
-        key->resize(sizeof(double));
-        char* to = const_cast<char*>(key->data());
-        ret = ::rtidb::base::PackDouble(&val, to);
-    } else {
-        PDLOG(WARNING, "unsupported data type %s, tid %u pid %u",
-                rtidb::type::DataType_Name(data_type).c_str(), id_, pid_);
-        return false;
+    switch(data_type) {
+        case ::rtidb::type::kSmallInt: {
+            int16_t si_val = 0;
+            view.GetInt16(idx, &si_val);
+            key->resize(sizeof(int16_t));
+            char* to = const_cast<char*>(key->data());
+            ret = ::rtidb::base::PackInteger(&si_val, sizeof(int16_t), false, to);
+            break;
+        }
+        case ::rtidb::type::kInt: { 
+            int32_t i_val = 0;
+            view.GetInt32(idx, &i_val);
+            key->resize(sizeof(int32_t));
+            char* to = const_cast<char*>(key->data());
+            ret = ::rtidb::base::PackInteger(&i_val, sizeof(int32_t), false, to);
+            break;
+        }
+        case ::rtidb::type::kBigInt: {
+            int64_t bi_val = 0;
+            view.GetInt64(idx, &bi_val);
+            key->resize(sizeof(int64_t));
+            char* to = const_cast<char*>(key->data());
+            ret = ::rtidb::base::PackInteger(&bi_val, sizeof(int64_t), false, to);
+            break;
+        }
+        case ::rtidb::type::kVarchar:
+        case ::rtidb::type::kString: {
+            char* ch = NULL;
+            uint32_t length = 0;
+            view.GetString(idx, &ch, &length);
+            int32_t dst_len = ::rtidb::base::GetDstStrSize(length);
+            key->resize(dst_len);
+            char* dst = const_cast<char*>(key->data());
+            ret = ::rtidb::base::PackString(ch, length, (void**)&dst);
+            break;
+        }
+        case ::rtidb::type::kFloat: {
+            float val = 0.0;
+            view.GetFloat(idx, &val);
+            key->resize(sizeof(float));
+            char* to = const_cast<char*>(key->data());
+            ret = ::rtidb::base::PackFloat(&val, to);
+            break;
+        }
+        case ::rtidb::type::kDouble: {
+            double val = 0.0;
+            view.GetDouble(idx, &val);
+            key->resize(sizeof(double));
+            char* to = const_cast<char*>(key->data());
+            ret = ::rtidb::base::PackDouble(&val, to);
+            break;
+        }
+        default: {
+            PDLOG(WARNING, "unsupported data type %s, tid %u pid %u",
+                    rtidb::type::DataType_Name(data_type).c_str(), id_, pid_);
+            return false;
+        }
     }
     if (ret < 0) {
         PDLOG(WARNING, "pack error, tid %u pid %u", id_, pid_);
@@ -425,23 +438,20 @@ bool RelationalTable::DeleteInternel(const std::string& comparable_key, const st
     std::shared_ptr<IndexDef> pk_index_def = table_index_.GetPkIndex();
     uint32_t pk_id = pk_index_def->GetId();
     rocksdb::WriteBatch batch;
+    rocksdb::Iterator* it = GetIteratorAndSeek(idx, comparable_key);
+    if (it == NULL) {
+        return false;
+    }
     if (index_def->GetType() == ::rtidb::type::kNoUnique) {
-        RelationalTableTraverseIterator* it = Seek(idx, comparable_key, 0);
-        if (it == NULL) {
-            delete it;
-            return false;
-        }
         int count = 0;
         while (it->Valid()) {
             std::string pk = "";
-            int ret = ParsePk(rocksdb::Slice(it->GetKey().data(), it->GetKey().size()), comparable_key, &pk);
+            int ret = ParsePk(it->key(), comparable_key, &pk);
             if (ret == -1) {
                 PDLOG(WARNING,"ParsePk failed, tid %u pid %u", id_, pid_);
-                it->SetFinish(true);
                 delete it;
                 return false;
             } else if (ret == -2) {
-                it->SetFinish(true);
                 delete it;
                 if (count == 0) {
                     PDLOG(WARNING,"no unique %s not exist, tid %u pid %u", comparable_key.c_str(), id_, pid_);
@@ -451,42 +461,25 @@ bool RelationalTable::DeleteInternel(const std::string& comparable_key, const st
                 }
             }
             batch.Delete(cf_hs_[pk_id + 1], rocksdb::Slice(pk));
-            batch.Delete(cf_hs_[idx + 1], rocksdb::Slice(it->GetKey().data(), it->GetKey().size()));
+            batch.Delete(cf_hs_[idx + 1], it->key());
             it->Next();
             count++;
         }
-        it->SetFinish(true);
-        delete it;
     } else if (index_def->GetType() == ::rtidb::type::kUnique) {
-        RelationalTableTraverseIterator* it = Seek(idx, comparable_key, 0);
-        if (it == NULL) {
+        if (it->key() != rocksdb::Slice(comparable_key)) {
+            PDLOG(WARNING, "key %s not found. tid %u pid %u", comparable_key.c_str(), id_, pid_);
             delete it;
             return false;
         }
-        if (it->GetKey() != ::rtidb::base::Slice(comparable_key)) {
-            it->SetFinish(true);
-            delete it;
-            return false;
-        }
-        const std::string& pk = std::string(it->GetValue().data(), it->GetValue().size());
-        batch.Delete(cf_hs_[pk_id + 1], rocksdb::Slice(pk));
+        batch.Delete(cf_hs_[pk_id + 1], it->value());
         batch.Delete(cf_hs_[idx + 1], rocksdb::Slice(comparable_key));
-        it->SetFinish(true);
-        delete it; 
     } else if (index_def->GetType() == ::rtidb::type::kPrimaryKey) {
-        RelationalTableTraverseIterator* it = Seek(idx, comparable_key, 0);
-        if (it == NULL) {
+        if (it->key() != rocksdb::Slice(comparable_key)) {
+            PDLOG(WARNING, "key %s not found. tid %u pid %u", comparable_key.c_str(), id_, pid_);
             delete it;
             return false;
         }
-        if (it->GetKey() != ::rtidb::base::Slice(comparable_key)) {
-            it->SetFinish(true);
-            delete it;
-            return false;
-        }
-        rtidb::base::Slice slice = it->GetValue();
-        it->SetFinish(true);
-        delete it;
+        rocksdb::Slice slice = it->value();
 
         const Schema& schema = table_meta_.column_desc();
         ::rtidb::base::RowView view(schema, 
@@ -502,7 +495,7 @@ bool RelationalTable::DeleteInternel(const std::string& comparable_key, const st
                     return false;
                 }
                 std::string second_key = "";
-                if (!GetStr(view, col->GetId(), col->GetType(), &second_key)) {
+                if (!GetPackedField(view, col->GetId(), col->GetType(), &second_key)) {
                     return false;
                 }
                 if (!DeleteInternel(second_key, index_def)) {
@@ -513,9 +506,11 @@ bool RelationalTable::DeleteInternel(const std::string& comparable_key, const st
 
         batch.Delete(cf_hs_[idx + 1], rocksdb::Slice(comparable_key));
     } else {
+        delete it;
         PDLOG(WARNING,"unsupported index type, tid %u pid %u", id_, pid_);
         return false; 
     }
+    delete it;
     rocksdb::Status s = db_->Write(write_opts_, &batch);
     if (s.ok()) {
         offset_.fetch_add(1, std::memory_order_relaxed);
@@ -526,16 +521,24 @@ bool RelationalTable::DeleteInternel(const std::string& comparable_key, const st
     }
 }
 
-RelationalTableTraverseIterator* RelationalTable::Seek(uint32_t idx, const std::string& key, 
-        const uint64_t snapshot_id) {
-    RelationalTableTraverseIterator* it = NewTraverse(idx, snapshot_id);
+rocksdb::Iterator* RelationalTable::GetRocksdbIterator(uint32_t idx) {
+    rocksdb::ReadOptions ro = rocksdb::ReadOptions();
+    ro.prefix_same_as_start = true;
+    ro.pin_data = true;
+    rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[idx + 1]);
+    return it;
+}
+
+rocksdb::Iterator* RelationalTable::GetIteratorAndSeek(uint32_t idx, const std::string& key) {
+    rocksdb::Iterator* it = GetRocksdbIterator(idx);
     if (it == NULL) {
-        PDLOG(WARNING, "key not found. tid %u pid %u", id_, pid_);
+        PDLOG(WARNING, "idx %u not exist. tid %u pid %u", idx, id_, pid_);
         return NULL;
     }
-    it->Seek(key);
+    it->Seek(rocksdb::Slice(key));
     if (!it->Valid()) {
-        PDLOG(WARNING, "iterator not valid. tid %u pid %u", id_, pid_);
+        PDLOG(WARNING, "key %s not found. tid %u pid %u", key.c_str(), id_, pid_);
+        delete it;
         return NULL;
     }
     return it;
@@ -591,53 +594,46 @@ bool RelationalTable::Query(const std::shared_ptr<IndexDef> index_def, const std
 
     if (index_type == ::rtidb::type::kPrimaryKey ||
             index_type == ::rtidb::type::kAutoGen) {
-        RelationalTableTraverseIterator* it = Seek(idx, key, 0);
+        rocksdb::Iterator* it = GetIteratorAndSeek(idx, key);
         if (it == NULL) {
+            return false;
+        }
+        if (it->key() != rocksdb::Slice(key)) {
+            PDLOG(WARNING, "key %s not found. tid %u pid %u", key.c_str(), id_, pid_);
             delete it;
             return false;
         }
-        if (it->GetKey() != ::rtidb::base::Slice(key)) {
-            it->SetFinish(true);
-            delete it;
-            return false;
-        }
-        rtidb::base::Slice slice = ::rtidb::base::Slice(it->GetValue().data(), it->GetValue().size());
+        rtidb::base::Slice slice = ::rtidb::base::Slice(it->value().data(), it->value().size());
         vec->push_back(slice);
-        it->SetFinish(true);
         delete it;
     } else if (index_type == ::rtidb::type::kUnique) {
-        RelationalTableTraverseIterator* it = Seek(idx, key, 0);
+        rocksdb::Iterator* it = GetIteratorAndSeek(idx, key);
         if (it == NULL) {
+            return false;
+        }
+        if (it->key() != rocksdb::Slice(key)) {
+            PDLOG(WARNING, "key %s not found. tid %u pid %u", key.c_str(), id_, pid_);
             delete it;
             return false;
         }
-        if (it->GetKey() != ::rtidb::base::Slice(key)) {
-            it->SetFinish(true);
-            delete it;
-            return false;
-        }
-        const std::string& pk = std::string(it->GetValue().data(), it->GetValue().size());
+        const std::string& pk = std::string(it->value().data(), it->value().size());
         Query(table_index_.GetPkIndex(), pk, vec); 
-        it->SetFinish(true);
         delete it;
     } else if (index_type == ::rtidb::type::kNoUnique) {
         //TODO multi records
-        RelationalTableTraverseIterator* it = Seek(idx, key, 0);
+        rocksdb::Iterator* it = GetIteratorAndSeek(idx, key);
         if (it == NULL) {
-            delete it;
             return false;
         }
         int count = 0;
         while (it->Valid()) {
             std::string pk = "";
-            int ret = ParsePk(rocksdb::Slice(it->GetKey().data(), it->GetKey().size()), key, &pk);
+            int ret = ParsePk(it->key(), key, &pk);
             if (ret == -1) {
                 PDLOG(WARNING,"ParsePk failed, tid %u pid %u", id_, pid_);
-                it->SetFinish(true);
                 delete it;
                 return false;
             } else if (ret == -2) {
-                it->SetFinish(true);
                 delete it;
                 if (count == 0) {
                     PDLOG(WARNING,"no unique %s not exist, tid %u pid %u", key.c_str(), id_, pid_);
@@ -650,7 +646,6 @@ bool RelationalTable::Query(const std::shared_ptr<IndexDef> index_def, const std
             it->Next();
             count++;
         }
-        it->SetFinish(true);
         delete it;
     }
     return true;
@@ -704,13 +699,13 @@ bool RelationalTable::UpdateDB(const std::map<std::string, int>& cd_idx_map, con
     //TODO if condition columns size is more than 1
     for (int i = 0; i < condition_schema.size(); i++) {
         pk_data_type = condition_schema.Get(i).data_type();
-        if (!GetStr(cd_view, i, pk_data_type, &pk)) {
+        if (!GetPackedField(cd_view, i, pk_data_type, &pk)) {
             return false;
         }
         //TODO combined key
     }
 
-    std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+    std::lock_guard<std::mutex> lock(mu_);
     std::vector<rtidb::base::Slice> value_vec;
     std::shared_ptr<IndexDef> index_def = table_index_.GetPkIndex();
     bool ok = Query(index_def, pk, &value_vec);

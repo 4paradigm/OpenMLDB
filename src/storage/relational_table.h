@@ -30,12 +30,9 @@
 #include "base/memcomparable_format.h"
 #include <snappy.h>
 #include "base/field_codec.h"
-#include <thread>
-#include "base/spinlock.h"
 
 typedef google::protobuf::RepeatedPtrField<::rtidb::api::Dimension> Dimensions;
 using Schema = ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
-using ::rtidb::base::SpinMutex;
 
 namespace rtidb {
 namespace storage {
@@ -169,8 +166,8 @@ private:
     int InitColumnDesc();
     bool InitFromMeta();
     static void initOptionTemplate();
-    RelationalTableTraverseIterator* Seek(uint32_t idx, const std::string& key, 
-            const uint64_t snapshot_id); 
+    rocksdb::Iterator* GetIteratorAndSeek(uint32_t idx, const std::string& key); 
+    rocksdb::Iterator* GetRocksdbIterator(uint32_t idx); 
     bool PutDB(const std::string& pk, const char* data, uint32_t size);
     void UpdateInternel(const ::rtidb::api::Columns& cd_columns, 
             std::map<std::string, int>& cd_idx_map, 
@@ -179,12 +176,11 @@ private:
             const std::map<std::string, int>& col_idx_map, 
             const Schema& condition_schema, const Schema& value_schema, 
             const std::string& cd_value, const std::string& col_value); 
-    bool GetStr(::rtidb::base::RowView& view, uint32_t idx, 
+    bool GetPackedField(::rtidb::base::RowView& view, uint32_t idx, 
             const ::rtidb::type::DataType& data_type, std::string* key); 
     bool ConvertIndex(const std::string& name, const std::string& value, 
             std::string* out_val); 
 
-    SpinMutex spin_mutex_;
     std::mutex mu_;
     ::rtidb::common::StorageMode storage_mode_;
     std::string name_;
