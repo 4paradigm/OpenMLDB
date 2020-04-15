@@ -61,7 +61,10 @@ swig_add_library(fesql_jsdk
   SOURCES fesql_interface.i)
 target_include_directories(fesql_jsdk PRIVATE ${JNI_INCLUDE_DIRS})
 target_link_libraries(fesql_jsdk PRIVATE fesql_sdk fesql_vm ${vm_deps_libs} fesql_simple_catalog fesql_codegen fesql_udf ${llvm_libs} ${COMMON_LIBS})
+
 if(APPLE)
+  set_target_properties(fesql_jsdk PROPERTIES
+           SUFFIX ".dylib")
   set_target_properties(fesql_pysdk PROPERTIES
            SUFFIX ".so")
   set_property(TARGET fesql_pysdk APPEND PROPERTY

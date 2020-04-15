@@ -76,6 +76,7 @@ using fesql::node::PlanType;
 %}
 
 
+%rename(BaseStatus) fesql::base::Status;
 %ignore MakeExprWithTable; // TODO: avoid return object with share pointer
 %ignore WindowIterator;
 

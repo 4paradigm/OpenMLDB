@@ -1,6 +1,6 @@
 package com._4paradigm.fesql.offline;
 
-import com._4paradigm.fesql.base.Status;
+import com._4paradigm.fesql.base.BaseStatus;
 import com._4paradigm.fesql.type.TypeOuterClass;
 import com._4paradigm.fesql.type.TypeOuterClass.TableDef;
 import com._4paradigm.fesql.type.TypeOuterClass.ColumnDef;
@@ -15,7 +15,7 @@ public class TestParseSQL {
 
     @Test
     public void testParseSQL() {
-        LibraryLoader.loadLibrary("libfesql_jsdk.jnilib");
+        LibraryLoader.loadLibrary("fesql_jsdk");
         ColumnDef col1 = ColumnDef.newBuilder()
                 .setName("col_1").setType(TypeOuterClass.Type.kDouble).build();
         ColumnDef col2 = ColumnDef.newBuilder()
@@ -36,7 +36,7 @@ public class TestParseSQL {
 
         BatchRunSession sess = new BatchRunSession();
 
-        Status status = new Status();
+        BaseStatus status = new BaseStatus();
         Engine engine = new Engine(catalog);
         engine.Get("select col_1, col_2 from t1;", "db", sess, status);
 

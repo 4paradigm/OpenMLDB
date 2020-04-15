@@ -17,8 +17,7 @@ public class LibraryLoader {
 
     public static void loadLibrary(String libraryPath) {
         boolean isPath = libraryPath.endsWith(".so") ||
-                libraryPath.endsWith(".dylib") ||
-                libraryPath.endsWith(".jnilib");
+                libraryPath.endsWith(".dylib");
         if (!isPath) {
             // try load from environment
             try {
@@ -32,9 +31,9 @@ public class LibraryLoader {
         if (!isPath) {
             String osName = System.getProperty("os.name").toLowerCase();
             if (osName.equals("mac os x")) {
-                libraryPath += "lib" + libraryPath + ".dylib";
+                libraryPath = "lib" + libraryPath + ".dylib";
             } else if (osName.contains("linux")) {
-                libraryPath += "lib" + libraryPath + ".so";
+                libraryPath = "lib" + libraryPath + ".so";
             } else {
                 throw new IllegalArgumentException("Do not support os type: " + osName);
             }
