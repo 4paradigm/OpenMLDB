@@ -80,7 +80,7 @@ public interface TableSyncClient {
     Object[] getRow(String tname, String key, long time, Tablet.GetType type) throws TimeoutException, TabletException;
 
     Object[] getRow(String tname, String key, long time, GetOption getOption) throws  TimeoutException, TabletException;
-
+    Object[] getRow(String tname, String key, long time, Object type) throws  TimeoutException, TabletException;
     Object[] getRow(String tname, String key, String idxName) throws TimeoutException, TabletException;
 
     Object[] getRow(String tname, String key, String idxName, long time) throws TimeoutException, TabletException;

@@ -48,6 +48,11 @@ public class TableAsyncClientImpl implements TableAsyncClient {
     }
 
     @Override
+    public GetFuture get(String name, String key, long time, Object type) throws TabletException {
+        return get(name, key, time, (Tablet.GetType)(type));
+    }
+
+    @Override
     public PutFuture put(int tid, int pid, long time, Object[] row) throws TabletException {
         TableHandler tableHandler = client.getHandler(tid);
         if (tableHandler == null) {
