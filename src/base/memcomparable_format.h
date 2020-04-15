@@ -207,6 +207,7 @@ static int PackString(const void *src,  // The data to encode
     return 0;
 }
 
+__attribute__((unused))
 static int UnpackInteger(const void *from, uint32_t length, bool unsigned_flag,
                          void *to) {
     if (from == nullptr || length < 2) {
@@ -272,6 +273,7 @@ static int UnpackFloatingPoint(const void *src, const size_t size,
    Note also that this code assumes that NaN and +/-Infinity are never
    allowed in the database.
 */
+__attribute__((unused))
 static int UnpackFloat(const void *src, void *dst) {
     static float zero_val = 0.0;
     static const uchar zero_pattern[4] = {128, 0, 0, 0};
@@ -288,6 +290,7 @@ static int UnpackFloat(const void *src, void *dst) {
    Note also that this code assumes that NaN and +/-Infinity are never
    allowed in the database.
 */
+__attribute__((unused))
 static int UnpackDouble(const void *src, void *dst) {
     static double zero_val = 0.0;
     static const uchar zero_pattern[8] = {128, 0, 0, 0, 0, 0, 0, 0};
@@ -330,6 +333,7 @@ static uint32_t CalcUnpackVariableFormat(uchar flag, bool *done) {
 /*
    Function of type rdb_index_field_unpack_t
 */
+__attribute__((unused))
 static int UnpackString(const void *src, void *dst, int32_t *size) {
     if (src == nullptr) {
         return -1;

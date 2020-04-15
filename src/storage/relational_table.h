@@ -91,7 +91,7 @@ public:
     bool Query(const std::shared_ptr<IndexDef> index_def, const std::string& key, std::vector<rtidb::base::Slice>* vec); 
 
     bool Delete(const std::string& idx_name, const std::string& key);
-    bool DeleteInternel(const std::string& comparable_key, const std::shared_ptr<IndexDef> index_def);
+    bool DeletePk(const rocksdb::Slice pk_slice); 
 
     rtidb::storage::RelationalTableTraverseIterator* NewTraverse(uint32_t idx, uint64_t snapshot_id);
 
