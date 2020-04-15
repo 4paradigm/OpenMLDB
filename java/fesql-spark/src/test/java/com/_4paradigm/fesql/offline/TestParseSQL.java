@@ -7,6 +7,7 @@ import com._4paradigm.fesql.type.TypeOuterClass.ColumnDef;
 import com._4paradigm.fesql.type.TypeOuterClass.Database;
 import com._4paradigm.fesql.vm.BatchRunSession;
 import com._4paradigm.fesql.vm.Engine;
+import com._4paradigm.fesql.vm.PhysicalOpNode;
 import com._4paradigm.fesql.vm.SimpleCatalog;
 import org.junit.Test;
 
@@ -39,6 +40,9 @@ public class TestParseSQL {
         BaseStatus status = new BaseStatus();
         Engine engine = new Engine(catalog);
         engine.Get("select col_1, col_2 from t1;", "db", sess, status);
+
+        PhysicalOpNode root = sess.GetPhysicalPlan();
+        root.Print();
 
         status.delete();
         sess.delete();

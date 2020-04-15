@@ -56,6 +56,7 @@ namespace std {
 #include "vm/engine.h"
 #include "vm/catalog.h"
 #include "vm/simple_catalog.h"
+#include "vm/physical_op.h"
 
 using namespace fesql;
 using fesql::sdk::Schema;
@@ -97,3 +98,4 @@ using fesql::node::PlanType;
 %include "vm/catalog.h"
 %include "vm/simple_catalog.h"
 %include "vm/engine.h"
+%include "vm/physical_op.h"
