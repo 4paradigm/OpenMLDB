@@ -231,3 +231,19 @@ else
     echo "brpc done"
 fi
 
+if [ -f "boost_succ" ]
+then
+    echo "boost exist"
+else
+    if [ -f "boost_1_69_0.tar.gz" ]
+    then
+        echo "boost exist"
+    else
+        wget --no-check-certificate -O boost_1_69_0.tar.gz http://pkg.4paradigm.com/fesql/boost_1_69_0.tar.gz
+    fi
+    tar -zxvf boost_1_69_0.tar.gz
+    cd boost_1_69_0 && ./bootstrap.sh && ./b2 install --prefix=${DEPS_PREFIX}
+    cd -
+    touch boost_succ
+fi
+
