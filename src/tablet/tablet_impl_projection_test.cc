@@ -508,6 +508,7 @@ TEST_P(TabletProjectTest, get_case) {
         ::rtidb::api::PutRequest request;
         request.set_tid(tid);
         request.set_pid(0);
+        request.set_format_version(1);
         ::rtidb::api::Dimension* dim = request.add_dimensions();
         dim->set_idx(0);
         std::string key = args->pk;
@@ -575,6 +576,7 @@ TEST_P(TabletProjectTest, scan_case) {
         ::rtidb::api::PutRequest request;
         request.set_tid(tid);
         request.set_pid(0);
+        request.set_format_version(1);
         ::rtidb::api::Dimension* dim = request.add_dimensions();
         dim->set_idx(0);
         std::string key = args->pk;
