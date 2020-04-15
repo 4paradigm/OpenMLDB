@@ -82,7 +82,7 @@ bool RowFnLetIRBuilder::Build(
         ::llvm::Type::getInt32Ty(module_->getContext())->getPointerTo());
     args_llvm_type.push_back(
         ::llvm::Type::getInt8PtrTy(module_->getContext())->getPointerTo());
-    
+
     args.push_back("row_ptrs");
     args.push_back("window_ptrs");
     args.push_back("row_sizes");
