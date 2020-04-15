@@ -210,15 +210,17 @@ then
 else
     if [ -d "incubator-brpc" ]
     then
-        rm -rf incubator-brpc
-    fi
-    if [ -f "incubator-brpc.tar.gz" ]
-    then
-        echo "incubator-brpc.tar.gz exists"
+        echo "incubator-brpc exists"
     else
-        wget http://pkg.4paradigm.com/fesql/incubator-brpc.0304.tar.gz
+        if [ -f "incubator-brpc.0304.tar.gz" ]
+        then
+            echo "incubator-brpc.tar.gz exists"
+            tar -zxvf incubator-brpc.0304.tar.gz
+        else
+            wget http://pkg.4paradigm.com/fesql/incubator-brpc.0304.tar.gz
+        fi
     fi
-    tar -zxvf incubator-brpc.0304.tar.gz
+
     BRPC_DIR=$DEPS_SOURCE/incubator-brpc
     cd incubator-brpc && mkdir -p b2
     cd b2 && cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${DEPS_PREFIX} -DWITH_GLOG=ON .. && make brpc-static 
