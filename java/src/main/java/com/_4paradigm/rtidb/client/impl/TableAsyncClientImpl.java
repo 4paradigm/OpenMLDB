@@ -483,6 +483,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         }
         builder.setPid(pid);
         builder.setTid(tid);
+        builder.setFormatVersion(th.getFormatVersion());
         if (time != 0) {
             builder.setTime(time);
         }

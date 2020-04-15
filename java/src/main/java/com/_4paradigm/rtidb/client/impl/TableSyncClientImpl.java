@@ -1211,6 +1211,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         Tablet.PutRequest.Builder builder = Tablet.PutRequest.newBuilder();
         builder.setPid(pid);
         builder.setTid(tid);
+        builder.setFormatVersion(th.getFormatVersion());
         if (time != 0) {
             builder.setTime(time);
         }

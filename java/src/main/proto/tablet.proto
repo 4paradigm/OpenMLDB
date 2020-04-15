@@ -73,6 +73,7 @@ enum OPType {
     kAddReplicaSimplyRemoteOP = 17; 
     kDelReplicaRemoteOP = 18; 
     kAddReplicaRemoteOP = 19; 
+    kAddIndexOP = 20; 
 }
 
 enum TaskType {
@@ -98,6 +99,10 @@ enum TaskType {
     kDropTableRemote = 20; 
     kAddReplicaNSRemote = 21; 
     kDumpIndexData = 22;
+    kSendIndexData = 23;
+    kLoadIndexData = 24;
+    kExtractIndexData = 25;
+    kAddIndexToTablet = 26;
 }
 
 enum TaskStatus {
@@ -182,6 +187,7 @@ message PutRequest {
     optional uint32 pid = 5;
     repeated Dimension dimensions = 6;
     repeated TSDimension ts_dimensions = 7;
+    optional uint32 format_version = 8 [default = 0];
 }
 
 message PutResponse {
@@ -461,6 +467,19 @@ message SendSnapshotRequest {
     optional uint32 remote_tid = 5;
 }
 
+message SendIndexDataRequest {
+
+    message EndpointPair {
+        optional uint32 pid = 1;
+        optional string endpoint = 2;
+    }
+
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    repeated EndpointPair pairs = 3;
+    optional TaskInfo task_info = 4;
+}
+
 message SendDataRequest {
     required uint32 tid = 1;
     required uint32 pid = 2;
@@ -647,6 +666,22 @@ message DumpIndexDataRequest {
     optional TaskInfo task_info = 6;
 }
 
+message LoadIndexDataRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    optional uint32 partition_num = 3;
+    optional TaskInfo task_info = 4;
+}
+
+message ExtractIndexDataRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    optional uint32 partition_num = 3;
+    optional uint32 idx = 4;
+    optional rtidb.common.ColumnKey column_key = 5;
+    optional TaskInfo task_info = 6;
+}
+
 message Columns {
     repeated string name = 1;
     optional bytes value = 2;
@@ -725,6 +760,9 @@ service TabletServer {
     rpc SetMode(SetModeRequest) returns (GeneralResponse);
     rpc GetAllSnapshotOffset(EmptyRequest) returns(TableSnapshotOffsetResponse);
     rpc AddIndex(AddIndexRequest) returns(GeneralResponse);
+    rpc SendIndexData(SendIndexDataRequest) returns(GeneralResponse);
     rpc DeleteIndex(DeleteIndexRequest) returns (GeneralResponse);
     rpc DumpIndexData(DumpIndexDataRequest) returns (GeneralResponse);
+    rpc LoadIndexData(LoadIndexDataRequest) returns (GeneralResponse);
+    rpc ExtractIndexData(ExtractIndexDataRequest) returns (GeneralResponse);
 }
