@@ -944,12 +944,12 @@ bool check_key(const char *key, int len)
     if (!key) return false;
     if (len == 0 || len > MAX_KEY_LEN)
     {
-        printf("bad key len=%d", len);
+        printf("bad key len=%d\n", len);
         return false;
     }
     if (key[0] <= ' ')
     {
-        printf("bad key len=%d %x", len, key[0]);
+        printf("bad key len=%d %x\n", len, key[0]);
         return false;
     }
     int k;
@@ -957,7 +957,7 @@ bool check_key(const char *key, int len)
     {
         if (isspace(key[k]) || iscntrl(key[k]))
         {
-            printf("bad key len=%d %s", len, key);
+            printf("bad key len=%d %s\n", len, key);
             return false;
         }
     }

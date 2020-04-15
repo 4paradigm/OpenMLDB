@@ -1245,13 +1245,13 @@ bool bc_set(Bitcask *bc, const char *key, char *value, size_t vlen, int flag, in
 {
     if ((version < 0 && vlen > 0) || vlen > MAX_VALUE_LEN || !check_key(key, strlen(key)))
     {
-        printf("invalid set cmd, key %s, version %d, vlen %ld", key, version, vlen);
+        printf("invalid set cmd, key %s, version %d, vlen %ld\n", key, version, vlen);
         return false;
     }
     else
     {
         if (vlen > MAX_VALUE_LEN_WARN)
-            printf("set large value for key %s, version %d, vlen %ld", key, version, vlen);
+            printf("set large value for key %s, version %d, vlen %ld\n", key, version, vlen);
     }
 
     bool suc = false;

@@ -4,39 +4,34 @@ namespace rtidb {
 namespace storage {
 ObjectStore::ObjectStore(const ::rtidb::api::TableMeta &table_meta, const std::string &db_root_path):
     db_(NULL), tid_(table_meta.tid()), pid_(table_meta.pid()), name_(table_meta.name()),
-    db_root_path_(db_root_path), is_leader_(false), path_(NULL) {
+    db_root_path_(db_root_path), is_leader_(false), storage_mode_(table_meta.storage_mode()) {
 }
 
 bool ObjectStore::Init() {
-    path_ = (char*)malloc(sizeof(char)*db_root_path_.length() + 1);
-    memcpy(path_, db_root_path_.c_str(), db_root_path_.length());
-    db_ = hs_open(path_, 1, 0, 16);
-    return true;
+    db_root_path_ = db_root_path_ + "/" + std::to_string(tid_) + "_" + std::to_string(pid_) + "/data";
+    char* path = const_cast<char*>(db_root_path_.data());
+    db_ = hs_open(path, 1, 0, 16);
+    if (db_ != NULL) {
+        return true;
+    }
+    return false;
 }
 
 ObjectStore::~ObjectStore() {
     DoFlash();
     hs_close(db_);
-    if (path_ != NULL) {
-        free(path_);
-    }
 }
 
 bool ObjectStore::Store(const std::string &key, const std::string &value) {
-    char* hs_key = (char*) malloc(sizeof(char)*key.length());
-    char* hs_value = (char*) malloc(sizeof(char)*value.length());
-    bool ret = hs_set(db_, hs_key, hs_value, value.length(), 0, 0);
-    free(hs_key);
-    free(hs_value);
-    return ret;
+    char* hs_key = const_cast<char*>(key.data());
+    char* hs_value = const_cast<char*>(value.data());
+    return hs_set(db_, hs_key, hs_value, value.length(), 0, 0);
 }
 
 rtidb::base::Slice ObjectStore::Get(const std::string& key) {
-    char* hs_key = (char*) malloc(sizeof(char)*key.length());
-    memcpy(hs_key, key.c_str(), key.length());
+    char* hs_key = const_cast<char*>(key.data());
     uint32_t vlen = 0, flag;
     char* ch = hs_get(db_, hs_key, &vlen, &flag);
-    free(hs_key);
     if (ch == NULL) {
         return rtidb::base::Slice();
     }
@@ -45,6 +40,10 @@ rtidb::base::Slice ObjectStore::Get(const std::string& key) {
 
 void ObjectStore::DoFlash() {
     hs_flush(db_, 1024, 60 * 10);
+}
+
+::rtidb::common::StorageMode ObjectStore::GetStorageMode() const {
+    return storage_mode_;
 }
 
 }

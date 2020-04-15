@@ -49,6 +49,7 @@ namespace rtidb {
 namespace tablet {
 
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<RelationalTable> > > RelationalTables;
+typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<ObjectStore>>> ObjectStores;
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Table> > > Tables;
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<LogReplicator> > > Replicators;
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Snapshot> > > Snapshots;
@@ -326,6 +327,8 @@ private:
     std::shared_ptr<Table> GetTable(uint32_t tid, uint32_t pid);
     // Get table by table id , and Need external synchronization  
     std::shared_ptr<Table> GetTableUnLock(uint32_t tid, uint32_t pid);
+    std::shared_ptr<ObjectStore> GetObjectStore(uint32_t tid, uint32_t pid);
+    std::shared_ptr<ObjectStore> GetObjectStoreUnLock(uint32_t tid, uint32_t pid);
     //std::shared_ptr<DiskTable> GetDiskTable(uint32_t tid, uint32_t pid);
     //std::shared_ptr<DiskTable> GetDiskTableUnLock(uint32_t tid, uint32_t pid);
     std::shared_ptr<RelationalTable> GetRelationalTableUnLock(uint32_t tid, uint32_t pid);
@@ -474,8 +477,7 @@ private:
     std::map<::rtidb::common::StorageMode, std::vector<std::string>> mode_root_paths_;
     std::map<::rtidb::common::StorageMode, std::vector<std::string>> mode_recycle_root_paths_;
     std::atomic<bool> follower_;
-    ObjectStore* object_store_;
-    bool has_object_store_;
+    ObjectStores object_stores_;
 };
 
 }

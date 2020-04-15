@@ -91,8 +91,7 @@ TabletImpl::TabletImpl():tables_(),mu_(), gc_pool_(FLAGS_gc_pool_size),
     replicators_(), snapshots_(), zk_client_(NULL),
     keep_alive_pool_(1), task_pool_(FLAGS_task_pool_size),
     io_pool_(FLAGS_io_pool_size), snapshot_pool_(1), server_(NULL),
-    mode_root_paths_(), mode_recycle_root_paths_(), object_store_(NULL),
-    has_object_store_(false) {
+    mode_root_paths_(), mode_recycle_root_paths_(), object_stores_() {
     follower_.store(false);
 }
 
@@ -417,9 +416,24 @@ void TabletImpl::Get(RpcController* controller,
     brpc::ClosureGuard done_guard(done);
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     std::shared_ptr<RelationalTable> r_table;
+    std::shared_ptr<ObjectStore> o_table;
     if (!table) {
-        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-        r_table = GetRelationalTableUnLock(request->tid(), request->pid());
+        std::shared_ptr<ObjectStore> object_store = GetObjectStore(request->tid(), request->pid());
+        if (object_store) {
+            rtidb::base::Slice slice = object_store->Get(request->key());
+            if (slice.size() > 0) {
+                std::string *value = response->mutable_value();
+                value->assign(slice.data(), slice.size());
+                response->set_code(::rtidb::base::ReturnCode::kOk);
+            } else {
+                response->set_code(::rtidb::base::ReturnCode::kKeyNotFound);
+                response->set_msg("key not found");
+            }
+            const char* ch = slice.data();
+            delete[] ch;
+            return;
+        }
+        r_table = GetRelationalTable(request->tid(), request->pid());
         if (!r_table) {
             PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
             response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
@@ -511,16 +525,6 @@ void TabletImpl::Get(RpcController* controller,
             default:
                 return;
         }
-    } else if (object_store_ != NULL && request->tid() == object_store_->tid()) {
-        rtidb::base::Slice slice = object_store_->Get(request->key());
-        if (slice.size() > 0) {
-            std::string* value = response->mutable_value();
-            value->assign(slice.data(), slice.size());
-            response->set_code(::rtidb::base::ReturnCode::kOk);
-        } else {
-            response->set_code(::rtidb::base::ReturnCode::kKeyNotFound);
-            response->set_msg("key not found");
-        }
     } else {
         std::string * value = response->mutable_value(); 
         bool ok = false;
@@ -597,8 +601,19 @@ void TabletImpl::Put(RpcController* controller,
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     std::shared_ptr<RelationalTable> r_table;
     if (!table) {
-        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-        r_table = GetRelationalTableUnLock(request->tid(), request->pid());
+        std::shared_ptr<ObjectStore> object_store = GetObjectStore(request->tid(), request->pid());
+        if (object_store) {
+            bool ok = object_store->Store(request->pk(), request->value());
+            if (!ok) {
+                PDLOG(WARNING, "object store put failed");
+                response->set_code(::rtidb::base::ReturnCode::kPutFailed);
+                response->set_msg("put failed");
+            } else {
+                response->set_code(::rtidb::base::ReturnCode::kOk);
+            }
+            return;
+        }
+        r_table = GetRelationalTable(request->tid(), request->pid());
         if (!r_table) {
             PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
             response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
@@ -693,14 +708,6 @@ void TabletImpl::Put(RpcController* controller,
             if (FLAGS_binlog_notify_on_put) {
                 replicator->Notify(); 
             }
-        }
-    } else if (object_store_ != NULL && request->tid() == object_store_->tid()) {
-        bool ok = object_store_->Store(request->pk(), request->value());
-        if (!ok) {
-            response->set_code(::rtidb::base::ReturnCode::kPutFailed);
-            response->set_msg("put failed");
-        } else {
-            response->set_code(::rtidb::base::ReturnCode::kOk);
         }
     } else {
         bool ok = r_table->Put(request->value());
@@ -2771,12 +2778,22 @@ void TabletImpl::LoadTable(RpcController* controller,
             break;
         }
 
-        std::shared_ptr<Table> table = GetTable(tid, pid);
-        if (table) {
-            PDLOG(WARNING, "table with tid[%u] and pid[%u] exists", tid, pid);
-            response->set_code(::rtidb::base::ReturnCode::kTableAlreadyExists);
-            response->set_msg("table already exists");
-            break;
+        if (table_meta.table_type() == ::rtidb::type::kObjectStore) {
+            std::shared_ptr<ObjectStore> o_table = GetObjectStore(tid, pid);
+            if (o_table) {
+                PDLOG(WARNING, "table with tid[%u] and pid[%u] exists", tid, pid);
+                response->set_code(::rtidb::base::ReturnCode::kTableAlreadyExists);
+                response->set_msg("table already exists");
+                break;
+            }
+        } else {
+            std::shared_ptr<Table> table = GetTable(tid, pid);
+            if (table) {
+                PDLOG(WARNING, "table with tid[%u] and pid[%u] exists", tid, pid);
+                response->set_code(::rtidb::base::ReturnCode::kTableAlreadyExists);
+                response->set_msg("table already exists");
+                break;
+            }
         }
 
         UpdateTableMeta(db_path, &table_meta);
@@ -2802,6 +2819,16 @@ void TabletImpl::LoadTable(RpcController* controller,
             PDLOG(INFO, "start to recover table with id %u pid %u name %s seg_cnt %d idx_cnt %u schema_size %u ttl %llu", tid, 
                     pid, name.c_str(), seg_cnt, table_meta.dimensions_size(), table_meta.schema().size(), ttl);
             task_pool_.AddTask(boost::bind(&TabletImpl::LoadTableInternal, this, tid, pid, task_ptr));
+        } else if (table_meta.table_type() == ::rtidb::type::kObjectStore) {
+            std::shared_ptr<ObjectStore> o_table = std::make_shared<ObjectStore>(table_meta, db_path);
+            if (!o_table->Init()) {
+                PDLOG(INFO, "init object store failed");
+                response->set_code(::rtidb::base::ReturnCode::kCreateTableFailed);
+                response->set_msg("init object store failed");
+                break;
+            }
+            std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+            object_stores_[tid].insert(std::make_pair(pid, o_table));
         } else {
             task_pool_.AddTask(boost::bind(&TabletImpl::LoadDiskTableInternal, this, tid, pid, table_meta, task_ptr));
             PDLOG(INFO, "load table tid[%u] pid[%u] storage mode[%s]", 
@@ -3049,30 +3076,40 @@ int32_t TabletImpl::DeleteRelationalTableInternal(uint32_t tid, uint32_t pid, st
     std::string recycle_bin_root_path;
     int32_t code = -1;
     do {
-        std::shared_ptr<RelationalTable> table;
-        {
-            std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-            table = GetRelationalTableUnLock(tid, pid);
-        }
-        if (!table) {
+        std::shared_ptr<RelationalTable> table = GetRelationalTable(tid, pid);
+        std::shared_ptr<ObjectStore> o_table = GetObjectStore(tid, pid);
+        if (!table && !o_table) {
             PDLOG(WARNING, "table is not exist. tid %u pid %u", tid, pid);
             break;
         }
-        bool ok = ChooseDBRootPath(tid, pid, table->GetStorageMode(), root_path);
+        ::rtidb::common::StorageMode sm = rtidb::common::StorageMode::kHDD;
+        if (table) {
+            sm = table->GetStorageMode();
+        } else {
+            sm = o_table->GetStorageMode();
+        }
+        bool ok = ChooseDBRootPath(tid, pid, sm, root_path);
         if (!ok) {
             PDLOG(WARNING, "fail to get db root path. tid %u pid %u", tid, pid);
             break;
         }
-        ok = ChooseRecycleBinRootPath(tid, pid, table->GetStorageMode(), recycle_bin_root_path);
+        ok = ChooseRecycleBinRootPath(tid, pid, sm, recycle_bin_root_path);
         if (!ok) {
             PDLOG(WARNING, "fail to get recycle bin root path. tid %u pid %u", tid, pid);
             break;
         }
-        {
+        if (table) {
             std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-            tables_[tid].erase(pid);
-            if (tables_[tid].empty()) {
-                tables_.erase(tid);
+            relational_tables_[tid].erase(pid);
+            if (relational_tables_[tid].empty()) {
+                relational_tables_.erase(tid);
+            }
+        }
+        if (o_table) {
+            std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+            object_stores_[tid].erase(pid);
+            if (object_stores_[tid].empty()) {
+                object_stores_.erase(tid);
             }
         }
         code = 0;
@@ -3137,6 +3174,23 @@ void TabletImpl::CreateTable(RpcController* controller,
             response->set_msg("table already exists");
             return;
         }
+    } else {
+        bool exists = false;
+        std::shared_ptr<RelationalTable> r_table = GetRelationalTable(tid, pid);
+        if (r_table) {
+            exists = true;
+            PDLOG(WARNING, "relation table with tid[%u] and pid[%u] exists", tid, pid);
+        }
+        std::shared_ptr<ObjectStore> o_table = GetObjectStore(tid, pid);
+        if (o_table) {
+            exists = true;
+            PDLOG(WARNING, "object store tid[%u] and pid[%u] exists", tid, pid);
+        }
+        if (exists) {
+            response->set_code(::rtidb::base::ReturnCode::kTableAlreadyExists);
+            response->set_msg("table already exists");
+            return;
+        }
     }
     std::string name = table_meta->name();
     PDLOG(INFO, "start creating table tid[%u] pid[%u] with mode %s", 
@@ -3176,10 +3230,10 @@ void TabletImpl::CreateTable(RpcController* controller,
                 return;
             }
         } else {
+            PDLOG(WARNING, "unkown table type");
             response->set_code(::rtidb::base::ReturnCode::kUnkownTableType);
             response->set_msg("unkown table type");
             return;
-
         }
     } else if (table_meta->storage_mode() != rtidb::common::kMemory) {
         std::string msg;
@@ -3211,8 +3265,6 @@ void TabletImpl::CreateTable(RpcController* controller,
             PDLOG(WARNING, "replicator with tid %u and pid %u does not exist", tid, pid);
             return;
         }
-        response->set_code(::rtidb::base::ReturnCode::kOk);
-        response->set_msg("ok");
         table->SetTableStat(::rtidb::storage::kNormal);
         replicator->StartSyncing();
         io_pool_.DelayTask(FLAGS_binlog_sync_to_disk_interval, boost::bind(&TabletImpl::SchedSyncDisk, this, tid, pid));
@@ -3224,14 +3276,19 @@ void TabletImpl::CreateTable(RpcController* controller,
     } else {
         std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
         std::shared_ptr<RelationalTable> table = GetRelationalTableUnLock(tid, pid);
-        if (!table) {
+        std::shared_ptr<ObjectStore> o_table = GetObjectStoreUnLock(tid, pid);
+        if (!table && !o_table) {
             response->set_code(::rtidb::base::ReturnCode::kCreateTableFailed);
             response->set_msg("table is not exist");
             PDLOG(WARNING, "table with tid %u and pid %u does not exist", tid, pid);
             return; 
         }
-        table->SetTableStat(::rtidb::storage::kNormal);
+        if (table) {
+            table->SetTableStat(::rtidb::storage::kNormal);
+        }
     }
+    response->set_code(::rtidb::base::ReturnCode::kOk);
+    response->set_msg("ok");
 }
 
 void TabletImpl::ExecuteGc(RpcController* controller,
@@ -3783,30 +3840,17 @@ int TabletImpl::CreateRelationalTableInternal(const ::rtidb::api::TableMeta* tab
         msg.assign("fail to get table db root path");
         return -1;
     }
-    RelationalTable* table_ptr = new RelationalTable(*table_meta, db_root_path);
+    std::shared_ptr<RelationalTable> table_ptr = std::make_shared<RelationalTable>(*table_meta, db_root_path);
     if (!table_ptr->Init()) {
         return -1;
     }
     PDLOG(INFO, "create relation table. tid %u pid %u", tid, pid);
     std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-    std::shared_ptr<RelationalTable> table = GetRelationalTableUnLock(tid, pid);
-    if (table) {
-        PDLOG(WARNING, "table with tid[%u] and pid[%u] exists", tid, pid);
-        return -1;
-    }
-    table.reset(table_ptr);
-    relational_tables_[table_meta->tid()].insert(std::make_pair(table_meta->pid(), table));
+    relational_tables_[table_meta->tid()].insert(std::make_pair(table_meta->pid(), table_ptr));
     return 0;
 }
 
 int TabletImpl::CreateObjectStore(const ::rtidb::api::TableMeta* table_meta, std::string& msg) {
-    {
-        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-        if (has_object_store_) {
-            msg.assign("already have object store");
-        }
-        return -1;
-    }
     uint32_t tid = table_meta->tid();
     uint32_t pid = table_meta->pid();
     std::string db_root_path;
@@ -3816,14 +3860,15 @@ int TabletImpl::CreateObjectStore(const ::rtidb::api::TableMeta* table_meta, std
         PDLOG(WARNING, "fail to get table db root path");
         return -1;
     }
-
-    ObjectStore* table_ptr = new ObjectStore(*table_meta, db_root_path);
-    if (!table_ptr->Init()) {
+    std::shared_ptr<ObjectStore> object_store = std::make_shared<ObjectStore>(*table_meta, db_root_path);
+    if (!object_store->Init()) {
+        PDLOG(WARNING, "init object store failed");
         return -1;
     }
     PDLOG(INFO, "create object store. tid %u pid %u", tid, pid);
     std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-    has_object_store_ = true;
+    object_stores_[table_meta->tid()].insert(std::make_pair(table_meta->pid(), object_store));
+    return 0;
 }
 
 void TabletImpl::DropTable(RpcController* controller,
@@ -3841,7 +3886,7 @@ void TabletImpl::DropTable(RpcController* controller,
     }
     uint32_t tid = request->tid();
     uint32_t pid = request->pid();
-    PDLOG(INFO, "drop table. tid[%u] pid[%u]", tid, pid);
+    PDLOG(INFO, "drop table. tid[%u] pid[%u] %s", tid, pid, rtidb::type::TableType_Name(request->table_type()).c_str());
     do {
         if (!request->has_table_type() || request->table_type() == ::rtidb::type::kTimeSeries) {
             std::shared_ptr<Table> table = GetTable(tid, pid);
@@ -3859,12 +3904,11 @@ void TabletImpl::DropTable(RpcController* controller,
             }
             task_pool_.AddTask(boost::bind(&TabletImpl::DeleteTableInternal, this, tid, pid, task_ptr));
         } else {
-            std::shared_ptr<RelationalTable> table;
-            {
-                std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-                table = GetRelationalTableUnLock(request->tid(), request->pid());
+            std::shared_ptr<ObjectStore> o_table = GetObjectStore(tid, pid);
+            if (!o_table) {
+                std::shared_ptr<RelationalTable> table = GetRelationalTable(tid, pid);
                 if (!table) {
-                    PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
+                    PDLOG(WARNING, "table is not exist. tid %u, pid %u", tid, pid);
                     response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
                     response->set_msg("table is not exist");
                     break;
@@ -4147,6 +4191,22 @@ std::shared_ptr<Table> TabletImpl::GetTableUnLock(uint32_t tid, uint32_t pid) {
         }
     }
     return std::shared_ptr<Table>();
+}
+
+std::shared_ptr<ObjectStore> TabletImpl::GetObjectStore(uint32_t tid, uint32_t pid) {
+    std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+    return GetObjectStoreUnLock(tid, pid);
+}
+
+std::shared_ptr<ObjectStore> TabletImpl::GetObjectStoreUnLock(uint32_t tid, uint32_t pid) {
+    ObjectStores::iterator it = object_stores_.find(tid);
+    if (it != object_stores_.end()) {
+        auto tit = it->second.find(pid);
+        if (tit != it->second.end()) {
+            return tit->second;
+        }
+    }
+    return std::shared_ptr<ObjectStore>();
 }
 
 std::shared_ptr<RelationalTable> TabletImpl::GetRelationalTableUnLock(uint32_t tid, uint32_t pid) {

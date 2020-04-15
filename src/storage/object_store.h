@@ -32,6 +32,8 @@ public:
 
     rtidb::base::Slice Get(const std::string& key);
 
+    ::rtidb::common::StorageMode GetStorageMode() const;
+
 private:
     void DoFlash();
 
@@ -41,8 +43,7 @@ private:
     std::string name_;
     std::string db_root_path_;
     bool is_leader_;
-    char* path_;
-
+    ::rtidb::common::StorageMode storage_mode_;
 };
 
 }

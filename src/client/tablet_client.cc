@@ -817,9 +817,7 @@ bool TabletClient::DropTable(uint32_t id, uint32_t pid,
     if (task_info) {
         request.mutable_task_info()->CopyFrom(*task_info);
     }
-    if (table_type == ::rtidb::type::kRelational) {
-        request.set_table_type(::rtidb::type::kRelational);
-    }
+    request.set_table_type(table_type);
     ::rtidb::api::DropTableResponse response;
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::DropTable,
             &request, &response, FLAGS_request_timeout_ms, 1);

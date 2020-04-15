@@ -2263,8 +2263,12 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::Tab
     }
     ::rtidb::api::TableMeta table_meta;
     std::string schema;
-    if (table_info->has_table_type() && table_info->table_type() == ::rtidb::type::kRelational) {
-        table_meta.set_table_type(::rtidb::type::kRelational);
+    if (table_info->has_table_type()) {
+        if (table_info->table_type() == ::rtidb::type::kRelational) {
+            table_meta.set_table_type(::rtidb::type::kRelational);
+        } else if (table_info->table_type() == rtidb::type::kObjectStore) {
+            table_meta.set_table_type(::rtidb::type::kObjectStore);
+        }
     } else {
         for (uint32_t i = 0; i < columns.size(); i++) {
             if (columns[i].add_ts_idx) {
