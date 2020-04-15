@@ -54,7 +54,6 @@ class RowIRContext {
     RowIRInfo info_;
     std::unique_ptr<RowDecodeIRBuilder> row_ir_builder_;
     std::unique_ptr<WindowDecodeIRBuilder> window_ir_builder_;
-
 };
 
 class ExprIRBuilder {
