@@ -136,8 +136,6 @@ class TestCaseBase(unittest.TestCase):
                     time.sleep(10)
             if conf.cluster_mode == "cluster":
                 self.clear_ns_table(self.ns_leader_r)
-                self.remove_replica_cluster(self.ns_leader, self.alias)
-                time.sleep(3)
         except Exception as e:
             traceback.print_exc(file=sys.stdout)
         infoLogger.info('\n\n' + '=' * 50 + ' TEARDOWN FINISHED ' + '=' * 50 + '\n' * 5)
@@ -290,6 +288,10 @@ class TestCaseBase(unittest.TestCase):
 
     def ns_add_table_field(self, endpoint, name ,col_name, col_type):
         cmd = 'addtablefield {} {} {}'.format(name, col_name, col_type);
+        return self.run_client(endpoint, cmd, 'ns_client')
+
+    def ns_addindex(self, endpoint, name, index_name, col_name='', ts_name=''):
+        cmd = 'addindex {} {} {} {}'.format(name, index_name, col_name, ts_name)
         return self.run_client(endpoint, cmd, 'ns_client')
 
     def parse_scan_result(self, result):    

@@ -92,7 +92,7 @@ public:
     }
 
     inline uint32_t GetIdxCnt() const {
-        return idx_cnt_;
+        return table_index_.Size();
     }
 
     inline uint32_t GetPid() const {
@@ -153,6 +153,13 @@ public:
 
     std::shared_ptr<IndexDef> GetIndex(uint32_t idx) {
         return table_index_.GetIndex(idx);
+    }
+
+    void SetIndexReady(uint32_t idx) {
+        std::shared_ptr<IndexDef> index = table_index_.GetIndex(idx);
+        if (index) {
+            index->SetStatus(IndexStatus::kReady);
+        }
     }
 
     inline std::map<std::string, uint8_t>& GetTSMapping() {
@@ -221,7 +228,6 @@ protected:
     std::string name_;
     uint32_t id_;
     uint32_t pid_;
-    uint32_t idx_cnt_;
     std::atomic<uint64_t> diskused_;
     std::atomic<uint64_t> abs_ttl_;
     std::atomic<uint64_t> new_abs_ttl_;

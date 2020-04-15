@@ -274,6 +274,7 @@ message TraverseRequest {
     optional uint64 ts = 6;
     optional bool enable_remove_duplicated_record = 7 [default=false];
     optional string ts_name = 8;
+    optional uint64 snapshot_id = 9;
 }
 
 message TraverseResponse {
@@ -284,6 +285,7 @@ message TraverseResponse {
     optional string pk = 5;
     optional uint64 ts = 6;
     optional bool is_finish = 7;
+    optional uint64 snapshot_id = 8;
 }
 
 message ScanResponse {

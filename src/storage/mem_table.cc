@@ -43,6 +43,7 @@ MemTable::MemTable(const std::string& name,
         pid, ttl * 60 * 1000, true, 60 * 1000, mapping,
         ttl_type, ::rtidb::api::CompressType::kNoCompress),
         seg_cnt_(seg_cnt),
+        segments_(MAX_INDEX_NUM, NULL),
         enable_gc_(false), 
         record_cnt_(0), time_offset_(0),
         segment_released_(false), record_byte_size_(0) {}
@@ -51,7 +52,8 @@ MemTable::MemTable(const ::rtidb::api::TableMeta& table_meta) :
         Table(table_meta.storage_mode(), table_meta.name(), table_meta.tid(), table_meta.pid(),
                 0, true, 60 * 1000, std::map<std::string, uint32_t>(),
                 ::rtidb::api::TTLType::kAbsoluteTime, 
-                ::rtidb::api::CompressType::kNoCompress) {
+                ::rtidb::api::CompressType::kNoCompress),
+        segments_(MAX_INDEX_NUM, NULL) {
     seg_cnt_ = 8;
     enable_gc_ = false;
     record_cnt_ = 0;
@@ -68,10 +70,12 @@ MemTable::~MemTable() {
     }
     Release();
     for (uint32_t i = 0; i < segments_.size(); i++) {
-        for (uint32_t j = 0; j < seg_cnt_; j++) {
-            delete segments_[i][j];
+        if (segments_[i] != NULL) {
+            for (uint32_t j = 0; j < seg_cnt_; j++) {
+                delete segments_[i][j];
+            }
+            delete[] segments_[i];
         }
-        delete[] segments_[i];
     }
     segments_.clear();
 }
@@ -96,12 +100,12 @@ bool MemTable::Init() {
             key_entry_max_height_ = FLAGS_absolute_default_skiplist_height;
         }
     }
-    for (uint32_t i = 0; i < idx_cnt_; i++) {
+    uint32_t idx_cnt = GetIdxCnt();
+    for (uint32_t i = 0; i < idx_cnt; i++) {
         std::shared_ptr<IndexDef> index_def = GetIndex(i);
         if (!index_def || !index_def->IsReady()) {
             PDLOG(WARNING, "init failed, index %u is not exist. tid %u pid %u",
                         i, id_, pid_);
-            segments_.push_back(NULL);
             continue;
         }
         const std::vector<uint32_t> ts_vec =  index_def->GetTsColumn();
@@ -109,16 +113,17 @@ bool MemTable::Init() {
         if (!ts_vec.empty()) {
             for (uint32_t j = 0; j < seg_cnt_; j++) {
                 seg_arr[j] = new Segment(key_entry_max_height_, ts_vec);
-                PDLOG(INFO, "init %u, %u segment. height %u, ts col num %u", 
-                    i, j, key_entry_max_height_, ts_vec.size());
+                PDLOG(INFO, "init %u, %u segment. height %u, ts col num %u. tid %u pid %u", 
+                    i, j, key_entry_max_height_, ts_vec.size(), id_, pid_);
             }
         } else {
             for (uint32_t j = 0; j < seg_cnt_; j++) {
                 seg_arr[j] = new Segment(key_entry_max_height_);
-                PDLOG(INFO, "init %u, %u segment. height %u", i, j, key_entry_max_height_);
+                PDLOG(INFO, "init %u, %u segment. height %u tid %u pid %u", 
+                        i, j, key_entry_max_height_, id_, pid_);
             }
         }
-        segments_.push_back(seg_arr);
+        segments_[i] = seg_arr;
     }
     if (abs_ttl_ > 0 || lat_ttl_ > 0) {
         enable_gc_ = true;
@@ -177,7 +182,7 @@ bool MemTable::Put(uint64_t time,
     for (;it != dimensions.end(); ++it) {
         std::shared_ptr<IndexDef> index_def = GetIndex(it->idx());
         if (!index_def || !index_def->IsReady()) {
-            block->dim_cnt_down --;
+            block->dim_cnt_down--;
             continue;
         }
         Slice spk(it->key());
@@ -255,7 +260,8 @@ bool MemTable::Put(const Slice& pk,
                 uint64_t time, 
                 DataBlock* row,
                 uint32_t idx) {
-    if (idx >= idx_cnt_) {
+    std::shared_ptr<IndexDef> index_def = GetIndex(idx);
+    if (!index_def || !index_def->IsReady()) {
         return false;
     }
     uint32_t seg_idx = 0;
@@ -268,7 +274,8 @@ bool MemTable::Put(const Slice& pk,
 }
 
 bool MemTable::Delete(const std::string& pk, uint32_t idx) {
-    if (idx >= idx_cnt_) {
+    std::shared_ptr<IndexDef> index_def = GetIndex(idx);
+    if (!index_def || !index_def->IsReady()) {
         return false;
     }
     Slice spk(pk);
@@ -314,7 +321,8 @@ void MemTable::SchedGc() {
     uint64_t gc_idx_cnt = 0;
     uint64_t gc_record_cnt = 0;
     uint64_t gc_record_byte_size = 0;
-    for (uint32_t i = 0; i < idx_cnt_; i++) {
+    uint32_t idx_cnt = GetIdxCnt();
+    for (uint32_t i = 0; i < idx_cnt; i++) {
         std::map<uint32_t, TTLDesc> cur_ttl_map;
         std::shared_ptr<IndexDef> index_def = GetIndex(i);
         if (!index_def) {
@@ -527,9 +535,6 @@ bool MemTable::IsExpire(const LogEntry& entry) {
 }
 
 int MemTable::GetCount(uint32_t index, const std::string& pk, uint64_t& count) {
-    if (index >= idx_cnt_) {
-        return -1;
-    }
     std::shared_ptr<IndexDef> index_def = GetIndex(index);
     if (index_def && !index_def->IsReady()) {
         return -1;
@@ -573,11 +578,6 @@ TableIterator* MemTable::NewIterator(const std::string& pk, Ticket& ticket) {
 }
 
 TableIterator* MemTable::NewIterator(uint32_t index, const std::string& pk, Ticket& ticket) {
-    if (index >= idx_cnt_ || index >= segments_.size()) {
-        PDLOG(WARNING, "invalid idx %u, the max idx cnt %u, segment size %u", 
-                        index, idx_cnt_, segments_.size());
-        return NULL;
-    }
     std::shared_ptr<IndexDef> index_def = GetIndex(index);
     if (!index_def || !index_def->IsReady()) {
         PDLOG(WARNING, "index %d not found in table, tid %u pid %u", index, id_, pid_);
@@ -621,7 +621,7 @@ uint64_t MemTable::GetRecordIdxByteSize() {
     uint64_t record_idx_byte_size = 0;
     const std::vector<std::shared_ptr<IndexDef>> indexs = GetAllIndex();
     for (const auto& index_def : indexs) {
-        if (index_def->IsReady() && index_def->GetId() < segments_.size()) {
+        if (index_def && index_def->IsReady()) {
             for (uint32_t j = 0; j < seg_cnt_; j++) {
                 record_idx_byte_size += segments_[index_def->GetId()][j]->GetIdxByteSize(); 
             }
@@ -634,7 +634,7 @@ uint64_t MemTable::GetRecordIdxCnt() {
     uint64_t record_idx_cnt = 0;
     const std::vector<std::shared_ptr<IndexDef>> indexs = GetAllIndex();
     for (const auto& index_def : indexs) {
-        if (index_def->IsReady() && index_def->GetId() < segments_.size()) {
+        if (index_def && index_def->IsReady()) {
             for (uint32_t j = 0; j < seg_cnt_; j++) {
                 record_idx_cnt += segments_[index_def->GetId()][j]->GetIdxCnt(); 
             }
@@ -647,7 +647,7 @@ uint64_t MemTable::GetRecordPkCnt() {
     uint64_t record_pk_cnt = 0;
     const std::vector<std::shared_ptr<IndexDef>> index_vec = GetAllIndex();
     for (const auto& index_def : index_vec) {
-        if (index_def->IsReady() && index_def->GetId() < segments_.size()) {
+        if (index_def && index_def->IsReady()) {
             for (uint32_t j = 0; j < seg_cnt_; j++) {
                 record_pk_cnt += segments_[index_def->GetId()][j]->GetPkCnt(); 
             }
@@ -658,9 +658,6 @@ uint64_t MemTable::GetRecordPkCnt() {
 
 bool MemTable::GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) {
     if (stat == NULL) {
-        return false;
-    }
-    if (idx >= idx_cnt_ || idx >= segments_.size()) {
         return false;
     }
     std::shared_ptr<IndexDef> index_def = GetIndex(idx);
@@ -684,27 +681,51 @@ bool MemTable::AddIndex(const ::rtidb::common::ColumnKey& column_key) {
                     column_key.index_name().c_str(), id_, pid_);
             return false;
         }
-        index_def->SetStatus(IndexStatus::kReady);
-        return true;
-    }
-    index_def = std::make_shared<IndexDef>(column_key.index_name(), table_index_.Size());
-    std::vector<uint32_t> ts_vec;
-    for (int idx = 0; idx < column_key.ts_name_size(); idx++) {
-        auto ts_iter = ts_mapping_.find(column_key.ts_name(idx));
-        if (ts_iter == ts_mapping_.end()) {
-            PDLOG(WARNING, "not found ts_name[%s]. tid %u pid %u", 
-                    column_key.ts_name(idx).c_str(), id_, pid_);
+        index_def->SetStatus(IndexStatus::kLoading);
+    } else {
+        index_def = std::make_shared<IndexDef>(column_key.index_name(), 
+                table_index_.Size(), IndexStatus::kLoading);
+        std::vector<uint32_t> ts_vec;
+        for (int idx = 0; idx < column_key.ts_name_size(); idx++) {
+            auto ts_iter = ts_mapping_.find(column_key.ts_name(idx));
+            if (ts_iter == ts_mapping_.end()) {
+                PDLOG(WARNING, "not found ts_name[%s]. tid %u pid %u", 
+                        column_key.ts_name(idx).c_str(), id_, pid_);
+                return false;
+            }
+            if (std::find(ts_vec.begin(), ts_vec.end(), ts_iter->second) != ts_vec.end()) {
+                PDLOG(WARNING, "has repeated ts_name[%s]. tid %u pid %u", 
+                        column_key.ts_name(idx).c_str(), id_, pid_);
+                return false;
+            }
+            ts_vec.push_back(ts_iter->second);
+        }
+        index_def->SetTsColumn(ts_vec);
+        if (table_index_.AddIndex(index_def) < 0) {
+            PDLOG(WARNING, "add index failed. tid %u pid %u", id_, pid_);
             return false;
         }
-        if (std::find(ts_vec.begin(), ts_vec.end(), ts_iter->second) != ts_vec.end()) {
-            PDLOG(WARNING, "has repeated ts_name[%s]. tid %u pid %u", 
-                    column_key.ts_name(idx).c_str(), id_, pid_);
-            return false;
-        }
-        ts_vec.push_back(ts_iter->second);
     }
-    index_def->SetTsColumn(ts_vec);
-    table_index_.AddIndex(index_def);
+    uint32_t index_id = index_def->GetId();
+    const std::vector<uint32_t> ts_vec =  index_def->GetTsColumn();
+    Segment** seg_arr = new Segment*[seg_cnt_];
+    if (!ts_vec.empty()) {
+        for (uint32_t j = 0; j < seg_cnt_; j++) {
+            seg_arr[j] = new Segment(key_entry_max_height_, ts_vec);
+            PDLOG(INFO, "init %u, %u segment. height %u, ts col num %u. tid %u pid %u", 
+                index_id, j, key_entry_max_height_, ts_vec.size(), id_, pid_);
+        }
+    } else {
+        for (uint32_t j = 0; j < seg_cnt_; j++) {
+            seg_arr[j] = new Segment(key_entry_max_height_);
+            PDLOG(INFO, "init %u, %u segment. height %u tid %u pid %u", 
+                    index_id, j, key_entry_max_height_, id_, pid_);
+        }
+    }
+    if (segments_[index_id] != NULL) {
+        delete segments_[index_id];
+    }
+    segments_[index_id] = seg_arr;
     return true;
 }
 
@@ -819,7 +840,7 @@ bool MemTableTraverseIterator::IsExpired() {
     } else if (ttl_type_ == ::rtidb::api::TTLType::kAbsAndLat) {
         return it_->GetKey() <= expire_value_.abs_ttl && record_idx_ > expire_value_.lat_ttl;
     } else {
-        return it_->GetKey() <= expire_value_.abs_ttl || record_idx_ > expire_value_.lat_ttl;
+        return ((it_->GetKey() <= expire_value_.abs_ttl) && (expire_value_.abs_ttl != 0)) || ((record_idx_ > expire_value_.lat_ttl) && (expire_value_.lat_ttl != 0));
     }
 }
 

@@ -13,7 +13,8 @@ public enum DataType {
     Varchar, //string
     Date,
     Timestamp,
-    Blob;
+    Blob,
+    String;
 
     public static Type.DataType valueFrom(DataType dataType) {
         switch (dataType) {
@@ -31,6 +32,8 @@ public enum DataType {
                 return Type.DataType.kDouble;
             case Varchar:
                 return Type.DataType.kVarchar;
+            case String:
+                return Type.DataType.kString;
             case Date:
                 return Type.DataType.kDate;
             case Timestamp:
@@ -58,6 +61,8 @@ public enum DataType {
                 return Double;
             case kVarchar:
                 return Varchar;
+            case kString:
+                return String;
             case kDate:
                 return Date;
             case kTimestamp:

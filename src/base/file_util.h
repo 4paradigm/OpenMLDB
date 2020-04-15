@@ -25,6 +25,8 @@ using ::baidu::common::WARNING;
 namespace rtidb {
 namespace base {
 
+static constexpr uint32_t BOLCK_SIZE = 4 * 1024;
+
 inline static bool Mkdir(const std::string& path) {
 
     const int dir_mode = 0777;
@@ -128,23 +130,23 @@ inline static int GetFileName(const std::string& path, std::vector<std::string>&
     return 0;
 }
 
-inline static int GetSize(const std::string& file_path, uint64_t& size) {
+inline static bool GetFileSize(const std::string& file_path, uint64_t& size) {
     if (file_path.empty()) {
         PDLOG(WARNING, "input path is empty");
-        return -1;
+        return false;
     }
     struct stat stat_buf;
     if (lstat(file_path.c_str(), &stat_buf) < 0) {
         PDLOG(WARNING, "stat path %s failed err[%d: %s]",
                        file_path.c_str(), errno, strerror(errno));
-        return -1;
+        return false;
     }
     if (S_ISREG(stat_buf.st_mode)) {
         size = stat_buf.st_size;
-        return 0;
+        return true;
     }
     PDLOG(WARNING, "[%s] is not a regular file", file_path.c_str());
-    return -1;
+    return false;
 }
 
 inline static bool RemoveDir(const std::string& path) {
@@ -243,6 +245,41 @@ static bool GetDirSizeRecur(const std::string& path, uint64_t& size) {
         }
     }
     return true;
+}
+
+__attribute__((unused))
+static bool CopyFile(const std::string& src_file, const std::string& desc_file) {
+    if (!IsExists(src_file)) {
+        return false;
+    }
+    FILE* f_src = fopen(src_file.c_str(), "r");
+    if (!f_src) {
+        return false;
+    }
+    FILE* f_desc = fopen(desc_file.c_str(), "w+");
+    if (!f_desc) {
+        fclose(f_src);
+        return false;
+    }
+    char buf[BOLCK_SIZE];
+    bool has_error = false;
+    while (!feof(f_src)) {
+        size_t r_len = fread(buf, sizeof(char), BOLCK_SIZE, f_src);
+        if (r_len < BOLCK_SIZE) {
+            if (!feof(f_src)) {
+                has_error = true;
+                break;
+            }
+        }
+        size_t w_len = fwrite(buf, sizeof(char), r_len, f_desc);
+        if (w_len < r_len) {
+            has_error = true;
+            break;
+        }
+    }
+    fclose(f_src);
+    fclose(f_desc);
+    return has_error == false;
 }
 
 }

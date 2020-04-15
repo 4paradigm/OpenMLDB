@@ -173,7 +173,9 @@ enum ReturnCode {
     kIndexAlreadyExists = 141,
     kDeleteIndexFailed = 142,
     kAddIndexFailed = 143,
-    kFailToCreateFile = 144,
+    kTableTypeMismatch = 145,
+    kDumpIndexDataFailed = 146,
+    kSnapshotRecycled = 147,
     kNameserverIsNotLeader = 300,
     kAutoFailoverIsEnabled = 301,
     kEndpointIsNotExist = 302,
@@ -235,8 +237,9 @@ enum ReturnCode {
     kRemoteTableHasANoAliveLeaderPartition = 514,
     kRequestHasNoZoneInfoOrTaskInfo = 515,
     kCurNameserverIsLeaderCluster = 516,
-    kIndexDeleteFailed = 601,
-    kDumpIndexDataFailed = 602,
+    kHasNotColumnKey = 517,
+    kTooManyPartition = 518,
+    kWrongColumnKey = 519,
     kOperatorNotSupport = 701,
 };
 
