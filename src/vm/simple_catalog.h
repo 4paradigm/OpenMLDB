@@ -18,6 +18,10 @@
 #ifndef SRC_VM_SIMPLE_CATALOG_H_
 #define SRC_VM_SIMPLE_CATALOG_H_
 
+#include <string>
+#include <map>
+#include <memory>
+
 #include "glog/logging.h"
 #include "proto/type.pb.h"
 #include "vm/catalog.h"
@@ -26,7 +30,7 @@ namespace fesql {
 namespace vm {
 
 class SimpleCatalogTableHandler : public TableHandler {
-  public:
+ public:
     explicit SimpleCatalogTableHandler(const std::string &db_name,
                                        const fesql::type::TableDef &);
 
@@ -40,23 +44,23 @@ class SimpleCatalogTableHandler : public TableHandler {
 
     const IndexHint &GetIndex() override;
 
-    std::unique_ptr<fesql::codec::WindowIterator>
-    GetWindowIterator(const std::string &) override;
+    std::unique_ptr<fesql::codec::WindowIterator> GetWindowIterator(
+        const std::string &) override;
 
     const uint64_t GetCount() override;
 
     base::Slice At(uint64_t pos) override;
 
-    std::shared_ptr<PartitionHandler>
-    GetPartition(std::shared_ptr<TableHandler> table_hander,
-                 const std::string &index_name) const override;
+    std::shared_ptr<PartitionHandler> GetPartition(
+        std::shared_ptr<TableHandler> table_hander,
+        const std::string &index_name) const override;
 
-    std::unique_ptr<IteratorV<uint64_t, base::Slice>>
-    GetIterator() const override;
+    std::unique_ptr<IteratorV<uint64_t, base::Slice>> GetIterator()
+        const override;
 
     IteratorV<uint64_t, base::Slice> *GetIterator(int8_t *addr) const override;
 
-  private:
+ private:
     std::string db_name_;
     fesql::type::TableDef table_def_;
 
@@ -68,17 +72,17 @@ class SimpleCatalogTableHandler : public TableHandler {
  * Simple Catalog without actual data bindings.
  */
 class SimpleCatalog : public Catalog {
-  public:
-    explicit SimpleCatalog();
+ public:
+    SimpleCatalog();
     SimpleCatalog(const SimpleCatalog &) = delete;
     ~SimpleCatalog();
 
     void AddDatabase(const fesql::type::Database &db);
     std::shared_ptr<type::Database> GetDatabase(const std::string &db) override;
-    std::shared_ptr<TableHandler>
-    GetTable(const std::string &db, const std::string &table_name) override;
+    std::shared_ptr<TableHandler> GetTable(
+        const std::string &db, const std::string &table_name) override;
 
-  private:
+ private:
     std::map<std::string,
              std::map<std::string, std::shared_ptr<SimpleCatalogTableHandler>>>
         table_handlers_;
@@ -86,6 +90,6 @@ class SimpleCatalog : public Catalog {
     std::map<std::string, std::shared_ptr<type::Database>> databases_;
 };
 
-} // namespace vm
-} // namespace fesql
-#endif // SRC_VM_SIMPLE_CATALOG_H_
+}  // namespace vm
+}  // namespace fesql
+#endif  // SRC_VM_SIMPLE_CATALOG_H_

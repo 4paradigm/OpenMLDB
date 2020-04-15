@@ -40,16 +40,16 @@ TEST_F(SimpleCatalogTest, test) {
     auto tbl_handle = catalog.GetTable("db", "t");
     ASSERT_TRUE(tbl_handle != nullptr);
     ASSERT_TRUE(tbl_handle->GetSchema() != nullptr);
-    ASSERT_TRUE(tbl_handle->GetName() == "t");
-    ASSERT_TRUE(tbl_handle->GetDatabase() == "db");
+    ASSERT_EQ(tbl_handle->GetName(), "t");
+    ASSERT_EQ(tbl_handle->GetDatabase(), "db");
 
-    ASSERT_TRUE(tbl_handle->GetWindowIterator("") == nullptr);
-    ASSERT_TRUE(tbl_handle->GetCount() == 0);
-    ASSERT_TRUE(tbl_handle->GetIterator() == nullptr);
+    ASSERT_EQ(tbl_handle->GetWindowIterator(""), nullptr);
+    ASSERT_EQ(tbl_handle->GetCount(), 0);
+    ASSERT_EQ(tbl_handle->GetIterator(), nullptr);
 }
 
-} // namespace vm
-} // namespace fesql
+}  // namespace vm
+}  // namespace fesql
 
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);

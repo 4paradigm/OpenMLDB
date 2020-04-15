@@ -14,7 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include "vm/simple_catalog.h"
 
 namespace fesql {
@@ -33,14 +32,13 @@ void SimpleCatalog::AddDatabase(const fesql::type::Database &db) {
     databases_[db.name()] = std::make_shared<fesql::type::Database>(db);
 }
 
-std::shared_ptr<type::Database>
-SimpleCatalog::GetDatabase(const std::string &db_name) {
+std::shared_ptr<type::Database> SimpleCatalog::GetDatabase(
+    const std::string &db_name) {
     return databases_[db_name];
 }
 
-std::shared_ptr<TableHandler>
-SimpleCatalog::GetTable(const std::string &db_name,
-                        const std::string &table_name) {
+std::shared_ptr<TableHandler> SimpleCatalog::GetTable(
+    const std::string &db_name, const std::string &table_name) {
     auto &dict = table_handlers_[db_name];
     return dict[table_name];
 }
@@ -98,8 +96,8 @@ const std::string &SimpleCatalogTableHandler::GetDatabase() {
     return this->db_name_;
 }
 
-std::unique_ptr<WindowIterator>
-SimpleCatalogTableHandler::GetWindowIterator(const std::string &) {
+std::unique_ptr<WindowIterator> SimpleCatalogTableHandler::GetWindowIterator(
+    const std::string &) {
     LOG(ERROR) << "Unsupported operation: GetWindowIterator()";
     return nullptr;
 }
@@ -124,11 +122,11 @@ SimpleCatalogTableHandler::GetIterator() const {
     return nullptr;
 }
 
-IteratorV<uint64_t, base::Slice> *
-SimpleCatalogTableHandler::GetIterator(int8_t *addr) const {
+IteratorV<uint64_t, base::Slice> *SimpleCatalogTableHandler::GetIterator(
+    int8_t *addr) const {
     LOG(ERROR) << "Unsupported operation: GetIterator()";
     return nullptr;
 }
 
-} // namespace vm
-} // namespace fesql
+}  // namespace vm
+}  // namespace fesql
