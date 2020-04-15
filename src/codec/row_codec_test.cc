@@ -324,11 +324,54 @@ TEST_F(CodecTest, ManyCol) {
             int64_t val = 0;
             ret = view.GetInt64(idx * 3 + 1, &val);
             ASSERT_EQ(ret, 0);
-            ASSERT_EQ(val, static_cast<int64_t >(ts + idx));
+            ASSERT_EQ(val, static_cast<int64_t>(ts + idx));
             double d = 0.0;
             ret = view.GetDouble(idx * 3 + 2, &d);
             ASSERT_EQ(ret, 0);
             ASSERT_DOUBLE_EQ(d, 1.3);
+        }
+    }
+}
+
+TEST_F(CodecTest, RowDecoderTest) {
+    std::vector<int> num_vec = {10, 20, 50, 100, 1000};
+    for (auto col_num : num_vec) {
+        ::fesql::type::TableDef def;
+        for (int i = 0; i < col_num; i++) {
+            ::fesql::type::ColumnDef* col = def.add_columns();
+            col->set_name("col" + std::to_string(i));
+            if (i % 3 == 0) {
+                col->set_type(::fesql::type::kVarchar);
+            } else if (i % 3 == 1) {
+                col->set_type(::fesql::type::kInt64);
+            } else if (i % 3 == 2) {
+                col->set_type(::fesql::type::kDouble);
+            }
+        }
+
+        RowDecoder decoder(def.columns());
+        for (int i = 0; i < col_num; i++) {
+            if (i % 3 == 0) {
+                uint32_t offset;
+                uint32_t next_offset;
+                uint32_t str_start_offset;
+                fesql::type::Type type;
+                ASSERT_TRUE(decoder.GetStringFieldOffset(
+                    "col" + std::to_string(i), &offset, &next_offset,
+                    &str_start_offset));
+            } else if (i % 3 == 1) {
+                uint32_t offset;
+                fesql::type::Type type;
+                ASSERT_TRUE(decoder.GetPrimayFieldOffsetType(
+                    "col" + std::to_string(i), &offset, &type));
+                ASSERT_EQ(::fesql::type::kInt64, type);
+            } else if (i % 3 == 2) {
+                uint32_t offset;
+                fesql::type::Type type;
+                ASSERT_TRUE(decoder.GetPrimayFieldOffsetType(
+                    "col" + std::to_string(i), &offset, &type));
+                ASSERT_EQ(::fesql::type::kDouble, type);
+            }
         }
     }
 }

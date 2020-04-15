@@ -38,7 +38,7 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                     return new DataRunner(id_++, provider->table_handler_);
                 }
                 case kProviderTypeRequest: {
-                    return new RequestRunner(id_++, op->output_schema);
+                    return new RequestRunner(id_++, op->output_schema_);
                 }
                 default: {
                     status.msg = "fail to support data provider type " +

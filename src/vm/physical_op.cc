@@ -41,7 +41,10 @@ bool PhysicalUnaryNode::InitSchema() {
         LOG(WARNING) << "InitSchema fail: producers is empty or null";
         return false;
     }
-    output_schema.CopyFrom(producers_[0]->output_schema);
+    output_schema_.CopyFrom(producers_[0]->output_schema_);
+    for (auto pair : producers_[0]->output_name_schema_list_) {
+        output_name_schema_list_.push_back(pair);
+    }
     PrintSchema();
     return true;
 }
@@ -50,7 +53,10 @@ bool PhysicalBinaryNode::InitSchema() {
         LOG(WARNING) << "InitSchema fail: producers is empty or null";
         return false;
     }
-    output_schema.CopyFrom(producers_[0]->output_schema);
+    output_schema_.CopyFrom(producers_[0]->output_schema_);
+    for (auto pair : producers_[0]->output_name_schema_list_) {
+        output_name_schema_list_.push_back(pair);
+    }
     PrintSchema();
     return true;
 }
@@ -177,8 +183,14 @@ bool PhysicalJoinNode::InitSchema() {
                         "producer is null";
         return false;
     }
-    output_schema.CopyFrom(producers_[0]->output_schema);
-    output_schema.MergeFrom(producers_[1]->output_schema);
+    output_schema_.CopyFrom(producers_[0]->output_schema_);
+    output_schema_.MergeFrom(producers_[1]->output_schema_);
+    for (auto pair : producers_[0]->output_name_schema_list_) {
+        output_name_schema_list_.push_back(pair);
+    }
+    for (auto right_pair : producers_[1]->output_name_schema_list_) {
+        output_name_schema_list_.push_back(right_pair);
+    }
     PrintSchema();
     return false;
 }
@@ -225,7 +237,9 @@ bool PhysicalDataProviderNode::InitSchema() {
     if (table_handler_) {
         auto schema = table_handler_->GetSchema();
         if (schema) {
-            output_schema.CopyFrom(*schema);
+            output_schema_.CopyFrom(*schema);
+            output_name_schema_list_.push_back(std::make_pair(
+                table_handler_->GetName(), table_handler_->GetSchema()));
             PrintSchema();
             return true;
         } else {
@@ -239,17 +253,20 @@ bool PhysicalDataProviderNode::InitSchema() {
 }
 void PhysicalOpNode::PrintSchema() {
     std::stringstream ss;
-    for (int32_t i = 0; i < output_schema.size(); i++) {
+    for (int32_t i = 0; i < output_schema_.size(); i++) {
         if (i > 0) {
             ss << "\n";
         }
-        const type::ColumnDef& column = output_schema.Get(i);
+        const type::ColumnDef& column = output_schema_.Get(i);
         ss << column.name() << " " << type::Type_Name(column.type());
     }
     DLOG(INFO) << "\n" << ss.str();
 }
 bool PhysicalUnionNode::InitSchema() {
-    output_schema.CopyFrom(producers_[0]->output_schema);
+    output_schema_.CopyFrom(producers_[0]->output_schema_);
+    for (auto pair : producers_[0]->output_name_schema_list_) {
+        output_name_schema_list_.push_back(pair);
+    }
     PrintSchema();
     return true;
 }
@@ -276,7 +293,10 @@ void PhysicalRequestUnionNode::Print(std::ostream& output,
     PrintChildren(output, tab);
 }
 bool PhysicalRequestUnionNode::InitSchema() {
-    output_schema.CopyFrom(producers_[0]->output_schema);
+    output_schema_.CopyFrom(producers_[0]->output_schema_);
+    for (auto pair : producers_[0]->output_name_schema_list_) {
+        output_name_schema_list_.push_back(pair);
+    }
     PrintSchema();
     return true;
 }
@@ -300,8 +320,14 @@ bool PhysicalRequestJoinNode::InitSchema() {
                         "producer is null";
         return false;
     }
-    output_schema.CopyFrom(producers_[0]->output_schema);
-    output_schema.MergeFrom(producers_[1]->output_schema);
+    output_schema_.CopyFrom(producers_[0]->output_schema_);
+    output_schema_.MergeFrom(producers_[1]->output_schema_);
+    for (auto pair : producers_[0]->output_name_schema_list_) {
+        output_name_schema_list_.push_back(pair);
+    }
+    for (auto right_pair : producers_[1]->output_name_schema_list_) {
+        output_name_schema_list_.push_back(right_pair);
+    }
     PrintSchema();
     return true;
 }
@@ -317,7 +343,10 @@ void PhysicalSeekIndexNode::Print(std::ostream& output,
     PrintChildren(output, tab);
 }
 bool PhysicalSeekIndexNode::InitSchema() {
-    output_schema.CopyFrom(producers_[0]->output_schema);
+    output_schema_.CopyFrom(producers_[1]->output_schema_);
+    for (auto pair : producers_[1]->output_name_schema_list_) {
+        output_name_schema_list_.push_back(pair);
+    }
     PrintSchema();
     return true;
 }

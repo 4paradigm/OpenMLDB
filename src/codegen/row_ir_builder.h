@@ -20,9 +20,18 @@
 
 #include <string>
 #include "llvm/IR/IRBuilder.h"
+#include "node/node_enum.h"
 
 namespace fesql {
 namespace codegen {
+
+class Decoder {
+ public:
+    Decoder() {}
+    virtual ~Decoder() {}
+    virtual bool GetColOffsetType(const std::string& name, uint32_t* offset_ptr,
+                                  node::DataType* type_ptr) = 0;
+};
 
 class RowDecodeIRBuilder {
  public:

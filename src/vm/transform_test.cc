@@ -404,7 +404,7 @@ void Physical_Plan_Check(const std::shared_ptr<tablet::TabletCatalog>& catalog,
     std::cout << oos.str() << std::endl;
 
     std::ostringstream ss;
-    PrintSchema(ss, physical_plan->output_schema);
+    PrintSchema(ss, physical_plan->output_schema_);
     std::cout << "schema:\n" << ss.str() << std::endl;
 
     ASSERT_EQ(oos.str(), exp);

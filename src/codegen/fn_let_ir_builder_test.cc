@@ -49,8 +49,8 @@ ExitOnError ExitOnErr;
 
 namespace fesql {
 namespace codegen {
-using fesql::codec::ArrayListV;
 using fesql::base::Slice;
+using fesql::codec::ArrayListV;
 static node::NodeManager manager;
 
 /// Check E. If it's in a success state then return the contained value. If
@@ -80,9 +80,12 @@ node::ProjectListNode* GetPlanNodeList(node::PlanNodeList trees) {
 }
 class FnLetIRBuilderTest : public ::testing::Test {
  public:
-    FnLetIRBuilderTest() { GetSchema(table_); }
+    FnLetIRBuilderTest() {
+        GetSchemaT1(table_);
+        GetSchemaT2(table2_);
+    }
     ~FnLetIRBuilderTest() {}
-    void GetSchema(::fesql::type::TableDef& table) {  // NOLINT
+    void GetSchemaT1(::fesql::type::TableDef& table) {  // NOLINT
         table.set_name("t1");
         {
             ::fesql::type::ColumnDef* column = table.add_columns();
@@ -117,7 +120,36 @@ class FnLetIRBuilderTest : public ::testing::Test {
             column->set_name("col6");
         }
     }
-    void BuildBuf(int8_t** buf, uint32_t* size) {
+
+    void GetSchemaT2(::fesql::type::TableDef& table) {  // NOLINT
+        table.set_name("t2");
+        {
+            ::fesql::type::ColumnDef* column = table.add_columns();
+            column->set_type(::fesql::type::kInt64);
+            column->set_name("c5");
+        }
+        {
+            ::fesql::type::ColumnDef* column = table.add_columns();
+            column->set_type(::fesql::type::kInt32);
+            column->set_name("col1");
+        }
+        {
+            ::fesql::type::ColumnDef* column = table.add_columns();
+            column->set_type(::fesql::type::kInt16);
+            column->set_name("col2");
+        }
+        {
+            ::fesql::type::ColumnDef* column = table.add_columns();
+            column->set_type(::fesql::type::kDouble);
+            column->set_name("c4");
+        }
+        {
+            ::fesql::type::ColumnDef* column = table.add_columns();
+            column->set_type(::fesql::type::kVarchar);
+            column->set_name("col6");
+        }
+    }
+    void BuildT1Buf(int8_t** buf, uint32_t* size) {
         codec::RowBuilder builder(table_.columns());
         uint32_t total_size = builder.CalTotalLength(1);
         int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
@@ -131,9 +163,23 @@ class FnLetIRBuilderTest : public ::testing::Test {
         *buf = ptr;
         *size = total_size;
     }
+    void BuildT2Buf(int8_t** buf, uint32_t* size) {
+        codec::RowBuilder builder(table2_.columns());
+        uint32_t total_size = builder.CalTotalLength(1);
+        int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
+        builder.SetBuffer(ptr, total_size);
+        builder.AppendInt64(640);
+        builder.AppendInt32(320);
+        builder.AppendInt16(160);
+        builder.AppendDouble(33.1);
+        builder.AppendString("2", 1);
+        *buf = ptr;
+        *size = total_size;
+    }
 
  protected:
     fesql::type::TableDef table_;
+    fesql::type::TableDef table2_;
 };
 
 void AddFunc(const std::string& fn, ::llvm::Module* m) {
@@ -172,9 +218,10 @@ TEST_F(FnLetIRBuilderTest, test_primary) {
     fesql::node::ProjectListNode* pp_node_ptr = GetPlanNodeList(trees);
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
-    RowFnLetIRBuilder ir_builder(table_.columns(), m.get(), false);
+    RowFnLetIRBuilder ir_builder(table_.columns(), m.get());
     vm::Schema schema;
-    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, &schema);
+    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr->GetProjects(),
+                               &schema);
     ASSERT_TRUE(ok);
     ASSERT_EQ(4, schema.size());
     m->print(::llvm::errs(), NULL);
@@ -191,7 +238,7 @@ TEST_F(FnLetIRBuilderTest, test_primary) {
         int8_t*, int8_t*, int32_t, int8_t**))load_fn_jit.getAddress();
     int8_t* buf = NULL;
     uint32_t size = 0;
-    BuildBuf(&buf, &size);
+    BuildT1Buf(&buf, &size);
     int8_t* output = NULL;
     int32_t ret2 = decode(buf, nullptr, size, &output);
     ASSERT_EQ(ret2, 0);
@@ -206,6 +253,96 @@ TEST_F(FnLetIRBuilderTest, test_primary) {
     std::string str2(reinterpret_cast<char*>(output + 22), 5);
     ASSERT_EQ("hello", str2);
     free(buf);
+}
+TEST_F(FnLetIRBuilderTest, test_multi_row_simple_query) {
+    // Create an LLJIT instance.
+    auto ctx = llvm::make_unique<LLVMContext>();
+    auto m = make_unique<Module>("test_project", *ctx);
+    ::fesql::node::NodePointVector list;
+    ::fesql::parser::FeSQLParser parser;
+    ::fesql::node::NodeManager manager;
+    ::fesql::base::Status status;
+    int ret = parser.parse(
+        "SELECT t1.col1 as t1_col1, t1.col6 as t1_col6, t2.col1 as t2_col1, "
+        "col4+c4 as add_col4 FROM t1,t2 limit 10;",
+        list, &manager, status);
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(1u, list.size());
+    ::fesql::plan::SimplePlanner planner(&manager);
+    ::fesql::node::PlanNodeList trees;
+    ret = planner.CreatePlanTree(list, trees, status);
+    ASSERT_EQ(0, ret);
+    std::cout << *(trees[0]);
+    fesql::node::ProjectListNode* pp_node_ptr = GetPlanNodeList(trees);
+    // Create the add1 function entry and insert this entry into module M.  The
+    // function will have a return type of "int" and take an argument of "int".
+    std::vector<std::pair<const std::string, const vm::Schema*>>
+        name_schema_list;
+
+    name_schema_list.push_back(
+        std::make_pair(table_.name(), &table_.columns()));
+
+    name_schema_list.push_back(
+        std::make_pair(table2_.name(), &table2_.columns()));
+
+    RowFnLetIRBuilder ir_builder(name_schema_list, m.get());
+    vm::Schema schema;
+    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr->GetProjects(),
+                               &schema);
+    ASSERT_TRUE(ok);
+    ASSERT_EQ(4, schema.size());
+    m->print(::llvm::errs(), NULL);
+    auto J = ExitOnErr(LLJITBuilder().create());
+    auto& jd = J->getMainJITDylib();
+    ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
+                                      J->getDataLayout());
+
+    ::fesql::vm::InitCodecSymbol(jd, mi);
+    ExitOnErr(J->addIRModule(
+        std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
+    auto load_fn_jit = ExitOnErr(J->lookup("test_project_fn"));
+    int32_t (*decode)(int8_t*, int8_t*, int32_t, int8_t*, int8_t*, int32_t,
+                      int8_t**) =
+        (int32_t(*)(int8_t*, int8_t*, int32_t, int8_t*, int8_t*, int32_t,
+                    int8_t**))load_fn_jit.getAddress();
+    int8_t* buf = NULL;
+    int8_t* buf2 = NULL;
+    uint32_t size = 0;
+    uint32_t size2 = 0;
+    BuildT1Buf(&buf, &size);
+    BuildT2Buf(&buf2, &size2);
+    int8_t* output = NULL;
+    int32_t ret2 = decode(buf, nullptr, size, buf2, nullptr, size2, &output);
+    ASSERT_EQ(ret2, 0);
+    uint32_t out_size = *reinterpret_cast<uint32_t*>(output + 2);
+    ASSERT_EQ(out_size, 25u);
+    vm::RowView row_view(schema);
+    row_view.Reset(output);
+    {
+        int32_t value;
+        ASSERT_EQ(0, row_view.GetInt32(0, &value));
+        ASSERT_EQ(32, value);
+    }
+    {
+        char* buf;
+        uint32_t size;
+        ASSERT_EQ(0, row_view.GetString(1, &buf, &size));
+        ASSERT_EQ("1", std::string(buf, size));
+    }
+
+    {
+        int32_t value;
+        ASSERT_EQ(0, row_view.GetInt32(2, &value));
+        ASSERT_EQ(320, value);
+    }
+
+    {
+        double value;
+        ASSERT_EQ(0, row_view.GetDouble(3, &value));
+        ASSERT_EQ(3.1 + 33.1, value);
+    }
+    free(buf);
+    free(buf2);
 }
 
 TEST_F(FnLetIRBuilderTest, test_udf) {
@@ -231,9 +368,10 @@ TEST_F(FnLetIRBuilderTest, test_udf) {
     fesql::node::ProjectListNode* pp_node_ptr = GetPlanNodeList(trees);
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
-    RowFnLetIRBuilder ir_builder(table_.columns(), m.get(), false);
+    RowFnLetIRBuilder ir_builder(table_.columns(), m.get());
     vm::Schema schema;
-    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, &schema);
+    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr->GetProjects(),
+                               &schema);
     ASSERT_TRUE(ok);
     ASSERT_EQ(2, schema.size());
     m->print(::llvm::errs(), NULL);
@@ -250,7 +388,7 @@ TEST_F(FnLetIRBuilderTest, test_udf) {
         int8_t*, int8_t*, int32_t, int8_t**))load_fn_jit.getAddress();
     int8_t* buf = NULL;
     uint32_t size = 0;
-    BuildBuf(&buf, &size);
+    BuildT1Buf(&buf, &size);
     int8_t* output = NULL;
     int32_t ret2 = decode(buf, nullptr, size, &output);
     ASSERT_EQ(ret2, 0);
@@ -284,9 +422,10 @@ TEST_F(FnLetIRBuilderTest, test_simple_project) {
     auto m = make_unique<Module>("test_project", *ctx);
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
-    RowFnLetIRBuilder ir_builder(table_.columns(), m.get(), false);
+    RowFnLetIRBuilder ir_builder(table_.columns(), m.get());
     vm::Schema schema;
-    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, &schema);
+    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr->GetProjects(),
+                               &schema);
     ASSERT_TRUE(ok);
     ASSERT_EQ(1, schema.size());
     m->print(::llvm::errs(), NULL);
@@ -304,7 +443,7 @@ TEST_F(FnLetIRBuilderTest, test_simple_project) {
         int8_t*, int8_t*, int32_t, int8_t**))load_fn_jit.getAddress();
     int8_t* ptr = NULL;
     uint32_t size = 0;
-    BuildBuf(&ptr, &size);
+    BuildT1Buf(&ptr, &size);
     int8_t* output = NULL;
     int32_t ret2 = decode(ptr, nullptr, size, &output);
     ASSERT_EQ(ret2, 0);
@@ -335,9 +474,10 @@ TEST_F(FnLetIRBuilderTest, test_extern_udf_project) {
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
     ::fesql::udf::RegisterUDFToModule(m.get());
-    RowFnLetIRBuilder ir_builder(table_.columns(), m.get(), false);
+    RowFnLetIRBuilder ir_builder(table_.columns(), m.get());
     vm::Schema schema;
-    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, &schema);
+    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr->GetProjects(),
+                               &schema);
     ASSERT_TRUE(ok);
     ASSERT_EQ(1, schema.size());
     m->print(::llvm::errs(), NULL);
@@ -358,7 +498,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_udf_project) {
 
     int8_t* ptr = NULL;
     uint32_t size = 0;
-    BuildBuf(&ptr, &size);
+    BuildT1Buf(&ptr, &size);
     int8_t* output = NULL;
     int32_t ret2 = decode(ptr, nullptr, size, &output);
     ASSERT_EQ(ret2, 0);
@@ -515,9 +655,10 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_sum_project) {
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
     ::fesql::udf::RegisterUDFToModule(m.get());
-    RowFnLetIRBuilder ir_builder(table_.columns(), m.get(), false);
+    RowFnLetIRBuilder ir_builder(table_.columns(), m.get());
     vm::Schema schema;
-    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, &schema);
+    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr->GetProjects(),
+                               &schema);
     ASSERT_TRUE(ok);
     ASSERT_EQ(5, schema.size());
     m->print(::llvm::errs(), NULL);
@@ -542,7 +683,8 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_sum_project) {
     LOG(INFO) << "input ptr " << ptr;
 
     int8_t* output = NULL;
-    int32_t ret2 = decode(window.back().buf(), ptr, 0, &output);
+    int32_t ret2 =
+        decode(window.back().buf(), ptr, window.back().size(), &output);
     ASSERT_EQ(0, ret2);
     ASSERT_EQ(1u + 11u + 111u + 1111u + 11111u,
               *reinterpret_cast<uint32_t*>(output + 7));
@@ -592,9 +734,10 @@ TEST_F(FnLetIRBuilderTest, test_simple_window_project_mix) {
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
     ::fesql::udf::RegisterUDFToModule(m.get());
-    RowFnLetIRBuilder ir_builder(table_.columns(), m.get(), false);
+    RowFnLetIRBuilder ir_builder(table_.columns(), m.get());
     vm::Schema schema;
-    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, &schema);
+    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr->GetProjects(),
+                               &schema);
     ASSERT_TRUE(ok);
     ASSERT_EQ(8, schema.size());
     m->print(::llvm::errs(), NULL);
@@ -619,7 +762,8 @@ TEST_F(FnLetIRBuilderTest, test_simple_window_project_mix) {
     LOG(INFO) << "input ptr " << ptr;
 
     int8_t* output = NULL;
-    int32_t ret2 = decode(window.back().buf(), ptr, 0, &output);
+    int32_t ret2 =
+        decode(window.back().buf(), ptr, window.back().size(), &output);
     ASSERT_EQ(0, ret2);
     ASSERT_EQ(11111u, *reinterpret_cast<uint32_t*>(output + 7));
     ASSERT_EQ(1u + 11u + 111u + 1111u + 11111u,
@@ -668,9 +812,10 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_min_project) {
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
     ::fesql::udf::RegisterUDFToModule(m.get());
-    RowFnLetIRBuilder ir_builder(table_.columns(), m.get(), false);
+    RowFnLetIRBuilder ir_builder(table_.columns(), m.get());
     vm::Schema schema;
-    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, &schema);
+    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr->GetProjects(),
+                               &schema);
     ASSERT_TRUE(ok);
     ASSERT_EQ(5, schema.size());
     m->print(::llvm::errs(), NULL);
@@ -693,7 +838,8 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_min_project) {
     std::vector<Slice> window;
     BuildWindow(window, &ptr);
     int8_t* output = NULL;
-    int32_t ret2 = decode(window.back().buf(), ptr, 0, &output);
+    int32_t ret2 =
+        decode(window.back().buf(), ptr, window.back().size(), &output);
     ASSERT_EQ(ret2, 0);
     ASSERT_EQ(7u + 4u + 4u + 8u + 2u + 8u,
               *reinterpret_cast<uint32_t*>(output + 2));
@@ -735,9 +881,10 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_max_project) {
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
     ::fesql::udf::RegisterUDFToModule(m.get());
-    RowFnLetIRBuilder ir_builder(table_.columns(), m.get(), false);
+    RowFnLetIRBuilder ir_builder(table_.columns(), m.get());
     vm::Schema schema;
-    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, &schema);
+    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr->GetProjects(),
+                               &schema);
     ASSERT_TRUE(ok);
     ASSERT_EQ(5, schema.size());
     m->print(::llvm::errs(), NULL);
@@ -760,7 +907,8 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_max_project) {
     std::vector<Slice> window;
     BuildWindow(window, &ptr);
     int8_t* output = NULL;
-    int32_t ret2 = decode(window.back().buf(), ptr, 0, &output);
+    int32_t ret2 =
+        decode(window.back().buf(), ptr, window.back().size(), &output);
     ASSERT_EQ(ret2, 0);
     ASSERT_EQ(7u + 4u + 4u + 8u + 2u + 8u,
               *reinterpret_cast<uint32_t*>(output + 2));
@@ -824,9 +972,10 @@ TEST_F(FnLetIRBuilderTest, test_col_at_udf) {
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
 
-    RowFnLetIRBuilder ir_builder(table_.columns(), m.get(), false);
+    RowFnLetIRBuilder ir_builder(table_.columns(), m.get());
     vm::Schema schema;
-    bool ok = ir_builder.Build("test_at_fn", pp_node_ptr, &schema);
+    bool ok =
+        ir_builder.Build("test_at_fn", pp_node_ptr->GetProjects(), &schema);
     ASSERT_TRUE(ok);
     LOG(INFO) << "fn let ir build ok";
     ASSERT_EQ(3, schema.size());
@@ -850,7 +999,8 @@ TEST_F(FnLetIRBuilderTest, test_col_at_udf) {
     std::vector<Slice> window;
     BuildWindow(window, &ptr);
     int8_t* output = NULL;
-    int32_t ret2 = decode(window.back().buf(), ptr, 0, &output);
+    int32_t ret2 =
+        decode(window.back().buf(), ptr, window.back().size(), &output);
     ASSERT_EQ(ret2, 0);
     //    ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8, *reinterpret_cast<uint32_t*>(output +
     //    2));

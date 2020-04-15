@@ -39,7 +39,13 @@ using ::fesql::codec::RowView;
 
 class Engine;
 
-struct CompileInfo {
+class CompileInfo {
+ public:
+    SQLContext& get_sql_context() {
+        return this->sql_ctx;
+    }
+
+ private:
     SQLContext sql_ctx;
 };
 
@@ -50,13 +56,13 @@ class RunSession {
     ~RunSession();
 
     virtual inline const Schema& GetSchema() const {
-        return compile_info_->sql_ctx.schema;
+        return compile_info_->get_sql_context().schema;
     }
     virtual inline vm::PhysicalOpNode* GetPhysicalPlan() {
-        return compile_info_->sql_ctx.plan;
+        return compile_info_->get_sql_context().plan;
     }
     virtual inline vm::Runner* GetRunner() {
-        return compile_info_->sql_ctx.runner;
+        return compile_info_->get_sql_context().runner;
     }
 
     virtual const bool IsBatchRun() const = 0;
