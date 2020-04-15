@@ -9,6 +9,8 @@
     <modules>
            <module>fesql-jdbc</module>
            <module>fesql-native</module>
+           <module>fesql-proto</module>
+           <module>fesql-spark</module>
     </modules>
     <packaging>pom</packaging>
     <name>sdk</name>

@@ -143,7 +143,7 @@ bool BlockIRBuilder::BuildIfElseBlock(
 
     builder.SetInsertPoint(if_else_start);
     ExprIRBuilder expr_builder(builder.GetInsertBlock(), sv_);
-    //进行条件的代码
+    // 进行条件的代码
     llvm::Value *cond = nullptr;
     if (false ==
         expr_builder.Build(if_else_block->if_block_->if_node->expression_,

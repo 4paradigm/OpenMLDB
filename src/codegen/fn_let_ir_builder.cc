@@ -114,7 +114,6 @@ bool RowFnLetIRBuilder::Build(
         return false;
     }
     ExprIRBuilder expr_ir_builder(block, &sv, row_info_list_, true, module_);
-
     ::fesql::node::PlanNodeList::const_iterator it = projects.cbegin();
     std::map<uint32_t, ::llvm::Value*> outputs;
     uint32_t index = 0;

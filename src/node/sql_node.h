@@ -55,8 +55,8 @@ inline const std::string CmdTypeName(const CmdType &type) {
     }
 }
 
-inline const std::string ExplainTypeName(const ExplainType &type) {
-    switch (type) {
+inline const std::string ExplainTypeName(const ExplainType &explain_type) {
+    switch (explain_type) {
         case kExplainLogical:
             return "logical";
         case kExplainPhysical:
@@ -1150,10 +1150,12 @@ class CmdNode : public SQLNode {
 
 class ExplainNode : public SQLNode {
  public:
-    explicit ExplainNode(const QueryNode *query, node::ExplainType type)
-        : SQLNode(kExplainSmt, 0, 0), type_(type), query_(query) {}
+    explicit ExplainNode(const QueryNode *query, node::ExplainType explain_type)
+        : SQLNode(kExplainSmt, 0, 0), explain_type_(explain_type),
+                  query_(query) {}
     void Print(std::ostream &output, const std::string &org_tab) const;
-    const node::ExplainType type_;
+
+    const node::ExplainType explain_type_;
     const node::QueryNode *query_;
 };
 

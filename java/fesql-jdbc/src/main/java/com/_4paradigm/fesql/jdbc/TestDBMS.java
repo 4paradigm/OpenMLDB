@@ -1,7 +1,7 @@
 package com._4paradigm.fesql.jdbc;
-import com._4paradigm.fesql.DBMSSdk;
-import com._4paradigm.fesql.Status;
-import com._4paradigm.fesql.fesql;
+import com._4paradigm.fesql.sdk.DBMSSdk;
+import com._4paradigm.fesql.sdk.Status;
+import com._4paradigm.fesql_interface;
 
 public class TestDBMS {
     public static void main(String[] args) {
@@ -14,7 +14,7 @@ public class TestDBMS {
             System.load(path);
         }
         String endpoint="172.27.128.37:9211";
-        DBMSSdk sdk = fesql.CreateDBMSSdk(endpoint);
+        DBMSSdk sdk = fesql_interface.CreateDBMSSdk(endpoint);
         Status status = new Status();
         sdk.CreateDatabase("testxx", status);
         System.out.println(status.getCode());
