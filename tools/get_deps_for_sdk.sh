@@ -231,8 +231,3 @@ else
     echo "brpc done"
 fi
 
-if [[ "$OSTYPE" == "linux-gnu" ]]; then
-	cd ${DEPS_PREFIX}/lib && rm *.so
-elif [[ "$OSTYPE" == "darwin"* ]]; then
-	cd ${DEPS_PREFIX}/lib && rm *.dylib 
-fi
