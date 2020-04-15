@@ -187,6 +187,7 @@ message PutRequest {
     optional uint32 pid = 5;
     repeated Dimension dimensions = 6;
     repeated TSDimension ts_dimensions = 7;
+    optional format_version = 8 [default = 0];
 }
 
 message PutResponse {

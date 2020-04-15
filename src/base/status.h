@@ -176,6 +176,7 @@ enum ReturnCode {
     kTableTypeMismatch = 145,
     kDumpIndexDataFailed = 146,
     kSnapshotRecycled = 147,
+    kPutBadFormat = 148,
     kNameserverIsNotLeader = 300,
     kAutoFailoverIsEnabled = 301,
     kEndpointIsNotExist = 302,

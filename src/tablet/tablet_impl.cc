@@ -607,7 +607,7 @@ void TabletImpl::Put(RpcController* controller,
         done->Run();
         return;
     }
-    uint64_t start_time = ::baidu::common::timer::get_micros();
+        uint64_t start_time = ::baidu::common::timer::get_micros();
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     std::shared_ptr<RelationalTable> r_table;
     if (!table) {
@@ -622,13 +622,19 @@ void TabletImpl::Put(RpcController* controller,
         }
     }
     if (table) {
+        if ((!request->has_format_verion() && table->GetTableMeta().format_version() == 1)
+                || (request->has_format_verion() && request->format_version() != table->GetTableMeta().format_version())) {
+            response->set_code(::rtidb::base::ReturnCode::kPutBadFormat);
+            response->set_msg("put bad format");
+            done->Run();
+            return;
+        }
         if (request->time() == 0 && request->ts_dimensions_size() == 0) {
             response->set_code(::rtidb::base::ReturnCode::kTsMustBeGreaterThanZero);
             response->set_msg("ts must be greater than zero");
             done->Run();
             return;
         }
-
         if (!table->IsLeader()) {
             response->set_code(::rtidb::base::ReturnCode::kTableIsFollower);
             response->set_msg("table is follower");
