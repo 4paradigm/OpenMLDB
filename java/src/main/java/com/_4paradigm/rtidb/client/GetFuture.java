@@ -30,6 +30,7 @@ public class GetFuture implements Future<ByteString>{
 		return new GetFuture(f, t, config);
 	}
 
+	public GetFuture() {}
 	public GetFuture(Future<Tablet.GetResponse> f, TableHandler t, RTIDBClientConfig config) {
 		this.f = f;
 		this.th = t;
