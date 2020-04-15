@@ -2820,15 +2820,19 @@ void TabletImpl::LoadTable(RpcController* controller,
                     pid, name.c_str(), seg_cnt, table_meta.dimensions_size(), table_meta.schema().size(), ttl);
             task_pool_.AddTask(boost::bind(&TabletImpl::LoadTableInternal, this, tid, pid, task_ptr));
         } else if (table_meta.table_type() == ::rtidb::type::kObjectStore) {
-            std::shared_ptr<ObjectStore> o_table = std::make_shared<ObjectStore>(table_meta, db_path);
-            if (!o_table->Init()) {
-                PDLOG(INFO, "init object store failed");
+            std::string msg;
+            if(CreateObjectStore(&table_meta, msg) < 0) {
+                PDLOG(INFO, "%s", msg.c_str());
                 response->set_code(::rtidb::base::ReturnCode::kCreateTableFailed);
-                response->set_msg("init object store failed");
-                break;
+                response->set_msg(msg);
             }
-            std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-            object_stores_[tid].insert(std::make_pair(pid, o_table));
+        } else if (table_meta.table_type() == ::rtidb::type::kRelational) {
+            std::string msg;
+            if (CreateRelationalTableInternal(&table_meta, msg) < 0) {
+                PDLOG(INFO, "%s", msg.c_str());
+                response->set_code(::rtidb::base::ReturnCode::kCreateTableFailed);
+                response->set_msg(msg);
+            }
         } else {
             task_pool_.AddTask(boost::bind(&TabletImpl::LoadDiskTableInternal, this, tid, pid, table_meta, task_ptr));
             PDLOG(INFO, "load table tid[%u] pid[%u] storage mode[%s]", 
