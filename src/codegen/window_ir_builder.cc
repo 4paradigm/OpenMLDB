@@ -41,7 +41,7 @@ bool MemoryWindowDecodeIRBuilder::BuildGetCol(const std::string& name,
     }
     ::fesql::node::DataType data_type;
     uint32_t offset;
-    if (GetColOffsetType(name, &offset, &data_type)) {
+    if (!GetColOffsetType(name, &offset, &data_type)) {
         LOG(WARNING) << "fail to get filed offset " << name;
         return false;
     }

@@ -356,6 +356,9 @@ TEST_F(CodecTest, RowDecoderTest) {
                 uint32_t next_offset;
                 uint32_t str_start_offset;
                 fesql::type::Type type;
+                ASSERT_TRUE(decoder.GetPrimayFieldOffsetType(
+                    "col" + std::to_string(i), &offset, &type));
+                ASSERT_EQ(::fesql::type::kInt64, type);
                 ASSERT_TRUE(decoder.GetStringFieldOffset(
                     "col" + std::to_string(i), &offset, &next_offset,
                     &str_start_offset));
