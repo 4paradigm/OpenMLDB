@@ -39,6 +39,11 @@ public class TableSyncClientImpl implements TableSyncClient {
     }
 
     @Override
+    public Object[] getRow(String tname, String key, long time, Object type) throws TimeoutException, TabletException {
+        return getRow(tname, key, time, (Tablet.GetType)type);
+    }
+
+    @Override
     public KvIterator scan(String tname, Map<String, Object> keyMap, long st, long et, ScanOption option) throws TimeoutException, TabletException {
         if (option.getIdxName() == null) throw new TabletException("idx name is required ");
         TableHandler th = client.getHandler(tname);
