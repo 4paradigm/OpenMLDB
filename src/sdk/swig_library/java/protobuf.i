@@ -28,13 +28,19 @@
 %define %protobuf(TYPE, JTYPE)
 
 %typemap(jni) TYPE "jbyteArray"
+%typemap(jni) const TYPE& "jbyteArray"
+
 %typemap(jtype) TYPE "byte[]"
+%typemap(jtype) const TYPE& "byte[]"
+
 %typemap(jstype) TYPE "JTYPE"
+%typemap(jstype) const TYPE& "JTYPE"
+
 
 %typemap(in) TYPE %{
     if(!$input) {
         if (!jenv->ExceptionCheck()) {
-        SWIG_JavaThrowException(jenv, SWIG_JavaNullPointerException, "null string");
+            SWIG_JavaThrowException(jenv, SWIG_JavaNullPointerException, "null string");
         }
         return $null;
     }
@@ -43,8 +49,25 @@
     ($1).ParseFromArray($1_bytes, $1_bytes_size);
     jenv->ReleaseByteArrayElements($input, $1_bytes, 0);
 %}
+%typemap(in) const TYPE& %{
+    if(!$input) {
+        if (!jenv->ExceptionCheck()) {
+            SWIG_JavaThrowException(jenv, SWIG_JavaNullPointerException, "null string");
+        }
+        return $null;
+    }
+    jsize $1_bytes_size = jenv->GetArrayLength($input);
+    jbyte* $1_bytes = (jbyte *)jenv->GetByteArrayElements($input, NULL);
+    TYPE $1_object;
+    ($1_object).ParseFromArray($1_bytes, $1_bytes_size);
+    $1 = &($1_object);
+    jenv->ReleaseByteArrayElements($input, $1_bytes, 0);
+%}
+
 
 %typemap(javain) TYPE "($javainput).toByteArray()"
+%typemap(javain) const TYPE & "($javainput).toByteArray()"
+
 
 %typemap(out) TYPE %{
     jsize $1_bytes_size = ($1).ByteSize();

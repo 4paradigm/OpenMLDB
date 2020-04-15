@@ -31,6 +31,8 @@
 #include "vm/mem_catalog.h"
 #include "vm/sql_compiler.h"
 
+#include "llvm-c/Target.h"
+
 namespace fesql {
 namespace vm {
 
@@ -107,6 +109,9 @@ typedef std::map<std::string,
 class Engine {
  public:
     explicit Engine(const std::shared_ptr<Catalog>& cl);
+
+    // Initialize LLVM environments
+    static void InitializeGlobalLLVM();
 
     ~Engine();
 

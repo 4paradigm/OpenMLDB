@@ -24,6 +24,7 @@
 #include "codec/row_codec.h"
 #include "codegen/buf_ir_builder.h"
 #include "vm/mem_catalog.h"
+#include "llvm-c/Target.h"
 
 namespace fesql {
 namespace vm {
@@ -31,6 +32,13 @@ namespace vm {
 Engine::Engine(const std::shared_ptr<Catalog>& catalog) : cl_(catalog) {}
 
 Engine::~Engine() {}
+
+
+void Engine::InitializeGlobalLLVM() {
+    LLVMInitializeNativeTarget();
+    LLVMInitializeNativeAsmPrinter();
+}
+
 
 bool Engine::Get(const std::string& sql, const std::string& db,
                  RunSession& session,
