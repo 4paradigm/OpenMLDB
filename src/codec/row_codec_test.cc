@@ -358,7 +358,7 @@ TEST_F(CodecTest, RowDecoderTest) {
                 fesql::type::Type type;
                 ASSERT_TRUE(decoder.GetPrimayFieldOffsetType(
                     "col" + std::to_string(i), &offset, &type));
-                ASSERT_EQ(::fesql::type::kInt64, type);
+                ASSERT_EQ(::fesql::type::kVarchar, type);
                 ASSERT_TRUE(decoder.GetStringFieldOffset(
                     "col" + std::to_string(i), &offset, &next_offset,
                     &str_start_offset));
@@ -472,9 +472,9 @@ TEST_F(CodecTest, RowDecoderOffsetTest) {
                                      &str_start_offset);
         LOG(INFO) << "offset: " << offset << " next_offset: " << next_offset
                   << " str_start_offset " << str_start_offset;
-        ASSERT_EQ(0, offset);
-        ASSERT_EQ(1, next_offset);
-        ASSERT_EQ(33, str_start_offset);
+        ASSERT_EQ(0u, offset);
+        ASSERT_EQ(1u, next_offset);
+        ASSERT_EQ(33u, str_start_offset);
     }
     {
         uint32_t offset;
@@ -487,9 +487,9 @@ TEST_F(CodecTest, RowDecoderOffsetTest) {
                                      &str_start_offset);
         LOG(INFO) << "offset: " << offset << " next_offset: " << next_offset
                   << " str_start_offset " << str_start_offset;
-        ASSERT_EQ(1, offset);
-        ASSERT_EQ(0, next_offset);
-        ASSERT_EQ(33, str_start_offset);
+        ASSERT_EQ(1u, offset);
+        ASSERT_EQ(0u, next_offset);
+        ASSERT_EQ(33u, str_start_offset);
     }
 }
 TEST_F(CodecTest, RowDecoderOffsetLongHeaderTest) {
@@ -595,9 +595,9 @@ TEST_F(CodecTest, RowDecoderOffsetLongHeaderTest) {
                                      &str_start_offset);
         LOG(INFO) << "offset: " << offset << " next_offset: " << next_offset
                   << " str_start_offset " << str_start_offset;
-        ASSERT_EQ(0, offset);
-        ASSERT_EQ(1, next_offset);
-        ASSERT_EQ(50, str_start_offset);
+        ASSERT_EQ(0u, offset);
+        ASSERT_EQ(1u, next_offset);
+        ASSERT_EQ(50u, str_start_offset);
     }
     {
         uint32_t offset;
@@ -610,9 +610,9 @@ TEST_F(CodecTest, RowDecoderOffsetLongHeaderTest) {
                                      &str_start_offset);
         LOG(INFO) << "offset: " << offset << " next_offset: " << next_offset
                   << " str_start_offset " << str_start_offset;
-        ASSERT_EQ(1, offset);
-        ASSERT_EQ(0, next_offset);
-        ASSERT_EQ(50, str_start_offset);
+        ASSERT_EQ(1u, offset);
+        ASSERT_EQ(0u, next_offset);
+        ASSERT_EQ(50u, str_start_offset);
     }
 }
 }  // namespace codec
