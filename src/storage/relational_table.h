@@ -87,8 +87,8 @@ public:
 
     bool Query(const ::google::protobuf::RepeatedPtrField< ::rtidb::api::ReadOption >& ros,
             std::string* pairs, uint32_t* count);
-    bool Query(const std::string& idx_name, const std::string& idx_val, std::vector<rtidb::base::Slice>* vec); 
-    bool Query(const std::shared_ptr<IndexDef> index_def, const std::string& key, std::vector<rtidb::base::Slice>* vec); 
+    bool Query(const std::string& idx_name, const std::string& idx_val, std::vector<rocksdb::Slice>* vec); 
+    bool Query(const std::shared_ptr<IndexDef> index_def, const rocksdb::Slice key_slice, std::vector<rocksdb::Slice>* vec); 
 
     bool Delete(const std::string& idx_name, const std::string& key);
     bool DeletePk(const rocksdb::Slice pk_slice); 
@@ -148,25 +148,21 @@ private:
         memcpy(buf, no_unique.c_str(), no_unique.size());
         memcpy(buf + no_unique.size(), pk.c_str(), pk.size());
     }
-    inline int ParsePk(const rocksdb::Slice& value, const std::string& key, std::string* pk) {
+    inline rocksdb::Slice ParsePk(const rocksdb::Slice& value, const std::string& key) {
         if (value.size() < key.size()) {
-            return -1;
+            return rocksdb::Slice();
         }
         if (memcmp(reinterpret_cast<void*>(const_cast<char*>(key.c_str())), 
                     reinterpret_cast<void*>(const_cast<char*>(value.data())), key.size()) != 0) {
-            return -2;
+            return rocksdb::Slice();
         }
-
-        pk->resize(value.size() - key.size());
-        char* buf = const_cast<char*>(pk->c_str());
-        memcpy(buf, value.data() + key.size(), value.size() - key.size());
-        return 0;
+        return rocksdb::Slice(value.data() + key.size(), value.size() - key.size());
     }
     bool InitColumnFamilyDescriptor();
     int InitColumnDesc();
     bool InitFromMeta();
     static void initOptionTemplate();
-    rocksdb::Iterator* GetIteratorAndSeek(uint32_t idx, const std::string& key); 
+    rocksdb::Iterator* GetIteratorAndSeek(uint32_t idx, const rocksdb::Slice key_slice); 
     rocksdb::Iterator* GetRocksdbIterator(uint32_t idx); 
     bool PutDB(const std::string& pk, const char* data, uint32_t size);
     void UpdateInternel(const ::rtidb::api::Columns& cd_columns, 

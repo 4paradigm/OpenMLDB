@@ -430,7 +430,7 @@ bool RelationalTable::Delete(const std::string& idx_name,
     if (!index_def) return false;
     std::string comparable_key = "";
     if (!ConvertIndex(idx_name, key, &comparable_key)) return false;
-    rocksdb::Iterator* it = GetIteratorAndSeek(index_def->GetId(), comparable_key);
+    rocksdb::Iterator* it = GetIteratorAndSeek(index_def->GetId(), rocksdb::Slice(comparable_key));
     if (it == NULL) {
         return false;
     }
@@ -439,7 +439,7 @@ bool RelationalTable::Delete(const std::string& idx_name,
         return DeletePk(rocksdb::Slice(comparable_key));
     } else if (index_type == ::rtidb::type::kUnique) {
         if (it->key() != rocksdb::Slice(comparable_key)) {
-            PDLOG(WARNING, "unique key %s not found. tid %u pid %u", comparable_key.c_str(), id_, pid_);
+            PDLOG(DEBUG, "unique key %s not found. tid %u pid %u", comparable_key.c_str(), id_, pid_);
             delete it;
             return false;
         }
@@ -447,22 +447,17 @@ bool RelationalTable::Delete(const std::string& idx_name,
     } else if (index_type == ::rtidb::type::kNoUnique) {
         int count = 0;
         while (it->Valid()) {
-            std::string pk = "";
-            int ret = ParsePk(it->key(), comparable_key, &pk);
-            if (ret == -1) {
-                PDLOG(WARNING,"ParsePk failed, tid %u pid %u", id_, pid_);
-                delete it;
-                return false;
-            } else if (ret == -2) {
+            rocksdb::Slice pk_slice = ParsePk(it->key(), comparable_key);
+             if (pk_slice == rocksdb::Slice()) {
                 if (count == 0) {
-                    PDLOG(WARNING,"no_unique key %s not exist, tid %u pid %u", comparable_key.c_str(), id_, pid_);
+                    PDLOG(DEBUG, "ParsePk failed, key %s not exist, tid %u pid %u", comparable_key.c_str(), id_, pid_);
                     delete it;
                     return false;
                 } else {
                     break;
                 }
             }
-            if (!DeletePk(rocksdb::Slice(pk))) {
+            if (!DeletePk(pk_slice)) {
                 delete it;
                 return false;
             }
@@ -470,7 +465,7 @@ bool RelationalTable::Delete(const std::string& idx_name,
             count++;
         }
     } else {
-        PDLOG(WARNING,"unsupported index type %s, tid %u pid %u", 
+        PDLOG(WARNING, "unsupported index type %s, tid %u pid %u", 
                 ::rtidb::type::IndexType_Name(index_type).c_str(), id_, pid_);
         delete it;
         return false; 
@@ -483,20 +478,19 @@ bool RelationalTable::DeletePk(const rocksdb::Slice pk_slice) {
     std::shared_ptr<IndexDef> pk_index_def = table_index_.GetPkIndex();
     uint32_t pk_id = pk_index_def->GetId();
    
-    std::string pk(pk_slice.data(), pk_slice.size());
-    rocksdb::Iterator* pk_it = GetIteratorAndSeek(pk_id, pk);
+    rocksdb::Iterator* pk_it = GetIteratorAndSeek(pk_id, pk_slice);
     if (pk_it == NULL) {
         return false;
     }
     if (pk_it->key() != pk_slice) {
-        PDLOG(WARNING, "pk %s not found. tid %u pid %u", pk.c_str(), id_, pid_);
+        std::string pk(pk_slice.data(), pk_slice.size());
+        PDLOG(DEBUG, "pk %s not found. tid %u pid %u", pk.c_str(), id_, pid_);
         delete pk_it;
         return false;
     }
     rocksdb::WriteBatch batch;
     batch.Delete(cf_hs_[pk_id + 1], pk_slice);
     rocksdb::Slice slice = pk_it->value();
-    delete pk_it;
 
     const Schema& schema = table_meta_.column_desc();
     ::rtidb::base::RowView view(schema, 
@@ -509,20 +503,24 @@ bool RelationalTable::DeletePk(const rocksdb::Slice pk_slice) {
             if (!col) {
                 PDLOG(WARNING, "col name %s not exist, tid %u pid %u", 
                         index_def->GetName().c_str(), id_, pid_);
+                delete pk_it;
                 return false;
             }
             std::string second_key = "";
             if (!GetPackedField(view, col->GetId(), col->GetType(), &second_key)) {
+                delete pk_it;
                 return false;
             }
             uint32_t index_id = index_def->GetId();
-            rocksdb::Iterator* it = GetIteratorAndSeek(index_id, second_key);
+            rocksdb::Iterator* it = GetIteratorAndSeek(index_id, rocksdb::Slice(second_key));
             if (it == NULL) {
+                delete pk_it;
                 return false;
             }
             if (index_def->GetType() == ::rtidb::type::kUnique) {
                 if (it->key() != rocksdb::Slice(second_key)) {
-                    PDLOG(WARNING, "unique key %s not found. tid %u pid %u", second_key.c_str(), id_, pid_);
+                    PDLOG(DEBUG, "unique key %s not found. tid %u pid %u", second_key.c_str(), id_, pid_);
+                    delete pk_it;
                     delete it;
                     return false;
                 }
@@ -530,23 +528,18 @@ bool RelationalTable::DeletePk(const rocksdb::Slice pk_slice) {
             } else if (index_def->GetType() == ::rtidb::type::kNoUnique) {
                 int count = 0;
                 while (it->Valid()) {
-                    std::string r_pk = "";
-                    int ret = ParsePk(it->key(), second_key, &r_pk);
-                    PDLOG(DEBUG, "r_pk %s, tid %u pid %u", r_pk.c_str(), id_, pid_);
-                    if (ret == -1) {
-                        PDLOG(WARNING, "ParsePk failed, tid %u pid %u", id_, pid_);
-                        delete it;
-                        return false;
-                    } else if (ret == -2) {
+                    rocksdb::Slice r_pk_slice = ParsePk(it->key(), second_key);
+                    if (r_pk_slice == rocksdb::Slice()) {
                         if (count == 0) {
-                            PDLOG(WARNING, "no_unique key %s not exist, tid %u pid %u", second_key.c_str(), id_, pid_);
+                            PDLOG(DEBUG, "ParsePk failed, key %s not exist, tid %u pid %u", second_key.c_str(), id_, pid_);
+                            delete pk_it;
                             delete it;
                             return false;
                         } else {
                             break;
                         }
                     }
-                    if (pk != r_pk) {
+                    if (pk_slice != r_pk_slice) {
                         break;
                     }
                     batch.Delete(cf_hs_[index_id + 1], it->key());
@@ -557,6 +550,7 @@ bool RelationalTable::DeletePk(const rocksdb::Slice pk_slice) {
             delete it;
         }
     }
+    delete pk_it;
     rocksdb::Status s = db_->Write(write_opts_, &batch);
     if (s.ok()) {
         offset_.fetch_add(1, std::memory_order_relaxed);
@@ -575,14 +569,15 @@ rocksdb::Iterator* RelationalTable::GetRocksdbIterator(uint32_t idx) {
     return it;
 }
 
-rocksdb::Iterator* RelationalTable::GetIteratorAndSeek(uint32_t idx, const std::string& key) {
+rocksdb::Iterator* RelationalTable::GetIteratorAndSeek(uint32_t idx, const rocksdb::Slice key_slice) {
     rocksdb::Iterator* it = GetRocksdbIterator(idx);
     if (it == NULL) {
         PDLOG(WARNING, "idx %u not exist. tid %u pid %u", idx, id_, pid_);
         return NULL;
     }
-    it->Seek(rocksdb::Slice(key));
+    it->Seek(key_slice);
     if (!it->Valid()) {
+        std::string key(key_slice.data(), key_slice.size());
         PDLOG(WARNING, "key %s not found. tid %u pid %u", key.c_str(), id_, pid_);
         delete it;
         return NULL;
@@ -593,7 +588,7 @@ rocksdb::Iterator* RelationalTable::GetIteratorAndSeek(uint32_t idx, const std::
 bool RelationalTable::Query(
         const ::google::protobuf::RepeatedPtrField<::rtidb::api::ReadOption>& ros,
         std::string* pairs, uint32_t* count) {
-    std::vector<rtidb::base::Slice> value_vec;
+    std::vector<rocksdb::Slice> value_vec;
     uint32_t total_block_size = 0;
     for (auto& ro : ros) {
         //TODO combined key
@@ -603,7 +598,7 @@ bool RelationalTable::Query(
             return false; 
         }
     }
-    for (rtidb::base::Slice& value : value_vec) {
+    for (rocksdb::Slice& value : value_vec) {
         total_block_size += value.size();
     }
     uint32_t scount = value_vec.size();
@@ -625,70 +620,68 @@ bool RelationalTable::Query(
 }
 
 bool RelationalTable::Query(const std::string& idx_name, const std::string& idx_val, 
-        std::vector<rtidb::base::Slice>* vec) {
+        std::vector<rocksdb::Slice>* vec) {
     std::shared_ptr<IndexDef> index_def = table_index_.GetIndex(idx_name);
     if (!index_def) return false;
     std::string key = "";
     if (!ConvertIndex(idx_name, idx_val, &key)) return false;
-    return Query(index_def, key, vec);     
+    return Query(index_def, rocksdb::Slice(key), vec);     
 }
 
-bool RelationalTable::Query(const std::shared_ptr<IndexDef> index_def, const std::string& key, 
-        std::vector<rtidb::base::Slice>* vec) {
+bool RelationalTable::Query(const std::shared_ptr<IndexDef> index_def, 
+        const rocksdb::Slice key_slice, 
+        std::vector<rocksdb::Slice>* vec) {
     uint32_t idx = index_def->GetId();
     ::rtidb::type::IndexType index_type = index_def->GetType(); 
 
     if (index_type == ::rtidb::type::kPrimaryKey ||
             index_type == ::rtidb::type::kAutoGen) {
-        rocksdb::Iterator* it = GetIteratorAndSeek(idx, key);
+        rocksdb::Iterator* it = GetIteratorAndSeek(idx, key_slice);
         if (it == NULL) {
             return false;
         }
-        if (it->key() != rocksdb::Slice(key)) {
+        if (it->key() != key_slice) {
+            std::string key(key_slice.data(), key_slice.size());
             PDLOG(WARNING, "key %s not found. tid %u pid %u", key.c_str(), id_, pid_);
             delete it;
             return false;
         }
-        rtidb::base::Slice slice = ::rtidb::base::Slice(it->value().data(), it->value().size());
-        vec->push_back(slice);
+        vec->push_back(it->value());
         delete it;
     } else if (index_type == ::rtidb::type::kUnique) {
-        rocksdb::Iterator* it = GetIteratorAndSeek(idx, key);
+        rocksdb::Iterator* it = GetIteratorAndSeek(idx, key_slice);
         if (it == NULL) {
             return false;
         }
-        if (it->key() != rocksdb::Slice(key)) {
+        if (it->key() != key_slice) {
+            std::string key(key_slice.data(), key_slice.size());
             PDLOG(WARNING, "key %s not found. tid %u pid %u", key.c_str(), id_, pid_);
             delete it;
             return false;
         }
-        const std::string& pk = std::string(it->value().data(), it->value().size());
-        Query(table_index_.GetPkIndex(), pk, vec); 
+        Query(table_index_.GetPkIndex(), it->value(), vec); 
         delete it;
     } else if (index_type == ::rtidb::type::kNoUnique) {
         //TODO multi records
-        rocksdb::Iterator* it = GetIteratorAndSeek(idx, key);
+        rocksdb::Iterator* it = GetIteratorAndSeek(idx, key_slice);
         if (it == NULL) {
             return false;
         }
         int count = 0;
         while (it->Valid()) {
-            std::string pk = "";
-            int ret = ParsePk(it->key(), key, &pk);
-            if (ret == -1) {
-                PDLOG(WARNING,"ParsePk failed, tid %u pid %u", id_, pid_);
-                delete it;
-                return false;
-            } else if (ret == -2) {
-                delete it;
+            std::string key(key_slice.data(), key_slice.size());
+            rocksdb::Slice pk_slice = ParsePk(it->key(), key);
+             if (pk_slice == rocksdb::Slice()) {
                 if (count == 0) {
-                    PDLOG(WARNING,"no unique %s not exist, tid %u pid %u", key.c_str(), id_, pid_);
+                    PDLOG(DEBUG, "ParsePk failed, key %s not exist, tid %u pid %u", key.c_str(), id_, pid_);
+                    delete it;
                     return false;
                 } else {
+                    delete it;
                     return true;
                 }
             }
-            Query(table_index_.GetPkIndex(), pk, vec); 
+            Query(table_index_.GetPkIndex(), pk_slice, vec); 
             it->Next();
             count++;
         }
@@ -752,14 +745,14 @@ bool RelationalTable::UpdateDB(const std::map<std::string, int>& cd_idx_map, con
     }
 
     std::lock_guard<std::mutex> lock(mu_);
-    std::vector<rtidb::base::Slice> value_vec;
+    std::vector<rocksdb::Slice> value_vec;
     std::shared_ptr<IndexDef> index_def = table_index_.GetPkIndex();
-    bool ok = Query(index_def, pk, &value_vec);
+    bool ok = Query(index_def, rocksdb::Slice(pk), &value_vec);
     if (!ok) {
         PDLOG(WARNING, "get failed, update table tid %u pid %u failed", id_, pid_);
         return false;
     }
-    rtidb::base::Slice slice = value_vec.at(0);
+    rocksdb::Slice slice = value_vec.at(0);
 
     ::rtidb::base::RowView row_view(schema, reinterpret_cast<int8_t*>(const_cast<char*>(slice.data())), slice.size());
     uint32_t col_value_size = col_value.length();
