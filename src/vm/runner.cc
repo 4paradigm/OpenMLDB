@@ -14,7 +14,11 @@
 #include "vm/mem_catalog.h"
 namespace fesql {
 namespace vm {
-
+#define ROW_ARG int8_t*, int8_t*, int32_t
+#define ROW_ARGS(N)
+#define DECLARE_UDF(FN, N)\
+int32_t (*udf)(int8_t*, int8_t*, int32_t, int8_t**) = \
+(int32_t(*)(int8_t*, int8_t*, int32_t, int8_t**))(FN);
 Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
     if (nullptr == node) {
         status.msg = "fail to build runner : physical node is null";
@@ -253,8 +257,8 @@ Slice Runner::RowProject(const int8_t* fn, const Slice slice) {
 }
 
 Slice Runner::MultiRowsProject(const int8_t* fn,
-                               std::vector<const Slice>* slices_ptr) {
-    if (nullptr == slices_ptr || slices_ptr->empty()) {
+                               std::vector<const Slice>& slices_ptr) {
+    if (slices_ptr.empty()) {
         return Slice();
     }
     int32_t (*udf)(int8_t*, int8_t*, int8_t**) =
@@ -775,6 +779,11 @@ std::shared_ptr<DataHandler> RequestLastJoinRunner::Run(
     //    auto request_fn_row = Slice(RowProject(fn_, request), true);
     // filter by keys if need
     if (!condition_idxs_.empty()) {
+        auto condition_row =
+            Slice(RowProject(
+                fn_, std::dynamic_pointer_cast<RowHandler>(left)->GetValue()),
+                  true);
+
         auto condition_idx = condition_idxs_[0];
         if (GetColumnBool(&row_view_, condition_idx,
                           fn_schema_.Get(condition_idx).type())) {

@@ -89,7 +89,7 @@ class Runner {
     Slice WindowProject(const int8_t* fn, const uint64_t key, const Slice slice,
                         Window* window);
     Slice RowProject(const int8_t* fn, const Slice slice);
-    Slice MultiRowsProject(const int8_t* fn, std::vector<const Slice>* slices_ptr);
+    Slice MultiRowsProject(const int8_t* fn, std::vector<const Slice>& slices_ptr);
 
     std::string GetColumnString(RowView* view, int pos, type::Type type);
     int64_t GetColumnInt64(RowView* view, int pos, type::Type type);

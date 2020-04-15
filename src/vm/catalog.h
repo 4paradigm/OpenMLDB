@@ -85,7 +85,7 @@ class RowHandler : public DataHandler {
     const uint64_t GetCount() override { return 0; }
     base::Slice At(uint64_t pos) override { return base::Slice(); }
     const HandlerType GetHanlderType() override { return kRowHandler; }
-    virtual const base::Slice GetValue() const = 0;
+    virtual const std::vector<base::Slice>& GetValue() const = 0;
 };
 
 class TableHandler : public DataHandler {

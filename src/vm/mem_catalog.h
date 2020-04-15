@@ -108,23 +108,20 @@ class MemWindowIterator : public WindowIterator {
     const Schema* schema_;
     MemSegmentMap::const_iterator iter_;
 };
-
 class MemRowHandler : public RowHandler {
  public:
-    MemRowHandler(base::Slice slice, const Schema* schema)
-        : RowHandler(),
-          slice_(slice),
-          table_name_(""),
-          db_(""),
-          schema_(schema) {}
+    MemRowHandler()
+        : RowHandler(), slices_(), table_name_(""), db_(""), schema_(nullptr) {}
     ~MemRowHandler() {}
-    const base::Slice GetValue() const { return slice_; }
-    const Schema* GetSchema() override { return schema_; }
+
+    const std::vector<const base::Slice>& GetValue() { return slices_; }
+    const Schema* GetSchema() override { return nullptr; }
     const std::string& GetName() override { return table_name_; }
     const std::string& GetDatabase() override { return db_; }
+    void AddRow(const base::Slice& row) { slices_.push_back(row); }
 
  private:
-    const base::Slice slice_;
+    std::vector<const base::Slice> slices_;
     std::string table_name_;
     std::string db_;
     const Schema* schema_;
