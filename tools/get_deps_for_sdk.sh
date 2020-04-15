@@ -242,8 +242,26 @@ else
         wget --no-check-certificate -O boost_1_69_0.tar.gz http://pkg.4paradigm.com/fesql/boost_1_69_0.tar.gz
     fi
     tar -zxvf boost_1_69_0.tar.gz
-    cd boost_1_69_0 && ./bootstrap.sh && ./b2 install --prefix=${DEPS_PREFIX}
+    cd boost_1_69_0 && ./bootstrap.sh --with-toolset=clang  && ./b2 install --prefix=${DEPS_PREFIX}
     cd -
     touch boost_succ
 fi
 
+if [ -f "benchmark_succ" ]
+then
+    echo "benchmark exist"
+else
+    if [ -f "v1.5.0.tar.gz" ]
+    then
+        echo "benchmark  exist"
+    else
+        wget --no-check-certificate -O v1.5.0.tar.gz https://github.com/google/benchmark/archive/v1.5.0.tar.gz
+    fi
+
+    tar zxf v1.5.0.tar.gz
+    cd benchmark-1.5.0 && mkdir -p build
+    cd build && cmake -DCMAKE_INSTALL_PREFIX=${DEPS_PREFIX} -DCMAKE_CXX_FLAGS=-fPIC -DBENCHMARK_ENABLE_GTEST_TESTS=OFF .. >/dev/null
+    make -j4 && make install
+    cd ${DEPS_SOURCE}
+    touch benchmark_succ
+fi
