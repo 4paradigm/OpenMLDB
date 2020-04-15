@@ -622,8 +622,8 @@ void TabletImpl::Put(RpcController* controller,
         }
     }
     if (table) {
-        if ((!request->has_format_verion() && table->GetTableMeta().format_version() == 1)
-                || (request->has_format_verion() && request->format_version() != table->GetTableMeta().format_version())) {
+        if ((!request->has_format_version() && table->GetTableMeta().format_version() == 1)
+                || (request->has_format_version() && request->format_version() != table->GetTableMeta().format_version())) {
             response->set_code(::rtidb::base::ReturnCode::kPutBadFormat);
             response->set_msg("put bad format");
             done->Run();
