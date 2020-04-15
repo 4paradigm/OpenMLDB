@@ -27,22 +27,16 @@ namespace codegen {
 RowFnLetIRBuilder::RowFnLetIRBuilder(const vm::Schema& schema,
                                      ::llvm::Module* module)
     : module_(module) {
-    row_info_list_.push_back(RowIRInfo{.row_ptr_name_ = "row_ptr_name",
-                                       .row_size_name_ = "row_size_name",
-                                       .window_ptr_name_ = "window_ptr_name",
-                                       .table_name_ = "",
-                                       .schema_ = &schema});
+    row_info_list_.push_back(
+        RowIRInfo{.idx = 0, .table_name_ = "", .schema_ = &schema});
 }
 
 RowFnLetIRBuilder::RowFnLetIRBuilder(const std::string& table_name,
                                      const vm::Schema& schema,
                                      ::llvm::Module* module)
     : module_(module) {
-    row_info_list_.push_back(RowIRInfo{.row_ptr_name_ = "row_ptr_name",
-                                       .row_size_name_ = "row_size_name",
-                                       .window_ptr_name_ = "window_ptr_name",
-                                       .table_name_ = table_name,
-                                       .schema_ = &schema});
+    row_info_list_.push_back(
+        RowIRInfo{.idx = 0, .table_name_ = table_name, .schema_ = &schema});
 }
 RowFnLetIRBuilder::RowFnLetIRBuilder(
     std::vector<std::pair<const std::string, const vm::Schema*>>&
@@ -53,16 +47,20 @@ RowFnLetIRBuilder::RowFnLetIRBuilder(
     for (auto iter = table_schema_list.cbegin();
          iter != table_schema_list.cend(); iter++) {
         row_info_list_.push_back(RowIRInfo{
-            .row_ptr_name_ = "row_ptr_name_" + std::to_string(idx),
-            .row_size_name_ = "row_size_name_" + std::to_string(idx),
-            .window_ptr_name_ = "window_ptr_name_" + std::to_string(idx),
-            .table_name_ = iter->first,
-            .schema_ = iter->second});
+            .idx = idx, .table_name_ = iter->first, .schema_ = iter->second});
         idx++;
     }
 }
 RowFnLetIRBuilder::~RowFnLetIRBuilder() {}
 
+/**
+ * Codegen For int32 RowFnLetUDF(int_8* row_ptrs, int8_t* window_ptrs, int32 *
+ * row_sizes, int8_t * output_ptr)
+ * @param name
+ * @param projects
+ * @param output_schema
+ * @return
+ */
 bool RowFnLetIRBuilder::Build(
     const std::string& name, const node::PlanNodeList& projects,
     vm::Schema* output_schema) {  // NOLINT (runtime/references)
@@ -76,19 +74,18 @@ bool RowFnLetIRBuilder::Build(
 
     std::vector<std::string> args;
     std::vector<::llvm::Type*> args_llvm_type;
-    for (auto info : row_info_list_) {
-        args_llvm_type.push_back(
-            ::llvm::Type::getInt8PtrTy(module_->getContext()));
-        args_llvm_type.push_back(
-            ::llvm::Type::getInt8PtrTy(module_->getContext()));
-        args_llvm_type.push_back(
-            ::llvm::Type::getInt32Ty(module_->getContext()));
-        args.push_back(info.row_ptr_name_);
-        args.push_back(info.window_ptr_name_);
-        args.push_back(info.row_size_name_);
-    }
     args_llvm_type.push_back(
         ::llvm::Type::getInt8PtrTy(module_->getContext())->getPointerTo());
+    args_llvm_type.push_back(
+        ::llvm::Type::getInt8PtrTy(module_->getContext())->getPointerTo());
+    args_llvm_type.push_back(
+        ::llvm::Type::getInt32Ty(module_->getContext())->getPointerTo());
+    args_llvm_type.push_back(
+        ::llvm::Type::getInt8PtrTy(module_->getContext())->getPointerTo());
+    
+    args.push_back("row_ptrs");
+    args.push_back("window_ptrs");
+    args.push_back("row_sizes");
     args.push_back(output_ptr_name);
 
     base::Status status;
@@ -103,7 +100,6 @@ bool RowFnLetIRBuilder::Build(
 
     ScopeVar sv;
     sv.Enter(name);
-
     ok = FillArgs(args, fn, sv);
 
     if (!ok) {
@@ -214,6 +210,7 @@ bool RowFnLetIRBuilder::BuildFnHeader(
     DLOG(INFO) << "create fn header " << name << " done";
     return true;
 }
+
 bool RowFnLetIRBuilder::FillArgs(const std::vector<std::string>& args,
                                  ::llvm::Function* fn,
                                  ScopeVar& sv) {  // NOLINT
