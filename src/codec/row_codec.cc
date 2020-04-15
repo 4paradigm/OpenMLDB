@@ -598,6 +598,13 @@ RowDecoder::RowDecoder(const vm::Schema& schema)
             }
         }
     }
+    uint32_t next_pos = 0;
+    for (auto iter = next_str_pos_.rbegin(); iter != next_str_pos_.rend();
+         iter++) {
+        uint32_t tmp = iter->second;
+        iter->second = next_pos;
+        next_pos = tmp;
+    }
     str_field_start_offset_ = offset;
 }
 bool RowDecoder::GetPrimayFieldOffsetType(const std::string& name,
