@@ -29,68 +29,12 @@ namespace codegen {
 BufNativeIRBuilder::BufNativeIRBuilder(const vm::Schema& schema,
                                        ::llvm::BasicBlock* block,
                                        ScopeVar* scope_var)
-    : schema_(schema),
-      block_(block),
+    : block_(block),
       sv_(scope_var),
-      variable_ir_builder_(block, scope_var),
-      types_() {
-    uint32_t offset = codec::GetStartOffset(schema_.size());
-    uint32_t string_field_cnt = 0;
-    for (int32_t i = 0; i < schema_.size(); i++) {
-        const ::fesql::type::ColumnDef& column = schema_.Get(i);
-        fesql::node::DataType data_type;
-        if (!SchemaType2DataType(column.type(), &data_type)) {
-            LOG(WARNING) << "fail to convert schema type to data type " +
-                                fesql::type::Type_Name(column.type());
-            return;
-        }
-        if (data_type == ::fesql::node::kVarchar) {
-            types_.insert(std::make_pair(
-                column.name(), std::make_pair(data_type, string_field_cnt)));
-            next_str_pos_.insert(
-                std::make_pair(string_field_cnt, string_field_cnt));
-            string_field_cnt += 1;
-        } else {
-            auto it = codec::TYPE_SIZE_MAP.find(column.type());
-            if (it == codec::TYPE_SIZE_MAP.end()) {
-                LOG(WARNING) << "fail to find column type "
-                             << ::fesql::type::Type_Name(column.type());
-            } else {
-                types_.insert(std::make_pair(
-                    column.name(), std::make_pair(data_type, offset)));
-                offset += it->second;
-            }
-        }
-    }
-    uint32_t next_pos = 0;
-    for (auto iter = next_str_pos_.rbegin(); iter != next_str_pos_.rend();
-         iter++) {
-        uint32_t tmp = iter->second;
-        iter->second = next_pos;
-        next_pos = tmp;
-    }
-    str_field_start_offset_ = offset;
-}
+      decoder_(schema),
+      variable_ir_builder_(block, scope_var) {}
 
 BufNativeIRBuilder::~BufNativeIRBuilder() {}
-
-bool BufNativeIRBuilder::BuildGetFiledOffset(const std::string& name,
-                                             uint32_t* offset,
-                                             ::fesql::node::DataType* fe_type) {
-    if (nullptr == offset || nullptr == fe_type) {
-        LOG(WARNING) << "input args have null";
-        return false;
-    }
-    Types::iterator it = types_.find(name);
-    if (it == types_.end()) {
-        LOG(WARNING) << "no column " << name << " in schema";
-        return false;
-    }
-    // TODO(wangtaize) support null check
-    *fe_type = it->second.first;
-    *offset = it->second.second;
-    return true;
-}
 
 bool BufNativeIRBuilder::BuildGetField(const std::string& name,
                                        ::llvm::Value* row_ptr,
@@ -101,15 +45,14 @@ bool BufNativeIRBuilder::BuildGetField(const std::string& name,
         return false;
     }
 
-    ::fesql::node::DataType fe_type;
     uint32_t offset;
-    if (!BuildGetFiledOffset(name, &offset, &fe_type)) {
+    ::fesql::node::DataType data_type;
+    if (!GetFiledOffsetType(name, &offset, &data_type)) {
         LOG(WARNING) << "fail to get filed offset " << name;
         return false;
     }
-
     ::llvm::IRBuilder<> builder(block_);
-    switch (fe_type) {
+    switch (data_type) {
         case ::fesql::node::kInt16: {
             llvm::Type* i16_ty = builder.getInt16Ty();
             return BuildGetPrimaryField("fesql_storage_get_int16_field",
@@ -137,18 +80,21 @@ bool BufNativeIRBuilder::BuildGetField(const std::string& name,
         }
         case ::fesql::node::kVarchar: {
             uint32_t next_offset = 0;
-            auto nit = next_str_pos_.find(offset);
-            if (nit != next_str_pos_.end()) {
-                next_offset = nit->second;
+            uint32_t str_start_offset = 0;
+            if (!decoder_.GetStringFieldOffset(name, &offset, &next_offset,
+                                               &str_start_offset)) {
+                LOG(WARNING)
+                    << "fail to get string filed offset and next offset"
+                    << name;
             }
             DLOG(INFO) << "get string with offset " << offset << " next offset "
                        << next_offset << " for col " << name;
-            return BuildGetStringField(offset, next_offset, row_ptr, row_size,
-                                       output);
+            return BuildGetStringField(offset, next_offset, str_start_offset,
+                                       row_ptr, row_size, output);
         }
         default: {
             LOG(WARNING) << "fail to get col for type: "
-                         << node::DataTypeName(fe_type);
+                         << node::DataTypeName(data_type);
             return false;
         }
     }
@@ -174,11 +120,9 @@ bool BufNativeIRBuilder::BuildGetPrimaryField(const std::string& fn_name,
     return true;
 }
 
-bool BufNativeIRBuilder::BuildGetStringField(uint32_t offset,
-                                             uint32_t next_str_field_offset,
-                                             ::llvm::Value* row_ptr,
-                                             ::llvm::Value* size,
-                                             ::llvm::Value** output) {
+bool BufNativeIRBuilder::BuildGetStringField(
+    uint32_t offset, uint32_t next_str_field_offset, uint32_t str_start_offset,
+    ::llvm::Value* row_ptr, ::llvm::Value* size, ::llvm::Value** output) {
     base::Status status;
     if (row_ptr == NULL || size == NULL || output == NULL) {
         LOG(WARNING) << "input args have null ptr";
@@ -235,9 +179,24 @@ bool BufNativeIRBuilder::BuildGetStringField(uint32_t offset,
     // TODO(wangtaize) add status check
     builder.CreateCall(callee, ::llvm::ArrayRef<::llvm::Value*>{
                                    row_ptr, str_offset, next_str_offset,
-                                   builder.getInt32(str_field_start_offset_),
+                                   builder.getInt32(str_start_offset),
                                    str_addr_space, data_ptr_ptr, size_ptr});
     *output = string_ref;
+    return true;
+}
+bool BufNativeIRBuilder::GetFiledOffsetType(const std::string& name,
+                                            uint32_t* offset_ptr,
+                                            node::DataType* data_type_ptr) {
+    fesql::type::Type type;
+    if (!decoder_.GetPrimayFieldOffsetType(name, offset_ptr, &type)) {
+        return false;
+    }
+
+    if (!SchemaType2DataType(type, data_type_ptr)) {
+        LOG(WARNING) << "unrecognized data type " +
+                            fesql::type::Type_Name(type);
+        return false;
+    }
     return true;
 }
 

@@ -683,7 +683,8 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_sum_project) {
     LOG(INFO) << "input ptr " << ptr;
 
     int8_t* output = NULL;
-    int32_t ret2 = decode(window.back().buf(), ptr, 0, &output);
+    int32_t ret2 =
+        decode(window.back().buf(), ptr, window.back().size(), &output);
     ASSERT_EQ(0, ret2);
     ASSERT_EQ(1u + 11u + 111u + 1111u + 11111u,
               *reinterpret_cast<uint32_t*>(output + 7));
@@ -761,7 +762,8 @@ TEST_F(FnLetIRBuilderTest, test_simple_window_project_mix) {
     LOG(INFO) << "input ptr " << ptr;
 
     int8_t* output = NULL;
-    int32_t ret2 = decode(window.back().buf(), ptr, 0, &output);
+    int32_t ret2 =
+        decode(window.back().buf(), ptr, window.back().size(), &output);
     ASSERT_EQ(0, ret2);
     ASSERT_EQ(11111u, *reinterpret_cast<uint32_t*>(output + 7));
     ASSERT_EQ(1u + 11u + 111u + 1111u + 11111u,
@@ -836,7 +838,8 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_min_project) {
     std::vector<Slice> window;
     BuildWindow(window, &ptr);
     int8_t* output = NULL;
-    int32_t ret2 = decode(window.back().buf(), ptr, 0, &output);
+    int32_t ret2 =
+        decode(window.back().buf(), ptr, window.back().size(), &output);
     ASSERT_EQ(ret2, 0);
     ASSERT_EQ(7u + 4u + 4u + 8u + 2u + 8u,
               *reinterpret_cast<uint32_t*>(output + 2));
@@ -904,7 +907,8 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_max_project) {
     std::vector<Slice> window;
     BuildWindow(window, &ptr);
     int8_t* output = NULL;
-    int32_t ret2 = decode(window.back().buf(), ptr, 0, &output);
+    int32_t ret2 =
+        decode(window.back().buf(), ptr, window.back().size(), &output);
     ASSERT_EQ(ret2, 0);
     ASSERT_EQ(7u + 4u + 4u + 8u + 2u + 8u,
               *reinterpret_cast<uint32_t*>(output + 2));
@@ -995,7 +999,8 @@ TEST_F(FnLetIRBuilderTest, test_col_at_udf) {
     std::vector<Slice> window;
     BuildWindow(window, &ptr);
     int8_t* output = NULL;
-    int32_t ret2 = decode(window.back().buf(), ptr, 0, &output);
+    int32_t ret2 =
+        decode(window.back().buf(), ptr, window.back().size(), &output);
     ASSERT_EQ(ret2, 0);
     //    ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8, *reinterpret_cast<uint32_t*>(output +
     //    2));
