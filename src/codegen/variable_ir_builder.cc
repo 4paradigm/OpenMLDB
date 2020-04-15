@@ -120,8 +120,32 @@ bool fesql::codegen::VariableIRBuilder::StoreColumnRef(
     return StoreValue("col." + relation_name + "." + name, value, status);
 }
 bool fesql::codegen::VariableIRBuilder::StoreColumnItem(
-    const std::string &relation_name,
-    const std::string& name, ::llvm::Value* value,
-    fesql::base::Status& status) {
+    const std::string& relation_name, const std::string& name,
+    ::llvm::Value* value, fesql::base::Status& status) {
     return StoreValue("item." + relation_name + "." + name, value, status);
+}
+bool fesql::codegen::VariableIRBuilder::LoadArrayIndex(
+    std::string array_ptr_name, int32_t index, ::llvm::Value** output,
+    base::Status& status) {
+    ::llvm::IRBuilder<> builder(block_);
+    ::llvm::Value* array_ptr;
+    if (!LoadValue(array_ptr_name, &array_ptr, status)) {
+        status.msg = "fail load array ptr" + array_ptr_name;
+        status.code = common::kCodegenError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+    ::llvm::Value* ptr = builder.CreateInBoundsGEP(
+        array_ptr, ::llvm::ArrayRef<::llvm::Value*>(builder.getInt64(index)));
+
+    ::llvm::Value* value = builder.CreateLoad(ptr);
+    if (nullptr == value) {
+        status.msg =
+            "fail load " + array_ptr_name + "[" + std::to_string(index) + "]";
+        status.code = common::kCodegenError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+    *output = value;
+    return true;
 }

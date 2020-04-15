@@ -36,6 +36,9 @@ class VariableIRBuilder {
                          const std::string& name, ::llvm::Value* value,
                          base::Status& status);  // NOLINT (runtime/references)
 
+    bool LoadArrayIndex(std::string array_name, int32_t index,
+                        ::llvm::Value** output,
+                        base::Status& status);  // NOLINT (runtime/references)
     bool LoadValue(std::string name, ::llvm::Value** output,
                    base::Status& status);  // NOLINT (runtime/references)
     bool StoreValue(const std::string& name, ::llvm::Value* value,
