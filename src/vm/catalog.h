@@ -31,7 +31,8 @@ namespace vm {
 
 using fesql::codec::IteratorV;
 using fesql::codec::ListV;
-using fesql::codec::SliceIterator;
+using fesql::codec::Row;
+using fesql::codec::RowIterator;
 using fesql::codec::WindowIterator;
 
 struct ColInfo {
@@ -55,7 +56,7 @@ typedef std::map<std::string, IndexSt> IndexHint;
 class PartitionHandler;
 
 enum HandlerType { kRowHandler, kTableHandler, kPartitionHandler };
-class DataHandler : public ListV<base::Slice> {
+class DataHandler : public ListV<Row> {
  public:
     DataHandler() {}
     virtual ~DataHandler() {}
@@ -75,17 +76,16 @@ class RowHandler : public DataHandler {
     RowHandler() {}
 
     virtual ~RowHandler() {}
-    std::unique_ptr<IteratorV<uint64_t, base::Slice>> GetIterator()
-        const override {
-        return std::unique_ptr<IteratorV<uint64_t, base::Slice>>();
+    std::unique_ptr<IteratorV<uint64_t, Row>> GetIterator() const override {
+        return std::unique_ptr<IteratorV<uint64_t, Row>>();
     }
-    IteratorV<uint64_t, base::Slice>* GetIterator(int8_t* addr) const override {
+    IteratorV<uint64_t, Row>* GetIterator(int8_t* addr) const override {
         return nullptr;
     }
     const uint64_t GetCount() override { return 0; }
-    base::Slice At(uint64_t pos) override { return base::Slice(); }
+    Row At(uint64_t pos) override { return Row(); }
     const HandlerType GetHanlderType() override { return kRowHandler; }
-    virtual const std::vector<base::Slice>& GetValue() const = 0;
+    virtual const Row& GetValue() const = 0;
 };
 
 class TableHandler : public DataHandler {
@@ -104,7 +104,7 @@ class TableHandler : public DataHandler {
     virtual std::unique_ptr<WindowIterator> GetWindowIterator(
         const std::string& idx_name) = 0;
     virtual const uint64_t GetCount() { return 0; }
-    virtual base::Slice At(uint64_t pos) { return base::Slice(); }
+    virtual Row At(uint64_t pos) { return Row(); }
     const HandlerType GetHanlderType() override { return kTableHandler; }
     virtual std::shared_ptr<PartitionHandler> GetPartition(
         std::shared_ptr<TableHandler> table_hander,
@@ -117,10 +117,10 @@ class PartitionHandler : public TableHandler {
  public:
     PartitionHandler() : TableHandler() {}
     ~PartitionHandler() {}
-    virtual std::unique_ptr<SliceIterator> GetIterator() const {
-        return std::unique_ptr<SliceIterator>();
+    virtual std::unique_ptr<RowIterator> GetIterator() const {
+        return std::unique_ptr<RowIterator>();
     }
-    IteratorV<uint64_t, base::Slice>* GetIterator(int8_t* addr) const override {
+    IteratorV<uint64_t, Row>* GetIterator(int8_t* addr) const override {
         return nullptr;
     }
     virtual std::unique_ptr<WindowIterator> GetWindowIterator(
@@ -130,7 +130,7 @@ class PartitionHandler : public TableHandler {
     virtual std::unique_ptr<WindowIterator> GetWindowIterator() = 0;
     virtual const bool IsAsc() = 0;
     const HandlerType GetHanlderType() override { return kPartitionHandler; }
-    virtual base::Slice At(uint64_t pos) { return base::Slice(); }
+    virtual Row At(uint64_t pos) { return Row(); }
     virtual std::shared_ptr<TableHandler> GetSegment(
         std::shared_ptr<PartitionHandler> partition_hander,
         const std::string& key) {

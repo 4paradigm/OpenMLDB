@@ -19,9 +19,9 @@
 #define SRC_CODEC_ROW_CODEC_H_
 
 #include <map>
+#include <string>
 #include <unordered_map>
 #include <utility>
-#include <string>
 #include <vector>
 #include "proto/type.pb.h"
 #include "vm/catalog.h"
@@ -31,7 +31,7 @@ namespace codec {
 
 #define BitMapSize(size) (((size) >> 3) + !!((size)&0x07))
 
-using Schema = vm::Schema;
+using fesql::vm::Schema;
 static constexpr uint8_t VERSION_LENGTH = 2;
 static constexpr uint8_t SIZE_LENGTH = 4;
 static constexpr uint8_t HEADER_LENGTH = VERSION_LENGTH + SIZE_LENGTH;
@@ -165,6 +165,7 @@ class RowDecoder {
     std::map<uint32_t, uint32_t> next_str_pos_;
     uint32_t str_field_start_offset_;
 };
+
 }  // namespace codec
 }  // namespace fesql
 #endif  // SRC_CODEC_ROW_CODEC_H_

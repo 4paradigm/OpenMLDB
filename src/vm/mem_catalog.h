@@ -24,31 +24,31 @@
 namespace fesql {
 namespace vm {
 
-using fesql::base::Slice;
+using fesql::codec::Row;
 using fesql::codec::IteratorV;
-using fesql::codec::SliceIterator;
+using fesql::codec::RowIterator;
 using fesql::codec::WindowIterator;
 
 struct AscComparor {
-    bool operator()(std::pair<uint64_t, Slice> i,
-                    std::pair<uint64_t, Slice> j) {
+    bool operator()(std::pair<uint64_t, Row> i,
+                    std::pair<uint64_t, Row> j) {
         return i.first < j.first;
     }
 };
 
 struct DescComparor {
-    bool operator()(std::pair<uint64_t, Slice> i,
-                    std::pair<uint64_t, Slice> j) {
+    bool operator()(std::pair<uint64_t, Row> i,
+                    std::pair<uint64_t, Row> j) {
         return i.first > j.first;
     }
 };
 
-typedef std::vector<std::pair<uint64_t, base::Slice>> MemSegment;
-typedef std::vector<base::Slice> MemTable;
+typedef std::vector<std::pair<uint64_t, Row>> MemSegment;
+typedef std::vector<Row> MemTable;
 typedef std::map<std::string, MemSegment, std::greater<std::string>>
     MemSegmentMap;
 
-class MemSegmentIterator : public SliceIterator {
+class MemSegmentIterator : public RowIterator {
  public:
     MemSegmentIterator(const MemSegment* table, const vm::Schema* schema);
     MemSegmentIterator(const MemSegment* table, const vm::Schema* schema,
@@ -57,7 +57,7 @@ class MemSegmentIterator : public SliceIterator {
     void Seek(uint64_t ts);
     void SeekToFirst();
     const uint64_t GetKey();
-    const Slice& GetValue();
+    const Row& GetValue();
     void Next();
     bool Valid();
 
@@ -69,7 +69,7 @@ class MemSegmentIterator : public SliceIterator {
     MemSegment::const_iterator iter_;
 };
 
-class MemTableIterator : public SliceIterator {
+class MemTableIterator : public RowIterator {
  public:
     MemTableIterator(const MemTable* table, const vm::Schema* schema);
     MemTableIterator(const MemTable* table, const vm::Schema* schema,
@@ -78,7 +78,7 @@ class MemTableIterator : public SliceIterator {
     void Seek(uint64_t ts);
     void SeekToFirst();
     const uint64_t GetKey();
-    const Slice& GetValue();
+    const Row& GetValue();
     void Next();
     bool Valid();
 
@@ -100,8 +100,8 @@ class MemWindowIterator : public WindowIterator {
     void SeekToFirst();
     void Next();
     bool Valid();
-    std::unique_ptr<SliceIterator> GetValue();
-    const base::Slice GetKey();
+    std::unique_ptr<RowIterator> GetValue();
+    const Row GetKey();
 
  private:
     const MemSegmentMap* partitions_;
@@ -110,18 +110,22 @@ class MemWindowIterator : public WindowIterator {
 };
 class MemRowHandler : public RowHandler {
  public:
-    MemRowHandler()
-        : RowHandler(), slices_(), table_name_(""), db_(""), schema_(nullptr) {}
+    MemRowHandler(const Row row, const vm::Schema* schema)
+        : RowHandler(),
+          row_(row),
+          table_name_(""),
+          db_(""),
+          schema_(schema) {
+    }
     ~MemRowHandler() {}
 
-    const std::vector<const base::Slice>& GetValue() { return slices_; }
     const Schema* GetSchema() override { return nullptr; }
     const std::string& GetName() override { return table_name_; }
     const std::string& GetDatabase() override { return db_; }
-    void AddRow(const base::Slice& row) { slices_.push_back(row); }
+    const Row& GetValue() const override { return row_; }
 
  private:
-    std::vector<const base::Slice> slices_;
+    Row row_;
     std::string table_name_;
     std::string db_;
     const Schema* schema_;
@@ -141,16 +145,16 @@ class MemTableHandler : public TableHandler {
     inline const IndexHint& GetIndex() { return index_hint_; }
     inline const std::string& GetDatabase() { return db_; }
 
-    std::unique_ptr<IteratorV<uint64_t, base::Slice>> GetIterator() const;
-    IteratorV<uint64_t, base::Slice>* GetIterator(int8_t* addr) const;
+    std::unique_ptr<IteratorV<uint64_t, Row>> GetIterator() const;
+    IteratorV<uint64_t, Row>* GetIterator(int8_t* addr) const;
     std::unique_ptr<WindowIterator> GetWindowIterator(
         const std::string& idx_name);
 
-    void AddRow(const base::Slice& row);
+    void AddRow(const Row& row);
     void Reverse();
     virtual const uint64_t GetCount() { return table_.size(); }
-    virtual Slice At(uint64_t pos) {
-        return pos >= 0 && pos < table_.size() ? table_.at(pos) : base::Slice();
+    virtual Row At(uint64_t pos) {
+        return pos >= 0 && pos < table_.size() ? table_.at(pos) : Row();
     }
 
  protected:
@@ -173,19 +177,19 @@ class MemSegmentHandler : public TableHandler {
     inline const Schema* GetSchema() { return schema_; }
     inline const std::string& GetName() { return table_name_; }
     inline const IndexHint& GetIndex() { return index_hint_; }
-    std::unique_ptr<IteratorV<uint64_t, base::Slice>> GetIterator() const;
-    IteratorV<uint64_t, base::Slice>* GetIterator(int8_t* addr) const;
+    std::unique_ptr<IteratorV<uint64_t, Row>> GetIterator() const;
+    IteratorV<uint64_t, Row>* GetIterator(int8_t* addr) const;
     inline const std::string& GetDatabase() { return db_; }
     std::unique_ptr<WindowIterator> GetWindowIterator(
         const std::string& idx_name);
-    void AddRow(const uint64_t key, const base::Slice& v);
-    void AddRow(const base::Slice& v);
+    void AddRow(const uint64_t key, const Row& v);
+    void AddRow(const Row& v);
     void Sort(const bool is_asc);
     void Reverse();
     virtual const uint64_t GetCount() { return table_.size(); }
-    virtual Slice At(uint64_t pos) {
+    virtual Row At(uint64_t pos) {
         return pos >= 0 && pos < table_.size() ? table_.at(pos).second
-                                               : base::Slice();
+                                               : Row();
     }
 
  protected:
@@ -215,14 +219,14 @@ class Window : public MemSegmentHandler {
           max_size_(max_size) {}
     virtual ~Window() {}
 
-    std::unique_ptr<vm::IteratorV<uint64_t, Slice>> GetIterator()
+    std::unique_ptr<vm::IteratorV<uint64_t, Row>> GetIterator()
         const override {
         std::unique_ptr<vm::MemSegmentIterator> it(
             new vm::MemSegmentIterator(&table_, schema_, start_, end_));
         return std::move(it);
     }
 
-    vm::IteratorV<uint64_t, Slice>* GetIterator(int8_t* addr) const override {
+    vm::IteratorV<uint64_t, Row>* GetIterator(int8_t* addr) const override {
         if (nullptr == addr) {
             return new vm::MemSegmentIterator(&table_, schema_, start_, end_);
         } else {
@@ -230,12 +234,12 @@ class Window : public MemSegmentHandler {
                 vm::MemSegmentIterator(&table_, schema_, start_, end_);
         }
     }
-    virtual void BufferData(uint64_t key, const Slice& row) = 0;
+    virtual void BufferData(uint64_t key, const Row& row) = 0;
 
     virtual const uint64_t GetCount() { return end_ - start_; }
-    virtual Slice At(uint64_t pos) {
+    virtual Row At(uint64_t pos) {
         return (pos + start_ < end_) ? table_.at(pos + start_).second
-                                     : base::Slice();
+                                     : Row();
     }
 
  protected:
@@ -253,7 +257,7 @@ class CurrentHistoryWindow : public Window {
     CurrentHistoryWindow(int64_t start_offset, uint32_t max_size)
         : Window(start_offset, 0, max_size) {}
 
-    void BufferData(uint64_t key, const Slice& row) {
+    void BufferData(uint64_t key, const Row& row) {
         AddRow(key, row);
         end_++;
         int64_t sub = (key + start_offset_);
@@ -271,7 +275,7 @@ class CurrentHistoryUnboundWindow : public Window {
     CurrentHistoryUnboundWindow() : Window(INT64_MIN, 0) {}
     explicit CurrentHistoryUnboundWindow(uint32_t max_size)
         : Window(INT64_MIN, 0, max_size) {}
-    void BufferData(uint64_t key, const Slice& row) {
+    void BufferData(uint64_t key, const Row& row) {
         AddRow(key, row);
         end_++;
         while ((0 != max_size_ && (end_ - start_) > max_size_)) {
@@ -299,7 +303,7 @@ class MemPartitionHandler : public PartitionHandler {
     const std::string& GetName() override;
     const std::string& GetDatabase() override;
     virtual std::unique_ptr<WindowIterator> GetWindowIterator();
-    bool AddRow(const std::string& key, uint64_t ts, const Slice& row);
+    bool AddRow(const std::string& key, uint64_t ts, const Row& row);
     void Sort(const bool is_asc);
     void Reverse();
     void Print();

@@ -14,11 +14,6 @@
 #include "vm/mem_catalog.h"
 namespace fesql {
 namespace vm {
-#define ROW_ARG int8_t*, int8_t*, int32_t
-#define ROW_ARGS(N)
-#define DECLARE_UDF(FN, N)\
-int32_t (*udf)(int8_t*, int8_t*, int32_t, int8_t**) = \
-(int32_t(*)(int8_t*, int8_t*, int32_t, int8_t**))(FN);
 Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
     if (nullptr == node) {
         status.msg = "fail to build runner : physical node is null";
@@ -222,60 +217,45 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
     }
 }
 
-Slice Runner::WindowProject(const int8_t* fn, uint64_t key, const Slice slice,
+Row Runner::WindowProject(const int8_t* fn, uint64_t key, const Row row,
                             Window* window) {
-    if (slice.empty()) {
-        return slice;
+    if (row.empty()) {
+        return row;
     }
-    window->BufferData(key, slice);
+    window->BufferData(key, row);
     int32_t (*udf)(int8_t**, int8_t**, int32_t*, int8_t**) =
         (int32_t(*)(int8_t**, int8_t**, int32_t*, int8_t**))(fn);
     int8_t* out_buf = nullptr;
-    int8_t* row_ptrs[1] = {slice.buf()};
+    int8_t* row_ptrs[1] = {row.buf()};
     int8_t* window_ptrs[1] = {reinterpret_cast<int8_t*>(window)};
-    int32_t row_sizes[1] = {static_cast<int32_t>(slice.size())};
+    int32_t row_sizes[1] = {static_cast<int32_t>(row.size())};
     uint32_t ret = udf(row_ptrs, window_ptrs, row_sizes, &out_buf);
     if (ret != 0) {
         LOG(WARNING) << "fail to run udf " << ret;
-        return Slice();
+        return Row();
     }
-    return Slice(reinterpret_cast<char*>(out_buf), RowView::GetSize(out_buf));
+    return Row(reinterpret_cast<char*>(out_buf), RowView::GetSize(out_buf));
 }
-Slice Runner::RowProject(const int8_t* fn, const Slice slice) {
-    if (slice.empty()) {
-        return slice;
+Row Runner::RowProject(const int8_t* fn, const Row row) {
+    if (row.empty()) {
+        return row;
     }
     int32_t (*udf)(int8_t**, int8_t**, int32_t*, int8_t**) =
         (int32_t(*)(int8_t**, int8_t**, int32_t*, int8_t**))(fn);
     int8_t* buf = nullptr;
 
-    int8_t* row_ptrs[1] = {slice.buf()};
+    int8_t* row_ptrs[1] = {row.buf()};
     int8_t* window_ptrs[1] = {nullptr};
-    int32_t row_sizes[1] = {static_cast<int32_t>(slice.size())};
+    int32_t row_sizes[1] = {static_cast<int32_t>(row.size())};
     uint32_t ret = udf(row_ptrs, window_ptrs, row_sizes, &buf);
 
     if (ret != 0) {
         LOG(WARNING) << "fail to run udf " << ret;
-        return Slice();
+        return Row();
     }
-    return Slice(reinterpret_cast<char*>(buf), RowView::GetSize(buf));
+    return Row(reinterpret_cast<char*>(buf), RowView::GetSize(buf));
 }
 
-Slice Runner::MultiRowsProject(const int8_t* fn,
-                               std::vector<const Slice>& slices_ptr) {
-    if (slices_ptr.empty()) {
-        return Slice();
-    }
-    int32_t (*udf)(int8_t*, int8_t*, int8_t**) =
-        (int32_t(*)(int8_t*, int8_t*, int8_t**))(fn);
-    int8_t* buf = nullptr;
-    uint32_t ret = udf(reinterpret_cast<int8_t*>(slices_ptr), nullptr, &buf);
-    if (ret != 0) {
-        LOG(WARNING) << "fail to run udf " << ret;
-        return Slice();
-    }
-    return Slice(reinterpret_cast<char*>(buf), RowView::GetSize(buf));
-}
 std::string Runner::GetColumnString(RowView* row_view, int key_idx,
                                     type::Type key_type) {
     std::string key = "";
@@ -448,7 +428,7 @@ std::shared_ptr<DataHandler> Runner::TableGroup(
 
     auto iter = std::dynamic_pointer_cast<TableHandler>(table)->GetIterator();
     while (iter->Valid()) {
-        const Slice key_row(RowProject(fn, iter->GetValue()), true);
+        const Row key_row(RowProject(fn, iter->GetValue()), true);
         row_view->Reset(key_row.buf(), key_row.size());
         std::string keys = GenerateKeys(row_view, schema, idxs);
         output_partitions->AddRow(keys, iter->GetKey(), iter->GetValue());
@@ -481,7 +461,7 @@ std::shared_ptr<DataHandler> Runner::PartitionGroup(
         auto segment_iter = iter->GetValue();
         segment_iter->SeekToFirst();
         while (segment_iter->Valid()) {
-            const Slice key_row(RowProject(fn, segment_iter->GetValue()), true);
+            const Row key_row(RowProject(fn, segment_iter->GetValue()), true);
             row_view->Reset(key_row.buf(), key_row.size());
             std::string keys = GenerateKeys(row_view, schema, idxs);
             output_partitions->AddRow(keys, segment_iter->GetKey(),
@@ -524,7 +504,7 @@ std::shared_ptr<DataHandler> Runner::PartitionSort(
             if (idxs.empty()) {
                 key = segment_iter->GetKey();
             } else {
-                const Slice order_row(RowProject(fn, segment_iter->GetValue()),
+                const Row order_row(RowProject(fn, segment_iter->GetValue()),
                                       true);
                 row_view->Reset(order_row.buf(), order_row.size());
                 key = GetColumnInt64(row_view, idxs[0],
@@ -561,7 +541,7 @@ std::shared_ptr<DataHandler> Runner::TableSort(
         new MemSegmentHandler(table->GetSchema()));
     auto iter = std::dynamic_pointer_cast<TableHandler>(table)->GetIterator();
     while (iter->Valid()) {
-        const Slice order_row(RowProject(fn, iter->GetValue()), true);
+        const Row order_row(RowProject(fn, iter->GetValue()), true);
 
         row_view->Reset(order_row.buf(), order_row.size());
 
@@ -729,7 +709,7 @@ std::shared_ptr<DataHandler> WindowAggRunner::Run(RunnerContext& ctx) {
             if (limit_cnt_ > 0 && cnt++ >= limit_cnt_) {
                 break;
             }
-            const Slice row(WindowProject(fn_, segment->GetKey(),
+            const Row row(WindowProject(fn_, segment->GetKey(),
                                           segment->GetValue(), &window));
             output_table->AddRow(row);
             segment->Next();
@@ -755,7 +735,7 @@ std::shared_ptr<DataHandler> IndexSeekRunner::Run(RunnerContext& ctx) {
         std::dynamic_pointer_cast<PartitionHandler>(right);
 
     auto keys_row =
-        Slice(RowProject(
+        Row(RowProject(
                   fn_, std::dynamic_pointer_cast<RowHandler>(left)->GetValue()),
               true);
     row_view_.Reset(keys_row.buf(), keys_row.size());
@@ -781,83 +761,7 @@ std::shared_ptr<DataHandler> RequestLastJoinRunner::Run(
     auto request = std::dynamic_pointer_cast<RowHandler>(left)->GetValue();
     auto table = std::dynamic_pointer_cast<TableHandler>(right);
     std::shared_ptr<DataHandler> output = right;
-    //    auto request_fn_row = Slice(RowProject(fn_, request), true);
-    // filter by keys if need
-    if (!condition_idxs_.empty()) {
-        auto condition_row =
-            Slice(RowProject(
-                fn_, std::dynamic_pointer_cast<RowHandler>(left)->GetValue()),
-                  true);
-
-        auto condition_idx = condition_idxs_[0];
-        if (GetColumnBool(&row_view_, condition_idx,
-                          fn_schema_.Get(condition_idx).type())) {
-        }
-
-        auto mem_table = std::shared_ptr<MemTableHandler>(
-            new MemTableHandler(output_schema));
-        auto iter = table->GetIterator();
-        std::vector<const Slice&> rows;
-        auto condition_type = fn_schema_.Get(condition_idx).type();
-        rows.reserve(2);
-        rows.push_back(request);
-        while (iter->Valid()) {
-            rows[1] = iter->GetValue();
-            auto row = Slice(MultiRowsProject(fn_, &rows), true);
-            row_view_.Reset(row.buf(), row.size());
-            if (GetColumnBool(&row_view_, condition_idx, condition_type)) {
-                mem_table->AddRow(iter->GetValue());
-                break;
-            }
-            iter->Next();
-        }
-        output = std::shared_ptr<TableHandler>(mem_table);
-    }
-
-    // sort by orders if need
-    if (!orders_idxs_.empty()) {
-        output = TableSort(std::shared_ptr<DataHandler>(output), fn_schema_,
-                           fn_, orders_idxs_, false, &row_view_);
-    }
-
-    // build window with start and end offset
-    auto window_table =
-        std::shared_ptr<MemTableHandler>(new MemTableHandler(output_schema));
-
-    uint64_t start = 0;
-    uint64_t end = UINT64_MAX;
-
-    if (!keys_idxs_.empty()) {
-        row_view_.Reset(request_fn_row.buf(), request_fn_row.size());
-        auto ts_idx = keys_idxs_[0];
-        int64_t key =
-            GetColumnInt64(&row_view_, ts_idx, fn_schema_.Get(ts_idx).type());
-
-        start = (key + start_offset_) < 0 ? 0 : (key + start_offset_);
-
-        end = (key + end_offset_) < 0 ? 0 : (key + end_offset_);
-
-        DLOG(INFO) << "request key: " << key;
-    }
-
-    window_table->AddRow(request);
-
-    DLOG(INFO) << "start make window ";
-    if (output) {
-        auto table_output = std::dynamic_pointer_cast<TableHandler>(output);
-        auto table_iter = table_output->GetIterator();
-        if (table_iter) {
-            table_iter->Seek(end);
-            while (table_iter->Valid()) {
-                if (table_iter->GetKey() <= start) {
-                    break;
-                }
-                window_table->AddRow(table_iter->GetValue());
-                table_iter->Next();
-            }
-        }
-    }
-    return window_table;
+    return std::shared_ptr<DataHandler>();
 }
 std::shared_ptr<DataHandler> LimitRunner::Run(RunnerContext& ctx) {
     auto input = producers_[0]->RunWithCache(ctx);
@@ -934,7 +838,7 @@ std::shared_ptr<DataHandler> GroupAggRunner::Run(RunnerContext& ctx) {
         }
         iter->Next();
         output_table->AddRow(
-            Slice(reinterpret_cast<char*>(buf), RowView::GetSize(buf)));
+            Row(reinterpret_cast<char*>(buf), RowView::GetSize(buf)));
     }
     return output_table;
 }
@@ -956,7 +860,7 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(RunnerContext& ctx) {
     auto request = std::dynamic_pointer_cast<RowHandler>(left)->GetValue();
     auto table = std::dynamic_pointer_cast<TableHandler>(right);
     std::shared_ptr<DataHandler> output = right;
-    auto request_fn_row = Slice(RowProject(fn_, request), true);
+    auto request_fn_row = Row(RowProject(fn_, request), true);
     // filter by keys if need
     if (!groups_idxs_.empty()) {
         row_view_.Reset(request_fn_row.buf(), request_fn_row.size());
@@ -967,7 +871,7 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(RunnerContext& ctx) {
             new MemTableHandler(output_schema));
         auto iter = table->GetIterator();
         while (iter->Valid()) {
-            auto row = Slice(RowProject(fn_, iter->GetValue()), true);
+            auto row = Row(RowProject(fn_, iter->GetValue()), true);
             row_view_.Reset(row.buf(), row.size());
             std::string keys =
                 GenerateKeys(&row_view_, fn_schema_, groups_idxs_);
@@ -1056,7 +960,7 @@ std::shared_ptr<DataHandler> AggRunner::Run(RunnerContext& ctx) {
         return std::shared_ptr<DataHandler>();
     }
     return std::shared_ptr<RowHandler>(new MemRowHandler(
-        Slice(reinterpret_cast<char*>(buf), RowView::GetSize(buf)),
+        Row(reinterpret_cast<char*>(buf), RowView::GetSize(buf)),
         &fn_schema_));
 }
 }  // namespace vm

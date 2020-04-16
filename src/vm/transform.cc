@@ -279,7 +279,7 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
             node::ExprListNode expr_list;
             expr_list.AddChild(
                 const_cast<node::ExprNode*>(join_op->condition_));
-            CodeGenExprList((node->output_name_schema_list_,
+            CodeGenExprList(node->output_name_schema_list_,
                             &expr_list, true, fn_name, &fn_schema, status);
             join_op->SetConditionIdxs({0});
             break;

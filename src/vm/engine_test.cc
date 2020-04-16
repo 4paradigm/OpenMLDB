@@ -43,7 +43,7 @@ using namespace llvm::orc;  // NOLINT (build/namespaces)
 
 namespace fesql {
 namespace vm {
-using fesql::base::Slice;
+using fesql::codec::Row;
 using fesql::codec::ArrayListV;
 enum EngineRunMode { RUNBATCH, RUNONE };
 class EngineTest : public ::testing::TestWithParam<EngineRunMode> {};
@@ -106,7 +106,7 @@ void BuildBuf(int8_t** buf, uint32_t* size) {
     *buf = ptr;
     *size = total_size;
 }
-void BuildWindow(std::vector<Slice>& rows,  // NOLINT
+void BuildWindow(std::vector<Row>& rows,  // NOLINT
                  int8_t** buf) {
     ::fesql::type::TableDef table;
     BuildTableDef(table);
@@ -125,7 +125,7 @@ void BuildWindow(std::vector<Slice>& rows,  // NOLINT
         builder.AppendDouble(11.1);
         builder.AppendInt64(1);
         builder.AppendString(str.c_str(), 1);
-        rows.push_back(Slice(ptr, total_size));
+        rows.push_back(Row(ptr, total_size));
     }
     {
         codec::RowBuilder builder(table.columns());
@@ -141,7 +141,7 @@ void BuildWindow(std::vector<Slice>& rows,  // NOLINT
         builder.AppendDouble(22.2);
         builder.AppendInt64(2);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(Slice(ptr, total_size));
+        rows.push_back(Row(ptr, total_size));
     }
     {
         codec::RowBuilder builder(table.columns());
@@ -157,7 +157,7 @@ void BuildWindow(std::vector<Slice>& rows,  // NOLINT
         builder.AppendDouble(33.3);
         builder.AppendInt64(1);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(Slice(ptr, total_size));
+        rows.push_back(Row(ptr, total_size));
     }
     {
         codec::RowBuilder builder(table.columns());
@@ -173,7 +173,7 @@ void BuildWindow(std::vector<Slice>& rows,  // NOLINT
         builder.AppendDouble(44.4);
         builder.AppendInt64(2);
         builder.AppendString("4444", str.size());
-        rows.push_back(Slice(ptr, total_size));
+        rows.push_back(Row(ptr, total_size));
     }
     {
         codec::RowBuilder builder(table.columns());
@@ -191,14 +191,14 @@ void BuildWindow(std::vector<Slice>& rows,  // NOLINT
         builder.AppendDouble(55.5);
         builder.AppendInt64(3);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(Slice(ptr, total_size));
+        rows.push_back(Row(ptr, total_size));
     }
 
-    ::fesql::codec::ArrayListV<Slice>* w =
-        new ::fesql::codec::ArrayListV<Slice>(&rows);
+    ::fesql::codec::ArrayListV<Row>* w =
+        new ::fesql::codec::ArrayListV<Row>(&rows);
     *buf = reinterpret_cast<int8_t*>(w);
 }
-void BuildWindowUnique(std::vector<Slice>& rows,  // NOLINT
+void BuildWindowUnique(std::vector<Row>& rows,  // NOLINT
                        int8_t** buf) {
     ::fesql::type::TableDef table;
     BuildTableDef(table);
@@ -218,7 +218,7 @@ void BuildWindowUnique(std::vector<Slice>& rows,  // NOLINT
         builder.AppendDouble(11.1);
         builder.AppendInt64(1);
         builder.AppendString(str.c_str(), 1);
-        rows.push_back(Slice(ptr, total_size));
+        rows.push_back(Row(ptr, total_size));
     }
     {
         codec::RowBuilder builder(table.columns());
@@ -234,7 +234,7 @@ void BuildWindowUnique(std::vector<Slice>& rows,  // NOLINT
         builder.AppendDouble(22.2);
         builder.AppendInt64(2);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(Slice(ptr, total_size));
+        rows.push_back(Row(ptr, total_size));
     }
     {
         codec::RowBuilder builder(table.columns());
@@ -250,7 +250,7 @@ void BuildWindowUnique(std::vector<Slice>& rows,  // NOLINT
         builder.AppendDouble(33.3);
         builder.AppendInt64(3);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(Slice(ptr, total_size));
+        rows.push_back(Row(ptr, total_size));
     }
     {
         codec::RowBuilder builder(table.columns());
@@ -266,7 +266,7 @@ void BuildWindowUnique(std::vector<Slice>& rows,  // NOLINT
         builder.AppendDouble(44.4);
         builder.AppendInt64(4);
         builder.AppendString("4444", str.size());
-        rows.push_back(Slice(ptr, total_size));
+        rows.push_back(Row(ptr, total_size));
     }
     {
         codec::RowBuilder builder(table.columns());
@@ -284,18 +284,18 @@ void BuildWindowUnique(std::vector<Slice>& rows,  // NOLINT
         builder.AppendDouble(55.5);
         builder.AppendInt64(5);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(Slice(ptr, total_size));
+        rows.push_back(Row(ptr, total_size));
     }
 
-    ::fesql::codec::ArrayListV<Slice>* w =
-        new ::fesql::codec::ArrayListV<Slice>(&rows);
+    ::fesql::codec::ArrayListV<Row>* w =
+        new ::fesql::codec::ArrayListV<Row>(&rows);
     *buf = reinterpret_cast<int8_t*>(w);
 }
 void StoreData(::fesql::storage::Table* table, int8_t* rows) {
-    ArrayListV<Slice>* window = reinterpret_cast<ArrayListV<Slice>*>(rows);
+    ArrayListV<Row>* window = reinterpret_cast<ArrayListV<Row>*>(rows);
     auto w = window->GetIterator();
     ASSERT_TRUE(w->Valid());
-    Slice row = w->GetValue();
+    Row row = w->GetValue();
     w->Next();
     ASSERT_TRUE(table->Put(reinterpret_cast<char*>(row.buf()), row.size()));
 
@@ -383,8 +383,8 @@ TEST_P(EngineTest, test_normal) {
         int32_t limit = 2;
         auto iter = catalog->GetTable("db", "t1")->GetIterator();
         while (limit-- > 0 && iter->Valid()) {
-            Slice row;
-            ret = session.Run(Slice(iter->GetValue()), &row);
+            Row row;
+            ret = session.Run(Row(iter->GetValue()), &row);
             ASSERT_EQ(0, ret);
             output.push_back(row.buf());
             iter->Next();
@@ -465,7 +465,7 @@ TEST_F(EngineTest, test_window_agg) {
     ASSERT_TRUE(table->Init());
     auto catalog = BuildCommonCatalog(table_def, table);
     int8_t* rows = NULL;
-    std::vector<Slice> windows;
+    std::vector<Row> windows;
     BuildWindow(windows, &rows);
     // add request
     {
@@ -520,8 +520,8 @@ TEST_F(EngineTest, test_window_agg) {
     int32_t limit = 10;
     auto iter = windows.cbegin();
     while (limit-- > 0 && iter != windows.cend()) {
-        Slice request = *iter;
-        Slice row;
+        Row request = *iter;
+        Row row;
         int32_t ret = session.Run(request, &row);
         ASSERT_EQ(0, ret);
         output.push_back(row.buf());
@@ -613,7 +613,7 @@ TEST_F(EngineTest, test_window_agg_batch_run) {
     ASSERT_TRUE(table->Init());
     auto catalog = BuildCommonCatalog(table_def, table);
     int8_t* rows = NULL;
-    std::vector<Slice> windows;
+    std::vector<Row> windows;
     BuildWindow(windows, &rows);
     StoreData(table.get(), rows);
     const std::string sql =
@@ -722,7 +722,7 @@ TEST_F(EngineTest, test_window_agg_with_limit) {
     }
 
     int8_t* rows = NULL;
-    std::vector<Slice> windows;
+    std::vector<Row> windows;
     BuildWindow(windows, &rows);
     const std::string sql =
         "SELECT "
@@ -742,8 +742,8 @@ TEST_F(EngineTest, test_window_agg_with_limit) {
     int32_t limit = 2;
     auto iter = windows.cbegin();
     while (limit-- > 0 && iter != windows.cend()) {
-        Slice request = *iter;
-        Slice row;
+        Row request = *iter;
+        Row row;
         int32_t ret = session.Run(request, &row);
         ASSERT_EQ(0, ret);
         output.push_back(row.buf());
@@ -790,7 +790,7 @@ TEST_F(EngineTest, test_window_agg_with_limit_batch_run) {
     auto catalog = BuildCommonCatalog(table_def, table);
 
     int8_t* rows = NULL;
-    std::vector<Slice> windows;
+    std::vector<Row> windows;
     BuildWindow(windows, &rows);
     StoreData(table.get(), rows);
     const std::string sql =
@@ -862,7 +862,7 @@ TEST_F(EngineTest, test_multi_windows_agg) {
     ASSERT_TRUE(table->Init());
 
     int8_t* rows = NULL;
-    std::vector<Slice> windows;
+    std::vector<Row> windows;
     BuildWindow(windows, &rows);
     StoreData(table.get(), rows);
     auto catalog = BuildCommonCatalog(table_def, table);
@@ -957,7 +957,7 @@ TEST_F(EngineTest, test_window_agg_unique_partition) {
     ASSERT_TRUE(table->Init());
 
     int8_t* rows = NULL;
-    std::vector<Slice> windows;
+    std::vector<Row> windows;
     BuildWindowUnique(windows, &rows);
     auto catalog = BuildCommonCatalog(table_def, table);
     // add request
@@ -989,8 +989,8 @@ TEST_F(EngineTest, test_window_agg_unique_partition) {
     int32_t limit = 10;
     auto iter = windows.cbegin();
     while (limit-- > 0 && iter != windows.cend()) {
-        Slice request = *iter;
-        Slice row;
+        Row request = *iter;
+        Row row;
         int32_t ret = session.Run(request, &row);
         ASSERT_EQ(0, ret);
         output.push_back(row.buf());
@@ -1077,7 +1077,7 @@ TEST_F(EngineTest, test_window_agg_unique_partition_batch_run) {
     ASSERT_TRUE(table->Init());
 
     int8_t* rows = NULL;
-    std::vector<Slice> windows;
+    std::vector<Row> windows;
     BuildWindowUnique(windows, &rows);
     StoreData(table.get(), rows);
     auto catalog = BuildCommonCatalog(table_def, table);
@@ -1179,7 +1179,7 @@ TEST_F(EngineTest, test_window_agg_varchar_pk) {
     ASSERT_TRUE(table->Init());
     auto catalog = BuildCommonCatalog(table_def, table);
     int8_t* rows = NULL;
-    std::vector<Slice> windows;
+    std::vector<Row> windows;
     BuildWindow(windows, &rows);
     StoreData(table.get(), rows);
     const std::string sql =
@@ -1279,7 +1279,7 @@ TEST_F(EngineTest, test_window_agg_varchar_pk_batch_run) {
     ASSERT_TRUE(table->Init());
 
     int8_t* rows = NULL;
-    std::vector<Slice> windows;
+    std::vector<Row> windows;
     BuildWindow(windows, &rows);
     StoreData(table.get(), rows);
     auto catalog = BuildCommonCatalog(table_def, table);

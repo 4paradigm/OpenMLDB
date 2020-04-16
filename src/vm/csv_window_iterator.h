@@ -39,8 +39,8 @@ class CSVWindowIterator : public WindowIterator {
     void SeekToFirst();
     void Next();
     bool Valid();
-    std::unique_ptr<SliceIterator> GetValue();
-    const base::Slice GetKey();
+    std::unique_ptr<RowIterator> GetValue();
+    const Row GetKey();
 
  private:
     const std::shared_ptr<arrow::Table> table_;

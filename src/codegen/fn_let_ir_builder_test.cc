@@ -49,7 +49,7 @@ ExitOnError ExitOnErr;
 
 namespace fesql {
 namespace codegen {
-using fesql::base::Slice;
+using fesql::codec::Row;
 using fesql::codec::ArrayListV;
 static node::NodeManager manager;
 
@@ -199,7 +199,7 @@ void AddFunc(const std::string& fn, ::llvm::Module* m) {
         ASSERT_TRUE(ok);
     }
 }
-void BuildWindow(std::vector<Slice>& rows,  // NOLINT
+void BuildWindow(std::vector<Row>& rows,  // NOLINT
                  int8_t** buf) {
     ::fesql::type::TableDef table;
     table.set_name("t1");
@@ -249,7 +249,7 @@ void BuildWindow(std::vector<Slice>& rows,  // NOLINT
         builder.AppendDouble(4.1);
         builder.AppendInt64(5);
         builder.AppendString(str.c_str(), 1);
-        rows.push_back(Slice(ptr, total_size));
+        rows.push_back(Row(ptr, total_size));
     }
     {
         codec::RowBuilder builder(table.columns());
@@ -263,7 +263,7 @@ void BuildWindow(std::vector<Slice>& rows,  // NOLINT
         builder.AppendDouble(44.1);
         builder.AppendInt64(55);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(Slice(ptr, total_size));
+        rows.push_back(Row(ptr, total_size));
     }
     {
         codec::RowBuilder builder(table.columns());
@@ -277,7 +277,7 @@ void BuildWindow(std::vector<Slice>& rows,  // NOLINT
         builder.AppendDouble(444.1);
         builder.AppendInt64(555);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(Slice(ptr, total_size));
+        rows.push_back(Row(ptr, total_size));
     }
     {
         codec::RowBuilder builder(table.columns());
@@ -291,7 +291,7 @@ void BuildWindow(std::vector<Slice>& rows,  // NOLINT
         builder.AppendDouble(4444.1);
         builder.AppendInt64(5555);
         builder.AppendString("4444", str.size());
-        rows.push_back(Slice(ptr, total_size));
+        rows.push_back(Row(ptr, total_size));
     }
     {
         codec::RowBuilder builder(table.columns());
@@ -307,10 +307,10 @@ void BuildWindow(std::vector<Slice>& rows,  // NOLINT
         builder.AppendDouble(44444.1);
         builder.AppendInt64(55555);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(Slice(ptr, total_size));
+        rows.push_back(Row(ptr, total_size));
     }
 
-    ArrayListV<Slice>* w = new ArrayListV<Slice>(&rows);
+    ArrayListV<Row>* w = new ArrayListV<Row>(&rows);
 
     *buf = reinterpret_cast<int8_t*>(w);
 }
@@ -536,7 +536,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_sum_project) {
         "FOLLOWING) limit 10;";
 
     int8_t* ptr = NULL;
-    std::vector<Slice> window;
+    std::vector<Row> window;
     BuildWindow(window, &ptr);
     int8_t* output = NULL;
     int8_t* row_ptrs[1] = {window.back().buf()};
@@ -573,7 +573,7 @@ TEST_F(FnLetIRBuilderTest, test_simple_window_project_mix) {
         "PRECEDING AND 3 FOLLOWING) limit 10;";
 
     int8_t* ptr = NULL;
-    std::vector<Slice> window;
+    std::vector<Row> window;
     BuildWindow(window, &ptr);
     int8_t* output = NULL;
     int8_t* row_ptrs[1] = {window.back().buf()};
@@ -610,7 +610,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_min_project) {
         "FROM t1 WINDOW w1 AS (PARTITION BY COL2 ORDER BY `TS` ROWS BETWEEN 3 "
         "PRECEDING AND 3 FOLLOWING) limit 10;";
     int8_t* ptr = NULL;
-    std::vector<Slice> window;
+    std::vector<Row> window;
     BuildWindow(window, &ptr);
     int8_t* output = NULL;
     int8_t* row_ptrs[1] = {window.back().buf()};
@@ -641,7 +641,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_max_project) {
         "FOLLOWING) limit 10;";
 
     int8_t* ptr = NULL;
-    std::vector<Slice> window;
+    std::vector<Row> window;
     BuildWindow(window, &ptr);
     int8_t* output = NULL;
     int8_t* row_ptrs[1] = {window.back().buf()};
@@ -690,7 +690,7 @@ TEST_F(FnLetIRBuilderTest, test_col_at_udf) {
         "FOLLOWING) limit 10;";
 
     int8_t* ptr = NULL;
-    std::vector<Slice> window;
+    std::vector<Row> window;
     BuildWindow(window, &ptr);
     int8_t* output = NULL;
     int8_t* row_ptrs[1] = {window.back().buf()};

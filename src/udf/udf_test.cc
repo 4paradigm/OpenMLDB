@@ -17,7 +17,7 @@
 #include "codec/list_iterator_codec.h"
 namespace fesql {
 namespace udf {
-using fesql::base::Slice;
+using fesql::codec::Row;
 using fesql::codec::ArrayListV;
 using fesql::codec::ColumnImpl;
 
@@ -36,7 +36,7 @@ class UDFTest : public ::testing::Test {
             *(reinterpret_cast<float*>(ptr + 2 + 4 + 2)) = 3.1f;
             *(reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4)) = 4.1;
             *(reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8)) = 5;
-            rows.push_back(Slice(ptr, 28));
+            rows.push_back(Row(ptr, 28));
         }
 
         {
@@ -46,7 +46,7 @@ class UDFTest : public ::testing::Test {
             *(reinterpret_cast<float*>(ptr + 2 + 4 + 2)) = 33.1f;
             *(reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4)) = 44.1;
             *(reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8)) = 55;
-            rows.push_back(Slice(ptr, 28));
+            rows.push_back(Row(ptr, 28));
         }
 
         {
@@ -56,12 +56,12 @@ class UDFTest : public ::testing::Test {
             *(reinterpret_cast<float*>(ptr + 2 + 4 + 2)) = 333.1f;
             *(reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4)) = 444.1;
             *(reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8)) = 555;
-            rows.push_back(Slice(ptr, 28));
+            rows.push_back(Row(ptr, 28));
         }
     }
 
  protected:
-    std::vector<base::Slice> rows;
+    std::vector<Row> rows;
 };
 
 TEST_F(UDFTest, UDF_mem_table_handler_sum_test) {
@@ -202,7 +202,7 @@ TEST_F(UDFTest, UDF_mem_segment_handler_sum_test) {
 }
 
 TEST_F(UDFTest, UDF_sum_test) {
-    ArrayListV<Slice> window(&rows);
+    ArrayListV<Row> window(&rows);
     const uint32_t size = sizeof(::fesql::codec::ColumnImpl<int16_t>);
     {
         int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
@@ -266,7 +266,7 @@ TEST_F(UDFTest, UDF_sum_test) {
 }
 
 TEST_F(UDFTest, UDF_max_test) {
-    ArrayListV<Slice> impl(&rows);
+    ArrayListV<Row> impl(&rows);
     const uint32_t size = sizeof(::fesql::codec::ColumnImpl<int16_t>);
     {
         int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
@@ -330,7 +330,7 @@ TEST_F(UDFTest, UDF_max_test) {
 }
 
 TEST_F(UDFTest, UDF_min_test) {
-    ArrayListV<Slice> impl(&rows);
+    ArrayListV<Row> impl(&rows);
     const uint32_t size = sizeof(ColumnImpl<int16_t>);
     {
         int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
@@ -393,7 +393,7 @@ TEST_F(UDFTest, UDF_min_test) {
     }
 }
 TEST_F(UDFTest, GetColTest) {
-    ArrayListV<Slice> impl(&rows);
+    ArrayListV<Row> impl(&rows);
     const uint32_t size = sizeof(ColumnImpl<int16_t>);
     for (int i = 0; i < 10; ++i) {
         int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
@@ -471,7 +471,7 @@ TEST_F(UDFTest, GetMemColTest) {
     }
 }
 TEST_F(UDFTest, GetColHeapTest) {
-    ArrayListV<Slice> impl(&rows);
+    ArrayListV<Row> impl(&rows);
     const uint32_t size = sizeof(ColumnImpl<int16_t>);
     for (int i = 0; i < 1000; ++i) {
         int8_t buf[size];  // NOLINT

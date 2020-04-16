@@ -22,7 +22,7 @@
 namespace fesql {
 namespace vm {
 
-using base::Slice;
+using codec::Row;
 using base::Status;
 using codec::RowView;
 using vm::DataHandler;
@@ -33,9 +33,9 @@ using vm::Window;
 class RunnerContext {
  public:
     RunnerContext() : request_(), cache_() {}
-    explicit RunnerContext(const Slice& request)
+    explicit RunnerContext(const Row& request)
         : request_(request), cache_() {}
-    const Slice request_;
+    const Row request_;
     std::map<int32_t, std::shared_ptr<DataHandler>> cache_;
 };
 class Runner {
@@ -86,10 +86,9 @@ class Runner {
         RunnerContext& ctx);  // NOLINT
 
  protected:
-    Slice WindowProject(const int8_t* fn, const uint64_t key, const Slice slice,
+    Row WindowProject(const int8_t* fn, const uint64_t key, const Row slice,
                         Window* window);
-    Slice RowProject(const int8_t* fn, const Slice slice);
-    Slice MultiRowsProject(const int8_t* fn, std::vector<const Slice>& slices_ptr);
+    Row RowProject(const int8_t* fn, const Row slice);
 
     std::string GetColumnString(RowView* view, int pos, type::Type type);
     int64_t GetColumnInt64(RowView* view, int pos, type::Type type);

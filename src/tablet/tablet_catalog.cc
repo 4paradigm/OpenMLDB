@@ -28,7 +28,7 @@ namespace fesql {
 namespace tablet {
 using fesql::codec::IteratorV;
 using fesql::codec::WindowIterator;
-using fesql::codec::SliceIterator;
+using fesql::codec::RowIterator;
 
 TabletTableHandler::TabletTableHandler(const vm::Schema schema,
                                        const std::string& name,
@@ -84,7 +84,7 @@ bool TabletTableHandler::Init() {
     return true;
 }
 
-std::unique_ptr<SliceIterator> TabletTableHandler::GetIterator() const {
+std::unique_ptr<RowIterator> TabletTableHandler::GetIterator() const {
     std::unique_ptr<storage::FullTableIterator> it(
         new storage::FullTableIterator(table_->GetSegments(),
                                        table_->GetSegCnt(), table_));
@@ -106,15 +106,15 @@ std::unique_ptr<WindowIterator> TabletTableHandler::GetWindowIterator(
 }
 
 // TODP(chenjing): 基于segment 优化Get(int pos) 操作
-const base::Slice TabletTableHandler::Get(int32_t pos) {
+const Row TabletTableHandler::Get(int32_t pos) {
     auto iter = GetIterator();
 
     while (pos-- > 0 && iter->Valid()) {
         iter->Next();
     }
-    return iter->Valid() ? iter->GetValue() : base::Slice();
+    return iter->Valid() ? iter->GetValue() : Row();
 }
-IteratorV<uint64_t, base::Slice>* TabletTableHandler::GetIterator(
+IteratorV<uint64_t, Row>* TabletTableHandler::GetIterator(
     int8_t* addr) const {
     return new (addr) storage::FullTableIterator(table_->GetSegments(),
                                                  table_->GetSegCnt(), table_);
@@ -128,12 +128,12 @@ const uint64_t TabletTableHandler::GetCount() {
     }
     return cnt;
 }
-base::Slice TabletTableHandler::At(uint64_t pos) {
+Row TabletTableHandler::At(uint64_t pos) {
     auto iter = GetIterator();
     while (pos-- > 0 && iter->Valid()) {
         iter->Next();
     }
-    return iter->Valid() ? iter->GetValue() : base::Slice();
+    return iter->Valid() ? iter->GetValue() : Row();
 }
 
 TabletCatalog::TabletCatalog() : tables_(), db_() {}
@@ -200,16 +200,16 @@ TabletSegmentHandler::TabletSegmentHandler(
     const std::string& key)
     : TableHandler(), partition_hander_(partition_hander), key_(key) {}
 TabletSegmentHandler::~TabletSegmentHandler() {}
-std::unique_ptr<SliceIterator> TabletSegmentHandler::GetIterator() const {
+std::unique_ptr<RowIterator> TabletSegmentHandler::GetIterator() const {
     auto iter = partition_hander_->GetWindowIterator();
     if (iter) {
         iter->Seek(key_);
         return iter->Valid() ? std::move(iter->GetValue())
-                             : std::unique_ptr<SliceIterator>();
+                             : std::unique_ptr<RowIterator>();
     }
-    return std::unique_ptr<SliceIterator>();
+    return std::unique_ptr<RowIterator>();
 }
-IteratorV<uint64_t, base::Slice>* TabletSegmentHandler::GetIterator(
+IteratorV<uint64_t, Row>* TabletSegmentHandler::GetIterator(
     int8_t* addr) const {
     LOG(WARNING) << "can't get iterator with given address";
     return nullptr;
@@ -227,12 +227,12 @@ const uint64_t TabletSegmentHandler::GetCount() {
     }
     return cnt;
 }
-base::Slice TabletSegmentHandler::At(uint64_t pos) {
+Row TabletSegmentHandler::At(uint64_t pos) {
     auto iter = GetIterator();
     while (pos-- > 0 && iter->Valid()) {
         iter->Next();
     }
-    return iter->Valid() ? iter->GetValue() : base::Slice();
+    return iter->Valid() ? iter->GetValue() : Row();
 }
 
 const uint64_t TabletPartitionHandler::GetCount() {

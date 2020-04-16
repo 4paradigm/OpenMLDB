@@ -93,12 +93,12 @@ TEST_F(TableIteratorTest, it_full_table) {
     ASSERT_TRUE(it.Valid());
     char* ch = nullptr;
     uint32_t length = 0;
-    view.GetValue(reinterpret_cast<const int8_t*>(it.GetValue().data()), 2, &ch,
+    view.GetValue(it.GetValue().buf(), 2, &ch,
                   &length);
     ASSERT_STREQ("value1", std::string(ch, length).c_str());
     it.Next();
     ASSERT_TRUE(it.Valid());
-    view.GetValue(reinterpret_cast<const int8_t*>(it.GetValue().data()), 2, &ch,
+    view.GetValue(it.GetValue().buf(), 2, &ch,
                   &length);
     ASSERT_STREQ("value2", std::string(ch, length).c_str());
     it.Next();
@@ -130,7 +130,7 @@ TEST_F(TableIteratorTest, it_window_table) {
     ASSERT_TRUE(it.Valid());
     {
         auto key = it.GetKey();
-        base::Slice key_expect("key1");
+        Row key_expect("key1");
         ASSERT_EQ(0, key.compare(key_expect));
         auto wit = it.GetValue();
         wit->SeekToFirst();
@@ -143,7 +143,7 @@ TEST_F(TableIteratorTest, it_window_table) {
     it.Next();
     {
         auto key = it.GetKey();
-        base::Slice key_expect("key2");
+        Row key_expect("key2");
         ASSERT_EQ(0, key.compare(key_expect));
         auto wit = it.GetValue();
         wit->SeekToFirst();
