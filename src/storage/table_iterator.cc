@@ -95,15 +95,17 @@ std::unique_ptr<RowIterator> WindowTableIterator::GetValue() {
 void WindowTableIterator::GoToStart() {
     while (seg_idx_ < seg_cnt_) {
         if (!pk_it_) {
-            pk_it_ = std::move(std::unique_ptr<base::Iterator<base::Slice, void*>>(
-                segments_[index_][seg_idx_]->GetEntries()->NewIterator()));
+            pk_it_ =
+                std::move(std::unique_ptr<base::Iterator<base::Slice, void*>>(
+                    segments_[index_][seg_idx_]->GetEntries()->NewIterator()));
             pk_it_->SeekToFirst();
         }
         if (pk_it_->Valid()) {
             return;
         } else {
             seg_idx_++;
-            pk_it_ = std::move(std::unique_ptr<base::Iterator<base::Slice, void*>>());
+            pk_it_ = std::move(
+                std::unique_ptr<base::Iterator<base::Slice, void*>>());
         }
     }
 }
@@ -171,8 +173,9 @@ void FullTableIterator::GoToNext() {
         // try to incr seg_idx
         seg_idx_++;
         while (seg_idx_ < seg_cnt_) {
-            pk_it_ = std::move(std::unique_ptr<base::Iterator<base::Slice, void*>>(
-                segments_[0][seg_idx_]->GetEntries()->NewIterator()));
+            pk_it_ =
+                std::move(std::unique_ptr<base::Iterator<base::Slice, void*>>(
+                    segments_[0][seg_idx_]->GetEntries()->NewIterator()));
             pk_it_->SeekToFirst();
             while (pk_it_->Valid()) {
                 auto it = (reinterpret_cast<TimeEntry*>(pk_it_->GetValue()))
@@ -195,8 +198,9 @@ void FullTableIterator::GoToNext() {
 void FullTableIterator::GoToStart() {
     while (seg_idx_ < seg_cnt_) {
         if (!pk_it_) {
-            pk_it_ = std::move(std::unique_ptr<base::Iterator<base::Slice, void*>>(
-                segments_[0][seg_idx_]->GetEntries()->NewIterator()));
+            pk_it_ =
+                std::move(std::unique_ptr<base::Iterator<base::Slice, void*>>(
+                    segments_[0][seg_idx_]->GetEntries()->NewIterator()));
             pk_it_->SeekToFirst();
         }
         if (pk_it_->Valid()) {
@@ -211,14 +215,15 @@ void FullTableIterator::GoToStart() {
                 break;
             } else {
                 seg_idx_++;
-                pk_it_ =
-                    std::move(std::unique_ptr<base::Iterator<base::Slice, void*>>());
+                pk_it_ = std::move(
+                    std::unique_ptr<base::Iterator<base::Slice, void*>>());
                 ts_it_ = std::move(
                     std::unique_ptr<base::Iterator<uint64_t, DataBlock*>>());
             }
         } else {
             seg_idx_++;
-            pk_it_ = std::move(std::unique_ptr<base::Iterator<base::Slice, void*>>());
+            pk_it_ = std::move(
+                std::unique_ptr<base::Iterator<base::Slice, void*>>());
         }
     }
 }

@@ -22,8 +22,7 @@ namespace codec {
 class Row {
  public:
     Row() : buf_(nullptr), size_(0), need_free_(false) {}
-    Row(int8_t *d, size_t n)
-        : buf_(d), size_(n), need_free_(false) {}
+    Row(int8_t *d, size_t n) : buf_(d), size_(n), need_free_(false) {}
     Row(int8_t *d, size_t n, bool need_free)
         : buf_(d), size_(n), need_free_(need_free) {}
     Row(const char *d, size_t n)
@@ -53,7 +52,9 @@ class Row {
         }
     }
     inline int8_t *buf() const { return buf_; }
-    inline const char* data() const { return reinterpret_cast<const char*>(buf_); }
+    inline const char *data() const {
+        return reinterpret_cast<const char *>(buf_);
+    }
     inline int32_t size() const { return size_; }
     // Return true if the length of the referenced data is zero
     inline bool empty() const { return 0 == size_; }
@@ -61,12 +62,12 @@ class Row {
     //   <  0 iff "*this" <  "b",
     //   == 0 iff "*this" == "b",
     //   >  0 iff "*this" >  "b"
-    int compare(const Row& b) const;
+    int compare(const Row &b) const;
     int8_t *buf_;
     int32_t size_;
     bool need_free_;
 };
-inline int Row::compare(const Row& b) const {
+inline int Row::compare(const Row &b) const {
     const size_t min_len = (size_ < b.size_) ? size_ : b.size_;
     int r = memcmp(buf_, b.buf_, min_len);
     if (r == 0) {
@@ -78,12 +79,12 @@ inline int Row::compare(const Row& b) const {
     return r;
 }
 
-inline bool operator==(const Row& x, const Row & y) {
+inline bool operator==(const Row &x, const Row &y) {
     return ((x.size() == y.size()) &&
-        (memcmp(x.buf(), y.buf(), x.size()) == 0));
+            (memcmp(x.buf(), y.buf(), x.size()) == 0));
 }
 
-inline bool operator!=(const Row& x, const Row& y) { return !(x == y); }
+inline bool operator!=(const Row &x, const Row &y) { return !(x == y); }
 
 template <class V>
 class ArrayListIterator;
