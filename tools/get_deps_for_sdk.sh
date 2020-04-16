@@ -291,10 +291,55 @@ else
     else
         wget --no-check-certificate -O thrift-0.12.0.tar.gz  http://pkg.4paradigm.com/fesql/thrift-0.12.0.tar.gz
     fi
-    tar -zxvf thrift-0.12.0.tar.gz
-    cd thrift-0.12.0 && ./configure --with-python=no --with-nodejs=no --prefix=${DEPS_PREFIX} && make -j4 && make install
+    #tar -zxvf thrift-0.12.0.tar.gz
+    cd thrift-0.12.0 && ./configure --with-python=no --with-nodejs=no --prefix=${DEPS_PREFIX} --with-boost=${DEPS_PREFIX} && make -j10 && make install
     cd ${DEPS_SOURCE}
     touch thrift_succ
+fi
+
+if [ -f "rapjson_succ" ]
+then 
+    echo "rapjson exist"
+else
+    wget http://pkg.4paradigm.com/rtidb/dev/rapidjson.1.1.0.tar.gz
+    tar -zxvf rapidjson.1.1.0.tar.gz
+    cp -rf rapidjson-1.1.0/include/rapidjson ${DEPS_PREFIX}/include
+    touch rapjson_succ
+fi
+
+
+if [ -f "flatbuffer_succ" ]
+then
+    echo "flatbuffer installed"
+else
+    if [ -f "flatbuffers-1.11.0.tar.gz" ]
+    then
+        echo "flatbuffers-1.11.0.tar.gz downloaded"
+    else
+        wget --no-check-certificate -O flatbuffers-1.11.0.tar.gz http://pkg.4paradigm.com/fesql/flatbuffers-1.11.0.tar.gz
+    fi
+    tar -zxvf flatbuffers-1.11.0.tar.gz
+    cd flatbuffers-1.11.0 && mkdir -p build && cd build && cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${DEPS_PREFIX} -DCMAKE_CXX_FLAGS=-fPIC ..
+    make -j4 && make install
+    cd ${DEPS_SOURCE}
+    touch flatbuffer_succ
+fi
+
+if [ -f "double-conversion_succ" ]
+then 
+    echo "double-conversion exist"
+else
+    if [ -f "v3.1.5.tar.gz" ]
+    then
+        echo "double-conversion pkg exist"
+    else
+        wget --no-check-certificate -O v3.1.5.tar.gz https://github.com/google/double-conversion/archive/v3.1.5.tar.gz
+    fi
+    tar -zxvf v3.1.5.tar.gz
+    cd double-conversion-3.1.5 && mkdir -p build2 && cd build2 && cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${DEPS_PREFIX} -DCMAKE_CXX_FLAGS=-fPIC .. >/dev/null
+    make -j4 && make install
+    cd ${DEPS_SOURCE}
+    touch double-conversion_succ
 fi
 
 if [ -f "arrow_succ" ]
@@ -316,7 +361,7 @@ else
     -DARROW_ORC=OFF -DARROW_PARQUET=ON -DARROW_PLASMA=OFF\
     -DARROW_PLASMA_JAVA_CLIENT=OFF -DARROW_PYTHON=OFF -DARROW_BUILD_TESTS=OFF \
     -DARROW_BUILD_UTILITIES=OFF ..
-    make -j4 parquet_static && make install
+    make -j10 parquet_static && make install
     cd ${DEPS_SOURCE}
     touch arrow_succ
 fi
