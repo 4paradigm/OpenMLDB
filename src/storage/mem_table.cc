@@ -681,33 +681,27 @@ bool MemTable::AddIndex(const ::rtidb::common::ColumnKey& column_key) {
                     column_key.index_name().c_str(), id_, pid_);
             return false;
         }
-        index_def->SetStatus(IndexStatus::kLoading);
+        table_meta_.mutable_column_key(index_def->GetId())->CopyFrom(column_key);
     } else {
-        index_def = std::make_shared<IndexDef>(column_key.index_name(), 
-                table_index_.Size(), IndexStatus::kLoading);
-        std::vector<uint32_t> ts_vec;
-        for (int idx = 0; idx < column_key.ts_name_size(); idx++) {
-            auto ts_iter = ts_mapping_.find(column_key.ts_name(idx));
-            if (ts_iter == ts_mapping_.end()) {
-                PDLOG(WARNING, "not found ts_name[%s]. tid %u pid %u", 
-                        column_key.ts_name(idx).c_str(), id_, pid_);
-                return false;
-            }
-            if (std::find(ts_vec.begin(), ts_vec.end(), ts_iter->second) != ts_vec.end()) {
-                PDLOG(WARNING, "has repeated ts_name[%s]. tid %u pid %u", 
-                        column_key.ts_name(idx).c_str(), id_, pid_);
-                return false;
-            }
-            ts_vec.push_back(ts_iter->second);
-        }
-        index_def->SetTsColumn(ts_vec);
-        if (table_index_.AddIndex(index_def) < 0) {
-            PDLOG(WARNING, "add index failed. tid %u pid %u", id_, pid_);
+        ::rtidb::common::ColumnKey* added_column_key = table_meta_.add_column_key();
+        added_column_key->CopyFrom(column_key);
+    }
+    std::vector<uint32_t> ts_vec;
+    for (int idx = 0; idx < column_key.ts_name_size(); idx++) {
+        auto ts_iter = ts_mapping_.find(column_key.ts_name(idx));
+        if (ts_iter == ts_mapping_.end()) {
+            PDLOG(WARNING, "not found ts_name[%s]. tid %u pid %u", 
+                    column_key.ts_name(idx).c_str(), id_, pid_);
             return false;
         }
+        if (std::find(ts_vec.begin(), ts_vec.end(), ts_iter->second) != ts_vec.end()) {
+            PDLOG(WARNING, "has repeated ts_name[%s]. tid %u pid %u", 
+                    column_key.ts_name(idx).c_str(), id_, pid_);
+            return false;
+        }
+        ts_vec.push_back(ts_iter->second);
     }
-    uint32_t index_id = index_def->GetId();
-    const std::vector<uint32_t> ts_vec =  index_def->GetTsColumn();
+    uint32_t index_id = (index_def == NULL) ? table_index_.Size() : index_def->GetId();
     Segment** seg_arr = new Segment*[seg_cnt_];
     if (!ts_vec.empty()) {
         for (uint32_t j = 0; j < seg_cnt_; j++) {
@@ -726,6 +720,16 @@ bool MemTable::AddIndex(const ::rtidb::common::ColumnKey& column_key) {
         delete segments_[index_id];
     }
     segments_[index_id] = seg_arr;
+    if (!index_def) {
+        index_def = std::make_shared<IndexDef>(column_key.index_name(),
+                table_index_.Size());
+        if (table_index_.AddIndex(index_def) < 0) {
+            PDLOG(WARNING, "add index failed. tid %u pid %u", id_, pid_);
+            return false;
+        }
+    }
+    index_def->SetTsColumn(ts_vec);
+    index_def->SetStatus(IndexStatus::kReady);
     return true;
 }
 
@@ -742,7 +746,7 @@ bool MemTable::DeleteIndex(std::string idx_name) {
         return false;
     }
     if (!index_def->IsReady()) {
-        PDLOG(WARNING, "index %s status is not ready. tid %u pid %u", 
+        PDLOG(WARNING, "index %s can't delete. tid %u pid %u", 
                 idx_name.c_str(), id_, pid_);
         return false;
     }
