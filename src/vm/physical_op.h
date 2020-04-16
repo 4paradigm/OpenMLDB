@@ -89,6 +89,8 @@ class PhysicalOpNode {
           limit_cnt_(0) {}
     virtual ~PhysicalOpNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
+    void Print() const;
+
     virtual void PrintChildren(std::ostream &output,
                                const std::string &tab) const;
     virtual bool InitSchema() = 0;
