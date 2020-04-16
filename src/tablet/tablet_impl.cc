@@ -4906,8 +4906,7 @@ void TabletImpl::AddIndex(RpcController* controller,
     }
     MemTable* mem_table = dynamic_cast<MemTable*>(table.get());
     if (mem_table == NULL) {
-        PDLOG(WARNING, "table is not memtable. tid %u, pid %u", 
-                request->column_key().index_name().c_str(), tid, pid);
+        PDLOG(WARNING, "table is not memtable. tid %u, pid %u", tid, pid);
         response->set_code(::rtidb::base::ReturnCode::kTableTypeMismatch);
         response->set_msg("table is not memtable");
         return;
