@@ -12,6 +12,7 @@ import com._4paradigm.rtidb.client.type.IndexType;
 import com._4paradigm.rtidb.client.type.TableType;
 import com._4paradigm.rtidb.common.Common;
 import com._4paradigm.rtidb.ns.NS.*;
+import com._4paradigm.rtidb.type.Type;
 import io.brpc.client.*;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
@@ -40,6 +41,18 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
     private AtomicBoolean isClose = new AtomicBoolean(false);
     private RTIDBClientConfig config;
     private RpcBaseClient bs = null;
+    private static Map<String, Type.DataType> TYPE_MAPING = new HashMap<>();
+    static {
+        TYPE_MAPING.put("int16", Type.DataType.kSmallInt);
+        TYPE_MAPING.put("int32", Type.DataType.kInt);
+        TYPE_MAPING.put("int64", Type.DataType.kBigInt);
+        TYPE_MAPING.put("float", Type.DataType.kFloat);
+        TYPE_MAPING.put("double", Type.DataType.kDouble);
+        TYPE_MAPING.put("string", Type.DataType.kVarchar);
+        TYPE_MAPING.put("timestamp", Type.DataType.kTimestamp);
+        TYPE_MAPING.put("bool", Type.DataType.kBool);
+        TYPE_MAPING.put("date", Type.DataType.kDate);
+    }
     private final static ScheduledExecutorService clusterGuardThread = Executors.newScheduledThreadPool(1, new ThreadFactory() {
         public Thread newThread(Runnable r) {
             Thread t = Executors.defaultThreadFactory().newThread(r);
@@ -252,7 +265,8 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
                 break;
             }
         }
-        CreateTableRequest request = CreateTableRequest.newBuilder().setTableInfo(tableInfo).build();
+        TableInfo newTableInfo = addDataType(tableInfo);
+        CreateTableRequest request = CreateTableRequest.newBuilder().setTableInfo(newTableInfo).build();
         GeneralResponse response = ns.createTable(request);
         if (response != null && response.getCode() == 0) {
             return true;
@@ -262,9 +276,23 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         return false;
     }
 
+    private TableInfo addDataType(TableInfo tableInfo) {
+        TableInfo.Builder builder = TableInfo.newBuilder(tableInfo);
+        for (int i = 0; i < tableInfo.getColumnDescV1List().size(); i++) {
+            Common.ColumnDesc desc = tableInfo.getColumnDescV1(i);
+            Type.DataType type = TYPE_MAPING.get(desc.getType());
+            Common.ColumnDesc.Builder descBuilder =Common.ColumnDesc.newBuilder(desc);
+            if (type!=null)
+            descBuilder.setDataType(type);
+            builder.setColumnDescV1(i, descBuilder.build());
+        }
+        return builder.build();
+    }
+
     @Override
     public boolean createTable(TableInfo tableInfo) {
-        CreateTableRequest request = CreateTableRequest.newBuilder().setTableInfo(tableInfo).build();
+        TableInfo newTableInfo = addDataType(tableInfo);
+        CreateTableRequest request = CreateTableRequest.newBuilder().setTableInfo(newTableInfo).build();
         GeneralResponse response = ns.createTable(request);
         if (response != null && response.getCode() == 0) {
             return true;

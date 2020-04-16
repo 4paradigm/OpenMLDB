@@ -43,10 +43,10 @@ public class TableAsyncProjectionTest extends TestCaseBase {
     private TestArgs createArg(Object[] input, ArrayList<String> projectList, Object[] expect, String key, long ts)  {
         String name = String.valueOf(id.incrementAndGet());
         TableInfo.Builder tbuilder = TableInfo.newBuilder();
-        Common.ColumnDesc col0 = Common.ColumnDesc.newBuilder().setName("card").setDataType(Type.DataType.kVarchar).setType("string").build();
-        Common.ColumnDesc col1 = Common.ColumnDesc.newBuilder().setName("mcc").setNotNull(false).setDataType(Type.DataType.kVarchar).setType("string").build();
-        Common.ColumnDesc col2 = Common.ColumnDesc.newBuilder().setName("ts").setDataType(Type.DataType.kBigInt).setType("int64").setIsTsCol(true).build();
-        Common.ColumnDesc col3 = Common.ColumnDesc.newBuilder().setName("date").setNotNull(false).setDataType(Type.DataType.kDate).setType("date").build();
+        Common.ColumnDesc col0 = Common.ColumnDesc.newBuilder().setName("card").setType("string").build();
+        Common.ColumnDesc col1 = Common.ColumnDesc.newBuilder().setName("mcc").setNotNull(false).setType("string").build();
+        Common.ColumnDesc col2 = Common.ColumnDesc.newBuilder().setName("ts").setType("int64").setIsTsCol(true).build();
+        Common.ColumnDesc col3 = Common.ColumnDesc.newBuilder().setName("date").setNotNull(false).setType("date").build();
         tbuilder.addColumnDescV1(col0);
         tbuilder.addColumnDescV1(col1);
         tbuilder.addColumnDescV1(col2);
