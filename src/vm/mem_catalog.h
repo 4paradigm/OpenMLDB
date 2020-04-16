@@ -109,27 +109,40 @@ class MemWindowIterator : public WindowIterator {
 class MemRowHandler : public RowHandler {
  public:
     MemRowHandler(const Row row, const vm::Schema* schema)
-        : RowHandler(), row_(row), table_name_(""), db_(""), schema_(schema) {}
+        : RowHandler(),
+          table_name_(""),
+          db_(""),
+          schema_(schema),
+          rows_cnt_(1),
+          rows_({row}) {}
+    MemRowHandler(RowHandler* row_handler, const vm::Schema* schema)
+        : RowHandler(),
+          table_name_(""),
+          db_(""),
+          schema_(schema),
+          rows_cnt_(row_handler->GetRowsCnt()),
+          rows_(row_handler->GetRows()) {}
     ~MemRowHandler() {}
 
     const Schema* GetSchema() override { return nullptr; }
     const std::string& GetName() override { return table_name_; }
     const std::string& GetDatabase() override { return db_; }
-    const Row& GetValue() const override { return row_; }
-    void AddOtherRow(const Row& row) { other_rows.push_back(row); }
-    const size_t GetOtherRowCnt() const {
-        return other_rows.size();
+    const Row& GetValue() const override { return rows_[0]; }
+    void AddRow(const Row& row) {
+        rows_.push_back(row);
+        rows_cnt_++;
     }
-    const Row& GetOtherRow(uint32_t pos) {
-        return other_rows[pos];
-    }
+    const size_t GetRowsCnt() const { return rows_.size(); }
+    const std::vector<Row>& GetRows() const { return rows_; }
+    const Row& GetRowAt(uint32_t pos) const { return rows_[pos]; }
+    void SetRowAt(int32_t pos, const Row row) { rows_[pos] = row; }
 
  private:
-    Row row_;
     std::string table_name_;
     std::string db_;
     const Schema* schema_;
-    std::vector<Row> other_rows;
+    int32_t rows_cnt_;
+    std::vector<Row> rows_;
 };
 
 class MemTableHandler : public TableHandler {
@@ -160,13 +173,10 @@ class MemTableHandler : public TableHandler {
     void AddOtherTable(std::shared_ptr<TableHandler> other_table) {
         other_tables_.push_back(other_table);
     }
-    const size_t GetOtherTableCnt() const {
-        return other_tables_.size();
-    }
+    const size_t GetOtherTableCnt() const { return other_tables_.size(); }
     std::shared_ptr<TableHandler> GetOtherTable(int32_t pos) {
         return other_tables_[pos];
     }
-
 
  protected:
     const std::string table_name_;

@@ -14,6 +14,7 @@
 #include "vm/mem_catalog.h"
 namespace fesql {
 namespace vm {
+#define MAX_ROW_NUM 20;
 Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
     if (nullptr == node) {
         status.msg = "fail to build runner : physical node is null";
@@ -218,7 +219,7 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
 }
 
 Row Runner::WindowProject(const int8_t* fn, uint64_t key, const Row row,
-                            Window* window) {
+                          Window* window) {
     if (row.empty()) {
         return row;
     }
@@ -236,7 +237,7 @@ Row Runner::WindowProject(const int8_t* fn, uint64_t key, const Row row,
     }
     return Row(reinterpret_cast<char*>(out_buf), RowView::GetSize(out_buf));
 }
-Row Runner::RowProject(const int8_t* fn, const Row row) {
+Row Runner::RowProject(const int8_t* fn, const Row row, const bool need_free) {
     if (row.empty()) {
         return row;
     }
@@ -253,9 +254,57 @@ Row Runner::RowProject(const int8_t* fn, const Row row) {
         LOG(WARNING) << "fail to run udf " << ret;
         return Row();
     }
-    return Row(reinterpret_cast<char*>(buf), RowView::GetSize(buf));
+    return Row(reinterpret_cast<char*>(buf), RowView::GetSize(buf), need_free);
 }
 
+Row Runner::MultiRowsProject(const int8_t* fn, const std::vector<Row>& rows,
+                             const bool need_free) {
+    if (rows.empty()) {
+        return Row();
+    }
+    int32_t (*udf)(int8_t**, int8_t**, int32_t*, int8_t**) =
+        (int32_t(*)(int8_t**, int8_t**, int32_t*, int8_t**))(fn);
+    const size_t len = rows.size();
+
+    if (len < 10) {
+        int8_t* buf = nullptr;
+        int8_t* row_ptrs[10] = {0};
+        int8_t* window_ptrs[10] = {0};
+        int32_t row_sizes[10] = {0};
+        for (size_t i = 1; i < len; i++) {
+            row_ptrs[i] = rows[i].buf();
+            row_sizes[i] = rows[i].size();
+        }
+        uint32_t ret = udf(row_ptrs, window_ptrs, row_sizes, &buf);
+
+        if (ret != 0) {
+            LOG(WARNING) << "fail to run udf " << ret;
+            return Row();
+        }
+        return Row(reinterpret_cast<char*>(buf), RowView::GetSize(buf),
+                   need_free);
+    } else {
+        int8_t* buf = nullptr;
+        int8_t** row_ptrs = new int8_t* [len] { 0 };
+        int8_t** window_ptrs = new int8_t* [len] { 0 };
+        int32_t* row_sizes = new int32_t[len]{0};
+        for (size_t i = 1; i < len; i++) {
+            row_ptrs[i] = rows[i].buf();
+            row_sizes[i] = rows[i].size();
+        }
+        uint32_t ret = udf(row_ptrs, window_ptrs, row_sizes, &buf);
+
+        delete[] row_ptrs;
+        delete[] window_ptrs;
+        delete[] row_ptrs;
+        if (ret != 0) {
+            LOG(WARNING) << "fail to run udf " << ret;
+            return Row();
+        }
+        return Row(reinterpret_cast<char*>(buf), RowView::GetSize(buf),
+                   need_free);
+    }
+}
 std::string Runner::GetColumnString(RowView* row_view, int key_idx,
                                     type::Type key_type) {
     std::string key = "";
@@ -505,7 +554,7 @@ std::shared_ptr<DataHandler> Runner::PartitionSort(
                 key = segment_iter->GetKey();
             } else {
                 const Row order_row(RowProject(fn, segment_iter->GetValue()),
-                                      true);
+                                    true);
                 row_view->Reset(order_row.buf(), order_row.size());
                 key = GetColumnInt64(row_view, idxs[0],
                                      schema.Get(idxs[0]).type());
@@ -681,8 +730,15 @@ std::shared_ptr<DataHandler> TableProjectRunner::Run(RunnerContext& ctx) {
 std::shared_ptr<DataHandler> RowProjectRunner::Run(RunnerContext& ctx) {
     auto row =
         std::dynamic_pointer_cast<RowHandler>(producers_[0]->RunWithCache(ctx));
-    return std::shared_ptr<DataHandler>(
-        new MemRowHandler(RowProject(fn_, row->GetValue()), &fn_schema_));
+    if (0 == row->GetRowsCnt()) {
+        return std::shared_ptr<DataHandler>();
+    } else if (1 == row->GetRowsCnt()) {
+        return std::shared_ptr<DataHandler>(
+            new MemRowHandler(RowProject(fn_, row->GetValue()), &fn_schema_));
+    } else {
+        return std::shared_ptr<DataHandler>(
+            new MemRowHandler(MultiRowsProject(fn_, row->GetRows()), &fn_schema_));
+    }
 }
 std::shared_ptr<DataHandler> WindowAggRunner::Run(RunnerContext& ctx) {
     auto input = producers_[0]->RunWithCache(ctx);
@@ -710,7 +766,7 @@ std::shared_ptr<DataHandler> WindowAggRunner::Run(RunnerContext& ctx) {
                 break;
             }
             const Row row(WindowProject(fn_, segment->GetKey(),
-                                          segment->GetValue(), &window));
+                                        segment->GetValue(), &window));
             output_table->AddRow(row);
             segment->Next();
         }
@@ -735,9 +791,9 @@ std::shared_ptr<DataHandler> IndexSeekRunner::Run(RunnerContext& ctx) {
         std::dynamic_pointer_cast<PartitionHandler>(right);
 
     auto keys_row =
-        Row(RowProject(
-                  fn_, std::dynamic_pointer_cast<RowHandler>(left)->GetValue()),
-              true);
+        Row(RowProject(fn_,
+                       std::dynamic_pointer_cast<RowHandler>(left)->GetValue()),
+            true);
     row_view_.Reset(keys_row.buf(), keys_row.size());
 
     std::string key = GenerateKeys(&row_view_, fn_schema_, keys_idxs_);
@@ -756,11 +812,36 @@ std::shared_ptr<DataHandler> RequestLastJoinRunner::Run(
     if (kPartitionHandler == right->GetHanlderType()) {
         return std::shared_ptr<DataHandler>();
     }
-
-    auto request = std::dynamic_pointer_cast<RowHandler>(left)->GetValue();
+    auto request = std::dynamic_pointer_cast<RowHandler>(left);
     auto table = std::dynamic_pointer_cast<TableHandler>(right);
-    std::shared_ptr<DataHandler> output = right;
-    return std::shared_ptr<DataHandler>();
+    auto table_iter = table->GetIterator();
+
+    std::shared_ptr<MemRowHandler> join_row = std::shared_ptr<MemRowHandler>(
+        new MemRowHandler(std::dynamic_pointer_cast<RowHandler>(left).get(),
+                          left->GetSchema()));
+    // skip condition check
+    if (condition_idxs_.empty()) {
+        if (table_iter->Valid()) {
+            join_row->AddRow(table_iter->GetValue());
+        } else {
+            join_row->AddRow(Row());
+        }
+        return join_row;
+    }
+
+    int32_t idx = condition_idxs_[0];
+    join_row->AddRow(Row());
+    int32_t last_idx = join_row->GetRowsCnt() - 1;
+    while (table_iter->Valid()) {
+        join_row->SetRowAt(last_idx, table_iter->GetValue());
+        auto row = MultiRowsProject(fn_, join_row->GetRows(), true);
+        row_view_.Reset(row.buf());
+        if (GetColumnBool(&row_view_, idx, fn_schema_.Get(idx).type())) {
+            return join_row;
+        }
+    }
+    join_row->SetRowAt(last_idx, Row());
+    return join_row;
 }
 std::shared_ptr<DataHandler> LimitRunner::Run(RunnerContext& ctx) {
     auto input = producers_[0]->RunWithCache(ctx);
@@ -958,9 +1039,9 @@ std::shared_ptr<DataHandler> AggRunner::Run(RunnerContext& ctx) {
         LOG(WARNING) << "fail to run udf " << ret;
         return std::shared_ptr<DataHandler>();
     }
-    return std::shared_ptr<RowHandler>(new MemRowHandler(
-        Row(reinterpret_cast<char*>(buf), RowView::GetSize(buf)),
-        &fn_schema_));
+    auto row_handler = std::shared_ptr<RowHandler>(
+        new MemRowHandler(Row(buf, RowView::GetSize(buf)), &fn_schema_));
+    return row_handler;
 }
 }  // namespace vm
 }  // namespace fesql

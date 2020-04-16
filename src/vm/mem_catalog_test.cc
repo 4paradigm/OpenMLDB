@@ -295,8 +295,6 @@ TEST_F(MemCataLogTest, mem_table_handler_test) {
     }
     table_handler.AddOtherTable(table2_handler);
     ASSERT_EQ(1, table_handler.GetOtherTableCnt());
-
-
 }
 TEST_F(MemCataLogTest, mem_segment_handler_test) {
     std::vector<Row> rows;
@@ -505,15 +503,15 @@ TEST_F(MemCataLogTest, mem_row_handler_test) {
 
     // Add Row test
     MemRowHandler multi_row_handler(rows[0], &table.columns());
-    for (auto row : rows) {
-        multi_row_handler.AddOtherRow(row);
+    for (size_t i = 1; i < rows.size(); i++) {
+        multi_row_handler.AddRow(rows[i]);
     }
 
-    ASSERT_EQ(rows[0], multi_row_handler.GetOtherRow(0));
-    ASSERT_EQ(rows[1], multi_row_handler.GetOtherRow(1));
-    ASSERT_EQ(rows[2], multi_row_handler.GetOtherRow(2));
-    ASSERT_EQ(rows[3], multi_row_handler.GetOtherRow(3));
-    ASSERT_EQ(rows[4], multi_row_handler.GetOtherRow(4));
+    ASSERT_EQ(rows[0], multi_row_handler.GetRowAt(0));
+    ASSERT_EQ(rows[1], multi_row_handler.GetRowAt(1));
+    ASSERT_EQ(rows[2], multi_row_handler.GetRowAt(2));
+    ASSERT_EQ(rows[3], multi_row_handler.GetRowAt(3));
+    ASSERT_EQ(rows[4], multi_row_handler.GetRowAt(4));
 }
 
 }  // namespace vm
