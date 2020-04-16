@@ -233,7 +233,8 @@ bool ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call_fn,
 
     row_mode_ = old_mode;
 
-    ::llvm::Function* fn = GetFuncion(call_fn->GetFunctionName(), generics_types, status);
+    ::llvm::Function* fn =
+        GetFuncion(call_fn->GetFunctionName(), generics_types, status);
 
     if (common::kOk != status.code) {
         return false;
