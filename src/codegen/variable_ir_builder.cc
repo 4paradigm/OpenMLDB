@@ -127,6 +127,12 @@ bool fesql::codegen::VariableIRBuilder::StoreColumnItem(
 bool fesql::codegen::VariableIRBuilder::LoadArrayIndex(
     std::string array_ptr_name, int32_t index, ::llvm::Value** output,
     base::Status& status) {
+    std::string array_index_name = array_ptr_name;
+    array_index_name.append("[").append(std::to_string(index)).append("]");
+    if (LoadValue(array_index_name, output, status)) {
+        return true;
+    }
+
     ::llvm::IRBuilder<> builder(block_);
     ::llvm::Value* array_ptr;
     if (!LoadValue(array_ptr_name, &array_ptr, status)) {
@@ -145,6 +151,10 @@ bool fesql::codegen::VariableIRBuilder::LoadArrayIndex(
         status.code = common::kCodegenError;
         LOG(WARNING) << status.msg;
         return false;
+    }
+
+    if (!StoreValue(array_index_name, value, status)) {
+        LOG(WARNING) << "fail to cache " << array_index_name;
     }
     *output = value;
     return true;
