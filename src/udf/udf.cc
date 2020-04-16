@@ -450,7 +450,9 @@ void RegisterUDFToModule(::llvm::Module *m) {
 }
 void InitCLibSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
                     ::llvm::orc::MangleAndInterner &mi) {  // NOLINT
-    AddSymbol(jd, mi, "fmod", (reinterpret_cast<void *>(static_cast<float(*)(float, float)>(&fmod))));
+    AddSymbol(jd, mi, "fmod",
+              (reinterpret_cast<void *>(
+                  static_cast<double (*)(double, double)>(&fmod))));
     AddSymbol(jd, mi, "fmodf", (reinterpret_cast<void *>(&fmodf)));
 }
 void InitCLibSymbol(vm::FeSQLJIT *jit_ptr) {  // NOLINT
