@@ -757,7 +757,6 @@ std::shared_ptr<DataHandler> RequestLastJoinRunner::Run(
         return std::shared_ptr<DataHandler>();
     }
 
-    auto output_schema = left->GetSchema();
     auto request = std::dynamic_pointer_cast<RowHandler>(left)->GetValue();
     auto table = std::dynamic_pointer_cast<TableHandler>(right);
     std::shared_ptr<DataHandler> output = right;

@@ -116,9 +116,14 @@ class MemRowHandler : public RowHandler {
     const std::string& GetName() override { return table_name_; }
     const std::string& GetDatabase() override { return db_; }
     const Row& GetValue() const override { return row_; }
-    void AddRow(const Row& row) {
-        other_rows.push_back(row);
+    void AddOtherRow(const Row& row) { other_rows.push_back(row); }
+    const size_t GetOtherRowCnt() const {
+        return other_rows.size();
     }
+    const Row& GetOtherRow(uint32_t pos) {
+        return other_rows[pos];
+    }
+
  private:
     Row row_;
     std::string table_name_;
@@ -155,6 +160,14 @@ class MemTableHandler : public TableHandler {
     void AddOtherTable(std::shared_ptr<TableHandler> other_table) {
         other_tables_.push_back(other_table);
     }
+    const size_t GetOtherTableCnt() const {
+        return other_tables_.size();
+    }
+    std::shared_ptr<TableHandler> GetOtherTable(int32_t pos) {
+        return other_tables_[pos];
+    }
+
+
  protected:
     const std::string table_name_;
     const std::string db_;
