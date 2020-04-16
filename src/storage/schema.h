@@ -16,6 +16,8 @@
 namespace rtidb {
 namespace storage {
 
+static constexpr uint32_t MAX_INDEX_NUM = 200;
+
 struct TTLDesc {
     TTLDesc() = default;
     
@@ -53,7 +55,7 @@ struct TTLDesc {
     uint64_t lat_ttl;
 };
 
-enum IndexStatus {
+enum class IndexStatus {
     kReady = 0,
     kWaiting,
     kDeleting,
@@ -75,14 +77,14 @@ public:
         ts_column_ = ts_vec;
     }
     inline bool IsReady() { 
-        return status_.load(std::memory_order_relaxed) == IndexStatus::kReady;
+        return status_.load(std::memory_order_acquire) == IndexStatus::kReady;
     }
     inline uint32_t GetId() { return index_id_; }
     void SetStatus(IndexStatus status) {
-        status_.store(status, std::memory_order_relaxed);
+        status_.store(status, std::memory_order_release);
     }
     IndexStatus GetStatus() { 
-        return status_.load(std::memory_order_relaxed);
+        return status_.load(std::memory_order_acquire);
     }
     inline ::rtidb::type::IndexType GetType() {
         return type_;
@@ -107,10 +109,9 @@ public:
     void ReSet();
     std::shared_ptr<IndexDef> GetIndex(uint32_t idx);
     std::shared_ptr<IndexDef> GetIndex(const std::string& name);
-    void AddIndex(std::shared_ptr<IndexDef> index_def);
-    void SetAllIndex(const std::vector<std::shared_ptr<IndexDef>>& index_vec);
+    int AddIndex(std::shared_ptr<IndexDef> index_def);
     std::vector<std::shared_ptr<IndexDef>> GetAllIndex();
-    inline uint32_t Size() {
+    inline uint32_t Size() const {
         return std::atomic_load_explicit(&indexs_, std::memory_order_relaxed)->size();
     }
     bool HasAutoGen(); 

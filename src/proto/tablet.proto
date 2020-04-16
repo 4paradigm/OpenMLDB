@@ -73,6 +73,7 @@ enum OPType {
     kAddReplicaSimplyRemoteOP = 17; 
     kDelReplicaRemoteOP = 18; 
     kAddReplicaRemoteOP = 19; 
+    kAddIndexOP = 20; 
 }
 
 enum TaskType {
@@ -101,6 +102,7 @@ enum TaskType {
     kSendIndexData = 23;
     kLoadIndexData = 24;
     kExtractIndexData = 25;
+    kAddIndexToTablet = 26;
 }
 
 enum TaskStatus {
@@ -710,6 +712,10 @@ message BatchQueryResponse {
     optional uint32 count = 5;
 }
 
+message CancelOPRequest {
+    optional uint64 op_id = 1;
+}
+
 service TabletServer {
 
     // write and read api for client
@@ -765,4 +771,7 @@ service TabletServer {
     rpc SendIndexData(SendIndexDataRequest) returns(GeneralResponse);
     rpc DeleteIndex(DeleteIndexRequest) returns (GeneralResponse);
     rpc DumpIndexData(DumpIndexDataRequest) returns (GeneralResponse);
+    rpc LoadIndexData(LoadIndexDataRequest) returns (GeneralResponse);
+    rpc ExtractIndexData(ExtractIndexDataRequest) returns (GeneralResponse);
+    rpc CancelOP(CancelOPRequest) returns (GeneralResponse);
 }

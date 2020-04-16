@@ -76,7 +76,6 @@ public:
 private:
     std::shared_ptr<ZkClient> zk_client_;
     uint64_t session_term_;
-    int64_t task_id_;
     // todo :: add statsus variable show replicas status
 };
 
@@ -91,6 +90,7 @@ struct Task {
     ~Task() {}
     std::string endpoint_;
     std::shared_ptr<::rtidb::api::TaskInfo> task_info_;
+    std::vector<std::shared_ptr<Task>> sub_task_;
     TaskFun fun_;
 };
 
@@ -564,6 +564,45 @@ private:
             uint64_t op_index,
             ::rtidb::api::OPType op_type);
 
+    std::shared_ptr<Task> CreateDumpIndexDataTask(uint64_t op_index,
+            ::rtidb::api::OPType op_type,
+            uint32_t tid,
+            uint32_t pid,
+            const std::string& endpoint,
+            uint32_t partition_num,
+            const ::rtidb::common::ColumnKey& column_key,
+            uint32_t idx);
+
+    std::shared_ptr<Task> CreateSendIndexDataTask(uint64_t op_index,
+            ::rtidb::api::OPType op_type,
+            uint32_t tid,
+            uint32_t pid,
+            const std::string& endpoint,
+            const std::map<uint32_t, std::string>& pid_endpoint_map);
+
+    std::shared_ptr<Task> CreateLoadIndexDataTask(uint64_t op_index,
+            ::rtidb::api::OPType op_type,
+            uint32_t tid,
+            uint32_t pid,
+            const std::string& endpoint,
+            uint32_t partition_num);
+
+    std::shared_ptr<Task> CreateExtractIndexDataTask(uint64_t op_index,
+            ::rtidb::api::OPType op_type,
+            uint32_t tid,
+            uint32_t pid,
+            const std::vector<std::string>& endpoints,
+            uint32_t partition_num,
+            const ::rtidb::common::ColumnKey& column_key,
+            uint32_t idx);
+
+    std::shared_ptr<Task> CreateAddIndexToTabletTask(uint64_t op_index,
+            ::rtidb::api::OPType op_type,
+            uint32_t tid,
+            uint32_t pid,
+            const std::vector<std::string>& endpoints,
+            const ::rtidb::common::ColumnKey& column_key);
+
     std::shared_ptr<TableInfo> GetTableInfo(const std::string& name);
 
     int AddOPTask(const ::rtidb::api::TaskInfo& task_info, ::rtidb::api::TaskType task_type, std::shared_ptr<::rtidb::api::TaskInfo>& task_ptr, std::vector<uint64_t> rep_cluster_op_id_vec);
@@ -616,6 +655,11 @@ private:
             uint64_t parent_id = INVALID_PARENT_ID,
             uint32_t concurrency = FLAGS_name_server_task_concurrency_for_replica_cluster);
 
+    int CreateAddIndexOP(const std::string& name, uint32_t pid,
+            const ::rtidb::common::ColumnKey& column_key, uint32_t idx);
+
+    int CreateAddIndexOPTask(std::shared_ptr<OPData> op_data);
+
     int DropTableRemoteOP(const std::string& name,
             const std::string& alias,
             uint64_t parent_id = INVALID_PARENT_ID,
@@ -629,6 +673,8 @@ private:
                                  std::shared_ptr<::rtidb::api::TaskInfo> task_info);
 
     void WrapTaskFun(const boost::function<bool ()>& fun, std::shared_ptr<::rtidb::api::TaskInfo> task_info);
+
+    void RunSubTask(std::shared_ptr<Task> task);
 
     // get tablet info
     std::shared_ptr<TabletInfo> GetTabletInfo(const std::string& endpoint);

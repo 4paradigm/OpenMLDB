@@ -152,10 +152,10 @@ int RelationalTable::InitColumnDesc() {
         }
         if (column_key.flag()) {
             table_index_.AddIndex(std::make_shared<IndexDef>(index_name, key_idx, 
-                        ::rtidb::storage::kDeleted, index_type, column_idx_map));
+                        ::rtidb::storage::IndexStatus::kDeleted, index_type, column_idx_map));
         } else {
             table_index_.AddIndex(std::make_shared<IndexDef>(index_name, key_idx, 
-                        ::rtidb::storage::kReady, index_type, column_idx_map));
+                        ::rtidb::storage::IndexStatus::kReady, index_type, column_idx_map));
         }
         key_idx++;
     }

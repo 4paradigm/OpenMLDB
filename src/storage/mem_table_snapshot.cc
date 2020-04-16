@@ -202,7 +202,7 @@ int MemTableSnapshot::TTLSnapshot(std::shared_ptr<Table> table, const ::rtidb::a
         }
         if (!status.ok()) {
             PDLOG(WARNING, "fail to read record for tid %u, pid %u with error %s", tid_, pid_, status.ToString().c_str());
-            has_error = true;        
+            has_error = true;
             break;
         }
         if (!entry.ParseFromString(record.ToString())) {
@@ -712,7 +712,7 @@ int MemTableSnapshot::ExtractIndexData(std::shared_ptr<Table> table, ::rtidb::co
     } else {
         PDLOG(INFO, "schema is empty. tid %u, pid %u", tid, pid);
         making_snapshot_.store(false, std::memory_order_release);
-        return true;
+        return 0;
     }
 
     std::set<uint32_t> deleted_index;
@@ -741,7 +741,7 @@ int MemTableSnapshot::ExtractIndexData(std::shared_ptr<Table> table, ::rtidb::co
             PDLOG(WARNING, "fail to find column_desc %s. tid %u, pid %u", 
                     name.c_str(), tid, pid);
             making_snapshot_.store(false, std::memory_order_release);
-            return false;
+            return -1;
         }
     }
 
@@ -1033,7 +1033,7 @@ bool MemTableSnapshot::DumpSnapshotIndexData(std::shared_ptr<Table>& table, cons
                     cur_key += "|" + row[i];
                 }
             }
-            uint32_t index_pid = ::rtidb::base::hash64(cur_key)%partition_num;
+            uint32_t index_pid = ::rtidb::base::hash64(cur_key) % partition_num;
             if (!pid_set.count(index_pid)) {
                 std::string entry_str;
                 entry.clear_dimensions();
@@ -1044,14 +1044,15 @@ bool MemTableSnapshot::DumpSnapshotIndexData(std::shared_ptr<Table>& table, cons
                 ::rtidb::base::Slice new_record(entry_str);
                 ::rtidb::base::Status status = whs[index_pid]->Write(new_record);
                 if (!status.ok()) {
-                    PDLOG(WARNING, "fail to dump index entrylog in snapshot to pid[%u].", index_pid);
+                    PDLOG(WARNING, "fail to dump index entrylog in snapshot to pid[%u]. tid %u pid %u",
+                            index_pid, tid_, pid_);
                     return false;
                 } else {
                     PDLOG(DEBUG, "dump entry key[%s] into pid[%u]", cur_key.c_str(), index_pid);
                 }
             }
         }
-    }while(0);
+    } while(0);
     return true;
 }
 

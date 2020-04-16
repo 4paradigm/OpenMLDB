@@ -37,19 +37,8 @@ TableIndex::~TableIndex() {
 }
 
 void TableIndex::ReSet() {
-    std::atomic_load_explicit(&indexs_, std::memory_order_relaxed)->clear();
-}
-
-void TableIndex::SetAllIndex(const std::vector<std::shared_ptr<IndexDef>>& index_vec) {
-    auto new_indexs = std::make_shared<std::vector<std::shared_ptr<IndexDef>>>(index_vec);
+    auto new_indexs = std::make_shared<std::vector<std::shared_ptr<IndexDef>>>();
     std::atomic_store_explicit(&indexs_, new_indexs, std::memory_order_relaxed);
-    for (auto index_def : *new_indexs) {
-        if (index_def->GetType() == ::rtidb::type::kPrimaryKey || 
-                index_def->GetType() == ::rtidb::type::kAutoGen) {
-            pk_index_ = index_def; 
-            break;
-        } 
-    }
 }
 
 std::shared_ptr<IndexDef> TableIndex::GetIndex(uint32_t idx) {
@@ -74,8 +63,11 @@ std::vector<std::shared_ptr<IndexDef>> TableIndex::GetAllIndex() {
     return *std::atomic_load_explicit(&indexs_, std::memory_order_relaxed);
 }
 
-void TableIndex::AddIndex(std::shared_ptr<IndexDef> index_def) {
+int TableIndex::AddIndex(std::shared_ptr<IndexDef> index_def) {
     auto old_indexs = std::atomic_load_explicit(&indexs_, std::memory_order_relaxed);
+    if (old_indexs->size() >= MAX_INDEX_NUM) {
+        return -1;
+    }
     auto new_indexs = std::make_shared<std::vector<std::shared_ptr<IndexDef>>>(*old_indexs);
     new_indexs->push_back(index_def);
     std::atomic_store_explicit(&indexs_, new_indexs, std::memory_order_relaxed);
@@ -83,6 +75,7 @@ void TableIndex::AddIndex(std::shared_ptr<IndexDef> index_def) {
             index_def->GetType() == ::rtidb::type::kAutoGen) {
         pk_index_ = index_def; 
     } 
+    return 0;
 }
 
 bool TableIndex::HasAutoGen() {
@@ -141,15 +134,15 @@ std::vector<std::shared_ptr<ColumnDef>> TableColumn::GetAllColumn() {
 }
 
 void TableColumn::AddColumn(std::shared_ptr<ColumnDef> column_def) {
-        auto old_columns = std::atomic_load_explicit(&columns_, std::memory_order_relaxed);
-        auto new_columns = std::make_shared<std::vector<std::shared_ptr<ColumnDef>>>(*old_columns);
-        new_columns->push_back(column_def);
-        std::atomic_store_explicit(&columns_, new_columns, std::memory_order_relaxed);
+    auto old_columns = std::atomic_load_explicit(&columns_, std::memory_order_relaxed);
+    auto new_columns = std::make_shared<std::vector<std::shared_ptr<ColumnDef>>>(*old_columns);
+    new_columns->push_back(column_def);
+    std::atomic_store_explicit(&columns_, new_columns, std::memory_order_relaxed);
 
-        auto old_map = std::atomic_load_explicit(&column_map_, std::memory_order_relaxed);
-        auto new_map = std::make_shared<std::map<std::string, std::shared_ptr<ColumnDef>>>(*old_map);
-        new_map->insert(std::make_pair(column_def->GetName(), column_def));
-        std::atomic_store_explicit(&column_map_, new_map, std::memory_order_relaxed);
+    auto old_map = std::atomic_load_explicit(&column_map_, std::memory_order_relaxed);
+    auto new_map = std::make_shared<std::map<std::string, std::shared_ptr<ColumnDef>>>(*old_map);
+    new_map->insert(std::make_pair(column_def->GetName(), column_def));
+    std::atomic_store_explicit(&column_map_, new_map, std::memory_order_relaxed);
 }
 
 }
