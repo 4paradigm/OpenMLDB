@@ -426,6 +426,10 @@ public class RowCodecTest {
             Assert.assertTrue(rowView.isNull(0));
             Assert.assertEquals(rowView.getBool(1), new Boolean(false));
             Assert.assertEquals(rowView.getString(2), "1");
+
+            RowView rowView2 = new RowView(schema);
+            Object value = rowView2.getValue(buffer, 2, DataType.Varchar);
+            Assert.assertEquals((String) value, "1");
         } catch (TabletException e) {
             Assert.assertTrue(false);
         }

@@ -1293,22 +1293,39 @@ public class TableSyncClientTest extends TestCaseBase {
             data.put("price", 12.2);
             tableSyncClient.put(name, data, wo);
 
+            data.clear();
+            data.put("id", 14l);
+            data.put("attribute", "a4");
+            data.put("image", "i2");
+            data.put("memory", 13);
+            data.put("price", 12.2);
+            tableSyncClient.put(name, data, wo);
+
             //traverse
             it = tableSyncClient.traverse(name, ro);
-            Assert.assertEquals(it.getCount(), 3);
+            Assert.assertEquals(it.getCount(), 4);
 
             //delete no unique
             {
-                Map<String, Object> conditionColumns2 = new HashMap<>();
-                conditionColumns2.put("memory", 12);
-                ok = tableSyncClient.delete(name, conditionColumns2);
+                Map<String, Object> conditionColumns = new HashMap<>();
+                conditionColumns.put("memory", 12);
+                ok = tableSyncClient.delete(name, conditionColumns);
                 Assert.assertTrue(ok);
-                ro = new ReadOption(conditionColumns2, null, null, 1);
+                ro = new ReadOption(conditionColumns, null, null, 1);
                 it = tableSyncClient.query(name, ro);
                 Assert.assertFalse(it.valid());
+
+                Map<String, Object> conditionColumns2 = new HashMap<>();
+                conditionColumns2.put("memory", 13);
+                ro = new ReadOption(conditionColumns2, null, null, 1);
+                it = tableSyncClient.query(name, ro);
+                Assert.assertTrue(it.valid());
+                Assert.assertEquals(it.getCount(), 1);
+                queryMap = it.getDecodedValue();
+                Assert.assertEquals(queryMap.get("memory"), 13);
             }
             it = tableSyncClient.traverse(name, ro);
-            Assert.assertEquals(it.getCount(), 1);
+            Assert.assertEquals(it.getCount(), 2);
             Assert.assertTrue(it.valid());
             queryMap = it.getDecodedValue();
             Assert.assertEquals(queryMap.get("memory"), 11);

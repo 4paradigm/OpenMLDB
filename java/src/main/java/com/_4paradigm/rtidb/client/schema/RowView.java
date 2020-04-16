@@ -239,7 +239,7 @@ public class RowView {
                     nextStrFieldOffset = fieldOffset + 1;
                 }
                 return getStrField(row, fieldOffset, nextStrFieldOffset,
-                        strFieldStartOffset, strAddrLength);
+                        strFieldStartOffset, RowCodecCommon.getAddrLength(size));
             default:
                 throw new TabletException("unsupported data type");
         }
