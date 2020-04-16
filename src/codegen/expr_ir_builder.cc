@@ -309,7 +309,7 @@ bool ExprIRBuilder::BuildColumnItem(const std::string& col,
     if (!variable_ir_builder_.LoadValue(row_ptr_name_, &row_ptr, status) ||
         row_ptr == NULL) {
         std::ostringstream oss;
-        oss << "fail to find row ptr with P " + row_ptr_name_ << " :"
+        oss << "fail to find row ptr with name " + row_ptr_name_ << " :"
             << status.msg;
         status.msg = oss.str();
         LOG(WARNING) << status.msg;
