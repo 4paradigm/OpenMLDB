@@ -682,7 +682,7 @@ bool BatchModeTransformer::AddPass(PhysicalPlanPassType type) {
     return true;
 }
 bool BatchModeTransformer::GenProjects(
-    std::vector<std::pair<const std::string, const Schema*>>&
+    const std::vector<std::pair<const std::string, const Schema*>>&
         input_name_schema_list,
     const node::PlanNodeList& projects, const bool row_project,
     std::string& fn_name,    // NOLINT

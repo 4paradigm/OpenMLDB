@@ -315,7 +315,8 @@ void BuildWindow(std::vector<Slice>& rows,  // NOLINT
     *buf = reinterpret_cast<int8_t*>(w);
 }
 void CheckFnLetBuilder(
-    std::vector<std::pair<const std::string, const vm::Schema*>>* name_schemas,
+    const std::vector<std::pair<const std::string, const vm::Schema*>>&
+        name_schemas,
     std::string udf_str, std::string sql, int8_t** row_ptrs,
     int8_t** window_ptrs, int32_t* row_sizes, vm::Schema* output_schema,
     int8_t** output) {
@@ -368,7 +369,7 @@ void CheckFnLetBuilder(type::TableDef& table, std::string udf_str,  // NOLINT
     std::vector<std::pair<const std::string, const vm::Schema*>>
         name_schema_list;
     name_schema_list.push_back(std::make_pair(table.name(), &table.columns()));
-    CheckFnLetBuilder(&name_schema_list, udf_str, sql, row_ptrs, window_ptrs,
+    CheckFnLetBuilder(name_schema_list, udf_str, sql, row_ptrs, window_ptrs,
                       row_sizes, output_schema, output);
 }
 
@@ -426,7 +427,7 @@ TEST_F(FnLetIRBuilderTest, test_multi_row_simple_query) {
     int32_t row_sizes[2] = {static_cast<int32_t>(size),
                             static_cast<int32_t>(size2)};
     vm::Schema schema;
-    CheckFnLetBuilder(&name_schema_list, "", sql, row_ptrs, window_ptrs,
+    CheckFnLetBuilder(name_schema_list, "", sql, row_ptrs, window_ptrs,
                       row_sizes, &schema, &output);
     ASSERT_EQ(4, schema.size());
     uint32_t out_size = *reinterpret_cast<uint32_t*>(output + 2);

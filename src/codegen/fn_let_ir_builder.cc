@@ -39,7 +39,7 @@ RowFnLetIRBuilder::RowFnLetIRBuilder(const std::string& table_name,
         RowIRInfo{.idx = 0, .table_name_ = table_name, .schema_ = &schema});
 }
 RowFnLetIRBuilder::RowFnLetIRBuilder(
-    std::vector<std::pair<const std::string, const vm::Schema*>>&
+    const std::vector<std::pair<const std::string, const vm::Schema*>>&
         table_schema_list,
     ::llvm::Module* module)
     : module_(module) {
