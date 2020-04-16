@@ -22,20 +22,6 @@ static rocksdb::Options ssd_option_template;
 static rocksdb::Options hdd_option_template;
 static bool options_template_initialized = false;
 
-RelationalTable::RelationalTable(const std::string &name, uint32_t id, uint32_t pid,
-        ::rtidb::common::StorageMode storage_mode,
-        const std::string& db_root_path) :
-    storage_mode_(storage_mode), name_(name), id_(id), pid_(pid), idx_cnt_(0),
-    last_make_snapshot_time_(0),  
-    write_opts_(), offset_(0), db_root_path_(db_root_path),
-    snapshot_index_(1) {
-        if (!options_template_initialized) {
-            initOptionTemplate();
-        }
-        write_opts_.disableWAL = FLAGS_disable_wal;
-        db_ = nullptr;
-}
-
 RelationalTable::RelationalTable(const ::rtidb::api::TableMeta& table_meta,
         const std::string& db_root_path) :
     storage_mode_(table_meta.storage_mode()), name_(table_meta.name()), id_(table_meta.tid()), pid_(table_meta.pid()),
@@ -44,6 +30,7 @@ RelationalTable::RelationalTable(const ::rtidb::api::TableMeta& table_meta,
     write_opts_(), offset_(0), db_root_path_(db_root_path),
     snapshots_(), snapshot_index_(1) {
     table_meta_.CopyFrom(table_meta);
+    row_view_ = new ::rtidb::base::RowView(table_meta_.column_desc());
     if (!options_template_initialized) {
         initOptionTemplate();
     }
@@ -59,6 +46,9 @@ RelationalTable::~RelationalTable() {
     if (db_ != nullptr) {
         db_->Close();
         delete db_;
+    }
+    if (row_view_ != nullptr) {
+        delete row_view_;
     }
 }
 
@@ -226,12 +216,11 @@ bool RelationalTable::Put(const std::string& value) {
         char* to = const_cast<char*>(pk.data());
         ::rtidb::base::PackInteger(&auto_gen_pk, sizeof(int64_t), false, to);
     } else {
-        ::rtidb::base::RowView view(schema, reinterpret_cast<int8_t*>(const_cast<char*>(&(value[0]))), value.size());
         std::shared_ptr<IndexDef> index_def = table_index_.GetPkIndex();
         for (auto& kv : index_def->GetColumnIdxMap()) {
             uint32_t idx = kv.first;
             ::rtidb::type::DataType data_type = kv.second.data_type();
-            if (!GetPackedField(view, idx, data_type, &pk)) {
+            if (!GetPackedField(reinterpret_cast<int8_t*>(const_cast<char*>(&(value[0]))), idx, data_type, &pk)) {
                 return false;
             }
         }
@@ -253,8 +242,6 @@ bool RelationalTable::PutDB(const std::string &pk, const char *data, uint32_t si
     } else {
         batch.Put(cf_hs_[index_def->GetId() + 1], spk, rocksdb::Slice(data, size));
     }
-    const Schema& schema = table_meta_.column_desc(); 
-    ::rtidb::base::RowView view(schema, reinterpret_cast<int8_t*>(const_cast<char*>(data)), size);
     for (uint32_t i = 0; i < table_index_.Size(); i++) {
         std::shared_ptr<IndexDef> index_def = table_index_.GetIndex(i);
         for (auto& kv : index_def->GetColumnIdxMap()) {
@@ -262,7 +249,7 @@ bool RelationalTable::PutDB(const std::string &pk, const char *data, uint32_t si
             ::rtidb::type::DataType data_type = kv.second.data_type();
             std::string key = "";
             if (index_def->GetType() == ::rtidb::type::kUnique) {
-                if (!GetPackedField(view, idx, data_type, &key)) {
+                if (!GetPackedField(reinterpret_cast<int8_t*>(const_cast<char*>(data)), idx, data_type, &key)) {
                     return false;
                 }
                 rocksdb::Iterator* it = GetRocksdbIterator(idx);
@@ -277,7 +264,7 @@ bool RelationalTable::PutDB(const std::string &pk, const char *data, uint32_t si
                 rocksdb::Slice unique = rocksdb::Slice(key);
                 batch.Put(cf_hs_[index_def->GetId() + 1], unique, spk);
             } else if (index_def->GetType() == ::rtidb::type::kNoUnique) {
-                if (!GetPackedField(view, idx, data_type, &key)) {
+                if (!GetPackedField(reinterpret_cast<int8_t*>(const_cast<char*>(data)), idx, data_type, &key)) {
                     return false;
                 }
                 std::string no_unique = "";
@@ -298,13 +285,14 @@ bool RelationalTable::PutDB(const std::string &pk, const char *data, uint32_t si
     }
 }
 
-bool RelationalTable::GetPackedField(::rtidb::base::RowView& view, uint32_t idx, 
+bool RelationalTable::GetPackedField(const int8_t* row, uint32_t idx, 
         const ::rtidb::type::DataType& data_type, std::string* key) {
+    int get_value_ret = 0;
     int ret = 0;
     switch(data_type) {
         case ::rtidb::type::kSmallInt: {
             int16_t si_val = 0;
-            view.GetInt16(idx, &si_val);
+            get_value_ret = row_view_->GetValue(row, idx, data_type, &si_val);
             key->resize(sizeof(int16_t));
             char* to = const_cast<char*>(key->data());
             ret = ::rtidb::base::PackInteger(&si_val, sizeof(int16_t), false, to);
@@ -312,7 +300,7 @@ bool RelationalTable::GetPackedField(::rtidb::base::RowView& view, uint32_t idx,
         }
         case ::rtidb::type::kInt: { 
             int32_t i_val = 0;
-            view.GetInt32(idx, &i_val);
+            get_value_ret = row_view_->GetValue(row, idx, data_type, &i_val);
             key->resize(sizeof(int32_t));
             char* to = const_cast<char*>(key->data());
             ret = ::rtidb::base::PackInteger(&i_val, sizeof(int32_t), false, to);
@@ -320,7 +308,7 @@ bool RelationalTable::GetPackedField(::rtidb::base::RowView& view, uint32_t idx,
         }
         case ::rtidb::type::kBigInt: {
             int64_t bi_val = 0;
-            view.GetInt64(idx, &bi_val);
+            get_value_ret = row_view_->GetValue(row, idx, data_type, &bi_val);
             key->resize(sizeof(int64_t));
             char* to = const_cast<char*>(key->data());
             ret = ::rtidb::base::PackInteger(&bi_val, sizeof(int64_t), false, to);
@@ -330,7 +318,7 @@ bool RelationalTable::GetPackedField(::rtidb::base::RowView& view, uint32_t idx,
         case ::rtidb::type::kString: {
             char* ch = NULL;
             uint32_t length = 0;
-            view.GetString(idx, &ch, &length);
+            get_value_ret =  row_view_->GetValue(row, idx, &ch, &length);
             int32_t dst_len = ::rtidb::base::GetDstStrSize(length);
             key->resize(dst_len);
             char* dst = const_cast<char*>(key->data());
@@ -339,7 +327,7 @@ bool RelationalTable::GetPackedField(::rtidb::base::RowView& view, uint32_t idx,
         }
         case ::rtidb::type::kFloat: {
             float val = 0.0;
-            view.GetFloat(idx, &val);
+            get_value_ret = row_view_->GetValue(row, idx, data_type, &val);
             key->resize(sizeof(float));
             char* to = const_cast<char*>(key->data());
             ret = ::rtidb::base::PackFloat(&val, to);
@@ -347,7 +335,7 @@ bool RelationalTable::GetPackedField(::rtidb::base::RowView& view, uint32_t idx,
         }
         case ::rtidb::type::kDouble: {
             double val = 0.0;
-            view.GetDouble(idx, &val);
+            get_value_ret = row_view_->GetValue(row, idx, data_type, &val);
             key->resize(sizeof(double));
             char* to = const_cast<char*>(key->data());
             ret = ::rtidb::base::PackDouble(&val, to);
@@ -358,6 +346,86 @@ bool RelationalTable::GetPackedField(::rtidb::base::RowView& view, uint32_t idx,
                     rtidb::type::DataType_Name(data_type).c_str(), id_, pid_);
             return false;
         }
+    }
+    if (get_value_ret < 0) {
+        PDLOG(WARNING, "getValue failed,_type %s, tid %u pid %u", 
+                rtidb::type::DataType_Name(data_type).c_str(), id_, pid_);
+        return false;
+    }
+    if (ret < 0) {
+        PDLOG(WARNING, "pack data_type %s error, tid %u pid %u", 
+                rtidb::type::DataType_Name(data_type).c_str(), id_, pid_);
+        return false;
+    }
+    return true;
+}
+
+bool RelationalTable::GetPackedField(::rtidb::base::RowView& view, uint32_t idx, 
+        const ::rtidb::type::DataType& data_type, std::string* key) {
+    int get_value_ret = 0;
+    int ret = 0;
+    switch(data_type) {
+        case ::rtidb::type::kSmallInt: {
+            int16_t si_val = 0;
+            get_value_ret = view.GetInt16(idx, &si_val);
+            key->resize(sizeof(int16_t));
+            char* to = const_cast<char*>(key->data());
+            ret = ::rtidb::base::PackInteger(&si_val, sizeof(int16_t), false, to);
+            break;
+        }
+        case ::rtidb::type::kInt: { 
+            int32_t i_val = 0;
+            get_value_ret = view.GetInt32(idx, &i_val);
+            key->resize(sizeof(int32_t));
+            char* to = const_cast<char*>(key->data());
+            ret = ::rtidb::base::PackInteger(&i_val, sizeof(int32_t), false, to);
+            break;
+        }
+        case ::rtidb::type::kBigInt: {
+            int64_t bi_val = 0;
+            get_value_ret = view.GetInt64(idx, &bi_val);
+            key->resize(sizeof(int64_t));
+            char* to = const_cast<char*>(key->data());
+            ret = ::rtidb::base::PackInteger(&bi_val, sizeof(int64_t), false, to);
+            break;
+        }
+        case ::rtidb::type::kVarchar:
+        case ::rtidb::type::kString: {
+            char* ch = NULL;
+            uint32_t length = 0;
+            get_value_ret = view.GetString(idx, &ch, &length);
+            int32_t dst_len = ::rtidb::base::GetDstStrSize(length);
+            key->resize(dst_len);
+            char* dst = const_cast<char*>(key->data());
+            ret = ::rtidb::base::PackString(ch, length, (void**)&dst);
+            break;
+        }
+        case ::rtidb::type::kFloat: {
+            float val = 0.0;
+            get_value_ret = view.GetFloat(idx, &val);
+            key->resize(sizeof(float));
+            char* to = const_cast<char*>(key->data());
+            ret = ::rtidb::base::PackFloat(&val, to);
+            break;
+        }
+        case ::rtidb::type::kDouble: {
+            double val = 0.0;
+            get_value_ret = view.GetDouble(idx, &val);
+            key->resize(sizeof(double));
+            char* to = const_cast<char*>(key->data());
+            ret = ::rtidb::base::PackDouble(&val, to);
+            break;
+        }
+        default: {
+            PDLOG(WARNING, "unsupported data type %s, tid %u pid %u",
+                    rtidb::type::DataType_Name(data_type).c_str(), id_, pid_);
+            return false;
+        }
+    }
+    if (get_value_ret < 0) {
+        PDLOG(WARNING, "getValue failed,_type %s, tid %u pid %u", 
+                rtidb::type::DataType_Name(data_type).c_str(), id_, pid_);
+        return false;
     }
     if (ret < 0) {
         PDLOG(WARNING, "pack error, tid %u pid %u", id_, pid_);
@@ -492,9 +560,6 @@ bool RelationalTable::DeletePk(const rocksdb::Slice pk_slice) {
     batch.Delete(cf_hs_[pk_id + 1], pk_slice);
     rocksdb::Slice slice = pk_it->value();
 
-    const Schema& schema = table_meta_.column_desc();
-    ::rtidb::base::RowView view(schema, 
-            reinterpret_cast<int8_t*>(const_cast<char*>(slice.data())), slice.size());
     const std::vector<std::shared_ptr<IndexDef>>& indexs = table_index_.GetAllIndex();
     for (const auto& index_def : indexs) {
         if (index_def->GetType() == ::rtidb::type::kUnique ||
@@ -507,7 +572,8 @@ bool RelationalTable::DeletePk(const rocksdb::Slice pk_slice) {
                 return false;
             }
             std::string second_key = "";
-            if (!GetPackedField(view, col->GetId(), col->GetType(), &second_key)) {
+            if (!GetPackedField(reinterpret_cast<int8_t*>(const_cast<char*>(slice.data())),
+                        col->GetId(), col->GetType(), &second_key)) {
                 delete pk_it;
                 return false;
             }

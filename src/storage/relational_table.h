@@ -70,12 +70,6 @@ struct SnapshotInfo {
 class RelationalTable {
 
 public:
-    RelationalTable(const std::string& name,
-                uint32_t id,
-                uint32_t pid,
-                ::rtidb::common::StorageMode storage_mode,
-                const std::string& db_root_path);
-
     RelationalTable(const ::rtidb::api::TableMeta& table_meta,
               const std::string& db_root_path);
     RelationalTable(const RelationalTable&) = delete;
@@ -172,6 +166,8 @@ private:
             const std::map<std::string, int>& col_idx_map, 
             const Schema& condition_schema, const Schema& value_schema, 
             const std::string& cd_value, const std::string& col_value); 
+    bool GetPackedField(const int8_t* row, uint32_t idx, 
+            const ::rtidb::type::DataType& data_type, std::string* key); 
     bool GetPackedField(::rtidb::base::RowView& view, uint32_t idx, 
             const ::rtidb::type::DataType& data_type, std::string* key); 
     bool ConvertIndex(const std::string& name, const std::string& value, 
@@ -204,6 +200,7 @@ private:
 
     std::map<uint64_t, std::shared_ptr<SnapshotInfo>> snapshots_;
     uint64_t snapshot_index_; // 0 is invalid snapshot_index
+    ::rtidb::base::RowView* row_view_;
 };
 
 }
