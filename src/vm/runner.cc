@@ -736,8 +736,8 @@ std::shared_ptr<DataHandler> RowProjectRunner::Run(RunnerContext& ctx) {
         return std::shared_ptr<DataHandler>(
             new MemRowHandler(RowProject(fn_, row->GetValue()), &fn_schema_));
     } else {
-        return std::shared_ptr<DataHandler>(
-            new MemRowHandler(MultiRowsProject(fn_, row->GetRows()), &fn_schema_));
+        return std::shared_ptr<DataHandler>(new MemRowHandler(
+            MultiRowsProject(fn_, row->GetRows()), &fn_schema_));
     }
 }
 std::shared_ptr<DataHandler> WindowAggRunner::Run(RunnerContext& ctx) {

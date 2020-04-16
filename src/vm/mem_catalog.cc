@@ -240,7 +240,7 @@ MemTableHandler::MemTableHandler(const std::string& table_name,
       types_(),
       index_hint_(),
       table_(),
-      other_tables_(){}
+      other_tables_() {}
 void MemTableHandler::AddRow(const Row& row) { table_.push_back(row); }
 void MemTableHandler::Reverse() { std::reverse(table_.begin(), table_.end()); }
 MemTableHandler::~MemTableHandler() {}
