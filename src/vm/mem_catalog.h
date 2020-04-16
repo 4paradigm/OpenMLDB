@@ -24,21 +24,19 @@
 namespace fesql {
 namespace vm {
 
-using fesql::codec::Row;
 using fesql::codec::IteratorV;
+using fesql::codec::Row;
 using fesql::codec::RowIterator;
 using fesql::codec::WindowIterator;
 
 struct AscComparor {
-    bool operator()(std::pair<uint64_t, Row> i,
-                    std::pair<uint64_t, Row> j) {
+    bool operator()(std::pair<uint64_t, Row> i, std::pair<uint64_t, Row> j) {
         return i.first < j.first;
     }
 };
 
 struct DescComparor {
-    bool operator()(std::pair<uint64_t, Row> i,
-                    std::pair<uint64_t, Row> j) {
+    bool operator()(std::pair<uint64_t, Row> i, std::pair<uint64_t, Row> j) {
         return i.first > j.first;
     }
 };
@@ -111,24 +109,22 @@ class MemWindowIterator : public WindowIterator {
 class MemRowHandler : public RowHandler {
  public:
     MemRowHandler(const Row row, const vm::Schema* schema)
-        : RowHandler(),
-          row_(row),
-          table_name_(""),
-          db_(""),
-          schema_(schema) {
-    }
+        : RowHandler(), row_(row), table_name_(""), db_(""), schema_(schema) {}
     ~MemRowHandler() {}
 
     const Schema* GetSchema() override { return nullptr; }
     const std::string& GetName() override { return table_name_; }
     const std::string& GetDatabase() override { return db_; }
     const Row& GetValue() const override { return row_; }
-
+    void AddRow(const Row& row) {
+        other_rows.push_back(row);
+    }
  private:
     Row row_;
     std::string table_name_;
     std::string db_;
     const Schema* schema_;
+    std::vector<Row> other_rows;
 };
 
 class MemTableHandler : public TableHandler {
@@ -156,7 +152,9 @@ class MemTableHandler : public TableHandler {
     virtual Row At(uint64_t pos) {
         return pos >= 0 && pos < table_.size() ? table_.at(pos) : Row();
     }
-
+    void AddOtherTable(std::shared_ptr<TableHandler> other_table) {
+        other_tables_.push_back(other_table);
+    }
  protected:
     const std::string table_name_;
     const std::string db_;
@@ -164,6 +162,7 @@ class MemTableHandler : public TableHandler {
     Types types_;
     IndexHint index_hint_;
     MemTable table_;
+    std::vector<std::shared_ptr<TableHandler>> other_tables_;
 };
 
 class MemSegmentHandler : public TableHandler {
@@ -188,8 +187,7 @@ class MemSegmentHandler : public TableHandler {
     void Reverse();
     virtual const uint64_t GetCount() { return table_.size(); }
     virtual Row At(uint64_t pos) {
-        return pos >= 0 && pos < table_.size() ? table_.at(pos).second
-                                               : Row();
+        return pos >= 0 && pos < table_.size() ? table_.at(pos).second : Row();
     }
 
  protected:
@@ -219,8 +217,7 @@ class Window : public MemSegmentHandler {
           max_size_(max_size) {}
     virtual ~Window() {}
 
-    std::unique_ptr<vm::IteratorV<uint64_t, Row>> GetIterator()
-        const override {
+    std::unique_ptr<vm::IteratorV<uint64_t, Row>> GetIterator() const override {
         std::unique_ptr<vm::MemSegmentIterator> it(
             new vm::MemSegmentIterator(&table_, schema_, start_, end_));
         return std::move(it);
@@ -238,8 +235,7 @@ class Window : public MemSegmentHandler {
 
     virtual const uint64_t GetCount() { return end_ - start_; }
     virtual Row At(uint64_t pos) {
-        return (pos + start_ < end_) ? table_.at(pos + start_).second
-                                     : Row();
+        return (pos + start_ < end_) ? table_.at(pos + start_).second : Row();
     }
 
  protected:
