@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com._4paradigm</groupId>
 	<artifactId>rtidb-client</artifactId>
-	<version>1.4.1.0-RELEASE</version>
+	<version>1.6.0.0-SNAPSHOT</version>
 	<packaging>jar</packaging>
 	<dependencies>
 
@@ -80,8 +80,8 @@
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<configuration>
-					<source>1.7</source>
-					<target>1.7</target>
+					<source>8</source>
+					<target>8</target>
 					<encoding>UTF-8</encoding>
 				</configuration>
             </plugin>
@@ -90,7 +90,7 @@
 				<artifactId>protobuf-maven-plugin</artifactId>
 				<version>0.5.0</version>
 				<configuration>
-<protocExecutable>../thirdparty/bin/protoc</protocExecutable>
+<protocExecutable>/usr/local/bin/protoc</protocExecutable>
 				</configuration>
 				<executions>
 					<execution>
