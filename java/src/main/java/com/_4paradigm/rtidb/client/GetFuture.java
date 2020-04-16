@@ -34,7 +34,7 @@ public class GetFuture implements Future<ByteString>{
 	public GetFuture(Future<Tablet.GetResponse> f, TableHandler t, RTIDBClientConfig config) {
 		this.f = f;
 		this.th = t;
-		if (t.getTableInfo().getFormatVersion() == 1) {
+		if (t != null && t.getTableInfo().getFormatVersion() == 1) {
 			rv = new RowSliceView(t.getSchema());
 		}
 	}
@@ -42,7 +42,7 @@ public class GetFuture implements Future<ByteString>{
 	public GetFuture(Future<Tablet.GetResponse> f, TableHandler t, RTIDBClientConfig config, List<ColumnDesc> projection) {
 		this.f = f;
 		this.th = t;
-		if (t.getTableInfo().getFormatVersion() == 1) {
+		if (t != null && t.getTableInfo().getFormatVersion() == 1) {
 			if (projection != null) {
 				rv = new RowSliceView(projection);
 			}else {
