@@ -67,6 +67,7 @@ if (COVERAGE_ENABLE)
     endif()
 endif()
 
+find_package(Threads)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(OS_LIB ${CMAKE_THREAD_LIBS_INIT} rt)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
