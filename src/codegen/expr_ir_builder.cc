@@ -232,7 +232,8 @@ bool ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call_fn,
     }
 
     row_mode_ = old_mode;
-    ::llvm::Function* fn = GetFuncion(name, generics_types, status);
+
+    ::llvm::Function* fn = GetFuncion(call_fn->GetFunctionName(), generics_types, status);
 
     if (common::kOk != status.code) {
         return false;
@@ -307,7 +308,7 @@ bool ExprIRBuilder::BuildColumnItem(const std::string& col,
     if (!variable_ir_builder_.LoadValue(row_ptr_name_, &row_ptr, status) ||
         row_ptr == NULL) {
         std::ostringstream oss;
-        oss << "fail to find row ptr with name " + row_ptr_name_ << " :"
+        oss << "fail to find row ptr with P " + row_ptr_name_ << " :"
             << status.msg;
         status.msg = oss.str();
         LOG(WARNING) << status.msg;
