@@ -37,9 +37,7 @@ namespace fesql {
 namespace codegen {
 
 struct RowIRInfo {
-    const std::string row_ptr_name_;
-    const std::string row_size_name_;
-    const std::string window_ptr_name_;
+    const uint32_t idx;
     const std::string table_name_;
     const vm::Schema* schema_;
 };

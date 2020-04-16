@@ -228,11 +228,13 @@ Slice Runner::WindowProject(const int8_t* fn, uint64_t key, const Slice slice,
         return slice;
     }
     window->BufferData(key, slice);
-    int32_t (*udf)(int8_t*, int8_t*, int32_t, int8_t**) =
-        (int32_t(*)(int8_t*, int8_t*, int32_t, int8_t**))(fn);
+    int32_t (*udf)(int8_t**, int8_t**, int32_t*, int8_t**) =
+        (int32_t(*)(int8_t**, int8_t**, int32_t*, int8_t**))(fn);
     int8_t* out_buf = nullptr;
-    uint32_t ret = udf(slice.buf(), reinterpret_cast<int8_t*>(window),
-                       slice.size(), &out_buf);
+    int8_t* row_ptrs[1] = {slice.buf()};
+    int8_t* window_ptrs[1] = {reinterpret_cast<int8_t*>(window)};
+    int32_t row_sizes[1] = {static_cast<int32_t>(slice.size())};
+    uint32_t ret = udf(row_ptrs, window_ptrs, row_sizes, &out_buf);
     if (ret != 0) {
         LOG(WARNING) << "fail to run udf " << ret;
         return Slice();
@@ -243,12 +245,15 @@ Slice Runner::RowProject(const int8_t* fn, const Slice slice) {
     if (slice.empty()) {
         return slice;
     }
-    int32_t (*udf)(int8_t*, int8_t*, int32_t, int8_t**) =
-        (int32_t(*)(int8_t*, int8_t*, int32_t, int8_t**))(fn);
+    int32_t (*udf)(int8_t**, int8_t**, int32_t*, int8_t**) =
+        (int32_t(*)(int8_t**, int8_t**, int32_t*, int8_t**))(fn);
     int8_t* buf = nullptr;
-    uint32_t ret =
-        udf(reinterpret_cast<int8_t*>(const_cast<char*>(slice.data())), nullptr,
-            slice.size(), &buf);
+
+    int8_t* row_ptrs[1] = {slice.buf()};
+    int8_t* window_ptrs[1] = {nullptr};
+    int32_t row_sizes[1] = {static_cast<int32_t>(slice.size())};
+    uint32_t ret = udf(row_ptrs, window_ptrs, row_sizes, &buf);
+
     if (ret != 0) {
         LOG(WARNING) << "fail to run udf " << ret;
         return Slice();
@@ -906,8 +911,8 @@ std::shared_ptr<DataHandler> GroupAggRunner::Run(RunnerContext& ctx) {
     auto iter = partition->GetWindowIterator();
     iter->SeekToFirst();
 
-    int32_t (*udf)(int8_t*, int8_t*, int32_t, int8_t**) =
-        (int32_t(*)(int8_t*, int8_t*, int32_t, int8_t**))(fn_);
+    int32_t (*udf)(int8_t**, int8_t**, int32_t*, int8_t**) =
+        (int32_t(*)(int8_t**, int8_t**, int32_t*, int8_t**))(fn_);
 
     while (iter->Valid()) {
         auto segment_iter = iter->GetValue();
@@ -919,9 +924,10 @@ std::shared_ptr<DataHandler> GroupAggRunner::Run(RunnerContext& ctx) {
         auto key = std::string(iter->GetKey().data(), iter->GetKey().size());
         auto segment = partition->GetSegment(partition, key);
         int8_t* buf = nullptr;
-        uint32_t ret =
-            udf(first_row.buf(), reinterpret_cast<int8_t*>(segment.get()),
-                first_row.size(), &buf);
+        int8_t* row_ptrs[1] = {first_row.buf()};
+        int8_t* window_ptrs[1] = {reinterpret_cast<int8_t*>(segment.get())};
+        int32_t row_sizes[1] = {static_cast<int32_t>(first_row.size())};
+        uint32_t ret = udf(row_ptrs, window_ptrs, row_sizes, &buf);
         if (ret != 0) {
             LOG(WARNING) << "fail to run udf " << ret;
             return std::shared_ptr<DataHandler>();
@@ -1037,12 +1043,14 @@ std::shared_ptr<DataHandler> AggRunner::Run(RunnerContext& ctx) {
 
     auto& row = iter->GetValue();
 
-    int32_t (*udf)(int8_t*, int8_t*, int32_t, int8_t**) =
-        (int32_t(*)(int8_t*, int8_t*, int32_t, int8_t**))(fn_);
+    int32_t (*udf)(int8_t**, int8_t**, int32_t*, int8_t**) =
+        (int32_t(*)(int8_t**, int8_t**, int32_t*, int8_t**))(fn_);
     int8_t* buf = nullptr;
 
-    uint32_t ret = udf(row.buf(), reinterpret_cast<int8_t*>(table.get()),
-                       row.size(), &buf);
+    int8_t* row_ptrs[1] = {row.buf()};
+    int8_t* window_ptrs[1] = {reinterpret_cast<int8_t*>(table.get())};
+    int32_t row_sizes[1] = {static_cast<int32_t>(row.size())};
+    uint32_t ret = udf(row_ptrs, window_ptrs, row_sizes, &buf);
     if (ret != 0) {
         LOG(WARNING) << "fail to run udf " << ret;
         return std::shared_ptr<DataHandler>();

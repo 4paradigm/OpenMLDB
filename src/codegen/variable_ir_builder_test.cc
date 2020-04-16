@@ -9,6 +9,7 @@
 #include "codegen/variable_ir_builder.h"
 #include <memory>
 #include <utility>
+#include <vector>
 #include "codegen/ir_base_builder.h"
 #include "gtest/gtest.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
@@ -67,6 +68,47 @@ void MutableVariableCheck(::fesql::node::DataType type, V1 value1, V1 result) {
     ASSERT_EQ(ret, result);
 }
 
+template <class V1>
+void ArrayVariableCheck(node::DataType type, V1 *array, int pos, V1 exp) {
+    auto ctx = llvm::make_unique<LLVMContext>();
+    auto m = make_unique<Module>("array_func", *ctx);
+    llvm::Type *element_type = NULL;
+    ASSERT_TRUE(::fesql::codegen::GetLLVMType(m.get(), type, &element_type));
+    //    ::llvm::ArrayType *llvm_type =
+    //        ::llvm::ArrayType::get(element_type, element_num);
+
+    ::llvm::Type *llvm_type = element_type->getPointerTo();
+    ASSERT_TRUE(nullptr != llvm_type);
+    // Create the add1 function entry and insert this entry into module M.  The
+    // function will have a return type of "D" and take an argument of "S".
+    Function *load_fn =
+        Function::Create(FunctionType::get(element_type, {llvm_type}, false),
+                         Function::ExternalLinkage, "load_fn", m.get());
+
+    BasicBlock *entry_block = BasicBlock::Create(*ctx, "EntryBlock", load_fn);
+    IRBuilder<> builder(entry_block);
+    auto iter = load_fn->arg_begin();
+    Argument *arg0 = &(*iter);
+    ScopeVar scope_var;
+    scope_var.Enter("fn_base");
+    scope_var.AddVar("array_arg", arg0);
+    VariableIRBuilder ir_builder(entry_block, &scope_var);
+    llvm::Value *output;
+    base::Status status;
+
+    ASSERT_TRUE(ir_builder.LoadValue("array_arg", &output, status));
+    ASSERT_TRUE(ir_builder.LoadArrayIndex("array_arg", pos, &output, status));
+    builder.CreateRet(output);
+    m->print(::llvm::errs(), NULL, true, true);
+    auto J = ExitOnErr(LLJITBuilder().create());
+    ExitOnErr(J->addIRModule(
+        std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
+    auto load_fn_jit = ExitOnErr(J->lookup("load_fn"));
+    V1 (*decode)(V1[]) = (V1(*)(V1 *))load_fn_jit.getAddress();
+    V1 ret = decode(array);
+    ASSERT_EQ(ret, exp);
+}
+
 TEST_F(VariableIRBuilderTest, test_mutable_variable_assign) {
     MutableVariableCheck<int32_t>(::fesql::node::DataType::kInt32, 999, 999);
     MutableVariableCheck<int64_t>(::fesql::node::DataType::kInt64, 99999999L,
@@ -76,6 +118,33 @@ TEST_F(VariableIRBuilderTest, test_mutable_variable_assign) {
     MutableVariableCheck<double>(::fesql::node::DataType::kDouble, 0.999,
                                  0.999);
     MutableVariableCheck<int16_t>(::fesql::node::DataType::kInt16, 99, 99);
+}
+
+TEST_F(VariableIRBuilderTest, test_int32_array_variable) {
+    int len = 10;
+    int32_t *int_num = new int32_t[len];
+    for (int j = 0; j < len; ++j) {
+        int_num[j] = j + 1;
+    }
+    ArrayVariableCheck<int32_t>(::fesql::node::DataType::kInt32, int_num, 0, 1);
+    ArrayVariableCheck<int32_t>(::fesql::node::DataType::kInt32, int_num, 1, 2);
+    ArrayVariableCheck<int32_t>(::fesql::node::DataType::kInt32, int_num, 9,
+                                10);
+}
+
+TEST_F(VariableIRBuilderTest, test_int8ptr_array_variable) {
+    std::vector<std::string> strs = {"abcd", "efg", "hijk", "lmn",
+                                     "opq",  "rst", "uvw",  "xyz"};
+    int8_t **int_num = new int8_t *[strs.size()];
+    for (size_t j = 0; j < strs.size(); ++j) {
+        int_num[j] = reinterpret_cast<int8_t *>(&(strs[j]));
+    }
+    ArrayVariableCheck<int8_t *>(::fesql::node::DataType::kInt8Ptr, int_num, 0,
+                                 reinterpret_cast<int8_t *>(&strs[0]));
+    ArrayVariableCheck<int8_t*>(::fesql::node::DataType::kInt8Ptr, int_num, 1,
+                               reinterpret_cast<int8_t *>(&strs[1]));
+    ArrayVariableCheck<int8_t*>(::fesql::node::DataType::kInt8Ptr, int_num, 7,
+                               reinterpret_cast<int8_t *>(&strs[7]));
 }
 
 }  // namespace codegen

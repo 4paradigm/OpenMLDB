@@ -11,8 +11,8 @@
 #define SRC_VM_TRANSFORM_H_
 #include <memory>
 #include <string>
-#include <utility>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 #include "base/graph.h"
 #include "base/status.h"
@@ -272,12 +272,13 @@ class BatchModeTransformer {
     const std::shared_ptr<Catalog> catalog_;
 
  private:
-    bool GenProjects(std::vector<std::pair<const std::string, const Schema*>>&
-                         input_name_schema_list,
-                     const node::PlanNodeList& projects, const bool row_mode,
-                     std::string& fn_name,   // NOLINT
-                     Schema* output_schema,  // NOLINT
-                     base::Status& status);  // NOLINT
+    bool GenProjects(
+        const std::vector<std::pair<const std::string, const Schema*>>&
+            input_name_schema_list,
+        const node::PlanNodeList& projects, const bool row_mode,
+        std::string& fn_name,   // NOLINT
+        Schema* output_schema,  // NOLINT
+        base::Status& status);  // NOLINT
 
     ::llvm::Module* module_;
     uint32_t id_;
