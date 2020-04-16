@@ -9,7 +9,6 @@
 
 #ifndef SRC_VM_RUNNER_H_
 #define SRC_VM_RUNNER_H_
-#include <stdint-gcc.h>
 #include <map>
 #include <string>
 #include <vector>

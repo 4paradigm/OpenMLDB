@@ -39,9 +39,11 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(arrow_libs parquet arrow_dataset arrow brotlidec brotlienc 
     brotlicommon
     thrift lz4 z zstd double-conversion boost_filesystem snappy)
-elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin") # TODO: Make sure all libraries can be linked
     set(COMMON_LIBS glog gflags)
     set(g_libs glog gflags)
+    set(arrow_libs parquet arrow_dataset arrow
+    double-conversion boost_filesystem snappy)
 endif()
 set(BOOST_ROOT "${PROJECT_SOURCE_DIR}/thirdparty/")
 find_package(LLVM REQUIRED CONFIG)
@@ -65,6 +67,7 @@ if (COVERAGE_ENABLE)
     endif()
 endif()
 
+find_package(Threads)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(OS_LIB ${CMAKE_THREAD_LIBS_INIT} rt)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
