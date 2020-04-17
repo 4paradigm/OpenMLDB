@@ -1194,7 +1194,6 @@ void HandleNSClientShowSchema(const std::vector<std::string>& parts, ::rtidb::cl
         }
         ::rtidb::storage::TTLDesc ttl_desc(abs_ttl, lat_ttl);
         ::rtidb::base::PrintColumnKey(ttl_type, ttl_desc, tables[0].column_desc_v1(), tables[0].column_key());
-        
     } else if (tables[0].column_desc_size() > 0) {
         if (tables[0].added_column_desc_size() == 0) {
             ::rtidb::base::PrintSchema(tables[0].column_desc());
@@ -3586,6 +3585,26 @@ void HandleNSClientDeleteIndex(const std::vector<std::string>& parts, ::rtidb::c
     std::cout << "delete index ok" << std::endl;
 }
 
+void HandleClientDeleteIndex(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
+    ::rtidb::nameserver::GeneralResponse response;
+    if (parts.size() < 4) {
+        std::cout << "Bad format" << std::endl;
+        std::cout << "usage: deleteindex tid pid index_name" << std::endl;
+        return;
+    }
+    try {
+        std::string msg;
+        if (!client->DeleteIndex(boost::lexical_cast<uint32_t>(parts[1]),
+                boost::lexical_cast<uint32_t>(parts[2]), parts[3], &msg)) {
+            std::cout << "Fail to delete index. error msg: " << msg << std::endl;
+            return;
+        }
+    } catch(std::exception const& e) {
+        std::cout << "Invalid args tid and pid should be uint32_t" << std::endl;
+    }
+    std::cout << "delete index ok" << std::endl;
+}
+
 void HandleClientSetTTL(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
     if (parts.size() < 5) {
         std::cout << "Bad setttl format, eg setttl tid pid type ttl [ts_name]" << std::endl;
@@ -3950,6 +3969,7 @@ void HandleClientHelp(const std::vector<std::string> parts, ::rtidb::client::Tab
         printf("create - create table\n");
         printf("delreplica - delete replica from leader\n");
         printf("delete - delete pk\n");
+        printf("deleteindex - delete index\n");
         printf("drop - drop table\n");
         printf("exit - exit client\n");
         printf("get - get only one record\n");
@@ -4024,6 +4044,10 @@ void HandleClientHelp(const std::vector<std::string> parts, ::rtidb::client::Tab
             printf("usage: delete tid pid key [key_name]\n");
             printf("ex: delete 1 0 key1\n");
             printf("ex: delete 1 0 card0 card\n");
+        } else if (parts[1] == "deleteindex") {
+            printf("desc: delete index\n");
+            printf("usage: deleteindex tid pid index_name\n");
+            printf("ex: deleteindex 1 0 card\n");
         } else if (parts[1] == "count") {
             printf("desc: count the num of data in specified key\n");
             printf("usage: count tid pid key [filter_expired_data]\n");
@@ -5390,6 +5414,8 @@ void StartClient() {
             HandleClientConnectZK(parts, &client);
         } else if (parts[0] == "disconnectzk") {
             HandleClientDisConnectZK(parts, &client);
+        } else if (parts[0] == "deleteindex") {
+            HandleClientDeleteIndex(parts, &client);
         } else if (parts[0] == "setttl") {
             HandleClientSetTTL(parts, &client);
         } else if (parts[0] == "setlimit") {

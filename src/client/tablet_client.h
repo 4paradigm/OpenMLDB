@@ -258,7 +258,7 @@ public:
 
     bool SetMode(bool mode);
 
-    bool DeleteIndex(uint32_t tid, const std::string& idx_name);
+    bool DeleteIndex(uint32_t tid, uint32_t pid, const std::string& idx_name, std::string* msg);
 
     bool AddIndex(uint32_t tid, uint32_t pid, 
             const ::rtidb::common::ColumnKey& column_key,

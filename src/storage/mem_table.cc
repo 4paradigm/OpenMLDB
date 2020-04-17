@@ -330,6 +330,7 @@ void MemTable::SchedGc() {
         }
         if (index_def->GetStatus() == IndexStatus::kWaiting) {
             index_def->SetStatus(IndexStatus::kDeleting);
+            continue;
         } else if(index_def->GetStatus() == IndexStatus::kDeleting) {
             if (segments_[i] != NULL) {
                 for (uint32_t k = 0; k < seg_cnt_; k++) {

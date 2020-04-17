@@ -1244,14 +1244,16 @@ bool TabletClient::GetAllSnapshotOffset(std::map<uint32_t, std::map<uint32_t, ui
     return true;
 }
 
-bool TabletClient::DeleteIndex(uint32_t tid, const std::string& idx_name) {
+bool TabletClient::DeleteIndex(uint32_t tid, uint32_t pid, const std::string& idx_name, std::string* msg) {
     ::rtidb::api::DeleteIndexRequest request;
     ::rtidb::api::GeneralResponse response;
     request.set_tid(tid);
+    request.set_pid(pid);
     request.set_idx_name(idx_name);
     bool ok = client_.SendRequest(&rtidb::api::TabletServer_Stub::DeleteIndex, &request, &response, FLAGS_request_timeout_ms, 1);
     if (!ok || response.code() != 0) {
         return false;
+        *msg = response.msg();
     }
     return true;
 }

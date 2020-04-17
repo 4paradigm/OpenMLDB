@@ -650,7 +650,8 @@ message HttpResponse { }
 
 message DeleteIndexRequest {
     optional uint32 tid = 1;
-    optional string idx_name = 2;
+    optional uint32 pid = 2;
+    optional string idx_name = 3;
 }
 
 message DumpIndexDataRequest {

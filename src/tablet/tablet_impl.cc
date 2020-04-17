@@ -4390,46 +4390,41 @@ void TabletImpl::DeleteIndex(RpcController* controller,
         ::rtidb::api::GeneralResponse* response,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    std::map<uint32_t, std::shared_ptr<Table>> tables;
-    {
-        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-        auto iter = tables_.find(request->tid());
-        if (iter == tables_.end()) {
-            response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
-            response->set_msg("table is not exist");
-            return;
-        }
-        tables = iter->second;
-        if (tables.begin()->second->GetStorageMode() != ::rtidb::common::kMemory) {
-            response->set_code(::rtidb::base::ReturnCode::kOperatorNotSupport);
-            response->set_msg("only support mem_table");
-            return;
-        }
-        for (const auto& kv: tables) {
-            std::string root_path;
-            MemTable* mem_table = dynamic_cast<MemTable*>(kv.second.get());
-            if (!mem_table->DeleteIndex(request->idx_name())) {
-                response->set_code(::rtidb::base::ReturnCode::kDeleteIndexFailed);
-                response->set_msg("delete index failed");
-                PDLOG(WARNING, "delete index %s failed. tid %u pid %u", 
-                        request->idx_name().c_str(), request->tid(), kv.first);
-                return;
-            }
-            bool ok = ChooseDBRootPath(request->tid(), kv.second.get()->GetPid(), kv.second.get()->GetStorageMode(), root_path);
-            if (!ok) {
-                response->set_code(::rtidb::base::ReturnCode::kFailToGetDbRootPath);
-                response->set_msg("fail to get table db root path");
-                PDLOG(WARNING, "table db path is not found. tid %u, pid %u", request->tid(), kv.second.get()->GetPid());
-                break;
-            }
-            std::string db_path = root_path + "/" + std::to_string(request->tid()) + 
-                "_" + std::to_string(kv.second.get()->GetPid());
-            WriteTableMeta(db_path, &kv.second.get()->GetTableMeta());
-            PDLOG(INFO, "delete index %s success. tid %u pid %u", 
-                            request->idx_name().c_str(), request->tid(), kv.first);
-        }
+    uint32_t tid = request->tid();
+    uint32_t pid = request->pid();
+    std::shared_ptr<Table> table = GetTable(tid, pid);
+    if (!table) {
+        PDLOG(WARNING, "table is not exist. tid %u, pid %u", tid, pid);
+        response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
+        response->set_msg("table is not exist");
+        return;
     }
-    PDLOG(INFO, "delete index %s success. tid %u", request->idx_name().c_str(), request->tid());
+    if (table->GetStorageMode() != ::rtidb::common::kMemory) {
+        response->set_code(::rtidb::base::ReturnCode::kOperatorNotSupport);
+        response->set_msg("only support mem_table");
+        PDLOG(WARNING, "only support mem_table. tid %u, pid %u", tid, pid);
+        return;
+    }
+    std::string root_path;
+    if (!ChooseDBRootPath(tid, pid, table->GetStorageMode(), root_path)) {
+        response->set_code(::rtidb::base::ReturnCode::kFailToGetDbRootPath);
+        response->set_msg("fail to get table db root path");
+        PDLOG(WARNING, "table db path is not found. tid %u, pid %u", tid, pid);
+        return;
+    }
+    MemTable* mem_table = dynamic_cast<MemTable*>(table.get());
+    if (!mem_table->DeleteIndex(request->idx_name())) {
+        response->set_code(::rtidb::base::ReturnCode::kDeleteIndexFailed);
+        response->set_msg("delete index failed");
+        PDLOG(WARNING, "delete index %s failed. tid %u pid %u", 
+                request->idx_name().c_str(), tid, pid);
+        return;
+    }
+    std::string db_path = root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid);
+    WriteTableMeta(db_path, &table->GetTableMeta());
+    PDLOG(INFO, "delete index %s success. tid %u pid %u", 
+                    request->idx_name().c_str(), tid, pid);
+    PDLOG(INFO, "delete index %s success. tid %u pid %u", request->idx_name().c_str(), tid, pid);
     response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
