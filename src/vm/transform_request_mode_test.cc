@@ -225,30 +225,31 @@ INSTANTIATE_TEST_CASE_P(
 
 INSTANTIATE_TEST_CASE_P(
     SqlJoinPlan, TransformRequestModeTest,
-    testing::Values("SELECT * FROM t1 full join t2 on t1.col1 = t2.col2;",
-                    "SELECT * FROM t1 right join t2 on t1.col1 = t2.col2;",
-                    "SELECT * FROM t1 inner join t2 on t1.col1 = t2.col2;",
-                    "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join t2 on "
-                    "t1.col1 = t2.col2 and t2.col15 >= t1.col15;"));
+    testing::Values(
+        "SELECT * FROM t1 full join t2 on t1.col1 = t2.col2;",
+        "SELECT * FROM t1 right join t2 on t1.col1 = t2.col2;",
+        "SELECT * FROM t1 inner join t2 on t1.col1 = t2.col2;",
+        "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join t2 on "
+        "t1.col1 = t2.col2 and t2.col15 >= t1.col15;"));
 
-//TODO(chenjing): window pk 列冲突
-//INSTANTIATE_TEST_CASE_P(
-//    SqlLeftJoinWindowPlan, TransformRequestModeTest,
-//    testing::Values(
-//        "SELECT "
-//        "col1, "
-//        "sum(col3) OVER w1 as w1_col3_sum, "
-//        "sum(col2) OVER w1 as w1_col2_sum "
-//        "FROM t1 left join t2 on t1.col1 = t2.col1 "
-//        "WINDOW w1 AS (PARTITION BY col1 ORDER BY col15 ROWS BETWEEN 3 "
-//        "PRECEDING AND CURRENT ROW) limit 10;",
-//        "SELECT "
-//        "col1, "
-//        "sum(col3) OVER w1 as w1_col3_sum, "
-//        "sum(col2) OVER w1 as w1_col2_sum "
-//        "FROM t1 left join t2 on t1.col1 = t2.col1 "
-//        "WINDOW w1 AS (PARTITION BY col1, col2 ORDER BY col15 ROWS BETWEEN 3 "
-//        "PRECEDING AND CURRENT ROW) limit 10;"));
+INSTANTIATE_TEST_CASE_P(
+    SqlLeftJoinWindowPlan, TransformRequestModeTest,
+    testing::Values(
+        "SELECT "
+        "t1.col1, "
+        "sum(t1.col3) OVER w1 as w1_col3_sum, "
+        "sum(t2.col2) OVER w1 as w1_col2_sum "
+        "FROM t1 left join t2 on t1.col1 = t2.col1 "
+        "WINDOW w1 AS (PARTITION BY t1.col1 ORDER BY t1.col15 ROWS BETWEEN 3 "
+        "PRECEDING AND CURRENT ROW) limit 10;",
+        "SELECT "
+        "t1.col1, "
+        "sum(t1.col3) OVER w1 as w1_col3_sum, "
+        "sum(t2.col2) OVER w1 as w1_col2_sum "
+        "FROM t1 left join t2 on t1.col1 = t2.col1 "
+        "WINDOW w1 AS (PARTITION BY t1.col1, t2.col2 ORDER BY t1.col15 ROWS "
+        "BETWEEN 3 "
+        "PRECEDING AND CURRENT ROW) limit 10;"));
 INSTANTIATE_TEST_CASE_P(
     SqlUnionPlan, TransformRequestModeTest,
     testing::Values("SELECT * FROM t1 UNION SELECT max(col1), min(col2), "
@@ -546,52 +547,51 @@ TEST_F(TransformRequestModeTest, pass_sort_optimized_test) {
     }
 }
 
- TEST_F(TransformRequestModeTest, pass_join_optimized_test) {
+TEST_F(TransformRequestModeTest, pass_join_optimized_test) {
     std::vector<std::pair<std::string, std::string>> in_outs;
     in_outs.push_back(std::make_pair(
-        "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t2 last join t2 on "
+        "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join t2 on "
         "t1.col1 = t2.col2 and t2.col15 >= t1.col15;",
-        ""
-        ));
-//    in_outs.push_back(std::make_pair(
-//        "SELECT "
-//        "col1, "
-//        "sum(col3) OVER w1 as w1_col3_sum, "
-//        "sum(col2) OVER w1 as w1_col2_sum "
-//        "FROM t1 left join t2 on t1.col1 = t2.col1 "
-//        "WINDOW w1 AS (PARTITION BY col1 ORDER BY col15 ROWS BETWEEN 3 "
-//        "PRECEDING AND CURRENT ROW) limit 10;",
-//        "LIMIT(limit=10)\n"
-//        "  PROJECT(type=ProjectRow)\n"
-//        "    JOIN(type=kJoinTypeConcat, condition=)\n"
-//        "      PROJECT(type=ProjectRow)\n"
-//        "        JOIN(type=LeftJoin, condition=t1.col1 = t2.col1)\n"
-//        "          SCAN(table=t1)\n"
-//        "          SCAN(table=t2)\n"
-//        "      PROJECT(type=WindowAggregation, start=-3, end=0)\n"
-//        "        JOIN(type=LeftJoin, condition=t1.col1 = t2.col1)\n"
-//        "          SCAN(type=IndexScan, table=t1, index=index1)\n"
-//        "          SCAN(table=t2)"));
-//    in_outs.push_back(std::make_pair(
-//        "SELECT "
-//        "col1, "
-//        "sum(col3) OVER w1 as w1_col3_sum, "
-//        "sum(col2) OVER w1 as w1_col2_sum "
-//        "FROM t1 left join t2 on t1.col1 = t2.col1 "
-//        "WINDOW w1 AS (PARTITION BY col1, col2 ORDER BY col15 ROWS BETWEEN 3 "
-//        "PRECEDING AND CURRENT ROW) limit 10;",
-//        "LIMIT(limit=10)\n"
-//        "  PROJECT(type=ProjectRow)\n"
-//        "    JOIN(type=kJoinTypeConcat, condition=)\n"
-//        "      PROJECT(type=ProjectRow)\n"
-//        "        JOIN(type=LeftJoin, condition=t1.col1 = t2.col1)\n"
-//        "          SCAN(table=t1)\n"
-//        "          SCAN(table=t2)\n"
-//        "      PROJECT(type=Aggregation)\n"
-//        "        BUFFER(start=-3, end=0)\n"
-//        "          JOIN(type=LeftJoin, condition=t1.col1 = t2.col1)\n"
-//        "            SCAN(type=IndexScan, table=t1, index=index12)\n"
-//        "            SCAN(table=t2)"));
+        "PROJECT(type=TableProject)\n"
+        "  REQUEST_JOIN(type=LastJoin, condition=t1.col1 = t2.col2 AND "
+        "t2.col15 >= t1.col15)\n"
+        "    DATA_PROVIDER(request=t1)\n"
+        "    DATA_PROVIDER(table=t2)"));
+    //    in_outs.push_back(std::make_pair(
+    //        "SELECT "
+    //        "col1, "
+    //        "sum(col3) OVER w1 as w1_col3_sum, "
+    //        "sum(col2) OVER w1 as w1_col2_sum "
+    //        "FROM t1 left join t2 on t1.col1 = t2.col1 "
+    //        "WINDOW w1 AS (PARTITION BY col1 ORDER BY col15 ROWS BETWEEN 3 "
+    //        "PRECEDING AND CURRENT ROW) limit 10;",
+    //        "LIMIT(limit=10)\n"
+    //        "  PROJECT(type=ProjectRow)\n"
+    //        "    JOIN(type=kJoinTypeConcat, condition=)\n"
+    //        "      PROJECT(type=ProjectRow)\n"
+    //        "        JOIN(type=LeftJoin, condition=t1.col1 = t2.col1)\n"
+    //        "          SCAN(table=t1)\n"
+    //        "          SCAN(table=t2)\n"
+    //        "      PROJECT(type=WindowAggregation, start=-3, end=0)\n"
+    //        "        JOIN(type=LeftJoin, condition=t1.col1 = t2.col1)\n"
+    //        "          SCAN(type=IndexScan, table=t1, index=index1)\n"
+    //        "          SCAN(table=t2)"));
+    //    in_outs.push_back(std::make_pair(
+    //        "SELECT "
+    //        "col1, "
+    //        "sum(col3) OVER w1 as w1_col3_sum, "
+    //        "sum(col2) OVER w1 as w1_col2_sum "
+    //        "FROM t1 left join t2 on t1.col1 = t2.col1 "
+    //        "WINDOW w1 AS (PARTITION BY col1, col2 ORDER BY col15 ROWS BETWEEN
+    //        3 " "PRECEDING AND CURRENT ROW) limit 10;", "LIMIT(limit=10)\n" "
+    //        PROJECT(type=ProjectRow)\n" "    JOIN(type=kJoinTypeConcat,
+    //        condition=)\n" "      PROJECT(type=ProjectRow)\n" "
+    //        JOIN(type=LeftJoin, condition=t1.col1 = t2.col1)\n" "
+    //        SCAN(table=t1)\n" "          SCAN(table=t2)\n" "
+    //        PROJECT(type=Aggregation)\n" "        BUFFER(start=-3, end=0)\n"
+    //        "          JOIN(type=LeftJoin, condition=t1.col1 = t2.col1)\n"
+    //        "            SCAN(type=IndexScan, table=t1, index=index12)\n"
+    //        "            SCAN(table=t2)"));
     fesql::type::TableDef table_def;
     BuildTableDef(table_def);
     table_def.set_name("t1");

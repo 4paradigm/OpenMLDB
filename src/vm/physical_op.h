@@ -528,6 +528,7 @@ class PhysicalRequestUnionNode : public PhysicalBinaryNode {
           start_offset_(start_offset),
           end_offset_(end_offset) {
         output_type_ = kSchemaTypeTable;
+        InitSchema();
     }
     virtual ~PhysicalRequestUnionNode() {}
     bool InitSchema() override;

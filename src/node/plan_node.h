@@ -267,6 +267,7 @@ class WindowPlanNode : public LeafPlanNode {
     void SetName(const std::string &name) { WindowPlanNode::name = name; }
     const int GetId() const { return id; }
     virtual bool Equals(const PlanNode *node) const;
+
  private:
     int id;
     std::string name;
