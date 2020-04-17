@@ -224,7 +224,6 @@ bool RelationalTable::Put(const std::string& value) {
             }
         }
     }
-    //PDLOG(DEBUG, "put pk: %s, pk size %u", pk.c_str(), pk.size());
     return PutDB(pk, uncompressed_value.c_str(), uncompressed_value.size());
 }
 
@@ -552,8 +551,7 @@ bool RelationalTable::DeletePk(const rocksdb::Slice pk_slice) {
         return false;
     }
     if (pk_it->key() != pk_slice) {
-        std::string pk(pk_slice.data(), pk_slice.size());
-        PDLOG(DEBUG, "pk %s not found. tid %u pid %u", pk.c_str(), id_, pid_);
+        PDLOG(DEBUG, "pk %s not found. tid %u pid %u", pk_slice.ToString().c_str(), id_, pid_);
         delete pk_it;
         return false;
     }
@@ -579,42 +577,13 @@ bool RelationalTable::DeletePk(const rocksdb::Slice pk_slice) {
                 return false;
             }
             uint32_t index_id = index_def->GetId();
-            rocksdb::Iterator* it = GetIteratorAndSeek(index_id, rocksdb::Slice(second_key));
-            if (it == NULL) {
-                delete pk_it;
-                return false;
-            }
             if (index_def->GetType() == ::rtidb::type::kUnique) {
-                if (it->key() != rocksdb::Slice(second_key)) {
-                    PDLOG(DEBUG, "unique key %s not found. tid %u pid %u", second_key.c_str(), id_, pid_);
-                    delete pk_it;
-                    delete it;
-                    return false;
-                }
                 batch.Delete(cf_hs_[index_id + 1], rocksdb::Slice(second_key));
             } else if (index_def->GetType() == ::rtidb::type::kNoUnique) {
-                int count = 0;
-                while (it->Valid()) {
-                    rocksdb::Slice r_pk_slice = ParsePk(it->key(), second_key);
-                    if (r_pk_slice.empty()) {
-                        if (count == 0) {
-                            PDLOG(DEBUG, "ParsePk failed, key %s not exist, tid %u pid %u", second_key.c_str(), id_, pid_);
-                            delete pk_it;
-                            delete it;
-                            return false;
-                        } else {
-                            break;
-                        }
-                    }
-                    if (pk_slice != r_pk_slice) {
-                        break;
-                    }
-                    batch.Delete(cf_hs_[index_id + 1], it->key());
-                    it->Next();
-                    count++;
-                }
+                std::string no_unique = "";
+                CombineNoUniqueAndPk(second_key, pk_slice.ToString(), &no_unique);
+                batch.Delete(cf_hs_[index_id + 1], rocksdb::Slice(no_unique));
             }
-            delete it;
         }
     }
     delete pk_it;
@@ -654,7 +623,7 @@ rocksdb::Iterator* RelationalTable::GetIteratorAndSeek(uint32_t idx, const rocks
 bool RelationalTable::Query(
         const ::google::protobuf::RepeatedPtrField<::rtidb::api::ReadOption>& ros,
         std::string* pairs, uint32_t* count) {
-    std::vector<rocksdb::Slice> value_vec;
+    std::vector<std::string> value_vec;
     uint32_t total_block_size = 0;
     for (auto& ro : ros) {
         //TODO combined key
@@ -664,7 +633,7 @@ bool RelationalTable::Query(
             return false; 
         }
     }
-    for (rocksdb::Slice& value : value_vec) {
+    for (std::string& value : value_vec) {
         total_block_size += value.size();
     }
     uint32_t scount = value_vec.size();
@@ -686,17 +655,17 @@ bool RelationalTable::Query(
 }
 
 bool RelationalTable::Query(const std::string& idx_name, const std::string& idx_val, 
-        std::vector<rocksdb::Slice>* vec) {
+        std::vector<std::string>* return_vec) {
     std::shared_ptr<IndexDef> index_def = table_index_.GetIndex(idx_name);
     if (!index_def) return false;
     std::string key = "";
     if (!ConvertIndex(idx_name, idx_val, &key)) return false;
-    return Query(index_def, rocksdb::Slice(key), vec);     
+    return Query(index_def, rocksdb::Slice(key), return_vec);     
 }
 
 bool RelationalTable::Query(const std::shared_ptr<IndexDef> index_def, 
         const rocksdb::Slice key_slice, 
-        std::vector<rocksdb::Slice>* vec) {
+        std::vector<std::string>* return_vec) {
     uint32_t idx = index_def->GetId();
     ::rtidb::type::IndexType index_type = index_def->GetType(); 
 
@@ -711,7 +680,8 @@ bool RelationalTable::Query(const std::shared_ptr<IndexDef> index_def,
             delete it;
             return false;
         }
-        vec->push_back(it->value());
+        std::string temp(it->value().data(), it->value().size());
+        return_vec->push_back(temp);
         delete it;
     } else if (index_type == ::rtidb::type::kUnique) {
         rocksdb::Iterator* it = GetIteratorAndSeek(idx, key_slice);
@@ -723,7 +693,7 @@ bool RelationalTable::Query(const std::shared_ptr<IndexDef> index_def,
             delete it;
             return false;
         }
-        Query(table_index_.GetPkIndex(), it->value(), vec); 
+        Query(table_index_.GetPkIndex(), it->value(), return_vec); 
         delete it;
     } else if (index_type == ::rtidb::type::kNoUnique) {
         //TODO multi records
@@ -745,7 +715,7 @@ bool RelationalTable::Query(const std::shared_ptr<IndexDef> index_def,
                     return true;
                 }
             }
-            Query(table_index_.GetPkIndex(), pk_slice, vec); 
+            Query(table_index_.GetPkIndex(), pk_slice, return_vec); 
             it->Next();
             count++;
         }
@@ -809,16 +779,16 @@ bool RelationalTable::UpdateDB(const std::map<std::string, int>& cd_idx_map, con
     }
 
     std::lock_guard<std::mutex> lock(mu_);
-    std::vector<rocksdb::Slice> value_vec;
+    std::vector<std::string> value_vec;
     std::shared_ptr<IndexDef> index_def = table_index_.GetPkIndex();
     bool ok = Query(index_def, rocksdb::Slice(pk), &value_vec);
     if (!ok) {
         PDLOG(WARNING, "get failed, update table tid %u pid %u failed", id_, pid_);
         return false;
     }
-    rocksdb::Slice slice = value_vec.at(0);
+    std::string temp = value_vec.at(0);
 
-    ::rtidb::base::RowView row_view(schema, reinterpret_cast<int8_t*>(const_cast<char*>(slice.data())), slice.size());
+    ::rtidb::base::RowView row_view(schema, reinterpret_cast<int8_t*>(const_cast<char*>(temp.data())), temp.size());
     uint32_t col_value_size = col_value.length();
     ::rtidb::base::RowView value_view(value_schema, reinterpret_cast<int8_t*>(const_cast<char*>(&(col_value[0]))), col_value_size);
     uint32_t string_length = 0; 

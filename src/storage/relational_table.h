@@ -81,8 +81,8 @@ public:
 
     bool Query(const ::google::protobuf::RepeatedPtrField< ::rtidb::api::ReadOption >& ros,
             std::string* pairs, uint32_t* count);
-    bool Query(const std::string& idx_name, const std::string& idx_val, std::vector<rocksdb::Slice>* vec); 
-    bool Query(const std::shared_ptr<IndexDef> index_def, const rocksdb::Slice key_slice, std::vector<rocksdb::Slice>* vec); 
+    bool Query(const std::string& idx_name, const std::string& idx_val, std::vector<std::string>* return_vec); 
+    bool Query(const std::shared_ptr<IndexDef> index_def, const rocksdb::Slice key_slice, std::vector<std::string>* vec); 
 
     bool Delete(const std::string& idx_name, const std::string& key);
     bool DeletePk(const rocksdb::Slice pk_slice); 
