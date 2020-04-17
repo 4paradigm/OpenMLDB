@@ -10,7 +10,6 @@
 #include <algorithm>
 namespace fesql {
 namespace vm {
-using fesql::base::Slice;
 MemSegmentIterator::MemSegmentIterator(const MemSegment* table,
                                        const vm::Schema* schema)
     : table_(table),
@@ -41,7 +40,7 @@ void MemSegmentIterator::Seek(uint64_t ts) {
 }
 void MemSegmentIterator::SeekToFirst() { iter_ = start_iter_; }
 const uint64_t MemSegmentIterator::GetKey() { return iter_->first; }
-const Slice& fesql::vm::MemSegmentIterator::GetValue() {
+const Row& fesql::vm::MemSegmentIterator::GetValue() {
     return iter_->second;
 }
 void MemSegmentIterator::Next() { iter_++; }
@@ -64,13 +63,13 @@ void MemWindowIterator::Seek(const std::string& key) {
 void MemWindowIterator::SeekToFirst() { iter_ = partitions_->cbegin(); }
 void MemWindowIterator::Next() { iter_++; }
 bool MemWindowIterator::Valid() { return partitions_->cend() != iter_; }
-std::unique_ptr<SliceIterator> MemWindowIterator::GetValue() {
-    std::unique_ptr<SliceIterator> it = std::unique_ptr<SliceIterator>(
+std::unique_ptr<RowIterator> MemWindowIterator::GetValue() {
+    std::unique_ptr<RowIterator> it = std::unique_ptr<RowIterator>(
         new MemSegmentIterator(&(iter_->second), schema_));
     return std::move(it);
 }
-const base::Slice MemWindowIterator::GetKey() {
-    return base::Slice(iter_->first);
+const Row MemWindowIterator::GetKey() {
+    return Row(iter_->first);
 }
 
 MemSegmentHandler::MemSegmentHandler()
@@ -101,7 +100,7 @@ MemSegmentHandler::MemSegmentHandler(const std::string& table_name,
       table_() {}
 
 MemSegmentHandler::~MemSegmentHandler() {}
-std::unique_ptr<IteratorV<uint64_t, base::Slice>>
+std::unique_ptr<IteratorV<uint64_t, Row>>
 MemSegmentHandler::GetIterator() const {
     std::unique_ptr<MemSegmentIterator> it(
         new MemSegmentIterator(&table_, schema_));
@@ -112,10 +111,10 @@ std::unique_ptr<WindowIterator> MemSegmentHandler::GetWindowIterator(
     return std::unique_ptr<WindowIterator>();
 }
 
-void MemSegmentHandler::AddRow(const uint64_t key, const base::Slice& row) {
+void MemSegmentHandler::AddRow(const uint64_t key, const Row& row) {
     table_.push_back(std::make_pair(key, row));
 }
-void MemSegmentHandler::AddRow(const base::Slice& row) {
+void MemSegmentHandler::AddRow(const Row& row) {
     table_.push_back(std::make_pair(0, row));
 }
 const Types& MemSegmentHandler::GetTypes() { return types_; }
@@ -132,7 +131,7 @@ void MemSegmentHandler::Sort(const bool is_asc) {
 void MemSegmentHandler::Reverse() {
     std::reverse(table_.begin(), table_.end());
 }
-IteratorV<uint64_t, base::Slice>* MemSegmentHandler::GetIterator(
+IteratorV<uint64_t, Row>* MemSegmentHandler::GetIterator(
     int8_t* addr) const {
     if (nullptr == addr) {
         return new MemSegmentIterator(&table_, schema_);
@@ -162,14 +161,14 @@ const std::string& MemPartitionHandler::GetDatabase() { return db_; }
 const Types& MemPartitionHandler::GetTypes() { return types_; }
 const IndexHint& MemPartitionHandler::GetIndex() { return index_hint_; }
 bool MemPartitionHandler::AddRow(const std::string& key, uint64_t ts,
-                                 const Slice& row) {
+                                 const Row& row) {
     auto iter = partitions_.find(key);
     if (iter == partitions_.cend()) {
         partitions_.insert(std::pair<std::string, MemSegment>(
-            key, {std::make_pair(ts, base::Slice(row.data(), row.size()))}));
+            key, {std::make_pair(ts, Row(row.data(), row.size()))}));
     } else {
         iter->second.push_back(
-            std::make_pair(ts, base::Slice(row.data(), row.size())));
+            std::make_pair(ts, Row(row.data(), row.size())));
     }
     return true;
 }
@@ -213,13 +212,13 @@ std::unique_ptr<WindowIterator> MemTableHandler::GetWindowIterator(
     const std::string& idx_name) {
     return std::unique_ptr<WindowIterator>();
 }
-std::unique_ptr<IteratorV<uint64_t, base::Slice>> MemTableHandler::GetIterator()
+std::unique_ptr<IteratorV<uint64_t, Row>> MemTableHandler::GetIterator()
     const {
     std::unique_ptr<MemTableIterator> it(
         new MemTableIterator(&table_, schema_));
     return std::move(it);
 }
-IteratorV<uint64_t, base::Slice>* MemTableHandler::GetIterator(
+IteratorV<uint64_t, Row>* MemTableHandler::GetIterator(
     int8_t* addr) const {
     return new (addr) MemTableIterator(&table_, schema_);
 }
@@ -249,7 +248,7 @@ MemTableHandler::MemTableHandler(const std::string& table_name,
       types_(),
       index_hint_(),
       table_() {}
-void MemTableHandler::AddRow(const base::Slice& row) { table_.push_back(row); }
+void MemTableHandler::AddRow(const Row& row) { table_.push_back(row); }
 void MemTableHandler::Reverse() { std::reverse(table_.begin(), table_.end()); }
 MemTableHandler::~MemTableHandler() {}
 MemTableIterator::MemTableIterator(const MemTable* table,
@@ -275,7 +274,7 @@ const uint64_t MemTableIterator::GetKey() {
 }
 bool MemTableIterator::Valid() { return end_iter_ != iter_; }
 void MemTableIterator::Next() { iter_++; }
-const Slice& MemTableIterator::GetValue() { return *iter_; }
+const Row& MemTableIterator::GetValue() { return *iter_; }
 
 }  // namespace vm
 }  // namespace fesql

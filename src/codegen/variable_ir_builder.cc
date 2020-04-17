@@ -104,3 +104,58 @@ bool fesql::codegen::VariableIRBuilder::StoreValue(
     fesql::base::Status& status) {
     return StoreValue(name, value, true, status);
 }
+bool fesql::codegen::VariableIRBuilder::LoadColumnRef(
+    const std::string& relation_name, const std::string& name,
+    ::llvm::Value** output, fesql::base::Status& status) {
+    return LoadValue("col." + relation_name + "." + name, output, status);
+}
+bool fesql::codegen::VariableIRBuilder::LoadColumnItem(
+    const std::string& relation_name, const std::string& name,
+    ::llvm::Value** output, fesql::base::Status& status) {
+    return LoadValue("item." + relation_name + "." + name, output, status);
+}
+bool fesql::codegen::VariableIRBuilder::StoreColumnRef(
+    const std::string& relation_name, const std::string& name,
+    ::llvm::Value* value, fesql::base::Status& status) {
+    return StoreValue("col." + relation_name + "." + name, value, status);
+}
+bool fesql::codegen::VariableIRBuilder::StoreColumnItem(
+    const std::string& relation_name, const std::string& name,
+    ::llvm::Value* value, fesql::base::Status& status) {
+    return StoreValue("item." + relation_name + "." + name, value, status);
+}
+bool fesql::codegen::VariableIRBuilder::LoadArrayIndex(
+    std::string array_ptr_name, int32_t index, ::llvm::Value** output,
+    base::Status& status) {
+    std::string array_index_name = array_ptr_name;
+    array_index_name.append("[").append(std::to_string(index)).append("]");
+    if (LoadValue(array_index_name, output, status)) {
+        return true;
+    }
+
+    ::llvm::IRBuilder<> builder(block_);
+    ::llvm::Value* array_ptr;
+    if (!LoadValue(array_ptr_name, &array_ptr, status)) {
+        status.msg = "fail load array ptr" + array_ptr_name;
+        status.code = common::kCodegenError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+    ::llvm::Value* ptr = builder.CreateInBoundsGEP(
+        array_ptr, ::llvm::ArrayRef<::llvm::Value*>(builder.getInt64(index)));
+
+    ::llvm::Value* value = builder.CreateLoad(ptr);
+    if (nullptr == value) {
+        status.msg =
+            "fail load " + array_ptr_name + "[" + std::to_string(index) + "]";
+        status.code = common::kCodegenError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+
+    if (!StoreValue(array_index_name, value, status)) {
+        LOG(WARNING) << "fail to cache " << array_index_name;
+    }
+    *output = value;
+    return true;
+}

@@ -38,7 +38,7 @@ bool GetRow(const Schema& schema, const std::shared_ptr<arrow::Table>& table,
             uint64_t chunk_offset, uint64_t array_offset,
             codec::RowBuilder* rb);
 
-class CSVSegmentIterator : public SliceIterator {
+class CSVSegmentIterator : public RowIterator {
  public:
     CSVSegmentIterator(const std::shared_ptr<arrow::Table>& table,
                        const IndexDatas* index_datas,
@@ -52,7 +52,7 @@ class CSVSegmentIterator : public SliceIterator {
 
     const uint64_t GetKey();
 
-    const base::Slice& GetValue();
+    const Row& GetValue();
 
     void Next();
 
@@ -69,10 +69,10 @@ class CSVSegmentIterator : public SliceIterator {
     uint32_t buf_size_;
     std::map<uint64_t, RowLocation>::const_reverse_iterator it_;
     std::map<uint64_t, RowLocation>::const_reverse_iterator rend_;
-    base::Slice value_;
+    Row value_;
 };
 
-class CSVTableIterator : public SliceIterator {
+class CSVTableIterator : public RowIterator {
  public:
     CSVTableIterator(const std::shared_ptr<arrow::Table>& table,
                      const Schema& schema);
@@ -84,7 +84,7 @@ class CSVTableIterator : public SliceIterator {
 
     const uint64_t GetKey();
 
-    const base::Slice& GetValue();
+    const Row& GetValue();
 
     void Next();
 
@@ -101,7 +101,7 @@ class CSVTableIterator : public SliceIterator {
     int8_t* buf_;
     codec::RowBuilder rb_;
     uint32_t buf_size_;
-    base::Slice value_;
+    Row value_;
 };
 
 }  // namespace vm

@@ -324,7 +324,7 @@ TEST_F(CodecTest, ManyCol) {
             int64_t val = 0;
             ret = view.GetInt64(idx * 3 + 1, &val);
             ASSERT_EQ(ret, 0);
-            ASSERT_EQ(val, static_cast<int64_t >(ts + idx));
+            ASSERT_EQ(val, static_cast<int64_t>(ts + idx));
             double d = 0.0;
             ret = view.GetDouble(idx * 3 + 2, &d);
             ASSERT_EQ(ret, 0);
@@ -333,6 +333,288 @@ TEST_F(CodecTest, ManyCol) {
     }
 }
 
+TEST_F(CodecTest, RowDecoderTest) {
+    std::vector<int> num_vec = {10, 20, 50, 100, 1000};
+    for (auto col_num : num_vec) {
+        ::fesql::type::TableDef def;
+        for (int i = 0; i < col_num; i++) {
+            ::fesql::type::ColumnDef* col = def.add_columns();
+            col->set_name("col" + std::to_string(i));
+            if (i % 3 == 0) {
+                col->set_type(::fesql::type::kVarchar);
+            } else if (i % 3 == 1) {
+                col->set_type(::fesql::type::kInt64);
+            } else if (i % 3 == 2) {
+                col->set_type(::fesql::type::kDouble);
+            }
+        }
+
+        RowDecoder decoder(def.columns());
+        for (int i = 0; i < col_num; i++) {
+            if (i % 3 == 0) {
+                uint32_t offset;
+                uint32_t next_offset;
+                uint32_t str_start_offset;
+                fesql::type::Type type;
+                ASSERT_TRUE(decoder.GetPrimayFieldOffsetType(
+                    "col" + std::to_string(i), &offset, &type));
+                ASSERT_EQ(::fesql::type::kVarchar, type);
+                ASSERT_TRUE(decoder.GetStringFieldOffset(
+                    "col" + std::to_string(i), &offset, &next_offset,
+                    &str_start_offset));
+            } else if (i % 3 == 1) {
+                uint32_t offset;
+                fesql::type::Type type;
+                ASSERT_TRUE(decoder.GetPrimayFieldOffsetType(
+                    "col" + std::to_string(i), &offset, &type));
+                ASSERT_EQ(::fesql::type::kInt64, type);
+            } else if (i % 3 == 2) {
+                uint32_t offset;
+                fesql::type::Type type;
+                ASSERT_TRUE(decoder.GetPrimayFieldOffsetType(
+                    "col" + std::to_string(i), &offset, &type));
+                ASSERT_EQ(::fesql::type::kDouble, type);
+            }
+        }
+    }
+}
+
+TEST_F(CodecTest, RowDecoderOffsetTest) {
+    type::TableDef table;
+    table.set_name("t1");
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kInt32);
+        column->set_name("col1");
+    }
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kInt16);
+        column->set_name("col2");
+    }
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kFloat);
+        column->set_name("col3");
+    }
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kDouble);
+        column->set_name("col4");
+    }
+
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kInt64);
+        column->set_name("col5");
+    }
+
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kVarchar);
+        column->set_name("col6");
+    }
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kVarchar);
+        column->set_name("col7");
+    }
+
+    RowDecoder decoder(table.columns());
+    {
+        uint32_t offset;
+        type::Type type;
+        decoder.GetPrimayFieldOffsetType("col1", &offset, &type);
+        ASSERT_EQ(::fesql::type::kInt32, type);
+        LOG(INFO) << "offset: " << offset;
+        ASSERT_EQ(7u, offset);
+    }
+    {
+        uint32_t offset;
+        type::Type type;
+        decoder.GetPrimayFieldOffsetType("col2", &offset, &type);
+        ASSERT_EQ(::fesql::type::kInt16, type);
+        LOG(INFO) << "offset: " << offset;
+        ASSERT_EQ(7u + 4u, offset);
+    }
+    {
+        uint32_t offset;
+        type::Type type;
+        decoder.GetPrimayFieldOffsetType("col3", &offset, &type);
+        ASSERT_EQ(::fesql::type::kFloat, type);
+        LOG(INFO) << "offset: " << offset;
+        ASSERT_EQ(7u + 4u + 2u, offset);
+    }
+    {
+        uint32_t offset;
+        type::Type type;
+        decoder.GetPrimayFieldOffsetType("col4", &offset, &type);
+        ASSERT_EQ(::fesql::type::kDouble, type);
+        LOG(INFO) << "offset: " << offset;
+        ASSERT_EQ(7u + 4u + 2u + 4u, offset);
+    }
+    {
+        uint32_t offset;
+        type::Type type;
+        decoder.GetPrimayFieldOffsetType("col5", &offset, &type);
+        ASSERT_EQ(::fesql::type::kInt64, type);
+        LOG(INFO) << "offset: " << offset;
+        ASSERT_EQ(7u + 4u + 2u + 4u + 8u, offset);
+    }
+    {
+        uint32_t offset;
+        type::Type type;
+        decoder.GetPrimayFieldOffsetType("col6", &offset, &type);
+        ASSERT_EQ(::fesql::type::kVarchar, type);
+        uint32_t next_offset;
+        uint32_t str_start_offset;
+        decoder.GetStringFieldOffset("col6", &offset, &next_offset,
+                                     &str_start_offset);
+        LOG(INFO) << "offset: " << offset << " next_offset: " << next_offset
+                  << " str_start_offset " << str_start_offset;
+        ASSERT_EQ(0u, offset);
+        ASSERT_EQ(1u, next_offset);
+        ASSERT_EQ(33u, str_start_offset);
+    }
+    {
+        uint32_t offset;
+        type::Type type;
+        decoder.GetPrimayFieldOffsetType("col7", &offset, &type);
+        ASSERT_EQ(::fesql::type::kVarchar, type);
+        uint32_t next_offset;
+        uint32_t str_start_offset;
+        decoder.GetStringFieldOffset("col7", &offset, &next_offset,
+                                     &str_start_offset);
+        LOG(INFO) << "offset: " << offset << " next_offset: " << next_offset
+                  << " str_start_offset " << str_start_offset;
+        ASSERT_EQ(1u, offset);
+        ASSERT_EQ(0u, next_offset);
+        ASSERT_EQ(33u, str_start_offset);
+    }
+}
+TEST_F(CodecTest, RowDecoderOffsetLongHeaderTest) {
+    type::TableDef table;
+    table.set_name("t1");
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kInt32);
+        column->set_name("col1");
+    }
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kInt16);
+        column->set_name("col2");
+    }
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kFloat);
+        column->set_name("col3");
+    }
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kDouble);
+        column->set_name("col4");
+    }
+
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kInt64);
+        column->set_name("col5");
+    }
+
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kVarchar);
+        column->set_name("col6");
+    }
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kVarchar);
+        column->set_name("col7");
+    }
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kInt64);
+        column->set_name("col8");
+    }
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kDouble);
+        column->set_name("col9");
+    }
+
+    RowDecoder decoder(table.columns());
+    {
+        uint32_t offset;
+        type::Type type;
+        decoder.GetPrimayFieldOffsetType("col1", &offset, &type);
+        ASSERT_EQ(::fesql::type::kInt32, type);
+        LOG(INFO) << "offset: " << offset;
+        ASSERT_EQ(8u, offset);
+    }
+    {
+        uint32_t offset;
+        type::Type type;
+        decoder.GetPrimayFieldOffsetType("col2", &offset, &type);
+        ASSERT_EQ(::fesql::type::kInt16, type);
+        LOG(INFO) << "offset: " << offset;
+        ASSERT_EQ(8u + 4u, offset);
+    }
+    {
+        uint32_t offset;
+        type::Type type;
+        decoder.GetPrimayFieldOffsetType("col3", &offset, &type);
+        ASSERT_EQ(::fesql::type::kFloat, type);
+        LOG(INFO) << "offset: " << offset;
+        ASSERT_EQ(8u + 4u + 2u, offset);
+    }
+    {
+        uint32_t offset;
+        type::Type type;
+        decoder.GetPrimayFieldOffsetType("col4", &offset, &type);
+        ASSERT_EQ(::fesql::type::kDouble, type);
+        LOG(INFO) << "offset: " << offset;
+        ASSERT_EQ(8u + 4u + 2u + 4u, offset);
+    }
+    {
+        uint32_t offset;
+        type::Type type;
+        decoder.GetPrimayFieldOffsetType("col5", &offset, &type);
+        ASSERT_EQ(::fesql::type::kInt64, type);
+        LOG(INFO) << "offset: " << offset;
+        ASSERT_EQ(8u + 4u + 2u + 4u + 8u, offset);
+    }
+    {
+        uint32_t offset;
+        type::Type type;
+        decoder.GetPrimayFieldOffsetType("col6", &offset, &type);
+        ASSERT_EQ(::fesql::type::kVarchar, type);
+        uint32_t next_offset;
+        uint32_t str_start_offset;
+        decoder.GetStringFieldOffset("col6", &offset, &next_offset,
+                                     &str_start_offset);
+        LOG(INFO) << "offset: " << offset << " next_offset: " << next_offset
+                  << " str_start_offset " << str_start_offset;
+        ASSERT_EQ(0u, offset);
+        ASSERT_EQ(1u, next_offset);
+        ASSERT_EQ(50u, str_start_offset);
+    }
+    {
+        uint32_t offset;
+        type::Type type;
+        decoder.GetPrimayFieldOffsetType("col7", &offset, &type);
+        ASSERT_EQ(::fesql::type::kVarchar, type);
+        uint32_t next_offset;
+        uint32_t str_start_offset;
+        decoder.GetStringFieldOffset("col7", &offset, &next_offset,
+                                     &str_start_offset);
+        LOG(INFO) << "offset: " << offset << " next_offset: " << next_offset
+                  << " str_start_offset " << str_start_offset;
+        ASSERT_EQ(1u, offset);
+        ASSERT_EQ(0u, next_offset);
+        ASSERT_EQ(50u, str_start_offset);
+    }
+}
 }  // namespace codec
 }  // namespace fesql
 

@@ -24,12 +24,13 @@
 #include "codec/list_iterator_codec.h"
 #include "glog/logging.h"
 #include "storage/segment.h"
+#include "base/slice.h"
 #include "storage/table.h"
 #include "vm/catalog.h"
 
 namespace fesql {
 namespace storage {
-using fesql::base::Slice;
+using fesql::codec::Row;
 using fesql::codec::IteratorV;
 using fesql::codec::WindowIterator;
 class WindowTableIterator;
@@ -37,7 +38,7 @@ class FullTableIterator;
 class WindowInternalIterator;
 class EmptyWindowIterator;
 
-class EmptyWindowIterator : public IteratorV<uint64_t, base::Slice> {
+class EmptyWindowIterator : public IteratorV<uint64_t, Row> {
  public:
     EmptyWindowIterator() : value_() {}
 
@@ -51,15 +52,15 @@ class EmptyWindowIterator : public IteratorV<uint64_t, base::Slice> {
 
     inline void Next() {}
 
-    inline const base::Slice& GetValue() { return value_; }
+    inline const Row& GetValue() { return value_; }
 
     inline const uint64_t GetKey() { return 0; }
 
  private:
-    base::Slice value_;
+    Row value_;
 };
 
-class WindowInternalIterator : public IteratorV<uint64_t, base::Slice> {
+class WindowInternalIterator : public IteratorV<uint64_t, Row> {
  public:
     explicit WindowInternalIterator(
         std::unique_ptr<base::Iterator<uint64_t, DataBlock*>> ts_it);
@@ -73,13 +74,13 @@ class WindowInternalIterator : public IteratorV<uint64_t, base::Slice> {
 
     void Next();
 
-    const base::Slice& GetValue();
+    const Row& GetValue();
 
     const uint64_t GetKey();
 
  private:
     std::unique_ptr<base::Iterator<uint64_t, DataBlock*>> ts_it_;
-    base::Slice value_;
+    Row value_;
 };
 
 class WindowTableIterator : public WindowIterator {
@@ -92,8 +93,8 @@ class WindowTableIterator : public WindowIterator {
     void SeekToFirst();
     void Next();
     bool Valid();
-    std::unique_ptr<vm::SliceIterator> GetValue();
-    const base::Slice GetKey();
+    std::unique_ptr<vm::RowIterator> GetValue();
+    const Row GetKey();
 
  private:
     void GoToStart();
@@ -104,14 +105,13 @@ class WindowTableIterator : public WindowIterator {
     uint32_t seg_cnt_;
     uint32_t index_;
     uint32_t seg_idx_;
-    std::unique_ptr<base::Iterator<base::Slice, void*>> pk_it_;
-    base::Slice key_;
+    std::unique_ptr<base::Iterator<Slice, void*>> pk_it_;
     // hold the reference
     std::shared_ptr<Table> table_;
 };
 
 // the full table iterator
-class FullTableIterator : public IteratorV<uint64_t, base::Slice> {
+class FullTableIterator : public IteratorV<uint64_t, Row> {
  public:
     FullTableIterator() : seg_cnt_(0), seg_idx_(0), segments_(NULL) {}
 
@@ -129,7 +129,7 @@ class FullTableIterator : public IteratorV<uint64_t, base::Slice> {
 
     void Next();
 
-    const Slice& GetValue();
+    const Row& GetValue();
 
     // the key maybe the row num
     const uint64_t GetKey() { return 0; }
@@ -143,9 +143,9 @@ class FullTableIterator : public IteratorV<uint64_t, base::Slice> {
     uint32_t seg_idx_;
     Segment*** segments_;
     std::unique_ptr<base::Iterator<uint64_t, DataBlock*>> ts_it_;
-    std::unique_ptr<base::Iterator<base::Slice, void*>> pk_it_;
+    std::unique_ptr<base::Iterator<Slice, void*>> pk_it_;
     std::shared_ptr<Table> table_;
-    Slice value_;
+    Row value_;
 };
 
 }  // namespace storage

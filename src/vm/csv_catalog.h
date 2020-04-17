@@ -22,7 +22,6 @@
 #include <memory>
 #include <string>
 #include "vm/catalog.h"
-
 #include "arrow/array.h"
 #include "arrow/csv/api.h"
 #include "arrow/filesystem/api.h"
@@ -83,10 +82,10 @@ class CSVTableHandler : public TableHandler {
     std::unique_ptr<WindowIterator> GetWindowIterator(
         const std::string& idx_name);
     const uint64_t GetCount() override;
-    base::Slice At(uint64_t pos) override;
-    std::unique_ptr<IteratorV<uint64_t, base::Slice>> GetIterator()
+    Row At(uint64_t pos) override;
+    std::unique_ptr<IteratorV<uint64_t, Row>> GetIterator()
         const override;
-    IteratorV<uint64_t, base::Slice>* GetIterator(int8_t* addr) const override;
+    IteratorV<uint64_t, Row>* GetIterator(int8_t* addr) const override;
 
  private:
     bool InitConfig();

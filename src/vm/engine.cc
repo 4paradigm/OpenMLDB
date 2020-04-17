@@ -100,7 +100,7 @@ std::shared_ptr<CompileInfo> Engine::GetCacheLocked(const std::string& db,
 RunSession::RunSession() {}
 RunSession::~RunSession() {}
 
-int32_t RequestRunSession::Run(const Slice& in_row, Slice* out_row) {
+int32_t RequestRunSession::Run(const Row& in_row, Row* out_row) {
     RunnerContext ctx(in_row);
     auto output = compile_info_->get_sql_context().runner->RunWithCache(ctx);
     if (!output) {

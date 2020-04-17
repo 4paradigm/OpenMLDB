@@ -21,6 +21,7 @@ namespace fesql {
 namespace bm {
 using base::Slice;
 using codec::RowView;
+using codec::Row;
 using ::fesql::base::DefaultComparator;
 using storage::ArrayList;
 DefaultComparator cmp;
@@ -29,7 +30,7 @@ int64_t RunIterate(storage::BaseList<uint64_t, int64_t>* list);
 int64_t RunIterateTest(storage::BaseList<uint64_t, int64_t>* list);
 void ArrayListIterate(benchmark::State* state, MODE mode, int64_t data_size) {
     type::TableDef table_def;
-    std::vector<Slice> buffer;
+    std::vector<Row> buffer;
     BuildOnePkTableData(table_def, buffer, data_size);
 
     RowView row_view(table_def.columns());
