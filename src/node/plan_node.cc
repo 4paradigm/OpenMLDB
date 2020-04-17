@@ -440,31 +440,7 @@ bool WindowPlanNode::Equals(const PlanNode *node) const {
            this->orders_ == that->orders_ && this->keys_ == that->keys_ &&
            LeafPlanNode::Equals(node);
 }
-const bool WindowPlanNode::ExtractWindowGroupsAndOrders(
-    ExprListNode **groups_output, OrderByNode **orders_output) const {
-    if (orders_.empty() && keys_.empty()) {
-        LOG(WARNING) << "fail extract window's groups and orders";
-        return false;
-    }
-    if (!orders_.empty()) {
-        // TODO(chenjing): remove 临时适配, 有mem泄漏问题
-        node::ExprListNode *expr = new node::ExprListNode();
-        for (auto id : orders_) {
-            expr->AddChild(new node::ColumnRefNode(id, ""));
-        }
-        *orders_output = new OrderByNode(expr, true);
-    }
 
-    if (!keys_.empty()) {
-        // TODO(chenjing): remove 临时适配, 有mem泄漏问题
-        auto groups = new node::ExprListNode();
-        for (auto id : keys_) {
-            groups->AddChild(new ColumnRefNode(id, ""));
-        }
-        *groups_output = groups;
-    }
-    return true;
-}
 
 void SortPlanNode::Print(std::ostream &output,
                          const std::string &org_tab) const {

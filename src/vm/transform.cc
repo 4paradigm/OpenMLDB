@@ -455,15 +455,8 @@ bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
         LOG(WARNING) << status.msg;
         return false;
     }
-    node::OrderByNode* orders = nullptr;
-    node::ExprListNode* groups = nullptr;
-    if (!w_ptr->ExtractWindowGroupsAndOrders(&groups, &orders)) {
-        status.msg =
-            "fail to transform window aggeration: gourps and orders is "
-            "null";
-        LOG(WARNING) << status.msg;
-        return false;
-    }
+    const node::OrderByNode* orders = w_ptr->GetOrders();
+    const node::ExprListNode* groups = w_ptr->GetKeys();
 
     if (kPhysicalOpDataProvider == depend->type_) {
         auto data_op = dynamic_cast<PhysicalDataProviderNode*>(depend);
