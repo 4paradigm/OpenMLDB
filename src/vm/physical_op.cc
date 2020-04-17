@@ -48,18 +48,7 @@ bool PhysicalUnaryNode::InitSchema() {
     PrintSchema();
     return true;
 }
-bool PhysicalBinaryNode::InitSchema() {
-    if (producers_.empty() || nullptr == producers_[0]) {
-        LOG(WARNING) << "InitSchema fail: producers is empty or null";
-        return false;
-    }
-    output_schema_.CopyFrom(producers_[0]->output_schema_);
-    for (auto pair : producers_[0]->output_name_schema_list_) {
-        output_name_schema_list_.push_back(pair);
-    }
-    PrintSchema();
-    return true;
-}
+
 void PhysicalBinaryNode::PrintChildren(std::ostream& output,
                                        const std::string& tab) const {
     if (2 != producers_.size() || nullptr == producers_[0] ||

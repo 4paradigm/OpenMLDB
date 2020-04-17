@@ -158,9 +158,8 @@ class PhysicalBinaryNode : public PhysicalOpNode {
         : PhysicalOpNode(type, is_block, is_lazy) {
         AddProducer(left);
         AddProducer(right);
-        InitSchema();
     }
-    virtual bool InitSchema();
+    virtual bool InitSchema() = 0;
     virtual ~PhysicalBinaryNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     virtual void PrintChildren(std::ostream &output,
@@ -435,6 +434,7 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
           join_type_(join_type),
           condition_(condition) {
         output_type_ = kSchemaTypeTable;
+        InitSchema();
     }
     virtual ~PhysicalJoinNode() {}
     bool InitSchema() override;
@@ -458,6 +458,7 @@ class PhysicalUnionNode : public PhysicalBinaryNode {
         : PhysicalBinaryNode(left, right, kPhysicalOpUnoin, true, true),
           is_all_(is_all) {
         output_type_ = kSchemaTypeTable;
+        InitSchema();
     }
     virtual ~PhysicalUnionNode() {}
     bool InitSchema() override;
@@ -472,6 +473,7 @@ class PhysicalSeekIndexNode : public PhysicalBinaryNode {
         : PhysicalBinaryNode(left, right, kPhysicalOpIndexSeek, true, true),
           keys_(keys) {
         output_type_ = kSchemaTypeGroup;
+        InitSchema();
     }
     virtual ~PhysicalSeekIndexNode() {}
     bool InitSchema() override;
@@ -494,6 +496,7 @@ class PhysicalRequestJoinNode : public PhysicalBinaryNode {
           join_type_(join_type),
           condition_(condition) {
         output_type_ = kSchemaTypeTable;
+        InitSchema();
     }
     virtual ~PhysicalRequestJoinNode() {}
     bool InitSchema() override;
