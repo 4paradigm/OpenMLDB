@@ -28,9 +28,9 @@ class Row {
     Row(int8_t *d, size_t n, bool need_free) : slice_(d, n, need_free) {}
     Row(const char *d, size_t n) : slice_(d, n, false) {}
     Row(const char *d, size_t n, bool need_free) : slice_(d, n, need_free) {}
-    Row(Row &s) : slice_(s.slice_), slices_(s.slices_) {}
-    Row(const Row &s) : slice_(s.slice_), slices_(s.slices_) {}
-    Row(const Slice &s) : slice_(s) {}
+    explicit Row(Row &s) : slice_(s.slice_), slices_(s.slices_) {}
+    explicit Row(const Row &s) : slice_(s.slice_), slices_(s.slices_) {}
+    explicit Row(const Slice &s) : slice_(s) {}
     explicit Row(const std::string &s) : slice_(s) {}
 
     explicit Row(const char *s) : slice_(s) {}
