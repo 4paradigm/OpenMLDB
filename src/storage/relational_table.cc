@@ -155,6 +155,15 @@ int RelationalTable::InitColumnDesc() {
         }
         key_idx++;
     }
+    std::shared_ptr<IndexDef> index_def = table_index_.GetPkIndex();
+    if(!index_def) {
+        PDLOG(WARNING, "pk_index_ not exist, tid %u pid %u", id_, pid_);
+        return -1; 
+    }
+    if (table_index_.HasAutoGen() && index_def->GetColumnIdxMap().size() > 1) {
+        PDLOG(WARNING, "auto_gen_pk don`t support combined key, tid %u pid %u", id_, pid_);
+        return -1; 
+    }
     return 0;
 }
 
@@ -202,19 +211,29 @@ bool RelationalTable::Put(const std::string& value) {
         ::snappy::Uncompress(value.c_str(), value.length(), &uncompressed);
         uncompressed_value = uncompressed;
     }
+    std::shared_ptr<IndexDef> index_def = table_index_.GetPkIndex();
     std::string pk = "";
     const Schema& schema = table_meta_.column_desc(); 
     if (table_index_.HasAutoGen()) {
+        const std::string& col_name = index_def->GetColumnIdxMap().begin()->second.name();
+        std::shared_ptr<ColumnDef> column_def = table_column_.GetColumn(col_name);
+        if (!column_def) {
+            PDLOG(WARNING, "col name %s not exist, tid %u pid %u", col_name.c_str(), id_, pid_);
+            return false;
+        }
+
         ::rtidb::base::RowBuilder builder(schema);
         builder.SetBuffer(reinterpret_cast<int8_t*>(
                     const_cast<char*>(&(uncompressed_value[0]))), uncompressed_value.size());
         int64_t auto_gen_pk = id_generator_.Next();
-        builder.AppendInt64(auto_gen_pk);
+        if(!builder.SetInt64(column_def->GetId(), auto_gen_pk)) {
+            PDLOG(WARNING, "SetInt64 failed, idx %d, tid %u pid %u", column_def->GetId(), id_, pid_);
+            return false;
+        }
         pk.resize(sizeof(int64_t));
         char* to = const_cast<char*>(pk.data());
         ::rtidb::base::PackInteger(&auto_gen_pk, sizeof(int64_t), false, to);
     } else {
-        std::shared_ptr<IndexDef> index_def = table_index_.GetPkIndex();
         for (auto& kv : index_def->GetColumnIdxMap()) {
             uint32_t idx = kv.first;
             ::rtidb::type::DataType data_type = kv.second.data_type();
