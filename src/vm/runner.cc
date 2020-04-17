@@ -151,12 +151,51 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 return nullptr;
             }
             auto op = dynamic_cast<const PhysicalRequestJoinNode*>(node);
-            auto runner = new RequestLastJoinRunner(
-                id_++, op->GetFn(), op->GetFnSchema(), op->GetLimitCnt(),
-                op->GetConditionIdxs());
-            runner->AddProducer(left);
-            runner->AddProducer(right);
-            return runner;
+            switch (op->join_type_) {
+                case node::kJoinTypeLast: {
+                    auto runner = new RequestLastJoinRunner(
+                        id_++, op->GetFn(), op->GetFnSchema(),
+                        op->GetLimitCnt(), op->GetConditionIdxs());
+                    runner->AddProducer(left);
+                    runner->AddProducer(right);
+                    return runner;
+                }
+                default: {
+                    status.code = common::kOpGenError;
+                    status.msg = "can't handle join type " +
+                                 node::JoinTypeName(op->join_type_);
+                    LOG(WARNING) << status.msg;
+                    return nullptr;
+                }
+            }
+        }
+        case kPhysicalOpJoin: {
+            auto left = Build(node->GetProducers().at(0), status);
+            if (nullptr == left) {
+                return nullptr;
+            }
+            auto right = Build(node->GetProducers().at(1), status);
+            if (nullptr == right) {
+                return nullptr;
+            }
+            auto op = dynamic_cast<const PhysicalJoinNode*>(node);
+            switch (op->join_type_) {
+                case node::kJoinTypeLast: {
+                    auto runner = new LastJoinRunner(
+                        id_++, op->GetFn(), op->GetFnSchema(),
+                        op->GetLimitCnt(), op->GetConditionIdxs());
+                    runner->AddProducer(left);
+                    runner->AddProducer(right);
+                    return runner;
+                }
+                default: {
+                    status.code = common::kOpGenError;
+                    status.msg = "can't handle join type " +
+                                 node::JoinTypeName(op->join_type_);
+                    LOG(WARNING) << status.msg;
+                    return nullptr;
+                }
+            }
         }
         case kPhysicalOpGroupBy: {
             auto input = Build(node->GetProducers().at(0), status);
@@ -986,6 +1025,9 @@ std::shared_ptr<DataHandler> AggRunner::Run(RunnerContext& ctx) {
     auto row_handler = std::shared_ptr<RowHandler>(
         new MemRowHandler(Row(buf, RowView::GetSize(buf)), &fn_schema_));
     return row_handler;
+}
+std::shared_ptr<DataHandler> LastJoinRunner::Run(RunnerContext& ctx) {
+    return std::shared_ptr<DataHandler>();
 }
 }  // namespace vm
 }  // namespace fesql

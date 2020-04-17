@@ -343,6 +343,22 @@ class RequestLastJoinRunner : public Runner {
     const std::vector<int32_t> condition_idxs_;
 };
 
+class LastJoinRunner : public Runner {
+ public:
+    LastJoinRunner(const int32_t id, const int8_t* fn, const Schema& fn_schema,
+                   const int32_t limit_cnt,
+                   const std::vector<int32_t>& condition_idxs)
+        : Runner(id, fn, fn_schema, limit_cnt),
+          condition_idxs_(condition_idxs) {}
+    ~LastJoinRunner() {}
+    virtual void Print(std::ostream& output, const std::string& tab) const {
+        output << tab << "[" << id_ << "]"
+               << "LASTJOIN";
+        Runner::Print(output, tab);
+    }
+    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
+    const std::vector<int32_t> condition_idxs_;
+};
 class LimitRunner : public Runner {
  public:
     LimitRunner(int32_t id, int32_t limit_cnt) : Runner(id, limit_cnt) {}

@@ -126,10 +126,11 @@ INSTANTIATE_TEST_CASE_P(
 
 INSTANTIATE_TEST_CASE_P(
     SqlJoinPlan, RunnerTest,
-    testing::Values("SELECT t1.col1, t1.col2, t2.col1 as t2_col1 FROM t1 last "
-                    "join t2 on t1.col1 = t2.col1;",
-                    "SELECT t1.col1, t1.col2, t2.col1 as t2_col1 FROM t1 last "
-                    "join t2 on t1.col1 = t2.col1 and t1.col2 = t2.col2;"));
+    testing::Values(
+        "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join t2 on "
+        "t1.col1 = t2.col2;",
+        "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join t2 on "
+        "t1.col1 = t2.col2 and t2.col15 >= t1.col15;"));
 
 void Runner_Check(std::shared_ptr<Catalog> catalog, const std::string sql,
                   const bool is_batch) {
