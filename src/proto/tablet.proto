@@ -103,6 +103,7 @@ enum TaskType {
     kLoadIndexData = 24;
     kExtractIndexData = 25;
     kAddIndexToTablet = 26;
+    kTableSyncTask = 27;
 }
 
 enum TaskStatus {
