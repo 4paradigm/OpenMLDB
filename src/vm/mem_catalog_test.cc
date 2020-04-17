@@ -11,7 +11,7 @@
 #include "vm/test_base.h"
 namespace fesql {
 namespace vm {
-using fesql::storage::Slice;
+using fesql::codec::Row;
 class MemCataLogTest : public ::testing::Test {
  public:
     MemCataLogTest() {}
@@ -61,7 +61,7 @@ void BuildTableDef(::fesql::type::TableDef& table) {  // NOLINT
 }
 
 void BuildRows(::fesql::type::TableDef& table,              // NOLINT
-               std::vector<Slice>& rows) {  // NOLINT
+               std::vector<Row>& rows) {  // NOLINT
     BuildTableDef(table);
     {
         codec::RowBuilder builder(table.columns());
@@ -78,7 +78,7 @@ void BuildRows(::fesql::type::TableDef& table,              // NOLINT
         builder.AppendDouble(11.1);
         builder.AppendInt64(1);
         builder.AppendString(str.c_str(), 1);
-        rows.push_back(Slice(ptr, total_size));
+        rows.push_back(Row(ptr, total_size));
     }
     {
         codec::RowBuilder builder(table.columns());
@@ -94,7 +94,7 @@ void BuildRows(::fesql::type::TableDef& table,              // NOLINT
         builder.AppendDouble(22.2);
         builder.AppendInt64(2);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(Slice(ptr, total_size));
+        rows.push_back(Row(ptr, total_size));
     }
     {
         codec::RowBuilder builder(table.columns());
@@ -110,7 +110,7 @@ void BuildRows(::fesql::type::TableDef& table,              // NOLINT
         builder.AppendDouble(33.3);
         builder.AppendInt64(1);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(Slice(ptr, total_size));
+        rows.push_back(Row(ptr, total_size));
     }
     {
         codec::RowBuilder builder(table.columns());
@@ -126,7 +126,7 @@ void BuildRows(::fesql::type::TableDef& table,              // NOLINT
         builder.AppendDouble(44.4);
         builder.AppendInt64(2);
         builder.AppendString("4444", str.size());
-        rows.push_back(Slice(ptr, total_size));
+        rows.push_back(Row(ptr, total_size));
     }
     {
         codec::RowBuilder builder(table.columns());
@@ -144,12 +144,12 @@ void BuildRows(::fesql::type::TableDef& table,              // NOLINT
         builder.AppendDouble(55.5);
         builder.AppendInt64(3);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(Slice(ptr, total_size));
+        rows.push_back(Row(ptr, total_size));
     }
 }
 
 TEST_F(MemCataLogTest, mem_table_handler_test) {
-    std::vector<storage::Slice> rows;
+    std::vector<Row> rows;
     ::fesql::type::TableDef table;
     BuildRows(table, rows);
     vm::MemSegmentHandler table_handler("t1", "temp", &(table.columns()));
@@ -193,7 +193,7 @@ TEST_F(MemCataLogTest, mem_table_handler_test) {
 }
 
 TEST_F(MemCataLogTest, mem_table_iterator_test) {
-    std::vector<storage::Slice> rows;
+    std::vector<Row> rows;
     ::fesql::type::TableDef table;
     BuildRows(table, rows);
     vm::MemSegmentHandler table_handler("t1", "temp", &(table.columns()));
@@ -252,7 +252,7 @@ TEST_F(MemCataLogTest, mem_table_iterator_test) {
 }
 
 TEST_F(MemCataLogTest, mem_partition_test) {
-    std::vector<storage::Slice> rows;
+    std::vector<Row> rows;
     ::fesql::type::TableDef table;
     BuildRows(table, rows);
     vm::MemPartitionHandler partition_handler("t1", "temp", &(table.columns()));
@@ -274,7 +274,7 @@ TEST_F(MemCataLogTest, mem_partition_test) {
 
     {
         auto iter = window_iter->GetValue();
-        ASSERT_EQ(base::Slice("group2"), window_iter->GetKey());
+        ASSERT_EQ(Row("group2"), window_iter->GetKey());
         while (iter->Valid()) {
             iter->Next();
         }
@@ -329,7 +329,7 @@ TEST_F(MemCataLogTest, mem_partition_test) {
     ASSERT_TRUE(window_iter->Valid());
     {
         auto iter = window_iter->GetValue();
-        ASSERT_EQ(base::Slice("group1"), window_iter->GetKey());
+        ASSERT_EQ(Row("group1"), window_iter->GetKey());
         while (iter->Valid()) {
             iter->Next();
         }

@@ -14,7 +14,8 @@ namespace fesql {
 namespace codegen {
 
 using fesql::codec::ArrayListV;
-using fesql::base::Slice;
+using fesql::codec::Row;
+
 void BuildBuf(int8_t** buf, uint32_t* size) {
     ::fesql::type::TableDef table;
     table.set_name("t1");
@@ -65,7 +66,7 @@ void BuildBuf(int8_t** buf, uint32_t* size) {
     *size = total_size;
 }
 
-void BuildWindow(std::vector<Slice>& rows,  // NOLINT
+void BuildWindow(std::vector<Row>& rows,  // NOLINT
                  int8_t** buf) {
     ::fesql::type::TableDef table;
     table.set_name("t1");
@@ -115,7 +116,7 @@ void BuildWindow(std::vector<Slice>& rows,  // NOLINT
         builder.AppendDouble(3.1);
         builder.AppendInt64(64);
         builder.AppendString(str.c_str(), 1);
-        rows.push_back(Slice(ptr, total_size));
+        rows.push_back(Row(ptr, total_size));
     }
     {
         codec::RowBuilder builder(table.columns());
@@ -129,7 +130,7 @@ void BuildWindow(std::vector<Slice>& rows,  // NOLINT
         builder.AppendDouble(3.1);
         builder.AppendInt64(64);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(Slice(ptr, total_size));
+        rows.push_back(Row(ptr, total_size));
     }
     {
         codec::RowBuilder builder(table.columns());
@@ -143,7 +144,7 @@ void BuildWindow(std::vector<Slice>& rows,  // NOLINT
         builder.AppendDouble(3.1);
         builder.AppendInt64(64);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(Slice(ptr, total_size));
+        rows.push_back(Row(ptr, total_size));
     }
     {
         codec::RowBuilder builder(table.columns());
@@ -157,7 +158,7 @@ void BuildWindow(std::vector<Slice>& rows,  // NOLINT
         builder.AppendDouble(3.1);
         builder.AppendInt64(64);
         builder.AppendString("4444", str.size());
-        rows.push_back(Slice(ptr, total_size));
+        rows.push_back(Row(ptr, total_size));
     }
     {
         codec::RowBuilder builder(table.columns());
@@ -173,15 +174,15 @@ void BuildWindow(std::vector<Slice>& rows,  // NOLINT
         builder.AppendDouble(3.1);
         builder.AppendInt64(64);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(Slice(ptr, total_size));
+        rows.push_back(Row(ptr, total_size));
     }
 
-    ArrayListV<Slice>* w =
-        new ArrayListV<Slice>(&rows);
+    ArrayListV<Row>* w =
+        new ArrayListV<Row>(&rows);
     *buf = reinterpret_cast<int8_t*>(w);
 }
 
-void BuildWindow2(std::vector<Slice>& rows,  // NOLINT
+void BuildWindow2(std::vector<Row>& rows,  // NOLINT
                   int8_t** buf) {
     ::fesql::type::TableDef table;
     table.set_name("t1");
@@ -231,7 +232,7 @@ void BuildWindow2(std::vector<Slice>& rows,  // NOLINT
         builder.AppendDouble(4.1);
         builder.AppendInt64(5);
         builder.AppendString(str.c_str(), 1);
-        rows.push_back(Slice(ptr, total_size));
+        rows.push_back(Row(ptr, total_size));
     }
     {
         codec::RowBuilder builder(table.columns());
@@ -245,7 +246,7 @@ void BuildWindow2(std::vector<Slice>& rows,  // NOLINT
         builder.AppendDouble(44.1);
         builder.AppendInt64(55);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(Slice(ptr, total_size));
+        rows.push_back(Row(ptr, total_size));
     }
     {
         codec::RowBuilder builder(table.columns());
@@ -259,7 +260,7 @@ void BuildWindow2(std::vector<Slice>& rows,  // NOLINT
         builder.AppendDouble(444.1);
         builder.AppendInt64(555);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(Slice(ptr, total_size));
+        rows.push_back(Row(ptr, total_size));
     }
     {
         codec::RowBuilder builder(table.columns());
@@ -273,7 +274,7 @@ void BuildWindow2(std::vector<Slice>& rows,  // NOLINT
         builder.AppendDouble(4444.1);
         builder.AppendInt64(5555);
         builder.AppendString("4444", str.size());
-        rows.push_back(Slice(ptr, total_size));
+        rows.push_back(Row(ptr, total_size));
     }
     {
         codec::RowBuilder builder(table.columns());
@@ -289,10 +290,10 @@ void BuildWindow2(std::vector<Slice>& rows,  // NOLINT
         builder.AppendDouble(44444.1);
         builder.AppendInt64(55555);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(Slice(ptr, total_size));
+        rows.push_back(Row(ptr, total_size));
     }
 
-    ArrayListV<Slice> *w = new ArrayListV<Slice>(&rows);
+    ArrayListV<Row> *w = new ArrayListV<Row>(&rows);
     *buf = reinterpret_cast<int8_t*>(w);
 }
 }  // namespace codegen

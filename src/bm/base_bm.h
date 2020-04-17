@@ -20,7 +20,7 @@
 #include "vm/mem_catalog.h"
 namespace fesql {
 namespace bm {
-using base::Slice;
+using fesql::codec::Row;
 
 template <class T>
 class Repeater {
@@ -168,7 +168,7 @@ void BuildBuf(int8_t** buf, uint32_t* size,
 }
 
 void BuildOnePkTableData(type::TableDef& table_def,   // NOLINT
-                         std::vector<Slice>& buffer,  // NOLINT
+                         std::vector<Row>& buffer,  // NOLINT
                          int64_t data_size) {
     ::fesql::bm::Repeater<std::string> col0(
         std::vector<std::string>({"hello"}));
@@ -201,14 +201,14 @@ void BuildOnePkTableData(type::TableDef& table_def,   // NOLINT
         builder.AppendDouble(col4.GetValue());
         builder.AppendInt64(col5.GetValue());
         builder.AppendString(str2.c_str(), str2.size());
-        buffer.push_back(Slice(ptr, total_size));
+        buffer.push_back(Row(ptr, total_size));
     }
 }
 std::shared_ptr<tablet::TabletCatalog> BuildOnePkTableStorage(
     int32_t data_size) {
     DLOG(INFO) << "insert window data";
     type::TableDef table_def;
-    std::vector<Slice> buffer;
+    std::vector<Row> buffer;
     BuildOnePkTableData(table_def, buffer, data_size);
     // Build index
     ::fesql::type::IndexDef* index = table_def.add_indexes();

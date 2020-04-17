@@ -17,6 +17,7 @@ using codec::ArrayListIterator;
 using codec::ArrayListV;
 using codec::ColumnImpl;
 using codec::v1::GetCol;
+using codec::Row;
 
 class WindowIteratorTest : public ::testing::Test {
  public:
@@ -53,7 +54,7 @@ TEST_F(WindowIteratorTest, ArrayListIteratorImplTest) {
 
 TEST_F(WindowIteratorTest, MemTableIteratorImplTest) {
     // prepare row buf
-    std::vector<Slice> rows;
+    std::vector<Row> rows;
     MemTableHandler table;
     {
         int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
@@ -62,7 +63,7 @@ TEST_F(WindowIteratorTest, MemTableIteratorImplTest) {
         *(reinterpret_cast<float*>(ptr + 2 + 4 + 2)) = 3.1f;
         *(reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4)) = 4.1;
         *(reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8)) = 5;
-        table.AddRow(Slice(ptr, 28));
+        table.AddRow(Row(ptr, 28));
     }
 
     {
@@ -72,7 +73,7 @@ TEST_F(WindowIteratorTest, MemTableIteratorImplTest) {
         *(reinterpret_cast<float*>(ptr + 2 + 4 + 2)) = 33.1f;
         *(reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4)) = 44.1;
         *(reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8)) = 55;
-        table.AddRow(Slice(ptr, 28));
+        table.AddRow(Row(ptr, 28));
     }
 
     {
@@ -82,7 +83,7 @@ TEST_F(WindowIteratorTest, MemTableIteratorImplTest) {
         *(reinterpret_cast<float*>(ptr + 2 + 4 + 2)) = 333.1f;
         *(reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4)) = 444.1;
         *(reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8)) = 555;
-        table.AddRow(Slice(ptr, 28));
+        table.AddRow(Row(ptr, 28));
     }
 
     auto impl = table.GetIterator();
@@ -98,7 +99,7 @@ TEST_F(WindowIteratorTest, MemTableIteratorImplTest) {
 
 TEST_F(WindowIteratorTest, MemSegmentIteratorImplTest) {
     // prepare row buf
-    std::vector<Slice> rows;
+    std::vector<Row> rows;
     MemSegmentHandler table;
     {
         int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
@@ -107,7 +108,7 @@ TEST_F(WindowIteratorTest, MemSegmentIteratorImplTest) {
         *(reinterpret_cast<float*>(ptr + 2 + 4 + 2)) = 3.1f;
         *(reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4)) = 4.1;
         *(reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8)) = 5;
-        table.AddRow(1, Slice(ptr, 28));
+        table.AddRow(1, Row(ptr, 28));
     }
 
     {
@@ -117,7 +118,7 @@ TEST_F(WindowIteratorTest, MemSegmentIteratorImplTest) {
         *(reinterpret_cast<float*>(ptr + 2 + 4 + 2)) = 33.1f;
         *(reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4)) = 44.1;
         *(reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8)) = 55;
-        table.AddRow(2, Slice(ptr, 28));
+        table.AddRow(2, Row(ptr, 28));
     }
 
     {
@@ -127,7 +128,7 @@ TEST_F(WindowIteratorTest, MemSegmentIteratorImplTest) {
         *(reinterpret_cast<float*>(ptr + 2 + 4 + 2)) = 333.1f;
         *(reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4)) = 444.1;
         *(reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8)) = 555;
-        table.AddRow(3, Slice(ptr, 28));
+        table.AddRow(3, Row(ptr, 28));
     }
 
     auto impl = table.GetIterator();
@@ -150,7 +151,7 @@ TEST_F(WindowIteratorTest, MemColumnIteratorImplTest) {
         *(reinterpret_cast<float*>(ptr + 2 + 4 + 2)) = 3.1f;
         *(reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4)) = 4.1;
         *(reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8)) = 5;
-        table.AddRow(Slice(ptr, 28));
+        table.AddRow(Row(ptr, 28));
     }
 
     {
@@ -160,7 +161,7 @@ TEST_F(WindowIteratorTest, MemColumnIteratorImplTest) {
         *(reinterpret_cast<float*>(ptr + 2 + 4 + 2)) = 33.1f;
         *(reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4)) = 44.1;
         *(reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8)) = 55;
-        table.AddRow(Slice(ptr, 28));
+        table.AddRow(Row(ptr, 28));
     }
 
     {
@@ -170,7 +171,7 @@ TEST_F(WindowIteratorTest, MemColumnIteratorImplTest) {
         *(reinterpret_cast<float*>(ptr + 2 + 4 + 2)) = 333.1f;
         *(reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4)) = 444.1;
         *(reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8)) = 555;
-        table.AddRow(Slice(ptr, 28));
+        table.AddRow(Row(ptr, 28));
     }
 
     auto column = new ColumnImpl<int32_t>(&table, 2);
@@ -198,7 +199,7 @@ TEST_F(WindowIteratorTest, MemGetColTest) {
         *(reinterpret_cast<float*>(ptr + 2 + 4 + 2)) = 3.1f;
         *(reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4)) = 4.1;
         *(reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8)) = 5;
-        table.AddRow(Slice(ptr, 28));
+        table.AddRow(Row(ptr, 28));
     }
 
     {
@@ -208,7 +209,7 @@ TEST_F(WindowIteratorTest, MemGetColTest) {
         *(reinterpret_cast<float*>(ptr + 2 + 4 + 2)) = 33.1f;
         *(reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4)) = 44.1;
         *(reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8)) = 55;
-        table.AddRow(Slice(ptr, 28));
+        table.AddRow(Row(ptr, 28));
     }
 
     {
@@ -218,7 +219,7 @@ TEST_F(WindowIteratorTest, MemGetColTest) {
         *(reinterpret_cast<float*>(ptr + 2 + 4 + 2)) = 333.1f;
         *(reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4)) = 444.1;
         *(reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8)) = 555;
-        table.AddRow(Slice(ptr, 28));
+        table.AddRow(Row(ptr, 28));
     }
 
     const uint32_t size = sizeof(ColumnImpl<int32_t>);
@@ -226,8 +227,8 @@ TEST_F(WindowIteratorTest, MemGetColTest) {
     ASSERT_EQ(0, GetCol(reinterpret_cast<int8_t*>(&table),
                                             2, type::kInt32, buf));
 
-    ListV<base::Slice> * list =
-        reinterpret_cast<ListV<base::Slice>*>(&table);
+    ListV<Row> * list =
+        reinterpret_cast<ListV<Row>*>(&table);
     new (buf) ColumnImpl<int32_t >(list, 2);
     auto column = reinterpret_cast<ColumnImpl<int32_t >*>(buf);
     auto impl = column->GetIterator();
@@ -245,11 +246,11 @@ TEST_F(WindowIteratorTest, MemGetColTest) {
 }
 
 TEST_F(WindowIteratorTest, CurrentHistoryWindowTest) {
-    std::vector<std::pair<uint64_t, Slice>> rows;
+    std::vector<std::pair<uint64_t, Row>> rows;
     int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
     *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
     *(reinterpret_cast<int64_t*>(ptr + 2 + 4)) = 1;
-    Slice row(ptr, 28);
+    Row row(ptr, 28);
 
     // history current_ts -1000 ~ current_ts
     {
@@ -319,11 +320,11 @@ TEST_F(WindowIteratorTest, CurrentHistoryWindowTest) {
 }
 
 TEST_F(WindowIteratorTest, CurrentHistoryUnboundWindowTest) {
-    std::vector<std::pair<uint64_t, Slice>> rows;
+    std::vector<std::pair<uint64_t, Row>> rows;
     int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
     *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
     *(reinterpret_cast<int64_t*>(ptr + 2 + 4)) = 1;
-    Slice row(ptr, 28);
+    Row row(ptr, 28);
 
     // history current_ts -1000 ~ current_ts
     CurrentHistoryUnboundWindow window;

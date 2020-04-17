@@ -62,9 +62,9 @@ using namespace fesql::node;
 using fesql::vm::SQLContext;
 using fesql::vm::Catalog;
 using fesql::vm::PhysicalOpNode;
-using fesql::codec::SliceIterator;
+using fesql::codec::RowIterator;
 using fesql::codec::IteratorV;
-using fesql::base::Slice;
+using fesql::codec::Row;
 using fesql::node::PlanType;
 %}
 
