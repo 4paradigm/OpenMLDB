@@ -1,7 +1,7 @@
 import "common.proto";
 import "type.proto";
 import "tablet.proto";
-package rtidb.ObjectStorage;
+package rtidb.blobserver;
 
 option cc_generic_services = true;
 option java_generic_services = true;
@@ -31,7 +31,7 @@ message PutRequest {
     optional bytes pairs = 3;
 }
 
-message OssTableMeta {
+message TableMeta {
     optional uint32 tid = 1;
     optional string name = 2;
     optional uint32 pid = 3;
@@ -43,7 +43,7 @@ message OssTableMeta {
 }
 
 message CreateTableRequest {
-    optional OssTableMeta table_meta = 1;
+    optional TableMeta table_meta = 1;
 }
 
 message StatsRequest {
@@ -59,7 +59,7 @@ message StatsResponse {
     optional uint64 avail_space = 5;
 }
 
-service OSS {
+service BlobServer {
     rpc CreateTable(CreateTableRequest) returns (GeneralResponse);
     rpc Put(PutRequest) returns (GeneralResponse);
     rpc Get(GeneralRequest) returns (GetResponse);

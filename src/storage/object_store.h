@@ -1,4 +1,9 @@
 //
+// Copyright (C) 2020 4paradigm.com
+// Author kongquan
+// Date 2020-04-14
+
+//
 // Created by kongsys on 4/13/20.
 //
 #pragma once
@@ -17,12 +22,13 @@ namespace rtidb {
 namespace storage {
 
 class ObjectStore {
-public:
-    ObjectStore(const ::rtidb::api::TableMeta& table_meta, const std::string& db_root_path);
+ public:
+    ObjectStore(const ::rtidb::api::TableMeta& table_meta,
+                const std::string& db_root_path);
 
     bool Init();
 
-    uint32_t tid() { return tid_; };
+    uint32_t tid() { return tid_; }
 
     ObjectStore(const ObjectStore&) = delete;
     ObjectStore& operator=(const ObjectStore&) = delete;
@@ -34,7 +40,7 @@ public:
 
     ::rtidb::common::StorageMode GetStorageMode() const;
 
-private:
+ private:
     void DoFlash();
 
     HStore* db_;
@@ -46,6 +52,5 @@ private:
     ::rtidb::common::StorageMode storage_mode_;
 };
 
-}
-}
-
+}  // namespace storage
+}  // namespace rtidb

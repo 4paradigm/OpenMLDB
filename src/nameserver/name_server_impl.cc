@@ -567,7 +567,7 @@ bool ClusterInfo::RemoveReplicaClusterByNs(const std::string& alias, const std::
     return std::atomic_load_explicit(&client_, std::memory_order_relaxed)->RemoveReplicaClusterByNs(alias, zone_name, term, code, msg);
   }
 
-NameServerImpl::NameServerImpl():mu_(), tablets_(), OSSs_(),
+NameServerImpl::NameServerImpl():mu_(), tablets_(), blob_servers_(),
                                  table_info_(), zk_client_(NULL), dist_lock_(NULL), thread_pool_(1),
                                  task_thread_pool_(FLAGS_name_server_task_pool_size), cv_(),
     rand_(0xdeadbeef), session_term_(0) {

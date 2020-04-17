@@ -9,7 +9,7 @@
 
 #include "client/tablet_client.h"
 #include "client/ns_client.h"
-#include "client/oss_client.h"
+#include "client/bs_client.h"
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
 #include "zk/dist_lock.h"
@@ -38,7 +38,7 @@ using ::rtidb::zk::DistLock;
 using ::rtidb::api::TabletState;
 using ::rtidb::client::TabletClient;
 using ::rtidb::client::NsClient;
-using ::rtidb::client::OssClient;
+using ::rtidb::client::BsClient;
 
 const uint64_t INVALID_PARENT_ID = UINT64_MAX;
 
@@ -52,9 +52,9 @@ struct TabletInfo {
     uint64_t ctime_;
 };
 // oss info
-struct OSSInfo {
+struct BlobServerInfo {
     TabletState state_;
-    std::shared_ptr<OssClient> client_;
+    std::shared_ptr<BsClient> client_;
     uint64_t ctime_;
 };
 
@@ -89,7 +89,7 @@ private:
 
 // the container of tablet
 typedef std::map<std::string, std::shared_ptr<TabletInfo>> Tablets;
-typedef std::map<std::string, std::shared_ptr<OSSInfo>> OSSs;
+typedef std::map<std::string, std::shared_ptr<BlobServerInfo>> BlobServers;
 
 typedef boost::function<void ()> TaskFun;
 
@@ -716,7 +716,7 @@ private:
 private:
     std::mutex mu_;
     Tablets tablets_;
-    OSSs OSSs_;
+    BlobServers blob_servers_;
     std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>> table_info_;
     std::map<std::string, std::shared_ptr<::rtidb::nameserver::ClusterInfo>> nsc_;
     ZoneInfo zone_info_;

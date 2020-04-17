@@ -4,25 +4,25 @@
 // Date 2020-04-16
 
 #include <rpc/rpc_client.h>
-#include "proto/object_storage.pb.h"
+#include "proto/blob_server.pb.h"
 
 namespace rtidb {
 namespace client {
 
-using ::rtidb::ObjectStorage::OssTableMeta;
-using ::rtidb::ObjectStorage::OSS_Stub;
+using ::rtidb::blobserver::TableMeta;
+using ::rtidb::blobserver::BlobServer_Stub;
 
-class OssClient {
+class BsClient {
 public:
-   OssClient(const std::string& endpoint);
+   BsClient(const std::string& endpoint);
 
-   OssClient(const std::string& endpoint, bool use_sleep_policy);
+   BsClient(const std::string& endpoint, bool use_sleep_policy);
 
    int Init();
 
    std::string GetEndpoint();
 
-   bool CreateTable(const OssTableMeta& table_meta, std::string* msg);
+   bool CreateTable(const TableMeta& table_meta, std::string* msg);
 
    bool Put(uint32_t tid, uint32_t pid, const std::string& key, const std::string& value, std::string* msg);
 
@@ -33,7 +33,7 @@ public:
    bool Stats(uint32_t tid, uint32_t pid, uint64_t* count, uint64_t* total_space, uint64_t* avail_space);
 private:
    std::string endpoint_;
-   ::rtidb::RpcClient<OSS_Stub> client_;
+   ::rtidb::RpcClient<BlobServer_Stub> client_;
 };
 
 }
