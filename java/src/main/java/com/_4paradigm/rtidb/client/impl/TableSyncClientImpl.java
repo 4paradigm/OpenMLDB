@@ -476,11 +476,29 @@ public class TableSyncClientImpl implements TableSyncClient {
                 bs =  response.getValue();
             }
             if (isNewFormat) {
-                // TODO 优化
+
                 RowSliceView rv = new RowSliceView(schema);
                 return rv.read(bs.asReadOnlyByteBuffer().order(ByteOrder.LITTLE_ENDIAN));
             }else {
-                return RowCodec.decode(bs.asReadOnlyByteBuffer().order(ByteOrder.LITTLE_ENDIAN), schema);
+                if (getOption.getProjection().size() > 0) {
+                    BitSet bset = new BitSet(th.getSchema().size());
+                    List<Integer> pschema = new ArrayList<>();
+                    int maxIndex = -1;
+                    for (String name : getOption.getProjection()) {
+                        Integer idx = th.getSchemaPos().get(name);
+                        if (idx == null) {
+                            throw new TabletException("Cannot find column " + name);
+                        }
+                        bset.set(idx, true);
+                        if (idx > maxIndex) {
+                            maxIndex = idx;
+                        }
+                        pschema.add(idx);
+                    }
+                    return RowCodec.decode(bs.asReadOnlyByteBuffer().order(ByteOrder.LITTLE_ENDIAN), schema, bset, pschema, maxIndex);
+                }else {
+                    return RowCodec.decode(bs.asReadOnlyByteBuffer().order(ByteOrder.LITTLE_ENDIAN), schema);
+                }
             }
         }
         if (response != null) {
@@ -998,14 +1016,42 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (response != null && response.getCode() == 0) {
             if (isNewFormat) {
                 RowKvIterator rit = new RowKvIterator(response.getPairs(), schema, response.getCount());
+                if (th.getTableInfo().hasCompressType()) {
+                    rit.setCompressType(th.getTableInfo().getCompressType());
+                }
                 return rit;
+            }else {
+                if (option.getProjection().size() > 0) {
+                    BitSet bset = new BitSet(th.getSchema().size());
+                    List<Integer> pschema = new ArrayList<>();
+                    int maxIndex = -1;
+                    for (String name : option.getProjection()) {
+                        Integer idx = th.getSchemaPos().get(name);
+                        if (idx == null) {
+                            throw new TabletException("Cannot find column " + name);
+                        }
+                        bset.set(idx, true);
+                        if (idx > maxIndex) {
+                            maxIndex = idx;
+                        }
+                        pschema.add(idx);
+                    }
+                    DefaultKvIterator it = new DefaultKvIterator(response.getPairs(), schema, bset, pschema, maxIndex);
+                    it.setCount(response.getCount());
+                    if (th.getTableInfo().hasCompressType()) {
+                        it.setCompressType(th.getTableInfo().getCompressType());
+                    }
+                    return it;
+                }else {
+                    DefaultKvIterator it = new DefaultKvIterator(response.getPairs(), schema);
+                    it.setCount(response.getCount());
+                    if (th.getTableInfo().hasCompressType()) {
+                        it.setCompressType(th.getTableInfo().getCompressType());
+                    }
+                    return it;
+                }
             }
-            DefaultKvIterator it = new DefaultKvIterator(response.getPairs(), schema);
-            it.setCount(response.getCount());
-            if (th.getTableInfo().hasCompressType()) {
-                it.setCompressType(th.getTableInfo().getCompressType());
-            }
-            return it;
+
         }
         if (response != null) {
             throw new TabletException(response.getCode(), response.getMsg());
