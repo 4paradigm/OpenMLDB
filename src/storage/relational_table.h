@@ -82,10 +82,10 @@ public:
     bool Query(const ::google::protobuf::RepeatedPtrField< ::rtidb::api::ReadOption >& ros,
             std::string* pairs, uint32_t* count);
     bool Query(const std::string& idx_name, const std::string& idx_val, std::vector<std::string>* return_vec); 
-    bool Query(const std::shared_ptr<IndexDef> index_def, const rocksdb::Slice key_slice, std::vector<std::string>* vec); 
+    bool Query(const std::shared_ptr<IndexDef> index_def, const rocksdb::Slice& key_slice, std::vector<std::string>* vec); 
 
     bool Delete(const std::string& idx_name, const std::string& key);
-    bool DeletePk(const rocksdb::Slice pk_slice); 
+    bool DeletePk(const rocksdb::Slice& pk_slice); 
 
     rtidb::storage::RelationalTableTraverseIterator* NewTraverse(uint32_t idx, uint64_t snapshot_id);
 
@@ -156,7 +156,7 @@ private:
     int InitColumnDesc();
     bool InitFromMeta();
     static void initOptionTemplate();
-    rocksdb::Iterator* GetIteratorAndSeek(uint32_t idx, const rocksdb::Slice key_slice); 
+    rocksdb::Iterator* GetIteratorAndSeek(uint32_t idx, const rocksdb::Slice& key_slice); 
     rocksdb::Iterator* GetRocksdbIterator(uint32_t idx); 
     bool PutDB(const std::string& pk, const char* data, uint32_t size);
     void CreateSchema(const ::rtidb::api::Columns& cd_columns, 

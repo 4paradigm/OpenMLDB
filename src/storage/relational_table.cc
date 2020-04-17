@@ -542,7 +542,7 @@ bool RelationalTable::Delete(const std::string& idx_name,
     return true;
 }
 
-bool RelationalTable::DeletePk(const rocksdb::Slice pk_slice) {
+bool RelationalTable::DeletePk(const rocksdb::Slice& pk_slice) {
     std::shared_ptr<IndexDef> pk_index_def = table_index_.GetPkIndex();
     uint32_t pk_id = pk_index_def->GetId();
    
@@ -605,7 +605,7 @@ rocksdb::Iterator* RelationalTable::GetRocksdbIterator(uint32_t idx) {
     return it;
 }
 
-rocksdb::Iterator* RelationalTable::GetIteratorAndSeek(uint32_t idx, const rocksdb::Slice key_slice) {
+rocksdb::Iterator* RelationalTable::GetIteratorAndSeek(uint32_t idx, const rocksdb::Slice& key_slice) {
     rocksdb::Iterator* it = GetRocksdbIterator(idx);
     if (it == NULL) {
         PDLOG(WARNING, "idx %u not exist. tid %u pid %u", idx, id_, pid_);
@@ -664,7 +664,7 @@ bool RelationalTable::Query(const std::string& idx_name, const std::string& idx_
 }
 
 bool RelationalTable::Query(const std::shared_ptr<IndexDef> index_def, 
-        const rocksdb::Slice key_slice, 
+        const rocksdb::Slice& key_slice, 
         std::vector<std::string>* return_vec) {
     uint32_t idx = index_def->GetId();
     ::rtidb::type::IndexType index_type = index_def->GetType(); 
