@@ -1,12 +1,12 @@
 package com._4paradigm.rtidb.client.impl;
 
+import com._4paradigm.rtidb.client.ReadOption;
 import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.ha.PartitionHandler;
 import com._4paradigm.rtidb.client.ha.RTIDBClient;
 import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.FieldCodec;
-import com._4paradigm.rtidb.client.schema.ReadOption;
 import com._4paradigm.rtidb.client.schema.RowView;
 import com._4paradigm.rtidb.client.type.DataType;
 import com._4paradigm.rtidb.client.type.IndexType;
