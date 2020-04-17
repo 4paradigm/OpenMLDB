@@ -3,6 +3,7 @@ package com._4paradigm.rtidb.client.ut;
 import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.schema.*;
 import com._4paradigm.rtidb.client.type.DataType;
+import com.google.protobuf.ByteBufferNoCopy;
 import org.joda.time.DateTime;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -425,6 +426,10 @@ public class RowCodecTest {
             Assert.assertTrue(rowView.isNull(0));
             Assert.assertEquals(rowView.getBool(1), new Boolean(false));
             Assert.assertEquals(rowView.getString(2), "1");
+
+            RowView rowView2 = new RowView(schema);
+            Object value = rowView2.getValue(buffer, 2, DataType.Varchar);
+            Assert.assertEquals((String) value, "1");
         } catch (TabletException e) {
             Assert.assertTrue(false);
         }
@@ -731,6 +736,42 @@ public class RowCodecTest {
             }
         } catch (TabletException e) {
             Assert.assertTrue(false);
+        }
+    }
+
+    @Test
+    public void testSingleColumnCodec() {
+        List<ByteBuffer> list = new ArrayList<>();
+        {
+            /**
+             * encode part
+             */
+            list.add(FieldCodec.convert(false));
+            list.add(FieldCodec.convert(true));
+            short int16Val = 33;
+            list.add(FieldCodec.convert(int16Val));
+            int int32Val = 44;
+            list.add(FieldCodec.convert(int32Val));
+            long int64Val = 55;
+            list.add(FieldCodec.convert(int64Val));
+            float fVal = 3.3f;
+            list.add(FieldCodec.convert(fVal));
+            double dVal = 4.4;
+            list.add(FieldCodec.convert(dVal));
+            list.add(FieldCodec.convert("123"));
+        }
+        {
+            /**
+             * decode part
+             */
+            Assert.assertEquals(FieldCodec.GetBool(ByteBufferNoCopy.wrap(list.get(0))), false);
+            Assert.assertEquals(FieldCodec.GetBool(ByteBufferNoCopy.wrap(list.get(1))), true);
+            Assert.assertEquals(FieldCodec.GetShort(ByteBufferNoCopy.wrap(list.get(2))), 33);
+            Assert.assertEquals(FieldCodec.GetInt(ByteBufferNoCopy.wrap(list.get(3))), 44);
+            Assert.assertEquals(FieldCodec.GetLong(ByteBufferNoCopy.wrap(list.get(4))), 55);
+            Assert.assertEquals(FieldCodec.GetFloat(ByteBufferNoCopy.wrap(list.get(5))), 3.3f);
+            Assert.assertEquals(FieldCodec.GetDouble(ByteBufferNoCopy.wrap(list.get(6))), 4.4);
+            Assert.assertEquals(FieldCodec.GetString(ByteBufferNoCopy.wrap(list.get(7))), "123");
         }
     }
 }

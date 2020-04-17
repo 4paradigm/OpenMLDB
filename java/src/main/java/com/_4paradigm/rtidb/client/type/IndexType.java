@@ -5,7 +5,7 @@ import com._4paradigm.rtidb.type.Type;
 public enum IndexType {
 
     Unique, // uinque index
-    NoUinque,
+    NoUnique,
     PrimaryKey,
     AutoGen,  // auto gen primary key
     Increment; // auto gen increment id primary key
@@ -14,8 +14,8 @@ public enum IndexType {
         switch (indexType) {
             case Unique:
                 return Type.IndexType.kUnique;
-            case NoUinque:
-                return Type.IndexType.kNoUinque;
+            case NoUnique:
+                return Type.IndexType.kNoUnique;
             case PrimaryKey:
                 return Type.IndexType.kPrimaryKey;
             case AutoGen:

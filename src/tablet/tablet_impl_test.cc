@@ -550,14 +550,16 @@ TEST_F(TabletImplTest, GetRelationalTable) {
     tablet.Init();
     // table not found
     {
-        ::rtidb::api::GetRequest request;
+        ::rtidb::api::BatchQueryRequest request;
+        ::rtidb::api::ReadOption* ro = request.add_read_option();
+        ::rtidb::api::Columns* cols = ro->add_index();
+        cols->add_name("card");
+        cols->set_value("test");
         request.set_tid(1);
         request.set_pid(0);
-        request.set_key("test");
-        request.set_ts(0);
-        ::rtidb::api::GetResponse response;
+        ::rtidb::api::BatchQueryResponse response;
         MockClosure closure;
-        tablet.Get(NULL, &request, &response, &closure);
+        tablet.BatchQuery(NULL, &request, &response, &closure);
         ASSERT_EQ(100, response.code());
     }
     // create table
@@ -601,14 +603,17 @@ TEST_F(TabletImplTest, GetRelationalTable) {
     }
     // key not found
     {
-        ::rtidb::api::GetRequest request;
+        ::rtidb::api::BatchQueryRequest request;
+        ::rtidb::api::ReadOption* ro = request.add_read_option();
+        ::rtidb::api::Columns* cols = ro->add_index();
+        cols->add_name("card");
+        cols->set_value("test");
         request.set_tid(id);
-        request.set_pid(1);
-        request.set_key("test");
-        ::rtidb::api::GetResponse response;
+        request.set_pid(1); 
+        ::rtidb::api::BatchQueryResponse response;
         MockClosure closure;
-        tablet.Get(NULL, &request, &response, &closure);
-        ASSERT_EQ(109, response.code());
+        tablet.BatchQuery(NULL, &request, &response, &closure);
+        ASSERT_EQ(148, response.code());
     }
     // put some key
     ::rtidb::base::RowBuilder builder(schema_t);
@@ -634,15 +639,23 @@ TEST_F(TabletImplTest, GetRelationalTable) {
             &closure);
     ASSERT_EQ(0, presponse.code());
     //get
-    ::rtidb::api::GetRequest request;
+    ::rtidb::api::BatchQueryRequest request;
+    ::rtidb::api::ReadOption* ro = request.add_read_option();
+    ::rtidb::api::Columns* cols = ro->add_index();
+    cols->add_name("card");
+    int64_t int64_val = 10;
+    std::string tmp = "";
+    tmp.resize(8);
+    char* buf = const_cast<char*>(tmp.data());
+    ::rtidb::base::Convert(int64_val, buf);
+    cols->set_value(tmp);
     request.set_tid(id);
     request.set_pid(1);
-    request.set_key("10");
-    ::rtidb::api::GetResponse response;
-    tablet.Get(NULL, &request, &response, &closure);
+    ::rtidb::api::BatchQueryResponse response;
+    tablet.BatchQuery(NULL, &request, &response, &closure);
     ASSERT_EQ(0, response.code());
-    std::string res = response.value();
-    ::rtidb::base::RowView view(schema_t, reinterpret_cast<int8_t*>(&(res[0])), size);
+    std::string res = response.pairs();
+    ::rtidb::base::RowView view(schema_t, reinterpret_cast<int8_t*>(&(res[0]) + 4), size);
     int64_t val = 0;
     ASSERT_EQ(view.GetInt64(0, &val), 0);
     ASSERT_EQ(val, 10l);
@@ -690,12 +703,19 @@ TEST_F(TabletImplTest, GetRelationalTable) {
         buffer += size;
     }
     {
-
         rtidb::api::BatchQueryRequest batchQuery_request;
         rtidb::api::BatchQueryResponse batchQuery_response;
+        ::rtidb::api::ReadOption* ro = batchQuery_request.add_read_option();
+        ::rtidb::api::Columns* cols = ro->add_index();
+        cols->add_name("card");
+        int64_t int64_val = 10;
+        std::string tmp = "";
+        tmp.resize(8);
+        char* buf = const_cast<char*>(tmp.data());
+        ::rtidb::base::Convert(int64_val, buf);
+        cols->set_value(tmp);
         batchQuery_request.set_tid(id);
         batchQuery_request.set_pid(1);
-        batchQuery_request.add_query_key("10");
         tablet.BatchQuery(NULL, &batchQuery_request, &batchQuery_response, &closure);
         ASSERT_EQ(0, batchQuery_response.code());
         ASSERT_TRUE(batchQuery_response.is_finish());
@@ -749,14 +769,16 @@ TEST_F(TabletImplTest, StringKeyRelationalTable) {
     std::string table_name = "relation_test" + GenRand();
     // table not found
     {
-        ::rtidb::api::GetRequest request;
+        ::rtidb::api::BatchQueryRequest request;
+        ::rtidb::api::ReadOption* ro = request.add_read_option();
+        ::rtidb::api::Columns* cols = ro->add_index();
+        cols->add_name("card");
+        cols->set_value("test");
         request.set_tid(1);
         request.set_pid(0);
-        request.set_key("test");
-        request.set_ts(0);
-        ::rtidb::api::GetResponse response;
+        ::rtidb::api::BatchQueryResponse response;
         MockClosure closure;
-        tablet.Get(NULL, &request, &response, &closure);
+        tablet.BatchQuery(NULL, &request, &response, &closure);
         ASSERT_EQ(100, response.code());
     }
     // create table
@@ -797,14 +819,17 @@ TEST_F(TabletImplTest, StringKeyRelationalTable) {
     }
     // key not found
     {
-        ::rtidb::api::GetRequest request;
+        ::rtidb::api::BatchQueryRequest request;
+        ::rtidb::api::ReadOption* ro = request.add_read_option();
+        ::rtidb::api::Columns* cols = ro->add_index();
+        cols->add_name("card");
+        cols->set_value("test");
         request.set_tid(id);
         request.set_pid(1);
-        request.set_key("test");
-        ::rtidb::api::GetResponse response;
+        ::rtidb::api::BatchQueryResponse response;
         MockClosure closure;
-        tablet.Get(NULL, &request, &response, &closure);
-        ASSERT_EQ(109, response.code());
+        tablet.BatchQuery(NULL, &request, &response, &closure);
+        ASSERT_EQ(148, response.code());
     }
     // put some key
     ::rtidb::base::RowBuilder builder(schema_t);
@@ -835,7 +860,10 @@ TEST_F(TabletImplTest, StringKeyRelationalTable) {
     }
     //get
     for (int64_t i = 0; i < 10l; i++) {
-        ::rtidb::api::GetRequest request;
+        ::rtidb::api::BatchQueryRequest request;
+        ::rtidb::api::ReadOption* ro = request.add_read_option();
+        ::rtidb::api::Columns* cols = ro->add_index();
+        cols->add_name("card");
         request.set_tid(id);
         request.set_pid(1);
         char chs[10];
@@ -843,14 +871,18 @@ TEST_F(TabletImplTest, StringKeyRelationalTable) {
         std::string key(chs), mcc_val;
         sprintf(chs, "mcc%06lu", i);
         mcc_val.assign(chs);
-        request.set_key(key);
-        ::rtidb::api::GetResponse response;
+        cols->set_value(key);
+        ::rtidb::api::BatchQueryResponse response;
         MockClosure closure;
-        tablet.Get(NULL, &request, &response, &closure);
+        tablet.BatchQuery(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
-        std::string res = response.value();
-        uint32_t size = res.length();
-        ::rtidb::base::RowView view(schema_t, reinterpret_cast<int8_t*>(&(res[0])), size);
+        std::string res = response.pairs();
+        const char* buf = res.data();
+        uint32_t value_size = 0;
+        memcpy(static_cast<void*>(&value_size), buf, 4);
+        buf += 4;
+
+        ::rtidb::base::RowView view(schema_t, reinterpret_cast<int8_t*>(const_cast<char*>(buf)), value_size);
         char* ch = NULL;
         uint32_t length = 0;
         ASSERT_EQ(view.GetString(0, &ch, &length), 0);
@@ -910,18 +942,6 @@ TEST_F(TabletImplTest, StringKeyRelationalTable) {
         ::rtidb::api::DropTableResponse drs;
         tablet.DropTable(NULL, &dr, &drs, &closure);
         ASSERT_EQ(0, drs.code());
-    }
-    // table not found
-    {
-        ::rtidb::api::GetRequest request;
-        request.set_tid(1);
-        request.set_pid(0);
-        request.set_key("test");
-        request.set_ts(0);
-        ::rtidb::api::GetResponse response;
-        MockClosure closure;
-        tablet.Get(NULL, &request, &response, &closure);
-        ASSERT_EQ(100, response.code());
     }
 }
 
