@@ -10,11 +10,12 @@ endif()
 
 add_library(tablet STATIC proto/tablet.pb.cc proto/common.pb.cc proto/type.pb.cc tablet/tablet_impl.cc flags.cc tablet/file_receiver.cc tablet/file_sender.cc)
 add_library(nameserver STATIC proto/name_server.pb.cc nameserver/name_server_impl.cc flags.cc)
+add_library(object_storage_server STATIC proto/object_storage.pb.cc oss/oss_impl.cc)
 add_library(beans storage/beans/bitcask.c storage/beans/clock_gettime_stub.c storage/beans/codec.c storage/beans/common.c storage/beans/crc32.c storage/beans/diskmgr.c storage/beans/hint.c storage/beans/hstore.c storage/beans/htree.c storage/beans/mfile.c storage/beans/quicklz.c storage/beans/record.c)
 target_link_libraries(beans rt pthread)
 add_library(storage STATIC storage/object_store.cc storage/mem_table.cc storage/disk_table.cc storage/relational_table.cc storage/segment.cc storage/ticket.cc storage/mem_table_snapshot.cc storage/disk_table_snapshot.cc storage/snapshot.cc storage/table.cc storage/binlog.cc base/codec.cc storage/schema.cc)
 target_link_libraries(storage beans rocksdb z rt pthread)
-add_library(client STATIC client/tablet_client.cc client/ns_client.cc)
+add_library(client STATIC client/tablet_client.cc client/ns_client.cc client/oss_client.cc)
 add_library(log STATIC log/crc32c.cc 
                        log/sequential_file.cc 
                        log/log_writer.cc 
@@ -29,6 +30,7 @@ add_library(replica STATIC replica/replicate_node.cc
 
 add_library(rtidb_py SHARED client/tablet_client.cc client/tablet_client_wrapper.cc proto/tablet.pb.cc proto/common.pb.cc proto/type.pb.cc)
 target_link_libraries(rtidb_py pthread common brpc gflags rt ssl crypto dl leveldb protobuf z snappy)
+
 
 add_executable(strings_test base/strings_test.cc)
 target_link_libraries(strings_test gtest pthread)
@@ -122,6 +124,6 @@ target_link_libraries(memcomparable_format_test gtest pthread)
 
 add_executable(rtidb cmd/rtidb.cc base/status.cc proto/client.pb.cc base/linenoise.cc)
 
-target_link_libraries(rtidb gflags common client  tablet storage replica log nameserver brpc ssl crypto dl leveldb protobuf z snappy gflags pthread rt zk_client zookeeper_mt tcmalloc_minimal)
+target_link_libraries(rtidb object_storage_server gflags common client tablet storage replica log nameserver brpc ssl crypto dl leveldb protobuf z snappy gflags pthread rt zk_client zookeeper_mt tcmalloc_minimal)
 
 add_subdirectory(client)

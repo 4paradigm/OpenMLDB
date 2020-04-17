@@ -39,6 +39,7 @@
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <random>
 #include "proto/type.pb.h"
+#include "oss/oss_impl.h"
 
 using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
@@ -217,6 +218,50 @@ void StartTablet() {
                     FLAGS_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM, RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
     }
     if (!tablet->RegisterZK()) {
+        PDLOG(WARNING, "Fail to register zk");
+        exit(1);
+    }
+    std::ostringstream oss;
+    oss << RTIDB_VERSION_MAJOR << "." << RTIDB_VERSION_MEDIUM << "." << RTIDB_VERSION_MINOR << "." << RTIDB_VERSION_BUG;
+    server.set_version(oss.str());
+    server.RunUntilAskedToQuit();
+}
+
+void StartOSS() {
+    SetupLog();
+    ::rtidb::oss::OSSImpl* oss_impl = new ::rtidb::oss::OSSImpl();
+    bool ok = oss_impl->Init();
+    if (!ok) {
+        PDLOG(WARNING, "fail to init tablet");
+        exit(1);
+    }
+    brpc::ServerOptions options;
+    options.num_threads = FLAGS_thread_pool_size;
+    brpc::Server server;
+    if (server.AddService(oss_impl, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
+        PDLOG(WARNING, "Fail to add service");
+        exit(1);
+    }
+    server.MaxConcurrencyOf(oss_impl, "Get") = FLAGS_scan_concurrency_limit;
+    server.MaxConcurrencyOf(oss_impl, "Put") = FLAGS_put_concurrency_limit;
+    oss_impl->SetServer(&server);
+    server.MaxConcurrencyOf(oss_impl, "Get") = FLAGS_get_concurrency_limit;
+    if (FLAGS_port > 0) {
+        if (server.Start(FLAGS_port, &options) != 0) {
+            PDLOG(WARNING, "Fail to start server");
+            exit(1);
+        }
+        PDLOG(INFO, "start tablet on port %d with version %d.%d.%d.%d",
+              FLAGS_port, RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM, RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
+    } else {
+        if (server.Start(FLAGS_endpoint.c_str(), &options) != 0) {
+            PDLOG(WARNING, "Fail to start server");
+            exit(1);
+        }
+        PDLOG(INFO, "start tablet on endpoint %s with version %d.%d.%d.%d",
+              FLAGS_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM, RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
+    }
+    if (!oss_impl->RegisterZK()) {
         PDLOG(WARNING, "Fail to register zk");
         exit(1);
     }
@@ -5577,6 +5622,8 @@ int main(int argc, char* argv[]) {
         StartClient();
     } else if (FLAGS_role == "nameserver") {
         StartNameServer();
+    } else if (FLAGS_role == "oss") {
+        StartOSS();
     } else if (FLAGS_role == "ns_client") {
         StartNsClient();
     } else {
