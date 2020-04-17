@@ -15,9 +15,9 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include "base/slice.h"
 #include "codec/type_codec.h"
 #include "glog/logging.h"
-#include "base/slice.h"
 namespace fesql {
 namespace codec {
 using fesql::base::Slice;
@@ -45,6 +45,44 @@ class Row {
     //   == 0 iff "*this" == "b",
     //   >  0 iff "*this" >  "b"
     int compare(const Row &b) const;
+    void Append(const Row &b) {
+        slices_.push_back(b.slice_);
+        if (!b.slices_.empty()) {
+            for (auto iter = b.slices_.cbegin(); iter != b.slices_.cend();
+                 iter++) {
+                slices_.push_back(*iter);
+            }
+        }
+    }
+    int8_t **GetRowPtrs() const {
+        if (slices_.empty()) {
+            return new int8_t *[1] { slice_.buf() };
+        } else {
+            int8_t **ptrs = new int8_t *[slices_.size() + 1];
+            int pos = 0;
+            ptrs[pos++] = slice_.buf();
+            for (auto slice : slices_) {
+                ptrs[pos++] = slice.buf();
+            }
+            return ptrs;
+        }
+    }
+
+    int32_t *GetRowSizes() const {
+        if (slices_.empty()) {
+            return new int32_t[1]{static_cast<int32_t>(slice_.size())};
+        } else {
+            int32_t *sizes = new int32_t[slices_.size() + 1];
+            int pos = 0;
+            sizes[pos++] = slice_.size();
+            for (auto slice : slices_) {
+                sizes[pos++] = static_cast<int32_t>(slice.size());
+            }
+            return sizes;
+        }
+    }
+    void AppendEmptyRow() { slices_.push_back(Slice()); }
+
     Slice slice_;
     std::vector<Slice> slices_;
 };

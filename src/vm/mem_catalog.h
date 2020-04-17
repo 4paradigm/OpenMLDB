@@ -108,6 +108,8 @@ class MemWindowIterator : public WindowIterator {
 };
 class MemRowHandler : public RowHandler {
  public:
+    explicit MemRowHandler(const Row row)
+        : RowHandler(), table_name_(""), db_(""), schema_(nullptr), row_(row) {}
     MemRowHandler(const Row row, const vm::Schema* schema)
         : RowHandler(), table_name_(""), db_(""), schema_(schema), row_(row) {}
     ~MemRowHandler() {}

@@ -271,9 +271,13 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
             node::ExprListNode expr_list;
             expr_list.AddChild(
                 const_cast<node::ExprNode*>(filter_op->condition_));
-            CodeGenExprList((node->GetProducers()[0]->output_name_schema_list_),
-                            &expr_list, true, fn_name, &fn_schema, status);
-            filter_op->SetConditionIdxs({0});
+            if (!node::ExprListNullOrEmpty(&expr_list)) {
+                CodeGenExprList(
+                    (node->GetProducers()[0]->output_name_schema_list_),
+                    &expr_list, true, fn_name, &fn_schema, status);
+                filter_op->SetConditionIdxs({0});
+            }
+
             break;
         }
         case kPhysicalOpJoin: {
@@ -281,9 +285,11 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
             node::ExprListNode expr_list;
             expr_list.AddChild(
                 const_cast<node::ExprNode*>(join_op->condition_));
-            CodeGenExprList(node->output_name_schema_list_, &expr_list, true,
-                            fn_name, &fn_schema, status);
-            join_op->SetConditionIdxs({0});
+            if (!node::ExprListNullOrEmpty(&expr_list)) {
+                CodeGenExprList(node->output_name_schema_list_, &expr_list,
+                                true, fn_name, &fn_schema, status);
+                join_op->SetConditionIdxs({0});
+            }
             break;
         }
         case kPhysicalOpRequestJoin: {
@@ -291,9 +297,11 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
             node::ExprListNode expr_list;
             expr_list.AddChild(
                 const_cast<node::ExprNode*>(request_join_op->condition_));
-            CodeGenExprList(node->output_name_schema_list_, &expr_list, true,
-                            fn_name, &fn_schema, status);
-            request_join_op->SetConditionIdxs({0});
+            if (!node::ExprListNullOrEmpty(&expr_list)) {
+                CodeGenExprList(node->output_name_schema_list_, &expr_list,
+                                true, fn_name, &fn_schema, status);
+                request_join_op->SetConditionIdxs({0});
+            }
             break;
         }
         case kPhysicalOpRequestUnoin: {

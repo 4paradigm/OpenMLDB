@@ -495,7 +495,7 @@ class PhysicalRequestJoinNode : public PhysicalBinaryNode {
         : PhysicalBinaryNode(left, right, kPhysicalOpRequestJoin, false, true),
           join_type_(join_type),
           condition_(condition) {
-        output_type_ = kSchemaTypeTable;
+        output_type_ = kSchemaTypeRow;
         InitSchema();
     }
     virtual ~PhysicalRequestJoinNode() {}

@@ -43,8 +43,8 @@ using namespace llvm::orc;  // NOLINT (build/namespaces)
 
 namespace fesql {
 namespace vm {
-using fesql::codec::Row;
 using fesql::codec::ArrayListV;
+using fesql::codec::Row;
 enum EngineRunMode { RUNBATCH, RUNONE };
 class EngineTest : public ::testing::TestWithParam<EngineRunMode> {};
 void BuildTableDef(::fesql::type::TableDef& table) {  // NOLINT
@@ -89,6 +89,46 @@ void BuildTableDef(::fesql::type::TableDef& table) {  // NOLINT
     }
 }
 
+void BuildTableT2Def(::fesql::type::TableDef& table) {  // NOLINT
+    table.set_name("t2");
+    table.set_catalog("db");
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kVarchar);
+        column->set_name("str0");
+    }
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kVarchar);
+        column->set_name("str1");
+    }
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kFloat);
+        column->set_name("col3");
+    }
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kDouble);
+        column->set_name("col4");
+    }
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kInt16);
+        column->set_name("col2");
+    }
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kInt32);
+        column->set_name("col1");
+    }
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kInt64);
+        column->set_name("col5");
+    }
+}
+
 void BuildBuf(int8_t** buf, uint32_t* size) {
     ::fesql::type::TableDef table;
     BuildTableDef(table);
@@ -103,6 +143,23 @@ void BuildBuf(int8_t** buf, uint32_t* size) {
     builder.AppendDouble(3.1);
     builder.AppendInt64(64);
     builder.AppendString("1", 1);
+    *buf = ptr;
+    *size = total_size;
+}
+void BuildT2Buf(int8_t** buf, uint32_t* size) {
+    ::fesql::type::TableDef table;
+    BuildTableT2Def(table);
+    codec::RowBuilder builder(table.columns());
+    uint32_t total_size = builder.CalTotalLength(2);
+    int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
+    builder.SetBuffer(ptr, total_size);
+    builder.AppendString("A", 1);
+    builder.AppendString("B", 1);
+    builder.AppendFloat(22.1f);
+    builder.AppendDouble(33.1);
+    builder.AppendInt16(160);
+    builder.AppendInt32(32);
+    builder.AppendInt64(640);
     *buf = ptr;
     *size = total_size;
 }
@@ -196,6 +253,95 @@ void BuildWindow(std::vector<Row>& rows,  // NOLINT
 
     ::fesql::codec::ArrayListV<Row>* w =
         new ::fesql::codec::ArrayListV<Row>(&rows);
+    *buf = reinterpret_cast<int8_t*>(w);
+}
+
+void BuildT2Window(std::vector<Row>& rows,  // NOLINT
+                   int8_t** buf) {
+    ::fesql::type::TableDef table;
+    BuildTableT2Def(table);
+    {
+        codec::RowBuilder builder(table.columns());
+        std::string str = "A";
+        std::string str0 = "0";
+        uint32_t total_size = builder.CalTotalLength(str.size() + str0.size());
+        int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
+
+        builder.SetBuffer(ptr, total_size);
+        builder.AppendString(str0.c_str(), 1);
+        builder.AppendString(str.c_str(), 1);
+        builder.AppendFloat(1.1f);
+        builder.AppendDouble(11.1);
+        builder.AppendInt16(5);
+        builder.AppendInt32(1);
+        builder.AppendInt64(1);
+        rows.push_back(Row(ptr, total_size));
+    }
+    {
+        codec::RowBuilder builder(table.columns());
+        std::string str = "BB";
+        std::string str0 = "0";
+        uint32_t total_size = builder.CalTotalLength(str.size() + str0.size());
+        int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
+        builder.SetBuffer(ptr, total_size);
+        builder.AppendString(str0.c_str(), 1);
+        builder.AppendString(str.c_str(), str.size());
+        builder.AppendFloat(2.2f);
+        builder.AppendDouble(22.2);
+        builder.AppendInt16(5);
+        builder.AppendInt32(2);
+        builder.AppendInt64(2);
+        rows.push_back(Row(ptr, total_size));
+    }
+    {
+        codec::RowBuilder builder(table.columns());
+        std::string str = "CCC";
+        std::string str0 = "1";
+        uint32_t total_size = builder.CalTotalLength(str.size() + str0.size());
+        int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
+        builder.SetBuffer(ptr, total_size);
+        builder.AppendString(str0.c_str(), 1);
+        builder.AppendString(str.c_str(), str.size());
+        builder.AppendFloat(3.3f);
+        builder.AppendDouble(33.3);
+        builder.AppendInt16(55);
+        builder.AppendInt32(3);
+        builder.AppendInt64(1);
+        rows.push_back(Row(ptr, total_size));
+    }
+    {
+        codec::RowBuilder builder(table.columns());
+        std::string str = "DDDD";
+        std::string str0 = "1";
+        uint32_t total_size = builder.CalTotalLength(str.size() + str0.size());
+        int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
+        builder.SetBuffer(ptr, total_size);
+        builder.AppendString(str0.c_str(), 1);
+        builder.AppendString(str.c_str(), str.size());
+        builder.AppendFloat(4.4f);
+        builder.AppendDouble(44.4);
+        builder.AppendInt16(55);
+        builder.AppendInt32(4);
+        builder.AppendInt64(2);
+        rows.push_back(Row(ptr, total_size));
+    }
+    {
+        codec::RowBuilder builder(table.columns());
+        std::string str = "EEEEE";
+        std::string str0 = "2";
+        uint32_t total_size = builder.CalTotalLength(str.size() + str0.size());
+        int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
+        builder.SetBuffer(ptr, total_size);
+        builder.AppendString(str0.c_str(), 1);
+        builder.AppendString(str.c_str(), str.size());
+        builder.AppendFloat(5.5f);
+        builder.AppendDouble(55.5);
+        builder.AppendInt16(55);
+        builder.AppendInt32(5);
+        builder.AppendInt64(3);
+        rows.push_back(Row(ptr, total_size));
+    }
+    ArrayListV<Row>* w = new ArrayListV<Row>(&rows);
     *buf = reinterpret_cast<int8_t*>(w);
 }
 void BuildWindowUnique(std::vector<Row>& rows,  // NOLINT
@@ -448,6 +594,150 @@ TEST_P(EngineTest, test_normal) {
         uint32_t size;
         row_view->GetString(3, &v, &size);
         ASSERT_EQ("1", std::string(v, size));
+    }
+    free(output[0]);
+    free(output[1]);
+}
+
+// 无条件last join
+TEST_F(EngineTest, test_last_join) {
+    type::TableDef table_def;
+    BuildTableDef(table_def);
+    ::fesql::type::IndexDef* index = table_def.add_indexes();
+    index->set_name("index1");
+    index->add_first_keys("col2");
+    index->set_second_key("col5");
+    std::shared_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, table_def));
+    ASSERT_TRUE(table->Init());
+    int8_t* rows = NULL;
+    std::vector<Row> windows;
+    BuildWindow(windows, &rows);
+    StoreData(table.get(), rows);
+
+    type::TableDef table_def2;
+    BuildTableT2Def(table_def2);
+    {
+        ::fesql::type::IndexDef* index = table_def2.add_indexes();
+        index->set_name("index1");
+        index->add_first_keys("col2");
+        index->set_second_key("col5");
+    }
+
+    std::shared_ptr<::fesql::storage::Table> table2(
+        new ::fesql::storage::Table(2, 1, table_def2));
+    ASSERT_TRUE(table2->Init());
+    int8_t* rows2 = NULL;
+    std::vector<Row> windows2;
+    BuildT2Window(windows2, &rows2);
+    StoreData(table2.get(), rows2);
+
+    auto catalog = BuildCommonCatalog(table_def, table);
+    AddTable(catalog, table_def2, table2);
+
+    // add request
+    {
+        fesql::type::TableDef request_def;
+        BuildTableDef(request_def);
+        request_def.set_name("t1");
+        request_def.set_catalog("request");
+        std::shared_ptr<::fesql::storage::Table> request(
+            new ::fesql::storage::Table(1, 1, request_def));
+        AddTable(catalog, request_def, request);
+    }
+
+    const std::string sql =
+        "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return "
+        "d\nend\n%%sql\nSELECT t1.col0, test(t1.col1,t2.col1), t1.col2 , str1 "
+        "FROM t1 last join t2 on t1.col1=t2.col1 and t1.col5 = t2.col5 "
+        "limit 2;";
+    std::cout << sql << std::endl;
+    Engine engine(catalog);
+    base::Status get_status;
+    DLOG(INFO) << "RUN IN MODE REQUEST";
+    std::vector<int8_t*> output;
+    vm::Schema schema;
+
+    int32_t ret = -1;
+    RequestRunSession session;
+    bool ok = engine.Get(sql, "db", session, get_status);
+    ASSERT_TRUE(ok);
+    schema = session.GetSchema();
+    PrintSchema(schema);
+    std::ostringstream oss;
+    session.GetPhysicalPlan()->Print(oss, "");
+    std::cout << "physical plan:\n" << oss.str() << std::endl;
+
+    std::ostringstream runner_oss;
+    session.GetRunner()->Print(runner_oss, "");
+    std::cout << "runner plan:\n" << runner_oss.str() << std::endl;
+    int32_t limit = 2;
+    auto iter = catalog->GetTable("db", "t1")->GetIterator();
+    while (limit-- > 0 && iter->Valid()) {
+        Row row;
+        ret = session.Run(Row(iter->GetValue()), &row);
+        ASSERT_EQ(0, ret);
+        output.push_back(row.buf());
+        iter->Next();
+    }
+    ASSERT_EQ(2u, output.size());
+
+    ::fesql::type::TableDef output_schema;
+    for (auto column : schema) {
+        ::fesql::type::ColumnDef* column_def = output_schema.add_columns();
+        *column_def = column;
+    }
+
+    std::unique_ptr<codec::RowView> row_view =
+        std::move(std::unique_ptr<codec::RowView>(
+            new codec::RowView(output_schema.columns())));
+
+    row_view->Reset(output[0]);
+    {
+        char* v = nullptr;
+        uint32_t size;
+        row_view->GetString(0, &v, &size);
+        ASSERT_EQ("2", std::string(v, size));
+    }
+    {
+        int32_t v;
+        row_view->GetInt32(1, &v);
+        ASSERT_EQ(5 + 5 + 1, v);
+    }
+    {
+        int16_t v;
+        row_view->GetInt16(2, &v);
+        ASSERT_EQ(55, v);
+    }
+    {
+        char* v = nullptr;
+        uint32_t size;
+        row_view->GetString(3, &v, &size);
+        ASSERT_EQ("EEEEE", std::string(v, size));
+    }
+
+    row_view->Reset(output[1]);
+    {
+        char* v = nullptr;
+        uint32_t size;
+        row_view->GetString(0, &v, &size);
+        ASSERT_EQ("1", std::string(v, size));
+    }
+    {
+        int32_t v;
+        row_view->GetInt32(1, &v);
+        ASSERT_EQ(4 + 4 + 1, v);
+    }
+    {
+        int16_t v;
+        row_view->GetInt16(2, &v);
+        ASSERT_EQ(55, v);
+    }
+    {
+        char* v = nullptr;
+        uint32_t size;
+        row_view->GetString(3, &v, &size);
+        ASSERT_EQ("DDDD", std::string(v, size));
     }
     free(output[0]);
     free(output[1]);

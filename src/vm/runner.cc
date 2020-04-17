@@ -237,73 +237,26 @@ Row Runner::WindowProject(const int8_t* fn, uint64_t key, const Row row,
     }
     return Row(reinterpret_cast<char*>(out_buf), RowView::GetSize(out_buf));
 }
+
 Row Runner::RowProject(const int8_t* fn, const Row row, const bool need_free) {
     if (row.empty()) {
-        return row;
+        return Row();
     }
     int32_t (*udf)(int8_t**, int8_t**, int32_t*, int8_t**) =
         (int32_t(*)(int8_t**, int8_t**, int32_t*, int8_t**))(fn);
+
     int8_t* buf = nullptr;
+    int8_t** row_ptrs = row.GetRowPtrs();
+    int32_t* row_sizes = row.GetRowSizes();
+    uint32_t ret = udf(row_ptrs, nullptr, row_sizes, &buf);
 
-    int8_t* row_ptrs[1] = {row.buf()};
-    int8_t* window_ptrs[1] = {nullptr};
-    int32_t row_sizes[1] = {static_cast<int32_t>(row.size())};
-    uint32_t ret = udf(row_ptrs, window_ptrs, row_sizes, &buf);
-
+    if (nullptr != row_ptrs) delete[] row_ptrs;
+    if (nullptr != row_sizes) delete[] row_sizes;
     if (ret != 0) {
         LOG(WARNING) << "fail to run udf " << ret;
         return Row();
     }
     return Row(reinterpret_cast<char*>(buf), RowView::GetSize(buf), need_free);
-}
-
-Row Runner::MultiRowsProject(const int8_t* fn, const std::vector<Row>& rows,
-                             const bool need_free) {
-    if (rows.empty()) {
-        return Row();
-    }
-    int32_t (*udf)(int8_t**, int8_t**, int32_t*, int8_t**) =
-        (int32_t(*)(int8_t**, int8_t**, int32_t*, int8_t**))(fn);
-    const size_t len = rows.size();
-
-    if (len < 10) {
-        int8_t* buf = nullptr;
-        int8_t* row_ptrs[10] = {0};
-        int8_t* window_ptrs[10] = {0};
-        int32_t row_sizes[10] = {0};
-        for (size_t i = 1; i < len; i++) {
-            row_ptrs[i] = rows[i].buf();
-            row_sizes[i] = rows[i].size();
-        }
-        uint32_t ret = udf(row_ptrs, window_ptrs, row_sizes, &buf);
-
-        if (ret != 0) {
-            LOG(WARNING) << "fail to run udf " << ret;
-            return Row();
-        }
-        return Row(reinterpret_cast<char*>(buf), RowView::GetSize(buf),
-                   need_free);
-    } else {
-        int8_t* buf = nullptr;
-        int8_t** row_ptrs = new int8_t* [len] { 0 };
-        int8_t** window_ptrs = new int8_t* [len] { 0 };
-        int32_t* row_sizes = new int32_t[len]{0};
-        for (size_t i = 1; i < len; i++) {
-            row_ptrs[i] = rows[i].buf();
-            row_sizes[i] = rows[i].size();
-        }
-        uint32_t ret = udf(row_ptrs, window_ptrs, row_sizes, &buf);
-
-        delete[] row_ptrs;
-        delete[] window_ptrs;
-        delete[] row_ptrs;
-        if (ret != 0) {
-            LOG(WARNING) << "fail to run udf " << ret;
-            return Row();
-        }
-        return Row(reinterpret_cast<char*>(buf), RowView::GetSize(buf),
-                   need_free);
-    }
 }
 std::string Runner::GetColumnString(RowView* row_view, int key_idx,
                                     type::Type key_type) {
@@ -361,7 +314,7 @@ std::string Runner::GetColumnString(RowView* row_view, int key_idx,
     return key;
 }
 bool Runner::GetColumnBool(RowView* row_view, int idx, type::Type type) {
-    int64_t key = -1;
+    bool key = false;
     switch (type) {
         case fesql::type::kInt32: {
             int32_t value;
@@ -710,6 +663,7 @@ std::shared_ptr<DataHandler> TableProjectRunner::Run(RunnerContext& ctx) {
     if (!input) {
         return std::shared_ptr<DataHandler>();
     }
+
     if (kTableHandler != input->GetHanlderType()) {
         return std::shared_ptr<DataHandler>();
     }
@@ -803,37 +757,35 @@ std::shared_ptr<DataHandler> RequestLastJoinRunner::Run(
     if (kPartitionHandler == right->GetHanlderType()) {
         return std::shared_ptr<DataHandler>();
     }
-    auto request = std::dynamic_pointer_cast<RowHandler>(left);
+    auto request = std::dynamic_pointer_cast<RowHandler>(left)->GetValue();
     auto table = std::dynamic_pointer_cast<TableHandler>(right);
     auto table_iter = table->GetIterator();
 
-    std::shared_ptr<MemRowHandler> join_row =
-        std::shared_ptr<MemRowHandler>(new MemRowHandler(
-            std::dynamic_pointer_cast<RowHandler>(left)->GetValue(),
-            left->GetSchema()));
-    //    // skip condition check
-    //    if (condition_idxs_.empty()) {
-    //        if (table_iter->Valid()) {
-    //            join_row->AddRow(table_iter->GetValue());
-    //        } else {
-    //            join_row->AddRow(Row());
-    //        }
-    //        return join_row;
-    //    }
-    //
-    //    int32_t idx = condition_idxs_[0];
-    //    join_row->AddRow(Row());
-    //    int32_t last_idx = join_row->GetRowsCnt() - 1;
-    //    while (table_iter->Valid()) {
-    //        join_row->SetRowAt(last_idx, table_iter->GetValue());
-    //        auto row = MultiRowsProject(fn_, join_row->GetRows(), true);
-    //        row_view_.Reset(row.buf());
-    //        if (GetColumnBool(&row_view_, idx, fn_schema_.Get(idx).type())) {
-    //            return join_row;
-    //        }
-    //    }
-    //    join_row->SetRowAt(last_idx, Row());
-    return join_row;
+    // skip condition check
+    if (condition_idxs_.empty()) {
+        Row row(request);
+        if (table_iter->Valid()) {
+            row.Append(table_iter->GetValue());
+        } else {
+            row.AppendEmptyRow();
+        }
+        return std::shared_ptr<RowHandler>(new MemRowHandler(row));
+    }
+
+    int32_t idx = condition_idxs_[0];
+    while (table_iter->Valid()) {
+        Row join_row(request);
+        join_row.Append(table_iter->GetValue());
+        auto condition_row = RowProject(fn_, join_row, true);
+        row_view_.Reset(condition_row.buf());
+        if (GetColumnBool(&row_view_, idx, fn_schema_.Get(idx).type())) {
+            return std::shared_ptr<RowHandler>(new MemRowHandler(join_row));
+        }
+        table_iter->Next();
+    }
+    Row join_row(request);
+    join_row.AppendEmptyRow();
+    return std::shared_ptr<RowHandler>(new MemRowHandler(join_row));
 }
 std::shared_ptr<DataHandler> LimitRunner::Run(RunnerContext& ctx) {
     auto input = producers_[0]->RunWithCache(ctx);

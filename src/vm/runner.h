@@ -89,8 +89,6 @@ class Runner {
                       Window* window);
     Row RowProject(const int8_t* fn, const Row row,
                    const bool need_free = false);
-    Row MultiRowsProject(const int8_t* fn, const std::vector<Row>& rows,
-                         const bool need_free = false);
 
     std::string GetColumnString(RowView* view, int pos, type::Type type);
     int64_t GetColumnInt64(RowView* view, int pos, type::Type type);
