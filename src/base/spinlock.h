@@ -17,6 +17,7 @@
 //
 
 #pragma once
+#include <thread>
 
 namespace rtidb {
 namespace base {

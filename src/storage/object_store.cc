@@ -7,7 +7,7 @@
 
 namespace rtidb {
 namespace storage {
-ObjectStore::ObjectStore(const ::rtidb::api::TableMeta& table_meta,
+ObjectStore::ObjectStore(const ::rtidb::blobserver::TableMeta& table_meta,
                          const std::string& db_root_path)
     : db_(NULL),
       tid_(table_meta.tid()),

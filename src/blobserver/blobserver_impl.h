@@ -14,6 +14,7 @@
 #include "proto/blob_server.pb.h"
 #include "thread_pool.h"
 #include "zk/zk_client.h"
+#include "base/spinlock.h"
 
 namespace rtidb {
 namespace blobserver {
@@ -23,6 +24,7 @@ using ::google::protobuf::Closure;
 using ::google::protobuf::RpcController;
 using ::rtidb::zk::ZkClient;
 using ::rtidb::storage::ObjectStore;
+using ::rtidb::base::SpinMutex;
 
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<ObjectStore>>> ObjectStores;
 
@@ -36,6 +38,14 @@ class BlobServerImpl : public ::rtidb::blobserver::BlobServer {
 
     void CheckZkClient();
 
+    bool RegisterZK();
+
+    inline void SetServer(brpc::Server* server) { server_ = server; }
+
+    std::shared_ptr<ObjectStore> GetStore(uint32_t tid, uint32_t pid);
+
+    std::shared_ptr<ObjectStore> GetStoreUnLock(uint32_t tid, uint32_t pid);
+
     void CreateTable(RpcController* controller,
                      const CreateTableRequest* request,
                      GeneralResponse* response, Closure* done);
@@ -47,18 +57,18 @@ class BlobServerImpl : public ::rtidb::blobserver::BlobServer {
                 GeneralResponse* response, Closure* done);
     void Stats(RpcController* controller, const StatsRequest* request,
                StatsResponse* response, Closure* done);
-
-    bool RegisterZK();
-
-    inline void SetServer(brpc::Server* server) { server_ = server; }
+    void LoadTable(RpcController* controller, const LoadTableRequest* request,
+                   GeneralResponse* response, Closure* done);
 
  private:
     std::mutex mu_;
+    SpinMutex spin_mutex_;
     ZkClient* zk_client_;
     brpc::Server* server_;
     ThreadPool keep_alive_pool_;
     std::atomic<bool> follower_;
     ObjectStores object_stores_;
+    std::vector<std::string> root_paths_;
 };
 
 }  // namespace oss

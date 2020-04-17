@@ -16,14 +16,15 @@ extern "C" {
 };
 #endif
 #include <base/slice.h>
-#include "proto/tablet.pb.h"
+#include "proto/blob_server.pb.h"
+#include "proto/common.pb.h"
 
 namespace rtidb {
 namespace storage {
 
 class ObjectStore {
  public:
-    ObjectStore(const ::rtidb::api::TableMeta& table_meta,
+    ObjectStore(const ::rtidb::blobserver::TableMeta& table_meta,
                 const std::string& db_root_path);
 
     bool Init();
