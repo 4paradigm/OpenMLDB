@@ -55,6 +55,9 @@ public class GetFuture implements Future<ByteString>{
 			rv = new RowSliceView(t.getSchema());
 		}
 		rowLength = t.getSchema().size();
+		if (th.getSchemaMap().size() > 0) {
+			rowLength += th.getSchemaMap().size();
+		}
 	}
 
 	public GetFuture(Future<Tablet.GetResponse> f, TableHandler t, RTIDBClientConfig config, List<ColumnDesc> projection) {

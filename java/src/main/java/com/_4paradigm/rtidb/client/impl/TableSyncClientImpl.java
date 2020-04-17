@@ -40,7 +40,9 @@ public class TableSyncClientImpl implements TableSyncClient {
 
     @Override
     public Object[] getRow(String tname, String key, long time, Object type) throws TimeoutException, TabletException {
-        return getRow(tname, key, time, (Tablet.GetType)type);
+        GetOption getOption = new GetOption();
+        getOption.setGetType((Tablet.GetType)type);
+        return getRow(tname, key, time, getOption);
     }
 
     @Override
@@ -152,6 +154,7 @@ public class TableSyncClientImpl implements TableSyncClient {
 
     @Override
     public ByteString get(int tid, int pid, String key, long time) throws TimeoutException, TabletException {
+
         return get(tid, pid, key, null, time, null, null, client.getHandler(tid), 0l, null);
     }
 
@@ -422,10 +425,6 @@ public class TableSyncClientImpl implements TableSyncClient {
             return new RelationalIterator();
         }
         RelationalIterator it = new RelationalIterator(bs, th, colSet);
-//        it.setCount(response.getCount());
-//        if (th.getTableInfo().hasCompressType()) {
-//            it.setCompressType(th.getTableInfo().getCompressType());
-//        }
         return it;
     }
 
@@ -497,7 +496,11 @@ public class TableSyncClientImpl implements TableSyncClient {
                     }
                     return RowCodec.decode(bs.asReadOnlyByteBuffer().order(ByteOrder.LITTLE_ENDIAN), schema, bset, pschema, maxIndex);
                 }else {
-                    return RowCodec.decode(bs.asReadOnlyByteBuffer().order(ByteOrder.LITTLE_ENDIAN), schema);
+                    if (th.getSchemaMap().size() > 0) {
+                        return RowCodec.decode(bs.asReadOnlyByteBuffer().order(ByteOrder.LITTLE_ENDIAN), schema, th.getSchemaMap().size());
+                    }else {
+                        return RowCodec.decode(bs.asReadOnlyByteBuffer().order(ByteOrder.LITTLE_ENDIAN), schema);
+                    }
                 }
             }
         }
@@ -820,7 +823,10 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (th == null) {
             throw new TabletException("no table with tid" + tid);
         }
-        return scan(tid, pid, key, idxName, st, et, null, limit, 0, th);
+        ScanOption scanOption = new ScanOption();
+        scanOption.setLimit(limit);
+        scanOption.setIdxName(idxName);
+        return scan(tid, pid, key, st, et, th, scanOption);
     }
 
     @Override
@@ -858,7 +864,11 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         key = validateKey(key);
         int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
-        return scan(th.getTableInfo().getTid(), pid, key, idxName, st, et, null, limit, 0, th);
+        ScanOption scanOption = new ScanOption();
+        scanOption.setLimit(limit);
+        scanOption.setIdxName(idxName);
+        scanOption.setRemoveDuplicateRecordByTime(client.getConfig().isRemoveDuplicateByTime());
+        return scan(th.getTableInfo().getTid(), pid, key, st, et, th, scanOption);
     }
 
     @Override
@@ -875,7 +885,11 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         key = validateKey(key);
         int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
-        return scan(th.getTableInfo().getTid(), pid, key, idxName, st, et, tsName, limit, 0, th);
+        ScanOption scanOption = new ScanOption();
+        scanOption.setLimit(limit);
+        scanOption.setIdxName(idxName);
+        scanOption.setTsName(tsName);
+        return scan(th.getTableInfo().getTid(), pid, key, st, et, th, scanOption);
     }
 
     @Override
@@ -894,7 +908,11 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         String combinedKey = TableClientCommon.getCombinedKey(keyArr, client.getConfig().isHandleNull());
         int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
-        return scan(th.getTableInfo().getTid(), pid, combinedKey, idxName, st, et, tsName, limit, 0, th);
+        ScanOption scanOption = new ScanOption();
+        scanOption.setLimit(limit);
+        scanOption.setIdxName(idxName);
+        scanOption.setTsName(tsName);
+        return scan(th.getTableInfo().getTid(), pid, combinedKey,  st, et,th, scanOption);
     }
 
     @Override
@@ -911,7 +929,11 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         String combinedKey = TableClientCommon.getCombinedKey(keyMap, list, client.getConfig().isHandleNull());
         int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
-        return scan(th.getTableInfo().getTid(), pid, combinedKey, idxName, st, et, tsName, limit, 0, th);
+        ScanOption scanOption = new ScanOption();
+        scanOption.setIdxName(idxName);
+        scanOption.setLimit(limit);
+        scanOption.setTsName(tsName);
+        return scan(th.getTableInfo().getTid(), pid, combinedKey, st, et, th, scanOption);
     }
 
     @Override
@@ -950,7 +972,10 @@ public class TableSyncClientImpl implements TableSyncClient {
             throw new TabletException("check key number failed");
         }
         String combinedKey = TableClientCommon.getCombinedKey(keyArr, client.getConfig().isHandleNull());
-        return scan(tid, pid, combinedKey, idxName, st, et, tsName, 0, 0, th);
+        ScanOption scanOption = new ScanOption();
+        scanOption.setIdxName(idxName);
+        scanOption.setTsName(tsName);
+        return scan(tid, pid, combinedKey,st, et, th, scanOption);
     }
 
     @Override
@@ -971,7 +996,12 @@ public class TableSyncClientImpl implements TableSyncClient {
             throw new TabletException("no index name in table" + idxName);
         }
         String combinedKey = TableClientCommon.getCombinedKey(keyMap, list, client.getConfig().isHandleNull());
-        return scan(tid, pid, combinedKey, idxName, st, et, tsName, limit, atLeast, th);
+        ScanOption scanOption = new ScanOption();
+        scanOption.setIdxName(idxName);
+        scanOption.setTsName(tsName);
+        scanOption.setLimit(limit);
+        scanOption.setAtLeast(atLeast);
+        return scan(tid, pid, combinedKey, st, et, th, scanOption);
     }
 
     private KvIterator scan(int tid, int pid, String key, long st, long et,TableHandler th, ScanOption option) throws TimeoutException, TabletException{
@@ -1043,7 +1073,7 @@ public class TableSyncClientImpl implements TableSyncClient {
                     }
                     return it;
                 }else {
-                    DefaultKvIterator it = new DefaultKvIterator(response.getPairs(), schema);
+                    DefaultKvIterator it = new DefaultKvIterator(response.getPairs(), th);
                     it.setCount(response.getCount());
                     if (th.getTableInfo().hasCompressType()) {
                         it.setCompressType(th.getTableInfo().getCompressType());
@@ -1052,56 +1082,6 @@ public class TableSyncClientImpl implements TableSyncClient {
                 }
             }
 
-        }
-        if (response != null) {
-            throw new TabletException(response.getCode(), response.getMsg());
-        }
-        throw new TabletException("rtidb internal server error");
-    }
-
-    private KvIterator scan(int tid, int pid, String key, String idxName,
-                            long st, long et, String tsName, int limit, int atLeast, TableHandler th) throws TimeoutException, TabletException {
-        key = validateKey(key);
-        PartitionHandler ph = th.getHandler(pid);
-        TabletServer ts = ph.getReadHandler(th.getReadStrategy());
-        if (ts == null) {
-            throw new TabletException("Cannot find available tabletServer with tid " + tid);
-        }
-        Tablet.ScanRequest.Builder builder = Tablet.ScanRequest.newBuilder();
-        if (key != null) {
-            builder.setPk(key);
-        }
-        builder.setTid(tid);
-        builder.setEt(et);
-        builder.setSt(st);
-        builder.setPid(pid);
-        builder.setLimit(limit);
-        builder.setAtleast(atLeast);
-        if (idxName != null && !idxName.isEmpty()) {
-            builder.setIdxName(idxName);
-        }
-        if (tsName != null && !tsName.isEmpty()) {
-            builder.setTsName(tsName);
-        }
-        if (client.getConfig().isRemoveDuplicateByTime()) {
-            builder.setEnableRemoveDuplicatedRecord(true);
-        }
-        Tablet.ScanRequest request = builder.build();
-        Tablet.ScanResponse response = ts.scan(request);
-        if (response != null && response.getCode() == 0) {
-            Long network = null;
-            DefaultKvIterator it = null;
-            if (th.getSchemaMap().size() > 0) {
-                it = new DefaultKvIterator(response.getPairs(), th);
-
-            } else {
-                it = new DefaultKvIterator(response.getPairs(), th.getSchema(), network);
-            }
-            it.setCount(response.getCount());
-            if (th.getTableInfo().hasCompressType()) {
-                it.setCompressType(th.getTableInfo().getCompressType());
-            }
-            return it;
         }
         if (response != null) {
             throw new TabletException(response.getCode(), response.getMsg());
