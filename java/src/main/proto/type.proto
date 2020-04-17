@@ -25,8 +25,8 @@ enum TableType {
 
 enum IndexType {
     kUnique = 1; // uinque index
-    kNoUinque = 2;
-    kPrimaryKey = 3; 
+    kNoUnique = 2;
+    kPrimaryKey = 3;
     kAutoGen = 4;  // auto gen primary key
     kIncrement = 5; // auto gen increment id primary key
     kTimeSerise = 6;
