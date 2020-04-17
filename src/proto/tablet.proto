@@ -708,6 +708,10 @@ message BatchQueryResponse {
     optional uint32 count = 5;
 }
 
+message CancelOPRequest {
+    optional uint64 op_id = 1;
+}
+
 service TabletServer {
 
     // write and read api for client
@@ -765,4 +769,5 @@ service TabletServer {
     rpc DumpIndexData(DumpIndexDataRequest) returns (GeneralResponse);
     rpc LoadIndexData(LoadIndexDataRequest) returns (GeneralResponse);
     rpc ExtractIndexData(ExtractIndexDataRequest) returns (GeneralResponse);
+    rpc CancelOP(CancelOPRequest) returns (GeneralResponse);
 }

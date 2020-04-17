@@ -59,8 +59,7 @@ enum class IndexStatus {
     kReady = 0,
     kWaiting,
     kDeleting,
-    kDeleted,
-    kLoading
+    kDeleted
 };
 
 class IndexDef {
@@ -74,14 +73,14 @@ public:
         ts_column_ = ts_vec;
     }
     inline bool IsReady() { 
-        return status_.load(std::memory_order_relaxed) == IndexStatus::kReady;
+        return status_.load(std::memory_order_acquire) == IndexStatus::kReady;
     }
     inline uint32_t GetId() { return index_id_; }
     void SetStatus(IndexStatus status) {
-        status_.store(status, std::memory_order_relaxed);
+        status_.store(status, std::memory_order_release);
     }
     IndexStatus GetStatus() { 
-        return status_.load(std::memory_order_relaxed);
+        return status_.load(std::memory_order_acquire);
     }
 
 private:
@@ -89,7 +88,6 @@ private:
     uint32_t index_id_;
     std::atomic<IndexStatus> status_;
     ::rtidb::type::IndexType type_;
-    std::vector<::rtidb::common::ColumnDesc> column_;
     std::vector<uint32_t> ts_column_;
 };
 
