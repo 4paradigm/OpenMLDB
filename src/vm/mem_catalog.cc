@@ -220,8 +220,7 @@ MemTableHandler::MemTableHandler()
       schema_(nullptr),
       types_(),
       index_hint_(),
-      table_(),
-      other_tables_() {}
+      table_() {}
 MemTableHandler::MemTableHandler(const Schema* schema)
     : TableHandler(),
       table_name_(""),
@@ -229,8 +228,7 @@ MemTableHandler::MemTableHandler(const Schema* schema)
       schema_(schema),
       types_(),
       index_hint_(),
-      table_(),
-      other_tables_() {}
+      table_() {}
 MemTableHandler::MemTableHandler(const std::string& table_name,
                                  const std::string& db, const Schema* schema)
     : TableHandler(),
@@ -239,8 +237,7 @@ MemTableHandler::MemTableHandler(const std::string& table_name,
       schema_(schema),
       types_(),
       index_hint_(),
-      table_(),
-      other_tables_() {}
+      table_() {}
 void MemTableHandler::AddRow(const Row& row) { table_.push_back(row); }
 void MemTableHandler::Reverse() { std::reverse(table_.begin(), table_.end()); }
 MemTableHandler::~MemTableHandler() {}

@@ -86,11 +86,6 @@ class RowHandler : public DataHandler {
     Row At(uint64_t pos) override { return Row(); }
     const HandlerType GetHanlderType() override { return kRowHandler; }
     virtual const Row& GetValue() const = 0;
-    virtual void AddRow(const Row& row) = 0;
-    virtual const size_t GetRowsCnt() const = 0;
-    virtual const std::vector<Row>& GetRows() const = 0;
-    virtual const Row& GetRowAt(uint32_t pos) const = 0;
-    virtual void SetRowAt(int32_t pos, const Row row) = 0;
 };
 
 class TableHandler : public DataHandler {
