@@ -610,7 +610,11 @@ class FrameNode : public SQLNode {
 class WindowDefNode : public SQLNode {
  public:
     WindowDefNode()
-        : SQLNode(kWindowDef, 0, 0), window_name_(""), frame_ptr_(NULL) {}
+        : SQLNode(kWindowDef, 0, 0),
+          window_name_(""),
+          frame_ptr_(NULL),
+          partitions_(nullptr),
+          orders_(nullptr) {}
 
     ~WindowDefNode() {}
 

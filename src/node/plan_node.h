@@ -247,8 +247,8 @@ class WindowPlanNode : public LeafPlanNode {
           start_offset_(0L),
           end_offset_(0L),
           is_range_between_(true),
-          keys_(),
-          orders_() {}
+          keys_(nullptr),
+          orders_(nullptr) {}
     ~WindowPlanNode() {}
     void Print(std::ostream &output, const std::string &org_tab) const;
     int64_t GetStartOffset() const { return start_offset_; }
