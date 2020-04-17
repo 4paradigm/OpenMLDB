@@ -276,6 +276,53 @@ void BuildT2Rows(::fesql::type::TableDef& table,  // NOLINT
         rows.push_back(Row(ptr, total_size));
     }
 }
+TEST_F(MemCataLogTest, row_test) {
+    std::vector<Row> rows;
+    ::fesql::type::TableDef table;
+    BuildRows(table, rows);
+
+    codec::RowView row_view(table.columns());
+    row_view.Reset(rows[3].buf());
+    std::string str = "4444";
+    std::string str0 = "0";
+    {
+        char* s;
+        uint32_t size;
+        row_view.GetString(0, &s, &size);
+        ASSERT_EQ("1", std::string(s, size));
+    }
+    {
+        int32_t value;
+        row_view.GetInt32(1, &value);
+        ASSERT_EQ(4, value);
+    }
+    {
+        int16_t value;
+        row_view.GetInt16(2, &value);
+        ASSERT_EQ(55, value);
+    }
+    {
+        float value;
+        row_view.GetFloat(3, &value);
+        ASSERT_EQ(4.4f, value);
+    }
+    {
+        double value;
+        row_view.GetDouble(4, &value);
+        ASSERT_EQ(44.4, value);
+    }
+    {
+        int64_t value;
+        row_view.GetInt64(5, &value);
+        ASSERT_EQ(2, value);
+    }
+    {
+        char* s;
+        uint32_t size;
+        row_view.GetString(6, &s, &size);
+        ASSERT_EQ("4444", std::string(s, size));
+    }
+}
 TEST_F(MemCataLogTest, mem_table_handler_test) {
     std::vector<Row> rows;
     ::fesql::type::TableDef table;
@@ -284,17 +331,6 @@ TEST_F(MemCataLogTest, mem_table_handler_test) {
     for (auto row : rows) {
         table_handler.AddRow(row);
     }
-
-    std::vector<Row> rows2;
-    ::fesql::type::TableDef table2;
-    BuildT2Rows(table2, rows2);
-    auto table2_handler = std::shared_ptr<MemTableHandler>(
-        new MemTableHandler("t2", "temp", &(table2.columns())));
-    for (auto row : rows) {
-        table2_handler->AddRow(row);
-    }
-    table_handler.AddOtherTable(table2_handler);
-    ASSERT_EQ(1, table_handler.GetOtherTableCnt());
 }
 TEST_F(MemCataLogTest, mem_segment_handler_test) {
     std::vector<Row> rows;
@@ -500,18 +536,6 @@ TEST_F(MemCataLogTest, mem_row_handler_test) {
         MemRowHandler row_hander(row, &table.columns());
         ASSERT_EQ(row, row_hander.GetValue());
     }
-
-    // Add Row test
-    MemRowHandler multi_row_handler(rows[0], &table.columns());
-    for (size_t i = 1; i < rows.size(); i++) {
-        multi_row_handler.AddRow(rows[i]);
-    }
-
-    ASSERT_EQ(rows[0], multi_row_handler.GetRowAt(0));
-    ASSERT_EQ(rows[1], multi_row_handler.GetRowAt(1));
-    ASSERT_EQ(rows[2], multi_row_handler.GetRowAt(2));
-    ASSERT_EQ(rows[3], multi_row_handler.GetRowAt(3));
-    ASSERT_EQ(rows[4], multi_row_handler.GetRowAt(4));
 }
 
 }  // namespace vm

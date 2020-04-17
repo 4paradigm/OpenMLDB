@@ -17,71 +17,58 @@
 #include <vector>
 #include "codec/type_codec.h"
 #include "glog/logging.h"
+#include "base/slice.h"
 namespace fesql {
 namespace codec {
+using fesql::base::Slice;
 class Row {
  public:
-    Row() : buf_(nullptr), size_(0), need_free_(false) {}
-    Row(int8_t *d, size_t n) : buf_(d), size_(n), need_free_(false) {}
-    Row(int8_t *d, size_t n, bool need_free)
-        : buf_(d), size_(n), need_free_(need_free) {}
-    Row(const char *d, size_t n)
-        : buf_(reinterpret_cast<int8_t *>(const_cast<char *>(d))),
-          size_(n),
-          need_free_(false) {}
-    Row(const char *d, size_t n, bool need_free)
-        : buf_(reinterpret_cast<int8_t *>(const_cast<char *>(d))),
-          size_(n),
-          need_free_(need_free) {}
-    Row(Row &s) : buf_(s.buf()), size_(s.size()), need_free_(false) {}
-    Row(const Row &s) : buf_(s.buf()), size_(s.size()), need_free_(false) {}
-    Row(const Row &s, bool need_free)
-        : buf_(s.buf()), size_(s.size()), need_free_(need_free) {}
-    explicit Row(const std::string &s)
-        : buf_(reinterpret_cast<int8_t *>(const_cast<char *>(s.data()))),
-          size_(s.size()),
-          need_free_(false) {}
+    Row() : slice_() {}
+    Row(int8_t *d, size_t n) : slice_(d, n, false) {}
+    Row(int8_t *d, size_t n, bool need_free) : slice_(d, n, need_free) {}
+    Row(const char *d, size_t n) : slice_(d, n, false) {}
+    Row(const char *d, size_t n, bool need_free) : slice_(d, n, need_free) {}
+    Row(Row &s) : slice_(s.slice_), slices_(s.slices_) {}
+    Row(const Row &s) : slice_(s.slice_), slices_(s.slices_) {}
+    Row(const Slice &s) : slice_(s) {}
+    explicit Row(const std::string &s) : slice_(s) {}
 
-    explicit Row(const char *s)
-        : buf_(reinterpret_cast<int8_t *>(const_cast<char *>(s))),
-          size_(strlen(s)),
-          need_free_(false) {}
-    virtual ~Row() {
-        if (need_free_) {
-            free(buf_);
-        }
-    }
-    inline int8_t *buf() const { return buf_; }
-    inline const char *data() const {
-        return reinterpret_cast<const char *>(buf_);
-    }
-    inline int32_t size() const { return size_; }
+    explicit Row(const char *s) : slice_(s) {}
+    virtual ~Row() {}
+    inline int8_t *buf() const { return slice_.buf(); }
+    inline const char *data() const { return slice_.data(); }
+    inline int32_t size() const { return slice_.size(); }
     // Return true if the length of the referenced data is zero
-    inline bool empty() const { return 0 == size_; }
+    inline bool empty() const { return slice_.empty() && slices_.empty(); }
     // Three-way comparison.  Returns value:
     //   <  0 iff "*this" <  "b",
     //   == 0 iff "*this" == "b",
     //   >  0 iff "*this" >  "b"
     int compare(const Row &b) const;
-    int8_t *buf_;
-    int32_t size_;
-    bool need_free_;
+    Slice slice_;
+    std::vector<Slice> slices_;
 };
 inline int Row::compare(const Row &b) const {
-    const size_t min_len = (size_ < b.size_) ? size_ : b.size_;
-    int r = memcmp(buf_, b.buf_, min_len);
-    if (r == 0) {
-        if (size_ < b.size_)
-            r = -1;
-        else if (size_ > b.size_)
-            r = +1;
+    int r = slice_.compare(b.slice_);
+    if (r != 0) {
+        return r;
     }
-    return r;
+    size_t this_len = slices_.size();
+    size_t b_len = b.slices_.size();
+    size_t min_len = this_len < b_len ? this_len : b_len;
+    for (size_t i = 0; i < min_len; i++) {
+        int slice_compared = slices_[i].compare(b.slices_[i]);
+        if (0 == slice_compared) {
+            continue;
+        }
+        return slice_compared;
+    }
+
+    return this_len < b_len ? -1 : this_len > b_len ? +1 : 0;
 }
 
 inline bool operator==(const Row &x, const Row &y) {
-    return ((x.size() == y.size()) &&
-            (memcmp(x.buf(), y.buf(), x.size()) == 0));
+    return x.slice_ == y.slice_ && x.slices_ == y.slices_;
 }
 
 inline bool operator!=(const Row &x, const Row &y) { return !(x == y); }
