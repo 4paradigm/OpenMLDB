@@ -159,7 +159,7 @@ private:
     rocksdb::Iterator* GetIteratorAndSeek(uint32_t idx, const rocksdb::Slice key_slice); 
     rocksdb::Iterator* GetRocksdbIterator(uint32_t idx); 
     bool PutDB(const std::string& pk, const char* data, uint32_t size);
-    void UpdateInternel(const ::rtidb::api::Columns& cd_columns, 
+    void CreateSchema(const ::rtidb::api::Columns& cd_columns, 
             std::map<std::string, int>& cd_idx_map, 
             Schema& condition_schema);
     bool UpdateDB(const std::map<std::string, int>& cd_idx_map, 
@@ -200,7 +200,7 @@ private:
 
     std::map<uint64_t, std::shared_ptr<SnapshotInfo>> snapshots_;
     uint64_t snapshot_index_; // 0 is invalid snapshot_index
-    ::rtidb::base::RowView* row_view_;
+    ::rtidb::base::RowView row_view_;
 };
 
 }

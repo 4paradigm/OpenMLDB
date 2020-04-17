@@ -1407,6 +1407,16 @@ TEST_F(NameServerImplTest, CreateRelationalTable) {
     meta2->set_endpoint("127.0.0.1:9531");
     meta2->set_is_leader(true);
 
+    ::rtidb::common::ColumnDesc* col = table_info->add_column_desc_v1();
+    col->set_name("card");
+    col->set_data_type(::rtidb::type::kBigInt);
+    ::rtidb::common::ColumnDesc* col2 = table_info->add_column_desc_v1();
+    col2->set_name("mcc");
+    col2->set_data_type(::rtidb::type::kVarchar);
+    ::rtidb::common::ColumnKey* ck = table_info->add_column_key();
+    ck->set_index_name("card");
+    ck->add_col_name("card");
+
     ok = name_server_client.SendRequest(&::rtidb::nameserver::NameServer_Stub::CreateTable,
             &request, &response, FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);

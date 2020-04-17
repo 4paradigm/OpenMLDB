@@ -121,8 +121,8 @@ std::shared_ptr<ColumnDef> TableColumn::GetColumn(uint32_t idx) {
 
 std::shared_ptr<ColumnDef> TableColumn::GetColumn(const std::string& name) {
     auto map = std::atomic_load_explicit(&column_map_, std::memory_order_relaxed);
-    auto it = (*map).find(name);
-    if (it != (*map).end()) {
+    auto it = map->find(name);
+    if (it != map->end()) {
         return it->second;
     } else {
         return std::shared_ptr<ColumnDef>();
