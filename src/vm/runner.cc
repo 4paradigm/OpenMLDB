@@ -447,7 +447,7 @@ int64_t Runner::GetColumnInt64(RowView* row_view, int key_idx,
     return key;
 }
 std::shared_ptr<DataHandler> Runner::TableGroup(
-    const std::shared_ptr<DataHandler> table, const KeyGenerator& key_gen) {
+    const std::shared_ptr<DataHandler> table, KeyGenerator& key_gen) {
     if (!key_gen.Valid()) {
         return table;
     }
@@ -470,8 +470,8 @@ std::shared_ptr<DataHandler> Runner::TableGroup(
     return output_partitions;
 }
 std::shared_ptr<DataHandler> Runner::PartitionGroup(
-    const std::shared_ptr<DataHandler> table, const KeyGenerator& key_gen_) {
-    if (key_gen_.Valid()) {
+    const std::shared_ptr<DataHandler> table, KeyGenerator& key_gen) {
+    if (key_gen.Valid()) {
         return table;
     }
 
@@ -492,7 +492,7 @@ std::shared_ptr<DataHandler> Runner::PartitionGroup(
         auto segment_iter = iter->GetValue();
         segment_iter->SeekToFirst();
         while (segment_iter->Valid()) {
-            std::string keys = key_gen_.Gen(segment_iter->GetValue());
+            std::string keys = key_gen.Gen(segment_iter->GetValue());
             output_partitions->AddRow(keys, segment_iter->GetKey(),
                                       segment_iter->GetValue());
             segment_iter->Next();
@@ -503,7 +503,7 @@ std::shared_ptr<DataHandler> Runner::PartitionGroup(
 }
 
 std::shared_ptr<DataHandler> Runner::PartitionSort(
-    std::shared_ptr<DataHandler> table, const OrderGenerator& order_gen,
+    std::shared_ptr<DataHandler> table, OrderGenerator& order_gen,
     bool is_asc) {
     if (!table) {
         return std::shared_ptr<DataHandler>();
@@ -1004,21 +1004,29 @@ std::shared_ptr<DataHandler> AggRunner::Run(RunnerContext& ctx) {
     return row_handler;
 }
 
-const std::string KeyGenerator::Gen(const Row& row) const {
+const std::string KeyGenerator::Gen(const Row& row) {
     Row key_row = Runner::RowProject(fn_, row, true);
-    std::string key_str = Runner::GenerateKeys(&row_view_, fn_schema_, idxs_);
-    return key_str;
+    std::string keys = "";
+    for (auto pos : idxs_) {
+        std::string key = Runner::GetColumnString(&row_view_, pos,
+                                                  fn_schema_.Get(pos).type());
+        if (!keys.empty()) {
+            keys.append("|");
+        }
+        keys.append(key);
+    }
+    return keys;
 }
 
-const bool ConditionGenerator::Gen(const Row& row) const {
+const bool ConditionGenerator::Gen(const Row& row) {
     Row cond_row = Runner::RowProject(fn_, row, true);
     return Runner::GetColumnBool(&row_view_, idxs_[0],
                                  fn_schema_.Get(idxs_[0]).type());
 }
-const Row ProjectGenerator::Gen(const Row& row) const {
+const Row ProjectGenerator::Gen(const Row& row) {
     return Runner::RowProject(fn_, row, false);
 }
-const Row AggGenerator::Gen(std::shared_ptr<TableHandler> table) const {
+const Row AggGenerator::Gen(std::shared_ptr<TableHandler> table) {
     auto iter = table->GetIterator();
     iter->SeekToFirst();
     if (!iter->Valid()) {
@@ -1040,7 +1048,7 @@ const Row AggGenerator::Gen(std::shared_ptr<TableHandler> table) const {
     return Row(buf, RowView::GetSize(buf));
 }
 const Row WindowGenerator::Gen(const uint64_t key, const Row row,
-                               Window* window) const {
+                               Window* window) {
     return Runner::WindowProject(fn_, key, row, window);
 }
 }  // namespace vm

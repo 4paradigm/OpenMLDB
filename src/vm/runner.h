@@ -53,21 +53,21 @@ class ProjectGenerator : public FnGenerator {
  public:
     ProjectGenerator(const FnInfo& info) : FnGenerator(info) {}
     virtual ~ProjectGenerator() {}
-    const Row Gen(const Row& row) const;
+    const Row Gen(const Row& row);
 };
 
 class AggGenerator : public FnGenerator {
  public:
     AggGenerator(const FnInfo& info) : FnGenerator(info) {}
     virtual ~AggGenerator() {}
-    const Row Gen(std::shared_ptr<TableHandler> table) const;
+    const Row Gen(std::shared_ptr<TableHandler> table);
 };
 
 class WindowGenerator : public FnGenerator {
  public:
     WindowGenerator(const FnInfo& info) : FnGenerator(info) {}
     virtual ~WindowGenerator() {}
-    const Row Gen(const uint64_t key, const Row row, Window* window) const;
+    const Row Gen(const uint64_t key, const Row row, Window* window);
 };
 
 class KeyGenerator : public FnGenerator {
@@ -75,7 +75,7 @@ class KeyGenerator : public FnGenerator {
     KeyGenerator(const FnInfo& info, const std::vector<int32_t> idxs)
         : FnGenerator(info), idxs_(idxs) {}
     virtual ~KeyGenerator() {}
-    const std::string Gen(const Row& row) const;
+    const std::string Gen(const Row& row);
     const std::vector<int32_t> idxs_;
 };
 
@@ -84,7 +84,7 @@ class OrderGenerator : public FnGenerator {
     OrderGenerator(const FnInfo& info, const std::vector<int32_t> idxs)
         : FnGenerator(info), idxs_(idxs) {}
     virtual ~OrderGenerator() {}
-    const int64_t Gen(const Row& row) const;
+    const int64_t Gen(const Row& row);
     const std::vector<int32_t> idxs_;
 };
 
@@ -93,7 +93,7 @@ class ConditionGenerator : public FnGenerator {
     ConditionGenerator(const FnInfo& info, const std::vector<int32_t> idxs)
         : FnGenerator(info), idxs_(idxs) {}
     virtual ~ConditionGenerator() {}
-    const bool Gen(const Row& row) const;
+    const bool Gen(const Row& row);
     const std::vector<int32_t> idxs_;
 };
 class Runner {
@@ -130,13 +130,12 @@ class Runner {
 
  protected:
     std::shared_ptr<DataHandler> TableGroup(
-        const std::shared_ptr<DataHandler> table, const KeyGenerator& key_gen);
+        const std::shared_ptr<DataHandler> table, KeyGenerator& key_gen);
     std::shared_ptr<DataHandler> PartitionGroup(
-        const std::shared_ptr<DataHandler> partitions,
-        const KeyGenerator& key_gen);
+        const std::shared_ptr<DataHandler> partitions, KeyGenerator& key_gen);
 
     std::shared_ptr<DataHandler> PartitionSort(
-        std::shared_ptr<DataHandler> table, const OrderGenerator& order_gen,
+        std::shared_ptr<DataHandler> table, OrderGenerator& order_gen,
         const bool is_asc);
     std::shared_ptr<DataHandler> TableSort(std::shared_ptr<DataHandler> table,
                                            OrderGenerator order_gen,
@@ -200,14 +199,14 @@ class FilterRunner : public Runner {
     }
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
     const std::vector<int32_t> idxs_;
-    const ConditionGenerator cond_gen_;
+    ConditionGenerator cond_gen_;
 };
 class OrderRunner : public Runner {
  public:
     OrderRunner(const int32_t id, const int32_t limit_cnt,
                 const FnInfo& fn_info, const std::vector<int32_t>& idxs,
                 const bool is_asc)
-        : Runner(id, limit_cnt), is_asc_(is_asc), order_gen_(fn_info, idxs) {}
+        : Runner(id, limit_cnt), order_gen_(fn_info, idxs), is_asc_(is_asc) {}
     ~OrderRunner() {}
     virtual void Print(std::ostream& output, const std::string& tab) const {
         output << tab << "[" << id_ << "]"
@@ -217,7 +216,6 @@ class OrderRunner : public Runner {
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
     OrderGenerator order_gen_;
     const bool is_asc_;
-    const std::vector<int32_t> idxs_;
 };
 
 class GroupAndSortRunner : public Runner {
@@ -239,8 +237,8 @@ class GroupAndSortRunner : public Runner {
     }
 
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
-    const KeyGenerator group_gen_;
-    const OrderGenerator order_gen_;
+    KeyGenerator group_gen_;
+    OrderGenerator order_gen_;
     const bool is_asc_;
 };
 
@@ -257,7 +255,7 @@ class TableProjectRunner : public Runner {
     }
 
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
-    const ProjectGenerator project_gen_;
+    ProjectGenerator project_gen_;
 };
 
 class RowProjectRunner : public Runner {
@@ -272,7 +270,7 @@ class RowProjectRunner : public Runner {
         Runner::Print(output, tab);
     }
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
-    const ProjectGenerator project_gen_;
+    ProjectGenerator project_gen_;
 };
 
 class GroupAggRunner : public Runner {
@@ -287,7 +285,7 @@ class GroupAggRunner : public Runner {
         Runner::Print(output, tab);
     }
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
-    const AggGenerator agg_gen_;
+    AggGenerator agg_gen_;
 };
 
 class AggRunner : public Runner {
@@ -301,7 +299,7 @@ class AggRunner : public Runner {
         Runner::Print(output, tab);
     }
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
-    const AggGenerator agg_gen_;
+    AggGenerator agg_gen_;
 };
 class WindowAggRunner : public Runner {
  public:
@@ -319,7 +317,7 @@ class WindowAggRunner : public Runner {
         Runner::Print(output, tab);
     }
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
-    const WindowGenerator window_gen_;
+    WindowGenerator window_gen_;
     const int64_t start_offset_;
     const int64_t end_offset_;
 };
@@ -347,9 +345,9 @@ class RequestUnionRunner : public Runner {
     }
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
     const bool is_asc_;
-    const KeyGenerator group_gen_;
-    const OrderGenerator order_gen_;
-    const OrderGenerator ts_gen_;
+    KeyGenerator group_gen_;
+    OrderGenerator order_gen_;
+    OrderGenerator ts_gen_;
     const int64_t start_offset_;
     const int64_t end_offset_;
 };
@@ -367,7 +365,7 @@ class IndexSeekRunner : public Runner {
         Runner::Print(output, tab);
     }
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
-    const KeyGenerator key_gen_;
+    KeyGenerator key_gen_;
 };
 
 class LastJoinRunner : public Runner {
@@ -387,8 +385,8 @@ class LastJoinRunner : public Runner {
         Runner::Print(output, tab);
     }
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
-    const ConditionGenerator condition_gen_;
-    const KeyGenerator left_key_gen_;
+    ConditionGenerator condition_gen_;
+    KeyGenerator left_key_gen_;
     const Row RowLastJoin(const Row& left_row, RowIterator* right_iter);
 };
 

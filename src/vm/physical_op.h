@@ -437,7 +437,7 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
         : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false, true),
           join_type_(join_type),
           condition_(condition),
-          keys_(keys) {
+          left_keys_(keys) {
         output_type_ = kSchemaTypeTable;
         InitSchema();
     }

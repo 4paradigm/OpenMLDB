@@ -1494,7 +1494,7 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
                     node_manager_->RegisterNode(new_order_op);
                     PhysicalJoinNode* new_join_op = new PhysicalJoinNode(
                         new_order_op, join_op->GetProducers()[1],
-                        join_op->join_type_, join_op->condition_);
+                        join_op->join_type_, join_op->condition_, nullptr);
                     node_manager_->RegisterNode(new_order_op);
                     *output = new_join_op;
                     return true;
@@ -1543,7 +1543,7 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
                     node_manager_->RegisterNode(new_group_sort_op);
                     PhysicalJoinNode* new_join_op = new PhysicalJoinNode(
                         new_group_sort_op, join_op->GetProducers()[1],
-                        join_op->join_type_, join_op->condition_);
+                        join_op->join_type_, join_op->condition_, nullptr);
                     node_manager_->RegisterNode(new_join_op);
                     *output = new_join_op;
                     return true;
@@ -1703,7 +1703,7 @@ bool RequestModeransformer::TransformJoinOp(const node::JoinPlanNode* node,
         return false;
     }
     *output = new PhysicalRequestJoinNode(left, right, node->join_type_,
-                                          node->condition_);
+                                          node->condition_, nullptr);
     node_manager_->RegisterNode(*output);
     return true;
 }
