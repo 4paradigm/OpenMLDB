@@ -30,6 +30,10 @@ class Row {
     Row(const char *d, size_t n, bool need_free) : slice_(d, n, need_free) {}
     Row(Row &s) : slice_(s.slice_), slices_(s.slices_) {}
     Row(const Row &s) : slice_(s.slice_), slices_(s.slices_) {}
+    Row(const Row &major, const Row &secondary) : slice_(major.slice_) {
+        Append(major.slices_);
+        Append(secondary);
+    }
     explicit Row(const Slice &s) : slice_(s) {}
     explicit Row(const std::string &s) : slice_(s) {}
 
@@ -45,14 +49,16 @@ class Row {
     //   == 0 iff "*this" == "b",
     //   >  0 iff "*this" >  "b"
     int compare(const Row &b) const;
-    void Append(const Row &b) {
-        slices_.push_back(b.slice_);
-        if (!b.slices_.empty()) {
-            for (auto iter = b.slices_.cbegin(); iter != b.slices_.cend();
-                 iter++) {
+    void Append(const std::vector<Slice> &slices) {
+        if (!slices.empty()) {
+            for (auto iter = slices_.cbegin(); iter != slices_.cend(); iter++) {
                 slices_.push_back(*iter);
             }
         }
+    }
+    void Append(const Row &b) {
+        slices_.push_back(b.slice_);
+        Append(b.slices_);
     }
     int8_t **GetRowPtrs() const {
         if (slices_.empty()) {

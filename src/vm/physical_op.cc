@@ -147,12 +147,6 @@ void PhysicalWindowAggrerationNode::Print(std::ostream& output,
     PrintChildren(output, tab);
 }
 
-void PhysicalLoopsNode::Print(std::ostream& output,
-                              const std::string& tab) const {
-    PhysicalOpNode::Print(output, tab);
-    output << "\n";
-    PrintChildren(output, tab);
-}
 void PhysicalJoinNode::Print(std::ostream& output,
                              const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);

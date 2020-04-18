@@ -290,18 +290,64 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
                                 true, fn_name, &fn_schema, status);
                 join_op->SetConditionIdxs({0});
             }
+            // Gen left key function
+            {
+                node::ExprListNode expr_list;
+                std::vector<int32_t> keys_idxs;
+                int32_t idx = 0;
+                if (!node::ExprListNullOrEmpty(join_op->left_keys_)) {
+                    for (auto expr : join_op->left_keys_->children_) {
+                        expr_list.AddChild(expr);
+                        keys_idxs.push_back(idx++);
+                    }
+                }
+                if (!expr_list.children_.empty()) {
+                    // Gen left table key
+                    FnInfo left_key_fn_info;
+                    CodeGenExprList(
+                        (node->GetProducers()[0]->output_name_schema_list_),
+                        &expr_list, true, left_key_fn_info.fn_name_,
+                        &left_key_fn_info.fn_schema_, status);
+                    join_op->SetLeftKeyInfo(left_key_fn_info);
+                }
+            }
             break;
         }
         case kPhysicalOpRequestJoin: {
             auto request_join_op = dynamic_cast<PhysicalRequestJoinNode*>(node);
-            node::ExprListNode expr_list;
-            expr_list.AddChild(
-                const_cast<node::ExprNode*>(request_join_op->condition_));
-            if (!node::ExprListNullOrEmpty(&expr_list)) {
-                CodeGenExprList(node->output_name_schema_list_, &expr_list,
-                                true, fn_name, &fn_schema, status);
-                request_join_op->SetConditionIdxs({0});
+            {
+                node::ExprListNode expr_list;
+                expr_list.AddChild(
+                    const_cast<node::ExprNode*>(request_join_op->condition_));
+                if (!node::ExprListNullOrEmpty(&expr_list)) {
+                    CodeGenExprList(node->output_name_schema_list_, &expr_list,
+                                    true, fn_name, &fn_schema, status);
+                    request_join_op->SetConditionIdxs({0});
+                }
             }
+            // Gen left key function
+            {
+                node::ExprListNode expr_list;
+                std::vector<int32_t> keys_idxs;
+                int32_t idx = 0;
+                if (!node::ExprListNullOrEmpty(request_join_op->left_keys_)) {
+                    for (auto expr : request_join_op->left_keys_->children_) {
+                        expr_list.AddChild(expr);
+                        keys_idxs.push_back(idx++);
+                    }
+                }
+                if (!expr_list.children_.empty()) {
+                    // Gen left table key
+                    FnInfo left_key_fn_info;
+                    CodeGenExprList(
+                        (node->GetProducers()[0]->output_name_schema_list_),
+                        &expr_list, true, left_key_fn_info.fn_name_,
+                        &left_key_fn_info.fn_schema_, status);
+                    request_join_op->SetLeftKeysIdxs(keys_idxs);
+                    request_join_op->SetLeftKeyInfo(left_key_fn_info);
+                }
+            }
+
             break;
         }
         case kPhysicalOpRequestUnoin: {
@@ -512,8 +558,8 @@ bool BatchModeTransformer::TransformJoinOp(const node::JoinPlanNode* node,
     if (!TransformPlanOp(node->GetChildren()[1], &right, status)) {
         return false;
     }
-    *output =
-        new PhysicalJoinNode(left, right, node->join_type_, node->condition_);
+    *output = new PhysicalJoinNode(left, right, node->join_type_,
+                                   node->condition_, nullptr);
     node_manager_->RegisterNode(*output);
     return true;
 }
@@ -1409,7 +1455,7 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
                     join_op->GetProducers()[0], group_expr);
                 PhysicalJoinNode* new_join_op = new PhysicalJoinNode(
                     new_group_op, join_op->GetProducers()[1],
-                    join_op->join_type_, join_op->condition_);
+                    join_op->join_type_, join_op->condition_, nullptr);
                 node_manager_->RegisterNode(new_group_op);
                 node_manager_->RegisterNode(new_join_op);
                 *output = new_join_op;
@@ -1593,13 +1639,13 @@ bool RequestModeransformer::TransformProjecPlantOp(
     } else {
         auto iter = ops.cbegin();
 
-        PhysicalOpNode* join = new PhysicalJoinNode(
-            (*iter), *(++iter), ::fesql::node::kJoinTypeConcat, nullptr);
+        PhysicalOpNode* join = new PhysicalRequestJoinNode(
+            (*iter), *(++iter), ::fesql::node::kJoinTypeConcat);
         node_manager_->RegisterNode(join);
         iter++;
         for (; iter != ops.cend(); iter++) {
-            join = new PhysicalJoinNode(
-                join, *iter, ::fesql::node::kJoinTypeConcat, nullptr);
+            join = new PhysicalRequestJoinNode(join, *iter,
+                                               ::fesql::node::kJoinTypeConcat);
             node_manager_->RegisterNode(join);
         }
 
