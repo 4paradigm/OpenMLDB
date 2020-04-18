@@ -450,12 +450,16 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
     void SetConditionIdxs(const std::vector<int32_t> &idxs) {
         condition_idxs_ = idxs;
     }
-    void SetLeftKeysIdxs(const std::vector<int32_t> &idxs) { left_keys_idxs_ = idxs; }
-    const std::vector<int32_t> &GetLeftKeysIdxs() const { return left_keys_idxs_; }
+    void SetLeftKeysIdxs(const std::vector<int32_t> &idxs) {
+        left_keys_idxs_ = idxs;
+    }
+    const std::vector<int32_t> &GetLeftKeysIdxs() const {
+        return left_keys_idxs_;
+    }
     const std::vector<int32_t> &GetConditionIdxs() const {
         return condition_idxs_;
     }
-    void SetLeftKeyInfo(FnInfo &fn_info) { left_key_fn_info_ = fn_info; }
+    void SetLeftKeyInfo(const FnInfo &fn_info) { left_key_fn_info_ = fn_info; }
     const FnInfo &GetLeftKeyFnInfo() const { return left_key_fn_info_; }
 
  private:
@@ -508,7 +512,7 @@ class PhysicalRequestJoinNode : public PhysicalBinaryNode {
     const std::vector<int32_t> &GetConditionIdxs() const {
         return condition_idxs_;
     }
-    void SetLeftKeyInfo(FnInfo &fn_info) { left_key_fn_info_ = fn_info; }
+    void SetLeftKeyInfo(const FnInfo &fn_info) { left_key_fn_info_ = fn_info; }
     const FnInfo &GetLeftKeyFnInfo() const { return left_key_fn_info_; }
 
  private:

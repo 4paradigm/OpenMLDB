@@ -252,7 +252,6 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
     }
 }
 
-
 Row Runner::RowProject(const int8_t* fn, const Row row, const bool need_free) {
     if (row.empty()) {
         return Row();
@@ -1040,7 +1039,7 @@ const Row WindowGenerator::Gen(const uint64_t key, const Row row,
     }
     window->BufferData(key, row);
     int32_t (*udf)(int8_t**, int8_t**, int32_t*, int8_t**) =
-    (int32_t(*)(int8_t**, int8_t**, int32_t*, int8_t**))(fn_);
+        (int32_t(*)(int8_t**, int8_t**, int32_t*, int8_t**))(fn_);
     int8_t* out_buf = nullptr;
     int8_t* row_ptrs[1] = {row.buf()};
     int8_t* window_ptrs[1] = {reinterpret_cast<int8_t*>(window)};

@@ -40,7 +40,7 @@ class RunnerContext {
 
 class FnGenerator {
  public:
-    FnGenerator(const FnInfo& info)
+    explicit FnGenerator(const FnInfo& info)
         : fn_(info.fn_), fn_schema_(info.fn_schema_), row_view_(fn_schema_) {}
     virtual ~FnGenerator() {}
     inline const bool Valid() const { return fn_ == nullptr; }
@@ -51,21 +51,21 @@ class FnGenerator {
 
 class ProjectGenerator : public FnGenerator {
  public:
-    ProjectGenerator(const FnInfo& info) : FnGenerator(info) {}
+    explicit ProjectGenerator(const FnInfo& info) : FnGenerator(info) {}
     virtual ~ProjectGenerator() {}
     const Row Gen(const Row& row);
 };
 
 class AggGenerator : public FnGenerator {
  public:
-    AggGenerator(const FnInfo& info) : FnGenerator(info) {}
+    explicit AggGenerator(const FnInfo& info) : FnGenerator(info) {}
     virtual ~AggGenerator() {}
     const Row Gen(std::shared_ptr<TableHandler> table);
 };
 
 class WindowGenerator : public FnGenerator {
  public:
-    WindowGenerator(const FnInfo& info) : FnGenerator(info) {}
+    explicit WindowGenerator(const FnInfo& info) : FnGenerator(info) {}
     virtual ~WindowGenerator() {}
     const Row Gen(const uint64_t key, const Row row, Window* window);
 };
@@ -126,15 +126,18 @@ class Runner {
     static Row RowProject(const int8_t* fn, const Row row,
                           const bool need_free = false);
     static std::shared_ptr<DataHandler> TableGroup(
-        const std::shared_ptr<DataHandler> table, KeyGenerator& key_gen);
+        const std::shared_ptr<DataHandler> table,
+        KeyGenerator& key_gen);  // NOLINT
     static std::shared_ptr<DataHandler> PartitionGroup(
-        const std::shared_ptr<DataHandler> partitions, KeyGenerator& key_gen);
+        const std::shared_ptr<DataHandler> partitions,
+        KeyGenerator& key_gen);  // NOLINT
 
     static std::shared_ptr<DataHandler> PartitionSort(
-        std::shared_ptr<DataHandler> table, OrderGenerator& order_gen,
+        std::shared_ptr<DataHandler> table,
+        OrderGenerator& order_gen,  // NOLINT
         const bool is_asc);
     static std::shared_ptr<DataHandler> TableSort(
-        std::shared_ptr<DataHandler> table, OrderGenerator order_gen,
+        std::shared_ptr<DataHandler> table, OrderGenerator order_gen,  // NOLINT
         const bool is_asc);
 
  protected:
@@ -417,7 +420,6 @@ class LimitRunner : public Runner {
     }
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
 };
-;
 class RunnerBuilder {
  public:
     RunnerBuilder() : id_(0) {}
