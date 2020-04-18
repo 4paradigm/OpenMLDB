@@ -118,28 +118,26 @@ class Runner {
     virtual std::shared_ptr<DataHandler> Run(RunnerContext& ctx) = 0;  // NOLINT
     virtual std::shared_ptr<DataHandler> RunWithCache(
         RunnerContext& ctx);  // NOLINT
-    static Row RowProject(const int8_t* fn, const Row row,
-                          const bool need_free = false);
-    static Row WindowProject(const int8_t* fn, const uint64_t key,
-                             const Row row, Window* window);
     static std::string GetColumnString(RowView* view, int pos, type::Type type);
     static int64_t GetColumnInt64(RowView* view, int pos, type::Type type);
     static bool GetColumnBool(RowView* view, int idx, type::Type type);
     static std::string GenerateKeys(RowView* row_view, const Schema& schema,
                                     const std::vector<int>& idxs);
-
- protected:
-    std::shared_ptr<DataHandler> TableGroup(
+    static Row RowProject(const int8_t* fn, const Row row,
+                          const bool need_free = false);
+    static std::shared_ptr<DataHandler> TableGroup(
         const std::shared_ptr<DataHandler> table, KeyGenerator& key_gen);
-    std::shared_ptr<DataHandler> PartitionGroup(
+    static std::shared_ptr<DataHandler> PartitionGroup(
         const std::shared_ptr<DataHandler> partitions, KeyGenerator& key_gen);
 
-    std::shared_ptr<DataHandler> PartitionSort(
+    static std::shared_ptr<DataHandler> PartitionSort(
         std::shared_ptr<DataHandler> table, OrderGenerator& order_gen,
         const bool is_asc);
-    std::shared_ptr<DataHandler> TableSort(std::shared_ptr<DataHandler> table,
-                                           OrderGenerator order_gen,
-                                           const bool is_asc);
+    static std::shared_ptr<DataHandler> TableSort(
+        std::shared_ptr<DataHandler> table, OrderGenerator order_gen,
+        const bool is_asc);
+
+ protected:
     bool need_cache_;
     std::vector<Runner*> producers_;
 };

@@ -252,25 +252,6 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
     }
 }
 
-Row Runner::WindowProject(const int8_t* fn, uint64_t key, const Row row,
-                          Window* window) {
-    if (row.empty()) {
-        return row;
-    }
-    window->BufferData(key, row);
-    int32_t (*udf)(int8_t**, int8_t**, int32_t*, int8_t**) =
-        (int32_t(*)(int8_t**, int8_t**, int32_t*, int8_t**))(fn);
-    int8_t* out_buf = nullptr;
-    int8_t* row_ptrs[1] = {row.buf()};
-    int8_t* window_ptrs[1] = {reinterpret_cast<int8_t*>(window)};
-    int32_t row_sizes[1] = {static_cast<int32_t>(row.size())};
-    uint32_t ret = udf(row_ptrs, window_ptrs, row_sizes, &out_buf);
-    if (ret != 0) {
-        LOG(WARNING) << "fail to run udf " << ret;
-        return Row();
-    }
-    return Row(reinterpret_cast<char*>(out_buf), RowView::GetSize(out_buf));
-}
 
 Row Runner::RowProject(const int8_t* fn, const Row row, const bool need_free) {
     if (row.empty()) {
@@ -1017,7 +998,12 @@ const std::string KeyGenerator::Gen(const Row& row) {
     }
     return keys;
 }
-
+const int64_t OrderGenerator::Gen(const Row& row) {
+    Row order_row = Runner::RowProject(fn_, row, true);
+    row_view_.Reset(order_row.buf());
+    return Runner::GetColumnInt64(&row_view_, idxs_[0],
+                                  fn_schema_.Get(idxs_[0]).type());
+}
 const bool ConditionGenerator::Gen(const Row& row) {
     Row cond_row = Runner::RowProject(fn_, row, true);
     return Runner::GetColumnBool(&row_view_, idxs_[0],
@@ -1049,7 +1035,23 @@ const Row AggGenerator::Gen(std::shared_ptr<TableHandler> table) {
 }
 const Row WindowGenerator::Gen(const uint64_t key, const Row row,
                                Window* window) {
-    return Runner::WindowProject(fn_, key, row, window);
+    if (row.empty()) {
+        return row;
+    }
+    window->BufferData(key, row);
+    int32_t (*udf)(int8_t**, int8_t**, int32_t*, int8_t**) =
+    (int32_t(*)(int8_t**, int8_t**, int32_t*, int8_t**))(fn_);
+    int8_t* out_buf = nullptr;
+    int8_t* row_ptrs[1] = {row.buf()};
+    int8_t* window_ptrs[1] = {reinterpret_cast<int8_t*>(window)};
+    int32_t row_sizes[1] = {static_cast<int32_t>(row.size())};
+    uint32_t ret = udf(row_ptrs, window_ptrs, row_sizes, &out_buf);
+    if (ret != 0) {
+        LOG(WARNING) << "fail to run udf " << ret;
+        return Row();
+    }
+    return Row(reinterpret_cast<char*>(out_buf), RowView::GetSize(out_buf));
 }
+
 }  // namespace vm
 }  // namespace fesql
