@@ -45,7 +45,7 @@ ExitOnError ExitOnErr;
 
 namespace fesql {
 namespace vm {
-
+Runner* GetFirstRunnerOfType(Runner* root, const RunnerType type);
 void BuildTableDef(::fesql::type::TableDef& table_def) {  // NOLINT
     table_def.set_name("t1");
     table_def.set_catalog("db");
@@ -76,6 +76,21 @@ void BuildTableDef(::fesql::type::TableDef& table_def) {  // NOLINT
         column->set_type(::fesql::type::kInt64);
         column->set_name("col15");
     }
+}
+void BuildBuf(int8_t** buf, uint32_t* size) {
+    ::fesql::type::TableDef table;
+    BuildTableDef(table);
+    codec::RowBuilder builder(table.columns());
+    uint32_t total_size = builder.CalTotalLength(2);
+    int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
+    builder.SetBuffer(ptr, total_size);
+    builder.AppendInt32(32);
+    builder.AppendInt16(16);
+    builder.AppendFloat(2.1f);
+    builder.AppendDouble(3.1);
+    builder.AppendInt64(64);
+    *buf = ptr;
+    *size = total_size;
 }
 class RunnerTest : public ::testing::TestWithParam<std::string> {};
 
@@ -274,6 +289,61 @@ TEST_P(RunnerTest, batch_mode_test) {
     AddTable(catalog, table_def6, table6);
 
     Runner_Check(catalog, sqlstr, true);
+}
+
+Runner* GetFirstRunnerOfType(Runner* root, const RunnerType type) {
+    if (nullptr == root) {
+        return nullptr;
+    }
+
+    if (type == root->type_) {
+        return root;
+    } else {
+        for (auto runner : root->GetProducers()) {
+            auto res = GetFirstRunnerOfType(runner, type);
+            if (nullptr != res) {
+                return res;
+            }
+        }
+        return nullptr;
+    }
+}
+TEST_F(RunnerTest, KeyGeneratorTest) {
+    std::string sqlstr =
+        "select avg(col1), avg(col2) from t1 group by col1, col2 limit 1;";
+    const fesql::base::Status exp_status(::fesql::common::kOk, "ok");
+    boost::to_lower(sqlstr);
+    LOG(INFO) << sqlstr;
+    fesql::type::TableDef table_def;
+    BuildTableDef(table_def);
+    table_def.set_name("t1");
+    std::shared_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, table_def));
+    ::fesql::type::IndexDef* index = table_def.add_indexes();
+    index->set_name("index12");
+    index->add_first_keys("col3");
+    index->add_first_keys("col4");
+    index->set_second_key("col15");
+    auto catalog = BuildCommonCatalog(table_def, table);
+    Runner_Check(catalog, sqlstr, true);
+
+    node::NodeManager nm;
+    SQLCompiler sql_compiler(catalog, &nm);
+    SQLContext sql_context;
+    sql_context.sql = sqlstr;
+    sql_context.db = "db";
+    sql_context.is_batch_mode = true;
+    base::Status compile_status;
+    bool ok = sql_compiler.Compile(sql_context, compile_status);
+    ASSERT_TRUE(ok);
+    ASSERT_TRUE(nullptr != sql_context.plan);
+
+    auto root = GetFirstRunnerOfType(sql_context.runner, kRunnerGroup);
+    auto group_runner = dynamic_cast<GroupRunner*>(root);
+    int8_t* row1 = NULL;
+    uint32_t size1 = 0;
+    BuildBuf(&row1, &size1);
+    ASSERT_EQ("32|16", group_runner->group_gen_.Gen(Row(row1, size1)));
 }
 
 }  // namespace vm

@@ -14,7 +14,6 @@
 #include "vm/mem_catalog.h"
 namespace fesql {
 namespace vm {
-#define MAX_ROW_NUM 20;
 Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
     if (nullptr == node) {
         status.msg = "fail to build runner : physical node is null";
@@ -320,7 +319,7 @@ std::string Runner::GetColumnString(RowView* row_view, int key_idx,
             break;
         }
         default: {
-            LOG(WARNING) << "fail to get partition for "
+            LOG(WARNING) << "fail to get string for "
                             "current row";
             break;
         }
@@ -372,7 +371,7 @@ bool Runner::GetColumnBool(RowView* row_view, int idx, type::Type type) {
             }
         }
         default: {
-            LOG(WARNING) << "fail to get partition for "
+            LOG(WARNING) << "fail to get bool for "
                             "current row";
             break;
         }
@@ -419,7 +418,7 @@ int64_t Runner::GetColumnInt64(RowView* row_view, int key_idx,
             break;
         }
         default: {
-            LOG(WARNING) << "fail to get partition for "
+            LOG(WARNING) << "fail to get int64 for "
                             "current row";
             break;
         }
@@ -451,7 +450,7 @@ std::shared_ptr<DataHandler> Runner::TableGroup(
 }
 std::shared_ptr<DataHandler> Runner::PartitionGroup(
     const std::shared_ptr<DataHandler> table, KeyGenerator& key_gen) {
-    if (key_gen.Valid()) {
+    if (!key_gen.Valid()) {
         return table;
     }
 
@@ -536,7 +535,7 @@ std::shared_ptr<DataHandler> Runner::TableSort(
         return std::shared_ptr<DataHandler>();
     }
 
-    if (order_gen.Valid()) {
+    if (!order_gen.Valid()) {
         return table;
     }
     auto output_table = std::shared_ptr<MemSegmentHandler>(
@@ -734,8 +733,7 @@ std::shared_ptr<DataHandler> RequestLastJoinRunner::Run(
     }
 
     auto left_row = std::dynamic_pointer_cast<RowHandler>(left)->GetValue();
-    auto table = std::dynamic_pointer_cast<TableHandler>(right);
-    RowIterator* right_iter = nullptr;
+    auto right_table = std::dynamic_pointer_cast<TableHandler>(right);
     if (kPartitionHandler == right->GetHanlderType()) {
         if (!left_key_gen_.Valid()) {
             LOG(WARNING)
@@ -743,20 +741,11 @@ std::shared_ptr<DataHandler> RequestLastJoinRunner::Run(
             return fail_ptr;
         }
         auto partition = std::dynamic_pointer_cast<PartitionHandler>(right);
-        auto partition_iter = partition->GetWindowIterator();
         const std::string& key_str = left_key_gen_.Gen(left_row);
-        partition_iter->Seek(key_str);
-        right_iter = partition_iter->GetValue().get();
-    } else {
-        right_iter = table->GetIterator().get();
+        right_table = partition->GetSegment(partition, key_str);
     }
-    if (nullptr == right_iter) {
-        return std::shared_ptr<RowHandler>(
-            new MemRowHandler(Row(left_row, Row())));
-    } else {
-        return std::shared_ptr<RowHandler>(
-            new MemRowHandler(RowLastJoin(left_row, right_iter)));
-    }
+    return std::shared_ptr<RowHandler>(
+        new MemRowHandler(RowLastJoin(left_row, right_table, condition_gen_)));
 }
 
 std::shared_ptr<DataHandler> LastJoinRunner::Run(RunnerContext& ctx) {
@@ -792,43 +781,41 @@ std::shared_ptr<DataHandler> LastJoinRunner::Run(RunnerContext& ctx) {
             const Row& left_row = left_iter->GetValue();
             const std::string& key_str = left_key_gen_.Gen(left_row);
             partition_iter->Seek(key_str);
-            partition->GetSegment(partition, key_str);
-            auto right_iter = partition_iter->GetValue();
-            if (!right_iter) {
-                output_table->AddRow(Row(left_row, Row()));
-            } else {
-                output_table->AddRow(RowLastJoin(left_row, right_iter.get()));
-            }
+            auto right_table = partition->GetSegment(partition, key_str);
+            output_table->AddRow(
+                RowLastJoin(left_row, right_table, condition_gen_));
             left_iter->Next();
         }
     } else {
-        auto table = std::dynamic_pointer_cast<TableHandler>(right);
+        auto right_table = std::dynamic_pointer_cast<TableHandler>(right);
         while (left_iter->Valid()) {
             const Row& left_row = left_iter->GetValue();
-            auto right_iter = table->GetIterator();
-            if (!right_iter) {
-                output_table->AddRow(Row(left_row, Row()));
-            } else {
-                output_table->AddRow(RowLastJoin(left_row, right_iter.get()));
-            }
+            output_table->AddRow(
+                RowLastJoin(left_row, right_table, condition_gen_));
             left_iter->Next();
         }
     }
     return output_table;
 }
-const Row LastJoinRunner::RowLastJoin(const Row& left_row,
-                                      RowIterator* right_iter) {
+const Row Runner::RowLastJoin(const Row& left_row,
+                              std::shared_ptr<TableHandler> right_table,
+                              ConditionGenerator& cond_gen) {
+    if (!right_table) {
+        return Row(left_row, Row());
+    }
+    auto right_iter = right_table->GetIterator();
     if (!right_iter->Valid()) {
         return Row(left_row, Row());
     }
-    if (!condition_gen_.Valid()) {
+    if (!cond_gen.Valid()) {
         return Row(left_row, right_iter->GetValue());
     }
     while (right_iter->Valid()) {
         Row joined_row(left_row, right_iter->GetValue());
-        if (condition_gen_.Gen(joined_row)) {
+        if (cond_gen.Gen(joined_row)) {
             return joined_row;
         }
+        right_iter->Next();
     }
     return Row(left_row, Row());
 }
@@ -986,6 +973,7 @@ std::shared_ptr<DataHandler> AggRunner::Run(RunnerContext& ctx) {
 
 const std::string KeyGenerator::Gen(const Row& row) {
     Row key_row = Runner::RowProject(fn_, row, true);
+    row_view_.Reset(key_row.buf());
     std::string keys = "";
     for (auto pos : idxs_) {
         std::string key = Runner::GetColumnString(&row_view_, pos,
@@ -1005,6 +993,7 @@ const int64_t OrderGenerator::Gen(const Row& row) {
 }
 const bool ConditionGenerator::Gen(const Row& row) {
     Row cond_row = Runner::RowProject(fn_, row, true);
+    row_view_.Reset(cond_row.buf());
     return Runner::GetColumnBool(&row_view_, idxs_[0],
                                  fn_schema_.Get(idxs_[0]).type());
 }

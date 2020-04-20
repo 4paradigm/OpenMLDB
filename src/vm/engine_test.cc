@@ -46,6 +46,7 @@ namespace vm {
 using fesql::codec::ArrayListV;
 using fesql::codec::Row;
 enum EngineRunMode { RUNBATCH, RUNONE };
+
 class EngineTest : public ::testing::TestWithParam<EngineRunMode> {};
 void BuildTableDef(::fesql::type::TableDef& table) {  // NOLINT
     table.set_name("t1");
@@ -599,8 +600,9 @@ TEST_P(EngineTest, test_normal) {
     free(output[1]);
 }
 
-// 无条件last join
-TEST_F(EngineTest, test_last_join) {
+// 无命中索引last join
+TEST_P(EngineTest, test_last_join_no_match_index) {
+    ParamType is_batch_mode = GetParam();
     type::TableDef table_def;
     BuildTableDef(table_def);
     ::fesql::type::IndexDef* index = table_def.add_indexes();
@@ -658,27 +660,199 @@ TEST_F(EngineTest, test_last_join) {
     std::vector<int8_t*> output;
     vm::Schema schema;
 
-    int32_t ret = -1;
-    RequestRunSession session;
-    bool ok = engine.Get(sql, "db", session, get_status);
-    ASSERT_TRUE(ok);
-    schema = session.GetSchema();
-    PrintSchema(schema);
-    std::ostringstream oss;
-    session.GetPhysicalPlan()->Print(oss, "");
-    std::cout << "physical plan:\n" << oss.str() << std::endl;
+    if (RUNBATCH == is_batch_mode) {
+        int32_t ret = -1;
+        BatchRunSession session;
+        bool ok = engine.Get(sql, "db", session, get_status);
+        ASSERT_TRUE(ok);
+        schema = session.GetSchema();
+        PrintSchema(schema);
+        std::ostringstream oss;
+        session.GetPhysicalPlan()->Print(oss, "");
+        std::cout << "physical plan:\n" << oss.str() << std::endl;
 
-    std::ostringstream runner_oss;
-    session.GetRunner()->Print(runner_oss, "");
-    std::cout << "runner plan:\n" << runner_oss.str() << std::endl;
-    int32_t limit = 2;
-    auto iter = catalog->GetTable("db", "t1")->GetIterator();
-    while (limit-- > 0 && iter->Valid()) {
-        Row row;
-        ret = session.Run(Row(iter->GetValue()), &row);
+        std::ostringstream runner_oss;
+        session.GetRunner()->Print(runner_oss, "");
+        std::cout << "runner plan:\n" << runner_oss.str() << std::endl;
+
+        ret = session.Run(output, 10);
         ASSERT_EQ(0, ret);
-        output.push_back(row.buf());
-        iter->Next();
+    } else {
+        int32_t ret = -1;
+        RequestRunSession session;
+        bool ok = engine.Get(sql, "db", session, get_status);
+        ASSERT_TRUE(ok);
+        schema = session.GetSchema();
+        PrintSchema(schema);
+
+        int32_t limit = 2;
+        auto iter = catalog->GetTable("db", "t1")->GetIterator();
+        while (limit-- > 0 && iter->Valid()) {
+            Row row;
+            ret = session.Run(Row(iter->GetValue()), &row);
+            ASSERT_EQ(0, ret);
+            output.push_back(row.buf());
+            iter->Next();
+        }
+    }
+    ASSERT_EQ(2u, output.size());
+
+    ::fesql::type::TableDef output_schema;
+    for (auto column : schema) {
+        ::fesql::type::ColumnDef* column_def = output_schema.add_columns();
+        *column_def = column;
+    }
+
+    std::unique_ptr<codec::RowView> row_view =
+        std::move(std::unique_ptr<codec::RowView>(
+            new codec::RowView(output_schema.columns())));
+
+    row_view->Reset(output[0]);
+    {
+        char* v = nullptr;
+        uint32_t size;
+        row_view->GetString(0, &v, &size);
+        ASSERT_EQ("2", std::string(v, size));
+    }
+    {
+        int32_t v;
+        row_view->GetInt32(1, &v);
+        ASSERT_EQ(5 + 5 + 1, v);
+    }
+    {
+        int16_t v;
+        row_view->GetInt16(2, &v);
+        ASSERT_EQ(55, v);
+    }
+    {
+        char* v = nullptr;
+        uint32_t size;
+        row_view->GetString(3, &v, &size);
+        ASSERT_EQ("EEEEE", std::string(v, size));
+    }
+
+    row_view->Reset(output[1]);
+    {
+        char* v = nullptr;
+        uint32_t size;
+        row_view->GetString(0, &v, &size);
+        ASSERT_EQ("1", std::string(v, size));
+    }
+    {
+        int32_t v;
+        row_view->GetInt32(1, &v);
+        ASSERT_EQ(4 + 4 + 1, v);
+    }
+    {
+        int16_t v;
+        row_view->GetInt16(2, &v);
+        ASSERT_EQ(55, v);
+    }
+    {
+        char* v = nullptr;
+        uint32_t size;
+        row_view->GetString(3, &v, &size);
+        ASSERT_EQ("DDDD", std::string(v, size));
+    }
+    free(output[0]);
+    free(output[1]);
+}
+
+// 命中索引last join
+TEST_P(EngineTest, test_last_join_match_index) {
+    ParamType is_batch_mode = GetParam();
+    type::TableDef table_def;
+    BuildTableDef(table_def);
+    ::fesql::type::IndexDef* index = table_def.add_indexes();
+    index->set_name("index1");
+    index->add_first_keys("col2");
+    index->set_second_key("col5");
+
+    std::shared_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, table_def));
+    ASSERT_TRUE(table->Init());
+    int8_t* rows = NULL;
+    std::vector<Row> windows;
+    BuildWindow(windows, &rows);
+    StoreData(table.get(), rows);
+
+    type::TableDef table_def2;
+    BuildTableT2Def(table_def2);
+    {
+        ::fesql::type::IndexDef* index = table_def2.add_indexes();
+        index->set_name("index1");
+        index->add_first_keys("col1");
+        index->set_second_key("col5");
+    }
+
+    std::shared_ptr<::fesql::storage::Table> table2(
+        new ::fesql::storage::Table(2, 1, table_def2));
+    ASSERT_TRUE(table2->Init());
+    int8_t* rows2 = NULL;
+    std::vector<Row> windows2;
+    BuildT2Window(windows2, &rows2);
+    StoreData(table2.get(), rows2);
+
+    auto catalog = BuildCommonCatalog(table_def, table);
+    AddTable(catalog, table_def2, table2);
+
+    // add request
+    {
+        fesql::type::TableDef request_def;
+        BuildTableDef(request_def);
+        request_def.set_name("t1");
+        request_def.set_catalog("request");
+        std::shared_ptr<::fesql::storage::Table> request(
+            new ::fesql::storage::Table(1, 1, request_def));
+        AddTable(catalog, request_def, request);
+    }
+
+    const std::string sql =
+        "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return "
+        "d\nend\n%%sql\nSELECT t1.col0, test(t1.col1,t2.col1), t1.col2 , str1 "
+        "FROM t1 last join t2 on t1.col1=t2.col1 and t1.col5 = t2.col5 "
+        "limit 2;";
+    std::cout << sql << std::endl;
+    Engine engine(catalog);
+    base::Status get_status;
+    DLOG(INFO) << "RUN IN MODE REQUEST";
+    std::vector<int8_t*> output;
+    vm::Schema schema;
+
+    if (RUNBATCH == is_batch_mode) {
+        int32_t ret = -1;
+        BatchRunSession session;
+        bool ok = engine.Get(sql, "db", session, get_status);
+        ASSERT_TRUE(ok);
+        schema = session.GetSchema();
+        PrintSchema(schema);
+        std::ostringstream oss;
+        session.GetPhysicalPlan()->Print(oss, "");
+        std::cout << "physical plan:\n" << oss.str() << std::endl;
+
+        std::ostringstream runner_oss;
+        session.GetRunner()->Print(runner_oss, "");
+        std::cout << "runner plan:\n" << runner_oss.str() << std::endl;
+
+        ret = session.Run(output, 10);
+        ASSERT_EQ(0, ret);
+    } else {
+        int32_t ret = -1;
+        RequestRunSession session;
+        bool ok = engine.Get(sql, "db", session, get_status);
+        ASSERT_TRUE(ok);
+        schema = session.GetSchema();
+        PrintSchema(schema);
+
+        int32_t limit = 2;
+        auto iter = catalog->GetTable("db", "t1")->GetIterator();
+        while (limit-- > 0 && iter->Valid()) {
+            Row row;
+            ret = session.Run(Row(iter->GetValue()), &row);
+            ASSERT_EQ(0, ret);
+            output.push_back(row.buf());
+            iter->Next();
+        }
     }
     ASSERT_EQ(2u, output.size());
 
