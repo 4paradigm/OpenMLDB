@@ -7,7 +7,7 @@ add_library(fesql_vm STATIC jit.cc runner.cc sql_compiler.cc engine.cc mem_catal
 add_library(fesql_csv_catalog STATIC csv_catalog.cc csv_table_iterator.cc
         csv_window_iterator.cc)
 
-set(vm_deps_libs fesql_tablet fesql_vm fesql_udf fesql_vm fesql_parser fesql_planner fesql_codegen fesql_storage fesql_codec fesql_proto
+set(vm_deps_libs fesql_tablet fesql_vm fesql_udf  fesql_parser fesql_planner fesql_codegen fesql_storage fesql_codec fesql_proto
         fesql_node fesql_base)
 
 
