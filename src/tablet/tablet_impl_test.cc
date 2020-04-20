@@ -1632,6 +1632,7 @@ TEST_F(TabletImplTest, MultiGet) {
     // delete first index should fail
     deleteindex_request.set_idx_name("pk");
     deleteindex_request.set_tid(id);
+    deleteindex_request.set_pid(1);
     tablet.DeleteIndex(NULL, &deleteindex_request, &deleteindex_response, &closure);
     ASSERT_EQ(142, deleteindex_response.code());
     // delete other index
@@ -3070,7 +3071,7 @@ TEST_F(TabletImplTest, LoadWithDeletedKey) {
         table_meta->set_tid(id);
         table_meta->set_pid(1);
         table_meta->set_ttl(0);
-        table_meta->set_seg_cnt(128);
+        table_meta->set_seg_cnt(8);
         table_meta->set_term(1024);
 
         ::rtidb::common::ColumnDesc* column_desc1 = table_meta->add_column_desc();
@@ -3110,6 +3111,7 @@ TEST_F(TabletImplTest, LoadWithDeletedKey) {
         // delete first index should fail
         deleteindex_request.set_idx_name("mcc");
         deleteindex_request.set_tid(id);
+        deleteindex_request.set_pid(1);
         tablet.DeleteIndex(NULL, &deleteindex_request, &deleteindex_response, &closure);
         ASSERT_EQ(0, deleteindex_response.code());
     }
