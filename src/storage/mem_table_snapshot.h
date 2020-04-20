@@ -51,14 +51,9 @@ public:
 
     void Put(std::string& path, std::shared_ptr<Table>& table, std::vector<std::string*> recordPtr, std::atomic<uint64_t>* succ_cnt, std::atomic<uint64_t>* failed_cnt);
 
-    int ExtractIndexFromSnapshot(std::shared_ptr<Table> table, const ::rtidb::api::Manifest& manifest, 
-        WriteHandle* wh, ::rtidb::common::ColumnKey& column_key, uint32_t idx, uint32_t partition_num,
-        std::vector<::rtidb::base::ColumnDesc> columns, uint32_t max_idx, std::vector<uint32_t> index_cols, uint64_t& count, 
-        uint64_t& expired_key_num, uint64_t& deleted_key_num);
-
     int ExtractIndexData(std::shared_ptr<Table> table, ::rtidb::common::ColumnKey& column_key, uint32_t idx, uint32_t partition_num, uint64_t& out_offset);
 
-    bool DumpSnapshotIndexData(std::shared_ptr<Table>& table, const ::rtidb::common::ColumnKey& column_key, uint32_t idx, std::vector<::rtidb::log::WriteHandle*>& whs, uint64_t& lasest_offset);
+    bool DumpIndexData(std::shared_ptr<Table>& table, const ::rtidb::common::ColumnKey& column_key, uint32_t idx, std::vector<::rtidb::log::WriteHandle*>& whs);
 
 private:
 
@@ -68,7 +63,16 @@ private:
                                std::atomic<uint64_t>* g_succ_cnt,
                                std::atomic<uint64_t>* g_failed_cnt);
 
-   uint64_t CollectDeletedKey(uint64_t end_offset);
+    uint64_t CollectDeletedKey(uint64_t end_offset);
+
+    int ExtractIndexFromSnapshot(std::shared_ptr<Table> table, const ::rtidb::api::Manifest& manifest, 
+        WriteHandle* wh, ::rtidb::common::ColumnKey& column_key, uint32_t idx, uint32_t partition_num,
+        std::vector<::rtidb::base::ColumnDesc> columns, uint32_t max_idx, std::vector<uint32_t> index_cols, uint64_t& count, 
+        uint64_t& expired_key_num, uint64_t& deleted_key_num);
+
+    bool DumpSnapshotIndexData(std::shared_ptr<Table>& table, const ::rtidb::common::ColumnKey& column_key, 
+        std::vector<uint32_t>& index_cols, std::vector<::rtidb::base::ColumnDesc>& columns,std::set<uint32_t>& deleted_index, uint32_t max_idx,
+        uint32_t idx, std::vector<::rtidb::log::WriteHandle*>& whs, uint64_t& latest_offset);
 
 private:
     LogParts* log_part_;

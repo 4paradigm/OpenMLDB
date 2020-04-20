@@ -4651,9 +4651,7 @@ void TabletImpl::DumpIndexDataInternal(std::shared_ptr<::rtidb::storage::Table> 
         ::rtidb::log::WriteHandle* wh = new ::rtidb::log::WriteHandle(index_file_name, fd);
         whs.push_back(wh);
     }
-    ::rtidb::storage::Binlog binlog(replicator->GetLogPart(), binlog_path);
-    uint64_t offset = 0;
-    if (memtable_snapshot->DumpSnapshotIndexData(table, column_key, idx, whs, offset) && binlog.DumpBinlogIndexData(table, column_key, idx, whs, offset)) {
+    if (memtable_snapshot->DumpIndexData(table, column_key, idx, whs)) {
         PDLOG(INFO, "dump index on table tid[%u] pid[%u] succeed", tid, pid);
         SetTaskStatus(task, ::rtidb::api::kDone);
     } else {
@@ -4786,7 +4784,11 @@ void TabletImpl::LoadIndexDataInternal(uint32_t tid, uint32_t pid, uint32_t cur_
         }
         ::rtidb::api::LogEntry entry;
         entry.ParseFromString(std::string(record.data(), record.size()));
-        table->Put(entry);
+        if (entry.has_method_type() && entry.method_type() == ::rtidb::api::MethodType::kDelete) {
+            table->Delete(entry.dimensions(0).key(), entry.dimensions(0).idx());
+        } else {
+            table->Put(entry);
+        }
         replicator->AppendEntry(entry);
         succ_cnt++;
     }
