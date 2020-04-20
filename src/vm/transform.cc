@@ -1301,7 +1301,6 @@ bool FilterOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
                                            &and_conditions)) {
                 return false;
             }
-
             node::ExprListNode new_and_conditions;
             std::vector<ExprPair> condition_eq_pair;
             for (auto expr : and_conditions.children_) {

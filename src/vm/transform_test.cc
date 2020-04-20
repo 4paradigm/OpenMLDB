@@ -48,6 +48,7 @@ class TransformTest : public ::testing::TestWithParam<std::string> {
     ~TransformTest() {}
 };
 
+
 void BuildTableDef(::fesql::type::TableDef& table_def) {  // NOLINT
     table_def.set_name("t1");
     table_def.set_catalog("db");

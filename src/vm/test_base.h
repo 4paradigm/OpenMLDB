@@ -24,6 +24,7 @@
 #include "glog/logging.h"
 #include "tablet/tablet_catalog.h"
 #include "vm/catalog.h"
+#include "plan/planner.h"
 
 namespace fesql {
 namespace vm {
