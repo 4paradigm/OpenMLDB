@@ -293,7 +293,9 @@ public class TableAsyncClientImpl implements TableAsyncClient {
 
     @Override
     public ScanFuture scan(String name, String key, long st, long et) throws TabletException {
-        return scan(name, key, null, st, et, null, 0);
+        ScanOption scanOption = new ScanOption();
+        scanOption.setLimit(0);
+        return scan(name, key, st, et,scanOption);
     }
 
     @Override
