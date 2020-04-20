@@ -1430,7 +1430,6 @@ void TabletImpl::Traverse(RpcController* controller,
         } else if (scount < request->limit()) {
             is_finish = true;
         }
-        delete it;
         uint32_t total_size = scount * (8+4+4) + total_block_size;
         std::string* pairs = response->mutable_pairs();
         if (scount <= 0) {
@@ -1447,6 +1446,7 @@ void TabletImpl::Traverse(RpcController* controller,
                 offset += (4 + 4 + 8 + kv.first.length() + pair.second.size());
             }
         }
+        delete it;
         PDLOG(DEBUG, "traverse count %d. last_pk %s last_time %lu", scount, last_pk.c_str(), last_time);
         response->set_code(::rtidb::base::ReturnCode::kOk);
         response->set_count(scount);

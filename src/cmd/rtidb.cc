@@ -1230,16 +1230,25 @@ void HandleNSDelete(const std::vector<std::string>& parts, ::rtidb::client::NsCl
         return;
     }
     std::string idx_name;
-    if (tables[0].column_desc_size() >= 0 && parts.size() > 3) {
-        std::vector<::rtidb::base::ColumnDesc> columns;
-        if (::rtidb::base::SchemaCodec::ConvertColumnDesc(tables[0], columns) < 0) {
-            std::cout << "convert table column desc failed" << std::endl; 
-            return;
-        }
-        for (uint32_t i = 0; i < columns.size(); i++) {
-            if (columns[i].name == parts[3]) {
-                idx_name = parts[3];
-                break;
+    if (parts.size() > 3) {
+        if (tables[0].column_key_size() > 0) {
+            for (int idx = 0; idx < tables[0].column_key_size(); idx++) {
+                if (tables[0].column_key(idx).index_name() == parts[3]) {
+                    idx_name = parts[3];
+                    break;
+                }
+            }
+        } else {
+            std::vector<::rtidb::base::ColumnDesc> columns;
+            if (::rtidb::base::SchemaCodec::ConvertColumnDesc(tables[0], columns) < 0) {
+                std::cout << "convert table column desc failed" << std::endl; 
+                return;
+            }
+            for (uint32_t i = 0; i < columns.size(); i++) {
+                if (columns[i].add_ts_idx && columns[i].name == parts[3]) {
+                    idx_name = parts[3];
+                    break;
+                }
             }
         }
         if (idx_name.empty()) {
