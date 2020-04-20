@@ -204,7 +204,7 @@ public class RowBuilder {
         int data = year << 16;
         data = data | (month << 8);
         data = data | day;
-        buf.position(offset_vec.get(cnt));
+        buf.position(offsetVec.get(cnt));
         buf.putInt(data);
         cnt++;
         return true;

@@ -456,40 +456,6 @@ public class TableSyncClientImpl implements TableSyncClient {
         return key;
     }
 
-    private RelationalIterator queryRelationTable(int tid, int pid, String key, String idxName, Tablet.GetType type,
-                                                  TableHandler th, Set<String> colSet) throws TabletException {
-        key = validateKey(key);
-        PartitionHandler ph = th.getHandler(pid);
-        TabletServer ts = ph.getReadHandler(th.getReadStrategy());
-        if (ts == null) {
-            throw new TabletException("Cannot find available tabletServer with tid " + tid);
-        }
-        Tablet.GetRequest.Builder builder = Tablet.GetRequest.newBuilder();
-
-        builder.setTid(tid);
-        builder.setPid(pid);
-        builder.setKey(key);
-        if (type != null) builder.setType(type);
-        if (idxName != null && !idxName.isEmpty()) {
-            builder.setIdxName(idxName);
-        }
-        Tablet.GetRequest request = builder.build();
-        Tablet.GetResponse response = ts.get(request);
-        ByteString bs = null;
-        if (response != null && response.getCode() == 0) {
-            if (th.getTableInfo().hasCompressType() && th.getTableInfo().getCompressType() == NS.CompressType.kSnappy) {
-                byte[] uncompressed = Compress.snappyUnCompress(response.getValue().toByteArray());
-                bs = ByteString.copyFrom(uncompressed);
-            } else {
-                bs = response.getValue();
-            }
-        } else if (response != null && response.getCode() != 0) {
-            return new RelationalIterator();
-        }
-        RelationalIterator it = new RelationalIterator(bs, th, colSet);
-        return it;
-    }
-
     private Object[]  get(int pid, String key, long time, GetOption getOption, TableHandler th) throws TabletException {
         key = validateKey(key);
         PartitionHandler ph = th.getHandler(pid);
