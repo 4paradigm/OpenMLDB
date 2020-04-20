@@ -17,10 +17,10 @@
 namespace rtidb {
 namespace base {
 
-const static char LABELS[10] = {'0', '1', '2', '3', '4', // NOLINT
+static const char LABELS[10] = {'0', '1', '2', '3', '4',
                                 '5', '6', '7', '8', '9'};
-const static uint32_t TIME_OFFSET[] = {1000, 60, 60, 24}; // NOLINT
-const static char* TIME_LABEL[] = {"ms", "s", "m", "h", "d"}; // NOLINT
+static const uint32_t TIME_OFFSET[] = {1000, 60, 60, 24};
+static const char* TIME_LABEL[] = {"ms", "s", "m", "h", "d"};
 
 static inline void SplitString(const std::string& full,
                                const std::string& delim,

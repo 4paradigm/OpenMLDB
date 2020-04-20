@@ -8,6 +8,7 @@
 
 #include <snappy.h>
 #include <tprinter.h>
+#include <gflags/gflags.h>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -19,6 +20,8 @@
 #include "proto/tablet.pb.h"
 #include "proto/type.pb.h"
 #include "storage/segment.h"
+#include "base/flat_array.h"
+#include "base/kv_iterator.h"
 
 DECLARE_uint32(max_col_display_length);
 

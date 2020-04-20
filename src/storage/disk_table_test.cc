@@ -6,11 +6,12 @@
 //
 
 #include "storage/disk_table.h"
-#include "gtest/gtest.h"
-#include "timer.h"
-#include "logging.h"
-#include "base/file_util.h"
 #include <iostream>
+#include <utility>
+#include "base/file_util.h"
+#include "gtest/gtest.h"
+#include "logging.h"  // NOLINT
+#include "timer.h"    // NOLINT
 
 using ::baidu::common::INFO;
 
@@ -27,21 +28,20 @@ inline uint32_t GenRand() {
 }
 
 void RemoveData(const std::string& path) {
-    ::rtidb::base::RemoveDir(path+"/data");
+    ::rtidb::base::RemoveDir(path + "/data");
     ::rtidb::base::RemoveDir(path);
     ::rtidb::base::RemoveDir(FLAGS_hdd_root_path);
     ::rtidb::base::RemoveDir(FLAGS_ssd_root_path);
 }
 
 class DiskTableTest : public ::testing::Test {
-
-public:
+ public:
     DiskTableTest() {}
     ~DiskTableTest() {}
 };
 
 TEST_F(DiskTableTest, ParseKeyAndTs) {
-    std::string combined_key = CombineKeyTs("abcdexxx11",1552619498000);
+    std::string combined_key = CombineKeyTs("abcdexxx11", 1552619498000);
     std::string key;
     uint64_t ts;
     ASSERT_EQ(0, ParseKeyAndTs(combined_key, key, ts));
@@ -65,9 +65,9 @@ TEST_F(DiskTableTest, ParseKeyAndTs) {
 TEST_F(DiskTableTest, Put) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    DiskTable* table = new DiskTable("yjtable1", 1, 1, mapping, 10, 
-            ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD,
-            FLAGS_hdd_root_path);
+    DiskTable* table = new DiskTable(
+        "yjtable1", 1, 1, mapping, 10, ::rtidb::api::TTLType::kAbsoluteTime,
+        ::rtidb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
     ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 100; idx++) {
         std::string key = "test" + std::to_string(idx);
@@ -101,14 +101,14 @@ TEST_F(DiskTableTest, MultiDimensionPut) {
     mapping.insert(std::make_pair("idx0", 0));
     mapping.insert(std::make_pair("idx1", 1));
     mapping.insert(std::make_pair("idx2", 2));
-    DiskTable* table = new DiskTable("yjtable2", 1, 2, mapping, 10,
-            ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD,
-            FLAGS_hdd_root_path);
+    DiskTable* table = new DiskTable(
+        "yjtable2", 1, 2, mapping, 10, ::rtidb::api::TTLType::kAbsoluteTime,
+        ::rtidb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
     ASSERT_TRUE(table->Init());
     ASSERT_EQ(3, table->GetIdxCnt());
-//    ASSERT_EQ(0, table->GetRecordIdxCnt());
-//    ASSERT_EQ(0, table->GetRecordCnt());
-    Dimensions  dimensions;
+    //    ASSERT_EQ(0, table->GetRecordIdxCnt());
+    //    ASSERT_EQ(0, table->GetRecordCnt());
+    Dimensions dimensions;
     ::rtidb::api::Dimension* d0 = dimensions.Add();
     d0->set_key("yjdim0");
     d0->set_idx(0);
@@ -122,7 +122,7 @@ TEST_F(DiskTableTest, MultiDimensionPut) {
     d2->set_idx(2);
     bool ok = table->Put(1, "yjtestvalue", dimensions);
     ASSERT_TRUE(ok);
-//    ASSERT_EQ(3, table->GetRecordIdxCnt());
+    //    ASSERT_EQ(3, table->GetRecordIdxCnt());
     Ticket ticket;
     TableIterator* it = table->NewIterator(0, "yjdim0", ticket);
     it->SeekToFirst();
@@ -188,7 +188,6 @@ TEST_F(DiskTableTest, MultiDimensionPut) {
     ASSERT_TRUE(table->Get(1, "key1", 2, val));
     ASSERT_EQ("value2", val);
 
-
     it = table->NewIterator(2, "dimxxx1", ticket);
     it->SeekToFirst();
     ASSERT_TRUE(it->Valid());
@@ -224,27 +223,34 @@ TEST_F(DiskTableTest, LongPut) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     mapping.insert(std::make_pair("idx1", 1));
-    DiskTable* table = new DiskTable("yjtable3", 1, 3, mapping, 10, 
-            ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kSSD,
-            FLAGS_ssd_root_path);
+    DiskTable* table = new DiskTable(
+        "yjtable3", 1, 3, mapping, 10, ::rtidb::api::TTLType::kAbsoluteTime,
+        ::rtidb::common::StorageMode::kSSD, FLAGS_ssd_root_path);
     ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 10; idx++) {
-        Dimensions  dimensions;
+        Dimensions dimensions;
         ::rtidb::api::Dimension* d0 = dimensions.Add();
-        d0->set_key("ThisIsAVeryLongKeyWhichLengthIsMoreThan40" + std::to_string(idx));
+        d0->set_key("ThisIsAVeryLongKeyWhichLengthIsMoreThan40" +
+                    std::to_string(idx));
         d0->set_idx(0);
 
         ::rtidb::api::Dimension* d1 = dimensions.Add();
-        d1->set_key("ThisIsAnotherVeryLongKeyWhichLengthIsMoreThan40" + std::to_string(idx));
+        d1->set_key("ThisIsAnotherVeryLongKeyWhichLengthIsMoreThan40" +
+                    std::to_string(idx));
         d1->set_idx(1);
         uint64_t ts = 1581931824136;
         for (int k = 0; k < 10; k++) {
-            ASSERT_TRUE(table->Put(ts + k, "ThisIsAVeryLongKeyWhichLengthIsMoreThan40'sValue", dimensions));
+            ASSERT_TRUE(table->Put(
+                ts + k, "ThisIsAVeryLongKeyWhichLengthIsMoreThan40'sValue",
+                dimensions));
         }
     }
     for (int idx = 0; idx < 10; idx++) {
-        std::string raw_key0 = "ThisIsAVeryLongKeyWhichLengthIsMoreThan40" + std::to_string(idx);
-        std::string raw_key1 = "ThisIsAnotherVeryLongKeyWhichLengthIsMoreThan40" + std::to_string(idx);
+        std::string raw_key0 =
+            "ThisIsAVeryLongKeyWhichLengthIsMoreThan40" + std::to_string(idx);
+        std::string raw_key1 =
+            "ThisIsAnotherVeryLongKeyWhichLengthIsMoreThan40" +
+            std::to_string(idx);
         Ticket ticket0, ticket1;
         TableIterator* it0 = table->NewIterator(0, raw_key0, ticket0);
         TableIterator* it1 = table->NewIterator(1, raw_key1, ticket1);
@@ -262,8 +268,10 @@ TEST_F(DiskTableTest, LongPut) {
             ASSERT_EQ(1581931824136 + 9 - k, it1->GetKey());
             std::string value0 = it0->GetValue().ToString();
             std::string value1 = it1->GetValue().ToString();
-            ASSERT_EQ("ThisIsAVeryLongKeyWhichLengthIsMoreThan40'sValue", value0);
-            ASSERT_EQ("ThisIsAVeryLongKeyWhichLengthIsMoreThan40'sValue", value1);
+            ASSERT_EQ("ThisIsAVeryLongKeyWhichLengthIsMoreThan40'sValue",
+                      value0);
+            ASSERT_EQ("ThisIsAVeryLongKeyWhichLengthIsMoreThan40'sValue",
+                      value1);
             it0->Next();
             it1->Next();
         }
@@ -282,9 +290,9 @@ TEST_F(DiskTableTest, Delete) {
     mapping.insert(std::make_pair("idx0", 0));
     mapping.insert(std::make_pair("idx1", 1));
     mapping.insert(std::make_pair("idx2", 2));
-    DiskTable* table = new DiskTable("yjtable2", 1, 2, mapping, 10,
-            ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD,
-            FLAGS_hdd_root_path);
+    DiskTable* table = new DiskTable(
+        "yjtable2", 1, 2, mapping, 10, ::rtidb::api::TTLType::kAbsoluteTime,
+        ::rtidb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
     ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 10; idx++) {
         std::string key = "test" + std::to_string(idx);
@@ -319,9 +327,9 @@ TEST_F(DiskTableTest, Delete) {
 TEST_F(DiskTableTest, TraverseIterator) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    DiskTable* table = new DiskTable("t1", 1, 3, mapping, 0,
-            ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD,
-            FLAGS_hdd_root_path);
+    DiskTable* table = new DiskTable(
+        "t1", 1, 3, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime,
+        ::rtidb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
     ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 100; idx++) {
         std::string key = "test" + std::to_string(idx);
@@ -338,7 +346,7 @@ TEST_F(DiskTableTest, TraverseIterator) {
     it->SeekToFirst();
     int count = 0;
     while (it->Valid()) {
-        std::string pk = it->GetPK();;
+        std::string pk = it->GetPK();
         count++;
         it->Next();
     }
@@ -349,7 +357,7 @@ TEST_F(DiskTableTest, TraverseIterator) {
     count = 0;
     while (it->Valid()) {
         if (count == 0) {
-            std::string pk = it->GetPK();;
+            std::string pk = it->GetPK();
             ASSERT_EQ("test90", pk);
             ASSERT_EQ(9542, it->GetKey());
         }
@@ -362,7 +370,7 @@ TEST_F(DiskTableTest, TraverseIterator) {
     count = 0;
     while (it->Valid()) {
         if (count == 0) {
-            std::string pk = it->GetPK();;
+            std::string pk = it->GetPK();
             ASSERT_EQ("test91", pk);
             ASSERT_EQ(9546, it->GetKey());
         }
@@ -375,7 +383,7 @@ TEST_F(DiskTableTest, TraverseIterator) {
     count = 0;
     while (it->Valid()) {
         if (count == 0) {
-            std::string pk = it->GetPK();;
+            std::string pk = it->GetPK();
             ASSERT_EQ("test91", pk);
             ASSERT_EQ(9546, it->GetKey());
         }
@@ -389,7 +397,7 @@ TEST_F(DiskTableTest, TraverseIterator) {
     count = 0;
     while (it->Valid()) {
         if (count == 0) {
-            std::string pk = it->GetPK();;
+            std::string pk = it->GetPK();
             ASSERT_EQ("test98", pk);
             ASSERT_EQ(9546, it->GetKey());
         }
@@ -411,9 +419,9 @@ TEST_F(DiskTableTest, TraverseIteratorCount) {
     FLAGS_max_traverse_cnt = 50;
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    DiskTable* table = new DiskTable("t1", 1, 3, mapping, 0,
-            ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD,
-            FLAGS_hdd_root_path);
+    DiskTable* table = new DiskTable(
+        "t1", 1, 3, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime,
+        ::rtidb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
     ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 100; idx++) {
         std::string key = "test" + std::to_string(idx);
@@ -426,7 +434,7 @@ TEST_F(DiskTableTest, TraverseIteratorCount) {
     it->SeekToFirst();
     int count = 0;
     while (it->Valid()) {
-        std::string pk = it->GetPK();;
+        std::string pk = it->GetPK();
         count++;
         it->Next();
     }
@@ -454,7 +462,7 @@ TEST_F(DiskTableTest, TraverseIteratorCount) {
     count = 0;
     while (it->Valid()) {
         if (count == 0) {
-            std::string pk = it->GetPK();;
+            std::string pk = it->GetPK();
             ASSERT_EQ("test91", pk);
             ASSERT_EQ(9546, it->GetKey());
         }
@@ -463,13 +471,13 @@ TEST_F(DiskTableTest, TraverseIteratorCount) {
     }
     ASSERT_EQ(48, count);
     delete it;
-    
+
     it = table->NewTraverseIterator(0);
     it->Seek("test90", 9530);
     count = 0;
     while (it->Valid()) {
         if (count == 0) {
-            std::string pk = it->GetPK();;
+            std::string pk = it->GetPK();
             ASSERT_EQ("test91", pk);
             ASSERT_EQ(9546, it->GetKey());
         }
@@ -490,11 +498,11 @@ TEST_F(DiskTableTest, TraverseIteratorCountTTL) {
     FLAGS_max_traverse_cnt = 50;
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    DiskTable* table = new DiskTable("t1", 1, 3, mapping, 5,
-            ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD,
-            FLAGS_hdd_root_path);
+    DiskTable* table = new DiskTable(
+        "t1", 1, 3, mapping, 5, ::rtidb::api::TTLType::kAbsoluteTime,
+        ::rtidb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
     ASSERT_TRUE(table->Init());
-    ASSERT_EQ(table->GetTTL().abs_ttl*60*1000, 5*60*1000);
+    ASSERT_EQ(table->GetTTL().abs_ttl * 60 * 1000, 5 * 60 * 1000);
     ASSERT_EQ(table->GetTTL().lat_ttl, 0);
     ASSERT_EQ(table->GetTTLType(), ::rtidb::api::TTLType::kAbsoluteTime);
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
@@ -504,14 +512,16 @@ TEST_F(DiskTableTest, TraverseIteratorCountTTL) {
         for (int k = 0; k < 60; k++) {
             if (idx == 0) {
                 if (k < 30) {
-                    ASSERT_TRUE(table->Put(key, ts + k - 6 * 1000 * 60, "value", 5));
+                    ASSERT_TRUE(
+                        table->Put(key, ts + k - 6 * 1000 * 60, "value", 5));
                 }
                 continue;
             }
             if (k < 30) {
                 ASSERT_TRUE(table->Put(key, ts + k, "value", 5));
             } else {
-                ASSERT_TRUE(table->Put(key, ts + k - 6 * 1000 * 60, "value", 5));
+                ASSERT_TRUE(
+                    table->Put(key, ts + k - 6 * 1000 * 60, "value", 5));
             }
         }
     }
@@ -540,14 +550,14 @@ TEST_F(DiskTableTest, TraverseIteratorCountTTL) {
     FLAGS_max_traverse_cnt = old_max_traverse;
     std::string path = FLAGS_hdd_root_path + "/1_3";
     RemoveData(path);
-}    
+}
 
 TEST_F(DiskTableTest, TraverseIteratorLatest) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    DiskTable* table = new DiskTable("t1", 1, 3, mapping, 3,
-            ::rtidb::api::TTLType::kLatestTime, ::rtidb::common::StorageMode::kHDD,
-            FLAGS_hdd_root_path);
+    DiskTable* table = new DiskTable(
+        "t1", 1, 3, mapping, 3, ::rtidb::api::TTLType::kLatestTime,
+        ::rtidb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
     ASSERT_TRUE(table->Init());
     ASSERT_EQ(table->GetTTL().abs_ttl, 0);
     ASSERT_EQ(table->GetTTL().lat_ttl, 3);
@@ -567,7 +577,7 @@ TEST_F(DiskTableTest, TraverseIteratorLatest) {
     it->SeekToFirst();
     int count = 0;
     while (it->Valid()) {
-        std::string pk = it->GetPK();;
+        std::string pk = it->GetPK();
         count++;
         it->Next();
     }
@@ -578,7 +588,7 @@ TEST_F(DiskTableTest, TraverseIteratorLatest) {
     count = 0;
     while (it->Valid()) {
         if (count == 0) {
-            std::string pk = it->GetPK();;
+            std::string pk = it->GetPK();
             ASSERT_EQ("test90", pk);
             ASSERT_EQ(9540, it->GetKey());
         }
@@ -591,7 +601,7 @@ TEST_F(DiskTableTest, TraverseIteratorLatest) {
     count = 0;
     while (it->Valid()) {
         if (count == 0) {
-            std::string pk = it->GetPK();;
+            std::string pk = it->GetPK();
             ASSERT_EQ("test91", pk);
             ASSERT_EQ(9541, it->GetKey());
         }
@@ -603,7 +613,7 @@ TEST_F(DiskTableTest, TraverseIteratorLatest) {
     count = 0;
     while (it->Valid()) {
         if (count == 0) {
-            std::string pk = it->GetPK();;
+            std::string pk = it->GetPK();
             ASSERT_EQ("test91", pk);
             ASSERT_EQ(9541, it->GetKey());
         }
@@ -620,9 +630,9 @@ TEST_F(DiskTableTest, TraverseIteratorLatest) {
 TEST_F(DiskTableTest, Load) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    DiskTable* table = new DiskTable("t1", 1, 1, mapping, 10, 
-            ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD,
-            FLAGS_hdd_root_path);
+    DiskTable* table = new DiskTable(
+        "t1", 1, 1, mapping, 10, ::rtidb::api::TTLType::kAbsoluteTime,
+        ::rtidb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
     ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 100; idx++) {
         std::string key = "test" + std::to_string(idx);
@@ -648,9 +658,9 @@ TEST_F(DiskTableTest, Load) {
     delete it;
     delete table;
 
-    table = new DiskTable("t1", 1, 1, mapping, 10, 
-            ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD,
-            FLAGS_hdd_root_path);
+    table = new DiskTable(
+        "t1", 1, 1, mapping, 10, ::rtidb::api::TTLType::kAbsoluteTime,
+        ::rtidb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
     ASSERT_TRUE(table->LoadTable());
     raw_key = "test35";
     it = table->NewIterator(raw_key, ticket);
@@ -675,9 +685,9 @@ TEST_F(DiskTableTest, Load) {
 TEST_F(DiskTableTest, CompactFilter) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    DiskTable* table = new DiskTable("t1", 1, 1, mapping, 10, 
-            ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD,
-            FLAGS_hdd_root_path);
+    DiskTable* table = new DiskTable(
+        "t1", 1, 1, mapping, 10, ::rtidb::api::TTLType::kAbsoluteTime,
+        ::rtidb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
     ASSERT_TRUE(table->Init());
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     for (int idx = 0; idx < 100; idx++) {
@@ -685,7 +695,8 @@ TEST_F(DiskTableTest, CompactFilter) {
         uint64_t ts = cur_time;
         for (int k = 0; k < 5; k++) {
             if (k > 2) {
-                ASSERT_TRUE(table->Put(key, ts - k - 10 * 60 * 1000, "value9", 6));
+                ASSERT_TRUE(
+                    table->Put(key, ts - k - 10 * 60 * 1000, "value9", 6));
             } else {
                 ASSERT_TRUE(table->Put(key, ts - k, "value", 5));
             }
@@ -775,7 +786,8 @@ TEST_F(DiskTableTest, CompactFilterMulTs) {
                 ::rtidb::api::TSDimension* ts_dim1 = ts_dims.Add();
                 ts_dim1->set_ts(cur_time - i * 60 * 1000);
                 ts_dim1->set_idx(1);
-                ASSERT_TRUE(table->Put(dims, ts_dims, "value" + std::to_string(i)));
+                ASSERT_TRUE(
+                    table->Put(dims, ts_dims, "value" + std::to_string(i)));
             }
 
         } else {
@@ -787,22 +799,23 @@ TEST_F(DiskTableTest, CompactFilterMulTs) {
                 ::rtidb::api::TSDimension* ts_dim1 = ts_dims.Add();
                 ts_dim1->set_ts(cur_time - i);
                 ts_dim1->set_idx(1);
-                ASSERT_TRUE(table->Put(dims, ts_dims, "value" + std::to_string(i)));
+                ASSERT_TRUE(
+                    table->Put(dims, ts_dims, "value" + std::to_string(i)));
             }
         }
     }
     Ticket ticket;
     TableIterator* iter = table->NewIterator(0, 0, "card0", ticket);
     iter->SeekToFirst();
-    while(iter->Valid()) {
-        //printf("key %s ts %lu\n", iter->GetPK().c_str(), iter->GetKey());
+    while (iter->Valid()) {
+        // printf("key %s ts %lu\n", iter->GetPK().c_str(), iter->GetKey());
         iter->Next();
     }
     delete iter;
     iter = table->NewIterator(1, 1, "mcc0", ticket);
     iter->SeekToFirst();
-    while(iter->Valid()) {
-        //printf("key %s ts %lu\n", iter->GetPK().c_str(), iter->GetKey());
+    while (iter->Valid()) {
+        // printf("key %s ts %lu\n", iter->GetPK().c_str(), iter->GetKey());
         iter->Next();
     }
     delete iter;
@@ -825,8 +838,9 @@ TEST_F(DiskTableTest, CompactFilterMulTs) {
             for (int i = 0; i < 10; i++) {
                 std::string e_value = "value" + std::to_string(i);
                 std::string value;
-                //printf("idx:%d i:%d key:%s ts:%lu\n", idx, i, key.c_str(), ts - i);
-                //printf("idx:%d i:%d key:%s ts:%lu\n", idx, i, key1.c_str(), ts - i);
+                // printf("idx:%d i:%d key:%s ts:%lu\n", idx, i, key.c_str(), ts
+                // - i); printf("idx:%d i:%d key:%s ts:%lu\n", idx, i,
+                // key1.c_str(), ts - i);
                 ASSERT_TRUE(table->Get(0, key, ts - i, 0, value));
                 ASSERT_EQ(e_value, value);
                 ASSERT_TRUE(table->Get(0, key, ts - i, 1, value));
@@ -838,15 +852,15 @@ TEST_F(DiskTableTest, CompactFilterMulTs) {
     table->CompactDB();
     iter = table->NewIterator(0, 0, "card0", ticket);
     iter->SeekToFirst();
-    while(iter->Valid()) {
-        //printf("key %s ts %lu\n", iter->GetPK().c_str(), iter->GetKey());
+    while (iter->Valid()) {
+        // printf("key %s ts %lu\n", iter->GetPK().c_str(), iter->GetKey());
         iter->Next();
     }
     delete iter;
     iter = table->NewIterator(1, 1, "mcc0", ticket);
     iter->SeekToFirst();
-    while(iter->Valid()) {
-        //printf("key %s ts %lu\n", iter->GetPK().c_str(), iter->GetKey());
+    while (iter->Valid()) {
+        // printf("key %s ts %lu\n", iter->GetPK().c_str(), iter->GetKey());
         iter->Next();
     }
     delete iter;
@@ -870,9 +884,11 @@ TEST_F(DiskTableTest, CompactFilterMulTs) {
                     ASSERT_EQ(e_value, value);
                     ASSERT_TRUE(table->Get(1, key1, cur_ts, 1, value));
                 } else {
-                    //printf("idx:%lu i:%d key:%s ts:%lu\n", idx, i, key.c_str(), cur_ts);
+                    // printf("idx:%lu i:%d key:%s ts:%lu\n", idx, i,
+                    // key.c_str(), cur_ts);
                     ASSERT_FALSE(table->Get(0, key, cur_ts, 1, value));
-                    //printf("idx:%lu i:%d key:%s ts:%lu\n", idx, i, key1.c_str(), cur_ts);
+                    // printf("idx:%lu i:%d key:%s ts:%lu\n", idx, i,
+                    // key1.c_str(), cur_ts);
                     ASSERT_FALSE(table->Get(1, key1, cur_ts, 1, value));
                 }
             }
@@ -953,15 +969,15 @@ TEST_F(DiskTableTest, GcHeadMulTs) {
     Ticket ticket;
     TableIterator* iter = table->NewIterator(0, 0, "card0", ticket);
     iter->SeekToFirst();
-    while(iter->Valid()) {
-        //printf("key %s ts %lu\n", iter->GetPK().c_str(), iter->GetKey());
+    while (iter->Valid()) {
+        // printf("key %s ts %lu\n", iter->GetPK().c_str(), iter->GetKey());
         iter->Next();
     }
     delete iter;
     iter = table->NewIterator(1, 1, "mcc0", ticket);
     iter->SeekToFirst();
-    while(iter->Valid()) {
-        //printf("key %s ts %lu\n", iter->GetPK().c_str(), iter->GetKey());
+    while (iter->Valid()) {
+        // printf("key %s ts %lu\n", iter->GetPK().c_str(), iter->GetKey());
         iter->Next();
     }
     delete iter;
@@ -972,8 +988,10 @@ TEST_F(DiskTableTest, GcHeadMulTs) {
         for (int i = 0; i < 10; i++) {
             std::string e_value = "value" + std::to_string(i);
             std::string value;
-            //printf("idx:%d i:%d key:%s ts:%lu\n", idx, i, key.c_str(), ts - i);
-            //printf("idx:%d i:%d key:%s ts:%lu\n", idx, i, key1.c_str(), ts - i);
+            // printf("idx:%d i:%d key:%s ts:%lu\n", idx, i, key.c_str(), ts -
+            // i); printf("idx:%d i:%d key:%s ts:%lu\n", idx, i, key1.c_str(),
+            // ts
+            // - i);
             if (idx == 50 && i > 2) {
                 ASSERT_FALSE(table->Get(0, key, ts - i, 0, value));
                 ASSERT_FALSE(table->Get(0, key, ts - i, 1, value));
@@ -990,15 +1008,15 @@ TEST_F(DiskTableTest, GcHeadMulTs) {
     table->SchedGc();
     iter = table->NewIterator(0, 0, "card0", ticket);
     iter->SeekToFirst();
-    while(iter->Valid()) {
-        //printf("key %s ts %lu\n", iter->GetPK().c_str(), iter->GetKey());
+    while (iter->Valid()) {
+        // printf("key %s ts %lu\n", iter->GetPK().c_str(), iter->GetKey());
         iter->Next();
     }
     delete iter;
     iter = table->NewIterator(1, 1, "mcc0", ticket);
     iter->SeekToFirst();
-    while(iter->Valid()) {
-        //printf("key %s ts %lu\n", iter->GetPK().c_str(), iter->GetKey());
+    while (iter->Valid()) {
+        // printf("key %s ts %lu\n", iter->GetPK().c_str(), iter->GetKey());
         iter->Next();
     }
     delete iter;
@@ -1009,7 +1027,8 @@ TEST_F(DiskTableTest, GcHeadMulTs) {
         for (int i = 0; i < 10; i++) {
             std::string e_value = "value" + std::to_string(i);
             std::string value;
-            //printf("idx:%d, i:%d, key:%s, ts:%lu\n", idx, i , key.c_str(), ts-i);
+            // printf("idx:%d, i:%d, key:%s, ts:%lu\n", idx, i , key.c_str(),
+            // ts-i);
             if (idx == 50 && i > 2) {
                 ASSERT_FALSE(table->Get(0, key, ts - i, 0, value));
                 ASSERT_FALSE(table->Get(0, key, ts - i, 1, value));
@@ -1040,9 +1059,9 @@ TEST_F(DiskTableTest, GcHeadMulTs) {
 TEST_F(DiskTableTest, GcHead) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    DiskTable* table = new DiskTable("t1", 1, 3, mapping, 3,
-            ::rtidb::api::TTLType::kLatestTime, ::rtidb::common::StorageMode::kHDD,
-            FLAGS_hdd_root_path);
+    DiskTable* table = new DiskTable(
+        "t1", 1, 3, mapping, 3, ::rtidb::api::TTLType::kLatestTime,
+        ::rtidb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
     ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 100; idx++) {
         std::string key = "test" + std::to_string(idx);
@@ -1094,9 +1113,9 @@ TEST_F(DiskTableTest, GcHead) {
 TEST_F(DiskTableTest, GcTTL) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    DiskTable* table = new DiskTable("t1", 1, 3, mapping, 10,
-            ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD,
-            FLAGS_hdd_root_path);
+    DiskTable* table = new DiskTable(
+        "t1", 1, 3, mapping, 10, ::rtidb::api::TTLType::kAbsoluteTime,
+        ::rtidb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
     ASSERT_TRUE(table->Init());
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     for (int idx = 0; idx < 100; idx++) {
@@ -1104,7 +1123,8 @@ TEST_F(DiskTableTest, GcTTL) {
         uint64_t ts = cur_time;
         for (int k = 0; k < 5; k++) {
             if (k > 2) {
-                ASSERT_TRUE(table->Put(key, ts - k - 10 * 60 * 1000, "value9", 6));
+                ASSERT_TRUE(
+                    table->Put(key, ts - k - 10 * 60 * 1000, "value9", 6));
             } else {
                 ASSERT_TRUE(table->Put(key, ts - k, "value", 5));
             }
@@ -1146,9 +1166,9 @@ TEST_F(DiskTableTest, GcTTL) {
 TEST_F(DiskTableTest, CheckPoint) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    DiskTable* table = new DiskTable("t1", 1, 1, mapping, 0, 
-            ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD,
-            FLAGS_hdd_root_path);
+    DiskTable* table = new DiskTable(
+        "t1", 1, 1, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime,
+        ::rtidb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
     ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 100; idx++) {
         std::string key = "test" + std::to_string(idx);
@@ -1172,7 +1192,7 @@ TEST_F(DiskTableTest, CheckPoint) {
     }
     ASSERT_FALSE(it->Valid());
     delete it;
-    
+
     std::string snapshot_path = FLAGS_hdd_root_path + "/1_1/snapshot";
     ASSERT_EQ(table->CreateCheckPoint(snapshot_path), 0);
     delete table;
@@ -1182,9 +1202,9 @@ TEST_F(DiskTableTest, CheckPoint) {
 
     ::rtidb::base::Rename(snapshot_path, data_path);
 
-    table = new DiskTable("t1", 1, 1, mapping, 0, 
-            ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD,
-            FLAGS_hdd_root_path);
+    table = new DiskTable(
+        "t1", 1, 1, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime,
+        ::rtidb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
     ASSERT_TRUE(table->LoadTable());
     raw_key = "test35";
     it = table->NewIterator(raw_key, ticket);
@@ -1205,7 +1225,7 @@ TEST_F(DiskTableTest, CheckPoint) {
     it->SeekToFirst();
     int count = 0;
     while (it->Valid()) {
-        std::string pk = it->GetPK();;
+        std::string pk = it->GetPK();
         count++;
         it->Next();
     }
@@ -1218,8 +1238,8 @@ TEST_F(DiskTableTest, CheckPoint) {
     RemoveData(path);
 }
 
-}
-}
+}  // namespace storage
+}  // namespace rtidb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

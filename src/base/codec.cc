@@ -16,8 +16,8 @@
  */
 
 #include "base/codec.h"
-#include <logging.h>
 #include <unordered_map>
+#include "logging.h" // NOLINT
 
 using ::baidu::common::DEBUG;
 using ::baidu::common::INFO;

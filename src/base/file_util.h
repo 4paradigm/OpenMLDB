@@ -11,13 +11,13 @@
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <logging.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <vector>
 #include <string>
+#include "logging.h" // NOLINT
 
 using ::baidu::common::INFO;
 using ::baidu::common::WARNING;

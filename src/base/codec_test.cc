@@ -86,10 +86,10 @@ TEST_F(CodecTest, NULLTest) {
     ASSERT_EQ(view.GetBool(1, &val1), 0);
     ASSERT_FALSE(val1);
     ASSERT_EQ(view.GetString(2, &ch, &length), 0);
-    
+
     RowView view2(schema);
     view2.GetValue(reinterpret_cast<int8_t*>(&(row[0])), 2, &ch, &length);
-    std::string ret(ch, length); 
+    std::string ret(ch, length);
     ASSERT_EQ(ret, st);
 }
 

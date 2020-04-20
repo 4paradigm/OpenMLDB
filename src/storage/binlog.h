@@ -13,24 +13,30 @@
 #include "log/log_writer.h"
 #include "storage/table.h"
 
-typedef ::rtidb::base::Skiplist<uint32_t, uint64_t, ::rtidb::base::DefaultComparator> LogParts;
+typedef ::rtidb::base::Skiplist<uint32_t, uint64_t,
+                                ::rtidb::base::DefaultComparator>
+    LogParts;
 
 namespace rtidb {
 namespace storage {
 
 class Binlog {
-public:
+ public:
     Binlog(LogParts* log_part, const std::string& binlog_path);
     ~Binlog() = default;
-    bool RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset, uint64_t& latest_offset);
+    bool RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset,
+                           uint64_t& latest_offset);  // NOLINT
 
-    bool DumpBinlogIndexData(std::shared_ptr<Table>& table, const ::rtidb::common::ColumnKey& column_key, uint32_t idx, std::vector<::rtidb::log::WriteHandle*>& whs, uint64_t offset);
+    bool DumpBinlogIndexData(
+        std::shared_ptr<Table>& table,  // NOLINT
+        const ::rtidb::common::ColumnKey& column_key, uint32_t idx,
+        std::vector<::rtidb::log::WriteHandle*>& whs,  // NOLINT
+        uint64_t offset);
 
-private:
+ private:
     LogParts* log_part_;
     std::string log_path_;
-
 };
 
-}
-}
+}  // namespace storage
+}  // namespace rtidb

@@ -5,19 +5,19 @@
 // Date 2017-06-16
 //
 
+#include <gtest/gtest.h>
+#include <sched.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <iostream>
+#include <vector>
+#include "base/file_util.h"
+#include "log/coding.h"
+#include "log/crc32c.h"
 #include "log/log_reader.h"
 #include "log/log_writer.h"
 #include "proto/tablet.pb.h"
-#include <sched.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <gtest/gtest.h>
-#include "base/file_util.h"
-#include <iostream>
-#include "log/crc32c.h"
-#include "log/coding.h"
-#include <vector>
 
 using ::rtidb::base::Slice;
 using ::rtidb::base::Status;
@@ -26,15 +26,12 @@ namespace rtidb {
 namespace log {
 
 class LogWRTest : public ::testing::Test {
-
-public:
+ public:
     LogWRTest() {}
-    ~LogWRTest () {}
+    ~LogWRTest() {}
 };
 
-inline std::string GenRand() {
-    return std::to_string(rand() % 10000000 + 1);
-}
+inline std::string GenRand() { return std::to_string(rand() % 10000000 + 1); } // NOLINT
 
 uint32_t type_crc_[kMaxRecordType + 1];
 int block_offset_ = 0;
@@ -46,7 +43,8 @@ void InitTypeCrc(uint32_t* type_crc) {
     }
 }
 
-void GenPhysicalRecord(RecordType t, const char* ptr, size_t n, int& block_offset_, std::vector<std::string>& rec_vec) {
+void GenPhysicalRecord(RecordType t, const char* ptr, size_t n,
+                       int& block_offset_, std::vector<std::string>& rec_vec) { // NOLINT
     assert(n <= 0xffff);  // Must fit in two bytes
     assert(block_offset_ + kHeaderSize + n <= kBlockSize);
     // Format the header
@@ -57,7 +55,7 @@ void GenPhysicalRecord(RecordType t, const char* ptr, size_t n, int& block_offse
 
     // Compute the crc of the record type and the payload.
     uint32_t crc = Extend(type_crc_[t], ptr, n);
-    crc = Mask(crc);                 // Adjust for storage
+    crc = Mask(crc);  // Adjust for storage
     EncodeFixed32(buf, crc);
 
     std::string str(buf, kHeaderSize);
@@ -67,7 +65,7 @@ void GenPhysicalRecord(RecordType t, const char* ptr, size_t n, int& block_offse
     block_offset_ += kHeaderSize + n;
 }
 
-int AddRecord(const Slice& slice, std::vector<std::string>& vec) {
+int AddRecord(const Slice& slice, std::vector<std::string>& vec) { // NOLINT
     const char* ptr = slice.data();
     size_t left = slice.size();
 
@@ -82,9 +80,10 @@ int AddRecord(const Slice& slice, std::vector<std::string>& vec) {
         const int leftover = kBlockSize - block_offset_;
         assert(leftover >= 0);
         if (leftover < kHeaderSize) {
-          // Switch to a new block
+            // Switch to a new block
             if (leftover > 0) {
-                // Fill the trailer (literal below relies on kHeaderSize being 7)
+                // Fill the trailer (literal below relies on kHeaderSize being
+                // 7)
                 assert(kHeaderSize == 7);
                 vec.push_back(std::string("\x00\x00\x00\x00\x00\x00"));
             }
@@ -236,7 +235,7 @@ TEST_F(LogWRTest, TestWait) {
     Status status = writer.AddRecord(sval);
     ASSERT_TRUE(status.ok());
 
-    block_offset_ = 1024 * 5 + kHeaderSize * 2  - kBlockSize;
+    block_offset_ = 1024 * 5 + kHeaderSize * 2 - kBlockSize;
 
     FILE* fd_r = fopen(full_path.c_str(), "rb");
     ASSERT_TRUE(fd_r != NULL);
@@ -262,7 +261,6 @@ TEST_F(LogWRTest, TestWait) {
     wf->Flush();
     status = reader.ReadRecord(&value, &scratch2);
     ASSERT_TRUE(status.IsWaitRecord());
-
 
     status = wf->Append(Slice(vec[1].c_str(), vec[1].length()));
     wf->Flush();
@@ -306,17 +304,12 @@ TEST_F(LogWRTest, TestGoBack) {
     ASSERT_EQ("hello", value3.ToString());
 }
 
-
-}
-}
+}  // namespace log
+}  // namespace rtidb
 
 int main(int argc, char** argv) {
-    srand (time(NULL));
+    srand(time(NULL));
     ::baidu::common::SetLogLevel(::baidu::common::DEBUG);
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }
-
-
-
-

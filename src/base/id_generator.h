@@ -4,13 +4,14 @@
 // Author wangbao
 // Date 2020-3-20
 //
+#pragma once
 
 #include <pthread.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include "base/random.h"
+#include "timer.h" // NOLINT
 
-#pragma once
 namespace rtidb {
 namespace base {
 

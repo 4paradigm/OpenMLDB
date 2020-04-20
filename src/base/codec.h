@@ -8,7 +8,6 @@
 #ifndef SRC_BASE_CODEC_H_
 #define SRC_BASE_CODEC_H_
 
-#include <logging.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string>
@@ -16,6 +15,7 @@
 #include <vector>
 #include <utility>
 #include "base/endianconv.h"
+#include "logging.h" // NOLINT
 #include "base/strings.h"
 #include "storage/segment.h"
 

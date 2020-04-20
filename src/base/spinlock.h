@@ -17,6 +17,7 @@
 //
 
 #pragma once
+#include <thread> // NOLINT
 
 namespace rtidb {
 namespace base {
