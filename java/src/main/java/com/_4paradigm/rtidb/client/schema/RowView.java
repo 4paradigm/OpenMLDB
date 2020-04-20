@@ -202,7 +202,7 @@ public class RowView {
             return null;
         }
         Object val = null;
-        int offset = offset_vec.get(idx);
+        int offset = offsetVec.get(idx);
         switch (column.getDataType()) {
             case Bool: {
                 int v = row.get(offset);
@@ -240,11 +240,11 @@ public class RowView {
             case Varchar:
                 int field_offset = offset;
                 int next_str_field_offset = 0;
-                if (field_offset < string_field_cnt - 1) {
+                if (field_offset < stringFieldCnt - 1) {
                     next_str_field_offset = field_offset + 1;
                 }
                 return getStrField(row, field_offset, next_str_field_offset,
-                        str_field_start_offset, RowCodecCommon.getAddrLength(size));
+                        strFieldStartOffset, RowCodecCommon.getAddrLength(size));
             default:
                 throw new TabletException("unsupported data type");
         }
