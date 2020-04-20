@@ -4,6 +4,7 @@
 // Date 2020-04-16
 
 #include "blobserver/blobserver_impl.h"
+#include <base/file_util.h>
 #include <base/hash.h>
 #include <base/status.h>
 #include <base/strings.h>
@@ -58,6 +59,13 @@ bool BlobServerImpl::Init() {
         PDLOG(INFO, "zk cluster disabled");
     }
     ::rtidb::base::SplitString(FLAGS_hdd_root_path, ",", root_paths_);
+    for (auto& it : root_paths_) {
+        bool ok = ::rtidb::base::MkdirRecur(it);
+        if (!ok) {
+            PDLOG(WARNING, "fail to creat dir %s", it.c_str());
+            return false;
+        }
+    }
     return true;
 }
 

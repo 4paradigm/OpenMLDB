@@ -30,7 +30,8 @@ public:
 
    bool Delete(uint32_t tid, uint32_t pid, const std::string& key, std::string* msg);
 
-   bool Stats(uint32_t tid, uint32_t pid, uint64_t* count, uint64_t* total_space, uint64_t* avail_space);
+   bool Stats(uint32_t tid, uint32_t pid, uint64_t* count, uint64_t* total_space, uint64_t* avail_space, std::string* msg);
+
 private:
    std::string endpoint_;
    ::rtidb::RpcClient<BlobServer_Stub> client_;

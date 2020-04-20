@@ -58,7 +58,7 @@ TEST_F(BinlogTest, DeleteBinlog) {
     tablet->Init();
     int offset = FLAGS_make_snapshot_threshold_offset;
     FLAGS_make_snapshot_threshold_offset = 0;
-	brpc::Server server;
+    brpc::Server server;
     if (server.AddService(tablet, brpc::SERVER_OWNS_SERVICE) != 0) {
        PDLOG(WARNING, "fail to register tablet rpc service");
        exit(1);

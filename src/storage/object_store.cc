@@ -19,7 +19,7 @@ ObjectStore::ObjectStore(const ::rtidb::blobserver::TableMeta& table_meta,
 
 bool ObjectStore::Init() {
     db_root_path_ = db_root_path_ + "/" + std::to_string(tid_) + "_" +
-                    std::to_string(pid_) + "/data";
+                    std::to_string(pid_);
     char* path = const_cast<char*>(db_root_path_.data());
     db_ = hs_open(path, 1, 0, 16);
     if (db_ != NULL) {
