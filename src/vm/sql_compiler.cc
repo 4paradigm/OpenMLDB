@@ -246,13 +246,16 @@ bool SQLCompiler::ResolvePlanFnAddress(PhysicalOpNode* node,
 
     if (!node->GetFnInfos().empty()) {
         for (auto info_ptr : node->GetFnInfos()) {
-            ::llvm::Expected<::llvm::JITEvaluatedSymbol> symbol(
-                jit->lookup(info_ptr->fn_name_));
-            if (symbol.takeError()) {
-                LOG(WARNING) << "fail to resolve fn address "
-                             << info_ptr->fn_name_ << " not found in jit";
+            if (!info_ptr->fn_name_.empty()) {
+                ::llvm::Expected<::llvm::JITEvaluatedSymbol> symbol(
+                    jit->lookup(info_ptr->fn_name_));
+                if (symbol.takeError()) {
+                    LOG(WARNING) << "fail to resolve fn address "
+                                 << info_ptr->fn_name_ << " not found in jit";
+                }
+                info_ptr->fn_ =
+                    (reinterpret_cast<int8_t*>(symbol->getAddress()));
             }
-            info_ptr->fn_ = (reinterpret_cast<int8_t*>(symbol->getAddress()));
         }
     }
     return true;
