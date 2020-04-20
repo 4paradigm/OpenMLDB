@@ -22,6 +22,7 @@
 #include "node/plan_node.h"
 #include "node/sql_node.h"
 #include "vm/physical_op.h"
+#include "vm/schema.h"
 namespace fesql {
 namespace vm {
 class LogicalOp {
