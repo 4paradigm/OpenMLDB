@@ -165,8 +165,11 @@ class FilterOptimized : public TransformUpPysicalPass {
     static bool TransfromAndConditionList(
         const node::ExprNode* condition,
         node::ExprListNode* and_condition_list);
-    static bool TransformEqualExprPair(node::ExprNode* condition,
+    static bool TransformEqualExprPair(const SchemasContext& ctx,
+                                       node::ExprNode* condition,
                                        ExprPair* expr_pair);
+    static bool ExprRefResolved(const node::ExprNode* expr,
+                    const RowSchemaInfo** info);
 
  private:
     virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);

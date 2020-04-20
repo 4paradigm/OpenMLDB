@@ -48,39 +48,6 @@ class TransformTest : public ::testing::TestWithParam<std::string> {
     ~TransformTest() {}
 };
 
-
-void BuildTableDef(::fesql::type::TableDef& table_def) {  // NOLINT
-    table_def.set_name("t1");
-    table_def.set_catalog("db");
-    {
-        ::fesql::type::ColumnDef* column = table_def.add_columns();
-        column->set_type(::fesql::type::kInt32);
-        column->set_name("col1");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table_def.add_columns();
-        column->set_type(::fesql::type::kInt16);
-        column->set_name("col2");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table_def.add_columns();
-        column->set_type(::fesql::type::kFloat);
-        column->set_name("col3");
-    }
-
-    {
-        ::fesql::type::ColumnDef* column = table_def.add_columns();
-        column->set_type(::fesql::type::kDouble);
-        column->set_name("col4");
-    }
-
-    {
-        ::fesql::type::ColumnDef* column = table_def.add_columns();
-        column->set_type(::fesql::type::kInt64);
-        column->set_name("col15");
-    }
-}
-
 INSTANTIATE_TEST_CASE_P(
     SqlSimpleProjectPlanner, TransformTest,
     testing::Values(
@@ -109,17 +76,17 @@ INSTANTIATE_TEST_CASE_P(
 INSTANTIATE_TEST_CASE_P(
     SqlWindowProjectPlanner, TransformTest,
     testing::Values(
-        "SELECT COL1, COL2, `COL15`, AVG(COL3) OVER w, SUM(COL3) OVER w FROM "
+        "SELECT COL1, COL2, `COL5`, AVG(COL3) OVER w, SUM(COL3) OVER w FROM "
         "t1 \n"
         "WINDOW w AS (PARTITION BY COL2\n"
-        "              ORDER BY `COL15` ROWS BETWEEN UNBOUNDED PRECEDING AND "
+        "              ORDER BY `COL5` ROWS BETWEEN UNBOUNDED PRECEDING AND "
         "CURRENT ROW);",
         "SELECT COL1, SUM(col4) OVER w as w_amt_sum FROM t1 \n"
         "WINDOW w AS (PARTITION BY COL2\n"
-        "              ORDER BY `col15` ROWS BETWEEN 3 PRECEDING AND 3 "
+        "              ORDER BY `col5` ROWS BETWEEN 3 PRECEDING AND 3 "
         "FOLLOWING);",
         "SELECT sum(col1) OVER w1 as w1_col1_sum FROM t1 "
-        "WINDOW w1 AS (PARTITION BY col15 ORDER BY `col15` RANGE BETWEEN 3 "
+        "WINDOW w1 AS (PARTITION BY col5 ORDER BY `col5` RANGE BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;"));
 
 INSTANTIATE_TEST_CASE_P(
@@ -202,7 +169,7 @@ INSTANTIATE_TEST_CASE_P(
         "SELECT * FROM t1 right join t2 on t1.col1 = t2.col2;",
         "SELECT * FROM t1 inner join t2 on t1.col1 = t2.col2 limit 10;",
         "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join t2 on "
-        "t1.col1 = t2.col2 and t2.col15 >= t1.col15;"));
+        "t1.col1 = t2.col2 and t2.col5 >= t1.col5;"));
 
 // TODO(chenjing): 解决窗口PK列冲突的问题
 INSTANTIATE_TEST_CASE_P(
@@ -213,14 +180,14 @@ INSTANTIATE_TEST_CASE_P(
         "sum(t1.col3) OVER w1 as w1_col3_sum, "
         "sum(t2.col2) OVER w1 as w1_col2_sum "
         "FROM t1 left join t2 on t1.col1 = t2.col1 "
-        "WINDOW w1 AS (PARTITION BY t1.col1 ORDER BY t1.col15 ROWS BETWEEN 3 "
+        "WINDOW w1 AS (PARTITION BY t1.col1 ORDER BY t1.col5 ROWS BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;",
         "SELECT "
         "t1.col1, "
         "sum(t1.col3) OVER w1 as w1_col3_sum, "
         "sum(t2.col2) OVER w1 as w1_col2_sum "
         "FROM t1 left join t2 on t1.col1 = t2.col1 WINDOW w1 AS (PARTITION BY "
-        "t1.col1, t1.col2 ORDER BY t1.col15 ROWS BETWEEN 3 "
+        "t1.col1, t1.col2 ORDER BY t1.col5 ROWS BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;"));
 INSTANTIATE_TEST_CASE_P(
     SqlUnionPlan, TransformTest,
@@ -244,7 +211,7 @@ INSTANTIATE_TEST_CASE_P(
         "SELECT distinct COL1 FROM t1 HAVING COL1 > 10 and COL2 = 20;",
         "SELECT DISTINCT sum(COL1) as col1sum, * FROM t1 group by COL1,COL2;",
         "SELECT DISTINCT sum(col1) OVER w1 as w1_col1_sum FROM t1 "
-        "WINDOW w1 AS (PARTITION BY col15 ORDER BY `TS` RANGE BETWEEN 3 "
+        "WINDOW w1 AS (PARTITION BY col5 ORDER BY `TS` RANGE BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;",
         //        "SELECT DISTINCT COUNT(*) FROM t1;",
         "SELECT distinct COL1 FROM t1 where COL1+COL2;",
@@ -322,7 +289,7 @@ TEST_P(TransformTest, transform_physical_plan) {
     index->set_name("index12");
     index->add_first_keys("col1");
     index->add_first_keys("col2");
-    index->set_second_key("col15");
+    index->set_second_key("col5");
     auto catalog = BuildCommonCatalog(table_def, table);
     AddTable(catalog, table_def2, table2);
     AddTable(catalog, table_def3, table3);
@@ -443,13 +410,13 @@ TEST_F(TransformTest, pass_group_optimized_test) {
         index->set_name("index12");
         index->add_first_keys("col1");
         index->add_first_keys("col2");
-        index->set_second_key("col15");
+        index->set_second_key("col5");
     }
     {
         ::fesql::type::IndexDef* index = table_def.add_indexes();
         index->set_name("index1");
         index->add_first_keys("col1");
-        index->set_second_key("col15");
+        index->set_second_key("col5");
     }
 
     auto catalog = BuildCommonCatalog(table_def, table);
@@ -466,10 +433,10 @@ TEST_F(TransformTest, pass_sort_optimized_test) {
         "col1, "
         "sum(col3) OVER w1 as w1_col3_sum, "
         "sum(col2) OVER w1 as w1_col2_sum "
-        "FROM t1 WINDOW w1 AS (PARTITION BY col1 ORDER BY col15 ROWS BETWEEN 3 "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;",
         "LIMIT(limit=10, optimized)\n"
-        "  PROJECT(type=WindowAggregation, groups=(col1), orders=(col15) ASC, "
+        "  PROJECT(type=WindowAggregation, groups=(col1), orders=(col5) ASC, "
         "start=-3, end=0, limit=10)\n"
         "    GROUP_AND_SORT_BY(groups=(), orders=() ASC)\n"
         "      DATA_PROVIDER(type=IndexScan, table=t1, index=index1)"));
@@ -478,11 +445,11 @@ TEST_F(TransformTest, pass_sort_optimized_test) {
         "col1, "
         "sum(col3) OVER w1 as w1_col3_sum, "
         "sum(col2) OVER w1 as w1_col2_sum "
-        "FROM t1 WINDOW w1 AS (PARTITION BY col2, col1 ORDER BY col15 ROWS "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col2, col1 ORDER BY col5 ROWS "
         "BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;",
         "LIMIT(limit=10, optimized)\n"
-        "  PROJECT(type=WindowAggregation, groups=(col2,col1), orders=(col15) "
+        "  PROJECT(type=WindowAggregation, groups=(col2,col1), orders=(col5) "
         "ASC, start=-3, end=0, limit=10)\n"
         "    GROUP_AND_SORT_BY(groups=(), orders=() ASC)\n"
         "      DATA_PROVIDER(type=IndexScan, table=t1, index=index12)"));
@@ -491,12 +458,12 @@ TEST_F(TransformTest, pass_sort_optimized_test) {
         "col1, "
         "sum(col3) OVER w1 as w1_col3_sum, "
         "sum(col2) OVER w1 as w1_col2_sum "
-        "FROM t1 WINDOW w1 AS (PARTITION BY col3 ORDER BY col15 ROWS BETWEEN 3 "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col3 ORDER BY col5 ROWS BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;",
         "LIMIT(limit=10, optimized)\n"
-        "  PROJECT(type=WindowAggregation, groups=(col3), orders=(col15) ASC, "
+        "  PROJECT(type=WindowAggregation, groups=(col3), orders=(col5) ASC, "
         "start=-3, end=0, limit=10)\n"
-        "    GROUP_AND_SORT_BY(groups=(col3), orders=(col15) ASC)\n"
+        "    GROUP_AND_SORT_BY(groups=(col3), orders=(col5) ASC)\n"
         "      DATA_PROVIDER(table=t1)"));
 
     fesql::type::TableDef table_def;
@@ -509,13 +476,13 @@ TEST_F(TransformTest, pass_sort_optimized_test) {
         index->set_name("index12");
         index->add_first_keys("col1");
         index->add_first_keys("col2");
-        index->set_second_key("col15");
+        index->set_second_key("col5");
     }
     {
         ::fesql::type::IndexDef* index = table_def.add_indexes();
         index->set_name("index1");
         index->add_first_keys("col1");
-        index->set_second_key("col15");
+        index->set_second_key("col5");
     }
 
     auto catalog = BuildCommonCatalog(table_def, table);
@@ -533,10 +500,10 @@ TEST_F(TransformTest, pass_join_optimized_test) {
         "t2.col1, "
         "sum(t1.col2) OVER w1 as w1_col2_sum "
         "FROM t1 left join t2 on t1.col1 = t2.col1 "
-        "WINDOW w1 AS (PARTITION BY t1.col1 ORDER BY t1.col15 ROWS BETWEEN 3 "
+        "WINDOW w1 AS (PARTITION BY t1.col1 ORDER BY t1.col5 ROWS BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;",
         "LIMIT(limit=10, optimized)\n"
-        "  PROJECT(type=WindowAggregation, groups=(t1.col1), orders=(t1.col15) "
+        "  PROJECT(type=WindowAggregation, groups=(t1.col1), orders=(t1.col5) "
         "ASC, "
         "start=-3, end=0, limit=10)\n"
         "    JOIN(type=LeftJoin, condition=t1.col1 = t2.col1)\n"
@@ -549,12 +516,12 @@ TEST_F(TransformTest, pass_join_optimized_test) {
         "sum(t1.col3) OVER w1 as w1_col3_sum, "
         "sum(t1.col2) OVER w1 as w1_col2_sum "
         "FROM t1 left join t2 on t1.col1 = t2.col1 "
-        "WINDOW w1 AS (PARTITION BY t1.col1, t1.col2 ORDER BY t1.col15 ROWS "
+        "WINDOW w1 AS (PARTITION BY t1.col1, t1.col2 ORDER BY t1.col5 ROWS "
         "BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;",
         "LIMIT(limit=10, optimized)\n"
         "  PROJECT(type=WindowAggregation, groups=(t1.col1,t1.col2), "
-        "orders=(t1.col15) "
+        "orders=(t1.col5) "
         "ASC, start=-3, end=0, limit=10)\n"
         "    JOIN(type=LeftJoin, condition=t1.col1 = t2.col1)\n"
         "      GROUP_AND_SORT_BY(groups=(), orders=() ASC)\n"
@@ -570,13 +537,13 @@ TEST_F(TransformTest, pass_join_optimized_test) {
         index->set_name("index12");
         index->add_first_keys("col1");
         index->add_first_keys("col2");
-        index->set_second_key("col15");
+        index->set_second_key("col5");
     }
     {
         ::fesql::type::IndexDef* index = table_def.add_indexes();
         index->set_name("index1");
         index->add_first_keys("col1");
-        index->set_second_key("col15");
+        index->set_second_key("col5");
     }
     auto catalog = BuildCommonCatalog(table_def, table);
     {
@@ -647,6 +614,18 @@ TEST_F(TransformTest, TransfromConditionsTest) {
 }
 
 TEST_F(TransformTest, TransfromEqExprPairTest) {
+    std::vector<std::pair<const std::string, const vm::Schema*>> name_schemas;
+    type::TableDef t1;
+    type::TableDef t2;
+    {
+        BuildTableDef(t1);
+        name_schemas.push_back(std::make_pair("t1", &t1.columns()));
+    }
+    {
+        BuildTableT2Def(t2);
+        name_schemas.push_back(std::make_pair("t2", &t2.columns()));
+    }
+    const SchemasContext ctx(name_schemas);
     std::vector<std::pair<std::string, std::pair<std::string, std::string>>>
         sql_exp;
 
@@ -655,6 +634,10 @@ TEST_F(TransformTest, TransfromEqExprPairTest) {
 
     sql_exp.push_back(std::make_pair("select t2.col1=t1.col1 from t1,t2;",
                                      std::make_pair("t2.col1", "t1.col1")));
+
+    // Fail Extract Equal Pair
+    sql_exp.push_back(std::make_pair(
+        "select t2.col1+t1.col1=t2.col3 from t1,t2;", std::make_pair("", "")));
 
     for (size_t i = 0; i < sql_exp.size(); i++) {
         std::string sql = sql_exp[i].first;
@@ -667,7 +650,7 @@ TEST_F(TransformTest, TransfromEqExprPairTest) {
                   << "]: " << node::ExprString(condition);
         node::ExprListNode and_condition_list;
         std::pair<node::ExprNode*, node::ExprNode*> expr_pair;
-        FilterOptimized::TransformEqualExprPair(condition, &expr_pair);
+        FilterOptimized::TransformEqualExprPair(ctx, condition, &expr_pair);
         ASSERT_EQ(exp_list.first, node::ExprString(expr_pair.first));
         ASSERT_EQ(exp_list.second, node::ExprString(expr_pair.second));
     }

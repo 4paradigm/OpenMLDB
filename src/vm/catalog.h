@@ -25,6 +25,7 @@
 #include "base/slice.h"
 #include "codec/list_iterator_codec.h"
 #include "proto/type.pb.h"
+#include "vm/schema.h"
 
 namespace fesql {
 namespace vm {
@@ -35,23 +36,6 @@ using fesql::codec::Row;
 using fesql::codec::RowIterator;
 using fesql::codec::WindowIterator;
 
-struct ColInfo {
-    ::fesql::type::Type type;
-    uint32_t pos;
-    std::string name;
-};
-
-struct IndexSt {
-    std::string name;
-    uint32_t index;
-    uint32_t ts_pos;
-    std::vector<ColInfo> keys;
-};
-
-typedef ::google::protobuf::RepeatedPtrField<::fesql::type::ColumnDef> Schema;
-typedef ::google::protobuf::RepeatedPtrField<::fesql::type::IndexDef> IndexList;
-typedef std::map<std::string, ColInfo> Types;
-typedef std::map<std::string, IndexSt> IndexHint;
 
 class PartitionHandler;
 

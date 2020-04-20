@@ -27,10 +27,11 @@
 #include "node/plan_node.h"
 #include "proto/type.pb.h"
 #include "vm/catalog.h"
+#include "vm/schema.h"
 
 namespace fesql {
 namespace codegen {
-
+using fesql::vm::RowSchemaInfo;
 class RowFnLetIRBuilder {
  public:
     RowFnLetIRBuilder(const vm::Schema& schema, ::llvm::Module* module);
@@ -69,7 +70,7 @@ class RowFnLetIRBuilder {
 
  private:
     // input schema
-    std::vector<RowIRInfo> row_info_list_;
+    const vm::SchemasContext schema_context_;
     ::llvm::Module* module_;
 };
 
