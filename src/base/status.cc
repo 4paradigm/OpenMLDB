@@ -28,9 +28,9 @@ Status::Status(Code code, const Slice& msg, const Slice& msg2) {
     result[4] = static_cast<char>(code);
     memcpy(result + 5, msg.data(), len1);
     if (len2) {
-      result[5 + len1] = ':';
-      result[6 + len1] = ' ';
-      memcpy(result + 7 + len1, msg2.data(), len2);
+        result[5 + len1] = ':';
+        result[6 + len1] = ' ';
+        memcpy(result + 7 + len1, msg2.data(), len2);
     }
     state_ = result;
 }
@@ -70,21 +70,18 @@ std::string Status::ToString() const {
                 type = "End of file";
                 break;
             default:
-                snprintf(tmp, sizeof(tmp), "Unknown code(%d): ",
-                   static_cast<int>(code()));
+                snprintf(tmp, sizeof(tmp),
+                         "Unknown code(%d): ", static_cast<int>(code()));
                 type = tmp;
                 break;
-      }
-      std::string result(type);
-      uint32_t length;
-      memcpy(&length, state_, sizeof(length));
-      result.append(state_ + 5, length);
-      return result;
+        }
+        std::string result(type);
+        uint32_t length;
+        memcpy(&length, state_, sizeof(length));
+        result.append(state_ + 5, length);
+        return result;
     }
 }
 
-}
-}
-
-
-
+}  // namespace base
+}  // namespace rtidb

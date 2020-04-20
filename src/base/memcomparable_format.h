@@ -36,7 +36,7 @@ static constexpr int FLT_EXP_DIG = sizeof(float) * 8 - FLT_MANT_DIG;
 static constexpr int DBL_EXP_DIG = sizeof(double) * 8 - DBL_MANT_DIG;
 static constexpr int RDB_ESCAPE_LENGTH = 9;
 
-static int32_t GetDstStrSize(int32_t size) {
+static inline int32_t GetDstStrSize(int32_t size) {
     if (size == 0) {
         return RDB_ESCAPE_LENGTH;
     }
@@ -44,14 +44,14 @@ static int32_t GetDstStrSize(int32_t size) {
     return byte_num * RDB_ESCAPE_LENGTH;
 }
 
-static void SwapFloatBytes(uchar *const dst, const uchar *const src) {
+static inline void SwapFloatBytes(uchar *const dst, const uchar *const src) {
     dst[0] = src[3];
     dst[1] = src[2];
     dst[2] = src[1];
     dst[3] = src[0];
 }
 
-static void SwapDoubleBytes(uchar *const dst, const uchar *const src) {
+static inline void SwapDoubleBytes(uchar *const dst, const uchar *const src) {
     dst[0] = src[7];
     dst[1] = src[6];
     dst[2] = src[5];
@@ -62,8 +62,8 @@ static void SwapDoubleBytes(uchar *const dst, const uchar *const src) {
     dst[7] = src[0];
 }
 
-static void CopyInteger(const uchar *from, int length, bool is_unsigned,
-                        uchar *to) {
+__attribute__((unused)) static void CopyInteger(const uchar *from, int length,
+                                                bool is_unsigned, uchar *to) {
     const int sign_byte = from[length - 1];
     if (is_unsigned)
         to[0] = sign_byte;
@@ -72,28 +72,29 @@ static void CopyInteger(const uchar *from, int length, bool is_unsigned,
     for (int i = 1, j = length - 2; i < length; ++i, --j) to[i] = from[j];
 }
 
-static int PackInteger(const void *from, uint32_t length, bool unsigned_flag,
-                       void *to) {
+__attribute__((unused)) static int PackInteger(const void *from,
+                                               uint32_t length,
+                                               bool unsigned_flag, void *to) {
     if (from == nullptr || length < 2) {
         return -1;
     }
-    uchar *ptr = (uchar *)from;
-    uchar *uto = (uchar *)to;
+    uchar *ptr = (uchar *)from;  // NOLINT
+    uchar *uto = (uchar *)to;    // NOLINT
     CopyInteger(ptr, length, unsigned_flag, uto);
     return 0;
 }
 
-static int PackFloat(const void *from, void *to) {
+__attribute__((unused)) static int PackFloat(const void *from, void *to) {
     if (from == nullptr) {
         return -1;
     }
     uint32_t length = sizeof(float);
-    const uchar *ptr = (uchar *)from;
+    const uchar *ptr = (uchar *)from;  // NOLINT
     float nr;
     memcpy(&nr, ptr, length);
 
-    uchar *tmp = (uchar *)to;
-    if (nr == (float)0.0) {
+    uchar *tmp = (uchar *)to;  // NOLINT
+    if (nr == (float)0.0) {    // NOLINT
         /* Change to zero string */
         tmp[0] = (uchar)128;
         memset(tmp + 1, 0, length - 1);
@@ -115,23 +116,22 @@ static int PackFloat(const void *from, void *to) {
     return 0;
 }
 
-
 /* The following should work for IEEE */
-static int PackDouble(const void *from, void *to) {
+__attribute__((unused)) static int PackDouble(const void *from, void *to) {
     if (from == nullptr) {
         return -1;
     }
-    uint32_t length = sizeof(double); 
-    const uchar *ptr = (uchar *)from;
+    uint32_t length = sizeof(double);
+    const uchar *ptr = (uchar *)from;  // NOLINT
     double nr;
     memcpy(&nr, ptr, length);
 
-    uchar *tmp = (uchar *)to;
-    if (nr == 0.0) { /* Change to zero string */
+    uchar *tmp = (uchar *)to;  // NOLINT
+    if (nr == 0.0) {           /* Change to zero string */
         tmp[0] = (uchar)128;
         memset(tmp + 1, 0, sizeof(nr) - 1);
     } else {
-        uchar *ptr = (uchar *)&nr;
+        uchar *ptr = (uchar *)&nr;  // NOLINT
         SwapDoubleBytes(tmp, ptr);
         if (tmp[0] & 128) { /* Negative */
             uint32_t i;
@@ -170,14 +170,15 @@ static int PackDouble(const void *from, void *to) {
    - 9 bytes  is encoded as X X X X X X X X 9 X 0 0 0 0 0 0 0 1
    - 10 bytes is encoded as X X X X X X X X 9 X X 0 0 0 0 0 0 2
  */
-static int PackString(const void *src,  // The data to encode
-                      size_t src_len,   // The length of the data to encode
-                      void **dst) {     // The encoded data
+__attribute__((unused)) static int PackString(
+    const void *src,  // The data to encode
+    size_t src_len,   // The length of the data to encode
+    void **dst) {     // The encoded data
     if (src == nullptr) {
         return -1;
     }
-    const uchar *usrc = (uchar *)src;
-    uchar *ptr = (uchar *)*dst;
+    const uchar *usrc = (uchar *)src;  // NOLINT
+    uchar *ptr = (uchar *)*dst;        // NOLINT
 
     for (;;) {
         // Figure out how many bytes to copy, copy them and adjust pointers
@@ -203,18 +204,18 @@ static int PackString(const void *src,  // The data to encode
         // We have more data - put the flag byte (N) in and continue
         *(ptr++) = RDB_ESCAPE_LENGTH;
     }
-    //*dst = ptr;
+    // *dst = ptr;
     return 0;
 }
 
-__attribute__((unused))
-static int UnpackInteger(const void *from, uint32_t length, bool unsigned_flag,
-                         void *to) {
+__attribute__((unused)) static int UnpackInteger(const void *from,
+                                                 uint32_t length,
+                                                 bool unsigned_flag, void *to) {
     if (from == nullptr || length < 2) {
         return -1;
     }
-    const uchar *ufrom = (uchar *)from;
-    uchar *uto = (uchar *)to;
+    const uchar *ufrom = (uchar *)from; // NOLINT
+    uchar *uto = (uchar *)to; // NOLINT
     const int sign_byte = ufrom[0];
     if (unsigned_flag) {
         uto[length - 1] = sign_byte;
@@ -227,14 +228,12 @@ static int UnpackInteger(const void *from, uint32_t length, bool unsigned_flag,
     return 0;
 }
 
-static int UnpackFloatingPoint(const void *src, const size_t size,
-                               const int exp_digit,
-                               const uchar *const zero_pattern,
-                               const uchar *const zero_val,
-                               void (*swap_func)(uchar *, const uchar *),
-                               void *dst) {
-    const uchar *const from = (uchar *)src;
-    uchar *const udst = (uchar *)dst;
+__attribute__((unused)) static int UnpackFloatingPoint(
+    const void *src, const size_t size, const int exp_digit,
+    const uchar *const zero_pattern, const uchar *const zero_val,
+    void (*swap_func)(uchar *, const uchar *), void *dst) {
+    const uchar *const from = (uchar *)src; // NOLINT
+    uchar *const udst = (uchar *)dst; // NOLINT
     if (from == nullptr) {
         return -1;
     }
@@ -273,13 +272,11 @@ static int UnpackFloatingPoint(const void *src, const size_t size,
    Note also that this code assumes that NaN and +/-Infinity are never
    allowed in the database.
 */
-__attribute__((unused))
-static int UnpackFloat(const void *src, void *dst) {
+__attribute__((unused)) static int UnpackFloat(const void *src, void *dst) {
     static float zero_val = 0.0;
     static const uchar zero_pattern[4] = {128, 0, 0, 0};
     return UnpackFloatingPoint(src, sizeof(float), FLT_EXP_DIG, zero_pattern,
-                               (const uchar *)&zero_val, SwapFloatBytes,
-                               dst);
+                               (const uchar *)&zero_val, SwapFloatBytes, dst);
 }
 
 /*
@@ -290,19 +287,18 @@ static int UnpackFloat(const void *src, void *dst) {
    Note also that this code assumes that NaN and +/-Infinity are never
    allowed in the database.
 */
-__attribute__((unused))
-static int UnpackDouble(const void *src, void *dst) {
+__attribute__((unused)) static int UnpackDouble(const void *src, void *dst) {
     static double zero_val = 0.0;
     static const uchar zero_pattern[8] = {128, 0, 0, 0, 0, 0, 0, 0};
     return UnpackFloatingPoint(src, sizeof(double), DBL_EXP_DIG, zero_pattern,
-                               (const uchar *)&zero_val, SwapDoubleBytes,
-                               dst);
+                               (const uchar *)&zero_val, SwapDoubleBytes, dst);
 }
 
 /*
    Read the next @param size bytes.
 */
-static const uchar *Read(const uint32_t size, const uchar **usrc) {
+__attribute__((unused)) static const uchar *Read(const uint32_t size,
+                                                 const uchar **usrc) {
     const uchar *res;
     res = *usrc;
     *usrc += size;
@@ -314,7 +310,8 @@ static const uchar *Read(const uint32_t size, const uchar **usrc) {
    last chunk in the input.  This is based on the new format - see
    pack_variable_format.
 */
-static uint32_t CalcUnpackVariableFormat(uchar flag, bool *done) {
+__attribute__((unused)) static uint32_t CalcUnpackVariableFormat(uchar flag,
+                                                                 bool *done) {
     // Check for invalid flag values
     if (flag > RDB_ESCAPE_LENGTH) {
         return (uint32_t)-1;
@@ -333,13 +330,13 @@ static uint32_t CalcUnpackVariableFormat(uchar flag, bool *done) {
 /*
    Function of type rdb_index_field_unpack_t
 */
-__attribute__((unused))
-static int UnpackString(const void *src, void *dst, int32_t *size) {
+__attribute__((unused)) static int UnpackString(const void *src, void *dst,
+                                                int32_t *size) {
     if (src == nullptr) {
         return -1;
     }
-    const uchar *usrc = (uchar *)src;
-    uchar *udst = (uchar *)dst;
+    const uchar *usrc = (uchar *)src; // NOLINT
+    uchar *udst = (uchar *)dst; // NOLINT
     const uchar *ptr;
     size_t len = 0;
     bool finished = false;

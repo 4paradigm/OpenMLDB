@@ -5,18 +5,19 @@
 // Date 2017-09-23
 //
 
-#ifndef RTIDB_SCHEMA_CODEC_H
-#define RTIDB_SCHEMA_CODEC_H
-#include <vector>
-#include <map>
-#include <unordered_map>
-#include <string>
+#ifndef SRC_BASE_SCHEMA_CODEC_H_
+#define SRC_BASE_SCHEMA_CODEC_H_
+
 #include <cstring>
 #include <iostream>
-#include "proto/name_server.pb.h"
-#include "base/codec.h"
+#include <map>
+#include <string>
+#include <unordered_map>
+#include <vector>
 #include <boost/lexical_cast.hpp>
+#include "base/codec.h"
 #include "base/status.h"
+#include "proto/name_server.pb.h"
 
 namespace rtidb {
 namespace base {
@@ -24,44 +25,41 @@ namespace base {
 const uint32_t MAX_ROW_BYTE_SIZE = 1024 * 1024;
 const uint32_t HEADER_BYTE_SIZE = 3;
 
-const std::string NONETOKEN = "None#*@!";
-const std::string DEFAULT_LONG = "1";
+const std::string NONETOKEN = "None#*@!"; // NOLINT
+const std::string DEFAULT_LONG = "1"; // NOLINT
 
-static const std::unordered_map<std::string, ::rtidb::type::DataType>  DATA_TYPE_MAP = {
-    {"bool", ::rtidb::type::kBool}, 
-    {"smallint", ::rtidb::type::kSmallInt},
-    {"int", ::rtidb::type::kInt},
-    {"bigint", ::rtidb::type::kBigInt},
-    {"float", ::rtidb::type::kFloat},
-    {"double", ::rtidb::type::kDouble},
-    {"varchar", ::rtidb::type::kVarchar},
-    {"string", rtidb::type::DataType::kString},
-    {"date", ::rtidb::type::kDate},
-    {"timestamp", ::rtidb::type::kTimestamp},
-    {"blob", ::rtidb::type::kBlob}
-};
+static const std::unordered_map<std::string, ::rtidb::type::DataType>
+    DATA_TYPE_MAP = {{"bool", ::rtidb::type::kBool},
+                     {"smallint", ::rtidb::type::kSmallInt},
+                     {"int", ::rtidb::type::kInt},
+                     {"bigint", ::rtidb::type::kBigInt},
+                     {"float", ::rtidb::type::kFloat},
+                     {"double", ::rtidb::type::kDouble},
+                     {"varchar", ::rtidb::type::kVarchar},
+                     {"string", rtidb::type::DataType::kString},
+                     {"date", ::rtidb::type::kDate},
+                     {"timestamp", ::rtidb::type::kTimestamp},
+                     {"blob", ::rtidb::type::kBlob}};
 
-static const std::unordered_map<std::string, ::rtidb::type::IndexType> INDEX_TYPE_MAP = {
-    {"unique", ::rtidb::type::kUnique},
-    {"nounique", ::rtidb::type::kNoUnique},
-    {"primarykey", ::rtidb::type::kPrimaryKey},
-    {"autogen", ::rtidb::type::kAutoGen},
-    {"increment", ::rtidb::type::kIncrement}
-};
+static const std::unordered_map<std::string, ::rtidb::type::IndexType>
+    INDEX_TYPE_MAP = {{"unique", ::rtidb::type::kUnique},
+                      {"nounique", ::rtidb::type::kNoUnique},
+                      {"primarykey", ::rtidb::type::kPrimaryKey},
+                      {"autogen", ::rtidb::type::kAutoGen},
+                      {"increment", ::rtidb::type::kIncrement}};
 
-static const std::unordered_map<::rtidb::type::DataType, std::string> DATA_TYPE_STR_MAP = {
-    {::rtidb::type::kBool, "bool"},
-    {::rtidb::type::kSmallInt, "smallInt"},
-    {::rtidb::type::kInt, "int"},
-    {::rtidb::type::kBigInt, "bigInt"},
-    {::rtidb::type::kFloat, "float"},
-    {::rtidb::type::kDouble, "double"},
-    {::rtidb::type::kTimestamp, "timestamp"},
-    {::rtidb::type::kDate, "date"},
-    {::rtidb::type::kVarchar, "varchar"},
-    {::rtidb::type::kString, "string"},
-    {::rtidb::type::kBlob, "blob"}
-};
+static const std::unordered_map<::rtidb::type::DataType, std::string>
+    DATA_TYPE_STR_MAP = {{::rtidb::type::kBool, "bool"},
+                         {::rtidb::type::kSmallInt, "smallInt"},
+                         {::rtidb::type::kInt, "int"},
+                         {::rtidb::type::kBigInt, "bigInt"},
+                         {::rtidb::type::kFloat, "float"},
+                         {::rtidb::type::kDouble, "double"},
+                         {::rtidb::type::kTimestamp, "timestamp"},
+                         {::rtidb::type::kDate, "date"},
+                         {::rtidb::type::kVarchar, "varchar"},
+                         {::rtidb::type::kString, "string"},
+                         {::rtidb::type::kBlob, "blob"}};
 
 enum ColType {
     kString = 0,
@@ -94,19 +92,16 @@ struct ColumnDesc {
 };
 
 class SchemaCodec {
-
-public:
-    bool Encode(const std::vector<ColumnDesc>& columns,
-                std::string& buffer) {
-        //TODO limit the total size
+ public:
+    bool Encode(const std::vector<ColumnDesc>& columns, std::string& buffer) { // NOLINT
         uint32_t byte_size = GetSize(columns);
-        if (byte_size >  MAX_ROW_BYTE_SIZE) {
+        if (byte_size > MAX_ROW_BYTE_SIZE) {
             return false;
         }
         buffer.resize(byte_size);
         char* cbuffer = reinterpret_cast<char*>(&(buffer[0]));
         for (uint32_t i = 0; i < columns.size(); i++) {
-            uint8_t type = (uint8_t) columns[i].type;
+            uint8_t type = (uint8_t)columns[i].type;
             memcpy(cbuffer, static_cast<const void*>(&type), 1);
             cbuffer += 1;
             uint8_t add_ts_idx = 0;
@@ -115,7 +110,6 @@ public:
             }
             memcpy(cbuffer, static_cast<const void*>(&add_ts_idx), 1);
             cbuffer += 1;
-            //TODO limit the name length
             const std::string& name = columns[i].name;
             if (name.size() >= 128) {
                 return false;
@@ -129,7 +123,7 @@ public:
         return true;
     }
 
-    void Decode(const std::string& schema, std::vector<ColumnDesc>& columns) {
+    void Decode(const std::string& schema, std::vector<ColumnDesc>& columns) { // NOLINT
         const char* buffer = schema.c_str();
         uint32_t read_size = 0;
         while (read_size < schema.size()) {
@@ -180,9 +174,9 @@ public:
             type = ::rtidb::base::ColType::kTimestamp;
         } else if (raw_type == "int16") {
             type = ::rtidb::base::ColType::kInt16;
-        } else if (raw_type == "uint16"){
+        } else if (raw_type == "uint16") {
             type = ::rtidb::base::ColType::kUInt16;
-        } else if (raw_type == "bool"){
+        } else if (raw_type == "bool") {
             type = ::rtidb::base::ColType::kBool;
         } else if (raw_type == "date") {
             type = ::rtidb::base::ColType::kDate;
@@ -192,23 +186,26 @@ public:
         return type;
     }
 
-    static int ConvertColumnDesc(const ::rtidb::nameserver::TableInfo& table_info,
-                        std::vector<ColumnDesc>& columns) {
+    static int ConvertColumnDesc(
+        const ::rtidb::nameserver::TableInfo& table_info,
+        std::vector<ColumnDesc>& columns) { // NOLINT
         return ConvertColumnDesc(table_info, columns, 0);
     }
 
-    static int ConvertColumnDesc(const ::rtidb::nameserver::TableInfo& table_info,
-                        std::vector<ColumnDesc>& columns,
-                        int modify_index) {
+    static int ConvertColumnDesc(
+        const ::rtidb::nameserver::TableInfo& table_info,
+        std::vector<ColumnDesc>& columns, int modify_index) { // NOLINT
         columns.clear();
         if (table_info.column_desc_v1_size() > 0) {
             if (modify_index > 0) {
-                return ConvertColumnDesc(table_info.column_desc_v1(), columns, table_info.added_column_desc());
+                return ConvertColumnDesc(table_info.column_desc_v1(), columns,
+                                         table_info.added_column_desc());
             }
             return ConvertColumnDesc(table_info.column_desc_v1(), columns);
         }
         for (int idx = 0; idx < table_info.column_desc_size(); idx++) {
-            ::rtidb::base::ColType type = ConvertType(table_info.column_desc(idx).type());
+            ::rtidb::base::ColType type =
+                ConvertType(table_info.column_desc(idx).type());
             if (type == ::rtidb::base::ColType::kUnknown) {
                 return -1;
             }
@@ -221,7 +218,8 @@ public:
         }
         if (modify_index > 0) {
             for (int idx = 0; idx < modify_index; idx++) {
-                ::rtidb::base::ColType type = ConvertType(table_info.added_column_desc(idx).type());
+                ::rtidb::base::ColType type =
+                    ConvertType(table_info.added_column_desc(idx).type());
                 if (type == ::rtidb::base::ColType::kUnknown) {
                     return -1;
                 }
@@ -237,9 +235,11 @@ public:
     }
 
     static int ConvertColumnDesc(
-            const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>& column_desc_field,
-            std::vector<ColumnDesc>& columns,
-            const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>& added_column_field) {
+        const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>&
+            column_desc_field,
+        std::vector<ColumnDesc>& columns, // NOLINT
+        const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>&
+            added_column_field) {
         columns.clear();
         for (const auto& cur_column_desc : column_desc_field) {
             ::rtidb::base::ColType type = ConvertType(cur_column_desc.type());
@@ -255,7 +255,8 @@ public:
         }
         if (!added_column_field.empty()) {
             for (int idx = 0; idx < added_column_field.size(); idx++) {
-                ::rtidb::base::ColType type = ConvertType(added_column_field.Get(idx).type());
+                ::rtidb::base::ColType type =
+                    ConvertType(added_column_field.Get(idx).type());
                 if (type == ::rtidb::base::ColType::kUnknown) {
                     return -1;
                 }
@@ -271,10 +272,13 @@ public:
     }
 
     static int ConvertColumnDesc(
-            const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>& column_desc_field,
-            std::vector<ColumnDesc>& columns) {
-        google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc> added_column_field;
-        return ConvertColumnDesc(column_desc_field, columns, added_column_field);
+        const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>&
+            column_desc_field,
+        std::vector<ColumnDesc>& columns) { // NOLINT
+        google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>
+            added_column_field;
+        return ConvertColumnDesc(column_desc_field, columns,
+                                 added_column_field);
     }
 
     static bool HasTSCol(const std::vector<ColumnDesc>& columns) {
@@ -286,7 +290,7 @@ public:
         return false;
     }
 
-private:
+ private:
     // calc the total size of schema
     uint32_t GetSize(const std::vector<ColumnDesc>& columns) {
         uint32_t byte_size = 0;
@@ -298,12 +302,13 @@ private:
 };
 
 class RowSchemaCodec {
-
-public:
+ public:
     static int ConvertColumnDesc(
-            const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>& column_desc_field,
-            google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>& columns,
-            const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>& added_column_field) {
+        const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>&
+            column_desc_field,
+        google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>& columns, // NOLINT
+        const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>&
+            added_column_field) {
         columns.Clear();
         for (const auto& cur_column_desc : column_desc_field) {
             rtidb::common::ColumnDesc* column_desc = columns.Add();
@@ -332,34 +337,39 @@ public:
         return 0;
     }
 
-    static void GetSchemaData(const std::map<std::string, std::string>& columns_map, const Schema& schema, 
-            Schema& new_schema) {
+    static void GetSchemaData(
+        const std::map<std::string, std::string>& columns_map,
+        const Schema& schema, Schema& new_schema) { // NOLINT
         for (int i = 0; i < schema.size(); i++) {
             const ::rtidb::common::ColumnDesc& col = schema.Get(i);
             const std::string& col_name = col.name();
             auto iter = columns_map.find(col_name);
-            if(iter != columns_map.end()) {
+            if (iter != columns_map.end()) {
                 ::rtidb::common::ColumnDesc* tmp = new_schema.Add();
                 tmp->CopyFrom(col);
             }
         }
     }
 
-    static int32_t CalStrLength(const std::map<std::string, std::string>& str_map, const Schema& schema,
-            ResultMsg& rm) {
+    static int32_t CalStrLength(
+        const std::map<std::string, std::string>& str_map, const Schema& schema,
+        ResultMsg& rm) { // NOLINT
         int32_t str_len = 0;
         for (int i = 0; i < schema.size(); i++) {
             const ::rtidb::common::ColumnDesc& col = schema.Get(i);
-            if (col.data_type() == ::rtidb::type::kVarchar || col.data_type() == ::rtidb::type::kString) {
+            if (col.data_type() == ::rtidb::type::kVarchar ||
+                col.data_type() == ::rtidb::type::kString) {
                 auto iter = str_map.find(col.name());
                 if (iter == str_map.end()) {
                     rm.code = -1;
                     rm.msg = col.name() + " not in str_map";
                     return -1;
                 }
-                if (!col.not_null() && (iter->second == "null" || iter->second == NONETOKEN)) {
+                if (!col.not_null() &&
+                    (iter->second == "null" || iter->second == NONETOKEN)) {
                     continue;
-                } else if (iter->second == "null" || iter->second == NONETOKEN) {
+                } else if (iter->second == "null" ||
+                           iter->second == NONETOKEN) {
                     rm.code = -1;
                     rm.msg = col.name() + " should not be null";
                     return -1;
@@ -370,9 +380,11 @@ public:
         return str_len;
     }
 
-    static ResultMsg Encode(const std::map<std::string, std::string>& str_map, const Schema& schema, std::string& row) {
+    static ResultMsg Encode(const std::map<std::string, std::string>& str_map,
+                            const Schema& schema, std::string& row) { // NOLINT
         ResultMsg rm;
-        if (str_map.size() == 0 || schema.size() == 0 || str_map.size() - schema.size() != 0) {
+        if (str_map.size() == 0 || schema.size() == 0 ||
+            str_map.size() - schema.size() != 0) {
             rm.code = -1;
             rm.msg = "input error";
             return rm;
@@ -391,9 +403,10 @@ public:
             if (iter == str_map.end()) {
                 rm.code = -1;
                 rm.msg = col.name() + " not in str_map";
-                return rm; 
+                return rm;
             }
-            if (!col.not_null() && (iter->second == "null" || iter->second == NONETOKEN)) {
+            if (!col.not_null() &&
+                (iter->second == "null" || iter->second == NONETOKEN)) {
                 builder.AppendNULL();
                 continue;
             } else if (iter->second == "null" || iter->second == NONETOKEN) {
@@ -402,32 +415,40 @@ public:
                 return rm;
             }
             bool ok = false;
-           try {
+            try {
                 switch (col.data_type()) {
                     case rtidb::type::kString:
                     case rtidb::type::kVarchar:
-                        ok = builder.AppendString(iter->second.c_str(), iter->second.length());
+                        ok = builder.AppendString(iter->second.c_str(),
+                                                  iter->second.length());
                         break;
                     case rtidb::type::kBool:
-                        ok = builder.AppendBool(boost::lexical_cast<bool>(iter->second));
+                        ok = builder.AppendBool(
+                            boost::lexical_cast<bool>(iter->second));
                         break;
                     case rtidb::type::kSmallInt:
-                        ok = builder.AppendInt16(boost::lexical_cast<uint16_t>(iter->second));
+                        ok = builder.AppendInt16(
+                            boost::lexical_cast<uint16_t>(iter->second));
                         break;
                     case rtidb::type::kInt:
-                        ok = builder.AppendInt32(boost::lexical_cast<uint32_t>(iter->second));
+                        ok = builder.AppendInt32(
+                            boost::lexical_cast<uint32_t>(iter->second));
                         break;
                     case rtidb::type::kBigInt:
-                        ok = builder.AppendInt64(boost::lexical_cast<uint64_t>(iter->second));
+                        ok = builder.AppendInt64(
+                            boost::lexical_cast<uint64_t>(iter->second));
                         break;
                     case rtidb::type::kTimestamp:
-                        ok = builder.AppendTimestamp(boost::lexical_cast<uint64_t>(iter->second));
+                        ok = builder.AppendTimestamp(
+                            boost::lexical_cast<uint64_t>(iter->second));
                         break;
                     case rtidb::type::kFloat:
-                        ok = builder.AppendFloat(boost::lexical_cast<float>(iter->second));
+                        ok = builder.AppendFloat(
+                            boost::lexical_cast<float>(iter->second));
                         break;
                     case rtidb::type::kDouble:
-                        ok = builder.AppendDouble(boost::lexical_cast<double>(iter->second));
+                        ok = builder.AppendDouble(
+                            boost::lexical_cast<double>(iter->second));
                         break;
                     default:
                         rm.code = -1;
@@ -436,12 +457,14 @@ public:
                 }
                 if (!ok) {
                     rm.code = -1;
-                    rm.msg = "append " + ::rtidb::type::DataType_Name(col.data_type()) + " error";
+                    rm.msg = "append " +
+                             ::rtidb::type::DataType_Name(col.data_type()) +
+                             " error";
                     return rm;
                 }
-            } catch(std::exception const& e) {
+            } catch (std::exception const& e) {
                 rm.code = -1;
-                rm.msg = "input format error"; 
+                rm.msg = "input format error";
                 return rm;
             }
         }
@@ -450,14 +473,18 @@ public:
         return rm;
     }
 
-    static void Decode(google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>& schema, const std::string& value,
-                std::vector<std::string>& value_vec) {
-        rtidb::base::RowView rv(schema, reinterpret_cast<int8_t*>(const_cast<char*>(&value[0])), value.size());
+    static void Decode(
+        google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>& schema, // NOLINT
+        const std::string& value, std::vector<std::string>& value_vec) { // NOLINT
+        rtidb::base::RowView rv(
+            schema, reinterpret_cast<int8_t*>(const_cast<char*>(&value[0])),
+            value.size());
         Decode(schema, rv, value_vec);
     }
 
-    static void Decode(google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>& schema, rtidb::base::RowView& rv,
-                       std::vector<std::string>& value_vec) {
+    static void Decode(
+        google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>& schema, // NOLINT
+        rtidb::base::RowView& rv, std::vector<std::string>& value_vec) { // NOLINT
         for (int32_t i = 0; i < schema.size(); i++) {
             if (rv.IsNULL(i)) {
                 value_vec.push_back(NONETOKEN);
@@ -507,8 +534,9 @@ public:
                 if (ret == 0) {
                     col = std::to_string(val);
                 }
-            } else if (type == rtidb::type::kVarchar || type == rtidb::type::kString) {
-                char *ch = NULL;
+            } else if (type == rtidb::type::kVarchar ||
+                       type == rtidb::type::kString) {
+                char* ch = NULL;
                 uint32_t length = 0;
                 int ret = rv.GetString(i, &ch, &length);
                 if (ret == 0) {
@@ -518,9 +546,8 @@ public:
             value_vec.push_back(col);
         }
     }
-
 };
-}
-}
+}  // namespace base
+}  // namespace rtidb
 
-#endif
+#endif  // SRC_BASE_SCHEMA_CODEC_H_

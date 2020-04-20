@@ -36,23 +36,24 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __LINENOISE_H
-#define __LINENOISE_H
+#ifndef SRC_BASE_LINENOISE_H_
+#define SRC_BASE_LINENOISE_H_
 
 #ifdef __cplusplus
 extern "C" {
+#include <cstddef>
 #endif
 
 namespace rtidb {
 namespace base {
 
 typedef struct linenoiseCompletions {
-  size_t len;
-  char **cvec;
+    size_t len;
+    char **cvec;
 } linenoiseCompletions;
 
 typedef void(linenoiseCompletionCallback)(const char *, linenoiseCompletions *);
-typedef char*(linenoiseHintsCallback)(const char *, int *color, int *bold);
+typedef char *(linenoiseHintsCallback)(const char *, int *color, int *bold);
 typedef void(linenoiseFreeHintsCallback)(void *);
 void linenoiseSetCompletionCallback(linenoiseCompletionCallback *);
 void linenoiseSetHintsCallback(linenoiseHintsCallback *);
@@ -69,11 +70,11 @@ void linenoiseClearScreen(void);
 void linenoiseSetMultiLine(int ml);
 void linenoisePrintKeyCodes(void);
 
-}
-}
+}  // namespace base
+}  // namespace rtidb
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* __LINENOISE_H */
+#endif  // SRC_BASE_LINENOISE_H_

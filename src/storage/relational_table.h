@@ -28,6 +28,9 @@
 #include <mutex>
 #include "base/id_generator.h"
 #include "base/memcomparable_format.h"
+#ifdef DISALLOW_COPY_AND_ASSIGN
+#undef DISALLOW_COPY_AND_ASSIGN
+#endif
 #include <snappy.h>
 #include "base/field_codec.h"
 

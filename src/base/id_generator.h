@@ -1,23 +1,22 @@
 //
-// id_generator.h  
+// id_generator.h
 // Copyright (C) 2017 4paradigm.com
 // Author wangbao
 // Date 2020-3-20
 //
 
-#include "base/random.h"
-#include <unistd.h>
 #include <pthread.h>
 #include <stdlib.h>
-
+#include <unistd.h>
+#include "base/random.h"
 
 #pragma once
 namespace rtidb {
-namespace base{
+namespace base {
 
 class IdGenerator {
-public:
-    IdGenerator(): rand_(0xdeadbeef) {}
+ public:
+    IdGenerator() : rand_(0xdeadbeef) {}
     IdGenerator(const IdGenerator&) = delete;
     IdGenerator& operator=(const IdGenerator&) = delete;
     ~IdGenerator() {}
@@ -30,9 +29,9 @@ public:
         return llabs(res);
     }
 
-private:
+ private:
     ::rtidb::base::Random rand_;
 };
 
-}
-}
+}  // namespace base
+}  // namespace rtidb
