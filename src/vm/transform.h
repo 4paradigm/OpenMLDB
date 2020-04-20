@@ -161,8 +161,12 @@ class FilterOptimized : public TransformUpPysicalPass {
     FilterOptimized(node::NodeManager* node_manager, const std::string& db,
                     const std::shared_ptr<Catalog>& catalog)
         : TransformUpPysicalPass(node_manager, db, catalog) {}
-    static bool TransfromAndConditionList(const node::ExprNode* condition,
-                             node::ExprListNode* and_condition_list);
+    typedef std::pair<node::ExprNode*, node::ExprNode*> ExprPair;
+    static bool TransfromAndConditionList(
+        const node::ExprNode* condition,
+        node::ExprListNode* and_condition_list);
+    static bool TransformEqualExprPair(node::ExprNode* condition,
+                                       ExprPair* expr_pair);
 
  private:
     virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);

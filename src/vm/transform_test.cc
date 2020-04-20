@@ -628,6 +628,7 @@ TEST_F(TransformTest, TransfromConditionsTest) {
         std::vector<std::string>& exp_list = sql_exp[i].second;
         ::fesql::node::NodeManager manager;
         node::ExprNode* condition;
+        boost::to_lower(sql);
         ExtractExprFromSimpleSQL(&manager, sql, &condition);
         LOG(INFO) << "TEST condition [" << i
                   << "]: " << node::ExprString(condition);
@@ -641,6 +642,33 @@ TEST_F(TransformTest, TransfromConditionsTest) {
             ASSERT_EQ(exp_list[i],
                       node::ExprString(and_condition_list.children_[i]));
         }
+    }
+}
+
+TEST_F(TransformTest, TransfromEqExprPairTest) {
+    std::vector<std::pair<std::string, std::pair<std::string, std::string>>>
+        sql_exp;
+
+    sql_exp.push_back(std::make_pair("select t1.col1=t2.col1 from t1,t2;",
+                                     std::make_pair("t1.col1", "t2.col1")));
+
+    sql_exp.push_back(std::make_pair("select t2.col1=t1.col1 from t1,t2;",
+                                     std::make_pair("t2.col1", "t1.col1")));
+
+    for (size_t i = 0; i < sql_exp.size(); i++) {
+        std::string sql = sql_exp[i].first;
+        std::pair<std::string, std::string>& exp_list = sql_exp[i].second;
+        ::fesql::node::NodeManager manager;
+        node::ExprNode* condition;
+        boost::to_lower(sql);
+        ExtractExprFromSimpleSQL(&manager, sql, &condition);
+        LOG(INFO) << "TEST condition [" << i
+                  << "]: " << node::ExprString(condition);
+        node::ExprListNode and_condition_list;
+        std::pair<node::ExprNode*, node::ExprNode*> expr_pair;
+        FilterOptimized::TransformEqualExprPair(condition, &expr_pair);
+        ASSERT_EQ(exp_list.first, node::ExprString(expr_pair.first));
+        ASSERT_EQ(exp_list.second, node::ExprString(expr_pair.second));
     }
 }
 }  // namespace vm

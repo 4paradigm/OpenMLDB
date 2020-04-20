@@ -20,6 +20,7 @@
 
 #include <memory>
 #include <sstream>
+#include <string>
 #include "glog/logging.h"
 #include "tablet/tablet_catalog.h"
 #include "vm/catalog.h"
@@ -28,8 +29,7 @@ namespace fesql {
 namespace vm {
 
 void ExtractExprFromSimpleSQL(::fesql::node::NodeManager* nm,
-                            std::string& sql, node::ExprNode** output) {
-    boost::to_lower(sql);
+                              const std::string& sql, node::ExprNode** output) {
     std::cout << sql << std::endl;
     ::fesql::node::PlanNodeList plan_trees;
     ::fesql::base::Status base_status;
@@ -52,8 +52,10 @@ void ExtractExprFromSimpleSQL(::fesql::node::NodeManager* nm,
         dynamic_cast<node::ProjectPlanNode*>(plan_trees[0]->GetChildren()[0]);
     ASSERT_EQ(1u, project_plan_node->project_list_vec_.size());
 
-    auto project_list = dynamic_cast<node::ProjectListNode*>(project_plan_node->project_list_vec_[0]);
-    auto project = dynamic_cast<node::ProjectNode*>(project_list->GetProjects()[0]);
+    auto project_list = dynamic_cast<node::ProjectListNode*>(
+        project_plan_node->project_list_vec_[0]);
+    auto project =
+        dynamic_cast<node::ProjectNode*>(project_list->GetProjects()[0]);
     *output = project->GetExpression();
 }
 
@@ -91,7 +93,6 @@ std::shared_ptr<tablet::TabletCatalog> BuildCommonCatalog(
     return BuildCommonCatalog(table_def, table);
 }
 
-
 void PrintSchema(std::ostringstream& ss, const Schema& schema) {
     for (int32_t i = 0; i < schema.size(); i++) {
         if (i > 0) {
@@ -107,9 +108,6 @@ void PrintSchema(const Schema& schema) {
     PrintSchema(ss, schema);
     LOG(INFO) << "\n" << ss.str();
 }
-
-
-
 
 }  // namespace vm
 }  // namespace fesql

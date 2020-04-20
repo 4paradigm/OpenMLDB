@@ -1301,6 +1301,17 @@ bool FilterOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
                                            &and_conditions)) {
                 return false;
             }
+
+            node::ExprListNode new_and_conditions;
+            std::vector<ExprPair> condition_eq_pair;
+            for (auto expr : and_conditions.children_) {
+                ExprPair expr_pair;
+                if (TransformEqualExprPair(expr, &expr_pair)) {
+                    condition_eq_pair.push_back(expr_pair);
+                } else {
+                    new_and_conditions.AddChild(expr);
+                }
+            }
         }
         default: {
             return false;
@@ -1346,7 +1357,8 @@ bool FilterOptimized::TransfromAndConditionList(
                     }
                     return true;
                 }
-                //TODO(chenjing): NOT(expr OR expr) ==> AND (NOT expr) AND (NOT expr)
+                // TODO(chenjing): NOT(expr OR expr) ==> AND (NOT expr) AND (NOT
+                // expr)
                 default: {
                     and_condition_list->AddChild(
                         const_cast<node::ExprNode*>(condition));
@@ -1360,6 +1372,49 @@ bool FilterOptimized::TransfromAndConditionList(
             return true;
         }
     }
+}
+
+// Transform equal condition to expression pair
+// e.g. t1.col1 = t2.col1 -> pair(t1.col1, t2.col1)
+bool FilterOptimized::TransformEqualExprPair(node::ExprNode* condition,
+                                             ExprPair* expr_pair) {
+    if (nullptr == condition) {
+        return false;
+    }
+
+    switch (condition->expr_type_) {
+        case node::kExprUnary: {
+            const node::UnaryExpr* expr =
+                dynamic_cast<const node::UnaryExpr*>(condition);
+            switch (expr->GetOp()) {
+                case node::kFnOpBracket: {
+                    return TransformEqualExprPair(expr->children_[0],
+                                                  expr_pair);
+                }
+                default: {
+                    return false;
+                }
+            }
+        }
+        case node::kExprBinary: {
+            const node::BinaryExpr* expr =
+                dynamic_cast<const node::BinaryExpr*>(condition);
+            switch (expr->GetOp()) {
+                case node::kFnOpEq: {
+                    expr_pair->first = expr->children_[0];
+                    expr_pair->second = expr->children_[1];
+                    return true;
+                }
+                default: {
+                    return false;
+                }
+            }
+        }
+        default: {
+            return false;
+        }
+    }
+    return false;
 }
 bool LimitOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
     *output = in;
