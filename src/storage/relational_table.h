@@ -81,10 +81,11 @@ public:
 
     bool Query(const ::google::protobuf::RepeatedPtrField< ::rtidb::api::ReadOption >& ros,
             std::string* pairs, uint32_t* count);
-    bool Query(const std::string& idx_name, const std::string& idx_val, std::vector<std::string>* return_vec); 
+    bool Query(const ::google::protobuf::RepeatedPtrField<::rtidb::api::Columns>& indexs, std::vector<std::string>* return_vec); 
     bool Query(const std::shared_ptr<IndexDef> index_def, const rocksdb::Slice& key_slice, std::vector<std::string>* vec); 
 
-    bool Delete(const std::string& idx_name, const std::string& key);
+    bool Delete(const ::google::protobuf::RepeatedPtrField<::rtidb::api::Columns>& condition_columns);
+    bool Delete(const std::shared_ptr<IndexDef> index_def, const std::string& key); 
     bool DeletePk(const rocksdb::Slice& pk_slice); 
 
     rtidb::storage::RelationalTableTraverseIterator* NewTraverse(uint32_t idx, uint64_t snapshot_id);
@@ -172,6 +173,7 @@ private:
             const ::rtidb::type::DataType& data_type, std::string* key); 
     bool ConvertIndex(const std::string& name, const std::string& value, 
             std::string* out_val); 
+    bool GetCombineStr(const ::google::protobuf::RepeatedPtrField<::rtidb::api::Columns>& indexs, std::string* combine_name, std::string* combine_value); 
 
     std::mutex mu_;
     ::rtidb::common::StorageMode storage_mode_;
