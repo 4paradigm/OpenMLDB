@@ -194,6 +194,7 @@ message DeleteRequest {
     optional uint32 pid = 2;
     optional string key = 3;
     optional string idx_name = 4;
+    repeated Columns condition_columns = 5;
 }
 
 message ExecuteGcRequest {

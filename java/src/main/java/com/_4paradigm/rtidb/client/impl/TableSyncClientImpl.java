@@ -646,21 +646,9 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (th == null) {
             throw new TabletException("no table with name " + tableName);
         }
-        String idxName = "";
-        Object idxValue = "";
-        Iterator<Map.Entry<String, Object>> iter = conditionColumns.entrySet().iterator();
-        while (iter.hasNext()) {
-            Map.Entry<String, Object> entry = iter.next();
-            idxName = entry.getKey();
-            idxValue = entry.getValue();
-            break;
-        }
-//        idxValue = validateKey(idxValue);
-        int pid = TableClientCommon.computePidByKey(String.valueOf(idxValue), th.getPartitions().length);
-        return deleteRelational(th.getTableInfo().getTid(), pid, idxValue, idxName, th);
-    }
 
-    private boolean deleteRelational(int tid, int pid, Object key, String idxName, TableHandler th) throws TimeoutException, TabletException {
+        int tid = th.getTableInfo().getTid();
+        int pid = 0;
         PartitionHandler ph = th.getHandler(pid);
         TabletServer ts = ph.getLeader();
         if (ts == null) {
@@ -670,17 +658,26 @@ public class TableSyncClientImpl implements TableSyncClient {
         builder.setTid(tid);
         builder.setPid(pid);
         {
-            Map<String, DataType> nameTypeMap = th.getNameTypeMap();
-            if (!nameTypeMap.containsKey(idxName)) {
-                throw new TabletException("index name not found with tid " + tid);
-            }
-            DataType dataType = nameTypeMap.get(idxName);
-            ByteBuffer buffer = FieldCodec.convert(dataType, key);
-            String idxVal = ByteBufferNoCopy.wrap(buffer).toString(RowCodecCommon.CHARSET);
-            builder.setKey(idxVal);
+            String idxName = "";
+            Object idxValue = "";
+            Iterator<Map.Entry<String, Object>> iter = conditionColumns.entrySet().iterator();
+            while (iter.hasNext()) {
+                Tablet.Columns.Builder conditionBuilder = Tablet.Columns.newBuilder();
+                Map.Entry<String, Object> entry = iter.next();
+                idxName = entry.getKey();
+                idxValue = entry.getValue();
+                Map<String, DataType> nameTypeMap = th.getNameTypeMap();
+                if (!nameTypeMap.containsKey(idxName)) {
+                    throw new TabletException("index name not found with tid " + tid);
+                }
+                DataType dataType = nameTypeMap.get(idxName);
+                ByteBuffer buffer = FieldCodec.convert(dataType, idxValue);
 
+                conditionBuilder.addName(idxName);
+                conditionBuilder.setValue(ByteBufferNoCopy.wrap(buffer));
+                builder.addConditionColumns(conditionBuilder.build());
+            }
         }
-        builder.setIdxName(idxName);
         Tablet.DeleteRequest request = builder.build();
         Tablet.GeneralResponse response = ts.delete(request);
         if (response != null && response.getCode() == 0) {
