@@ -14,32 +14,14 @@
 #include <utility>
 #include <vector>
 #include "node/sql_node.h"
+#include "vm/catalog.h"
 namespace fesql {
 namespace vm {
-struct ColInfo {
-    ::fesql::type::Type type;
-    uint32_t pos;
-    std::string name;
-};
-
-struct IndexSt {
-    std::string name;
-    uint32_t index;
-    uint32_t ts_pos;
-    std::vector<ColInfo> keys;
-};
-
-typedef ::google::protobuf::RepeatedPtrField<::fesql::type::ColumnDef> Schema;
-typedef ::google::protobuf::RepeatedPtrField<::fesql::type::IndexDef> IndexList;
-typedef std::map<std::string, ColInfo> Types;
-typedef std::map<std::string, IndexSt> IndexHint;
-
 struct RowSchemaInfo {
     const uint32_t idx;
     const std::string table_name_;
     const vm::Schema* schema_;
 };
-
 class SchemasContext {
  public:
     SchemasContext(
