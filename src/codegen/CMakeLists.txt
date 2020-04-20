@@ -53,15 +53,13 @@ list(APPEND test_list predicate_expr_ir_builder_test)
 
 
 add_executable(expr_ir_builder_test expr_ir_builder_test.cc)
-target_link_libraries(expr_ir_builder_test gflags fesql_codegen fesql_codec fesql_parser
-        fesql_node fesql_proto protobuf ${llvm_libs} ${COMMON_LIBS} gtest pthread)
+target_link_libraries(expr_ir_builder_test  ${vm_deps_libs} ${llvm_libs} ${COMMON_LIBS} protobuf gtest pthread)
 add_test(expr_ir_builder_test expr_ir_builder_test --gtest_output=xml:${CMAKE_BINARY_DIR}/expr_ir_builder_test.xml)
 list(APPEND test_list expr_ir_builder_test)
 
 
 add_executable(block_ir_builder_test block_ir_builder_test.cc)
-target_link_libraries(block_ir_builder_test gflags fesql_codegen fesql_codec fesql_parser
-        fesql_node fesql_proto protobuf ${llvm_libs} ${COMMON_LIBS} gtest pthread)
+target_link_libraries(block_ir_builder_test  ${vm_deps_libs} ${llvm_libs} ${COMMON_LIBS} protobuf gtest pthread)
 add_test(block_ir_builder_test block_ir_builder_test --gtest_output=xml:${CMAKE_BINARY_DIR}/block_ir_builder_test.xml)
 list(APPEND test_list block_ir_builder_test)
 
