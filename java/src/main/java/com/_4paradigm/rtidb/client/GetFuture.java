@@ -10,8 +10,8 @@ import com._4paradigm.rtidb.utils.Compress;
 import com.google.protobuf.ByteString;
 
 import java.nio.ByteOrder;
+import java.util.BitSet;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -22,34 +22,58 @@ public class GetFuture implements Future<ByteString>{
 	private TableHandler th;
 	private RowSliceView rv;
 	private List<ColumnDesc> projection;
+
+	// the legacy format var
+	private List<Integer> projectionIdx;
+	private int maxProjectIndex;
+	private BitSet bitSet;
+	private int rowLength;
 	public static GetFuture wrappe(Future<Tablet.GetResponse> f, RTIDBClientConfig config) {
 		return new GetFuture(f, config);
 	}
 
 	public static GetFuture wrappe(Future<Tablet.GetResponse> f, TableHandler t, RTIDBClientConfig config) {
-		return new GetFuture(f, t, config);
+		return new GetFuture(f, t);
 	}
 
-	public GetFuture() {}
-	public GetFuture(Future<Tablet.GetResponse> f, TableHandler t, RTIDBClientConfig config) {
+	// for legacy format
+	public GetFuture(Future<Tablet.GetResponse> f, TableHandler t,
+					 List<Integer> projectionIdx,
+					 BitSet bitSet, int maxProjectIndex) {
 		this.f = f;
 		this.th = t;
-		if (t.getTableInfo().getFormatVersion() == 1) {
+		this.projectionIdx = projectionIdx;
+		this.maxProjectIndex = maxProjectIndex;
+		this.bitSet = bitSet;
+		this.rowLength = projectionIdx.size();
+	}
+
+	public GetFuture(Future<Tablet.GetResponse> f, TableHandler t) {
+		this.f = f;
+		this.th = t;
+		if (t != null && t.getTableInfo().getFormatVersion() == 1) {
 			rv = new RowSliceView(t.getSchema());
+		}
+		rowLength = t.getSchema().size();
+		if (th.getSchemaMap().size() > 0) {
+			rowLength += th.getSchemaMap().size();
 		}
 	}
 
 	public GetFuture(Future<Tablet.GetResponse> f, TableHandler t, RTIDBClientConfig config, List<ColumnDesc> projection) {
 		this.f = f;
 		this.th = t;
-		if (t.getTableInfo().getFormatVersion() == 1) {
+		rowLength = t.getSchema().size();
+		if (t != null && t.getTableInfo().getFormatVersion() == 1) {
 			if (projection != null) {
 				rv = new RowSliceView(projection);
+				rowLength = projection.size();
 			}else {
 				rv = new RowSliceView(t.getSchema());
 			}
 			this.projection = projection;
 		}
+
 	}
 
 	public GetFuture(Future<Tablet.GetResponse> f,  RTIDBClientConfig config) {
@@ -96,15 +120,6 @@ public class GetFuture implements Future<ByteString>{
 		if (raw == null || raw.isEmpty()) {
 			return null;
 		}
-		int rowLength =0;
-		if (projection != null) {
-			rowLength = projection.size();
-		}else {
-			rowLength = th.getSchema().size();
-			if (th.getSchemaMap() != null) {
-				rowLength += th.getSchemaMap().size();
-			}
-		}
 		Object[] row = new Object[rowLength];
 		decode(raw, row, 0, row.length);
 		return row;
@@ -117,15 +132,6 @@ public class GetFuture implements Future<ByteString>{
 		ByteString raw = get();
 		if (raw == null || raw.isEmpty()) {
 			return null;
-		}
-		int rowLength = 0;
-		if (projection != null && projection.size() > 0) {
-		    rowLength = projection.size();
-		}else {
-			rowLength = th.getSchema().size();
-			if (th.getSchemaMap() != null) {
-				rowLength += th.getSchemaMap().size();
-			}
 		}
 		Object[] row = new Object[rowLength];
 		decode(raw, row, 0, row.length);
@@ -147,7 +153,11 @@ public class GetFuture implements Future<ByteString>{
 				rv.read(raw.asReadOnlyByteBuffer().order(ByteOrder.LITTLE_ENDIAN), row, start, length);
 				break;
 			default:
-				RowCodec.decode(raw.asReadOnlyByteBuffer(), th.getSchema(), row, start, length);
+			    if (projectionIdx != null && projectionIdx.size() > 0) {
+					RowCodec.decode(raw.asReadOnlyByteBuffer(), th.getSchema(), bitSet, projectionIdx, maxProjectIndex, row, start, length);
+				}else {
+					RowCodec.decode(raw.asReadOnlyByteBuffer(), th.getSchema(), row, start, length);
+				}
 		}
 	}
 

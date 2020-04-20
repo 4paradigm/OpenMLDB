@@ -68,14 +68,14 @@ TEST_F(CodecTest, NULLTest) {
     col->set_name("col3");
     col->set_data_type(::rtidb::type::kVarchar);
     RowBuilder builder(schema);
-    uint32_t size = builder.CalTotalLength(1);
+    uint32_t size = builder.CalTotalLength(9);
     std::string row;
     row.resize(size);
     builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
-    std::string st("1");
+    std::string st("123456779");
     ASSERT_TRUE(builder.AppendNULL());
     ASSERT_TRUE(builder.AppendBool(false));
-    ASSERT_TRUE(builder.AppendString(st.c_str(), 1));
+    ASSERT_TRUE(builder.AppendString(st.c_str(), 9));
     RowView view(schema, reinterpret_cast<int8_t*>(&(row[0])), size);
     ASSERT_TRUE(view.IsNULL(0));
     char* ch = NULL;
@@ -84,6 +84,11 @@ TEST_F(CodecTest, NULLTest) {
     ASSERT_EQ(view.GetBool(1, &val1), 0);
     ASSERT_FALSE(val1);
     ASSERT_EQ(view.GetString(2, &ch, &length), 0);
+    
+    RowView view2(schema);
+    view2.GetValue(reinterpret_cast<int8_t*>(&(row[0])), 2, &ch, &length);
+    std::string ret(ch, length); 
+    ASSERT_EQ(ret, st);
 }
 
 TEST_F(CodecTest, Normal) {

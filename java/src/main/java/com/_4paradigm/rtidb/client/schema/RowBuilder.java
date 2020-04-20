@@ -20,26 +20,26 @@ public class RowBuilder {
     private int size = 0;
     private int cnt = 0;
     List<ColumnDesc> schema = new ArrayList<>();
-    private int str_field_cnt = 0;
-    private int str_field_start_offset = 0;
-    private int str_addr_length = 0;
-    private int str_offset = 0;
-    private List<Integer> offset_vec = new ArrayList<>();
+    private int strFieldCnt = 0;
+    private int strFieldStartOffset = 0;
+    private int strAddrLength = 0;
+    private int strOffset = 0;
+    private List<Integer> offsetVec = new ArrayList<>();
 
     public RowBuilder(List<ColumnDesc> schema) {
-        str_field_start_offset = RowCodecCommon.HEADER_LENGTH + RowCodecCommon.getBitMapSize(schema.size());
+        strFieldStartOffset = RowCodecCommon.HEADER_LENGTH + RowCodecCommon.getBitMapSize(schema.size());
         this.schema = schema;
         for (int idx = 0; idx < schema.size(); idx++) {
             ColumnDesc column = schema.get(idx);
             if (column.getDataType() == DataType.Varchar || column.getDataType() == DataType.String) {
-                offset_vec.add(str_field_cnt);
-                str_field_cnt++;
+                offsetVec.add(strFieldCnt);
+                strFieldCnt++;
             } else {
                 if (RowCodecCommon.TYPE_SIZE_MAP.get(column.getDataType()) == null) {
                     logger.warn("type is not supported");
                 } else {
-                    offset_vec.add(str_field_start_offset);
-                    str_field_start_offset += RowCodecCommon.TYPE_SIZE_MAP.get(column.getDataType());
+                    offsetVec.add(strFieldStartOffset);
+                    strFieldStartOffset += RowCodecCommon.TYPE_SIZE_MAP.get(column.getDataType());
                 }
             }
         }
@@ -49,38 +49,37 @@ public class RowBuilder {
         if (schema.size() == 0) {
             return 0;
         }
-        long total_length = str_field_start_offset + string_length;
-        if (total_length + str_field_cnt <= RowCodecCommon.UINT8_MAX) {
-            total_length += str_field_cnt;
-        } else if (total_length + str_field_cnt * 2 <= RowCodecCommon.UINT16_MAX) {
-            total_length += str_field_cnt * 2;
-        } else if (total_length + str_field_cnt * 3 <= RowCodecCommon.UINT24_MAX) {
-            total_length += str_field_cnt * 3;
-        } else if (total_length + str_field_cnt * 4 <= RowCodecCommon.UINT32_MAX) {
-            total_length += str_field_cnt * 4;
+        long totalLength = strFieldStartOffset + string_length;
+        if (totalLength + strFieldCnt <= RowCodecCommon.UINT8_MAX) {
+            totalLength += strFieldCnt;
+        } else if (totalLength + strFieldCnt * 2 <= RowCodecCommon.UINT16_MAX) {
+            totalLength += strFieldCnt * 2;
+        } else if (totalLength + strFieldCnt * 3 <= RowCodecCommon.UINT24_MAX) {
+            totalLength += strFieldCnt * 3;
+        } else if (totalLength + strFieldCnt * 4 <= RowCodecCommon.UINT32_MAX) {
+            totalLength += strFieldCnt * 4;
         }
-        if (total_length > Integer.MAX_VALUE) {
+        if (totalLength > Integer.MAX_VALUE) {
             throw new TabletException("total length is bigger than integer max value");
         }
-        return (int) total_length;
+        return (int) totalLength;
     }
 
     public ByteBuffer setBuffer(ByteBuffer buffer, int size) {
         if (buffer == null || size == 0 ||
-                size < str_field_start_offset + str_field_cnt) {
+                size < strFieldStartOffset + strFieldCnt) {
             return null;
         }
         if (buffer.order() == ByteOrder.BIG_ENDIAN) {
             buffer = buffer.order(ByteOrder.LITTLE_ENDIAN);
         }
-//        buffer = ByteBuffer.allocate(size).order(ByteOrder.LITTLE_ENDIAN);
         this.size = size;
         buffer.put((byte) 1); // FVersion
         buffer.put((byte) 1); // SVersion
         buffer.putInt(size); // size
         this.buf = buffer;
-        str_addr_length = RowCodecCommon.getAddrLength(size);
-        str_offset = str_field_start_offset + str_addr_length * str_field_cnt;
+        strAddrLength = RowCodecCommon.getAddrLength(size);
+        strOffset = strFieldStartOffset + strAddrLength * strFieldCnt;
         return this.buf;
     }
 
@@ -106,18 +105,18 @@ public class RowBuilder {
         buf.put(index, (byte) (bt | (1 << (cnt & 0x07))));
         ColumnDesc column = schema.get(cnt);
         if (column.getDataType() == DataType.Varchar || column.getDataType() == DataType.String) {
-            index = str_field_start_offset + str_addr_length * offset_vec.get(cnt);
+            index = strFieldStartOffset + strAddrLength * offsetVec.get(cnt);
             buf.position(index);
-            if (str_addr_length == 1) {
-                buf.put((byte) (str_offset & 0xFF));
-            } else if (str_addr_length == 2) {
-                buf.putShort((short) (str_offset & 0xFFFF));
-            } else if (str_addr_length == 3) {
-                buf.put((byte) (str_offset >> 16));
-                buf.put((byte) ((str_offset & 0xFF00) >> 8));
-                buf.put((byte) (str_offset & 0x00FF));
+            if (strAddrLength == 1) {
+                buf.put((byte) (strOffset & 0xFF));
+            } else if (strAddrLength == 2) {
+                buf.putShort((short) (strOffset & 0xFFFF));
+            } else if (strAddrLength == 3) {
+                buf.put((byte) (strOffset >> 16));
+                buf.put((byte) ((strOffset & 0xFF00) >> 8));
+                buf.put((byte) (strOffset & 0x00FF));
             } else {
-                buf.putInt(str_offset);
+                buf.putInt(strOffset);
             }
         }
         cnt++;
@@ -128,7 +127,7 @@ public class RowBuilder {
         if (!check(DataType.Bool)) {
             return false;
         }
-        buf.position(offset_vec.get(cnt));
+        buf.position(offsetVec.get(cnt));
         if (val) {
             buf.put((byte) 1);
         } else {
@@ -142,7 +141,7 @@ public class RowBuilder {
         if (!check(DataType.Int)) {
             return false;
         }
-        buf.position(offset_vec.get(cnt));
+        buf.position(offsetVec.get(cnt));
         buf.putInt(val);
         cnt++;
         return true;
@@ -152,7 +151,7 @@ public class RowBuilder {
         if (!check(DataType.SmallInt)) {
             return false;
         }
-        buf.position(offset_vec.get(cnt));
+        buf.position(offsetVec.get(cnt));
         buf.putShort(val);
         cnt++;
         return true;
@@ -162,7 +161,7 @@ public class RowBuilder {
         if (!check(DataType.Timestamp)) {
             return false;
         }
-        buf.position(offset_vec.get(cnt));
+        buf.position(offsetVec.get(cnt));
         buf.putLong(val);
         cnt++;
         return true;
@@ -172,7 +171,7 @@ public class RowBuilder {
         if (!check(DataType.BigInt)) {
             return false;
         }
-        buf.position(offset_vec.get(cnt));
+        buf.position(offsetVec.get(cnt));
         buf.putLong(val);
         cnt++;
         return true;
@@ -182,7 +181,7 @@ public class RowBuilder {
         if (!check(DataType.Float)) {
             return false;
         }
-        buf.position(offset_vec.get(cnt));
+        buf.position(offsetVec.get(cnt));
         buf.putFloat(val);
         cnt++;
         return true;
@@ -192,7 +191,7 @@ public class RowBuilder {
         if (!check(DataType.Double)) {
             return false;
         }
-        buf.position(offset_vec.get(cnt));
+        buf.position(offsetVec.get(cnt));
         buf.putDouble(val);
         cnt++;
         return true;
@@ -216,27 +215,27 @@ public class RowBuilder {
         if (val == null || (!check(DataType.Varchar) && !check(DataType.String))) {
             return false;
         }
-        if (str_offset + length > size) {
+        if (strOffset + length > size) {
             return false;
         }
-        int index = str_field_start_offset + str_addr_length * offset_vec.get(cnt);
+        int index = strFieldStartOffset + strAddrLength * offsetVec.get(cnt);
         buf.position(index);
-        if (str_addr_length == 1) {
-            buf.put((byte) (str_offset & 0xFF));
-        } else if (str_addr_length == 2) {
-            buf.putShort((short) (str_offset & 0xFFFF));
-        } else if (str_addr_length == 3) {
-            buf.put((byte) (str_offset >> 16));
-            buf.put((byte) ((str_offset & 0xFF00) >> 8));
-            buf.put((byte) (str_offset & 0x00FF));
+        if (strAddrLength == 1) {
+            buf.put((byte) (strOffset & 0xFF));
+        } else if (strAddrLength == 2) {
+            buf.putShort((short) (strOffset & 0xFFFF));
+        } else if (strAddrLength == 3) {
+            buf.put((byte) (strOffset >> 16));
+            buf.put((byte) ((strOffset & 0xFF00) >> 8));
+            buf.put((byte) (strOffset & 0x00FF));
         } else {
-            buf.putInt(str_offset);
+            buf.putInt(strOffset);
         }
         if (length != 0) {
-            buf.position(str_offset);
+            buf.position(strOffset);
             buf.put(val.getBytes(RowCodecCommon.CHARSET), 0, length);
         }
-        str_offset += length;
+        strOffset += length;
         cnt++;
         return true;
     }

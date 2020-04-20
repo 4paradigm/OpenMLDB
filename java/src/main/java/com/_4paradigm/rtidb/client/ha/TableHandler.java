@@ -28,6 +28,7 @@ public class TableHandler {
         return formatVersion;
     }
 
+    private Map<String, DataType> nameTypeMap = new HashMap<>();
     public TableHandler(TableInfo tableInfo) {
         this.tableInfo = tableInfo;
         int schemaSize = 0;
@@ -133,6 +134,9 @@ public class TableHandler {
                 }
             }
         }
+        for (ColumnDesc cd : schema) {
+            nameTypeMap.put(cd.getName(), cd.getDataType());
+        }
         if (tableInfo.getAddedColumnDescCount() > 0) {
             List<ColumnDesc> tempList = new ArrayList<ColumnDesc>(schema);
             for (int i = 0; i < tableInfo.getAddedColumnDescCount(); i++) {
@@ -148,6 +152,7 @@ public class TableHandler {
                 }
                 tempList.add(ncd);
                 schemaMap.put(schemaSize + i + 1, new ArrayList<>(tempList));
+                nameTypeMap.put(ncd.getName(), ncd.getDataType());
             }
         }
         if (tableInfo.hasTableType() &&
@@ -250,5 +255,9 @@ public class TableHandler {
 
     public void setAutoGenPkName(String autoGenPkName) {
         this.autoGenPkName = autoGenPkName;
+    }
+
+    public Map<String, DataType> getNameTypeMap() {
+        return nameTypeMap;
     }
 }

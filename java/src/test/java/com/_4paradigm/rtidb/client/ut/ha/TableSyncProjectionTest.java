@@ -37,24 +37,38 @@ public class TableSyncProjectionTest extends TestCaseBase {
         Object[] expected;
         String key;
         long ts;
+
+        @Override
+        public String toString() {
+            return "TestArgs{" +
+                    "tableInfo=" + tableInfo +
+                    ", projectionList=" + projectionList +
+                    ", row=" + Arrays.toString(row) +
+                    ", expected=" + Arrays.toString(expected) +
+                    ", key='" + key + '\'' +
+                    ", ts=" + ts +
+                    '}';
+        }
     };
 
 
 
-    private TestArgs createArg(Object[] input, ArrayList<String> projectList, Object[] expect, String key, long ts)  {
+    private TestArgs createArg(Object[] input,
+                               ArrayList<String> projectList, Object[] expect, String key, long ts,
+                               int formatVersion)  {
         String name = String.valueOf(id.incrementAndGet());
         TableInfo.Builder tbuilder = TableInfo.newBuilder();
-        Common.ColumnDesc col0 = Common.ColumnDesc.newBuilder().setName("card").setDataType(Type.DataType.kVarchar).setType("string").build();
-        Common.ColumnDesc col1 = Common.ColumnDesc.newBuilder().setName("mcc").setNotNull(false).setDataType(Type.DataType.kVarchar).setType("string").build();
-        Common.ColumnDesc col2 = Common.ColumnDesc.newBuilder().setName("ts").setDataType(Type.DataType.kBigInt).setType("int64").setIsTsCol(true).build();
-        Common.ColumnDesc col3 = Common.ColumnDesc.newBuilder().setName("date").setNotNull(false).setDataType(Type.DataType.kDate).setType("date").build();
+        Common.ColumnDesc col0 = Common.ColumnDesc.newBuilder().setName("card").setType("string").build();
+        Common.ColumnDesc col1 = Common.ColumnDesc.newBuilder().setName("mcc").setType("string").build();
+        Common.ColumnDesc col2 = Common.ColumnDesc.newBuilder().setName("ts").setType("int64").setIsTsCol(true).build();
+        Common.ColumnDesc col3 = Common.ColumnDesc.newBuilder().setName("date").setType("date").build();
         tbuilder.addColumnDescV1(col0);
         tbuilder.addColumnDescV1(col1);
         tbuilder.addColumnDescV1(col2);
         tbuilder.addColumnDescV1(col3);
         Common.ColumnKey ck = Common.ColumnKey.newBuilder().setIndexName("card").addColName("card").addTsName("ts").build();
         tbuilder.addColumnKey(ck);
-        tbuilder.setFormatVersion(1);
+        tbuilder.setFormatVersion(formatVersion);
         tbuilder.setName(name);
         tbuilder.setSegCnt(8);
         tbuilder.setTableType(Type.TableType.kTimeSeries);
@@ -73,18 +87,33 @@ public class TableSyncProjectionTest extends TestCaseBase {
     public Object[][] genCase() {
         Date now = new Date(System.currentTimeMillis());
         return new Object[][] {
+                // the legacy format
                 new Object[]{createArg(new Object[] {"card0", "mcc0", 10000l, new Date(now.getYear(), now.getMonth(), now.getDate())}, new ArrayList<String>(Arrays.asList("card")), new Object[]{"card0"},
-                        "card0", 10000l)},
+                        "card0", 10000l, 0)},
                 new Object[]{createArg(new Object[] {"card1", null, 10000l, new Date(now.getYear(), now.getMonth(), now.getDate())}, new ArrayList<String>(Arrays.asList("mcc")), new Object[]{null},
-                                "card1", 10000l)},
+                                "card1", 10000l, 0 )},
                 new Object[]{createArg(new Object[] {"card2", null, 10000l, new Date(now.getYear(), now.getMonth(), now.getDate())}, new ArrayList<String>(Arrays.asList("ts")), new Object[]{10000l},
-                        "card2", 10000l)},
+                        "card2", 10000l, 0)},
                 new Object[]{createArg(new Object[] {"card3", null, 10000l, new Date(now.getYear(), now.getMonth(), now.getDate())}, new ArrayList<String>(Arrays.asList("date")), new Object[]{new Date(now.getYear(), now.getMonth(), now.getDate())},
-                        "card3", 10000l)},
+                        "card3", 10000l, 0)},
                 new Object[]{createArg(new Object[] {"card4", "mcc0", 10000l, new Date(now.getYear(), now.getMonth(), now.getDate())}, new ArrayList<String>(Arrays.asList("mcc", "card", "mcc")), new Object[]{"mcc0", "card4", "mcc0"},
-                        "card4", 10000l)},
+                        "card4", 10000l, 0)},
                 new Object[]{createArg(new Object[] {"card5", "mcc0", 10000l, new Date(now.getYear(), now.getMonth(), now.getDate())}, new ArrayList<String>(Arrays.asList("date", "card")), new Object[]{new Date(now.getYear(), now.getMonth(), now.getDate()), "card5"},
-                        "card5", 10000l)}
+                        "card5", 10000l, 0 )},
+
+                // the new format
+                new Object[]{createArg(new Object[] {"card0", "mcc0", 10000l, new Date(now.getYear(), now.getMonth(), now.getDate())}, new ArrayList<String>(Arrays.asList("card")), new Object[]{"card0"},
+                        "card0", 10000l, 1)},
+                new Object[]{createArg(new Object[] {"card1", null, 10000l, new Date(now.getYear(), now.getMonth(), now.getDate())}, new ArrayList<String>(Arrays.asList("mcc")), new Object[]{null},
+                        "card1", 10000l, 1)},
+                new Object[]{createArg(new Object[] {"card2", null, 10000l, new Date(now.getYear(), now.getMonth(), now.getDate())}, new ArrayList<String>(Arrays.asList("ts")), new Object[]{10000l},
+                        "card2", 10000l, 1)},
+                new Object[]{createArg(new Object[] {"card3", null, 10000l, new Date(now.getYear(), now.getMonth(), now.getDate())}, new ArrayList<String>(Arrays.asList("date")), new Object[]{new Date(now.getYear(), now.getMonth(), now.getDate())},
+                        "card3", 10000l, 1)},
+                new Object[]{createArg(new Object[] {"card4", "mcc0", 10000l, new Date(now.getYear(), now.getMonth(), now.getDate())}, new ArrayList<String>(Arrays.asList("mcc", "card", "mcc")), new Object[]{"mcc0", "card4", "mcc0"},
+                        "card4", 10000l, 1)},
+                new Object[]{createArg(new Object[] {"card5", "mcc0", 10000l, new Date(now.getYear(), now.getMonth(), now.getDate())}, new ArrayList<String>(Arrays.asList("date", "card")), new Object[]{new Date(now.getYear(), now.getMonth(), now.getDate()), "card5"},
+                        "card5", 10000l, 1)}
 
         };
     }

@@ -17,18 +17,18 @@ public class RowView {
     private ByteBuffer row = null;
     private int size = 0;
     List<ColumnDesc> schema = new ArrayList<>();
-    private int string_field_cnt = 0;
-    private int str_field_start_offset = 0;
-    private int str_addr_length = 0;
-    private List<Integer> offset_vec = new ArrayList<>();
-    private boolean is_valid = false;
+    private int stringFieldCnt = 0;
+    private int strFieldStartOffset = 0;
+    private int strAddrLength = 0;
+    private List<Integer> offsetVec = new ArrayList<>();
+    private boolean isValid = false;
 
 
     public RowView(List<ColumnDesc> schema) {
         this.schema = schema;
-        this.is_valid = true;
+        this.isValid = true;
         if (schema.size() == 0) {
-            is_valid = false;
+            isValid = false;
             return;
         }
         init();
@@ -36,14 +36,14 @@ public class RowView {
 
     public RowView(List<ColumnDesc> schema, ByteBuffer row, int size) {
         this.schema = schema;
-        this.is_valid = true;
+        this.isValid = true;
         this.size = size;
         if (row.order() == ByteOrder.BIG_ENDIAN) {
             row = row.order(ByteOrder.LITTLE_ENDIAN);
         }
         this.row = row;
         if (schema.size() == 0) {
-            is_valid = false;
+            isValid = false;
             return;
         }
         if (init()) {
@@ -52,20 +52,20 @@ public class RowView {
     }
 
     private boolean init() {
-        str_field_start_offset = RowCodecCommon.HEADER_LENGTH + RowCodecCommon.getBitMapSize(schema.size());
+        strFieldStartOffset = RowCodecCommon.HEADER_LENGTH + RowCodecCommon.getBitMapSize(schema.size());
         for (int idx = 0; idx < schema.size(); idx++) {
             ColumnDesc column = schema.get(idx);
             if (column.getDataType() == DataType.Varchar || column.getDataType() == DataType.String) {
-                offset_vec.add(string_field_cnt);
-                string_field_cnt++;
+                offsetVec.add(stringFieldCnt);
+                stringFieldCnt++;
             } else {
                 if (RowCodecCommon.TYPE_SIZE_MAP.get(column.getDataType()) == null) {
-                    is_valid = false;
+                    isValid = false;
                     logger.warn("type is not supported");
                     return false;
                 } else {
-                    offset_vec.add(str_field_start_offset);
-                    str_field_start_offset += RowCodecCommon.TYPE_SIZE_MAP.get(column.getDataType());
+                    offsetVec.add(strFieldStartOffset);
+                    strFieldStartOffset += RowCodecCommon.TYPE_SIZE_MAP.get(column.getDataType());
                 }
             }
         }
@@ -75,7 +75,7 @@ public class RowView {
     public boolean reset(ByteBuffer row, int size) {
         if (schema.size() == 0 || row == null || size <= RowCodecCommon.HEADER_LENGTH ||
                 row.getInt(RowCodecCommon.VERSION_LENGTH) != size) {
-            is_valid = false;
+            isValid = false;
             return false;
         }
         if (row.order() == ByteOrder.BIG_ENDIAN) {
@@ -83,13 +83,13 @@ public class RowView {
         }
         this.row = row;
         this.size = size;
-        str_addr_length = RowCodecCommon.getAddrLength(size);
+        strAddrLength = RowCodecCommon.getAddrLength(size);
         return true;
     }
 
     private boolean reset(ByteBuffer row) {
         if (schema.size() == 0 || row == null) {
-            is_valid = false;
+            isValid = false;
             return false;
         }
         if (row.order() == ByteOrder.BIG_ENDIAN) {
@@ -98,15 +98,15 @@ public class RowView {
         this.row = row;
         this.size = row.getInt(RowCodecCommon.VERSION_LENGTH);
         if (this.size < RowCodecCommon.HEADER_LENGTH) {
-            is_valid = false;
+            isValid = false;
             return false;
         }
-        str_addr_length = RowCodecCommon.getAddrLength(size);
+        strAddrLength = RowCodecCommon.getAddrLength(size);
         return true;
     }
 
     private boolean checkValid(int idx, DataType type) {
-        if (row == null || !is_valid) {
+        if (row == null || !isValid) {
             return false;
         }
         if (idx >= schema.size()) {
@@ -202,7 +202,7 @@ public class RowView {
             return null;
         }
         Object val = null;
-        int offset = offset_vec.get(idx);
+        int offset = offsetVec.get(idx);
         switch (column.getDataType()) {
             case Bool: {
                 int v = row.get(offset);
@@ -240,11 +240,11 @@ public class RowView {
             case Varchar:
                 int field_offset = offset;
                 int next_str_field_offset = 0;
-                if (field_offset < string_field_cnt - 1) {
+                if (field_offset < stringFieldCnt - 1) {
                     next_str_field_offset = field_offset + 1;
                 }
                 return getStrField(row, field_offset, next_str_field_offset,
-                        str_field_start_offset, RowCodecCommon.getAddrLength(size));
+                        strFieldStartOffset, RowCodecCommon.getAddrLength(size));
             default:
                 throw new TabletException("unsupported data type");
         }
@@ -270,7 +270,7 @@ public class RowView {
             return null;
         }
         Object val = null;
-        int offset = offset_vec.get(idx);
+        int offset = offsetVec.get(idx);
         switch (type) {
             case Bool: {
                 int v = row.get(offset);
@@ -307,13 +307,13 @@ public class RowView {
                 break;
             case String:
             case Varchar:
-                int field_offset = offset;
-                int next_str_field_offset = 0;
-                if (field_offset < string_field_cnt - 1) {
-                    next_str_field_offset = field_offset + 1;
+                int fieldOffset = offset;
+                int nextStrFieldOffset = 0;
+                if (fieldOffset < stringFieldCnt - 1) {
+                    nextStrFieldOffset = fieldOffset + 1;
                 }
-                return getStrField(row, field_offset, next_str_field_offset,
-                        str_field_start_offset, RowCodecCommon.getAddrLength(size));
+                return getStrField(row, fieldOffset, nextStrFieldOffset,
+                        strFieldStartOffset, RowCodecCommon.getAddrLength(size));
             default:
                 throw new TabletException("unsupported data type");
         }
@@ -324,66 +324,66 @@ public class RowView {
         return (String) getValue(row, idx, DataType.Varchar);
     }
 
-    public String getStrField(ByteBuffer row, int field_offset,
-                              int next_str_field_offset, int str_start_offset,
-                              int addr_space) throws TabletException {
+    public String getStrField(ByteBuffer row, int fieldOffset,
+                              int nextStrFieldOffset, int strStartOffset,
+                              int addrSpace) throws TabletException {
         if (row == null) {
             throw new TabletException("row is null");
         }
         if (row.order() == ByteOrder.BIG_ENDIAN) {
             row = row.order(ByteOrder.LITTLE_ENDIAN);
         }
-        int row_with_offset = str_start_offset;
-        int str_offset = 0;
-        int next_str_offset = 0;
-        switch (addr_space) {
+        int rowWithOffset = strStartOffset;
+        int strOffset = 0;
+        int nextStrOffset = 0;
+        switch (addrSpace) {
             case 1: {
-                str_offset = row.get(row_with_offset + field_offset * addr_space) & 0xFF;
-                if (next_str_field_offset > 0) {
-                    next_str_offset = row.get(row_with_offset + next_str_field_offset * addr_space) & 0xFF;
+                strOffset = row.get(rowWithOffset + fieldOffset * addrSpace) & 0xFF;
+                if (nextStrFieldOffset > 0) {
+                    nextStrOffset = row.get(rowWithOffset + nextStrFieldOffset * addrSpace) & 0xFF;
                 }
                 break;
             }
             case 2: {
-                str_offset = row.getShort(row_with_offset + field_offset * addr_space) & 0xFFFF;
-                if (next_str_field_offset > 0) {
-                    next_str_offset = row.getShort(row_with_offset + next_str_field_offset * addr_space) & 0xFFFF;
+                strOffset = row.getShort(rowWithOffset + fieldOffset * addrSpace) & 0xFFFF;
+                if (nextStrFieldOffset > 0) {
+                    nextStrOffset = row.getShort(rowWithOffset + nextStrFieldOffset * addrSpace) & 0xFFFF;
                 }
                 break;
             }
             case 3: {
-                int cur_row_with_offset = row_with_offset + field_offset * addr_space;
-                str_offset = row.get(cur_row_with_offset) & 0xFF;
-                str_offset = (str_offset << 8) + (row.get((cur_row_with_offset + 1)) & 0xFF);
-                str_offset = (str_offset << 8) + (row.get((cur_row_with_offset + 2)) & 0xFF);
-                if (next_str_field_offset > 0) {
-                    int next_row_with_offset = row_with_offset + next_str_field_offset * addr_space;
-                    next_str_offset = row.get((next_row_with_offset)) & 0xFF;
-                    next_str_offset = (next_str_offset << 8) + (row.get(next_row_with_offset + 1) & 0xFF);
-                    next_str_offset = (next_str_offset << 8) + (row.get(next_row_with_offset + 2) & 0xFF);
+                int curRowWithOffset = rowWithOffset + fieldOffset * addrSpace;
+                strOffset = row.get(curRowWithOffset) & 0xFF;
+                strOffset = (strOffset << 8) + (row.get((curRowWithOffset + 1)) & 0xFF);
+                strOffset = (strOffset << 8) + (row.get((curRowWithOffset + 2)) & 0xFF);
+                if (nextStrFieldOffset > 0) {
+                    int nextRowWithOffset = rowWithOffset + nextStrFieldOffset * addrSpace;
+                    nextStrOffset = row.get((nextRowWithOffset)) & 0xFF;
+                    nextStrOffset = (nextStrOffset << 8) + (row.get(nextRowWithOffset + 1) & 0xFF);
+                    nextStrOffset = (nextStrOffset << 8) + (row.get(nextRowWithOffset + 2) & 0xFF);
                 }
                 break;
             }
             case 4: {
-                str_offset = row.getInt(row_with_offset + field_offset * addr_space);
-                if (next_str_field_offset > 0) {
-                    next_str_offset = row.getInt(row_with_offset + next_str_field_offset * addr_space);
+                strOffset = row.getInt(rowWithOffset + fieldOffset * addrSpace);
+                if (nextStrFieldOffset > 0) {
+                    nextStrOffset = row.getInt(rowWithOffset + nextStrFieldOffset * addrSpace);
                 }
                 break;
             }
             default: {
-                throw new TabletException("addr_space mistakes");
+                throw new TabletException("addrSpace mistakes");
             }
         }
         int len;
-        if (next_str_field_offset <= 0) {
-            int total_length = row.getInt(RowCodecCommon.VERSION_LENGTH);
-            len = total_length - str_offset;
+        if (nextStrFieldOffset <= 0) {
+            int totalLength = row.getInt(RowCodecCommon.VERSION_LENGTH);
+            len = totalLength - strOffset;
         } else {
-            len = next_str_offset - str_offset;
+            len = nextStrOffset - strOffset;
         }
         byte[] arr = new byte[len];
-        row.position(str_offset);
+        row.position(strOffset);
         row.get(arr);
         return new String(arr, RowCodecCommon.CHARSET);
     }

@@ -7,6 +7,7 @@ import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.tablet.Tablet;
 import com._4paradigm.rtidb.tablet.Tablet.ScanResponse;
 
+import java.util.BitSet;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -18,9 +19,24 @@ public class ScanFuture implements Future<KvIterator> {
     private Future<Tablet.ScanResponse> f;
     private TableHandler t;
     private List<ColumnDesc> projection;
+
+    private List<Integer> projectionIdx;
+    private BitSet bitSet;
+    private int maxProjectionIdx;
+
+
     public ScanFuture(Future<Tablet.ScanResponse> f, TableHandler t) {
         this.f = f;
         this.t = t;
+    }
+
+    public ScanFuture(Future<Tablet.ScanResponse> f, TableHandler t, List<Integer> projectionIdx,
+                      BitSet bitSet, int maxProjectionIdx) {
+        this.f = f;
+        this.t = t;
+        this.projectionIdx = projectionIdx;
+        this.bitSet = bitSet;
+        this.maxProjectionIdx = maxProjectionIdx;
     }
 
     public ScanFuture(Future<Tablet.ScanResponse> f, TableHandler t, Long startTime) {
@@ -79,7 +95,9 @@ public class ScanFuture implements Future<KvIterator> {
     private KvIterator getLegacyKvIterator(ScanResponse response) {
         DefaultKvIterator kit = null;
         if (t != null) {
-            if (t.getSchemaMap().size() > 0) {
+            if (projectionIdx != null && projectionIdx.size() >0) {
+                kit = new DefaultKvIterator(response.getPairs(), t.getSchema(), bitSet, projectionIdx, maxProjectionIdx);
+            }else if (t.getSchemaMap().size() > 0) {
                 kit = new DefaultKvIterator(response.getPairs(), t);
             } else {
                 kit = new DefaultKvIterator(response.getPairs(), t.getSchema());
