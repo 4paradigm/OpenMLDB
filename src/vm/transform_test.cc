@@ -591,6 +591,58 @@ TEST_F(TransformTest, pass_join_optimized_test) {
         Physical_Plan_Check(catalog, in_out.first, in_out.second);
     }
 }
+
+TEST_F(TransformTest, TransfromConditionsTest) {
+    std::vector<std::pair<std::string, std::vector<std::string>>> sql_exp;
+
+    sql_exp.push_back(std::make_pair(
+        "select t1.col1=t2.col1 or t1.col2 = t2.col2 and t1.col3 = t2.col3 "
+        "from t1,t2;",
+        std::vector<std::string>({"t1.col1 = t2.col1 OR t1.col2 = t2.col2 AND "
+                                  "t1.col3 = t2.col3"})));  // expr1
+
+    sql_exp.push_back(std::make_pair(
+        "select t1.col1=t2.col1 or t1.col2 = t2.col2 from t1,t2;",
+        std::vector<std::string>(
+            {"t1.col1 = t2.col1 OR t1.col2 = t2.col2"})));  // expr1
+
+    sql_exp.push_back(std::make_pair(
+        "select t1.col1=t2.col1 and t1.col2 = t2.col2 from t1,t2;",
+        std::vector<std::string>({"t1.col1 = t2.col1",      // expr1
+                                  "t1.col2 = t2.col2"})));  // expr2
+
+    sql_exp.push_back(std::make_pair(
+        "select (t1.col1=t2.col1 and t1.col2 = t2.col2) from t1,t2;",
+        std::vector<std::string>({"t1.col1 = t2.col1",      // expr1
+                                  "t1.col2 = t2.col2"})));  // expr2
+
+    sql_exp.push_back(std::make_pair(
+        "select t1.col1=t2.col1 and t1.col2 = t2.col2 and "
+        "t1.col3+t1.col4=t2.col3 from t1,t2;",
+        std::vector<std::string>({"t1.col1 = t2.col1",                // expr1
+                                  "t1.col2 = t2.col2",                // expr2
+                                  "t1.col3 + t1.col4 = t2.col3"})));  // expr3
+
+    for (size_t i = 0; i < sql_exp.size(); i++) {
+        std::string sql = sql_exp[i].first;
+        std::vector<std::string>& exp_list = sql_exp[i].second;
+        ::fesql::node::NodeManager manager;
+        node::ExprNode* condition;
+        ExtractExprFromSimpleSQL(&manager, sql, &condition);
+        LOG(INFO) << "TEST condition [" << i
+                  << "]: " << node::ExprString(condition);
+        node::ExprListNode and_condition_list;
+        FilterOptimized::TransfromAndConditionList(condition,
+                                                   &and_condition_list);
+        LOG(INFO) << "and condition list: "
+                  << node::ExprString(&and_condition_list);
+        ASSERT_EQ(exp_list.size(), and_condition_list.children_.size());
+        for (size_t i = 0; i < exp_list.size(); i++) {
+            ASSERT_EQ(exp_list[i],
+                      node::ExprString(and_condition_list.children_[i]));
+        }
+    }
+}
 }  // namespace vm
 }  // namespace fesql
 int main(int argc, char** argv) {

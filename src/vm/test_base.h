@@ -27,6 +27,36 @@
 namespace fesql {
 namespace vm {
 
+void ExtractExprFromSimpleSQL(::fesql::node::NodeManager* nm,
+                            std::string& sql, node::ExprNode** output) {
+    boost::to_lower(sql);
+    std::cout << sql << std::endl;
+    ::fesql::node::PlanNodeList plan_trees;
+    ::fesql::base::Status base_status;
+    ::fesql::plan::SimplePlanner planner(nm);
+    ::fesql::parser::FeSQLParser parser;
+    ::fesql::node::NodePointVector parser_trees;
+    parser.parse(sql, parser_trees, nm, base_status);
+    ASSERT_EQ(0, base_status.code);
+    if (planner.CreatePlanTree(parser_trees, plan_trees, base_status) == 0) {
+        std::cout << base_status.msg;
+        std::cout << *(plan_trees[0]) << std::endl;
+    } else {
+        std::cout << base_status.msg;
+    }
+    ASSERT_EQ(0, base_status.code);
+    std::cout.flush();
+
+    ASSERT_EQ(node::kPlanTypeProject, plan_trees[0]->GetChildren()[0]->type_);
+    auto project_plan_node =
+        dynamic_cast<node::ProjectPlanNode*>(plan_trees[0]->GetChildren()[0]);
+    ASSERT_EQ(1u, project_plan_node->project_list_vec_.size());
+
+    auto project_list = dynamic_cast<node::ProjectListNode*>(project_plan_node->project_list_vec_[0]);
+    auto project = dynamic_cast<node::ProjectNode*>(project_list->GetProjects()[0]);
+    *output = project->GetExpression();
+}
+
 bool AddTable(const std::shared_ptr<tablet::TabletCatalog>& catalog,
               const fesql::type::TableDef& table_def,
               std::shared_ptr<fesql::storage::Table> table) {

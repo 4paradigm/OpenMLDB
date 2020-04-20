@@ -1292,6 +1292,75 @@ bool GroupAndSortOptimized::MatchBestIndex(
     return succ;
 }
 
+bool FilterOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
+    switch (in->type_) {
+        case kPhysicalOpJoin: {
+            PhysicalJoinNode* join_op = dynamic_cast<PhysicalJoinNode*>(in);
+            node::ExprListNode and_conditions;
+            if (!TransfromAndConditionList(join_op->condition_,
+                                           &and_conditions)) {
+                return false;
+            }
+        }
+        default: {
+            return false;
+        }
+    }
+    return false;
+}
+
+// Transform condition expression some sub conditions
+// e.g.
+// condition : sub_expr1 and sub_expr2 and sub expr3
+// and_condition_list [sub_expr1, sub_expr2, sub_exor3]
+bool FilterOptimized::TransfromAndConditionList(
+    const node::ExprNode* condition, node::ExprListNode* and_condition_list) {
+    if (nullptr == condition) {
+        LOG(WARNING) << "fail to transfron conditions: null condition";
+        return false;
+    }
+
+    switch (condition->expr_type_) {
+        case node::kExprUnary: {
+            const node::UnaryExpr* expr =
+                dynamic_cast<const node::UnaryExpr*>(condition);
+            switch (expr->GetOp()) {
+                case node::kFnOpBracket: {
+                    return TransfromAndConditionList(expr->children_[0],
+                                                     and_condition_list);
+                }
+                default: {
+                    and_condition_list->AddChild(
+                        const_cast<node::ExprNode*>(condition));
+                    return true;
+                }
+            }
+        }
+        case node::kExprBinary: {
+            const node::BinaryExpr* expr =
+                dynamic_cast<const node::BinaryExpr*>(condition);
+            switch (expr->GetOp()) {
+                case node::kFnOpAnd: {
+                    for (auto child : expr->children_) {
+                        TransfromAndConditionList(child, and_condition_list);
+                    }
+                    return true;
+                }
+                //TODO(chenjing): NOT(expr OR expr) ==> AND (NOT expr) AND (NOT expr)
+                default: {
+                    and_condition_list->AddChild(
+                        const_cast<node::ExprNode*>(condition));
+                    return true;
+                }
+            }
+        }
+        default: {
+            and_condition_list->AddChild(
+                const_cast<node::ExprNode*>(condition));
+            return true;
+        }
+    }
+}
 bool LimitOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
     *output = in;
     if (kPhysicalOpLimit != in->type_) {

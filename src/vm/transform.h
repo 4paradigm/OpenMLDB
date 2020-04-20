@@ -153,6 +153,20 @@ class LimitOptimized : public TransformUpPysicalPass {
 
     static bool ApplyLimitCnt(PhysicalOpNode* node, int32_t limit_cnt);
 };
+
+// Optimize filter condition
+// for FilterNode, JoinNode
+class FilterOptimized : public TransformUpPysicalPass {
+ public:
+    FilterOptimized(node::NodeManager* node_manager, const std::string& db,
+                    const std::shared_ptr<Catalog>& catalog)
+        : TransformUpPysicalPass(node_manager, db, catalog) {}
+    static bool TransfromAndConditionList(const node::ExprNode* condition,
+                             node::ExprListNode* and_condition_list);
+
+ private:
+    virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
+};
 class LeftJoinOptimized : public TransformUpPysicalPass {
  public:
     LeftJoinOptimized(node::NodeManager* node_manager, const std::string& db,
