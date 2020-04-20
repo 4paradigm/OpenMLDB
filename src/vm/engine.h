@@ -23,6 +23,7 @@
 #include <mutex>  //NOLINT
 #include <string>
 #include <vector>
+#include "base/raw_buffer.h"
 #include "base/spin_lock.h"
 #include "codec/list_iterator_codec.h"
 #include "codec/row_codec.h"
@@ -41,10 +42,31 @@ using ::fesql::codec::RowView;
 
 class Engine;
 
+class EngineOptions {
+ public:
+    void set_keep_ir(bool flag) {
+        this->keep_ir_ = flag;
+    }
+    bool is_keep_ir() const {
+        return this->keep_ir_;
+    }
+ private:
+    bool keep_ir_;
+};
+
 class CompileInfo {
  public:
     SQLContext& get_sql_context() {
         return this->sql_ctx;
+    }
+
+    bool get_ir_buffer(const base::RawBuffer& buf) {
+        auto& str = this->sql_ctx.ir;
+        return buf.CopyFrom(str.data(), str.size());
+    }
+
+    size_t get_ir_size() {
+        return this->sql_ctx.ir.size();
     }
 
  private:
@@ -108,6 +130,7 @@ typedef std::map<std::string,
     EngineCache;
 class Engine {
  public:
+    Engine(const std::shared_ptr<Catalog>& cl, const EngineOptions& options);
     explicit Engine(const std::shared_ptr<Catalog>& cl);
 
     // Initialize LLVM environments
@@ -115,7 +138,8 @@ class Engine {
 
     ~Engine();
 
-    bool Get(const std::string& sql, const std::string& db,
+    std::shared_ptr<CompileInfo> Get(const std::string& sql,
+             const std::string& db,
              RunSession& session,    // NOLINT
              base::Status& status);  // NOLINT
  private:
@@ -123,6 +147,8 @@ class Engine {
                                                 const std::string& sql);
 
     const std::shared_ptr<Catalog> cl_;
+    EngineOptions options_;
+
     base::SpinMutex mu_;
     EngineCache cache_;
     ::fesql::node::NodeManager nm_;

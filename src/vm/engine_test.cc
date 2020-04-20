@@ -366,8 +366,8 @@ TEST_P(EngineTest, test_normal) {
     if (RUNBATCH == is_batch_mode) {
         int32_t ret = -1;
         BatchRunSession session;
-        bool ok = engine.Get(sql, "db", session, get_status);
-        ASSERT_TRUE(ok);
+        auto compie_info = engine.Get(sql, "db", session, get_status);
+        ASSERT_TRUE(compie_info != nullptr);
         ret = session.Run(output, 10);
         schema = session.GetSchema();
         PrintSchema(schema);
@@ -375,8 +375,8 @@ TEST_P(EngineTest, test_normal) {
     } else {
         int32_t ret = -1;
         RequestRunSession session;
-        bool ok = engine.Get(sql, "db", session, get_status);
-        ASSERT_TRUE(ok);
+        auto compie_info = engine.Get(sql, "db", session, get_status);
+        ASSERT_TRUE(compie_info != nullptr);
         schema = session.GetSchema();
         PrintSchema(schema);
 
@@ -505,8 +505,8 @@ TEST_F(EngineTest, test_window_agg) {
     Engine engine(catalog);
     RequestRunSession session;
     base::Status get_status;
-    bool ok = engine.Get(sql, "db", session, get_status);
-    ASSERT_TRUE(ok);
+    auto compie_info = engine.Get(sql, "db", session, get_status);
+    ASSERT_TRUE(compie_info != nullptr);
     PrintSchema(session.GetSchema());
     std::vector<int8_t*> output;
 
@@ -628,8 +628,8 @@ TEST_F(EngineTest, test_window_agg_batch_run) {
     Engine engine(catalog);
     BatchRunSession session;
     base::Status get_status;
-    bool ok = engine.Get(sql, "db", session, get_status);
-    ASSERT_TRUE(ok);
+    auto compie_info = engine.Get(sql, "db", session, get_status);
+    ASSERT_TRUE(compie_info != nullptr);
     std::vector<int8_t*> output;
     int32_t ret = session.Run(output, 100);
 
@@ -736,8 +736,8 @@ TEST_F(EngineTest, test_window_agg_with_limit) {
     Engine engine(catalog);
     RequestRunSession session;
     base::Status get_status;
-    bool ok = engine.Get(sql, "db", session, get_status);
-    ASSERT_TRUE(ok);
+    auto compie_info = engine.Get(sql, "db", session, get_status);
+    ASSERT_TRUE(compie_info != nullptr);
     std::vector<int8_t*> output;
     int32_t limit = 2;
     auto iter = windows.cbegin();
@@ -805,8 +805,8 @@ TEST_F(EngineTest, test_window_agg_with_limit_batch_run) {
     Engine engine(catalog);
     BatchRunSession session;
     base::Status get_status;
-    bool ok = engine.Get(sql, "db", session, get_status);
-    ASSERT_TRUE(ok);
+    auto compie_info = engine.Get(sql, "db", session, get_status);
+    ASSERT_TRUE(compie_info != nullptr);
     std::vector<int8_t*> output;
     int32_t ret = session.Run(output, 100);
 
@@ -878,8 +878,8 @@ TEST_F(EngineTest, test_multi_windows_agg) {
     Engine engine(catalog);
     BatchRunSession session(true);
     base::Status get_status;
-    bool ok = engine.Get(sql, "db", session, get_status);
-    ASSERT_TRUE(ok);
+    auto compie_info = engine.Get(sql, "db", session, get_status);
+    ASSERT_TRUE(compie_info != nullptr);
     std::vector<int8_t*> output;
     int32_t ret = session.Run(output, 10);
     ASSERT_EQ(0, ret);
@@ -983,8 +983,8 @@ TEST_F(EngineTest, test_window_agg_unique_partition) {
     Engine engine(catalog);
     RequestRunSession session;
     base::Status get_status;
-    bool ok = engine.Get(sql, "db", session, get_status);
-    ASSERT_TRUE(ok);
+    auto compie_info = engine.Get(sql, "db", session, get_status);
+    ASSERT_TRUE(compie_info != nullptr);
     std::vector<int8_t*> output;
     int32_t limit = 10;
     auto iter = windows.cbegin();
@@ -1093,8 +1093,8 @@ TEST_F(EngineTest, test_window_agg_unique_partition_batch_run) {
     Engine engine(catalog);
     BatchRunSession session;
     base::Status get_status;
-    bool ok = engine.Get(sql, "db", session, get_status);
-    ASSERT_TRUE(ok);
+    auto compie_info = engine.Get(sql, "db", session, get_status);
+    ASSERT_TRUE(compie_info != nullptr);
     std::vector<int8_t*> output;
     int32_t ret = session.Run(output, 10);
     ASSERT_EQ(0, ret);
@@ -1194,8 +1194,8 @@ TEST_F(EngineTest, test_window_agg_varchar_pk) {
     Engine engine(catalog);
     BatchRunSession session(true);
     base::Status get_status;
-    bool ok = engine.Get(sql, "db", session, get_status);
-    ASSERT_TRUE(ok);
+    auto compie_info = engine.Get(sql, "db", session, get_status);
+    ASSERT_TRUE(compie_info != nullptr);
     std::vector<int8_t*> output;
     int32_t ret = session.Run(output, 10);
     ASSERT_EQ(0, ret);
@@ -1295,8 +1295,8 @@ TEST_F(EngineTest, test_window_agg_varchar_pk_batch_run) {
     Engine engine(catalog);
     BatchRunSession session;
     base::Status get_status;
-    bool ok = engine.Get(sql, "db", session, get_status);
-    ASSERT_TRUE(ok);
+    auto compie_info = engine.Get(sql, "db", session, get_status);
+    ASSERT_TRUE(compie_info != nullptr);
     std::vector<int8_t*> output;
     int32_t ret = session.Run(output, 10);
     ASSERT_EQ(0, ret);

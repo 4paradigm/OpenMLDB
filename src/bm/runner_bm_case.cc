@@ -51,7 +51,7 @@ static void RequestUnionRunnerCase(const std::string& sql, int runner_id,
     Engine engine(catalog);
     RequestRunSession session;
     base::Status status;
-    ASSERT_TRUE(engine.Get(sql, "db", session, status));
+    ASSERT_TRUE(engine.Get(sql, "db", session, status) != nullptr);
     auto table = catalog->GetTable("db", "t1");
     if (!table) {
         LOG(WARNING) << "table not exist";
@@ -108,7 +108,7 @@ void IndexSeekRunnerCase(const std::string sql, int runner_id,
     Engine engine(catalog);
     RequestRunSession session;
     base::Status status;
-    ASSERT_TRUE(engine.Get(sql, "db", session, status));
+    ASSERT_TRUE(engine.Get(sql, "db", session, status) != nullptr);
     auto table = catalog->GetTable("db", "t1");
     if (!table) {
         LOG(WARNING) << "table not exist";
@@ -151,7 +151,7 @@ void AggRunnerCase(const std::string sql, int runner_id,
     Engine engine(catalog);
     RequestRunSession session;
     base::Status status;
-    ASSERT_TRUE(engine.Get(sql, "db", session, status));
+    ASSERT_TRUE(engine.Get(sql, "db", session, status) != nullptr);
     auto table = catalog->GetTable("db", "t1");
     if (!table) {
         LOG(WARNING) << "table not exist";

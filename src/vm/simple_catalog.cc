@@ -47,7 +47,7 @@ SimpleCatalogTableHandler::SimpleCatalogTableHandler(
     const std::string &db_name, const fesql::type::TableDef &table_def)
     : db_name_(db_name), table_def_(table_def) {
     // build col info and index info
-    for (size_t k = 0; k < table_def.columns_size(); ++k) {
+    for (int k = 0; k < table_def.columns_size(); ++k) {
         auto column = table_def.columns(k);
         ColInfo col_info;
         col_info.name = column.name();
@@ -55,7 +55,7 @@ SimpleCatalogTableHandler::SimpleCatalogTableHandler(
         col_info.pos = k;
         this->types_dict_[column.name()] = col_info;
     }
-    for (size_t k = 0; k < table_def.indexes_size(); ++k) {
+    for (int k = 0; k < table_def.indexes_size(); ++k) {
         auto index = table_def_.indexes(k);
         IndexSt hint;
         hint.index = k;

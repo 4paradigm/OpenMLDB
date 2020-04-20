@@ -9,7 +9,7 @@
 
 #ifndef SRC_VM_RUNNER_H_
 #define SRC_VM_RUNNER_H_
-#include <stdint-gcc.h>
+
 #include <map>
 #include <string>
 #include <vector>
@@ -44,16 +44,16 @@ class Runner {
         : id_(id),
           fn_(nullptr),
           fn_schema_(),
-          row_view_(fn_schema_),
           limit_cnt_(0),
+          row_view_(fn_schema_),
           need_cache_(false),
           producers_() {}
     Runner(const int32_t id, const int32_t limit_cnt)
         : id_(id),
           fn_(nullptr),
           fn_schema_(),
-          row_view_(fn_schema_),
           limit_cnt_(limit_cnt),
+          row_view_(fn_schema_),
           need_cache_(false),
           producers_() {}
     Runner(const int32_t id, const int8_t* fn, const Schema& fn_schema,
@@ -61,8 +61,8 @@ class Runner {
         : id_(id),
           fn_(fn),
           fn_schema_(fn_schema),
-          row_view_(fn_schema_),
           limit_cnt_(limit_cnt),
+          row_view_(fn_schema_),
           need_cache_(false),
           producers_() {}
     virtual ~Runner() {}
@@ -79,7 +79,7 @@ class Runner {
     const int32_t id_;
     const int8_t* fn_;
     const Schema fn_schema_;
-    RowView row_view_;
+
     const int32_t limit_cnt_;
     virtual std::shared_ptr<DataHandler> Run(RunnerContext& ctx) = 0;  // NOLINT
     virtual std::shared_ptr<DataHandler> RunWithCache(
@@ -111,6 +111,9 @@ class Runner {
                                            std::vector<int> idxs,
                                            const bool is_asc,
                                            RowView* row_view);
+
+    RowView row_view_;
+
     bool need_cache_;
     std::vector<Runner*> producers_;
 };

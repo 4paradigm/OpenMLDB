@@ -30,6 +30,9 @@ DECLARE_string(endpoint);
 DECLARE_int32(port);
 DECLARE_bool(enable_keep_alive);
 
+#define FLAGS_dbms_endpoint std::string("127.0.0.1:8090")
+#define FLAGS_endpoint "127.0.0.1:10892"
+
 namespace fesql {
 namespace tablet {
 
@@ -154,9 +157,9 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
 
     {
         base::Status base_status;
-        bool ok =
+        auto compile_info =
             engine_->Get(request->sql(), request->db(), session, base_status);
-        if (!ok) {
+        if (!compile_info) {
             status->set_msg(base_status.msg);
             status->set_code(base_status.code);
             LOG(WARNING) << base_status.msg;

@@ -105,6 +105,16 @@ class PhysicalOpNode {
         producers_.push_back(producer);
     }
 
+    PhysicalOpNode* GetProducer(size_t index) const {
+        return producers_[index];
+    }
+
+    const vm::Schema* GetOutputSchema() const {
+        return &output_schema;
+    }
+
+    size_t GetProducerCnt() const { return producers_.size(); }
+
     void SetFn(int8_t *fn) { fn_ = fn; }
     const int8_t *GetFn() const { return fn_; }
 

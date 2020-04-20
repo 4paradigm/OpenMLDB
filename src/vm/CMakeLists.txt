@@ -2,7 +2,7 @@ include_directories(${INCLUDE_DIRECTORIES}
         ${PROJECT_SOURCE_DIR}/src
         ${PROJECT_BINARY_DIR}/src)
 
-add_library(fesql_vm STATIC jit.cc runner.cc sql_compiler.cc engine.cc mem_catalog.cc transform.cc physical_op.cc)
+add_library(fesql_vm STATIC jit.cc jit_wrapper.cc runner.cc sql_compiler.cc engine.cc mem_catalog.cc transform.cc physical_op.cc)
 
 add_library(fesql_csv_catalog STATIC csv_catalog.cc csv_table_iterator.cc
         csv_window_iterator.cc)
@@ -58,6 +58,11 @@ add_executable(jit_test jit_test.cc)
 target_link_libraries(jit_test ${vm_deps_libs} protobuf ${llvm_libs} ${COMMON_LIBS} gtest pthread)
 add_test(jit_test jit_test --gtest_output=xml:${CMAKE_BINARY_DIR}/jit_test.xml)
 list(APPEND test_list jit_test)
+
+add_executable(jit_wrapper_test jit_wrapper_test.cc)
+target_link_libraries(jit_wrapper_test fesql_simple_catalog ${vm_deps_libs} protobuf ${llvm_libs} ${COMMON_LIBS} gtest pthread)
+add_test(jit_wrapper_test jit_wrapper_test --gtest_output=xml:${CMAKE_BINARY_DIR}/jit_wrapper_test.xml)
+list(APPEND test_list jit_wrapper_test)
 
 add_executable(runner_test runner_test.cc)
 target_link_libraries(runner_test ${vm_deps_libs}

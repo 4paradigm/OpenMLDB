@@ -70,6 +70,10 @@ bool RowBuilder::SetBuffer(int8_t* buf, uint32_t size) {
     return true;
 }
 
+bool RowBuilder::SetBuffer(const fesql::base::RawBuffer& buf) {
+    return this->SetBuffer(reinterpret_cast<int8_t*>(buf.addr), buf.size);
+}
+
 uint32_t RowBuilder::CalTotalLength(uint32_t string_length) {
     if (schema_.size() == 0) {
         return 0;
@@ -296,6 +300,10 @@ bool RowView::Reset(const int8_t* row) {
     return true;
 }
 
+bool RowView::Reset(const fesql::base::RawBuffer& buf) {
+    return Reset(reinterpret_cast<int8_t*>(buf.addr), buf.size);
+}
+
 bool RowView::CheckValid(uint32_t idx, ::fesql::type::Type type) {
     if (row_ == NULL || !is_valid_) {
         LOG(WARNING) << "row is invalid";
@@ -315,6 +323,56 @@ bool RowView::CheckValid(uint32_t idx, ::fesql::type::Type type) {
     return true;
 }
 
+bool RowView::GetBoolUnsafe(uint32_t idx) {
+    uint32_t offset = offset_vec_.at(idx);
+    int8_t v = v1::GetBoolField(row_, offset);
+    return v == 1 ? true : false;
+}
+
+int32_t RowView::GetInt32Unsafe(uint32_t idx) {
+    uint32_t offset = offset_vec_.at(idx);
+    return v1::GetInt32Field(row_, offset);
+}
+
+int64_t RowView::GetInt64Unsafe(uint32_t idx) {
+    uint32_t offset = offset_vec_.at(idx);
+    return v1::GetInt64Field(row_, offset);
+}
+
+int64_t RowView::GetTimestampUnsafe(uint32_t idx) {
+    uint32_t offset = offset_vec_.at(idx);
+    return v1::GetInt64Field(row_, offset);
+}
+
+int16_t RowView::GetInt16Unsafe(uint32_t idx) {
+    uint32_t offset = offset_vec_.at(idx);
+    return v1::GetInt16Field(row_, offset);
+}
+
+float RowView::GetFloatUnsafe(uint32_t idx) {
+    uint32_t offset = offset_vec_.at(idx);
+    return v1::GetFloatField(row_, offset);
+}
+
+double RowView::GetDoubleUnsafe(uint32_t idx) {
+    uint32_t offset = offset_vec_.at(idx);
+    return v1::GetDoubleField(row_, offset);
+}
+
+std::string RowView::GetStringUnsafe(uint32_t idx) {
+    uint32_t field_offset = offset_vec_.at(idx);
+    uint32_t next_str_field_offset = 0;
+    if (offset_vec_.at(idx) < string_field_cnt_ - 1) {
+        next_str_field_offset = field_offset + 1;
+    }
+    char* val;
+    uint32_t length;
+    v1::GetStrField(row_, field_offset, next_str_field_offset,
+                    str_field_start_offset_, str_addr_length_,
+                    reinterpret_cast<int8_t**>(&val), &length);
+    return std::string(val, length);
+}
+
 int32_t RowView::GetBool(uint32_t idx, bool* val) {
     if (val == NULL) {
         LOG(WARNING) << "output val is null";
@@ -326,13 +384,7 @@ int32_t RowView::GetBool(uint32_t idx, bool* val) {
     if (IsNULL(row_, idx)) {
         return 1;
     }
-    uint32_t offset = offset_vec_.at(idx);
-    int8_t v = v1::GetBoolField(row_, offset);
-    if (v == 1) {
-        *val = true;
-    } else {
-        *val = false;
-    }
+    *val = GetBoolUnsafe(idx);
     return 0;
 }
 
@@ -347,8 +399,7 @@ int32_t RowView::GetInt32(uint32_t idx, int32_t* val) {
     if (IsNULL(row_, idx)) {
         return 1;
     }
-    uint32_t offset = offset_vec_.at(idx);
-    *val = v1::GetInt32Field(row_, offset);
+    *val = GetInt32Unsafe(idx);
     return 0;
 }
 
@@ -363,8 +414,7 @@ int32_t RowView::GetTimestamp(uint32_t idx, int64_t* val) {
     if (IsNULL(row_, idx)) {
         return 1;
     }
-    uint32_t offset = offset_vec_.at(idx);
-    *val = v1::GetInt64Field(row_, offset);
+    *val = GetTimestampUnsafe(idx);
     return 0;
 }
 
@@ -379,8 +429,7 @@ int32_t RowView::GetInt64(uint32_t idx, int64_t* val) {
     if (IsNULL(row_, idx)) {
         return 1;
     }
-    uint32_t offset = offset_vec_.at(idx);
-    *val = v1::GetInt64Field(row_, offset);
+    *val = GetInt64Unsafe(idx);
     return 0;
 }
 
@@ -395,8 +444,7 @@ int32_t RowView::GetInt16(uint32_t idx, int16_t* val) {
     if (IsNULL(row_, idx)) {
         return 1;
     }
-    uint32_t offset = offset_vec_.at(idx);
-    *val = v1::GetInt16Field(row_, offset);
+    *val = GetInt16Unsafe(idx);
     return 0;
 }
 
@@ -411,8 +459,7 @@ int32_t RowView::GetFloat(uint32_t idx, float* val) {
     if (IsNULL(row_, idx)) {
         return 1;
     }
-    uint32_t offset = offset_vec_.at(idx);
-    *val = v1::GetFloatField(row_, offset);
+    *val = GetFloatUnsafe(idx);
     return 0;
 }
 
@@ -427,8 +474,7 @@ int32_t RowView::GetDouble(uint32_t idx, double* val) {
     if (IsNULL(row_, idx)) {
         return 1;
     }
-    uint32_t offset = offset_vec_.at(idx);
-    *val = v1::GetDoubleField(row_, offset);
+    *val = GetDoubleUnsafe(idx);
     return 0;
 }
 

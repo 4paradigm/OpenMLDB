@@ -1,15 +1,20 @@
 package com._4paradigm.fesql.offline;
 
 import com._4paradigm.fesql.base.BaseStatus;
+import com._4paradigm.fesql.base.Slice;
+import com._4paradigm.fesql.codec.RowBuilder;
+import com._4paradigm.fesql.codec.RowView;
 import com._4paradigm.fesql.type.TypeOuterClass;
 import com._4paradigm.fesql.type.TypeOuterClass.TableDef;
 import com._4paradigm.fesql.type.TypeOuterClass.ColumnDef;
 import com._4paradigm.fesql.type.TypeOuterClass.Database;
-import com._4paradigm.fesql.vm.BatchRunSession;
-import com._4paradigm.fesql.vm.Engine;
-import com._4paradigm.fesql.vm.PhysicalOpNode;
-import com._4paradigm.fesql.vm.SimpleCatalog;
+import com._4paradigm.fesql.vm.*;
 import org.junit.Test;
+
+import java.nio.ByteBuffer;
+import java.util.List;
+
+import static org.junit.Assert.assertEquals;
 
 
 public class TestParseSQL {
@@ -37,17 +42,71 @@ public class TestParseSQL {
 
         BatchRunSession sess = new BatchRunSession();
 
+        EngineOptions options = new EngineOptions();
+        options.set_keep_ir(true);
+
         BaseStatus status = new BaseStatus();
-        Engine engine = new Engine(catalog);
-        engine.Get("select col_1, col_2 from t1;", "db", sess, status);
+        Engine engine = new Engine(catalog, options);
+        CompileInfo compileInfo = engine.Get("select col_1, col_2 from t1;", "db", sess, status);
+
+        long size = compileInfo.get_ir_size();
+        ByteBuffer buffer = ByteBuffer.allocateDirect(Long.valueOf(size).intValue());
+        compileInfo.get_ir_buffer(buffer);
+        System.err.println("Dumped module string: len=" + size);
 
         PhysicalOpNode root = sess.GetPhysicalPlan();
         root.Print();
 
+        FeSQLJITWrapper jit = new FeSQLJITWrapper();
+        jit.Init();
+        jit.AddModuleFromBuffer(buffer);
+
+        dfs(jit, root);
+
+        jit.delete();
+        options.delete();
         status.delete();
         sess.delete();
         engine.delete();
         catalog.delete();
     }
 
+    private void dfs(FeSQLJITWrapper jit, PhysicalOpNode root) {
+        long childNum = root.GetProducerCnt();
+        for (int k = 0; k < childNum; ++k) {
+            PhysicalOpNode producer = root.GetProducer(k);
+            dfs(jit, producer);
+        }
+        String name = root.GetFnName();
+        if (!name.equals("")) {
+            System.err.println(name + ": " + jit.FindFunction(name));
+        }
+        if (root.getType_() == PhysicalOpType.kPhysicalOpProject && root.GetProducer(0).GetProducerCnt() == 0) {
+            System.err.println("Mock first project");
+            run(jit, root);
+        }
+    }
+
+    private void run(FeSQLJITWrapper jit, PhysicalOpNode root) {
+        ByteBuffer rowBuf = ByteBuffer.allocateDirect(4096);
+
+        RowBuilder builder = new RowBuilder(root.GetProducer(0).GetOutputSchema());
+        builder.SetBuffer(rowBuf);
+        builder.AppendDouble(3.14);
+        builder.AppendInt32(42);
+
+        Slice slice = new Slice(rowBuf);
+        long fn = jit.FindFunction(root.GetFnName());
+        DummyRunner runner = new DummyRunner();
+        Slice output = runner.RunRowProject(fn, slice);
+
+        RowView rowView = new RowView(root.GetOutputSchema());
+        rowView.Reset(output.buf(), Long.valueOf(output.size()).intValue());
+        assertEquals(3.14, rowView.GetDoubleUnsafe(0), 1e-10);
+        assertEquals(42, rowView.GetInt32Unsafe(1));
+
+        output.delete();
+        slice.delete();
+        runner.delete();
+    }
 }

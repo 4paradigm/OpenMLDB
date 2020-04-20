@@ -25,6 +25,15 @@ namespace std {
 %shared_ptr(fesql::sdk::ResultSet);
 %shared_ptr(fesql::vm::Catalog);
 %shared_ptr(fesql::vm::SimpleCatalog);
+%shared_ptr(fesql::vm::CompileInfo);
+
+%typemap(jni) fesql::vm::RawFunctionPtr "jlong"
+%typemap(jtype) fesql::vm::RawFunctionPtr "long"
+%typemap(jstype) fesql::vm::RawFunctionPtr "long"
+%typemap(javain) fesql::vm::RawFunctionPtr "$javainput"
+%typemap(javaout) fesql::vm::RawFunctionPtr "{ return $jnicall; }"
+%typemap(in) fesql::vm::RawFunctionPtr %{ $1 = reinterpret_cast<fesql::vm::RawFunctionPtr>($input); %}
+
 
 // Fix for Java shared_ptr unref
 // %feature("unref") fesql::vm::Catalog "delete $this;"
@@ -42,8 +51,15 @@ namespace std {
 %protobuf_enum(fesql::type::Type, com._4paradigm.fesql.type.TypeOuterClass.Type);
 %protobuf(fesql::type::Database, com._4paradigm.fesql.type.TypeOuterClass.Database);
 %protobuf(fesql::type::TableDef, com._4paradigm.fesql.type.TypeOuterClass.TableDef);
-#endif
+%protobuf_repeated_typedef(fesql::vm::Schema, com._4paradigm.fesql.type.TypeOuterClass.ColumnDef);
 
+// Enable direct buffer interfaces
+%include "swig_library/java/buffer.i"
+%as_direct_buffer(fesql::base::RawBuffer);
+
+// Enable common numeric types
+%include "swig_library/java/numerics.i"
+#endif
 
 
 %{
@@ -57,6 +73,7 @@ namespace std {
 #include "vm/catalog.h"
 #include "vm/simple_catalog.h"
 #include "vm/physical_op.h"
+#include "vm/jit_wrapper.h"
 
 using namespace fesql;
 using fesql::sdk::Schema;
@@ -70,6 +87,7 @@ using namespace fesql::node;
 using fesql::vm::SQLContext;
 using fesql::vm::Catalog;
 using fesql::vm::PhysicalOpNode;
+using fesql::vm::RowView;
 using fesql::codec::SliceIterator;
 using fesql::codec::IteratorV;
 using fesql::base::Slice;
@@ -87,8 +105,11 @@ using fesql::node::PlanType;
 %ignore fesql::vm::SimpleCatalogTableHandler;
 %ignore DataTypeName; // TODO: Geneerate duplicated class
 %ignore fesql::vm::RequestRunSession::RunRequestPlan;
+%ignore fesql::vm::FeSQLJITWrapper::AddModule;
 
+%include "base/slice.h"
 %include "base/status.h"
+%include "codec/row_codec.h"
 %include "sdk/result_set.h"
 %include "sdk/base.h"
 %include "sdk/dbms_sdk.h"
@@ -99,3 +120,5 @@ using fesql::node::PlanType;
 %include "vm/simple_catalog.h"
 %include "vm/engine.h"
 %include "vm/physical_op.h"
+%include "vm/jit_wrapper.h"
+%include "vm/runner.h"
