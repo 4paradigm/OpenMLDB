@@ -1355,5 +1355,17 @@ bool TabletClient::ExtractIndexData(uint32_t tid, uint32_t pid, uint32_t partiti
     return true;
 }
 
+bool TabletClient::CancelOP(const uint64_t op_id) {
+    ::rtidb::api::CancelOPRequest request;
+    ::rtidb::api::GeneralResponse response;
+    request.set_op_id(op_id);
+    bool ret = client_.SendRequest(&::rtidb::api::TabletServer_Stub::CancelOP,
+            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+    if (!ret || response.code() != 0) {
+        return false;
+    }
+    return true;
+}
+
 }
 }

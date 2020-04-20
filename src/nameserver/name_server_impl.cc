@@ -954,6 +954,14 @@ bool NameServerImpl::RecoverOPTask() {
                     continue;
                 }
                 break;
+            case ::rtidb::api::OPType::kAddIndexOP:
+                if (CreateAddIndexOPTask(op_data) < 0) {
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]",
+                                ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(),
+                                op_data->op_info_.op_id());
+                    continue;
+                }
+                break;
             default:
                 PDLOG(WARNING, "unsupport recover op[%s]! op_id[%lu]",
                                 ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(),
@@ -1697,7 +1705,7 @@ int NameServerImpl::DeleteTask() {
     }
     DeleteTaskRemote(done_task_vec_remote, has_failed);
     if (!has_failed) {
-        DeleteTask(done_task_vec);        
+        DeleteTask(done_task_vec);
     }
     return 0;
 }
@@ -2772,29 +2780,49 @@ void NameServerImpl::CancelOP(RpcController* controller,
         PDLOG(WARNING, "auto_failover is enabled");
         return;
     }
-    std::lock_guard<std::mutex> lock(mu_);
-    for (auto& op_list : task_vec_) {
-        if (op_list.empty()) {
-            continue;
-        }
-        for (auto iter = op_list.begin(); iter != op_list.end(); iter++) {
-            if ((*iter)->op_info_.op_id() == request->op_id()) {
-                (*iter)->op_info_.set_task_status(::rtidb::api::kCanceled);
-                for (auto& task : (*iter)->task_list_) {
-                    task->task_info_->set_status(::rtidb::api::kCanceled);
+    bool find_op = false;
+    std::vector<std::shared_ptr<TabletClient>> client_vec;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        for (auto& op_list : task_vec_) {
+            if (op_list.empty()) {
+                continue;
+            }
+            for (auto iter = op_list.begin(); iter != op_list.end(); iter++) {
+                if ((*iter)->op_info_.op_id() == request->op_id()) {
+                    (*iter)->op_info_.set_task_status(::rtidb::api::kCanceled);
+                    for (auto& task : (*iter)->task_list_) {
+                        task->task_info_->set_status(::rtidb::api::kCanceled);
+                    }
+                    find_op = true;
+                    break;
                 }
-                response->set_code(::rtidb::base::ReturnCode::kOk);
-                response->set_msg("ok");
-                PDLOG(INFO, "op[%lu] is canceled! op_type[%s]",
-                            request->op_id(), ::rtidb::api::OPType_Name((*iter)->op_info_.op_type()).c_str());
-                return;
             }
         }
+        for (auto iter = tablets_.begin(); iter != tablets_.end(); ++iter) {
+            if (iter->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+                PDLOG(DEBUG, "tablet[%s] is not Healthy", iter->first.c_str());
+                continue;
+            }
+            client_vec.push_back(iter->second->client_);
+        }
     }
-    response->set_code(::rtidb::base::ReturnCode::kOpStatusIsNotKdoingOrKinited);
-    response->set_msg("op status is not kDoing or kInited");
-    PDLOG(WARNING, "op[%lu] status is not kDoing or kInited", request->op_id());
-    return;
+    if (find_op) {
+        for (const auto& client : client_vec) {
+            if (!client->CancelOP(request->op_id())) {
+                PDLOG(WARNING, "tablet[%s] cancel op failed", client->GetEndpoint().c_str());
+                continue;
+            }
+            PDLOG(DEBUG, "tablet[%s] cancel op success", client->GetEndpoint().c_str());
+        }
+        response->set_code(::rtidb::base::ReturnCode::kOk);
+        response->set_msg("ok");
+        PDLOG(INFO, "op[%lu] is canceled!", request->op_id());
+    } else {
+        response->set_code(::rtidb::base::ReturnCode::kOpStatusIsNotKdoingOrKinited);
+        response->set_msg("op status is not kDoing or kInited");
+        PDLOG(WARNING, "op[%lu] status is not kDoing or kInited", request->op_id());
+    }
 }
 
 void NameServerImpl::ShowOPStatus(RpcController* controller,
@@ -8625,8 +8653,8 @@ void NameServerImpl::AddIndex(RpcController* controller,
                 break;
             }
         }
-        std::map<std::string, const ::rtidb::common::ColumnDesc&> col_map;
-        std::map<std::string, const ::rtidb::common::ColumnDesc&> ts_map;
+        std::map<std::string, ::rtidb::common::ColumnDesc> col_map;
+        std::map<std::string, ::rtidb::common::ColumnDesc> ts_map;
         for (const auto&column_desc : table_info->column_desc_v1()) {
             if (column_desc.is_ts_col()) {
                 ts_map.insert(std::make_pair(column_desc.name(), column_desc));
@@ -8636,10 +8664,10 @@ void NameServerImpl::AddIndex(RpcController* controller,
         }
         for (const auto& col_name : request->column_key().col_name()) {
             auto it = col_map.find(col_name);
-            if (it == col_map.end()) {
+            if (it == col_map.end() || (it->second.type() == "float") || (it->second.type() == "double")) {
                 response->set_code(::rtidb::base::ReturnCode::kWrongColumnKey);
                 response->set_msg("wrong column key!");
-                PDLOG(WARNING, "column_desc %s not exist, table name %s", 
+                PDLOG(WARNING, "column_desc %s has wrong type or not exist, table name %s", 
                     col_name.c_str(), request->name().c_str());
                 return;
             }
@@ -8680,7 +8708,7 @@ void NameServerImpl::AddIndex(RpcController* controller,
     }
     if (index_pos < table_info->column_key_size()) {
         ::rtidb::common::ColumnKey* column_key = table_info->mutable_column_key(index_pos);
-        column_key->set_flag(0);
+        column_key->CopyFrom(request->column_key());
     } else {
         ::rtidb::common::ColumnKey* column_key = table_info->add_column_key();
         column_key->CopyFrom(request->column_key());

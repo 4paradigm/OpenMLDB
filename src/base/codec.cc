@@ -579,11 +579,11 @@ int32_t RowView::GetValue(const int8_t* row, uint32_t idx, char** val,
         return -1;
     }
     if ((int32_t)idx >= schema_.size()) {
-        return false;
+        return -1;
     }
     const ::rtidb::common::ColumnDesc& column = schema_.Get(idx);
-    if (column.data_type() != ::rtidb::type::kVarchar || column.data_type() != ::rtidb::type::kString) {
-        return false;
+    if (column.data_type() != ::rtidb::type::kVarchar && column.data_type() != ::rtidb::type::kString) {
+        return -1;
     }
     uint32_t size = GetSize(row);
     if (size <= HEADER_LENGTH) {
