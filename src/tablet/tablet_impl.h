@@ -357,7 +357,6 @@ private:
 
     void DumpIndexDataInternal(std::shared_ptr<::rtidb::storage::Table> table, 
             std::shared_ptr<::rtidb::storage::MemTableSnapshot> memtable_snapshot, 
-            std::shared_ptr<::rtidb::replica::LogReplicator> replicator, 
             uint32_t partition_num,
             ::rtidb::common::ColumnKey& column_key, 
             uint32_t idx, 

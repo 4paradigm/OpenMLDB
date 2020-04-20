@@ -4563,7 +4563,6 @@ void TabletImpl::DumpIndexData(RpcController* controller,
     do {
         std::shared_ptr<Table> table;
         std::shared_ptr<Snapshot> snapshot;
-        std::shared_ptr<LogReplicator> replicator;
         {
             std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
             table = GetTableUnLock(tid, pid);
@@ -4592,16 +4591,9 @@ void TabletImpl::DumpIndexData(RpcController* controller,
                 response->set_msg("table snapshot is not exist");
                 break;
             }
-            replicator = GetReplicatorUnLock(tid, pid);
-            if (!replicator) {
-                PDLOG(WARNING, "fail to find table tid %u pid %u leader's log replicator", tid, pid);
-                response->set_code(::rtidb::base::ReturnCode::kReplicatorIsNotExist);
-                response->set_msg("replicator is not exist");
-                break;
-            }
         }
         std::shared_ptr<::rtidb::storage::MemTableSnapshot> memtable_snapshot = std::static_pointer_cast<::rtidb::storage::MemTableSnapshot>(snapshot);
-        task_pool_.AddTask(boost::bind(&TabletImpl::DumpIndexDataInternal, this, table, memtable_snapshot, replicator, request->partition_num(), request->column_key(), request->idx(), task_ptr));
+        task_pool_.AddTask(boost::bind(&TabletImpl::DumpIndexDataInternal, this, table, memtable_snapshot, request->partition_num(), request->column_key(), request->idx(), task_ptr));
         response->set_code(::rtidb::base::ReturnCode::kOk);
         response->set_msg("ok");
         PDLOG(INFO, "dump index tid[%u] pid[%u]", tid, pid);
@@ -4612,7 +4604,6 @@ void TabletImpl::DumpIndexData(RpcController* controller,
 
 void TabletImpl::DumpIndexDataInternal(std::shared_ptr<::rtidb::storage::Table> table, 
         std::shared_ptr<::rtidb::storage::MemTableSnapshot> memtable_snapshot, 
-        std::shared_ptr<::rtidb::replica::LogReplicator> replicator, 
         uint32_t partition_num,
         ::rtidb::common::ColumnKey& column_key, 
         uint32_t idx, 
