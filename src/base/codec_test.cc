@@ -48,14 +48,11 @@ TEST_F(CodecTest, EncodeRows) {
     uint32_t total_block_size =
         test1.length() + test2.length() + empty.length();
     data.emplace_back(
-        1,
-         std::move(::rtidb::base::Slice(test1.c_str(), test1.length())));
+        1, std::move(::rtidb::base::Slice(test1.c_str(), test1.length())));
     data.emplace_back(
-        2, 
-          std::move(::rtidb::base::Slice(test2.c_str(), test2.length())));
+        2, std::move(::rtidb::base::Slice(test2.c_str(), test2.length())));
     data.emplace_back(
-        3, 
-          std::move(::rtidb::base::Slice(empty.c_str(), empty.length())));
+        3, std::move(::rtidb::base::Slice(empty.c_str(), empty.length())));
     std::string pairs;
     int32_t size = ::rtidb::base::EncodeRows(data, total_block_size, &pairs);
     ASSERT_EQ(size, 3 * 12 + 6 + 6);

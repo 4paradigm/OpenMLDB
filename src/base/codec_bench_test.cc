@@ -30,8 +30,7 @@ void RunHasTs(::rtidb::storage::DataBlock* db) {
     uint32_t total_block_size = 0;
     for (uint32_t i = 0; i < 1000; i++) {
         datas.emplace_back(
-            1000, 
-                    std::move( ::rtidb::base::Slice(db->data, db->size)));
+            1000, std::move(::rtidb::base::Slice(db->data, db->size)));
         total_block_size += db->size;
     }
     std::string pairs;

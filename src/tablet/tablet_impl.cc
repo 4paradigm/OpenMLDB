@@ -1133,7 +1133,8 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
                 PDLOG(WARNING, "fail to make a projection");
                 return -4;
             }
-            tmp.emplace_back(it->GetKey(), std::move(Slice(reinterpret_cast<char*>(ptr), size, true)));
+            tmp.emplace_back(it->GetKey(),
+                    std::move(Slice(reinterpret_cast<char*>(ptr), size, true)));
             total_block_size += size;
         } else {
             total_block_size += it->GetValue().size();
