@@ -8,13 +8,14 @@
 #include <brpc/server.h>
 #include <storage/object_store.h>
 #include <map>
+#include <memory>
 #include <mutex>
 #include <string>
-#include <memory>
-#include "proto/blob_server.pb.h"
-#include "thread_pool.h"
-#include "zk/zk_client.h"
+#include <vector>
 #include "base/spinlock.h"
+#include "proto/blob_server.pb.h"
+#include "thread_pool.h" // NOLINT
+#include "zk/zk_client.h"
 
 namespace rtidb {
 namespace blobserver {
@@ -22,11 +23,13 @@ namespace blobserver {
 using ::baidu::common::ThreadPool;
 using ::google::protobuf::Closure;
 using ::google::protobuf::RpcController;
-using ::rtidb::zk::ZkClient;
-using ::rtidb::storage::ObjectStore;
 using ::rtidb::base::SpinMutex;
+using ::rtidb::storage::ObjectStore;
+using ::rtidb::zk::ZkClient;
 
-typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<ObjectStore>>> ObjectStores;
+
+typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<ObjectStore>>>
+    ObjectStores;
 
 class BlobServerImpl : public ::rtidb::blobserver::BlobServer {
  public:
@@ -71,5 +74,5 @@ class BlobServerImpl : public ::rtidb::blobserver::BlobServer {
     std::vector<std::string> root_paths_;
 };
 
-}  // namespace oss
+}  // namespace blobserver
 }  // namespace rtidb

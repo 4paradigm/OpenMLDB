@@ -7,8 +7,8 @@
 #include <gflags/gflags.h>
 #include <google/protobuf/stubs/common.h>
 #include <logging.h>
-#include "gtest/gtest.h"
 #include "client/bs_client.h"
+#include "gtest/gtest.h"
 
 DECLARE_string(hdd_root_path);
 DECLARE_int32(zk_session_timeout);
@@ -19,9 +19,7 @@ namespace blobserver {
 
 uint32_t counter = 10;
 
-inline std::string GenRand() {
-    return std::to_string(rand() % 10000000 + 1);
-}
+inline std::string GenRand() { return std::to_string(rand() % 10000000 + 1); } // NOLINT
 
 class MockClosure : public ::google::protobuf::Closure {
  public:
@@ -75,14 +73,15 @@ TEST_F(BlobServerImplTest, Basic_Test) {
     }
 }
 
-}
-}
+}  // namespace blobserver
+}  // namespace rtidb
 
 int main(int argc, char** argv) {
     FLAGS_zk_session_timeout = 100000;
     ::testing::InitGoogleTest(&argc, argv);
-    srand (time(NULL));
+    srand(time(NULL));
     ::baidu::common::SetLogLevel(::baidu::common::INFO);
-    FLAGS_hdd_root_path = "/tmp/test_blobserver" + ::rtidb::blobserver::GenRand();
+    FLAGS_hdd_root_path =
+        "/tmp/test_blobserver" + ::rtidb::blobserver::GenRand();
     return RUN_ALL_TESTS();
 }

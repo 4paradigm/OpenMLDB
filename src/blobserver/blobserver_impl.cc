@@ -9,6 +9,7 @@
 #include <base/status.h>
 #include <base/strings.h>
 #include <gflags/gflags.h>
+#include <utility>
 #include "boost/bind.hpp"
 #include "logging.h"
 
@@ -27,11 +28,16 @@ using ::rtidb::base::ReturnCode;
 namespace rtidb {
 namespace blobserver {
 
-const static uint32_t SEED = 0xe17a1465;
+static const uint32_t SEED = 0xe17a1465;
 
-BlobServerImpl::BlobServerImpl(): mu_(), spin_mutex_(), zk_client_(NULL),
-                                server_(NULL), keep_alive_pool_(1), object_stores_(),
-                                root_paths_() {}
+BlobServerImpl::BlobServerImpl()
+    : mu_(),
+      spin_mutex_(),
+      zk_client_(NULL),
+      server_(NULL),
+      keep_alive_pool_(1),
+      object_stores_(),
+      root_paths_() {}
 
 BlobServerImpl::~BlobServerImpl() {
     if (zk_client_ != NULL) {
@@ -59,7 +65,7 @@ bool BlobServerImpl::Init() {
         PDLOG(INFO, "zk cluster disabled");
     }
     ::rtidb::base::SplitString(FLAGS_hdd_root_path, ",", root_paths_);
-    for (auto& it : root_paths_) {
+    for (auto &it : root_paths_) {
         bool ok = ::rtidb::base::MkdirRecur(it);
         if (!ok) {
             PDLOG(WARNING, "fail to creat dir %s", it.c_str());
@@ -78,8 +84,9 @@ bool BlobServerImpl::RegisterZK() {
         }
         PDLOG(INFO, "oss with endpoint %s register to zk cluster %s ok",
               FLAGS_endpoint.c_str(), FLAGS_zk_cluster.c_str());
-        keep_alive_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval,
-                                   boost::bind(&BlobServerImpl::CheckZkClient, this));
+        keep_alive_pool_.DelayTask(
+            FLAGS_zk_keep_alive_check_interval,
+            boost::bind(&BlobServerImpl::CheckZkClient, this));
     }
     return true;
 }
@@ -96,15 +103,16 @@ void BlobServerImpl::CheckZkClient() {
             PDLOG(INFO, "registe zk ok");
         }
     }
-    keep_alive_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval,
-                               boost::bind(&BlobServerImpl::CheckZkClient, this));
+    keep_alive_pool_.DelayTask(
+        FLAGS_zk_keep_alive_check_interval,
+        boost::bind(&BlobServerImpl::CheckZkClient, this));
 }
 
 void BlobServerImpl::CreateTable(RpcController *controller,
-                          const CreateTableRequest *request,
-                          GeneralResponse *response, Closure *done) {
+                                 const CreateTableRequest *request,
+                                 GeneralResponse *response, Closure *done) {
     brpc::ClosureGuard done_guard(done);
-    const TableMeta& table_meta = request->table_meta();
+    const TableMeta &table_meta = request->table_meta();
     uint32_t tid = table_meta.tid(), pid = table_meta.pid();
     if (table_meta.table_type() != ::rtidb::type::kObjectStore) {
         response->set_code(ReturnCode::kTableMetaIsIllegal);
@@ -131,7 +139,8 @@ void BlobServerImpl::CreateTable(RpcController *controller,
         path.assign(root_paths_[0]);
     } else {
         std::string key = std::to_string(tid) + std::to_string(pid);
-        uint32_t index = ::rtidb::base::hash(key.c_str(), key.size(), SEED) % root_paths_.size();
+        uint32_t index = ::rtidb::base::hash(key.c_str(), key.size(), SEED) %
+                         root_paths_.size();
         path.assign(root_paths_[index]);
     }
     store = std::make_shared<ObjectStore>(table_meta, path);
@@ -144,8 +153,9 @@ void BlobServerImpl::CreateTable(RpcController *controller,
     object_stores_[tid].insert(std::make_pair(pid, store));
 }
 
-void BlobServerImpl::Get(RpcController *controller, const GeneralRequest *request,
-                  GetResponse *response, Closure *done) {
+void BlobServerImpl::Get(RpcController *controller,
+                         const GeneralRequest *request, GetResponse *response,
+                         Closure *done) {
     brpc::ClosureGuard done_guard(done);
     uint32_t tid = request->tid(), pid = request->pid();
     std::shared_ptr<ObjectStore> store = GetStore(tid, pid);
@@ -157,10 +167,10 @@ void BlobServerImpl::Get(RpcController *controller, const GeneralRequest *reques
     }
     rtidb::base::Slice slice = store->Get(request->key());
     if (slice.size() > 0) {
-        std::string* value = response->mutable_pairs();
+        std::string *value = response->mutable_pairs();
         value->assign(slice.data(), slice.size());
         response->set_code(ReturnCode::kOk);
-        const char* ch = slice.data();
+        const char *ch = slice.data();
         delete[] ch;
     } else {
         response->set_code(ReturnCode::kKeyNotFound);
@@ -169,7 +179,7 @@ void BlobServerImpl::Get(RpcController *controller, const GeneralRequest *reques
 }
 
 void BlobServerImpl::Put(RpcController *controller, const PutRequest *request,
-                  GeneralResponse *response, Closure *done) {
+                         GeneralResponse *response, Closure *done) {
     brpc::ClosureGuard done_guard(done);
     uint32_t tid = request->tid(), pid = request->pid();
     std::shared_ptr<ObjectStore> store = GetStore(tid, pid);
@@ -188,24 +198,27 @@ void BlobServerImpl::Put(RpcController *controller, const PutRequest *request,
     response->set_code(ReturnCode::kOk);
 }
 
-void BlobServerImpl::Delete(RpcController *controller, const GeneralRequest *request,
-                     GeneralResponse *response, Closure *done) {
+void BlobServerImpl::Delete(RpcController *controller,
+                            const GeneralRequest *request,
+                            GeneralResponse *response, Closure *done) {
     brpc::ClosureGuard done_guard(done);
 }
 
-void BlobServerImpl::Stats(RpcController *controller, const StatsRequest *request,
-                    StatsResponse *response, Closure *done) {
+void BlobServerImpl::Stats(RpcController *controller,
+                           const StatsRequest *request, StatsResponse *response,
+                           Closure *done) {
     brpc::ClosureGuard done_guard(done);
 }
 
-void BlobServerImpl::LoadTable(RpcController* controller, const LoadTableRequest* request,
-               GeneralResponse* response, Closure* done) {
+void BlobServerImpl::LoadTable(RpcController *controller,
+                               const LoadTableRequest *request,
+                               GeneralResponse *response, Closure *done) {
     brpc::ClosureGuard done_guard(done);
     std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
     if (request->has_task_info() && request->task_info().IsInitialized()) {
-        //
+        // TODO(kongquan): process taskinfo
     }
-    const TableMeta& table_meta = request->table_meta();
+    const TableMeta &table_meta = request->table_meta();
     uint32_t tid = table_meta.tid(), pid = table_meta.pid();
     std::shared_ptr<ObjectStore> store = GetStore(tid, pid);
     if (store) {
@@ -226,7 +239,8 @@ void BlobServerImpl::LoadTable(RpcController* controller, const LoadTableRequest
         path.assign(root_paths_[0]);
     } else {
         std::string key = std::to_string(tid) + std::to_string(pid);
-        uint32_t index = ::rtidb::base::hash(key.c_str(), key.size(), SEED) % root_paths_.size();
+        uint32_t index = ::rtidb::base::hash(key.c_str(), key.size(), SEED) %
+                         root_paths_.size();
         path.assign(root_paths_[index]);
     }
     store = std::make_shared<ObjectStore>(table_meta, path);
@@ -239,12 +253,14 @@ void BlobServerImpl::LoadTable(RpcController* controller, const LoadTableRequest
     object_stores_[tid].insert(std::make_pair(pid, store));
 }
 
-std::shared_ptr<ObjectStore> BlobServerImpl::GetStore(uint32_t tid, uint32_t pid) {
+std::shared_ptr<ObjectStore> BlobServerImpl::GetStore(uint32_t tid,
+                                                      uint32_t pid) {
     std::lock_guard<SpinMutex> lock_guard(spin_mutex_);
     return GetStoreUnLock(tid, pid);
 }
 
-std::shared_ptr<ObjectStore> BlobServerImpl::GetStoreUnLock(uint32_t tid, uint32_t pid) {
+std::shared_ptr<ObjectStore> BlobServerImpl::GetStoreUnLock(uint32_t tid,
+                                                            uint32_t pid) {
     ObjectStores::iterator it = object_stores_.find(tid);
     if (it != object_stores_.end()) {
         auto tit = it->second.find(pid);
@@ -253,8 +269,7 @@ std::shared_ptr<ObjectStore> BlobServerImpl::GetStoreUnLock(uint32_t tid, uint32
         }
     }
     return std::shared_ptr<ObjectStore>();
-
 }
 
-}  // namespace oss
+}  // namespace blobserver
 }  // namespace rtidb

@@ -1086,6 +1086,55 @@ void NameServerImpl::UpdateTabletsLocked(const std::vector<std::string>& endpoin
     UpdateTablets(endpoints);
 }
 
+void NameServerImpl::UpdateBlobServersLocked(const std::vector<std::string>& endpoints) {
+    std::lock_guard<std::mutex> lock (mu_);
+    UpdateBlobServers(endpoints);
+}
+
+void NameServerImpl::UpdateBlobServers(const std::vector<std::string>& endpoints) {
+    std::set<std::string> alive;
+    std::vector<std::string>::const_iterator  it = endpoints.begin();
+    for (; it != endpoints.end(); ++it) {
+        alive.insert(*it);
+        BlobServers::iterator tit = blob_servers_.find(*it);
+        if (tit == blob_servers_.end()) {
+            std::shared_ptr<BlobServerInfo> blob = std::make_shared<BlobServerInfo>();
+            blob->state_ = TabletState::kTabletHealthy;
+            blob->client_ = std::make_shared<BsClient>(*it, true);
+            if (blob->client_->Init() != 0) {
+                PDLOG(WARNING, "blob client init error. endpoint[%s]", it->c_str());
+                continue;
+            }
+            blob->ctime_ = ::baidu::common::timer::get_micros() / 1000;
+            blob_servers_.insert(std::make_pair(*it, blob));
+            PDLOG(INFO, "add blob client. endpoint[%s]", it->c_str());
+        } else {
+            if (tit->second->state_ != TabletState::kTabletHealthy) {
+                tit->second->state_ = TabletState::kTabletHealthy;
+                tit->second->ctime_ = ::baidu::common::timer::get_micros() / 1000;
+                PDLOG(INFO, "blob is online. endpoint[%s]", tit->first.c_str());
+                thread_pool_.AddTask(boost::bind(&NameServerImpl::OnBlobOnline, this, tit->first));
+            }
+        }
+        PDLOG(INFO, "healthy blob with endpoint[%s]", it->c_str());
+    }
+
+    for (auto tit = blob_servers_.begin(); tit != blob_servers_.end(); ++tit) {
+        if (alive.find(tit->first) == alive.end() && tit->second->state_ == TabletState::kTabletHealthy) {
+            PDLOG(INFO, "offline blob with endpoint[%s]", tit->first.c_str());
+            tit->second->state_ = TabletState::kTabletOffline;
+            tit->second->ctime_ = ::baidu::common::timer::get_micros() / 1000;
+            if (offline_endpoint_map_.find(tit->first) == offline_endpoint_map_.end()) {
+                offline_endpoint_map_.insert(std::make_pair(tit->first, tit->second->ctime_));
+                if (running_.load(std::memory_order_acquire)) {
+                    thread_pool_.DelayTask(FLAGS_tablet_offline_check_interval, boost::bind(&NameServerImpl::OnBlobOffline, this, tit->first, false));
+                }
+            } else {
+                offline_endpoint_map_[tit->first] = tit->second->ctime_;
+            }
+        }
+    }
+}
 
 void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
     // check exist and newly add tablets
@@ -1135,6 +1184,46 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
         }
     }
     thread_pool_.AddTask(boost::bind(&NameServerImpl::DistributeTabletMode, this));
+}
+
+void NameServerImpl::OnBlobOnline(const std::string& endpoint) {
+    return;
+}
+
+void NameServerImpl::OnBlobOffline(const std::string& endpoint, bool startup_flag) {
+    if (!running_.load(std::memory_order_acquire)) {
+        PDLOG(WARNING, "cur namesever is not leader");
+        return;
+    }
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        auto tit = blob_servers_.find(endpoint);
+        if (tit == blob_servers_.end()) {
+            PDLOG(WARNING, "cannot find endpoint %s in blob map", endpoint.c_str());
+            return;
+        }
+        auto iter = offline_endpoint_map_.find(endpoint);
+        if (iter == offline_endpoint_map_.end()) {
+            PDLOG(WARNING, "cannot find endpoint %s in offline endpoint map", endpoint.c_str());
+            return;
+        }
+        if (!startup_flag && tit->second->state_ == TabletState::kTabletHealthy) {
+            PDLOG(INFO, "endpoint %s is healthy, need not offline endpoint", endpoint.c_str());
+            return;
+        }
+        if (table_info_.empty()) {
+            PDLOG(INFO, "endpoint %s has no table, need not offline endpoint", endpoint.c_str());
+            return;
+        }
+        uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
+        if (!startup_flag && cur_time < iter->second + FLAGS_tablet_heartbeat_timeout) {
+            thread_pool_.DelayTask(FLAGS_tablet_offline_check_interval, boost::bind(&NameServerImpl::OnBlobOffline, this, endpoint, false));
+            return;
+        }
+    }
+    if (auto_failover_.load(std::memory_order_acquire)) {
+        PDLOG(INFO, "Run OfflineEndpoint. endpoint is %s", endpoint.c_str());
+    }
 }
 
 void NameServerImpl::OnTabletOffline(const std::string& endpoint, bool startup_flag) {
@@ -1300,8 +1389,25 @@ bool NameServerImpl::Init() {
     } else {
         UpdateTablets(endpoints);
     }
+    std::string oss_path = FLAGS_zk_root_path + "/ossnodes";
+    endpoints.clear();
+    bool ok = zk_client_->GetChildren(oss_path, endpoints);
+    if (!ok) {
+        zk_client_->CreateNode(oss_path, "");
+    } else {
+        UpdateBlobServers(endpoints);
+    }
     zk_client_->WatchNodes(boost::bind(&NameServerImpl::UpdateTabletsLocked, this, _1));
-    zk_client_->WatchNodes();
+    ok = zk_client_->WatchNodes();
+    if (!ok) {
+        PDLOG(WARNING, "fail to watch nodes");
+        return false;
+    }
+    ok = zk_client_->WatchChildren(oss_path, boost::bind(&NameServerImpl::UpdateBlobServersLocked, this, _1));
+    if (!ok) {
+        PDLOG(WARNING, "fail to watch ossnodes");
+        return false;
+    }
     session_term_ = zk_client_->GetSessionTerm();
 
     thread_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&NameServerImpl::CheckZkClient, this));
