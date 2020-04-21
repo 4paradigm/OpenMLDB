@@ -9,9 +9,9 @@
 
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <unistd.h>
+#include <boost/bind.hpp>
 #include <set>
 #include <utility>
-#include <boost/bind.hpp>
 #include "base/count_down_latch.h"
 #include "base/display.h"
 #include "base/file_util.h"
@@ -1154,7 +1154,8 @@ bool MemTableSnapshot::DumpSnapshotIndexData(
                 }
             }
             if (!deleted_pos_set.empty()) {
-                if ((int)deleted_pos_set.size() == entry.dimensions_size()) {
+                if (std::static_cast<int> deleted_pos_set.size() ==
+                    entry.dimensions_size()) {
                     continue;
                 } else {
                     ::rtidb::api::LogEntry tmp_entry(entry);
@@ -1356,7 +1357,8 @@ bool MemTableSnapshot::DumpIndexData(
                 }
             }
             if (!deleted_pos_set.empty()) {
-                if ((int)deleted_pos_set.size() == entry.dimensions_size()) {
+                if (std::static_cast<int> deleted_pos_set.size() ==
+                    entry.dimensions_size()) {
                     continue;
                 } else {
                     ::rtidb::api::LogEntry tmp_entry(entry);
