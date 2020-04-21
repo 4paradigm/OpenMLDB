@@ -5,20 +5,17 @@
 // Date 2017-09-21
 //
 
-
-#ifndef RTIDB_BASE_COUNT_DOWN_LATCH_H
-#define RTIDB_BASE_COUNT_DOWN_LATCH_H
-#include <mutex>
-#include <condition_variable>
+#ifndef SRC_BASE_COUNT_DOWN_LATCH_H_
+#define SRC_BASE_COUNT_DOWN_LATCH_H_
+#include <condition_variable> // NOLINT
+#include <mutex> // NOLINT
 
 namespace rtidb {
 namespace base {
 
 class CountDownLatch {
-
-public:
-    CountDownLatch(int32_t count):count_(count),
-    mu_(), cv_(){}
+ public:
+    explicit CountDownLatch(int32_t count) : count_(count), mu_(), cv_() {}
     ~CountDownLatch() {}
 
     void CountDown() {
@@ -50,12 +47,12 @@ public:
         return count_;
     }
 
-private:
+ private:
     int32_t count_;
     std::mutex mu_;
     std::condition_variable cv_;
 };
 
-}
-}
-#endif /* !RTIDB_BASE_COUNT_DOWN_LATCH_H */
+}  // namespace base
+}  // namespace rtidb
+#endif  // SRC_BASE_COUNT_DOWN_LATCH_H_

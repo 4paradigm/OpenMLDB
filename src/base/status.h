@@ -5,9 +5,10 @@
 // Date 2017-06-16
 //
 
-#ifndef RTIDB_BASE_STATUS_H
-#define RTIDB_BASE_STATUS_H
+#ifndef SRC_BASE_STATUS_H_
+#define SRC_BASE_STATUS_H_
 
+#include <string>
 #include "base/slice.h"
 
 namespace rtidb {
@@ -19,9 +20,9 @@ struct ResultMsg {
 };
 
 class Status {
-public:
+ public:
     // Create a success status.
-    Status() : state_(NULL) { }
+    Status() : state_(NULL) {}
     ~Status() { delete[] state_; }
 
     // Copy the specified status.
@@ -41,7 +42,8 @@ public:
     static Status NotSupported(const Slice& msg, const Slice& msg2 = Slice()) {
         return Status(kNotSupported, msg, msg2);
     }
-    static Status InvalidArgument(const Slice& msg, const Slice& msg2 = Slice()) {
+    static Status InvalidArgument(const Slice& msg,
+                                  const Slice& msg2 = Slice()) {
         return Status(kInvalidArgument, msg, msg2);
     }
     static Status IOError(const Slice& msg, const Slice& msg2 = Slice()) {
@@ -52,13 +54,9 @@ public:
         return Status(kInvalidRecord, msg, msg2);
     }
 
-    static Status WaitRecord() {
-        return Status(kWaitRecord, "", "");
-    }
+    static Status WaitRecord() { return Status(kWaitRecord, "", ""); }
 
-    static Status Eof() {
-        return Status(kEof, "", ""); 
-    }
+    static Status Eof() { return Status(kEof, "", ""); }
 
     // Returns true iff the status indicates success.
     bool ok() const { return (state_ == NULL); }
@@ -83,12 +81,11 @@ public:
     bool IsWaitRecord() const { return code() == kWaitRecord; }
     bool IsEof() const { return code() == kEof; }
 
-
     // Return a string representation of this status suitable for printing.
     // Returns the string "OK" for success.
     std::string ToString() const;
 
-private:
+ private:
     // OK status has a NULL state_.  Otherwise, state_ is a new[] array
     // of the following form:
     //    state_[0..3] == length of message
@@ -123,8 +120,8 @@ inline void Status::operator=(const Status& s) {
     // The following condition catches both aliasing (when this == &s),
     // and the common case where both s and *this are ok.
     if (state_ != s.state_) {
-      delete[] state_;
-      state_ = (s.state_ == NULL) ? NULL : CopyState(s.state_);
+        delete[] state_;
+        state_ = (s.state_ == NULL) ? NULL : CopyState(s.state_);
     }
 }
 
@@ -176,6 +173,7 @@ enum ReturnCode {
     kTableTypeMismatch = 145,
     kDumpIndexDataFailed = 146,
     kSnapshotRecycled = 147,
+    kQueryFailed = 148,
     kNameserverIsNotLeader = 300,
     kAutoFailoverIsEnabled = 301,
     kEndpointIsNotExist = 302,
@@ -243,7 +241,7 @@ enum ReturnCode {
     kOperatorNotSupport = 701,
 };
 
-} // end of base 
-} // end of rtidb
+}  // namespace base
+}  // namespace rtidb
 
-#endif /* !RTIDB_BASE_STATUS */
+#endif  // SRC_BASE_STATUS_H_

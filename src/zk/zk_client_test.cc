@@ -7,13 +7,13 @@
 
 #include "zk/zk_client.h"
 #include <gtest/gtest.h>
-#include <boost/bind.hpp>
 #include <sched.h>
 #include <unistd.h>
-#include "logging.h"
+#include <boost/bind.hpp>
+#include "logging.h" // NOLINT
 extern "C" {
 #include "zookeeper/zookeeper.h"
-} 
+}
 
 using ::baidu::common::INFO;
 
@@ -23,16 +23,13 @@ namespace zk {
 static bool call_invoked = false;
 static int32_t endpoint_size = 2;
 class ZkClientTest : public ::testing::Test {
-
-public:
+ public:
     ZkClientTest() {}
 
     ~ZkClientTest() {}
 };
 
-inline std::string GenRand() {
-    return std::to_string(rand() % 10000000 + 1);
-}
+inline std::string GenRand() { return std::to_string(rand() % 10000000 + 1); } // NOLINT
 
 void WatchCallback(const std::vector<std::string>& endpoints) {
     PDLOG(INFO, "call back with endpoints size %d", endpoints.size());
@@ -78,9 +75,10 @@ TEST_F(ZkClientTest, CreateNode) {
     ZkClient client("127.0.0.1:6181", 1000, "127.0.0.1:9527", "/rtidb1");
     bool ok = client.Init();
     ASSERT_TRUE(ok);
-    
+
     std::string assigned_path;
-    ok = client.CreateNode("/rtidb1/lock/request", "", ZOO_EPHEMERAL | ZOO_SEQUENCE, assigned_path);
+    ok = client.CreateNode("/rtidb1/lock/request", "",
+                           ZOO_EPHEMERAL | ZOO_SEQUENCE, assigned_path);
     ASSERT_TRUE(ok);
 
     std::string node = "/rtidb1/test/node" + GenRand();
@@ -90,23 +88,22 @@ TEST_F(ZkClientTest, CreateNode) {
     ASSERT_TRUE(ok);
     ret = client.IsExistNode(node);
     ASSERT_EQ(ret, 0);
-    
+
     ZkClient client2("127.0.0.1:6181", 1000, "127.0.0.1:9527", "/rtidb1");
     ok = client2.Init();
     ASSERT_TRUE(ok);
 
     std::string assigned_path1;
-    ok = client2.CreateNode("/rtidb1/lock/request", "", ZOO_EPHEMERAL | ZOO_SEQUENCE, assigned_path1);
+    ok = client2.CreateNode("/rtidb1/lock/request", "",
+                            ZOO_EPHEMERAL | ZOO_SEQUENCE, assigned_path1);
     ASSERT_TRUE(ok);
-
 }
 
-}
-}
+}  // namespace zk
+}  // namespace rtidb
 
 int main(int argc, char** argv) {
-    srand (time(NULL));
+    srand(time(NULL));
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }
-
