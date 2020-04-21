@@ -395,7 +395,6 @@ public class TableAsyncClientTest extends TestCaseBase {
                         for (int i = 1; i <= 100; i++) {
                             PutFuture pf = tableAsyncClient.put(name, i, new Object[]{"card" + index, "mcc" + index, (double) i});
                             Assert.assertTrue(pf.get());
-//                            System.out.println("----------------" + index + "---------------");
 
                             GetFuture gf = tableAsyncClient.get(name, "card" + index, i);
                             Object[] row = gf.getRow();

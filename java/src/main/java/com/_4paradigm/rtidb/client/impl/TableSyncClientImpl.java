@@ -658,22 +658,22 @@ public class TableSyncClientImpl implements TableSyncClient {
         builder.setTid(tid);
         builder.setPid(pid);
         {
-            String idxName = "";
-            Object idxValue = "";
+            String colName = "";
+            Object colValue = "";
             Iterator<Map.Entry<String, Object>> iter = conditionColumns.entrySet().iterator();
             while (iter.hasNext()) {
                 Tablet.Columns.Builder conditionBuilder = Tablet.Columns.newBuilder();
                 Map.Entry<String, Object> entry = iter.next();
-                idxName = entry.getKey();
-                idxValue = entry.getValue();
+                colName = entry.getKey();
+                colValue = entry.getValue();
                 Map<String, DataType> nameTypeMap = th.getNameTypeMap();
-                if (!nameTypeMap.containsKey(idxName)) {
+                if (!nameTypeMap.containsKey(colName)) {
                     throw new TabletException("index name not found with tid " + tid);
                 }
-                DataType dataType = nameTypeMap.get(idxName);
-                ByteBuffer buffer = FieldCodec.convert(dataType, idxValue);
+                DataType dataType = nameTypeMap.get(colName);
+                ByteBuffer buffer = FieldCodec.convert(dataType, colValue);
 
-                conditionBuilder.addName(idxName);
+                conditionBuilder.addName(colName);
                 conditionBuilder.setValue(ByteBufferNoCopy.wrap(buffer));
                 builder.addConditionColumns(conditionBuilder.build());
             }
@@ -1219,23 +1219,16 @@ public class TableSyncClientImpl implements TableSyncClient {
 
     }
 
-    private boolean updateRequest(TableHandler th, int pid, List<ColumnDesc> newCdSchema, List<ColumnDesc> newValueSchema,
-                                  ByteBuffer conditionBuffer, ByteBuffer valueBuffer) throws TabletException {
+    private boolean updateRequest(TableHandler th, int pid, Map<String, Object> conditionColumns, List<ColumnDesc> newValueSchema,
+                                  ByteBuffer valueBuffer) throws TimeoutException, TabletException {
         PartitionHandler ph = th.getHandler(pid);
         if (th.getTableInfo().hasCompressType() && th.getTableInfo().getCompressType() == NS.CompressType.kSnappy) {
-            byte[] data = conditionBuffer.array();
+            byte[] data = valueBuffer.array();
             byte[] compressed = Compress.snappyCompress(data);
             if (compressed == null) {
                 throw new TabletException("snappy compress error");
             }
-            conditionBuffer = ByteBuffer.wrap(compressed);
-
-            byte[] data2 = valueBuffer.array();
-            byte[] compressed2 = Compress.snappyCompress(data2);
-            if (compressed2 == null) {
-                throw new TabletException("snappy compress error");
-            }
-            valueBuffer = ByteBuffer.wrap(compressed2);
+            valueBuffer = ByteBuffer.wrap(compressed);
         }
         TabletServer tablet = ph.getLeader();
         int tid = th.getTableInfo().getTid();
@@ -1246,13 +1239,25 @@ public class TableSyncClientImpl implements TableSyncClient {
         builder.setTid(tid);
         builder.setPid(pid);
         {
-            Tablet.Columns.Builder conditionBuilder = Tablet.Columns.newBuilder();
-            for (ColumnDesc col : newCdSchema) {
-                conditionBuilder.addName(col.getName());
+            String colName = "";
+            Object colValue = "";
+            Iterator<Map.Entry<String, Object>> iter = conditionColumns.entrySet().iterator();
+            while (iter.hasNext()) {
+                Tablet.Columns.Builder conditionBuilder = Tablet.Columns.newBuilder();
+                Map.Entry<String, Object> entry = iter.next();
+                colName = entry.getKey();
+                colValue = entry.getValue();
+                Map<String, DataType> nameTypeMap = th.getNameTypeMap();
+                if (!nameTypeMap.containsKey(colName)) {
+                    throw new TabletException("index name not found with tid " + tid);
+                }
+                DataType dataType = nameTypeMap.get(colName);
+                ByteBuffer buffer = FieldCodec.convert(dataType, colValue);
+
+                conditionBuilder.addName(colName);
+                conditionBuilder.setValue(ByteBufferNoCopy.wrap(buffer));
+                builder.addConditionColumns(conditionBuilder.build());
             }
-            conditionBuffer.rewind();
-            conditionBuilder.setValue(ByteBufferNoCopy.wrap(conditionBuffer.asReadOnlyBuffer()));
-            builder.setConditionColumns(conditionBuilder.build());
         }
         {
             Tablet.Columns.Builder valueBuilder = Tablet.Columns.newBuilder();
@@ -1299,25 +1304,10 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (valueColumns == null || valueColumns.isEmpty()) {
             throw new TabletException("valueColumns is null or empty");
         }
-        String idxName = "";
-        String idxValue = "";
-        Iterator<Map.Entry<String, Object>> iter = conditionColumns.entrySet().iterator();
-        while (iter.hasNext()) {
-            Map.Entry<String, Object> entry = iter.next();
-            idxName = entry.getKey();
-            idxValue = entry.getValue().toString();
-            break;
-        }
-        idxValue = validateKey(idxValue);
-        int pid = TableClientCommon.computePidByKey(idxValue, th.getPartitions().length);
-
-        List<ColumnDesc> newCdSchema = getSchemaData(conditionColumns, th.getSchema());
-        ByteBuffer conditionBuffer = RowBuilder.encode(conditionColumns, newCdSchema);
-
         List<ColumnDesc> newValueSchema = getSchemaData(valueColumns, th.getSchema());
         ByteBuffer valueBuffer = RowBuilder.encode(valueColumns, newValueSchema);
 
-        return updateRequest(th, pid, newCdSchema, newValueSchema, conditionBuffer, valueBuffer);
+        return updateRequest(th, 0, conditionColumns, newValueSchema, valueBuffer);
     }
 
     @Override
