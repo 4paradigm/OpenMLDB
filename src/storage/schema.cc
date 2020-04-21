@@ -88,6 +88,10 @@ IndexDef::IndexDef(const std::string& name, uint32_t id,
 
 IndexDef::~IndexDef() {}
 
+bool ColumnDefSortFunc(const ColumnDef& cd_a, const ColumnDef& cd_b) {
+    return (cd_a.GetId() < cd_b.GetId());
+}
+
 TableIndex::TableIndex() {
     indexs_ = std::make_shared<std::vector<std::shared_ptr<IndexDef>>>();
     pk_index_ = std::shared_ptr<IndexDef>();
@@ -149,9 +153,14 @@ int TableIndex::AddIndex(std::shared_ptr<IndexDef> index_def) {
         index_def->GetType() == ::rtidb::type::kAutoGen) {
         pk_index_ = index_def;
     }
+    std::vector<ColumnDef> vec;
+    for (auto& col_def : index_def->GetColumns()) {
+        vec.push_back(col_def);
+    }
+    std::sort(vec.begin(), vec.end(), ColumnDefSortFunc);
     std::string combine_name = "";
     int count = 0;
-    for (auto& col_def : index_def->GetColumns()) {
+    for (auto& col_def : vec) {
         if (count++ > 0) {
             combine_name.append("_");
         }

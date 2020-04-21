@@ -5,6 +5,7 @@
 
 #include "storage/relational_table.h"
 #include <utility>
+#include <algorithm>
 #include "base/file_util.h"
 #include "base/hash.h"
 #include "logging.h"  // NOLINT
@@ -412,8 +413,7 @@ bool RelationalTable::GetPackedField(const int8_t* row, uint32_t idx,
     return true;
 }
 
-bool RelationalTable::GetPackedField(::rtidb::base::RowView* view,
-                                     uint32_t idx,
+bool RelationalTable::GetPackedField(::rtidb::base::RowView* view, uint32_t idx,
                                      const ::rtidb::type::DataType& data_type,
                                      std::string* key) {
     int get_value_ret = 0;
@@ -1007,14 +1007,24 @@ bool RelationalTable::GetCombineStr(
     std::string* combine_name, std::string* combine_value) {
     combine_name->clear();
     combine_value->clear();
-    int count = 0;
+    std::vector<ColumnDef> vec;
+    std::map<std::string, std::string> map;
     for (auto& index : indexs) {
         const std::string& name = index.name(0);
+        map.insert(std::make_pair(name, index.value()));
+        vec.push_back(*(table_column_.GetColumn(name)));
+    }
+    std::sort(vec.begin(), vec.end(), ::rtidb::storage::ColumnDefSortFunc);
+    int count = 0;
+    for (auto& col_def : vec) {
+        const std::string& name = col_def.GetName();
         if (count > 0) {
             combine_name->append("_");
         }
         combine_name->append(name);
-        const std::string& value = index.value();
+        auto it = map.find(name);
+        if (it == map.end()) return false;
+        const std::string& value = it->second;
         std::string temp = "";
         if (!ConvertIndex(name, value, &temp)) return false;
         if (count > 0) {
@@ -1030,9 +1040,14 @@ bool RelationalTable::GetCombineStr(const std::shared_ptr<IndexDef> index_def,
                                     const int8_t* data,
                                     std::string* comparable_pk) {
     comparable_pk->clear();
+    std::vector<ColumnDef> vec;
+    for (auto& col_def : index_def->GetColumns()) {
+        vec.push_back(col_def);
+    }
+    std::sort(vec.begin(), vec.end(), ::rtidb::storage::ColumnDefSortFunc);
     int count = 0;
     std::string col_val = "";
-    for (const auto& col_def : index_def->GetColumns()) {
+    for (const auto& col_def : vec) {
         uint32_t idx = col_def.GetId();
         ::rtidb::type::DataType data_type = col_def.GetType();
         if (!GetPackedField(data, idx, data_type, &col_val)) {

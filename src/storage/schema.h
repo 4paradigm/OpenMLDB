@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <atomic>
 #include <map>
 #include <memory>
@@ -129,6 +130,8 @@ class IndexDef {
     std::vector<ColumnDef> columns_;
     std::vector<uint32_t> ts_column_;
 };
+
+bool ColumnDefSortFunc(const ColumnDef& cd_a, const ColumnDef& cd_b);
 
 class TableIndex {
  public:
