@@ -32,7 +32,7 @@
 #include "codegen/window_ir_builder.h"
 #include "llvm/IR/IRBuilder.h"
 #include "node/sql_node.h"
-#include "vm/schema.h"
+#include "vm/schemas_context.h"
 
 namespace fesql {
 namespace codegen {

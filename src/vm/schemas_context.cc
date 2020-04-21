@@ -6,7 +6,7 @@
  * Date: 2020/4/20
  *--------------------------------------------------------------------------
  **/
-#include "vm/schema.h"
+#include "vm/schemas_context.h"
 #include <set>
 namespace fesql {
 namespace vm {

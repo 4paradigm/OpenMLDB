@@ -6,9 +6,9 @@
  * Date: 2020/4/20
  *--------------------------------------------------------------------------
  **/
-#include "vm/schema.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
+#include "vm/schemas_context.h"
 namespace fesql {
 namespace vm {
 void BuildTableDef(::fesql::type::TableDef& table) {  // NOLINT
@@ -93,9 +93,9 @@ void BuildTableT2Def(::fesql::type::TableDef& table) {  // NOLINT
     }
 }
 
-class SchemaTest : public ::testing::Test {};
+class SchemasContextTest : public ::testing::Test {};
 
-TEST_F(SchemaTest, NewSchemasContextTest) {
+TEST_F(SchemasContextTest, NewSchemasContextTest) {
     std::vector<std::pair<const std::string, const vm::Schema*>> name_schemas;
     type::TableDef t1;
     type::TableDef t2;
@@ -124,7 +124,7 @@ TEST_F(SchemaTest, NewSchemasContextTest) {
     ASSERT_EQ("t2", ctx.row_schema_info_list_[1].table_name_);
 }
 
-TEST_F(SchemaTest, ColumnResolvedTest) {
+TEST_F(SchemasContextTest, ColumnResolvedTest) {
     std::vector<std::pair<const std::string, const vm::Schema*>> name_schemas;
     type::TableDef t1;
     type::TableDef t2;

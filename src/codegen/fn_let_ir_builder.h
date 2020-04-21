@@ -27,7 +27,7 @@
 #include "node/plan_node.h"
 #include "proto/type.pb.h"
 #include "vm/catalog.h"
-#include "vm/schema.h"
+#include "vm/schemas_context.h"
 
 namespace fesql {
 namespace codegen {

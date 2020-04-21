@@ -7,8 +7,8 @@
  *--------------------------------------------------------------------------
  **/
 
-#ifndef SRC_VM_SCHEMA_H_
-#define SRC_VM_SCHEMA_H_
+#ifndef SRC_VM_SCHEMAS_CONTEXT_H_
+#define SRC_VM_SCHEMAS_CONTEXT_H_
 #include <map>
 #include <string>
 #include <utility>
@@ -51,4 +51,4 @@ class SchemasContext {
 }  // namespace vm
 }  // namespace fesql
 
-#endif  // SRC_VM_SCHEMA_H_
+#endif  // SRC_VM_SCHEMAS_CONTEXT_H_

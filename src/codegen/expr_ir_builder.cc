@@ -26,7 +26,7 @@
 #include "codegen/window_ir_builder.h"
 #include "glog/logging.h"
 #include "proto/common.pb.h"
-#include "vm/schema.h"
+#include "vm/schemas_context.h"
 
 namespace fesql {
 namespace codegen {

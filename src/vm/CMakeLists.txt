@@ -2,7 +2,7 @@ include_directories(${INCLUDE_DIRECTORIES}
         ${PROJECT_SOURCE_DIR}/src
         ${PROJECT_BINARY_DIR}/src)
 
-add_library(fesql_vm STATIC jit.cc runner.cc sql_compiler.cc engine.cc mem_catalog.cc schema.cc transform.cc physical_op.cc)
+add_library(fesql_vm STATIC jit.cc runner.cc sql_compiler.cc engine.cc mem_catalog.cc schemas_context.cc transform.cc physical_op.cc)
 
 add_library(fesql_csv_catalog STATIC csv_catalog.cc csv_table_iterator.cc
         csv_window_iterator.cc)
@@ -16,10 +16,10 @@ target_link_libraries(physical_op_test ${COMMON_LIBS} gtest pthread)
 add_test(physical_op_test physical_op_test --gtest_output=xml:${CMAKE_BINARY_DIR}/physical_op_test.xml)
 list(APPEND physical_op_test physical_op_test)
 
-add_executable(schema_test schema_test.cc)
-target_link_libraries(schema_test ${vm_deps_libs} protobuf ${llvm_libs} ${COMMON_LIBS} gtest pthread)
-add_test(schema_test schema_test --gtest_output=xml:${CMAKE_BINARY_DIR}/schema_test.xml)
-list(APPEND test_list schema_test)
+add_executable(schemas_context_test schemas_context_test.cc)
+target_link_libraries(schemas_context_test ${vm_deps_libs} protobuf ${llvm_libs} ${COMMON_LIBS} gtest pthread)
+add_test(schemas_context_test schemas_context_test --gtest_output=xml:${CMAKE_BINARY_DIR}/schemas_context_test.xml)
+list(APPEND test_list schemas_context_test)
 
 add_executable(mem_catalog_test mem_catalog_test.cc)
 target_link_libraries(mem_catalog_test ${vm_deps_libs} protobuf ${llvm_libs} ${COMMON_LIBS} gtest pthread)
