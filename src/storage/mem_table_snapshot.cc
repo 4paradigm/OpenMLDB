@@ -1154,7 +1154,7 @@ bool MemTableSnapshot::DumpSnapshotIndexData(
                 }
             }
             if (!deleted_pos_set.empty()) {
-                if (std::static_cast<int> deleted_pos_set.size() ==
+                if (static_cast<int>(deleted_pos_set.size()) ==
                     entry.dimensions_size()) {
                     continue;
                 } else {
@@ -1357,7 +1357,7 @@ bool MemTableSnapshot::DumpIndexData(
                 }
             }
             if (!deleted_pos_set.empty()) {
-                if (std::static_cast<int> deleted_pos_set.size() ==
+                if (static_cast<int>(deleted_pos_set.size()) ==
                     entry.dimensions_size()) {
                     continue;
                 } else {
