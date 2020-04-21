@@ -42,8 +42,8 @@ bool PhysicalUnaryNode::InitSchema() {
         return false;
     }
     output_schema_.CopyFrom(producers_[0]->output_schema_);
-    for (auto pair : producers_[0]->output_name_schema_list_) {
-        output_name_schema_list_.push_back(pair);
+    for (auto pair : producers_[0]->GetOutputNameSchemaList()) {
+        GetOutputNameSchemaList().push_back(pair);
     }
     PrintSchema();
     return true;
@@ -169,11 +169,11 @@ bool PhysicalJoinNode::InitSchema() {
     }
     output_schema_.CopyFrom(producers_[0]->output_schema_);
     output_schema_.MergeFrom(producers_[1]->output_schema_);
-    for (auto pair : producers_[0]->output_name_schema_list_) {
-        output_name_schema_list_.push_back(pair);
+    for (auto pair : producers_[0]->GetOutputNameSchemaList()) {
+        GetOutputNameSchemaList().push_back(pair);
     }
-    for (auto right_pair : producers_[1]->output_name_schema_list_) {
-        output_name_schema_list_.push_back(right_pair);
+    for (auto right_pair : producers_[1]->GetOutputNameSchemaList()) {
+        GetOutputNameSchemaList().push_back(right_pair);
     }
     PrintSchema();
     return false;
@@ -222,7 +222,7 @@ bool PhysicalDataProviderNode::InitSchema() {
         auto schema = table_handler_->GetSchema();
         if (schema) {
             output_schema_.CopyFrom(*schema);
-            output_name_schema_list_.push_back(std::make_pair(
+            GetOutputNameSchemaList().push_back(std::make_pair(
                 table_handler_->GetName(), table_handler_->GetSchema()));
             PrintSchema();
             return true;
@@ -238,7 +238,7 @@ bool PhysicalDataProviderNode::InitSchema() {
 void PhysicalOpNode::PrintSchema() {
     std::stringstream ss;
     ss << PhysicalOpTypeName(type_) << " output name schema list: \n";
-    for (auto pair : output_name_schema_list_) {
+    for (auto pair : GetOutputNameSchemaList()) {
         ss << "pair table: " << pair.first << "\n";
         for (int32_t i = 0; i < pair.second->size(); i++) {
             if (i > 0) {
@@ -261,8 +261,8 @@ void PhysicalOpNode::PrintSchema() {
 }
 bool PhysicalUnionNode::InitSchema() {
     output_schema_.CopyFrom(producers_[0]->output_schema_);
-    for (auto pair : producers_[0]->output_name_schema_list_) {
-        output_name_schema_list_.push_back(pair);
+    for (auto pair : producers_[0]->GetOutputNameSchemaList()) {
+        GetOutputNameSchemaList().push_back(pair);
     }
     PrintSchema();
     return true;
@@ -291,8 +291,8 @@ void PhysicalRequestUnionNode::Print(std::ostream& output,
 }
 bool PhysicalRequestUnionNode::InitSchema() {
     output_schema_.CopyFrom(producers_[0]->output_schema_);
-    for (auto pair : producers_[0]->output_name_schema_list_) {
-        output_name_schema_list_.push_back(pair);
+    for (auto pair : producers_[0]->GetOutputNameSchemaList()) {
+        GetOutputNameSchemaList().push_back(pair);
     }
     PrintSchema();
     return true;
@@ -320,11 +320,11 @@ bool PhysicalRequestJoinNode::InitSchema() {
     }
     output_schema_.CopyFrom(producers_[0]->output_schema_);
     output_schema_.MergeFrom(producers_[1]->output_schema_);
-    for (auto pair : producers_[0]->output_name_schema_list_) {
-        output_name_schema_list_.push_back(pair);
+    for (auto pair : producers_[0]->GetOutputNameSchemaList()) {
+        GetOutputNameSchemaList().push_back(pair);
     }
-    for (auto right_pair : producers_[1]->output_name_schema_list_) {
-        output_name_schema_list_.push_back(right_pair);
+    for (auto right_pair : producers_[1]->GetOutputNameSchemaList()) {
+        GetOutputNameSchemaList().push_back(right_pair);
     }
     PrintSchema();
     return true;
@@ -342,8 +342,8 @@ void PhysicalSeekIndexNode::Print(std::ostream& output,
 }
 bool PhysicalSeekIndexNode::InitSchema() {
     output_schema_.CopyFrom(producers_[1]->output_schema_);
-    for (auto pair : producers_[1]->output_name_schema_list_) {
-        output_name_schema_list_.push_back(pair);
+    for (auto pair : producers_[1]->GetOutputNameSchemaList()) {
+        GetOutputNameSchemaList().push_back(pair);
     }
     PrintSchema();
     return true;

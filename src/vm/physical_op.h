@@ -120,6 +120,11 @@ class PhysicalOpNode {
 
     const vm::Schema &GetFnSchema() const { return fn_info_.fn_schema_; }
 
+    std::vector<std::pair<const std::string, const vm::Schema *>>
+        &GetOutputNameSchemaList() {
+        return output_name_schema_list_;
+    }
+
     void SetLimitCnt(int32_t limit_cnt) { limit_cnt_ = limit_cnt; }
 
     const int32_t GetLimitCnt() const { return limit_cnt_; }
@@ -128,14 +133,14 @@ class PhysicalOpNode {
     const bool is_lazy_;
     PhysicalSchemaType output_type_;
     vm::Schema output_schema_;
-    std::vector<std::pair<const std::string, const vm::Schema *>>
-        output_name_schema_list_;
 
  protected:
     FnInfo fn_info_;
     std::vector<FnInfo *> fn_infos_;
     int32_t limit_cnt_;
     std::vector<PhysicalOpNode *> producers_;
+    std::vector<std::pair<const std::string, const vm::Schema *>>
+        output_name_schema_list_;
 };
 
 class PhysicalUnaryNode : public PhysicalOpNode {
