@@ -1,30 +1,27 @@
 //
 // skip_list_test.cc
-// Copyright 2017 4paradigm.com 
+// Copyright 2017 4paradigm.com
 
 #include "base/skiplist.h"
-#include "gtest/gtest.h"
-#include "base/slice.h"
 #include <vector>
+#include <string>
+#include "base/slice.h"
+#include "gtest/gtest.h"
 
 namespace rtidb {
 namespace base {
 
 class NodeTest : public ::testing::Test {
-
-public:
-    NodeTest(){}
+ public:
+    NodeTest() {}
     ~NodeTest() {}
 };
 
 class SkiplistTest : public ::testing::Test {
-
-public:
-    SkiplistTest(){}
+ public:
+    SkiplistTest() {}
     ~SkiplistTest() {}
-
 };
-
 
 struct SliceComparator {
     int operator()(const Slice& a, const Slice& b) const {
@@ -38,7 +35,7 @@ struct Comparator {
     int operator()(const uint32_t a, const uint32_t b) const {
         if (a > b) {
             return 1;
-        }else if (a == b) {
+        } else if (a == b) {
             return 0;
         }
         return -1;
@@ -49,7 +46,7 @@ struct DescComparator {
     int operator()(const uint32_t a, const uint32_t b) const {
         if (a > b) {
             return -1;
-        }else if (a == b) {
+        } else if (a == b) {
             return 0;
         }
         return 1;
@@ -61,14 +58,11 @@ struct KE {
     uint32_t v;
 };
 
-
 struct StrComparator {
     int operator()(const std::string& a, const std::string& b) const {
         return a.compare(b);
     }
 };
-
-
 
 TEST_F(NodeTest, SetNext) {
     uint32_t key = 1;
@@ -84,15 +78,13 @@ TEST_F(NodeTest, SetNext) {
 }
 
 TEST_F(NodeTest, NodeByteSize) {
-    std::atomic<Node<Slice, std::string*>* > node0[12];
+    std::atomic<Node<Slice, std::string*>*> node0[12];
     ASSERT_EQ(96, sizeof(node0));
     ASSERT_EQ(32, sizeof(Node<uint64_t, void*>));
     ASSERT_EQ(40, sizeof(Node<Slice, void*>));
 }
 
-
-
-TEST_F(NodeTest, SliceTest)  {
+TEST_F(NodeTest, SliceTest) {
     SliceComparator cmp;
     Skiplist<Slice, KE*, SliceComparator> sl(12, 4, cmp);
     Slice key("test1");
@@ -102,7 +94,7 @@ TEST_F(NodeTest, SliceTest)  {
     sl.Insert(key, v);
     Slice pk("test1");
     KE* n = sl.Get(pk);
-    ASSERT_TRUE(pk.compare(n->k) == 0);
+    ASSERT_TRUE(pk.compare(n->k) == 0); // NOLINT
 }
 
 TEST_F(NodeTest, AddToFirst) {
@@ -114,13 +106,14 @@ TEST_F(NodeTest, AddToFirst) {
         uint32_t value3 = 5;
         sl.Insert(key3, value3);
         uint32_t key4 = 3;
-        uint32_t value4= 6;
+        uint32_t value4 = 6;
         sl.Insert(key4, value4);
         uint32_t key1 = 1;
         uint32_t value1 = 1;
         bool ok = sl.AddToFirst(key1, value1);
         ASSERT_TRUE(ok);
-        Skiplist<uint32_t, uint32_t, Comparator>::Iterator* it = sl.NewIterator();
+        Skiplist<uint32_t, uint32_t, Comparator>::Iterator* it =
+            sl.NewIterator();
         it->SeekToFirst();
         ASSERT_TRUE(it->Valid());
         ASSERT_EQ(1, it->GetKey());
@@ -138,7 +131,6 @@ TEST_F(NodeTest, AddToFirst) {
     }
 }
 
-
 TEST_F(SkiplistTest, InsertAndIterator) {
     Comparator cmp;
     for (auto height : vec) {
@@ -153,9 +145,10 @@ TEST_F(SkiplistTest, InsertAndIterator) {
         uint32_t value3 = 5;
         sl.Insert(key3, value3);
         uint32_t key4 = 3;
-        uint32_t value4= 6;
+        uint32_t value4 = 6;
         sl.Insert(key4, value4);
-        Skiplist<uint32_t, uint32_t, Comparator>::Iterator* it = sl.NewIterator();
+        Skiplist<uint32_t, uint32_t, Comparator>::Iterator* it =
+            sl.NewIterator();
         it->Seek(0);
         ASSERT_EQ(1, it->GetKey());
         ASSERT_EQ(2, it->GetValue());
@@ -188,7 +181,7 @@ TEST_F(SkiplistTest, GetSize) {
     uint32_t value3 = 5;
     sl.Insert(key3, value3);
     uint32_t key4 = 3;
-    uint32_t value4= 6;
+    uint32_t value4 = 6;
     sl.Insert(key4, value4);
     ASSERT_EQ(3, sl.GetSize());
 }
@@ -202,17 +195,17 @@ TEST_F(SkiplistTest, Iterator) {
     delete it;
     {
         uint32_t key = 1;
-        uint32_t value=  2;
+        uint32_t value = 2;
         sl.Insert(key, value);
     }
     {
         uint32_t key = 2;
-        uint32_t value=  3;
+        uint32_t value = 3;
         sl.Insert(key, value);
     }
     {
         uint32_t key = 3;
-        uint32_t value=  4;
+        uint32_t value = 4;
         sl.Insert(key, value);
     }
     it = sl.NewIterator();
@@ -237,17 +230,17 @@ TEST_F(SkiplistTest, Split1) {
         Comparator cmp;
         Skiplist<uint32_t, uint32_t, Comparator> sl(height, 4, cmp);
         uint32_t key1 = 0;
-        uint32_t value1= 0;
+        uint32_t value1 = 0;
         sl.Insert(key1, value1);
         uint32_t key2 = 1;
-        uint32_t value2= 1;
+        uint32_t value2 = 1;
         sl.Insert(key2, value2);
         uint32_t key3 = 2;
-        uint32_t value3= 2;
+        uint32_t value3 = 2;
         sl.Insert(key3, value3);
         ASSERT_EQ(2, sl.GetLast()->GetKey());
         uint32_t key4 = 3;
-        uint32_t value4= 6;
+        uint32_t value4 = 6;
         sl.Insert(key4, value4);
         ASSERT_EQ(3, sl.GetLast()->GetKey());
         Node<uint32_t, uint32_t>* node = sl.Split(4);
@@ -264,7 +257,8 @@ TEST_F(SkiplistTest, Split1) {
         ASSERT_EQ(3, node->GetKey());
         node = node->GetNext(0);
         ASSERT_TRUE(node == NULL);
-        Skiplist<uint32_t, uint32_t, Comparator>::Iterator* it = sl.NewIterator();
+        Skiplist<uint32_t, uint32_t, Comparator>::Iterator* it =
+            sl.NewIterator();
         it->Seek(0);
         ASSERT_EQ(0, it->GetKey());
         it->Next();
@@ -280,19 +274,19 @@ TEST_F(SkiplistTest, SplitByPos) {
     for (auto height : vec) {
         Skiplist<uint32_t, uint32_t, Comparator> sl(height, 4, cmp);
         uint32_t key1 = 0;
-        uint32_t value1= 0;
+        uint32_t value1 = 0;
         sl.Insert(key1, value1);
         uint32_t key2 = 1;
-        uint32_t value2= 1;
+        uint32_t value2 = 1;
         sl.Insert(key2, value2);
         uint32_t key3 = 2;
-        uint32_t value3= 2;
+        uint32_t value3 = 2;
         sl.Insert(key3, value3);
         // insert the same key
-        uint32_t value3_an= 22;
+        uint32_t value3_an = 22;
         sl.Insert(key3, value3_an);
         uint32_t key4 = 3;
-        uint32_t value4= 6;
+        uint32_t value4 = 6;
         sl.Insert(key4, value4);
         ASSERT_EQ(3, sl.GetLast()->GetKey());
 
@@ -307,7 +301,8 @@ TEST_F(SkiplistTest, SplitByPos) {
         ASSERT_EQ(3, node->GetKey());
         node = node->GetNext(0);
         ASSERT_TRUE(node == NULL);
-        Skiplist<uint32_t, uint32_t, Comparator>::Iterator* it = sl.NewIterator();
+        Skiplist<uint32_t, uint32_t, Comparator>::Iterator* it =
+            sl.NewIterator();
         it->Seek(0);
         ASSERT_EQ(0, it->GetKey());
         it->Next();
@@ -317,7 +312,7 @@ TEST_F(SkiplistTest, SplitByPos) {
         ASSERT_EQ(2, it->GetKey());
         it->Next();
         ASSERT_FALSE(it->Valid());
-    }    
+    }
 }
 
 TEST_F(SkiplistTest, SplitByPos1) {
@@ -325,16 +320,16 @@ TEST_F(SkiplistTest, SplitByPos1) {
     for (auto height : vec) {
         Skiplist<uint32_t, uint32_t, Comparator> sl(height, 4, cmp);
         uint32_t key1 = 1;
-        uint32_t value1= 1;
+        uint32_t value1 = 1;
         sl.Insert(key1, value1);
         uint32_t key2 = 2;
-        uint32_t value2= 2;
+        uint32_t value2 = 2;
         sl.Insert(key2, value2);
         uint32_t key3 = 3;
-        uint32_t value3= 3;
+        uint32_t value3 = 3;
         sl.Insert(key3, value3);
         uint32_t key4 = 4;
-        uint32_t value4= 4;
+        uint32_t value4 = 4;
         sl.Insert(key4, value4);
         ASSERT_EQ(4, sl.GetLast()->GetKey());
         Node<uint32_t, uint32_t>* node = sl.SplitByPos(2);
@@ -350,19 +345,19 @@ TEST_F(SkiplistTest, SplitByKeyOrPos1) {
     for (auto height : vec) {
         Skiplist<uint32_t, uint32_t, Comparator> sl(height, 4, cmp);
         uint32_t key1 = 1;
-        uint32_t value1= 1;
+        uint32_t value1 = 1;
         sl.Insert(key1, value1);
         uint32_t key2 = 2;
-        uint32_t value2= 2;
+        uint32_t value2 = 2;
         sl.Insert(key2, value2);
         uint32_t key3 = 3;
-        uint32_t value3= 3;
+        uint32_t value3 = 3;
         sl.Insert(key3, value3);
         uint32_t key4 = 4;
-        uint32_t value4= 4;
+        uint32_t value4 = 4;
         sl.Insert(key4, value4);
         uint32_t key5 = 5;
-        uint32_t value5= 5;
+        uint32_t value5 = 5;
         sl.Insert(key5, value5);
         ASSERT_EQ(5, sl.GetLast()->GetKey());
         Node<uint32_t, uint32_t>* node = sl.SplitByKeyOrPos(4, 5);
@@ -382,19 +377,19 @@ TEST_F(SkiplistTest, SplitByKeyOrPos2) {
     for (auto height : vec) {
         Skiplist<uint32_t, uint32_t, Comparator> sl(height, 4, cmp);
         uint32_t key1 = 1;
-        uint32_t value1= 1;
+        uint32_t value1 = 1;
         sl.Insert(key1, value1);
         uint32_t key2 = 2;
-        uint32_t value2= 2;
+        uint32_t value2 = 2;
         sl.Insert(key2, value2);
         uint32_t key3 = 3;
-        uint32_t value3= 3;
+        uint32_t value3 = 3;
         sl.Insert(key3, value3);
         uint32_t key4 = 4;
-        uint32_t value4= 4;
+        uint32_t value4 = 4;
         sl.Insert(key4, value4);
         uint32_t key5 = 5;
-        uint32_t value5= 5;
+        uint32_t value5 = 5;
         sl.Insert(key5, value5);
         ASSERT_EQ(5, sl.GetLast()->GetKey());
         Node<uint32_t, uint32_t>* node = sl.SplitByKeyOrPos(5, 3);
@@ -414,19 +409,19 @@ TEST_F(SkiplistTest, SplitByKeyOrPos3) {
     for (auto height : vec) {
         Skiplist<uint32_t, uint32_t, Comparator> sl(height, 4, cmp);
         uint32_t key1 = 1;
-        uint32_t value1= 1;
+        uint32_t value1 = 1;
         sl.Insert(key1, value1);
         uint32_t key2 = 2;
-        uint32_t value2= 2;
+        uint32_t value2 = 2;
         sl.Insert(key2, value2);
         uint32_t key3 = 3;
-        uint32_t value3= 3;
+        uint32_t value3 = 3;
         sl.Insert(key3, value3);
         uint32_t key4 = 4;
-        uint32_t value4= 4;
+        uint32_t value4 = 4;
         sl.Insert(key4, value4);
         uint32_t key5 = 5;
-        uint32_t value5= 5;
+        uint32_t value5 = 5;
         sl.Insert(key5, value5);
         ASSERT_EQ(5, sl.GetLast()->GetKey());
         Node<uint32_t, uint32_t>* node = sl.SplitByKeyOrPos(3, 2);
@@ -444,19 +439,19 @@ TEST_F(SkiplistTest, SplitByKeyAndPos1) {
     for (auto height : vec) {
         Skiplist<uint32_t, uint32_t, Comparator> sl(height, 4, cmp);
         uint32_t key1 = 1;
-        uint32_t value1= 1;
+        uint32_t value1 = 1;
         sl.Insert(key1, value1);
         uint32_t key2 = 2;
-        uint32_t value2= 2;
+        uint32_t value2 = 2;
         sl.Insert(key2, value2);
         uint32_t key3 = 3;
-        uint32_t value3= 3;
+        uint32_t value3 = 3;
         sl.Insert(key3, value3);
         uint32_t key4 = 4;
-        uint32_t value4= 4;
+        uint32_t value4 = 4;
         sl.Insert(key4, value4);
         uint32_t key5 = 5;
-        uint32_t value5= 5;
+        uint32_t value5 = 5;
         sl.Insert(key5, value5);
         ASSERT_EQ(5, sl.GetLast()->GetKey());
         Node<uint32_t, uint32_t>* node = sl.SplitByKeyAndPos(3, 4);
@@ -474,19 +469,19 @@ TEST_F(SkiplistTest, SplitByKeyAndPos2) {
     for (auto height : vec) {
         Skiplist<uint32_t, uint32_t, Comparator> sl(height, 4, cmp);
         uint32_t key1 = 1;
-        uint32_t value1= 1;
+        uint32_t value1 = 1;
         sl.Insert(key1, value1);
         uint32_t key2 = 2;
-        uint32_t value2= 2;
+        uint32_t value2 = 2;
         sl.Insert(key2, value2);
         uint32_t key3 = 3;
-        uint32_t value3= 3;
+        uint32_t value3 = 3;
         sl.Insert(key3, value3);
         uint32_t key4 = 4;
-        uint32_t value4= 4;
+        uint32_t value4 = 4;
         sl.Insert(key4, value4);
         uint32_t key5 = 5;
-        uint32_t value5= 5;
+        uint32_t value5 = 5;
         sl.Insert(key5, value5);
         ASSERT_EQ(5, sl.GetLast()->GetKey());
         Node<uint32_t, uint32_t>* node = sl.SplitByKeyAndPos(5, 3);
@@ -504,19 +499,19 @@ TEST_F(SkiplistTest, SplitByKeyAndPos3) {
     for (auto height : vec) {
         Skiplist<uint32_t, uint32_t, Comparator> sl(height, 4, cmp);
         uint32_t key1 = 1;
-        uint32_t value1= 1;
+        uint32_t value1 = 1;
         sl.Insert(key1, value1);
         uint32_t key2 = 2;
-        uint32_t value2= 2;
+        uint32_t value2 = 2;
         sl.Insert(key2, value2);
         uint32_t key3 = 3;
-        uint32_t value3= 3;
+        uint32_t value3 = 3;
         sl.Insert(key3, value3);
         uint32_t key4 = 4;
-        uint32_t value4= 4;
+        uint32_t value4 = 4;
         sl.Insert(key4, value4);
         uint32_t key5 = 5;
-        uint32_t value5= 5;
+        uint32_t value5 = 5;
         sl.Insert(key5, value5);
         ASSERT_EQ(5, sl.GetLast()->GetKey());
         Node<uint32_t, uint32_t>* node = sl.SplitByKeyAndPos(5, 4);
@@ -532,12 +527,13 @@ TEST_F(SkiplistTest, Iterator2) {
     StrComparator cmp;
     Skiplist<std::string, std::string, StrComparator> sl(12, 4, cmp);
     std::string k = "h";
-    std::string v= "b";
+    std::string v = "b";
     sl.Insert(k, v);
     std::string k1 = "a";
-    std::string v2="b";
+    std::string v2 = "b";
     sl.Insert(k1, v2);
-    Skiplist<std::string, std::string, StrComparator>::Iterator* it = sl.NewIterator();
+    Skiplist<std::string, std::string, StrComparator>::Iterator* it =
+        sl.NewIterator();
     it->Seek("h");
     ASSERT_EQ("h", it->GetKey());
     it->Next();
@@ -548,28 +544,28 @@ TEST_F(SkiplistTest, Clear) {
     StrComparator cmp;
     Skiplist<std::string, std::string, StrComparator> sl(12, 4, cmp);
     std::string k = "h";
-    std::string v= "b";
+    std::string v = "b";
     sl.Insert(k, v);
     std::string k1 = "a";
-    std::string v2="b";
+    std::string v2 = "b";
     sl.Insert(k1, v2);
-    ASSERT_EQ(2,sl.Clear());
+    ASSERT_EQ(2, sl.Clear());
 }
 
 TEST_F(SkiplistTest, Remove) {
     StrComparator cmp;
     Skiplist<std::string, std::string, StrComparator> sl(12, 4, cmp);
     std::string k = "h";
-    std::string v= "b";
+    std::string v = "b";
     sl.Insert(k, v);
     std::string k1 = "a";
-    std::string v2="b";
+    std::string v2 = "b";
     sl.Insert(k1, v2);
     std::string k2 = "b";
-    std::string v3="c";
+    std::string v3 = "c";
     sl.Insert(k2, v3);
     ASSERT_EQ("h", sl.GetLast()->GetKey());
-    std::string k3="c";
+    std::string k3 = "c";
     Node<std::string, std::string>* none_exist_node = sl.Remove(k3);
     ASSERT_FALSE(none_exist_node != NULL);
     Node<std::string, std::string>* node = sl.Remove(k2);
@@ -577,7 +573,8 @@ TEST_F(SkiplistTest, Remove) {
     ASSERT_FALSE(node == NULL);
     ASSERT_EQ("b", node->GetKey());
     ASSERT_EQ("c", node->GetValue());
-    Skiplist<std::string, std::string, StrComparator>::Iterator* it = sl.NewIterator();
+    Skiplist<std::string, std::string, StrComparator>::Iterator* it =
+        sl.NewIterator();
     it->SeekToFirst();
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ("a", it->GetKey());
@@ -603,7 +600,7 @@ TEST_F(SkiplistTest, Get) {
     sl.Insert(key, value);
     uint32_t ret = sl.Get(1);
     ASSERT_EQ(1, ret);
-    ASSERT_FALSE(sl.Get(2) == 2);
+    ASSERT_FALSE(sl.Get(2) == 2); // NOLINT
 }
 
 TEST_F(SkiplistTest, GetLast) {
@@ -644,7 +641,8 @@ TEST_F(SkiplistTest, Duplicate) {
         sl.Insert(key, value);
     }
 
-    Skiplist<uint32_t, uint32_t, DescComparator>::Iterator* it = sl.NewIterator();
+    Skiplist<uint32_t, uint32_t, DescComparator>::Iterator* it =
+        sl.NewIterator();
     ASSERT_EQ(3, it->GetSize());
     it->SeekToFirst();
     ASSERT_TRUE(it->Valid());
@@ -662,8 +660,8 @@ TEST_F(SkiplistTest, Duplicate) {
     ASSERT_FALSE(it->Valid());
 }
 
-}
-}
+}  // namespace base
+}  // namespace rtidb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

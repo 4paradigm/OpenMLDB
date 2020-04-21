@@ -1,31 +1,29 @@
 //
+// Copyright (C) 2017 4paradigm.com
 // Created by kongsys on 8/16/19.
 //
 
-#ifndef RTIDB_TASKPOOL_HPP
-#define RTIDB_TASKPOOL_HPP
+#ifndef SRC_BASE_TASKPOOL_HPP_
+#define SRC_BASE_TASKPOOL_HPP_
 
+#include <vector>
 #include <boost/function.hpp>
 #include "base/ringqueue.h"
 
 namespace rtidb {
 namespace base {
 class TaskPool {
-public:
-    TaskPool(uint32_t thread_num, uint32_t qsize):
-    stop_(false),
-    threads_num_(thread_num),
-    queue_(qsize) {
+ public:
+    TaskPool(uint32_t thread_num, uint32_t qsize)
+        : stop_(false), threads_num_(thread_num), queue_(qsize) {
         Start();
     }
 
-    ~TaskPool() {
-        Stop();
-    }
-    typedef boost::function<void ()> Task;
+    ~TaskPool() { Stop(); }
+    typedef boost::function<void()> Task;
 
     bool Start() {
-        for(uint32_t i = 0; i < threads_num_; i++) {
+        for (uint32_t i = 0; i < threads_num_; i++) {
             pthread_t tid;
             int ret = pthread_create(&tid, NULL, ThreadWrapper, this);
             if (ret) {
@@ -59,7 +57,8 @@ public:
         queue_.put(task);
         work_cv_.notify_one();
     }
-private:
+
+ private:
     static void* ThreadWrapper(void* arg) {
         reinterpret_cast<TaskPool*>(arg)->ThreadProc();
         return NULL;
@@ -90,6 +89,6 @@ private:
     std::condition_variable work_cv_, queue_cv_;
     std::mutex mutex_;
 };
-}
-}
-#endif //RTIDB_TASKPOOL_HPP
+}  // namespace base
+}  // namespace rtidb
+#endif  // SRC_BASE_TASKPOOL_HPP_

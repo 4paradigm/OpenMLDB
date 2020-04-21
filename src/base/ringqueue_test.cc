@@ -1,17 +1,18 @@
 //
-// Created by kongsys on 8/20/19.
+// ringqueue_test.cc
+// Copyright (C) 2017 4paradigm.com
+// Author kongquan
+// Date 2019-08-15
 //
 
-#include "ringqueue.h"
+#include "base/ringqueue.h"
 #include "gtest/gtest.h"
 
-
-namespace  rtidb {
+namespace rtidb {
 namespace base {
 
 class RingQueueTest : public ::testing::Test {
-
-public:
+ public:
     RingQueueTest() {}
     ~RingQueueTest() {}
 };
@@ -25,11 +26,10 @@ TEST_F(RingQueueTest, full) {
     ASSERT_TRUE(rq.full());
     rq.pop();
     ASSERT_FALSE(rq.full());
-
 }
 
 TEST_F(RingQueueTest, empty) {
-    uint32_t  size = 10;
+    uint32_t size = 10;
     RingQueue<uint32_t> rq(size);
     ASSERT_TRUE(rq.empty());
     rq.put(size);
@@ -37,7 +37,7 @@ TEST_F(RingQueueTest, empty) {
 }
 
 TEST_F(RingQueueTest, capacity) {
-    uint32_t  size = 10;
+    uint32_t size = 10;
     RingQueue<uint32_t> rq(size);
     ASSERT_EQ(size, rq.capacity());
 }
@@ -50,11 +50,11 @@ TEST_F(RingQueueTest, size) {
         ASSERT_EQ(i, rq.size());
     }
     ASSERT_TRUE(rq.full());
-    for (uint32_t i = 1; i <= size/5; i++) {
-	rq.pop();
+    for (uint32_t i = 1; i <= size / 5; i++) {
+        rq.pop();
     }
-    for (uint32_t i = 1; i <= size/5; i++) {
-	rq.put(size + i);
+    for (uint32_t i = 1; i <= size / 5; i++) {
+        rq.put(size + i);
     }
     ASSERT_EQ(size, rq.size());
 }
@@ -68,8 +68,8 @@ TEST_F(RingQueueTest, pop) {
     }
 }
 
-};
-}
+};  // namespace base
+}  // namespace rtidb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

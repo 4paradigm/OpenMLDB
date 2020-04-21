@@ -1,7 +1,7 @@
 //
 // field_codec.h
 // Copyright (C) 2020 4paradigm.com
-// Author wangbao 
+// Author wangbao
 // Date 2020-04-07
 //
 
@@ -53,13 +53,10 @@ static inline void Convert(double data, char* buffer) {
     memcpy(buffer, static_cast<const void*>(&data), 8);
 }
 
-
 /**
  *  decode part
  */
-static inline void GetBool(const char* ch, void* res) {
-    memcpy(res, ch, 1);
-}
+static inline void GetBool(const char* ch, void* res) { memcpy(res, ch, 1); }
 
 static inline void GetInt16(const char* ch, void* res) {
     memcpy(res, ch, 2);
@@ -86,5 +83,5 @@ static inline void GetDouble(const char* ch, void* res) {
     memrev64ifbe(static_cast<void*>(res));
 }
 
-}//namespace base
-}//namespace rtidb
+}  // namespace base
+}  // namespace rtidb

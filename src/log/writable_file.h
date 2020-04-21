@@ -5,23 +5,22 @@
 // Date 2017-06-16
 //
 
-
-#ifndef RTIDB_LOG_WRITABLE_FILE
-#define RTIDB_LOG_WRITABLE_FILE
+#ifndef SRC_LOG_WRITABLE_FILE_H_
+#define SRC_LOG_WRITABLE_FILE_H_
 
 #include <string>
 
 namespace rtidb {
 
 namespace base {
-    class Status;
-    class Slice;
-}
+class Status;
+class Slice;
+}  // namespace base
 
 namespace log {
 
 class WritableFile {
-public:
+ public:
     WritableFile() { wsize_ = 0; }
     virtual ~WritableFile() {}
 
@@ -31,10 +30,10 @@ public:
     virtual base::Status Sync() = 0;
     uint64_t GetSize() { return wsize_; }
 
-protected:    
+ protected:
     uint64_t wsize_;
 
-private:
+ private:
     // No copying allowed
     WritableFile(const WritableFile&);
     void operator=(const WritableFile&);
@@ -42,8 +41,7 @@ private:
 
 WritableFile* NewWritableFile(const std::string& fname, FILE* f);
 
+}  // namespace log
+}  // namespace rtidb
 
-} // end of log
-} // end of rtidb
-
-#endif /* !RTIDB_LOG_WRITABLE_FILE_H */
+#endif  // SRC_LOG_WRITABLE_FILE_H_
