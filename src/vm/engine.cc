@@ -44,7 +44,7 @@ void Engine::InitializeGlobalLLVM() {
 }
 
 
-std::shared_ptr<CompileInfo> Engine::Get(const std::string& sql,
+bool Engine::Get(const std::string& sql,
                  const std::string& db,
                  RunSession& session,
                  base::Status& status) {  // NOLINT (runtime/references)
@@ -53,7 +53,7 @@ std::shared_ptr<CompileInfo> Engine::Get(const std::string& sql,
         if (info) {
             session.SetCompileInfo(info);
             session.SetCatalog(cl_);
-            return info;
+            return true;
         }
     }
 
@@ -65,7 +65,7 @@ std::shared_ptr<CompileInfo> Engine::Get(const std::string& sql,
     bool ok = compiler.Compile(info->get_sql_context(), status);
     if (!ok || 0 != status.code) {
         // do clean
-        return nullptr;
+        return false;
     }
 
     {
@@ -84,7 +84,7 @@ std::shared_ptr<CompileInfo> Engine::Get(const std::string& sql,
             session.SetCompileInfo(it->second);
         }
     }
-    return info;
+    return true;
 }
 
 std::shared_ptr<CompileInfo> Engine::GetCacheLocked(const std::string& db,

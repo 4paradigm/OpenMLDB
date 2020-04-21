@@ -118,8 +118,8 @@ void Run() {
     Engine engine(catalog);
     BatchRunSession session;
     base::Status status;
-    auto compile_info = engine.Get(FLAGS_query, FLAGS_db, session, status);
-    if (!compile_info) {
+    ok = engine.Get(FLAGS_query, FLAGS_db, session, status);
+    if (!ok) {
         std::cout << "fail to compile sql for " << status.msg << std::endl;
         return;
     }

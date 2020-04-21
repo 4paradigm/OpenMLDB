@@ -12,8 +12,8 @@ import com._4paradigm.fesql.vm.*;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
-import java.util.List;
 
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertEquals;
 
 
@@ -47,7 +47,8 @@ public class TestParseSQL {
 
         BaseStatus status = new BaseStatus();
         Engine engine = new Engine(catalog, options);
-        CompileInfo compileInfo = engine.Get("select col_1, col_2 from t1;", "db", sess, status);
+        assertTrue(engine.Get("select col_1, col_2 from t1;", "db", sess, status));
+        CompileInfo compileInfo = sess.GetCompileInfo();
 
         long size = compileInfo.get_ir_size();
         ByteBuffer buffer = ByteBuffer.allocateDirect(Long.valueOf(size).intValue());

@@ -48,8 +48,8 @@ std::string GetModuleString(std::shared_ptr<SimpleCatalog> catalog) {
     base::Status status;
     BatchRunSession session;
     Engine engine(catalog, options);
-    auto compile_info = engine.Get(
-        "select col_1, col_2 from t1;", "db", session, status);
+    engine.Get("select col_1, col_2 from t1;", "db", session, status);
+    auto compile_info = session.GetCompileInfo();
     return compile_info->get_sql_context().ir;
 }
 

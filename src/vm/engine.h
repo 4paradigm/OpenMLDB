@@ -89,6 +89,10 @@ class RunSession {
         return compile_info_->get_sql_context().runner;
     }
 
+    virtual inline std::shared_ptr<CompileInfo> GetCompileInfo() {
+        return compile_info_;
+    }
+
     virtual const bool IsBatchRun() const = 0;
 
  protected:
@@ -138,7 +142,7 @@ class Engine {
 
     ~Engine();
 
-    std::shared_ptr<CompileInfo> Get(const std::string& sql,
+    bool Get(const std::string& sql,
              const std::string& db,
              RunSession& session,    // NOLINT
              base::Status& status);  // NOLINT
