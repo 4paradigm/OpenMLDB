@@ -23,6 +23,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include "base/raw_buffer.h"
 #include "proto/type.pb.h"
 #include "vm/catalog.h"
 
@@ -64,11 +65,12 @@ inline uint32_t GetStartOffset(int32_t column_count) {
 
 class RowBuilder {
  public:
-    explicit RowBuilder(const Schema& schema);
+    explicit RowBuilder(const fesql::vm::Schema& schema);
     ~RowBuilder() = default;
 
     uint32_t CalTotalLength(uint32_t string_length);
     bool SetBuffer(int8_t* buf, uint32_t size);
+    bool SetBuffer(const fesql::base::RawBuffer& buf);
     bool AppendBool(bool val);
     bool AppendInt32(int32_t val);
     bool AppendInt16(int16_t val);
@@ -96,12 +98,12 @@ class RowBuilder {
 
 class RowView {
  public:
-    RowView(const Schema& schema, const int8_t* row, uint32_t size);
-    explicit RowView(const Schema& schema);
+    RowView(const fesql::vm::Schema& schema, const int8_t* row, uint32_t size);
+    explicit RowView(const fesql::vm::Schema& schema);
     ~RowView() = default;
     bool Reset(const int8_t* row, uint32_t size);
     bool Reset(const int8_t* row);
-
+    bool Reset(const fesql::base::RawBuffer& buf);
     int32_t GetBool(uint32_t idx, bool* val);
     int32_t GetInt32(uint32_t idx, int32_t* val);
     int32_t GetInt64(uint32_t idx, int64_t* val);
@@ -110,6 +112,16 @@ class RowView {
     int32_t GetFloat(uint32_t idx, float* val);
     int32_t GetDouble(uint32_t idx, double* val);
     int32_t GetString(uint32_t idx, char** val, uint32_t* length);
+
+    bool GetBoolUnsafe(uint32_t idx);
+    int32_t GetInt32Unsafe(uint32_t idx);
+    int64_t GetInt64Unsafe(uint32_t idx);
+    int64_t GetTimestampUnsafe(uint32_t idx);
+    int16_t GetInt16Unsafe(uint32_t idx);
+    float GetFloatUnsafe(uint32_t idx);
+    double GetDoubleUnsafe(uint32_t idx);
+    std::string GetStringUnsafe(uint32_t idx);
+
     bool IsNULL(uint32_t idx) { return IsNULL(row_, idx); }
     inline uint32_t GetSize() { return size_; }
 

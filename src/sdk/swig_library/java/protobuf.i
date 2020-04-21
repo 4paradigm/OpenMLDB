@@ -90,4 +90,171 @@
 %enddef
 
 
+// Declare auto type mapping for protobuf repeated fields
+%define %protobuf_repeated_typedef(TYPE, JTYPE)
+
+%typemap(jni) TYPE "jobjectArray"
+%typemap(jni) TYPE* "jobjectArray"
+%typemap(jni) const TYPE& "jobjectArray"
+
+%typemap(jtype) TYPE "Object[]"
+%typemap(jtype) TYPE* "Object[]"
+%typemap(jtype) const TYPE& "Object[]"
+
+%typemap(jstype) TYPE "java.util.List<JTYPE>"
+%typemap(jstype) TYPE* "java.util.List<JTYPE>"
+%typemap(jstype) const TYPE& "java.util.List<JTYPE>"
+
+%typemap(in) TYPE %{
+    if(!$input) {
+        if (!jenv->ExceptionCheck()) {
+            SWIG_JavaThrowException(jenv, SWIG_JavaNullPointerException, "null string");
+        }
+        return $null;
+    }
+    jsize $1_fields_size = jenv->GetArrayLength($input);
+
+    jmethodID ser_method;
+
+    for (jsize k = 0; k < $1_fields_size; ++k) {
+        auto field_ptr = ($1).Add();
+
+        jobject obj = jenv->GetObjectArrayElement($input, k);
+        if (k == 0) {
+            jclass clazz = jenv->GetObjectClass(obj);
+            ser_method = jenv->GetMethodID(clazz, "toByteArray", "()[B");
+        }
+
+        jbyteArray $1_byte_arr = (jbyteArray) jenv->CallObjectMethod(obj, ser_method);
+        jsize $1_bytes_size = jenv->GetArrayLength($1_byte_arr);
+        jbyte* $1_bytes = (jbyte *)jenv->GetByteArrayElements($1_byte_arr, NULL);
+        field_ptr->ParseFromArray($1_bytes, $1_bytes_size);
+        jenv->ReleaseByteArrayElements($1_byte_arr, $1_bytes, 0);
+    }
+%}
+%typemap(in) const TYPE& %{
+    if(!$input) {
+        if (!jenv->ExceptionCheck()) {
+            SWIG_JavaThrowException(jenv, SWIG_JavaNullPointerException, "null string");
+        }
+        return $null;
+    }
+    jsize $1_fields_size = jenv->GetArrayLength($input);
+
+    jmethodID ser_method;
+
+    TYPE $1_object;
+    for (jsize k = 0; k < $1_fields_size; ++k) {
+        auto field_ptr = ($1_object).Add();
+
+        jobject obj = jenv->GetObjectArrayElement($input, k);
+        if (k == 0) {
+            jclass clazz = jenv->GetObjectClass(obj);
+            ser_method = jenv->GetMethodID(clazz, "toByteArray", "()[B");
+        }
+
+        jbyteArray $1_byte_arr = (jbyteArray) jenv->CallObjectMethod(obj, ser_method);
+        jsize $1_bytes_size = jenv->GetArrayLength($1_byte_arr);
+        jbyte* $1_bytes = (jbyte *)jenv->GetByteArrayElements($1_byte_arr, NULL);
+        field_ptr->ParseFromArray($1_bytes, $1_bytes_size);
+        jenv->ReleaseByteArrayElements($1_byte_arr, $1_bytes, 0);
+    }
+    $1 = &($1_object);
+%}
+%typemap(in) TYPE* %{
+    if(!$input) {
+        if (!jenv->ExceptionCheck()) {
+            SWIG_JavaThrowException(jenv, SWIG_JavaNullPointerException, "null string");
+        }
+        return $null;
+    }
+    jsize $1_fields_size = jenv->GetArrayLength($input);
+
+    jmethodID ser_method;
+
+    TYPE $1_object;
+    for (jsize k = 0; k < $1_fields_size; ++k) {
+        auto field_ptr = ($1_object).Add();
+
+        jobject obj = jenv->GetObjectArrayElement($input, k);
+        if (k == 0) {
+            jclass clazz = jenv->GetObjectClass(obj);
+            ser_method = jenv->GetMethodID(clazz, "toByteArray", "()[B");
+        }
+
+        jbyteArray $1_byte_arr = (jbyteArray) jenv->CallObjectMethod(obj, ser_method);
+        jsize $1_bytes_size = jenv->GetArrayLength($1_byte_arr);
+        jbyte* $1_bytes = (jbyte *)jenv->GetByteArrayElements($1_byte_arr, NULL);
+        field_ptr->ParseFromArray($1_bytes, $1_bytes_size);
+        jenv->ReleaseByteArrayElements($1_byte_arr, $1_bytes, 0);
+    }
+    $1 = &($1_object);
+%}
+
+
+%typemap(javain) TYPE "($javainput).toArray()"
+%typemap(javain) const TYPE & "($javainput).toArray()"
+%typemap(javain) TYPE* "($javainput).toArray()"
+
+
+%typemap(out) TYPE {
+    jsize $1_fields_size = ($1).size();
+    $result = jenv->NewObjectArray($1_fields_size, jenv->FindClass("[B"), NULL);
+    for (jint k = 0; k < $1_fields_size; ++k) {
+        auto& field = ($1).Get(k);
+        jsize $1_bytes_size = field.ByteSize();
+        jbyteArray $1_byte_arr = jenv->NewByteArray($1_bytes_size);
+        jbyte* $1_bytes = (jbyte *)jenv->GetByteArrayElements($1_byte_arr, NULL);
+        field.SerializeToArray($1_bytes, $1_bytes_size);
+        jenv->ReleaseByteArrayElements($1_byte_arr, $1_bytes, 0);
+        jenv->SetObjectArrayElement($result, k, $1_byte_arr);
+    }
+}
+%typemap(out) const TYPE& {
+    jsize $1_fields_size = ($1)->size();
+    $result = jenv->NewObjectArray($1_fields_size, jenv->FindClass("[B"), NULL);
+    for (jint k = 0; k < $1_fields_size; ++k) {
+        auto& field = ($1)->Get(k);
+        jsize $1_bytes_size = field.ByteSize();
+        jbyteArray $1_byte_arr = jenv->NewByteArray($1_bytes_size);
+        jbyte* $1_bytes = (jbyte *)jenv->GetByteArrayElements($1_byte_arr, NULL);
+        field.SerializeToArray($1_bytes, $1_bytes_size);
+        jenv->ReleaseByteArrayElements($1_byte_arr, $1_bytes, 0);
+        jenv->SetObjectArrayElement($result, k, $1_byte_arr);
+    }
+}
+%typemap(out) TYPE* {
+    jsize $1_fields_size = ($1)->size();
+    $result = jenv->NewObjectArray($1_fields_size, jenv->FindClass("[B"), NULL);
+    for (jint k = 0; k < $1_fields_size; ++k) {
+        auto& field = ($1)->Get(k);
+        jsize $1_bytes_size = field.ByteSize();
+        jbyteArray $1_byte_arr = jenv->NewByteArray($1_bytes_size);
+        jbyte* $1_bytes = (jbyte *)jenv->GetByteArrayElements($1_byte_arr, NULL);
+        field.SerializeToArray($1_bytes, $1_bytes_size);
+        jenv->ReleaseByteArrayElements($1_byte_arr, $1_bytes, 0);
+        jenv->SetObjectArrayElement($result, k, $1_byte_arr);
+    }
+}
+
+%typemap(javaout) TYPE, const TYPE&, TYPE* {
+    java.util.List<JTYPE> list = new java.util.ArrayList();
+    Object[] fields = $jnicall;
+    if (fields == null) {
+        return null;
+    }
+    try {
+        for (Object o : fields) {
+            list.add(JTYPE.parseFrom((byte[])o));
+        }
+    } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+        e.printStackTrace();
+        return null;
+    }
+    return list;
+}
+
+
+%enddef
+
 #endif

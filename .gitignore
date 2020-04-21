@@ -2,8 +2,10 @@ build
 thirdparty
 thirdsrc
 
+*.dylib
 *.jnilib
 *.so
+*.a
 
 # java ignore
 *.iml
