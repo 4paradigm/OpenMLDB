@@ -5,16 +5,16 @@
 // Date 2017-09-04
 //
 
+#ifndef SRC_ZK_ZK_CLIENT_H_
+#define SRC_ZK_ZK_CLIENT_H_
 
-#ifndef RTIDB_ZK_CLIENT_H
-#define RTIDB_ZK_CLIENT_H
-
-#include "boost/function.hpp"
-#include <mutex>
-#include <condition_variable>
-#include <map>
-#include <vector>
 #include <atomic>
+#include <condition_variable> // NOLINT
+#include <map>
+#include <mutex> // NOLINT
+#include <vector>
+#include <string>
+#include "boost/function.hpp"
 
 extern "C" {
 #include "zookeeper/zookeeper.h"
@@ -23,27 +23,22 @@ extern "C" {
 namespace rtidb {
 namespace zk {
 
-typedef boost::function<void (const std::vector<std::string>& endpoint)> NodesChangedCallback;
+typedef boost::function<void(const std::vector<std::string>& endpoint)>
+    NodesChangedCallback;
 
 const uint32_t ZK_MAX_BUFFER_SIZE = 1024 * 1024;
 
 class ZkClient {
-
-public:
-
+ public:
     // hosts , the zookeeper server lists eg host1:2181,host2:2181
     // session_timeout, the session timeout
     // endpoint, the client endpoint
-    ZkClient(const std::string& hosts, 
-             int32_t session_timeout,
-             const std::string& endpoint,
-             const std::string& zk_root_path);
+    ZkClient(const std::string& hosts, int32_t session_timeout,
+             const std::string& endpoint, const std::string& zk_root_path);
 
-    ZkClient(const std::string &hosts,
-             int32_t session_timeout,
-             const std::string &endpoint,
-             const std::string &zk_root_path,
-             const std::string &zone_path);
+    ZkClient(const std::string& hosts, int32_t session_timeout,
+             const std::string& endpoint, const std::string& zk_root_path,
+             const std::string& zone_path);
     ~ZkClient();
 
     // init zookeeper connections
@@ -63,42 +58,37 @@ public:
     void HandleNodesChanged(int type, int state);
 
     // get all alive nodes
-    bool GetNodes(std::vector<std::string>& endpoints);
+    bool GetNodes(std::vector<std::string>& endpoints); // NOLINT
 
-    bool GetChildren(const std::string& path, std::vector<std::string>& children);
+    bool GetChildren(const std::string& path,
+                     std::vector<std::string>& children); // NOLINT
 
     // log all event from zookeeper
     void LogEvent(int type, int state, const char* path);
 
     bool Mkdir(const std::string& path);
 
-    bool GetNodeValue(const std::string& node, std::string& value);
-    bool GetNodeValueLocked(const std::string& node, std::string& value);
+    bool GetNodeValue(const std::string& node, std::string& value); // NOLINT
+    bool GetNodeValueLocked(const std::string& node, std::string& value); // NOLINT
 
     bool SetNodeValue(const std::string& node, const std::string& value);
 
-    bool SetNodeWatcher(const std::string& node, 
-                        watcher_fn watcher, 
+    bool SetNodeWatcher(const std::string& node, watcher_fn watcher,
                         void* watcherCtx);
 
-    bool WatchChildren(const std::string& node, 
-                       NodesChangedCallback callback);
+    bool WatchChildren(const std::string& node, NodesChangedCallback callback);
 
     void CancelWatchChildren(const std::string& node);
 
-    void HandleChildrenChanged(const std::string& path, 
-                               int type, int state);
+    void HandleChildrenChanged(const std::string& path, int type, int state);
 
-    bool DeleteNode(const std::string& node);                           
+    bool DeleteNode(const std::string& node);
 
     // create a persistence node
-    bool CreateNode(const std::string& node,
-                    const std::string& value);
+    bool CreateNode(const std::string& node, const std::string& value);
 
-    bool CreateNode(const std::string& node, 
-                    const std::string& value, 
-                    int flags,
-                    std::string& assigned_path_name);
+    bool CreateNode(const std::string& node, const std::string& value,
+                    int flags, std::string& assigned_path_name); // NOLINT
 
     bool WatchNodes();
 
@@ -113,18 +103,17 @@ public:
         return registed_.load(std::memory_order_relaxed);
     }
 
-	inline uint64_t GetSessionTerm() {
+    inline uint64_t GetSessionTerm() {
         return session_term_.load(std::memory_order_relaxed);
     }
 
     // when reconnect, need Register and Watchnodes again
     bool Reconnect();
 
-private:
-
+ private:
     void Connected();
-private:
 
+ private:
     // input args
     std::string hosts_;
     int32_t session_timeout_;
@@ -149,7 +138,7 @@ private:
     std::atomic<uint64_t> session_term_;
 };
 
-}
-}
+}  // namespace zk
+}  // namespace rtidb
 
-#endif /* !RTIDB_ZK_CLIENT_H */
+#endif  // SRC_ZK_ZK_CLIENT_H_

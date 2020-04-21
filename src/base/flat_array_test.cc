@@ -1,19 +1,17 @@
 //
 // flat_array_test.cc
-// Copyright 2017 4paradigm.com 
-
+// Copyright 2017 4paradigm.com
 
 #include "base/flat_array.h"
-#include "gtest/gtest.h"
-#include "base/strings.h"
 #include <iostream>
+#include "base/strings.h"
+#include "gtest/gtest.h"
 
 namespace rtidb {
 namespace base {
 
 class FlatArrayTest : public ::testing::Test {
-
-public:
+ public:
     FlatArrayTest() {}
     ~FlatArrayTest() {}
 };
@@ -23,16 +21,16 @@ TEST_F(FlatArrayTest, Decode) {
     FlatArrayCodec codec(&buffer, 5);
     bool ok = codec.Append(1.2f);
     ASSERT_TRUE(ok);
-    std::string big_col1(100,'a'); 
+    std::string big_col1(100, 'a');
     ok = codec.Append(big_col1);
     ASSERT_TRUE(ok);
-    std::string big_col2(127,'b'); 
+    std::string big_col2(127, 'b');
     ok = codec.Append(big_col2);
     ASSERT_TRUE(ok);
-    std::string big_col3(128,'c'); 
+    std::string big_col3(128, 'c');
     ok = codec.Append(big_col3);
     ASSERT_TRUE(ok);
-    std::string big_col4(32767,'e'); 
+    std::string big_col4(32767, 'e');
     ok = codec.Append(big_col4);
     ASSERT_TRUE(ok);
     codec.Build();
@@ -80,7 +78,7 @@ TEST_F(FlatArrayTest, Encode) {
     codec.Build();
     std::cout << buffer.size() << std::endl;
     std::cout << ::rtidb::base::DebugString(buffer) << std::endl;
-    ASSERT_TRUE(buffer.size() == 13);
+    ASSERT_EQ(buffer.size(), 13);
     FlatArrayIterator it(buffer.c_str(), buffer.size(), 2);
     ASSERT_EQ(kFloat, it.GetType());
     ASSERT_TRUE(it.Valid());
@@ -153,10 +151,8 @@ TEST_F(FlatArrayTest, DateEncode) {
     std::cout << ::rtidb::base::DebugString(buffer) << std::endl;
 }
 
-
-
-}
-}
+}  // namespace base
+}  // namespace rtidb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

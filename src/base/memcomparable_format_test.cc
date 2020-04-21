@@ -1,8 +1,12 @@
 /*
  * memcomparable_format_test.cc
+ * Copyright (C) 2017 4paradigm.com
+ * Author wangbao
  */
 
 #include "base/memcomparable_format.h"
+#include <string>
+#include <vector>
 #include "gtest/gtest.h"
 
 namespace rtidb {
@@ -60,7 +64,7 @@ TEST_F(MemComFormatTest, TestIntegersNum) {
     {
         // test big int
         std::vector<std::string> vec;
-        int64_t arr[3] = {-1000, 1000,  0};
+        int64_t arr[3] = {-1000, 1000, 0};
         for (int i = 0; i < 3; i++) {
             int64_t int_64 = arr[i];
             std::string str;
@@ -82,7 +86,7 @@ TEST_F(MemComFormatTest, TestIntegersNum) {
 
 TEST_F(MemComFormatTest, TestFloatingNum) {
     {
-        //  test float 
+        //  test float
         std::vector<std::string> vec;
         float arr[3] = {-6.66, 6.66, 0};
         for (int i = 0; i < 3; i++) {
@@ -128,20 +132,19 @@ TEST_F(MemComFormatTest, TestFloatingNum) {
 TEST_F(MemComFormatTest, TestVarchar) {
     std::vector<std::string> vec;
     int arr_len = 6;
-    std::string arr[arr_len] 
-        = {"12345678", "123456789", "1234567890123456789", 
-            "",         " ",         "1234567"};
+    std::string arr[arr_len] = {"12345678", "123456789", "1234567890123456789",
+                                "",         " ",         "1234567"};
     for (int i = 0; i < arr_len; i++) {
         //  pack varchar
         std::string str = arr[i];
         const char* src = str.c_str();
         size_t str_len = str.length();
         int32_t dst_len = GetDstStrSize(str_len);
-        //printf("--------------step1 dst_len %d\n", dst_len);
+        // printf("--------------step1 dst_len %d\n", dst_len);
         std::string from;
         from.resize(dst_len);
         char* dst = const_cast<char*>(from.data());
-        ASSERT_EQ(PackString(src, str_len, (void**)&dst), 0);
+        ASSERT_EQ(PackString(src, str_len, (void**)&dst), 0);  // NOLINT
         vec.push_back(from);
 
         // unpack varchar

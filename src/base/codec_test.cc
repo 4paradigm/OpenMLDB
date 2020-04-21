@@ -1,25 +1,23 @@
 /*
  * codec_test.cc
+ * Copyright (C) 4paradigm.com 2019
  */
 
-
 #include "base/codec.h"
-#include "storage/segment.h"
+#include <string>
+#include <vector>
+#include "base/kv_iterator.h"
 #include "gtest/gtest.h"
 #include "proto/common.pb.h"
 #include "proto/tablet.pb.h"
-#include "base/kv_iterator.h"
-#include <string>
-#include <vector>
-
+#include "storage/segment.h"
 
 namespace rtidb {
 namespace base {
 
 class CodecTest : public ::testing::Test {
-
-public:
-    CodecTest(){}
+ public:
+    CodecTest() {}
     ~CodecTest() {}
 };
 
@@ -84,10 +82,10 @@ TEST_F(CodecTest, NULLTest) {
     ASSERT_EQ(view.GetBool(1, &val1), 0);
     ASSERT_FALSE(val1);
     ASSERT_EQ(view.GetString(2, &ch, &length), 0);
-    
+
     RowView view2(schema);
     view2.GetValue(reinterpret_cast<int8_t*>(&(row[0])), 2, &ch, &length);
-    std::string ret(ch, length); 
+    std::string ret(ch, length);
     ASSERT_EQ(ret, st);
 }
 
@@ -349,7 +347,8 @@ TEST_F(CodecTest, ManyCol) {
             ASSERT_TRUE(builder.AppendInt64(ts + idx));
             ASSERT_TRUE(builder.AppendDouble(1.3));
         }
-        RowView view(def.column_desc(), reinterpret_cast<int8_t*>(&(row[0])), size);
+        RowView view(def.column_desc(), reinterpret_cast<int8_t*>(&(row[0])),
+                     size);
         for (int idx = 0; idx < col_num; idx++) {
             char* ch = NULL;
             uint32_t length = 0;
@@ -369,9 +368,8 @@ TEST_F(CodecTest, ManyCol) {
     }
 }
 
-
-}
-}
+}  // namespace base
+}  // namespace rtidb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

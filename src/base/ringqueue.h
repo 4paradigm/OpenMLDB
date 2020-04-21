@@ -1,35 +1,36 @@
 //
-// Created by kongsys on 8/15/19.
+// ringqueue.h
+// Copyright (C) 2017 4paradigm.com
+// Author kongquan
+// Date 2019-08-15
 //
 
-#ifndef BASE_RINGQUEUE_H
-#define BASE_RINGQUEUE_H
+#ifndef SRC_BASE_RINGQUEUE_H_
+#define SRC_BASE_RINGQUEUE_H_
 
+#include <condition_variable> // NOLINT
 #include <cstdint>
-#include <mutex>
-#include <condition_variable>
+#include <mutex> // NOLINT
 
 namespace rtidb {
 namespace base {
 
-template<class T>
+template <class T>
 class RingQueue {
-public:
-    RingQueue(uint32_t size = 100):
-    max_size_(size),
-    buf_(new T[size]),
-    head_(0),
-    tail_(0),
-    full_(false) {}
+ public:
+    explicit RingQueue(uint32_t size = 100)
+        : max_size_(size),
+          buf_(new T[size]),
+          head_(0),
+          tail_(0),
+          full_(false) {}
 
-    ~RingQueue() {
-      delete[] buf_;
-    }
+    ~RingQueue() { delete[] buf_; }
     bool full() const { return full_; }
 
     bool empty() const { return (!full_ && (head_ == tail_)); }
 
-    uint32_t capacity() const { return max_size_; };
+    uint32_t capacity() const { return max_size_; }
 
     uint32_t size() const {
         uint32_t size = max_size_;
@@ -57,7 +58,8 @@ public:
 
         return val;
     }
-private:
+
+ private:
     const uint32_t max_size_;
     T* buf_;
     uint32_t head_;
@@ -65,7 +67,7 @@ private:
     bool full_;
 };
 
-}
-}
+}  // namespace base
+}  // namespace rtidb
 
-#endif //RTIDB_RINGQUEUE_H
+#endif  // SRC_BASE_RINGQUEUE_H_

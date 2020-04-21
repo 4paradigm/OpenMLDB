@@ -6,86 +6,81 @@
 //
 
 #include "replica/log_replicator.h"
-#include "replica/replicate_node.h"
-#include <sched.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <gtest/gtest.h>
-#include <stdio.h>
-#include "proto/tablet.pb.h"
-#include "logging.h"
-#include "thread_pool.h"
 #include <brpc/server.h>
+#include <gtest/gtest.h>
+#include <sched.h>
+#include <stdio.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <utility>
+#include "logging.h" // NOLINT
+#include "proto/tablet.pb.h"
+#include "replica/replicate_node.h"
 #include "storage/mem_table.h"
 #include "storage/segment.h"
 #include "storage/ticket.h"
-#include "timer.h"
+#include "thread_pool.h" // NOLINT
+#include "timer.h" // NOLINT
 
-using ::baidu::common::ThreadPool;
-using ::rtidb::storage::Table;
-using ::rtidb::storage::MemTable;
-using ::rtidb::storage::Ticket;
-using ::rtidb::storage::TableIterator;
-using ::rtidb::storage::DataBlock;
-using ::google::protobuf::RpcController;
-using ::google::protobuf::Closure;
-using ::baidu::common::INFO;
 using ::baidu::common::DEBUG;
+using ::baidu::common::INFO;
+using ::baidu::common::ThreadPool;
+using ::google::protobuf::Closure;
+using ::google::protobuf::RpcController;
+using ::rtidb::storage::DataBlock;
+using ::rtidb::storage::MemTable;
+using ::rtidb::storage::Table;
+using ::rtidb::storage::TableIterator;
+using ::rtidb::storage::Ticket;
 
 namespace rtidb {
 namespace replica {
 
-const std::vector<std::string> g_endpoints;    
+const std::vector<std::string> g_endpoints;
 
 class MockTabletImpl : public ::rtidb::api::TabletServer {
-
-public:
-    MockTabletImpl(const ReplicatorRole& role,
-                   const std::string& path,
+ public:
+    MockTabletImpl(const ReplicatorRole& role, const std::string& path,
                    const std::vector<std::string>& endpoints,
-                   std::shared_ptr<MemTable> table): role_(role),
-    path_(path), endpoints_(endpoints), 
-    replicator_(path_, endpoints_, role_, table, &follower_) {
-    }
+                   std::shared_ptr<MemTable> table)
+        : role_(role),
+          path_(path),
+          endpoints_(endpoints),
+          replicator_(path_, endpoints_, role_, table, &follower_) {}
 
-    ~MockTabletImpl() {
-    }
+    ~MockTabletImpl() {}
     bool Init() {
-        //table_ = new Table("test", 1, 1, 8, 0, false, g_endpoints);
-        //table_->Init();
+        // table_ = new Table("test", 1, 1, 8, 0, false, g_endpoints);
+        // table_->Init();
         return replicator_.Init();
     }
 
-    void Put(RpcController* controller,
-             const ::rtidb::api::PutRequest* request,
-             ::rtidb::api::PutResponse* response,
-             Closure* done) {}
+    void Put(RpcController* controller, const ::rtidb::api::PutRequest* request,
+             ::rtidb::api::PutResponse* response, Closure* done) {}
 
     void Scan(RpcController* controller,
               const ::rtidb::api::ScanRequest* request,
-              ::rtidb::api::ScanResponse* response,
-              Closure* done) {}
+              ::rtidb::api::ScanResponse* response, Closure* done) {}
 
     void CreateTable(RpcController* controller,
-            const ::rtidb::api::CreateTableRequest* request,
-            ::rtidb::api::CreateTableResponse* response,
-            Closure* done) {}
+                     const ::rtidb::api::CreateTableRequest* request,
+                     ::rtidb::api::CreateTableResponse* response,
+                     Closure* done) {}
 
     void DropTable(RpcController* controller,
-            const ::rtidb::api::DropTableRequest* request,
-            ::rtidb::api::DropTableResponse* response,
-            Closure* done) {}
+                   const ::rtidb::api::DropTableRequest* request,
+                   ::rtidb::api::DropTableResponse* response, Closure* done) {}
 
     void AppendEntries(RpcController* controller,
-            const ::rtidb::api::AppendEntriesRequest* request,
-            ::rtidb::api::AppendEntriesResponse* response,
-            Closure* done) {
+                       const ::rtidb::api::AppendEntriesRequest* request,
+                       ::rtidb::api::AppendEntriesResponse* response,
+                       Closure* done) {
         bool ok = replicator_.AppendEntries(request, response);
         if (ok) {
             PDLOG(INFO, "receive log entry from leader ok");
             response->set_code(0);
-        }else {
+        } else {
             PDLOG(INFO, "receive log entry from leader error");
             response->set_code(1);
         }
@@ -93,14 +88,11 @@ public:
         replicator_.Notify();
     }
 
-    void SetMode(bool follower) {
-        follower_.store(follower);
-    }
+    void SetMode(bool follower) { follower_.store(follower); }
 
-    bool GetMode() {
-        return follower_.load(std::memory_order_relaxed);
-    }
-private:
+    bool GetMode() { return follower_.load(std::memory_order_relaxed); }
+
+ private:
     ReplicatorRole role_;
     std::string path_;
     std::vector<std::string> endpoints_;
@@ -108,42 +100,39 @@ private:
     std::atomic<bool> follower_;
 };
 
-bool ReceiveEntry(const ::rtidb::api::LogEntry& entry) {
-    return true;
-}
+bool ReceiveEntry(const ::rtidb::api::LogEntry& entry) { return true; }
 
 class LogReplicatorTest : public ::testing::Test {
-
-public:
+ public:
     LogReplicatorTest() {}
 
     ~LogReplicatorTest() {}
 };
 
-inline std::string GenRand() {
-    return std::to_string(rand() % 10000000 + 1);
-}
+inline std::string GenRand() { return std::to_string(rand() % 10000000 + 1); } // NOLINT
 
-TEST_F(LogReplicatorTest,  Init) {
+TEST_F(LogReplicatorTest, Init) {
     std::vector<std::string> endpoints;
     std::string folder = "/tmp/" + GenRand() + "/";
     std::map<std::string, uint32_t> mapping;
     std::atomic<bool> follower(false);
     mapping.insert(std::make_pair("idx", 0));
-    std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", 1, 1, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
+    std::shared_ptr<MemTable> table = std::make_shared<MemTable>(
+        "test", 1, 1, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
     LogReplicator replicator(folder, endpoints, kLeaderNode, table, &follower);
     bool ok = replicator.Init();
     ASSERT_TRUE(ok);
 }
 
-TEST_F(LogReplicatorTest,  BenchMark) {
+TEST_F(LogReplicatorTest, BenchMark) {
     std::vector<std::string> endpoints;
     std::string folder = "/tmp/" + GenRand() + "/";
     std::map<std::string, uint32_t> mapping;
     std::atomic<bool> follower(false);
     mapping.insert(std::make_pair("idx", 0));
-    std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", 1, 1, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
+    std::shared_ptr<MemTable> table = std::make_shared<MemTable>(
+        "test", 1, 1, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
     LogReplicator replicator(folder, endpoints, kLeaderNode, table, &follower);
     bool ok = replicator.Init();
@@ -156,28 +145,29 @@ TEST_F(LogReplicatorTest,  BenchMark) {
     ASSERT_TRUE(ok);
 }
 
-TEST_F(LogReplicatorTest,   LeaderAndFollowerMulti) {
-	brpc::ServerOptions options;
-	brpc::Server server0;
-	brpc::Server server1;
+TEST_F(LogReplicatorTest, LeaderAndFollowerMulti) {
+    brpc::ServerOptions options;
+    brpc::Server server0;
+    brpc::Server server1;
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("card", 0));
     mapping.insert(std::make_pair("merchant", 1));
-    std::shared_ptr<MemTable> t7 = std::make_shared<MemTable>("test", 1, 1, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
+    std::shared_ptr<MemTable> t7 = std::make_shared<MemTable>(
+        "test", 1, 1, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
     t7->Init();
     {
         std::string follower_addr = "127.0.0.1:17527";
         std::string folder = "/tmp/" + GenRand() + "/";
-        MockTabletImpl* follower = new MockTabletImpl(kFollowerNode, 
-                folder, g_endpoints, t7);
+        MockTabletImpl* follower =
+            new MockTabletImpl(kFollowerNode, folder, g_endpoints, t7);
         bool ok = follower->Init();
         ASSERT_TRUE(ok);
-		if (server0.AddService(follower, brpc::SERVER_OWNS_SERVICE) != 0) {
+        if (server0.AddService(follower, brpc::SERVER_OWNS_SERVICE) != 0) {
             ASSERT_TRUE(false);
-    	}
-		if (server0.Start(follower_addr.c_str(), &options) != 0) {
+        }
+        if (server0.Start(follower_addr.c_str(), &options) != 0) {
             ASSERT_TRUE(false);
-    	}
+        }
         PDLOG(INFO, "start follower");
     }
 
@@ -201,7 +191,7 @@ TEST_F(LogReplicatorTest,   LeaderAndFollowerMulti) {
         entry.set_value("value 1");
         ok = leader.AppendEntry(entry);
         ASSERT_TRUE(ok);
-    } 
+    }
     // the second row
     {
         ::rtidb::api::LogEntry entry;
@@ -215,7 +205,7 @@ TEST_F(LogReplicatorTest,   LeaderAndFollowerMulti) {
         entry.set_value("value 2");
         ok = leader.AppendEntry(entry);
         ASSERT_TRUE(ok);
-    } 
+    }
     // the third row
     {
         ::rtidb::api::LogEntry entry;
@@ -226,28 +216,29 @@ TEST_F(LogReplicatorTest,   LeaderAndFollowerMulti) {
         entry.set_value("value 3");
         ok = leader.AppendEntry(entry);
         ASSERT_TRUE(ok);
-    } 
+    }
     leader.Notify();
     std::vector<std::string> vec;
     vec.push_back("127.0.0.1:17528");
     leader.AddReplicateNode(vec);
     sleep(2);
 
-    std::shared_ptr<MemTable> t8 = std::make_shared<MemTable>("test", 1, 1, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
+    std::shared_ptr<MemTable> t8 = std::make_shared<MemTable>(
+        "test", 1, 1, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
     t8->Init();
     {
         std::string follower_addr = "127.0.0.1:17528";
         std::string folder = "/tmp/" + GenRand() + "/";
-        MockTabletImpl* follower = new MockTabletImpl(kFollowerNode, 
-                folder, g_endpoints, t8);
+        MockTabletImpl* follower =
+            new MockTabletImpl(kFollowerNode, folder, g_endpoints, t8);
         bool ok = follower->Init();
         ASSERT_TRUE(ok);
-		if (server1.AddService(follower, brpc::SERVER_OWNS_SERVICE) != 0) {
+        if (server1.AddService(follower, brpc::SERVER_OWNS_SERVICE) != 0) {
             ASSERT_TRUE(false);
-    	}
-		if (server1.Start(follower_addr.c_str(), &options) != 0) {
+        }
+        if (server1.Start(follower_addr.c_str(), &options) != 0) {
             ASSERT_TRUE(false);
-    	}
+        }
         PDLOG(INFO, "start follower");
     }
     sleep(20);
@@ -296,31 +287,31 @@ TEST_F(LogReplicatorTest,   LeaderAndFollowerMulti) {
         it->Next();
         ASSERT_FALSE(it->Valid());
     }
-
 }
 
-TEST_F(LogReplicatorTest,  LeaderAndFollower) {
-	brpc::ServerOptions options;
-	brpc::Server server0;
-	brpc::Server server1;
+TEST_F(LogReplicatorTest, LeaderAndFollower) {
+    brpc::ServerOptions options;
+    brpc::Server server0;
+    brpc::Server server1;
     brpc::Server server2;
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx", 0));
-    std::shared_ptr<MemTable> t7 = std::make_shared<MemTable>("test", 1, 1, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
+    std::shared_ptr<MemTable> t7 = std::make_shared<MemTable>(
+        "test", 1, 1, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
     t7->Init();
     {
         std::string follower_addr = "127.0.0.1:18527";
         std::string folder = "/tmp/" + GenRand() + "/";
-        MockTabletImpl* follower = new MockTabletImpl(kFollowerNode, 
-                folder, g_endpoints, t7);
+        MockTabletImpl* follower =
+            new MockTabletImpl(kFollowerNode, folder, g_endpoints, t7);
         bool ok = follower->Init();
         ASSERT_TRUE(ok);
-		if (server0.AddService(follower, brpc::SERVER_OWNS_SERVICE) != 0) {
+        if (server0.AddService(follower, brpc::SERVER_OWNS_SERVICE) != 0) {
             ASSERT_TRUE(false);
-    	}
-		if (server0.Start(follower_addr.c_str(), &options) != 0) {
+        }
+        if (server0.Start(follower_addr.c_str(), &options) != 0) {
             ASSERT_TRUE(false);
-    	}
+        }
         PDLOG(INFO, "start follower");
     }
 
@@ -355,29 +346,32 @@ TEST_F(LogReplicatorTest,  LeaderAndFollower) {
     leader.AddReplicateNode(vec, 2);
     sleep(2);
 
-    std::shared_ptr<MemTable> t8 = std::make_shared<MemTable>("test", 1, 1, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
+    std::shared_ptr<MemTable> t8 = std::make_shared<MemTable>(
+        "test", 1, 1, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
     t8->Init();
     {
         std::string follower_addr = "127.0.0.1:18528";
         std::string folder = "/tmp/" + GenRand() + "/";
-        MockTabletImpl* follower = new MockTabletImpl(kFollowerNode, 
-                folder, g_endpoints, t8);
+        MockTabletImpl* follower =
+            new MockTabletImpl(kFollowerNode, folder, g_endpoints, t8);
         bool ok = follower->Init();
         ASSERT_TRUE(ok);
-		if (server1.AddService(follower, brpc::SERVER_OWNS_SERVICE) != 0) {
+        if (server1.AddService(follower, brpc::SERVER_OWNS_SERVICE) != 0) {
             ASSERT_TRUE(false);
-    	}
-		if (server1.Start(follower_addr.c_str(), &options) != 0) {
+        }
+        if (server1.Start(follower_addr.c_str(), &options) != 0) {
             ASSERT_TRUE(false);
-    	}
+        }
         PDLOG(INFO, "start follower");
     }
-    std::shared_ptr<MemTable> t9 = std::make_shared<MemTable>("test", 2, 1, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
+    std::shared_ptr<MemTable> t9 = std::make_shared<MemTable>(
+        "test", 2, 1, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
     t9->Init();
     {
         std::string follower_addr = "127.0.0.1:18529";
         std::string folder = "/tmp/" + GenRand() + "/";
-        MockTabletImpl* follower = new MockTabletImpl(kFollowerNode, folder, g_endpoints, t9);
+        MockTabletImpl* follower =
+            new MockTabletImpl(kFollowerNode, folder, g_endpoints, t9);
         bool ok = follower->Init();
         ASSERT_TRUE(ok);
         follower->SetMode(true);
@@ -473,20 +467,21 @@ TEST_F(LogReplicatorTest,  LeaderAndFollower) {
     }
 }
 
-TEST_F(LogReplicatorTest,  Leader_Remove_local_follower) {
+TEST_F(LogReplicatorTest, Leader_Remove_local_follower) {
     brpc::ServerOptions options;
     brpc::Server server0;
     brpc::Server server1;
     brpc::Server server2;
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx", 0));
-    std::shared_ptr<MemTable> t7 = std::make_shared<MemTable>("test", 1, 1, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
+    std::shared_ptr<MemTable> t7 = std::make_shared<MemTable>(
+        "test", 1, 1, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
     t7->Init();
     {
         std::string follower_addr = "127.0.0.1:18527";
         std::string folder = "/tmp/" + GenRand() + "/";
-        MockTabletImpl* follower = new MockTabletImpl(kFollowerNode,
-                                                      folder, g_endpoints, t7);
+        MockTabletImpl* follower =
+            new MockTabletImpl(kFollowerNode, folder, g_endpoints, t7);
         bool ok = follower->Init();
         ASSERT_TRUE(ok);
         if (server0.AddService(follower, brpc::SERVER_OWNS_SERVICE) != 0) {
@@ -529,12 +524,14 @@ TEST_F(LogReplicatorTest,  Leader_Remove_local_follower) {
     leader.AddReplicateNode(vec, 2);
     sleep(2);
 
-    std::shared_ptr<MemTable> t8 = std::make_shared<MemTable>("test", 1, 1, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
+    std::shared_ptr<MemTable> t8 = std::make_shared<MemTable>(
+        "test", 1, 1, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
     t8->Init();
     {
         std::string follower_addr = "127.0.0.1:18528";
         std::string folder = "/tmp/" + GenRand() + "/";
-        MockTabletImpl* follower = new MockTabletImpl(kFollowerNode, folder, g_endpoints, t8);
+        MockTabletImpl* follower =
+            new MockTabletImpl(kFollowerNode, folder, g_endpoints, t8);
         bool ok = follower->Init();
         ASSERT_TRUE(ok);
         if (server1.AddService(follower, brpc::SERVER_OWNS_SERVICE) != 0) {
@@ -545,12 +542,14 @@ TEST_F(LogReplicatorTest,  Leader_Remove_local_follower) {
         }
         PDLOG(INFO, "start follower");
     }
-    std::shared_ptr<MemTable> t9 = std::make_shared<MemTable>("test", 2, 1, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
+    std::shared_ptr<MemTable> t9 = std::make_shared<MemTable>(
+        "test", 2, 1, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
     t9->Init();
     {
         std::string follower_addr = "127.0.0.1:18529";
         std::string folder = "/tmp/" + GenRand() + "/";
-        MockTabletImpl* follower = new MockTabletImpl(kFollowerNode, folder, g_endpoints, t9);
+        MockTabletImpl* follower =
+            new MockTabletImpl(kFollowerNode, folder, g_endpoints, t9);
         bool ok = follower->Init();
         ASSERT_TRUE(ok);
         follower->SetMode(true);
@@ -645,7 +644,6 @@ TEST_F(LogReplicatorTest,  Leader_Remove_local_follower) {
         ASSERT_EQ("value4", value_str3);
         ASSERT_EQ(9524, it->GetKey());
 
-
         it->Next();
         ASSERT_TRUE(it->Valid());
         value = it->GetValue();
@@ -655,14 +653,13 @@ TEST_F(LogReplicatorTest,  Leader_Remove_local_follower) {
     }
 }
 
-}
-}
+}  // namespace replica
+}  // namespace rtidb
 
 int main(int argc, char** argv) {
-    srand (time(NULL));
+    srand(time(NULL));
     ::baidu::common::SetLogLevel(::baidu::common::INFO);
     ::testing::InitGoogleTest(&argc, argv);
     int ok = RUN_ALL_TESTS();
-    return ok; 
+    return ok;
 }
-

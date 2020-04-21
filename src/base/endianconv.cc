@@ -1,4 +1,6 @@
 /* endinconv.c -- Endian conversions utilities.
+ * Copyright (c) 2011-2012, Salvatore Sanfilippo <antirez at gmail dot com>
+ * All rights reserved.
  *
  * This functions are never called directly, but always using the macros
  * defined into endianconv.h, this way we define everything is a non-operation
@@ -12,9 +14,6 @@
  * write(2) without other additional steps.
  *
  * ----------------------------------------------------------------------------
- *
- * Copyright (c) 2011-2012, Salvatore Sanfilippo <antirez at gmail dot com>
- * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -41,8 +40,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-
 #include <stdint.h>
+#include "base/endianconv.h"
 namespace rtidb {
 namespace base {
 
@@ -103,5 +102,5 @@ uint64_t intrev64(uint64_t v) {
     return v;
 }
 
-}
-}
+}  // namespace base
+}  // namespace rtidb

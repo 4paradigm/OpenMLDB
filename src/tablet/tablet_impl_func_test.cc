@@ -1,30 +1,30 @@
 //
 // tablet_impl_func_test.cc
 // Copyright (C) 2017 4paradigm.com
-// Author wangtaize 
+// Author wangtaize
 // Date 2017-04-05
 //
 
-#include "tablet/tablet_impl.h"
+#include <fcntl.h>
+#include <gflags/gflags.h>
+#include <google/protobuf/io/zero_copy_stream_impl.h>
+#include <google/protobuf/text_format.h>
+#include <sys/stat.h>
+#include <boost/lexical_cast.hpp>
+#include "base/file_util.h"
+#include "base/flat_array.h"
+#include "base/kv_iterator.h"
+#include "base/schema_codec.h"
+#include "base/strings.h"
+#include "gtest/gtest.h"
+#include "log/log_reader.h"
+#include "log/log_writer.h"
+#include "logging.h" // NOLINT
 #include "proto/tablet.pb.h"
 #include "storage/mem_table.h"
 #include "storage/ticket.h"
-#include "base/kv_iterator.h"
-#include "gtest/gtest.h"
-#include "logging.h"
-#include "timer.h"
-#include "base/schema_codec.h"
-#include "base/flat_array.h"
-#include <boost/lexical_cast.hpp>
-#include <gflags/gflags.h>
-#include <google/protobuf/text_format.h>
-#include <google/protobuf/io/zero_copy_stream_impl.h>
-#include <sys/stat.h> 
-#include <fcntl.h>
-#include "log/log_writer.h"
-#include "log/log_reader.h"
-#include "base/file_util.h"
-#include "base/strings.h"
+#include "tablet/tablet_impl.h"
+#include "timer.h" // NOLINT
 
 DECLARE_string(db_root_path);
 DECLARE_string(zk_cluster);
@@ -38,13 +38,11 @@ namespace tablet {
 
 using ::rtidb::api::TableStatus;
 
-inline std::string GenRand() {
-    return std::to_string(rand() % 10000000 + 1);
-}
+inline std::string GenRand() { return std::to_string(rand() % 10000000 + 1); } // NOLINT
 
-void CreateBaseTable(::rtidb::storage::Table*& table, 
-        const ::rtidb::api::TTLType& ttl_type,
-        uint64_t ttl, uint64_t start_ts) {
+void CreateBaseTable(::rtidb::storage::Table*& table, // NOLINT
+                     const ::rtidb::api::TTLType& ttl_type, uint64_t ttl,
+                     uint64_t start_ts) {
     ::rtidb::api::TableMeta table_meta;
     table_meta.set_name("table");
     table_meta.set_tid(1);
@@ -107,19 +105,20 @@ void CreateBaseTable(::rtidb::storage::Table*& table,
         ts->set_idx(1);
         ts->set_ts(start_ts + i);
         std::string value = "value" + std::to_string(i);
-        ASSERT_TRUE(table->Put(request.dimensions(), request.ts_dimensions(), value));
+        ASSERT_TRUE(
+            table->Put(request.dimensions(), request.ts_dimensions(), value));
     }
     return;
 }
 
 class TabletFuncTest : public ::testing::Test {
-
-public:
+ public:
     TabletFuncTest() {}
     ~TabletFuncTest() {}
 };
 
-void RunGetTimeIndexAssert(::rtidb::storage::TableIterator* it, uint64_t base_ts, uint64_t expired_ts) {
+void RunGetTimeIndexAssert(::rtidb::storage::TableIterator* it,
+                           uint64_t base_ts, uint64_t expired_ts) {
     ::rtidb::tablet::TabletImpl tablet_impl;
     std::string value;
     uint64_t ts;
@@ -127,7 +126,7 @@ void RunGetTimeIndexAssert(::rtidb::storage::TableIterator* it, uint64_t base_ts
     ::rtidb::api::TableMeta meta;
     // get the st kSubKeyGt
     {
-        //for the legacy
+        // for the legacy
         ::rtidb::api::GetRequest request;
         request.set_ts(100 + base_ts);
         request.set_type(::rtidb::api::GetType::kSubKeyGt);
@@ -142,7 +141,7 @@ void RunGetTimeIndexAssert(::rtidb::storage::TableIterator* it, uint64_t base_ts
 
     // get the st kSubKeyLe
     {
-        //for the legacy
+        // for the legacy
         ::rtidb::api::GetRequest request;
         request.set_ts(100 + base_ts);
         request.set_type(::rtidb::api::GetType::kSubKeyLe);
@@ -157,7 +156,7 @@ void RunGetTimeIndexAssert(::rtidb::storage::TableIterator* it, uint64_t base_ts
 
     // get the st 900kSubKeyLe
     {
-        //for the legacy
+        // for the legacy
         ::rtidb::api::GetRequest request;
         request.set_ts(900 + base_ts);
         request.set_type(::rtidb::api::GetType::kSubKeyLe);
@@ -172,7 +171,7 @@ void RunGetTimeIndexAssert(::rtidb::storage::TableIterator* it, uint64_t base_ts
 
     // get the st 899kSubKeyLe
     {
-        //for the legacy
+        // for the legacy
         ::rtidb::api::GetRequest request;
         request.set_ts(899 + base_ts);
         request.set_type(::rtidb::api::GetType::kSubKeyLe);
@@ -187,7 +186,7 @@ void RunGetTimeIndexAssert(::rtidb::storage::TableIterator* it, uint64_t base_ts
 
     // get the st 800 kSubKeyLe
     {
-        //for the legacy
+        // for the legacy
         ::rtidb::api::GetRequest request;
         request.set_ts(899 + base_ts);
         request.set_type(::rtidb::api::GetType::kSubKeyLe);
@@ -202,7 +201,7 @@ void RunGetTimeIndexAssert(::rtidb::storage::TableIterator* it, uint64_t base_ts
 
     // get the st 800 kSubKeyLe
     {
-        //for the legacy
+        // for the legacy
         ::rtidb::api::GetRequest request;
         request.set_ts(899 + base_ts);
         request.set_type(::rtidb::api::GetType::kSubKeyLe);
@@ -212,9 +211,7 @@ void RunGetTimeIndexAssert(::rtidb::storage::TableIterator* it, uint64_t base_ts
                 &request, meta, &value, &ts);
         ASSERT_EQ(1, code);
     }
-
 }
-
 
 void RunGetLatestIndexAssert(::rtidb::storage::TableIterator* it) {
     ::rtidb::tablet::TabletImpl tablet_impl;
@@ -224,7 +221,7 @@ void RunGetLatestIndexAssert(::rtidb::storage::TableIterator* it) {
     ::rtidb::api::TableMeta meta;
     // get the st kSubKeyGt
     {
-        //for the legacy
+        // for the legacy
         ::rtidb::api::GetRequest request;
         request.set_ts(1100);
         request.set_type(::rtidb::api::GetType::kSubKeyGt);
@@ -288,8 +285,6 @@ void RunGetLatestIndexAssert(::rtidb::storage::TableIterator* it) {
         ASSERT_EQ(ts, 1200);
         ASSERT_EQ(value, "value200");
     }
-
-
 }
 
 TEST_F(TabletFuncTest, GetLatestIndex_default_iterator) {
@@ -304,7 +299,8 @@ TEST_F(TabletFuncTest, GetLatestIndex_ts0_iterator) {
     ::rtidb::storage::Table* table = NULL;
     CreateBaseTable(table, ::rtidb::api::TTLType::kLatestTime, 10, 1000);
     ::rtidb::storage::Ticket ticket;
-    ::rtidb::storage::TableIterator* it = table->NewIterator(0, 0, "card0", ticket);
+    ::rtidb::storage::TableIterator* it =
+        table->NewIterator(0, 0, "card0", ticket);
     RunGetLatestIndexAssert(it);
 }
 
@@ -312,7 +308,8 @@ TEST_F(TabletFuncTest, GetLatestIndex_ts1_iterator) {
     ::rtidb::storage::Table* table = NULL;
     CreateBaseTable(table, ::rtidb::api::TTLType::kLatestTime, 10, 1000);
     ::rtidb::storage::Ticket ticket;
-    ::rtidb::storage::TableIterator* it = table->NewIterator(0, 1, "card0", ticket);
+    ::rtidb::storage::TableIterator* it =
+        table->NewIterator(0, 1, "card0", ticket);
     RunGetLatestIndexAssert(it);
 }
 
@@ -330,7 +327,8 @@ TEST_F(TabletFuncTest, GetTimeIndex_ts0_iterator) {
     ::rtidb::storage::Table* table = NULL;
     CreateBaseTable(table, ::rtidb::api::TTLType::kAbsoluteTime, 1000, base_ts);
     ::rtidb::storage::Ticket ticket;
-    ::rtidb::storage::TableIterator* it = table->NewIterator(0, 0, "card0", ticket);
+    ::rtidb::storage::TableIterator* it =
+        table->NewIterator(0, 0, "card0", ticket);
     RunGetTimeIndexAssert(it, base_ts, base_ts - 100);
 }
 
@@ -339,16 +337,16 @@ TEST_F(TabletFuncTest, GetTimeIndex_ts1_iterator) {
     ::rtidb::storage::Table* table = NULL;
     CreateBaseTable(table, ::rtidb::api::TTLType::kAbsoluteTime, 1000, base_ts);
     ::rtidb::storage::Ticket ticket;
-    ::rtidb::storage::TableIterator* it = table->NewIterator(0, 1, "card0", ticket);
+    ::rtidb::storage::TableIterator* it =
+        table->NewIterator(0, 1, "card0", ticket);
     RunGetTimeIndexAssert(it, base_ts, base_ts - 100);
 }
 
-}
-}
+}  // namespace tablet
+}  // namespace rtidb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
-    srand (time(NULL));
+    srand(time(NULL));
     return RUN_ALL_TESTS();
 }
-

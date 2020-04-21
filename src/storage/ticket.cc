@@ -35,7 +35,5 @@ void Ticket::Pop() {
     }
 }
 
-}
-}
-
-
+}  // namespace storage
+}  // namespace rtidb

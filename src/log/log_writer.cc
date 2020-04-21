@@ -7,9 +7,9 @@
 #include <stdint.h>
 #include "log/coding.h"
 #include "log/crc32c.h"
-#include "logging.h"
-using ::baidu::common::INFO;
+#include "logging.h" // NOLINT
 using ::baidu::common::DEBUG;
+using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
 
 namespace rtidb {
@@ -22,9 +22,7 @@ static void InitTypeCrc(uint32_t* type_crc) {
     }
 }
 
-Writer::Writer(WritableFile* dest)
-    : dest_(dest),
-      block_offset_(0) {
+Writer::Writer(WritableFile* dest) : dest_(dest), block_offset_(0) {
     InitTypeCrc(type_crc_);
 }
 
@@ -33,8 +31,7 @@ Writer::Writer(WritableFile* dest, uint64_t dest_length)
     InitTypeCrc(type_crc_);
 }
 
-Writer::~Writer() {
-}
+Writer::~Writer() {}
 
 Status Writer::EndLog() {
     Slice slice;
@@ -45,9 +42,10 @@ Status Writer::EndLog() {
         const int leftover = kBlockSize - block_offset_;
         assert(leftover >= 0);
         if (leftover < kHeaderSize) {
-          // Switch to a new block
+            // Switch to a new block
             if (leftover > 0) {
-                // Fill the trailer (literal below relies on kHeaderSize being 7)
+                // Fill the trailer (literal below relies on kHeaderSize being
+                // 7)
                 assert(kHeaderSize == 7);
                 dest_->Append(Slice("\x00\x00\x00\x00\x00\x00", leftover));
             }
@@ -79,9 +77,10 @@ Status Writer::AddRecord(const Slice& slice) {
         const int leftover = kBlockSize - block_offset_;
         assert(leftover >= 0);
         if (leftover < kHeaderSize) {
-          // Switch to a new block
+            // Switch to a new block
             if (leftover > 0) {
-                // Fill the trailer (literal below relies on kHeaderSize being 7)
+                // Fill the trailer (literal below relies on kHeaderSize being
+                // 7)
                 assert(kHeaderSize == 7);
                 dest_->Append(Slice("\x00\x00\x00\x00\x00\x00", leftover));
             }
@@ -123,7 +122,7 @@ Status Writer::EmitPhysicalRecord(RecordType t, const char* ptr, size_t n) {
 
     // Compute the crc of the record type and the payload.
     uint32_t crc = Extend(type_crc_[t], ptr, n);
-    crc = Mask(crc);                 // Adjust for storage
+    crc = Mask(crc);  // Adjust for storage
     EncodeFixed32(buf, crc);
 
     // Write the header and the payload

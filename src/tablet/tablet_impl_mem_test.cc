@@ -1,45 +1,38 @@
 //
 // tablet_impl_test.cc
 // Copyright (C) 2017 4paradigm.com
-// Author wangtaize 
+// Author wangtaize
 // Date 2017-04-05
 //
 
-#include "tablet/tablet_impl.h"
-#include "proto/tablet.pb.h"
+#include <gflags/gflags.h>
 #include "base/kv_iterator.h"
+#include "config.h" // NOLINT
 #include "gtest/gtest.h"
-#include "gflags/gflags.h"
-#include "config.h"
-#include "logging.h"
-#include "timer.h"
+#include "logging.h" // NOLINT
+#include "proto/tablet.pb.h"
+#include "tablet/tablet_impl.h"
+#include "timer.h" // NOLINT
 #ifdef TCMALLOC_ENABLE
 #include "gperftools/heap-checker.h"
 #endif
-#include <gflags/gflags.h>
 
 DECLARE_string(db_root_path);
 
 namespace rtidb {
 namespace tablet {
 
-inline std::string GenRand() {
-    return std::to_string(rand() % 10000000 + 1);
-}
-
+inline std::string GenRand() { return std::to_string(rand() % 10000000 + 1); } // NOLINT
 
 class MockClosure : public ::google::protobuf::Closure {
-
-public:
+ public:
     MockClosure() {}
     ~MockClosure() {}
     void Run() {}
-
 };
 
 class TabletImplMemTest : public ::testing::Test {
-
-public:
+ public:
     TabletImplMemTest() {}
     ~TabletImplMemTest() {}
 };
@@ -61,8 +54,7 @@ TEST_F(TabletImplMemTest, TestMem) {
         table_meta->set_ttl(0);
         ::rtidb::api::CreateTableResponse response;
         MockClosure closure;
-        tablet->CreateTable(NULL, &request, &response,
-                &closure);
+        tablet->CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
     // put once
@@ -74,15 +66,13 @@ TEST_F(TabletImplMemTest, TestMem) {
         prequest.set_tid(1);
         prequest.set_pid(1);
         ::rtidb::api::PutResponse presponse;
-        tablet->Put(NULL, &prequest, &presponse,
-                &closure);
+        tablet->Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
         prequest.set_time(0);
-        tablet->Put(NULL, &prequest, &presponse,
-                &closure);
+        tablet->Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(114, presponse.code());
     }
-    // 
+    //
     {
         for (uint32_t i = 0; i < 100; i++) {
             ::rtidb::api::PutRequest prequest;
@@ -92,8 +82,7 @@ TEST_F(TabletImplMemTest, TestMem) {
             prequest.set_tid(1);
             prequest.set_pid(1);
             ::rtidb::api::PutResponse presponse;
-            tablet->Put(NULL, &prequest, &presponse,
-                    &closure);
+            tablet->Put(NULL, &prequest, &presponse, &closure);
             ASSERT_EQ(0, presponse.code());
         }
     }
@@ -124,17 +113,14 @@ TEST_F(TabletImplMemTest, TestMem) {
 #endif
 }
 
-}
-}
+}  // namespace tablet
+}  // namespace rtidb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
-    srand (time(NULL));
+    srand(time(NULL));
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     ::baidu::common::SetLogLevel(::baidu::common::INFO);
     FLAGS_db_root_path = "/tmp/" + ::rtidb::tablet::GenRand();
     return RUN_ALL_TESTS();
 }
-
-
-

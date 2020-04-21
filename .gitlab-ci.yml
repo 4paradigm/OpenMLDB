@@ -5,7 +5,7 @@ stages:
     - it-tablet
     - it-ns
 
-build_rtidb_and_case:
+build_rtidb:
     stage: build
     script:
         - ln -sf /usr/workdir/thirdparty thirdparty
@@ -15,6 +15,15 @@ build_rtidb_and_case:
         expire_in: 2h
         paths:
             - build/bin/rtidb
+
+style_check:
+    stage: build
+    script:
+        - source /root/.bashrc && bash tools/style_check.sh
+    artifacts:
+        reports:
+            junit:
+                - ./style.xml
 
 cpp_ut:
     stage: ut

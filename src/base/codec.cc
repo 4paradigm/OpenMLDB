@@ -17,11 +17,11 @@
 
 #include "base/codec.h"
 #include <unordered_map>
-#include "logging.h"
+#include "logging.h" // NOLINT
 
+using ::baidu::common::DEBUG;
 using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
-using ::baidu::common::DEBUG;
 
 namespace rtidb {
 namespace base {
@@ -63,7 +63,8 @@ RowBuilder::RowBuilder(const Schema& schema)
     for (int idx = 0; idx < schema.size(); idx++) {
         const ::rtidb::common::ColumnDesc& column = schema.Get(idx);
         rtidb::type::DataType cur_type = column.data_type();
-        if (cur_type == ::rtidb::type::kVarchar || cur_type == ::rtidb::type::kString) {
+        if (cur_type == ::rtidb::type::kVarchar ||
+            cur_type == ::rtidb::type::kString) {
             offset_vec_.push_back(str_field_cnt_);
             str_field_cnt_++;
         } else {
@@ -122,7 +123,8 @@ bool RowBuilder::Check(::rtidb::type::DataType type) {
     if (column.data_type() != type) {
         return false;
     }
-    if (column.data_type() != ::rtidb::type::kVarchar && column.data_type() != ::rtidb::type::kString) {
+    if (column.data_type() != ::rtidb::type::kVarchar &&
+        column.data_type() != ::rtidb::type::kString) {
         auto iter = TYPE_SIZE_MAP.find(column.data_type());
         if (iter == TYPE_SIZE_MAP.end()) {
             return false;
@@ -155,7 +157,8 @@ bool RowBuilder::AppendNULL() {
     int8_t* ptr = buf_ + HEADER_LENGTH + (cnt_ >> 3);
     *(reinterpret_cast<uint8_t*>(ptr)) |= 1 << (cnt_ & 0x07);
     const ::rtidb::common::ColumnDesc& column = schema_.Get(cnt_);
-    if (column.data_type() == ::rtidb::type::kVarchar || column.data_type() == rtidb::type::kString) {
+    if (column.data_type() == ::rtidb::type::kVarchar ||
+        column.data_type() == rtidb::type::kString) {
         ptr = buf_ + str_field_start_offset_ +
               str_addr_length_ * offset_vec_[cnt_];
         if (str_addr_length_ == 1) {
@@ -232,7 +235,9 @@ bool RowBuilder::AppendDouble(double val) {
 }
 
 bool RowBuilder::AppendString(const char* val, uint32_t length) {
-    if (val == NULL || (!Check(::rtidb::type::kVarchar) && !Check(rtidb::type::kString))) return false;
+    if (val == NULL ||
+        (!Check(::rtidb::type::kVarchar) && !Check(rtidb::type::kString)))
+        return false;
     if (str_offset_ + length > size_) return false;
     int8_t* ptr =
         buf_ + str_field_start_offset_ + str_addr_length_ * offset_vec_[cnt_];
@@ -290,7 +295,8 @@ bool RowView::Init() {
     for (int idx = 0; idx < schema_.size(); idx++) {
         const ::rtidb::common::ColumnDesc& column = schema_.Get(idx);
         rtidb::type::DataType cur_type = column.data_type();
-        if (cur_type == ::rtidb::type::kVarchar || cur_type == ::rtidb::type::kString) {
+        if (cur_type == ::rtidb::type::kVarchar ||
+            cur_type == ::rtidb::type::kString) {
             offset_vec_.push_back(string_field_cnt_);
             string_field_cnt_++;
         } else {
@@ -582,7 +588,8 @@ int32_t RowView::GetValue(const int8_t* row, uint32_t idx, char** val,
         return -1;
     }
     const ::rtidb::common::ColumnDesc& column = schema_.Get(idx);
-    if (column.data_type() != ::rtidb::type::kVarchar && column.data_type() != ::rtidb::type::kString) {
+    if (column.data_type() != ::rtidb::type::kVarchar &&
+        column.data_type() != ::rtidb::type::kString) {
         return -1;
     }
     uint32_t size = GetSize(row);
@@ -607,7 +614,8 @@ int32_t RowView::GetString(uint32_t idx, char** val, uint32_t* length) {
         return -1;
     }
 
-    if (!CheckValid(idx, ::rtidb::type::kVarchar) && !CheckValid(idx, ::rtidb::type::kString)) {
+    if (!CheckValid(idx, ::rtidb::type::kVarchar) &&
+        !CheckValid(idx, ::rtidb::type::kString)) {
         return -1;
     }
     if (IsNULL(row_, idx)) {
@@ -623,7 +631,7 @@ int32_t RowView::GetString(uint32_t idx, char** val, uint32_t* length) {
                            reinterpret_cast<int8_t**>(val), length);
 }
 
-namespace v1{
+namespace v1 {
 int32_t GetStrField(const int8_t* row, uint32_t field_offset,
                     uint32_t next_str_field_offset, uint32_t str_start_offset,
                     uint32_t addr_space, int8_t** data, uint32_t* size) {

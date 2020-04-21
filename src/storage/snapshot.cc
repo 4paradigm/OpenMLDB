@@ -6,13 +6,13 @@
 //
 
 #include "storage/snapshot.h"
-#include "logging.h"
-#include <google/protobuf/text_format.h>
-#include <google/protobuf/io/zero_copy_stream_impl.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <fcntl.h>
+#include <google/protobuf/io/zero_copy_stream_impl.h>
+#include <google/protobuf/text_format.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include "logging.h" // NOLINT
 
 using ::baidu::common::DEBUG;
 using ::baidu::common::INFO;
@@ -21,11 +21,12 @@ using ::baidu::common::WARNING;
 namespace rtidb {
 namespace storage {
 
-const std::string MANIFEST = "MANIFEST";
+const std::string MANIFEST = "MANIFEST"; // NOLINT
 
-int Snapshot::GenManifest(const std::string& snapshot_name, uint64_t key_count, uint64_t offset, uint64_t term) {
-    PDLOG(DEBUG, "record offset[%lu]. add snapshot[%s] key_count[%lu]",
-                offset, snapshot_name.c_str(), key_count);
+int Snapshot::GenManifest(const std::string& snapshot_name, uint64_t key_count,
+                          uint64_t offset, uint64_t term) {
+    PDLOG(DEBUG, "record offset[%lu]. add snapshot[%s] key_count[%lu]", offset,
+          snapshot_name.c_str(), key_count);
     std::string full_path = snapshot_path_ + MANIFEST;
     std::string tmp_file = snapshot_path_ + MANIFEST + ".tmp";
     ::rtidb::api::Manifest manifest;
@@ -46,20 +47,23 @@ int Snapshot::GenManifest(const std::string& snapshot_name, uint64_t key_count, 
         PDLOG(WARNING, "write error. path[%s]", tmp_file.c_str());
         io_error = true;
     }
-    if (!io_error && ((fflush(fd_write) == EOF) || fsync(fileno(fd_write)) == -1)) {
+    if (!io_error &&
+        ((fflush(fd_write) == EOF) || fsync(fileno(fd_write)) == -1)) {
         PDLOG(WARNING, "flush error. path[%s]", tmp_file.c_str());
         io_error = true;
     }
     fclose(fd_write);
     if (!io_error && rename(tmp_file.c_str(), full_path.c_str()) == 0) {
-        PDLOG(DEBUG, "%s generate success. path[%s]", MANIFEST.c_str(), full_path.c_str());
+        PDLOG(DEBUG, "%s generate success. path[%s]", MANIFEST.c_str(),
+              full_path.c_str());
         return 0;
     }
     unlink(tmp_file.c_str());
     return -1;
 }
 
-int Snapshot::GetLocalManifest(const std::string& full_path, ::rtidb::api::Manifest& manifest) {
+int Snapshot::GetLocalManifest(const std::string& full_path,
+                               ::rtidb::api::Manifest& manifest) {
     int fd = open(full_path.c_str(), O_RDONLY);
     if (fd < 0) {
         PDLOG(INFO, "[%s] is not exist", MANIFEST.c_str());
@@ -74,6 +78,6 @@ int Snapshot::GetLocalManifest(const std::string& full_path, ::rtidb::api::Manif
     }
     return 0;
 }
-   
-}
-}
+
+}  // namespace storage
+}  // namespace rtidb
