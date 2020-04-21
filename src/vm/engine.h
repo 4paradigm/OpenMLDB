@@ -142,8 +142,7 @@ class Engine {
 
     ~Engine();
 
-    bool Get(const std::string& sql,
-             const std::string& db,
+    bool Get(const std::string& sql, const std::string& db,
              RunSession& session,    // NOLINT
              base::Status& status);  // NOLINT
  private:

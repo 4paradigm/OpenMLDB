@@ -43,7 +43,7 @@ using namespace llvm::orc;  // NOLINT (build/namespaces)
 
 namespace fesql {
 namespace vm {
-using fesql::codec::Slice;
+using fesql::base::Slice;
 using fesql::codec::ArrayListV;
 enum EngineRunMode { RUNBATCH, RUNONE };
 class EngineTest : public ::testing::TestWithParam<EngineRunMode> {};
