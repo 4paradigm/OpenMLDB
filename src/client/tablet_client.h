@@ -8,11 +8,11 @@
 #ifndef SRC_CLIENT_TABLET_CLIENT_H_
 #define SRC_CLIENT_TABLET_CLIENT_H_
 
-#include <vector>
-#include <string>
-#include <memory>
 #include <map>
+#include <memory>
+#include <string>
 #include <utility>
+#include <vector>
 #include "base/kv_iterator.h"
 #include "base/schema_codec.h"
 #include "proto/tablet.pb.h"
@@ -60,14 +60,14 @@ class TabletClient {
 
     bool UpdateTableMetaForAddField(
         uint32_t tid, const ::rtidb::common::ColumnDesc& column_desc,
-        const std::string& schema, std::string& msg); // NOLINT
+        const std::string& schema, std::string& msg);  // NOLINT
 
     bool Update(uint32_t tid, uint32_t pid, const Schema& new_cd_schema,
                 const Schema& new_value_schema, const std::string& cd_value,
-                const std::string& value, std::string& msg); // NOLINT
+                const std::string& value, std::string& msg);  // NOLINT
 
     bool Put(uint32_t tid, uint32_t pid, const std::string& value,
-             std::string& msg); // NOLINT
+             std::string& msg);  // NOLINT
 
     bool Put(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time,
              const std::string& value);
@@ -85,50 +85,55 @@ class TabletClient {
              const std::string& value);
 
     bool Get(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time,
-             std::string& value, uint64_t& ts, std::string& msg); // NOLINT
+             std::string& value, uint64_t& ts, std::string& msg);  // NOLINT
 
     bool Get(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time,
-             const std::string& idx_name, std::string& value, uint64_t& ts, // NOLINT
-             std::string& msg); // NOLINT
+             const std::string& idx_name, std::string& value,
+             uint64_t& ts,       // NOLINT
+             std::string& msg);  // NOLINT
 
     bool Get(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time,
              const std::string& idx_name, const std::string& ts_name,
-             std::string& value, uint64_t& ts, std::string& msg); // NOLINT
+             std::string& value, uint64_t& ts, std::string& msg);  // NOLINT
 
     bool Delete(uint32_t tid, uint32_t pid, const std::string& pk,
-                const std::string& idx_name, std::string& msg); // NOLINT
+                const std::string& idx_name, std::string& msg);  // NOLINT
 
     bool Count(uint32_t tid, uint32_t pid, const std::string& pk,
                const std::string& idx_name, bool filter_expired_data,
-               uint64_t& value, std::string& msg); // NOLINT
+               uint64_t& value, std::string& msg);  // NOLINT
 
     bool Count(uint32_t tid, uint32_t pid, const std::string& pk,
                const std::string& idx_name, const std::string& ts_name,
-               bool filter_expired_data, uint64_t& value, std::string& msg); // NOLINT
+               bool filter_expired_data, uint64_t& value,
+               std::string& msg);  // NOLINT
 
     ::rtidb::base::KvIterator* Scan(uint32_t tid, uint32_t pid,
                                     const std::string& pk, uint64_t stime,
                                     uint64_t etime, uint32_t limit,
-                                    uint32_t atleast, std::string& msg); // NOLINT
+                                    uint32_t atleast,
+                                    std::string& msg);  // NOLINT
 
     ::rtidb::base::KvIterator* Scan(uint32_t tid, uint32_t pid,
                                     const std::string& pk, uint64_t stime,
                                     uint64_t etime, const std::string& idx_name,
                                     const std::string& ts_name, uint32_t limit,
-                                    uint32_t atleast, std::string& msg); // NOLINT
+                                    uint32_t atleast,
+                                    std::string& msg);  // NOLINT
 
     ::rtidb::base::KvIterator* Scan(uint32_t tid, uint32_t pid,
                                     const std::string& pk, uint64_t stime,
                                     uint64_t etime, const std::string& idx_name,
                                     uint32_t limit, uint32_t atleast,
-                                    std::string& msg); // NOLINT
+                                    std::string& msg);  // NOLINT
 
     ::rtidb::base::KvIterator* Scan(uint32_t tid, uint32_t pid, const char* pk,
                                     uint64_t stime, uint64_t etime,
-                                    std::string& msg, bool showm = false); // NOLINT
+                                    std::string& msg,
+                                    bool showm = false);  // NOLINT
 
     bool GetTableSchema(uint32_t tid, uint32_t pid,
-                        ::rtidb::api::TableMeta& table_meta); // NOLINT
+                        ::rtidb::api::TableMeta& table_meta);  // NOLINT
 
     bool DropTable(
         uint32_t id, uint32_t pid,
@@ -194,33 +199,37 @@ class TabletClient {
     bool DeleteBinlog(uint32_t tid, uint32_t pid,
                       ::rtidb::common::StorageMode storage_mode);
 
-    bool GetTaskStatus(::rtidb::api::TaskStatusResponse& response); // NOLINT
+    bool GetTaskStatus(::rtidb::api::TaskStatusResponse& response);  // NOLINT
 
     bool DeleteOPTask(const std::vector<uint64_t>& op_id_vec);
 
     bool GetTermPair(uint32_t tid, uint32_t pid,
-                     ::rtidb::common::StorageMode storage_mode, uint64_t& term, // NOLINT
-                     uint64_t& offset, bool& has_table, bool& is_leader); // NOLINT
+                     ::rtidb::common::StorageMode storage_mode,
+                     uint64_t& term,  // NOLINT
+                     uint64_t& offset, bool& has_table,
+                     bool& is_leader);  // NOLINT
 
     bool GetManifest(uint32_t tid, uint32_t pid,
                      ::rtidb::common::StorageMode storage_mode,
-                     ::rtidb::api::Manifest& manifest); // NOLINT
+                     ::rtidb::api::Manifest& manifest);  // NOLINT
 
-    bool GetTableStatus(::rtidb::api::GetTableStatusResponse& response); // NOLINT
+    bool GetTableStatus(
+        ::rtidb::api::GetTableStatusResponse& response);  // NOLINT
     bool GetTableStatus(uint32_t tid, uint32_t pid,
-                        ::rtidb::api::TableStatus& table_status); // NOLINT
+                        ::rtidb::api::TableStatus& table_status);  // NOLINT
     bool GetTableStatus(uint32_t tid, uint32_t pid, bool need_schema,
-                        ::rtidb::api::TableStatus& table_status); // NOLINT
+                        ::rtidb::api::TableStatus& table_status);  // NOLINT
 
     bool FollowOfNoOne(uint32_t tid, uint32_t pid, uint64_t term,
-                       uint64_t& offset); // NOLINT
+                       uint64_t& offset);  // NOLINT
 
-    bool GetTableFollower(uint32_t tid, uint32_t pid, uint64_t& offset, // NOLINT
-                          std::map<std::string, uint64_t>& info_map, // NOLINT
-                          std::string& msg); // NOLINT
+    bool GetTableFollower(uint32_t tid, uint32_t pid,
+                          uint64_t& offset,                           // NOLINT
+                          std::map<std::string, uint64_t>& info_map,  // NOLINT
+                          std::string& msg);                          // NOLINT
 
-    bool GetAllSnapshotOffset(
-        std::map<uint32_t, std::map<uint32_t, uint64_t>>& tid_pid_offset); // NOLINT
+    bool GetAllSnapshotOffset(std::map<uint32_t, std::map<uint32_t, uint64_t>>&
+                                  tid_pid_offset);  // NOLINT
 
     bool BatchQuery(uint32_t tid, uint32_t pid, const std::string& idx_name,
                     const std::vector<std::string>& keys, std::string* msg,
@@ -234,7 +243,8 @@ class TabletClient {
     ::rtidb::base::KvIterator* Traverse(uint32_t tid, uint32_t pid,
                                         const std::string& idx_name,
                                         const std::string& pk, uint64_t ts,
-                                        uint32_t limit, uint32_t& count); // NOLINT
+                                        uint32_t limit,
+                                        uint32_t& count);  // NOLINT
 
     bool Traverse(uint32_t tid, uint32_t pid, const std::string& pk,
                   uint32_t limit, uint32_t* count, std::string* msg,

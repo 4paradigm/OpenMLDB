@@ -20,12 +20,12 @@
 #endif
 #include <snappy.h>
 #include <atomic>
-#include <boost/lexical_cast.hpp>
 #include <map>
 #include <memory>
 #include <mutex>  // NOLINT
 #include <string>
 #include <vector>
+#include <boost/lexical_cast.hpp>
 #include "base/codec.h"
 #include "base/endianconv.h"
 #include "base/field_codec.h"
@@ -90,9 +90,10 @@ class RelationalTable {
                std::string* pairs, uint32_t* count);
     bool Query(const ::google::protobuf::RepeatedPtrField<
                    ::rtidb::api::Columns>& indexs,
-               std::vector<std::string>* return_vec);
+               std::vector<std::shared_ptr<std::string>>* return_vec);
     bool Query(const std::shared_ptr<IndexDef> index_def,
-               const rocksdb::Slice& key_slice, std::vector<std::string>* vec);
+               const rocksdb::Slice& key_slice,
+               std::vector<std::shared_ptr<std::string>>* vec);
 
     bool Delete(
         const ::google::protobuf::RepeatedPtrField<::rtidb::api::Columns>&
@@ -175,7 +176,7 @@ class RelationalTable {
     rocksdb::Iterator* GetRocksdbIterator(uint32_t idx);
     bool PutDB(const std::string& pk, const char* data, uint32_t size);
     bool CreateSchema(const ::rtidb::api::Columns& columns,
-                      std::map<std::string, int>& idx_map, Schema& new_schema);
+                      std::map<std::string, int>* idx_map, Schema* new_schema);
     bool UpdateDB(const std::shared_ptr<IndexDef> index_def,
                   const std::string& comparable_key,
                   const std::map<std::string, int>& col_idx_map,
@@ -183,7 +184,7 @@ class RelationalTable {
     bool GetPackedField(const int8_t* row, uint32_t idx,
                         const ::rtidb::type::DataType& data_type,
                         std::string* key);
-    bool GetPackedField(::rtidb::base::RowView& view, uint32_t idx,
+    bool GetPackedField(const ::rtidb::base::RowView& view, uint32_t idx,
                         const ::rtidb::type::DataType& data_type,
                         std::string* key);
     bool ConvertIndex(const std::string& name, const std::string& value,

@@ -412,7 +412,8 @@ bool RelationalTable::GetPackedField(const int8_t* row, uint32_t idx,
     return true;
 }
 
-bool RelationalTable::GetPackedField(::rtidb::base::RowView& view, uint32_t idx,
+bool RelationalTable::GetPackedField(const ::rtidb::base::RowView& view,
+                                     uint32_t idx,
                                      const ::rtidb::type::DataType& data_type,
                                      std::string* key) {
     int get_value_ret = 0;
@@ -698,15 +699,15 @@ rocksdb::Iterator* RelationalTable::GetIteratorAndSeek(
 bool RelationalTable::Query(
     const ::google::protobuf::RepeatedPtrField<::rtidb::api::ReadOption>& ros,
     std::string* pairs, uint32_t* count) {
-    std::vector<std::string> value_vec;
+    std::vector<std::shared_ptr<std::string>> value_vec;
     uint32_t total_block_size = 0;
     for (auto& ro : ros) {
         if (!Query(ro.index(), &value_vec)) {
             return false;
         }
     }
-    for (std::string& value : value_vec) {
-        total_block_size += value.size();
+    for (const auto& value : value_vec) {
+        total_block_size += value->size();
     }
     uint32_t scount = value_vec.size();
     *count = scount;
@@ -720,15 +721,15 @@ bool RelationalTable::Query(
     char* rbuffer = reinterpret_cast<char*>(&((*pairs)[0]));
     uint32_t offset = 0;
     for (const auto& value : value_vec) {
-        rtidb::base::Encode(value.data(), value.size(), rbuffer, offset);
-        offset += (4 + value.size());
+        rtidb::base::Encode(value->data(), value->size(), rbuffer, offset);
+        offset += (4 + value->size());
     }
     return true;
 }
 
 bool RelationalTable::Query(
     const ::google::protobuf::RepeatedPtrField<::rtidb::api::Columns>& indexs,
-    std::vector<std::string>* return_vec) {
+    std::vector<std::shared_ptr<std::string>>* return_vec) {
     std::string combine_name = "";
     std::string combine_value = "";
     if (!GetCombineStr(indexs, &combine_name, &combine_value)) {
@@ -740,9 +741,9 @@ bool RelationalTable::Query(
     return Query(index_def, rocksdb::Slice(combine_value), return_vec);
 }
 
-bool RelationalTable::Query(const std::shared_ptr<IndexDef> index_def,
-                            const rocksdb::Slice& key_slice,
-                            std::vector<std::string>* return_vec) {
+bool RelationalTable::Query(
+    const std::shared_ptr<IndexDef> index_def, const rocksdb::Slice& key_slice,
+    std::vector<std::shared_ptr<std::string>>* return_vec) {
     uint32_t idx = index_def->GetId();
     ::rtidb::type::IndexType index_type = index_def->GetType();
     std::unique_ptr<rocksdb::Iterator> it(GetIteratorAndSeek(idx, key_slice));
@@ -757,7 +758,7 @@ bool RelationalTable::Query(const std::shared_ptr<IndexDef> index_def,
             return false;
         }
         std::string temp(it->value().data(), it->value().size());
-        return_vec->push_back(temp);
+        return_vec->push_back(std::make_shared<std::string>(temp));
     } else if (index_type == ::rtidb::type::kUnique) {
         if (it->key() != key_slice) {
             PDLOG(DEBUG, "key %s not found. tid %u pid %u",
@@ -803,18 +804,18 @@ bool RelationalTable::Update(const ::google::protobuf::RepeatedPtrField<
     const std::string& col_value = col_columns.value();
     std::map<std::string, int> col_idx_map;
     Schema value_schema;
-    if (!CreateSchema(col_columns, col_idx_map, value_schema)) return false;
+    if (!CreateSchema(col_columns, &col_idx_map, &value_schema)) return false;
     return UpdateDB(index_def, combine_value, col_idx_map, value_schema,
                     col_value);
 }
 
 bool RelationalTable::CreateSchema(const ::rtidb::api::Columns& columns,
-                                   std::map<std::string, int>& idx_map,
-                                   Schema& new_schema) {
+                                   std::map<std::string, int>* idx_map,
+                                   Schema* new_schema) {
     for (int i = 0; i < columns.name_size(); i++) {
         const std::string& name = columns.name(i);
-        idx_map.insert(std::make_pair(name, i));
-        ::rtidb::common::ColumnDesc* col = new_schema.Add();
+        idx_map->insert(std::make_pair(name, i));
+        ::rtidb::common::ColumnDesc* col = new_schema->Add();
         col->set_name(name);
         std::shared_ptr<ColumnDef> column_def = table_column_.GetColumn(name);
         if (!column_def) {
@@ -847,7 +848,7 @@ bool RelationalTable::UpdateDB(const std::shared_ptr<IndexDef> index_def,
         uncompressed_value = uncompressed;
     }
     std::lock_guard<std::mutex> lock(mu_);
-    std::vector<std::string> value_vec;
+    std::vector<std::shared_ptr<std::string>> value_vec;
     bool ok = Query(index_def, rocksdb::Slice(comparable_key), &value_vec);
     if (!ok) {
         PDLOG(WARNING, "get failed, update table tid %u pid %u failed", id_,
@@ -859,13 +860,13 @@ bool RelationalTable::UpdateDB(const std::shared_ptr<IndexDef> index_def,
     for (const auto& temp : value_vec) {
         const Schema& schema = table_meta_.column_desc();
         ::rtidb::base::RowView row_view(
-            schema, reinterpret_cast<int8_t*>(const_cast<char*>(temp.data())),
-            temp.size());
+            schema, reinterpret_cast<int8_t*>(const_cast<char*>(temp->data())),
+            temp->size());
         if (index_type == ::rtidb::type::kUnique ||
             index_type == ::rtidb::type::kNoUnique) {
             if (!GetCombineStr(
                     table_index_.GetPkIndex(),
-                    reinterpret_cast<int8_t*>(const_cast<char*>(temp.data())),
+                    reinterpret_cast<int8_t*>(const_cast<char*>(temp->data())),
                     &pk)) {
                 return false;
             }
