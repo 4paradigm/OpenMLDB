@@ -11,6 +11,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <set>
 #include "base/schema_codec.h"
 #include "log/log_reader.h"
 #include "log/log_writer.h"
@@ -63,10 +64,11 @@ class MemTableSnapshot : public Snapshot {
 
     int ExtractIndexFromSnapshot(
         std::shared_ptr<Table> table, const ::rtidb::api::Manifest& manifest,
-        WriteHandle* wh, const ::rtidb::common::ColumnKey& column_key,  // NOLINT
+        WriteHandle* wh,
+        const ::rtidb::common::ColumnKey& column_key,  // NOLINT
         uint32_t idx, uint32_t partition_num,
-        const std::vector<::rtidb::base::ColumnDesc>& columns,
-        uint32_t max_idx, const std::vector<uint32_t>& index_cols,
+        const std::vector<::rtidb::base::ColumnDesc>& columns, uint32_t max_idx,
+        const std::vector<uint32_t>& index_cols,
         uint64_t& count,                                        // NOLINT
         uint64_t& expired_key_num, uint64_t& deleted_key_num);  // NOLINT
 
@@ -97,6 +99,10 @@ class MemTableSnapshot : public Snapshot {
                                std::atomic<uint64_t>* g_failed_cnt);
 
     uint64_t CollectDeletedKey(uint64_t end_offset);
+
+    bool SerializeToString(::rtidb::api::LogEntry* entry, std::string* str,
+                           const ::rtidb::api::CompressType compress_type,
+                           const std::set<uint32_t>& deleted_index);
 
  private:
     LogParts* log_part_;

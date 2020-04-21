@@ -9,9 +9,9 @@
 
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <unistd.h>
-#include <boost/bind.hpp>
 #include <set>
 #include <utility>
+#include <boost/bind.hpp>
 #include "base/count_down_latch.h"
 #include "base/display.h"
 #include "base/file_util.h"
@@ -1087,6 +1087,53 @@ int MemTableSnapshot::ExtractIndexData(
     return ret;
 }
 
+bool MemTableSnapshot::SerializeToString(
+    ::rtidb::api::LogEntry* entry, std::string* str,
+    const ::rtidb::api::CompressType compress_type,
+    const std::set<uint32_t>& deleted_index) {
+    if (entry->dimensions_size() == 0) {
+        std::string combined_key = entry->pk() + "|0";
+        if (deleted_keys_.find(combined_key) != deleted_keys_.end()) {
+            return false;
+        }
+    } else {
+        std::set<int> deleted_pos_set;
+        for (int pos = 0; pos < entry->dimensions_size(); pos++) {
+            std::string combined_key =
+                entry->dimensions(pos).key() + "|" +
+                std::to_string(entry->dimensions(pos).idx());
+            if (deleted_keys_.find(combined_key) != deleted_keys_.end() ||
+                deleted_index.find(entry->dimensions(pos).idx()) !=
+                    deleted_index.end()) {
+                deleted_pos_set.insert(pos);
+            }
+        }
+        if (!deleted_pos_set.empty()) {
+            if (static_cast<int>(deleted_pos_set.size()) ==
+                entry->dimensions_size()) {
+                return false;
+            } else {
+                ::rtidb::api::LogEntry tmp_entry(*entry);
+                entry->clear_dimensions();
+                for (int pos = 0; pos < tmp_entry.dimensions_size(); pos++) {
+                    if (deleted_pos_set.find(pos) == deleted_pos_set.end()) {
+                        ::rtidb::api::Dimension* dimension =
+                            entry->add_dimensions();
+                        dimension->CopyFrom(tmp_entry.dimensions(pos));
+                    }
+                }
+            }
+        }
+    }
+    if (compress_type == ::rtidb::api::kSnappy) {
+        ::snappy::Uncompress(entry->value().c_str(), entry->value().size(),
+                             str);
+    } else {
+        str->assign(entry->value().c_str(), entry->value().size());
+    }
+    return true;
+}
+
 bool MemTableSnapshot::DumpSnapshotIndexData(
     std::shared_ptr<Table> table, const ::rtidb::common::ColumnKey& column_key,
     const std::vector<uint32_t>& index_cols,
@@ -1143,43 +1190,10 @@ bool MemTableSnapshot::DumpSnapshotIndexData(
             failed_cnt.fetch_add(1, std::memory_order_relaxed);
             continue;
         }
-        if (entry.dimensions_size() == 0) {
-            std::string combined_key = entry.pk() + "|0";
-            if (deleted_keys_.find(combined_key) != deleted_keys_.end()) {
-                continue;
-            }
-        } else {
-            std::set<int> deleted_pos_set;
-            for (int pos = 0; pos < entry.dimensions_size(); pos++) {
-                std::string combined_key =
-                    entry.dimensions(pos).key() + "|" +
-                    std::to_string(entry.dimensions(pos).idx());
-                if (deleted_keys_.find(combined_key) != deleted_keys_.end() ||
-                    deleted_index.count(entry.dimensions(pos).idx())) {
-                    deleted_pos_set.insert(pos);
-                }
-            }
-            if (!deleted_pos_set.empty()) {
-                if (static_cast<int>(deleted_pos_set.size()) ==
-                    entry.dimensions_size()) {
-                    continue;
-                } else {
-                    ::rtidb::api::LogEntry tmp_entry(entry);
-                    entry.clear_dimensions();
-                    for (int pos = 0; pos < tmp_entry.dimensions_size();
-                         pos++) {
-                        if (deleted_pos_set.find(pos) ==
-                            deleted_pos_set.end()) {
-                            ::rtidb::api::Dimension* dimension =
-                                entry.add_dimensions();
-                            dimension->CopyFrom(tmp_entry.dimensions(pos));
-                        }
-                    }
-                    std::string tmp_buf;
-                    entry.SerializeToString(&tmp_buf);
-                    record.reset(tmp_buf.data(), tmp_buf.size());
-                }
-            }
+        std::string buff;
+        if (!SerializeToString(&entry, &buff, table->GetCompressType(),
+                               deleted_index)) {
+            continue;
         }
         std::set<uint32_t> pid_set;
         bool has_main_index = false;
@@ -1191,11 +1205,6 @@ bool MemTableSnapshot::DumpSnapshotIndexData(
         }
         if (!has_main_index) {
             continue;
-        }
-        std::string buff = entry.value();
-        if (table->GetCompressType() == ::rtidb::api::kSnappy) {
-            ::snappy::Uncompress(entry.value().c_str(), entry.value().size(),
-                                 &buff);
         }
         std::vector<std::string> row;
         ::rtidb::base::FillTableRow(max_idx + 1, columns, buff.c_str(),
@@ -1348,43 +1357,10 @@ bool MemTableSnapshot::DumpIndexData(
                   "tid %u, pid %u",
                   cur_offset, entry.log_index(), tid, pid);
         }
-        if (entry.dimensions_size() == 0) {
-            std::string combined_key = entry.pk() + "|0";
-            if (deleted_keys_.find(combined_key) != deleted_keys_.end()) {
-                continue;
-            }
-        } else {
-            std::set<int> deleted_pos_set;
-            for (int pos = 0; pos < entry.dimensions_size(); pos++) {
-                std::string combined_key =
-                    entry.dimensions(pos).key() + "|" +
-                    std::to_string(entry.dimensions(pos).idx());
-                if (deleted_keys_.find(combined_key) != deleted_keys_.end() ||
-                    deleted_index.count(entry.dimensions(pos).idx())) {
-                    deleted_pos_set.insert(pos);
-                }
-            }
-            if (!deleted_pos_set.empty()) {
-                if (static_cast<int>(deleted_pos_set.size()) ==
-                    entry.dimensions_size()) {
-                    continue;
-                } else {
-                    ::rtidb::api::LogEntry tmp_entry(entry);
-                    entry.clear_dimensions();
-                    for (int pos = 0; pos < tmp_entry.dimensions_size();
-                         pos++) {
-                        if (deleted_pos_set.find(pos) ==
-                            deleted_pos_set.end()) {
-                            ::rtidb::api::Dimension* dimension =
-                                entry.add_dimensions();
-                            dimension->CopyFrom(tmp_entry.dimensions(pos));
-                        }
-                    }
-                    std::string tmp_buf;
-                    entry.SerializeToString(&tmp_buf);
-                    record.reset(tmp_buf.data(), tmp_buf.size());
-                }
-            }
+        std::string buff;
+        if (!SerializeToString(&entry, &buff, table->GetCompressType(),
+                               deleted_index)) {
+            continue;
         }
         std::set<uint32_t> pid_set;
         bool has_main_index = false;
@@ -1396,13 +1372,6 @@ bool MemTableSnapshot::DumpIndexData(
         }
         if (!has_main_index) {
             continue;
-        }
-        std::string buff;
-        if (table->GetCompressType() == ::rtidb::api::kSnappy) {
-            ::snappy::Uncompress(entry.value().c_str(), entry.value().size(),
-                                 &buff);
-        } else {
-            buff = entry.value();
         }
         std::vector<std::string> row;
         ::rtidb::base::FillTableRow(max_idx + 1, columns, buff.c_str(),
