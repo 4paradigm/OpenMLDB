@@ -5,12 +5,11 @@
 // Date 2017-07-14
 //
 
+#ifndef SRC_STORAGE_TICKET_H_
+#define SRC_STORAGE_TICKET_H_
 
-#ifndef RTIDB_TICKET_H
-#define RTIDB_TICKET_H
-
-#include "storage/segment.h"
 #include <vector>
+#include "storage/segment.h"
 
 namespace rtidb {
 namespace storage {
@@ -18,18 +17,18 @@ namespace storage {
 class KeyEntry;
 
 class Ticket {
-
-public:
+ public:
     Ticket();
     ~Ticket();
 
     void Push(KeyEntry* entry);
     void Pop();
-private:
+
+ private:
     std::vector<KeyEntry*> entries_;
 };
 
-}
-}
+}  // namespace storage
+}  // namespace rtidb
 
-#endif /* !RTIDB_TICKET_H */
+#endif  // SRC_STORAGE_TICKET_H_

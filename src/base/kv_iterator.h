@@ -1,9 +1,14 @@
-#ifndef RTIDB_BASE_KV_LIST
-#define RTIDB_BASE_KV_LIST
+//
+// base/kv_iterator.h
+// Copyright (C) 2019 4paradigm.com
+//
+#ifndef SRC_BASE_KV_ITERATOR_H_
+#define SRC_BASE_KV_ITERATOR_H_
 
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
+#include <string>
 
 #include "base/slice.h"
 #include "proto/tablet.pb.h"
@@ -12,52 +17,61 @@ namespace rtidb {
 namespace base {
 
 class KvIterator {
-
-public:
-    KvIterator(::rtidb::api::ScanResponse* response):response_(response),buffer_(NULL),
-    tsize_(0),
-    offset_(0), c_size_(0),
-    tmp_(NULL),
-    has_pk_(false),
-    auto_clean_(true){
+ public:
+    explicit KvIterator(::rtidb::api::ScanResponse* response)
+        : response_(response),
+          buffer_(NULL),
+          tsize_(0),
+          offset_(0),
+          c_size_(0),
+          tmp_(NULL),
+          has_pk_(false),
+          auto_clean_(true) {
         buffer_ = reinterpret_cast<char*>(&((*response->mutable_pairs())[0]));
         tmp_ = new Slice();
         tsize_ = response->pairs().size();
         Next();
     }
 
-    KvIterator(::rtidb::api::TraverseResponse* response):response_(response),buffer_(NULL),
-    tsize_(0),
-    offset_(0), c_size_(0),
-    tmp_(NULL),
-    has_pk_(true),
-    auto_clean_(true){
+    explicit KvIterator(::rtidb::api::TraverseResponse* response)
+        : response_(response),
+          buffer_(NULL),
+          tsize_(0),
+          offset_(0),
+          c_size_(0),
+          tmp_(NULL),
+          has_pk_(true),
+          auto_clean_(true) {
         buffer_ = reinterpret_cast<char*>(&((*response->mutable_pairs())[0]));
         tmp_ = new Slice();
         tsize_ = response->pairs().size();
         Next();
     }
 
-    KvIterator(::rtidb::api::ScanResponse* response,
-               bool clean):response_(response),buffer_(NULL),
-    tsize_(0),
-    offset_(0), c_size_(0),
-    tmp_(NULL),
-    has_pk_(false),
-    auto_clean_(clean){
+    KvIterator(::rtidb::api::ScanResponse* response, bool clean)
+        : response_(response),
+          buffer_(NULL),
+          tsize_(0),
+          offset_(0),
+          c_size_(0),
+          tmp_(NULL),
+          has_pk_(false),
+          auto_clean_(clean) {
         buffer_ = reinterpret_cast<char*>(&((*response->mutable_pairs())[0]));
         tsize_ = response->pairs().size();
         tmp_ = new Slice();
         Next();
     }
 
-    KvIterator(::rtidb::api::TraverseResponse* response,
-               bool clean):response_(response),buffer_(NULL),
-    tsize_(0),
-    offset_(0), c_size_(0),
-    tmp_(NULL),
-    has_pk_(true),
-    auto_clean_(clean){
+    KvIterator(::rtidb::api::TraverseResponse* response, bool clean)
+        : response_(response),
+          buffer_(NULL),
+          tsize_(0),
+          offset_(0),
+          c_size_(0),
+          tmp_(NULL),
+          has_pk_(true),
+          auto_clean_(clean) {
         buffer_ = reinterpret_cast<char*>(&((*response->mutable_pairs())[0]));
         tsize_ = response->pairs().size();
         tmp_ = new Slice();
@@ -78,7 +92,7 @@ public:
         if (has_pk_) {
             if (tsize_ < 16) {
                 return false;
-            }    
+            }
         } else {
             if (tsize_ < 12) {
                 return false;
@@ -122,19 +136,13 @@ public:
         }
     }
 
-    uint64_t GetKey() const {
-        return time_; 
-    }
+    uint64_t GetKey() const { return time_; }
 
-    std::string GetPK() const {
-        return pk_; 
-    }
+    std::string GetPK() const { return pk_; }
 
-    Slice& GetValue() const {
-        return *tmp_;
-    }
+    Slice& GetValue() const { return *tmp_; }
 
-private:
+ private:
     ::google::protobuf::Message* response_;
     char* buffer_;
     uint32_t tsize_;
@@ -147,6 +155,6 @@ private:
     bool auto_clean_;
 };
 
-}
-}
-#endif
+}  // namespace base
+}  // namespace rtidb
+#endif  // SRC_BASE_KV_ITERATOR_H_

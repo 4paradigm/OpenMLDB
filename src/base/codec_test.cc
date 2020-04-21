@@ -1,25 +1,23 @@
 /*
  * codec_test.cc
+ * Copyright (C) 4paradigm.com 2019
  */
 
-
 #include "base/codec.h"
-#include "storage/segment.h"
+#include <string>
+#include <vector>
+#include "base/kv_iterator.h"
 #include "gtest/gtest.h"
 #include "proto/common.pb.h"
 #include "proto/tablet.pb.h"
-#include "base/kv_iterator.h"
-#include <string>
-#include <vector>
-
+#include "storage/segment.h"
 
 namespace rtidb {
 namespace base {
 
 class CodecTest : public ::testing::Test {
-
-public:
-    CodecTest(){}
+ public:
+    CodecTest() {}
     ~CodecTest() {}
 };
 
@@ -29,7 +27,6 @@ TEST_F(CodecTest, EncodeRows_empty) {
     int32_t size = ::rtidb::base::EncodeRows(data, 0, &pairs);
     ASSERT_EQ(size, 0);
 }
-
 
 TEST_F(CodecTest, EncodeRows_invalid) {
     std::vector<std::pair<uint64_t, ::rtidb::base::Slice>> data;
@@ -42,10 +39,14 @@ TEST_F(CodecTest, EncodeRows) {
     std::string test1 = "value1";
     std::string test2 = "value2";
     std::string empty;
-    uint32_t total_block_size = test1.length() + test2.length() + empty.length();
-    data.push_back(std::make_pair(1, ::rtidb::base::Slice(test1.c_str(), test1.length())));
-    data.push_back(std::make_pair(2, ::rtidb::base::Slice(test2.c_str(), test2.length())));
-    data.push_back(std::make_pair(3, ::rtidb::base::Slice(empty.c_str(), empty.length())));
+    uint32_t total_block_size =
+        test1.length() + test2.length() + empty.length();
+    data.push_back(
+        std::make_pair(1, ::rtidb::base::Slice(test1.c_str(), test1.length())));
+    data.push_back(
+        std::make_pair(2, ::rtidb::base::Slice(test2.c_str(), test2.length())));
+    data.push_back(
+        std::make_pair(3, ::rtidb::base::Slice(empty.c_str(), empty.length())));
     std::string pairs;
     int32_t size = ::rtidb::base::EncodeRows(data, total_block_size, &pairs);
     ASSERT_EQ(size, 3 * 12 + 6 + 6);
@@ -85,10 +86,10 @@ TEST_F(CodecTest, NULLTest) {
     ASSERT_EQ(view.GetBool(1, &val1), 0);
     ASSERT_FALSE(val1);
     ASSERT_EQ(view.GetString(2, &ch, &length), 0);
-    
+
     RowView view2(schema);
     view2.GetValue(reinterpret_cast<int8_t*>(&(row[0])), 2, &ch, &length);
-    std::string ret(ch, length); 
+    std::string ret(ch, length);
     ASSERT_EQ(ret, st);
 }
 
@@ -350,7 +351,8 @@ TEST_F(CodecTest, ManyCol) {
             ASSERT_TRUE(builder.AppendInt64(ts + idx));
             ASSERT_TRUE(builder.AppendDouble(1.3));
         }
-        RowView view(def.column_desc(), reinterpret_cast<int8_t*>(&(row[0])), size);
+        RowView view(def.column_desc(), reinterpret_cast<int8_t*>(&(row[0])),
+                     size);
         for (int idx = 0; idx < col_num; idx++) {
             char* ch = NULL;
             uint32_t length = 0;
@@ -370,9 +372,8 @@ TEST_F(CodecTest, ManyCol) {
     }
 }
 
-
-}
-}
+}  // namespace base
+}  // namespace rtidb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

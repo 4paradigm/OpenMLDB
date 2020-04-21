@@ -1,8 +1,9 @@
 /**
+ * Copyright (C) 2017 4paradigm.com
  * field_codec_test.cc
  */
-
-#include "base/field_codec.h" 
+#include <vector>
+#include "base/field_codec.h"
 #include "gtest/gtest.h"
 
 namespace rtidb {
@@ -81,36 +82,36 @@ TEST_F(SingleColumnCodecTest, TestEncodec) {
          */
         bool v1 = false;
         ::rtidb::base::GetBool(vec[0].data(), &v1);
-        ASSERT_EQ(v1, true); 
+        ASSERT_EQ(v1, true);
 
         bool v2 = true;
         ::rtidb::base::GetBool(vec[1].data(), &v2);
-        ASSERT_EQ(v2, false); 
+        ASSERT_EQ(v2, false);
 
         int16_t v3 = 0;
         ::rtidb::base::GetInt16(vec[2].data(), &v3);
-        ASSERT_EQ(v3, 33); 
+        ASSERT_EQ(v3, 33);
 
         int32_t v4 = 0;
         ::rtidb::base::GetInt32(vec[3].data(), &v4);
-        ASSERT_EQ(v4, 44); 
+        ASSERT_EQ(v4, 44);
 
         int64_t v5 = 0;
         ::rtidb::base::GetInt64(vec[4].data(), &v5);
-        ASSERT_EQ(v5, 55); 
+        ASSERT_EQ(v5, 55);
 
         float v6 = 0.0;
         ::rtidb::base::GetFloat(vec[5].data(), &v6);
-        ASSERT_EQ(v6, 3.3f); 
+        ASSERT_EQ(v6, 3.3f);
 
         double v7 = 0.0;
         ::rtidb::base::GetDouble(vec[6].data(), &v7);
-        ASSERT_EQ(v7, 4.4); 
+        ASSERT_EQ(v7, 4.4);
     }
 }
 
-} //namespace base
-} //namespace rtidb
+}  // namespace base
+}  // namespace rtidb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
