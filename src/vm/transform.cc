@@ -1301,32 +1301,12 @@ bool FilterOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
                                            &and_conditions)) {
                 return false;
             }
-
-            vm::SchemasContext ctx(join_op->output_name_schema_list_);
             node::ExprListNode new_and_conditions;
             std::vector<ExprPair> condition_eq_pair;
-
-            for (auto expr : and_conditions.children_) {
-                ExprPair expr_pair;
-                if (TransformEqualExprPair(expr, &expr_pair)) {
-                    const RowSchemaInfo* info_left;
-                    const RowSchemaInfo* info_right;
-                    if (!ctx.ExprRefResolved(expr_pair.first, &info_left)) {
-                        continue;
-                    }
-                    if (!ctx.ExprRefResolved(expr_pair.second, &info_right)) {
-                        continue;
-                    }
-                    if (nullptr == info_left || nullptr == info_right) {
-                        continue;
-                    }
-                    if (info_left == info_right) {
-                        continue;
-                    }
-                    condition_eq_pair.push_back(expr_pair);
-                } else {
-                    new_and_conditions.AddChild(expr);
-                }
+            if (!TransformEqualExprPair(join_op->output_name_schema_list_,
+                                        &and_conditions, &new_and_conditions,
+                                        condition_eq_pair)) {
+                return false;
             }
         }
         default: {
@@ -1391,8 +1371,8 @@ bool FilterOptimized::TransfromAndConditionList(
 }
 // Transform equal condition to expression pair
 // e.g. t1.col1 = t2.col1 -> pair(t1.col1, t2.col1)
-bool FilterOptimized::TransformEqualExprPair(node::ExprNode* condition,
-                                             ExprPair* expr_pair) {
+bool FilterOptimized::ExtractEqualExprPair(node::ExprNode* condition,
+                                           ExprPair* expr_pair) {
     if (nullptr == condition) {
         return false;
     }
@@ -1402,8 +1382,7 @@ bool FilterOptimized::TransformEqualExprPair(node::ExprNode* condition,
                 dynamic_cast<const node::UnaryExpr*>(condition);
             switch (expr->GetOp()) {
                 case node::kFnOpBracket: {
-                    return TransformEqualExprPair(expr->children_[0],
-                                                  expr_pair);
+                    return ExtractEqualExprPair(expr->children_[0], expr_pair);
                 }
                 default: {
                     return false;
@@ -1428,6 +1407,37 @@ bool FilterOptimized::TransformEqualExprPair(node::ExprNode* condition,
             return false;
         }
     }
+}
+bool FilterOptimized::TransformEqualExprPair(
+    const std::vector<std::pair<const std::string, const vm::Schema*>>
+        name_schema_list,
+    node::ExprListNode* and_conditions, node::ExprListNode* out_condition_list,
+    std::vector<ExprPair>& condition_eq_pair) {  // NOLINT
+    vm::SchemasContext ctx(name_schema_list);
+    for (auto expr : and_conditions->children_) {
+        ExprPair expr_pair;
+        if (ExtractEqualExprPair(expr, &expr_pair)) {
+            const RowSchemaInfo* info_left;
+            const RowSchemaInfo* info_right;
+            if (!ctx.ExprRefResolved(expr_pair.first, &info_left)) {
+                continue;
+            }
+            if (!ctx.ExprRefResolved(expr_pair.second, &info_right)) {
+                continue;
+            }
+            if (nullptr == info_left || nullptr == info_right) {
+                continue;
+            }
+            if (info_left == info_right) {
+                continue;
+            }
+            condition_eq_pair.push_back(expr_pair);
+        } else {
+            out_condition_list->AddChild(expr);
+        }
+    }
+
+    return !condition_eq_pair.empty();
 }
 bool LimitOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
     *output = in;

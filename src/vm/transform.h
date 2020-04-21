@@ -165,8 +165,14 @@ class FilterOptimized : public TransformUpPysicalPass {
     static bool TransfromAndConditionList(
         const node::ExprNode* condition,
         node::ExprListNode* and_condition_list);
-    static bool TransformEqualExprPair(node::ExprNode* condition,
-                                       ExprPair* expr_pair);
+    static bool ExtractEqualExprPair(node::ExprNode* condition,
+                                     ExprPair* expr_pair);
+    static bool TransformEqualExprPair(
+        const std::vector<std::pair<const std::string, const vm::Schema*>>
+            name_schema_list,
+        node::ExprListNode* and_conditions,
+        node::ExprListNode* out_condition_list,
+        std::vector<ExprPair>& condition_eq_pair);  // NOLINT
 
  private:
     virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);

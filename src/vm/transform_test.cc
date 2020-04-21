@@ -613,50 +613,57 @@ TEST_F(TransformTest, TransfromConditionsTest) {
     }
 }
 
-TEST_F(TransformTest, TransfromEqExprPairTest) {
-    //    std::vector<std::pair<const std::string, const vm::Schema*>>
-    //    name_schemas; type::TableDef t1; type::TableDef t2;
-    //    {
-    //        BuildTableDef(t1);
-    //        name_schemas.push_back(std::make_pair("t1", &t1.columns()));
-    //    }
-    //    {
-    //        BuildTableT2Def(t2);
-    //        name_schemas.push_back(std::make_pair("t2", &t2.columns()));
-    //    }
-    //    std::vector<std::pair<std::string, std::pair<std::string,
-    //    std::string>>>
-    //        sql_exp;
-    //
-    //    sql_exp.push_back(std::make_pair("select t1.col1=t2.col1 from t1,t2;",
-    //                                     std::make_pair("t1.col1",
-    //                                     "t2.col1")));
-    //
-    //    sql_exp.push_back(std::make_pair("select t2.col1=t1.col1 from t1,t2;",
-    //                                     std::make_pair("t2.col1",
-    //                                     "t1.col1")));
-    //
-    //    // Fail Extract Equal Pair
-    //    sql_exp.push_back(std::make_pair(
-    //        "select t2.col1+t1.col1=t2.col3 from t1,t2;", std::make_pair("",
-    //        "")));
-    //
-    //    for (size_t i = 0; i < sql_exp.size(); i++) {
-    //        std::string sql = sql_exp[i].first;
-    //        std::pair<std::string, std::string>& exp_list = sql_exp[i].second;
-    //        ::fesql::node::NodeManager manager;
-    //        node::ExprNode* condition;
-    //        boost::to_lower(sql);
-    //        ExtractExprFromSimpleSQL(&manager, sql, &condition);
-    //        LOG(INFO) << "TEST condition [" << i
-    //                  << "]: " << node::ExprString(condition);
-    //        node::ExprListNode and_condition_list;
-    //        std::pair<node::ExprNode*, node::ExprNode*> expr_pair;
-    //        FilterOptimized::TransformEqualExprPair(ctx, condition,
-    //        &expr_pair); ASSERT_EQ(exp_list.first,
-    //        node::ExprString(expr_pair.first)); ASSERT_EQ(exp_list.second,
-    //        node::ExprString(expr_pair.second));
-    //    }
+TEST_F(TransformTest, TransformEqualExprPairTest) {
+    std::vector<std::pair<const std::string, const vm::Schema*>> name_schemas;
+    type::TableDef t1;
+    type::TableDef t2;
+    {
+        BuildTableDef(t1);
+        name_schemas.push_back(std::make_pair("t1", &t1.columns()));
+    }
+    {
+        BuildTableT2Def(t2);
+        name_schemas.push_back(std::make_pair("t2", &t2.columns()));
+    }
+    std::vector<std::pair<std::string, std::pair<std::string, std::string>>>
+        sql_exp;
+
+    sql_exp.push_back(std::make_pair("select t1.col1=t2.col1 from t1,t2;",
+                                     std::make_pair("t1.col1", "t2.col1")));
+
+    sql_exp.push_back(std::make_pair("select t2.col1=t1.col1 from t1,t2;",
+                                     std::make_pair("t2.col1", "t1.col1")));
+
+    // Fail Extract Equal Pair
+    sql_exp.push_back(std::make_pair(
+        "select t2.col1+t1.col1=t2.col3 from t1,t2;", std::make_pair("", "")));
+
+    for (size_t i = 0; i < sql_exp.size(); i++) {
+        std::string sql = sql_exp[i].first;
+        std::pair<std::string, std::string>& exp_list = sql_exp[i].second;
+        ::fesql::node::NodeManager manager;
+        node::ExprNode* condition;
+        boost::to_lower(sql);
+        ExtractExprFromSimpleSQL(&manager, sql, &condition);
+        LOG(INFO) << "TEST condition [" << i
+                  << "]: " << node::ExprString(condition);
+        node::ExprListNode mock_condition_list;
+        mock_condition_list.AddChild(condition);
+
+        node::ExprListNode out_condition_list;
+        std::vector<std::pair<node::ExprNode*, node::ExprNode*>>
+            mock_expr_pairs;
+
+        FilterOptimized::TransformEqualExprPair(
+            name_schemas, &mock_condition_list, &out_condition_list,
+            mock_expr_pairs);
+
+        std::pair<node::ExprNode*, node::ExprNode*> expr_pair =
+            mock_expr_pairs.empty() ? std::make_pair(nullptr, nullptr)
+                                    : mock_expr_pairs[0];
+        ASSERT_EQ(exp_list.first, node::ExprString(expr_pair.first));
+        ASSERT_EQ(exp_list.second, node::ExprString(expr_pair.second));
+    }
 }
 }  // namespace vm
 }  // namespace fesql
