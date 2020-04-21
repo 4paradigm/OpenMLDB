@@ -45,8 +45,9 @@ class DummyRunner : public Runner {
         return nullptr;
     }
 
-    Slice RunRowProject(RawFunctionPtr fn, const Slice slice) {
-        return this->RowProject(fn, slice);
+    fesql::codec::Row RunRowProject(RawFunctionPtr fn,
+                                    const fesql::codec::Row row) {
+        return this->RowProject(fn, row);
     }
 };
 

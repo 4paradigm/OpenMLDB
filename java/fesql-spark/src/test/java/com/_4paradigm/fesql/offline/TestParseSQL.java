@@ -2,6 +2,7 @@ package com._4paradigm.fesql.offline;
 
 import com._4paradigm.fesql.base.BaseStatus;
 import com._4paradigm.fesql.base.Slice;
+import com._4paradigm.fesql.codec.Row;
 import com._4paradigm.fesql.codec.RowBuilder;
 import com._4paradigm.fesql.codec.RowView;
 import com._4paradigm.fesql.type.TypeOuterClass;
@@ -96,10 +97,10 @@ public class TestParseSQL {
         builder.AppendDouble(3.14);
         builder.AppendInt32(42);
 
-        Slice slice = new Slice(rowBuf);
+        Row row = new Row(rowBuf);
         long fn = jit.FindFunction(root.GetFnName());
         DummyRunner runner = new DummyRunner();
-        Slice output = runner.RunRowProject(fn, slice);
+        Row output = runner.RunRowProject(fn, row);
 
         RowView rowView = new RowView(root.GetOutputSchema());
         rowView.Reset(output.buf(), Long.valueOf(output.size()).intValue());
@@ -107,7 +108,7 @@ public class TestParseSQL {
         assertEquals(42, rowView.GetInt32Unsafe(1));
 
         output.delete();
-        slice.delete();
+        row.delete();
         runner.delete();
     }
 }

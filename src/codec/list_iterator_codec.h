@@ -18,36 +18,11 @@
 #include "codec/type_codec.h"
 #include "glog/logging.h"
 #include "base/slice.h"
+#include "codec/row.h"
 namespace fesql {
 namespace codec {
 using fesql::base::Slice;
-class Row {
- public:
-    Row() : slice_() {}
-    Row(int8_t *d, size_t n) : slice_(d, n, false) {}
-    Row(int8_t *d, size_t n, bool need_free) : slice_(d, n, need_free) {}
-    Row(const char *d, size_t n) : slice_(d, n, false) {}
-    Row(const char *d, size_t n, bool need_free) : slice_(d, n, need_free) {}
-    Row(Row &s) : slice_(s.slice_), slices_(s.slices_) {}
-    Row(const Row &s) : slice_(s.slice_), slices_(s.slices_) {}
-    explicit Row(const Slice &s) : slice_(s) {}
-    explicit Row(const std::string &s) : slice_(s) {}
 
-    explicit Row(const char *s) : slice_(s) {}
-    virtual ~Row() {}
-    inline int8_t *buf() const { return slice_.buf(); }
-    inline const char *data() const { return slice_.data(); }
-    inline int32_t size() const { return slice_.size(); }
-    // Return true if the length of the referenced data is zero
-    inline bool empty() const { return slice_.empty() && slices_.empty(); }
-    // Three-way comparison.  Returns value:
-    //   <  0 iff "*this" <  "b",
-    //   == 0 iff "*this" == "b",
-    //   >  0 iff "*this" >  "b"
-    int compare(const Row &b) const;
-    Slice slice_;
-    std::vector<Slice> slices_;
-};
 inline int Row::compare(const Row &b) const {
     int r = slice_.compare(b.slice_);
     if (r != 0) {

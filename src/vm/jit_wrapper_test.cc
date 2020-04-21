@@ -74,16 +74,16 @@ TEST_F(JITWrapperTest, test) {
     row_builder.AppendDouble(3.14);
     row_builder.AppendInt32(42);
 
-    Slice slice(buf, 1024);
+    fesql::codec::Row row(buf, 1024);
     DummyRunner runner;
 
-    Slice output = runner.RunRowProject(fn, slice);
+    fesql::codec::Row output = runner.RunRowProject(fn, row);
 
-    codec::RowView row(*schema, output.buf(), output.size());
+    codec::RowView row_view(*schema, output.buf(), output.size());
     double c1;
     int32_t c2;
-    ASSERT_EQ(row.GetDouble(0, &c1), 0);
-    ASSERT_EQ(row.GetInt32(1, &c2), 0);
+    ASSERT_EQ(row_view.GetDouble(0, &c1), 0);
+    ASSERT_EQ(row_view.GetInt32(1, &c2), 0);
     ASSERT_EQ(c1, 3.14);
     ASSERT_EQ(c2, 42);
 }

@@ -104,12 +104,6 @@ class RowView {
     bool Reset(const int8_t* row, uint32_t size);
     bool Reset(const int8_t* row);
     bool Reset(const fesql::base::RawBuffer& buf);
-
-    void show() {
-        printf("row buf: %lld\n",
-            reinterpret_cast<long long int>(row_));  // NOLINT
-    }
-
     int32_t GetBool(uint32_t idx, bool* val);
     int32_t GetInt32(uint32_t idx, int32_t* val);
     int32_t GetInt64(uint32_t idx, int64_t* val);

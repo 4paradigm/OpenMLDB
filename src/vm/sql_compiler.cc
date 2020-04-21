@@ -116,7 +116,7 @@ void SQLCompiler::KeepIR(SQLContext& ctx, llvm::Module* m) {
     llvm::raw_string_ostream buf(ctx.ir);
     llvm::WriteBitcodeToFile(*m, buf);
     buf.flush();
-    LOG(INFO) << "keep ir length: " << ctx.ir.size();
+    DLOG(INFO) << "keep ir length: " << ctx.ir.size();
 }
 
 bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
