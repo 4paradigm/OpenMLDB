@@ -191,7 +191,7 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
                     keys_idxs.push_back(idx++);
                 }
                 CodeGenExprList(
-                    (node->GetProducers()[0]->GetOutputNameSchemaList()),
+                    node->GetProducers()[0]->GetOutputNameSchemaList(),
                     seek_op->keys_, true, fn_name, &fn_schema, status);
                 seek_op->SetKeysIdxs(keys_idxs);
             }
@@ -305,10 +305,11 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
                     // Gen left table key
                     FnInfo left_key_fn_info;
                     CodeGenExprList(
-                        (node->GetProducers()[0]->GetOutputNameSchemaList()),
+                        node->GetProducers()[0]->GetOutputNameSchemaList(),
                         &expr_list, true, left_key_fn_info.fn_name_,
                         &left_key_fn_info.fn_schema_, status);
                     join_op->SetLeftKeyInfo(left_key_fn_info);
+                    join_op->SetLeftKeysIdxs(keys_idxs);
                 }
             }
             break;
@@ -533,6 +534,7 @@ bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
                     return false;
                 }
             }
+            break;
         }
         case kPhysicalOpRequestJoin: {
             auto join_op = dynamic_cast<PhysicalRequestJoinNode*>(depend);
@@ -600,6 +602,7 @@ bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
                         LOG(WARNING) << status.msg;
                         return false;
                     }
+                    break;
                 }
                 default: {
                     // do nothing
@@ -1090,8 +1093,7 @@ bool BatchModeTransformer::GenFnDef(const node::FuncDefPlanNode* fn_plan,
 }
 
 bool BatchModeTransformer::CodeGenExprList(
-    std::vector<std::pair<const std::string, const Schema*>>&
-        input_name_schema_list,
+    const NameSchemaList& input_name_schema_list,
     const node::ExprListNode* expr_list, bool row_mode, std::string& fn_name,
     Schema* output_schema, base::Status& status) {
     if (node::ExprListNullOrEmpty(expr_list)) {

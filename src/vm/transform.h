@@ -294,7 +294,7 @@ class BatchModeTransformer {
     bool GenFnDef(const node::FuncDefPlanNode* fn_plan,
                   base::Status& status);  // NOLINT
     bool CodeGenExprList(
-        std::vector<std::pair<const std::string, const Schema*>>&
+        const NameSchemaList&
             input_name_schema_list,
         const node::ExprListNode* expr_list, bool row_mode,
         std::string& fn_name, Schema* output_schema,               // NOLINT

@@ -41,9 +41,7 @@ class Engine;
 
 class CompileInfo {
  public:
-    SQLContext& get_sql_context() {
-        return this->sql_ctx;
-    }
+    SQLContext& get_sql_context() { return this->sql_ctx; }
 
  private:
     SQLContext sql_ctx;
@@ -67,6 +65,9 @@ class RunSession {
 
     virtual const bool IsBatchRun() const = 0;
 
+    void EnableDebug() { is_debug_ = true; }
+    void DisableDebug() { is_debug_ = false; }
+
  protected:
     inline void SetCompileInfo(
         const std::shared_ptr<CompileInfo>& compile_info) {
@@ -75,6 +76,7 @@ class RunSession {
     inline void SetCatalog(const std::shared_ptr<Catalog>& cl) { cl_ = cl; }
     std::shared_ptr<CompileInfo> compile_info_;
     std::shared_ptr<Catalog> cl_;
+    bool is_debug_;
     friend Engine;
 };
 

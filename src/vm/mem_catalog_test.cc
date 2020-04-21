@@ -74,6 +74,8 @@ TEST_F(MemCataLogTest, mem_table_handler_test) {
     for (auto row : rows) {
         table_handler.AddRow(row);
     }
+
+
 }
 TEST_F(MemCataLogTest, mem_segment_handler_test) {
     std::vector<Row> rows;

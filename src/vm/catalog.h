@@ -51,6 +51,7 @@ typedef ::google::protobuf::RepeatedPtrField<::fesql::type::ColumnDef> Schema;
 typedef ::google::protobuf::RepeatedPtrField<::fesql::type::IndexDef> IndexList;
 typedef std::map<std::string, ColInfo> Types;
 typedef std::map<std::string, IndexSt> IndexHint;
+typedef std::vector<std::pair<const std::string, const Schema*>> NameSchemaList;
 class PartitionHandler;
 
 enum HandlerType { kRowHandler, kTableHandler, kPartitionHandler };

@@ -40,6 +40,10 @@ class Row {
     explicit Row(const char *s) : slice_(s) {}
     virtual ~Row() {}
     inline int8_t *buf() const { return slice_.buf(); }
+    inline int8_t *buf(int32_t pos) const {
+        return 0 == pos ? slice_.buf() : slices_[pos-1].buf();
+    }
+
     inline const char *data() const { return slice_.data(); }
     inline int32_t size() const { return slice_.size(); }
     // Return true if the length of the referenced data is zero
@@ -60,6 +64,7 @@ class Row {
         slices_.push_back(b.slice_);
         Append(b.slices_);
     }
+
     int8_t **GetRowPtrs() const {
         if (slices_.empty()) {
             return new int8_t *[1] { slice_.buf() };
@@ -74,6 +79,7 @@ class Row {
         }
     }
 
+    int32_t GetRowPtrCnt() const { return 1 + slices_.size(); }
     int32_t *GetRowSizes() const {
         if (slices_.empty()) {
             return new int32_t[1]{static_cast<int32_t>(slice_.size())};

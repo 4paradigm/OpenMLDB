@@ -47,6 +47,7 @@ using fesql::codec::ArrayListV;
 using fesql::codec::Row;
 enum EngineRunMode { RUNBATCH, RUNONE };
 
+const bool IS_DEBUG = true;
 class EngineTest : public ::testing::TestWithParam<EngineRunMode> {};
 
 void BuildWindow(std::vector<Row>& rows,  // NOLINT
@@ -232,6 +233,9 @@ TEST_P(EngineTest, test_normal) {
     if (RUNBATCH == is_batch_mode) {
         int32_t ret = -1;
         BatchRunSession session;
+        if (IS_DEBUG) {
+            session.EnableDebug();
+        }
         bool ok = engine.Get(sql, "db", session, get_status);
         ASSERT_TRUE(ok);
         ret = session.Run(output, 10);
@@ -241,6 +245,9 @@ TEST_P(EngineTest, test_normal) {
     } else {
         int32_t ret = -1;
         RequestRunSession session;
+        if (IS_DEBUG) {
+            session.EnableDebug();
+        }
         bool ok = engine.Get(sql, "db", session, get_status);
         ASSERT_TRUE(ok);
         schema = session.GetSchema();
@@ -382,9 +389,13 @@ TEST_P(EngineTest, test_last_join_no_match_index) {
     if (RUNBATCH == is_batch_mode) {
         int32_t ret = -1;
         BatchRunSession session;
+        if (IS_DEBUG) {
+            session.EnableDebug();
+        }
         bool ok = engine.Get(sql, "db", session, get_status);
         ASSERT_TRUE(ok);
         schema = session.GetSchema();
+        session.EnableDebug();
         PrintSchema(schema);
         std::ostringstream oss;
         session.GetPhysicalPlan()->Print(oss, "");
@@ -399,6 +410,7 @@ TEST_P(EngineTest, test_last_join_no_match_index) {
     } else {
         int32_t ret = -1;
         RequestRunSession session;
+        session.EnableDebug();
         bool ok = engine.Get(sql, "db", session, get_status);
         ASSERT_TRUE(ok);
         schema = session.GetSchema();
@@ -541,6 +553,7 @@ TEST_P(EngineTest, test_last_join_match_index) {
     if (RUNBATCH == is_batch_mode) {
         int32_t ret = -1;
         BatchRunSession session;
+        session.EnableDebug();
         bool ok = engine.Get(sql, "db", session, get_status);
         ASSERT_TRUE(ok);
         schema = session.GetSchema();
@@ -558,6 +571,7 @@ TEST_P(EngineTest, test_last_join_match_index) {
     } else {
         int32_t ret = -1;
         RequestRunSession session;
+        session.EnableDebug();
         bool ok = engine.Get(sql, "db", session, get_status);
         ASSERT_TRUE(ok);
         schema = session.GetSchema();
@@ -685,8 +699,12 @@ TEST_F(EngineTest, test_window_agg) {
         "test_at_0(col1) OVER w1 as w1_col1_at0 "
         "FROM t1 WINDOW w1 AS (PARTITION BY col2 ORDER BY col5 ROWS BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;";
+    LOG(INFO) << sql;
     Engine engine(catalog);
     RequestRunSession session;
+    if (IS_DEBUG) {
+        session.EnableDebug();
+    }
     base::Status get_status;
     bool ok = engine.Get(sql, "db", session, get_status);
     ASSERT_TRUE(ok);
@@ -810,6 +828,9 @@ TEST_F(EngineTest, test_window_agg_batch_run) {
         "PRECEDING AND CURRENT ROW) limit 10;";
     Engine engine(catalog);
     BatchRunSession session;
+    if (IS_DEBUG) {
+        session.EnableDebug();
+    }
     base::Status get_status;
     bool ok = engine.Get(sql, "db", session, get_status);
     ASSERT_TRUE(ok);
@@ -918,6 +939,9 @@ TEST_F(EngineTest, test_window_agg_with_limit) {
         "PRECEDING AND CURRENT ROW) limit 2;";
     Engine engine(catalog);
     RequestRunSession session;
+    if (IS_DEBUG) {
+        session.EnableDebug();
+    }
     base::Status get_status;
     bool ok = engine.Get(sql, "db", session, get_status);
     ASSERT_TRUE(ok);
@@ -987,6 +1011,9 @@ TEST_F(EngineTest, test_window_agg_with_limit_batch_run) {
         "PRECEDING AND CURRENT ROW) limit 2;";
     Engine engine(catalog);
     BatchRunSession session;
+    if (IS_DEBUG) {
+        session.EnableDebug();
+    }
     base::Status get_status;
     bool ok = engine.Get(sql, "db", session, get_status);
     ASSERT_TRUE(ok);
@@ -1165,6 +1192,9 @@ TEST_F(EngineTest, test_window_agg_unique_partition) {
         "PRECEDING AND CURRENT ROW) limit 10;";
     Engine engine(catalog);
     RequestRunSession session;
+    if (IS_DEBUG) {
+        session.EnableDebug();
+    }
     base::Status get_status;
     bool ok = engine.Get(sql, "db", session, get_status);
     ASSERT_TRUE(ok);
@@ -1275,6 +1305,9 @@ TEST_F(EngineTest, test_window_agg_unique_partition_batch_run) {
         "PRECEDING AND CURRENT ROW) limit 10;";
     Engine engine(catalog);
     BatchRunSession session;
+    if (IS_DEBUG) {
+        session.EnableDebug();
+    }
     base::Status get_status;
     bool ok = engine.Get(sql, "db", session, get_status);
     ASSERT_TRUE(ok);
@@ -1477,6 +1510,9 @@ TEST_F(EngineTest, test_window_agg_varchar_pk_batch_run) {
         "PRECEDING AND CURRENT ROW) limit 10;";
     Engine engine(catalog);
     BatchRunSession session;
+    if (IS_DEBUG) {
+        session.EnableDebug();
+    }
     base::Status get_status;
     bool ok = engine.Get(sql, "db", session, get_status);
     ASSERT_TRUE(ok);
