@@ -9,9 +9,9 @@
 
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <unistd.h>
+#include <boost/bind.hpp>
 #include <set>
 #include <utility>
-#include <boost/bind.hpp>
 #include "base/count_down_latch.h"
 #include "base/display.h"
 #include "base/file_util.h"
@@ -624,8 +624,9 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table,
 int MemTableSnapshot::ExtractIndexFromSnapshot(
     std::shared_ptr<Table> table, const ::rtidb::api::Manifest& manifest,
     WriteHandle* wh, const ::rtidb::common::ColumnKey& column_key, uint32_t idx,
-    uint32_t partition_num, const std::vector<::rtidb::base::ColumnDesc>& columns,
-    uint32_t max_idx, const std::vector<uint32_t>& index_cols, uint64_t& count,
+    uint32_t partition_num,
+    const std::vector<::rtidb::base::ColumnDesc>& columns, uint32_t max_idx,
+    const std::vector<uint32_t>& index_cols, uint64_t& count,
     uint64_t& expired_key_num, uint64_t& deleted_key_num) {
     uint32_t tid = table->GetId();
     uint32_t pid = table->GetPid();
@@ -787,10 +788,9 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(
     return 0;
 }
 
-int MemTableSnapshot::ExtractIndexData(std::shared_ptr<Table> table,
-                                       const ::rtidb::common::ColumnKey& column_key,
-                                       uint32_t idx, uint32_t partition_num,
-                                       uint64_t& out_offset) {
+int MemTableSnapshot::ExtractIndexData(
+    std::shared_ptr<Table> table, const ::rtidb::common::ColumnKey& column_key,
+    uint32_t idx, uint32_t partition_num, uint64_t& out_offset) {
     uint32_t tid = table->GetId();
     uint32_t pid = table->GetPid();
     if (making_snapshot_.load(std::memory_order_acquire)) {
@@ -1138,8 +1138,8 @@ bool MemTableSnapshot::DumpSnapshotIndexData(
         entry_buff.clear();
         entry_buff.assign(record.data(), record.size());
         if (!entry.ParseFromString(entry_buff)) {
-            PDLOG(WARNING,
-                  "fail to parse record for tid %u, pid %u", tid_, pid_);
+            PDLOG(WARNING, "fail to parse record for tid %u, pid %u", tid_,
+                  pid_);
             failed_cnt.fetch_add(1, std::memory_order_relaxed);
             continue;
         }
@@ -1192,7 +1192,7 @@ bool MemTableSnapshot::DumpSnapshotIndexData(
         if (!has_main_index) {
             continue;
         }
-        std::string buff = entry.value()
+        std::string buff = entry.value();
         if (table->GetCompressType() == ::rtidb::api::kSnappy) {
             ::snappy::Uncompress(entry.value().c_str(), entry.value().size(),
                                  &buff);
