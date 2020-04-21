@@ -389,8 +389,8 @@ int32_t RowView::GetDate(uint32_t idx, uint32_t* year, uint32_t* month,
     uint32_t date = static_cast<uint32_t>(v1::GetInt32Field(row_, offset));
     *day = date & 0x0000000FF;
     date = date >> 8;
-    *month = 1 + date & 0x0000FF;
-    *year = 1900 + date >> 8;
+    *month = 1 + (date & 0x0000FF);
+    *year = 1900 + (date >> 8);
     return 0;
 }
 

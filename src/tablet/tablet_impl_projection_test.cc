@@ -389,7 +389,7 @@ std::vector<TestArgs*> GenCommonCase() {
     }
     return args;
 }
-inline std::string GenRand() { return std::to_string(rand_r() % 10000000 + 1); }
+inline std::string GenRand() { return std::to_string(rand() % 10000000 + 1); } // NOLINT
 
 void CompareRow(base::RowView* left, base::RowView* right,
         const Schema& schema) {
@@ -489,7 +489,7 @@ TEST_P(TabletProjectTest, get_case) {
     auto args = GetParam();
     // create table
     std::string name = ::rtidb::tablet::GenRand();
-    int tid = rand_r() % 100000;
+    int tid = rand() % 100000;  // NOLINT
     MockClosure closure;
     // create a table
     {
@@ -557,7 +557,7 @@ TEST_P(TabletProjectTest, scan_case) {
     auto args = GetParam();
     // create table
     std::string name = ::rtidb::tablet::GenRand();
-    int tid = rand_r() % 10000000;
+    int tid = rand() % 10000000; // NOLINT
     MockClosure closure;
     // create a table
     {

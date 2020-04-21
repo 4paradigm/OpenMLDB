@@ -39,8 +39,8 @@ namespace tablet {
 using ::rtidb::api::TableStatus;
 
 inline std::string GenRand() {
-    return std::to_string(rand_r() % 10000000 + 1);
-}  // NOLINT
+    return std::to_string(rand() % 10000000 + 1); // NOLINT
+}  
 
 void CreateBaseTable(::rtidb::storage::Table*& table,  // NOLINT
                      const ::rtidb::api::TTLType& ttl_type, uint64_t ttl,
