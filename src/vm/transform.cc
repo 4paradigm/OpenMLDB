@@ -1296,17 +1296,31 @@ bool FilterOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
     switch (in->type_) {
         case kPhysicalOpJoin: {
             PhysicalJoinNode* join_op = dynamic_cast<PhysicalJoinNode*>(in);
-            vm::SchemasContext ctx(join_op->output_name_schema_list_);
             node::ExprListNode and_conditions;
             if (!TransfromAndConditionList(join_op->condition_,
                                            &and_conditions)) {
                 return false;
             }
+            vm::SchemasContext ctx(join_op->output_name_schema_list_);
             node::ExprListNode new_and_conditions;
             std::vector<ExprPair> condition_eq_pair;
             for (auto expr : and_conditions.children_) {
                 ExprPair expr_pair;
-                if (TransformEqualExprPair(ctx, expr, &expr_pair)) {
+                if (TransformEqualExprPair(expr, &expr_pair)) {
+                    const RowSchemaInfo* info_left;
+                    const RowSchemaInfo* info_right;
+                    if (!ctx.ExprRefResolved(expr_pair.first, &info_left)) {
+                        continue;
+                    }
+                    if (!ctx.ExprRefResolved(expr_pair.second, &info_right)) {
+                        continue;
+                    }
+                    if (nullptr == info_left || nullptr == info_right) {
+                        continue;
+                    }
+                    if (info_left == info_right) {
+                        continue;
+                    }
                     condition_eq_pair.push_back(expr_pair);
                 } else {
                     new_and_conditions.AddChild(expr);
@@ -1375,8 +1389,7 @@ bool FilterOptimized::TransfromAndConditionList(
 }
 // Transform equal condition to expression pair
 // e.g. t1.col1 = t2.col1 -> pair(t1.col1, t2.col1)
-bool FilterOptimized::TransformEqualExprPair(const SchemasContext& ctx,
-                                             node::ExprNode* condition,
+bool FilterOptimized::TransformEqualExprPair(node::ExprNode* condition,
                                              ExprPair* expr_pair) {
     if (nullptr == condition) {
         return false;
@@ -1387,7 +1400,7 @@ bool FilterOptimized::TransformEqualExprPair(const SchemasContext& ctx,
                 dynamic_cast<const node::UnaryExpr*>(condition);
             switch (expr->GetOp()) {
                 case node::kFnOpBracket: {
-                    return TransformEqualExprPair(ctx, expr->children_[0],
+                    return TransformEqualExprPair(expr->children_[0],
                                                   expr_pair);
                 }
                 default: {
@@ -1400,20 +1413,6 @@ bool FilterOptimized::TransformEqualExprPair(const SchemasContext& ctx,
                 dynamic_cast<const node::BinaryExpr*>(condition);
             switch (expr->GetOp()) {
                 case node::kFnOpEq: {
-                    const RowSchemaInfo* info_left;
-                    const RowSchemaInfo* info_right;
-                    if (!ctx.ExprRefResolved(expr->children_[0], &info_left)) {
-                        return false;
-                    }
-                    if (!ctx.ExprRefResolved(expr->children_[1], &info_right)) {
-                        return false;
-                    }
-                    if (nullptr == info_left || nullptr == info_right) {
-                        return false;
-                    }
-                    if (info_left == info_right) {
-                        return false;
-                    }
                     expr_pair->first = expr->children_[0];
                     expr_pair->second = expr->children_[1];
                     return true;
