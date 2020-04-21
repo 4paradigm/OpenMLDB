@@ -11,16 +11,14 @@
 //
 
 #include "log/writable_file.h"
-
+#include <errno.h>
+#include <stdio.h>
+#include <unistd.h>
 #include "base/slice.h"
 #include "base/status.h"
 
-#include <stdio.h>
-#include <unistd.h>
-#include <errno.h>
-
-using ::rtidb::base::Status;
 using ::rtidb::base::Slice;
+using ::rtidb::base::Status;
 
 namespace rtidb {
 namespace log {
@@ -30,15 +28,14 @@ static Status IOError(const std::string& context, int err_number) {
 }
 
 class PosixWritableFile : public WritableFile {
-
-public:
+ public:
     PosixWritableFile(const std::string& fname, FILE* f)
-      : filename_(fname), file_(f) { }
+        : filename_(fname), file_(f) {}
 
     ~PosixWritableFile() {
         if (file_ != NULL) {
-          // Ignoring any potential errors
-          fclose(file_);
+            // Ignoring any potential errors
+            fclose(file_);
         }
     }
 
@@ -54,7 +51,7 @@ public:
     virtual Status Close() {
         Status result;
         if (fclose(file_) != 0) {
-          result = IOError(filename_, errno);
+            result = IOError(filename_, errno);
         }
         file_ = NULL;
         return result;
@@ -69,14 +66,13 @@ public:
 
     virtual Status Sync() {
         // Ensure new files referred to by the manifest are in the filesystem.
-        if (fflush_unlocked(file_) != 0 ||
-            fdatasync(fileno(file_)) != 0) {
+        if (fflush_unlocked(file_) != 0 || fdatasync(fileno(file_)) != 0) {
             return IOError(filename_, errno);
         }
         return Status::OK();
     }
 
-private:
+ private:
     std::string filename_;
     FILE* file_;
 };
@@ -85,7 +81,5 @@ WritableFile* NewWritableFile(const std::string& fname, FILE* f) {
     return new PosixWritableFile(fname, f);
 }
 
-} // end of log
-} // end of rtidb
-
-
+}  // namespace log
+}  // namespace rtidb

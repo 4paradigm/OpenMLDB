@@ -1,36 +1,35 @@
 //
 // codec_bench_test.cc
 // Copyright (C) 2017 4paradigm.com
-// Author wangtaize 
+// Author wangtaize
 // Date 2017-04-12
 //
 
+#include <timer.h>
+#include <iostream>
 #include "base/codec.h"
-#include "storage/segment.h"
+#include "base/kv_iterator.h"
 #include "gtest/gtest.h"
 #include "proto/common.pb.h"
 #include "proto/tablet.pb.h"
-#include "base/kv_iterator.h"
-#include "timer.h"
-#include <iostream>
+#include "storage/segment.h"
 
 namespace rtidb {
 namespace base {
 
 class CodecBenchmarkTest : public ::testing::Test {
-
-public:
-    CodecBenchmarkTest(){}
+ public:
+    CodecBenchmarkTest() {}
     ~CodecBenchmarkTest() {}
-
 };
 
 void RunHasTs(::rtidb::storage::DataBlock* db) {
-    std::vector<std::pair<uint64_t, ::rtidb::base::Slice> > datas;
+    std::vector<std::pair<uint64_t, ::rtidb::base::Slice>> datas;
     datas.reserve(1000);
     uint32_t total_block_size = 0;
     for (uint32_t i = 0; i < 1000; i++) {
-        datas.push_back(std::make_pair(1000, ::rtidb::base::Slice(db->data, db->size)));
+        datas.push_back(
+            std::make_pair(1000, ::rtidb::base::Slice(db->data, db->size)));
         total_block_size += db->size;
     }
     std::string pairs;
@@ -54,7 +53,8 @@ TEST_F(CodecBenchmarkTest, Encode_ts_vs_none_ts) {
     for (uint32_t i = 0; i < 128; i++) {
         bd[i] = 'a';
     }
-    ::rtidb::storage::DataBlock* block = new ::rtidb::storage::DataBlock(1, bd, 128);
+    ::rtidb::storage::DataBlock* block =
+        new ::rtidb::storage::DataBlock(1, bd, 128);
     for (uint32_t i = 0; i < 10; i++) {
         RunHasTs(block);
         RunNoneTs(block);
@@ -67,14 +67,15 @@ TEST_F(CodecBenchmarkTest, Encode_ts_vs_none_ts) {
     }
     consumed = ::baidu::common::timer::get_micros() - consumed;
 
-    
     uint64_t pconsumed = ::baidu::common::timer::get_micros();
     for (uint32_t i = 0; i < 10000; i++) {
         RunNoneTs(block);
     }
     pconsumed = ::baidu::common::timer::get_micros() - pconsumed;
-    std::cout << "encode 1000 records has ts avg consumed:" << consumed /10000 << "μs"<< std::endl;
-    std::cout << "encode 1000 records has no ts avg consumed " << pconsumed/10000<< "μs" << std::endl;
+    std::cout << "encode 1000 records has ts avg consumed:" << consumed / 10000
+              << "μs" << std::endl;
+    std::cout << "encode 1000 records has no ts avg consumed "
+              << pconsumed / 10000 << "μs" << std::endl;
 }
 
 TEST_F(CodecBenchmarkTest, Encode) {
@@ -85,7 +86,8 @@ TEST_F(CodecBenchmarkTest, Encode) {
     }
 
     for (uint32_t i = 0; i < 1000; i++) {
-        ::rtidb::storage::DataBlock* block = new ::rtidb::storage::DataBlock(1, bd, 400);
+        ::rtidb::storage::DataBlock* block =
+            new ::rtidb::storage::DataBlock(1, bd, 400);
         data.push_back(block);
     }
 
@@ -117,8 +119,8 @@ TEST_F(CodecBenchmarkTest, Encode) {
     }
 
     pconsumed = ::baidu::common::timer::get_micros() - pconsumed;
-    std::cout << "Encode rtidb: " << consumed/1000 << std::endl;
-    std::cout << "Encode protobuf: " << pconsumed/1000 << std::endl;
+    std::cout << "Encode rtidb: " << consumed / 1000 << std::endl;
+    std::cout << "Encode protobuf: " << pconsumed / 1000 << std::endl;
 }
 
 TEST_F(CodecBenchmarkTest, Decode) {
@@ -130,7 +132,8 @@ TEST_F(CodecBenchmarkTest, Decode) {
     }
 
     for (uint32_t i = 0; i < 1000; i++) {
-        ::rtidb::storage::DataBlock* block = new ::rtidb::storage::DataBlock(1, bd, 400);
+        ::rtidb::storage::DataBlock* block =
+            new ::rtidb::storage::DataBlock(1, bd, 400);
         data.push_back(block);
     }
     char buffer[400 * 1000 + 1000 * 12];
@@ -142,10 +145,10 @@ TEST_F(CodecBenchmarkTest, Decode) {
     }
 
     ::rtidb::api::ScanResponse response;
-    response.set_pairs(buffer, 412* 1000);
+    response.set_pairs(buffer, 412 * 1000);
 
     uint64_t consumed = ::baidu::common::timer::get_micros();
-    for (uint32_t i = 0; i < 10000;i++) {
+    for (uint32_t i = 0; i < 10000; i++) {
         ::rtidb::base::KvIterator it(&response, false);
         while (it.Valid()) {
             it.Next();
@@ -169,15 +172,14 @@ TEST_F(CodecBenchmarkTest, Decode) {
     }
 
     pconsumed = ::baidu::common::timer::get_micros() - pconsumed;
-    std::cout << "Decode rtidb: " << consumed/1000 << std::endl;
-    std::cout << "Decode protobuf: " << pconsumed/1000 << std::endl;
+    std::cout << "Decode rtidb: " << consumed / 1000 << std::endl;
+    std::cout << "Decode protobuf: " << pconsumed / 1000 << std::endl;
 }
 
-}
-}
+}  // namespace base
+}  // namespace rtidb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }
-

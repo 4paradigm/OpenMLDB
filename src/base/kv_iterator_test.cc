@@ -1,25 +1,22 @@
 //
 // kv_iterator_test.cc
-// Copyright 2017 4paradigm.com 
-
+// Copyright 2017 4paradigm.com
 
 #include "base/kv_iterator.h"
-#include "base/codec.h"
-#include "gtest/gtest.h"
-#include "base/strings.h"
-#include "proto/tablet.pb.h"
 #include <iostream>
+#include "base/codec.h"
+#include "base/strings.h"
+#include "gtest/gtest.h"
+#include "proto/tablet.pb.h"
 
 namespace rtidb {
 namespace base {
 
 class KvIteratorTest : public ::testing::Test {
-
-public:
+ public:
     KvIteratorTest() {}
     ~KvIteratorTest() {}
 };
-
 
 TEST_F(KvIteratorTest, Iterator_NULL) {
     ::rtidb::api::ScanResponse* response = new ::rtidb::api::ScanResponse();
@@ -31,7 +28,7 @@ TEST_F(KvIteratorTest, Iterator_ONE) {
     ::rtidb::api::ScanResponse* response = new ::rtidb::api::ScanResponse();
     std::string* pairs = response->mutable_pairs();
     pairs->resize(17);
-    char* data = reinterpret_cast<char*>(& ((*pairs)[0])) ;
+    char* data = reinterpret_cast<char*>(&((*pairs)[0]));
     DataBlock* db1 = new DataBlock(1, "hello", 5);
     Encode(9527, db1, data, 0);
     KvIterator kv_it(response);
@@ -47,7 +44,7 @@ TEST_F(KvIteratorTest, Iterator) {
 
     std::string* pairs = response->mutable_pairs();
     pairs->resize(34);
-    char* data = reinterpret_cast<char*>(& ((*pairs)[0])) ;
+    char* data = reinterpret_cast<char*>(&((*pairs)[0]));
     DataBlock* db1 = new DataBlock(1, "hello", 5);
     DataBlock* db2 = new DataBlock(1, "hell1", 5);
     Encode(9527, db1, data, 0);
@@ -65,11 +62,12 @@ TEST_F(KvIteratorTest, Iterator) {
 }
 
 TEST_F(KvIteratorTest, HasPK) {
-    ::rtidb::api::TraverseResponse* response = new ::rtidb::api::TraverseResponse();
+    ::rtidb::api::TraverseResponse* response =
+        new ::rtidb::api::TraverseResponse();
 
     std::string* pairs = response->mutable_pairs();
     pairs->resize(52);
-    char* data = reinterpret_cast<char*>(& ((*pairs)[0]));
+    char* data = reinterpret_cast<char*>(&((*pairs)[0]));
     DataBlock* db1 = new DataBlock(1, "hello", 5);
     DataBlock* db2 = new DataBlock(1, "hell1", 5);
     EncodeFull("test1", 9527, db1, data, 0);
@@ -88,9 +86,8 @@ TEST_F(KvIteratorTest, HasPK) {
     ASSERT_FALSE(kv_it.Valid());
 }
 
-
-}
-}
+}  // namespace base
+}  // namespace rtidb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

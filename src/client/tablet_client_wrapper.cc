@@ -9,8 +9,8 @@
 
 #include "base/codec.h"
 
-using namespace rtidb::client;
-using namespace rtidb::base;
+using namespace rtidb::client; // NOLINT
+using namespace rtidb::base; // NOLINT
 
 extern "C" {
 
@@ -21,33 +21,25 @@ TabletClient* NewClient(const char* endpoint) {
     return client;
 }
 
-void FreeClient(TabletClient* client) {
-    delete client;
+void FreeClient(TabletClient* client) { delete client; }
 
-}
-
-bool CreateTable(TabletClient* client, 
-                 const char* name, int tid,
-                 int pid, int ttl) {
+bool CreateTable(TabletClient* client, const char* name, int tid, int pid,
+                 int ttl) {
     std::string n(name);
-    return client->CreateTable(n, tid, pid, ttl, 0, true, std::vector<std::string>(), 
-                    ::rtidb::api::TTLType::kAbsoluteTime, 8, 0, ::rtidb::api::CompressType::kNoCompress);
+    return client->CreateTable(n, tid, pid, ttl, 0, true,
+                               std::vector<std::string>(),
+                               ::rtidb::api::TTLType::kAbsoluteTime, 8, 0,
+                               ::rtidb::api::CompressType::kNoCompress);
 }
 
-bool Put(TabletClient* client,
-        uint32_t tid, uint32_t pid,
-        const char* pk,
-        uint64_t time,
-        const char* value) {
+bool Put(TabletClient* client, uint32_t tid, uint32_t pid, const char* pk,
+         uint64_t time, const char* value) {
     return client->Put(tid, pid, pk, time, value);
 }
 
-KvIterator* Scan(TabletClient* client,
-        uint32_t tid, uint32_t pid,
-        const char* pk,
-        uint64_t st,
-        uint64_t et) {
-    std::string msg;    
+KvIterator* Scan(TabletClient* client, uint32_t tid, uint32_t pid,
+                 const char* pk, uint64_t st, uint64_t et) {
+    std::string msg;
     return client->Scan(tid, pid, pk, st, et, msg, false);
 }
 
@@ -55,13 +47,9 @@ bool DropTable(TabletClient* client, uint32_t tid, uint32_t pid) {
     return client->DropTable(tid, pid);
 }
 
-bool IteratorValid(KvIterator* it) {
-    return it->Valid();
-}
+bool IteratorValid(KvIterator* it) { return it->Valid(); }
 
-void IteratorNext(KvIterator* it) {
-    it->Next();
-}
+void IteratorNext(KvIterator* it) { it->Next(); }
 
 void IteratorGetValue(KvIterator* it, uint32_t* len, char** val) {
     Slice& value = it->GetValue();
@@ -71,18 +59,9 @@ void IteratorGetValue(KvIterator* it, uint32_t* len, char** val) {
     *len = value.size();
 }
 
-void IteratorGetKey(KvIterator* it, uint64_t* key) {
-    *key = it->GetKey();
+void IteratorGetKey(KvIterator* it, uint64_t* key) { *key = it->GetKey(); }
+
+void IteratorFree(KvIterator* it) { delete it; }
+
+void FreeString(const char* str) { delete str; }
 }
-
-void IteratorFree(KvIterator* it) {
-    delete it;
-}
-
-void FreeString(const char* str) {
-    delete str;
-}
-
-}
-
-

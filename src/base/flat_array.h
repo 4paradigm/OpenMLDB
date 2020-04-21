@@ -5,16 +5,15 @@
 // Date 2017-09-23
 //
 
+#ifndef SRC_BASE_FLAT_ARRAY_H_
+#define SRC_BASE_FLAT_ARRAY_H_
 
-#ifndef RTIDB_FLAT_ARRAY_H
-#define RTIDB_FLAT_ARRAY_H
-
-#include <string>
-#include <cstring>
 #include <stdint.h>
+#include <cstring>
+#include <string>
 #include <vector>
-#include "base/schema_codec.h"
 #include "base/endianconv.h"
+#include "base/schema_codec.h"
 
 namespace rtidb {
 namespace base {
@@ -25,18 +24,21 @@ static const uint32_t max_row_size = 1024 * 1024;
 static const uint16_t MAX_STRING_LENGTH = 32767;
 
 class FlatArrayCodec {
+ public:
+    FlatArrayCodec(std::string* buffer, uint16_t col_cnt)
+        : buffer_(buffer),
+          col_cnt_(col_cnt),
+          cur_cnt_(0),
+          datas_(col_cnt_),
+          modify_times_(0) {}
 
-public:
-    FlatArrayCodec(std::string* buffer, 
-            uint16_t col_cnt):buffer_(buffer), col_cnt_(col_cnt),
-    cur_cnt_(0), datas_(col_cnt_), modify_times_(0){
-    }
-
-    FlatArrayCodec(std::string* buffer, 
-            uint16_t col_cnt, int modify_times):buffer_(buffer), col_cnt_(col_cnt),
-    cur_cnt_(0), datas_(col_cnt_), modify_times_(modify_times){
-    }
-    FlatArrayCodec():col_cnt_(0),cur_cnt_(0),modify_times_(0){}
+    FlatArrayCodec(std::string* buffer, uint16_t col_cnt, int modify_times)
+        : buffer_(buffer),
+          col_cnt_(col_cnt),
+          cur_cnt_(0),
+          datas_(col_cnt_),
+          modify_times_(modify_times) {}
+    FlatArrayCodec() : col_cnt_(0), cur_cnt_(0), modify_times_(0) {}
     ~FlatArrayCodec() {}
 
     bool Append(bool data) {
@@ -45,10 +47,10 @@ public:
         }
         if (data) {
             Encode(kBool, static_cast<const void*>(&bool_true), 1);
-        }else {
+        } else {
             Encode(kBool, static_cast<const void*>(&bool_false), 1);
         }
-        cur_cnt_ ++;
+        cur_cnt_++;
         return true;
     }
 
@@ -58,7 +60,7 @@ public:
         }
         memrev16ifbe(static_cast<void*>(&data));
         Encode(kUInt16, static_cast<const void*>(&data), 2);
-        cur_cnt_ ++;
+        cur_cnt_++;
         return true;
     }
 
@@ -68,7 +70,7 @@ public:
         }
         memrev16ifbe(static_cast<void*>(&data));
         Encode(kInt16, static_cast<const void*>(&data), 2);
-        cur_cnt_ ++;
+        cur_cnt_++;
         return true;
     }
 
@@ -78,7 +80,7 @@ public:
         }
         memrev32ifbe(static_cast<void*>(&data));
         Encode(kFloat, static_cast<const void*>(&data), 4);
-        cur_cnt_ ++;
+        cur_cnt_++;
         return true;
     }
 
@@ -88,7 +90,7 @@ public:
         }
         memrev32ifbe(static_cast<void*>(&data));
         Encode(kInt32, static_cast<const void*>(&data), 4);
-        cur_cnt_ ++;
+        cur_cnt_++;
         return true;
     }
 
@@ -98,7 +100,7 @@ public:
         }
         memrev64ifbe(static_cast<void*>(&data));
         Encode(kInt64, static_cast<const void*>(&data), 8);
-        cur_cnt_ ++;
+        cur_cnt_++;
         return true;
     }
 
@@ -108,7 +110,7 @@ public:
         }
         memrev32ifbe(static_cast<void*>(&data));
         Encode(kUInt32, static_cast<const void*>(&data), 4);
-        cur_cnt_ ++;
+        cur_cnt_++;
         return true;
     }
 
@@ -118,7 +120,7 @@ public:
         }
         memrev64ifbe(static_cast<void*>(&data));
         Encode(kUInt64, static_cast<const void*>(&data), 8);
-        cur_cnt_ ++;
+        cur_cnt_++;
         return true;
     }
 
@@ -128,7 +130,7 @@ public:
         }
         memrev64ifbe(static_cast<void*>(&data));
         Encode(kTimestamp, static_cast<const void*>(&data), 8);
-        cur_cnt_ ++;
+        cur_cnt_++;
         return true;
     }
 
@@ -138,7 +140,7 @@ public:
         }
         memrev64ifbe(static_cast<void*>(&data));
         Encode(kDate, static_cast<const void*>(&data), 8);
-        cur_cnt_ ++;
+        cur_cnt_++;
         return true;
     }
 
@@ -148,7 +150,7 @@ public:
         }
         memrev64ifbe(static_cast<void*>(&data));
         Encode(kDouble, static_cast<const void*>(&data), 8);
-        cur_cnt_ ++;
+        cur_cnt_++;
         return true;
     }
 
@@ -163,7 +165,7 @@ public:
 
         uint16_t size = (uint16_t)data.length();
         Encode(kString, static_cast<const void*>(data.c_str()), size);
-        cur_cnt_ ++;
+        cur_cnt_++;
         return true;
     }
 
@@ -172,19 +174,18 @@ public:
             return false;
         }
         Encode(kNull, NULL, 0);
-        cur_cnt_ ++;
+        cur_cnt_++;
         return true;
     }
 
     void Build() {
-        //TODO limit the total size of single row
         buffer_->resize(GetSize());
-        char* cbuffer = reinterpret_cast<char*>(&((*buffer_)[0])); 
+        char* cbuffer = reinterpret_cast<char*>(&((*buffer_)[0]));
         if (col_cnt_ - modify_times_ >= 128) {
             if (modify_times_ > 0) {
                 uint16_t modify_count = (uint16_t)(modify_times_ | 0x8000);
                 memcpy(cbuffer, static_cast<const void*>(&modify_count), 2);
-            } else { 
+            } else {
                 memcpy(cbuffer, static_cast<const void*>(&col_cnt_), 2);
             }
             memrev16ifbe(static_cast<void*>(cbuffer));
@@ -217,13 +218,13 @@ public:
                 memcpy(cbuffer, static_cast<const void*>(&second_value), 1);
                 cbuffer += 1;
             }
-            memcpy(cbuffer, static_cast<const void*>(col.buffer.c_str()), col.buffer.size());
+            memcpy(cbuffer, static_cast<const void*>(col.buffer.c_str()),
+                   col.buffer.size());
             cbuffer += col.buffer.size();
         }
     }
 
-private:
-    
+ private:
     uint32_t GetSize() {
         // one byte for column count
         uint32_t size = 1;
@@ -252,7 +253,7 @@ private:
         }
     }
 
-private:
+ private:
     std::string* buffer_;
     uint16_t col_cnt_;
     uint16_t cur_cnt_;
@@ -261,11 +262,14 @@ private:
 };
 
 class FlatArrayIterator {
-
-public:
-
-    FlatArrayIterator(const char* buffer, uint32_t bsize, uint16_t column_size):buffer_(buffer), 
-    col_cnt_(0), bsize_(bsize), type_(kUnknown), fsize_(0), offset_(0){
+ public:
+    FlatArrayIterator(const char* buffer, uint32_t bsize, uint16_t column_size)
+        : buffer_(buffer),
+          col_cnt_(0),
+          bsize_(bsize),
+          type_(kUnknown),
+          fsize_(0),
+          offset_(0) {
         // for the case of adding field
         if (column_size < 128) {
             if ((uint8_t)(buffer_[0] & 0x80) != 0) {
@@ -292,10 +296,8 @@ public:
 
     ~FlatArrayIterator() {}
 
-    // Get the column count 
-    uint16_t Size() {
-        return col_cnt_;
-    }
+    // Get the column count
+    uint16_t Size() { return col_cnt_; }
 
     // Get float can be only invoked once when after Next
     bool GetFloat(float* value) {
@@ -348,7 +350,7 @@ public:
         offset_ += 4;
         return true;
     }
-    
+
     bool GetUInt64(uint64_t* value) {
         if (type_ != kUInt64) {
             return false;
@@ -383,8 +385,8 @@ public:
         offset_ += 1;
         if (bool_value == 1) {
             *value = true;
-        }else {
-            *value = false; 
+        } else {
+            *value = false;
         }
         return true;
     }
@@ -473,7 +475,7 @@ public:
         offset_ += 8;
         return true;
     }
-    
+
     bool GetDouble(double* value) {
         if (type_ != kDouble) {
             return false;
@@ -508,9 +510,7 @@ public:
         return true;
     }
 
-    ColType GetType() {
-        return type_;
-    }
+    ColType GetType() { return type_; }
 
     void Next() {
         if (offset_ + 2 > bsize_) {
@@ -527,7 +527,8 @@ public:
             buffer_ += 1;
             offset_++;
         } else {
-            fsize_ = (((uint8_t)(buffer_[0]) & 0x7F) << 8) | ((uint8_t)buffer_[1] & 0xFF);
+            fsize_ = (((uint8_t)(buffer_[0]) & 0x7F) << 8) |
+                     ((uint8_t)buffer_[1] & 0xFF);
             buffer_ += 2;
             offset_ += 2;
         }
@@ -540,7 +541,7 @@ public:
         return true;
     }
 
-private:
+ private:
     const char* buffer_;
     uint16_t col_cnt_;
     uint32_t bsize_;
@@ -551,7 +552,7 @@ private:
     uint32_t offset_;
 };
 
-}
-}
+}  // namespace base
+}  // namespace rtidb
 
-#endif /* !RTIDB_FLAT_ARRAY_H */
+#endif  // SRC_BASE_FLAT_ARRAY_H_

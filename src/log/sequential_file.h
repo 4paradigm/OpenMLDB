@@ -5,9 +5,8 @@
 // Date 2017-06-16
 //
 
-
-#ifndef RTIDB_LOG_SEQUENTIAL_FILE_H
-#define RTIDB_LOG_SEQUENTIAL_FILE_H
+#ifndef SRC_LOG_SEQUENTIAL_FILE_H_
+#define SRC_LOG_SEQUENTIAL_FILE_H_
 
 #include <stdint.h>
 #include <string>
@@ -17,14 +16,14 @@ namespace rtidb {
 namespace base {
 class Status;
 class Slice;
-}
+}  // namespace base
 
 namespace log {
 
 // A file abstraction for reading sequentially through a file
 class SequentialFile {
-public:
-    SequentialFile() { }
+ public:
+    SequentialFile() {}
     virtual ~SequentialFile() {}
 
     // Read up to "n" bytes from the file.  "scratch[0..n-1]" may be
@@ -48,7 +47,8 @@ public:
 
     virtual base::Status Tell(uint64_t* pos) = 0;
     virtual base::Status Seek(uint64_t pos) = 0;
-private:
+
+ private:
     // No copying allowed
     SequentialFile(const SequentialFile&);
     void operator=(const SequentialFile&);
@@ -56,6 +56,6 @@ private:
 
 SequentialFile* NewSeqFile(const std::string& fname, FILE* f);
 
-}
-}
-#endif /* !RTIDB_LOG_SEQUENTIAL_FILE_H */
+}  // namespace log
+}  // namespace rtidb
+#endif  // SRC_LOG_SEQUENTIAL_FILE_H_

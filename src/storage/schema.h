@@ -7,11 +7,13 @@
 
 #pragma once
 
-#include <vector>
-#include <memory>
 #include <atomic>
-#include "proto/type.pb.h"
+#include <map>
+#include <memory>
+#include <string>
+#include <vector>
 #include "proto/tablet.pb.h"
+#include "proto/type.pb.h"
 
 namespace rtidb {
 namespace storage {
@@ -20,34 +22,38 @@ static constexpr uint32_t MAX_INDEX_NUM = 200;
 
 struct TTLDesc {
     TTLDesc() = default;
-    
+
     TTLDesc(uint64_t abs, uint64_t lat) : abs_ttl(abs), lat_ttl(lat) {}
 
     inline bool HasExpire(::rtidb::api::TTLType ttl_type) const {
-        switch(ttl_type) {
-            case ::rtidb::api::TTLType::kAbsoluteTime: 
+        switch (ttl_type) {
+            case ::rtidb::api::TTLType::kAbsoluteTime:
                 return abs_ttl != 0;
-            case ::rtidb::api::TTLType::kLatestTime: 
+            case ::rtidb::api::TTLType::kLatestTime:
                 return lat_ttl != 0;
-            case ::rtidb::api::TTLType::kAbsAndLat: 
+            case ::rtidb::api::TTLType::kAbsAndLat:
                 return abs_ttl != 0 && lat_ttl != 0;
-            case ::rtidb::api::TTLType::kAbsOrLat: 
+            case ::rtidb::api::TTLType::kAbsOrLat:
                 return abs_ttl != 0 || lat_ttl != 0;
-            default: return false;
+            default:
+                return false;
         }
     }
 
     inline std::string ToString(::rtidb::api::TTLType ttl_type) const {
-        switch(ttl_type) {
-            case ::rtidb::api::TTLType::kAbsoluteTime: 
+        switch (ttl_type) {
+            case ::rtidb::api::TTLType::kAbsoluteTime:
                 return std::to_string(abs_ttl) + "min";
-            case ::rtidb::api::TTLType::kLatestTime: 
+            case ::rtidb::api::TTLType::kLatestTime:
                 return std::to_string(lat_ttl);
-            case ::rtidb::api::TTLType::kAbsAndLat: 
-                return std::to_string(abs_ttl) + "min&&" + std::to_string(lat_ttl);
-            case ::rtidb::api::TTLType::kAbsOrLat: 
-                return std::to_string(abs_ttl)+ "min||" + std::to_string(lat_ttl);
-            default: return "";
+            case ::rtidb::api::TTLType::kAbsAndLat:
+                return std::to_string(abs_ttl) + "min&&" +
+                       std::to_string(lat_ttl);
+            case ::rtidb::api::TTLType::kAbsOrLat:
+                return std::to_string(abs_ttl) + "min||" +
+                       std::to_string(lat_ttl);
+            default:
+                return "";
         }
     }
 
@@ -55,16 +61,12 @@ struct TTLDesc {
     uint64_t lat_ttl;
 };
 
-enum class IndexStatus {
-    kReady = 0,
-    kWaiting,
-    kDeleting,
-    kDeleted
-};
+enum class IndexStatus { kReady = 0, kWaiting, kDeleting, kDeleted };
 
 class ColumnDef {
  public:
-    ColumnDef(const std::string& name, uint32_t id, ::rtidb::type::DataType type);
+    ColumnDef(const std::string& name, uint32_t id,
+              ::rtidb::type::DataType type);
     ~ColumnDef();
     inline uint32_t GetId() const { return id_; }
     const std::string& GetName() const { return name_; }
@@ -83,49 +85,43 @@ class TableColumn {
     std::shared_ptr<ColumnDef> GetColumn(uint32_t idx);
     std::shared_ptr<ColumnDef> GetColumn(const std::string& name);
     void AddColumn(std::shared_ptr<ColumnDef> column_def);
-    void SetAllColumn(const std::vector<std::shared_ptr<ColumnDef>>& column_def);
     std::vector<std::shared_ptr<ColumnDef>> GetAllColumn();
     inline uint32_t Size() {
-        return std::atomic_load_explicit(&columns_, std::memory_order_relaxed)->size();
+        return std::atomic_load_explicit(&columns_, std::memory_order_relaxed)
+            ->size();
     }
 
  private:
     std::shared_ptr<std::vector<std::shared_ptr<ColumnDef>>> columns_;
-    std::shared_ptr<std::map<std::string, std::shared_ptr<ColumnDef>>> column_map_;
+    std::shared_ptr<std::map<std::string, std::shared_ptr<ColumnDef>>>
+        column_map_;
 };
 
 class IndexDef {
-public:
+ public:
     IndexDef(const std::string& name, uint32_t id);
     IndexDef(const std::string& name, uint32_t id, IndexStatus stauts);
-    IndexDef(const std::string& name, uint32_t id, 
-            const IndexStatus& stauts, 
-            ::rtidb::type::IndexType type, 
-            const std::vector<ColumnDef>& column_idx_map);
+    IndexDef(const std::string& name, uint32_t id, const IndexStatus& stauts,
+             ::rtidb::type::IndexType type,
+             const std::vector<ColumnDef>& column_idx_map);
     ~IndexDef();
     const std::string& GetName() { return name_; }
     const std::vector<uint32_t>& GetTsColumn() { return ts_column_; }
     void SetTsColumn(const std::vector<uint32_t>& ts_vec) {
         ts_column_ = ts_vec;
     }
-    inline bool IsReady() { 
+    inline bool IsReady() {
         return status_.load(std::memory_order_acquire) == IndexStatus::kReady;
     }
     inline uint32_t GetId() { return index_id_; }
     void SetStatus(IndexStatus status) {
         status_.store(status, std::memory_order_release);
     }
-    IndexStatus GetStatus() { 
-        return status_.load(std::memory_order_acquire);
-    }
-    inline ::rtidb::type::IndexType GetType() {
-        return type_;
-    }
-    inline const std::vector<ColumnDef>& GetColumns() {
-        return columns_;
-    }
+    IndexStatus GetStatus() { return status_.load(std::memory_order_acquire); }
+    inline ::rtidb::type::IndexType GetType() { return type_; }
+    inline const std::vector<ColumnDef>& GetColumns() { return columns_; }
 
-private:
+ private:
     std::string name_;
     uint32_t index_id_;
     std::atomic<IndexStatus> status_;
@@ -135,7 +131,7 @@ private:
 };
 
 class TableIndex {
-public:    
+ public:
     TableIndex();
     ~TableIndex();
     void ReSet();
@@ -144,17 +140,20 @@ public:
     int AddIndex(std::shared_ptr<IndexDef> index_def);
     std::vector<std::shared_ptr<IndexDef>> GetAllIndex();
     inline uint32_t Size() const {
-        return std::atomic_load_explicit(&indexs_, std::memory_order_relaxed)->size();
+        return std::atomic_load_explicit(&indexs_, std::memory_order_relaxed)
+            ->size();
     }
-    bool HasAutoGen(); 
-    std::shared_ptr<IndexDef> GetPkIndex(); 
-    const std::shared_ptr<IndexDef> GetIndexByCombineStr(const std::string& combine_str); 
+    bool HasAutoGen();
+    std::shared_ptr<IndexDef> GetPkIndex();
+    const std::shared_ptr<IndexDef> GetIndexByCombineStr(
+        const std::string& combine_str);
 
-private:
+ private:
     std::shared_ptr<std::vector<std::shared_ptr<IndexDef>>> indexs_;
     std::shared_ptr<IndexDef> pk_index_;
-    std::shared_ptr<std::map<std::string, std::shared_ptr<IndexDef>>> combine_col_name_map_;
+    std::shared_ptr<std::map<std::string, std::shared_ptr<IndexDef>>>
+        combine_col_name_map_;
 };
 
-}
-}
+}  // namespace storage
+}  // namespace rtidb

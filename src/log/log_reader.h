@@ -9,14 +9,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
-#ifndef RTIDB_LOG_READER_H_
-#define RTIDB_LOG_READER_H_
+#ifndef SRC_LOG_LOG_READER_H_
+#define SRC_LOG_LOG_READER_H_
 
 #include <stdint.h>
+#include <string>
 #include "base/skiplist.h"
+#include "base/slice.h"
 #include "log/log_format.h"
 #include "log/sequential_file.h"
-#include "base/slice.h"
 
 using ::rtidb::base::Slice;
 
@@ -29,10 +30,10 @@ class Status;
 namespace log {
 
 class Reader {
-public:
+ public:
     // Interface for reporting errors.
     class Reporter {
-    public:
+     public:
         virtual ~Reporter();
 
         // Some corruption was detected.  "size" is the approximate number
@@ -73,7 +74,7 @@ public:
     void GoBackToLastBlock();
     void GoBackToStart();
 
-private:
+ private:
     SequentialFile* const file_;
     Reporter* const reporter_;
     bool const checksum_;
@@ -98,14 +99,15 @@ private:
 
     // Extend record types with the following special values
     enum {
-      kEof = kMaxRecordType + 1,
-      // Returned whenever we find an invalid physical record.
-      // Currently there are three situations in which this happens:
-      // * The record has an invalid CRC (ReadPhysicalRecord reports a drop)
-      // * The record is a 0-length record (No drop is reported)
-      // * The record is below constructor's initial_offset (No drop is reported)
-      kBadRecord = kMaxRecordType + 2,
-      kWaitRecord = kMaxRecordType + 3
+        kEof = kMaxRecordType + 1,
+        // Returned whenever we find an invalid physical record.
+        // Currently there are three situations in which this happens:
+        // * The record has an invalid CRC (ReadPhysicalRecord reports a drop)
+        // * The record is a 0-length record (No drop is reported)
+        // * The record is below constructor's initial_offset (No drop is
+        // reported)
+        kBadRecord = kMaxRecordType + 2,
+        kWaitRecord = kMaxRecordType + 3
     };
 
     // Skips all blocks that are completely before "initial_offset_".
@@ -114,7 +116,7 @@ private:
     bool SkipToInitialBlock();
 
     // Return type, or one of the preceding special values
-    unsigned int ReadPhysicalRecord(Slice* result, uint64_t& offset);
+    unsigned int ReadPhysicalRecord(Slice* result, uint64_t& offset); // NOLINT
 
     // Reports dropped bytes to the reporter.
     // buffer_ must be updated to remove the dropped bytes prior to invocation.
@@ -126,13 +128,16 @@ private:
     void operator=(const Reader&);
 };
 
-typedef ::rtidb::base::Skiplist<uint32_t, uint64_t, ::rtidb::base::DefaultComparator> LogParts;
+typedef ::rtidb::base::Skiplist<uint32_t, uint64_t,
+                                ::rtidb::base::DefaultComparator>
+    LogParts;
 
 class LogReader {
-public:
+ public:
     LogReader(LogParts* logs, const std::string& log_path);
     virtual ~LogReader();
-    ::rtidb::base::Status ReadNextRecord(::rtidb::base::Slice* record, std::string* buffer);
+    ::rtidb::base::Status ReadNextRecord(::rtidb::base::Slice* record,
+                                         std::string* buffer);
     int RollRLogFile();
     int OpenSeqFile(const std::string& path);
     void GoBackToLastBlock();
@@ -142,8 +147,9 @@ public:
     uint64_t GetLastRecordEndOffset();
     void SetOffset(uint64_t start_offset);
     LogReader(const LogReader&) = delete;
-    LogReader& operator= (const LogReader&) = delete;
-protected:
+    LogReader& operator=(const LogReader&) = delete;
+
+ protected:
     std::string log_path_;
     int log_part_index_;
     uint64_t start_offset_;
@@ -152,8 +158,7 @@ protected:
     LogParts* logs_;
 };
 
-
 }  // namespace log
 }  // namespace rtidb
 
-#endif  // RTIDB_LOG_READER_H_
+#endif  // SRC_LOG_LOG_READER_H_

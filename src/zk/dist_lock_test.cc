@@ -5,16 +5,16 @@
 // Date 2017-04-21
 //
 
-#include "zk/zk_client.h"
 #include "zk/dist_lock.h"
 #include <gtest/gtest.h>
-#include <boost/bind.hpp>
 #include <sched.h>
 #include <unistd.h>
-#include "logging.h"
+#include <boost/bind.hpp>
+#include "logging.h" // NOLINT
+#include "zk/zk_client.h"
 extern "C" {
 #include "zookeeper/zookeeper.h"
-} 
+}
 
 using ::baidu::common::INFO;
 
@@ -23,25 +23,23 @@ namespace zk {
 
 static bool call_invoked = false;
 class DistLockTest : public ::testing::Test {
-
-public:
+ public:
     DistLockTest() {}
 
     ~DistLockTest() {}
 };
 
-void OnLockedCallback() {
-    call_invoked = true;
-}
+void OnLockedCallback() { call_invoked = true; }
 
 void OnLostCallback() {}
-
 
 TEST_F(DistLockTest, Lock) {
     ZkClient client("127.0.0.1:6181", 10000, "127.0.0.1:9527", "/rtidb_lock");
     bool ok = client.Init();
     ASSERT_TRUE(ok);
-    DistLock lock("/rtidb_lock/nameserver_lock", &client, boost::bind(&OnLockedCallback), boost::bind(&OnLostCallback), "endpoint1");
+    DistLock lock("/rtidb_lock/nameserver_lock", &client,
+                  boost::bind(&OnLockedCallback), boost::bind(&OnLostCallback),
+                  "endpoint1");
     lock.Lock();
     sleep(5);
     if (!call_invoked) {
@@ -59,7 +57,9 @@ TEST_F(DistLockTest, Lock) {
         lock.Stop();
         ASSERT_TRUE(false);
     }
-    DistLock lock2("/rtidb_lock/nameserver_lock", &client2, boost::bind(&OnLockedCallback), boost::bind(&OnLostCallback), "endpoint2");
+    DistLock lock2("/rtidb_lock/nameserver_lock", &client2,
+                   boost::bind(&OnLockedCallback), boost::bind(&OnLostCallback),
+                   "endpoint2");
     lock2.Lock();
     sleep(5);
     ASSERT_FALSE(call_invoked);
@@ -69,12 +69,11 @@ TEST_F(DistLockTest, Lock) {
     lock2.Stop();
 }
 
-}
-}
+}  // namespace zk
+}  // namespace rtidb
 
 int main(int argc, char** argv) {
-    srand (time(NULL));
+    srand(time(NULL));
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }
-

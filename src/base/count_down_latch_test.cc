@@ -5,10 +5,10 @@
 // Date 2017-09-21
 //
 
-#include "count_down_latch.h"
+#include "base/count_down_latch.h"
+#include <thread_pool.h>
 #include "boost/bind.hpp"
 #include "gtest/gtest.h"
-#include "thread_pool.h"
 
 using ::baidu::common::ThreadPool;
 
@@ -16,16 +16,12 @@ namespace rtidb {
 namespace base {
 
 class CountDownLatchTest : public ::testing::Test {
-
-public:
+ public:
     CountDownLatchTest() {}
     ~CountDownLatchTest() {}
 };
 
-
-void DoCountDown(CountDownLatch* cdl) {
-    cdl->CountDown();
-}
+void DoCountDown(CountDownLatch* cdl) { cdl->CountDown(); }
 
 TEST_F(CountDownLatchTest, IsDone) {
     CountDownLatch latch(3);
@@ -41,7 +37,6 @@ TEST_F(CountDownLatchTest, Invalid) {
     ASSERT_TRUE(latch.IsDone());
 }
 
-
 TEST_F(CountDownLatchTest, MultiIsDone) {
     CountDownLatch latch(3);
     ThreadPool pool(1);
@@ -56,14 +51,10 @@ TEST_F(CountDownLatchTest, MultiIsDone) {
     ASSERT_EQ(0, latch.GetCount());
 }
 
-
-}
-}
+}  // namespace base
+}  // namespace rtidb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }
-
-
-
