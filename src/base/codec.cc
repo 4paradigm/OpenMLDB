@@ -143,8 +143,8 @@ bool RowBuilder::AppendDate(uint32_t date) {
 bool RowBuilder::AppendDate(uint32_t year, uint32_t month, uint32_t day) {
     if (!Check(::rtidb::type::kDate)) return false;
     int8_t* ptr = buf_ + offset_vec_[cnt_];
-    uint32_t data = year << 16;
-    data = data | (month << 8);
+    uint32_t data = (year - 1900) << 16;
+    data = data | ((month-1) << 8);
     data = data | day;
     *(reinterpret_cast<uint32_t*>(ptr)) = data;
     cnt_++;
@@ -383,8 +383,8 @@ int32_t RowView::GetDate(uint32_t idx, uint32_t* year, uint32_t* month, uint32_t
     uint32_t date = static_cast<uint32_t>(v1::GetInt32Field(row_, offset));
     *day = date & 0x0000000FF;
     date = date >> 8;
-    *month = date & 0x0000FF;
-    *year = date >> 8;
+    *month = 1 + date & 0x0000FF;
+    *year = 1900 + date >> 8;
     return 0;
 }
 

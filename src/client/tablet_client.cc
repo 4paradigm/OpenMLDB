@@ -245,8 +245,46 @@ bool TabletClient::Put(uint32_t tid,
              uint64_t time,
              const std::string& value,
              const std::vector<std::pair<std::string, uint32_t> >& dimensions) {
+    Put(tid, pid, time, value, dimensions, 0);
+}
+
+bool TabletClient::Put(uint32_t tid,
+             uint32_t pid,
+             uint64_t time,
+             const std::string& value,
+             const std::vector<std::pair<std::string, uint32_t> >& dimensions,
+             uint32_t format_version) {
     ::rtidb::api::PutRequest request;
     request.set_time(time);
+    request.set_value(value);
+    request.set_tid(tid);
+    request.set_pid(pid);
+    request.set_format_version(format_version);
+    for (size_t i = 0; i < dimensions.size(); i++) {
+        ::rtidb::api::Dimension* d = request.add_dimensions();
+        d->set_key(dimensions[i].first);
+        d->set_idx(dimensions[i].second);
+    }
+    ::rtidb::api::PutResponse response;
+    uint64_t consumed = ::baidu::common::timer::get_micros();
+    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Put,
+            &request, &response, FLAGS_request_timeout_ms, 1);
+    if (FLAGS_enable_show_tp) {
+        consumed = ::baidu::common::timer::get_micros() - consumed;
+        percentile_.push_back(consumed);
+    }
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    return false;
+}
+bool TabletClient::Put(uint32_t tid,
+             uint32_t pid,
+             const std::vector<std::pair<std::string, uint32_t> >& dimensions,
+             const std::vector<uint64_t>& ts_dimensions,
+             const std::string& value,
+             uint32_t format_version) {
+    ::rtidb::api::PutRequest request;
     request.set_value(value);
     request.set_tid(tid);
     request.set_pid(pid);
@@ -255,6 +293,12 @@ bool TabletClient::Put(uint32_t tid,
         d->set_key(dimensions[i].first);
         d->set_idx(dimensions[i].second);
     }
+    for (size_t i = 0; i < ts_dimensions.size(); i++) {
+        ::rtidb::api::TSDimension* d = request.add_ts_dimensions();
+        d->set_ts(ts_dimensions[i]);
+        d->set_idx(i);
+    }
+    request.set_format_version(format_version);
     ::rtidb::api::PutResponse response;
     uint64_t consumed = ::baidu::common::timer::get_micros();
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Put,
@@ -274,32 +318,7 @@ bool TabletClient::Put(uint32_t tid,
              const std::vector<std::pair<std::string, uint32_t> >& dimensions,
              const std::vector<uint64_t>& ts_dimensions,
              const std::string& value) {
-    ::rtidb::api::PutRequest request;
-    request.set_value(value);
-    request.set_tid(tid);
-    request.set_pid(pid);
-    for (size_t i = 0; i < dimensions.size(); i++) {
-        ::rtidb::api::Dimension* d = request.add_dimensions();
-        d->set_key(dimensions[i].first);
-        d->set_idx(dimensions[i].second);
-    }
-    for (size_t i = 0; i < ts_dimensions.size(); i++) {
-        ::rtidb::api::TSDimension* d = request.add_ts_dimensions();
-        d->set_ts(ts_dimensions[i]);
-        d->set_idx(i);
-    }
-    ::rtidb::api::PutResponse response;
-    uint64_t consumed = ::baidu::common::timer::get_micros();
-    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Put,
-            &request, &response, FLAGS_request_timeout_ms, 1);
-    if (FLAGS_enable_show_tp) {
-        consumed = ::baidu::common::timer::get_micros() - consumed;
-        percentile_.push_back(consumed);
-    }
-    if (ok && response.code() == 0) {
-        return true;
-    }
-    return false;
+    Put(tid, pid, dimensions, ts_dimensions, value, 0);
 }
 
 bool TabletClient::Put(uint32_t tid,

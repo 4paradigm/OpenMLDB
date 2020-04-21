@@ -30,8 +30,11 @@ const std::string DEFAULT_LONG = "1";
 static const std::unordered_map<std::string, ::rtidb::type::DataType>  DATA_TYPE_MAP = {
     {"bool", ::rtidb::type::kBool}, 
     {"smallint", ::rtidb::type::kSmallInt},
+    {"small16", ::rtidb::type::kSmallInt},
     {"int", ::rtidb::type::kInt},
+    {"int32", ::rtidb::type::kInt},
     {"bigint", ::rtidb::type::kBigInt},
+    {"int64", ::rtidb::type::kBigInt},
     {"float", ::rtidb::type::kFloat},
     {"double", ::rtidb::type::kDouble},
     {"varchar", ::rtidb::type::kVarchar},

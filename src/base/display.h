@@ -298,6 +298,101 @@ static void PrintColumnKey(const ::rtidb::api::TTLType& ttl_type, const ::rtidb:
     tp.Print(true);
 }
 
+static void FillTableRow(const Schema& schema,
+        const char* row_ptr, uint32_t row_size,
+        std::vector<std::string>& row) {
+    ::rtidb::base::RowView rv(schema);
+    rv.Reset(reinterpret_cast<const int8_t*>(row_ptr), row_size);
+    for (int32_t i = 0; i < schema.size(); i++) {
+            uint32_t index = (uint32_t)i;
+            const ::rtidb::common::ColumnDesc& column =  schema.Get(i);
+            if (rv.IsNULL(index)) {
+                row.push_back("null");
+                continue;
+            }
+            switch(column.data_type()) {
+                case ::rtidb::type::kBool:
+                    {
+                        bool val = false;
+                        rv.GetBool(index, &val);
+                        if (val) {
+                            row.push_back("true");
+                        }else {
+                            row.push_back("false");
+                        }
+                        break;
+                    }
+                case ::rtidb::type::kSmallInt:
+                    {
+                        int16_t val = 0;
+                        rv.GetInt16(index, &val);
+                        row.push_back(boost::lexical_cast<std::string>(val));
+                        break;
+                    }
+                case ::rtidb::type::kInt:
+                    {
+                        int32_t val = 0;
+                        rv.GetInt32(index, &val);
+                        row.push_back(boost::lexical_cast<std::string>(val));
+                        break;
+                    }
+                case ::rtidb::type::kBigInt:
+                    {
+                        int64_t val = 0;
+                        rv.GetInt64(index, &val);
+                        row.push_back(boost::lexical_cast<std::string>(val));
+                        break;
+                    }
+                case ::rtidb::type::kFloat:
+                    {
+                        float val = 0;
+                        rv.GetFloat(index, &val);
+                        row.push_back(boost::lexical_cast<std::string>(val));
+                        break;
+                    }
+                case ::rtidb::type::kDouble:
+                    {
+                        double val = 0;
+                        rv.GetDouble(index, &val);
+                        row.push_back(boost::lexical_cast<std::string>(val));
+                        break;
+                    }
+                case ::rtidb::type::kVarchar:
+                case ::rtidb::type::kString:
+                    {
+                        char* val = NULL;
+                        uint32_t size = 0;
+                        rv.GetString(index, &val, &size);
+                        std::string sval(val, size);
+                        row.push_back(sval);
+                        break;
+                    }
+                case ::rtidb::type::kTimestamp:
+                    {
+                        int64_t time = 0;
+                        rv.GetTimestamp(index, &time);
+                        row.push_back(boost::lexical_cast<std::string>(time));
+                        break;
+                    }
+                case ::rtidb::type::kDate:
+                    {
+                        uint32_t year = 0;
+                        uint32_t month = 0;
+                        uint32_t day = 0;
+                        rv.GetDate(index, &year, &month, &day);
+                        std::stringstream ss;
+                        ss << year << "-" << month << "-" << day;
+                        row.push_back(ss.str());
+                        break;
+                    }
+                default:
+                    {
+                        row.push_back("-");
+                    }
+            }
+    }
+}
+
 static void FillTableRow(const std::vector<::rtidb::base::ColumnDesc>& schema,
                   const char* row,
                   const uint32_t row_size,
@@ -436,6 +531,35 @@ static void FillTableRow(uint32_t full_schema_size,
         fit.Next();
         vrow.push_back(col);
     }
+}
+
+__attribute__((unused))
+static void ShowTableRows(const Schema& schema,
+        ::rtidb::base::KvIterator* it,
+        const ::rtidb::nameserver::CompressType ctype) {
+    std::vector<std::string> row;
+    row.push_back("#");
+    for (int32_t i = 0; i < schema.size(); i++) {
+        row.push_back(schema.Get(i).name());
+    }
+    ::baidu::common::TPrinter tp(row.size(), FLAGS_max_col_display_length);
+    tp.AddRow(row);
+    uint32_t index = 1;
+    while (it->Valid()) {
+        std::vector<std::string> vrow;
+        vrow.push_back(boost::lexical_cast<std::string>(index));
+        std::string value;
+        if (ctype == ::rtidb::nameserver::kSnappy) {
+            ::snappy::Uncompress(it->GetValue().data(), it->GetValue().size(), &value);
+        } else {
+            value.assign(it->GetValue().data(), it->GetValue().size());
+        }
+        FillTableRow(schema, value.c_str(), value.size(), vrow);
+        tp.AddRow(vrow);
+        index ++;
+        it->Next();
+    }
+    tp.Print(true);
 }
 
 __attribute__((unused))
@@ -770,6 +894,10 @@ static void PrintTableInformation(std::vector<::rtidb::nameserver::TableInfo>& t
     row.clear();
     row.push_back("diskused");
     row.push_back(::rtidb::base::HumanReadableString(diskused));
+    tp.AddRow(row);
+    row.clear();
+    row.push_back("format_version");
+    row.push_back(std::to_string(table.format_version()));
     tp.AddRow(row);
     tp.Print(true);
 }
