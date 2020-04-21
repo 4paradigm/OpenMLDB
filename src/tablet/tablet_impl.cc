@@ -341,12 +341,11 @@ bool TabletImpl::CheckGetDone(::rtidb::api::GetType type, uint64_t ts,
 }
 
 int32_t TabletImpl::GetIndex(uint64_t expire_time, uint64_t expire_cnt,
-                                ::rtidb::api::TTLType ttl_type,
-                                 ::rtidb::storage::TableIterator* it,
-                                 const ::rtidb::api::GetRequest* request,
-                                 const ::rtidb::api::TableMeta& meta,
-                                 std::string* value,
-                                 uint64_t* ts) {
+                             ::rtidb::api::TTLType ttl_type,
+                             ::rtidb::storage::TableIterator* it,
+                             const ::rtidb::api::GetRequest* request,
+                             const ::rtidb::api::TableMeta& meta,
+                             std::string* value, uint64_t* ts) {
     uint64_t st = request->ts();
     const rtidb::api::GetType& st_type = request->type();
     uint64_t et = request->et();
@@ -378,10 +377,12 @@ int32_t TabletImpl::GetIndex(uint64_t expire_time, uint64_t expire_cnt,
         return -2;
     }
     bool enable_project = false;
-    ::rtidb::base::RowProject row_project(meta.column_desc(), request->projection());
+    ::rtidb::base::RowProject row_project(meta.column_desc(),
+                                          request->projection());
     if (request->projection().size() > 0 && meta.format_version() == 1) {
         if (meta.compress_type() == api::kSnappy) {
-            PDLOG(WARNING, "project on compress row data do not being supported");
+            PDLOG(WARNING,
+                  "project on compress row data do not being supported");
             return -1;
         }
         bool ok = row_project.Init();
@@ -441,14 +442,16 @@ int32_t TabletImpl::GetIndex(uint64_t expire_time, uint64_t expire_cnt,
             if (enable_project) {
                 int8_t* ptr = nullptr;
                 uint32_t size = 0;
-                bool ok = row_project.Project(reinterpret_cast<const int8_t*>(it->GetValue().data()), it->GetValue().size(), &ptr, &size);
+                bool ok = row_project.Project(
+                    reinterpret_cast<const int8_t*>(it->GetValue().data()),
+                    it->GetValue().size(), &ptr, &size);
                 if (!ok) {
                     PDLOG(WARNING, "fail to make a projection");
                     return -4;
                 }
                 value->assign(reinterpret_cast<char*>(ptr), size);
                 delete[] ptr;
-            }else {
+            } else {
                 value->assign(it_value.data(), it_value.size());
                 return 0;
             }
@@ -483,14 +486,16 @@ int32_t TabletImpl::GetIndex(uint64_t expire_time, uint64_t expire_cnt,
         if (enable_project) {
             int8_t* ptr = nullptr;
             uint32_t size = 0;
-            bool ok = row_project.Project(reinterpret_cast<const int8_t*>(it->GetValue().data()), it->GetValue().size(), &ptr, &size);
+            bool ok = row_project.Project(
+                reinterpret_cast<const int8_t*>(it->GetValue().data()),
+                it->GetValue().size(), &ptr, &size);
             if (!ok) {
                 PDLOG(WARNING, "fail to make a projection");
                 return -4;
             }
             value->assign(reinterpret_cast<char*>(ptr), size);
             delete[] ptr;
-        }else {
+        } else {
             value->assign(it->GetValue().data(), it->GetValue().size());
         }
         *ts = it->GetKey();
@@ -502,8 +507,7 @@ int32_t TabletImpl::GetIndex(uint64_t expire_time, uint64_t expire_cnt,
 
 void TabletImpl::Get(RpcController* controller,
                      const ::rtidb::api::GetRequest* request,
-                     ::rtidb::api::GetResponse* response,
-                     Closure* done) {
+                     ::rtidb::api::GetResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     std::shared_ptr<RelationalTable> r_table;
@@ -575,11 +579,9 @@ void TabletImpl::Get(RpcController* controller,
         std::string* value = response->mutable_value();
         uint64_t ts = 0;
         int32_t code = 0;
-        code =
-            GetIndex(table->GetExpireTime(ttl.abs_ttl * 60 * 1000), ttl.lat_ttl,
-                     table->GetTTLType(), it, request,
-                     table->GetTableMeta(),
-                     value, &ts);
+        code = GetIndex(table->GetExpireTime(ttl.abs_ttl * 60 * 1000),
+                        ttl.lat_ttl, table->GetTTLType(), it, request,
+                        table->GetTableMeta(), value, &ts);
         delete it;
         response->set_ts(ts);
         response->set_code(code);
@@ -677,7 +679,7 @@ void TabletImpl::Put(RpcController* controller,
         done->Run();
         return;
     }
-        uint64_t start_time = ::baidu::common::timer::get_micros();
+    uint64_t start_time = ::baidu::common::timer::get_micros();
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     std::shared_ptr<RelationalTable> r_table;
     if (!table) {
@@ -693,8 +695,11 @@ void TabletImpl::Put(RpcController* controller,
         }
     }
     if (table) {
-        if ((!request->has_format_version() && table->GetTableMeta().format_version() == 1)
-                || (request->has_format_version() && request->format_version() != table->GetTableMeta().format_version())) {
+        if ((!request->has_format_version() &&
+             table->GetTableMeta().format_version() == 1) ||
+            (request->has_format_version() &&
+             request->format_version() !=
+                 table->GetTableMeta().format_version())) {
             response->set_code(::rtidb::base::ReturnCode::kPutBadFormat);
             response->set_msg("put bad format");
             done->Run();
@@ -975,13 +980,11 @@ int TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta,
 }
 
 int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
-        ::rtidb::api::TTLType ttl_type,
-        ::rtidb::storage::TableIterator* it,
-        const ::rtidb::api::ScanRequest* request,
-        const ::rtidb::api::TableMeta& meta,
-        std::string* pairs,
-        uint32_t* count) {
-
+                              ::rtidb::api::TTLType ttl_type,
+                              ::rtidb::storage::TableIterator* it,
+                              const ::rtidb::api::ScanRequest* request,
+                              const ::rtidb::api::TableMeta& meta,
+                              std::string* pairs, uint32_t* count) {
     uint32_t limit = request->limit();
     uint32_t atleast = request->atleast();
     uint64_t st = request->st();
@@ -989,11 +992,13 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
     uint64_t et = request->et();
     const rtidb::api::GetType& et_type = request->et_type();
     bool enable_project = false;
-    //TODO (wangtaize) support extend columns
-    ::rtidb::base::RowProject row_project(meta.column_desc(), request->projection());
+    // TODO(wangtaize) support extend columns
+    ::rtidb::base::RowProject row_project(meta.column_desc(),
+                                          request->projection());
     if (request->projection().size() > 0 && meta.format_version() == 1) {
         if (meta.compress_type() == api::kSnappy) {
-            PDLOG(WARNING, "project on compress row data do not being supported");
+            PDLOG(WARNING,
+                  "project on compress row data do not being supported");
             return -1;
         }
         bool ok = row_project.Init();
@@ -1059,7 +1064,7 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
         it->SeekToFirst();
     }
     uint64_t last_time = 0;
-    std::vector<std::pair<uint64_t, std::unique_ptr<::rtidb::base::Slice> > > tmp;
+    std::vector<std::pair<uint64_t, std::unique_ptr<::rtidb::base::Slice>>> tmp;
     tmp.reserve(FLAGS_scan_reserve_size);
     uint32_t total_block_size = 0;
     while (it->Valid()) {
@@ -1121,16 +1126,21 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
         if (enable_project) {
             int8_t* ptr = nullptr;
             uint32_t size = 0;
-            bool ok = row_project.Project(reinterpret_cast<const int8_t*>(it->GetValue().data()), it->GetValue().size(), &ptr, &size);
+            bool ok = row_project.Project(
+                reinterpret_cast<const int8_t*>(it->GetValue().data()),
+                it->GetValue().size(), &ptr, &size);
             if (!ok) {
                 PDLOG(WARNING, "fail to make a projection");
                 return -4;
             }
-            std::unique_ptr<::rtidb::base::Slice> value(new ::rtidb::base::Slice(reinterpret_cast<char*>(ptr), size, true));
+            std::unique_ptr<::rtidb::base::Slice> value(
+                new ::rtidb::base::Slice(reinterpret_cast<char*>(ptr), size,
+                                         true));
             tmp.push_back(std::make_pair(it->GetKey(), std::move(value)));
             total_block_size += size;
-        }else {
-            std::unique_ptr<::rtidb::base::Slice> value(new ::rtidb::base::Slice(it->GetValue()));
+        } else {
+            std::unique_ptr<::rtidb::base::Slice> value(
+                new ::rtidb::base::Slice(it->GetValue()));
             total_block_size += value->size();
             tmp.push_back(std::make_pair(it->GetKey(), std::move(value)));
         }
@@ -1347,10 +1357,8 @@ void TabletImpl::Scan(RpcController* controller,
     int32_t code = 0;
     uint64_t expire_time = table->GetExpireTime(ttl.abs_ttl * 60 * 1000);
     uint64_t expire_cnt = ttl.lat_ttl;
-    code = ScanIndex(expire_time, expire_cnt, 
-                    table->GetTTLType(),
-                    it, request, table->GetTableMeta(),
-                    pairs, &count);
+    code = ScanIndex(expire_time, expire_cnt, table->GetTTLType(), it, request,
+                     table->GetTableMeta(), pairs, &count);
     delete it;
     response->set_code(code);
     response->set_count(count);
