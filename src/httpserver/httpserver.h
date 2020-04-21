@@ -27,8 +27,8 @@ class HttpImpl : public ::rtidb::httpserver::HTTPServer {
     bool Init();
 
     void Get(RpcController* controller,
-                    const ::rtidb::httpserver::HttpRequest* request,
-                    ::rtidb::httpserver::HttpResponse* response, Closure* done);
+             const ::rtidb::httpserver::HttpRequest* request,
+             ::rtidb::httpserver::HttpResponse* response, Closure* done);
 
     inline void SetServer(brpc::Server* server) { server_ = server; }
 

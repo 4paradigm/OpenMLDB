@@ -6108,7 +6108,6 @@ def FlagCxx11Features(filename, clean_lines, linenum, error):
                                       'condition_variable',
                                       'fenv.h',
                                       'future',
-                                      'mutex',
                                       'thread',
                                       'chrono',
                                       'ratio',

@@ -4,11 +4,13 @@
 // Date 2020-04-08
 
 #include "httpserver/httpserver.h"
+#include <fcntl.h>
 #include <gflags/gflags.h>
 #include <string>
-#include <boost/algorithm/string/split.hpp>
+#include <vector>
+#include <memory>
 #include <boost/algorithm/string/classification.hpp>
-#include <fcntl.h>
+#include <boost/algorithm/string/split.hpp>
 
 DECLARE_string(endpoint);
 DECLARE_string(zk_cluster);
@@ -33,8 +35,8 @@ bool HttpImpl::Init() {
         return false;
     }
     client_ = new BaseClient(FLAGS_zk_cluster, FLAGS_zk_root_path,
-                            FLAGS_endpoint, FLAGS_zk_session_timeout,
-                            FLAGS_zk_keep_alive_check_interval);
+                             FLAGS_endpoint, FLAGS_zk_session_timeout,
+                             FLAGS_zk_keep_alive_check_interval);
     std::string msg;
     bool ok = client_->Init(&msg);
     if (!ok) {
@@ -45,8 +47,8 @@ bool HttpImpl::Init() {
 }
 
 void HttpImpl::Get(RpcController* controller,
-                const ::rtidb::httpserver::HttpRequest* request,
-                ::rtidb::httpserver::HttpResponse* response, Closure* done) {
+                   const ::rtidb::httpserver::HttpRequest* request,
+                   ::rtidb::httpserver::HttpResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
     brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
     std::string table;
@@ -58,7 +60,8 @@ void HttpImpl::Get(RpcController* controller,
         table = unresolve_path;
         blob_id = cntl->http_request().uri().GetQuery("blob_id");
         if (blob_id == NULL) {
-            cntl->http_response().set_status_code(brpc::HTTP_STATUS_BAD_REQUEST);
+            cntl->http_response().set_status_code(
+                brpc::HTTP_STATUS_BAD_REQUEST);
             return;
         }
     } else if (vec.size() == 2) {
@@ -78,21 +81,25 @@ void HttpImpl::Get(RpcController* controller,
     std::string err_msg;
     auto tablet = client_->GetTabletClient(th->partition[0].leader, &err_msg);
     if (!tablet) {
-        cntl->http_response().set_status_code(brpc::HTTP_STATUS_INTERNAL_SERVER_ERROR);
+        cntl->http_response().set_status_code(
+            brpc::HTTP_STATUS_INTERNAL_SERVER_ERROR);
         response_writer.append(err_msg);
         return;
     }
     uint64_t ts;
     std::string value;
-    bool ok = tablet->Get(th->table_info->tid(), 0, *blob_id, 0, "", "", value, ts, err_msg);
+    bool ok = tablet->Get(th->table_info->tid(), 0, *blob_id, 0, "", "", value,
+                          ts, err_msg);
     if (!ok) {
-        cntl->http_response().set_status_code(brpc::HTTP_STATUS_INTERNAL_SERVER_ERROR);
+        cntl->http_response().set_status_code(
+            brpc::HTTP_STATUS_INTERNAL_SERVER_ERROR);
         response_writer.append(err_msg);
         return;
     }
     rtidb::base::RowView rv(*(th->columns));
     const char* buffer = value.c_str();
-    rv.Reset(reinterpret_cast<int8_t*>(const_cast<char*>(buffer)), value.length());
+    rv.Reset(reinterpret_cast<int8_t*>(const_cast<char*>(buffer)),
+             value.length());
     int i = 0;
     /*
     for (; i < th->columns->size(); i++) {
@@ -107,12 +114,13 @@ void HttpImpl::Get(RpcController* controller,
         return;
     }
      */
-    i = 1; // current do not process blob
+    i = 1;  // current do not process blob
     char* ch = NULL;
     uint32_t length = 0;
     int ret = rv.GetString(i, &ch, &length);
     if (ret != 0) {
-        cntl->http_response().set_status_code(brpc::HTTP_STATUS_INTERNAL_SERVER_ERROR);
+        cntl->http_response().set_status_code(
+            brpc::HTTP_STATUS_INTERNAL_SERVER_ERROR);
         response_writer.append("get blob failed");
         return;
     }
