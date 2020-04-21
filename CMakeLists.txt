@@ -42,10 +42,14 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin") # TODO: Make sure all libraries can be linked
     set(COMMON_LIBS glog gflags)
     set(g_libs glog gflags)
-    set(arrow_libs parquet arrow_dataset arrow
-    double-conversion boost_filesystem snappy)
+    # set(arrow_libs parquet arrow_dataset arrow
+    # double-conversion boost_filesystem snappy)
+    set(arrow_libs parquet arrow_dataset arrow brotlidec brotlienc 
+    brotlicommon
+    thrift lz4 z zstd double-conversion boost_filesystem snappy)
 endif()
 set(BOOST_ROOT "${PROJECT_SOURCE_DIR}/thirdparty/")
+
 find_package(LLVM REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
@@ -87,6 +91,7 @@ endif()
 set(boost_libs boost_graph)
 add_definitions('-g')
 add_definitions('-Wall')
+add_definitions("-O0")
 add_definitions('-std=c++14')
 add_definitions(${LLVM_DEFINITIONS})
 find_package(SWIG REQUIRED)

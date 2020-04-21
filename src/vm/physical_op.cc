@@ -47,7 +47,7 @@ bool PhysicalUnaryNode::InitSchema() {
         return false;
     }
     output_schema_.CopyFrom(producers_[0]->output_schema_);
-    for (auto pair : producers_[0]->output_name_schema_list_) {
+    for (auto pair : producers_[0]->GetOutputNameSchemaList()) {
         output_name_schema_list_.push_back(pair);
     }
     PrintSchema();
@@ -179,10 +179,10 @@ bool PhysicalJoinNode::InitSchema() {
     }
     output_schema_.CopyFrom(producers_[0]->output_schema_);
     output_schema_.MergeFrom(producers_[1]->output_schema_);
-    for (auto pair : producers_[0]->output_name_schema_list_) {
+    for (auto pair : producers_[0]->GetOutputNameSchemaList()) {
         output_name_schema_list_.push_back(pair);
     }
-    for (auto right_pair : producers_[1]->output_name_schema_list_) {
+    for (auto right_pair : producers_[1]->GetOutputNameSchemaList()) {
         output_name_schema_list_.push_back(right_pair);
     }
     PrintSchema();
@@ -271,7 +271,7 @@ void PhysicalOpNode::PrintSchema() {
 }
 bool PhysicalUnionNode::InitSchema() {
     output_schema_.CopyFrom(producers_[0]->output_schema_);
-    for (auto pair : producers_[0]->output_name_schema_list_) {
+    for (auto pair : producers_[0]->GetOutputNameSchemaList()) {
         output_name_schema_list_.push_back(pair);
     }
     PrintSchema();
@@ -301,7 +301,7 @@ void PhysicalRequestUnionNode::Print(std::ostream& output,
 }
 bool PhysicalRequestUnionNode::InitSchema() {
     output_schema_.CopyFrom(producers_[0]->output_schema_);
-    for (auto pair : producers_[0]->output_name_schema_list_) {
+    for (auto pair : producers_[0]->GetOutputNameSchemaList()) {
         output_name_schema_list_.push_back(pair);
     }
     PrintSchema();
@@ -330,10 +330,10 @@ bool PhysicalRequestJoinNode::InitSchema() {
     }
     output_schema_.CopyFrom(producers_[0]->output_schema_);
     output_schema_.MergeFrom(producers_[1]->output_schema_);
-    for (auto pair : producers_[0]->output_name_schema_list_) {
+    for (auto pair : producers_[0]->GetOutputNameSchemaList()) {
         output_name_schema_list_.push_back(pair);
     }
-    for (auto right_pair : producers_[1]->output_name_schema_list_) {
+    for (auto right_pair : producers_[1]->GetOutputNameSchemaList()) {
         output_name_schema_list_.push_back(right_pair);
     }
     PrintSchema();
@@ -352,7 +352,7 @@ void PhysicalSeekIndexNode::Print(std::ostream& output,
 }
 bool PhysicalSeekIndexNode::InitSchema() {
     output_schema_.CopyFrom(producers_[1]->output_schema_);
-    for (auto pair : producers_[1]->output_name_schema_list_) {
+    for (auto pair : producers_[1]->GetOutputNameSchemaList()) {
         output_name_schema_list_.push_back(pair);
     }
     PrintSchema();

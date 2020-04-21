@@ -49,16 +49,17 @@ class SimpleCatalogTableHandler : public TableHandler {
 
     const uint64_t GetCount() override;
 
-    base::Slice At(uint64_t pos) override;
+    fesql::codec::Row At(uint64_t pos) override;
 
     std::shared_ptr<PartitionHandler> GetPartition(
         std::shared_ptr<TableHandler> table_hander,
         const std::string &index_name) const override;
 
-    std::unique_ptr<IteratorV<uint64_t, base::Slice>> GetIterator()
+    std::unique_ptr<IteratorV<uint64_t, fesql::codec::Row>> GetIterator()
         const override;
 
-    IteratorV<uint64_t, base::Slice> *GetIterator(int8_t *addr) const override;
+    IteratorV<uint64_t, fesql::codec::Row> *GetIterator(int8_t *addr)
+        const override;
 
  private:
     std::string db_name_;

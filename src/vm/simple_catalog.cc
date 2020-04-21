@@ -104,9 +104,9 @@ std::unique_ptr<WindowIterator> SimpleCatalogTableHandler::GetWindowIterator(
 
 const uint64_t SimpleCatalogTableHandler::GetCount() { return 0; }
 
-base::Slice SimpleCatalogTableHandler::At(uint64_t pos) {
+fesql::codec::Row SimpleCatalogTableHandler::At(uint64_t pos) {
     LOG(ERROR) << "Unsupported operation: At()";
-    return base::Slice();
+    return fesql::codec::Row();
 }
 
 std::shared_ptr<PartitionHandler> SimpleCatalogTableHandler::GetPartition(
@@ -116,13 +116,14 @@ std::shared_ptr<PartitionHandler> SimpleCatalogTableHandler::GetPartition(
     return nullptr;
 }
 
-std::unique_ptr<IteratorV<uint64_t, base::Slice>>
+std::unique_ptr<IteratorV<uint64_t, fesql::codec::Row>>
 SimpleCatalogTableHandler::GetIterator() const {
     LOG(ERROR) << "Unsupported operation: GetIterator()";
     return nullptr;
 }
 
-IteratorV<uint64_t, base::Slice> *SimpleCatalogTableHandler::GetIterator(
+IteratorV<uint64_t, fesql::codec::Row>
+*SimpleCatalogTableHandler::GetIterator(
     int8_t *addr) const {
     LOG(ERROR) << "Unsupported operation: GetIterator()";
     return nullptr;

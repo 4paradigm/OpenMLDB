@@ -2,43 +2,65 @@ image: develop-registry.4pd.io/centos6_gcc7_fesql:0.0.8
 variables:
     GIT_SUBMODULE_STRATEGY: normal
 
+before_script:
+    - source tools/init_env.profile.sh
+
 stages:
     - build
+    - test
     - benchmark
 
 style_check:
     stage: build
     script:
-        - source /opt/rh/python27/enable && bash tools/style_check.sh
+        - bash tools/style_check.sh
     artifacts:
         reports:
             junit:
                 - ./style.xml
 
-build_py3sdk_and_case:
-    stage: build
-    script:
-        - ln -sf /depends/thirdparty thirdparty
-        - source /opt/rh/devtoolset-7/enable && bash tools/run_py3_ut.sh
-    artifacts:
-        reports:
-            junit:
-                - python/test/*.xml
-
 build_fesql_and_case:
     stage: build
     script:
-        - ln -sf /depends/thirdparty thirdparty
-        - source /opt/rh/devtoolset-7/enable && bash tools/compile.sh
+        - bash tools/compile.sh
         - cd build && make coverage
     artifacts:
         reports:
             junit:
                 - build/*.xml
-        paths: ["build/coverage"]
+        paths: 
+            - "build/coverage"
+            - ./build
+
+build_py3sdk_and_case:
+    stage: test
+    script:
+        - bash tools/run_py3_ut.sh
+    artifacts:
+        reports:
+            junit:
+                - python/test/*.xml
+
+build_and_test_on_mac:
+    stage: build
+    variables:
+        CICD_RUNNER_TAG: "macos"
+        CICD_RUNNER_THIRDPARTY_PATH: "/Users/wrongtest/projects/fesql/thirdparty"
+    script:
+        - echo hello world
+    tags:
+        - macos
+
+test_java_sdk:
+    stage: test
+    script:
+        - bash tools/run_java_ut.sh
+    artifacts:
+        reports:
+            junit:
+                - java/target/surefire-reports/TEST-*.xml
 
 micro_benchmark:
     stage: benchmark
     script:
-        - ln -sf /depends/thirdparty thirdparty
-        - source /opt/rh/devtoolset-7/enable && bash tools/micro_bench.sh
+        - bash tools/micro_bench.sh

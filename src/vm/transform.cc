@@ -191,7 +191,7 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
                     keys_idxs.push_back(idx++);
                 }
                 CodeGenExprList(
-                    (node->GetProducers()[0]->output_name_schema_list_),
+                    (node->GetProducers()[0]->GetOutputNameSchemaList()),
                     seek_op->keys_, true, fn_name, &fn_schema, status);
                 seek_op->SetKeysIdxs(keys_idxs);
             }
@@ -209,7 +209,7 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
                     idxs.push_back(idx++);
                 }
                 CodeGenExprList(
-                    (node->GetProducers()[0]->output_name_schema_list_),
+                    (node->GetProducers()[0]->GetOutputNameSchemaList()),
                     group_op->groups_, true, fn_name, &fn_schema, status);
 
                 group_op->SetGroupsIdxs(idxs);
@@ -229,7 +229,7 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
                         idxs.push_back(idx++);
                     }
                     CodeGenExprList(
-                        (node->GetProducers()[0]->output_name_schema_list_),
+                        (node->GetProducers()[0]->GetOutputNameSchemaList()),
                         order_op->order_->order_by_, true, fn_name, &fn_schema,
                         status);
                     order_op->SetOrdersIdxs(idxs);
@@ -258,7 +258,7 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
             }
             if (!expr_list.children_.empty()) {
                 CodeGenExprList(
-                    (node->GetProducers()[0]->output_name_schema_list_),
+                    (node->GetProducers()[0]->GetOutputNameSchemaList()),
                     &expr_list, true, fn_name, &fn_schema, status);
                 group_sort_op->SetGroupsIdxs(groups_idxs);
                 group_sort_op->SetOrdersIdxs(orders_idxs);
@@ -271,7 +271,7 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
             node::ExprListNode expr_list;
             expr_list.AddChild(
                 const_cast<node::ExprNode*>(filter_op->condition_));
-            CodeGenExprList((node->GetProducers()[0]->output_name_schema_list_),
+            CodeGenExprList((node->GetProducers()[0]->GetOutputNameSchemaList()),
                             &expr_list, true, fn_name, &fn_schema, status);
             filter_op->SetConditionIdxs({0});
             break;
@@ -281,7 +281,7 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
             node::ExprListNode expr_list;
             expr_list.AddChild(
                 const_cast<node::ExprNode*>(join_op->condition_));
-            CodeGenExprList(node->output_name_schema_list_, &expr_list, true,
+            CodeGenExprList(node->GetOutputNameSchemaList(), &expr_list, true,
                             fn_name, &fn_schema, status);
             join_op->SetConditionIdxs({0});
             break;
@@ -291,7 +291,7 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
             node::ExprListNode expr_list;
             expr_list.AddChild(
                 const_cast<node::ExprNode*>(request_join_op->condition_));
-            CodeGenExprList(node->output_name_schema_list_, &expr_list, true,
+            CodeGenExprList(node->GetOutputNameSchemaList(), &expr_list, true,
                             fn_name, &fn_schema, status);
             request_join_op->SetConditionIdxs({0});
             break;
@@ -330,7 +330,7 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
             }
             if (!expr_list.children_.empty()) {
                 CodeGenExprList(
-                    (node->GetProducers()[0]->output_name_schema_list_),
+                    (node->GetProducers()[0]->GetOutputNameSchemaList()),
                     &expr_list, true, fn_name, &fn_schema, status);
                 request_union->SetGroupsIdxs(groups_idxs);
                 request_union->SetOrdersIdxs(orders_idxs);
@@ -763,7 +763,7 @@ bool BatchModeTransformer::CreatePhysicalProjectNode(
     switch (project_type) {
         case kRowProject:
         case kTableProject: {
-            if (!GenProjects((node->output_name_schema_list_), projects, true,
+            if (!GenProjects((node->GetOutputNameSchemaList()), projects, true,
                              fn_name, &output_schema, status)) {
                 return false;
             }
@@ -773,7 +773,7 @@ bool BatchModeTransformer::CreatePhysicalProjectNode(
         case kGroupAggregation:
         case kWindowAggregation: {
             // TODO(chenjing): gen window aggregation
-            if (!GenProjects((node->output_name_schema_list_), projects, false,
+            if (!GenProjects((node->GetOutputNameSchemaList()), projects, false,
                              fn_name, &output_schema, status)) {
                 return false;
             }

@@ -3,6 +3,7 @@ thirdparty
 thirdsrc
 
 *.jnilib
+*.dylib
 *.so
 
 # java ignore
