@@ -512,6 +512,22 @@ TEST_F(TransformTest, pass_join_optimized_test) {
         "        DATA_PROVIDER(table=t2)"));
     in_outs.push_back(std::make_pair(
         "SELECT "
+        "sum(t1.col3) OVER w1 as w1_col3_sum, "
+        "t2.col1, "
+        "sum(t1.col2) OVER w1 as w1_col2_sum "
+        "FROM t1 last join t2 on t1.col1 = t2.col1 AND t1.col3 > t2.col3 "
+        "WINDOW w1 AS (PARTITION BY t1.col1 ORDER BY t1.col5 ROWS BETWEEN 3 "
+        "PRECEDING AND CURRENT ROW) limit 10;",
+        "LIMIT(limit=10, optimized)\n"
+        "  PROJECT(type=WindowAggregation, groups=(t1.col1), orders=(t1.col5) "
+        "ASC, start=-3, end=0, limit=10)\n"
+        "    JOIN(type=LastJoin, condition=t1.col3 > t2.col3, key=(t1.col1))\n"
+        "      GROUP_AND_SORT_BY(groups=(), orders=() ASC)\n"
+        "        DATA_PROVIDER(type=IndexScan, table=t1, index=index1)\n"
+        "      GROUP_BY(groups=(t2.col1))\n"
+        "        DATA_PROVIDER(table=t2)"));
+    in_outs.push_back(std::make_pair(
+        "SELECT "
         "t2.col1, "
         "sum(t1.col3) OVER w1 as w1_col3_sum, "
         "sum(t1.col2) OVER w1 as w1_col2_sum "
@@ -594,6 +610,10 @@ TEST_F(TransformTest, TransfromConditionsTest) {
                                   "t1.col2 = t2.col2",                // expr2
                                   "t1.col3 + t1.col4 = t2.col3"})));  // expr3
 
+    sql_exp.push_back(std::make_pair(
+        "select t1.col1 = t2.col2 and t2.col5 >= t1.col5 from t1,t2;",
+        std::vector<std::string>({"t1.col1 = t2.col2",       // expr1
+                                  "t2.col5 >= t1.col5"})));  // expr2
     for (size_t i = 0; i < sql_exp.size(); i++) {
         std::string sql = sql_exp[i].first;
         std::vector<std::string>& exp_list = sql_exp[i].second;
@@ -604,8 +624,8 @@ TEST_F(TransformTest, TransfromConditionsTest) {
         LOG(INFO) << "TEST condition [" << i
                   << "]: " << node::ExprString(condition);
         node::ExprListNode and_condition_list;
-        FilterConditionOptimized::TransfromAndConditionList(condition,
-                                                   &and_condition_list);
+        FilterConditionOptimized::TransfromAndConditionList(
+            condition, &and_condition_list);
         LOG(INFO) << "and condition list: "
                   << node::ExprString(&and_condition_list);
         ASSERT_EQ(exp_list.size(), and_condition_list.children_.size());
@@ -645,6 +665,8 @@ TEST_F(TransformTest, TransformEqualExprPairTest) {
                                      std::make_pair("", "")));
     sql_exp.push_back(std::make_pair("select t1.col1=t3.col2 from t1,t2;",
                                      std::make_pair("", "")));
+    sql_exp.push_back(std::make_pair("select t2.col1>t1.col1 from t1,t2;",
+                                     std::make_pair("", "")));
 
     for (size_t i = 0; i < sql_exp.size(); i++) {
         std::string sql = sql_exp[i].first;
@@ -668,6 +690,8 @@ TEST_F(TransformTest, TransformEqualExprPairTest) {
         ExprPair mock_pair;
         ExprPair expr_pair =
             mock_expr_pairs.empty() ? mock_pair : mock_expr_pairs[0];
+        LOG(INFO) << "REST CONDITION: "
+                  << node::ExprString(&out_condition_list);
         ASSERT_EQ(exp_list.first, node::ExprString(expr_pair.left_expr_));
         ASSERT_EQ(exp_list.second, node::ExprString(expr_pair.right_expr_));
         ASSERT_EQ(mock_condition_list.children_.size(),

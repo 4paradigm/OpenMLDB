@@ -521,10 +521,17 @@ TEST_F(TransformRequestModeTest, pass_join_optimized_test) {
         "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join t2 on "
         "t1.col1 = t2.col2 and t2.col5 >= t1.col5;",
         "PROJECT(type=RowProject)\n"
-        "  REQUEST_JOIN(type=LastJoin, condition=)\n"
+        "  REQUEST_JOIN(type=LastJoin, condition=t2.col5 >= t1.col5)\n"
         "    DATA_PROVIDER(request=t1)\n"
         "    GROUP_BY(groups=(t2.col2))\n"
         "      DATA_PROVIDER(table=t2)"));
+    in_outs.push_back(std::make_pair(
+        "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join t2 on "
+        "t1.col1 = t2.col1 and t2.col5 >= t1.col5;",
+        "PROJECT(type=RowProject)\n"
+        "  REQUEST_JOIN(type=LastJoin, condition=t2.col5 >= t1.col5)\n"
+        "    DATA_PROVIDER(request=t1)\n"
+        "    DATA_PROVIDER(type=IndexScan, table=t2, index=index1_t2)"));
     in_outs.push_back(std::make_pair(
         "SELECT "
         "t2.col1, "

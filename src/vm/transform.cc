@@ -1591,6 +1591,8 @@ bool FilterConditionOptimized::TransformEqualExprPair(
                 out_condition_list->AddChild(expr);
                 continue;
             }
+        } else {
+            out_condition_list->AddChild(expr);
         }
     }
     return !condition_eq_pair.empty();
@@ -1739,7 +1741,7 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
         return false;
     }
     if (in->GetProducers().empty() ||
-        kPhysicalOpJoin == in->GetProducers()[0]->type_) {
+        kPhysicalOpJoin != in->GetProducers()[0]->type_) {
         return false;
     }
     PhysicalJoinNode* join_op =
