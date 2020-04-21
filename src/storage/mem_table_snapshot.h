@@ -84,10 +84,10 @@ class MemTableSnapshot : public Snapshot {
                          uint32_t idx, uint32_t partition_num,
                          uint64_t& out_offset);  // NOLINT
 
-    bool DumpIndexData(std::shared_ptr<Table>& table,
+    bool DumpIndexData(std::shared_ptr<Table> table,
                        const ::rtidb::common::ColumnKey& column_key,
                        uint32_t idx,
-                       std::vector<::rtidb::log::WriteHandle*>& whs);
+                       std::vector<::rtidb::log::WriteHandle*>& whs);  // NOLINT
 
  private:
     // load single snapshot to table

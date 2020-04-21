@@ -9,9 +9,9 @@
 
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <unistd.h>
-#include <boost/bind.hpp>
 #include <set>
 #include <utility>
+#include <boost/bind.hpp>
 #include "base/count_down_latch.h"
 #include "base/display.h"
 #include "base/file_util.h"
@@ -1230,7 +1230,7 @@ bool MemTableSnapshot::DumpSnapshotIndexData(
 }
 
 bool MemTableSnapshot::DumpIndexData(
-    std::shared_ptr<Table>& table, const ::rtidb::common::ColumnKey& column_key,
+    std::shared_ptr<Table> table, const ::rtidb::common::ColumnKey& column_key,
     uint32_t idx, std::vector<::rtidb::log::WriteHandle*>& whs) {
     uint32_t tid = table->GetId();
     uint32_t pid = table->GetPid();
