@@ -374,11 +374,20 @@ class BatchQueryResult : public ViewResult {
 };
 
 class BaseClient {
-public:
-    BaseClient(const std::string& zk_cluster, const std::string& zk_root_path, const std::string& endpoint, int32_t zk_session_timeout, int32_t zk_keep_alive_check):
-        mu_(), tablets_(), tables_(), zk_client_(NULL), zk_cluster_(zk_cluster), zk_root_path_(zk_root_path), endpoint_(endpoint), zk_session_timeout_(zk_session_timeout), zk_keep_alive_check_(zk_keep_alive_check),
-        zk_table_data_path_() {
-    }
+ public:
+    BaseClient(const std::string& zk_cluster, const std::string& zk_root_path,
+               const std::string& endpoint, int32_t zk_session_timeout,
+               int32_t zk_keep_alive_check)
+        : mu_(),
+          tablets_(),
+          tables_(),
+          zk_client_(NULL),
+          zk_cluster_(zk_cluster),
+          zk_root_path_(zk_root_path),
+          endpoint_(endpoint),
+          zk_session_timeout_(zk_session_timeout),
+          zk_keep_alive_check_(zk_keep_alive_check),
+          zk_table_data_path_() {}
     ~BaseClient();
 
     bool Init(std::string* msg);
@@ -390,12 +399,13 @@ public:
     void DoFresh(const std::vector<std::string>& events);
     bool RegisterZK(std::string* msg);
     std::shared_ptr<rtidb::client::TabletClient> GetTabletClient(
-            const std::string& endpoint, std::string* msg);
+        const std::string& endpoint, std::string* msg);
     std::shared_ptr<TableHandler> GetTableHandler(const std::string& name);
 
-private:
+ private:
     std::mutex mu_;
-    std::map<std::string, std::shared_ptr<rtidb::client::TabletClient>> tablets_;
+    std::map<std::string, std::shared_ptr<rtidb::client::TabletClient>>
+        tablets_;
     std::map<std::string, std::shared_ptr<TableHandler>> tables_;
     rtidb::zk::ZkClient* zk_client_;
     std::string zk_cluster_;
@@ -431,11 +441,12 @@ class RtidbClient {
                     const std::vector<std::string>& keys, std::string* data,
                     bool* is_finish, uint32_t* count);
     void SetZkCheckInterval(int32_t interval);
-    GeneralResult Update(const std::string& table_name, 
-            const std::map<std::string, std::string>& condition_columns_map,
-            const std::map<std::string, std::string>& value_columns_map,
-            const WriteOption& wo); 
+    GeneralResult Update(
+        const std::string& table_name,
+        const std::map<std::string, std::string>& condition_columns_map,
+        const std::map<std::string, std::string>& value_columns_map,
+        const WriteOption& wo);
 
-private:
+ private:
     BaseClient* client_;
 };
