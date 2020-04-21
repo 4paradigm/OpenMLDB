@@ -223,7 +223,7 @@ int MemTableSnapshot::TTLSnapshot(std::shared_ptr<Table> table,
     bool has_error = false;
     std::set<uint32_t> deleted_index;
     for (const auto& it : table->GetAllIndex()) {
-        if (it->GetStatus() == ::rtidb::storage::IndexStatus::kDeleted) {
+        if (it->GetStatus() == ::rtidb::storage::IndexStatus::kReady) {
             deleted_index.insert(it->GetId());
         }
     }
@@ -623,9 +623,9 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table,
 
 int MemTableSnapshot::ExtractIndexFromSnapshot(
     std::shared_ptr<Table> table, const ::rtidb::api::Manifest& manifest,
-    WriteHandle* wh, ::rtidb::common::ColumnKey& column_key, uint32_t idx,
-    uint32_t partition_num, std::vector<::rtidb::base::ColumnDesc> columns,
-    uint32_t max_idx, std::vector<uint32_t> index_cols, uint64_t& count,
+    WriteHandle* wh, const ::rtidb::common::ColumnKey& column_key, uint32_t idx,
+    uint32_t partition_num, const std::vector<::rtidb::base::ColumnDesc>& columns,
+    uint32_t max_idx, const std::vector<uint32_t>& index_cols, uint64_t& count,
     uint64_t& expired_key_num, uint64_t& deleted_key_num) {
     uint32_t tid = table->GetId();
     uint32_t pid = table->GetPid();
@@ -788,7 +788,7 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(
 }
 
 int MemTableSnapshot::ExtractIndexData(std::shared_ptr<Table> table,
-                                       ::rtidb::common::ColumnKey& column_key,
+                                       const ::rtidb::common::ColumnKey& column_key,
                                        uint32_t idx, uint32_t partition_num,
                                        uint64_t& out_offset) {
     uint32_t tid = table->GetId();
@@ -848,7 +848,7 @@ int MemTableSnapshot::ExtractIndexData(std::shared_ptr<Table> table,
     uint32_t max_idx = 0;
     // get columns in new column_key
     for (const auto& name : column_key.col_name()) {
-        if (column_desc_map.count(name)) {
+        if (column_desc_map.find(name) != column_desc_map.end()) {
             uint32_t idx = column_desc_map[name];
             index_cols.push_back(idx);
             if (idx > max_idx) {
@@ -1089,9 +1089,9 @@ int MemTableSnapshot::ExtractIndexData(std::shared_ptr<Table> table,
 
 bool MemTableSnapshot::DumpSnapshotIndexData(
     std::shared_ptr<Table> table, const ::rtidb::common::ColumnKey& column_key,
-    std::vector<uint32_t>& index_cols,
-    std::vector<::rtidb::base::ColumnDesc>& columns,
-    std::set<uint32_t>& deleted_index, uint32_t max_idx, uint32_t idx,
+    const std::vector<uint32_t>& index_cols,
+    const std::vector<::rtidb::base::ColumnDesc>& columns,
+    const std::set<uint32_t>& deleted_index, uint32_t max_idx, uint32_t idx,
     std::vector<::rtidb::log::WriteHandle*>& whs, uint64_t& latest_offset) {
     uint32_t partition_num = whs.size();
     ::rtidb::api::Manifest manifest;
@@ -1112,7 +1112,9 @@ bool MemTableSnapshot::DumpSnapshotIndexData(
     }
     ::rtidb::log::SequentialFile* seq_file = ::rtidb::log::NewSeqFile(path, fd);
     ::rtidb::log::Reader reader(seq_file, NULL, false, 0);
+    ::rtidb::api::LogEntry entry;
     std::string buffer;
+    std::string entry_buff;
     while (true) {
         buffer.clear();
         ::rtidb::base::Slice record;
@@ -1133,10 +1135,14 @@ bool MemTableSnapshot::DumpSnapshotIndexData(
             failed_cnt.fetch_add(1, std::memory_order_relaxed);
             continue;
         }
-        std::string* sp = new std::string(record.data(), record.size());
-        ::rtidb::api::LogEntry entry;
-        entry.ParseFromString(*sp);
-        delete sp;
+        entry_buff.clear();
+        entry_buff.assign(record.data(), record.size());
+        if (!entry.ParseFromString(entry_buff)) {
+            PDLOG(WARNING,
+                  "fail to parse record for tid %u, pid %u", tid_, pid_);
+            failed_cnt.fetch_add(1, std::memory_order_relaxed);
+            continue;
+        }
         if (entry.dimensions_size() == 0) {
             std::string combined_key = entry.pk() + "|0";
             if (deleted_keys_.find(combined_key) != deleted_keys_.end()) {
@@ -1186,12 +1192,10 @@ bool MemTableSnapshot::DumpSnapshotIndexData(
         if (!has_main_index) {
             continue;
         }
-        std::string buff;
+        std::string buff = entry.value()
         if (table->GetCompressType() == ::rtidb::api::kSnappy) {
             ::snappy::Uncompress(entry.value().c_str(), entry.value().size(),
                                  &buff);
-        } else {
-            buff = entry.value();
         }
         std::vector<std::string> row;
         ::rtidb::base::FillTableRow(max_idx + 1, columns, buff.c_str(),
@@ -1232,6 +1236,10 @@ bool MemTableSnapshot::DumpSnapshotIndexData(
 bool MemTableSnapshot::DumpIndexData(
     std::shared_ptr<Table> table, const ::rtidb::common::ColumnKey& column_key,
     uint32_t idx, std::vector<::rtidb::log::WriteHandle*>& whs) {
+    if (making_snapshot_.load(std::memory_order_acquire)) {
+        PDLOG(WARNING, "snapshot is doing now!");
+        return false;
+    }
     uint32_t tid = table->GetId();
     uint32_t pid = table->GetPid();
     uint32_t partition_num = whs.size();
@@ -1251,7 +1259,7 @@ bool MemTableSnapshot::DumpIndexData(
     std::vector<uint32_t> index_cols;
     uint32_t max_idx = 0;
     for (const auto& name : column_key.col_name()) {
-        if (column_desc_map.count(name)) {
+        if (column_desc_map.find(name) != column_desc_map.end()) {
             uint32_t idx = column_desc_map[name];
             index_cols.push_back(idx);
             if (idx > max_idx) {
@@ -1264,7 +1272,7 @@ bool MemTableSnapshot::DumpIndexData(
     }
     std::set<uint32_t> deleted_index;
     for (const auto& it : table->GetAllIndex()) {
-        if (it->GetStatus() == ::rtidb::storage::IndexStatus::kDeleted) {
+        if (it->GetStatus() != ::rtidb::storage::IndexStatus::kReady) {
             deleted_index.insert(it->GetId());
         }
     }

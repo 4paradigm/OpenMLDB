@@ -63,24 +63,24 @@ class MemTableSnapshot : public Snapshot {
 
     int ExtractIndexFromSnapshot(
         std::shared_ptr<Table> table, const ::rtidb::api::Manifest& manifest,
-        WriteHandle* wh, ::rtidb::common::ColumnKey& column_key,  // NOLINT
+        WriteHandle* wh, const ::rtidb::common::ColumnKey& column_key,  // NOLINT
         uint32_t idx, uint32_t partition_num,
-        std::vector<::rtidb::base::ColumnDesc> columns,  // NOLINT
-        uint32_t max_idx, std::vector<uint32_t> index_cols,
+        const std::vector<::rtidb::base::ColumnDesc>& columns,
+        uint32_t max_idx, const std::vector<uint32_t>& index_cols,
         uint64_t& count,                                        // NOLINT
         uint64_t& expired_key_num, uint64_t& deleted_key_num);  // NOLINT
 
-    bool DumpSnapshotIndexData(std::shared_ptr<Table> table,
-                               const ::rtidb::common::ColumnKey& column_key,
-                               std::vector<uint32_t>& index_cols,  // NOLINT
-                               std::vector<::rtidb::base::ColumnDesc>& columns,  // NOLINT
-                               std::set<uint32_t>& deleted_index,  // NOLINT
-                               uint32_t max_idx, uint32_t idx,
-                               std::vector<::rtidb::log::WriteHandle*>& whs, // NOLINT
-                               uint64_t& latest_offset); // NOLINT
+    bool DumpSnapshotIndexData(
+        std::shared_ptr<Table> table,
+        const ::rtidb::common::ColumnKey& column_key,
+        const std::vector<uint32_t>& index_cols,
+        const std::vector<::rtidb::base::ColumnDesc>& columns,
+        const std::set<uint32_t>& deleted_index, uint32_t max_idx, uint32_t idx,
+        std::vector<::rtidb::log::WriteHandle*>& whs,  // NOLINT
+        uint64_t& latest_offset);                      // NOLINT
 
     int ExtractIndexData(std::shared_ptr<Table> table,
-                         ::rtidb::common::ColumnKey& column_key,  // NOLINT
+                         const ::rtidb::common::ColumnKey& column_key,
                          uint32_t idx, uint32_t partition_num,
                          uint64_t& out_offset);  // NOLINT
 
