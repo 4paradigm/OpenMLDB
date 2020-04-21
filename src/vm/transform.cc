@@ -1301,9 +1301,11 @@ bool FilterOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
                                            &and_conditions)) {
                 return false;
             }
+
             vm::SchemasContext ctx(join_op->output_name_schema_list_);
             node::ExprListNode new_and_conditions;
             std::vector<ExprPair> condition_eq_pair;
+
             for (auto expr : and_conditions.children_) {
                 ExprPair expr_pair;
                 if (TransformEqualExprPair(expr, &expr_pair)) {
