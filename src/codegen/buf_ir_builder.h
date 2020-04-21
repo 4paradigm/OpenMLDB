@@ -22,6 +22,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include "codec/row_codec.h"
 #include "codegen/row_ir_builder.h"
 #include "codegen/scope_var.h"
 #include "codegen/variable_ir_builder.h"
@@ -76,37 +77,21 @@ class BufNativeIRBuilder : public RowDecodeIRBuilder {
     bool BuildGetField(const std::string& name, ::llvm::Value* row_ptr,
                        ::llvm::Value* row_size, ::llvm::Value** output);
 
-    bool BuildGetFiledOffset(const std::string& name, uint32_t* offset,
-                             ::fesql::node::DataType* fe_type);
-
  private:
     bool BuildGetPrimaryField(const std::string& fn_name,
                               ::llvm::Value* row_ptr, uint32_t offset,
                               ::llvm::Type* type, ::llvm::Value** output);
-
-    bool BuildGetPrimaryCol(const std::string& fn_name, ::llvm::Value* row_ptr,
-                            uint32_t offset, fesql::node::DataType type,
-                            ::llvm::Value** output);
-
     bool BuildGetStringField(uint32_t offset, uint32_t next_str_field_offset,
-                             ::llvm::Value* row_ptr, ::llvm::Value* size,
-                             ::llvm::Value** output);
-
-    bool BuildGetStringCol(uint32_t offset, uint32_t next_str_field_offset,
-                           fesql::node::DataType type, ::llvm::Value* row_ptr,
-                           ::llvm::Value** output);
+                             uint32_t str_start_offset, ::llvm::Value* row_ptr,
+                             ::llvm::Value* size, ::llvm::Value** output);
+    bool GetFiledOffsetType(const std::string& name, uint32_t* offset_ptr,
+                            node::DataType* data_type_ptr);
 
  private:
-    vm::Schema schema_;
     ::llvm::BasicBlock* block_;
-
     ScopeVar* sv_;
+    codec::RowDecoder decoder_;
     VariableIRBuilder variable_ir_builder_;
-    typedef std::map<std::string, std::pair<::fesql::node::DataType, int32_t>>
-        Types;
-    Types types_;
-    uint32_t str_field_start_offset_;
-    std::map<uint32_t, uint32_t> next_str_pos_;
 };
 
 }  // namespace codegen

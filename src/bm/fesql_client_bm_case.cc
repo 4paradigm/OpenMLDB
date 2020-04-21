@@ -44,7 +44,7 @@ static std::shared_ptr<fesql::sdk::DBMSSdk> feql_dbms_sdk_init() {
     return fesql::sdk::CreateDBMSSdk(endpoint);
 }
 
-static bool fesql_server_init(brpc::Server &tablet_server,  // NOLINT
+static bool FeSqlServerInit(brpc::Server &tablet_server,  // NOLINT
                               brpc::Server &dbms_server,    // NOLINT
                               ::fesql::tablet::TabletServerImpl *tablet,
                               ::fesql::dbms::DBMSServerImpl *dbms) {
@@ -81,7 +81,7 @@ static bool fesql_server_init(brpc::Server &tablet_server,  // NOLINT
     return true;
 }
 
-static bool init_db(std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk,
+static bool InitDB(std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk,
                     std::string db_name) {
     LOG(INFO) << "Creating database " << db_name;
     // create database
@@ -95,7 +95,7 @@ static bool init_db(std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk,
     return true;
 }
 
-static bool init_tbl(std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk,
+static bool InitTBL(std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk,
                      const std::string &db_name,
                      const std::string &schema_sql) {
     DLOG(INFO) << ("Creating table 'tbl' in database 'test'...\n");
@@ -136,8 +136,8 @@ static void SIMPLE_CASE_QUERY(benchmark::State *state_ptr, MODE mode,
     ::fesql::tablet::TabletServerImpl table_server_impl;
     ::fesql::dbms::DBMSServerImpl dbms_server_impl;
 
-    if (!fesql_server_init(tablet_server, dbms_server, &table_server_impl,
-                           &dbms_server_impl)) {
+    if (!FeSqlServerInit(tablet_server, dbms_server, &table_server_impl,
+                         &dbms_server_impl)) {
         LOG(WARNING) << "Fail to init server";
         if (TEST == mode) {
             FAIL();
@@ -161,12 +161,12 @@ static void SIMPLE_CASE_QUERY(benchmark::State *state_ptr, MODE mode,
         goto failure;
     }
 
-    if (false == init_db(dbms_sdk, db_name)) {
+    if (false == InitDB(dbms_sdk, db_name)) {
         LOG(WARNING) << "Fail to create db";
         failure_flag = true;
         goto failure;
     }
-    if (false == init_tbl(dbms_sdk, db_name, schema_sql)) {
+    if (false == InitTBL(dbms_sdk, db_name, schema_sql)) {
         LOG(WARNING) << "Fail to create table";
         failure_flag = true;
         goto failure;
@@ -246,8 +246,8 @@ static void WINDOW_CASE_QUERY(benchmark::State *state_ptr, MODE mode,
     ::fesql::tablet::TabletServerImpl table_server_impl;
     ::fesql::dbms::DBMSServerImpl dbms_server_impl;
 
-    if (!fesql_server_init(tablet_server, dbms_server, &table_server_impl,
-                           &dbms_server_impl)) {
+    if (!FeSqlServerInit(tablet_server, dbms_server, &table_server_impl,
+                         &dbms_server_impl)) {
         LOG(WARNING) << "Fail to init server";
         if (TEST == mode) {
             FAIL();
@@ -271,11 +271,11 @@ static void WINDOW_CASE_QUERY(benchmark::State *state_ptr, MODE mode,
         goto failure;
     }
 
-    if (false == init_db(dbms_sdk, db_name)) {
+    if (false == InitDB(dbms_sdk, db_name)) {
         failure_flag = true;
         goto failure;
     }
-    if (false == init_tbl(dbms_sdk, db_name, schema_sql)) {
+    if (false == InitTBL(dbms_sdk, db_name, schema_sql)) {
         failure_flag = true;
         goto failure;
     }

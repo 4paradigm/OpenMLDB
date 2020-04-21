@@ -89,8 +89,9 @@ using fesql::vm::Catalog;
 using fesql::vm::PhysicalOpNode;
 using fesql::vm::RowView;
 using fesql::codec::SliceIterator;
+using fesql::codec::RowIterator;
 using fesql::codec::IteratorV;
-using fesql::base::Slice;
+using fesql::codec::Row;
 using fesql::node::PlanType;
 %}
 

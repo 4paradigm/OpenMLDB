@@ -149,6 +149,8 @@ bool BatchModeTransformer::TransformPlanOp(const ::fesql::node::PlanNode* node,
         }
     }
     if (!ok) {
+        LOG(WARNING) << "fail to tranform physical plan: fail node " +
+                            node::NameOfPlanNodeType(node->type_);
         return false;
     }
     op_map_[logical_op] = op;
@@ -188,9 +190,9 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
                 while (idx < size) {
                     keys_idxs.push_back(idx++);
                 }
-                CodeGenExprList((node->GetProducers()[0]->output_schema),
-                                seek_op->keys_, true, fn_name, &fn_schema,
-                                status);
+                CodeGenExprList(
+                    (node->GetProducers()[0]->output_name_schema_list_),
+                    seek_op->keys_, true, fn_name, &fn_schema, status);
                 seek_op->SetKeysIdxs(keys_idxs);
             }
 
@@ -206,9 +208,9 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
                 while (idx < size) {
                     idxs.push_back(idx++);
                 }
-                CodeGenExprList((node->GetProducers()[0]->output_schema),
-                                group_op->groups_, true, fn_name, &fn_schema,
-                                status);
+                CodeGenExprList(
+                    (node->GetProducers()[0]->output_name_schema_list_),
+                    group_op->groups_, true, fn_name, &fn_schema, status);
 
                 group_op->SetGroupsIdxs(idxs);
             }
@@ -226,9 +228,10 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
                     while (idx < size) {
                         idxs.push_back(idx++);
                     }
-                    CodeGenExprList((node->GetProducers()[0]->output_schema),
-                                    order_op->order_->order_by_, true, fn_name,
-                                    &fn_schema, status);
+                    CodeGenExprList(
+                        (node->GetProducers()[0]->output_name_schema_list_),
+                        order_op->order_->order_by_, true, fn_name, &fn_schema,
+                        status);
                     order_op->SetOrdersIdxs(idxs);
                 }
             }
@@ -254,8 +257,9 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
                 }
             }
             if (!expr_list.children_.empty()) {
-                CodeGenExprList((node->GetProducers()[0]->output_schema),
-                                &expr_list, true, fn_name, &fn_schema, status);
+                CodeGenExprList(
+                    (node->GetProducers()[0]->output_name_schema_list_),
+                    &expr_list, true, fn_name, &fn_schema, status);
                 group_sort_op->SetGroupsIdxs(groups_idxs);
                 group_sort_op->SetOrdersIdxs(orders_idxs);
             }
@@ -267,7 +271,7 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
             node::ExprListNode expr_list;
             expr_list.AddChild(
                 const_cast<node::ExprNode*>(filter_op->condition_));
-            CodeGenExprList((node->GetProducers()[0]->output_schema),
+            CodeGenExprList((node->GetProducers()[0]->output_name_schema_list_),
                             &expr_list, true, fn_name, &fn_schema, status);
             filter_op->SetConditionIdxs({0});
             break;
@@ -277,9 +281,19 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
             node::ExprListNode expr_list;
             expr_list.AddChild(
                 const_cast<node::ExprNode*>(join_op->condition_));
-            CodeGenExprList((node->GetProducers()[0]->output_schema),
-                            &expr_list, true, fn_name, &fn_schema, status);
+            CodeGenExprList(node->output_name_schema_list_, &expr_list, true,
+                            fn_name, &fn_schema, status);
             join_op->SetConditionIdxs({0});
+            break;
+        }
+        case kPhysicalOpRequestJoin: {
+            auto request_join_op = dynamic_cast<PhysicalRequestJoinNode*>(node);
+            node::ExprListNode expr_list;
+            expr_list.AddChild(
+                const_cast<node::ExprNode*>(request_join_op->condition_));
+            CodeGenExprList(node->output_name_schema_list_, &expr_list, true,
+                            fn_name, &fn_schema, status);
+            request_join_op->SetConditionIdxs({0});
             break;
         }
         case kPhysicalOpRequestUnoin: {
@@ -315,8 +329,9 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
                 }
             }
             if (!expr_list.children_.empty()) {
-                CodeGenExprList((node->GetProducers()[0]->output_schema),
-                                &expr_list, true, fn_name, &fn_schema, status);
+                CodeGenExprList(
+                    (node->GetProducers()[0]->output_name_schema_list_),
+                    &expr_list, true, fn_name, &fn_schema, status);
                 request_union->SetGroupsIdxs(groups_idxs);
                 request_union->SetOrdersIdxs(orders_idxs);
                 request_union->SetKeysIdxs(keys_idxs);
@@ -411,7 +426,7 @@ bool BatchModeTransformer::TransformProjecPlantOp(
                 dynamic_cast<node::AllNode*>(project_node->GetExpression());
             if (all_expr->children_.empty()) {
                 // expand all expression if needed
-                for (auto column : depend->output_schema) {
+                for (auto column : depend->output_schema_) {
                     all_expr->children_.push_back(
                         node_manager_->MakeColumnRefNode(
                             column.name(), all_expr->GetRelationName()));
@@ -440,15 +455,8 @@ bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
         LOG(WARNING) << status.msg;
         return false;
     }
-    node::OrderByNode* orders = nullptr;
-    node::ExprListNode* groups = nullptr;
-    if (!w_ptr->ExtractWindowGroupsAndOrders(&groups, &orders)) {
-        status.msg =
-            "fail to transform window aggeration: gourps and orders is "
-            "null";
-        LOG(WARNING) << status.msg;
-        return false;
-    }
+    const node::OrderByNode* orders = w_ptr->GetOrders();
+    const node::ExprListNode* groups = w_ptr->GetKeys();
 
     if (kPhysicalOpDataProvider == depend->type_) {
         auto data_op = dynamic_cast<PhysicalDataProviderNode*>(depend);
@@ -678,16 +686,18 @@ bool BatchModeTransformer::AddPass(PhysicalPlanPassType type) {
     passes.push_back(type);
     return true;
 }
-bool BatchModeTransformer::GenProjects(const Schema& input_schema,
-                                       const node::PlanNodeList& projects,
-                                       const bool row_project,
-                                       std::string& fn_name,    // NOLINT
-                                       Schema* output_schema,   // NOLINT
-                                       base::Status& status) {  // NOLINT
+bool BatchModeTransformer::GenProjects(
+    const std::vector<std::pair<const std::string, const Schema*>>&
+        input_name_schema_list,
+    const node::PlanNodeList& projects, const bool row_project,
+    std::string& fn_name,    // NOLINT
+    Schema* output_schema,   // NOLINT
+    base::Status& status) {  // NOLINT
     // TODO(wangtaize) use ops end op output schema
-    ::fesql::codegen::RowFnLetIRBuilder builder(input_schema, module_);
+    ::fesql::codegen::RowFnLetIRBuilder builder(input_name_schema_list,
+                                                module_);
     fn_name = "__internal_sql_codegen_" + std::to_string(id_++);
-    bool ok = builder.Build(fn_name, projects, row_project, output_schema);
+    bool ok = builder.Build(fn_name, projects, output_schema);
     if (!ok) {
         status.code = common::kCodegenError;
         status.msg = "fail to codegen projects node";
@@ -730,7 +740,7 @@ bool BatchModeTransformer::CreatePhysicalProjectNode(
             auto all_expr = dynamic_cast<node::AllNode*>(expr);
             if (all_expr->children_.empty()) {
                 // expand all expression if needed
-                for (auto column : node->output_schema) {
+                for (auto column : node->output_schema_) {
                     all_expr->children_.push_back(
                         node_manager_->MakeColumnRefNode(
                             column.name(), all_expr->GetRelationName()));
@@ -753,8 +763,8 @@ bool BatchModeTransformer::CreatePhysicalProjectNode(
     switch (project_type) {
         case kRowProject:
         case kTableProject: {
-            if (!GenProjects((node->output_schema), projects, true, fn_name,
-                             &output_schema, status)) {
+            if (!GenProjects((node->output_name_schema_list_), projects, true,
+                             fn_name, &output_schema, status)) {
                 return false;
             }
             break;
@@ -763,8 +773,8 @@ bool BatchModeTransformer::CreatePhysicalProjectNode(
         case kGroupAggregation:
         case kWindowAggregation: {
             // TODO(chenjing): gen window aggregation
-            if (!GenProjects((node->output_schema), projects, false, fn_name,
-                             &output_schema, status)) {
+            if (!GenProjects((node->output_name_schema_list_), projects, false,
+                             fn_name, &output_schema, status)) {
                 return false;
             }
             break;
@@ -815,7 +825,7 @@ bool BatchModeTransformer::TransformProjectOp(
         }
     }
 
-    switch (depend->output_type) {
+    switch (depend->output_type_) {
         case kSchemaTypeRow:
             return CreatePhysicalProjectNode(kRowProject, depend, project_list,
                                              output, status);
@@ -901,12 +911,13 @@ bool BatchModeTransformer::TransformPhysicalPlan(
             case ::fesql::node::kPlanTypeQuery: {
                 PhysicalOpNode* physical_plan = nullptr;
                 if (!TransformQueryPlan(node, &physical_plan, status)) {
+                    LOG(WARNING)
+                        << "fail to transform query plan to physical plan";
                     return false;
                 }
                 ApplyPasses(physical_plan, output);
                 if (!GenPlanNode(*output, status)) {
                     LOG(WARNING) << "fail to gen plan";
-
                     return false;
                 }
                 break;
@@ -940,11 +951,11 @@ bool BatchModeTransformer::GenFnDef(const node::FuncDefPlanNode* fn_plan,
     return true;
 }
 
-bool BatchModeTransformer::CodeGenExprList(const Schema& input_schema,
-                                           const node::ExprListNode* expr_list,
-                                           bool row_mode, std::string& fn_name,
-                                           Schema* output_schema,
-                                           base::Status& status) {
+bool BatchModeTransformer::CodeGenExprList(
+    std::vector<std::pair<const std::string, const Schema*>>&
+        input_name_schema_list,
+    const node::ExprListNode* expr_list, bool row_mode, std::string& fn_name,
+    Schema* output_schema, base::Status& status) {
     if (node::ExprListNullOrEmpty(expr_list)) {
         status.msg = "fail to codegen expr list: null or empty list";
         status.code = common::kCodegenError;
@@ -957,8 +968,8 @@ bool BatchModeTransformer::CodeGenExprList(const Schema& input_schema,
             pos++, node::ExprString(expr), expr));
     }
 
-    return GenProjects(input_schema, projects, true, fn_name, output_schema,
-                       status);
+    return GenProjects(input_name_schema_list, projects, true, fn_name,
+                       output_schema, status);
 }
 
 bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
@@ -1381,7 +1392,7 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
                 }
                 if (!CheckExprListFromSchema(
                         group_op->groups_,
-                        (join_op->GetProducers()[0]->output_schema))) {
+                        (join_op->GetProducers()[0]->output_schema_))) {
                     return false;
                 }
                 auto group_expr = group_op->groups_;
@@ -1418,7 +1429,7 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
 
                     if (!CheckExprListFromSchema(
                             sort_op->order_->order_by_,
-                            join_op->GetProducers()[0]->output_schema)) {
+                            join_op->GetProducers()[0]->output_schema_)) {
                         return false;
                     }
 
@@ -1460,13 +1471,13 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
 
                     if (!CheckExprListFromSchema(
                             group_sort_op->groups_,
-                            (join_op->GetProducers()[0]->output_schema))) {
+                            (join_op->GetProducers()[0]->output_schema_))) {
                         return false;
                     }
 
                     if (!CheckExprListFromSchema(
                             group_sort_op->orders_->order_by_,
-                            (join_op->GetProducers()[0]->output_schema))) {
+                            (join_op->GetProducers()[0]->output_schema_))) {
                         return false;
                     }
 
@@ -1599,7 +1610,7 @@ bool RequestModeransformer::TransformProjecPlantOp(
                     dynamic_cast<node::AllNode*>(project_node->GetExpression());
                 if (all_expr->children_.empty()) {
                     // expand all expression if needed
-                    for (auto column : depend->output_schema) {
+                    for (auto column : depend->output_schema_) {
                         all_expr->children_.push_back(
                             node_manager_->MakeColumnRefNode(
                                 column.name(), all_expr->GetRelationName()));
@@ -1619,6 +1630,28 @@ bool RequestModeransformer::TransformProjecPlantOp(
         return CreatePhysicalProjectNode(kTableProject, join, project_list,
                                          output, status);
     }
+}
+bool RequestModeransformer::TransformJoinOp(const node::JoinPlanNode* node,
+                                            PhysicalOpNode** output,
+                                            base::Status& status) {
+    if (nullptr == node || nullptr == output) {
+        status.msg = "input node or output node is null";
+        status.code = common::kPlanError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+    PhysicalOpNode* left = nullptr;
+    PhysicalOpNode* right = nullptr;
+    if (!TransformPlanOp(node->GetChildren()[0], &left, status)) {
+        return false;
+    }
+    if (!TransformPlanOp(node->GetChildren()[1], &right, status)) {
+        return false;
+    }
+    *output = new PhysicalRequestJoinNode(left, right, node->join_type_,
+                                          node->condition_);
+    node_manager_->RegisterNode(*output);
+    return true;
 }
 
 }  // namespace vm

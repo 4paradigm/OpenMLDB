@@ -27,7 +27,7 @@ namespace fesql {
 namespace codec {
 namespace v1 {
 
-using fesql::base::Slice;
+using fesql::codec::Row;
 using fesql::codec::ListV;
 int32_t GetStrField(const int8_t* row, uint32_t field_offset,
                     uint32_t next_str_field_offset, uint32_t str_start_offset,
@@ -151,7 +151,7 @@ int32_t GetStrCol(int8_t* input, int32_t str_field_offset,
         return -2;
     }
 
-    ListV<Slice>* w = reinterpret_cast<ListV<Slice>*>(input);
+    ListV<Row>* w = reinterpret_cast<ListV<Row>*>(input);
     fesql::type::Type type = static_cast<fesql::type::Type>(type_id);
     switch (type) {
         case fesql::type::kVarchar: {
@@ -171,8 +171,8 @@ int32_t GetCol(int8_t* input, int32_t offset, int32_t type_id, int8_t* data) {
     if (nullptr == input || nullptr == data) {
         return -2;
     }
-    ListV<Slice>* w =
-        reinterpret_cast<ListV<Slice>*>(input);
+    ListV<Row>* w =
+        reinterpret_cast<ListV<Row>*>(input);
     switch (type) {
         case fesql::type::kInt32: {
             new (data) ColumnImpl<int>(w, offset);

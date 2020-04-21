@@ -10,7 +10,7 @@ add_test(schema_codec_test schema_codec_test --gtest_output=xml:${CMAKE_BINARY_D
 list(APPEND test_list schema_codec_test)
 
 add_executable(row_codec_test row_codec_test.cc)
-target_link_libraries(row_codec_test fesql_codec fesql_proto protobuf glog gflags unwind lzma gtest pthread)
+target_link_libraries(row_codec_test fesql_codec fesql_proto protobuf glog gflags lzma gtest pthread)
 add_test(row_codec_test row_codec_test --gtest_output=xml:${CMAKE_BINARY_DIR}/row_codec_test.xml)
 list(APPEND test_list row_codec_test)
 

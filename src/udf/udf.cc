@@ -19,7 +19,7 @@
 namespace fesql {
 namespace udf {
 namespace v1 {
-using fesql::base::Slice;
+using fesql::codec::Row;
 using fesql::codec::ColumnImpl;
 using fesql::codec::IteratorRef;
 using fesql::codec::ListRef;
@@ -222,7 +222,7 @@ void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
     AddSymbol(jd, mi, "count_list_float",
               reinterpret_cast<void *>(&v1::count_list<float>));
     AddSymbol(jd, mi, "count_list_row",
-              reinterpret_cast<void *>(&v1::count_list<fesql::base::Slice>));
+              reinterpret_cast<void *>(&v1::count_list<fesql::codec::Row>));
 
     AddSymbol(jd, mi, "avg_list_int16",
               reinterpret_cast<void *>(&v1::avg_list<int16_t>));
@@ -450,7 +450,9 @@ void RegisterUDFToModule(::llvm::Module *m) {
 }
 void InitCLibSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
                     ::llvm::orc::MangleAndInterner &mi) {  // NOLINT
-    AddSymbol(jd, mi, "fmod", (reinterpret_cast<void *>(&fmod)));
+    AddSymbol(jd, mi, "fmod",
+              (reinterpret_cast<void *>(
+                  static_cast<double (*)(double, double)>(&fmod))));
     AddSymbol(jd, mi, "fmodf", (reinterpret_cast<void *>(&fmodf)));
 }
 void InitCLibSymbol(vm::FeSQLJIT *jit_ptr) {  // NOLINT

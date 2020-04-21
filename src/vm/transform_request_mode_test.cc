@@ -124,7 +124,7 @@ void Physical_Plan_Check(const std::shared_ptr<tablet::TabletCatalog>& catalog,
     physical_plan->Print(oss, "");
     std::cout << "physical plan:\n" << sql << "\n" << oss.str() << std::endl;
     std::ostringstream ss;
-    PrintSchema(ss, physical_plan->output_schema);
+    PrintSchema(ss, physical_plan->output_schema_);
     std::cout << "schema:\n" << ss.str() << std::endl;
     ASSERT_EQ(oss.str(), exp);
 }
@@ -225,26 +225,30 @@ INSTANTIATE_TEST_CASE_P(
 
 INSTANTIATE_TEST_CASE_P(
     SqlJoinPlan, TransformRequestModeTest,
-    testing::Values("SELECT * FROM t1 full join t2 on t1.col1 = t2.col2;",
-                    "SELECT * FROM t1 right join t2 on t1.col1 = t2.col2;",
-                    "SELECT * FROM t1 inner join t2 on t1.col1 = t2.col2;"));
+    testing::Values(
+        "SELECT * FROM t1 full join t2 on t1.col1 = t2.col2;",
+        "SELECT * FROM t1 right join t2 on t1.col1 = t2.col2;",
+        "SELECT * FROM t1 inner join t2 on t1.col1 = t2.col2;",
+        "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join t2 on "
+        "t1.col1 = t2.col2 and t2.col15 >= t1.col15;"));
 
 INSTANTIATE_TEST_CASE_P(
     SqlLeftJoinWindowPlan, TransformRequestModeTest,
     testing::Values(
         "SELECT "
-        "col1, "
-        "sum(col3) OVER w1 as w1_col3_sum, "
-        "sum(col2) OVER w1 as w1_col2_sum "
+        "t1.col1, "
+        "sum(t1.col3) OVER w1 as w1_col3_sum, "
+        "sum(t2.col2) OVER w1 as w1_col2_sum "
         "FROM t1 left join t2 on t1.col1 = t2.col1 "
-        "WINDOW w1 AS (PARTITION BY col1 ORDER BY col15 ROWS BETWEEN 3 "
+        "WINDOW w1 AS (PARTITION BY t1.col1 ORDER BY t1.col15 ROWS BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;",
         "SELECT "
-        "col1, "
-        "sum(col3) OVER w1 as w1_col3_sum, "
-        "sum(col2) OVER w1 as w1_col2_sum "
+        "t1.col1, "
+        "sum(t1.col3) OVER w1 as w1_col3_sum, "
+        "sum(t2.col2) OVER w1 as w1_col2_sum "
         "FROM t1 left join t2 on t1.col1 = t2.col1 "
-        "WINDOW w1 AS (PARTITION BY col1, col2 ORDER BY col15 ROWS BETWEEN 3 "
+        "WINDOW w1 AS (PARTITION BY t1.col1, t2.col2 ORDER BY t1.col15 ROWS "
+        "BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;"));
 INSTANTIATE_TEST_CASE_P(
     SqlUnionPlan, TransformRequestModeTest,
@@ -389,7 +393,7 @@ TEST_P(TransformRequestModeTest, transform_physical_plan) {
     physical_plan->Print(oss, "");
     std::cout << "physical plan:\n" << sqlstr << "\n" << oss.str() << std::endl;
     std::ostringstream ss;
-    PrintSchema(ss, physical_plan->output_schema);
+    PrintSchema(ss, physical_plan->output_schema_);
     std::cout << "schema:\n" << ss.str() << std::endl;
     //    m->print(::llvm::errs(), NULL);
 }
@@ -542,90 +546,94 @@ TEST_F(TransformRequestModeTest, pass_sort_optimized_test) {
         Physical_Plan_Check(catalog, in_out.first, in_out.second);
     }
 }
-//
-// TEST_F(TransformRequestModeTest, pass_join_optimized_test) {
-//    std::vector<std::pair<std::string, std::string>> in_outs;
-//    in_outs.push_back(std::make_pair(
-//        "SELECT "
-//        "col1, "
-//        "sum(col3) OVER w1 as w1_col3_sum, "
-//        "sum(col2) OVER w1 as w1_col2_sum "
-//        "FROM t1 left join t2 on t1.col1 = t2.col1 "
-//        "WINDOW w1 AS (PARTITION BY col1 ORDER BY col15 ROWS BETWEEN 3 "
-//        "PRECEDING AND CURRENT ROW) limit 10;",
-//        "LIMIT(limit=10)\n"
-//        "  PROJECT(type=ProjectRow)\n"
-//        "    JOIN(type=kJoinTypeConcat, condition=)\n"
-//        "      PROJECT(type=ProjectRow)\n"
-//        "        JOIN(type=LeftJoin, condition=t1.col1 = t2.col1)\n"
-//        "          SCAN(table=t1)\n"
-//        "          SCAN(table=t2)\n"
-//        "      PROJECT(type=WindowAggregation, start=-3, end=0)\n"
-//        "        JOIN(type=LeftJoin, condition=t1.col1 = t2.col1)\n"
-//        "          SCAN(type=IndexScan, table=t1, index=index1)\n"
-//        "          SCAN(table=t2)"));
-//    in_outs.push_back(std::make_pair(
-//        "SELECT "
-//        "col1, "
-//        "sum(col3) OVER w1 as w1_col3_sum, "
-//        "sum(col2) OVER w1 as w1_col2_sum "
-//        "FROM t1 left join t2 on t1.col1 = t2.col1 "
-//        "WINDOW w1 AS (PARTITION BY col1, col2 ORDER BY col15 ROWS BETWEEN 3 "
-//        "PRECEDING AND CURRENT ROW) limit 10;",
-//        "LIMIT(limit=10)\n"
-//        "  PROJECT(type=ProjectRow)\n"
-//        "    JOIN(type=kJoinTypeConcat, condition=)\n"
-//        "      PROJECT(type=ProjectRow)\n"
-//        "        JOIN(type=LeftJoin, condition=t1.col1 = t2.col1)\n"
-//        "          SCAN(table=t1)\n"
-//        "          SCAN(table=t2)\n"
-//        "      PROJECT(type=Aggregation)\n"
-//        "        BUFFER(start=-3, end=0)\n"
-//        "          JOIN(type=LeftJoin, condition=t1.col1 = t2.col1)\n"
-//        "            SCAN(type=IndexScan, table=t1, index=index12)\n"
-//        "            SCAN(table=t2)"));
-//    fesql::type::TableDef table_def;
-//    BuildTableDef(table_def);
-//    table_def.set_name("t1");
-//    std::shared_ptr<::fesql::storage::Table> table(
-//        new ::fesql::storage::Table(1, 1, table_def));
-//    {
-//        ::fesql::type::IndexDef* index = table_def.add_indexes();
-//        index->set_name("index12");
-//        index->add_first_keys("col1");
-//        index->add_first_keys("col2");
-//        index->set_second_key("col15");
-//    }
-//    {
-//        ::fesql::type::IndexDef* index = table_def.add_indexes();
-//        index->set_name("index1");
-//        index->add_first_keys("col1");
-//        index->set_second_key("col15");
-//    }
-//    auto catalog = BuildCommonCatalog(table_def, table);
-//    {
-//        fesql::type::TableDef table_def2;
-//        BuildTableDef(table_def2);
-//        table_def2.set_name("t2");
-//        std::shared_ptr<::fesql::storage::Table> table2(
-//            new ::fesql::storage::Table(1, 1, table_def2));
-//        AddTable(catalog, table_def2, table2);
-//    }
-//
-//    {
-//        fesql::type::TableDef request_def;
-//        BuildTableDef(request_def);
-//        request_def.set_name("t1");
-//        request_def.set_catalog("request");
-//        std::shared_ptr<::fesql::storage::Table> request(
-//            new ::fesql::storage::Table(1, 1, request_def));
-//        AddTable(catalog, request_def, request);
-//    }
-//
-//    for (auto in_out : in_outs) {
-//        Physical_Plan_Check(catalog, in_out.first, in_out.second);
-//    }
-//}
+
+TEST_F(TransformRequestModeTest, pass_join_optimized_test) {
+    std::vector<std::pair<std::string, std::string>> in_outs;
+    in_outs.push_back(std::make_pair(
+        "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join t2 on "
+        "t1.col1 = t2.col2 and t2.col15 >= t1.col15;",
+        "PROJECT(type=TableProject)\n"
+        "  REQUEST_JOIN(type=LastJoin, condition=t1.col1 = t2.col2 AND "
+        "t2.col15 >= t1.col15)\n"
+        "    DATA_PROVIDER(request=t1)\n"
+        "    DATA_PROVIDER(table=t2)"));
+    //    in_outs.push_back(std::make_pair(
+    //        "SELECT "
+    //        "col1, "
+    //        "sum(col3) OVER w1 as w1_col3_sum, "
+    //        "sum(col2) OVER w1 as w1_col2_sum "
+    //        "FROM t1 left join t2 on t1.col1 = t2.col1 "
+    //        "WINDOW w1 AS (PARTITION BY col1 ORDER BY col15 ROWS BETWEEN 3 "
+    //        "PRECEDING AND CURRENT ROW) limit 10;",
+    //        "LIMIT(limit=10)\n"
+    //        "  PROJECT(type=ProjectRow)\n"
+    //        "    JOIN(type=kJoinTypeConcat, condition=)\n"
+    //        "      PROJECT(type=ProjectRow)\n"
+    //        "        JOIN(type=LeftJoin, condition=t1.col1 = t2.col1)\n"
+    //        "          SCAN(table=t1)\n"
+    //        "          SCAN(table=t2)\n"
+    //        "      PROJECT(type=WindowAggregation, start=-3, end=0)\n"
+    //        "        JOIN(type=LeftJoin, condition=t1.col1 = t2.col1)\n"
+    //        "          SCAN(type=IndexScan, table=t1, index=index1)\n"
+    //        "          SCAN(table=t2)"));
+    //    in_outs.push_back(std::make_pair(
+    //        "SELECT "
+    //        "col1, "
+    //        "sum(col3) OVER w1 as w1_col3_sum, "
+    //        "sum(col2) OVER w1 as w1_col2_sum "
+    //        "FROM t1 left join t2 on t1.col1 = t2.col1 "
+    //        "WINDOW w1 AS (PARTITION BY col1, col2 ORDER BY col15 ROWS BETWEEN
+    //        3 " "PRECEDING AND CURRENT ROW) limit 10;", "LIMIT(limit=10)\n" "
+    //        PROJECT(type=ProjectRow)\n" "    JOIN(type=kJoinTypeConcat,
+    //        condition=)\n" "      PROJECT(type=ProjectRow)\n" "
+    //        JOIN(type=LeftJoin, condition=t1.col1 = t2.col1)\n" "
+    //        SCAN(table=t1)\n" "          SCAN(table=t2)\n" "
+    //        PROJECT(type=Aggregation)\n" "        BUFFER(start=-3, end=0)\n"
+    //        "          JOIN(type=LeftJoin, condition=t1.col1 = t2.col1)\n"
+    //        "            SCAN(type=IndexScan, table=t1, index=index12)\n"
+    //        "            SCAN(table=t2)"));
+    fesql::type::TableDef table_def;
+    BuildTableDef(table_def);
+    table_def.set_name("t1");
+    std::shared_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, table_def));
+    {
+        ::fesql::type::IndexDef* index = table_def.add_indexes();
+        index->set_name("index12");
+        index->add_first_keys("col1");
+        index->add_first_keys("col2");
+        index->set_second_key("col15");
+    }
+    {
+        ::fesql::type::IndexDef* index = table_def.add_indexes();
+        index->set_name("index1");
+        index->add_first_keys("col1");
+        index->set_second_key("col15");
+    }
+    auto catalog = BuildCommonCatalog(table_def, table);
+    {
+        fesql::type::TableDef table_def2;
+        BuildTableDef(table_def2);
+        table_def2.set_name("t2");
+        std::shared_ptr<::fesql::storage::Table> table2(
+            new ::fesql::storage::Table(1, 1, table_def2));
+        AddTable(catalog, table_def2, table2);
+    }
+
+    {
+        fesql::type::TableDef request_def;
+        BuildTableDef(request_def);
+        request_def.set_name("t1");
+        request_def.set_catalog("request");
+        std::shared_ptr<::fesql::storage::Table> request(
+            new ::fesql::storage::Table(1, 1, request_def));
+        AddTable(catalog, request_def, request);
+    }
+
+    for (auto in_out : in_outs) {
+        Physical_Plan_Check(catalog, in_out.first, in_out.second);
+    }
+}
 
 }  // namespace vm
 }  // namespace fesql

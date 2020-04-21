@@ -16,10 +16,10 @@
  */
 
 #include "codec/row_codec.h"
-
+#include <string>
 #include <utility>
-#include "glog/logging.h"
 #include "codec/type_codec.h"
+#include "glog/logging.h"
 
 namespace fesql {
 namespace codec {
@@ -617,6 +617,90 @@ int32_t RowView::GetString(uint32_t idx, char** val, uint32_t* length) {
     return v1::GetStrField(row_, field_offset, next_str_field_offset,
                            str_field_start_offset_, str_addr_length_,
                            reinterpret_cast<int8_t**>(val), length);
+}
+
+RowDecoder::RowDecoder(const vm::Schema& schema)
+    : schema_(schema), types_(), next_str_pos_(), str_field_start_offset_(0) {
+    uint32_t offset = codec::GetStartOffset(schema_.size());
+    uint32_t string_field_cnt = 0;
+    for (int32_t i = 0; i < schema_.size(); i++) {
+        const ::fesql::type::ColumnDef& column = schema_.Get(i);
+        if (column.type() == ::fesql::type::kVarchar) {
+            types_.insert(std::make_pair(
+                column.name(),
+                std::make_pair(column.type(), string_field_cnt)));
+            next_str_pos_.insert(
+                std::make_pair(string_field_cnt, string_field_cnt));
+            string_field_cnt += 1;
+        } else {
+            auto it = codec::TYPE_SIZE_MAP.find(column.type());
+            if (it == codec::TYPE_SIZE_MAP.end()) {
+                LOG(WARNING) << "fail to find column type "
+                             << ::fesql::type::Type_Name(column.type());
+            } else {
+                types_.insert(std::make_pair(
+                    column.name(), std::make_pair(column.type(), offset)));
+                offset += it->second;
+            }
+        }
+    }
+    uint32_t next_pos = 0;
+    for (auto iter = next_str_pos_.rbegin(); iter != next_str_pos_.rend();
+         iter++) {
+        uint32_t tmp = iter->second;
+        iter->second = next_pos;
+        next_pos = tmp;
+    }
+    str_field_start_offset_ = offset;
+}
+bool RowDecoder::GetPrimayFieldOffsetType(const std::string& name,
+                                          uint32_t* offset_ptr,
+                                          type::Type* type_ptr) {
+    if (nullptr == offset_ptr || nullptr == type_ptr) {
+        LOG(WARNING) << "input args have null";
+        return false;
+    }
+    Types::iterator it = types_.find(name);
+    if (it == types_.end()) {
+        LOG(WARNING) << "no column " << name << " in schema";
+        return false;
+    }
+    // TODO(wangtaize) support null check
+    *type_ptr = it->second.first;
+    *offset_ptr = it->second.second;
+    return true;
+}
+bool RowDecoder::GetStringFieldOffset(const std::string& name,
+                                      uint32_t* str_offset_ptr,
+                                      uint32_t* str_next_offset_ptr,
+                                      uint32_t* str_start_offset_ptr) {
+    if (nullptr == str_offset_ptr || nullptr == str_next_offset_ptr ||
+        nullptr == str_start_offset_ptr) {
+        LOG(WARNING) << "input args have null";
+        return false;
+    }
+    Types::iterator it = types_.find(name);
+    if (it == types_.end()) {
+        LOG(WARNING) << "no column " << name << " in schema";
+        return false;
+    }
+    // TODO(wangtaize) support null check
+    uint32_t offset = it->second.second;
+    uint32_t next_offset;
+    auto nit = next_str_pos_.find(offset);
+    if (nit != next_str_pos_.end()) {
+        next_offset = nit->second;
+    } else {
+        LOG(WARNING) << "fail to get string field next offset";
+        return false;
+    }
+    DLOG(INFO) << "get string with offset " << offset << " next offset "
+               << next_offset << " for col " << name;
+
+    *str_offset_ptr = offset;
+    *str_next_offset_ptr = next_offset;
+    *str_start_offset_ptr = str_field_start_offset_;
+    return true;
 }
 
 }  // namespace codec

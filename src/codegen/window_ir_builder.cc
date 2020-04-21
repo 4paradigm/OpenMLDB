@@ -28,41 +28,7 @@ namespace codegen {
 
 MemoryWindowDecodeIRBuilder::MemoryWindowDecodeIRBuilder(
     const vm::Schema& schema, ::llvm::BasicBlock* block)
-    : schema_(schema),
-      block_(block),
-      types_(),
-      next_str_pos_(),
-      str_field_start_offset_(0) {
-    uint32_t offset = codec::GetStartOffset(schema_.size());
-    uint32_t string_field_cnt = 0;
-    for (int32_t i = 0; i < schema_.size(); i++) {
-        const ::fesql::type::ColumnDef& column = schema_.Get(i);
-        fesql::node::DataType data_type;
-        if (!SchemaType2DataType(column.type(), &data_type)) {
-            LOG(WARNING) << "fail to convert schema type to data type " +
-                                fesql::type::Type_Name(column.type());
-            return;
-        }
-        if (data_type == ::fesql::node::kVarchar) {
-            types_.insert(std::make_pair(
-                column.name(), std::make_pair(data_type, string_field_cnt)));
-            next_str_pos_.insert(
-                std::make_pair(string_field_cnt, string_field_cnt));
-            string_field_cnt += 1;
-        } else {
-            auto it = codec::TYPE_SIZE_MAP.find(column.type());
-            if (it == codec::TYPE_SIZE_MAP.end()) {
-                LOG(WARNING) << "fail to find column type "
-                             << ::fesql::type::Type_Name(column.type());
-            } else {
-                types_.insert(std::make_pair(
-                    column.name(), std::make_pair(data_type, offset)));
-                offset += it->second;
-            }
-        }
-    }
-    str_field_start_offset_ = offset;
-}
+    : block_(block), decoder_(schema) {}
 
 MemoryWindowDecodeIRBuilder::~MemoryWindowDecodeIRBuilder() {}
 
@@ -73,35 +39,35 @@ bool MemoryWindowDecodeIRBuilder::BuildGetCol(const std::string& name,
         LOG(WARNING) << "input args have null";
         return false;
     }
-
-    auto it = types_.find(name);
-    if (it == types_.end()) {
-        LOG(WARNING) << "no column " << name << " in schema";
+    ::fesql::node::DataType data_type;
+    uint32_t offset;
+    if (!GetColOffsetType(name, &offset, &data_type)) {
+        LOG(WARNING) << "fail to get filed offset " << name;
         return false;
     }
-
-    ::fesql::node::DataType& fe_type = it->second.first;
     ::llvm::IRBuilder<> builder(block_);
-    uint32_t offset = it->second.second;
-    switch (fe_type) {
+    switch (data_type) {
         case ::fesql::node::kInt16:
         case ::fesql::node::kInt32:
         case ::fesql::node::kInt64:
         case ::fesql::node::kFloat:
         case ::fesql::node::kDouble: {
             return BuildGetPrimaryCol("fesql_storage_get_col", window_ptr,
-                                      offset, fe_type, output);
+                                      offset, data_type, output);
         }
         case ::fesql::node::kVarchar: {
             uint32_t next_offset = 0;
-            auto nit = next_str_pos_.find(offset);
-            if (nit != next_str_pos_.end()) {
-                next_offset = nit->second;
+            uint32_t str_start_offset = 0;
+            if (!decoder_.GetStringFieldOffset(name, &offset, &next_offset,
+                                               &str_start_offset)) {
+                LOG(WARNING)
+                    << "fail to get string filed offset and next offset"
+                    << name;
             }
             DLOG(INFO) << "get string with offset " << offset << " next offset "
                        << next_offset << " for col " << name;
-            return BuildGetStringCol(offset, next_offset, fe_type, window_ptr,
-                                     output);
+            return BuildGetStringCol(offset, next_offset, str_start_offset,
+                                     data_type, window_ptr, output);
         }
         default: {
             return false;
@@ -165,7 +131,7 @@ bool MemoryWindowDecodeIRBuilder::BuildGetPrimaryCol(
 }
 
 bool MemoryWindowDecodeIRBuilder::BuildGetStringCol(
-    uint32_t offset, uint32_t next_str_field_offset,
+    uint32_t offset, uint32_t next_str_field_offset, uint32_t str_start_offset,
     const fesql::node::DataType& type, ::llvm::Value* window_ptr,
     ::llvm::Value** output) {
     if (window_ptr == NULL || output == NULL) {
@@ -218,28 +184,26 @@ bool MemoryWindowDecodeIRBuilder::BuildGetStringCol(
     }
     ::llvm::Value* val_type_id =
         builder.getInt32(static_cast<int32_t>(schema_type));
-    builder.CreateCall(callee, ::llvm::ArrayRef<::llvm::Value*>{
-                                   window_ptr, str_offset, next_str_offset,
-                                   builder.getInt32(str_field_start_offset_),
-                                   val_type_id, col_iter});
+    builder.CreateCall(
+        callee, ::llvm::ArrayRef<::llvm::Value*>{
+                    window_ptr, str_offset, next_str_offset,
+                    builder.getInt32(str_start_offset), val_type_id, col_iter});
     *output = list_ref;
     return true;
 }
 bool MemoryWindowDecodeIRBuilder::GetColOffsetType(
     const std::string& name, uint32_t* offset_ptr,
-    node::DataType* type_ptr) {
-    if (nullptr == offset_ptr || nullptr == type_ptr) {
-        LOG(WARNING) << "fail to get col offset and type: offset or type "
-                        "pointer is null";
+    node::DataType* data_type_ptr) {
+    fesql::type::Type type;
+    if (!decoder_.GetPrimayFieldOffsetType(name, offset_ptr, &type)) {
         return false;
     }
-    auto it = types_.find(name);
-    if (it == types_.end()) {
-        LOG(WARNING) << "no column " << name << " in schema";
+
+    if (!SchemaType2DataType(type, data_type_ptr)) {
+        LOG(WARNING) << "unrecognized data type " +
+                            fesql::type::Type_Name(type);
         return false;
     }
-    *offset_ptr = it->second.second;
-    *type_ptr = it->second.first;
     return true;
 }
 

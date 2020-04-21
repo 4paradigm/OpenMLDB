@@ -21,6 +21,7 @@
 #include <map>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 #include "base/raw_buffer.h"
 #include "proto/type.pb.h"
@@ -31,7 +32,7 @@ namespace codec {
 
 #define BitMapSize(size) (((size) >> 3) + !!((size)&0x07))
 
-using Schema = vm::Schema;
+using fesql::vm::Schema;
 static constexpr uint8_t VERSION_LENGTH = 2;
 static constexpr uint8_t SIZE_LENGTH = 4;
 static constexpr uint8_t HEADER_LENGTH = VERSION_LENGTH + SIZE_LENGTH;
@@ -160,6 +161,27 @@ class RowView {
     const int8_t* row_;
     const Schema schema_;
     std::vector<uint32_t> offset_vec_;
+};
+
+class RowDecoder {
+ public:
+    explicit RowDecoder(const vm::Schema& schema);
+    virtual ~RowDecoder() {}
+    virtual bool GetPrimayFieldOffsetType(const std::string& name,
+                                          uint32_t* offset_ptr,
+                                          type::Type* type_ptr);
+    virtual bool GetStringFieldOffset(const std::string& name,
+                                      uint32_t* str_offset_ptr,
+                                      uint32_t* str_next_offset_ptr,
+                                      uint32_t* str_start_offset_ptr);
+
+ private:
+    vm::Schema schema_;
+    typedef std::map<std::string, std::pair<::fesql::type::Type, int32_t>>
+        Types;
+    Types types_;
+    std::map<uint32_t, uint32_t> next_str_pos_;
+    uint32_t str_field_start_offset_;
 };
 
 }  // namespace codec

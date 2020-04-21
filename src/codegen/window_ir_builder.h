@@ -25,6 +25,7 @@
 #include "llvm/IR/IRBuilder.h"
 #include "proto/type.pb.h"
 #include "vm/catalog.h"
+#include "codec/row_codec.h"
 
 namespace fesql {
 namespace codegen {
@@ -50,8 +51,8 @@ class MemoryWindowDecodeIRBuilder : public WindowDecodeIRBuilder {
 
     bool BuildGetCol(const std::string& name, ::llvm::Value* window_ptr,
                      ::llvm::Value** output);
-    virtual bool GetColOffsetType(const std::string& name, uint32_t* offset_ptr,
-                                  node::DataType* type_ptr);
+    bool GetColOffsetType(const std::string& name, uint32_t* offset_ptr,
+                          node::DataType* type_ptr);
 
  private:
     bool BuildGetPrimaryCol(const std::string& fn_name, ::llvm::Value* row_ptr,
@@ -59,17 +60,13 @@ class MemoryWindowDecodeIRBuilder : public WindowDecodeIRBuilder {
                             ::llvm::Value** output);
 
     bool BuildGetStringCol(uint32_t offset, uint32_t next_str_field_offset,
+                           uint32_t str_start_offset,
                            const fesql::node::DataType& type,
                            ::llvm::Value* window_ptr, ::llvm::Value** output);
 
  private:
-    vm::Schema schema_;
     ::llvm::BasicBlock* block_;
-    typedef std::map<std::string, std::pair<::fesql::node::DataType, int32_t>>
-        Types;
-    Types types_;
-    std::map<uint32_t, uint32_t> next_str_pos_;
-    uint32_t str_field_start_offset_;
+    ::fesql::codec::RowDecoder decoder_;
 };
 
 }  // namespace codegen

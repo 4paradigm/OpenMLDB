@@ -199,24 +199,27 @@ INSTANTIATE_TEST_CASE_P(
     testing::Values(
         "SELECT * FROM t1 full join t2 on t1.col1 = t2.col2;",
         "SELECT * FROM t1 right join t2 on t1.col1 = t2.col2;",
-        "SELECT * FROM t1 inner join t2 on t1.col1 = t2.col2 limit 10;"));
+        "SELECT * FROM t1 inner join t2 on t1.col1 = t2.col2 limit 10;",
+        "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join t2 on "
+        "t1.col1 = t2.col2 and t2.col15 >= t1.col15;"));
 
+// TODO(chenjing): 解决窗口PK列冲突的问题
 INSTANTIATE_TEST_CASE_P(
     SqlLeftJoinWindowPlan, TransformTest,
     testing::Values(
         "SELECT "
-        "col1, "
-        "sum(col3) OVER w1 as w1_col3_sum, "
-        "sum(col2) OVER w1 as w1_col2_sum "
+        "t1.col1, "
+        "sum(t1.col3) OVER w1 as w1_col3_sum, "
+        "sum(t2.col2) OVER w1 as w1_col2_sum "
         "FROM t1 left join t2 on t1.col1 = t2.col1 "
-        "WINDOW w1 AS (PARTITION BY col1 ORDER BY col15 ROWS BETWEEN 3 "
+        "WINDOW w1 AS (PARTITION BY t1.col1 ORDER BY t1.col15 ROWS BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;",
         "SELECT "
-        "col1, "
-        "sum(col3) OVER w1 as w1_col3_sum, "
-        "sum(col2) OVER w1 as w1_col2_sum "
-        "FROM t1 left join t2 on t1.col1 = t2.col1 "
-        "WINDOW w1 AS (PARTITION BY col1, col2 ORDER BY col15 ROWS BETWEEN 3 "
+        "t1.col1, "
+        "sum(t1.col3) OVER w1 as w1_col3_sum, "
+        "sum(t2.col2) OVER w1 as w1_col2_sum "
+        "FROM t1 left join t2 on t1.col1 = t2.col1 WINDOW w1 AS (PARTITION BY "
+        "t1.col1, t1.col2 ORDER BY t1.col15 ROWS BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;"));
 INSTANTIATE_TEST_CASE_P(
     SqlUnionPlan, TransformTest,
@@ -404,7 +407,7 @@ void Physical_Plan_Check(const std::shared_ptr<tablet::TabletCatalog>& catalog,
     std::cout << oos.str() << std::endl;
 
     std::ostringstream ss;
-    PrintSchema(ss, physical_plan->output_schema);
+    PrintSchema(ss, physical_plan->output_schema_);
     std::cout << "schema:\n" << ss.str() << std::endl;
 
     ASSERT_EQ(oos.str(), exp);
@@ -525,14 +528,15 @@ TEST_F(TransformTest, pass_join_optimized_test) {
     std::vector<std::pair<std::string, std::string>> in_outs;
     in_outs.push_back(std::make_pair(
         "SELECT "
-        "sum(col3) OVER w1 as w1_col3_sum, "
-        "col1, "
-        "sum(col2) OVER w1 as w1_col2_sum "
+        "sum(t1.col3) OVER w1 as w1_col3_sum, "
+        "t2.col1, "
+        "sum(t1.col2) OVER w1 as w1_col2_sum "
         "FROM t1 left join t2 on t1.col1 = t2.col1 "
-        "WINDOW w1 AS (PARTITION BY col1 ORDER BY col15 ROWS BETWEEN 3 "
+        "WINDOW w1 AS (PARTITION BY t1.col1 ORDER BY t1.col15 ROWS BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;",
         "LIMIT(limit=10, optimized)\n"
-        "  PROJECT(type=WindowAggregation, groups=(col1), orders=(col15) ASC, "
+        "  PROJECT(type=WindowAggregation, groups=(t1.col1), orders=(t1.col15) "
+        "ASC, "
         "start=-3, end=0, limit=10)\n"
         "    JOIN(type=LeftJoin, condition=t1.col1 = t2.col1)\n"
         "      GROUP_AND_SORT_BY(groups=(), orders=() ASC)\n"
@@ -540,14 +544,16 @@ TEST_F(TransformTest, pass_join_optimized_test) {
         "      DATA_PROVIDER(table=t2)"));
     in_outs.push_back(std::make_pair(
         "SELECT "
-        "col1, "
-        "sum(col3) OVER w1 as w1_col3_sum, "
-        "sum(col2) OVER w1 as w1_col2_sum "
+        "t2.col1, "
+        "sum(t1.col3) OVER w1 as w1_col3_sum, "
+        "sum(t1.col2) OVER w1 as w1_col2_sum "
         "FROM t1 left join t2 on t1.col1 = t2.col1 "
-        "WINDOW w1 AS (PARTITION BY col1, col2 ORDER BY col15 ROWS BETWEEN 3 "
+        "WINDOW w1 AS (PARTITION BY t1.col1, t1.col2 ORDER BY t1.col15 ROWS "
+        "BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;",
         "LIMIT(limit=10, optimized)\n"
-        "  PROJECT(type=WindowAggregation, groups=(col1,col2), orders=(col15) "
+        "  PROJECT(type=WindowAggregation, groups=(t1.col1,t1.col2), "
+        "orders=(t1.col15) "
         "ASC, start=-3, end=0, limit=10)\n"
         "    JOIN(type=LeftJoin, condition=t1.col1 = t2.col1)\n"
         "      GROUP_AND_SORT_BY(groups=(), orders=() ASC)\n"

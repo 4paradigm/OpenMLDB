@@ -20,7 +20,8 @@ class Slice {
     Slice(const char* d, size_t n) : need_free_(false), size_(n), data_(d) {}
     Slice(int8_t* d, size_t n)
         : need_free_(false), size_(n), data_(reinterpret_cast<char*>(d)) {}
-
+    Slice(int8_t* d, size_t n, bool need_free)
+        : need_free_(need_free), size_(n), data_(reinterpret_cast<char*>(d)) {}
     // Create a slice that refers to the contents of "s"
     explicit Slice(const std::string& s)
         : need_free_(false), size_(s.size()), data_(s.data()) {}

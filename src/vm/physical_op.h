@@ -12,6 +12,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <utility>
 #include "base/graph.h"
 #include "node/plan_node.h"
 #include "vm/catalog.h"
@@ -35,6 +36,7 @@ enum PhysicalOpType {
     kPhysicalOpUnoin,
     kPhysicalOpIndexSeek,
     kPhysicalOpRequestUnoin,
+    kPhysicalOpRequestJoin,
     kPhysicalOpRequestGroup,
     kPhysicalOpRequestGroupAndSort,
 };
@@ -70,6 +72,8 @@ inline const std::string PhysicalOpTypeName(const PhysicalOpType &type) {
             return "UNION";
         case kPhysicalOpRequestUnoin:
             return "REQUEST_UNION";
+        case kPhysicalOpRequestJoin:
+            return "REQUEST_JOIN";
         case kPhysicalOpIndexSeek:
             return "INDEX_SEEK";
         default:
@@ -83,7 +87,7 @@ class PhysicalOpNode {
         : type_(type),
           is_block_(is_block),
           is_lazy_(is_lazy),
-          output_type(kSchemaTypeTable),
+          output_type_(kSchemaTypeTable),
           fn_name_(""),
           fn_(nullptr),
           limit_cnt_(0) {}
@@ -131,8 +135,10 @@ class PhysicalOpNode {
     const PhysicalOpType type_;
     const bool is_block_;
     const bool is_lazy_;
-    PhysicalSchemaType output_type;
-    vm::Schema output_schema;
+    PhysicalSchemaType output_type_;
+    vm::Schema output_schema_;
+    std::vector<std::pair<const std::string, const vm::Schema *>>
+        output_name_schema_list_;
 
  protected:
     std::string fn_name_;
@@ -164,9 +170,8 @@ class PhysicalBinaryNode : public PhysicalOpNode {
         : PhysicalOpNode(type, is_block, is_lazy) {
         AddProducer(left);
         AddProducer(right);
-        InitSchema();
     }
-    virtual bool InitSchema();
+    virtual bool InitSchema() = 0;
     virtual ~PhysicalBinaryNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     virtual void PrintChildren(std::ostream &output,
@@ -220,7 +225,7 @@ class PhysicalRequestProviderNode : public PhysicalDataProviderNode {
     explicit PhysicalRequestProviderNode(
         const std::shared_ptr<TableHandler> &table_handler)
         : PhysicalDataProviderNode(table_handler, kProviderTypeRequest) {
-        output_type = kSchemaTypeRow;
+        output_type_ = kSchemaTypeRow;
     }
     virtual ~PhysicalRequestProviderNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
@@ -232,7 +237,7 @@ class PhysicalScanIndexNode : public PhysicalDataProviderNode {
                           const std::string &index_name)
         : PhysicalDataProviderNode(table_handler, kProviderTypeIndexScan),
           index_name_(index_name) {
-        output_type = kSchemaTypeGroup;
+        output_type_ = kSchemaTypeGroup;
     }
     virtual ~PhysicalScanIndexNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
@@ -244,7 +249,7 @@ class PhysicalGroupNode : public PhysicalUnaryNode {
     PhysicalGroupNode(PhysicalOpNode *node, const node::ExprListNode *groups)
         : PhysicalUnaryNode(node, kPhysicalOpGroupBy, true, false),
           groups_(groups) {
-        output_type = kSchemaTypeGroup;
+        output_type_ = kSchemaTypeGroup;
     }
 
     virtual ~PhysicalGroupNode() {}
@@ -267,7 +272,7 @@ class PhysicalGroupAndSortNode : public PhysicalUnaryNode {
         : PhysicalUnaryNode(node, kPhysicalOpGroupAndSort, true, false),
           groups_(groups),
           orders_(orders) {
-        output_type = kSchemaTypeGroup;
+        output_type_ = kSchemaTypeGroup;
     }
     virtual ~PhysicalGroupAndSortNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
@@ -321,7 +326,7 @@ class PhysicalProjectNode : public PhysicalUnaryNode {
                         const bool is_block, const bool is_lazy)
         : PhysicalUnaryNode(node, kPhysicalOpProject, is_block, is_lazy),
           project_type_(project_type) {
-        output_schema.CopyFrom(schema);
+        output_schema_.CopyFrom(schema);
         SetFnName(fn_name);
         SetFnSchema(schema);
     }
@@ -337,7 +342,7 @@ class PhysicalRowProjectNode : public PhysicalProjectNode {
                            const Schema &schema)
         : PhysicalProjectNode(node, fn_name, schema, kRowProject, false,
                               false) {
-        output_type = kSchemaTypeRow;
+        output_type_ = kSchemaTypeRow;
     }
     virtual ~PhysicalRowProjectNode() {}
 };
@@ -348,7 +353,7 @@ class PhysicalTableProjectNode : public PhysicalProjectNode {
                              const Schema &schema)
         : PhysicalProjectNode(node, fn_name, schema, kTableProject, false,
                               false) {
-        output_type = kSchemaTypeTable;
+        output_type_ = kSchemaTypeTable;
     }
     virtual ~PhysicalTableProjectNode() {}
 };
@@ -358,7 +363,7 @@ class PhysicalAggrerationNode : public PhysicalProjectNode {
                             const Schema &schema)
         : PhysicalProjectNode(node, fn_name, schema, kAggregation, true,
                               false) {
-        output_type = kSchemaTypeRow;
+        output_type_ = kSchemaTypeRow;
     }
     virtual ~PhysicalAggrerationNode() {}
 };
@@ -372,7 +377,7 @@ class PhysicalGroupAggrerationNode : public PhysicalProjectNode {
         : PhysicalProjectNode(node, fn_name, schema, kGroupAggregation, true,
                               false),
           groups_(groups) {
-        output_type = kSchemaTypeTable;
+        output_type_ = kSchemaTypeTable;
     }
     virtual ~PhysicalGroupAggrerationNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
@@ -401,7 +406,7 @@ class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
           orders_(orders),
           start_offset_(start_offset),
           end_offset_(end_offset) {
-        output_type = kSchemaTypeTable;
+        output_type_ = kSchemaTypeTable;
     }
     virtual ~PhysicalWindowAggrerationNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
@@ -440,7 +445,8 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
         : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false, true),
           join_type_(join_type),
           condition_(condition) {
-        output_type = kSchemaTypeTable;
+        output_type_ = kSchemaTypeTable;
+        InitSchema();
     }
     virtual ~PhysicalJoinNode() {}
     bool InitSchema() override;
@@ -463,7 +469,8 @@ class PhysicalUnionNode : public PhysicalBinaryNode {
     PhysicalUnionNode(PhysicalOpNode *left, PhysicalOpNode *right, bool is_all)
         : PhysicalBinaryNode(left, right, kPhysicalOpUnoin, true, true),
           is_all_(is_all) {
-        output_type = kSchemaTypeTable;
+        output_type_ = kSchemaTypeTable;
+        InitSchema();
     }
     virtual ~PhysicalUnionNode() {}
     bool InitSchema() override;
@@ -477,7 +484,8 @@ class PhysicalSeekIndexNode : public PhysicalBinaryNode {
                           const node::ExprListNode *keys)
         : PhysicalBinaryNode(left, right, kPhysicalOpIndexSeek, true, true),
           keys_(keys) {
-        output_type = kSchemaTypeGroup;
+        output_type_ = kSchemaTypeGroup;
+        InitSchema();
     }
     virtual ~PhysicalSeekIndexNode() {}
     bool InitSchema() override;
@@ -491,6 +499,32 @@ class PhysicalSeekIndexNode : public PhysicalBinaryNode {
     std::vector<int32_t> keys_idxs_;
 };
 
+class PhysicalRequestJoinNode : public PhysicalBinaryNode {
+ public:
+    PhysicalRequestJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
+                            const node::JoinType join_type,
+                            const node::ExprNode *condition)
+        : PhysicalBinaryNode(left, right, kPhysicalOpRequestJoin, false, true),
+          join_type_(join_type),
+          condition_(condition) {
+        output_type_ = kSchemaTypeTable;
+        InitSchema();
+    }
+    virtual ~PhysicalRequestJoinNode() {}
+    bool InitSchema() override;
+    virtual void Print(std::ostream &output, const std::string &tab) const;
+    const node::JoinType join_type_;
+    const node::ExprNode *condition_;
+    void SetConditionIdxs(const std::vector<int32_t> &idxs) {
+        condition_idxs_ = idxs;
+    }
+    const std::vector<int32_t> &GetConditionIdxs() const {
+        return condition_idxs_;
+    }
+
+ private:
+    std::vector<int32_t> condition_idxs_;
+};
 class PhysicalRequestUnionNode : public PhysicalBinaryNode {
  public:
     PhysicalRequestUnionNode(PhysicalOpNode *left, PhysicalOpNode *right,
@@ -505,7 +539,8 @@ class PhysicalRequestUnionNode : public PhysicalBinaryNode {
           keys_(keys),
           start_offset_(start_offset),
           end_offset_(end_offset) {
-        output_type = kSchemaTypeTable;
+        output_type_ = kSchemaTypeTable;
+        InitSchema();
     }
     virtual ~PhysicalRequestUnionNode() {}
     bool InitSchema() override;

@@ -45,7 +45,7 @@ namespace bm {
 using vm::Engine;
 using vm::BatchRunSession;
 using vm::RequestRunSession;
-using base::Slice;
+using codec::Row;
 
 using namespace ::llvm;                                      // NOLINT
 
@@ -56,7 +56,7 @@ static int64_t RunTableRequest(RequestRunSession& session,  // NOLINT
     int64_t cnt = 0;
     while (cnt < limit_cnt && iter->Valid()) {
         cnt++;
-        Slice row;
+        Row row;
         session.Run(iter->GetValue(), &row);
         iter->Next();
         delete row.buf();

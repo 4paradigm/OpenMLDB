@@ -29,9 +29,10 @@ namespace fesql {
 namespace tablet {
 
 using vm::PartitionHandler;
-using vm::SliceIterator;
+using vm::RowIterator;
 using vm::TableHandler;
 using vm::WindowIterator;
+using codec::Row;
 
 class TabletPartitionHandler;
 class TabletTableHandler;
@@ -60,13 +61,13 @@ class TabletSegmentHandler : public TableHandler {
         return partition_hander_->GetIndex();
     }
 
-    std::unique_ptr<vm::SliceIterator> GetIterator() const;
-    vm::IteratorV<uint64_t, base::Slice>* GetIterator(
+    std::unique_ptr<vm::RowIterator> GetIterator() const;
+    vm::IteratorV<uint64_t, Row>* GetIterator(
         int8_t* addr) const override;
     std::unique_ptr<vm::WindowIterator> GetWindowIterator(
         const std::string& idx_name);
     virtual const uint64_t GetCount();
-    base::Slice At(uint64_t pos) override;
+    Row At(uint64_t pos) override;
 
  private:
     std::shared_ptr<vm::PartitionHandler> partition_hander_;
@@ -134,17 +135,17 @@ class TabletTableHandler : public vm::TableHandler {
 
     inline const vm::IndexHint& GetIndex() { return index_hint_; }
 
-    const base::Slice Get(int32_t pos);
+    const Row Get(int32_t pos);
 
     inline std::shared_ptr<storage::Table> GetTable() { return table_; }
 
-    std::unique_ptr<SliceIterator> GetIterator() const;
-    vm::IteratorV<uint64_t, base::Slice>* GetIterator(
+    std::unique_ptr<RowIterator> GetIterator() const;
+    vm::IteratorV<uint64_t, Row>* GetIterator(
         int8_t* addr) const override;
     std::unique_ptr<WindowIterator> GetWindowIterator(
         const std::string& idx_name);
     virtual const uint64_t GetCount();
-    base::Slice At(uint64_t pos) override;
+    Row At(uint64_t pos) override;
 
     virtual std::shared_ptr<PartitionHandler> GetPartition(
         std::shared_ptr<TableHandler> table_hander,

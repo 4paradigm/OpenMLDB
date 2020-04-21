@@ -19,7 +19,7 @@
 #include "vm/mem_catalog.h"
 namespace fesql {
 namespace bm {
-using base::Slice;
+using codec::Row;
 using codec::ColumnImpl;
 using vm::MemSegmentHandler;
 using vm::MemTableHandler;
@@ -43,7 +43,7 @@ const int64_t PartitionHandlerIterateTest(
 static void BuildData(type::TableDef& table_def,       // NOLINT
                       vm::MemSegmentHandler& segment,  // NOLINT
                       int64_t data_size) {
-    std::vector<Slice> buffer;
+    std::vector<Row> buffer;
     BuildOnePkTableData(table_def, buffer, data_size);
     uint64_t ts = 1;
     for (auto row : buffer) {
@@ -53,7 +53,7 @@ static void BuildData(type::TableDef& table_def,       // NOLINT
 static void BuildData(type::TableDef& table_def,   // NOLINT
                       vm::MemTableHandler& table,  // NOLINT
                       int64_t data_size) {
-    std::vector<Slice> buffer;
+    std::vector<Row> buffer;
     BuildOnePkTableData(table_def, buffer, data_size);
     for (auto row : buffer) {
         table.AddRow(row);
@@ -212,7 +212,7 @@ void CopyMemSegment(benchmark::State* state, MODE mode, int64_t data_size) {
 
 int64_t RunCopyArrayList(MemSegmentHandler& window,    // NOLINT
                          type::TableDef& table_def) {  // NOLINT
-    std::vector<Slice> window_table;
+    std::vector<Row> window_table;
     auto from_iter = window.GetIterator();
     while (from_iter->Valid()) {
         window_table.push_back(from_iter->GetValue());
@@ -290,13 +290,13 @@ void SumArrayListCol(benchmark::State* state, MODE mode, int64_t data_size,
     type::TableDef table_def;
     BuildData(table_def, window, data_size);
 
-    std::vector<Slice> buffer;
+    std::vector<Row> buffer;
     auto from_iter = window.GetIterator();
     while (from_iter->Valid()) {
         buffer.push_back(from_iter->GetValue());
         from_iter->Next();
     }
-    codec::ArrayListV<Slice> list_table(&buffer);
+    codec::ArrayListV<Row> list_table(&buffer);
 
     codegen::MemoryWindowDecodeIRBuilder builder(table_def.columns(), nullptr);
     uint32_t offset;

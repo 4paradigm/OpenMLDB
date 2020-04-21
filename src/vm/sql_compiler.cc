@@ -203,7 +203,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         status.code = common::kOpGenError;
         return false;
     }
-    ctx.schema = ctx.plan->output_schema;
+    ctx.schema = ctx.plan->output_schema_;
     ctx.runner = runner;
     return true;
 }

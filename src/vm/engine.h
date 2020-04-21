@@ -37,7 +37,7 @@
 namespace fesql {
 namespace vm {
 
-using ::fesql::base::Slice;
+using ::fesql::codec::Row;
 using ::fesql::codec::RowView;
 
 class Engine;
@@ -123,9 +123,9 @@ class RequestRunSession : public RunSession {
  public:
     RequestRunSession() : RunSession() {}
     ~RequestRunSession() {}
-    virtual int32_t Run(const Slice& in_row, Slice* output);  // NOLINT
+    virtual int32_t Run(const Row& in_row, Row* output);  // NOLINT
     const bool IsBatchRun() const override { return false; }
-    std::shared_ptr<TableHandler> RunRequestPlan(const Slice& request,
+    std::shared_ptr<TableHandler> RunRequestPlan(const Row& request,
                                                  PhysicalOpNode* node);
 };
 

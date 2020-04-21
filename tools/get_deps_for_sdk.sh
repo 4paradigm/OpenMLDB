@@ -210,15 +210,17 @@ then
 else
     if [ -d "incubator-brpc" ]
     then
-        rm -rf incubator-brpc
-    fi
-    if [ -f "incubator-brpc.tar.gz" ]
-    then
-        echo "incubator-brpc.tar.gz exists"
+        echo "incubator-brpc exists"
     else
-        wget http://pkg.4paradigm.com/fesql/incubator-brpc.0304.tar.gz
+        if [ -f "incubator-brpc.0304.tar.gz" ]
+        then
+            echo "incubator-brpc.tar.gz exists"
+            tar -zxvf incubator-brpc.0304.tar.gz
+        else
+            wget http://pkg.4paradigm.com/fesql/incubator-brpc.0304.tar.gz
+        fi
     fi
-    tar -zxvf incubator-brpc.0304.tar.gz
+
     BRPC_DIR=$DEPS_SOURCE/incubator-brpc
     cd incubator-brpc && mkdir -p b2
     cd b2 && cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${DEPS_PREFIX} -DWITH_GLOG=ON .. && make brpc-static 
@@ -229,8 +231,137 @@ else
     echo "brpc done"
 fi
 
-if [[ "$OSTYPE" == "linux-gnu" ]]; then
-	cd ${DEPS_PREFIX}/lib && rm *.so
-elif [[ "$OSTYPE" == "darwin"* ]]; then
-	cd ${DEPS_PREFIX}/lib && rm *.dylib 
+if [ -f "boost_succ" ]
+then
+    echo "boost exist"
+else
+    if [ -f "boost_1_69_0.tar.gz" ]
+    then
+        echo "boost exist"
+    else
+        wget --no-check-certificate -O boost_1_69_0.tar.gz http://pkg.4paradigm.com/fesql/boost_1_69_0.tar.gz
+    fi
+    tar -zxvf boost_1_69_0.tar.gz
+    cd boost_1_69_0 && ./bootstrap.sh --with-toolset=clang  && ./b2 install --prefix=${DEPS_PREFIX}
+    cd -
+    touch boost_succ
+fi
+
+if [ -f "benchmark_succ" ]
+then
+    echo "benchmark exist"
+else
+    if [ -f "v1.5.0.tar.gz" ]
+    then
+        echo "benchmark  exist"
+    else
+        wget --no-check-certificate -O v1.5.0.tar.gz https://github.com/google/benchmark/archive/v1.5.0.tar.gz
+    fi
+
+    tar zxf v1.5.0.tar.gz
+    cd benchmark-1.5.0 && mkdir -p build
+    cd build && cmake -DCMAKE_INSTALL_PREFIX=${DEPS_PREFIX} -DCMAKE_CXX_FLAGS=-fPIC -DBENCHMARK_ENABLE_GTEST_TESTS=OFF .. >/dev/null
+    make -j4 && make install
+    cd ${DEPS_SOURCE}
+    touch benchmark_succ
+fi
+
+
+if [ -f "gperf_tool" ]
+then
+    echo "gperf_tool exist"
+else
+    wget http://pkg.4paradigm.com/rtidb/dev/gperftools-2.5.tar.gz
+    tar -zxvf gperftools-2.5.tar.gz
+    cd gperftools-2.5
+    ./configure --enable-cpu-profiler --enable-heap-checker --enable-heap-profiler  --enable-static --prefix=${DEPS_PREFIX}
+    make -j2 >/dev/null
+    make install
+    cd -
+    touch gperf_tool
+fi
+
+if [ -f "thrift_succ" ]
+then
+    echo "thrift installed"
+else
+    if [ -f "thrift-0.12.0.tar.gz" ]
+    then
+        echo "thrift-0.12.0.tar.gz  downloaded"
+    else
+        wget --no-check-certificate -O thrift-0.12.0.tar.gz  http://pkg.4paradigm.com/fesql/thrift-0.12.0.tar.gz
+    fi
+    #tar -zxvf thrift-0.12.0.tar.gz
+    cd thrift-0.12.0 && ./configure --with-python=no --with-nodejs=no --prefix=${DEPS_PREFIX} --with-boost=${DEPS_PREFIX} && make -j10 && make install
+    cd ${DEPS_SOURCE}
+    touch thrift_succ
+fi
+
+if [ -f "rapjson_succ" ]
+then 
+    echo "rapjson exist"
+else
+    wget http://pkg.4paradigm.com/rtidb/dev/rapidjson.1.1.0.tar.gz
+    tar -zxvf rapidjson.1.1.0.tar.gz
+    cp -rf rapidjson-1.1.0/include/rapidjson ${DEPS_PREFIX}/include
+    touch rapjson_succ
+fi
+
+
+if [ -f "flatbuffer_succ" ]
+then
+    echo "flatbuffer installed"
+else
+    if [ -f "flatbuffers-1.11.0.tar.gz" ]
+    then
+        echo "flatbuffers-1.11.0.tar.gz downloaded"
+    else
+        wget --no-check-certificate -O flatbuffers-1.11.0.tar.gz http://pkg.4paradigm.com/fesql/flatbuffers-1.11.0.tar.gz
+    fi
+    tar -zxvf flatbuffers-1.11.0.tar.gz
+    cd flatbuffers-1.11.0 && mkdir -p build && cd build && cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${DEPS_PREFIX} -DCMAKE_CXX_FLAGS=-fPIC ..
+    make -j4 && make install
+    cd ${DEPS_SOURCE}
+    touch flatbuffer_succ
+fi
+
+if [ -f "double-conversion_succ" ]
+then 
+    echo "double-conversion exist"
+else
+    if [ -f "v3.1.5.tar.gz" ]
+    then
+        echo "double-conversion pkg exist"
+    else
+        wget --no-check-certificate -O v3.1.5.tar.gz https://github.com/google/double-conversion/archive/v3.1.5.tar.gz
+    fi
+    tar -zxvf v3.1.5.tar.gz
+    cd double-conversion-3.1.5 && mkdir -p build2 && cd build2 && cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${DEPS_PREFIX} -DCMAKE_CXX_FLAGS=-fPIC .. >/dev/null
+    make -j4 && make install
+    cd ${DEPS_SOURCE}
+    touch double-conversion_succ
+fi
+
+if [ -f "arrow_succ" ]
+then
+    echo "arrow installed"
+else
+    if [ -f "apache-arrow-0.15.1.tar.gz" ]
+    then
+        echo "apache-arrow-0.15.1.tar.gz   downloaded"
+    else
+        wget --no-check-certificate -O apache-arrow-0.15.1.tar.gz http://pkg.4paradigm.com/fesql/apache-arrow-0.15.1.tar.gz
+    fi
+    tar -zxvf apache-arrow-0.15.1.tar.gz
+    export ARROW_BUILD_TOOLCHAIN=${DEPS_PREFIX}
+    export JEMALLOC_HOME=${DEPS_PREFIX}
+    cd apache-arrow-0.15.1/cpp && mkdir -p build && cd build
+    cmake  -DARROW_JEMALLOC=OFF -DARROW_MIMALLOC=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${DEPS_PREFIX} -DARROW_CUDA=OFF -DARROW_FLIGHT=OFF -DARROW_GANDIVA=OFF \
+    -DARROW_GANDIVA_JAVA=OFF -DARROW_HDFS=ON -DARROW_HIVESERVER2=OFF \
+    -DARROW_ORC=OFF -DARROW_PARQUET=ON -DARROW_PLASMA=OFF\
+    -DARROW_PLASMA_JAVA_CLIENT=OFF -DARROW_PYTHON=OFF -DARROW_BUILD_TESTS=OFF \
+    -DARROW_BUILD_UTILITIES=OFF ..
+    make -j10 parquet_static && make install
+    cd ${DEPS_SOURCE}
+    touch arrow_succ
 fi
