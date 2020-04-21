@@ -94,7 +94,7 @@ public:
 
     void TTLSnapshot();
 
-    bool Update(const ::rtidb::api::Columns& cd_columns, 
+    bool Update(const ::google::protobuf::RepeatedPtrField<::rtidb::api::Columns>& cd_columns, 
             const ::rtidb::api::Columns& col_columns);
 
     inline ::rtidb::common::StorageMode GetStorageMode() const {
@@ -160,13 +160,14 @@ private:
     rocksdb::Iterator* GetIteratorAndSeek(uint32_t idx, const rocksdb::Slice& key_slice); 
     rocksdb::Iterator* GetRocksdbIterator(uint32_t idx); 
     bool PutDB(const std::string& pk, const char* data, uint32_t size);
-    void CreateSchema(const ::rtidb::api::Columns& cd_columns, 
-            std::map<std::string, int>& cd_idx_map, 
-            Schema& condition_schema);
-    bool UpdateDB(const std::map<std::string, int>& cd_idx_map, 
-            const std::map<std::string, int>& col_idx_map, 
-            const Schema& condition_schema, const Schema& value_schema, 
-            const std::string& cd_value, const std::string& col_value); 
+    bool CreateSchema(const ::rtidb::api::Columns& columns, 
+            std::map<std::string, int>& idx_map, 
+            Schema& new_schema);
+    bool UpdateDB(const std::shared_ptr<IndexDef> index_def, 
+            const std::string& comparable_key,
+            const std::map<std::string, int>& col_idx_map,  
+            const Schema& value_schema, 
+            const std::string& col_value); 
     bool GetPackedField(const int8_t* row, uint32_t idx, 
             const ::rtidb::type::DataType& data_type, std::string* key); 
     bool GetPackedField(::rtidb::base::RowView& view, uint32_t idx, 
@@ -174,7 +175,8 @@ private:
     bool ConvertIndex(const std::string& name, const std::string& value, 
             std::string* out_val); 
     bool GetCombineStr(const ::google::protobuf::RepeatedPtrField<::rtidb::api::Columns>& indexs, std::string* combine_name, std::string* combine_value); 
-
+    bool GetCombineStr(const std::shared_ptr<IndexDef> index_def, 
+            const int8_t* data, std::string* comparable_pk); 
     std::mutex mu_;
     ::rtidb::common::StorageMode storage_mode_;
     std::string name_;

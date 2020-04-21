@@ -687,7 +687,7 @@ message Columns {
 message UpdateRequest {
     optional uint32 tid = 1;
     optional uint32 pid = 2;
-    optional Columns condition_columns = 3;
+    repeated Columns condition_columns = 3;
     optional Columns value_columns = 4;
 }
 
