@@ -151,7 +151,8 @@ void PhysicalJoinNode::Print(std::ostream& output,
                              const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "(type=" << node::JoinTypeName(join_type_)
-           << ", condition=" << node::ExprString(condition_);
+           << ", condition=" << node::ExprString(condition_)
+           << ", key=" << node::ExprString(left_keys_);
     if (limit_cnt_ > 0) {
         output << ", limit=" << limit_cnt_;
     }

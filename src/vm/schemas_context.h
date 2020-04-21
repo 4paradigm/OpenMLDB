@@ -18,7 +18,7 @@
 namespace fesql {
 namespace vm {
 struct RowSchemaInfo {
-    const uint32_t idx;
+    const uint32_t idx_;
     const std::string table_name_;
     const vm::Schema* schema_;
 };

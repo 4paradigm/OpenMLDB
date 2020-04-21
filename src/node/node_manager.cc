@@ -772,5 +772,19 @@ ExprNode *NodeManager::MakeBetweenExpr(ExprNode *expr, ExprNode *left,
     ExprNode *node_ptr = new BetweenExpr(expr, left, right);
     return RegisterNode(node_ptr);
 }
+ExprNode *NodeManager::MakeAndExpr(ExprListNode *expr_list) {
+    if (node::ExprListNullOrEmpty(expr_list)) {
+        return nullptr;
+    }
+    ExprNode *left_node = expr_list->children_[0];
+    if (1 == expr_list->children_.size()) {
+        return left_node;
+    }
+    for (size_t i = 1; i < expr_list->children_.size(); i++) {
+        left_node = MakeBinaryExprNode(left_node, expr_list->children_[i],
+                                       node::kFnOpAnd);
+    }
+    return left_node;
+}
 }  // namespace node
 }  // namespace fesql

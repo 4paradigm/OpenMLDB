@@ -499,34 +499,33 @@ TEST_F(TransformTest, pass_join_optimized_test) {
         "sum(t1.col3) OVER w1 as w1_col3_sum, "
         "t2.col1, "
         "sum(t1.col2) OVER w1 as w1_col2_sum "
-        "FROM t1 left join t2 on t1.col1 = t2.col1 "
+        "FROM t1 last join t2 on t1.col1 = t2.col1 "
         "WINDOW w1 AS (PARTITION BY t1.col1 ORDER BY t1.col5 ROWS BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;",
         "LIMIT(limit=10, optimized)\n"
         "  PROJECT(type=WindowAggregation, groups=(t1.col1), orders=(t1.col5) "
-        "ASC, "
-        "start=-3, end=0, limit=10)\n"
-        "    JOIN(type=LeftJoin, condition=t1.col1 = t2.col1)\n"
+        "ASC, start=-3, end=0, limit=10)\n"
+        "    JOIN(type=LastJoin, condition=, key=(t1.col1))\n"
         "      GROUP_AND_SORT_BY(groups=(), orders=() ASC)\n"
         "        DATA_PROVIDER(type=IndexScan, table=t1, index=index1)\n"
-        "      DATA_PROVIDER(table=t2)"));
+        "      GROUP_BY(groups=(t2.col1))\n"
+        "        DATA_PROVIDER(table=t2)"));
     in_outs.push_back(std::make_pair(
         "SELECT "
         "t2.col1, "
         "sum(t1.col3) OVER w1 as w1_col3_sum, "
         "sum(t1.col2) OVER w1 as w1_col2_sum "
-        "FROM t1 left join t2 on t1.col1 = t2.col1 "
+        "FROM t1 last join t2 on t1.col2 = t2.col2 "
         "WINDOW w1 AS (PARTITION BY t1.col1, t1.col2 ORDER BY t1.col5 ROWS "
         "BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;",
         "LIMIT(limit=10, optimized)\n"
         "  PROJECT(type=WindowAggregation, groups=(t1.col1,t1.col2), "
-        "orders=(t1.col5) "
-        "ASC, start=-3, end=0, limit=10)\n"
-        "    JOIN(type=LeftJoin, condition=t1.col1 = t2.col1)\n"
+        "orders=(t1.col5) ASC, start=-3, end=0, limit=10)\n"
+        "    JOIN(type=LastJoin, condition=, key=(t1.col2))\n"
         "      GROUP_AND_SORT_BY(groups=(), orders=() ASC)\n"
         "        DATA_PROVIDER(type=IndexScan, table=t1, index=index12)\n"
-        "      DATA_PROVIDER(table=t2)"));
+        "      DATA_PROVIDER(type=IndexScan, table=t2, index=index_col2)"));
     fesql::type::TableDef table_def;
     BuildTableDef(table_def);
     table_def.set_name("t1");
@@ -550,6 +549,10 @@ TEST_F(TransformTest, pass_join_optimized_test) {
         fesql::type::TableDef table_def2;
         BuildTableDef(table_def2);
         table_def2.set_name("t2");
+        ::fesql::type::IndexDef* index = table_def2.add_indexes();
+        index->set_name("index_col2");
+        index->add_first_keys("col2");
+        index->set_second_key("col5");
         std::shared_ptr<::fesql::storage::Table> table2(
             new ::fesql::storage::Table(1, 1, table_def2));
         AddTable(catalog, table_def2, table2);
@@ -601,7 +604,7 @@ TEST_F(TransformTest, TransfromConditionsTest) {
         LOG(INFO) << "TEST condition [" << i
                   << "]: " << node::ExprString(condition);
         node::ExprListNode and_condition_list;
-        FilterOptimized::TransfromAndConditionList(condition,
+        FilterConditionOptimized::TransfromAndConditionList(condition,
                                                    &and_condition_list);
         LOG(INFO) << "and condition list: "
                   << node::ExprString(&and_condition_list);
@@ -625,6 +628,7 @@ TEST_F(TransformTest, TransformEqualExprPairTest) {
         BuildTableT2Def(t2);
         name_schemas.push_back(std::make_pair("t2", &t2.columns()));
     }
+
     std::vector<std::pair<std::string, std::pair<std::string, std::string>>>
         sql_exp;
 
@@ -632,11 +636,15 @@ TEST_F(TransformTest, TransformEqualExprPairTest) {
                                      std::make_pair("t1.col1", "t2.col1")));
 
     sql_exp.push_back(std::make_pair("select t2.col1=t1.col1 from t1,t2;",
-                                     std::make_pair("t2.col1", "t1.col1")));
+                                     std::make_pair("t1.col1", "t2.col1")));
 
     // Fail Extract Equal Pair
     sql_exp.push_back(std::make_pair(
         "select t2.col1+t1.col1=t2.col3 from t1,t2;", std::make_pair("", "")));
+    sql_exp.push_back(std::make_pair("select t1.col1=t1.col2 from t1,t2;",
+                                     std::make_pair("", "")));
+    sql_exp.push_back(std::make_pair("select t1.col1=t3.col2 from t1,t2;",
+                                     std::make_pair("", "")));
 
     for (size_t i = 0; i < sql_exp.size(); i++) {
         std::string sql = sql_exp[i].first;
@@ -651,18 +659,19 @@ TEST_F(TransformTest, TransformEqualExprPairTest) {
         mock_condition_list.AddChild(condition);
 
         node::ExprListNode out_condition_list;
-        std::vector<std::pair<node::ExprNode*, node::ExprNode*>>
-            mock_expr_pairs;
+        std::vector<vm::ExprPair> mock_expr_pairs;
 
-        FilterOptimized::TransformEqualExprPair(
+        FilterConditionOptimized::TransformEqualExprPair(
             name_schemas, &mock_condition_list, &out_condition_list,
             mock_expr_pairs);
 
-        std::pair<node::ExprNode*, node::ExprNode*> expr_pair =
-            mock_expr_pairs.empty() ? std::make_pair(nullptr, nullptr)
-                                    : mock_expr_pairs[0];
-        ASSERT_EQ(exp_list.first, node::ExprString(expr_pair.first));
-        ASSERT_EQ(exp_list.second, node::ExprString(expr_pair.second));
+        ExprPair mock_pair;
+        ExprPair expr_pair =
+            mock_expr_pairs.empty() ? mock_pair : mock_expr_pairs[0];
+        ASSERT_EQ(exp_list.first, node::ExprString(expr_pair.left_expr_));
+        ASSERT_EQ(exp_list.second, node::ExprString(expr_pair.right_expr_));
+        ASSERT_EQ(mock_condition_list.children_.size(),
+                  out_condition_list.children_.size() + mock_expr_pairs.size());
     }
 }
 }  // namespace vm

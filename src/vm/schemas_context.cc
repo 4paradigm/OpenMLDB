@@ -17,7 +17,7 @@ vm::SchemasContext::SchemasContext(
     for (auto iter = table_schema_list.cbegin();
          iter != table_schema_list.cend(); iter++) {
         RowSchemaInfo info = {
-            .idx = idx, .table_name_ = iter->first, .schema_ = iter->second};
+            .idx_ = idx, .table_name_ = iter->first, .schema_ = iter->second};
         row_schema_info_list_.push_back(info);
         // init table -> context idx map
         if (!info.table_name_.empty()) {

@@ -320,24 +320,24 @@ bool ExprIRBuilder::BuildColumnItem(const std::string& relation_name,
     }
 
     ::llvm::Value* row_ptr = NULL;
-    if (!variable_ir_builder_.LoadArrayIndex("row_ptrs", info->idx, &row_ptr,
+    if (!variable_ir_builder_.LoadArrayIndex("row_ptrs", info->idx_, &row_ptr,
                                              status) ||
         row_ptr == NULL) {
         std::ostringstream oss;
         oss << "fail to find row_ptrs"
-            << "[" << info->idx << "]" << status.msg;
+            << "[" << info->idx_ << "]" << status.msg;
         status.msg = oss.str();
         LOG(WARNING) << status.msg;
         return false;
     }
 
     ::llvm::Value* row_size = NULL;
-    if (!variable_ir_builder_.LoadArrayIndex("row_sizes", info->idx, &row_size,
+    if (!variable_ir_builder_.LoadArrayIndex("row_sizes", info->idx_, &row_size,
                                              status) ||
         row_size == NULL) {
         std::ostringstream oss;
         oss << "fail to find row_sizes"
-            << "[" << info->idx << "]"
+            << "[" << info->idx_ << "]"
             << ": " << status.msg;
         status.msg = oss.str();
         LOG(WARNING) << status.msg;
@@ -345,8 +345,8 @@ bool ExprIRBuilder::BuildColumnItem(const std::string& relation_name,
     }
 
     // TODO(wangtaize) buf ir builder add build get field ptr
-    ok = row_ir_builder_list_[info->idx]->BuildGetField(col, row_ptr, row_size,
-                                                        &value);
+    ok = row_ir_builder_list_[info->idx_]->BuildGetField(col, row_ptr, row_size,
+                                                         &value);
     if (!ok || value == NULL) {
         status.msg = "fail to find column " + col;
         status.code = common::kCodegenError;
@@ -390,21 +390,21 @@ bool ExprIRBuilder::BuildColumnIterator(const std::string& relation_name,
     }
 
     ::llvm::Value* row_ptr = NULL;
-    ok = variable_ir_builder_.LoadArrayIndex("window_ptrs", info->idx, &row_ptr,
-                                             status);
+    ok = variable_ir_builder_.LoadArrayIndex("window_ptrs", info->idx_,
+                                             &row_ptr, status);
 
     if (!ok || row_ptr == NULL) {
-        status.msg = "fail to find window_ptrs[" + std::to_string(info->idx) +
+        status.msg = "fail to find window_ptrs[" + std::to_string(info->idx_) +
                      "]: " + status.msg;
         LOG(WARNING) << status.msg;
         return false;
     }
 
     ::llvm::Value* row_size = NULL;
-    ok = variable_ir_builder_.LoadArrayIndex("row_sizes", info->idx, &row_size,
+    ok = variable_ir_builder_.LoadArrayIndex("row_sizes", info->idx_, &row_size,
                                              status);
     if (!ok || row_size == NULL) {
-        status.msg = "fail to find row_sizes[" + std::to_string(info->idx) +
+        status.msg = "fail to find row_sizes[" + std::to_string(info->idx_) +
                      "]: " + status.msg;
         LOG(WARNING) << status.msg;
         status.code = common::kCodegenError;
@@ -412,7 +412,7 @@ bool ExprIRBuilder::BuildColumnIterator(const std::string& relation_name,
     }
     DLOG(INFO) << "get table column " << col;
     // NOT reuse for iterator
-    ok = window_ir_builder_list_[info->idx]->BuildGetCol(col, row_ptr, &value);
+    ok = window_ir_builder_list_[info->idx_]->BuildGetCol(col, row_ptr, &value);
 
     if (!ok || value == NULL) {
         status.msg = "fail to find column " + col;

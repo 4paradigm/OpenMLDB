@@ -115,11 +115,11 @@ TEST_F(SchemasContextTest, NewSchemasContextTest) {
     ASSERT_EQ(std::vector<uint32_t>({0u, 1u}), ctx.col_context_id_map_["col1"]);
     ASSERT_EQ(std::vector<uint32_t>({1u}), ctx.col_context_id_map_["str0"]);
 
-    ASSERT_EQ(0u, ctx.row_schema_info_list_[0].idx);
+    ASSERT_EQ(0u, ctx.row_schema_info_list_[0].idx_);
     ASSERT_EQ(name_schemas[0].second, ctx.row_schema_info_list_[0].schema_);
     ASSERT_EQ("t1", ctx.row_schema_info_list_[0].table_name_);
 
-    ASSERT_EQ(1u, ctx.row_schema_info_list_[1].idx);
+    ASSERT_EQ(1u, ctx.row_schema_info_list_[1].idx_);
     ASSERT_EQ(name_schemas[1].second, ctx.row_schema_info_list_[1].schema_);
     ASSERT_EQ("t2", ctx.row_schema_info_list_[1].table_name_);
 }
