@@ -5,6 +5,8 @@ import com._4paradigm.rtidb.client.ha.PartitionHandler;
 import com._4paradigm.rtidb.client.ha.RTIDBClient;
 import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
+import com._4paradigm.rtidb.client.schema.FieldCodec;
+import com._4paradigm.rtidb.client.schema.ReadOption;
 import com._4paradigm.rtidb.client.schema.RowView;
 import com._4paradigm.rtidb.client.type.DataType;
 import com._4paradigm.rtidb.client.type.IndexType;
@@ -12,6 +14,7 @@ import com._4paradigm.rtidb.common.Common;
 import com._4paradigm.rtidb.ns.NS;
 import com._4paradigm.rtidb.tablet.Tablet;
 import com._4paradigm.rtidb.utils.Compress;
+import com.google.protobuf.ByteBufferNoCopy;
 import com.google.protobuf.ByteString;
 import rtidb.api.TabletServer;
 
@@ -43,11 +46,9 @@ public class RelationalIterator {
     private RTIDBClient client = null;
     private boolean continue_update = false;
     private boolean batch_query = false;
-    private List<String> keys = null;
+    //    private List<String> keys = null;
     private long snapshot_id = 0;
-
-    public RelationalIterator() {
-    }
+    private List<ReadOption> ros = null;
 
     public RelationalIterator(RTIDBClient client, TableHandler th, Set<String> colSet) {
         this.offset = 0;
@@ -80,36 +81,39 @@ public class RelationalIterator {
             }
         }
         continue_update = true;
-    }
-    public RelationalIterator(ByteString bs, TableHandler th, Set<String> colSet) {
-        this.bs = bs;
-        this.bb = this.bs.asReadOnlyByteBuffer();
-        this.offset = 0;
-        this.totalSize = this.bs.size();
-        this.schema = th.getSchema();
-        this.th = th;
-
-        if (colSet != null && !colSet.isEmpty()) {
-            for (int i = 0; i < this.getSchema().size(); i++) {
-                ColumnDesc columnDesc = this.getSchema().get(i);
-                if (colSet.contains(columnDesc.getName())) {
-                    this.idxDescMap.put(i, columnDesc);
-                }
-            }
-        }
-        rowView = new RowView(th.getSchema());
         next();
     }
 
-    public RelationalIterator(RTIDBClient client, TableHandler th, List<String> queryKeys, Set<String> colSet) {
+//    public RelationalIterator(ByteString bs, TableHandler th, Set<String> colSet) {
+//        this.bs = bs;
+//        this.bb = this.bs.asReadOnlyByteBuffer();
+//        this.offset = 0;
+//        this.totalSize = this.bs.size();
+//        this.schema = th.getSchema();
+//        this.th = th;
+//
+//        if (colSet != null && !colSet.isEmpty()) {
+//            for (int i = 0; i < this.getSchema().size(); i++) {
+//                ColumnDesc columnDesc = this.getSchema().get(i);
+//                if (colSet.contains(columnDesc.getName())) {
+//                    this.idxDescMap.put(i, columnDesc);
+//                }
+//            }
+//        }
+//        rowView = new RowView(th.getSchema());
+//        next();
+//    }
+
+    public RelationalIterator(RTIDBClient client, TableHandler th, List<ReadOption> ros) {
         this.offset = 0;
         this.totalSize = 0;
         this.schema = th.getSchema();
         this.th = th;
         this.client = client;
         this.compressType = th.getTableInfo().getCompressType();
-        this.keys = queryKeys;
+        this.ros = ros;
 
+        Set<String> colSet = ros.get(0).getColSet();
         if (colSet != null && !colSet.isEmpty()) {
             for (int i = 0; i < this.getSchema().size(); i++) {
                 ColumnDesc columnDesc = this.getSchema().get(i);
@@ -126,14 +130,14 @@ public class RelationalIterator {
                 idxName = key.getIndexName();
             }
         }
-        for (int i = 0; i < schema.size(); i++) {
-            if (schema.get(i).getName().equals(idxName)) {
-                key_type = schema.get(i).getDataType();
-                key_idx = i;
-            }
-        }
+//        for (int i = 0; i < schema.size(); i++) {
+//            if (schema.get(i).getName().equals(idxName)) {
+//                key_type = schema.get(i).getDataType();
+//                key_idx = i;
+//            }
+//        }
         batch_query = true;
-
+        next();
     }
 
 
@@ -142,6 +146,10 @@ public class RelationalIterator {
             return th.getSchemaMap().get(th.getSchema().size() + th.getSchemaMap().size());
         }
         return schema;
+    }
+
+    public int getCount() {
+        return count;
     }
 
     public boolean valid() {
@@ -197,10 +205,10 @@ public class RelationalIterator {
                 throw new RuntimeException("row view reset failed");
             }
         } else {
-            slice = this.bb.slice().asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN);
-            slice.position(0);
-            slice.limit(bs.size());
-            rowView.reset(slice, bs.size());
+//            slice = this.bb.slice().asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN);
+//            slice.position(0);
+//            slice.limit(bs.size());
+//            rowView.reset(slice, bs.size());
         }
     }
 
@@ -222,12 +230,12 @@ public class RelationalIterator {
                 map.put(columnDesc.getName(), value);
             }
         }
-        if (batch_query) {
-            Object val = rowView.getValue(key_idx, key_type);
-            if (keys.contains(val)) {
-                keys.remove(val);
-            }
-        }
+//        if (batch_query) {
+//            Object val = rowView.getValue(key_idx, key_type);
+//            if (keys.contains(val)) {
+//                keys.remove(val);
+//            }
+//        }
         return map;
     }
 
@@ -236,13 +244,33 @@ public class RelationalIterator {
             PartitionHandler ph = th.getHandler(0);
             TabletServer ts = ph.getReadHandler(th.getReadStrategy());
             Tablet.BatchQueryRequest.Builder builder = Tablet.BatchQueryRequest.newBuilder();
-            builder.setTid(th.getTableInfo().getTid());
-            if (keys == null || keys.isEmpty()) {
-                throw new TabletException("batch query keys is not provides");
-            }
-            for (int i = 0; i < keys.size(); i++) {
-                String key = keys.get(i);
-                builder.addQueryKey(key);
+            int tid = th.getTableInfo().getTid();
+            builder.setTid(tid);
+
+            for (int i = 0; i < ros.size(); i++) {
+                Iterator<Map.Entry<String, Object>> it = ros.get(i).getIndex().entrySet().iterator();
+                if (it.hasNext()) {
+                    Map.Entry<String, Object> next = it.next();
+                    String idxName = next.getKey();
+                    Object idxValue = next.getValue();
+
+                    Tablet.ReadOption.Builder roBuilder = Tablet.ReadOption.newBuilder();
+                    {
+                        Tablet.Columns.Builder indexBuilder = Tablet.Columns.newBuilder();
+                        indexBuilder.addName(idxName);
+                        Map<String, DataType> nameTypeMap = th.getNameTypeMap();
+                        if (!nameTypeMap.containsKey(idxName)) {
+                            throw new TabletException("index name not found with tid " + tid);
+                        }
+                        DataType dataType = nameTypeMap.get(idxName);
+                        ByteBuffer buffer = FieldCodec.convert(dataType, idxValue);
+                        if (buffer != null) {
+                            indexBuilder.setValue(ByteBufferNoCopy.wrap(buffer));
+                        }
+                        roBuilder.addIndex(indexBuilder.build());
+                    }
+                    builder.addReadOption(roBuilder.build());
+                }
             }
             Tablet.BatchQueryRequest request = builder.build();
             Tablet.BatchQueryResponse response = ts.batchQuery(request);
@@ -251,15 +279,20 @@ public class RelationalIterator {
                 bb = bs.asReadOnlyByteBuffer();
                 totalSize = this.bs.size();
                 offset = 0;
+                count = response.getCount();
                 if (response.hasIsFinish() && response.getIsFinish()) {
                     isFinished = true;
                 }
                 return;
+            } else if (response.getCode() != 0) {
+                offset = 0;
+                totalSize = 0;
+                return;
             }
-            if (response != null) {
-                throw new TabletException(response.getCode(), response.getMsg());
-            }
-            throw new TabletException("rtidb internal server error");
+//            if (response != null) {
+//                throw new TabletException(response.getCode(), response.getMsg());
+//            }
+//            throw new TabletException("rtidb internal server error");
         }
         do {
             if (pid >= th.getPartitions().length) {
@@ -285,6 +318,7 @@ public class RelationalIterator {
                 bs = response.getPairs();
                 bb = bs.asReadOnlyByteBuffer();
                 totalSize = this.bs.size();
+                count += response.getCount();
                 if (response.hasSnapshotId()) {
                     snapshot_id = response.getSnapshotId();
                 }

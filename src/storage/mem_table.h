@@ -1,26 +1,26 @@
 //
 // table.h
 // Copyright (C) 2017 4paradigm.com
-// Author wangtaize 
-// Date 2017-03-31 
-// 
+// Author wangtaize
+// Date 2017-03-31
+//
 
+#ifndef SRC_STORAGE_MEM_TABLE_H_
+#define SRC_STORAGE_MEM_TABLE_H_
 
-#ifndef RTIDB_STORAGE_TABLE_H
-#define RTIDB_STORAGE_TABLE_H
-
-#include <vector>
-#include <map>
-#include "storage/segment.h"
-#include "storage/ticket.h"
-#include "storage/iterator.h"
-#include "storage/table.h"
 #include <atomic>
+#include <map>
 #include <memory>
+#include <string>
+#include <vector>
 #include "proto/tablet.pb.h"
+#include "storage/iterator.h"
+#include "storage/segment.h"
+#include "storage/table.h"
+#include "storage/ticket.h"
 
-using ::rtidb::base::Slice;
 using ::rtidb::api::LogEntry;
+using ::rtidb::base::Slice;
 
 namespace rtidb {
 namespace storage {
@@ -28,23 +28,26 @@ namespace storage {
 typedef google::protobuf::RepeatedPtrField<::rtidb::api::Dimension> Dimensions;
 
 class MemTableTraverseIterator : public TableIterator {
-public:
-    MemTableTraverseIterator(Segment** segments, uint32_t seg_cnt, ::rtidb::api::TTLType ttl_type, const uint64_t& expire_time, const uint64_t& expire_cnt, uint32_t ts_index);
-    ~MemTableTraverseIterator();
-    virtual bool Valid() override;
-    virtual void Next() override;
-    virtual void Seek(const std::string& key, uint64_t time) override;
-    virtual rtidb::base::Slice GetValue() const override;
-    virtual std::string GetPK() const override;
-    virtual uint64_t GetKey() const override;
-    virtual void SeekToFirst() override;
-    virtual uint64_t GetCount() const override;
+ public:
+    MemTableTraverseIterator(Segment** segments, uint32_t seg_cnt,
+                             ::rtidb::api::TTLType ttl_type,
+                             const uint64_t& expire_time,
+                             const uint64_t& expire_cnt, uint32_t ts_index);
+    virtual ~MemTableTraverseIterator();
+    bool Valid() override;
+    void Next() override;
+    void Seek(const std::string& key, uint64_t time) override;
+    rtidb::base::Slice GetValue() const override;
+    std::string GetPK() const override;
+    uint64_t GetKey() const override;
+    void SeekToFirst() override;
+    uint64_t GetCount() const override;
 
-private:
+ private:
     void NextPK();
     bool IsExpired();
 
-private:
+ private:
     Segment** segments_;
     uint32_t const seg_cnt_;
     uint32_t seg_idx_;
@@ -60,52 +63,55 @@ private:
 };
 
 class MemTable : public Table {
+ public:
+    MemTable(const std::string& name, uint32_t id, uint32_t pid,
+             uint32_t seg_cnt, const std::map<std::string, uint32_t>& mapping,
+             uint64_t ttl, ::rtidb::api::TTLType ttl_type);
 
-public:
-
-    MemTable(const std::string& name,
-          uint32_t id,
-          uint32_t pid,
-          uint32_t seg_cnt,
-          const std::map<std::string, uint32_t>& mapping,
-          uint64_t ttl, ::rtidb::api::TTLType ttl_type);
-
-    MemTable(const ::rtidb::api::TableMeta& table_meta);
+    explicit MemTable(const ::rtidb::api::TableMeta& table_meta);
     virtual ~MemTable();
     MemTable(const MemTable&) = delete;
     MemTable& operator=(const MemTable&) = delete;
 
-    virtual bool Init() override;
+    bool Init() override;
 
     // Put a record
-    virtual bool Put(const std::string& pk, uint64_t time, const char* data, uint32_t size) override;
+    bool Put(const std::string& pk, uint64_t time, const char* data,
+             uint32_t size) override;
 
     // Put a multi dimension record
-    virtual bool Put(uint64_t time, const std::string& value, const Dimensions& dimensions) override;
+    bool Put(uint64_t time, const std::string& value,
+             const Dimensions& dimensions) override;
 
     // Note the method should incr record_cnt_ manually
     bool Put(const Slice& pk, uint64_t time, DataBlock* row, uint32_t idx);
 
-    virtual bool Put(const Dimensions& dimensions, const TSDimensions& ts_dimemsions, const std::string& value) override;
+    bool Put(const Dimensions& dimensions, const TSDimensions& ts_dimemsions,
+             const std::string& value) override;
 
-    virtual bool Delete(const std::string& pk, uint32_t idx) override;
+    bool Delete(const std::string& pk, uint32_t idx) override;
 
     // use the first demission
-    virtual TableIterator* NewIterator(const std::string& pk, Ticket& ticket) override;
+    TableIterator* NewIterator(const std::string& pk, Ticket& ticket) override;
 
-    virtual TableIterator* NewIterator(uint32_t index, const std::string& pk, Ticket& ticket) override;
+    TableIterator* NewIterator(uint32_t index, const std::string& pk,
+                               Ticket& ticket) override;
 
-    virtual TableIterator* NewIterator(uint32_t index, int32_t ts_idx, const std::string& pk, Ticket& ticket) override;
+    TableIterator* NewIterator(uint32_t index, int32_t ts_idx,
+                               const std::string& pk, Ticket& ticket) override;
 
-    virtual TableIterator* NewTraverseIterator(uint32_t index) override;
-    virtual TableIterator* NewTraverseIterator(uint32_t index, uint32_t ts_idx) override;
+    TableIterator* NewTraverseIterator(uint32_t index) override;
+    TableIterator* NewTraverseIterator(uint32_t index,
+                                       uint32_t ts_idx) override;
     // release all memory allocated
     uint64_t Release();
 
-    virtual void SchedGc() override;
+    void SchedGc() override;
 
-    int GetCount(uint32_t index, const std::string& pk, uint64_t& count);
-    int GetCount(uint32_t index, uint32_t ts_idx, const std::string& pk, uint64_t& count);
+    int GetCount(uint32_t index, const std::string& pk,
+                 uint64_t& count);  // NOLINT
+    int GetCount(uint32_t index, uint32_t ts_idx, const std::string& pk,
+                 uint64_t& count);  // NOLINT
 
     uint64_t GetRecordIdxCnt();
     bool GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size);
@@ -119,32 +125,32 @@ public:
         return record_byte_size_.load(std::memory_order_relaxed);
     }
 
-    virtual uint64_t GetRecordCnt() const override {
+    uint64_t GetRecordCnt() const override {
         return record_cnt_.load(std::memory_order_relaxed);
     }
 
-    inline uint32_t GetSegCnt() const {
-        return seg_cnt_;
-    }
+    inline uint32_t GetSegCnt() const { return seg_cnt_; }
 
     inline void SetExpire(bool is_expire) {
         enable_gc_.store(is_expire, std::memory_order_relaxed);
     }
 
-    virtual uint64_t GetExpireTime(uint64_t ttl) override;
+    uint64_t GetExpireTime(uint64_t ttl) override;
 
-    virtual bool IsExpire(const ::rtidb::api::LogEntry& entry) override;
+    bool IsExpire(const ::rtidb::api::LogEntry& entry) override;
 
     inline bool GetExpireStatus() {
         return enable_gc_.load(std::memory_order_relaxed);
     }
 
     inline void SetTimeOffset(int64_t offset) {
-        time_offset_.store(offset * 1000, std::memory_order_relaxed); // convert to millisecond
+        time_offset_.store(
+            offset * 1000,
+            std::memory_order_relaxed);  // convert to millisecond
     }
 
     inline int64_t GetTimeOffset() {
-       return  time_offset_.load(std::memory_order_relaxed) / 1000;
+        return time_offset_.load(std::memory_order_relaxed) / 1000;
     }
 
     inline void RecordCntIncr() {
@@ -155,21 +161,22 @@ public:
         record_cnt_.fetch_add(cnt, std::memory_order_relaxed);
     }
 
-    inline uint32_t GetKeyEntryHeight() {
-        return key_entry_max_height_;
-    }
+    inline uint32_t GetKeyEntryHeight() { return key_entry_max_height_; }
 
     bool DeleteIndex(std::string idx_name);
 
     bool AddIndex(const ::rtidb::common::ColumnKey& column_key);
 
-private:
+ private:
+    inline bool CheckAbsolute(
+        const LogEntry& entry,
+        const std::map<uint32_t, uint64_t>& ts_dimemsions_map);
 
-    inline bool CheckAbsolute(const LogEntry& entry, const std::map<uint32_t, uint64_t>& ts_dimemsions_map);
+    inline bool CheckLatest(
+        const LogEntry& entry,
+        const std::map<uint32_t, uint64_t>& ts_dimemsions_map);
 
-    inline bool CheckLatest(const LogEntry& entry, const std::map<uint32_t, uint64_t>& ts_dimemsions_map);
-
-private:
+ private:
     uint32_t seg_cnt_;
     std::vector<Segment**> segments_;
     std::atomic<bool> enable_gc_;
@@ -181,7 +188,7 @@ private:
     uint32_t key_entry_max_height_;
 };
 
-}
-}
+}  // namespace storage
+}  // namespace rtidb
 
-#endif /* !TABLE_H */
+#endif  // SRC_STORAGE_MEM_TABLE_H_

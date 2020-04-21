@@ -1,33 +1,31 @@
 //
 // segment_test.cc
 // Copyright (C) 2017 4paradigm.com
-// Author wangtaize 
+// Author wangtaize
 // Date 2017-03-31
 //
 
-#include "gtest/gtest.h"
-#include "logging.h"
-#include "base/file_util.h"
-#include "storage/binlog.h"
-#include "storage/mem_table.h"
-#include "storage/mem_table_snapshot.h"
-#include "storage/disk_table_snapshot.h"
-#include "storage/ticket.h"
-#include "proto/tablet.pb.h"
-#include "log/log_writer.h"
-#include "gflags/gflags.h"
-#include <iostream>
+#include <gflags/gflags.h>
+#include <google/protobuf/io/zero_copy_stream_impl.h>
+#include <google/protobuf/text_format.h>
 #include <sched.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <unistd.h>
-#include <gflags/gflags.h>
 #include <time.h>
-#include "base/strings.h"
+#include <unistd.h>
+#include <iostream>
 #include "base/file_util.h"
-#include "timer.h"
-#include <google/protobuf/text_format.h>
-#include <google/protobuf/io/zero_copy_stream_impl.h>
+#include "base/strings.h"
+#include "gtest/gtest.h"
+#include "log/log_writer.h"
+#include "logging.h" // NOLINT
+#include "proto/tablet.pb.h"
+#include "storage/binlog.h"
+#include "storage/disk_table_snapshot.h"
+#include "storage/mem_table.h"
+#include "storage/mem_table_snapshot.h"
+#include "storage/ticket.h"
+#include "timer.h" // NOLINT
 
 DECLARE_string(db_root_path);
 DECLARE_string(hdd_root_path);
@@ -39,21 +37,18 @@ class WritableFile;
 }
 namespace storage {
 
-const static ::rtidb::base::DefaultComparator scmp;
+static const ::rtidb::base::DefaultComparator scmp;
 
 class SnapshotTest : public ::testing::Test {
-
-public:
-    SnapshotTest(){}
+ public:
+    SnapshotTest() {}
     ~SnapshotTest() {}
 };
 
-inline uint32_t GenRand() {
-    return rand() % 10000000 + 1;
-}
+inline uint32_t GenRand() { return rand() % 10000000 + 1; }
 
 void RemoveData(const std::string& path) {
-    ::rtidb::base::RemoveDir(path+"/data");
+    ::rtidb::base::RemoveDir(path + "/data");
     ::rtidb::base::RemoveDir(path);
     ::rtidb::base::RemoveDir(FLAGS_hdd_root_path);
 }
@@ -69,8 +64,9 @@ int GetManifest(const std::string file, ::rtidb::api::Manifest* manifest) {
     return 0;
 }
 
-bool RollWLogFile(WriteHandle** wh, LogParts* logs, const std::string& log_path, 
-            uint32_t& binlog_index, uint64_t offset, bool append_end = true) {
+bool RollWLogFile(WriteHandle** wh, LogParts* logs, const std::string& log_path,
+                  uint32_t& binlog_index, uint64_t offset, // NOLINT
+                  bool append_end = true) {
     if (*wh != NULL) {
         if (append_end) {
             (*wh)->EndLog();
@@ -119,11 +115,12 @@ TEST_F(SnapshotTest, Recover_binlog_and_snapshot) {
     snapshot.Init();
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", 4, 3, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
+    std::shared_ptr<MemTable> table = std::make_shared<MemTable>(
+        "test", 4, 3, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
-    uint64_t offset_value = 0;;
+    uint64_t offset_value = 0;
     int ret = snapshot.MakeSnapshot(table, offset_value, 0);
-    ASSERT_EQ(0, ret); 
+    ASSERT_EQ(0, ret);
     RollWLogFile(&wh, log_part, binlog_dir, binlog_index, offset);
     for (; count < 20; count++) {
         offset++;
@@ -228,10 +225,10 @@ TEST_F(SnapshotTest, Recover_only_binlog_multi) {
         entry.set_ts(count);
         entry.set_value("value" + std::to_string(count));
         ::rtidb::api::Dimension* d1 = entry.add_dimensions();
-        d1->set_key("card0"); 
+        d1->set_key("card0");
         d1->set_idx(0);
         ::rtidb::api::Dimension* d2 = entry.add_dimensions();
-        d2->set_key("merchant0"); 
+        d2->set_key("merchant0");
         d2->set_idx(1);
         std::string buffer;
         entry.SerializeToString(&buffer);
@@ -243,7 +240,8 @@ TEST_F(SnapshotTest, Recover_only_binlog_multi) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("card", 0));
     mapping.insert(std::make_pair("merchant", 1));
-    std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", 4, 4, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
+    std::shared_ptr<MemTable> table = std::make_shared<MemTable>(
+        "test", 4, 4, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
     MemTableSnapshot snapshot(4, 4, log_part, FLAGS_db_root_path);
     snapshot.Init();
@@ -289,7 +287,6 @@ TEST_F(SnapshotTest, Recover_only_binlog_multi) {
     }
 }
 
-
 TEST_F(SnapshotTest, Recover_only_binlog) {
     std::string snapshot_dir = FLAGS_db_root_path + "/3_3/snapshot/";
     std::string binlog_dir = FLAGS_db_root_path + "/3_3/binlog/";
@@ -316,7 +313,8 @@ TEST_F(SnapshotTest, Recover_only_binlog) {
     wh->Sync();
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", 3, 3, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
+    std::shared_ptr<MemTable> table = std::make_shared<MemTable>(
+        "test", 3, 3, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
     MemTableSnapshot snapshot(3, 3, log_part, FLAGS_db_root_path);
     snapshot.Init();
@@ -340,7 +338,6 @@ TEST_F(SnapshotTest, Recover_only_binlog) {
     ASSERT_EQ("value0", value3_str);
     it->Next();
     ASSERT_FALSE(it->Valid());
-
 }
 
 TEST_F(SnapshotTest, Recover_only_snapshot_multi) {
@@ -353,7 +350,8 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi) {
         std::string full_path = snapshot_dir + "/" + snapshot1;
         FILE* fd_w = fopen(full_path.c_str(), "ab+");
         ASSERT_TRUE(fd_w != NULL);
-        ::rtidb::log::WritableFile* wf = ::rtidb::log::NewWritableFile(snapshot1, fd_w);
+        ::rtidb::log::WritableFile* wf =
+            ::rtidb::log::NewWritableFile(snapshot1, fd_w);
         ::rtidb::log::Writer writer(wf);
         {
             ::rtidb::api::LogEntry entry;
@@ -372,7 +370,6 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi) {
             Slice sval(val.c_str(), val.size());
             Status status = writer.AddRecord(sval);
             ASSERT_TRUE(status.ok());
-
         }
         {
             ::rtidb::api::LogEntry entry;
@@ -399,7 +396,8 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi) {
         std::string full_path = snapshot_dir + "/" + snapshot1;
         FILE* fd_w = fopen(full_path.c_str(), "ab+");
         ASSERT_TRUE(fd_w != NULL);
-        ::rtidb::log::WritableFile* wf = ::rtidb::log::NewWritableFile(snapshot1, fd_w);
+        ::rtidb::log::WritableFile* wf =
+            ::rtidb::log::NewWritableFile(snapshot1, fd_w);
         ::rtidb::log::Writer writer(wf);
         ::rtidb::api::LogEntry entry;
         entry.set_pk("test1");
@@ -424,7 +422,8 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("card", 0));
     mapping.insert(std::make_pair("merchant", 1));
-    std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", 3, 2, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
+    std::shared_ptr<MemTable> table = std::make_shared<MemTable>(
+        "test", 3, 2, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
     LogParts* log_part = new LogParts(12, 4, scmp);
     MemTableSnapshot snapshot(3, 2, log_part, FLAGS_db_root_path);
@@ -471,7 +470,6 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi) {
     }
     ASSERT_EQ(2, table->GetRecordCnt());
     ASSERT_EQ(4, table->GetRecordIdxCnt());
-
 }
 
 TEST_F(SnapshotTest, Recover_only_snapshot_multi_with_deleted_index) {
@@ -484,7 +482,8 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi_with_deleted_index) {
         std::string full_path = snapshot_dir + "/" + snapshot1;
         FILE* fd_w = fopen(full_path.c_str(), "ab+");
         ASSERT_TRUE(fd_w != NULL);
-        ::rtidb::log::WritableFile* wf = ::rtidb::log::NewWritableFile(snapshot1, fd_w);
+        ::rtidb::log::WritableFile* wf =
+            ::rtidb::log::NewWritableFile(snapshot1, fd_w);
         ::rtidb::log::Writer writer(wf);
         {
             ::rtidb::api::LogEntry entry;
@@ -529,7 +528,8 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi_with_deleted_index) {
         std::string full_path = snapshot_dir + "/" + snapshot1;
         FILE* fd_w = fopen(full_path.c_str(), "ab+");
         ASSERT_TRUE(fd_w != NULL);
-        ::rtidb::log::WritableFile* wf = ::rtidb::log::NewWritableFile(snapshot1, fd_w);
+        ::rtidb::log::WritableFile* wf =
+            ::rtidb::log::NewWritableFile(snapshot1, fd_w);
         ::rtidb::log::Writer writer(wf);
         ::rtidb::api::LogEntry entry;
         entry.set_pk("test1");
@@ -550,7 +550,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi_with_deleted_index) {
         status = writer.AddRecord(sval2);
         ASSERT_TRUE(status.ok());
     }
-     ::rtidb::api::TableMeta* table_meta = new ::rtidb::api::TableMeta();
+    ::rtidb::api::TableMeta* table_meta = new ::rtidb::api::TableMeta();
     table_meta->set_name("test");
     table_meta->set_tid(4);
     table_meta->set_pid(2);
@@ -597,12 +597,11 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi_with_deleted_index) {
     {
         Ticket ticket;
         TableIterator* it = table->NewIterator(1, "merchant0", ticket);
-        ASSERT_TRUE(it==NULL);
+        ASSERT_TRUE(it == NULL);
     }
     ASSERT_EQ(2, table->GetRecordCnt());
     ASSERT_EQ(2, table->GetRecordIdxCnt());
 }
-
 
 TEST_F(SnapshotTest, Recover_only_snapshot) {
     std::string snapshot_dir = FLAGS_db_root_path + "/2_2/snapshot";
@@ -613,7 +612,8 @@ TEST_F(SnapshotTest, Recover_only_snapshot) {
         std::string full_path = snapshot_dir + "/" + snapshot1;
         FILE* fd_w = fopen(full_path.c_str(), "ab+");
         ASSERT_TRUE(fd_w != NULL);
-        ::rtidb::log::WritableFile* wf = ::rtidb::log::NewWritableFile(snapshot1, fd_w);
+        ::rtidb::log::WritableFile* wf =
+            ::rtidb::log::NewWritableFile(snapshot1, fd_w);
         ::rtidb::log::Writer writer(wf);
         ::rtidb::api::LogEntry entry;
         entry.set_pk("test0");
@@ -635,7 +635,6 @@ TEST_F(SnapshotTest, Recover_only_snapshot) {
         Slice sval2(val.c_str(), val.size());
         status = writer.AddRecord(sval2);
         ASSERT_TRUE(status.ok());
-
     }
 
     {
@@ -643,7 +642,8 @@ TEST_F(SnapshotTest, Recover_only_snapshot) {
         std::string full_path = snapshot_dir + "/" + snapshot1;
         FILE* fd_w = fopen(full_path.c_str(), "ab+");
         ASSERT_TRUE(fd_w != NULL);
-        ::rtidb::log::WritableFile* wf = ::rtidb::log::NewWritableFile(snapshot1, fd_w);
+        ::rtidb::log::WritableFile* wf =
+            ::rtidb::log::NewWritableFile(snapshot1, fd_w);
         ::rtidb::log::Writer writer(wf);
         ::rtidb::api::LogEntry entry;
         entry.set_pk("test1");
@@ -668,7 +668,8 @@ TEST_F(SnapshotTest, Recover_only_snapshot) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
 
-    std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", 2, 2, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
+    std::shared_ptr<MemTable> table = std::make_shared<MemTable>(
+        "test", 2, 2, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
     LogParts* log_part = new LogParts(12, 4, scmp);
     MemTableSnapshot snapshot(2, 2, log_part, FLAGS_db_root_path);
@@ -700,7 +701,8 @@ TEST_F(SnapshotTest, MakeSnapshot) {
     snapshot.Init();
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    std::shared_ptr<MemTable> table = std::make_shared<MemTable>("tx_log", 1, 1, 8, mapping, 2, ::rtidb::api::TTLType::kAbsoluteTime);
+    std::shared_ptr<MemTable> table = std::make_shared<MemTable>(
+        "tx_log", 1, 1, 8, mapping, 2, ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
     uint64_t offset = 0;
     uint32_t binlog_index = 0;
@@ -754,7 +756,8 @@ TEST_F(SnapshotTest, MakeSnapshot) {
         entry.set_term(6);
         if (count == 20) {
             // set one timeout key
-            entry.set_ts(::baidu::common::timer::get_micros() / 1000 - 4 * 60 * 1000);
+            entry.set_ts(::baidu::common::timer::get_micros() / 1000 -
+                         4 * 60 * 1000);
         } else {
             entry.set_ts(::baidu::common::timer::get_micros() / 1000);
         }
@@ -843,7 +846,7 @@ TEST_F(SnapshotTest, MakeSnapshot_with_delete_index) {
     LogParts* log_part = new LogParts(12, 4, scmp);
     MemTableSnapshot snapshot(1, 3, log_part, FLAGS_db_root_path);
     snapshot.Init();
-     ::rtidb::api::TableMeta* table_meta = new ::rtidb::api::TableMeta();
+    ::rtidb::api::TableMeta* table_meta = new ::rtidb::api::TableMeta();
     table_meta->set_name("test");
     table_meta->set_tid(4);
     table_meta->set_pid(2);
@@ -873,10 +876,10 @@ TEST_F(SnapshotTest, MakeSnapshot_with_delete_index) {
         entry.set_value("value");
         entry.set_term(5);
         ::rtidb::api::Dimension* d1 = entry.add_dimensions();
-        d1->set_key("card"+std::to_string(count));
+        d1->set_key("card" + std::to_string(count));
         d1->set_idx(0);
         ::rtidb::api::Dimension* d2 = entry.add_dimensions();
-        d2->set_key("merchant"+std::to_string(count));
+        d2->set_key("merchant" + std::to_string(count));
         d2->set_idx(1);
         std::string buffer;
         entry.SerializeToString(&buffer);
@@ -889,15 +892,16 @@ TEST_F(SnapshotTest, MakeSnapshot_with_delete_index) {
         ::rtidb::api::LogEntry entry;
         entry.set_log_index(offset);
         ::rtidb::api::Dimension* d1 = entry.add_dimensions();
-        d1->set_key("card"+std::to_string(count));
+        d1->set_key("card" + std::to_string(count));
         d1->set_idx(0);
         ::rtidb::api::Dimension* d2 = entry.add_dimensions();
-        d2->set_key("merchant"+std::to_string(count));
+        d2->set_key("merchant" + std::to_string(count));
         d2->set_idx(1);
         entry.set_term(6);
         if (count == 20) {
             // set one timeout key
-            entry.set_ts(::baidu::common::timer::get_micros() / 1000 - 4 * 60 * 1000);
+            entry.set_ts(::baidu::common::timer::get_micros() / 1000 -
+                         4 * 60 * 1000);
         } else {
             entry.set_ts(::baidu::common::timer::get_micros() / 1000);
         }
@@ -934,10 +938,10 @@ TEST_F(SnapshotTest, MakeSnapshot_with_delete_index) {
         ::rtidb::api::LogEntry entry;
         entry.set_log_index(offset);
         ::rtidb::api::Dimension* d1 = entry.add_dimensions();
-        d1->set_key("card"+std::to_string(count));
+        d1->set_key("card" + std::to_string(count));
         d1->set_idx(0);
         ::rtidb::api::Dimension* d2 = entry.add_dimensions();
-        d2->set_key("merchant"+std::to_string(count));
+        d2->set_key("merchant" + std::to_string(count));
         d2->set_idx(1);
         entry.set_ts(::baidu::common::timer::get_micros() / 1000);
         entry.set_value("value");
@@ -965,7 +969,7 @@ TEST_F(SnapshotTest, MakeSnapshot_with_delete_index) {
         ::rtidb::base::Status status = wh->Write(slice);
         offset++;
     }
-    
+
     table->DeleteIndex("merchant");
 
     ret = snapshot.MakeSnapshot(table, offset_value, 0);
@@ -995,7 +999,8 @@ TEST_F(SnapshotTest, MakeSnapshotLatest) {
     snapshot.Init();
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    std::shared_ptr<MemTable> table = std::make_shared<MemTable>("tx_log", 5, 1, 8, mapping, 4, ::rtidb::api::TTLType::kLatestTime);
+    std::shared_ptr<MemTable> table = std::make_shared<MemTable>(
+        "tx_log", 5, 1, 8, mapping, 4, ::rtidb::api::TTLType::kLatestTime);
     table->Init();
     uint64_t offset = 0;
     uint32_t binlog_index = 0;
@@ -1055,7 +1060,7 @@ TEST_F(SnapshotTest, MakeSnapshotLatest) {
         fileInput.SetCloseOnDelete(true);
         google::protobuf::TextFormat::Parse(&fileInput, &manifest);
     }
-    ASSERT_EQ(offset-1, manifest.offset());
+    ASSERT_EQ(offset - 1, manifest.offset());
     ASSERT_EQ(16, manifest.count());
     ASSERT_EQ(6, manifest.term());
 
@@ -1094,13 +1099,13 @@ TEST_F(SnapshotTest, MakeSnapshotLatest) {
         google::protobuf::TextFormat::Parse(&fileInput, &manifest);
     }
 
-    ASSERT_EQ(offset-1, manifest.offset());
+    ASSERT_EQ(offset - 1, manifest.offset());
     ASSERT_EQ(21, manifest.count());
     ASSERT_EQ(7, manifest.term());
 }
 
 TEST_F(SnapshotTest, RecordOffset) {
-	std::string snapshot_path = FLAGS_db_root_path + "/1_1/snapshot/";
+    std::string snapshot_path = FLAGS_db_root_path + "/1_1/snapshot/";
     MemTableSnapshot snapshot(1, 1, NULL, FLAGS_db_root_path);
     snapshot.Init();
     uint64_t offset = 1122;
@@ -1130,8 +1135,10 @@ TEST_F(SnapshotTest, RecordOffset) {
 
 TEST_F(SnapshotTest, Recover_empty_binlog) {
     uint32_t tid = GenRand();
-    std::string snapshot_dir = FLAGS_db_root_path + "/" + std::to_string(tid) + "_0/snapshot/";
-    std::string binlog_dir = FLAGS_db_root_path + "/" + std::to_string(tid) + "_0/binlog/";
+    std::string snapshot_dir =
+        FLAGS_db_root_path + "/" + std::to_string(tid) + "_0/snapshot/";
+    std::string binlog_dir =
+        FLAGS_db_root_path + "/" + std::to_string(tid) + "_0/binlog/";
     LogParts* log_part = new LogParts(12, 4, scmp);
     uint64_t offset = 0;
     uint32_t binlog_index = 0;
@@ -1197,7 +1204,8 @@ TEST_F(SnapshotTest, Recover_empty_binlog) {
 
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", tid, 0, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
+    std::shared_ptr<MemTable> table = std::make_shared<MemTable>(
+        "test", tid, 0, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
     MemTableSnapshot snapshot(tid, 0, log_part, FLAGS_db_root_path);
     snapshot.Init();
@@ -1259,7 +1267,8 @@ TEST_F(SnapshotTest, Recover_snapshot_ts) {
         printf("path:%s\n", full_path.c_str());
         FILE* fd_w = fopen(full_path.c_str(), "ab+");
         ASSERT_TRUE(fd_w != NULL);
-        ::rtidb::log::WritableFile* wf = ::rtidb::log::NewWritableFile(snapshot1, fd_w);
+        ::rtidb::log::WritableFile* wf =
+            ::rtidb::log::NewWritableFile(snapshot1, fd_w);
         ::rtidb::log::Writer writer(wf);
         ::rtidb::api::LogEntry entry;
         entry.set_pk("test0");
@@ -1285,7 +1294,7 @@ TEST_F(SnapshotTest, Recover_snapshot_ts) {
         Status status = writer.AddRecord(sval);
         ASSERT_TRUE(status.ok());
     }
-    
+
     ::rtidb::api::TableMeta table_meta;
     table_meta.set_name("test");
     table_meta.set_tid(2);
@@ -1363,16 +1372,17 @@ TEST_F(SnapshotTest, Recover_snapshot_ts) {
 
 TEST_F(SnapshotTest, DiskTableMakeSnapshot) {
     std::string snapshot_path = FLAGS_hdd_root_path + "/1_1/snapshot/";
-    DiskTableSnapshot snapshot(1, 1, ::rtidb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
+    DiskTableSnapshot snapshot(1, 1, ::rtidb::common::StorageMode::kHDD,
+                               FLAGS_hdd_root_path);
     snapshot.Init();
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    DiskTable* disk_table_ptr = new DiskTable("test", 1, 1, mapping, 0, 
-            ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD,
-            FLAGS_hdd_root_path);
+    DiskTable* disk_table_ptr = new DiskTable(
+        "test", 1, 1, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime,
+        ::rtidb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
     std::shared_ptr<Table> table(disk_table_ptr);
     table->Init();
-    
+
     for (int idx = 0; idx < 1000; idx++) {
         std::string key = "test" + std::to_string(idx);
         uint64_t ts = 9537;
@@ -1380,7 +1390,7 @@ TEST_F(SnapshotTest, DiskTableMakeSnapshot) {
             ASSERT_TRUE(table->Put(key, ts + k, "value", 5));
         }
     }
-    
+
     snapshot.SetTerm(9);
     uint64_t offset = 0;
     int ret = snapshot.MakeSnapshot(table, offset, 0);
@@ -1398,7 +1408,7 @@ TEST_F(SnapshotTest, DiskTableMakeSnapshot) {
     ASSERT_EQ(10000, manifest.offset());
     ASSERT_EQ(10000, manifest.count());
     ASSERT_EQ(9, manifest.term());
-    
+
     std::string path = FLAGS_hdd_root_path + "/1_1";
     RemoveData(path);
 }
@@ -1409,7 +1419,8 @@ TEST_F(SnapshotTest, MakeSnapshotWithEndOffset) {
     snapshot.Init();
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    std::shared_ptr<MemTable> table = std::make_shared<MemTable>("tx_log", 1, 10, 8, mapping, 2, ::rtidb::api::TTLType::kAbsoluteTime);
+    std::shared_ptr<MemTable> table = std::make_shared<MemTable>(
+        "tx_log", 1, 10, 8, mapping, 2, ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
     uint64_t offset = 0;
     uint32_t binlog_index = 0;
@@ -1463,7 +1474,8 @@ TEST_F(SnapshotTest, MakeSnapshotWithEndOffset) {
         entry.set_term(6);
         if (count == 20) {
             // set one timeout key
-            entry.set_ts(::baidu::common::timer::get_micros() / 1000 - 4 * 60 * 1000);
+            entry.set_ts(::baidu::common::timer::get_micros() / 1000 -
+                         4 * 60 * 1000);
         } else {
             entry.set_ts(::baidu::common::timer::get_micros() / 1000);
         }
@@ -1497,17 +1509,17 @@ TEST_F(SnapshotTest, MakeSnapshotWithEndOffset) {
     ASSERT_EQ(8, manifest.count());
     ASSERT_EQ(5, manifest.term());
 
-     ret = snapshot.MakeSnapshot(table, offset_value, 0);
-     ASSERT_EQ(0, ret);
-     ret = ::rtidb::base::GetFileName(snapshot_path, vec);
-     ASSERT_EQ(0, ret);
-     ASSERT_EQ(4, vec.size());
-     vec.clear();
-     ret = ::rtidb::base::GetFileName(log_path, vec);
-     ASSERT_EQ(2, vec.size());
+    ret = snapshot.MakeSnapshot(table, offset_value, 0);
+    ASSERT_EQ(0, ret);
+    ret = ::rtidb::base::GetFileName(snapshot_path, vec);
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(4, vec.size());
+    vec.clear();
+    ret = ::rtidb::base::GetFileName(log_path, vec);
+    ASSERT_EQ(2, vec.size());
 
-     full_path = snapshot_path + "MANIFEST";
-     manifest.Clear();
+    full_path = snapshot_path + "MANIFEST";
+    manifest.Clear();
     {
         int fd = open(full_path.c_str(), O_RDONLY);
         google::protobuf::io::FileInputStream fileInput(fd);
@@ -1571,12 +1583,12 @@ TEST_F(SnapshotTest, MakeSnapshotWithEndOffset) {
     ASSERT_EQ(7, manifest.term());
 }
 
-}
-}
+}  // namespace storage
+}  // namespace rtidb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
-    srand (time(NULL));
+    srand(time(NULL));
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     ::baidu::common::SetLogLevel(::baidu::common::INFO);
     FLAGS_db_root_path = "/tmp/" + std::to_string(::rtidb::storage::GenRand());

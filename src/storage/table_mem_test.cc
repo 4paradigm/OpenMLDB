@@ -1,13 +1,13 @@
 //
 // table_test.cc
 // Copyright (C) 2017 4paradigm.com
-// Author wangtaize 
+// Author wangtaize
 // Date 2017-03-31
 //
 
-#include "storage/table.h"
 #include "gtest/gtest.h"
-#include "timer.h"
+#include "storage/table.h"
+#include "timer.h" // NOLINT
 #ifdef TCMALLOC_ENABLE
 #include "gperftools/heap-checker.h"
 #endif
@@ -16,14 +16,12 @@ namespace rtidb {
 namespace storage {
 
 class TableMemTest : public ::testing::Test {
-
-public:
+ public:
     TableMemTest() {}
     ~TableMemTest() {}
 };
 
 TEST_F(TableMemTest, Memory) {
-
 #ifdef TCMALLOC_ENABLE
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
     HeapLeakChecker checker("test_mem");
@@ -46,14 +44,10 @@ TEST_F(TableMemTest, Memory) {
 #endif
 }
 
-}
-}
+}  // namespace storage
+}  // namespace rtidb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }
-
-
-
-

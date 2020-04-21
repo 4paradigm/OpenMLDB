@@ -1,20 +1,25 @@
-
-#include "base/status.h"
-#include "base/schema_codec.h"
-#include "base/hash.h"
-#include "base/strings.h"
+// binlog.cc
+// Copyright (C) 2017 4paradigm.com
 #include "storage/binlog.h"
-#include "logging.h"
-#include "timer.h"
-#include "gflags/gflags.h"
-#include "base/kv_iterator.h"
-#include "base/flat_array.h"
+#include <map>
+#include <utility>
+#include <set>
+#include <vector>
 #include "base/display.h"
+#include "base/flat_array.h"
+#include "base/hash.h"
+#include "base/kv_iterator.h"
+#include "base/schema_codec.h"
+#include "base/status.h"
+#include "base/strings.h"
+#include "gflags/gflags.h"
 #include "log/log_writer.h"
+#include "logging.h" // NOLINT
+#include "timer.h" // NOLINT
 
+using ::baidu::common::DEBUG;
 using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
-using ::baidu::common::DEBUG;
 
 DECLARE_uint64(gc_on_table_recover_count);
 DECLARE_int32(binlog_name_length);
@@ -22,13 +27,17 @@ DECLARE_int32(binlog_name_length);
 namespace rtidb {
 namespace storage {
 
-Binlog::Binlog(LogParts* log_part, const std::string& binlog_path) : 
-        log_part_(log_part), log_path_(binlog_path) {}
+Binlog::Binlog(LogParts* log_part, const std::string& binlog_path)
+    : log_part_(log_part), log_path_(binlog_path) {}
 
-bool Binlog::RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset, uint64_t& latest_offset) {
+bool Binlog::RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset,
+                               uint64_t& latest_offset) {
     uint32_t tid = table->GetId();
     uint32_t pid = table->GetPid();
-    PDLOG(INFO, "start recover table tid %u, pid %u from binlog with start offset %lu", tid, pid, offset);
+    PDLOG(
+        INFO,
+        "start recover table tid %u, pid %u from binlog with start offset %lu",
+        tid, pid, offset);
     ::rtidb::log::LogReader log_reader(log_part_, log_path_);
     log_reader.SetOffset(offset);
     ::rtidb::api::LogEntry entry;
@@ -42,19 +51,24 @@ bool Binlog::RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset, ui
     while (true) {
         buffer.clear();
         ::rtidb::base::Slice record;
-        ::rtidb::base::Status status = log_reader.ReadNextRecord(&record, &buffer);
+        ::rtidb::base::Status status =
+            log_reader.ReadNextRecord(&record, &buffer);
         if (status.IsWaitRecord()) {
             int end_log_index = log_reader.GetEndLogIndex();
             int cur_log_index = log_reader.GetLogIndex();
             if (end_log_index >= 0 && end_log_index > cur_log_index) {
                 log_reader.RollRLogFile();
-                PDLOG(WARNING, "read new binlog file. tid[%u] pid[%u] cur_log_index[%d] end_log_index[%d] cur_offset[%lu]", 
-                                tid, pid, cur_log_index, end_log_index, cur_offset);
+                PDLOG(WARNING,
+                      "read new binlog file. tid[%u] pid[%u] cur_log_index[%d] "
+                      "end_log_index[%d] cur_offset[%lu]",
+                      tid, pid, cur_log_index, end_log_index, cur_offset);
                 continue;
             }
             consumed = ::baidu::common::timer::now_time() - consumed;
-            PDLOG(INFO, "table tid %u pid %u completed, succ_cnt %lu, failed_cnt %lu, consumed %us",
-                       tid, pid, succ_cnt, failed_cnt, consumed);
+            PDLOG(INFO,
+                  "table tid %u pid %u completed, succ_cnt %lu, failed_cnt "
+                  "%lu, consumed %us",
+                  tid, pid, succ_cnt, failed_cnt, consumed);
             reach_end_log = false;
             break;
         }
@@ -72,27 +86,34 @@ bool Binlog::RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset, ui
         }
         bool ok = entry.ParseFromString(record.ToString());
         if (!ok) {
-            PDLOG(WARNING, "fail parse record for tid %u, pid %u with value %s", 
-                        tid, pid, ::rtidb::base::DebugString(record.ToString()).c_str());
+            PDLOG(WARNING, "fail parse record for tid %u, pid %u with value %s",
+                  tid, pid,
+                  ::rtidb::base::DebugString(record.ToString()).c_str());
             failed_cnt++;
             continue;
         }
 
         if (cur_offset >= entry.log_index()) {
-            PDLOG(DEBUG, "offset %lu has been made snapshot", entry.log_index());
+            PDLOG(DEBUG, "offset %lu has been made snapshot",
+                  entry.log_index());
             continue;
         }
 
         if (cur_offset + 1 != entry.log_index()) {
-            PDLOG(WARNING, "missing log entry cur_offset %lu , new entry offset %lu for tid %u, pid %u",
+            PDLOG(WARNING,
+                  "missing log entry cur_offset %lu , new entry offset %lu for "
+                  "tid %u, pid %u",
                   cur_offset, entry.log_index(), tid, pid);
         }
-        
-        if (entry.has_method_type() && entry.method_type() == ::rtidb::api::MethodType::kDelete) {
+
+        if (entry.has_method_type() &&
+            entry.method_type() == ::rtidb::api::MethodType::kDelete) {
             if (entry.dimensions_size() == 0) {
-                PDLOG(WARNING, "no dimesion. tid %u pid %u offset %lu", tid, pid, entry.log_index());
+                PDLOG(WARNING, "no dimesion. tid %u pid %u offset %lu", tid,
+                      pid, entry.log_index());
             } else {
-                table->Delete(entry.dimensions(0).key(), entry.dimensions(0).idx());
+                table->Delete(entry.dimensions(0).key(),
+                              entry.dimensions(0).idx());
             }
         } else {
             table->Put(entry);
@@ -100,8 +121,10 @@ bool Binlog::RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset, ui
         cur_offset = entry.log_index();
         succ_cnt++;
         if (succ_cnt % 100000 == 0) {
-            PDLOG(INFO, "[Recover] load data from binlog succ_cnt %lu, failed_cnt %lu for tid %u, pid %u",
-                    succ_cnt, failed_cnt, tid, pid);
+            PDLOG(INFO,
+                  "[Recover] load data from binlog succ_cnt %lu, failed_cnt "
+                  "%lu for tid %u, pid %u",
+                  succ_cnt, failed_cnt, tid, pid);
         }
         if (succ_cnt % FLAGS_gc_on_table_recover_count == 0) {
             table->SchedGc();
@@ -115,16 +138,20 @@ bool Binlog::RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset, ui
             return true;
         }
         uint64_t pos = log_reader.GetLastRecordEndOffset();
-        PDLOG(DEBUG, "last record end offset[%lu] tid[%u] pid[%u]", pos, tid, pid);
-        std::string full_path = log_path_ + "/" +
-                            ::rtidb::base::FormatToString(log_index, FLAGS_binlog_name_length) + ".log";
+        PDLOG(DEBUG, "last record end offset[%lu] tid[%u] pid[%u]", pos, tid,
+              pid);
+        std::string full_path =
+            log_path_ + "/" +
+            ::rtidb::base::FormatToString(log_index, FLAGS_binlog_name_length) +
+            ".log";
         FILE* fd = fopen(full_path.c_str(), "rb+");
         if (fd == NULL) {
             PDLOG(WARNING, "fail to open file %s", full_path.c_str());
             return false;
         }
         if (fseek(fd, pos, SEEK_SET) != 0) {
-            PDLOG(WARNING, "fail to seek. file[%s] pos[%lu]", full_path.c_str(), pos);
+            PDLOG(WARNING, "fail to seek. file[%s] pos[%lu]", full_path.c_str(),
+                  pos);
             return false;
         }
         ::rtidb::log::WriteHandle wh(full_path, fd, pos);
@@ -134,7 +161,11 @@ bool Binlog::RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset, ui
     return true;
 }
 
-bool Binlog::DumpBinlogIndexData(std::shared_ptr<Table>& table, const ::rtidb::common::ColumnKey& column_key, uint32_t idx, std::vector<::rtidb::log::WriteHandle*>& whs, uint64_t offset) {
+bool Binlog::DumpBinlogIndexData(std::shared_ptr<Table>& table,
+                                 const ::rtidb::common::ColumnKey& column_key,
+                                 uint32_t idx,
+                                 std::vector<::rtidb::log::WriteHandle*>& whs,
+                                 uint64_t offset) {
     uint32_t tid = table->GetId();
     uint32_t pid = table->GetPid();
     ::rtidb::log::LogReader log_reader(log_part_, log_path_);
@@ -178,19 +209,24 @@ bool Binlog::DumpBinlogIndexData(std::shared_ptr<Table>& table, const ::rtidb::c
     while (true) {
         buffer.clear();
         ::rtidb::base::Slice record;
-        ::rtidb::base::Status status = log_reader.ReadNextRecord(&record, &buffer);
+        ::rtidb::base::Status status =
+            log_reader.ReadNextRecord(&record, &buffer);
         if (status.IsWaitRecord()) {
             int end_log_index = log_reader.GetEndLogIndex();
             int cur_log_index = log_reader.GetLogIndex();
             if (end_log_index >= 0 && end_log_index > cur_log_index) {
                 log_reader.RollRLogFile();
-                PDLOG(WARNING, "read new binlog file. tid[%u] pid[%u] cur_log_index[%d] end_log_index[%d] cur_offset[%lu]", 
-                                tid, pid, cur_log_index, end_log_index, cur_offset);
+                PDLOG(WARNING,
+                      "read new binlog file. tid[%u] pid[%u] cur_log_index[%d] "
+                      "end_log_index[%d] cur_offset[%lu]",
+                      tid, pid, cur_log_index, end_log_index, cur_offset);
                 continue;
             }
             consumed = ::baidu::common::timer::now_time() - consumed;
-            PDLOG(INFO, "table tid %u pid %u completed, succ_cnt %lu, failed_cnt %lu, consumed %us",
-                       tid, pid, succ_cnt, failed_cnt, consumed);
+            PDLOG(INFO,
+                  "table tid %u pid %u completed, succ_cnt %lu, failed_cnt "
+                  "%lu, consumed %us",
+                  tid, pid, succ_cnt, failed_cnt, consumed);
             break;
         }
         if (status.IsEof()) {
@@ -207,19 +243,23 @@ bool Binlog::DumpBinlogIndexData(std::shared_ptr<Table>& table, const ::rtidb::c
         }
         bool ok = entry.ParseFromString(record.ToString());
         if (!ok) {
-            PDLOG(WARNING, "fail parse record for tid %u, pid %u with value %s", 
-                        tid, pid, ::rtidb::base::DebugString(record.ToString()).c_str());
+            PDLOG(WARNING, "fail parse record for tid %u, pid %u with value %s",
+                  tid, pid,
+                  ::rtidb::base::DebugString(record.ToString()).c_str());
             failed_cnt++;
             continue;
         }
 
         if (cur_offset >= entry.log_index()) {
-            PDLOG(DEBUG, "offset %lu has been made snapshot", entry.log_index());
+            PDLOG(DEBUG, "offset %lu has been made snapshot",
+                  entry.log_index());
             continue;
         }
 
         if (cur_offset + 1 != entry.log_index()) {
-            PDLOG(WARNING, "missing log entry cur_offset %lu , new entry offset %lu for tid %u, pid %u",
+            PDLOG(WARNING,
+                  "missing log entry cur_offset %lu , new entry offset %lu for "
+                  "tid %u, pid %u",
                   cur_offset, entry.log_index(), tid, pid);
         }
         std::set<uint32_t> pid_set;
@@ -228,19 +268,21 @@ bool Binlog::DumpBinlogIndexData(std::shared_ptr<Table>& table, const ::rtidb::c
             if (dim.idx() == 0) {
                 has_main_index = true;
             }
-            pid_set.insert(::rtidb::base::hash64(dim.key())%partition_num);
+            pid_set.insert(::rtidb::base::hash64(dim.key()) % partition_num);
         }
         if (!has_main_index) {
             continue;
         }
         std::string buff;
         if (table->GetCompressType() == ::rtidb::api::kSnappy) {
-            ::snappy::Uncompress(entry.value().c_str(), entry.value().size(), &buff);
+            ::snappy::Uncompress(entry.value().c_str(), entry.value().size(),
+                                 &buff);
         } else {
             buff = entry.value();
         }
         std::vector<std::string> row;
-        ::rtidb::base::FillTableRow(max_idx + 1, columns, buff.c_str(), buff.size(), row);
+        ::rtidb::base::FillTableRow(max_idx + 1, columns, buff.c_str(),
+                                    buff.size(), row);
         std::string cur_key;
         for (uint32_t i : index_cols) {
             if (cur_key.empty()) {
@@ -249,7 +291,7 @@ bool Binlog::DumpBinlogIndexData(std::shared_ptr<Table>& table, const ::rtidb::c
                 cur_key += "|" + row[i];
             }
         }
-        uint32_t index_pid = ::rtidb::base::hash64(cur_key)%partition_num;
+        uint32_t index_pid = ::rtidb::base::hash64(cur_key) % partition_num;
         if (!pid_set.count(index_pid)) {
             std::string entry_str;
             entry.clear_dimensions();
@@ -260,10 +302,13 @@ bool Binlog::DumpBinlogIndexData(std::shared_ptr<Table>& table, const ::rtidb::c
             ::rtidb::base::Slice new_record(entry_str);
             ::rtidb::base::Status status = whs[index_pid]->Write(new_record);
             if (!status.ok()) {
-                PDLOG(WARNING, "fail to dump index entrylog in binlog to pid[%u].", index_pid);
+                PDLOG(WARNING,
+                      "fail to dump index entrylog in binlog to pid[%u].",
+                      index_pid);
                 return false;
             } else {
-                PDLOG(DEBUG, "dump entry key[%s] into pid[%u]", cur_key.c_str(), index_pid);
+                PDLOG(DEBUG, "dump entry key[%s] into pid[%u]", cur_key.c_str(),
+                      index_pid);
             }
         }
 
@@ -274,5 +319,5 @@ bool Binlog::DumpBinlogIndexData(std::shared_ptr<Table>& table, const ::rtidb::c
     return true;
 }
 
-}
-}
+}  // namespace storage
+}  // namespace rtidb

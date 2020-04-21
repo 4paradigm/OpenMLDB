@@ -1,23 +1,23 @@
 //
 // codec.h
 // Copyright (C) 2017 4paradigm.com
-// Author wangtaize 
-// Date 2017-03-31 
-// 
+// Author wangtaize
+// Date 2017-03-31
+//
 
+#ifndef SRC_BASE_CODEC_H_
+#define SRC_BASE_CODEC_H_
 
-#ifndef RTIDB_BASE_CODEC_H
-#define RTIDB_BASE_CODEC_H
-
-#include <string.h>
-#include <stdlib.h>
 #include <stdio.h>
-#include <vector>
+#include <stdlib.h>
+#include <string>
 #include <map>
-#include "storage/segment.h"
-#include "logging.h"
-#include "base/strings.h"
+#include <vector>
+#include <utility>
 #include "base/endianconv.h"
+#include "logging.h" // NOLINT
+#include "base/strings.h"
+#include "storage/segment.h"
 
 using ::rtidb::storage::DataBlock;
 
@@ -27,7 +27,8 @@ using ::baidu::common::WARNING;
 namespace rtidb {
 namespace base {
 
-static inline void Encode(uint64_t time, const char* data, const size_t size, char* buffer, uint32_t offset) {
+static inline void Encode(uint64_t time, const char* data, const size_t size,
+                          char* buffer, uint32_t offset) {
     buffer += offset;
     uint32_t total_size = 8 + size;
     PDLOG(DEBUG, "encode size %d", total_size);
@@ -40,11 +41,13 @@ static inline void Encode(uint64_t time, const char* data, const size_t size, ch
     memcpy(buffer, static_cast<const void*>(data), size);
 }
 
-static inline void Encode(uint64_t time, const DataBlock* data, char* buffer, uint32_t offset) {
+static inline void Encode(uint64_t time, const DataBlock* data, char* buffer,
+                          uint32_t offset) {
     return Encode(time, data->data, data->size, buffer, offset);
 }
 
-static inline void Encode(const char* data, const size_t size, char* buffer, uint32_t offset) {
+static inline void Encode(const char* data, const size_t size, char* buffer,
+                          uint32_t offset) {
     buffer += offset;
     memcpy(buffer, static_cast<const void*>(&size), 4);
     memrev32ifbe(buffer);
@@ -52,7 +55,8 @@ static inline void Encode(const char* data, const size_t size, char* buffer, uin
     memcpy(buffer, static_cast<const void*>(data), size);
 }
 
-static inline void Encode(const DataBlock* data, char* buffer, uint32_t offset) {
+static inline void Encode(const DataBlock* data, char* buffer,
+                          uint32_t offset) {
     return Encode(data->data, data->size, buffer, offset);
 }
 
@@ -68,7 +72,7 @@ static inline int32_t EncodeRows(const std::vector<::rtidb::base::Slice>& rows,
         body->resize(total_size);
     }
     uint32_t offset = 0;
-    char* rbuffer = reinterpret_cast<char*>(& ((*body)[0]));
+    char* rbuffer = reinterpret_cast<char*>(&((*body)[0]));
     for (auto lit = rows.begin(); lit != rows.end(); ++lit) {
         ::rtidb::base::Encode(lit->data(), lit->size(), rbuffer, offset);
         offset += (4 + lit->size());
@@ -76,31 +80,34 @@ static inline int32_t EncodeRows(const std::vector<::rtidb::base::Slice>& rows,
     return total_size;
 }
 
-static inline int32_t EncodeRows(const std::vector<std::pair<uint64_t, ::rtidb::base::Slice>>& rows,
-                                 uint32_t total_block_size, std::string* pairs) {
-
+static inline int32_t EncodeRows(
+    const std::vector<std::pair<uint64_t, ::rtidb::base::Slice>>& rows,
+    uint32_t total_block_size, std::string* pairs) {
     if (pairs == NULL) {
         PDLOG(WARNING, "invalid output pairs");
         return -1;
     }
 
-    uint32_t total_size = rows.size() * (8+4) + total_block_size;
+    uint32_t total_size = rows.size() * (8 + 4) + total_block_size;
     if (rows.size() > 0) {
         pairs->resize(total_size);
     }
 
-    char* rbuffer = reinterpret_cast<char*>(& ((*pairs)[0]));
+    char* rbuffer = reinterpret_cast<char*>(&((*pairs)[0]));
     uint32_t offset = 0;
     for (auto lit = rows.begin(); lit != rows.end(); ++lit) {
         const std::pair<uint64_t, ::rtidb::base::Slice>& pair = *lit;
-        ::rtidb::base::Encode(pair.first, pair.second.data(), pair.second.size(), rbuffer, offset);
+        ::rtidb::base::Encode(pair.first, pair.second.data(),
+                              pair.second.size(), rbuffer, offset);
         offset += (4 + 8 + pair.second.size());
     }
     return total_size;
 }
 
 // encode pk, ts and value
-static inline void EncodeFull(const std::string& pk, uint64_t time, const char* data, const size_t size, char* buffer, uint32_t offset) {
+static inline void EncodeFull(const std::string& pk, uint64_t time,
+                              const char* data, const size_t size, char* buffer,
+                              uint32_t offset) {
     buffer += offset;
     uint32_t pk_size = pk.length();
     uint32_t total_size = 8 + pk_size + size;
@@ -119,11 +126,15 @@ static inline void EncodeFull(const std::string& pk, uint64_t time, const char* 
     memcpy(buffer, static_cast<const void*>(data), size);
 }
 
-static inline void EncodeFull(const std::string& pk, uint64_t time, const DataBlock* data, char* buffer, uint32_t offset) {
+static inline void EncodeFull(const std::string& pk, uint64_t time,
+                              const DataBlock* data, char* buffer,
+                              uint32_t offset) {
     return EncodeFull(pk, time, data->data, data->size, buffer, offset);
 }
 
-static inline void Decode(const std::string* str, std::vector<std::pair<uint64_t, std::string*> >& pairs) {
+static inline void Decode(
+    const std::string* str,
+    std::vector<std::pair<uint64_t, std::string*>>& pairs) { // NOLINT
     const char* buffer = str->c_str();
     uint32_t total_size = str->length();
     PDLOG(DEBUG, "total size %d %s", total_size, DebugString(*str).c_str());
@@ -139,14 +150,17 @@ static inline void Decode(const std::string* str, std::vector<std::pair<uint64_t
         buffer += 8;
         assert(size >= 8);
         std::string* data = new std::string(size - 8, '0');
-        memcpy(reinterpret_cast<char*>(& ((*data)[0])), buffer, size - 8);
+        memcpy(reinterpret_cast<char*>(&((*data)[0])), buffer, size - 8);
         buffer += (size - 8);
         pairs.push_back(std::make_pair(time, data));
         total_size -= (size + 4);
     }
 }
 
-static inline void DecodeFull(const std::string* str, std::map<std::string, std::vector<std::pair<uint64_t, std::string*>>>& value_map) {
+static inline void DecodeFull(
+    const std::string* str,
+    std::map<std::string, std::vector<std::pair<uint64_t, std::string*>>>&
+        value_map) {
     const char* buffer = str->c_str();
     uint32_t total_size = str->length();
     PDLOG(DEBUG, "total size %u %s", total_size, DebugString(*str).c_str());
@@ -170,17 +184,19 @@ static inline void DecodeFull(const std::string* str, std::map<std::string, std:
         buffer += pk_size;
         uint32_t value_size = size - 8 - pk_size;
         std::string* data = new std::string(value_size, '0');
-        memcpy(reinterpret_cast<char*>(& ((*data)[0])), buffer, value_size);
+        memcpy(reinterpret_cast<char*>(&((*data)[0])), buffer, value_size);
         buffer += value_size;
         if (value_map.find(pk) == value_map.end()) {
-            value_map.insert(std::make_pair(pk, std::vector<std::pair<uint64_t, std::string*>>()));
+            value_map.insert(std::make_pair(
+                pk, std::vector<std::pair<uint64_t, std::string*>>()));
         }
         value_map[pk].push_back(std::make_pair(time, data));
         total_size -= (size + 8);
     }
 }
 
-using Schema = ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
+using Schema =
+    ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
 static constexpr uint8_t VERSION_LENGTH = 2;
 static constexpr uint8_t SIZE_LENGTH = 4;
 static constexpr uint8_t HEADER_LENGTH = VERSION_LENGTH + SIZE_LENGTH;
@@ -241,8 +257,8 @@ class RowView {
         return *(reinterpret_cast<const uint32_t*>(row + VERSION_LENGTH));
     }
 
-    int32_t GetValue(const int8_t* row, uint32_t idx, ::rtidb::type::DataType type,
-                     void* val);
+    int32_t GetValue(const int8_t* row, uint32_t idx,
+                     ::rtidb::type::DataType type, void* val);
 
     int32_t GetInteger(const int8_t* row, uint32_t idx,
                        ::rtidb::type::DataType type, int64_t* val);
@@ -389,8 +405,7 @@ int32_t GetStrCol(int8_t* input, int32_t str_field_offset,
                   int32_t type_id, int8_t* data);
 }  // namespace v1
 
-}
-}
+}  // namespace base
+}  // namespace rtidb
 
-#endif /* !CODEC_H */
-
+#endif  // SRC_BASE_CODEC_H_

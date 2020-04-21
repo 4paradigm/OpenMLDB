@@ -12,18 +12,18 @@ namespace rtidb {
 namespace tablet {
 
 class FileReceiver {
-public:
-    FileReceiver(const std::string& file_name, 
-            const std::string& dir_name, const std::string& path);
+ public:
+    FileReceiver(const std::string& file_name, const std::string& dir_name,
+                 const std::string& path);
     ~FileReceiver();
     FileReceiver(const FileReceiver&) = delete;
-    FileReceiver& operator = (const FileReceiver&) = delete;
+    FileReceiver& operator=(const FileReceiver&) = delete;
     bool Init();
     int WriteData(const std::string& data, uint64_t block_id);
     void SaveFile();
     uint64_t GetBlockId();
 
-private:
+ private:
     std::string file_name_;
     std::string dir_name_;
     std::string path_;
@@ -32,5 +32,5 @@ private:
     FILE* file_;
 };
 
-}
-}
+}  // namespace tablet
+}  // namespace rtidb

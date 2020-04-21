@@ -15,23 +15,23 @@
 #include <stdio.h>
 #include "base/slice.h"
 #include "base/status.h"
-#include "logging.h"
+#include "logging.h" // NOLINT
 
+using ::baidu::common::DEBUG;
 using ::rtidb::base::Slice;
 using ::rtidb::base::Status;
-using ::baidu::common::DEBUG;
 
 namespace rtidb {
 namespace log {
 
-class PosixSequentialFile: public SequentialFile {
-private:
+class PosixSequentialFile : public SequentialFile {
+ private:
     std::string filename_;
     FILE* file_;
 
-public:
+ public:
     PosixSequentialFile(const std::string& fname, FILE* f)
-        : filename_(fname), file_(f) { }
+        : filename_(fname), file_(f) {}
 
     virtual ~PosixSequentialFile() { fclose(file_); }
 
@@ -77,14 +77,11 @@ public:
         }
         return Status::IOError("fail to seek", strerror(errno));
     }
-
 };
 
 SequentialFile* NewSeqFile(const std::string& fname, FILE* f) {
     return new PosixSequentialFile(fname, f);
 }
 
-}
-}
-
-
+}  // namespace log
+}  // namespace rtidb
