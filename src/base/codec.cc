@@ -17,7 +17,7 @@
 
 #include "base/codec.h"
 #include <unordered_map>
-#include "logging.h" // NOLINT
+#include "logging.h"  // NOLINT
 
 using ::baidu::common::DEBUG;
 using ::baidu::common::INFO;
@@ -140,7 +140,8 @@ bool RowBuilder::Check(uint32_t index, ::rtidb::type::DataType type) {
     if (column.data_type() != type) {
         return false;
     }
-    if (column.data_type() != ::rtidb::type::kVarchar && column.data_type() != ::rtidb::type::kString) {
+    if (column.data_type() != ::rtidb::type::kVarchar &&
+        column.data_type() != ::rtidb::type::kString) {
         auto iter = TYPE_SIZE_MAP.find(column.data_type());
         if (iter == TYPE_SIZE_MAP.end()) {
             return false;
@@ -178,7 +179,8 @@ bool RowBuilder::SetNULL(uint32_t index) {
     int8_t* ptr = buf_ + HEADER_LENGTH + (index >> 3);
     *(reinterpret_cast<uint8_t*>(ptr)) |= 1 << (index & 0x07);
     const ::rtidb::common::ColumnDesc& column = schema_.Get(index);
-    if (column.data_type() == ::rtidb::type::kVarchar || column.data_type() == rtidb::type::kString) {
+    if (column.data_type() == ::rtidb::type::kVarchar ||
+        column.data_type() == rtidb::type::kString) {
         ptr = buf_ + str_field_start_offset_ +
               str_addr_length_ * offset_vec_[index];
         if (str_addr_length_ == 1) {
@@ -329,7 +331,9 @@ bool RowBuilder::AppendString(const char* val, uint32_t length) {
 }
 
 bool RowBuilder::SetString(uint32_t index, const char* val, uint32_t length) {
-    if (val == NULL || (!Check(::rtidb::type::kVarchar) && !Check(rtidb::type::kString))) return false;
+    if (val == NULL ||
+        (!Check(::rtidb::type::kVarchar) && !Check(rtidb::type::kString)))
+        return false;
     if (str_offset_ + length > size_) return false;
     int8_t* ptr =
         buf_ + str_field_start_offset_ + str_addr_length_ * offset_vec_[index];

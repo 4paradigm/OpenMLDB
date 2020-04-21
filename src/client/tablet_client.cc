@@ -1012,7 +1012,7 @@ void TabletClient::ShowTp() {
 }
 
 bool TabletClient::Get(uint32_t tid, uint32_t pid, const std::string& pk,
-                       uint64_t time, std::string& value, uint64_t& ts,
+                       uint64_t time, const std::string& value, uint64_t& ts,
                        std::string& msg) {
     ::rtidb::api::GetRequest request;
     ::rtidb::api::GetResponse response;

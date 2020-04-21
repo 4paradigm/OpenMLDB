@@ -10,13 +10,13 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <string>
 #include <map>
-#include <vector>
+#include <string>
 #include <utility>
+#include <vector>
 #include "base/endianconv.h"
-#include "logging.h" // NOLINT
 #include "base/strings.h"
+#include "logging.h"  // NOLINT
 #include "storage/segment.h"
 
 using ::rtidb::storage::DataBlock;
@@ -134,7 +134,7 @@ static inline void EncodeFull(const std::string& pk, uint64_t time,
 
 static inline void Decode(
     const std::string* str,
-    std::vector<std::pair<uint64_t, std::string*>>& pairs) { // NOLINT
+    std::vector<std::pair<uint64_t, std::string*>>& pairs) {  // NOLINT
     const char* buffer = str->c_str();
     uint32_t total_size = str->length();
     PDLOG(DEBUG, "total size %d %s", total_size, DebugString(*str).c_str());
@@ -229,7 +229,7 @@ class RowBuilder {
     bool SetString(uint32_t index, const char* val, uint32_t length);
     bool SetNULL(uint32_t index);
 
-private:
+ private:
     bool Check(::rtidb::type::DataType type);
     bool Check(uint32_t index, ::rtidb::type::DataType type);
 

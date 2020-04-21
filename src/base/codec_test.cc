@@ -130,7 +130,7 @@ TEST_F(CodecTest, Normal) {
     int64_t val2 = 0;
     ASSERT_EQ(view.GetInt64(4, &val2), 0);
     ASSERT_EQ(val2, 5);
-    
+
     builder.SetInt64(4, 10);
     int64_t val3 = 0;
     ASSERT_EQ(view.GetInt64(4, &val3), 0);

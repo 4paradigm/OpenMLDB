@@ -88,7 +88,7 @@ class TabletClient {
              std::string& value, uint64_t& ts, std::string& msg);  // NOLINT
 
     bool Get(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time,
-             const std::string& idx_name, std::string& value,
+             const std::string& idx_name, const std::string& value,
              uint64_t& ts,       // NOLINT
              std::string& msg);  // NOLINT
 
@@ -105,7 +105,7 @@ class TabletClient {
 
     bool Count(uint32_t tid, uint32_t pid, const std::string& pk,
                const std::string& idx_name, const std::string& ts_name,
-               bool filter_expired_data, uint64_t& value,
+               bool filter_expired_data, uint64_t& value, // NOLINT
                std::string& msg);  // NOLINT
 
     ::rtidb::base::KvIterator* Scan(uint32_t tid, uint32_t pid,
@@ -129,7 +129,7 @@ class TabletClient {
 
     ::rtidb::base::KvIterator* Scan(uint32_t tid, uint32_t pid, const char* pk,
                                     uint64_t stime, uint64_t etime,
-                                    std::string& msg,
+                                    std::string& msg,  // NOLINT
                                     bool showm = false);  // NOLINT
 
     bool GetTableSchema(uint32_t tid, uint32_t pid,
@@ -206,7 +206,7 @@ class TabletClient {
     bool GetTermPair(uint32_t tid, uint32_t pid,
                      ::rtidb::common::StorageMode storage_mode,
                      uint64_t& term,  // NOLINT
-                     uint64_t& offset, bool& has_table,
+                     uint64_t& offset, bool& has_table, // NOLINT
                      bool& is_leader);  // NOLINT
 
     bool GetManifest(uint32_t tid, uint32_t pid,
