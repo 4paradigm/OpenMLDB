@@ -130,6 +130,23 @@ bool RowBuilder::Check(::rtidb::type::DataType type) {
     return true;
 }
 
+bool RowBuilder::Check(uint32_t index, ::rtidb::type::DataType type) {
+    if ((int32_t)index >= schema_.size()) {
+        return false;
+    }
+    const ::rtidb::common::ColumnDesc& column = schema_.Get(index);
+    if (column.data_type() != type) {
+        return false;
+    }
+    if (column.data_type() != ::rtidb::type::kVarchar && column.data_type() != ::rtidb::type::kString) {
+        auto iter = TYPE_SIZE_MAP.find(column.data_type());
+        if (iter == TYPE_SIZE_MAP.end()) {
+            return false;
+        }
+    }
+    return true;
+}
+
 bool RowBuilder::AppendNULL() {
     int8_t* ptr = buf_ + HEADER_LENGTH + (cnt_ >> 3);
     *(reinterpret_cast<uint8_t*>(ptr)) |= 1 << (cnt_ & 0x07);
@@ -154,11 +171,41 @@ bool RowBuilder::AppendNULL() {
     return true;
 }
 
+bool RowBuilder::SetNULL(uint32_t index) {
+    int8_t* ptr = buf_ + HEADER_LENGTH + (index >> 3);
+    *(reinterpret_cast<uint8_t*>(ptr)) |= 1 << (index & 0x07);
+    const ::rtidb::common::ColumnDesc& column = schema_.Get(index);
+    if (column.data_type() == ::rtidb::type::kVarchar || column.data_type() == rtidb::type::kString) {
+        ptr = buf_ + str_field_start_offset_ +
+              str_addr_length_ * offset_vec_[index];
+        if (str_addr_length_ == 1) {
+            *(reinterpret_cast<uint8_t*>(ptr)) = (uint8_t)str_offset_;
+        } else if (str_addr_length_ == 2) {
+            *(reinterpret_cast<uint16_t*>(ptr)) = (uint16_t)str_offset_;
+        } else if (str_addr_length_ == 3) {
+            *(reinterpret_cast<uint8_t*>(ptr)) = str_offset_ >> 16;
+            *(reinterpret_cast<uint8_t*>(ptr + 1)) =
+                (str_offset_ & 0xFF00) >> 8;
+            *(reinterpret_cast<uint8_t*>(ptr + 2)) = str_offset_ & 0x00FF;
+        } else {
+            *(reinterpret_cast<uint32_t*>(ptr)) = str_offset_;
+        }
+    }
+    return true;
+}
+
 bool RowBuilder::AppendBool(bool val) {
     if (!Check(::rtidb::type::kBool)) return false;
     int8_t* ptr = buf_ + offset_vec_[cnt_];
     *(reinterpret_cast<uint8_t*>(ptr)) = val ? 1 : 0;
     cnt_++;
+    return true;
+}
+
+bool RowBuilder::SetBool(uint32_t index, bool val) {
+    if (!Check(index, ::rtidb::type::kBool)) return false;
+    int8_t* ptr = buf_ + offset_vec_[index];
+    *(reinterpret_cast<uint8_t*>(ptr)) = val ? 1 : 0;
     return true;
 }
 
@@ -170,11 +217,25 @@ bool RowBuilder::AppendInt32(int32_t val) {
     return true;
 }
 
+bool RowBuilder::SetInt32(uint32_t index, int32_t val) {
+    if (!Check(index, ::rtidb::type::kInt)) return false;
+    int8_t* ptr = buf_ + offset_vec_[index];
+    *(reinterpret_cast<int32_t*>(ptr)) = val;
+    return true;
+}
+
 bool RowBuilder::AppendInt16(int16_t val) {
     if (!Check(::rtidb::type::kSmallInt)) return false;
     int8_t* ptr = buf_ + offset_vec_[cnt_];
     *(reinterpret_cast<int16_t*>(ptr)) = val;
     cnt_++;
+    return true;
+}
+
+bool RowBuilder::SetInt16(uint32_t index, int16_t val) {
+    if (!Check(index, ::rtidb::type::kSmallInt)) return false;
+    int8_t* ptr = buf_ + offset_vec_[index];
+    *(reinterpret_cast<int16_t*>(ptr)) = val;
     return true;
 }
 
@@ -186,11 +247,25 @@ bool RowBuilder::AppendTimestamp(int64_t val) {
     return true;
 }
 
+bool RowBuilder::SetTimestamp(uint32_t index, int64_t val) {
+    if (!Check(index, ::rtidb::type::kTimestamp)) return false;
+    int8_t* ptr = buf_ + offset_vec_[index];
+    *(reinterpret_cast<int64_t*>(ptr)) = val;
+    return true;
+}
+
 bool RowBuilder::AppendInt64(int64_t val) {
     if (!Check(::rtidb::type::kBigInt)) return false;
     int8_t* ptr = buf_ + offset_vec_[cnt_];
     *(reinterpret_cast<int64_t*>(ptr)) = val;
     cnt_++;
+    return true;
+}
+
+bool RowBuilder::SetInt64(uint32_t index, int64_t val) {
+    if (!Check(index, ::rtidb::type::kBigInt)) return false;
+    int8_t* ptr = buf_ + offset_vec_[index];
+    *(reinterpret_cast<int64_t*>(ptr)) = val;
     return true;
 }
 
@@ -202,11 +277,25 @@ bool RowBuilder::AppendFloat(float val) {
     return true;
 }
 
+bool RowBuilder::SetFloat(uint32_t index, float val) {
+    if (!Check(index, ::rtidb::type::kFloat)) return false;
+    int8_t* ptr = buf_ + offset_vec_[index];
+    *(reinterpret_cast<float*>(ptr)) = val;
+    return true;
+}
+
 bool RowBuilder::AppendDouble(double val) {
     if (!Check(::rtidb::type::kDouble)) return false;
     int8_t* ptr = buf_ + offset_vec_[cnt_];
     *(reinterpret_cast<double*>(ptr)) = val;
     cnt_++;
+    return true;
+}
+
+bool RowBuilder::SetDouble(uint32_t index, double val) {
+    if (!Check(index, ::rtidb::type::kDouble)) return false;
+    int8_t* ptr = buf_ + offset_vec_[index];
+    *(reinterpret_cast<double*>(ptr)) = val;
     return true;
 }
 
@@ -231,6 +320,29 @@ bool RowBuilder::AppendString(const char* val, uint32_t length) {
     }
     str_offset_ += length;
     cnt_++;
+    return true;
+}
+
+bool RowBuilder::SetString(uint32_t index, const char* val, uint32_t length) {
+    if (val == NULL || (!Check(::rtidb::type::kVarchar) && !Check(rtidb::type::kString))) return false;
+    if (str_offset_ + length > size_) return false;
+    int8_t* ptr =
+        buf_ + str_field_start_offset_ + str_addr_length_ * offset_vec_[index];
+    if (str_addr_length_ == 1) {
+        *(reinterpret_cast<uint8_t*>(ptr)) = (uint8_t)str_offset_;
+    } else if (str_addr_length_ == 2) {
+        *(reinterpret_cast<uint16_t*>(ptr)) = (uint16_t)str_offset_;
+    } else if (str_addr_length_ == 3) {
+        *(reinterpret_cast<uint8_t*>(ptr)) = str_offset_ >> 16;
+        *(reinterpret_cast<uint8_t*>(ptr + 1)) = (str_offset_ & 0xFF00) >> 8;
+        *(reinterpret_cast<uint8_t*>(ptr + 2)) = str_offset_ & 0x00FF;
+    } else {
+        *(reinterpret_cast<uint32_t*>(ptr)) = str_offset_;
+    }
+    if (length != 0) {
+        memcpy(reinterpret_cast<char*>(buf_ + str_offset_), val, length);
+    }
+    str_offset_ += length;
     return true;
 }
 

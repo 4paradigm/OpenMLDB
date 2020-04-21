@@ -203,8 +203,19 @@ class RowBuilder {
     bool AppendString(const char* val, uint32_t length);
     bool AppendNULL();
 
- private:
+    bool SetBool(uint32_t index, bool val);
+    bool SetInt32(uint32_t index, int32_t val);
+    bool SetInt16(uint32_t index, int16_t val);
+    bool SetInt64(uint32_t index, int64_t val);
+    bool SetTimestamp(uint32_t index, int64_t val);
+    bool SetFloat(uint32_t index, float val);
+    bool SetDouble(uint32_t index, double val);
+    bool SetString(uint32_t index, const char* val, uint32_t length);
+    bool SetNULL(uint32_t index);
+
+private:
     bool Check(::rtidb::type::DataType type);
+    bool Check(uint32_t index, ::rtidb::type::DataType type);
 
  private:
     const Schema& schema_;

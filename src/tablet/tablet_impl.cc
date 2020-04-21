@@ -1589,7 +1589,7 @@ void TabletImpl::Delete(RpcController* controller,
         }
         return;
     } else {
-        if (r_table->Delete(request->idx_name(), request->key())) {
+        if (r_table->Delete(request->condition_columns())) {
             response->set_code(::rtidb::base::ReturnCode::kOk);
             response->set_msg("ok");
             PDLOG(DEBUG, "delete ok. tid %u, pid %u, key %s, idx_name %s", 
