@@ -24,21 +24,19 @@
 namespace fesql {
 namespace vm {
 
-using fesql::codec::Row;
 using fesql::codec::IteratorV;
+using fesql::codec::Row;
 using fesql::codec::RowIterator;
 using fesql::codec::WindowIterator;
 
 struct AscComparor {
-    bool operator()(std::pair<uint64_t, Row> i,
-                    std::pair<uint64_t, Row> j) {
+    bool operator()(std::pair<uint64_t, Row> i, std::pair<uint64_t, Row> j) {
         return i.first < j.first;
     }
 };
 
 struct DescComparor {
-    bool operator()(std::pair<uint64_t, Row> i,
-                    std::pair<uint64_t, Row> j) {
+    bool operator()(std::pair<uint64_t, Row> i, std::pair<uint64_t, Row> j) {
         return i.first > j.first;
     }
 };
@@ -111,12 +109,7 @@ class MemWindowIterator : public WindowIterator {
 class MemRowHandler : public RowHandler {
  public:
     MemRowHandler(const Row row, const vm::Schema* schema)
-        : RowHandler(),
-          row_(row),
-          table_name_(""),
-          db_(""),
-          schema_(schema) {
-    }
+        : RowHandler(), table_name_(""), db_(""), schema_(schema), row_(row) {}
     ~MemRowHandler() {}
 
     const Schema* GetSchema() override { return nullptr; }
@@ -125,10 +118,10 @@ class MemRowHandler : public RowHandler {
     const Row& GetValue() const override { return row_; }
 
  private:
-    Row row_;
     std::string table_name_;
     std::string db_;
     const Schema* schema_;
+    Row row_;
 };
 
 class MemTableHandler : public TableHandler {
@@ -188,8 +181,7 @@ class MemSegmentHandler : public TableHandler {
     void Reverse();
     virtual const uint64_t GetCount() { return table_.size(); }
     virtual Row At(uint64_t pos) {
-        return pos >= 0 && pos < table_.size() ? table_.at(pos).second
-                                               : Row();
+        return pos >= 0 && pos < table_.size() ? table_.at(pos).second : Row();
     }
 
  protected:
@@ -219,8 +211,7 @@ class Window : public MemSegmentHandler {
           max_size_(max_size) {}
     virtual ~Window() {}
 
-    std::unique_ptr<vm::IteratorV<uint64_t, Row>> GetIterator()
-        const override {
+    std::unique_ptr<vm::IteratorV<uint64_t, Row>> GetIterator() const override {
         std::unique_ptr<vm::MemSegmentIterator> it(
             new vm::MemSegmentIterator(&table_, schema_, start_, end_));
         return std::move(it);
@@ -238,8 +229,7 @@ class Window : public MemSegmentHandler {
 
     virtual const uint64_t GetCount() { return end_ - start_; }
     virtual Row At(uint64_t pos) {
-        return (pos + start_ < end_) ? table_.at(pos + start_).second
-                                     : Row();
+        return (pos + start_ < end_) ? table_.at(pos + start_).second : Row();
     }
 
  protected:

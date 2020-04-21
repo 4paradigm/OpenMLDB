@@ -53,18 +53,7 @@ bool PhysicalUnaryNode::InitSchema() {
     PrintSchema();
     return true;
 }
-bool PhysicalBinaryNode::InitSchema() {
-    if (producers_.empty() || nullptr == producers_[0]) {
-        LOG(WARNING) << "InitSchema fail: producers is empty or null";
-        return false;
-    }
-    output_schema_.CopyFrom(producers_[0]->output_schema_);
-    for (auto pair : producers_[0]->output_name_schema_list_) {
-        output_name_schema_list_.push_back(pair);
-    }
-    PrintSchema();
-    return true;
-}
+
 void PhysicalBinaryNode::PrintChildren(std::ostream& output,
                                        const std::string& tab) const {
     if (2 != producers_.size() || nullptr == producers_[0] ||
@@ -258,6 +247,19 @@ bool PhysicalDataProviderNode::InitSchema() {
 }
 void PhysicalOpNode::PrintSchema() {
     std::stringstream ss;
+    ss << PhysicalOpTypeName(type_) << " output name schema list: \n";
+    for (auto pair : output_name_schema_list_) {
+        ss << "pair table: " << pair.first << "\n";
+        for (int32_t i = 0; i < pair.second->size(); i++) {
+            if (i > 0) {
+                ss << "\n";
+            }
+            const type::ColumnDef& column = pair.second->Get(i);
+            ss << column.name() << " " << type::Type_Name(column.type());
+        }
+        ss << "\n";
+    }
+    ss << "output schema\n";
     for (int32_t i = 0; i < output_schema_.size(); i++) {
         if (i > 0) {
             ss << "\n";
@@ -309,7 +311,8 @@ bool PhysicalRequestUnionNode::InitSchema() {
 void PhysicalRequestJoinNode::Print(std::ostream& output,
                                     const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(condition=" << node::ExprString(condition_);
+    output << "(type=" << node::JoinTypeName(join_type_)
+           << ", condition=" << node::ExprString(condition_);
     if (limit_cnt_ > 0) {
         output << ", limit=" << limit_cnt_;
     }

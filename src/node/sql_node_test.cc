@@ -131,8 +131,8 @@ TEST_F(SqlNodeTest, MakeWindowDefNodetTest) {
     ASSERT_EQ(kWindowDef, node_ptr->GetType());
     //
 
-    ASSERT_EQ(std::vector<std::string>({"keycol"}), node_ptr->GetPartitions());
-    ASSERT_EQ(std::vector<std::string>({"col1"}), node_ptr->GetOrders());
+    ASSERT_EQ("(keycol)", ExprString(node_ptr->GetPartitions()));
+    ASSERT_EQ(("(col1) ASC"), ExprString(node_ptr->GetOrders()));
     ASSERT_EQ(frame, node_ptr->GetFrame());
     ASSERT_EQ("", node_ptr->GetName());
 }

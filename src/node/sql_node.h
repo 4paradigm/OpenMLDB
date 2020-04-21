@@ -610,7 +610,11 @@ class FrameNode : public SQLNode {
 class WindowDefNode : public SQLNode {
  public:
     WindowDefNode()
-        : SQLNode(kWindowDef, 0, 0), window_name_(""), frame_ptr_(NULL) {}
+        : SQLNode(kWindowDef, 0, 0),
+          window_name_(""),
+          frame_ptr_(NULL),
+          partitions_(nullptr),
+          orders_(nullptr) {}
 
     ~WindowDefNode() {}
 
@@ -618,22 +622,23 @@ class WindowDefNode : public SQLNode {
 
     void SetName(const std::string &name) { window_name_ = name; }
 
-    std::vector<std::string> &GetPartitions() { return partitions_; }
+    ExprListNode *GetPartitions() { return partitions_; }
 
-    std::vector<std::string> &GetOrders() { return orders_; }
+    OrderByNode *GetOrders() { return orders_; }
 
     SQLNode *GetFrame() const { return frame_ptr_; }
 
+    void SetPartitions(ExprListNode *partitions) { partitions_ = partitions; }
+    void SetOrders(OrderByNode *orders) { orders_ = orders; }
     void SetFrame(FrameNode *frame) { frame_ptr_ = frame; }
-
     void Print(std::ostream &output, const std::string &org_tab) const;
     virtual bool Equals(const SQLNode *that) const;
 
  private:
-    std::string window_name_; /* window's own name */
-    FrameNode *frame_ptr_;    /* expression for starting bound, if any */
-    std::vector<std::string> partitions_; /* PARTITION BY expression list */
-    std::vector<std::string> orders_;     /* ORDER BY (list of SortBy) */
+    std::string window_name_;  /* window's own name */
+    FrameNode *frame_ptr_;     /* expression for starting bound, if any */
+    ExprListNode *partitions_; /* PARTITION BY expression list */
+    OrderByNode *orders_;      /* ORDER BY (list of SortBy) */
 };
 
 class AllNode : public ExprNode {
@@ -1151,8 +1156,9 @@ class CmdNode : public SQLNode {
 class ExplainNode : public SQLNode {
  public:
     explicit ExplainNode(const QueryNode *query, node::ExplainType explain_type)
-        : SQLNode(kExplainSmt, 0, 0), explain_type_(explain_type),
-                  query_(query) {}
+        : SQLNode(kExplainSmt, 0, 0),
+          explain_type_(explain_type),
+          query_(query) {}
     void Print(std::ostream &output, const std::string &org_tab) const;
 
     const node::ExplainType explain_type_;

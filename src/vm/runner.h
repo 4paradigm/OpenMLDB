@@ -21,8 +21,8 @@
 namespace fesql {
 namespace vm {
 
-using codec::Row;
 using base::Status;
+using codec::Row;
 using codec::RowView;
 using vm::DataHandler;
 using vm::PartitionHandler;
@@ -32,8 +32,7 @@ using vm::Window;
 class RunnerContext {
  public:
     RunnerContext() : request_(), cache_() {}
-    explicit RunnerContext(const Row& request)
-        : request_(request), cache_() {}
+    explicit RunnerContext(const Row& request) : request_(request), cache_() {}
     const Row request_;
     std::map<int32_t, std::shared_ptr<DataHandler>> cache_;
 };
@@ -85,9 +84,12 @@ class Runner {
         RunnerContext& ctx);  // NOLINT
 
  protected:
-    Row WindowProject(const int8_t* fn, const uint64_t key, const Row slice,
-                        Window* window);
-    Row RowProject(const int8_t* fn, const Row slice);
+    Row WindowProject(const int8_t* fn, const uint64_t key, const Row row,
+                      Window* window);
+    Row RowProject(const int8_t* fn, const Row row,
+                   const bool need_free = false);
+    Row MultiRowsProject(const int8_t* fn, const std::vector<Row>& rows,
+                         const bool need_free = false);
 
     std::string GetColumnString(RowView* view, int pos, type::Type type);
     int64_t GetColumnInt64(RowView* view, int pos, type::Type type);
@@ -121,7 +123,8 @@ class DataRunner : public Runner {
         : Runner(id), data_handler_(data_hander) {}
     ~DataRunner() {}
     virtual void Print(std::ostream& output, const std::string& tab) const {
-        output << tab <<"[" << id_ << "]" << "DATA";
+        output << tab << "[" << id_ << "]"
+               << "DATA";
         Runner::Print(output, tab);
     }
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
@@ -134,7 +137,8 @@ class RequestRunner : public Runner {
         : Runner(id), request_schema(schema) {}
     ~RequestRunner() {}
     virtual void Print(std::ostream& output, const std::string& tab) const {
-        output << tab <<"[" << id_ << "]" << "REQUEST";
+        output << tab << "[" << id_ << "]"
+               << "REQUEST";
         Runner::Print(output, tab);
     }
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
@@ -147,7 +151,8 @@ class GroupRunner : public Runner {
         : Runner(id, fn, fn_schema, limit_cnt), idxs_(idxs) {}
     ~GroupRunner() {}
     virtual void Print(std::ostream& output, const std::string& tab) const {
-        output << tab <<"[" << id_ << "]" << "GROUP";
+        output << tab << "[" << id_ << "]"
+               << "GROUP";
         Runner::Print(output, tab);
     }
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
@@ -161,7 +166,8 @@ class FilterRunner : public Runner {
         : Runner(id, fn, fn_schema, limit_cnt), idxs_(idxs) {}
     ~FilterRunner() {}
     virtual void Print(std::ostream& output, const std::string& tab) const {
-        output << tab <<"[" << id_ << "]" << "FILTER";
+        output << tab << "[" << id_ << "]"
+               << "FILTER";
         Runner::Print(output, tab);
     }
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
@@ -176,7 +182,8 @@ class OrderRunner : public Runner {
     ~OrderRunner() {}
 
     virtual void Print(std::ostream& output, const std::string& tab) const {
-        output << tab <<"[" << id_ << "]" << "ORDER";
+        output << tab << "[" << id_ << "]"
+               << "ORDER";
         Runner::Print(output, tab);
     }
 
@@ -198,7 +205,8 @@ class GroupAndSortRunner : public Runner {
           is_asc_(is_asc) {}
     ~GroupAndSortRunner() {}
     virtual void Print(std::ostream& output, const std::string& tab) const {
-        output << tab <<"[" << id_ << "]" << "GROUP_AND_SORT";
+        output << tab << "[" << id_ << "]"
+               << "GROUP_AND_SORT";
         Runner::Print(output, tab);
     }
 
@@ -215,7 +223,8 @@ class TableProjectRunner : public Runner {
         : Runner(id, fn, fn_schema, limit_cnt) {}
     ~TableProjectRunner() {}
     virtual void Print(std::ostream& output, const std::string& tab) const {
-        output << tab <<"[" << id_ << "]" << "TABLE_PROJECT";
+        output << tab << "[" << id_ << "]"
+               << "TABLE_PROJECT";
         Runner::Print(output, tab);
     }
 
@@ -229,7 +238,8 @@ class RowProjectRunner : public Runner {
         : Runner(id, fn, fn_schema, limit_cnt) {}
     ~RowProjectRunner() {}
     virtual void Print(std::ostream& output, const std::string& tab) const {
-        output << tab <<"[" << id_ << "]" << "ROW_PROJECT";
+        output << tab << "[" << id_ << "]"
+               << "ROW_PROJECT";
         Runner::Print(output, tab);
     }
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
@@ -242,7 +252,8 @@ class GroupAggRunner : public Runner {
         : Runner(id, fn, fn_schema, limit_cnt) {}
     ~GroupAggRunner() {}
     virtual void Print(std::ostream& output, const std::string& tab) const {
-        output << tab <<"[" << id_ << "]" << "GROUP_AGG_PROJECT";
+        output << tab << "[" << id_ << "]"
+               << "GROUP_AGG_PROJECT";
         Runner::Print(output, tab);
     }
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
@@ -255,7 +266,8 @@ class AggRunner : public Runner {
         : Runner(id, fn, fn_schema, limit_cnt) {}
     ~AggRunner() {}
     virtual void Print(std::ostream& output, const std::string& tab) const {
-        output << tab <<"[" << id_ << "]" << "AGG_PROJECT";
+        output << tab << "[" << id_ << "]"
+               << "AGG_PROJECT";
         Runner::Print(output, tab);
     }
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
@@ -274,7 +286,8 @@ class WindowAggRunner : public Runner {
           end_offset_(end_offset) {}
     ~WindowAggRunner() {}
     virtual void Print(std::ostream& output, const std::string& tab) const {
-        output << tab <<"[" << id_ << "]" << "WINDOW_AGG_PROJECT";
+        output << tab << "[" << id_ << "]"
+               << "WINDOW_AGG_PROJECT";
         Runner::Print(output, tab);
     }
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
@@ -301,7 +314,8 @@ class RequestUnionRunner : public Runner {
           end_offset_(end_offset) {}
     ~RequestUnionRunner() {}
     virtual void Print(std::ostream& output, const std::string& tab) const {
-        output << tab <<"[" << id_ << "]" << "REQUEST_UNION";
+        output << tab << "[" << id_ << "]"
+               << "REQUEST_UNION";
         Runner::Print(output, tab);
     }
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
@@ -316,13 +330,14 @@ class RequestUnionRunner : public Runner {
 class RequestLastJoinRunner : public Runner {
  public:
     RequestLastJoinRunner(const int32_t id, const int8_t* fn,
-                       const Schema& fn_schema, const int32_t limit_cnt,
-                       const std::vector<int32_t>& condition_idxs)
+                          const Schema& fn_schema, const int32_t limit_cnt,
+                          const std::vector<int32_t>& condition_idxs)
         : Runner(id, fn, fn_schema, limit_cnt),
           condition_idxs_(condition_idxs) {}
     ~RequestLastJoinRunner() {}
     virtual void Print(std::ostream& output, const std::string& tab) const {
-        output << tab <<"[" << id_ << "]" << "REQUEST_LASTJOIN";
+        output << tab << "[" << id_ << "]"
+               << "REQUEST_LASTJOIN";
         Runner::Print(output, tab);
     }
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
@@ -334,7 +349,8 @@ class LimitRunner : public Runner {
     LimitRunner(int32_t id, int32_t limit_cnt) : Runner(id, limit_cnt) {}
     ~LimitRunner() {}
     virtual void Print(std::ostream& output, const std::string& tab) const {
-        output << tab <<"[" << id_ << "]" << "LIMIT";
+        output << tab << "[" << id_ << "]"
+               << "LIMIT";
         Runner::Print(output, tab);
     }
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
@@ -348,7 +364,8 @@ class IndexSeekRunner : public Runner {
 
     ~IndexSeekRunner() {}
     virtual void Print(std::ostream& output, const std::string& tab) const {
-        output << tab <<"[" << id_ << "]" << "INDEX_SEEK";
+        output << tab << "[" << id_ << "]"
+               << "INDEX_SEEK";
         Runner::Print(output, tab);
     }
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
