@@ -3764,6 +3764,36 @@ void NameServerImpl::CreateTable(RpcController* controller,
         }
         cur_term = term_;
     }
+    if (table_info->table_type() == ::rtidb::type::kObjectStore) {
+        ::rtidb::blobserver::TableMeta meta;
+        meta.set_tid(table_info->tid());
+        meta.set_pid(0);
+        meta.set_name(table_info->name());
+        std::shared_ptr<BlobServerInfo> blob;
+        {
+            std::lock_guard<std::mutex> lock(mu_);
+            for (auto tit = blob_servers_.begin(); tit != blob_servers_.end(); ++tit) {
+                if (tit->second->state_ == TabletState::kTabletHealthy) {
+                    blob = tit->second;
+                }
+            }
+        }
+        if (!blob) {
+            response->set_code(::rtidb::base::ReturnCode::kSetPartitionInfoFailed);
+            return;
+        }
+        std::string msg;
+        bool ok = blob->client_->CreateTable(meta, &msg);
+        if (!ok) {
+            response->set_code(::rtidb::base::kCreateTableFailed);
+            response->set_msg(msg);
+            return;
+        }
+        std::lock_guard<std::mutex> lock(mu_);
+        table_info_.insert(std::make_pair(table_info->name(), table_info));
+        response->set_code(::rtidb::base::ReturnCode::kOk);
+        return;
+    }
     std::vector<::rtidb::base::ColumnDesc> columns;
     if (!table_info->has_table_type() || table_info->table_type() == ::rtidb::type::kTimeSeries) {
         if (::rtidb::base::SchemaCodec::ConvertColumnDesc(*table_info, columns) < 0) {
