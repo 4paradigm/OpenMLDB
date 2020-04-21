@@ -28,6 +28,7 @@ class SchemasContext {
         const std::vector<std::pair<const std::string, const vm::Schema*>>&
             table_schema_list);
 
+    virtual ~SchemasContext() {}
     bool ExprListResolved(std::vector<node::ExprNode*> expr_list,
                           const RowSchemaInfo** info) const;
     bool ExprRefResolved(const node::ExprNode* expr,

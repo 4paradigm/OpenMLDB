@@ -17,7 +17,7 @@ add_library(fesql_codegen STATIC
         list_ir_builder.cc
         predicate_expr_ir_builder.cc)
 
-set(vm_deps_libs fesql_storage fesql_parser fesql_planner fesql_codegen fesql_vm fesql_udf fesql_codec fesql_proto
+set(vm_deps_libs fesql_storage fesql_vm fesql_parser fesql_planner fesql_codegen fesql_vm fesql_udf fesql_codec fesql_proto
         fesql_node fesql_base)
 
 add_executable(ir_base_builder_test ir_base_builder_test.cc)
