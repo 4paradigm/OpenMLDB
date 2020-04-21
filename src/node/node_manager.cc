@@ -82,39 +82,9 @@ SQLNode *NodeManager::MakeWindowDefNode(ExprListNode *partitions,
             delete node_ptr;
             return nullptr;
         }
-        auto expr_list = dynamic_cast<OrderByNode *>(orders)->order_by_;
-        for (auto expr : expr_list->children_) {
-            switch (expr->GetExprType()) {
-                case kExprColumnRef:
-                    // TODO(chenjing): window 支持未来窗口
-                    node_ptr->GetOrders().push_back(
-                        dynamic_cast<const ColumnRefNode *>(expr)
-                            ->GetColumnName());
-                    break;
-                    // TODO(chenjing): 支持复杂表达式作为order列
-                default: {
-                    LOG(WARNING)
-                        << "fail to create window node with invalid expr";
-                    delete node_ptr;
-                    return nullptr;
-                }
-            }
-        }
+        node_ptr->SetOrders(dynamic_cast<OrderByNode *>(orders));
     }
-
-    for (auto expr : partitions->children_) {
-        switch (expr->GetExprType()) {
-            case kExprColumnRef:
-                node_ptr->GetPartitions().push_back(
-                    dynamic_cast<ColumnRefNode *>(expr)->GetColumnName());
-                break;
-            default: {
-                LOG(WARNING) << "fail to create window node with invalid expr";
-                delete node_ptr;
-                return nullptr;
-            }
-        }
-    }
+    node_ptr->SetPartitions(partitions);
     node_ptr->SetFrame(dynamic_cast<FrameNode *>(frame));
     return RegisterNode(node_ptr);
 }

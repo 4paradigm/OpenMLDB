@@ -149,6 +149,8 @@ bool BatchModeTransformer::TransformPlanOp(const ::fesql::node::PlanNode* node,
         }
     }
     if (!ok) {
+        LOG(WARNING) << "fail to tranform physical plan: fail node " +
+                            node::NameOfPlanNodeType(node->type_);
         return false;
     }
     op_map_[logical_op] = op;
@@ -279,8 +281,8 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
             node::ExprListNode expr_list;
             expr_list.AddChild(
                 const_cast<node::ExprNode*>(join_op->condition_));
-            CodeGenExprList(node->output_name_schema_list_,
-                            &expr_list, true, fn_name, &fn_schema, status);
+            CodeGenExprList(node->output_name_schema_list_, &expr_list, true,
+                            fn_name, &fn_schema, status);
             join_op->SetConditionIdxs({0});
             break;
         }
@@ -453,15 +455,8 @@ bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
         LOG(WARNING) << status.msg;
         return false;
     }
-    node::OrderByNode* orders = nullptr;
-    node::ExprListNode* groups = nullptr;
-    if (!w_ptr->ExtractWindowGroupsAndOrders(&groups, &orders)) {
-        status.msg =
-            "fail to transform window aggeration: gourps and orders is "
-            "null";
-        LOG(WARNING) << status.msg;
-        return false;
-    }
+    const node::OrderByNode* orders = w_ptr->GetOrders();
+    const node::ExprListNode* groups = w_ptr->GetKeys();
 
     if (kPhysicalOpDataProvider == depend->type_) {
         auto data_op = dynamic_cast<PhysicalDataProviderNode*>(depend);
@@ -916,12 +911,13 @@ bool BatchModeTransformer::TransformPhysicalPlan(
             case ::fesql::node::kPlanTypeQuery: {
                 PhysicalOpNode* physical_plan = nullptr;
                 if (!TransformQueryPlan(node, &physical_plan, status)) {
+                    LOG(WARNING)
+                        << "fail to transform query plan to physical plan";
                     return false;
                 }
                 ApplyPasses(physical_plan, output);
                 if (!GenPlanNode(*output, status)) {
                     LOG(WARNING) << "fail to gen plan";
-
                     return false;
                 }
                 break;
