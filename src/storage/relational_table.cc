@@ -412,7 +412,7 @@ bool RelationalTable::GetPackedField(const int8_t* row, uint32_t idx,
     return true;
 }
 
-bool RelationalTable::GetPackedField(const ::rtidb::base::RowView& view,
+bool RelationalTable::GetPackedField(::rtidb::base::RowView* view,
                                      uint32_t idx,
                                      const ::rtidb::type::DataType& data_type,
                                      std::string* key) {
@@ -421,7 +421,7 @@ bool RelationalTable::GetPackedField(const ::rtidb::base::RowView& view,
     switch (data_type) {
         case ::rtidb::type::kSmallInt: {
             int16_t si_val = 0;
-            get_value_ret = view.GetInt16(idx, &si_val);
+            get_value_ret = view->GetInt16(idx, &si_val);
             key->resize(sizeof(int16_t));
             char* to = const_cast<char*>(key->data());
             ret =
@@ -430,7 +430,7 @@ bool RelationalTable::GetPackedField(const ::rtidb::base::RowView& view,
         }
         case ::rtidb::type::kInt: {
             int32_t i_val = 0;
-            get_value_ret = view.GetInt32(idx, &i_val);
+            get_value_ret = view->GetInt32(idx, &i_val);
             key->resize(sizeof(int32_t));
             char* to = const_cast<char*>(key->data());
             ret =
@@ -439,7 +439,7 @@ bool RelationalTable::GetPackedField(const ::rtidb::base::RowView& view,
         }
         case ::rtidb::type::kBigInt: {
             int64_t bi_val = 0;
-            get_value_ret = view.GetInt64(idx, &bi_val);
+            get_value_ret = view->GetInt64(idx, &bi_val);
             key->resize(sizeof(int64_t));
             char* to = const_cast<char*>(key->data());
             ret =
@@ -450,7 +450,7 @@ bool RelationalTable::GetPackedField(const ::rtidb::base::RowView& view,
         case ::rtidb::type::kString: {
             char* ch = NULL;
             uint32_t length = 0;
-            get_value_ret = view.GetString(idx, &ch, &length);
+            get_value_ret = view->GetString(idx, &ch, &length);
             int32_t dst_len = ::rtidb::base::GetDstStrSize(length);
             key->resize(dst_len);
             char* dst = const_cast<char*>(key->data());
@@ -460,7 +460,7 @@ bool RelationalTable::GetPackedField(const ::rtidb::base::RowView& view,
         }
         case ::rtidb::type::kFloat: {
             float val = 0.0;
-            get_value_ret = view.GetFloat(idx, &val);
+            get_value_ret = view->GetFloat(idx, &val);
             key->resize(sizeof(float));
             char* to = const_cast<char*>(key->data());
             ret = ::rtidb::base::PackFloat(&val, to);
@@ -468,7 +468,7 @@ bool RelationalTable::GetPackedField(const ::rtidb::base::RowView& view,
         }
         case ::rtidb::type::kDouble: {
             double val = 0.0;
-            get_value_ret = view.GetDouble(idx, &val);
+            get_value_ret = view->GetDouble(idx, &val);
             key->resize(sizeof(double));
             char* to = const_cast<char*>(key->data());
             ret = ::rtidb::base::PackDouble(&val, to);

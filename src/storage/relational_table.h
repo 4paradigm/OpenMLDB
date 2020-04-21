@@ -184,7 +184,7 @@ class RelationalTable {
     bool GetPackedField(const int8_t* row, uint32_t idx,
                         const ::rtidb::type::DataType& data_type,
                         std::string* key);
-    bool GetPackedField(const ::rtidb::base::RowView& view, uint32_t idx,
+    bool GetPackedField(::rtidb::base::RowView* view, uint32_t idx,
                         const ::rtidb::type::DataType& data_type,
                         std::string* key);
     bool ConvertIndex(const std::string& name, const std::string& value,
