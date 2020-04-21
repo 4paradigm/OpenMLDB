@@ -19,6 +19,7 @@
 #include "base/strings.h"
 #include "logging.h"  // NOLINT
 #include "storage/segment.h"
+#include "boost/container/deque.hpp"
 
 using ::rtidb::storage::DataBlock;
 
@@ -81,8 +82,8 @@ static inline int32_t EncodeRows(const std::vector<::rtidb::base::Slice>& rows,
 }
 
 static inline int32_t EncodeRows(
-    const std::vector<
-        std::pair<uint64_t, std::unique_ptr<::rtidb::base::Slice>>>& rows,
+    const boost::container::deque<
+        std::pair<uint64_t, ::rtidb::base::Slice>>& rows,
     uint32_t total_block_size, std::string* pairs) {
     if (pairs == NULL) {
         PDLOG(WARNING, "invalid output pairs");
@@ -97,9 +98,9 @@ static inline int32_t EncodeRows(
     char* rbuffer = reinterpret_cast<char*>(&((*pairs)[0]));
     uint32_t offset = 0;
     for (auto lit = rows.begin(); lit != rows.end(); ++lit) {
-        ::rtidb::base::Encode(lit->first, lit->second->data(),
-                              lit->second->size(), rbuffer, offset);
-        offset += (4 + 8 + lit->second->size());
+        ::rtidb::base::Encode(lit->first, lit->second.data(),
+                              lit->second.size(), rbuffer, offset);
+        offset += (4 + 8 + lit->second.size());
     }
     return total_size;
 }

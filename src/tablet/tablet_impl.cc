@@ -17,6 +17,7 @@
 #include <utility>
 #include <vector>
 #include "config.h"  // NOLINT
+#include "boost/container/deque.hpp"
 #ifdef TCMALLOC_ENABLE
 #include "gperftools/malloc_extension.h"
 #endif
@@ -1064,8 +1065,7 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
         it->SeekToFirst();
     }
     uint64_t last_time = 0;
-    std::vector<std::pair<uint64_t, std::unique_ptr<::rtidb::base::Slice>>> tmp;
-    tmp.reserve(FLAGS_scan_reserve_size);
+    boost::container::deque<std::pair<uint64_t, ::rtidb::base::Slice>> tmp;
     uint32_t total_block_size = 0;
     while (it->Valid()) {
         if (limit > 0 && tmp.size() >= limit) {
@@ -1133,16 +1133,11 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
                 PDLOG(WARNING, "fail to make a projection");
                 return -4;
             }
-            std::unique_ptr<::rtidb::base::Slice> value(
-                new ::rtidb::base::Slice(reinterpret_cast<char*>(ptr), size,
-                                         true));
-            tmp.push_back(std::make_pair(it->GetKey(), std::move(value)));
+            tmp.emplace_back(it->GetKey(), std::move(Slice(reinterpret_cast<char*>(ptr), size, true)));
             total_block_size += size;
         } else {
-            std::unique_ptr<::rtidb::base::Slice> value(
-                new ::rtidb::base::Slice(it->GetValue()));
-            total_block_size += value->size();
-            tmp.push_back(std::make_pair(it->GetKey(), std::move(value)));
+            total_block_size += it->GetValue().size();
+            tmp.emplace_back(it->GetKey(), std::move(Slice(it->GetValue())));
         }
         it->Next();
         if (total_block_size > FLAGS_scan_max_bytes_size) {

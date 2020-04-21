@@ -25,14 +25,13 @@ class CodecBenchmarkTest : public ::testing::Test {
 };
 
 void RunHasTs(::rtidb::storage::DataBlock* db) {
-    std::vector<std::pair<uint64_t, std::unique_ptr<::rtidb::base::Slice>>>
+    boost::container::deque<std::pair<uint64_t, ::rtidb::base::Slice>>
         datas;
-    datas.reserve(1000);
     uint32_t total_block_size = 0;
     for (uint32_t i = 0; i < 1000; i++) {
-        datas.push_back(std::make_pair(
-            1000, std::unique_ptr<::rtidb::base::Slice>(
-                      new ::rtidb::base::Slice(db->data, db->size))));
+        datas.emplace_back(
+            1000, 
+                    std::move( ::rtidb::base::Slice(db->data, db->size)));
         total_block_size += db->size;
     }
     std::string pairs;
