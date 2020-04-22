@@ -24,9 +24,7 @@ struct RowSchemaInfo {
 };
 class SchemasContext {
  public:
-    SchemasContext(
-        const std::vector<std::pair<const std::string, const vm::Schema*>>&
-            table_schema_list);
+    explicit SchemasContext(const vm::NameSchemaList& table_schema_list);
 
     virtual ~SchemasContext() {}
     bool ExprListResolved(std::vector<node::ExprNode*> expr_list,

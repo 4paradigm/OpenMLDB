@@ -55,10 +55,10 @@ ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
     for (auto info : schemas_context->row_schema_info_list_) {
         row_ir_builder_list_.push_back(std::unique_ptr<RowDecodeIRBuilder>(
             new BufNativeIRBuilder(*info.schema_, block, sv_)));
-        window_ir_builder_list_.push_back(
-            std::unique_ptr<WindowDecodeIRBuilder>(
-                new MemoryWindowDecodeIRBuilder(*info.schema_, block)));
     }
+    window_ir_builder_ =
+        std::unique_ptr<WindowDecodeIRBuilder>(new MemoryWindowDecodeIRBuilder(
+            schemas_context->row_schema_info_list_, block));
 }
 ExprIRBuilder::~ExprIRBuilder() {}
 
@@ -389,30 +389,18 @@ bool ExprIRBuilder::BuildColumnIterator(const std::string& relation_name,
         return true;
     }
 
-    ::llvm::Value* row_ptr = NULL;
-    ok = variable_ir_builder_.LoadArrayIndex("window_ptrs", info->idx_,
-                                             &row_ptr, status);
+    ::llvm::Value* window_ptr = NULL;
+    ok = variable_ir_builder_.LoadValue("window_ptr", &window_ptr, status);
 
-    if (!ok || row_ptr == NULL) {
-        status.msg = "fail to find window_ptrs[" + std::to_string(info->idx_) +
-                     "]: " + status.msg;
+    if (!ok || window_ptr == NULL) {
+        status.msg = "fail to find window_ptr: " + status.msg;
         LOG(WARNING) << status.msg;
         return false;
     }
 
-    ::llvm::Value* row_size = NULL;
-    ok = variable_ir_builder_.LoadArrayIndex("row_sizes", info->idx_, &row_size,
-                                             status);
-    if (!ok || row_size == NULL) {
-        status.msg = "fail to find row_sizes[" + std::to_string(info->idx_) +
-                     "]: " + status.msg;
-        LOG(WARNING) << status.msg;
-        status.code = common::kCodegenError;
-        return false;
-    }
     DLOG(INFO) << "get table column " << col;
     // NOT reuse for iterator
-    ok = window_ir_builder_list_[info->idx_]->BuildGetCol(col, row_ptr, &value);
+    ok = window_ir_builder_->BuildGetCol(col, window_ptr, info->idx_, &value);
 
     if (!ok || value == NULL) {
         status.msg = "fail to find column " + col;

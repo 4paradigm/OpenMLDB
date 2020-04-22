@@ -247,7 +247,7 @@ void BuildT2Rows(::fesql::type::TableDef& table,  // NOLINT
         builder.AppendString(str.c_str(), 1);
         builder.AppendFloat(1.1f);
         builder.AppendDouble(11.1);
-        builder.AppendInt16(5);
+        builder.AppendInt16(50);
         builder.AppendInt32(1);
         builder.AppendInt64(1);
         rows.push_back(Row(ptr, total_size));
@@ -263,7 +263,7 @@ void BuildT2Rows(::fesql::type::TableDef& table,  // NOLINT
         builder.AppendString(str.c_str(), str.size());
         builder.AppendFloat(2.2f);
         builder.AppendDouble(22.2);
-        builder.AppendInt16(5);
+        builder.AppendInt16(50);
         builder.AppendInt32(2);
         builder.AppendInt64(2);
         rows.push_back(Row(ptr, total_size));
@@ -279,7 +279,7 @@ void BuildT2Rows(::fesql::type::TableDef& table,  // NOLINT
         builder.AppendString(str.c_str(), str.size());
         builder.AppendFloat(3.3f);
         builder.AppendDouble(33.3);
-        builder.AppendInt16(55);
+        builder.AppendInt16(550);
         builder.AppendInt32(3);
         builder.AppendInt64(1);
         rows.push_back(Row(ptr, total_size));
@@ -295,7 +295,7 @@ void BuildT2Rows(::fesql::type::TableDef& table,  // NOLINT
         builder.AppendString(str.c_str(), str.size());
         builder.AppendFloat(4.4f);
         builder.AppendDouble(44.4);
-        builder.AppendInt16(55);
+        builder.AppendInt16(550);
         builder.AppendInt32(4);
         builder.AppendInt64(2);
         rows.push_back(Row(ptr, total_size));
@@ -311,7 +311,7 @@ void BuildT2Rows(::fesql::type::TableDef& table,  // NOLINT
         builder.AppendString(str.c_str(), str.size());
         builder.AppendFloat(5.5f);
         builder.AppendDouble(55.5);
-        builder.AppendInt16(55);
+        builder.AppendInt16(550);
         builder.AppendInt32(5);
         builder.AppendInt64(3);
         rows.push_back(Row(ptr, total_size));

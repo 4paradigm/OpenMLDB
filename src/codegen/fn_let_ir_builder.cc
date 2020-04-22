@@ -40,7 +40,7 @@ RowFnLetIRBuilder::RowFnLetIRBuilder(
 RowFnLetIRBuilder::~RowFnLetIRBuilder() {}
 
 /**
- * Codegen For int32 RowFnLetUDF(int_8* row_ptrs, int8_t* window_ptrs, int32 *
+ * Codegen For int32 RowFnLetUDF(int_8* row_ptrs, int8_t* window_ptr, int32 *
  * row_sizes, int8_t * output_ptr)
  * @param name
  * @param projects
@@ -62,15 +62,14 @@ bool RowFnLetIRBuilder::Build(
     std::vector<::llvm::Type*> args_llvm_type;
     args_llvm_type.push_back(
         ::llvm::Type::getInt8PtrTy(module_->getContext())->getPointerTo());
-    args_llvm_type.push_back(
-        ::llvm::Type::getInt8PtrTy(module_->getContext())->getPointerTo());
+    args_llvm_type.push_back(::llvm::Type::getInt8PtrTy(module_->getContext()));
     args_llvm_type.push_back(
         ::llvm::Type::getInt32Ty(module_->getContext())->getPointerTo());
     args_llvm_type.push_back(
         ::llvm::Type::getInt8PtrTy(module_->getContext())->getPointerTo());
 
     args.push_back("row_ptrs");
-    args.push_back("window_ptrs");
+    args.push_back("window_ptr");
     args.push_back("row_sizes");
     args.push_back(output_ptr_name);
 

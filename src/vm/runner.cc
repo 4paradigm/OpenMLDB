@@ -275,8 +275,8 @@ Row Runner::RowProject(const int8_t* fn, const Row row, const bool need_free) {
     if (row.empty()) {
         return Row();
     }
-    int32_t (*udf)(int8_t**, int8_t**, int32_t*, int8_t**) =
-        (int32_t(*)(int8_t**, int8_t**, int32_t*, int8_t**))(fn);
+    int32_t (*udf)(int8_t**, int8_t*, int32_t*, int8_t**) =
+        (int32_t(*)(int8_t**, int8_t*, int32_t*, int8_t**))(fn);
 
     int8_t* buf = nullptr;
     int8_t** row_ptrs = row.GetRowPtrs();
@@ -1169,14 +1169,14 @@ const Row AggGenerator::Gen(std::shared_ptr<TableHandler> table) {
         return Row();
     }
     auto& row = iter->GetValue();
-    int32_t (*udf)(int8_t**, int8_t**, int32_t*, int8_t**) =
-        (int32_t(*)(int8_t**, int8_t**, int32_t*, int8_t**))(fn_);
+    int32_t (*udf)(int8_t**, int8_t*, int32_t*, int8_t**) =
+        (int32_t(*)(int8_t**, int8_t*, int32_t*, int8_t**))(fn_);
     int8_t* buf = nullptr;
 
-    int8_t* row_ptrs[1] = {row.buf()};
-    int8_t* window_ptrs[1] = {reinterpret_cast<int8_t*>(table.get())};
-    int32_t row_sizes[1] = {static_cast<int32_t>(row.size())};
-    uint32_t ret = udf(row_ptrs, window_ptrs, row_sizes, &buf);
+    int8_t** row_ptrs = row.GetRowPtrs();
+    int8_t* window_ptr = reinterpret_cast<int8_t*>(table.get());
+    int32_t* row_sizes = row.GetRowSizes();
+    uint32_t ret = udf(row_ptrs, window_ptr, row_sizes, &buf);
     if (ret != 0) {
         LOG(WARNING) << "fail to run udf " << ret;
         return Row();
@@ -1189,13 +1189,13 @@ const Row WindowGenerator::Gen(const uint64_t key, const Row row,
         return row;
     }
     window->BufferData(key, row);
-    int32_t (*udf)(int8_t**, int8_t**, int32_t*, int8_t**) =
-        (int32_t(*)(int8_t**, int8_t**, int32_t*, int8_t**))(fn_);
+    int32_t (*udf)(int8_t**, int8_t*, int32_t*, int8_t**) =
+        (int32_t(*)(int8_t**, int8_t*, int32_t*, int8_t**))(fn_);
     int8_t* out_buf = nullptr;
-    int8_t* row_ptrs[1] = {row.buf()};
-    int8_t* window_ptrs[1] = {reinterpret_cast<int8_t*>(window)};
-    int32_t row_sizes[1] = {static_cast<int32_t>(row.size())};
-    uint32_t ret = udf(row_ptrs, window_ptrs, row_sizes, &out_buf);
+    int8_t** row_ptrs = row.GetRowPtrs();
+    int8_t* window_ptr = reinterpret_cast<int8_t*>(window);
+    int32_t* row_sizes = row.GetRowSizes();
+    uint32_t ret = udf(row_ptrs, window_ptr, row_sizes, &out_buf);
     if (ret != 0) {
         LOG(WARNING) << "fail to run udf " << ret;
         return Row();

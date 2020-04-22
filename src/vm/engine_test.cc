@@ -657,7 +657,7 @@ TEST_P(EngineTest, test_last_join_match_index) {
 }
 
 // 命中索引last join
-TEST_P(EngineTest, test_last_join_window_agg) {
+TEST_F(EngineTest, test_last_join_window_agg) {
     type::TableDef table_def;
     BuildTableDef(table_def);
     ::fesql::type::IndexDef* index = table_def.add_indexes();
@@ -671,7 +671,6 @@ TEST_P(EngineTest, test_last_join_window_agg) {
     int8_t* rows = NULL;
     std::vector<Row> windows;
     BuildWindow(windows, &rows);
-    StoreData(table.get(), rows);
 
     type::TableDef table_def2;
     BuildTableT2Def(table_def2);
@@ -721,10 +720,11 @@ TEST_P(EngineTest, test_last_join_window_agg) {
         "SELECT "
         "test_sum(t1.col1) OVER w1 as w1_col1_sum, "
         "sum(t1.col3) OVER w1 as w1_col3_sum, "
-        "sum(t2.col4) OVER w1 as w1_col4_sum, "
-        "sum(t2.col2) OVER w1 as w1_col2_sum, "
+        "sum(t2.col4) OVER w1 as w1_t2_col4_sum, "
+        "sum(t2.col2) OVER w1 as w1_t2_col2_sum, "
         "sum(t1.col5) OVER w1 as w1_col5_sum, "
-        "test_at_0(t2.col1) OVER w1 as w1_col1_at0 "
+        "test_at_0(t1.col1) OVER w1 as w1_t1_col1_at0, "
+        "str1 as t2_str1 "
         "FROM t1 last join t2 on t1.col1=t2.col1 and t1.col5 = t2.col5 "
         "WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.col5 ROWS BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;";
@@ -736,7 +736,6 @@ TEST_P(EngineTest, test_last_join_window_agg) {
     vm::Schema schema;
 
     {
-        int32_t ret = -1;
         RequestRunSession session;
         session.EnableDebug();
         bool ok = engine.Get(sql, "db", session, get_status);
@@ -750,17 +749,19 @@ TEST_P(EngineTest, test_last_join_window_agg) {
         std::ostringstream runner_oss;
         session.GetRunner()->Print(runner_oss, "");
         std::cout << "runner plan:\n" << runner_oss.str() << std::endl;
-        int32_t limit = 2;
-        auto iter = catalog->GetTable("db", "t1")->GetIterator();
-        while (limit-- > 0 && iter->Valid()) {
+        int32_t limit = 10;
+        auto iter = windows.cbegin();
+        while (limit-- > 0 && iter != windows.cend()) {
+            Row request = *iter;
             Row row;
-            ret = session.Run(Row(iter->GetValue()), &row);
+            int32_t ret = session.Run(request, &row);
             ASSERT_EQ(0, ret);
             output.push_back(row.buf());
-            iter->Next();
+            iter++;
+            ASSERT_TRUE(table->Put(request.data(), request.size()));
         }
     }
-    ASSERT_EQ(2u, output.size());
+    ASSERT_EQ(5u, output.size());
 
     ::fesql::type::TableDef output_schema;
     for (auto column : schema) {
@@ -771,53 +772,83 @@ TEST_P(EngineTest, test_last_join_window_agg) {
     std::unique_ptr<codec::RowView> row_view =
         std::move(std::unique_ptr<codec::RowView>(
             new codec::RowView(output_schema.columns())));
+    int8_t* output_1 = output[0];
+    int8_t* output_22 = output[1];
 
-    row_view->Reset(output[0]);
+    int8_t* output_333 = output[2];
+    int8_t* output_4444 = output[3];
+    int8_t* output_aaa = output[4];
+
+    ASSERT_EQ(5u, output.size());
+
+    ASSERT_EQ(1, *(reinterpret_cast<int32_t*>(output_1 + 7)));
+    ASSERT_EQ(1.1f, *(reinterpret_cast<float*>(output_1 + 7 + 4)));
+    ASSERT_EQ(11.1, *(reinterpret_cast<double*>(output_1 + 7 + 4 + 4)));
+    ASSERT_EQ(50, *(reinterpret_cast<int16_t*>(output_1 + 7 + 4 + 4 + 8)));
+    ASSERT_EQ(1L, *(reinterpret_cast<int64_t*>(output_1 + 7 + 4 + 4 + 8 + 2)));
+    ASSERT_EQ(1,
+              *(reinterpret_cast<int32_t*>(output_1 + 7 + 4 + 4 + 8 + 2 + 8)));
     {
-        char* v = nullptr;
-        uint32_t size;
-        row_view->GetString(0, &v, &size);
-        ASSERT_EQ("2", std::string(v, size));
-    }
-    {
-        int32_t v;
-        row_view->GetInt32(1, &v);
-        ASSERT_EQ(5 + 5 + 1, v);
-    }
-    {
-        int16_t v;
-        row_view->GetInt16(2, &v);
-        ASSERT_EQ(55, v);
-    }
-    {
-        char* v = nullptr;
-        uint32_t size;
-        row_view->GetString(3, &v, &size);
-        ASSERT_EQ("EEEEE", std::string(v, size));
+        row_view->Reset(output_1);
+        ASSERT_EQ("A", row_view->GetAsString(6));
     }
 
-    row_view->Reset(output[1]);
+    ASSERT_EQ(1 + 2, *(reinterpret_cast<int32_t*>(output_22 + 7)));
+    ASSERT_EQ(1.1f + 2.2f, *(reinterpret_cast<float*>(output_22 + 7 + 4)));
+    ASSERT_EQ(11.1 + 22.2, *(reinterpret_cast<double*>(output_22 + 7 + 4 + 4)));
+    ASSERT_EQ(50 + 50,
+              *(reinterpret_cast<int16_t*>(output_22 + 7 + 4 + 4 + 8)));
+    ASSERT_EQ(1L + 2L,
+              *(reinterpret_cast<int64_t*>(output_22 + 7 + 4 + 4 + 8 + 2)));
+    ASSERT_EQ(2,
+              *(reinterpret_cast<int32_t*>(output_22 + 7 + 4 + 4 + 8 + 2 + 8)));
     {
-        char* v = nullptr;
-        uint32_t size;
-        row_view->GetString(0, &v, &size);
-        ASSERT_EQ("1", std::string(v, size));
+        row_view->Reset(output_22);
+        ASSERT_EQ("BB", row_view->GetAsString(6));
     }
+
+    ASSERT_EQ(3, *(reinterpret_cast<int32_t*>(output_333 + 7)));
+    ASSERT_EQ(3.3f, *(reinterpret_cast<float*>(output_333 + 7 + 4)));
+    ASSERT_EQ(33.3, *(reinterpret_cast<double*>(output_333 + 7 + 4 + 4)));
+    ASSERT_EQ(550, *(reinterpret_cast<int16_t*>(output_333 + 7 + 4 + 4 + 8)));
+    ASSERT_EQ(1L,
+              *(reinterpret_cast<int64_t*>(output_333 + 7 + 4 + 4 + 8 + 2)));
+    ASSERT_EQ(
+        3, *(reinterpret_cast<int32_t*>(output_333 + 7 + 4 + 4 + 8 + 2 + 8)));
     {
-        int32_t v;
-        row_view->GetInt32(1, &v);
-        ASSERT_EQ(4 + 4 + 1, v);
+        row_view->Reset(output_333);
+        ASSERT_EQ("CCC", row_view->GetAsString(6));
     }
+
+    ASSERT_EQ(3 + 4, *(reinterpret_cast<int32_t*>(output_4444 + 7)));
+    ASSERT_EQ(3.3f + 4.4f, *(reinterpret_cast<float*>(output_4444 + 7 + 4)));
+    ASSERT_EQ(33.3 + 44.4,
+              *(reinterpret_cast<double*>(output_4444 + 7 + 4 + 4)));
+    ASSERT_EQ(550 + 550,
+              *(reinterpret_cast<int16_t*>(output_4444 + 7 + 4 + 4 + 8)));
+    ASSERT_EQ(1L + 2L,
+              *(reinterpret_cast<int64_t*>(output_4444 + 7 + 4 + 4 + 8 + 2)));
+    ASSERT_EQ(
+        4, *(reinterpret_cast<int32_t*>(output_4444 + 7 + 4 + 4 + 8 + 2 + 8)));
     {
-        int16_t v;
-        row_view->GetInt16(2, &v);
-        ASSERT_EQ(55, v);
+        row_view->Reset(output_4444);
+        ASSERT_EQ("DDDD", row_view->GetAsString(6));
     }
+
+    ASSERT_EQ(3 + 4 + 5, *(reinterpret_cast<int32_t*>(output_aaa + 7)));
+    ASSERT_EQ(3.3f + 4.4f + 5.5f,
+              *(reinterpret_cast<float*>(output_aaa + 7 + 4)));
+    ASSERT_EQ(33.3 + 44.4 + 55.5,
+              *(reinterpret_cast<double*>(output_aaa + 7 + 4 + 4)));
+    ASSERT_EQ(550 + 550 + 550,
+              *(reinterpret_cast<int16_t*>(output_aaa + 7 + 4 + 4 + 8)));
+    ASSERT_EQ(1L + 2L + 3L,
+              *(reinterpret_cast<int64_t*>(output_aaa + 7 + 4 + 4 + 8 + 2)));
+    ASSERT_EQ(
+        5, *(reinterpret_cast<int32_t*>(output_aaa + 7 + 4 + 4 + 8 + 2 + 8)));
     {
-        char* v = nullptr;
-        uint32_t size;
-        row_view->GetString(3, &v, &size);
-        ASSERT_EQ("DDDD", std::string(v, size));
+        row_view->Reset(output_aaa);
+        ASSERT_EQ("EEEEE", row_view->GetAsString(6));
     }
     free(output[0]);
     free(output[1]);
