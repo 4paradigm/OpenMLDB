@@ -636,17 +636,10 @@ bool RelationalTable::DeletePk(const rocksdb::Slice& pk_slice) {
     for (const auto& index_def : indexs) {
         if (index_def->GetType() == ::rtidb::type::kUnique ||
             index_def->GetType() == ::rtidb::type::kNoUnique) {
-            std::shared_ptr<ColumnDef> col =
-                table_column_.GetColumn(index_def->GetName());
-            if (!col) {
-                PDLOG(WARNING, "col name %s not exist, tid %u pid %u",
-                      index_def->GetName().c_str(), id_, pid_);
-                return false;
-            }
             std::string second_key = "";
-            if (!GetPackedField(
+            if (!GetCombineStr(index_def,
                     reinterpret_cast<int8_t*>(const_cast<char*>(slice.data())),
-                    col->GetId(), col->GetType(), &second_key)) {
+                    &second_key)) {
                 return false;
             }
             uint32_t index_id = index_def->GetId();
@@ -737,7 +730,11 @@ bool RelationalTable::Query(
     }
     std::shared_ptr<IndexDef> index_def =
         table_index_.GetIndexByCombineStr(combine_name);
-    if (!index_def) return false;
+    if (!index_def) {
+        PDLOG(DEBUG, "combine_name %s not found. tid %u pid %u",
+                combine_name.c_str(), id_, pid_);
+        return false;
+    }
     return Query(index_def, rocksdb::Slice(combine_value), return_vec);
 }
 
