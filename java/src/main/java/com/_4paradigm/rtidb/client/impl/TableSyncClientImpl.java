@@ -40,6 +40,47 @@ public class TableSyncClientImpl implements TableSyncClient {
     }
 
     @Override
+    public Object[] getRow(String tname, Object[] keyArr, long time, GetOption option) throws TimeoutException, TabletException {
+        TableHandler th = client.getHandler(tname);
+        if (th == null) {
+            throw new TabletException("no table with name " + tname);
+        }
+        if (option.getIdxName() == null) {
+            throw new TabletException("index name is required");
+        }
+        List<String> list = th.getKeyMap().get(option.getIdxName());
+        if (list == null) {
+            throw new TabletException("no index name in table" + option.getIdxName());
+        }
+        if (keyArr.length != list.size()) {
+            throw new TabletException("check key number failed");
+        }
+        String combinedKey = TableClientCommon.getCombinedKey(keyArr, client.getConfig().isHandleNull());
+        int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
+        Object[] row = get(pid, combinedKey,  time, option, th);
+        return row;
+    }
+
+    @Override
+    public Object[] getRow(String tname, Map<String, Object> keyMap, long time, GetOption option) throws TimeoutException, TabletException {
+        TableHandler th = client.getHandler(tname);
+        if (th == null) {
+            throw new TabletException("no table with name " + tname);
+        }
+        if (option.getIdxName() == null) {
+            throw new TabletException("index name is required");
+        }
+        List<String> list = th.getKeyMap().get(option.getIdxName());
+        if (list == null) {
+            throw new TabletException("no index name in table" + option.getIdxName());
+        }
+        String combinedKey = TableClientCommon.getCombinedKey(keyMap, list, client.getConfig().isHandleNull());
+        int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
+        Object[] row = get(pid, combinedKey,  time, option, th);
+        return row;
+    }
+
+    @Override
     public Object[] getRow(String tname, String key, long time, Object type) throws TimeoutException, TabletException {
         GetOption getOption = new GetOption();
         getOption.setEtType((Tablet.GetType)type);
@@ -266,16 +307,13 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         String combinedKey = TableClientCommon.getCombinedKey(keyArr, client.getConfig().isHandleNull());
         int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
-        ByteString response = get(th.getTableInfo().getTid(), pid, combinedKey, idxName, time, tsName, type, th, et, etType);
-        if (response == null || response.isEmpty()) {
-            return null;
-        }
-        Object[] row = null;
-        if (th.getSchemaMap().size() > 0) {
-            row = RowCodec.decode(response.asReadOnlyByteBuffer(), th.getSchema(), th.getSchemaMap().size());
-        } else {
-            row = RowCodec.decode(response.asReadOnlyByteBuffer(), th.getSchema());
-        }
+        GetOption option = new GetOption();
+        option.setStType(type);
+        option.setEtType(etType);
+        option.setIdxName(idxName);
+        option.setTsName(tsName);
+        option.setEt(et);
+        Object[] row = get(pid, combinedKey,  time, option, th);
         return row;
     }
 
@@ -292,16 +330,13 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         String combinedKey = TableClientCommon.getCombinedKey(keyMap, list, client.getConfig().isHandleNull());
         int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
-        ByteString response = get(th.getTableInfo().getTid(), pid, combinedKey, idxName, time, tsName, type, th, et, etType);
-        if (response == null || response.isEmpty()) {
-            return null;
-        }
-        Object[] row = null;
-        if (th.getSchemaMap().size() > 0) {
-            row = RowCodec.decode(response.asReadOnlyByteBuffer(), th.getSchema(), th.getSchemaMap().size());
-        } else {
-            row = RowCodec.decode(response.asReadOnlyByteBuffer(), th.getSchema());
-        }
+        GetOption option = new GetOption();
+        option.setStType(type);
+        option.setEtType(etType);
+        option.setIdxName(idxName);
+        option.setTsName(tsName);
+        option.setEt(et);
+        Object[] row = get(pid, combinedKey,  time, option, th);
         return row;
     }
 

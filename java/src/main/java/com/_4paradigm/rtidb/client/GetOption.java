@@ -30,7 +30,6 @@ public class GetOption {
         this.stType = stType;
     }
 
-
     public Tablet.GetType getEtType() {
         return etType;
     }

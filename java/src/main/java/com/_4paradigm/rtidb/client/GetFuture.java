@@ -35,7 +35,7 @@ public class GetFuture implements Future<ByteString>{
 	public static GetFuture wrappe(Future<Tablet.GetResponse> f, TableHandler t, RTIDBClientConfig config) {
 		return new GetFuture(f, t);
 	}
-
+	public GetFuture() {}
 	// for legacy format
 	public GetFuture(Future<Tablet.GetResponse> f, TableHandler t,
 					 List<Integer> projectionIdx,

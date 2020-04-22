@@ -104,6 +104,9 @@ public interface TableSyncClient {
     Object[] getRow(String tname, Object[] keyArr, String idxName, long time, String tsName, Tablet.GetType type) throws TimeoutException, TabletException;
     Object[] getRow(String tname, Map<String, Object> keyMap, String idxName, long time, String tsName, Tablet.GetType type) throws TimeoutException, TabletException;
 
+    Object[] getRow(String tname, Object[] keyArr, long time, GetOption option) throws TimeoutException, TabletException;
+    Object[] getRow(String tname, Map<String, Object> keyMap,long time, GetOption option) throws TimeoutException, TabletException;
+
     KvIterator scan(String tname, String key, long st, long et) throws TimeoutException, TabletException;
 
     KvIterator scan(String tname, String key, int limit) throws TimeoutException, TabletException;
