@@ -23,6 +23,7 @@
 #include <string>
 #include <vector>
 #include "base/slice.h"
+#include "codec/row.h"
 #include "codec/list_iterator_codec.h"
 #include "proto/type.pb.h"
 

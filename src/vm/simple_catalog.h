@@ -55,11 +55,11 @@ class SimpleCatalogTableHandler : public TableHandler {
         std::shared_ptr<TableHandler> table_hander,
         const std::string &index_name) const override;
 
-    std::unique_ptr<IteratorV<uint64_t, fesql::codec::Row>> GetIterator()
-        const override;
+    std::unique_ptr<IteratorV<uint64_t, fesql::codec::Row>>
+        GetIterator() const override;
 
-    IteratorV<uint64_t, fesql::codec::Row> *GetIterator(int8_t *addr)
-        const override;
+    IteratorV<uint64_t, fesql::codec::Row>*
+        GetIterator(int8_t *addr) const override;
 
  private:
     std::string db_name_;

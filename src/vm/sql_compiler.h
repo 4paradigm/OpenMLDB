@@ -54,6 +54,8 @@ struct SQLContext {
 
 void InitCodecSymbol(::llvm::orc::JITDylib& jd,            // NOLINT
                      ::llvm::orc::MangleAndInterner& mi);  // NOLINT
+void InitCodecSymbol(vm::FeSQLJIT* jit_ptr);
+
 
 class SQLCompiler {
  public:
