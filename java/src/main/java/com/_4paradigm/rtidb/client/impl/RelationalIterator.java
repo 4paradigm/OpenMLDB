@@ -46,7 +46,6 @@ public class RelationalIterator {
     private RTIDBClient client = null;
     private boolean continue_update = false;
     private boolean batch_query = false;
-    //    private List<String> keys = null;
     private long snapshot_id = 0;
     private List<ReadOption> ros = null;
 
@@ -212,12 +211,11 @@ public class RelationalIterator {
 
             for (int i = 0; i < ros.size(); i++) {
                 Iterator<Map.Entry<String, Object>> it = ros.get(i).getIndex().entrySet().iterator();
-                if (it.hasNext()) {
+                Tablet.ReadOption.Builder roBuilder = Tablet.ReadOption.newBuilder();
+                while (it.hasNext()) {
                     Map.Entry<String, Object> next = it.next();
                     String idxName = next.getKey();
                     Object idxValue = next.getValue();
-
-                    Tablet.ReadOption.Builder roBuilder = Tablet.ReadOption.newBuilder();
                     {
                         Tablet.Columns.Builder indexBuilder = Tablet.Columns.newBuilder();
                         indexBuilder.addName(idxName);
@@ -232,8 +230,8 @@ public class RelationalIterator {
                         }
                         roBuilder.addIndex(indexBuilder.build());
                     }
-                    builder.addReadOption(roBuilder.build());
                 }
+                builder.addReadOption(roBuilder.build());
             }
             Tablet.BatchQueryRequest request = builder.build();
             Tablet.BatchQueryResponse response = ts.batchQuery(request);
@@ -252,10 +250,6 @@ public class RelationalIterator {
                 totalSize = 0;
                 return;
             }
-//            if (response != null) {
-//                throw new TabletException(response.getCode(), response.getMsg());
-//            }
-//            throw new TabletException("rtidb internal server error");
         }
         do {
             if (pid >= th.getPartitions().length) {
