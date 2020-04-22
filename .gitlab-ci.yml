@@ -7,7 +7,6 @@ before_script:
 
 stages:
     - build
-    - test
     - benchmark
 
 style_check:
@@ -18,6 +17,15 @@ style_check:
         reports:
             junit:
                 - ./style.xml
+
+build_py3sdk_and_case:
+    stage: build
+    script:
+        - bash tools/run_py3_ut.sh
+    artifacts:
+        reports:
+            junit:
+                - python/test/*.xml
 
 build_fesql_and_case:
     stage: build
@@ -30,35 +38,16 @@ build_fesql_and_case:
                 - build/*.xml
         paths: 
             - "build/coverage"
-            - ./build
 
-build_py3sdk_and_case:
-    stage: test
-    script:
-        - bash tools/run_py3_ut.sh
-    artifacts:
-        reports:
-            junit:
-                - python/test/*.xml
-
-build_and_test_on_mac:
+build_fesql_and_case_on_mac:
     stage: build
     variables:
         CICD_RUNNER_TAG: "macos"
         CICD_RUNNER_THIRDPARTY_PATH: "/Users/wrongtest/projects/fesql/thirdparty"
     script:
-        - echo hello world
+        - bash tools/compile_and_test.sh
     tags:
         - macos
-
-test_java_sdk:
-    stage: test
-    script:
-        - bash tools/run_java_ut.sh
-    artifacts:
-        reports:
-            junit:
-                - java/target/surefire-reports/TEST-*.xml
 
 micro_benchmark:
     stage: benchmark

@@ -42,8 +42,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin") # TODO: Make sure all libraries can be linked
     set(COMMON_LIBS glog gflags)
     set(g_libs glog gflags)
-    # set(arrow_libs parquet arrow_dataset arrow
-    # double-conversion boost_filesystem snappy)
     set(arrow_libs parquet arrow_dataset arrow brotlidec brotlienc 
     brotlicommon
     thrift lz4 z zstd double-conversion boost_filesystem snappy)

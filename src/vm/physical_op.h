@@ -131,11 +131,10 @@ class PhysicalOpNode {
 
     void SetLimitCnt(int32_t limit_cnt) { limit_cnt_ = limit_cnt; }
 
-    const int32_t GetLimitCnt() const { return limit_cnt_; }
-
     std::vector<std::pair<const std::string, const vm::Schema *>>&
         GetOutputNameSchemaList() { return output_name_schema_list_; }
 
+    const int32_t GetLimitCnt() const { return limit_cnt_; }
     const PhysicalOpType type_;
     const bool is_block_;
     const bool is_lazy_;

@@ -4,7 +4,6 @@ echo "Third party packages path: ${CICD_RUNNER_THIRDPARTY_PATH}"
 if [[ ${CICD_RUNNER_TAG} == "macos" ]]; then
     echo "Run in mac environment"
     ln -sf ${CICD_RUNNER_THIRDPARTY_PATH} thirdparty
-    bash tools/compile.sh
 else
     ln -sf /depends/thirdparty thirdparty
     source /opt/rh/python27/enable
