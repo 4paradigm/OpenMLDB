@@ -742,7 +742,8 @@ bool RowProject::Project(const int8_t* row_ptr, uint32_t size,
     for (int32_t i = 0; i < plist_.size(); i++) {
         uint32_t idx = plist_.Get(i);
         const ::rtidb::common::ColumnDesc& column = schema_.Get(idx);
-        if (column.data_type() == ::rtidb::type::kVarchar) {
+        if (column.data_type() == ::rtidb::type::kVarchar
+                || column.data_type == ::rtidb::type::kString) {
             if (row_view_->IsNULL(idx)) continue;
             uint32_t length = 0;
             char* content = nullptr;
@@ -808,6 +809,8 @@ bool RowProject::Project(const int8_t* row_ptr, uint32_t size,
                 if (ret == 0) row_builder_->AppendDouble(val);
                 break;
             }
+
+            case ::rtidb::type::kString: 
             case ::rtidb::type::kVarchar: {
                 char* val = NULL;
                 uint32_t size = 0;
