@@ -40,6 +40,8 @@ DECLARE_uint32(get_replica_status_interval);
 DECLARE_int32(make_snapshot_time);
 DECLARE_int32(make_snapshot_check_interval);
 
+using ::rtidb::base::ReturnCode;
+
 namespace rtidb {
 namespace nameserver {
 
@@ -3769,28 +3771,36 @@ void NameServerImpl::CreateTable(RpcController* controller,
         meta.set_tid(table_info->tid());
         meta.set_pid(0);
         meta.set_name(table_info->name());
-        std::shared_ptr<BlobServerInfo> blob;
-        {
-            std::lock_guard<std::mutex> lock(mu_);
-            for (auto tit = blob_servers_.begin(); tit != blob_servers_.end(); ++tit) {
-                if (tit->second->state_ == TabletState::kTabletHealthy) {
-                    blob = tit->second;
-                }
-            }
-        }
-        if (!blob) {
-            response->set_code(::rtidb::base::ReturnCode::kSetPartitionInfoFailed);
+        meta.set_table_type(::rtidb::type::kObjectStore);
+        table_info->clear_table_partition();
+
+        std::shared_ptr<BlobServerInfo> blob_info = SetBlobTableInfo(*table_info);
+        if (!blob_info) {
+            PDLOG(WARNING, "not found available blob server");
+            response->set_code(ReturnCode::kSetPartitionInfoFailed);
             return;
         }
         std::string msg;
-        bool ok = blob->client_->CreateTable(meta, &msg);
+        bool ok = blob_info->client_->CreateTable(meta, &msg);
         if (!ok) {
-            response->set_code(::rtidb::base::kCreateTableFailed);
+            response->set_code(ReturnCode::kCreateTableFailed);
             response->set_msg(msg);
             return;
         }
+        std::string table_value;
+        table_info->SerializeToString(&table_value);
+        if (!zk_client_->CreateNode(zk_table_data_path_ + "/" + table_info->name(), table_value)) {
+                PDLOG(WARNING, "create object table node[%s/%s] failed!",
+                      zk_table_data_path_.c_str(), table_info->name().c_str());
+                response->set_code(ReturnCode::kSetZkFailed);
+                response->set_msg("set zk failed");
+                return;
+        }
+        PDLOG(INFO, "create table node[%s/%s] success!",
+              zk_table_data_path_.c_str(), table_info->name().c_str());
         std::lock_guard<std::mutex> lock(mu_);
         table_info_.insert(std::make_pair(table_info->name(), table_info));
+        NotifyTableChanged();
         response->set_code(::rtidb::base::ReturnCode::kOk);
         return;
     }
@@ -3909,9 +3919,48 @@ void NameServerImpl::CreateTableInternel(GeneralResponse& response,
     task_thread_pool_.AddTask(boost::bind(&NameServerImpl::DropTableOnTablet, this, table_info));
 }
 
+std::shared_ptr<BlobServerInfo> NameServerImpl::SetBlobTableInfo(::rtidb::nameserver::TableInfo& table_info) {
+    table_info.clear_table_partition();
+    auto new_part = table_info.add_table_partition();
+    auto new_meta = new_part->add_partition_meta();
+
+    std::map<std::string, uint64_t> endpoint_count;
+    std::lock_guard<std::mutex> lock(mu_);
+    for (const auto& iter : table_info_) {
+        auto table_info = iter.second;
+        if (table_info->table_type() != ::rtidb::type::kObjectStore) {
+            continue;
+        }
+        for (const auto& part : table_info->table_partition()) {
+            for (const auto& meta : part.partition_meta()) {
+                std::string ep = meta.endpoint();
+                if (endpoint_count.find(ep) == endpoint_count.end() || !meta.is_alive()) {
+                    endpoint_count.insert(std::make_pair(ep, 1));
+                    continue;
+                }
+                endpoint_count[ep]++;
+            }
+        }
+    }
+    std::string meta_endpoint;
+    uint64_t min = UINT64_MAX;
+    for (const auto& tit : endpoint_count) {
+        if (tit.second < min) {
+            min = tit.second;
+            meta_endpoint = tit.first;
+        }
+    }
+    const auto& iter = blob_servers_.find(meta_endpoint);
+    if (iter != blob_servers_.end()) {
+        new_meta->set_endpoint(iter->first);
+        return iter->second;
+    }
+    return std::shared_ptr<BlobServerInfo>();
+}
+
 //called by function CheckTableInfo and SyncTable
 int NameServerImpl::AddReplicaSimplyRemoteOP(const std::string& alias, const std::string& name,
-        const std::string& endpoint, uint32_t remote_tid, uint32_t pid) {
+                                             const std::string& endpoint, uint32_t remote_tid, uint32_t pid) {
     if (!running_.load(std::memory_order_acquire)) {
         PDLOG(WARNING, "cur nameserver is not leader");
         return -1;

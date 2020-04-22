@@ -475,6 +475,8 @@ private:
     void DelTableInfo(const std::string& name, const std::string& endpoint, uint32_t pid,
             std::shared_ptr<::rtidb::api::TaskInfo> task_info, uint32_t flag);
 
+    std::shared_ptr<BlobServerInfo> SetBlobTableInfo(::rtidb::nameserver::TableInfo& table_info);
+
    void UpdatePartitionStatus(const std::string& name, const std::string& endpoint, uint32_t pid,
                     bool is_leader, bool is_alive, std::shared_ptr<::rtidb::api::TaskInfo> task_info);
 

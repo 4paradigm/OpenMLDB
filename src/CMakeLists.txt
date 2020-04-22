@@ -115,19 +115,19 @@ add_executable(binlog_test  replica/binlog_test.cc client/tablet_client.cc base/
 target_link_libraries(binlog_test gtest gflags tablet zk_client zookeeper_mt storage replica log common brpc rt ssl crypto dl leveldb pthread protobuf z snappy  tcmalloc_minimal)
 
 add_executable(nameserver_test nameserver/name_server_test.cc client/tablet_client.cc client/ns_client.cc base/status.cc)
-target_link_libraries(nameserver_test  gtest pthread tablet nameserver gflags storage replica log common brpc ssl crypto dl leveldb protobuf z snappy rt zk_client zookeeper_mt tcmalloc_minimal)
+target_link_libraries(nameserver_test  gtest pthread tablet nameserver blobserver client gflags storage replica log common brpc ssl crypto dl leveldb protobuf z snappy rt zk_client zookeeper_mt tcmalloc_minimal)
 
 add_executable(blobserver_impl_test blobserver/blobserver_impl_test.cc proto/common.pb.cc proto/tablet.pb.cc flags.cc)
 target_link_libraries(blobserver_impl_test gtest pthread blobserver client gflags beans common brpc rt ssl crypto dl protobuf z zk_client zookeeper_mt leveldb)
 
 add_executable(nameserver_create_remote_test nameserver/name_server_create_remote_test.cc client/tablet_client.cc client/ns_client.cc base/status.cc)
-target_link_libraries(nameserver_create_remote_test  gtest pthread tablet nameserver gflags storage replica log common brpc ssl crypto dl leveldb protobuf z snappy rt zk_client zookeeper_mt tcmalloc_minimal)
+target_link_libraries(nameserver_create_remote_test  gtest pthread tablet nameserver blobserver client gflags storage replica log common brpc ssl crypto dl leveldb protobuf z snappy rt zk_client zookeeper_mt tcmalloc_minimal)
 
 add_executable(memcomparable_format_test base/memcomparable_format_test.cc)
 target_link_libraries(memcomparable_format_test gtest pthread)
 
 add_executable(rtidb cmd/rtidb.cc base/status.cc proto/client.pb.cc base/linenoise.cc)
 
-target_link_libraries(rtidb blobserver gflags common tablet storage replica log nameserver client brpc ssl crypto dl leveldb protobuf z snappy gflags pthread rt zk_client zookeeper_mt tcmalloc_minimal)
+target_link_libraries(rtidb gflags common tablet storage replica log nameserver blobserver client brpc ssl crypto dl leveldb protobuf z snappy gflags pthread rt zk_client zookeeper_mt tcmalloc_minimal)
 
 add_subdirectory(client)
