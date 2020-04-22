@@ -92,6 +92,7 @@ public class GetFuture implements Future<ByteString>{
 			rv = new RowSliceView(t.getSchema());
 		}
 	}
+	public GetFuture() {}
 
 	public GetFuture(Future<Tablet.GetResponse> f, long _, RTIDBClientConfig config) {
 		this.f = f;

@@ -44,6 +44,7 @@ public class ScanFuture implements Future<KvIterator> {
         this.t = t;
     }
 
+    public ScanFuture() {}
     public ScanFuture(Future<Tablet.ScanResponse> f, TableHandler t, List<ColumnDesc> projection) {
         this.f = f;
         this.t = t;

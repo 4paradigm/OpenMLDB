@@ -132,5 +132,6 @@ public interface TableAsyncClient {
 
     GetFuture get(String name, String key, String idxName) throws TabletException;
     GetFuture get(String name, String key, long time, GetOption getOption) throws TabletException;
+    GetFuture get(String name, Map<String, Object> keyMap, long time, GetOption getOption) throws TabletException;
     GetFuture get(String name, String key, long time, Object type) throws TabletException;
 }

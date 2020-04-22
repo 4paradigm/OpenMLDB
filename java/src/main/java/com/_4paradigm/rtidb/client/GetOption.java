@@ -12,7 +12,7 @@ public class GetOption {
     private List<String> projection = new ArrayList<>();
     private long et  = 0;
     private Tablet.GetType stType = null;
-    private Tablet.GetType getType = null;
+    private Tablet.GetType etType = null;
 
     public long getEt() {
         return et;
@@ -30,12 +30,13 @@ public class GetOption {
         this.stType = stType;
     }
 
-    public Tablet.GetType getGetType() {
-        return getType;
+
+    public Tablet.GetType getEtType() {
+        return etType;
     }
 
-    public void setGetType(Tablet.GetType getType) {
-        this.getType = getType;
+    public void setEtType(Tablet.GetType etType) {
+        this.etType = etType;
     }
 
     public String getIdxName() {
