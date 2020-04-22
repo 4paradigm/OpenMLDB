@@ -49,8 +49,8 @@ ExitOnError ExitOnErr;
 
 namespace fesql {
 namespace codegen {
-using fesql::codec::Row;
 using fesql::codec::ArrayListV;
+using fesql::codec::Row;
 static node::NodeManager manager;
 
 /// Check E. If it's in a success state then return the contained value. If
@@ -78,131 +78,9 @@ node::ProjectListNode* GetPlanNodeList(node::PlanNodeList trees) {
             plan_node->project_list_vec_[0]);
     return pp_node_ptr;
 }
-class FnLetIRBuilderTest : public ::testing::Test {
- public:
-    FnLetIRBuilderTest() {
-        GetSchemaT1(table_);
-        GetSchemaT2(table2_);
-    }
-    ~FnLetIRBuilderTest() {}
-    void GetSchemaT1(::fesql::type::TableDef& table) {  // NOLINT
-        table.set_name("t1");
-        {
-            ::fesql::type::ColumnDef* column = table.add_columns();
-            column->set_type(::fesql::type::kInt32);
-            column->set_name("col1");
-        }
-        {
-            ::fesql::type::ColumnDef* column = table.add_columns();
-            column->set_type(::fesql::type::kInt16);
-            column->set_name("col2");
-        }
-        {
-            ::fesql::type::ColumnDef* column = table.add_columns();
-            column->set_type(::fesql::type::kFloat);
-            column->set_name("col3");
-        }
-        {
-            ::fesql::type::ColumnDef* column = table.add_columns();
-            column->set_type(::fesql::type::kDouble);
-            column->set_name("col4");
-        }
-
-        {
-            ::fesql::type::ColumnDef* column = table.add_columns();
-            column->set_type(::fesql::type::kInt64);
-            column->set_name("col5");
-        }
-
-        {
-            ::fesql::type::ColumnDef* column = table.add_columns();
-            column->set_type(::fesql::type::kVarchar);
-            column->set_name("col6");
-        }
-    }
-
-    void GetSchemaT2(::fesql::type::TableDef& table) {  // NOLINT
-        table.set_name("t2");
-        {
-            ::fesql::type::ColumnDef* column = table.add_columns();
-            column->set_type(::fesql::type::kInt64);
-            column->set_name("c5");
-        }
-        {
-            ::fesql::type::ColumnDef* column = table.add_columns();
-            column->set_type(::fesql::type::kInt32);
-            column->set_name("col1");
-        }
-        {
-            ::fesql::type::ColumnDef* column = table.add_columns();
-            column->set_type(::fesql::type::kInt16);
-            column->set_name("col2");
-        }
-        {
-            ::fesql::type::ColumnDef* column = table.add_columns();
-            column->set_type(::fesql::type::kDouble);
-            column->set_name("c4");
-        }
-        {
-            ::fesql::type::ColumnDef* column = table.add_columns();
-            column->set_type(::fesql::type::kVarchar);
-            column->set_name("col6");
-        }
-    }
-    void BuildT1Buf(int8_t** buf, uint32_t* size) {
-        codec::RowBuilder builder(table_.columns());
-        uint32_t total_size = builder.CalTotalLength(1);
-        int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
-        builder.SetBuffer(ptr, total_size);
-        builder.AppendInt32(32);
-        builder.AppendInt16(16);
-        builder.AppendFloat(2.1f);
-        builder.AppendDouble(3.1);
-        builder.AppendInt64(64);
-        builder.AppendString("1", 1);
-        *buf = ptr;
-        *size = total_size;
-    }
-    void BuildT2Buf(int8_t** buf, uint32_t* size) {
-        codec::RowBuilder builder(table2_.columns());
-        uint32_t total_size = builder.CalTotalLength(1);
-        int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
-        builder.SetBuffer(ptr, total_size);
-        builder.AppendInt64(640);
-        builder.AppendInt32(320);
-        builder.AppendInt16(160);
-        builder.AppendDouble(33.1);
-        builder.AppendString("2", 1);
-        *buf = ptr;
-        *size = total_size;
-    }
-
- protected:
-    fesql::type::TableDef table_;
-    fesql::type::TableDef table2_;
-};
-
-void AddFunc(const std::string& fn, ::llvm::Module* m) {
-    if (fn.empty()) {
-        return;
-    }
-    ::fesql::node::NodePointVector trees;
-    ::fesql::parser::FeSQLParser parser;
-    ::fesql::base::Status status;
-    int ret = parser.parse(fn, trees, &manager, status);
-    ASSERT_EQ(0, ret);
-    FnIRBuilder fn_ir_builder(m);
-    for (node::SQLNode* node : trees) {
-        LOG(INFO) << "Add Func: " << *node;
-        bool ok =
-            fn_ir_builder.Build(dynamic_cast<node::FnNodeFnDef*>(node), status);
-        ASSERT_TRUE(ok);
-    }
-}
-void BuildWindow(std::vector<Row>& rows,  // NOLINT
-                 int8_t** buf) {
-    ::fesql::type::TableDef table;
+void GetSchemaT1(::fesql::type::TableDef& table) {  // NOLINT
     table.set_name("t1");
+    table.set_catalog("db");
     {
         ::fesql::type::ColumnDef* column = table.add_columns();
         column->set_type(::fesql::type::kInt32);
@@ -235,6 +113,80 @@ void BuildWindow(std::vector<Row>& rows,  // NOLINT
         column->set_type(::fesql::type::kVarchar);
         column->set_name("col6");
     }
+}
+void GetSchemaT2(::fesql::type::TableDef& table) {  // NOLINT
+    table.set_name("t2");
+    table.set_catalog("db");
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kVarchar);
+        column->set_name("str0");
+    }
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kVarchar);
+        column->set_name("str1");
+    }
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kFloat);
+        column->set_name("col3");
+    }
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kDouble);
+        column->set_name("col4");
+    }
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kInt16);
+        column->set_name("col2");
+    }
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kInt32);
+        column->set_name("col1");
+    }
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kInt64);
+        column->set_name("col5");
+    }
+}
+class FnLetIRBuilderTest : public ::testing::Test {
+ public:
+    FnLetIRBuilderTest() {
+        GetSchemaT1(table_);
+        GetSchemaT2(table2_);
+    }
+    ~FnLetIRBuilderTest() {}
+
+ protected:
+    fesql::type::TableDef table_;
+    fesql::type::TableDef table2_;
+};
+
+void AddFunc(const std::string& fn, ::llvm::Module* m) {
+    if (fn.empty()) {
+        return;
+    }
+    ::fesql::node::NodePointVector trees;
+    ::fesql::parser::FeSQLParser parser;
+    ::fesql::base::Status status;
+    int ret = parser.parse(fn, trees, &manager, status);
+    ASSERT_EQ(0, ret);
+    FnIRBuilder fn_ir_builder(m);
+    for (node::SQLNode* node : trees) {
+        LOG(INFO) << "Add Func: " << *node;
+        bool ok =
+            fn_ir_builder.Build(dynamic_cast<node::FnNodeFnDef*>(node), status);
+        ASSERT_TRUE(ok);
+    }
+}
+void BuildWindow(std::vector<Row>& rows,  // NOLINT
+                 int8_t** buf) {
+    ::fesql::type::TableDef table;
+    GetSchemaT1(table);
 
     {
         codec::RowBuilder builder(table.columns());
@@ -314,12 +266,136 @@ void BuildWindow(std::vector<Row>& rows,  // NOLINT
 
     *buf = reinterpret_cast<int8_t*>(w);
 }
+
+void BuildWindow2(std::vector<Row>& rows,  // NOLINT
+                  int8_t** buf) {
+    ::fesql::type::TableDef table;
+
+    GetSchemaT2(table);
+    {
+        codec::RowBuilder builder(table.columns());
+        std::string str = "A";
+        std::string str0 = "0";
+        uint32_t total_size = builder.CalTotalLength(str.size() + str0.size());
+        int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
+
+        builder.SetBuffer(ptr, total_size);
+        builder.AppendString(str0.c_str(), 1);
+        builder.AppendString(str.c_str(), 1);
+        builder.AppendFloat(1.1f);
+        builder.AppendDouble(11.1);
+        builder.AppendInt16(5);
+        builder.AppendInt32(1);
+        builder.AppendInt64(1);
+        rows.push_back(Row(ptr, total_size));
+    }
+    {
+        codec::RowBuilder builder(table.columns());
+        std::string str = "BB";
+        std::string str0 = "0";
+        uint32_t total_size = builder.CalTotalLength(str.size() + str0.size());
+        int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
+        builder.SetBuffer(ptr, total_size);
+        builder.AppendString(str0.c_str(), 1);
+        builder.AppendString(str.c_str(), str.size());
+        builder.AppendFloat(2.2f);
+        builder.AppendDouble(22.2);
+        builder.AppendInt16(5);
+        builder.AppendInt32(2);
+        builder.AppendInt64(2);
+        rows.push_back(Row(ptr, total_size));
+    }
+    {
+        codec::RowBuilder builder(table.columns());
+        std::string str = "CCC";
+        std::string str0 = "1";
+        uint32_t total_size = builder.CalTotalLength(str.size() + str0.size());
+        int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
+        builder.SetBuffer(ptr, total_size);
+        builder.AppendString(str0.c_str(), 1);
+        builder.AppendString(str.c_str(), str.size());
+        builder.AppendFloat(3.3f);
+        builder.AppendDouble(33.3);
+        builder.AppendInt16(55);
+        builder.AppendInt32(3);
+        builder.AppendInt64(1);
+        rows.push_back(Row(ptr, total_size));
+    }
+    {
+        codec::RowBuilder builder(table.columns());
+        std::string str = "DDDD";
+        std::string str0 = "1";
+        uint32_t total_size = builder.CalTotalLength(str.size() + str0.size());
+        int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
+        builder.SetBuffer(ptr, total_size);
+        builder.AppendString(str0.c_str(), 1);
+        builder.AppendString(str.c_str(), str.size());
+        builder.AppendFloat(4.4f);
+        builder.AppendDouble(44.4);
+        builder.AppendInt16(55);
+        builder.AppendInt32(4);
+        builder.AppendInt64(2);
+        rows.push_back(Row(ptr, total_size));
+    }
+    {
+        codec::RowBuilder builder(table.columns());
+        std::string str = "EEEEE";
+        std::string str0 = "2";
+        uint32_t total_size = builder.CalTotalLength(str.size() + str0.size());
+        int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
+        builder.SetBuffer(ptr, total_size);
+        builder.AppendString(str0.c_str(), 1);
+        builder.AppendString(str.c_str(), str.size());
+        builder.AppendFloat(5.5f);
+        builder.AppendDouble(55.5);
+        builder.AppendInt16(55);
+        builder.AppendInt32(5);
+        builder.AppendInt64(3);
+        rows.push_back(Row(ptr, total_size));
+    }
+    ArrayListV<Row>* w = new ArrayListV<Row>(&rows);
+
+    *buf = reinterpret_cast<int8_t*>(w);
+}
+void BuildT1Buf(int8_t** buf, uint32_t* size) {
+    ::fesql::type::TableDef table;
+    GetSchemaT1(table);
+    codec::RowBuilder builder(table.columns());
+    uint32_t total_size = builder.CalTotalLength(1);
+    int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
+    builder.SetBuffer(ptr, total_size);
+    builder.AppendInt32(32);
+    builder.AppendInt16(16);
+    builder.AppendFloat(2.1f);
+    builder.AppendDouble(3.1);
+    builder.AppendInt64(64);
+    builder.AppendString("1", 1);
+    *buf = ptr;
+    *size = total_size;
+}
+void BuildT2Buf(int8_t** buf, uint32_t* size) {
+    ::fesql::type::TableDef table;
+    GetSchemaT2(table);
+    codec::RowBuilder builder(table.columns());
+    uint32_t total_size = builder.CalTotalLength(2);
+    int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
+    builder.SetBuffer(ptr, total_size);
+    builder.AppendString("A", 1);
+    builder.AppendString("B", 1);
+    builder.AppendFloat(22.1);
+    builder.AppendDouble(33.1);
+    builder.AppendInt16(160);
+    builder.AppendInt32(32);
+    builder.AppendInt64(640);
+    *buf = ptr;
+    *size = total_size;
+}
+
 void CheckFnLetBuilder(
     const std::vector<std::pair<const std::string, const vm::Schema*>>&
         name_schemas,
-    std::string udf_str, std::string sql, int8_t** row_ptrs,
-    int8_t** window_ptrs, int32_t* row_sizes, vm::Schema* output_schema,
-    int8_t** output) {
+    std::string udf_str, std::string sql, int8_t** row_ptrs, int8_t* window_ptr,
+    int32_t* row_sizes, vm::Schema* output_schema, int8_t** output) {
     // Create an LLJIT instance.
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_project", *ctx);
@@ -357,19 +433,19 @@ void CheckFnLetBuilder(
         std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
     auto load_fn_jit = ExitOnErr(J->lookup("test_at_fn"));
 
-    int32_t (*decode)(int8_t**, int8_t**, int32_t*, int8_t**) = (int32_t(*)(
-        int8_t**, int8_t**, int32_t*, int8_t**))load_fn_jit.getAddress();
-    int32_t ret2 = decode(row_ptrs, window_ptrs, row_sizes, output);
+    int32_t (*decode)(int8_t**, int8_t*, int32_t*, int8_t**) = (int32_t(*)(
+        int8_t**, int8_t*, int32_t*, int8_t**))load_fn_jit.getAddress();
+    int32_t ret2 = decode(row_ptrs, window_ptr, row_sizes, output);
     ASSERT_EQ(0, ret2);
 }
 void CheckFnLetBuilder(type::TableDef& table, std::string udf_str,  // NOLINT
-                       std::string sql, int8_t** row_ptrs, int8_t** window_ptrs,
+                       std::string sql, int8_t** row_ptrs, int8_t* window_ptr,
                        int32_t* row_sizes, vm::Schema* output_schema,
                        int8_t** output) {
     std::vector<std::pair<const std::string, const vm::Schema*>>
         name_schema_list;
     name_schema_list.push_back(std::make_pair(table.name(), &table.columns()));
-    CheckFnLetBuilder(name_schema_list, udf_str, sql, row_ptrs, window_ptrs,
+    CheckFnLetBuilder(name_schema_list, udf_str, sql, row_ptrs, window_ptr,
                       row_sizes, output_schema, output);
 }
 
@@ -381,11 +457,11 @@ TEST_F(FnLetIRBuilderTest, test_primary) {
     BuildT1Buf(&buf, &size);
     int8_t* output = NULL;
     int8_t* row_ptrs[1] = {buf};
-    int8_t* window_ptrs[1] = {nullptr};
+    int8_t* window_ptr = nullptr;
     int32_t row_sizes[1] = {static_cast<int32_t>(size)};
     vm::Schema schema;
-    CheckFnLetBuilder(table_, "", sql, row_ptrs, window_ptrs, row_sizes,
-                      &schema, &output);
+    CheckFnLetBuilder(table_, "", sql, row_ptrs, window_ptr, row_sizes, &schema,
+                      &output);
     uint32_t out_size = *reinterpret_cast<uint32_t*>(output + 2);
     ASSERT_EQ(4, schema.size());
     ASSERT_EQ(out_size, 27u);
@@ -402,9 +478,9 @@ TEST_F(FnLetIRBuilderTest, test_primary) {
 TEST_F(FnLetIRBuilderTest, test_multi_row_simple_query) {
     // Create an LLJIT instance.
     std::string sql =
-        "SELECT t1.col1 as t1_col1, t1.col6 as t1_col6, t2.col1 as "
-        "t2_col1, "
-        "col4+c4 as add_col4 FROM t1,t2 limit 10;";
+        "SELECT t1.col1 as t1_col1, col6 as col6, t2.col5 as "
+        "t2_col5, "
+        "t1.col4+t2.col4 as add_col4 FROM t1,t2 limit 10;";
 
     // Create the add1 function entry and insert this entry into module M. The
     // function will have a return type of "int" and take an argument of "int".
@@ -423,15 +499,15 @@ TEST_F(FnLetIRBuilderTest, test_multi_row_simple_query) {
     int8_t* output = NULL;
 
     int8_t* row_ptrs[2] = {buf, buf2};
-    int8_t* window_ptrs[2] = {nullptr, nullptr};
+    int8_t* window_ptr = nullptr;
     int32_t row_sizes[2] = {static_cast<int32_t>(size),
                             static_cast<int32_t>(size2)};
     vm::Schema schema;
-    CheckFnLetBuilder(name_schema_list, "", sql, row_ptrs, window_ptrs,
+    CheckFnLetBuilder(name_schema_list, "", sql, row_ptrs, window_ptr,
                       row_sizes, &schema, &output);
     ASSERT_EQ(4, schema.size());
     uint32_t out_size = *reinterpret_cast<uint32_t*>(output + 2);
-    ASSERT_EQ(out_size, 25u);
+    ASSERT_EQ(out_size, 29u);
     vm::RowView row_view(schema);
     row_view.Reset(output);
     {
@@ -445,13 +521,11 @@ TEST_F(FnLetIRBuilderTest, test_multi_row_simple_query) {
         ASSERT_EQ(0, row_view.GetString(1, &buf, &size));
         ASSERT_EQ("1", std::string(buf, size));
     }
-
     {
-        int32_t value;
-        ASSERT_EQ(0, row_view.GetInt32(2, &value));
-        ASSERT_EQ(320, value);
+        int64_t value;
+        ASSERT_EQ(0, row_view.GetInt64(2, &value));
+        ASSERT_EQ(640, 640);
     }
-
     {
         double value;
         ASSERT_EQ(0, row_view.GetDouble(3, &value));
@@ -472,10 +546,10 @@ TEST_F(FnLetIRBuilderTest, test_udf) {
     BuildT1Buf(&buf, &size);
     int8_t* output = NULL;
     int8_t* row_ptrs[1] = {buf};
-    int8_t* window_ptrs[1] = {nullptr};
+    int8_t* window_ptr = nullptr;
     int32_t row_sizes[1] = {static_cast<int32_t>(size)};
     vm::Schema schema;
-    CheckFnLetBuilder(table_, udf_sql, sql, row_ptrs, window_ptrs, row_sizes,
+    CheckFnLetBuilder(table_, udf_sql, sql, row_ptrs, window_ptr, row_sizes,
                       &schema, &output);
     ASSERT_EQ(2, schema.size());
     uint32_t out_size = *reinterpret_cast<uint32_t*>(output + 2);
@@ -494,11 +568,11 @@ TEST_F(FnLetIRBuilderTest, test_simple_project) {
     BuildT1Buf(&ptr, &size);
     int8_t* output = NULL;
     int8_t* row_ptrs[1] = {ptr};
-    int8_t* window_ptrs[1] = {nullptr};
+    int8_t* window_ptr = nullptr;
     int32_t row_sizes[1] = {static_cast<int32_t>(size)};
     vm::Schema schema;
-    CheckFnLetBuilder(table_, "", sql, row_ptrs, window_ptrs, row_sizes,
-                      &schema, &output);
+    CheckFnLetBuilder(table_, "", sql, row_ptrs, window_ptr, row_sizes, &schema,
+                      &output);
     ASSERT_EQ(1, schema.size());
     ASSERT_EQ(11u, *reinterpret_cast<uint32_t*>(output + 2));
     ASSERT_EQ(32u, *reinterpret_cast<uint32_t*>(output + 7));
@@ -512,11 +586,11 @@ TEST_F(FnLetIRBuilderTest, test_extern_udf_project) {
     BuildT1Buf(&ptr, &size);
     int8_t* output = NULL;
     int8_t* row_ptrs[1] = {ptr};
-    int8_t* window_ptrs[1] = {nullptr};
+    int8_t* window_ptr = nullptr;
     int32_t row_sizes[1] = {static_cast<int32_t>(size)};
     vm::Schema schema;
-    CheckFnLetBuilder(table_, "", sql, row_ptrs, window_ptrs, row_sizes,
-                      &schema, &output);
+    CheckFnLetBuilder(table_, "", sql, row_ptrs, window_ptr, row_sizes, &schema,
+                      &output);
     ASSERT_EQ(1, schema.size());
     ASSERT_EQ(11u, *reinterpret_cast<uint32_t*>(output + 2));
     ASSERT_EQ(33u, *reinterpret_cast<uint32_t*>(output + 7));
@@ -540,11 +614,11 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_sum_project) {
     BuildWindow(window, &ptr);
     int8_t* output = NULL;
     int8_t* row_ptrs[1] = {window.back().buf()};
-    int8_t* window_ptrs[1] = {ptr};
+    int8_t* window_ptr = ptr;
     int32_t row_sizes[1] = {static_cast<int32_t>(window.back().size())};
     vm::Schema schema;
-    CheckFnLetBuilder(table_, "", sql, row_ptrs, window_ptrs, row_sizes,
-                      &schema, &output);
+    CheckFnLetBuilder(table_, "", sql, row_ptrs, window_ptr, row_sizes, &schema,
+                      &output);
     ASSERT_EQ(1u + 11u + 111u + 1111u + 11111u,
               *reinterpret_cast<uint32_t*>(output + 7));
     ASSERT_EQ(3.1f + 33.1f + 333.1f + 3333.1f + 33333.1f,
@@ -577,11 +651,11 @@ TEST_F(FnLetIRBuilderTest, test_simple_window_project_mix) {
     BuildWindow(window, &ptr);
     int8_t* output = NULL;
     int8_t* row_ptrs[1] = {window.back().buf()};
-    int8_t* window_ptrs[1] = {ptr};
+    int8_t* window_ptr = ptr;
     int32_t row_sizes[1] = {static_cast<int32_t>(window.back().size())};
     vm::Schema schema;
-    CheckFnLetBuilder(table_, "", sql, row_ptrs, window_ptrs, row_sizes,
-                      &schema, &output);
+    CheckFnLetBuilder(table_, "", sql, row_ptrs, window_ptr, row_sizes, &schema,
+                      &output);
     ASSERT_EQ(11111u, *reinterpret_cast<uint32_t*>(output + 7));
     ASSERT_EQ(1u + 11u + 111u + 1111u + 11111u,
               *reinterpret_cast<uint32_t*>(output + 7 + 4));
@@ -592,6 +666,74 @@ TEST_F(FnLetIRBuilderTest, test_simple_window_project_mix) {
     ASSERT_EQ(4.1 + 44.1 + 444.1 + 4444.1 + 44444.1,
               *reinterpret_cast<double*>(output + 7 + 4 + 4 + 4 + 4 + 8));
     ASSERT_EQ(2 + 22 + 222 + 2222 + 22222,
+              *reinterpret_cast<int16_t*>(output + 7 + 4 + 4 + 4 + 4 + 8 + 8));
+    ASSERT_EQ(
+        5L + 55L + 555L + 5555L + 55555L,
+        *reinterpret_cast<int64_t*>(output + 7 + 4 + 4 + 4 + 4 + 8 + 8 + 2));
+    free(ptr);
+}
+
+TEST_F(FnLetIRBuilderTest, test_join_window_project_mix) {
+    std::string sql =
+        "SELECT "
+        "t1.col1, "
+        "sum(t1.col1) OVER w1 as w1_col1_sum , "
+        "t1.col3, "
+        "sum(t1.col3) OVER w1 as w1_col3_sum, "
+        "t2.col4, "
+        "sum(t2.col4) OVER w1 as w1_col4_sum,  "
+        "sum(t2.col2) OVER w1 as w1_col2_sum,  "
+        "sum(t1.col5) OVER w1 as w1_col5_sum  "
+        "FROM t1 last join t2 on t1.col1=t2.col1 "
+        "WINDOW w1 AS (PARTITION BY COL2 ORDER BY `TS` ROWS BETWEEN 3 "
+        "PRECEDING AND 3 FOLLOWING) limit 10;";
+
+    int8_t* ptr = NULL;
+    std::vector<Row> window;
+    BuildWindow(window, &ptr);
+
+    int8_t* ptr2 = NULL;
+    std::vector<Row> window2;
+    BuildWindow2(window2, &ptr2);
+
+    ASSERT_EQ(window.size(), window2.size());
+    std::vector<Row> window_t12;
+
+    for (size_t i = 0; i < window.size(); i++) {
+        window_t12.push_back(Row(window[i], window2[i]));
+    }
+
+    ArrayListV<Row>* w = new ArrayListV<Row>(&window_t12);
+    int8_t* output = NULL;
+    int8_t** row_ptrs = window_t12.back().GetRowPtrs();
+    int8_t* window_ptr = reinterpret_cast<int8_t*>(w);
+    int32_t* row_sizes = window_t12.back().GetRowSizes();
+    vm::Schema schema;
+
+    std::vector<std::pair<const std::string, const vm::Schema*>>
+        name_schema_list;
+    name_schema_list.push_back(
+        std::make_pair(table_.name(), &table_.columns()));
+    name_schema_list.push_back(
+        std::make_pair(table2_.name(), &table2_.columns()));
+
+    CheckFnLetBuilder(name_schema_list, "", sql, row_ptrs, window_ptr,
+                      row_sizes, &schema, &output);
+    // t1.col1
+    ASSERT_EQ(11111u, *reinterpret_cast<uint32_t*>(output + 7));
+    // sum(t1.col1)
+    ASSERT_EQ(1u + 11u + 111u + 1111u + 11111u,
+              *reinterpret_cast<uint32_t*>(output + 7 + 4));
+    // t1.col3
+    ASSERT_EQ(33333.1f, *reinterpret_cast<float*>(output + 7 + 4 + 4));
+    // sum(t1.col3)
+    ASSERT_EQ(3.1f + 33.1f + 333.1f + 3333.1f + 33333.1f,
+              *reinterpret_cast<float*>(output + 7 + 4 + 4 + 4));
+
+    ASSERT_EQ(55.5, *reinterpret_cast<double*>(output + 7 + 4 + 4 + 4 + 4));
+    ASSERT_EQ(11.1 + 22.2 + 33.3 + 44.4 + 55.5,
+              *reinterpret_cast<double*>(output + 7 + 4 + 4 + 4 + 4 + 8));
+    ASSERT_EQ(55 + 55 + 55 + 5 + 5,
               *reinterpret_cast<int16_t*>(output + 7 + 4 + 4 + 4 + 4 + 8 + 8));
     ASSERT_EQ(
         5L + 55L + 555L + 5555L + 55555L,
@@ -614,11 +756,11 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_min_project) {
     BuildWindow(window, &ptr);
     int8_t* output = NULL;
     int8_t* row_ptrs[1] = {window.back().buf()};
-    int8_t* window_ptrs[1] = {ptr};
+    int8_t* window_ptr = ptr;
     int32_t row_sizes[1] = {static_cast<int32_t>(window.back().size())};
     vm::Schema schema;
-    CheckFnLetBuilder(table_, "", sql, row_ptrs, window_ptrs, row_sizes,
-                      &schema, &output);
+    CheckFnLetBuilder(table_, "", sql, row_ptrs, window_ptr, row_sizes, &schema,
+                      &output);
     ASSERT_EQ(7u + 4u + 4u + 8u + 2u + 8u,
               *reinterpret_cast<uint32_t*>(output + 2));
     ASSERT_EQ(1u, *reinterpret_cast<uint32_t*>(output + 7));
@@ -645,11 +787,11 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_max_project) {
     BuildWindow(window, &ptr);
     int8_t* output = NULL;
     int8_t* row_ptrs[1] = {window.back().buf()};
-    int8_t* window_ptrs[1] = {ptr};
+    int8_t* window_ptr = ptr;
     int32_t row_sizes[1] = {static_cast<int32_t>(window.back().size())};
     vm::Schema schema;
-    CheckFnLetBuilder(table_, "", sql, row_ptrs, window_ptrs, row_sizes,
-                      &schema, &output);
+    CheckFnLetBuilder(table_, "", sql, row_ptrs, window_ptr, row_sizes, &schema,
+                      &output);
     ASSERT_EQ(7u + 4u + 4u + 8u + 2u + 8u,
               *reinterpret_cast<uint32_t*>(output + 2));
     ASSERT_EQ(11111u, *reinterpret_cast<uint32_t*>(output + 7));
@@ -694,11 +836,11 @@ TEST_F(FnLetIRBuilderTest, test_col_at_udf) {
     BuildWindow(window, &ptr);
     int8_t* output = NULL;
     int8_t* row_ptrs[1] = {window.back().buf()};
-    int8_t* window_ptrs[1] = {ptr};
+    int8_t* window_ptr = ptr;
     int32_t row_sizes[1] = {static_cast<int32_t>(window.back().size())};
     vm::Schema schema;
 
-    CheckFnLetBuilder(table_, udf_str, sql, row_ptrs, window_ptrs, row_sizes,
+    CheckFnLetBuilder(table_, udf_str, sql, row_ptrs, window_ptr, row_sizes,
                       &schema, &output);
     ASSERT_EQ(3, schema.size());
     ASSERT_EQ(7u + 4u + 4u + 4u, *reinterpret_cast<uint32_t*>(output + 2));

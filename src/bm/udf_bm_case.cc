@@ -19,20 +19,20 @@
 #include "vm/mem_catalog.h"
 namespace fesql {
 namespace bm {
-using codec::Row;
 using codec::ColumnImpl;
+using codec::Row;
 using vm::MemTableHandler;
 using vm::MemTimeTableHandler;
-static void BuildData(type::TableDef& table_def,      // NOLINT
+static void BuildData(type::TableDef& table_def,        // NOLINT
                       vm::MemTimeTableHandler& window,  // NOLINT
                       int64_t data_size);
 
-int64_t RunCopyToArrayList(MemTimeTableHandler& window,               // NOLINT
-                         type::TableDef& table_def);              // NOLINT
-int32_t RunCopyToTable(vm::TableHandler* table,                     // NOLINT
-                     const vm::Schema* schema);                   // NOLINT
-int32_t RunCopyToTimeTable(MemTimeTableHandler& segment,                // NOLINT
-                       type::TableDef& table_def);                // NOLINT
+int64_t RunCopyToArrayList(MemTimeTableHandler& window,           // NOLINT
+                           type::TableDef& table_def);            // NOLINT
+int32_t RunCopyToTable(vm::TableHandler* table,                   // NOLINT
+                       const vm::Schema* schema);                 // NOLINT
+int32_t RunCopyToTimeTable(MemTimeTableHandler& segment,          // NOLINT
+                           type::TableDef& table_def);            // NOLINT
 int32_t TableHanlderIterate(vm::TableHandler* table_hander);      // NOLINT
 int32_t TableHanlderIterateTest(vm::TableHandler* table_hander);  // NOLINT
 const int64_t PartitionHandlerIterate(vm::PartitionHandler* partition_handler,
@@ -40,7 +40,7 @@ const int64_t PartitionHandlerIterate(vm::PartitionHandler* partition_handler,
 const int64_t PartitionHandlerIterateTest(
     vm::PartitionHandler* partition_handler, const std::string& key);
 
-static void BuildData(type::TableDef& table_def,       // NOLINT
+static void BuildData(type::TableDef& table_def,         // NOLINT
                       vm::MemTimeTableHandler& segment,  // NOLINT
                       int64_t data_size) {
     std::vector<Row> buffer;
@@ -210,8 +210,8 @@ void CopyMemSegment(benchmark::State* state, MODE mode, int64_t data_size) {
     }
 }
 
-int64_t RunCopyToArrayList(MemTimeTableHandler& window,    // NOLINT
-                         type::TableDef& table_def) {  // NOLINT
+int64_t RunCopyToArrayList(MemTimeTableHandler& window,  // NOLINT
+                           type::TableDef& table_def) {  // NOLINT
     std::vector<Row> window_table;
     auto from_iter = window.GetIterator();
     while (from_iter->Valid()) {
@@ -220,8 +220,8 @@ int64_t RunCopyToArrayList(MemTimeTableHandler& window,    // NOLINT
     }
     return window_table.size();
 }
-int32_t RunCopyToTable(vm::TableHandler* table,  // NOLINT
-                     const vm::Schema* schema) {      // NOLINT
+int32_t RunCopyToTable(vm::TableHandler* table,     // NOLINT
+                       const vm::Schema* schema) {  // NOLINT
     auto window_table =
         std::shared_ptr<vm::MemTableHandler>(new MemTableHandler(schema));
     auto from_iter = table->GetIterator();
@@ -231,8 +231,8 @@ int32_t RunCopyToTable(vm::TableHandler* table,  // NOLINT
     }
     return window_table->GetCount();
 }
-int32_t RunCopyToTimeTable(MemTimeTableHandler& segment,    // NOLINT
-                       type::TableDef& table_def) {  // NOLINT
+int32_t RunCopyToTimeTable(MemTimeTableHandler& segment,  // NOLINT
+                           type::TableDef& table_def) {   // NOLINT
     auto window_table = std::shared_ptr<vm::MemTimeTableHandler>(
         new MemTimeTableHandler(&table_def.columns()));
     auto from_iter = segment.GetIterator();
@@ -302,7 +302,7 @@ void SumArrayListCol(benchmark::State* state, MODE mode, int64_t data_size,
     uint32_t offset;
     node::DataType type;
     uint32_t col_size;
-    ASSERT_TRUE(builder.GetColOffsetType(col_name, &offset, &type));
+    ASSERT_TRUE(builder.GetColOffsetType(col_name, 0, &offset, &type));
     ASSERT_TRUE(codegen::GetLLVMColumnSize(type, &col_size));
     int8_t* buf = reinterpret_cast<int8_t*>(alloca(col_size));
     ::fesql::codec::ListRef list_ref;
@@ -311,9 +311,9 @@ void SumArrayListCol(benchmark::State* state, MODE mode, int64_t data_size,
     int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
     type::Type storage_type;
     ASSERT_TRUE(codegen::DataType2SchemaType(type, &storage_type));
-    ASSERT_EQ(0,
-              ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&list_table),
-                                         offset, storage_type, buf));
+    ASSERT_EQ(
+        0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&list_table), 0,
+                                      offset, storage_type, buf));
     {
         switch (mode) {
             case BENCHMARK: {
@@ -400,7 +400,7 @@ void SumMemTableCol(benchmark::State* state, MODE mode, int64_t data_size,
     uint32_t offset;
     node::DataType type;
     uint32_t col_size;
-    ASSERT_TRUE(builder.GetColOffsetType(col_name, &offset, &type));
+    ASSERT_TRUE(builder.GetColOffsetType(col_name, 0, &offset, &type));
     ASSERT_TRUE(codegen::GetLLVMColumnSize(type, &col_size));
     int8_t* buf = reinterpret_cast<int8_t*>(alloca(col_size));
     ::fesql::codec::ListRef list_ref;
@@ -410,7 +410,7 @@ void SumMemTableCol(benchmark::State* state, MODE mode, int64_t data_size,
     type::Type storage_type;
     ASSERT_TRUE(codegen::DataType2SchemaType(type, &storage_type));
     ASSERT_EQ(0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&window),
-                                            offset, storage_type, buf));
+                                            0, offset, storage_type, buf));
     {
         switch (mode) {
             case BENCHMARK: {

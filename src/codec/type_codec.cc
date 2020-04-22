@@ -27,8 +27,8 @@ namespace fesql {
 namespace codec {
 namespace v1 {
 
-using fesql::codec::Row;
 using fesql::codec::ListV;
+using fesql::codec::Row;
 int32_t GetStrField(const int8_t* row, uint32_t field_offset,
                     uint32_t next_str_field_offset, uint32_t str_start_offset,
                     uint32_t addr_space, int8_t** data, uint32_t* size) {
@@ -144,7 +144,7 @@ int32_t AppendString(int8_t* buf_ptr, uint32_t buf_size, int8_t* val,
     return str_body_offset + size;
 }
 
-int32_t GetStrCol(int8_t* input, int32_t str_field_offset,
+int32_t GetStrCol(int8_t* input, int32_t row_idx, int32_t str_field_offset,
                   int32_t next_str_field_offset, int32_t str_start_offset,
                   int32_t type_id, int8_t* data) {
     if (nullptr == input || nullptr == data) {
@@ -155,8 +155,9 @@ int32_t GetStrCol(int8_t* input, int32_t str_field_offset,
     fesql::type::Type type = static_cast<fesql::type::Type>(type_id);
     switch (type) {
         case fesql::type::kVarchar: {
-            new (data) StringColumnImpl(
-                w, str_field_offset, next_str_field_offset, str_start_offset);
+            new (data)
+                StringColumnImpl(w, row_idx, str_field_offset,
+                                 next_str_field_offset, str_start_offset);
             break;
         }
         default: {
@@ -166,32 +167,32 @@ int32_t GetStrCol(int8_t* input, int32_t str_field_offset,
     return 0;
 }
 
-int32_t GetCol(int8_t* input, int32_t offset, int32_t type_id, int8_t* data) {
+int32_t GetCol(int8_t* input, int32_t row_idx, int32_t offset, int32_t type_id,
+               int8_t* data) {
     fesql::type::Type type = static_cast<fesql::type::Type>(type_id);
     if (nullptr == input || nullptr == data) {
         return -2;
     }
-    ListV<Row>* w =
-        reinterpret_cast<ListV<Row>*>(input);
+    ListV<Row>* w = reinterpret_cast<ListV<Row>*>(input);
     switch (type) {
         case fesql::type::kInt32: {
-            new (data) ColumnImpl<int>(w, offset);
+            new (data) ColumnImpl<int>(w, row_idx, offset);
             break;
         }
         case fesql::type::kInt16: {
-            new (data) ColumnImpl<int16_t>(w, offset);
+            new (data) ColumnImpl<int16_t>(w, row_idx, offset);
             break;
         }
         case fesql::type::kInt64: {
-            new (data) ColumnImpl<int64_t>(w, offset);
+            new (data) ColumnImpl<int64_t>(w, row_idx, offset);
             break;
         }
         case fesql::type::kFloat: {
-            new (data) ColumnImpl<float>(w, offset);
+            new (data) ColumnImpl<float>(w, row_idx, offset);
             break;
         }
         case fesql::type::kDouble: {
-            new (data) ColumnImpl<double>(w, offset);
+            new (data) ColumnImpl<double>(w, row_idx, offset);
             break;
         }
         default: {

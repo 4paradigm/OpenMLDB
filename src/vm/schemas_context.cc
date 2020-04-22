@@ -11,8 +11,7 @@
 namespace fesql {
 namespace vm {
 vm::SchemasContext::SchemasContext(
-    const std::vector<std::pair<const std::string, const vm::Schema*>>&
-        table_schema_list) {
+    const vm::NameSchemaList& table_schema_list) {
     uint32_t idx = 0;
     for (auto iter = table_schema_list.cbegin();
          iter != table_schema_list.cend(); iter++) {

@@ -656,6 +656,204 @@ TEST_P(EngineTest, test_last_join_match_index) {
     free(output[1]);
 }
 
+// 命中索引last join
+TEST_F(EngineTest, test_last_join_window_agg) {
+    type::TableDef table_def;
+    BuildTableDef(table_def);
+    ::fesql::type::IndexDef* index = table_def.add_indexes();
+    index->set_name("index1");
+    index->add_first_keys("col2");
+    index->set_second_key("col5");
+
+    std::shared_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, table_def));
+    ASSERT_TRUE(table->Init());
+    int8_t* rows = NULL;
+    std::vector<Row> windows;
+    BuildWindow(windows, &rows);
+
+    type::TableDef table_def2;
+    BuildTableT2Def(table_def2);
+    {
+        ::fesql::type::IndexDef* index = table_def2.add_indexes();
+        index->set_name("index1");
+        index->add_first_keys("col1");
+        index->set_second_key("col5");
+    }
+
+    std::shared_ptr<::fesql::storage::Table> table2(
+        new ::fesql::storage::Table(2, 1, table_def2));
+    ASSERT_TRUE(table2->Init());
+    int8_t* rows2 = NULL;
+    std::vector<Row> windows2;
+    BuildT2Window(windows2, &rows2);
+    StoreData(table2.get(), rows2);
+
+    auto catalog = BuildCommonCatalog(table_def, table);
+    AddTable(catalog, table_def2, table2);
+
+    // add request
+    {
+        fesql::type::TableDef request_def;
+        BuildTableDef(request_def);
+        request_def.set_name("t1");
+        request_def.set_catalog("request");
+        std::shared_ptr<::fesql::storage::Table> request(
+            new ::fesql::storage::Table(1, 1, request_def));
+        AddTable(catalog, request_def, request);
+    }
+    const std::string sql =
+        "%%fun\n"
+        "def test_at(col:list<int>, pos:int):int\n"
+        "    return col[pos]\n"
+        "end\n"
+        "def test_at_0(col:list<int>):int\n"
+        "    return test_at(col,0)\n"
+        "end\n"
+        "def test_sum(col:list<int>):int\n"
+        "    result = 0\n"
+        "    for x in col\n"
+        "        result += x\n"
+        "    return result\n"
+        "end\n"
+        "%%sql\n"
+        "SELECT "
+        "test_sum(t1.col1) OVER w1 as w1_col1_sum, "
+        "sum(t1.col3) OVER w1 as w1_col3_sum, "
+        "sum(t2.col4) OVER w1 as w1_t2_col4_sum, "
+        "sum(t2.col2) OVER w1 as w1_t2_col2_sum, "
+        "sum(t1.col5) OVER w1 as w1_col5_sum, "
+        "test_at_0(t1.col1) OVER w1 as w1_t1_col1_at0, "
+        "str1 as t2_str1 "
+        "FROM t1 last join t2 on t1.col1=t2.col1 and t1.col5 = t2.col5 "
+        "WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.col5 ROWS BETWEEN 3 "
+        "PRECEDING AND CURRENT ROW) limit 10;";
+    std::cout << sql << std::endl;
+    Engine engine(catalog);
+    base::Status get_status;
+    DLOG(INFO) << "RUN IN MODE REQUEST";
+    std::vector<int8_t*> output;
+    vm::Schema schema;
+
+    {
+        RequestRunSession session;
+        session.EnableDebug();
+        bool ok = engine.Get(sql, "db", session, get_status);
+        ASSERT_TRUE(ok);
+        schema = session.GetSchema();
+        PrintSchema(schema);
+        std::ostringstream oss;
+        session.GetPhysicalPlan()->Print(oss, "");
+        std::cout << "physical plan:\n" << oss.str() << std::endl;
+
+        std::ostringstream runner_oss;
+        session.GetRunner()->Print(runner_oss, "");
+        std::cout << "runner plan:\n" << runner_oss.str() << std::endl;
+        int32_t limit = 10;
+        auto iter = windows.cbegin();
+        while (limit-- > 0 && iter != windows.cend()) {
+            Row request = *iter;
+            Row row;
+            int32_t ret = session.Run(request, &row);
+            ASSERT_EQ(0, ret);
+            output.push_back(row.buf());
+            iter++;
+            ASSERT_TRUE(table->Put(request.data(), request.size()));
+        }
+    }
+    ASSERT_EQ(5u, output.size());
+
+    ::fesql::type::TableDef output_schema;
+    for (auto column : schema) {
+        ::fesql::type::ColumnDef* column_def = output_schema.add_columns();
+        *column_def = column;
+    }
+
+    std::unique_ptr<codec::RowView> row_view =
+        std::move(std::unique_ptr<codec::RowView>(
+            new codec::RowView(output_schema.columns())));
+    int8_t* output_1 = output[0];
+    int8_t* output_22 = output[1];
+
+    int8_t* output_333 = output[2];
+    int8_t* output_4444 = output[3];
+    int8_t* output_aaa = output[4];
+
+    ASSERT_EQ(5u, output.size());
+
+    ASSERT_EQ(1, *(reinterpret_cast<int32_t*>(output_1 + 7)));
+    ASSERT_EQ(1.1f, *(reinterpret_cast<float*>(output_1 + 7 + 4)));
+    ASSERT_EQ(11.1, *(reinterpret_cast<double*>(output_1 + 7 + 4 + 4)));
+    ASSERT_EQ(50, *(reinterpret_cast<int16_t*>(output_1 + 7 + 4 + 4 + 8)));
+    ASSERT_EQ(1L, *(reinterpret_cast<int64_t*>(output_1 + 7 + 4 + 4 + 8 + 2)));
+    ASSERT_EQ(1,
+              *(reinterpret_cast<int32_t*>(output_1 + 7 + 4 + 4 + 8 + 2 + 8)));
+    {
+        row_view->Reset(output_1);
+        ASSERT_EQ("A", row_view->GetAsString(6));
+    }
+
+    ASSERT_EQ(1 + 2, *(reinterpret_cast<int32_t*>(output_22 + 7)));
+    ASSERT_EQ(1.1f + 2.2f, *(reinterpret_cast<float*>(output_22 + 7 + 4)));
+    ASSERT_EQ(11.1 + 22.2, *(reinterpret_cast<double*>(output_22 + 7 + 4 + 4)));
+    ASSERT_EQ(50 + 50,
+              *(reinterpret_cast<int16_t*>(output_22 + 7 + 4 + 4 + 8)));
+    ASSERT_EQ(1L + 2L,
+              *(reinterpret_cast<int64_t*>(output_22 + 7 + 4 + 4 + 8 + 2)));
+    ASSERT_EQ(2,
+              *(reinterpret_cast<int32_t*>(output_22 + 7 + 4 + 4 + 8 + 2 + 8)));
+    {
+        row_view->Reset(output_22);
+        ASSERT_EQ("BB", row_view->GetAsString(6));
+    }
+
+    ASSERT_EQ(3, *(reinterpret_cast<int32_t*>(output_333 + 7)));
+    ASSERT_EQ(3.3f, *(reinterpret_cast<float*>(output_333 + 7 + 4)));
+    ASSERT_EQ(33.3, *(reinterpret_cast<double*>(output_333 + 7 + 4 + 4)));
+    ASSERT_EQ(550, *(reinterpret_cast<int16_t*>(output_333 + 7 + 4 + 4 + 8)));
+    ASSERT_EQ(1L,
+              *(reinterpret_cast<int64_t*>(output_333 + 7 + 4 + 4 + 8 + 2)));
+    ASSERT_EQ(
+        3, *(reinterpret_cast<int32_t*>(output_333 + 7 + 4 + 4 + 8 + 2 + 8)));
+    {
+        row_view->Reset(output_333);
+        ASSERT_EQ("CCC", row_view->GetAsString(6));
+    }
+
+    ASSERT_EQ(3 + 4, *(reinterpret_cast<int32_t*>(output_4444 + 7)));
+    ASSERT_EQ(3.3f + 4.4f, *(reinterpret_cast<float*>(output_4444 + 7 + 4)));
+    ASSERT_EQ(33.3 + 44.4,
+              *(reinterpret_cast<double*>(output_4444 + 7 + 4 + 4)));
+    ASSERT_EQ(550 + 550,
+              *(reinterpret_cast<int16_t*>(output_4444 + 7 + 4 + 4 + 8)));
+    ASSERT_EQ(1L + 2L,
+              *(reinterpret_cast<int64_t*>(output_4444 + 7 + 4 + 4 + 8 + 2)));
+    ASSERT_EQ(
+        4, *(reinterpret_cast<int32_t*>(output_4444 + 7 + 4 + 4 + 8 + 2 + 8)));
+    {
+        row_view->Reset(output_4444);
+        ASSERT_EQ("DDDD", row_view->GetAsString(6));
+    }
+
+    ASSERT_EQ(3 + 4 + 5, *(reinterpret_cast<int32_t*>(output_aaa + 7)));
+    ASSERT_EQ(3.3f + 4.4f + 5.5f,
+              *(reinterpret_cast<float*>(output_aaa + 7 + 4)));
+    ASSERT_EQ(33.3 + 44.4 + 55.5,
+              *(reinterpret_cast<double*>(output_aaa + 7 + 4 + 4)));
+    ASSERT_EQ(550 + 550 + 550,
+              *(reinterpret_cast<int16_t*>(output_aaa + 7 + 4 + 4 + 8)));
+    ASSERT_EQ(1L + 2L + 3L,
+              *(reinterpret_cast<int64_t*>(output_aaa + 7 + 4 + 4 + 8 + 2)));
+    ASSERT_EQ(
+        5, *(reinterpret_cast<int32_t*>(output_aaa + 7 + 4 + 4 + 8 + 2 + 8)));
+    {
+        row_view->Reset(output_aaa);
+        ASSERT_EQ("EEEEE", row_view->GetAsString(6));
+    }
+    free(output[0]);
+    free(output[1]);
+}
+
 TEST_F(EngineTest, test_window_agg) {
     type::TableDef table_def;
     BuildTableDef(table_def);

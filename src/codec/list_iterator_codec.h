@@ -41,11 +41,14 @@ class Row {
     virtual ~Row() {}
     inline int8_t *buf() const { return slice_.buf(); }
     inline int8_t *buf(int32_t pos) const {
-        return 0 == pos ? slice_.buf() : slices_[pos-1].buf();
+        return 0 == pos ? slice_.buf() : slices_[pos - 1].buf();
     }
 
     inline const char *data() const { return slice_.data(); }
     inline int32_t size() const { return slice_.size(); }
+    inline int32_t size(int32_t pos) const {
+        return 0 == pos ? slice_.size() : slices_[pos - 1].size();
+    }
     // Return true if the length of the referenced data is zero
     inline bool empty() const { return slice_.empty() && slices_.empty(); }
     // Three-way comparison.  Returns value:
@@ -94,7 +97,7 @@ class Row {
         }
     }
     void AppendEmptyRow() { slices_.push_back(Slice()); }
-// Return a string that contains the copy of the referenced data.
+    // Return a string that contains the copy of the referenced data.
     std::string ToString() const { return slice_.ToString(); }
     Slice slice_;
     std::vector<Slice> slices_;
@@ -183,13 +186,16 @@ class WrapListImpl : public ListV<V> {
 template <class V>
 class ColumnImpl : public WrapListImpl<V, Row> {
  public:
-    ColumnImpl(ListV<Row> *impl, uint32_t offset)
-        : WrapListImpl<V, Row>(), root_(impl), offset_(offset) {}
+    ColumnImpl(ListV<Row> *impl, int32_t row_idx, uint32_t offset)
+        : WrapListImpl<V, Row>(),
+          root_(impl),
+          row_idx_(row_idx),
+          offset_(offset) {}
 
     ~ColumnImpl() {}
     const V GetField(Row row) const override {
         V value;
-        const int8_t *ptr = row.buf() + offset_;
+        const int8_t *ptr = row.buf(row_idx_) + offset_;
         value = *((const V *)ptr);
         return value;
     }
@@ -208,26 +214,28 @@ class ColumnImpl : public WrapListImpl<V, Row> {
     const uint64_t GetCount() override { return root_->GetCount(); }
     V At(uint64_t pos) override { return GetField(root_->At(pos)); }
 
- private:
+ protected:
     ListV<Row> *root_;
+    const uint32_t row_idx_;
     const uint32_t offset_;
 };
 
 class StringColumnImpl : public ColumnImpl<StringRef> {
  public:
-    StringColumnImpl(ListV<Row> *impl, int32_t str_field_offset,
-                     int32_t next_str_field_offset, int32_t str_start_offset)
-        : ColumnImpl<StringRef>(impl, 0u),
+    StringColumnImpl(ListV<Row> *impl, int32_t row_idx,
+                     int32_t str_field_offset, int32_t next_str_field_offset,
+                     int32_t str_start_offset)
+        : ColumnImpl<StringRef>(impl, row_idx, 0u),
           str_field_offset_(str_field_offset),
           next_str_field_offset_(next_str_field_offset),
           str_start_offset_(str_start_offset) {}
 
     ~StringColumnImpl() {}
     const StringRef GetField(Row row) const override {
-        int32_t addr_space = v1::GetAddrSpace(row.size());
+        int32_t addr_space = v1::GetAddrSpace(row.size(row_idx_));
         StringRef value;
-        v1::GetStrField(row.buf(), str_field_offset_, next_str_field_offset_,
-                        str_start_offset_, addr_space,
+        v1::GetStrField(row.buf(row_idx_), str_field_offset_,
+                        next_str_field_offset_, str_start_offset_, addr_space,
                         reinterpret_cast<int8_t **>(&(value.data)),
                         &(value.size));
         return value;
