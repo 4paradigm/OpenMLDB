@@ -622,9 +622,9 @@ class WindowDefNode : public SQLNode {
 
     void SetName(const std::string &name) { window_name_ = name; }
 
-    ExprListNode *GetPartitions() { return partitions_; }
+    ExprListNode *GetPartitions() const { return partitions_; }
 
-    OrderByNode *GetOrders() { return orders_; }
+    OrderByNode *GetOrders() const { return orders_; }
 
     SQLNode *GetFrame() const { return frame_ptr_; }
 
@@ -903,7 +903,6 @@ class BetweenExpr : public ExprNode {
     const std::string GetExprString() const;
     virtual bool Equals(const ExprNode *node) const;
 
- private:
     ExprNode *expr_;
     ExprNode *left_;
     ExprNode *right_;

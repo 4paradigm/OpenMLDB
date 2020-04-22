@@ -72,7 +72,8 @@ using fesql::node::PlanType;
 
 %ignore MakeExprWithTable; // TODO: avoid return object with share pointer
 %ignore WindowIterator;
-
+%ignore fesql::vm::SchemasContext;
+%ignore fesql::vm::RowSchemaInfo;
 %ignore fesql::vm::RowHandler;
 %ignore fesql::vm::TableHandler;
 %ignore fesql::vm::PartitionHandler;

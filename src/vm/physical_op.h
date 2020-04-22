@@ -120,6 +120,11 @@ class PhysicalOpNode {
 
     const vm::Schema &GetFnSchema() const { return fn_info_.fn_schema_; }
 
+    const std::vector<std::pair<const std::string, const vm::Schema *>>
+        &GetOutputNameSchemaList() {
+        return output_name_schema_list_;
+    }
+
     void SetLimitCnt(int32_t limit_cnt) { limit_cnt_ = limit_cnt; }
 
     const int32_t GetLimitCnt() const { return limit_cnt_; }
@@ -128,14 +133,14 @@ class PhysicalOpNode {
     const bool is_lazy_;
     PhysicalSchemaType output_type_;
     vm::Schema output_schema_;
-    std::vector<std::pair<const std::string, const vm::Schema *>>
-        output_name_schema_list_;
 
  protected:
     FnInfo fn_info_;
     std::vector<FnInfo *> fn_infos_;
     int32_t limit_cnt_;
     std::vector<PhysicalOpNode *> producers_;
+    std::vector<std::pair<const std::string, const vm::Schema *>>
+        output_name_schema_list_;
 };
 
 class PhysicalUnaryNode : public PhysicalOpNode {
@@ -144,7 +149,6 @@ class PhysicalUnaryNode : public PhysicalOpNode {
                       bool is_lazy)
         : PhysicalOpNode(type, is_block, is_lazy) {
         AddProducer(node);
-        InitSchema();
     }
     virtual ~PhysicalUnaryNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
@@ -161,7 +165,6 @@ class PhysicalBinaryNode : public PhysicalOpNode {
         AddProducer(left);
         AddProducer(right);
     }
-    virtual bool InitSchema() = 0;
     virtual ~PhysicalBinaryNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     virtual void PrintChildren(std::ostream &output,
@@ -240,6 +243,7 @@ class PhysicalGroupNode : public PhysicalUnaryNode {
         : PhysicalUnaryNode(node, kPhysicalOpGroupBy, true, false),
           groups_(groups) {
         output_type_ = kSchemaTypeGroup;
+        InitSchema();
     }
 
     virtual ~PhysicalGroupNode() {}
@@ -263,6 +267,7 @@ class PhysicalGroupAndSortNode : public PhysicalUnaryNode {
           groups_(groups),
           orders_(orders) {
         output_type_ = kSchemaTypeGroup;
+        InitSchema();
     }
     virtual ~PhysicalGroupAndSortNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
@@ -316,9 +321,10 @@ class PhysicalProjectNode : public PhysicalUnaryNode {
                         const bool is_block, const bool is_lazy)
         : PhysicalUnaryNode(node, kPhysicalOpProject, is_block, is_lazy),
           project_type_(project_type) {
-        output_schema_.CopyFrom(schema);
         SetFnName(fn_name);
         SetFnSchema(schema);
+        output_schema_ = schema;
+        InitSchema();
     }
     virtual ~PhysicalProjectNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
@@ -429,6 +435,7 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
           left_keys_(nullptr) {
         output_type_ = kSchemaTypeTable;
         InitSchema();
+        fn_infos_.push_back(&left_key_fn_info_);
     }
     PhysicalJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
                      const node::JoinType join_type,
@@ -440,6 +447,7 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
           left_keys_(keys) {
         output_type_ = kSchemaTypeTable;
         InitSchema();
+        fn_infos_.push_back(&left_key_fn_info_);
     }
     virtual ~PhysicalJoinNode() {}
     bool InitSchema() override;
@@ -608,7 +616,10 @@ class PhysicalSortNode : public PhysicalUnaryNode {
  public:
     PhysicalSortNode(PhysicalOpNode *node, const node::OrderByNode *order)
         : PhysicalUnaryNode(node, kPhysicalOpSortBy, true, false),
-          order_(order) {}
+          order_(order) {
+        output_type_ = node->output_type_;
+        InitSchema();
+    }
     virtual ~PhysicalSortNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     void SetOrdersIdxs(const std::vector<int32_t> &idxs) {
@@ -625,7 +636,10 @@ class PhysicalFliterNode : public PhysicalUnaryNode {
  public:
     PhysicalFliterNode(PhysicalOpNode *node, const node::ExprNode *condition)
         : PhysicalUnaryNode(node, kPhysicalOpFilter, true, false),
-          condition_(condition) {}
+          condition_(condition) {
+        output_type_ = node->output_type_;
+        InitSchema();
+    }
     virtual ~PhysicalFliterNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const node::ExprNode *condition_;
@@ -646,6 +660,8 @@ class PhysicalLimitNode : public PhysicalUnaryNode {
         : PhysicalUnaryNode(node, kPhysicalOpLimit, true, false) {
         limit_cnt_ = limit_cnt;
         limit_optimized_ = false;
+        output_type_ = node->output_type_;
+        InitSchema();
     }
     virtual ~PhysicalLimitNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
@@ -660,7 +676,10 @@ class PhysicalRenameNode : public PhysicalUnaryNode {
  public:
     PhysicalRenameNode(PhysicalOpNode *node, const std::string &name)
         : PhysicalUnaryNode(node, kPhysicalOpRename, false, false),
-          name_(name) {}
+          name_(name) {
+        output_type_ = node->output_type_;
+        InitSchema();
+    }
     virtual ~PhysicalRenameNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const std::string &name_;
@@ -669,7 +688,10 @@ class PhysicalRenameNode : public PhysicalUnaryNode {
 class PhysicalDistinctNode : public PhysicalUnaryNode {
  public:
     explicit PhysicalDistinctNode(PhysicalOpNode *node)
-        : PhysicalUnaryNode(node, kPhysicalOpDistinct, true, false) {}
+        : PhysicalUnaryNode(node, kPhysicalOpDistinct, true, false) {
+        output_type_ = node->output_type_;
+        InitSchema();
+    }
     virtual ~PhysicalDistinctNode() {}
 };
 

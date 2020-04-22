@@ -46,52 +46,7 @@ ExitOnError ExitOnErr;
 namespace fesql {
 namespace vm {
 Runner* GetFirstRunnerOfType(Runner* root, const RunnerType type);
-void BuildTableDef(::fesql::type::TableDef& table_def) {  // NOLINT
-    table_def.set_name("t1");
-    table_def.set_catalog("db");
-    {
-        ::fesql::type::ColumnDef* column = table_def.add_columns();
-        column->set_type(::fesql::type::kInt32);
-        column->set_name("col1");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table_def.add_columns();
-        column->set_type(::fesql::type::kInt16);
-        column->set_name("col2");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table_def.add_columns();
-        column->set_type(::fesql::type::kFloat);
-        column->set_name("col3");
-    }
 
-    {
-        ::fesql::type::ColumnDef* column = table_def.add_columns();
-        column->set_type(::fesql::type::kDouble);
-        column->set_name("col4");
-    }
-
-    {
-        ::fesql::type::ColumnDef* column = table_def.add_columns();
-        column->set_type(::fesql::type::kInt64);
-        column->set_name("col15");
-    }
-}
-void BuildBuf(int8_t** buf, uint32_t* size) {
-    ::fesql::type::TableDef table;
-    BuildTableDef(table);
-    codec::RowBuilder builder(table.columns());
-    uint32_t total_size = builder.CalTotalLength(2);
-    int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
-    builder.SetBuffer(ptr, total_size);
-    builder.AppendInt32(32);
-    builder.AppendInt16(16);
-    builder.AppendFloat(2.1f);
-    builder.AppendDouble(3.1);
-    builder.AppendInt64(64);
-    *buf = ptr;
-    *size = total_size;
-}
 class RunnerTest : public ::testing::TestWithParam<std::string> {};
 
 INSTANTIATE_TEST_CASE_P(
@@ -105,17 +60,17 @@ INSTANTIATE_TEST_CASE_P(
 INSTANTIATE_TEST_CASE_P(
     SqlWindowProjectPlanner, RunnerTest,
     testing::Values(
-        "SELECT COL1, COL2, `COL15`, AVG(COL3) OVER w, SUM(COL3) OVER w FROM "
+        "SELECT COL1, COL2, `COL5`, AVG(COL3) OVER w, SUM(COL3) OVER w FROM "
         "t1 \n"
         "WINDOW w AS (PARTITION BY COL2\n"
-        "              ORDER BY `COL15` ROWS BETWEEN UNBOUNDED PRECEDING AND "
+        "              ORDER BY `COL5` ROWS BETWEEN UNBOUNDED PRECEDING AND "
         "CURRENT ROW);",
         "SELECT COL1, SUM(col4) OVER w as w_amt_sum FROM t1 \n"
         "WINDOW w AS (PARTITION BY COL2\n"
-        "              ORDER BY `col15` ROWS BETWEEN 3 PRECEDING AND 3 "
+        "              ORDER BY `col5` ROWS BETWEEN 3 PRECEDING AND 3 "
         "FOLLOWING);",
         "SELECT sum(col1) OVER w1 as w1_col1_sum FROM t1 "
-        "WINDOW w1 AS (PARTITION BY col15 ORDER BY `col15` RANGE BETWEEN 3 "
+        "WINDOW w1 AS (PARTITION BY col5 ORDER BY `col5` RANGE BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;"));
 
 INSTANTIATE_TEST_CASE_P(
@@ -145,7 +100,7 @@ INSTANTIATE_TEST_CASE_P(
         "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join t2 on "
         "t1.col1 = t2.col2;",
         "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join t2 on "
-        "t1.col1 = t2.col2 and t2.col15 >= t1.col15;"));
+        "t1.col1 = t2.col2 and t2.col5 >= t1.col5;"));
 
 void Runner_Check(std::shared_ptr<Catalog> catalog, const std::string sql,
                   const bool is_batch) {
@@ -217,7 +172,7 @@ TEST_P(RunnerTest, request_mode_test) {
     index->set_name("index12");
     index->add_first_keys("col1");
     index->add_first_keys("col2");
-    index->set_second_key("col15");
+    index->set_second_key("col5");
     auto catalog = BuildCommonCatalog(table_def, table);
     AddTable(catalog, table_def2, table2);
     AddTable(catalog, table_def3, table3);
@@ -280,7 +235,7 @@ TEST_P(RunnerTest, batch_mode_test) {
     index->set_name("index12");
     index->add_first_keys("col1");
     index->add_first_keys("col2");
-    index->set_second_key("col15");
+    index->set_second_key("col5");
     auto catalog = BuildCommonCatalog(table_def, table);
     AddTable(catalog, table_def2, table2);
     AddTable(catalog, table_def3, table3);
@@ -323,7 +278,7 @@ TEST_F(RunnerTest, KeyGeneratorTest) {
     index->set_name("index12");
     index->add_first_keys("col3");
     index->add_first_keys("col4");
-    index->set_second_key("col15");
+    index->set_second_key("col5");
     auto catalog = BuildCommonCatalog(table_def, table);
     Runner_Check(catalog, sqlstr, true);
 
@@ -340,12 +295,59 @@ TEST_F(RunnerTest, KeyGeneratorTest) {
 
     auto root = GetFirstRunnerOfType(sql_context.runner, kRunnerGroup);
     auto group_runner = dynamic_cast<GroupRunner*>(root);
-    int8_t* row1 = NULL;
-    uint32_t size1 = 0;
-    BuildBuf(&row1, &size1);
-    ASSERT_EQ("32|16", group_runner->group_gen_.Gen(Row(row1, size1)));
+    std::vector<Row> rows;
+    fesql::type::TableDef temp_table;
+    BuildRows(temp_table, rows);
+    ASSERT_EQ("1|5", group_runner->group_gen_.Gen(rows[0]));
+    ASSERT_EQ("2|5", group_runner->group_gen_.Gen(rows[1]));
+    ASSERT_EQ("3|55", group_runner->group_gen_.Gen(rows[2]));
+    ASSERT_EQ("4|55", group_runner->group_gen_.Gen(rows[3]));
+    ASSERT_EQ("5|55", group_runner->group_gen_.Gen(rows[4]));
 }
 
+TEST_F(RunnerTest, RunnerPrintDataTest) {
+    fesql::type::TableDef table_def;
+    BuildTableDef(table_def);
+    table_def.set_name("t1");
+    std::shared_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, table_def));
+    ::fesql::type::IndexDef* index = table_def.add_indexes();
+    index->set_name("index12");
+    index->add_first_keys("col3");
+    index->add_first_keys("col4");
+    index->set_second_key("col5");
+    auto catalog = BuildCommonCatalog(table_def, table);
+    std::vector<Row> rows;
+    fesql::type::TableDef temp_table;
+    BuildRows(temp_table, rows);
+
+    NameSchemaList name_schema_list;
+    name_schema_list.push_back(std::make_pair("t1", &table_def.columns()));
+    // Print Empty Set
+    std::shared_ptr<MemTableHandler> table_handler =
+        std::shared_ptr<MemTableHandler>(new MemTableHandler());
+    Runner::PrintData(name_schema_list, table_handler);
+
+    // Print Table
+    for (auto row : rows) {
+        table_handler->AddRow(row);
+    }
+    Runner::PrintData(name_schema_list, table_handler);
+
+    // Print Table
+    int i = 0;
+    while (i++ < 10) {
+        for (auto row : rows) {
+            table_handler->AddRow(row);
+        }
+    }
+    Runner::PrintData(name_schema_list, table_handler);
+
+    // Print Row
+    std::shared_ptr<MemRowHandler> row_handler =
+        std::shared_ptr<MemRowHandler>(new MemRowHandler(rows[0]));
+    Runner::PrintData(name_schema_list, row_handler);
+}
 }  // namespace vm
 }  // namespace fesql
 

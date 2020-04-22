@@ -26,35 +26,21 @@ namespace codegen {
 
 RowFnLetIRBuilder::RowFnLetIRBuilder(const vm::Schema& schema,
                                      ::llvm::Module* module)
-    : module_(module) {
-    row_info_list_.push_back(
-        RowIRInfo{.idx = 0, .table_name_ = "", .schema_ = &schema});
-}
+    : schema_context_({std::make_pair("", &schema)}), module_(module) {}
 
 RowFnLetIRBuilder::RowFnLetIRBuilder(const std::string& table_name,
                                      const vm::Schema& schema,
                                      ::llvm::Module* module)
-    : module_(module) {
-    row_info_list_.push_back(
-        RowIRInfo{.idx = 0, .table_name_ = table_name, .schema_ = &schema});
-}
+    : schema_context_({std::make_pair(table_name, &schema)}), module_(module) {}
 RowFnLetIRBuilder::RowFnLetIRBuilder(
     const std::vector<std::pair<const std::string, const vm::Schema*>>&
         table_schema_list,
     ::llvm::Module* module)
-    : module_(module) {
-    uint32_t idx = 0;
-    for (auto iter = table_schema_list.cbegin();
-         iter != table_schema_list.cend(); iter++) {
-        row_info_list_.push_back(RowIRInfo{
-            .idx = idx, .table_name_ = iter->first, .schema_ = iter->second});
-        idx++;
-    }
-}
+    : schema_context_(table_schema_list), module_(module) {}
 RowFnLetIRBuilder::~RowFnLetIRBuilder() {}
 
 /**
- * Codegen For int32 RowFnLetUDF(int_8* row_ptrs, int8_t* window_ptrs, int32 *
+ * Codegen For int32 RowFnLetUDF(int_8* row_ptrs, int8_t* window_ptr, int32 *
  * row_sizes, int8_t * output_ptr)
  * @param name
  * @param projects
@@ -76,15 +62,14 @@ bool RowFnLetIRBuilder::Build(
     std::vector<::llvm::Type*> args_llvm_type;
     args_llvm_type.push_back(
         ::llvm::Type::getInt8PtrTy(module_->getContext())->getPointerTo());
-    args_llvm_type.push_back(
-        ::llvm::Type::getInt8PtrTy(module_->getContext())->getPointerTo());
+    args_llvm_type.push_back(::llvm::Type::getInt8PtrTy(module_->getContext()));
     args_llvm_type.push_back(
         ::llvm::Type::getInt32Ty(module_->getContext())->getPointerTo());
     args_llvm_type.push_back(
         ::llvm::Type::getInt8PtrTy(module_->getContext())->getPointerTo());
 
     args.push_back("row_ptrs");
-    args.push_back("window_ptrs");
+    args.push_back("window_ptr");
     args.push_back("row_sizes");
     args.push_back(output_ptr_name);
 
@@ -109,11 +94,11 @@ bool RowFnLetIRBuilder::Build(
     ::llvm::BasicBlock* block =
         ::llvm::BasicBlock::Create(module_->getContext(), "entry", fn);
     VariableIRBuilder variable_ir_builder(block, &sv);
-    if (row_info_list_.empty()) {
+    if (schema_context_.row_schema_info_list_.empty()) {
         LOG(WARNING) << "fail to build fn: row info list is empty";
         return false;
     }
-    ExprIRBuilder expr_ir_builder(block, &sv, row_info_list_, true, module_);
+    ExprIRBuilder expr_ir_builder(block, &sv, &schema_context_, true, module_);
     ::fesql::node::PlanNodeList::const_iterator it = projects.cbegin();
     std::map<uint32_t, ::llvm::Value*> outputs;
     uint32_t index = 0;

@@ -32,9 +32,12 @@ using vm::TableHandler;
 using vm::Window;
 class RunnerContext {
  public:
-    RunnerContext() : request_(), cache_() {}
-    explicit RunnerContext(const Row& request) : request_(request), cache_() {}
+    explicit RunnerContext(const bool is_debug = false)
+        : request_(), is_debug_(is_debug), cache_() {}
+    explicit RunnerContext(const Row& request, const bool is_debug = false)
+        : request_(request), is_debug_(is_debug), cache_() {}
     const Row request_;
+    const bool is_debug_;
     std::map<int32_t, std::shared_ptr<DataHandler>> cache_;
 };
 
@@ -165,18 +168,22 @@ inline const std::string RunnerTypeName(const RunnerType& type) {
 }
 class Runner {
  public:
-    explicit Runner(const int32_t id, const RunnerType type)
+    explicit Runner(const int32_t id, const RunnerType type,
+                    const vm::NameSchemaList& output_schemas)
         : id_(id),
           type_(type),
           limit_cnt_(0),
           need_cache_(false),
-          producers_() {}
-    Runner(const int32_t id, const RunnerType type, const int32_t limit_cnt)
+          producers_(),
+          output_schemas_(output_schemas) {}
+    Runner(const int32_t id, const RunnerType type,
+           const vm::NameSchemaList& output_schemas, const int32_t limit_cnt)
         : id_(id),
           type_(type),
           limit_cnt_(limit_cnt),
           need_cache_(false),
-          producers_() {}
+          producers_(),
+          output_schemas_(output_schemas) {}
     virtual ~Runner() {}
     void AddProducer(Runner* runner) { producers_.push_back(runner); }
     const std::vector<Runner*>& GetProducers() const { return producers_; }
@@ -220,15 +227,20 @@ class Runner {
         std::shared_ptr<DataHandler> table, OrderGenerator order_gen,  // NOLINT
         const bool is_asc);
 
+    static void PrintData(const vm::NameSchemaList& schema_list,
+                          std::shared_ptr<DataHandler> data);
+
  protected:
     bool need_cache_;
     std::vector<Runner*> producers_;
+    const vm::NameSchemaList output_schemas_;
 };
 
 class DataRunner : public Runner {
  public:
-    DataRunner(const int32_t id, std::shared_ptr<DataHandler> data_hander)
-        : Runner(id, kRunnerData), data_handler_(data_hander) {}
+    DataRunner(const int32_t id, const NameSchemaList& schema,
+               std::shared_ptr<DataHandler> data_hander)
+        : Runner(id, kRunnerData, schema), data_handler_(data_hander) {}
     ~DataRunner() {}
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
     const std::shared_ptr<DataHandler> data_handler_;
@@ -236,17 +248,18 @@ class DataRunner : public Runner {
 
 class RequestRunner : public Runner {
  public:
-    RequestRunner(const int32_t id, const Schema& schema)
-        : Runner(id, kRunnerRequest), request_schema(schema) {}
+    RequestRunner(const int32_t id, const NameSchemaList& schema)
+        : Runner(id, kRunnerRequest, schema) {}
     ~RequestRunner() {}
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
-    const Schema request_schema;
 };
 class GroupRunner : public Runner {
  public:
-    GroupRunner(const int32_t id, const int32_t limit_cnt,
-                const FnInfo& fn_info, const std::vector<int32_t>& idxs)
-        : Runner(id, kRunnerGroup, limit_cnt), group_gen_(fn_info, idxs) {}
+    GroupRunner(const int32_t id, const NameSchemaList& schema,
+                const int32_t limit_cnt, const FnInfo& fn_info,
+                const std::vector<int32_t>& idxs)
+        : Runner(id, kRunnerGroup, schema, limit_cnt),
+          group_gen_(fn_info, idxs) {}
     ~GroupRunner() {}
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
     KeyGenerator group_gen_;
@@ -254,9 +267,11 @@ class GroupRunner : public Runner {
 
 class FilterRunner : public Runner {
  public:
-    FilterRunner(const int32_t id, const int32_t limit_cnt,
-                 const FnInfo& fn_info, const std::vector<int32_t>& idxs)
-        : Runner(id, kRunnerFilter, limit_cnt), cond_gen_(fn_info, idxs) {}
+    FilterRunner(const int32_t id, const NameSchemaList& schema,
+                 const int32_t limit_cnt, const FnInfo& fn_info,
+                 const std::vector<int32_t>& idxs)
+        : Runner(id, kRunnerFilter, schema, limit_cnt),
+          cond_gen_(fn_info, idxs) {}
     ~FilterRunner() {}
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
     const std::vector<int32_t> idxs_;
@@ -264,10 +279,10 @@ class FilterRunner : public Runner {
 };
 class OrderRunner : public Runner {
  public:
-    OrderRunner(const int32_t id, const int32_t limit_cnt,
-                const FnInfo& fn_info, const std::vector<int32_t>& idxs,
-                const bool is_asc)
-        : Runner(id, kRunnerOrder, limit_cnt),
+    OrderRunner(const int32_t id, const NameSchemaList& schema,
+                const int32_t limit_cnt, const FnInfo& fn_info,
+                const std::vector<int32_t>& idxs, const bool is_asc)
+        : Runner(id, kRunnerOrder, schema, limit_cnt),
           order_gen_(fn_info, idxs),
           is_asc_(is_asc) {}
     ~OrderRunner() {}
@@ -278,12 +293,12 @@ class OrderRunner : public Runner {
 
 class GroupAndSortRunner : public Runner {
  public:
-    GroupAndSortRunner(const int32_t id, const int32_t limit_cnt,
-                       const FnInfo& fn_info,
+    GroupAndSortRunner(const int32_t id, const NameSchemaList& schema,
+                       const int32_t limit_cnt, const FnInfo& fn_info,
                        const std::vector<int32_t>& groups_idxs,
                        const std::vector<int32_t>& orders_idxs,
                        const bool is_asc)
-        : Runner(id, kRunnerGroupAndSort, limit_cnt),
+        : Runner(id, kRunnerGroupAndSort, schema, limit_cnt),
           group_gen_(fn_info, groups_idxs),
           order_gen_(fn_info, orders_idxs),
           is_asc_(is_asc) {}
@@ -296,9 +311,10 @@ class GroupAndSortRunner : public Runner {
 
 class TableProjectRunner : public Runner {
  public:
-    TableProjectRunner(const int32_t id, const int32_t limit_cnt,
-                       const FnInfo& fn_info)
-        : Runner(id, kRunnerTableProject, limit_cnt), project_gen_(fn_info) {}
+    TableProjectRunner(const int32_t id, const NameSchemaList& schema,
+                       const int32_t limit_cnt, const FnInfo& fn_info)
+        : Runner(id, kRunnerTableProject, schema, limit_cnt),
+          project_gen_(fn_info) {}
     ~TableProjectRunner() {}
 
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
@@ -307,9 +323,10 @@ class TableProjectRunner : public Runner {
 
 class RowProjectRunner : public Runner {
  public:
-    RowProjectRunner(const int32_t id, const int32_t limit_cnt,
-                     const FnInfo& fn_info)
-        : Runner(id, kRunnerRowProject, limit_cnt), project_gen_(fn_info) {}
+    RowProjectRunner(const int32_t id, const NameSchemaList& schema,
+                     const int32_t limit_cnt, const FnInfo& fn_info)
+        : Runner(id, kRunnerRowProject, schema, limit_cnt),
+          project_gen_(fn_info) {}
     ~RowProjectRunner() {}
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
     ProjectGenerator project_gen_;
@@ -317,9 +334,9 @@ class RowProjectRunner : public Runner {
 
 class GroupAggRunner : public Runner {
  public:
-    GroupAggRunner(const int32_t id, const int32_t limit_cnt,
-                   const FnInfo& fn_info)
-        : Runner(id, kRunnerGroupAgg, limit_cnt), agg_gen_(fn_info) {}
+    GroupAggRunner(const int32_t id, const NameSchemaList& schema,
+                   const int32_t limit_cnt, const FnInfo& fn_info)
+        : Runner(id, kRunnerGroupAgg, schema, limit_cnt), agg_gen_(fn_info) {}
     ~GroupAggRunner() {}
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
     AggGenerator agg_gen_;
@@ -327,18 +344,19 @@ class GroupAggRunner : public Runner {
 
 class AggRunner : public Runner {
  public:
-    AggRunner(const int32_t id, const int32_t limit_cnt, const FnInfo& fn_info)
-        : Runner(id, kRunnerAgg, limit_cnt), agg_gen_(fn_info) {}
+    AggRunner(const int32_t id, const NameSchemaList& schema,
+              const int32_t limit_cnt, const FnInfo& fn_info)
+        : Runner(id, kRunnerAgg, schema, limit_cnt), agg_gen_(fn_info) {}
     ~AggRunner() {}
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
     AggGenerator agg_gen_;
 };
 class WindowAggRunner : public Runner {
  public:
-    WindowAggRunner(const int32_t id, const int32_t limit_cnt,
-                    const FnInfo& fn_info, const int64_t start_offset,
-                    const int64_t end_offset)
-        : Runner(id, kRunnerWindowAgg, limit_cnt),
+    WindowAggRunner(const int32_t id, const NameSchemaList& schema,
+                    const int32_t limit_cnt, const FnInfo& fn_info,
+                    const int64_t start_offset, const int64_t end_offset)
+        : Runner(id, kRunnerWindowAgg, schema, limit_cnt),
           window_gen_(fn_info),
           start_offset_(start_offset),
           end_offset_(end_offset) {}
@@ -351,13 +369,13 @@ class WindowAggRunner : public Runner {
 
 class RequestUnionRunner : public Runner {
  public:
-    RequestUnionRunner(const int32_t id, const int32_t limit_cnt,
-                       const FnInfo& fn_info,
+    RequestUnionRunner(const int32_t id, const NameSchemaList& schema,
+                       const int32_t limit_cnt, const FnInfo& fn_info,
                        const std::vector<int32_t>& groups_idxs,
                        const std::vector<int32_t>& orders_idxs,
                        const std::vector<int32_t>& ts_idxs, const bool is_asc,
                        const int64_t start_offset, const int64_t end_offset)
-        : Runner(id, kRunnerRequestUnion, limit_cnt),
+        : Runner(id, kRunnerRequestUnion, schema, limit_cnt),
           is_asc_(is_asc),
           group_gen_(fn_info, groups_idxs),
           order_gen_(fn_info, orders_idxs),
@@ -375,10 +393,10 @@ class RequestUnionRunner : public Runner {
 };
 class IndexSeekRunner : public Runner {
  public:
-    IndexSeekRunner(const int32_t id, const int32_t limit_cnt,
-                    const FnInfo& fn_info,
+    IndexSeekRunner(const int32_t id, const NameSchemaList& schema,
+                    const int32_t limit_cnt, const FnInfo& fn_info,
                     const std::vector<int32_t>& keys_idxs)
-        : Runner(id, kRunnerIndexSeek, limit_cnt),
+        : Runner(id, kRunnerIndexSeek, schema, limit_cnt),
           key_gen_(fn_info, keys_idxs) {}
 
     ~IndexSeekRunner() {}
@@ -388,12 +406,12 @@ class IndexSeekRunner : public Runner {
 
 class LastJoinRunner : public Runner {
  public:
-    LastJoinRunner(const int32_t id, const int32_t limit_cnt,
-                   const FnInfo& fn_info,
+    LastJoinRunner(const int32_t id, const NameSchemaList& schema,
+                   const int32_t limit_cnt, const FnInfo& fn_info,
                    const std::vector<int32_t>& condition_idxs,
                    const FnInfo& left_key_info,
                    const std::vector<int32_t>& left_keys_idxs)
-        : Runner(id, kRunnerLastJoin, limit_cnt),
+        : Runner(id, kRunnerLastJoin, schema, limit_cnt),
           condition_gen_(fn_info, condition_idxs),
           left_key_gen_(left_key_info, left_keys_idxs) {}
     ~LastJoinRunner() {}
@@ -404,12 +422,12 @@ class LastJoinRunner : public Runner {
 
 class RequestLastJoinRunner : public Runner {
  public:
-    RequestLastJoinRunner(const int32_t id, const int32_t limit_cnt,
-                          const FnInfo& fn_info,
+    RequestLastJoinRunner(const int32_t id, const NameSchemaList& schema,
+                          const int32_t limit_cnt, const FnInfo& fn_info,
                           const std::vector<int32_t>& condition_idxs,
                           const FnInfo& left_key_info,
                           const std::vector<int32_t>& left_keys_idxs)
-        : Runner(id, kRunnerRequestLastJoin, limit_cnt),
+        : Runner(id, kRunnerRequestLastJoin, schema, limit_cnt),
           condition_gen_(fn_info, condition_idxs),
           left_key_gen_(left_key_info, left_keys_idxs) {}
     ~RequestLastJoinRunner() {}
@@ -420,8 +438,8 @@ class RequestLastJoinRunner : public Runner {
 
 class LimitRunner : public Runner {
  public:
-    LimitRunner(int32_t id, int32_t limit_cnt)
-        : Runner(id, kRunnerLimit, limit_cnt) {}
+    LimitRunner(int32_t id, const NameSchemaList& schema, int32_t limit_cnt)
+        : Runner(id, kRunnerLimit, schema, limit_cnt) {}
     ~LimitRunner() {}
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
 };

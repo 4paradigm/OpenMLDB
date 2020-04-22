@@ -48,38 +48,6 @@ class TransformRequestModeTest : public ::testing::TestWithParam<std::string> {
     ~TransformRequestModeTest() {}
 };
 
-void BuildTableDef(::fesql::type::TableDef& table_def) {  // NOLINT
-    table_def.set_name("t1");
-    table_def.set_catalog("db");
-    {
-        ::fesql::type::ColumnDef* column = table_def.add_columns();
-        column->set_type(::fesql::type::kInt32);
-        column->set_name("col1");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table_def.add_columns();
-        column->set_type(::fesql::type::kInt16);
-        column->set_name("col2");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table_def.add_columns();
-        column->set_type(::fesql::type::kFloat);
-        column->set_name("col3");
-    }
-
-    {
-        ::fesql::type::ColumnDef* column = table_def.add_columns();
-        column->set_type(::fesql::type::kDouble);
-        column->set_name("col4");
-    }
-
-    {
-        ::fesql::type::ColumnDef* column = table_def.add_columns();
-        column->set_type(::fesql::type::kInt64);
-        column->set_name("col15");
-    }
-}
-
 void Physical_Plan_Check(const std::shared_ptr<tablet::TabletCatalog>& catalog,
                          std::string sql, std::string exp) {
     const fesql::base::Status exp_status(::fesql::common::kOk, "ok");
@@ -101,8 +69,6 @@ void Physical_Plan_Check(const std::shared_ptr<tablet::TabletCatalog>& catalog,
             std::ostringstream oss;
             oss << *(plan_trees[0]);
             LOG(INFO) << "logical plan:\n" << oss.str();
-            //            std::cout << "logical plan:\n" << oss.str() <<
-            //            std::endl;
         } else {
             std::cout << base_status.msg;
         }
@@ -140,17 +106,17 @@ INSTANTIATE_TEST_CASE_P(
 INSTANTIATE_TEST_CASE_P(
     SqlWindowProjectPlanner, TransformRequestModeTest,
     testing::Values(
-        "SELECT COL1, COL2, `COL15`, AVG(COL3) OVER w, SUM(COL3) OVER w FROM "
+        "SELECT COL1, COL2, `COL5`, AVG(COL3) OVER w, SUM(COL3) OVER w FROM "
         "t1 \n"
         "WINDOW w AS (PARTITION BY COL2\n"
-        "              ORDER BY `COL15` ROWS BETWEEN UNBOUNDED PRECEDING AND "
+        "              ORDER BY `COL5` ROWS BETWEEN UNBOUNDED PRECEDING AND "
         "CURRENT ROW);",
         "SELECT COL1, SUM(col4) OVER w as w_amt_sum FROM t1 \n"
         "WINDOW w AS (PARTITION BY COL2\n"
-        "              ORDER BY `col15` ROWS BETWEEN 3 PRECEDING AND 3 "
+        "              ORDER BY `col5` ROWS BETWEEN 3 PRECEDING AND 3 "
         "FOLLOWING);",
         "SELECT sum(col1) OVER w1 as w1_col1_sum FROM t1 "
-        "WINDOW w1 AS (PARTITION BY col15 ORDER BY `col15` RANGE BETWEEN 3 "
+        "WINDOW w1 AS (PARTITION BY col5 ORDER BY `col5` RANGE BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;"));
 
 INSTANTIATE_TEST_CASE_P(
@@ -230,7 +196,7 @@ INSTANTIATE_TEST_CASE_P(
         "SELECT * FROM t1 right join t2 on t1.col1 = t2.col2;",
         "SELECT * FROM t1 inner join t2 on t1.col1 = t2.col2;",
         "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join t2 on "
-        "t1.col1 = t2.col2 and t2.col15 >= t1.col15;"));
+        "t1.col1 = t2.col2 and t2.col5 >= t1.col5;"));
 
 INSTANTIATE_TEST_CASE_P(
     SqlLeftJoinWindowPlan, TransformRequestModeTest,
@@ -240,20 +206,20 @@ INSTANTIATE_TEST_CASE_P(
         "sum(t1.col3) OVER w1 as w1_col3_sum, "
         "sum(t2.col2) OVER w1 as w1_col2_sum "
         "FROM t1 left join t2 on t1.col1 = t2.col1 "
-        "WINDOW w1 AS (PARTITION BY t1.col1 ORDER BY t1.col15 ROWS BETWEEN 3 "
+        "WINDOW w1 AS (PARTITION BY t1.col1 ORDER BY t1.col5 ROWS BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;",
         "SELECT "
         "t1.col1, "
         "sum(t1.col3) OVER w1 as w1_col3_sum, "
         "sum(t2.col2) OVER w1 as w1_col2_sum "
         "FROM t1 left join t2 on t1.col1 = t2.col1 "
-        "WINDOW w1 AS (PARTITION BY t1.col1, t2.col2 ORDER BY t1.col15 ROWS "
+        "WINDOW w1 AS (PARTITION BY t1.col1, t1.col2 ORDER BY t1.col5 ROWS "
         "BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;"));
 INSTANTIATE_TEST_CASE_P(
     SqlUnionPlan, TransformRequestModeTest,
     testing::Values("SELECT * FROM t1 UNION SELECT max(col1), min(col2), "
-                    "sum(col3), avg(col4), col15 FROM t1;",
+                    "sum(col3), avg(col4), col5 FROM t1;",
                     "SELECT * FROM t1 inner join t2 on t1.col1 = t2.col2 UNION "
                     "SELECT * FROM t1 inner join t2 on t1.col1 = t2.col3 UNION "
                     "SELECT * FROM t1 inner join t2 on t2.col1 = t2.col4;"));
@@ -263,7 +229,7 @@ INSTANTIATE_TEST_CASE_P(
         "SELECT distinct COL1 FROM t1 HAVING COL1 > 10 and COL2 = 20;",
         "SELECT DISTINCT sum(COL1) as col1sum, * FROM t1 group by COL1,COL2;",
         "SELECT DISTINCT sum(col1) OVER w1 as w1_col1_sum FROM t1 "
-        "WINDOW w1 AS (PARTITION BY col15 ORDER BY `TS` RANGE BETWEEN 3 "
+        "WINDOW w1 AS (PARTITION BY col5 ORDER BY `TS` RANGE BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;",
         //        "SELECT DISTINCT COUNT(*) FROM t1;",
         "SELECT distinct COL1 FROM t1 where COL1+COL2;",
@@ -344,7 +310,7 @@ TEST_P(TransformRequestModeTest, transform_physical_plan) {
     index->set_name("index12");
     index->add_first_keys("col1");
     index->add_first_keys("col2");
-    index->set_second_key("col15");
+    index->set_second_key("col5");
     auto catalog = BuildCommonCatalog(table_def, table);
     AddTable(catalog, table_def2, table2);
     AddTable(catalog, table_def3, table3);
@@ -442,13 +408,13 @@ TEST_F(TransformRequestModeTest, pass_group_optimized_test) {
         index->set_name("index12");
         index->add_first_keys("col1");
         index->add_first_keys("col2");
-        index->set_second_key("col15");
+        index->set_second_key("col5");
     }
     {
         ::fesql::type::IndexDef* index = table_def.add_indexes();
         index->set_name("index1");
         index->add_first_keys("col1");
-        index->set_second_key("col15");
+        index->set_second_key("col5");
     }
 
     auto catalog = BuildCommonCatalog(table_def, table);
@@ -473,11 +439,11 @@ TEST_F(TransformRequestModeTest, pass_sort_optimized_test) {
         "col1, "
         "sum(col3) OVER w1 as w1_col3_sum, "
         "sum(col2) OVER w1 as w1_col2_sum "
-        "FROM t1 WINDOW w1 AS (PARTITION BY col1 ORDER BY col15 ROWS BETWEEN 3 "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;",
         "LIMIT(limit=10, optimized)\n"
         "  PROJECT(type=Aggregation, limit=10)\n"
-        "    REQUEST_UNION(groups=(), orders=() ASC, keys=(col15) ASC, "
+        "    REQUEST_UNION(groups=(), orders=() ASC, keys=(col5) ASC, "
         "start=-3, end=0)\n"
         "      DATA_PROVIDER(request=t1)\n"
         "      INDEX_SEEK(keys=(col1))\n"
@@ -488,11 +454,11 @@ TEST_F(TransformRequestModeTest, pass_sort_optimized_test) {
         "col1, "
         "sum(col3) OVER w1 as w1_col3_sum, "
         "sum(col2) OVER w1 as w1_col2_sum "
-        "FROM t1 WINDOW w1 AS (PARTITION BY col2, col1 ORDER BY col15 ROWS "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col2, col1 ORDER BY col5 ROWS "
         "BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;",
         "LIMIT(limit=10, optimized)\n"
         "  PROJECT(type=Aggregation, limit=10)\n"
-        "    REQUEST_UNION(groups=(), orders=() ASC, keys=(col15) ASC, "
+        "    REQUEST_UNION(groups=(), orders=() ASC, keys=(col5) ASC, "
         "start=-3, end=0)\n"
         "      DATA_PROVIDER(request=t1)\n"
         "      INDEX_SEEK(keys=(col1,col2))\n"
@@ -504,11 +470,11 @@ TEST_F(TransformRequestModeTest, pass_sort_optimized_test) {
         "sum(col3) OVER w1 as w1_col3_sum, "
         "*, "
         "sum(col2) OVER w1 as w1_col2_sum "
-        "FROM t1 WINDOW w1 AS (PARTITION BY col3 ORDER BY col15 ROWS BETWEEN 3"
+        "FROM t1 WINDOW w1 AS (PARTITION BY col3 ORDER BY col5 ROWS BETWEEN 3"
         "PRECEDING AND CURRENT ROW) limit 10;",
         "LIMIT(limit=10, optimized)\n"
         "  PROJECT(type=Aggregation, limit=10)\n"
-        "    REQUEST_UNION(groups=(col3), orders=(col15) ASC, keys=(col15) "
+        "    REQUEST_UNION(groups=(col3), orders=(col5) ASC, keys=(col5) "
         "ASC, start=-3, end=0)\n"
         "      DATA_PROVIDER(request=t1)\n"
         "      DATA_PROVIDER(table=t1)"));
@@ -523,13 +489,13 @@ TEST_F(TransformRequestModeTest, pass_sort_optimized_test) {
         index->set_name("index12");
         index->add_first_keys("col1");
         index->add_first_keys("col2");
-        index->set_second_key("col15");
+        index->set_second_key("col5");
     }
     {
         ::fesql::type::IndexDef* index = table_def.add_indexes();
         index->set_name("index1");
         index->add_first_keys("col1");
-        index->set_second_key("col15");
+        index->set_second_key("col5");
     }
 
     auto catalog = BuildCommonCatalog(table_def, table);
@@ -551,47 +517,78 @@ TEST_F(TransformRequestModeTest, pass_join_optimized_test) {
     std::vector<std::pair<std::string, std::string>> in_outs;
     in_outs.push_back(std::make_pair(
         "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join t2 on "
-        "t1.col1 = t2.col2 and t2.col15 >= t1.col15;",
+        "t1.col1 = t2.col2 and t2.col5 >= t1.col5;",
         "PROJECT(type=RowProject)\n"
-        "  REQUEST_JOIN(type=LastJoin, condition=t1.col1 = t2.col2 AND "
-        "t2.col15 >= t1.col15)\n"
+        "  REQUEST_JOIN(type=LastJoin, condition=t2.col5 >= t1.col5)\n"
         "    DATA_PROVIDER(request=t1)\n"
-        "    DATA_PROVIDER(table=t2)"));
-    //    in_outs.push_back(std::make_pair(
-    //        "SELECT "
-    //        "col1, "
-    //        "sum(col3) OVER w1 as w1_col3_sum, "
-    //        "sum(col2) OVER w1 as w1_col2_sum "
-    //        "FROM t1 left join t2 on t1.col1 = t2.col1 "
-    //        "WINDOW w1 AS (PARTITION BY col1 ORDER BY col15 ROWS BETWEEN 3 "
-    //        "PRECEDING AND CURRENT ROW) limit 10;",
-    //        "LIMIT(limit=10)\n"
-    //        "  PROJECT(type=ProjectRow)\n"
-    //        "    JOIN(type=kJoinTypeConcat, condition=)\n"
-    //        "      PROJECT(type=ProjectRow)\n"
-    //        "        JOIN(type=LeftJoin, condition=t1.col1 = t2.col1)\n"
-    //        "          SCAN(table=t1)\n"
-    //        "          SCAN(table=t2)\n"
-    //        "      PROJECT(type=WindowAggregation, start=-3, end=0)\n"
-    //        "        JOIN(type=LeftJoin, condition=t1.col1 = t2.col1)\n"
-    //        "          SCAN(type=IndexScan, table=t1, index=index1)\n"
-    //        "          SCAN(table=t2)"));
-    //    in_outs.push_back(std::make_pair(
-    //        "SELECT "
-    //        "col1, "
-    //        "sum(col3) OVER w1 as w1_col3_sum, "
-    //        "sum(col2) OVER w1 as w1_col2_sum "
-    //        "FROM t1 left join t2 on t1.col1 = t2.col1 "
-    //        "WINDOW w1 AS (PARTITION BY col1, col2 ORDER BY col15 ROWS BETWEEN
-    //        3 " "PRECEDING AND CURRENT ROW) limit 10;", "LIMIT(limit=10)\n" "
-    //        PROJECT(type=ProjectRow)\n" "    JOIN(type=kJoinTypeConcat,
-    //        condition=)\n" "      PROJECT(type=ProjectRow)\n" "
-    //        JOIN(type=LeftJoin, condition=t1.col1 = t2.col1)\n" "
-    //        SCAN(table=t1)\n" "          SCAN(table=t2)\n" "
-    //        PROJECT(type=Aggregation)\n" "        BUFFER(start=-3, end=0)\n"
-    //        "          JOIN(type=LeftJoin, condition=t1.col1 = t2.col1)\n"
-    //        "            SCAN(type=IndexScan, table=t1, index=index12)\n"
-    //        "            SCAN(table=t2)"));
+        "    GROUP_BY(groups=(t2.col2))\n"
+        "      DATA_PROVIDER(table=t2)"));
+    in_outs.push_back(std::make_pair(
+        "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join t2 on "
+        "t1.col1 = t2.col1 and t2.col5 >= t1.col5;",
+        "PROJECT(type=RowProject)\n"
+        "  REQUEST_JOIN(type=LastJoin, condition=t2.col5 >= t1.col5)\n"
+        "    DATA_PROVIDER(request=t1)\n"
+        "    DATA_PROVIDER(type=IndexScan, table=t2, index=index1_t2)"));
+    in_outs.push_back(std::make_pair(
+        "SELECT "
+        "t2.col1, "
+        "sum(t1.col3) OVER w1 as w1_col3_sum, "
+        "sum(t1.col2) OVER w1 as w1_col2_sum "
+        "FROM t1 last join t2 on t1.col1 = t2.col1 "
+        "WINDOW w1 AS (PARTITION BY t1.col1 ORDER BY t1.col5 ROWS "
+        "BETWEEN 3 "
+        "PRECEDING AND CURRENT ROW) limit 10;",
+        "LIMIT(limit=10, optimized)\n"
+        "  PROJECT(type=Aggregation, limit=10)\n"
+        "    JOIN(type=LastJoin, condition=, key=(t1.col1))\n"
+        "      REQUEST_UNION(groups=(), orders=() ASC, keys=(t1.col5) ASC, "
+        "start=-3, end=0)\n"
+        "        DATA_PROVIDER(request=t1)\n"
+        "        INDEX_SEEK(keys=(t1.col1))\n"
+        "          DATA_PROVIDER(request=t1)\n"
+        "          DATA_PROVIDER(type=IndexScan, table=t1, index=index1)\n"
+        "      DATA_PROVIDER(type=IndexScan, table=t2, index=index1_t2)"));
+    in_outs.push_back(std::make_pair(
+        "SELECT "
+        "t2.col1, "
+        "sum(t1.col3) OVER w1 as w1_col3_sum, "
+        "sum(t1.col2) OVER w1 as w1_col2_sum "
+        "FROM t1 last join t2 on t1.col2 = t2.col2 "
+        "WINDOW w1 AS (PARTITION BY t1.col1, t1.col2 ORDER BY t1.col5 ROWS "
+        "BETWEEN 3 "
+        "PRECEDING AND CURRENT ROW) limit 10;",
+        "LIMIT(limit=10, optimized)\n"
+        "  PROJECT(type=Aggregation, limit=10)\n"
+        "    JOIN(type=LastJoin, condition=, key=(t1.col2))\n"
+        "      REQUEST_UNION(groups=(), orders=() ASC, keys=(t1.col5) ASC, "
+        "start=-3, end=0)\n"
+        "        DATA_PROVIDER(request=t1)\n"
+        "        INDEX_SEEK(keys=(t1.col1,t1.col2))\n"
+        "          DATA_PROVIDER(request=t1)\n"
+        "          DATA_PROVIDER(type=IndexScan, table=t1, index=index12)\n"
+        "      GROUP_BY(groups=(t2.col2))\n"
+        "        DATA_PROVIDER(table=t2)"));
+    in_outs.push_back(std::make_pair(
+        "SELECT "
+        "t2.col1, "
+        "sum(t1.col3) OVER w1 as w1_col3_sum, "
+        "sum(t1.col2) OVER w1 as w1_col2_sum "
+        "FROM t1 last join t2 on t1.col1 = t2.col1 "
+        "WINDOW w1 AS (PARTITION BY t1.col1, t1.col2 ORDER BY t1.col5 ROWS "
+        "BETWEEN 3 "
+        "PRECEDING AND CURRENT ROW) limit 10;",
+        "LIMIT(limit=10, optimized)\n"
+        "  PROJECT(type=Aggregation, limit=10)\n"
+        "    JOIN(type=LastJoin, condition=, key=(t1.col1))\n"
+        "      REQUEST_UNION(groups=(), orders=() ASC, keys=(t1.col5) ASC, "
+        "start=-3, end=0)\n"
+        "        DATA_PROVIDER(request=t1)\n"
+        "        INDEX_SEEK(keys=(t1.col1,t1.col2))\n"
+        "          DATA_PROVIDER(request=t1)\n"
+        "          DATA_PROVIDER(type=IndexScan, table=t1, index=index12)\n"
+        "      DATA_PROVIDER(type=IndexScan, table=t2, index=index1_t2)"));
+
     fesql::type::TableDef table_def;
     BuildTableDef(table_def);
     table_def.set_name("t1");
@@ -602,19 +599,23 @@ TEST_F(TransformRequestModeTest, pass_join_optimized_test) {
         index->set_name("index12");
         index->add_first_keys("col1");
         index->add_first_keys("col2");
-        index->set_second_key("col15");
+        index->set_second_key("col5");
     }
     {
         ::fesql::type::IndexDef* index = table_def.add_indexes();
         index->set_name("index1");
         index->add_first_keys("col1");
-        index->set_second_key("col15");
+        index->set_second_key("col5");
     }
     auto catalog = BuildCommonCatalog(table_def, table);
     {
         fesql::type::TableDef table_def2;
         BuildTableDef(table_def2);
         table_def2.set_name("t2");
+        ::fesql::type::IndexDef* index = table_def2.add_indexes();
+        index->set_name("index1_t2");
+        index->add_first_keys("col1");
+        index->set_second_key("col5");
         std::shared_ptr<::fesql::storage::Table> table2(
             new ::fesql::storage::Table(1, 1, table_def2));
         AddTable(catalog, table_def2, table2);
