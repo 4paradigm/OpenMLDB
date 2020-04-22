@@ -87,21 +87,6 @@ public class TableAsyncClientImpl implements TableAsyncClient {
     }
 
     @Override
-    public GetFuture get(String name, Map<String, Object> keyMap, long time, GetOption getOption) throws TabletException {
-        TableHandler th = client.getHandler(name);
-        if (th == null) {
-            throw new TabletException("no table with name " + name);
-        }
-        List<String> list = th.getKeyMap().get(getOption.getIdxName());
-        if (list == null) {
-            throw new TabletException("no index name");
-        }
-        String combinedKey = TableClientCommon.getCombinedKey(keyMap, list, client.getConfig().isHandleNull());
-        int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
-        return get(pid, combinedKey, time, getOption, th);
-    }
-
-    @Override
     public GetFuture get(String name, String key, long time, Object type) throws TabletException {
         return get(name, key, time, (Tablet.GetType)(type));
     }
