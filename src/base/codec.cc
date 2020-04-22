@@ -809,8 +809,7 @@ bool RowProject::Project(const int8_t* row_ptr, uint32_t size,
                 if (ret == 0) row_builder_->AppendDouble(val);
                 break;
             }
-
-            case ::rtidb::type::kString: 
+            case ::rtidb::type::kString:
             case ::rtidb::type::kVarchar: {
                 char* val = NULL;
                 uint32_t size = 0;

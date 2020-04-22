@@ -37,6 +37,45 @@ public class TableAsyncClientImpl implements TableAsyncClient {
     }
 
     @Override
+    public GetFuture get(String name, Map<String, Object> keyMap, long time, GetOption getOption) throws TabletException {
+        TableHandler th = client.getHandler(name);
+        if (th == null) {
+            throw new TabletException("no table with name " + name);
+        }
+        if (getOption.getIdxName() == null) {
+            throw new TabletException("index name is required but null");
+        }
+        List<String> list = th.getKeyMap().get(getOption.getIdxName());
+        if (list == null) {
+            throw new TabletException("no index name found ");
+        }
+        String combinedKey = TableClientCommon.getCombinedKey(keyMap, list, client.getConfig().isHandleNull());
+        int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
+        return get(pid, combinedKey, time, getOption, th);
+    }
+
+    @Override
+    public GetFuture get(String name, Object[] keys, long time, GetOption getOption) throws TabletException {
+        TableHandler th = client.getHandler(name);
+        if (th == null) {
+            throw new TabletException("no table with name " + name);
+        }
+        if (getOption.getIdxName() == null) {
+            throw new TabletException("index name is required but null");
+        }
+        List<String> list = th.getKeyMap().get(getOption.getIdxName());
+        if (list == null) {
+            throw new TabletException("no index name found");
+        }
+        if (keys.length != list.size()) {
+            throw new TabletException("check key number failed");
+        }
+        String combinedKey = TableClientCommon.getCombinedKey(keys, client.getConfig().isHandleNull());
+        int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
+        return get(pid, combinedKey, time, getOption, th);
+    }
+
+    @Override
     public GetFuture get(String name, String key, long time, GetOption getOption) throws TabletException {
         TableHandler th = client.getHandler(name);
         if (th == null) {
@@ -321,8 +360,8 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         }
         String combinedKey = TableClientCommon.getCombinedKey(keyMap, list, client.getConfig().isHandleNull());
         int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
-        return scan(th.getTableInfo().getTid(), pid, combinedKey, option.getIdxName(), st,
-                et, option.getTsName(), option.getLimit(), option.getAtLeast(), th);
+        return scan(th.getTableInfo().getTid(), pid, combinedKey,  st,
+                et, th, option);
     }
 
     @Override
@@ -353,8 +392,8 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         }
         String combinedKey = TableClientCommon.getCombinedKey(keyArr, client.getConfig().isHandleNull());
         int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
-        return scan(th.getTableInfo().getTid(), pid, combinedKey, option.getIdxName(), st,
-                et, option.getTsName(), option.getLimit(), option.getAtLeast(), th);
+        return scan(th.getTableInfo().getTid(), pid, combinedKey,  st,
+                et, th, option);
     }
 
     @Override
@@ -365,6 +404,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         }
         key = validateKey(key);
         int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
+        ScanOption scanOption = new ScanOption();
         return scan(th.getTableInfo().getTid(), pid, key, idxName, st, et, tsName, limit, 0,th);
     }
 
@@ -823,9 +863,15 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         if (keyArr.length != list.size()) {
             throw new TabletException("check key number failed");
         }
+        GetOption option = new GetOption();
+        option.setTsName(tsName);
+        option.setIdxName(idxName);
+        option.setEt(et);
+        option.setEtType(etType);
+        option.setStType(type);
         String combinedKey = TableClientCommon.getCombinedKey(keyArr, client.getConfig().isHandleNull());
         int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
-        return get(th.getTableInfo().getTid(), pid, combinedKey, idxName, time, tsName, type, et, etType, th);
+        return get(pid, combinedKey, time, option, th);
     }
 
     @Override
@@ -839,9 +885,15 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         if (list == null) {
             throw new TabletException("no index name " + idxName + " in table " + name);
         }
+        GetOption option = new GetOption();
+        option.setTsName(tsName);
+        option.setIdxName(idxName);
+        option.setEt(et);
+        option.setEtType(etType);
+        option.setStType(type);
         String combinedKey = TableClientCommon.getCombinedKey(keyMap, list, client.getConfig().isHandleNull());
         int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
-        return get(th.getTableInfo().getTid(), pid, combinedKey, idxName, time, tsName, type, et, etType, th);
+        return get(pid, combinedKey, time, option, th);
     }
 
     @Override
