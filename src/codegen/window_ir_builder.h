@@ -21,11 +21,13 @@
 #include <map>
 #include <string>
 #include <utility>
+#include <vector>
+#include "codec/row_codec.h"
 #include "codegen/ir_base_builder.h"
 #include "llvm/IR/IRBuilder.h"
 #include "proto/type.pb.h"
 #include "vm/catalog.h"
-#include "codec/row_codec.h"
+#include "vm/schemas_context.h"
 
 namespace fesql {
 namespace codegen {
@@ -38,7 +40,10 @@ class WindowDecodeIRBuilder {
 
     virtual bool BuildGetCol(const std::string& name, ::llvm::Value* window_ptr,
                              ::llvm::Value** output) = 0;
-    virtual bool GetColOffsetType(const std::string& name, uint32_t* offset_ptr,
+    virtual bool BuildGetCol(const std::string& name, ::llvm::Value* window_ptr,
+                             uint32_t row_idx, ::llvm::Value** output) = 0;
+    virtual bool GetColOffsetType(const std::string& name, uint32_t row_idx,
+                                  uint32_t* offset_ptr,
                                   node::DataType* type_ptr) = 0;
 };
 
@@ -46,27 +51,34 @@ class MemoryWindowDecodeIRBuilder : public WindowDecodeIRBuilder {
  public:
     MemoryWindowDecodeIRBuilder(const vm::Schema& schema,
                                 ::llvm::BasicBlock* block);
+    MemoryWindowDecodeIRBuilder(
+        const std::vector<vm::RowSchemaInfo>& schema_list,
+        ::llvm::BasicBlock* block);
 
     ~MemoryWindowDecodeIRBuilder();
 
-    bool BuildGetCol(const std::string& name, ::llvm::Value* window_ptr,
-                     ::llvm::Value** output);
-    bool GetColOffsetType(const std::string& name, uint32_t* offset_ptr,
-                          node::DataType* type_ptr);
+    virtual bool BuildGetCol(const std::string& name, ::llvm::Value* window_ptr,
+                             ::llvm::Value** output);
+    virtual bool BuildGetCol(const std::string& name, ::llvm::Value* window_ptr,
+                             uint32_t row_idx, ::llvm::Value** output);
+    bool GetColOffsetType(const std::string& name, uint32_t row_idx,
+                          uint32_t* offset_ptr, node::DataType* type_ptr);
 
  private:
     bool BuildGetPrimaryCol(const std::string& fn_name, ::llvm::Value* row_ptr,
-                            uint32_t offset, const fesql::node::DataType& type,
+                            uint32_t row_idx, uint32_t offset,
+                            const fesql::node::DataType& type,
                             ::llvm::Value** output);
 
-    bool BuildGetStringCol(uint32_t offset, uint32_t next_str_field_offset,
+    bool BuildGetStringCol(uint32_t row_idx, uint32_t offset,
+                           uint32_t next_str_field_offset,
                            uint32_t str_start_offset,
                            const fesql::node::DataType& type,
                            ::llvm::Value* window_ptr, ::llvm::Value** output);
 
  private:
     ::llvm::BasicBlock* block_;
-    ::fesql::codec::RowDecoder decoder_;
+    std::vector<::fesql::codec::RowDecoder> decoder_list_;
 };
 
 }  // namespace codegen

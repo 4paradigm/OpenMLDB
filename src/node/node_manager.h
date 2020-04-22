@@ -247,6 +247,8 @@ class NodeManager {
                                        const std::string &table2,
                                        const node::ExprListNode *expr_list);
 
+    node::ExprNode *MakeAndExpr(ExprListNode *expr_list);
+
  private:
     ProjectNode *MakeProjectNode(const int32_t pos, const std::string &name,
                                  const bool is_aggregation,

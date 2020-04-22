@@ -46,37 +46,6 @@ ExitOnError ExitOnErr;
 namespace fesql {
 namespace vm {
 
-void BuildTableDef(::fesql::type::TableDef& table_def) {  // NOLINT
-    table_def.set_name("t1");
-    table_def.set_catalog("db");
-    {
-        ::fesql::type::ColumnDef* column = table_def.add_columns();
-        column->set_type(::fesql::type::kInt32);
-        column->set_name("col1");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table_def.add_columns();
-        column->set_type(::fesql::type::kInt16);
-        column->set_name("col2");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table_def.add_columns();
-        column->set_type(::fesql::type::kFloat);
-        column->set_name("col3");
-    }
-
-    {
-        ::fesql::type::ColumnDef* column = table_def.add_columns();
-        column->set_type(::fesql::type::kDouble);
-        column->set_name("col4");
-    }
-
-    {
-        ::fesql::type::ColumnDef* column = table_def.add_columns();
-        column->set_type(::fesql::type::kInt64);
-        column->set_name("col15");
-    }
-}
 class SQLCompilerTest : public ::testing::TestWithParam<std::string> {};
 
 INSTANTIATE_TEST_CASE_P(
@@ -84,17 +53,17 @@ INSTANTIATE_TEST_CASE_P(
     testing::Values(
         "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return "
         "d\nend\n%%sql\nSELECT test(col1,col1) FROM t1 limit 10;",
-        "SELECT COL1, COL2, `COL15`, AVG(COL3) OVER w, SUM(COL3) OVER w FROM "
+        "SELECT COL1, COL2, `COL5`, AVG(COL3) OVER w, SUM(COL3) OVER w FROM "
         "t1 \n"
         "WINDOW w AS (PARTITION BY COL2\n"
-        "              ORDER BY `COL15` ROWS BETWEEN UNBOUNDED PRECEDING AND "
+        "              ORDER BY `COL5` ROWS BETWEEN UNBOUNDED PRECEDING AND "
         "CURRENT ROW);",
         "SELECT COL1, SUM(col4) OVER w as w_amt_sum FROM t1 \n"
         "WINDOW w AS (PARTITION BY COL2\n"
-        "              ORDER BY `col15` ROWS BETWEEN 3 PRECEDING AND 3 "
+        "              ORDER BY `col5` ROWS BETWEEN 3 PRECEDING AND 3 "
         "FOLLOWING);",
         "SELECT sum(col1) OVER w1 as w1_col1_sum FROM t1 "
-        "WINDOW w1 AS (PARTITION BY col15 ORDER BY `col15` RANGE BETWEEN 3 "
+        "WINDOW w1 AS (PARTITION BY col5 ORDER BY `col5` RANGE BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;"));
 
 void Compiler_Runner_Check(std::shared_ptr<Catalog> catalog,
@@ -170,7 +139,7 @@ TEST_P(SQLCompilerTest, compile_request_mode_test) {
     index->set_name("index12");
     index->add_first_keys("col1");
     index->add_first_keys("col2");
-    index->set_second_key("col15");
+    index->set_second_key("col5");
     auto catalog = BuildCommonCatalog(table_def, table);
     AddTable(catalog, table_def2, table2);
     AddTable(catalog, table_def3, table3);
@@ -237,7 +206,7 @@ TEST_P(SQLCompilerTest, compile_batch_mode_test) {
     index->set_name("index12");
     index->add_first_keys("col1");
     index->add_first_keys("col2");
-    index->set_second_key("col15");
+    index->set_second_key("col5");
     auto catalog = BuildCommonCatalog(table_def, table);
     AddTable(catalog, table_def2, table2);
     AddTable(catalog, table_def3, table3);

@@ -30,14 +30,25 @@ class Row {
     Row(const char *d, size_t n, bool need_free) : slice_(d, n, need_free) {}
     Row(Row &s) : slice_(s.slice_), slices_(s.slices_) {}
     Row(const Row &s) : slice_(s.slice_), slices_(s.slices_) {}
+    Row(const Row &major, const Row &secondary) : slice_(major.slice_) {
+        Append(major.slices_);
+        Append(secondary);
+    }
     explicit Row(const Slice &s) : slice_(s) {}
     explicit Row(const std::string &s) : slice_(s) {}
 
     explicit Row(const char *s) : slice_(s) {}
     virtual ~Row() {}
     inline int8_t *buf() const { return slice_.buf(); }
+    inline int8_t *buf(int32_t pos) const {
+        return 0 == pos ? slice_.buf() : slices_[pos - 1].buf();
+    }
+
     inline const char *data() const { return slice_.data(); }
     inline int32_t size() const { return slice_.size(); }
+    inline int32_t size(int32_t pos) const {
+        return 0 == pos ? slice_.size() : slices_[pos - 1].size();
+    }
     // Return true if the length of the referenced data is zero
     inline bool empty() const { return slice_.empty() && slices_.empty(); }
     // Three-way comparison.  Returns value:
@@ -45,15 +56,18 @@ class Row {
     //   == 0 iff "*this" == "b",
     //   >  0 iff "*this" >  "b"
     int compare(const Row &b) const;
-    void Append(const Row &b) {
-        slices_.push_back(b.slice_);
-        if (!b.slices_.empty()) {
-            for (auto iter = b.slices_.cbegin(); iter != b.slices_.cend();
-                 iter++) {
+    void Append(const std::vector<Slice> &slices) {
+        if (!slices.empty()) {
+            for (auto iter = slices_.cbegin(); iter != slices_.cend(); iter++) {
                 slices_.push_back(*iter);
             }
         }
     }
+    void Append(const Row &b) {
+        slices_.push_back(b.slice_);
+        Append(b.slices_);
+    }
+
     int8_t **GetRowPtrs() const {
         if (slices_.empty()) {
             return new int8_t *[1] { slice_.buf() };
@@ -68,6 +82,7 @@ class Row {
         }
     }
 
+    int32_t GetRowPtrCnt() const { return 1 + slices_.size(); }
     int32_t *GetRowSizes() const {
         if (slices_.empty()) {
             return new int32_t[1]{static_cast<int32_t>(slice_.size())};
@@ -82,7 +97,8 @@ class Row {
         }
     }
     void AppendEmptyRow() { slices_.push_back(Slice()); }
-
+    // Return a string that contains the copy of the referenced data.
+    std::string ToString() const { return slice_.ToString(); }
     Slice slice_;
     std::vector<Slice> slices_;
 };
@@ -170,13 +186,16 @@ class WrapListImpl : public ListV<V> {
 template <class V>
 class ColumnImpl : public WrapListImpl<V, Row> {
  public:
-    ColumnImpl(ListV<Row> *impl, uint32_t offset)
-        : WrapListImpl<V, Row>(), root_(impl), offset_(offset) {}
+    ColumnImpl(ListV<Row> *impl, int32_t row_idx, uint32_t offset)
+        : WrapListImpl<V, Row>(),
+          root_(impl),
+          row_idx_(row_idx),
+          offset_(offset) {}
 
     ~ColumnImpl() {}
     const V GetField(Row row) const override {
         V value;
-        const int8_t *ptr = row.buf() + offset_;
+        const int8_t *ptr = row.buf(row_idx_) + offset_;
         value = *((const V *)ptr);
         return value;
     }
@@ -195,26 +214,28 @@ class ColumnImpl : public WrapListImpl<V, Row> {
     const uint64_t GetCount() override { return root_->GetCount(); }
     V At(uint64_t pos) override { return GetField(root_->At(pos)); }
 
- private:
+ protected:
     ListV<Row> *root_;
+    const uint32_t row_idx_;
     const uint32_t offset_;
 };
 
 class StringColumnImpl : public ColumnImpl<StringRef> {
  public:
-    StringColumnImpl(ListV<Row> *impl, int32_t str_field_offset,
-                     int32_t next_str_field_offset, int32_t str_start_offset)
-        : ColumnImpl<StringRef>(impl, 0u),
+    StringColumnImpl(ListV<Row> *impl, int32_t row_idx,
+                     int32_t str_field_offset, int32_t next_str_field_offset,
+                     int32_t str_start_offset)
+        : ColumnImpl<StringRef>(impl, row_idx, 0u),
           str_field_offset_(str_field_offset),
           next_str_field_offset_(next_str_field_offset),
           str_start_offset_(str_start_offset) {}
 
     ~StringColumnImpl() {}
     const StringRef GetField(Row row) const override {
-        int32_t addr_space = v1::GetAddrSpace(row.size());
+        int32_t addr_space = v1::GetAddrSpace(row.size(row_idx_));
         StringRef value;
-        v1::GetStrField(row.buf(), str_field_offset_, next_str_field_offset_,
-                        str_start_offset_, addr_space,
+        v1::GetStrField(row.buf(row_idx_), str_field_offset_,
+                        next_str_field_offset_, str_start_offset_, addr_space,
                         reinterpret_cast<int8_t **>(&(value.data)),
                         &(value.size));
         return value;

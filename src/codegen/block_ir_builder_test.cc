@@ -19,6 +19,7 @@
 #include "llvm/Transforms/Utils.h"
 #include "node/node_manager.h"
 #include "parser/parser.h"
+#include "vm/schemas_context.h"
 
 using namespace llvm;       // NOLINT (build/namespaces)
 using namespace llvm::orc;  // NOLINT (build/namespaces)

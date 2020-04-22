@@ -62,6 +62,7 @@ using namespace fesql::node;
 using fesql::vm::SQLContext;
 using fesql::vm::Catalog;
 using fesql::vm::PhysicalOpNode;
+using fesql::vm::FnInfo;
 using fesql::codec::RowIterator;
 using fesql::codec::IteratorV;
 using fesql::codec::Row;
@@ -71,7 +72,8 @@ using fesql::node::PlanType;
 
 %ignore MakeExprWithTable; // TODO: avoid return object with share pointer
 %ignore WindowIterator;
-
+%ignore fesql::vm::SchemasContext;
+%ignore fesql::vm::RowSchemaInfo;
 %ignore fesql::vm::RowHandler;
 %ignore fesql::vm::TableHandler;
 %ignore fesql::vm::PartitionHandler;

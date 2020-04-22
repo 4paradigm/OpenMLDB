@@ -10,14 +10,14 @@
 #include <algorithm>
 namespace fesql {
 namespace vm {
-MemSegmentIterator::MemSegmentIterator(const MemSegment* table,
+MemTimeTableIterator::MemTimeTableIterator(const MemTimeTable* table,
                                        const vm::Schema* schema)
     : table_(table),
       schema_(schema),
       start_iter_(table->cbegin()),
       end_iter_(table->cend()),
       iter_(table->cbegin()) {}
-MemSegmentIterator::MemSegmentIterator(const MemSegment* table,
+MemTimeTableIterator::MemTimeTableIterator(const MemTimeTable* table,
                                        const vm::Schema* schema, int32_t start,
                                        int32_t end)
     : table_(table),
@@ -25,10 +25,10 @@ MemSegmentIterator::MemSegmentIterator(const MemSegment* table,
       start_iter_(table_->begin() + start),
       end_iter_(table_->begin() + end),
       iter_(start_iter_) {}
-MemSegmentIterator::~MemSegmentIterator() {}
+MemTimeTableIterator::~MemTimeTableIterator() {}
 
 // TODO(chenjing): speed up seek for memory iterator
-void MemSegmentIterator::Seek(uint64_t ts) {
+void MemTimeTableIterator::Seek(uint64_t ts) {
     iter_ = start_iter_;
     while (iter_ != end_iter_) {
         if (iter_->first <= ts) {
@@ -37,12 +37,12 @@ void MemSegmentIterator::Seek(uint64_t ts) {
         iter_++;
     }
 }
-void MemSegmentIterator::SeekToFirst() { iter_ = start_iter_; }
-const uint64_t MemSegmentIterator::GetKey() { return iter_->first; }
-const Row& fesql::vm::MemSegmentIterator::GetValue() { return iter_->second; }
-void MemSegmentIterator::Next() { iter_++; }
+void MemTimeTableIterator::SeekToFirst() { iter_ = start_iter_; }
+const uint64_t MemTimeTableIterator::GetKey() { return iter_->first; }
+const Row& fesql::vm::MemTimeTableIterator::GetValue() { return iter_->second; }
+void MemTimeTableIterator::Next() { iter_++; }
 
-bool MemSegmentIterator::Valid() { return end_iter_ != iter_; }
+bool MemTimeTableIterator::Valid() { return end_iter_ != iter_; }
 
 MemWindowIterator::MemWindowIterator(const MemSegmentMap* partitions,
                                      const Schema* schema)
@@ -61,12 +61,12 @@ void MemWindowIterator::Next() { iter_++; }
 bool MemWindowIterator::Valid() { return partitions_->cend() != iter_; }
 std::unique_ptr<RowIterator> MemWindowIterator::GetValue() {
     std::unique_ptr<RowIterator> it = std::unique_ptr<RowIterator>(
-        new MemSegmentIterator(&(iter_->second), schema_));
+        new MemTimeTableIterator(&(iter_->second), schema_));
     return std::move(it);
 }
 const Row MemWindowIterator::GetKey() { return Row(iter_->first); }
 
-MemSegmentHandler::MemSegmentHandler()
+MemTimeTableHandler::MemTimeTableHandler()
     : TableHandler(),
       table_name_(""),
       db_(""),
@@ -74,7 +74,7 @@ MemSegmentHandler::MemSegmentHandler()
       types_(),
       index_hint_(),
       table_() {}
-MemSegmentHandler::MemSegmentHandler(const Schema* schema)
+MemTimeTableHandler::MemTimeTableHandler(const Schema* schema)
     : TableHandler(),
       table_name_(""),
       db_(""),
@@ -82,7 +82,7 @@ MemSegmentHandler::MemSegmentHandler(const Schema* schema)
       types_(),
       index_hint_(),
       table_() {}
-MemSegmentHandler::MemSegmentHandler(const std::string& table_name,
+MemTimeTableHandler::MemTimeTableHandler(const std::string& table_name,
                                      const std::string& db,
                                      const Schema* schema)
     : TableHandler(),
@@ -93,27 +93,27 @@ MemSegmentHandler::MemSegmentHandler(const std::string& table_name,
       index_hint_(),
       table_() {}
 
-MemSegmentHandler::~MemSegmentHandler() {}
-std::unique_ptr<IteratorV<uint64_t, Row>> MemSegmentHandler::GetIterator()
+MemTimeTableHandler::~MemTimeTableHandler() {}
+std::unique_ptr<IteratorV<uint64_t, Row>> MemTimeTableHandler::GetIterator()
     const {
-    std::unique_ptr<MemSegmentIterator> it(
-        new MemSegmentIterator(&table_, schema_));
+    std::unique_ptr<MemTimeTableIterator> it(
+        new MemTimeTableIterator(&table_, schema_));
     return std::move(it);
 }
-std::unique_ptr<WindowIterator> MemSegmentHandler::GetWindowIterator(
+std::unique_ptr<WindowIterator> MemTimeTableHandler::GetWindowIterator(
     const std::string& idx_name) {
     return std::unique_ptr<WindowIterator>();
 }
 
-void MemSegmentHandler::AddRow(const uint64_t key, const Row& row) {
+void MemTimeTableHandler::AddRow(const uint64_t key, const Row& row) {
     table_.push_back(std::make_pair(key, row));
 }
-void MemSegmentHandler::AddRow(const Row& row) {
+void MemTimeTableHandler::AddRow(const Row& row) {
     table_.push_back(std::make_pair(0, row));
 }
-const Types& MemSegmentHandler::GetTypes() { return types_; }
+const Types& MemTimeTableHandler::GetTypes() { return types_; }
 
-void MemSegmentHandler::Sort(const bool is_asc) {
+void MemTimeTableHandler::Sort(const bool is_asc) {
     if (is_asc) {
         AscComparor comparor;
         std::sort(table_.begin(), table_.end(), comparor);
@@ -122,14 +122,14 @@ void MemSegmentHandler::Sort(const bool is_asc) {
         std::sort(table_.begin(), table_.end(), comparor);
     }
 }
-void MemSegmentHandler::Reverse() {
+void MemTimeTableHandler::Reverse() {
     std::reverse(table_.begin(), table_.end());
 }
-IteratorV<uint64_t, Row>* MemSegmentHandler::GetIterator(int8_t* addr) const {
+IteratorV<uint64_t, Row>* MemTimeTableHandler::GetIterator(int8_t* addr) const {
     if (nullptr == addr) {
-        return new MemSegmentIterator(&table_, schema_);
+        return new MemTimeTableIterator(&table_, schema_);
     } else {
-        return new (addr) MemSegmentIterator(&table_, schema_);
+        return new (addr) MemTimeTableIterator(&table_, schema_);
     }
 }
 
@@ -157,7 +157,7 @@ bool MemPartitionHandler::AddRow(const std::string& key, uint64_t ts,
                                  const Row& row) {
     auto iter = partitions_.find(key);
     if (iter == partitions_.cend()) {
-        partitions_.insert(std::pair<std::string, MemSegment>(
+        partitions_.insert(std::pair<std::string, MemTimeTable>(
             key, {std::make_pair(ts, Row(row.data(), row.size()))}));
     } else {
         iter->second.push_back(std::make_pair(ts, Row(row.data(), row.size())));

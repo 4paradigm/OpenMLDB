@@ -89,11 +89,11 @@ std::shared_ptr<CompileInfo> Engine::GetCacheLocked(const std::string& db,
     return iit->second;
 }
 
-RunSession::RunSession() {}
+RunSession::RunSession() : is_debug_(false) {}
 RunSession::~RunSession() {}
 
 int32_t RequestRunSession::Run(const Row& in_row, Row* out_row) {
-    RunnerContext ctx(in_row);
+    RunnerContext ctx(in_row, is_debug_);
     auto output = compile_info_->get_sql_context().runner->RunWithCache(ctx);
     if (!output) {
         LOG(WARNING) << "run batch plan output is null";
@@ -122,7 +122,7 @@ int32_t RequestRunSession::Run(const Row& in_row, Row* out_row) {
 }
 
 std::shared_ptr<TableHandler> BatchRunSession::Run() {
-    RunnerContext ctx;
+    RunnerContext ctx(is_debug_);
     auto output = compile_info_->get_sql_context().runner->RunWithCache(ctx);
     if (!output) {
         LOG(WARNING) << "run batch plan output is null";
@@ -147,7 +147,7 @@ std::shared_ptr<TableHandler> BatchRunSession::Run() {
     return std::shared_ptr<TableHandler>();
 }
 int32_t BatchRunSession::Run(std::vector<int8_t*>& buf, uint64_t limit) {
-    RunnerContext ctx;
+    RunnerContext ctx(is_debug_);
     auto output = compile_info_->get_sql_context().runner->RunWithCache(ctx);
     if (!output) {
         LOG(WARNING) << "run batch plan output is null";
