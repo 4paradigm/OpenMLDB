@@ -1609,13 +1609,15 @@ void TabletImpl::Traverse(RpcController* controller,
             }
             return;
         }
-        if (request->has_pk()) {
-            it->Seek(request->pk());
+        if (request->has_last_pk()) {
+            it->Seek(request->last_pk());
+            if (!it->Valid())
             it->Next();
         } else {
             it->SeekToFirst();
         }
         uint32_t scount = 0;
+        std::string* last_pk = response->mutable_last_pk();;
         std::vector<rtidb::base::Slice> value_vec;
         uint32_t total_block_size = 0;
         for (; it->Valid(); it->Next()) {
@@ -1623,6 +1625,7 @@ void TabletImpl::Traverse(RpcController* controller,
                 PDLOG(DEBUG, "reache the limit %u", request->limit());
                 break;
             }
+            last_pk->assign(it->GetKey().data(), it->GetKey().size());
             rtidb::base::Slice value = it->GetValue();
             total_block_size += value.size();
             value_vec.push_back(value);
