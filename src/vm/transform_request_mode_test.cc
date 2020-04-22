@@ -69,8 +69,6 @@ void Physical_Plan_Check(const std::shared_ptr<tablet::TabletCatalog>& catalog,
             std::ostringstream oss;
             oss << *(plan_trees[0]);
             LOG(INFO) << "logical plan:\n" << oss.str();
-            //            std::cout << "logical plan:\n" << oss.str() <<
-            //            std::endl;
         } else {
             std::cout << base_status.msg;
         }
@@ -215,7 +213,7 @@ INSTANTIATE_TEST_CASE_P(
         "sum(t1.col3) OVER w1 as w1_col3_sum, "
         "sum(t2.col2) OVER w1 as w1_col2_sum "
         "FROM t1 left join t2 on t1.col1 = t2.col1 "
-        "WINDOW w1 AS (PARTITION BY t1.col1, t2.col2 ORDER BY t1.col5 ROWS "
+        "WINDOW w1 AS (PARTITION BY t1.col1, t1.col2 ORDER BY t1.col5 ROWS "
         "BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;"));
 INSTANTIATE_TEST_CASE_P(
