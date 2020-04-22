@@ -223,7 +223,7 @@ int MemTableSnapshot::TTLSnapshot(std::shared_ptr<Table> table,
     bool has_error = false;
     std::set<uint32_t> deleted_index;
     for (const auto& it : table->GetAllIndex()) {
-        if (it->GetStatus() == ::rtidb::storage::IndexStatus::kReady) {
+        if (it->GetStatus() != ::rtidb::storage::IndexStatus::kReady) {
             deleted_index.insert(it->GetId());
         }
     }
