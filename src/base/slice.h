@@ -65,13 +65,14 @@ class Slice {
         return data_[n];
     }
 
-    void operator=(const Slice& s) {
+    Slice& operator=(const Slice& s) {
         if (need_free_) {
             delete[] data_;
         }
         need_free_ = false;
         size_ = s.size();
         data_ = s.data();
+        return *this;
     }
 
     Slice(const Slice& s)
