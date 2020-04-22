@@ -52,20 +52,12 @@ bool MemoryWindowDecodeIRBuilder::BuildGetCol(const std::string& name,
         LOG(WARNING) << "input args have null";
         return false;
     }
-    uint32_t offset;
-    fesql::type::Type type;
-    if (!decoder_list_[row_idx].GetPrimayFieldOffsetType(name, &offset,
-                                                         &type)) {
-        return false;
-    }
-
     ::fesql::node::DataType data_type;
-    if (!SchemaType2DataType(type, &data_type)) {
-        LOG(WARNING) << "unrecognized data type " +
-                            fesql::type::Type_Name(type);
+    uint32_t offset;
+    if (!GetColOffsetType(name, row_idx, &offset, &data_type)) {
+        LOG(WARNING) << "fail to get filed offset " << name;
         return false;
     }
-
     ::llvm::IRBuilder<> builder(block_);
     switch (data_type) {
         case ::fesql::node::kInt16:
@@ -215,6 +207,22 @@ bool MemoryWindowDecodeIRBuilder::BuildGetStringCol(
                     window_ptr, val_row_idx, str_offset, next_str_offset,
                     builder.getInt32(str_start_offset), val_type_id, col_iter});
     *output = list_ref;
+    return true;
+}
+bool MemoryWindowDecodeIRBuilder::GetColOffsetType(
+    const std::string& name, uint32_t row_idx, uint32_t* offset_ptr,
+    node::DataType* data_type_ptr) {
+    fesql::type::Type type;
+    if (!decoder_list_[row_idx].GetPrimayFieldOffsetType(name, offset_ptr,
+                                                         &type)) {
+        return false;
+    }
+
+    if (!SchemaType2DataType(type, data_type_ptr)) {
+        LOG(WARNING) << "unrecognized data type " +
+                            fesql::type::Type_Name(type);
+        return false;
+    }
     return true;
 }
 
