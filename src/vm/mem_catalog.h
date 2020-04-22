@@ -41,17 +41,17 @@ struct DescComparor {
     }
 };
 
-typedef std::vector<std::pair<uint64_t, Row>> MemSegment;
+typedef std::vector<std::pair<uint64_t, Row>> MemTimeTable;
 typedef std::vector<Row> MemTable;
-typedef std::map<std::string, MemSegment, std::greater<std::string>>
+typedef std::map<std::string, MemTimeTable, std::greater<std::string>>
     MemSegmentMap;
 
-class MemSegmentIterator : public RowIterator {
+class MemTimeTableIterator : public RowIterator {
  public:
-    MemSegmentIterator(const MemSegment* table, const vm::Schema* schema);
-    MemSegmentIterator(const MemSegment* table, const vm::Schema* schema,
-                       int32_t start, int32_t end);
-    ~MemSegmentIterator();
+    MemTimeTableIterator(const MemTimeTable* table, const vm::Schema* schema);
+    MemTimeTableIterator(const MemTimeTable* table, const vm::Schema* schema,
+                         int32_t start, int32_t end);
+    ~MemTimeTableIterator();
     void Seek(uint64_t ts);
     void SeekToFirst();
     const uint64_t GetKey();
@@ -60,11 +60,11 @@ class MemSegmentIterator : public RowIterator {
     bool Valid();
 
  private:
-    const MemSegment* table_;
+    const MemTimeTable* table_;
     const Schema* schema_;
-    const MemSegment::const_iterator start_iter_;
-    const MemSegment::const_iterator end_iter_;
-    MemSegment::const_iterator iter_;
+    const MemTimeTable::const_iterator start_iter_;
+    const MemTimeTable::const_iterator end_iter_;
+    MemTimeTable::const_iterator iter_;
 };
 
 class MemTableIterator : public RowIterator {
@@ -118,6 +118,7 @@ class MemRowHandler : public RowHandler {
     const std::string& GetName() override { return table_name_; }
     const std::string& GetDatabase() override { return db_; }
     const Row& GetValue() const override { return row_; }
+    const std::string GetHandlerTypeName() override { return "MemRowHandler"; }
 
  private:
     std::string table_name_;
@@ -152,6 +153,10 @@ class MemTableHandler : public TableHandler {
         return pos >= 0 && pos < table_.size() ? table_.at(pos) : Row();
     }
 
+    const std::string GetHandlerTypeName() override {
+        return "MemTableHandler";
+    }
+
  protected:
     const std::string table_name_;
     const std::string db_;
@@ -161,14 +166,14 @@ class MemTableHandler : public TableHandler {
     MemTable table_;
 };
 
-class MemSegmentHandler : public TableHandler {
+class MemTimeTableHandler : public TableHandler {
  public:
-    MemSegmentHandler();
-    explicit MemSegmentHandler(const Schema* schema);
-    MemSegmentHandler(const std::string& table_name, const std::string& db,
-                      const Schema* schema);
+    MemTimeTableHandler();
+    explicit MemTimeTableHandler(const Schema* schema);
+    MemTimeTableHandler(const std::string& table_name, const std::string& db,
+                        const Schema* schema);
     const Types& GetTypes() override;
-    ~MemSegmentHandler() override;
+    ~MemTimeTableHandler() override;
     inline const Schema* GetSchema() { return schema_; }
     inline const std::string& GetName() { return table_name_; }
     inline const IndexHint& GetIndex() { return index_hint_; }
@@ -185,6 +190,9 @@ class MemSegmentHandler : public TableHandler {
     virtual Row At(uint64_t pos) {
         return pos >= 0 && pos < table_.size() ? table_.at(pos).second : Row();
     }
+    const std::string GetHandlerTypeName() override {
+        return "MemTimeTableHandler";
+    }
 
  protected:
     const std::string table_name_;
@@ -192,20 +200,20 @@ class MemSegmentHandler : public TableHandler {
     const Schema* schema_;
     Types types_;
     IndexHint index_hint_;
-    MemSegment table_;
+    MemTimeTable table_;
 };
 
-class Window : public MemSegmentHandler {
+class Window : public MemTimeTableHandler {
  public:
     Window(int64_t start_offset, int64_t end_offset)
-        : MemSegmentHandler(),
+        : MemTimeTableHandler(),
           start_(0),
           end_(0),
           start_offset_(start_offset),
           end_offset_(end_offset),
           max_size_(0) {}
     Window(int64_t start_offset, int64_t end_offset, uint32_t max_size)
-        : MemSegmentHandler(),
+        : MemTimeTableHandler(),
           start_(0),
           end_(0),
           start_offset_(start_offset),
@@ -214,17 +222,17 @@ class Window : public MemSegmentHandler {
     virtual ~Window() {}
 
     std::unique_ptr<vm::IteratorV<uint64_t, Row>> GetIterator() const override {
-        std::unique_ptr<vm::MemSegmentIterator> it(
-            new vm::MemSegmentIterator(&table_, schema_, start_, end_));
+        std::unique_ptr<vm::MemTimeTableIterator> it(
+            new vm::MemTimeTableIterator(&table_, schema_, start_, end_));
         return std::move(it);
     }
 
     vm::IteratorV<uint64_t, Row>* GetIterator(int8_t* addr) const override {
         if (nullptr == addr) {
-            return new vm::MemSegmentIterator(&table_, schema_, start_, end_);
+            return new vm::MemTimeTableIterator(&table_, schema_, start_, end_);
         } else {
             return new (addr)
-                vm::MemSegmentIterator(&table_, schema_, start_, end_);
+                vm::MemTimeTableIterator(&table_, schema_, start_, end_);
         }
     }
     virtual void BufferData(uint64_t key, const Row& row) = 0;
@@ -233,6 +241,7 @@ class Window : public MemSegmentHandler {
     virtual Row At(uint64_t pos) {
         return (pos + start_ < end_) ? table_.at(pos + start_).second : Row();
     }
+    const std::string GetHandlerTypeName() override { return "Window"; }
 
  protected:
     uint32_t start_;
@@ -277,7 +286,7 @@ class CurrentHistoryUnboundWindow : public Window {
 };
 
 typedef std::map<std::string,
-                 std::map<std::string, std::shared_ptr<MemSegmentHandler>>>
+                 std::map<std::string, std::shared_ptr<MemTimeTableHandler>>>
     MemTables;
 typedef std::map<std::string, std::shared_ptr<type::Database>> Databases;
 
@@ -300,6 +309,16 @@ class MemPartitionHandler : public PartitionHandler {
     void Reverse();
     void Print();
     virtual const uint64_t GetCount() { return partitions_.size(); }
+    virtual std::shared_ptr<TableHandler> GetSegment(
+        std::shared_ptr<PartitionHandler> partition_hander,
+        const std::string& key) {
+        return std::shared_ptr<SegmentHandler>(
+            new SegmentHandler(partition_hander, key));
+    }
+
+    const std::string GetHandlerTypeName() override {
+        return "MemPartitionHandler";
+    }
 
  private:
     std::string table_name_;

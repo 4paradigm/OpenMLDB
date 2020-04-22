@@ -132,8 +132,8 @@ TEST_F(UDFTest, UDF_mem_table_handler_sum_test) {
     }
 }
 
-TEST_F(UDFTest, UDF_mem_segment_handler_sum_test) {
-    vm::MemSegmentHandler window;
+TEST_F(UDFTest, UDF_mem_time_table_handler_sum_test) {
+    vm::MemTimeTableHandler window;
     uint64_t ts = 1000;
     for (auto row : rows) {
         window.AddRow(ts++, row);
@@ -443,8 +443,8 @@ TEST_F(UDFTest, GetWindowColTest) {
         ASSERT_FALSE(col_iterator->Valid());
     }
 }
-TEST_F(UDFTest, GetMemColTest) {
-    vm::MemSegmentHandler table;
+TEST_F(UDFTest, GetTimeMemColTest) {
+    vm::MemTimeTableHandler table;
     uint64_t ts = 1000;
     for (auto row : rows) {
         table.AddRow(ts++, row);

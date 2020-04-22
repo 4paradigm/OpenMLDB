@@ -415,7 +415,13 @@ TEST_P(EngineTest, test_last_join_no_match_index) {
         ASSERT_TRUE(ok);
         schema = session.GetSchema();
         PrintSchema(schema);
+        std::ostringstream oss;
+        session.GetPhysicalPlan()->Print(oss, "");
+        std::cout << "physical plan:\n" << oss.str() << std::endl;
 
+        std::ostringstream runner_oss;
+        session.GetRunner()->Print(runner_oss, "");
+        std::cout << "runner plan:\n" << runner_oss.str() << std::endl;
         int32_t limit = 2;
         auto iter = catalog->GetTable("db", "t1")->GetIterator();
         while (limit-- > 0 && iter->Valid()) {

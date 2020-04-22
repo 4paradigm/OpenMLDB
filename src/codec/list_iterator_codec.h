@@ -94,7 +94,8 @@ class Row {
         }
     }
     void AppendEmptyRow() { slices_.push_back(Slice()); }
-
+// Return a string that contains the copy of the referenced data.
+    std::string ToString() const { return slice_.ToString(); }
     Slice slice_;
     std::vector<Slice> slices_;
 };

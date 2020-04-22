@@ -488,10 +488,12 @@ std::shared_ptr<DataHandler> Runner::PartitionGroup(
     iter->SeekToFirst();
     while (iter->Valid()) {
         auto segment_iter = iter->GetValue();
+        auto segment_key = iter->GetKey().ToString();
         segment_iter->SeekToFirst();
         while (segment_iter->Valid()) {
             std::string keys = key_gen.Gen(segment_iter->GetValue());
-            output_partitions->AddRow(keys, segment_iter->GetKey(),
+            output_partitions->AddRow(segment_key + "|" + keys,
+                                      segment_iter->GetKey(),
                                       segment_iter->GetValue());
             segment_iter->Next();
         }
@@ -557,8 +559,8 @@ std::shared_ptr<DataHandler> Runner::TableSort(
     if (!order_gen.Valid()) {
         return table;
     }
-    auto output_table = std::shared_ptr<MemSegmentHandler>(
-        new MemSegmentHandler(table->GetSchema()));
+    auto output_table = std::shared_ptr<MemTimeTableHandler>(
+        new MemTimeTableHandler(table->GetSchema()));
     auto iter = std::dynamic_pointer_cast<TableHandler>(table)->GetIterator();
     while (iter->Valid()) {
         int64_t key = order_gen.Gen(iter->GetValue());
@@ -799,12 +801,11 @@ std::shared_ptr<DataHandler> LastJoinRunner::Run(RunnerContext& ctx) {
             return fail_ptr;
         }
         auto partition = std::dynamic_pointer_cast<PartitionHandler>(right);
-        auto partition_iter = partition->GetWindowIterator();
         left_iter->SeekToFirst();
         while (left_iter->Valid()) {
             const Row& left_row = left_iter->GetValue();
             const std::string& key_str = left_key_gen_.Gen(left_row);
-            partition_iter->Seek(key_str);
+            LOG(INFO) << "key_str " << key_str;
             auto right_table = partition->GetSegment(partition, key_str);
             output_table->AddRow(
                 RowLastJoin(left_row, right_table, condition_gen_));
@@ -870,11 +871,6 @@ void Runner::PrintData(const vm::NameSchemaList& schema_list,
     }
 
     t.endOfRow();
-    //    t.add("Empty set");
-    //    t.endOfRow();
-    oss << t << std::endl;
-    LOG(INFO) << "\n" << oss.str();
-    //    return;
     if (!data) {
         t.add("Empty set");
         t.endOfRow();
@@ -981,7 +977,7 @@ void Runner::PrintData(const vm::NameSchemaList& schema_list,
         }
     }
     oss << t << std::endl;
-    LOG(INFO) << "RESULT:\n" << oss.str();
+    LOG(INFO) << data->GetHandlerTypeName() << " RESULT:\n" << oss.str();
 }
 std::shared_ptr<DataHandler> LimitRunner::Run(RunnerContext& ctx) {
     auto input = producers_[0]->RunWithCache(ctx);

@@ -154,7 +154,7 @@ class PhysicalUnaryNode : public PhysicalOpNode {
     virtual void Print(std::ostream &output, const std::string &tab) const;
     virtual void PrintChildren(std::ostream &output,
                                const std::string &tab) const;
-    virtual bool InitSchema() override;
+    bool InitSchema() override;
 };
 
 class PhysicalBinaryNode : public PhysicalOpNode {
@@ -165,7 +165,6 @@ class PhysicalBinaryNode : public PhysicalOpNode {
         AddProducer(left);
         AddProducer(right);
     }
-    virtual bool InitSchema() = 0;
     virtual ~PhysicalBinaryNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     virtual void PrintChildren(std::ostream &output,
@@ -200,7 +199,7 @@ class PhysicalDataProviderNode : public PhysicalOpNode {
         InitSchema();
     }
     ~PhysicalDataProviderNode() {}
-    virtual bool InitSchema() override;
+    bool InitSchema() override;
     const DataProviderType provider_type_;
     const std::shared_ptr<TableHandler> table_handler_;
 };

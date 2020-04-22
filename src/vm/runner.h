@@ -32,9 +32,9 @@ using vm::TableHandler;
 using vm::Window;
 class RunnerContext {
  public:
-    RunnerContext(const bool is_debug = false)
+    explicit RunnerContext(const bool is_debug = false)
         : request_(), is_debug_(is_debug), cache_() {}
-    RunnerContext(const Row& request, const bool is_debug = false)
+    explicit RunnerContext(const Row& request, const bool is_debug = false)
         : request_(request), is_debug_(is_debug), cache_() {}
     const Row request_;
     const bool is_debug_;
@@ -227,7 +227,9 @@ class Runner {
         std::shared_ptr<DataHandler> table, OrderGenerator order_gen,  // NOLINT
         const bool is_asc);
 
-    static void PrintData(const vm::NameSchemaList& schema_list, std::shared_ptr<DataHandler> data);
+    static void PrintData(const vm::NameSchemaList& schema_list,
+                          std::shared_ptr<DataHandler> data);
+
  protected:
     bool need_cache_;
     std::vector<Runner*> producers_;
@@ -253,8 +255,9 @@ class RequestRunner : public Runner {
 };
 class GroupRunner : public Runner {
  public:
-    GroupRunner(const int32_t id, const NameSchemaList& schema, const int32_t limit_cnt,
-                const FnInfo& fn_info, const std::vector<int32_t>& idxs)
+    GroupRunner(const int32_t id, const NameSchemaList& schema,
+                const int32_t limit_cnt, const FnInfo& fn_info,
+                const std::vector<int32_t>& idxs)
         : Runner(id, kRunnerGroup, schema, limit_cnt),
           group_gen_(fn_info, idxs) {}
     ~GroupRunner() {}
@@ -276,9 +279,9 @@ class FilterRunner : public Runner {
 };
 class OrderRunner : public Runner {
  public:
-    OrderRunner(const int32_t id, const NameSchemaList& schema, const int32_t limit_cnt,
-                const FnInfo& fn_info, const std::vector<int32_t>& idxs,
-                const bool is_asc)
+    OrderRunner(const int32_t id, const NameSchemaList& schema,
+                const int32_t limit_cnt, const FnInfo& fn_info,
+                const std::vector<int32_t>& idxs, const bool is_asc)
         : Runner(id, kRunnerOrder, schema, limit_cnt),
           order_gen_(fn_info, idxs),
           is_asc_(is_asc) {}
@@ -341,8 +344,8 @@ class GroupAggRunner : public Runner {
 
 class AggRunner : public Runner {
  public:
-    AggRunner(const int32_t id, const NameSchemaList& schema, const int32_t limit_cnt,
-              const FnInfo& fn_info)
+    AggRunner(const int32_t id, const NameSchemaList& schema,
+              const int32_t limit_cnt, const FnInfo& fn_info)
         : Runner(id, kRunnerAgg, schema, limit_cnt), agg_gen_(fn_info) {}
     ~AggRunner() {}
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT

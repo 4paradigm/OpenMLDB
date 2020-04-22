@@ -334,7 +334,7 @@ TEST_F(RunnerTest, RunnerPrintDataTest) {
 
     // Print Table
     int i = 0;
-    while(i++ < 10) {
+    while (i++ < 10) {
         for (auto row : rows) {
             table_handler->AddRow(row);
         }

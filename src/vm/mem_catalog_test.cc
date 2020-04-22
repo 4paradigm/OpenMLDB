@@ -18,7 +18,6 @@ class MemCataLogTest : public ::testing::Test {
     ~MemCataLogTest() {}
 };
 
-
 TEST_F(MemCataLogTest, row_test) {
     std::vector<Row> rows;
     ::fesql::type::TableDef table;
@@ -74,14 +73,12 @@ TEST_F(MemCataLogTest, mem_table_handler_test) {
     for (auto row : rows) {
         table_handler.AddRow(row);
     }
-
-
 }
 TEST_F(MemCataLogTest, mem_segment_handler_test) {
     std::vector<Row> rows;
     ::fesql::type::TableDef table;
     BuildRows(table, rows);
-    vm::MemSegmentHandler table_handler("t1", "temp", &(table.columns()));
+    vm::MemTimeTableHandler table_handler("t1", "temp", &(table.columns()));
     for (auto row : rows) {
         table_handler.AddRow(row);
     }
@@ -124,7 +121,7 @@ TEST_F(MemCataLogTest, mem_table_iterator_test) {
     std::vector<Row> rows;
     ::fesql::type::TableDef table;
     BuildRows(table, rows);
-    vm::MemSegmentHandler table_handler("t1", "temp", &(table.columns()));
+    vm::MemTimeTableHandler table_handler("t1", "temp", &(table.columns()));
     uint64_t ts = 1;
     for (auto row : rows) {
         table_handler.AddRow(ts++, row);

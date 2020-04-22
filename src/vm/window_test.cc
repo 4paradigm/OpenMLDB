@@ -100,7 +100,7 @@ TEST_F(WindowIteratorTest, MemTableIteratorImplTest) {
 TEST_F(WindowIteratorTest, MemSegmentIteratorImplTest) {
     // prepare row buf
     std::vector<Row> rows;
-    MemSegmentHandler table;
+    MemTimeTableHandler table;
     {
         int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
         *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
@@ -143,7 +143,7 @@ TEST_F(WindowIteratorTest, MemSegmentIteratorImplTest) {
 
 TEST_F(WindowIteratorTest, MemColumnIteratorImplTest) {
     // prepare row buf
-    MemSegmentHandler table;
+    MemTimeTableHandler table;
     {
         int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
         *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
@@ -191,7 +191,7 @@ TEST_F(WindowIteratorTest, MemColumnIteratorImplTest) {
 
 TEST_F(WindowIteratorTest, MemGetColTest) {
     // prepare row buf
-    MemSegmentHandler table;
+    MemTimeTableHandler table;
     {
         int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
         *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
