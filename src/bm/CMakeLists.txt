@@ -65,7 +65,7 @@ add_executable(fesql_client_bm_case_test fesql_client_bm_case_test.cc)
 target_link_libraries(fesql_client_bm_case_test fesql_client_bm_case
     fesql_dbms
     fesql_tablet
-    fesql_storage fesql_vm fesql_codegen fesql_udf
+    fesql_storage fesql_vm fesql_codegen fesql_udf fesql_base
     fesql_flags
     gtest fesql_sdk benchmark ${COMMON_LIBS} ${llvm_libs})
 
@@ -76,7 +76,7 @@ add_executable(fesql_client_batch_run_bm fesql_client_batch_run_bm.cc)
 target_link_libraries(fesql_client_batch_run_bm fesql_client_bm_case
     fesql_dbms
     fesql_tablet
-    fesql_storage fesql_vm fesql_codegen fesql_udf
+    fesql_storage fesql_vm fesql_codegen fesql_udf fesql_base
     fesql_flags
     gtest fesql_sdk benchmark ${COMMON_LIBS} ${llvm_libs})
 
