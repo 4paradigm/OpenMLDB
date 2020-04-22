@@ -290,11 +290,10 @@ typedef std::map<std::string,
     MemTables;
 typedef std::map<std::string, std::shared_ptr<type::Database>> Databases;
 
-
 class MemSegmentHandler : public TableHandler {
  public:
     MemSegmentHandler(std::shared_ptr<PartitionHandler> partition_hander,
-                   const std::string& key)
+                      const std::string& key)
         : partition_hander_(partition_hander), key_(key) {}
 
     virtual ~MemSegmentHandler() {}
@@ -360,7 +359,9 @@ class MemSegmentHandler : public TableHandler {
         }
         return iter->Valid() ? iter->GetValue() : Row();
     }
-    const std::string GetHandlerTypeName() override { return "MemSegmentHandler"; }
+    const std::string GetHandlerTypeName() override {
+        return "MemSegmentHandler";
+    }
 
  private:
     std::shared_ptr<vm::PartitionHandler> partition_hander_;
