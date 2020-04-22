@@ -154,19 +154,26 @@ class LimitOptimized : public TransformUpPysicalPass {
     static bool ApplyLimitCnt(PhysicalOpNode* node, int32_t limit_cnt);
 };
 
+struct ExprPair {
+    node::ExprNode* left_expr_ = nullptr;
+    uint32_t left_idx_ = 0u;
+    node::ExprNode* right_expr_ = nullptr;
+    uint32_t right_idx_ = 0u;
+};
 // Optimize filter condition
 // for FilterNode, JoinNode
-class FilterOptimized : public TransformUpPysicalPass {
+class FilterConditionOptimized : public TransformUpPysicalPass {
  public:
-    FilterOptimized(node::NodeManager* node_manager, const std::string& db,
-                    const std::shared_ptr<Catalog>& catalog)
+    FilterConditionOptimized(node::NodeManager* node_manager,
+                             const std::string& db,
+                             const std::shared_ptr<Catalog>& catalog)
         : TransformUpPysicalPass(node_manager, db, catalog) {}
-    typedef std::pair<node::ExprNode*, node::ExprNode*> ExprPair;
     static bool TransfromAndConditionList(
         const node::ExprNode* condition,
         node::ExprListNode* and_condition_list);
-    static bool ExtractEqualExprPair(node::ExprNode* condition,
-                                     ExprPair* expr_pair);
+    static bool ExtractEqualExprPair(
+        node::ExprNode* condition,
+        std::pair<node::ExprNode*, node::ExprNode*>* expr_pair);
     static bool TransformEqualExprPair(
         const std::vector<std::pair<const std::string, const vm::Schema*>>
             name_schema_list,
@@ -176,6 +183,8 @@ class FilterOptimized : public TransformUpPysicalPass {
 
  private:
     virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
+    void SkipConstExpression(node::ExprListNode input,
+                             node::ExprListNode* output);
 };
 class LeftJoinOptimized : public TransformUpPysicalPass {
  public:
@@ -193,9 +202,10 @@ typedef fesql::base::Graph<LogicalOp, HashLogicalOp, EqualLogicalOp>
     LogicalGraph;
 
 enum PhysicalPlanPassType {
+    kPassFilterOptimized,
     kPassGroupAndSortOptimized,
     kPassLeftJoinOptimized,
-    kPassLimitOptimized
+    kPassLimitOptimized,
 };
 
 inline std::string PhysicalPlanPassTypeName(PhysicalPlanPassType type) {
@@ -284,7 +294,7 @@ class BatchModeTransformer {
     bool GenFnDef(const node::FuncDefPlanNode* fn_plan,
                   base::Status& status);  // NOLINT
     bool CodeGenExprList(
-        std::vector<std::pair<const std::string, const Schema*>>&
+        const NameSchemaList&
             input_name_schema_list,
         const node::ExprListNode* expr_list, bool row_mode,
         std::string& fn_name, Schema* output_schema,               // NOLINT

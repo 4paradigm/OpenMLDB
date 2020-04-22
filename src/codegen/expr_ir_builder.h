@@ -92,7 +92,7 @@ class ExprIRBuilder {
     ::llvm::Module* module_;
     const vm::SchemasContext* schemas_context_;
     std::vector<std::unique_ptr<RowDecodeIRBuilder>> row_ir_builder_list_;
-    std::vector<std::unique_ptr<WindowDecodeIRBuilder>> window_ir_builder_list_;
+    std::unique_ptr<WindowDecodeIRBuilder> window_ir_builder_;
     bool IsUADF(std::string function_name);
     bool FindRowSchemaInfo(const std::string& relation_name,
                            const std::string& col_name,

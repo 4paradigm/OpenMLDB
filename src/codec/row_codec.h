@@ -124,6 +124,7 @@ class RowView {
                        ::fesql::type::Type type, int64_t* val);
     int32_t GetValue(const int8_t* row, uint32_t idx, char** val,
                      uint32_t* length);
+    std::string GetAsString(uint32_t idx);
 
  private:
     bool Init();

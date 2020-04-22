@@ -305,6 +305,49 @@ TEST_F(RunnerTest, KeyGeneratorTest) {
     ASSERT_EQ("5|55", group_runner->group_gen_.Gen(rows[4]));
 }
 
+TEST_F(RunnerTest, RunnerPrintDataTest) {
+    fesql::type::TableDef table_def;
+    BuildTableDef(table_def);
+    table_def.set_name("t1");
+    std::shared_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, table_def));
+    ::fesql::type::IndexDef* index = table_def.add_indexes();
+    index->set_name("index12");
+    index->add_first_keys("col3");
+    index->add_first_keys("col4");
+    index->set_second_key("col5");
+    auto catalog = BuildCommonCatalog(table_def, table);
+    std::vector<Row> rows;
+    fesql::type::TableDef temp_table;
+    BuildRows(temp_table, rows);
+
+    NameSchemaList name_schema_list;
+    name_schema_list.push_back(std::make_pair("t1", &table_def.columns()));
+    // Print Empty Set
+    std::shared_ptr<MemTableHandler> table_handler =
+        std::shared_ptr<MemTableHandler>(new MemTableHandler());
+    Runner::PrintData(name_schema_list, table_handler);
+
+    // Print Table
+    for (auto row : rows) {
+        table_handler->AddRow(row);
+    }
+    Runner::PrintData(name_schema_list, table_handler);
+
+    // Print Table
+    int i = 0;
+    while (i++ < 10) {
+        for (auto row : rows) {
+            table_handler->AddRow(row);
+        }
+    }
+    Runner::PrintData(name_schema_list, table_handler);
+
+    // Print Row
+    std::shared_ptr<MemRowHandler> row_handler =
+        std::shared_ptr<MemRowHandler>(new MemRowHandler(rows[0]));
+    Runner::PrintData(name_schema_list, row_handler);
+}
 }  // namespace vm
 }  // namespace fesql
 

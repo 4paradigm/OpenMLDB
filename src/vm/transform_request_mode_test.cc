@@ -69,8 +69,6 @@ void Physical_Plan_Check(const std::shared_ptr<tablet::TabletCatalog>& catalog,
             std::ostringstream oss;
             oss << *(plan_trees[0]);
             LOG(INFO) << "logical plan:\n" << oss.str();
-            //            std::cout << "logical plan:\n" << oss.str() <<
-            //            std::endl;
         } else {
             std::cout << base_status.msg;
         }
@@ -215,7 +213,7 @@ INSTANTIATE_TEST_CASE_P(
         "sum(t1.col3) OVER w1 as w1_col3_sum, "
         "sum(t2.col2) OVER w1 as w1_col2_sum "
         "FROM t1 left join t2 on t1.col1 = t2.col1 "
-        "WINDOW w1 AS (PARTITION BY t1.col1, t2.col2 ORDER BY t1.col5 ROWS "
+        "WINDOW w1 AS (PARTITION BY t1.col1, t1.col2 ORDER BY t1.col5 ROWS "
         "BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;"));
 INSTANTIATE_TEST_CASE_P(
@@ -521,45 +519,76 @@ TEST_F(TransformRequestModeTest, pass_join_optimized_test) {
         "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join t2 on "
         "t1.col1 = t2.col2 and t2.col5 >= t1.col5;",
         "PROJECT(type=RowProject)\n"
-        "  REQUEST_JOIN(type=LastJoin, condition=t1.col1 = t2.col2 AND "
-        "t2.col5 >= t1.col5)\n"
+        "  REQUEST_JOIN(type=LastJoin, condition=t2.col5 >= t1.col5)\n"
         "    DATA_PROVIDER(request=t1)\n"
-        "    DATA_PROVIDER(table=t2)"));
-    //    in_outs.push_back(std::make_pair(
-    //        "SELECT "
-    //        "col1, "
-    //        "sum(col3) OVER w1 as w1_col3_sum, "
-    //        "sum(col2) OVER w1 as w1_col2_sum "
-    //        "FROM t1 left join t2 on t1.col1 = t2.col1 "
-    //        "WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 3 "
-    //        "PRECEDING AND CURRENT ROW) limit 10;",
-    //        "LIMIT(limit=10)\n"
-    //        "  PROJECT(type=ProjectRow)\n"
-    //        "    JOIN(type=kJoinTypeConcat, condition=)\n"
-    //        "      PROJECT(type=ProjectRow)\n"
-    //        "        JOIN(type=LeftJoin, condition=t1.col1 = t2.col1)\n"
-    //        "          SCAN(table=t1)\n"
-    //        "          SCAN(table=t2)\n"
-    //        "      PROJECT(type=WindowAggregation, start=-3, end=0)\n"
-    //        "        JOIN(type=LeftJoin, condition=t1.col1 = t2.col1)\n"
-    //        "          SCAN(type=IndexScan, table=t1, index=index1)\n"
-    //        "          SCAN(table=t2)"));
-    //    in_outs.push_back(std::make_pair(
-    //        "SELECT "
-    //        "col1, "
-    //        "sum(col3) OVER w1 as w1_col3_sum, "
-    //        "sum(col2) OVER w1 as w1_col2_sum "
-    //        "FROM t1 left join t2 on t1.col1 = t2.col1 "
-    //        "WINDOW w1 AS (PARTITION BY col1, col2 ORDER BY col5 ROWS BETWEEN
-    //        3 " "PRECEDING AND CURRENT ROW) limit 10;", "LIMIT(limit=10)\n" "
-    //        PROJECT(type=ProjectRow)\n" "    JOIN(type=kJoinTypeConcat,
-    //        condition=)\n" "      PROJECT(type=ProjectRow)\n" "
-    //        JOIN(type=LeftJoin, condition=t1.col1 = t2.col1)\n" "
-    //        SCAN(table=t1)\n" "          SCAN(table=t2)\n" "
-    //        PROJECT(type=Aggregation)\n" "        BUFFER(start=-3, end=0)\n"
-    //        "          JOIN(type=LeftJoin, condition=t1.col1 = t2.col1)\n"
-    //        "            SCAN(type=IndexScan, table=t1, index=index12)\n"
-    //        "            SCAN(table=t2)"));
+        "    GROUP_BY(groups=(t2.col2))\n"
+        "      DATA_PROVIDER(table=t2)"));
+    in_outs.push_back(std::make_pair(
+        "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join t2 on "
+        "t1.col1 = t2.col1 and t2.col5 >= t1.col5;",
+        "PROJECT(type=RowProject)\n"
+        "  REQUEST_JOIN(type=LastJoin, condition=t2.col5 >= t1.col5)\n"
+        "    DATA_PROVIDER(request=t1)\n"
+        "    DATA_PROVIDER(type=IndexScan, table=t2, index=index1_t2)"));
+    in_outs.push_back(std::make_pair(
+        "SELECT "
+        "t2.col1, "
+        "sum(t1.col3) OVER w1 as w1_col3_sum, "
+        "sum(t1.col2) OVER w1 as w1_col2_sum "
+        "FROM t1 last join t2 on t1.col1 = t2.col1 "
+        "WINDOW w1 AS (PARTITION BY t1.col1 ORDER BY t1.col5 ROWS "
+        "BETWEEN 3 "
+        "PRECEDING AND CURRENT ROW) limit 10;",
+        "LIMIT(limit=10, optimized)\n"
+        "  PROJECT(type=Aggregation, limit=10)\n"
+        "    JOIN(type=LastJoin, condition=, key=(t1.col1))\n"
+        "      REQUEST_UNION(groups=(), orders=() ASC, keys=(t1.col5) ASC, "
+        "start=-3, end=0)\n"
+        "        DATA_PROVIDER(request=t1)\n"
+        "        INDEX_SEEK(keys=(t1.col1))\n"
+        "          DATA_PROVIDER(request=t1)\n"
+        "          DATA_PROVIDER(type=IndexScan, table=t1, index=index1)\n"
+        "      DATA_PROVIDER(type=IndexScan, table=t2, index=index1_t2)"));
+    in_outs.push_back(std::make_pair(
+        "SELECT "
+        "t2.col1, "
+        "sum(t1.col3) OVER w1 as w1_col3_sum, "
+        "sum(t1.col2) OVER w1 as w1_col2_sum "
+        "FROM t1 last join t2 on t1.col2 = t2.col2 "
+        "WINDOW w1 AS (PARTITION BY t1.col1, t1.col2 ORDER BY t1.col5 ROWS "
+        "BETWEEN 3 "
+        "PRECEDING AND CURRENT ROW) limit 10;",
+        "LIMIT(limit=10, optimized)\n"
+        "  PROJECT(type=Aggregation, limit=10)\n"
+        "    JOIN(type=LastJoin, condition=, key=(t1.col2))\n"
+        "      REQUEST_UNION(groups=(), orders=() ASC, keys=(t1.col5) ASC, "
+        "start=-3, end=0)\n"
+        "        DATA_PROVIDER(request=t1)\n"
+        "        INDEX_SEEK(keys=(t1.col1,t1.col2))\n"
+        "          DATA_PROVIDER(request=t1)\n"
+        "          DATA_PROVIDER(type=IndexScan, table=t1, index=index12)\n"
+        "      GROUP_BY(groups=(t2.col2))\n"
+        "        DATA_PROVIDER(table=t2)"));
+    in_outs.push_back(std::make_pair(
+        "SELECT "
+        "t2.col1, "
+        "sum(t1.col3) OVER w1 as w1_col3_sum, "
+        "sum(t1.col2) OVER w1 as w1_col2_sum "
+        "FROM t1 last join t2 on t1.col1 = t2.col1 "
+        "WINDOW w1 AS (PARTITION BY t1.col1, t1.col2 ORDER BY t1.col5 ROWS "
+        "BETWEEN 3 "
+        "PRECEDING AND CURRENT ROW) limit 10;",
+        "LIMIT(limit=10, optimized)\n"
+        "  PROJECT(type=Aggregation, limit=10)\n"
+        "    JOIN(type=LastJoin, condition=, key=(t1.col1))\n"
+        "      REQUEST_UNION(groups=(), orders=() ASC, keys=(t1.col5) ASC, "
+        "start=-3, end=0)\n"
+        "        DATA_PROVIDER(request=t1)\n"
+        "        INDEX_SEEK(keys=(t1.col1,t1.col2))\n"
+        "          DATA_PROVIDER(request=t1)\n"
+        "          DATA_PROVIDER(type=IndexScan, table=t1, index=index12)\n"
+        "      DATA_PROVIDER(type=IndexScan, table=t2, index=index1_t2)"));
+
     fesql::type::TableDef table_def;
     BuildTableDef(table_def);
     table_def.set_name("t1");
@@ -583,6 +612,10 @@ TEST_F(TransformRequestModeTest, pass_join_optimized_test) {
         fesql::type::TableDef table_def2;
         BuildTableDef(table_def2);
         table_def2.set_name("t2");
+        ::fesql::type::IndexDef* index = table_def2.add_indexes();
+        index->set_name("index1_t2");
+        index->add_first_keys("col1");
+        index->set_second_key("col5");
         std::shared_ptr<::fesql::storage::Table> table2(
             new ::fesql::storage::Table(1, 1, table_def2));
         AddTable(catalog, table_def2, table2);

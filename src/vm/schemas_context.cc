@@ -11,13 +11,12 @@
 namespace fesql {
 namespace vm {
 vm::SchemasContext::SchemasContext(
-    const std::vector<std::pair<const std::string, const vm::Schema*>>&
-        table_schema_list) {
+    const vm::NameSchemaList& table_schema_list) {
     uint32_t idx = 0;
     for (auto iter = table_schema_list.cbegin();
          iter != table_schema_list.cend(); iter++) {
         RowSchemaInfo info = {
-            .idx = idx, .table_name_ = iter->first, .schema_ = iter->second};
+            .idx_ = idx, .table_name_ = iter->first, .schema_ = iter->second};
         row_schema_info_list_.push_back(info);
         // init table -> context idx map
         if (!info.table_name_.empty()) {

@@ -18,15 +18,13 @@
 namespace fesql {
 namespace vm {
 struct RowSchemaInfo {
-    const uint32_t idx;
+    const uint32_t idx_;
     const std::string table_name_;
     const vm::Schema* schema_;
 };
 class SchemasContext {
  public:
-    SchemasContext(
-        const std::vector<std::pair<const std::string, const vm::Schema*>>&
-            table_schema_list);
+    explicit SchemasContext(const vm::NameSchemaList& table_schema_list);
 
     virtual ~SchemasContext() {}
     bool ExprListResolved(std::vector<node::ExprNode*> expr_list,
