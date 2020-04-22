@@ -567,7 +567,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         builder.setKey(key);
         builder.setTs(time);
         if (getOption.getStType() != null) builder.setType(getOption.getStType());
-        if (getOption.getGetType() != null) builder.setEtType(getOption.getGetType());
+        if (getOption.getEtType() != null) builder.setEtType(getOption.getEtType());
         if (getOption.getIdxName() != null && !getOption.getIdxName().isEmpty()) {
             builder.setIdxName(getOption.getIdxName());
         }

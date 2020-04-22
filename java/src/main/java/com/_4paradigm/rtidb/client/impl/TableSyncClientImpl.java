@@ -83,7 +83,7 @@ public class TableSyncClientImpl implements TableSyncClient {
     @Override
     public Object[] getRow(String tname, String key, long time, Object type) throws TimeoutException, TabletException {
         GetOption getOption = new GetOption();
-        getOption.setGetType((Tablet.GetType)type);
+        getOption.setEtType((Tablet.GetType)type);
         return getRow(tname, key, time, getOption);
     }
 
@@ -520,7 +520,7 @@ public class TableSyncClientImpl implements TableSyncClient {
             isNewFormat = true;
         }
         if (getOption.getStType() != null) builder.setType(getOption.getStType());
-        if (getOption.getGetType() != null) builder.setEtType(getOption.getGetType());
+        if (getOption.getEtType() != null) builder.setEtType(getOption.getEtType());
         if (getOption.getIdxName() != null && !getOption.getIdxName().isEmpty()) {
             builder.setIdxName(getOption.getIdxName());
         }
