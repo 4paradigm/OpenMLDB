@@ -1948,6 +1948,60 @@ public class TableSyncClientTest extends TestCaseBase {
         }
     }
 
+    @Test(dataProvider = "relational_combine_key_case")
+    public void testRelationalTableTraverseWithCombineKey(RelationTestArgs args) {
+        nsc.dropTable(args.tableDesc.getName());
+        boolean ok = nsc.createTable(args.tableDesc);
+        Assert.assertTrue(ok);
+        client.refreshRouteTable();
+        String name = args.tableDesc.getName();
+        try {
+            List<com._4paradigm.rtidb.client.schema.ColumnDesc> schema = tableSyncClient.getSchema(name);
+            Assert.assertEquals(schema.size(), 8);
+
+            //put
+            WriteOption wo = new WriteOption();
+            Map<String, Object> data = new HashMap<String, Object>();
+            for (int i = 0; i < 1000; i++) {
+                data.put("id", 10L + i);
+                data.put("name", "n" + i);
+                data.put("attribute", "a" + i);
+                data.put("image", "i" + i);
+                data.put("memory", 10 + i);
+                data.put("price", 11.1 + i);
+                data.put("attribute2", 11.1 + i);
+                data.put("memory2", 11.1 + i);
+                ok = tableSyncClient.put(name, data, wo);
+                data.clear();
+                Assert.assertTrue(ok);
+            }
+            ReadOption ro = new ReadOption(null, null, null, 0);
+            //traverse
+            RelationalIterator trit = tableSyncClient.traverse(name, ro);
+            for (int i = 0; i < 1000; i++) {
+                Assert.assertTrue(trit.valid());
+                Map<String, Object> TraverseMap = trit.getDecodedValue();
+                Assert.assertEquals(TraverseMap.size(), 8);
+                Assert.assertEquals(TraverseMap.get("id"), 10L + i);
+                Assert.assertEquals(TraverseMap.get("name"), "n" + i);
+                Assert.assertEquals(TraverseMap.get("attribute"), "a" + i);
+                Assert.assertEquals(TraverseMap.get("image"), "i" + i);
+                Assert.assertEquals(TraverseMap.get("memory"), 10 + i);
+                Assert.assertEquals(TraverseMap.get("price"), 11.1 + i);
+                Assert.assertEquals(TraverseMap.get("attribute2"), 11.1 + i);
+                Assert.assertEquals(TraverseMap.get("memory2"), 11.1 + i);
+                trit.next();
+            }
+            Assert.assertEquals(trit.getCount(), 1000);
+            Assert.assertFalse(trit.valid());
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.assertTrue(false);
+        } finally {
+            nsc.dropTable(name);
+        }
+    }
+
     @Test
     public void testRelationalTableTraverse() {
         String name = "";
@@ -1959,7 +2013,7 @@ public class TableSyncClientTest extends TestCaseBase {
             //put
             WriteOption wo = new WriteOption();
             Map<String, Object> data = new HashMap<String, Object>();
-            for (long i = 0; i < 10; i++) {
+            for (long i = 0; i < 1000; i++) {
                 data.put("id", i);
                 data.put("attribute", "a" + i);
                 data.put("image", "i" + i);
@@ -1971,12 +2025,11 @@ public class TableSyncClientTest extends TestCaseBase {
             Set<String> colSet = new HashSet<>();
             colSet.add("id");
             colSet.add("image");
-            ReadOption ro = new ReadOption(null, null, colSet, 1);
+            ReadOption ro = new ReadOption(null, null, colSet, 0);
 
             //traverse
             RelationalIterator trit = tableSyncClient.traverse(name, ro);
-            Assert.assertEquals(trit.getCount(), 10);
-            for (long i = 0; i < 10; i++) {
+            for (long i = 0; i < 1000; i++) {
                 Assert.assertTrue(trit.valid());
                 Map<String, Object> TraverseMap = trit.getDecodedValue();
                 Assert.assertEquals(TraverseMap.size(), 2);
@@ -1984,6 +2037,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(TraverseMap.get("image"), "i" + i);
                 trit.next();
             }
+            Assert.assertEquals(trit.getCount(), 1000);
             Assert.assertFalse(trit.valid());
         } catch (Exception e) {
             e.printStackTrace();
@@ -2089,6 +2143,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(TraverseMap.get("image"), "i" + i);
                 trit.next();
             }
+            Assert.assertEquals(trit.getCount(), 999);
             Assert.assertFalse(trit.valid());
         } catch (Exception e) {
             e.printStackTrace();

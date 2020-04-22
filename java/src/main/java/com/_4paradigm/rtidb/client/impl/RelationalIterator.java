@@ -40,9 +40,7 @@ public class RelationalIterator {
     private RowView rowView;
     private boolean isFinished = false;
     private int pid = 0;
-    private String last_pk = null;
-    private int key_idx = 0;
-    private DataType key_type;
+    private ByteString last_pk = null;
     private RTIDBClient client = null;
     private boolean continue_update = false;
     private boolean batch_query = false;
@@ -71,12 +69,6 @@ public class RelationalIterator {
             Common.ColumnKey key = th.getTableInfo().getColumnKey(i);
             if (key.hasIndexType() && key.getIndexType() == IndexType.valueFrom(IndexType.PrimaryKey)) {
                 idxName = key.getIndexName();
-            }
-        }
-        for (int i = 0; i < schema.size(); i++) {
-            if (schema.get(i).getName().equals(idxName)) {
-                key_type = schema.get(i).getDataType();
-                key_idx = i;
             }
         }
         continue_update = true;
@@ -261,9 +253,7 @@ public class RelationalIterator {
             Tablet.TraverseRequest.Builder builder = Tablet.TraverseRequest.newBuilder();
             builder.setTid(th.getTableInfo().getTid());
             if (offset != 0) {
-                Object val = rowView.getValue(key_idx, key_type);
-                last_pk = val.toString();
-                builder.setPk(last_pk);
+                builder.setLastPk(last_pk);
             }
             if (snapshot_id > 0) {
                 builder.setSnapshotId(snapshot_id);
@@ -279,6 +269,7 @@ public class RelationalIterator {
                 if (response.hasSnapshotId()) {
                     snapshot_id = response.getSnapshotId();
                 }
+                last_pk = response.getLastPk();
                 offset = 0;
                 if (totalSize == 0) {
                     if (response.hasIsFinish() && response.getIsFinish()) {
