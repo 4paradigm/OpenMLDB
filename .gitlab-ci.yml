@@ -1,6 +1,7 @@
 image: develop-registry.4pd.io/centos6_gcc7_fesql:0.0.8
 variables:
     GIT_SUBMODULE_STRATEGY: normal
+    CICD_RUNNER_THIRDPARTY_PATH: "/depends/thirdparty"
 
 before_script:
     - source tools/init_env.profile.sh
@@ -43,11 +44,12 @@ build_fesql_and_case_on_mac:
     stage: build
     variables:
         CICD_RUNNER_TAG: "macos"
-        CICD_RUNNER_THIRDPARTY_PATH: "/Users/wrongtest/projects/fesql/thirdparty"
     script:
         - bash tools/compile_and_test.sh
     tags:
         - macos
+    only:
+        - /.*-macos$/
 
 micro_benchmark:
     stage: benchmark
