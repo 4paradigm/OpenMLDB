@@ -290,6 +290,83 @@ typedef std::map<std::string,
     MemTables;
 typedef std::map<std::string, std::shared_ptr<type::Database>> Databases;
 
+
+class MemSegmentHandler : public TableHandler {
+ public:
+    MemSegmentHandler(std::shared_ptr<PartitionHandler> partition_hander,
+                   const std::string& key)
+        : partition_hander_(partition_hander), key_(key) {}
+
+    virtual ~MemSegmentHandler() {}
+
+    inline const vm::Schema* GetSchema() {
+        return partition_hander_->GetSchema();
+    }
+
+    inline const std::string& GetName() { return partition_hander_->GetName(); }
+
+    inline const std::string& GetDatabase() {
+        return partition_hander_->GetDatabase();
+    }
+
+    inline const vm::Types& GetTypes() { return partition_hander_->GetTypes(); }
+
+    inline const vm::IndexHint& GetIndex() {
+        return partition_hander_->GetIndex();
+    }
+
+    std::unique_ptr<vm::RowIterator> GetIterator() const {
+        auto iter = partition_hander_->GetWindowIterator();
+        if (iter) {
+            iter->Seek(key_);
+            return iter->Valid() ? std::move(iter->GetValue())
+                                 : std::unique_ptr<RowIterator>();
+        }
+        return std::unique_ptr<RowIterator>();
+    }
+    vm::IteratorV<uint64_t, Row>* GetIterator(int8_t* addr) const override {
+        LOG(WARNING) << "can't get iterator with given address";
+        return nullptr;
+    }
+    std::unique_ptr<vm::WindowIterator> GetWindowIterator(
+        const std::string& idx_name) {
+        LOG(WARNING) << "SegmentHandler can't support window iterator";
+        return std::unique_ptr<WindowIterator>();
+    }
+    virtual const uint64_t GetCount() {
+        auto iter = GetIterator();
+        if (!iter) {
+            return 0;
+        }
+        iter->SeekToFirst();
+        uint64_t cnt = 0;
+        while (iter->Valid()) {
+            cnt++;
+            iter->Next();
+        }
+        return cnt;
+    }
+    Row At(uint64_t pos) override {
+        if (pos < 0) {
+            return Row();
+        }
+        auto iter = GetIterator();
+        if (!iter) {
+            return Row();
+        }
+        iter->SeekToFirst();
+        while (pos-- > 0 && iter->Valid()) {
+            iter->Next();
+        }
+        return iter->Valid() ? iter->GetValue() : Row();
+    }
+    const std::string GetHandlerTypeName() override { return "MemSegmentHandler"; }
+
+ private:
+    std::shared_ptr<vm::PartitionHandler> partition_hander_;
+    std::string key_;
+};
+
 class MemPartitionHandler : public PartitionHandler {
  public:
     explicit MemPartitionHandler(const Schema* schema);
@@ -312,8 +389,8 @@ class MemPartitionHandler : public PartitionHandler {
     virtual std::shared_ptr<TableHandler> GetSegment(
         std::shared_ptr<PartitionHandler> partition_hander,
         const std::string& key) {
-        return std::shared_ptr<SegmentHandler>(
-            new SegmentHandler(partition_hander, key));
+        return std::shared_ptr<MemSegmentHandler>(
+            new MemSegmentHandler(partition_hander, key));
     }
 
     const std::string GetHandlerTypeName() override {
