@@ -802,6 +802,7 @@ public class TableAsyncClientTest extends TestCaseBase {
     }
     @Test
     public void testMultiTTLAnd() {
+
         Tablet.TTLDesc.Builder builder = Tablet.TTLDesc.newBuilder();
         builder.setAbsTtl(1);
         builder.setLatTtl(2);
