@@ -107,5 +107,31 @@ bool BsClient::Stats(uint32_t tid, uint32_t pid, uint64_t *count, uint64_t *tota
     return false;
 }
 
+bool BsClient::GetStoreStatus(::rtidb::blobserver::GetStoreStatusResponse* response) {
+    ::rtidb::blobserver::GetStoreStatusRequest request;
+    bool ok = client_.SendRequest(&BlobServer_Stub::GetStoreStatus, &request, response, FLAGS_request_timeout_ms, 1);
+    if (ok || response->code() == 0) {
+        return  true;
+    }
+    return false;
+}
+
+bool BsClient::GetStoreStatus(uint32_t tid, uint32_t pid, ::rtidb::blobserver::StoreStatus* status) {
+    ::rtidb::blobserver::GetStoreStatusRequest request;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    ::rtidb::blobserver::GetStoreStatusResponse response;
+    bool ok = client_.SendRequest(&BlobServer_Stub::GetStoreStatus, &request, &response, FLAGS_request_timeout_ms, 1);
+    if (ok || response.code() == 0) {
+        if (response.all_status_size() < 0) {
+            return false;
+        }
+        const auto& temp_status = response.all_status(0);
+        status->CopyFrom(temp_status);
+        return  true;
+    }
+    return false;
+}
+
 }
 }

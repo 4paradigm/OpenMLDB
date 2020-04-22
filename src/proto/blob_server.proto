@@ -65,6 +65,22 @@ message LoadTableRequest {
     optional rtidb.api.TaskInfo task_info = 2;
 }
 
+message StoreStatus {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+}
+
+message GetStoreStatusResponse {
+    repeated StoreStatus all_status = 1;
+    optional int32 code = 2;
+    optional string msg = 3;
+}
+
+message GetStoreStatusRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+}
+
 
 service BlobServer {
     rpc CreateTable(CreateTableRequest) returns (GeneralResponse);
@@ -73,4 +89,5 @@ service BlobServer {
     rpc Delete(GeneralRequest) returns (GeneralResponse);
     rpc Stats(StatsRequest) returns (StatsResponse);
     rpc LoadTable(LoadTableRequest) returns (GeneralResponse);
+    rpc GetStoreStatus(GetStoreStatusRequest) returns (GetStoreStatusResponse);
 }

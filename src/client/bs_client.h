@@ -32,6 +32,10 @@ public:
 
    bool Stats(uint32_t tid, uint32_t pid, uint64_t* count, uint64_t* total_space, uint64_t* avail_space, std::string* msg);
 
+   bool GetStoreStatus(::rtidb::blobserver::GetStoreStatusResponse* response);
+
+   bool GetStoreStatus(uint32_t tid, uint32_t pid, ::rtidb::blobserver::StoreStatus* status);
+
 private:
    std::string endpoint_;
    ::rtidb::RpcClient<BlobServer_Stub> client_;

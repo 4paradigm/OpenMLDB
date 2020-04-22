@@ -14,7 +14,7 @@
 #include <vector>
 #include "base/spinlock.h"
 #include "proto/blob_server.pb.h"
-#include "thread_pool.h" // NOLINT
+#include "thread_pool.h"  // NOLINT
 #include "zk/zk_client.h"
 
 namespace rtidb {
@@ -26,7 +26,6 @@ using ::google::protobuf::RpcController;
 using ::rtidb::base::SpinMutex;
 using ::rtidb::storage::ObjectStore;
 using ::rtidb::zk::ZkClient;
-
 
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<ObjectStore>>>
     ObjectStores;
@@ -62,6 +61,9 @@ class BlobServerImpl : public ::rtidb::blobserver::BlobServer {
                StatsResponse* response, Closure* done);
     void LoadTable(RpcController* controller, const LoadTableRequest* request,
                    GeneralResponse* response, Closure* done);
+    void GetStoreStatus(RpcController* controller,
+                        const GetStoreStatusRequest* request,
+                        GetStoreStatusResponse* response, Closure* done);
 
  private:
     std::mutex mu_;

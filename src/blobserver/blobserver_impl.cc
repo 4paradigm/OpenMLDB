@@ -271,5 +271,36 @@ std::shared_ptr<ObjectStore> BlobServerImpl::GetStoreUnLock(uint32_t tid,
     return std::shared_ptr<ObjectStore>();
 }
 
+void BlobServerImpl::GetStoreStatus(RpcController* controller,
+                    const GetStoreStatusRequest* request,
+                    GetStoreStatusResponse* response, Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    if (request->has_tid() && request->has_pid()) {
+        uint32_t tid = request->tid(), pid = request->pid();
+        std::shared_ptr<ObjectStore> store = GetStore(tid, pid);
+        if (!store) {
+            response->set_code(ReturnCode::kOk);
+            return;
+        }
+        StoreStatus* status = response->add_all_status();
+        status->set_tid(tid);
+        status->set_pid(pid);
+        response->set_code(ReturnCode::kOk);
+        return;
+    }
+    std::lock_guard<SpinMutex> lock_guard(spin_mutex_);
+    for (const auto& it : object_stores_) {
+        for(const auto& tit : it.second) {
+            StoreStatus* status = response->add_all_status();
+            status->set_tid(it.first);
+            status->set_pid(tit.first);
+        }
+    }
+    response->set_code(ReturnCode::kOk);
+    return;
+}
+
+
+
 }  // namespace blobserver
 }  // namespace rtidb

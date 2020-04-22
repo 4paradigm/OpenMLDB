@@ -3718,7 +3718,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
             }
         }
     }
-    if (!request->has_zone_info()) { 
+    if (!request->has_zone_info() && table_info->table_type() != ::rtidb::type::kObjectStore) {
         if (FillColumnKey(*table_info) < 0) {
             response->set_code(::rtidb::base::ReturnCode::kInvalidParameter);
             response->set_msg("fill column key failed");
@@ -3922,10 +3922,14 @@ void NameServerImpl::CreateTableInternel(GeneralResponse& response,
 std::shared_ptr<BlobServerInfo> NameServerImpl::SetBlobTableInfo(::rtidb::nameserver::TableInfo& table_info) {
     table_info.clear_table_partition();
     auto new_part = table_info.add_table_partition();
+    new_part->set_pid(0);
     auto new_meta = new_part->add_partition_meta();
 
     std::map<std::string, uint64_t> endpoint_count;
     std::lock_guard<std::mutex> lock(mu_);
+    for (const auto& it : blob_servers_) {
+        endpoint_count.insert(std::make_pair(it.first, 0));
+    }
     for (const auto& iter : table_info_) {
         auto table_info = iter.second;
         if (table_info->table_type() != ::rtidb::type::kObjectStore) {
@@ -3950,11 +3954,13 @@ std::shared_ptr<BlobServerInfo> NameServerImpl::SetBlobTableInfo(::rtidb::namese
             meta_endpoint = tit.first;
         }
     }
-    const auto& iter = blob_servers_.find(meta_endpoint);
-    if (iter != blob_servers_.end()) {
-        new_meta->set_endpoint(iter->first);
-        return iter->second;
+    BlobServers::iterator it  = blob_servers_.find(meta_endpoint);
+    if (it != blob_servers_.end()) {
+        new_meta->set_endpoint(it->first);
+        new_meta->set_is_leader(true);
+        return it->second;
     }
+    PDLOG(INFO, "no available blob server");
     return std::shared_ptr<BlobServerInfo>();
 }
 
