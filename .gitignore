@@ -4,6 +4,7 @@ thirdsrc
 
 *.dylib
 *.jnilib
+*.dylib
 *.so
 *.a
 

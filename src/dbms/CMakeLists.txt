@@ -4,9 +4,8 @@ include_directories(${INCLUDE_DIRECTORIES}
 
 add_library(fesql_dbms STATIC dbms_server_impl.cc)
 
-# TODO: Update the test to compile in Mac
 add_executable(dbms_server_test dbms_server_impl_test.cc)
-target_link_libraries(dbms_server_test fesql_dbms fesql_tablet
+target_link_libraries(dbms_server_test fesql_dbms fesql_tablet ${OS_LIB}
     fesql_storage fesql_vm fesql_parser fesql_planner fesql_codegen
     fesql_proto fesql_udf fesql_node fesql_codec fesql_flags
     brpc  protobuf  gtest ${COMMON_LIBS} ${llvm_libs} leveldb z snappy ssl crypto dl pthread)

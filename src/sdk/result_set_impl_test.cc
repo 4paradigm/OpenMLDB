@@ -151,7 +151,7 @@ TEST_P(ResultSetImplTest, test_normal) {
                     row_view.GetString(j, &left_ptr, &left_size);
                     ASSERT_TRUE(rs.GetString(j, &right_ptr, &right_size));
                     ASSERT_EQ(left_size, right_size);
-                    ASSERT_EQ(left_ptr, right_ptr);
+                    ASSERT_EQ(std::string(left_ptr), std::string(right_ptr));
                     break;
                 }
                 default: {
