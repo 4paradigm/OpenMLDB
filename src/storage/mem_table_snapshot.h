@@ -76,7 +76,7 @@ class MemTableSnapshot : public Snapshot {
         std::shared_ptr<Table> table,
         const std::vector<uint32_t>& index_cols,
         const std::vector<::rtidb::base::ColumnDesc>& columns,
-        const std::set<uint32_t>& deleted_index, uint32_t max_idx, uint32_t idx,
+        uint32_t max_idx, uint32_t idx,
         const std::vector<::rtidb::log::WriteHandle*>& whs,
         uint64_t* snapshot_offset);
 
@@ -84,7 +84,7 @@ class MemTableSnapshot : public Snapshot {
         std::shared_ptr<Table> table,
         const std::vector<uint32_t>& index_cols,
         const std::vector<::rtidb::base::ColumnDesc>& columns,
-        const std::set<uint32_t>& deleted_index, uint32_t max_idx, uint32_t idx,
+        uint32_t max_idx, uint32_t idx,
         const std::vector<::rtidb::log::WriteHandle*>& whs,
         uint64_t snapshot_offset, uint64_t collected_offset);
 

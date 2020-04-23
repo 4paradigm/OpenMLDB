@@ -640,12 +640,6 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(
     ::rtidb::log::SequentialFile* seq_file =
         ::rtidb::log::NewSeqFile(manifest.name(), fd);
     ::rtidb::log::Reader reader(seq_file, NULL, false, 0);
-    std::set<uint32_t> deleted_index;
-    for (const auto& it : table->GetAllIndex()) {
-        if (it->GetStatus() == ::rtidb::storage::IndexStatus::kDeleted) {
-            deleted_index.insert(it->GetId());
-        }
-    }
     std::string buffer;
     ::rtidb::api::LogEntry entry;
     bool has_error = false;
@@ -684,7 +678,7 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(
                     entry.dimensions(pos).key() + "|" +
                     std::to_string(entry.dimensions(pos).idx());
                 if (deleted_keys_.find(combined_key) != deleted_keys_.end() ||
-                    deleted_index.count(entry.dimensions(pos).idx())) {
+                    !table->GetIndex(entry.dimensions(pos).idx())->IsReady()) {
                     deleted_pos_set.insert(pos);
                 }
             }
@@ -832,13 +826,6 @@ int MemTableSnapshot::ExtractIndexData(
         return 0;
     }
 
-    std::set<uint32_t> deleted_index;
-    for (const auto& it : table->GetAllIndex()) {
-        if (it->GetStatus() == ::rtidb::storage::IndexStatus::kDeleted) {
-            deleted_index.insert(it->GetId());
-        }
-    }
-
     // get all columns
     std::map<std::string, uint32_t> column_desc_map;
     for (uint32_t i = 0; i < columns.size(); ++i) {
@@ -933,7 +920,8 @@ int MemTableSnapshot::ExtractIndexData(
                     auto iter = deleted_keys_.find(combined_key);
                     if ((iter != deleted_keys_.end() &&
                          cur_offset <= iter->second) ||
-                        deleted_index.count(entry.dimensions(pos).idx())) {
+                        !table->GetIndex(entry.dimensions(pos).idx())
+                             ->IsReady()) {
                         deleted_pos_set.insert(pos);
                     }
                 }
@@ -1170,9 +1158,8 @@ bool MemTableSnapshot::PackNewIndexEntry(
 
 bool MemTableSnapshot::DumpSnapshotIndexData(
     std::shared_ptr<Table> table, const std::vector<uint32_t>& index_cols,
-    const std::vector<::rtidb::base::ColumnDesc>& columns,
-    const std::set<uint32_t>& deleted_index, uint32_t max_idx, uint32_t idx,
-    const std::vector<::rtidb::log::WriteHandle*>& whs,
+    const std::vector<::rtidb::base::ColumnDesc>& columns, uint32_t max_idx,
+    uint32_t idx, const std::vector<::rtidb::log::WriteHandle*>& whs,
     uint64_t* snapshot_offset) {
     uint32_t partition_num = whs.size();
     ::rtidb::api::Manifest manifest;
@@ -1280,19 +1267,13 @@ bool MemTableSnapshot::DumpIndexData(
             return false;
         }
     }
-    std::set<uint32_t> deleted_index;
-    for (const auto& it : table->GetAllIndex()) {
-        if (it->GetStatus() != ::rtidb::storage::IndexStatus::kReady) {
-            deleted_index.insert(it->GetId());
-        }
-    }
     uint64_t collected_offset = CollectDeletedKey(0);
     uint64_t snapshot_offset = 0;
     bool ret = true;
-    if (!DumpSnapshotIndexData(table, index_cols, columns, deleted_index,
-                               max_idx, idx, whs, &snapshot_offset) ||
-        !DumpBinlogIndexData(table, index_cols, columns, deleted_index, max_idx,
-                             idx, whs, snapshot_offset, collected_offset)) {
+    if (!DumpSnapshotIndexData(table, index_cols, columns, max_idx, idx, whs,
+                               &snapshot_offset) ||
+        !DumpBinlogIndexData(table, index_cols, columns, max_idx, idx, whs,
+                             snapshot_offset, collected_offset)) {
         ret = false;
     }
     making_snapshot_.store(false, std::memory_order_release);
@@ -1301,9 +1282,8 @@ bool MemTableSnapshot::DumpIndexData(
 
 bool MemTableSnapshot::DumpBinlogIndexData(
     std::shared_ptr<Table> table, const std::vector<uint32_t>& index_cols,
-    const std::vector<::rtidb::base::ColumnDesc>& columns,
-    const std::set<uint32_t>& deleted_index, uint32_t max_idx, uint32_t idx,
-    const std::vector<::rtidb::log::WriteHandle*>& whs,
+    const std::vector<::rtidb::base::ColumnDesc>& columns, uint32_t max_idx,
+    uint32_t idx, const std::vector<::rtidb::log::WriteHandle*>& whs,
     uint64_t snapshot_offset, uint64_t collected_offset) {
     ::rtidb::log::LogReader log_reader(log_part_, log_path_);
     log_reader.SetOffset(snapshot_offset);
