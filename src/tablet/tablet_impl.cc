@@ -4867,7 +4867,8 @@ void TabletImpl::DeleteIndex(RpcController* controller,
         return;
     }
     std::string root_path;
-    if (!ChooseDBRootPath(tid, pid, table->GetStorageMode(), root_path)) {
+    if (!ChooseDBRootPath(tid, pid, ::rtidb::common::StorageMode::kMemory,
+                          root_path)) {
         response->set_code(::rtidb::base::ReturnCode::kFailToGetDbRootPath);
         response->set_msg("fail to get table db root path");
         PDLOG(WARNING, "table db path is not found. tid %u, pid %u", tid, pid);
