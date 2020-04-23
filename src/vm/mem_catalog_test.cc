@@ -199,7 +199,7 @@ TEST_F(MemCataLogTest, mem_partition_test) {
 
     {
         auto iter = window_iter->GetValue();
-        ASSERT_EQ(Row("group2"), window_iter->GetKey());
+        ASSERT_EQ("group2", window_iter->GetKey().ToString());
         while (iter->Valid()) {
             iter->Next();
         }
@@ -254,7 +254,7 @@ TEST_F(MemCataLogTest, mem_partition_test) {
     ASSERT_TRUE(window_iter->Valid());
     {
         auto iter = window_iter->GetValue();
-        ASSERT_EQ(Row("group1"), window_iter->GetKey());
+        ASSERT_EQ("group1", window_iter->GetKey().ToString());
         while (iter->Valid()) {
             iter->Next();
         }
@@ -276,7 +276,7 @@ TEST_F(MemCataLogTest, mem_row_handler_test) {
     // construct test
     for (auto row : rows) {
         MemRowHandler row_hander(row, &table.columns());
-        ASSERT_EQ(row, row_hander.GetValue());
+        ASSERT_EQ(0, row.compare(row_hander.GetValue()));
     }
 }
 
