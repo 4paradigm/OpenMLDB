@@ -1,0 +1,10 @@
+package rtidb.httpserver;
+
+option cc_generic_services = true;
+
+message HttpRequest { };
+message HttpResponse { };
+
+service HTTPServer {
+    rpc Get(HttpRequest) returns(HttpResponse);
+}
