@@ -380,6 +380,12 @@ else
         wget --no-check-certificate -O v1.0.7.tar.gz https://github.com/google/brotli/archive/v1.0.7.tar.gz
     fi
     tar -zxvf v1.0.7.tar.gz
+    ####
+    # mac install
+    # mkdir out && cd out
+    # cmake -DCMAKE_INSTALL_PREFIX=./installed ..
+    # cmake --build . -target install
+    ####
     cd brotli-1.0.7  && ./bootstrap && ./configure --prefix=${DEPS_PREFIX} && make -j4 && make install
     cd -
     touch brotli_succ
