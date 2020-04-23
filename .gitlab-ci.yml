@@ -4,7 +4,7 @@ stages:
     - ut
     - it-tablet
     - it-ns
-    - deploy
+#    - deploy
 
 build_rtidb:
     stage: build
@@ -136,7 +136,7 @@ disktable-java:
                 - rtidb-auto-test/target/failsafe-reports/TEST-*.xml
 
 deploy-package:
-    stage: deploy
+    stage: build
     script:
         - ln -sf /usr/workdir/thirdparty thirdparty
         - ln -sf /usr/workdir/thirdsrc thirdsrc
