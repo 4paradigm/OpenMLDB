@@ -10,7 +10,7 @@ cp -rf src/proto/tablet.proto java/src/main/proto/
 cp -rf src/proto/name_server.proto java/src/main/proto/
 cp -rf src/proto/common.proto java/src/main/proto/
 
-ll build/bin
+ls -al build/bin
 
 cp steps/zoo.cfg thirdsrc/zookeeper-3.4.10/conf
 cd thirdsrc/zookeeper-3.4.10
@@ -21,7 +21,7 @@ netstat -anp | grep 6181 | awk '{print $NF}' | awk -F '/' '{print $1}'| xargs ki
 sleep 5
 
 echo "xxxxxxxxx"
-ll build/bin
+ls -al build/bin
 
 cd onebox && sh start_onebox.sh && cd $ROOT_DIR
 sleep 3
