@@ -37,12 +37,12 @@ git submodule add https://gitlab.4pd.io/FeatureEngineering/rtidb-auto-test.git a
 cd auto-test-rtidb
 git checkout release/1.4.2
 echo "rtidb_version:$rtidb_version"
-git pull
-sh run.sh cicd.xml $rtidb_version
-
-code=$?
-cd $ROOT_DIR
-cd onebox && sh stop_all.sh
-cd $ROOT_DIR
-cd thirdsrc/zookeeper-3.4.10 && ./bin/zkServer.sh stop
-exit $code
+#git pull
+#sh run.sh cicd.xml $rtidb_version
+#
+#code=$?
+#cd $ROOT_DIR
+#cd onebox && sh stop_all.sh
+#cd $ROOT_DIR
+#cd thirdsrc/zookeeper-3.4.10 && ./bin/zkServer.sh stop
+#exit $code
