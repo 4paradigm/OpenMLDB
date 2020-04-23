@@ -2,7 +2,17 @@ build
 thirdparty
 thirdsrc
 
+*.dylib
+*.jnilib
+*.dylib
+*.so
+*.a
+
 # java ignore
 *.iml
 *.idea*
 java/*/target
+
+# ignore codegen files
+java/fesql-proto/src/main/java/com/*
+java/fesql-native/src/main/java/com/*

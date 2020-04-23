@@ -16,116 +16,11 @@
 #include <utility>
 #include <vector>
 #include "base/slice.h"
+#include "codec/row.h"
 #include "codec/type_codec.h"
 #include "glog/logging.h"
 namespace fesql {
 namespace codec {
-using fesql::base::Slice;
-class Row {
- public:
-    Row() : slice_() {}
-    Row(int8_t *d, size_t n) : slice_(d, n, false) {}
-    Row(int8_t *d, size_t n, bool need_free) : slice_(d, n, need_free) {}
-    Row(const char *d, size_t n) : slice_(d, n, false) {}
-    Row(const char *d, size_t n, bool need_free) : slice_(d, n, need_free) {}
-    Row(Row &s) : slice_(s.slice_), slices_(s.slices_) {}
-    Row(const Row &s) : slice_(s.slice_), slices_(s.slices_) {}
-    Row(const Row &major, const Row &secondary) : slice_(major.slice_) {
-        Append(major.slices_);
-        Append(secondary);
-    }
-    explicit Row(const Slice &s) : slice_(s) {}
-    explicit Row(const std::string &s) : slice_(s) {}
-
-    explicit Row(const char *s) : slice_(s) {}
-    virtual ~Row() {}
-    inline int8_t *buf() const { return slice_.buf(); }
-    inline int8_t *buf(int32_t pos) const {
-        return 0 == pos ? slice_.buf() : slices_[pos - 1].buf();
-    }
-
-    inline const char *data() const { return slice_.data(); }
-    inline int32_t size() const { return slice_.size(); }
-    inline int32_t size(int32_t pos) const {
-        return 0 == pos ? slice_.size() : slices_[pos - 1].size();
-    }
-    // Return true if the length of the referenced data is zero
-    inline bool empty() const { return slice_.empty() && slices_.empty(); }
-    // Three-way comparison.  Returns value:
-    //   <  0 iff "*this" <  "b",
-    //   == 0 iff "*this" == "b",
-    //   >  0 iff "*this" >  "b"
-    int compare(const Row &b) const;
-    void Append(const std::vector<Slice> &slices) {
-        if (!slices.empty()) {
-            for (auto iter = slices_.cbegin(); iter != slices_.cend(); iter++) {
-                slices_.push_back(*iter);
-            }
-        }
-    }
-    void Append(const Row &b) {
-        slices_.push_back(b.slice_);
-        Append(b.slices_);
-    }
-
-    int8_t **GetRowPtrs() const {
-        if (slices_.empty()) {
-            return new int8_t *[1] { slice_.buf() };
-        } else {
-            int8_t **ptrs = new int8_t *[slices_.size() + 1];
-            int pos = 0;
-            ptrs[pos++] = slice_.buf();
-            for (auto slice : slices_) {
-                ptrs[pos++] = slice.buf();
-            }
-            return ptrs;
-        }
-    }
-
-    int32_t GetRowPtrCnt() const { return 1 + slices_.size(); }
-    int32_t *GetRowSizes() const {
-        if (slices_.empty()) {
-            return new int32_t[1]{static_cast<int32_t>(slice_.size())};
-        } else {
-            int32_t *sizes = new int32_t[slices_.size() + 1];
-            int pos = 0;
-            sizes[pos++] = slice_.size();
-            for (auto slice : slices_) {
-                sizes[pos++] = static_cast<int32_t>(slice.size());
-            }
-            return sizes;
-        }
-    }
-    void AppendEmptyRow() { slices_.push_back(Slice()); }
-    // Return a string that contains the copy of the referenced data.
-    std::string ToString() const { return slice_.ToString(); }
-    Slice slice_;
-    std::vector<Slice> slices_;
-};
-inline int Row::compare(const Row &b) const {
-    int r = slice_.compare(b.slice_);
-    if (r != 0) {
-        return r;
-    }
-    size_t this_len = slices_.size();
-    size_t b_len = b.slices_.size();
-    size_t min_len = this_len < b_len ? this_len : b_len;
-    for (size_t i = 0; i < min_len; i++) {
-        int slice_compared = slices_[i].compare(b.slices_[i]);
-        if (0 == slice_compared) {
-            continue;
-        }
-        return slice_compared;
-    }
-
-    return this_len < b_len ? -1 : this_len > b_len ? +1 : 0;
-}
-
-inline bool operator==(const Row &x, const Row &y) {
-    return x.slice_ == y.slice_ && x.slices_ == y.slices_;
-}
-
-inline bool operator!=(const Row &x, const Row &y) { return !(x == y); }
 
 template <class V>
 class ArrayListIterator;

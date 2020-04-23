@@ -15,7 +15,7 @@ add_test(graph_test graph_test --gtest_output=xml:${CMAKE_BINARY_DIR}/graph_test
 list(APPEND test_list graph_test)
 
 add_executable(hash_mk hash_mk.cc)
-target_link_libraries(hash_mk gflags benchmark benchmark_main pthread rt)
+target_link_libraries(hash_mk gflags benchmark benchmark_main ${OS_LIB})
 
 add_executable(texttable_test texttable_test.cc)
 target_link_libraries(texttable_test fesql_base gflags gtest pthread)

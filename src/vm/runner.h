@@ -9,7 +9,7 @@
 
 #ifndef SRC_VM_RUNNER_H_
 #define SRC_VM_RUNNER_H_
-#include <stdint-gcc.h>
+
 #include <map>
 #include <string>
 #include <vector>
@@ -127,7 +127,8 @@ enum RunnerType {
     kRunnerIndexSeek,
     kRunnerLastJoin,
     kRunnerRequestLastJoin,
-    kRunnerLimit
+    kRunnerLimit,
+    kRunnerUnknow,
 };
 
 inline const std::string RunnerTypeName(const RunnerType& type) {
@@ -168,6 +169,13 @@ inline const std::string RunnerTypeName(const RunnerType& type) {
 }
 class Runner {
  public:
+    explicit Runner(const int32_t id)
+        : id_(id),
+          type_(kRunnerUnknow),
+          limit_cnt_(0),
+          need_cache_(false),
+          producers_(),
+          output_schemas_() {}
     explicit Runner(const int32_t id, const RunnerType type,
                     const vm::NameSchemaList& output_schemas)
         : id_(id),

@@ -36,6 +36,7 @@
 #include "parser/parser.h"
 #include "plan/planner.h"
 #include "tablet/tablet_catalog.h"
+#include "vm/simple_catalog.h"
 #include "vm/test_base.h"
 
 using namespace llvm;       // NOLINT
@@ -214,8 +215,16 @@ TEST_P(SQLCompilerTest, compile_batch_mode_test) {
     AddTable(catalog, table_def5, table5);
     AddTable(catalog, table_def6, table6);
 
-
     Compiler_Runner_Check(catalog, sqlstr, true);
+
+    // Check for work with simple catalog
+    auto simple_catalog = std::make_shared<SimpleCatalog>();
+    fesql::type::Database db;
+    db.set_name("db");
+    ::fesql::type::TableDef* p_table = db.add_tables();
+    *p_table = table_def;
+    simple_catalog->AddDatabase(db);
+    Compiler_Runner_Check(simple_catalog, sqlstr, true);
 }
 
 }  // namespace vm

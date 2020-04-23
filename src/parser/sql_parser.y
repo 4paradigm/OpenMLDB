@@ -306,7 +306,7 @@ typedef void* yyscan_t;
 %token SQL_BIG_RESULT
 %token SQL_CALC_FOUND_ROWS
 %token SQL_SMALL_RESULT
-%token SSL
+%token USE_SSL
 %token STRINGTYPE
 %token STARTING
 %token STRAIGHT_JOIN

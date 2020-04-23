@@ -6,8 +6,7 @@ add_library(fesql_storage STATIC table.cc segment.cc table_iterator.cc)
 
 add_executable(table_iterator_test table_iterator_test.cc)
 target_link_libraries(table_iterator_test 
-fesql_storage fesql_codec fesql_proto glog gflags gtest protobuf pthread
-unwind lzma)
+fesql_storage fesql_codec fesql_proto glog gflags gtest protobuf pthread lzma)
 add_test(table_iterator_test table_iterator_test --gtest_output=xml:${CMAKE_BINARY_DIR}/table_iterator_test.xml)
 list(APPEND test_list table_iterator_test)
 
@@ -23,6 +22,6 @@ list(APPEND test_list skiplist_test)
 
 add_executable(table_test table_test.cc)
 target_link_libraries(table_test fesql_storage fesql_codec fesql_proto glog
-    gflags gtest protobuf pthread unwind lzma)
+    gflags gtest protobuf pthread lzma)
 add_test(table_test table_test --gtest_output=xml:${CMAKE_BINARY_DIR}/table_test.xml)
 list(APPEND test_list table_test)

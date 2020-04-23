@@ -14,6 +14,11 @@ const char INDENT[] = "  ";
 void PhysicalOpNode::Print(std::ostream& output, const std::string& tab) const {
     output << tab << PhysicalOpTypeName(type_);
 }
+
+void PhysicalOpNode::Print() const {
+    this->Print(std::cout, "    ");
+}
+
 void PhysicalOpNode::PrintChildren(std::ostream& output,
                                    const std::string& tab) const {}
 void PhysicalOpNode::UpdateProducer(int i, PhysicalOpNode* producer) {

@@ -94,6 +94,8 @@ class PhysicalOpNode {
           limit_cnt_(0) {}
     virtual ~PhysicalOpNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
+    void Print() const;
+
     virtual void PrintChildren(std::ostream &output,
                                const std::string &tab) const;
     virtual bool InitSchema() = 0;
@@ -112,6 +114,15 @@ class PhysicalOpNode {
     const FnInfo &GetFnInfo() const { return fn_info_; }
     void SetFn(int8_t *fn) { fn_info_.fn_ = fn; }
     const int8_t *GetFn() const { return fn_info_.fn_; }
+    PhysicalOpNode* GetProducer(size_t index) const {
+        return producers_[index];
+    }
+
+    const vm::Schema* GetOutputSchema() const {
+        return &output_schema_;
+    }
+
+    size_t GetProducerCnt() const { return producers_.size(); }
 
     void SetFnName(const std::string &fn_name) { fn_info_.fn_name_ = fn_name; }
     const std::string &GetFnName() const { return fn_info_.fn_name_; }

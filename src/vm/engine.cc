@@ -24,15 +24,28 @@
 #include "codec/row_codec.h"
 #include "codegen/buf_ir_builder.h"
 #include "vm/mem_catalog.h"
+#include "llvm-c/Target.h"
 
 namespace fesql {
 namespace vm {
 
 Engine::Engine(const std::shared_ptr<Catalog>& catalog) : cl_(catalog) {}
 
+Engine::Engine(const std::shared_ptr<Catalog>& catalog,
+               const EngineOptions& options) :
+    cl_(catalog), options_(options) {}
+
 Engine::~Engine() {}
 
-bool Engine::Get(const std::string& sql, const std::string& db,
+
+void Engine::InitializeGlobalLLVM() {
+    LLVMInitializeNativeTarget();
+    LLVMInitializeNativeAsmPrinter();
+}
+
+
+bool Engine::Get(const std::string& sql,
+                 const std::string& db,
                  RunSession& session,
                  base::Status& status) {  // NOLINT (runtime/references)
     {
@@ -48,7 +61,7 @@ bool Engine::Get(const std::string& sql, const std::string& db,
     info->get_sql_context().sql = sql;
     info->get_sql_context().db = db;
     info->get_sql_context().is_batch_mode = session.IsBatchRun();
-    SQLCompiler compiler(cl_, &nm_);
+    SQLCompiler compiler(cl_, &nm_, options_.is_keep_ir());
     bool ok = compiler.Compile(info->get_sql_context(), status);
     if (!ok || 0 != status.code) {
         // do clean

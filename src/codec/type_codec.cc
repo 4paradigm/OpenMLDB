@@ -16,7 +16,6 @@
  */
 
 #include "codec/type_codec.h"
-
 #include <string>
 #include <utility>
 #include "codec/list_iterator_codec.h"
