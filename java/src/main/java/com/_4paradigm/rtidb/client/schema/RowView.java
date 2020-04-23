@@ -195,10 +195,6 @@ public class RowView {
             row = row.order(ByteOrder.LITTLE_ENDIAN);
         }
         ColumnDesc column = schema.get(idx);
-        int size = getSize(row);
-        if (size <= RowCodecCommon.HEADER_LENGTH) {
-            throw new TabletException("row size is not bigger than header length");
-        }
         int rowSize = getSize(row);
         if (rowSize <= RowCodecCommon.HEADER_LENGTH) {
             throw new TabletException("row size is not bigger than header length");
