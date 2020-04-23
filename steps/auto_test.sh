@@ -2,6 +2,9 @@
 
 ROOT_DIR=`pwd`
 
+echo "xxxxxxxxx"
+ls -al build/bin
+
 PROTO_BIN=$ROOT_DIR/thirdparty/bin/protoc
 ulimit -c unlimited
 sed -i "/protocExecutable/c\<protocExecutable>${PROTO_BIN}<\/protocExecutable>" java/pom.xml
@@ -20,9 +23,6 @@ netstat -anp | grep 6181 | awk '{print $NF}' | awk -F '/' '{print $1}'| xargs ki
 ./bin/zkServer.sh start && cd $ROOT_DIR
 
 sleep 5
-
-echo "xxxxxxxxx"
-ls -al build/bin
 
 cd onebox && sh start_onebox.sh && cd $ROOT_DIR
 sleep 3
