@@ -140,6 +140,6 @@ disktable-java:
         - ls -l auto-test-rtidb/target
         - tar czvf $CI_COMMIT_SHA  auto-test-rtidb/allure-results
         - bash steps/upload-nexus.sh $CI_COMMIT_SHA
-        - curl -s "http://172.27.232.34:8080/job/rtidb-test-report/buildWithParameters?token=gitlab&pkg=$CI_COMMIT_SHA&buildname=$CI_PIPELINE_ID"-"$CI_JOB_ID"
+        - curl -s "http://auto.4paradigm.com/job/rtidb-test-report/buildWithParameters?token=gitlab&pkg=$CI_COMMIT_SHA&buildname=$CI_PIPELINE_ID"-"$CI_JOB_ID"
         - bash steps/get-report-url.sh rtidb-test-report $CI_PIPELINE_ID"-"$CI_JOB_ID
 

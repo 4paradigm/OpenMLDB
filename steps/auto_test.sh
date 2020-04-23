@@ -13,15 +13,14 @@ echo "server_env:${server_env}"
 echo "upgrade_version:${upgrade_version}"
 echo "rtidb_auto_test_branch:${rtidb_auto_test_branch}"
 
-cd $ROOT_DIR/java
-rtidb_version=`cat pom.xml| grep version | head -n 1 | sed -n 's/<version>\(.*\)<\/version>/\1/p'`
-mvn clean install -Dmaven.test.skip=true
-echo "rtidb_version:$rtidb_version"
-
 if [ ! -z ${java_client_version} ] ; then
 	rtidb_version=${java_client_version}
-	echo "override rtidb_version:$rtidb_version"
+else
+    cd $ROOT_DIR/java
+    rtidb_version=`cat pom.xml| grep version | head -n 1 | sed -n 's/<version>\(.*\)<\/version>/\1/p'`
+    mvn clean install -Dmaven.test.skip=true
 fi
+echo "rtidb_version:$rtidb_version"
 
 cd $ROOT_DIR
 source /root/.bashrc && rm -rf auto-test-rtidb
@@ -37,11 +36,23 @@ git pull
 #-s 服务端的环境，默认为1500，为1.5.0.0版本
 #-u 升级到的版本，无默认值，进行升级测试时必须传此参数
 
-if [ ! -z ${upgrade_version} ] ; then
-	sh run-compatibility.sh -c ${test_case_xml} -j $rtidb_version -s ${server_env} -r $rtidb_path -u ${upgrade_version}
-else
-    sh run-compatibility.sh -c ${test_case_xml} -j $rtidb_version -s ${server_env} -r $rtidb_path
+parameters="-c ${test_case_xml} -j $rtidb_version -s ${server_env}"
+
+if [ ${override_rtidb} ] ; then
+    parameters=$parameters+" -r $rtidb_path"
 fi
+
+if [ ! -z ${upgrade_version} ] ; then
+	parameters=$parameters+" -u ${upgrade_version}"
+fi
+echo "parameters:$parameters"
+
+#sh run-compatibility.sh $parameters
+#if [ ! -z ${upgrade_version} ] ; then
+#	sh run-compatibility.sh -c ${test_case_xml} -j $rtidb_version -s ${server_env} -r $rtidb_path -u ${upgrade_version}
+#else
+#    sh run-compatibility.sh -c ${test_case_xml} -j $rtidb_version -s ${server_env} -r $rtidb_path
+#fi
 
 code=$?
 cd $ROOT_DIR

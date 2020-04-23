@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 job_name=$1
 build_name=$2
-jenkins_job_url="http://172.27.232.34:8080/job/$job_name"
+jenkins_job_url="http://auto.4paradigm.com/job/$job_name"
 build_time_graph="$jenkins_job_url/buildTimeGraph/map"
 build_history=$(curl -s $build_time_graph)
 
