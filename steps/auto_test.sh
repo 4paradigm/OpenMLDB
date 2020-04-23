@@ -4,7 +4,14 @@
 ls -al build/bin
 ROOT_DIR=`pwd`
 rtidb_path=$ROOT_DIR/build/bin/rtidb
+echo "rtidb_path:$rtidb_path"
 source read_properties.sh
+
+echo "java_client_version:${java_client_version}"
+echo "test_case_xml:${test_case_xml}"
+echo "server_env:${server_env}"
+echo "upgrade_version:${upgrade_version}"
+echo "rtidb_auto_test_branch:${rtidb_auto_test_branch}"
 
 cd $ROOT_DIR/java
 rtidb_version=`cat pom.xml| grep version | head -n 1 | sed -n 's/<version>\(.*\)<\/version>/\1/p'`
