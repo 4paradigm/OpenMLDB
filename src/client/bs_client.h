@@ -18,7 +18,7 @@ using ::rtidb::blobserver::TableMeta;
 
 class BsClient {
  public:
-    explcit BsClient(const std::string& endpoint);
+    explicit BsClient(const std::string& endpoint);
 
     BsClient(const std::string& endpoint, bool use_sleep_policy);
 

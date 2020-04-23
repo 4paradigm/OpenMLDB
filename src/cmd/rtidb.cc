@@ -4,7 +4,6 @@
 // Author wangtaize
 // Date 2017-03-31
 //
-#include <brpc/server.h>
 #include <fcntl.h>
 #include <gflags/gflags.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
@@ -13,8 +12,10 @@
 #include <signal.h>
 #include <snappy.h>
 #include <unistd.h>
+
 #include <iostream>
 #include <random>
+
 #include "base/display.h"
 #include "base/file_util.h"
 #include "base/flat_array.h"
@@ -24,6 +25,9 @@
 #include "base/schema_codec.h"
 #include "base/strings.h"
 #include "blobserver/blobserver_impl.h"
+#include "boost/algorithm/string.hpp"
+#include "boost/lexical_cast.hpp"
+#include "brpc/server.h"
 #include "client/ns_client.h"
 #include "client/tablet_client.h"
 #include "httpserver/httpserver.h"
@@ -37,8 +41,6 @@
 #include "timer.h"     // NOLINT
 #include "tprinter.h"  // NOLINT
 #include "version.h"   // NOLINT
-#include <boost/algorithm/string.hpp>
-#include <boost/lexical_cast.hpp>
 
 using ::baidu::common::DEBUG;
 using ::baidu::common::INFO;
@@ -5731,7 +5733,7 @@ void HandleClientSGet(const std::vector<std::string>& parts,
     } else {
         std::vector<::rtidb::base::ColumnDesc> columns_tmp;
         int32_t size =
-            static_cast<int>(raw.size() - table_meta.added_column_desc_size);
+            static_cast<int>(raw.size() - table_meta.added_column_desc_size());
         for (int i = 0; i < size; i++) {
             columns_tmp.push_back(raw.at(i));
         }

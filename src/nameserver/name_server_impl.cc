@@ -4508,7 +4508,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
         table_info->clear_table_partition();
 
         std::shared_ptr<BlobServerInfo> blob_info =
-            SetBlobTableInfo(*table_info);
+            SetBlobTableInfo(table_info.get());
         if (!blob_info) {
             PDLOG(WARNING, "not found available blob server");
             response->set_code(ReturnCode::kSetPartitionInfoFailed);

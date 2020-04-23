@@ -72,11 +72,11 @@ void StartNameServer(brpc::Server* server) {
     ASSERT_TRUE(ok);
     sleep(4);
     brpc::ServerOptions options;
-    if (server.AddService(nameserver, brpc::SERVER_OWNS_SERVICE) != 0) {
+    if (server->AddService(nameserver, brpc::SERVER_OWNS_SERVICE) != 0) {
         PDLOG(WARNING, "Fail to add service");
         exit(1);
     }
-    if (server.Start(FLAGS_endpoint.c_str(), &options) != 0) {
+    if (server->Start(FLAGS_endpoint.c_str(), &options) != 0) {
         PDLOG(WARNING, "Fail to start server");
         exit(1);
     }
