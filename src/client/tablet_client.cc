@@ -248,7 +248,7 @@ bool TabletClient::Put(uint32_t tid,
              uint64_t time,
              const std::string& value,
              const std::vector<std::pair<std::string, uint32_t> >& dimensions) {
-    Put(tid, pid, time, value, dimensions, 0);
+    return Put(tid, pid, time, value, dimensions, 0);
 }
 
 bool TabletClient::Put(uint32_t tid,
@@ -323,7 +323,7 @@ bool TabletClient::Put(uint32_t tid,
              const std::vector<std::pair<std::string, uint32_t> >& dimensions,
              const std::vector<uint64_t>& ts_dimensions,
              const std::string& value) {
-    Put(tid, pid, dimensions, ts_dimensions, value, 0);
+    return Put(tid, pid, dimensions, ts_dimensions, value, 0);
 }
 
 bool TabletClient::Put(uint32_t tid,
