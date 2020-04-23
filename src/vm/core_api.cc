@@ -35,4 +35,4 @@ fesql::codec::Row CoreAPI::RowProject(const int8_t* fn,
 }
 
 }  // namespace vm
-}
+}  // namespace fesql

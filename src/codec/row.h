@@ -91,9 +91,6 @@ class Row {
     Slice slice_;
     std::vector<Slice> slices_;
 };
-inline bool operator==(const Row &x, const Row &y);
-
-inline bool operator!=(const Row &x, const Row &y);
 
 }  // namespace codec
 }  // namespace fesql

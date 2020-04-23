@@ -10,6 +10,8 @@
 #ifndef SRC_VM_CORE_API_H_
 #define SRC_VM_CORE_API_H_
 
+#include <map>
+#include <memory>
 #include "codec/row.h"
 #include "vm/catalog.h"
 namespace fesql {
@@ -18,7 +20,8 @@ class RunnerContext {
  public:
     explicit RunnerContext(const bool is_debug = false)
         : request_(), is_debug_(is_debug), cache_() {}
-    explicit RunnerContext(const fesql::codec::Row& request, const bool is_debug = false)
+    explicit RunnerContext(const fesql::codec::Row& request,
+                           const bool is_debug = false)
         : request_(request), is_debug_(is_debug), cache_() {}
     const fesql::codec::Row request_;
     const bool is_debug_;

@@ -55,11 +55,6 @@ int32_t *Row::GetRowSizes() const {
         return sizes;
     }
 }
-inline bool operator==(const Row &x, const Row &y) {
-    return x.slice_ == y.slice_ && x.slices_ == y.slices_;
-}
-
-inline bool operator!=(const Row &x, const Row &y) { return !(x == y); }
 
 }  // namespace codec
-}
+}  // namespace fesql
