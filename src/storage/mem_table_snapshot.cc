@@ -789,9 +789,8 @@ int MemTableSnapshot::ExtractIndexData(
     uint32_t pid = table->GetPid();
     if (making_snapshot_.exchange(true, std::memory_order_consume)) {
         PDLOG(INFO, "snapshot is doing now. tid %u, pid %u", tid, pid);
-        return false;
+        return -1;
     }
-    making_snapshot_.store(true, std::memory_order_release);
     std::string now_time = ::rtidb::base::GetNowTime();
     std::string snapshot_name =
         now_time.substr(0, now_time.length() - 2) + ".sdb";
