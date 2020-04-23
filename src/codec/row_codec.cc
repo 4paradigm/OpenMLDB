@@ -94,7 +94,8 @@ uint32_t RowBuilder::CalTotalLength(uint32_t string_length) {
 
 bool RowBuilder::Check(::fesql::type::Type type) {
     if ((int32_t)cnt_ >= schema_.size()) {
-        LOG(WARNING) << "idx out of index";
+        LOG(WARNING) << "idx out of index: "
+            << cnt_ << " size=" << schema_.size();
         return false;
     }
     const ::fesql::type::ColumnDef& column = schema_.Get(cnt_);

@@ -211,6 +211,8 @@ class PhysicalDataProviderNode : public PhysicalOpNode {
     }
     ~PhysicalDataProviderNode() {}
     bool InitSchema() override;
+    static PhysicalDataProviderNode* CastFrom(PhysicalOpNode* node);
+    const std::string& GetName() const;
     const DataProviderType provider_type_;
     const std::shared_ptr<TableHandler> table_handler_;
 };
@@ -340,6 +342,7 @@ class PhysicalProjectNode : public PhysicalUnaryNode {
     virtual ~PhysicalProjectNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     bool InitSchema() override;
+    static PhysicalProjectNode* CastFrom(PhysicalOpNode* node);
     const ProjectType project_type_;
 };
 
