@@ -3,7 +3,7 @@ package com._4paradigm.rtidb.client.impl;
 import com._4paradigm.rtidb.client.KvIterator;
 import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
-import com._4paradigm.rtidb.client.schema.RowSliceView;
+import com._4paradigm.rtidb.client.schema.RowView;
 import com._4paradigm.rtidb.ns.NS;
 import com.google.protobuf.ByteString;
 
@@ -24,7 +24,7 @@ public class RowKvIterator implements KvIterator {
     private int count;
     private long key;
     private NS.CompressType compressType = NS.CompressType.kNoCompress;
-    private RowSliceView rv;
+    private RowView rv;
 
     public RowKvIterator(ByteString bs, List<ColumnDesc> schema, int count) {
         this.bs = bs;
@@ -35,7 +35,7 @@ public class RowKvIterator implements KvIterator {
         this.count = count;
         next();
         this.schema = schema;
-        rv = new RowSliceView(schema);
+        rv = new RowView(schema);
     }
 
     public int getCount() {

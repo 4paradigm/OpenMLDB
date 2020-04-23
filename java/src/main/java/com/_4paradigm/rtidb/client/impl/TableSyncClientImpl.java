@@ -539,7 +539,7 @@ public class TableSyncClientImpl implements TableSyncClient {
             }
             if (isNewFormat) {
 
-                RowSliceView rv = new RowSliceView(schema);
+                RowView rv = new RowView(schema);
                 return rv.read(bs.asReadOnlyByteBuffer().order(ByteOrder.LITTLE_ENDIAN));
             }else {
                 if (getOption.getProjection().size() > 0) {

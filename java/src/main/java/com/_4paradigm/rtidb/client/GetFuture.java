@@ -20,7 +20,7 @@ import java.util.concurrent.TimeoutException;
 public class GetFuture implements Future<ByteString>{
 	private Future<Tablet.GetResponse> f;
 	private TableHandler th;
-	private RowSliceView rv;
+	private RowView rv;
 	private List<ColumnDesc> projection;
 
 	// the legacy format var
@@ -51,7 +51,7 @@ public class GetFuture implements Future<ByteString>{
 		this.f = f;
 		this.th = t;
 		if (t != null && t.getTableInfo().getFormatVersion() == 1) {
-			rv = new RowSliceView(t.getSchema());
+			rv = new RowView(t.getSchema());
 		}
 		rowLength = t.getSchema().size();
 		if (th.getSchemaMap().size() > 0) {
@@ -65,10 +65,10 @@ public class GetFuture implements Future<ByteString>{
 		rowLength = t.getSchema().size();
 		if (t != null && t.getTableInfo().getFormatVersion() == 1) {
 			if (projection != null) {
-				rv = new RowSliceView(projection);
+				rv = new RowView(projection);
 				rowLength = projection.size();
 			}else {
-				rv = new RowSliceView(t.getSchema());
+				rv = new RowView(t.getSchema());
 			}
 			this.projection = projection;
 		}
@@ -88,7 +88,7 @@ public class GetFuture implements Future<ByteString>{
 		this.f = f;
 		this.th = t;
 		if (t.getTableInfo().getFormatVersion() == 1) {
-			rv = new RowSliceView(t.getSchema());
+			rv = new RowView(t.getSchema());
 		}
 	}
 	public GetFuture() {}

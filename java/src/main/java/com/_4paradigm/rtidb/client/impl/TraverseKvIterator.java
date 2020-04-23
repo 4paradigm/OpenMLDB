@@ -7,7 +7,7 @@ import com._4paradigm.rtidb.client.ha.RTIDBClient;
 import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.RowCodec;
-import com._4paradigm.rtidb.client.schema.RowSliceView;
+import com._4paradigm.rtidb.client.schema.RowView;
 import com._4paradigm.rtidb.ns.NS;
 import com._4paradigm.rtidb.tablet.Tablet;
 import com._4paradigm.rtidb.utils.Compress;
@@ -43,7 +43,7 @@ public class TraverseKvIterator implements KvIterator {
     private RTIDBClient client = null;
     private TableHandler th = null;
     private static Charset charset = Charset.forName("utf-8");
-    private RowSliceView rv;
+    private RowView rv;
 
     public TraverseKvIterator(RTIDBClient client, TableHandler th, String idxName, String tsName) {
         this.offset = 0;
@@ -58,7 +58,7 @@ public class TraverseKvIterator implements KvIterator {
             this.compressType = th.getTableInfo().getCompressType();
         }
         if (th.getFormatVersion() == 1) {
-            rv = new RowSliceView(th.getSchema());
+            rv = new RowView(th.getSchema());
         }
     }
 

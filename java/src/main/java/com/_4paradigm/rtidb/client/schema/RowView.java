@@ -2,6 +2,7 @@ package com._4paradigm.rtidb.client.schema;
 
 import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.type.DataType;
+import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,15 +15,15 @@ import java.util.List;
 public class RowView {
 
     private final static Logger logger = LoggerFactory.getLogger(RowView.class);
+    private final static byte BOOL_FALSE = 0;
     private ByteBuffer row = null;
     private int size = 0;
-    List<ColumnDesc> schema = new ArrayList<>();
+    private List<ColumnDesc> schema = new ArrayList<>();
     private int stringFieldCnt = 0;
     private int strFieldStartOffset = 0;
     private int strAddrLength = 0;
     private List<Integer> offsetVec = new ArrayList<>();
     private boolean isValid = false;
-
 
     public RowView(List<ColumnDesc> schema) {
         this.schema = schema;
@@ -198,56 +199,12 @@ public class RowView {
         if (size <= RowCodecCommon.HEADER_LENGTH) {
             throw new TabletException("row size is not bigger than header length");
         }
-        if (isNull(row, idx)) {
-            return null;
+        int rowSize = getSize(row);
+        if (rowSize <= RowCodecCommon.HEADER_LENGTH) {
+            throw new TabletException("row size is not bigger than header length");
         }
-        Object val = null;
-        int offset = offsetVec.get(idx);
-        switch (column.getDataType()) {
-            case Bool: {
-                int v = row.get(offset);
-                if (v == 1) {
-                    val = true;
-                } else {
-                    val = false;
-                }
-                break;
-            }
-            case SmallInt:
-                val = row.getShort(offset);
-                break;
-            case Int:
-                val = row.getInt(offset);
-                break;
-            case Timestamp:
-            case BigInt:
-                val = row.getLong(offset);
-                break;
-            case Float:
-                val = row.getFloat(offset);
-                break;
-            case Double:
-                val = row.getDouble(offset);
-                break;
-            case Date:
-                int date = row.getInt(offset);
-                int day = date & 0x0000000FF;
-                date = date >> 8;
-                int month = date & 0x0000FF;
-                int year = date >> 8;
-                val = new Date(year, month, day);
-                break;
-            case Varchar:
-                int field_offset = offset;
-                int next_str_field_offset = 0;
-                if (field_offset < stringFieldCnt - 1) {
-                    next_str_field_offset = field_offset + 1;
-                }
-                return getStrField(row, field_offset, next_str_field_offset,
-                        strFieldStartOffset, RowCodecCommon.getAddrLength(size));
-            default:
-                throw new TabletException("unsupported data type");
-        }
+        int localStrAddrLength = RowCodecCommon.getAddrLength(rowSize);
+        Object val = readObject(row, idx, column.getDataType(), rowSize,localStrAddrLength);
         return val;
     }
 
@@ -262,61 +219,12 @@ public class RowView {
         if (column.getDataType() != type) {
             throw new TabletException("data type mismatch");
         }
-        int size = getSize(row);
-        if (size <= RowCodecCommon.HEADER_LENGTH) {
+        int rowSize = getSize(row);
+        if (rowSize <= RowCodecCommon.HEADER_LENGTH) {
             throw new TabletException("row size is not bigger than header length");
         }
-        if (isNull(row, idx)) {
-            return null;
-        }
-        Object val = null;
-        int offset = offsetVec.get(idx);
-        switch (type) {
-            case Bool: {
-                int v = row.get(offset);
-                if (v == 1) {
-                    val = true;
-                } else {
-                    val = false;
-                }
-                break;
-            }
-            case SmallInt:
-                val = row.getShort(offset);
-                break;
-            case Int:
-                val = row.getInt(offset);
-                break;
-            case Timestamp:
-            case BigInt:
-                val = row.getLong(offset);
-                break;
-            case Float:
-                val = row.getFloat(offset);
-                break;
-            case Double:
-                val = row.getDouble(offset);
-                break;
-            case Date:
-                int date = row.getInt(offset);
-                int day = date & 0x0000000FF;
-                date = date >> 8;
-                int month = date & 0x0000FF;
-                int year = date >> 8;
-                val = new Date(year, month, day);
-                break;
-            case String:
-            case Varchar:
-                int fieldOffset = offset;
-                int nextStrFieldOffset = 0;
-                if (fieldOffset < stringFieldCnt - 1) {
-                    nextStrFieldOffset = fieldOffset + 1;
-                }
-                return getStrField(row, fieldOffset, nextStrFieldOffset,
-                        strFieldStartOffset, RowCodecCommon.getAddrLength(size));
-            default:
-                throw new TabletException("unsupported data type");
-        }
+        int localStrAddrLength = RowCodecCommon.getAddrLength(rowSize);
+        Object val = readObject(row, idx, type, rowSize,localStrAddrLength);
         return val;
     }
 
@@ -324,9 +232,67 @@ public class RowView {
         return (String) getValue(row, idx, DataType.Varchar);
     }
 
+    private Object readObject(ByteBuffer buf, int index, DataType dt, int rowSize,
+                              int localStrAddrLength) throws TabletException {
+        if (isNull(buf, index)) {
+            return null;
+        }
+        int offset = offsetVec.get(index);
+        switch (dt) {
+            case Bool:
+                return buf.get(offset) == BOOL_FALSE ? false: true;
+            case SmallInt:
+                return buf.getShort(offset);
+            case Int:
+                return buf.getInt(offset);
+            case BigInt:
+                return buf.getLong(offset);
+            case Float:
+                return buf.getFloat(offset);
+            case Double:
+                return buf.getDouble(offset);
+            case Timestamp:
+                return new DateTime(buf.getLong(offset));
+            case Date:
+                int date = buf.getInt(offset);
+                int day = date & 0x0000000FF;
+                date = date >> 8;
+                int month = date & 0x0000FF;
+                int year = date >> 8;
+                return new Date(year, month, day);
+            case Varchar:
+            case String:
+                int nextStrFieldOffset = 0;
+                if (offset < stringFieldCnt - 1) {
+                    nextStrFieldOffset = offset + 1;
+                }
+                return getStrField(buf, offset, nextStrFieldOffset,
+                        strFieldStartOffset, localStrAddrLength, rowSize);
+            default:
+                throw new TabletException("invalid column type" + dt.name());
+        }
+    }
+
+    public void read(ByteBuffer buf, Object[] row, int start, int length) throws TabletException{
+        if (buf == null) throw new TabletException("buf is null");
+        int rowSize = buf.getInt(RowCodecCommon.VERSION_LENGTH);
+        int localStrAddrLength = RowCodecCommon.getAddrLength(rowSize);
+        int index = start;
+        for (int i = 0; i < schema.size() && i < length ; i++) {
+            ColumnDesc column = schema.get(i);
+            row[index] = readObject(buf, i, column.getDataType(), rowSize, localStrAddrLength);
+            index ++;
+        }
+    }
+    public Object[] read(ByteBuffer buf) throws TabletException{
+        Object[] row = new Object[schema.size()];
+        read(buf, row, 0, row.length);
+        return row;
+    }
     public String getStrField(ByteBuffer row, int fieldOffset,
                               int nextStrFieldOffset, int strStartOffset,
-                              int addrSpace) throws TabletException {
+                              int addrSpace,
+                              int total_size) throws TabletException {
         if (row == null) {
             throw new TabletException("row is null");
         }
@@ -377,8 +343,7 @@ public class RowView {
         }
         int len;
         if (nextStrFieldOffset <= 0) {
-            int totalLength = row.getInt(RowCodecCommon.VERSION_LENGTH);
-            len = totalLength - strOffset;
+            len = total_size - strOffset;
         } else {
             len = nextStrOffset - strOffset;
         }

@@ -8,7 +8,6 @@ import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.RowBuilder;
 import com._4paradigm.rtidb.client.schema.RowCodec;
-import com._4paradigm.rtidb.client.schema.RowSliceView;
 import com._4paradigm.rtidb.ns.NS;
 import com._4paradigm.rtidb.tablet.Tablet;
 import com._4paradigm.rtidb.tablet.Tablet.GetResponse;
@@ -17,15 +16,12 @@ import com._4paradigm.rtidb.tablet.Tablet.ScanResponse;
 import com._4paradigm.rtidb.utils.Compress;
 import com.google.common.base.Charsets;
 import com.google.protobuf.ByteBufferNoCopy;
-import com.google.protobuf.ByteString;
 import io.brpc.client.RpcCallback;
 import rtidb.api.TabletServer;
 
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.*;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeoutException;
 
 public class TableAsyncClientImpl implements TableAsyncClient {
 
