@@ -4886,8 +4886,6 @@ void TabletImpl::DeleteIndex(RpcController* controller,
     WriteTableMeta(db_path, &table->GetTableMeta());
     PDLOG(INFO, "delete index %s success. tid %u pid %u",
           request->idx_name().c_str(), tid, pid);
-    PDLOG(INFO, "delete index %s success. tid %u pid %u",
-          request->idx_name().c_str(), tid, pid);
     response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
