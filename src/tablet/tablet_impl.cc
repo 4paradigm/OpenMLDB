@@ -3082,7 +3082,8 @@ void TabletImpl::LoadTable(RpcController* controller,
             std::string msg;
             if (CreateRelationalTableInternal(&table_meta, msg) < 0) {
                 PDLOG(INFO, "%s", msg.c_str());
-                response->set_code(::rtidb::base::ReturnCode::kCreateTableFailed);
+                response->set_code(
+                    ::rtidb::base::ReturnCode::kCreateTableFailed);
                 response->set_msg(msg);
             }
         } else {
@@ -3477,7 +3478,8 @@ void TabletImpl::CreateTable(RpcController* controller,
     } else {
         std::shared_ptr<RelationalTable> r_table = GetRelationalTable(tid, pid);
         if (r_table) {
-            PDLOG(WARNING, "relation table with tid[%u] and pid[%u] exists", tid, pid);
+            PDLOG(WARNING, "relation table with tid[%u] and pid[%u] exists",
+                  tid, pid);
             response->set_code(::rtidb::base::ReturnCode::kTableAlreadyExists);
             response->set_msg("table already exists");
             return;
@@ -4168,13 +4170,15 @@ int TabletImpl::CreateRelationalTableInternal(
         msg.assign("fail to get table db root path");
         return -1;
     }
-    std::shared_ptr<RelationalTable> table_ptr = std::make_shared<RelationalTable>(*table_meta, db_root_path);
+    std::shared_ptr<RelationalTable> table_ptr =
+        std::make_shared<RelationalTable>(*table_meta, db_root_path);
     if (!table_ptr->Init()) {
         return -1;
     }
     PDLOG(INFO, "create relation table. tid %u pid %u", tid, pid);
     std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-    relational_tables_[table_meta->tid()].insert(std::make_pair(table_meta->pid(), table_ptr));
+    relational_tables_[table_meta->tid()].insert(
+        std::make_pair(table_meta->pid(), table_ptr));
     return 0;
 }
 
@@ -4194,7 +4198,8 @@ void TabletImpl::DropTable(RpcController* controller,
     }
     uint32_t tid = request->tid();
     uint32_t pid = request->pid();
-    PDLOG(INFO, "drop table. tid[%u] pid[%u] %s", tid, pid, rtidb::type::TableType_Name(request->table_type()).c_str());
+    PDLOG(INFO, "drop table. tid[%u] pid[%u] %s", tid, pid,
+          rtidb::type::TableType_Name(request->table_type()).c_str());
     do {
         if (!request->has_table_type() ||
             request->table_type() == ::rtidb::type::kTimeSeries) {
@@ -4219,13 +4224,13 @@ void TabletImpl::DropTable(RpcController* controller,
             task_pool_.AddTask(boost::bind(&TabletImpl::DeleteTableInternal,
                                            this, tid, pid, task_ptr));
         } else {
-            std::shared_ptr<RelationalTable> r_table = GetRelationalTable(tid, pid);
+            std::shared_ptr<RelationalTable> r_table =
+                GetRelationalTable(tid, pid);
             std::shared_ptr<RelationalTable> table;
             if (!r_table) {
                 PDLOG(WARNING, "table is not exist. tid %u, pid %u",
                       request->tid(), request->pid());
-                response->set_code(
-                    ::rtidb::base::ReturnCode::kTableIsNotExist);
+                response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
                 response->set_msg("table is not exist");
                 break;
             }

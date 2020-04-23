@@ -6,18 +6,15 @@
 //
 #include <brpc/server.h>
 #include <fcntl.h>
+#include <gflags/gflags.h>
+#include <google/protobuf/io/zero_copy_stream_impl.h>
+#include <google/protobuf/text_format.h>
 #include <sched.h>
 #include <signal.h>
 #include <snappy.h>
 #include <unistd.h>
-#include <gflags/gflags.h>
-#include <google/protobuf/io/zero_copy_stream_impl.h>
-#include <google/protobuf/text_format.h>
-#include <random>
 #include <iostream>
-#include <boost/algorithm/string.hpp>
-#include <boost/lexical_cast.hpp>
-#include "logging.h"  // NOLINT
+#include <random>
 #include "base/display.h"
 #include "base/file_util.h"
 #include "base/flat_array.h"
@@ -26,19 +23,22 @@
 #include "base/linenoise.h"
 #include "base/schema_codec.h"
 #include "base/strings.h"
+#include "blobserver/blobserver_impl.h"
 #include "client/ns_client.h"
 #include "client/tablet_client.h"
+#include "httpserver/httpserver.h"
+#include "logging.h"  // NOLINT
 #include "nameserver/name_server_impl.h"
 #include "proto/client.pb.h"
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
 #include "proto/type.pb.h"
-#include "blobserver/blobserver_impl.h"
 #include "tablet/tablet_impl.h"
-#include "httpserver/httpserver.h"
-#include "timer.h"  // NOLINT
+#include "timer.h"     // NOLINT
 #include "tprinter.h"  // NOLINT
 #include "version.h"   // NOLINT
+#include <boost/algorithm/string.hpp>
+#include <boost/lexical_cast.hpp>
 
 using ::baidu::common::DEBUG;
 using ::baidu::common::INFO;
@@ -273,7 +273,8 @@ void StartHttp() {
             exit(1);
         }
         PDLOG(INFO, "start tablet on endpoint %s with version %d.%d.%d.%d",
-              FLAGS_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM, RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
+              FLAGS_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
+              RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
     }
     std::ostringstream oss;
     oss << RTIDB_VERSION_MAJOR << "." << RTIDB_VERSION_MEDIUM << "."
@@ -284,7 +285,8 @@ void StartHttp() {
 
 void StartBlob() {
     SetupLog();
-    ::rtidb::blobserver::BlobServerImpl* server_impl = new ::rtidb::blobserver::BlobServerImpl();
+    ::rtidb::blobserver::BlobServerImpl* server_impl =
+        new ::rtidb::blobserver::BlobServerImpl();
     bool ok = server_impl->Init();
     if (!ok) {
         PDLOG(WARNING, "fail to init tablet");
@@ -315,7 +317,8 @@ void StartBlob() {
             exit(1);
         }
         PDLOG(INFO, "start tablet on endpoint %s with version %d.%d.%d.%d",
-              FLAGS_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM, RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
+              FLAGS_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
+              RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
     }
     if (!server_impl->RegisterZK()) {
         PDLOG(WARNING, "Fail to register zk");
@@ -1643,8 +1646,8 @@ bool ParseCondAndOp(const std::string& source, uint64_t& first_end,  // NOLINT
 bool GetCondAndPrintColumns(
     const std::vector<std::string>& parts,
     std::map<std::string, std::string>& condition_columns_map,  // NOLINT
-    std::vector<std::string>& print_column, // NOLINT
-    rtidb::api::GetType& get_type) {  // NOLINT
+    std::vector<std::string>& print_column,                     // NOLINT
+    rtidb::api::GetType& get_type) {                            // NOLINT
     uint64_t size = parts.size();
     uint64_t i = 2;
     if (parts[i] == "*") {
@@ -3369,7 +3372,7 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
         ns_table_info.set_table_type(rtidb::type::TableType::kTimeSeries);
     } else if (table_type == "krelational" || table_type == "relational") {
         ns_table_info.set_table_type(rtidb::type::TableType::kRelational);
-    } else if (table_type == "kobjectstore" || table_type == "objectstore"){
+    } else if (table_type == "kobjectstore" || table_type == "objectstore") {
         ns_table_info.set_table_type(rtidb::type::TableType::kObjectStore);
     } else {
         printf("table_type mode %s is invalid\n",
@@ -5727,8 +5730,9 @@ void HandleClientSGet(const std::vector<std::string>& parts,
         ::rtidb::base::FillTableRow(raw, value.c_str(), value.size(), row);
     } else {
         std::vector<::rtidb::base::ColumnDesc> columns_tmp;
-        for (int i = 0;
-             i < (int)(raw.size() - table_meta.added_column_desc_size()); i++) {  // NOLINT
+        int32_t size =
+            static_cast<int>(raw.size() - table_meta.added_column_desc_size);
+        for (int i = 0; i < size; i++) {
             columns_tmp.push_back(raw.at(i));
         }
         ::rtidb::base::FillTableRow(raw.size(), columns_tmp, value.c_str(),
@@ -5872,7 +5876,7 @@ void HandleClientSScan(const std::vector<std::string>& parts,
         } else {
             std::vector<::rtidb::base::ColumnDesc> columns_tmp;
             for (int i = 0;
-                 i < (int)(raw.size() - // NOLINT
+                 i < (int)(raw.size() -                           // NOLINT
                            table_meta.added_column_desc_size());  // NOLINT
                  i++) {
                 columns_tmp.push_back(raw.at(i));

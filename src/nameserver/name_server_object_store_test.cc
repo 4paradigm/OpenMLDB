@@ -6,6 +6,8 @@
 //
 
 #include <blobserver/blobserver_impl.h>
+#include <logging.h>
+#include <timer.h>
 #include <brpc/server.h>
 #include <gflags/gflags.h>
 #include <sched.h>
@@ -13,13 +15,11 @@
 #include "base/file_util.h"
 #include "client/ns_client.h"
 #include "gtest/gtest.h"
-#include "logging.h"
-#include "name_server_impl.h"
+#include "nameserver/name_server_impl.h"
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
 #include "rpc/rpc_client.h"
 #include "tablet/tablet_impl.h"
-#include "timer.h"
 
 DECLARE_string(endpoint);
 DECLARE_string(hdd_root_path);
@@ -34,45 +34,39 @@ DECLARE_bool(auto_failover);
 
 using ::rtidb::zk::ZkClient;
 
-
 namespace rtidb {
 namespace nameserver {
 
-inline std::string GenRand() {
-    return std::to_string(rand() % 10000000 + 1);
-}
+inline std::string GenRand() { return std::to_string(rand() % 10000000 + 1); } // NOLINT
 
 class MockClosure : public ::google::protobuf::Closure {
-
-public:
+ public:
     MockClosure() {}
     ~MockClosure() {}
     void Run() {}
-
 };
 class NameServerImplObjectStoreTest : public ::testing::Test {
-
-public:
+ public:
     NameServerImplObjectStoreTest() {}
     ~NameServerImplObjectStoreTest() {}
 };
 
-void StartNameServer(brpc::Server& server, NameServerImpl* nameserver) {
+void StartNameServer(brpc::Server* server, NameServerImpl* nameserver) {
     bool ok = nameserver->Init();
     ASSERT_TRUE(ok);
     sleep(4);
     brpc::ServerOptions options;
-    if (server.AddService(nameserver, brpc::SERVER_OWNS_SERVICE) != 0) {
+    if (server->AddService(nameserver, brpc::SERVER_OWNS_SERVICE) != 0) {
         PDLOG(WARNING, "Fail to add service");
         exit(1);
     }
-    if (server.Start(FLAGS_endpoint.c_str(), &options) != 0) {
+    if (server->Start(FLAGS_endpoint.c_str(), &options) != 0) {
         PDLOG(WARNING, "Fail to start server");
         exit(1);
     }
 }
 
-void StartNameServer(brpc::Server& server) {
+void StartNameServer(brpc::Server* server) {
     NameServerImpl* nameserver = new NameServerImpl();
     bool ok = nameserver->Init();
     ASSERT_TRUE(ok);
@@ -88,18 +82,19 @@ void StartNameServer(brpc::Server& server) {
     }
 }
 
-void StartBlob(brpc::Server& server) {
+void StartBlob(brpc::Server* server) {
     FLAGS_hdd_root_path = "/tmp/object_store_test/" + GenRand();
-    ::rtidb::blobserver::BlobServerImpl* blob = new ::rtidb::blobserver::BlobServerImpl();
+    ::rtidb::blobserver::BlobServerImpl* blob =
+        new ::rtidb::blobserver::BlobServerImpl();
     bool ok = blob->Init();
     ASSERT_TRUE(ok);
     sleep(2);
     brpc::ServerOptions options1;
-    if (server.AddService(blob, brpc::SERVER_OWNS_SERVICE) != 0) {
+    if (server->AddService(blob, brpc::SERVER_OWNS_SERVICE) != 0) {
         PDLOG(WARNING, "Fail to add service");
         exit(1);
     }
-    if (server.Start(FLAGS_endpoint.c_str(), &options1) != 0) {
+    if (server->Start(FLAGS_endpoint.c_str(), &options1) != 0) {
         PDLOG(WARNING, "Fail to start server");
         exit(1);
     }
@@ -110,21 +105,22 @@ void StartBlob(brpc::Server& server) {
 
 TEST_F(NameServerImplObjectStoreTest, CreateTable) {
     // local ns and tablet
-    //ns
-    FLAGS_zk_cluster="127.0.0.1:6181";
-    FLAGS_zk_root_path="/rtidb3" + GenRand();
+    // ns
+    FLAGS_zk_cluster = "127.0.0.1:6181";
+    FLAGS_zk_root_path = "/rtidb3" + GenRand();
     FLAGS_endpoint = "127.0.0.1:9631";
 
     NameServerImpl* nameserver_1 = new NameServerImpl();
     brpc::Server server;
-    StartNameServer(server, nameserver_1); 
-    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client_1(FLAGS_endpoint);
+    StartNameServer(&server, nameserver_1);
+    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>
+        name_server_client_1(FLAGS_endpoint);
     name_server_client_1.Init();
 
-    //tablet
-    FLAGS_endpoint="127.0.0.1:9931";
+    // tablet
+    FLAGS_endpoint = "127.0.0.1:9931";
     brpc::Server server1;
-    StartBlob(server1);
+    StartBlob(&server1);
     ::rtidb::client::BsClient blob_client(FLAGS_endpoint);
     ASSERT_EQ(0, blob_client.Init());
 
@@ -135,12 +131,13 @@ TEST_F(NameServerImplObjectStoreTest, CreateTable) {
     {
         CreateTableRequest request;
         GeneralResponse response;
-        TableInfo *table_info = request.mutable_table_info();
+        TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
         table_info->set_table_type(::rtidb::type::kObjectStore);
         table_info->set_replica_num(1);
-        ok = name_server_client_1.SendRequest(&::rtidb::nameserver::NameServer_Stub::CreateTable,
-                &request, &response, FLAGS_request_timeout_ms, 1);
+        ok = name_server_client_1.SendRequest(
+            &::rtidb::nameserver::NameServer_Stub::CreateTable, &request,
+            &response, FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, response.code());
         sleep(3);
@@ -149,8 +146,9 @@ TEST_F(NameServerImplObjectStoreTest, CreateTable) {
         ::rtidb::nameserver::ShowTableRequest request;
         ::rtidb::nameserver::ShowTableResponse response;
         request.set_name(name);
-        ok = name_server_client_1.SendRequest(&::rtidb::nameserver::NameServer_Stub::ShowTable,
-                &request, &response, FLAGS_request_timeout_ms, 1);
+        ok = name_server_client_1.SendRequest(
+            &::rtidb::nameserver::NameServer_Stub::ShowTable, &request,
+            &response, FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(1, response.table_info_size());
@@ -165,15 +163,15 @@ TEST_F(NameServerImplObjectStoreTest, CreateTable) {
     }
 }
 
-}
-}
+}  // namespace nameserver
+}  // namespace rtidb
 
 int main(int argc, char** argv) {
     FLAGS_zk_session_timeout = 100000;
     ::testing::InitGoogleTest(&argc, argv);
-    srand (time(NULL));
+    srand(time(NULL));
     ::baidu::common::SetLogLevel(::baidu::common::INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    //FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
+    // FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
     return RUN_ALL_TESTS();
 }

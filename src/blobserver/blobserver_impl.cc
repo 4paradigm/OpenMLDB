@@ -4,6 +4,7 @@
 // Date 2020-04-16
 
 #include "blobserver/blobserver_impl.h"
+#include <logging.h>
 #include <base/file_util.h>
 #include <base/hash.h>
 #include <base/status.h>
@@ -11,7 +12,6 @@
 #include <gflags/gflags.h>
 #include <utility>
 #include "boost/bind.hpp"
-#include "logging.h"
 
 DECLARE_string(endpoint);
 DECLARE_string(zk_cluster);
@@ -290,7 +290,7 @@ void BlobServerImpl::GetStoreStatus(RpcController* controller,
     }
     std::lock_guard<SpinMutex> lock_guard(spin_mutex_);
     for (const auto& it : object_stores_) {
-        for(const auto& tit : it.second) {
+        for (const auto& tit : it.second) {
             StoreStatus* status = response->add_all_status();
             status->set_tid(it.first);
             status->set_pid(tit.first);
