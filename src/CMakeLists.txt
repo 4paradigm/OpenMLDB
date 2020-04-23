@@ -129,6 +129,9 @@ target_link_libraries(nameserver_object_store_test gtest pthread nameserver blob
 add_executable(memcomparable_format_test base/memcomparable_format_test.cc)
 target_link_libraries(memcomparable_format_test gtest pthread)
 
+add_executable(field_codec_test base/field_codec_test.cc)
+target_link_libraries(field_codec_test gtest pthread)
+
 add_executable(rtidb cmd/rtidb.cc base/status.cc proto/client.pb.cc base/linenoise.cc)
 
 target_link_libraries(rtidb gflags common tablet storage replica log nameserver blobserver client brpc ssl crypto dl leveldb protobuf z snappy gflags pthread rt zk_client zookeeper_mt tcmalloc_minimal)

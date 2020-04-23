@@ -1,53 +1,49 @@
 //
 // log_appender.h
 // Copyright (C) 2017 4paradigm.com
-// Author wangtaize 
-// Date 2017-06-07 
-// 
+// Author wangtaize
+// Date 2017-06-07
+//
 
-#ifndef RTIDB_LOG_REPLICATOR_H
-#define RTIDB_LOG_REPLICATOR_H
+#ifndef SRC_REPLICA_LOG_REPLICATOR_H_
+#define SRC_REPLICA_LOG_REPLICATOR_H_
 
-#include <vector>
-#include <map>
-#include "base/skiplist.h"
 #include <atomic>
-#include <mutex>
-#include <condition_variable>
-#include "thread_pool.h"
-#include "log/log_writer.h"
+#include <condition_variable> // NOLINT
+#include <map>
+#include <mutex> // NOLINT
+#include <vector>
+#include <string>
+#include <memory>
+#include "base/skiplist.h"
+#include "bthread/bthread.h"
+#include "bthread/condition_variable.h"
 #include "log/log_reader.h"
+#include "log/log_writer.h"
 #include "log/sequential_file.h"
 #include "proto/tablet.pb.h"
 #include "replica/replicate_node.h"
 #include "storage/table.h"
-#include "bthread/bthread.h"
-#include "bthread/condition_variable.h"
+#include "thread_pool.h" // NOLINT
 
 namespace rtidb {
 namespace replica {
 
 using ::baidu::common::ThreadPool;
-using ::rtidb::log::SequentialFile;
+using ::rtidb::api::LogEntry;
 using ::rtidb::log::Reader;
+using ::rtidb::log::SequentialFile;
 using ::rtidb::log::WriteHandle;
 using ::rtidb::storage::Table;
-using ::rtidb::api::LogEntry;
 
-enum ReplicatorRole {
-    kLeaderNode = 1,
-    kFollowerNode
-};
-
+enum ReplicatorRole { kLeaderNode = 1, kFollowerNode };
 
 class LogReplicator {
-
-public:
-
+ public:
     LogReplicator(const std::string& path,
                   const std::vector<std::string>& endpoints,
-                  const ReplicatorRole& role,
-                  std::shared_ptr<Table> table, std::atomic<bool>* follower);
+                  const ReplicatorRole& role, std::shared_ptr<Table> table,
+                  std::atomic<bool>* follower);
 
     ~LogReplicator();
 
@@ -60,7 +56,7 @@ public:
                        ::rtidb::api::AppendEntriesResponse* response);
 
     // the master node append entry
-    bool AppendEntry(::rtidb::api::LogEntry& entry);
+    bool AppendEntry(::rtidb::api::LogEntry& entry); // NOLINT
 
     //  data to slave nodes
     void Notify();
@@ -74,11 +70,12 @@ public:
     // add replication
     int AddReplicateNode(const std::vector<std::string>& endpoint_vec);
     // add replication with tid
-    int AddReplicateNode(const std::vector<std::string>& endpoint_vec, uint32_t tid);
+    int AddReplicateNode(const std::vector<std::string>& endpoint_vec,
+                         uint32_t tid);
 
     int DelReplicateNode(const std::string& endpoint);
 
-    void GetReplicateInfo(std::map<std::string, uint64_t>& info_map);
+    void GetReplicateInfo(std::map<std::string, uint64_t>& info_map); // NOLINT
 
     void MatchLogOffset();
 
@@ -93,7 +90,7 @@ public:
     LogParts* GetLogPart();
 
     inline uint64_t GetLogOffset() {
-        return  log_offset_.load(std::memory_order_relaxed);
+        return log_offset_.load(std::memory_order_relaxed);
     }
     void SetRole(const ReplicatorRole& role);
 
@@ -102,16 +99,16 @@ public:
 
     void SetSnapshotLogPartIndex(uint64_t offset);
 
-    bool ParseBinlogIndex(const std::string& path, uint32_t& index);
+    bool ParseBinlogIndex(const std::string& path, uint32_t& index); // NOLINT
 
     bool DelAllReplicateNode();
 
-private:
+ private:
     bool OpenSeqFile(const std::string& path, SequentialFile** sf);
 
     bool ApplyEntryToTable(const LogEntry& entry);
 
-private:
+ private:
     // the replicator root data path
     std::string path_;
     std::string log_path_;
@@ -140,7 +137,7 @@ private:
     std::atomic<bool>* follower_;
 };
 
-} // end of replica
-} // end of rtidb
+}  // namespace replica
+}  // namespace rtidb
 
-#endif /* !RTIDB_LOG_REPLICATOR_H */
+#endif  // SRC_REPLICA_LOG_REPLICATOR_H_

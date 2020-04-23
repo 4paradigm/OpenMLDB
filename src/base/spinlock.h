@@ -6,7 +6,7 @@
 //  This source code is licensed under both the GPLv2 (found in the
 //  COPYING file in the root directory) and Apache 2.0 License
 //  (found in the LICENSE.Apache file in the root directory).
-//  
+//
 //  Copyright (c) 2011 The LevelDB Authors. All rights reserved.
 //  Use of this source code is governed by a BSD-style license that can be
 //  found in the LICENSE file. See the AUTHORS file for names of contributors.
@@ -17,7 +17,7 @@
 //
 
 #pragma once
-#include <thread>
+#include <thread> // NOLINT
 
 namespace rtidb {
 namespace base {
@@ -34,15 +34,15 @@ inline void AsmVolatilePause() {
 }
 
 class SpinMutex {
-public:
+ public:
     SpinMutex() : locked_(false) {}
 
     bool try_lock() {
         auto currently_locked = locked_.load(std::memory_order_relaxed);
         return !currently_locked &&
-            locked_.compare_exchange_weak(currently_locked, true,
-                    std::memory_order_acquire,
-                    std::memory_order_relaxed);
+               locked_.compare_exchange_weak(currently_locked, true,
+                                             std::memory_order_acquire,
+                                             std::memory_order_relaxed);
     }
 
     void lock() {
@@ -60,9 +60,9 @@ public:
 
     void unlock() { locked_.store(false, std::memory_order_release); }
 
-private:
+ private:
     std::atomic<bool> locked_;
 };
 
-}
-}
+}  // namespace base
+}  // namespace rtidb

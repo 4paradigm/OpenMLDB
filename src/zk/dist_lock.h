@@ -5,37 +5,31 @@
 // Date 2017-09-07
 //
 
-#ifndef RTIDB_DIST_LOCK_H
-#define RTIDB_DIST_LOCK_H
+#ifndef SRC_ZK_DIST_LOCK_H_
+#define SRC_ZK_DIST_LOCK_H_
 
-#include "boost/function.hpp"
-#include <mutex>
-#include <vector>
-#include "zk/zk_client.h"
-#include "thread_pool.h"
 #include <atomic>
+#include <mutex> // NOLINT
+#include <vector>
+#include <string>
+#include "boost/function.hpp"
+#include "thread_pool.h" // NOLINT
+#include "zk/zk_client.h"
 
 using ::baidu::common::ThreadPool;
 using ::rtidb::zk::ZkClient;
 
-
 namespace rtidb {
 namespace zk {
 
-enum LockState {
-    kLocked,
-    kLostLock,
-    kTryLock
-};
+enum LockState { kLocked, kLostLock, kTryLock };
 
-typedef boost::function<void()>  NotifyCallback;
+typedef boost::function<void()> NotifyCallback;
 class DistLock {
-
-public:
+ public:
     DistLock(const std::string& root_path, ZkClient* zk_client,
-            NotifyCallback on_locked_cl,
-            NotifyCallback on_lost_lock_cl,
-            const std::string& lock_value);
+             NotifyCallback on_locked_cl, NotifyCallback on_lost_lock_cl,
+             const std::string& lock_value);
 
     ~DistLock();
 
@@ -45,14 +39,14 @@ public:
 
     bool IsLocked();
 
-    void CurrentLockValue(std::string& value);
+    void CurrentLockValue(std::string& value); // NOLINT
 
-private:
-
+ private:
     void InternalLock();
     void HandleChildrenChanged(const std::vector<std::string>& children);
     void HandleChildrenChangedLocked(const std::vector<std::string>& children);
-private:
+
+ private:
     // input args
     std::string root_path_;
     NotifyCallback on_locked_cl_;
@@ -72,7 +66,7 @@ private:
     uint64_t client_session_term_;
 };
 
-}
-}
+}  // namespace zk
+}  // namespace rtidb
 
-#endif /* !RTIDB_DIST_LOCK_H */
+#endif  // SRC_ZK_DIST_LOCK_H_

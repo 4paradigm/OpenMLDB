@@ -11,18 +11,18 @@
 
 #include "log/log_reader.h"
 
+#include <fcntl.h>
+#include <gflags/gflags.h>
 #include <stdio.h>
+#include "base/status.h"
+#include "base/strings.h"
 #include "log/coding.h"
 #include "log/crc32c.h"
 #include "log/log_format.h"
-#include "logging.h"
-#include "base/status.h"
-#include <gflags/gflags.h>
-#include "base/strings.h"
-#include <fcntl.h>
+#include "logging.h" // NOLINT
 
-using ::baidu::common::INFO;
 using ::baidu::common::DEBUG;
+using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
 using ::rtidb::base::Status;
 
@@ -32,9 +32,7 @@ DECLARE_int32(binlog_name_length);
 namespace rtidb {
 namespace log {
 
-Reader::Reporter::~Reporter() {
-
-}
+Reader::Reporter::~Reporter() {}
 
 Reader::Reader(SequentialFile* file, Reporter* reporter, bool checksum,
                uint64_t initial_offset)
@@ -48,198 +46,204 @@ Reader::Reader(SequentialFile* file, Reporter* reporter, bool checksum,
       end_of_buffer_offset_(0),
       last_end_of_buffer_offset_(0),
       initial_offset_(initial_offset),
-      resyncing_(initial_offset > 0) {
-}
+      resyncing_(initial_offset > 0) {}
 
-Reader::~Reader() {
-  delete[] backing_store_;
-}
+Reader::~Reader() { delete[] backing_store_; }
 
 bool Reader::SkipToInitialBlock() {
-  size_t offset_in_block = initial_offset_ % kBlockSize;
-  uint64_t block_start_location = initial_offset_ - offset_in_block;
+    size_t offset_in_block = initial_offset_ % kBlockSize;
+    uint64_t block_start_location = initial_offset_ - offset_in_block;
 
-  // Don't search a block if we'd be in the trailer
-  if (offset_in_block > kBlockSize - 6) {
-    block_start_location += kBlockSize;
-  }
-
-  end_of_buffer_offset_ = block_start_location;
-
-  // Skip to start of first block that can contain the initial record
-  if (block_start_location > 0) {
-    Status skip_status = file_->Skip(block_start_location);
-    if (!skip_status.ok()) {
-      ReportDrop(block_start_location, skip_status);
-      return false;
+    // Don't search a block if we'd be in the trailer
+    if (offset_in_block > kBlockSize - 6) {
+        block_start_location += kBlockSize;
     }
-  }
-  return true;
+
+    end_of_buffer_offset_ = block_start_location;
+
+    // Skip to start of first block that can contain the initial record
+    if (block_start_location > 0) {
+        Status skip_status = file_->Skip(block_start_location);
+        if (!skip_status.ok()) {
+            ReportDrop(block_start_location, skip_status);
+            return false;
+        }
+    }
+    return true;
 }
 
 Status Reader::ReadRecord(Slice* record, std::string* scratch) {
-  if (last_record_offset_ < initial_offset_) {
-    if (!SkipToInitialBlock()) {
-      return Status::IOError("");
+    if (last_record_offset_ < initial_offset_) {
+        if (!SkipToInitialBlock()) {
+            return Status::IOError("");
+        }
     }
-  }
-  scratch->clear();
-  record->clear();
-  bool in_fragmented_record = false;
-  // Record offset of the logical record that we're reading
-  // 0 is a dummy value to make compilers happy
-  uint64_t prospective_record_offset = 0;
+    scratch->clear();
+    record->clear();
+    bool in_fragmented_record = false;
+    // Record offset of the logical record that we're reading
+    // 0 is a dummy value to make compilers happy
+    uint64_t prospective_record_offset = 0;
 
-  Slice fragment;
-  while (true) {
-    uint64_t offset = 0;
-    const unsigned int record_type = ReadPhysicalRecord(&fragment, offset);
+    Slice fragment;
+    while (true) {
+        uint64_t offset = 0;
+        const unsigned int record_type = ReadPhysicalRecord(&fragment, offset);
 
-    // ReadPhysicalRecord may have only had an empty trailer remaining in its
-    // internal buffer. Calculate the offset of the next physical record now
-    // that it has returned, properly accounting for its header size.
-    uint64_t physical_record_offset =
-        end_of_buffer_offset_ - buffer_.size() - kHeaderSize - fragment.size();
+        // ReadPhysicalRecord may have only had an empty trailer remaining in
+        // its internal buffer. Calculate the offset of the next physical record
+        // now that it has returned, properly accounting for its header size.
+        uint64_t physical_record_offset = end_of_buffer_offset_ -
+                                          buffer_.size() - kHeaderSize -
+                                          fragment.size();
 
-    if (resyncing_) {
-      if (record_type == kMiddleType) {
-        continue;
-      } else if (record_type == kLastType) {
-        resyncing_ = false;
-        continue;
-      } else {
-        resyncing_ = false;
-      }
+        if (resyncing_) {
+            if (record_type == kMiddleType) {
+                continue;
+            } else if (record_type == kLastType) {
+                resyncing_ = false;
+                continue;
+            } else {
+                resyncing_ = false;
+            }
+        }
+
+        switch (record_type) {
+            case kFullType:
+                if (in_fragmented_record) {
+                    // Handle bug in earlier versions of log::Writer where
+                    // it could emit an empty kFirstType record at the tail end
+                    // of a block followed by a kFullType or kFirstType record
+                    // at the beginning of the next block.
+                    if (!scratch->empty()) {
+                        PDLOG(DEBUG, "partial record without end(1)");
+                    }
+                }
+                prospective_record_offset = physical_record_offset;
+                scratch->clear();
+                *record = fragment;
+                last_record_offset_ = prospective_record_offset;
+                last_record_end_offset_ =
+                    end_of_buffer_offset_ - buffer_.size();
+                if (offset) {
+                    last_end_of_buffer_offset_ = offset;
+                }
+                return Status::OK();
+
+            case kWaitRecord:
+                if (in_fragmented_record) {
+                    // This can be caused by the writer dying immediately after
+                    // writing a physical record but before completing the next;
+                    // don't treat it as a corruption, just ignore the entire
+                    // logical record.
+                    scratch->clear();
+                }
+                GoBackToLastBlock();
+                return Status::WaitRecord();
+
+            case kFirstType:
+                if (in_fragmented_record) {
+                    // Handle bug in earlier versions of log::Writer where
+                    // it could emit an empty kFirstType record at the tail end
+                    // of a block followed by a kFullType or kFirstType record
+                    // at the beginning of the next block.
+                    if (!scratch->empty()) {
+                        PDLOG(DEBUG, "partial record without end(2)");
+                    }
+                }
+                prospective_record_offset = physical_record_offset;
+                scratch->assign(fragment.data(), fragment.size());
+                in_fragmented_record = true;
+                break;
+
+            case kMiddleType:
+                if (!in_fragmented_record) {
+                    PDLOG(DEBUG,
+                          "missing start of fragmented record(1). fragment "
+                          "size %u",
+                          fragment.size());
+                } else {
+                    scratch->append(fragment.data(), fragment.size());
+                }
+                break;
+
+            case kLastType:
+                if (!in_fragmented_record) {
+                    PDLOG(DEBUG,
+                          "missing start of fragmented record(2). fragment "
+                          "size %u",
+                          fragment.size());
+                } else {
+                    scratch->append(fragment.data(), fragment.size());
+                    *record = Slice(*scratch);
+                    last_record_offset_ = prospective_record_offset;
+                    last_record_end_offset_ =
+                        end_of_buffer_offset_ - buffer_.size();
+                    if (offset) {
+                        last_end_of_buffer_offset_ = offset;
+                    }
+                    return Status::OK();
+                }
+                break;
+
+            case kEof:
+                if (in_fragmented_record) {
+                    // This can be caused by the writer dying immediately after
+                    // writing a physical record but before completing the next;
+                    // don't treat it as a corruption, just ignore the entire
+                    // logical record.
+                    scratch->clear();
+                }
+                return Status::Eof();
+
+            case kBadRecord:
+                if (in_fragmented_record) {
+                    PDLOG(DEBUG, "error in middle of record");
+                    in_fragmented_record = false;
+                    scratch->clear();
+                }
+                return Status::InvalidRecord(Slice("kBadRecord"));
+
+            default: {
+                char buf[40];
+                snprintf(buf, sizeof(buf), "unknown record type %u",
+                         record_type);
+                PDLOG(DEBUG, "%s", buf);
+                ReportCorruption((fragment.size() +
+                                  (in_fragmented_record ? scratch->size() : 0)),
+                                 buf);
+                in_fragmented_record = false;
+                scratch->clear();
+                return Status::InvalidRecord(Slice(buf, strlen(buf)));
+            }
+        }
     }
-
-    switch (record_type) {
-      case kFullType:
-        if (in_fragmented_record) {
-          // Handle bug in earlier versions of log::Writer where
-          // it could emit an empty kFirstType record at the tail end
-          // of a block followed by a kFullType or kFirstType record
-          // at the beginning of the next block.
-          if (!scratch->empty()) {
-            PDLOG(DEBUG, "partial record without end(1)");
-          }
-        }
-        prospective_record_offset = physical_record_offset;
-        scratch->clear();
-        *record = fragment;
-        last_record_offset_ = prospective_record_offset;
-        last_record_end_offset_ = end_of_buffer_offset_ - buffer_.size();
-        if (offset) {
-            last_end_of_buffer_offset_ = offset;
-        }    
-        return Status::OK();
-
-      case kWaitRecord:
-        if (in_fragmented_record) {
-          // This can be caused by the writer dying immediately after
-          // writing a physical record but before completing the next; don't
-          // treat it as a corruption, just ignore the entire logical record.
-          scratch->clear();
-        }
-        GoBackToLastBlock();
-        return Status::WaitRecord(); 
-
-      case kFirstType:
-        if (in_fragmented_record) {
-          // Handle bug in earlier versions of log::Writer where
-          // it could emit an empty kFirstType record at the tail end
-          // of a block followed by a kFullType or kFirstType record
-          // at the beginning of the next block.
-          if (!scratch->empty()) {
-            PDLOG(DEBUG, "partial record without end(2)");
-          }
-        }
-        prospective_record_offset = physical_record_offset;
-        scratch->assign(fragment.data(), fragment.size());
-        in_fragmented_record = true;
-        break;
-
-      case kMiddleType:
-        if (!in_fragmented_record) {
-          PDLOG(DEBUG, "missing start of fragmented record(1). fragment size %u", fragment.size());
-        } else {
-          scratch->append(fragment.data(), fragment.size());
-        }
-        break;
-
-      case kLastType:
-        if (!in_fragmented_record) {
-          PDLOG(DEBUG, "missing start of fragmented record(2). fragment size %u", fragment.size());
-        } else {
-          scratch->append(fragment.data(), fragment.size());
-          *record = Slice(*scratch);
-          last_record_offset_ = prospective_record_offset;
-          last_record_end_offset_ = end_of_buffer_offset_ - buffer_.size();
-          if (offset) {
-            last_end_of_buffer_offset_ = offset;
-          }
-          return Status::OK();
-        }
-        break;
-
-      case kEof:
-        if (in_fragmented_record) {
-          // This can be caused by the writer dying immediately after
-          // writing a physical record but before completing the next; don't
-          // treat it as a corruption, just ignore the entire logical record.
-          scratch->clear();
-        }
-        return Status::Eof();
-
-      case kBadRecord:
-        if (in_fragmented_record) {
-          PDLOG(DEBUG, "error in middle of record");
-          in_fragmented_record = false;
-          scratch->clear();
-        }
-        return Status::InvalidRecord(Slice("kBadRecord"));
-
-      default: {
-        char buf[40];
-        snprintf(buf, sizeof(buf), "unknown record type %u", record_type);
-        PDLOG(DEBUG, "%s", buf);
-        ReportCorruption(
-            (fragment.size() + (in_fragmented_record ? scratch->size() : 0)),
-            buf);
-        in_fragmented_record = false;
-        scratch->clear();
-        return Status::InvalidRecord(Slice(buf, strlen(buf)));
-      }
-    }
-  }
-  return Status::IOError("");
+    return Status::IOError("");
 }
 
-uint64_t Reader::LastRecordOffset() {
-  return last_record_offset_;
-}
+uint64_t Reader::LastRecordOffset() { return last_record_offset_; }
 
-uint64_t Reader::LastRecordEndOffset() {
-  return last_record_end_offset_;
-}
+uint64_t Reader::LastRecordEndOffset() { return last_record_end_offset_; }
 
 void Reader::ReportCorruption(uint64_t bytes, const char* reason) {
-  ReportDrop(bytes, Status::Corruption(reason));
+    ReportDrop(bytes, Status::Corruption(reason));
 }
 
 void Reader::ReportDrop(uint64_t bytes, const Status& reason) {
-  if (reporter_ != NULL &&
-      end_of_buffer_offset_ - buffer_.size() - bytes >= initial_offset_) {
-    reporter_->Corruption(static_cast<size_t>(bytes), reason);
-  }
+    if (reporter_ != NULL &&
+        end_of_buffer_offset_ - buffer_.size() - bytes >= initial_offset_) {
+        reporter_->Corruption(static_cast<size_t>(bytes), reason);
+    }
 }
 
 void Reader::GoBackToLastBlock() {
     size_t offset_in_block = last_end_of_buffer_offset_ % kBlockSize;
     uint64_t block_start_location = 0;
-    if (last_end_of_buffer_offset_ >  offset_in_block) {
+    if (last_end_of_buffer_offset_ > offset_in_block) {
         block_start_location = last_end_of_buffer_offset_ - offset_in_block;
     }
-    PDLOG(DEBUG, "go back block from[%lu] to [%lu]", end_of_buffer_offset_, block_start_location);
+    PDLOG(DEBUG, "go back block from[%lu] to [%lu]", end_of_buffer_offset_,
+          block_start_location);
     end_of_buffer_offset_ = block_start_location;
     buffer_.clear();
     file_->Seek(block_start_location);
@@ -267,9 +271,9 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
             PDLOG(WARNING, "fail to read file %s", status.ToString().c_str());
             return kWaitRecord;
         }
-        if (buffer_.size() < kHeaderSize) { 
-            PDLOG(DEBUG, "read buffer size[%d] less than kHeaderSize[%d]", 
-                            buffer_.size(), kHeaderSize);
+        if (buffer_.size() < kHeaderSize) {
+            PDLOG(DEBUG, "read buffer size[%d] less than kHeaderSize[%d]",
+                  buffer_.size(), kHeaderSize);
             return kWaitRecord;
         }
     }
@@ -281,62 +285,63 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
     const unsigned int type = header[6];
     const uint32_t length = a | (b << 8);
     if (kHeaderSize + length > buffer_.size()) {
-      PDLOG(DEBUG, "end of file %d, header size %d data length %d", buffer_.size(), kHeaderSize,
-              length);
-      return kWaitRecord;
+        PDLOG(DEBUG, "end of file %d, header size %d data length %d",
+              buffer_.size(), kHeaderSize, length);
+        return kWaitRecord;
     }
     // Check crc
     if (checksum_) {
-      uint32_t expected_crc = Unmask(DecodeFixed32(header));
-      uint32_t actual_crc = Value(header + 6, 1 + length);
-      if (actual_crc != expected_crc) {
-        // Drop the rest of the buffer since "length" itself may have
-        // been corrupted and if we trust it, we could find some
-        // fragment of a real log record that just happens to look
-        // like a valid log record.
-        size_t drop_size = buffer_.size();
-        buffer_.clear();
-        ReportCorruption(drop_size, "checksum mismatch");
-        PDLOG(WARNING, "bad record with crc");
-        return kBadRecord;
-      }
+        uint32_t expected_crc = Unmask(DecodeFixed32(header));
+        uint32_t actual_crc = Value(header + 6, 1 + length);
+        if (actual_crc != expected_crc) {
+            // Drop the rest of the buffer since "length" itself may have
+            // been corrupted and if we trust it, we could find some
+            // fragment of a real log record that just happens to look
+            // like a valid log record.
+            size_t drop_size = buffer_.size();
+            buffer_.clear();
+            ReportCorruption(drop_size, "checksum mismatch");
+            PDLOG(WARNING, "bad record with crc");
+            return kBadRecord;
+        }
     }
 
     // Get Eof flag
     if (type == kEofType && length == 0) {
-      buffer_.clear();
-      PDLOG(INFO, "end of file");
-      return kEof;
+        buffer_.clear();
+        PDLOG(INFO, "end of file");
+        return kEof;
     }
 
     if (type == kZeroType && length == 0) {
-      // Skip zero length record without reporting any drops since
-      // such records are produced by the mmap based writing code in
-      // env_posix.cc that preallocates file regions.
-      buffer_.clear();
-      PDLOG(WARNING, "bad record with zero type");
-      return kBadRecord;
+        // Skip zero length record without reporting any drops since
+        // such records are produced by the mmap based writing code in
+        // env_posix.cc that preallocates file regions.
+        buffer_.clear();
+        PDLOG(WARNING, "bad record with zero type");
+        return kBadRecord;
     }
 
     buffer_.remove_prefix(kHeaderSize + length);
     // Skip physical record that started before initial_offset_
     if (end_of_buffer_offset_ - buffer_.size() - kHeaderSize - length <
         initial_offset_) {
-      result->clear();
-      PDLOG(WARNING, "bad record with initial_offset");
-      return kBadRecord;
+        result->clear();
+        PDLOG(WARNING, "bad record with initial_offset");
+        return kBadRecord;
     }
     *result = Slice(header + kHeaderSize, length);
     return type;
 }
 
-LogReader::LogReader(LogParts* logs, const std::string& log_path) : log_path_(log_path) {
+LogReader::LogReader(LogParts* logs, const std::string& log_path)
+    : log_path_(log_path) {
     sf_ = NULL;
     reader_ = NULL;
     logs_ = logs;
     log_part_index_ = -1;
     start_offset_ = 0;
-} 
+}
 
 LogReader::~LogReader() {
     delete sf_;
@@ -361,9 +366,7 @@ void LogReader::GoBackToStart() {
     reader_->GoBackToStart();
 }
 
-int LogReader::GetLogIndex() {
-    return log_part_index_;
-}
+int LogReader::GetLogIndex() { return log_part_index_; }
 
 uint64_t LogReader::GetLastRecordEndOffset() {
     if (reader_ == NULL) {
@@ -373,14 +376,14 @@ uint64_t LogReader::GetLastRecordEndOffset() {
     return reader_->LastRecordEndOffset();
 }
 
-::rtidb::base::Status LogReader::ReadNextRecord(
-        ::rtidb::base::Slice* record, std::string* buffer) {
-    // first read record 
+::rtidb::base::Status LogReader::ReadNextRecord(::rtidb::base::Slice* record,
+                                                std::string* buffer) {
+    // first read record
     if (sf_ == NULL) {
-         if (RollRLogFile() < 0) {
+        if (RollRLogFile() < 0) {
             PDLOG(WARNING, "fail to roll read log");
             return ::rtidb::base::Status::WaitRecord();
-         }
+        }
     }
     ::rtidb::base::Status status = reader_->ReadRecord(record, buffer);
     if (status.IsEof()) {
@@ -422,24 +425,26 @@ int LogReader::RollRLogFile() {
     if (log_part_index_ < 0) {
         while (it->Valid()) {
             PDLOG(DEBUG, "log index[%u] and start offset %lld", it->GetKey(),
-                    it->GetValue());
+                  it->GetValue());
             if (it->GetValue() <= start_offset_) {
                 break;
             }
             it->Next();
         }
         if (it->Valid()) {
-            index = (int)it->GetKey();
+            index = (int)it->GetKey(); // NOLINT
         } else {
-            PDLOG(WARNING, "no log part matched! start_offset[%lu]", start_offset_); 
+            PDLOG(WARNING, "no log part matched! start_offset[%lu]",
+                  start_offset_);
         }
     } else {
         uint32_t log_part_index = (uint32_t)log_part_index_;
         while (it->Valid()) {
-            PDLOG(DEBUG, "log index[%u] and start offset %lu", it->GetKey(), it->GetValue());
+            PDLOG(DEBUG, "log index[%u] and start offset %lu", it->GetKey(),
+                  it->GetValue());
             // find the next of current index log file part
             if (it->GetKey() == log_part_index + 1) {
-                index = (int)it->GetKey();
+                index = (int)it->GetKey(); // NOLINT
                 break;
             } else if (it->GetKey() == log_part_index) {
                 PDLOG(DEBUG, "no new file. log_part_index %d", log_part_index);
@@ -447,8 +452,9 @@ int LogReader::RollRLogFile() {
             }
             uint32_t cur_index = it->GetKey();
             it->Next();
-            if (it->Valid() && it->GetKey() <= log_part_index && cur_index > log_part_index) {
-                index = (int)cur_index;
+            if (it->Valid() && it->GetKey() <= log_part_index &&
+                cur_index > log_part_index) {
+                index = (int)cur_index; // NOLINT
                 break;
             }
         }
@@ -456,18 +462,21 @@ int LogReader::RollRLogFile() {
     delete it;
     if (index >= 0) {
         // open a new log part file
-        std::string full_path = log_path_ + "/" + 
-            ::rtidb::base::FormatToString(index, FLAGS_binlog_name_length) + ".log";
+        std::string full_path =
+            log_path_ + "/" +
+            ::rtidb::base::FormatToString(index, FLAGS_binlog_name_length) +
+            ".log";
         if (OpenSeqFile(full_path) != 0) {
             return -1;
         }
         delete reader_;
         // roll a new log part file, reset status
         reader_ = new Reader(sf_, NULL, FLAGS_binlog_enable_crc, 0);
-        PDLOG(INFO, "roll log file from index[%d] to index[%d]", log_part_index_, index);
+        PDLOG(INFO, "roll log file from index[%d] to index[%d]",
+              log_part_index_, index);
         log_part_index_ = index;
         return 0;
-    } 
+    }
     return -1;
 }
 
@@ -477,7 +486,7 @@ int LogReader::OpenSeqFile(const std::string& path) {
         PDLOG(WARNING, "fail to open file %s", path.c_str());
         return -1;
     }
-    // close old Sequentialfile 
+    // close old Sequentialfile
     if (sf_ != NULL) {
         delete sf_;
         sf_ = NULL;
@@ -487,6 +496,5 @@ int LogReader::OpenSeqFile(const std::string& path) {
     return 0;
 }
 
-
 }  // namespace log
-}  // namespace leveldb
+}  // namespace rtidb

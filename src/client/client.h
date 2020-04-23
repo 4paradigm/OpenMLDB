@@ -83,7 +83,7 @@ struct ReadOption {
 };
 
 class ViewResult {
-public:
+ public:
     bool GetBool(uint32_t idx) {
         bool val;
         rv_->GetBool(idx, &val);
@@ -189,7 +189,7 @@ public:
                 key = std::to_string(val);
                 break;
             }
-            case  rtidb::type::kInt: {
+            case rtidb::type::kInt: {
                 int32_t val = GetInt32(pk_idx_);
                 key = std::to_string(val);
                 break;
@@ -216,7 +216,7 @@ public:
 
     std::shared_ptr<rtidb::base::RowView> rv_;
 
-private:
+ private:
     std::shared_ptr<
         google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>>
         columns_;
@@ -226,7 +226,7 @@ private:
 };
 
 class QueryResult : public ViewResult {
-public:
+ public:
     void SetError(int err_code, const std::string& err_msg) {
         code_ = err_code;
         msg_ = err_msg;
@@ -263,11 +263,11 @@ public:
 
     bool IsEnd() { return static_cast<uint64_t>(index_) >= values_->size(); }
 
-public:
+ public:
     int code_;
     std::string msg_;
 
-private:
+ private:
     int32_t index_;
     std::shared_ptr<std::vector<std::shared_ptr<std::string>>> values_;
 };
@@ -275,20 +275,26 @@ private:
 class RtidbClient;
 
 class TraverseResult : public ViewResult {
-public:
-    TraverseResult(): code_(0),
-        msg_(), offset_(0), value_(),
-        client_(nullptr), is_finish_(false),
-        ro_(), table_name_(), count_(0),
-        last_pk_() {
-    }
+ public:
+    TraverseResult()
+        : code_(0),
+          msg_(),
+          offset_(0),
+          value_(),
+          client_(nullptr),
+          is_finish_(false),
+          ro_(),
+          table_name_(),
+          count_(0),
+          last_pk_() {}
 
     void SetError(int err_code, const std::string& err_msg) {
         code_ = err_code;
         msg_ = err_msg;
     }
 
-    void Init(RtidbClient* client, std::string* table_name, struct ReadOption* ro, uint32_t count, uint64_t snapshot_id);
+    void Init(RtidbClient* client, std::string* table_name,
+              struct ReadOption* ro, uint32_t count, uint64_t snapshot_id);
 
     ~TraverseResult();
 
@@ -303,7 +309,7 @@ public:
     int code_;
     std::string msg_;
 
-private:
+ private:
     bool TraverseNext();
 
     uint32_t offset_;
@@ -317,21 +323,27 @@ private:
     uint64_t snapshot_id_;
 };
 
-class BatchQueryResult: public ViewResult {
-public:
-    BatchQueryResult(): code_(0),
-    msg_(), offset_(0), value_(),
-    client_(nullptr), is_finish_(false),
-    keys_(), table_name_(), already_get_(),
-    count_(0) {
-    }
+class BatchQueryResult : public ViewResult {
+ public:
+    BatchQueryResult()
+        : code_(0),
+          msg_(),
+          offset_(0),
+          value_(),
+          client_(nullptr),
+          is_finish_(false),
+          keys_(),
+          table_name_(),
+          already_get_(),
+          count_(0) {}
 
     void SetError(int err_code, const std::string& err_msg) {
         code_ = err_code;
         msg_ = err_msg;
     }
 
-    void Init(RtidbClient* client, std::string* table_name, const std::vector<std::string>& keys, uint32_t count);
+    void Init(RtidbClient* client, std::string* table_name,
+              const std::vector<std::string>& keys, uint32_t count);
 
     ~BatchQueryResult();
 
@@ -342,11 +354,11 @@ public:
 
     bool Next();
 
-public:
+ public:
     int code_;
     std::string msg_;
 
-private:
+ private:
     bool BatchQueryNext(const std::vector<std::string>& get_keys);
 
     uint32_t offset_;
@@ -360,26 +372,38 @@ private:
 };
 
 class RtidbClient {
-public:
+ public:
     RtidbClient();
     ~RtidbClient();
-    GeneralResult Init(const std::string& zk_cluster, const std::string& zk_path);
+    GeneralResult Init(const std::string& zk_cluster,
+                       const std::string& zk_path);
     QueryResult Query(const std::string& name, const struct ReadOption& ro);
-    GeneralResult Put(const std::string& name, const std::map<std::string, std::string>& values, const WriteOption& wo);
-    GeneralResult Delete(const std::string& name, const std::map<std::string, std::string>& values);
-    TraverseResult Traverse(const std::string& name, const struct ReadOption& ro);
-    bool Traverse(const std::string& name, const struct ReadOption& ro, std::string* data, uint32_t* count,
-                               const std::string& last_key, bool* is_finish, uint64_t* snapshot_id_);
-    BatchQueryResult BatchQuery(const std::string& name, const std::vector<ReadOption>& ros);
-    bool BatchQuery(const std::string& name, const std::vector<std::string>& keys, std::string* data, bool* is_finish, uint32_t* count);
+    GeneralResult Put(const std::string& name,
+                      const std::map<std::string, std::string>& values,
+                      const WriteOption& wo);
+    GeneralResult Delete(const std::string& name,
+                         const std::map<std::string, std::string>& values);
+    TraverseResult Traverse(const std::string& name,
+                            const struct ReadOption& ro);
+    bool Traverse(const std::string& name, const struct ReadOption& ro,
+                  std::string* data, uint32_t* count,
+                  const std::string& last_key, bool* is_finish,
+                  uint64_t* snapshot_id_);
+    BatchQueryResult BatchQuery(const std::string& name,
+                                const std::vector<ReadOption>& ros);
+    bool BatchQuery(const std::string& name,
+                    const std::vector<std::string>& keys, std::string* data,
+                    bool* is_finish, uint32_t* count);
     void SetZkCheckInterval(int32_t interval);
-    GeneralResult Update(const std::string& table_name, 
-            const std::map<std::string, std::string>& condition_columns_map,
-            const std::map<std::string, std::string>& value_columns_map,
-            const WriteOption& wo); 
+    GeneralResult Update(
+        const std::string& table_name,
+        const std::map<std::string, std::string>& condition_columns_map,
+        const std::map<std::string, std::string>& value_columns_map,
+        const WriteOption& wo);
 
-private:
-    std::shared_ptr<rtidb::client::TabletClient> GetTabletClient(const std::string& endpoint, std::string* msg);
+ private:
+    std::shared_ptr<rtidb::client::TabletClient> GetTabletClient(
+        const std::string& endpoint, std::string* msg);
     void CheckZkClient();
     void UpdateEndpoint(const std::set<std::string>& alive_endpoints);
     bool RefreshNodeList();
@@ -390,10 +414,11 @@ private:
         RefreshTable();
     }
 
-private:
+ private:
     std::shared_ptr<rtidb::zk::ZkClient> zk_client_;
     std::shared_ptr<rtidb::client::NsClient> client_;
-    std::map<std::string, std::shared_ptr<rtidb::client::TabletClient>> tablets_;
+    std::map<std::string, std::shared_ptr<rtidb::client::TabletClient>>
+        tablets_;
     std::mutex mu_;
     std::string zk_cluster_;
     std::string zk_path_;

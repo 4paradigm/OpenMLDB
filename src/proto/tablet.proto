@@ -680,6 +680,7 @@ message ExtractIndexDataRequest {
 message Columns {
     repeated string name = 1;
     optional bytes value = 2;
+    optional GetType type = 3 [default = kSubKeyEq];
 }
 
 message UpdateRequest {
@@ -689,10 +690,18 @@ message UpdateRequest {
     optional Columns value_columns = 4;
 }
 
+message ReadOption {
+    repeated Columns index = 1;
+    repeated Columns readFilter = 2;
+    repeated string colSet = 3;
+    optional uint32 limit = 4;
+}
+
 message BatchQueryRequest {
     optional uint32 tid = 1;
     optional uint32 pid = 2;
-    repeated string query_key = 3;
+    repeated ReadOption read_option = 3;
+    repeated string query_key = 4;
 }
 
 message BatchQueryResponse {
@@ -701,6 +710,10 @@ message BatchQueryResponse {
     optional int32 code = 3;
     optional bool is_finish = 4;
     optional uint32 count = 5;
+}
+
+message CancelOPRequest {
+    optional uint64 op_id = 1;
 }
 
 service TabletServer {
@@ -760,4 +773,5 @@ service TabletServer {
     rpc DumpIndexData(DumpIndexDataRequest) returns (GeneralResponse);
     rpc LoadIndexData(LoadIndexDataRequest) returns (GeneralResponse);
     rpc ExtractIndexData(ExtractIndexDataRequest) returns (GeneralResponse);
+    rpc CancelOP(CancelOPRequest) returns (GeneralResponse);
 }

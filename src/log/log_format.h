@@ -5,8 +5,8 @@
 // Log format information shared by reader and writer.
 // See ../doc/log_format.md for more detail.
 
-#ifndef RTIDB_LOG_FORMAT_H_
-#define RTIDB_LOG_FORMAT_H_
+#ifndef SRC_LOG_LOG_FORMAT_H_
+#define SRC_LOG_LOG_FORMAT_H_
 
 namespace rtidb {
 namespace log {
@@ -35,4 +35,4 @@ static const int kHeaderSize = 4 + 2 + 1;
 }  // namespace log
 }  // namespace rtidb
 
-#endif  // RTIDB_LOG_FORMAT_H_
+#endif  // SRC_LOG_LOG_FORMAT_H_

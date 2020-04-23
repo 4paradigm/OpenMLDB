@@ -7,8 +7,8 @@
 // * In addition we support variable length "varint" encoding
 // * Strings are encoded prefixed by their length in varint format
 
-#ifndef RTIDB_LOG_CODING_H
-#define RTIDB_LOG_CODING_H
+#ifndef SRC_LOG_CODING_H_
+#define SRC_LOG_CODING_H_
 
 #include <stdint.h>
 #include <string.h>
@@ -48,13 +48,15 @@ inline uint32_t DecodeFixed32(const char* ptr) {
     if (rtidb::base::kLittleEndian) {
         // Load the raw bytes
         uint32_t result;
-        memcpy(&result, ptr, sizeof(result));  // gcc optimizes this to a plain load
+        memcpy(&result, ptr,
+               sizeof(result));  // gcc optimizes this to a plain load
         return result;
     } else {
-        return ((static_cast<uint32_t>(static_cast<unsigned char>(ptr[0])))
-        | (static_cast<uint32_t>(static_cast<unsigned char>(ptr[1])) << 8)
-        | (static_cast<uint32_t>(static_cast<unsigned char>(ptr[2])) << 16)
-        | (static_cast<uint32_t>(static_cast<unsigned char>(ptr[3])) << 24));
+        return (
+            (static_cast<uint32_t>(static_cast<unsigned char>(ptr[0]))) |
+            (static_cast<uint32_t>(static_cast<unsigned char>(ptr[1])) << 8) |
+            (static_cast<uint32_t>(static_cast<unsigned char>(ptr[2])) << 16) |
+            (static_cast<uint32_t>(static_cast<unsigned char>(ptr[3])) << 24));
     }
 }
 
@@ -62,7 +64,8 @@ inline uint64_t DecodeFixed64(const char* ptr) {
     if (rtidb::base::kLittleEndian) {
         // Load the raw bytes
         uint64_t result;
-        memcpy(&result, ptr, sizeof(result));  // gcc optimizes this to a plain load
+        memcpy(&result, ptr,
+               sizeof(result));  // gcc optimizes this to a plain load
         return result;
     } else {
         uint64_t lo = DecodeFixed32(ptr);
@@ -71,7 +74,7 @@ inline uint64_t DecodeFixed64(const char* ptr) {
     }
 }
 
-} // end of log
-} // end of rtidb
+}  // namespace log
+}  // namespace rtidb
 
-#endif  // RTIDB_LOG_CODING_H
+#endif  // SRC_LOG_CODING_H_
