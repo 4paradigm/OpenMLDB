@@ -4,8 +4,9 @@
 //
 
 #include "storage/relational_table.h"
-#include <utility>
 #include <algorithm>
+#include <utility>
+#include <set>
 #include "base/file_util.h"
 #include "base/hash.h"
 #include "logging.h"  // NOLINT
@@ -140,14 +141,54 @@ bool RelationalTable::InitColumnFamilyDescriptor() {
 }
 
 int RelationalTable::InitColumnDesc() {
-    if (table_meta_.column_key_size() <= 0) {
-        PDLOG(WARNING, "column_key_size is 0, tid %u pid %u", id_, pid_);
-        return -1;
-    }
     const Schema& schema = table_meta_.column_desc();
     if (schema.size() == 0) {
         PDLOG(WARNING, "column_desc_size is 0, tid %u pid %u", id_, pid_);
         return -1;
+    }
+    if (table_meta_.column_key_size() == 0) {
+        PDLOG(WARNING, "column_key_size is 0, tid %u pid %u", id_, pid_);
+        return -1;
+    }
+    std::map<std::string, ::rtidb::type::DataType> column_map;
+    for (const auto& column_desc : schema) {
+        const std::string& col_name = column_desc.name();
+        if (column_map.find(col_name) != column_map.end()) {
+            PDLOG(WARNING, "column name %s repeated, tid %u pid %u",
+                  col_name.c_str(), id_, pid_);
+            return -1;
+        }
+        column_map.insert(std::make_pair(col_name, column_desc.data_type()));
+    }
+    std::set<std::string> index_set;
+    for (const auto& column_key : table_meta_.column_key()) {
+        const std::string& idx_name = column_key.index_name();
+        if (index_set.find(idx_name) != index_set.end()) {
+            PDLOG(WARNING, "index name %s repeated, tid %u pid %u",
+                  idx_name.c_str(), id_, pid_);
+            return -1;
+        }
+        index_set.insert(idx_name);
+        for (const auto& column_name : column_key.col_name()) {
+            auto iter = column_map.find(column_name);
+            if (iter == column_map.end()) {
+                PDLOG(WARNING, "column name %s not fount, tid %u pid %u",
+                      column_name.c_str(), id_, pid_);
+                return -1;
+            }
+            if ((iter->second != ::rtidb::type::kSmallInt) &&
+                (iter->second != ::rtidb::type::kInt) &&
+                (iter->second != ::rtidb::type::kBigInt) &&
+                (iter->second != ::rtidb::type::kFloat) &&
+                (iter->second != ::rtidb::type::kDouble &&
+                 (iter->second != ::rtidb::type::kVarchar &&
+                  (iter->second != ::rtidb::type::kString)))) {
+                PDLOG(WARNING, "unsupported data type %s, tid %u pid %u",
+                      rtidb::type::DataType_Name(iter->second).c_str(), id_,
+                      pid_);
+                return -1;
+            }
+        }
     }
     uint32_t col_idx = 0;
     for (auto& col_desc : schema) {
@@ -637,7 +678,8 @@ bool RelationalTable::DeletePk(const rocksdb::Slice& pk_slice) {
         if (index_def->GetType() == ::rtidb::type::kUnique ||
             index_def->GetType() == ::rtidb::type::kNoUnique) {
             std::string second_key = "";
-            if (!GetCombineStr(index_def,
+            if (!GetCombineStr(
+                    index_def,
                     reinterpret_cast<int8_t*>(const_cast<char*>(slice.data())),
                     &second_key)) {
                 return false;
@@ -732,7 +774,7 @@ bool RelationalTable::Query(
         table_index_.GetIndexByCombineStr(combine_name);
     if (!index_def) {
         PDLOG(DEBUG, "combine_name %s not found. tid %u pid %u",
-                combine_name.c_str(), id_, pid_);
+              combine_name.c_str(), id_, pid_);
         return false;
     }
     return Query(index_def, rocksdb::Slice(combine_value), return_vec);
