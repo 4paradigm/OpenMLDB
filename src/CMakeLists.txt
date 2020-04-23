@@ -19,6 +19,8 @@ add_library(log STATIC log/crc32c.cc
                        log/log_reader.cc
                        log/writable_file.cc flags.cc)
 
+add_library(rtidb_proxy STATIC proto/http_server.pb.cc httpserver/httpserver.cc flags.cc client/client.cc)
+
 add_library(base STATIC base/status.cc base/ringqueue.h)
 add_library(zk_client STATIC zk/zk_client.cc zk/dist_lock.cc)
 
@@ -129,6 +131,6 @@ target_link_libraries(field_codec_test gtest pthread)
 
 add_executable(rtidb cmd/rtidb.cc base/status.cc proto/client.pb.cc base/linenoise.cc)
 
-target_link_libraries(rtidb gflags common client  tablet storage replica log nameserver brpc ssl crypto dl leveldb protobuf z snappy gflags pthread rt zk_client zookeeper_mt tcmalloc_minimal)
+target_link_libraries(rtidb gflags common client  tablet storage replica log nameserver brpc ssl crypto dl leveldb protobuf z snappy gflags pthread rt zk_client zookeeper_mt tcmalloc_minimal rtidb_proxy)
 
 add_subdirectory(client)
