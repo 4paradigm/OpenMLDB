@@ -23,6 +23,8 @@ cd auto-test-rtidb
 git checkout ${rtidb_auto_test_branch}
 git pull
 
+ls -al
+
 #bash run-compatibility.sh -c test_1500.xml -j 1.5.0.0-RELEASE -s 1500 -u 1510 -r /home/rtidb/rtidb
 #-c 执行的suite_xml,决定了跑哪些case 默认为test_1500.xml
 #-j java_client的版本号 默认为1.5.0.0-RELEASE
