@@ -4,7 +4,7 @@
 // Author wangtaize
 // Date 2017-03-31
 //
-#include <snappy.h>
+#include <snappy.h> // NOLINT
 #include <brpc/server.h>
 #include <fcntl.h>
 #include <gflags/gflags.h>
@@ -17,8 +17,6 @@
 #include <random>
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
-#include "logging.h"  // NOLINT
-
 #include "base/display.h"
 #include "base/file_util.h"
 #include "base/flat_array.h"
@@ -29,6 +27,8 @@
 #include "base/strings.h"
 #include "client/ns_client.h"
 #include "client/tablet_client.h"
+#include "httpserver/httpserver.h"
+#include "logging.h"  // NOLINT
 #include "nameserver/name_server_impl.h"
 #include "proto/client.pb.h"
 #include "proto/name_server.pb.h"
@@ -233,6 +233,47 @@ void StartTablet() {
     if (!tablet->RegisterZK()) {
         PDLOG(WARNING, "Fail to register zk");
         exit(1);
+    }
+    std::ostringstream oss;
+    oss << RTIDB_VERSION_MAJOR << "." << RTIDB_VERSION_MEDIUM << "."
+        << RTIDB_VERSION_MINOR << "." << RTIDB_VERSION_BUG;
+    server.set_version(oss.str());
+    server.RunUntilAskedToQuit();
+}
+
+void StartHttp() {
+    SetupLog();
+    ::rtidb::http::HttpImpl* http = new ::rtidb::http::HttpImpl();
+    bool ok = http->Init();
+    if (!ok) {
+        PDLOG(WARNING, "fail to init http server");
+        exit(1);
+    }
+    brpc::ServerOptions options;
+    options.num_threads = FLAGS_thread_pool_size;
+    brpc::Server server;
+    if (server.AddService(http, brpc::SERVER_DOESNT_OWN_SERVICE,
+                          "/v1/get/* => Get") != 0) {
+        PDLOG(WARNING, "fail to add service");
+        exit(1);
+    }
+    server.MaxConcurrencyOf(http, "Get") = FLAGS_get_concurrency_limit;
+    if (FLAGS_port > 0) {
+        if (server.Start(FLAGS_port, &options) != 0) {
+            PDLOG(WARNING, "Fail to start server");
+            exit(1);
+        }
+        PDLOG(INFO, "start tablet on port %d with version %d.%d.%d.%d",
+              FLAGS_port, RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
+              RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
+    } else {
+        if (server.Start(FLAGS_endpoint.c_str(), &options) != 0) {
+            PDLOG(WARNING, "Fail to start server");
+            exit(1);
+        }
+        PDLOG(INFO, "start tablet on endpoint %s with version %d.%d.%d.%d",
+              FLAGS_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
+              RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
     }
     std::ostringstream oss;
     oss << RTIDB_VERSION_MAJOR << "." << RTIDB_VERSION_MEDIUM << "."
@@ -5812,8 +5853,9 @@ void HandleClientSScan(const std::vector<std::string>& parts,
             ::rtidb::base::ShowTableRows(raw, it, compress_type);
         } else {
             std::vector<::rtidb::base::ColumnDesc> columns_tmp;
-            for (int i = 0; i < (int)(raw.size() -  // NOLINT
-                                      table_meta.added_column_desc_size());
+            for (int i = 0;
+                 i < (int)(raw.size() -                           // NOLINT
+                           table_meta.added_column_desc_size());  // NOLINT
                  i++) {
                 columns_tmp.push_back(raw.at(i));
             }
@@ -6259,6 +6301,8 @@ int main(int argc, char* argv[]) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     if (FLAGS_role == "tablet") {
         StartTablet();
+    } else if (FLAGS_role == "http") {
+        StartHttp();
     } else if (FLAGS_role == "client") {
         StartClient();
     } else if (FLAGS_role == "nameserver") {
