@@ -4,19 +4,16 @@
 // Author wangtaize
 // Date 2017-03-31
 //
-#include <snappy.h> // NOLINT
-#include <brpc/server.h>
 #include <fcntl.h>
 #include <gflags/gflags.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/text_format.h>
 #include <sched.h>
 #include <signal.h>
+#include <snappy.h>
 #include <unistd.h>
 #include <iostream>
 #include <random>
-#include <boost/algorithm/string.hpp>
-#include <boost/lexical_cast.hpp>
 #include "base/display.h"
 #include "base/file_util.h"
 #include "base/flat_array.h"
@@ -25,6 +22,9 @@
 #include "base/linenoise.h"
 #include "base/schema_codec.h"
 #include "base/strings.h"
+#include "boost/algorithm/string.hpp"
+#include "boost/lexical_cast.hpp"
+#include "brpc/server.h"
 #include "client/ns_client.h"
 #include "client/tablet_client.h"
 #include "httpserver/httpserver.h"
