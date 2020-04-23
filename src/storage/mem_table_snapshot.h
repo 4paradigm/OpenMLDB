@@ -74,12 +74,19 @@ class MemTableSnapshot : public Snapshot {
 
     bool DumpSnapshotIndexData(
         std::shared_ptr<Table> table,
-        const ::rtidb::common::ColumnKey& column_key,
         const std::vector<uint32_t>& index_cols,
         const std::vector<::rtidb::base::ColumnDesc>& columns,
         const std::set<uint32_t>& deleted_index, uint32_t max_idx, uint32_t idx,
-        std::vector<::rtidb::log::WriteHandle*>& whs,  // NOLINT
-        uint64_t& latest_offset);                      // NOLINT
+        const std::vector<::rtidb::log::WriteHandle*>& whs,
+        uint64_t* snapshot_offset);
+
+    bool DumpBinlogIndexData(
+        std::shared_ptr<Table> table,
+        const std::vector<uint32_t>& index_cols,
+        const std::vector<::rtidb::base::ColumnDesc>& columns,
+        const std::set<uint32_t>& deleted_index, uint32_t max_idx, uint32_t idx,
+        const std::vector<::rtidb::log::WriteHandle*>& whs,
+        uint64_t snapshot_offset, uint64_t collected_offset);
 
     int ExtractIndexData(std::shared_ptr<Table> table,
                          const ::rtidb::common::ColumnKey& column_key,
@@ -89,7 +96,14 @@ class MemTableSnapshot : public Snapshot {
     bool DumpIndexData(std::shared_ptr<Table> table,
                        const ::rtidb::common::ColumnKey& column_key,
                        uint32_t idx,
-                       std::vector<::rtidb::log::WriteHandle*>& whs);  // NOLINT
+                       const std::vector<::rtidb::log::WriteHandle*>& whs);
+
+    bool PackNewIndexEntry(std::shared_ptr<Table> table,
+                        const std::vector<uint32_t>& index_cols,
+                        const std::vector<::rtidb::base::ColumnDesc>& columns,
+                        uint32_t max_idx, uint32_t idx, uint32_t partition_num,
+                        ::rtidb::api::LogEntry* entry,
+                        uint32_t* index_pid);
 
  private:
     // load single snapshot to table
@@ -99,10 +113,6 @@ class MemTableSnapshot : public Snapshot {
                                std::atomic<uint64_t>* g_failed_cnt);
 
     uint64_t CollectDeletedKey(uint64_t end_offset);
-
-    bool SerializeToString(::rtidb::api::LogEntry* entry, std::string* str,
-                           const ::rtidb::api::CompressType compress_type,
-                           const std::set<uint32_t>& deleted_index);
 
  private:
     LogParts* log_part_;
