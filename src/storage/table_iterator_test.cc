@@ -21,11 +21,13 @@
 #include <string>
 #include "gtest/gtest.h"
 #include "storage/table.h"
+#include "codec/row.h"
 
 namespace fesql {
 namespace storage {
 using codec::RowBuilder;
 using codec::RowView;
+using codec::Row;
 
 void BuildTableSchema(type::TableDef& table_def) {  // NOLINT
     ::fesql::type::ColumnDef* col = table_def.add_columns();

@@ -15,38 +15,12 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include "codec/type_codec.h"
-#include "glog/logging.h"
 #include "base/slice.h"
 #include "codec/row.h"
+#include "codec/type_codec.h"
+#include "glog/logging.h"
 namespace fesql {
 namespace codec {
-using fesql::base::Slice;
-
-inline int Row::compare(const Row &b) const {
-    int r = slice_.compare(b.slice_);
-    if (r != 0) {
-        return r;
-    }
-    size_t this_len = slices_.size();
-    size_t b_len = b.slices_.size();
-    size_t min_len = this_len < b_len ? this_len : b_len;
-    for (size_t i = 0; i < min_len; i++) {
-        int slice_compared = slices_[i].compare(b.slices_[i]);
-        if (0 == slice_compared) {
-            continue;
-        }
-        return slice_compared;
-    }
-
-    return this_len < b_len ? -1 : this_len > b_len ? +1 : 0;
-}
-
-inline bool operator==(const Row &x, const Row &y) {
-    return x.slice_ == y.slice_ && x.slices_ == y.slices_;
-}
-
-inline bool operator!=(const Row &x, const Row &y) { return !(x == y); }
 
 template <class V>
 class ArrayListIterator;
@@ -107,13 +81,16 @@ class WrapListImpl : public ListV<V> {
 template <class V>
 class ColumnImpl : public WrapListImpl<V, Row> {
  public:
-    ColumnImpl(ListV<Row> *impl, uint32_t offset)
-        : WrapListImpl<V, Row>(), root_(impl), offset_(offset) {}
+    ColumnImpl(ListV<Row> *impl, int32_t row_idx, uint32_t offset)
+        : WrapListImpl<V, Row>(),
+          root_(impl),
+          row_idx_(row_idx),
+          offset_(offset) {}
 
     ~ColumnImpl() {}
     const V GetField(Row row) const override {
         V value;
-        const int8_t *ptr = row.buf() + offset_;
+        const int8_t *ptr = row.buf(row_idx_) + offset_;
         value = *((const V *)ptr);
         return value;
     }
@@ -132,26 +109,28 @@ class ColumnImpl : public WrapListImpl<V, Row> {
     const uint64_t GetCount() override { return root_->GetCount(); }
     V At(uint64_t pos) override { return GetField(root_->At(pos)); }
 
- private:
+ protected:
     ListV<Row> *root_;
+    const uint32_t row_idx_;
     const uint32_t offset_;
 };
 
 class StringColumnImpl : public ColumnImpl<StringRef> {
  public:
-    StringColumnImpl(ListV<Row> *impl, int32_t str_field_offset,
-                     int32_t next_str_field_offset, int32_t str_start_offset)
-        : ColumnImpl<StringRef>(impl, 0u),
+    StringColumnImpl(ListV<Row> *impl, int32_t row_idx,
+                     int32_t str_field_offset, int32_t next_str_field_offset,
+                     int32_t str_start_offset)
+        : ColumnImpl<StringRef>(impl, row_idx, 0u),
           str_field_offset_(str_field_offset),
           next_str_field_offset_(next_str_field_offset),
           str_start_offset_(str_start_offset) {}
 
     ~StringColumnImpl() {}
     const StringRef GetField(Row row) const override {
-        int32_t addr_space = v1::GetAddrSpace(row.size());
+        int32_t addr_space = v1::GetAddrSpace(row.size(row_idx_));
         StringRef value;
-        v1::GetStrField(row.buf(), str_field_offset_, next_str_field_offset_,
-                        str_start_offset_, addr_space,
+        v1::GetStrField(row.buf(row_idx_), str_field_offset_,
+                        next_str_field_offset_, str_start_offset_, addr_space,
                         reinterpret_cast<int8_t **>(&(value.data)),
                         &(value.size));
         return value;

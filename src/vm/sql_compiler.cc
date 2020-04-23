@@ -27,8 +27,8 @@
 #include "parser/parser.h"
 #include "plan/planner.h"
 #include "udf/udf.h"
-#include "vm/transform.h"
 #include "vm/runner.h"
+#include "vm/transform.h"
 
 namespace fesql {
 namespace vm {
@@ -176,7 +176,6 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         return false;
     }
 
-
     m->print(::llvm::errs(), NULL);
     if (keep_ir_) {
         KeepIR(ctx, m.get());
@@ -246,18 +245,22 @@ bool SQLCompiler::ResolvePlanFnAddress(PhysicalOpNode* node,
         }
     }
 
-    if (!node->GetFnName().empty()) {
-        ::llvm::Expected<::llvm::JITEvaluatedSymbol> symbol(
-            jit->lookup(node->GetFnName()));
-        if (symbol.takeError()) {
-            LOG(WARNING) << "fail to resolve fn address " << node->GetFnName()
-                         << " not found in jit";
+    if (!node->GetFnInfos().empty()) {
+        for (auto info_ptr : node->GetFnInfos()) {
+            if (!info_ptr->fn_name_.empty()) {
+                ::llvm::Expected<::llvm::JITEvaluatedSymbol> symbol(
+                    jit->lookup(info_ptr->fn_name_));
+                if (symbol.takeError()) {
+                    LOG(WARNING) << "fail to resolve fn address "
+                                 << info_ptr->fn_name_ << " not found in jit";
+                }
+                info_ptr->fn_ =
+                    (reinterpret_cast<int8_t*>(symbol->getAddress()));
+            }
         }
-        node->SetFn(reinterpret_cast<int8_t*>(symbol->getAddress()));
     }
     return true;
 }
-
 
 }  // namespace vm
 }  // namespace fesql

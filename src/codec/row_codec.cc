@@ -563,6 +563,72 @@ int32_t RowView::GetValue(const int8_t* row, uint32_t idx,
     }
     return 0;
 }
+std::string RowView::GetAsString(uint32_t idx) {
+    if (schema_.size() == 0) {
+        return "NA";
+    }
+    if ((int32_t)idx >= schema_.size()) {
+        LOG(WARNING) << "idx out of index";
+        return "NA";
+    }
+
+    if (IsNULL(idx)) {
+        return "NULL";
+    }
+    const ::fesql::type::ColumnDef& column = schema_.Get(idx);
+    switch (column.type()) {
+        case fesql::type::kInt32: {
+            int32_t value;
+            if (0 == GetInt32(idx, &value)) {
+                return std::to_string(value);
+            }
+            break;
+        }
+        case fesql::type::kInt64: {
+            int64_t value;
+            if (0 == GetInt64(idx, &value)) {
+                return std::to_string(value);
+            }
+            break;
+        }
+        case fesql::type::kInt16: {
+            int16_t value;
+            if (0 == GetInt16(idx, &value)) {
+                return std::to_string(value);
+            }
+            break;
+        }
+        case fesql::type::kFloat: {
+            float value;
+            if (0 == GetFloat(idx, &value)) {
+                return std::to_string(value);
+            }
+            break;
+        }
+        case fesql::type::kDouble: {
+            double value;
+            if (0 == GetDouble(idx, &value)) {
+                return std::to_string(value);
+            }
+            break;
+        }
+        case fesql::type::kVarchar: {
+            char* str = nullptr;
+            uint32_t str_size;
+            if (0 == GetString(idx, &str, &str_size)) {
+                return std::string(str, str_size);
+            }
+            break;
+        }
+        default: {
+            LOG(WARNING) << "fail to get string for "
+                            "current row";
+            break;
+        }
+    }
+
+    return "NA";
+}
 
 int32_t RowView::GetValue(const int8_t* row, uint32_t idx, char** val,
                           uint32_t* length) {

@@ -119,6 +119,7 @@ void PhysicalProjectNode::Print(std::ostream& output,
     PrintChildren(output, tab);
 }
 bool PhysicalProjectNode::InitSchema() {
+    output_name_schema_list_.push_back(std::make_pair("", &output_schema_));
     PrintSchema();
     return true;
 }
@@ -152,17 +153,12 @@ void PhysicalWindowAggrerationNode::Print(std::ostream& output,
     PrintChildren(output, tab);
 }
 
-void PhysicalLoopsNode::Print(std::ostream& output,
-                              const std::string& tab) const {
-    PhysicalOpNode::Print(output, tab);
-    output << "\n";
-    PrintChildren(output, tab);
-}
 void PhysicalJoinNode::Print(std::ostream& output,
                              const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "(type=" << node::JoinTypeName(join_type_)
-           << ", condition=" << node::ExprString(condition_);
+           << ", condition=" << node::ExprString(condition_)
+           << ", key=" << node::ExprString(left_keys_);
     if (limit_cnt_ > 0) {
         output << ", limit=" << limit_cnt_;
     }
@@ -248,7 +244,7 @@ bool PhysicalDataProviderNode::InitSchema() {
 void PhysicalOpNode::PrintSchema() {
     std::stringstream ss;
     ss << PhysicalOpTypeName(type_) << " output name schema list: \n";
-    for (auto pair : output_name_schema_list_) {
+    for (auto pair : GetOutputNameSchemaList()) {
         ss << "pair table: " << pair.first << "\n";
         for (int32_t i = 0; i < pair.second->size(); i++) {
             if (i > 0) {

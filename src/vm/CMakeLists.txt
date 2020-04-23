@@ -2,7 +2,7 @@ include_directories(${INCLUDE_DIRECTORIES}
         ${PROJECT_SOURCE_DIR}/src
         ${PROJECT_BINARY_DIR}/src)
 
-add_library(fesql_vm STATIC jit.cc jit_wrapper.cc runner.cc sql_compiler.cc engine.cc mem_catalog.cc transform.cc physical_op.cc)
+add_library(fesql_vm STATIC jit.cc jit_wrapper.cc runner.cc sql_compiler.cc engine.cc core_api.cc mem_catalog.cc schemas_context.cc transform.cc physical_op.cc)
 
 add_library(fesql_csv_catalog STATIC csv_catalog.cc csv_table_iterator.cc
         csv_window_iterator.cc)
@@ -22,6 +22,11 @@ add_executable(simple_catalog_test simple_catalog_test.cc)
 target_link_libraries(simple_catalog_test fesql_simple_catalog ${vm_deps_libs} protobuf ${llvm_libs} ${COMMON_LIBS} gtest pthread)
 add_test(simple_catalog_test simple_catalog_test --gtest_output=xml:${CMAKE_BINARY_DIR}/simple_catalog_test.xml)
 list(APPEND test_list simple_catalog_test)
+
+add_executable(schemas_context_test schemas_context_test.cc)
+target_link_libraries(schemas_context_test ${vm_deps_libs} protobuf ${llvm_libs} ${COMMON_LIBS} gtest pthread)
+add_test(schemas_context_test schemas_context_test --gtest_output=xml:${CMAKE_BINARY_DIR}/schemas_context_test.xml)
+list(APPEND test_list schemas_context_test)
 
 add_executable(mem_catalog_test mem_catalog_test.cc)
 target_link_libraries(mem_catalog_test ${vm_deps_libs} protobuf ${llvm_libs} ${COMMON_LIBS} gtest pthread)

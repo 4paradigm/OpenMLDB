@@ -28,11 +28,11 @@
 namespace fesql {
 namespace tablet {
 
+using codec::Row;
 using vm::PartitionHandler;
 using vm::RowIterator;
 using vm::TableHandler;
 using vm::WindowIterator;
-using codec::Row;
 
 class TabletPartitionHandler;
 class TabletTableHandler;
@@ -62,12 +62,14 @@ class TabletSegmentHandler : public TableHandler {
     }
 
     std::unique_ptr<vm::RowIterator> GetIterator() const;
-    vm::IteratorV<uint64_t, Row>* GetIterator(
-        int8_t* addr) const override;
+    vm::IteratorV<uint64_t, Row>* GetIterator(int8_t* addr) const override;
     std::unique_ptr<vm::WindowIterator> GetWindowIterator(
         const std::string& idx_name);
     virtual const uint64_t GetCount();
     Row At(uint64_t pos) override;
+    const std::string GetHandlerTypeName() override {
+        return "TabletSegmentHandler";
+    }
 
  private:
     std::shared_ptr<vm::PartitionHandler> partition_hander_;
@@ -108,6 +110,9 @@ class TabletPartitionHandler : public PartitionHandler {
         return std::shared_ptr<TabletSegmentHandler>(
             new TabletSegmentHandler(partition_hander, key));
     }
+    const std::string GetHandlerTypeName() override {
+        return "TabletPartitionHandler";
+    }
 
  private:
     std::shared_ptr<TableHandler> table_handler_;
@@ -140,8 +145,7 @@ class TabletTableHandler : public vm::TableHandler {
     inline std::shared_ptr<storage::Table> GetTable() { return table_; }
 
     std::unique_ptr<RowIterator> GetIterator() const;
-    vm::IteratorV<uint64_t, Row>* GetIterator(
-        int8_t* addr) const override;
+    vm::IteratorV<uint64_t, Row>* GetIterator(int8_t* addr) const override;
     std::unique_ptr<WindowIterator> GetWindowIterator(
         const std::string& idx_name);
     virtual const uint64_t GetCount();
@@ -164,6 +168,9 @@ class TabletTableHandler : public vm::TableHandler {
         }
         return std::shared_ptr<TabletPartitionHandler>(
             new TabletPartitionHandler(table_hander, index_name));
+    }
+    const std::string GetHandlerTypeName() override {
+        return "TabletTableHandler";
     }
 
  private:

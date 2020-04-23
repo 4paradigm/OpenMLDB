@@ -20,7 +20,7 @@
 #include <string>
 #include <utility>
 #include "base/hash.h"
-#include "codec/row_codec.h"
+#include "codec/row.h"
 
 namespace fesql {
 namespace storage {
