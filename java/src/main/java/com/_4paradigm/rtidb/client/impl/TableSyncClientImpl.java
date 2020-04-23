@@ -504,6 +504,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         builder.setPid(pid);
         builder.setKey(key);
         builder.setTs(time);
+        builder.setEt(getOption.getEt());
         boolean isNewFormat = false;
         if (th.getFormatVersion() == 1 ) {
             if (getOption.getProjection().size() > 0) {

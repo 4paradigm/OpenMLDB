@@ -36,7 +36,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class TableSyncClientTest extends TestCaseBase {
-    private static AtomicInteger id = new AtomicInteger(10000);
+    private static AtomicInteger id = new AtomicInteger(90000);
     private static String[] nodes = Config.NODES;
 
     @BeforeClass
