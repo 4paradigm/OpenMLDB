@@ -5802,11 +5802,7 @@ void HandleClientSGet(const std::vector<std::string>& parts,
     } else {
         std::vector<::rtidb::base::ColumnDesc> columns_tmp;
         for (int i = 0;
-<<<<<<< HEAD
-             i < (int)(raw.size() - table_meta.added_column_desc_size());i++) {  // NOLINT
-=======
              i < (int)(raw.size() - table_meta.added_column_desc_size()); i++) {  // NOLINT
->>>>>>> origin/develop
             columns_tmp.push_back(raw.at(i));
         }
         ::rtidb::base::FillTableRow(raw.size(), columns_tmp, value.c_str(),
@@ -5950,12 +5946,8 @@ void HandleClientSScan(const std::vector<std::string>& parts,
         } else {
             std::vector<::rtidb::base::ColumnDesc> columns_tmp;
             for (int i = 0;
-<<<<<<< HEAD
-                 i < (int)(raw.size() - table_meta.added_column_desc_size());  // NOLINT
-=======
                  i < (int)(raw.size() - // NOLINT
                            table_meta.added_column_desc_size());  // NOLINT
->>>>>>> origin/develop
                  i++) {
                 columns_tmp.push_back(raw.at(i));
             }
