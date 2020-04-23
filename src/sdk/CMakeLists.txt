@@ -44,7 +44,7 @@ swig_add_library(fesql_pysdk
         OUTPUT_DIR ${CMAKE_BINARY_DIR}/python/fesql/
         SOURCES fesql_interface.i)
 target_include_directories(fesql_pysdk PRIVATE ${PYTHON_INCLUDE_DIRS})
-target_link_libraries(fesql_pysdk PRIVATE fesql_sdk fesql_vm ${vm_deps_libs} fesql_simple_catalog fesql_codegen fesql_udf ${llvm_libs} ${COMMON_LIBS})
+target_link_libraries(fesql_pysdk PRIVATE fesql_sdk fesql_vm ${vm_deps_libs} fesql_simple_catalog fesql_codegen fesql_udf fesql_base ${llvm_libs} ${COMMON_LIBS})
 
 
 set_property(SOURCE fesql_interface.i PROPERTY COMPILE_OPTIONS -package com._4paradigm)
@@ -54,7 +54,7 @@ swig_add_library(fesql_jsdk
         OUTPUT_DIR ${PROJECT_SOURCE_DIR}/java/fesql-native/src/main/java/com/_4paradigm/
         SOURCES fesql_interface.i)
 target_include_directories(fesql_jsdk PRIVATE ${JNI_INCLUDE_DIRS})
-target_link_libraries(fesql_jsdk PRIVATE fesql_sdk fesql_vm ${vm_deps_libs} fesql_simple_catalog fesql_codegen fesql_udf ${llvm_libs} ${COMMON_LIBS})
+target_link_libraries(fesql_jsdk PRIVATE fesql_sdk fesql_vm ${vm_deps_libs} fesql_simple_catalog fesql_codegen fesql_udf fesql_base ${llvm_libs} ${COMMON_LIBS})
 
 if(APPLE)
   set_target_properties(fesql_jsdk PROPERTIES
