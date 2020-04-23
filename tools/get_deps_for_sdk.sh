@@ -434,3 +434,20 @@ else
     cd ${DEPS_SOURCE}
     touch arrow_succ
 fi
+
+if [ -f "yaml_succ" ]
+then
+    echo "yaml-cpp installed"
+else
+    if [ -f "yaml-cpp-0.6.3.tar.gz" ]
+    then
+        echo "yaml-cpp-0.6.3.tar.gz downloaded"
+    else
+        wget --no-check-certificate -O yaml-cpp-0.6.3.tar.gz https://github.com/jbeder/yaml-cpp/archive/yaml-cpp-0.6.3.tar.gz
+    fi
+    git clone https://github.com/jbeder/yaml-cpp.git
+    cd yaml-cpp && mkdir -p build && cd build
+    cmake -DCMAKE_INSTALL_PREFIX=${DEPS_PREFIX} ..
+    make && make install
+    touch yaml_succ
+fi

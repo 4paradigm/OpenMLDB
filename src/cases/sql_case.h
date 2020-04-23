@@ -12,6 +12,7 @@
 #include <parser/parser.h>
 #include <vm/catalog.h>
 #include <string>
+#include "codec/row_codec.h"
 #include "proto/type.pb.h"
 namespace fesql {
 namespace cases {
@@ -19,16 +20,33 @@ class SQLCaseBuilder;
 
 class SQLCase {
  public:
-    bool TypeParse(const std::string& type_str, fesql::type::Type *type);
+    SQLCase() {}
+    virtual ~SQLCase() {}
     // extract schema from schema string
     // name:type|name:type|name:type|
-    bool ExtractSchema(type::TableDef& table);  // NOLINT
+    bool ExtractDataSchema(type::TableDef& table);                // NOLINT
+    bool ExtractExpSchema(type::TableDef& table);                 // NOLINT
+    bool ExtractData(std::vector<fesql::codec::Row>& rows);       // NOLINT
+    bool ExtractExpResult(std::vector<fesql::codec::Row>& rows);  // NOLINT
+
+    static bool TypeParse(const std::string& row_str, fesql::type::Type* type);
+    static bool ExtractSchema(const std::string& schema_str,
+                              type::TableDef& table);  // NOLINT
+    static bool ExtractRows(const vm::Schema& schema,
+                            const std::string& data_str,
+                            std::vector<fesql::codec::Row>& rows);  // NOLINT
+    static bool ExtractRow(const vm::Schema& schema, const std::string& row_str,
+                           int8_t** out_ptr, int32_t* out_size);
     std::string sql_str_;
     std::string table_name_;
-    std::string schema_str_;
-    std::string input_str_;
+    std::string data_schema_str_;
+    std::string data_str;
+    std::string expect_schema_str_;
     std::string expect_str_;
     friend SQLCaseBuilder;
+
+ private:
+    type::TableDef table_;
 
  private:
 };

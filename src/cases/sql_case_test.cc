@@ -8,6 +8,7 @@
  **/
 
 #include "cases/sql_case.h"
+#include <vector>
 #include "gtest/gtest.h"
 namespace fesql {
 namespace cases {
@@ -57,63 +58,404 @@ TEST_F(SQLCaseTest, ExtractSchemaTest) {
     }
 
     {
-        SQLCase sql_case;
-        sql_case.schema_str_ =
+        const std::string schema_str =
             "col0:string, col1:int32, col2:int16, col3:float, col4:double, "
             "col5:int64, col6:string";
         type::TableDef output_table;
-        sql_case.ExtractSchema(output_table);
+        ASSERT_TRUE(SQLCase::ExtractSchema(schema_str, output_table));
         output_table.set_name(table.name());
         output_table.set_catalog(table.catalog());
         ASSERT_EQ(table.DebugString(), output_table.DebugString());
     }
     {
-        SQLCase sql_case;
-        sql_case.schema_str_ =
+        const std::string schema_str =
             "col0:string, col1:int, col2:smallint, col3:float, col4:double, "
             "col5:bigint, col6:string";
         type::TableDef output_table;
-        sql_case.ExtractSchema(output_table);
+        ASSERT_TRUE(SQLCase::ExtractSchema(schema_str, output_table));
         output_table.set_name(table.name());
         output_table.set_catalog(table.catalog());
         ASSERT_EQ(table.DebugString(), output_table.DebugString());
     }
     {
-        SQLCase sql_case;
-        sql_case.schema_str_ =
-            "col0:string, col1:i32, col2:i16, col3:float, col4:double, "
-            "col5:i64, col6:string";
+        const std::string schema_str =
+            "col0:string\ncol1:i32\ncol2:i16\ncol3:float\ncol4:double\n"
+            "col5:i64\ncol6:varchar";
         type::TableDef output_table;
-        sql_case.ExtractSchema(output_table);
+        ASSERT_TRUE(SQLCase::ExtractSchema(schema_str, output_table));
         output_table.set_name(table.name());
         output_table.set_catalog(table.catalog());
         ASSERT_EQ(table.DebugString(), output_table.DebugString());
+    }
+
+    type::TableDef table2;
+    table2.set_name("t1");
+    table2.set_catalog("db");
+    {
+        ::fesql::type::ColumnDef* column = table2.add_columns();
+        column->set_type(::fesql::type::kVarchar);
+        column->set_name("col0");
+    }
+    {
+        ::fesql::type::ColumnDef* column = table2.add_columns();
+        column->set_type(::fesql::type::kInt32);
+        column->set_name("col1");
+    }
+    {
+        ::fesql::type::ColumnDef* column = table2.add_columns();
+        column->set_type(::fesql::type::kTimestamp);
+        column->set_name("coltime");
+    }
+
+    // column with timestamp
+    {
+        const std::string schema_str =
+            "col0:string, col1:int32, coltime:timestamp";
+        type::TableDef output_table;
+        output_table.set_name(table2.name());
+        output_table.set_catalog(table2.catalog());
+        ASSERT_TRUE(SQLCase::ExtractSchema(schema_str, output_table));
+        ASSERT_EQ(table2.DebugString(), output_table.DebugString());
     }
 
     // Invalid Type
     {
-        SQLCase sql_case;
-        sql_case.schema_str_ =
-            "col0:str, col1:long";
+        const std::string schema_str = "col0:str, col1:long";
         type::TableDef output_table;
-        ASSERT_FALSE(sql_case.ExtractSchema(output_table));
+        ASSERT_FALSE(SQLCase::ExtractSchema(schema_str, output_table));
     }
 
     {
-        SQLCase sql_case;
-        sql_case.schema_str_ =
-            "col0:integer, col1:int32";
+        const std::string schema_str = "col0:integer, col1:int32";
         type::TableDef output_table;
-        ASSERT_FALSE(sql_case.ExtractSchema(output_table));
+        ASSERT_FALSE(SQLCase::ExtractSchema(schema_str, output_table));
     }
 
-    //InValid Column
+    // InValid Column
     {
-        SQLCase sql_case;
-        sql_case.schema_str_ =
-            "col0:str, col1:int32,,";
+        const std::string schema_str = "col0:str, col1:int32,,";
         type::TableDef output_table;
-        ASSERT_FALSE(sql_case.ExtractSchema(output_table));
+        ASSERT_FALSE(SQLCase::ExtractSchema(schema_str, output_table));
+    }
+}
+
+TEST_F(SQLCaseTest, ExtractDataTest) {
+    {
+        std::string data_schema_str =
+            "col0:string, col1:int32, col2:int16, col3:float, col4:double, "
+            "col5:int64, col6:string";
+        std::string data_str =
+            "0, 1, 5, 1.1, 11.1, 1, 1\n"
+            "0, 2, 5, 2.2, 22.2, 2, 22\n"
+            "0, 3, 55, 3.3, 33.3, 1, 333\n"
+            "0, 4, 55, 4.4, 44.4, 2, 4444\n"
+            "0, 5, 55, 5.5, 55.5, 3, "
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            "a";
+        type::TableDef output_table;
+        ASSERT_TRUE(SQLCase::ExtractSchema(data_schema_str, output_table));
+        std::vector<fesql::codec::Row> rows;
+        ASSERT_TRUE(
+            SQLCase::ExtractRows(output_table.columns(), data_str, rows));
+        ASSERT_EQ(5, rows.size());
+        fesql::codec::RowView row_view(output_table.columns());
+
+        {
+            row_view.Reset(rows[0].buf());
+            ASSERT_EQ("0", row_view.GetAsString(0));
+            ASSERT_EQ(1, row_view.GetInt32Unsafe(1));
+            ASSERT_EQ(5, row_view.GetInt16Unsafe(2));
+            ASSERT_EQ(1.1f, row_view.GetFloatUnsafe(3));
+            ASSERT_EQ(11.1, row_view.GetDoubleUnsafe(4));
+            ASSERT_EQ(1L, row_view.GetInt64Unsafe(5));
+            ASSERT_EQ("1", row_view.GetStringUnsafe(6));
+        }
+        {
+            row_view.Reset(rows[1].buf());
+            ASSERT_EQ("0", row_view.GetAsString(0));
+            ASSERT_EQ(2, row_view.GetInt32Unsafe(1));
+            ASSERT_EQ(5, row_view.GetInt16Unsafe(2));
+            ASSERT_EQ(2.2f, row_view.GetFloatUnsafe(3));
+            ASSERT_EQ(22.2, row_view.GetDoubleUnsafe(4));
+            ASSERT_EQ(2L, row_view.GetInt64Unsafe(5));
+            ASSERT_EQ("22", row_view.GetStringUnsafe(6));
+        }
+        {
+            row_view.Reset(rows[2].buf());
+            ASSERT_EQ("0", row_view.GetAsString(0));
+            ASSERT_EQ(3, row_view.GetInt32Unsafe(1));
+            ASSERT_EQ(55, row_view.GetInt16Unsafe(2));
+            ASSERT_EQ(3.3f, row_view.GetFloatUnsafe(3));
+            ASSERT_EQ(33.3, row_view.GetDoubleUnsafe(4));
+            ASSERT_EQ(1L, row_view.GetInt64Unsafe(5));
+            ASSERT_EQ("333", row_view.GetStringUnsafe(6));
+        }
+        {
+            row_view.Reset(rows[3].buf());
+            ASSERT_EQ("0", row_view.GetAsString(0));
+            ASSERT_EQ(4, row_view.GetInt32Unsafe(1));
+            ASSERT_EQ(55, row_view.GetInt16Unsafe(2));
+            ASSERT_EQ(4.4f, row_view.GetFloatUnsafe(3));
+            ASSERT_EQ(44.4, row_view.GetDoubleUnsafe(4));
+            ASSERT_EQ(2L, row_view.GetInt64Unsafe(5));
+            ASSERT_EQ("4444", row_view.GetStringUnsafe(6));
+        }
+        {
+            row_view.Reset(rows[4].buf());
+            ASSERT_EQ("0", row_view.GetAsString(0));
+            ASSERT_EQ(5, row_view.GetInt32Unsafe(1));
+            ASSERT_EQ(55, row_view.GetInt16Unsafe(2));
+            ASSERT_EQ(5.5f, row_view.GetFloatUnsafe(3));
+            ASSERT_EQ(55.5, row_view.GetDoubleUnsafe(4));
+            ASSERT_EQ(3L, row_view.GetInt64Unsafe(5));
+            ASSERT_EQ(
+                "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                "aaaa",
+                row_view.GetStringUnsafe(6));
+        }
+    }
+}
+
+TEST_F(SQLCaseTest, ExtractRowTest) {
+    {
+        const std::string schema_str =
+            "col0:string, col1:int32, col2:int16, col3:float, col4:double, "
+            "col5:int64, col6:string, col7:timestamp";
+
+        std::string row_str = "0, 1, 5, 1.1, 11.1, 1, 1, 1587647803000\n";
+        type::TableDef output_table;
+        ASSERT_TRUE(SQLCase::ExtractSchema(schema_str, output_table));
+        std::vector<fesql::codec::Row> rows;
+        int8_t* row_ptr = nullptr;
+        int32_t row_size = 0;
+        ASSERT_TRUE(SQLCase::ExtractRow(output_table.columns(), row_str,
+                                        &row_ptr, &row_size));
+        fesql::codec::RowView row_view(output_table.columns());
+
+        {
+            row_view.Reset(row_ptr);
+            ASSERT_EQ("0", row_view.GetAsString(0));
+            ASSERT_EQ(1, row_view.GetInt32Unsafe(1));
+            ASSERT_EQ(5, row_view.GetInt16Unsafe(2));
+            ASSERT_EQ(1.1f, row_view.GetFloatUnsafe(3));
+            ASSERT_EQ(11.1, row_view.GetDoubleUnsafe(4));
+            ASSERT_EQ(1L, row_view.GetInt64Unsafe(5));
+            ASSERT_EQ("1", row_view.GetStringUnsafe(6));
+            ASSERT_EQ(1587647803000, row_view.GetTimestampUnsafe(7));
+        }
+    }
+}
+
+TEST_F(SQLCaseTest, ExtractSQLCase) {
+    SQLCase sql_case;
+    sql_case.data_schema_str_ =
+        "col0:string, col1:int32, col2:int16, col3:float, col4:double, "
+        "col5:int64, col6:string";
+    sql_case.data_str =
+        "0, 1, 5, 1.1, 11.1, 1, 1\n"
+        "0, 2, 5, 2.2, 22.2, 2, 22\n"
+        "0, 3, 55, 3.3, 33.3, 1, 333\n"
+        "0, 4, 55, 4.4, 44.4, 2, 4444\n"
+        "0, 5, 55, 5.5, 55.5, 3, "
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        "a";
+    sql_case.expect_schema_str_ =
+        "f0:string, f1:float, f2:double, f3:int16, f4:int32, f5:int64, "
+        "f6:timestamp";
+    sql_case.expect_str_ =
+        "A, 1.1, 2.2, 3, 4, 5, 1587647803000\n"
+        "BB, 11.1, 22.2, 30, 40, 50, 1587647804000";
+
+    // Check Data Schema
+    {
+        type::TableDef output_table;
+        ASSERT_TRUE(sql_case.ExtractDataSchema(output_table));
+        type::TableDef table;
+        table.set_name("t1");
+        table.set_catalog("db");
+        {
+            ::fesql::type::ColumnDef* column = table.add_columns();
+            column->set_type(::fesql::type::kVarchar);
+            column->set_name("col0");
+        }
+        {
+            ::fesql::type::ColumnDef* column = table.add_columns();
+            column->set_type(::fesql::type::kInt32);
+            column->set_name("col1");
+        }
+        {
+            ::fesql::type::ColumnDef* column = table.add_columns();
+            column->set_type(::fesql::type::kInt16);
+            column->set_name("col2");
+        }
+        {
+            ::fesql::type::ColumnDef* column = table.add_columns();
+            column->set_type(::fesql::type::kFloat);
+            column->set_name("col3");
+        }
+        {
+            ::fesql::type::ColumnDef* column = table.add_columns();
+            column->set_type(::fesql::type::kDouble);
+            column->set_name("col4");
+        }
+
+        {
+            ::fesql::type::ColumnDef* column = table.add_columns();
+            column->set_type(::fesql::type::kInt64);
+            column->set_name("col5");
+        }
+
+        {
+            ::fesql::type::ColumnDef* column = table.add_columns();
+            column->set_type(::fesql::type::kVarchar);
+            column->set_name("col6");
+        }
+        output_table.set_name(table.name());
+        output_table.set_catalog(table.catalog());
+        ASSERT_EQ(table.DebugString(), output_table.DebugString());
+    }
+
+    // Check Data
+    {
+        type::TableDef output_table;
+        std::vector<fesql::codec::Row> rows;
+        ASSERT_TRUE(sql_case.ExtractData(rows));
+        ASSERT_EQ(5, rows.size());
+        sql_case.ExtractDataSchema(output_table);
+        fesql::codec::RowView row_view(output_table.columns());
+
+        {
+            row_view.Reset(rows[0].buf());
+            ASSERT_EQ("0", row_view.GetAsString(0));
+            ASSERT_EQ(1, row_view.GetInt32Unsafe(1));
+            ASSERT_EQ(5, row_view.GetInt16Unsafe(2));
+            ASSERT_EQ(1.1f, row_view.GetFloatUnsafe(3));
+            ASSERT_EQ(11.1, row_view.GetDoubleUnsafe(4));
+            ASSERT_EQ(1L, row_view.GetInt64Unsafe(5));
+            ASSERT_EQ("1", row_view.GetStringUnsafe(6));
+        }
+        {
+            row_view.Reset(rows[1].buf());
+            ASSERT_EQ("0", row_view.GetAsString(0));
+            ASSERT_EQ(2, row_view.GetInt32Unsafe(1));
+            ASSERT_EQ(5, row_view.GetInt16Unsafe(2));
+            ASSERT_EQ(2.2f, row_view.GetFloatUnsafe(3));
+            ASSERT_EQ(22.2, row_view.GetDoubleUnsafe(4));
+            ASSERT_EQ(2L, row_view.GetInt64Unsafe(5));
+            ASSERT_EQ("22", row_view.GetStringUnsafe(6));
+        }
+        {
+            row_view.Reset(rows[2].buf());
+            ASSERT_EQ("0", row_view.GetAsString(0));
+            ASSERT_EQ(3, row_view.GetInt32Unsafe(1));
+            ASSERT_EQ(55, row_view.GetInt16Unsafe(2));
+            ASSERT_EQ(3.3f, row_view.GetFloatUnsafe(3));
+            ASSERT_EQ(33.3, row_view.GetDoubleUnsafe(4));
+            ASSERT_EQ(1L, row_view.GetInt64Unsafe(5));
+            ASSERT_EQ("333", row_view.GetStringUnsafe(6));
+        }
+        {
+            row_view.Reset(rows[3].buf());
+            ASSERT_EQ("0", row_view.GetAsString(0));
+            ASSERT_EQ(4, row_view.GetInt32Unsafe(1));
+            ASSERT_EQ(55, row_view.GetInt16Unsafe(2));
+            ASSERT_EQ(4.4f, row_view.GetFloatUnsafe(3));
+            ASSERT_EQ(44.4, row_view.GetDoubleUnsafe(4));
+            ASSERT_EQ(2L, row_view.GetInt64Unsafe(5));
+            ASSERT_EQ("4444", row_view.GetStringUnsafe(6));
+        }
+        {
+            row_view.Reset(rows[4].buf());
+            ASSERT_EQ("0", row_view.GetAsString(0));
+            ASSERT_EQ(5, row_view.GetInt32Unsafe(1));
+            ASSERT_EQ(55, row_view.GetInt16Unsafe(2));
+            ASSERT_EQ(5.5f, row_view.GetFloatUnsafe(3));
+            ASSERT_EQ(55.5, row_view.GetDoubleUnsafe(4));
+            ASSERT_EQ(3L, row_view.GetInt64Unsafe(5));
+            ASSERT_EQ(
+                "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                "aaaa",
+                row_view.GetStringUnsafe(6));
+        }
+    }
+
+    // Check Data Schema
+    {
+        type::TableDef output_table;
+        ASSERT_TRUE(sql_case.ExtractExpSchema(output_table));
+        type::TableDef table;
+        table.set_name("t1");
+        table.set_catalog("db");
+        {
+            ::fesql::type::ColumnDef* column = table.add_columns();
+            column->set_type(::fesql::type::kVarchar);
+            column->set_name("f0");
+        }
+        {
+            ::fesql::type::ColumnDef* column = table.add_columns();
+            column->set_type(::fesql::type::kFloat);
+            column->set_name("f1");
+        }
+        {
+            ::fesql::type::ColumnDef* column = table.add_columns();
+            column->set_type(::fesql::type::kDouble);
+            column->set_name("f2");
+        }
+        {
+            ::fesql::type::ColumnDef* column = table.add_columns();
+            column->set_type(::fesql::type::kInt16);
+            column->set_name("f3");
+        }
+        {
+            ::fesql::type::ColumnDef* column = table.add_columns();
+            column->set_type(::fesql::type::kInt32);
+            column->set_name("f4");
+        }
+        {
+            ::fesql::type::ColumnDef* column = table.add_columns();
+            column->set_type(::fesql::type::kInt64);
+            column->set_name("f5");
+        }
+
+        {
+            ::fesql::type::ColumnDef* column = table.add_columns();
+            column->set_type(::fesql::type::kTimestamp);
+            column->set_name("f6");
+        }
+        output_table.set_name(table.name());
+        output_table.set_catalog(table.catalog());
+        ASSERT_EQ(table.DebugString(), output_table.DebugString());
+    }
+
+    // Check Data
+    {
+        type::TableDef output_table;
+        std::vector<fesql::codec::Row> rows;
+        ASSERT_TRUE(sql_case.ExtractExpResult(rows));
+        ASSERT_EQ(2, rows.size());
+        sql_case.ExtractExpSchema(output_table);
+        fesql::codec::RowView row_view(output_table.columns());
+
+        {
+            row_view.Reset(rows[0].buf());
+            ASSERT_EQ("A", row_view.GetAsString(0));
+            ASSERT_EQ(1.1f, row_view.GetFloatUnsafe(1));
+            ASSERT_EQ(2.2, row_view.GetDoubleUnsafe(2));
+            ASSERT_EQ(3, row_view.GetInt16Unsafe(3));
+            ASSERT_EQ(4, row_view.GetInt32Unsafe(4));
+            ASSERT_EQ(5L, row_view.GetInt64Unsafe(5));
+            ASSERT_EQ(1587647803000L, row_view.GetTimestampUnsafe(6));
+        }
+        {
+            row_view.Reset(rows[1].buf());
+            ASSERT_EQ("BB", row_view.GetAsString(0));
+            ASSERT_EQ(11.1f, row_view.GetFloatUnsafe(1));
+            ASSERT_EQ(22.2, row_view.GetDoubleUnsafe(2));
+            ASSERT_EQ(30, row_view.GetInt16Unsafe(3));
+            ASSERT_EQ(40, row_view.GetInt32Unsafe(4));
+            ASSERT_EQ(50L, row_view.GetInt64Unsafe(5));
+            ASSERT_EQ(1587647804000L, row_view.GetTimestampUnsafe(6));
+        }
     }
 }
 }  // namespace cases
