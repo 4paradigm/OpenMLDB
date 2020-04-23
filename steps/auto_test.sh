@@ -23,8 +23,6 @@ cd auto-test-rtidb
 git checkout ${rtidb_auto_test_branch}
 git pull
 
-ls -al
-
 #bash run-compatibility.sh -c test_1500.xml -j 1.5.0.0-RELEASE -s 1500 -u 1510 -r /home/rtidb/rtidb
 #-c 执行的suite_xml,决定了跑哪些case 默认为test_1500.xml
 #-j java_client的版本号 默认为1.5.0.0-RELEASE
@@ -32,11 +30,11 @@ ls -al
 #-s 服务端的环境，默认为1500，为1.5.0.0版本
 #-u 升级到的版本，无默认值，进行升级测试时必须传此参数
 
-#sh run-compatibility.sh cicd.xml -c ${test_case_xml} -j $rtidb_version -s ${server_env} -r $rtidb_path -u ${upgrade_version}
-#
-#code=$?
-#cd $ROOT_DIR
-#cd onebox && sh stop_all.sh
-#cd $ROOT_DIR
-#cd thirdsrc/zookeeper-3.4.10 && ./bin/zkServer.sh stop
-#exit $code
+sh run-compatibility.sh cicd.xml -c ${test_case_xml} -j $rtidb_version -s ${server_env} -r $rtidb_path -u ${upgrade_version}
+
+code=$?
+cd $ROOT_DIR
+cd onebox && sh stop_all.sh
+cd $ROOT_DIR
+cd thirdsrc/zookeeper-3.4.10 && ./bin/zkServer.sh stop
+exit $code
