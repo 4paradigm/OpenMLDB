@@ -63,19 +63,19 @@ namespace std {
 
 
 %{
-#include "sdk/base.h"
-#include "sdk/result_set.h"
-#include "sdk/dbms_sdk.h"
-#include "sdk/tablet_sdk.h"
 #include "node/plan_node.h"
 #include "node/sql_node.h"
-#include "vm/engine.h"
+#include "sdk/base.h"
+#include "sdk/dbms_sdk.h"
+#include "sdk/result_set.h"
+#include "sdk/tablet_sdk.h"
 #include "vm/catalog.h"
-#include "vm/simple_catalog.h"
-#include "vm/physical_op.h"
+#include "vm/engine.h"
 #include "vm/jit_wrapper.h"
+#include "vm/physical_op.h"
+#include "vm/simple_catalog.h"
 
-using namespace fesql;
+    using namespace fesql;
 using fesql::sdk::Schema;
 using fesql::sdk::ResultSet;
 using fesql::sdk::Table;
@@ -124,4 +124,4 @@ using fesql::node::PlanType;
 %include "vm/engine.h"
 %include "vm/physical_op.h"
 %include "vm/jit_wrapper.h"
-%include "vm/runner.h"
+%include "vm/core_api.h"

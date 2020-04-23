@@ -12,6 +12,7 @@
 #include <utility>
 #include <vector>
 #include "base/texttable.h"
+#include "vm/core_api.h"
 #include "vm/mem_catalog.h"
 namespace fesql {
 namespace vm {
@@ -271,25 +272,6 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
     }
 }
 
-Row Runner::RowProject(const int8_t* fn, const Row row, const bool need_free) {
-    if (row.empty()) {
-        return Row();
-    }
-    int32_t (*udf)(int8_t**, int8_t*, int32_t*, int8_t**) =
-        (int32_t(*)(int8_t**, int8_t*, int32_t*, int8_t**))(fn);
-
-    int8_t* buf = nullptr;
-    int8_t** row_ptrs = row.GetRowPtrs();
-    int32_t* row_sizes = row.GetRowSizes();
-    uint32_t ret = udf(row_ptrs, nullptr, row_sizes, &buf);
-    if (nullptr != row_ptrs) delete[] row_ptrs;
-    if (nullptr != row_sizes) delete[] row_sizes;
-    if (ret != 0) {
-        LOG(WARNING) << "fail to run udf " << ret;
-        return Row();
-    }
-    return Row(reinterpret_cast<char*>(buf), RowView::GetSize(buf), need_free);
-}
 std::string Runner::GetColumnString(RowView* row_view, int key_idx,
                                     type::Type key_type) {
     std::string key = "NA";
@@ -396,6 +378,26 @@ bool Runner::GetColumnBool(RowView* row_view, int idx, type::Type type) {
         }
     }
     return key;
+}
+
+Row Runner::WindowProject(const int8_t* fn, const uint64_t key,
+                                 const Row row, Window* window) {
+    if (row.empty()) {
+        return row;
+    }
+    window->BufferData(key, row);
+    int32_t (*udf)(int8_t**, int8_t*, int32_t*, int8_t**) =
+    (int32_t(*)(int8_t**, int8_t*, int32_t*, int8_t**))(fn);
+    int8_t* out_buf = nullptr;
+    int8_t** row_ptrs = row.GetRowPtrs();
+    int8_t* window_ptr = reinterpret_cast<int8_t*>(window);
+    int32_t* row_sizes = row.GetRowSizes();
+    uint32_t ret = udf(row_ptrs, window_ptr, row_sizes, &out_buf);
+    if (ret != 0) {
+        LOG(WARNING) << "fail to run udf " << ret;
+        return Row();
+    }
+    return Row(reinterpret_cast<char*>(out_buf), RowView::GetSize(out_buf));
 }
 int64_t Runner::GetColumnInt64(RowView* row_view, int key_idx,
                                type::Type key_type) {
@@ -979,6 +981,7 @@ void Runner::PrintData(const vm::NameSchemaList& schema_list,
     oss << t << std::endl;
     LOG(INFO) << data->GetHandlerTypeName() << " RESULT:\n" << oss.str();
 }
+
 std::shared_ptr<DataHandler> LimitRunner::Run(RunnerContext& ctx) {
     auto input = producers_[0]->RunWithCache(ctx);
     auto fail_ptr = std::shared_ptr<DataHandler>();
@@ -1134,7 +1137,7 @@ std::shared_ptr<DataHandler> AggRunner::Run(RunnerContext& ctx) {
 }
 
 const std::string KeyGenerator::Gen(const Row& row) {
-    Row key_row = Runner::RowProject(fn_, row, true);
+    Row key_row = CoreAPI::RowProject(fn_, row, true);
     row_view_.Reset(key_row.buf());
     std::string keys = "";
     for (auto pos : idxs_) {
@@ -1148,19 +1151,19 @@ const std::string KeyGenerator::Gen(const Row& row) {
     return keys;
 }
 const int64_t OrderGenerator::Gen(const Row& row) {
-    Row order_row = Runner::RowProject(fn_, row, true);
+    Row order_row = CoreAPI::RowProject(fn_, row, true);
     row_view_.Reset(order_row.buf());
     return Runner::GetColumnInt64(&row_view_, idxs_[0],
                                   fn_schema_.Get(idxs_[0]).type());
 }
 const bool ConditionGenerator::Gen(const Row& row) {
-    Row cond_row = Runner::RowProject(fn_, row, true);
+    Row cond_row = CoreAPI::RowProject(fn_, row, true);
     row_view_.Reset(cond_row.buf());
     return Runner::GetColumnBool(&row_view_, idxs_[0],
                                  fn_schema_.Get(idxs_[0]).type());
 }
 const Row ProjectGenerator::Gen(const Row& row) {
-    return Runner::RowProject(fn_, row, false);
+    return CoreAPI::RowProject(fn_, row, false);
 }
 const Row AggGenerator::Gen(std::shared_ptr<TableHandler> table) {
     auto iter = table->GetIterator();
@@ -1185,23 +1188,9 @@ const Row AggGenerator::Gen(std::shared_ptr<TableHandler> table) {
 }
 const Row WindowGenerator::Gen(const uint64_t key, const Row row,
                                Window* window) {
-    if (row.empty()) {
-        return row;
-    }
-    window->BufferData(key, row);
-    int32_t (*udf)(int8_t**, int8_t*, int32_t*, int8_t**) =
-        (int32_t(*)(int8_t**, int8_t*, int32_t*, int8_t**))(fn_);
-    int8_t* out_buf = nullptr;
-    int8_t** row_ptrs = row.GetRowPtrs();
-    int8_t* window_ptr = reinterpret_cast<int8_t*>(window);
-    int32_t* row_sizes = row.GetRowSizes();
-    uint32_t ret = udf(row_ptrs, window_ptr, row_sizes, &out_buf);
-    if (ret != 0) {
-        LOG(WARNING) << "fail to run udf " << ret;
-        return Row();
-    }
-    return Row(reinterpret_cast<char*>(out_buf), RowView::GetSize(out_buf));
+    return Runner::WindowProject(fn_, key, row, window);
 }
+
 
 }  // namespace vm
 }  // namespace fesql

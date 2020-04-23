@@ -18,6 +18,7 @@
 #include "vm/catalog.h"
 #include "vm/mem_catalog.h"
 #include "vm/physical_op.h"
+#include "vm/core_api.h"
 
 namespace fesql {
 namespace vm {
@@ -30,16 +31,7 @@ using vm::PartitionHandler;
 using vm::Schema;
 using vm::TableHandler;
 using vm::Window;
-class RunnerContext {
- public:
-    explicit RunnerContext(const bool is_debug = false)
-        : request_(), is_debug_(is_debug), cache_() {}
-    explicit RunnerContext(const Row& request, const bool is_debug = false)
-        : request_(request), is_debug_(is_debug), cache_() {}
-    const Row request_;
-    const bool is_debug_;
-    std::map<int32_t, std::shared_ptr<DataHandler>> cache_;
-};
+
 
 class FnGenerator {
  public:
@@ -215,8 +207,8 @@ class Runner {
     static bool GetColumnBool(RowView* view, int idx, type::Type type);
     static std::string GenerateKeys(RowView* row_view, const Schema& schema,
                                     const std::vector<int>& idxs);
-    static Row RowProject(const int8_t* fn, const Row row,
-                          const bool need_free = false);
+    static Row WindowProject(const int8_t* fn, const uint64_t key,
+                             const Row row, Window* window);
     const Row RowLastJoin(const Row& left_row,
                           std::shared_ptr<TableHandler> right_table,
                           ConditionGenerator& cond_gen);  // NOLINT

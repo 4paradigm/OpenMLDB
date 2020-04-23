@@ -31,7 +31,6 @@
 #include "vm/catalog.h"
 #include "vm/mem_catalog.h"
 #include "vm/sql_compiler.h"
-
 #include "llvm-c/Target.h"
 
 namespace fesql {

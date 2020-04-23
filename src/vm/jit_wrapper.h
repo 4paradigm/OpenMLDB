@@ -21,36 +21,28 @@
 #include <memory>
 #include <string>
 #include <vector>
-
-#include "llvm/IR/Module.h"
-
 #include "base/raw_buffer.h"
 #include "base/status.h"
+#include "llvm/IR/Module.h"
+#include "vm/catalog.h"
+#include "vm/core_api.h"
 #include "vm/jit.h"
-#include "vm/runner.h"
 
 namespace fesql {
 namespace vm {
 
 typedef const int8_t* RawFunctionPtr;
 
-
 // TODO(bxq): remove dummy runner
-class DummyRunner : public Runner {
+class DummyRunner {
  public:
-    DummyRunner(): Runner(0) {}
+    DummyRunner() {}
     ~DummyRunner() {}
-    std::shared_ptr<DataHandler> Run(
-        fesql::vm::RunnerContext& ctx) override {  // NOLINT
-        return nullptr;
-    }
-
     fesql::codec::Row RunRowProject(RawFunctionPtr fn,
                                     const fesql::codec::Row row) {
-        return this->RowProject(fn, row);
+        return fesql::vm::CoreAPI::RowProject(fn, row);
     }
 };
-
 
 class FeSQLJITWrapper {
  public:
