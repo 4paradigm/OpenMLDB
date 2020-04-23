@@ -10316,7 +10316,7 @@ void NameServerImpl::DeleteIndex(RpcController* controller,
         return;
     }
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info;
-    uint32_t index_pos = 0;
+    int32_t index_pos = -1;
     std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>>
         tablet_client_map;
     {
@@ -10337,20 +10337,24 @@ void NameServerImpl::DeleteIndex(RpcController* controller,
                   request->table_name().c_str());
             return;
         }
-        bool has_index = false;
         for (int i = 0; i < table_info->column_key_size(); i++) {
             if (table_info->column_key(i).index_name() == request->idx_name()) {
                 if (table_info->column_key(i).flag() == 0) {
-                    has_index = true;
+                    index_pos = i;
                 }
-                index_pos = i;
                 break;
             }
         }
-        if (!has_index) {
+        if (index_pos < 0) {
             response->set_code(::rtidb::base::ReturnCode::kIdxNameNotFound);
             response->set_msg("index doesn't exist!");
             PDLOG(WARNING, "index[%s]  doesn't exist!",
+                  request->idx_name().c_str());
+            return;
+        } else if (index_pos == 0) {
+            response->set_code(::rtidb::base::ReturnCode::kDeleteIndexFailed);
+            response->set_msg("index is primary key");
+            PDLOG(WARNING, "index %s is primary key, cannot delete",
                   request->idx_name().c_str());
             return;
         }
@@ -10394,6 +10398,7 @@ void NameServerImpl::DeleteIndex(RpcController* controller,
             }
         }
     }
+    bool delete_failed = false;
     for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
         for (int meta_idx = 0;
              meta_idx < table_info->table_partition(idx).partition_meta_size();
@@ -10410,6 +10415,7 @@ void NameServerImpl::DeleteIndex(RpcController* controller,
                       request->table_name().c_str(),
                       table_info->table_partition(idx).pid(), endpoint.c_str(),
                       msg.c_str());
+                delete_failed = true;
             }
         }
     }
@@ -10428,10 +10434,15 @@ void NameServerImpl::DeleteIndex(RpcController* controller,
           zk_table_data_path_.c_str(), request->table_name().c_str(),
           table_value.c_str());
     NotifyTableChanged();
+    if (delete_failed) {
+        response->set_code(::rtidb::base::kDeleteIndexFailed);
+        response->set_msg("delete failed");
+    } else {
+        response->set_code(0);
+        response->set_msg("ok");
+    }
     PDLOG(INFO, "delete index : table[%s] index[%s]",
           request->table_name().c_str(), request->idx_name().c_str());
-    response->set_code(0);
-    response->set_msg("ok");
 }
 
 void NameServerImpl::AddIndex(RpcController* controller,
