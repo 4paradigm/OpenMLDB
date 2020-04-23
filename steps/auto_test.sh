@@ -37,7 +37,7 @@ git pull
 #-s 服务端的环境，默认为1500，为1.5.0.0版本
 #-u 升级到的版本，无默认值，进行升级测试时必须传此参数
 
-sh run-compatibility.sh cicd.xml -c ${test_case_xml} -j $rtidb_version -s ${server_env} -r $rtidb_path -u ${upgrade_version}
+sh run-compatibility.sh -c ${test_case_xml} -j $rtidb_version -s ${server_env} -r $rtidb_path -u ${upgrade_version}
 
 code=$?
 cd $ROOT_DIR
