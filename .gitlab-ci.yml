@@ -1,21 +1,21 @@
 image: develop-registry.4pd.io/centos6_gcc7_rtidb_build:0.0.9
 stages:
-    - build
+#    - build
     - ut
 #    - it-tablet
 #    - it-ns
 
-build_rtidb:
-    stage: build
-    script:
-        - ln -sf /usr/workdir/thirdparty thirdparty
-        - ln -sf /usr/workdir/thirdsrc thirdsrc
-        - source /root/.bashrc && bash steps/compile.sh
-        - ls -al build/bin
-    artifacts:
-        expire_in: 2h
-        paths:
-            - build/bin/rtidb
+#build_rtidb:
+#    stage: build
+#    script:
+#        - ln -sf /usr/workdir/thirdparty thirdparty
+#        - ln -sf /usr/workdir/thirdsrc thirdsrc
+#        - source /root/.bashrc && bash steps/compile.sh
+#        - ls -al build/bin
+#    artifacts:
+#        expire_in: 2h
+#        paths:
+#            - build/bin/rtidb
 
 #style_check:
 #    stage: build

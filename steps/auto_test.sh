@@ -9,7 +9,8 @@ mkdir -p java/src/main/proto/
 cp -rf src/proto/tablet.proto java/src/main/proto/
 cp -rf src/proto/name_server.proto java/src/main/proto/
 cp -rf src/proto/common.proto java/src/main/proto/
-
+echo "aaaaa"
+pwd
 ls -al build/bin
 
 cp steps/zoo.cfg thirdsrc/zookeeper-3.4.10/conf
