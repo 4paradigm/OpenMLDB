@@ -7,4 +7,5 @@ $PJ_ROOT/thirdparty/bin/protoc --cpp_out . tablet.proto
 $PJ_ROOT/thirdparty/bin/protoc --cpp_out . name_server.proto
 $PJ_ROOT/thirdparty/bin/protoc --cpp_out . client.proto
 $PJ_ROOT/thirdparty/bin/protoc --cpp_out . blob_server.proto
+$PJ_ROOT/thirdparty/bin/protoc --cpp_out . http_server.proto
 
