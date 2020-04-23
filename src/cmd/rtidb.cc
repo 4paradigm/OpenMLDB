@@ -4,21 +4,20 @@
 // Author wangtaize
 // Date 2017-03-31
 //
+#include <brpc/server.h>
 #include <fcntl.h>
 #include <sched.h>
 #include <signal.h>
-#include <unistd.h>
 #include <snappy.h>
+#include <unistd.h>
+#include <gflags/gflags.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/text_format.h>
-#include <brpc/server.h>
-#include <gflags/gflags.h>
-#include <iostream>
 #include <random>
+#include <iostream>
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
-#include "logging.h" // NOLINT
-
+#include "logging.h"  // NOLINT
 #include "base/display.h"
 #include "base/file_util.h"
 #include "base/flat_array.h"
@@ -35,9 +34,10 @@
 #include "proto/tablet.pb.h"
 #include "proto/type.pb.h"
 #include "tablet/tablet_impl.h"
-#include "timer.h" // NOLINT
-#include "tprinter.h" // NOLINT
-#include "version.h" // NOLINT
+#include "httpserver/httpserver.h"
+#include "timer.h"  // NOLINT
+#include "tprinter.h"  // NOLINT
+#include "version.h"   // NOLINT
 
 using ::baidu::common::DEBUG;
 using ::baidu::common::INFO;
@@ -241,6 +241,47 @@ void StartTablet() {
     server.RunUntilAskedToQuit();
 }
 
+void StartHttp() {
+    SetupLog();
+    ::rtidb::http::HttpImpl* http = new ::rtidb::http::HttpImpl();
+    bool ok = http->Init();
+    if (!ok) {
+        PDLOG(WARNING, "fail to init http server");
+        exit(1);
+    }
+    brpc::ServerOptions options;
+    options.num_threads = FLAGS_thread_pool_size;
+    brpc::Server server;
+    if (server.AddService(http, brpc::SERVER_DOESNT_OWN_SERVICE,
+                          "/v1/get/* => Get") != 0) {
+        PDLOG(WARNING, "fail to add service");
+        exit(1);
+    }
+    server.MaxConcurrencyOf(http, "Get") = FLAGS_get_concurrency_limit;
+    if (FLAGS_port > 0) {
+        if (server.Start(FLAGS_port, &options) != 0) {
+            PDLOG(WARNING, "Fail to start server");
+            exit(1);
+        }
+        PDLOG(INFO, "start tablet on port %d with version %d.%d.%d.%d",
+              FLAGS_port, RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
+              RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
+    } else {
+        if (server.Start(FLAGS_endpoint.c_str(), &options) != 0) {
+            PDLOG(WARNING, "Fail to start server");
+            exit(1);
+        }
+        PDLOG(INFO, "start tablet on endpoint %s with version %d.%d.%d.%d",
+              FLAGS_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
+              RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
+    }
+    std::ostringstream oss;
+    oss << RTIDB_VERSION_MAJOR << "." << RTIDB_VERSION_MEDIUM << "."
+        << RTIDB_VERSION_MINOR << "." << RTIDB_VERSION_BUG;
+    server.set_version(oss.str());
+    server.RunUntilAskedToQuit();
+}
+
 int SetDimensionData(
     const std::map<std::string, std::string>& raw_data,
     const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey>&
@@ -295,10 +336,10 @@ int SetDimensionData(
 int EncodeMultiDimensionData(
     const std::vector<std::string>& data,
     const std::vector<::rtidb::base::ColumnDesc>& columns, uint32_t pid_num,
-    std::string& value, // NOLINT
+    std::string& value,  // NOLINT
     std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>&
         dimensions,
-    std::vector<uint64_t>& ts_dimensions, int modify_times) { // NOLINT
+    std::vector<uint64_t>& ts_dimensions, int modify_times) {  // NOLINT
     if (data.size() != columns.size()) {
         return -1;
     }
@@ -358,7 +399,7 @@ int EncodeMultiDimensionData(
                 tm tm_s;
                 time_t time;
                 char buf[20] = {0};
-                strcpy(buf, date.c_str()); // NOLINT
+                strcpy(buf, date.c_str());  // NOLINT
                 char* result = strptime(buf, "%Y-%m-%d %H:%M:%S", &tm_s);
                 if (result == NULL) {
                     printf("date format is YY-MM-DD. ex: 2018-06-01\n");
@@ -402,10 +443,10 @@ int EncodeMultiDimensionData(
 int EncodeMultiDimensionData(
     const std::vector<std::string>& data,
     const std::vector<::rtidb::base::ColumnDesc>& columns, uint32_t pid_num,
-    std::string& value, // NOLINT
+    std::string& value,  // NOLINT
     std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>&
         dimensions,
-    std::vector<uint64_t>& ts_dimensions) { // NOLINT
+    std::vector<uint64_t>& ts_dimensions) {  // NOLINT
     return EncodeMultiDimensionData(data, columns, pid_num, value, dimensions,
                                     ts_dimensions, 0);
 }
@@ -413,7 +454,7 @@ int EncodeMultiDimensionData(
 int EncodeMultiDimensionData(
     const std::vector<std::string>& data,
     const std::vector<::rtidb::base::ColumnDesc>& columns, uint32_t pid_num,
-    std::string& value, // NOLINT
+    std::string& value,  // NOLINT
     std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>&
         dimensions) {
     std::vector<uint64_t> ts_dimensions;
@@ -424,7 +465,7 @@ int EncodeMultiDimensionData(
 int EncodeMultiDimensionData(
     const std::vector<std::string>& data,
     const std::vector<::rtidb::base::ColumnDesc>& columns, uint32_t pid_num,
-    std::string& value, // NOLINT
+    std::string& value,  // NOLINT
     std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>&
         dimensions,
     int modify_times) {
@@ -495,7 +536,8 @@ int PutData(
     return 0;
 }
 
-int SplitPidGroup(const std::string& pid_group, std::set<uint32_t>& pid_set) { // NOLINT
+int SplitPidGroup(const std::string& pid_group,
+                  std::set<uint32_t>& pid_set) {  // NOLINT
     try {
         if (::rtidb::base::IsNumber(pid_group)) {
             pid_set.insert(boost::lexical_cast<uint32_t>(pid_group));
@@ -531,10 +573,10 @@ int SplitPidGroup(const std::string& pid_group, std::set<uint32_t>& pid_set) { /
     return 0;
 }
 
-bool GetParameterMap(const std::string& first,
-                     const std::vector<std::string>& parts,
-                     const std::string& delimiter,
-                     std::map<std::string, std::string>& parameter_map) { // NOLINT
+bool GetParameterMap(
+    const std::string& first, const std::vector<std::string>& parts,
+    const std::string& delimiter,
+    std::map<std::string, std::string>& parameter_map) {  // NOLINT
     std::vector<std::string> temp_vec;
     ::rtidb::base::SplitString(parts[1], delimiter, temp_vec);
     if (temp_vec.size() == 2 && temp_vec[0] == first && !temp_vec[1].empty()) {
@@ -552,7 +594,7 @@ bool GetParameterMap(const std::string& first,
 
 std::shared_ptr<::rtidb::client::TabletClient> GetTabletClient(
     const ::rtidb::nameserver::TableInfo& table_info, uint32_t pid,
-    std::string& msg) { // NOLINT
+    std::string& msg) {  // NOLINT
     std::string endpoint;
     for (int idx = 0; idx < table_info.table_partition_size(); idx++) {
         if (table_info.table_partition(idx).pid() != pid) {
@@ -1390,9 +1432,10 @@ void HandleNSDelete(const std::vector<std::string>& parts,
     }
 }
 
-bool GetColumnMap(const std::vector<std::string>& parts,
-                  std::map<std::string, std::string>& condition_columns_map, // NOLINT
-                  std::map<std::string, std::string>& value_columns_map) { // NOLINT
+bool GetColumnMap(
+    const std::vector<std::string>& parts,
+    std::map<std::string, std::string>& condition_columns_map,  // NOLINT
+    std::map<std::string, std::string>& value_columns_map) {    // NOLINT
     std::string delimiter = "=";
     bool is_condition_columns_map = false;
     std::vector<std::string> temp_vec;
@@ -1515,8 +1558,8 @@ void HandleNSUpdate(const std::vector<std::string>& parts,
     }
 }
 
-bool ParseCondAndOp(const std::string& source, uint64_t& first_end, // NOLINT
-                    uint64_t& value_begin, int32_t& get_type) { // NOLINT
+bool ParseCondAndOp(const std::string& source, uint64_t& first_end,  // NOLINT
+                    uint64_t& value_begin, int32_t& get_type) {      // NOLINT
     for (uint64_t i = 0; i < source.length(); i++) {
         switch (source[i]) {
             case '=':
@@ -1553,8 +1596,9 @@ bool ParseCondAndOp(const std::string& source, uint64_t& first_end, // NOLINT
 
 bool GetCondAndPrintColumns(
     const std::vector<std::string>& parts,
-    std::map<std::string, std::string>& condition_columns_map, // NOLINT
-    std::vector<std::string>& print_column, rtidb::api::GetType& get_type) { // NOLINT
+    std::map<std::string, std::string>& condition_columns_map,  // NOLINT
+    std::vector<std::string>& print_column, // NOLINT
+    rtidb::api::GetType& get_type) {  // NOLINT
     uint64_t size = parts.size();
     uint64_t i = 2;
     if (parts[i] == "*") {
@@ -1732,7 +1776,7 @@ void HandleNSQuery(const std::vector<std::string>& parts,
         tp = new baidu::common::TPrinter(print_column.size() + 1,
                                          FLAGS_max_col_display_length);
         std::map<std::string, uint64_t> column_position;
-        int index_array[print_column.size()]; // NOLINT
+        int index_array[print_column.size()];  // NOLINT
         for (uint64_t i = 0; i < print_column.size(); i++) {
             row.push_back(print_column[i]);
             column_position.insert(std::make_pair(print_column[i], i));
@@ -2682,8 +2726,8 @@ void HandleNSPut(const std::vector<std::string>& parts,
             column_desc_list_1 = tables[0].column_desc_v1();
         google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>
             column_desc_list_2 = tables[0].added_column_desc();
-        int base_size = (int)(column_desc_list_1.size()); // NOLINT
-        int add_size = (int)(column_desc_list_2.size()); // NOLINT
+        int base_size = (int)(column_desc_list_1.size());  // NOLINT
+        int add_size = (int)(column_desc_list_2.size());   // NOLINT
         int in_size = parts.size();
         if (tables[0].has_table_type() &&
             tables[0].table_type() == ::rtidb::type::TableType::kRelational) {
@@ -2775,8 +2819,8 @@ void HandleNSPut(const std::vector<std::string>& parts,
                    parts[2].c_str());
             return;
         }
-        int base_size = (int)(tables[0].column_desc_size()); // NOLINT
-        int add_size = (int)(tables[0].added_column_desc_size()); // NOLINT
+        int base_size = (int)(tables[0].column_desc_size());       // NOLINT
+        int add_size = (int)(tables[0].added_column_desc_size());  // NOLINT
         int modify_index = parts.size() - 3 - base_size;
         if (modify_index - add_size > 0 || modify_index < 0) {
             printf("put format error! input value does not match the schema\n");
@@ -2860,8 +2904,9 @@ void HandleNSPut(const std::vector<std::string>& parts,
     }
 }
 
-int SetTablePartition(const ::rtidb::client::TableInfo& table_info,
-                      ::rtidb::nameserver::TableInfo& ns_table_info) { // NOLINT
+int SetTablePartition(
+    const ::rtidb::client::TableInfo& table_info,
+    ::rtidb::nameserver::TableInfo& ns_table_info) {  // NOLINT
     if (table_info.table_partition_size() > 0) {
         std::map<uint32_t, std::string> leader_map;
         std::map<uint32_t, std::set<std::string>> follower_map;
@@ -2977,7 +3022,7 @@ int SetTablePartition(const ::rtidb::client::TableInfo& table_info,
 
 int SetColumnDesc(const ::rtidb::client::TableInfo& table_info,
                   const std::set<std::string>& type_set,
-                  ::rtidb::nameserver::TableInfo& ns_table_info) { // NOLINT
+                  ::rtidb::nameserver::TableInfo& ns_table_info) {  // NOLINT
     std::map<std::string, std::string> name_map;
     std::set<std::string> index_set;
     std::set<std::string> ts_col_set;
@@ -3182,7 +3227,7 @@ int SetColumnDesc(const ::rtidb::client::TableInfo& table_info,
 }
 
 int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
-                 ::rtidb::nameserver::TableInfo& ns_table_info) { // NOLINT
+                 ::rtidb::nameserver::TableInfo& ns_table_info) {  // NOLINT
     ::rtidb::client::TableInfo table_info;
     int fd = open(path.c_str(), O_RDONLY);
     if (fd < 0) {
@@ -3994,7 +4039,7 @@ void HandleNSShowOPStatus(const std::vector<std::string>& parts,
         row.push_back(response.op_status(idx).status());
         if (response.op_status(idx).start_time() > 0) {
             time_t rawtime = (time_t)response.op_status(idx).start_time();
-            tm* timeinfo = localtime(&rawtime); // NOLINT
+            tm* timeinfo = localtime(&rawtime);  // NOLINT
             char buf[20];
             strftime(buf, 20, "%Y%m%d%H%M%S", timeinfo);
             row.push_back(buf);
@@ -4004,7 +4049,7 @@ void HandleNSShowOPStatus(const std::vector<std::string>& parts,
                                    response.op_status(idx).start_time()) +
                     "s");
                 rawtime = (time_t)response.op_status(idx).end_time();
-                timeinfo = localtime(&rawtime); // NOLINT
+                timeinfo = localtime(&rawtime);  // NOLINT
                 buf[0] = '\0';
                 strftime(buf, 20, "%Y%m%d%H%M%S", timeinfo);
                 row.push_back(buf);
@@ -4153,7 +4198,7 @@ void HandleClientGet(const std::vector<std::string>& parts,
     }
 }
 
-void HandleClientBenGet(std::vector<std::string>& parts, // NOLINT
+void HandleClientBenGet(std::vector<std::string>& parts,  // NOLINT
                         ::rtidb::client::TabletClient* client) {
     try {
         uint32_t tid = boost::lexical_cast<uint32_t>(parts[1]);
@@ -4213,7 +4258,7 @@ void HandleClientPut(const std::vector<std::string>& parts,
     }
 }
 
-void HandleClientBenPut(std::vector<std::string>& parts, // NOLINT
+void HandleClientBenPut(std::vector<std::string>& parts,  // NOLINT
                         ::rtidb::client::TabletClient* client) {
     try {
         uint32_t tid = boost::lexical_cast<uint32_t>(parts[1]);
@@ -5013,7 +5058,8 @@ void HandleClientPreview(const std::vector<std::string>& parts,
                 ::rtidb::base::FillTableRow(columns, str, str_size, row);
             } else {
                 std::vector<::rtidb::base::ColumnDesc> columns_tmp = columns;
-                for (int i = 0; i < (int)(table_meta.added_column_desc_size()); // NOLINT
+                for (int i = 0;
+                     i < (int)(table_meta.added_column_desc_size());  // NOLINT
                      i++) {
                     columns_tmp.pop_back();
                 }
@@ -5080,7 +5126,7 @@ void HandleClientScan(const std::vector<std::string>& parts,
 void HandleClientBenchmarkPut(uint32_t tid, uint32_t pid, uint32_t val_size,
                               uint32_t run_times, uint32_t ns,
                               ::rtidb::client::TabletClient* client) {
-    char val[val_size]; // NOLINT
+    char val[val_size];  // NOLINT
     for (uint32_t i = 0; i < val_size; i++) {
         val[i] = '0';
     }
@@ -5634,7 +5680,7 @@ void HandleClientSGet(const std::vector<std::string>& parts,
     } else {
         std::vector<::rtidb::base::ColumnDesc> columns_tmp;
         for (int i = 0;
-             i < (int)(raw.size() - table_meta.added_column_desc_size()); i++) { // NOLINT
+             i < (int)(raw.size() - table_meta.added_column_desc_size()); i++) {  // NOLINT
             columns_tmp.push_back(raw.at(i));
         }
         ::rtidb::base::FillTableRow(raw.size(), columns_tmp, value.c_str(),
@@ -5778,7 +5824,8 @@ void HandleClientSScan(const std::vector<std::string>& parts,
         } else {
             std::vector<::rtidb::base::ColumnDesc> columns_tmp;
             for (int i = 0;
-                 i < (int)(raw.size() - table_meta.added_column_desc_size()); // NOLINT
+                 i < (int)(raw.size() - // NOLINT
+                           table_meta.added_column_desc_size());  // NOLINT
                  i++) {
                 columns_tmp.push_back(raw.at(i));
             }
@@ -5817,8 +5864,9 @@ void HandleClientSPut(const std::vector<std::string>& parts,
         std::vector<::rtidb::base::ColumnDesc> raw;
         ::rtidb::base::SchemaCodec scodec;
         scodec.Decode(schema, raw);
-        int base_size = (int)(raw.size() - table_meta.added_column_desc_size()); // NOLINT
-        int modify_index = (int)(parts.size() - 4 - base_size); // NOLINT
+        int base_size =
+            (int)(raw.size() - table_meta.added_column_desc_size());  // NOLINT
+        int modify_index = (int)(parts.size() - 4 - base_size);       // NOLINT
         if (modify_index > table_meta.added_column_desc_size() ||
             modify_index < 0) {
             std::cout << "Input value mismatch schema" << std::endl;
@@ -6221,6 +6269,8 @@ int main(int argc, char* argv[]) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     if (FLAGS_role == "tablet") {
         StartTablet();
+    } else if (FLAGS_role == "http") {
+        StartHttp();
     } else if (FLAGS_role == "client") {
         StartClient();
     } else if (FLAGS_role == "nameserver") {
