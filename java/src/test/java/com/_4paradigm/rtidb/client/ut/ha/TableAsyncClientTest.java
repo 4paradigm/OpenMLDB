@@ -447,7 +447,7 @@ public class TableAsyncClientTest extends TestCaseBase {
             boolean ok = nsc.addTableField(name, "aa", "string");
             Thread.currentThread().sleep(1000);
             Assert.assertTrue(ok);
-//            client.refreshRouteTable();
+            client.refreshRouteTable();
 
             pf = tableAsyncClient.put(name, 9528, new Object[]{"card1", "mcc1", 9.2d, "aa1"});
             Assert.assertTrue(pf.get());
@@ -802,6 +802,7 @@ public class TableAsyncClientTest extends TestCaseBase {
     }
     @Test
     public void testMultiTTLAnd() {
+
         Tablet.TTLDesc.Builder builder = Tablet.TTLDesc.newBuilder();
         builder.setAbsTtl(1);
         builder.setLatTtl(2);

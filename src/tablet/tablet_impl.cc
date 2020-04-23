@@ -17,6 +17,7 @@
 #include <utility>
 #include <vector>
 #include "config.h"  // NOLINT
+#include "boost/container/deque.hpp"
 #ifdef TCMALLOC_ENABLE
 #include "gperftools/malloc_extension.h"
 #endif
@@ -344,6 +345,7 @@ int32_t TabletImpl::GetIndex(uint64_t expire_time, uint64_t expire_cnt,
                              ::rtidb::api::TTLType ttl_type,
                              ::rtidb::storage::TableIterator* it,
                              const ::rtidb::api::GetRequest* request,
+                             const ::rtidb::api::TableMeta& meta,
                              std::string* value, uint64_t* ts) {
     uint64_t st = request->ts();
     const rtidb::api::GetType& st_type = request->type();
@@ -374,6 +376,22 @@ int32_t TabletImpl::GetIndex(uint64_t expire_time, uint64_t expire_cnt,
         PDLOG(WARNING, "invalid st type %s",
               ::rtidb::api::GetType_Name(st_type).c_str());
         return -2;
+    }
+    bool enable_project = false;
+    ::rtidb::base::RowProject row_project(meta.column_desc(),
+                                          request->projection());
+    if (request->projection().size() > 0 && meta.format_version() == 1) {
+        if (meta.compress_type() == api::kSnappy) {
+            PDLOG(WARNING,
+                  "project on compress row data do not being supported");
+            return -1;
+        }
+        bool ok = row_project.Init();
+        if (!ok) {
+            PDLOG(WARNING, "invalid project list");
+            return -1;
+        }
+        enable_project = true;
     }
     uint32_t cnt = 0;
     if (st > 0) {
@@ -421,9 +439,23 @@ int32_t TabletImpl::GetIndex(uint64_t expire_time, uint64_t expire_cnt,
         if (st_type == ::rtidb::api::GetType::kSubKeyGe ||
             st_type == ::rtidb::api::GetType::kSubKeyGt) {
             ::rtidb::base::Slice it_value = it->GetValue();
-            value->assign(it_value.data(), it_value.size());
             *ts = it->GetKey();
-            return 0;
+            if (enable_project) {
+                int8_t* ptr = nullptr;
+                uint32_t size = 0;
+                bool ok = row_project.Project(
+                    reinterpret_cast<const int8_t*>(it->GetValue().data()),
+                    it->GetValue().size(), &ptr, &size);
+                if (!ok) {
+                    PDLOG(WARNING, "fail to make a projection");
+                    return -4;
+                }
+                value->assign(reinterpret_cast<char*>(ptr), size);
+                delete[] ptr;
+            } else {
+                value->assign(it_value.data(), it_value.size());
+                return 0;
+            }
         }
         switch (real_et_type) {
             case ::rtidb::api::GetType::kSubKeyEq:
@@ -452,8 +484,21 @@ int32_t TabletImpl::GetIndex(uint64_t expire_time, uint64_t expire_cnt,
         if (jump_out) {
             return 1;
         }
-        ::rtidb::base::Slice it_value = it->GetValue();
-        value->assign(it_value.data(), it_value.size());
+        if (enable_project) {
+            int8_t* ptr = nullptr;
+            uint32_t size = 0;
+            bool ok = row_project.Project(
+                reinterpret_cast<const int8_t*>(it->GetValue().data()),
+                it->GetValue().size(), &ptr, &size);
+            if (!ok) {
+                PDLOG(WARNING, "fail to make a projection");
+                return -4;
+            }
+            value->assign(reinterpret_cast<char*>(ptr), size);
+            delete[] ptr;
+        } else {
+            value->assign(it->GetValue().data(), it->GetValue().size());
+        }
         *ts = it->GetKey();
         return 0;
     }
@@ -487,7 +532,6 @@ void TabletImpl::Get(RpcController* controller,
             response->set_msg("table is loading");
             return;
         }
-
         uint32_t index = 0;
         int ts_index = -1;
         if (request->has_idx_name() && request->idx_name().size() > 0) {
@@ -536,9 +580,9 @@ void TabletImpl::Get(RpcController* controller,
         std::string* value = response->mutable_value();
         uint64_t ts = 0;
         int32_t code = 0;
-        code =
-            GetIndex(table->GetExpireTime(ttl.abs_ttl * 60 * 1000), ttl.lat_ttl,
-                     table->GetTTLType(), it, request, value, &ts);
+        code = GetIndex(table->GetExpireTime(ttl.abs_ttl * 60 * 1000),
+                        ttl.lat_ttl, table->GetTTLType(), it, request,
+                        table->GetTableMeta(), value, &ts);
         delete it;
         response->set_ts(ts);
         response->set_code(code);
@@ -652,6 +696,16 @@ void TabletImpl::Put(RpcController* controller,
         }
     }
     if (table) {
+        if ((!request->has_format_version() &&
+             table->GetTableMeta().format_version() == 1) ||
+            (request->has_format_version() &&
+             request->format_version() !=
+                 table->GetTableMeta().format_version())) {
+            response->set_code(::rtidb::base::ReturnCode::kPutBadFormat);
+            response->set_msg("put bad format");
+            done->Run();
+            return;
+        }
         if (request->time() == 0 && request->ts_dimensions_size() == 0) {
             response->set_code(
                 ::rtidb::base::ReturnCode::kTsMustBeGreaterThanZero);
@@ -659,7 +713,6 @@ void TabletImpl::Put(RpcController* controller,
             done->Run();
             return;
         }
-
         if (!table->IsLeader()) {
             response->set_code(::rtidb::base::ReturnCode::kTableIsFollower);
             response->set_msg("table is follower");
@@ -931,6 +984,7 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
                               ::rtidb::api::TTLType ttl_type,
                               ::rtidb::storage::TableIterator* it,
                               const ::rtidb::api::ScanRequest* request,
+                              const ::rtidb::api::TableMeta& meta,
                               std::string* pairs, uint32_t* count) {
     uint32_t limit = request->limit();
     uint32_t atleast = request->atleast();
@@ -938,6 +992,23 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
     const rtidb::api::GetType& st_type = request->st_type();
     uint64_t et = request->et();
     const rtidb::api::GetType& et_type = request->et_type();
+    bool enable_project = false;
+    // TODO(wangtaize) support extend columns
+    ::rtidb::base::RowProject row_project(meta.column_desc(),
+                                          request->projection());
+    if (request->projection().size() > 0 && meta.format_version() == 1) {
+        if (meta.compress_type() == api::kSnappy) {
+            PDLOG(WARNING,
+                  "project on compress row data do not being supported");
+            return -1;
+        }
+        bool ok = row_project.Init();
+        if (!ok) {
+            PDLOG(WARNING, "invalid project list");
+            return -1;
+        }
+        enable_project = true;
+    }
     bool remove_duplicated_record =
         request->has_enable_remove_duplicated_record() &&
         request->enable_remove_duplicated_record();
@@ -993,10 +1064,8 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
     } else {
         it->SeekToFirst();
     }
-
     uint64_t last_time = 0;
-    std::vector<std::pair<uint64_t, ::rtidb::base::Slice>> tmp;
-    tmp.reserve(FLAGS_scan_reserve_size);
+    boost::container::deque<std::pair<uint64_t, ::rtidb::base::Slice>> tmp;
     uint32_t total_block_size = 0;
     while (it->Valid()) {
         if (limit > 0 && tmp.size() >= limit) {
@@ -1054,9 +1123,23 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
             }
             if (jump_out) break;
         }
-        ::rtidb::base::Slice it_value = it->GetValue();
-        tmp.push_back(std::make_pair(it->GetKey(), it_value));
-        total_block_size += it_value.size();
+        if (enable_project) {
+            int8_t* ptr = nullptr;
+            uint32_t size = 0;
+            bool ok = row_project.Project(
+                reinterpret_cast<const int8_t*>(it->GetValue().data()),
+                it->GetValue().size(), &ptr, &size);
+            if (!ok) {
+                PDLOG(WARNING, "fail to make a projection");
+                return -4;
+            }
+            tmp.emplace_back(it->GetKey(),
+                    std::move(Slice(reinterpret_cast<char*>(ptr), size, true)));
+            total_block_size += size;
+        } else {
+            total_block_size += it->GetValue().size();
+            tmp.emplace_back(it->GetKey(), std::move(Slice(it->GetValue())));
+        }
         it->Next();
         if (total_block_size > FLAGS_scan_max_bytes_size) {
             PDLOG(WARNING, "reach the max byte size");
@@ -1271,7 +1354,7 @@ void TabletImpl::Scan(RpcController* controller,
     uint64_t expire_time = table->GetExpireTime(ttl.abs_ttl * 60 * 1000);
     uint64_t expire_cnt = ttl.lat_ttl;
     code = ScanIndex(expire_time, expire_cnt, table->GetTTLType(), it, request,
-                     pairs, &count);
+                     table->GetTableMeta(), pairs, &count);
     delete it;
     response->set_code(code);
     response->set_count(count);

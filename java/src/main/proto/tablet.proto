@@ -73,6 +73,7 @@ enum OPType {
     kAddReplicaSimplyRemoteOP = 17; 
     kDelReplicaRemoteOP = 18; 
     kAddReplicaRemoteOP = 19; 
+    kAddIndexOP = 20; 
 }
 
 enum TaskType {
@@ -98,6 +99,10 @@ enum TaskType {
     kDropTableRemote = 20; 
     kAddReplicaNSRemote = 21; 
     kDumpIndexData = 22;
+    kSendIndexData = 23;
+    kLoadIndexData = 24;
+    kExtractIndexData = 25;
+    kAddIndexToTablet = 26;
 }
 
 enum TaskStatus {
@@ -182,6 +187,7 @@ message PutRequest {
     optional uint32 pid = 5;
     repeated Dimension dimensions = 6;
     repeated TSDimension ts_dimensions = 7;
+    optional uint32 format_version = 8 [default = 0];
 }
 
 message PutResponse {
@@ -245,6 +251,7 @@ message ScanRequest {
     optional GetType et_type = 12 [default = kSubKeyGt];
     optional bool enable_remove_ts = 13 [default = false];
     optional uint32 atleast = 14 [default = 0];
+    repeated uint32 projection = 15;
 }
 
 message RpcMetric {
@@ -332,6 +339,8 @@ message TableMeta {
     repeated rtidb.common.ColumnDesc added_column_desc = 18;
     optional TTLDesc ttl_desc = 19;
     optional rtidb.type.TableType table_type = 20;
+    // format_version 0 , the legacy format 1 ,the new one
+    optional uint32 format_version = 21 [default = 0];
 }
 
 message CreateTableRequest {
@@ -458,6 +467,19 @@ message SendSnapshotRequest {
     optional uint32 remote_tid = 5;
 }
 
+message SendIndexDataRequest {
+
+    message EndpointPair {
+        optional uint32 pid = 1;
+        optional string endpoint = 2;
+    }
+
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    repeated EndpointPair pairs = 3;
+    optional TaskInfo task_info = 4;
+}
+
 message SendDataRequest {
     required uint32 tid = 1;
     required uint32 pid = 2;
@@ -528,6 +550,7 @@ message GetRequest {
     optional string ts_name = 7;
     optional uint64 et = 8;
     optional GetType et_type = 9 [default = kSubKeyGe];
+    repeated uint32 projection = 10;
 }
 
 message GetResponse {
@@ -643,6 +666,22 @@ message DumpIndexDataRequest {
     optional TaskInfo task_info = 6;
 }
 
+message LoadIndexDataRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    optional uint32 partition_num = 3;
+    optional TaskInfo task_info = 4;
+}
+
+message ExtractIndexDataRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    optional uint32 partition_num = 3;
+    optional uint32 idx = 4;
+    optional rtidb.common.ColumnKey column_key = 5;
+    optional TaskInfo task_info = 6;
+}
+
 message Columns {
     repeated string name = 1;
     optional bytes value = 2;
@@ -729,6 +768,9 @@ service TabletServer {
     rpc SetMode(SetModeRequest) returns (GeneralResponse);
     rpc GetAllSnapshotOffset(EmptyRequest) returns(TableSnapshotOffsetResponse);
     rpc AddIndex(AddIndexRequest) returns(GeneralResponse);
+    rpc SendIndexData(SendIndexDataRequest) returns(GeneralResponse);
     rpc DeleteIndex(DeleteIndexRequest) returns (GeneralResponse);
     rpc DumpIndexData(DumpIndexDataRequest) returns (GeneralResponse);
+    rpc LoadIndexData(LoadIndexDataRequest) returns (GeneralResponse);
+    rpc ExtractIndexData(ExtractIndexDataRequest) returns (GeneralResponse);
 }

@@ -49,11 +49,30 @@ class Slice {
         }
     }
 
+    Slice(Slice&& s) {
+        need_free_ = s.need_free_;
+        size_ = s.size();
+        data_ = s.data();
+        s.size_ = 0;
+        s.data_ = NULL;
+        s.need_free_ = false;
+    }
+
     // Return the ith byte in the referenced data.
     // REQUIRES: n < size()
     char operator[](size_t n) const {
         assert(n < size());
         return data_[n];
+    }
+
+    Slice& operator=(const Slice& s) {
+        if (need_free_) {
+            delete[] data_;
+        }
+        need_free_ = false;
+        size_ = s.size();
+        data_ = s.data();
+        return *this;
     }
 
     Slice(const Slice& s)

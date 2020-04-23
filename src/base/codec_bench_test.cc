@@ -12,6 +12,7 @@
 #include "gtest/gtest.h"
 #include "proto/common.pb.h"
 #include "proto/tablet.pb.h"
+#include "proto/type.pb.h"
 #include "storage/segment.h"
 
 namespace rtidb {
@@ -24,12 +25,12 @@ class CodecBenchmarkTest : public ::testing::Test {
 };
 
 void RunHasTs(::rtidb::storage::DataBlock* db) {
-    std::vector<std::pair<uint64_t, ::rtidb::base::Slice>> datas;
-    datas.reserve(1000);
+    boost::container::deque<std::pair<uint64_t, ::rtidb::base::Slice>>
+        datas;
     uint32_t total_block_size = 0;
     for (uint32_t i = 0; i < 1000; i++) {
-        datas.push_back(
-            std::make_pair(1000, ::rtidb::base::Slice(db->data, db->size)));
+        datas.emplace_back(
+            1000, std::move(::rtidb::base::Slice(db->data, db->size)));
         total_block_size += db->size;
     }
     std::string pairs;
@@ -46,6 +47,49 @@ void RunNoneTs(::rtidb::storage::DataBlock* db) {
     }
     std::string pairs;
     ::rtidb::base::EncodeRows(datas, total_block_size, &pairs);
+}
+
+TEST_F(CodecBenchmarkTest, ProjectTest) {
+    Schema schema;
+    for (uint32_t i = 0; i < 100; i++) {
+        common::ColumnDesc* col = schema.Add();
+        col->set_name("col" + std::to_string(i));
+        col->set_data_type(type::kBigInt);
+    }
+    common::ColumnDesc* col_last = schema.Add();
+    col_last->set_name("col_last");
+    col_last->set_data_type(type::kVarchar);
+    std::string hello = "hello";
+    RowBuilder rb(schema);
+    uint32_t total_size = rb.CalTotalLength(hello.size());
+    void* ptr = ::malloc(total_size);
+    rb.SetBuffer(reinterpret_cast<int8_t*>(ptr), total_size);
+    for (uint32_t i = 0; i < 100; i++) {
+        int64_t val = 100;
+        rb.AppendInt64(val);
+    }
+    rb.AppendString(hello.c_str(), hello.size());
+    ProjectList plist;
+    uint32_t* idx = plist.Add();
+    *idx = 100;
+    uint32_t* idx2 = plist.Add();
+    *idx2 = 99;
+
+    uint64_t consumed = ::baidu::common::timer::get_micros();
+    for (int64_t i = 1; i < 100; i++) {
+        RowProject rp(schema, plist);
+        rp.Init();
+        for (int32_t j = 0; j < 1000; j++) {
+            int8_t* data = NULL;
+            uint32_t size = 0;
+            rp.Project(reinterpret_cast<int8_t*>(ptr), total_size, &data,
+                       &size);
+            free(reinterpret_cast<void*>(data));
+        }
+    }
+    consumed = ::baidu::common::timer::get_micros() - consumed;
+    std::cout << "project 1000 records avg consumed:" << consumed / 100 << "μs"
+              << std::endl;
 }
 
 TEST_F(CodecBenchmarkTest, Encode_ts_vs_none_ts) {

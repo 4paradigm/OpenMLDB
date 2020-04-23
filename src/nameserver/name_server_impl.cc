@@ -2710,6 +2710,7 @@ int NameServerImpl::CreateTableOnTablet(
     table_meta.set_schema(schema);
     table_meta.set_ttl_type(ttl_type);
     table_meta.set_compress_type(compress_type);
+    table_meta.set_format_version(table_info->format_version());
     if (table_info->has_ttl_desc()) {
         table_meta.mutable_ttl_desc()->CopyFrom(table_info->ttl_desc());
     }
