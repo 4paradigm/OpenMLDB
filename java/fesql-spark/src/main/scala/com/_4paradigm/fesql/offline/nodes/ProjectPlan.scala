@@ -27,30 +27,31 @@ object ProjectPlan {
     )
 
     // project implementation
-    val projectRDD = inputRDD.mapPartitions(iter =>
+    val projectRDD = inputRDD.mapPartitions(iter => {
+      // ensure worker native
+      FeSqlLibrary.init()
+
+      // ensure worker side module
+      if (!JITManager.hasModule(projectConfig.moduleTag)) {
+        val buffer = projectConfig.moduleBroadcast.value.getBuffer
+        JITManager.initModule(projectConfig.moduleTag, buffer)
+      }
+
       projectIter(iter, projectConfig)
-    )
+    })
 
     SparkInstance.fromRDD(outputSchema, projectRDD)
   }
 
 
   def projectIter(inputIter: Iterator[Row], config: ProjectConfig): Iterator[Row] = {
-    // ensure worker native
-    FeSqlLibrary.init()
-
-    // ensure worker side module
-    if (! JITManager.hasModule(config.moduleTag)) {
-      val buffer = config.moduleBroadcast.value.getBuffer
-      JITManager.initModule(config.moduleTag, buffer)
-    }
-
     // reusable output row inst
     val outputArr = Array.fill[Any](config.outputSchema.size)(null)
 
-    // TODO: these objects are now leaked
     val jit = JITManager.getJIT
     val fn = jit.FindFunction(config.functionName)
+
+    // TODO: these objects are now leaked
     val runner = new DummyRunner()
     val encoder = new RowCodec(config.inputSchema)
     val decoder = new RowCodec(config.outputSchema)
