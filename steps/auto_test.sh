@@ -43,7 +43,6 @@ else
     sh run-compatibility.sh -c ${test_case_xml} -j $rtidb_version -s ${server_env} -r $rtidb_path
 fi
 
-
 code=$?
 cd $ROOT_DIR
 cd onebox && sh stop_all.sh
