@@ -38,12 +38,12 @@ git pull
 
 parameters="-c ${test_case_xml} -j $rtidb_version -s ${server_env}"
 
-if [ ${override_rtidb} ] ; then
-    parameters=$parameters+" -r $rtidb_path"
+if [ ! -z ${override_rtidb} ] ; then
+    parameters=$parameters" -r $rtidb_path"
 fi
 
 if [ ! -z ${upgrade_version} ] ; then
-	parameters=$parameters+" -u ${upgrade_version}"
+	parameters=$parameters" -u ${upgrade_version}"
 fi
 echo "parameters:$parameters"
 
