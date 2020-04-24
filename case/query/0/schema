@@ -1,0 +1,7 @@
+col0:string
+col1:i32
+col2:i16
+col3:float
+col4:double
+col5:i64
+col6:varchar

@@ -445,8 +445,8 @@ else
     else
         wget --no-check-certificate -O yaml-cpp-0.6.3.tar.gz https://github.com/jbeder/yaml-cpp/archive/yaml-cpp-0.6.3.tar.gz
     fi
-    git clone https://github.com/jbeder/yaml-cpp.git
-    cd yaml-cpp && mkdir -p build && cd build
+    tar -zxvf yaml-cpp-0.6.3.tar.gz
+    cd yaml-cpp-yaml-cpp-0.6.3 && mkdir -p build && cd build
     cmake -DCMAKE_INSTALL_PREFIX=${DEPS_PREFIX} ..
     make && make install
     touch yaml_succ
