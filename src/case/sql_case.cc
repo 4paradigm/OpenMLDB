@@ -47,6 +47,65 @@ bool SQLCase::TypeParse(const std::string& type_str, fesql::type::Type* type) {
     }
     return true;
 }
+bool SQLCase::ExtractTableDef(const std::string& schema_str,
+                              const std::string& index_str,
+                              type::TableDef& table) {
+    if (!ExtractSchema(schema_str, table)) {
+        return false;
+    }
+    if (index_str.empty()) {
+        return true;
+    }
+    return ExtractIndex(index_str, table);
+}
+bool SQLCase::ExtractIndex(const std::string& index_str,
+                           type::TableDef& table) {  // NOLINT
+    if (index_str.empty()) {
+        LOG(WARNING) << "Empty Index String";
+        return false;
+    }
+    std::vector<std::string> index_vec;
+    boost::split(index_vec, index_str, boost::is_any_of(",\n"),
+                 boost::token_compress_on);
+    if (index_vec.empty()) {
+        LOG(WARNING) << "Invalid Schema Format";
+        return false;
+    }
+    for (auto index : index_vec) {
+        boost::trim(index);
+        if (index.empty()) {
+            LOG(WARNING) << "Index String Empty";
+            return false;
+        }
+        std::vector<std::string> name_keys_order;
+        boost::split(name_keys_order, index, boost::is_any_of(":"),
+                     boost::token_compress_on);
+        if (2 > name_keys_order.size()) {
+            LOG(WARNING) << "Invalid Index Format:" << index;
+            return false;
+        }
+        ::fesql::type::IndexDef* index_def = table.add_indexes();
+        boost::trim(name_keys_order[0]);
+        index_def->set_name(name_keys_order[0]);
+
+        std::vector<std::string> keys;
+        boost::trim(name_keys_order[1]);
+        boost::split(keys, name_keys_order[1], boost::is_any_of("|"),
+                     boost::token_compress_on);
+        boost::trim(name_keys_order[1]);
+
+        for (auto key : keys) {
+            index_def->add_first_keys(key);
+        }
+
+        if (3 == name_keys_order.size()) {
+            boost::trim(name_keys_order[2]);
+            index_def->set_second_key(name_keys_order[2]);
+        }
+    }
+    return true;
+}
+
 bool SQLCase::ExtractSchema(const std::string& schema_str,
                             type::TableDef& table) {  // NOLINT
     if (schema_str.empty()) {
@@ -83,7 +142,7 @@ bool SQLCase::ExtractSchema(const std::string& schema_str,
     return true;
 }
 
-bool SQLCase::AddInput(const TableInfo&table_data) {
+bool SQLCase::AddInput(const TableInfo& table_data) {
     inputs_.push_back(table_data);
     return true;
 }
@@ -230,11 +289,13 @@ bool SQLCase::ExtractRows(const vm::Schema& schema, const std::string& data_str,
     return true;
 }
 bool SQLCase::ExtractInputTableDef(type::TableDef& table, int32_t input_idx) {
-    if (!ExtractSchema(inputs_[input_idx].schema_, table)) {
+    if (!ExtractTableDef(inputs_[input_idx].schema_, inputs_[input_idx].index_,
+                         table)) {
         return false;
     }
-    table.set_catalog(inputs_[input_idx].db_);
+    table.set_catalog(db_);
     table.set_name(inputs_[input_idx].name_);
+    return true;
 }
 bool SQLCase::ExtractOutputSchema(type::TableDef& table) {
     return ExtractSchema(output_.schema_, table);
@@ -254,15 +315,29 @@ bool SQLCase::CreateSQLCasesFromYaml(const std::string& yaml_path,
              case_iter != sql_cases_node.end(); case_iter++) {
             SQLCase sql_case;
             auto sql_case_node = *case_iter;
-            if (sql_case_node["desc"]) {
-                sql_case.desc_ = sql_case_node["desc"].as<std::string>();
-            } else {
-                sql_case.id_ = -1;
-            }
+
             if (sql_case_node["id"]) {
                 sql_case.id_ = sql_case_node["id"].as<int32_t>();
             } else {
                 sql_case.id_ = -1;
+            }
+
+            if (sql_case_node["desc"]) {
+                sql_case.desc_ = sql_case_node["desc"].as<std::string>();
+            } else {
+                sql_case.desc_ = "";
+            }
+
+            if (sql_case_node["mode"]) {
+                sql_case.mode_ = sql_case_node["mode"].as<std::string>();
+            } else {
+                sql_case.mode_ = "batch";
+            }
+
+            if (sql_case_node["db"]) {
+                sql_case.db_ = sql_case_node["db"].as<std::string>();
+            } else {
+                sql_case.db_ = "test";
             }
 
             if (sql_case_node["sql"]) {
@@ -274,15 +349,16 @@ bool SQLCase::CreateSQLCasesFromYaml(const std::string& yaml_path,
                 for (auto iter = inputs.begin(); iter != inputs.end(); iter++) {
                     SQLCase::TableInfo table;
                     auto schema_data = *iter;
-                    if (schema_data["db"]) {
-                        table.db_ = schema_data["db"].as<std::string>();
-                    }
                     if (schema_data["name"]) {
                         table.name_ = schema_data["name"].as<std::string>();
                     }
                     if (schema_data["schema"]) {
                         table.schema_ = schema_data["schema"].as<std::string>();
                     }
+                    if (schema_data["index"]) {
+                        table.index_ = schema_data["index"].as<std::string>();
+                    }
+
                     if (schema_data["data"]) {
                         table.data_ = schema_data["data"].as<std::string>();
                         boost::trim(table.data_);
@@ -295,6 +371,10 @@ bool SQLCase::CreateSQLCasesFromYaml(const std::string& yaml_path,
                 if (sql_case_node["output"]["schema"]) {
                     sql_case.output_.schema_ =
                         sql_case_node["output"]["schema"].as<std::string>();
+                }
+                if (sql_case_node["output"]["index"]) {
+                    sql_case.output_.index_ =
+                        sql_case_node["output"]["index"].as<std::string>();
                 }
                 if (sql_case_node["output"]["data"]) {
                     sql_case.output_.data_ =

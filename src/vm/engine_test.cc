@@ -18,6 +18,7 @@
 #include "vm/engine.h"
 #include <utility>
 #include <vector>
+#include "base/texttable.h"
 #include "case/sql_case.h"
 #include "codec/list_iterator_codec.h"
 #include "codec/row_codec.h"
@@ -59,6 +60,48 @@ std::vector<SQLCase> InitCases(std::string yaml_path) {
     return cases;
 }
 
+void CheckSchema(const vm::Schema& schema, const vm::Schema& exp_schema);
+void CheckRows(const std::vector<Row>& rows, const std::vector<Row>& exp_rows);
+void PrintRows(const vm::Schema& schema, const std::vector<Row>& rows);
+void CheckSchema(const vm::Schema& schema, const vm::Schema& exp_schema) {
+    ASSERT_EQ(schema.size(), exp_schema.size());
+    for (int i = 0; i < schema.size(); i++) {
+        ASSERT_EQ(schema.Get(i).DebugString(), exp_schema.Get(i).DebugString());
+    }
+}
+void PrintRows(const vm::Schema& schema, const std::vector<Row>& rows) {
+    std::ostringstream oss;
+    RowView row_view(schema);
+    ::fesql::base::TextTable t('-', '|', '+');
+    // Add Header
+    for (int i = 0; i < schema.size(); i++) {
+        t.add(schema.Get(i).name());
+    }
+    t.endOfRow();
+    if (rows.empty()) {
+        t.add("Empty set");
+        t.endOfRow();
+        return;
+    }
+
+    int cnt = 0;
+    for (auto row : rows) {
+        row_view.Reset(row.buf());
+        for (int idx = 0; idx < schema.size(); idx++) {
+            std::string str = row_view.GetAsString(idx);
+            t.add(str);
+        }
+        t.endOfRow();
+    }
+    oss << t << std::endl;
+    LOG(INFO) << "\n" << oss.str() << "\n";
+}
+void CheckRows(const std::vector<Row>& rows, const std::vector<Row>& exp_rows) {
+    ASSERT_EQ(rows.size(), exp_rows.size());
+    for (size_t i = 0; i < rows.size(); i++) {
+        ASSERT_EQ(0, rows[i].compare(exp_rows[i]));
+    }
+}
 class EngineTest : public ::testing::TestWithParam<SQLCase> {
  public:
     EngineTest() {}
@@ -173,7 +216,8 @@ void BuildWindowUnique(std::vector<Row>& rows,  // NOLINT
         new ::fesql::codec::ArrayListV<Row>(&rows);
     *buf = reinterpret_cast<int8_t*>(w);
 }
-void StoreData(::fesql::storage::Table* table, std::vector<Row>& rows) {
+void StoreData(::fesql::storage::Table* table, const std::vector<Row>& rows) {
+    ASSERT_TRUE(table->Init());
     for (auto row : rows) {
         ASSERT_TRUE(table->Put(reinterpret_cast<char*>(row.buf()), row.size()));
     }
@@ -205,10 +249,6 @@ void StoreData(::fesql::storage::Table* table, int8_t* rows) {
     ASSERT_TRUE(table->Put(reinterpret_cast<char*>(row.buf()), row.size()));
 }
 
-INSTANTIATE_TEST_CASE_P(
-    EngineSimpleQuery, EngineTest,
-    testing::ValuesIn(InitCases("/cases/query/0/simple_query.yaml")));
-
 TEST_F(EngineTest, test_normal) {
     EngineRunMode is_batch_mode = RUNBATCH;
     int8_t* row1 = NULL;
@@ -230,7 +270,6 @@ TEST_F(EngineTest, test_normal) {
     ASSERT_TRUE(table->Put(reinterpret_cast<char*>(row1), size1));
 
     auto catalog = BuildCommonCatalog(table_def, table);
-
 
     const std::string sql =
         "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return "
@@ -338,37 +377,54 @@ TEST_F(EngineTest, test_normal) {
     free(output[1]);
 }
 
-TEST_P(EngineTest, test_request_mode_engine) {
-    ParamType sql_case = GetParam();
-    LOG(INFO) << sql_case.desc();
-
+void RequestModeCheck(SQLCase& sql_case) {  // NOLINT
     int32_t input_cnt = sql_case.CountInputs();
-
     // Init catalog
+    std::map<std::string, std::shared_ptr<::fesql::storage::Table>>
+        name_table_map;
     auto catalog = BuildCommonCatalog();
     for (int32_t i = 0; i < input_cnt; i++) {
         type::TableDef table_def;
         sql_case.ExtractInputTableDef(table_def, i);
         std::shared_ptr<::fesql::storage::Table> table(
             new ::fesql::storage::Table(i + 1, 1, table_def));
-        std::vector<Row> rows;
-        sql_case.ExtractInputData(rows, i);
+        name_table_map[table_def.name()] = table;
         ASSERT_TRUE(AddTable(catalog, table_def, table));
     }
-    Engine engine();
-    RequestRunSession session;
 
-    ASSERT_TRUE(table->Init());
-    StoreData(table.get(), rows);
+    // Init engine and run session
     std::cout << sql_case.sql_str() << std::endl;
     base::Status get_status;
-    DLOG(INFO) << "RUN IN MODE REQUEST";
-    std::vector<int8_t*> output;
-    vm::Schema schema;
-    int32_t ret = -1;
-    session.EnableDebug();
-    bool ok = engine.Get(sql, "db", session, get_status);
+
+    Engine engine(catalog);
+    RequestRunSession session;
+    //    session.EnableDebug();
+
+    bool ok =
+        engine.Get(sql_case.sql_str(), sql_case.db(), session, get_status);
     ASSERT_TRUE(ok);
+
+    const std::string& request_name = session.GetRequestName();
+    const vm::Schema& request_schema = session.GetRequestSchema();
+
+    std::vector<Row> request_data;
+    for (int32_t i = 0; i < input_cnt; i++) {
+        auto input = sql_case.inputs()[i];
+        if (input.name_ == request_name) {
+            ASSERT_TRUE(sql_case.ExtractInputData(request_data, i));
+            continue;
+        }
+        std::vector<Row> rows;
+        sql_case.ExtractInputData(rows, i);
+        if (!rows.empty()) {
+            StoreData(name_table_map[input.name_].get(), rows);
+        }
+    }
+
+    int32_t ret = -1;
+    DLOG(INFO) << "RUN IN MODE REQUEST";
+    std::vector<Row> output;
+    vm::Schema schema;
     schema = session.GetSchema();
     PrintSchema(schema);
     std::ostringstream oss;
@@ -378,35 +434,114 @@ TEST_P(EngineTest, test_request_mode_engine) {
     std::ostringstream runner_oss;
     session.GetRunner()->Print(runner_oss, "");
     std::cout << "runner plan:\n" << runner_oss.str() << std::endl;
-    int32_t limit = 2;
-    auto iter = catalog->GetTable("db", "t1")->GetIterator();
-    while (limit-- > 0 && iter->Valid()) {
-        Row row;
-        ret = session.Run(Row(iter->GetValue()), &row);
+
+    // Check Output Schema
+    std::vector<Row> case_output_data;
+    type::TableDef case_output_table;
+    ASSERT_TRUE(sql_case.ExtractOutputData(case_output_data));
+    ASSERT_TRUE(sql_case.ExtractOutputSchema(case_output_table));
+    CheckSchema(schema, case_output_table.columns());
+
+    // Check Output Data
+    auto request_table = name_table_map[request_name];
+    for (auto in_row : request_data) {
+        Row out_row;
+        ret = session.Run(in_row, &out_row);
         ASSERT_EQ(0, ret);
-        output.push_back(row.buf());
-        iter->Next();
+        ASSERT_TRUE(request_table->Put(in_row.data(), in_row.size()));
+        output.push_back(out_row);
     }
-    //    ::fesql::type::IndexDef* index = table_def.add_indexes();
-    //    index->set_name("index1");
-    //    index->add_first_keys("col2");
-    //    index->set_second_key("col5");
+    LOG(INFO) << "expect result:\n";
+    PrintRows(case_output_table.columns(), case_output_data);
+    LOG(INFO) << "real result:\n";
+    PrintRows(schema, output);
+    CheckRows(output, case_output_data);
+}
+void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
+    int32_t input_cnt = sql_case.CountInputs();
 
-    ASSERT_TRUE(table->Init());
+    // Init catalog
+    std::map<std::string, std::shared_ptr<::fesql::storage::Table>>
+        name_table_map;
+    auto catalog = BuildCommonCatalog();
+    for (int32_t i = 0; i < input_cnt; i++) {
+        type::TableDef table_def;
+        sql_case.ExtractInputTableDef(table_def, i);
+        std::shared_ptr<::fesql::storage::Table> table(
+            new ::fesql::storage::Table(i + 1, 1, table_def));
+        name_table_map[table_def.name()] = table;
+        ASSERT_TRUE(AddTable(catalog, table_def, table));
+    }
+
+    // Init engine and run session
+    std::cout << sql_case.sql_str() << std::endl;
+    base::Status get_status;
+
+    Engine engine(catalog);
+    BatchRunSession session;
+    //    session.EnableDebug();
+
+    bool ok =
+        engine.Get(sql_case.sql_str(), sql_case.db(), session, get_status);
+    ASSERT_TRUE(ok);
+    std::vector<Row> request_data;
+    for (int32_t i = 0; i < input_cnt; i++) {
+        auto input = sql_case.inputs()[i];
+        std::vector<Row> rows;
+        sql_case.ExtractInputData(rows, i);
+        if (!rows.empty()) {
+            StoreData(name_table_map[input.name_].get(), rows);
+        }
+    }
+
+    int32_t ret = -1;
+    DLOG(INFO) << "RUN IN MODE BATCH";
+    vm::Schema schema;
+    schema = session.GetSchema();
+    PrintSchema(schema);
+    std::ostringstream oss;
+    session.GetPhysicalPlan()->Print(oss, "");
+    std::cout << "physical plan:\n" << oss.str() << std::endl;
+
+    std::ostringstream runner_oss;
+    session.GetRunner()->Print(runner_oss, "");
+    std::cout << "runner plan:\n" << runner_oss.str() << std::endl;
+
+    // Check Output Schema
+    std::vector<Row> case_output_data;
+    type::TableDef case_output_table;
+    ASSERT_TRUE(sql_case.ExtractOutputData(case_output_data));
+    ASSERT_TRUE(sql_case.ExtractOutputSchema(case_output_table));
+    CheckSchema(schema, case_output_table.columns());
+
+    // Check Output Data
+    std::vector<Row> output;
+    std::vector<int8_t*> output_ptr;
+    ASSERT_EQ(0, session.Run(output_ptr));
+    for (auto ptr : output_ptr) {
+        output.push_back(Row(ptr, RowView::GetSize(ptr)));
+    }
+    LOG(INFO) << "expect result:\n";
+    PrintRows(case_output_table.columns(), case_output_data);
+    LOG(INFO) << "real result:\n";
+    PrintRows(schema, output);
+    CheckRows(output, case_output_data);
 }
 
-TEST_P(EngineTest, test_batch_mode_engine) {
+INSTANTIATE_TEST_CASE_P(
+    EngineSimpleQuery, EngineTest,
+    testing::ValuesIn(InitCases("/cases/query/0/simple_query.yaml")));
+TEST_P(EngineTest, test_batch_engine) {
     ParamType sql_case = GetParam();
-    LOG(INFO) << sql_case.sql_str();
-    type::TableDef table_def;
-    BuildTableDef(table_def);
-    ::fesql::type::IndexDef* index = table_def.add_indexes();
-    index->set_name("index1");
-    index->add_first_keys("col2");
-    index->set_second_key("col5");
-    std::shared_ptr<::fesql::storage::Table> table(
-        new ::fesql::storage::Table(1, 1, table_def));
+    LOG(INFO) << sql_case.desc();
+    BatchModeCheck(sql_case);
 }
+TEST_P(EngineTest, test_request_engine) {
+    ParamType sql_case = GetParam();
+    LOG(INFO) << sql_case.desc();
+    RequestModeCheck(sql_case);
+}
+
 // 无命中索引last join
 TEST_F(EngineTest, test_last_join_no_match_index) {
     EngineRunMode is_batch_mode = RUNBATCH;
@@ -443,8 +578,6 @@ TEST_F(EngineTest, test_last_join_no_match_index) {
 
     auto catalog = BuildCommonCatalog(table_def, table);
     AddTable(catalog, table_def2, table2);
-
-
 
     const std::string sql =
         "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return "
@@ -605,8 +738,6 @@ TEST_F(EngineTest, test_last_join_match_index) {
     auto catalog = BuildCommonCatalog(table_def, table);
     AddTable(catalog, table_def2, table2);
 
-
-
     const std::string sql =
         "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return "
         "d\nend\n%%sql\nSELECT t1.col0, test(t1.col1,t2.col1), t1.col2 , str1 "
@@ -754,7 +885,6 @@ TEST_F(EngineTest, test_last_join_window_agg) {
 
     auto catalog = BuildCommonCatalog(table_def, table);
     AddTable(catalog, table_def2, table2);
-
 
     const std::string sql =
         "%%fun\n"
@@ -922,7 +1052,6 @@ TEST_F(EngineTest, test_window_agg) {
     int8_t* rows = NULL;
     std::vector<Row> windows;
     BuildWindow(windows, &rows);
-
 
     const std::string sql =
         "%%fun\n"
@@ -1163,7 +1292,6 @@ TEST_F(EngineTest, test_window_agg_with_limit) {
     ASSERT_TRUE(table->Init());
 
     auto catalog = BuildCommonCatalog(table_def, table);
-
 
     int8_t* rows = NULL;
     std::vector<Row> windows;

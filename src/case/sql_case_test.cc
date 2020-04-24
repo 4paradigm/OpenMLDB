@@ -17,7 +17,7 @@ namespace sqlcase {
 
 class SQLCaseTest : public ::testing::Test {};
 
-TEST_F(SQLCaseTest, ExtractSchemaTest) {
+TEST_F(SQLCaseTest, ExtractTableDefTest) {
     type::TableDef table;
     table.set_name("t1");
     table.set_catalog("db");
@@ -60,34 +60,66 @@ TEST_F(SQLCaseTest, ExtractSchemaTest) {
     }
 
     {
+        type::TableDef exp_table = table;
+        auto index = exp_table.add_indexes();
+        index->set_name("index1");
+        index->add_first_keys("col1");
+        index->set_second_key("col5");
         const std::string schema_str =
             "col0:string, col1:int32, col2:int16, col3:float, col4:double, "
             "col5:int64, col6:string";
         type::TableDef output_table;
         ASSERT_TRUE(SQLCase::ExtractSchema(schema_str, output_table));
+        const std::string index_str = "index1:col1:col5";
+        ASSERT_TRUE(SQLCase::ExtractIndex(index_str, output_table));
         output_table.set_name(table.name());
         output_table.set_catalog(table.catalog());
-        ASSERT_EQ(table.DebugString(), output_table.DebugString());
+        ASSERT_EQ(exp_table.DebugString(), output_table.DebugString());
     }
     {
+        type::TableDef exp_table = table;
+        auto index = exp_table.add_indexes();
+        index->set_name("index1");
+        index->add_first_keys("col1");
+        index->add_first_keys("col2");
+        index->set_second_key("col5");
         const std::string schema_str =
             "col0:string, col1:int, col2:smallint, col3:float, col4:double, "
             "col5:bigint, col6:string";
         type::TableDef output_table;
         ASSERT_TRUE(SQLCase::ExtractSchema(schema_str, output_table));
+        const std::string index_str = "index1:col1|col2:col5";
+        ASSERT_TRUE(SQLCase::ExtractIndex(index_str, output_table));
         output_table.set_name(table.name());
         output_table.set_catalog(table.catalog());
-        ASSERT_EQ(table.DebugString(), output_table.DebugString());
+        ASSERT_EQ(exp_table.DebugString(), output_table.DebugString());
     }
     {
+        type::TableDef exp_table = table;
+        {
+            auto index = exp_table.add_indexes();
+            index->set_name("index1");
+            index->add_first_keys("col1");
+            index->set_second_key("col5");
+        }
+        {
+            auto index = exp_table.add_indexes();
+            index->set_name("index2");
+            index->add_first_keys("col1");
+            index->add_first_keys("col2");
+            index->set_second_key("col5");
+        }
+
         const std::string schema_str =
             "col0:string\ncol1:i32\ncol2:i16\ncol3:float\ncol4:double\n"
             "col5:i64\ncol6:varchar";
         type::TableDef output_table;
         ASSERT_TRUE(SQLCase::ExtractSchema(schema_str, output_table));
+        const std::string index_str = "index1:col1:col5, index2:col1|col2:col5";
+        ASSERT_TRUE(SQLCase::ExtractIndex(index_str, output_table));
         output_table.set_name(table.name());
         output_table.set_catalog(table.catalog());
-        ASSERT_EQ(table.DebugString(), output_table.DebugString());
+        ASSERT_EQ(exp_table.DebugString(), output_table.DebugString());
     }
 
     type::TableDef table2;
@@ -254,6 +286,7 @@ TEST_F(SQLCaseTest, ExtractSQLCase) {
     const std::string schema =
         "col0:string, col1:int32, col2:int16, col3:float, col4:double, "
         "col5:int64, col6:string";
+    const std::string index = "index1:col1:col5";
     const std::string data =
         "0, 1, 5, 1.1, 11.1, 1, 1\n"
         "0, 2, 5, 2.2, 22.2, 2, 22\n"
@@ -264,17 +297,12 @@ TEST_F(SQLCaseTest, ExtractSQLCase) {
         "a";
     {
         SQLCase::TableInfo table_data = {
-            .name_ = "",
-            .db_ = "",
-            .schema_ = schema,
-            .data_ = data
-        };
+            .name_ = "", .schema_ = schema, .index_ = index, .data_ = data};
         sql_case.AddInput(table_data);
     }
 
     SQLCase::TableInfo table_data = {
         .name_ = "",
-        .db_ = "",
         .schema_ =
             "f0:string, f1:float, f2:double, f3:int16, f4:int32, f5:int64, "
             "f6:timestamp",
@@ -327,6 +355,10 @@ TEST_F(SQLCaseTest, ExtractSQLCase) {
             column->set_type(::fesql::type::kVarchar);
             column->set_name("col6");
         }
+        auto index = table.add_indexes();
+        index->set_name("index1");
+        index->add_first_keys("col1");
+        index->set_second_key("col5");
         output_table.set_name(table.name());
         output_table.set_catalog(table.catalog());
         ASSERT_EQ(table.DebugString(), output_table.DebugString());
@@ -487,13 +519,15 @@ TEST_F(SQLCaseTest, ExtractYamlSQLCase) {
     {
         SQLCase& sql_case = cases[0];
         ASSERT_EQ(sql_case.id(), 1);
+        ASSERT_EQ("batch", sql_case.mode());
         ASSERT_EQ("SELECT所有列", sql_case.desc());
         ASSERT_EQ(sql_case.inputs()[0].name_, "t1");
-        ASSERT_EQ(sql_case.inputs()[0].db_, "test");
+        ASSERT_EQ(sql_case.db(), "test");
         ASSERT_EQ(
             sql_case.inputs()[0].schema_,
             "col0:string, col1:int32, col2:int16, col3:float, col4:double, "
             "col5:int64, col6:string");
+        ASSERT_EQ(sql_case.inputs()[0].index_, "index1:col1|col2:col5");
         ASSERT_EQ(sql_case.inputs()[0].data_,
                   "0, 1, 5, 1.1, 11.1, 1, 1\n0, 2, 5, 2.2, 22.2, 2, 22\n0, 3, "
                   "55, 3.3, "
@@ -518,12 +552,15 @@ TEST_F(SQLCaseTest, ExtractYamlSQLCase) {
         SQLCase& sql_case = cases[1];
         ASSERT_EQ(sql_case.id(), 2);
         ASSERT_EQ("SELECT最小值", sql_case.desc());
+        ASSERT_EQ("request", sql_case.mode());
         ASSERT_EQ(sql_case.inputs()[0].name_, "t1");
-        ASSERT_EQ(sql_case.inputs()[0].db_, "test");
+        ASSERT_EQ(sql_case.db(), "test");
         ASSERT_EQ(
             sql_case.inputs()[0].schema_,
             "col0:string, col1:int32, col2:int16, col3:float, col4:double, "
             "col5:int64, col6:string");
+        ASSERT_EQ(sql_case.inputs()[0].index_,
+                  "index1:col1|col2:col5, index2:col1:col5");
         ASSERT_EQ(sql_case.inputs()[0].data_,
                   "0, 1, 5, 1.1, 11.1, 1, 1\n0, 2, 5, 2.2, 22.2, 2, 22");
         ASSERT_EQ(

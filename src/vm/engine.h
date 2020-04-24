@@ -27,11 +27,11 @@
 #include "base/spin_lock.h"
 #include "codec/list_iterator_codec.h"
 #include "codec/row_codec.h"
+#include "llvm-c/Target.h"
 #include "proto/common.pb.h"
 #include "vm/catalog.h"
 #include "vm/mem_catalog.h"
 #include "vm/sql_compiler.h"
-#include "llvm-c/Target.h"
 
 namespace fesql {
 namespace vm {
@@ -43,12 +43,9 @@ class Engine;
 
 class EngineOptions {
  public:
-    void set_keep_ir(bool flag) {
-        this->keep_ir_ = flag;
-    }
-    bool is_keep_ir() const {
-        return this->keep_ir_;
-    }
+    void set_keep_ir(bool flag) { this->keep_ir_ = flag; }
+    bool is_keep_ir() const { return this->keep_ir_; }
+
  private:
     bool keep_ir_;
 };
@@ -62,9 +59,7 @@ class CompileInfo {
         return buf.CopyFrom(str.data(), str.size());
     }
 
-    size_t get_ir_size() {
-        return this->sql_ctx.ir.size();
-    }
+    size_t get_ir_size() { return this->sql_ctx.ir.size(); }
 
  private:
     SQLContext sql_ctx;
@@ -112,8 +107,9 @@ class BatchRunSession : public RunSession {
     explicit BatchRunSession(bool mini_batch = false)
         : RunSession(), mini_batch_(mini_batch) {}
     ~BatchRunSession() {}
-    virtual int32_t Run(std::vector<int8_t*>& buf, uint64_t limit);  // NOLINT
-    virtual std::shared_ptr<TableHandler> Run();                     // NOLINT
+    virtual int32_t Run(std::vector<int8_t*>& buf,  // NOLINT
+                        uint64_t limit = 0);
+    virtual std::shared_ptr<TableHandler> Run();  // NOLINT
     const bool IsBatchRun() const override { return true; }
 
  private:
@@ -134,8 +130,6 @@ class RequestRunSession : public RunSession {
     virtual inline const std::string& GetRequestName() const {
         return compile_info_->get_sql_context().request_name;
     }
-
-
 };
 
 typedef std::map<std::string,

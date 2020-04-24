@@ -2,12 +2,14 @@ SQLCases:
   -
     id: 1
     desc: SELECT所有列
+    mode: batch
+    db: test
     sql: select col0, col1, col2, col3, col4, col5, col6 from t1;
     inputs:
       -
         name: t1
-        db: test
         schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
+        index: index1:col1|col2:col5
         data: |
           0, 1, 5, 1.1, 11.1, 1, 1
           0, 2, 5, 2.2, 22.2, 2, 22
@@ -25,11 +27,13 @@ SQLCases:
   -
     id: 2
     desc: SELECT最小值
+    mode: request
+    db: test
     sql: select min(col0), min(col1), min(col2), min(col3), min(col4), min(col5), min(col6) from t1;
     inputs:
       -
         name: t1
-        db: test
+        index: index1:col1|col2:col5, index2:col1:col5
         schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
         data: |
           0, 1, 5, 1.1, 11.1, 1, 1
