@@ -1974,9 +1974,6 @@ bool RequestModeransformer::TransformJoinOp(const node::JoinPlanNode* node,
     node_manager_->RegisterNode(*output);
     return true;
 }
-const Schema& RequestModeransformer::request_schema() const {
-    return request_schema_;
-}
 bool RequestModeransformer::TransformScanOp(const node::TablePlanNode* node,
                                             PhysicalOpNode** output,
                                             base::Status& status) {
@@ -1992,6 +1989,7 @@ bool RequestModeransformer::TransformScanOp(const node::TablePlanNode* node,
             *output = new PhysicalRequestProviderNode(table);
             node_manager_->RegisterNode(*output);
             request_schema_ = *table->GetSchema();
+            request_name_ = table->GetName();
             return true;
         } else {
             status.msg = "fail to transform data_provider op: table " + db_ +

@@ -49,7 +49,6 @@ namespace vm {
 
 class SQLCompilerTest : public ::testing::TestWithParam<std::string> {};
 
-
 INSTANTIATE_TEST_CASE_P(
     SqlSimpleProject, SQLCompilerTest,
     testing::Values(
@@ -147,7 +146,8 @@ void Compiler_Runner_Check(std::shared_ptr<Catalog> catalog,
 }
 
 void Request_Schema_Check(std::shared_ptr<Catalog> catalog,
-                          const std::string sql, const vm::Schema& exp_schema) {
+                          const std::string sql,
+                          const type::TableDef& exp_table_def) {
     node::NodeManager nm;
     SQLCompiler sql_compiler(catalog, &nm);
     SQLContext sql_context;
@@ -175,10 +175,12 @@ void Request_Schema_Check(std::shared_ptr<Catalog> catalog,
     PrintSchema(oss_schema, sql_context.request_schema);
     std::cout << "request schema:\n" << oss_request_schema.str();
 
-    ASSERT_EQ(sql_context.request_schema.size(), exp_schema.size());
+    ASSERT_EQ(sql_context.request_name, exp_table_def.name());
+    ASSERT_EQ(sql_context.request_schema.size(),
+              exp_table_def.columns().size());
     for (int i = 0; i < sql_context.request_schema.size(); i++) {
         ASSERT_EQ(sql_context.request_schema.Get(i).DebugString(),
-                  exp_schema.Get(i).DebugString());
+                  exp_table_def.columns().Get(i).DebugString());
     }
 }
 
@@ -237,7 +239,7 @@ TEST_P(SQLCompilerTest, compile_request_mode_test) {
     AddTable(catalog, table_def5, table5);
     AddTable(catalog, table_def6, table6);
     Compiler_Runner_Check(catalog, sqlstr, false);
-    Request_Schema_Check(catalog, sqlstr, table_def.columns());
+    Request_Schema_Check(catalog, sqlstr, table_def);
 }
 
 TEST_P(SQLCompilerTest, compile_batch_mode_test) {

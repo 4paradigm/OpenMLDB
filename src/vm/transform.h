@@ -326,7 +326,8 @@ class RequestModeransformer : public BatchModeTransformer {
                           ::llvm::Module* module);
     virtual ~RequestModeransformer();
 
-    const Schema& request_schema() const;
+    const Schema& request_schema() const { return request_schema_; }
+    const std::string& request_name() const { return request_name_; }
 
  protected:
     virtual bool TransformProjecPlantOp(const node::ProjectPlanNode* node,
@@ -341,6 +342,7 @@ class RequestModeransformer : public BatchModeTransformer {
 
  private:
     vm::Schema request_schema_;
+    std::string request_name_;
 };
 bool TransformLogicalTreeToLogicalGraph(const ::fesql::node::PlanNode* node,
                                         LogicalGraph* graph,
