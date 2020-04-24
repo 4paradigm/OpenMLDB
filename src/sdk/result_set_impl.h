@@ -23,13 +23,17 @@
 #include "proto/tablet.pb.h"
 #include "sdk/base_impl.h"
 #include "sdk/result_set.h"
+#include "brpc/controller.h"
+#include "butil/iobuf.h"
 
 namespace fesql {
 namespace sdk {
 
 class ResultSetImpl : public ResultSet {
  public:
-    explicit ResultSetImpl(std::unique_ptr<tablet::QueryResponse> response);
+    explicit ResultSetImpl(std::unique_ptr<tablet::QueryResponse> response,
+            std::unique_ptr<brpc::Controller> cntl);
+
     ~ResultSetImpl();
 
     bool Init();
@@ -61,11 +65,16 @@ class ResultSetImpl : public ResultSet {
     int32_t Size();
 
  private:
+    int32_t GetRecordSize();
+ private:
     std::unique_ptr<tablet::QueryResponse> response_;
     int32_t index_;
     int32_t size_;
     std::unique_ptr<codec::RowView> row_view_;
+    vm::Schema internal_schema_;
     SchemaImpl schema_;
+    std::unique_ptr<brpc::Controller> cntl_;
+    std::unique_ptr<butil::IOBufAsZeroCopyInputStream> records_stream_;
 };
 
 }  // namespace sdk

@@ -22,35 +22,52 @@
 #include <utility>
 #include "base/strings.h"
 #include "glog/logging.h"
+#include "codec/schema_codec.h"
 
 namespace fesql {
 namespace sdk {
 
-ResultSetImpl::ResultSetImpl(std::unique_ptr<tablet::QueryResponse> response)
+ResultSetImpl::ResultSetImpl(std::unique_ptr<tablet::QueryResponse> response, std::unique_ptr<brpc::Controller> cntl)
     : response_(std::move(response)),
       index_(-1),
       size_(0),
       row_view_(),
-      schema_() {
-    if (response_) {
-        schema_.SetSchema(response_->schema());
-        size_ = response_->result_set().size();
-    }
+      internal_schema_(),
+      schema_(),
+      cntl_(std::move(cntl)),
+      records_stream_(){
 }
 
 ResultSetImpl::~ResultSetImpl() {}
 
 bool ResultSetImpl::Init() {
+    if (!response_) return false;
+    size_ = response_->byte_size();
+    if (size_<= 0) return true;
+    // decode schema
+    bool ok = codec::SchemaCodec::Decode(response_->schema(), &internal_schema_);
+    if (!ok) {
+        LOG(WARNING) << "fail to decode response schema ";
+        return false;
+    }
     std::unique_ptr<codec::RowView> row_view(
-        new codec::RowView(response_->schema()));
+        new codec::RowView(internal_schema_));
     row_view_ = std::move(row_view);
+    schema_.SetSchema(internal_schema_);
+    std::unique_ptr<butil::IOBufAsZeroCopyInputStream> stream(cntl_->response_attachment());
+    records_stream_ = std::move(stream);
     return true;
+}
+
+int32_t ResultSetImpl::GetRecordSize() {
+    void* data = NULL;
+    int32_t size = 0;
+    stream->Next(&data, 6);
 }
 
 bool ResultSetImpl::Next() {
     index_++;
-    if (index_ < size_) {
-        const std::string& row = response_->result_set(index_);
+    if (index_ < response_->count()) {
         row_view_->Reset(reinterpret_cast<const int8_t*>(row.c_str()),
                          row.size());
         return true;

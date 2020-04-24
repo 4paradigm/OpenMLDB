@@ -14,8 +14,10 @@ message QueryRequest {
 
 message QueryResponse {
     optional common.Status status = 1;
-    repeated bytes result_set = 2;
-    repeated type.ColumnDef schema = 3;
+    optional bytes schema = 2;
+    // the record size
+    optional uint32 byte_size = 3;
+    optional uint32 count = 4;
 }
 
 message CreateTableRequest {

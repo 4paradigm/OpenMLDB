@@ -60,9 +60,15 @@ class RunSession {
     virtual inline const Schema& GetSchema() const {
         return compile_info_->get_sql_context().schema;
     }
+
+    virtual inline const std::string& GetDecodedSchema() const  {
+        return decoded_schema_;
+    }
+
     virtual inline vm::PhysicalOpNode* GetPhysicalPlan() {
         return compile_info_->get_sql_context().plan;
     }
+
     virtual inline vm::Runner* GetRunner() {
         return compile_info_->get_sql_context().runner;
     }
@@ -70,13 +76,14 @@ class RunSession {
     virtual const bool IsBatchRun() const = 0;
 
  protected:
-    inline void SetCompileInfo(
-        const std::shared_ptr<CompileInfo>& compile_info) {
-        compile_info_ = compile_info;
-    }
+    bool SetCompileInfo(
+        const std::shared_ptr<CompileInfo>& compile_info);
+
     inline void SetCatalog(const std::shared_ptr<Catalog>& cl) { cl_ = cl; }
+
     std::shared_ptr<CompileInfo> compile_info_;
     std::shared_ptr<Catalog> cl_;
+    std::string decoded_schema_;
     friend Engine;
 };
 

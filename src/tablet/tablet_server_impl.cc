@@ -24,6 +24,8 @@
 #include <vector>
 #include "base/strings.h"
 #include "gflags/gflags.h"
+#include "butil/iobuf.h"
+#include "brpc/controller.h"
 
 DECLARE_string(dbms_endpoint);
 DECLARE_string(endpoint);
@@ -162,9 +164,6 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
             LOG(WARNING) << base_status.msg;
             return;
         }
-        //        std::ostringstream oss;
-        //        session.GetPhysicalPlan()->Print(oss, "");
-        //        std::cout << "physical plan:\n" << oss.str() << std::endl;
     }
 
     auto table = session.Run();
@@ -175,15 +174,23 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
         status->set_msg("fail to run sql");
         return;
     }
-    // TODO(wangtaize) opt the result buf
+
+    brpc::Controller *cntl = static_cast<brpc::Controller*>(ctrl);
+    butil::IOBuf& buf = cntl->response_attachment();
     auto iter = table->GetIterator();
+    uint32_t byte_size = 0;
+    uint32_t count = 0;
     while (iter->Valid()) {
-        int8_t* ptr = iter->GetValue().buf();
+        const codec::Row& row = iter->GetValue();
+        byte_size += row.size();
         iter->Next();
-        response->add_result_set(ptr, *reinterpret_cast<uint32_t*>(ptr + 2));
-        free(ptr);
+        buf.append(reinterpret_cast<void*>(row.buf()), row.size());
+        free(row.buf());
+        count += 1;
     }
-    response->mutable_schema()->CopyFrom(session.GetSchema());
+    response->set_schema(session.GetDecodedSchema());
+    response->set_byte_size(byte_size);
+    response->set_count(count);
     status->set_code(common::kOk);
 }
 

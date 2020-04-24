@@ -22,6 +22,7 @@
 #include "base/strings.h"
 #include "codec/list_iterator_codec.h"
 #include "codec/row_codec.h"
+#include "codec/schema_codec.h"
 #include "codegen/buf_ir_builder.h"
 #include "vm/mem_catalog.h"
 #include "llvm-c/Target.h"
@@ -99,6 +100,11 @@ std::shared_ptr<CompileInfo> Engine::GetCacheLocked(const std::string& db,
 
 RunSession::RunSession() {}
 RunSession::~RunSession() {}
+
+bool RunSession::SetCompileInfo(const std::shared_ptr<CompileInfo>& compile_info) {
+    compile_info_ = compile_info;
+    return codec::SchemaCodec::Encode(compile_info_->get_sql_context().schema, &decoded_schema_);
+}
 
 int32_t RequestRunSession::Run(const Row& in_row, Row* out_row) {
     RunnerContext ctx(in_row);
