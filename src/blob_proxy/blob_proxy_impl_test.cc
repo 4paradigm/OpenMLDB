@@ -4,13 +4,16 @@
 // Date 2020-04-25
 
 #include "blob_proxy/blob_proxy_impl.h"
-#include "blobserver/blobserver_impl.h"
-#include "nameserver/name_server_impl.h"
+
 #include <gflags/gflags.h>
 #include <google/protobuf/stubs/common.h>
 #include <logging.h>
+#include <string>
+
+#include "blobserver/blobserver_impl.h"
 #include "client/bs_client.h"
 #include "gtest/gtest.h"
+#include "nameserver/name_server_impl.h"
 
 DECLARE_string(endpoint);
 DECLARE_string(hdd_root_path);
@@ -20,17 +23,19 @@ DECLARE_int32(zk_session_timeout);
 DECLARE_int32(request_timeout_ms);
 DECLARE_int32(zk_keep_alive_check_interval);
 
-using rtidb::nameserver::NameServerImpl;
-using rtidb::nameserver::TableInfo;
 using rtidb::nameserver::CreateTableRequest;
 using rtidb::nameserver::GeneralResponse;
+using rtidb::nameserver::NameServerImpl;
+using rtidb::nameserver::TableInfo;
 
 namespace rtidb {
 namespace blobproxy {
 
 uint32_t counter = 10;
 
-inline std::string GenRand() { return std::to_string(rand() % 10000000 + 1); } // NOLINT
+inline std::string GenRand() {
+    return std::to_string(rand() % 10000000 + 1);  // NOLINT
+}
 
 class MockClosure : public ::google::protobuf::Closure {
  public:
@@ -39,7 +44,7 @@ class MockClosure : public ::google::protobuf::Closure {
     void Run() {}
 };
 
-class BlobProxyImplTest: public ::testing::Test {
+class BlobProxyImplTest : public ::testing::Test {
  public:
     BlobProxyImplTest() {}
     ~BlobProxyImplTest() {}
@@ -82,13 +87,15 @@ void StartBlob(brpc::Server* server) {
 }
 
 void StartProxy(brpc::Server* server) {
-    ::rtidb::blobproxy::BlobProxyImpl* proxy = new ::rtidb::blobproxy::BlobProxyImpl();
+    ::rtidb::blobproxy::BlobProxyImpl* proxy =
+        new ::rtidb::blobproxy::BlobProxyImpl();
     bool ok = proxy->Init();
     ASSERT_TRUE(ok);
     sleep(2);
     brpc::ServerOptions options1;
     brpc::ServerOptions options;
-    if (server->AddService(proxy, brpc::SERVER_DOESNT_OWN_SERVICE, "/v1/get/* => Get") != 0) {
+    if (server->AddService(proxy, brpc::SERVER_DOESNT_OWN_SERVICE,
+                           "/v1/get/* => Get") != 0) {
         PDLOG(WARNING, "fail to add service");
         exit(1);
     }
@@ -179,7 +186,8 @@ TEST_F(BlobProxyImplTest, Basic_Test) {
         int ret = channel.Init(FLAGS_endpoint.c_str(), &oc);
         ASSERT_EQ(0, ret);
         brpc::Controller cntl;
-        cntl.http_request().uri() = FLAGS_endpoint + "/v1/get/" + name + "/" + key;
+        cntl.http_request().uri() =
+            FLAGS_endpoint + "/v1/get/" + name + "/" + key;
         cntl.http_request().set_method(brpc::HTTP_METHOD_GET);
         channel.CallMethod(NULL, &cntl, NULL, NULL, NULL);
         ASSERT_EQ(200, cntl.http_response().status_code());
@@ -189,10 +197,9 @@ TEST_F(BlobProxyImplTest, Basic_Test) {
         int code = memcmp(value.data(), ss.data(), value.length());
         ASSERT_EQ(0, code);
     }
-
 }
 
-}  // namespace blobserver
+}  // namespace blobproxy
 }  // namespace rtidb
 
 int main(int argc, char** argv) {

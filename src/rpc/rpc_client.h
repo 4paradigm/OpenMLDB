@@ -23,11 +23,13 @@
 #include <gflags/gflags.h>
 #include <mutex.h>
 #include <thread_pool.h>
+
 #include <boost/bind.hpp>
 #include <boost/function.hpp>
-#include "logging.h" // NOLINT
-#include <thread> // NOLINT
-#include <string> // NOLINT
+#include <string>  // NOLINT
+#include <thread>  // NOLINT
+
+#include "logging.h"  // NOLINT
 
 using ::baidu::common::DEBUG;
 using ::baidu::common::INFO;
@@ -123,10 +125,11 @@ class RpcClient {
     }
 
     template <class Request, class Response, class Callback>
-    bool SendRequestGetAttachment(void (T::*func)(google::protobuf::RpcController*,
-                                     const Request*, Response*, Callback*),
-                     const Request* request, Response* response,
-                     uint64_t rpc_timeout, int retry_times, butil::IOBuf* buff) {
+    bool SendRequestGetAttachment(
+        void (T::*func)(google::protobuf::RpcController*, const Request*,
+                        Response*, Callback*),
+        const Request* request, Response* response, uint64_t rpc_timeout,
+        int retry_times, butil::IOBuf* buff) {
         brpc::Controller cntl;
         cntl.set_log_id(log_id_++);
         if (rpc_timeout > 0) {

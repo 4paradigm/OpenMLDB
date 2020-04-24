@@ -7,7 +7,9 @@
 #define SRC_CLIENT_BS_CLIENT_H_
 
 #include <rpc/rpc_client.h>
+
 #include <string>
+
 #include "proto/blob_server.pb.h"
 
 namespace rtidb {

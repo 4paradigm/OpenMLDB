@@ -24,13 +24,13 @@
 #include "base/linenoise.h"
 #include "base/schema_codec.h"
 #include "base/strings.h"
+#include "blob_proxy/blob_proxy_impl.h"
 #include "blobserver/blobserver_impl.h"
 #include "boost/algorithm/string.hpp"
 #include "boost/lexical_cast.hpp"
 #include "brpc/server.h"
 #include "client/ns_client.h"
 #include "client/tablet_client.h"
-#include "blob_proxy/blob_proxy_impl.h"
 #include "logging.h"  // NOLINT
 #include "nameserver/name_server_impl.h"
 #include "proto/client.pb.h"
@@ -246,7 +246,8 @@ void StartTablet() {
 
 void StartBlobProxy() {
     SetupLog();
-    ::rtidb::blobproxy::BlobProxyImpl* proxy = new ::rtidb::blobproxy::BlobProxyImpl();
+    ::rtidb::blobproxy::BlobProxyImpl* proxy =
+        new ::rtidb::blobproxy::BlobProxyImpl();
     bool ok = proxy->Init();
     if (!ok) {
         PDLOG(WARNING, "fail to init blobproxy server");
