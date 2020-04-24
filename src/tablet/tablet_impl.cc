@@ -1782,65 +1782,6 @@ void TabletImpl::BatchQuery(RpcController* controller,
         response->set_msg("table is not exist");
         return;
     }
-    /**
-    uint32_t index = 0;
-    rtidb::storage::RelationalTableTraverseIterator* it =
-        r_table->NewTraverse(index, 0);
-    if (it == NULL) {
-        response->set_code(::rtidb::base::ReturnCode::kIdxNameNotFound);
-        response->set_msg("idx name not found");
-        return;
-    }
-    std::vector<rtidb::base::Slice> value_vec;
-    uint32_t total_block_size = 0;
-
-    uint32_t scount = 0;
-    uint32_t not_found_count = 0;
-    for (auto& key : request->query_key()) {
-        it->Seek(key);
-        scount++;
-        if (!it->Valid()) {
-            not_found_count++;
-            continue;
-        }
-        rtidb::base::Slice value = it->GetValue();
-
-        total_block_size += value.size();
-        value_vec.push_back(value);
-        if (scount >= FLAGS_max_traverse_cnt) {
-            PDLOG(DEBUG, "batchquery cnt %lu max %lu",
-                    scount, FLAGS_max_traverse_cnt);
-            break;
-        }
-    }
-    if (total_block_size == 0) {
-        PDLOG(DEBUG, "tid %u pid %u, batchQuery not key found.", request->tid(),
-    request->pid()); response->set_code(rtidb::base::ReturnCode::kOk);
-        response->set_is_finish(true);
-    }
-    bool is_finish = false;
-    if (static_cast<uint64_t>(scount) ==
-    static_cast<uint64_t>(request->query_key_size())) { is_finish = true;
-    }
-    uint32_t total_size = (scount - not_found_count) * 4 + total_block_size;
-    std::string* pairs = response->mutable_pairs();
-    if (scount <= 0) {
-        pairs->resize(0);
-    } else {
-        pairs->resize(total_size);
-    }
-    char* rbuffer = reinterpret_cast<char*>(&((*pairs)[0]));
-    uint32_t offset = 0;
-    for (const auto& value : value_vec) {
-        rtidb::base::Encode(value.data(), value.size(), rbuffer, offset);
-        offset += (4 + value.size());
-    }
-    PDLOG(DEBUG, "tid %u pid %u, batchQuery count %d.", request->tid(),
-    request->pid(), scount); it->SetFinish(true); delete it;
-    response->set_code(rtidb::base::ReturnCode::kOk);
-    response->set_is_finish(is_finish);
-    response->set_count(scount);
-*/
     uint32_t scount = 0;
     std::string* pairs = response->mutable_pairs();
     bool ok = r_table->Query(request->read_option(), pairs, &scount);
