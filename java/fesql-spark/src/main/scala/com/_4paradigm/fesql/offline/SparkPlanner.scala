@@ -26,27 +26,27 @@ class SparkPlanner(session: SparkSession) {
       case (name, df) => planCtx.registerDataFrame(name, df)
     }
 
-    withSQLEngine(sql, SparkUtils.getDatabase("spark_db", tableDict)) { engine =>
+    withSQLEngine(sql, FesqlUtil.getDatabase("spark_db", tableDict)) { engine =>
       val irBuffer = engine.getIRBuffer
       planCtx.setModuleBuffer(irBuffer)
 
       val root = engine.getPlan
       logger.info("Get FeSQL physical plan: ")
       root.Print()
-      planPhysicalNodes(root, planCtx)
+      visitPhysicalNodes(root, planCtx)
     }
   }
 
 
-  private def planPhysicalNodes(root: PhysicalOpNode, ctx: PlanContext): SparkInstance = {
+  private def visitPhysicalNodes(root: PhysicalOpNode, ctx: PlanContext): SparkInstance = {
     val optCache = ctx.getPlanResult(root)
     if (optCache.isDefined) {
       return optCache.get
     }
 
     val children = mutable.ArrayBuffer[SparkInstance]()
-    for (k <- 0 until root.GetProducerCnt().toInt) {
-      children += planPhysicalNodes(root.GetProducer(k), ctx)
+    for (i <- 0 until root.GetProducerCnt().toInt) {
+      children += visitPhysicalNodes(root.GetProducer(i), ctx)
     }
 
     val opType = root.getType_

@@ -1,5 +1,6 @@
 package com._4paradigm.fesql.offline;
 
+import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
@@ -24,22 +25,30 @@ public class SerializableByteBuffer implements Serializable {
             throw new IOException("No backed buffer");
         }
         out.defaultWriteObject();
-        out.write(buffer.capacity());
+        out.writeInt(buffer.capacity());
         out.writeBoolean(buffer.isDirect());
         if (buffer.hasArray()) {
-            out.write(buffer.array());
+            out.write(buffer.array(), 0, buffer.capacity());
         } else {
             byte[] bytes = new byte[buffer.capacity()];
-            buffer.get(bytes, 0, bytes.length);
+            ByteBuffer view = buffer.duplicate();
+            view.rewind();
+            view.get(bytes, 0, bytes.length);
             out.write(bytes);
         }
-        out.write(MAGIC_END_TAG);
+        out.writeInt(MAGIC_END_TAG);
     }
+
 
     private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException {
         in.defaultReadObject();
-        int capacity = in.readInt();
-        boolean isDirect = in.readBoolean();
+
+        // object stream is backed by block stream, thus read bytes
+        // operations should be buffered to ensure exact bytes are read
+        DataInputStream wrappedIStream = new DataInputStream(in);
+
+        int capacity = wrappedIStream.readInt();
+        boolean isDirect = wrappedIStream.readBoolean();
         if (isDirect) {
             buffer = ByteBuffer.allocateDirect(capacity);
         } else {
@@ -51,15 +60,18 @@ public class SerializableByteBuffer implements Serializable {
         } else {
             bytes = new byte[capacity];
         }
-        int readLen = in.read(bytes, 0, capacity);
-        if (readLen < capacity) {
-            throw new IOException("Byte buffer stream corrupt, expect buffer bytes: "
-                    + capacity + " but read only " + readLen);
+
+        try {
+            wrappedIStream.readFully(bytes, 0, capacity);
+        } catch (IOException e) {
+            throw new IOException("Byte buffer stream corrupt, " +
+                    "expect buffer bytes: " + capacity, e);
         }
-        if (!buffer.hasArray()) {
+        if (!buffer.hasArray()) {  // maybe direct
             buffer.put(bytes, 0, capacity);
+            buffer.rewind();
         }
-        int endTag = in.readInt();
+        int endTag = wrappedIStream.readInt();
         if (endTag != MAGIC_END_TAG) {
             throw new IOException("Byte buffer stream corrupt");
         }

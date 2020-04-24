@@ -8,7 +8,7 @@ import org.apache.spark.sql.types._
 
 class RowCodec(schema: StructType) {
 
-  private val columnDefs = SparkUtils.getFeSQLSchema(schema)
+  private val columnDefs = FesqlUtil.getFeSQLSchema(schema)
 
   // for encode
   private var rowBuilder = new RowBuilder(columnDefs)

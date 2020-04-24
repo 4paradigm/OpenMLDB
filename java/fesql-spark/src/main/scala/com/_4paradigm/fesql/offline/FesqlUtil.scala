@@ -9,7 +9,7 @@ import org.apache.spark.sql.types._
 import scala.collection.JavaConverters._
 
 
-object SparkUtils {
+object FesqlUtil {
 
   def getDatabase(databaseName: String, dict: Map[String, DataFrame]): Database = {
     val databaseBuilder = Database.newBuilder()

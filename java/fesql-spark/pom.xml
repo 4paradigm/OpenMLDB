@@ -105,7 +105,7 @@
 					</args>
 				</configuration>
 				<executions>
-					<!--重要,将scala的编译提前到process-resources阶段,不然编译Java时会报找不到Scala的类-->
+					<!-- process mixed compilation of java and scala files -->
 					<execution>
 						<id>scala-compile-first</id>
 						<phase>process-resources</phase>

@@ -15,7 +15,7 @@ object ProjectPlan {
   def gen(ctx: PlanContext, node: PhysicalProjectNode, inputs: Seq[SparkInstance]): SparkInstance = {
     val inputInstance = inputs.head
     val inputRDD = inputInstance.getRDD
-    val outputSchema = SparkUtils.getSparkSchema(node.GetOutputSchema())
+    val outputSchema = FesqlUtil.getSparkSchema(node.GetOutputSchema())
 
     // spark closure
     val projectConfig = ProjectConfig(
