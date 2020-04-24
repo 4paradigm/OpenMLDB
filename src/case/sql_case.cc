@@ -7,13 +7,15 @@
  *--------------------------------------------------------------------------
  **/
 
-#include "cases/sql_case.h"
+#include "case/sql_case.h"
 #include "boost/algorithm/string.hpp"
+#include "boost/filesystem/operations.hpp"
 #include "boost/lexical_cast.hpp"
 #include "codec/row_codec.h"
 #include "glog/logging.h"
 #include "string"
 #include "vector"
+#include "yaml-cpp/yaml.h"
 namespace fesql {
 namespace cases {
 using fesql::codec::Row;
@@ -81,30 +83,36 @@ bool SQLCase::ExtractSchema(const std::string& schema_str,
     return true;
 }
 
-bool SQLCase::ExtractData(std::vector<Row>& rows) {
-    if (data_str.empty()) {
+bool SQLCase::AddInput(const std::string& name, const std::string& schema,
+                       const std::string& data) {
+    TableData table = {name, schema, data};
+    inputs_.push_back(table);
+    return true;
+}
+bool SQLCase::ExtractInputData(std::vector<Row>& rows, int32_t input_idx) {
+    if (inputs_[input_idx].data_.empty()) {
         LOG(WARNING) << "Empty Data String";
         return false;
     }
     type::TableDef table;
-    if (!ExtractDataSchema(table)) {
+    if (!ExtractInputSchema(table)) {
         LOG(WARNING) << "Invalid Schema";
         return false;
     }
-    return ExtractRows(table.columns(), data_str, rows);
+    return ExtractRows(table.columns(), inputs_[input_idx].data_, rows);
 }
 
-bool SQLCase::ExtractExpResult(std::vector<Row>& rows) {
-    if (expect_str_.empty()) {
+bool SQLCase::ExtractOutputData(std::vector<Row>& rows) {
+    if (output_.data_.empty()) {
         LOG(WARNING) << "Empty Data String";
         return false;
     }
     type::TableDef table;
-    if (!ExtractExpSchema(table)) {
+    if (!ExtractOutputSchema(table)) {
         LOG(WARNING) << "Invalid Schema";
         return false;
     }
-    return ExtractRows(table.columns(), expect_str_, rows);
+    return ExtractRows(table.columns(), output_.data_, rows);
 }
 bool SQLCase::ExtractRow(const vm::Schema& schema, const std::string& row_str,
                          int8_t** out_ptr, int32_t* out_size) {
@@ -223,11 +231,95 @@ bool SQLCase::ExtractRows(const vm::Schema& schema, const std::string& data_str,
     }
     return true;
 }
-bool SQLCase::ExtractDataSchema(type::TableDef& table) {
-    return ExtractSchema(data_schema_str_, table);
+bool SQLCase::ExtractInputSchema(type::TableDef& table, int32_t input_idx) {
+    return ExtractSchema(inputs_[input_idx].schema_, table);
 }
-bool SQLCase::ExtractExpSchema(type::TableDef& table) {
-    return ExtractSchema(expect_schema_str_, table);
+bool SQLCase::ExtractOutputSchema(type::TableDef& table) {
+    return ExtractSchema(output_.schema_, table);
+}
+bool SQLCase::CreateSQLCaseFromYaml(const std::string& yaml_path,
+                                    SQLCase* sql_case_ptr) {
+    if (nullptr == sql_case_ptr) {
+        LOG(WARNING) << "sql case output is null";
+        return false;
+    }
+    if (!boost::filesystem::is_regular_file(yaml_path)) {
+        LOG(WARNING) << yaml_path << ": No such file";
+        return false;
+    }
+    YAML::Node config = YAML::LoadFile(yaml_path);
+    if (config["SQLCase"]) {
+        auto sql_case_node = config["SQLCase"];
+
+        if (sql_case_node["id"]) {
+            sql_case_ptr->id_ = sql_case_node["id"].as<int32_t>();
+        } else {
+            sql_case_ptr->id_ = -1;
+        }
+
+        if (sql_case_node["sql"]) {
+            sql_case_ptr->sql_str_ = sql_case_node["sql"].as<std::string>();
+        }
+
+        if (sql_case_node["inputs"]) {
+            auto inputs = sql_case_node["inputs"];
+            if (!inputs.IsMap()) {
+                LOG(WARNING) << "Inputs is invalid";
+            }
+            for (auto iter = inputs.begin(); iter != inputs.end(); iter++) {
+                TableData table;
+                auto schema_data = iter->second;
+
+                if (schema_data["name"]) {
+                    table.name_ = schema_data["name"].as<std::string>();
+                }
+                if (schema_data["schema"]) {
+                    table.schema_ = schema_data["schema"].as<std::string>();
+                }
+                if (schema_data["data"]) {
+                    table.data_ = schema_data["data"].as<std::string>();
+                    boost::trim(table.data_);
+                }
+                sql_case_ptr->inputs_.push_back(table);
+            }
+        }
+
+        if (sql_case_node["output"]) {
+            if (sql_case_node["output"]["schema"]) {
+                sql_case_ptr->output_.schema_ =
+                    sql_case_node["output"]["schema"].as<std::string>();
+            }
+            if (sql_case_node["output"]["data"]) {
+                sql_case_ptr->output_.data_ =
+                    sql_case_node["output"]["data"].as<std::string>();
+                boost::trim(sql_case_ptr->output_.data_);
+            }
+        }
+    } else {
+        LOG(WARNING) << "Invalid SQLCase";
+        return false;
+    }
+    return true;
+}
+std::string SQLCase::FindFesqlDirPath() {
+    boost::filesystem::path current_path(boost::filesystem::current_path());
+    std::cout << "Current path is : " << current_path << std::endl;
+
+    boost::filesystem::path fesql_path;
+
+    while (current_path.has_parent_path()) {
+        current_path = current_path.parent_path();
+        if (current_path.filename().string() == "fesql") {
+            break;
+        }
+    }
+
+    if (current_path.filename().string() == "fesql") {
+        LOG(INFO) << "Fesql Dir Path is : " << current_path.string()
+                  << std::endl;
+        return current_path.string();
+    }
+    return std::string();
 }
 
 }  // namespace cases

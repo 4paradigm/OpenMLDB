@@ -7,9 +7,11 @@
  *--------------------------------------------------------------------------
  **/
 
-#include "cases/sql_case.h"
+#include "case/sql_case.h"
 #include <vector>
+#include "boost/filesystem/operations.hpp"
 #include "gtest/gtest.h"
+#include "yaml-cpp/yaml.h"
 namespace fesql {
 namespace cases {
 
@@ -248,10 +250,11 @@ TEST_F(SQLCaseTest, ExtractRowTest) {
 
 TEST_F(SQLCaseTest, ExtractSQLCase) {
     SQLCase sql_case;
-    sql_case.data_schema_str_ =
+
+    const std::string schema =
         "col0:string, col1:int32, col2:int16, col3:float, col4:double, "
         "col5:int64, col6:string";
-    sql_case.data_str =
+    const std::string data =
         "0, 1, 5, 1.1, 11.1, 1, 1\n"
         "0, 2, 5, 2.2, 22.2, 2, 22\n"
         "0, 3, 55, 3.3, 33.3, 1, 333\n"
@@ -259,17 +262,18 @@ TEST_F(SQLCaseTest, ExtractSQLCase) {
         "0, 5, 55, 5.5, 55.5, 3, "
         "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
         "a";
-    sql_case.expect_schema_str_ =
+    sql_case.AddInput("", schema, data);
+    sql_case.output_.schema_ =
         "f0:string, f1:float, f2:double, f3:int16, f4:int32, f5:int64, "
         "f6:timestamp";
-    sql_case.expect_str_ =
+    sql_case.output_.data_ =
         "A, 1.1, 2.2, 3, 4, 5, 1587647803000\n"
         "BB, 11.1, 22.2, 30, 40, 50, 1587647804000";
 
     // Check Data Schema
     {
         type::TableDef output_table;
-        ASSERT_TRUE(sql_case.ExtractDataSchema(output_table));
+        ASSERT_TRUE(sql_case.ExtractInputSchema(output_table));
         type::TableDef table;
         table.set_name("t1");
         table.set_catalog("db");
@@ -319,9 +323,9 @@ TEST_F(SQLCaseTest, ExtractSQLCase) {
     {
         type::TableDef output_table;
         std::vector<fesql::codec::Row> rows;
-        ASSERT_TRUE(sql_case.ExtractData(rows));
+        ASSERT_TRUE(sql_case.ExtractInputData(rows));
         ASSERT_EQ(5, rows.size());
-        sql_case.ExtractDataSchema(output_table);
+        sql_case.ExtractInputSchema(output_table);
         fesql::codec::RowView row_view(output_table.columns());
 
         {
@@ -382,7 +386,7 @@ TEST_F(SQLCaseTest, ExtractSQLCase) {
     // Check Data Schema
     {
         type::TableDef output_table;
-        ASSERT_TRUE(sql_case.ExtractExpSchema(output_table));
+        ASSERT_TRUE(sql_case.ExtractOutputSchema(output_table));
         type::TableDef table;
         table.set_name("t1");
         table.set_catalog("db");
@@ -431,9 +435,9 @@ TEST_F(SQLCaseTest, ExtractSQLCase) {
     {
         type::TableDef output_table;
         std::vector<fesql::codec::Row> rows;
-        ASSERT_TRUE(sql_case.ExtractExpResult(rows));
+        ASSERT_TRUE(sql_case.ExtractOutputData(rows));
         ASSERT_EQ(2, rows.size());
-        sql_case.ExtractExpSchema(output_table);
+        sql_case.ExtractOutputSchema(output_table);
         fesql::codec::RowView row_view(output_table.columns());
 
         {
@@ -457,6 +461,33 @@ TEST_F(SQLCaseTest, ExtractSQLCase) {
             ASSERT_EQ(1587647804000L, row_view.GetTimestampUnsafe(6));
         }
     }
+}
+
+TEST_F(SQLCaseTest, ExtractYamlSQLCase) {
+    std::string fesql_dir = SQLCase::FindFesqlDirPath();
+
+    std::string case_path = fesql_dir + "/cases/query/0/case1.yaml";
+
+    SQLCase sql_case;
+    ASSERT_TRUE(SQLCase::CreateSQLCaseFromYaml(case_path, &sql_case));
+    ASSERT_EQ(sql_case.id_, 1);
+    ASSERT_EQ(sql_case.inputs_[0].name_, "t1");
+    ASSERT_EQ(sql_case.inputs_[0].schema_,
+              "col0:string, col1:int32, col2:int16, col3:float, col4:double, "
+              "col5:int64, col6:string");
+    ASSERT_EQ(
+        sql_case.inputs_[0].data_,
+        "0, 1, 5, 1.1, 11.1, 1, 1\n0, 2, 5, 2.2, 22.2, 2, 22\n0, 3, 55, 3.3, "
+        "33.3, 1, 333\n0, 4, 55, 4.4, 44.4, 2, 4444\n0, 5, 55, 5.5, 55.5, 3, "
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+    ASSERT_EQ(sql_case.output_.schema_,
+              "col0:string, col1:int32, col2:int16, col3:float, col4:double, "
+              "col5:int64, col6:string");
+    ASSERT_EQ(
+        sql_case.output_.data_,
+        "0, 1, 5, 1.1, 11.1, 1, 1\n0, 2, 5, 2.2, 22.2, 2, 22\n0, 3, 55, 3.3, "
+        "33.3, 1, 333\n0, 4, 55, 4.4, 44.4, 2, 4444\n0, 5, 55, 5.5, 55.5, 3, "
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
 }
 }  // namespace cases
 }  // namespace fesql

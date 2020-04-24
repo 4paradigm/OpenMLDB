@@ -13,7 +13,7 @@ add_subdirectory(tablet)
 add_subdirectory(bm)
 add_subdirectory(batch)
 add_subdirectory(codec)
-add_subdirectory(cases)
+add_subdirectory(case)
 
 include_directories(${INCLUDE_DIRECTORIES}
         ${PROJECT_SOURCE_DIR}/src
