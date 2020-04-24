@@ -9,8 +9,6 @@ import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.FieldCodec;
 import com._4paradigm.rtidb.client.schema.RowView;
 import com._4paradigm.rtidb.client.type.DataType;
-import com._4paradigm.rtidb.client.type.IndexType;
-import com._4paradigm.rtidb.common.Common;
 import com._4paradigm.rtidb.ns.NS;
 import com._4paradigm.rtidb.tablet.Tablet;
 import com._4paradigm.rtidb.utils.Compress;
@@ -64,13 +62,6 @@ public class RelationalIterator {
             }
         }
         this.rowView = new RowView(th.getSchema());
-        String idxName = "";
-        for (int i = 0; i < th.getTableInfo().getColumnKeyCount(); i++) {
-            Common.ColumnKey key = th.getTableInfo().getColumnKey(i);
-            if (key.hasIndexType() && key.getIndexType() == IndexType.valueFrom(IndexType.PrimaryKey)) {
-                idxName = key.getIndexName();
-            }
-        }
         continue_update = true;
         next();
     }
@@ -94,13 +85,6 @@ public class RelationalIterator {
             }
         }
         rowView = new RowView(th.getSchema());
-        String idxName = "";
-        for (int i = 0; i < th.getTableInfo().getColumnKeyCount(); i++) {
-            Common.ColumnKey key = th.getTableInfo().getColumnKey(i);
-            if (key.hasIndexType() && key.getIndexType() == IndexType.valueFrom(IndexType.PrimaryKey)) {
-                idxName = key.getIndexName();
-            }
-        }
         batch_query = true;
         next();
     }
@@ -253,7 +237,7 @@ public class RelationalIterator {
             Tablet.TraverseRequest.Builder builder = Tablet.TraverseRequest.newBuilder();
             builder.setTid(th.getTableInfo().getTid());
             if (offset != 0) {
-                builder.setLastPk(last_pk);
+                builder.setPkBytes(last_pk);
             }
             if (snapshot_id > 0) {
                 builder.setSnapshotId(snapshot_id);
@@ -269,7 +253,7 @@ public class RelationalIterator {
                 if (response.hasSnapshotId()) {
                     snapshot_id = response.getSnapshotId();
                 }
-                last_pk = response.getLastPk();
+                last_pk = response.getPkBytes();
                 offset = 0;
                 if (totalSize == 0) {
                     if (response.hasIsFinish() && response.getIsFinish()) {
