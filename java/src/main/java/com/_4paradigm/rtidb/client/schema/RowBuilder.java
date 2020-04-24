@@ -2,12 +2,14 @@ package com._4paradigm.rtidb.client.schema;
 
 import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.type.DataType;
+import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.sql.Date;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -274,7 +276,13 @@ public class RowBuilder {
                     ok = builder.appendInt32((Integer) column);
                     break;
                 case Timestamp:
-                    ok = builder.appendTimestamp((Long) column);
+                    if (column instanceof DateTime) {
+                        ok = builder.appendTimestamp(((DateTime) column).getMillis());
+                    }else if (column instanceof Timestamp) {
+                        ok = builder.appendTimestamp(((Timestamp) column).getTime());
+                    }else {
+                        ok = builder.appendTimestamp((Long) column);
+                    }
                     break;
                 case BigInt:
                     ok = builder.appendInt64((Long) column);
@@ -333,7 +341,13 @@ public class RowBuilder {
                     ok = builder.appendInt32((Integer) column);
                     break;
                 case Timestamp:
-                    ok = builder.appendTimestamp((Long) column);
+                    if (column instanceof DateTime) {
+                        ok = builder.appendTimestamp(((DateTime) column).getMillis());
+                    }else if (column instanceof Timestamp) {
+                        ok = builder.appendTimestamp(((Timestamp) column).getTime());
+                    }else {
+                        ok = builder.appendTimestamp((Long) column);
+                    }
                     break;
                 case BigInt:
                     ok = builder.appendInt64((Long) column);
