@@ -7,6 +7,7 @@ import com._4paradigm.rtidb.client.base.TestCaseBase;
 import com._4paradigm.rtidb.common.Common;
 import com._4paradigm.rtidb.ns.NS.TableInfo;
 import com._4paradigm.rtidb.type.Type;
+import org.joda.time.DateTime;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -62,10 +63,12 @@ public class TableSyncProjectionTest extends TestCaseBase {
         Common.ColumnDesc col1 = Common.ColumnDesc.newBuilder().setName("mcc").setType("string").build();
         Common.ColumnDesc col2 = Common.ColumnDesc.newBuilder().setName("ts").setType("int64").setIsTsCol(true).build();
         Common.ColumnDesc col3 = Common.ColumnDesc.newBuilder().setName("date").setType("date").build();
+        Common.ColumnDesc col4 = Common.ColumnDesc.newBuilder().setName("time").setType("timestamp").build();
         tbuilder.addColumnDescV1(col0);
         tbuilder.addColumnDescV1(col1);
         tbuilder.addColumnDescV1(col2);
         tbuilder.addColumnDescV1(col3);
+        tbuilder.addColumnDescV1(col4);
         Common.ColumnKey ck = Common.ColumnKey.newBuilder().setIndexName("card").addColName("card").addTsName("ts").build();
         tbuilder.addColumnKey(ck);
         tbuilder.setFormatVersion(formatVersion);
@@ -86,33 +89,38 @@ public class TableSyncProjectionTest extends TestCaseBase {
     @DataProvider(name="projection_case")
     public Object[][] genCase() {
         Date now = new Date(System.currentTimeMillis());
+        DateTime dt = new DateTime();
         return new Object[][] {
                 // the legacy format
-                new Object[]{createArg(new Object[] {"card0", "mcc0", 10000l, new Date(now.getYear(), now.getMonth(), now.getDate())}, new ArrayList<String>(Arrays.asList("card")), new Object[]{"card0"},
+                new Object[]{createArg(new Object[] {"card0", "mcc0", 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt}, new ArrayList<String>(Arrays.asList("card")), new Object[]{"card0"},
                         "card0", 10000l, 0)},
-                new Object[]{createArg(new Object[] {"card1", null, 10000l, new Date(now.getYear(), now.getMonth(), now.getDate())}, new ArrayList<String>(Arrays.asList("mcc")), new Object[]{null},
+                new Object[]{createArg(new Object[] {"card1", null, 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt}, new ArrayList<String>(Arrays.asList("mcc")), new Object[]{null},
                                 "card1", 10000l, 0 )},
-                new Object[]{createArg(new Object[] {"card2", null, 10000l, new Date(now.getYear(), now.getMonth(), now.getDate())}, new ArrayList<String>(Arrays.asList("ts")), new Object[]{10000l},
+                new Object[]{createArg(new Object[] {"card2", null, 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt}, new ArrayList<String>(Arrays.asList("ts")), new Object[]{10000l},
                         "card2", 10000l, 0)},
-                new Object[]{createArg(new Object[] {"card3", null, 10000l, new Date(now.getYear(), now.getMonth(), now.getDate())}, new ArrayList<String>(Arrays.asList("date")), new Object[]{new Date(now.getYear(), now.getMonth(), now.getDate())},
+                new Object[]{createArg(new Object[] {"card3", null, 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt}, new ArrayList<String>(Arrays.asList("date")), new Object[]{new Date(now.getYear(), now.getMonth(), now.getDate())},
                         "card3", 10000l, 0)},
-                new Object[]{createArg(new Object[] {"card4", "mcc0", 10000l, new Date(now.getYear(), now.getMonth(), now.getDate())}, new ArrayList<String>(Arrays.asList("mcc", "card", "mcc")), new Object[]{"mcc0", "card4", "mcc0"},
+                new Object[]{createArg(new Object[] {"card3", null, 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt}, new ArrayList<String>(Arrays.asList("time")), new Object[]{dt},
+                        "card3", 10000l, 0)},
+                new Object[]{createArg(new Object[] {"card4", "mcc0", 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt}, new ArrayList<String>(Arrays.asList("mcc", "card", "mcc")), new Object[]{"mcc0", "card4", "mcc0"},
                         "card4", 10000l, 0)},
-                new Object[]{createArg(new Object[] {"card5", "mcc0", 10000l, new Date(now.getYear(), now.getMonth(), now.getDate())}, new ArrayList<String>(Arrays.asList("date", "card")), new Object[]{new Date(now.getYear(), now.getMonth(), now.getDate()), "card5"},
+                new Object[]{createArg(new Object[] {"card5", "mcc0", 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt}, new ArrayList<String>(Arrays.asList("date", "card")), new Object[]{new Date(now.getYear(), now.getMonth(), now.getDate()), "card5"},
                         "card5", 10000l, 0 )},
 
                 // the new format
-                new Object[]{createArg(new Object[] {"card0", "mcc0", 10000l, new Date(now.getYear(), now.getMonth(), now.getDate())}, new ArrayList<String>(Arrays.asList("card")), new Object[]{"card0"},
+                new Object[]{createArg(new Object[] {"card0", "mcc0", 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt}, new ArrayList<String>(Arrays.asList("card")), new Object[]{"card0"},
                         "card0", 10000l, 1)},
-                new Object[]{createArg(new Object[] {"card1", null, 10000l, new Date(now.getYear(), now.getMonth(), now.getDate())}, new ArrayList<String>(Arrays.asList("mcc")), new Object[]{null},
+                new Object[]{createArg(new Object[] {"card1", null, 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt}, new ArrayList<String>(Arrays.asList("mcc")), new Object[]{null},
                         "card1", 10000l, 1)},
-                new Object[]{createArg(new Object[] {"card2", null, 10000l, new Date(now.getYear(), now.getMonth(), now.getDate())}, new ArrayList<String>(Arrays.asList("ts")), new Object[]{10000l},
+                new Object[]{createArg(new Object[] {"card2", null, 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt}, new ArrayList<String>(Arrays.asList("ts")), new Object[]{10000l},
                         "card2", 10000l, 1)},
-                new Object[]{createArg(new Object[] {"card3", null, 10000l, new Date(now.getYear(), now.getMonth(), now.getDate())}, new ArrayList<String>(Arrays.asList("date")), new Object[]{new Date(now.getYear(), now.getMonth(), now.getDate())},
+                new Object[]{createArg(new Object[] {"card3", null, 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt}, new ArrayList<String>(Arrays.asList("date")), new Object[]{new Date(now.getYear(), now.getMonth(), now.getDate())},
                         "card3", 10000l, 1)},
-                new Object[]{createArg(new Object[] {"card4", "mcc0", 10000l, new Date(now.getYear(), now.getMonth(), now.getDate())}, new ArrayList<String>(Arrays.asList("mcc", "card", "mcc")), new Object[]{"mcc0", "card4", "mcc0"},
+                new Object[]{createArg(new Object[] {"card3", null, 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt}, new ArrayList<String>(Arrays.asList("time")), new Object[]{dt},
+                        "card3", 10000l, 1)},
+                new Object[]{createArg(new Object[] {"card4", "mcc0", 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt}, new ArrayList<String>(Arrays.asList("mcc", "card", "mcc")), new Object[]{"mcc0", "card4", "mcc0"},
                         "card4", 10000l, 1)},
-                new Object[]{createArg(new Object[] {"card5", "mcc0", 10000l, new Date(now.getYear(), now.getMonth(), now.getDate())}, new ArrayList<String>(Arrays.asList("date", "card")), new Object[]{new Date(now.getYear(), now.getMonth(), now.getDate()), "card5"},
+                new Object[]{createArg(new Object[] {"card5", "mcc0", 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt}, new ArrayList<String>(Arrays.asList("date", "card")), new Object[]{new Date(now.getYear(), now.getMonth(), now.getDate()), "card5"},
                         "card5", 10000l, 1)}
 
         };
