@@ -167,8 +167,13 @@ void BlobServerImpl::Get(RpcController *controller,
     }
     rtidb::base::Slice slice = store->Get(request->key());
     if (slice.size() > 0) {
-        std::string *value = response->mutable_pairs();
-        value->assign(slice.data(), slice.size());
+        if (request->attachment()) {
+            brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
+            cntl->response_attachment().append(slice.data(), slice.size());
+        } else {
+            std::string *value = response->mutable_pairs();
+            value->assign(slice.data(), slice.size());
+        }
         response->set_code(ReturnCode::kOk);
         const char *ch = slice.data();
         delete[] ch;
@@ -178,8 +183,8 @@ void BlobServerImpl::Get(RpcController *controller,
     }
 }
 
-void BlobServerImpl::Put(RpcController *controller, const PutRequest *request,
-                         GeneralResponse *response, Closure *done) {
+void BlobServerImpl::Put(RpcController* controller, const PutRequest* request,
+                         PutResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
     uint32_t tid = request->tid(), pid = request->pid();
     std::shared_ptr<ObjectStore> store = GetStore(tid, pid);
@@ -189,11 +194,20 @@ void BlobServerImpl::Put(RpcController *controller, const PutRequest *request,
         response->set_msg("table is not exist");
         return;
     }
-    bool ok = store->Store(request->key(), request->pairs());
+    bool ok = false;
+    std::string key;
+    if (request->key().size() > 0) {
+        ok = store->Store(request->key(), request->pairs());
+    } else {
+        ok = store->Store(&key, request->pairs());
+    }
     if (!ok) {
         response->set_code(ReturnCode::kPutFailed);
         response->set_msg("put failed");
         return;
+    }
+    if (key.size() > 0) {
+        response->set_key(key);
     }
     response->set_code(ReturnCode::kOk);
 }
@@ -202,6 +216,26 @@ void BlobServerImpl::Delete(RpcController *controller,
                             const GeneralRequest *request,
                             GeneralResponse *response, Closure *done) {
     brpc::ClosureGuard done_guard(done);
+    if (request->key().size() > 0) {
+        uint32_t tid = request->tid(), pid = request->pid();
+        std::shared_ptr<ObjectStore> store = GetStore(tid, pid);
+        if (!store) {
+            PDLOG(WARNING, "table is not exist. tid[%u] pid[%u", tid, pid);
+            response->set_code(ReturnCode::kTableIsNotExist);
+            response->set_msg("table is not exist");
+            return;
+        }
+        bool ok = store->Delete(request->key());
+        if (!ok) {
+            response->set_code(ReturnCode::kKeyNotFound);
+            response->set_msg("key not found");
+            return;
+        }
+        response->set_code(ReturnCode::kOk);
+    } else {
+        response->set_code(ReturnCode::kKeyNotFound);
+        response->set_msg("empty key");
+    }
 }
 
 void BlobServerImpl::Stats(RpcController *controller,

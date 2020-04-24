@@ -186,10 +186,10 @@ bool BaseClient::RefreshNodeList() {
         return false;
     }
     endpoint_set.clear();
-    for (const auto& endpoints : endpoints) {
-        endpoints_set.insert(endpoint);
+    for (const auto& endpoint : endpoints) {
+        endpoint_set.insert(endpoint);
     }
-    UpdateBlobEndpoint(endpoints_set);
+    UpdateBlobEndpoint(endpoint_set);
     return true;
 }
 
@@ -227,9 +227,9 @@ void BaseClient::UpdateBlobEndpoint(const std::set<std::string>& alive_endpoints
         old_blobs = blobs_;
     }
     for (const auto& endpoint : alive_endpoints) {
-        auto iter = old_blobs.find(endoint);
+        auto iter = old_blobs.find(endpoint);
         if (iter == old_blobs.end()) {
-            std::shared_ptr<rtib::client::BsClient> blob = 
+            std::shared_ptr<rtidb::client::BsClient> blob =
                 std::make_shared<rtidb::client::BsClient>(endpoint);
         if (blob->Init() != 0) {
             std::cerr << endpoint << " initial failed!" << std::endl;
@@ -242,7 +242,7 @@ void BaseClient::UpdateBlobEndpoint(const std::set<std::string>& alive_endpoints
     }
     std::lock_guard<std::mutex> mx(mu_);
     blobs_.clear();
-    blobs = new_blobs;
+    blobs_ = new_blobs;
 }
 
 void BaseClient::RefreshTable() {
@@ -269,7 +269,8 @@ void BaseClient::RefreshTable() {
                       << std::endl;
             continue;
         }
-        if (table_info->table_type() != rtidb::type::TableType::kRelational) {
+        rtidb::type::TableType tb = table_info->table_type();
+        if (tb != rtidb::type::TableType::kRelational && tb != rtidb::type::TableType::kObjectStore) {
             continue;
         }
         std::shared_ptr<

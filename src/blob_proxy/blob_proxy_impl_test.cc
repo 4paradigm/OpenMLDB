@@ -1,22 +1,16 @@
 //
-// name_server_create_remote_test.cc
 // Copyright (C) 2020 4paradigm.com
 // Author kongquan
-// Date 2020-04-22
-//
+// Date 2020-04-25
 
-#include <blobserver/blobserver_impl.h>
-#include <logging.h>
-#include <timer.h>
-#include <brpc/server.h>
-#include <gflags/gflags.h>
-#include <sched.h>
-#include <unistd.h>
-#include "gtest/gtest.h"
+#include "blob_proxy/blob_proxy_impl.h"
+#include "blobserver/blobserver_impl.h"
 #include "nameserver/name_server_impl.h"
-#include "proto/name_server.pb.h"
-#include "proto/tablet.pb.h"
-#include "rpc/rpc_client.h"
+#include <gflags/gflags.h>
+#include <google/protobuf/stubs/common.h>
+#include <logging.h>
+#include "client/bs_client.h"
+#include "gtest/gtest.h"
 
 DECLARE_string(endpoint);
 DECLARE_string(hdd_root_path);
@@ -25,14 +19,16 @@ DECLARE_string(zk_root_path);
 DECLARE_int32(zk_session_timeout);
 DECLARE_int32(request_timeout_ms);
 DECLARE_int32(zk_keep_alive_check_interval);
-DECLARE_int32(make_snapshot_threshold_offset);
-DECLARE_uint32(name_server_task_max_concurrency);
-DECLARE_bool(auto_failover);
 
-using ::rtidb::zk::ZkClient;
+using rtidb::nameserver::NameServerImpl;
+using rtidb::nameserver::TableInfo;
+using rtidb::nameserver::CreateTableRequest;
+using rtidb::nameserver::GeneralResponse;
 
 namespace rtidb {
-namespace nameserver {
+namespace blobproxy {
+
+uint32_t counter = 10;
 
 inline std::string GenRand() { return std::to_string(rand() % 10000000 + 1); } // NOLINT
 
@@ -42,29 +38,14 @@ class MockClosure : public ::google::protobuf::Closure {
     ~MockClosure() {}
     void Run() {}
 };
-class NameServerImplObjectStoreTest : public ::testing::Test {
+
+class BlobProxyImplTest: public ::testing::Test {
  public:
-    NameServerImplObjectStoreTest() {}
-    ~NameServerImplObjectStoreTest() {}
+    BlobProxyImplTest() {}
+    ~BlobProxyImplTest() {}
 };
 
 void StartNameServer(brpc::Server* server, NameServerImpl* nameserver) {
-    bool ok = nameserver->Init();
-    ASSERT_TRUE(ok);
-    sleep(4);
-    brpc::ServerOptions options;
-    if (server->AddService(nameserver, brpc::SERVER_OWNS_SERVICE) != 0) {
-        PDLOG(WARNING, "Fail to add service");
-        exit(1);
-    }
-    if (server->Start(FLAGS_endpoint.c_str(), &options) != 0) {
-        PDLOG(WARNING, "Fail to start server");
-        exit(1);
-    }
-}
-
-void StartNameServer(brpc::Server* server) {
-    NameServerImpl* nameserver = new NameServerImpl();
     bool ok = nameserver->Init();
     ASSERT_TRUE(ok);
     sleep(4);
@@ -100,9 +81,26 @@ void StartBlob(brpc::Server* server) {
     sleep(2);
 }
 
-TEST_F(NameServerImplObjectStoreTest, CreateTable) {
-    // local ns and tablet
-    // ns
+void StartProxy(brpc::Server* server) {
+    ::rtidb::blobproxy::BlobProxyImpl* proxy = new ::rtidb::blobproxy::BlobProxyImpl();
+    bool ok = proxy->Init();
+    ASSERT_TRUE(ok);
+    sleep(2);
+    brpc::ServerOptions options1;
+    brpc::ServerOptions options;
+    if (server->AddService(proxy, brpc::SERVER_DOESNT_OWN_SERVICE, "/v1/get/* => Get") != 0) {
+        PDLOG(WARNING, "fail to add service");
+        exit(1);
+    }
+    if (server->Start(FLAGS_endpoint.c_str(), &options1) != 0) {
+        PDLOG(WARNING, "Fail to start server");
+        exit(1);
+    }
+    ASSERT_TRUE(ok);
+    sleep(2);
+}
+
+TEST_F(BlobProxyImplTest, Basic_Test) {
     FLAGS_zk_cluster = "127.0.0.1:6181";
     FLAGS_zk_root_path = "/rtidb3" + GenRand();
     FLAGS_endpoint = "127.0.0.1:9631";
@@ -124,6 +122,7 @@ TEST_F(NameServerImplObjectStoreTest, CreateTable) {
 
     bool ok = false;
     std::string name = "test" + GenRand();
+    uint32_t tid, pid = 0;
     {
         CreateTableRequest request;
         GeneralResponse response;
@@ -150,16 +149,50 @@ TEST_F(NameServerImplObjectStoreTest, CreateTable) {
         ASSERT_EQ(1, response.table_info_size());
         const auto& info = response.table_info(0);
         ASSERT_EQ(::rtidb::type::TableType::kObjectStore, info.table_type());
-        uint32_t tid = info.tid();
+        tid = info.tid();
         ::rtidb::blobserver::StoreStatus status;
         ok = blob_client.GetStoreStatus(tid, 0, &status);
         ASSERT_TRUE(ok);
         ASSERT_EQ(tid, status.tid());
         ASSERT_EQ(0u, status.pid());
     }
+    std::string key = "testkey1";
+    std::string value = "testvalue1";
+    std::string err_msg;
+    ok = blob_client.Put(tid, pid, &key, value, &err_msg);
+    ASSERT_TRUE(ok);
+    std::string get_value;
+    ok = blob_client.Get(tid, pid, key, &get_value, &err_msg);
+    ASSERT_TRUE(ok);
+    {
+        int code = memcmp(value.data(), get_value.data(), value.length());
+        ASSERT_EQ(0, code);
+    }
+    {
+        FLAGS_endpoint = "127.0.0.1:9932";
+        brpc::Server server;
+        StartProxy(&server);
+
+        brpc::ChannelOptions oc;
+        oc.protocol = brpc::PROTOCOL_HTTP;
+        brpc::Channel channel;
+        int ret = channel.Init(FLAGS_endpoint.c_str(), &oc);
+        ASSERT_EQ(0, ret);
+        brpc::Controller cntl;
+        cntl.http_request().uri() = FLAGS_endpoint + "/v1/get/" + name + "/" + key;
+        cntl.http_request().set_method(brpc::HTTP_METHOD_GET);
+        channel.CallMethod(NULL, &cntl, NULL, NULL, NULL);
+        ASSERT_EQ(200, cntl.http_response().status_code());
+        ASSERT_FALSE(cntl.Failed());
+        butil::IOBuf buff = cntl.response_attachment();
+        std::string ss = buff.to_string();
+        int code = memcmp(value.data(), ss.data(), value.length());
+        ASSERT_EQ(0, code);
+    }
+
 }
 
-}  // namespace nameserver
+}  // namespace blobserver
 }  // namespace rtidb
 
 int main(int argc, char** argv) {
@@ -167,7 +200,7 @@ int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
     ::baidu::common::SetLogLevel(::baidu::common::INFO);
-    ::google::ParseCommandLineFlags(&argc, &argv, true);
-    // FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
+    FLAGS_hdd_root_path =
+        "/tmp/test_blobserver" + ::rtidb::blobproxy::GenRand();
     return RUN_ALL_TESTS();
 }

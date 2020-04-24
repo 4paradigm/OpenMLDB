@@ -23,7 +23,7 @@ add_library(log STATIC log/crc32c.cc
                        log/log_reader.cc
                        log/writable_file.cc flags.cc)
 
-add_library(rtidb_proxy STATIC proto/http_server.pb.cc httpserver/httpserver.cc flags.cc client/client.cc)
+add_library(blob_proxy STATIC proto/blob_proxy.pb.cc blob_proxy/blob_proxy_impl.cc flags.cc client/client.cc)
 
 add_library(base STATIC base/status.cc base/ringqueue.h)
 add_library(zk_client STATIC zk/zk_client.cc zk/dist_lock.cc)
@@ -122,6 +122,9 @@ target_link_libraries(nameserver_test  gtest pthread tablet nameserver blobserve
 add_executable(blobserver_impl_test blobserver/blobserver_impl_test.cc proto/common.pb.cc proto/tablet.pb.cc flags.cc)
 target_link_libraries(blobserver_impl_test gtest pthread blobserver client gflags beans common brpc rt ssl crypto dl protobuf z zk_client zookeeper_mt leveldb)
 
+add_executable(blob_proxy_impl_test blob_proxy/blob_proxy_impl_test.cc proto/common.pb.cc proto/tablet.pb.cc flags.cc)
+target_link_libraries(blob_proxy_impl_test gtest pthread blobserver blob_proxy nameserver client storage snappy gflags beans common brpc rt ssl crypto dl protobuf z zk_client zookeeper_mt leveldb)
+
 add_executable(nameserver_create_remote_test nameserver/name_server_create_remote_test.cc client/tablet_client.cc client/ns_client.cc base/status.cc)
 target_link_libraries(nameserver_create_remote_test gtest pthread tablet nameserver blobserver client gflags storage replica log common brpc ssl crypto dl leveldb protobuf z snappy rt zk_client zookeeper_mt tcmalloc_minimal)
 
@@ -136,6 +139,6 @@ target_link_libraries(field_codec_test gtest pthread)
 
 add_executable(rtidb cmd/rtidb.cc base/status.cc proto/client.pb.cc base/linenoise.cc)
 
-target_link_libraries(rtidb gflags common tablet storage replica log nameserver blobserver client brpc ssl crypto dl leveldb protobuf z snappy gflags pthread rt zk_client zookeeper_mt tcmalloc_minimal rtidb_proxy)
+target_link_libraries(rtidb gflags common tablet storage replica log nameserver blobserver client brpc ssl crypto dl leveldb protobuf z snappy gflags pthread rt zk_client zookeeper_mt tcmalloc_minimal blob_proxy)
 
 add_subdirectory(client)

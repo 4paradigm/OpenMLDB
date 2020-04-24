@@ -4506,6 +4506,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
         meta.set_name(table_info->name());
         meta.set_table_type(::rtidb::type::kObjectStore);
         table_info->clear_table_partition();
+        table_info->set_partition_num(1);
 
         std::shared_ptr<BlobServerInfo> blob_info =
             SetBlobTableInfo(table_info.get());

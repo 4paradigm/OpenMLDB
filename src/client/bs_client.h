@@ -28,11 +28,14 @@ class BsClient {
 
     bool CreateTable(const TableMeta& table_meta, std::string* msg);
 
-    bool Put(uint32_t tid, uint32_t pid, const std::string& key,
+    bool Put(uint32_t tid, uint32_t pid, std::string* key,
              const std::string& value, std::string* msg);
 
     bool Get(uint32_t tid, uint32_t pid, const std::string& key,
              std::string* value, std::string* msg);
+
+    bool Get(uint32_t tid, uint32_t pid, const std::string& key,
+             std::string* msg, butil::IOBuf* buff);
 
     bool Delete(uint32_t tid, uint32_t pid, const std::string& key,
                 std::string* msg);

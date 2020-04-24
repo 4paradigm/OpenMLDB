@@ -17,6 +17,7 @@ message GeneralRequest {
     optional uint32 tid = 1;
     optional uint32 pid = 2;
     optional string key = 3;
+    optional bool attachment = 4 [default = false];
 }
 
 message GetResponse {
@@ -30,6 +31,12 @@ message PutRequest {
     optional uint32 pid = 2;
     optional string key = 3;
     optional bytes pairs = 4;
+}
+
+message PutResponse {
+    optional uint32 code = 1;
+    optional string msg = 2;
+    optional string key = 3;
 }
 
 message TableMeta {
@@ -84,7 +91,7 @@ message GetStoreStatusRequest {
 
 service BlobServer {
     rpc CreateTable(CreateTableRequest) returns (GeneralResponse);
-    rpc Put(PutRequest) returns (GeneralResponse);
+    rpc Put(PutRequest) returns (PutResponse);
     rpc Get(GeneralRequest) returns (GetResponse);
     rpc Delete(GeneralRequest) returns (GeneralResponse);
     rpc Stats(StatsRequest) returns (StatsResponse);

@@ -5,6 +5,8 @@
 
 #include "storage/object_store.h"
 
+#include <sstream>
+
 namespace rtidb {
 namespace storage {
 ObjectStore::ObjectStore(const ::rtidb::blobserver::TableMeta& table_meta,
@@ -15,7 +17,8 @@ ObjectStore::ObjectStore(const ::rtidb::blobserver::TableMeta& table_meta,
       name_(table_meta.name()),
       db_root_path_(db_root_path),
       is_leader_(false),
-      storage_mode_(table_meta.storage_mode()) {}
+      storage_mode_(table_meta.storage_mode()),
+      id_generator_() {}
 
 bool ObjectStore::Init() {
     db_root_path_ = db_root_path_ + "/" + std::to_string(tid_) + "_" +
@@ -39,6 +42,16 @@ bool ObjectStore::Store(const std::string& key, const std::string& value) {
     return hs_set(db_, hs_key, hs_value, value.length(), 0, 0);
 }
 
+bool ObjectStore::Store(std::string* key, const std::string &value) {
+    uint64_t gen_pk = id_generator_.Next();
+    std::stringstream  ss;
+    ss << std::hex << gen_pk;
+    *key = ss.str();
+    char* hs_key = const_cast<char*>(key->data());
+    char* hs_value = const_cast<char*>(value.data());
+    return hs_set(db_, hs_key, hs_value, value.length(), 0, 0);
+}
+
 rtidb::base::Slice ObjectStore::Get(const std::string& key) {
     char* hs_key = const_cast<char*>(key.data());
     uint32_t vlen = 0, flag;
@@ -47,6 +60,11 @@ rtidb::base::Slice ObjectStore::Get(const std::string& key) {
         return rtidb::base::Slice();
     }
     return rtidb::base::Slice(ch, vlen);
+}
+
+bool ObjectStore::Delete(const std::string &key) {
+    char* hs_key = const_cast<char*>(key.data());
+    return hs_delete(db_, hs_key);
 }
 
 void ObjectStore::DoFlash() { hs_flush(db_, 1024, 60 * 10); }

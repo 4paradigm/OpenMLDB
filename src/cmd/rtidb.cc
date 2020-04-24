@@ -30,7 +30,7 @@
 #include "brpc/server.h"
 #include "client/ns_client.h"
 #include "client/tablet_client.h"
-#include "httpserver/httpserver.h"
+#include "blob_proxy/blob_proxy_impl.h"
 #include "logging.h"  // NOLINT
 #include "nameserver/name_server_impl.h"
 #include "proto/client.pb.h"
@@ -244,23 +244,23 @@ void StartTablet() {
     server.RunUntilAskedToQuit();
 }
 
-void StartHttp() {
+void StartBlobProxy() {
     SetupLog();
-    ::rtidb::http::HttpImpl* http = new ::rtidb::http::HttpImpl();
-    bool ok = http->Init();
+    ::rtidb::blobproxy::BlobProxyImpl* proxy = new ::rtidb::blobproxy::BlobProxyImpl();
+    bool ok = proxy->Init();
     if (!ok) {
-        PDLOG(WARNING, "fail to init http server");
+        PDLOG(WARNING, "fail to init blobproxy server");
         exit(1);
     }
     brpc::ServerOptions options;
     options.num_threads = FLAGS_thread_pool_size;
     brpc::Server server;
-    if (server.AddService(http, brpc::SERVER_DOESNT_OWN_SERVICE,
+    if (server.AddService(proxy, brpc::SERVER_DOESNT_OWN_SERVICE,
                           "/v1/get/* => Get") != 0) {
         PDLOG(WARNING, "fail to add service");
         exit(1);
     }
-    server.MaxConcurrencyOf(http, "Get") = FLAGS_get_concurrency_limit;
+    server.MaxConcurrencyOf(proxy, "Get") = FLAGS_get_concurrency_limit;
     if (FLAGS_port > 0) {
         if (server.Start(FLAGS_port, &options) != 0) {
             PDLOG(WARNING, "Fail to start server");
@@ -274,7 +274,7 @@ void StartHttp() {
             PDLOG(WARNING, "Fail to start server");
             exit(1);
         }
-        PDLOG(INFO, "start tablet on endpoint %s with version %d.%d.%d.%d",
+        PDLOG(INFO, "start blobproxy on endpoint %s with version %d.%d.%d.%d",
               FLAGS_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
               RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
     }
@@ -6323,8 +6323,8 @@ int main(int argc, char* argv[]) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     if (FLAGS_role == "tablet") {
         StartTablet();
-    } else if (FLAGS_role == "http") {
-        StartHttp();
+    } else if (FLAGS_role == "") {
+        StartBlobProxy();
     } else if (FLAGS_role == "client") {
         StartClient();
     } else if (FLAGS_role == "nameserver") {

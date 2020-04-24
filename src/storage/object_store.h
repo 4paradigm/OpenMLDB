@@ -15,7 +15,9 @@ extern "C" {
 #ifdef __cplusplus
 };
 #endif
+#include <base/id_generator.h>
 #include <base/slice.h>
+
 #include "proto/blob_server.pb.h"
 #include "proto/common.pb.h"
 
@@ -37,6 +39,10 @@ class ObjectStore {
 
     bool Store(const std::string& key, const std::string& value);
 
+    bool Store(std::string* key, const std::string& value);
+
+    bool Delete(const std::string& key);
+
     rtidb::base::Slice Get(const std::string& key);
 
     ::rtidb::common::StorageMode GetStorageMode() const;
@@ -51,6 +57,7 @@ class ObjectStore {
     std::string db_root_path_;
     bool is_leader_;
     ::rtidb::common::StorageMode storage_mode_;
+    ::rtidb::base::IdGenerator id_generator_;
 };
 
 }  // namespace storage

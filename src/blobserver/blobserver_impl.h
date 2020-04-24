@@ -52,7 +52,7 @@ class BlobServerImpl : public ::rtidb::blobserver::BlobServer {
                      const CreateTableRequest* request,
                      GeneralResponse* response, Closure* done);
     void Put(RpcController* controller, const PutRequest* request,
-             GeneralResponse* response, Closure* done);
+             PutResponse* response, Closure* done);
     void Get(RpcController* controller, const GeneralRequest* request,
              GetResponse* response, Closure* done);
     void Delete(RpcController* controller, const GeneralRequest* request,

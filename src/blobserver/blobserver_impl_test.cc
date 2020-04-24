@@ -62,7 +62,7 @@ TEST_F(BlobServerImplTest, Basic_Test) {
     }
     std::string key = "testkey1";
     std::string value = "testvalue1";
-    bool ok = client.Put(tid, pid, key, value, &err_msg);
+    bool ok = client.Put(tid, pid, &key, value, &err_msg);
     ASSERT_TRUE(ok);
     std::string get_value;
     ok = client.Get(tid, pid, key, &get_value, &err_msg);
@@ -71,6 +71,22 @@ TEST_F(BlobServerImplTest, Basic_Test) {
         int code = memcmp(value.data(), get_value.data(), value.length());
         ASSERT_EQ(0, code);
     }
+    std::string auto_gen_key;
+    std::string value2 = "testvalue2";
+    ok = client.Put(tid, pid, &auto_gen_key, value2, &err_msg);
+    ASSERT_TRUE(ok);
+    get_value.clear();
+    ok = client.Get(tid, pid, auto_gen_key, &get_value, &err_msg);
+    ASSERT_TRUE(ok);
+    std::cout << get_value << std::endl;
+    {
+        int code = memcmp(value2.data(), get_value.data(), value2.length());
+        ASSERT_EQ(0, code);
+    }
+    ok = client.Delete(tid, pid, auto_gen_key, &err_msg);
+    ASSERT_TRUE(ok);
+    ok = client.Get(tid, pid, auto_gen_key, &get_value, &err_msg);
+    ASSERT_FALSE(ok);
 }
 
 }  // namespace blobserver
