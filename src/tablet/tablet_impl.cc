@@ -1609,14 +1609,14 @@ void TabletImpl::Traverse(RpcController* controller,
             }
             return;
         }
-        if (request->has_last_pk()) {
-            it->Seek(request->last_pk());
+        if (request->has_pk()) {
+            it->Seek(request->pk());
             it->Next();
         } else {
             it->SeekToFirst();
         }
         uint32_t scount = 0;
-        std::string* last_pk = response->mutable_last_pk();;
+        std::string* last_pk = response->mutable_pk();;
         std::vector<rtidb::base::Slice> value_vec;
         uint32_t total_block_size = 0;
         for (; it->Valid(); it->Next()) {
