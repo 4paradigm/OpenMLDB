@@ -131,6 +131,11 @@ class RequestRunSession : public RunSession {
     virtual inline const Schema& GetRequestSchema() const {
         return compile_info_->get_sql_context().request_schema;
     }
+    virtual inline const std::string& GetRequestName() const {
+        return compile_info_->get_sql_context().request_name;
+    }
+
+
 };
 
 typedef std::map<std::string,
