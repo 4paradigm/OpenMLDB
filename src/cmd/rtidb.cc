@@ -4,20 +4,16 @@
 // Author wangtaize
 // Date 2017-03-31
 //
-#include <brpc/server.h>
 #include <fcntl.h>
+#include <gflags/gflags.h>
+#include <google/protobuf/io/zero_copy_stream_impl.h>
+#include <google/protobuf/text_format.h>
 #include <sched.h>
 #include <signal.h>
 #include <snappy.h>
 #include <unistd.h>
-#include <gflags/gflags.h>
-#include <google/protobuf/io/zero_copy_stream_impl.h>
-#include <google/protobuf/text_format.h>
-#include <random>
 #include <iostream>
-#include <boost/algorithm/string.hpp>
-#include <boost/lexical_cast.hpp>
-#include "logging.h"  // NOLINT
+#include <random>
 #include "base/display.h"
 #include "base/file_util.h"
 #include "base/flat_array.h"
@@ -26,16 +22,20 @@
 #include "base/linenoise.h"
 #include "base/schema_codec.h"
 #include "base/strings.h"
+#include "boost/algorithm/string.hpp"
+#include "boost/lexical_cast.hpp"
+#include "brpc/server.h"
 #include "client/ns_client.h"
 #include "client/tablet_client.h"
+#include "httpserver/httpserver.h"
+#include "logging.h"  // NOLINT
 #include "nameserver/name_server_impl.h"
 #include "proto/client.pb.h"
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
 #include "proto/type.pb.h"
 #include "tablet/tablet_impl.h"
-#include "httpserver/httpserver.h"
-#include "timer.h"  // NOLINT
+#include "timer.h"     // NOLINT
 #include "tprinter.h"  // NOLINT
 #include "version.h"   // NOLINT
 
@@ -1703,8 +1703,8 @@ bool ParseCondAndOp(const std::string& source, uint64_t& first_end,  // NOLINT
 bool GetCondAndPrintColumns(
     const std::vector<std::string>& parts,
     std::map<std::string, std::string>& condition_columns_map,  // NOLINT
-    std::vector<std::string>& print_column, // NOLINT
-    rtidb::api::GetType& get_type) {  // NOLINT
+    std::vector<std::string>& print_column,                     // NOLINT
+    rtidb::api::GetType& get_type) {                            // NOLINT
     uint64_t size = parts.size();
     uint64_t i = 2;
     if (parts[i] == "*") {
@@ -4219,6 +4219,29 @@ void HandleNSClientDeleteIndex(const std::vector<std::string>& parts,
     std::cout << "delete index ok" << std::endl;
 }
 
+void HandleClientDeleteIndex(const std::vector<std::string>& parts,
+                             ::rtidb::client::TabletClient* client) {
+    ::rtidb::nameserver::GeneralResponse response;
+    if (parts.size() < 4) {
+        std::cout << "Bad format" << std::endl;
+        std::cout << "usage: deleteindex tid pid index_name" << std::endl;
+        return;
+    }
+    try {
+        std::string msg;
+        if (!client->DeleteIndex(boost::lexical_cast<uint32_t>(parts[1]),
+                                 boost::lexical_cast<uint32_t>(parts[2]),
+                                 parts[3], &msg)) {
+            std::cout << "Fail to delete index. error msg: " << msg
+                      << std::endl;
+            return;
+        }
+    } catch (std::exception const& e) {
+        std::cout << "Invalid args tid and pid should be uint32_t" << std::endl;
+    }
+    std::cout << "delete index ok" << std::endl;
+}
+
 void HandleClientSetTTL(const std::vector<std::string>& parts,
                         ::rtidb::client::TabletClient* client) {
     if (parts.size() < 5) {
@@ -4616,6 +4639,7 @@ void HandleClientHelp(const std::vector<std::string> parts,
         printf("create - create table\n");
         printf("delreplica - delete replica from leader\n");
         printf("delete - delete pk\n");
+        printf("deleteindex - delete index\n");
         printf("drop - drop table\n");
         printf("exit - exit client\n");
         printf("get - get only one record\n");
@@ -4702,6 +4726,10 @@ void HandleClientHelp(const std::vector<std::string> parts,
             printf("usage: delete tid pid key [key_name]\n");
             printf("ex: delete 1 0 key1\n");
             printf("ex: delete 1 0 card0 card\n");
+        } else if (parts[1] == "deleteindex") {
+            printf("desc: delete index\n");
+            printf("usage: deleteindex tid pid index_name\n");
+            printf("ex: deleteindex 1 0 card\n");
         } else if (parts[1] == "count") {
             printf("desc: count the num of data in specified key\n");
             printf("usage: count tid pid key [filter_expired_data]\n");
@@ -5802,7 +5830,9 @@ void HandleClientSGet(const std::vector<std::string>& parts,
     } else {
         std::vector<::rtidb::base::ColumnDesc> columns_tmp;
         for (int i = 0;
-             i < (int)(raw.size() - table_meta.added_column_desc_size()); i++) {  // NOLINT
+             i <
+             (int)(raw.size() - table_meta.added_column_desc_size());  // NOLINT
+             i++) {
             columns_tmp.push_back(raw.at(i));
         }
         ::rtidb::base::FillTableRow(raw.size(), columns_tmp, value.c_str(),
@@ -5946,7 +5976,7 @@ void HandleClientSScan(const std::vector<std::string>& parts,
         } else {
             std::vector<::rtidb::base::ColumnDesc> columns_tmp;
             for (int i = 0;
-                 i < (int)(raw.size() - // NOLINT
+                 i < (int)(raw.size() -                           // NOLINT
                            table_meta.added_column_desc_size());  // NOLINT
                  i++) {
                 columns_tmp.push_back(raw.at(i));
@@ -6208,6 +6238,8 @@ void StartClient() {
             HandleClientConnectZK(parts, &client);
         } else if (parts[0] == "disconnectzk") {
             HandleClientDisConnectZK(parts, &client);
+        } else if (parts[0] == "deleteindex") {
+            HandleClientDeleteIndex(parts, &client);
         } else if (parts[0] == "setttl") {
             HandleClientSetTTL(parts, &client);
         } else if (parts[0] == "setlimit") {

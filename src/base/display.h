@@ -259,6 +259,9 @@ __attribute__((unused)) static void PrintColumnKey(
     uint32_t idx = 0;
     if (column_key_field.size() > 0) {
         for (const auto& column_key : column_key_field) {
+            if (column_key.flag() == 1) {
+                continue;
+            }
             row.clear();
             row.push_back(std::to_string(idx));
             row.push_back(column_key.index_name());
