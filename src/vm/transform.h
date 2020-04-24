@@ -293,13 +293,11 @@ class BatchModeTransformer {
     virtual void ApplyPasses(PhysicalOpNode* node, PhysicalOpNode** output);
     bool GenFnDef(const node::FuncDefPlanNode* fn_plan,
                   base::Status& status);  // NOLINT
-    bool CodeGenExprList(
-        const NameSchemaList&
-            input_name_schema_list,
-        const node::ExprListNode* expr_list, bool row_mode,
-        std::string& fn_name, Schema* output_schema,               // NOLINT
-        base::Status& status);                                     // NOLINT
-    bool GenPlanNode(PhysicalOpNode* node, base::Status& status);  // NOLINT
+    bool CodeGenExprList(const NameSchemaList& input_name_schema_list,
+                         const node::ExprListNode* expr_list, bool row_mode,
+                         std::string& fn_name, Schema* output_schema,  // NOLINT
+                         base::Status& status);                        // NOLINT
+    bool GenPlanNode(PhysicalOpNode* node, base::Status& status);      // NOLINT
 
     node::NodeManager* node_manager_;
     const std::string db_;
@@ -328,6 +326,8 @@ class RequestModeransformer : public BatchModeTransformer {
                           ::llvm::Module* module);
     virtual ~RequestModeransformer();
 
+    const Schema& request_schema() const;
+
  protected:
     virtual bool TransformProjecPlantOp(const node::ProjectPlanNode* node,
                                         PhysicalOpNode** output,
@@ -335,6 +335,12 @@ class RequestModeransformer : public BatchModeTransformer {
     virtual bool TransformJoinOp(const node::JoinPlanNode* node,
                                  PhysicalOpNode** output,
                                  base::Status& status);  // NOLINT
+    virtual bool TransformScanOp(const node::TablePlanNode* node,
+                                 PhysicalOpNode** output,
+                                 base::Status& status);  // NOLINT
+
+ private:
+    vm::Schema request_schema_;
 };
 bool TransformLogicalTreeToLogicalGraph(const ::fesql::node::PlanNode* node,
                                         LogicalGraph* graph,

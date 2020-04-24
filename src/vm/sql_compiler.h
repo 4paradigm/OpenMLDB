@@ -47,6 +47,7 @@ struct SQLContext {
     // eg using bthead to compile ir
     std::unique_ptr<FeSQLJIT> jit;
     Schema schema;
+    Schema request_schema;
     Runner *runner;
     uint32_t row_size;
     std::string ir;

@@ -40,9 +40,10 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 case kProviderTypeIndexScan: {
                     auto provider =
                         dynamic_cast<const PhysicalScanIndexNode*>(node);
-                    return new DataRunner(id_++,
-                                          node->GetOutputNameSchemaList(),
-                                          provider->table_handler_);
+                    return new DataRunner(
+                        id_++, node->GetOutputNameSchemaList(),
+                        provider->table_handler_->GetPartition(
+                            provider->table_handler_, provider->index_name_));
                 }
                 case kProviderTypeRequest: {
                     return new RequestRunner(id_++,
@@ -380,14 +381,14 @@ bool Runner::GetColumnBool(RowView* row_view, int idx, type::Type type) {
     return key;
 }
 
-Row Runner::WindowProject(const int8_t* fn, const uint64_t key,
-                                 const Row row, Window* window) {
+Row Runner::WindowProject(const int8_t* fn, const uint64_t key, const Row row,
+                          Window* window) {
     if (row.empty()) {
         return row;
     }
     window->BufferData(key, row);
     int32_t (*udf)(int8_t**, int8_t*, int32_t*, int8_t**) =
-    (int32_t(*)(int8_t**, int8_t*, int32_t*, int8_t**))(fn);
+        (int32_t(*)(int8_t**, int8_t*, int32_t*, int8_t**))(fn);
     int8_t* out_buf = nullptr;
     int8_t** row_ptrs = row.GetRowPtrs();
     int8_t* window_ptr = reinterpret_cast<int8_t*>(window);
@@ -1190,7 +1191,6 @@ const Row WindowGenerator::Gen(const uint64_t key, const Row row,
                                Window* window) {
     return Runner::WindowProject(fn_, key, row, window);
 }
-
 
 }  // namespace vm
 }  // namespace fesql

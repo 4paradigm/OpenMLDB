@@ -222,18 +222,6 @@ std::shared_ptr<tablet::TabletCatalog> BuildOnePkTableStorage(
     table->Init();
 
     auto catalog = BuildCommonCatalog(table_def, table);
-
-    // add request
-    {
-        fesql::type::TableDef request_def;
-        BuildTableDef(request_def);
-        request_def.set_name("t1");
-        request_def.set_catalog("request");
-        std::shared_ptr<::fesql::storage::Table> request(
-            new ::fesql::storage::Table(1, 1, request_def));
-        AddTable(catalog, request_def, request);
-    }
-
     for (auto row : buffer) {
         table->Put(reinterpret_cast<char*>(row.buf()), row.size());
         delete row.buf();
