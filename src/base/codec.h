@@ -14,10 +14,12 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <memory>
 #include "base/endianconv.h"
 #include "base/strings.h"
 #include "logging.h"  // NOLINT
 #include "storage/segment.h"
+#include "boost/container/deque.hpp"
 
 using ::rtidb::storage::DataBlock;
 
@@ -31,7 +33,6 @@ static inline void Encode(uint64_t time, const char* data, const size_t size,
                           char* buffer, uint32_t offset) {
     buffer += offset;
     uint32_t total_size = 8 + size;
-    PDLOG(DEBUG, "encode size %d", total_size);
     memcpy(buffer, static_cast<const void*>(&total_size), 4);
     memrev32ifbe(buffer);
     buffer += 4;
@@ -81,7 +82,8 @@ static inline int32_t EncodeRows(const std::vector<::rtidb::base::Slice>& rows,
 }
 
 static inline int32_t EncodeRows(
-    const std::vector<std::pair<uint64_t, ::rtidb::base::Slice>>& rows,
+    const boost::container::deque<
+        std::pair<uint64_t, ::rtidb::base::Slice>>& rows,
     uint32_t total_block_size, std::string* pairs) {
     if (pairs == NULL) {
         PDLOG(WARNING, "invalid output pairs");
@@ -96,10 +98,9 @@ static inline int32_t EncodeRows(
     char* rbuffer = reinterpret_cast<char*>(&((*pairs)[0]));
     uint32_t offset = 0;
     for (auto lit = rows.begin(); lit != rows.end(); ++lit) {
-        const std::pair<uint64_t, ::rtidb::base::Slice>& pair = *lit;
-        ::rtidb::base::Encode(pair.first, pair.second.data(),
-                              pair.second.size(), rbuffer, offset);
-        offset += (4 + 8 + pair.second.size());
+        ::rtidb::base::Encode(lit->first, lit->second.data(),
+                              lit->second.size(), rbuffer, offset);
+        offset += (4 + 8 + lit->second.size());
     }
     return total_size;
 }
@@ -195,12 +196,41 @@ static inline void DecodeFull(
     }
 }
 
+using ProjectList = ::google::protobuf::RepeatedField<uint32_t>;
 using Schema =
     ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
 static constexpr uint8_t VERSION_LENGTH = 2;
 static constexpr uint8_t SIZE_LENGTH = 4;
 static constexpr uint8_t HEADER_LENGTH = VERSION_LENGTH + SIZE_LENGTH;
 static constexpr uint32_t UINT24_MAX = (1 << 24) - 1;
+
+struct RowContext;
+class RowBuilder;
+class RowView;
+class RowProject;
+
+// TODO(wangtaize) share the row codec context
+struct RowContext {};
+
+class RowProject {
+ public:
+    RowProject(const Schema& schema, const ProjectList& plist);
+
+    ~RowProject();
+
+    bool Init();
+
+    bool Project(const int8_t* row_ptr, uint32_t row_size, int8_t** out_ptr,
+                 uint32_t* out_size);
+
+ private:
+    const Schema& schema_;
+    const ProjectList& plist_;
+    Schema output_schema_;
+    // TODO(wangtaize) share the init overhead
+    RowBuilder* row_builder_;
+    RowView* row_view_;
+};
 
 class RowBuilder {
  public:
@@ -218,6 +248,9 @@ class RowBuilder {
     bool AppendDouble(double val);
     bool AppendString(const char* val, uint32_t length);
     bool AppendNULL();
+    bool AppendDate(uint32_t year, uint32_t month, uint32_t day);
+    // append the date that encoded
+    bool AppendDate(uint32_t date);
 
     bool SetBool(uint32_t index, bool val);
     bool SetInt32(uint32_t index, int32_t val);
@@ -261,6 +294,9 @@ class RowView {
     int32_t GetFloat(uint32_t idx, float* val);
     int32_t GetDouble(uint32_t idx, double* val);
     int32_t GetString(uint32_t idx, char** val, uint32_t* length);
+    int32_t GetDate(uint32_t idx, uint32_t* year, uint32_t* month,
+                    uint32_t* day);
+    int32_t GetDate(uint32_t idx, uint32_t* date);
     bool IsNULL(uint32_t idx) { return IsNULL(row_, idx); }
     inline uint32_t GetSize() { return size_; }
 
@@ -273,6 +309,7 @@ class RowView {
 
     int32_t GetInteger(const int8_t* row, uint32_t idx,
                        ::rtidb::type::DataType type, int64_t* val);
+
     int32_t GetValue(const int8_t* row, uint32_t idx, char** val,
                      uint32_t* length);
 

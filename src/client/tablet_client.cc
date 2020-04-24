@@ -242,14 +242,26 @@ bool TabletClient::Put(uint32_t tid, uint32_t pid, const std::string& value,
     return false;
 }
 
-bool TabletClient::Put(
-    uint32_t tid, uint32_t pid, uint64_t time, const std::string& value,
-    const std::vector<std::pair<std::string, uint32_t>>& dimensions) {
+bool TabletClient::Put(uint32_t tid,
+             uint32_t pid,
+             uint64_t time,
+             const std::string& value,
+             const std::vector<std::pair<std::string, uint32_t> >& dimensions) {
+    return Put(tid, pid, time, value, dimensions, 0);
+}
+
+bool TabletClient::Put(uint32_t tid,
+             uint32_t pid,
+             uint64_t time,
+             const std::string& value,
+             const std::vector<std::pair<std::string, uint32_t> >& dimensions,
+             uint32_t format_version) {
     ::rtidb::api::PutRequest request;
     request.set_time(time);
     request.set_value(value);
     request.set_tid(tid);
     request.set_pid(pid);
+    request.set_format_version(format_version);
     for (size_t i = 0; i < dimensions.size(); i++) {
         ::rtidb::api::Dimension* d = request.add_dimensions();
         d->set_key(dimensions[i].first);
@@ -269,11 +281,12 @@ bool TabletClient::Put(
     }
     return false;
 }
-
-bool TabletClient::Put(
-    uint32_t tid, uint32_t pid,
-    const std::vector<std::pair<std::string, uint32_t>>& dimensions,
-    const std::vector<uint64_t>& ts_dimensions, const std::string& value) {
+bool TabletClient::Put(uint32_t tid,
+             uint32_t pid,
+             const std::vector<std::pair<std::string, uint32_t> >& dimensions,
+             const std::vector<uint64_t>& ts_dimensions,
+             const std::string& value,
+             uint32_t format_version) {
     ::rtidb::api::PutRequest request;
     request.set_value(value);
     request.set_tid(tid);
@@ -288,6 +301,7 @@ bool TabletClient::Put(
         d->set_ts(ts_dimensions[i]);
         d->set_idx(i);
     }
+    request.set_format_version(format_version);
     ::rtidb::api::PutResponse response;
     uint64_t consumed = ::baidu::common::timer::get_micros();
     bool ok =
@@ -303,8 +317,20 @@ bool TabletClient::Put(
     return false;
 }
 
-bool TabletClient::Put(uint32_t tid, uint32_t pid, const char* pk,
-                       uint64_t time, const char* value, uint32_t size) {
+bool TabletClient::Put(uint32_t tid,
+             uint32_t pid,
+             const std::vector<std::pair<std::string, uint32_t> >& dimensions,
+             const std::vector<uint64_t>& ts_dimensions,
+             const std::string& value) {
+    return Put(tid, pid, dimensions, ts_dimensions, value, 0);
+}
+
+bool TabletClient::Put(uint32_t tid,
+                       uint32_t pid,
+                       const char* pk,
+                       uint64_t time,
+                       const char* value,
+                       uint32_t size) {
     ::rtidb::api::PutRequest request;
     request.set_pk(pk);
     request.set_time(time);
@@ -1299,16 +1325,19 @@ bool TabletClient::GetAllSnapshotOffset(
     return true;
 }
 
-bool TabletClient::DeleteIndex(uint32_t tid, const std::string& idx_name) {
+bool TabletClient::DeleteIndex(uint32_t tid, uint32_t pid,
+                               const std::string& idx_name, std::string* msg) {
     ::rtidb::api::DeleteIndexRequest request;
     ::rtidb::api::GeneralResponse response;
     request.set_tid(tid);
+    request.set_pid(pid);
     request.set_idx_name(idx_name);
     bool ok =
         client_.SendRequest(&rtidb::api::TabletServer_Stub::DeleteIndex,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     if (!ok || response.code() != 0) {
         return false;
+        *msg = response.msg();
     }
     return true;
 }

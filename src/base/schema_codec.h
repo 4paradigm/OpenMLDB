@@ -25,14 +25,20 @@ namespace base {
 const uint32_t MAX_ROW_BYTE_SIZE = 1024 * 1024;
 const uint32_t HEADER_BYTE_SIZE = 3;
 
-const std::string NONETOKEN = "None#*@!"; // NOLINT
-const std::string DEFAULT_LONG = "1"; // NOLINT
+const std::string NONETOKEN = "None#*@!";  // NOLINT
+const std::string DEFAULT_LONG = "1";      // NOLINT
 
 static const std::unordered_map<std::string, ::rtidb::type::DataType>
     DATA_TYPE_MAP = {{"bool", ::rtidb::type::kBool},
                      {"smallint", ::rtidb::type::kSmallInt},
+                     {"uint16", ::rtidb::type::kSmallInt},
+                     {"int16", ::rtidb::type::kSmallInt},
                      {"int", ::rtidb::type::kInt},
+                     {"int32", ::rtidb::type::kInt},
+                     {"uint32", ::rtidb::type::kInt},
                      {"bigint", ::rtidb::type::kBigInt},
+                     {"int64", ::rtidb::type::kBigInt},
+                     {"uint64", ::rtidb::type::kBigInt},
                      {"float", ::rtidb::type::kFloat},
                      {"double", ::rtidb::type::kDouble},
                      {"varchar", ::rtidb::type::kVarchar},
@@ -93,7 +99,8 @@ struct ColumnDesc {
 
 class SchemaCodec {
  public:
-    bool Encode(const std::vector<ColumnDesc>& columns, std::string& buffer) { // NOLINT
+    bool Encode(const std::vector<ColumnDesc>& columns,
+                std::string& buffer) {  // NOLINT
         uint32_t byte_size = GetSize(columns);
         if (byte_size > MAX_ROW_BYTE_SIZE) {
             return false;
@@ -123,7 +130,8 @@ class SchemaCodec {
         return true;
     }
 
-    void Decode(const std::string& schema, std::vector<ColumnDesc>& columns) { // NOLINT
+    void Decode(const std::string& schema,
+                std::vector<ColumnDesc>& columns) {  // NOLINT
         const char* buffer = schema.c_str();
         uint32_t read_size = 0;
         while (read_size < schema.size()) {
@@ -188,13 +196,13 @@ class SchemaCodec {
 
     static int ConvertColumnDesc(
         const ::rtidb::nameserver::TableInfo& table_info,
-        std::vector<ColumnDesc>& columns) { // NOLINT
+        std::vector<ColumnDesc>& columns) {  // NOLINT
         return ConvertColumnDesc(table_info, columns, 0);
     }
 
     static int ConvertColumnDesc(
         const ::rtidb::nameserver::TableInfo& table_info,
-        std::vector<ColumnDesc>& columns, int modify_index) { // NOLINT
+        std::vector<ColumnDesc>& columns, int modify_index) {  // NOLINT
         columns.clear();
         if (table_info.column_desc_v1_size() > 0) {
             if (modify_index > 0) {
@@ -237,7 +245,7 @@ class SchemaCodec {
     static int ConvertColumnDesc(
         const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>&
             column_desc_field,
-        std::vector<ColumnDesc>& columns, // NOLINT
+        std::vector<ColumnDesc>& columns,  // NOLINT
         const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>&
             added_column_field) {
         columns.clear();
@@ -274,7 +282,7 @@ class SchemaCodec {
     static int ConvertColumnDesc(
         const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>&
             column_desc_field,
-        std::vector<ColumnDesc>& columns) { // NOLINT
+        std::vector<ColumnDesc>& columns) {  // NOLINT
         google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>
             added_column_field;
         return ConvertColumnDesc(column_desc_field, columns,
@@ -306,7 +314,8 @@ class RowSchemaCodec {
     static int ConvertColumnDesc(
         const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>&
             column_desc_field,
-        google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>& columns, // NOLINT
+        google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>&
+            columns,  // NOLINT
         const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>&
             added_column_field) {
         columns.Clear();
@@ -339,7 +348,7 @@ class RowSchemaCodec {
 
     static void GetSchemaData(
         const std::map<std::string, std::string>& columns_map,
-        const Schema& schema, Schema& new_schema) { // NOLINT
+        const Schema& schema, Schema& new_schema) {  // NOLINT
         for (int i = 0; i < schema.size(); i++) {
             const ::rtidb::common::ColumnDesc& col = schema.Get(i);
             const std::string& col_name = col.name();
@@ -353,7 +362,7 @@ class RowSchemaCodec {
 
     static int32_t CalStrLength(
         const std::map<std::string, std::string>& str_map, const Schema& schema,
-        ResultMsg& rm) { // NOLINT
+        ResultMsg& rm) {  // NOLINT
         int32_t str_len = 0;
         for (int i = 0; i < schema.size(); i++) {
             const ::rtidb::common::ColumnDesc& col = schema.Get(i);
@@ -381,7 +390,7 @@ class RowSchemaCodec {
     }
 
     static ResultMsg Encode(const std::map<std::string, std::string>& str_map,
-                            const Schema& schema, std::string& row) { // NOLINT
+                            const Schema& schema, std::string& row) {  // NOLINT
         ResultMsg rm;
         if (str_map.size() == 0 || schema.size() == 0 ||
             str_map.size() - schema.size() != 0) {
@@ -473,18 +482,20 @@ class RowSchemaCodec {
         return rm;
     }
 
-    static void Decode(
-        google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>& schema, // NOLINT
-        const std::string& value, std::vector<std::string>& value_vec) { // NOLINT
+    static void Decode(google::protobuf::RepeatedPtrField<
+                           rtidb::common::ColumnDesc>& schema,  // NOLINT
+                       const std::string& value,
+                       std::vector<std::string>& value_vec) {  // NOLINT
         rtidb::base::RowView rv(
             schema, reinterpret_cast<int8_t*>(const_cast<char*>(&value[0])),
             value.size());
         Decode(schema, rv, value_vec);
     }
 
-    static void Decode(
-        google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>& schema, // NOLINT
-        rtidb::base::RowView& rv, std::vector<std::string>& value_vec) { // NOLINT
+    static void Decode(google::protobuf::RepeatedPtrField<
+                           rtidb::common::ColumnDesc>& schema,  // NOLINT
+                       rtidb::base::RowView& rv, //NOLINT
+                       std::vector<std::string>& value_vec) {  // NOLINT
         for (int32_t i = 0; i < schema.size(); i++) {
             if (rv.IsNULL(i)) {
                 value_vec.push_back(NONETOKEN);

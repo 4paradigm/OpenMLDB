@@ -30,4 +30,5 @@ message TableInfo {
     optional rtidb.api.TTLDesc ttl_desc = 13;
     optional string table_type = 14 [default = "TimeSeries"];
     repeated IndexDef index = 15;
+    optional uint32 format_version = 16 [default = 0];
 }

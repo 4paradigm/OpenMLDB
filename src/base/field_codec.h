@@ -60,7 +60,7 @@ static inline void Convert(double data, char* buffer) {
     memcpy(buffer, static_cast<const void*>(&data), 8);
 }
 
-static bool Convert(const std::string& str, DataType data_type,
+static inline bool Convert(const std::string& str, DataType data_type,
                     std::string* out) {
     try {
         switch (data_type) {
