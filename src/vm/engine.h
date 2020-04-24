@@ -128,6 +128,9 @@ class RequestRunSession : public RunSession {
     const bool IsBatchRun() const override { return false; }
     std::shared_ptr<TableHandler> RunRequestPlan(const Row& request,
                                                  PhysicalOpNode* node);
+    virtual inline const Schema& GetRequestSchema() const {
+        return compile_info_->get_sql_context().request_schema;
+    }
 };
 
 typedef std::map<std::string,
