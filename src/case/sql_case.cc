@@ -17,7 +17,7 @@
 #include "vector"
 #include "yaml-cpp/yaml.h"
 namespace fesql {
-namespace cases {
+namespace sqlcase {
 using fesql::codec::Row;
 bool SQLCase::TypeParse(const std::string& type_str, fesql::type::Type* type) {
     if (nullptr == type) {
@@ -65,7 +65,7 @@ bool SQLCase::ExtractSchema(const std::string& schema_str,
         boost::split(name_type_vec, col, boost::is_any_of(":"),
                      boost::token_compress_on);
         if (2 != name_type_vec.size()) {
-            LOG(WARNING) << "Invalid Schema Format";
+            LOG(WARNING) << "Invalid Schema Format:" << schema_str;
             return false;
         }
         ::fesql::type::ColumnDef* column = table.add_columns();
@@ -83,10 +83,8 @@ bool SQLCase::ExtractSchema(const std::string& schema_str,
     return true;
 }
 
-bool SQLCase::AddInput(const std::string& name, const std::string& schema,
-                       const std::string& data) {
-    TableData table = {name, schema, data};
-    inputs_.push_back(table);
+bool SQLCase::AddInput(const TableInfo&table_data) {
+    inputs_.push_back(table_data);
     return true;
 }
 bool SQLCase::ExtractInputData(std::vector<Row>& rows, int32_t input_idx) {
@@ -95,7 +93,7 @@ bool SQLCase::ExtractInputData(std::vector<Row>& rows, int32_t input_idx) {
         return false;
     }
     type::TableDef table;
-    if (!ExtractInputSchema(table)) {
+    if (!ExtractInputTableDef(table)) {
         LOG(WARNING) << "Invalid Schema";
         return false;
     }
@@ -231,77 +229,89 @@ bool SQLCase::ExtractRows(const vm::Schema& schema, const std::string& data_str,
     }
     return true;
 }
-bool SQLCase::ExtractInputSchema(type::TableDef& table, int32_t input_idx) {
-    return ExtractSchema(inputs_[input_idx].schema_, table);
+bool SQLCase::ExtractInputTableDef(type::TableDef& table, int32_t input_idx) {
+    if (!ExtractSchema(inputs_[input_idx].schema_, table)) {
+        return false;
+    }
+    table.set_catalog(inputs_[input_idx].db_);
+    table.set_name(inputs_[input_idx].name_);
 }
 bool SQLCase::ExtractOutputSchema(type::TableDef& table) {
     return ExtractSchema(output_.schema_, table);
 }
-bool SQLCase::CreateSQLCaseFromYaml(const std::string& yaml_path,
-                                    SQLCase* sql_case_ptr) {
-    if (nullptr == sql_case_ptr) {
-        LOG(WARNING) << "sql case output is null";
-        return false;
-    }
+bool SQLCase::CreateSQLCasesFromYaml(const std::string& yaml_path,
+                                     std::vector<SQLCase>& sql_cases) {
+    LOG(INFO) << "SQL Cases Path: " << yaml_path;
     if (!boost::filesystem::is_regular_file(yaml_path)) {
         LOG(WARNING) << yaml_path << ": No such file";
         return false;
     }
     YAML::Node config = YAML::LoadFile(yaml_path);
-    if (config["SQLCase"]) {
-        auto sql_case_node = config["SQLCase"];
+    if (config["SQLCases"]) {
+        auto sql_cases_node = config["SQLCases"];
 
-        if (sql_case_node["id"]) {
-            sql_case_ptr->id_ = sql_case_node["id"].as<int32_t>();
-        } else {
-            sql_case_ptr->id_ = -1;
-        }
-
-        if (sql_case_node["sql"]) {
-            sql_case_ptr->sql_str_ = sql_case_node["sql"].as<std::string>();
-        }
-
-        if (sql_case_node["inputs"]) {
-            auto inputs = sql_case_node["inputs"];
-            if (!inputs.IsMap()) {
-                LOG(WARNING) << "Inputs is invalid";
+        for (auto case_iter = sql_cases_node.begin();
+             case_iter != sql_cases_node.end(); case_iter++) {
+            SQLCase sql_case;
+            auto sql_case_node = *case_iter;
+            if (sql_case_node["desc"]) {
+                sql_case.desc_ = sql_case_node["desc"].as<std::string>();
+            } else {
+                sql_case.id_ = -1;
             }
-            for (auto iter = inputs.begin(); iter != inputs.end(); iter++) {
-                TableData table;
-                auto schema_data = iter->second;
+            if (sql_case_node["id"]) {
+                sql_case.id_ = sql_case_node["id"].as<int32_t>();
+            } else {
+                sql_case.id_ = -1;
+            }
 
-                if (schema_data["name"]) {
-                    table.name_ = schema_data["name"].as<std::string>();
+            if (sql_case_node["sql"]) {
+                sql_case.sql_str_ = sql_case_node["sql"].as<std::string>();
+            }
+
+            if (sql_case_node["inputs"]) {
+                auto inputs = sql_case_node["inputs"];
+                for (auto iter = inputs.begin(); iter != inputs.end(); iter++) {
+                    SQLCase::TableInfo table;
+                    auto schema_data = *iter;
+                    if (schema_data["db"]) {
+                        table.db_ = schema_data["db"].as<std::string>();
+                    }
+                    if (schema_data["name"]) {
+                        table.name_ = schema_data["name"].as<std::string>();
+                    }
+                    if (schema_data["schema"]) {
+                        table.schema_ = schema_data["schema"].as<std::string>();
+                    }
+                    if (schema_data["data"]) {
+                        table.data_ = schema_data["data"].as<std::string>();
+                        boost::trim(table.data_);
+                    }
+                    sql_case.inputs_.push_back(table);
                 }
-                if (schema_data["schema"]) {
-                    table.schema_ = schema_data["schema"].as<std::string>();
-                }
-                if (schema_data["data"]) {
-                    table.data_ = schema_data["data"].as<std::string>();
-                    boost::trim(table.data_);
-                }
-                sql_case_ptr->inputs_.push_back(table);
             }
+
+            if (sql_case_node["output"]) {
+                if (sql_case_node["output"]["schema"]) {
+                    sql_case.output_.schema_ =
+                        sql_case_node["output"]["schema"].as<std::string>();
+                }
+                if (sql_case_node["output"]["data"]) {
+                    sql_case.output_.data_ =
+                        sql_case_node["output"]["data"].as<std::string>();
+                    boost::trim(sql_case.output_.data_);
+                }
+            }
+            sql_cases.push_back(sql_case);
         }
 
-        if (sql_case_node["output"]) {
-            if (sql_case_node["output"]["schema"]) {
-                sql_case_ptr->output_.schema_ =
-                    sql_case_node["output"]["schema"].as<std::string>();
-            }
-            if (sql_case_node["output"]["data"]) {
-                sql_case_ptr->output_.data_ =
-                    sql_case_node["output"]["data"].as<std::string>();
-                boost::trim(sql_case_ptr->output_.data_);
-            }
-        }
     } else {
         LOG(WARNING) << "Invalid SQLCase";
         return false;
     }
     return true;
 }
-std::string SQLCase::FindFesqlDirPath() {
+std::string FindFesqlDirPath() {
     boost::filesystem::path current_path(boost::filesystem::current_path());
     std::cout << "Current path is : " << current_path << std::endl;
 
@@ -322,5 +332,5 @@ std::string SQLCase::FindFesqlDirPath() {
     return std::string();
 }
 
-}  // namespace cases
+}  // namespace sqlcase
 }  // namespace fesql

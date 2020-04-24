@@ -18,6 +18,7 @@
 #include "vm/engine.h"
 #include <utility>
 #include <vector>
+#include "case/sql_case.h"
 #include "codec/list_iterator_codec.h"
 #include "codec/row_codec.h"
 #include "gtest/gtest.h"
@@ -45,10 +46,24 @@ namespace fesql {
 namespace vm {
 using fesql::codec::ArrayListV;
 using fesql::codec::Row;
+using fesql::sqlcase::SQLCase;
 enum EngineRunMode { RUNBATCH, RUNONE };
 
 const bool IS_DEBUG = true;
-class EngineTest : public ::testing::TestWithParam<EngineRunMode> {};
+
+void InitCases(std::string yaml_path, std::vector<SQLCase> cases);
+std::vector<SQLCase> InitCases(std::string yaml_path) {
+    std::vector<SQLCase> cases;
+    SQLCase::CreateSQLCasesFromYaml(
+        fesql::sqlcase::FindFesqlDirPath() + yaml_path, cases);
+    return cases;
+}
+
+class EngineTest : public ::testing::TestWithParam<SQLCase> {
+ public:
+    EngineTest() {}
+    virtual ~EngineTest() {}
+};
 
 void BuildWindow(std::vector<Row>& rows,  // NOLINT
                  int8_t** buf) {
@@ -158,6 +173,11 @@ void BuildWindowUnique(std::vector<Row>& rows,  // NOLINT
         new ::fesql::codec::ArrayListV<Row>(&rows);
     *buf = reinterpret_cast<int8_t*>(w);
 }
+void StoreData(::fesql::storage::Table* table, std::vector<Row>& rows) {
+    for (auto row : rows) {
+        ASSERT_TRUE(table->Put(reinterpret_cast<char*>(row.buf()), row.size()));
+    }
+}
 void StoreData(::fesql::storage::Table* table, int8_t* rows) {
     ArrayListV<Row>* window = reinterpret_cast<ArrayListV<Row>*>(rows);
     auto w = window->GetIterator();
@@ -185,11 +205,12 @@ void StoreData(::fesql::storage::Table* table, int8_t* rows) {
     ASSERT_TRUE(table->Put(reinterpret_cast<char*>(row.buf()), row.size()));
 }
 
-INSTANTIATE_TEST_CASE_P(EngineRUNAndBatchMode, EngineTest,
-                        testing::Values(RUNBATCH, RUNONE));
+INSTANTIATE_TEST_CASE_P(
+    EngineSimpleQuery, EngineTest,
+    testing::ValuesIn(InitCases("/cases/query/0/simple_query.yaml")));
 
-TEST_P(EngineTest, test_normal) {
-    ParamType is_batch_mode = GetParam();
+TEST_F(EngineTest, test_normal) {
+    EngineRunMode is_batch_mode = RUNBATCH;
     int8_t* row1 = NULL;
     uint32_t size1 = 0;
     BuildBuf(&row1, &size1);
@@ -326,9 +347,78 @@ TEST_P(EngineTest, test_normal) {
     free(output[1]);
 }
 
+TEST_P(EngineTest, test_request_mode_engine) {
+    ParamType sql_case = GetParam();
+    LOG(INFO) << sql_case.desc();
+
+    int32_t input_cnt = sql_case.CountInputs();
+
+    // Init catalog
+    auto catalog = BuildCommonCatalog();
+    for (int32_t i = 0; i < input_cnt; i++) {
+        type::TableDef table_def;
+        sql_case.ExtractInputTableDef(table_def, i);
+        std::shared_ptr<::fesql::storage::Table> table(
+            new ::fesql::storage::Table(i + 1, 1, table_def));
+        std::vector<Row> rows;
+        sql_case.ExtractInputData(rows, i);
+        ASSERT_TRUE(AddTable(catalog, table_def, table));
+    }
+    Engine engine();
+    RequestRunSession session;
+
+    ASSERT_TRUE(table->Init());
+    StoreData(table.get(), rows);
+    std::cout << sql_case.sql_str() << std::endl;
+    base::Status get_status;
+    DLOG(INFO) << "RUN IN MODE REQUEST";
+    std::vector<int8_t*> output;
+    vm::Schema schema;
+    int32_t ret = -1;
+    session.EnableDebug();
+    bool ok = engine.Get(sql, "db", session, get_status);
+    ASSERT_TRUE(ok);
+    schema = session.GetSchema();
+    PrintSchema(schema);
+    std::ostringstream oss;
+    session.GetPhysicalPlan()->Print(oss, "");
+    std::cout << "physical plan:\n" << oss.str() << std::endl;
+
+    std::ostringstream runner_oss;
+    session.GetRunner()->Print(runner_oss, "");
+    std::cout << "runner plan:\n" << runner_oss.str() << std::endl;
+    int32_t limit = 2;
+    auto iter = catalog->GetTable("db", "t1")->GetIterator();
+    while (limit-- > 0 && iter->Valid()) {
+        Row row;
+        ret = session.Run(Row(iter->GetValue()), &row);
+        ASSERT_EQ(0, ret);
+        output.push_back(row.buf());
+        iter->Next();
+    }
+    //    ::fesql::type::IndexDef* index = table_def.add_indexes();
+    //    index->set_name("index1");
+    //    index->add_first_keys("col2");
+    //    index->set_second_key("col5");
+
+    ASSERT_TRUE(table->Init());
+}
+
+TEST_P(EngineTest, test_batch_mode_engine) {
+    ParamType sql_case = GetParam();
+    LOG(INFO) << sql_case.sql_str();
+    type::TableDef table_def;
+    BuildTableDef(table_def);
+    ::fesql::type::IndexDef* index = table_def.add_indexes();
+    index->set_name("index1");
+    index->add_first_keys("col2");
+    index->set_second_key("col5");
+    std::shared_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, table_def));
+}
 // 无命中索引last join
-TEST_P(EngineTest, test_last_join_no_match_index) {
-    ParamType is_batch_mode = GetParam();
+TEST_F(EngineTest, test_last_join_no_match_index) {
+    EngineRunMode is_batch_mode = RUNBATCH;
     type::TableDef table_def;
     BuildTableDef(table_def);
     ::fesql::type::IndexDef* index = table_def.add_indexes();
@@ -496,8 +586,8 @@ TEST_P(EngineTest, test_last_join_no_match_index) {
 }
 
 // 命中索引last join
-TEST_P(EngineTest, test_last_join_match_index) {
-    ParamType is_batch_mode = GetParam();
+TEST_F(EngineTest, test_last_join_match_index) {
+    EngineRunMode is_batch_mode = RUNBATCH;
     type::TableDef table_def;
     BuildTableDef(table_def);
     ::fesql::type::IndexDef* index = table_def.add_indexes();

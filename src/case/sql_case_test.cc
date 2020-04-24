@@ -13,7 +13,7 @@
 #include "gtest/gtest.h"
 #include "yaml-cpp/yaml.h"
 namespace fesql {
-namespace cases {
+namespace sqlcase {
 
 class SQLCaseTest : public ::testing::Test {};
 
@@ -262,18 +262,31 @@ TEST_F(SQLCaseTest, ExtractSQLCase) {
         "0, 5, 55, 5.5, 55.5, 3, "
         "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
         "a";
-    sql_case.AddInput("", schema, data);
-    sql_case.output_.schema_ =
-        "f0:string, f1:float, f2:double, f3:int16, f4:int32, f5:int64, "
-        "f6:timestamp";
-    sql_case.output_.data_ =
-        "A, 1.1, 2.2, 3, 4, 5, 1587647803000\n"
-        "BB, 11.1, 22.2, 30, 40, 50, 1587647804000";
+    {
+        SQLCase::TableInfo table_data = {
+            .name_ = "",
+            .db_ = "",
+            .schema_ = schema,
+            .data_ = data
+        };
+        sql_case.AddInput(table_data);
+    }
+
+    SQLCase::TableInfo table_data = {
+        .name_ = "",
+        .db_ = "",
+        .schema_ =
+            "f0:string, f1:float, f2:double, f3:int16, f4:int32, f5:int64, "
+            "f6:timestamp",
+        .data_ =
+            "A, 1.1, 2.2, 3, 4, 5, 1587647803000\n"
+            "BB, 11.1, 22.2, 30, 40, 50, 1587647804000"};
+    sql_case.set_output(table_data);
 
     // Check Data Schema
     {
         type::TableDef output_table;
-        ASSERT_TRUE(sql_case.ExtractInputSchema(output_table));
+        ASSERT_TRUE(sql_case.ExtractInputTableDef(output_table));
         type::TableDef table;
         table.set_name("t1");
         table.set_catalog("db");
@@ -325,7 +338,7 @@ TEST_F(SQLCaseTest, ExtractSQLCase) {
         std::vector<fesql::codec::Row> rows;
         ASSERT_TRUE(sql_case.ExtractInputData(rows));
         ASSERT_EQ(5, rows.size());
-        sql_case.ExtractInputSchema(output_table);
+        sql_case.ExtractInputTableDef(output_table);
         fesql::codec::RowView row_view(output_table.columns());
 
         {
@@ -464,32 +477,63 @@ TEST_F(SQLCaseTest, ExtractSQLCase) {
 }
 
 TEST_F(SQLCaseTest, ExtractYamlSQLCase) {
-    std::string fesql_dir = SQLCase::FindFesqlDirPath();
+    std::string fesql_dir = fesql::sqlcase::FindFesqlDirPath();
+    std::string case_path = fesql_dir + "/cases/yaml/demo.yaml";
+    std::vector<SQLCase> cases;
 
-    std::string case_path = fesql_dir + "/cases/query/0/case1.yaml";
+    ASSERT_TRUE(
+        fesql::sqlcase::SQLCase::CreateSQLCasesFromYaml(case_path, cases));
+    ASSERT_EQ(2, cases.size());
+    {
+        SQLCase& sql_case = cases[0];
+        ASSERT_EQ(sql_case.id(), 1);
+        ASSERT_EQ("SELECT所有列", sql_case.desc());
+        ASSERT_EQ(sql_case.inputs()[0].name_, "t1");
+        ASSERT_EQ(sql_case.inputs()[0].db_, "test");
+        ASSERT_EQ(
+            sql_case.inputs()[0].schema_,
+            "col0:string, col1:int32, col2:int16, col3:float, col4:double, "
+            "col5:int64, col6:string");
+        ASSERT_EQ(sql_case.inputs()[0].data_,
+                  "0, 1, 5, 1.1, 11.1, 1, 1\n0, 2, 5, 2.2, 22.2, 2, 22\n0, 3, "
+                  "55, 3.3, "
+                  "33.3, 1, 333\n0, 4, 55, 4.4, 44.4, 2, 4444\n0, 5, 55, 5.5, "
+                  "55.5, 3, "
+                  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  "aaaaaa");
+        ASSERT_EQ(
+            sql_case.output().schema_,
+            "col0:string, col1:int32, col2:int16, col3:float, col4:double, "
+            "col5:int64, col6:string");
+        ASSERT_EQ(sql_case.output().data_,
+                  "0, 1, 5, 1.1, 11.1, 1, 1\n0, 2, 5, 2.2, 22.2, 2, 22\n0, 3, "
+                  "55, 3.3, "
+                  "33.3, 1, 333\n0, 4, 55, 4.4, 44.4, 2, 4444\n0, 5, 55, 5.5, "
+                  "55.5, 3, "
+                  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  "aaaaaa");
+    }
 
-    SQLCase sql_case;
-    ASSERT_TRUE(SQLCase::CreateSQLCaseFromYaml(case_path, &sql_case));
-    ASSERT_EQ(sql_case.id_, 1);
-    ASSERT_EQ(sql_case.inputs_[0].name_, "t1");
-    ASSERT_EQ(sql_case.inputs_[0].schema_,
-              "col0:string, col1:int32, col2:int16, col3:float, col4:double, "
-              "col5:int64, col6:string");
-    ASSERT_EQ(
-        sql_case.inputs_[0].data_,
-        "0, 1, 5, 1.1, 11.1, 1, 1\n0, 2, 5, 2.2, 22.2, 2, 22\n0, 3, 55, 3.3, "
-        "33.3, 1, 333\n0, 4, 55, 4.4, 44.4, 2, 4444\n0, 5, 55, 5.5, 55.5, 3, "
-        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-    ASSERT_EQ(sql_case.output_.schema_,
-              "col0:string, col1:int32, col2:int16, col3:float, col4:double, "
-              "col5:int64, col6:string");
-    ASSERT_EQ(
-        sql_case.output_.data_,
-        "0, 1, 5, 1.1, 11.1, 1, 1\n0, 2, 5, 2.2, 22.2, 2, 22\n0, 3, 55, 3.3, "
-        "33.3, 1, 333\n0, 4, 55, 4.4, 44.4, 2, 4444\n0, 5, 55, 5.5, 55.5, 3, "
-        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+    {
+        SQLCase& sql_case = cases[1];
+        ASSERT_EQ(sql_case.id(), 2);
+        ASSERT_EQ("SELECT最小值", sql_case.desc());
+        ASSERT_EQ(sql_case.inputs()[0].name_, "t1");
+        ASSERT_EQ(sql_case.inputs()[0].db_, "test");
+        ASSERT_EQ(
+            sql_case.inputs()[0].schema_,
+            "col0:string, col1:int32, col2:int16, col3:float, col4:double, "
+            "col5:int64, col6:string");
+        ASSERT_EQ(sql_case.inputs()[0].data_,
+                  "0, 1, 5, 1.1, 11.1, 1, 1\n0, 2, 5, 2.2, 22.2, 2, 22");
+        ASSERT_EQ(
+            sql_case.output().schema_,
+            "col0:string, col1:int32, col2:int16, col3:float, col4:double, "
+            "col5:int64, col6:string");
+        ASSERT_EQ(sql_case.output().data_, "0, 1, 5, 1.1, 11.1, 1, 1");
+    }
 }
-}  // namespace cases
+}  // namespace sqlcase
 }  // namespace fesql
 
 int main(int argc, char** argv) {
