@@ -181,6 +181,15 @@ bool BaseClient::RefreshNodeList() {
         endpoint_set.insert(endpoint);
     }
     UpdateEndpoint(endpoint_set);
+    endpoints.clear();
+    if (!zk_client_->GetChildren(zk_root_path_ + "/ossnodes", endpoints)) {
+        return false;
+    }
+    endpoint_set.clear();
+    for (const auto& endpoints : endpoints) {
+        endpoints_set.insert(endpoint);
+    }
+    UpdateBlobEndpoint(endpoints_set);
     return true;
 }
 
@@ -208,6 +217,32 @@ void BaseClient::UpdateEndpoint(const std::set<std::string>& alive_endpoints) {
     std::lock_guard<std::mutex> mx(mu_);
     tablets_.clear();
     tablets_ = new_tablets;
+}
+
+void BaseClient::UpdateBlobEndpoint(const std::set<std::string>& alive_endpoints) {
+    decltype(blobs_) old_blobs;
+    decltype(blobs_) new_blobs;
+    {
+        std::lock_guard<std::mutex> mx(mu_);
+        old_blobs = blobs_;
+    }
+    for (const auto& endpoint : alive_endpoints) {
+        auto iter = old_blobs.find(endoint);
+        if (iter == old_blobs.end()) {
+            std::shared_ptr<rtib::client::BsClient> blob = 
+                std::make_shared<rtidb::client::BsClient>(endpoint);
+        if (blob->Init() != 0) {
+            std::cerr << endpoint << " initial failed!" << std::endl;
+            continue;
+        }
+        new_blobs.insert(std::make_pair(endpoint, blob));
+        } else {
+            new_blobs.insert(std::make_pair(endpoint, iter->second));
+        }
+    }
+    std::lock_guard<std::mutex> mx(mu_);
+    blobs_.clear();
+    blobs = new_blobs;
 }
 
 void BaseClient::RefreshTable() {
@@ -347,6 +382,27 @@ std::shared_ptr<rtidb::client::TabletClient> BaseClient::GetTabletClient(
         tablets_.insert(std::make_pair(endpoint, tablet));
     }
     return tablet;
+}
+
+std::shared_ptr<rtidb::client::BsClient> BaseClient::GetBlobClient(const std::string& endpoint, std::string* msg) {
+    {
+        std::lock_guard<std::mutex> mx(mu_);
+        auto iter = blobs_.find(endpoint);
+        if (iter != blobs_.end()) {
+            return iter->second;
+        }
+    }
+    std::shared_ptr<rtidb::client::BsClient> blob = std::make_shared<rtidb::client::BsClient>(endpoint);
+    int code = blob->Init();
+    if (code < 0) {
+        *msg = "failed init blob client";
+        return NULL;
+    }
+    {
+        std::lock_guard<std::mutex> mx(mu_);
+        blobs_.insert(std::make_pair(endpoint, blob));
+    }
+    return blob;
 }
 
 std::shared_ptr<TableHandler> BaseClient::GetTableHandler(

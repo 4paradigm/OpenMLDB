@@ -11,6 +11,7 @@
 #include "base/codec.h"
 #include "base/schema_codec.h"
 #include "client/ns_client.h"
+#include "client/bs_client.h"
 #include "client/tablet_client.h"
 #include "zk/zk_client.h"
 
@@ -380,6 +381,7 @@ class BaseClient {
                int32_t zk_keep_alive_check)
         : mu_(),
           tablets_(),
+        blobs_(),
           tables_(),
           zk_client_(NULL),
           zk_cluster_(zk_cluster),
@@ -394,18 +396,21 @@ class BaseClient {
     void CheckZkClient();
     bool RefreshNodeList();
     void UpdateEndpoint(const std::set<std::string>& alive_endpoints);
+    void UpdateBlobEndpoint(const std::set<std::string>& alive_endpoints);
     void RefreshTable();
     void SetZkCheckInterval(int32_t interval);
     void DoFresh(const std::vector<std::string>& events);
     bool RegisterZK(std::string* msg);
     std::shared_ptr<rtidb::client::TabletClient> GetTabletClient(
         const std::string& endpoint, std::string* msg);
+    std::shared_ptr<rtidb::client::BsClient> GetBlobClient(const std::string& endpoint, std::string* msg);
     std::shared_ptr<TableHandler> GetTableHandler(const std::string& name);
 
  private:
     std::mutex mu_;
     std::map<std::string, std::shared_ptr<rtidb::client::TabletClient>>
         tablets_;
+    std::map<std::string, std::shared_ptr<rtidb::client::BsClient>> blobs_;
     std::map<std::string, std::shared_ptr<TableHandler>> tables_;
     rtidb::zk::ZkClient* zk_client_;
     std::string zk_cluster_;
