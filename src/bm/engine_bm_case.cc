@@ -382,16 +382,7 @@ void EngineRequestSimpleSelectDouble(benchmark::State* state,
     table->Put(reinterpret_cast<char*>(ptr), size);
     delete ptr;
     auto catalog = BuildCommonCatalog(table_def, table);
-    // add request
-    {
-        fesql::type::TableDef request_def;
-        BuildTableDef(request_def);
-        request_def.set_name("t1");
-        request_def.set_catalog("request");
-        std::shared_ptr<::fesql::storage::Table> request(
-            new ::fesql::storage::Table(1, 1, request_def));
-        AddTable(catalog, request_def, request);
-    }
+
     const std::string sql = "SELECT col4 FROM t1 limit 2;";
     Engine engine(catalog);
     RequestRunSession session;
@@ -433,16 +424,7 @@ void EngineRequestSimpleSelectVarchar(benchmark::State* state,
     table->Put(reinterpret_cast<char*>(ptr), size);
     delete ptr;
     auto catalog = BuildCommonCatalog(table_def, table);
-    // add request
-    {
-        fesql::type::TableDef request_def;
-        BuildTableDef(request_def);
-        request_def.set_name("t1");
-        request_def.set_catalog("request");
-        std::shared_ptr<::fesql::storage::Table> request(
-            new ::fesql::storage::Table(1, 1, request_def));
-        AddTable(catalog, request_def, request);
-    }
+
     const std::string sql = "SELECT col6 FROM t1 limit 1;";
     Engine engine(catalog);
     RequestRunSession session;
@@ -484,17 +466,6 @@ void EngineRequestSimpleSelectInt32(benchmark::State* state,
     table->Put(reinterpret_cast<char*>(ptr), size);
     delete ptr;
     auto catalog = BuildCommonCatalog(table_def, table);
-    // add request
-    {
-        fesql::type::TableDef request_def;
-        BuildTableDef(request_def);
-        request_def.set_name("t1");
-        request_def.set_catalog("request");
-        std::shared_ptr<::fesql::storage::Table> request(
-            new ::fesql::storage::Table(1, 1, request_def));
-        AddTable(catalog, request_def, request);
-    }
-
     const std::string sql = "SELECT col1 FROM t1 limit 1;";
     Engine engine(catalog);
     RequestRunSession session;
@@ -535,16 +506,7 @@ void EngineRequestSimpleUDF(benchmark::State* state, MODE mode) {  // NOLINT
     table->Put(reinterpret_cast<char*>(ptr), size);
     delete ptr;
     auto catalog = BuildCommonCatalog(table_def, table);
-    // add request
-    {
-        fesql::type::TableDef request_def;
-        BuildTableDef(request_def);
-        request_def.set_name("t1");
-        request_def.set_catalog("request");
-        std::shared_ptr<::fesql::storage::Table> request(
-            new ::fesql::storage::Table(1, 1, request_def));
-        AddTable(catalog, request_def, request);
-    }
+
     const std::string sql =
         "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return "
         "d\nend\n%%sql\nSELECT test(col1,col1) FROM t1 limit 1;";

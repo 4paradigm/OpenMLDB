@@ -318,14 +318,6 @@ TEST_P(TransformRequestModeTest, transform_physical_plan) {
     AddTable(catalog, table_def5, table5);
     AddTable(catalog, table_def6, table6);
 
-    fesql::type::TableDef request_def;
-    BuildTableDef(request_def);
-    request_def.set_name("t1");
-    request_def.set_catalog("request");
-    std::shared_ptr<::fesql::storage::Table> request(
-        new ::fesql::storage::Table(1, 1, request_def));
-    AddTable(catalog, request_def, request);
-
     ::fesql::node::NodeManager manager;
     ::fesql::node::PlanNodeList plan_trees;
     ::fesql::base::Status base_status;
@@ -419,14 +411,6 @@ TEST_F(TransformRequestModeTest, pass_group_optimized_test) {
 
     auto catalog = BuildCommonCatalog(table_def, table);
 
-    fesql::type::TableDef request_def;
-    BuildTableDef(request_def);
-    request_def.set_name("t1");
-    request_def.set_catalog("request");
-    std::shared_ptr<::fesql::storage::Table> request(
-        new ::fesql::storage::Table(1, 1, request_def));
-    AddTable(catalog, request_def, request);
-
     for (auto in_out : in_outs) {
         Physical_Plan_Check(catalog, in_out.first, in_out.second);
     }
@@ -499,15 +483,6 @@ TEST_F(TransformRequestModeTest, pass_sort_optimized_test) {
     }
 
     auto catalog = BuildCommonCatalog(table_def, table);
-
-    fesql::type::TableDef request_def;
-    BuildTableDef(request_def);
-    request_def.set_name("t1");
-    request_def.set_catalog("request");
-    std::shared_ptr<::fesql::storage::Table> request(
-        new ::fesql::storage::Table(1, 1, request_def));
-    AddTable(catalog, request_def, request);
-
     for (auto in_out : in_outs) {
         Physical_Plan_Check(catalog, in_out.first, in_out.second);
     }
@@ -619,16 +594,6 @@ TEST_F(TransformRequestModeTest, pass_join_optimized_test) {
         std::shared_ptr<::fesql::storage::Table> table2(
             new ::fesql::storage::Table(1, 1, table_def2));
         AddTable(catalog, table_def2, table2);
-    }
-
-    {
-        fesql::type::TableDef request_def;
-        BuildTableDef(request_def);
-        request_def.set_name("t1");
-        request_def.set_catalog("request");
-        std::shared_ptr<::fesql::storage::Table> request(
-            new ::fesql::storage::Table(1, 1, request_def));
-        AddTable(catalog, request_def, request);
     }
 
     for (auto in_out : in_outs) {
