@@ -18,145 +18,70 @@ class MemCataLogTest : public ::testing::Test {
     ~MemCataLogTest() {}
 };
 
-void BuildTableDef(::fesql::type::TableDef& table) {  // NOLINT
-    table.set_name("t1");
-    table.set_catalog("db");
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kVarchar);
-        column->set_name("col0");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt32);
-        column->set_name("col1");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt16);
-        column->set_name("col2");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kFloat);
-        column->set_name("col3");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kDouble);
-        column->set_name("col4");
-    }
+TEST_F(MemCataLogTest, row_test) {
+    std::vector<Row> rows;
+    ::fesql::type::TableDef table;
+    BuildRows(table, rows);
 
+    codec::RowView row_view(table.columns());
+    row_view.Reset(rows[3].buf());
+    std::string str = "4444";
+    std::string str0 = "0";
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt64);
-        column->set_name("col5");
+        char* s;
+        uint32_t size;
+        row_view.GetString(0, &s, &size);
+        ASSERT_EQ("1", std::string(s, size));
     }
-
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kVarchar);
-        column->set_name("col6");
+        int32_t value;
+        row_view.GetInt32(1, &value);
+        ASSERT_EQ(4, value);
+    }
+    {
+        int16_t value;
+        row_view.GetInt16(2, &value);
+        ASSERT_EQ(55, value);
+    }
+    {
+        float value;
+        row_view.GetFloat(3, &value);
+        ASSERT_EQ(4.4f, value);
+    }
+    {
+        double value;
+        row_view.GetDouble(4, &value);
+        ASSERT_EQ(44.4, value);
+    }
+    {
+        int64_t value;
+        row_view.GetInt64(5, &value);
+        ASSERT_EQ(2, value);
+    }
+    {
+        char* s;
+        uint32_t size;
+        row_view.GetString(6, &s, &size);
+        ASSERT_EQ("4444", std::string(s, size));
     }
 }
-
-void BuildRows(::fesql::type::TableDef& table,              // NOLINT
-               std::vector<Row>& rows) {  // NOLINT
-    BuildTableDef(table);
-    {
-        codec::RowBuilder builder(table.columns());
-        std::string str = "1";
-        std::string str0 = "0";
-        uint32_t total_size = builder.CalTotalLength(str.size() + str0.size());
-        int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
-
-        builder.SetBuffer(ptr, total_size);
-        builder.AppendString("0", 1);
-        builder.AppendInt32(1);
-        builder.AppendInt16(5);
-        builder.AppendFloat(1.1f);
-        builder.AppendDouble(11.1);
-        builder.AppendInt64(1);
-        builder.AppendString(str.c_str(), 1);
-        rows.push_back(Row(ptr, total_size));
-    }
-    {
-        codec::RowBuilder builder(table.columns());
-        std::string str = "22";
-        std::string str0 = "0";
-        uint32_t total_size = builder.CalTotalLength(str.size() + str0.size());
-        int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
-        builder.SetBuffer(ptr, total_size);
-        builder.AppendString("0", 1);
-        builder.AppendInt32(2);
-        builder.AppendInt16(5);
-        builder.AppendFloat(2.2f);
-        builder.AppendDouble(22.2);
-        builder.AppendInt64(2);
-        builder.AppendString(str.c_str(), str.size());
-        rows.push_back(Row(ptr, total_size));
-    }
-    {
-        codec::RowBuilder builder(table.columns());
-        std::string str = "333";
-        std::string str0 = "0";
-        uint32_t total_size = builder.CalTotalLength(str.size() + str0.size());
-        int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
-        builder.SetBuffer(ptr, total_size);
-        builder.AppendString("1", 1);
-        builder.AppendInt32(3);
-        builder.AppendInt16(55);
-        builder.AppendFloat(3.3f);
-        builder.AppendDouble(33.3);
-        builder.AppendInt64(1);
-        builder.AppendString(str.c_str(), str.size());
-        rows.push_back(Row(ptr, total_size));
-    }
-    {
-        codec::RowBuilder builder(table.columns());
-        std::string str = "4444";
-        std::string str0 = "0";
-        uint32_t total_size = builder.CalTotalLength(str.size() + str0.size());
-        int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
-        builder.SetBuffer(ptr, total_size);
-        builder.AppendString("1", 1);
-        builder.AppendInt32(4);
-        builder.AppendInt16(55);
-        builder.AppendFloat(4.4f);
-        builder.AppendDouble(44.4);
-        builder.AppendInt64(2);
-        builder.AppendString("4444", str.size());
-        rows.push_back(Row(ptr, total_size));
-    }
-    {
-        codec::RowBuilder builder(table.columns());
-        std::string str =
-            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-            "a";
-        std::string str0 = "0";
-        uint32_t total_size = builder.CalTotalLength(str.size() + str0.size());
-        int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
-        builder.SetBuffer(ptr, total_size);
-        builder.AppendString("2", 1);
-        builder.AppendInt32(5);
-        builder.AppendInt16(55);
-        builder.AppendFloat(5.5f);
-        builder.AppendDouble(55.5);
-        builder.AppendInt64(3);
-        builder.AppendString(str.c_str(), str.size());
-        rows.push_back(Row(ptr, total_size));
-    }
-}
-
 TEST_F(MemCataLogTest, mem_table_handler_test) {
     std::vector<Row> rows;
     ::fesql::type::TableDef table;
     BuildRows(table, rows);
-    vm::MemSegmentHandler table_handler("t1", "temp", &(table.columns()));
+    vm::MemTableHandler table_handler("t1", "temp", &(table.columns()));
     for (auto row : rows) {
         table_handler.AddRow(row);
     }
-
+}
+TEST_F(MemCataLogTest, mem_segment_handler_test) {
+    std::vector<Row> rows;
+    ::fesql::type::TableDef table;
+    BuildRows(table, rows);
+    vm::MemTimeTableHandler table_handler("t1", "temp", &(table.columns()));
+    for (auto row : rows) {
+        table_handler.AddRow(row);
+    }
     auto iter = table_handler.GetIterator();
 
     ASSERT_TRUE(iter->Valid());
@@ -196,7 +121,7 @@ TEST_F(MemCataLogTest, mem_table_iterator_test) {
     std::vector<Row> rows;
     ::fesql::type::TableDef table;
     BuildRows(table, rows);
-    vm::MemSegmentHandler table_handler("t1", "temp", &(table.columns()));
+    vm::MemTimeTableHandler table_handler("t1", "temp", &(table.columns()));
     uint64_t ts = 1;
     for (auto row : rows) {
         table_handler.AddRow(ts++, row);
@@ -274,7 +199,7 @@ TEST_F(MemCataLogTest, mem_partition_test) {
 
     {
         auto iter = window_iter->GetValue();
-        ASSERT_EQ(Row("group2"), window_iter->GetKey());
+        ASSERT_EQ("group2", window_iter->GetKey().ToString());
         while (iter->Valid()) {
             iter->Next();
         }
@@ -329,7 +254,7 @@ TEST_F(MemCataLogTest, mem_partition_test) {
     ASSERT_TRUE(window_iter->Valid());
     {
         auto iter = window_iter->GetValue();
-        ASSERT_EQ(Row("group1"), window_iter->GetKey());
+        ASSERT_EQ("group1", window_iter->GetKey().ToString());
         while (iter->Valid()) {
             iter->Next();
         }
@@ -340,6 +265,18 @@ TEST_F(MemCataLogTest, mem_partition_test) {
         ASSERT_TRUE(reinterpret_cast<int8_t*>(const_cast<char*>(
                         iter->GetValue().data())) == rows[2].buf());
         ASSERT_EQ(iter->GetValue().size(), rows[2].size());
+    }
+}
+
+TEST_F(MemCataLogTest, mem_row_handler_test) {
+    std::vector<Row> rows;
+    ::fesql::type::TableDef table;
+    BuildRows(table, rows);
+
+    // construct test
+    for (auto row : rows) {
+        MemRowHandler row_hander(row, &table.columns());
+        ASSERT_EQ(0, row.compare(row_hander.GetValue()));
     }
 }
 

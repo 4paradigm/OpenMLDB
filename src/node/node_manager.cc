@@ -82,39 +82,9 @@ SQLNode *NodeManager::MakeWindowDefNode(ExprListNode *partitions,
             delete node_ptr;
             return nullptr;
         }
-        auto expr_list = dynamic_cast<OrderByNode *>(orders)->order_by_;
-        for (auto expr : expr_list->children_) {
-            switch (expr->GetExprType()) {
-                case kExprColumnRef:
-                    // TODO(chenjing): window 支持未来窗口
-                    node_ptr->GetOrders().push_back(
-                        dynamic_cast<const ColumnRefNode *>(expr)
-                            ->GetColumnName());
-                    break;
-                    // TODO(chenjing): 支持复杂表达式作为order列
-                default: {
-                    LOG(WARNING)
-                        << "fail to create window node with invalid expr";
-                    delete node_ptr;
-                    return nullptr;
-                }
-            }
-        }
+        node_ptr->SetOrders(dynamic_cast<OrderByNode *>(orders));
     }
-
-    for (auto expr : partitions->children_) {
-        switch (expr->GetExprType()) {
-            case kExprColumnRef:
-                node_ptr->GetPartitions().push_back(
-                    dynamic_cast<ColumnRefNode *>(expr)->GetColumnName());
-                break;
-            default: {
-                LOG(WARNING) << "fail to create window node with invalid expr";
-                delete node_ptr;
-                return nullptr;
-            }
-        }
-    }
+    node_ptr->SetPartitions(partitions);
     node_ptr->SetFrame(dynamic_cast<FrameNode *>(frame));
     return RegisterNode(node_ptr);
 }
@@ -801,6 +771,20 @@ ExprNode *NodeManager::MakeBetweenExpr(ExprNode *expr, ExprNode *left,
                                        ExprNode *right) {
     ExprNode *node_ptr = new BetweenExpr(expr, left, right);
     return RegisterNode(node_ptr);
+}
+ExprNode *NodeManager::MakeAndExpr(ExprListNode *expr_list) {
+    if (node::ExprListNullOrEmpty(expr_list)) {
+        return nullptr;
+    }
+    ExprNode *left_node = expr_list->children_[0];
+    if (1 == expr_list->children_.size()) {
+        return left_node;
+    }
+    for (size_t i = 1; i < expr_list->children_.size(); i++) {
+        left_node = MakeBinaryExprNode(left_node, expr_list->children_[i],
+                                       node::kFnOpAnd);
+    }
+    return left_node;
 }
 }  // namespace node
 }  // namespace fesql

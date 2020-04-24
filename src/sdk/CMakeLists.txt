@@ -4,63 +4,57 @@ include_directories(${INCLUDE_DIRECTORIES}
 
 add_library(fesql_sdk STATIC base_impl.cc dbms_sdk.cc tablet_sdk.cc result_set_impl.cc)
 target_link_libraries(fesql_sdk fesql_parser fesql_planner fesql_node fesql_codec fesql_proto brpc ${g_libs} protobuf leveldb ${OS_LIB} z snappy ssl crypto dl)
+
+set(sdk_deps_libs fesql_dbms fesql_tablet fesql_storage fesql_vm fesql_codegen fesql_udf
+        fesql_base fesql_flags fesql_sdk)
 add_executable(dbms_sdk_test dbms_sdk_test.cc)
-target_link_libraries(dbms_sdk_test  
-    fesql_dbms
-    fesql_tablet 
-    fesql_storage fesql_vm fesql_codegen fesql_udf
-    fesql_flags
-    gtest fesql_sdk  ${COMMON_LIBS} ${llvm_libs})
+target_link_libraries(dbms_sdk_test
+        ${sdk_deps_libs}
+        ${COMMON_LIBS} ${llvm_libs} gtest)
 add_test(dbms_sdk_test dbms_sdk_test --gtest_output=xml:${CMAKE_BINARY_DIR}/dbms_sdk_test.xml)
 list(APPEND test_list dbms_sdk_test)
 
 add_executable(tablet_sdk_test tablet_sdk_test.cc)
 target_link_libraries(tablet_sdk_test
-    fesql_dbms
-    fesql_tablet 
-    fesql_storage fesql_vm fesql_codegen fesql_udf
-    fesql_flags
-    gtest fesql_sdk ${COMMON_LIBS} ${llvm_libs})
+        ${sdk_deps_libs}
+        ${COMMON_LIBS} ${llvm_libs} gtest)
 
 add_test(tablet_sdk_test tablet_sdk_test
-    --gtest_output=xml:${CMAKE_BINARY_DIR}/tablet_sdk_test.xml)
+        --gtest_output=xml:${CMAKE_BINARY_DIR}/tablet_sdk_test.xml)
 list(APPEND test_list tablet_sdk_test)
 
 add_executable(result_set_impl_test result_set_impl_test.cc)
 target_link_libraries(result_set_impl_test
-    fesql_dbms
-    fesql_tablet 
-    fesql_storage fesql_vm fesql_codegen fesql_udf
-    fesql_flags 
-    gtest fesql_sdk ${COMMON_LIBS} ${llvm_libs})
+        ${sdk_deps_libs}
+        ${COMMON_LIBS} ${llvm_libs} gtest)
 add_test(result_set_impl_test result_set_impl_test --gtest_output=xml:${CMAKE_BINARY_DIR}/result_set_impl_test.xml)
 list(APPEND test_list result_set_impl_test)
 
 set_property(SOURCE fesql_interface.i PROPERTY CPLUSPLUS ON)
 if (CMAKE_SYSTEM_NAME MATCHES "Darwin")
-	set_property(SOURCE fesql_interface.i PROPERTY COMPILE_OPTIONS -python)
-else()
-	set_property(SOURCE fesql_interface.i PROPERTY COMPILE_OPTIONS -py3)
-endif()
+    set_property(SOURCE fesql_interface.i PROPERTY COMPILE_OPTIONS -python)
+else ()
+    set_property(SOURCE fesql_interface.i PROPERTY COMPILE_OPTIONS -py3)
+endif ()
 
-set (UseSWIG_TARGET_NAME_PREFERENCE STANDARD)
+set(UseSWIG_TARGET_NAME_PREFERENCE STANDARD)
 swig_add_library(fesql_pysdk
-  TYPE SHARED
-  LANGUAGE python
-  OUTPUT_DIR ${CMAKE_BINARY_DIR}/python/fesql/
-  SOURCES fesql_interface.i)
+        TYPE SHARED
+        LANGUAGE python
+        OUTPUT_DIR ${CMAKE_BINARY_DIR}/python/fesql/
+        SOURCES fesql_interface.i)
 target_include_directories(fesql_pysdk PRIVATE ${PYTHON_INCLUDE_DIRS})
-target_link_libraries(fesql_pysdk PRIVATE fesql_sdk fesql_vm ${vm_deps_libs} fesql_simple_catalog fesql_codegen fesql_udf ${llvm_libs} ${COMMON_LIBS})
+target_link_libraries(fesql_pysdk PRIVATE fesql_sdk fesql_vm ${vm_deps_libs} fesql_simple_catalog fesql_codegen fesql_udf fesql_base ${llvm_libs} ${COMMON_LIBS})
 
 
 set_property(SOURCE fesql_interface.i PROPERTY COMPILE_OPTIONS -package com._4paradigm)
 swig_add_library(fesql_jsdk
-  TYPE SHARED
-  LANGUAGE java
-  OUTPUT_DIR ${PROJECT_SOURCE_DIR}/java/fesql-native/src/main/java/com/_4paradigm/
-  SOURCES fesql_interface.i)
+        TYPE SHARED
+        LANGUAGE java
+        OUTPUT_DIR ${PROJECT_SOURCE_DIR}/java/fesql-native/src/main/java/com/_4paradigm/
+        SOURCES fesql_interface.i)
 target_include_directories(fesql_jsdk PRIVATE ${JNI_INCLUDE_DIRS})
-target_link_libraries(fesql_jsdk PRIVATE fesql_sdk fesql_vm ${vm_deps_libs} fesql_simple_catalog fesql_codegen fesql_udf ${llvm_libs} ${COMMON_LIBS})
+target_link_libraries(fesql_jsdk PRIVATE fesql_sdk fesql_vm ${vm_deps_libs} fesql_simple_catalog fesql_codegen fesql_udf fesql_base ${llvm_libs} ${COMMON_LIBS})
 
 if(APPLE)
   set_target_properties(fesql_jsdk PROPERTIES

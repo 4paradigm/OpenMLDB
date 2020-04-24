@@ -24,7 +24,7 @@ SimpleCatalog::~SimpleCatalog() {}
 
 void SimpleCatalog::AddDatabase(const fesql::type::Database &db) {
     auto &dict = table_handlers_[db.name()];
-    for (size_t k = 0; k < db.tables_size(); ++k) {
+    for (int k = 0; k < db.tables_size(); ++k) {
         auto tbl = db.tables(k);
         dict[tbl.name()] =
             std::make_shared<SimpleCatalogTableHandler>(db.name(), tbl);
@@ -47,7 +47,7 @@ SimpleCatalogTableHandler::SimpleCatalogTableHandler(
     const std::string &db_name, const fesql::type::TableDef &table_def)
     : db_name_(db_name), table_def_(table_def) {
     // build col info and index info
-    for (size_t k = 0; k < table_def.columns_size(); ++k) {
+    for (int k = 0; k < table_def.columns_size(); ++k) {
         auto column = table_def.columns(k);
         ColInfo col_info;
         col_info.name = column.name();
@@ -55,7 +55,7 @@ SimpleCatalogTableHandler::SimpleCatalogTableHandler(
         col_info.pos = k;
         this->types_dict_[column.name()] = col_info;
     }
-    for (size_t k = 0; k < table_def.indexes_size(); ++k) {
+    for (int k = 0; k < table_def.indexes_size(); ++k) {
         auto index = table_def_.indexes(k);
         IndexSt hint;
         hint.index = k;
@@ -104,9 +104,9 @@ std::unique_ptr<WindowIterator> SimpleCatalogTableHandler::GetWindowIterator(
 
 const uint64_t SimpleCatalogTableHandler::GetCount() { return 0; }
 
-base::Slice SimpleCatalogTableHandler::At(uint64_t pos) {
+fesql::codec::Row SimpleCatalogTableHandler::At(uint64_t pos) {
     LOG(ERROR) << "Unsupported operation: At()";
-    return base::Slice();
+    return fesql::codec::Row();
 }
 
 std::shared_ptr<PartitionHandler> SimpleCatalogTableHandler::GetPartition(
@@ -116,13 +116,14 @@ std::shared_ptr<PartitionHandler> SimpleCatalogTableHandler::GetPartition(
     return nullptr;
 }
 
-std::unique_ptr<IteratorV<uint64_t, base::Slice>>
+std::unique_ptr<IteratorV<uint64_t, fesql::codec::Row>>
 SimpleCatalogTableHandler::GetIterator() const {
     LOG(ERROR) << "Unsupported operation: GetIterator()";
     return nullptr;
 }
 
-IteratorV<uint64_t, base::Slice> *SimpleCatalogTableHandler::GetIterator(
+IteratorV<uint64_t, fesql::codec::Row>*
+SimpleCatalogTableHandler::GetIterator(
     int8_t *addr) const {
     LOG(ERROR) << "Unsupported operation: GetIterator()";
     return nullptr;

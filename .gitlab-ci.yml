@@ -1,6 +1,10 @@
 image: develop-registry.4pd.io/centos6_gcc7_fesql:0.0.8
 variables:
     GIT_SUBMODULE_STRATEGY: normal
+    CICD_RUNNER_THIRDPARTY_PATH: "/depends/thirdparty"
+
+before_script:
+    - source tools/init_env.profile.sh
 
 stages:
     - build
@@ -9,7 +13,7 @@ stages:
 style_check:
     stage: build
     script:
-        - source /opt/rh/python27/enable && bash tools/style_check.sh
+        - bash tools/style_check.sh
     artifacts:
         reports:
             junit:
@@ -18,8 +22,7 @@ style_check:
 build_py3sdk_and_case:
     stage: build
     script:
-        - ln -sf /depends/thirdparty thirdparty
-        - source /opt/rh/devtoolset-7/enable && bash tools/run_py3_ut.sh
+        - bash tools/run_py3_ut.sh
     artifacts:
         reports:
             junit:
@@ -28,17 +31,27 @@ build_py3sdk_and_case:
 build_fesql_and_case:
     stage: build
     script:
-        - ln -sf /depends/thirdparty thirdparty
-        - source /opt/rh/devtoolset-7/enable && bash tools/compile.sh
+        - bash tools/compile.sh
         - cd build && make coverage
     artifacts:
         reports:
             junit:
                 - build/*.xml
-        paths: ["build/coverage"]
+        paths: 
+            - "build/coverage"
+
+build_fesql_and_case_on_mac:
+    stage: build
+    variables:
+        CICD_RUNNER_TAG: "macos"
+    script:
+        - bash tools/compile_and_test.sh
+    tags:
+        - macos
+    only:
+        - /.*-macos$/
 
 micro_benchmark:
     stage: benchmark
     script:
-        - ln -sf /depends/thirdparty thirdparty
-        - source /opt/rh/devtoolset-7/enable && bash tools/micro_bench.sh
+        - bash tools/micro_bench.sh

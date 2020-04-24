@@ -6,6 +6,8 @@
 #include <string.h>
 #include <string>
 
+#include "base/raw_buffer.h"
+
 namespace fesql {
 namespace base {
 
@@ -18,11 +20,13 @@ class Slice {
     Slice(const char* d, size_t n) : need_free_(false), size_(n), data_(d) {}
     Slice(int8_t* d, size_t n)
         : need_free_(false), size_(n), data_(reinterpret_cast<char*>(d)) {}
-
+    Slice(int8_t* d, size_t n, bool need_free)
+        : need_free_(need_free), size_(n), data_(reinterpret_cast<char*>(d)) {}
     // Create a slice that refers to the contents of "s"
     explicit Slice(const std::string& s)
         : need_free_(false), size_(s.size()), data_(s.data()) {}
-
+    explicit Slice(const fesql::base::RawBuffer& buf)
+        : need_free_(false), size_(buf.size), data_(buf.addr) {}
     explicit Slice(const char* s)
         : need_free_(false), size_(strlen(s)), data_(s) {}
     Slice(const char* d, size_t n, bool need_free)

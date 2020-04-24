@@ -247,8 +247,8 @@ class WindowPlanNode : public LeafPlanNode {
           start_offset_(0L),
           end_offset_(0L),
           is_range_between_(true),
-          keys_(),
-          orders_() {}
+          keys_(nullptr),
+          orders_(nullptr) {}
     ~WindowPlanNode() {}
     void Print(std::ostream &output, const std::string &org_tab) const;
     int64_t GetStartOffset() const { return start_offset_; }
@@ -259,17 +259,14 @@ class WindowPlanNode : public LeafPlanNode {
     void SetIsRangeBetween(bool isRangeBetween) {
         is_range_between_ = isRangeBetween;
     }
-    const std::vector<std::string> &GetKeys() const { return keys_; }
-    const std::vector<std::string> &GetOrders() const { return orders_; }
-    void SetKeys(const std::vector<std::string> &keys) { keys_ = keys; }
-    void SetOrders(const std::vector<std::string> &orders) { orders_ = orders; }
+    const ExprListNode *GetKeys() const { return keys_; }
+    const OrderByNode *GetOrders() const { return orders_; }
+    void SetKeys(ExprListNode *keys) { keys_ = keys; }
+    void SetOrders(OrderByNode *orders) { orders_ = orders; }
     const std::string &GetName() const { return name; }
     void SetName(const std::string &name) { WindowPlanNode::name = name; }
     const int GetId() const { return id; }
     virtual bool Equals(const PlanNode *node) const;
-
-    const bool ExtractWindowGroupsAndOrders(ExprListNode **groups_output,
-                                      OrderByNode **orders_output) const;
 
  private:
     int id;
@@ -277,8 +274,8 @@ class WindowPlanNode : public LeafPlanNode {
     int64_t start_offset_;
     int64_t end_offset_;
     bool is_range_between_;
-    std::vector<std::string> keys_;
-    std::vector<std::string> orders_;
+    ExprListNode *keys_;
+    OrderByNode *orders_;
 };
 
 class ProjectListNode : public LeafPlanNode {

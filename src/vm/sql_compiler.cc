@@ -27,8 +27,8 @@
 #include "parser/parser.h"
 #include "plan/planner.h"
 #include "udf/udf.h"
-#include "vm/transform.h"
 #include "vm/runner.h"
+#include "vm/transform.h"
 
 namespace fesql {
 namespace vm {
@@ -116,6 +116,7 @@ void SQLCompiler::KeepIR(SQLContext& ctx, llvm::Module* m) {
     llvm::raw_string_ostream buf(ctx.ir);
     llvm::WriteBitcodeToFile(*m, buf);
     buf.flush();
+    DLOG(INFO) << "keep ir length: " << ctx.ir.size();
 }
 
 bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
@@ -174,7 +175,6 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         LOG(WARNING) << "fail to opt ir module for sql " << ctx.sql;
         return false;
     }
-
 
     m->print(::llvm::errs(), NULL);
     if (keep_ir_) {
@@ -245,18 +245,22 @@ bool SQLCompiler::ResolvePlanFnAddress(PhysicalOpNode* node,
         }
     }
 
-    if (!node->GetFnName().empty()) {
-        ::llvm::Expected<::llvm::JITEvaluatedSymbol> symbol(
-            jit->lookup(node->GetFnName()));
-        if (symbol.takeError()) {
-            LOG(WARNING) << "fail to resolve fn address " << node->GetFnName()
-                         << " not found in jit";
+    if (!node->GetFnInfos().empty()) {
+        for (auto info_ptr : node->GetFnInfos()) {
+            if (!info_ptr->fn_name_.empty()) {
+                ::llvm::Expected<::llvm::JITEvaluatedSymbol> symbol(
+                    jit->lookup(info_ptr->fn_name_));
+                if (symbol.takeError()) {
+                    LOG(WARNING) << "fail to resolve fn address "
+                                 << info_ptr->fn_name_ << " not found in jit";
+                }
+                info_ptr->fn_ =
+                    (reinterpret_cast<int8_t*>(symbol->getAddress()));
+            }
         }
-        node->SetFn(reinterpret_cast<int8_t*>(symbol->getAddress()));
     }
     return true;
 }
-
 
 }  // namespace vm
 }  // namespace fesql

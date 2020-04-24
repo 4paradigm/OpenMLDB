@@ -19,20 +19,20 @@
 #include "vm/mem_catalog.h"
 namespace fesql {
 namespace bm {
-using codec::Row;
 using codec::ColumnImpl;
-using vm::MemSegmentHandler;
+using codec::Row;
 using vm::MemTableHandler;
-static void BuildData(type::TableDef& table_def,      // NOLINT
-                      vm::MemSegmentHandler& window,  // NOLINT
+using vm::MemTimeTableHandler;
+static void BuildData(type::TableDef& table_def,        // NOLINT
+                      vm::MemTimeTableHandler& window,  // NOLINT
                       int64_t data_size);
 
-int64_t RunCopyArrayList(MemSegmentHandler& window,               // NOLINT
-                         type::TableDef& table_def);              // NOLINT
-int32_t RunCopyTable(vm::TableHandler* table,                     // NOLINT
-                     const vm::Schema* schema);                   // NOLINT
-int32_t RunCopySegment(MemSegmentHandler& segment,                // NOLINT
-                       type::TableDef& table_def);                // NOLINT
+int64_t RunCopyToArrayList(MemTimeTableHandler& window,           // NOLINT
+                           type::TableDef& table_def);            // NOLINT
+int32_t RunCopyToTable(vm::TableHandler* table,                   // NOLINT
+                       const vm::Schema* schema);                 // NOLINT
+int32_t RunCopyToTimeTable(MemTimeTableHandler& segment,          // NOLINT
+                           type::TableDef& table_def);            // NOLINT
 int32_t TableHanlderIterate(vm::TableHandler* table_hander);      // NOLINT
 int32_t TableHanlderIterateTest(vm::TableHandler* table_hander);  // NOLINT
 const int64_t PartitionHandlerIterate(vm::PartitionHandler* partition_handler,
@@ -40,8 +40,8 @@ const int64_t PartitionHandlerIterate(vm::PartitionHandler* partition_handler,
 const int64_t PartitionHandlerIterateTest(
     vm::PartitionHandler* partition_handler, const std::string& key);
 
-static void BuildData(type::TableDef& table_def,       // NOLINT
-                      vm::MemSegmentHandler& segment,  // NOLINT
+static void BuildData(type::TableDef& table_def,         // NOLINT
+                      vm::MemTimeTableHandler& segment,  // NOLINT
                       int64_t data_size) {
     std::vector<Row> buffer;
     BuildOnePkTableData(table_def, buffer, data_size);
@@ -61,20 +61,20 @@ static void BuildData(type::TableDef& table_def,   // NOLINT
 }
 
 void CopyArrayList(benchmark::State* state, MODE mode, int64_t data_size) {
-    vm::MemSegmentHandler window;
+    vm::MemTimeTableHandler window;
     type::TableDef table_def;
     BuildData(table_def, window, data_size);
 
     switch (mode) {
         case BENCHMARK: {
             for (auto _ : *state) {
-                benchmark::DoNotOptimize(RunCopyArrayList(window, table_def));
+                benchmark::DoNotOptimize(RunCopyToArrayList(window, table_def));
             }
             DeleteData(&window);
             break;
         }
         case TEST: {
-            if (data_size == RunCopyArrayList(window, table_def)) {
+            if (data_size == RunCopyToArrayList(window, table_def)) {
                 DeleteData(&window);
             } else {
                 DeleteData(&window);
@@ -84,20 +84,20 @@ void CopyArrayList(benchmark::State* state, MODE mode, int64_t data_size) {
     }
 }
 void CopyMemTable(benchmark::State* state, MODE mode, int64_t data_size) {
-    vm::MemSegmentHandler table;
+    vm::MemTimeTableHandler table;
     type::TableDef table_def;
     BuildData(table_def, table, data_size);
     switch (mode) {
         case BENCHMARK: {
             for (auto _ : *state) {
                 benchmark::DoNotOptimize(
-                    RunCopyTable(&table, &(table_def.columns())));
+                    RunCopyToTable(&table, &(table_def.columns())));
             }
             DeleteData(&table);
             break;
         }
         case TEST: {
-            if (data_size == RunCopyTable(&table, &(table_def.columns()))) {
+            if (data_size == RunCopyToTable(&table, &(table_def.columns()))) {
                 DeleteData(&table);
             } else {
                 DeleteData(&table);
@@ -170,7 +170,7 @@ void MemTableIterate(benchmark::State* state, MODE mode, int64_t data_size) {
 }
 
 void MemSegmentIterate(benchmark::State* state, MODE mode, int64_t data_size) {
-    vm::MemSegmentHandler table_hanlder;
+    vm::MemTimeTableHandler table_hanlder;
     type::TableDef table_def;
     BuildData(table_def, table_hanlder, data_size);
     switch (mode) {
@@ -188,19 +188,19 @@ void MemSegmentIterate(benchmark::State* state, MODE mode, int64_t data_size) {
     }
 }
 void CopyMemSegment(benchmark::State* state, MODE mode, int64_t data_size) {
-    vm::MemSegmentHandler table;
+    vm::MemTimeTableHandler table;
     type::TableDef table_def;
     BuildData(table_def, table, data_size);
     switch (mode) {
         case BENCHMARK: {
             for (auto _ : *state) {
-                benchmark::DoNotOptimize(RunCopySegment(table, table_def));
+                benchmark::DoNotOptimize(RunCopyToTimeTable(table, table_def));
             }
             DeleteData(&table);
             break;
         }
         case TEST: {
-            if (data_size == RunCopySegment(table, table_def)) {
+            if (data_size == RunCopyToTimeTable(table, table_def)) {
                 DeleteData(&table);
             } else {
                 DeleteData(&table);
@@ -210,8 +210,8 @@ void CopyMemSegment(benchmark::State* state, MODE mode, int64_t data_size) {
     }
 }
 
-int64_t RunCopyArrayList(MemSegmentHandler& window,    // NOLINT
-                         type::TableDef& table_def) {  // NOLINT
+int64_t RunCopyToArrayList(MemTimeTableHandler& window,  // NOLINT
+                           type::TableDef& table_def) {  // NOLINT
     std::vector<Row> window_table;
     auto from_iter = window.GetIterator();
     while (from_iter->Valid()) {
@@ -220,22 +220,22 @@ int64_t RunCopyArrayList(MemSegmentHandler& window,    // NOLINT
     }
     return window_table.size();
 }
-int32_t RunCopyTable(vm::TableHandler* table_hander,  // NOLINT
-                     const vm::Schema* schema) {      // NOLINT
+int32_t RunCopyToTable(vm::TableHandler* table,     // NOLINT
+                       const vm::Schema* schema) {  // NOLINT
     auto window_table =
         std::shared_ptr<vm::MemTableHandler>(new MemTableHandler(schema));
-    auto from_iter = table_hander->GetIterator();
+    auto from_iter = table->GetIterator();
     while (from_iter->Valid()) {
         window_table->AddRow(from_iter->GetValue());
         from_iter->Next();
     }
     return window_table->GetCount();
 }
-int32_t RunCopySegment(MemSegmentHandler& window,    // NOLINT
-                       type::TableDef& table_def) {  // NOLINT
-    auto window_table = std::shared_ptr<vm::MemSegmentHandler>(
-        new MemSegmentHandler(&table_def.columns()));
-    auto from_iter = window.GetIterator();
+int32_t RunCopyToTimeTable(MemTimeTableHandler& segment,  // NOLINT
+                           type::TableDef& table_def) {   // NOLINT
+    auto window_table = std::shared_ptr<vm::MemTimeTableHandler>(
+        new MemTimeTableHandler(&table_def.columns()));
+    auto from_iter = segment.GetIterator();
     while (from_iter->Valid()) {
         window_table->AddRow(from_iter->GetKey(), from_iter->GetValue());
         from_iter->Next();
@@ -286,7 +286,7 @@ const int64_t PartitionHandlerIterateTest(
 }
 void SumArrayListCol(benchmark::State* state, MODE mode, int64_t data_size,
                      const std::string& col_name) {
-    vm::MemSegmentHandler window;
+    vm::MemTimeTableHandler window;
     type::TableDef table_def;
     BuildData(table_def, window, data_size);
 
@@ -302,7 +302,7 @@ void SumArrayListCol(benchmark::State* state, MODE mode, int64_t data_size,
     uint32_t offset;
     node::DataType type;
     uint32_t col_size;
-    ASSERT_TRUE(builder.GetColOffsetType(col_name, &offset, &type));
+    ASSERT_TRUE(builder.GetColOffsetType(col_name, 0, &offset, &type));
     ASSERT_TRUE(codegen::GetLLVMColumnSize(type, &col_size));
     int8_t* buf = reinterpret_cast<int8_t*>(alloca(col_size));
     ::fesql::codec::ListRef list_ref;
@@ -311,9 +311,9 @@ void SumArrayListCol(benchmark::State* state, MODE mode, int64_t data_size,
     int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
     type::Type storage_type;
     ASSERT_TRUE(codegen::DataType2SchemaType(type, &storage_type));
-    ASSERT_EQ(0,
-              ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&list_table),
-                                         offset, storage_type, buf));
+    ASSERT_EQ(
+        0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&list_table), 0,
+                                      offset, storage_type, buf));
     {
         switch (mode) {
             case BENCHMARK: {
@@ -400,7 +400,7 @@ void SumMemTableCol(benchmark::State* state, MODE mode, int64_t data_size,
     uint32_t offset;
     node::DataType type;
     uint32_t col_size;
-    ASSERT_TRUE(builder.GetColOffsetType(col_name, &offset, &type));
+    ASSERT_TRUE(builder.GetColOffsetType(col_name, 0, &offset, &type));
     ASSERT_TRUE(codegen::GetLLVMColumnSize(type, &col_size));
     int8_t* buf = reinterpret_cast<int8_t*>(alloca(col_size));
     ::fesql::codec::ListRef list_ref;
@@ -410,7 +410,7 @@ void SumMemTableCol(benchmark::State* state, MODE mode, int64_t data_size,
     type::Type storage_type;
     ASSERT_TRUE(codegen::DataType2SchemaType(type, &storage_type));
     ASSERT_EQ(0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&window),
-                                            offset, storage_type, buf));
+                                            0, offset, storage_type, buf));
     {
         switch (mode) {
             case BENCHMARK: {

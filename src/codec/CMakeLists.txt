@@ -2,7 +2,7 @@ include_directories(${INCLUDE_DIRECTORIES}
     ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_BINARY_DIR}/src)
 
-add_library(fesql_codec STATIC type_codec.cc row_codec.cc list_iterator_codec.cc)
+add_library(fesql_codec STATIC type_codec.cc row_codec.cc list_iterator_codec.cc row.cc)
 
 add_executable(schema_codec_test schema_codec_test.cc)
 target_link_libraries(schema_codec_test fesql_proto protobuf gflags gtest pthread)

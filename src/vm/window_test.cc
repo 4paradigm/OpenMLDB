@@ -16,8 +16,8 @@ namespace vm {
 using codec::ArrayListIterator;
 using codec::ArrayListV;
 using codec::ColumnImpl;
-using codec::v1::GetCol;
 using codec::Row;
+using codec::v1::GetCol;
 
 class WindowIteratorTest : public ::testing::Test {
  public:
@@ -96,11 +96,10 @@ TEST_F(WindowIteratorTest, MemTableIteratorImplTest) {
     ASSERT_FALSE(impl->Valid());
 }
 
-
 TEST_F(WindowIteratorTest, MemSegmentIteratorImplTest) {
     // prepare row buf
     std::vector<Row> rows;
-    MemSegmentHandler table;
+    MemTimeTableHandler table;
     {
         int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
         *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
@@ -143,7 +142,7 @@ TEST_F(WindowIteratorTest, MemSegmentIteratorImplTest) {
 
 TEST_F(WindowIteratorTest, MemColumnIteratorImplTest) {
     // prepare row buf
-    MemSegmentHandler table;
+    MemTimeTableHandler table;
     {
         int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
         *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
@@ -174,7 +173,7 @@ TEST_F(WindowIteratorTest, MemColumnIteratorImplTest) {
         table.AddRow(Row(ptr, 28));
     }
 
-    auto column = new ColumnImpl<int32_t>(&table, 2);
+    auto column = new ColumnImpl<int32_t>(&table, 0, 2);
     auto impl = column->GetIterator();
     ASSERT_TRUE(impl->Valid());
     ASSERT_EQ(1, impl->GetValue());
@@ -191,7 +190,7 @@ TEST_F(WindowIteratorTest, MemColumnIteratorImplTest) {
 
 TEST_F(WindowIteratorTest, MemGetColTest) {
     // prepare row buf
-    MemSegmentHandler table;
+    MemTimeTableHandler table;
     {
         int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
         *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
@@ -224,13 +223,12 @@ TEST_F(WindowIteratorTest, MemGetColTest) {
 
     const uint32_t size = sizeof(ColumnImpl<int32_t>);
     int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
-    ASSERT_EQ(0, GetCol(reinterpret_cast<int8_t*>(&table),
-                                            2, type::kInt32, buf));
+    ASSERT_EQ(
+        0, GetCol(reinterpret_cast<int8_t*>(&table), 0, 2, type::kInt32, buf));
 
-    ListV<Row> * list =
-        reinterpret_cast<ListV<Row>*>(&table);
-    new (buf) ColumnImpl<int32_t >(list, 2);
-    auto column = reinterpret_cast<ColumnImpl<int32_t >*>(buf);
+    ListV<Row>* list = reinterpret_cast<ListV<Row>*>(&table);
+    new (buf) ColumnImpl<int32_t>(list, 0, 2);
+    auto column = reinterpret_cast<ColumnImpl<int32_t>*>(buf);
     auto impl = column->GetIterator();
     ASSERT_TRUE(impl->Valid());
     ASSERT_EQ(1, impl->GetValue());
@@ -242,7 +240,7 @@ TEST_F(WindowIteratorTest, MemGetColTest) {
     ASSERT_EQ(111, impl->GetValue());
     impl->Next();
     ASSERT_FALSE(impl->Valid());
-//    delete (column);
+    //    delete (column);
 }
 
 TEST_F(WindowIteratorTest, CurrentHistoryWindowTest) {

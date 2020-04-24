@@ -23,6 +23,7 @@
 #include <mutex>  //NOLINT
 #include <string>
 #include <vector>
+#include "base/raw_buffer.h"
 #include "base/spin_lock.h"
 #include "codec/list_iterator_codec.h"
 #include "codec/row_codec.h"
@@ -30,7 +31,6 @@
 #include "vm/catalog.h"
 #include "vm/mem_catalog.h"
 #include "vm/sql_compiler.h"
-
 #include "llvm-c/Target.h"
 
 namespace fesql {
@@ -41,10 +41,29 @@ using ::fesql::codec::RowView;
 
 class Engine;
 
+class EngineOptions {
+ public:
+    void set_keep_ir(bool flag) {
+        this->keep_ir_ = flag;
+    }
+    bool is_keep_ir() const {
+        return this->keep_ir_;
+    }
+ private:
+    bool keep_ir_;
+};
+
 class CompileInfo {
  public:
-    SQLContext& get_sql_context() {
-        return this->sql_ctx;
+    SQLContext& get_sql_context() { return this->sql_ctx; }
+
+    bool get_ir_buffer(const base::RawBuffer& buf) {
+        auto& str = this->sql_ctx.ir;
+        return buf.CopyFrom(str.data(), str.size());
+    }
+
+    size_t get_ir_size() {
+        return this->sql_ctx.ir.size();
     }
 
  private:
@@ -73,7 +92,14 @@ class RunSession {
         return compile_info_->get_sql_context().runner;
     }
 
+    virtual inline std::shared_ptr<CompileInfo> GetCompileInfo() {
+        return compile_info_;
+    }
+
     virtual const bool IsBatchRun() const = 0;
+
+    void EnableDebug() { is_debug_ = true; }
+    void DisableDebug() { is_debug_ = false; }
 
  protected:
     bool SetCompileInfo(
@@ -84,6 +110,7 @@ class RunSession {
     std::shared_ptr<CompileInfo> compile_info_;
     std::shared_ptr<Catalog> cl_;
     std::string decoded_schema_;
+    bool is_debug_;
     friend Engine;
 };
 
@@ -115,6 +142,7 @@ typedef std::map<std::string,
     EngineCache;
 class Engine {
  public:
+    Engine(const std::shared_ptr<Catalog>& cl, const EngineOptions& options);
     explicit Engine(const std::shared_ptr<Catalog>& cl);
 
     // Initialize LLVM environments
@@ -130,6 +158,8 @@ class Engine {
                                                 const std::string& sql);
 
     const std::shared_ptr<Catalog> cl_;
+    EngineOptions options_;
+
     base::SpinMutex mu_;
     EngineCache cache_;
     ::fesql::node::NodeManager nm_;

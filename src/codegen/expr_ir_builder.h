@@ -32,41 +32,17 @@
 #include "codegen/window_ir_builder.h"
 #include "llvm/IR/IRBuilder.h"
 #include "node/sql_node.h"
+#include "vm/schemas_context.h"
 
 namespace fesql {
 namespace codegen {
 
-struct RowIRInfo {
-    const uint32_t idx;
-    const std::string table_name_;
-    const vm::Schema* schema_;
-};
-
-class RowIRContext {
- public:
-    RowIRContext(::llvm::BasicBlock* block, ScopeVar* scope_var,
-                 const RowIRInfo& info)
-        : info_(info),
-          row_ir_builder_(
-              new BufNativeIRBuilder(*info_.schema_, block, scope_var)),
-          window_ir_builder_(
-              new MemoryWindowDecodeIRBuilder(*info_.schema_, block)) {}
-    RowIRInfo info_;
-    std::unique_ptr<RowDecodeIRBuilder> row_ir_builder_;
-    std::unique_ptr<WindowDecodeIRBuilder> window_ir_builder_;
-};
-
+using fesql::vm::RowSchemaInfo;
 class ExprIRBuilder {
  public:
     ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var);
-
     ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
-                  const vm::Schema& schema, const bool row_mode,
-                  const std::string& row_ptr_name,
-                  const std::string& window_ptr_name,
-                  const std::string& row_size_name, ::llvm::Module* module);
-    ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
-                  const std::vector<RowIRInfo>& row_ir_info_list,
+                  const vm::SchemasContext* schemas_context,
                   const bool row_mode, ::llvm::Module* module);
 
     ~ExprIRBuilder();
@@ -114,16 +90,13 @@ class ExprIRBuilder {
     ArithmeticIRBuilder arithmetic_ir_builder_;
     PredicateIRBuilder predicate_ir_builder_;
     ::llvm::Module* module_;
-
-    // row ir context list
-    std::vector<std::unique_ptr<RowIRContext>> row_ir_context_list_;
-    // column_name -> [context_id1, context_id2]
-    std::map<std::string, std::vector<uint32_t>> col_context_id_map_;
-    // table_name -> context_id1
-    std::map<std::string, uint32_t> table_context_id_map_;
+    const vm::SchemasContext* schemas_context_;
+    std::vector<std::unique_ptr<RowDecodeIRBuilder>> row_ir_builder_list_;
+    std::unique_ptr<WindowDecodeIRBuilder> window_ir_builder_;
     bool IsUADF(std::string function_name);
-    bool FindRowIRContext(const std::string& relation_name,
-                          const std::string& col_name, RowIRContext** ctx);
+    bool FindRowSchemaInfo(const std::string& relation_name,
+                           const std::string& col_name,
+                           const RowSchemaInfo** info);
 };
 }  // namespace codegen
 }  // namespace fesql

@@ -26,6 +26,7 @@
 #include "codegen/window_ir_builder.h"
 #include "glog/logging.h"
 #include "proto/common.pb.h"
+#include "vm/schemas_context.h"
 
 namespace fesql {
 namespace codegen {
@@ -38,34 +39,10 @@ ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var)
       arithmetic_ir_builder_(block),
       predicate_ir_builder_(block),
       module_(block->getModule()),
-      row_ir_context_list_(),
-      col_context_id_map_(),
-      table_context_id_map_() {}
+      schemas_context_(nullptr) {}
 
 ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
-                             const vm::Schema& schema, const bool row_mode,
-                             const std::string& row_ptr_name,
-                             const std::string& window_ptr_name,
-                             const std::string& row_size_name,
-                             ::llvm::Module* module)
-    : block_(block),
-      sv_(scope_var),
-      row_mode_(row_mode),
-      variable_ir_builder_(block, scope_var),
-      arithmetic_ir_builder_(block),
-      predicate_ir_builder_(block),
-      module_(module) {
-    row_ir_context_list_.push_back(
-        std::unique_ptr<RowIRContext>(new RowIRContext(
-            block, scope_var,
-            RowIRInfo{.idx = 0, .table_name_ = "", .schema_ = &schema})));
-    std::vector<uint32_t> idx = {0};
-    for (auto iter = schema.begin(); iter != schema.end(); iter++) {
-        col_context_id_map_.insert(std::make_pair(iter->name(), idx));
-    }
-}
-ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
-                             const std::vector<RowIRInfo>& row_info_list,
+                             const vm::SchemasContext* schemas_context,
                              const bool row_mode, ::llvm::Module* module)
     : block_(block),
       sv_(scope_var),
@@ -73,33 +50,15 @@ ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
       variable_ir_builder_(block, scope_var),
       arithmetic_ir_builder_(block),
       predicate_ir_builder_(block),
-      module_(module) {
-    uint32_t idx = 0;
-
-    for (auto info : row_info_list) {
-        // init context list
-        row_ir_context_list_.push_back(std::unique_ptr<RowIRContext>(
-            new RowIRContext(block, scope_var, info)));
-
-        // init table -> context idx map
-        if (!info.table_name_.empty()) {
-            table_context_id_map_.insert(std::make_pair(info.table_name_, idx));
-        }
-
-        // init col -> context idx map
-        auto schema = info.schema_;
-        for (auto col_iter = schema->begin(); col_iter != schema->end();
-             col_iter++) {
-            auto map_iter = col_context_id_map_.find(col_iter->name());
-            if (map_iter == col_context_id_map_.cend()) {
-                col_context_id_map_.insert(
-                    std::make_pair(col_iter->name(), std::vector<uint32_t>()));
-                map_iter = col_context_id_map_.find(col_iter->name());
-            }
-            map_iter->second.push_back(idx);
-        }
-        idx++;
+      module_(module),
+      schemas_context_(schemas_context) {
+    for (auto info : schemas_context->row_schema_info_list_) {
+        row_ir_builder_list_.push_back(std::unique_ptr<RowDecodeIRBuilder>(
+            new BufNativeIRBuilder(*info.schema_, block, sv_)));
     }
+    window_ir_builder_ =
+        std::unique_ptr<WindowDecodeIRBuilder>(new MemoryWindowDecodeIRBuilder(
+            schemas_context->row_schema_info_list_, block));
 }
 ExprIRBuilder::~ExprIRBuilder() {}
 
@@ -344,8 +303,8 @@ bool ExprIRBuilder::BuildColumnItem(const std::string& relation_name,
                                     const std::string& col,
                                     ::llvm::Value** output,
                                     base::Status& status) {
-    RowIRContext* ctx;
-    if (!FindRowIRContext(relation_name, col, &ctx)) {
+    const RowSchemaInfo* info;
+    if (!FindRowSchemaInfo(relation_name, col, &info)) {
         status.msg =
             "fail to find row context with " + relation_name + "." + col;
         status.code = common::kCodegenError;
@@ -355,7 +314,7 @@ bool ExprIRBuilder::BuildColumnItem(const std::string& relation_name,
     ::llvm::Value* value = NULL;
     DLOG(INFO) << "get table column " << col;
     // not found
-    bool ok = variable_ir_builder_.LoadColumnItem(ctx->info_.table_name_, col,
+    bool ok = variable_ir_builder_.LoadColumnItem(info->table_name_, col,
                                                   &value, status);
     if (ok) {
         *output = value;
@@ -363,24 +322,24 @@ bool ExprIRBuilder::BuildColumnItem(const std::string& relation_name,
     }
 
     ::llvm::Value* row_ptr = NULL;
-    if (!variable_ir_builder_.LoadArrayIndex("row_ptrs", ctx->info_.idx,
-                                             &row_ptr, status) ||
+    if (!variable_ir_builder_.LoadArrayIndex("row_ptrs", info->idx_, &row_ptr,
+                                             status) ||
         row_ptr == NULL) {
         std::ostringstream oss;
         oss << "fail to find row_ptrs"
-            << "[" << ctx->info_.idx << "]" << status.msg;
+            << "[" << info->idx_ << "]" << status.msg;
         status.msg = oss.str();
         LOG(WARNING) << status.msg;
         return false;
     }
 
     ::llvm::Value* row_size = NULL;
-    if (!variable_ir_builder_.LoadArrayIndex("row_sizes", ctx->info_.idx,
-                                             &row_size, status) ||
+    if (!variable_ir_builder_.LoadArrayIndex("row_sizes", info->idx_, &row_size,
+                                             status) ||
         row_size == NULL) {
         std::ostringstream oss;
         oss << "fail to find row_sizes"
-            << "[" << ctx->info_.idx << "]"
+            << "[" << info->idx_ << "]"
             << ": " << status.msg;
         status.msg = oss.str();
         LOG(WARNING) << status.msg;
@@ -388,7 +347,8 @@ bool ExprIRBuilder::BuildColumnItem(const std::string& relation_name,
     }
 
     // TODO(wangtaize) buf ir builder add build get field ptr
-    ok = ctx->row_ir_builder_->BuildGetField(col, row_ptr, row_size, &value);
+    ok = row_ir_builder_list_[info->idx_]->BuildGetField(col, row_ptr, row_size,
+                                                         &value);
     if (!ok || value == NULL) {
         status.msg = "fail to find column " + col;
         status.code = common::kCodegenError;
@@ -396,8 +356,8 @@ bool ExprIRBuilder::BuildColumnItem(const std::string& relation_name,
         return false;
     }
 
-    ok = variable_ir_builder_.StoreColumnItem(ctx->info_.table_name_, col,
-                                              value, status);
+    ok = variable_ir_builder_.StoreColumnItem(info->table_name_, col, value,
+                                              status);
     if (ok) {
         *output = value;
         return true;
@@ -414,8 +374,8 @@ bool ExprIRBuilder::BuildColumnIterator(const std::string& relation_name,
                                         const std::string& col,
                                         ::llvm::Value** output,
                                         base::Status& status) {  // NOLINT
-    RowIRContext* ctx;
-    if (!FindRowIRContext(relation_name, col, &ctx)) {
+    const RowSchemaInfo* info;
+    if (!FindRowSchemaInfo(relation_name, col, &info)) {
         status.msg = "fail to find context with " + relation_name + "." + col;
         status.code = common::kCodegenError;
         return false;
@@ -424,44 +384,32 @@ bool ExprIRBuilder::BuildColumnIterator(const std::string& relation_name,
     ::llvm::Value* value = NULL;
     DLOG(INFO) << "get table column " << col;
     // not found
-    bool ok = variable_ir_builder_.LoadColumnRef(ctx->info_.table_name_, col,
-                                                 &value, status);
+    bool ok = variable_ir_builder_.LoadColumnRef(info->table_name_, col, &value,
+                                                 status);
     if (ok) {
         *output = value;
         return true;
     }
 
-    ::llvm::Value* row_ptr = NULL;
-    ok = variable_ir_builder_.LoadArrayIndex("window_ptrs", ctx->info_.idx,
-                                             &row_ptr, status);
+    ::llvm::Value* window_ptr = NULL;
+    ok = variable_ir_builder_.LoadValue("window_ptr", &window_ptr, status);
 
-    if (!ok || row_ptr == NULL) {
-        status.msg = "fail to find window_ptrs[" +
-                     std::to_string(ctx->info_.idx) + "]: " + status.msg;
+    if (!ok || window_ptr == NULL) {
+        status.msg = "fail to find window_ptr: " + status.msg;
         LOG(WARNING) << status.msg;
         return false;
     }
 
-    ::llvm::Value* row_size = NULL;
-    ok = variable_ir_builder_.LoadArrayIndex("row_sizes", ctx->info_.idx,
-                                             &row_size, status);
-    if (!ok || row_size == NULL) {
-        status.msg = "fail to find row_sizes[" +
-                     std::to_string(ctx->info_.idx) + "]: " + status.msg;
-        LOG(WARNING) << status.msg;
-        status.code = common::kCodegenError;
-        return false;
-    }
     DLOG(INFO) << "get table column " << col;
     // NOT reuse for iterator
-    ok = ctx->window_ir_builder_->BuildGetCol(col, row_ptr, &value);
+    ok = window_ir_builder_->BuildGetCol(col, window_ptr, info->idx_, &value);
 
     if (!ok || value == NULL) {
         status.msg = "fail to find column " + col;
         status.code = common::kCodegenError;
         return false;
     }
-    ok = variable_ir_builder_.StoreColumnRef(ctx->info_.table_name_, col, value,
+    ok = variable_ir_builder_.StoreColumnRef(info->table_name_, col, value,
                                              status);
     if (ok) {
         *output = value;
@@ -651,60 +599,15 @@ bool ExprIRBuilder::IsUADF(std::string function_name) {
     }
     return false;
 }
-bool ExprIRBuilder::FindRowIRContext(const std::string& relation_name,
-                                     const std::string& col_name,
-                                     RowIRContext** ctx) {
-    if (relation_name.empty() && col_name.empty()) {
-        LOG(WARNING) << "fail to find column: relation and col is empty";
+bool ExprIRBuilder::FindRowSchemaInfo(const std::string& relation_name,
+                                      const std::string& col_name,
+                                      const RowSchemaInfo** info) {
+    if (nullptr == schemas_context_) {
+        LOG(WARNING)
+            << "fail to find row schema info with null schemas context";
         return false;
     }
-
-    uint32_t table_ctx_id = -1;
-    if (!relation_name.empty()) {
-        auto table_map_iter = table_context_id_map_.find(relation_name);
-        if (table_map_iter == table_context_id_map_.cend()) {
-            LOG(WARNING) << "Unknow Column: ' " + col_name + "'  in '" +
-                                relation_name + "'";
-            return false;
-        }
-        table_ctx_id = table_map_iter->second;
-    }
-
-    auto iter = col_context_id_map_.find(col_name);
-    if (iter == col_context_id_map_.end()) {
-        LOG(WARNING) << "fail to find column";
-        return false;
-    }
-
-    if (iter->second.size() > 1) {
-        if (relation_name.empty()) {
-            LOG(WARNING) << "Column: '" + col_name +
-                                "' in field list is ambiguous";
-            return false;
-        } else {
-            *ctx = nullptr;
-            for (auto col_ctx_id : iter->second) {
-                if (col_ctx_id == table_ctx_id) {
-                    *ctx = row_ir_context_list_[col_ctx_id].get();
-                    return true;
-                }
-            }
-            LOG(WARNING) << "Unknow Column: ' " + col_name + "'  in '" +
-                                relation_name + "'";
-            return false;
-        }
-    } else {
-        uint32_t col_context_id = iter->second[0];
-        if (!relation_name.empty()) {
-            if (table_ctx_id != col_context_id) {
-                LOG(WARNING) << "Unknow Column: ' " + col_name + "'  in '" +
-                                    relation_name + "'";
-                return false;
-            }
-        }
-        *ctx = row_ir_context_list_[col_context_id].get();
-        return true;
-    }
+    return schemas_context_->ColumnRefResolved(relation_name, col_name, info);
 }
 
 }  // namespace codegen

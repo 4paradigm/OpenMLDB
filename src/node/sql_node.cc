@@ -426,10 +426,10 @@ void WindowDefNode::Print(std::ostream &output,
     PrintValue(output, tab, window_name_, "window_name", false);
 
     output << "\n";
-    PrintValue(output, tab, partitions_, "partitions", false);
+    PrintValue(output, tab, ExprString(partitions_), "partitions", false);
 
     output << "\n";
-    PrintValue(output, tab, orders_, "orders", false);
+    PrintValue(output, tab, ExprString(orders_), "orders", false);
 
     output << "\n";
     PrintSQLNode(output, tab, frame_ptr_, "frame", true);

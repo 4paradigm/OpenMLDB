@@ -17,12 +17,13 @@
 
 #ifndef SRC_VM_CATALOG_H_
 #define SRC_VM_CATALOG_H_
-
 #include <map>
 #include <memory>
 #include <string>
 #include <vector>
+#include <utility>
 #include "base/slice.h"
+#include "codec/row.h"
 #include "codec/list_iterator_codec.h"
 #include "proto/type.pb.h"
 
@@ -52,7 +53,7 @@ typedef ::google::protobuf::RepeatedPtrField<::fesql::type::ColumnDef> Schema;
 typedef ::google::protobuf::RepeatedPtrField<::fesql::type::IndexDef> IndexList;
 typedef std::map<std::string, ColInfo> Types;
 typedef std::map<std::string, IndexSt> IndexHint;
-
+typedef std::vector<std::pair<const std::string, const Schema*>> NameSchemaList;
 class PartitionHandler;
 
 enum HandlerType { kRowHandler, kTableHandler, kPartitionHandler };
@@ -69,6 +70,7 @@ class DataHandler : public ListV<Row> {
     // get the db name
     virtual const std::string& GetDatabase() = 0;
     virtual const HandlerType GetHanlderType() = 0;
+    virtual const std::string GetHandlerTypeName() = 0;
 };
 
 class RowHandler : public DataHandler {
@@ -86,6 +88,7 @@ class RowHandler : public DataHandler {
     Row At(uint64_t pos) override { return Row(); }
     const HandlerType GetHanlderType() override { return kRowHandler; }
     virtual const Row& GetValue() const = 0;
+    const std::string GetHandlerTypeName() override { return "RowHandler"; }
 };
 
 class TableHandler : public DataHandler {
@@ -111,6 +114,7 @@ class TableHandler : public DataHandler {
         const std::string& index_name) const {
         return std::shared_ptr<PartitionHandler>();
     }
+    const std::string GetHandlerTypeName() override { return "TableHandler"; }
 };
 
 class PartitionHandler : public TableHandler {
@@ -135,6 +139,9 @@ class PartitionHandler : public TableHandler {
         std::shared_ptr<PartitionHandler> partition_hander,
         const std::string& key) {
         return std::shared_ptr<TableHandler>();
+    }
+    const std::string GetHandlerTypeName() override {
+        return "PartitionHandler";
     }
 };
 

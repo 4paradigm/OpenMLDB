@@ -109,8 +109,8 @@ std::shared_ptr<ResultSet> TabletSdkImpl::Query(const std::string& db,
     request.set_db(db);
     request.set_is_batch(true);
     std::unique_ptr<brpc::Controller> cntl(new brpc::Controller());
-    cntl.set_timeout_ms(10000);
-    DLOG(INFO) << "SyncQuery >> timeout_ms: " << cntl.timeout_ms();
+    cntl->set_timeout_ms(10000);
+    DLOG(INFO) << "SyncQuery >> timeout_ms: " << cntl->timeout_ms();
     stub.Query(cntl.get(), &request, response.get(), NULL);
     if (cntl.Failed()) {
         status->code = common::kConnError;

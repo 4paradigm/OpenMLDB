@@ -348,8 +348,7 @@ TEST_F(PlannerTest, SelectPlanWithWindowProjectTest) {
     ASSERT_EQ(-3, project_list->GetW()->GetStartOffset());
     ASSERT_EQ(3, project_list->GetW()->GetEndOffset());
 
-    ASSERT_EQ(std::vector<std::string>({"COL2"}),
-              project_list->GetW()->GetKeys());
+    ASSERT_EQ("(COL2)", node::ExprString(project_list->GetW()->GetKeys()));
     ASSERT_TRUE(project_list->IsWindowAgg());
 
     plan_ptr = plan_ptr->GetChildren()[0];
@@ -412,8 +411,7 @@ TEST_F(PlannerTest, SelectPlanWithMultiWindowProjectTest) {
 
     ASSERT_EQ(-1 * 86400000, project_list->GetW()->GetStartOffset());
     ASSERT_EQ(-1000, project_list->GetW()->GetEndOffset());
-    ASSERT_EQ(std::vector<std::string>({"col2"}),
-              project_list->GetW()->GetKeys());
+    ASSERT_EQ("(col2)", node::ExprString(project_list->GetW()->GetKeys()));
 
     // validate projection 1: window agg over w2
     project_list = dynamic_cast<node::ProjectListNode *>(
@@ -423,8 +421,7 @@ TEST_F(PlannerTest, SelectPlanWithMultiWindowProjectTest) {
     ASSERT_EQ(-2 * 86400000, project_list->GetW()->GetStartOffset());
     ASSERT_EQ(-1000, project_list->GetW()->GetEndOffset());
 
-    ASSERT_EQ(std::vector<std::string>({"col3"}),
-              project_list->GetW()->GetKeys());
+    ASSERT_EQ("(col3)", node::ExprString(project_list->GetW()->GetKeys()));
     ASSERT_TRUE(project_list->IsWindowAgg());
 
     plan_ptr = plan_ptr->GetChildren()[0];
@@ -554,8 +551,7 @@ TEST_F(PlannerTest, MultiProjectListPlanPostTest) {
         ASSERT_TRUE(nullptr != project_list->GetW());
         ASSERT_EQ(-2 * 86400000, project_list->GetW()->GetStartOffset());
         ASSERT_EQ(-1000, project_list->GetW()->GetEndOffset());
-        ASSERT_EQ(std::vector<std::string>({"col3"}),
-                  project_list->GetW()->GetKeys());
+        ASSERT_EQ("(col3)", node::ExprString(project_list->GetW()->GetKeys()));
         ASSERT_TRUE(project_list->IsWindowAgg());
 
         // validate w2_col3_sum pos 1
