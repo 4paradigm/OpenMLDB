@@ -5150,7 +5150,6 @@ void TabletImpl::DumpIndexData(
     do {
         std::shared_ptr<Table> table;
         std::shared_ptr<Snapshot> snapshot;
-        std::shared_ptr<LogReplicator> replicator;
         {
             std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
             table = GetTableUnLock(tid, pid);
@@ -5184,24 +5183,13 @@ void TabletImpl::DumpIndexData(
                 response->set_msg("table snapshot is not exist");
                 break;
             }
-            replicator = GetReplicatorUnLock(tid, pid);
-            if (!replicator) {
-                PDLOG(
-                    WARNING,
-                    "fail to find table tid %u pid %u leader's log replicator",
-                    tid, pid);
-                response->set_code(
-                    ::rtidb::base::ReturnCode::kReplicatorIsNotExist);
-                response->set_msg("replicator is not exist");
-                break;
-            }
         }
         std::shared_ptr<::rtidb::storage::MemTableSnapshot> memtable_snapshot =
             std::static_pointer_cast<::rtidb::storage::MemTableSnapshot>(
                 snapshot);
         task_pool_.AddTask(
             boost::bind(&TabletImpl::DumpIndexDataInternal, this, table,
-                        memtable_snapshot, replicator, request->partition_num(),
+                        memtable_snapshot, request->partition_num(),
                         request->column_key(), request->idx(), task_ptr));
         response->set_code(::rtidb::base::ReturnCode::kOk);
         response->set_msg("ok");
@@ -5214,7 +5202,6 @@ void TabletImpl::DumpIndexData(
 void TabletImpl::DumpIndexDataInternal(
     std::shared_ptr<::rtidb::storage::Table> table,
     std::shared_ptr<::rtidb::storage::MemTableSnapshot> memtable_snapshot,
-    std::shared_ptr<::rtidb::replica::LogReplicator> replicator,
     uint32_t partition_num, ::rtidb::common::ColumnKey& column_key,
     uint32_t idx, std::shared_ptr<::rtidb::api::TaskInfo> task) {
     uint32_t tid = table->GetId();
@@ -5256,11 +5243,7 @@ void TabletImpl::DumpIndexDataInternal(
             new ::rtidb::log::WriteHandle(index_file_name, fd);
         whs.push_back(wh);
     }
-    ::rtidb::storage::Binlog binlog(replicator->GetLogPart(), binlog_path);
-    uint64_t offset = 0;
-    if (memtable_snapshot->DumpSnapshotIndexData(table, column_key, idx, whs,
-                                                 offset) &&
-        binlog.DumpBinlogIndexData(table, column_key, idx, whs, offset)) {
+    if (memtable_snapshot->DumpIndexData(table, column_key, idx, whs)) {
         PDLOG(INFO, "dump index on table tid[%u] pid[%u] succeed", tid, pid);
         SetTaskStatus(task, ::rtidb::api::kDone);
     } else {
@@ -5410,7 +5393,12 @@ void TabletImpl::LoadIndexDataInternal(
         }
         ::rtidb::api::LogEntry entry;
         entry.ParseFromString(std::string(record.data(), record.size()));
-        table->Put(entry);
+        if (entry.has_method_type() &&
+            entry.method_type() == ::rtidb::api::MethodType::kDelete) {
+            table->Delete(entry.dimensions(0).key(), entry.dimensions(0).idx());
+        } else {
+            table->Put(entry);
+        }
         replicator->AppendEntry(entry);
         succ_cnt++;
     }
