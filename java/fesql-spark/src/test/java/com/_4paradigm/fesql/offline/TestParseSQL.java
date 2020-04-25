@@ -65,11 +65,11 @@ public class TestParseSQL {
 
         dfs(jit, root);
 
+        engine.delete();
         jit.delete();
         options.delete();
         status.delete();
         sess.delete();
-        engine.delete();
         catalog.delete();
     }
 

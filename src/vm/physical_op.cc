@@ -124,6 +124,10 @@ bool PhysicalProjectNode::InitSchema() {
     return true;
 }
 
+PhysicalProjectNode* PhysicalProjectNode::CastFrom(PhysicalOpNode* node) {
+    return dynamic_cast<PhysicalProjectNode*>(node);
+}
+
 void PhysicalGroupAggrerationNode::Print(std::ostream& output,
                                          const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
@@ -221,6 +225,15 @@ void PhysicalFliterNode::Print(std::ostream& output,
     output << ")";
     output << "\n";
     PrintChildren(output, tab);
+}
+
+PhysicalDataProviderNode* PhysicalDataProviderNode::CastFrom(
+    PhysicalOpNode* node) {
+    return dynamic_cast<PhysicalDataProviderNode*>(node);
+}
+
+const std::string& PhysicalDataProviderNode::GetName() const {
+    return table_handler_->GetName();
 }
 
 bool PhysicalDataProviderNode::InitSchema() {

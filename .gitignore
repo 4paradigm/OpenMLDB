@@ -8,6 +8,8 @@ thirdsrc
 *.so
 *.a
 
+src/version.h
+
 # java ignore
 *.iml
 *.idea*
