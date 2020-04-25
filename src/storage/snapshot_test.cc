@@ -959,9 +959,6 @@ TEST_F(SnapshotTest, MakeSnapshot_with_delete_index) {
         ::rtidb::api::Dimension* d1 = entry.add_dimensions();
         d1->set_key("card9");
         d1->set_idx(0);
-        ::rtidb::api::Dimension* d2 = entry.add_dimensions();
-        d2->set_key("merchant9");
-        d2->set_idx(1);
         entry.set_term(5);
         std::string buffer;
         entry.SerializeToString(&buffer);
@@ -989,7 +986,7 @@ TEST_F(SnapshotTest, MakeSnapshot_with_delete_index) {
     }
 
     ASSERT_EQ(51, manifest.offset());
-    ASSERT_EQ(49, manifest.count());
+    ASSERT_EQ(48, manifest.count());
     ASSERT_EQ(7, manifest.term());
 }
 

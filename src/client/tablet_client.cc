@@ -6,11 +6,11 @@
 //
 
 #include "client/tablet_client.h"
-#include <iostream>
 #include <algorithm>
+#include <iostream>
 #include "base/codec.h"
-#include "logging.h" // NOLINT
-#include "timer.h" // NOLINT
+#include "logging.h"  // NOLINT
+#include "timer.h"    // NOLINT
 
 DECLARE_int32(request_max_retry);
 DECLARE_int32(request_timeout_ms);
@@ -1326,16 +1326,19 @@ bool TabletClient::GetAllSnapshotOffset(
     return true;
 }
 
-bool TabletClient::DeleteIndex(uint32_t tid, const std::string& idx_name) {
+bool TabletClient::DeleteIndex(uint32_t tid, uint32_t pid,
+                               const std::string& idx_name, std::string* msg) {
     ::rtidb::api::DeleteIndexRequest request;
     ::rtidb::api::GeneralResponse response;
     request.set_tid(tid);
+    request.set_pid(pid);
     request.set_idx_name(idx_name);
     bool ok =
         client_.SendRequest(&rtidb::api::TabletServer_Stub::DeleteIndex,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     if (!ok || response.code() != 0) {
         return false;
+        *msg = response.msg();
     }
     return true;
 }

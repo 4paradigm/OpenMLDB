@@ -11,11 +11,11 @@
 #include <brpc/server.h>
 #include <list>
 #include <map>
-#include <mutex> // NOLINT
-#include <vector>
-#include <string>
 #include <memory>
+#include <mutex>  // NOLINT
 #include <set>
+#include <string>
+#include <vector>
 #include "base/set.h"
 #include "base/spinlock.h"
 #include "proto/tablet.pb.h"
@@ -26,7 +26,7 @@
 #include "storage/mem_table_snapshot.h"
 #include "storage/relational_table.h"
 #include "tablet/file_receiver.h"
-#include "thread_pool.h" // NOLINT
+#include "thread_pool.h"  // NOLINT
 #include "zk/zk_client.h"
 
 using ::baidu::common::ThreadPool;
@@ -316,16 +316,16 @@ class TabletImpl : public ::rtidb::api::TabletServer {
     void GcTableSnapshot(uint32_t tid, uint32_t pid);
 
     int CheckTableMeta(const rtidb::api::TableMeta* table_meta,
-                       std::string& msg); // NOLINT
+                       std::string& msg);  // NOLINT
 
     int CreateTableInternal(const ::rtidb::api::TableMeta* table_meta,
-                            std::string& msg); // NOLINT
+                            std::string& msg);  // NOLINT
 
     int CreateDiskTableInternal(const ::rtidb::api::TableMeta* table_meta,
-                                bool is_load, std::string& msg); // NOLINT
+                                bool is_load, std::string& msg);  // NOLINT
 
     int CreateRelationalTableInternal(const ::rtidb::api::TableMeta* table_meta,
-                                      std::string& msg); // NOLINT
+                                      std::string& msg);  // NOLINT
 
     void MakeSnapshotInternal(uint32_t tid, uint32_t pid, uint64_t end_offset,
                               std::shared_ptr<::rtidb::api::TaskInfo> task);
@@ -337,8 +337,7 @@ class TabletImpl : public ::rtidb::api::TabletServer {
     void DumpIndexDataInternal(
         std::shared_ptr<::rtidb::storage::Table> table,
         std::shared_ptr<::rtidb::storage::MemTableSnapshot> memtable_snapshot,
-        std::shared_ptr<::rtidb::replica::LogReplicator> replicator,
-        uint32_t partition_num, ::rtidb::common::ColumnKey& column_key, // NOLINT
+        uint32_t partition_num, ::rtidb::common::ColumnKey& column_key,  // NOLINT
         uint32_t idx, std::shared_ptr<::rtidb::api::TaskInfo> task);
 
     void SendIndexDataInternal(
@@ -353,7 +352,7 @@ class TabletImpl : public ::rtidb::api::TabletServer {
     void ExtractIndexDataInternal(
         std::shared_ptr<::rtidb::storage::Table> table,
         std::shared_ptr<::rtidb::storage::MemTableSnapshot> memtable_snapshot,
-        ::rtidb::common::ColumnKey& column_key, uint32_t idx, // NOLINT
+        ::rtidb::common::ColumnKey& column_key, uint32_t idx,  // NOLINT
         uint32_t partition_num, std::shared_ptr<::rtidb::api::TaskInfo> task);
 
     void SchedMakeSnapshot();
@@ -390,20 +389,23 @@ class TabletImpl : public ::rtidb::api::TabletServer {
 
     int AddOPTask(const ::rtidb::api::TaskInfo& task_info,
                   ::rtidb::api::TaskType task_type,
-                  std::shared_ptr<::rtidb::api::TaskInfo>& task_ptr); // NOLINT
+                  std::shared_ptr<::rtidb::api::TaskInfo>& task_ptr);  // NOLINT
 
-    void SetTaskStatus(std::shared_ptr<::rtidb::api::TaskInfo>& task_ptr, // NOLINT
-                       ::rtidb::api::TaskStatus status);
+    void SetTaskStatus(
+        std::shared_ptr<::rtidb::api::TaskInfo>& task_ptr,  // NOLINT
+        ::rtidb::api::TaskStatus status);
 
-    int GetTaskStatus(std::shared_ptr<::rtidb::api::TaskInfo>& task_ptr, // NOLINT
-                      ::rtidb::api::TaskStatus* status);
+    int GetTaskStatus(
+        std::shared_ptr<::rtidb::api::TaskInfo>& task_ptr,  // NOLINT
+        ::rtidb::api::TaskStatus* status);
 
     std::shared_ptr<::rtidb::api::TaskInfo> FindTask(
         uint64_t op_id, ::rtidb::api::TaskType task_type);
 
-    int AddOPMultiTask(const ::rtidb::api::TaskInfo& task_info,
-                       ::rtidb::api::TaskType task_type,
-                       std::shared_ptr<::rtidb::api::TaskInfo>& task_ptr); // NOLINT
+    int AddOPMultiTask(
+        const ::rtidb::api::TaskInfo& task_info,
+        ::rtidb::api::TaskType task_type,
+        std::shared_ptr<::rtidb::api::TaskInfo>& task_ptr);  // NOLINT
 
     std::shared_ptr<::rtidb::api::TaskInfo> FindMultiTask(
         const ::rtidb::api::TaskInfo& task_info);
@@ -422,27 +424,28 @@ class TabletImpl : public ::rtidb::api::TabletServer {
 
     bool ChooseDBRootPath(uint32_t tid, uint32_t pid,
                           const ::rtidb::common::StorageMode& mode,
-                          std::string& path); // NOLINT
+                          std::string& path);  // NOLINT
 
     bool ChooseRecycleBinRootPath(uint32_t tid, uint32_t pid,
                                   const ::rtidb::common::StorageMode& mode,
-                                  std::string& path); // NOLINT
+                                  std::string& path);  // NOLINT
 
     bool ChooseTableRootPath(uint32_t tid, uint32_t pid,
                              const ::rtidb::common::StorageMode& mode,
-                             std::string& path); // NOLINT
+                             std::string& path);  // NOLINT
 
     bool GetTableRootSize(uint32_t tid, uint32_t pid,
                           const ::rtidb::common::StorageMode& mode,
-                          uint64_t& size); // NOLINT
+                          uint64_t& size);  // NOLINT
 
     int32_t GetSnapshotOffset(uint32_t tid, uint32_t pid,
-                              common::StorageMode sm, std::string& msg, // NOLINT
-                              uint64_t& term, uint64_t& offset); // NOLINT
+                              common::StorageMode sm,
+                              std::string& msg,                   // NOLINT
+                              uint64_t& term, uint64_t& offset);  // NOLINT
 
     bool SeekWithCount(::rtidb::storage::TableIterator* it, const uint64_t time,
                        const ::rtidb::api::GetType& type, uint32_t max_cnt,
-                       uint32_t& cnt); // NOLINT
+                       uint32_t& cnt);  // NOLINT
 
     bool Seek(::rtidb::storage::TableIterator* it, const uint64_t time,
               const ::rtidb::api::GetType& type);
