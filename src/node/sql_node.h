@@ -746,8 +746,8 @@ class ExprIdNode : public ExprNode {
         : ExprNode(kExprId), name_(name) {}
     const std::string GetName() const { return name_; }
     void Print(std::ostream &output, const std::string &org_tab) const override;
-    const std::string GetExprString() const;
-    virtual bool Equals(const ExprNode *node) const;
+    const std::string GetExprString() const override;
+    bool Equals(const ExprNode *node) const override;
 
  private:
     std::string name_;

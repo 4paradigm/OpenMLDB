@@ -47,7 +47,9 @@ struct SQLContext {
     // eg using bthead to compile ir
     std::unique_ptr<FeSQLJIT> jit;
     Schema schema;
-    Runner *runner;
+    Schema request_schema;
+    std::string request_name;
+    Runner* runner;
     uint32_t row_size;
     std::string ir;
 };
@@ -55,7 +57,6 @@ struct SQLContext {
 void InitCodecSymbol(::llvm::orc::JITDylib& jd,            // NOLINT
                      ::llvm::orc::MangleAndInterner& mi);  // NOLINT
 void InitCodecSymbol(vm::FeSQLJIT* jit_ptr);
-
 
 class SQLCompiler {
  public:

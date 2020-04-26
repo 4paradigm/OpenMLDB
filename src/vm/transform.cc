@@ -740,30 +740,16 @@ bool BatchModeTransformer::TransformScanOp(const node::TablePlanNode* node,
         LOG(WARNING) << status.msg;
         return false;
     }
-    if (node->IsPrimary()) {
-        auto table = catalog_->GetTable("request", node->table_);
-        if (table) {
-            *output = new PhysicalRequestProviderNode(table);
-            node_manager_->RegisterNode(*output);
-        } else {
-            status.msg = "fail to transform data_provider op: request." +
-                         node->table_ + " not exist!";
-            status.code = common::kPlanError;
-            LOG(WARNING) << status.msg;
-            return false;
-        }
+    auto table = catalog_->GetTable(db_, node->table_);
+    if (table) {
+        *output = new PhysicalTableProviderNode(table);
+        node_manager_->RegisterNode(*output);
     } else {
-        auto table = catalog_->GetTable(db_, node->table_);
-        if (table) {
-            *output = new PhysicalTableProviderNode(table);
-            node_manager_->RegisterNode(*output);
-        } else {
-            status.msg = "fail to transform data_provider op: table " + db_ +
-                         "." + node->table_ + " not exist!";
-            status.code = common::kPlanError;
-            LOG(WARNING) << status.msg;
-            return false;
-        }
+        status.msg = "fail to transform data_provider op: table " + db_ + "." +
+                     node->table_ + " not exist!";
+        status.code = common::kPlanError;
+        LOG(WARNING) << status.msg;
+        return false;
     }
     return true;
 }
@@ -1131,10 +1117,8 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                     }
 
                     PhysicalScanIndexNode* scan_index_op =
-                        new PhysicalScanIndexNode(
-                            scan_op->table_handler_->GetPartition(
-                                scan_op->table_handler_, index_name),
-                            index_name);
+                        new PhysicalScanIndexNode(scan_op->table_handler_,
+                                                  index_name);
                     node_manager_->RegisterNode(scan_index_op);
 
                     if (nullptr == new_groups || new_groups->IsEmpty()) {
@@ -1172,10 +1156,8 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                                        index_st, &new_orders);
 
                     PhysicalScanIndexNode* scan_index_op =
-                        new PhysicalScanIndexNode(
-                            scan_op->table_handler_->GetPartition(
-                                scan_op->table_handler_, index_name),
-                            index_name);
+                        new PhysicalScanIndexNode(scan_op->table_handler_,
+                                                  index_name);
                     node_manager_->RegisterNode(scan_index_op);
 
                     PhysicalGroupAndSortNode* new_group_sort_op =
@@ -1210,10 +1192,8 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                                        index_st, &new_orders);
 
                     PhysicalScanIndexNode* scan_index_op =
-                        new PhysicalScanIndexNode(
-                            scan_op->table_handler_->GetPartition(
-                                scan_op->table_handler_, index_name),
-                            index_name);
+                        new PhysicalScanIndexNode(scan_op->table_handler_,
+                                                  index_name);
                     PhysicalSeekIndexNode* seek_index_op =
                         new PhysicalSeekIndexNode(union_op->GetProducers()[0],
                                                   scan_index_op, keys);
@@ -1971,6 +1951,7 @@ bool RequestModeransformer::TransformProjecPlantOp(
                                          output, status);
     }
 }
+
 bool RequestModeransformer::TransformJoinOp(const node::JoinPlanNode* node,
                                             PhysicalOpNode** output,
                                             base::Status& status) {
@@ -1992,6 +1973,33 @@ bool RequestModeransformer::TransformJoinOp(const node::JoinPlanNode* node,
                                           node->condition_, nullptr);
     node_manager_->RegisterNode(*output);
     return true;
+}
+bool RequestModeransformer::TransformScanOp(const node::TablePlanNode* node,
+                                            PhysicalOpNode** output,
+                                            base::Status& status) {
+    if (nullptr == node || nullptr == output) {
+        status.msg = "input node or output node is null";
+        status.code = common::kPlanError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+    if (node->IsPrimary()) {
+        auto table = catalog_->GetTable(db_, node->table_);
+        if (table) {
+            *output = new PhysicalRequestProviderNode(table);
+            node_manager_->RegisterNode(*output);
+            request_schema_ = *table->GetSchema();
+            request_name_ = table->GetName();
+            return true;
+        } else {
+            status.msg = "fail to transform data_provider op: table " + db_ +
+                         "." + node->table_ + " not exist!";
+            status.code = common::kPlanError;
+            LOG(WARNING) << status.msg;
+            return false;
+        }
+    }
+    return BatchModeTransformer::TransformScanOp(node, output, status);
 }
 
 }  // namespace vm

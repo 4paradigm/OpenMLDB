@@ -179,15 +179,6 @@ TEST_P(RunnerTest, request_mode_test) {
     AddTable(catalog, table_def4, table4);
     AddTable(catalog, table_def5, table5);
     AddTable(catalog, table_def6, table6);
-
-    fesql::type::TableDef request_def;
-    BuildTableDef(request_def);
-    request_def.set_name("t1");
-    request_def.set_catalog("request");
-    std::shared_ptr<::fesql::storage::Table> request(
-        new ::fesql::storage::Table(1, 1, request_def));
-    AddTable(catalog, request_def, request);
-
     Runner_Check(catalog, sqlstr, false);
 }
 

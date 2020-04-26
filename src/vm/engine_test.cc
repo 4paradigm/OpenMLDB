@@ -209,16 +209,7 @@ TEST_P(EngineTest, test_normal) {
     ASSERT_TRUE(table->Put(reinterpret_cast<char*>(row1), size1));
 
     auto catalog = BuildCommonCatalog(table_def, table);
-    // add request
-    {
-        fesql::type::TableDef request_def;
-        BuildTableDef(request_def);
-        request_def.set_name("t1");
-        request_def.set_catalog("request");
-        std::shared_ptr<::fesql::storage::Table> request(
-            new ::fesql::storage::Table(1, 1, request_def));
-        AddTable(catalog, request_def, request);
-    }
+
 
     const std::string sql =
         "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return "
@@ -363,16 +354,7 @@ TEST_P(EngineTest, test_last_join_no_match_index) {
     auto catalog = BuildCommonCatalog(table_def, table);
     AddTable(catalog, table_def2, table2);
 
-    // add request
-    {
-        fesql::type::TableDef request_def;
-        BuildTableDef(request_def);
-        request_def.set_name("t1");
-        request_def.set_catalog("request");
-        std::shared_ptr<::fesql::storage::Table> request(
-            new ::fesql::storage::Table(1, 1, request_def));
-        AddTable(catalog, request_def, request);
-    }
+
 
     const std::string sql =
         "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return "
@@ -533,16 +515,7 @@ TEST_P(EngineTest, test_last_join_match_index) {
     auto catalog = BuildCommonCatalog(table_def, table);
     AddTable(catalog, table_def2, table2);
 
-    // add request
-    {
-        fesql::type::TableDef request_def;
-        BuildTableDef(request_def);
-        request_def.set_name("t1");
-        request_def.set_catalog("request");
-        std::shared_ptr<::fesql::storage::Table> request(
-            new ::fesql::storage::Table(1, 1, request_def));
-        AddTable(catalog, request_def, request);
-    }
+
 
     const std::string sql =
         "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return "
@@ -692,16 +665,7 @@ TEST_F(EngineTest, test_last_join_window_agg) {
     auto catalog = BuildCommonCatalog(table_def, table);
     AddTable(catalog, table_def2, table2);
 
-    // add request
-    {
-        fesql::type::TableDef request_def;
-        BuildTableDef(request_def);
-        request_def.set_name("t1");
-        request_def.set_catalog("request");
-        std::shared_ptr<::fesql::storage::Table> request(
-            new ::fesql::storage::Table(1, 1, request_def));
-        AddTable(catalog, request_def, request);
-    }
+
     const std::string sql =
         "%%fun\n"
         "def test_at(col:list<int>, pos:int):int\n"
@@ -868,16 +832,7 @@ TEST_F(EngineTest, test_window_agg) {
     int8_t* rows = NULL;
     std::vector<Row> windows;
     BuildWindow(windows, &rows);
-    // add request
-    {
-        fesql::type::TableDef request_def;
-        BuildTableDef(request_def);
-        request_def.set_name("t1");
-        request_def.set_catalog("request");
-        std::shared_ptr<::fesql::storage::Table> request(
-            new ::fesql::storage::Table(1, 1, request_def));
-        AddTable(catalog, request_def, request);
-    }
+
 
     const std::string sql =
         "%%fun\n"
@@ -1118,16 +1073,7 @@ TEST_F(EngineTest, test_window_agg_with_limit) {
     ASSERT_TRUE(table->Init());
 
     auto catalog = BuildCommonCatalog(table_def, table);
-    // add request
-    {
-        fesql::type::TableDef request_def;
-        BuildTableDef(request_def);
-        request_def.set_name("t1");
-        request_def.set_catalog("request");
-        std::shared_ptr<::fesql::storage::Table> request(
-            new ::fesql::storage::Table(1, 1, request_def));
-        AddTable(catalog, request_def, request);
-    }
+
 
     int8_t* rows = NULL;
     std::vector<Row> windows;
@@ -1374,16 +1320,6 @@ TEST_F(EngineTest, test_window_agg_unique_partition) {
     std::vector<Row> windows;
     BuildWindowUnique(windows, &rows);
     auto catalog = BuildCommonCatalog(table_def, table);
-    // add request
-    {
-        fesql::type::TableDef request_def;
-        BuildTableDef(request_def);
-        request_def.set_name("t1");
-        request_def.set_catalog("request");
-        std::shared_ptr<::fesql::storage::Table> request(
-            new ::fesql::storage::Table(1, 1, request_def));
-        AddTable(catalog, request_def, request);
-    }
 
     const std::string sql =
         "SELECT "
