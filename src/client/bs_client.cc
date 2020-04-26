@@ -44,20 +44,18 @@ bool BsClient::Put(uint32_t tid, uint32_t pid, std::string *key,
     ::rtidb::blobserver::PutResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
-    bool release_on_request = true;
-    if (key->size() > 0) {
+    if (!key->empty()) {
         request.set_allocated_key(key);
-    } else {
-        release_on_request = false;
     }
     request.set_allocated_data(const_cast<std::string *>(&value));
     bool ok = client_.SendRequest(&BlobServer_Stub::Put, &request, &response,
                                   FLAGS_request_timeout_ms, 1);
+    request.release_data();
     msg->swap(*response.mutable_msg());
-    if (release_on_request) {
-        request.release_key();
+    if (key->empty()) {
+        key->swap(*(response.mutable_key()));
     } else {
-        key->swap(*response.mutable_key());
+        request.release_key();
     }
     if (ok && response.code() == 0) {
         return true;
@@ -75,9 +73,9 @@ bool BsClient::Get(uint32_t tid, uint32_t pid, const std::string &key,
     bool ok = client_.SendRequest(&BlobServer_Stub::Get, &request, &response,
                                   FLAGS_request_timeout_ms, 1);
     request.release_key();
+    msg->swap(*response.mutable_msg());
     if (ok && response.code() == 0) {
-        value->swap(*response.mutable_pairs());
-        msg->swap(*response.mutable_msg());
+        value->swap(*response.mutable_data());
         return true;
     }
     return false;

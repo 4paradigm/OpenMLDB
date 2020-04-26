@@ -21,7 +21,7 @@ message GeneralRequest {
 }
 
 message GetResponse {
-    optional bytes pairs = 1;
+    optional bytes data = 1;
     optional string msg = 2;
     optional int32 code = 3;
 }

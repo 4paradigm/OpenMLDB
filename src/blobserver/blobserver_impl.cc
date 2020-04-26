@@ -157,7 +157,8 @@ void BlobServerImpl::Get(RpcController *controller,
                          const GeneralRequest *request, GetResponse *response,
                          Closure *done) {
     brpc::ClosureGuard done_guard(done);
-    uint32_t tid = request->tid(), pid = request->pid();
+    uint32_t tid = request->tid();
+    uint32_t pid = request->pid();
     std::shared_ptr<ObjectStore> store = GetStore(tid, pid);
     if (!store) {
         PDLOG(WARNING, "table is not exist. tid[%u] pid[%u", tid, pid);
@@ -171,7 +172,7 @@ void BlobServerImpl::Get(RpcController *controller,
             brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
             cntl->response_attachment().append(slice.data(), slice.size());
         } else {
-            std::string *value = response->mutable_pairs();
+            std::string *value = response->mutable_data();
             value->assign(slice.data(), slice.size());
         }
         response->set_code(ReturnCode::kOk);
@@ -186,7 +187,8 @@ void BlobServerImpl::Get(RpcController *controller,
 void BlobServerImpl::Put(RpcController* controller, const PutRequest* request,
                          PutResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    uint32_t tid = request->tid(), pid = request->pid();
+    uint32_t tid = request->tid();
+    uint32_t pid = request->pid();
     std::shared_ptr<ObjectStore> store = GetStore(tid, pid);
     if (!store) {
         PDLOG(WARNING, "table is not exist. tid[%u] pid[%u", tid, pid);
@@ -196,7 +198,7 @@ void BlobServerImpl::Put(RpcController* controller, const PutRequest* request,
     }
     bool ok = false;
     std::string key;
-    if (request->key().empty() > 0) {
+    if (request->key().empty()) {
         ok = store->Store(&key, request->data());
     } else {
         ok = store->Store(request->key(), request->data());
@@ -206,7 +208,7 @@ void BlobServerImpl::Put(RpcController* controller, const PutRequest* request,
         response->set_msg("put failed");
         return;
     }
-    if (key.empty() > 0) {
+    if (request->key().empty()) {
         response->set_key(key);
     }
     response->set_code(ReturnCode::kOk);
@@ -217,8 +219,12 @@ void BlobServerImpl::Delete(RpcController *controller,
                             const GeneralRequest *request,
                             GeneralResponse *response, Closure *done) {
     brpc::ClosureGuard done_guard(done);
-    if (request->key().size() > 0) {
-        uint32_t tid = request->tid(), pid = request->pid();
+    if (request->key().empty()) {
+        response->set_code(ReturnCode::kKeyNotFound);
+        response->set_msg("empty key");
+    } else {
+        uint32_t tid = request->tid();
+        uint32_t pid = request->pid();
         std::shared_ptr<ObjectStore> store = GetStore(tid, pid);
         if (!store) {
             PDLOG(WARNING, "table is not exist. tid[%u] pid[%u", tid, pid);
@@ -233,9 +239,6 @@ void BlobServerImpl::Delete(RpcController *controller,
             return;
         }
         response->set_code(ReturnCode::kOk);
-    } else {
-        response->set_code(ReturnCode::kKeyNotFound);
-        response->set_msg("empty key");
     }
 }
 
@@ -254,7 +257,8 @@ void BlobServerImpl::LoadTable(RpcController *controller,
         // TODO(kongquan): process taskinfo
     }
     const TableMeta &table_meta = request->table_meta();
-    uint32_t tid = table_meta.tid(), pid = table_meta.pid();
+    uint32_t tid = table_meta.tid();
+    uint32_t pid = table_meta.pid();
     std::shared_ptr<ObjectStore> store = GetStore(tid, pid);
     if (store) {
         PDLOG(WARNING, "table with tid[%u] and pid[%u] exists", tid, pid);
@@ -311,7 +315,8 @@ void BlobServerImpl::GetStoreStatus(RpcController* controller,
                     GetStoreStatusResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (request->has_tid() && request->has_pid()) {
-        uint32_t tid = request->tid(), pid = request->pid();
+        uint32_t tid = request->tid();
+        uint32_t pid = request->pid();
         std::shared_ptr<ObjectStore> store = GetStore(tid, pid);
         if (!store) {
             response->set_code(ReturnCode::kOk);
