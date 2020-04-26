@@ -96,6 +96,50 @@ class RowBuilder {
     std::vector<uint32_t> offset_vec_;
 };
 
+/*class RowIterView {
+ public:
+    explicit RowIterView(const fesql::vm::Schema& schema);
+    ~RowIterView();
+    int32_t SkipColumns(uint32_t cnt);
+    int32_t NextBool(bool* val);
+    int32_t NextInt16(int16_t* val);
+    int32_t NextInt32(int32_t* val);
+    int32_t NextInt64(int64_t* val);
+    int32_t NextFloat(float* val);
+    int32_t NextDouble(double* val);
+    int32_t NextTimestamp(int64_t* val);
+};
+
+
+class RowBaseView {
+ public:
+    explicit RowBaseView();
+    virtual ~RowBaseView();
+    virtual int32_t GetBool(uint32_t idx,  bool* val) = 0;
+    virtual int32_t GetInt16(uint32_t idx, int16_t* val) = 0;
+    virtual int32_t GetInt32(uint32_t idx, int32_t* val) = 0;
+};
+
+class RowIOBufView {
+ public:
+    explicit RowIOBufView(const fesql::vm::Schema& schema);
+    ~RowIOBufView();
+    bool Reset(const butil::IOBuf& buf);
+ private:
+    bool Init();
+
+ private:
+    const butil::IOBuf buf_;
+    uint8_t str_addr_length_;
+    bool is_valid_;
+    uint32_t string_field_cnt_;
+    uint32_t str_field_start_offset_;
+    uint32_t size_;
+    const Schema schema_;
+    std::vector<uint32_t> offset_vec_;
+};
+*/
+
 class RowView {
  public:
     RowView(const fesql::vm::Schema& schema, const int8_t* row, uint32_t size);
@@ -162,9 +206,11 @@ class RowDecoder {
  public:
     explicit RowDecoder(const vm::Schema& schema);
     virtual ~RowDecoder() {}
+
     virtual bool GetPrimayFieldOffsetType(const std::string& name,
                                           uint32_t* offset_ptr,
                                           type::Type* type_ptr);
+
     virtual bool GetStringFieldOffset(const std::string& name,
                                       uint32_t* str_offset_ptr,
                                       uint32_t* str_next_offset_ptr,

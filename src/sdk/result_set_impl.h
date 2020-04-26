@@ -31,8 +31,8 @@ namespace sdk {
 
 class ResultSetImpl : public ResultSet {
  public:
-    explicit ResultSetImpl(std::unique_ptr<tablet::QueryResponse> response,
-            std::unique_ptr<brpc::Controller> cntl);
+    ResultSetImpl(std::unique_ptr<tablet::QueryResponse> response,
+                  std::unique_ptr<brpc::Controller> cntl);
 
     ~ResultSetImpl();
 
@@ -40,7 +40,9 @@ class ResultSetImpl : public ResultSet {
 
     bool Next();
 
-    bool GetString(uint32_t index, char** result, uint32_t* size);
+    bool GetString(uint32_t index,
+                   char** result, 
+                   uint32_t* size);
 
     bool GetBool(uint32_t index, bool* result);
 
@@ -60,21 +62,28 @@ class ResultSetImpl : public ResultSet {
 
     bool GetTime(uint32_t index, int64_t* mills);
 
-    const Schema& GetSchema();
+    inline const Schema& GetSchema() {
+        return schema_;
+    }
 
-    int32_t Size();
+    inline int32_t Size() {
+        return  response_->count();
+    }
 
  private:
-    int32_t GetRecordSize();
+    inline uint32_t GetRecordSize() {
+        return response_->count();
+    }
  private:
     std::unique_ptr<tablet::QueryResponse> response_;
     int32_t index_;
-    int32_t size_;
+    int32_t byte_size_;
+    uint32_t position_;
     std::unique_ptr<codec::RowView> row_view_;
     vm::Schema internal_schema_;
     SchemaImpl schema_;
     std::unique_ptr<brpc::Controller> cntl_;
-    std::unique_ptr<butil::IOBufAsZeroCopyInputStream> records_stream_;
+    butil::IOBuf row_buf_;
 };
 
 }  // namespace sdk

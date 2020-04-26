@@ -188,7 +188,6 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
         free(row.buf());
         count += 1;
     }
-
     response->set_schema(session.GetDecodedSchema());
     response->set_byte_size(byte_size);
     response->set_count(count);

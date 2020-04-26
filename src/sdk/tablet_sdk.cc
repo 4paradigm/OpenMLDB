@@ -112,7 +112,7 @@ std::shared_ptr<ResultSet> TabletSdkImpl::Query(const std::string& db,
     cntl->set_timeout_ms(10000);
     DLOG(INFO) << "SyncQuery >> timeout_ms: " << cntl->timeout_ms();
     stub.Query(cntl.get(), &request, response.get(), NULL);
-    if (cntl.Failed()) {
+    if (cntl->Failed()) {
         status->code = common::kConnError;
         status->msg = "Rpc control error";
         LOG(WARNING) << "SyncQuery fail: " << status->msg;
@@ -125,7 +125,7 @@ std::shared_ptr<ResultSet> TabletSdkImpl::Query(const std::string& db,
         return std::shared_ptr<ResultSet>();
     }
     status->code = 0;
-    std::shared_ptr<ResultSetImpl> impl(new ResultSetImpl(std::move(response)));
+    std::shared_ptr<ResultSetImpl> impl(new ResultSetImpl(std::move(response), std::move(cntl)));
     impl->Init();
     DLOG(INFO) << "SyncQuery result set done!";
     return impl;

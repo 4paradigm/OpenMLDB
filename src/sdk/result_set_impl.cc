@@ -27,10 +27,12 @@
 namespace fesql {
 namespace sdk {
 
-ResultSetImpl::ResultSetImpl(std::unique_ptr<tablet::QueryResponse> response, std::unique_ptr<brpc::Controller> cntl)
+ResultSetImpl::ResultSetImpl(std::unique_ptr<tablet::QueryResponse> response, 
+        std::unique_ptr<brpc::Controller> cntl)
     : response_(std::move(response)),
       index_(-1),
-      size_(0),
+      byte_size_(0),
+      position_(0),
       row_view_(),
       internal_schema_(),
       schema_(),
@@ -42,9 +44,8 @@ ResultSetImpl::~ResultSetImpl() {}
 
 bool ResultSetImpl::Init() {
     if (!response_) return false;
-    size_ = response_->byte_size();
-    if (size_<= 0) return true;
-    // decode schema
+    byte_size_ = response_->byte_size();
+    if (byte_size_<= 0) return true;
     bool ok = codec::SchemaCodec::Decode(response_->schema(), &internal_schema_);
     if (!ok) {
         LOG(WARNING) << "fail to decode response schema ";
@@ -54,22 +55,18 @@ bool ResultSetImpl::Init() {
         new codec::RowView(internal_schema_));
     row_view_ = std::move(row_view);
     schema_.SetSchema(internal_schema_);
-    std::unique_ptr<butil::IOBufAsZeroCopyInputStream> stream(cntl_->response_attachment());
-    records_stream_ = std::move(stream);
     return true;
-}
-
-int32_t ResultSetImpl::GetRecordSize() {
-    void* data = NULL;
-    int32_t size = 0;
-    stream->Next(&data, 6);
 }
 
 bool ResultSetImpl::Next() {
     index_++;
-    if (index_ < response_->count()) {
-        row_view_->Reset(reinterpret_cast<const int8_t*>(row.c_str()),
-                         row.size());
+    if (index_ < response_->count() 
+            && position_ < byte_size_) {
+        // get row size
+        uint32_t row_size = 0;
+        cntl_->response_attachment().copy_to(
+               reinterpret_cast<void*>(&row_size),
+               4, position_ + 2);
         return true;
     }
     return false;

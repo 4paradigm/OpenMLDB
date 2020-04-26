@@ -56,7 +56,7 @@ target_link_libraries(engine_bm engine_bm_case ${vm_deps_libs}
         benchmark protobuf ${llvm_libs} ${COMMON_LIBS} tcmalloc profiler gtest ${OS_LIB})
 
 #add_executable(memsql_client_bm memsql_client_bm.cc)
-#target_link_libraries(memsql_client_bm benchmark mysqlclient ${COMMON_LIBS} gtest ${OS_LIB})
+#target_link_libraries(memsql_client_bm ${vm_deps_libs} benchmark mysqlclient ${llvm_libs} ${COMMON_LIBS} protobuf gtest ${OS_LIB})
 
 
 add_library(fesql_client_bm_case STATIC fesql_client_bm_case.cc)
