@@ -756,7 +756,6 @@ void TabletImpl::Put(RpcController* controller,
         std::shared_ptr<LogReplicator> replicator;
         do {
             replicator = GetReplicator(request->tid(), request->pid());
-            done->Run();
             if (!replicator) {
                 PDLOG(
                     WARNING,
@@ -797,6 +796,7 @@ void TabletImpl::Put(RpcController* controller,
                   key.c_str(), end_time - start_time, request->tid(),
                   request->pid());
         }
+        done->Run();
         if (replicator) {
             if (FLAGS_binlog_notify_on_put) {
                 replicator->Notify();
