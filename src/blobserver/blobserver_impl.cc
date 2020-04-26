@@ -154,7 +154,7 @@ void BlobServerImpl::CreateTable(RpcController *controller,
 }
 
 void BlobServerImpl::Get(RpcController *controller,
-                         const GeneralRequest *request, GetResponse *response,
+                         const GetRequest *request, GetResponse *response,
                          Closure *done) {
     brpc::ClosureGuard done_guard(done);
     uint32_t tid = request->tid();
@@ -216,7 +216,7 @@ void BlobServerImpl::Put(RpcController* controller, const PutRequest* request,
 }
 
 void BlobServerImpl::Delete(RpcController *controller,
-                            const GeneralRequest *request,
+                            const DeleteRequest *request,
                             GeneralResponse *response, Closure *done) {
     brpc::ClosureGuard done_guard(done);
     if (request->key().empty()) {

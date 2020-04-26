@@ -65,7 +65,7 @@ bool BsClient::Put(uint32_t tid, uint32_t pid, std::string *key,
 
 bool BsClient::Get(uint32_t tid, uint32_t pid, const std::string &key,
                    std::string *value, std::string *msg) {
-    ::rtidb::blobserver::GeneralRequest request;
+    ::rtidb::blobserver::GetRequest request;
     ::rtidb::blobserver::GetResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
@@ -83,7 +83,7 @@ bool BsClient::Get(uint32_t tid, uint32_t pid, const std::string &key,
 
 bool BsClient::Get(uint32_t tid, uint32_t pid, const std::string &key,
                    std::string *msg, butil::IOBuf *buff) {
-    ::rtidb::blobserver::GeneralRequest request;
+    ::rtidb::blobserver::GetRequest request;
     request.set_tid(tid);
     request.set_pid(pid);
     request.set_key(key);
@@ -103,7 +103,7 @@ bool BsClient::Get(uint32_t tid, uint32_t pid, const std::string &key,
 
 bool BsClient::Delete(uint32_t tid, uint32_t pid, const std::string &key,
                       std::string *msg) {
-    ::rtidb::blobserver::GeneralRequest request;
+    ::rtidb::blobserver::DeleteRequest request;
     ::rtidb::blobserver::GeneralResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
