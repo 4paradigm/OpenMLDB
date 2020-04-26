@@ -673,10 +673,10 @@ void TabletImpl::Update(RpcController* controller,
 void TabletImpl::Put(RpcController* controller,
                      const ::rtidb::api::PutRequest* request,
                      ::rtidb::api::PutResponse* response, Closure* done) {
-    brpc::ClosureGuard done_guard(done);
     if (follower_.load(std::memory_order_relaxed)) {
         response->set_code(::rtidb::base::ReturnCode::kIsFollowerCluster);
         response->set_msg("is follower cluster");
+        done->Run();
         return;
     }
     uint64_t start_time = ::baidu::common::timer::get_micros();
@@ -689,6 +689,7 @@ void TabletImpl::Put(RpcController* controller,
                   request->pid());
             response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
             response->set_msg("table is not exist");
+            done->Run();
             return;
         }
     }
@@ -707,11 +708,13 @@ void TabletImpl::Put(RpcController* controller,
             response->set_code(
                 ::rtidb::base::ReturnCode::kTsMustBeGreaterThanZero);
             response->set_msg("ts must be greater than zero");
+            done->Run();
             return;
         }
         if (!table->IsLeader()) {
             response->set_code(::rtidb::base::ReturnCode::kTableIsFollower);
             response->set_msg("table is follower");
+            done->Run();
             return;
         }
         if (table->GetTableStat() == ::rtidb::storage::kLoading) {
@@ -719,6 +722,7 @@ void TabletImpl::Put(RpcController* controller,
                   request->pid());
             response->set_code(::rtidb::base::ReturnCode::kTableIsLoading);
             response->set_msg("table is loading");
+            done->Run();
             return;
         }
         bool ok = false;
@@ -728,6 +732,7 @@ void TabletImpl::Put(RpcController* controller,
                 response->set_code(
                     ::rtidb::base::ReturnCode::kInvalidDimensionParameter);
                 response->set_msg("invalid dimension parameter");
+                done->Run();
                 return;
             }
             if (request->ts_dimensions_size() > 0) {
@@ -744,12 +749,14 @@ void TabletImpl::Put(RpcController* controller,
         if (!ok) {
             response->set_code(::rtidb::base::ReturnCode::kPutFailed);
             response->set_msg("put failed");
+            done->Run();
             return;
         }
         response->set_code(::rtidb::base::ReturnCode::kOk);
         std::shared_ptr<LogReplicator> replicator;
         do {
             replicator = GetReplicator(request->tid(), request->pid());
+            done->Run();
             if (!replicator) {
                 PDLOG(
                     WARNING,
@@ -800,8 +807,10 @@ void TabletImpl::Put(RpcController* controller,
         if (!ok) {
             response->set_code(::rtidb::base::ReturnCode::kPutFailed);
             response->set_msg("put failed");
+            done->Run();
             return;
         }
+        done->Run();
         response->set_code(::rtidb::base::ReturnCode::kOk);
     }
 }
