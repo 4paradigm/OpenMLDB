@@ -144,6 +144,9 @@ public class GetFuture implements Future<ByteString>{
 			throw new TabletException("no schema for table " + th.getTableInfo().getName());
 		}
 		ByteString raw = get();
+		if (raw == null || raw.isEmpty()) {
+		    return;
+		}
 		decode(raw, row, start, length);
 	}
 
