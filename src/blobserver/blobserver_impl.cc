@@ -242,12 +242,6 @@ void BlobServerImpl::Delete(RpcController *controller,
     }
 }
 
-void BlobServerImpl::Stats(RpcController *controller,
-                           const StatsRequest *request, StatsResponse *response,
-                           Closure *done) {
-    brpc::ClosureGuard done_guard(done);
-}
-
 void BlobServerImpl::LoadTable(RpcController *controller,
                                const LoadTableRequest *request,
                                GeneralResponse *response, Closure *done) {

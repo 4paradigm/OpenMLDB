@@ -57,8 +57,6 @@ class BlobServerImpl : public ::rtidb::blobserver::BlobServer {
              GetResponse* response, Closure* done);
     void Delete(RpcController* controller, const GeneralRequest* request,
                 GeneralResponse* response, Closure* done);
-    void Stats(RpcController* controller, const StatsRequest* request,
-               StatsResponse* response, Closure* done);
     void LoadTable(RpcController* controller, const LoadTableRequest* request,
                    GeneralResponse* response, Closure* done);
     void GetStoreStatus(RpcController* controller,

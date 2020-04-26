@@ -118,25 +118,6 @@ bool BsClient::Delete(uint32_t tid, uint32_t pid, const std::string &key,
     return false;
 }
 
-bool BsClient::Stats(uint32_t tid, uint32_t pid, uint64_t *count,
-                     uint64_t *total_space, uint64_t *avail_space,
-                     std::string *msg) {
-    ::rtidb::blobserver::StatsRequest request;
-    ::rtidb::blobserver::StatsResponse response;
-    request.set_tid(tid);
-    request.set_pid(pid);
-    bool ok = client_.SendRequest(&BlobServer_Stub::Stats, &request, &response,
-                                  FLAGS_request_timeout_ms, 1);
-    msg->swap(*response.mutable_msg());
-    if (ok && response.code() == 0) {
-        *count = response.count();
-        *total_space = response.total_space();
-        *avail_space = response.avail_space();
-        return true;
-    }
-    return false;
-}
-
 bool BsClient::GetStoreStatus(
     ::rtidb::blobserver::GetStoreStatusResponse *response) {
     ::rtidb::blobserver::GetStoreStatusRequest request;
