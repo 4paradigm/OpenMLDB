@@ -67,6 +67,7 @@ double avg_list(int8_t *input) {
     ListV<V> *col = (ListV<V> *)(list_ref->list);
     auto iter = col->GetIterator();
     int32_t cnt = 0;
+    iter->SeekToFirst();
     while (iter->Valid()) {
         result += iter->GetValue();
         iter->Next();
@@ -94,7 +95,7 @@ V max_list(int8_t *input) {
     ::fesql::codec::ListRef *list_ref = (::fesql::codec::ListRef *)(input);
     ListV<V> *col = (ListV<V> *)(list_ref->list);
     auto iter = col->GetIterator();
-
+    iter->SeekToFirst();
     if (iter->Valid()) {
         result = iter->GetValue();
         iter->Next();
@@ -123,6 +124,7 @@ V min_list(int8_t *input) {
         result = iter->GetValue();
         iter->Next();
     }
+    iter->SeekToFirst();
     while (iter->Valid()) {
         V v = iter->GetValue();
         iter->Next();
