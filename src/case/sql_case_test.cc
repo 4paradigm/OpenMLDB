@@ -301,14 +301,14 @@ TEST_F(SQLCaseTest, ExtractSQLCase) {
         sql_case.AddInput(table_data);
     }
 
-    SQLCase::TableInfo table_data = {
-        .name_ = "",
-        .schema_ =
-            "f0:string, f1:float, f2:double, f3:int16, f4:int32, f5:int64, "
-            "f6:timestamp",
-        .data_ =
-            "A, 1.1, 2.2, 3, 4, 5, 1587647803000\n"
-            "BB, 11.1, 22.2, 30, 40, 50, 1587647804000"};
+    SQLCase::TableInfo table_data;
+    table_data.name_ = "";
+    table_data.schema_ =
+        "f0:string, f1:float, f2:double, f3:int16, f4:int32, f5:int64, "
+        "f6:timestamp";
+    table_data.data_ =
+        "A, 1.1, 2.2, 3, 4, 5, 1587647803000\n"
+        "BB, 11.1, 22.2, 30, 40, 50, 1587647804000";
     sql_case.set_output(table_data);
 
     // Check Data Schema
