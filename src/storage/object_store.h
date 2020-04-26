@@ -3,9 +3,6 @@
 // Author kongquan
 // Date 2020-04-14
 
-//
-// Created by kongsys on 4/13/20.
-//
 #pragma once
 #include <string>
 #ifdef __cplusplus
