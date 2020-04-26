@@ -201,7 +201,6 @@ bool SQLCase::ExtractRow(const vm::Schema& schema, const std::string& row_str,
             LOG(WARNING) << "Invalid Row: Row doesn't match with schema";
             return false;
         }
-        bool ok = false;
         switch (it->type()) {
             case type::kInt16: {
                 if (!rb.AppendInt16(
