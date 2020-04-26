@@ -191,7 +191,7 @@ TEST_F(SQLCaseTest, ExtractDataTest) {
         std::vector<fesql::codec::Row> rows;
         ASSERT_TRUE(
             SQLCase::ExtractRows(output_table.columns(), data_str, rows));
-        ASSERT_EQ(5, rows.size());
+        ASSERT_EQ(5u, rows.size());
         fesql::codec::RowView row_view(output_table.columns());
 
         {
