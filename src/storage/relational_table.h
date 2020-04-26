@@ -83,7 +83,7 @@ class RelationalTable {
     ~RelationalTable();
     bool Init();
 
-    bool Put(const std::shared_ptr<std::string> value);
+    bool Put(const std::string& value);
 
     bool Query(const ::google::protobuf::RepeatedPtrField<
                    ::rtidb::api::ReadOption>& ros,
