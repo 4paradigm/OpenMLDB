@@ -1,6 +1,6 @@
 #! /bin/sh
 
-docker run -v `pwd`:/fesql develop-registry.4pd.io/fesql_build_base:0.8 bash -c "ls /fesql;cd /fesql && sh tools/compile_and_test_in_docker.sh"
+docker run -v `pwd`:/fesql develop-registry.4pd.io/centos6_gcc7_fesql:0.0.10 bash -c "ls /fesql;cd /fesql && sh tools/compile_and_test_in_docker.sh"
 
 
 
