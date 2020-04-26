@@ -112,8 +112,6 @@ class EngineTest : public ::testing::TestWithParam<SQLCase> {
  public:
     EngineTest() {}
     virtual ~EngineTest() {}
-
-
 };
 
 void BuildWindow(std::vector<Row>& rows,  // NOLINT
