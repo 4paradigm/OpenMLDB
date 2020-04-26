@@ -23,6 +23,7 @@
 #include "base/strings.h"
 #include "brpc/channel.h"
 #include "codec/row_codec.h"
+#include "codec/schema_codec.h"
 #include "glog/logging.h"
 #include "node/node_enum.h"
 #include "parser/parser.h"
@@ -32,6 +33,8 @@
 
 namespace fesql {
 namespace sdk {
+
+const static std::string EMPTY_STR;
 
 class TabletSdkImpl : public TabletSdk {
  public:
@@ -46,11 +49,24 @@ class TabletSdkImpl : public TabletSdk {
 
     std::shared_ptr<ResultSet> Query(const std::string& db,
                                      const std::string& sql,
-                                     sdk::Status* status);
+                                     sdk::Status* status) {
+        return Query(db, sql, EMPTY_STR, true, status);
+    }
+
+    std::shared_ptr<ResultSet> Query(const std::string& db,
+                                     const std::string& sql,
+                                     const std::string& row,
+                                     sdk::Status* status) {
+        return Query(db, sql, row, false, status);
+    }
+
 
     void Insert(const std::string& db, const std::string& sql,
                 sdk::Status* status);
 
+    bool Explain(const std::string& db, const std::string& sql,
+            ExplainInfo* explain_info,
+            sdk::Status* status);
  private:
     void BuildInsertRequest(const node::InsertPlanNode* iplan,
                             const std::string& db,
@@ -66,6 +82,12 @@ class TabletSdkImpl : public TabletSdk {
         node::NodeManager& node_manager,  // NOLINT (runtime/references)
         node::PlanNodeList& plan_trees,   // NOLINT (runtime/references)
         sdk::Status& status);             // NOLINT (runtime/references)
+
+    std::shared_ptr<ResultSet> Query(const std::string& db,
+                                     const std::string& sql,
+                                     const std::string& row,
+                                     bool is_batch,
+                                     sdk::Status* status);
 
  private:
     std::string endpoint_;
@@ -97,17 +119,22 @@ void TabletSdkImpl::Insert(const tablet::InsertRequest& request,
 
 std::shared_ptr<ResultSet> TabletSdkImpl::Query(const std::string& db,
                                                 const std::string& sql,
+                                                const std::string& row,
+                                                bool is_batch,
                                                 sdk::Status* status) {
     if (status == NULL) {
         return std::shared_ptr<ResultSet>();
     }
+
     ::fesql::tablet::TabletServer_Stub stub(channel_);
     ::fesql::tablet::QueryRequest request;
     std::unique_ptr<tablet::QueryResponse> response(
         new tablet::QueryResponse());
     request.set_sql(sql);
     request.set_db(db);
-    request.set_is_batch(true);
+    request.set_is_batch(is_batch);
+    if (!is_batch)
+    request.set_row(row);
     std::unique_ptr<brpc::Controller> cntl(new brpc::Controller());
     cntl->set_timeout_ms(10000);
     DLOG(INFO) << "SyncQuery >> timeout_ms: " << cntl->timeout_ms();
@@ -152,6 +179,57 @@ bool TabletSdkImpl::GetSchema(const std::string& db, const std::string& table,
         return false;
     }
     schema->CopyFrom(response.schema());
+    return true;
+}
+
+bool TabletSdkImpl::Explain(const std::string& db, const std::string& sql,
+        ExplainInfo* explain_info,
+        sdk::Status* status) {
+    if (status == NULL || explain_info == NULL) return false;
+    ::fesql::tablet::TabletServer_Stub stub(channel_);
+    ::fesql::tablet::ExplainRequest request;
+    request.set_sql(sql);
+    request.set_db(db);
+    ::fesql::tablet::ExplainResponse response;
+    brpc::Controller cntl;
+    stub.Explain(&cntl, &request, &response, NULL);
+
+    if (cntl.Failed()) {
+        status->code = (common::kConnError);
+        status->msg = "rpc controller error " + cntl.ErrorText();
+        return false;
+    }
+
+    if (response.status().code() != common::kOk) {
+        status->code = response.status().code();
+        status->msg = response.status().msg();
+        return false;
+    }
+    
+    vm::Schema internal_input_schema;
+    bool ok = codec::SchemaCodec::Decode(response.input_schema(), &internal_input_schema);
+    if (!ok) {
+        status->msg = "fail to decode input schema";
+        status->code = common::kSchemaCodecError;
+        return false;
+    }
+
+    SchemaImpl input_schema(internal_input_schema);
+    explain_info->input_schema = input_schema;
+    vm::Schema internal_output_schema;
+    ok = codec::SchemaCodec::Decode(response.output_schema(), &internal_output_schema);
+    if (!ok) {
+        status->msg = "fail to decode output  schema";
+        status->code = common::kSchemaCodecError;
+        return false;
+    }
+
+    SchemaImpl output_schema(internal_output_schema);
+    explain_info->output_schema = output_schema;
+    explain_info->ir = response.ir();
+    explain_info->logical_plan = response.logical_plan();
+    explain_info->physical_plan = response.physical_plan();
+    status->code = common::kOk;
     return true;
 }
 

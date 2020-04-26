@@ -1622,6 +1622,74 @@ TEST_F(EngineTest, test_window_agg_varchar_pk) {
         free(ptr);
     }
 }
+TEST_F(EngineTest, test_explain_batch_mode) {
+    type::TableDef table_def;
+    BuildTableDef(table_def);
+    ::fesql::type::IndexDef* index = table_def.add_indexes();
+    index->set_name("index1");
+    index->add_first_keys("col0");
+    index->set_second_key("col5");
+    std::shared_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, table_def));
+    ASSERT_TRUE(table->Init());
+    int8_t* rows = NULL;
+    std::vector<Row> windows;
+    BuildWindow(windows, &rows);
+    StoreData(table.get(), rows);
+    auto catalog = BuildCommonCatalog(table_def, table);
+    const std::string sql =
+        "SELECT "
+        "sum(col1) OVER w1 as w1_col1_sum, "
+        "sum(col3) OVER w1 as w1_col3_sum, "
+        "sum(col4) OVER w1 as w1_col4_sum, "
+        "sum(col2) OVER w1 as w1_col2_sum, "
+        "sum(col5) OVER w1 as w1_col5_sum "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 ROWS BETWEEN 3 "
+        "PRECEDING AND CURRENT ROW) limit 10;";
+    Engine engine(catalog);
+    ExplainOutput output;
+    base::Status status;
+    bool ok = engine.Explain(sql, "db", true, &output, &status);
+    ASSERT_TRUE(ok);
+    std::cout << output.logical_plan << std::endl;
+    std::cout << output.physical_plan << std::endl;
+    ASSERT_TRUE(output.output_schema.size() > 0);
+}
+
+TEST_F(EngineTest, test_explain_request_mode) {
+    type::TableDef table_def;
+    BuildTableDef(table_def);
+    ::fesql::type::IndexDef* index = table_def.add_indexes();
+    index->set_name("index1");
+    index->add_first_keys("col0");
+    index->set_second_key("col5");
+    std::shared_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, table_def));
+    ASSERT_TRUE(table->Init());
+    int8_t* rows = NULL;
+    std::vector<Row> windows;
+    BuildWindow(windows, &rows);
+    StoreData(table.get(), rows);
+    auto catalog = BuildCommonCatalog(table_def, table);
+    const std::string sql =
+        "SELECT "
+        "sum(col1) OVER w1 as w1_col1_sum, "
+        "sum(col3) OVER w1 as w1_col3_sum, "
+        "sum(col4) OVER w1 as w1_col4_sum, "
+        "sum(col2) OVER w1 as w1_col2_sum, "
+        "sum(col5) OVER w1 as w1_col5_sum "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 ROWS BETWEEN 3 "
+        "PRECEDING AND CURRENT ROW) limit 10;";
+    Engine engine(catalog);
+    ExplainOutput output;
+    base::Status status;
+    bool ok = engine.Explain(sql, "db", false, &output, &status);
+    ASSERT_TRUE(ok);
+    std::cout << output.logical_plan << std::endl;
+    std::cout << output.physical_plan << std::endl;
+    ASSERT_TRUE(output.input_schema.size() > 0);
+    ASSERT_TRUE(output.output_schema.size() > 0);
+}
 
 TEST_F(EngineTest, test_window_agg_varchar_pk_batch_run) {
     type::TableDef table_def;

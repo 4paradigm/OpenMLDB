@@ -27,15 +27,36 @@
 namespace fesql {
 namespace sdk {
 
+struct ExplainInfo {
+    Schema input_schema;
+    Schema output_schema;
+    std::string logical_plan;
+    std::string physical_plan;
+    std::string ir;
+};
+
 class TabletSdk {
  public:
     TabletSdk() = default;
     virtual ~TabletSdk() {}
+
     virtual void Insert(const std::string& db, const std::string& sql,
                         sdk::Status* status) = 0;
+
     virtual std::shared_ptr<ResultSet> Query(const std::string& db,
                                              const std::string& sql,
                                              sdk::Status* status) = 0;
+
+    virtual std::shared_ptr<ResultSet> Query(const std::string& db,
+                                             const std::string& sql,
+                                             const std::string& row,
+                                             sdk::Status* status) = 0;
+
+
+    virtual bool Explain(const std::string& db,
+            const std::string& sql, ExplainInfo* explain_info,
+            sdk::Status* status) = 0;
+
 };
 
 // create a new tablet sdk with a endpoint

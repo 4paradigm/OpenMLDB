@@ -102,8 +102,9 @@ void InitCodecSymbol(vm::FeSQLJIT* jit_ptr) {
 using ::fesql::base::Status;
 
 SQLCompiler::SQLCompiler(const std::shared_ptr<Catalog>& cl,
-                         ::fesql::node::NodeManager* nm, bool keep_ir)
-    : cl_(cl), nm_(nm), keep_ir_(keep_ir) {}
+                         ::fesql::node::NodeManager* nm, bool keep_ir,
+                         bool dump_plan)
+    : cl_(cl), nm_(nm), keep_ir_(keep_ir), dump_plan_(dump_plan) {}
 
 SQLCompiler::~SQLCompiler() {}
 
@@ -126,11 +127,14 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     if (!ok) {
         return false;
     }
-
+    if (dump_plan_ && trees.size() > 0) {
+        std::stringstream logical_plan_ss;
+        trees[0]->Print(logical_plan_ss, "\t");
+        ctx.logical_plan = logical_plan_ss.str();
+    }
     auto llvm_ctx = ::llvm::make_unique<::llvm::LLVMContext>();
     auto m = ::llvm::make_unique<::llvm::Module>("sql", *llvm_ctx);
     ::fesql::udf::RegisterUDFToModule(m.get());
-
     if (ctx.is_batch_mode) {
         vm::BatchModeTransformer transformer(nm_, ctx.db, cl_, m.get());
         transformer.AddDefaultPasses();
@@ -159,7 +163,11 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         LOG(WARNING) << status.msg;
         return false;
     }
-
+    if (dump_plan_) {
+        std::stringstream physical_plan_ss;
+        ctx.plan->Print(physical_plan_ss, "\t");
+        ctx.physical_plan = physical_plan_ss.str();
+    }
     ::llvm::Expected<std::unique_ptr<FeSQLJIT>> jit_expected(
         FeSQLJITBuilder().create());
     {

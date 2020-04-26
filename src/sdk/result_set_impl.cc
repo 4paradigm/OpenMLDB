@@ -36,8 +36,7 @@ ResultSetImpl::ResultSetImpl(std::unique_ptr<tablet::QueryResponse> response,
       row_view_(),
       internal_schema_(),
       schema_(),
-      cntl_(std::move(cntl)),
-      records_stream_(){
+      cntl_(std::move(cntl)){
 }
 
 ResultSetImpl::~ResultSetImpl() {}
@@ -154,10 +153,6 @@ bool ResultSetImpl::GetTime(uint32_t index, int64_t* mills) {
     int32_t ret = row_view_->GetTimestamp(index, mills);
     return ret == 0;
 }
-
-const Schema& ResultSetImpl::GetSchema() { return schema_; }
-
-int32_t ResultSetImpl::Size() { return size_; }
 
 }  // namespace sdk
 }  // namespace fesql

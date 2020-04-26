@@ -229,6 +229,58 @@ TEST_P(TabletSdkTest, test_normal) {
     }
 }
 
+TEST_P(TabletSdkTest, test_explain) {
+    usleep(4000 * 1000);
+    const std::string endpoint = "127.0.0.1:" + std::to_string(base_dbms_port_);
+    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk =
+        ::fesql::sdk::CreateDBMSSdk(endpoint);
+
+    std::string name = "db_x";
+    // create database db1
+    {
+        fesql::sdk::Status status;
+        dbms_sdk->CreateDatabase(name, &status);
+        ASSERT_EQ(0, static_cast<int>(status.code));
+    }
+    {
+        // create table db1
+        std::string sql =
+            "create table t1(\n"
+            "    column1 int NOT NULL,\n"
+            "    column2 double NOT NULL,\n"
+            "    column3 float NOT NULL,\n"
+            "    column4 bigint NOT NULL,\n"
+            "    column5 int NOT NULL\n,"
+            "    index(key=column1, ts=column5)\n"
+            ");";
+
+        fesql::sdk::Status status;
+        dbms_sdk->ExecuteQuery(name, sql, &status);
+        ASSERT_EQ(0, static_cast<int>(status.code));
+    }
+
+    std::shared_ptr<TabletSdk> sdk =
+        CreateTabletSdk("127.0.0.1:" + std::to_string(base_tablet_port_));
+    if (sdk) {
+        ASSERT_TRUE(true);
+    } else {
+        ASSERT_FALSE(true);
+    }
+    {
+        ExplainInfo info;
+        ::fesql::sdk::Status status;
+        std::string sql =
+            "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    "
+            "return d\nend\n%%sql\nSELECT column1, column2, "
+            "test(column1,column5) as f1, column1 + column5 as f2 FROM t1 "
+            "limit 10;";
+        sdk->Explain(name, sql, &info, &status);
+        ASSERT_EQ(0, static_cast<int>(status.code));
+        ASSERT_TRUE(info.input_schema.GetColumnCnt() == 5);
+        ASSERT_TRUE(info.output_schema.GetColumnCnt() == 4);
+    }
+}
+
 TEST_P(TabletSdkTest, test_create_and_query) {
     usleep(4000 * 1000);
     const std::string endpoint = "127.0.0.1:" + std::to_string(base_dbms_port_);

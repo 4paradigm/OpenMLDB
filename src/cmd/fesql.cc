@@ -362,13 +362,15 @@ void HandleSQLScript(
                 return;
             }
             case fesql::node::kExplainSmt: {
-                fesql::plan::SimplePlanner planner(&node_manager);
-                fesql::node::PlanNodeList plan_trees;
-                if (!planner.CreatePlanTree(parser_trees, plan_trees,
-                                            sql_status)) {
+                std::string empty;
+                std::string mu_script = script;
+                mu_script.replace(0u, 7u, empty);
+                ::fesql::sdk::ExplainInfo info;
+                bool ok = dbms_sdk->Explain(cmd_client_db.name, mu_script, &info, &status);
+                if (!ok || 0 != status.code) {
                     return;
                 }
-                std::cout << "Logical plan: \n" << plan_trees[0];
+                std::cout << info.physical_plan << std::endl;
                 return;
             }
             case fesql::node::kFnList:

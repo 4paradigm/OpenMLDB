@@ -23,9 +23,12 @@
 #include "sdk/base.h"
 #include "sdk/base_impl.h"
 #include "sdk/result_set.h"
+#include "sdk/tablet_sdk.h"
 
 namespace fesql {
 namespace sdk {
+
+static const Schema EMPTY;
 
 class DBMSSdk {
  public:
@@ -48,6 +51,26 @@ class DBMSSdk {
                                                     sdk::Status *status) {
         return std::shared_ptr<ResultSet>();
     }
+
+    virtual std::shared_ptr<ResultSet> ExecuteQuery(const std::string& catalog,
+                                                    const std::string& sql,
+                                                    const std::string& row,
+                                                    sdk::Status *status) {
+        return std::shared_ptr<ResultSet>();
+    }
+
+    virtual const Schema& GetInputSchema(const std::string& catalog,
+            const std::string& sql, 
+            sdk::Status *status) {
+        return EMPTY;
+    }
+
+    virtual bool Explain(const std::string& catalog,
+            const std::string& sql, ExplainInfo* info,
+            sdk::Status *status) {
+        return false;
+    }
+
 };
 
 // create a new dbms sdk with a endpoint

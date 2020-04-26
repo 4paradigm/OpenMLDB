@@ -138,6 +138,15 @@ class RequestRunSession : public RunSession {
     }
 };
 
+struct ExplainOutput {
+    // just for request mode
+    vm::Schema input_schema;
+    std::string logical_plan;
+    std::string physical_plan;
+    std::string ir;
+    vm::Schema output_schema;
+};
+
 typedef std::map<std::string,
                  std::map<std::string, std::shared_ptr<CompileInfo>>>
     EngineCache;
@@ -154,13 +163,16 @@ class Engine {
     bool Get(const std::string& sql, const std::string& db,
              RunSession& session,    // NOLINT
              base::Status& status);  // NOLINT
+
+    bool Explain(const std::string& sql, const std::string& db,
+            bool is_batch, 
+            ExplainOutput* explain_output,
+            base::Status *status);
  private:
     std::shared_ptr<CompileInfo> GetCacheLocked(const std::string& db,
                                                 const std::string& sql);
-
     const std::shared_ptr<Catalog> cl_;
     EngineOptions options_;
-
     base::SpinMutex mu_;
     EngineCache cache_;
     ::fesql::node::NodeManager nm_;

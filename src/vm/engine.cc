@@ -49,6 +49,7 @@ bool Engine::Get(const std::string& sql,
                  const std::string& db,
                  RunSession& session,
                  base::Status& status) {  // NOLINT (runtime/references)
+
     {
         std::shared_ptr<CompileInfo> info = GetCacheLocked(db, sql);
         if (info) {
@@ -85,6 +86,35 @@ bool Engine::Get(const std::string& sql,
             session.SetCompileInfo(it->second);
         }
     }
+    return true;
+}
+
+bool Engine::Explain(const std::string& sql, const std::string& db,
+            bool is_batch, 
+            ExplainOutput* explain_output,
+            base::Status *status) {
+    if (explain_output == NULL
+            || status == NULL) {
+        LOG(WARNING) << "input args is invalid";
+        return false;
+    }
+    ::fesql::node::NodeManager nm;
+    SQLContext ctx;
+    ctx.is_batch_mode = is_batch;
+    ctx.sql = sql;
+    ctx.db = db;
+    SQLCompiler compiler(cl_, &nm, true, true);
+    bool ok = compiler.Compile(ctx, *status);
+    if (!ok || 0 != status->code) {
+        LOG(WARNING) << "fail to compile sql " << sql 
+            << " in db " << db << " with error " << status->msg;
+        return false;
+    }
+    explain_output->input_schema.CopyFrom(ctx.request_schema);
+    explain_output->output_schema.CopyFrom(ctx.schema);
+    explain_output->logical_plan = ctx.logical_plan;
+    explain_output->physical_plan = ctx.physical_plan;
+    explain_output->ir = ctx.ir;
     return true;
 }
 
