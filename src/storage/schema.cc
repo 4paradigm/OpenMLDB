@@ -23,14 +23,15 @@ TableColumn::TableColumn() {
 TableColumn::~TableColumn() {
 }
 
-std::shared_ptr<ColumnDef> TableColumn::GetColumn(uint32_t idx) {
+const std::shared_ptr<ColumnDef> TableColumn::GetColumn(uint32_t idx) {
     if (idx < columns_.size()) {
         return columns_.at(idx);
     }
     return std::shared_ptr<ColumnDef>();
 }
 
-std::shared_ptr<ColumnDef> TableColumn::GetColumn(const std::string& name) {
+const std::shared_ptr<ColumnDef> TableColumn::GetColumn(
+        const std::string& name) {
     auto it = column_map_.find(name);
     if (it != column_map_.end()) {
         return it->second;
@@ -39,7 +40,7 @@ std::shared_ptr<ColumnDef> TableColumn::GetColumn(const std::string& name) {
     }
 }
 
-std::vector<std::shared_ptr<ColumnDef>> TableColumn::GetAllColumn() {
+const std::vector<std::shared_ptr<ColumnDef>> TableColumn::GetAllColumn() {
     return columns_;
 }
 

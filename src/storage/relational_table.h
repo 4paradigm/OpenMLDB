@@ -89,11 +89,11 @@ class RelationalTable {
                    ::rtidb::api::ReadOption>& ros,
                std::string* pairs, uint32_t* count);
     bool Query(const ::google::protobuf::RepeatedPtrField<
-                   ::rtidb::api::Columns>& indexs,
-               std::vector<std::shared_ptr<std::string>>* return_vec);
+            ::rtidb::api::Columns>& indexs,
+            std::vector<std::unique_ptr<rocksdb::Iterator>>* return_vec);
     bool Query(const std::shared_ptr<IndexDef> index_def,
                const rocksdb::Slice& key_slice,
-               std::vector<std::shared_ptr<std::string>>* vec);
+               std::vector<std::unique_ptr<rocksdb::Iterator>>* vec);
 
     bool Delete(
         const ::google::protobuf::RepeatedPtrField<::rtidb::api::Columns>&
