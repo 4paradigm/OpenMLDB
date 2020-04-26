@@ -805,11 +805,7 @@ void TabletImpl::Put(RpcController* controller,
             }
         }
     } else {
-        std::shared_ptr<std::string> val_ptr(
-                const_cast<::rtidb::api::PutRequest*>(request)->
-                release_value());
-        bool ok = r_table->Put(val_ptr);
-        if (!ok) {
+        if (!r_table->Put(request->value())) {
             response->set_code(::rtidb::base::ReturnCode::kPutFailed);
             response->set_msg("put failed");
             done->Run();

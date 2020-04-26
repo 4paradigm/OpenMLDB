@@ -261,17 +261,21 @@ bool RelationalTable::Init() {
     return true;
 }
 
-bool RelationalTable::Put(const std::shared_ptr<std::string> value) {
-    ::rtidb::base::Slice slice(*value);
+bool RelationalTable::Put(const std::string& value) {
+    ::rtidb::base::Slice slice(value);
+    std::string new_value;
     if (table_meta_.compress_type() == ::rtidb::api::kSnappy) {
-        std::string uncompressed = "";
-        ::snappy::Uncompress(value->c_str(), value->length(), &uncompressed);
-        slice.reset(uncompressed.data(), uncompressed.size());
+        ::snappy::Uncompress(value.c_str(), value.length(), &new_value);
+        slice.reset(new_value.data(), new_value.size());
     }
     std::shared_ptr<IndexDef> index_def = table_index_.GetPkIndex();
-    std::string pk = "";
+    std::string pk;
     const Schema& schema = table_meta_.column_desc();
     if (table_index_.HasAutoGen()) {
+        if (new_value.empty()) {
+            new_value.assign(value);
+            slice.reset(new_value.data(), new_value.size());
+        }
         const ColumnDef& column_def = index_def->GetColumns().at(0);
         ::rtidb::base::RowBuilder builder(schema);
         builder.SetBuffer(reinterpret_cast<int8_t*>(
