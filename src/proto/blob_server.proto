@@ -17,7 +17,7 @@ message GeneralRequest {
     optional uint32 tid = 1;
     optional uint32 pid = 2;
     optional string key = 3;
-    optional bool attachment = 4 [default = false];
+    optional bool use_attachment = 4 [default = false];
 }
 
 message GetResponse {

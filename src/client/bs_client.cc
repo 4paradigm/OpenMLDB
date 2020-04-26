@@ -88,7 +88,7 @@ bool BsClient::Get(uint32_t tid, uint32_t pid, const std::string &key,
     request.set_pid(pid);
     request.set_key(key);
     request.set_allocated_key(const_cast<std::string *>(&key));
-    request.set_attachment(true);
+    request.set_use_attachment(true);
     ::rtidb::blobserver::GetResponse response;
     bool ok = client_.SendRequestGetAttachment(
         &BlobServer_Stub::Get, &request, &response, FLAGS_request_timeout_ms, 1,

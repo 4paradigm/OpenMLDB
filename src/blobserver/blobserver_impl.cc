@@ -168,7 +168,7 @@ void BlobServerImpl::Get(RpcController *controller,
     }
     rtidb::base::Slice slice = store->Get(request->key());
     if (slice.size() > 0) {
-        if (request->attachment()) {
+        if (request->use_attachment()) {
             brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
             cntl->response_attachment().append(slice.data(), slice.size());
         } else {
