@@ -79,7 +79,7 @@ void BlobProxyImpl::Get(RpcController* controller, const HttpRequest* request,
     if (!th) {
         PDLOG(INFO, "table %s not found", table.c_str());
         cntl->http_response().set_status_code(brpc::HTTP_STATUS_NOT_FOUND);
-        response_writer.append("tablet not found");
+        response_writer.append("table not found");
         return;
     }
     std::string err_msg;

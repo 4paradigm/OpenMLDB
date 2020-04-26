@@ -3,14 +3,14 @@
 // Author kongquan
 // Date 2020-04-16
 
-#include "blobserver/blobserver_impl.h"
-#include <logging.h>
-#include <base/file_util.h>
-#include <base/hash.h>
-#include <base/status.h>
-#include <base/strings.h>
 #include <gflags/gflags.h>
 #include <utility>
+#include "blobserver/blobserver_impl.h"
+#include "logging.h" // NOLINT
+#include "base/file_util.h"
+#include "base/hash.h"
+#include "base/status.h"
+#include "base/strings.h"
 #include "boost/bind.hpp"
 
 DECLARE_string(endpoint);
@@ -31,8 +31,7 @@ namespace blobserver {
 static const uint32_t SEED = 0xe17a1465;
 
 BlobServerImpl::BlobServerImpl()
-    : mu_(),
-      spin_mutex_(),
+    : spin_mutex_(),
       zk_client_(NULL),
       server_(NULL),
       keep_alive_pool_(1),
@@ -46,7 +45,7 @@ BlobServerImpl::~BlobServerImpl() {
 }
 
 bool BlobServerImpl::Init() {
-    std::lock_guard<std::mutex> lock(mu_);
+    std::lock_guard<SpinMutex> lock(spin_mutex_);
     if (FLAGS_hdd_root_path.empty()) {
         PDLOG(WARNING, "hdd root path did not set");
         return false;
@@ -113,7 +112,8 @@ void BlobServerImpl::CreateTable(RpcController *controller,
                                  GeneralResponse *response, Closure *done) {
     brpc::ClosureGuard done_guard(done);
     const TableMeta &table_meta = request->table_meta();
-    uint32_t tid = table_meta.tid(), pid = table_meta.pid();
+    uint32_t tid = table_meta.tid();
+    uint32_t pid = table_meta.pid();
     if (table_meta.table_type() != ::rtidb::type::kObjectStore) {
         response->set_code(ReturnCode::kTableMetaIsIllegal);
         response->set_msg("table type illegal");
@@ -127,7 +127,6 @@ void BlobServerImpl::CreateTable(RpcController *controller,
         response->set_msg("table already exists");
     }
     std::string name = table_meta.name();
-    PDLOG(INFO, "start creating table tid[%u] pid[%u]", tid, pid);
     if (root_paths_.size() < 1) {
         PDLOG(WARNING, "fail to find db root path tid[%u] pid[%u]", tid, pid);
         response->set_code(ReturnCode::kFailToGetDbRootPath);
@@ -149,6 +148,7 @@ void BlobServerImpl::CreateTable(RpcController *controller,
         response->set_code(ReturnCode::kCreateTableFailed);
         response->set_msg("init object store failed");
     }
+    PDLOG(INFO, "creat table tid[%u] pid[%u] success", tid, pid);
     std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
     object_stores_[tid].insert(std::make_pair(pid, store));
 }
@@ -196,20 +196,21 @@ void BlobServerImpl::Put(RpcController* controller, const PutRequest* request,
     }
     bool ok = false;
     std::string key;
-    if (request->key().size() > 0) {
-        ok = store->Store(request->key(), request->pairs());
+    if (request->key().empty() > 0) {
+        ok = store->Store(&key, request->data());
     } else {
-        ok = store->Store(&key, request->pairs());
+        ok = store->Store(request->key(), request->data());
     }
     if (!ok) {
         response->set_code(ReturnCode::kPutFailed);
         response->set_msg("put failed");
         return;
     }
-    if (key.size() > 0) {
+    if (key.empty() > 0) {
         response->set_key(key);
     }
     response->set_code(ReturnCode::kOk);
+    response->set_msg("ok");
 }
 
 void BlobServerImpl::Delete(RpcController *controller,
@@ -331,7 +332,6 @@ void BlobServerImpl::GetStoreStatus(RpcController* controller,
         }
     }
     response->set_code(ReturnCode::kOk);
-    return;
 }
 
 

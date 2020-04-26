@@ -53,7 +53,6 @@ class BlobProxyImplTest : public ::testing::Test {
 void StartNameServer(brpc::Server* server, NameServerImpl* nameserver) {
     bool ok = nameserver->Init();
     ASSERT_TRUE(ok);
-    sleep(4);
     brpc::ServerOptions options;
     if (server->AddService(nameserver, brpc::SERVER_OWNS_SERVICE) != 0) {
         PDLOG(WARNING, "Fail to add service");
@@ -63,6 +62,7 @@ void StartNameServer(brpc::Server* server, NameServerImpl* nameserver) {
         PDLOG(WARNING, "Fail to start server");
         exit(1);
     }
+    sleep(2);
 }
 
 void StartBlob(brpc::Server* server) {
@@ -71,7 +71,6 @@ void StartBlob(brpc::Server* server) {
         new ::rtidb::blobserver::BlobServerImpl();
     bool ok = blob->Init();
     ASSERT_TRUE(ok);
-    sleep(2);
     brpc::ServerOptions options1;
     if (server->AddService(blob, brpc::SERVER_OWNS_SERVICE) != 0) {
         PDLOG(WARNING, "Fail to add service");

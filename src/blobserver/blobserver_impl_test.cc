@@ -78,7 +78,6 @@ TEST_F(BlobServerImplTest, Basic_Test) {
     get_value.clear();
     ok = client.Get(tid, pid, auto_gen_key, &get_value, &err_msg);
     ASSERT_TRUE(ok);
-    std::cout << get_value << std::endl;
     {
         int code = memcmp(value2.data(), get_value.data(), value2.length());
         ASSERT_EQ(0, code);

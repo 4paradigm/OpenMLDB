@@ -6,16 +6,16 @@
 #pragma once
 
 #include <brpc/server.h>
-#include <storage/object_store.h>
 #include <map>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <vector>
+#include "storage/object_store.h"
+#include "zk/zk_client.h"
 #include "base/spinlock.h"
 #include "proto/blob_server.pb.h"
 #include "thread_pool.h"  // NOLINT
-#include "zk/zk_client.h"
 
 namespace rtidb {
 namespace blobserver {
@@ -66,7 +66,6 @@ class BlobServerImpl : public ::rtidb::blobserver::BlobServer {
                         GetStoreStatusResponse* response, Closure* done);
 
  private:
-    std::mutex mu_;
     SpinMutex spin_mutex_;
     ZkClient* zk_client_;
     brpc::Server* server_;

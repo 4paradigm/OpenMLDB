@@ -30,7 +30,7 @@ message PutRequest {
     optional uint32 tid = 1;
     optional uint32 pid = 2;
     optional string key = 3;
-    optional bytes pairs = 4;
+    optional bytes data = 4;
 }
 
 message PutResponse {
