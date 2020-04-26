@@ -628,6 +628,10 @@ class NameServerImpl : public NameServer {
         uint32_t pid, const std::vector<std::string>& endpoints,
         const ::rtidb::common::ColumnKey& column_key);
 
+    std::shared_ptr<Task> CreateTableSyncTask(
+        uint64_t op_index, ::rtidb::api::OPType op_type,
+        const std::string& name, const boost::function<bool()>& fun);
+
     std::shared_ptr<TableInfo> GetTableInfo(const std::string& name);
 
     int AddOPTask(const ::rtidb::api::TaskInfo& task_info,
@@ -639,9 +643,9 @@ class NameServerImpl : public NameServer {
         uint64_t op_id, ::rtidb::api::TaskType task_type);
 
     int CreateOPData(::rtidb::api::OPType op_type, const std::string& value,
-                     std::shared_ptr<OPData>& op_data, // NOLINT
-                     const std::string& name,  // NOLINT
-                     uint32_t pid, uint64_t parent_id = INVALID_PARENT_ID,
+                     std::shared_ptr<OPData>& op_data,  // NOLINT
+                     const std::string& name, uint32_t pid,
+                     uint64_t parent_id = INVALID_PARENT_ID,
                      uint64_t remote_op_id = INVALID_PARENT_ID);
     int AddOPData(const std::shared_ptr<OPData>& op_data,
                   uint32_t concurrency = FLAGS_name_server_task_concurrency);
@@ -728,8 +732,16 @@ class NameServerImpl : public NameServer {
         uint64_t offset_delta,
         std::shared_ptr<::rtidb::api::TaskInfo> task_info);
 
+    bool AddIndexToTableInfo(const std::string& name,
+                             const ::rtidb::common::ColumnKey& column_key,
+                             uint32_t index_pos);
+
     void WrapTaskFun(const boost::function<bool()>& fun,
                      std::shared_ptr<::rtidb::api::TaskInfo> task_info);
+
+    void RunSyncTaskFun(const std::string& name,
+                        const boost::function<bool()>& fun,
+                        std::shared_ptr<::rtidb::api::TaskInfo> task_info);
 
     void RunSubTask(std::shared_ptr<Task> task);
 
@@ -762,8 +774,8 @@ class NameServerImpl : public NameServer {
         const std::vector<::rtidb::nameserver::TableInfo>& tables);
 
     bool CompareSnapshotOffset(
-        const std::vector<TableInfo>& tables, std::string& msg, // NOLINT
-        int& code,  // NOLINT
+        const std::vector<TableInfo>& tables, std::string& msg,  // NOLINT
+        int& code,                                               // NOLINT
         std::map<std::string, std::map<uint32_t, std::map<uint32_t, uint64_t>>>&
             table_part_offset);
 
@@ -800,6 +812,7 @@ class NameServerImpl : public NameServer {
     uint64_t term_;
     std::string zk_op_index_node_;
     std::string zk_op_data_path_;
+    std::string zk_op_sync_path_;
     uint64_t op_index_;
     std::atomic<bool> running_;
     std::list<std::shared_ptr<OPData>> done_op_list_;

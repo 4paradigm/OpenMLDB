@@ -103,6 +103,7 @@ enum TaskType {
     kLoadIndexData = 24;
     kExtractIndexData = 25;
     kAddIndexToTablet = 26;
+    kTableSyncTask = 27;
 }
 
 enum TaskStatus {
@@ -187,6 +188,7 @@ message PutRequest {
     optional uint32 pid = 5;
     repeated Dimension dimensions = 6;
     repeated TSDimension ts_dimensions = 7;
+    optional uint32 format_version = 8 [default = 0];
 }
 
 message PutResponse {
@@ -250,6 +252,7 @@ message ScanRequest {
     optional GetType et_type = 12 [default = kSubKeyGt];
     optional bool enable_remove_ts = 13 [default = false];
     optional uint32 atleast = 14 [default = 0];
+    repeated uint32 projection = 15;
 }
 
 message RpcMetric {
@@ -337,6 +340,8 @@ message TableMeta {
     repeated rtidb.common.ColumnDesc added_column_desc = 18;
     optional TTLDesc ttl_desc = 19;
     optional rtidb.type.TableType table_type = 20;
+    // format_version 0 , the legacy format 1 ,the new one
+    optional uint32 format_version = 21 [default = 0];
 }
 
 message CreateTableRequest {
@@ -546,6 +551,7 @@ message GetRequest {
     optional string ts_name = 7;
     optional uint64 et = 8;
     optional GetType et_type = 9 [default = kSubKeyGe];
+    repeated uint32 projection = 10;
 }
 
 message GetResponse {
@@ -649,7 +655,8 @@ message HttpResponse { }
 
 message DeleteIndexRequest {
     optional uint32 tid = 1;
-    optional string idx_name = 2;
+    optional uint32 pid = 2;
+    optional string idx_name = 3;
 }
 
 message DumpIndexDataRequest {
