@@ -178,7 +178,7 @@ bool SQLCase::ExtractRow(const vm::Schema& schema, const std::string& row_str,
     std::vector<std::string> item_vec;
     boost::split(item_vec, row_str, boost::is_any_of(","),
                  boost::token_compress_on);
-    if (item_vec.size() != static_cast<size_t >(schema.size())) {
+    if (item_vec.size() != static_cast<size_t>(schema.size())) {
         LOG(WARNING) << "Invalid Row: Row doesn't match with schema";
         return false;
     }
@@ -300,6 +300,10 @@ bool SQLCase::ExtractInputTableDef(type::TableDef& table, int32_t input_idx) {
 }
 bool SQLCase::ExtractOutputSchema(type::TableDef& table) {
     return ExtractSchema(output_.schema_, table);
+}
+std::ostream& operator<<(std::ostream& output, const SQLCase& thiz) {
+    output << "Case ID: " << thiz.id() << ", Desc:" << thiz.desc();
+    return output;
 }
 bool SQLCase::CreateSQLCasesFromYaml(const std::string& yaml_path,
                                      std::vector<SQLCase>& sql_cases) {
