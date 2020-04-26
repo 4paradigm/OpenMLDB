@@ -284,7 +284,7 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         TableInfo.Builder builder = TableInfo.newBuilder(tableInfo);
         for (int i = 0; i < tableInfo.getColumnDescV1List().size(); i++) {
             Common.ColumnDesc desc = tableInfo.getColumnDescV1(i);
-            Type.DataType type = TYPE_MAPING.get(desc.getType());
+            Type.DataType type = TYPE_MAPING.get(desc.getType().toLowerCase());
             Common.ColumnDesc.Builder descBuilder =Common.ColumnDesc.newBuilder(desc);
             if (type!=null)
             descBuilder.setDataType(type);
