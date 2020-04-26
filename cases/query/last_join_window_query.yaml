@@ -1,0 +1,94 @@
+SQLCases:
+  - id: 1
+    desc: LAST JOIN Window, Join未命中索引
+    mode: request
+    db: db1
+    sql: |
+      %%fun
+      def test_sum(col:list<int>):int
+          result = 0
+          for x in col
+              result += x
+          return result
+      end
+      %%sql
+      SELECT t1.col2, t1.col5,
+      test_sum(t1.col1) OVER w1 as w1_col1_sum, sum(t1.col3) OVER w1 as w1_col3_sum,
+      sum(t2.col4) OVER w1 as w1_t2_col4_sum, sum(t2.col2) OVER w1 as w1_t2_col2_sum,
+      sum(t1.col5) OVER w1 as w1_col5_sum, t1.col1,
+      str1 as t2_str1 FROM t1 last join t2 on t1.col1=t2.col1 and t1.col5 = t2.col5
+      WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.col5 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
+    inputs:
+      - name: t1
+        schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
+        index: index2:col2:col5
+        data: |
+          0, 1, 5, 1.1, 11.1, 1, 1
+          0, 2, 5, 2.2, 22.2, 2, 22
+          1, 3, 55, 3.3, 33.3, 1, 333
+          1, 4, 55, 4.4, 44.4, 2, 4444
+          2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      - name: t2
+        schema: str0:string, str1:string, col3:float, col4:double, col2:int16, col1:int32, col5:int64
+        index: index1:col2:col5
+        data: |
+          2, EEEEE, 5.5, 550.5, 550, 5, 3
+          1, DDDD, 4.4, 440.4, 550, 4, 2
+          1, CCC, 3.3, 330.3, 550, 3, 1
+          0, BB, 2.2, 220.2, 50, 2, 2
+          0, A, 1.1, 110.1, 50, 1, 1
+    output:
+      schema: t1.col2:int16, t1.col5:int64, w1_col1_sum:int32, w1_col3_sum:float, w1_t2_col4_sum:double, w1_t2_col2_sum:int16, w1_col5_sum:int64, t1.col1:int32, t2_str1:string
+
+      data: |
+        5, 1, 1, 1.1, 110.1, 50, 1, 1, A
+        5, 2, 3, 3.3, 330.3, 100, 3, 2, BB
+        55, 1, 3, 3.3, 330.3, 550, 1, 3, CCC
+        55, 2, 7, 7.7, 770.7, 1100, 3, 4, DDDD
+        55, 3, 12, 13.2, 1321.2, 1650, 6, 5, EEEEE
+  - id: 2
+    desc: LAST JOIN Window, Join成功命中索引
+    mode: request
+    db: db1
+    sql: |
+      %%fun
+      def test_sum(col:list<int>):int
+          result = 0
+          for x in col
+              result += x
+          return result
+      end
+      %%sql
+      SELECT t1.col2, t1.col5,
+      test_sum(t1.col1) OVER w1 as w1_col1_sum, sum(t1.col3) OVER w1 as w1_col3_sum,
+      sum(t2.col4) OVER w1 as w1_t2_col4_sum, sum(t2.col2) OVER w1 as w1_t2_col2_sum,
+      sum(t1.col5) OVER w1 as w1_col5_sum, t1.col1,
+      str1 as t2_str1 FROM t1 last join t2 on t1.col1=t2.col1 and t1.col5 = t2.col5
+      WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.col5 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
+    inputs:
+      - name: t1
+        schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
+        index: index2:col2:col5
+        data: |
+          0, 1, 5, 1.1, 11.1, 1, 1
+          0, 2, 5, 2.2, 22.2, 2, 22
+          1, 3, 55, 3.3, 33.3, 1, 333
+          1, 4, 55, 4.4, 44.4, 2, 4444
+          2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      - name: t2
+        schema: str0:string, str1:string, col3:float, col4:double, col2:int16, col1:int32, col5:int64
+        index: index1:col1:col5
+        data: |
+          2, EEEEE, 5.5, 550.5, 550, 5, 3
+          1, DDDD, 4.4, 440.4, 550, 4, 2
+          1, CCC, 3.3, 330.3, 550, 3, 1
+          0, BB, 2.2, 220.2, 50, 2, 2
+          0, A, 1.1, 110.1, 50, 1, 1
+    output:
+      schema: t1.col2:int16, t1.col5:int64, w1_col1_sum:int32, w1_col3_sum:float, w1_t2_col4_sum:double, w1_t2_col2_sum:int16, w1_col5_sum:int64, t1.col1:int32, t2_str1:string
+      data: |
+        5, 1, 1, 1.1, 110.1, 50, 1, 1, A
+        5, 2, 3, 3.3, 330.3, 100, 3, 2, BB
+        55, 1, 3, 3.3, 330.3, 550, 1, 3, CCC
+        55, 2, 7, 7.7, 770.7, 1100, 3, 4, DDDD
+        55, 3, 12, 13.2, 1321.2, 1650, 6, 5, EEEEE

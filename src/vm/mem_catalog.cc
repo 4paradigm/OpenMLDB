@@ -158,9 +158,9 @@ bool MemPartitionHandler::AddRow(const std::string& key, uint64_t ts,
     auto iter = partitions_.find(key);
     if (iter == partitions_.cend()) {
         partitions_.insert(std::pair<std::string, MemTimeTable>(
-            key, {std::make_pair(ts, Row(row.data(), row.size()))}));
+            key, {std::make_pair(ts, row)}));
     } else {
-        iter->second.push_back(std::make_pair(ts, Row(row.data(), row.size())));
+        iter->second.push_back(std::make_pair(ts, row));
     }
     return true;
 }

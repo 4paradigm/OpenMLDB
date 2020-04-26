@@ -551,10 +551,19 @@ TEST_F(SQLCaseTest, ExtractYamlSQLCase) {
     {
         SQLCase& sql_case = cases[1];
         ASSERT_EQ(sql_case.id(), 2);
-        ASSERT_EQ("SELECT最小值", sql_case.desc());
+        ASSERT_EQ("SELECT UDF", sql_case.desc());
         ASSERT_EQ("request", sql_case.mode());
         ASSERT_EQ(sql_case.inputs()[0].name_, "t1");
         ASSERT_EQ(sql_case.db(), "test");
+        ASSERT_EQ(sql_case.sql_str(),
+                  "%%fun\n"
+                  "def test(a:i32,b:i32):i32\n"
+                  "    c=a+b\n"
+                  "    d=c+1\n"
+                  "    return d\n"
+                  "end\n"
+                  "%%sql\n"
+                  "SELECT col0, test(col1,col1), col2 , col6 FROM t1 limit 2;");
         ASSERT_EQ(
             sql_case.inputs()[0].schema_,
             "col0:string, col1:int32, col2:int16, col3:float, col4:double, "
@@ -563,11 +572,9 @@ TEST_F(SQLCaseTest, ExtractYamlSQLCase) {
                   "index1:col1|col2:col5, index2:col1:col5");
         ASSERT_EQ(sql_case.inputs()[0].data_,
                   "0, 1, 5, 1.1, 11.1, 1, 1\n0, 2, 5, 2.2, 22.2, 2, 22");
-        ASSERT_EQ(
-            sql_case.output().schema_,
-            "col0:string, col1:int32, col2:int16, col3:float, col4:double, "
-            "col5:int64, col6:string");
-        ASSERT_EQ(sql_case.output().data_, "0, 1, 5, 1.1, 11.1, 1, 1");
+        ASSERT_EQ(sql_case.output().schema_,
+                  "col0:string, col1:int32, col2:int16, col6:string");
+        ASSERT_EQ(sql_case.output().data_, "0, 3, 5, 1\n0, 4, 5, 22");
     }
 }
 }  // namespace sqlcase

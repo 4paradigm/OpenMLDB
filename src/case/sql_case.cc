@@ -120,11 +120,13 @@ bool SQLCase::ExtractSchema(const std::string& schema_str,
         return false;
     }
     for (auto col : col_vec) {
+        boost::trim(col);
         std::vector<std::string> name_type_vec;
         boost::split(name_type_vec, col, boost::is_any_of(":"),
                      boost::token_compress_on);
         if (2 != name_type_vec.size()) {
-            LOG(WARNING) << "Invalid Schema Format:" << schema_str;
+            LOG(WARNING) << "Invalid Schema Format:" << schema_str
+                         << " Invalid Column " << col;
             return false;
         }
         ::fesql::type::ColumnDef* column = table.add_columns();
@@ -152,7 +154,7 @@ bool SQLCase::ExtractInputData(std::vector<Row>& rows, int32_t input_idx) {
         return false;
     }
     type::TableDef table;
-    if (!ExtractInputTableDef(table)) {
+    if (!ExtractInputTableDef(table, input_idx)) {
         LOG(WARNING) << "Invalid Schema";
         return false;
     }
@@ -177,7 +179,7 @@ bool SQLCase::ExtractRow(const vm::Schema& schema, const std::string& row_str,
     boost::split(item_vec, row_str, boost::is_any_of(","),
                  boost::token_compress_on);
     if (item_vec.size() != schema.size()) {
-        LOG(WARNING) << "Row doesn't match with schema";
+        LOG(WARNING) << "Invalid Row: Row doesn't match with schema";
         return false;
     }
     int str_size = 0;
@@ -196,7 +198,7 @@ bool SQLCase::ExtractRow(const vm::Schema& schema, const std::string& row_str,
     uint32_t index = 0;
     for (; it != schema.end(); ++it) {
         if (index >= item_vec.size()) {
-            LOG(WARNING) << "Row doesn't match with schema";
+            LOG(WARNING) << "Invalid Row: Row doesn't match with schema";
             return false;
         }
         bool ok = false;
@@ -324,12 +326,14 @@ bool SQLCase::CreateSQLCasesFromYaml(const std::string& yaml_path,
 
             if (sql_case_node["desc"]) {
                 sql_case.desc_ = sql_case_node["desc"].as<std::string>();
+                boost::trim(sql_case.desc_);
             } else {
                 sql_case.desc_ = "";
             }
 
             if (sql_case_node["mode"]) {
                 sql_case.mode_ = sql_case_node["mode"].as<std::string>();
+                boost::trim(sql_case.mode_);
             } else {
                 sql_case.mode_ = "batch";
             }
@@ -342,6 +346,7 @@ bool SQLCase::CreateSQLCasesFromYaml(const std::string& yaml_path,
 
             if (sql_case_node["sql"]) {
                 sql_case.sql_str_ = sql_case_node["sql"].as<std::string>();
+                boost::trim(sql_case.sql_str_);
             }
 
             if (sql_case_node["inputs"]) {
@@ -351,12 +356,15 @@ bool SQLCase::CreateSQLCasesFromYaml(const std::string& yaml_path,
                     auto schema_data = *iter;
                     if (schema_data["name"]) {
                         table.name_ = schema_data["name"].as<std::string>();
+                        boost::trim(table.name_);
                     }
                     if (schema_data["schema"]) {
                         table.schema_ = schema_data["schema"].as<std::string>();
+                        boost::trim(table.schema_);
                     }
                     if (schema_data["index"]) {
                         table.index_ = schema_data["index"].as<std::string>();
+                        boost::trim(table.index_);
                     }
 
                     if (schema_data["data"]) {
@@ -371,10 +379,12 @@ bool SQLCase::CreateSQLCasesFromYaml(const std::string& yaml_path,
                 if (sql_case_node["output"]["schema"]) {
                     sql_case.output_.schema_ =
                         sql_case_node["output"]["schema"].as<std::string>();
+                    boost::trim(sql_case.output_.schema_);
                 }
                 if (sql_case_node["output"]["index"]) {
                     sql_case.output_.index_ =
                         sql_case_node["output"]["index"].as<std::string>();
+                    boost::trim(sql_case.output_.index_);
                 }
                 if (sql_case_node["output"]["data"]) {
                     sql_case.output_.data_ =

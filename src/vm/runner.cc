@@ -784,46 +784,98 @@ std::shared_ptr<DataHandler> LastJoinRunner::Run(RunnerContext& ctx) {
         LOG(WARNING) << "fail to run last join: left|right input is empty";
         return fail_ptr;
     }
-    if (kTableHandler != left->GetHanlderType()) {
-        LOG(WARNING) << "fail to run last join: left input is invalid type";
-        return fail_ptr;
-    }
 
-    auto left_table = std::dynamic_pointer_cast<TableHandler>(left);
-    auto left_iter = left_table->GetIterator();
-    if (!left_iter || !left_iter->Valid()) {
-        LOG(WARNING) << "fail to run last join: left input empty";
-        return fail_ptr;
-    }
-    auto output_table = std::shared_ptr<MemTableHandler>(new MemTableHandler());
-
-    if (kPartitionHandler == right->GetHanlderType()) {
-        if (!left_key_gen_.Valid()) {
-            LOG(WARNING) << "can't join right partition table when join "
-                            "left_key_gen_ is invalid";
+    if (kTableHandler == left->GetHanlderType()) {
+        auto output_table =
+            std::shared_ptr<MemTableHandler>(new MemTableHandler());
+        auto left_table = std::dynamic_pointer_cast<TableHandler>(left);
+        auto left_iter = left_table->GetIterator();
+        if (!left_iter || !left_iter->Valid()) {
+            LOG(WARNING) << "fail to run last join: left input empty";
             return fail_ptr;
         }
-        auto partition = std::dynamic_pointer_cast<PartitionHandler>(right);
-        left_iter->SeekToFirst();
-        while (left_iter->Valid()) {
-            const Row& left_row = left_iter->GetValue();
-            const std::string& key_str = left_key_gen_.Gen(left_row);
-            LOG(INFO) << "key_str " << key_str;
-            auto right_table = partition->GetSegment(partition, key_str);
-            output_table->AddRow(
-                RowLastJoin(left_row, right_table, condition_gen_));
-            left_iter->Next();
+        if (kPartitionHandler == right->GetHanlderType()) {
+            if (!left_key_gen_.Valid()) {
+                LOG(WARNING) << "can't join right partition table when join "
+                                "left_key_gen_ is invalid";
+                return fail_ptr;
+            }
+            auto partition = std::dynamic_pointer_cast<PartitionHandler>(right);
+            left_iter->SeekToFirst();
+            while (left_iter->Valid()) {
+                const Row& left_row = left_iter->GetValue();
+                const std::string& key_str = left_key_gen_.Gen(left_row);
+                LOG(INFO) << "key_str " << key_str;
+                auto right_table = partition->GetSegment(partition, key_str);
+                output_table->AddRow(
+                    RowLastJoin(left_row, right_table, condition_gen_));
+                left_iter->Next();
+            }
+        } else {
+            auto right_table = std::dynamic_pointer_cast<TableHandler>(right);
+            while (left_iter->Valid()) {
+                const Row& left_row = left_iter->GetValue();
+                output_table->AddRow(
+                    RowLastJoin(left_row, right_table, condition_gen_));
+                left_iter->Next();
+            }
         }
+        return output_table;
     } else {
-        auto right_table = std::dynamic_pointer_cast<TableHandler>(right);
-        while (left_iter->Valid()) {
-            const Row& left_row = left_iter->GetValue();
-            output_table->AddRow(
-                RowLastJoin(left_row, right_table, condition_gen_));
-            left_iter->Next();
+        auto output_partition =
+            std::shared_ptr<MemPartitionHandler>(new MemPartitionHandler());
+        auto left_partition = std::dynamic_pointer_cast<PartitionHandler>(left);
+        auto left_window_iter = left_partition->GetWindowIterator();
+        if (!left_window_iter || !left_window_iter->Valid()) {
+            LOG(WARNING) << "fail to run last join: left input empty";
+            return fail_ptr;
         }
+        if (kPartitionHandler == right->GetHanlderType()) {
+            if (!left_key_gen_.Valid()) {
+                LOG(WARNING) << "can't join right partition table when join "
+                                "left_key_gen_ is invalid";
+                return fail_ptr;
+            }
+            auto partition = std::dynamic_pointer_cast<PartitionHandler>(right);
+            left_window_iter->SeekToFirst();
+            while (left_window_iter->Valid()) {
+                auto left_iter = left_window_iter->GetValue();
+                auto left_key = left_window_iter->GetKey();
+                left_iter->SeekToFirst();
+                while (left_iter->Valid()) {
+                    const Row& left_row = left_iter->GetValue();
+                    const std::string& key_str = left_key_gen_.Gen(left_row);
+                    LOG(INFO) << "key_str " << key_str;
+                    auto right_table =
+                        partition->GetSegment(partition, key_str);
+                    output_partition->AddRow(
+                        std::string(left_key.data(), left_key.size()),
+                        left_iter->GetKey(),
+                        RowLastJoin(left_row, right_table, condition_gen_));
+                    left_iter->Next();
+                }
+                left_window_iter->Next();
+            }
+        } else {
+            auto partition = std::dynamic_pointer_cast<PartitionHandler>(right);
+            left_window_iter->SeekToFirst();
+            auto right_table = std::dynamic_pointer_cast<TableHandler>(right);
+            while (left_window_iter->Valid()) {
+                auto left_iter = left_window_iter->GetValue();
+                auto left_key = left_window_iter->GetKey();
+                left_iter->SeekToFirst();
+                while (left_iter->Valid()) {
+                    const Row& left_row = left_iter->GetValue();
+                    output_partition->AddRow(
+                        std::string(left_key.data(), left_key.size()),
+                        left_iter->GetKey(),
+                        RowLastJoin(left_row, right_table, condition_gen_));
+                    left_iter->Next();
+                }
+            }
+        }
+        return output_partition;
     }
-    return output_table;
 }
 const Row Runner::RowLastJoin(const Row& left_row,
                               std::shared_ptr<TableHandler> right_table,
