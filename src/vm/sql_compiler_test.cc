@@ -145,7 +145,7 @@ void Compiler_Runner_Check(std::shared_ptr<Catalog> catalog,
     std::cout << "schema:\n" << oss_schema.str();
 }
 
-void Request_Schema_Check(std::shared_ptr<Catalog> catalog,
+void RequestSchemaCheck(std::shared_ptr<Catalog> catalog,
                           const std::string sql,
                           const type::TableDef& exp_table_def) {
     node::NodeManager nm;
@@ -239,7 +239,7 @@ TEST_P(SQLCompilerTest, compile_request_mode_test) {
     AddTable(catalog, table_def5, table5);
     AddTable(catalog, table_def6, table6);
     Compiler_Runner_Check(catalog, sqlstr, false);
-    Request_Schema_Check(catalog, sqlstr, table_def);
+    RequestSchemaCheck(catalog, sqlstr, table_def);
 }
 
 TEST_P(SQLCompilerTest, compile_batch_mode_test) {

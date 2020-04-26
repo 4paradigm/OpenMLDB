@@ -1055,7 +1055,7 @@ std::shared_ptr<DataHandler> LimitRunner::Run(RunnerContext& ctx) {
             }
             return output_table;
         }
-        case kRowProject: {
+        case kRowHandler: {
             DLOG(INFO) << "limit row handler";
             return input;
         }

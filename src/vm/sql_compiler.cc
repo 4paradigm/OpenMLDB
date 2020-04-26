@@ -178,7 +178,6 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         return false;
     }
 
-    m->print(::llvm::errs(), NULL);
     if (keep_ir_) {
         KeepIR(ctx, m.get());
     }
