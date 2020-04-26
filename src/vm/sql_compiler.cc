@@ -149,6 +149,8 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
                          << ctx.sql;
             return false;
         }
+        ctx.request_schema = transformer.request_schema();
+        ctx.request_name = transformer.request_name();
     }
 
     if (nullptr == ctx.plan) {

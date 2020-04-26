@@ -116,7 +116,7 @@ class MemRowHandler : public RowHandler {
         : RowHandler(), table_name_(""), db_(""), schema_(schema), row_(row) {}
     ~MemRowHandler() {}
 
-    const Schema* GetSchema() override { return nullptr; }
+    const Schema* GetSchema() override { return schema_; }
     const std::string& GetName() override { return table_name_; }
     const std::string& GetDatabase() override { return db_; }
     const Row& GetValue() const override { return row_; }
