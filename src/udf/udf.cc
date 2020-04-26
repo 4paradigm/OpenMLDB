@@ -19,12 +19,12 @@
 namespace fesql {
 namespace udf {
 namespace v1 {
-using fesql::codec::Row;
 using fesql::codec::ColumnImpl;
 using fesql::codec::IteratorRef;
+using fesql::codec::IteratorV;
 using fesql::codec::ListRef;
 using fesql::codec::ListV;
-using fesql::codec::IteratorV;
+using fesql::codec::Row;
 using fesql::codec::StringColumnImpl;
 using fesql::codec::StringRef;
 
@@ -49,6 +49,7 @@ V sum_list(int8_t *input) {
     ::fesql::codec::ListV<V> *col =
         (::fesql::codec::ListV<V> *)(list_ref->list);
     auto iter = col->GetIterator();
+    iter->SeekToFirst();
     while (iter->Valid()) {
         result += iter->GetValue();
         iter->Next();
@@ -63,8 +64,7 @@ double avg_list(int8_t *input) {
         return result;
     }
     ::fesql::codec::ListRef *list_ref = (::fesql::codec::ListRef *)(input);
-    ListV<V> *col =
-        (ListV<V> *)(list_ref->list);
+    ListV<V> *col = (ListV<V> *)(list_ref->list);
     auto iter = col->GetIterator();
     int32_t cnt = 0;
     while (iter->Valid()) {
@@ -81,8 +81,7 @@ int64_t count_list(int8_t *input) {
     }
 
     ::fesql::codec::ListRef *list_ref = (::fesql::codec::ListRef *)(input);
-    ListV<V> *col =
-        (ListV<V> *)(list_ref->list);
+    ListV<V> *col = (ListV<V> *)(list_ref->list);
     return int64_t(col->GetCount());
 }
 
@@ -93,8 +92,7 @@ V max_list(int8_t *input) {
         return result;
     }
     ::fesql::codec::ListRef *list_ref = (::fesql::codec::ListRef *)(input);
-    ListV<V> *col =
-        (ListV<V> *)(list_ref->list);
+    ListV<V> *col = (ListV<V> *)(list_ref->list);
     auto iter = col->GetIterator();
 
     if (iter->Valid()) {
@@ -118,8 +116,7 @@ V min_list(int8_t *input) {
         return result;
     }
     ::fesql::codec::ListRef *list_ref = (::fesql::codec::ListRef *)(input);
-    ListV<V> *col =
-        (ListV<V> *)(list_ref->list);
+    ListV<V> *col = (ListV<V> *)(list_ref->list);
     auto iter = col->GetIterator();
 
     if (iter->Valid()) {
@@ -139,8 +136,7 @@ V min_list(int8_t *input) {
 template <class V>
 V at_list(int8_t *input, int32_t pos) {
     ::fesql::codec::ListRef *list_ref = (::fesql::codec::ListRef *)(input);
-    ListV<V> *list =
-        (ListV<V> *)(list_ref->list);
+    ListV<V> *list = (ListV<V> *)(list_ref->list);
     return list->At(pos);
 }
 
@@ -153,8 +149,9 @@ bool iterator_list(int8_t *input, int8_t *output) {
     ::fesql::codec::IteratorRef *iterator_ref =
         (::fesql::codec::IteratorRef *)(output);
     ListV<V> *col = (ListV<V> *)(list_ref->list);
-    iterator_ref->iterator =
-        reinterpret_cast<int8_t *>(col->GetIterator(nullptr));
+    auto col_iter = col->GetIterator(nullptr);
+    col_iter->SeekToFirst();
+    iterator_ref->iterator = reinterpret_cast<int8_t *>(col_iter);
     return true;
 }
 
