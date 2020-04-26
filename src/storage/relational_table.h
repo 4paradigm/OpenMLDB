@@ -83,7 +83,7 @@ class RelationalTable {
     ~RelationalTable();
     bool Init();
 
-    bool Put(const std::string& value);
+    bool Put(const std::shared_ptr<std::string> value);
 
     bool Query(const ::google::protobuf::RepeatedPtrField<
                    ::rtidb::api::ReadOption>& ros,
@@ -149,10 +149,9 @@ class RelationalTable {
     inline void CombineNoUniqueAndPk(const std::string& no_unique,
                                      const std::string& pk,
                                      std::string* result) {
-        result->resize(no_unique.size() + pk.size());
-        char* buf = const_cast<char*>(result->data());
-        memcpy(buf, no_unique.c_str(), no_unique.size());
-        memcpy(buf + no_unique.size(), pk.c_str(), pk.size());
+        result->reserve(no_unique.size() + pk.size());
+        result->assign(no_unique);
+        result->append(pk);
     }
     inline rocksdb::Slice ParsePk(const rocksdb::Slice& value,
                                   const std::string& key) {

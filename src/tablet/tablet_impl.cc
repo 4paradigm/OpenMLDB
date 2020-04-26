@@ -805,7 +805,10 @@ void TabletImpl::Put(RpcController* controller,
             }
         }
     } else {
-        bool ok = r_table->Put(request->value());
+        std::shared_ptr<std::string> val_ptr(
+                const_cast<::rtidb::api::PutRequest*>(request)->
+                release_value());
+        bool ok = r_table->Put(val_ptr);
         if (!ok) {
             response->set_code(::rtidb::base::ReturnCode::kPutFailed);
             response->set_msg("put failed");
@@ -818,7 +821,7 @@ void TabletImpl::Put(RpcController* controller,
 }
 
 int TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta,
-                               std::string& msg) {
+        std::string& msg) {
     msg.clear();
     if (table_meta->name().size() <= 0) {
         msg = "table name is empty";

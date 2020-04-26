@@ -9,7 +9,7 @@
 
 #include <algorithm>
 #include <atomic>
-#include <map>
+#include <unordered_map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -88,14 +88,12 @@ class TableColumn {
     void AddColumn(std::shared_ptr<ColumnDef> column_def);
     std::vector<std::shared_ptr<ColumnDef>> GetAllColumn();
     inline uint32_t Size() {
-        return std::atomic_load_explicit(&columns_, std::memory_order_relaxed)
-            ->size();
+        return columns_.size();
     }
 
  private:
-    std::shared_ptr<std::vector<std::shared_ptr<ColumnDef>>> columns_;
-    std::shared_ptr<std::map<std::string, std::shared_ptr<ColumnDef>>>
-        column_map_;
+    std::vector<std::shared_ptr<ColumnDef>> columns_;
+    std::unordered_map<std::string, std::shared_ptr<ColumnDef>> column_map_;
 };
 
 class IndexDef {
@@ -154,7 +152,7 @@ class TableIndex {
  private:
     std::shared_ptr<std::vector<std::shared_ptr<IndexDef>>> indexs_;
     std::shared_ptr<IndexDef> pk_index_;
-    std::shared_ptr<std::map<std::string, std::shared_ptr<IndexDef>>>
+    std::shared_ptr<std::unordered_map<std::string, std::shared_ptr<IndexDef>>>
         combine_col_name_map_;
 };
 
