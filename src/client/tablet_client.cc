@@ -201,6 +201,7 @@ bool TabletClient::Update(uint32_t tid, uint32_t pid,
     for (int i = 0; i < new_cd_schema.size(); i++) {
         ::rtidb::api::Columns* cd = request.add_condition_columns();
         cd->add_name(new_cd_schema.Get(i).name());
+        // TODO(wangbao) bugfix
         cd->set_value(cd_value);
     }
     ::rtidb::api::Columns* val = request.mutable_value_columns();

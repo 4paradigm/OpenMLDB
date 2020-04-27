@@ -99,8 +99,10 @@ class RelationalTable {
         const ::google::protobuf::RepeatedPtrField<::rtidb::api::Columns>&
             condition_columns);
     bool Delete(const std::shared_ptr<IndexDef> index_def,
-                const std::string& key);
-    bool DeletePk(const rocksdb::Slice& pk_slice);
+                const std::string& comparable_key,
+                rocksdb::WriteBatch* batch);
+    bool DeletePk(const rocksdb::Slice& pk_slice,
+            rocksdb::WriteBatch* batch);
 
     rtidb::storage::RelationalTableTraverseIterator* NewTraverse(
         uint32_t idx, uint64_t snapshot_id);
@@ -173,7 +175,8 @@ class RelationalTable {
     rocksdb::Iterator* GetIteratorAndSeek(uint32_t idx,
                                           const rocksdb::Slice& key_slice);
     rocksdb::Iterator* GetRocksdbIterator(uint32_t idx);
-    bool PutDB(const std::string& pk, const char* data, uint32_t size);
+    bool PutDB(const rocksdb::Slice& spk, const char* data, uint32_t size,
+            bool unique_check, rocksdb::WriteBatch* batch);
     bool CreateSchema(const ::rtidb::api::Columns& columns,
                       std::map<std::string, int>* idx_map, Schema* new_schema);
     bool UpdateDB(const std::shared_ptr<IndexDef> index_def,
