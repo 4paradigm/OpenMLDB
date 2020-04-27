@@ -10,9 +10,9 @@
 #include "plan/planner.h"
 #include <utility>
 #include <vector>
+#include "case/sql_case.h"
 #include "gtest/gtest.h"
 #include "parser/parser.h"
-#include "case/sql_case.h"
 namespace fesql {
 namespace plan {
 
@@ -27,7 +27,8 @@ void InitCases(std::string yaml_path, std::vector<SQLCase> &cases);  // NOLINT
 
 void InitCases(std::string yaml_path, std::vector<SQLCase> &cases) {  // NOLINT
     if (!SQLCase::CreateSQLCasesFromYaml(
-        fesql::sqlcase::FindFesqlDirPath() + "/" + yaml_path, cases, "parse-only")) {
+            fesql::sqlcase::FindFesqlDirPath() + "/" + yaml_path, cases,
+            "parse-only")) {
         FAIL();
     }
 }
