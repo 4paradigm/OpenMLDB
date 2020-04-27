@@ -1075,7 +1075,8 @@ int MemTableSnapshot::ExtractIndexData(
 }
 
 bool MemTableSnapshot::PackNewIndexEntry(
-    std::shared_ptr<Table> table, const std::vector<std::vector<uint32_t>>& index_cols,
+    std::shared_ptr<Table> table,
+    const std::vector<std::vector<uint32_t>>& index_cols,
     const std::vector<::rtidb::base::ColumnDesc>& columns, uint32_t max_idx,
     uint32_t idx, uint32_t partition_num, ::rtidb::api::LogEntry* entry,
     uint32_t* index_pid) {
@@ -1145,8 +1146,9 @@ bool MemTableSnapshot::PackNewIndexEntry(
         }
         return cur_key;
     };
-    for (uint32_t i=0;i<index_cols.size()-1;++i) {
-        pid_set.insert(::rtidb::base::hash64(get_key(index_cols[i])) % partition_num);
+    for (uint32_t i = 0; i < index_cols.size() - 1; ++i) {
+        pid_set.insert(::rtidb::base::hash64(get_key(index_cols[i])) %
+                       partition_num);
     }
     std::string cur_key = get_key(index_cols.back());
     *index_pid = ::rtidb::base::hash64(cur_key) % partition_num;
@@ -1162,7 +1164,8 @@ bool MemTableSnapshot::PackNewIndexEntry(
 }
 
 bool MemTableSnapshot::DumpSnapshotIndexData(
-    std::shared_ptr<Table> table, const std::vector<std::vector<uint32_t>>& index_cols,
+    std::shared_ptr<Table> table,
+    const std::vector<std::vector<uint32_t>>& index_cols,
     const std::vector<::rtidb::base::ColumnDesc>& columns, uint32_t max_idx,
     uint32_t idx, const std::vector<::rtidb::log::WriteHandle*>& whs,
     uint64_t* snapshot_offset) {
@@ -1308,7 +1311,8 @@ bool MemTableSnapshot::DumpIndexData(
 }
 
 bool MemTableSnapshot::DumpBinlogIndexData(
-    std::shared_ptr<Table> table, const std::vector<std::vector<uint32_t>>& index_cols,
+    std::shared_ptr<Table> table,
+    const std::vector<std::vector<uint32_t>>& index_cols,
     const std::vector<::rtidb::base::ColumnDesc>& columns, uint32_t max_idx,
     uint32_t idx, const std::vector<::rtidb::log::WriteHandle*>& whs,
     uint64_t snapshot_offset, uint64_t collected_offset) {
