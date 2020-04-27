@@ -330,6 +330,7 @@ TEST_F(PlannerTest, MultiProjectListPlanPostTest) {
         "w2 AS (PARTITION BY col3 ORDER BY `TS` RANGE BETWEEN 2d PRECEDING AND "
         "1s PRECEDING) "
         "limit 10;";
+    std::cout << sql << std::endl;
     int ret = parser_->parse(sql, list, manager_, status);
     ASSERT_EQ(0, ret);
     ASSERT_EQ(2u, list.size());
