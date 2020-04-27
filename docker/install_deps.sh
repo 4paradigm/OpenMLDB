@@ -437,4 +437,20 @@ else
     echo "brpc done"
 fi
 
+if [ -f "yaml_succ" ]
+then
+    echo "yaml-cpp installed"
+else
+    if [ -f "yaml-cpp-0.6.3.tar.gz" ]
+    then
+        echo "yaml-cpp-0.6.3.tar.gz downloaded"
+    else
+        wget --no-check-certificate -O yaml-cpp-0.6.3.tar.gz https://github.com/jbeder/yaml-cpp/archive/yaml-cpp-0.6.3.tar.gz
+    fi
+    tar -zxvf yaml-cpp-0.6.3.tar.gz
+    cd yaml-cpp-yaml-cpp-0.6.3 && mkdir -p build && cd build
+    cmake -DCMAKE_INSTALL_PREFIX=${DEPS_PREFIX} ..
+    make && make install
+    touch yaml_succ
+fi
 #cd ${WORK_DIR} && rm -rf ${DEPS_SOURCE}

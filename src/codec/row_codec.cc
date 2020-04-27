@@ -564,6 +564,20 @@ int32_t RowView::GetValue(const int8_t* row, uint32_t idx,
     }
     return 0;
 }
+std::string RowView::GetRowString() {
+    if (schema_.size() == 0) {
+        return "NA";
+    }
+    std::string row_str = "";
+
+    for (int i = 0; i < schema_.size(); i++) {
+        row_str.append(GetAsString(i));
+        if (i != schema_.size()-1) {
+            row_str.append(", ");
+        }
+    }
+    return row_str;
+}
 std::string RowView::GetAsString(uint32_t idx) {
     if (schema_.size() == 0) {
         return "NA";

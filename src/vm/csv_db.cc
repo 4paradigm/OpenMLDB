@@ -56,48 +56,7 @@ void PrintRows(const Schema& schema, const std::vector<int8_t*>& rows) {
         row_decoder.Reset(*it);
         for (int32_t i = 0; i < schema.size(); i++) {
             const type::ColumnDef& column = schema.Get(i);
-            switch (column.type()) {
-                case type::kInt16: {
-                    int16_t value;
-                    row_decoder.GetInt16((uint32_t)i, &value);
-                    t.add(std::to_string(value));
-                    break;
-                }
-                case type::kInt32: {
-                    int32_t value;
-                    row_decoder.GetInt32((uint32_t)i, &value);
-                    t.add(std::to_string(value));
-                    break;
-                }
-                case type::kInt64: {
-                    int64_t value;
-                    row_decoder.GetInt64((uint32_t)i, &value);
-                    t.add(std::to_string(value));
-                    break;
-                }
-                case type::kFloat: {
-                    float value;
-                    row_decoder.GetFloat((uint32_t)i, &value);
-                    t.add(std::to_string(value));
-                    break;
-                }
-                case type::kDouble: {
-                    double value;
-                    row_decoder.GetDouble((uint32_t)i, &value);
-                    t.add(std::to_string(value));
-                    break;
-                }
-                case type::kVarchar: {
-                    char* data = NULL;
-                    uint32_t size = 0;
-                    row_decoder.GetString((uint32_t)i, &data, &size);
-                    t.add(std::string(data, size));
-                    break;
-                }
-                default: {
-                    t.add("NA");
-                }
-            }
+            t.add(row_decoder.GetAsString(i));
         }
         t.endOfRow();
     }

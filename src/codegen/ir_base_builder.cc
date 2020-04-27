@@ -99,8 +99,6 @@ bool GetLLVMType(::llvm::Module* m, const ::fesql::node::DataType& type,
     return true;
 }
 
-
-
 bool GetLLVMColumnSize(const ::fesql::node::DataType& v_type, uint32_t* size) {
     if (nullptr == size) {
         LOG(WARNING) << "the size ptr is NULL ";
@@ -261,8 +259,7 @@ bool GetLLVMType(::llvm::Module* m, const fesql::node::TypeNode* data_type,
         case fesql::node::kList: {
             if (data_type->generics_.size() != 1) {
                 LOG(WARNING) << "fail to convert data type: list generic types "
-                                "number is " +
-                                    data_type->generics_.size();
+                                "number is " << data_type->generics_.size();
                 return false;
             }
             ::llvm::Type* list_type = nullptr;
@@ -277,8 +274,8 @@ bool GetLLVMType(::llvm::Module* m, const fesql::node::TypeNode* data_type,
             if (data_type->generics_.size() != 1) {
                 LOG(WARNING)
                     << "fail to convert data type: iterator generic types "
-                       "number is " +
-                           data_type->generics_.size();
+                       "number is "
+                    << data_type->generics_.size();
                 return false;
             }
             ::llvm::Type* list_type = nullptr;

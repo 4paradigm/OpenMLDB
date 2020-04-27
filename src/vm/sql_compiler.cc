@@ -120,7 +120,7 @@ void SQLCompiler::KeepIR(SQLContext& ctx, llvm::Module* m) {
 }
 
 bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
-    DLOG(INFO) << "start to compile sql " << ctx.sql;
+    LOG(INFO) << "start to compile sql " << ctx.sql;
     ::fesql::node::PlanNodeList trees;
     bool ok = Parse(ctx, (*nm_), trees, status);
     if (!ok) {
@@ -178,7 +178,6 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         return false;
     }
 
-    m->print(::llvm::errs(), NULL);
     if (keep_ir_) {
         KeepIR(ctx, m.get());
     }

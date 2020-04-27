@@ -137,6 +137,7 @@ class RowView {
     int32_t GetValue(const int8_t* row, uint32_t idx, char** val,
                      uint32_t* length);
     std::string GetAsString(uint32_t idx);
+    std::string GetRowString();
 
  private:
     bool Init();

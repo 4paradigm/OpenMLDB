@@ -102,7 +102,7 @@ INSTANTIATE_TEST_CASE_P(
         "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join t2 on "
         "t1.col1 = t2.col2 and t2.col5 >= t1.col5;"));
 
-void Runner_Check(std::shared_ptr<Catalog> catalog, const std::string sql,
+void RunnerCheck(std::shared_ptr<Catalog> catalog, const std::string sql,
                   const bool is_batch) {
     node::NodeManager nm;
     SQLCompiler sql_compiler(catalog, &nm);
@@ -179,7 +179,7 @@ TEST_P(RunnerTest, request_mode_test) {
     AddTable(catalog, table_def4, table4);
     AddTable(catalog, table_def5, table5);
     AddTable(catalog, table_def6, table6);
-    Runner_Check(catalog, sqlstr, false);
+    RunnerCheck(catalog, sqlstr, false);
 }
 
 TEST_P(RunnerTest, batch_mode_test) {
@@ -234,7 +234,7 @@ TEST_P(RunnerTest, batch_mode_test) {
     AddTable(catalog, table_def5, table5);
     AddTable(catalog, table_def6, table6);
 
-    Runner_Check(catalog, sqlstr, true);
+    RunnerCheck(catalog, sqlstr, true);
 }
 
 Runner* GetFirstRunnerOfType(Runner* root, const RunnerType type) {
@@ -271,7 +271,7 @@ TEST_F(RunnerTest, KeyGeneratorTest) {
     index->add_first_keys("col4");
     index->set_second_key("col5");
     auto catalog = BuildCommonCatalog(table_def, table);
-    Runner_Check(catalog, sqlstr, true);
+    RunnerCheck(catalog, sqlstr, true);
 
     node::NodeManager nm;
     SQLCompiler sql_compiler(catalog, &nm);

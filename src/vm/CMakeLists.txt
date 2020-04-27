@@ -12,6 +12,7 @@ add_library(fesql_simple_catalog STATIC simple_catalog.cc)
 set(vm_deps_libs fesql_tablet fesql_vm fesql_udf fesql_vm fesql_parser fesql_planner fesql_codegen fesql_storage fesql_codec fesql_proto
         fesql_node fesql_base)
 
+set(case_deps_libs fesql_case ${yaml_libs} boost_filesystem)
 
 add_executable(physical_op_test physical_op_test.cc)
 target_link_libraries(physical_op_test ${COMMON_LIBS} gtest pthread)
@@ -85,7 +86,7 @@ list(APPEND test_list sql_compiler_test)
 
 
 add_executable(engine_test engine_test.cc)
-target_link_libraries(engine_test ${vm_deps_libs}
+target_link_libraries(engine_test ${case_deps_libs} ${vm_deps_libs}
         protobuf ${llvm_libs} ${COMMON_LIBS} gtest pthread)
 add_test(engine_test engine_test
         --gtest_output=xml:${CMAKE_BINARY_DIR}/engine_test.xml)
