@@ -6,15 +6,18 @@
 //
 
 #include "nameserver/name_server_impl.h"
+
 #include <base/strings.h>
 #include <gflags/gflags.h>
 #include <strings.h>
+
 #include <algorithm>
 #include <chrono>
 #include <set>
 #include <utility>
+
+#include "boost/algorithm/string.hpp"
 #include "base/status.h"
-#include <boost/algorithm/string.hpp>
 #include "timer.h"  // NOLINT
 
 DECLARE_string(endpoint);
@@ -46,7 +49,7 @@ using ::rtidb::base::ReturnCode;
 namespace rtidb {
 namespace nameserver {
 
-const std::string OFFLINE_LEADER_ENDPOINT = // NOLINT
+const std::string OFFLINE_LEADER_ENDPOINT =  // NOLINT
     "OFFLINE_LEADER_ENDPOINT";
 const uint8_t MAX_ADD_TABLE_FIELD_COUNT = 63;
 
@@ -2820,7 +2823,8 @@ int NameServerImpl::CreateTableOnTablet(
     }
     ::rtidb::api::TableMeta table_meta;
     std::string schema;
-    if (table_info->has_table_type()) {
+    if (table_info->has_table_type() &&
+        table_info->table_type() != ::rtidb::type::kTimeSeries) {
         if (table_info->table_type() == ::rtidb::type::kRelational) {
             table_meta.set_table_type(::rtidb::type::kRelational);
         } else if (table_info->table_type() == rtidb::type::kObjectStore) {

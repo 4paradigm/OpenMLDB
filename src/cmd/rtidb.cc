@@ -6474,7 +6474,7 @@ int main(int argc, char* argv[]) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     if (FLAGS_role == "tablet") {
         StartTablet();
-    } else if (FLAGS_role == "") {
+    } else if (FLAGS_role == "blob_proxy") {
         StartBlobProxy();
     } else if (FLAGS_role == "client") {
         StartClient();
