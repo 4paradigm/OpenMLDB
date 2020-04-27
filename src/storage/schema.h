@@ -83,10 +83,10 @@ class TableColumn {
  public:
     TableColumn();
     ~TableColumn();
-    const std::shared_ptr<ColumnDef> GetColumn(uint32_t idx);
-    const std::shared_ptr<ColumnDef> GetColumn(const std::string& name);
+    std::shared_ptr<ColumnDef> GetColumn(uint32_t idx);
+    std::shared_ptr<ColumnDef> GetColumn(const std::string& name);
     void AddColumn(std::shared_ptr<ColumnDef> column_def);
-    const std::vector<std::shared_ptr<ColumnDef>> GetAllColumn();
+    const std::vector<std::shared_ptr<ColumnDef>>& GetAllColumn();
     inline uint32_t Size() {
         return columns_.size();
     }
