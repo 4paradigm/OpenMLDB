@@ -1,0 +1,82 @@
+SQLCases:
+  - id: 1
+    desc: SELECT列
+    sql: SELECT COL1 FROM t1;
+  - id: 2
+    desc: SELECT列重命名
+    sql: SELECT COL1 as c1 FROM t1;
+  - id: 3
+    desc: SELECT列重命名2
+    sql: SELECT COL1 c1 FROM t1;
+  - id: 4
+    desc: SELECT 表.列
+    sql: SELECT t1.COL1 FROM t1;
+  - id: 5
+    desc: SELECT 表.列 重命名
+    sql: SELECT t1.COL1 as c1 FROM t1;
+  - id: 6
+    desc: SELECT 表.列 重命名2
+    sql: SELECT t1.COL1 c1 FROM t1;
+  - id: 7
+    desc: SELECT Limit
+    sql: SELECT t1.COL1 c1 FROM t1 limit 10;
+  - id: 8
+    desc: SELECT所有列
+    sql: SELECT * FROM t1;
+  - id: 9
+    desc: SELECT COUNT
+    sql: SELECT COUNT(*) FROM t1;
+  - id: 10
+    desc: SELECT COUNT某一列（去除null列）
+    sql: SELECT COUNT(COL1) FROM t1;
+  - id: 11
+    desc: SELECT 表达式+
+    sql: SELECT COL1 + COL2 as col12 FROM t1;
+  - id: 12
+    desc: SELECT 算术表达式-
+    sql: SELECT COL1 - COL2 as col12 FROM t1;
+  - id: 13
+    desc: SELECT 算术表达式*
+    sql: SELECT COL1 * COL2 as col12 FROM t1;
+  - id: 15
+    desc: SELECT 算术表达式/
+    sql: SELECT COL1 / COL2 as col12 FROM t1;
+  - id: 16
+    desc: SELECT 算术表达式/
+    sql: SELECT COL1 % COL2 as col12 FROM t1;
+  - id: 17
+    desc: SELECT Bool表达式等于
+    sql: SELECT COL1 = COL2 as col12 FROM t1;
+  - id: 18
+    desc: SELECT Bool表达式等于2
+    sql: SELECT COL1 == COL2 as col12 FROM t1;
+  - id: 19
+    desc: SELECT Bool表达式小于
+    sql: SELECT COL1 < COL2 as col12 FROM t1;
+  - id: 20
+    desc: SELECT Bool表达式大于
+    sql: SELECT COL1 > COL2 as col12 FROM t1;
+  - id: 21
+    desc: SELECT Bool表达式小于等于
+    sql: SELECT COL1 <= COL2 as col12 FROM t1;
+  - id: 22
+    desc: SELECT Bool表达式大于等于
+    sql: SELECT COL1 >= COL2 as col12 FROM t1;
+  - id: 23
+    desc: SELECT Bool表达式不等于
+    sql: SELECT COL1 != COL2 as col12 FROM t1;
+  - id: 24
+    desc: SELECT 逻辑关系表达式AND
+    sql: SELECT COL1 >= COL2 && COL1 != COL2 as col12 FROM t1;
+  - id: 25
+    desc: SELECT 逻辑关系表达式AND2
+    sql: SELECT COL1 >= COL2 and COL1 != COL2 as col12 FROM t1;
+  - id: 26
+    desc: SELECT 逻辑关系表达式OR
+    sql: SELECT COL1 >= COL2 || COL1 != COL2 as col12 FROM t1;
+  - id: 27
+    desc: SELECT 逻辑关系表达式OR2
+    sql: SELECT COL1 >= COL2 OR COL1 != COL2 as col12 FROM t1;
+  - id: 28
+    desc: SELECT 逻辑关系表达式非
+    sql: SELECT !(COL1 >= COL2 or COL1 != COL2) as col12 FROM t1;

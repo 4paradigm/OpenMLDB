@@ -327,7 +327,8 @@ bool SQLCase::CreateTableInfoFromYamlNode(const YAML::Node& schema_data,
     return true;
 }
 bool SQLCase::CreateSQLCasesFromYaml(const std::string& yaml_path,
-                                     std::vector<SQLCase>& sql_cases) {
+                                     std::vector<SQLCase>& sql_cases,
+                                     const std::string& filter_mode) {
     LOG(INFO) << "SQL Cases Path: " << yaml_path;
     if (!boost::filesystem::is_regular_file(yaml_path)) {
         LOG(WARNING) << yaml_path << ": No such file";
@@ -360,6 +361,12 @@ bool SQLCase::CreateSQLCasesFromYaml(const std::string& yaml_path,
                 boost::trim(sql_case.mode_);
             } else {
                 sql_case.mode_ = "batch";
+            }
+
+            if (!filter_mode.empty()) {
+                if (sql_case.mode_ == filter_mode) {
+                    continue;
+                }
             }
 
             if (sql_case_node["db"]) {

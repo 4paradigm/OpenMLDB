@@ -12,6 +12,7 @@
 #include <vector>
 #include "gtest/gtest.h"
 #include "parser/parser.h"
+#include "case/sql_case.h"
 namespace fesql {
 namespace plan {
 
@@ -19,7 +20,23 @@ using fesql::node::NodeManager;
 using fesql::node::PlanNode;
 using fesql::node::SQLNode;
 using fesql::node::SQLNodeList;
-class PlannerTest : public ::testing::TestWithParam<std::string> {
+using fesql::sqlcase::SQLCase;
+
+std::vector<SQLCase> InitCases(std::string yaml_path);
+void InitCases(std::string yaml_path, std::vector<SQLCase> &cases);  // NOLINT
+
+void InitCases(std::string yaml_path, std::vector<SQLCase> &cases) {  // NOLINT
+    if (!SQLCase::CreateSQLCasesFromYaml(
+        fesql::sqlcase::FindFesqlDirPath() + "/" + yaml_path, cases, "parse-only")) {
+        FAIL();
+    }
+}
+std::vector<SQLCase> InitCases(std::string yaml_path) {
+    std::vector<SQLCase> cases;
+    InitCases(yaml_path, cases);
+    return cases;
+}
+class PlannerTest : public ::testing::TestWithParam<SQLCase> {
  public:
     PlannerTest() {
         manager_ = new NodeManager();
@@ -37,199 +54,54 @@ class PlannerTest : public ::testing::TestWithParam<std::string> {
 };
 
 INSTANTIATE_TEST_CASE_P(
-    SqlExprPlanner, PlannerTest,
-    testing::Values(
-        "SELECT COL1 FROM t1;", "SELECT COL1 as c1 FROM t1;",
-        "SELECT COL1 c1 FROM t1;", "SELECT t1.COL1 FROM t1;",
-        "SELECT t1.COL1 as c1 FROM t1;", "SELECT t1.COL1 c1 FROM t1;",
-        "SELECT t1.COL1 c1 FROM t1 limit 10;", "SELECT * FROM t1;",
-        "SELECT COUNT(*) FROM t1;", "SELECT COUNT(COL1) FROM t1;",
-        "SELECT TRIM(COL1) FROM t1;", "SELECT trim(COL1) as trim_col1 FROM t1;",
-        "SELECT MIN(COL1) FROM t1;", "SELECT min(COL1) FROM t1;",
-        "SELECT MAX(COL1) FROM t1;", "SELECT max(COL1) as max_col1 FROM t1;",
-        "SELECT SUM(COL1) FROM t1;", "SELECT sum(COL1) as sum_col1 FROM t1;",
-        "SELECT COL1, COL2, `TS`, AVG(COL3) OVER w, SUM(COL3) OVER w FROM t1 \n"
-        "WINDOW w AS (PARTITION BY COL2\n"
-        "              ORDER BY `TS` ROWS BETWEEN UNBOUNDED PRECEDING AND "
-        "UNBOUNDED FOLLOWING);",
-        "SELECT COL1, trim(COL2), `TS`, AVG(AMT) OVER w, SUM(AMT) OVER w FROM "
-        "t1 \n"
-        "WINDOW w AS (PARTITION BY COL2\n"
-        "              ORDER BY `TS` ROWS BETWEEN 3 PRECEDING AND 3 "
-        "FOLLOWING);",
-        "SELECT COL1, SUM(COL3) OVER w as w_amt_sum FROM t \n"
-        "WINDOW w AS (PARTITION BY COL2\n"
-        "              ORDER BY `TS` ROWS BETWEEN 3 PRECEDING AND 3 "
-        "FOLLOWING);",
-        "SELECT COL1 + COL2 as col12 FROM t1;",
-        "SELECT COL1 - COL2 as col12 FROM t1;",
-        "SELECT COL1 * COL2 as col12 FROM t1;",
-        "SELECT COL1 / COL2 as col12 FROM t1;",
-        "SELECT COL1 % COL2 as col12 FROM t1;",
-        "SELECT COL1 = COL2 as col12 FROM t1;",
-        "SELECT COL1 == COL2 as col12 FROM t1;",
-        "SELECT COL1 < COL2 as col12 FROM t1;",
-        "SELECT COL1 > COL2 as col12 FROM t1;",
-        "SELECT COL1 <= COL2 as col12 FROM t1;",
-        "SELECT COL1 != COL2 as col12 FROM t1;",
-        "SELECT COL1 >= COL2 as col12 FROM t1;",
-        "SELECT COL1 >= COL2 && COL1 != COL2 as col12 FROM t1;",
-        "SELECT COL1 >= COL2 and COL1 != COL2 as col12 FROM t1;",
-        "SELECT COL1 >= COL2 || COL1 != COL2 as col12 FROM t1;",
-        "SELECT COL1 >= COL2 or COL1 != COL2 as col12 FROM t1;",
-        "SELECT !(COL1 >= COL2 or COL1 != COL2) as col12 FROM t1;",
-
-        "SELECT sum(col1) OVER w1 as w1_col1_sum FROM t1 "
-        "WINDOW w1 AS (PARTITION BY col15 ORDER BY `TS` RANGE BETWEEN 3 "
-        "PRECEDING AND CURRENT ROW) limit 10;",
-        "SELECT COUNT(*) FROM t1;"));
+    SqlSimpleQueryParse, PlannerTest,
+    testing::ValuesIn(InitCases("cases/plan/simple_query.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
-    SqlWherePlan, PlannerTest,
-    testing::Values(
-        "SELECT COL1 FROM t1 where COL1+COL2;",
-        "SELECT COL1 FROM t1 where COL1;",
-        "SELECT COL1 FROM t1 where COL1 > 10 and COL2 = 20 or COL1 =0;",
-        "SELECT COL1 FROM t1 where COL1 > 10 and COL2 = 20;",
-        "SELECT COL1 FROM t1 where COL1 > 10;"));
-INSTANTIATE_TEST_CASE_P(
-    SqlLikePlan, PlannerTest,
-    testing::Values("SELECT COL1 FROM t1 where COL like \"%abc\";",
-                    "SELECT COL1 FROM t1 where COL1 like '%123';",
-                    "SELECT COL1 FROM t1 where COL not like \"%abc\";",
-                    "SELECT COL1 FROM t1 where COL1 not like '%123';",
-                    "SELECT COL1 FROM t1 where COL1 not like 10;",
-                    "SELECT COL1 FROM t1 where COL1 like 10;"));
-INSTANTIATE_TEST_CASE_P(
-    SqlInPlan, PlannerTest,
-    testing::Values(
-        "SELECT COL1 FROM t1 where COL in (1, 2, 3, 4, 5);",
-        "SELECT COL1 FROM t1 where COL1 in (\"abc\", \"xyz\", \"test\");",
-        "SELECT COL1 FROM t1 where COL1 not in (1,2,3,4,5);"));
+    SqlDistinctParse, PlannerTest,
+    testing::ValuesIn(InitCases("cases/plan/distinct_query.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
-    SqlGroupPlan, PlannerTest,
-    testing::Values(
-        "SELECT distinct sum(COL1) as col1sum, * FROM t1 where col2 > 10 group "
-        "by COL1, "
-        "COL2 having col1sum > 0 order by COL1+COL2 limit 10;",
-        "SELECT sum(COL1) as col1sum, * FROM t1 group by COL1, COL2;",
-        "SELECT COL1 FROM t1 group by COL1+COL2;",
-        "SELECT COL1 FROM t1 group by COL1;",
-        "SELECT COL1 FROM t1 group by COL1 > 10 and COL2 = 20 or COL1 =0;",
-        "SELECT COL1 FROM t1 group by COL1, COL2;",
-        "SELECT COL1 FROM t1 group by COL1;"));
+    SqlWhereParse, PlannerTest,
+    testing::ValuesIn(InitCases("cases/plan/where_query.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
-    SqlHavingPlan, PlannerTest,
-    testing::Values(
-        "SELECT COL1 FROM t1 having COL1+COL2;",
-        "SELECT COL1 FROM t1 having COL1;",
-        "SELECT COL1 FROM t1 HAVING COL1 > 10 and COL2 = 20 or COL1 =0;",
-        "SELECT COL1 FROM t1 HAVING COL1 > 10 and COL2 = 20;",
-        "SELECT COL1 FROM t1 HAVING COL1 > 10;"));
+    SqlGroupParse, PlannerTest,
+    testing::ValuesIn(InitCases("cases/plan/group_query.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
-    SqlOrderPlan, PlannerTest,
-    testing::Values("SELECT COL1 FROM t1 order by COL1 + COL2 - COL3;",
-                    "SELECT COL1 FROM t1 order by COL1, COL2, COL3;",
-                    "SELECT COL1 FROM t1 order by COL1, COL2;",
-                    "SELECT COL1 FROM t1 order by COL1;"));
+    SqlHavingParse, PlannerTest,
+    testing::ValuesIn(InitCases("cases/plan/having_query.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
-    SqlWhereGroupHavingOrderPlan, PlannerTest,
-    testing::Values(
-        "SELECT sum(COL1) as col1sum, * FROM t1 where col2 > 10 group by COL1, "
-        "COL2 having col1sum > 0 order by COL1+COL2 limit 10;",
-        "SELECT sum(COL1) as col1sum, * FROM t1 where col2 > 10 group by COL1, "
-        "COL2 having col1sum > 0 order by COL1 limit 10;",
-        "SELECT sum(COL1) as col1sum, * FROM t1 where col2 > 10 group by COL1, "
-        "COL2 having col1sum > 0 limit 10;",
-        "SELECT sum(COL1) as col1sum, * FROM t1 where col2 > 10 group by COL1, "
-        "COL2 having col1sum > 0;",
-        "SELECT sum(COL1) as col1sum, * FROM t1 group by COL1, COL2 having "
-        "sum(COL1) > 0;",
-        "SELECT sum(COL1) as col1sum, * FROM t1 group by COL1, COL2 having "
-        "col1sum > 0;"));
+    SqlOrderParse, PlannerTest,
+    testing::ValuesIn(InitCases("cases/plan/order_query.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
-    SqlJoinPlan, PlannerTest,
-    testing::Values(
-        "SELECT * FROM t1 full join t2 on t1.col1 = t2.col2;",
-        "SELECT * FROM t1 left join t2 on t1.col1 = t2.col2;",
-        "SELECT * FROM t1 right join t2 on t1.col1 = t2.col2;",
-        "SELECT * FROM t1 inner join t2 on t1.col1 = t2.col2;",
-        "SELECT * FROM t1 last join t2 on t1.col1 = t2.col2;",
-        "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t2 left join t2 on "
-        "t1.col1 = t2.col2 and t2.col15 >= t1.col15;",
-        "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t2 last join t2 on "
-        "t1.col1 = t2.col2 and t2.col15 >= t1.col15;",
-        "SELECT t1.col1 as t1_col1, t2.col1 as t2_col2 from t1 LAST JOIN t2 on "
-        "t1.col1 = t2.col1 and t2.col15 between t1.col15 - 30d and t1.col15 "
-        "- 1d;"));
+    SqlJoinParse, PlannerTest,
+    testing::ValuesIn(InitCases("cases/plan/join_query.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
-    SqlUnionPlan, PlannerTest,
-    testing::Values(
-        "SELECT * FROM t1 UNION SELECT * FROM t2;",
-        "SELECT * FROM t1 UNION DISTINCT SELECT * FROM t2;",
-        "SELECT * FROM t1 UNION ALL SELECT * FROM t2;",
-        "SELECT * FROM t1 UNION ALL SELECT * FROM t2 UNION SELECT * FROM t3;",
-        "SELECT * FROM t1 left join t2 on t1.col1 = t2.col2 UNION ALL SELECT * "
-        "FROM t3 UNION SELECT * FROM t4;",
-        "SELECT sum(COL1) as col1sum, * FROM t1 where col2 > 10 group by COL1, "
-        "COL2 having col1sum > 0 order by COL1+COL2 limit 10 UNION ALL "
-        "SELECT sum(COL1) as col1sum, * FROM t1 group by COL1, COL2 having "
-        "sum(COL1) > 0;",
-        "SELECT * FROM t1 inner join t2 on t1.col1 = t2.col2 UNION "
-        "SELECT * FROM t3 inner join t4 on t3.col1 = t4.col2 UNION "
-        "SELECT * FROM t5 inner join t6 on t5.col1 = t6.col2;"));
-INSTANTIATE_TEST_CASE_P(
-    SqlDistinctPlan, PlannerTest,
-    testing::Values(
-        "SELECT distinct COL1 FROM t1 HAVING COL1 > 10 and COL2 = 20;",
-        "SELECT DISTINCT sum(COL1) as col1sum, * FROM t1 group by COL1,COL2;",
-        "SELECT DISTINCT sum(col1) OVER w1 as w1_col1_sum FROM t1 "
-        "WINDOW w1 AS (PARTITION BY col15 ORDER BY `TS` RANGE BETWEEN 3 "
-        "PRECEDING AND CURRENT ROW) limit 10;",
-        "SELECT DISTINCT COUNT(*) FROM t1;",
-        "SELECT distinct COL1 FROM t1 where COL1+COL2;",
-        "SELECT DISTINCT COL1 FROM t1 where COL1 > 10;"));
+    SqlUnionParse, PlannerTest,
+    testing::ValuesIn(InitCases("cases/plan/union_query.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
-    SqlSubQueryPlan, PlannerTest,
-    testing::Values(
-        "SELECT * FROM t1 WHERE COL1 > (select avg(COL1) from t1) limit 10;",
-        "select * from (select * from t1 where col1>0);",
-        "SELECT LastName,FirstName, Title, Salary FROM Employees AS T1 "
-        "WHERE Salary >=(SELECT Avg(Salary) "
-        "FROM Employees WHERE T1.Title = Employees.Title) Order by Title;",
-        "select * from \n"
-        "    (select * from stu where grade = 7) s\n"
-        "left join \n"
-        "    (select * from sco where subject = \"math\") t\n"
-        "on s.id = t.stu_id\n"
-        "union\n"
-        "select distinct * from \n"
-        "    (select distinct * from stu where grade = 7) s\n"
-        "right join \n"
-        "    (select distinct * from sco where subject = \"math\") t\n"
-        "on s.id = t.stu_id;",
-        "SELECT * FROM t5 inner join t6 on t5.col1 = t6.col2;",
-        "select * from \n"
-        "    (select * from stu where grade = 7) s\n"
-        "left join \n"
-        "    (select * from sco where subject = \"math\") t\n"
-        "on s.id = t.stu_id\n"
-        "union\n"
-        "select * from \n"
-        "    (select * from stu where grade = 7) s\n"
-        "right join \n"
-        "    (select * from sco where subject = \"math\") t\n"
-        "on s.id = t.stu_id;",
-        "SELECT * FROM t5 inner join t6 on t5.col1 = t6.col2;"));
+    SqlSubQueryParse, PlannerTest,
+    testing::ValuesIn(InitCases("cases/plan/sub_query.yaml")));
+
+INSTANTIATE_TEST_CASE_P(UDFParse, PlannerTest,
+                        testing::ValuesIn(InitCases("cases/plan/udf.yaml")));
+
+INSTANTIATE_TEST_CASE_P(SQLCreate, PlannerTest,
+                        testing::ValuesIn(InitCases("cases/plan/create.yaml")));
+
+INSTANTIATE_TEST_CASE_P(SQLInsert, PlannerTest,
+                        testing::ValuesIn(InitCases("cases/plan/insert.yaml")));
+
+INSTANTIATE_TEST_CASE_P(SQLCmdParserTest, PlannerTest,
+                        testing::ValuesIn(InitCases("cases/plan/cmd.yaml")));
 TEST_P(PlannerTest, PlannerSucessTest) {
-    std::string sqlstr = GetParam();
+    std::string sqlstr = GetParam().sql_str();
     std::cout << sqlstr << std::endl;
 
     NodePointVector trees;
@@ -245,7 +117,6 @@ TEST_P(PlannerTest, PlannerSucessTest) {
     Planner *planner_ptr = new SimplePlanner(manager_);
     node::PlanNodeList plan_trees;
     ASSERT_EQ(0, planner_ptr->CreatePlanTree(trees, plan_trees, status));
-    ASSERT_EQ(1u, plan_trees.size());
     std::cout << *(plan_trees.front()) << std::endl;
 }
 

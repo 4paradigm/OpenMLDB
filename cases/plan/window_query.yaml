@@ -1,0 +1,8 @@
+SQLCases:
+  - id: 1
+    desc: SELECT列
+    sql: |
+      SELECT sum(col1) OVER w1 as w1_col1_sum FROM t1
+      WINDOW w1 AS (PARTITION BY col15 ORDER BY col5 RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
+
+

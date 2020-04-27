@@ -1,0 +1,31 @@
+SQLCases:
+  - id: 1
+    desc: SELECT简单过滤
+    sql: SELECT COL1 FROM t1 where COL1 > 10;
+  - id: 3
+    desc: SELECT过滤条件是逻辑关系表达式
+    sql: SELECT COL1 FROM t1 where COL1 > 10 and COL2 = 20 or COL1 =0;
+  - id: 4
+    desc: SELECT 过滤后统计条数
+    sql: SELECT COUNT(*) FROM t1 where COL1 > 10 and COL2 = 20;
+  - id: 5
+    desc: SELECT 过滤条件LIKE通配符
+    sql: SELECT COL1 FROM t1 where COL like "%abc";
+  - id: 6
+    desc: SELECT 过滤条件NOT LIKE 通配符
+    sql: SELECT COL1 FROM t1 where COL like "%abc";
+  - id: 7
+    desc: SELECT 过滤条件LIKE 数字
+    sql: SELECT COL1 FROM t1 where COL1 like 10;
+  - id: 8
+    desc: SELECT 过滤条件NOT LIKE 数字
+    sql: SELECT COL1 FROM t1 where COL1 not like 10;
+  - id: 9
+    desc: SELECT 过滤条件in整数元组
+    sql: SELECT COL1 FROM t1 where COL2 in (1, 2, 3, 4, 5);
+  - id: 10
+    desc: SELECT 过滤条件in字符串元组
+    sql: SELECT COL1 FROM t1 where COL1 in ("abc", "xyz", "test");
+  - id: 11
+    desc: SELECT 过滤条件NOT IN证书元组
+    sql: SELECT COL1 FROM t1 where COL1 not in (1,2,3,4,5);

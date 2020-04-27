@@ -7,7 +7,7 @@ set(SQL_AST_LEXER_GEN
 
 set(SQL_AST_PARSER_GEN
         ${CMAKE_CURRENT_BINARY_DIR}/sql_parser.gen.cc)
-
+set(case_deps_libs fesql_case ${yaml_libs} fesql_codec boost_filesystem)
 add_custom_command(OUTPUT ${SQL_AST_LEXER_GEN}
         COMMAND flex ${PROJECT_SOURCE_DIR}/src/parser/sql_scan.l
         )
@@ -22,5 +22,5 @@ ADD_CUSTOM_TARGET(run_gen_parser DEPENDS ${SQL_AST_LEXER_GEN}
 add_library(fesql_parser STATIC ${CMAKE_CURRENT_BINARY_DIR}/sql_scan.gen.cc ${CMAKE_CURRENT_BINARY_DIR}/sql_parser.gen.cc parser.cc)
 
 add_executable(sql_parser_test sql_parser_test.cc)
-target_link_libraries(sql_parser_test fesql_parser fesql_node fesql_proto ${COMMON_LIBS} protobuf gtest pthread)
+target_link_libraries(sql_parser_test fesql_parser fesql_node ${case_deps_libs} fesql_proto ${COMMON_LIBS} protobuf gtest pthread)
 add_test(sql_parser_test sql_parser_test --gtest_output=xml:${CMAKE_BINARY_DIR}/sql_parser_test.xml)

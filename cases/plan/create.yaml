@@ -1,0 +1,62 @@
+SQLCases:
+  - id: 1
+    desc: 简单CREATE
+    sql: |
+      create table test(
+          column1 int NOT NULL,
+          column2 timestamp NOT NULL,
+          column3 int NOT NULL,
+          column4 string NOT NULL,
+          column5 int NOT NULL
+      );
+  - id: 2
+    desc: 简单CREATE NOT EXIST
+    sql: |
+      create table IF NOT EXISTS test(
+          column1 int NOT NULL,
+          column2 timestamp NOT NULL,
+          column3 int NOT NULL,
+          column4 string NOT NULL,
+          column5 int NOT NULL
+      );
+  - id: 3
+    desc: CREATE with 索引
+    sql: |
+      create table test(
+          column1 int NOT NULL,
+          column2 timestamp NOT NULL,
+          column3 int NOT NULL,
+          column4 string NOT NULL,
+          column5 int NOT NULL,
+          index(key=(column4, column3), ts=column5)
+      );
+  - id: 4
+    desc: Create with索引和TTL
+    sql: |
+      create table test(
+          column1 int NOT NULL,
+          column2 timestamp NOT NULL,
+          column3 int NOT NULL,
+          column4 string NOT NULL,
+          column5 int NOT NULL,
+          index(key=(column4, column3), ts=column2, ttl=60d)
+      );
+  - id: 5
+    desc: Create 带索引和version
+    sql: |
+      create table test(
+          column1 int NOT NULL,
+          column2 timestamp NOT NULL,
+          column3 int NOT NULL,
+          column4 string NOT NULL,
+          column5 int NOT NULL,
+          index(key=(column4, column3), version=(column5, 3), ts=column2, ttl=60d)
+      );
+
+
+
+
+
+
+
+
