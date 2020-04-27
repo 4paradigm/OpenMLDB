@@ -17,7 +17,7 @@
 #include <random>
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
-#include "logging.h" // NOLINT
+#include "base/glog_wapper.h" // NOLINT
 
 #include "base/display.h"
 #include "base/file_util.h"
@@ -39,9 +39,6 @@
 #include "tprinter.h" // NOLINT
 #include "version.h" // NOLINT
 
-using ::baidu::common::DEBUG;
-using ::baidu::common::INFO;
-using ::baidu::common::WARNING;
 using Schema =
     ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
 
@@ -72,20 +69,16 @@ DECLARE_uint32(max_col_display_length);
 void SetupLog() {
     // Config log
     if (FLAGS_log_level == "debug") {
-        ::baidu::common::SetLogLevel(DEBUG);
+        ::rtidb::base::SetLogLevel(DEBUG);
     } else {
-        ::baidu::common::SetLogLevel(INFO);
+        ::rtidb::base::SetLogLevel(INFO);
     }
     if (!FLAGS_log_dir.empty()) {
         ::rtidb::base::Mkdir(FLAGS_log_dir);
-        std::string info_file = FLAGS_log_dir + "/" + FLAGS_role + ".info.log";
-        std::string warning_file =
-            FLAGS_log_dir + "/" + FLAGS_role + ".warning.log";
-        ::baidu::common::SetLogFile(info_file.c_str());
-        ::baidu::common::SetWarningFile(warning_file.c_str());
+        std::string file = FLAGS_log_dir + "/" + FLAGS_role;
+        ::testing::InitGoogleTest(&argc, argv);
+        rtidb::base::SetLogFile(file);
     }
-    ::baidu::common::SetLogCount(FLAGS_log_file_count);
-    ::baidu::common::SetLogSize(FLAGS_log_file_size);
 }
 
 void StartNameServer() {

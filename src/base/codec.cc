@@ -17,11 +17,9 @@
 
 #include "base/codec.h"
 #include <unordered_map>
-#include "logging.h" // NOLINT
+#include "base/glog_wapper.h" // NOLINT
 
-using ::baidu::common::DEBUG;
-using ::baidu::common::INFO;
-using ::baidu::common::WARNING;
+
 
 namespace rtidb {
 namespace base {

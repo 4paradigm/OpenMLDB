@@ -7,7 +7,7 @@
 
 #include <gflags/gflags.h>
 #include "gtest/gtest.h"
-#include "logging.h"  // NOLINT
+#include "base/glog_wapper.h"  // NOLINT
 #include "storage/mem_table.h"
 #include "storage/ticket.h"
 #include "timer.h"  // NOLINT

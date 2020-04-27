@@ -15,7 +15,7 @@
 #include <vector>
 #include <utility>
 #include "base/endianconv.h"
-#include "logging.h" // NOLINT
+#include "base/glog_wapper.h" // NOLINT
 #include "base/strings.h"
 #include "storage/segment.h"
 
@@ -31,7 +31,7 @@ static inline void Encode(uint64_t time, const char* data, const size_t size,
                           char* buffer, uint32_t offset) {
     buffer += offset;
     uint32_t total_size = 8 + size;
-    PDLOG(DEBUG, "encode size %d", total_size);
+    DEBUGLOG("encode size %d", total_size);
     memcpy(buffer, static_cast<const void*>(&total_size), 4);
     memrev32ifbe(buffer);
     buffer += 4;
@@ -111,7 +111,7 @@ static inline void EncodeFull(const std::string& pk, uint64_t time,
     buffer += offset;
     uint32_t pk_size = pk.length();
     uint32_t total_size = 8 + pk_size + size;
-    PDLOG(DEBUG, "encode total size %u pk size %u", total_size, pk_size);
+    DEBUGLOG("encode total size %u pk size %u", total_size, pk_size);
     memcpy(buffer, static_cast<const void*>(&total_size), 4);
     memrev32ifbe(buffer);
     buffer += 4;
@@ -137,12 +137,12 @@ static inline void Decode(
     std::vector<std::pair<uint64_t, std::string*>>& pairs) { // NOLINT
     const char* buffer = str->c_str();
     uint32_t total_size = str->length();
-    PDLOG(DEBUG, "total size %d %s", total_size, DebugString(*str).c_str());
+    DEBUGLOG("total size %d %s", total_size, DebugString(*str).c_str());
     while (total_size > 0) {
         uint32_t size = 0;
         memcpy(static_cast<void*>(&size), buffer, 4);
         memrev32ifbe(static_cast<void*>(&size));
-        PDLOG(DEBUG, "decode size %d", size);
+        DEBUGLOG("decode size %d", size);
         buffer += 4;
         uint64_t time = 0;
         memcpy(static_cast<void*>(&time), buffer, 8);
@@ -163,18 +163,18 @@ static inline void DecodeFull(
         value_map) {
     const char* buffer = str->c_str();
     uint32_t total_size = str->length();
-    PDLOG(DEBUG, "total size %u %s", total_size, DebugString(*str).c_str());
+    DEBUGLOG("total size %u %s", total_size, DebugString(*str).c_str());
     while (total_size > 0) {
         uint32_t size = 0;
         memcpy(static_cast<void*>(&size), buffer, 4);
         memrev32ifbe(static_cast<void*>(&size));
-        PDLOG(DEBUG, "decode size %u", size);
+        DEBUGLOG("decode size %u", size);
         buffer += 4;
         uint32_t pk_size = 0;
         memcpy(static_cast<void*>(&pk_size), buffer, 4);
         buffer += 4;
         memrev32ifbe(static_cast<void*>(&pk_size));
-        PDLOG(DEBUG, "decode size %u", pk_size);
+        DEBUGLOG("decode size %u", pk_size);
         assert(size > pk_size + 8);
         uint64_t time = 0;
         memcpy(static_cast<void*>(&time), buffer, 8);

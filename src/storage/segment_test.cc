@@ -11,7 +11,7 @@
 #include "base/slice.h"
 #include "storage/record.h"
 #include "gtest/gtest.h"
-#include "logging.h" // NOLINT
+#include "base/glog_wapper.h" // NOLINT
 
 using ::rtidb::base::Slice;
 

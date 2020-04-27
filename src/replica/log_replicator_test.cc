@@ -14,7 +14,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <utility>
-#include "logging.h" // NOLINT
+#include "base/glog_wapper.h" // NOLINT
 #include "proto/tablet.pb.h"
 #include "replica/replicate_node.h"
 #include "storage/mem_table.h"

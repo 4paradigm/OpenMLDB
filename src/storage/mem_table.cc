@@ -12,13 +12,11 @@
 #include <utility>
 #include "base/hash.h"
 #include "base/slice.h"
-#include "logging.h"  // NOLINT
+#include "base/glog_wapper.h"  // NOLINT
 #include "storage/record.h"
 #include "timer.h"  // NOLINT
 
-using ::baidu::common::DEBUG;
-using ::baidu::common::INFO;
-using ::baidu::common::WARNING;
+
 
 DECLARE_string(db_root_path);
 DECLARE_uint32(skiplist_max_height);

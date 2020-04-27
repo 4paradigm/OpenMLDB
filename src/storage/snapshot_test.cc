@@ -18,7 +18,7 @@
 #include "base/strings.h"
 #include "gtest/gtest.h"
 #include "log/log_writer.h"
-#include "logging.h" // NOLINT
+#include "base/glog_wapper.h" // NOLINT
 #include "proto/tablet.pb.h"
 #include "storage/binlog.h"
 #include "storage/disk_table_snapshot.h"

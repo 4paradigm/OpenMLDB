@@ -19,7 +19,7 @@
 #include "gtest/gtest.h"
 #include "log/log_reader.h"
 #include "log/log_writer.h"
-#include "logging.h" // NOLINT
+#include "base/glog_wapper.h" // NOLINT
 #include "proto/tablet.pb.h"
 #include "storage/mem_table.h"
 #include "storage/ticket.h"

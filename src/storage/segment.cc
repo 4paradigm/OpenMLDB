@@ -9,13 +9,11 @@
 
 #include <gflags/gflags.h>
 #include "base/strings.h"
-#include "logging.h"  // NOLINT
+#include "base/glog_wapper.h"  // NOLINT
 #include "storage/record.h"
 #include "timer.h"  // NOLINT
 
-using ::baidu::common::DEBUG;
-using ::baidu::common::INFO;
-using ::baidu::common::WARNING;
+
 
 DECLARE_uint32(skiplist_max_height);
 DECLARE_uint32(gc_deleted_pk_version_delta);
@@ -297,12 +295,12 @@ void Segment::FreeList(::rtidb::base::Node<uint64_t, DataBlock*>* node,
         ::rtidb::base::Node<uint64_t, DataBlock*>* tmp = node;
         idx_byte_size_.fetch_sub(GetRecordTsIdxSize(tmp->Height()));
         node = node->GetNextNoBarrier(0);
-        PDLOG(DEBUG, "delete key %lld with height %u", tmp->GetKey(),
+        DEBUGLOG("delete key %lld with height %u", tmp->GetKey(),
               tmp->Height());
         if (tmp->GetValue()->dim_cnt_down > 1) {
             tmp->GetValue()->dim_cnt_down--;
         } else {
-            PDLOG(DEBUG, "delele data block for key %lld", tmp->GetKey());
+            DEBUGLOG("delele data block for key %lld", tmp->GetKey());
             gc_record_byte_size += GetRecordSize(tmp->GetValue()->size);
             delete tmp->GetValue();
             gc_record_cnt++;
@@ -422,7 +420,7 @@ void Segment::Gc4Head(uint64_t keep_cnt, uint64_t& gc_idx_cnt,
         gc_idx_cnt += entry_gc_idx_cnt;
         it->Next();
     }
-    PDLOG(DEBUG, "[Gc4Head] segment gc keep cnt %lu consumed %lld, count %lld",
+    DEBUGLOG("[Gc4Head] segment gc keep cnt %lu consumed %lld, count %lld",
           keep_cnt, (::baidu::common::timer::get_micros() - consumed) / 1000,
           gc_idx_cnt - old);
     idx_cnt_.fetch_sub(gc_idx_cnt - old, std::memory_order_relaxed);
@@ -488,7 +486,7 @@ void Segment::Gc4Head(const std::map<uint32_t, TTLDesc>& ttl_desc,
             gc_idx_cnt += entry_gc_idx_cnt;
         }
     }
-    PDLOG(DEBUG, "[Gc4Head] segment gc consumed %lld, count %lld",
+    DEBUGLOG("[Gc4Head] segment gc consumed %lld, count %lld",
           (::baidu::common::timer::get_micros() - consumed) / 1000,
           gc_idx_cnt - old);
     delete it;
@@ -518,7 +516,7 @@ void Segment::Gc4TTL(const uint64_t time, uint64_t& gc_idx_cnt,
         if (node == NULL) {
             continue;
         } else if (node->GetKey() > time) {
-            PDLOG(DEBUG,
+            DEBUGLOG(
                   "[Gc4TTL] segment gc with key %lu need not ttl, last node "
                   "key %lu",
                   time, node->GetKey());
@@ -543,7 +541,7 @@ void Segment::Gc4TTL(const uint64_t time, uint64_t& gc_idx_cnt,
         entry->count_.fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
         gc_idx_cnt += entry_gc_idx_cnt;
     }
-    PDLOG(DEBUG, "[Gc4TTL] segment gc with key %lld ,consumed %lld, count %lld",
+    DEBUGLOG("[Gc4TTL] segment gc with key %lld ,consumed %lld, count %lld",
           time, (::baidu::common::timer::get_micros() - consumed) / 1000,
           gc_idx_cnt - old);
     idx_cnt_.fetch_sub(gc_idx_cnt - old, std::memory_order_relaxed);
@@ -599,7 +597,7 @@ void Segment::Gc4TTL(const std::map<uint32_t, TTLDesc>& ttl_desc,
             if (node == NULL) {
                 continue;
             } else if (node->GetKey() > kv.second.abs_ttl) {
-                PDLOG(DEBUG,
+                DEBUGLOG(
                       "[Gc4TTL] segment gc with key %lu ts_idx %lu need not "
                       "ttl, node key %lu",
                       kv.second.abs_ttl, pos->second, node->GetKey());
@@ -644,7 +642,7 @@ void Segment::Gc4TTL(const std::map<uint32_t, TTLDesc>& ttl_desc,
             }
         }
     }
-    PDLOG(DEBUG, "[Gc4TTL] segment gc with key %lld, consumed %lld, count %lld",
+    DEBUGLOG("[Gc4TTL] segment gc with key %lld, consumed %lld, count %lld",
           time, (::baidu::common::timer::get_micros() - consumed) / 1000,
           gc_idx_cnt - old);
     delete it;
@@ -669,7 +667,7 @@ void Segment::Gc4TTLAndHead(const uint64_t time, const uint64_t keep_cnt,
         if (node == NULL) {
             continue;
         } else if (node->GetKey() > time) {
-            PDLOG(DEBUG,
+            DEBUGLOG(
                   "[Gc4TTLAndHead] segment gc with key %lu need not ttl, last "
                   "node key %lu",
                   time, node->GetKey());
@@ -687,7 +685,7 @@ void Segment::Gc4TTLAndHead(const uint64_t time, const uint64_t keep_cnt,
         entry->count_.fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
         gc_idx_cnt += entry_gc_idx_cnt;
     }
-    PDLOG(DEBUG,
+    DEBUGLOG(
           "[Gc4TTLAndHead] segment gc time %lu and keep cnt %lu consumed %lld, "
           "count %lld",
           time, keep_cnt,
@@ -745,7 +743,7 @@ void Segment::Gc4TTLAndHead(const std::map<uint32_t, TTLDesc>& ttl_desc,
             if (node == NULL) {
                 continue;
             } else if (node->GetKey() > kv.second.abs_ttl) {
-                PDLOG(DEBUG,
+                DEBUGLOG(
                       "[Gc4TTLAndHead] segment gc with key %lu ts_idx %lu need "
                       "not ttl, node key %lu",
                       kv.second.abs_ttl, pos->second, node->GetKey());
@@ -769,7 +767,7 @@ void Segment::Gc4TTLAndHead(const std::map<uint32_t, TTLDesc>& ttl_desc,
             gc_idx_cnt += entry_gc_idx_cnt;
         }
     }
-    PDLOG(DEBUG, "[Gc4TTLAndHead] segment gc consumed %lld, count %lld",
+    DEBUGLOG("[Gc4TTLAndHead] segment gc consumed %lld, count %lld",
           (::baidu::common::timer::get_micros() - consumed) / 1000,
           gc_idx_cnt - old);
     delete it;
@@ -822,7 +820,7 @@ void Segment::Gc4TTLOrHead(const uint64_t time, const uint64_t keep_cnt,
         entry->count_.fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
         gc_idx_cnt += entry_gc_idx_cnt;
     }
-    PDLOG(DEBUG,
+    DEBUGLOG(
           "[Gc4TTLAndHead] segment gc time %lu and keep cnt %lu consumed %lld, "
           "count %lld",
           time, keep_cnt,
@@ -930,7 +928,7 @@ void Segment::Gc4TTLOrHead(const std::map<uint32_t, TTLDesc>& ttl_desc,
             }
         }
     }
-    PDLOG(DEBUG, "[Gc4TTLOrHead] segment gc consumed %lld, count %lld",
+    DEBUGLOG("[Gc4TTLOrHead] segment gc consumed %lld, count %lld",
           (::baidu::common::timer::get_micros() - consumed) / 1000,
           gc_idx_cnt - old);
     delete it;

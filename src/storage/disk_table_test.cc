@@ -10,7 +10,7 @@
 #include <utility>
 #include "base/file_util.h"
 #include "gtest/gtest.h"
-#include "logging.h"  // NOLINT
+#include "base/glog_wapper.h"  // NOLINT
 #include "timer.h"    // NOLINT
 
 using ::baidu::common::INFO;

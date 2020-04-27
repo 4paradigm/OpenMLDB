@@ -12,7 +12,7 @@
 #include "base/file_util.h"
 #include "client/ns_client.h"
 #include "gtest/gtest.h"
-#include "logging.h" // NOLINT
+#include "base/glog_wapper.h" // NOLINT
 #include "nameserver/name_server_impl.h"
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"

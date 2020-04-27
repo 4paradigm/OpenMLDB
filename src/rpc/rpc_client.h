@@ -25,13 +25,11 @@
 #include <thread_pool.h>
 #include <boost/bind.hpp>
 #include <boost/function.hpp>
-#include "logging.h" // NOLINT
+#include "base/glog_wapper.h" // NOLINT
 #include <thread> // NOLINT
 #include <string> // NOLINT
 
-using ::baidu::common::DEBUG;
-using ::baidu::common::INFO;
-using ::baidu::common::WARNING;
+
 
 DECLARE_int32(request_sleep_time);
 

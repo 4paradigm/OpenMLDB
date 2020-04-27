@@ -8,7 +8,7 @@
 #include "zk/dist_lock.h"
 #include "boost/algorithm/string/join.hpp"
 #include "boost/bind.hpp"
-#include "logging.h" // NOLINT
+#include "base/glog_wapper.h" // NOLINT
 extern "C" {
 #include "zookeeper/zookeeper.h"
 }

@@ -15,7 +15,7 @@
 #include <stdio.h>
 #include "base/slice.h"
 #include "base/status.h"
-#include "logging.h" // NOLINT
+#include "base/glog_wapper.h" // NOLINT
 
 using ::baidu::common::DEBUG;
 using ::rtidb::base::Slice;
@@ -66,7 +66,7 @@ class PosixSequentialFile : public SequentialFile {
             return Status::IOError("fail to ftell file", strerror(errno));
         }
         *pos = (uint64_t)ret;
-        PDLOG(DEBUG, "tell file with pos %lld", ret);
+        DEBUGLOG("tell file with pos %lld", ret);
         return Status::OK();
     }
 

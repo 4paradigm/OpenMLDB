@@ -10,7 +10,7 @@
 #include <unistd.h>
 #include "base/kv_iterator.h"
 #include "gtest/gtest.h"
-#include "logging.h" // NOLINT
+#include "base/glog_wapper.h" // NOLINT
 #include "proto/tablet.pb.h"
 #include "tablet/tablet_impl.h"
 #include "timer.h" // NOLINT

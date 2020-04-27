@@ -15,7 +15,7 @@
 #include <unistd.h>
 #include "base/file_util.h"
 #include "client/tablet_client.h"
-#include "logging.h" // NOLINT
+#include "base/glog_wapper.h" // NOLINT
 #include "proto/tablet.pb.h"
 #include "replica/log_replicator.h"
 #include "replica/replicate_node.h"
