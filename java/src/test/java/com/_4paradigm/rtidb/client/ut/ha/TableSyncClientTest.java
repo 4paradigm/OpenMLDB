@@ -223,12 +223,12 @@ public class TableSyncClientTest extends TestCaseBase {
 
     class RelationTestArgs {
         TableDesc tableDesc;
-        List<Object> projectionList;
+        List<Object> conditionList;
         Object[] row;
         Object[] expected;
     }
 
-    private RelationTestArgs createRelationalArgs(Object[] input, List<Object> projectList, Object[] expect) {
+    private RelationTestArgs createRelationalArgs(Object[] input, List<Object> conditionList, Object[] expect) {
         String name = String.valueOf(id.incrementAndGet());
         nsc.dropTable(name);
         TableDesc tableDesc = new TableDesc();
@@ -306,12 +306,12 @@ public class TableSyncClientTest extends TestCaseBase {
         args.tableDesc = tableDesc;
         args.row = input;
         args.expected = expect;
-        args.projectionList = projectList;
+        args.conditionList = conditionList;
 
         return args;
     }
 
-    private RelationTestArgs createRelationalWithCombineKeyArgs(Object[] input, List<Object> projectList, Object[] expect) {
+    private RelationTestArgs createRelationalWithCombineKeyArgs(Object[] input, List<Object> conditionList, Object[] expect) {
         String name = String.valueOf(id.incrementAndGet());
         nsc.dropTable(name);
         TableDesc tableDesc = new TableDesc();
@@ -413,7 +413,7 @@ public class TableSyncClientTest extends TestCaseBase {
         args.tableDesc = tableDesc;
         args.row = input;
         args.expected = expect;
-        args.projectionList = projectList;
+        args.conditionList = conditionList;
 
         return args;
     }
@@ -1455,9 +1455,9 @@ public class TableSyncClientTest extends TestCaseBase {
 
             //delete pk
             {
-                ok = tableSyncClient.delete(name, (Map) args.projectionList.get(0));
+                ok = tableSyncClient.delete(name, (Map) args.conditionList.get(0));
                 Assert.assertTrue(ok);
-                ro = new ReadOption((Map) args.projectionList.get(0), null, null, 1);
+                ro = new ReadOption((Map) args.conditionList.get(0), null, null, 1);
                 it = tableSyncClient.query(name, ro);
                 Assert.assertFalse(it.valid());
             }
@@ -1576,7 +1576,7 @@ public class TableSyncClientTest extends TestCaseBase {
             Map<String, Object> queryMap;
             {
                 //query pk
-                ro = new ReadOption((Map) args.projectionList.get(0), null, null, 1);
+                ro = new ReadOption((Map) args.conditionList.get(0), null, null, 1);
                 it = tableSyncClient.query(name, ro);
                 Assert.assertTrue(it.valid());
                 Assert.assertEquals(it.getCount(), args.expected[0]);
@@ -1593,7 +1593,7 @@ public class TableSyncClientTest extends TestCaseBase {
             }
             {
                 //query unique
-                ro = new ReadOption((Map) args.projectionList.get(1), null, null, 1);
+                ro = new ReadOption((Map) args.conditionList.get(1), null, null, 1);
                 it = tableSyncClient.query(name, ro);
                 Assert.assertTrue(it.valid());
                 Assert.assertEquals(it.getCount(), args.expected[1]);
@@ -1610,7 +1610,7 @@ public class TableSyncClientTest extends TestCaseBase {
             }
             {
                 //query no unique
-                ro = new ReadOption((Map) args.projectionList.get(2), null, null, 1);
+                ro = new ReadOption((Map) args.conditionList.get(2), null, null, 1);
                 it = tableSyncClient.query(name, ro);
                 Assert.assertTrue(it.valid());
                 Assert.assertEquals(it.getCount(), args.expected[2]);
@@ -1645,11 +1645,11 @@ public class TableSyncClientTest extends TestCaseBase {
                 //batch query
                 List<ReadOption> ros = new ArrayList<ReadOption>();
                 {
-                    ro = new ReadOption((Map) args.projectionList.get(0), null, null, 1);
+                    ro = new ReadOption((Map) args.conditionList.get(0), null, null, 1);
                     ros.add(ro);
                 }
                 {
-                    ro = new ReadOption((Map) args.projectionList.get(2), null, null, 1);
+                    ro = new ReadOption((Map) args.conditionList.get(2), null, null, 1);
                     ros.add(ro);
                 }
                 it = tableSyncClient.batchQuery(name, ros);
@@ -1701,11 +1701,11 @@ public class TableSyncClientTest extends TestCaseBase {
                 Map<String, Object> valueColumns = new HashMap<>();
                 valueColumns.put("price", 15.5);
                 valueColumns.put("image", "i5");
-                ok = tableSyncClient.update(name, (Map) args.projectionList.get(0), valueColumns, wo);
+                ok = tableSyncClient.update(name, (Map) args.conditionList.get(0), valueColumns, wo);
                 Assert.assertTrue(ok);
 
                 //query pk
-                ro = new ReadOption((Map) args.projectionList.get(0), null, null, 1);
+                ro = new ReadOption((Map) args.conditionList.get(0), null, null, 1);
                 it = tableSyncClient.query(name, ro);
                 Assert.assertTrue(it.valid());
                 Assert.assertEquals(it.getCount(), args.expected[4]);
@@ -1726,11 +1726,11 @@ public class TableSyncClientTest extends TestCaseBase {
                 Map<String, Object> valueColumns = new HashMap<>();
                 valueColumns.put("price", 16.6);
                 valueColumns.put("image", "i6");
-                ok = tableSyncClient.update(name, (Map) args.projectionList.get(1), valueColumns, wo);
+                ok = tableSyncClient.update(name, (Map) args.conditionList.get(1), valueColumns, wo);
                 Assert.assertTrue(ok);
 
                 //query unique
-                ro = new ReadOption((Map) args.projectionList.get(1), null, null, 1);
+                ro = new ReadOption((Map) args.conditionList.get(1), null, null, 1);
                 it = tableSyncClient.query(name, ro);
                 Assert.assertTrue(it.valid());
                 Assert.assertEquals(it.getCount(), args.expected[5]);
@@ -1751,11 +1751,11 @@ public class TableSyncClientTest extends TestCaseBase {
                 Map<String, Object> valueColumns = new HashMap<>();
                 valueColumns.put("price", 17.7);
                 valueColumns.put("image", "i7");
-                ok = tableSyncClient.update(name, (Map) args.projectionList.get(2), valueColumns, wo);
+                ok = tableSyncClient.update(name, (Map) args.conditionList.get(2), valueColumns, wo);
                 Assert.assertTrue(ok);
 
                 //query no unique
-                ro = new ReadOption((Map) args.projectionList.get(2), null, null, 2);
+                ro = new ReadOption((Map) args.conditionList.get(2), null, null, 2);
                 it = tableSyncClient.query(name, ro);
                 Assert.assertTrue(it.valid());
                 Assert.assertEquals(it.getCount(), args.expected[6]);
@@ -1793,9 +1793,9 @@ public class TableSyncClientTest extends TestCaseBase {
                 it = tableSyncClient.traverse(name, ro);
                 Assert.assertEquals(it.getCount(), 4);
 
-                ok = tableSyncClient.delete(name, (Map) args.projectionList.get(0));
+                ok = tableSyncClient.delete(name, (Map) args.conditionList.get(0));
                 Assert.assertTrue(ok);
-                ro = new ReadOption((Map) args.projectionList.get(0), null, null, 1);
+                ro = new ReadOption((Map) args.conditionList.get(0), null, null, 1);
                 it = tableSyncClient.query(name, ro);
                 Assert.assertFalse(it.valid());
 
@@ -1812,9 +1812,9 @@ public class TableSyncClientTest extends TestCaseBase {
                 it = tableSyncClient.traverse(name, ro);
                 Assert.assertEquals(it.getCount(), 4);
 
-                ok = tableSyncClient.delete(name, (Map) args.projectionList.get(1));
+                ok = tableSyncClient.delete(name, (Map) args.conditionList.get(1));
                 Assert.assertTrue(ok);
-                ro = new ReadOption((Map) args.projectionList.get(1), null, null, 1);
+                ro = new ReadOption((Map) args.conditionList.get(1), null, null, 1);
                 it = tableSyncClient.query(name, ro);
                 Assert.assertFalse(it.valid());
 
@@ -1824,9 +1824,9 @@ public class TableSyncClientTest extends TestCaseBase {
             }
             {
                 //delete by no unique
-                ok = tableSyncClient.delete(name, (Map) args.projectionList.get(2));
+                ok = tableSyncClient.delete(name, (Map) args.conditionList.get(2));
                 Assert.assertTrue(ok);
-                ro = new ReadOption((Map) args.projectionList.get(2), null, null, 1);
+                ro = new ReadOption((Map) args.conditionList.get(2), null, null, 1);
                 it = tableSyncClient.query(name, ro);
                 Assert.assertFalse(it.valid());
 
