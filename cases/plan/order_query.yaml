@@ -11,14 +11,3 @@ SQLCases:
   - id: 4
     desc: 按聚合结果排序
     sql: SELECT SUM(COL2) as sum_col2 FROM t1 Group By col1 order by sum_col2 DESC;
-
-
-
-
-
-
-
-
-
-
-

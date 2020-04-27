@@ -17,13 +17,3 @@ SQLCases:
   - id: 6
     desc: 先过滤再分组聚合再过滤再排序
     sql: SELECT sum(COL3) as col3sum, * FROM t1 where col2 > 10 group by COL1, COL2 having col3sum > 0 Order By COL1;
-
-
-
-
-
-
-
-
-
-

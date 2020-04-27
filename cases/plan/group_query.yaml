@@ -17,12 +17,3 @@ SQLCases:
   - id: 6
     desc: SELECT多KEY的分组聚合
     sql: SELECT COL1, COL2, SUM(COL3) FROM t1 group by COL1, COL2;
-
-
-
-
-
-
-
-
-

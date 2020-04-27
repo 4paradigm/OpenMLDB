@@ -20,10 +20,3 @@ SQLCases:
       SELECT sum(COL1) as col1sum, * FROM t1 where col2 > 10 group by COL1, COL2 having col1sum > 0 order by
       COL1+COL2 limit 10 UNION ALL SELECT sum(COL1) as col1sum, * FROM t1 group by COL1, COL2 having sum(COL1) > 0;
 
-
-
-
-
-
-
-

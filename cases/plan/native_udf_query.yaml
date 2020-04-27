@@ -15,10 +15,3 @@ SQLCases:
     desc: Sum函数
     sql: SELECT SUM(COL1) FROM t1;
 
-
-
-
-
-
-
-

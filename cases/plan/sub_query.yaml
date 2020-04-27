@@ -20,10 +20,3 @@ SQLCases:
           (select * from sco where subject = "math") t
       on s.id = t.stu_id;
 
-
-
-
-
-
-
-

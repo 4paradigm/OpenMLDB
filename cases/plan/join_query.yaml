@@ -20,11 +20,3 @@ SQLCases:
   - id: 7
     desc: LastJoin有between条件
     sql: SELECT t1.col1 as t1_col1, t2.col1 as t2_col2 from t1 LAST JOIN t2 on t1.col1 = t2.col1 and t2.std_ts between t1.std_ts - 30d and t1.std_ts - 1d;
-
-
-
-
-
-
-
-

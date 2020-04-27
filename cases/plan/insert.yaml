@@ -5,4 +5,3 @@ SQLCases:
   - id: 2
     desc: 简单INSERT指定列
     sql: insert into t1 (col1, col2, col3, col4) values(1, 2, 3.1, "string");
-

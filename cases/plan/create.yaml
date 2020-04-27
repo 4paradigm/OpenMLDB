@@ -52,11 +52,3 @@ SQLCases:
           column5 int NOT NULL,
           index(key=(column4, column3), version=(column5, 3), ts=column2, ttl=60d)
       );
-
-
-
-
-
-
-
-
