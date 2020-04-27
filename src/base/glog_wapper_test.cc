@@ -19,12 +19,13 @@ class GlogWapperTest : public ::testing::Test {
 };
 
 TEST_F(GlogWapperTest, Log) {
+    ::rtidb::base::SetLogLevel(DEBUG);
     char* path = "/tmp/hello.txt";
     ::google::InitGoogleLogging(path);
     PDLOG(INFO, "hello %d %f", 290, 3.1);
     std::string s = "word";
     PDLOG(INFO, "hello %s", s);
-    DEBUGLOG("this is a debug %d", 123);
+    DEBUGLOG("hello %d", 233);
 }
 
 

@@ -20,6 +20,7 @@ namespace rtidb {
 namespace base {
 
     const int DEBUG = -1;
+    static int log_level = INFO;
 
     template<typename... Arguments>
     std::string FormatArgs(const char* fmt, const Arguments&... args) {
@@ -31,17 +32,22 @@ namespace base {
         return boost::str(f);
     }
 
+    void SetLogLevel(int level) {
+        log_level = level;
+    }
+
+    void SetLogFile(std::string path) {
+        ::google::InitGoogleLogging(path);
+    }
+
 } // namespace base
 } // namespace rtidb
 
-#define PDLOG(level, fmt, args...) COMPACT_GOOGLE_LOG_ ## level.stream() << ::rtidb::base::FormatArgs(fmt, args)
 
-#if DCHECK_IS_ON()
-#define DEBUGLOG(fmt, args...) COMPACT_GOOGLE_LOG_INFO.stream() << ::rtidb::base::FormatArgs(fmt, args)
-#else
-#define DEBUGLOG(fmt, args...) \
-  static_cast<void>(0), \
-  true ? (void) 0 : google::LogMessageVoidify() & COMPACT_GOOGLE_LOG_INFO.stream() << ::rtidb::base::FormatArgs(fmt, args)
-#endif
+using ::rtidb::base::DEBUG;
+
+#define PDLOG(level, fmt, args...) COMPACT_GOOGLE_LOG_ ## level.stream() << ::rtidb::base::FormatArgs(fmt, ##args)
+
+#define DEBUGLOG(fmt, args...) if(::rtidb::base::log_level==-1) COMPACT_GOOGLE_LOG_INFO.stream() << ::rtidb::base::FormatArgs(fmt, ##args)
 
 #endif // GLOG_WAPPER_H_
