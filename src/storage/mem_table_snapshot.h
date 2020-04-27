@@ -74,7 +74,7 @@ class MemTableSnapshot : public Snapshot {
 
     bool DumpSnapshotIndexData(
         std::shared_ptr<Table> table,
-        const std::vector<uint32_t>& index_cols,
+        const std::vector<std::vector<uint32_t>>& index_cols,
         const std::vector<::rtidb::base::ColumnDesc>& columns,
         uint32_t max_idx, uint32_t idx,
         const std::vector<::rtidb::log::WriteHandle*>& whs,
@@ -82,7 +82,7 @@ class MemTableSnapshot : public Snapshot {
 
     bool DumpBinlogIndexData(
         std::shared_ptr<Table> table,
-        const std::vector<uint32_t>& index_cols,
+        const std::vector<std::vector<uint32_t>>& index_cols,
         const std::vector<::rtidb::base::ColumnDesc>& columns,
         uint32_t max_idx, uint32_t idx,
         const std::vector<::rtidb::log::WriteHandle*>& whs,
@@ -99,7 +99,7 @@ class MemTableSnapshot : public Snapshot {
                        const std::vector<::rtidb::log::WriteHandle*>& whs);
 
     bool PackNewIndexEntry(std::shared_ptr<Table> table,
-                        const std::vector<uint32_t>& index_cols,
+                        const std::vector<std::vector<uint32_t>>& index_cols,
                         const std::vector<::rtidb::base::ColumnDesc>& columns,
                         uint32_t max_idx, uint32_t idx, uint32_t partition_num,
                         ::rtidb::api::LogEntry* entry,
