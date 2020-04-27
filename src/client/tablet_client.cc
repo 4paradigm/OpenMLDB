@@ -1139,6 +1139,32 @@ bool TabletClient::Get(uint32_t tid, uint32_t pid, const std::string& pk,
     return true;
 }
 
+bool TabletClient::Query(uint32_t tid, uint32_t pid, 
+        const ::rtidb::api::ReadOption& ro, 
+        std::string* value,
+        uint32_t* count, std::string* msg) {
+    ::rtidb::api::BatchQueryRequest request;
+    ::rtidb::api::BatchQueryResponse response;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    ::rtidb::api::ReadOption* ro_ptr = request.add_read_option();
+    ro_ptr->CopyFrom(ro);
+    response.set_allocated_pairs(value);
+    bool ok =
+        client_.SendRequest(&::rtidb::api::TabletServer_Stub::BatchQuery, 
+                &request, &response, FLAGS_request_timeout_ms, 1);
+    if (response.has_msg()) {
+        *msg = response.msg();
+    }
+    if (!ok || response.code() != 0) {
+        response.release_pairs();
+        return false;
+    }
+    *count = response.count();
+    response.release_pairs();
+    return true;
+}
+
 bool TabletClient::Delete(uint32_t tid, uint32_t pid, const std::string& pk,
                           const std::string& idx_name, std::string& msg) {
     ::rtidb::api::DeleteRequest request;

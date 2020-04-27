@@ -110,6 +110,10 @@ class TabletClient {
              const std::string& idx_name, const std::string& ts_name,
              std::string& value, uint64_t& ts, std::string& msg);  // NOLINT
 
+    bool Query(uint32_t tid, uint32_t pid, 
+            const ::rtidb::api::ReadOption& ro, 
+            std::string* value, uint32_t* count, std::string* msg);
+
     bool Delete(uint32_t tid, uint32_t pid, const std::string& pk,
                 const std::string& idx_name, std::string& msg);  // NOLINT
 

@@ -377,11 +377,19 @@ class TestCaseBase(unittest.TestCase):
     def ns_put_multi(self, endpoint, name, ts, row):
         cmd = 'put {} {} {}'.format(name, ts, ' '.join(row))
         return self.run_client(endpoint, cmd, 'ns_client')
-
     
     def ns_put_multi_with_pair(self, endpoint, name, row):
         cmd = 'put {} {}'.format(name, ' '.join(row))
         return self.run_client(endpoint, cmd, 'ns_client')
+
+    def ns_put_relation(self, endpoint, name, row):
+        cmd = 'put {} {}'.format('table_name=' + name, row)
+        return self.run_client(endpoint, cmd, 'ns_client')
+
+    def ns_query(self, endpoint, name, row):
+        cmd = 'query {} {}'.format('table_name=' + name, row)
+        result = self.run_client(endpoint, cmd, 'ns_client')
+        return self.parse_scan_result(result)
 
     def ns_drop(self, endpoint, tname):
         infoLogger.debug(tname)

@@ -28,6 +28,9 @@ DECLARE_uint32(max_col_display_length);
 namespace rtidb {
 namespace base {
 
+using Schema =
+    ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
+
 static std::string DataTypeToStr(::rtidb::type::DataType data_type) {
     auto iter = ::rtidb::base::DATA_TYPE_STR_MAP.find(data_type);
     if (iter == ::rtidb::base::DATA_TYPE_STR_MAP.end()) {
@@ -541,6 +544,38 @@ static void FillTableRow(
         vrow.push_back(col);
     }
 }
+
+static bool FillTableRows(const std::string& data, 
+        uint32_t count, 
+        const Schema& schema,
+        std::vector<std::vector<std::string>>* row_vec) {
+    rtidb::base::RowView rv(schema);
+    uint32_t offset = 0;
+    for (uint32_t i = 0; i < count; i++) {
+        std::vector<std::string> row;
+        const char* ch = data.c_str();
+        ch += offset;
+        uint32_t value_size = 0;
+        memcpy(static_cast<void*>(&value_size), ch, 4);
+        ch += 4;
+        bool ok = rv.Reset(reinterpret_cast<int8_t*>(const_cast<char*>(ch)),
+                value_size);
+        if (!ok) {
+            std::cerr << "reset decode data error" << std::endl;
+            return false;
+        }
+        offset += 4 + value_size;
+        rtidb::base::RowSchemaCodec::Decode(schema, rv, row);
+        for (uint64_t i = 0; i < row.size(); i++) {
+            if (row[i] == rtidb::base::NONETOKEN) {
+                row[i] = "null";
+            }
+        }
+        row_vec->push_back(row);
+    }
+    return true;
+}
+
 
 __attribute__((unused)) static void ShowTableRows(
     const Schema& schema, ::rtidb::base::KvIterator* it,

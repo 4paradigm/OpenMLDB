@@ -482,7 +482,7 @@ class RowSchemaCodec {
         return rm;
     }
 
-    static void Decode(google::protobuf::RepeatedPtrField<
+    static void Decode(const google::protobuf::RepeatedPtrField<
                            rtidb::common::ColumnDesc>& schema,  // NOLINT
                        const std::string& value,
                        std::vector<std::string>& value_vec) {  // NOLINT
@@ -492,7 +492,7 @@ class RowSchemaCodec {
         Decode(schema, rv, value_vec);
     }
 
-    static void Decode(google::protobuf::RepeatedPtrField<
+    static void Decode(const google::protobuf::RepeatedPtrField<
                            rtidb::common::ColumnDesc>& schema,  // NOLINT
                        rtidb::base::RowView& rv, //NOLINT
                        std::vector<std::string>& value_vec) {  // NOLINT
