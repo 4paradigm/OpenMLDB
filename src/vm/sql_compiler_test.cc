@@ -119,7 +119,7 @@ INSTANTIATE_TEST_CASE_P(
         "WINDOW w1 AS (PARTITION BY col5 ORDER BY `col5` RANGE BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;"));
 
-void Compiler_Runner_Check(std::shared_ptr<Catalog> catalog,
+void CompilerRunnerCheck(std::shared_ptr<Catalog> catalog,
                            const std::string sql, const bool is_batch) {
     node::NodeManager nm;
     SQLCompiler sql_compiler(catalog, &nm);
@@ -238,7 +238,7 @@ TEST_P(SQLCompilerTest, compile_request_mode_test) {
     AddTable(catalog, table_def4, table4);
     AddTable(catalog, table_def5, table5);
     AddTable(catalog, table_def6, table6);
-    Compiler_Runner_Check(catalog, sqlstr, false);
+    CompilerRunnerCheck(catalog, sqlstr, false);
     RequestSchemaCheck(catalog, sqlstr, table_def);
 }
 
@@ -297,7 +297,7 @@ TEST_P(SQLCompilerTest, compile_batch_mode_test) {
     AddTable(catalog, table_def5, table5);
     AddTable(catalog, table_def6, table6);
 
-    Compiler_Runner_Check(catalog, sqlstr, true);
+    CompilerRunnerCheck(catalog, sqlstr, true);
 
     // Check for work with simple catalog
     auto simple_catalog = std::make_shared<SimpleCatalog>();
@@ -325,7 +325,7 @@ TEST_P(SQLCompilerTest, compile_batch_mode_test) {
     }
 
     simple_catalog->AddDatabase(db);
-    Compiler_Runner_Check(simple_catalog, sqlstr, true);
+    CompilerRunnerCheck(simple_catalog, sqlstr, true);
 }
 
 }  // namespace vm
