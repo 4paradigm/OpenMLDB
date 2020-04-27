@@ -15,7 +15,6 @@ using google::INFO;
 using google::WARNING;
 using google::ERROR;
 using google::FATAL;
-using rtidb::base::DEBUG;
 
 namespace rtidb {
 namespace base {
@@ -36,5 +35,13 @@ namespace base {
 } // namespace rtidb
 
 #define PDLOG(level, fmt, args...) COMPACT_GOOGLE_LOG_ ## level.stream() << ::rtidb::base::FormatArgs(fmt, args)
+
+#if DCHECK_IS_ON()
+#define DEBUGLOG(fmt, args...) COMPACT_GOOGLE_LOG_INFO.stream() << ::rtidb::base::FormatArgs(fmt, args)
+#else
+#define DEBUGLOG(fmt, args...) \
+  static_cast<void>(0), \
+  true ? (void) 0 : google::LogMessageVoidify() & COMPACT_GOOGLE_LOG_INFO.stream() << ::rtidb::base::FormatArgs(fmt, args)
+#endif
 
 #endif // GLOG_WAPPER_H_

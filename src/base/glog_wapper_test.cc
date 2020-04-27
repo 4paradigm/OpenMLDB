@@ -8,6 +8,7 @@
 #include <iostream>
 #include "gtest/gtest.h"
 
+
 namespace rtidb {
 namespace base {
 
@@ -23,6 +24,7 @@ TEST_F(GlogWapperTest, Log) {
     PDLOG(INFO, "hello %d %f", 290, 3.1);
     std::string s = "word";
     PDLOG(INFO, "hello %s", s);
+    DEBUGLOG("this is a debug %d", 123);
 }
 
 
