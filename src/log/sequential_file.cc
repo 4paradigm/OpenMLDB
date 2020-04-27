@@ -17,7 +17,7 @@
 #include "base/status.h"
 #include "base/glog_wapper.h" // NOLINT
 
-using ::baidu::common::DEBUG;
+
 using ::rtidb::base::Slice;
 using ::rtidb::base::Status;
 

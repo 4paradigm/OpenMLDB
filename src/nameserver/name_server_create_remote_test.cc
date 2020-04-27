@@ -1283,7 +1283,7 @@ int main(int argc, char** argv) {
     FLAGS_zk_session_timeout = 100000;
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
-    ::baidu::common::SetLogLevel(::baidu::common::INFO);
+    ::rtidb::base::SetLogLevel(INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     // FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
     return RUN_ALL_TESTS();

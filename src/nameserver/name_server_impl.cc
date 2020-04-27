@@ -15,6 +15,7 @@
 #include <utility>
 #include <boost/algorithm/string.hpp>
 #include "base/status.h"
+#include "base/glog_wapper.h"
 #include "timer.h" // NOLINT
 
 DECLARE_string(endpoint);
@@ -1926,16 +1927,14 @@ void NameServerImpl::UpdateTaskMapStatus(
                     status == ::rtidb::api::kCanceled) {
                     task_info->set_status(status);
                     if (status == ::rtidb::api::kFailed) {
-                        PDLOG(
-                            DEBUG,
+                        DEBUGLOG(
                             "update task status from[kDoing] to[kFailed]. "
                             "op_id[%lu], task_type[%s]",
                             task_info->op_id(),
                             ::rtidb::api::TaskType_Name(task_info->task_type())
                                 .c_str());
                     } else {
-                        PDLOG(
-                            DEBUG,
+                        DEBUGLOG(
                             "update task status from[kDoing] to[kCanceled]. "
                             "op_id[%lu], task_type[%s]",
                             task_info->op_id(),
@@ -1948,8 +1947,7 @@ void NameServerImpl::UpdateTaskMapStatus(
                         task_info->status() != ::rtidb::api::kFailed &&
                         task_info->status() != ::rtidb::api::kCanceled) {
                         task_info->set_status(status);
-                        PDLOG(
-                            DEBUG,
+                        DEBUGLOG(
                             "update task status from[kDoing] to[kDone]. "
                             "op_id[%lu], task_type[%s]",
                             task_info->op_id(),

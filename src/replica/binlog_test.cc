@@ -26,8 +26,7 @@
 #include "thread_pool.h" // NOLINT
 #include "timer.h" // NOLINT
 
-using ::baidu::common::DEBUG;
-using ::baidu::common::INFO;
+
 using ::baidu::common::ThreadPool;
 using ::google::protobuf::Closure;
 using ::google::protobuf::RpcController;
@@ -109,7 +108,7 @@ inline std::string GenRand() { return std::to_string(rand() % 10000000 + 1); } /
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
-    ::baidu::common::SetLogLevel(::baidu::common::INFO);
+    ::rtidb::base::SetLogLevel(INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     FLAGS_db_root_path = "/tmp/" + ::GenRand();
     return RUN_ALL_TESTS();

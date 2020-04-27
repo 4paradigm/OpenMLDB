@@ -23,8 +23,6 @@
 #include "thread_pool.h" // NOLINT
 #include "timer.h" // NOLINT
 
-using ::baidu::common::DEBUG;
-using ::baidu::common::INFO;
 using ::baidu::common::ThreadPool;
 using ::google::protobuf::Closure;
 using ::google::protobuf::RpcController;
@@ -658,7 +656,7 @@ TEST_F(LogReplicatorTest, Leader_Remove_local_follower) {
 
 int main(int argc, char** argv) {
     srand(time(NULL));
-    ::baidu::common::SetLogLevel(::baidu::common::INFO);
+    ::rtidb::base::SetLogLevel(INFO);
     ::testing::InitGoogleTest(&argc, argv);
     int ok = RUN_ALL_TESTS();
     return ok;

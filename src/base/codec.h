@@ -21,8 +21,8 @@
 
 using ::rtidb::storage::DataBlock;
 
-using ::baidu::common::DEBUG;
-using ::baidu::common::WARNING;
+
+
 
 namespace rtidb {
 namespace base {

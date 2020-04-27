@@ -13,7 +13,7 @@
 #include "base/glog_wapper.h"  // NOLINT
 #include "timer.h"    // NOLINT
 
-using ::baidu::common::INFO;
+
 
 DECLARE_string(ssd_root_path);
 DECLARE_string(hdd_root_path);
@@ -1243,7 +1243,7 @@ TEST_F(DiskTableTest, CheckPoint) {
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
-    ::baidu::common::SetLogLevel(::baidu::common::INFO);
+    ::rtidb::base::SetLogLevel(INFO);
     FLAGS_hdd_root_path = "/tmp/" + std::to_string(::rtidb::storage::GenRand());
     FLAGS_ssd_root_path = "/tmp/" + std::to_string(::rtidb::storage::GenRand());
     return RUN_ALL_TESTS();

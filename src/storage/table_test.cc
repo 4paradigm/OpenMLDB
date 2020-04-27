@@ -1245,6 +1245,6 @@ TEST_F(TableTest, GcAbsAndLat) {
 int main(int argc, char** argv) {
     FLAGS_max_traverse_cnt = 200000;
     ::testing::InitGoogleTest(&argc, argv);
-    ::baidu::common::SetLogLevel(::baidu::common::INFO);
+    ::rtidb::base::SetLogLevel(INFO);
     return RUN_ALL_TESTS();
 }

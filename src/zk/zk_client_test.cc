@@ -15,7 +15,7 @@ extern "C" {
 #include "zookeeper/zookeeper.h"
 }
 
-using ::baidu::common::INFO;
+
 
 namespace rtidb {
 namespace zk {

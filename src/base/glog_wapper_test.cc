@@ -26,6 +26,8 @@ TEST_F(GlogWapperTest, Log) {
     std::string s = "word";
     PDLOG(INFO, "hello %s", s);
     DEBUGLOG("hello %d", 233);
+    uint64_t time = 123456;
+    DEBUGLOG("[Gc4TTL] segment gc with key %lu, consumed %lu, count %lu", time, time + 100, time - 100);
 }
 
 

@@ -6812,7 +6812,7 @@ TEST_F(TabletImplTest, SendIndexData) {
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
-    ::baidu::common::SetLogLevel(::baidu::common::INFO);
+    ::rtidb::base::SetLogLevel(INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     FLAGS_db_root_path = "/tmp/" + ::rtidb::tablet::GenRand();
     FLAGS_ssd_root_path = "/tmp/" + ::rtidb::tablet::GenRand();

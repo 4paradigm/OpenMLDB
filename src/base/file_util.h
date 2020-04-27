@@ -19,8 +19,6 @@
 #include <string>
 #include "base/glog_wapper.h" // NOLINT
 
-using ::baidu::common::INFO;
-using ::baidu::common::WARNING;
 
 namespace rtidb {
 namespace base {

@@ -13,8 +13,8 @@ extern "C" {
 #include "zookeeper/zookeeper.h"
 }
 
-using ::baidu::common::INFO;
-using ::baidu::common::WARNING;
+
+
 
 namespace rtidb {
 namespace zk {

@@ -414,7 +414,7 @@ TEST_F(SegmentTest, PutAndGetTS) {
 }  // namespace rtidb
 
 int main(int argc, char** argv) {
-    ::baidu::common::SetLogLevel(::baidu::common::INFO);
+    ::rtidb::base::SetLogLevel(INFO);
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }

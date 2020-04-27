@@ -37,7 +37,7 @@ namespace base {
     }
 
     void SetLogFile(std::string path) {
-        ::google::InitGoogleLogging(path);
+        ::google::InitGoogleLogging(path.c_str());
     }
 
 } // namespace base
@@ -48,6 +48,6 @@ using ::rtidb::base::DEBUG;
 
 #define PDLOG(level, fmt, args...) COMPACT_GOOGLE_LOG_ ## level.stream() << ::rtidb::base::FormatArgs(fmt, ##args)
 
-#define DEBUGLOG(fmt, args...) if(::rtidb::base::log_level==-1) COMPACT_GOOGLE_LOG_INFO.stream() << ::rtidb::base::FormatArgs(fmt, ##args)
+#define DEBUGLOG(fmt, args...) {if(::rtidb::base::log_level==-1) COMPACT_GOOGLE_LOG_INFO.stream() << ::rtidb::base::FormatArgs(fmt, ##args);}while(0)
 
 #endif // GLOG_WAPPER_H_
