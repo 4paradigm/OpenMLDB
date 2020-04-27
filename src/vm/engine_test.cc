@@ -53,10 +53,17 @@ enum EngineRunMode { RUNBATCH, RUNONE };
 
 const bool IS_DEBUG = true;
 std::vector<SQLCase> InitCases(std::string yaml_path);
+void InitCases(std::string yaml_path, std::vector<SQLCase>& cases);  // NOLINT
+
+void InitCases(std::string yaml_path, std::vector<SQLCase>& cases) {
+    if (!SQLCase::CreateSQLCasesFromYaml(
+            fesql::sqlcase::FindFesqlDirPath() + yaml_path, cases)) {
+        FAIL();
+    }
+}
 std::vector<SQLCase> InitCases(std::string yaml_path) {
     std::vector<SQLCase> cases;
-    SQLCase::CreateSQLCasesFromYaml(
-        fesql::sqlcase::FindFesqlDirPath() + yaml_path, cases);
+    InitCases(yaml_path, cases);
     return cases;
 }
 

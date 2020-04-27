@@ -11,6 +11,7 @@
 #define SRC_CASE_SQL_CASE_H_
 #include <parser/parser.h>
 #include <vm/catalog.h>
+#include <yaml-cpp/node/node.h>
 #include <string>
 #include <vector>
 #include "codec/row_codec.h"
@@ -61,6 +62,8 @@ class SQLCase {
                             std::vector<fesql::codec::Row>& rows);  // NOLINT
     static bool ExtractRow(const vm::Schema& schema, const std::string& row_str,
                            int8_t** out_ptr, int32_t* out_size);
+    static bool CreateTableInfoFromYamlNode(const YAML::Node& node,
+                                            SQLCase::TableInfo* output);
     static bool CreateSQLCasesFromYaml(
         const std::string& yaml_path,
         std::vector<SQLCase>& sql_case_ptr);  // NOLINT
@@ -75,6 +78,7 @@ class SQLCase {
     std::string sql_str_;
     std::vector<TableInfo> inputs_;
     TableInfo output_;
+
 };
 std::string FindFesqlDirPath();
 

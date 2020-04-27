@@ -305,6 +305,27 @@ std::ostream& operator<<(std::ostream& output, const SQLCase& thiz) {
     output << "Case ID: " << thiz.id() << ", Desc:" << thiz.desc();
     return output;
 }
+bool SQLCase::CreateTableInfoFromYamlNode(const YAML::Node& schema_data,
+                                          SQLCase::TableInfo* table) {
+    if (schema_data["name"]) {
+        table->name_ = schema_data["name"].as<std::string>();
+        boost::trim(table->name_);
+    }
+    if (schema_data["schema"]) {
+        table->schema_ = schema_data["schema"].as<std::string>();
+        boost::trim(table->schema_);
+    }
+    if (schema_data["index"]) {
+        table->index_ = schema_data["index"].as<std::string>();
+        boost::trim(table->index_);
+    }
+
+    if (schema_data["data"]) {
+        table->data_ = schema_data["data"].as<std::string>();
+        boost::trim(table->data_);
+    }
+    return true;
+}
 bool SQLCase::CreateSQLCasesFromYaml(const std::string& yaml_path,
                                      std::vector<SQLCase>& sql_cases) {
     LOG(INFO) << "SQL Cases Path: " << yaml_path;
@@ -357,42 +378,64 @@ bool SQLCase::CreateSQLCasesFromYaml(const std::string& yaml_path,
                 for (auto iter = inputs.begin(); iter != inputs.end(); iter++) {
                     SQLCase::TableInfo table;
                     auto schema_data = *iter;
-                    if (schema_data["name"]) {
-                        table.name_ = schema_data["name"].as<std::string>();
-                        boost::trim(table.name_);
-                    }
-                    if (schema_data["schema"]) {
-                        table.schema_ = schema_data["schema"].as<std::string>();
-                        boost::trim(table.schema_);
-                    }
-                    if (schema_data["index"]) {
-                        table.index_ = schema_data["index"].as<std::string>();
-                        boost::trim(table.index_);
-                    }
 
-                    if (schema_data["data"]) {
-                        table.data_ = schema_data["data"].as<std::string>();
-                        boost::trim(table.data_);
+                    if (schema_data["resource"]) {
+                        std::string resource =
+                            schema_data["resource"].as<std::string>();
+                        boost::trim(resource);
+                        std::string resource_path =
+                            FindFesqlDirPath() + "/" + resource;
+                        LOG(INFO) << "Resource path: " << resource_path;
+                        if (!boost::filesystem::is_regular_file(
+                                resource_path)) {
+                            LOG(WARNING) << resource_path << ": No such file";
+                            return false;
+                        }
+                        YAML::Node table_config = YAML::LoadFile(resource_path);
+                        if (table_config["table"]) {
+                            if (!CreateTableInfoFromYamlNode(
+                                    table_config["table"], &table)) {
+                                return false;
+                            }
+                        } else {
+                            LOG(WARNING) << "SQL Input Resource is invalid";
+                            return false;
+                        }
+                    }
+                    if (!CreateTableInfoFromYamlNode(schema_data, &table)) {
+                        return false;
                     }
                     sql_case.inputs_.push_back(table);
                 }
             }
 
             if (sql_case_node["output"]) {
-                if (sql_case_node["output"]["schema"]) {
-                    sql_case.output_.schema_ =
-                        sql_case_node["output"]["schema"].as<std::string>();
-                    boost::trim(sql_case.output_.schema_);
+                auto schema_data = sql_case_node["output"];
+                if (schema_data["resource"]) {
+                    std::string resource =
+                        schema_data["resource"].as<std::string>();
+                    boost::trim(resource);
+                    std::string resource_path =
+                        FindFesqlDirPath() + "/" + resource;
+                    LOG(INFO) << "Resource path: " << resource_path;
+                    if (!boost::filesystem::is_regular_file(resource_path)) {
+                        LOG(WARNING) << resource_path << ": No such file";
+                        return false;
+                    }
+                    YAML::Node table_config = YAML::LoadFile(resource_path);
+                    if (table_config["table"]) {
+                        if (!CreateTableInfoFromYamlNode(table_config["table"],
+                                                         &sql_case.output_)) {
+                            return false;
+                        }
+                    } else {
+                        LOG(WARNING) << "SQL Input Resource is invalid";
+                        return false;
+                    }
                 }
-                if (sql_case_node["output"]["index"]) {
-                    sql_case.output_.index_ =
-                        sql_case_node["output"]["index"].as<std::string>();
-                    boost::trim(sql_case.output_.index_);
-                }
-                if (sql_case_node["output"]["data"]) {
-                    sql_case.output_.data_ =
-                        sql_case_node["output"]["data"].as<std::string>();
-                    boost::trim(sql_case.output_.data_);
+                if (!CreateTableInfoFromYamlNode(schema_data,
+                                                 &sql_case.output_)) {
+                    return false;
                 }
             }
             sql_cases.push_back(sql_case);

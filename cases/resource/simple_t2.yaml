@@ -1,0 +1,10 @@
+table:
+  name: t2
+  schema: str0:string, str1:string, col3:float, col4:double, col2:int16, col1:int32, col5:int64
+  index: index1:col2:col5
+  data: |
+    2, EEEEE, 5.5, 550.5, 550, 5, 3
+    1, DDDD, 4.4, 440.4, 550, 4, 2
+    1, CCC, 3.3, 330.3, 550, 3, 1
+    0, BB, 2.2, 220.2, 50, 2, 2
+    0, A, 1.1, 110.1, 50, 1, 1

@@ -515,7 +515,7 @@ TEST_F(SQLCaseTest, ExtractYamlSQLCase) {
 
     ASSERT_TRUE(
         fesql::sqlcase::SQLCase::CreateSQLCasesFromYaml(case_path, cases));
-    ASSERT_EQ(2, cases.size());
+    ASSERT_EQ(3, cases.size());
     {
         SQLCase& sql_case = cases[0];
         ASSERT_EQ(sql_case.id(), 1);
@@ -547,10 +547,41 @@ TEST_F(SQLCaseTest, ExtractYamlSQLCase) {
                   "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
                   "aaaaaa");
     }
-
     {
         SQLCase& sql_case = cases[1];
         ASSERT_EQ(sql_case.id(), 2);
+        ASSERT_EQ("batch", sql_case.mode());
+        ASSERT_EQ("SELECT所有列使用resource输入", sql_case.desc());
+        ASSERT_EQ(sql_case.inputs()[0].name_, "t1");
+        ASSERT_EQ(sql_case.db(), "test");
+        ASSERT_EQ(
+            sql_case.inputs()[0].schema_,
+            "col0:string, col1:int32, col2:int16, col3:float, col4:double, "
+            "col5:int64, col6:string");
+        ASSERT_EQ(sql_case.inputs()[0].index_, "index2:col2:col5");
+        ASSERT_EQ(sql_case.inputs()[0].data_,
+                  "0, 1, 5, 1.1, 11.1, 1, 1\n0, 2, 5, 2.2, 22.2, 2, 22\n1, 3, "
+                  "55, 3.3, "
+                  "33.3, 1, 333\n1, 4, 55, 4.4, 44.4, 2, 4444\n2, 5, 55, 5.5, "
+                  "55.5, 3, "
+                  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  "aaaaaa");
+        ASSERT_EQ(
+            sql_case.output().schema_,
+            "col0:string, col1:int32, col2:int16, col3:float, col4:double, "
+            "col5:int64, col6:string");
+        ASSERT_EQ(sql_case.output().data_,
+                  "0, 1, 5, 1.1, 11.1, 1, 1\n0, 2, 5, 2.2, 22.2, 2, 22\n0, 3, "
+                  "55, 3.3, "
+                  "33.3, 1, 333\n0, 4, 55, 4.4, 44.4, 2, 4444\n0, 5, 55, 5.5, "
+                  "55.5, 3, "
+                  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  "aaaaaa");
+    }
+
+    {
+        SQLCase& sql_case = cases[2];
+        ASSERT_EQ(sql_case.id(), 3);
         ASSERT_EQ("SELECT UDF", sql_case.desc());
         ASSERT_EQ("request", sql_case.mode());
         ASSERT_EQ(sql_case.inputs()[0].name_, "t1");
