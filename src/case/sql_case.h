@@ -65,6 +65,7 @@ class SQLCase {
         const std::string& yaml_path,
         std::vector<SQLCase>& sql_case_ptr);  // NOLINT
     friend SQLCaseBuilder;
+    friend std::ostream &operator<<(std::ostream &output, const SQLCase &thiz);
 
  private:
     int32_t id_;

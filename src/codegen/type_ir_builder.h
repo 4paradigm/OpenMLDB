@@ -20,8 +20,8 @@
 
 #include <string>
 #include <vector>
-#include "node/node_enum.h"
 #include "codec/row_codec.h"
+#include "node/node_enum.h"
 
 namespace fesql {
 namespace codegen {
@@ -39,7 +39,6 @@ struct String {
 struct Timestamp {
     int64_t ts;
 };
-
 
 inline const bool ConvertFeSQLType2LLVMType(const node::TypeNode* data_type,
                                             ::llvm::Module* m,  // NOLINT
@@ -93,7 +92,7 @@ inline const bool ConvertFeSQLType2LLVMType(const node::TypeNode* data_type,
             if (data_type->generics_.size() != 1) {
                 LOG(WARNING) << "fail to convert data type: list generic types "
                                 "number is " +
-                                    data_type->generics_.size();
+                                    std::to_string(data_type->generics_.size());
                 return false;
             }
             std::string name;
@@ -106,8 +105,6 @@ inline const bool ConvertFeSQLType2LLVMType(const node::TypeNode* data_type,
     }
     return true;
 }
-
-
 
 }  // namespace codegen
 }  // namespace fesql
