@@ -382,8 +382,8 @@ public class TableSyncClientTest extends TestCaseBase {
             indexDef.setIndexName("idx1");
             indexDef.setIndexType(IndexType.PrimaryKey);
             List<String> colNameList = new ArrayList<>();
-            colNameList.add("id");
             colNameList.add("name");
+            colNameList.add("id");
             indexDef.setColNameList(colNameList);
             indexs.add(indexDef);
         }
@@ -1363,6 +1363,43 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.get("image"), "i5");
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 15.5);
+            }
+            //update pk by no unique
+            {
+                Map<String, Object> conditionColumns = new HashMap<>();
+                conditionColumns.put("memory", 12);
+                Map<String, Object> valueColumns = new HashMap<>();
+                valueColumns.put("id", 16l);
+                valueColumns.put("price", 16.6);
+                valueColumns.put("image", "i6");
+                ok = tableSyncClient.update(name, conditionColumns, valueColumns, wo);
+                Assert.assertTrue(ok);
+
+                //query no unique
+                Map<String, Object> index3 = new HashMap<>();
+                index3.put("memory", 12);
+                ro = new ReadOption(index3, null, null, 2);
+                it = tableSyncClient.query(name, ro);
+                Assert.assertTrue(it.valid());
+                Assert.assertEquals(it.getCount(), 2);
+
+                queryMap = it.getDecodedValue();
+                Assert.assertEquals(queryMap.size(), 5);
+                Assert.assertEquals(queryMap.get("id"), 16l);
+                Assert.assertEquals(queryMap.get("attribute"), "a2");
+                Assert.assertEquals(queryMap.get("image"), "i6");
+                Assert.assertEquals(queryMap.get("memory"), 12);
+                Assert.assertEquals(queryMap.get("price"), 16.6);
+
+                it.next();
+                Assert.assertTrue(it.valid());
+                queryMap = it.getDecodedValue();
+                Assert.assertEquals(queryMap.size(), 5);
+                Assert.assertEquals(queryMap.get("id"), 16l);
+                Assert.assertEquals(queryMap.get("attribute"), "a3");
+                Assert.assertEquals(queryMap.get("image"), "i6");
+                Assert.assertEquals(queryMap.get("memory"), 12);
+                Assert.assertEquals(queryMap.get("price"), 16.6);
             }
         } catch (Exception e) {
             e.printStackTrace();
