@@ -64,6 +64,8 @@ void CheckSchema(const vm::Schema& schema, const vm::Schema& exp_schema);
 void CheckRows(const vm::Schema& schema, const std::vector<Row>& rows,
                const std::vector<Row>& exp_rows);
 void PrintRows(const vm::Schema& schema, const std::vector<Row>& rows);
+void StoreData(::fesql::storage::Table* table, const std::vector<Row>& rows);
+
 void CheckSchema(const vm::Schema& schema, const vm::Schema& exp_schema) {
     ASSERT_EQ(schema.size(), exp_schema.size());
     for (int i = 0; i < schema.size(); i++) {
@@ -107,6 +109,13 @@ void CheckRows(const vm::Schema& schema, const std::vector<Row>& rows,
         ASSERT_EQ(row_view.GetRowString(), row_view_exp.GetRowString());
     }
 }
+void StoreData(::fesql::storage::Table* table, const std::vector<Row>& rows) {
+    ASSERT_TRUE(table->Init());
+    for (auto row : rows) {
+        ASSERT_TRUE(table->Put(reinterpret_cast<char*>(row.buf()), row.size()));
+    }
+}
+
 class EngineTest : public ::testing::TestWithParam<SQLCase> {
  public:
     EngineTest() {}
