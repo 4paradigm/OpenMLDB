@@ -20,8 +20,8 @@ SQLCases:
   - id: 7
     desc: explain
     sql: explain SELECT * FROM t1 WHERE COL1 > (select avg(COL1) from t1) limit 10;
-    mode: parse-only
+    mode: plan-unsupport
   - id: 8
     desc: explain logical
     sql: explain logical SELECT * FROM t1 WHERE COL1 > (select avg(COL1) from t1) limit 10;
-    mode: parse-only
+    mode: plan-unsupport

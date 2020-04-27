@@ -329,6 +329,17 @@ bool SQLCase::CreateTableInfoFromYamlNode(const YAML::Node& schema_data,
 bool SQLCase::CreateSQLCasesFromYaml(const std::string& yaml_path,
                                      std::vector<SQLCase>& sql_cases,
                                      const std::string& filter_mode) {
+    std::vector<const std::string> filter_modes;
+    if (filter_mode.empty()) {
+        return CreateSQLCasesFromYaml(yaml_path, sql_cases, filter_modes);
+    } else {
+        filter_modes.push_back(filter_mode);
+        return CreateSQLCasesFromYaml(yaml_path, sql_cases, filter_modes);
+    }
+}
+bool SQLCase::CreateSQLCasesFromYaml(
+    const std::string& yaml_path, std::vector<SQLCase>& sql_cases,
+    const std::vector<const std::string> filter_modes) {
     LOG(INFO) << "SQL Cases Path: " << yaml_path;
     if (!boost::filesystem::is_regular_file(yaml_path)) {
         LOG(WARNING) << yaml_path << ": No such file";
@@ -363,8 +374,17 @@ bool SQLCase::CreateSQLCasesFromYaml(const std::string& yaml_path,
                 sql_case.mode_ = "batch";
             }
 
-            if (!filter_mode.empty()) {
-                if (sql_case.mode_ == filter_mode) {
+            if (!filter_modes.empty()) {
+                bool need_filter = false;
+                for (auto filter_mode : filter_modes) {
+                    if (boost::contains(sql_case.mode_, filter_mode)) {
+                        need_filter = true;
+                        break;
+                    }
+                }
+
+                if (need_filter) {
+                    LOG(INFO) << "SKIP SQL Case " << sql_case.desc();
                     continue;
                 }
             }

@@ -26,9 +26,11 @@ SQLCases:
   - id: 9
     desc: SELECT COUNT
     sql: SELECT COUNT(*) FROM t1;
+    mode: physical-plan-unsupport
   - id: 10
     desc: SELECT COUNT某一列（去除null列）
     sql: SELECT COUNT(COL1) FROM t1;
+    mode: physical-plan-unsupport
   - id: 11
     desc: SELECT 表达式+
     sql: SELECT COL1 + COL2 as col12 FROM t1;

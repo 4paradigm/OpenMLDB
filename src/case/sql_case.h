@@ -64,9 +64,14 @@ class SQLCase {
                            int8_t** out_ptr, int32_t* out_size);
     static bool CreateTableInfoFromYamlNode(const YAML::Node& node,
                                             SQLCase::TableInfo* output);
-    static bool CreateSQLCasesFromYaml(const std::string& yaml_path,
-                                       std::vector<SQLCase>& sql_case_ptr, // NOLINT
-                                       const std::string& filter_mode = "");
+    static bool CreateSQLCasesFromYaml(
+        const std::string& yaml_path,
+        std::vector<SQLCase>& sql_case_ptr,  // NOLINT
+        const std::string& filter_mode = "");
+    static bool CreateSQLCasesFromYaml(
+        const std::string& yaml_path,
+        std::vector<SQLCase>& sql_case_ptr,  // NOLINT
+        std::vector<const std::string> filter_modes);
     friend SQLCaseBuilder;
     friend std::ostream& operator<<(std::ostream& output, const SQLCase& thiz);
 

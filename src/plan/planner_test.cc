@@ -28,7 +28,8 @@ void InitCases(std::string yaml_path, std::vector<SQLCase> &cases);  // NOLINT
 void InitCases(std::string yaml_path, std::vector<SQLCase> &cases) {  // NOLINT
     if (!SQLCase::CreateSQLCasesFromYaml(
             fesql::sqlcase::FindFesqlDirPath() + "/" + yaml_path, cases,
-            "parse-only")) {
+            std::vector<const std::string>(
+                {"plan-unsupport", "parser-unsupport"}))) {
         FAIL();
     }
 }
@@ -57,6 +58,10 @@ class PlannerTest : public ::testing::TestWithParam<SQLCase> {
 INSTANTIATE_TEST_CASE_P(
     SqlSimpleQueryParse, PlannerTest,
     testing::ValuesIn(InitCases("cases/plan/simple_query.yaml")));
+
+INSTANTIATE_TEST_CASE_P(
+    SqlWindowQueryParse, PlannerTest,
+    testing::ValuesIn(InitCases("cases/plan/window_query.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
     SqlDistinctParse, PlannerTest,
@@ -473,7 +478,7 @@ TEST_F(PlannerTest, LastJoinPlanTest) {
     base::Status status;
     const std::string sql =
         "SELECT t1.col1 as t1_col1, t2.col1 as t2_col2 from t1 LAST JOIN t2 on "
-        "t1.col1 = t2.col1 and t2.col15 between t1.col15 - 30d and t1.col15 "
+        "t1.col1 = t2.col1 and t2.col5 between t1.col5 - 30d and t1.col5 "
         "- 1d limit 10;";
     int ret = parser_->parse(sql, list, manager_, status);
     ASSERT_EQ(0, ret);
@@ -539,7 +544,7 @@ TEST_F(PlannerTest, LastJoinPlanTest) {
     auto join = dynamic_cast<node::JoinPlanNode *>(plan_ptr);
     ASSERT_EQ(node::kJoinTypeLast, join->join_type_);
     ASSERT_EQ(
-        "t1.col1 = t2.col1 AND t2.col15 between t1.col15 - 30d and t1.col15 - "
+        "t1.col1 = t2.col1 AND t2.col5 between t1.col5 - 30d and t1.col5 - "
         "1d",
         join->condition_->GetExprString());
 

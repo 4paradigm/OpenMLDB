@@ -18,6 +18,7 @@
 #include <memory>
 #include <utility>
 #include "boost/algorithm/string.hpp"
+#include "case/sql_case.h"
 #include "gtest/gtest.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/IR/Function.h"
@@ -45,65 +46,47 @@ ExitOnError ExitOnErr;
 
 namespace fesql {
 namespace vm {
+using fesql::sqlcase::SQLCase;
 Runner* GetFirstRunnerOfType(Runner* root, const RunnerType type);
 
-class RunnerTest : public ::testing::TestWithParam<std::string> {};
+std::vector<SQLCase> InitCases(std::string yaml_path);
+void InitCases(std::string yaml_path, std::vector<SQLCase>& cases);  // NOLINT
 
-INSTANTIATE_TEST_CASE_P(
-    SqlSimpleProject, RunnerTest,
-    testing::Values(
-        "SELECT COL1 as c1 FROM t1;", "SELECT t1.COL1 c1 FROM t1 limit 10;",
-        "SELECT COL1 as c1, col2  FROM t1;",
-        "SELECT col1-col2 as col1_2, *, col1+col2 as col12 FROM t1 limit 10;",
-        "SELECT *, col1+col2 as col12 FROM t1 limit 10;"));
+void InitCases(std::string yaml_path, std::vector<SQLCase>& cases) {  // NOLINT
+    if (!SQLCase::CreateSQLCasesFromYaml(
+            fesql::sqlcase::FindFesqlDirPath() + "/" + yaml_path, cases,
+            std::vector<const std::string>(
+                {"runner-unsupport", "physical-plan-unsupport"}))) {
+        FAIL();
+    }
+}
+std::vector<SQLCase> InitCases(std::string yaml_path) {
+    std::vector<SQLCase> cases;
+    InitCases(yaml_path, cases);
+    return cases;
+}
 
+class RunnerTest : public ::testing::TestWithParam<SQLCase> {};
 INSTANTIATE_TEST_CASE_P(
-    SqlWindowProjectPlanner, RunnerTest,
-    testing::Values(
-        "SELECT COL1, COL2, `COL5`, AVG(COL3) OVER w, SUM(COL3) OVER w FROM "
-        "t1 \n"
-        "WINDOW w AS (PARTITION BY COL2\n"
-        "              ORDER BY `COL5` ROWS BETWEEN UNBOUNDED PRECEDING AND "
-        "CURRENT ROW);",
-        "SELECT COL1, SUM(col4) OVER w as w_amt_sum FROM t1 \n"
-        "WINDOW w AS (PARTITION BY COL2\n"
-        "              ORDER BY `col5` ROWS BETWEEN 3 PRECEDING AND 3 "
-        "FOLLOWING);",
-        "SELECT sum(col1) OVER w1 as w1_col1_sum FROM t1 "
-        "WINDOW w1 AS (PARTITION BY col5 ORDER BY `col5` RANGE BETWEEN 3 "
-        "PRECEDING AND CURRENT ROW) limit 10;"));
+    SqlSimpleQueryParse, RunnerTest,
+    testing::ValuesIn(InitCases("cases/plan/simple_query.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    SqlWindowQueryParse, RunnerTest,
+    testing::ValuesIn(InitCases("cases/plan/window_query.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
     SqlWherePlan, RunnerTest,
-    testing::Values(
-        "SELECT COL1 FROM t1 where COL1+COL2;",
-        "SELECT COL1 FROM t1 where COL1;",
-        "SELECT COL1 FROM t1 where COL1 > 10 and COL2 = 20 or COL1 =0;",
-        "SELECT COL1 FROM t1 where COL1 > 10 and COL2 = 20;",
-        "SELECT COL1 FROM t1 where COL1 > 10;"));
+    testing::ValuesIn(InitCases("cases/plan/where_query.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
     SqlGroupPlan, RunnerTest,
-    testing::Values(
-        "SELECT sum(col1) as col1sum FROM t1 group by col1, col2;",
-        "SELECT sum(col1) as col1sum FROM t1 group by col1, col2, col3;",
-        "SELECT sum(col1) as col1sum FROM t1 group by col3, col2, col1;",
-        "SELECT sum(COL1) FROM t1 group by COL1+COL2;",
-        "SELECT sum(COL1) FROM t1 group by COL1;",
-        "SELECT sum(COL1) FROM t1 group by COL1 > 10 and COL2 = 20 or COL1 =0;",
-        "SELECT sum(COL1) FROM t1 group by COL1, COL2;",
-        "SELECT sum(COL1) FROM t1 group by COL1;"));
+    testing::ValuesIn(InitCases("cases/plan/group_query.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
     SqlJoinPlan, RunnerTest,
-    testing::Values(
-        "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join t2 on "
-        "t1.col1 = t2.col2;",
-        "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join t2 on "
-        "t1.col1 = t2.col2 and t2.col5 >= t1.col5;"));
-
+    testing::ValuesIn(InitCases("cases/plan/join_query.yaml")));
 void RunnerCheck(std::shared_ptr<Catalog> catalog, const std::string sql,
-                  const bool is_batch) {
+                 const bool is_batch) {
     node::NodeManager nm;
     SQLCompiler sql_compiler(catalog, &nm);
     SQLContext sql_context;
@@ -113,6 +96,7 @@ void RunnerCheck(std::shared_ptr<Catalog> catalog, const std::string sql,
     base::Status compile_status;
     bool ok = sql_compiler.Compile(sql_context, compile_status);
     ASSERT_TRUE(ok);
+    ASSERT_TRUE(sql_compiler.BuildRunner(sql_context, compile_status));
     ASSERT_TRUE(nullptr != sql_context.plan);
     std::ostringstream oss;
     sql_context.plan->Print(oss, "");
@@ -129,7 +113,7 @@ void RunnerCheck(std::shared_ptr<Catalog> catalog, const std::string sql,
 }
 
 TEST_P(RunnerTest, request_mode_test) {
-    std::string sqlstr = GetParam();
+    std::string sqlstr = GetParam().sql_str();
     const fesql::base::Status exp_status(::fesql::common::kOk, "ok");
     boost::to_lower(sqlstr);
     LOG(INFO) << sqlstr;
@@ -183,7 +167,7 @@ TEST_P(RunnerTest, request_mode_test) {
 }
 
 TEST_P(RunnerTest, batch_mode_test) {
-    std::string sqlstr = GetParam();
+    std::string sqlstr = GetParam().sql_str();
     const fesql::base::Status exp_status(::fesql::common::kOk, "ok");
     boost::to_lower(sqlstr);
     LOG(INFO) << sqlstr;
@@ -282,6 +266,7 @@ TEST_F(RunnerTest, KeyGeneratorTest) {
     base::Status compile_status;
     bool ok = sql_compiler.Compile(sql_context, compile_status);
     ASSERT_TRUE(ok);
+    ASSERT_TRUE(sql_compiler.BuildRunner(sql_context, compile_status));
     ASSERT_TRUE(nullptr != sql_context.plan);
 
     auto root = GetFirstRunnerOfType(sql_context.runner, kRunnerGroup);

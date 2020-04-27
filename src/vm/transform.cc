@@ -190,9 +190,11 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
                 while (idx < size) {
                     keys_idxs.push_back(idx++);
                 }
-                CodeGenExprList(
-                    node->GetProducers()[0]->GetOutputNameSchemaList(),
-                    seek_op->keys_, true, fn_name, &fn_schema, status);
+                if (!CodeGenExprList(
+                        node->GetProducers()[0]->GetOutputNameSchemaList(),
+                        seek_op->keys_, true, fn_name, &fn_schema, status)) {
+                    return false;
+                }
                 seek_op->SetKeysIdxs(keys_idxs);
             }
 
@@ -208,9 +210,11 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
                 while (idx < size) {
                     idxs.push_back(idx++);
                 }
-                CodeGenExprList(
-                    (node->GetProducers()[0]->GetOutputNameSchemaList()),
-                    group_op->groups_, true, fn_name, &fn_schema, status);
+                if (!CodeGenExprList(
+                        (node->GetProducers()[0]->GetOutputNameSchemaList()),
+                        group_op->groups_, true, fn_name, &fn_schema, status)) {
+                    return false;
+                }
 
                 group_op->SetGroupsIdxs(idxs);
             }
@@ -228,10 +232,12 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
                     while (idx < size) {
                         idxs.push_back(idx++);
                     }
-                    CodeGenExprList(
-                        (node->GetProducers()[0]->GetOutputNameSchemaList()),
-                        order_op->order_->order_by_, true, fn_name, &fn_schema,
-                        status);
+                    if (!CodeGenExprList((node->GetProducers()[0]
+                                              ->GetOutputNameSchemaList()),
+                                         order_op->order_->order_by_, true,
+                                         fn_name, &fn_schema, status)) {
+                        return false;
+                    }
                     order_op->SetOrdersIdxs(idxs);
                 }
             }
@@ -257,9 +263,11 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
                 }
             }
             if (!expr_list.children_.empty()) {
-                CodeGenExprList(
-                    (node->GetProducers()[0]->GetOutputNameSchemaList()),
-                    &expr_list, true, fn_name, &fn_schema, status);
+                if (!CodeGenExprList(
+                        (node->GetProducers()[0]->GetOutputNameSchemaList()),
+                        &expr_list, true, fn_name, &fn_schema, status)) {
+                    return false;
+                }
                 group_sort_op->SetGroupsIdxs(groups_idxs);
                 group_sort_op->SetOrdersIdxs(orders_idxs);
             }
@@ -272,9 +280,11 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
                 node::ExprListNode expr_list;
                 expr_list.AddChild(
                     const_cast<node::ExprNode*>(filter_op->condition_));
-                CodeGenExprList(
-                    (node->GetProducers()[0]->GetOutputNameSchemaList()),
-                    &expr_list, true, fn_name, &fn_schema, status);
+                if (!CodeGenExprList(
+                        (node->GetProducers()[0]->GetOutputNameSchemaList()),
+                        &expr_list, true, fn_name, &fn_schema, status)) {
+                    return false;
+                }
                 filter_op->SetConditionIdxs({0});
             }
             break;
@@ -285,8 +295,11 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
                 node::ExprListNode expr_list;
                 expr_list.AddChild(
                     const_cast<node::ExprNode*>(join_op->condition_));
-                CodeGenExprList(node->GetOutputNameSchemaList(), &expr_list,
-                                true, fn_name, &fn_schema, status);
+                if (!CodeGenExprList(node->GetOutputNameSchemaList(),
+                                     &expr_list, true, fn_name, &fn_schema,
+                                     status)) {
+                    return false;
+                }
                 join_op->SetConditionIdxs({0});
             }
 
@@ -304,10 +317,12 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
                 if (!expr_list.children_.empty()) {
                     // Gen left table key
                     FnInfo left_key_fn_info;
-                    CodeGenExprList(
-                        node->GetProducers()[0]->GetOutputNameSchemaList(),
-                        &expr_list, true, left_key_fn_info.fn_name_,
-                        &left_key_fn_info.fn_schema_, status);
+                    if (!CodeGenExprList(
+                            node->GetProducers()[0]->GetOutputNameSchemaList(),
+                            &expr_list, true, left_key_fn_info.fn_name_,
+                            &left_key_fn_info.fn_schema_, status)) {
+                        return false;
+                    }
                     join_op->SetLeftKeyInfo(left_key_fn_info);
                     join_op->SetLeftKeysIdxs(keys_idxs);
                 }
@@ -320,8 +335,11 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
                 node::ExprListNode expr_list;
                 expr_list.AddChild(
                     const_cast<node::ExprNode*>(request_join_op->condition_));
-                CodeGenExprList(node->GetOutputNameSchemaList(), &expr_list,
-                                true, fn_name, &fn_schema, status);
+                if (!CodeGenExprList(node->GetOutputNameSchemaList(),
+                                     &expr_list, true, fn_name, &fn_schema,
+                                     status)) {
+                    return false;
+                }
                 request_join_op->SetConditionIdxs({0});
             }
             // Gen left key function
@@ -338,10 +356,13 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
                 if (!expr_list.children_.empty()) {
                     // Gen left table key
                     FnInfo left_key_fn_info;
-                    CodeGenExprList(
-                        (node->GetProducers()[0]->GetOutputNameSchemaList()),
-                        &expr_list, true, left_key_fn_info.fn_name_,
-                        &left_key_fn_info.fn_schema_, status);
+                    if (!CodeGenExprList(
+                            (node->GetProducers()[0]
+                                 ->GetOutputNameSchemaList()),
+                            &expr_list, true, left_key_fn_info.fn_name_,
+                            &left_key_fn_info.fn_schema_, status)) {
+                        return false;
+                    }
                     request_join_op->SetLeftKeysIdxs(keys_idxs);
                     request_join_op->SetLeftKeyInfo(left_key_fn_info);
                 }
@@ -382,9 +403,11 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
                 }
             }
             if (!expr_list.children_.empty()) {
-                CodeGenExprList(
-                    (node->GetProducers()[0]->GetOutputNameSchemaList()),
-                    &expr_list, true, fn_name, &fn_schema, status);
+                if (!CodeGenExprList(
+                        (node->GetProducers()[0]->GetOutputNameSchemaList()),
+                        &expr_list, true, fn_name, &fn_schema, status)) {
+                    return false;
+                }
                 request_union->SetGroupsIdxs(groups_idxs);
                 request_union->SetOrdersIdxs(orders_idxs);
                 request_union->SetKeysIdxs(keys_idxs);
@@ -1947,7 +1970,7 @@ bool RequestModeransformer::TransformProjecPlantOp(
             pos++;
         }
 
-        return CreatePhysicalProjectNode(kTableProject, join, project_list,
+        return CreatePhysicalProjectNode(kRowProject, join, project_list,
                                          output, status);
     }
 }
