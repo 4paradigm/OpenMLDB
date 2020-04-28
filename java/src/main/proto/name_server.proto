@@ -90,6 +90,7 @@ message TableInfo {
     optional rtidb.api.TTLDesc ttl_desc = 16;
     optional rtidb.type.TableType table_type = 17 [default = kTimeSeries];
     optional uint32 format_version = 18 [default = 0];
+    optional string db = 19;
 }
 
 message CreateTableRequest {
@@ -119,6 +120,7 @@ message CreateTableInfoRequest {
 
 message ShowTableRequest {
     optional string name = 1;
+    optional string db = 2;
 }
 
 message ShowTableResponse {
@@ -376,6 +378,13 @@ message SyncTableRequest {
     optional uint32 pid = 3;
 }
 
+message AddIndexMeta {
+    optional string name = 1;
+    optional uint32 pid = 2;
+    optional rtidb.common.ColumnKey column_key = 3;
+    optional uint32 idx = 4;
+}
+
 message AddIndexRequest {
     optional string name = 1;
     optional rtidb.common.ColumnKey column_key = 2;
@@ -384,6 +393,14 @@ message AddIndexRequest {
 message DeleteIndexRequest {
     optional string table_name = 1;
     optional string idx_name = 2;
+}
+
+message CreateDatabaseRequest {
+    optional string db = 1;
+}
+
+message UseDatabaseRequest {
+    optional string db = 1;
 }
 
 service NameServer {
@@ -425,4 +442,6 @@ service NameServer {
     rpc SyncTable(SyncTableRequest) returns (GeneralResponse);
     rpc AddIndex(AddIndexRequest) returns (GeneralResponse);
     rpc DeleteIndex(DeleteIndexRequest) returns (GeneralResponse);
+    rpc CreateDatabase(CreateDatabaseRequest) returns (GeneralResponse);
+    rpc UseDatabase(UseDatabaseRequest) returns (GeneralResponse);
 }

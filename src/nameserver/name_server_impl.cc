@@ -3547,7 +3547,8 @@ void NameServerImpl::ShowTable(RpcController* controller,
     for (const auto& kv : table_info_) {
         if ((request->has_name() && request->name() != kv.first) ||
             (request->has_db() && kv.second->has_db() &&
-             request->db() != kv.second->db())) {
+            request->db() != kv.second->db()) ||
+            (!request->has_db() && kv.second->has_db())) {
             continue;
         }
         ::rtidb::nameserver::TableInfo* table_info = response->add_table_info();
