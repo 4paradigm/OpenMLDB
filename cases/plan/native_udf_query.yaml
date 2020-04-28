@@ -1,0 +1,17 @@
+SQLCases:
+  - id: 1
+    desc: Trim函数
+    sql: SELECT TRIM(COL1) FROM t1;
+  - id: 2
+    desc: Trim函数2
+    sql: SELECT trim(COL1) as trim_col1 FROM t1;
+  - id: 3
+    desc: Min函数
+    sql: SELECT MIN(COL1) FROM t1;
+  - id: 4
+    desc: Max函数
+    sql: SELECT MAX(COL1) FROM t1;
+  - id: 5
+    desc: Sum函数
+    sql: SELECT SUM(COL1) FROM t1;
+

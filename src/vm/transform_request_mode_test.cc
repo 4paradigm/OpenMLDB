@@ -13,6 +13,7 @@
 #include <vector>
 #include "base/status.h"
 #include "boost/algorithm/string.hpp"
+#include "case/sql_case.h"
 #include "gtest/gtest.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/IR/Function.h"
@@ -42,14 +43,33 @@ ExitOnError ExitOnErr;
 
 namespace fesql {
 namespace vm {
-class TransformRequestModeTest : public ::testing::TestWithParam<std::string> {
+
+using fesql::sqlcase::SQLCase;
+std::vector<SQLCase> InitCases(std::string yaml_path);
+void InitCases(std::string yaml_path, std::vector<SQLCase>& cases);  // NOLINT
+
+void InitCases(std::string yaml_path, std::vector<SQLCase>& cases) {  // NOLINT
+    if (!SQLCase::CreateSQLCasesFromYaml(
+            fesql::sqlcase::FindFesqlDirPath() + "/" + yaml_path, cases,
+            std::vector<std::string>({"physical-plan-unsupport",
+                                      "plan-unsupport", "parser-unsupport"}))) {
+        FAIL();
+    }
+}
+
+std::vector<SQLCase> InitCases(std::string yaml_path) {
+    std::vector<SQLCase> cases;
+    InitCases(yaml_path, cases);
+    return cases;
+}
+class TransformRequestModeTest : public ::testing::TestWithParam<SQLCase> {
  public:
     TransformRequestModeTest() {}
     ~TransformRequestModeTest() {}
 };
 
 void PhysicalPlanCheck(const std::shared_ptr<tablet::TabletCatalog>& catalog,
-                         std::string sql, std::string exp) {
+                       std::string sql, std::string exp) {
     const fesql::base::Status exp_status(::fesql::common::kOk, "ok");
 
     boost::to_lower(sql);
@@ -94,177 +114,43 @@ void PhysicalPlanCheck(const std::shared_ptr<tablet::TabletCatalog>& catalog,
     std::cout << "schema:\n" << ss.str() << std::endl;
     ASSERT_EQ(oss.str(), exp);
 }
-
 INSTANTIATE_TEST_CASE_P(
-    SqlSimpleProjectPlanner, TransformRequestModeTest,
-    testing::Values(
-        "SELECT COL1 as c1 FROM t1;", "SELECT t1.COL1 c1 FROM t1 limit 10;",
-        "SELECT COL1 as c1, col2  FROM t1;",
-        "SELECT col1-col2 as col1_2, *, col1+col2 as col12 FROM t1 limit 10;",
-        "SELECT *, col1+col2 as col12 FROM t1 limit 10;"));
-
+    SqlSimpleQueryParse, TransformRequestModeTest,
+    testing::ValuesIn(InitCases("cases/plan/simple_query.yaml")));
 INSTANTIATE_TEST_CASE_P(
-    SqlWindowProjectPlanner, TransformRequestModeTest,
-    testing::Values(
-        "SELECT COL1, COL2, `COL5`, AVG(COL3) OVER w, SUM(COL3) OVER w FROM "
-        "t1 \n"
-        "WINDOW w AS (PARTITION BY COL2\n"
-        "              ORDER BY `COL5` ROWS BETWEEN UNBOUNDED PRECEDING AND "
-        "CURRENT ROW);",
-        "SELECT COL1, SUM(col4) OVER w as w_amt_sum FROM t1 \n"
-        "WINDOW w AS (PARTITION BY COL2\n"
-        "              ORDER BY `col5` ROWS BETWEEN 3 PRECEDING AND 3 "
-        "FOLLOWING);",
-        "SELECT sum(col1) OVER w1 as w1_col1_sum FROM t1 "
-        "WINDOW w1 AS (PARTITION BY col5 ORDER BY `col5` RANGE BETWEEN 3 "
-        "PRECEDING AND CURRENT ROW) limit 10;"));
+    SqlWindowQueryParse, TransformRequestModeTest,
+    testing::ValuesIn(InitCases("cases/plan/window_query.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
     SqlWherePlan, TransformRequestModeTest,
-    testing::Values(
-        "SELECT COL1 FROM t1 where COL1+COL2;",
-        "SELECT COL1 FROM t1 where COL1;",
-        "SELECT COL1 FROM t1 where COL1 > 10 and COL2 = 20 or COL1 =0;",
-        "SELECT COL1 FROM t1 where COL1 > 10 and COL2 = 20;",
-        "SELECT COL1 FROM t1 where COL1 > 10;"));
-INSTANTIATE_TEST_CASE_P(
-    SqlLikePlan, TransformRequestModeTest,
-    testing::Values("SELECT COL1 FROM t1 where COL like \"%abc\";",
-                    "SELECT COL1 FROM t1 where COL1 like '%123';",
-                    "SELECT COL1 FROM t1 where COL not like \"%abc\";",
-                    "SELECT COL1 FROM t1 where COL1 not like '%123';",
-                    "SELECT COL1 FROM t1 where COL1 not like 10;",
-                    "SELECT COL1 FROM t1 where COL1 like 10;"));
-INSTANTIATE_TEST_CASE_P(
-    SqlInPlan, TransformRequestModeTest,
-    testing::Values(
-        "SELECT COL1 FROM t1 where COL in (1, 2, 3, 4, 5);",
-        "SELECT COL1 FROM t1 where COL1 in (\"abc\", \"xyz\", \"test\");",
-        "SELECT COL1 FROM t1 where COL1 not in (1,2,3,4,5);"));
+    testing::ValuesIn(InitCases("cases/plan/where_query.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
     SqlGroupPlan, TransformRequestModeTest,
-    testing::Values(
-        "SELECT distinct sum(COL1) as col1sum FROM t1 where col2 > 10 group "
-        "by COL1, "
-        "COL2 having col1sum > 0 order by COL1+COL2 limit 10;",
-        "SELECT sum(col1) as col1sum FROM t1 group by col1, col2;",
-        "SELECT sum(col1) as col1sum FROM t1 group by col1, col2, col3;",
-        "SELECT sum(col1) as col1sum FROM t1 group by col3, col2, col1;",
-        "SELECT sum(COL1) FROM t1 group by COL1+COL2;",
-        "SELECT sum(COL1) FROM t1 group by COL1;",
-        "SELECT sum(COL1) FROM t1 group by COL1 > 10 and COL2 = 20 or COL1 =0;",
-        "SELECT sum(COL1) FROM t1 group by COL1, COL2;",
-        "SELECT sum(COL1) FROM t1 group by COL1;"));
+    testing::ValuesIn(InitCases("cases/plan/group_query.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
     SqlHavingPlan, TransformRequestModeTest,
-    testing::Values(
-        "SELECT COL1 FROM t1 having COL1+COL2;",
-        "SELECT COL1 FROM t1 having COL1;",
-        "SELECT COL1 FROM t1 HAVING COL1 > 10 and COL2 = 20 or COL1 =0;",
-        "SELECT COL1 FROM t1 HAVING COL1 > 10 and COL2 = 20;",
-        "SELECT COL1 FROM t1 HAVING COL1 > 10;"));
+    testing::ValuesIn(InitCases("cases/plan/having_query.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
     SqlOrderPlan, TransformRequestModeTest,
-    testing::Values("SELECT COL1 FROM t1 order by COL1 + COL2 - COL3;",
-                    "SELECT COL1 FROM t1 order by COL1, COL2, COL3;",
-                    "SELECT COL1 FROM t1 order by COL1, COL2;",
-                    "SELECT COL1 FROM t1 order by COL1;"));
-
-INSTANTIATE_TEST_CASE_P(
-    SqlWhereGroupHavingOrderPlan, TransformRequestModeTest,
-    testing::Values(
-        "SELECT sum(COL1) as col1sum FROM t1 where col2 > 10 group by COL1, "
-        "COL2 having col1sum > 0 order by COL1+COL2 limit 10;",
-        "SELECT sum(COL1) as col1sum FROM t1 where col2 > 10 group by COL1, "
-        "COL2 having col1sum > 0 order by COL1 limit 10;",
-        "SELECT sum(COL1) as col1sum FROM t1 where col2 > 10 group by COL1, "
-        "COL2 having col1sum > 0 limit 10;",
-        "SELECT sum(COL1) as col1sum FROM t1 where col2 > 10 group by COL1, "
-        "COL2 having col1sum > 0;",
-        "SELECT sum(COL1) as col1sum FROM t1 group by COL1, COL2 having "
-        "sum(COL1) > 0;",
-        "SELECT sum(COL1) as col1sum FROM t1 group by COL1, COL2 having "
-        "col1sum > 0;"));
+    testing::ValuesIn(InitCases("cases/plan/order_query.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
     SqlJoinPlan, TransformRequestModeTest,
-    testing::Values(
-        "SELECT * FROM t1 full join t2 on t1.col1 = t2.col2;",
-        "SELECT * FROM t1 right join t2 on t1.col1 = t2.col2;",
-        "SELECT * FROM t1 inner join t2 on t1.col1 = t2.col2;",
-        "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join t2 on "
-        "t1.col1 = t2.col2 and t2.col5 >= t1.col5;"));
+    testing::ValuesIn(InitCases("cases/plan/join_query.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
-    SqlLeftJoinWindowPlan, TransformRequestModeTest,
-    testing::Values(
-        "SELECT "
-        "t1.col1, "
-        "sum(t1.col3) OVER w1 as w1_col3_sum, "
-        "sum(t2.col2) OVER w1 as w1_col2_sum "
-        "FROM t1 left join t2 on t1.col1 = t2.col1 "
-        "WINDOW w1 AS (PARTITION BY t1.col1 ORDER BY t1.col5 ROWS BETWEEN 3 "
-        "PRECEDING AND CURRENT ROW) limit 10;",
-        "SELECT "
-        "t1.col1, "
-        "sum(t1.col3) OVER w1 as w1_col3_sum, "
-        "sum(t2.col2) OVER w1 as w1_col2_sum "
-        "FROM t1 left join t2 on t1.col1 = t2.col1 "
-        "WINDOW w1 AS (PARTITION BY t1.col1, t1.col2 ORDER BY t1.col5 ROWS "
-        "BETWEEN 3 "
-        "PRECEDING AND CURRENT ROW) limit 10;"));
-INSTANTIATE_TEST_CASE_P(
-    SqlUnionPlan, TransformRequestModeTest,
-    testing::Values("SELECT * FROM t1 UNION SELECT max(col1), min(col2), "
-                    "sum(col3), avg(col4), col5 FROM t1;",
-                    "SELECT * FROM t1 inner join t2 on t1.col1 = t2.col2 UNION "
-                    "SELECT * FROM t1 inner join t2 on t1.col1 = t2.col3 UNION "
-                    "SELECT * FROM t1 inner join t2 on t2.col1 = t2.col4;"));
-INSTANTIATE_TEST_CASE_P(
     SqlDistinctPlan, TransformRequestModeTest,
-    testing::Values(
-        "SELECT distinct COL1 FROM t1 HAVING COL1 > 10 and COL2 = 20;",
-        "SELECT DISTINCT sum(COL1) as col1sum, * FROM t1 group by COL1,COL2;",
-        "SELECT DISTINCT sum(col1) OVER w1 as w1_col1_sum FROM t1 "
-        "WINDOW w1 AS (PARTITION BY col5 ORDER BY `TS` RANGE BETWEEN 3 "
-        "PRECEDING AND CURRENT ROW) limit 10;",
-        //        "SELECT DISTINCT COUNT(*) FROM t1;",
-        "SELECT distinct COL1 FROM t1 where COL1+COL2;",
-        "SELECT DISTINCT COL1 FROM t1 where COL1 > 10;"));
+    testing::ValuesIn(InitCases("cases/plan/distinct_query.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
     SqlSubQueryPlan, TransformRequestModeTest,
-    testing::Values(
-        "SELECT * FROM t1 WHERE COL1 > (select avg(COL1) from t1) limit 10;",
-        "select * from (select * from t1 where col1>0);",
-        "select * from \n"
-        "    (select * from t1 where col1 = 7) s\n"
-        "left join \n"
-        "    (select * from t1 where col2 = 2) t\n"
-        "on s.col3 = t.col3\n"
-        "union\n"
-        "select distinct * from \n"
-        "    (select distinct * from t1 where col1 = 7) s\n"
-        "right join \n"
-        "    (select distinct * from t1 where col2 = 2) t\n"
-        "on s.col3 = t.col3;",
-        "select * from \n"
-        "    (select * from t1 where col1 = 7) s\n"
-        "left join \n"
-        "    (select * from t1 where col2 = 2) t\n"
-        "on s.col3 = t.col3\n"
-        "union\n"
-        "select distinct * from \n"
-        "    (select  * from t1 where col1 = 7) s\n"
-        "right join \n"
-        "    (select distinct * from t1 where col2 = 2) t\n"
-        "on s.col3 = t.col3;"));
+    testing::ValuesIn(InitCases("cases/plan/sub_query.yaml")));
 
 TEST_P(TransformRequestModeTest, transform_physical_plan) {
-    std::string sqlstr = GetParam();
+    std::string sqlstr = GetParam().sql_str();
     LOG(INFO) << sqlstr;
 
     const fesql::base::Status exp_status(::fesql::common::kOk, "ok");

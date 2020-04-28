@@ -64,7 +64,12 @@ bool Engine::Get(const std::string& sql,
     SQLCompiler compiler(cl_, &nm_, options_.is_keep_ir());
     bool ok = compiler.Compile(info->get_sql_context(), status);
     if (!ok || 0 != status.code) {
-        // do clean
+        // TODO(chenjing): do clean
+        return false;
+    }
+    ok = compiler.BuildRunner(info->get_sql_context(), status);
+    if (!ok || 0 != status.code) {
+        // TODO(chenjing): do clean
         return false;
     }
 

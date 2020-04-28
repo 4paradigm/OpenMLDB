@@ -19,6 +19,7 @@
 #include <memory>
 #include <utility>
 #include "boost/algorithm/string.hpp"
+#include "case/sql_case.h"
 #include "gtest/gtest.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/IR/Function.h"
@@ -47,80 +48,45 @@ ExitOnError ExitOnErr;
 namespace fesql {
 namespace vm {
 
-class SQLCompilerTest : public ::testing::TestWithParam<std::string> {};
+using fesql::sqlcase::SQLCase;
+std::vector<SQLCase> InitCases(std::string yaml_path);
+void InitCases(std::string yaml_path, std::vector<SQLCase>& cases);  // NOLINT
 
+void InitCases(std::string yaml_path, std::vector<SQLCase>& cases) {  // NOLINT
+    if (!SQLCase::CreateSQLCasesFromYaml(
+            fesql::sqlcase::FindFesqlDirPath() + "/" + yaml_path, cases,
+            std::vector<std::string>({"physical-plan-unsupport",
+                                      "plan-unsupport", "parser-unsupport"}))) {
+        FAIL();
+    }
+}
+std::vector<SQLCase> InitCases(std::string yaml_path) {
+    std::vector<SQLCase> cases;
+    InitCases(yaml_path, cases);
+    return cases;
+}
+class SQLCompilerTest : public ::testing::TestWithParam<SQLCase> {};
 INSTANTIATE_TEST_CASE_P(
-    SqlSimpleProject, SQLCompilerTest,
-    testing::Values(
-        "SELECT COL1 as c1 FROM t1;", "SELECT t1.COL1 c1 FROM t1 limit 10;",
-        "SELECT COL1 as c1, col2  FROM t1;",
-        "SELECT col1-col2 as col1_2, *, col1+col2 as col12 FROM t1 limit 10;",
-        "SELECT *, col1+col2 as col12 FROM t1 limit 10;"));
-
+    SqlSimpleQueryParse, SQLCompilerTest,
+    testing::ValuesIn(InitCases("cases/plan/simple_query.yaml")));
 INSTANTIATE_TEST_CASE_P(
-    SqlWindowProjectPlanner, SQLCompilerTest,
-    testing::Values(
-        "SELECT COL1, COL2, `COL5`, AVG(COL3) OVER w, SUM(COL3) OVER w FROM "
-        "t1 \n"
-        "WINDOW w AS (PARTITION BY COL2\n"
-        "              ORDER BY `COL5` ROWS BETWEEN UNBOUNDED PRECEDING AND "
-        "CURRENT ROW);",
-        "SELECT COL1, SUM(col4) OVER w as w_amt_sum FROM t1 \n"
-        "WINDOW w AS (PARTITION BY COL2\n"
-        "              ORDER BY `col5` ROWS BETWEEN 3 PRECEDING AND 3 "
-        "FOLLOWING);",
-        "SELECT sum(col1) OVER w1 as w1_col1_sum FROM t1 "
-        "WINDOW w1 AS (PARTITION BY col5 ORDER BY `col5` RANGE BETWEEN 3 "
-        "PRECEDING AND CURRENT ROW) limit 10;"));
+    SqlWindowQueryParse, SQLCompilerTest,
+    testing::ValuesIn(InitCases("cases/plan/window_query.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
     SqlWherePlan, SQLCompilerTest,
-    testing::Values(
-        "SELECT COL1 FROM t1 where COL1+COL2;",
-        "SELECT COL1 FROM t1 where COL1;",
-        "SELECT COL1 FROM t1 where COL1 > 10 and COL2 = 20 or COL1 =0;",
-        "SELECT COL1 FROM t1 where COL1 > 10 and COL2 = 20;",
-        "SELECT COL1 FROM t1 where COL1 > 10;"));
+    testing::ValuesIn(InitCases("cases/plan/where_query.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
     SqlGroupPlan, SQLCompilerTest,
-    testing::Values(
-        "SELECT sum(col1) as col1sum FROM t1 group by col1, col2;",
-        "SELECT sum(col1) as col1sum FROM t1 group by col1, col2, col3;",
-        "SELECT sum(col1) as col1sum FROM t1 group by col3, col2, col1;",
-        "SELECT sum(COL1) FROM t1 group by COL1+COL2;",
-        "SELECT sum(COL1) FROM t1 group by COL1;",
-        "SELECT sum(COL1) FROM t1 group by COL1 > 10 and COL2 = 20 or COL1 =0;",
-        "SELECT sum(COL1) FROM t1 group by COL1, COL2;",
-        "SELECT sum(COL1) FROM t1 group by COL1;"));
+    testing::ValuesIn(InitCases("cases/plan/group_query.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
     SqlJoinPlan, SQLCompilerTest,
-    testing::Values(
-        "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join t2 on "
-        "t1.col1 = t2.col2;",
-        "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join t2 on "
-        "t1.col1 = t2.col2 and t2.col5 >= t1.col5;"));
-INSTANTIATE_TEST_CASE_P(
-    WindowSqlTest, SQLCompilerTest,
-    testing::Values(
-        "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return "
-        "d\nend\n%%sql\nSELECT test(col1,col1) FROM t1 limit 10;",
-        "SELECT COL1, COL2, `COL5`, AVG(COL3) OVER w, SUM(COL3) OVER w FROM "
-        "t1 \n"
-        "WINDOW w AS (PARTITION BY COL2\n"
-        "              ORDER BY `COL5` ROWS BETWEEN UNBOUNDED PRECEDING AND "
-        "CURRENT ROW);",
-        "SELECT COL1, SUM(col4) OVER w as w_amt_sum FROM t1 \n"
-        "WINDOW w AS (PARTITION BY COL2\n"
-        "              ORDER BY `col5` ROWS BETWEEN 3 PRECEDING AND 3 "
-        "FOLLOWING);",
-        "SELECT sum(col1) OVER w1 as w1_col1_sum FROM t1 "
-        "WINDOW w1 AS (PARTITION BY col5 ORDER BY `col5` RANGE BETWEEN 3 "
-        "PRECEDING AND CURRENT ROW) limit 10;"));
+    testing::ValuesIn(InitCases("cases/plan/join_query.yaml")));
 
-void CompilerRunnerCheck(std::shared_ptr<Catalog> catalog,
-                           const std::string sql, const bool is_batch) {
+void CompilerCheck(std::shared_ptr<Catalog> catalog, const std::string sql,
+                   const bool is_batch) {
     node::NodeManager nm;
     SQLCompiler sql_compiler(catalog, &nm);
     SQLContext sql_context;
@@ -135,19 +101,13 @@ void CompilerRunnerCheck(std::shared_ptr<Catalog> catalog,
     sql_context.plan->Print(oss, "");
     std::cout << "physical plan:\n" << sql << "\n" << oss.str() << std::endl;
 
-    ASSERT_TRUE(nullptr != sql_context.runner);
-    std::ostringstream runner_oss;
-    sql_context.runner->Print(runner_oss, "");
-    std::cout << "runner: \n" << oss.str() << std::endl;
-
     std::ostringstream oss_schema;
     PrintSchema(oss_schema, sql_context.schema);
     std::cout << "schema:\n" << oss_schema.str();
 }
 
-void RequestSchemaCheck(std::shared_ptr<Catalog> catalog,
-                          const std::string sql,
-                          const type::TableDef& exp_table_def) {
+void RequestSchemaCheck(std::shared_ptr<Catalog> catalog, const std::string sql,
+                        const type::TableDef& exp_table_def) {
     node::NodeManager nm;
     SQLCompiler sql_compiler(catalog, &nm);
     SQLContext sql_context;
@@ -161,11 +121,6 @@ void RequestSchemaCheck(std::shared_ptr<Catalog> catalog,
     std::ostringstream oss;
     sql_context.plan->Print(oss, "");
     std::cout << "physical plan:\n" << sql << "\n" << oss.str() << std::endl;
-
-    ASSERT_TRUE(nullptr != sql_context.runner);
-    std::ostringstream runner_oss;
-    sql_context.runner->Print(runner_oss, "");
-    std::cout << "runner: \n" << oss.str() << std::endl;
 
     std::ostringstream oss_schema;
     PrintSchema(oss_schema, sql_context.schema);
@@ -185,7 +140,7 @@ void RequestSchemaCheck(std::shared_ptr<Catalog> catalog,
 }
 
 TEST_P(SQLCompilerTest, compile_request_mode_test) {
-    std::string sqlstr = GetParam();
+    std::string sqlstr = GetParam().sql_str();
     LOG(INFO) << sqlstr;
 
     const fesql::base::Status exp_status(::fesql::common::kOk, "ok");
@@ -238,12 +193,12 @@ TEST_P(SQLCompilerTest, compile_request_mode_test) {
     AddTable(catalog, table_def4, table4);
     AddTable(catalog, table_def5, table5);
     AddTable(catalog, table_def6, table6);
-    CompilerRunnerCheck(catalog, sqlstr, false);
+    CompilerCheck(catalog, sqlstr, false);
     RequestSchemaCheck(catalog, sqlstr, table_def);
 }
 
 TEST_P(SQLCompilerTest, compile_batch_mode_test) {
-    std::string sqlstr = GetParam();
+    std::string sqlstr = GetParam().sql_str();
     LOG(INFO) << sqlstr;
 
     const fesql::base::Status exp_status(::fesql::common::kOk, "ok");
@@ -297,7 +252,7 @@ TEST_P(SQLCompilerTest, compile_batch_mode_test) {
     AddTable(catalog, table_def5, table5);
     AddTable(catalog, table_def6, table6);
 
-    CompilerRunnerCheck(catalog, sqlstr, true);
+    CompilerCheck(catalog, sqlstr, true);
 
     // Check for work with simple catalog
     auto simple_catalog = std::make_shared<SimpleCatalog>();
@@ -325,7 +280,7 @@ TEST_P(SQLCompilerTest, compile_batch_mode_test) {
     }
 
     simple_catalog->AddDatabase(db);
-    CompilerRunnerCheck(simple_catalog, sqlstr, true);
+    CompilerCheck(simple_catalog, sqlstr, true);
 }
 
 }  // namespace vm

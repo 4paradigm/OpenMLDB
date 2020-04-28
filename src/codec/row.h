@@ -71,7 +71,7 @@ class Row {
     int compare(const Row &b) const;
     void Append(const std::vector<Slice> &slices) {
         if (!slices.empty()) {
-            for (auto iter = slices_.cbegin(); iter != slices_.cend(); iter++) {
+            for (auto iter = slices.cbegin(); iter != slices.cend(); iter++) {
                 slices_.push_back(*iter);
             }
         }

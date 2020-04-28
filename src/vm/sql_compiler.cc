@@ -195,7 +195,10 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     if (!ResolvePlanFnAddress(ctx.plan, ctx.jit, status)) {
         return false;
     }
-
+    ctx.schema = ctx.plan->output_schema_;
+    return true;
+}
+bool SQLCompiler::BuildRunner(SQLContext& ctx, Status& status) {  // NOLINT
     RunnerBuilder runner_builder;
     Runner* runner = runner_builder.Build(ctx.plan, status);
     if (nullptr == runner) {
@@ -203,7 +206,6 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         status.code = common::kOpGenError;
         return false;
     }
-    ctx.schema = ctx.plan->output_schema_;
     ctx.runner = runner;
     return true;
 }

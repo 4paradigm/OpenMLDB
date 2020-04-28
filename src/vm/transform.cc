@@ -190,9 +190,11 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
                 while (idx < size) {
                     keys_idxs.push_back(idx++);
                 }
-                CodeGenExprList(
-                    node->GetProducers()[0]->GetOutputNameSchemaList(),
-                    seek_op->keys_, true, fn_name, &fn_schema, status);
+                if (!CodeGenExprList(
+                        node->GetProducers()[0]->GetOutputNameSchemaList(),
+                        seek_op->keys_, true, fn_name, &fn_schema, status)) {
+                    return false;
+                }
                 seek_op->SetKeysIdxs(keys_idxs);
             }
 
@@ -208,9 +210,11 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
                 while (idx < size) {
                     idxs.push_back(idx++);
                 }
-                CodeGenExprList(
-                    (node->GetProducers()[0]->GetOutputNameSchemaList()),
-                    group_op->groups_, true, fn_name, &fn_schema, status);
+                if (!CodeGenExprList(
+                        (node->GetProducers()[0]->GetOutputNameSchemaList()),
+                        group_op->groups_, true, fn_name, &fn_schema, status)) {
+                    return false;
+                }
 
                 group_op->SetGroupsIdxs(idxs);
             }
@@ -228,10 +232,12 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
                     while (idx < size) {
                         idxs.push_back(idx++);
                     }
-                    CodeGenExprList(
-                        (node->GetProducers()[0]->GetOutputNameSchemaList()),
-                        order_op->order_->order_by_, true, fn_name, &fn_schema,
-                        status);
+                    if (!CodeGenExprList((node->GetProducers()[0]
+                                              ->GetOutputNameSchemaList()),
+                                         order_op->order_->order_by_, true,
+                                         fn_name, &fn_schema, status)) {
+                        return false;
+                    }
                     order_op->SetOrdersIdxs(idxs);
                 }
             }
@@ -257,9 +263,11 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
                 }
             }
             if (!expr_list.children_.empty()) {
-                CodeGenExprList(
-                    (node->GetProducers()[0]->GetOutputNameSchemaList()),
-                    &expr_list, true, fn_name, &fn_schema, status);
+                if (!CodeGenExprList(
+                        (node->GetProducers()[0]->GetOutputNameSchemaList()),
+                        &expr_list, true, fn_name, &fn_schema, status)) {
+                    return false;
+                }
                 group_sort_op->SetGroupsIdxs(groups_idxs);
                 group_sort_op->SetOrdersIdxs(orders_idxs);
             }
@@ -272,9 +280,11 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
                 node::ExprListNode expr_list;
                 expr_list.AddChild(
                     const_cast<node::ExprNode*>(filter_op->condition_));
-                CodeGenExprList(
-                    (node->GetProducers()[0]->GetOutputNameSchemaList()),
-                    &expr_list, true, fn_name, &fn_schema, status);
+                if (!CodeGenExprList(
+                        (node->GetProducers()[0]->GetOutputNameSchemaList()),
+                        &expr_list, true, fn_name, &fn_schema, status)) {
+                    return false;
+                }
                 filter_op->SetConditionIdxs({0});
             }
             break;
@@ -285,8 +295,11 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
                 node::ExprListNode expr_list;
                 expr_list.AddChild(
                     const_cast<node::ExprNode*>(join_op->condition_));
-                CodeGenExprList(node->GetOutputNameSchemaList(), &expr_list,
-                                true, fn_name, &fn_schema, status);
+                if (!CodeGenExprList(node->GetOutputNameSchemaList(),
+                                     &expr_list, true, fn_name, &fn_schema,
+                                     status)) {
+                    return false;
+                }
                 join_op->SetConditionIdxs({0});
             }
 
@@ -304,10 +317,12 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
                 if (!expr_list.children_.empty()) {
                     // Gen left table key
                     FnInfo left_key_fn_info;
-                    CodeGenExprList(
-                        node->GetProducers()[0]->GetOutputNameSchemaList(),
-                        &expr_list, true, left_key_fn_info.fn_name_,
-                        &left_key_fn_info.fn_schema_, status);
+                    if (!CodeGenExprList(
+                            node->GetProducers()[0]->GetOutputNameSchemaList(),
+                            &expr_list, true, left_key_fn_info.fn_name_,
+                            &left_key_fn_info.fn_schema_, status)) {
+                        return false;
+                    }
                     join_op->SetLeftKeyInfo(left_key_fn_info);
                     join_op->SetLeftKeysIdxs(keys_idxs);
                 }
@@ -320,8 +335,11 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
                 node::ExprListNode expr_list;
                 expr_list.AddChild(
                     const_cast<node::ExprNode*>(request_join_op->condition_));
-                CodeGenExprList(node->GetOutputNameSchemaList(), &expr_list,
-                                true, fn_name, &fn_schema, status);
+                if (!CodeGenExprList(node->GetOutputNameSchemaList(),
+                                     &expr_list, true, fn_name, &fn_schema,
+                                     status)) {
+                    return false;
+                }
                 request_join_op->SetConditionIdxs({0});
             }
             // Gen left key function
@@ -338,10 +356,13 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
                 if (!expr_list.children_.empty()) {
                     // Gen left table key
                     FnInfo left_key_fn_info;
-                    CodeGenExprList(
-                        (node->GetProducers()[0]->GetOutputNameSchemaList()),
-                        &expr_list, true, left_key_fn_info.fn_name_,
-                        &left_key_fn_info.fn_schema_, status);
+                    if (!CodeGenExprList(
+                            (node->GetProducers()[0]
+                                 ->GetOutputNameSchemaList()),
+                            &expr_list, true, left_key_fn_info.fn_name_,
+                            &left_key_fn_info.fn_schema_, status)) {
+                        return false;
+                    }
                     request_join_op->SetLeftKeysIdxs(keys_idxs);
                     request_join_op->SetLeftKeyInfo(left_key_fn_info);
                 }
@@ -382,9 +403,11 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
                 }
             }
             if (!expr_list.children_.empty()) {
-                CodeGenExprList(
-                    (node->GetProducers()[0]->GetOutputNameSchemaList()),
-                    &expr_list, true, fn_name, &fn_schema, status);
+                if (!CodeGenExprList(
+                        (node->GetProducers()[0]->GetOutputNameSchemaList()),
+                        &expr_list, true, fn_name, &fn_schema, status)) {
+                    return false;
+                }
                 request_union->SetGroupsIdxs(groups_idxs);
                 request_union->SetOrdersIdxs(orders_idxs);
                 request_union->SetKeysIdxs(keys_idxs);
@@ -445,18 +468,17 @@ bool BatchModeTransformer::TransformProjecPlantOp(
     }
 
     std::vector<PhysicalOpNode*> ops;
-    for (auto iter = node->project_list_vec_.rbegin();
-         iter != node->project_list_vec_.rend(); ++iter) {
+    int32_t project_cnt = 0;
+    for (size_t i = node->project_list_vec_.size() - 1; i > 0; i--) {
         fesql::node::ProjectListNode* project_list =
-            dynamic_cast<fesql::node::ProjectListNode*>(*iter);
-
+            dynamic_cast<fesql::node::ProjectListNode*>(
+                node->project_list_vec_[i]);
+        project_cnt++;
         // append oringinal table column after project columns
         // if there is multi
-        if (node->project_list_vec_.size() > 1) {
-            project_list->AddProject(node_manager_->MakeRowProjectNode(
-                project_list->GetProjects().size(), "*",
-                node_manager_->MakeAllNode("")));
-        }
+        project_list->AddProject(node_manager_->MakeRowProjectNode(
+            project_list->GetProjects().size(), "*",
+            node_manager_->MakeAllNode("")));
 
         PhysicalOpNode* project_op = nullptr;
         if (!TransformProjectOp(project_list, depend, &project_op, status)) {
@@ -465,7 +487,12 @@ bool BatchModeTransformer::TransformProjecPlantOp(
         depend = project_op;
     }
 
-    auto project_list = node_manager_->MakeProjectListPlanNode(nullptr, false);
+    // 第一个Project节点除了计算投影表达式之外，还需要筛选出前面窗口的表达式结果
+    // TODO(chenjing): 这部分代码可读性还是太差
+    fesql::node::ProjectListNode* first_project_list =
+        dynamic_cast<fesql::node::ProjectListNode*>(node->project_list_vec_[0]);
+    auto project_list = node_manager_->MakeProjectListPlanNode(
+        first_project_list->w_ptr_, first_project_list->is_window_agg_);
     uint32_t pos = 0;
     for (auto iter = node->pos_mapping_.cbegin();
          iter != node->pos_mapping_.cend(); iter++) {
@@ -474,7 +501,11 @@ bool BatchModeTransformer::TransformProjecPlantOp(
 
         auto project_node = dynamic_cast<node::ProjectNode*>(
             sub_project_list->GetProjects().at(iter->second));
-        if (node::kExprAll == project_node->GetExpression()->expr_type_) {
+        if (iter->first == 0) {
+            project_list->AddProject(project_node);
+
+        } else if (node::kExprAll ==
+                   project_node->GetExpression()->expr_type_) {
             auto all_expr =
                 dynamic_cast<node::AllNode*>(project_node->GetExpression());
             if (all_expr->children_.empty()) {
@@ -494,9 +525,7 @@ bool BatchModeTransformer::TransformProjecPlantOp(
         }
         pos++;
     }
-
-    return CreatePhysicalProjectNode(kTableProject, depend, project_list,
-                                     output, status);
+    return TransformProjectOp(project_list, depend, output, status);
 }
 
 bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
@@ -1947,7 +1976,7 @@ bool RequestModeransformer::TransformProjecPlantOp(
             pos++;
         }
 
-        return CreatePhysicalProjectNode(kTableProject, join, project_list,
+        return CreatePhysicalProjectNode(kRowProject, join, project_list,
                                          output, status);
     }
 }
