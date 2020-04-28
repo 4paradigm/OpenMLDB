@@ -468,18 +468,17 @@ bool BatchModeTransformer::TransformProjecPlantOp(
     }
 
     std::vector<PhysicalOpNode*> ops;
-    for (auto iter = node->project_list_vec_.rbegin();
-         iter != node->project_list_vec_.rend(); ++iter) {
+    int32_t project_cnt = 0;
+    for (size_t i = node->project_list_vec_.size() - 1; i > 0; i--) {
         fesql::node::ProjectListNode* project_list =
-            dynamic_cast<fesql::node::ProjectListNode*>(*iter);
-
+            dynamic_cast<fesql::node::ProjectListNode*>(
+                node->project_list_vec_[i]);
+        project_cnt++;
         // append oringinal table column after project columns
         // if there is multi
-        if (node->project_list_vec_.size() > 1) {
-            project_list->AddProject(node_manager_->MakeRowProjectNode(
-                project_list->GetProjects().size(), "*",
-                node_manager_->MakeAllNode("")));
-        }
+        project_list->AddProject(node_manager_->MakeRowProjectNode(
+            project_list->GetProjects().size(), "*",
+            node_manager_->MakeAllNode("")));
 
         PhysicalOpNode* project_op = nullptr;
         if (!TransformProjectOp(project_list, depend, &project_op, status)) {
@@ -488,7 +487,12 @@ bool BatchModeTransformer::TransformProjecPlantOp(
         depend = project_op;
     }
 
-    auto project_list = node_manager_->MakeProjectListPlanNode(nullptr, false);
+    // 第一个Project节点除了计算投影表达式之外，还需要筛选出前面窗口的表达式结果
+    // TODO(chenjing): 这部分代码可读性还是太差
+    fesql::node::ProjectListNode* first_project_list =
+        dynamic_cast<fesql::node::ProjectListNode*>(node->project_list_vec_[0]);
+    auto project_list = node_manager_->MakeProjectListPlanNode(
+        first_project_list->w_ptr_, first_project_list->is_window_agg_);
     uint32_t pos = 0;
     for (auto iter = node->pos_mapping_.cbegin();
          iter != node->pos_mapping_.cend(); iter++) {
@@ -497,7 +501,11 @@ bool BatchModeTransformer::TransformProjecPlantOp(
 
         auto project_node = dynamic_cast<node::ProjectNode*>(
             sub_project_list->GetProjects().at(iter->second));
-        if (node::kExprAll == project_node->GetExpression()->expr_type_) {
+        if (iter->first == 0) {
+            project_list->AddProject(project_node);
+
+        } else if (node::kExprAll ==
+                   project_node->GetExpression()->expr_type_) {
             auto all_expr =
                 dynamic_cast<node::AllNode*>(project_node->GetExpression());
             if (all_expr->children_.empty()) {
@@ -517,9 +525,7 @@ bool BatchModeTransformer::TransformProjecPlantOp(
         }
         pos++;
     }
-
-    return CreatePhysicalProjectNode(kTableProject, depend, project_list,
-                                     output, status);
+    return TransformProjectOp(project_list, depend, output, status);
 }
 
 bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,

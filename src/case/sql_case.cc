@@ -328,8 +328,8 @@ bool SQLCase::CreateTableInfoFromYamlNode(const YAML::Node& schema_data,
 }
 bool SQLCase::CreateSQLCasesFromYaml(const std::string& yaml_path,
                                      std::vector<SQLCase>& sql_cases,
-                                     const std::string& filter_mode) {
-    std::vector<const std::string> filter_modes;
+                                     const std::string filter_mode) {
+    std::vector<std::string> filter_modes;
     if (filter_mode.empty()) {
         return CreateSQLCasesFromYaml(yaml_path, sql_cases, filter_modes);
     } else {
@@ -339,7 +339,7 @@ bool SQLCase::CreateSQLCasesFromYaml(const std::string& yaml_path,
 }
 bool SQLCase::CreateSQLCasesFromYaml(
     const std::string& yaml_path, std::vector<SQLCase>& sql_cases,
-    const std::vector<const std::string> filter_modes) {
+    const std::vector<std::string>& filter_modes) {
     LOG(INFO) << "SQL Cases Path: " << yaml_path;
     if (!boost::filesystem::is_regular_file(yaml_path)) {
         LOG(WARNING) << yaml_path << ": No such file";

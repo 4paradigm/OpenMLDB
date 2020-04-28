@@ -28,8 +28,7 @@ void InitCases(std::string yaml_path, std::vector<SQLCase> &cases);  // NOLINT
 void InitCases(std::string yaml_path, std::vector<SQLCase> &cases) {  // NOLINT
     if (!SQLCase::CreateSQLCasesFromYaml(
             fesql::sqlcase::FindFesqlDirPath() + "/" + yaml_path, cases,
-            std::vector<const std::string>(
-                {"plan-unsupport", "parser-unsupport"}))) {
+            std::vector<std::string>({"plan-unsupport", "parser-unsupport"}))) {
         FAIL();
     }
 }
@@ -123,7 +122,9 @@ TEST_P(PlannerTest, PlannerSucessTest) {
     Planner *planner_ptr = new SimplePlanner(manager_);
     node::PlanNodeList plan_trees;
     ASSERT_EQ(0, planner_ptr->CreatePlanTree(trees, plan_trees, status));
-    std::cout << *(plan_trees.front()) << std::endl;
+    for (auto tree : plan_trees) {
+        std::cout << *tree << std::endl;
+    }
 }
 
 TEST_F(PlannerTest, SimplePlannerCreatePlanTest) {

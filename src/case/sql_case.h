@@ -67,11 +67,11 @@ class SQLCase {
     static bool CreateSQLCasesFromYaml(
         const std::string& yaml_path,
         std::vector<SQLCase>& sql_case_ptr,  // NOLINT
-        const std::string& filter_mode = "");
+        const std::string filter_mode = "");
     static bool CreateSQLCasesFromYaml(
         const std::string& yaml_path,
         std::vector<SQLCase>& sql_case_ptr,  // NOLINT
-        std::vector<const std::string> filter_modes);
+        const std::vector<std::string>& filter_modes);
     friend SQLCaseBuilder;
     friend std::ostream& operator<<(std::ostream& output, const SQLCase& thiz);
 
