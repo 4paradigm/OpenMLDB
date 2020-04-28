@@ -1,10 +1,10 @@
-package rtidb.httpserver;
+package rtidb.blobproxy;
 
 option cc_generic_services = true;
 
 message HttpRequest { };
 message HttpResponse { };
 
-service HTTPServer {
+service BlobProxy {
     rpc Get(HttpRequest) returns(HttpResponse);
 }

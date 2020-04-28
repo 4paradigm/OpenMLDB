@@ -864,9 +864,7 @@ bool TabletClient::DropTable(uint32_t id, uint32_t pid, TableType table_type,
     if (task_info) {
         request.mutable_task_info()->CopyFrom(*task_info);
     }
-    if (table_type == ::rtidb::type::kRelational) {
-        request.set_table_type(::rtidb::type::kRelational);
-    }
+    request.set_table_type(table_type);
     ::rtidb::api::DropTableResponse response;
     bool ok =
         client_.SendRequest(&::rtidb::api::TabletServer_Stub::DropTable,
@@ -1123,19 +1121,17 @@ bool TabletClient::Get(uint32_t tid, uint32_t pid, const std::string& pk,
     if (!ts_name.empty()) {
         request.set_ts_name(ts_name);
     }
-    response.set_allocated_value(&value);
     bool ok =
         client_.SendRequest(&::rtidb::api::TabletServer_Stub::Get, &request,
                             &response, FLAGS_request_timeout_ms, 1);
     if (response.has_msg()) {
         msg = response.msg();
     }
+    value.swap(*response.mutable_value());
     if (!ok || response.code() != 0) {
-        response.release_value();
         return false;
     }
     ts = response.ts();
-    response.release_value();
     return true;
 }
 
@@ -1242,16 +1238,14 @@ bool TabletClient::Traverse(uint32_t tid, uint32_t pid, const std::string& pk,
         request.set_snapshot_id(*snapshot_id);
     }
 
-    response.set_allocated_pairs(data);
-    response.set_allocated_msg(msg);
     if (!pk.empty()) {
         request.set_pk(pk);
     }
     bool ok = client_.SendRequest(&rtidb::api::TabletServer_Stub::Traverse,
                                   &request, &response, FLAGS_request_timeout_ms,
                                   FLAGS_request_max_retry);
-    response.release_pairs();
-    response.release_msg();
+    data->swap(*response.mutable_pairs());
+    msg->swap(*response.mutable_msg());
     if (!ok || response.code() != 0) {
         return false;
     }
@@ -1283,16 +1277,14 @@ bool TabletClient::BatchQuery(uint32_t tid, uint32_t pid,
     rtidb::api::BatchQueryResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
-    response.set_allocated_msg(msg);
-    response.set_allocated_pairs(data);
     for (const auto& key : keys) {
         request.add_query_key(key);
     }
     bool ok = client_.SendRequest(&rtidb::api::TabletServer_Stub::BatchQuery,
                                   &request, &response, FLAGS_request_timeout_ms,
                                   FLAGS_request_max_retry);
-    response.release_msg();
-    response.release_pairs();
+    data->swap(*response.mutable_pairs());
+    msg->swap(*response.mutable_msg());
     if (!ok || response.code() != 0) {
         return false;
     }

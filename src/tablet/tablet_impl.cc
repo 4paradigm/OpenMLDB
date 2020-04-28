@@ -513,8 +513,7 @@ void TabletImpl::Get(RpcController* controller,
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     std::shared_ptr<RelationalTable> r_table;
     if (!table) {
-        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-        r_table = GetRelationalTableUnLock(request->tid(), request->pid());
+        r_table = GetRelationalTable(request->tid(), request->pid());
         if (!r_table) {
             PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(),
                   request->pid());
@@ -684,8 +683,7 @@ void TabletImpl::Put(RpcController* controller,
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     std::shared_ptr<RelationalTable> r_table;
     if (!table) {
-        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-        r_table = GetRelationalTableUnLock(request->tid(), request->pid());
+        r_table = GetRelationalTable(request->tid(), request->pid());
         if (!r_table) {
             PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(),
                   request->pid());
@@ -3077,7 +3075,8 @@ void TabletImpl::LoadTable(RpcController* controller,
         }
 
         std::shared_ptr<Table> table = GetTable(tid, pid);
-        if (table) {
+        std::shared_ptr<RelationalTable> r_table = GetRelationalTable(tid, pid);
+        if (table || r_table) {
             PDLOG(WARNING, "table with tid[%u] and pid[%u] exists", tid, pid);
             response->set_code(::rtidb::base::ReturnCode::kTableAlreadyExists);
             response->set_msg("table already exists");
@@ -3113,6 +3112,14 @@ void TabletImpl::LoadTable(RpcController* controller,
                   table_meta.schema().size(), ttl);
             task_pool_.AddTask(boost::bind(&TabletImpl::LoadTableInternal, this,
                                            tid, pid, task_ptr));
+        } else if (table_meta.table_type() == ::rtidb::type::kRelational) {
+            std::string msg;
+            if (CreateRelationalTableInternal(&table_meta, msg) < 0) {
+                PDLOG(INFO, "%s", msg.c_str());
+                response->set_code(
+                    ::rtidb::base::ReturnCode::kCreateTableFailed);
+                response->set_msg(msg);
+            }
         } else {
             task_pool_.AddTask(boost::bind(&TabletImpl::LoadDiskTableInternal,
                                            this, tid, pid, table_meta,
@@ -3409,33 +3416,28 @@ int32_t TabletImpl::DeleteRelationalTableInternal(
     std::string recycle_bin_root_path;
     int32_t code = -1;
     do {
-        std::shared_ptr<RelationalTable> table;
-        {
-            std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-            table = GetRelationalTableUnLock(tid, pid);
-        }
+        std::shared_ptr<RelationalTable> table = GetRelationalTable(tid, pid);
         if (!table) {
             PDLOG(WARNING, "table is not exist. tid %u pid %u", tid, pid);
             break;
         }
-        bool ok =
-            ChooseDBRootPath(tid, pid, table->GetStorageMode(), root_path);
+        ::rtidb::common::StorageMode sm = table->GetStorageMode();
+        bool ok = ChooseDBRootPath(tid, pid, sm, root_path);
         if (!ok) {
             PDLOG(WARNING, "fail to get db root path. tid %u pid %u", tid, pid);
             break;
         }
-        ok = ChooseRecycleBinRootPath(tid, pid, table->GetStorageMode(),
-                                      recycle_bin_root_path);
+        ok = ChooseRecycleBinRootPath(tid, pid, sm, recycle_bin_root_path);
         if (!ok) {
             PDLOG(WARNING, "fail to get recycle bin root path. tid %u pid %u",
                   tid, pid);
             break;
         }
-        {
+        if (table) {
             std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-            tables_[tid].erase(pid);
-            if (tables_[tid].empty()) {
-                tables_.erase(tid);
+            relational_tables_[tid].erase(pid);
+            if (relational_tables_[tid].empty()) {
+                relational_tables_.erase(tid);
             }
         }
         code = 0;
@@ -3507,6 +3509,15 @@ void TabletImpl::CreateTable(RpcController* controller,
             response->set_msg("table already exists");
             return;
         }
+    } else {
+        std::shared_ptr<RelationalTable> r_table = GetRelationalTable(tid, pid);
+        if (r_table) {
+            PDLOG(WARNING, "relation table with tid[%u] and pid[%u] exists",
+                  tid, pid);
+            response->set_code(::rtidb::base::ReturnCode::kTableAlreadyExists);
+            response->set_msg("table already exists");
+            return;
+        }
     }
     std::string name = table_meta->name();
     PDLOG(INFO, "start creating table tid[%u] pid[%u] with mode %s", tid, pid,
@@ -3573,8 +3584,6 @@ void TabletImpl::CreateTable(RpcController* controller,
                   tid, pid);
             return;
         }
-        response->set_code(::rtidb::base::ReturnCode::kOk);
-        response->set_msg("ok");
         table->SetTableStat(::rtidb::storage::kNormal);
         replicator->StartSyncing();
         io_pool_.DelayTask(
@@ -3606,6 +3615,8 @@ void TabletImpl::CreateTable(RpcController* controller,
         }
         table->SetTableStat(::rtidb::storage::kNormal);
     }
+    response->set_code(::rtidb::base::ReturnCode::kOk);
+    response->set_msg("ok");
 }
 
 void TabletImpl::ExecuteGc(RpcController* controller,
@@ -4193,20 +4204,15 @@ int TabletImpl::CreateRelationalTableInternal(
         msg.assign("fail to get table db root path");
         return -1;
     }
-    RelationalTable* table_ptr = new RelationalTable(*table_meta, db_root_path);
+    std::shared_ptr<RelationalTable> table_ptr =
+        std::make_shared<RelationalTable>(*table_meta, db_root_path);
     if (!table_ptr->Init()) {
         return -1;
     }
     PDLOG(INFO, "create relation table. tid %u pid %u", tid, pid);
     std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-    std::shared_ptr<RelationalTable> table = GetRelationalTableUnLock(tid, pid);
-    if (table) {
-        PDLOG(WARNING, "table with tid[%u] and pid[%u] exists", tid, pid);
-        return -1;
-    }
-    table.reset(table_ptr);
     relational_tables_[table_meta->tid()].insert(
-        std::make_pair(table_meta->pid(), table));
+        std::make_pair(table_meta->pid(), table_ptr));
     return 0;
 }
 
@@ -4226,7 +4232,8 @@ void TabletImpl::DropTable(RpcController* controller,
     }
     uint32_t tid = request->tid();
     uint32_t pid = request->pid();
-    PDLOG(INFO, "drop table. tid[%u] pid[%u]", tid, pid);
+    PDLOG(INFO, "drop table. tid[%u] pid[%u] %s", tid, pid,
+          rtidb::type::TableType_Name(request->table_type()).c_str());
     do {
         if (!request->has_table_type() ||
             request->table_type() == ::rtidb::type::kTimeSeries) {
@@ -4251,19 +4258,15 @@ void TabletImpl::DropTable(RpcController* controller,
             task_pool_.AddTask(boost::bind(&TabletImpl::DeleteTableInternal,
                                            this, tid, pid, task_ptr));
         } else {
+            std::shared_ptr<RelationalTable> r_table =
+                GetRelationalTable(tid, pid);
             std::shared_ptr<RelationalTable> table;
-            {
-                std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-                table =
-                    GetRelationalTableUnLock(request->tid(), request->pid());
-                if (!table) {
-                    PDLOG(WARNING, "table is not exist. tid %u, pid %u",
-                          request->tid(), request->pid());
-                    response->set_code(
-                        ::rtidb::base::ReturnCode::kTableIsNotExist);
-                    response->set_msg("table is not exist");
-                    break;
-                }
+            if (!r_table) {
+                PDLOG(WARNING, "table is not exist. tid %u, pid %u",
+                      request->tid(), request->pid());
+                response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
+                response->set_msg("table is not exist");
+                break;
             }
             task_pool_.AddTask(
                 boost::bind(&TabletImpl::DeleteRelationalTableInternal, this,
