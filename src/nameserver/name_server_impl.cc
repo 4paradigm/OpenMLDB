@@ -11,9 +11,9 @@
 #include <strings.h>
 #include <algorithm>
 #include <set>
+#include <utility>
 #include <boost/algorithm/string.hpp>
 #include <chrono>  // NOLINT
-#include <utility>
 #include "base/status.h"
 #include "timer.h"  // NOLINT
 
@@ -696,7 +696,7 @@ NameServerImpl::NameServerImpl()
     std::string zk_table_path = FLAGS_zk_root_path + "/table";
     zk_table_index_node_ = zk_table_path + "/table_index";
     zk_table_data_path_ = zk_table_path + "/table_data";
-    zk_db_path_ = zk_db_path + "/db";
+    zk_db_path_ = FLAGS_zk_root_path + "/db";
     zk_term_node_ = zk_table_path + "/term";
     std::string zk_op_path = FLAGS_zk_root_path + "/op";
     zk_op_index_node_ = zk_op_path + "/op_index";
@@ -828,9 +828,9 @@ bool NameServerImpl::Recover() {
 }
 
 bool NameServerImpl::RecoverDb() {
-    db_.clear();
+    databases_.clear();
     std::vector<std::string> db_vec;
-    if (!zk_client_->GetChildren(zk_db_node_, db_vec)) {
+    if (!zk_client_->GetChildren(zk_db_path_, db_vec)) {
         if (zk_client_->IsExistNode(zk_db_path_) > 0) {
             PDLOG(WARNING, "db node is not exist");
             return true;
@@ -839,7 +839,7 @@ bool NameServerImpl::RecoverDb() {
         return false;
     }
     PDLOG(INFO, "recover db num[%d]", db_vec.size());
-    db_.insert(db_vec.begin(), db_vec.end());
+    databases_.insert(db_vec.begin(), db_vec.end());
     return true;
 }
 
