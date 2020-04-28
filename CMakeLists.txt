@@ -14,7 +14,7 @@ configure_file (
 
 add_definitions('-g')
 add_definitions('-Wall')
-add_definitions('-std=c++11')
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 option(TCMALLOC_ENABLE "Enable TCMALLOC" ON)
 option(STATIC_COMPILE_ENABLE "Enable STATIC COMPILE" OFF) 
 if (STATIC_COMPILE_ENABLE)

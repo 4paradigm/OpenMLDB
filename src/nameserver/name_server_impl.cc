@@ -6,14 +6,17 @@
 //
 
 #include "nameserver/name_server_impl.h"
+
 #include <base/strings.h>
 #include <gflags/gflags.h>
 #include <strings.h>
+
 #include <algorithm>
-#include <chrono>  // NOLINT
+#include <chrono>
 #include <set>
 #include <utility>
-#include <boost/algorithm/string.hpp>
+
+#include "boost/algorithm/string.hpp"
 #include "base/status.h"
 #include "timer.h"  // NOLINT
 
@@ -41,10 +44,12 @@ DECLARE_uint32(get_replica_status_interval);
 DECLARE_int32(make_snapshot_time);
 DECLARE_int32(make_snapshot_check_interval);
 
+using ::rtidb::base::ReturnCode;
+
 namespace rtidb {
 namespace nameserver {
 
-const std::string OFFLINE_LEADER_ENDPOINT = // NOLINT
+const std::string OFFLINE_LEADER_ENDPOINT =  // NOLINT
     "OFFLINE_LEADER_ENDPOINT";
 const uint8_t MAX_ADD_TABLE_FIELD_COUNT = 63;
 
@@ -1278,6 +1283,68 @@ void NameServerImpl::UpdateTabletsLocked(
     UpdateTablets(endpoints);
 }
 
+void NameServerImpl::UpdateBlobServersLocked(
+    const std::vector<std::string>& endpoints) {
+    std::lock_guard<std::mutex> lock(mu_);
+    UpdateBlobServers(endpoints);
+}
+
+void NameServerImpl::UpdateBlobServers(
+    const std::vector<std::string>& endpoints) {
+    std::set<std::string> alive;
+    std::vector<std::string>::const_iterator it = endpoints.begin();
+    for (; it != endpoints.end(); ++it) {
+        alive.insert(*it);
+        BlobServers::iterator tit = blob_servers_.find(*it);
+        if (tit == blob_servers_.end()) {
+            std::shared_ptr<BlobServerInfo> blob =
+                std::make_shared<BlobServerInfo>();
+            blob->state_ = TabletState::kTabletHealthy;
+            blob->client_ = std::make_shared<BsClient>(*it, true);
+            if (blob->client_->Init() != 0) {
+                PDLOG(WARNING, "blob client init error. endpoint[%s]",
+                      it->c_str());
+                continue;
+            }
+            blob->ctime_ = ::baidu::common::timer::get_micros() / 1000;
+            blob_servers_.insert(std::make_pair(*it, blob));
+            PDLOG(INFO, "add blob client. endpoint[%s]", it->c_str());
+        } else {
+            if (tit->second->state_ != TabletState::kTabletHealthy) {
+                tit->second->state_ = TabletState::kTabletHealthy;
+                tit->second->ctime_ =
+                    ::baidu::common::timer::get_micros() / 1000;
+                PDLOG(INFO, "blob is online. endpoint[%s]", tit->first.c_str());
+                thread_pool_.AddTask(boost::bind(&NameServerImpl::OnBlobOnline,
+                                                 this, tit->first));
+            }
+        }
+        PDLOG(INFO, "healthy blob with endpoint[%s]", it->c_str());
+    }
+
+    for (auto tit = blob_servers_.begin(); tit != blob_servers_.end(); ++tit) {
+        if (alive.find(tit->first) == alive.end() &&
+            tit->second->state_ == TabletState::kTabletHealthy) {
+            PDLOG(INFO, "offline blob with endpoint[%s]", tit->first.c_str());
+            tit->second->state_ = TabletState::kTabletOffline;
+            tit->second->ctime_ = ::baidu::common::timer::get_micros() / 1000;
+            if (offline_endpoint_map_.find(tit->first) ==
+                offline_endpoint_map_.end()) {
+                offline_endpoint_map_.insert(
+                    std::make_pair(tit->first, tit->second->ctime_));
+                if (running_.load(std::memory_order_acquire)) {
+                    thread_pool_.DelayTask(
+                        FLAGS_tablet_offline_check_interval,
+                        boost::bind(&NameServerImpl::OnBlobOffline, this,
+                                    tit->first, false));
+                }
+            } else {
+                offline_endpoint_map_[tit->first] = tit->second->ctime_;
+            }
+        }
+    }
+}
+
 void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
     // check exist and newly add tablets
     std::set<std::string> alive;
@@ -1339,6 +1406,53 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
     }
     thread_pool_.AddTask(
         boost::bind(&NameServerImpl::DistributeTabletMode, this));
+}
+
+void NameServerImpl::OnBlobOnline(const std::string& endpoint) { return; }
+
+void NameServerImpl::OnBlobOffline(const std::string& endpoint,
+                                   bool startup_flag) {
+    if (!running_.load(std::memory_order_acquire)) {
+        PDLOG(WARNING, "cur namesever is not leader");
+        return;
+    }
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        auto tit = blob_servers_.find(endpoint);
+        if (tit == blob_servers_.end()) {
+            PDLOG(WARNING, "cannot find endpoint %s in blob map",
+                  endpoint.c_str());
+            return;
+        }
+        auto iter = offline_endpoint_map_.find(endpoint);
+        if (iter == offline_endpoint_map_.end()) {
+            PDLOG(WARNING, "cannot find endpoint %s in offline endpoint map",
+                  endpoint.c_str());
+            return;
+        }
+        if (!startup_flag &&
+            tit->second->state_ == TabletState::kTabletHealthy) {
+            PDLOG(INFO, "endpoint %s is healthy, need not offline endpoint",
+                  endpoint.c_str());
+            return;
+        }
+        if (table_info_.empty()) {
+            PDLOG(INFO, "endpoint %s has no table, need not offline endpoint",
+                  endpoint.c_str());
+            return;
+        }
+        uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
+        if (!startup_flag &&
+            cur_time < iter->second + FLAGS_tablet_heartbeat_timeout) {
+            thread_pool_.DelayTask(FLAGS_tablet_offline_check_interval,
+                                   boost::bind(&NameServerImpl::OnBlobOffline,
+                                               this, endpoint, false));
+            return;
+        }
+    }
+    if (auto_failover_.load(std::memory_order_acquire)) {
+        PDLOG(INFO, "Run OfflineEndpoint. endpoint is %s", endpoint.c_str());
+    }
 }
 
 void NameServerImpl::OnTabletOffline(const std::string& endpoint,
@@ -1546,9 +1660,28 @@ bool NameServerImpl::Init() {
     } else {
         UpdateTablets(endpoints);
     }
+    std::string oss_path = FLAGS_zk_root_path + "/ossnodes";
+    endpoints.clear();
+    bool ok = zk_client_->GetChildren(oss_path, endpoints);
+    if (!ok) {
+        zk_client_->CreateNode(oss_path, "");
+    } else {
+        UpdateBlobServers(endpoints);
+    }
     zk_client_->WatchNodes(
         boost::bind(&NameServerImpl::UpdateTabletsLocked, this, _1));
-    zk_client_->WatchNodes();
+    ok = zk_client_->WatchNodes();
+    if (!ok) {
+        PDLOG(WARNING, "fail to watch nodes");
+        return false;
+    }
+    ok = zk_client_->WatchChildren(
+        oss_path,
+        boost::bind(&NameServerImpl::UpdateBlobServersLocked, this, _1));
+    if (!ok) {
+        PDLOG(WARNING, "fail to watch ossnodes");
+        return false;
+    }
     session_term_ = zk_client_->GetSessionTerm();
 
     thread_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval,
@@ -2691,8 +2824,12 @@ int NameServerImpl::CreateTableOnTablet(
     ::rtidb::api::TableMeta table_meta;
     std::string schema;
     if (table_info->has_table_type() &&
-        table_info->table_type() == ::rtidb::type::kRelational) {
-        table_meta.set_table_type(::rtidb::type::kRelational);
+        table_info->table_type() != ::rtidb::type::kTimeSeries) {
+        if (table_info->table_type() == ::rtidb::type::kRelational) {
+            table_meta.set_table_type(::rtidb::type::kRelational);
+        } else if (table_info->table_type() == rtidb::type::kObjectStore) {
+            table_meta.set_table_type(::rtidb::type::kObjectStore);
+        }
     } else {
         for (uint32_t i = 0; i < columns.size(); i++) {
             if (columns[i].add_ts_idx) {
@@ -4315,7 +4452,8 @@ void NameServerImpl::CreateTable(RpcController* controller,
             }
         }
     }
-    if (!request->has_zone_info()) {
+    if (!request->has_zone_info() &&
+        table_info->table_type() != ::rtidb::type::kObjectStore) {
         if (FillColumnKey(*table_info) < 0) {
             response->set_code(::rtidb::base::ReturnCode::kInvalidParameter);
             response->set_msg("fill column key failed");
@@ -4366,6 +4504,47 @@ void NameServerImpl::CreateTable(RpcController* controller,
             tid = table_index_;
         }
         cur_term = term_;
+    }
+    if (table_info->table_type() == ::rtidb::type::kObjectStore) {
+        ::rtidb::blobserver::TableMeta meta;
+        meta.set_tid(table_info->tid());
+        meta.set_pid(0);
+        meta.set_name(table_info->name());
+        meta.set_table_type(::rtidb::type::kObjectStore);
+        table_info->clear_table_partition();
+        table_info->set_partition_num(1);
+
+        std::shared_ptr<BlobServerInfo> blob_info =
+            SetBlobTableInfo(table_info.get());
+        if (!blob_info) {
+            PDLOG(WARNING, "not found available blob server");
+            response->set_code(ReturnCode::kSetPartitionInfoFailed);
+            return;
+        }
+        std::string msg;
+        bool ok = blob_info->client_->CreateTable(meta, &msg);
+        if (!ok) {
+            response->set_code(ReturnCode::kCreateTableFailed);
+            response->set_msg(msg);
+            return;
+        }
+        std::string table_value;
+        table_info->SerializeToString(&table_value);
+        if (!zk_client_->CreateNode(
+                zk_table_data_path_ + "/" + table_info->name(), table_value)) {
+            PDLOG(WARNING, "create object table node[%s/%s] failed!",
+                  zk_table_data_path_.c_str(), table_info->name().c_str());
+            response->set_code(ReturnCode::kSetZkFailed);
+            response->set_msg("set zk failed");
+            return;
+        }
+        PDLOG(INFO, "create table node[%s/%s] success!",
+              zk_table_data_path_.c_str(), table_info->name().c_str());
+        std::lock_guard<std::mutex> lock(mu_);
+        table_info_.insert(std::make_pair(table_info->name(), table_info));
+        NotifyTableChanged();
+        response->set_code(::rtidb::base::ReturnCode::kOk);
+        return;
     }
     std::vector<::rtidb::base::ColumnDesc> columns;
     if (!table_info->has_table_type() ||
@@ -4521,6 +4700,54 @@ void NameServerImpl::CreateTableInternel(
     }
     task_thread_pool_.AddTask(
         boost::bind(&NameServerImpl::DropTableOnTablet, this, table_info));
+}
+
+std::shared_ptr<BlobServerInfo> NameServerImpl::SetBlobTableInfo(
+    TableInfo* table_info) {
+    table_info->clear_table_partition();
+    auto new_part = table_info->add_table_partition();
+    new_part->set_pid(0);
+    auto new_meta = new_part->add_partition_meta();
+
+    std::map<std::string, uint64_t> endpoint_count;
+    std::lock_guard<std::mutex> lock(mu_);
+    for (const auto& it : blob_servers_) {
+        endpoint_count.insert(std::make_pair(it.first, 0));
+    }
+    for (const auto& iter : table_info_) {
+        auto info = iter.second;
+        if (info->table_type() != ::rtidb::type::kObjectStore) {
+            continue;
+        }
+        for (const auto& part : info->table_partition()) {
+            for (const auto& meta : part.partition_meta()) {
+                std::string ep = meta.endpoint();
+                if (endpoint_count.find(ep) == endpoint_count.end() ||
+                    !meta.is_alive()) {
+                    endpoint_count.insert(std::make_pair(ep, 1));
+                    continue;
+                }
+                endpoint_count[ep]++;
+            }
+        }
+    }
+    std::string meta_endpoint;
+    uint64_t min = UINT64_MAX;
+    for (const auto& tit : endpoint_count) {
+        if (tit.second < min) {
+            min = tit.second;
+            meta_endpoint = tit.first;
+        }
+    }
+    BlobServers::iterator it = blob_servers_.find(meta_endpoint);
+    if (it != blob_servers_.end()) {
+        new_meta->set_endpoint(it->first);
+        new_meta->set_is_leader(true);
+        new_meta->set_is_alive(true);
+        return it->second;
+    }
+    PDLOG(INFO, "no available blob server");
+    return std::shared_ptr<BlobServerInfo>();
 }
 
 // called by function CheckTableInfo and SyncTable

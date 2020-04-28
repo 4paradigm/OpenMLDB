@@ -367,7 +367,7 @@ message DropTableRequest {
     optional int32 tid = 1;
     optional int32 pid = 2;
     optional TaskInfo task_info = 3;
-    optional rtidb.type.TableType table_type = 4;
+    optional rtidb.type.TableType table_type = 4 [default = kTimeSeries];
 }
 
 message DropTableResponse {
