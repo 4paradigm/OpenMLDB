@@ -22,12 +22,13 @@
 #include "base/linenoise.h"
 #include "base/schema_codec.h"
 #include "base/strings.h"
+#include "blob_proxy/blob_proxy_impl.h"
+#include "blobserver/blobserver_impl.h"
 #include "boost/algorithm/string.hpp"
 #include "boost/lexical_cast.hpp"
 #include "brpc/server.h"
 #include "client/ns_client.h"
 #include "client/tablet_client.h"
-#include "httpserver/httpserver.h"
 #include "logging.h"  // NOLINT
 #include "nameserver/name_server_impl.h"
 #include "proto/client.pb.h"
@@ -241,23 +242,68 @@ void StartTablet() {
     server.RunUntilAskedToQuit();
 }
 
-void StartHttp() {
+void StartBlobProxy() {
     SetupLog();
-    ::rtidb::http::HttpImpl* http = new ::rtidb::http::HttpImpl();
-    bool ok = http->Init();
+    ::rtidb::blobproxy::BlobProxyImpl* proxy =
+        new ::rtidb::blobproxy::BlobProxyImpl();
+    bool ok = proxy->Init();
     if (!ok) {
-        PDLOG(WARNING, "fail to init http server");
+        PDLOG(WARNING, "fail to init blobproxy server");
         exit(1);
     }
     brpc::ServerOptions options;
     options.num_threads = FLAGS_thread_pool_size;
     brpc::Server server;
-    if (server.AddService(http, brpc::SERVER_DOESNT_OWN_SERVICE,
+    if (server.AddService(proxy, brpc::SERVER_DOESNT_OWN_SERVICE,
                           "/v1/get/* => Get") != 0) {
         PDLOG(WARNING, "fail to add service");
         exit(1);
     }
-    server.MaxConcurrencyOf(http, "Get") = FLAGS_get_concurrency_limit;
+    server.MaxConcurrencyOf(proxy, "Get") = FLAGS_get_concurrency_limit;
+    if (FLAGS_port > 0) {
+        if (server.Start(FLAGS_port, &options) != 0) {
+            PDLOG(WARNING, "Fail to start server");
+            exit(1);
+        }
+        PDLOG(INFO, "start tablet on port %d with version %d.%d.%d.%d",
+              FLAGS_port, RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
+              RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
+    } else {
+        if (server.Start(FLAGS_endpoint.c_str(), &options) != 0) {
+            PDLOG(WARNING, "Fail to start server");
+            exit(1);
+        }
+        PDLOG(INFO, "start blobproxy on endpoint %s with version %d.%d.%d.%d",
+              FLAGS_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
+              RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
+    }
+    std::ostringstream oss;
+    oss << RTIDB_VERSION_MAJOR << "." << RTIDB_VERSION_MEDIUM << "."
+        << RTIDB_VERSION_MINOR << "." << RTIDB_VERSION_BUG;
+    server.set_version(oss.str());
+    server.RunUntilAskedToQuit();
+}
+
+void StartBlob() {
+    SetupLog();
+    ::rtidb::blobserver::BlobServerImpl* server_impl =
+        new ::rtidb::blobserver::BlobServerImpl();
+    bool ok = server_impl->Init();
+    if (!ok) {
+        PDLOG(WARNING, "fail to init tablet");
+        exit(1);
+    }
+    brpc::ServerOptions options;
+    options.num_threads = FLAGS_thread_pool_size;
+    brpc::Server server;
+    if (server.AddService(server_impl, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
+        PDLOG(WARNING, "Fail to add service");
+        exit(1);
+    }
+    server.MaxConcurrencyOf(server_impl, "Get") = FLAGS_scan_concurrency_limit;
+    server.MaxConcurrencyOf(server_impl, "Put") = FLAGS_put_concurrency_limit;
+    server_impl->SetServer(&server);
+    server.MaxConcurrencyOf(server_impl, "Get") = FLAGS_get_concurrency_limit;
     if (FLAGS_port > 0) {
         if (server.Start(FLAGS_port, &options) != 0) {
             PDLOG(WARNING, "Fail to start server");
@@ -274,6 +320,10 @@ void StartHttp() {
         PDLOG(INFO, "start tablet on endpoint %s with version %d.%d.%d.%d",
               FLAGS_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
               RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
+    }
+    if (!server_impl->RegisterZK()) {
+        PDLOG(WARNING, "Fail to register zk");
+        exit(1);
     }
     std::ostringstream oss;
     oss << RTIDB_VERSION_MAJOR << "." << RTIDB_VERSION_MEDIUM << "."
@@ -3481,6 +3531,8 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
         ns_table_info.set_table_type(rtidb::type::TableType::kTimeSeries);
     } else if (table_type == "krelational" || table_type == "relational") {
         ns_table_info.set_table_type(rtidb::type::TableType::kRelational);
+    } else if (table_type == "kobjectstore" || table_type == "objectstore") {
+        ns_table_info.set_table_type(rtidb::type::TableType::kObjectStore);
     } else {
         printf("table_type mode %s is invalid\n",
                table_info.table_type().c_str());
@@ -5861,10 +5913,9 @@ void HandleClientSGet(const std::vector<std::string>& parts,
         ::rtidb::base::FillTableRow(raw, value.c_str(), value.size(), row);
     } else {
         std::vector<::rtidb::base::ColumnDesc> columns_tmp;
-        for (int i = 0;
-             i <
-             (int)(raw.size() - table_meta.added_column_desc_size());  // NOLINT
-             i++) {
+        int32_t size =
+            static_cast<int>(raw.size() - table_meta.added_column_desc_size());
+        for (int i = 0; i < size; i++) {
             columns_tmp.push_back(raw.at(i));
         }
         ::rtidb::base::FillTableRow(raw.size(), columns_tmp, value.c_str(),
@@ -6455,12 +6506,14 @@ int main(int argc, char* argv[]) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     if (FLAGS_role == "tablet") {
         StartTablet();
-    } else if (FLAGS_role == "http") {
-        StartHttp();
+    } else if (FLAGS_role == "blob_proxy") {
+        StartBlobProxy();
     } else if (FLAGS_role == "client") {
         StartClient();
     } else if (FLAGS_role == "nameserver") {
         StartNameServer();
+    } else if (FLAGS_role == "blob") {
+        StartBlob();
     } else if (FLAGS_role == "ns_client") {
         StartNsClient();
     } else {

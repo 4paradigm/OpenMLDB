@@ -21,6 +21,7 @@ enum DataType {
 enum TableType {
     kTimeSeries = 1; 
     kRelational = 2;
+    kObjectStore = 3;
 }
 
 enum IndexType {
