@@ -696,6 +696,7 @@ NameServerImpl::NameServerImpl()
     std::string zk_table_path = FLAGS_zk_root_path + "/table";
     zk_table_index_node_ = zk_table_path + "/table_index";
     zk_table_data_path_ = zk_table_path + "/table_data";
+    zk_table_db_path_ = zk_db_path + "/db";
     zk_term_node_ = zk_table_path + "/term";
     std::string zk_op_path = FLAGS_zk_root_path + "/op";
     zk_op_index_node_ = zk_op_path + "/op_index";
