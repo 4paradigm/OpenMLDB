@@ -16,9 +16,9 @@
 #include "base/status.h"
 #include "codec/row_codec.h"
 #include "vm/catalog.h"
+#include "vm/core_api.h"
 #include "vm/mem_catalog.h"
 #include "vm/physical_op.h"
-#include "vm/core_api.h"
 
 namespace fesql {
 namespace vm {
@@ -31,7 +31,6 @@ using vm::PartitionHandler;
 using vm::Schema;
 using vm::TableHandler;
 using vm::Window;
-
 
 class FnGenerator {
  public:
@@ -118,6 +117,7 @@ enum RunnerType {
     kRunnerRequestUnion,
     kRunnerIndexSeek,
     kRunnerLastJoin,
+    kRunnerConcat,
     kRunnerRequestLastJoin,
     kRunnerLimit,
     kRunnerUnknow,
@@ -151,6 +151,8 @@ inline const std::string RunnerTypeName(const RunnerType& type) {
             return "INDEX_SEEK";
         case kRunnerLastJoin:
             return "LASTJOIN";
+        case kRunnerConcat:
+            return "CONCAT";
         case kRunnerRequestLastJoin:
             return "REQUEST_LASTJOIN";
         case kRunnerLimit:
@@ -436,6 +438,15 @@ class RequestLastJoinRunner : public Runner {
     KeyGenerator left_key_gen_;
 };
 
+class ConcatRunner : public Runner {
+ public:
+    ConcatRunner(const int32_t id, const NameSchemaList& schema,
+                 const int32_t limit_cnt)
+        : Runner(id, kRunnerConcat, schema, limit_cnt) {
+    }
+    ~ConcatRunner() {}
+    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
+};
 class LimitRunner : public Runner {
  public:
     LimitRunner(int32_t id, const NameSchemaList& schema, int32_t limit_cnt)

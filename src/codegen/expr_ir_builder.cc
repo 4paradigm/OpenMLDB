@@ -167,7 +167,9 @@ bool ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
                                    status);
         }
         default: {
-            LOG(WARNING) << "not supported";
+            LOG(WARNING) << "Expression Type "
+                         << node::ExprTypeName(node->GetExprType())
+                         << " not supported";
             return false;
         }
     }

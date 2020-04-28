@@ -172,6 +172,14 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                     runner->AddProducer(right);
                     return runner;
                 }
+                case node::kJoinTypeConcat: {
+                    auto runner =
+                        new ConcatRunner(id_++, node->GetOutputNameSchemaList(),
+                                         op->GetLimitCnt());
+                    runner->AddProducer(left);
+                    runner->AddProducer(right);
+                    return runner;
+                }
                 default: {
                     status.code = common::kOpGenError;
                     status.msg = "can't handle join type " +
@@ -1036,6 +1044,37 @@ void Runner::PrintData(const vm::NameSchemaList& schema_list,
     LOG(INFO) << data->GetHandlerTypeName() << " RESULT:\n" << oss.str();
 }
 
+std::shared_ptr<DataHandler> ConcatRunner::Run(RunnerContext& ctx) {
+    auto fail_ptr = std::shared_ptr<DataHandler>();
+    auto left = producers_[0]->RunWithCache(ctx);
+    auto right = producers_[1]->RunWithCache(ctx);
+    if (!left || !right) {
+        return std::shared_ptr<DataHandler>();
+    }
+    if (kRowHandler != left->GetHanlderType()) {
+        return std::shared_ptr<DataHandler>();
+    }
+
+    if (kRowHandler == right->GetHanlderType()) {
+        auto left_row = std::dynamic_pointer_cast<RowHandler>(left)->GetValue();
+        auto right_row =
+            std::dynamic_pointer_cast<RowHandler>(right)->GetValue();
+        return std::shared_ptr<RowHandler>(
+            new MemRowHandler(Row(left_row, right_row)));
+    } else if (kTableHandler == right->GetHanlderType()) {
+        auto left_row = std::dynamic_pointer_cast<RowHandler>(left)->GetValue();
+        auto right_table = std::dynamic_pointer_cast<TableHandler>(right);
+        auto right_iter = right_table->GetIterator();
+        if (!right_iter) {
+            return std::shared_ptr<RowHandler>(
+                new MemRowHandler(Row(left_row, Row())));
+        }
+        return std::shared_ptr<RowHandler>(
+            new MemRowHandler(Row(left_row, right_iter->GetValue())));
+    } else {
+        return std::shared_ptr<DataHandler>();
+    }
+}
 std::shared_ptr<DataHandler> LimitRunner::Run(RunnerContext& ctx) {
     auto input = producers_[0]->RunWithCache(ctx);
     auto fail_ptr = std::shared_ptr<DataHandler>();
