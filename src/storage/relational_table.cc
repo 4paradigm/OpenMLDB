@@ -878,6 +878,7 @@ bool RelationalTable::UpdateDB(const std::shared_ptr<IndexDef> index_def,
     }
 
     bool is_update_index = false;
+    bool is_update_pk = false;
     const Schema& schema = table_meta_.column_desc();
     ::rtidb::base::Slice pk_slice(comparable_key);
     rocksdb::WriteBatch batch;
@@ -931,6 +932,14 @@ bool RelationalTable::UpdateDB(const std::shared_ptr<IndexDef> index_def,
                 if ((!is_update_index)
                         && table_index_.FindColName(schema.Get(i).name())) {
                     is_update_index = true;
+                }
+                if (!is_update_pk) {
+                    for (const auto& col_def :
+                            table_index_.GetPkIndex()->GetColumns()) {
+                        if (col_def.GetName() == schema.Get(i).name()) {
+                            is_update_pk = true;
+                        }
+                    }
                 }
                 if (schema.Get(i).not_null() &&
                     value_view.IsNULL(col_iter->second)) {
@@ -1052,6 +1061,16 @@ bool RelationalTable::UpdateDB(const std::shared_ptr<IndexDef> index_def,
                         "update table tid %u pid %u failed", id_, pid_);
                 return false;
             }
+        }
+        std::string new_pk;
+        if (is_update_pk) {
+            if (!GetCombineStr(
+                        table_index_.GetPkIndex(),
+                        reinterpret_cast<int8_t*>(
+                            const_cast<char*>(row.data())), &new_pk)) {
+                return false;
+            }
+            pk_slice.reset(new_pk.data(), new_pk.size());
         }
         ok = PutDB(rocksdb::Slice(pk_slice.data(), pk_slice.size()),
                 row.c_str(), row.length(), false, &batch);
