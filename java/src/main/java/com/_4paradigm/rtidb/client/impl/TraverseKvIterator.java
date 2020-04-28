@@ -232,6 +232,7 @@ public class TraverseKvIterator implements KvIterator {
             offset += 8;
             return;
         }
+        bb.position(offset);
         int total_size = bb.getInt();
         int pk_size = bb.getInt();
         time = bb.getLong();
