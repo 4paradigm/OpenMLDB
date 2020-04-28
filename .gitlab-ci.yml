@@ -43,13 +43,12 @@ build_fesql_and_case:
 build_fesql_and_case_on_mac:
     stage: build
     variables:
+        CICD_RUNNER_THIRDPARTY_PATH: "/opt/depends/thirdparty"
         CICD_RUNNER_TAG: "macos"
     script:
         - bash tools/compile_and_test.sh
     tags:
         - macos
-    only:
-        - /.*-macos$/
 
 micro_benchmark:
     stage: benchmark
