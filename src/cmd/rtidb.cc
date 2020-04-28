@@ -335,10 +335,11 @@ int SetDimensionData(
 
 int EncodeMultiDimensionDataForNewFormat(
     const std::vector<std::string>& data, const Schema& schema,
-    uint32_t pid_num, std::string& value, //NOLINT
-    std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>&  //NOLINT
+    uint32_t pid_num, std::string& value,  // NOLINT
+    std::map<uint32_t,
+             std::vector<std::pair<std::string, uint32_t>>>&  // NOLINT
         dimensions,
-    std::vector<uint64_t>& ts_dimensions) { //NOLINT
+    std::vector<uint64_t>& ts_dimensions) {  // NOLINT
     if (data.size() != (size_t)schema.size()) {
         return -1;
     }
@@ -1665,13 +1666,13 @@ void HandleNSUpdate(const std::vector<std::string>& parts,
 }
 
 void HandleNsUseDb(const std::vector<std::string>& parts,
-                    ::rtidb::client::NsClient* client) {
+                   ::rtidb::client::NsClient* client) {
     if (parts.size() < 2) {
         std::cout << "use format error. eg: use database_name" << std::endl;
         return;
     }
     std::string msg;
-    if (client->Use(parts[1], msg)){
+    if (client->Use(parts[1], msg)) {
         std::cout << "use database: " << parts[1] << std::endl;
     } else {
         std::cout << "use database failed. error msg: " << msg << std::endl;
@@ -1679,14 +1680,14 @@ void HandleNsUseDb(const std::vector<std::string>& parts,
 }
 
 void HandleNsCreateDb(const std::vector<std::string>& parts,
-                    ::rtidb::client::NsClient* client) {
+                      ::rtidb::client::NsClient* client) {
     if (parts.size() < 2) {
-        std::cout << "createdb format error. eg: createdb database_name" 
-                << std::endl;
+        std::cout << "createdb format error. eg: createdb database_name"
+                  << std::endl;
         return;
     }
     std::string msg;
-    if (client->CreateDatabase(parts[1], msg)){
+    if (client->CreateDatabase(parts[1], msg)) {
         std::cout << "create database: " << parts[1] << std::endl;
     } else {
         std::cout << "create database failed. error msg: " << msg << std::endl;
@@ -3688,6 +3689,9 @@ void HandleNSCreateTable(const std::vector<std::string>& parts,
             }
         }
     }
+    if (client->HasDb()) {
+        ns_table_info.set_db(client->GetDb());
+    }
     std::string msg;
     if (!client->CreateTable(ns_table_info, msg)) {
         std::cout << "Fail to create table. error msg: " << msg << std::endl;
@@ -3989,6 +3993,14 @@ void HandleNSClientHelp(const std::vector<std::string>& parts,
             printf("usage: query table_name=xxx col1 col2 where col3=xxx\n");
             printf("eg: query table_name=test1 card mcc where card=card0\n");
             printf("eg: query table_name=test1 * where card=card0\n");
+        } else if (parts[1] == "createdb") {
+            printf("desc: create database\n");
+            printf("usage: createdb database_name\n");
+            printf("eg: createdb db1");
+        } else if (parts[1] == "use") {
+            printf("desc: use database\n");
+            printf("usage: use database_name\n");
+            printf("eg: use db1");
         } else {
             printf("unsupport cmd %s\n", parts[1].c_str());
         }

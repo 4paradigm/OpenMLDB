@@ -22,6 +22,8 @@ std::string NsClient::GetEndpoint() { return endpoint_; }
 
 const std::string& NsClient::GetDb() { return db_; }
 
+bool NsClient::HasDb() { return !db_.empty(); }
+
 bool NsClient::Use(std::string db, std::string& msg) {
     ::rtidb::nameserver::UseDatabaseRequest request;
     ::rtidb::nameserver::GeneralResponse response;

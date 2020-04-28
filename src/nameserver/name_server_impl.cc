@@ -4265,6 +4265,13 @@ void NameServerImpl::CreateTable(RpcController* controller,
                   table_info->name().c_str());
             return;
         }
+        if (table_info->has_db() && databases_.find(table_info->db()) == databases_.end()) {
+            response->set_code(::rtidb::base::ReturnCode::kDatabaseNotFound);
+            response->set_msg("database not found");
+            PDLOG(WARNING, "database[%s] not found", 
+                table_info->db().c_str());
+            return;
+        }
     }
     if (!table_info->has_table_type() ||
         table_info->table_type() == ::rtidb::type::kTimeSeries) {
@@ -11017,14 +11024,17 @@ void NameServerImpl::CreateDatabase(RpcController* controller,
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
-    auto it = databases_.find(request->db());
-    if (it == databases_.end()) {
-        databases_.insert(request->db());
-        response->set_code(::rtidb::base::ReturnCode::kOk);
-        response->set_msg("ok");
-    } else {
-        response->set_code(::rtidb::base::ReturnCode::kDatabaseAlreadyExists);
-        response->set_msg("database already exists");
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        auto it = databases_.find(request->db());
+        if (it == databases_.end()) {
+            databases_.insert(request->db());
+            response->set_code(::rtidb::base::ReturnCode::kOk);
+            response->set_msg("ok");
+        } else {
+            response->set_code(::rtidb::base::ReturnCode::kDatabaseAlreadyExists);
+            response->set_msg("database already exists");
+        }
     }
 }
 
@@ -11038,12 +11048,15 @@ void NameServerImpl::UseDatabase(RpcController* controller,
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
-    if (databases_.find(request->db()) != databases_.end()) {
-        response->set_code(::rtidb::base::ReturnCode::kOk);
-        response->set_msg("ok");
-    } else {
-        response->set_code(::rtidb::base::ReturnCode::kDatabaseNotFound);
-        response->set_msg("database not found");
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        if (databases_.find(request->db()) != databases_.end()) {
+            response->set_code(::rtidb::base::ReturnCode::kOk);
+            response->set_msg("ok");
+        } else {
+            response->set_code(::rtidb::base::ReturnCode::kDatabaseNotFound);
+            response->set_msg("database not found");
+        }
     }
 }
 

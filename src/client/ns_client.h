@@ -38,6 +38,8 @@ class NsClient {
 
     const std::string& GetDb();
 
+    bool HasDb();
+
     bool Use(std::string db, std::string& msg);  // NOINT
 
     bool CreateDatabase(std::string db, std::string& msg);  // NOINT
