@@ -7,8 +7,10 @@
 
 #include <brpc/server.h>
 #include <client/client.h>
+
 #include <mutex>
-#include "proto/http_server.pb.h"
+
+#include "proto/blob_proxy.pb.h"
 #include "zk/zk_client.h"
 
 using ::google::protobuf::Closure;
@@ -16,19 +18,18 @@ using ::google::protobuf::RpcController;
 using ::rtidb::zk::ZkClient;
 
 namespace rtidb {
-namespace http {
+namespace blobproxy {
 
-class HttpImpl : public ::rtidb::httpserver::HTTPServer {
+class BlobProxyImpl : public ::rtidb::blobproxy::BlobProxy {
  public:
-    HttpImpl();
+    BlobProxyImpl();
 
-    ~HttpImpl();
+    ~BlobProxyImpl();
 
     bool Init();
 
-    void Get(RpcController* controller,
-             const ::rtidb::httpserver::HttpRequest* request,
-             ::rtidb::httpserver::HttpResponse* response, Closure* done);
+    void Get(RpcController* controller, const HttpRequest* request,
+             HttpResponse* response, Closure* done);
 
     inline void SetServer(brpc::Server* server) { server_ = server; }
 
@@ -38,5 +39,5 @@ class HttpImpl : public ::rtidb::httpserver::HTTPServer {
     brpc::Server* server_;
     BaseClient* client_;
 };
-}  // namespace http
+}  // namespace blobproxy
 }  // namespace rtidb

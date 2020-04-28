@@ -20,6 +20,7 @@
 #include <vector>
 #include "base/random.h"
 #include "base/schema_codec.h"
+#include "client/bs_client.h"
 #include "client/ns_client.h"
 #include "client/tablet_client.h"
 #include "proto/name_server.pb.h"
@@ -37,6 +38,7 @@ namespace nameserver {
 using ::google::protobuf::Closure;
 using ::google::protobuf::RpcController;
 using ::rtidb::api::TabletState;
+using ::rtidb::client::BsClient;
 using ::rtidb::client::NsClient;
 using ::rtidb::client::TabletClient;
 using ::rtidb::zk::DistLock;
@@ -51,6 +53,12 @@ struct TabletInfo {
     // tablet rpc handle
     std::shared_ptr<TabletClient> client_;
     // the date create
+    uint64_t ctime_;
+};
+// oss info
+struct BlobServerInfo {
+    TabletState state_;
+    std::shared_ptr<BsClient> client_;
     uint64_t ctime_;
 };
 
@@ -96,6 +104,7 @@ class ClusterInfo {
 
 // the container of tablet
 typedef std::map<std::string, std::shared_ptr<TabletInfo>> Tablets;
+typedef std::map<std::string, std::shared_ptr<BlobServerInfo>> BlobServers;
 
 typedef boost::function<void()> TaskFun;
 
@@ -426,11 +435,19 @@ class NameServerImpl : public NameServer {
     // Update tablets from zookeeper
     void UpdateTablets(const std::vector<std::string>& endpoints);
 
+    void UpdateBlobServers(const std::vector<std::string>& endpoints);
+
+    void UpdateBlobServersLocked(const std::vector<std::string>& endpoints);
+
     void OnTabletOffline(const std::string& endpoint, bool startup_flag);
 
     void RecoverOfflineTablet();
 
     void OnTabletOnline(const std::string& endpoint);
+
+    void OnBlobOffline(const std::string& endpoint, bool startup_flag);
+
+    void OnBlobOnline(const std::string& endpoint);
 
     void OfflineEndpointInternal(const std::string& endpoint,
                                  uint32_t concurrency);
@@ -448,6 +465,8 @@ class NameServerImpl : public NameServer {
                       uint32_t pid,
                       std::shared_ptr<::rtidb::api::TaskInfo> task_info,
                       uint32_t flag);
+
+    std::shared_ptr<BlobServerInfo> SetBlobTableInfo(TableInfo* table_info);
 
     void UpdatePartitionStatus(
         const std::string& name, const std::string& endpoint, uint32_t pid,
@@ -782,6 +801,7 @@ class NameServerImpl : public NameServer {
  private:
     std::mutex mu_;
     Tablets tablets_;
+    BlobServers blob_servers_;
     std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>>
         table_info_;
     std::map<std::string, std::shared_ptr<::rtidb::nameserver::ClusterInfo>>
