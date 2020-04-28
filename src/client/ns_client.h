@@ -40,12 +40,12 @@ class NsClient {
 
     bool HasDb();
 
-    bool Use(std::string db, std::string& msg);  // NOINT
+    bool Use(std::string db, std::string& msg);  // NOLINT
 
-    bool CreateDatabase(std::string db, std::string& msg);  // NOINT
+    bool CreateDatabase(std::string db, std::string& msg);  // NOLINT
 
-    bool ShowTablet(std::vector<TabletInfo>& tablets,
-                    std::string& msg);  // NOLINT
+    bool ShowTablet(std::vector<TabletInfo>& tablets,  // NOLINT
+                    std::string& msg);                 // NOLINT
 
     bool ShowTable(
         const std::string& name,
@@ -88,8 +88,8 @@ class NsClient {
 
     bool CreateRemoteTableInfoSimply(
         const ::rtidb::nameserver::ZoneInfo& zone_info,
-        ::rtidb::nameserver::TableInfo& table_info,
-        std::string& msg);  // NOLINT
+        ::rtidb::nameserver::TableInfo& table_info,  // NOLINT
+        std::string& msg);                           // NOLINT
 
     bool DropTableRemote(const ::rtidb::api::TaskInfo& task_info,
                          const std::string& name,
@@ -121,8 +121,8 @@ class NsClient {
                  std::string& msg);                             // NOLINT
 
     bool ChangeLeader(const std::string& name, uint32_t pid,
-                      std::string& candidate_leader,
-                      std::string& msg);  // NOLINT
+                      std::string& candidate_leader,  // NOLINT
+                      std::string& msg);              // NOLINT
 
     bool OfflineEndpoint(const std::string& endpoint, uint32_t concurrency,
                          std::string& msg);  // NOLINT

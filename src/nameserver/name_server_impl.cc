@@ -10,9 +10,9 @@
 #include <gflags/gflags.h>
 #include <strings.h>
 #include <algorithm>
+#include <set>
 #include <boost/algorithm/string.hpp>
 #include <chrono>  // NOLINT
-#include <set>
 #include <utility>
 #include "base/status.h"
 #include "timer.h"  // NOLINT
@@ -696,7 +696,7 @@ NameServerImpl::NameServerImpl()
     std::string zk_table_path = FLAGS_zk_root_path + "/table";
     zk_table_index_node_ = zk_table_path + "/table_index";
     zk_table_data_path_ = zk_table_path + "/table_data";
-    zk_table_db_path_ = zk_db_path + "/db";
+    zk_db_path_ = zk_db_path + "/db";
     zk_term_node_ = zk_table_path + "/term";
     std::string zk_op_path = FLAGS_zk_root_path + "/op";
     zk_op_index_node_ = zk_op_path + "/op_index";
@@ -804,6 +804,10 @@ bool NameServerImpl::Recover() {
                 : auto_failover_.store(false, std::memory_order_release);
             PDLOG(INFO, "get zk_auto_failover_node[%s]", value.c_str());
         }
+        if (!RecoverDb()) {
+            PDLOG(WARNING, "recover db failed!");
+            return false;
+        }
         if (!RecoverTableInfo()) {
             PDLOG(WARNING, "recover table info failed!");
             return false;
@@ -820,6 +824,22 @@ bool NameServerImpl::Recover() {
         RecoverOfflineTablet();
     }
     UpdateTaskStatus(true);
+    return true;
+}
+
+bool NameServerImpl::RecoverDb() {
+    db_.clear();
+    std::vector<std::string> db_vec;
+    if (!zk_client_->GetChildren(zk_db_node_, db_vec)) {
+        if (zk_client_->IsExistNode(zk_db_path_) > 0) {
+            PDLOG(WARNING, "db node is not exist");
+            return true;
+        }
+        PDLOG(WARNING, "get db failed!");
+        return false;
+    }
+    PDLOG(INFO, "recover db num[%d]", db_vec.size());
+    db_.insert(db_vec.begin(), db_vec.end());
     return true;
 }
 
@@ -4266,11 +4286,11 @@ void NameServerImpl::CreateTable(RpcController* controller,
                   table_info->name().c_str());
             return;
         }
-        if (table_info->has_db() && databases_.find(table_info->db()) == databases_.end()) {
+        if (table_info->has_db() &&
+            databases_.find(table_info->db()) == databases_.end()) {
             response->set_code(::rtidb::base::ReturnCode::kDatabaseNotFound);
             response->set_msg("database not found");
-            PDLOG(WARNING, "database[%s] not found", 
-                table_info->db().c_str());
+            PDLOG(WARNING, "database[%s] not found", table_info->db().c_str());
             return;
         }
     }
@@ -11025,18 +11045,28 @@ void NameServerImpl::CreateDatabase(RpcController* controller,
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
+    bool ok = false;
     {
         std::lock_guard<std::mutex> lock(mu_);
-        auto it = databases_.find(request->db());
-        if (it == databases_.end()) {
+        ok = databases_.find(request->db()) == databases_.end();
+        if (ok) {
             databases_.insert(request->db());
-            response->set_code(::rtidb::base::ReturnCode::kOk);
-            response->set_msg("ok");
-        } else {
-            response->set_code(::rtidb::base::ReturnCode::kDatabaseAlreadyExists);
-            response->set_msg("database already exists");
         }
     }
+    if (ok) {
+        if (!zk_client_->CreateNode(zk_db_path_ + "/" + request->db(), "")) {
+            PDLOG(WARNING, "create db node[%s/%s] failed!", zk_db_path_.c_str(),
+                  request->db().c_str());
+            response->set_code(::rtidb::base::ReturnCode::kSetZkFailed);
+            response->set_msg("set zk failed");
+            return;
+        }
+        response->set_code(::rtidb::base::ReturnCode::kOk);
+        response->set_msg("ok");
+        return;
+    }
+    response->set_code(::rtidb::base::ReturnCode::kDatabaseAlreadyExists);
+    response->set_msg("database already exists");
 }
 
 void NameServerImpl::UseDatabase(RpcController* controller,

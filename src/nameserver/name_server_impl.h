@@ -366,6 +366,8 @@ class NameServerImpl : public NameServer {
     // 2.recover table status from all tablets
     bool Recover();
 
+    bool RecoverDb();
+
     bool RecoverTableInfo();
 
     void RecoverClusterInfo();
@@ -792,7 +794,7 @@ class NameServerImpl : public NameServer {
     std::string zk_table_index_node_;
     std::string zk_term_node_;
     std::string zk_table_data_path_;
-    std::string zk_table_db_path_;
+    std::string zk_db_path_;
     std::string zk_auto_failover_node_;
     std::string zk_auto_recover_table_node_;
     std::string zk_table_changed_notify_node_;
