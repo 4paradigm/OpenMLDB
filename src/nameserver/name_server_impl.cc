@@ -10,10 +10,10 @@
 #include <gflags/gflags.h>
 #include <strings.h>
 #include <algorithm>
+#include <boost/algorithm/string.hpp>
 #include <chrono>  // NOLINT
 #include <set>
 #include <utility>
-#include <boost/algorithm/string.hpp>
 #include "base/status.h"
 #include "timer.h"  // NOLINT
 
@@ -44,7 +44,7 @@ DECLARE_int32(make_snapshot_check_interval);
 namespace rtidb {
 namespace nameserver {
 
-const std::string OFFLINE_LEADER_ENDPOINT = // NOLINT
+const std::string OFFLINE_LEADER_ENDPOINT =  // NOLINT
     "OFFLINE_LEADER_ENDPOINT";
 const uint8_t MAX_ADD_TABLE_FIELD_COUNT = 63;
 
@@ -3389,9 +3389,9 @@ void NameServerImpl::ShowTable(RpcController* controller,
     }
     std::lock_guard<std::mutex> lock(mu_);
     for (const auto& kv : table_info_) {
-        if ((request->has_name() && request->name() != kv.first) || 
-                (request->has_db() && kv.second->has_db() &&
-                request->db() != kv.second->db())) {
+        if ((request->has_name() && request->name() != kv.first) ||
+            (request->has_db() && kv.second->has_db() &&
+             request->db() != kv.second->db())) {
             continue;
         }
         ::rtidb::nameserver::TableInfo* table_info = response->add_table_info();
@@ -11007,9 +11007,9 @@ std::shared_ptr<Task> NameServerImpl::CreateAddIndexToTabletTask(
     return task;
 }
 
-void NameServerImpl::CreateDatabase(RpcController* controller, 
-                const CreateDatabaseRequest* request,
-                GeneralResponse* response, Closure* done) {
+void NameServerImpl::CreateDatabase(RpcController* controller,
+                                    const CreateDatabaseRequest* request,
+                                    GeneralResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (!running_.load(std::memory_order_acquire)) {
         response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
@@ -11028,9 +11028,9 @@ void NameServerImpl::CreateDatabase(RpcController* controller,
     }
 }
 
-void NameServerImpl::UseDatabase(RpcController* controller, 
-                const UseDatabaseRequest* request,
-                GeneralResponse* response, Closure* done) {
+void NameServerImpl::UseDatabase(RpcController* controller,
+                                 const UseDatabaseRequest* request,
+                                 GeneralResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (!running_.load(std::memory_order_acquire)) {
         response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);

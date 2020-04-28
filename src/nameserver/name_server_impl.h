@@ -12,9 +12,9 @@
 #include <condition_variable>  // NOLINT
 #include <list>
 #include <map>
-#include <set>
 #include <memory>
 #include <mutex>  // NOLINT
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -304,11 +304,13 @@ class NameServerImpl : public NameServer {
     void AddIndex(RpcController* controller, const AddIndexRequest* request,
                   GeneralResponse* response, Closure* done);
 
-    void UseDatabase(RpcController* controller, const UseDatabaseRequest* request,
-                  GeneralResponse* response, Closure* done);
+    void UseDatabase(RpcController* controller,
+                     const UseDatabaseRequest* request,
+                     GeneralResponse* response, Closure* done);
 
-    void CreateDatabase(RpcController* controller, const CreateDatabaseRequest* request,
-                  GeneralResponse* response, Closure* done);
+    void CreateDatabase(RpcController* controller,
+                        const CreateDatabaseRequest* request,
+                        GeneralResponse* response, Closure* done);
 
     int SyncExistTable(
         const std::string& alias, const std::string& name,

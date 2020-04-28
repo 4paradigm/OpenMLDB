@@ -26,8 +26,9 @@ bool NsClient::Use(std::string db, std::string& msg) {
     ::rtidb::nameserver::UseDatabaseRequest request;
     ::rtidb::nameserver::GeneralResponse response;
     request.set_db(db);
-    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::UseDatabase,
-                                &request, &response, FLAGS_request_timeout_ms, 1);
+    bool ok =
+        client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::UseDatabase,
+                            &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
         db_ = db;
@@ -40,8 +41,9 @@ bool NsClient::CreateDatabase(std::string db, std::string& msg) {
     ::rtidb::nameserver::CreateDatabaseRequest request;
     ::rtidb::nameserver::GeneralResponse response;
     request.set_db(db);
-    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::CreateDatabase,
-                                &request, &response, FLAGS_request_timeout_ms, 1);
+    bool ok = client_.SendRequest(
+        &::rtidb::nameserver::NameServer_Stub::CreateDatabase, &request,
+        &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     return ok && response.code() == 0;
 }
