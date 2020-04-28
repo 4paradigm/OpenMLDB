@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class TableAsyncProjectionTest extends TestCaseBase {
-    private static AtomicInteger id = new AtomicInteger(20000);
+    private static AtomicInteger id = new AtomicInteger(21000);
     @BeforeClass
     public void setUp() {
         super.setUp();
