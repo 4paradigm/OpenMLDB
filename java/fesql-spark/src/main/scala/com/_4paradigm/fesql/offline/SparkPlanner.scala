@@ -1,7 +1,7 @@
 package com._4paradigm.fesql.offline
 
 import com._4paradigm.fesql.`type`.TypeOuterClass._
-import com._4paradigm.fesql.offline.nodes.{DataProviderPlan, ProjectPlan}
+import com._4paradigm.fesql.offline.nodes.{DataProviderPlan, GroupAndSortPlan, RowProjectPlan, WindowAggPlan}
 import com._4paradigm.fesql.vm._
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.slf4j.LoggerFactory
@@ -9,7 +9,7 @@ import org.slf4j.LoggerFactory
 import scala.collection.mutable
 
 
-class SparkPlanner(session: SparkSession) {
+class SparkPlanner(session: SparkSession, config: Map[String, Any]) {
 
   private val logger = LoggerFactory.getLogger(this.getClass)
 
@@ -17,9 +17,13 @@ class SparkPlanner(session: SparkSession) {
   FeSqlLibrary.init()
 
 
+  def this(session: SparkSession) = {
+    this(session, Map())
+  }
+
   def plan(sql: String, tableDict: Map[String, DataFrame]): SparkInstance = {
     // spark translation state
-    val planCtx = new PlanContext(sql, session)
+    val planCtx = new PlanContext(sql, session, config)
 
     // set spark input tables
     tableDict.foreach {
@@ -55,7 +59,20 @@ class SparkPlanner(session: SparkSession) {
         DataProviderPlan.gen(ctx, PhysicalDataProviderNode.CastFrom(root), children)
 
       case PhysicalOpType.kPhysicalOpProject =>
-        ProjectPlan.gen(ctx, PhysicalProjectNode.CastFrom(root), children)
+        val projectNode = PhysicalProjectNode.CastFrom(root)
+        projectNode.getProject_type_ match {
+          case ProjectType.kTableProject =>
+            RowProjectPlan.gen(ctx, PhysicalTableProjectNode.CastFrom(projectNode), children)
+
+          case ProjectType.kWindowAggregation =>
+            WindowAggPlan.gen(ctx, PhysicalWindowAggrerationNode.CastFrom(projectNode), children.head)
+
+          case _ => throw new FeSQLException(
+            s"Project type ${projectNode.getProject_type_} not supported")
+        }
+
+      case PhysicalOpType.kPhysicalOpGroupAndSort =>
+        GroupAndSortPlan.gen(ctx, PhysicalGroupAndSortNode.CastFrom(root), children.head)
 
       case _ =>
         throw new IllegalArgumentException(s"Plan type $opType not supported")

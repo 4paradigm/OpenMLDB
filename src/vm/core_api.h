@@ -14,8 +14,36 @@
 #include <memory>
 #include "codec/row.h"
 #include "vm/catalog.h"
+#include "vm/mem_catalog.h"
+
 namespace fesql {
 namespace vm {
+
+class CoreAPI;
+
+typedef const int8_t* RawFunctionPtr;
+
+class WindowInterface {
+ public:
+    WindowInterface(int64_t start_offset,
+                    int64_t end_offset,
+                    uint32_t max_size):
+        window_impl_(std::unique_ptr<Window>(
+            new CurrentHistoryWindow(start_offset, max_size))) {}
+
+    void BufferData(uint64_t key, const Row& row) {
+        window_impl_->BufferData(key, row);
+    }
+
+ private:
+    friend CoreAPI;
+
+    Window* GetWindow() { return window_impl_.get(); }
+
+    std::unique_ptr<Window> window_impl_;
+};
+
+
 class RunnerContext {
  public:
     explicit RunnerContext(const bool is_debug = false)
@@ -27,11 +55,18 @@ class RunnerContext {
     const bool is_debug_;
     std::map<int32_t, std::shared_ptr<DataHandler>> cache_;
 };
+
+
 class CoreAPI {
  public:
-    static fesql::codec::Row RowProject(const int8_t* fn,
+    static fesql::codec::Row RowProject(const fesql::vm::RawFunctionPtr fn,
                                         const fesql::codec::Row row,
                                         const bool need_free = false);
+
+    static fesql::codec::Row WindowProject(const fesql::vm::RawFunctionPtr fn,
+                                           const uint64_t key,
+                                           const Row row,
+                                           WindowInterface* window);
 };
 }  // namespace vm
 }  // namespace fesql

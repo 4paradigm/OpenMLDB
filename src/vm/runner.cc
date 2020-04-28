@@ -400,6 +400,7 @@ Row Runner::WindowProject(const int8_t* fn, const uint64_t key, const Row row,
     }
     return Row(reinterpret_cast<char*>(out_buf), RowView::GetSize(out_buf));
 }
+
 int64_t Runner::GetColumnInt64(RowView* row_view, int key_idx,
                                type::Type key_type) {
     int64_t key = -1;

@@ -31,18 +31,6 @@
 namespace fesql {
 namespace vm {
 
-typedef const int8_t* RawFunctionPtr;
-
-// TODO(bxq): remove dummy runner
-class DummyRunner {
- public:
-    DummyRunner() {}
-    ~DummyRunner() {}
-    fesql::codec::Row RunRowProject(RawFunctionPtr fn,
-                                    const fesql::codec::Row row) {
-        return fesql::vm::CoreAPI::RowProject(fn, row);
-    }
-};
 
 class FeSQLJITWrapper {
  public:
@@ -57,7 +45,7 @@ class FeSQLJITWrapper {
 
     bool AddModuleFromBuffer(const base::RawBuffer&);
 
-    RawFunctionPtr FindFunction(const std::string& funcname);
+    fesql::vm::RawFunctionPtr FindFunction(const std::string& funcname);
 
  private:
     std::unique_ptr<FeSQLJIT> jit_;

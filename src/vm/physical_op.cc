@@ -107,6 +107,12 @@ void PhysicalGroupAndSortNode::Print(std::ostream& output,
     output << "\n";
     PrintChildren(output, tab);
 }
+
+PhysicalGroupAndSortNode*
+PhysicalGroupAndSortNode::CastFrom(PhysicalOpNode* node) {
+    return dynamic_cast<PhysicalGroupAndSortNode*>(node);
+}
+
 void PhysicalProjectNode::Print(std::ostream& output,
                                 const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
@@ -126,6 +132,21 @@ bool PhysicalProjectNode::InitSchema() {
 
 PhysicalProjectNode* PhysicalProjectNode::CastFrom(PhysicalOpNode* node) {
     return dynamic_cast<PhysicalProjectNode*>(node);
+}
+
+PhysicalRowProjectNode*
+PhysicalRowProjectNode::CastFrom(PhysicalOpNode* node) {
+    return dynamic_cast<PhysicalRowProjectNode*>(node);
+}
+
+PhysicalTableProjectNode*
+PhysicalTableProjectNode::CastFrom(PhysicalOpNode* node) {
+    return dynamic_cast<PhysicalTableProjectNode*>(node);
+}
+
+PhysicalWindowAggrerationNode*
+PhysicalWindowAggrerationNode::CastFrom(PhysicalOpNode* node) {
+    return dynamic_cast<PhysicalWindowAggrerationNode*>(node);
 }
 
 void PhysicalGroupAggrerationNode::Print(std::ostream& output,

@@ -292,11 +292,18 @@ class PhysicalGroupAndSortNode : public PhysicalUnaryNode {
     void SetOrdersIdxs(const std::vector<int32_t> &idxs) {
         orders_idxs_ = idxs;
     }
+    const node::ExprListNode* GetGroups() const {
+        return groups_;
+    }
+    const node::OrderByNode* GetOrders() const {
+        return orders_;
+    }
     const std::vector<int32_t> &GetOrdersIdxs() const { return orders_idxs_; }
     const std::vector<int32_t> &GetGroupsIdxs() const { return groups_idxs_; }
     const bool GetIsAsc() const {
         return nullptr == orders_ ? true : orders_->is_asc_;
     }
+    static PhysicalGroupAndSortNode* CastFrom(PhysicalOpNode* node);
 
  private:
     std::vector<int32_t> groups_idxs_;
@@ -355,6 +362,7 @@ class PhysicalRowProjectNode : public PhysicalProjectNode {
         output_type_ = kSchemaTypeRow;
     }
     virtual ~PhysicalRowProjectNode() {}
+    static PhysicalRowProjectNode* CastFrom(PhysicalOpNode* node);
 };
 
 class PhysicalTableProjectNode : public PhysicalProjectNode {
@@ -366,6 +374,7 @@ class PhysicalTableProjectNode : public PhysicalProjectNode {
         output_type_ = kSchemaTypeTable;
     }
     virtual ~PhysicalTableProjectNode() {}
+    static PhysicalTableProjectNode* CastFrom(PhysicalOpNode* node);
 };
 class PhysicalAggrerationNode : public PhysicalProjectNode {
  public:
@@ -431,8 +440,14 @@ class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
     void SetOrdersIdxs(const std::vector<int32_t> &idxs) {
         orders_idxs_ = idxs;
     }
+    static PhysicalWindowAggrerationNode* CastFrom(PhysicalOpNode* node);
     const std::vector<int32_t> &GetOrdersIdxs() const { return orders_idxs_; }
     const std::vector<int32_t> &GetGroupsIdxs() const { return groups_idxs_; }
+
+    const int64_t GetStartOffset() const { return start_offset_; }
+    const int64_t GetEndOffset() const { return end_offset_; }
+    const node::ExprListNode* GetGroups() const { return groups_; }
+    const node::OrderByNode* GetOrders() const { return orders_; }
 
  private:
     std::vector<int32_t> groups_idxs_;
