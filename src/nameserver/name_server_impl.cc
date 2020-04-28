@@ -3389,7 +3389,9 @@ void NameServerImpl::ShowTable(RpcController* controller,
     }
     std::lock_guard<std::mutex> lock(mu_);
     for (const auto& kv : table_info_) {
-        if (request->has_name() && request->name() != kv.first) {
+        if ((request->has_name() && request->name() != kv.first) || 
+                (request->has_db() && kv.second->has_db() &&
+                request->db() != kv.second->db())) {
             continue;
         }
         ::rtidb::nameserver::TableInfo* table_info = response->add_table_info();
@@ -11005,8 +11007,8 @@ std::shared_ptr<Task> NameServerImpl::CreateAddIndexToTabletTask(
     return task;
 }
 
-void NameServerImpl::UseDatabase(RpcController* controller, 
-                const UseDatabseRequest* request,
+void NameServerImpl::CreateDatabase(RpcController* controller, 
+                const CreateDatabaseRequest* request,
                 GeneralResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (!running_.load(std::memory_order_acquire)) {
@@ -11018,16 +11020,16 @@ void NameServerImpl::UseDatabase(RpcController* controller,
     auto it = databases_.find(request->db());
     if (it == databases_.end()) {
         databases_.insert(request->db());
-        request->set_code(::rtidb::base::ReturnCode::kOk);
+        response->set_code(::rtidb::base::ReturnCode::kOk);
         response->set_msg("ok");
     } else {
-        response->set_code(::rtidb::base::ReturnCode::kDatabaseNotFound);
-        response->set_msg("database not found");
+        response->set_code(::rtidb::base::ReturnCode::kDatabaseAlreadyExists);
+        response->set_msg("database already exists");
     }
 }
 
 void NameServerImpl::UseDatabase(RpcController* controller, 
-                const UseDatabseRequest* request,
+                const UseDatabaseRequest* request,
                 GeneralResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (!running_.load(std::memory_order_acquire)) {
@@ -11036,8 +11038,8 @@ void NameServerImpl::UseDatabase(RpcController* controller,
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
-    if (databases_.find(request->db()) != database_.end()) {
-        request->set_code(::rtidb::base::ReturnCode::kOk);
+    if (databases_.find(request->db()) != databases_.end()) {
+        response->set_code(::rtidb::base::ReturnCode::kOk);
         response->set_msg("ok");
     } else {
         response->set_code(::rtidb::base::ReturnCode::kDatabaseNotFound);

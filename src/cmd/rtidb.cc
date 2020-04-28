@@ -1664,6 +1664,35 @@ void HandleNSUpdate(const std::vector<std::string>& parts,
     }
 }
 
+void HandleNsUseDb(const std::vector<std::string>& parts,
+                    ::rtidb::client::NsClient* client) {
+    if (parts.size() < 2) {
+        std::cout << "use format error. eg: use database_name" << std::endl;
+        return;
+    }
+    std::string msg;
+    if (client->Use(parts[1], msg)){
+        std::cout << "use database: " << parts[1] << std::endl;
+    } else {
+        std::cout << "use database failed. error msg: " << msg << std::endl;
+    }
+}
+
+void HandleNsCreateDb(const std::vector<std::string>& parts,
+                    ::rtidb::client::NsClient* client) {
+    if (parts.size() < 2) {
+        std::cout << "createdb format error. eg: createdb database_name" 
+                << std::endl;
+        return;
+    }
+    std::string msg;
+    if (client->CreateDatabase(parts[1], msg)){
+        std::cout << "create database: " << parts[1] << std::endl;
+    } else {
+        std::cout << "create database failed. error msg: " << msg << std::endl;
+    }
+}
+
 bool ParseCondAndOp(const std::string& source, uint64_t& first_end,  // NOLINT
                     uint64_t& value_begin, int32_t& get_type) {      // NOLINT
     for (uint64_t i = 0; i < source.length(); i++) {
@@ -6405,6 +6434,10 @@ void StartNsClient() {
             HandleNSUpdate(parts, &client);
         } else if (parts[0] == "query") {
             HandleNSQuery(parts, &client);
+        } else if (parts[0] == "use") {
+            HandleNsUseDb(parts, &client);
+        } else if (parts[0] == "createdb") {
+            HandleNsCreateDb(parts, &client);
         } else if (parts[0] == "exit" || parts[0] == "quit") {
             std::cout << "bye" << std::endl;
             return;

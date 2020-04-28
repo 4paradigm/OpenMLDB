@@ -304,7 +304,7 @@ class NameServerImpl : public NameServer {
     void AddIndex(RpcController* controller, const AddIndexRequest* request,
                   GeneralResponse* response, Closure* done);
 
-    void UseDatabase(RpcController* controller, const UseDatabseRequest* request,
+    void UseDatabase(RpcController* controller, const UseDatabaseRequest* request,
                   GeneralResponse* response, Closure* done);
 
     void CreateDatabase(RpcController* controller, const CreateDatabaseRequest* request,

@@ -20,6 +20,32 @@ int NsClient::Init() { return client_.Init(); }
 
 std::string NsClient::GetEndpoint() { return endpoint_; }
 
+const std::string& NsClient::GetDb() { return db_; }
+
+bool NsClient::Use(std::string db, std::string& msg) {
+    ::rtidb::nameserver::UseDatabaseRequest request;
+    ::rtidb::nameserver::GeneralResponse response;
+    request.set_db(db);
+    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::UseDatabase,
+                                &request, &response, FLAGS_request_timeout_ms, 1);
+    msg = response.msg();
+    if (ok && response.code() == 0) {
+        db_ = db;
+        return true;
+    }
+    return false;
+}
+
+bool NsClient::CreateDatabase(std::string db, std::string& msg) {
+    ::rtidb::nameserver::CreateDatabaseRequest request;
+    ::rtidb::nameserver::GeneralResponse response;
+    request.set_db(db);
+    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::CreateDatabase,
+                                &request, &response, FLAGS_request_timeout_ms, 1);
+    msg = response.msg();
+    return ok && response.code() == 0;
+}
+
 bool NsClient::ShowTablet(std::vector<TabletInfo>& tablets, std::string& msg) {
     ::rtidb::nameserver::ShowTabletRequest request;
     ::rtidb::nameserver::ShowTabletResponse response;
@@ -48,6 +74,9 @@ bool NsClient::ShowTable(const std::string& name,
     ::rtidb::nameserver::ShowTableRequest request;
     if (!name.empty()) {
         request.set_name(name);
+    }
+    if (!db_.empty()) {
+        request.set_db(db_);
     }
     ::rtidb::nameserver::ShowTableResponse response;
     bool ok =

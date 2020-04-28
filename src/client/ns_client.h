@@ -36,6 +36,12 @@ class NsClient {
 
     std::string GetEndpoint();
 
+    const std::string& GetDb();
+
+    bool Use(std::string db, std::string& msg); // NOINT
+
+    bool CreateDatabase(std::string db, std::string& msg); // NOINT
+
     bool ShowTablet(std::vector<TabletInfo>& tablets, std::string& msg); // NOLINT
 
     bool ShowTable(const std::string& name,
@@ -173,6 +179,7 @@ class NsClient {
 
  private:
     std::string endpoint_;
+    std::string db_;
     ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> client_;
 };
 
