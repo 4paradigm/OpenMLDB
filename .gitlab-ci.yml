@@ -11,7 +11,6 @@ build_rtidb:
         - ln -sf /usr/workdir/thirdparty thirdparty
         - ln -sf /usr/workdir/thirdsrc thirdsrc
         - source /root/.bashrc && bash steps/compile.sh
-        - ls -al build/bin
     artifacts:
         expire_in: 2h
         paths:
