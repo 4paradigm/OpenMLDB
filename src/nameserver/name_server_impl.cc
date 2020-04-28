@@ -11005,5 +11005,45 @@ std::shared_ptr<Task> NameServerImpl::CreateAddIndexToTabletTask(
     return task;
 }
 
+void NameServerImpl::UseDatabase(RpcController* controller, 
+                const UseDatabseRequest* request,
+                GeneralResponse* response, Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    if (!running_.load(std::memory_order_acquire)) {
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
+        response->set_msg("nameserver is not leader");
+        PDLOG(WARNING, "cur nameserver is not leader");
+        return;
+    }
+    auto it = databases_.find(request->db());
+    if (it == databases_.end()) {
+        databases_.insert(request->db());
+        request->set_code(::rtidb::base::ReturnCode::kOk);
+        response->set_msg("ok");
+    } else {
+        response->set_code(::rtidb::base::ReturnCode::kDatabaseNotFound);
+        response->set_msg("database not found");
+    }
+}
+
+void NameServerImpl::UseDatabase(RpcController* controller, 
+                const UseDatabseRequest* request,
+                GeneralResponse* response, Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    if (!running_.load(std::memory_order_acquire)) {
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
+        response->set_msg("nameserver is not leader");
+        PDLOG(WARNING, "cur nameserver is not leader");
+        return;
+    }
+    if (databases_.find(request->db()) != database_.end()) {
+        request->set_code(::rtidb::base::ReturnCode::kOk);
+        response->set_msg("ok");
+    } else {
+        response->set_code(::rtidb::base::ReturnCode::kDatabaseNotFound);
+        response->set_msg("database not found");
+    }
+}
+
 }  // namespace nameserver
 }  // namespace rtidb

@@ -12,6 +12,7 @@
 #include <condition_variable>  // NOLINT
 #include <list>
 #include <map>
+#include <set>
 #include <memory>
 #include <mutex>  // NOLINT
 #include <string>
@@ -301,6 +302,12 @@ class NameServerImpl : public NameServer {
                      GeneralResponse* response, Closure* done);
 
     void AddIndex(RpcController* controller, const AddIndexRequest* request,
+                  GeneralResponse* response, Closure* done);
+
+    void UseDatabase(RpcController* controller, const UseDatabseRequest* request,
+                  GeneralResponse* response, Closure* done);
+
+    void CreateDatabase(RpcController* controller, const CreateDatabaseRequest* request,
                   GeneralResponse* response, Closure* done);
 
     int SyncExistTable(
@@ -806,6 +813,7 @@ class NameServerImpl : public NameServer {
     std::atomic<uint64_t> task_rpc_version_;
     std::map<uint64_t, std::list<std::shared_ptr<::rtidb::api::TaskInfo>>>
         task_map_;
+    std::set<std::string> databases_;
 };
 
 }  // namespace nameserver

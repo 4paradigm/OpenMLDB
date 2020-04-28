@@ -119,6 +119,7 @@ message CreateTableInfoRequest {
 
 message ShowTableRequest {
     optional string name = 1;
+    optional string db = 2;
 }
 
 message ShowTableResponse {
@@ -393,6 +394,14 @@ message DeleteIndexRequest {
     optional string idx_name = 2;
 }
 
+message CreateDatabaseRequest {
+    optional string db = 1;
+}
+
+message UseDatabaseRequest {
+    optional string db = 1;
+}
+
 service NameServer {
     rpc CreateTable(CreateTableRequest) returns (GeneralResponse);
     rpc DropTable(DropTableRequest) returns (GeneralResponse);
@@ -432,4 +441,6 @@ service NameServer {
     rpc SyncTable(SyncTableRequest) returns (GeneralResponse);
     rpc AddIndex(AddIndexRequest) returns (GeneralResponse);
     rpc DeleteIndex(DeleteIndexRequest) returns (GeneralResponse);
+    rpc CreateDatabase(CreateDatabaseRequest) returns (GeneralResponse);
+    rpc UseDatabase(UseDatabaseRequest) returns (GeneralResponse);
 }
