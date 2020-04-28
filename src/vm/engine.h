@@ -43,11 +43,15 @@ class Engine;
 
 class EngineOptions {
  public:
+    EngineOptions() : keep_ir_(false), compile_only_(false) {}
     void set_keep_ir(bool flag) { this->keep_ir_ = flag; }
     bool is_keep_ir() const { return this->keep_ir_; }
+    void set_compile_only(bool flag) { this->compile_only_ = flag; }
+    bool is_compile_only() const { return compile_only_; }
 
  private:
     bool keep_ir_;
+    bool compile_only_;
 };
 
 class CompileInfo {
@@ -148,6 +152,9 @@ class Engine {
     bool Get(const std::string& sql, const std::string& db,
              RunSession& session,    // NOLINT
              base::Status& status);  // NOLINT
+    bool Compile(const std::string& sql, const std::string& db,
+                 RunSession& session,    // NOLINT
+                 base::Status& status);  // NOLINT
  private:
     std::shared_ptr<CompileInfo> GetCacheLocked(const std::string& db,
                                                 const std::string& sql);
