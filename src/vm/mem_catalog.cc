@@ -11,15 +11,15 @@
 namespace fesql {
 namespace vm {
 MemTimeTableIterator::MemTimeTableIterator(const MemTimeTable* table,
-                                       const vm::Schema* schema)
+                                           const vm::Schema* schema)
     : table_(table),
       schema_(schema),
       start_iter_(table->cbegin()),
       end_iter_(table->cend()),
       iter_(table->cbegin()) {}
 MemTimeTableIterator::MemTimeTableIterator(const MemTimeTable* table,
-                                       const vm::Schema* schema, int32_t start,
-                                       int32_t end)
+                                           const vm::Schema* schema,
+                                           int32_t start, int32_t end)
     : table_(table),
       schema_(schema),
       start_iter_(table_->begin() + start),
@@ -42,23 +42,25 @@ const uint64_t MemTimeTableIterator::GetKey() { return iter_->first; }
 const Row& fesql::vm::MemTimeTableIterator::GetValue() { return iter_->second; }
 void MemTimeTableIterator::Next() { iter_++; }
 
-bool MemTimeTableIterator::Valid() { return end_iter_ != iter_; }
+bool MemTimeTableIterator::Valid() { return end_iter_ > iter_; }
 
 MemWindowIterator::MemWindowIterator(const MemSegmentMap* partitions,
                                      const Schema* schema)
     : WindowIterator(),
       partitions_(partitions),
       schema_(schema),
-      iter_(partitions->cbegin()) {}
+      iter_(partitions->cbegin()),
+      start_iter_(partitions->cbegin()),
+      end_iter_(partitions->cend()) {}
 
 MemWindowIterator::~MemWindowIterator() {}
 
 void MemWindowIterator::Seek(const std::string& key) {
     iter_ = partitions_->find(key);
 }
-void MemWindowIterator::SeekToFirst() { iter_ = partitions_->cbegin(); }
+void MemWindowIterator::SeekToFirst() { iter_ = start_iter_; }
 void MemWindowIterator::Next() { iter_++; }
-bool MemWindowIterator::Valid() { return partitions_->cend() != iter_; }
+bool MemWindowIterator::Valid() { return end_iter_ != iter_; }
 std::unique_ptr<RowIterator> MemWindowIterator::GetValue() {
     std::unique_ptr<RowIterator> it = std::unique_ptr<RowIterator>(
         new MemTimeTableIterator(&(iter_->second), schema_));
@@ -83,8 +85,8 @@ MemTimeTableHandler::MemTimeTableHandler(const Schema* schema)
       index_hint_(),
       table_() {}
 MemTimeTableHandler::MemTimeTableHandler(const std::string& table_name,
-                                     const std::string& db,
-                                     const Schema* schema)
+                                         const std::string& db,
+                                         const Schema* schema)
     : TableHandler(),
       table_name_(table_name),
       db_(db),
@@ -262,7 +264,7 @@ void MemTableIterator::SeekToFirst() { iter_ = start_iter_; }
 const uint64_t MemTableIterator::GetKey() {
     return Valid() ? iter_ - start_iter_ : -1;
 }
-bool MemTableIterator::Valid() { return end_iter_ != iter_; }
+bool MemTableIterator::Valid() { return end_iter_ > iter_; }
 void MemTableIterator::Next() { iter_++; }
 const Row& MemTableIterator::GetValue() { return *iter_; }
 

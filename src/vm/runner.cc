@@ -1162,15 +1162,18 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(RunnerContext& ctx) {
     // filter by keys if need
     if (group_gen_.Valid()) {
         auto mem_table =
-            std::shared_ptr<MemTableHandler>(new MemTableHandler());
+            std::shared_ptr<MemTimeTableHandler>(new MemTimeTableHandler());
         std::string request_keys = group_gen_.Gen(request);
         auto iter = table->GetIterator();
-        while (iter->Valid()) {
-            std::string keys = group_gen_.Gen(iter->GetValue());
-            if (request_keys == keys) {
-                mem_table->AddRow(iter->GetValue());
+        if (iter) {
+            iter->SeekToFirst();
+            while (iter->Valid()) {
+                std::string keys = group_gen_.Gen(iter->GetValue());
+                if (request_keys == keys) {
+                    mem_table->AddRow(iter->GetKey(), iter->GetValue());
+                }
+                iter->Next();
             }
-            iter->Next();
         }
         output = std::shared_ptr<TableHandler>(mem_table);
     }
