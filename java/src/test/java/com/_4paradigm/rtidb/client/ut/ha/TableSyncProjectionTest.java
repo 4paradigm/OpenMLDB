@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class TableSyncProjectionTest extends TestCaseBase {
-    private static AtomicInteger id = new AtomicInteger(20000);
+    private static AtomicInteger id = new AtomicInteger(30100);
     @BeforeClass
     public void setUp() {
         super.setUp();
@@ -64,11 +64,15 @@ public class TableSyncProjectionTest extends TestCaseBase {
         Common.ColumnDesc col2 = Common.ColumnDesc.newBuilder().setName("ts").setType("int64").setIsTsCol(true).build();
         Common.ColumnDesc col3 = Common.ColumnDesc.newBuilder().setName("date").setType("date").build();
         Common.ColumnDesc col4 = Common.ColumnDesc.newBuilder().setName("time").setType("timestamp").build();
+        Common.ColumnDesc col5 = Common.ColumnDesc.newBuilder().setName("amt").setType("double").build();
+        Common.ColumnDesc col6 = Common.ColumnDesc.newBuilder().setName("amt2").setType("float").build();
         tbuilder.addColumnDescV1(col0);
         tbuilder.addColumnDescV1(col1);
         tbuilder.addColumnDescV1(col2);
         tbuilder.addColumnDescV1(col3);
         tbuilder.addColumnDescV1(col4);
+        tbuilder.addColumnDescV1(col5);
+        tbuilder.addColumnDescV1(col6);
         Common.ColumnKey ck = Common.ColumnKey.newBuilder().setIndexName("card").addColName("card").addTsName("ts").build();
         tbuilder.addColumnKey(ck);
         tbuilder.setFormatVersion(formatVersion);
@@ -92,35 +96,41 @@ public class TableSyncProjectionTest extends TestCaseBase {
         DateTime dt = new DateTime();
         return new Object[][] {
                 // the legacy format
-                new Object[]{createArg(new Object[] {"card0", "mcc0", 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt}, new ArrayList<String>(Arrays.asList("card")), new Object[]{"card0"},
+                new Object[]{createArg(new Object[] {"card0", "mcc0", 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt, 64.0d, 32.0f}, new ArrayList<String>(Arrays.asList("card")), new Object[]{"card0"},
                         "card0", 10000l, 0)},
-                new Object[]{createArg(new Object[] {"card1", null, 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt}, new ArrayList<String>(Arrays.asList("mcc")), new Object[]{null},
+                new Object[]{createArg(new Object[] {"card1", null, 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt, 64.0d, 32.0f}, new ArrayList<String>(Arrays.asList("mcc")), new Object[]{null},
                                 "card1", 10000l, 0 )},
-                new Object[]{createArg(new Object[] {"card2", null, 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt}, new ArrayList<String>(Arrays.asList("ts")), new Object[]{10000l},
+                new Object[]{createArg(new Object[] {"card2", null, 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt, 64.0d, 32.0f}, new ArrayList<String>(Arrays.asList("ts")), new Object[]{10000l},
                         "card2", 10000l, 0)},
-                new Object[]{createArg(new Object[] {"card3", null, 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt}, new ArrayList<String>(Arrays.asList("date")), new Object[]{new Date(now.getYear(), now.getMonth(), now.getDate())},
+                new Object[]{createArg(new Object[] {"card3", null, 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt, 64.0d, 32.0f}, new ArrayList<String>(Arrays.asList("date")), new Object[]{new Date(now.getYear(), now.getMonth(), now.getDate())},
                         "card3", 10000l, 0)},
-                new Object[]{createArg(new Object[] {"card3", null, 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt}, new ArrayList<String>(Arrays.asList("time")), new Object[]{dt},
+                new Object[]{createArg(new Object[] {"card3", null, 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt, 64.0d, 32.0f}, new ArrayList<String>(Arrays.asList("time")), new Object[]{dt},
                         "card3", 10000l, 0)},
-                new Object[]{createArg(new Object[] {"card4", "mcc0", 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt}, new ArrayList<String>(Arrays.asList("mcc", "card", "mcc")), new Object[]{"mcc0", "card4", "mcc0"},
+                new Object[]{createArg(new Object[] {"card4", "mcc0", 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt, 64.0d, 32.0f}, new ArrayList<String>(Arrays.asList("mcc", "card", "mcc")), new Object[]{"mcc0", "card4", "mcc0"},
                         "card4", 10000l, 0)},
-                new Object[]{createArg(new Object[] {"card5", "mcc0", 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt}, new ArrayList<String>(Arrays.asList("date", "card")), new Object[]{new Date(now.getYear(), now.getMonth(), now.getDate()), "card5"},
+                new Object[]{createArg(new Object[] {"card5", "mcc0", 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt, 64.0d, 32.0f}, new ArrayList<String>(Arrays.asList("date", "card")), new Object[]{new Date(now.getYear(), now.getMonth(), now.getDate()), "card5"},
                         "card5", 10000l, 0 )},
 
                 // the new format
-                new Object[]{createArg(new Object[] {"card0", "mcc0", 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt}, new ArrayList<String>(Arrays.asList("card")), new Object[]{"card0"},
+                new Object[]{createArg(new Object[] {"card0", "mcc0", 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt, 64.0d, 32.0f}, new ArrayList<String>(),new Object[] {"card0", "mcc0", 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt, 64.0d, 32.0f},
                         "card0", 10000l, 1)},
-                new Object[]{createArg(new Object[] {"card1", null, 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt}, new ArrayList<String>(Arrays.asList("mcc")), new Object[]{null},
+                new Object[]{createArg(new Object[] {"card0", "mcc0", 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt, 64.0d, 32.0f}, new ArrayList<String>(Arrays.asList("card")), new Object[]{"card0"},
+                        "card0", 10000l, 1)},
+                new Object[]{createArg(new Object[] {"card1", null, 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt, 64.0d, 32.0f}, new ArrayList<String>(Arrays.asList("mcc")), new Object[]{null},
                         "card1", 10000l, 1)},
-                new Object[]{createArg(new Object[] {"card2", null, 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt}, new ArrayList<String>(Arrays.asList("ts")), new Object[]{10000l},
+                new Object[]{createArg(new Object[] {"card2", null, 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt, 64.0d, 32.0f}, new ArrayList<String>(Arrays.asList("ts")), new Object[]{10000l},
                         "card2", 10000l, 1)},
-                new Object[]{createArg(new Object[] {"card3", null, 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt}, new ArrayList<String>(Arrays.asList("date")), new Object[]{new Date(now.getYear(), now.getMonth(), now.getDate())},
+                new Object[]{createArg(new Object[] {"card3", null, 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt, 64.0d, 32.0f}, new ArrayList<String>(Arrays.asList("date")), new Object[]{new Date(now.getYear(), now.getMonth(), now.getDate())},
                         "card3", 10000l, 1)},
-                new Object[]{createArg(new Object[] {"card3", null, 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt}, new ArrayList<String>(Arrays.asList("time")), new Object[]{dt},
+                new Object[]{createArg(new Object[] {"card3", null, 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt, 64.0d, 32.0f}, new ArrayList<String>(Arrays.asList("time")), new Object[]{dt},
                         "card3", 10000l, 1)},
-                new Object[]{createArg(new Object[] {"card4", "mcc0", 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt}, new ArrayList<String>(Arrays.asList("mcc", "card", "mcc")), new Object[]{"mcc0", "card4", "mcc0"},
+                new Object[]{createArg(new Object[] {"card3", null, 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt, 64.0d, 32.0f}, new ArrayList<String>(Arrays.asList("amt")), new Object[]{64.0d},
+                        "card3", 10000l, 1)},
+                new Object[]{createArg(new Object[] {"card3", null, 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt, 64.0d, 32.0f}, new ArrayList<String>(Arrays.asList("amt2")), new Object[]{32.0f},
+                        "card3", 10000l, 1)},
+                new Object[]{createArg(new Object[] {"card4", "mcc0", 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt, 64.0d, 32.0f}, new ArrayList<String>(Arrays.asList("mcc", "card", "mcc")), new Object[]{"mcc0", "card4", "mcc0"},
                         "card4", 10000l, 1)},
-                new Object[]{createArg(new Object[] {"card5", "mcc0", 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt}, new ArrayList<String>(Arrays.asList("date", "card")), new Object[]{new Date(now.getYear(), now.getMonth(), now.getDate()), "card5"},
+                new Object[]{createArg(new Object[] {"card5", "mcc0", 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt, 64.0d, 32.0f}, new ArrayList<String>(Arrays.asList("date", "card")), new Object[]{new Date(now.getYear(), now.getMonth(), now.getDate()), "card5"},
                         "card5", 10000l, 1)}
 
         };
@@ -156,5 +166,20 @@ public class TableSyncProjectionTest extends TestCaseBase {
         option.setProjection(args.projectionList);
         Object[] row = tableSyncClient.getRow(args.tableInfo.getName(), args.key, args.ts, option);
         Assert.assertEquals(args.expected, row);
+    }
+
+    @Test(dataProvider = "projection_case")
+    public void testTraverse(TestArgs args) throws Exception{
+        nsc.dropTable(args.tableInfo.getName());
+        boolean ok = nsc.createTable(args.tableInfo);
+        Assert.assertTrue(ok);
+        List<TableInfo> tables = nsc.showTable(args.tableInfo.getName());
+        client.refreshRouteTable();
+        ok = tableSyncClient.put(args.tableInfo.getName(), args.row);
+        Assert.assertTrue(ok);
+        KvIterator it = tableSyncClient.traverse(args.tableInfo.getName(), "card");
+        Assert.assertTrue(it.valid());
+        Object row = it.getDecodedValue();
+        Assert.assertEquals(args.row, row);
     }
 }
