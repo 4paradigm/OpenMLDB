@@ -7,11 +7,13 @@
  *--------------------------------------------------------------------------
  **/
 #include "vm/core_api.h"
+#include "vm/runner.h"
 #include "codec/row_codec.h"
+
 namespace fesql {
 namespace vm {
 
-fesql::codec::Row CoreAPI::RowProject(const int8_t* fn,
+fesql::codec::Row CoreAPI::RowProject(const RawFunctionPtr fn,
                                       const fesql::codec::Row row,
                                       const bool need_free) {
     if (row.empty()) {
@@ -32,6 +34,13 @@ fesql::codec::Row CoreAPI::RowProject(const int8_t* fn,
     }
     return Row(reinterpret_cast<char*>(buf),
                fesql::codec::RowView::GetSize(buf), need_free);
+}
+
+fesql::codec::Row CoreAPI::WindowProject(const RawFunctionPtr fn,
+                                         const uint64_t key,
+                                         const Row row,
+                                         WindowInterface* window) {
+    return Runner::WindowProject(fn, key, row, window->GetWindow());
 }
 
 }  // namespace vm

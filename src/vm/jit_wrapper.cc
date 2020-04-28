@@ -49,7 +49,7 @@ bool FeSQLJITWrapper::AddModule(std::unique_ptr<llvm::Module> module,
     ::llvm::Error e = jit_->addIRModule(
         ::llvm::orc::ThreadSafeModule(std::move(module), std::move(llvm_ctx)));
     if (e) {
-        LOG(WARNING) << "fail to add ir module";
+        LOG(WARNING) << "fail to add ir module" << llvm::toString(std::move(e));
         return false;
     }
     InitCodecSymbol(jit_.get());
@@ -63,7 +63,7 @@ bool FeSQLJITWrapper::AddModuleFromBuffer(const base::RawBuffer& buf) {
     auto llvm_ctx = ::llvm::make_unique<::llvm::LLVMContext>();
     auto res = llvm::parseBitcodeFile(mem_buf_ref, *llvm_ctx);
     if (res.takeError()) {
-        LOG(WARNING) << "fail to parse module";
+        LOG(WARNING) << "fail to parse module, module size: " << buf.size;
         return false;
     }
     return this->AddModule(std::move(res.get()), std::move(llvm_ctx));

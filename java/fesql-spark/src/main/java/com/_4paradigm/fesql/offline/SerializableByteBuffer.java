@@ -6,6 +6,10 @@ import java.io.Serializable;
 import java.nio.ByteBuffer;
 
 
+/**
+ * By default, ByteBuffer instances are not serializable, tihs class implemented
+ * serializable wrapper for byte buffer to communicate serialize buffer content.
+ */
 public class SerializableByteBuffer implements Serializable {
 
     transient private ByteBuffer buffer;

@@ -10,7 +10,7 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
 
 import scala.collection.mutable
 
-class PlanContext(tag: String, session: SparkSession) {
+class PlanContext(tag: String, session: SparkSession, config: Map[String, Any]) {
 
   private var moduleBuffer: SerializableByteBuffer = _
   private var moduleBroadCast: Broadcast[SerializableByteBuffer] = _
@@ -46,6 +46,10 @@ class PlanContext(tag: String, session: SparkSession) {
 
   def getDataFrame(name: String): Option[DataFrame] = {
     namedSparkDataFrames.get(name)
+  }
+
+  def getConf[T](key: String, default: T): T = {
+    config.getOrElse(key, default).asInstanceOf[T]
   }
 }
 
