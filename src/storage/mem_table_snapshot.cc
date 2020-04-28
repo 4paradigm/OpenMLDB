@@ -1088,13 +1088,11 @@ bool MemTableSnapshot::PackNewIndexEntry(
         }
     } else {
         for (int pos = 0; pos < entry->dimensions_size(); pos++) {
-            std::string combined_key =
-                entry->dimensions(pos).key() + "|" +
-                std::to_string(entry->dimensions(pos).idx());
-            if (!(deleted_keys_.find(combined_key) != deleted_keys_.end() ||
-                !table->GetIndex(entry->dimensions(pos).idx())->IsReady()) &&
-                entry->dimensions(pos).idx() == 0) {
-                has_main_index = true;
+            if (entry->dimensions(pos).idx() == 0) {
+                std::string combined_key = entry->dimensions(pos).key() + "|0";
+                if (deleted_keys_.find(combined_key) == deleted_keys_.end()) {
+                    has_main_index = true;
+                }
                 break;
             }
         }
