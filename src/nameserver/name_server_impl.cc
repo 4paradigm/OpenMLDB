@@ -10310,7 +10310,7 @@ void NameServerImpl::SyncTable(RpcController* controller,
                 PDLOG(INFO, "table [%s] already exists in replica cluster [%s]",
                       name.c_str(), cluster_alias.c_str());
                 if (SyncExistTable(cluster_alias, name, tables, *table_info,
-                                   UINT32_MAX, code, msg) < 0) {
+                                   INVALID_PID, code, msg) < 0) {
                     break;
                 }
             } else {
