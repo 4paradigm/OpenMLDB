@@ -1080,49 +1080,29 @@ bool MemTableSnapshot::PackNewIndexEntry(
     const std::vector<::rtidb::base::ColumnDesc>& columns, uint32_t max_idx,
     uint32_t idx, uint32_t partition_num, ::rtidb::api::LogEntry* entry,
     uint32_t* index_pid) {
+    bool has_main_index = false;
     if (entry->dimensions_size() == 0) {
         std::string combined_key = entry->pk() + "|0";
         if (deleted_keys_.find(combined_key) != deleted_keys_.end()) {
             return false;
         }
     } else {
-        std::set<int> deleted_pos_set;
         for (int pos = 0; pos < entry->dimensions_size(); pos++) {
             std::string combined_key =
                 entry->dimensions(pos).key() + "|" +
                 std::to_string(entry->dimensions(pos).idx());
-            if (deleted_keys_.find(combined_key) != deleted_keys_.end() ||
-                !table->GetIndex(entry->dimensions(pos).idx())->IsReady()) {
-                deleted_pos_set.insert(pos);
+            if (!(deleted_keys_.find(combined_key) != deleted_keys_.end() ||
+                !table->GetIndex(entry->dimensions(pos).idx())->IsReady()) &&
+                entry->dimensions(pos).idx() == 0) {
+                has_main_index = true;
+                break;
             }
-        }
-        if (!deleted_pos_set.empty()) {
-            if (static_cast<int>(deleted_pos_set.size()) ==
-                entry->dimensions_size()) {
-                return false;
-            } else {
-                ::rtidb::api::LogEntry tmp_entry(*entry);
-                entry->clear_dimensions();
-                for (int pos = 0; pos < tmp_entry.dimensions_size(); pos++) {
-                    if (deleted_pos_set.find(pos) == deleted_pos_set.end()) {
-                        ::rtidb::api::Dimension* dimension =
-                            entry->add_dimensions();
-                        dimension->CopyFrom(tmp_entry.dimensions(pos));
-                    }
-                }
-            }
-        }
-    }
-    std::set<uint32_t> pid_set;
-    bool has_main_index = false;
-    for (const auto& dim : entry->dimensions()) {
-        if (dim.idx() == 0) {
-            has_main_index = true;
         }
     }
     if (!has_main_index) {
         return false;
     }
+    std::set<uint32_t> pid_set;
     std::vector<std::string> row;
     if (table->GetCompressType() == ::rtidb::api::kSnappy) {
         std::string buff;
@@ -1135,28 +1115,29 @@ bool MemTableSnapshot::PackNewIndexEntry(
                                     entry->value().c_str(),
                                     entry->value().size(), row);
     }
-    auto get_key = [&row](const std::vector<uint32_t>& cols) -> std::string {
+    std::string key;
+    for (uint32_t i = 0; i < index_cols.size(); ++i) {
         std::string cur_key;
-        for (uint32_t i : cols) {
+        for (uint32_t j : index_cols[i]) {
             if (cur_key.empty()) {
-                cur_key = row[i];
+                cur_key = row[j];
             } else {
-                cur_key += "|" + row[i];
+                cur_key += "|" + row[j];
             }
         }
-        return cur_key;
-    };
-    for (uint32_t i = 0; i < index_cols.size() - 1; ++i) {
-        pid_set.insert(::rtidb::base::hash64(get_key(index_cols[i])) %
-                       partition_num);
+        uint32_t pid = ::rtidb::base::hash64(cur_key) % partition_num;
+        if (i < index_cols.size() - 1) {
+            pid_set.insert(pid);
+        } else {
+            *index_pid = pid;
+            key = cur_key;
+        }
     }
-    std::string cur_key = get_key(index_cols.back());
-    *index_pid = ::rtidb::base::hash64(cur_key) % partition_num;
     if (!pid_set.count(*index_pid)) {
         std::string entry_str;
         entry->clear_dimensions();
         ::rtidb::api::Dimension* dim = entry->add_dimensions();
-        dim->set_key(cur_key);
+        dim->set_key(key);
         dim->set_idx(idx);
         return true;
     }
