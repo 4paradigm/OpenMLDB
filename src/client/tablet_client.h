@@ -119,6 +119,11 @@ class TabletClient {
     bool Delete(uint32_t tid, uint32_t pid, const std::string& pk,
                 const std::string& idx_name, std::string& msg);  // NOLINT
 
+    bool Delete(uint32_t tid, uint32_t pid,
+            const ::google::protobuf::RepeatedPtrField<
+            ::rtidb::api::Columns>& cd_columns,
+            std::string* msg);
+
     bool Count(uint32_t tid, uint32_t pid, const std::string& pk,
                const std::string& idx_name, bool filter_expired_data,
                uint64_t& value, std::string& msg);  // NOLINT

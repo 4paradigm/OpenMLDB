@@ -395,6 +395,10 @@ class TestCaseBase(unittest.TestCase):
         cmd = 'update {} {}'.format('table_name=' + name, row)
         return self.run_client(endpoint, cmd, 'ns_client')
 
+    def ns_delete_relation(self, endpoint, name, row):
+        cmd = 'delete {} {}'.format('table_name=' + name, row)
+        return self.run_client(endpoint, cmd, 'ns_client')
+
     def ns_drop(self, endpoint, tname):
         infoLogger.debug(tname)
         return self.run_client(endpoint, 'drop {}'.format(tname), 'ns_client')

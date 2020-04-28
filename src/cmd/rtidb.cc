@@ -1524,67 +1524,145 @@ void HandleNSClientShowSchema(const std::vector<std::string>& parts,
 
 void HandleNSDelete(const std::vector<std::string>& parts,
                     ::rtidb::client::NsClient* client) {
-    if (parts.size() < 3) {
-        std::cout << "delete format error. eg: delete table_name key | delete "
-                     "table_name key idx_name"
-                  << std::endl;
-        return;
-    }
-    std::vector<::rtidb::nameserver::TableInfo> tables;
-    std::string msg;
-    bool ret = client->ShowTable(parts[1], tables, msg);
-    if (!ret) {
-        std::cout << "failed to get table info. error msg: " << msg
-                  << std::endl;
-        return;
-    }
-    if (tables.empty()) {
-        printf("delete failed! table %s is not exist\n", parts[1].c_str());
-        return;
-    }
-    uint32_t tid = tables[0].tid();
-    std::string key = parts[2];
-    uint32_t pid = (uint32_t)(::rtidb::base::hash64(key) %
-                              tables[0].table_partition_size());
-    std::shared_ptr<::rtidb::client::TabletClient> tablet_client =
-        GetTabletClient(tables[0], pid, msg);
-    if (!tablet_client) {
-        std::cout << "failed to delete. error msg: " << msg << std::endl;
-        return;
-    }
-    std::string idx_name;
-    if (parts.size() > 3) {
-        if (tables[0].column_key_size() > 0) {
-            for (int idx = 0; idx < tables[0].column_key_size(); idx++) {
-                if (tables[0].column_key(idx).index_name() == parts[3]) {
-                    idx_name = parts[3];
-                    break;
-                }
-            }
-        } else {
-            std::vector<::rtidb::base::ColumnDesc> columns;
-            if (::rtidb::base::SchemaCodec::ConvertColumnDesc(tables[0],
-                                                              columns) < 0) {
-                std::cout << "convert table column desc failed" << std::endl;
-                return;
-            }
-            for (uint32_t i = 0; i < columns.size(); i++) {
-                if (columns[i].add_ts_idx && columns[i].name == parts[3]) {
-                    idx_name = parts[3];
-                    break;
-                }
-            }
-        }
-        if (idx_name.empty()) {
-            printf("idx_name %s is not exist\n", parts[3].c_str());
+    std::vector<std::string> vec;
+    ::rtidb::base::SplitString(parts[1], "=", vec);
+    if (vec.size() < 2) {
+        if (parts.size() < 3) {
+            std::cout <<
+                "delete format error. eg: delete table_name key | delete"
+                "table_name key idx_name" << std::endl;
             return;
         }
-    }
-    msg.clear();
-    if (tablet_client->Delete(tid, pid, key, idx_name, msg)) {
-        std::cout << "delete ok" << std::endl;
+        std::vector<::rtidb::nameserver::TableInfo> tables;
+        std::string msg;
+        bool ret = client->ShowTable(parts[1], tables, msg);
+        if (!ret) {
+            std::cout << "failed to get table info. error msg: " << msg
+                << std::endl;
+            return;
+        }
+        if (tables.empty()) {
+            printf("delete failed! table %s is not exist\n", parts[1].c_str());
+            return;
+        }
+        uint32_t tid = tables[0].tid();
+        std::string key = parts[2];
+        uint32_t pid = (uint32_t)(::rtidb::base::hash64(key) %
+                tables[0].table_partition_size());
+        std::shared_ptr<::rtidb::client::TabletClient> tablet_client =
+            GetTabletClient(tables[0], pid, msg);
+        if (!tablet_client) {
+            std::cout << "failed to delete. error msg: " << msg << std::endl;
+            return;
+        }
+        std::string idx_name;
+        if (parts.size() > 3) {
+            if (tables[0].column_key_size() > 0) {
+                for (int idx = 0; idx < tables[0].column_key_size(); idx++) {
+                    if (tables[0].column_key(idx).index_name() == parts[3]) {
+                        idx_name = parts[3];
+                        break;
+                    }
+                }
+            } else {
+                std::vector<::rtidb::base::ColumnDesc> columns;
+                if (::rtidb::base::SchemaCodec::ConvertColumnDesc(tables[0],
+                            columns) < 0) {
+                    std::cout << "convert table column desc failed"
+                        << std::endl;
+                    return;
+                }
+                for (uint32_t i = 0; i < columns.size(); i++) {
+                    if (columns[i].add_ts_idx && columns[i].name == parts[3]) {
+                        idx_name = parts[3];
+                        break;
+                    }
+                }
+            }
+            if (idx_name.empty()) {
+                printf("idx_name %s is not exist\n", parts[3].c_str());
+                return;
+            }
+        }
+        msg.clear();
+        if (tablet_client->Delete(tid, pid, key, idx_name, msg)) {
+            std::cout << "delete ok" << std::endl;
+        } else {
+            std::cout << "delete failed. error msg: " << msg << std::endl;
+        }
     } else {
-        std::cout << "delete failed. error msg: " << msg << std::endl;
+        if (parts.size() < 4) {
+            std::cout << "delete format error. eg: delete table_name=xxx"
+                " where col=xxx" << std::endl;
+            return;
+        }
+        std::string table_name;
+        std::vector<std::string> temp_vec;
+        ::rtidb::base::SplitString(parts[1], "=", temp_vec);
+        if (temp_vec.size() == 2 && temp_vec[0] == "table_name" &&
+                !temp_vec[1].empty()) {
+            table_name = temp_vec[1];
+        } else {
+            std::cout << "delete format error. eg: delete table_name=xxx"
+                " where col=xxx" << std::endl;
+            return;
+        }
+        temp_vec.clear();
+        std::map<std::string, std::string> condition_columns_map;
+        for (uint32_t i = 3; i < parts.size(); i++) {
+            ::rtidb::base::SplitString(parts[i], "=", temp_vec);
+            if (temp_vec.size() < 2 || temp_vec[1].empty()) {
+                return;
+            }
+            condition_columns_map.insert(
+                    std::make_pair(temp_vec[0], temp_vec[1]));
+        }
+        if (condition_columns_map.empty()) {
+            std::cout << "delete format error. eg: delete table_name=xxx"
+                " where col=xxx" << std::endl;
+            return;
+        }
+        std::vector<::rtidb::nameserver::TableInfo> tables;
+        std::string msg;
+        bool ret = client->ShowTable(table_name, tables, msg);
+        if (!ret) {
+            std::cout << "failed to get table info. error msg: " << msg
+                << std::endl;
+            return;
+        }
+        if (tables.empty()) {
+            printf("get failed! table %s is not exist\n", parts[1].c_str());
+            return;
+        }
+        if (tables[0].column_desc_v1_size() == 0) {
+            std::cout << "column_desc_v1_size is 0" << std::endl;
+            return;
+        }
+        uint32_t tid = tables[0].tid();
+        uint32_t pid = 0;
+        std::shared_ptr<::rtidb::client::TabletClient> tablet_client =
+            GetTabletClient(tables[0], pid, msg);
+        if (!tablet_client) {
+            std::cout << "failed to get. error msg: " << msg << std::endl;
+            return;
+        }
+        Schema schema;
+        rtidb::base::RowSchemaCodec::ConvertColumnDesc(
+                tables[0].column_desc_v1(), schema,
+                tables[0].added_column_desc());
+        ::google::protobuf::RepeatedPtrField<::rtidb::api::Columns> cd_columns;
+        ::rtidb::base::ResultMsg cd_rm
+            = ::rtidb::base::RowSchemaCodec::GetCdColumns(
+                    schema, condition_columns_map, &cd_columns);
+        if (cd_rm.code < 0) {
+            printf("GetCdColumns error, msg: %s\n", cd_rm.msg.c_str());
+            return;
+        }
+        if (tablet_client->Delete(tid, pid, cd_columns, &msg)) {
+            std::cout << "delete ok" << std::endl;
+        } else {
+            std::cout << "delete failed. error msg: " << msg << std::endl;
+        }
     }
 }
 

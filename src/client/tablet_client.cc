@@ -1180,6 +1180,27 @@ bool TabletClient::Delete(uint32_t tid, uint32_t pid, const std::string& pk,
     return true;
 }
 
+bool TabletClient::Delete(uint32_t tid, uint32_t pid,
+        const ::google::protobuf::RepeatedPtrField<
+        ::rtidb::api::Columns>& cd_columns,
+        std::string* msg) {
+    ::rtidb::api::DeleteRequest request;
+    ::rtidb::api::GeneralResponse response;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    ::google::protobuf::RepeatedPtrField<::rtidb::api::Columns>*
+        cd_columns_ptr = request.mutable_condition_columns();
+    cd_columns_ptr->CopyFrom(cd_columns);
+    bool ok =
+        client_.SendRequest(&::rtidb::api::TabletServer_Stub::Delete, &request,
+                            &response, FLAGS_request_timeout_ms, 1);
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    *msg = response.msg();
+    return false;
+}
+
 bool TabletClient::ConnectZK() {
     ::rtidb::api::ConnectZKRequest request;
     ::rtidb::api::GeneralResponse response;

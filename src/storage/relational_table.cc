@@ -367,6 +367,15 @@ bool RelationalTable::GetPackedField(const int8_t* row, uint32_t idx,
     // TODO(wangbao) resolve null
     // TODO(wangbao) bool timestamp date
     switch (data_type) {
+        case ::rtidb::type::kBool: {
+            bool val = false;
+            get_value_ret = row_view_.GetValue(row, idx, data_type, &val);
+            key->resize(sizeof(bool));
+            char* to = const_cast<char*>(key->data());
+            ret =
+                ::rtidb::base::PackInteger(&val, sizeof(bool), false, to);
+            break;
+        }
         case ::rtidb::type::kSmallInt: {
             int16_t si_val = 0;
             get_value_ret = row_view_.GetValue(row, idx, data_type, &si_val);
@@ -875,6 +884,7 @@ bool RelationalTable::UpdateDB(const std::shared_ptr<IndexDef> index_def,
                           id_, pid_);
                     return false;
                 } else if (value_view.IsNULL(col_iter->second)) {
+                    // TODO(wangbao) if pk update to null
                     builder.AppendNULL();
                     continue;
                 }
