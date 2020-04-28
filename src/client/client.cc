@@ -484,27 +484,17 @@ GeneralResult RtidbClient::Update(
                         "condition_columns_map or value_columns_map is empty");
         return result;
     }
-    auto cd_iter = condition_columns_map.begin();
-    std::string pk = cd_iter->second;
-
     uint32_t tid = th->table_info->tid();
-    uint32_t pid = (uint32_t)(::rtidb::base::hash64(pk) %
-                              th->table_info->table_partition_size());
-    google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc> new_cd_schema;
-    ::rtidb::base::RowSchemaCodec::GetSchemaData(condition_columns_map,
-                                                 *(th->columns), new_cd_schema);
-    std::string cd_value;
-    ::rtidb::base::ResultMsg cd_rm = ::rtidb::base::RowSchemaCodec::Encode(
-        condition_columns_map, new_cd_schema, cd_value);
+    uint32_t pid = 0;
+    ::google::protobuf::RepeatedPtrField<::rtidb::api::Columns> cd_columns;
+    ::rtidb::base::ResultMsg cd_rm
+        = ::rtidb::base::RowSchemaCodec::GetCdColumns(
+                *(th->columns), condition_columns_map, &cd_columns);
     if (cd_rm.code < 0) {
-        result.SetError(cd_rm.code, "encode error, msg: " + cd_rm.msg);
+        result.SetError(cd_rm.code, "GetCdColumns error, msg: " + cd_rm.msg);
         return result;
     }
-    if (th->table_info->compress_type() == ::rtidb::nameserver::kSnappy) {
-        std::string compressed;
-        ::snappy::Compress(cd_value.c_str(), cd_value.length(), &compressed);
-        cd_value = compressed;
-    }
+
     google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>
         new_value_schema;
     ::rtidb::base::RowSchemaCodec::GetSchemaData(
@@ -528,8 +518,8 @@ GeneralResult RtidbClient::Update(
         result.SetError(-1, msg);
         return result;
     }
-    bool ok = tablet_client->Update(tid, pid, new_cd_schema, new_value_schema,
-                                    cd_value, value, msg);
+    bool ok = tablet_client->Update(tid, pid, cd_columns,
+            new_value_schema, value, &msg);
     if (!ok) {
         result.SetError(-1, msg);
     }

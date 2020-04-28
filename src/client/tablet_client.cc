@@ -190,20 +190,18 @@ bool TabletClient::UpdateTableMetaForAddField(
 }
 
 bool TabletClient::Update(uint32_t tid, uint32_t pid,
-                          const Schema& new_cd_schema,
-                          const Schema& new_value_schema,
-                          const std::string& cd_value, const std::string& value,
-                          std::string& msg) {
+        const ::google::protobuf::RepeatedPtrField<
+        ::rtidb::api::Columns>& cd_columns,
+        const Schema& new_value_schema,
+        const std::string& value,
+        std::string* msg) {
     ::rtidb::api::UpdateRequest request;
     ::rtidb::api::GeneralResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
-    for (int i = 0; i < new_cd_schema.size(); i++) {
-        ::rtidb::api::Columns* cd = request.add_condition_columns();
-        cd->add_name(new_cd_schema.Get(i).name());
-        // TODO(wangbao) bugfix
-        cd->set_value(cd_value);
-    }
+    ::google::protobuf::RepeatedPtrField<::rtidb::api::Columns>*
+        cd_columns_ptr = request.mutable_condition_columns();
+    cd_columns_ptr->CopyFrom(cd_columns);
     ::rtidb::api::Columns* val = request.mutable_value_columns();
     for (int i = 0; i < new_value_schema.size(); i++) {
         val->add_name(new_value_schema.Get(i).name());
@@ -216,7 +214,7 @@ bool TabletClient::Update(uint32_t tid, uint32_t pid,
     if (ok && response.code() == 0) {
         return true;
     }
-    msg = response.msg();
+    *msg = response.msg();
     return false;
 }
 
@@ -1139,8 +1137,8 @@ bool TabletClient::Get(uint32_t tid, uint32_t pid, const std::string& pk,
     return true;
 }
 
-bool TabletClient::Query(uint32_t tid, uint32_t pid, 
-        const ::rtidb::api::ReadOption& ro, 
+bool TabletClient::Query(uint32_t tid, uint32_t pid,
+        const ::rtidb::api::ReadOption& ro,
         std::string* value,
         uint32_t* count, std::string* msg) {
     ::rtidb::api::BatchQueryRequest request;
@@ -1151,17 +1149,16 @@ bool TabletClient::Query(uint32_t tid, uint32_t pid,
     ro_ptr->CopyFrom(ro);
     response.set_allocated_pairs(value);
     bool ok =
-        client_.SendRequest(&::rtidb::api::TabletServer_Stub::BatchQuery, 
+        client_.SendRequest(&::rtidb::api::TabletServer_Stub::BatchQuery,
                 &request, &response, FLAGS_request_timeout_ms, 1);
     if (response.has_msg()) {
         *msg = response.msg();
     }
+    response.release_pairs();
     if (!ok || response.code() != 0) {
-        response.release_pairs();
         return false;
     }
     *count = response.count();
-    response.release_pairs();
     return true;
 }
 

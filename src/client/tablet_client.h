@@ -62,9 +62,11 @@ class TabletClient {
         uint32_t tid, const ::rtidb::common::ColumnDesc& column_desc,
         const std::string& schema, std::string& msg);  // NOLINT
 
-    bool Update(uint32_t tid, uint32_t pid, const Schema& new_cd_schema,
-                const Schema& new_value_schema, const std::string& cd_value,
-                const std::string& value, std::string& msg);  // NOLINT
+    bool Update(uint32_t tid, uint32_t pid,
+            const ::google::protobuf::RepeatedPtrField<
+            ::rtidb::api::Columns>& cd_columns,
+            const Schema& new_value_schema,
+            const std::string& value, std::string* msg);
 
     bool Put(uint32_t tid, uint32_t pid, const std::string& value,
              std::string& msg);  // NOLINT
@@ -110,8 +112,8 @@ class TabletClient {
              const std::string& idx_name, const std::string& ts_name,
              std::string& value, uint64_t& ts, std::string& msg);  // NOLINT
 
-    bool Query(uint32_t tid, uint32_t pid, 
-            const ::rtidb::api::ReadOption& ro, 
+    bool Query(uint32_t tid, uint32_t pid,
+            const ::rtidb::api::ReadOption& ro,
             std::string* value, uint32_t* count, std::string* msg);
 
     bool Delete(uint32_t tid, uint32_t pid, const std::string& pk,

@@ -18,6 +18,7 @@
 #include "base/codec.h"
 #include "base/status.h"
 #include "proto/name_server.pb.h"
+#include "base/field_codec.h"
 
 namespace rtidb {
 namespace base {
@@ -556,6 +557,38 @@ class RowSchemaCodec {
             }
             value_vec.push_back(col);
         }
+    }
+    static ResultMsg GetCdColumns(const Schema& schema,
+            const std::map<std::string, std::string>& cd_columns_map,
+            ::google::protobuf::RepeatedPtrField<::rtidb::api::Columns>*
+            cd_columns) {
+        ResultMsg rm;
+        std::map<std::string, ::rtidb::type::DataType> name_type_map;
+        for (const auto& col_desc : schema) {
+            name_type_map.insert(std::make_pair(
+                        col_desc.name(), col_desc.data_type()));
+        }
+        for (const auto& kv : cd_columns_map) {
+            auto iter = name_type_map.find(kv.first);
+            if (iter == name_type_map.end()) {
+                rm.code = -1;
+                rm.msg = "query failed! col_name " + kv.first + " not exist";
+                return rm;
+            }
+            ::rtidb::api::Columns* index = cd_columns->Add();
+            index->add_name(kv.first);
+            ::rtidb::type::DataType type = iter->second;
+            std::string val = "";
+            if (!::rtidb::base::Convert(kv.second, type, &val)) {
+                rm.code = -1;
+                rm.msg = "convert str " + kv.second + "  failed!";
+                return rm;
+            }
+            index->set_value(val);
+        }
+        rm.code = 0;
+        rm.msg = "ok";
+        return rm;
     }
 };
 }  // namespace base

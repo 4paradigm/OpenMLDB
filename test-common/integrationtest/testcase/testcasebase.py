@@ -391,6 +391,10 @@ class TestCaseBase(unittest.TestCase):
         result = self.run_client(endpoint, cmd, 'ns_client')
         return self.parse_scan_result(result)
 
+    def ns_update(self, endpoint, name, row):
+        cmd = 'update {} {}'.format('table_name=' + name, row)
+        return self.run_client(endpoint, cmd, 'ns_client')
+
     def ns_drop(self, endpoint, tname):
         infoLogger.debug(tname)
         return self.run_client(endpoint, 'drop {}'.format(tname), 'ns_client')

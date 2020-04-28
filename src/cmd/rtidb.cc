@@ -1598,8 +1598,6 @@ void HandleNSUpdate(const std::vector<std::string>& parts,
                   << std::endl;
         return;
     }
-    auto cd_iter = condition_columns_map.begin();
-    std::string pk = cd_iter->second;
     std::vector<::rtidb::nameserver::TableInfo> tables;
     std::string msg;
     bool ret = client->ShowTable(table_name, tables, msg);
@@ -1617,32 +1615,28 @@ void HandleNSUpdate(const std::vector<std::string>& parts,
         return;
     }
     uint32_t tid = tables[0].tid();
-    uint32_t pid = (uint32_t)(::rtidb::base::hash64(pk) %
-                              tables[0].table_partition_size());
+    uint32_t pid = 0;
     std::shared_ptr<::rtidb::client::TabletClient> tablet_client =
         GetTabletClient(tables[0], pid, msg);
     if (!tablet_client) {
         std::cout << "failed to get. error msg: " << msg << std::endl;
         return;
     }
-    Schema new_cd_schema;
-    ::rtidb::base::RowSchemaCodec::GetSchemaData(
-        condition_columns_map, tables[0].column_desc_v1(), new_cd_schema);
-    std::string cd_value;
-    ::rtidb::base::ResultMsg cd_rm = ::rtidb::base::RowSchemaCodec::Encode(
-        condition_columns_map, new_cd_schema, cd_value);
+    Schema schema;
+    rtidb::base::RowSchemaCodec::ConvertColumnDesc(
+        tables[0].column_desc_v1(), schema, tables[0].added_column_desc());
+    ::google::protobuf::RepeatedPtrField<::rtidb::api::Columns> cd_columns;
+    ::rtidb::base::ResultMsg cd_rm
+        = ::rtidb::base::RowSchemaCodec::GetCdColumns(
+                schema, condition_columns_map, &cd_columns);
     if (cd_rm.code < 0) {
-        printf("encode error, msg: %s\n", cd_rm.msg.c_str());
+        printf("GetCdColumns error, msg: %s\n", cd_rm.msg.c_str());
         return;
     }
-    if (tables[0].compress_type() == ::rtidb::nameserver::kSnappy) {
-        std::string compressed;
-        ::snappy::Compress(cd_value.c_str(), cd_value.length(), &compressed);
-        cd_value = compressed;
-    }
+
     Schema new_value_schema;
     ::rtidb::base::RowSchemaCodec::GetSchemaData(
-        value_columns_map, tables[0].column_desc_v1(), new_value_schema);
+        value_columns_map, schema, new_value_schema);
     std::string value;
     ::rtidb::base::ResultMsg value_rm = ::rtidb::base::RowSchemaCodec::Encode(
         value_columns_map, new_value_schema, value);
@@ -1655,8 +1649,8 @@ void HandleNSUpdate(const std::vector<std::string>& parts,
         ::snappy::Compress(value.c_str(), value.length(), &compressed);
         value = compressed;
     }
-    bool ok = tablet_client->Update(tid, pid, new_cd_schema, new_value_schema,
-                                    cd_value, value, msg);
+    bool ok = tablet_client->Update(tid, pid, cd_columns,
+            new_value_schema, value, &msg);
     if (!ok) {
         printf("update failed, msg: %s\n", msg.c_str());
     } else {
@@ -1851,7 +1845,8 @@ void HandleNSQuery(const std::vector<std::string>& parts,
     for (const auto& kv : condition_columns_map) {
         auto iter = name_type_map.find(kv.first);
         if (iter == name_type_map.end()) {
-            printf("query failed! col_name %s is not exist\n", kv.first.c_str());
+            printf("query failed! col_name %s is not exist\n",
+                    kv.first.c_str());
             return;
         }
         ::rtidb::api::Columns* index = ro.add_index();
@@ -1860,6 +1855,7 @@ void HandleNSQuery(const std::vector<std::string>& parts,
         std::string val = "";
         if (!rtidb::base::Convert(kv.second, type, &val)) {
             printf("convert str %s failed! \n", kv.second.c_str());
+            return;
         }
         index->set_value(val);
     }
@@ -2487,7 +2483,7 @@ void HandleNSPreview(const std::vector<std::string>& parts,
         return;
     }
     uint32_t tid = tables[0].tid();
-    if (tables[0].has_table_type() && 
+    if (tables[0].has_table_type() &&
             tables[0].table_type() == rtidb::type::kRelational) {
         Schema schema;
         rtidb::base::RowSchemaCodec::ConvertColumnDesc(
@@ -2502,7 +2498,7 @@ void HandleNSPreview(const std::vector<std::string>& parts,
         tp.AddRow(row);
         row.clear();
         uint64_t seq = 1;
-        std::string data; 
+        std::string data;
         for (int pid = 0; pid < tables[0].table_partition_size(); pid++) {
             if (limit == 0) {
                 break;
@@ -2838,7 +2834,7 @@ void HandleNSPut(const std::vector<std::string>& parts,
         return;
     }
     if (tables[0].has_table_type() &&
-             tables[0].table_type() == 
+             tables[0].table_type() ==
              ::rtidb::type::TableType::kRelational) {
         auto iter = parameter_map.find("table_name");
         if (iter != parameter_map.end()) {
