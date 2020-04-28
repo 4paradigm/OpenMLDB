@@ -370,37 +370,25 @@ bool RelationalTable::GetPackedField(const int8_t* row, uint32_t idx,
         case ::rtidb::type::kBool: {
             bool val = false;
             get_value_ret = row_view_.GetValue(row, idx, data_type, &val);
-            key->resize(sizeof(bool));
-            char* to = const_cast<char*>(key->data());
-            ret =
-                ::rtidb::base::PackInteger(&val, sizeof(bool), false, to);
+            ret = PackValue(&val, data_type, key);
             break;
         }
         case ::rtidb::type::kSmallInt: {
-            int16_t si_val = 0;
-            get_value_ret = row_view_.GetValue(row, idx, data_type, &si_val);
-            key->resize(sizeof(int16_t));
-            char* to = const_cast<char*>(key->data());
-            ret =
-                ::rtidb::base::PackInteger(&si_val, sizeof(int16_t), false, to);
+            int16_t val = 0;
+            get_value_ret = row_view_.GetValue(row, idx, data_type, &val);
+            ret = PackValue(&val, data_type, key);
             break;
         }
         case ::rtidb::type::kInt: {
-            int32_t i_val = 0;
-            get_value_ret = row_view_.GetValue(row, idx, data_type, &i_val);
-            key->resize(sizeof(int32_t));
-            char* to = const_cast<char*>(key->data());
-            ret =
-                ::rtidb::base::PackInteger(&i_val, sizeof(int32_t), false, to);
+            int32_t val = 0;
+            get_value_ret = row_view_.GetValue(row, idx, data_type, &val);
+            ret = PackValue(&val, data_type, key);
             break;
         }
         case ::rtidb::type::kBigInt: {
-            int64_t bi_val = 0;
-            get_value_ret = row_view_.GetValue(row, idx, data_type, &bi_val);
-            key->resize(sizeof(int64_t));
-            char* to = const_cast<char*>(key->data());
-            ret =
-                ::rtidb::base::PackInteger(&bi_val, sizeof(int64_t), false, to);
+            int64_t val = 0;
+            get_value_ret = row_view_.GetValue(row, idx, data_type, &val);
+            ret = PackValue(&val, data_type, key);
             break;
         }
         case ::rtidb::type::kVarchar:
@@ -418,17 +406,19 @@ bool RelationalTable::GetPackedField(const int8_t* row, uint32_t idx,
         case ::rtidb::type::kFloat: {
             float val = 0.0;
             get_value_ret = row_view_.GetValue(row, idx, data_type, &val);
-            key->resize(sizeof(float));
-            char* to = const_cast<char*>(key->data());
-            ret = ::rtidb::base::PackFloat(&val, to);
+            ret = PackValue(&val, data_type, key);
             break;
         }
         case ::rtidb::type::kDouble: {
             double val = 0.0;
             get_value_ret = row_view_.GetValue(row, idx, data_type, &val);
-            key->resize(sizeof(double));
-            char* to = const_cast<char*>(key->data());
-            ret = ::rtidb::base::PackDouble(&val, to);
+            ret = PackValue(&val, data_type, key);
+            break;
+        }
+        case ::rtidb::type::kTimestamp: {
+            int64_t val = 0;
+            get_value_ret = row_view_.GetValue(row, idx, data_type, &val);
+            ret = PackValue(&val, data_type, key);
             break;
         }
         default: {
@@ -445,6 +435,72 @@ bool RelationalTable::GetPackedField(const int8_t* row, uint32_t idx,
     if (ret < 0) {
         PDLOG(WARNING, "pack data_type %s error, tid %u pid %u",
               rtidb::type::DataType_Name(data_type).c_str(), id_, pid_);
+        return false;
+    }
+    return true;
+}
+
+bool RelationalTable::PackValue(const void *from,
+        ::rtidb::type::DataType data_type,
+        std::string* key) {
+    int ret = 0;
+    // TODO(wangbao) resolve null
+    // TODO(wangbao) bool timestamp date
+    switch (data_type) {
+        case ::rtidb::type::kBool: {
+            key->resize(sizeof(bool));
+            char* to = const_cast<char*>(key->data());
+            ret =
+                ::rtidb::base::PackInteger(from, sizeof(bool), false, to);
+            break;
+        }
+        case ::rtidb::type::kSmallInt: {
+            key->resize(sizeof(int16_t));
+            char* to = const_cast<char*>(key->data());
+            ret =
+                ::rtidb::base::PackInteger(from, sizeof(int16_t), false, to);
+            break;
+        }
+        case ::rtidb::type::kInt: {
+            key->resize(sizeof(int32_t));
+            char* to = const_cast<char*>(key->data());
+            ret =
+                ::rtidb::base::PackInteger(from, sizeof(int32_t), false, to);
+            break;
+        }
+        case ::rtidb::type::kBigInt: {
+            key->resize(sizeof(int64_t));
+            char* to = const_cast<char*>(key->data());
+            ret =
+                ::rtidb::base::PackInteger(from, sizeof(int64_t), false, to);
+            break;
+        }
+        case ::rtidb::type::kFloat: {
+            key->resize(sizeof(float));
+            char* to = const_cast<char*>(key->data());
+            ret = ::rtidb::base::PackFloat(from, to);
+            break;
+        }
+        case ::rtidb::type::kDouble: {
+            key->resize(sizeof(double));
+            char* to = const_cast<char*>(key->data());
+            ret = ::rtidb::base::PackDouble(from, to);
+            break;
+        }
+        case ::rtidb::type::kTimestamp: {
+            key->resize(sizeof(int64_t));
+            char* to = const_cast<char*>(key->data());
+            ret =
+                ::rtidb::base::PackInteger(from, sizeof(int64_t), false, to);
+            break;
+        }
+        default: {
+            PDLOG(WARNING, "unsupported data type %s, tid %u pid %u",
+                  rtidb::type::DataType_Name(data_type).c_str(), id_, pid_);
+            return false;
+        }
+    }
+    if (ret < 0) {
         return false;
     }
     return true;
@@ -873,7 +929,7 @@ bool RelationalTable::UpdateDB(const std::shared_ptr<IndexDef> index_def,
             auto col_iter = col_idx_map.find(schema.Get(i).name());
             if (col_iter != col_idx_map.end()) {
                 if ((!is_update_index)
-                        && table_index_.GetIndex(schema.Get(i).name())) {
+                        && table_index_.FindColName(schema.Get(i).name())) {
                     is_update_index = true;
                 }
                 if (schema.Get(i).not_null() &&
