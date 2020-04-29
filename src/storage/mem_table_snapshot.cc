@@ -1157,8 +1157,8 @@ bool MemTableSnapshot::DumpSnapshotIndexData(
     }
     *snapshot_offset = manifest.offset();
     std::string path = snapshot_path_ + "/" + manifest.name();
-    std::atomic<uint64_t> succ_cnt, failed_cnt;
-    succ_cnt = failed_cnt = 0;
+    uint64_t succ_cnt = 0;
+    uint64_t failed_cnt = 0;
     FILE* fd = fopen(path.c_str(), "rb");
     if (fd == NULL) {
         PDLOG(WARNING, "fail to open path %s for error %s", path.c_str(),
@@ -1178,23 +1178,21 @@ bool MemTableSnapshot::DumpSnapshotIndexData(
             PDLOG(INFO,
                   "read path %s for table tid %u pid %u completed, succ_cnt "
                   "%lu, failed_cnt %lu",
-                  path.c_str(), tid_, pid_,
-                  succ_cnt.load(std::memory_order_relaxed),
-                  failed_cnt.load(std::memory_order_relaxed));
+                  path.c_str(), tid_, pid_, succ_cnt, failed_cnt);
             break;
         }
         if (!status.ok()) {
             PDLOG(WARNING,
                   "fail to read record for tid %u, pid %u with error %s", tid_,
                   pid_, status.ToString().c_str());
-            failed_cnt.fetch_add(1, std::memory_order_relaxed);
+            failed_cnt++;
             continue;
         }
         entry_buff.assign(record.data(), record.size());
         if (!entry.ParseFromString(entry_buff)) {
             PDLOG(WARNING, "fail to parse record for tid %u, pid %u", tid_,
                   pid_);
-            failed_cnt.fetch_add(1, std::memory_order_relaxed);
+            failed_cnt++;
             continue;
         }
         uint32_t index_pid = 0;
@@ -1213,6 +1211,7 @@ bool MemTableSnapshot::DumpSnapshotIndexData(
                   index_pid, tid_, pid_);
             return false;
         }
+        succ_cnt++;
     }
     return true;
 }
