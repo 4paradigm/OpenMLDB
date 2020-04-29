@@ -2967,9 +2967,10 @@ int NameServerImpl::DropTableOnTablet(
                 PDLOG(WARNING,
                       "drop table failed. tid[%u] pid[%u] endpoint[%s]", tid,
                       pid, endpoint.c_str());
+            } else {
+                PDLOG(INFO, "drop table success. tid[%u] pid[%u] endpoint[%s]", 
+                        tid, pid, endpoint.c_str());
             }
-            PDLOG(INFO, "drop table success. tid[%u] pid[%u] endpoint[%s]", tid,
-                  pid, endpoint.c_str());
         }
     }
     return 0;
