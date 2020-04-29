@@ -188,7 +188,7 @@ public class RowView {
     }
 
     public Object getValue(ByteBuffer row, int idx) throws TabletException {
-        if (schema.size() == 0 || row == null || idx >= schema.size()) {
+        if (schema.size() == 0 || row == null || idx >= schema.size() || !isValid) {
             throw new TabletException("input mistake");
         }
         if (row.order() == ByteOrder.BIG_ENDIAN) {
@@ -205,7 +205,7 @@ public class RowView {
     }
 
     public Object getValue(ByteBuffer row, int idx, DataType type) throws TabletException {
-        if (schema.size() == 0 || row == null || idx >= schema.size()) {
+        if (schema.size() == 0 || row == null || idx >= schema.size() || !isValid) {
             throw new TabletException("input mistake");
         }
         if (row.order() == ByteOrder.BIG_ENDIAN) {

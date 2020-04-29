@@ -11,15 +11,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <map>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
-#include <memory>
 #include "base/endianconv.h"
 #include "base/strings.h"
+#include "boost/container/deque.hpp"
 #include "logging.h"  // NOLINT
 #include "storage/segment.h"
-#include "boost/container/deque.hpp"
 
 using ::rtidb::storage::DataBlock;
 
@@ -82,8 +82,8 @@ static inline int32_t EncodeRows(const std::vector<::rtidb::base::Slice>& rows,
 }
 
 static inline int32_t EncodeRows(
-    const boost::container::deque<
-        std::pair<uint64_t, ::rtidb::base::Slice>>& rows,
+    const boost::container::deque<std::pair<uint64_t, ::rtidb::base::Slice>>&
+        rows,
     uint32_t total_block_size, std::string* pairs) {
     if (pairs == NULL) {
         PDLOG(WARNING, "invalid output pairs");
@@ -252,8 +252,21 @@ class RowBuilder {
     // append the date that encoded
     bool AppendDate(uint32_t date);
 
+    bool SetBool(uint32_t index, bool val);
+    bool SetInt32(uint32_t index, int32_t val);
+    bool SetInt16(uint32_t index, int16_t val);
+    bool SetInt64(uint32_t index, int64_t val);
+    bool SetTimestamp(uint32_t index, int64_t val);
+    bool SetFloat(uint32_t index, float val);
+    bool SetDouble(uint32_t index, double val);
+    bool SetString(uint32_t index, const char* val, uint32_t length);
+    bool SetNULL(uint32_t index);
+    bool SetDate(uint32_t index, uint32_t year, uint32_t month, uint32_t day);
+    // set the date that encoded
+    bool SetDate(uint32_t index, uint32_t date);
+
  private:
-    bool Check(::rtidb::type::DataType type);
+    bool Check(uint32_t index, ::rtidb::type::DataType type);
 
  private:
     const Schema& schema_;

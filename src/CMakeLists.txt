@@ -141,7 +141,7 @@ add_executable(memcomparable_format_test base/memcomparable_format_test.cc)
 target_link_libraries(memcomparable_format_test gtest pthread)
 
 add_executable(field_codec_test base/field_codec_test.cc)
-target_link_libraries(field_codec_test gtest pthread)
+target_link_libraries(field_codec_test gtest pthread common)
 
 add_executable(rtidb cmd/rtidb.cc base/status.cc proto/client.pb.cc base/linenoise.cc)
 
