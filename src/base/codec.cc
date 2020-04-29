@@ -16,9 +16,7 @@
  */
 
 #include "base/codec.h"
-
 #include <unordered_set>
-
 #include "logging.h"  // NOLINT
 
 using ::baidu::common::DEBUG;
