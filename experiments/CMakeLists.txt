@@ -10,3 +10,4 @@ target_link_libraries(sql_parquet_test ${arrow_libs} ${g_libs} gtest pthread)
 
 add_executable(boost_test boost/boost_test.cc)
 target_link_libraries(boost_test ${boost_libs} ${COMMON_LIBS} gtest pthread)
+

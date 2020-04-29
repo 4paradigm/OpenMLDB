@@ -22,9 +22,9 @@
 #include <sstream>
 #include <string>
 #include "glog/logging.h"
+#include "plan/planner.h"
 #include "tablet/tablet_catalog.h"
 #include "vm/catalog.h"
-#include "plan/planner.h"
 
 namespace fesql {
 namespace vm {
@@ -376,6 +376,10 @@ std::shared_ptr<tablet::TabletCatalog> BuildCommonCatalog(
     return catalog;
 }
 
+std::shared_ptr<tablet::TabletCatalog> BuildCommonCatalog() {
+    std::shared_ptr<tablet::TabletCatalog> catalog(new tablet::TabletCatalog());
+    return catalog;
+}
 std::shared_ptr<tablet::TabletCatalog> BuildCommonCatalog(
     const fesql::type::TableDef& table_def) {
     std::shared_ptr<::fesql::storage::Table> table(

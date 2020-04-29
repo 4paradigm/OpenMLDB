@@ -109,27 +109,49 @@ class RowBuilder {
     int32_t NextDouble(double* val);
     int32_t NextTimestamp(int64_t* val);
 };
-
+*/
 
 class RowBaseView {
  public:
-    explicit RowBaseView();
+    RowBaseView();
     virtual ~RowBaseView();
     virtual int32_t GetBool(uint32_t idx,  bool* val) = 0;
     virtual int32_t GetInt16(uint32_t idx, int16_t* val) = 0;
     virtual int32_t GetInt32(uint32_t idx, int32_t* val) = 0;
+    virtual int32_t GetInt64(uint32_t idx, int64_t* val) = 0;
+    virtual int32_t GetFloat(uint32_t idx, float* val) = 0;
+    virtual int32_t GetDouble(uint32_t idx, double* val) = 0;
+    virtual int32_t GetTimestamp(uint32_t idx, int64_t* val) = 0;
+    virtual int32_t GetString(uint32_t idx, butil::IOBuf* buf) = 0;
+    virtual int32_t GetString(uint32_t idx, char** data, uint32_t* size) = 0;
+    virtual bool IsNULL(uint32_t idx) = 0;
 };
 
-class RowIOBufView {
+class RowIOBufView : public RowBaseView{
  public:
     explicit RowIOBufView(const fesql::vm::Schema& schema);
     ~RowIOBufView();
     bool Reset(const butil::IOBuf& buf);
+    int32_t GetInt16(uint32_t idx, int16_t* val);
+    int32_t GetInt32(uint32_t idx, int32_t* val);
+    int32_t GetInt64(uint32_t idx, int64_t* val);
+    int32_t GetFloat(uint32_t idx, float* val);
+    int32_t GetDouble(uint32_t idx, double* val);
+    int32_t GetTimestamp(uint32_t, int64_t* val);
+    int32_t GetString(uint32_t idx, butil::IOBuf* buf);
+    int32_t GetString(uint32_t idx, char** val, uint32_t* length) {
+        return -1;
+    }
+    inline bool IsNULL(uint32_t idx) {
+        uint32_t offset = HEADER_LENGTH + (idx >> 3);
+        uint8_t val = 0;
+        row_.copy_to(reinterpret_cast<void*>(&val), 1, offset);
+        return val & (1 << (idx & 0x07));
+    }
  private:
     bool Init();
-
  private:
-    const butil::IOBuf buf_;
+    butil::IOBuf row_;
     uint8_t str_addr_length_;
     bool is_valid_;
     uint32_t string_field_cnt_;
@@ -138,7 +160,6 @@ class RowIOBufView {
     const Schema schema_;
     std::vector<uint32_t> offset_vec_;
 };
-*/
 
 class RowView {
  public:
@@ -181,6 +202,7 @@ class RowView {
     int32_t GetValue(const int8_t* row, uint32_t idx, char** val,
                      uint32_t* length);
     std::string GetAsString(uint32_t idx);
+    std::string GetRowString();
 
  private:
     bool Init();

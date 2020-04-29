@@ -401,6 +401,26 @@ void WINDOW_CASE0_QUERY(benchmark::State *state_ptr, MODE mode,
     WINDOW_CASE_QUERY(state_ptr, mode, is_batch_mode, select_sql, group_size,
                       window_max_size);
 }
+void GROUPBY_CASE0_QUERY(benchmark::State *state_ptr, MODE mode,
+                        bool is_batch_mode, int64_t group_size,
+                        int64_t window_max_size) {
+    int64_t record_size = group_size * window_max_size;
+    std::string select_sql =
+        "SELECT "
+        "sum(col_i32) \n"
+        "FROM tbl group by col_str64\n"
+        "limit " +
+        std::to_string(record_size) + ";";
+    if (BENCHMARK == mode) {
+        std::string query_type = "sum 2 cols";
+        std::string label = query_type + "/group " +
+                            std::to_string(group_size) + "/max window size " +
+                            std::to_string(window_max_size);
+        state_ptr->SetLabel(label);
+    }
+    WINDOW_CASE_QUERY(state_ptr, mode, is_batch_mode, select_sql, group_size,
+                      window_max_size);
+}
 
 void WINDOW_CASE1_QUERY(benchmark::State *state_ptr, MODE mode,
                         bool is_batch_mode, int64_t group_size,

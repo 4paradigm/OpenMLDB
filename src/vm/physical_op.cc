@@ -276,7 +276,7 @@ void PhysicalOpNode::PrintSchema() {
         const type::ColumnDef& column = output_schema_.Get(i);
         ss << column.name() << " " << type::Type_Name(column.type());
     }
-    DLOG(INFO) << "\n" << ss.str();
+//    DLOG(INFO) << "\n" << ss.str();
 }
 bool PhysicalUnionNode::InitSchema() {
     output_schema_.CopyFrom(producers_[0]->output_schema_);

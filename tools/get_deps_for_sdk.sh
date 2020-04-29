@@ -380,6 +380,12 @@ else
         wget --no-check-certificate -O v1.0.7.tar.gz https://github.com/google/brotli/archive/v1.0.7.tar.gz
     fi
     tar -zxvf v1.0.7.tar.gz
+    ####
+    # mac install
+    # mkdir out && cd out
+    # cmake -DCMAKE_INSTALL_PREFIX=./installed ..
+    # cmake --build . -target install
+    ####
     cd brotli-1.0.7  && ./bootstrap && ./configure --prefix=${DEPS_PREFIX} && make -j4 && make install
     cd -
     touch brotli_succ
@@ -427,4 +433,21 @@ else
     make -j10 parquet_static && make install
     cd ${DEPS_SOURCE}
     touch arrow_succ
+fi
+
+if [ -f "yaml_succ" ]
+then
+    echo "yaml-cpp installed"
+else
+    if [ -f "yaml-cpp-0.6.3.tar.gz" ]
+    then
+        echo "yaml-cpp-0.6.3.tar.gz downloaded"
+    else
+        wget --no-check-certificate -O yaml-cpp-0.6.3.tar.gz https://github.com/jbeder/yaml-cpp/archive/yaml-cpp-0.6.3.tar.gz
+    fi
+    tar -zxvf yaml-cpp-0.6.3.tar.gz
+    cd yaml-cpp-yaml-cpp-0.6.3 && mkdir -p build && cd build
+    cmake -DCMAKE_INSTALL_PREFIX=${DEPS_PREFIX} ..
+    make && make install
+    touch yaml_succ
 fi

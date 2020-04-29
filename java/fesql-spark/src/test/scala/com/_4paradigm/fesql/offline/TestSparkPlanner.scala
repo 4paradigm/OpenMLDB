@@ -12,7 +12,7 @@ class TestSparkPlanner extends SparkTestSuite {
     ))
 
     val planner = new SparkPlanner(sess)
-    val res = planner.plan("select *, _1 + 1 from t;", Map("t" -> table))
+    val res = planner.plan("select *, _1 + 1, inc_int32(_1) from t;", Map("t" -> table))
 
     val output = res.getDf(sess)
     output.show()

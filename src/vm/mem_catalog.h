@@ -372,6 +372,7 @@ class MemSegmentHandler : public TableHandler {
 
 class MemPartitionHandler : public PartitionHandler {
  public:
+    MemPartitionHandler() {}
     explicit MemPartitionHandler(const Schema* schema);
     MemPartitionHandler(const std::string& table_name, const std::string& db,
                         const Schema* schema);

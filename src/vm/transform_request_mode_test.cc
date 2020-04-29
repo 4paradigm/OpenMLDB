@@ -48,7 +48,7 @@ class TransformRequestModeTest : public ::testing::TestWithParam<std::string> {
     ~TransformRequestModeTest() {}
 };
 
-void Physical_Plan_Check(const std::shared_ptr<tablet::TabletCatalog>& catalog,
+void PhysicalPlanCheck(const std::shared_ptr<tablet::TabletCatalog>& catalog,
                          std::string sql, std::string exp) {
     const fesql::base::Status exp_status(::fesql::common::kOk, "ok");
 
@@ -412,7 +412,7 @@ TEST_F(TransformRequestModeTest, pass_group_optimized_test) {
     auto catalog = BuildCommonCatalog(table_def, table);
 
     for (auto in_out : in_outs) {
-        Physical_Plan_Check(catalog, in_out.first, in_out.second);
+        PhysicalPlanCheck(catalog, in_out.first, in_out.second);
     }
 }
 
@@ -484,7 +484,7 @@ TEST_F(TransformRequestModeTest, pass_sort_optimized_test) {
 
     auto catalog = BuildCommonCatalog(table_def, table);
     for (auto in_out : in_outs) {
-        Physical_Plan_Check(catalog, in_out.first, in_out.second);
+        PhysicalPlanCheck(catalog, in_out.first, in_out.second);
     }
 }
 
@@ -597,7 +597,7 @@ TEST_F(TransformRequestModeTest, pass_join_optimized_test) {
     }
 
     for (auto in_out : in_outs) {
-        Physical_Plan_Check(catalog, in_out.first, in_out.second);
+        PhysicalPlanCheck(catalog, in_out.first, in_out.second);
     }
 }
 
