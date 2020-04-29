@@ -665,8 +665,8 @@ bool BatchModeTransformer::TransformJoinOp(const node::JoinPlanNode* node,
     if (!TransformPlanOp(node->GetChildren()[1], &right, status)) {
         return false;
     }
-    *output = new PhysicalJoinNode(left, right, node->join_type_,
-                                   node->condition_);
+    *output =
+        new PhysicalJoinNode(left, right, node->join_type_, node->condition_);
     node_manager_->RegisterNode(*output);
     return true;
 }
@@ -1844,7 +1844,8 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
             node_manager_->RegisterNode(new_group_sort_op);
             PhysicalJoinNode* new_join_op = new PhysicalJoinNode(
                 new_group_sort_op, join_op->GetProducers()[1],
-                join_op->join_type_, join_op->condition_, join_op->left_keys_, join_op->right_keys_);
+                join_op->join_type_, join_op->condition_, join_op->left_keys_,
+                join_op->right_keys_);
             node_manager_->RegisterNode(new_join_op);
             *output = new_join_op;
             return true;

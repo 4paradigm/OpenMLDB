@@ -45,7 +45,6 @@ void Engine::InitializeGlobalLLVM() {
 bool Engine::Get(const std::string& sql, const std::string& db,
                  RunSession& session,
                  base::Status& status) {  // NOLINT (runtime/references)
-
     {
         std::shared_ptr<CompileInfo> info = GetCacheLocked(db, sql);
         if (info) {

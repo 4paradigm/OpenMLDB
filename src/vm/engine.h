@@ -152,9 +152,7 @@ class Engine {
     bool Get(const std::string& sql, const std::string& db,
              RunSession& session,    // NOLINT
              base::Status& status);  // NOLINT
-    bool Compile(const std::string& sql, const std::string& db,
-                 RunSession& session,    // NOLINT
-                 base::Status& status);  // NOLINT
+
  private:
     std::shared_ptr<CompileInfo> GetCacheLocked(const std::string& db,
                                                 const std::string& sql);

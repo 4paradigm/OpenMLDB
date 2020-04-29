@@ -16,10 +16,10 @@
  */
 
 #include "vm/engine.h"
-#include <boost/algorithm/string.hpp>
 #include <utility>
 #include <vector>
 #include "base/texttable.h"
+#include "boost/algorithm/string.hpp"
 #include "case/sql_case.h"
 #include "codec/list_iterator_codec.h"
 #include "codec/row_codec.h"
@@ -366,9 +366,7 @@ TEST_F(EngineTest, EngineCompileOnlyTest) {
             "on "
             "t1.col1 = t2.col2;",
             "SELECT t1.COL1, t1.COL2, t2.COL1, t2.COL2 FROM t1 last join t2 on "
-            "t1.col1 = t2.col2;",
-
-        };
+            "t1.col1 = t2.col2;"};
         EngineOptions options;
         options.set_compile_only(true);
         Engine engine(catalog, options);
@@ -391,8 +389,7 @@ TEST_F(EngineTest, EngineCompileOnlyTest) {
             "t1.col1 = t2.col2;",
             "SELECT t1.COL1, t1.COL2, t2.COL1, t2.COL2 FROM t1 right join t2 "
             "on "
-            "t1.col1 = t2.col2;"
-        };
+            "t1.col1 = t2.col2;"};
         EngineOptions options;
         Engine engine(catalog, options);
         base::Status get_status;
