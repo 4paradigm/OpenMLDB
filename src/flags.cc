@@ -103,10 +103,10 @@ DEFINE_uint32(max_col_display_length, 256, "config the max length of column disp
 // rocksdb
 DEFINE_bool(disable_wal, true, "If true, do not write WAL for write.");
 DEFINE_string(file_compression, "off", "Type of compression, can be pz, lz4, zlib");
-DEFINE_uint32(block_cache_mb, 1024, "Memory allocated for block cache");
-DEFINE_uint32(write_buffer_mb, 64, "Memtable size");
+DEFINE_uint32(block_cache_mb, 4096, "Memory allocated for caching uncompressed block (OS page cache handles the compressed ones)");
+DEFINE_uint32(write_buffer_mb, 128, "Memtable size");
 DEFINE_uint32(block_cache_shardbits, 8, "Divide block cache into 2^8 shards to avoid cache contention");
-DEFINE_bool(verify_compression, false, "debug use");
+DEFINE_bool(verify_compression, false, "For debug");
 
 // load table resouce control
 DEFINE_uint32(load_table_batch, 30, "set laod table batch size");
