@@ -71,8 +71,10 @@ SQLNode *NodeManager::MakeLimitNode(int count) {
     return RegisterNode(node_ptr);
 }
 
-SQLNode *NodeManager::MakeWindowDefNode(ExprListNode *partitions,
-                                        ExprNode *orders, SQLNode *frame) {
+SQLNode *NodeManager::MakeWindowDefNode(SQLNodeList *union_tables,
+                                        ExprListNode *partitions,
+                                        ExprNode *orders, SQLNode *frame,
+                                        bool instance_not_in_window) {
     WindowDefNode *node_ptr = new WindowDefNode();
     if (nullptr != orders) {
         if (node::kExprOrder != orders->GetExprType()) {
@@ -84,6 +86,8 @@ SQLNode *NodeManager::MakeWindowDefNode(ExprListNode *partitions,
         }
         node_ptr->SetOrders(dynamic_cast<OrderByNode *>(orders));
     }
+    node_ptr->set_instance_not_in_window_(instance_not_in_window);
+    node_ptr->set_union_tables(union_tables);
     node_ptr->SetPartitions(partitions);
     node_ptr->SetFrame(dynamic_cast<FrameNode *>(frame));
     return RegisterNode(node_ptr);

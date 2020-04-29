@@ -209,6 +209,7 @@ typedef void* yyscan_t;
 %token INOUT
 %token INSENSITIVE
 %token INSERT
+%token INSTANCE_NOT_IN_WINDOW
 %token INT
 %token INTEGER
 %token INTERVAL
@@ -396,7 +397,7 @@ typedef void* yyscan_t;
  /* create table */
 %type <node>  create_stmt column_desc column_index_item column_index_key
 %type <node>  cmd_stmt
-%type <flag>  op_not_null op_if_not_exist opt_distinct_clause
+%type <flag>  op_not_null op_if_not_exist opt_distinct_clause opt_instance_not_in_window
 %type <list>  column_desc_list column_index_item_list
 
 %type <list> opt_target_list
@@ -404,6 +405,7 @@ typedef void* yyscan_t;
             table_references
 
             window_clause window_definition_list
+            opt_union_clause
 
 %type <strval> relation_name relation_factor
                column_name
@@ -1382,11 +1384,12 @@ window_definition:
 		}
 		;
 
-window_specification: '(' opt_existing_window_name opt_partition_clause
-						opt_sort_clause opt_frame_clause ')'
-				{
-				    $$ = node_manager->MakeWindowDefNode($3, $4, $5);
-				}
+window_specification:
+				'(' opt_existing_window_name opt_union_clause opt_partition_clause
+					opt_sort_clause opt_frame_clause opt_instance_not_in_window ')'
+					{
+                 		$$ = node_manager->MakeWindowDefNode($3, $4, $5, $6, $7);
+                 	}
 		;
 
 opt_existing_window_name:
@@ -1394,12 +1397,22 @@ opt_existing_window_name:
 						| /*EMPTY*/		{ $$ = NULL; }
 
                         ;
-
+opt_union_clause:
+				UNION table_references
+				{
+					$$ = $2;
+				}
+				| /*EMPTY*/
+				{
+					$$ = NULL;
+				}
 opt_partition_clause: PARTITION BY column_ref_list		{ $$ = $3; }
 			            | /*EMPTY*/					{ $$ = NULL; }
 
 
-
+opt_instance_not_in_window:
+			INSTANCE_NOT_IN_WINDOW { $$ = true; }
+			| /*EMPTY*/ {$$ = false;}
 limit_clause:
             LIMIT INTNUM
             {
