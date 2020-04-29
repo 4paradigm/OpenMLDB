@@ -15,6 +15,8 @@ build_rtidb_and_case:
         expire_in: 2h
         paths:
             - build/bin/rtidb
+    except:
+        - feat/disktable-support-pz-fpga
 cpp_ut:
     stage: ut
     script:
@@ -26,6 +28,8 @@ cpp_ut:
         reports:
             junit:
                 - reports/*.xml
+    except:
+        - feat/disktable-support-pz-fpga
 java_ut:
     stage: ut
     script:
@@ -39,6 +43,8 @@ java_ut:
                 - java/target/surefire-reports/TEST-*.xml
                 - java/target/failsafe-reports/junitreports/TEST-*.xml
                 - java/target/failsafe-reports/TEST-*.xml
+    except:
+        - feat/disktable-support-pz-fpga
 
 tablet_one_demension:
     stage: it-tablet
@@ -53,6 +59,8 @@ tablet_one_demension:
         reports:
             junit:
                 - ./test-output/integrationtest/test-reports/*.xml
+    except:
+        - feat/disktable-support-pz-fpga
 
 tablet_multi_demension:
     stage: it-tablet
@@ -67,6 +75,8 @@ tablet_multi_demension:
         reports:
             junit:
                 - ./test-output/integrationtest/test-reports/*.xml
+    except:
+        - feat/disktable-support-pz-fpga
 
 ns_one_demension:
     stage: it-ns
@@ -81,6 +91,8 @@ ns_one_demension:
         reports:
             junit:
                 - ./test-output/integrationtest/test-reports/*.xml
+    except:
+        - feat/disktable-support-pz-fpga
 
 ns_multi_demension:
     stage: it-ns
@@ -95,3 +107,19 @@ ns_multi_demension:
         reports:
             junit:
                 - ./test-output/integrationtest/test-reports/*.xml
+    except:
+        - feat/disktable-support-pz-fpga
+
+build_rtidb_pz:
+    stage: build
+    script:
+        - ln -sf /usr/workdir/thirdparty thirdparty
+        - ln -sf /usr/workdir/thirdsrc thirdsrc
+        - bash steps/get_pz_fpga_deps.sh
+        - source /root/.bashrc && bash steps/compile.sh
+    artifacts:
+        expire_in: 2h
+        paths:
+            - build/bin/rtidb
+    only:
+        - feat/disktable-support-pz-fpga

@@ -34,10 +34,15 @@ if (LOG_FILE_PATH_ENABLE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D__FILE__='\"$(subst ${CMAKE_SOURCE_DIR}/,,$(abspath $<))\"' -Wno-builtin-macro-redefined")
 endif()
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake/modules/")
+#find_package(snappy REQUIRED)
+#include_directories(${SNAPPY_INCLUDE_DIR})
+#list(APPEND THIRDPARTY_LIBS ${SNAPPY_LIBRARIES})
+
 configure_file(
     "${PROJECT_SOURCE_DIR}/src/config.h.in"
     "${PROJECT_SOURCE_DIR}/src/config.h")
 include_directories(${PROJECT_SOURCE_DIR}/thirdparty/include)
-link_directories(${PROJECT_SOURCE_DIR}/thirdparty/lib)
+link_directories(${PROJECT_SOURCE_DIR}/thirdparty/lib ${PROJECT_SOURCE_DIR}/thirdparty/aclrte-linux64/lib)
 add_subdirectory(src)
 
