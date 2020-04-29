@@ -12,12 +12,14 @@
 #include <google/protobuf/text_format.h>
 #include <stdio.h>
 #include <stdlib.h>
+
 #include <algorithm>
 #include <thread>  // NOLINT
 #include <utility>
 #include <vector>
-#include "config.h"  // NOLINT
+
 #include "boost/container/deque.hpp"
+#include "config.h"  // NOLINT
 #ifdef TCMALLOC_ENABLE
 #include "gperftools/malloc_extension.h"
 #endif
@@ -1130,8 +1132,9 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
                 PDLOG(WARNING, "fail to make a projection");
                 return -4;
             }
-            tmp.emplace_back(it->GetKey(),
-                    std::move(Slice(reinterpret_cast<char*>(ptr), size, true)));
+            tmp.emplace_back(
+                it->GetKey(),
+                std::move(Slice(reinterpret_cast<char*>(ptr), size, true)));
             total_block_size += size;
         } else {
             total_block_size += it->GetValue().size();
@@ -2398,6 +2401,7 @@ void TabletImpl::SetTTLClock(RpcController* controller,
 void TabletImpl::MakeSnapshotInternal(
     uint32_t tid, uint32_t pid, uint64_t end_offset,
     std::shared_ptr<::rtidb::api::TaskInfo> task) {
+    PDLOG(INFO, "MakeSnapshotInternal begin, tid[%u] pid[%u]", tid, pid);
     std::shared_ptr<Table> table;
     std::shared_ptr<Snapshot> snapshot;
     std::shared_ptr<LogReplicator> replicator;
@@ -2489,6 +2493,7 @@ void TabletImpl::MakeSnapshotInternal(
             }
         }
     }
+    PDLOG(INFO, "MakeSnapshotInternal finish, tid[%u] pid[%u]", tid, pid);
 }
 
 void TabletImpl::MakeSnapshot(RpcController* controller,
@@ -4424,6 +4429,10 @@ int TabletImpl::AddOPTask(const ::rtidb::api::TaskInfo& task_info,
         task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
         return -1;
     }
+    PDLOG(INFO, "add task map success, op_id[%lu] op_type[%s] task_type[%s]",
+          task_info.op_id(),
+          ::rtidb::api::OPType_Name(task_info.op_type()).c_str(),
+          ::rtidb::api::TaskType_Name(task_info.task_type()).c_str());
     return 0;
 }
 
