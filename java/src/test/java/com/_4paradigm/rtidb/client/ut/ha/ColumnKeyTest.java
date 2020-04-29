@@ -507,6 +507,7 @@ public class ColumnKeyTest extends TestCaseBase {
                     boolean ret = tableSyncClient.put(name, dataMap);
                     Assert.assertTrue(ret);
                 } catch (Exception e) {
+                    e.printStackTrace();
                     Assert.assertTrue(false);
                 }
             }
@@ -1313,7 +1314,7 @@ public class ColumnKeyTest extends TestCaseBase {
         if (tableInfo.getStorageMode().equals(Common.StorageMode.kMemory)){
             Assert.assertEquals(tableSyncClient.count(tableName,key),20);
         } else {
-          Assert.assertEquals(tableSyncClient.count(tableName,key), 10);
+            Assert.assertEquals(tableSyncClient.count(tableName,key), 10);
         }
 
         //count(String tname, String key, long st, long et)
