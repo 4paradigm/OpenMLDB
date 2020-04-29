@@ -16,24 +16,33 @@ public class TableHandler {
     private Map<Integer, List<Integer>> indexes = new TreeMap<Integer, List<Integer>>();
     private Map<Integer, List<Integer>> indexTsMap = new TreeMap<Integer, List<Integer>>();
     private Map<String, List<String>> keyMap = new TreeMap<String, List<String>>();
+    private Map<String, Integer> schemaPos = new TreeMap<>();
     private List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
     private Map<Integer, List<ColumnDesc>> schemaMap = new TreeMap<>();
     private ReadStrategy readStrategy = ReadStrategy.kReadLeader;
     private boolean hasTsCol = false;
     private String autoGenPkName = "";
+    private int formatVersion = 0;
+
+    public int getFormatVersion() {
+        return formatVersion;
+    }
+
     private Map<String, DataType> nameTypeMap = new HashMap<>();
     public TableHandler(TableInfo tableInfo) {
         this.tableInfo = tableInfo;
         int schemaSize = 0;
         int index = 0;
+        formatVersion = tableInfo.getFormatVersion();
         if (tableInfo.getColumnDescV1Count() > 0) {
             schemaSize = tableInfo.getColumnDescV1Count();
-            Map<String, Integer> schemaPos = new HashMap<String, Integer>();
             Map<String, Integer> tsPos = new HashMap<String, Integer>();
             for (int i = 0; i< tableInfo.getColumnDescV1Count(); i++) {
                 com._4paradigm.rtidb.common.Common.ColumnDesc cd = tableInfo.getColumnDescV1(i);
                 ColumnDesc ncd = new ColumnDesc();
                 ncd.setName(cd.getName());
+                ncd.setDataType(DataType.valueFrom(cd.getDataType()));
+                ncd.setNotNull(cd.getNotNull());
                 if (!tableInfo.hasTableType() ||
                         tableInfo.getTableType() == Type.TableType.kTimeSeries) {
                     ncd.setAddTsIndex(cd.getAddTsIdx());
@@ -43,9 +52,6 @@ public class TableHandler {
                     }
                     ncd.setTsCol(cd.getIsTsCol());
                     ncd.setType(ColumnType.valueFrom(cd.getType()));
-                } else {
-                    ncd.setDataType(DataType.valueFrom(cd.getDataType()));
-                    ncd.setNotNull(cd.getNotNull());
                 }
                 schema.add(ncd);
                 if (cd.getAddTsIdx()) {
@@ -229,6 +235,10 @@ public class TableHandler {
         kReadFollower,
         kReadLocal,
         kReadRandom
+    }
+
+    public Map<String, Integer> getSchemaPos() {
+        return schemaPos;
     }
 
     public boolean hasTsCol() {

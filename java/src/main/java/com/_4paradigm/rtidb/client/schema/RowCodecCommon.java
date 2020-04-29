@@ -33,6 +33,7 @@ public class RowCodecCommon {
         TYPE_SIZE_MAP.put(DataType.BigInt, 8);
         TYPE_SIZE_MAP.put(DataType.Timestamp, 8);
         TYPE_SIZE_MAP.put(DataType.Double, 8);
+        TYPE_SIZE_MAP.put(DataType.Date, 4);
     }
 
     public static int getBitMapSize(int size) {
@@ -59,15 +60,34 @@ public class RowCodecCommon {
         int strLength = 0;
         for (int i = 0; i < schema.size(); i++) {
             ColumnDesc columnDesc = schema.get(i);
+            Object column = row.get(columnDesc.getName());
             if (columnDesc.getDataType().equals(DataType.Varchar) || columnDesc.getDataType().equals(DataType.String)) {
-                if (!columnDesc.isNotNull() && row.get(columnDesc.getName()) == null) {
+                if (!columnDesc.isNotNull() && column == null) {
                     continue;
                 } else if (columnDesc.isNotNull()
-                        && row.containsKey(columnDesc.getName())
-                        && row.get(columnDesc.getName()) == null) {
+                        && column == null) {
                     throw new TabletException("col " + columnDesc.getName() + " should not be null");
                 }
-                strLength += ((String) row.get(columnDesc.getName())).length();
+                strLength += ((String) column).length();
+            }
+        }
+        return strLength;
+    }
+
+    public static int calStrLength(Object[] row, List<ColumnDesc> schema) throws TabletException {
+        int strLength = 0;
+        for (int i = 0; i < schema.size(); i++) {
+            ColumnDesc columnDesc = schema.get(i);
+            Object column = row[i];
+            if (columnDesc.getDataType().equals(DataType.Varchar) 
+                    || columnDesc.getDataType().equals(DataType.String)) {
+                if (!columnDesc.isNotNull() && column == null) {
+                    continue;
+                } else if (columnDesc.isNotNull()
+                        && column == null) {
+                    throw new TabletException("col " + columnDesc.getName() + " should not be null");
+                }
+                strLength += ((String) column).length();
             }
         }
         return strLength;

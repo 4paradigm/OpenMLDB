@@ -4,6 +4,7 @@ stages:
     - ut
     - it-tablet
     - it-ns
+    - deploy
 
 build_rtidb:
     stage: build
@@ -139,4 +140,12 @@ disktable-java:
         - curl -s "http://auto.4paradigm.com/job/rtidb-test-report/buildWithParameters?token=gitlab&pkg=$CI_COMMIT_SHA&buildname=$CI_PIPELINE_ID"-"$CI_JOB_ID"
         - bash steps/get-report-url.sh rtidb-test-report $CI_PIPELINE_ID"-"$CI_JOB_ID
 
+
+
+deploy-package:
+    stage: deploy
+    script:
+        - ln -sf /usr/workdir/thirdparty thirdparty
+        - ln -sf /usr/workdir/thirdsrc thirdsrc
+        - source /root/.bashrc && bash steps/deploy_package.sh
 

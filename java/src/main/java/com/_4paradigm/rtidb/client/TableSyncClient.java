@@ -2,8 +2,6 @@ package com._4paradigm.rtidb.client;
 
 import com._4paradigm.rtidb.client.impl.RelationalIterator;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
-import com._4paradigm.rtidb.client.schema.ReadOption;
-import com._4paradigm.rtidb.client.schema.WriteOption;
 import com._4paradigm.rtidb.tablet.Tablet;
 import com.google.protobuf.ByteString;
 
@@ -79,6 +77,8 @@ public interface TableSyncClient {
     Object[] getRow(String tname, String key, long time) throws TimeoutException, TabletException;
     Object[] getRow(String tname, String key, long time, Tablet.GetType type) throws TimeoutException, TabletException;
 
+    Object[] getRow(String tname, String key, long time, GetOption getOption) throws  TimeoutException, TabletException;
+    Object[] getRow(String tname, String key, long time, Object type) throws  TimeoutException, TabletException;
     Object[] getRow(String tname, String key, String idxName) throws TimeoutException, TabletException;
 
     Object[] getRow(String tname, String key, String idxName, long time) throws TimeoutException, TabletException;
@@ -101,6 +101,9 @@ public interface TableSyncClient {
 
     Object[] getRow(String tname, Object[] keyArr, String idxName, long time, String tsName, Tablet.GetType type) throws TimeoutException, TabletException;
     Object[] getRow(String tname, Map<String, Object> keyMap, String idxName, long time, String tsName, Tablet.GetType type) throws TimeoutException, TabletException;
+
+    Object[] getRow(String tname, Object[] keyArr, long time, GetOption option) throws TimeoutException, TabletException;
+    Object[] getRow(String tname, Map<String, Object> keyMap,long time, GetOption option) throws TimeoutException, TabletException;
 
     KvIterator scan(String tname, String key, long st, long et) throws TimeoutException, TabletException;
 

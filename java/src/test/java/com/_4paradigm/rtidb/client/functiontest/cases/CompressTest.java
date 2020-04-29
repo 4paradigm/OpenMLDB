@@ -6,7 +6,6 @@ import com._4paradigm.rtidb.client.base.TestCaseBase;
 import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.impl.TableClientCommon;
 import com._4paradigm.rtidb.ns.NS.*;
-import com._4paradigm.rtidb.utils.MurmurHash;
 import com.google.protobuf.ByteString;
 import org.testng.Assert;
 import org.testng.annotations.*;

@@ -1,4 +1,4 @@
-package com._4paradigm.rtidb.client.schema;
+package com._4paradigm.rtidb.client;
 
 import java.util.List;
 import java.util.Map;

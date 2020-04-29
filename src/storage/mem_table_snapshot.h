@@ -11,6 +11,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <set>
 #include "base/schema_codec.h"
 #include "log/log_reader.h"
 #include "log/log_writer.h"
@@ -42,14 +43,14 @@ class MemTableSnapshot : public Snapshot {
     bool Init() override;
 
     bool Recover(std::shared_ptr<Table> table,
-                         uint64_t& latest_offset) override;
+                 uint64_t& latest_offset) override;
 
     void RecoverFromSnapshot(const std::string& snapshot_name,
                              uint64_t expect_cnt, std::shared_ptr<Table> table);
 
     int MakeSnapshot(std::shared_ptr<Table> table,
-                             uint64_t& out_offset,  // NOLINT
-                             uint64_t end_offset) override;
+                     uint64_t& out_offset,  // NOLINT
+                     uint64_t end_offset) override;
 
     int TTLSnapshot(std::shared_ptr<Table> table,
                     const ::rtidb::api::Manifest& manifest, WriteHandle* wh,
@@ -63,23 +64,46 @@ class MemTableSnapshot : public Snapshot {
 
     int ExtractIndexFromSnapshot(
         std::shared_ptr<Table> table, const ::rtidb::api::Manifest& manifest,
-        WriteHandle* wh, ::rtidb::common::ColumnKey& column_key,  // NOLINT
+        WriteHandle* wh,
+        const ::rtidb::common::ColumnKey& column_key,  // NOLINT
         uint32_t idx, uint32_t partition_num,
-        std::vector<::rtidb::base::ColumnDesc> columns,  // NOLINT
-        uint32_t max_idx, std::vector<uint32_t> index_cols,
+        const std::vector<::rtidb::base::ColumnDesc>& columns, uint32_t max_idx,
+        const std::vector<uint32_t>& index_cols,
         uint64_t& count,                                        // NOLINT
         uint64_t& expired_key_num, uint64_t& deleted_key_num);  // NOLINT
 
+    bool DumpSnapshotIndexData(
+        std::shared_ptr<Table> table,
+        const std::vector<std::vector<uint32_t>>& index_cols,
+        const std::vector<::rtidb::base::ColumnDesc>& columns,
+        uint32_t max_idx, uint32_t idx,
+        const std::vector<::rtidb::log::WriteHandle*>& whs,
+        uint64_t* snapshot_offset);
+
+    bool DumpBinlogIndexData(
+        std::shared_ptr<Table> table,
+        const std::vector<std::vector<uint32_t>>& index_cols,
+        const std::vector<::rtidb::base::ColumnDesc>& columns,
+        uint32_t max_idx, uint32_t idx,
+        const std::vector<::rtidb::log::WriteHandle*>& whs,
+        uint64_t snapshot_offset, uint64_t collected_offset);
+
     int ExtractIndexData(std::shared_ptr<Table> table,
-                         ::rtidb::common::ColumnKey& column_key,  // NOLINT
+                         const ::rtidb::common::ColumnKey& column_key,
                          uint32_t idx, uint32_t partition_num,
                          uint64_t& out_offset);  // NOLINT
 
-    bool DumpSnapshotIndexData(
-        std::shared_ptr<Table>& table,  // NOLINT
-        const ::rtidb::common::ColumnKey& column_key, uint32_t idx,
-        std::vector<::rtidb::log::WriteHandle*>& whs,  // NOLINT
-        uint64_t& lasest_offset);                      // NOLINT
+    bool DumpIndexData(std::shared_ptr<Table> table,
+                       const ::rtidb::common::ColumnKey& column_key,
+                       uint32_t idx,
+                       const std::vector<::rtidb::log::WriteHandle*>& whs);
+
+    bool PackNewIndexEntry(std::shared_ptr<Table> table,
+                        const std::vector<std::vector<uint32_t>>& index_cols,
+                        const std::vector<::rtidb::base::ColumnDesc>& columns,
+                        uint32_t max_idx, uint32_t idx, uint32_t partition_num,
+                        ::rtidb::api::LogEntry* entry,
+                        uint32_t* index_pid);
 
  private:
     // load single snapshot to table

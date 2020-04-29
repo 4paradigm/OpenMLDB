@@ -395,7 +395,6 @@ public class TableAsyncClientTest extends TestCaseBase {
                         for (int i = 1; i <= 100; i++) {
                             PutFuture pf = tableAsyncClient.put(name, i, new Object[]{"card" + index, "mcc" + index, (double) i});
                             Assert.assertTrue(pf.get());
-//                            System.out.println("----------------" + index + "---------------");
 
                             GetFuture gf = tableAsyncClient.get(name, "card" + index, i);
                             Object[] row = gf.getRow();
@@ -447,7 +446,7 @@ public class TableAsyncClientTest extends TestCaseBase {
             boolean ok = nsc.addTableField(name, "aa", "string");
             Thread.currentThread().sleep(1000);
             Assert.assertTrue(ok);
-//            client.refreshRouteTable();
+            client.refreshRouteTable();
 
             pf = tableAsyncClient.put(name, 9528, new Object[]{"card1", "mcc1", 9.2d, "aa1"});
             Assert.assertTrue(pf.get());
@@ -802,6 +801,7 @@ public class TableAsyncClientTest extends TestCaseBase {
     }
     @Test
     public void testMultiTTLAnd() {
+
         Tablet.TTLDesc.Builder builder = Tablet.TTLDesc.newBuilder();
         builder.setAbsTtl(1);
         builder.setLatTtl(2);

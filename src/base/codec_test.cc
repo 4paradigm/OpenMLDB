@@ -3,14 +3,17 @@
  * Copyright (C) 4paradigm.com 2019
  */
 
-#include "base/codec.h"
+
 #include <string>
 #include <vector>
+#include <memory>
+#include "base/codec.h"
 #include "base/kv_iterator.h"
 #include "gtest/gtest.h"
 #include "proto/common.pb.h"
 #include "proto/tablet.pb.h"
 #include "storage/segment.h"
+#include "boost/container/deque.hpp"
 
 namespace rtidb {
 namespace base {
@@ -22,31 +25,34 @@ class CodecTest : public ::testing::Test {
 };
 
 TEST_F(CodecTest, EncodeRows_empty) {
-    std::vector<std::pair<uint64_t, ::rtidb::base::Slice>> data;
+    boost::container::deque<std::pair<uint64_t, ::rtidb::base::Slice>>
+        data;
     std::string pairs;
     int32_t size = ::rtidb::base::EncodeRows(data, 0, &pairs);
     ASSERT_EQ(size, 0);
 }
 
 TEST_F(CodecTest, EncodeRows_invalid) {
-    std::vector<std::pair<uint64_t, ::rtidb::base::Slice>> data;
+    boost::container::deque<std::pair<uint64_t, ::rtidb::base::Slice>>
+        data;
     int32_t size = ::rtidb::base::EncodeRows(data, 0, NULL);
     ASSERT_EQ(size, -1);
 }
 
 TEST_F(CodecTest, EncodeRows) {
-    std::vector<std::pair<uint64_t, ::rtidb::base::Slice>> data;
+    boost::container::deque<std::pair<uint64_t, ::rtidb::base::Slice>>
+        data;
     std::string test1 = "value1";
     std::string test2 = "value2";
     std::string empty;
     uint32_t total_block_size =
         test1.length() + test2.length() + empty.length();
-    data.push_back(
-        std::make_pair(1, ::rtidb::base::Slice(test1.c_str(), test1.length())));
-    data.push_back(
-        std::make_pair(2, ::rtidb::base::Slice(test2.c_str(), test2.length())));
-    data.push_back(
-        std::make_pair(3, ::rtidb::base::Slice(empty.c_str(), empty.length())));
+    data.emplace_back(
+        1, std::move(::rtidb::base::Slice(test1.c_str(), test1.length())));
+    data.emplace_back(
+        2, std::move(::rtidb::base::Slice(test2.c_str(), test2.length())));
+    data.emplace_back(
+        3, std::move(::rtidb::base::Slice(empty.c_str(), empty.length())));
     std::string pairs;
     int32_t size = ::rtidb::base::EncodeRows(data, total_block_size, &pairs);
     ASSERT_EQ(size, 3 * 12 + 6 + 6);
@@ -127,6 +133,14 @@ TEST_F(CodecTest, Normal) {
     int16_t val1 = 0;
     ASSERT_EQ(view.GetInt16(1, &val1), 0);
     ASSERT_EQ(val1, 2);
+    int64_t val2 = 0;
+    ASSERT_EQ(view.GetInt64(4, &val2), 0);
+    ASSERT_EQ(val2, 5);
+
+    builder.SetInt64(4, 10);
+    int64_t val3 = 0;
+    ASSERT_EQ(view.GetInt64(4, &val3), 0);
+    ASSERT_EQ(val3, 10);
 }
 
 TEST_F(CodecTest, Encode) {

@@ -5,7 +5,7 @@ project(rtidb)
 set(CMAKE_BUILD_TYPE RelWithDebInfo)
 set(RTIDB_VERSION_MAJOR 1)
 set(RTIDB_VERSION_MEDIUM 5)
-set(RTIDB_VERSION_MINOR 0)
+set(RTIDB_VERSION_MINOR 1)
 set(RTIDB_VERSION_BUG 0)
 configure_file (
   "${PROJECT_SOURCE_DIR}/src/version.h.in"
@@ -14,7 +14,7 @@ configure_file (
 
 add_definitions('-g')
 add_definitions('-Wall')
-add_definitions('-std=c++11')
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 option(TCMALLOC_ENABLE "Enable TCMALLOC" ON)
 option(STATIC_COMPILE_ENABLE "Enable STATIC COMPILE" OFF) 
 if (STATIC_COMPILE_ENABLE)
