@@ -93,17 +93,17 @@ void StartNameServer(brpc::Server& server) { // NOLINT
     }
 }
 
-void StartTablet(brpc::Server& server) { // NOLINT
+void StartTablet(brpc::Server* server) { // NOLINT
     ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
     bool ok = tablet->Init();
     ASSERT_TRUE(ok);
     sleep(2);
     brpc::ServerOptions options1;
-    if (server.AddService(tablet, brpc::SERVER_OWNS_SERVICE) != 0) {
+    if (server->AddService(tablet, brpc::SERVER_OWNS_SERVICE) != 0) {
         PDLOG(WARNING, "Fail to add service");
         exit(1);
     }
-    if (server.Start(FLAGS_endpoint.c_str(), &options1) != 0) {
+    if (server->Start(FLAGS_endpoint.c_str(), &options1) != 0) {
         PDLOG(WARNING, "Fail to start server");
         exit(1);
     }

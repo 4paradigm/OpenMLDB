@@ -42,6 +42,8 @@ class BsClient {
     bool Delete(uint32_t tid, uint32_t pid, const std::string& key,
                 std::string* msg);
 
+    bool DropTable(uint32_t tid, uint32_t pid, std::string* msg);
+
     bool GetStoreStatus(::rtidb::blobserver::GetStoreStatusResponse* response);
 
     bool GetStoreStatus(uint32_t tid, uint32_t pid,

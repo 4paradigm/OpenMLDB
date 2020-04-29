@@ -5,21 +5,25 @@
 // Date 2020-04-22
 //
 
-#include <blobserver/blobserver_impl.h>
-#include <logging.h>
-#include <timer.h>
 #include <brpc/server.h>
 #include <gflags/gflags.h>
+#include <logging.h>
 #include <sched.h>
+#include <timer.h>
 #include <unistd.h>
+
+#include "blobserver/blobserver_impl.h"
 #include "gtest/gtest.h"
 #include "nameserver/name_server_impl.h"
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
 #include "rpc/rpc_client.h"
+#include "tablet/tablet_impl.h"
 
 DECLARE_string(endpoint);
+DECLARE_string(db_root_path);
 DECLARE_string(hdd_root_path);
+DECLARE_string(ssd_root_path);
 DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
 DECLARE_int32(zk_session_timeout);
@@ -34,7 +38,9 @@ using ::rtidb::zk::ZkClient;
 namespace rtidb {
 namespace nameserver {
 
-inline std::string GenRand() { return std::to_string(rand() % 10000000 + 1); } // NOLINT
+inline std::string GenRand() {
+    return std::to_string(rand() % 10000000 + 1); // NOLINT
+}
 
 class MockClosure : public ::google::protobuf::Closure {
  public:
@@ -80,7 +86,7 @@ void StartNameServer(brpc::Server* server) {
 }
 
 void StartBlob(brpc::Server* server) {
-    FLAGS_hdd_root_path = "/tmp/object_store_test/" + GenRand();
+    FLAGS_hdd_root_path = "/tmp/object_store_test" + GenRand();
     ::rtidb::blobserver::BlobServerImpl* blob =
         new ::rtidb::blobserver::BlobServerImpl();
     bool ok = blob->Init();
@@ -97,6 +103,29 @@ void StartBlob(brpc::Server* server) {
     }
     ok = blob->RegisterZK();
     ASSERT_TRUE(ok);
+    sleep(2);
+}
+
+void StartTablet(brpc::Server* server, rtidb::tablet::TabletImpl** tb) {
+    FLAGS_db_root_path = "/tmp/test" + GenRand();
+    FLAGS_hdd_root_path = "/tmp/test" + GenRand();
+    FLAGS_ssd_root_path = "/tmp/test" + GenRand();
+    ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
+    bool ok = tablet->Init();
+    ASSERT_TRUE(ok);
+    sleep(2);
+    brpc::ServerOptions options1;
+    if (server->AddService(tablet, brpc::SERVER_OWNS_SERVICE) != 0) {
+        PDLOG(WARNING, "Fail to add service");
+        exit(1);
+    }
+    if (server->Start(FLAGS_endpoint.c_str(), &options1) != 0) {
+        PDLOG(WARNING, "Fail to start server");
+        exit(1);
+    }
+    ok = tablet->RegisterZK();
+    ASSERT_TRUE(ok);
+    *tb = tablet;
     sleep(2);
 }
 
@@ -156,6 +185,96 @@ TEST_F(NameServerImplObjectStoreTest, CreateTable) {
         ASSERT_TRUE(ok);
         ASSERT_EQ(tid, status.tid());
         ASSERT_EQ(0u, status.pid());
+    }
+}
+
+TEST_F(NameServerImplObjectStoreTest, CreateTableWithBlobField) {
+    // local ns and tablet
+    // ns
+    FLAGS_zk_cluster = "127.0.0.1:6181";
+    FLAGS_zk_root_path = "/rtidb3" + GenRand();
+    FLAGS_endpoint = "127.0.0.1:9631";
+
+    NameServerImpl* nameserver = new NameServerImpl();
+    brpc::Server server;
+    StartNameServer(&server, nameserver);
+    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client(
+        FLAGS_endpoint);
+    ASSERT_EQ(0, name_server_client.Init());
+
+    FLAGS_endpoint = "127.0.0.1:9731";
+    brpc::Server tablet_svr;
+    ::rtidb::tablet::TabletImpl* tablet;
+    StartTablet(&tablet_svr, &tablet);
+    ::rtidb::client::TabletClient tablet_client(FLAGS_endpoint);
+    ASSERT_EQ(0, tablet_client.Init());
+
+    FLAGS_endpoint = "127.0.0.1:9931";
+    brpc::Server server1;
+    StartBlob(&server1);
+    ::rtidb::client::BsClient blob_client(FLAGS_endpoint);
+    ASSERT_EQ(0, blob_client.Init());
+
+    sleep(6);
+
+    bool ok = false;
+    std::string name = "test" + GenRand();
+    {
+        CreateTableRequest request;
+        GeneralResponse response;
+        TableInfo* table_info = request.mutable_table_info();
+        table_info->set_table_type(::rtidb::type::kRelational);
+        table_info->set_name(name);
+        TablePartition* partion = table_info->add_table_partition();
+        partion->set_pid(0);
+        PartitionMeta* meta = partion->add_partition_meta();
+        meta->set_endpoint("127.0.0.1:9731");
+        meta->set_is_leader(true);
+        ::rtidb::common::ColumnDesc* col0 = table_info->add_column_desc_v1();
+        col0->set_name("card");
+        col0->set_data_type(::rtidb::type::kBigInt);
+        ::rtidb::common::ColumnDesc* col1 = table_info->add_column_desc_v1();
+        col1->set_name("mcc");
+        col1->set_data_type(::rtidb::type::kVarchar);
+        ::rtidb::common::ColumnDesc* col2 = table_info->add_column_desc_v1();
+        col2->set_name("img");
+        col2->set_data_type(::rtidb::type::kBlob);
+        ::rtidb::common::ColumnKey* ck = table_info->add_column_key();
+        ck->set_index_name("card");
+        ck->add_col_name("card");
+        table_info->set_replica_num(1);
+        ok = name_server_client.SendRequest(
+            &::rtidb::nameserver::NameServer_Stub::CreateTable, &request,
+            &response, FLAGS_request_timeout_ms, 1);
+        ASSERT_TRUE(ok);
+        ASSERT_EQ(0, response.code());
+        sleep(3);
+    }
+    {
+        ::rtidb::nameserver::ShowTableRequest request;
+        ::rtidb::nameserver::ShowTableResponse response;
+        request.set_name(name);
+        ok = name_server_client.SendRequest(
+            &::rtidb::nameserver::NameServer_Stub::ShowTable, &request,
+            &response, FLAGS_request_timeout_ms, 1);
+        ASSERT_TRUE(ok);
+        ASSERT_EQ(0, response.code());
+        ASSERT_EQ(1, response.table_info_size());
+        const auto& info = response.table_info(0);
+        ASSERT_EQ(1, info.blobs_size());
+        uint32_t tid = info.tid();
+        ::rtidb::blobserver::StoreStatus blob_status;
+        ok = blob_client.GetStoreStatus(tid, 0, &blob_status);
+        ASSERT_TRUE(ok);
+        ASSERT_EQ(tid, blob_status.tid());
+        ASSERT_EQ(0u, blob_status.pid());
+        ::rtidb::api::GetTableStatusResponse resp;
+        ok = tablet_client.GetTableStatus(resp);
+        ASSERT_TRUE(ok);
+        ASSERT_EQ(1, resp.all_table_status_size());
+        ::rtidb::api::TableStatus table_status = resp.all_table_status(0);
+        ASSERT_EQ(tid, table_status.tid());
+        ASSERT_EQ(0u, table_status.pid());
     }
 }
 

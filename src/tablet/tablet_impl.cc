@@ -12,12 +12,14 @@
 #include <google/protobuf/text_format.h>
 #include <stdio.h>
 #include <stdlib.h>
+
 #include <algorithm>
 #include <thread>  // NOLINT
 #include <utility>
 #include <vector>
-#include "config.h"  // NOLINT
+
 #include "boost/container/deque.hpp"
+#include "config.h"  // NOLINT
 #ifdef TCMALLOC_ENABLE
 #include "gperftools/malloc_extension.h"
 #endif
@@ -1131,8 +1133,9 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
                 PDLOG(WARNING, "fail to make a projection");
                 return -4;
             }
-            tmp.emplace_back(it->GetKey(),
-                    std::move(Slice(reinterpret_cast<char*>(ptr), size, true)));
+            tmp.emplace_back(
+                it->GetKey(),
+                std::move(Slice(reinterpret_cast<char*>(ptr), size, true)));
             total_block_size += size;
         } else {
             total_block_size += it->GetValue().size();
@@ -2393,6 +2396,21 @@ void TabletImpl::GetTableStatus(
             if (request->has_need_schema() && request->need_schema()) {
                 status->set_schema(table->GetSchema());
             }
+        }
+    }
+    for (auto it = relational_tables_.begin(); it != relational_tables_.end();
+         it++) {
+        if (request->has_tid() && request->tid() != it->first) {
+            continue;
+        }
+        for (auto pit = it->second.begin(); pit != it->second.end(); pit++) {
+            if (request->has_pid() && request->pid() != pit->first) {
+                continue;
+            }
+            ::rtidb::api::TableStatus* status =
+                response->add_all_table_status();
+            status->set_tid(it->first);
+            status->set_pid(pit->first);
         }
     }
     response->set_code(::rtidb::base::ReturnCode::kOk);
