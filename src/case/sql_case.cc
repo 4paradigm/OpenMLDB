@@ -179,7 +179,8 @@ bool SQLCase::ExtractRow(const vm::Schema& schema, const std::string& row_str,
     boost::split(item_vec, row_str, boost::is_any_of(","),
                  boost::token_compress_on);
     if (item_vec.size() != static_cast<size_t>(schema.size())) {
-        LOG(WARNING) << "Invalid Row: Row doesn't match with schema";
+        LOG(WARNING) << "Invalid Row: Row doesn't match with schema : "
+                     << row_str;
         return false;
     }
     int str_size = 0;

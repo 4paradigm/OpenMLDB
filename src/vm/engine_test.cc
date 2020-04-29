@@ -111,10 +111,51 @@ void CheckRows(const vm::Schema& schema, const std::vector<Row>& rows,
     ASSERT_EQ(rows.size(), exp_rows.size());
     RowView row_view(schema);
     RowView row_view_exp(schema);
-    for (size_t i = 0; i < rows.size(); i++) {
-        row_view.Reset(rows[i].buf());
-        row_view_exp.Reset(exp_rows[i].buf());
-        ASSERT_EQ(row_view.GetRowString(), row_view_exp.GetRowString());
+    for (size_t row_index = 0; row_index < rows.size(); row_index++) {
+        row_view.Reset(rows[row_index].buf());
+        row_view_exp.Reset(exp_rows[row_index].buf());
+        for (int i = 0; i < schema.size(); i++) {
+            if (row_view_exp.IsNULL(i)) {
+                ASSERT_TRUE(row_view.IsNULL(i));
+                continue;
+            }
+            switch (schema.Get(i).type()) {
+                case fesql::type::kInt32: {
+                    ASSERT_EQ(row_view.GetInt32Unsafe(i),
+                    row_view_exp.GetInt32Unsafe(i));
+                    break;
+                }
+                case fesql::type::kInt64: {
+                    ASSERT_EQ(row_view.GetInt64Unsafe(i),
+                              row_view_exp.GetInt64Unsafe(i));
+                    break;
+                }
+                case fesql::type::kInt16: {
+                    ASSERT_EQ(row_view.GetInt16Unsafe(i),
+                              row_view_exp.GetInt16Unsafe(i));
+                    break;
+                }
+                case fesql::type::kFloat: {
+                    ASSERT_FLOAT_EQ(row_view.GetFloatUnsafe(i),
+                              row_view_exp.GetFloatUnsafe(i));
+                    break;
+                }
+                case fesql::type::kDouble: {
+                    ASSERT_DOUBLE_EQ(row_view.GetDoubleUnsafe(i),
+                              row_view_exp.GetDoubleUnsafe(i));
+                    break;
+                }
+                case fesql::type::kVarchar: {
+                    ASSERT_EQ(row_view.GetStringUnsafe(i),
+                              row_view_exp.GetStringUnsafe(i));
+                    break;
+                }
+                default: {
+                    FAIL() << "Invalid Column Type";
+                    break;
+                }
+            }
+        }
     }
 }
 void StoreData(::fesql::storage::Table* table, const std::vector<Row>& rows) {
