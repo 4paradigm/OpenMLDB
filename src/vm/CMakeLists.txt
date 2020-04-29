@@ -40,12 +40,12 @@ add_test(window_test mem_catalog_test --gtest_output=xml:${CMAKE_BINARY_DIR}/win
 list(APPEND test_list window_test)
 
 add_executable(transform_test transform_test.cc)
-target_link_libraries(transform_test ${vm_deps_libs} protobuf ${llvm_libs} ${COMMON_LIBS} ${Boost_LIBRARIES} gtest pthread)
+target_link_libraries(transform_test ${vm_deps_libs} ${case_deps_libs} protobuf ${llvm_libs} ${COMMON_LIBS} ${Boost_LIBRARIES} gtest pthread)
 add_test(transform_test transform_test --gtest_output=xml:${CMAKE_BINARY_DIR}/transform_test.xml)
 list(APPEND transform_test transform_test)
 
 add_executable(transform_request_mode_test transform_request_mode_test.cc)
-target_link_libraries(transform_request_mode_test ${vm_deps_libs} protobuf ${llvm_libs} ${COMMON_LIBS} ${Boost_LIBRARIES} gtest pthread)
+target_link_libraries(transform_request_mode_test ${vm_deps_libs} ${case_deps_libs} protobuf ${llvm_libs} ${COMMON_LIBS} ${Boost_LIBRARIES} gtest pthread)
 add_test(transform_request_mode_test transform_request_mode_test --gtest_output=xml:${CMAKE_BINARY_DIR}/transform_request_mode_test.xml)
 list(APPEND transform_request_mode_test transform_request_mode_test)
 
@@ -72,13 +72,13 @@ list(APPEND test_list jit_wrapper_test)
 
 add_executable(runner_test runner_test.cc)
 target_link_libraries(runner_test ${vm_deps_libs}
-        protobuf ${llvm_libs} ${COMMON_LIBS} gtest pthread)
+        protobuf ${case_deps_libs} ${llvm_libs} ${COMMON_LIBS} gtest pthread)
 add_test(sql_compiler_test runner_test
         --gtest_output=xml:${CMAKE_BINARY_DIR}/runner_test.xml)
 list(APPEND test_list runner_test)
 
 add_executable(sql_compiler_test sql_compiler_test.cc)
-target_link_libraries(sql_compiler_test fesql_simple_catalog ${vm_deps_libs}
+target_link_libraries(sql_compiler_test fesql_simple_catalog ${case_deps_libs} ${vm_deps_libs}
         protobuf ${llvm_libs} ${COMMON_LIBS} gtest pthread)
 add_test(sql_compiler_test sql_compiler_test
         --gtest_output=xml:${CMAKE_BINARY_DIR}/sql_compiler_test.xml)

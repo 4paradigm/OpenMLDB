@@ -51,7 +51,7 @@ public class SQLEngine implements AutoCloseable {
     }
 
     @Override
-    public void close() throws Exception {
+    synchronized public void close() throws Exception {
         engine.delete();
         engine = null;
 

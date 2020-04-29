@@ -1,0 +1,25 @@
+SQLCases:
+  - id: 1
+    desc:
+    sql: |
+      %%fun
+      def test(x:i32,y:i32):i32
+          c=x+y
+          return c
+      end
+      %%sql
+      SELECT test(COL1, COL1) FROM t1;
+  - id: 2
+    desc: Trim函数2
+    sql: |
+      %%fun
+      def test_sum(col:list<i32>):i32
+          res = 0
+          for x in list
+              res += x
+          return res
+      end
+      %%sql
+      SELECT test_sum(COL1), x(COL2), COL5 OVER w, SUM(COL1) OVER w FROM t
+      WINDOW w AS (PARTITION BY COL2
+                    ORDER BY COL5  ROWS BETWEEN 3 PRECEDING AND 3 FOLLOWING);

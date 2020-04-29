@@ -74,6 +74,8 @@ class SQLCompiler {
 
     bool Compile(SQLContext& ctx,  // NOLINT
                  Status& status);  // NOLINT
+    bool BuildRunner(SQLContext& ctx,  // NOLINT
+                 Status& status);  // NOLINT
 
  private:
     void KeepIR(SQLContext& ctx, llvm::Module* m);                     // NOLINT

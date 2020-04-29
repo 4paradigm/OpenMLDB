@@ -75,9 +75,8 @@ TEST_F(JITWrapperTest, test) {
     row_builder.AppendInt32(42);
 
     fesql::codec::Row row(buf, 1024);
-    DummyRunner runner;
 
-    fesql::codec::Row output = runner.RunRowProject(fn, row);
+    fesql::codec::Row output = CoreAPI::RowProject(fn, row);
 
     codec::RowView row_view(*schema, output.buf(), output.size());
     double c1;

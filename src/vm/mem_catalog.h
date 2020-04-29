@@ -106,6 +106,8 @@ class MemWindowIterator : public WindowIterator {
     const MemSegmentMap* partitions_;
     const Schema* schema_;
     MemSegmentMap::const_iterator iter_;
+    const MemSegmentMap::const_iterator start_iter_;
+    const MemSegmentMap::const_iterator end_iter_;
 };
 
 class MemRowHandler : public RowHandler {

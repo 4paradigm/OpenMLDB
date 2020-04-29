@@ -1,12 +1,13 @@
 package com._4paradigm.fesql.offline
 
 import java.nio.ByteBuffer
+import java.sql.Timestamp
 
 import com._4paradigm.fesql.codec.{RowBuilder, RowView, Row => NativeRow}
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types._
 
-class RowCodec(schema: StructType) {
+class SparkRowCodec(schema: StructType) {
 
   private val columnDefs = FesqlUtil.getFeSQLSchema(schema)
 
@@ -78,7 +79,7 @@ class RowCodec(schema: StructType) {
           case StringType =>
             output(i) = rowView.GetStringUnsafe(i)
           case TimestampType =>
-            output(i) = rowView.GetTimestampUnsafe(i)
+            output(i) = new Timestamp(rowView.GetTimestampUnsafe(i))
           case _ => throw new IllegalArgumentException(
             s"Spark type ${field.dataType} not supported")
         }

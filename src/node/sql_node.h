@@ -325,6 +325,9 @@ class ExprNode : public SQLNode {
         : SQLNode(kExpr, 0, 0), expr_type_(expr_type) {}
     ~ExprNode() {}
     void AddChild(ExprNode *expr) { children_.push_back(expr); }
+    const ExprNode* GetChild(size_t idx) const { return children_[idx]; }
+    int GetChildNum() const { return children_.size(); }
+
     const ExprType GetExprType() const { return expr_type_; }
     void PushBack(ExprNode *node_ptr) { children_.push_back(node_ptr); }
 
@@ -430,6 +433,15 @@ class OrderByNode : public ExprNode {
     void Print(std::ostream &output, const std::string &org_tab) const;
     const std::string GetExprString() const;
     virtual bool Equals(const ExprNode *that) const;
+
+    const ExprListNode* GetOrderBy() const {
+        return order_by_;
+    }
+
+    bool is_asc() const {
+        return is_asc_;
+    }
+
     const bool is_asc_;
     const ExprListNode *order_by_;
 };
@@ -884,6 +896,7 @@ class ColumnRefNode : public ExprNode {
         column_name_ = column_name;
     }
 
+    static ColumnRefNode* CastFrom(ExprNode* node);
     void Print(std::ostream &output, const std::string &org_tab) const;
     const std::string GetExprString() const;
     virtual bool Equals(const ExprNode *node) const;

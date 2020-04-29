@@ -3,6 +3,7 @@ package com._4paradigm.fesql.offline
 import org.apache.spark.sql.SparkSession
 import org.scalatest.{BeforeAndAfter, FunSuite}
 
+
 abstract class SparkTestSuite extends FunSuite with BeforeAndAfter {
 
   private val tlsSparkSession = new ThreadLocal[SparkSession]()

@@ -309,6 +309,11 @@ void ColumnRefNode::Print(std::ostream &output,
     output << "\n";
     PrintValue(output, tab, column_name_, "column_name", true);
 }
+
+ColumnRefNode* ColumnRefNode::CastFrom(ExprNode* node) {
+    return reinterpret_cast<ColumnRefNode*>(node);
+}
+
 const std::string ColumnRefNode::GetExprString() const {
     std::string str = "";
     if (!relation_name_.empty()) {

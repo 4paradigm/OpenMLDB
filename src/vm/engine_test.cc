@@ -19,6 +19,7 @@
 #include <utility>
 #include <vector>
 #include "base/texttable.h"
+#include "boost/algorithm/string.hpp"
 #include "case/sql_case.h"
 #include "codec/list_iterator_codec.h"
 #include "codec/row_codec.h"
@@ -57,7 +58,7 @@ void InitCases(std::string yaml_path, std::vector<SQLCase>& cases);  // NOLINT
 
 void InitCases(std::string yaml_path, std::vector<SQLCase>& cases) {  // NOLINT
     if (!SQLCase::CreateSQLCasesFromYaml(
-            fesql::sqlcase::FindFesqlDirPath() + yaml_path, cases)) {
+            fesql::sqlcase::FindFesqlDirPath() + "/" + yaml_path, cases)) {
         FAIL();
     }
 }
@@ -110,10 +111,51 @@ void CheckRows(const vm::Schema& schema, const std::vector<Row>& rows,
     ASSERT_EQ(rows.size(), exp_rows.size());
     RowView row_view(schema);
     RowView row_view_exp(schema);
-    for (size_t i = 0; i < rows.size(); i++) {
-        row_view.Reset(rows[i].buf());
-        row_view_exp.Reset(exp_rows[i].buf());
-        ASSERT_EQ(row_view.GetRowString(), row_view_exp.GetRowString());
+    for (size_t row_index = 0; row_index < rows.size(); row_index++) {
+        row_view.Reset(rows[row_index].buf());
+        row_view_exp.Reset(exp_rows[row_index].buf());
+        for (int i = 0; i < schema.size(); i++) {
+            if (row_view_exp.IsNULL(i)) {
+                ASSERT_TRUE(row_view.IsNULL(i));
+                continue;
+            }
+            switch (schema.Get(i).type()) {
+                case fesql::type::kInt32: {
+                    ASSERT_EQ(row_view.GetInt32Unsafe(i),
+                    row_view_exp.GetInt32Unsafe(i));
+                    break;
+                }
+                case fesql::type::kInt64: {
+                    ASSERT_EQ(row_view.GetInt64Unsafe(i),
+                              row_view_exp.GetInt64Unsafe(i));
+                    break;
+                }
+                case fesql::type::kInt16: {
+                    ASSERT_EQ(row_view.GetInt16Unsafe(i),
+                              row_view_exp.GetInt16Unsafe(i));
+                    break;
+                }
+                case fesql::type::kFloat: {
+                    ASSERT_FLOAT_EQ(row_view.GetFloatUnsafe(i),
+                              row_view_exp.GetFloatUnsafe(i));
+                    break;
+                }
+                case fesql::type::kDouble: {
+                    ASSERT_DOUBLE_EQ(row_view.GetDoubleUnsafe(i),
+                              row_view_exp.GetDoubleUnsafe(i));
+                    break;
+                }
+                case fesql::type::kVarchar: {
+                    ASSERT_EQ(row_view.GetStringUnsafe(i),
+                              row_view_exp.GetStringUnsafe(i));
+                    break;
+                }
+                default: {
+                    FAIL() << "Invalid Column Type";
+                    break;
+                }
+            }
+        }
     }
 }
 void StoreData(::fesql::storage::Table* table, const std::vector<Row>& rows) {
@@ -283,7 +325,6 @@ void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
     PrintRows(schema, output);
     CheckRows(schema, output, case_output_data);
 }
-
 INSTANTIATE_TEST_CASE_P(
     EngineRequstSimpleQuery, EngineTest,
     testing::ValuesIn(InitCases("/cases/batch_query/simple_query.yaml")));
@@ -329,6 +370,78 @@ TEST_P(EngineTest, test_engine) {
     } else {
         LOG(WARNING) << "Invalid Check Mode " << sql_case.mode();
         FAIL();
+    }
+}
+
+TEST_F(EngineTest, EngineCompileOnlyTest) {
+    const fesql::base::Status exp_status(::fesql::common::kOk, "ok");
+
+    fesql::type::TableDef table_def;
+    fesql::type::TableDef table_def2;
+
+    BuildTableDef(table_def);
+    BuildTableDef(table_def2);
+
+    table_def.set_name("t1");
+    table_def2.set_name("t2");
+
+    std::shared_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, table_def));
+    std::shared_ptr<::fesql::storage::Table> table2(
+        new ::fesql::storage::Table(2, 1, table_def2));
+    ::fesql::type::IndexDef* index = table_def.add_indexes();
+    index->set_name("index12");
+    index->add_first_keys("col1");
+    index->add_first_keys("col2");
+    index->set_second_key("col5");
+    auto catalog = BuildCommonCatalog(table_def, table);
+    AddTable(catalog, table_def2, table2);
+
+    {
+        std::vector<std::string> sql_str_list = {
+            "SELECT t1.COL1, t1.COL2, t2.COL1, t2.COL2 FROM t1 full join t2 on "
+            "t1.col1 = t2.col2;",
+            "SELECT t1.COL1, t1.COL2, t2.COL1, t2.COL2 FROM t1 left join t2 on "
+            "t1.col1 = t2.col2;",
+            "SELECT t1.COL1, t1.COL2, t2.COL1, t2.COL2 FROM t1 right join t2 "
+            "on "
+            "t1.col1 = t2.col2;",
+            "SELECT t1.COL1, t1.COL2, t2.COL1, t2.COL2 FROM t1 last join t2 on "
+            "t1.col1 = t2.col2;"};
+        EngineOptions options;
+        options.set_compile_only(true);
+        Engine engine(catalog, options);
+        base::Status get_status;
+        for (auto sqlstr : sql_str_list) {
+            boost::to_lower(sqlstr);
+            LOG(INFO) << sqlstr;
+            std::cout << sqlstr << std::endl;
+            BatchRunSession session;
+            ASSERT_TRUE(
+                engine.Get(sqlstr, table_def.catalog(), session, get_status));
+        }
+    }
+
+    {
+        std::vector<std::string> sql_str_list = {
+            "SELECT t1.COL1, t1.COL2, t2.COL1, t2.COL2 FROM t1 full join t2 on "
+            "t1.col1 = t2.col2;",
+            "SELECT t1.COL1, t1.COL2, t2.COL1, t2.COL2 FROM t1 left join t2 on "
+            "t1.col1 = t2.col2;",
+            "SELECT t1.COL1, t1.COL2, t2.COL1, t2.COL2 FROM t1 right join t2 "
+            "on "
+            "t1.col1 = t2.col2;"};
+        EngineOptions options;
+        Engine engine(catalog, options);
+        base::Status get_status;
+        for (auto sqlstr : sql_str_list) {
+            boost::to_lower(sqlstr);
+            LOG(INFO) << sqlstr;
+            std::cout << sqlstr << std::endl;
+            BatchRunSession session;
+            ASSERT_FALSE(
+                engine.Get(sqlstr, table_def.catalog(), session, get_status));
+        }
     }
 }
 }  // namespace vm

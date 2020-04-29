@@ -3,16 +3,16 @@ package com._4paradigm.fesql.offline.nodes
 import java.nio.ByteBuffer
 
 import com._4paradigm.fesql.offline._
-import com._4paradigm.fesql.vm.{DummyRunner, PhysicalProjectNode}
+import com._4paradigm.fesql.vm.{CoreAPI, FeSQLJITWrapper, PhysicalTableProjectNode}
 import com._4paradigm.fesql.codec.{Row => NativeRow}
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types.StructType
 import sun.nio.ch.DirectBuffer
 
-object ProjectPlan {
+object RowProjectPlan {
 
-  def gen(ctx: PlanContext, node: PhysicalProjectNode, inputs: Seq[SparkInstance]): SparkInstance = {
+  def gen(ctx: PlanContext, node: PhysicalTableProjectNode, inputs: Seq[SparkInstance]): SparkInstance = {
     val inputInstance = inputs.head
     val inputRDD = inputInstance.getRDD
     val outputSchema = FesqlUtil.getSparkSchema(node.GetOutputSchema())
@@ -29,36 +29,27 @@ object ProjectPlan {
     // project implementation
     val projectRDD = inputRDD.mapPartitions(iter => {
       // ensure worker native
-      FeSqlLibrary.init()
+      val tag = projectConfig.moduleTag
+      val buffer = projectConfig.moduleBroadcast.value.getBuffer
+      JITManager.initJITModule(tag, buffer)
+      val jit = JITManager.getJIT(tag)
 
-      // ensure worker side module
-      if (!JITManager.hasModule(projectConfig.moduleTag)) {
-        val buffer = projectConfig.moduleBroadcast.value.getBuffer
-        JITManager.initModule(projectConfig.moduleTag, buffer)
-      }
-
-      projectIter(iter, projectConfig)
+      projectIter(iter, jit, projectConfig)
     })
 
     SparkInstance.fromRDD(outputSchema, projectRDD)
   }
 
 
-  def projectIter(inputIter: Iterator[Row], config: ProjectConfig): Iterator[Row] = {
+  def projectIter(inputIter: Iterator[Row], jit: FeSQLJITWrapper, config: ProjectConfig): Iterator[Row] = {
     // reusable output row inst
     val outputArr = Array.fill[Any](config.outputSchema.size)(null)
 
-    val jit = JITManager.getJIT
     val fn = jit.FindFunction(config.functionName)
 
     // TODO: these objects are now leaked
-    val runner = new DummyRunner()
-    val encoder = new RowCodec(config.inputSchema)
-    val decoder = new RowCodec(config.outputSchema)
-
-    def doCompute(row: NativeRow): NativeRow = {
-      runner.RunRowProject(fn, row)
-    }
+    val encoder = new SparkRowCodec(config.inputSchema)
+    val decoder = new SparkRowCodec(config.outputSchema)
 
     // try best to avoid native buffer allocation
     var nativeBuf = ByteBuffer.allocateDirect(1024)
@@ -71,20 +62,19 @@ object ProjectPlan {
         nativeBuf = ByteBuffer.allocateDirect(rowSize)
       }
 
-      projectRow(row, nativeBuf, doCompute,
-        encoder, decoder, outputArr)
+      projectRow(row, nativeBuf, fn, encoder, decoder, outputArr)
     })
   }
 
 
-  def projectRow(row: Row, inputBuffer: ByteBuffer, compute: NativeRow => NativeRow,
-                 encoder: RowCodec, decoder: RowCodec, outputArr: Array[Any]): Row = {
+  def projectRow(row: Row, inputBuffer: ByteBuffer, fn: Long,
+                 encoder: SparkRowCodec, decoder: SparkRowCodec, outputArr: Array[Any]): Row = {
     // call encode
     encoder.encode(row, inputBuffer)
 
     // call native compute
     val nativeInputRow = new NativeRow(inputBuffer)
-    val outputNativeRow = compute(nativeInputRow)
+    val outputNativeRow = CoreAPI.RowProject(fn, nativeInputRow, false)
 
     // call decode
     decoder.decode(outputNativeRow, outputArr)

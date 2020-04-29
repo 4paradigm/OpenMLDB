@@ -1,38 +1,51 @@
 package com._4paradigm.fesql.offline;
 
 import com._4paradigm.fesql.vm.FeSQLJITWrapper;
+import scala.Byte;
 
 import java.nio.ByteBuffer;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 public class JITManager {
 
-    // currently we use singleton instance of jit
-    static private FeSQLJITWrapper jit;
-
+    // One jit currently only take one llvm module, since symbol may duplicate
+    static private Map<String, FeSQLJITWrapper> jits = new HashMap<>();
     static private Set<String> initializedModuleTags = new HashSet<>();
 
-    synchronized static public FeSQLJITWrapper getJIT() {
-        if (jit == null) {
-            jit = new FeSQLJITWrapper();
+    synchronized static public FeSQLJITWrapper getJIT(String tag) {
+        if (! jits.containsKey(tag)) {
+            FeSQLJITWrapper jit = new FeSQLJITWrapper();
             jit.Init();
+            jits.put(tag, jit);
         }
-        return jit;
+        return jits.get(tag);
     }
 
-    synchronized static public boolean hasModule(String tag) {
+    synchronized static private boolean hasModule(String tag) {
         return initializedModuleTags.contains(tag);
     }
 
-    synchronized static public void initModule(String tag, ByteBuffer moduleBuffer) {
-        FeSQLJITWrapper jit = getJIT();
+    synchronized static private void initModule(String tag, ByteBuffer moduleBuffer) {
+        FeSQLJITWrapper jit = getJIT(tag);
         if (! moduleBuffer.isDirect()) {
             throw new RuntimeException("JIT must use direct buffer");
         }
-        if (! initializedModuleTags.contains(tag)) {
-            jit.AddModuleFromBuffer(moduleBuffer);
-            initializedModuleTags.add(tag);
+        if (!jit.AddModuleFromBuffer(moduleBuffer)) {
+            throw new RuntimeException("Fail to initialize native module");
+        }
+        initializedModuleTags.add(tag);
+    }
+
+    synchronized static public void initJITModule(String tag, ByteBuffer moduleBuffer) {
+        // ensure worker native
+        FeSqlLibrary.init();
+
+        // ensure worker side module
+        if (!JITManager.hasModule(tag)) {
+            JITManager.initModule(tag, moduleBuffer);
         }
     }
 }
