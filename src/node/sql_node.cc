@@ -310,8 +310,8 @@ void ColumnRefNode::Print(std::ostream &output,
     PrintValue(output, tab, column_name_, "column_name", true);
 }
 
-ColumnRefNode* ColumnRefNode::CastFrom(ExprNode* node) {
-    return reinterpret_cast<ColumnRefNode*>(node);
+ColumnRefNode *ColumnRefNode::CastFrom(ExprNode *node) {
+    return reinterpret_cast<ColumnRefNode *>(node);
 }
 
 const std::string ColumnRefNode::GetExprString() const {
@@ -431,7 +431,8 @@ void WindowDefNode::Print(std::ostream &output,
     PrintValue(output, tab, window_name_, "window_name", false);
     if (nullptr != union_tables_) {
         output << "\n";
-        PrintSQLVector(output, tab, union_tables_->GetList(), "union_tables", false);
+        PrintSQLVector(output, tab, union_tables_->GetList(), "union_tables",
+                       false);
     }
     if (instance_not_in_window_) {
         output << "\n";

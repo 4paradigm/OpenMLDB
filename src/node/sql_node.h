@@ -650,7 +650,7 @@ class WindowDefNode : public SQLNode {
     const bool instance_not_in_window() const {
         return instance_not_in_window_;
     }
-    void set_instance_not_in_window_(bool instance_not_in_window) {
+    void set_instance_not_in_window(bool instance_not_in_window) {
         instance_not_in_window_ = instance_not_in_window;
     }
     void Print(std::ostream &output, const std::string &org_tab) const;

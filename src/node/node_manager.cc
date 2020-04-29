@@ -86,7 +86,7 @@ SQLNode *NodeManager::MakeWindowDefNode(SQLNodeList *union_tables,
         }
         node_ptr->SetOrders(dynamic_cast<OrderByNode *>(orders));
     }
-    node_ptr->set_instance_not_in_window_(instance_not_in_window);
+    node_ptr->set_instance_not_in_window(instance_not_in_window);
     node_ptr->set_union_tables(union_tables);
     node_ptr->SetPartitions(partitions);
     node_ptr->SetFrame(dynamic_cast<FrameNode *>(frame));

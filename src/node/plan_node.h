@@ -243,10 +243,12 @@ class WindowPlanNode : public LeafPlanNode {
     explicit WindowPlanNode(int id)
         : LeafPlanNode(kPlanTypeWindow),
           id(id),
+          instance_not_in_window_(false),
           name(""),
           start_offset_(0L),
           end_offset_(0L),
           is_range_between_(true),
+          union_tables_(nullptr),
           keys_(nullptr),
           orders_(nullptr) {}
     ~WindowPlanNode() {}
@@ -266,14 +268,27 @@ class WindowPlanNode : public LeafPlanNode {
     const std::string &GetName() const { return name; }
     void SetName(const std::string &name) { WindowPlanNode::name = name; }
     const int GetId() const { return id; }
+    SQLNodeList *union_tables() const { return union_tables_; }
+    void set_union_tables(SQLNodeList *union_table) {
+        union_tables_ = union_table;
+    }
+
+    const bool instance_not_in_window() const {
+        return instance_not_in_window_;
+    }
+    void set_instance_not_in_window(bool instance_not_in_window) {
+        instance_not_in_window_ = instance_not_in_window;
+    }
     virtual bool Equals(const PlanNode *node) const;
 
  private:
     int id;
     std::string name;
+    bool instance_not_in_window_;
     int64_t start_offset_;
     int64_t end_offset_;
     bool is_range_between_;
+    SQLNodeList *union_tables_;
     ExprListNode *keys_;
     OrderByNode *orders_;
 };
