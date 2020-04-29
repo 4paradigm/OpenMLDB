@@ -15,9 +15,7 @@ void PhysicalOpNode::Print(std::ostream& output, const std::string& tab) const {
     output << tab << PhysicalOpTypeName(type_);
 }
 
-void PhysicalOpNode::Print() const {
-    this->Print(std::cout, "    ");
-}
+void PhysicalOpNode::Print() const { this->Print(std::cout, "    "); }
 
 void PhysicalOpNode::PrintChildren(std::ostream& output,
                                    const std::string& tab) const {}
@@ -108,8 +106,8 @@ void PhysicalGroupAndSortNode::Print(std::ostream& output,
     PrintChildren(output, tab);
 }
 
-PhysicalGroupAndSortNode*
-PhysicalGroupAndSortNode::CastFrom(PhysicalOpNode* node) {
+PhysicalGroupAndSortNode* PhysicalGroupAndSortNode::CastFrom(
+    PhysicalOpNode* node) {
     return dynamic_cast<PhysicalGroupAndSortNode*>(node);
 }
 
@@ -134,18 +132,17 @@ PhysicalProjectNode* PhysicalProjectNode::CastFrom(PhysicalOpNode* node) {
     return dynamic_cast<PhysicalProjectNode*>(node);
 }
 
-PhysicalRowProjectNode*
-PhysicalRowProjectNode::CastFrom(PhysicalOpNode* node) {
+PhysicalRowProjectNode* PhysicalRowProjectNode::CastFrom(PhysicalOpNode* node) {
     return dynamic_cast<PhysicalRowProjectNode*>(node);
 }
 
-PhysicalTableProjectNode*
-PhysicalTableProjectNode::CastFrom(PhysicalOpNode* node) {
+PhysicalTableProjectNode* PhysicalTableProjectNode::CastFrom(
+    PhysicalOpNode* node) {
     return dynamic_cast<PhysicalTableProjectNode*>(node);
 }
 
-PhysicalWindowAggrerationNode*
-PhysicalWindowAggrerationNode::CastFrom(PhysicalOpNode* node) {
+PhysicalWindowAggrerationNode* PhysicalWindowAggrerationNode::CastFrom(
+    PhysicalOpNode* node) {
     return dynamic_cast<PhysicalWindowAggrerationNode*>(node);
 }
 
@@ -183,7 +180,8 @@ void PhysicalJoinNode::Print(std::ostream& output,
     PhysicalOpNode::Print(output, tab);
     output << "(type=" << node::JoinTypeName(join_type_)
            << ", condition=" << node::ExprString(condition_)
-           << ", key=" << node::ExprString(left_keys_);
+           << ", left_keys=" << node::ExprString(left_keys_)
+           << ", right_keys=" << node::ExprString(right_keys_);
     if (limit_cnt_ > 0) {
         output << ", limit=" << limit_cnt_;
     }
@@ -342,7 +340,9 @@ void PhysicalRequestJoinNode::Print(std::ostream& output,
                                     const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "(type=" << node::JoinTypeName(join_type_)
-           << ", condition=" << node::ExprString(condition_);
+           << ", condition=" << node::ExprString(condition_)
+           << ", left_keys=" << node::ExprString(left_keys_)
+           << ", right_keys=" << node::ExprString(right_keys_);
     if (limit_cnt_ > 0) {
         output << ", limit=" << limit_cnt_;
     }

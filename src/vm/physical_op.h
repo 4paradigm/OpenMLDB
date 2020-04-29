@@ -114,13 +114,11 @@ class PhysicalOpNode {
     const FnInfo &GetFnInfo() const { return fn_info_; }
     void SetFn(int8_t *fn) { fn_info_.fn_ = fn; }
     const int8_t *GetFn() const { return fn_info_.fn_; }
-    PhysicalOpNode* GetProducer(size_t index) const {
+    PhysicalOpNode *GetProducer(size_t index) const {
         return producers_[index];
     }
 
-    const vm::Schema* GetOutputSchema() const {
-        return &output_schema_;
-    }
+    const vm::Schema *GetOutputSchema() const { return &output_schema_; }
 
     size_t GetProducerCnt() const { return producers_.size(); }
 
@@ -211,8 +209,8 @@ class PhysicalDataProviderNode : public PhysicalOpNode {
     }
     ~PhysicalDataProviderNode() {}
     bool InitSchema() override;
-    static PhysicalDataProviderNode* CastFrom(PhysicalOpNode* node);
-    const std::string& GetName() const;
+    static PhysicalDataProviderNode *CastFrom(PhysicalOpNode *node);
+    const std::string &GetName() const;
     const DataProviderType provider_type_;
     const std::shared_ptr<TableHandler> table_handler_;
 };
@@ -292,18 +290,14 @@ class PhysicalGroupAndSortNode : public PhysicalUnaryNode {
     void SetOrdersIdxs(const std::vector<int32_t> &idxs) {
         orders_idxs_ = idxs;
     }
-    const node::ExprListNode* GetGroups() const {
-        return groups_;
-    }
-    const node::OrderByNode* GetOrders() const {
-        return orders_;
-    }
+    const node::ExprListNode *GetGroups() const { return groups_; }
+    const node::OrderByNode *GetOrders() const { return orders_; }
     const std::vector<int32_t> &GetOrdersIdxs() const { return orders_idxs_; }
     const std::vector<int32_t> &GetGroupsIdxs() const { return groups_idxs_; }
     const bool GetIsAsc() const {
         return nullptr == orders_ ? true : orders_->is_asc_;
     }
-    static PhysicalGroupAndSortNode* CastFrom(PhysicalOpNode* node);
+    static PhysicalGroupAndSortNode *CastFrom(PhysicalOpNode *node);
 
  private:
     std::vector<int32_t> groups_idxs_;
@@ -349,7 +343,7 @@ class PhysicalProjectNode : public PhysicalUnaryNode {
     virtual ~PhysicalProjectNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     bool InitSchema() override;
-    static PhysicalProjectNode* CastFrom(PhysicalOpNode* node);
+    static PhysicalProjectNode *CastFrom(PhysicalOpNode *node);
     const ProjectType project_type_;
 };
 
@@ -362,7 +356,7 @@ class PhysicalRowProjectNode : public PhysicalProjectNode {
         output_type_ = kSchemaTypeRow;
     }
     virtual ~PhysicalRowProjectNode() {}
-    static PhysicalRowProjectNode* CastFrom(PhysicalOpNode* node);
+    static PhysicalRowProjectNode *CastFrom(PhysicalOpNode *node);
 };
 
 class PhysicalTableProjectNode : public PhysicalProjectNode {
@@ -374,7 +368,7 @@ class PhysicalTableProjectNode : public PhysicalProjectNode {
         output_type_ = kSchemaTypeTable;
     }
     virtual ~PhysicalTableProjectNode() {}
-    static PhysicalTableProjectNode* CastFrom(PhysicalOpNode* node);
+    static PhysicalTableProjectNode *CastFrom(PhysicalOpNode *node);
 };
 class PhysicalAggrerationNode : public PhysicalProjectNode {
  public:
@@ -440,14 +434,14 @@ class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
     void SetOrdersIdxs(const std::vector<int32_t> &idxs) {
         orders_idxs_ = idxs;
     }
-    static PhysicalWindowAggrerationNode* CastFrom(PhysicalOpNode* node);
+    static PhysicalWindowAggrerationNode *CastFrom(PhysicalOpNode *node);
     const std::vector<int32_t> &GetOrdersIdxs() const { return orders_idxs_; }
     const std::vector<int32_t> &GetGroupsIdxs() const { return groups_idxs_; }
 
     const int64_t GetStartOffset() const { return start_offset_; }
     const int64_t GetEndOffset() const { return end_offset_; }
-    const node::ExprListNode* GetGroups() const { return groups_; }
-    const node::OrderByNode* GetOrders() const { return orders_; }
+    const node::ExprListNode *GetGroups() const { return groups_; }
+    const node::OrderByNode *GetOrders() const { return orders_; }
 
  private:
     std::vector<int32_t> groups_idxs_;
@@ -461,7 +455,20 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
         : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false, true),
           join_type_(join_type),
           condition_(nullptr),
-          left_keys_(nullptr) {
+          left_keys_(nullptr),
+          right_keys_(nullptr) {
+        output_type_ = kSchemaTypeTable;
+        InitSchema();
+        fn_infos_.push_back(&left_key_fn_info_);
+    }
+    PhysicalJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
+                     const node::JoinType join_type,
+                     const node::ExprNode *condition)
+        : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false, true),
+          join_type_(join_type),
+          condition_(condition),
+          left_keys_(nullptr),
+          right_keys_(nullptr) {
         output_type_ = kSchemaTypeTable;
         InitSchema();
         fn_infos_.push_back(&left_key_fn_info_);
@@ -469,11 +476,13 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
     PhysicalJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
                      const node::JoinType join_type,
                      const node::ExprNode *condition,
-                     const node::ExprListNode *keys)
+                     const node::ExprListNode *left_keys,
+                     const node::ExprListNode *right_keys)
         : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false, true),
           join_type_(join_type),
           condition_(condition),
-          left_keys_(keys) {
+          left_keys_(left_keys),
+          right_keys_(right_keys) {
         output_type_ = kSchemaTypeTable;
         InitSchema();
         fn_infos_.push_back(&left_key_fn_info_);
@@ -484,6 +493,7 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
     const node::JoinType join_type_;
     const node::ExprNode *condition_;
     const node::ExprListNode *left_keys_;
+    const node::ExprListNode *right_keys_;
     void SetConditionIdxs(const std::vector<int32_t> &idxs) {
         condition_idxs_ = idxs;
     }
@@ -512,6 +522,20 @@ class PhysicalRequestJoinNode : public PhysicalBinaryNode {
           join_type_(join_type),
           condition_(nullptr),
           left_keys_(nullptr),
+          right_keys_(nullptr),
+          left_key_fn_info_({"", nullptr}) {
+        output_type_ = kSchemaTypeRow;
+        InitSchema();
+        fn_infos_.push_back(&left_key_fn_info_);
+    }
+    PhysicalRequestJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
+                            const node::JoinType join_type,
+                            const node::ExprNode *condition)
+        : PhysicalBinaryNode(left, right, kPhysicalOpRequestJoin, false, true),
+          join_type_(join_type),
+          condition_(condition),
+          left_keys_(nullptr),
+          right_keys_(nullptr),
           left_key_fn_info_({"", nullptr}) {
         output_type_ = kSchemaTypeRow;
         InitSchema();
@@ -520,11 +544,13 @@ class PhysicalRequestJoinNode : public PhysicalBinaryNode {
     PhysicalRequestJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
                             const node::JoinType join_type,
                             const node::ExprNode *condition,
-                            const node::ExprListNode *keys)
+                            const node::ExprListNode *left_keys,
+                            const node::ExprListNode *right_keys)
         : PhysicalBinaryNode(left, right, kPhysicalOpRequestJoin, false, true),
           join_type_(join_type),
           condition_(condition),
-          left_keys_(keys),
+          left_keys_(left_keys),
+          right_keys_(right_keys),
           left_key_fn_info_({"", nullptr}) {
         output_type_ = kSchemaTypeRow;
         InitSchema();
@@ -536,6 +562,7 @@ class PhysicalRequestJoinNode : public PhysicalBinaryNode {
     const node::JoinType join_type_;
     const node::ExprNode *condition_;
     const node::ExprListNode *left_keys_;
+    const node::ExprListNode *right_keys_;
     void SetConditionIdxs(const std::vector<int32_t> &idxs) {
         condition_idxs_ = idxs;
     }

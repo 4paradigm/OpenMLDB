@@ -621,7 +621,7 @@ bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
                         node_manager_->RegisterNode(request_union_op);
                         *output = new PhysicalJoinNode(
                             request_union_op, join_op->GetProducers()[1],
-                            join_op->join_type_, join_op->condition_, nullptr);
+                            join_op->join_type_, join_op->condition_);
                         return true;
                     } else {
                         status.code = common::kPlanError;
@@ -666,7 +666,7 @@ bool BatchModeTransformer::TransformJoinOp(const node::JoinPlanNode* node,
         return false;
     }
     *output = new PhysicalJoinNode(left, right, node->join_type_,
-                                   node->condition_, nullptr);
+                                   node->condition_);
     node_manager_->RegisterNode(*output);
     return true;
 }
@@ -1406,21 +1406,21 @@ bool FilterConditionOptimized::Transform(PhysicalOpNode* in,
                 return false;
             }
             {
-                node::ExprListNode* groups = node_manager_->MakeExprList();
-                node::ExprListNode* keys = node_manager_->MakeExprList();
+                node::ExprListNode* right_keys = node_manager_->MakeExprList();
+                node::ExprListNode* left_keys = node_manager_->MakeExprList();
                 for (auto pair : condition_eq_pair) {
-                    groups->AddChild(pair.right_expr_);
-                    keys->AddChild(pair.left_expr_);
+                    right_keys->AddChild(pair.right_expr_);
+                    left_keys->AddChild(pair.left_expr_);
                 }
                 node::ExprNode* filter_condition =
                     node_manager_->MakeAndExpr(&new_and_conditions);
                 // 符合优化条件
-                PhysicalGroupNode* group_op =
-                    new PhysicalGroupNode(join_op->GetProducers()[1], groups);
+                PhysicalGroupNode* group_op = new PhysicalGroupNode(
+                    join_op->GetProducers()[1], right_keys);
 
                 PhysicalJoinNode* new_join_op = new PhysicalJoinNode(
                     join_op->GetProducers()[0], group_op, join_op->join_type_,
-                    filter_condition, keys);
+                    filter_condition, left_keys, right_keys);
                 *output = new_join_op;
                 return true;
             }
@@ -1441,22 +1441,23 @@ bool FilterConditionOptimized::Transform(PhysicalOpNode* in,
                 return false;
             }
             {
-                node::ExprListNode* groups = node_manager_->MakeExprList();
-                node::ExprListNode* keys = node_manager_->MakeExprList();
+                node::ExprListNode* right_keys = node_manager_->MakeExprList();
+                node::ExprListNode* left_keys = node_manager_->MakeExprList();
                 for (auto pair : condition_eq_pair) {
-                    groups->AddChild(pair.right_expr_);
-                    keys->AddChild(pair.left_expr_);
+                    right_keys->AddChild(pair.right_expr_);
+                    left_keys->AddChild(pair.left_expr_);
                 }
                 node::ExprNode* filter_condition =
                     node_manager_->MakeAndExpr(&new_and_conditions);
                 // 符合优化条件
-                PhysicalGroupNode* group_op =
-                    new PhysicalGroupNode(join_op->GetProducers()[1], groups);
+                PhysicalGroupNode* group_op = new PhysicalGroupNode(
+                    join_op->GetProducers()[1], right_keys);
 
                 PhysicalRequestJoinNode* new_join_op =
                     new PhysicalRequestJoinNode(join_op->GetProducers()[0],
                                                 group_op, join_op->join_type_,
-                                                filter_condition, keys);
+                                                filter_condition, left_keys,
+                                                right_keys);
                 *output = new_join_op;
                 return true;
             }
@@ -1782,7 +1783,7 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
                 new PhysicalGroupNode(join_op->GetProducers()[0], group_expr);
             PhysicalJoinNode* new_join_op = new PhysicalJoinNode(
                 new_group_op, join_op->GetProducers()[1], join_op->join_type_,
-                join_op->condition_, join_op->left_keys_);
+                join_op->condition_, join_op->left_keys_, join_op->right_keys_);
             node_manager_->RegisterNode(new_group_op);
             node_manager_->RegisterNode(new_join_op);
             *output = new_join_op;
@@ -1809,7 +1810,7 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
             node_manager_->RegisterNode(new_order_op);
             PhysicalJoinNode* new_join_op = new PhysicalJoinNode(
                 new_order_op, join_op->GetProducers()[1], join_op->join_type_,
-                join_op->condition_, join_op->left_keys_);
+                join_op->condition_, join_op->left_keys_, join_op->right_keys_);
             node_manager_->RegisterNode(new_order_op);
             *output = new_join_op;
             return true;
@@ -1843,7 +1844,7 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
             node_manager_->RegisterNode(new_group_sort_op);
             PhysicalJoinNode* new_join_op = new PhysicalJoinNode(
                 new_group_sort_op, join_op->GetProducers()[1],
-                join_op->join_type_, join_op->condition_, join_op->left_keys_);
+                join_op->join_type_, join_op->condition_, join_op->left_keys_, join_op->right_keys_);
             node_manager_->RegisterNode(new_join_op);
             *output = new_join_op;
             return true;
@@ -1999,7 +2000,7 @@ bool RequestModeransformer::TransformJoinOp(const node::JoinPlanNode* node,
         return false;
     }
     *output = new PhysicalRequestJoinNode(left, right, node->join_type_,
-                                          node->condition_, nullptr);
+                                          node->condition_);
     node_manager_->RegisterNode(*output);
     return true;
 }
