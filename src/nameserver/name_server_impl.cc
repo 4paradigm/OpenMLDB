@@ -3755,6 +3755,22 @@ void NameServerImpl::DropTableInternel(
         }
     }
     {
+        for (const auto& endpoint : table_info->blobs()) {
+            auto it = blob_servers_.find(endpoint);
+            if (it != blob_servers_.end()) {
+                std::string msg;
+                bool ok =it->second->client_->DropTable(tid, 0, &msg);
+                if (!ok) {
+                    PDLOG(WARNING, "drop object table[%u] endpoint[%s] fail",
+                          tid, endpoint.c_str());
+                    continue;
+                }
+                PDLOG(INFO, "drop object table. tid[%u] endpoint[%s]", tid,
+                      endpoint.c_str());
+            }
+        }
+    }
+    {
         std::lock_guard<std::mutex> lock(mu_);
         if (!zk_client_->DeleteNode(zk_table_data_path_ + "/" + name)) {
             PDLOG(WARNING, "delete table node[%s/%s] failed!",

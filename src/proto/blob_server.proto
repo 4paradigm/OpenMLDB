@@ -5,8 +5,8 @@ package rtidb.blobserver;
 
 option cc_generic_services = true;
 option java_generic_services = true;
-option java_package = "com._4paradigm.rtidb.object_storage_server";
-option java_outer_classname = "ObjectStorage";
+option java_package = "com._4paradigm.rtidb.object_store";
+option java_outer_classname = "oss";
 
 message GeneralResponse {
     optional string msg = 1;
