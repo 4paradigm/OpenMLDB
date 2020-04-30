@@ -408,11 +408,10 @@ void GROUPBY_CASE0_QUERY(benchmark::State *state_ptr, MODE mode,
     std::string select_sql =
         "SELECT "
         "sum(col_i32) \n"
-        "FROM tbl group by col_str64\n"
-        "limit " +
-        std::to_string(record_size) + ";";
+        "FROM tbl group by col_str64 ;";
+
     if (BENCHMARK == mode) {
-        std::string query_type = "sum 2 cols";
+        std::string query_type = "sum 1 cols";
         std::string label = query_type + "/group " +
                             std::to_string(group_size) + "/max window size " +
                             std::to_string(window_max_size);

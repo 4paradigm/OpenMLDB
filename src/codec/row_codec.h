@@ -113,8 +113,8 @@ class RowBuilder {
 
 class RowBaseView {
  public:
-    RowBaseView();
-    virtual ~RowBaseView();
+    RowBaseView() {}
+    virtual ~RowBaseView() {}
     virtual int32_t GetBool(uint32_t idx,  bool* val) = 0;
     virtual int32_t GetInt16(uint32_t idx, int16_t* val) = 0;
     virtual int32_t GetInt32(uint32_t idx, int32_t* val) = 0;

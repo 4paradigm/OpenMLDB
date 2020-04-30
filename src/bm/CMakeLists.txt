@@ -28,7 +28,7 @@ add_test(udf_bm_case_test udf_bm_case_test --gtest_output=xml:${CMAKE_BINARY_DIR
 list(APPEND test_list udf_bm_case_test)
 add_executable(udf_bm udf_bm.cc)
 target_link_libraries(udf_bm udf_bm_case ${vm_deps_libs}
-        benchmark protobuf ${llvm_libs} ${COMMON_LIBS} tcmalloc profiler gtest ${OS_LIB})
+        benchmark ${llvm_libs} brpc ${COMMON_LIBS} tcmalloc ssl crypto protobuf gtest ${OS_LIB})
 
 add_library(runner_bm_case STATIC runner_bm_case.cc)
 add_executable(runner_bm_case_test runner_bm_case_test.cc)
@@ -56,7 +56,7 @@ target_link_libraries(engine_bm engine_bm_case ${vm_deps_libs}
         benchmark protobuf ${llvm_libs} ${COMMON_LIBS} tcmalloc profiler gtest ${OS_LIB})
 
 add_executable(memsql_client_bm memsql_client_bm.cc)
-target_link_libraries(memsql_client_bm ${vm_deps_libs} benchmark mysqlclient ${llvm_libs} ${COMMON_LIBS} protobuf gtest ${OS_LIB})
+target_link_libraries(memsql_client_bm ${vm_deps_libs} benchmark mysqlclient ${llvm_libs} ${COMMON_LIBS} brpc protobuf ssl crypto gtest ${OS_LIB})
 
 
 add_library(fesql_client_bm_case STATIC fesql_client_bm_case.cc)
@@ -78,5 +78,5 @@ target_link_libraries(fesql_client_batch_run_bm fesql_client_bm_case
     fesql_tablet
     fesql_storage fesql_vm fesql_codegen fesql_udf fesql_base
     fesql_flags
-    gtest fesql_sdk benchmark ${COMMON_LIBS} ${llvm_libs})
+    gtest fesql_sdk benchmark tcmalloc ${COMMON_LIBS} ${llvm_libs})
 

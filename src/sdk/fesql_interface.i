@@ -75,7 +75,7 @@ namespace std {
 #include "vm/physical_op.h"
 #include "vm/simple_catalog.h"
 
-    using namespace fesql;
+using namespace fesql;
 using fesql::sdk::Schema;
 using fesql::sdk::ResultSet;
 using fesql::sdk::Table;

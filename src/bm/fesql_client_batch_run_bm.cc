@@ -55,6 +55,7 @@ static void BM_GROUPBY_CASE0_QUERY(benchmark::State &state) {  // NOLINT
     ::fesql::bm::GROUPBY_CASE0_QUERY(&state, BENCHMARK, true, state.range(0),
                                     state.range(1));
 }
+
 BENCHMARK(BM_GROUPBY_CASE0_QUERY)
     ->Args({1, 100})
     ->Args({1, 1000})
@@ -62,6 +63,7 @@ BENCHMARK(BM_GROUPBY_CASE0_QUERY)
     ->Args({10, 10})
     ->Args({10, 100})
     ->Args({10, 1000});
+
 BENCHMARK(BM_SIMPLE_QUERY)
     ->Args({1, 10})
     ->Args({1, 100})

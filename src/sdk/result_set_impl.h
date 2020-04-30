@@ -40,6 +40,8 @@ class ResultSetImpl : public ResultSet {
 
     bool Next();
 
+    bool IsNULL(uint32_t index) {}
+
     bool GetString(uint32_t index,
                    char** result, 
                    uint32_t* size);
@@ -59,6 +61,8 @@ class ResultSetImpl : public ResultSet {
     bool GetDouble(uint32_t index, double* result);
 
     bool GetDate(uint32_t index, uint32_t* days);
+
+    int32_t GetDateUnsafe(uint32_t index) {}
 
     bool GetTime(uint32_t index, int64_t* mills);
 
