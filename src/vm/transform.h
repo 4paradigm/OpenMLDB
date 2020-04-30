@@ -129,6 +129,11 @@ class GroupAndSortOptimized : public TransformUpPysicalPass {
  private:
     virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
 
+    bool KeysFilterOptimized(PhysicalOpNode* in, Group* group, Hash* hash,
+                             PhysicalOpNode** new_in);
+    bool GroupOptimized(PhysicalOpNode* in, Group* group,
+                        PhysicalOpNode** new_in);
+    bool SortOptimized(PhysicalOpNode* in, Sort* sort);
     bool TransformGroupExpr(const node::ExprListNode* group,
                             const IndexHint& index_hint, std::string* index,
                             const node::ExprListNode** keys,
@@ -162,9 +167,9 @@ struct ExprPair {
 };
 // Optimize filter condition
 // for FilterNode, JoinNode
-class FilterConditionOptimized : public TransformUpPysicalPass {
+class ConditionOptimized : public TransformUpPysicalPass {
  public:
-    FilterConditionOptimized(node::NodeManager* node_manager,
+    ConditionOptimized(node::NodeManager* node_manager,
                              const std::string& db,
                              const std::shared_ptr<Catalog>& catalog)
         : TransformUpPysicalPass(node_manager, db, catalog) {}
@@ -183,6 +188,8 @@ class FilterConditionOptimized : public TransformUpPysicalPass {
 
  private:
     virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
+    bool JoinConditionOptimized(PhysicalOpNode* in, ConditionFilter* filter,
+                            Hash* left_keys, Group* right_keys);
     void SkipConstExpression(node::ExprListNode input,
                              node::ExprListNode* output);
 };
@@ -330,6 +337,10 @@ class RequestModeransformer : public BatchModeTransformer {
     const std::string& request_name() const { return request_name_; }
 
  protected:
+    virtual bool TransformProjectOp(node::ProjectListNode* node,
+                                    PhysicalOpNode* depend,
+                                    PhysicalOpNode** output,
+                                    base::Status& status);  // NOLINT
     virtual bool TransformProjecPlantOp(const node::ProjectPlanNode* node,
                                         PhysicalOpNode** output,
                                         base::Status& status);  // NOLINT

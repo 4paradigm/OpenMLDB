@@ -37,9 +37,9 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                                           node->GetOutputNameSchemaList(),
                                           provider->table_handler_);
                 }
-                case kProviderTypeIndexScan: {
+                case kProviderTypePartition: {
                     auto provider =
-                        dynamic_cast<const PhysicalScanIndexNode*>(node);
+                        dynamic_cast<const PhysicalPartitionProviderNode*>(node);
                     return new DataRunner(
                         id_++, node->GetOutputNameSchemaList(),
                         provider->table_handler_->GetPartition(
@@ -59,7 +59,7 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             }
         }
         case kPhysicalOpProject: {
-            auto input = Build(node->GetProducers().at(0), status);
+            auto input = Build(node->producers().at(0), status);
             if (nullptr == input) {
                 return nullptr;
             }
@@ -114,30 +114,12 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 }
             }
         }
-        case kPhysicalOpIndexSeek: {
-            auto left = Build(node->GetProducers().at(0), status);
-            if (nullptr == left) {
-                return nullptr;
-            }
-            auto right = Build(node->GetProducers().at(1), status);
-            if (nullptr == right) {
-                return nullptr;
-            }
-
-            auto op = dynamic_cast<const PhysicalSeekIndexNode*>(node);
-            auto runner = new IndexSeekRunner(
-                id_++, node->GetOutputNameSchemaList(), op->GetLimitCnt(),
-                op->GetFnInfo(), op->GetKeysIdxs());
-            runner->AddProducer(left);
-            runner->AddProducer(right);
-            return runner;
-        }
         case kPhysicalOpRequestUnoin: {
-            auto left = Build(node->GetProducers().at(0), status);
+            auto left = Build(node->producers().at(0), status);
             if (nullptr == left) {
                 return nullptr;
             }
-            auto right = Build(node->GetProducers().at(1), status);
+            auto right = Build(node->producers().at(1), status);
             if (nullptr == right) {
                 return nullptr;
             }
@@ -152,11 +134,11 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             return runner;
         }
         case kPhysicalOpRequestJoin: {
-            auto left = Build(node->GetProducers().at(0), status);
+            auto left = Build(node->producers().at(0), status);
             if (nullptr == left) {
                 return nullptr;
             }
-            auto right = Build(node->GetProducers().at(1), status);
+            auto right = Build(node->producers().at(1), status);
             if (nullptr == right) {
                 return nullptr;
             }
@@ -167,7 +149,7 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                         id_++, node->GetOutputNameSchemaList(),
                         op->GetLimitCnt(), op->GetFnInfo(),
                         op->GetConditionIdxs(), op->GetLeftKeyFnInfo(),
-                        op->GetLeftKeysIdxs());
+                        op->left_keys_.GetKeysIdxs());
                     runner->AddProducer(left);
                     runner->AddProducer(right);
                     return runner;
@@ -190,11 +172,11 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             }
         }
         case kPhysicalOpJoin: {
-            auto left = Build(node->GetProducers().at(0), status);
+            auto left = Build(node->producers().at(0), status);
             if (nullptr == left) {
                 return nullptr;
             }
-            auto right = Build(node->GetProducers().at(1), status);
+            auto right = Build(node->producers().at(1), status);
             if (nullptr == right) {
                 return nullptr;
             }
@@ -205,7 +187,7 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                         id_++, node->GetOutputNameSchemaList(),
                         op->GetLimitCnt(), op->GetFnInfo(),
                         op->GetConditionIdxs(), op->GetLeftKeyFnInfo(),
-                        op->GetLeftKeysIdxs());
+                        op->left_keys_.GetKeysIdxs());
                     runner->AddProducer(left);
                     runner->AddProducer(right);
                     return runner;
@@ -220,7 +202,7 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             }
         }
         case kPhysicalOpGroupBy: {
-            auto input = Build(node->GetProducers().at(0), status);
+            auto input = Build(node->producers().at(0), status);
             if (nullptr == input) {
                 return nullptr;
             }
@@ -231,22 +213,8 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             runner->AddProducer(input);
             return runner;
         }
-        case kPhysicalOpGroupAndSort: {
-            auto input = Build(node->GetProducers().at(0), status);
-            if (nullptr == input) {
-                return nullptr;
-            }
-            auto op = dynamic_cast<const PhysicalGroupAndSortNode*>(node);
-
-            auto runner = new GroupAndSortRunner(
-                id_++, node->GetOutputNameSchemaList(), op->GetLimitCnt(),
-                op->GetFnInfo(), op->GetGroupsIdxs(), op->GetOrdersIdxs(),
-                op->GetIsAsc());
-            runner->AddProducer(input);
-            return runner;
-        }
         case kPhysicalOpFilter: {
-            auto input = Build(node->GetProducers().at(0), status);
+            auto input = Build(node->producers().at(0), status);
             if (nullptr == input) {
                 return nullptr;
             }
@@ -258,7 +226,7 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             return runner;
         }
         case kPhysicalOpLimit: {
-            auto input = Build(node->GetProducers().at(0), status);
+            auto input = Build(node->producers().at(0), status);
             if (nullptr == input) {
                 return nullptr;
             }

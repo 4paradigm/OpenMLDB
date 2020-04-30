@@ -25,7 +25,6 @@ enum PhysicalOpType {
     kPhysicalOpFilter,
     kPhysicalOpGroupBy,
     kPhysicalOpSortBy,
-    kPhysicalOpGroupAndSort,
     kPhysicalOpAggrerate,
     kPhysicalOpProject,
     kPhysicalOpLimit,
@@ -49,8 +48,6 @@ inline const std::string PhysicalOpTypeName(const PhysicalOpType &type) {
             return "GROUP_BY";
         case kPhysicalOpSortBy:
             return "SORT_BY";
-        case kPhysicalOpGroupAndSort:
-            return "GROUP_AND_SORT_BY";
         case kPhysicalOpFilter:
             return "FILTER_BY";
         case kPhysicalOpProject:
@@ -82,6 +79,98 @@ struct FnInfo {
     int8_t *fn_;
     vm::Schema fn_schema_;
 };
+
+class Group {
+ public:
+    Group(const node::ExprListNode *groups) : groups_(groups) {}
+    virtual ~Group() {}
+    void SetGroupsIdxs(const std::vector<int32_t> &idxs) {
+        groups_idxs_ = idxs;
+    }
+    const std::vector<int32_t> &GetGroupsIdxs() const { return groups_idxs_; }
+    void set_groups(const node::ExprListNode *groups) { groups_ = groups; }
+    const node::ExprListNode *groups() const { return groups_; }
+    const bool ValidGroup() { return !node::ExprListNullOrEmpty(groups_); }
+    const node::ExprListNode *groups_;
+
+ protected:
+    std::vector<int32_t> groups_idxs_;
+};
+
+class Sort {
+ public:
+    Sort(const node::OrderByNode *orders) : orders_(orders) {}
+    virtual ~Sort() {}
+    const node::OrderByNode *orders() const { return orders_; }
+    void set_orders(const node::OrderByNode *orders) { orders_ = orders; }
+    const std::vector<int32_t> &GetOrdersIdxs() const { return orders_idxs_; }
+    const bool GetIsAsc() const {
+        return nullptr == orders_ ? true : orders_->is_asc_;
+    }
+    void SetOrdersIdxs(const std::vector<int32_t> &idxs) {}
+    const bool ValidSort() { return nullptr != orders_; }
+    const node::OrderByNode *orders_;
+
+ protected:
+    std::vector<int32_t> orders_idxs_;
+};
+
+class Range {
+ public:
+    Range(const node::OrderByNode *order, const int64_t start_offset,
+          const int64_t end_offset)
+        : range_key_(nullptr),
+          start_offset_(start_offset),
+          end_offset_(end_offset) {
+        range_key_ = nullptr == order
+                         ? nullptr
+                         : node::ExprListNullOrEmpty(order->order_by_)
+                               ? nullptr
+                               : order->order_by_->children_[0];
+    }
+    virtual ~Range() {}
+    const node::ExprNode *range_keys() { return range_key_; }
+    const bool Valid() { return true; }
+    const node::ExprNode *range_key_;
+    const int64_t start_offset_;
+    const int64_t end_offset_;
+};
+
+class ConditionFilter {
+ public:
+    ConditionFilter(const node::ExprNode *condition) : condition_(condition) {}
+    virtual ~ConditionFilter() {}
+    void SetConditionIdxs(const std::vector<int32_t> &idxs) {
+        condition_idxs_ = idxs;
+    }
+    const std::vector<int32_t> &GetConditionIdxs() const {
+        return condition_idxs_;
+    }
+    const bool ValidCondition() { return nullptr != condition_; }
+    void set_condition(const node::ExprNode *condition) {
+        condition_ = condition;
+    }
+    const node::ExprNode *condition_;
+
+ protected:
+    std::vector<int32_t> condition_idxs_;
+};
+
+class Hash {
+ public:
+    Hash(const node::ExprListNode *keys) : keys_(keys) {}
+    virtual ~Hash() {}
+    void SetKeysIdxs(const std::vector<int32_t> &idxs) { key_idxs_ = idxs; }
+    const std::vector<int32_t> &GetKeysIdxs() const { return key_idxs_; }
+    void set_keys(const node::ExprListNode *keys) { keys_ = keys; }
+    const node::ExprListNode *keys() const { return keys_; }
+
+    const node::ExprListNode *keys_;
+
+ protected:
+    std::vector<int32_t> key_idxs_;
+};
+
 class PhysicalOpNode {
  public:
     PhysicalOpNode(PhysicalOpType type, bool is_block, bool is_lazy)
@@ -103,7 +192,7 @@ class PhysicalOpNode {
     const std::vector<PhysicalOpNode *> &GetProducers() const {
         return producers_;
     }
-    std::vector<PhysicalOpNode *> &GetProducers() { return producers_; }
+    std::vector<PhysicalOpNode *> &producers() { return producers_; }
     void UpdateProducer(int i, PhysicalOpNode *producer);
 
     void AddProducer(PhysicalOpNode *producer) {
@@ -120,6 +209,9 @@ class PhysicalOpNode {
 
     const vm::Schema *GetOutputSchema() const { return &output_schema_; }
 
+    void SetProducer(size_t index, PhysicalOpNode *produce) {
+        producers_[index] = produce;
+    }
     size_t GetProducerCnt() const { return producers_.size(); }
 
     void SetFnName(const std::string &fn_name) { fn_info_.fn_name_ = fn_name; }
@@ -182,7 +274,7 @@ class PhysicalBinaryNode : public PhysicalOpNode {
 
 enum DataProviderType {
     kProviderTypeTable,
-    kProviderTypeIndexScan,
+    kProviderTypePartition,
     kProviderTypeRequest
 };
 
@@ -190,8 +282,8 @@ inline const std::string DataProviderTypeName(const DataProviderType &type) {
     switch (type) {
         case kProviderTypeTable:
             return "Table";
-        case kProviderTypeIndexScan:
-            return "IndexScan";
+        case kProviderTypePartition:
+            return "Partition";
         case kProviderTypeRequest:
             return "Request";
         default:
@@ -235,73 +327,31 @@ class PhysicalRequestProviderNode : public PhysicalDataProviderNode {
     virtual void Print(std::ostream &output, const std::string &tab) const;
 };
 
-class PhysicalScanIndexNode : public PhysicalDataProviderNode {
+class PhysicalPartitionProviderNode : public PhysicalDataProviderNode {
  public:
-    PhysicalScanIndexNode(const std::shared_ptr<TableHandler> table_handler,
-                          const std::string &index_name)
-        : PhysicalDataProviderNode(table_handler, kProviderTypeIndexScan),
+    PhysicalPartitionProviderNode(
+        const std::shared_ptr<TableHandler> table_handler,
+        const std::string &index_name)
+        : PhysicalDataProviderNode(table_handler, kProviderTypePartition),
           index_name_(index_name) {
         output_type_ = kSchemaTypeGroup;
     }
-    virtual ~PhysicalScanIndexNode() {}
+    virtual ~PhysicalPartitionProviderNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const std::string index_name_;
 };
 
-class PhysicalGroupNode : public PhysicalUnaryNode {
+class PhysicalGroupNode : public PhysicalUnaryNode, public Group {
  public:
     PhysicalGroupNode(PhysicalOpNode *node, const node::ExprListNode *groups)
         : PhysicalUnaryNode(node, kPhysicalOpGroupBy, true, false),
-          groups_(groups) {
+          Group(groups) {
         output_type_ = kSchemaTypeGroup;
         InitSchema();
     }
-
     virtual ~PhysicalGroupNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
-    const node::ExprListNode *groups_;
-    void SetGroupsIdxs(const std::vector<int32_t> &idxs) {
-        groups_idxs_ = idxs;
-    }
-    const std::vector<int32_t> &GetGroupsIdxs() const { return groups_idxs_; }
-
- private:
-    std::vector<int32_t> groups_idxs_;
-};
-
-class PhysicalGroupAndSortNode : public PhysicalUnaryNode {
- public:
-    PhysicalGroupAndSortNode(PhysicalOpNode *node,
-                             const node::ExprListNode *groups,
-                             const node::OrderByNode *orders)
-        : PhysicalUnaryNode(node, kPhysicalOpGroupAndSort, true, false),
-          groups_(groups),
-          orders_(orders) {
-        output_type_ = kSchemaTypeGroup;
-        InitSchema();
-    }
-    virtual ~PhysicalGroupAndSortNode() {}
-    virtual void Print(std::ostream &output, const std::string &tab) const;
-    const node::ExprListNode *groups_;
-    const node::OrderByNode *orders_;
-    void SetGroupsIdxs(const std::vector<int32_t> &idxs) {
-        groups_idxs_ = idxs;
-    }
-    void SetOrdersIdxs(const std::vector<int32_t> &idxs) {
-        orders_idxs_ = idxs;
-    }
-    const node::ExprListNode *GetGroups() const { return groups_; }
-    const node::OrderByNode *GetOrders() const { return orders_; }
-    const std::vector<int32_t> &GetOrdersIdxs() const { return orders_idxs_; }
-    const std::vector<int32_t> &GetGroupsIdxs() const { return groups_idxs_; }
-    const bool GetIsAsc() const {
-        return nullptr == orders_ ? true : orders_->is_asc_;
-    }
-    static PhysicalGroupAndSortNode *CastFrom(PhysicalOpNode *node);
-
- private:
-    std::vector<int32_t> groups_idxs_;
-    std::vector<int32_t> orders_idxs_;
+    bool Valid() { return ValidGroup(); }
 };
 
 enum ProjectType {
@@ -381,7 +431,7 @@ class PhysicalAggrerationNode : public PhysicalProjectNode {
     virtual ~PhysicalAggrerationNode() {}
 };
 
-class PhysicalGroupAggrerationNode : public PhysicalProjectNode {
+class PhysicalGroupAggrerationNode : public PhysicalProjectNode, public Group {
  public:
     PhysicalGroupAggrerationNode(PhysicalOpNode *node,
                                  const node::ExprListNode *groups,
@@ -389,22 +439,17 @@ class PhysicalGroupAggrerationNode : public PhysicalProjectNode {
                                  const Schema &schema)
         : PhysicalProjectNode(node, fn_name, schema, kGroupAggregation, true,
                               false),
-          groups_(groups) {
+          Group(groups) {
         output_type_ = kSchemaTypeTable;
     }
     virtual ~PhysicalGroupAggrerationNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
-    const node::ExprListNode *groups_;
-    void SetGroupsIdxs(const std::vector<int32_t> &idxs) {
-        groups_idxs_ = idxs;
-    }
-    const std::vector<int32_t> &GetGroupsIdxs() const { return groups_idxs_; }
-
- private:
-    std::vector<int32_t> groups_idxs_;
 };
 
-class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
+class PhysicalWindowAggrerationNode : public PhysicalProjectNode,
+                                      public Group,
+                                      public Sort,
+                                      public Range {
  public:
     PhysicalWindowAggrerationNode(PhysicalOpNode *node,
                                   const node::ExprListNode *groups,
@@ -415,48 +460,26 @@ class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
                                   const int64_t end_offset)
         : PhysicalProjectNode(node, fn_name, schema, kWindowAggregation, true,
                               false),
-          groups_(groups),
-          orders_(orders),
-          start_offset_(start_offset),
-          end_offset_(end_offset) {
+          Group(groups),
+          Sort(orders),
+          Range(orders, start_offset, end_offset) {
         output_type_ = kSchemaTypeTable;
     }
     virtual ~PhysicalWindowAggrerationNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
-    const node::ExprListNode *groups_;
-    const node::OrderByNode *orders_;
-    const int64_t start_offset_;
-    const int64_t end_offset_;
-
-    void SetGroupsIdxs(const std::vector<int32_t> &idxs) {
-        groups_idxs_ = idxs;
-    }
-    void SetOrdersIdxs(const std::vector<int32_t> &idxs) {
-        orders_idxs_ = idxs;
-    }
     static PhysicalWindowAggrerationNode *CastFrom(PhysicalOpNode *node);
-    const std::vector<int32_t> &GetOrdersIdxs() const { return orders_idxs_; }
-    const std::vector<int32_t> &GetGroupsIdxs() const { return groups_idxs_; }
-
-    const int64_t GetStartOffset() const { return start_offset_; }
-    const int64_t GetEndOffset() const { return end_offset_; }
-    const node::ExprListNode *GetGroups() const { return groups_; }
-    const node::OrderByNode *GetOrders() const { return orders_; }
-
- private:
-    std::vector<int32_t> groups_idxs_;
-    std::vector<int32_t> orders_idxs_;
+    const bool Valid() { return true; }
 };
 
-class PhysicalJoinNode : public PhysicalBinaryNode {
+class PhysicalJoinNode : public PhysicalBinaryNode, public ConditionFilter {
  public:
     PhysicalJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
                      const node::JoinType join_type)
         : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false, true),
+          ConditionFilter(nullptr),
           join_type_(join_type),
-          condition_(nullptr),
           left_keys_(nullptr),
-          right_keys_(nullptr) {
+          right_groups_(nullptr) {
         output_type_ = kSchemaTypeTable;
         InitSchema();
         fn_infos_.push_back(&left_key_fn_info_);
@@ -466,9 +489,9 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
                      const node::ExprNode *condition)
         : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false, true),
           join_type_(join_type),
-          condition_(condition),
+          ConditionFilter(condition),
           left_keys_(nullptr),
-          right_keys_(nullptr) {
+          right_groups_(nullptr) {
         output_type_ = kSchemaTypeTable;
         InitSchema();
         fn_infos_.push_back(&left_key_fn_info_);
@@ -480,66 +503,65 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
                      const node::ExprListNode *right_keys)
         : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false, true),
           join_type_(join_type),
-          condition_(condition),
+          ConditionFilter(condition),
           left_keys_(left_keys),
-          right_keys_(right_keys) {
+          right_groups_(right_keys) {
         output_type_ = kSchemaTypeTable;
         InitSchema();
         fn_infos_.push_back(&left_key_fn_info_);
+        fn_infos_.push_back(&group_right_fn_info_);
     }
     virtual ~PhysicalJoinNode() {}
     bool InitSchema() override;
     virtual void Print(std::ostream &output, const std::string &tab) const;
-    const node::JoinType join_type_;
-    const node::ExprNode *condition_;
-    const node::ExprListNode *left_keys_;
-    const node::ExprListNode *right_keys_;
-    void SetConditionIdxs(const std::vector<int32_t> &idxs) {
-        condition_idxs_ = idxs;
-    }
-    void SetLeftKeysIdxs(const std::vector<int32_t> &idxs) {
-        left_keys_idxs_ = idxs;
-    }
-    const std::vector<int32_t> &GetLeftKeysIdxs() const {
-        return left_keys_idxs_;
-    }
-    const std::vector<int32_t> &GetConditionIdxs() const {
-        return condition_idxs_;
-    }
     void SetLeftKeyInfo(const FnInfo &fn_info) { left_key_fn_info_ = fn_info; }
     const FnInfo &GetLeftKeyFnInfo() const { return left_key_fn_info_; }
 
+    void set_group_right_fn_info(const FnInfo &fn_info) {
+        group_right_fn_info_ = fn_info;
+    }
+    const FnInfo &group_right_fn_info() const { return group_right_fn_info_; }
+    const node::JoinType join_type_;
+
+    const bool Valid() { return true; }
+    Hash left_keys_;
+    Group right_groups_;
+
  private:
     FnInfo left_key_fn_info_;
-    std::vector<int32_t> condition_idxs_;
-    std::vector<int32_t> left_keys_idxs_;
+    FnInfo group_right_fn_info_;
 };
-class PhysicalRequestJoinNode : public PhysicalBinaryNode {
+class PhysicalRequestJoinNode : public PhysicalBinaryNode,
+                                public ConditionFilter {
  public:
     PhysicalRequestJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
                             const node::JoinType join_type)
         : PhysicalBinaryNode(left, right, kPhysicalOpRequestJoin, false, true),
           join_type_(join_type),
-          condition_(nullptr),
+          ConditionFilter(nullptr),
           left_keys_(nullptr),
-          right_keys_(nullptr),
-          left_key_fn_info_({"", nullptr}) {
+          right_groups_(nullptr),
+          left_key_fn_info_({"", nullptr}),
+          group_right_fn_info_({"", nullptr}) {
         output_type_ = kSchemaTypeRow;
         InitSchema();
         fn_infos_.push_back(&left_key_fn_info_);
+        fn_infos_.push_back(&group_right_fn_info_);
     }
     PhysicalRequestJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
                             const node::JoinType join_type,
                             const node::ExprNode *condition)
         : PhysicalBinaryNode(left, right, kPhysicalOpRequestJoin, false, true),
           join_type_(join_type),
-          condition_(condition),
+          ConditionFilter(condition),
           left_keys_(nullptr),
-          right_keys_(nullptr),
-          left_key_fn_info_({"", nullptr}) {
+          right_groups_(nullptr),
+          left_key_fn_info_({"", nullptr}),
+          group_right_fn_info_({"", nullptr}) {
         output_type_ = kSchemaTypeRow;
         InitSchema();
         fn_infos_.push_back(&left_key_fn_info_);
+        fn_infos_.push_back(&group_right_fn_info_);
     }
     PhysicalRequestJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
                             const node::JoinType join_type,
@@ -548,41 +570,28 @@ class PhysicalRequestJoinNode : public PhysicalBinaryNode {
                             const node::ExprListNode *right_keys)
         : PhysicalBinaryNode(left, right, kPhysicalOpRequestJoin, false, true),
           join_type_(join_type),
-          condition_(condition),
+          ConditionFilter(condition),
           left_keys_(left_keys),
-          right_keys_(right_keys),
-          left_key_fn_info_({"", nullptr}) {
+          right_groups_(right_keys),
+          left_key_fn_info_({"", nullptr}),
+          group_right_fn_info_({"", nullptr}) {
         output_type_ = kSchemaTypeRow;
         InitSchema();
         fn_infos_.push_back(&left_key_fn_info_);
+        fn_infos_.push_back(&group_right_fn_info_);
     }
     virtual ~PhysicalRequestJoinNode() {}
     bool InitSchema() override;
     virtual void Print(std::ostream &output, const std::string &tab) const;
-    const node::JoinType join_type_;
-    const node::ExprNode *condition_;
-    const node::ExprListNode *left_keys_;
-    const node::ExprListNode *right_keys_;
-    void SetConditionIdxs(const std::vector<int32_t> &idxs) {
-        condition_idxs_ = idxs;
-    }
-    void SetLeftKeysIdxs(const std::vector<int32_t> &idxs) {
-        left_keys_idxs_ = idxs;
-    }
-    const std::vector<int32_t> &GetLeftKeysIdxs() const {
-        return left_keys_idxs_;
-    }
-
-    const std::vector<int32_t> &GetConditionIdxs() const {
-        return condition_idxs_;
-    }
     void SetLeftKeyInfo(const FnInfo &fn_info) { left_key_fn_info_ = fn_info; }
     const FnInfo &GetLeftKeyFnInfo() const { return left_key_fn_info_; }
+    const node::JoinType join_type_;
+    Hash left_keys_;
+    Group right_groups_;
 
  private:
     FnInfo left_key_fn_info_;
-    std::vector<int32_t> condition_idxs_;
-    std::vector<int32_t> left_keys_idxs_;
+    FnInfo group_right_fn_info_;
 };
 class PhysicalUnionNode : public PhysicalBinaryNode {
  public:
@@ -598,116 +607,55 @@ class PhysicalUnionNode : public PhysicalBinaryNode {
     const bool is_all_;
 };
 
-class PhysicalSeekIndexNode : public PhysicalBinaryNode {
- public:
-    PhysicalSeekIndexNode(PhysicalOpNode *left, PhysicalOpNode *right,
-                          const node::ExprListNode *keys)
-        : PhysicalBinaryNode(left, right, kPhysicalOpIndexSeek, true, true),
-          keys_(keys) {
-        output_type_ = kSchemaTypeGroup;
-        InitSchema();
-    }
-    virtual ~PhysicalSeekIndexNode() {}
-    bool InitSchema() override;
-    virtual void Print(std::ostream &output, const std::string &tab) const;
-    void SetKeysIdxs(const std::vector<int32_t> &idxs) { keys_idxs_ = idxs; }
-
-    const std::vector<int32_t> &GetKeysIdxs() const { return keys_idxs_; }
-    const node::ExprListNode *keys_;
-
- private:
-    std::vector<int32_t> keys_idxs_;
-};
-
-class PhysicalRequestUnionNode : public PhysicalBinaryNode {
+class PhysicalRequestUnionNode : public PhysicalBinaryNode,
+                                 public Group,
+                                 public Sort,
+                                 public Hash,
+                                 public Range {
  public:
     PhysicalRequestUnionNode(PhysicalOpNode *left, PhysicalOpNode *right,
                              const node::ExprListNode *groups,
                              const node::OrderByNode *orders,
-                             const node::OrderByNode *keys,
                              const int64_t start_offset,
                              const int64_t end_offset)
         : PhysicalBinaryNode(left, right, kPhysicalOpRequestUnoin, true, true),
-          groups_(groups),
-          orders_(orders),
-          keys_(keys),
-          start_offset_(start_offset),
-          end_offset_(end_offset) {
+          Group(groups),
+          Sort(orders),
+          Hash(nullptr),
+          Range(orders, start_offset, end_offset) {
         output_type_ = kSchemaTypeTable;
         InitSchema();
     }
     virtual ~PhysicalRequestUnionNode() {}
     bool InitSchema() override;
     virtual void Print(std::ostream &output, const std::string &tab) const;
-    void SetGroupsIdxs(const std::vector<int32_t> &idxs) {
-        groups_idxs_ = idxs;
-    }
-    void SetOrdersIdxs(const std::vector<int32_t> &idxs) {
-        orders_idxs_ = idxs;
-    }
-    void SetKeysIdxs(const std::vector<int32_t> &idxs) { keys_idxs_ = idxs; }
-
-    const std::vector<int32_t> &GetKeysIdxs() const { return keys_idxs_; }
-    const std::vector<int32_t> &GetOrdersIdxs() const { return orders_idxs_; }
-    const std::vector<int32_t> &GetGroupsIdxs() const { return groups_idxs_; }
-    const bool GetIsAsc() const {
-        return nullptr == orders_ ? true : orders_->is_asc_;
-    }
-
- private:
-    std::vector<int32_t> groups_idxs_;
-    std::vector<int32_t> orders_idxs_;
-    std::vector<int32_t> keys_idxs_;
-
- public:
-    const node::ExprListNode *groups_;
-    const node::OrderByNode *orders_;
-    const node::OrderByNode *keys_;
-
-    const int64_t start_offset_;
-    const int64_t end_offset_;
+    const bool Valid() { return true; }
 };
 
-class PhysicalSortNode : public PhysicalUnaryNode {
+class PhysicalSortNode : public PhysicalUnaryNode, public Sort {
  public:
     PhysicalSortNode(PhysicalOpNode *node, const node::OrderByNode *order)
-        : PhysicalUnaryNode(node, kPhysicalOpSortBy, true, false),
-          order_(order) {
+        : PhysicalUnaryNode(node, kPhysicalOpSortBy, true, false), Sort(order) {
         output_type_ = node->output_type_;
         InitSchema();
     }
     virtual ~PhysicalSortNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
-    void SetOrdersIdxs(const std::vector<int32_t> &idxs) {
-        orders_idxs_ = idxs;
-    }
-    const std::vector<int32_t> &GetOrdersIdxs() const { return orders_idxs_; }
-    const node::OrderByNode *order_;
 
- private:
-    std::vector<int32_t> orders_idxs_;
+    bool Valid() { return ValidSort(); }
 };
 
-class PhysicalFliterNode : public PhysicalUnaryNode {
+class PhysicalFliterNode : public PhysicalUnaryNode, public ConditionFilter {
  public:
     PhysicalFliterNode(PhysicalOpNode *node, const node::ExprNode *condition)
         : PhysicalUnaryNode(node, kPhysicalOpFilter, true, false),
-          condition_(condition) {
+          ConditionFilter(condition) {
         output_type_ = node->output_type_;
         InitSchema();
     }
     virtual ~PhysicalFliterNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
-    const node::ExprNode *condition_;
-    void SetConditionIdxs(const std::vector<int32_t> &idxs) {
-        condition_idxs_ = idxs;
-    }
-    const std::vector<int32_t> &GetConditionIdxs() const {
-        return condition_idxs_;
-    }
-
- private:
-    std::vector<int32_t> condition_idxs_;
+    bool Valid() { return ValidCondition(); }
 };
 
 class PhysicalLimitNode : public PhysicalUnaryNode {

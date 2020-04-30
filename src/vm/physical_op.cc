@@ -81,8 +81,8 @@ void PhysicalRequestProviderNode::Print(std::ostream& output,
     output << "(request=" << table_handler_->GetName() << ")";
 }
 
-void PhysicalScanIndexNode::Print(std::ostream& output,
-                                  const std::string& tab) const {
+void PhysicalPartitionProviderNode::Print(std::ostream& output,
+                                          const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "(type=" << DataProviderTypeName(provider_type_)
            << ", table=" << table_handler_->GetName()
@@ -95,20 +95,6 @@ void PhysicalGroupNode::Print(std::ostream& output,
     output << "(groups=" << node::ExprString(groups_) << ")";
     output << "\n";
     PrintChildren(output, tab);
-}
-
-void PhysicalGroupAndSortNode::Print(std::ostream& output,
-                                     const std::string& tab) const {
-    PhysicalOpNode::Print(output, tab);
-    output << "(groups=" << node::ExprString(groups_)
-           << ", orders=" << node::ExprString(orders_) << ")";
-    output << "\n";
-    PrintChildren(output, tab);
-}
-
-PhysicalGroupAndSortNode* PhysicalGroupAndSortNode::CastFrom(
-    PhysicalOpNode* node) {
-    return dynamic_cast<PhysicalGroupAndSortNode*>(node);
 }
 
 void PhysicalProjectNode::Print(std::ostream& output,
@@ -164,9 +150,11 @@ void PhysicalWindowAggrerationNode::Print(std::ostream& output,
     PhysicalOpNode::Print(output, tab);
     output << "(type=" << ProjectTypeName(project_type_)
            << ", groups=" << node::ExprString(groups_)
-           << ", orders=" << node::ExprString(orders_)
-           << ", start=" << std::to_string(start_offset_)
-           << ", end=" << std::to_string(end_offset_);
+           << ", orders=" << node::ExprString(orders_);
+    if (nullptr != range_key_) {
+        output << ", range=(" << node::ExprString(range_key_) << ", "
+               << start_offset_ << ", " << end_offset_ << ")";
+    }
     if (limit_cnt_ > 0) {
         output << ", limit=" << limit_cnt_;
     }
@@ -180,8 +168,8 @@ void PhysicalJoinNode::Print(std::ostream& output,
     PhysicalOpNode::Print(output, tab);
     output << "(type=" << node::JoinTypeName(join_type_)
            << ", condition=" << node::ExprString(condition_)
-           << ", left_keys=" << node::ExprString(left_keys_)
-           << ", right_keys=" << node::ExprString(right_keys_);
+           << ", left_keys=" << node::ExprString(left_keys_.keys())
+           << ", right_groups=" << node::ExprString(right_groups_.groups());
     if (limit_cnt_ > 0) {
         output << ", limit=" << limit_cnt_;
     }
@@ -211,7 +199,7 @@ bool PhysicalJoinNode::InitSchema() {
 void PhysicalSortNode::Print(std::ostream& output,
                              const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(" << node::ExprString(order_);
+    output << "(" << node::ExprString(orders_);
     if (limit_cnt_ > 0) {
         output << ", limit=" << limit_cnt_;
     }
@@ -317,9 +305,11 @@ void PhysicalRequestUnionNode::Print(std::ostream& output,
     PhysicalOpNode::Print(output, tab);
     output << "(groups=" << node::ExprString(groups_)
            << ", orders=" << node::ExprString(orders_)
-           << ", keys=" << node::ExprString(keys_)
-           << ", start=" << std::to_string(start_offset_)
-           << ", end=" << std::to_string(end_offset_);
+           << ", keys=" << node::ExprString(keys_);
+    if (nullptr != range_key_) {
+        output << ", range=(" << node::ExprString(range_key_) << ", "
+               << start_offset_ << ", " << end_offset_ <<")";
+    }
     if (limit_cnt_ > 0) {
         output << ", limit=" << limit_cnt_;
     }
@@ -341,8 +331,8 @@ void PhysicalRequestJoinNode::Print(std::ostream& output,
     PhysicalOpNode::Print(output, tab);
     output << "(type=" << node::JoinTypeName(join_type_)
            << ", condition=" << node::ExprString(condition_)
-           << ", left_keys=" << node::ExprString(left_keys_)
-           << ", right_keys=" << node::ExprString(right_keys_);
+           << ", left_keys=" << node::ExprString(left_keys_.keys())
+           << ", right_groups=" << node::ExprString(right_groups_.groups());
     if (limit_cnt_ > 0) {
         output << ", limit=" << limit_cnt_;
     }
@@ -369,24 +359,6 @@ bool PhysicalRequestJoinNode::InitSchema() {
     PrintSchema();
     return true;
 }
-void PhysicalSeekIndexNode::Print(std::ostream& output,
-                                  const std::string& tab) const {
-    PhysicalOpNode::Print(output, tab);
-    output << "(keys=" << node::ExprString(keys_);
-    if (limit_cnt_ > 0) {
-        output << ", limit=" << limit_cnt_;
-    }
-    output << ")";
-    output << "\n";
-    PrintChildren(output, tab);
-}
-bool PhysicalSeekIndexNode::InitSchema() {
-    output_schema_.CopyFrom(producers_[1]->output_schema_);
-    for (auto pair : producers_[1]->GetOutputNameSchemaList()) {
-        output_name_schema_list_.push_back(pair);
-    }
-    PrintSchema();
-    return true;
-}
+
 }  // namespace vm
 }  // namespace fesql
