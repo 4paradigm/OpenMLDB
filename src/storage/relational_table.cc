@@ -596,10 +596,7 @@ bool RelationalTable::Delete(const std::shared_ptr<IndexDef> index_def,
                              rocksdb::WriteBatch* batch) {
     ::rtidb::type::IndexType index_type = index_def->GetType();
     if (index_type == ::rtidb::type::kPrimaryKey) {
-        if (!DeletePk(rocksdb::Slice(comparable_key), batch))
-            return false;
-        else
-            return true;
+        return DeletePk(rocksdb::Slice(comparable_key), batch);
     }
     std::unique_ptr<rocksdb::Iterator> it(
         GetIteratorAndSeek(index_def->GetId(), rocksdb::Slice(comparable_key)));
@@ -612,10 +609,7 @@ bool RelationalTable::Delete(const std::shared_ptr<IndexDef> index_def,
                   comparable_key.c_str(), id_, pid_);
             return false;
         }
-        if (!DeletePk(it->value(), batch))
-            return false;
-        else
-            return true;
+        return DeletePk(it->value(), batch);
     } else if (index_type == ::rtidb::type::kNoUnique) {
         int count = 0;
         while (it->Valid()) {
@@ -949,7 +943,6 @@ bool RelationalTable::UpdateDB(const std::shared_ptr<IndexDef> index_def,
                           id_, pid_);
                     return false;
                 } else if (value_view.IsNULL(col_iter->second)) {
-                    // TODO(wangbao) if pk update to null
                     builder.AppendNULL();
                     continue;
                 }

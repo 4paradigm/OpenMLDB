@@ -1969,7 +1969,9 @@ void HandleNSQuery(const std::vector<std::string>& parts,
         name_type_map.insert(std::make_pair(
                     col_desc.name(), col_desc.data_type()));
     }
-    ::rtidb::api::ReadOption ro;
+    ::google::protobuf::RepeatedPtrField<
+        ::rtidb::api::ReadOption> ros_pb;
+    ::rtidb::api::ReadOption* ro = ros_pb.Add();
     for (const auto& kv : condition_columns_map) {
         auto iter = name_type_map.find(kv.first);
         if (iter == name_type_map.end()) {
@@ -1977,7 +1979,7 @@ void HandleNSQuery(const std::vector<std::string>& parts,
                     kv.first.c_str());
             return;
         }
-        ::rtidb::api::Columns* index = ro.add_index();
+        ::rtidb::api::Columns* index = ro->add_index();
         index->add_name(kv.first);
         ::rtidb::type::DataType type = iter->second;
         std::string val = "";
@@ -1989,7 +1991,7 @@ void HandleNSQuery(const std::vector<std::string>& parts,
     }
     std::string value;
     uint32_t count = 0;
-    bool ok = tablet_client->Query(tid, pid, ro, &value, &count, &msg);
+    bool ok = tablet_client->BatchQuery(tid, pid, ros_pb, &value, &count, &msg);
     if (!ok) {
         std::cout << "query error: " << msg << std::endl;
         return;
@@ -2642,16 +2644,18 @@ void HandleNSPreview(const std::vector<std::string>& parts,
             bool is_finish = false;
             std::string err_msg;
             uint64_t snapshot_id = 0;
-            bool ok = tablet_client->Traverse(tid, pid, "", limit, &count,
-                                              &err_msg, &data, &is_finish,
+            std::string pk = "";
+            bool ok = tablet_client->Traverse(tid, pid, limit, &count,
+                                              &err_msg, &pk, &data, &is_finish,
                                               &snapshot_id);
             if (!ok) {
                 std::cerr << "Fail to preview table" << std::endl;
             }
             if (tables[0].compress_type() == ::rtidb::nameserver::kSnappy) {
-                data.clear();
+                std::string uncompressed;
                 ::snappy::Uncompress(data.c_str(), data.length(),
-                        &data);
+                        &uncompressed);
+                data = uncompressed;
             }
             limit -= count;
             uint32_t offset = 0;

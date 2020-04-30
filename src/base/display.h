@@ -545,8 +545,8 @@ static void FillTableRow(
     }
 }
 
-static bool FillTableRows(const std::string& data, 
-        uint32_t count, 
+static bool FillTableRows(const std::string& data,
+        uint32_t count,
         const Schema& schema,
         std::vector<std::vector<std::string>>* row_vec) {
     rtidb::base::RowView rv(schema);
@@ -571,7 +571,7 @@ static bool FillTableRows(const std::string& data,
                 row[i] = "null";
             }
         }
-        row_vec->push_back(row);
+        row_vec->push_back(std::move(row));
     }
     return true;
 }
