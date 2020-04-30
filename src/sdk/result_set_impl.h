@@ -40,7 +40,7 @@ class ResultSetImpl : public ResultSet {
 
     bool Next();
 
-    bool IsNULL(uint32_t index) {}
+    bool IsNULL(uint32_t index);
 
     bool GetString(uint32_t index,
                    char** result, 

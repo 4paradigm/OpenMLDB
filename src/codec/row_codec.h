@@ -96,20 +96,6 @@ class RowBuilder {
     std::vector<uint32_t> offset_vec_;
 };
 
-/*class RowIterView {
- public:
-    explicit RowIterView(const fesql::vm::Schema& schema);
-    ~RowIterView();
-    int32_t SkipColumns(uint32_t cnt);
-    int32_t NextBool(bool* val);
-    int32_t NextInt16(int16_t* val);
-    int32_t NextInt32(int32_t* val);
-    int32_t NextInt64(int64_t* val);
-    int32_t NextFloat(float* val);
-    int32_t NextDouble(double* val);
-    int32_t NextTimestamp(int64_t* val);
-};
-*/
 
 class RowBaseView {
  public:
@@ -142,6 +128,17 @@ class RowIOBufView : public RowBaseView{
     int32_t GetString(uint32_t idx, char** val, uint32_t* length) {
         return -1;
     }
+
+    inline int32_t GetBool(uint32_t idx, bool* val) {
+        if (val == NULL) return -1;
+        if (IsNULL(idx)) {
+            return 1;
+        }
+        uint32_t offset = offset_vec_.at(idx);
+        *val = v1::GetBoolField(row_, offset) == 1 ? true : false;
+        return 0;
+    }
+
     inline bool IsNULL(uint32_t idx) {
         uint32_t offset = HEADER_LENGTH + (idx >> 3);
         uint8_t val = 0;

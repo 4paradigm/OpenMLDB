@@ -448,15 +448,11 @@ static void BM_GROUPBY_CASE1_QUERY(benchmark::State &state) {  // NOLINT
         "SELECT "
         "avg(col_i32),\n"
         "avg(col_i16),\n"
-        "avg(col_f),\n"
-        "avg(col_d),\n"
         "max(col_i32),\n"
-        "max(col_i16),\n"
-        "max(col_f),\n"
-        "max(col_d),\n"
+        "max(col_i16)\n"
         "FROM tbl\n"
         "group by col_str64;";
-    std::string query_type = "avg 5 cols and max 5 cols";
+    std::string query_type = "avg 2 cols and max 2 cols";
     std::string label = query_type + "/group " +
                         std::to_string(state.range(0)) + "/max window size " +
                         std::to_string(state.range(1));

@@ -787,7 +787,9 @@ bool RowDecoder::GetStringFieldOffset(const std::string& name,
 RowIOBufView::RowIOBufView(const fesql::vm::Schema& schema):row_(),
     str_addr_length_(0), is_valid_(true), string_field_cnt_(0),
     str_field_start_offset_(0), size_(0), schema_(schema),
-    offset_vec_() {}
+    offset_vec_() {
+    Init();
+}
 
 RowIOBufView::~RowIOBufView() {}
 
