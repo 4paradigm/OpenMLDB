@@ -176,7 +176,7 @@ class ViewResult {
 
     void SetRv(const std::shared_ptr<TableHandler>& th) {
         columns_ = th->columns;
-        rv_ = std::make_shared<rtidb::base::RowView>(*columns_);
+        rv_ = std::make_shared<rtidb::codec::RowView>(*columns_);
         pk_idx_ = th->pk_index;
         data_type_ = th->pk_type;
         initialed_ = true;
@@ -217,7 +217,7 @@ class ViewResult {
 
     int64_t GetInt(uint32_t idx);
 
-    std::shared_ptr<rtidb::base::RowView> rv_;
+    std::shared_ptr<rtidb::codec::RowView> rv_;
 
  private:
     std::shared_ptr<

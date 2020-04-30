@@ -8,7 +8,7 @@
 #include "gtest/gtest.h"
 
 namespace rtidb {
-namespace base {
+namespace codec {
 
 class FlatArrayTest : public ::testing::Test {
  public:
@@ -151,7 +151,7 @@ TEST_F(FlatArrayTest, DateEncode) {
     std::cout << ::rtidb::base::DebugString(buffer) << std::endl;
 }
 
-}  // namespace base
+}  // namespace codec
 }  // namespace rtidb
 
 int main(int argc, char** argv) {

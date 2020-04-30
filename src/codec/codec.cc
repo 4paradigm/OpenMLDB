@@ -24,7 +24,7 @@ using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
 
 namespace rtidb {
-namespace base {
+namespace codec {
 
 #define BitMapSize(size) (((size) >> 3) + !!((size)&0x07))
 
@@ -899,5 +899,5 @@ bool RowProject::Project(const int8_t* row_ptr, uint32_t size,
     return true;
 }
 
-}  // namespace base
+}  // namespace codec
 }  // namespace rtidb

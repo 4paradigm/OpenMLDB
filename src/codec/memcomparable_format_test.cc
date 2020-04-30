@@ -10,7 +10,7 @@
 #include "gtest/gtest.h"
 
 namespace rtidb {
-namespace base {
+namespace codec {
 
 class MemComFormatTest : public ::testing::Test {
  public:
@@ -164,7 +164,7 @@ TEST_F(MemComFormatTest, TestVarchar) {
     ASSERT_EQ(sort_vec.at(5), vec.at(2));
 }
 
-}  // namespace base
+}  // namespace codec
 }  // namespace rtidb
 
 int main(int argc, char** argv) {

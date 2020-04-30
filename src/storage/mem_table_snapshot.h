@@ -67,7 +67,7 @@ class MemTableSnapshot : public Snapshot {
         WriteHandle* wh,
         const ::rtidb::common::ColumnKey& column_key,  // NOLINT
         uint32_t idx, uint32_t partition_num,
-        const std::vector<::rtidb::base::ColumnDesc>& columns, uint32_t max_idx,
+        const std::vector<::rtidb::codec::ColumnDesc>& columns, uint32_t max_idx,
         const std::vector<uint32_t>& index_cols,
         uint64_t& count,                                        // NOLINT
         uint64_t& expired_key_num, uint64_t& deleted_key_num);  // NOLINT
@@ -75,7 +75,7 @@ class MemTableSnapshot : public Snapshot {
     bool DumpSnapshotIndexData(
         std::shared_ptr<Table> table,
         const std::vector<std::vector<uint32_t>>& index_cols,
-        const std::vector<::rtidb::base::ColumnDesc>& columns,
+        const std::vector<::rtidb::codec::ColumnDesc>& columns,
         uint32_t max_idx, uint32_t idx,
         const std::vector<::rtidb::log::WriteHandle*>& whs,
         uint64_t* snapshot_offset);
@@ -83,7 +83,7 @@ class MemTableSnapshot : public Snapshot {
     bool DumpBinlogIndexData(
         std::shared_ptr<Table> table,
         const std::vector<std::vector<uint32_t>>& index_cols,
-        const std::vector<::rtidb::base::ColumnDesc>& columns,
+        const std::vector<::rtidb::codec::ColumnDesc>& columns,
         uint32_t max_idx, uint32_t idx,
         const std::vector<::rtidb::log::WriteHandle*>& whs,
         uint64_t snapshot_offset, uint64_t collected_offset);
@@ -100,7 +100,7 @@ class MemTableSnapshot : public Snapshot {
 
     bool PackNewIndexEntry(std::shared_ptr<Table> table,
                         const std::vector<std::vector<uint32_t>>& index_cols,
-                        const std::vector<::rtidb::base::ColumnDesc>& columns,
+                        const std::vector<::rtidb::codec::ColumnDesc>& columns,
                         uint32_t max_idx, uint32_t idx, uint32_t partition_num,
                         ::rtidb::api::LogEntry* entry,
                         uint32_t* index_pid);

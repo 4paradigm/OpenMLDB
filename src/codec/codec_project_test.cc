@@ -23,7 +23,7 @@
 #include "proto/common.pb.h"
 
 namespace rtidb {
-namespace base {
+namespace codec {
 
 struct TestArgs {
     Schema schema;
@@ -417,7 +417,7 @@ TEST_P(ProjectCodecTest, common_case) {
 INSTANTIATE_TEST_CASE_P(ProjectCodecTestPrefix, ProjectCodecTest,
                         testing::ValuesIn(GenCommonCase()));
 
-}  // namespace base
+}  // namespace codec
 }  // namespace rtidb
 
 int main(int argc, char** argv) {
