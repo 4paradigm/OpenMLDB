@@ -168,6 +168,8 @@ void BaseClient::CheckZkClient() {
         std::cout << "reconnect zk" << std::endl;
         if (zk_client_->Reconnect()) {
             std::cout << "reconnect zk ok" << std::endl;
+            RefreshNodeList();
+            RefreshTable();
         }
     }
     task_thread_pool_.DelayTask(zk_keep_alive_check_,

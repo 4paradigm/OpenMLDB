@@ -11,7 +11,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import com._4paradigm.rtidb.ns.NS;
-import com._4paradigm.rtidb.object_storage_server.ObjectStorage;
 import com._4paradigm.rtidb.type.Type;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
@@ -289,7 +288,7 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
                         } else {
                             SingleEndpointRpcClient client = new SingleEndpointRpcClient(baseClient);
                             client.updateEndpoint(endPoint, bcg);
-                            BlobServer bs = (BlobServer) RpcProxy.getProxy(client, ObjectStorage.BlobServer.class);
+                            BlobServer bs = (BlobServer) RpcProxy.getProxy(client, BlobServer.class);
                             handler.setBS(bs);
                         }
                     }

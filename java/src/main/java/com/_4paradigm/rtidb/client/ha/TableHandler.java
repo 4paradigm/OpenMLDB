@@ -5,7 +5,7 @@ import com._4paradigm.rtidb.client.schema.ColumnType;
 import com._4paradigm.rtidb.client.type.DataType;
 import com._4paradigm.rtidb.common.Common;
 import com._4paradigm.rtidb.ns.NS.TableInfo;
-import com._4paradigm.rtidb.object_storage_server.ObjectStorage;
+import com._4paradigm.rtidb.object_store.oss;
 import com._4paradigm.rtidb.type.Type;
 import rtidb.blobserver.BlobServer;
 

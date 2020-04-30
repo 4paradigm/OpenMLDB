@@ -61,7 +61,7 @@ public class RowCodecCommon {
         for (int i = 0; i < schema.size(); i++) {
             ColumnDesc columnDesc = schema.get(i);
             Object column = row.get(columnDesc.getName());
-            if (columnDesc.getDataType().equals(DataType.Varchar) || columnDesc.getDataType().equals(DataType.String)) {
+            if (columnDesc.getDataType().equals(DataType.Varchar) || columnDesc.getDataType().equals(DataType.String) || columnDesc.getDataType().equals(DataType.Blob)){
                 if (!columnDesc.isNotNull() && column == null) {
                     continue;
                 } else if (columnDesc.isNotNull()

@@ -29,7 +29,10 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.sql.Timestamp;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
@@ -867,6 +870,52 @@ public class TableSyncClientTest extends TestCaseBase {
         String name = "";
         try {
             name = createRelationalTable(IndexType.PrimaryKey);
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.assertTrue(false);
+        } finally {
+            nsc.dropTable(name);
+        }
+    }
+
+    @Test
+    public  void TestWriteBinary() {
+        String name = "";
+        try {
+            name = createRelationalTable(IndexType.PrimaryKey);
+            List<com._4paradigm.rtidb.client.schema.ColumnDesc> schema = tableSyncClient.getSchema(name);
+            Assert.assertEquals(schema.size(), 3);
+
+            //put
+            WriteOption wo = new WriteOption();
+            Map<String, Object> data = new HashMap<String, Object>();
+            data.put("id", 11l);
+            data.put("attribute", "a1");
+
+            byte[] bytedata = "Any String you want".getBytes();
+            ByteBuffer buf = ByteBuffer.allocate(bytedata.length);
+            for (int i = 0 ; i < bytedata.length; i++) {
+                buf.put(bytedata[i]);
+            }
+            data.put("image", buf);
+            boolean ok = tableSyncClient.put(name, data, wo);
+            Assert.assertTrue(ok);
+            Map<String, Object> queryMap;
+            //query
+            {
+                Map<String, Object> index = new HashMap<>();
+                index.put("id", 11l);
+                Set<String> colSet = new HashSet<>();
+                colSet.add("id");
+                colSet.add("image");
+                ReadOption ro = new ReadOption(index, null, colSet, 1);
+                RelationalIterator it = tableSyncClient.query(name, ro);
+                Assert.assertTrue(it.valid());
+                queryMap = it.getDecodedValue();
+                Assert.assertEquals(queryMap.size(), 2);
+                Assert.assertEquals(queryMap.get("id"), 11l);
+                Assert.assertTrue(buf.equals((ByteBuffer) queryMap.get("image")));
+            }
         } catch (Exception e) {
             e.printStackTrace();
             Assert.assertTrue(false);

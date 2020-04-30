@@ -1,10 +1,9 @@
 package rtidb.blobserver;
 
-import com._4paradigm.rtidb.object_storage_server.ObjectStorage;
-
+import com._4paradigm.rtidb.object_store.oss;
 
 public interface BlobServer {
-    ObjectStorage.PutResponse put(ObjectStorage.PutRequest request);
-    ObjectStorage.GetResponse get(ObjectStorage.GetRequest reuqest);
-    ObjectStorage.GeneralResponse delete(ObjectStorage.DeleteRequest request);
+    oss.PutResponse put(oss.PutRequest request);
+    oss.GetResponse get(oss.GetRequest reuqest);
+    oss.GeneralResponse delete(oss.DeleteRequest request);
 }

@@ -15,7 +15,7 @@ import com.google.protobuf.ByteBufferNoCopy;
 import com.google.protobuf.ByteString;
 import rtidb.api.TabletServer;
 import rtidb.blobserver.BlobServer;
-import com._4paradigm.rtidb.object_storage_server.ObjectStorage;
+import com._4paradigm.rtidb.object_store.oss;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -1241,13 +1241,15 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (bs == null) {
             throw new TabletException("can not found available blobserver with tid " + tid);
         }
-        ObjectStorage.PutRequest.Builder builder = ObjectStorage.PutRequest.newBuilder();
+        oss.PutRequest.Builder builder = oss.PutRequest.newBuilder();
         builder.setTid(tid);
         builder.setPid(0);
+        row.rewind();
         builder.setData(ByteBufferNoCopy.wrap(row.asReadOnlyBuffer()));
 
-        ObjectStorage.PutRequest request = builder.build();
-        ObjectStorage.PutResponse response = bs.put(request);
+        oss.PutRequest request = builder.build();
+        System.out.println(request.getData().size() + "*******************");
+        oss.PutResponse response = bs.put(request);
         if (response != null && response.getCode() == 0) {
             autoKey[0] = response.getKey();
             return true;
@@ -1389,6 +1391,7 @@ public class TableSyncClientImpl implements TableSyncClient {
                     if (!ok) {
                         throw new TabletException("put blob failed");
                     }
+                    System.out.println("+++++++++++++++++++++" + keys[0] + "+++ " + tname);
                     row.put(colDesc.getName(), keys[0]);
                 }
             }
