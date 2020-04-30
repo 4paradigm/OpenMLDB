@@ -1248,7 +1248,6 @@ public class TableSyncClientImpl implements TableSyncClient {
         builder.setData(ByteBufferNoCopy.wrap(row.asReadOnlyBuffer()));
 
         oss.PutRequest request = builder.build();
-        System.out.println(request.getData().size() + "*******************");
         oss.PutResponse response = bs.put(request);
         if (response != null && response.getCode() == 0) {
             autoKey[0] = response.getKey();
@@ -1391,7 +1390,6 @@ public class TableSyncClientImpl implements TableSyncClient {
                     if (!ok) {
                         throw new TabletException("put blob failed");
                     }
-                    System.out.println("+++++++++++++++++++++" + keys[0] + "+++ " + tname);
                     row.put(colDesc.getName(), keys[0]);
                 }
             }
