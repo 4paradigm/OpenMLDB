@@ -334,9 +334,7 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
                     logger.error("fail to add endpoint", e);
                 }
             }
-            nodeManager.update(endpoinSet);
             children.clear();;
-            endpoinSet.clear();
             children = zookeeper.getChildren(config.getZkOssNodeRootPath(), false);
             for (String path : children) {
                 if (path.isEmpty()) {
