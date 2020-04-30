@@ -130,7 +130,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableRemoteBeforeAddRepCluster) {
     // tablet
     FLAGS_endpoint = "127.0.0.1:9931";
     brpc::Server server1;
-    StartTablet(server1);
+    StartTablet(&server1);
 
     // remote ns and tablet
     // ns
@@ -149,7 +149,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableRemoteBeforeAddRepCluster) {
     // tablet
     FLAGS_endpoint = "127.0.0.1:9932";
     brpc::Server server3;
-    StartTablet(server3);
+    StartTablet(&server3);
     bool ok = false;
     std::string name = "test" + GenRand();
     {
@@ -304,7 +304,7 @@ TEST_F(NameServerImplRemoteTest, CreateAndDropTableRemote) {
     // tablet
     FLAGS_endpoint = "127.0.0.1:9931";
     brpc::Server server1;
-    StartTablet(server1);
+    StartTablet(&server1);
 
     // remote ns and tablet
     // ns
@@ -323,7 +323,7 @@ TEST_F(NameServerImplRemoteTest, CreateAndDropTableRemote) {
     // tablet
     FLAGS_endpoint = "127.0.0.1:9932";
     brpc::Server server3;
-    StartTablet(server3);
+    StartTablet(&server3);
     bool ok = false;
     {
         ::rtidb::nameserver::SwitchModeRequest request;
@@ -468,17 +468,17 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
     FLAGS_endpoint = "127.0.0.1:9931";
     FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
     brpc::Server server1;
-    StartTablet(server1);
+    StartTablet(&server1);
 
     FLAGS_endpoint = "127.0.0.1:9941";
     FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
     brpc::Server server2;
-    StartTablet(server2);
+    StartTablet(&server2);
 
     FLAGS_endpoint = "127.0.0.1:9951";
     FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
     brpc::Server server3;
-    StartTablet(server3);
+    StartTablet(&server3);
 
     // remote ns and tablet
     // ns
@@ -496,12 +496,12 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
     FLAGS_endpoint = "127.0.0.1:9932";
     FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
     brpc::Server server5;
-    StartTablet(server5);
+    StartTablet(&server5);
 
     FLAGS_endpoint = "127.0.0.1:9942";
     FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
     brpc::Server server6;
-    StartTablet(server6);
+    StartTablet(&server6);
 
     bool ok = false;
     {
@@ -727,7 +727,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
     FLAGS_endpoint = "127.0.0.1:9952";
     FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
     brpc::Server server7;
-    StartTablet(server7);
+    StartTablet(&server7);
 
     name = "test" + GenRand();
     {
@@ -936,17 +936,17 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
     FLAGS_endpoint = "127.0.0.1:9931";
     FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
     brpc::Server server1;
-    StartTablet(server1);
+    StartTablet(&server1);
 
     FLAGS_endpoint = "127.0.0.1:9941";
     FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
     brpc::Server server2;
-    StartTablet(server2);
+    StartTablet(&server2);
 
     FLAGS_endpoint = "127.0.0.1:9951";
     FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
     brpc::Server server3;
-    StartTablet(server3);
+    StartTablet(&server3);
 
     // remote ns and tablet
     // ns
@@ -964,12 +964,12 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
     FLAGS_endpoint = "127.0.0.1:9932";
     FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
     brpc::Server server5;
-    StartTablet(server5);
+    StartTablet(&server5);
 
     FLAGS_endpoint = "127.0.0.1:9942";
     FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
     brpc::Server server6;
-    StartTablet(server6);
+    StartTablet(&server6);
 
     bool ok = false;
     {
@@ -1138,7 +1138,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
     FLAGS_endpoint = "127.0.0.1:9952";
     FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
     brpc::Server server7;
-    StartTablet(server7);
+    StartTablet(&server7);
 
     name = "test" + GenRand();
     {
