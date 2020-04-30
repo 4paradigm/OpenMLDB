@@ -1133,7 +1133,7 @@ bool MemTableSnapshot::PackNewIndexEntry(
             key = cur_key;
         }
     }
-    if (pid_set.find(*index_pid) != pid_set.end()) {
+    if (pid_set.find(*index_pid) == pid_set.end()) {
         std::string entry_str;
         entry->clear_dimensions();
         ::rtidb::api::Dimension* dim = entry->add_dimensions();
