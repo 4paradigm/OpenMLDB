@@ -2,14 +2,14 @@ package com._4paradigm.fesql.offline.nodes
 
 import com._4paradigm.fesql.offline.utils.SparkColumnUtil
 import com._4paradigm.fesql.offline.{PlanContext, SparkInstance}
-import com._4paradigm.fesql.vm.PhysicalGroupAndSortNode
+import com._4paradigm.fesql.vm.PhysicalGroupNode
 import org.apache.spark.sql.Column
 
 import scala.collection.mutable
 
-object GroupAndSortPlan {
+object GroupByPlan {
 
-  def gen(ctx: PlanContext, node: PhysicalGroupAndSortNode, input: SparkInstance): SparkInstance = {
+  def gen(ctx: PlanContext, node: PhysicalGroupNode, input: SparkInstance): SparkInstance = {
     val inputDf = input.getDf(ctx.getSparkSession)
 
     val groupByExprs = node.GetGroups()
@@ -25,19 +25,6 @@ object GroupAndSortPlan {
     } else {
       inputDf.repartition(groupByCols: _*)
     }
-
-    val orderExprs = node.GetOrders().GetOrderBy()
-    val orderByCols = mutable.ArrayBuffer[Column]()
-    for (i <- 0 until orderExprs.GetChildNum()) {
-      val expr = orderExprs.GetChild(i)
-      val column = SparkColumnUtil.resolve(expr, inputDf, ctx)
-      if (node.GetIsAsc()) {
-        orderByCols += column.asc
-      } else {
-        orderByCols += column.desc
-      }
-    }
-    val sortedDf = groupedDf.sortWithinPartitions(groupByCols ++ orderByCols: _*)
-    SparkInstance.fromDataFrame(sortedDf)
+    SparkInstance.fromDataFrame(groupedDf)
   }
 }

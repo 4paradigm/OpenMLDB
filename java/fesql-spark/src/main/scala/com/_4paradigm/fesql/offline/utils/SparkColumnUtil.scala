@@ -1,7 +1,8 @@
-package com._4paradigm.fesql.offline
+package com._4paradigm.fesql.offline.utils
 
 import com._4paradigm.fesql.node.{ColumnRefNode, ExprNode, ExprType}
-import org.apache.spark.sql.{Column, DataFrame}
+import com._4paradigm.fesql.offline.{FeSQLException, PlanContext}
+import org.apache.spark.sql.{Column, DataFrame, Row}
 
 
 object SparkColumnUtil {
@@ -25,5 +26,9 @@ object SparkColumnUtil {
       case _ => throw new FeSQLException(
         s"Unknown expression: ${expr.GetExprString()}")
     }
+  }
+
+  def getCol(dataFrame: DataFrame, index: Int): Column = {
+    new Column(dataFrame.queryExecution.analyzed.output(index))
   }
 }
