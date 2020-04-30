@@ -19,6 +19,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "base/hash.h"
 #include "base/random.h"
 #include "base/schema_codec.h"
 #include "client/bs_client.h"
@@ -46,6 +47,7 @@ using ::rtidb::zk::DistLock;
 using ::rtidb::zk::ZkClient;
 
 const uint64_t INVALID_PARENT_ID = UINT64_MAX;
+const uint32_t INVALID_PID = UINT32_MAX;
 
 // tablet info
 struct TabletInfo {
@@ -661,6 +663,10 @@ class NameServerImpl : public NameServer {
         const std::string& name, uint32_t pid,
         const std::string& candidate_leader, bool need_restore,
         uint32_t concurrency = FLAGS_name_server_task_concurrency);
+
+    std::shared_ptr<rtidb::nameserver::ClusterInfo> GetHealthCluster(
+        const std::string& alias);
+
     int CreateRecoverTableOP(const std::string& name, uint32_t pid,
                              const std::string& endpoint, bool is_leader,
                              uint64_t offset_delta, uint32_t concurrency);

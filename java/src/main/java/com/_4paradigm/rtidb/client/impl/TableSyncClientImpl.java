@@ -383,77 +383,6 @@ public class TableSyncClientImpl implements TableSyncClient {
         return new RelationalIterator(client, th, ros);
     }
 
-//    @Override
-//    public RelationalIterator query(String tableName, ReadOption ro) throws TimeoutException, TabletException {
-//        TableHandler th = client.getHandler(tableName);
-//        if (th == null) {
-//            throw new TabletException("no table with name " + tableName);
-//        }
-//        String idxName = "";
-//        Object idxValue = "";
-//        Iterator<Map.Entry<String, Object>> iter = ro.getIndex().entrySet().iterator();
-//        while (iter.hasNext()) {
-//            Map.Entry<String, Object> entry = iter.next();
-//            idxName = entry.getKey();
-//            idxValue = entry.getValue();
-//            break;
-//        }
-//        if (idxValue == null) {
-//            throw new TabletException("idxValue should not be null with name " + tableName);
-//        }
-//        int pid = TableClientCommon.computePidByKey(String.valueOf(idxValue), th.getPartitions().length);
-//        Set<String> colSet = ro.getColSet();
-//
-//        int tid = th.getTableInfo().getTid();
-//        PartitionHandler ph = th.getHandler(pid);
-//        TabletServer ts = ph.getReadHandler(th.getReadStrategy());
-//        if (ts == null) {
-//            throw new TabletException("Cannot find available tabletServer with tid " + tid);
-//        }
-//        Tablet.BatchQueryRequest.Builder builder = Tablet.BatchQueryRequest.newBuilder();
-//
-//        builder.setTid(tid);
-//        builder.setPid(pid);
-//
-//        Tablet.ReadOption.Builder roBuilder = Tablet.ReadOption.newBuilder();
-//        {
-//            Tablet.Columns.Builder indexBuilder = Tablet.Columns.newBuilder();
-//            indexBuilder.addName(idxName);
-//            Map<String, DataType> nameTypeMap = th.getNameTypeMap();
-//            if (!nameTypeMap.containsKey(idxName)) {
-//                throw new TabletException("index name not found with tid " + tid);
-//            }
-//            DataType dataType = nameTypeMap.get(idxName);
-//            ByteBuffer buffer = FieldCodec.convert(dataType, idxValue);
-//            if (buffer != null) {
-//                indexBuilder.setValue(ByteBufferNoCopy.wrap(buffer));
-//            }
-//            roBuilder.addIndex(indexBuilder.build());
-//        }
-//        builder.addReadOption(roBuilder.build());
-//
-//        Tablet.BatchQueryRequest request = builder.build();
-//        Tablet.BatchQueryResponse response = ts.batchQuery(request);
-//        ByteString bs = null;
-//        if (response != null && response.getCode() == 0) {
-//            if (th.getTableInfo().hasCompressType() &&
-//                    th.getTableInfo().getCompressType() == NS.CompressType.kSnappy) {
-//                byte[] uncompressed = Compress.snappyUnCompress(response.getPairs().toByteArray());
-//                bs = ByteString.copyFrom(uncompressed);
-//            } else {
-//                bs = response.getPairs();
-//            }
-//        } else if (response != null && response.getCode() != 0) {
-//            return new RelationalIterator();
-//        }
-//        RelationalIterator it = new RelationalIterator(bs, th, colSet);
-////        it.setCount(response.getCount());
-////        if (th.getTableInfo().hasCompressType()) {
-////            it.setCompressType(th.getTableInfo().getCompressType());
-////        }
-//        return it;
-//    }
-
     @Override
     public Object[] getRow(String tname, String key, long time, Tablet.GetType type) throws TimeoutException, TabletException {
         return getRow(tname, key, null, time, null, type);
@@ -791,21 +720,9 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (th == null) {
             throw new TabletException("no table with name " + tableName);
         }
-        String idxName = "";
-        Object idxValue = "";
-        Iterator<Map.Entry<String, Object>> iter = conditionColumns.entrySet().iterator();
-        while (iter.hasNext()) {
-            Map.Entry<String, Object> entry = iter.next();
-            idxName = entry.getKey();
-            idxValue = entry.getValue();
-            break;
-        }
-//        idxValue = validateKey(idxValue);
-        int pid = TableClientCommon.computePidByKey(String.valueOf(idxValue), th.getPartitions().length);
-        return deleteRelational(th.getTableInfo().getTid(), pid, idxValue, idxName, th);
-    }
 
-    private boolean deleteRelational(int tid, int pid, Object key, String idxName, TableHandler th) throws TimeoutException, TabletException {
+        int tid = th.getTableInfo().getTid();
+        int pid = 0;
         PartitionHandler ph = th.getHandler(pid);
         TabletServer ts = ph.getLeader();
         if (ts == null) {
@@ -815,17 +732,26 @@ public class TableSyncClientImpl implements TableSyncClient {
         builder.setTid(tid);
         builder.setPid(pid);
         {
-            Map<String, DataType> nameTypeMap = th.getNameTypeMap();
-            if (!nameTypeMap.containsKey(idxName)) {
-                throw new TabletException("index name not found with tid " + tid);
-            }
-            DataType dataType = nameTypeMap.get(idxName);
-            ByteBuffer buffer = FieldCodec.convert(dataType, key);
-            String idxVal = ByteBufferNoCopy.wrap(buffer).toString(RowCodecCommon.CHARSET);
-            builder.setKey(idxVal);
+            String colName = "";
+            Object colValue = "";
+            Iterator<Map.Entry<String, Object>> iter = conditionColumns.entrySet().iterator();
+            while (iter.hasNext()) {
+                Tablet.Columns.Builder conditionBuilder = Tablet.Columns.newBuilder();
+                Map.Entry<String, Object> entry = iter.next();
+                colName = entry.getKey();
+                colValue = entry.getValue();
+                Map<String, DataType> nameTypeMap = th.getNameTypeMap();
+                if (!nameTypeMap.containsKey(colName)) {
+                    throw new TabletException("index name not found with tid " + tid);
+                }
+                DataType dataType = nameTypeMap.get(colName);
+                ByteBuffer buffer = FieldCodec.convert(dataType, colValue);
 
+                conditionBuilder.addName(colName);
+                conditionBuilder.setValue(ByteBufferNoCopy.wrap(buffer));
+                builder.addConditionColumns(conditionBuilder.build());
+            }
         }
-        builder.setIdxName(idxName);
         Tablet.DeleteRequest request = builder.build();
         Tablet.GeneralResponse response = ts.delete(request);
         if (response != null && response.getCode() == 0) {
@@ -1435,23 +1361,16 @@ public class TableSyncClientImpl implements TableSyncClient {
 
     }
 
-    private boolean updateRequest(TableHandler th, int pid, List<ColumnDesc> newCdSchema, List<ColumnDesc> newValueSchema,
-                                  ByteBuffer conditionBuffer, ByteBuffer valueBuffer) throws TabletException {
+    private boolean updateRequest(TableHandler th, int pid, Map<String, Object> conditionColumns, List<ColumnDesc> newValueSchema,
+                                  ByteBuffer valueBuffer) throws TimeoutException, TabletException {
         PartitionHandler ph = th.getHandler(pid);
         if (th.getTableInfo().hasCompressType() && th.getTableInfo().getCompressType() == NS.CompressType.kSnappy) {
-            byte[] data = conditionBuffer.array();
+            byte[] data = valueBuffer.array();
             byte[] compressed = Compress.snappyCompress(data);
             if (compressed == null) {
                 throw new TabletException("snappy compress error");
             }
-            conditionBuffer = ByteBuffer.wrap(compressed);
-
-            byte[] data2 = valueBuffer.array();
-            byte[] compressed2 = Compress.snappyCompress(data2);
-            if (compressed2 == null) {
-                throw new TabletException("snappy compress error");
-            }
-            valueBuffer = ByteBuffer.wrap(compressed2);
+            valueBuffer = ByteBuffer.wrap(compressed);
         }
         TabletServer tablet = ph.getLeader();
         int tid = th.getTableInfo().getTid();
@@ -1462,13 +1381,25 @@ public class TableSyncClientImpl implements TableSyncClient {
         builder.setTid(tid);
         builder.setPid(pid);
         {
-            Tablet.Columns.Builder conditionBuilder = Tablet.Columns.newBuilder();
-            for (ColumnDesc col : newCdSchema) {
-                conditionBuilder.addName(col.getName());
+            String colName = "";
+            Object colValue = "";
+            Iterator<Map.Entry<String, Object>> iter = conditionColumns.entrySet().iterator();
+            while (iter.hasNext()) {
+                Tablet.Columns.Builder conditionBuilder = Tablet.Columns.newBuilder();
+                Map.Entry<String, Object> entry = iter.next();
+                colName = entry.getKey();
+                colValue = entry.getValue();
+                Map<String, DataType> nameTypeMap = th.getNameTypeMap();
+                if (!nameTypeMap.containsKey(colName)) {
+                    throw new TabletException("index name not found with tid " + tid);
+                }
+                DataType dataType = nameTypeMap.get(colName);
+                ByteBuffer buffer = FieldCodec.convert(dataType, colValue);
+
+                conditionBuilder.addName(colName);
+                conditionBuilder.setValue(ByteBufferNoCopy.wrap(buffer));
+                builder.addConditionColumns(conditionBuilder.build());
             }
-            conditionBuffer.rewind();
-            conditionBuilder.setValue(ByteBufferNoCopy.wrap(conditionBuffer.asReadOnlyBuffer()));
-            builder.setConditionColumns(conditionBuilder.build());
         }
         {
             Tablet.Columns.Builder valueBuilder = Tablet.Columns.newBuilder();
@@ -1515,25 +1446,10 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (valueColumns == null || valueColumns.isEmpty()) {
             throw new TabletException("valueColumns is null or empty");
         }
-        String idxName = "";
-        String idxValue = "";
-        Iterator<Map.Entry<String, Object>> iter = conditionColumns.entrySet().iterator();
-        while (iter.hasNext()) {
-            Map.Entry<String, Object> entry = iter.next();
-            idxName = entry.getKey();
-            idxValue = entry.getValue().toString();
-            break;
-        }
-        idxValue = validateKey(idxValue);
-        int pid = TableClientCommon.computePidByKey(idxValue, th.getPartitions().length);
-
-        List<ColumnDesc> newCdSchema = getSchemaData(conditionColumns, th.getSchema());
-        ByteBuffer conditionBuffer = RowBuilder.encode(conditionColumns, newCdSchema);
-
         List<ColumnDesc> newValueSchema = getSchemaData(valueColumns, th.getSchema());
         ByteBuffer valueBuffer = RowBuilder.encode(valueColumns, newValueSchema);
 
-        return updateRequest(th, pid, newCdSchema, newValueSchema, conditionBuffer, valueBuffer);
+        return updateRequest(th, 0, conditionColumns, newValueSchema, valueBuffer);
     }
 
     @Override

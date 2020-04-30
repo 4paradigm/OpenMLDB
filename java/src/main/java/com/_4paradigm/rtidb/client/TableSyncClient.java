@@ -2,8 +2,6 @@ package com._4paradigm.rtidb.client;
 
 import com._4paradigm.rtidb.client.impl.RelationalIterator;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
-import com._4paradigm.rtidb.client.schema.ReadOption;
-import com._4paradigm.rtidb.client.schema.WriteOption;
 import com._4paradigm.rtidb.tablet.Tablet;
 import com.google.protobuf.ByteString;
 

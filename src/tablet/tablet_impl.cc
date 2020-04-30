@@ -805,8 +805,7 @@ void TabletImpl::Put(RpcController* controller,
             }
         }
     } else {
-        bool ok = r_table->Put(request->value());
-        if (!ok) {
+        if (!r_table->Put(request->value())) {
             response->set_code(::rtidb::base::ReturnCode::kPutFailed);
             response->set_msg("put failed");
             done->Run();
@@ -818,7 +817,7 @@ void TabletImpl::Put(RpcController* controller,
 }
 
 int TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta,
-                               std::string& msg) {
+        std::string& msg) {
     msg.clear();
     if (table_meta->name().size() <= 0) {
         msg = "table name is empty";
@@ -1700,6 +1699,7 @@ void TabletImpl::Traverse(RpcController* controller,
             it->SeekToFirst();
         }
         uint32_t scount = 0;
+        std::string* last_pk = response->mutable_pk();;
         std::vector<rtidb::base::Slice> value_vec;
         uint32_t total_block_size = 0;
         for (; it->Valid(); it->Next()) {
@@ -1707,6 +1707,7 @@ void TabletImpl::Traverse(RpcController* controller,
                 PDLOG(DEBUG, "reache the limit %u", request->limit());
                 break;
             }
+            last_pk->assign(it->GetKey().data(), it->GetKey().size());
             rtidb::base::Slice value = it->GetValue();
             total_block_size += value.size();
             value_vec.push_back(value);
@@ -1831,7 +1832,7 @@ void TabletImpl::Delete(RpcController* controller,
         }
         return;
     } else {
-        if (r_table->Delete(request->idx_name(), request->key())) {
+        if (r_table->Delete(request->condition_columns())) {
             response->set_code(::rtidb::base::ReturnCode::kOk);
             response->set_msg("ok");
             PDLOG(DEBUG, "delete ok. tid %u, pid %u, key %s, idx_name %s",
@@ -1864,65 +1865,6 @@ void TabletImpl::BatchQuery(RpcController* controller,
         response->set_msg("table is not exist");
         return;
     }
-    /**
-    uint32_t index = 0;
-    rtidb::storage::RelationalTableTraverseIterator* it =
-        r_table->NewTraverse(index, 0);
-    if (it == NULL) {
-        response->set_code(::rtidb::base::ReturnCode::kIdxNameNotFound);
-        response->set_msg("idx name not found");
-        return;
-    }
-    std::vector<rtidb::base::Slice> value_vec;
-    uint32_t total_block_size = 0;
-
-    uint32_t scount = 0;
-    uint32_t not_found_count = 0;
-    for (auto& key : request->query_key()) {
-        it->Seek(key);
-        scount++;
-        if (!it->Valid()) {
-            not_found_count++;
-            continue;
-        }
-        rtidb::base::Slice value = it->GetValue();
-
-        total_block_size += value.size();
-        value_vec.push_back(value);
-        if (scount >= FLAGS_max_traverse_cnt) {
-            PDLOG(DEBUG, "batchquery cnt %lu max %lu",
-                    scount, FLAGS_max_traverse_cnt);
-            break;
-        }
-    }
-    if (total_block_size == 0) {
-        PDLOG(DEBUG, "tid %u pid %u, batchQuery not key found.", request->tid(),
-    request->pid()); response->set_code(rtidb::base::ReturnCode::kOk);
-        response->set_is_finish(true);
-    }
-    bool is_finish = false;
-    if (static_cast<uint64_t>(scount) ==
-    static_cast<uint64_t>(request->query_key_size())) { is_finish = true;
-    }
-    uint32_t total_size = (scount - not_found_count) * 4 + total_block_size;
-    std::string* pairs = response->mutable_pairs();
-    if (scount <= 0) {
-        pairs->resize(0);
-    } else {
-        pairs->resize(total_size);
-    }
-    char* rbuffer = reinterpret_cast<char*>(&((*pairs)[0]));
-    uint32_t offset = 0;
-    for (const auto& value : value_vec) {
-        rtidb::base::Encode(value.data(), value.size(), rbuffer, offset);
-        offset += (4 + value.size());
-    }
-    PDLOG(DEBUG, "tid %u pid %u, batchQuery count %d.", request->tid(),
-    request->pid(), scount); it->SetFinish(true); delete it;
-    response->set_code(rtidb::base::ReturnCode::kOk);
-    response->set_is_finish(is_finish);
-    response->set_count(scount);
-*/
     uint32_t scount = 0;
     std::string* pairs = response->mutable_pairs();
     bool ok = r_table->Query(request->read_option(), pairs, &scount);
@@ -2474,6 +2416,7 @@ void TabletImpl::SetTTLClock(RpcController* controller,
 void TabletImpl::MakeSnapshotInternal(
     uint32_t tid, uint32_t pid, uint64_t end_offset,
     std::shared_ptr<::rtidb::api::TaskInfo> task) {
+    PDLOG(INFO, "MakeSnapshotInternal begin, tid[%u] pid[%u]", tid, pid);
     std::shared_ptr<Table> table;
     std::shared_ptr<Snapshot> snapshot;
     std::shared_ptr<LogReplicator> replicator;
@@ -2565,6 +2508,7 @@ void TabletImpl::MakeSnapshotInternal(
             }
         }
     }
+    PDLOG(INFO, "MakeSnapshotInternal finish, tid[%u] pid[%u]", tid, pid);
 }
 
 void TabletImpl::MakeSnapshot(RpcController* controller,
@@ -4500,6 +4444,10 @@ int TabletImpl::AddOPTask(const ::rtidb::api::TaskInfo& task_info,
         task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
         return -1;
     }
+    PDLOG(INFO, "add task map success, op_id[%lu] op_type[%s] task_type[%s]",
+          task_info.op_id(),
+          ::rtidb::api::OPType_Name(task_info.op_type()).c_str(),
+          ::rtidb::api::TaskType_Name(task_info.task_type()).c_str());
     return 0;
 }
 
