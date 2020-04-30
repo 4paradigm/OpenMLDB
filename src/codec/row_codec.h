@@ -138,6 +138,7 @@ class RowView {
                      uint32_t* length);
     std::string GetAsString(uint32_t idx);
     std::string GetRowString();
+    const Schema* GetSchema() const { return &schema_; }
 
  private:
     bool Init();

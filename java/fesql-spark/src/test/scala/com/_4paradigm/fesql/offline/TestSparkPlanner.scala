@@ -23,6 +23,7 @@ class TestSparkPlanner extends SparkTestSuite {
     output.show()
   }
 
+
   test("Window plan smoke test") {
     val sess = getSparkSession
 
@@ -64,6 +65,42 @@ class TestSparkPlanner extends SparkTestSuite {
 
     val planner = new SparkPlanner(sess, config)
     val res = planner.plan(sql, Map("t" -> table))
+    val output = res.getDf(sess)
+    output.show()
+  }
+
+
+  test("Join plan smoke test") {
+    val sess = getSparkSession
+
+    val schemaLeft = StructType(Seq(
+      StructField("id", IntegerType),
+      StructField("time", LongType),
+      StructField("amt", DoubleType)
+    ))
+    val schemaRight = StructType(Seq(
+      StructField("id", IntegerType),
+      StructField("time", LongType),
+      StructField("str", StringType)
+    ))
+
+    val left = sess.createDataFrame(Seq(
+      (0, 1L, 1.0),
+      (0, 2L, 2.0),
+      (1, 3L, 3.0),
+      (2, 10L, 4.0)
+    ).map(Row.fromTuple(_)).asJava, schemaLeft)
+
+    val right = sess.createDataFrame(Seq(
+      (0, 1L, "x"),
+      (0, 2L, "y"),
+      (1, 2L, "z")
+    ).map(Row.fromTuple(_)).asJava, schemaRight)
+
+    val sql ="SELECT * FROM t1 last join t2 on t1.id = t2.id and t1.`time` <= t2.`time`;"
+
+    val planner = new SparkPlanner(sess)
+    val res = planner.plan(sql, Map("t1" -> left, "t2" -> right))
     val output = res.getDf(sess)
     output.show()
   }
