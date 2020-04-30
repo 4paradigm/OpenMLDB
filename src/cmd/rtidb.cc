@@ -16,11 +16,9 @@
 #include <random>
 #include "base/display.h"
 #include "base/file_util.h"
-#include "base/flat_array.h"
 #include "base/hash.h"
 #include "base/kv_iterator.h"
 #include "base/linenoise.h"
-#include "base/schema_codec.h"
 #include "base/strings.h"
 #include "blob_proxy/blob_proxy_impl.h"
 #include "blobserver/blobserver_impl.h"
@@ -29,6 +27,8 @@
 #include "brpc/server.h"
 #include "client/ns_client.h"
 #include "client/tablet_client.h"
+#include "codec/flat_array.h"
+#include "codec/schema_codec.h"
 #include "logging.h"  // NOLINT
 #include "nameserver/name_server_impl.h"
 #include "proto/client.pb.h"

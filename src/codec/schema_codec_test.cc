@@ -3,8 +3,8 @@
 // Copyright 2017 4paradigm.com
 //
 
-#include "base/schema_codec.h"
 #include "base/strings.h"
+#include "codec/schema_codec.h"
 #include "gtest/gtest.h"
 #include "proto/common.pb.h"
 #include "proto/name_server.pb.h"

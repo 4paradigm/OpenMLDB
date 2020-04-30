@@ -4,7 +4,7 @@
  * Author wangbao
  */
 
-#include "base/memcomparable_format.h"
+#include "codec/memcomparable_format.h"
 #include <string>
 #include <vector>
 #include "gtest/gtest.h"

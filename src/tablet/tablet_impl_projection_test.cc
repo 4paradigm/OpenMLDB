@@ -13,10 +13,10 @@
 #include <boost/lexical_cast.hpp>
 #include "timer.h" // NOLINT
 #include "base/file_util.h"
-#include "base/flat_array.h"
 #include "base/kv_iterator.h"
-#include "base/schema_codec.h"
 #include "base/strings.h"
+#include "codec/flat_array.h"
+#include "codec/schema_codec.h"
 #include "gtest/gtest.h"
 #include "log/log_reader.h"
 #include "log/log_writer.h"

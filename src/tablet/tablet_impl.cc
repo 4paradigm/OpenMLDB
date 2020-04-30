@@ -23,11 +23,11 @@
 #ifdef TCMALLOC_ENABLE
 #include "gperftools/malloc_extension.h"
 #endif
-#include "base/codec.h"
 #include "base/file_util.h"
 #include "base/hash.h"
 #include "base/status.h"
 #include "base/strings.h"
+#include "codec/codec.h"
 #include "logging.h"  // NOLINT
 #include "rapidjson/stringbuffer.h"
 #include "rapidjson/writer.h"

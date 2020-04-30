@@ -14,13 +14,13 @@
 #include "base/count_down_latch.h"
 #include "base/display.h"
 #include "base/file_util.h"
-#include "base/flat_array.h"
 #include "base/hash.h"
 #include "base/kv_iterator.h"
 #include "base/slice.h"
 #include "base/strings.h"
 #include "base/taskpool.hpp"
 #include "boost/bind.hpp"
+#include "codec/flat_array.h"
 #include "gflags/gflags.h"
 #include "log/log_reader.h"
 #include "log/sequential_file.h"
@@ -1080,13 +1080,13 @@ bool MemTableSnapshot::PackNewIndexEntry(
     const std::vector<::rtidb::base::ColumnDesc>& columns, uint32_t max_idx,
     uint32_t idx, uint32_t partition_num, ::rtidb::api::LogEntry* entry,
     uint32_t* index_pid) {
-    bool has_main_index = false;
     if (entry->dimensions_size() == 0) {
         std::string combined_key = entry->pk() + "|0";
         if (deleted_keys_.find(combined_key) != deleted_keys_.end()) {
             return false;
         }
     } else {
+        bool has_main_index = false;
         for (int pos = 0; pos < entry->dimensions_size(); pos++) {
             if (entry->dimensions(pos).idx() == 0) {
                 std::string combined_key = entry->dimensions(pos).key() + "|0";
@@ -1096,11 +1096,10 @@ bool MemTableSnapshot::PackNewIndexEntry(
                 break;
             }
         }
+        if (!has_main_index) {
+            return false;
+        }
     }
-    if (!has_main_index) {
-        return false;
-    }
-    std::set<uint32_t> pid_set;
     std::vector<std::string> row;
     if (table->GetCompressType() == ::rtidb::api::kSnappy) {
         std::string buff;
@@ -1114,6 +1113,7 @@ bool MemTableSnapshot::PackNewIndexEntry(
                                     entry->value().size(), row);
     }
     std::string key;
+    std::set<uint32_t> pid_set;
     for (uint32_t i = 0; i < index_cols.size(); ++i) {
         std::string cur_key;
         for (uint32_t j : index_cols[i]) {
@@ -1131,7 +1131,7 @@ bool MemTableSnapshot::PackNewIndexEntry(
             key = cur_key;
         }
     }
-    if (!pid_set.count(*index_pid)) {
+    if (pid_set.find(*index_pid) != pid_set.end()) {
         std::string entry_str;
         entry->clear_dimensions();
         ::rtidb::api::Dimension* dim = entry->add_dimensions();

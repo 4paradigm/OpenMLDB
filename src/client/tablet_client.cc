@@ -8,7 +8,7 @@
 #include "client/tablet_client.h"
 #include <algorithm>
 #include <iostream>
-#include "base/codec.h"
+#include "codec/codec.h"
 #include "logging.h"  // NOLINT
 #include "timer.h"    // NOLINT
 

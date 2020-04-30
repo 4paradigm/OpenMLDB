@@ -2,9 +2,9 @@
 // flat_array_test.cc
 // Copyright 2017 4paradigm.com
 
-#include "base/flat_array.h"
 #include <iostream>
 #include "base/strings.h"
+#include "codec/flat_array.h"
 #include "gtest/gtest.h"
 
 namespace rtidb {

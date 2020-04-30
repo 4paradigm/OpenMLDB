@@ -5,8 +5,8 @@
 // Date 2017-03-31
 //
 
-#ifndef SRC_BASE_CODEC_H_
-#define SRC_BASE_CODEC_H_
+#ifndef SRC_CODEC_CODEC_H_
+#define SRC_CODEC_CODEC_H_
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -458,4 +458,4 @@ int32_t GetStrCol(int8_t* input, int32_t str_field_offset,
 }  // namespace base
 }  // namespace rtidb
 
-#endif  // SRC_BASE_CODEC_H_
+#endif  // SRC_CODEC_CODEC_H_
