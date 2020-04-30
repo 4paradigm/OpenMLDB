@@ -290,7 +290,7 @@ void BaseClient::RefreshTable() {
         }
         std::shared_ptr<TableHandler> handler =
             std::make_shared<TableHandler>();
-        handler->partition.resize(table_info->partition_num());
+        handler->partition.resize(table_info->table_partition_size());
         int id = 0;
         for (const auto& part : table_info->table_partition()) {
             for (const auto& meta : part.partition_meta()) {
@@ -328,6 +328,9 @@ void BaseClient::RefreshTable() {
                 handler->auto_gen_pk_ = table_info->column_key(i).index_name();
                 break;
             }
+        }
+        if (table_info->blobs_size() > 0) {
+            handler->blobs.push_back(table_info->blobs(0));
         }
         handler->table_info = table_info;
         handler->columns = columns;

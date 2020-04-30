@@ -49,6 +49,7 @@ struct TableHandler {
     int pk_index;
     rtidb::type::DataType pk_type;
     std::string auto_gen_pk_;
+    std::vector<std::string> blobs;
 };
 
 struct GeneralResult {
