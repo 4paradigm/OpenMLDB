@@ -7,7 +7,7 @@ import com._4paradigm.fesql.offline._
 import com._4paradigm.fesql.offline.utils.{FesqlUtil, SparkColumnUtil, SparkRowUtil}
 import com._4paradigm.fesql.vm.{CoreAPI, FeSQLJITWrapper, PhysicalJoinNode}
 import org.apache.spark.broadcast.Broadcast
-import org.apache.spark.sql.catalyst.encoders.{ExpressionEncoder, RowEncoder}
+import org.apache.spark.sql.catalyst.encoders.RowEncoder
 import org.apache.spark.sql.types.{LongType, StructType}
 import org.apache.spark.sql.{Column, Row, functions}
 
@@ -116,7 +116,7 @@ object JoinPlan {
       distinct.drop(indexName)
 
     } else {
-      leftDf.join(rightDf, joinConditions.reduce(_ && _),  "left")
+      joined
     }
 
     SparkInstance.fromDataFrame(result)

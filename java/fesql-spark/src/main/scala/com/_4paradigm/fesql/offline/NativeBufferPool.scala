@@ -12,11 +12,11 @@ import scala.collection.mutable
   */
 class NativeBufferPool {
 
-  private val freeBuffers = mutable.ArrayBuffer[ManagedBuffer]()
+  private val freeBuffers = mutable.ArrayBuffer[IndexedBuffer]()
 
-  private val allocated = mutable.HashMap[Long, ManagedBuffer]()
+  private val allocated = mutable.HashMap[Long, IndexedBuffer]()
 
-  def getBuffer(bytes: Int): ManagedBuffer = {
+  def getBuffer(bytes: Int): IndexedBuffer = {
     if (freeBuffers.isEmpty) {
       allocateNew(bytes)
     } else {
@@ -32,14 +32,14 @@ class NativeBufferPool {
     }
   }
 
-  def releaseBuffer(buffer: ManagedBuffer): Unit = {
+  def releaseBuffer(buffer: IndexedBuffer): Unit = {
     freeBuffers += buffer
   }
 
-  private def allocateNew(bytes: Int): ManagedBuffer = {
+  private def allocateNew(bytes: Int): IndexedBuffer = {
     val buf = ByteBuffer.allocateDirect(bytes)
     val id = allocated.size
-    val managed = ManagedBuffer(id, buf)
+    val managed = IndexedBuffer(id, buf)
     allocated += id.toLong -> managed
     managed
   }
@@ -50,7 +50,7 @@ class NativeBufferPool {
     allocated.clear()
   }
 
-  case class ManagedBuffer(id: Long, buffer: ByteBuffer) {
+  case class IndexedBuffer(id: Long, buffer: ByteBuffer) {
     def getSize: Int = buffer.capacity()
 
     def free(): Unit = {
