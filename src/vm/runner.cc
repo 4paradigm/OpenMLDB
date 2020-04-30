@@ -1253,10 +1253,8 @@ const int64_t OrderGenerator::Gen(const Row& row) {
                                   fn_schema_.Get(idxs_[0]).type());
 }
 const bool ConditionGenerator::Gen(const Row& row) {
-    Row cond_row = CoreAPI::RowProject(fn_, row, true);
-    row_view_.Reset(cond_row.buf());
-    return Runner::GetColumnBool(&row_view_, idxs_[0],
-                                 fn_schema_.Get(idxs_[0]).type());
+    return CoreAPI::ComputeCondition(
+        fn_, row, &row_view_, idxs_[0]);
 }
 const Row ProjectGenerator::Gen(const Row& row) {
     return CoreAPI::RowProject(fn_, row, false);

@@ -96,6 +96,9 @@ void PhysicalGroupNode::Print(std::ostream& output,
     output << "\n";
     PrintChildren(output, tab);
 }
+PhysicalGroupNode* PhysicalGroupNode::CastFrom(PhysicalOpNode* node) {
+    return dynamic_cast<PhysicalGroupNode*>(node);
+}
 
 void PhysicalGroupAndSortNode::Print(std::ostream& output,
                                      const std::string& tab) const {
@@ -206,6 +209,9 @@ bool PhysicalJoinNode::InitSchema() {
     }
     PrintSchema();
     return false;
+}
+PhysicalJoinNode* PhysicalJoinNode::CastFrom(PhysicalOpNode* node) {
+    return dynamic_cast<PhysicalJoinNode*>(node);
 }
 
 void PhysicalSortNode::Print(std::ostream& output,

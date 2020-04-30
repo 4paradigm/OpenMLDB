@@ -1,7 +1,8 @@
 package com._4paradigm.fesql.offline
 
 import com._4paradigm.fesql.`type`.TypeOuterClass._
-import com._4paradigm.fesql.offline.nodes.{DataProviderPlan, GroupAndSortPlan, RowProjectPlan, WindowAggPlan}
+import com._4paradigm.fesql.offline.nodes._
+import com._4paradigm.fesql.offline.utils.FesqlUtil
 import com._4paradigm.fesql.vm._
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.slf4j.LoggerFactory
@@ -73,6 +74,12 @@ class SparkPlanner(session: SparkSession, config: Map[String, Any]) {
 
       case PhysicalOpType.kPhysicalOpGroupAndSort =>
         GroupAndSortPlan.gen(ctx, PhysicalGroupAndSortNode.CastFrom(root), children.head)
+
+      case PhysicalOpType.kPhysicalOpGroupBy =>
+        GroupByPlan.gen(ctx, PhysicalGroupNode.CastFrom(root), children.head)
+
+      case PhysicalOpType.kPhysicalOpJoin =>
+        JoinPlan.gen(ctx, PhysicalJoinNode.CastFrom(root), children.head, children.last)
 
       case _ =>
         throw new IllegalArgumentException(s"Plan type $opType not supported")

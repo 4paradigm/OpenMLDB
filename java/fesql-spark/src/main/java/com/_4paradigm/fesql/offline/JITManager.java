@@ -1,6 +1,8 @@
 package com._4paradigm.fesql.offline;
 
 import com._4paradigm.fesql.vm.FeSQLJITWrapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import scala.Byte;
 
 import java.nio.ByteBuffer;
@@ -10,6 +12,8 @@ import java.util.Map;
 import java.util.Set;
 
 public class JITManager {
+
+    static private Logger logger = LoggerFactory.getLogger(JITManager.class);
 
     // One jit currently only take one llvm module, since symbol may duplicate
     static private Map<String, FeSQLJITWrapper> jits = new HashMap<>();
@@ -46,6 +50,7 @@ public class JITManager {
         // ensure worker side module
         if (!JITManager.hasModule(tag)) {
             JITManager.initModule(tag, moduleBuffer);
+            logger.info("Init jit module with tag:\n" + tag);
         }
     }
 }
