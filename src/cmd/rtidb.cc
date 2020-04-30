@@ -2645,11 +2645,11 @@ void HandleNSPreview(const std::vector<std::string>& parts,
             std::string err_msg;
             uint64_t snapshot_id = 0;
             std::string pk = "";
-            bool ok = tablet_client->Traverse(tid, pid, limit, &count,
-                                              &err_msg, &pk, &data, &is_finish,
-                                              &snapshot_id);
+            bool ok = tablet_client->Traverse(tid, pid, limit,
+                    &pk, &snapshot_id, &data, &count, &is_finish, &err_msg);
             if (!ok) {
                 std::cerr << "Fail to preview table" << std::endl;
+                return;
             }
             if (tables[0].compress_type() == ::rtidb::nameserver::kSnappy) {
                 std::string uncompressed;

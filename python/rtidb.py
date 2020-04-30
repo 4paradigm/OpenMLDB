@@ -63,8 +63,8 @@ class RtidbResult:
   def __iter__(self):
     return self
   def count(self):
-    if hasattr(self.__data, "ValueSize"):
-      return self.__data.ValueSize()
+    if hasattr(self.__data, "Count"):
+      return self.__data.Count()
     else:
       raise Exception(-1, "result not support count")
   def __next__(self):
@@ -127,6 +127,7 @@ class RTIDBClient:
   def query(self, table_name: str, read_option: ReadOption):
     if (len(read_option.index) < 1):
       raise Exception("must set index")
+    ros = interclient.VectorReadOption()
     mid_map = {}
     for k in read_option.index:
       mid_map.update({k: str(read_option.index[k])})
@@ -139,7 +140,8 @@ class RTIDBClient:
       ro.read_filter.append(mid_rf)
     for col in read_option.col_set:
       ro.col_set.append(col)
-    resp = self.__client.Query(table_name, ro)
+    ros.append(ro)
+    resp = self.__client.BatchQuery(table_name, ros)
     if resp.code_ != 0:
       raise Exception(resp.code_, resp.msg_)
     return RtidbResult(resp)
@@ -168,8 +170,6 @@ class RTIDBClient:
     return RtidbResult(resp)
 
   def delete(self, table_name: str, condition_columns: map):
-    if (len(condition_columns) != 1):
-      raise Exception("keys size not 1")
     v = {}
     for k in condition_columns:
       v.update({k:str(condition_columns[k])})
@@ -194,4 +194,6 @@ class RTIDBClient:
       for col in read_option.col_set:
         ro.col_set.append(col)
     resp = self.__client.Traverse(table_name, ro)
+    if (resp.code_ != 0):
+      raise Exception(resp.code_, resp.msg_);
     return RtidbResult(resp)

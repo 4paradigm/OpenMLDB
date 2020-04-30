@@ -1133,31 +1133,6 @@ bool TabletClient::Get(uint32_t tid, uint32_t pid, const std::string& pk,
     return true;
 }
 
-bool TabletClient::Query(uint32_t tid, uint32_t pid,
-        const ::rtidb::api::ReadOption& ro,
-        std::string* value,
-        uint32_t* count, std::string* msg) {
-    ::rtidb::api::BatchQueryRequest request;
-    ::rtidb::api::BatchQueryResponse response;
-    request.set_tid(tid);
-    request.set_pid(pid);
-    ::rtidb::api::ReadOption* ro_ptr = request.add_read_option();
-    ro_ptr->CopyFrom(ro);
-    response.set_allocated_pairs(value);
-    bool ok =
-        client_.SendRequest(&::rtidb::api::TabletServer_Stub::BatchQuery,
-                &request, &response, FLAGS_request_timeout_ms, 1);
-    if (response.has_msg()) {
-        *msg = response.msg();
-    }
-    response.release_pairs();
-    if (!ok || response.code() != 0) {
-        return false;
-    }
-    *count = response.count();
-    return true;
-}
-
 bool TabletClient::Delete(uint32_t tid, uint32_t pid, const std::string& pk,
                           const std::string& idx_name, std::string& msg) {
     ::rtidb::api::DeleteRequest request;
@@ -1269,10 +1244,10 @@ bool TabletClient::DeleteBinlog(uint32_t tid, uint32_t pid,
     count = response->count();
     return kv_it;
 }
-bool TabletClient::Traverse(uint32_t tid, uint32_t pid, const std::string& pk,
-                            uint32_t limit, uint32_t* count, std::string* msg,
-                            std::string* data, bool* is_finish,
-                            uint64_t* snapshot_id) {
+bool TabletClient::Traverse(uint32_t tid, uint32_t pid, uint32_t limit,
+                            std::string* pk, uint64_t* snapshot_id,
+                            std::string* data, uint32_t* count,
+                            bool* is_finish, std::string* msg) {
     rtidb::api::TraverseRequest request;
     rtidb::api::TraverseResponse response;
     request.set_tid(tid);
@@ -1282,14 +1257,15 @@ bool TabletClient::Traverse(uint32_t tid, uint32_t pid, const std::string& pk,
         request.set_snapshot_id(*snapshot_id);
     }
 
-    if (!pk.empty()) {
-        request.set_pk(pk);
+    if (!pk->empty()) {
+        request.set_pk(*pk);
     }
     bool ok = client_.SendRequest(&rtidb::api::TabletServer_Stub::Traverse,
                                   &request, &response, FLAGS_request_timeout_ms,
                                   FLAGS_request_max_retry);
     data->swap(*response.mutable_pairs());
     msg->swap(*response.mutable_msg());
+    pk->swap(*response.mutable_pk());
     if (!ok || response.code() != 0) {
         return false;
     }
@@ -1313,17 +1289,17 @@ bool TabletClient::SetMode(bool mode) {
 }
 
 bool TabletClient::BatchQuery(uint32_t tid, uint32_t pid,
-                              const std::string& idx_name,
-                              const std::vector<std::string>& keys,
-                              std::string* msg, std::string* data,
-                              bool* is_finish, uint32_t* count) {
+        const ::google::protobuf::RepeatedPtrField<
+        ::rtidb::api::ReadOption> ros,
+        std::string* data,
+        uint32_t* count, std::string* msg) {
     rtidb::api::BatchQueryRequest request;
     rtidb::api::BatchQueryResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
-    for (const auto& key : keys) {
-        request.add_query_key(key);
-    }
+    ::google::protobuf::RepeatedPtrField<::rtidb::api::ReadOption>* ros_ptr
+        = request.mutable_read_option();
+    ros_ptr->CopyFrom(ros);
     bool ok = client_.SendRequest(&rtidb::api::TabletServer_Stub::BatchQuery,
                                   &request, &response, FLAGS_request_timeout_ms,
                                   FLAGS_request_max_retry);
@@ -1332,7 +1308,6 @@ bool TabletClient::BatchQuery(uint32_t tid, uint32_t pid,
     if (!ok || response.code() != 0) {
         return false;
     }
-    *is_finish = response.is_finish();
     *count = response.count();
     return true;
 }

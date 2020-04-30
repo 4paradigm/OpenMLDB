@@ -112,10 +112,6 @@ class TabletClient {
              const std::string& idx_name, const std::string& ts_name,
              std::string& value, uint64_t& ts, std::string& msg);  // NOLINT
 
-    bool Query(uint32_t tid, uint32_t pid,
-            const ::rtidb::api::ReadOption& ro,
-            std::string* value, uint32_t* count, std::string* msg);
-
     bool Delete(uint32_t tid, uint32_t pid, const std::string& pk,
                 const std::string& idx_name, std::string& msg);  // NOLINT
 
@@ -256,9 +252,11 @@ class TabletClient {
     bool GetAllSnapshotOffset(std::map<uint32_t, std::map<uint32_t, uint64_t>>&
                                   tid_pid_offset);  // NOLINT
 
-    bool BatchQuery(uint32_t tid, uint32_t pid, const std::string& idx_name,
-                    const std::vector<std::string>& keys, std::string* msg,
-                    std::string* data, bool* is_finish, uint32_t* count);
+    bool BatchQuery(uint32_t tid, uint32_t pid,
+            const ::google::protobuf::RepeatedPtrField<
+            ::rtidb::api::ReadOption> ros,
+            std::string* data,
+            uint32_t* count, std::string* msg);
 
     bool SetExpire(uint32_t tid, uint32_t pid, bool is_expire);
     bool SetTTLClock(uint32_t tid, uint32_t pid, uint64_t timestamp);
@@ -271,9 +269,10 @@ class TabletClient {
                                         uint32_t limit,
                                         uint32_t& count);  // NOLINT
 
-    bool Traverse(uint32_t tid, uint32_t pid, const std::string& pk,
-                  uint32_t limit, uint32_t* count, std::string* msg,
-                  std::string* data, bool* is_finish, uint64_t* snapshot_id);
+    bool Traverse(uint32_t tid, uint32_t pid, uint32_t limit,
+            std::string* pk, uint64_t* snapshot_id,
+            std::string* data, uint32_t* count,
+            bool* is_finish, std::string* msg);
 
     void ShowTp();
 
