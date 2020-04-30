@@ -360,6 +360,7 @@ void BlobServerImpl::DropTable(RpcController *controller,
         response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
         response->set_msg("please provide tid and pid");
     }
+    PDLOG(INFO, "drop table tid[%u]", request->tid());
 }
 
 void BlobServerImpl::DropTableInternal(uint32_t tid, uint32_t pid) {
