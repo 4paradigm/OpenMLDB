@@ -14,6 +14,8 @@ import com.google.common.base.Charsets;
 import com.google.protobuf.ByteBufferNoCopy;
 import com.google.protobuf.ByteString;
 import rtidb.api.TabletServer;
+import rtidb.blobserver.BlobServer;
+import com._4paradigm.rtidb.object_storage_server.ObjectStorage;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -1231,6 +1233,30 @@ public class TableSyncClientImpl implements TableSyncClient {
         return false;
     }
 
+    private boolean putObjectStore(int tid, ByteBuffer row, String[] autoKey, TableHandler th) throws TabletException {
+        if (autoKey.length < 1) {
+            throw new TabletException("auto gen key array size must greather 1");
+        }
+        BlobServer bs = th.getBS();
+        if (bs == null) {
+            throw new TabletException("can not found available blobserver with tid " + tid);
+        }
+        ObjectStorage.PutRequest.Builder builder = ObjectStorage.PutRequest.newBuilder();
+        builder.setTid(tid);
+        builder.setPid(0);
+        builder.setData(ByteBufferNoCopy.wrap(row.asReadOnlyBuffer()));
+
+        ObjectStorage.PutRequest request = builder.build();
+        ObjectStorage.PutResponse response = bs.put(request);
+        if (response != null && response.getCode() == 0) {
+            autoKey[0] = response.getKey();
+            return true;
+        }
+
+        return false;
+
+    }
+
     private boolean put(int tid, int pid,
                         String key, long time,
                         List<Tablet.Dimension> ds,
@@ -1346,6 +1372,25 @@ public class TableSyncClientImpl implements TableSyncClient {
             schema = th.getSchemaMap().get(row.size());
             if (schema.isEmpty()) {
                 throw new TabletException("no schema for column count " + row.size());
+            }
+        }
+        if (th.getBS() != null) {
+            if (!th.IsObjectTable()) {
+                for (Integer idx : th.getBlobSuffix()) {
+                    String[] keys = new String[1];
+                    ColumnDesc colDesc = schema.get(idx);
+                    Object col = row.get(colDesc.getName());
+                    if (colDesc.isNotNull() && col == null) {
+                        throw new TabletException("col " + colDesc.getName() + " should not be null");
+                    } else if (col == null) {
+                        continue;
+                    }
+                    boolean ok = putObjectStore(th.getTableInfo().getTid(), (ByteBuffer) col, keys, th);
+                    if (!ok) {
+                        throw new TabletException("put blob failed");
+                    }
+                    row.put(colDesc.getName(), keys[0]);
+                }
             }
         }
         buffer = RowBuilder.encode(row, schema);

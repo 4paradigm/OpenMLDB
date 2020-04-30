@@ -10,6 +10,9 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import com._4paradigm.rtidb.ns.NS;
+import com._4paradigm.rtidb.object_storage_server.ObjectStorage;
+import com._4paradigm.rtidb.type.Type;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
@@ -36,6 +39,7 @@ import io.brpc.client.RpcClientOptions;
 import io.brpc.client.RpcProxy;
 import io.brpc.client.SingleEndpointRpcClient;
 import rtidb.api.TabletServer;
+import rtidb.blobserver.BlobServer;
 
 public class RTIDBClusterClient implements Watcher, RTIDBClient {
     private final static Logger logger = LoggerFactory.getLogger(RTIDBClusterClient.class);
@@ -262,6 +266,35 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
                         }
                     }
                 }
+                if (table.hasTableType()) {
+                    List<String> blobs = new ArrayList<String>();
+                    if (table.getTableType() == Type.TableType.kRelational) {
+                        for (String blob : table.getBlobsList()) {
+                            blobs.add(blob);
+                        }
+                    } else if (table.getTableType() == Type.TableType.kObjectStore) {
+                        if (table.getTablePartitionList().size() > 1) {
+                            List<NS.PartitionMeta> metas = table.getTablePartition(0).getPartitionMetaList();
+                            if (metas.size() > 1) {
+                                blobs.add(metas.get(0).getEndpoint());
+                            }
+                        }
+                    }
+                    if (blobs.size() > 0) {
+                        EndPoint endPoint = new EndPoint(blobs.get(0));
+                        BrpcChannelGroup bcg = nodeManager.getChannel(endPoint);
+                        if (bcg == null) {
+                            logger.warn("no alive endpoint for table {}, except endpoint {}", table.getName(),
+                                    endPoint);
+                        } else {
+                            SingleEndpointRpcClient client = new SingleEndpointRpcClient(baseClient);
+                            client.updateEndpoint(endPoint, bcg);
+                            BlobServer bs = (BlobServer) RpcProxy.getProxy(client, ObjectStorage.BlobServer.class);
+                            handler.setBS(bs);
+                        }
+                    }
+                }
+
                 handler.setPartitions(partitionHandlerGroup);
                 newTables.put(table.getName(), handler);
                 newid2tables.put(table.getTid(), handler);
@@ -299,6 +332,26 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
                     endpoinSet.add(new EndPoint(parts[0], Integer.parseInt(parts[1])));
                 } catch (Exception e) {
                     logger.error("fail to add endpoint", e);
+                }
+            }
+            nodeManager.update(endpoinSet);
+            children.clear();;
+            endpoinSet.clear();
+            children = zookeeper.getChildren(config.getZkOssNodeRootPath(), false);
+            for (String path : children) {
+                if (path.isEmpty()) {
+                    continue;
+                }
+                logger.info("alive blob endpoint {}", path);
+                String[] parts = path.split(":");
+                if (parts.length != 2) {
+                    logger.warn("invalid blob endpoint {}", path);
+                    continue;
+                }
+                try {
+                    endpoinSet.add(new EndPoint(parts[0], Integer.parseInt(parts[1])));
+                } catch (Exception e) {
+                    logger.error("fail to add blob endpoint", e);
                 }
             }
             nodeManager.update(endpoinSet);
