@@ -6,27 +6,30 @@
 //
 
 #include "tablet/tablet_impl.h"
+
 #include <fcntl.h>
 #include <gflags/gflags.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/text_format.h>
 #include <sys/stat.h>
+
 #include <algorithm>
 #include <utility>
-#include <boost/lexical_cast.hpp>
+
 #include "base/file_util.h"
 #include "base/kv_iterator.h"
 #include "base/strings.h"
+#include "boost/lexical_cast.hpp"
 #include "codec/codec.h"
 #include "codec/flat_array.h"
 #include "codec/schema_codec.h"
 #include "gtest/gtest.h"
 #include "log/log_reader.h"
 #include "log/log_writer.h"
-#include "logging.h" // NOLINT
+#include "logging.h"  // NOLINT
 #include "proto/tablet.pb.h"
 #include "proto/type.pb.h"
-#include "timer.h" // NOLINT
+#include "timer.h"  // NOLINT
 
 DECLARE_string(db_root_path);
 DECLARE_string(ssd_root_path);
@@ -140,7 +143,8 @@ int MultiDimensionEncode(
 void MultiDimensionDecode(const std::string& value,
                           std::vector<std::string>& output,  // NOLINT
                           uint16_t column_num) {
-    rtidb::codec::FlatArrayIterator fit(value.c_str(), value.size(), column_num);
+    rtidb::codec::FlatArrayIterator fit(value.c_str(), value.size(),
+                                        column_num);
     while (fit.Valid()) {
         std::string col;
         if (fit.GetType() == ::rtidb::codec::ColType::kString) {
@@ -647,8 +651,8 @@ TEST_F(TabletImplTest, GetRelationalTable) {
     tablet.BatchQuery(NULL, &request, &response, &closure);
     ASSERT_EQ(0, response.code());
     std::string res = response.pairs();
-    ::rtidb::codec::RowView view(schema_t,
-                                reinterpret_cast<int8_t*>(&(res[0]) + 4), size);
+    ::rtidb::codec::RowView view(
+        schema_t, reinterpret_cast<int8_t*>(&(res[0]) + 4), size);
     int64_t val = 0;
     ASSERT_EQ(view.GetInt64(0, &val), 0);
     ASSERT_EQ(val, 10l);
@@ -6649,7 +6653,7 @@ TEST_F(TabletImplTest, DumpIndex) {
 
     std::vector<::rtidb::codec::ColumnDesc> columns;
     ::rtidb::codec::SchemaCodec::ConvertColumnDesc(table_meta->column_desc(),
-                                                  columns);
+                                                   columns);
     ::rtidb::codec::SchemaCodec codec;
     std::string buffer;
     codec.Encode(columns, buffer);
