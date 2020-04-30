@@ -3759,7 +3759,7 @@ void NameServerImpl::DropTableInternel(
             auto it = blob_servers_.find(endpoint);
             if (it != blob_servers_.end()) {
                 std::string msg;
-                bool ok =it->second->client_->DropTable(tid, 0, &msg);
+                bool ok = it->second->client_->DropTable(tid, 0, &msg);
                 if (!ok) {
                     PDLOG(WARNING, "drop object table[%u] endpoint[%s] fail",
                           tid, endpoint.c_str());
