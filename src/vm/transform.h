@@ -188,8 +188,7 @@ class ConditionOptimized : public TransformUpPysicalPass {
 
  private:
     virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
-    bool JoinConditionOptimized(PhysicalOpNode* in, ConditionFilter* filter,
-                            Hash* left_keys, Group* right_keys);
+    bool JoinConditionOptimized(PhysicalOpNode* in, Join* join);
     void SkipConstExpression(node::ExprListNode input,
                              node::ExprListNode* output);
 };
@@ -247,6 +246,14 @@ class BatchModeTransformer {
     typedef std::unordered_map<LogicalOp, ::fesql::vm::PhysicalOpNode*,
                                HashLogicalOp, EqualLogicalOp>
         LogicalOpMap;
+    bool GenPlanNode(PhysicalOpNode* node, base::Status& status);      // NOLINT
+    bool GenJoin(Join* join, PhysicalOpNode* in, base::Status& status); //NOLINT
+    bool GenFilter(ConditionFilter* filter, PhysicalOpNode* in,
+                   base::Status& status);
+    bool GenHash(Hash* hash, PhysicalOpNode*& in, base::Status& status); //NOLINT
+    bool GenWindow(WindowOp* window, PhysicalOpNode* in, base::Status& status); //NOLINT
+    bool GenGroup(Group* group, PhysicalOpNode* in, base::Status& status);
+    bool GenSort(Sort* sort, PhysicalOpNode* in, base::Status& status);
 
  protected:
     virtual bool TransformPlanOp(const ::fesql::node::PlanNode* node,
@@ -304,7 +311,10 @@ class BatchModeTransformer {
                          const node::ExprListNode* expr_list, bool row_mode,
                          std::string& fn_name, Schema* output_schema,  // NOLINT
                          base::Status& status);                        // NOLINT
-    bool GenPlanNode(PhysicalOpNode* node, base::Status& status);      // NOLINT
+    bool CodeGenExprList(const NameSchemaList& input_name_schema_list,
+                         const node::ExprListNode* expr_list, bool row_mode,
+                         FnInfo* fn_info,  // NOLINT
+                         base::Status& status);
 
     node::NodeManager* node_manager_;
     const std::string db_;

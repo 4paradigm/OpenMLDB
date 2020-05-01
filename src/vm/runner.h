@@ -59,16 +59,17 @@ class AggGenerator : public FnGenerator {
     inline const bool Valid() const override { return nullptr != fn_; }
 };
 
-class WindowGenerator : public FnGenerator {
+class WindowProjectGenerator : public FnGenerator {
  public:
-    explicit WindowGenerator(const FnInfo& info) : FnGenerator(info) {}
-    virtual ~WindowGenerator() {}
+    explicit WindowProjectGenerator(const FnInfo& info) : FnGenerator(info) {}
+    virtual ~WindowProjectGenerator() {}
     const Row Gen(const uint64_t key, const Row row, Window* window);
     inline const bool Valid() const override { return nullptr != fn_; }
 };
 
 class KeyGenerator : public FnGenerator {
  public:
+    KeyGenerator(const FnInfo& info) : FnGenerator(info) {}
     KeyGenerator(const FnInfo& info, const std::vector<int32_t> idxs)
         : FnGenerator(info), idxs_(idxs) {}
     virtual ~KeyGenerator() {}
@@ -81,6 +82,7 @@ class KeyGenerator : public FnGenerator {
 
 class OrderGenerator : public FnGenerator {
  public:
+    OrderGenerator(const FnInfo& info) : FnGenerator(info) {}
     OrderGenerator(const FnInfo& info, const std::vector<int32_t> idxs)
         : FnGenerator(info), idxs_(idxs) {}
     virtual ~OrderGenerator() {}
@@ -357,33 +359,38 @@ class WindowAggRunner : public Runner {
  public:
     WindowAggRunner(const int32_t id, const NameSchemaList& schema,
                     const int32_t limit_cnt, const FnInfo& fn_info,
-                    const int64_t start_offset, const int64_t end_offset)
+                    const WindowOp& window_op)
         : Runner(id, kRunnerWindowAgg, schema, limit_cnt),
+          window_op_(window_op),
           window_gen_(fn_info),
-          start_offset_(start_offset),
-          end_offset_(end_offset) {}
+          group_gen_(window_op.group_.fn_info_),
+          order_gen_(window_op.sort_.fn_info_),
+          key_gen(window_op.hash_.fn_info_),
+          range_gen_(window_op.range_.fn_info_) {}
     ~WindowAggRunner() {}
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
-    WindowGenerator window_gen_;
-    const int64_t start_offset_;
-    const int64_t end_offset_;
+    WindowOp window_op_;
+    WindowProjectGenerator window_gen_;
+    KeyGenerator group_gen_;
+    OrderGenerator order_gen_;
+    KeyGenerator key_gen;
+    OrderGenerator range_gen_;
+    int64_t start_offset_;
+    int64_t end_offset_;
 };
 
 class RequestUnionRunner : public Runner {
  public:
     RequestUnionRunner(const int32_t id, const NameSchemaList& schema,
                        const int32_t limit_cnt, const FnInfo& fn_info,
-                       const std::vector<int32_t>& groups_idxs,
-                       const std::vector<int32_t>& orders_idxs,
-                       const std::vector<int32_t>& ts_idxs, const bool is_asc,
-                       const int64_t start_offset, const int64_t end_offset)
+                       const WindowOp& window_op)
         : Runner(id, kRunnerRequestUnion, schema, limit_cnt),
-          is_asc_(is_asc),
-          group_gen_(fn_info, groups_idxs),
-          order_gen_(fn_info, orders_idxs),
-          ts_gen_(fn_info, ts_idxs),
-          start_offset_(start_offset),
-          end_offset_(end_offset) {}
+          is_asc_(window_op.sort_.GetIsAsc()),
+          group_gen_(fn_info),
+          order_gen_(fn_info),
+          ts_gen_(fn_info),
+          start_offset_(0),
+          end_offset_(0) {}
     ~RequestUnionRunner() {}
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
     const bool is_asc_;
@@ -442,8 +449,7 @@ class ConcatRunner : public Runner {
  public:
     ConcatRunner(const int32_t id, const NameSchemaList& schema,
                  const int32_t limit_cnt)
-        : Runner(id, kRunnerConcat, schema, limit_cnt) {
-    }
+        : Runner(id, kRunnerConcat, schema, limit_cnt) {}
     ~ConcatRunner() {}
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
 };

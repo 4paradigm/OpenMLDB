@@ -92,7 +92,7 @@ void PhysicalPartitionProviderNode::Print(std::ostream& output,
 void PhysicalGroupNode::Print(std::ostream& output,
                               const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(groups=" << node::ExprString(groups_) << ")";
+    output << "(" << group_.ToString() << ")";
     output << "\n";
     PrintChildren(output, tab);
 }
@@ -148,13 +148,8 @@ void PhysicalGroupAggrerationNode::Print(std::ostream& output,
 void PhysicalWindowAggrerationNode::Print(std::ostream& output,
                                           const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(type=" << ProjectTypeName(project_type_)
-           << ", groups=" << node::ExprString(groups_)
-           << ", orders=" << node::ExprString(orders_);
-    if (nullptr != range_key_) {
-        output << ", range=(" << node::ExprString(range_key_) << ", "
-               << start_offset_ << ", " << end_offset_ << ")";
-    }
+    output << "(type=" << ProjectTypeName(project_type_) << ", "
+           << window_.ToString();
     if (limit_cnt_ > 0) {
         output << ", limit=" << limit_cnt_;
     }
@@ -162,14 +157,33 @@ void PhysicalWindowAggrerationNode::Print(std::ostream& output,
     output << "\n";
     PrintChildren(output, tab);
 }
+bool PhysicalWindowAggrerationNode::InitSchema() {
+    if (2 != producers_.size() || nullptr == producers_[0] ||
+        nullptr == producers_[1]) {
+        LOG(WARNING) << "InitSchema fail: producers size isn't 2 or left/right "
+                        "producer is null";
+        return false;
+    }
+    output_schema_.CopyFrom(producers_[0]->output_schema_);
+    for (auto pair : producers_[0]->GetOutputNameSchemaList()) {
+        output_name_schema_list_.push_back(pair);
+    }
+
+    if (producers_.size() == 3 && nullptr != producers_[2]) {
+        output_schema_.MergeFrom(producers_[2]->output_schema_);
+        for (auto right_pair : producers_[2]->GetOutputNameSchemaList()) {
+            output_name_schema_list_.push_back(right_pair);
+        }
+    }
+    PrintSchema();
+    return true;
+}
 
 void PhysicalJoinNode::Print(std::ostream& output,
                              const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(type=" << node::JoinTypeName(join_type_)
-           << ", condition=" << node::ExprString(condition_)
-           << ", left_keys=" << node::ExprString(left_keys_.keys())
-           << ", right_groups=" << node::ExprString(right_groups_.groups());
+    output << "(type=" << node::JoinTypeName(join_type_) << ", "
+           << join_.ToString();
     if (limit_cnt_ > 0) {
         output << ", limit=" << limit_cnt_;
     }
@@ -193,13 +207,13 @@ bool PhysicalJoinNode::InitSchema() {
         output_name_schema_list_.push_back(right_pair);
     }
     PrintSchema();
-    return false;
+    return true;
 }
 
 void PhysicalSortNode::Print(std::ostream& output,
                              const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(" << node::ExprString(orders_);
+    output << "(" << sort_.ToString();
     if (limit_cnt_ > 0) {
         output << ", limit=" << limit_cnt_;
     }
@@ -225,7 +239,7 @@ void PhysicalRenameNode::Print(std::ostream& output,
 void PhysicalFliterNode::Print(std::ostream& output,
                                const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(condition=" << node::ExprString(condition_);
+    output << "(" << filter_.ToString();
     if (limit_cnt_ > 0) {
         output << ", limit=" << limit_cnt_;
     }
@@ -303,13 +317,7 @@ void PhysicalUnionNode::Print(std::ostream& output,
 void PhysicalRequestUnionNode::Print(std::ostream& output,
                                      const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(groups=" << node::ExprString(groups_)
-           << ", orders=" << node::ExprString(orders_)
-           << ", keys=" << node::ExprString(keys_);
-    if (nullptr != range_key_) {
-        output << ", range=(" << node::ExprString(range_key_) << ", "
-               << start_offset_ << ", " << end_offset_ <<")";
-    }
+    output << "(" << window_.ToString();
     if (limit_cnt_ > 0) {
         output << ", limit=" << limit_cnt_;
     }
@@ -329,10 +337,8 @@ bool PhysicalRequestUnionNode::InitSchema() {
 void PhysicalRequestJoinNode::Print(std::ostream& output,
                                     const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(type=" << node::JoinTypeName(join_type_)
-           << ", condition=" << node::ExprString(condition_)
-           << ", left_keys=" << node::ExprString(left_keys_.keys())
-           << ", right_groups=" << node::ExprString(right_groups_.groups());
+    output << "(type=" << node::JoinTypeName(join_type_) << ", "
+           << join_.ToString();
     if (limit_cnt_ > 0) {
         output << ", limit=" << limit_cnt_;
     }

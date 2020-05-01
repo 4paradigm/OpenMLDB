@@ -162,17 +162,16 @@ TEST_P(TransformTest, transform_physical_plan) {
         ::fesql::parser::FeSQLParser parser;
         ::fesql::node::NodePointVector parser_trees;
         parser.parse(sqlstr, parser_trees, &manager, base_status);
-        std::cout << *(parser_trees[0]) << std::endl;
+        LOG(INFO) << *(parser_trees[0]) << std::endl;
         ASSERT_EQ(0, base_status.code);
         if (planner.CreatePlanTree(parser_trees, plan_trees, base_status) ==
             0) {
-            std::cout << *(plan_trees[0]) << std::endl;
+            LOG(INFO) << *(plan_trees[0]) << std::endl;
         } else {
-            std::cout << base_status.msg;
+            LOG(INFO) << base_status.msg;
         }
 
         ASSERT_EQ(0, base_status.code);
-        std::cout.flush();
     }
 
     auto ctx = llvm::make_unique<LLVMContext>();
@@ -183,8 +182,11 @@ TEST_P(TransformTest, transform_physical_plan) {
     PhysicalOpNode* physical_plan = nullptr;
     ASSERT_TRUE(transform.TransformPhysicalPlan(plan_trees, &physical_plan,
                                                 base_status));
-    physical_plan->Print(std::cout, "");
-    m->print(::llvm::errs(), NULL);
+    std::ostringstream oss;
+
+    physical_plan->Print(oss, "");
+    LOG(INFO) << "physical plan:\n" << oss.str() << "\n";
+    //    m->print(::llvm::errs(), NULL);
 }
 
 void PhysicalPlanCheck(const std::shared_ptr<tablet::TabletCatalog>& catalog,
@@ -206,7 +208,7 @@ void PhysicalPlanCheck(const std::shared_ptr<tablet::TabletCatalog>& catalog,
         if (planner.CreatePlanTree(parser_trees, plan_trees, base_status) ==
             0) {
             std::cout << base_status.msg;
-            std::cout << *(plan_trees[0]) << std::endl;
+            LOG(INFO) << *(plan_trees[0]) << std::endl;
         } else {
             std::cout << base_status.msg;
         }
@@ -229,11 +231,11 @@ void PhysicalPlanCheck(const std::shared_ptr<tablet::TabletCatalog>& catalog,
 
     std::ostringstream oos;
     physical_plan->Print(oos, "");
-    std::cout << oos.str() << std::endl;
+    LOG(INFO) << "physical plan:\n" << oos.str() << std::endl;
 
     std::ostringstream ss;
     PrintSchema(ss, physical_plan->output_schema_);
-    std::cout << "schema:\n" << ss.str() << std::endl;
+    LOG(INFO) << "schema:\n" << ss.str() << std::endl;
 
     ASSERT_EQ(oos.str(), exp);
 }
@@ -464,6 +466,101 @@ TEST_F(TransformTest, TransformEqualExprPairTest) {
                   out_condition_list.children_.size() + mock_expr_pairs.size());
     }
 }
+
+class GroupGenTest : public ::testing::TestWithParam<std::string> {
+ public:
+    GroupGenTest() {}
+    ~GroupGenTest() {}
+};
+INSTANTIATE_TEST_CASE_P(GroupGen, GroupGenTest,
+                        testing::Values("select col1 from t1;",
+                                        "select col1, col2 from t1;"));
+
+TEST_P(GroupGenTest, GenTest) {
+    node::NodeManager nm;
+    base::Status status;
+
+    fesql::type::TableDef table_def;
+    BuildTableDef(table_def);
+    table_def.set_name("t1");
+    std::shared_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, table_def));
+    {
+        ::fesql::type::IndexDef* index = table_def.add_indexes();
+        index->set_name("index12");
+        index->add_first_keys("col1");
+        index->add_first_keys("col2");
+        index->set_second_key("col5");
+    }
+    {
+        ::fesql::type::IndexDef* index = table_def.add_indexes();
+        index->set_name("index1");
+        index->add_first_keys("col1");
+        index->set_second_key("col5");
+    }
+
+    auto catalog = BuildCommonCatalog(table_def, table);
+    auto groups = nm.MakeExprList();
+    ExtractExprListFromSimpleSQL(&nm, GetParam(), groups);
+    PhysicalTableProviderNode table_provider(catalog->GetTable("db", "t1"));
+    Group group(groups);
+
+    auto ctx = llvm::make_unique<LLVMContext>();
+    auto m = make_unique<Module>("test_op_generator", *ctx);
+    ::fesql::udf::RegisterUDFToModule(m.get());
+    BatchModeTransformer transformer(&nm, "db", catalog, m.get());
+    ASSERT_TRUE(transformer.GenGroup(&group, &table_provider, status));
+    m->print(::llvm::errs(), NULL);
+    ASSERT_FALSE(group.fn_info_.fn_name_.empty());
+}
+
+class FilterGenTest : public ::testing::TestWithParam<std::string> {
+ public:
+    FilterGenTest() {}
+    ~FilterGenTest() {}
+};
+INSTANTIATE_TEST_CASE_P(FilterGen, FilterGenTest,
+                        testing::Values("select t1.col1=t2.col1 from t1,t2;",
+                                        "select t1.col1!=t2.col2 from t1,t2;",
+                                        "select t1.col1>t2.col2 from t1,t2;",
+                                        "select t1.col1<t2.col2 from t1,t2;"));
+TEST_P(FilterGenTest, GenFilter) {
+    node::NodeManager nm;
+    base::Status status;
+
+    fesql::type::TableDef table_def;
+    BuildTableDef(table_def);
+    table_def.set_name("t1");
+    std::shared_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, table_def));
+
+    fesql::type::TableDef table_def2;
+    BuildTableDef(table_def2);
+    table_def2.set_name("t2");
+    std::shared_ptr<::fesql::storage::Table> table2(
+        new ::fesql::storage::Table(2, 1, table_def2));
+
+    auto catalog = BuildCommonCatalog(table_def, table);
+    AddTable(catalog, table_def2, table2);
+    node::ExprNode* condition;
+    ExtractExprFromSimpleSQL(&nm, GetParam(), &condition);
+
+    PhysicalTableProviderNode table_provider1(catalog->GetTable("db", "t1"));
+    PhysicalTableProviderNode table_provider2(catalog->GetTable("db", "t2"));
+    PhysicalJoinNode join_node(&table_provider1, &table_provider2,
+                               node::kJoinTypeConcat);
+
+    ConditionFilter filter(condition);
+
+    auto ctx = llvm::make_unique<LLVMContext>();
+    auto m = make_unique<Module>("test_op_generator", *ctx);
+    ::fesql::udf::RegisterUDFToModule(m.get());
+    BatchModeTransformer transformer(&nm, "db", catalog, m.get());
+    ASSERT_TRUE(transformer.GenFilter(&filter, &join_node, status));
+    m->print(::llvm::errs(), NULL);
+    ASSERT_FALSE(filter.fn_info_.fn_name_.empty());
+}
+
 }  // namespace vm
 }  // namespace fesql
 int main(int argc, char** argv) {

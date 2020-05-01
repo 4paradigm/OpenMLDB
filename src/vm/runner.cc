@@ -39,7 +39,8 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 }
                 case kProviderTypePartition: {
                     auto provider =
-                        dynamic_cast<const PhysicalPartitionProviderNode*>(node);
+                        dynamic_cast<const PhysicalPartitionProviderNode*>(
+                            node);
                     return new DataRunner(
                         id_++, node->GetOutputNameSchemaList(),
                         provider->table_handler_->GetPartition(
@@ -93,8 +94,7 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                             node);
                     auto runner = new WindowAggRunner(
                         id_++, node->GetOutputNameSchemaList(),
-                        op->GetLimitCnt(), op->GetFnInfo(), op->start_offset_,
-                        op->end_offset_);
+                        op->GetLimitCnt(), op->GetFnInfo(), op->window_);
                     runner->AddProducer(input);
                     return runner;
                 }
@@ -126,9 +126,7 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             auto op = dynamic_cast<const PhysicalRequestUnionNode*>(node);
             auto runner = new RequestUnionRunner(
                 id_++, node->GetOutputNameSchemaList(), op->GetLimitCnt(),
-                op->GetFnInfo(), op->GetGroupsIdxs(), op->GetOrdersIdxs(),
-                op->GetKeysIdxs(), op->GetIsAsc(), op->start_offset_,
-                op->end_offset_);
+                op->GetFnInfo(), op->window_);
             runner->AddProducer(left);
             runner->AddProducer(right);
             return runner;
@@ -148,8 +146,8 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                     auto runner = new RequestLastJoinRunner(
                         id_++, node->GetOutputNameSchemaList(),
                         op->GetLimitCnt(), op->GetFnInfo(),
-                        op->GetConditionIdxs(), op->GetLeftKeyFnInfo(),
-                        op->left_keys_.GetKeysIdxs());
+                        op->join_.filter_.GetConditionIdxs(), op->join_.left_hash_.fn_info_,
+                        op->join_.left_hash_.GetKeysIdxs());
                     runner->AddProducer(left);
                     runner->AddProducer(right);
                     return runner;
@@ -186,8 +184,8 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                     auto runner = new LastJoinRunner(
                         id_++, node->GetOutputNameSchemaList(),
                         op->GetLimitCnt(), op->GetFnInfo(),
-                        op->GetConditionIdxs(), op->GetLeftKeyFnInfo(),
-                        op->left_keys_.GetKeysIdxs());
+                        op->join_.filter_.GetConditionIdxs(), op->join_.left_hash_.fn_info_,
+                        op->join_.left_hash_.GetKeysIdxs());
                     runner->AddProducer(left);
                     runner->AddProducer(right);
                     return runner;
@@ -209,7 +207,7 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             auto op = dynamic_cast<const PhysicalGroupNode*>(node);
             auto runner = new GroupRunner(
                 id_++, node->GetOutputNameSchemaList(), op->GetLimitCnt(),
-                op->GetFnInfo(), op->GetGroupsIdxs());
+                op->GetFnInfo(), op->group_.GetGroupsIdxs());
             runner->AddProducer(input);
             return runner;
         }
@@ -221,7 +219,7 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             auto op = dynamic_cast<const PhysicalFliterNode*>(node);
             auto runner = new FilterRunner(
                 id_++, node->GetOutputNameSchemaList(), op->GetLimitCnt(),
-                op->GetFnInfo(), op->GetConditionIdxs());
+                op->GetFnInfo(), op->filter_.GetConditionIdxs());
             runner->AddProducer(input);
             return runner;
         }
@@ -679,13 +677,26 @@ std::shared_ptr<DataHandler> RowProjectRunner::Run(RunnerContext& ctx) {
 }
 std::shared_ptr<DataHandler> WindowAggRunner::Run(RunnerContext& ctx) {
     auto input = producers_[0]->RunWithCache(ctx);
+    auto fail_ptr = std::shared_ptr<DataHandler>();
     if (!input) {
         LOG(WARNING) << "window aggregation fail: input is null";
-        return std::shared_ptr<DataHandler>();
+        return fail_ptr;
     }
-    if (kPartitionHandler != input->GetHanlderType()) {
-        LOG(WARNING) << "window aggregation requires partition input";
-        return std::shared_ptr<DataHandler>();
+
+    if (window_op_.group_.ValidGroup()) {
+        switch (input->GetHanlderType()) {
+            case kPartitionHandler: {
+                return PartitionGroup(input, group_gen_);
+            }
+            case kTableHandler: {
+                return TableGroup(input, group_gen_);
+            }
+            default: {
+                LOG(WARNING) << "fail group when input type isn't "
+                                "partition or table";
+                return fail_ptr;
+            }
+        }
     }
     auto output_table = std::shared_ptr<MemTableHandler>(new MemTableHandler());
     auto partitions = std::dynamic_pointer_cast<PartitionHandler>(input);
@@ -1250,7 +1261,7 @@ const Row AggGenerator::Gen(std::shared_ptr<TableHandler> table) {
     }
     return Row(buf, RowView::GetSize(buf));
 }
-const Row WindowGenerator::Gen(const uint64_t key, const Row row,
+const Row WindowProjectGenerator::Gen(const uint64_t key, const Row row,
                                Window* window) {
     return Runner::WindowProject(fn_, key, row, window);
 }
