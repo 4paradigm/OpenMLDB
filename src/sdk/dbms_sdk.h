@@ -65,10 +65,10 @@ class DBMSSdk {
         return EMPTY;
     }
 
-    virtual bool Explain(const std::string& catalog,
-            const std::string& sql, ExplainInfo* info,
+    virtual std::shared_ptr<ExplainInfo> Explain(const std::string& catalog,
+            const std::string& sql,
             sdk::Status *status) {
-        return false;
+        return std::shared_ptr<ExplainInfo>();
     }
 
 };

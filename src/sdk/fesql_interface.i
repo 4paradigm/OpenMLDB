@@ -82,7 +82,6 @@ using fesql::sdk::Table;
 using fesql::sdk::TableSet;
 using fesql::sdk::DBMSSdk;
 using fesql::sdk::TabletSdk;
-
 using namespace fesql::node;
 using fesql::vm::SQLContext;
 using fesql::vm::Catalog;
@@ -93,6 +92,8 @@ using fesql::codec::RowIterator;
 using fesql::codec::IteratorV;
 using fesql::codec::Row;
 using fesql::node::PlanType;
+using fesql::sdk::ExplainInfo;
+
 %}
 
 
@@ -108,6 +109,7 @@ using fesql::node::PlanType;
 %ignore DataTypeName; // TODO: Geneerate duplicated class
 %ignore fesql::vm::RequestRunSession::RunRequestPlan;
 %ignore fesql::vm::FeSQLJITWrapper::AddModule;
+
 
 %include "base/slice.h"
 %include "base/status.h"

@@ -33,15 +33,14 @@ set(CMAKE_BUILD_TYPE RelWithDebInfo)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 #set(CMAKE_BUILD_TYPE DEBUG)
 set(LLVM_DIR "${PROJECT_SOURCE_DIR}/thirdparty/lib/cmake/llvm")
+
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    set(COMMON_LIBS glog gflags unwind lzma)
-    set(g_libs glog gflags unwind lzma)
+    set(COMMON_LIBS brpc protobuf glog gflags unwind lzma ssl crypto dl)
     set(arrow_libs parquet arrow_dataset arrow brotlidec brotlienc
             brotlicommon
             thrift lz4 z zstd double-conversion boost_filesystem snappy)
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin") # TODO: Make sure all libraries can be linked
-    set(COMMON_LIBS glog gflags)
-    set(g_libs glog gflags)
+    set(COMMON_LIBS brpc protobuf glog gflags ssl crypto)
     set(arrow_libs parquet arrow_dataset arrow brotlidec brotlienc
             brotlicommon
             thrift lz4 z zstd double-conversion boost_filesystem snappy)

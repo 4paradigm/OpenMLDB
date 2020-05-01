@@ -3,7 +3,7 @@ include_directories(${INCLUDE_DIRECTORIES}
         ${PROJECT_BINARY_DIR}/src)
 
 add_library(fesql_sdk STATIC base_impl.cc dbms_sdk.cc tablet_sdk.cc result_set_impl.cc)
-target_link_libraries(fesql_sdk fesql_parser fesql_planner fesql_node fesql_codec fesql_proto brpc ${g_libs} protobuf leveldb ${OS_LIB} z snappy ssl crypto dl)
+target_link_libraries(fesql_sdk fesql_parser fesql_planner fesql_node fesql_codec fesql_proto ${COMMON_LIBS} leveldb ${OS_LIB} z snappy)
 
 set(sdk_deps_libs fesql_dbms fesql_tablet fesql_storage fesql_vm fesql_codegen fesql_udf
         fesql_sdk fesql_base fesql_flags)

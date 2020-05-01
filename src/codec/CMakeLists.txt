@@ -7,17 +7,17 @@ set(case_deps_libs fesql_case ${yaml_libs} boost_filesystem)
 
 
 add_executable(row_test row_test.cc)
-target_link_libraries(row_test fesql_codec ${case_deps_libs} fesql_proto protobuf glog gflags lzma gtest pthread)
+target_link_libraries(row_test fesql_codec ${case_deps_libs} fesql_proto ${COMMON_LIBS} gtest pthread)
 add_test(row_test row_test --gtest_output=xml:${CMAKE_BINARY_DIR}/row_test.xml)
 list(APPEND test_list row_test)
 
 add_executable(schema_codec_test schema_codec_test.cc)
-target_link_libraries(schema_codec_test fesql_proto protobuf gflags gtest pthread)
+target_link_libraries(schema_codec_test fesql_proto ${COMMON_LIBS} gtest pthread)
 add_test(schema_codec_test schema_codec_test --gtest_output=xml:${CMAKE_BINARY_DIR}/schema_codec_test.xml)
 list(APPEND test_list schema_codec_test)
 
 add_executable(row_codec_test row_codec_test.cc)
-target_link_libraries(row_codec_test fesql_codec fesql_proto brpc protobuf glog gflags ssl crypto lzma dl gtest pthread)
+target_link_libraries(row_codec_test fesql_codec fesql_proto ${COMMON_LIBS} gtest pthread)
 add_test(row_codec_test row_codec_test --gtest_output=xml:${CMAKE_BINARY_DIR}/row_codec_test.xml)
 list(APPEND test_list row_codec_test)
 

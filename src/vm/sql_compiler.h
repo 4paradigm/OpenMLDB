@@ -54,7 +54,9 @@ struct SQLContext {
     std::string ir;
     std::string logical_plan;
     std::string physical_plan;
-    SQLContext() {}
+    SQLContext() {
+        runner = NULL;
+    }
     ~SQLContext() {
         delete runner;
     }

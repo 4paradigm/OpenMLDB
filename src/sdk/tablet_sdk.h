@@ -27,12 +27,16 @@
 namespace fesql {
 namespace sdk {
 
-struct ExplainInfo {
-    Schema input_schema;
-    Schema output_schema;
-    std::string logical_plan;
-    std::string physical_plan;
-    std::string ir;
+class ExplainInfo {
+
+ public:
+    ExplainInfo() {}
+    virtual ~ExplainInfo() {}
+    virtual const Schema& GetInputSchema() = 0;
+    virtual const Schema& GetOutputSchema() = 0;
+    virtual const std::string& GetLogicalPlan() = 0;
+    virtual const std::string& GetPhysicalPlan() = 0;
+    virtual const std::string& GetIR() = 0;
 };
 
 class TabletSdk {
@@ -46,15 +50,12 @@ class TabletSdk {
     virtual std::shared_ptr<ResultSet> Query(const std::string& db,
                                              const std::string& sql,
                                              sdk::Status* status) = 0;
-
     virtual std::shared_ptr<ResultSet> Query(const std::string& db,
                                              const std::string& sql,
                                              const std::string& row,
                                              sdk::Status* status) = 0;
-
-
-    virtual bool Explain(const std::string& db,
-            const std::string& sql, ExplainInfo* explain_info,
+    virtual std::shared_ptr<ExplainInfo> Explain(const std::string& db,
+            const std::string& sql, 
             sdk::Status* status) = 0;
 
 };

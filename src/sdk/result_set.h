@@ -24,7 +24,6 @@
 namespace fesql {
 namespace sdk {
 
-const static std::string result_set_str_empty;
 
 class ResultSet {
  public:
@@ -34,14 +33,13 @@ class ResultSet {
 
     virtual bool Next() = 0;
 
-    virtual bool GetString(uint32_t index, char** result, uint32_t* size) = 0;
+    virtual bool GetString(uint32_t index, std::string* val) = 0;
 
     inline std::string GetStringUnsafe(uint32_t index) {
-        if (IsNULL(index)) return result_set_str_empty;
-        char* ptr = NULL;
-        uint32_t size = 0;
-        GetString(index, &ptr, &size);
-        return std::string(ptr, size);
+        if (IsNULL(index)) return std::string();
+        std::string val;
+        GetString(index, &val);
+        return val;
     }
 
     virtual bool GetBool(uint32_t index, bool* result) = 0;

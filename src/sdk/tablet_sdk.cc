@@ -36,6 +36,47 @@ namespace sdk {
 
 const static std::string EMPTY_STR;
 
+class ExplainInfoImpl : public ExplainInfo {
+
+ public:
+    ExplainInfoImpl(const SchemaImpl& input_schema,
+            const SchemaImpl& output_schema,
+            const std::string& logical_plan,
+            const std::string& physical_plan,
+            const std::string& ir):input_schema_(input_schema),
+    output_schema_(output_schema), logical_plan_(logical_plan),
+    physical_plan_(physical_plan), ir_(ir) {}
+    ~ExplainInfoImpl() {}
+
+    const Schema&  GetInputSchema() {
+        return input_schema_;
+    }
+
+    const Schema& GetOutputSchema() {
+        return output_schema_;
+    }
+
+    const std::string& GetLogicalPlan() {
+    
+        return logical_plan_;
+    }
+
+    const std::string& GetPhysicalPlan() {
+        return physical_plan_;
+    }
+
+    const std::string& GetIR() {
+        return ir_;
+    }
+
+ private:
+    SchemaImpl input_schema_;
+    SchemaImpl output_schema_;
+    std::string logical_plan_;
+    std::string physical_plan_;
+    std::string ir_;
+};
+
 class TabletSdkImpl : public TabletSdk {
  public:
     TabletSdkImpl() {}
@@ -64,8 +105,7 @@ class TabletSdkImpl : public TabletSdk {
     void Insert(const std::string& db, const std::string& sql,
                 sdk::Status* status);
 
-    bool Explain(const std::string& db, const std::string& sql,
-            ExplainInfo* explain_info,
+    std::shared_ptr<ExplainInfo> Explain(const std::string& db, const std::string& sql,
             sdk::Status* status);
  private:
     void BuildInsertRequest(const node::InsertPlanNode* iplan,
@@ -182,10 +222,10 @@ bool TabletSdkImpl::GetSchema(const std::string& db, const std::string& table,
     return true;
 }
 
-bool TabletSdkImpl::Explain(const std::string& db, const std::string& sql,
-        ExplainInfo* explain_info,
+std::shared_ptr<ExplainInfo> TabletSdkImpl::Explain(const std::string& db, const std::string& sql,
         sdk::Status* status) {
-    if (status == NULL || explain_info == NULL) return false;
+
+    if (status == NULL) return std::shared_ptr<ExplainInfo>();
     ::fesql::tablet::TabletServer_Stub stub(channel_);
     ::fesql::tablet::ExplainRequest request;
     request.set_sql(sql);
@@ -197,40 +237,35 @@ bool TabletSdkImpl::Explain(const std::string& db, const std::string& sql,
     if (cntl.Failed()) {
         status->code = (common::kConnError);
         status->msg = "rpc controller error " + cntl.ErrorText();
-        return false;
+        return std::shared_ptr<ExplainInfo>();
     }
 
     if (response.status().code() != common::kOk) {
         status->code = response.status().code();
         status->msg = response.status().msg();
-        return false;
+        return std::shared_ptr<ExplainInfo>();
     }
-    
+
     vm::Schema internal_input_schema;
     bool ok = codec::SchemaCodec::Decode(response.input_schema(), &internal_input_schema);
     if (!ok) {
         status->msg = "fail to decode input schema";
         status->code = common::kSchemaCodecError;
-        return false;
+        return std::shared_ptr<ExplainInfo>();
     }
-
     SchemaImpl input_schema(internal_input_schema);
-    explain_info->input_schema = input_schema;
     vm::Schema internal_output_schema;
     ok = codec::SchemaCodec::Decode(response.output_schema(), &internal_output_schema);
     if (!ok) {
         status->msg = "fail to decode output  schema";
         status->code = common::kSchemaCodecError;
-        return false;
+        return std::shared_ptr<ExplainInfo>();
     }
-
     SchemaImpl output_schema(internal_output_schema);
-    explain_info->output_schema = output_schema;
-    explain_info->ir = response.ir();
-    explain_info->logical_plan = response.logical_plan();
-    explain_info->physical_plan = response.physical_plan();
+    std::shared_ptr<ExplainInfoImpl> impl(new ExplainInfoImpl(input_schema, output_schema, response.logical_plan(),
+            response.physical_plan(), response.ir()));
     status->code = common::kOk;
-    return true;
+    return impl;
 }
 
 void TabletSdkImpl::GetSqlPlan(const std::string& db, const std::string& sql,

@@ -50,11 +50,15 @@ bool ResultSetImpl::Init() {
         LOG(WARNING) << "fail to decode response schema ";
         return false;
     }
-    std::unique_ptr<codec::RowView> row_view(
-        new codec::RowView(internal_schema_));
+    std::unique_ptr<codec::RowIOBufView> row_view(
+        new codec::RowIOBufView(internal_schema_));
     row_view_ = std::move(row_view);
     schema_.SetSchema(internal_schema_);
     return true;
+}
+
+bool ResultSetImpl::IsNULL(uint32_t index) {
+    return row_view_->IsNULL(index);
 }
 
 bool ResultSetImpl::Next() {
@@ -66,18 +70,27 @@ bool ResultSetImpl::Next() {
         cntl_->response_attachment().copy_to(
                reinterpret_cast<void*>(&row_size),
                4, position_ + 2);
+        DLOG(INFO) << "row size " << row_size << " position " << position_ << " byte size " << byte_size_;
+        butil::IOBuf tmp;
+        cntl_->response_attachment().append_to(&tmp, row_size, position_);
+        position_ += row_size;
+        row_view_->Reset(tmp);
         return true;
     }
     return false;
 }
 
-bool ResultSetImpl::GetString(uint32_t index, char** result, uint32_t* size) {
-    if (result == NULL || size == NULL) {
+bool ResultSetImpl::GetString(uint32_t index, std::string* str) {
+    if (str == NULL) {
         LOG(WARNING) << "input ptr is null pointer";
         return false;
     }
-    int32_t ret = row_view_->GetString(index, result, size);
-    if (ret == 0) return true;
+    butil::IOBuf tmp;
+    int32_t ret = row_view_->GetString(index, &tmp);
+    if (ret == 0){
+        tmp.append_to(str, tmp.size(), 0);
+        return true;
+    }
     return false;
 }
 

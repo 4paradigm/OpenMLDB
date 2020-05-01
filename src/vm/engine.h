@@ -73,7 +73,7 @@ class RunSession {
  public:
     RunSession();
 
-    ~RunSession();
+    virtual ~RunSession();
 
     virtual inline const Schema& GetSchema() const {
         return compile_info_->get_sql_context().schema;

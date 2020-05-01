@@ -267,17 +267,17 @@ TEST_P(TabletSdkTest, test_explain) {
         ASSERT_FALSE(true);
     }
     {
-        ExplainInfo info;
         ::fesql::sdk::Status status;
         std::string sql =
             "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    "
             "return d\nend\n%%sql\nSELECT column1, column2, "
             "test(column1,column5) as f1, column1 + column5 as f2 FROM t1 "
             "limit 10;";
-        sdk->Explain(name, sql, &info, &status);
+
+        std::shared_ptr<ExplainInfo> ei = sdk->Explain(name, sql,&status);
         ASSERT_EQ(0, static_cast<int>(status.code));
-        ASSERT_TRUE(info.input_schema.GetColumnCnt() == 5);
-        ASSERT_TRUE(info.output_schema.GetColumnCnt() == 4);
+        ASSERT_EQ(ei->GetInputSchema().GetColumnCnt(), 5);
+        ASSERT_EQ(ei->GetOutputSchema().GetColumnCnt(), 4);
     }
 }
 
@@ -527,12 +527,9 @@ TEST_P(TabletSdkTest, test_udf_query) {
                 ASSERT_EQ(val, 5);
             }
             {
-                char* val = NULL;
-                uint32_t size = 0;
-                ASSERT_TRUE(rs->GetString(5, &val, &size));
-                ASSERT_EQ(size, 5u);
-                std::string str(val, 5);
-                ASSERT_EQ(str, "hello");
+                std::string val;
+                ASSERT_TRUE(rs->GetString(5, &val));
+                ASSERT_EQ("hello", val);
             }
         } else {
             ASSERT_TRUE(false);

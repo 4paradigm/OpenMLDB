@@ -225,10 +225,9 @@ void PrintResultSet(std::ostream &stream, ::fesql::sdk::ResultSet *result_set) {
                     break;
                 }
                 case fesql::sdk::kTypeString: {
-                    char *data = NULL;
-                    uint32_t size = 0;
-                    result_set->GetString(i, &data, &size);
-                    t.add(std::string(data, size));
+                    std::string val;
+                    result_set->GetString(i, &val);
+                    t.add(val);
                     break;
                 }
                 default: {
@@ -365,12 +364,11 @@ void HandleSQLScript(
                 std::string empty;
                 std::string mu_script = script;
                 mu_script.replace(0u, 7u, empty);
-                ::fesql::sdk::ExplainInfo info;
-                bool ok = dbms_sdk->Explain(cmd_client_db.name, mu_script, &info, &status);
-                if (!ok || 0 != status.code) {
+                std::shared_ptr<::fesql::sdk::ExplainInfo> info = dbms_sdk->Explain(cmd_client_db.name, mu_script, &status);
+                if (0 != status.code) {
                     return;
                 }
-                std::cout << info.physical_plan << std::endl;
+                std::cout << info->GetPhysicalPlan() << std::endl;
                 return;
             }
             case fesql::node::kFnList:

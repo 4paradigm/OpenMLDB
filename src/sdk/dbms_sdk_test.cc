@@ -293,12 +293,9 @@ TEST_F(DBMSSdkTest, ExecuteSQLTest) {
             }
 
             {
-                char *val = NULL;
-                uint32_t size = 0;
-                ASSERT_TRUE(rs->GetString(3, &val, &size));
-                ASSERT_EQ(size, 5);
-                std::string str(val, 5);
-                ASSERT_EQ(str, "hello");
+                std::string val;
+                ASSERT_TRUE(rs->GetString(3, &val));
+                ASSERT_EQ(val, "hello");
             }
         } else {
             ASSERT_FALSE(true);

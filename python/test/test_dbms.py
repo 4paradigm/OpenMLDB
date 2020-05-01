@@ -27,3 +27,4 @@ def run_db_check(dbms, ns, result):
 def test_dbms_valid():
     dbms = fesql.CreateDBMSSdk("xxxxx")
     assert not dbms
+
