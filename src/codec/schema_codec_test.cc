@@ -33,7 +33,7 @@ class SchemaCodecTest
 std::vector<std::pair<vm::Schema, uint32_t>> GenTestInput() {
     std::vector<std::pair<vm::Schema, uint32_t>> inputs;
     vm::Schema empty;
-    inputs.push_back(std::make_pair(empty, 2u));
+    inputs.push_back(std::make_pair(empty, 0));
     {
         // varchar
         vm::Schema schema;
