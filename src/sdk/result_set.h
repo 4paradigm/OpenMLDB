@@ -71,20 +71,20 @@ class ResultSet {
 
     virtual bool GetInt32(uint32_t index, int32_t* result) = 0;
 
-    int GetInt32Unsafe(uint32_t index) {
+    int32_t GetInt32Unsafe(uint32_t index) {
         if (IsNULL(index)) return 0;
         int32_t val = 0;
         GetInt32(index, &val);
-        return reinterpret_cast<int>(val);
+        return val;
     }
 
     virtual bool GetInt64(uint32_t index, int64_t* result) = 0;
 
-    long GetInt64Unsafe(uint32_t index) {
+    int64_t GetInt64Unsafe(uint32_t index) {
         if (IsNULL(index)) return 0;
         int64_t val = 0;
         GetInt64(index, &val);
-        return reinterpret_cast<long>(val);
+        return val;
     }
 
     virtual bool GetFloat(uint32_t index, float* result) = 0;
