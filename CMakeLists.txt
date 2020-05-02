@@ -53,7 +53,7 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 endif ()
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    set(COMMON_LIBS brpc leveldb protobuf glog tcmalloc gflags unwind lzma z snappy ssl crypto dl ${OS_LIB})
+    set(COMMON_LIBS brpc leveldb protobuf glog gflags unwind lzma z snappy ssl crypto dl ${OS_LIB})
     set(COMMON_NO_MEMORY_POOL_LIBS brpc leveldb protobuf glog gflags unwind lzma z snappy ssl crypto dl ${OS_LIB})
     set(COMMON_TEST_LIBS brpc leveldb protobuf gtest tcmalloc profiler glog gflags z snappy unwind lzma ssl crypto dl ${OS_LIB})
     set(arrow_libs parquet arrow_dataset arrow brotlidec brotlienc
