@@ -53,14 +53,14 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 endif ()
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    set(COMMON_LIBS brpc leveldb protobuf glog tcmalloc gflags unwind lzma ssl crypto dl ${OS_LIB})
-    set(COMMON_TEST_LIBS brpc leveldb protobuf gtest tcmalloc profiler glog gflags  unwind lzma ssl crypto dl ${OS_LIB})
+    set(COMMON_LIBS brpc leveldb protobuf glog tcmalloc gflags unwind lzma z snappy ssl crypto dl ${OS_LIB})
+    set(COMMON_TEST_LIBS brpc leveldb protobuf gtest tcmalloc profiler glog gflags z snappy unwind lzma ssl crypto dl ${OS_LIB})
     set(arrow_libs parquet arrow_dataset arrow brotlidec brotlienc
             brotlicommon
             thrift lz4 z zstd double-conversion boost_filesystem snappy)
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin") 
-    set(COMMON_LIBS brpc leveldb protobuf glog gflags ssl crypto ${OS_LIB})
-    set(COMMON_TEST_LIBS brpc leveldb protobuf gtest glog gflags ssl crypto ${OS_LIB})
+    set(COMMON_LIBS brpc leveldb protobuf glog gflags z snappy ssl crypto ${OS_LIB})
+    set(COMMON_TEST_LIBS brpc leveldb protobuf gtest glog gflags z snappy ssl crypto ${OS_LIB})
     set(arrow_libs parquet arrow_dataset arrow brotlidec brotlienc
             brotlicommon
             thrift lz4 z zstd double-conversion boost_filesystem snappy)
