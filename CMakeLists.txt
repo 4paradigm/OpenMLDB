@@ -34,39 +34,6 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 #set(CMAKE_BUILD_TYPE DEBUG)
 set(LLVM_DIR "${PROJECT_SOURCE_DIR}/thirdparty/lib/cmake/llvm")
 
-if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    set(COMMON_LIBS brpc protobuf glog gflags unwind lzma ssl crypto dl)
-    set(arrow_libs parquet arrow_dataset arrow brotlidec brotlienc
-            brotlicommon
-            thrift lz4 z zstd double-conversion boost_filesystem snappy)
-elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin") # TODO: Make sure all libraries can be linked
-    set(COMMON_LIBS brpc protobuf glog gflags ssl crypto)
-    set(arrow_libs parquet arrow_dataset arrow brotlidec brotlienc
-            brotlicommon
-            thrift lz4 z zstd double-conversion boost_filesystem snappy)
-endif ()
-set(BOOST_ROOT "${PROJECT_SOURCE_DIR}/thirdparty/")
-
-find_package(LLVM REQUIRED CONFIG)
-message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
-message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
-llvm_map_components_to_libnames(llvm_libs support core orcjit nativecodegen)
-
-configure_file(
-        "${PROJECT_SOURCE_DIR}/src/version.h.in"
-        "${PROJECT_SOURCE_DIR}/src/version.h"
-)
-option(TESTING_ENABLE "Enable Test" ON)
-option(COVERAGE_ENABLE "Enable Coverage" ON)
-if (TESTING_ENABLE)
-    enable_testing()
-endif ()
-if (COVERAGE_ENABLE)
-    if (CMAKE_COMPILER_IS_GNUCXX)
-        include(CodeCoverage)
-        APPEND_COVERAGE_COMPILER_FLAGS()
-    endif ()
-endif ()
 
 find_package(Threads)
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
@@ -84,6 +51,45 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
             "-Wl,-U,_ProfilerStart"
             "-Wl,-U,_ProfilerStop")
 endif ()
+
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    set(COMMON_LIBS brpc leveldb protobuf glog tcmalloc gflags unwind lzma ssl crypto dl ${OS_LIB})
+    set(COMMON_TEST_LIBS brpc leveldb protobuf gtest tcmalloc profiler glog gflags  unwind lzma ssl crypto dl ${OS_LIB})
+    set(arrow_libs parquet arrow_dataset arrow brotlidec brotlienc
+            brotlicommon
+            thrift lz4 z zstd double-conversion boost_filesystem snappy)
+elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin") 
+    set(COMMON_LIBS brpc leveldb protobuf glog gflags ssl crypto ${OS_LIB})
+    set(COMMON_TEST_LIBS brpc leveldb protobuf gtest glog gflags ssl crypto ${OS_LIB})
+    set(arrow_libs parquet arrow_dataset arrow brotlidec brotlienc
+            brotlicommon
+            thrift lz4 z zstd double-conversion boost_filesystem snappy)
+endif ()
+
+set(BOOST_ROOT "${PROJECT_SOURCE_DIR}/thirdparty/")
+
+find_package(LLVM REQUIRED CONFIG)
+message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
+message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
+llvm_map_components_to_libnames(llvm_libs support core orcjit nativecodegen)
+
+configure_file(
+        "${PROJECT_SOURCE_DIR}/src/version.h.in"
+        "${PROJECT_SOURCE_DIR}/src/version.h"
+)
+
+option(TESTING_ENABLE "Enable Test" ON)
+option(COVERAGE_ENABLE "Enable Coverage" ON)
+if (TESTING_ENABLE)
+    enable_testing()
+endif ()
+if (COVERAGE_ENABLE)
+    if (CMAKE_COMPILER_IS_GNUCXX)
+        include(CodeCoverage)
+        APPEND_COVERAGE_COMPILER_FLAGS()
+    endif ()
+endif ()
+
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     add_definitions('-Wall')
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
@@ -94,8 +100,8 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     add_definitions(-Wno-c++17-extensions)
     add_definitions(-Wno-defaulted-function-deleted)
 endif ()
-set(boost_libs boost_graph)
 
+set(boost_libs boost_graph)
 find_package(yaml-cpp REQUIRED)
 set(yaml_libs yaml-cpp)
 add_definitions('-g')

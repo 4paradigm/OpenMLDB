@@ -210,12 +210,51 @@ TEST_F(DBMSSdkTest, TableAPITest) {
     }
 }
 
-TEST_F(DBMSSdkTest, ExecuteSQLTest) {
+TEST_F(DBMSSdkTest, GetInputSchema_ns_not_exist) {
     usleep(2000 * 1000);
     const std::string endpoint = "127.0.0.1:" + std::to_string(dbms_port);
     std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk =
         ::fesql::sdk::CreateDBMSSdk(endpoint);
-    std::string name = "db_2";
+    std::string name = "db_x123";
+    {
+        Status status;
+        // select
+        std::string sql = "select column1 from test3;";
+        dbms_sdk->GetInputSchema(name, sql, &status);
+        ASSERT_EQ(31, static_cast<int>(status.code));
+    }
+}
+
+
+
+TEST_F(DBMSSdkTest, GetInputSchema_table_not_exist) {
+    usleep(2000 * 1000);
+    const std::string endpoint = "127.0.0.1:" + std::to_string(dbms_port);
+    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk =
+        ::fesql::sdk::CreateDBMSSdk(endpoint);
+
+    std::string name = "db_x12";
+    {
+        Status status;
+        dbms_sdk->CreateDatabase(name, &status);
+        ASSERT_EQ(0, static_cast<int>(status.code));
+    }
+    {
+        Status status;
+        // select
+        std::string sql = "select column1 from test3;";
+        dbms_sdk->GetInputSchema(name, sql, &status);
+        ASSERT_EQ(31, static_cast<int>(status.code));
+    }
+}
+
+TEST_F(DBMSSdkTest, GetInputSchema1) {
+    usleep(2000 * 1000);
+    const std::string endpoint = "127.0.0.1:" + std::to_string(dbms_port);
+    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk =
+        ::fesql::sdk::CreateDBMSSdk(endpoint);
+
+    std::string name = "db_x11";
     {
         Status status;
         dbms_sdk->CreateDatabase(name, &status);
@@ -237,7 +276,42 @@ TEST_F(DBMSSdkTest, ExecuteSQLTest) {
         dbms_sdk->ExecuteQuery(name, sql, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
+    {
+        Status status;
+        // select
+        std::string sql = "select column1 from test3;";
+        const Schema& schema = dbms_sdk->GetInputSchema(name, sql, &status);
+        ASSERT_EQ(0, static_cast<int>(status.code));
+        ASSERT_EQ(5, schema.GetColumnCnt());
+    }
+}
 
+TEST_F(DBMSSdkTest, ExecuteSQLTest) {
+    usleep(2000 * 1000);
+    const std::string endpoint = "127.0.0.1:" + std::to_string(dbms_port);
+    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk =
+        ::fesql::sdk::CreateDBMSSdk(endpoint);
+    std::string name = "db_2";
+    {
+        Status status;
+        dbms_sdk->CreateDatabase(name, &status);
+        ASSERT_EQ(0, static_cast<int>(status.code));
+    }
+    {
+        Status status;
+        // create table db1
+        std::string sql =
+            "create table test3(\n"
+            "    column1 int NOT NULL,\n"
+            "    column2 bigint NOT NULL,\n"
+            "    column3 int NOT NULL,\n"
+            "    column4 string NOT NULL,\n"
+            "    column5 int NOT NULL,\n"
+            "    index(key=column4, ts=column2)\n"
+            ");";
+        dbms_sdk->ExecuteQuery(name, sql, &status);
+        ASSERT_EQ(0, static_cast<int>(status.code));
+    }
     {
         Status status;
         // insert
@@ -245,7 +319,6 @@ TEST_F(DBMSSdkTest, ExecuteSQLTest) {
         dbms_sdk->ExecuteQuery(name, sql, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
-
     {
         Status status;
         std::string sql =
