@@ -56,7 +56,7 @@ swig_add_library(fesql_jsdk
         SOURCES fesql_interface.i)
 target_include_directories(fesql_jsdk PRIVATE ${JNI_INCLUDE_DIRS})
 target_compile_options(fesql_jsdk PRIVATE -w)
-target_link_libraries(fesql_jsdk PRIVATE fesql_sdk fesql_vm ${vm_deps_libs} fesql_simple_catalog fesql_codegen fesql_udf fesql_base ${llvm_libs} ${COMMON_LIBS})
+target_link_libraries(fesql_jsdk PRIVATE fesql_sdk fesql_vm ${vm_deps_libs} fesql_simple_catalog fesql_codegen fesql_udf fesql_base ${llvm_libs} ${COMMON_NO_MEMORY_POOL_LIBS})
 
 
 if(APPLE)
