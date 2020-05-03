@@ -93,12 +93,12 @@ class Group {
     const node::ExprListNode *groups() const { return groups_; }
     const bool ValidGroup() { return !node::ExprListNullOrEmpty(groups_); }
     const node::ExprListNode *groups_;
-    FnInfo fn_info_;
     const std::string ToString() const {
         std::ostringstream oss;
         oss << "groups=" << node::ExprString(groups_);
         return oss.str();
     }
+    FnInfo fn_info_;
 
  protected:
     std::vector<int32_t> groups_idxs_;
@@ -142,7 +142,10 @@ class Range {
                                : order->order_by_->children_[0];
     }
     virtual ~Range() {}
-    const node::ExprNode *range_keys() { return range_key_; }
+    const node::ExprNode *range_key() { return range_key_; }
+    void set_range_key(const node::ExprNode *range_key) {
+        range_key_ = range_key;
+    }
     const bool Valid() const { return nullptr != range_key_; }
     const std::string ToString() const {
         std::ostringstream oss;
@@ -154,8 +157,8 @@ class Range {
     }
     FnInfo fn_info_;
     const node::ExprNode *range_key_;
-    const int64_t start_offset_;
-    const int64_t end_offset_;
+    int64_t start_offset_;
+    int64_t end_offset_;
 };
 
 class ConditionFilter {

@@ -70,6 +70,11 @@ SQLNode *NodeManager::MakeLimitNode(int count) {
     LimitNode *node_ptr = new LimitNode(count);
     return RegisterNode(node_ptr);
 }
+SQLNode *NodeManager::MakeWindowDefNode(ExprListNode *partitions,
+                                        ExprNode *orders, SQLNode *frame) {
+    return MakeWindowDefNode(nullptr, partitions, orders, frame, true);
+}
+
 
 SQLNode *NodeManager::MakeWindowDefNode(SQLNodeList *union_tables,
                                         ExprListNode *partitions,

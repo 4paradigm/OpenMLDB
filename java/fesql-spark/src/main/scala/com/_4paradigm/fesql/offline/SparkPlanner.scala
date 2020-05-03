@@ -71,8 +71,6 @@ class SparkPlanner(session: SparkSession, config: Map[String, Any]) {
             s"Project type ${projectNode.getProject_type_} not supported")
         }
 
-      case PhysicalOpType.kPhysicalOpGroupAndSort =>
-        GroupAndSortPlan.gen(ctx, PhysicalGroupAndSortNode.CastFrom(root), children.head)
 
       case _ =>
         throw new IllegalArgumentException(s"Plan type $opType not supported")
