@@ -198,7 +198,7 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
         case kPhysicalOpProject: {
             auto project_op = dynamic_cast<PhysicalProjectNode*>(node);
             if (kWindowAggregation != project_op->project_type_) {
-                return false;
+                return true;
             }
             auto window_agg_op =
                 dynamic_cast<PhysicalWindowAggrerationNode*>(node);
@@ -228,6 +228,10 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
             if (!GenJoin(&request_join_op->join_, node, status)) {
                 return false;
             }
+            if (!GenHash(&request_join_op->hash_, node->producers()[0],
+                         status)) {
+                return false;
+            }
             break;
         }
         case kPhysicalOpRequestUnoin: {
@@ -235,6 +239,10 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
                 dynamic_cast<PhysicalRequestUnionNode*>(node);
             if (!GenWindow(&request_union_op->window_, node->producers()[1],
                            status)) {
+                return false;
+            }
+            if (!GenHash(&request_union_op->hash_, node->producers()[0],
+                         status)) {
                 return false;
             }
             break;
@@ -963,6 +971,9 @@ bool BatchModeTransformer::GenJoin(Join* join, PhysicalOpNode* in,
     if (!GenHash(&join->left_hash_, in->producers()[0], status)) {
         return false;
     }
+    if (!GenGroup(&join->right_partition_, in->producers()[1], status)) {
+        return false;
+    }
     return true;
 }
 bool BatchModeTransformer::GenFilter(ConditionFilter* filter,
@@ -1012,7 +1023,7 @@ bool BatchModeTransformer::GenWindow(WindowOp* window, PhysicalOpNode* in,
         return false;
     }
 
-    if (!GenHash(&window->hash_, in, status)) {
+    if (!GenRange(&window->range_, in, status)) {
         return false;
     }
     return true;
@@ -1055,6 +1066,18 @@ bool BatchModeTransformer::GenSort(Sort* sort, PhysicalOpNode* in,
     return true;
 }
 
+bool BatchModeTransformer::GenRange(Range* range, PhysicalOpNode* in,
+                                    base::Status& status) {
+    if (nullptr != range->range_key_) {
+        node::ExprListNode expr_list;
+        expr_list.AddChild(const_cast<node::ExprNode*>(range->range_key_));
+        if (!CodeGenExprList(in->GetOutputNameSchemaList(), &expr_list, true,
+                             &range->fn_info_, status)) {
+            return false;
+        }
+    }
+    return true;
+}
 bool GroupAndSortOptimized::KeysFilterOptimized(PhysicalOpNode* in,
                                                 Group* group, Hash* hash,
                                                 PhysicalOpNode** new_in) {
@@ -1078,6 +1101,58 @@ bool GroupAndSortOptimized::KeysFilterOptimized(PhysicalOpNode* in,
             group->set_groups(new_groups);
             hash->set_keys(keys);
             *new_in = scan_index_op;
+            return true;
+        }
+    }
+    return false;
+}
+bool GroupAndSortOptimized::JoinKeysOptimized(PhysicalOpNode* in, Join* join,
+                                              Hash* hash,
+                                              PhysicalOpNode** new_in) {
+    if (nullptr == join ||
+        node::ExprListNullOrEmpty(join->right_partition_.groups())) {
+        return false;
+    }
+
+    if (kPhysicalOpDataProvider == in->type_) {
+        auto scan_op = dynamic_cast<PhysicalDataProviderNode*>(in);
+        if (kProviderTypeTable == scan_op->provider_type_) {
+            const node::ExprListNode* new_right_partition = nullptr;
+            const node::ExprListNode* index_keys = nullptr;
+            node::ExprListNode* left_index_keys= nullptr;
+            node::ExprListNode* new_left_keys = nullptr;
+            std::string index_name;
+            auto& index_hint = scan_op->table_handler_->GetIndex();
+            const node::ExprListNode* right_partition =
+                join->right_partition_.groups();
+            if (!TransformGroupExpr(right_partition, index_hint, &index_name,
+                                    &index_keys, &new_right_partition)) {
+                return false;
+            }
+            PhysicalPartitionProviderNode* partition_op =
+                new PhysicalPartitionProviderNode(scan_op->table_handler_,
+                                                  index_name);
+            node_manager_->RegisterNode(partition_op);
+            *new_in = partition_op;
+            left_index_keys = node_manager_->MakeExprList();
+            new_left_keys = node_manager_->MakeExprList();
+            for (size_t i = 0; i < right_partition->children_.size(); i++) {
+                bool is_index_key = false;
+                for (auto key : index_keys->children_) {
+                    if (node::ExprEquals(right_partition->children_[i], key)) {
+                        is_index_key = true;
+                    }
+                }
+                if (is_index_key) {
+                    left_index_keys->AddChild(
+                        join->left_hash_.keys_->children_[i]);
+                } else {
+                    new_left_keys->AddChild(join->left_hash_.keys_->children_[i]);
+                }
+            }
+            join->right_partition_.set_groups(new_right_partition);
+            hash->set_keys(left_index_keys);
+            join->left_hash_.set_keys(new_left_keys);
             return true;
         }
     }
@@ -1144,8 +1219,7 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
         case kPhysicalOpGroupBy: {
             PhysicalGroupNode* group_op = dynamic_cast<PhysicalGroupNode*>(in);
             PhysicalOpNode* new_producer;
-            if (!GroupOptimized(group_op->GetProducer(0),
-                                &group_op->group_,
+            if (!GroupOptimized(group_op->GetProducer(0), &group_op->group_,
                                 &new_producer)) {
                 return false;
             }
@@ -1162,8 +1236,7 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                     dynamic_cast<PhysicalWindowAggrerationNode*>(project_op);
                 PhysicalOpNode* new_producer;
                 if (!GroupOptimized(union_op->GetProducer(0),
-                                    &union_op->window_.group_,
-                                    &new_producer)) {
+                                    &union_op->window_.group_, &new_producer)) {
                     return false;
                 }
                 union_op->SetProducer(0, new_producer);
@@ -1178,14 +1251,13 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
             PhysicalRequestUnionNode* union_op =
                 dynamic_cast<PhysicalRequestUnionNode*>(in);
             PhysicalOpNode* new_producer;
-            if (!KeysFilterOptimized(
-                    union_op->GetProducer(1), &union_op->window_.group_,
-                    &union_op->window_.hash_, &new_producer)) {
+            if (!KeysFilterOptimized(union_op->GetProducer(1),
+                                     &union_op->window_.group_,
+                                     &union_op->hash_, &new_producer)) {
                 return false;
             }
             union_op->SetProducer(1, new_producer);
-            SortOptimized(union_op->GetProducer(1),
-                          &union_op->window_.sort_);
+            SortOptimized(union_op->GetProducer(1), &union_op->window_.sort_);
             return true;
         }
         case kPhysicalOpRequestJoin: {
@@ -1193,9 +1265,8 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                 dynamic_cast<PhysicalRequestJoinNode*>(in);
             PhysicalOpNode* new_producer;
             // Optimized Right Table Partition
-            if (!GroupOptimized(join_op->GetProducer(1),
-                                (&join_op->join_.right_partition_),
-                                &new_producer)) {
+            if (!JoinKeysOptimized(join_op->GetProducer(1), &join_op->join_,
+                                   &join_op->hash_, &new_producer)) {
                 return false;
             }
             join_op->SetProducer(1, new_producer);

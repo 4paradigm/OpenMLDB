@@ -129,6 +129,8 @@ class GroupAndSortOptimized : public TransformUpPysicalPass {
  private:
     virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
 
+    bool JoinKeysOptimized(PhysicalOpNode* in, Join* join, Hash* hash,
+                           PhysicalOpNode** new_in);
     bool KeysFilterOptimized(PhysicalOpNode* in, Group* group, Hash* hash,
                              PhysicalOpNode** new_in);
     bool GroupOptimized(PhysicalOpNode* in, Group* group,
@@ -169,9 +171,8 @@ struct ExprPair {
 // for FilterNode, JoinNode
 class ConditionOptimized : public TransformUpPysicalPass {
  public:
-    ConditionOptimized(node::NodeManager* node_manager,
-                             const std::string& db,
-                             const std::shared_ptr<Catalog>& catalog)
+    ConditionOptimized(node::NodeManager* node_manager, const std::string& db,
+                       const std::shared_ptr<Catalog>& catalog)
         : TransformUpPysicalPass(node_manager, db, catalog) {}
     static bool TransfromAndConditionList(
         const node::ExprNode* condition,
@@ -246,14 +247,18 @@ class BatchModeTransformer {
     typedef std::unordered_map<LogicalOp, ::fesql::vm::PhysicalOpNode*,
                                HashLogicalOp, EqualLogicalOp>
         LogicalOpMap;
-    bool GenPlanNode(PhysicalOpNode* node, base::Status& status);      // NOLINT
-    bool GenJoin(Join* join, PhysicalOpNode* in, base::Status& status); //NOLINT
+    bool GenPlanNode(PhysicalOpNode* node, base::Status& status);  // NOLINT
+    bool GenJoin(Join* join, PhysicalOpNode* in,
+                 base::Status& status);  // NOLINT
     bool GenFilter(ConditionFilter* filter, PhysicalOpNode* in,
                    base::Status& status);
-    bool GenHash(Hash* hash, PhysicalOpNode*& in, base::Status& status); //NOLINT
-    bool GenWindow(WindowOp* window, PhysicalOpNode* in, base::Status& status); //NOLINT
+    bool GenHash(Hash* hash, PhysicalOpNode*& in,
+                 base::Status& status);  // NOLINT
+    bool GenWindow(WindowOp* window, PhysicalOpNode* in,
+                   base::Status& status);  // NOLINT
     bool GenGroup(Group* group, PhysicalOpNode* in, base::Status& status);
     bool GenSort(Sort* sort, PhysicalOpNode* in, base::Status& status);
+    bool GenRange(Range* sort, PhysicalOpNode* in, base::Status& status);
 
  protected:
     virtual bool TransformPlanOp(const ::fesql::node::PlanNode* node,

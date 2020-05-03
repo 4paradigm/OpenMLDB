@@ -135,8 +135,8 @@ PhysicalWindowAggrerationNode* PhysicalWindowAggrerationNode::CastFrom(
 void PhysicalGroupAggrerationNode::Print(std::ostream& output,
                                          const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(type=" << ProjectTypeName(project_type_)
-           << ", groups=" << node::ExprString(groups_);
+    output << "(type=" << ProjectTypeName(project_type_) << ", "
+           << group_.ToString();
     if (limit_cnt_ > 0) {
         output << ", limit=" << limit_cnt_;
     }
@@ -317,7 +317,13 @@ void PhysicalUnionNode::Print(std::ostream& output,
 void PhysicalRequestUnionNode::Print(std::ostream& output,
                                      const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(" << window_.ToString();
+    output << "(";
+    output << window_.group_.ToString();
+    output << ", " << window_.sort_.ToString();
+    output << ", " << hash_.ToString();
+    if (window_.range_.Valid()) {
+        output << ", " << window_.range_.ToString();
+    }
     if (limit_cnt_ > 0) {
         output << ", limit=" << limit_cnt_;
     }
@@ -339,6 +345,7 @@ void PhysicalRequestJoinNode::Print(std::ostream& output,
     PhysicalOpNode::Print(output, tab);
     output << "(type=" << node::JoinTypeName(join_type_) << ", "
            << join_.ToString();
+    output << ", " << hash_.ToString();
     if (limit_cnt_ > 0) {
         output << ", limit=" << limit_cnt_;
     }

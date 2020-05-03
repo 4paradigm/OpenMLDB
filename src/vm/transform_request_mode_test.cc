@@ -108,10 +108,10 @@ void PhysicalPlanCheck(const std::shared_ptr<tablet::TabletCatalog>& catalog,
     //    m->print(::llvm::errs(), NULL);
     std::ostringstream oss;
     physical_plan->Print(oss, "");
-    std::cout << "physical plan:\n" << sql << "\n" << oss.str() << std::endl;
+    LOG(INFO) << "physical plan:\n" << sql << "\n" << oss.str() << std::endl;
     std::ostringstream ss;
     PrintSchema(ss, physical_plan->output_schema_);
-    std::cout << "schema:\n" << ss.str() << std::endl;
+    LOG(INFO) << "schema:\n" << ss.str() << std::endl;
     ASSERT_EQ(oss.str(), exp);
 }
 INSTANTIATE_TEST_CASE_P(
@@ -242,6 +242,91 @@ TEST_P(TransformRequestModeTest, transform_physical_plan) {
     //    m->print(::llvm::errs(), NULL);
 }
 
+class TransformRequestModePassTest
+    : public ::testing::TestWithParam<std::pair<std::string, std::string>> {
+ public:
+    TransformRequestModePassTest() {}
+    ~TransformRequestModePassTest() {}
+};
+
+INSTANTIATE_TEST_CASE_P(
+    SQLJoin, TransformRequestModePassTest,
+    testing::Values(
+        std::make_pair(
+            "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join "
+            "t2 on "
+            " t1.col1 = t2.col2 and t2.col5 >= t1.col5;",
+            "PROJECT(type=RowProject)\n"
+            "  REQUEST_JOIN(type=LastJoin, condition=t2.col5 >= t1.col5, "
+            "left_keys=(t1.col1), right_groups=(t2.col2), keys=)\n"
+            "    DATA_PROVIDER(request=t1)\n"
+            "    DATA_PROVIDER(table=t2)"),
+        std::make_pair(
+            "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join "
+            "t2 on "
+            " t1.col1 = t2.col1 and t2.col5 >= t1.col5;",
+            "PROJECT(type=RowProject)\n"
+            "  REQUEST_JOIN(type=LastJoin, condition=t2.col5 >= t1.col5, "
+            "left_keys=(), right_groups=(), keys=(t1.col1))\n"
+            "    DATA_PROVIDER(request=t1)\n"
+            "    DATA_PROVIDER(type=Partition, table=t2, index=index1_t2)"),
+        std::make_pair(
+            "SELECT "
+            "t2.col1, "
+            "sum(t1.col3) OVER w1 as w1_col3_sum, "
+            "sum(t1.col2) OVER w1 as w1_col2_sum "
+            "FROM t1 last join t2 on t1.col1 = t2.col1 "
+            "WINDOW w1 AS (PARTITION BY t1.col1 ORDER BY t1.col5 ROWS "
+            "BETWEEN 3 "
+            "PRECEDING AND CURRENT ROW) limit 10;",
+            "LIMIT(limit=10, optimized)\n"
+            "  PROJECT(type=Aggregation, limit=10)\n"
+            "    JOIN(type=LastJoin, condition=, left_keys=(), "
+            "right_groups=())\n"
+            "      REQUEST_UNION(groups=(), orders=() ASC, keys=(t1.col1), "
+            "range=(t1.col5, -3, 0))\n"
+            "        DATA_PROVIDER(request=t1)\n"
+            "        DATA_PROVIDER(type=Partition, table=t1, index=index1)\n"
+            "      DATA_PROVIDER(type=Partition, table=t2, "
+            "index=index1_t2)"),
+        std::make_pair(
+            "SELECT "
+            "t2.col1, "
+            "sum(t1.col3) OVER w1 as w1_col3_sum, "
+            "sum(t1.col2) OVER w1 as w1_col2_sum "
+            "FROM t1 last join t2 on t1.col2 = t2.col2 "
+            "WINDOW w1 AS (PARTITION BY t1.col1, t1.col2 ORDER BY t1.col5 ROWS "
+            "BETWEEN 3 "
+            "PRECEDING AND CURRENT ROW) limit 10;",
+            "LIMIT(limit=10, optimized)\n"
+            "  PROJECT(type=Aggregation, limit=10)\n"
+            "    JOIN(type=LastJoin, condition=, left_keys=(t1.col2), "
+            "right_groups=(t2.col2))\n"
+            "      REQUEST_UNION(groups=(), orders=() ASC, "
+            "keys=(t1.col1,t1.col2), "
+            "range=(t1.col5, -3, 0))\n"
+            "        DATA_PROVIDER(request=t1)\n"
+            "        DATA_PROVIDER(type=Partition, table=t1, index=index12)\n"
+            "      DATA_PROVIDER(table=t2)"),
+        std::make_pair(
+            "SELECT "
+            "t2.col1, "
+            "sum(t1.col3) OVER w1 as w1_col3_sum, "
+            "sum(t1.col2) OVER w1 as w1_col2_sum "
+            "FROM t1 last join t2 on t1.col1 = t2.col1 "
+            "WINDOW w1 AS (PARTITION BY t1.col1, t1.col2 ORDER BY t1.col5 ROWS "
+            "BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;",
+            "LIMIT(limit=10, optimized)\n"
+            "  PROJECT(type=Aggregation, limit=10)\n"
+            "    JOIN(type=LastJoin, condition=, left_keys=(), "
+            "right_groups=())\n"
+            "      REQUEST_UNION(groups=(), orders=() ASC, "
+            "keys=(t1.col1,t1.col2), "
+            "range=(t1.col5, -3, 0))\n"
+            "        DATA_PROVIDER(request=t1)\n"
+            "        DATA_PROVIDER(type=Partition, table=t1, index=index12)\n"
+            "      DATA_PROVIDER(type=Partition, table=t2, index=index1_t2)")));
+
 TEST_F(TransformRequestModeTest, pass_group_optimized_test) {
     std::vector<std::pair<std::string, std::string>> in_outs;
     in_outs.push_back(std::make_pair(
@@ -362,78 +447,8 @@ TEST_F(TransformRequestModeTest, pass_sort_optimized_test) {
     }
 }
 
-TEST_F(TransformRequestModeTest, pass_join_optimized_test) {
-    std::vector<std::pair<std::string, std::string>> in_outs;
-    in_outs.push_back(std::make_pair(
-        "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join t2 on "
-        " t1.col1 = t2.col2 and t2.col5 >= t1.col5;",
-        "PROJECT(type=RowProject)\n"
-        "  REQUEST_JOIN(type=LastJoin, condition=t2.col5 >= t1.col5, "
-        "left_keys=(t1.col1), right_groups=(t2.col2))\n"
-        "    DATA_PROVIDER(request=t1)\n"
-        "    DATA_PROVIDER(table=t2)"));
-    in_outs.push_back(std::make_pair(
-        "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join t2 on "
-        " t1.col1 = t2.col1 and t2.col5 >= t1.col5;",
-        "PROJECT(type=RowProject)\n"
-        "  REQUEST_JOIN(type=LastJoin, condition=t2.col5 >= t1.col5, "
-        "left_keys=(t1.col1), right_groups=())\n"
-        "    DATA_PROVIDER(request=t1)\n"
-        "    DATA_PROVIDER(type=Partition, table=t2, index=index1_t2)"));
-    in_outs.push_back(std::make_pair(
-        "SELECT "
-        "t2.col1, "
-        "sum(t1.col3) OVER w1 as w1_col3_sum, "
-        "sum(t1.col2) OVER w1 as w1_col2_sum "
-        "FROM t1 last join t2 on t1.col1 = t2.col1 "
-        "WINDOW w1 AS (PARTITION BY t1.col1 ORDER BY t1.col5 ROWS "
-        "BETWEEN 3 "
-        "PRECEDING AND CURRENT ROW) limit 10;",
-        "LIMIT(limit=10, optimized)\n"
-        "  PROJECT(type=Aggregation, limit=10)\n"
-        "    JOIN(type=LastJoin, condition=, left_keys=(t1.col1), "
-        "right_groups=())\n"
-        "      REQUEST_UNION(groups=(), orders=() ASC, keys=(t1.col1), "
-        "range=(t1.col5, -3, 0))\n"
-        "        DATA_PROVIDER(request=t1)\n"
-        "        DATA_PROVIDER(type=Partition, table=t1, index=index1)\n"
-        "      DATA_PROVIDER(type=Partition, table=t2, index=index1_t2)"));
-    in_outs.push_back(std::make_pair(
-        "SELECT "
-        "t2.col1, "
-        "sum(t1.col3) OVER w1 as w1_col3_sum, "
-        "sum(t1.col2) OVER w1 as w1_col2_sum "
-        "FROM t1 last join t2 on t1.col2 = t2.col2 "
-        "WINDOW w1 AS (PARTITION BY t1.col1, t1.col2 ORDER BY t1.col5 ROWS "
-        "BETWEEN 3 "
-        "PRECEDING AND CURRENT ROW) limit 10;",
-        "LIMIT(limit=10, optimized)\n"
-        "  PROJECT(type=Aggregation, limit=10)\n"
-        "    JOIN(type=LastJoin, condition=, left_keys=(t1.col2), "
-        "right_groups=(t2.col2))\n"
-        "      REQUEST_UNION(groups=(), orders=() ASC, keys=(t1.col1,t1.col2), "
-        "range=(t1.col5, -3, 0))\n"
-        "        DATA_PROVIDER(request=t1)\n"
-        "        DATA_PROVIDER(type=Partition, table=t1, index=index12)\n"
-        "      DATA_PROVIDER(table=t2)"));
-    in_outs.push_back(std::make_pair(
-        "SELECT "
-        "t2.col1, "
-        "sum(t1.col3) OVER w1 as w1_col3_sum, "
-        "sum(t1.col2) OVER w1 as w1_col2_sum "
-        "FROM t1 last join t2 on t1.col1 = t2.col1 "
-        "WINDOW w1 AS (PARTITION BY t1.col1, t1.col2 ORDER BY t1.col5 ROWS "
-        "BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;",
-        "LIMIT(limit=10, optimized)\n"
-        "  PROJECT(type=Aggregation, limit=10)\n"
-        "    JOIN(type=LastJoin, condition=, left_keys=(t1.col1), "
-        "right_groups=())\n"
-        "      REQUEST_UNION(groups=(), orders=() ASC, keys=(t1.col1,t1.col2), "
-        "range=(t1.col5, -3, 0))\n"
-        "        DATA_PROVIDER(request=t1)\n"
-        "        DATA_PROVIDER(type=Partition, table=t1, index=index12)\n"
-        "      DATA_PROVIDER(type=Partition, table=t2, index=index1_t2)"));
-
+TEST_P(TransformRequestModePassTest, TransformPassTest) {
+    auto in_out = GetParam();
     fesql::type::TableDef table_def;
     BuildTableDef(table_def);
     table_def.set_name("t1");
@@ -465,10 +480,7 @@ TEST_F(TransformRequestModeTest, pass_join_optimized_test) {
             new ::fesql::storage::Table(1, 1, table_def2));
         AddTable(catalog, table_def2, table2);
     }
-
-    for (auto in_out : in_outs) {
-        PhysicalPlanCheck(catalog, in_out.first, in_out.second);
-    }
+    PhysicalPlanCheck(catalog, in_out.first, in_out.second);
 }
 
 }  // namespace vm
