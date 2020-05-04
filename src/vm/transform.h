@@ -129,7 +129,7 @@ class GroupAndSortOptimized : public TransformUpPysicalPass {
  private:
     virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
 
-    bool JoinKeysOptimized(PhysicalOpNode* in, Join* join, Hash* hash,
+    bool JoinKeysOptimized(PhysicalOpNode* in, Join* join,
                            PhysicalOpNode** new_in);
     bool KeysFilterOptimized(PhysicalOpNode* in, Group* group, Hash* hash,
                              PhysicalOpNode** new_in);

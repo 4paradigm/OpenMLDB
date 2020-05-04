@@ -385,6 +385,7 @@ class LastJoinRunner : public Runner {
         : Runner(id, kRunnerLastJoin, schema, limit_cnt),
           condition_gen_(join.filter_.fn_info_),
           left_key_gen_(join.left_hash_.fn_info_),
+          index_key_gen_(join.index_hash_.fn_info_),
           right_key_gen_(join.right_partition_.fn_info_) {}
     ~LastJoinRunner() {}
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
@@ -402,19 +403,19 @@ class LastJoinRunner : public Runner {
                        std::shared_ptr<MemPartitionHandler>);  // NOLINT
     ConditionGenerator condition_gen_;
     KeyGenerator left_key_gen_;
+    KeyGenerator index_key_gen_;
     KeyGenerator right_key_gen_;
 };
 
 class RequestLastJoinRunner : public Runner {
  public:
     RequestLastJoinRunner(const int32_t id, const NameSchemaList& schema,
-                          const int32_t limit_cnt, const Join& join,
-                          const Hash& hash)
+                          const int32_t limit_cnt, const Join& join)
         : Runner(id, kRunnerRequestLastJoin, schema, limit_cnt),
           condition_gen_(join.filter_.fn_info_),
           left_key_gen_(join.left_hash_.fn_info_),
-          right_key_gen_(join.right_partition_.fn_info_),
-          partition_key_gen(hash.fn_info_) {}
+          index_key_gen_(join.index_hash_.fn_info_),
+          right_key_gen_(join.right_partition_.fn_info_) {}
     ~RequestLastJoinRunner() {}
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
     Row PartitionRun(Row& left_row,
@@ -422,8 +423,8 @@ class RequestLastJoinRunner : public Runner {
     Row TableRun(Row& left_row, std::shared_ptr<TableHandler> table);  // NOLINT
     ConditionGenerator condition_gen_;
     KeyGenerator left_key_gen_;
+    KeyGenerator index_key_gen_;
     KeyGenerator right_key_gen_;
-    KeyGenerator partition_key_gen;
 };
 
 class ConcatRunner : public Runner {

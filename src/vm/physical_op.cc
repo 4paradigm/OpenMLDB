@@ -345,7 +345,6 @@ void PhysicalRequestJoinNode::Print(std::ostream& output,
     PhysicalOpNode::Print(output, tab);
     output << "(type=" << node::JoinTypeName(join_type_) << ", "
            << join_.ToString();
-    output << ", " << hash_.ToString();
     if (limit_cnt_ > 0) {
         output << ", limit=" << limit_cnt_;
     }

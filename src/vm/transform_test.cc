@@ -239,113 +239,7 @@ void PhysicalPlanCheck(const std::shared_ptr<tablet::TabletCatalog>& catalog,
 
     ASSERT_EQ(oos.str(), exp);
 }
-TEST_F(TransformTest, pass_group_optimized_test) {
-    std::vector<std::pair<std::string, std::string>> in_outs;
-    in_outs.push_back(std::make_pair(
-        "SELECT sum(col1) as col1sum FROM t1 group by col1;",
-        "PROJECT(type=GroupAggregation, groups=(col1))\n"
-        "  DATA_PROVIDER(type=Partition, table=t1, index=index1)"));
-    in_outs.push_back(std::make_pair(
-        "SELECT sum(col1) as col1sum FROM t1 group by col1, col2;",
-        "PROJECT(type=GroupAggregation, groups=(col1,col2))\n"
-        "  DATA_PROVIDER(type=Partition, table=t1, index=index12)"));
-    in_outs.push_back(std::make_pair(
-        "SELECT sum(col1) as col1sum FROM t1 group by col1, col2, col3;",
-        "PROJECT(type=GroupAggregation, groups=(col1,col2,col3))\n"
-        "  GROUP_BY(groups=(col3))\n"
-        "    DATA_PROVIDER(type=Partition, table=t1, index=index12)"));
-    in_outs.push_back(std::make_pair(
-        "SELECT sum(col1) as col1sum FROM t1 group by col3, col2, col1;",
-        "PROJECT(type=GroupAggregation, groups=(col3,col2,col1))\n"
-        "  GROUP_BY(groups=(col3))\n"
-        "    DATA_PROVIDER(type=Partition, table=t1, index=index12)"));
-    fesql::type::TableDef table_def;
-    BuildTableDef(table_def);
-    table_def.set_name("t1");
-    std::shared_ptr<::fesql::storage::Table> table(
-        new ::fesql::storage::Table(1, 1, table_def));
-    {
-        ::fesql::type::IndexDef* index = table_def.add_indexes();
-        index->set_name("index12");
-        index->add_first_keys("col1");
-        index->add_first_keys("col2");
-        index->set_second_key("col5");
-    }
-    {
-        ::fesql::type::IndexDef* index = table_def.add_indexes();
-        index->set_name("index1");
-        index->add_first_keys("col1");
-        index->set_second_key("col5");
-    }
 
-    auto catalog = BuildCommonCatalog(table_def, table);
-
-    for (auto in_out : in_outs) {
-        PhysicalPlanCheck(catalog, in_out.first, in_out.second);
-    }
-}
-
-TEST_F(TransformTest, pass_sort_optimized_test) {
-    std::vector<std::pair<std::string, std::string>> in_outs;
-    in_outs.push_back(std::make_pair(
-        "SELECT "
-        "col1, "
-        "sum(col3) OVER w1 as w1_col3_sum, "
-        "sum(col2) OVER w1 as w1_col2_sum "
-        "FROM t1 WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 3 "
-        "PRECEDING AND CURRENT ROW) limit 10;",
-        "LIMIT(limit=10, optimized)\n"
-        "  PROJECT(type=WindowAggregation, groups=(), orders=() ASC, "
-        "range=(col5, -3, 0), limit=10)\n"
-        "    DATA_PROVIDER(type=Partition, table=t1, index=index1)"));
-    in_outs.push_back(std::make_pair(
-        "SELECT "
-        "col1, "
-        "sum(col3) OVER w1 as w1_col3_sum, "
-        "sum(col2) OVER w1 as w1_col2_sum "
-        "FROM t1 WINDOW w1 AS (PARTITION BY col2, col1 ORDER BY col5 ROWS "
-        "BETWEEN 3 "
-        "PRECEDING AND CURRENT ROW) limit 10;",
-        "LIMIT(limit=10, optimized)\n"
-        "  PROJECT(type=WindowAggregation, groups=(), orders=() ASC, "
-        "range=(col5, -3, 0), limit=10)\n"
-        "    DATA_PROVIDER(type=Partition, table=t1, index=index12)"));
-    in_outs.push_back(std::make_pair(
-        "SELECT "
-        "col1, "
-        "sum(col3) OVER w1 as w1_col3_sum, "
-        "sum(col2) OVER w1 as w1_col2_sum "
-        "FROM t1 WINDOW w1 AS (PARTITION BY col3 ORDER BY col5 ROWS BETWEEN 3 "
-        "PRECEDING AND CURRENT ROW) limit 10;",
-        "LIMIT(limit=10, optimized)\n  PROJECT(type=WindowAggregation, "
-        "groups=(col3), orders=(col5) ASC, range=(col5, -3, 0), limit=10)\n    "
-        "DATA_PROVIDER(table=t1)"));
-
-    fesql::type::TableDef table_def;
-    BuildTableDef(table_def);
-    table_def.set_name("t1");
-    std::shared_ptr<::fesql::storage::Table> table(
-        new ::fesql::storage::Table(1, 1, table_def));
-    {
-        ::fesql::type::IndexDef* index = table_def.add_indexes();
-        index->set_name("index12");
-        index->add_first_keys("col1");
-        index->add_first_keys("col2");
-        index->set_second_key("col5");
-    }
-    {
-        ::fesql::type::IndexDef* index = table_def.add_indexes();
-        index->set_name("index1");
-        index->add_first_keys("col1");
-        index->set_second_key("col5");
-    }
-
-    auto catalog = BuildCommonCatalog(table_def, table);
-
-    for (auto in_out : in_outs) {
-        PhysicalPlanCheck(catalog, in_out.first, in_out.second);
-    }
-}
 
 TEST_F(TransformTest, TransfromConditionsTest) {
     std::vector<std::pair<std::string, std::vector<std::string>>> sql_exp;
@@ -561,6 +455,103 @@ TEST_P(FilterGenTest, GenFilter) {
     ASSERT_FALSE(filter.fn_info_.fn_name_.empty());
 }
 
+class TransformPassOptimizedTest
+    : public ::testing::TestWithParam<std::pair<std::string, std::string>> {
+ public:
+    TransformPassOptimizedTest() {}
+    ~TransformPassOptimizedTest() {}
+};
+
+INSTANTIATE_TEST_CASE_P(
+    GroupOptimized, TransformPassOptimizedTest,
+    testing::Values(
+        std::make_pair(
+            "SELECT sum(col1) as col1sum FROM t1 group by col1;",
+            "PROJECT(type=GroupAggregation, groups=(col1))\n"
+            "  DATA_PROVIDER(type=Partition, table=t1, index=index1)"),
+        std::make_pair(
+            "SELECT sum(col1) as col1sum FROM t1 group by col1, col2;",
+            "PROJECT(type=GroupAggregation, groups=(col1,col2))\n"
+            "  DATA_PROVIDER(type=Partition, table=t1, index=index12)"),
+        std::make_pair(
+            "SELECT sum(col1) as col1sum FROM t1 group by col1, col2, col3;",
+            "PROJECT(type=GroupAggregation, groups=(col1,col2,col3))\n"
+            "  GROUP_BY(groups=(col3))\n"
+            "    DATA_PROVIDER(type=Partition, table=t1, index=index12)"),
+        std::make_pair(
+            "SELECT sum(col1) as col1sum FROM t1 group by col3, col2, col1;",
+            "PROJECT(type=GroupAggregation, groups=(col3,col2,col1))\n"
+            "  GROUP_BY(groups=(col3))\n"
+            "    DATA_PROVIDER(type=Partition, table=t1, index=index12)")));
+
+INSTANTIATE_TEST_CASE_P(
+    SortOptimized, TransformPassOptimizedTest,
+    testing::Values(
+        std::make_pair(
+            "SELECT "
+            "col1, "
+            "sum(col3) OVER w1 as w1_col3_sum, "
+            "sum(col2) OVER w1 as w1_col2_sum "
+            "FROM t1 WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS "
+            "BETWEEN 3 "
+            "PRECEDING AND CURRENT ROW) limit 10;",
+            "LIMIT(limit=10, optimized)\n"
+            "  PROJECT(type=WindowAggregation, groups=(), orders=() ASC, "
+            "range=(col5, -3, 0), limit=10)\n"
+            "    DATA_PROVIDER(type=Partition, table=t1, index=index1)"),
+        std::make_pair(
+            "SELECT "
+            "col1, "
+            "sum(col3) OVER w1 as w1_col3_sum, "
+            "sum(col2) OVER w1 as w1_col2_sum "
+            "FROM t1 WINDOW w1 AS (PARTITION BY col2, col1 ORDER BY col5 ROWS "
+            "BETWEEN 3 "
+            "PRECEDING AND CURRENT ROW) limit 10;",
+            "LIMIT(limit=10, optimized)\n"
+            "  PROJECT(type=WindowAggregation, groups=(), orders=() ASC, "
+            "range=(col5, -3, 0), limit=10)\n"
+            "    DATA_PROVIDER(type=Partition, table=t1, index=index12)"),
+        std::make_pair(
+            "SELECT "
+            "col1, "
+            "sum(col3) OVER w1 as w1_col3_sum, "
+            "sum(col2) OVER w1 as w1_col2_sum "
+            "FROM t1 WINDOW w1 AS (PARTITION BY col3 ORDER BY col5 ROWS "
+            "BETWEEN 3 "
+            "PRECEDING AND CURRENT ROW) limit 10;",
+            "LIMIT(limit=10, optimized)\n  PROJECT(type=WindowAggregation, "
+            "groups=(col3), orders=(col5) ASC, range=(col5, -3, 0), "
+            "limit=10)\n    "
+            "DATA_PROVIDER(table=t1)")));
+
+
+
+
+TEST_P(TransformPassOptimizedTest, pass_optimzied_test) {
+    fesql::type::TableDef table_def;
+    BuildTableDef(table_def);
+    table_def.set_name("t1");
+    std::shared_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, table_def));
+    {
+        ::fesql::type::IndexDef* index = table_def.add_indexes();
+        index->set_name("index12");
+        index->add_first_keys("col1");
+        index->add_first_keys("col2");
+        index->set_second_key("col5");
+    }
+    {
+        ::fesql::type::IndexDef* index = table_def.add_indexes();
+        index->set_name("index1");
+        index->add_first_keys("col1");
+        index->set_second_key("col5");
+    }
+
+    auto catalog = BuildCommonCatalog(table_def, table);
+
+    auto in_out = GetParam();
+    PhysicalPlanCheck(catalog, in_out.first, in_out.second);
+}
 }  // namespace vm
 }  // namespace fesql
 int main(int argc, char** argv) {

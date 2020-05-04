@@ -228,10 +228,7 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
             if (!GenJoin(&request_join_op->join_, node, status)) {
                 return false;
             }
-            if (!GenHash(&request_join_op->hash_, node->producers()[0],
-                         status)) {
-                return false;
-            }
+
             break;
         }
         case kPhysicalOpRequestUnoin: {
@@ -971,9 +968,14 @@ bool BatchModeTransformer::GenJoin(Join* join, PhysicalOpNode* in,
     if (!GenHash(&join->left_hash_, in->producers()[0], status)) {
         return false;
     }
+    if (!GenHash(&join->index_hash_, in->producers()[0],
+                 status)) {
+        return false;
+    }
     if (!GenGroup(&join->right_partition_, in->producers()[1], status)) {
         return false;
     }
+
     return true;
 }
 bool BatchModeTransformer::GenFilter(ConditionFilter* filter,
@@ -1107,7 +1109,6 @@ bool GroupAndSortOptimized::KeysFilterOptimized(PhysicalOpNode* in,
     return false;
 }
 bool GroupAndSortOptimized::JoinKeysOptimized(PhysicalOpNode* in, Join* join,
-                                              Hash* hash,
                                               PhysicalOpNode** new_in) {
     if (nullptr == join ||
         node::ExprListNullOrEmpty(join->right_partition_.groups())) {
@@ -1151,7 +1152,7 @@ bool GroupAndSortOptimized::JoinKeysOptimized(PhysicalOpNode* in, Join* join,
                 }
             }
             join->right_partition_.set_groups(new_right_partition);
-            hash->set_keys(left_index_keys);
+            join->index_hash_.set_keys(left_index_keys);
             join->left_hash_.set_keys(new_left_keys);
             return true;
         }
@@ -1265,8 +1266,7 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                 dynamic_cast<PhysicalRequestJoinNode*>(in);
             PhysicalOpNode* new_producer;
             // Optimized Right Table Partition
-            if (!JoinKeysOptimized(join_op->GetProducer(1), &join_op->join_,
-                                   &join_op->hash_, &new_producer)) {
+            if (!JoinKeysOptimized(join_op->GetProducer(1), &join_op->join_, &new_producer)) {
                 return false;
             }
             join_op->SetProducer(1, new_producer);
@@ -1276,8 +1276,8 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
             PhysicalJoinNode* join_op = dynamic_cast<PhysicalJoinNode*>(in);
             PhysicalOpNode* new_producer;
             // Optimized Right Table Partition
-            if (!GroupOptimized(join_op->GetProducer(1),
-                                (&join_op->join_.right_partition_),
+            if (!JoinKeysOptimized(join_op->GetProducer(1),
+                                &join_op->join_,
                                 &new_producer)) {
                 return false;
             }

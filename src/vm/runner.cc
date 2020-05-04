@@ -147,7 +147,7 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 case node::kJoinTypeLast: {
                     auto runner = new RequestLastJoinRunner(
                         id_++, node->GetOutputNameSchemaList(),
-                        op->GetLimitCnt(), op->join_, op->hash_);
+                        op->GetLimitCnt(), op->join_);
                     runner->AddProducer(left);
                     runner->AddProducer(right);
                     return runner;
@@ -823,12 +823,12 @@ std::shared_ptr<DataHandler> RequestLastJoinRunner::Run(
 
 Row RequestLastJoinRunner::PartitionRun(
     Row& left_row, std::shared_ptr<PartitionHandler> partition) {
-    if (!partition_key_gen.Valid()) {
+    if (!index_key_gen_.Valid()) {
         LOG(WARNING)
             << "can't join right partition table when partition keys is empty";
         return Row();
     }
-    std::string partition_key = partition_key_gen.Gen(left_row);
+    std::string partition_key = index_key_gen_.Gen(left_row);
     auto right_table = partition->GetSegment(partition, partition_key);
     return TableRun(left_row, right_table);
 }
@@ -964,7 +964,12 @@ bool LastJoinRunner::TableJoin(std::shared_ptr<TableHandler> left,
     left_iter->SeekToFirst();
     while (left_iter->Valid()) {
         const Row& left_row = left_iter->GetValue();
-        const std::string& key_str = left_key_gen_.Gen(left_row);
+        std::string key_str = "";
+        if (index_key_gen_.Valid())
+            key_str = index_key_gen_.Gen(left_row) + "|" + left_key_gen_.Gen(left_row);
+        else {
+            key_str = left_key_gen_.Gen(left_row);
+        }
         LOG(INFO) << "key_str " << key_str;
         auto right_table = right->GetSegment(right, key_str);
         output->AddRow(RowLastJoin(left_row, right_table, condition_gen_));
@@ -1017,7 +1022,10 @@ bool LastJoinRunner::PartitionJoin(
         left_iter->SeekToFirst();
         while (left_iter->Valid()) {
             const Row& left_row = left_iter->GetValue();
-            const std::string& key_str = left_key_gen_.Gen(left_row);
+            const std::string& key_str = index_key_gen_.Valid() ?
+                index_key_gen_.Gen(left_row) + "|" +
+                                         left_key_gen_.Gen(left_row) :
+                                         left_key_gen_.Gen(left_row);
             auto right_table = right->GetSegment(right, key_str);
             output->AddRow(std::string(left_key.data(), left_key.size()),
                            left_iter->GetKey(),

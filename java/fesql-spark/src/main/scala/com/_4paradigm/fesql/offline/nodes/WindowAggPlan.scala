@@ -49,7 +49,7 @@ object WindowAggPlan {
       startOffset = node.getWindow_().getRange_.getStart_offset_(),
       orderIdx = orderIdx,
       groupIdxs = groupIdxs.toArray,
-      functionName = node.GetFnName(),
+      functionName = node.getProject_().getFn_name_(),
       moduleTag = ctx.getTag,
       moduleBroadcast = ctx.getModuleBufferBroadcast,
       inputSchema = input.getSchema,

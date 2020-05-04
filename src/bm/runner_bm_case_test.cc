@@ -27,12 +27,6 @@ TEST_F(RunnerBMCaseTest, RequestUnionRunnerCase_TEST) {
     WindowSumFeature1_RequestUnion(nullptr, TEST, 1, 10000L);
 }
 
-TEST_F(RunnerBMCaseTest, IndexSeekRunnerCase_TEST) {
-    WindowSumFeature1_IndexSeek(nullptr, TEST, 1, 100L);
-    WindowSumFeature1_IndexSeek(nullptr, TEST, 1, 1000L);
-    WindowSumFeature1_IndexSeek(nullptr, TEST, 1, 10000L);
-}
-
 }  // namespace bm
 }  // namespace fesql
 int main(int argc, char** argv) {
