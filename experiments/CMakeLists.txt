@@ -11,7 +11,5 @@ target_link_libraries(sql_parquet_test ${ARROW_LIBS} glog gflags  gtest pthread)
 add_executable(boost_test boost/boost_test.cc)
 target_link_libraries(boost_test ${boost_libs}  gtest pthread)
 
-
 add_executable(io_buf_test iobuf/test_iobuf.cc)
-target_link_libraries(io_buf_test ${BRPC_LIBS} gtest pthread)
-
+target_link_libraries(io_buf_test gtest ${BRPC_LIBS} ${OS_LIB})
