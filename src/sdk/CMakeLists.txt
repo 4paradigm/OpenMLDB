@@ -3,31 +3,25 @@ include_directories(${INCLUDE_DIRECTORIES}
         ${PROJECT_BINARY_DIR}/src)
 
 add_library(fesql_sdk STATIC base_impl.cc dbms_sdk.cc tablet_sdk.cc result_set_impl.cc)
-target_link_libraries(fesql_sdk fesql_parser fesql_planner fesql_node fesql_codec fesql_proto)
 
-set(sdk_deps_libs fesql_dbms fesql_tablet fesql_storage fesql_vm fesql_codegen fesql_udf
-        fesql_sdk fesql_base fesql_flags)
+set(sdk_deps_libs fesql_sdk fesql_dbms fesql_tablet fesql_flags ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS} ${OS_LIB})
 
 add_executable(dbms_sdk_test dbms_sdk_test.cc)
 target_link_libraries(dbms_sdk_test
-        ${sdk_deps_libs}
-        ${COMMON_TEST_LIBS} ${llvm_libs})
+        gtest ${sdk_deps_libs})
 add_test(dbms_sdk_test dbms_sdk_test --gtest_output=xml:${CMAKE_BINARY_DIR}/dbms_sdk_test.xml)
 list(APPEND test_list dbms_sdk_test)
 
 add_executable(tablet_sdk_test tablet_sdk_test.cc)
 target_link_libraries(tablet_sdk_test
-        ${sdk_deps_libs}
-        ${COMMON_TEST_LIBS} ${llvm_libs})
-
+       gtest ${sdk_deps_libs})
 add_test(tablet_sdk_test tablet_sdk_test
         --gtest_output=xml:${CMAKE_BINARY_DIR}/tablet_sdk_test.xml)
 list(APPEND test_list tablet_sdk_test)
 
 add_executable(result_set_impl_test result_set_impl_test.cc)
 target_link_libraries(result_set_impl_test
-        ${sdk_deps_libs}
-        ${COMMON_TEST_LIBS} ${llvm_libs})
+         gtest ${sdk_deps_libs})
 add_test(result_set_impl_test result_set_impl_test --gtest_output=xml:${CMAKE_BINARY_DIR}/result_set_impl_test.xml)
 list(APPEND test_list result_set_impl_test)
 
@@ -45,8 +39,7 @@ swig_add_library(fesql_pysdk
         OUTPUT_DIR ${CMAKE_BINARY_DIR}/python/fesql/
         SOURCES fesql_interface.i)
 target_include_directories(fesql_pysdk PRIVATE ${PYTHON_INCLUDE_DIRS})
-target_link_libraries(fesql_pysdk PRIVATE fesql_sdk fesql_vm ${vm_deps_libs} fesql_simple_catalog fesql_codegen fesql_udf fesql_base ${llvm_libs} ${COMMON_NO_MEMORY_POOL_LIBS})
-
+target_link_libraries(fesql_pysdk ${sdk_deps_libs})
 
 set_property(SOURCE fesql_interface.i PROPERTY COMPILE_OPTIONS -package com._4paradigm)
 swig_add_library(fesql_jsdk
@@ -56,8 +49,7 @@ swig_add_library(fesql_jsdk
         SOURCES fesql_interface.i)
 target_include_directories(fesql_jsdk PRIVATE ${JNI_INCLUDE_DIRS})
 target_compile_options(fesql_jsdk PRIVATE -w)
-target_link_libraries(fesql_jsdk PRIVATE fesql_sdk fesql_vm ${vm_deps_libs} fesql_simple_catalog fesql_codegen fesql_udf fesql_base ${llvm_libs} ${COMMON_NO_MEMORY_POOL_LIBS})
-
+target_link_libraries(fesql_jsdk fesql_simple_catalog ${sdk_deps_libs})
 
 if(APPLE)
   set_target_properties(fesql_jsdk PROPERTIES
@@ -67,7 +59,6 @@ if(APPLE)
   set_property(TARGET fesql_pysdk APPEND PROPERTY
     LINK_FLAGS "-flat_namespace -undefined suppress")
 endif()
-
 
 #######################
 ## Python Packaging  ##

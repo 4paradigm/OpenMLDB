@@ -57,7 +57,7 @@ bool ResultSetImpl::Init() {
     return true;
 }
 
-bool ResultSetImpl::IsNULL(uint32_t index) {
+bool ResultSetImpl::IsNULL(int index) {
     return row_view_->IsNULL(index);
 }
 

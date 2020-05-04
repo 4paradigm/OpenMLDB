@@ -35,7 +35,7 @@ class ResultSet {
 
     virtual bool GetString(uint32_t index, std::string* val) = 0;
 
-    inline std::string GetStringUnsafe(uint32_t index) {
+    inline std::string GetStringUnsafe(int index) {
         if (IsNULL(index)) return std::string();
         std::string val;
         GetString(index, &val);
@@ -44,16 +44,14 @@ class ResultSet {
 
     virtual bool GetBool(uint32_t index, bool* result) = 0;
 
-    inline bool GetBoolUnsafe(uint32_t index) {
+    inline bool GetBoolUnsafe(int index) {
         if (IsNULL(index)) return false;
         bool ok = false;
-        GetBool(index, &ok);
+        GetBool(static_cast<uint32_t>(index), &ok);
         return ok;
     }
-
     virtual bool GetChar(uint32_t index, char* result) = 0;
-
-    char GetCharUnsafe(uint32_t index)  {
+    char GetCharUnsafe(int index)  {
         if (IsNULL(index)) return 0;
         char data = 0;
         GetChar(index, &data);
@@ -62,7 +60,7 @@ class ResultSet {
 
     virtual bool GetInt16(uint32_t index, int16_t* result) = 0;
 
-    virtual short GetInt16Unsafe(uint32_t index) {
+    virtual short GetInt16Unsafe(int index) {
         if (IsNULL(index)) return 0;
         short val = 0;
         GetInt16(index, &val);
@@ -71,7 +69,7 @@ class ResultSet {
 
     virtual bool GetInt32(uint32_t index, int32_t* result) = 0;
 
-    int32_t GetInt32Unsafe(uint32_t index) {
+    int GetInt32Unsafe(int index) {
         if (IsNULL(index)) return 0;
         int32_t val = 0;
         GetInt32(index, &val);
@@ -80,7 +78,7 @@ class ResultSet {
 
     virtual bool GetInt64(uint32_t index, int64_t* result) = 0;
 
-    int64_t GetInt64Unsafe(uint32_t index) {
+    int64_t GetInt64Unsafe(int index) {
         if (IsNULL(index)) return 0;
         int64_t val = 0;
         GetInt64(index, &val);
@@ -89,7 +87,7 @@ class ResultSet {
 
     virtual bool GetFloat(uint32_t index, float* result) = 0;
 
-    virtual float GetFloatUnsafe(uint32_t index)  {
+    virtual float GetFloatUnsafe(int index)  {
         if (IsNULL(index)) return 0.0f;
         float val = 0.0f;
         GetFloat(index, &val);
@@ -98,7 +96,7 @@ class ResultSet {
 
     virtual bool GetDouble(uint32_t index, double* result) = 0;
 
-    virtual double GetDoubleUnsafe(uint32_t index)  {
+    virtual double GetDoubleUnsafe(int index)  {
         if (IsNULL(index)) return 0;
         double val = 0;
         GetDouble(index, &val);
@@ -110,7 +108,7 @@ class ResultSet {
     virtual int32_t GetDateUnsafe(uint32_t index) = 0;
 
     virtual bool GetTime(uint32_t index, int64_t* mills) = 0;
-    int64_t GetTimeUnsafe(uint32_t index) {
+    int64_t GetTimeUnsafe(int index) {
         if (IsNULL(index)) return 0;
         int64_t mills = 0;
         GetTime(index, &mills);
@@ -119,7 +117,7 @@ class ResultSet {
 
     virtual const Schema& GetSchema() = 0;
 
-    virtual bool IsNULL(uint32_t index) = 0;
+    virtual bool IsNULL(int index) = 0;
 
     virtual int32_t Size() = 0;
 };

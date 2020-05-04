@@ -67,7 +67,6 @@ class RowBuilder {
  public:
     explicit RowBuilder(const fesql::vm::Schema& schema);
     ~RowBuilder() = default;
-
     uint32_t CalTotalLength(uint32_t string_length);
     bool SetBuffer(int8_t* buf, uint32_t size);
     bool SetBuffer(const fesql::base::RawBuffer& buf);

@@ -70,7 +70,6 @@ class DBMSSdk {
             sdk::Status *status) {
         return std::shared_ptr<ExplainInfo>();
     }
-
 };
 
 // create a new dbms sdk with a endpoint

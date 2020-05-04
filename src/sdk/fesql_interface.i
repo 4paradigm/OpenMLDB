@@ -13,6 +13,7 @@ SWIG_JAVABODY_PROXY(public, public, SWIGTYPE)
 %include std_string.i
 %include std_shared_ptr.i
 %include stl.i
+#include stdint.i
 namespace std {
     %template(StringVector) vector<string>;
 }

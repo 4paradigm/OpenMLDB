@@ -33,13 +33,23 @@ set(CMAKE_BUILD_TYPE RelWithDebInfo)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 #set(CMAKE_BUILD_TYPE DEBUG)
 set(LLVM_DIR "${PROJECT_SOURCE_DIR}/thirdparty/lib/cmake/llvm")
-
+find_package(LLVM REQUIRED CONFIG)
+message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
+message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
+llvm_map_components_to_libnames(LLVM_LIBS support core orcjit nativecodegen)
 
 find_package(Threads)
+set(VM_LIBS fesql_vm fesql_udf fesql_parser fesql_planner fesql_codegen fesql_storage fesql_codec fesql_proto
+    fesql_node fesql_base)
+
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(OS_LIB ${CMAKE_THREAD_LIBS_INIT} rt)
+    set(BRPC_LIBS brpc leveldb protobuf glog gflags unwind lzma z snappy ssl crypto dl)
+    set(ARROW_LIBS parquet arrow_dataset arrow brotlidec brotlienc
+            brotlicommon
+            thrift lz4 z zstd double-conversion boost_filesystem snappy)
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    set(OS_LIB ${OS_LIB}
+    set(OS_LIB 
             ${CMAKE_THREAD_LIBS_INIT}
             "-framework CoreFoundation"
             "-framework CoreGraphics"
@@ -50,29 +60,13 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
             "-Wl,-U,_MallocExtension_ReleaseFreeMemory"
             "-Wl,-U,_ProfilerStart"
             "-Wl,-U,_ProfilerStop")
-endif ()
-
-if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    set(COMMON_LIBS brpc leveldb protobuf glog gflags unwind lzma z snappy ssl crypto dl ${OS_LIB})
-    set(COMMON_NO_MEMORY_POOL_LIBS brpc leveldb protobuf glog gflags unwind lzma z snappy ssl crypto dl ${OS_LIB})
-    set(COMMON_TEST_LIBS brpc leveldb protobuf gtest tcmalloc profiler glog gflags z snappy unwind lzma ssl crypto dl ${OS_LIB})
-    set(arrow_libs parquet arrow_dataset arrow brotlidec brotlienc
-            brotlicommon
-            thrift lz4 z zstd double-conversion boost_filesystem snappy)
-elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin") 
-    set(COMMON_LIBS brpc leveldb protobuf glog gflags z snappy ssl crypto ${OS_LIB})
-    set(COMMON_TEST_LIBS brpc leveldb protobuf gtest glog gflags z snappy ssl crypto ${OS_LIB})
-    set(arrow_libs parquet arrow_dataset arrow brotlidec brotlienc
-            brotlicommon
-            thrift lz4 z zstd double-conversion boost_filesystem snappy)
+    set(BRPC_LIBS brpc leveldb protobuf glog gflags z snappy ssl crypto dl)
+    set(ARROW_LIBS parquet arrow_dataset arrow brotlidec brotlienc
+        brotlicommon
+        thrift lz4 z zstd double-conversion boost_filesystem snappy)
 endif ()
 
 set(BOOST_ROOT "${PROJECT_SOURCE_DIR}/thirdparty/")
-
-find_package(LLVM REQUIRED CONFIG)
-message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
-message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
-llvm_map_components_to_libnames(llvm_libs support core orcjit nativecodegen)
 
 configure_file(
         "${PROJECT_SOURCE_DIR}/src/version.h.in"
