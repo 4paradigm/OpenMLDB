@@ -262,8 +262,8 @@ INSTANTIATE_TEST_CASE_P(
             "PRECEDING AND CURRENT ROW) limit 10;",
             "LIMIT(limit=10, optimized)\n"
             "  PROJECT(type=Aggregation, limit=10)\n"
-            "    REQUEST_UNION(groups=(), orders=() ASC, keys=(col1), "
-            "range=(col5, -3, 0))\n"
+            "    REQUEST_UNION(partition_keys=(), orders=() ASC, "
+            "range=(col5, -3, 0), index_keys=(col1))\n"
             "      DATA_PROVIDER(request=t1)\n"
             "      DATA_PROVIDER(type=Partition, table=t1, index=index1)"),
         std::make_pair(
@@ -275,8 +275,8 @@ INSTANTIATE_TEST_CASE_P(
             "BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;",
             "LIMIT(limit=10, optimized)\n"
             "  PROJECT(type=Aggregation, limit=10)\n"
-            "    REQUEST_UNION(groups=(), orders=() ASC, keys=(col1,col2), "
-            "range=(col5, -3, 0))\n"
+            "    REQUEST_UNION(partition_keys=(), orders=() ASC, "
+            "range=(col5, -3, 0), index_keys=(col1,col2))\n"
             "      DATA_PROVIDER(request=t1)\n"
             "      DATA_PROVIDER(type=Partition, table=t1, index=index12)"),
         std::make_pair(
@@ -290,8 +290,8 @@ INSTANTIATE_TEST_CASE_P(
             "PRECEDING AND CURRENT ROW) limit 10;",
             "LIMIT(limit=10, optimized)\n"
             "  PROJECT(type=Aggregation, limit=10)\n"
-            "    REQUEST_UNION(groups=(col3), orders=(col5) ASC, keys=, "
-            "range=(col5, -3, 0))\n"
+            "    REQUEST_UNION(partition_keys=(col3), orders=(col5) ASC, "
+            "range=(col5, -3, 0), index_keys=)\n"
             "      DATA_PROVIDER(request=t1)\n"
             "      DATA_PROVIDER(table=t1)")));
 INSTANTIATE_TEST_CASE_P(
@@ -300,25 +300,28 @@ INSTANTIATE_TEST_CASE_P(
         std::make_pair(
             "SELECT sum(col1) as col1sum FROM t1 group by col1;",
             "PROJECT(type=Aggregation)\n"
-            "  REQUEST_UNION(groups=(), orders=, keys=(col1))\n"
+            "  REQUEST_UNION(partition_keys=(), orders=, index_keys=(col1))\n"
             "    DATA_PROVIDER(request=t1)\n"
             "    DATA_PROVIDER(type=Partition, table=t1, index=index1)"),
         std::make_pair(
             "SELECT sum(col1) as col1sum FROM t1 group by col1, col2;",
             "PROJECT(type=Aggregation)\n"
-            "  REQUEST_UNION(groups=(), orders=, keys=(col1,col2))\n"
+            "  REQUEST_UNION(partition_keys=(), orders=, "
+            "index_keys=(col1,col2))\n"
             "    DATA_PROVIDER(request=t1)\n"
             "    DATA_PROVIDER(type=Partition, table=t1, index=index12)"),
         std::make_pair(
             "SELECT sum(col1) as col1sum FROM t1 group by col1, col2, col3;",
             "PROJECT(type=Aggregation)\n"
-            "  REQUEST_UNION(groups=(col3), orders=, keys=(col1,col2))\n"
+            "  REQUEST_UNION(partition_keys=(col3), orders=, "
+            "index_keys=(col1,col2))\n"
             "    DATA_PROVIDER(request=t1)\n"
             "    DATA_PROVIDER(type=Partition, table=t1, index=index12)"),
         std::make_pair(
             "SELECT sum(col1) as col1sum FROM t1 group by col3, col2, col1;",
             "PROJECT(type=Aggregation)\n"
-            "  REQUEST_UNION(groups=(col3), orders=, keys=(col1,col2))\n"
+            "  REQUEST_UNION(partition_keys=(col3), orders=, "
+            "index_keys=(col1,col2))\n"
             "    DATA_PROVIDER(request=t1)\n"
             "    DATA_PROVIDER(type=Partition, table=t1, index=index12)")));
 
@@ -331,7 +334,7 @@ INSTANTIATE_TEST_CASE_P(
             " t1.col1 = t2.col2 and t2.col5 >= t1.col5;",
             "PROJECT(type=RowProject)\n"
             "  REQUEST_JOIN(type=LastJoin, condition=t2.col5 >= t1.col5, "
-            "left_keys=(t1.col1), right_groups=(t2.col2), "
+            "left_keys=(t1.col1), right_keys=(t2.col2), "
             "index_keys=)\n"
             "    DATA_PROVIDER(request=t1)\n"
             "    DATA_PROVIDER(table=t2)"),
@@ -341,7 +344,7 @@ INSTANTIATE_TEST_CASE_P(
             " t1.col1 = t2.col1 and t2.col5 >= t1.col5;",
             "PROJECT(type=RowProject)\n"
             "  REQUEST_JOIN(type=LastJoin, condition=t2.col5 >= t1.col5, "
-            "left_keys=(), right_groups=(), index_keys=(t1.col1))\n"
+            "left_keys=(), right_keys=(), index_keys=(t1.col1))\n"
             "    DATA_PROVIDER(request=t1)\n"
             "    DATA_PROVIDER(type=Partition, table=t2, index=index1_t2)"),
         std::make_pair(
@@ -356,9 +359,9 @@ INSTANTIATE_TEST_CASE_P(
             "LIMIT(limit=10, optimized)\n"
             "  PROJECT(type=Aggregation, limit=10)\n"
             "    JOIN(type=LastJoin, condition=, left_keys=(), "
-            "right_groups=(), index_keys=(t1.col1))\n"
-            "      REQUEST_UNION(groups=(), orders=() ASC, keys=(t1.col1), "
-            "range=(t1.col5, -3, 0))\n"
+            "right_keys=(), index_keys=(t1.col1))\n"
+            "      REQUEST_UNION(partition_keys=(), orders=() ASC, "
+            "range=(t1.col5, -3, 0), index_keys=(t1.col1))\n"
             "        DATA_PROVIDER(request=t1)\n"
             "        DATA_PROVIDER(type=Partition, table=t1, index=index1)\n"
             "      DATA_PROVIDER(type=Partition, table=t2, index=index1_t2)"),
@@ -374,9 +377,9 @@ INSTANTIATE_TEST_CASE_P(
             "LIMIT(limit=10, optimized)\n"
             "  PROJECT(type=Aggregation, limit=10)\n"
             "    JOIN(type=LastJoin, condition=, left_keys=(t1.col2), "
-            "right_groups=(t2.col2), index_keys=)\n"
-            "      REQUEST_UNION(groups=(), orders=() ASC, "
-            "keys=(t1.col1,t1.col2), range=(t1.col5, -3, 0))\n"
+            "right_keys=(t2.col2), index_keys=)\n"
+            "      REQUEST_UNION(partition_keys=(), orders=() ASC, "
+            "range=(t1.col5, -3, 0), index_keys=(t1.col1,t1.col2))\n"
             "        DATA_PROVIDER(request=t1)\n"
             "        DATA_PROVIDER(type=Partition, table=t1, index=index12)\n"
             "      DATA_PROVIDER(table=t2)"),
@@ -391,9 +394,9 @@ INSTANTIATE_TEST_CASE_P(
             "LIMIT(limit=10, optimized)\n"
             "  PROJECT(type=Aggregation, limit=10)\n"
             "    JOIN(type=LastJoin, condition=, left_keys=(), "
-            "right_groups=(), index_keys=(t1.col1))\n"
-            "      REQUEST_UNION(groups=(), orders=() ASC, "
-            "keys=(t1.col1,t1.col2), range=(t1.col5, -3, 0))\n"
+            "right_keys=(), index_keys=(t1.col1))\n"
+            "      REQUEST_UNION(partition_keys=(), orders=() ASC, "
+            "range=(t1.col5, -3, 0), index_keys=(t1.col1,t1.col2))\n"
             "        DATA_PROVIDER(request=t1)\n"
             "        DATA_PROVIDER(type=Partition, table=t1, index=index12)\n"
             "      DATA_PROVIDER(type=Partition, table=t2, index=index1_t2)")));

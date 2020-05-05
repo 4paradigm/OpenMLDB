@@ -240,7 +240,6 @@ void PhysicalPlanCheck(const std::shared_ptr<tablet::TabletCatalog>& catalog,
     ASSERT_EQ(oos.str(), exp);
 }
 
-
 TEST_F(TransformTest, TransfromConditionsTest) {
     std::vector<std::pair<std::string, std::vector<std::string>>> sql_exp;
 
@@ -361,16 +360,16 @@ TEST_F(TransformTest, TransformEqualExprPairTest) {
     }
 }
 
-class GroupGenTest : public ::testing::TestWithParam<std::string> {
+class KeyGenTest : public ::testing::TestWithParam<std::string> {
  public:
-    GroupGenTest() {}
-    ~GroupGenTest() {}
+    KeyGenTest() {}
+    ~KeyGenTest() {}
 };
-INSTANTIATE_TEST_CASE_P(GroupGen, GroupGenTest,
+INSTANTIATE_TEST_CASE_P(KeyGen, KeyGenTest,
                         testing::Values("select col1 from t1;",
                                         "select col1, col2 from t1;"));
 
-TEST_P(GroupGenTest, GenTest) {
+TEST_P(KeyGenTest, GenTest) {
     node::NodeManager nm;
     base::Status status;
 
@@ -397,13 +396,13 @@ TEST_P(GroupGenTest, GenTest) {
     auto groups = nm.MakeExprList();
     ExtractExprListFromSimpleSQL(&nm, GetParam(), groups);
     PhysicalTableProviderNode table_provider(catalog->GetTable("db", "t1"));
-    Group group(groups);
+    Key group(groups);
 
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
     ::fesql::udf::RegisterUDFToModule(m.get());
     BatchModeTransformer transformer(&nm, "db", catalog, m.get());
-    ASSERT_TRUE(transformer.GenGroup(&group, &table_provider, status));
+    ASSERT_TRUE(transformer.GenKey(&group, &table_provider, status));
     m->print(::llvm::errs(), NULL);
     ASSERT_FALSE(group.fn_info_.fn_name_.empty());
 }
@@ -467,21 +466,21 @@ INSTANTIATE_TEST_CASE_P(
     testing::Values(
         std::make_pair(
             "SELECT sum(col1) as col1sum FROM t1 group by col1;",
-            "PROJECT(type=GroupAggregation, groups=(col1))\n"
+            "PROJECT(type=GroupAggregation, group_keys=(col1))\n"
             "  DATA_PROVIDER(type=Partition, table=t1, index=index1)"),
         std::make_pair(
             "SELECT sum(col1) as col1sum FROM t1 group by col1, col2;",
-            "PROJECT(type=GroupAggregation, groups=(col1,col2))\n"
+            "PROJECT(type=GroupAggregation, group_keys=(col1,col2))\n"
             "  DATA_PROVIDER(type=Partition, table=t1, index=index12)"),
         std::make_pair(
             "SELECT sum(col1) as col1sum FROM t1 group by col1, col2, col3;",
-            "PROJECT(type=GroupAggregation, groups=(col1,col2,col3))\n"
-            "  GROUP_BY(groups=(col3))\n"
+            "PROJECT(type=GroupAggregation, group_keys=(col1,col2,col3))\n"
+            "  GROUP_BY(group_keys=(col3))\n"
             "    DATA_PROVIDER(type=Partition, table=t1, index=index12)"),
         std::make_pair(
             "SELECT sum(col1) as col1sum FROM t1 group by col3, col2, col1;",
-            "PROJECT(type=GroupAggregation, groups=(col3,col2,col1))\n"
-            "  GROUP_BY(groups=(col3))\n"
+            "PROJECT(type=GroupAggregation, group_keys=(col3,col2,col1))\n"
+            "  GROUP_BY(group_keys=(col3))\n"
             "    DATA_PROVIDER(type=Partition, table=t1, index=index12)")));
 
 INSTANTIATE_TEST_CASE_P(
@@ -496,7 +495,8 @@ INSTANTIATE_TEST_CASE_P(
             "BETWEEN 3 "
             "PRECEDING AND CURRENT ROW) limit 10;",
             "LIMIT(limit=10, optimized)\n"
-            "  PROJECT(type=WindowAggregation, groups=(), orders=() ASC, "
+            "  PROJECT(type=WindowAggregation, partition_keys=(), orders=() "
+            "ASC, "
             "range=(col5, -3, 0), limit=10)\n"
             "    DATA_PROVIDER(type=Partition, table=t1, index=index1)"),
         std::make_pair(
@@ -508,7 +508,8 @@ INSTANTIATE_TEST_CASE_P(
             "BETWEEN 3 "
             "PRECEDING AND CURRENT ROW) limit 10;",
             "LIMIT(limit=10, optimized)\n"
-            "  PROJECT(type=WindowAggregation, groups=(), orders=() ASC, "
+            "  PROJECT(type=WindowAggregation, partition_keys=(), orders=() "
+            "ASC, "
             "range=(col5, -3, 0), limit=10)\n"
             "    DATA_PROVIDER(type=Partition, table=t1, index=index12)"),
         std::make_pair(
@@ -520,12 +521,9 @@ INSTANTIATE_TEST_CASE_P(
             "BETWEEN 3 "
             "PRECEDING AND CURRENT ROW) limit 10;",
             "LIMIT(limit=10, optimized)\n  PROJECT(type=WindowAggregation, "
-            "groups=(col3), orders=(col5) ASC, range=(col5, -3, 0), "
+            "partition_keys=(col3), orders=(col5) ASC, range=(col5, -3, 0), "
             "limit=10)\n    "
             "DATA_PROVIDER(table=t1)")));
-
-
-
 
 TEST_P(TransformPassOptimizedTest, pass_optimzied_test) {
     fesql::type::TableDef table_def;

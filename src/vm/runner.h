@@ -304,7 +304,7 @@ class RowProjectRunner : public Runner {
 class GroupAggRunner : public Runner {
  public:
     GroupAggRunner(const int32_t id, const NameSchemaList& schema,
-                   const int32_t limit_cnt, const Group& group,
+                   const int32_t limit_cnt, const Key& group,
                    const FnInfo& project)
         : Runner(id, kRunnerGroupAgg, schema, limit_cnt),
           group_(group.fn_info_),
@@ -332,7 +332,7 @@ class WindowAggRunner : public Runner {
         : Runner(id, kRunnerWindowAgg, schema, limit_cnt),
           window_op_(window_op),
           window_gen_(fn_info),
-          group_gen_(window_op.group_.fn_info_),
+          group_gen_(window_op.partition_.fn_info_),
           order_gen_(window_op.sort_.fn_info_),
           range_gen_(window_op.range_.fn_info_) {}
     ~WindowAggRunner() {}
@@ -355,10 +355,10 @@ class RequestUnionRunner : public Runner {
  public:
     RequestUnionRunner(const int32_t id, const NameSchemaList& schema,
                        const int32_t limit_cnt, const WindowOp& window_op,
-                       const Hash& hash)
+                       const Key& hash)
         : Runner(id, kRunnerRequestUnion, schema, limit_cnt),
           is_asc_(window_op.sort_.GetIsAsc()),
-          group_gen_(window_op.group_.fn_info_),
+          group_gen_(window_op.partition_.fn_info_),
           key_gen_(hash.fn_info_),
           order_gen_(window_op.sort_.fn_info_),
           ts_gen_(window_op.range_.fn_info_),
@@ -386,9 +386,9 @@ class LastJoinRunner : public Runner {
                    const int32_t limit_cnt, const Join& join)
         : Runner(id, kRunnerLastJoin, schema, limit_cnt),
           condition_gen_(join.filter_.fn_info_),
-          left_key_gen_(join.left_hash_.fn_info_),
-          index_key_gen_(join.index_hash_.fn_info_),
-          right_key_gen_(join.right_partition_.fn_info_) {}
+          left_key_gen_(join.left_key_.fn_info_),
+          index_key_gen_(join.index_key_.fn_info_),
+          right_key_gen_(join.right_key_.fn_info_) {}
     ~LastJoinRunner() {}
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
     bool TableJoin(std::shared_ptr<TableHandler> left,
@@ -415,9 +415,9 @@ class RequestLastJoinRunner : public Runner {
                           const int32_t limit_cnt, const Join& join)
         : Runner(id, kRunnerRequestLastJoin, schema, limit_cnt),
           condition_gen_(join.filter_.fn_info_),
-          left_key_gen_(join.left_hash_.fn_info_),
-          index_key_gen_(join.index_hash_.fn_info_),
-          right_key_gen_(join.right_partition_.fn_info_) {}
+          left_key_gen_(join.left_key_.fn_info_),
+          index_key_gen_(join.index_key_.fn_info_),
+          right_key_gen_(join.right_key_.fn_info_) {}
     ~RequestLastJoinRunner() {}
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
     Row PartitionRun(const Row& left_row,

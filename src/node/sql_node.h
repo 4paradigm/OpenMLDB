@@ -434,7 +434,7 @@ class OrderByNode : public ExprNode {
     const std::string GetExprString() const;
     virtual bool Equals(const ExprNode *that) const;
 
-    const ExprListNode *GetOrderBy() const { return order_by_; }
+    const ExprListNode *order_by() const { return order_by_; }
 
     bool is_asc() const { return is_asc_; }
 

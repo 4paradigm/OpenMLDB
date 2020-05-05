@@ -131,9 +131,9 @@ class GroupAndSortOptimized : public TransformUpPysicalPass {
 
     bool JoinKeysOptimized(PhysicalOpNode* in, Join* join,
                            PhysicalOpNode** new_in);
-    bool KeysFilterOptimized(PhysicalOpNode* in, Group* group, Hash* hash,
+    bool KeysFilterOptimized(PhysicalOpNode* in, Key* group, Key* hash,
                              PhysicalOpNode** new_in);
-    bool GroupOptimized(PhysicalOpNode* in, Group* group,
+    bool GroupOptimized(PhysicalOpNode* in, Key* group,
                         PhysicalOpNode** new_in);
     bool SortOptimized(PhysicalOpNode* in, Sort* sort);
     bool TransformGroupExpr(const node::ExprListNode* group,
@@ -252,12 +252,11 @@ class BatchModeTransformer {
                  base::Status& status);  // NOLINT
     bool GenFilter(ConditionFilter* filter, PhysicalOpNode* in,
                    base::Status& status);  // NOLINT
-    bool GenHash(Hash* hash, PhysicalOpNode* in,
+    bool GenKey(Key* hash, PhysicalOpNode* in,
                  base::Status& status);  // NOLINT
     bool GenWindow(WindowOp* window, PhysicalOpNode* in,
                    base::Status& status);  // NOLINT
-    bool GenGroup(Group* group, PhysicalOpNode* in,
-                  base::Status& status);  // NOLINT
+
     bool GenSort(Sort* sort, PhysicalOpNode* in,
                  base::Status& status);  // NOLINT
     bool GenRange(Range* sort, PhysicalOpNode* in,

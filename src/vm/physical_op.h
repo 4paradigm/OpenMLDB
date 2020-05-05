@@ -79,29 +79,9 @@ struct FnInfo {
     std::string fn_name_ = "";
     int8_t *fn_ = nullptr;
     vm::Schema fn_schema_;
-};
-
-class Group {
- public:
-    explicit Group(const node::ExprListNode *groups) : groups_(groups) {}
-    virtual ~Group() {}
-    void SetGroupsIdxs(const std::vector<int32_t> &idxs) {
-        groups_idxs_ = idxs;
-    }
-    const std::vector<int32_t> &GetGroupsIdxs() const { return groups_idxs_; }
-    void set_groups(const node::ExprListNode *groups) { groups_ = groups; }
-    const node::ExprListNode *groups() const { return groups_; }
-    const bool ValidGroup() { return !node::ExprListNullOrEmpty(groups_); }
-    const node::ExprListNode *groups_;
-    const std::string ToString() const {
-        std::ostringstream oss;
-        oss << "groups=" << node::ExprString(groups_);
-        return oss.str();
-    }
-    FnInfo fn_info_;
-
- protected:
-    std::vector<int32_t> groups_idxs_;
+    const std::string &fn_name() { return fn_name_; }
+    const vm::Schema &fn_schema() { return fn_schema_; }
+    const int8_t *fn() { return fn_; }
 };
 
 class Sort {
@@ -142,10 +122,6 @@ class Range {
                                : order->order_by_->children_[0];
     }
     virtual ~Range() {}
-    const node::ExprNode *range_key() { return range_key_; }
-    void set_range_key(const node::ExprNode *range_key) {
-        range_key_ = range_key;
-    }
     const bool Valid() const { return nullptr != range_key_; }
     const std::string ToString() const {
         std::ostringstream oss;
@@ -155,6 +131,13 @@ class Range {
         }
         return oss.str();
     }
+    const node::ExprNode *range_key() { return range_key_; }
+    void set_range_key(const node::ExprNode *range_key) {
+        range_key_ = range_key;
+    }
+    const int64_t start_offset() const { return start_offset_; }
+    const int64_t end_offset() const { return end_offset_; }
+    const FnInfo &fn_info() const { return fn_info_; }
     FnInfo fn_info_;
     const node::ExprNode *range_key_;
     int64_t start_offset_;
@@ -181,6 +164,8 @@ class ConditionFilter {
         oss << "condition=" << node::ExprString(condition_);
         return oss.str();
     }
+    const node::ExprNode *condition() const { return condition_; }
+    const FnInfo &fn_info() const { return fn_info_; }
     const node::ExprNode *condition_;
     FnInfo fn_info_;
 
@@ -188,11 +173,11 @@ class ConditionFilter {
     std::vector<int32_t> condition_idxs_;
 };
 
-class Hash {
+class Key {
  public:
-    Hash() : keys_(nullptr) {}
-    explicit Hash(const node::ExprListNode *keys) : keys_(keys) {}
-    virtual ~Hash() {}
+    Key() : keys_(nullptr) {}
+    explicit Key(const node::ExprListNode *keys) : keys_(keys) {}
+    virtual ~Key() {}
     void SetKeysIdxs(const std::vector<int32_t> &idxs) { key_idxs_ = idxs; }
     const std::vector<int32_t> &GetKeysIdxs() const { return key_idxs_; }
     void set_keys(const node::ExprListNode *keys) { keys_ = keys; }
@@ -202,7 +187,9 @@ class Hash {
         oss << "keys=" << node::ExprString(keys_);
         return oss.str();
     }
-    const bool Valid() const { return !node::ExprListNullOrEmpty(keys_); }
+    const bool ValidKey() const { return !node::ExprListNullOrEmpty(keys_); }
+    const FnInfo &fn_info() const { return fn_info_; }
+
     const node::ExprListNode *keys_;
     FnInfo fn_info_;
 
@@ -282,6 +269,7 @@ class PhysicalOpNode {
     std::vector<std::pair<const std::string, const vm::Schema *>>
         output_name_schema_list_;
 };
+
 class PhysicalUnaryNode : public PhysicalOpNode {
  public:
     PhysicalUnaryNode(PhysicalOpNode *node, PhysicalOpType type, bool is_block,
@@ -390,9 +378,9 @@ class PhysicalGroupNode : public PhysicalUnaryNode {
     }
     virtual ~PhysicalGroupNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
-    bool Valid() { return group_.ValidGroup(); }
-    Group group() const { return group_; }
-    Group group_;
+    bool Valid() { return group_.ValidKey(); }
+    Key group() const { return group_; }
+    Key group_;
 };
 
 enum ProjectType {
@@ -435,6 +423,7 @@ class PhysicalProjectNode : public PhysicalUnaryNode {
     virtual void Print(std::ostream &output, const std::string &tab) const;
     bool InitSchema() override;
     static PhysicalProjectNode *CastFrom(PhysicalOpNode *node);
+    const FnInfo &project() const { return project_; }
     const ProjectType project_type_;
     FnInfo project_;
 };
@@ -487,7 +476,7 @@ class PhysicalGroupAggrerationNode : public PhysicalProjectNode {
     }
     virtual ~PhysicalGroupAggrerationNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
-    Group group_;
+    Key group_;
 };
 
 class PhysicalUnionNode;
@@ -500,55 +489,64 @@ class Project {
 };
 class WindowOp {
  public:
-    WindowOp(const node::ExprListNode *groups, const node::OrderByNode *orders,
-             const int64_t start_offset, const int64_t end_offset)
-        : group_(groups),
+    WindowOp(const node::ExprListNode *partition,
+             const node::OrderByNode *orders, const int64_t start_offset,
+             const int64_t end_offset)
+        : partition_(partition),
           sort_(orders),
           range_(orders, start_offset, end_offset) {}
     virtual ~WindowOp() {}
     const std::string ToString() const {
         std::ostringstream oss;
-        oss << group_.ToString();
+        oss << "partition_" << partition_.ToString();
         oss << ", " << sort_.ToString();
         if (range_.Valid()) {
             oss << ", " << range_.ToString();
         }
-
         return oss.str();
     }
-    const Group &group() const { return group_; }
+    const Key &partition() const { return partition_; }
     const Sort &sort() const { return sort_; }
     const Range &range() const { return range_; }
-    Group group_;
+    Key partition_;
     Sort sort_;
     Range range_;
 };
 class Join {
  public:
-    Join() : filter_(nullptr), left_hash_(nullptr), right_partition_(nullptr) {}
+    Join()
+        : filter_(nullptr),
+          left_key_(nullptr),
+          right_key_(nullptr),
+          index_key_(nullptr) {}
     explicit Join(const node::ExprNode *condition)
-        : filter_(condition), left_hash_(nullptr), right_partition_(nullptr) {}
+        : filter_(condition),
+          left_key_(nullptr),
+          right_key_(nullptr),
+          index_key_(nullptr) {}
     Join(const node::ExprNode *condition, const node::ExprListNode *left_keys,
          const node::ExprListNode *right_keys)
         : filter_(condition),
-          left_hash_(left_keys),
-          right_partition_(right_keys) {}
+          left_key_(left_keys),
+          right_key_(right_keys),
+          index_key_(nullptr) {}
     virtual ~Join() {}
     const std::string ToString() const {
         std::ostringstream oss;
         oss << "condition=" << node::ExprString(filter_.condition_)
-            << ", left_keys=" << node::ExprString(left_hash_.keys())
-            << ", right_groups=" << node::ExprString(right_partition_.groups())
-            << ", index_keys=" << node::ExprString(index_hash_.keys());
+            << ", left_keys=" << node::ExprString(left_key_.keys())
+            << ", right_keys=" << node::ExprString(right_key_.keys())
+            << ", index_keys=" << node::ExprString(index_key_.keys());
         return oss.str();
     }
-    const Hash &left_hash() const { return left_hash_; }
-    const Group &right_partition() const { return right_partition_; }
+    const Key &left_key() const { return left_key_; }
+    const Key &right_key() const { return right_key_; }
+    const Key &index_key() const { return index_key_; }
     const ConditionFilter &filter() const { return filter_; }
     ConditionFilter filter_;
-    Hash left_hash_;
-    Group right_partition_;
-    Hash index_hash_;
+    Key left_key_;
+    Key right_key_;
+    Key index_key_;
 };
 
 class Union {
@@ -559,7 +557,7 @@ class Union {
 class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
  public:
     PhysicalWindowAggrerationNode(PhysicalOpNode *node,
-                                  const node::ExprListNode *groups,
+                                  const node::ExprListNode *partition,
                                   const node::OrderByNode *orders,
                                   const std::string &fn_name,
                                   const Schema &schema,
@@ -567,31 +565,31 @@ class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
                                   const int64_t end_offset)
         : PhysicalProjectNode(node, fn_name, schema, kWindowAggregation, true,
                               false),
-          window_(groups, orders, start_offset, end_offset),
+          window_(partition, orders, start_offset, end_offset),
           union_(),
           join_() {
         output_type_ = kSchemaTypeTable;
         InitSchema();
-        fn_infos_.push_back(&window_.group_.fn_info_);
+        fn_infos_.push_back(&window_.partition_.fn_info_);
         fn_infos_.push_back(&window_.sort_.fn_info_);
         fn_infos_.push_back(&window_.range_.fn_info_);
     }
     PhysicalWindowAggrerationNode(
         PhysicalOpNode *node, PhysicalOpNode *union_with,
-        PhysicalOpNode *join_with, const node::ExprListNode *groups,
+        PhysicalOpNode *join_with, const node::ExprListNode *partition,
         const node::OrderByNode *orders, const std::string &fn_name,
         const Schema &schema, const int64_t start_offset,
         const int64_t end_offset)
         : PhysicalProjectNode(node, fn_name, schema, kWindowAggregation, true,
                               false),
-          window_(groups, orders, start_offset, end_offset),
+          window_(partition, orders, start_offset, end_offset),
           union_(),
           join_() {
         AddProducer(union_with);
         AddProducer(join_with);
         output_type_ = kSchemaTypeTable;
         InitSchema();
-        fn_infos_.push_back(&window_.group_.fn_info_);
+        fn_infos_.push_back(&window_.partition_.fn_info_);
         fn_infos_.push_back(&window_.sort_.fn_info_);
         fn_infos_.push_back(&window_.range_.fn_info_);
     }
@@ -600,6 +598,7 @@ class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
     virtual void Print(std::ostream &output, const std::string &tab) const;
     static PhysicalWindowAggrerationNode *CastFrom(PhysicalOpNode *node);
     const bool Valid() { return true; }
+    const WindowOp &window() const { return window_; }
     WindowOp window_;
     Union union_;
     Join join_;
@@ -615,9 +614,9 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
         output_type_ = kSchemaTypeTable;
         InitSchema();
         fn_infos_.push_back(&join_.filter_.fn_info_);
-        fn_infos_.push_back(&join_.left_hash_.fn_info_);
-        fn_infos_.push_back(&join_.right_partition_.fn_info_);
-        fn_infos_.push_back(&join_.index_hash_.fn_info_);
+        fn_infos_.push_back(&join_.left_key_.fn_info_);
+        fn_infos_.push_back(&join_.right_key_.fn_info_);
+        fn_infos_.push_back(&join_.index_key_.fn_info_);
     }
     PhysicalJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
                      const node::JoinType join_type,
@@ -628,9 +627,9 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
         output_type_ = kSchemaTypeTable;
         InitSchema();
         fn_infos_.push_back(&join_.filter_.fn_info_);
-        fn_infos_.push_back(&join_.left_hash_.fn_info_);
-        fn_infos_.push_back(&join_.right_partition_.fn_info_);
-        fn_infos_.push_back(&join_.index_hash_.fn_info_);
+        fn_infos_.push_back(&join_.left_key_.fn_info_);
+        fn_infos_.push_back(&join_.right_key_.fn_info_);
+        fn_infos_.push_back(&join_.index_key_.fn_info_);
     }
     PhysicalJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
                      const node::JoinType join_type,
@@ -643,9 +642,9 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
         output_type_ = kSchemaTypeTable;
         InitSchema();
         fn_infos_.push_back(&join_.filter_.fn_info_);
-        fn_infos_.push_back(&join_.left_hash_.fn_info_);
-        fn_infos_.push_back(&join_.right_partition_.fn_info_);
-        fn_infos_.push_back(&join_.index_hash_.fn_info_);
+        fn_infos_.push_back(&join_.left_key_.fn_info_);
+        fn_infos_.push_back(&join_.right_key_.fn_info_);
+        fn_infos_.push_back(&join_.index_key_.fn_info_);
     }
     PhysicalJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
                      const node::JoinType join_type, const Join &join)
@@ -655,14 +654,15 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
         output_type_ = kSchemaTypeTable;
         InitSchema();
         fn_infos_.push_back(&join_.filter_.fn_info_);
-        fn_infos_.push_back(&join_.left_hash_.fn_info_);
-        fn_infos_.push_back(&join_.right_partition_.fn_info_);
-        fn_infos_.push_back(&join_.index_hash_.fn_info_);
+        fn_infos_.push_back(&join_.left_key_.fn_info_);
+        fn_infos_.push_back(&join_.right_key_.fn_info_);
+        fn_infos_.push_back(&join_.index_key_.fn_info_);
     }
     virtual ~PhysicalJoinNode() {}
     bool InitSchema() override;
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const bool Valid() { return true; }
+    const Join &join() const { return join_; }
     const node::JoinType join_type_;
     Join join_;
 };
@@ -676,9 +676,9 @@ class PhysicalRequestJoinNode : public PhysicalBinaryNode {
         output_type_ = kSchemaTypeRow;
         InitSchema();
         fn_infos_.push_back(&join_.filter_.fn_info_);
-        fn_infos_.push_back(&join_.left_hash_.fn_info_);
-        fn_infos_.push_back(&join_.right_partition_.fn_info_);
-        fn_infos_.push_back(&join_.index_hash_.fn_info_);
+        fn_infos_.push_back(&join_.left_key_.fn_info_);
+        fn_infos_.push_back(&join_.right_key_.fn_info_);
+        fn_infos_.push_back(&join_.index_key_.fn_info_);
     }
     PhysicalRequestJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
                             const node::JoinType join_type,
@@ -689,9 +689,9 @@ class PhysicalRequestJoinNode : public PhysicalBinaryNode {
         output_type_ = kSchemaTypeRow;
         InitSchema();
         fn_infos_.push_back(&join_.filter_.fn_info_);
-        fn_infos_.push_back(&join_.left_hash_.fn_info_);
-        fn_infos_.push_back(&join_.right_partition_.fn_info_);
-        fn_infos_.push_back(&join_.index_hash_.fn_info_);
+        fn_infos_.push_back(&join_.left_key_.fn_info_);
+        fn_infos_.push_back(&join_.right_key_.fn_info_);
+        fn_infos_.push_back(&join_.index_key_.fn_info_);
     }
     PhysicalRequestJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
                             const node::JoinType join_type,
@@ -704,13 +704,14 @@ class PhysicalRequestJoinNode : public PhysicalBinaryNode {
         output_type_ = kSchemaTypeRow;
         InitSchema();
         fn_infos_.push_back(&join_.filter_.fn_info_);
-        fn_infos_.push_back(&join_.left_hash_.fn_info_);
-        fn_infos_.push_back(&join_.right_partition_.fn_info_);
-        fn_infos_.push_back(&join_.index_hash_.fn_info_);
+        fn_infos_.push_back(&join_.left_key_.fn_info_);
+        fn_infos_.push_back(&join_.right_key_.fn_info_);
+        fn_infos_.push_back(&join_.index_key_.fn_info_);
     }
     virtual ~PhysicalRequestJoinNode() {}
     bool InitSchema() override;
     virtual void Print(std::ostream &output, const std::string &tab) const;
+    const Join &join() const { return join_; }
     const node::JoinType join_type_;
     Join join_;
 };
@@ -731,26 +732,28 @@ class PhysicalUnionNode : public PhysicalBinaryNode {
 class PhysicalRequestUnionNode : public PhysicalBinaryNode {
  public:
     PhysicalRequestUnionNode(PhysicalOpNode *left, PhysicalOpNode *right,
-                             const node::ExprListNode *groups,
+                             const node::ExprListNode *partition,
                              const node::OrderByNode *orders,
                              const int64_t start_offset,
                              const int64_t end_offset)
         : PhysicalBinaryNode(left, right, kPhysicalOpRequestUnoin, true, true),
-          window_(groups, orders, start_offset, end_offset),
-          hash_(nullptr) {
+          window_(partition, orders, start_offset, end_offset),
+          index_key_(nullptr) {
         output_type_ = kSchemaTypeTable;
         InitSchema();
-        fn_infos_.push_back(&window_.group_.fn_info_);
+        fn_infos_.push_back(&window_.partition_.fn_info_);
         fn_infos_.push_back(&window_.sort_.fn_info_);
         fn_infos_.push_back(&window_.range_.fn_info_);
-        fn_infos_.push_back(&hash_.fn_info_);
+        fn_infos_.push_back(&index_key_.fn_info_);
     }
     virtual ~PhysicalRequestUnionNode() {}
     bool InitSchema() override;
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const bool Valid() { return true; }
+    const WindowOp &window() const { return window_; }
+    const Key &index_key() const { return index_key_; }
     WindowOp window_;
-    Hash hash_;
+    Key index_key_;
 };
 
 class PhysicalSortNode : public PhysicalUnaryNode {
@@ -772,6 +775,7 @@ class PhysicalSortNode : public PhysicalUnaryNode {
     virtual void Print(std::ostream &output, const std::string &tab) const;
 
     bool Valid() { return sort_.ValidSort(); }
+    const Sort &sort() const { return sort_; }
     Sort sort_;
 };
 
@@ -787,6 +791,7 @@ class PhysicalFliterNode : public PhysicalUnaryNode {
     virtual ~PhysicalFliterNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     bool Valid() { return filter_.ValidCondition(); }
+    const ConditionFilter &filter() const { return filter_; }
     ConditionFilter filter_;
 };
 

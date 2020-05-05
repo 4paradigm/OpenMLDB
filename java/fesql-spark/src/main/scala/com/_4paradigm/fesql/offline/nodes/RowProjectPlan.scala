@@ -19,7 +19,7 @@ object RowProjectPlan {
 
     // spark closure
     val projectConfig = ProjectConfig(
-      functionName = node.getProject_().getFn_name_(),
+      functionName = node.project().fn_name(),
       moduleTag = ctx.getTag,
       moduleBroadcast = ctx.getModuleBufferBroadcast,
       inputSchema = inputInstance.getSchema,

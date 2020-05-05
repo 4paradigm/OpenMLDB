@@ -182,7 +182,7 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
     switch (node->type_) {
         case kPhysicalOpGroupBy: {
             auto group_op = dynamic_cast<PhysicalGroupNode*>(node);
-            if (!GenGroup(&group_op->group_, node->producers()[0], status)) {
+            if (!GenKey(&group_op->group_, node->producers()[0], status)) {
                 return false;
             }
             break;
@@ -237,8 +237,8 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
                            status)) {
                 return false;
             }
-            if (!GenHash(&request_union_op->hash_, node->producers()[0],
-                         status)) {
+            if (!GenKey(&request_union_op->index_key_, node->producers()[0],
+                        status)) {
                 return false;
             }
             break;
@@ -770,8 +770,8 @@ bool BatchModeTransformer::CreatePhysicalProjectNode(
         }
         case kGroupAggregation: {
             auto group_op = dynamic_cast<PhysicalGroupNode*>(node);
-            op = new PhysicalGroupAggrerationNode(
-                node, group_op->group_.groups(), fn_name, output_schema);
+            op = new PhysicalGroupAggrerationNode(node, group_op->group_.keys(),
+                                                  fn_name, output_schema);
             break;
         }
         case kWindowAggregation: {
@@ -964,13 +964,13 @@ bool BatchModeTransformer::GenJoin(Join* join, PhysicalOpNode* in,
     if (!GenFilter(&join->filter_, in, status)) {
         return false;
     }
-    if (!GenHash(&join->left_hash_, in->producers()[0], status)) {
+    if (!GenKey(&join->left_key_, in->producers()[0], status)) {
         return false;
     }
-    if (!GenHash(&join->index_hash_, in->producers()[0], status)) {
+    if (!GenKey(&join->index_key_, in->producers()[0], status)) {
         return false;
     }
-    if (!GenGroup(&join->right_partition_, in->producers()[1], status)) {
+    if (!GenKey(&join->right_key_, in->producers()[1], status)) {
         return false;
     }
 
@@ -989,8 +989,8 @@ bool BatchModeTransformer::GenFilter(ConditionFilter* filter,
     }
     return true;
 }
-bool BatchModeTransformer::GenHash(Hash* hash, PhysicalOpNode* in,
-                                   base::Status& status) {
+bool BatchModeTransformer::GenKey(Key* hash, PhysicalOpNode* in,
+                                  base::Status& status) {
     // Gen left key function
     node::ExprListNode expr_list;
     std::vector<int32_t> keys_idxs;
@@ -1015,7 +1015,7 @@ bool BatchModeTransformer::GenHash(Hash* hash, PhysicalOpNode* in,
 bool BatchModeTransformer::GenWindow(WindowOp* window, PhysicalOpNode* in,
                                      base::Status& status) {
     node::ExprListNode expr_list;
-    if (!GenGroup(&window->group_, in, status)) {
+    if (!GenKey(&window->partition_, in, status)) {
         return false;
     }
 
@@ -1028,24 +1028,7 @@ bool BatchModeTransformer::GenWindow(WindowOp* window, PhysicalOpNode* in,
     }
     return true;
 }
-bool BatchModeTransformer::GenGroup(Group* group, PhysicalOpNode* in,
-                                    base::Status& status) {
-    node::ExprListNode expr_list;
-    if (!node::ExprListNullOrEmpty(group->groups_)) {
-        int32_t idx = 0;
-        std::vector<int32_t> idxs;
-        for (auto expr : group->groups_->children_) {
-            expr_list.AddChild(expr);
-            idxs.push_back(idx++);
-        }
-        if (!CodeGenExprList(in->GetOutputNameSchemaList(), &expr_list, true,
-                             &group->fn_info_, status)) {
-            return false;
-        }
-        group->SetGroupsIdxs(idxs);
-    }
-    return true;
-}
+
 bool BatchModeTransformer::GenSort(Sort* sort, PhysicalOpNode* in,
                                    base::Status& status) {
     if (nullptr != sort->orders_ &&
@@ -1078,8 +1061,8 @@ bool BatchModeTransformer::GenRange(Range* range, PhysicalOpNode* in,
     }
     return true;
 }
-bool GroupAndSortOptimized::KeysFilterOptimized(PhysicalOpNode* in,
-                                                Group* group, Hash* hash,
+bool GroupAndSortOptimized::KeysFilterOptimized(PhysicalOpNode* in, Key* group,
+                                                Key* hash,
                                                 PhysicalOpNode** new_in) {
     if (nullptr == group || nullptr == hash) {
         return false;
@@ -1091,14 +1074,14 @@ bool GroupAndSortOptimized::KeysFilterOptimized(PhysicalOpNode* in,
             const node::ExprListNode* new_groups = nullptr;
             const node::ExprListNode* keys = nullptr;
             auto& index_hint = scan_op->table_handler_->GetIndex();
-            if (!TransformGroupExpr(group->groups(), index_hint, &index_name,
+            if (!TransformGroupExpr(group->keys(), index_hint, &index_name,
                                     &keys, &new_groups)) {
                 return false;
             }
             PhysicalPartitionProviderNode* scan_index_op =
                 new PhysicalPartitionProviderNode(scan_op->table_handler_,
                                                   index_name);
-            group->set_groups(new_groups);
+            group->set_keys(new_groups);
             hash->set_keys(keys);
             *new_in = scan_index_op;
             return true;
@@ -1108,8 +1091,7 @@ bool GroupAndSortOptimized::KeysFilterOptimized(PhysicalOpNode* in,
 }
 bool GroupAndSortOptimized::JoinKeysOptimized(PhysicalOpNode* in, Join* join,
                                               PhysicalOpNode** new_in) {
-    if (nullptr == join ||
-        node::ExprListNullOrEmpty(join->right_partition_.groups())) {
+    if (nullptr == join || node::ExprListNullOrEmpty(join->right_key_.keys())) {
         return false;
     }
 
@@ -1122,8 +1104,7 @@ bool GroupAndSortOptimized::JoinKeysOptimized(PhysicalOpNode* in, Join* join,
             node::ExprListNode* new_left_keys = nullptr;
             std::string index_name;
             auto& index_hint = scan_op->table_handler_->GetIndex();
-            const node::ExprListNode* right_partition =
-                join->right_partition_.groups();
+            const node::ExprListNode* right_partition = join->right_key_.keys();
             if (!TransformGroupExpr(right_partition, index_hint, &index_name,
                                     &index_keys, &new_right_partition)) {
                 return false;
@@ -1144,21 +1125,21 @@ bool GroupAndSortOptimized::JoinKeysOptimized(PhysicalOpNode* in, Join* join,
                 }
                 if (is_index_key) {
                     left_index_keys->AddChild(
-                        join->left_hash_.keys_->children_[i]);
+                        join->left_key_.keys_->children_[i]);
                 } else {
                     new_left_keys->AddChild(
-                        join->left_hash_.keys_->children_[i]);
+                        join->left_key_.keys_->children_[i]);
                 }
             }
-            join->right_partition_.set_groups(new_right_partition);
-            join->index_hash_.set_keys(left_index_keys);
-            join->left_hash_.set_keys(new_left_keys);
+            join->right_key_.set_keys(new_right_partition);
+            join->index_key_.set_keys(left_index_keys);
+            join->left_key_.set_keys(new_left_keys);
             return true;
         }
     }
     return false;
 }
-bool GroupAndSortOptimized::GroupOptimized(PhysicalOpNode* in, Group* group,
+bool GroupAndSortOptimized::GroupOptimized(PhysicalOpNode* in, Key* group,
                                            PhysicalOpNode** new_in) {
     if (nullptr == group) {
         return false;
@@ -1171,7 +1152,7 @@ bool GroupAndSortOptimized::GroupOptimized(PhysicalOpNode* in, Group* group,
             const node::OrderByNode* new_orders = nullptr;
             std::string index_name;
             auto& index_hint = scan_op->table_handler_->GetIndex();
-            if (!TransformGroupExpr(group->groups(), index_hint, &index_name,
+            if (!TransformGroupExpr(group->keys(), index_hint, &index_name,
                                     &keys, &new_groups)) {
                 return false;
             }
@@ -1180,7 +1161,7 @@ bool GroupAndSortOptimized::GroupOptimized(PhysicalOpNode* in, Group* group,
                                                   index_name);
             node_manager_->RegisterNode(partition_op);
             *new_in = partition_op;
-            group->set_groups(new_groups);
+            group->set_keys(new_groups);
             return true;
         }
     }
@@ -1236,7 +1217,8 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                     dynamic_cast<PhysicalWindowAggrerationNode*>(project_op);
                 PhysicalOpNode* new_producer;
                 if (!GroupOptimized(union_op->GetProducer(0),
-                                    &union_op->window_.group_, &new_producer)) {
+                                    &union_op->window_.partition_,
+                                    &new_producer)) {
                     return false;
                 }
                 union_op->SetProducer(0, new_producer);
@@ -1252,8 +1234,8 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                 dynamic_cast<PhysicalRequestUnionNode*>(in);
             PhysicalOpNode* new_producer;
             if (!KeysFilterOptimized(union_op->GetProducer(1),
-                                     &union_op->window_.group_,
-                                     &union_op->hash_, &new_producer)) {
+                                     &union_op->window_.partition_,
+                                     &union_op->index_key_, &new_producer)) {
                 return false;
             }
             union_op->SetProducer(1, new_producer);
@@ -1451,8 +1433,8 @@ bool ConditionOptimized::JoinConditionOptimized(PhysicalOpNode* in,
     }
     node::ExprNode* filter_condition =
         node_manager_->MakeAndExpr(&new_and_conditions);
-    join->left_hash_.set_keys(left_keys);
-    join->right_partition_.set_groups(right_keys);
+    join->left_key_.set_keys(left_keys);
+    join->right_key_.set_keys(right_keys);
     join->filter_.set_condition(filter_condition);
     return true;
 }
@@ -1774,17 +1756,17 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
     switch (in->type_) {
         case kPhysicalOpGroupBy: {
             auto group_op = dynamic_cast<PhysicalGroupNode*>(in);
-            if (node::ExprListNullOrEmpty(group_op->group_.groups_)) {
+            if (node::ExprListNullOrEmpty(group_op->group_.keys_)) {
                 LOG(WARNING)
                     << "LeftJoin optimized skip: groups is null or empty";
             }
 
             if (!CheckExprListFromSchema(
-                    group_op->group_.groups_,
+                    group_op->group_.keys_,
                     (join_op->GetProducers()[0]->output_schema_))) {
                 return false;
             }
-            auto group_expr = group_op->group_.groups_;
+            auto group_expr = group_op->group_.keys_;
             // 符合优化条件
             PhysicalGroupNode* new_group_op =
                 new PhysicalGroupNode(join_op->producers()[0], group_expr);
@@ -1827,7 +1809,7 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
             auto group_sort_op =
                 dynamic_cast<PhysicalWindowAggrerationNode*>(in);
             if (node::ExprListNullOrEmpty(
-                    group_sort_op->window_.group_.groups_) &&
+                    group_sort_op->window_.partition_.keys_) &&
                 (nullptr == group_sort_op->window_.sort_.orders_ ||
                  node::ExprListNullOrEmpty(
                      group_sort_op->window_.sort_.orders_->order_by_))) {
@@ -1835,7 +1817,7 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
                                 "order and groups are empty ";
             }
             if (!CheckExprListFromSchema(
-                    group_sort_op->window_.group_.groups_,
+                    group_sort_op->window_.partition_.keys_,
                     (join_op->GetProducers()[0]->output_schema_))) {
                 return false;
             }

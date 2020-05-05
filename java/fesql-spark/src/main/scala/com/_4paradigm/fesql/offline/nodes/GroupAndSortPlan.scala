@@ -10,8 +10,8 @@ object GroupAndSortPlan {
 
   def gen(ctx: PlanContext, node: PhysicalWindowAggrerationNode, input: SparkInstance): SparkInstance = {
     val inputDf = input.getDf(ctx.getSparkSession)
-    val windowOp = node.getWindow_();
-    val groupByExprs = windowOp.getGroup_().getGroups_()
+    val windowOp = node.window();
+    val groupByExprs = windowOp.partition().keys()
 
     val groupByCols = mutable.ArrayBuffer[Column]()
     for (i <- 0 until groupByExprs.GetChildNum()) {
@@ -26,7 +26,7 @@ object GroupAndSortPlan {
       inputDf.repartition(groupByCols: _*)
     }
 
-    val orderExprs = windowOp.getSort_().getOrders_().GetOrderBy()
+    val orderExprs = windowOp.sort().orders().order_by()
     val orderByCols = mutable.ArrayBuffer[Column]()
     for (i <- 0 until orderExprs.GetChildNum()) {
       val expr = orderExprs.GetChild(i)

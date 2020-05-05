@@ -92,7 +92,7 @@ void PhysicalPartitionProviderNode::Print(std::ostream& output,
 void PhysicalGroupNode::Print(std::ostream& output,
                               const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(" << group_.ToString() << ")";
+    output << "(" << "group_" << group_.ToString() << ")";
     output << "\n";
     PrintChildren(output, tab);
 }
@@ -136,7 +136,7 @@ void PhysicalGroupAggrerationNode::Print(std::ostream& output,
                                          const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "(type=" << ProjectTypeName(project_type_) << ", "
-           << group_.ToString();
+           << "group_" << group_.ToString();
     if (limit_cnt_ > 0) {
         output << ", limit=" << limit_cnt_;
     }
@@ -318,12 +318,8 @@ void PhysicalRequestUnionNode::Print(std::ostream& output,
                                      const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "(";
-    output << window_.group_.ToString();
-    output << ", " << window_.sort_.ToString();
-    output << ", " << hash_.ToString();
-    if (window_.range_.Valid()) {
-        output << ", " << window_.range_.ToString();
-    }
+    output << window_.ToString();
+    output << ", index_" << index_key_.ToString();
     if (limit_cnt_ > 0) {
         output << ", limit=" << limit_cnt_;
     }
