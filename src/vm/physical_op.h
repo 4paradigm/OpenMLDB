@@ -83,7 +83,7 @@ struct FnInfo {
 
 class Group {
  public:
-    Group(const node::ExprListNode *groups) : groups_(groups) {}
+    explicit Group(const node::ExprListNode *groups) : groups_(groups) {}
     virtual ~Group() {}
     void SetGroupsIdxs(const std::vector<int32_t> &idxs) {
         groups_idxs_ = idxs;
@@ -106,7 +106,7 @@ class Group {
 
 class Sort {
  public:
-    Sort(const node::OrderByNode *orders) : orders_(orders) {}
+    explicit Sort(const node::OrderByNode *orders) : orders_(orders) {}
     virtual ~Sort() {}
     const node::OrderByNode *orders() const { return orders_; }
     void set_orders(const node::OrderByNode *orders) { orders_ = orders; }
@@ -163,7 +163,8 @@ class Range {
 
 class ConditionFilter {
  public:
-    ConditionFilter(const node::ExprNode *condition) : condition_(condition) {}
+    explicit ConditionFilter(const node::ExprNode *condition)
+        : condition_(condition) {}
     virtual ~ConditionFilter() {}
     void SetConditionIdxs(const std::vector<int32_t> &idxs) {
         condition_idxs_ = idxs;
@@ -190,7 +191,7 @@ class ConditionFilter {
 class Hash {
  public:
     Hash() : keys_(nullptr) {}
-    Hash(const node::ExprListNode *keys) : keys_(keys) {}
+    explicit Hash(const node::ExprListNode *keys) : keys_(keys) {}
     virtual ~Hash() {}
     void SetKeysIdxs(const std::vector<int32_t> &idxs) { key_idxs_ = idxs; }
     const std::vector<int32_t> &GetKeysIdxs() const { return key_idxs_; }
@@ -525,7 +526,7 @@ class WindowOp {
 class Join {
  public:
     Join() : filter_(nullptr), left_hash_(nullptr), right_partition_(nullptr) {}
-    Join(const node::ExprNode *condition)
+    explicit Join(const node::ExprNode *condition)
         : filter_(condition), left_hash_(nullptr), right_partition_(nullptr) {}
     Join(const node::ExprNode *condition, const node::ExprListNode *left_keys,
          const node::ExprListNode *right_keys)
@@ -647,7 +648,7 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
         fn_infos_.push_back(&join_.index_hash_.fn_info_);
     }
     PhysicalJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
-                     const node::JoinType join_type, Join &join)
+                     const node::JoinType join_type, const Join &join)
         : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false, true),
           join_type_(join_type),
           join_(join) {
@@ -761,7 +762,7 @@ class PhysicalSortNode : public PhysicalUnaryNode {
         InitSchema();
         fn_infos_.push_back(&sort_.fn_info_);
     }
-    PhysicalSortNode(PhysicalOpNode *node, Sort &sort)
+    PhysicalSortNode(PhysicalOpNode *node, const Sort &sort)
         : PhysicalUnaryNode(node, kPhysicalOpSortBy, true, false), sort_(sort) {
         output_type_ = node->output_type_;
         InitSchema();

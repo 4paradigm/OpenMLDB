@@ -105,7 +105,8 @@ class NodeManager {
     SQLNode *MakeWindowDefNode(const std::string &name);
     SQLNode *MakeWindowDefNode(ExprListNode *partitions, ExprNode *orders,
                                SQLNode *frame);
-    SQLNode *MakeWindowDefNode(SQLNodeList *union_tables, ExprListNode *partitions, ExprNode *orders,
+    SQLNode *MakeWindowDefNode(SQLNodeList *union_tables,
+                               ExprListNode *partitions, ExprNode *orders,
                                SQLNode *frame, bool instance_not_in_window);
     ExprNode *MakeOrderByNode(ExprListNode *node_ptr, const bool is_asc);
     SQLNode *MakeFrameNode(SQLNode *start, SQLNode *end);

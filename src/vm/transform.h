@@ -251,14 +251,17 @@ class BatchModeTransformer {
     bool GenJoin(Join* join, PhysicalOpNode* in,
                  base::Status& status);  // NOLINT
     bool GenFilter(ConditionFilter* filter, PhysicalOpNode* in,
-                   base::Status& status);
-    bool GenHash(Hash* hash, PhysicalOpNode*& in,
+                   base::Status& status);  // NOLINT
+    bool GenHash(Hash* hash, PhysicalOpNode* in,
                  base::Status& status);  // NOLINT
     bool GenWindow(WindowOp* window, PhysicalOpNode* in,
                    base::Status& status);  // NOLINT
-    bool GenGroup(Group* group, PhysicalOpNode* in, base::Status& status);
-    bool GenSort(Sort* sort, PhysicalOpNode* in, base::Status& status);
-    bool GenRange(Range* sort, PhysicalOpNode* in, base::Status& status);
+    bool GenGroup(Group* group, PhysicalOpNode* in,
+                  base::Status& status);  // NOLINT
+    bool GenSort(Sort* sort, PhysicalOpNode* in,
+                 base::Status& status);  // NOLINT
+    bool GenRange(Range* sort, PhysicalOpNode* in,
+                  base::Status& status);  // NOLINT
 
  protected:
     virtual bool TransformPlanOp(const ::fesql::node::PlanNode* node,
@@ -318,8 +321,8 @@ class BatchModeTransformer {
                          base::Status& status);                        // NOLINT
     bool CodeGenExprList(const NameSchemaList& input_name_schema_list,
                          const node::ExprListNode* expr_list, bool row_mode,
-                         FnInfo* fn_info,  // NOLINT
-                         base::Status& status);
+                         FnInfo* fn_info,
+                         base::Status& status);  // NOLINT
 
     node::NodeManager* node_manager_;
     const std::string db_;

@@ -28,7 +28,8 @@ void InitCases(std::string yaml_path, std::vector<SQLCase> &cases);  // NOLINT
 void InitCases(std::string yaml_path, std::vector<SQLCase> &cases) {  // NOLINT
     if (!SQLCase::CreateSQLCasesFromYaml(
             fesql::sqlcase::FindFesqlDirPath() + "/" + yaml_path, cases,
-            std::vector<std::string>({"logical-plan-unsupport", "parser-unsupport"}))) {
+            std::vector<std::string>(
+                {"logical-plan-unsupport", "parser-unsupport"}))) {
         FAIL();
     }
 }
@@ -357,14 +358,12 @@ TEST_F(PlannerTest, WindowWithUnionTest) {
 
     ASSERT_TRUE(project_list->IsWindowAgg());
 
-
     ASSERT_EQ(-3, project_list->GetW()->GetStartOffset());
     ASSERT_EQ(0, project_list->GetW()->GetEndOffset());
     ASSERT_EQ("(col1)", node::ExprString(project_list->GetW()->GetKeys()));
     ASSERT_TRUE(project_list->GetW()->instance_not_in_window());
     ASSERT_TRUE(nullptr != project_list->GetW()->union_tables());
     ASSERT_EQ(2u, project_list->GetW()->union_tables()->GetList().size());
-
 
     plan_ptr = plan_ptr->GetChildren()[0];
     ASSERT_EQ(node::kPlanTypeTable, plan_ptr->GetType());

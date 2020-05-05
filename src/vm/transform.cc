@@ -12,7 +12,6 @@
 #include <unordered_map>
 #include "codegen/fn_ir_builder.h"
 #include "codegen/fn_let_ir_builder.h"
-#include "physical_op.h"
 #include "vm/physical_op.h"
 
 namespace fesql {
@@ -968,8 +967,7 @@ bool BatchModeTransformer::GenJoin(Join* join, PhysicalOpNode* in,
     if (!GenHash(&join->left_hash_, in->producers()[0], status)) {
         return false;
     }
-    if (!GenHash(&join->index_hash_, in->producers()[0],
-                 status)) {
+    if (!GenHash(&join->index_hash_, in->producers()[0], status)) {
         return false;
     }
     if (!GenGroup(&join->right_partition_, in->producers()[1], status)) {
@@ -991,7 +989,7 @@ bool BatchModeTransformer::GenFilter(ConditionFilter* filter,
     }
     return true;
 }
-bool BatchModeTransformer::GenHash(Hash* hash, PhysicalOpNode*& in,
+bool BatchModeTransformer::GenHash(Hash* hash, PhysicalOpNode* in,
                                    base::Status& status) {
     // Gen left key function
     node::ExprListNode expr_list;
@@ -1120,7 +1118,7 @@ bool GroupAndSortOptimized::JoinKeysOptimized(PhysicalOpNode* in, Join* join,
         if (kProviderTypeTable == scan_op->provider_type_) {
             const node::ExprListNode* new_right_partition = nullptr;
             const node::ExprListNode* index_keys = nullptr;
-            node::ExprListNode* left_index_keys= nullptr;
+            node::ExprListNode* left_index_keys = nullptr;
             node::ExprListNode* new_left_keys = nullptr;
             std::string index_name;
             auto& index_hint = scan_op->table_handler_->GetIndex();
@@ -1148,7 +1146,8 @@ bool GroupAndSortOptimized::JoinKeysOptimized(PhysicalOpNode* in, Join* join,
                     left_index_keys->AddChild(
                         join->left_hash_.keys_->children_[i]);
                 } else {
-                    new_left_keys->AddChild(join->left_hash_.keys_->children_[i]);
+                    new_left_keys->AddChild(
+                        join->left_hash_.keys_->children_[i]);
                 }
             }
             join->right_partition_.set_groups(new_right_partition);
@@ -1266,7 +1265,8 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                 dynamic_cast<PhysicalRequestJoinNode*>(in);
             PhysicalOpNode* new_producer;
             // Optimized Right Table Partition
-            if (!JoinKeysOptimized(join_op->GetProducer(1), &join_op->join_, &new_producer)) {
+            if (!JoinKeysOptimized(join_op->GetProducer(1), &join_op->join_,
+                                   &new_producer)) {
                 return false;
             }
             join_op->SetProducer(1, new_producer);
@@ -1276,9 +1276,8 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
             PhysicalJoinNode* join_op = dynamic_cast<PhysicalJoinNode*>(in);
             PhysicalOpNode* new_producer;
             // Optimized Right Table Partition
-            if (!JoinKeysOptimized(join_op->GetProducer(1),
-                                &join_op->join_,
-                                &new_producer)) {
+            if (!JoinKeysOptimized(join_op->GetProducer(1), &join_op->join_,
+                                   &new_producer)) {
                 return false;
             }
             join_op->SetProducer(1, new_producer);

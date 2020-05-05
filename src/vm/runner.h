@@ -73,21 +73,21 @@ class WindowProjectGenerator : public FnGenerator {
 
 class KeyGenerator : public FnGenerator {
  public:
-    KeyGenerator(const FnInfo& info) : FnGenerator(info) {}
+    explicit KeyGenerator(const FnInfo& info) : FnGenerator(info) {}
     virtual ~KeyGenerator() {}
     const std::string Gen(const Row& row);
 };
 
 class OrderGenerator : public FnGenerator {
  public:
-    OrderGenerator(const FnInfo& info) : FnGenerator(info) {}
+    explicit OrderGenerator(const FnInfo& info) : FnGenerator(info) {}
     virtual ~OrderGenerator() {}
     const int64_t Gen(const Row& row);
 };
 
 class ConditionGenerator : public FnGenerator {
  public:
-    ConditionGenerator(const FnInfo& info) : FnGenerator(info) {}
+    explicit ConditionGenerator(const FnInfo& info) : FnGenerator(info) {}
     virtual ~ConditionGenerator() {}
     const bool Gen(const Row& row);
 };
@@ -367,8 +367,10 @@ class RequestUnionRunner : public Runner {
     ~RequestUnionRunner() {}
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
 
-    std::shared_ptr<DataHandler> UnionTable(Row row, std::shared_ptr<TableHandler> table);
-    std::shared_ptr<DataHandler> UnionPartition(Row row, std::shared_ptr<PartitionHandler> partition);
+    std::shared_ptr<DataHandler> UnionTable(
+        Row row, std::shared_ptr<TableHandler> table);
+    std::shared_ptr<DataHandler> UnionPartition(
+        Row row, std::shared_ptr<PartitionHandler> partition);
     const bool is_asc_;
     KeyGenerator group_gen_;
     KeyGenerator key_gen_;
@@ -418,9 +420,10 @@ class RequestLastJoinRunner : public Runner {
           right_key_gen_(join.right_partition_.fn_info_) {}
     ~RequestLastJoinRunner() {}
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
-    Row PartitionRun(Row& left_row,
-                     std::shared_ptr<PartitionHandler> partition);     // NOLINT
-    Row TableRun(Row& left_row, std::shared_ptr<TableHandler> table);  // NOLINT
+    Row PartitionRun(const Row& left_row,
+                     std::shared_ptr<PartitionHandler> partition);  // NOLINT
+    Row TableRun(const Row& left_row,
+                 std::shared_ptr<TableHandler> table);  // NOLINT
     ConditionGenerator condition_gen_;
     KeyGenerator left_key_gen_;
     KeyGenerator index_key_gen_;
