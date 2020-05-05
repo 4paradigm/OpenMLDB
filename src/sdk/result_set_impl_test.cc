@@ -17,15 +17,15 @@
 
 #include "sdk/result_set_impl.h"
 
-#include <vector>
 #include <memory>
-#include <utility>
 #include <string>
+#include <utility>
+#include <vector>
+#include "brpc/controller.h"
 #include "codec/row_codec.h"
 #include "codec/schema_codec.h"
 #include "gtest/gtest.h"
 #include "proto/tablet.pb.h"
-#include "brpc/controller.h"
 
 namespace fesql {
 namespace sdk {
@@ -35,9 +35,7 @@ struct TestArgs {
     std::vector<std::string> rows;
 };
 
-
-class ResultSetImplTest
-    : public ::testing::TestWithParam<TestArgs*> {
+class ResultSetImplTest : public ::testing::TestWithParam<TestArgs*> {
  public:
     ResultSetImplTest() {}
     ~ResultSetImplTest() {}
@@ -46,11 +44,11 @@ class ResultSetImplTest
 std::vector<TestArgs*> GetTestCase() {
     std::vector<TestArgs*> case_set;
     // empty
-    { 
+    {
         TestArgs* args = new TestArgs();
         args->response = new tablet::QueryResponse();
         args->ctrl = new brpc::Controller();
-        case_set.push_back(args); 
+        case_set.push_back(args);
     }
     {
         TestArgs* args = new TestArgs();
@@ -165,18 +163,15 @@ std::vector<TestArgs*> GetTestCase() {
         args->rows.push_back(row);
         args->rows.push_back(row);
         case_set.push_back(args);
-
     }
     return case_set;
 }
 
 TEST_P(ResultSetImplTest, test_normal) {
     auto args = GetParam();
-    std::unique_ptr<tablet::QueryResponse> resp_ptr(
-        args->response);
+    std::unique_ptr<tablet::QueryResponse> resp_ptr(args->response);
     std::unique_ptr<brpc::Controller> cntrl(args->ctrl);
-    ResultSetImpl rs(std::move(resp_ptr),
-            std::move(cntrl));
+    ResultSetImpl rs(std::move(resp_ptr), std::move(cntrl));
     rs.Init();
     vm::Schema schema;
     bool ok = codec::SchemaCodec::Decode(args->response->schema(), &schema);

@@ -95,12 +95,11 @@ class RowBuilder {
     std::vector<uint32_t> offset_vec_;
 };
 
-
 class RowBaseView {
  public:
     RowBaseView() {}
     virtual ~RowBaseView() {}
-    virtual int32_t GetBool(uint32_t idx,  bool* val) = 0;
+    virtual int32_t GetBool(uint32_t idx, bool* val) = 0;
     virtual int32_t GetInt16(uint32_t idx, int16_t* val) = 0;
     virtual int32_t GetInt32(uint32_t idx, int32_t* val) = 0;
     virtual int32_t GetInt64(uint32_t idx, int64_t* val) = 0;
@@ -112,7 +111,7 @@ class RowBaseView {
     virtual bool IsNULL(uint32_t idx) = 0;
 };
 
-class RowIOBufView : public RowBaseView{
+class RowIOBufView : public RowBaseView {
  public:
     explicit RowIOBufView(const fesql::vm::Schema& schema);
     ~RowIOBufView();
@@ -124,9 +123,7 @@ class RowIOBufView : public RowBaseView{
     int32_t GetDouble(uint32_t idx, double* val);
     int32_t GetTimestamp(uint32_t, int64_t* val);
     int32_t GetString(uint32_t idx, butil::IOBuf* buf);
-    int32_t GetString(uint32_t idx, char** val, uint32_t* length) {
-        return -1;
-    }
+    int32_t GetString(uint32_t idx, char** val, uint32_t* length) { return -1; }
 
     inline int32_t GetBool(uint32_t idx, bool* val) {
         if (val == NULL) return -1;
@@ -144,8 +141,10 @@ class RowIOBufView : public RowBaseView{
         row_.copy_to(reinterpret_cast<void*>(&val), 1, offset);
         return val & (1 << (idx & 0x07));
     }
+
  private:
     bool Init();
+
  private:
     butil::IOBuf row_;
     uint8_t str_addr_length_;

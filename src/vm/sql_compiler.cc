@@ -39,25 +39,37 @@ void InitCodecSymbol(::llvm::orc::JITDylib& jd,             // NOLINT
                                    (reinterpret_cast<void*>(&malloc)));
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_get_int16_field",
-        reinterpret_cast<void*>(static_cast<int16_t (*)(const int8_t*, uint32_t)>(&codec::v1::GetInt16Field)));
+        reinterpret_cast<void*>(
+            static_cast<int16_t (*)(const int8_t*, uint32_t)>(
+                &codec::v1::GetInt16Field)));
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_get_int32_field",
-        reinterpret_cast<void*>(static_cast<int32_t (*)(const int8_t*, uint32_t)>(&codec::v1::GetInt32Field)));
+        reinterpret_cast<void*>(
+            static_cast<int32_t (*)(const int8_t*, uint32_t)>(
+                &codec::v1::GetInt32Field)));
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_get_int64_field",
-        reinterpret_cast<void*>(static_cast<int64_t (*)(const int8_t*, uint32_t)>(&codec::v1::GetInt64Field)));
+        reinterpret_cast<void*>(
+            static_cast<int64_t (*)(const int8_t*, uint32_t)>(
+                &codec::v1::GetInt64Field)));
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_get_float_field",
-        reinterpret_cast<void*>(static_cast<float (*)(const int8_t*, uint32_t)>(&codec::v1::GetFloatField)));
+        reinterpret_cast<void*>(static_cast<float (*)(const int8_t*, uint32_t)>(
+            &codec::v1::GetFloatField)));
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_get_double_field",
-        reinterpret_cast<void*>(static_cast<double (*)(const int8_t*, uint32_t)>(&codec::v1::GetDoubleField)));
+        reinterpret_cast<void*>(
+            static_cast<double (*)(const int8_t*, uint32_t)>(
+                &codec::v1::GetDoubleField)));
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_get_str_addr_space",
         reinterpret_cast<void*>(&codec::v1::GetAddrSpace));
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_get_str_field",
-        reinterpret_cast<void*>(static_cast<int32_t (*)(const int8_t*, uint32_t, uint32_t, uint32_t, uint32_t, int8_t**, uint32_t*)>(&codec::v1::GetStrField)));
+        reinterpret_cast<void*>(
+            static_cast<int32_t (*)(const int8_t*, uint32_t, uint32_t, uint32_t,
+                                    uint32_t, int8_t**, uint32_t*)>(
+                &codec::v1::GetStrField)));
     fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "fesql_storage_get_col",
                                    reinterpret_cast<void*>(&codec::v1::GetCol));
     fesql::vm::FeSQLJIT::AddSymbol(

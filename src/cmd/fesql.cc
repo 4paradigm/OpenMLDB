@@ -363,7 +363,8 @@ void HandleSQLScript(
                 std::string empty;
                 std::string mu_script = script;
                 mu_script.replace(0u, 7u, empty);
-                std::shared_ptr<::fesql::sdk::ExplainInfo> info = dbms_sdk->Explain(cmd_client_db.name, mu_script, &status);
+                std::shared_ptr<::fesql::sdk::ExplainInfo> info =
+                    dbms_sdk->Explain(cmd_client_db.name, mu_script, &status);
                 if (0 != status.code) {
                     return;
                 }

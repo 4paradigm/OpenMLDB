@@ -225,8 +225,7 @@ TEST_F(DBMSSdkTest, GetInputSchema_ns_not_exist) {
     }
 }
 
-
-TEST_F(DBMSSdkTest, request_mode) { 
+TEST_F(DBMSSdkTest, request_mode) {
     usleep(2000 * 1000);
     const std::string endpoint = "127.0.0.1:" + std::to_string(dbms_port);
     std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk =
@@ -262,9 +261,7 @@ TEST_F(DBMSSdkTest, request_mode) {
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
 
-    {
-    
-    }
+    {}
 }
 
 TEST_F(DBMSSdkTest, GetInputSchema_table_not_exist) {
@@ -320,7 +317,7 @@ TEST_F(DBMSSdkTest, GetInputSchema1) {
         Status status;
         // select
         std::string sql = "select column1 from test3;";
-        const Schema& schema = dbms_sdk->GetInputSchema(name, sql, &status);
+        const Schema &schema = dbms_sdk->GetInputSchema(name, sql, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
         ASSERT_EQ(5, schema.GetColumnCnt());
     }

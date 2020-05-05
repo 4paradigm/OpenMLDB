@@ -19,11 +19,11 @@
 #define SRC_SDK_RESULT_SET_H_
 
 #include <stdint.h>
+#include <string>
 #include "sdk/base.h"
 
 namespace fesql {
 namespace sdk {
-
 
 class ResultSet {
  public:
@@ -51,7 +51,7 @@ class ResultSet {
         return ok;
     }
     virtual bool GetChar(uint32_t index, char* result) = 0;
-    char GetCharUnsafe(int index)  {
+    char GetCharUnsafe(int index) {
         if (IsNULL(index)) return 0;
         char data = 0;
         GetChar(index, &data);
@@ -60,9 +60,9 @@ class ResultSet {
 
     virtual bool GetInt16(uint32_t index, int16_t* result) = 0;
 
-    virtual short GetInt16Unsafe(int index) {
+    virtual short GetInt16Unsafe(int index) { // NOLINT
         if (IsNULL(index)) return 0;
-        short val = 0;
+        short val = 0;  // NOLINT
         GetInt16(index, &val);
         return val;
     }
@@ -87,7 +87,7 @@ class ResultSet {
 
     virtual bool GetFloat(uint32_t index, float* result) = 0;
 
-    virtual float GetFloatUnsafe(int index)  {
+    virtual float GetFloatUnsafe(int index) {
         if (IsNULL(index)) return 0.0f;
         float val = 0.0f;
         GetFloat(index, &val);
@@ -96,7 +96,7 @@ class ResultSet {
 
     virtual bool GetDouble(uint32_t index, double* result) = 0;
 
-    virtual double GetDoubleUnsafe(int index)  {
+    virtual double GetDoubleUnsafe(int index) {
         if (IsNULL(index)) return 0;
         double val = 0;
         GetDouble(index, &val);
@@ -104,7 +104,7 @@ class ResultSet {
     }
 
     virtual bool GetDate(uint32_t index, uint32_t* days) = 0;
-    
+
     virtual int32_t GetDateUnsafe(uint32_t index) = 0;
 
     virtual bool GetTime(uint32_t index, int64_t* mills) = 0;

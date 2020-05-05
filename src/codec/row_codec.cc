@@ -94,8 +94,8 @@ uint32_t RowBuilder::CalTotalLength(uint32_t string_length) {
 
 bool RowBuilder::Check(::fesql::type::Type type) {
     if ((int32_t)cnt_ >= schema_.size()) {
-        LOG(WARNING) << "idx out of index: "
-            << cnt_ << " size=" << schema_.size();
+        LOG(WARNING) << "idx out of index: " << cnt_
+                     << " size=" << schema_.size();
         return false;
     }
     const ::fesql::type::ColumnDef& column = schema_.Get(cnt_);
@@ -572,7 +572,7 @@ std::string RowView::GetRowString() {
 
     for (int i = 0; i < schema_.size(); i++) {
         row_str.append(GetAsString(i));
-        if (i != schema_.size()-1) {
+        if (i != schema_.size() - 1) {
             row_str.append(", ");
         }
     }
@@ -784,10 +784,15 @@ bool RowDecoder::GetStringFieldOffset(const std::string& name,
     return true;
 }
 
-RowIOBufView::RowIOBufView(const fesql::vm::Schema& schema):row_(),
-    str_addr_length_(0), is_valid_(true), string_field_cnt_(0),
-    str_field_start_offset_(0), size_(0), schema_(schema),
-    offset_vec_() {
+RowIOBufView::RowIOBufView(const fesql::vm::Schema& schema)
+    : row_(),
+      str_addr_length_(0),
+      is_valid_(true),
+      string_field_cnt_(0),
+      str_field_start_offset_(0),
+      size_(0),
+      schema_(schema),
+      offset_vec_() {
     Init();
 }
 
@@ -819,13 +824,14 @@ bool RowIOBufView::Init() {
 
 bool RowIOBufView::Reset(const butil::IOBuf& buf) {
     row_ = buf;
-     if (schema_.size() == 0 || row_.size() <= HEADER_LENGTH) {
+    if (schema_.size() == 0 || row_.size() <= HEADER_LENGTH) {
         is_valid_ = false;
         return false;
     }
     size_ = row_.size();
     uint32_t tmp_size = 0;
-    row_.copy_to(reinterpret_cast<void *>(&tmp_size), SIZE_LENGTH, VERSION_LENGTH);
+    row_.copy_to(reinterpret_cast<void*>(&tmp_size), SIZE_LENGTH,
+                 VERSION_LENGTH);
     if (tmp_size != size_) {
         is_valid_ = false;
         return false;
@@ -873,7 +879,6 @@ int32_t RowIOBufView::GetFloat(uint32_t idx, float* val) {
     *val = v1::GetFloatField(row_, offset);
     return 0;
 }
-
 
 int32_t RowIOBufView::GetDouble(uint32_t idx, double* val) {
     if (val == NULL) return -1;

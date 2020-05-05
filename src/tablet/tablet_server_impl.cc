@@ -23,10 +23,10 @@
 #include <utility>
 #include <vector>
 #include "base/strings.h"
-#include "gflags/gflags.h"
-#include "butil/iobuf.h"
 #include "brpc/controller.h"
+#include "butil/iobuf.h"
 #include "codec/schema_codec.h"
+#include "gflags/gflags.h"
 
 DECLARE_string(dbms_endpoint);
 DECLARE_string(endpoint);
@@ -153,14 +153,14 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
     common::Status* status = response->mutable_status();
     status->set_code(common::kOk);
     status->set_msg("ok");
-    brpc::Controller *cntl = static_cast<brpc::Controller*>(ctrl);
+    brpc::Controller* cntl = static_cast<brpc::Controller*>(ctrl);
     butil::IOBuf& buf = cntl->response_attachment();
     if (request->is_batch()) {
         vm::BatchRunSession session;
         {
             base::Status base_status;
-            bool ok =
-                engine_->Get(request->sql(), request->db(), session, base_status);
+            bool ok = engine_->Get(request->sql(), request->db(), session,
+                                   base_status);
             if (!ok) {
                 status->set_msg(base_status.msg);
                 status->set_code(base_status.code);
@@ -193,7 +193,7 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
         response->set_byte_size(byte_size);
         response->set_count(count);
         status->set_code(common::kOk);
-    }else {
+    } else {
         if (request->row().empty()) {
             status->set_code(common::kBadRequest);
             status->set_msg("input row is empty");
@@ -202,8 +202,8 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
         vm::RequestRunSession session;
         {
             base::Status base_status;
-            bool ok =
-                engine_->Get(request->sql(), request->db(), session, base_status);
+            bool ok = engine_->Get(request->sql(), request->db(), session,
+                                   base_status);
             if (!ok) {
                 status->set_msg(base_status.msg);
                 status->set_code(base_status.code);
@@ -229,27 +229,30 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
     }
 }
 
-void TabletServerImpl::Explain(RpcController* ctrl, const ExplainRequest* request,
-            ExplainResponse* response, Closure* done) {
+void TabletServerImpl::Explain(RpcController* ctrl,
+                               const ExplainRequest* request,
+                               ExplainResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
     common::Status* status = response->mutable_status();
     vm::ExplainOutput output;
     base::Status base_status;
-    bool ok = engine_->Explain(request->sql(), 
-            request->db(), false, &output, &base_status);
+    bool ok = engine_->Explain(request->sql(), request->db(), false, &output,
+                               &base_status);
     if (!ok || base_status.code != 0) {
         status->set_msg(base_status.msg);
         status->set_code(base_status.code);
         LOG(WARNING) << base_status.msg;
         return;
     }
-    ok = codec::SchemaCodec::Encode(output.input_schema, response->mutable_input_schema());
+    ok = codec::SchemaCodec::Encode(output.input_schema,
+                                    response->mutable_input_schema());
     if (!ok) {
         status->set_msg("fail encode schema");
         status->set_code(common::kSchemaCodecError);
         return;
     }
-    ok = codec::SchemaCodec::Encode(output.output_schema, response->mutable_output_schema());
+    ok = codec::SchemaCodec::Encode(output.output_schema,
+                                    response->mutable_output_schema());
     if (!ok) {
         status->set_msg("fail encode schema");
         status->set_code(common::kSchemaCodecError);
@@ -276,7 +279,6 @@ void TabletServerImpl::GetTableSchema(RpcController* ctrl,
     }
     response->mutable_schema()->CopyFrom(handler->GetTable()->GetTableDef());
 }
-
 
 }  // namespace tablet
 }  // namespace fesql

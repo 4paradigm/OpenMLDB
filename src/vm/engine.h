@@ -79,7 +79,7 @@ class RunSession {
         return compile_info_->get_sql_context().schema;
     }
 
-    virtual inline const std::string& GetDecodedSchema() const  {
+    virtual inline const std::string& GetDecodedSchema() const {
         return decoded_schema_;
     }
 
@@ -101,8 +101,7 @@ class RunSession {
     void DisableDebug() { is_debug_ = false; }
 
  protected:
-    bool SetCompileInfo(
-        const std::shared_ptr<CompileInfo>& compile_info);
+    bool SetCompileInfo(const std::shared_ptr<CompileInfo>& compile_info);
 
     inline void SetCatalog(const std::shared_ptr<Catalog>& cl) { cl_ = cl; }
 
@@ -169,10 +168,9 @@ class Engine {
              RunSession& session,    // NOLINT
              base::Status& status);  // NOLINT
 
-    bool Explain(const std::string& sql, const std::string& db,
-            bool is_batch, 
-            ExplainOutput* explain_output,
-            base::Status *status);
+    bool Explain(const std::string& sql, const std::string& db, bool is_batch,
+                 ExplainOutput* explain_output, base::Status* status);
+
  private:
     std::shared_ptr<CompileInfo> GetCacheLocked(const std::string& db,
                                                 const std::string& sql);

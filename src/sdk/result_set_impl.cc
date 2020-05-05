@@ -21,14 +21,14 @@
 #include <string>
 #include <utility>
 #include "base/strings.h"
-#include "glog/logging.h"
 #include "codec/schema_codec.h"
+#include "glog/logging.h"
 
 namespace fesql {
 namespace sdk {
 
-ResultSetImpl::ResultSetImpl(std::unique_ptr<tablet::QueryResponse> response, 
-        std::unique_ptr<brpc::Controller> cntl)
+ResultSetImpl::ResultSetImpl(std::unique_ptr<tablet::QueryResponse> response,
+                             std::unique_ptr<brpc::Controller> cntl)
     : response_(std::move(response)),
       index_(-1),
       byte_size_(0),
@@ -36,16 +36,16 @@ ResultSetImpl::ResultSetImpl(std::unique_ptr<tablet::QueryResponse> response,
       row_view_(),
       internal_schema_(),
       schema_(),
-      cntl_(std::move(cntl)){
-}
+      cntl_(std::move(cntl)) {}
 
 ResultSetImpl::~ResultSetImpl() {}
 
 bool ResultSetImpl::Init() {
     if (!response_) return false;
     byte_size_ = response_->byte_size();
-    if (byte_size_<= 0) return true;
-    bool ok = codec::SchemaCodec::Decode(response_->schema(), &internal_schema_);
+    if (byte_size_ <= 0) return true;
+    bool ok =
+        codec::SchemaCodec::Decode(response_->schema(), &internal_schema_);
     if (!ok) {
         LOG(WARNING) << "fail to decode response schema ";
         return false;
@@ -57,20 +57,17 @@ bool ResultSetImpl::Init() {
     return true;
 }
 
-bool ResultSetImpl::IsNULL(int index) {
-    return row_view_->IsNULL(index);
-}
+bool ResultSetImpl::IsNULL(int index) { return row_view_->IsNULL(index); }
 
 bool ResultSetImpl::Next() {
     index_++;
-    if (index_ < response_->count() 
-            && position_ < byte_size_) {
+    if (index_ < response_->count() && position_ < byte_size_) {
         // get row size
         uint32_t row_size = 0;
-        cntl_->response_attachment().copy_to(
-               reinterpret_cast<void*>(&row_size),
-               4, position_ + 2);
-        DLOG(INFO) << "row size " << row_size << " position " << position_ << " byte size " << byte_size_;
+        cntl_->response_attachment().copy_to(reinterpret_cast<void*>(&row_size),
+                                             4, position_ + 2);
+        DLOG(INFO) << "row size " << row_size << " position " << position_
+                   << " byte size " << byte_size_;
         butil::IOBuf tmp;
         cntl_->response_attachment().append_to(&tmp, row_size, position_);
         position_ += row_size;
@@ -87,7 +84,7 @@ bool ResultSetImpl::GetString(uint32_t index, std::string* str) {
     }
     butil::IOBuf tmp;
     int32_t ret = row_view_->GetString(index, &tmp);
-    if (ret == 0){
+    if (ret == 0) {
         tmp.append_to(str, tmp.size(), 0);
         return true;
     }

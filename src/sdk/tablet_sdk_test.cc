@@ -274,7 +274,7 @@ TEST_P(TabletSdkTest, test_explain) {
             "test(column1,column5) as f1, column1 + column5 as f2 FROM t1 "
             "limit 10;";
 
-        std::shared_ptr<ExplainInfo> ei = sdk->Explain(name, sql,&status);
+        std::shared_ptr<ExplainInfo> ei = sdk->Explain(name, sql, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
         ASSERT_EQ(ei->GetInputSchema().GetColumnCnt(), 5);
         ASSERT_EQ(ei->GetOutputSchema().GetColumnCnt(), 4);

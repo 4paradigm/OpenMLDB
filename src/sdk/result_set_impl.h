@@ -19,12 +19,13 @@
 #define SRC_SDK_RESULT_SET_IMPL_H_
 
 #include <memory>
+#include <string>
+#include "brpc/controller.h"
+#include "butil/iobuf.h"
 #include "codec/row_codec.h"
 #include "proto/tablet.pb.h"
 #include "sdk/base_impl.h"
 #include "sdk/result_set.h"
-#include "brpc/controller.h"
-#include "butil/iobuf.h"
 
 namespace fesql {
 namespace sdk {
@@ -42,8 +43,7 @@ class ResultSetImpl : public ResultSet {
 
     bool IsNULL(int index);
 
-    bool GetString(uint32_t index,
-                   std::string* str);
+    bool GetString(uint32_t index, std::string* str);
 
     bool GetBool(uint32_t index, bool* result);
 
@@ -65,18 +65,13 @@ class ResultSetImpl : public ResultSet {
 
     bool GetTime(uint32_t index, int64_t* mills);
 
-    inline const Schema& GetSchema() {
-        return schema_;
-    }
+    inline const Schema& GetSchema() { return schema_; }
 
-    inline int32_t Size() {
-        return  response_->count();
-    }
+    inline int32_t Size() { return response_->count(); }
 
  private:
-    inline uint32_t GetRecordSize() {
-        return response_->count();
-    }
+    inline uint32_t GetRecordSize() { return response_->count(); }
+
  private:
     std::unique_ptr<tablet::QueryResponse> response_;
     int32_t index_;

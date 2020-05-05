@@ -97,7 +97,6 @@ TEST_F(CodecTest, Normal) {
     ASSERT_TRUE(builder.AppendDouble(4.1));
     ASSERT_TRUE(builder.AppendInt64(5));
     {
-    
         RowView view(schema, reinterpret_cast<int8_t*>(&(row[0])), size);
         int32_t val = 0;
         ASSERT_EQ(view.GetInt32(0, &val), 0);
@@ -105,7 +104,6 @@ TEST_F(CodecTest, Normal) {
         int16_t val1 = 0;
         ASSERT_EQ(view.GetInt16(1, &val1), 0);
         ASSERT_EQ(val1, 2);
-
     }
 
     {
@@ -192,7 +190,8 @@ TEST_F(CodecTest, Encode) {
             } else {
                 butil::IOBuf tmp;
                 ASSERT_EQ(view.GetString(i, &tmp), 0);
-                ASSERT_STREQ(tmp.to_string().c_str(), std::string(10, 'a' + i).c_str());
+                ASSERT_STREQ(tmp.to_string().c_str(),
+                             std::string(10, 'a' + i).c_str());
             }
         }
     }

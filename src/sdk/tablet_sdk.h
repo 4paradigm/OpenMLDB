@@ -27,9 +27,7 @@
 namespace fesql {
 namespace sdk {
 
-
 class ExplainInfo {
-
  public:
     ExplainInfo() {}
     virtual ~ExplainInfo() {}
@@ -56,9 +54,8 @@ class TabletSdk {
                                              const std::string& row,
                                              sdk::Status* status) = 0;
     virtual std::shared_ptr<ExplainInfo> Explain(const std::string& db,
-            const std::string& sql, 
-            sdk::Status* status) = 0;
-
+                                                 const std::string& sql,
+                                                 sdk::Status* status) = 0;
 };
 
 // create a new tablet sdk with a endpoint

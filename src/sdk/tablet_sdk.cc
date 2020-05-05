@@ -34,40 +34,30 @@
 namespace fesql {
 namespace sdk {
 
-const static std::string EMPTY_STR;
+static const std::string EMPTY_STR; // NOLINT
 
 class ExplainInfoImpl : public ExplainInfo {
-
  public:
     ExplainInfoImpl(const SchemaImpl& input_schema,
-            const SchemaImpl& output_schema,
-            const std::string& logical_plan,
-            const std::string& physical_plan,
-            const std::string& ir):input_schema_(input_schema),
-    output_schema_(output_schema), logical_plan_(logical_plan),
-    physical_plan_(physical_plan), ir_(ir) {}
+                    const SchemaImpl& output_schema,
+                    const std::string& logical_plan,
+                    const std::string& physical_plan, const std::string& ir)
+        : input_schema_(input_schema),
+          output_schema_(output_schema),
+          logical_plan_(logical_plan),
+          physical_plan_(physical_plan),
+          ir_(ir) {}
     ~ExplainInfoImpl() {}
 
-    const Schema&  GetInputSchema() {
-        return input_schema_;
-    }
+    const Schema& GetInputSchema() { return input_schema_; }
 
-    const Schema& GetOutputSchema() {
-        return output_schema_;
-    }
+    const Schema& GetOutputSchema() { return output_schema_; }
 
-    const std::string& GetLogicalPlan() {
-    
-        return logical_plan_;
-    }
+    const std::string& GetLogicalPlan() { return logical_plan_; }
 
-    const std::string& GetPhysicalPlan() {
-        return physical_plan_;
-    }
+    const std::string& GetPhysicalPlan() { return physical_plan_; }
 
-    const std::string& GetIR() {
-        return ir_;
-    }
+    const std::string& GetIR() { return ir_; }
 
  private:
     SchemaImpl input_schema_;
@@ -101,12 +91,13 @@ class TabletSdkImpl : public TabletSdk {
         return Query(db, sql, row, false, status);
     }
 
-
     void Insert(const std::string& db, const std::string& sql,
                 sdk::Status* status);
 
-    std::shared_ptr<ExplainInfo> Explain(const std::string& db, const std::string& sql,
-            sdk::Status* status);
+    std::shared_ptr<ExplainInfo> Explain(const std::string& db,
+                                         const std::string& sql,
+                                         sdk::Status* status);
+
  private:
     void BuildInsertRequest(const node::InsertPlanNode* iplan,
                             const std::string& db,
@@ -125,8 +116,7 @@ class TabletSdkImpl : public TabletSdk {
 
     std::shared_ptr<ResultSet> Query(const std::string& db,
                                      const std::string& sql,
-                                     const std::string& row,
-                                     bool is_batch,
+                                     const std::string& row, bool is_batch,
                                      sdk::Status* status);
 
  private:
@@ -173,8 +163,7 @@ std::shared_ptr<ResultSet> TabletSdkImpl::Query(const std::string& db,
     request.set_sql(sql);
     request.set_db(db);
     request.set_is_batch(is_batch);
-    if (!is_batch)
-    request.set_row(row);
+    if (!is_batch) request.set_row(row);
     std::unique_ptr<brpc::Controller> cntl(new brpc::Controller());
     cntl->set_timeout_ms(10000);
     DLOG(INFO) << "SyncQuery >> timeout_ms: " << cntl->timeout_ms();
@@ -192,7 +181,8 @@ std::shared_ptr<ResultSet> TabletSdkImpl::Query(const std::string& db,
         return std::shared_ptr<ResultSet>();
     }
     status->code = 0;
-    std::shared_ptr<ResultSetImpl> impl(new ResultSetImpl(std::move(response), std::move(cntl)));
+    std::shared_ptr<ResultSetImpl> impl(
+        new ResultSetImpl(std::move(response), std::move(cntl)));
     impl->Init();
     DLOG(INFO) << "SyncQuery result set done!";
     return impl;
@@ -222,9 +212,9 @@ bool TabletSdkImpl::GetSchema(const std::string& db, const std::string& table,
     return true;
 }
 
-std::shared_ptr<ExplainInfo> TabletSdkImpl::Explain(const std::string& db, const std::string& sql,
-        sdk::Status* status) {
-
+std::shared_ptr<ExplainInfo> TabletSdkImpl::Explain(const std::string& db,
+                                                    const std::string& sql,
+                                                    sdk::Status* status) {
     if (status == NULL) return std::shared_ptr<ExplainInfo>();
     ::fesql::tablet::TabletServer_Stub stub(channel_);
     ::fesql::tablet::ExplainRequest request;
@@ -247,7 +237,8 @@ std::shared_ptr<ExplainInfo> TabletSdkImpl::Explain(const std::string& db, const
     }
 
     vm::Schema internal_input_schema;
-    bool ok = codec::SchemaCodec::Decode(response.input_schema(), &internal_input_schema);
+    bool ok = codec::SchemaCodec::Decode(response.input_schema(),
+                                         &internal_input_schema);
     if (!ok) {
         status->msg = "fail to decode input schema";
         status->code = common::kSchemaCodecError;
@@ -255,15 +246,17 @@ std::shared_ptr<ExplainInfo> TabletSdkImpl::Explain(const std::string& db, const
     }
     SchemaImpl input_schema(internal_input_schema);
     vm::Schema internal_output_schema;
-    ok = codec::SchemaCodec::Decode(response.output_schema(), &internal_output_schema);
+    ok = codec::SchemaCodec::Decode(response.output_schema(),
+                                    &internal_output_schema);
     if (!ok) {
         status->msg = "fail to decode output  schema";
         status->code = common::kSchemaCodecError;
         return std::shared_ptr<ExplainInfo>();
     }
     SchemaImpl output_schema(internal_output_schema);
-    std::shared_ptr<ExplainInfoImpl> impl(new ExplainInfoImpl(input_schema, output_schema, response.logical_plan(),
-            response.physical_plan(), response.ir()));
+    std::shared_ptr<ExplainInfoImpl> impl(new ExplainInfoImpl(
+        input_schema, output_schema, response.logical_plan(),
+        response.physical_plan(), response.ir()));
     status->code = common::kOk;
     return impl;
 }

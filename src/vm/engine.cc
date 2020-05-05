@@ -24,9 +24,9 @@
 #include "codec/row_codec.h"
 #include "codec/schema_codec.h"
 #include "codegen/buf_ir_builder.h"
+#include "gflags/gflags.h"
 #include "llvm-c/Target.h"
 #include "vm/mem_catalog.h"
-#include "gflags/gflags.h"
 
 DECLARE_bool(logtostderr);
 DECLARE_string(log_dir);
@@ -54,7 +54,6 @@ void Engine::InitializeGlobalLLVM() {
 bool Engine::Get(const std::string& sql, const std::string& db,
                  RunSession& session,
                  base::Status& status) {  // NOLINT (runtime/references)
-
     {
         std::shared_ptr<CompileInfo> info = GetCacheLocked(db, sql);
         if (info) {
@@ -103,11 +102,9 @@ bool Engine::Get(const std::string& sql, const std::string& db,
 }
 
 bool Engine::Explain(const std::string& sql, const std::string& db,
-            bool is_batch, 
-            ExplainOutput* explain_output,
-            base::Status *status) {
-    if (explain_output == NULL
-            || status == NULL) {
+                     bool is_batch, ExplainOutput* explain_output,
+                     base::Status* status) {
+    if (explain_output == NULL || status == NULL) {
         LOG(WARNING) << "input args is invalid";
         return false;
     }
@@ -119,8 +116,8 @@ bool Engine::Explain(const std::string& sql, const std::string& db,
     SQLCompiler compiler(cl_, &nm, true, true);
     bool ok = compiler.Compile(ctx, *status);
     if (!ok || 0 != status->code) {
-        LOG(WARNING) << "fail to compile sql " << sql 
-            << " in db " << db << " with error " << status->msg;
+        LOG(WARNING) << "fail to compile sql " << sql << " in db " << db
+                     << " with error " << status->msg;
         return false;
     }
     explain_output->input_schema.CopyFrom(ctx.request_schema);
@@ -149,9 +146,11 @@ std::shared_ptr<CompileInfo> Engine::GetCacheLocked(const std::string& db,
 RunSession::RunSession() : is_debug_(false) {}
 RunSession::~RunSession() {}
 
-bool RunSession::SetCompileInfo(const std::shared_ptr<CompileInfo>& compile_info) {
+bool RunSession::SetCompileInfo(
+    const std::shared_ptr<CompileInfo>& compile_info) {
     compile_info_ = compile_info;
-    return codec::SchemaCodec::Encode(compile_info_->get_sql_context().schema, &decoded_schema_);
+    return codec::SchemaCodec::Encode(compile_info_->get_sql_context().schema,
+                                      &decoded_schema_);
 }
 
 int32_t RequestRunSession::Run(const Row& in_row, Row* out_row) {
