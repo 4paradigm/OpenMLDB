@@ -49,7 +49,7 @@ swig_add_library(fesql_jsdk
         SOURCES fesql_interface.i)
 target_include_directories(fesql_jsdk PRIVATE ${JNI_INCLUDE_DIRS})
 target_compile_options(fesql_jsdk PRIVATE -w)
-target_link_libraries(fesql_jsdk ${sdk_deps_libs})
+target_link_libraries(fesql_jsdk PRIVATE glog ${sdk_deps_libs})
 
 if(APPLE)
   set_target_properties(fesql_jsdk PROPERTIES
