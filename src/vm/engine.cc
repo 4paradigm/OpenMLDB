@@ -26,6 +26,10 @@
 #include "codegen/buf_ir_builder.h"
 #include "llvm-c/Target.h"
 #include "vm/mem_catalog.h"
+#include "gflags/gflags.h"
+
+DECLARE_bool(logtostderr);
+DECLARE_string(log_dir);
 
 namespace fesql {
 namespace vm {
@@ -39,6 +43,10 @@ Engine::Engine(const std::shared_ptr<Catalog>& catalog,
 Engine::~Engine() {}
 
 void Engine::InitializeGlobalLLVM() {
+    FLAGS_logtostderr = false;
+    FLAGS_log_dir = "/tmp";
+    const char* arg = "";
+    google::InitGoogleLogging(arg);
     LLVMInitializeNativeTarget();
     LLVMInitializeNativeAsmPrinter();
 }

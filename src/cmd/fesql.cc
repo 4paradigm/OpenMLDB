@@ -64,7 +64,6 @@ void HandleCmd(const fesql::node::CmdNode *cmd_node,
 void SetupLogging(char *argv[]) { google::InitGoogleLogging(argv[0]); }
 
 void StartTablet(int argc, char *argv[]) {
-    SetupLogging(argv);
     ::llvm::InitLLVM X(argc, argv);
     ::llvm::InitializeNativeTarget();
     ::llvm::InitializeNativeTargetAsmPrinter();

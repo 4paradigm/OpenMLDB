@@ -4,24 +4,24 @@ include_directories(${INCLUDE_DIRECTORIES}
 
 add_library(fesql_sdk STATIC base_impl.cc dbms_sdk.cc tablet_sdk.cc result_set_impl.cc)
 
-set(sdk_deps_libs fesql_sdk fesql_dbms fesql_tablet fesql_flags ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS} ${OS_LIB})
+set(sdk_deps_libs fesql_sdk fesql_simple_catalog ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS} ${OS_LIB})
 
 add_executable(dbms_sdk_test dbms_sdk_test.cc)
 target_link_libraries(dbms_sdk_test
-        gtest ${sdk_deps_libs})
+        gtest fesql_dbms fesql_tablet fesql_flags ${sdk_deps_libs})
 add_test(dbms_sdk_test dbms_sdk_test --gtest_output=xml:${CMAKE_BINARY_DIR}/dbms_sdk_test.xml)
 list(APPEND test_list dbms_sdk_test)
 
 add_executable(tablet_sdk_test tablet_sdk_test.cc)
 target_link_libraries(tablet_sdk_test
-       gtest ${sdk_deps_libs})
+       gtest fesql_dbms fesql_tablet fesql_flags ${sdk_deps_libs})
 add_test(tablet_sdk_test tablet_sdk_test
         --gtest_output=xml:${CMAKE_BINARY_DIR}/tablet_sdk_test.xml)
 list(APPEND test_list tablet_sdk_test)
 
 add_executable(result_set_impl_test result_set_impl_test.cc)
 target_link_libraries(result_set_impl_test
-         gtest ${sdk_deps_libs})
+         gtest fesql_dbms fesql_tablet fesql_flags ${sdk_deps_libs})
 add_test(result_set_impl_test result_set_impl_test --gtest_output=xml:${CMAKE_BINARY_DIR}/result_set_impl_test.xml)
 list(APPEND test_list result_set_impl_test)
 
@@ -49,7 +49,7 @@ swig_add_library(fesql_jsdk
         SOURCES fesql_interface.i)
 target_include_directories(fesql_jsdk PRIVATE ${JNI_INCLUDE_DIRS})
 target_compile_options(fesql_jsdk PRIVATE -w)
-target_link_libraries(fesql_jsdk fesql_simple_catalog ${sdk_deps_libs})
+target_link_libraries(fesql_jsdk ${sdk_deps_libs})
 
 if(APPLE)
   set_target_properties(fesql_jsdk PROPERTIES
