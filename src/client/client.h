@@ -49,7 +49,7 @@ struct TableHandler {
     int pk_index;
     rtidb::type::DataType pk_type;
     std::string auto_gen_pk_;
-    std::vector<std::string> blobs;
+    std::vector<int32_t> blobSuffix;
 };
 
 struct GeneralResult {
@@ -432,7 +432,7 @@ class RtidbClient {
                        const std::string& zk_path);
     QueryResult Query(const std::string& name, const struct ReadOption& ro);
     GeneralResult Put(const std::string& name,
-                      const std::map<std::string, std::string>& values,
+                      std::map<std::string, std::string>& values,
                       const WriteOption& wo);
     GeneralResult Delete(const std::string& name,
                          const std::map<std::string, std::string>& values);

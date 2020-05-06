@@ -292,6 +292,9 @@ void BaseClient::RefreshTable() {
         }
         std::shared_ptr<TableHandler> handler =
             std::make_shared<TableHandler>();
+        if (table_info->table_partition().empty()) {
+            continue;
+        }
         handler->partition.resize(table_info->table_partition_size());
         int id = 0;
         for (const auto& part : table_info->table_partition()) {
@@ -303,6 +306,14 @@ void BaseClient::RefreshTable() {
                 }
             }
             id++;
+        }
+        if (table_info->table_type() == rtidb::type::kObjectStore) {
+            if (handler->partition[0].leader.empty()) {
+                continue;
+            }
+            handler->table_info = table_info;
+            new_tables.insert(std::make_pair(table_name, handler));
+            continue;
         }
         std::string pk_col_name;
         for (const auto& column_key : table_info->column_key()) {
@@ -331,8 +342,12 @@ void BaseClient::RefreshTable() {
                 break;
             }
         }
-        if (table_info->blobs_size() > 0) {
-            handler->blobs.push_back(table_info->blobs(0));
+        if (!table_info->blobs().empty()) {
+            for (int i = 0; i < columns->size(); i++) {
+                if (columns->Get(i).data_type() == rtidb::type::kBlob) {
+                    handler->blobSuffix.push_back(i);
+                }
+            }
         }
         handler->table_info = table_info;
         handler->columns = columns;
@@ -606,7 +621,7 @@ GeneralResult RtidbClient::Update(
 }
 
 GeneralResult RtidbClient::Put(const std::string& name,
-                               const std::map<std::string, std::string>& value,
+                               std::map<std::string, std::string>& value,
                                const WriteOption& wo) {
     GeneralResult result;
 
@@ -625,7 +640,6 @@ GeneralResult RtidbClient::Put(const std::string& name,
             keys_column.insert(col);
         }
     }
-    std::map<std::string, std::string> val;
     for (auto& column : *(th->columns)) {
         auto iter = value.find(column.name());
         auto set_iter = keys_column.find(column.name());
@@ -638,8 +652,7 @@ GeneralResult RtidbClient::Put(const std::string& name,
                 result.SetError(-1, "input value error");
                 return result;
             } else {
-                val = value;
-                val.insert(std::make_pair(th->auto_gen_pk_,
+                value.insert(std::make_pair(th->auto_gen_pk_,
                                           ::rtidb::base::DEFAULT_LONG));
             }
         } else if (column.name() == th->auto_gen_pk_) {
@@ -647,18 +660,35 @@ GeneralResult RtidbClient::Put(const std::string& name,
             return result;
         }
     }
+    std::string err_msg;
+    if (!th->blobSuffix.empty()) {
+        std::shared_ptr<rtidb::client::BsClient> blob = client_->GetBlobClient(th->table_info->blobs(0), &err_msg);
+        if (blob == NULL) {
+            result.SetError(-1, err_msg);
+            return result;
+        }
+        for (const auto& i : th->blobSuffix) {
+            const auto& col = th->columns->Get(i);
+            auto iter = value.find(col.name());
+            if (iter == value.end()) {
+                result.SetError(-1, "key " + col.name() + " pair not found");
+                return result;
+            }
+            std::string key;
+            bool ok = blob->Put(th->table_info->tid(), 0, &key, iter->second, &err_msg);
+            if (!ok) {
+                result.SetError(-1, err_msg);
+            }
+            value.insert(std::make_pair(col.name(), key));
+        }
+    }
     std::string buffer;
     rtidb::base::ResultMsg rm;
-    if (!th->auto_gen_pk_.empty()) {
-        rm = rtidb::base::RowSchemaCodec::Encode(val, *(th->columns), buffer);
-    } else {
-        rm = rtidb::base::RowSchemaCodec::Encode(value, *(th->columns), buffer);
-    }
+    rm = rtidb::base::RowSchemaCodec::Encode(value, *(th->columns), buffer);
     if (rm.code != 0) {
         result.SetError(rm.code, "encode error, msg: " + rm.msg);
         return result;
     }
-    std::string err_msg;
     auto tablet = client_->GetTabletClient(th->partition[0].leader, &err_msg);
     if (tablet == NULL) {
         result.SetError(-1, err_msg);
