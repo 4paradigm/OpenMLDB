@@ -14,15 +14,16 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include "base/status.h"
+#include "boost/lexical_cast.hpp"
 #include "codec/codec.h"
 #include "proto/name_server.pb.h"
-#include "boost/lexical_cast.hpp"
 
 namespace rtidb {
 namespace codec {
 
-constexpr uint32_t MAX_ROW_BYTE_SIZE = 1024 * 1024; // 1M
+constexpr uint32_t MAX_ROW_BYTE_SIZE = 1024 * 1024;  // 1M
 constexpr uint32_t HEADER_BYTE_SIZE = 3;
 
 const std::string NONETOKEN = "None#*@!";  // NOLINT
@@ -242,10 +243,9 @@ class SchemaCodec {
         return 0;
     }
 
-    static int ConvertColumnDesc(
-        const Schema& column_desc_field,
-        std::vector<ColumnDesc>& columns,  // NOLINT
-        const Schema& added_column_field) {
+    static int ConvertColumnDesc(const Schema& column_desc_field,
+                                 std::vector<ColumnDesc>& columns,  // NOLINT
+                                 const Schema& added_column_field) {
         columns.clear();
         for (const auto& cur_column_desc : column_desc_field) {
             ::rtidb::codec::ColType type = ConvertType(cur_column_desc.type());
@@ -277,18 +277,16 @@ class SchemaCodec {
         return 0;
     }
 
-    static int ConvertColumnDesc(
-        const Schema& column_desc_field,
-        std::vector<ColumnDesc>& columns) {  // NOLINT
+    static int ConvertColumnDesc(const Schema& column_desc_field,
+                                 std::vector<ColumnDesc>& columns) {  // NOLINT
         Schema added_column_field;
         return ConvertColumnDesc(column_desc_field, columns,
                                  added_column_field);
     }
 
-    static int ConvertColumnDesc(
-        const Schema& column_desc_field,
-        Schema& columns,  // NOLINT
-        const Schema& added_column_field) {
+    static int ConvertColumnDesc(const Schema& column_desc_field,
+                                 Schema& columns,  // NOLINT
+                                 const Schema& added_column_field) {
         columns.Clear();
         for (const auto& cur_column_desc : column_desc_field) {
             rtidb::common::ColumnDesc* column_desc = columns.Add();

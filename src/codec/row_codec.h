@@ -6,6 +6,9 @@
 //
 #pragma once
 
+#include <map>
+#include <string>
+#include <utility>
 #include <vector>
 
 #include "codec/flat_array.h"
@@ -149,9 +152,9 @@ class RowCodec {
         Decode(schema, rv, value_vec);
     }
 
-    static void Decode(Schema& schema,  // NOLINT
-                       rtidb::codec::RowView& rv,               // NOLINT
-                       std::vector<std::string>& value_vec) {   // NOLINT
+    static void Decode(Schema& schema,                         // NOLINT
+                       rtidb::codec::RowView& rv,              // NOLINT
+                       std::vector<std::string>& value_vec) {  // NOLINT
         for (int32_t i = 0; i < schema.size(); i++) {
             if (rv.IsNULL(i)) {
                 value_vec.push_back(NONETOKEN);

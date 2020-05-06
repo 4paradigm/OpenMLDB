@@ -390,8 +390,8 @@ __attribute__((unused)) static void ShowTableRows(
         if (base_columns.size() == 0) {
             ::rtidb::codec::FillTableRow(raw, str, str_size, vrow);
         } else {
-            ::rtidb::codec::FillTableRow(raw.size(), base_columns, str, str_size, 
-                                        vrow);
+            ::rtidb::codec::FillTableRow(raw.size(), base_columns, str,
+                                         str_size, vrow);
         }
         tp.AddRow(vrow);
         index++;
