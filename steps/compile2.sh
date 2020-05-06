@@ -17,7 +17,7 @@ export MAVEN_HOME=${THIRDPARY}/apache-maven-3.6.3
 export PATH=$MAVEN_HOME/bin:$PATH
 sh steps/gen_code.sh
 mkdir -p $WORK_DIR/build 
-cd $WORK_DIR/build && cmake .. && make -j2
+cd $WORK_DIR/build && cmake .. && make rtidb
 code=$?
 cd $WORK_DIR
 exit $code
