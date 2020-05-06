@@ -716,16 +716,31 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(
         if (!(entry.has_method_type() &&
               entry.method_type() == ::rtidb::api::MethodType::kDelete)) {
             // new column_key
-            std::string buff;
+            std::vector<std::string> row;
+            const ::rtidb::api::TableMeta& table_meta = table->GetTableMeta();
             if (table->GetCompressType() == ::rtidb::api::kSnappy) {
+                std::string buff;
                 ::snappy::Uncompress(entry.value().c_str(),
                                      entry.value().size(), &buff);
+                if (table_meta.format_version() == 0) {
+                    ::rtidb::codec::FillTableRow(
+                        max_idx + 1, columns, buff.c_str(), buff.size(), row);
+                } else {
+                    ::rtidb::codec::RowCodec::DecodeRow(
+                        table_meta.column_desc(), ::rtidb::base::Slice(buff), 0,
+                        max_idx, row);
+                }
             } else {
-                buff = entry.value();
+                if (table_meta.format_version() == 0) {
+                    ::rtidb::codec::FillTableRow(max_idx + 1, columns,
+                                                 entry.value().c_str(),
+                                                 entry.value().size(), row);
+                } else {
+                    ::rtidb::codec::RowCodec::DecodeRow(
+                        table_meta.column_desc(),
+                        ::rtidb::base::Slice(entry.value()), 0, max_idx, row);
+                }
             }
-            std::vector<std::string> row;
-            ::rtidb::codec::FillTableRow(max_idx + 1, columns, buff.c_str(),
-                                        buff.size(), row);
             std::string cur_key;
             for (uint32_t i : index_cols) {
                 if (cur_key.empty()) {
@@ -957,16 +972,34 @@ int MemTableSnapshot::ExtractIndexData(
             if (!(entry.has_method_type() &&
                   entry.method_type() == ::rtidb::api::MethodType::kDelete)) {
                 // new column_key
-                std::string buff;
+                const ::rtidb::api::TableMeta& table_meta =
+                    table->GetTableMeta();
+                std::vector<std::string> row;
                 if (table->GetCompressType() == ::rtidb::api::kSnappy) {
+                    std::string buff;
                     ::snappy::Uncompress(entry.value().c_str(),
                                          entry.value().size(), &buff);
+                    if (table_meta.format_version() == 0) {
+                        ::rtidb::codec::FillTableRow(max_idx + 1, columns,
+                                                     buff.c_str(), buff.size(),
+                                                     row);
+                    } else {
+                        ::rtidb::codec::RowCodec::DecodeRow(
+                            table_meta.column_desc(),
+                            ::rtidb::base::Slice(buff), 0, max_idx, row);
+                    }
                 } else {
-                    buff = entry.value();
+                    if (table_meta.format_version() == 0) {
+                        ::rtidb::codec::FillTableRow(max_idx + 1, columns,
+                                                     entry.value().c_str(),
+                                                     entry.value().size(), row);
+                    } else {
+                        ::rtidb::codec::RowCodec::DecodeRow(
+                            table_meta.column_desc(),
+                            ::rtidb::base::Slice(entry.value()), 0, max_idx,
+                            row);
+                    }
                 }
-                std::vector<std::string> row;
-                ::rtidb::codec::FillTableRow(max_idx + 1, columns, buff.c_str(),
-                                            buff.size(), row);
                 std::string cur_key;
                 for (uint32_t i : index_cols) {
                     if (cur_key.empty()) {
@@ -1104,16 +1137,29 @@ bool MemTableSnapshot::PackNewIndexEntry(
         }
     }
     std::vector<std::string> row;
+    const ::rtidb::api::TableMeta& table_meta = table->GetTableMeta();
     if (table->GetCompressType() == ::rtidb::api::kSnappy) {
         std::string buff;
         ::snappy::Uncompress(entry->value().c_str(), entry->value().size(),
                              &buff);
-        ::rtidb::codec::FillTableRow(max_idx + 1, columns, buff.c_str(),
-                                    buff.size(), row);
+        if (table_meta.format_version() == 0) {
+            ::rtidb::codec::FillTableRow(max_idx + 1, columns, buff.c_str(),
+                                         buff.size(), row);
+        } else {
+            ::rtidb::codec::RowCodec::DecodeRow(table_meta.column_desc(),
+                                                ::rtidb::base::Slice(buff), 0,
+                                                max_idx, row);
+        }
     } else {
-        ::rtidb::codec::FillTableRow(max_idx + 1, columns,
-                                    entry->value().c_str(),
-                                    entry->value().size(), row);
+        if (table_meta.format_version() == 0) {
+            ::rtidb::codec::FillTableRow(max_idx + 1, columns,
+                                         entry->value().c_str(),
+                                         entry->value().size(), row);
+        } else {
+            ::rtidb::codec::RowCodec::DecodeRow(
+                table_meta.column_desc(), ::rtidb::base::Slice(entry->value()),
+                0, max_idx, row);
+        }
     }
     std::string key;
     std::set<uint32_t> pid_set;

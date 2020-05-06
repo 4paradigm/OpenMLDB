@@ -49,7 +49,7 @@ class RowCodec {
         return str_len;
     }
 
-    static ::rtidb::base::ResultMsg Encode(
+    static ::rtidb::base::ResultMsg EncodeRow(
         const std::map<std::string, std::string>& str_map, const Schema& schema,
         std::string& row) {  // NOLINT
         ::rtidb::base::ResultMsg rm;
@@ -143,24 +143,46 @@ class RowCodec {
         return rm;
     }
 
-    static void Decode(Schema& schema,  // NOLINT
-                       const std::string& value,
-                       std::vector<std::string>& value_vec) {  // NOLINT
+    static bool DecodeRow(const Schema& schema,  // NOLINT
+                          const ::rtidb::base::Slice& value,
+                          std::vector<std::string>& value_vec) {  // NOLINT
         rtidb::codec::RowView rv(
-            schema, reinterpret_cast<int8_t*>(const_cast<char*>(&value[0])),
+            schema, reinterpret_cast<int8_t*>(const_cast<char*>(value.data())),
             value.size());
-        Decode(schema, rv, value_vec);
+        return DecodeRow(schema, rv, 0, schema.size(), &value_vec);
     }
 
-    static void Decode(Schema& schema,                         // NOLINT
-                       rtidb::codec::RowView& rv,              // NOLINT
-                       std::vector<std::string>& value_vec) {  // NOLINT
-        for (int32_t i = 0; i < schema.size(); i++) {
+    static bool DecodeRow(const Schema& schema,  // NOLINT
+                          const ::rtidb::base::Slice& value,
+                          int start, int length,
+                          std::vector<std::string>& value_vec) {  // NOLINT
+        rtidb::codec::RowView rv(
+            schema, reinterpret_cast<int8_t*>(const_cast<char*>(value.data())),
+            value.size());
+        return DecodeRow(schema, rv, start, length, &value_vec);
+    }
+
+    static bool DecodeRow(const Schema& schema,                   // NOLINT
+                          rtidb::codec::RowView& rv,              // NOLINT
+                          std::vector<std::string>& value_vec) {  // NOLINT
+        return DecodeRow(schema, rv, 0, schema.size(), &value_vec);
+    }
+
+    static bool DecodeRow(const Schema& schema,
+                          rtidb::codec::RowView& rv,  // NOLINT
+                          int start, int length,
+                          std::vector<std::string>* value_vec) {
+        int end = start + length;
+        if (length <= 0 || end > schema.size()) {
+            return false;
+        }
+        value_vec->clear();
+        for (int32_t i = 0; i < end; i++) {
             if (rv.IsNULL(i)) {
-                value_vec.push_back(NONETOKEN);
+                value_vec->emplace_back(NONETOKEN);
                 continue;
             }
-            std::string col = "";
+            std::string col;
             auto type = schema.Get(i).data_type();
             if (type == rtidb::type::kInt) {
                 int32_t val;
@@ -207,18 +229,19 @@ class RowCodec {
             } else if (type == rtidb::type::kVarchar ||
                        type == rtidb::type::kString) {
                 char* ch = NULL;
-                uint32_t length = 0;
-                int ret = rv.GetString(i, &ch, &length);
+                uint32_t len = 0;
+                int ret = rv.GetString(i, &ch, &len);
                 if (ret == 0) {
-                    col.assign(ch, length);
+                    col.assign(ch, len);
                 }
             }
-            value_vec.push_back(col);
+            value_vec->emplace_back(std::move(col));
         }
+        return true;
     }
 };
 
-static void FillTableRow(
+__attribute__((unused)) static void FillTableRow(
     uint32_t full_schema_size,
     const std::vector<::rtidb::codec::ColumnDesc>& base_schema, const char* row,
     const uint32_t row_size, std::vector<std::string>& vrow) {  // NOLINT
@@ -227,7 +250,7 @@ static void FillTableRow(
         std::string col;
         if (!fit.Valid()) {
             full_schema_size--;
-            vrow.push_back("");
+            vrow.emplace_back("");
             continue;
         } else if (fit.GetType() == ::rtidb::codec::ColType::kString) {
             fit.GetString(&col);
@@ -286,88 +309,15 @@ static void FillTableRow(
         }
         full_schema_size--;
         fit.Next();
-        vrow.push_back(col);
-    }
-}
-
-static void FillTableRow(const std::vector<::rtidb::codec::ColumnDesc>& schema,
-                         const char* row, const uint32_t row_size,
-                         std::vector<std::string>& vrow) {  // NOLINT
-    rtidb::codec::FlatArrayIterator fit(row, row_size, schema.size());
-    while (fit.Valid()) {
-        std::string col;
-        if (fit.GetType() == ::rtidb::codec::ColType::kString) {
-            fit.GetString(&col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kUInt16) {
-            uint16_t uint16_col = 0;
-            fit.GetUInt16(&uint16_col);
-            col = boost::lexical_cast<std::string>(uint16_col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kInt16) {
-            int16_t int16_col = 0;
-            fit.GetInt16(&int16_col);
-            col = boost::lexical_cast<std::string>(int16_col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kInt32) {
-            int32_t int32_col = 0;
-            fit.GetInt32(&int32_col);
-            col = boost::lexical_cast<std::string>(int32_col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kInt64) {
-            int64_t int64_col = 0;
-            fit.GetInt64(&int64_col);
-            col = boost::lexical_cast<std::string>(int64_col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kUInt32) {
-            uint32_t uint32_col = 0;
-            fit.GetUInt32(&uint32_col);
-            col = boost::lexical_cast<std::string>(uint32_col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kUInt64) {
-            uint64_t uint64_col = 0;
-            fit.GetUInt64(&uint64_col);
-            col = boost::lexical_cast<std::string>(uint64_col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kDouble) {
-            double double_col = 0.0;
-            fit.GetDouble(&double_col);
-            col = boost::lexical_cast<std::string>(double_col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kFloat) {
-            float float_col = 0.0f;
-            fit.GetFloat(&float_col);
-            col = boost::lexical_cast<std::string>(float_col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kTimestamp) {
-            uint64_t ts = 0;
-            fit.GetTimestamp(&ts);
-            col = boost::lexical_cast<std::string>(ts);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kDate) {
-            uint64_t dt = 0;
-            fit.GetDate(&dt);
-            time_t rawtime = (time_t)dt / 1000;
-            tm* timeinfo = localtime(&rawtime);  // NOLINT
-            char buf[20];
-            strftime(buf, 20, "%Y-%m-%d", timeinfo);
-            col.assign(buf);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kBool) {
-            bool value = false;
-            fit.GetBool(&value);
-            if (value) {
-                col = "true";
-            } else {
-                col = "false";
-            }
-        }
-        fit.Next();
-        vrow.push_back(col);
+        vrow.emplace_back(std::move(col));
     }
 }
 
 __attribute__((unused)) static void FillTableRow(
-    const ::rtidb::codec::Schema& schema, const char* row_ptr,
-    uint32_t row_size,
-    std::vector<std::string>& row) {  // NOLINT
-    ::rtidb::codec::RowView rv(schema);
-    rv.Reset(reinterpret_cast<const int8_t*>(row_ptr), row_size);
-    for (int32_t i = 0; i < schema.size(); i++) {
-        uint32_t index = (uint32_t)i;
-        std::string val;
-        rv.GetStrValue(reinterpret_cast<const int8_t*>(row_ptr), index, &val);
-        row.push_back(std::move(val));
-    }
+    const std::vector<::rtidb::codec::ColumnDesc>& schema, const char* row,
+    const uint32_t row_size,
+    std::vector<std::string>& vrow) {  // NOLINT
+    return FillTableRow(schema.size(), schema, row, row_size, vrow);
 }
 
 }  // namespace codec
