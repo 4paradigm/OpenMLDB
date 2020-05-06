@@ -128,7 +128,7 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             auto op = dynamic_cast<const PhysicalRequestUnionNode*>(node);
             auto runner = new RequestUnionRunner(
                 id_++, node->GetOutputNameSchemaList(), op->GetLimitCnt(),
-                op->window_, op->index_key_);
+                op->window(), op->index_key());
             runner->AddProducer(left);
             runner->AddProducer(right);
             return runner;

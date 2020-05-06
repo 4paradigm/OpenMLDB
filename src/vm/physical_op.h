@@ -33,6 +33,7 @@ enum PhysicalOpType {
     kPhysicalOpDistinct,
     kPhysicalOpJoin,
     kPhysicalOpUnoin,
+    kPhysicalOpWindow,
     kPhysicalOpIndexSeek,
     kPhysicalOpRequestUnoin,
     kPhysicalOpRequestJoin,
@@ -541,26 +542,6 @@ class Join {
     const Key &index_key() const { return index_key_; }
     const ConditionFilter &filter() const { return filter_; }
     const node::JoinType join_type() const { return join_type_; }
-    void set_left_schema(
-        const std::vector<std::pair<const std::string, const vm::Schema *>>
-            &left_schema) {
-        left_schema_ = left_schema;
-    }
-    void set_right_schema(
-        const std::vector<std::pair<const std::string, const vm::Schema *>>
-            &right_schema) {
-        right_schema_ = right_schema;
-    }
-    const std::vector<std::pair<const std::string, const vm::Schema *>>
-        &left_schema() const {
-        return left_schema_;
-    }
-    const std::vector<std::pair<const std::string, const vm::Schema *>>
-        &right_schema() const {
-        return right_schema_;
-    }
-    std::vector<std::pair<const std::string, const vm::Schema *>> left_schema_;
-    std::vector<std::pair<const std::string, const vm::Schema *>> right_schema_;
     node::JoinType join_type_;
     ConditionFilter filter_;
     Key left_key_;
@@ -573,6 +554,18 @@ class Union {
     Union() : need_union_(false) {}
     bool need_union_;
 };
+
+class PhysicalWindowNode : public PhysicalUnaryNode, public WindowOp {
+ public:
+    PhysicalWindowNode(PhysicalOpNode *node,
+                       const node::ExprListNode *partition,
+                       const node::OrderByNode *orders,
+                       const int64_t start_offset, const int64_t end_offset)
+        : PhysicalUnaryNode(node, kPhysicalOpWindow, true, false),
+          WindowOp(partition, orders, start_offset, end_offset) {}
+    virtual ~PhysicalWindowNode() {}
+    virtual void Print(std::ostream &output, const std::string &tab) const;
+};
 class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
  public:
     PhysicalWindowAggrerationNode(PhysicalOpNode *node,
@@ -584,9 +577,9 @@ class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
                                   const int64_t end_offset)
         : PhysicalProjectNode(node, fn_name, schema, kWindowAggregation, true,
                               false),
-          window_(partition, orders, start_offset, end_offset),
+          window_(node, partition, orders, start_offset, end_offset),
           union_(),
-          window_joins_() {
+          join_(nullptr) {
         output_type_ = kSchemaTypeTable;
         InitSchema();
         fn_infos_.push_back(&window_.partition_.fn_info_);
@@ -598,14 +591,12 @@ class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
     virtual void Print(std::ostream &output, const std::string &tab) const;
     static PhysicalWindowAggrerationNode *CastFrom(PhysicalOpNode *node);
     const bool Valid() { return true; }
-    const WindowOp &window() const { return window_; }
-    void AddWindowJoin(PhysicalOpNode *right, const Join &join) {
-        window_joins_.push_back(join);
-        producers_.push_back(right);
-    }
-    WindowOp window_;
+    PhysicalWindowNode &window() { return window_; }
+    void set_join(PhysicalJoinNode *join) { join_ = join; }
+    PhysicalJoinNode *join() const { return join_; }
+    PhysicalWindowNode window_;
     Union union_;
-    std::vector<Join> window_joins_;
+    PhysicalJoinNode *join_;
 };
 
 class PhysicalJoinNode : public PhysicalBinaryNode {
@@ -642,8 +633,6 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
           join_(join_type, condition, left_keys, right_keys) {
         output_type_ = kSchemaTypeTable;
         InitSchema();
-        join_.set_left_schema(left->GetOutputNameSchemaList());
-        join_.set_right_schema(right->GetOutputNameSchemaList());
         fn_infos_.push_back(&join_.filter_.fn_info_);
         fn_infos_.push_back(&join_.left_key_.fn_info_);
         fn_infos_.push_back(&join_.right_key_.fn_info_);

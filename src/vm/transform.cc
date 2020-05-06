@@ -1797,7 +1797,7 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
             auto window_agg_op =
                 dynamic_cast<PhysicalWindowAggrerationNode*>(in);
             if (node::ExprListNullOrEmpty(
-                window_agg_op->window_.partition_.keys_) &&
+                    window_agg_op->window_.partition_.keys_) &&
                 (nullptr == window_agg_op->window_.sort_.orders_ ||
                  node::ExprListNullOrEmpty(
                      window_agg_op->window_.sort_.orders_->order_by_))) {
@@ -1806,21 +1806,49 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
                 return false;
             }
             if (!CheckExprListFromSchema(
-                window_agg_op->window_.partition_.keys_,
+                    window_agg_op->window_.partition_.keys_,
                     (join_op->GetProducers()[0]->output_schema_))) {
                 return false;
             }
 
             if (!CheckExprListFromSchema(
-                window_agg_op->window_.sort_.orders_->order_by_,
+                    window_agg_op->window_.sort_.orders_->order_by_,
                     (join_op->GetProducers()[0]->output_schema_))) {
                 return false;
             }
 
-            window_agg_op->SetProducer(0, join_op->producers()[0]);
-            window_agg_op->AddWindowJoin(join_op->producers()[1], join_op->join());
+            // WindowNode
+            //  \ Join
+            //      \ left
+            //      \ right
+            //==>
+            // Join
+            //  \ WindowNode
+            //      \ left
+            //  \ right
+            auto left = join_op->producers()[0];
+            auto right = join_op->producers()[1];
+            auto join_type = join_op->join().join_type();
+            auto window_join = window_agg_op->join();
+            auto window_node = window_agg_op->window();
+
+            window_agg_op->SetProducer(0, left);
+            if (nullptr == window_join) {
+                auto new_window_join = new PhysicalJoinNode(
+                    dynamic_cast<PhysicalOpNode*>(&window_agg_op->window()),
+                    right, join_op->join());
+                node_manager_->RegisterNode(new_window_join);
+                window_agg_op->set_join(new_window_join);
+            } else {
+                window_join->SetProducer(0, right);
+                window_node.SetProducer(0, right);
+
+                auto new_window_join =
+                    new PhysicalJoinNode(window_node, right, join_type);
+                node_manager_->RegisterNode(new_window_join);
+                window_agg_op->set_join(new_window_join);
+            }
             // TODO(chenjing): window agg 和 left jion的优化需要支持window with
-            // join
             *output = in;
             Transform(in, output);
             return true;
