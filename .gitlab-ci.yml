@@ -6,6 +6,18 @@ stages:
     - it-ns
     - deploy
 
+build_rtidb_new_image:
+    stage: build
+    script:
+        - ln -sf /depends/thirdparty thirdparty
+        - source /root/.bashrc && bash steps/compile2.sh
+    image: develop-registry.4pd.io/centos6_gcc7_fesql:0.0.11
+    artifacts:
+        expire_in: 2h
+        paths:
+            - build/bin/rtidb
+
+
 build_rtidb:
     stage: build
     script:

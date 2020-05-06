@@ -145,6 +145,6 @@ target_link_libraries(field_codec_test gtest pthread common)
 
 add_executable(rtidb cmd/rtidb.cc base/status.cc proto/client.pb.cc base/linenoise.cc)
 
-target_link_libraries(rtidb gflags common tablet storage replica log nameserver blobserver client brpc ssl crypto dl leveldb protobuf z snappy gflags pthread rt zk_client zookeeper_mt tcmalloc_minimal blob_proxy)
+target_link_libraries(rtidb common tablet storage replica log nameserver blobserver client brpc glog ssl crypto dl leveldb protobuf z snappy gflags pthread rt zk_client zookeeper_mt tcmalloc_minimal blob_proxy)
 
 add_subdirectory(client)
