@@ -16,10 +16,13 @@
  */
 
 #include "sdk/dbms_sdk.h"
+
 #include <iostream>
 #include <memory>
-#include <utility>
 #include <string>
+#include <utility>
+#include <map>
+#include "base/spin_lock.h"
 #include "brpc/channel.h"
 #include "node/node_manager.h"
 #include "parser/parser.h"
@@ -48,6 +51,21 @@ class DBMSSdkImpl : public DBMSSdk {
                                             const std::string &sql,
                                             sdk::Status *status);
 
+    // support select only
+    std::shared_ptr<ResultSet> ExecuteQuery(const std::string &catalog,
+                                            const std::string &sql,
+                                            const std::string &row,
+                                            sdk::Status *status) {
+        return tablet_sdk_->Query(catalog, sql, row, status);
+    }
+
+    const Schema &GetInputSchema(const std::string &catalog,
+                                 const std::string &sql, sdk::Status *status);
+
+    std::shared_ptr<ExplainInfo> Explain(const std::string &catalog,
+                                         const std::string &sql,
+                                         sdk::Status *status);
+
  private:
     bool InitTabletSdk();
 
@@ -55,6 +73,10 @@ class DBMSSdkImpl : public DBMSSdk {
     ::brpc::Channel *channel_;
     std::string endpoint_;
     std::shared_ptr<TabletSdk> tablet_sdk_;
+    base::SpinMutex spin_mutex_;
+    // TODO(wangtaize) remove shared_ptr
+    std::map<std::string, std::map<std::string, std::shared_ptr<ExplainInfo>>>
+        input_schema_map_;
 };
 
 DBMSSdkImpl::DBMSSdkImpl(const std::string &endpoint)
@@ -70,6 +92,49 @@ bool DBMSSdkImpl::Init() {
         return false;
     }
     return InitTabletSdk();
+}
+
+std::shared_ptr<ExplainInfo> DBMSSdkImpl::Explain(const std::string &catalog,
+                                                  const std::string &sql,
+                                                  sdk::Status *status) {
+    return tablet_sdk_->Explain(catalog, sql, status);
+}
+
+const Schema &DBMSSdkImpl::GetInputSchema(const std::string &catalog,
+                                          const std::string &sql,
+                                          sdk::Status *status) {
+    if (status == NULL) return EMPTY;
+    {
+        std::lock_guard<base::SpinMutex> lock(spin_mutex_);
+        auto it = input_schema_map_.find(catalog);
+        if (it != input_schema_map_.end()) {
+            auto iit = it->second.find(sql);
+            if (iit != it->second.end()) {
+                if (status != NULL) status->code = 0;
+                return iit->second->GetInputSchema();
+            }
+        }
+    }
+
+    std::shared_ptr<ExplainInfo> info =
+        tablet_sdk_->Explain(catalog, sql, status);
+    if (status->code != 0) {
+        LOG(WARNING) << "fail to get sql input schema for error "
+                     << status->msg;
+        return EMPTY;
+    }
+    {
+        std::lock_guard<base::SpinMutex> lock(spin_mutex_);
+        auto it = input_schema_map_.find(catalog);
+        if (it == input_schema_map_.end()) {
+            std::map<std::string, std::shared_ptr<ExplainInfo>> schemas;
+            schemas.insert(std::make_pair(sql, info));
+            input_schema_map_.insert(std::make_pair(catalog, schemas));
+        } else {
+            it->second.insert(std::make_pair(sql, info));
+        }
+        return input_schema_map_[catalog][sql]->GetInputSchema();
+    }
 }
 
 bool DBMSSdkImpl::InitTabletSdk() {

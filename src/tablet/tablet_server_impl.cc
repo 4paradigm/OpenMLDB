@@ -23,6 +23,9 @@
 #include <utility>
 #include <vector>
 #include "base/strings.h"
+#include "brpc/controller.h"
+#include "butil/iobuf.h"
+#include "codec/schema_codec.h"
 #include "gflags/gflags.h"
 
 DECLARE_string(dbms_endpoint);
@@ -150,40 +153,114 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
     common::Status* status = response->mutable_status();
     status->set_code(common::kOk);
     status->set_msg("ok");
-    vm::BatchRunSession session;
+    brpc::Controller* cntl = static_cast<brpc::Controller*>(ctrl);
+    butil::IOBuf& buf = cntl->response_attachment();
+    if (request->is_batch()) {
+        vm::BatchRunSession session;
+        {
+            base::Status base_status;
+            bool ok = engine_->Get(request->sql(), request->db(), session,
+                                   base_status);
+            if (!ok) {
+                status->set_msg(base_status.msg);
+                status->set_code(base_status.code);
+                LOG(WARNING) << base_status.msg;
+                return;
+            }
+        }
 
-    {
-        base::Status base_status;
-        bool ok =
-            engine_->Get(request->sql(), request->db(), session, base_status);
-        if (!ok) {
-            status->set_msg(base_status.msg);
-            status->set_code(base_status.code);
-            LOG(WARNING) << base_status.msg;
+        auto table = session.Run();
+
+        if (!table) {
+            LOG(WARNING) << "fail to run sql " << request->sql();
+            status->set_code(common::kSQLError);
+            status->set_msg("fail to run sql");
             return;
         }
-        //        std::ostringstream oss;
-        //        session.GetPhysicalPlan()->Print(oss, "");
-        //        std::cout << "physical plan:\n" << oss.str() << std::endl;
+
+        auto iter = table->GetIterator();
+        uint32_t byte_size = 0;
+        uint32_t count = 0;
+        while (iter->Valid()) {
+            const codec::Row& row = iter->GetValue();
+            byte_size += row.size();
+            iter->Next();
+            buf.append(reinterpret_cast<void*>(row.buf()), row.size());
+            free(row.buf());
+            count += 1;
+        }
+        response->set_schema(session.GetEncodedSchema());
+        response->set_byte_size(byte_size);
+        response->set_count(count);
+        status->set_code(common::kOk);
+    } else {
+        if (request->row().empty()) {
+            status->set_code(common::kBadRequest);
+            status->set_msg("input row is empty");
+            return;
+        }
+        vm::RequestRunSession session;
+        {
+            base::Status base_status;
+            bool ok = engine_->Get(request->sql(), request->db(), session,
+                                   base_status);
+            if (!ok) {
+                status->set_msg(base_status.msg);
+                status->set_code(base_status.code);
+                LOG(WARNING) << base_status.msg;
+                return;
+            }
+        }
+        codec::Row row(request->row().c_str(), request->row().size());
+        codec::Row output;
+        int32_t ret = session.Run(row, &output);
+        if (ret != 0) {
+            LOG(WARNING) << "fail to run sql " << request->sql();
+            status->set_code(common::kSQLError);
+            status->set_msg("fail to run sql");
+            return;
+        }
+        buf.append(reinterpret_cast<void*>(row.buf()), row.size());
+        response->set_schema(session.GetEncodedSchema());
+        response->set_byte_size(row.size());
+        response->set_count(1);
+        status->set_code(common::kOk);
+        free(row.buf());
     }
+}
 
-    auto table = session.Run();
-
-    if (!table) {
-        LOG(WARNING) << "fail to run sql " << request->sql();
-        status->set_code(common::kSQLError);
-        status->set_msg("fail to run sql");
+void TabletServerImpl::Explain(RpcController* ctrl,
+                               const ExplainRequest* request,
+                               ExplainResponse* response, Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    common::Status* status = response->mutable_status();
+    vm::ExplainOutput output;
+    base::Status base_status;
+    bool ok = engine_->Explain(request->sql(), request->db(), false, &output,
+                               &base_status);
+    if (!ok || base_status.code != 0) {
+        status->set_msg(base_status.msg);
+        status->set_code(base_status.code);
+        LOG(WARNING) << base_status.msg;
         return;
     }
-    // TODO(wangtaize) opt the result buf
-    auto iter = table->GetIterator();
-    while (iter->Valid()) {
-        int8_t* ptr = iter->GetValue().buf();
-        iter->Next();
-        response->add_result_set(ptr, *reinterpret_cast<uint32_t*>(ptr + 2));
-        free(ptr);
+    ok = codec::SchemaCodec::Encode(output.input_schema,
+                                    response->mutable_input_schema());
+    if (!ok) {
+        status->set_msg("fail encode schema");
+        status->set_code(common::kSchemaCodecError);
+        return;
     }
-    response->mutable_schema()->CopyFrom(session.GetSchema());
+    ok = codec::SchemaCodec::Encode(output.output_schema,
+                                    response->mutable_output_schema());
+    if (!ok) {
+        status->set_msg("fail encode schema");
+        status->set_code(common::kSchemaCodecError);
+        return;
+    }
+    response->set_ir(output.ir);
+    response->set_logical_plan(output.logical_plan);
+    response->set_physical_plan(output.physical_plan);
     status->set_code(common::kOk);
 }
 

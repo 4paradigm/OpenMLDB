@@ -21,8 +21,6 @@ include_directories(${INCLUDE_DIRECTORIES}
 
 add_library(fesql_flags STATIC flags.cc)
 add_executable(fesql cmd/fesql.cc)
-target_link_libraries(fesql fesql_dbms fesql_tablet fesql_sdk fesql_base
+target_link_libraries(fesql fesql_dbms fesql_tablet fesql_sdk 
     fesql_flags
-    fesql_vm fesql_udf fesql_parser fesql_planner
-    fesql_codegen fesql_node  fesql_storage fesql_codec fesql_proto brpc ${llvm_libs} ${COMMON_LIBS} leveldb protobuf z snappy ssl crypto dl pthread)
-
+    ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS} tcmalloc ${OS_LIB})

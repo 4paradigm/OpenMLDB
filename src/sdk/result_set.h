@@ -19,6 +19,7 @@
 #define SRC_SDK_RESULT_SET_H_
 
 #include <stdint.h>
+#include <string>
 #include "sdk/base.h"
 
 namespace fesql {
@@ -32,27 +33,91 @@ class ResultSet {
 
     virtual bool Next() = 0;
 
-    virtual bool GetString(uint32_t index, char** result, uint32_t* size) = 0;
+    virtual bool GetString(uint32_t index, std::string* val) = 0;
+
+    inline std::string GetStringUnsafe(int index) {
+        if (IsNULL(index)) return std::string();
+        std::string val;
+        GetString(index, &val);
+        return val;
+    }
 
     virtual bool GetBool(uint32_t index, bool* result) = 0;
 
+    inline bool GetBoolUnsafe(int index) {
+        if (IsNULL(index)) return false;
+        bool ok = false;
+        GetBool(static_cast<uint32_t>(index), &ok);
+        return ok;
+    }
     virtual bool GetChar(uint32_t index, char* result) = 0;
+    char GetCharUnsafe(int index) {
+        if (IsNULL(index)) return 0;
+        char data = 0;
+        GetChar(index, &data);
+        return data;
+    }
 
     virtual bool GetInt16(uint32_t index, int16_t* result) = 0;
 
+    virtual short GetInt16Unsafe(int index) { // NOLINT
+        if (IsNULL(index)) return 0;
+        short val = 0;  // NOLINT
+        GetInt16(index, &val);
+        return val;
+    }
+
     virtual bool GetInt32(uint32_t index, int32_t* result) = 0;
+
+    int GetInt32Unsafe(int index) {
+        if (IsNULL(index)) return 0;
+        int32_t val = 0;
+        GetInt32(index, &val);
+        return val;
+    }
 
     virtual bool GetInt64(uint32_t index, int64_t* result) = 0;
 
+    int64_t GetInt64Unsafe(int index) {
+        if (IsNULL(index)) return 0;
+        int64_t val = 0;
+        GetInt64(index, &val);
+        return val;
+    }
+
     virtual bool GetFloat(uint32_t index, float* result) = 0;
+
+    virtual float GetFloatUnsafe(int index) {
+        if (IsNULL(index)) return 0.0f;
+        float val = 0.0f;
+        GetFloat(index, &val);
+        return val;
+    }
 
     virtual bool GetDouble(uint32_t index, double* result) = 0;
 
+    virtual double GetDoubleUnsafe(int index) {
+        if (IsNULL(index)) return 0;
+        double val = 0;
+        GetDouble(index, &val);
+        return val;
+    }
+
     virtual bool GetDate(uint32_t index, uint32_t* days) = 0;
 
+    virtual int32_t GetDateUnsafe(uint32_t index) = 0;
+
     virtual bool GetTime(uint32_t index, int64_t* mills) = 0;
+    int64_t GetTimeUnsafe(int index) {
+        if (IsNULL(index)) return 0;
+        int64_t mills = 0;
+        GetTime(index, &mills);
+        return mills;
+    }
 
     virtual const Schema& GetSchema() = 0;
+
+    virtual bool IsNULL(int index) = 0;
 
     virtual int32_t Size() = 0;
 };

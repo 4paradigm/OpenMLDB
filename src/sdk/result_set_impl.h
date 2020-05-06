@@ -19,6 +19,9 @@
 #define SRC_SDK_RESULT_SET_IMPL_H_
 
 #include <memory>
+#include <string>
+#include "brpc/controller.h"
+#include "butil/iobuf.h"
 #include "codec/row_codec.h"
 #include "proto/tablet.pb.h"
 #include "sdk/base_impl.h"
@@ -29,14 +32,18 @@ namespace sdk {
 
 class ResultSetImpl : public ResultSet {
  public:
-    explicit ResultSetImpl(std::unique_ptr<tablet::QueryResponse> response);
+    ResultSetImpl(std::unique_ptr<tablet::QueryResponse> response,
+                  std::unique_ptr<brpc::Controller> cntl);
+
     ~ResultSetImpl();
 
     bool Init();
 
     bool Next();
 
-    bool GetString(uint32_t index, char** result, uint32_t* size);
+    bool IsNULL(int index);
+
+    bool GetString(uint32_t index, std::string* str);
 
     bool GetBool(uint32_t index, bool* result);
 
@@ -54,18 +61,26 @@ class ResultSetImpl : public ResultSet {
 
     bool GetDate(uint32_t index, uint32_t* days);
 
+    int32_t GetDateUnsafe(uint32_t index) {}
+
     bool GetTime(uint32_t index, int64_t* mills);
 
-    const Schema& GetSchema();
+    inline const Schema& GetSchema() { return schema_; }
 
-    int32_t Size();
+    inline int32_t Size() { return response_->count(); }
+
+ private:
+    inline uint32_t GetRecordSize() { return response_->count(); }
 
  private:
     std::unique_ptr<tablet::QueryResponse> response_;
     int32_t index_;
-    int32_t size_;
-    std::unique_ptr<codec::RowView> row_view_;
+    int32_t byte_size_;
+    uint32_t position_;
+    std::unique_ptr<codec::RowIOBufView> row_view_;
+    vm::Schema internal_schema_;
     SchemaImpl schema_;
+    std::unique_ptr<brpc::Controller> cntl_;
 };
 
 }  // namespace sdk

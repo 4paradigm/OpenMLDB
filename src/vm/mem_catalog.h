@@ -108,6 +108,7 @@ class MemWindowIterator : public WindowIterator {
     const MemSegmentMap::const_iterator start_iter_;
     const MemSegmentMap::const_iterator end_iter_;
 };
+
 class MemRowHandler : public RowHandler {
  public:
     explicit MemRowHandler(const Row row)

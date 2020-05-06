@@ -10,7 +10,7 @@ add_test(hash_test hash_test --gtest_output=xml:${CMAKE_BINARY_DIR}/hash_test.xm
 list(APPEND test_list hash_test)
 
 add_executable(graph_test graph_test.cc graph.cc)
-target_link_libraries(graph_test fesql_base ${boost_libs} ${COMMON_LIBS} gtest pthread)
+target_link_libraries(graph_test fesql_base ${boost_libs} gtest pthread)
 add_test(graph_test graph_test --gtest_output=xml:${CMAKE_BINARY_DIR}/graph_test.xml)
 list(APPEND test_list graph_test)
 
@@ -25,4 +25,3 @@ list(APPEND test_list texttable_test)
 add_executable(slice_test slice_test.cc)
 target_link_libraries(slice_test gflags gtest pthread)
 list(APPEND test_list slice_test)
-

@@ -94,8 +94,8 @@ uint32_t RowBuilder::CalTotalLength(uint32_t string_length) {
 
 bool RowBuilder::Check(::fesql::type::Type type) {
     if ((int32_t)cnt_ >= schema_.size()) {
-        LOG(WARNING) << "idx out of index: "
-            << cnt_ << " size=" << schema_.size();
+        LOG(WARNING) << "idx out of index: " << cnt_
+                     << " size=" << schema_.size();
         return false;
     }
     const ::fesql::type::ColumnDef& column = schema_.Get(cnt_);
@@ -572,7 +572,7 @@ std::string RowView::GetRowString() {
 
     for (int i = 0; i < schema_.size(); i++) {
         row_str.append(GetAsString(i));
-        if (i != schema_.size()-1) {
+        if (i != schema_.size() - 1) {
             row_str.append(", ");
         }
     }
@@ -787,6 +787,136 @@ bool RowDecoder::GetStringFieldOffset(const std::string& name,
     *str_next_offset_ptr = next_offset;
     *str_start_offset_ptr = str_field_start_offset_;
     return true;
+}
+
+RowIOBufView::RowIOBufView(const fesql::vm::Schema& schema)
+    : row_(),
+      str_addr_length_(0),
+      is_valid_(true),
+      string_field_cnt_(0),
+      str_field_start_offset_(0),
+      size_(0),
+      schema_(schema),
+      offset_vec_() {
+    Init();
+}
+
+RowIOBufView::~RowIOBufView() {}
+
+bool RowIOBufView::Init() {
+    uint32_t offset = HEADER_LENGTH + BitMapSize(schema_.size());
+    for (int idx = 0; idx < schema_.size(); idx++) {
+        const ::fesql::type::ColumnDef& column = schema_.Get(idx);
+        if (column.type() == ::fesql::type::kVarchar) {
+            offset_vec_.push_back(string_field_cnt_);
+            string_field_cnt_++;
+        } else {
+            auto iter = TYPE_SIZE_MAP.find(column.type());
+            if (iter == TYPE_SIZE_MAP.end()) {
+                LOG(WARNING) << ::fesql::type::Type_Name(column.type())
+                             << " is not supported";
+                is_valid_ = false;
+                return false;
+            } else {
+                offset_vec_.push_back(offset);
+                offset += iter->second;
+            }
+        }
+    }
+    str_field_start_offset_ = offset;
+    return true;
+}
+
+bool RowIOBufView::Reset(const butil::IOBuf& buf) {
+    row_ = buf;
+    if (schema_.size() == 0 || row_.size() <= HEADER_LENGTH) {
+        is_valid_ = false;
+        return false;
+    }
+    size_ = row_.size();
+    uint32_t tmp_size = 0;
+    row_.copy_to(reinterpret_cast<void*>(&tmp_size), SIZE_LENGTH,
+                 VERSION_LENGTH);
+    if (tmp_size != size_) {
+        is_valid_ = false;
+        return false;
+    }
+    str_addr_length_ = GetAddrLength(size_);
+    return true;
+}
+
+int32_t RowIOBufView::GetInt16(uint32_t idx, int16_t* val) {
+    if (val == NULL) return -1;
+    if (IsNULL(idx)) {
+        return 1;
+    }
+    uint32_t offset = offset_vec_.at(idx);
+    *val = v1::GetInt16Field(row_, offset);
+    return 0;
+}
+
+int32_t RowIOBufView::GetInt32(uint32_t idx, int32_t* val) {
+    if (val == NULL) return -1;
+    if (IsNULL(idx)) {
+        return 1;
+    }
+    uint32_t offset = offset_vec_.at(idx);
+    *val = v1::GetInt32Field(row_, offset);
+    return 0;
+}
+
+int32_t RowIOBufView::GetInt64(uint32_t idx, int64_t* val) {
+    if (val == NULL) return -1;
+    if (IsNULL(idx)) {
+        return 1;
+    }
+    uint32_t offset = offset_vec_.at(idx);
+    *val = v1::GetInt64Field(row_, offset);
+    return 0;
+}
+
+int32_t RowIOBufView::GetFloat(uint32_t idx, float* val) {
+    if (val == NULL) return -1;
+    if (IsNULL(idx)) {
+        return 1;
+    }
+    uint32_t offset = offset_vec_.at(idx);
+    *val = v1::GetFloatField(row_, offset);
+    return 0;
+}
+
+int32_t RowIOBufView::GetDouble(uint32_t idx, double* val) {
+    if (val == NULL) return -1;
+    if (IsNULL(idx)) {
+        return 1;
+    }
+    uint32_t offset = offset_vec_.at(idx);
+    *val = v1::GetDoubleField(row_, offset);
+    return 0;
+}
+
+int32_t RowIOBufView::GetTimestamp(uint32_t idx, int64_t* val) {
+    if (val == NULL) return -1;
+    if (IsNULL(idx)) {
+        return 1;
+    }
+    uint32_t offset = offset_vec_.at(idx);
+    *val = v1::GetInt64Field(row_, offset);
+    return 0;
+}
+
+int32_t RowIOBufView::GetString(uint32_t idx, butil::IOBuf* buf) {
+    if (buf == NULL) return -1;
+    if (IsNULL(idx)) {
+        return 1;
+    }
+    uint32_t field_offset = offset_vec_.at(idx);
+    uint32_t next_str_field_offset = 0;
+    if (offset_vec_.at(idx) < string_field_cnt_ - 1) {
+        next_str_field_offset = field_offset + 1;
+    }
+    return v1::GetStrField(row_, field_offset, next_str_field_offset,
+                           str_field_start_offset_, str_addr_length_, buf);
 }
 
 }  // namespace codec
