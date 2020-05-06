@@ -183,13 +183,15 @@ class ConditionOptimized : public TransformUpPysicalPass {
     static bool TransformEqualExprPair(
         const std::vector<std::pair<const std::string, const vm::Schema*>>
             name_schema_list,
+        const size_t left_schema_cnt,
         node::ExprListNode* and_conditions,
         node::ExprListNode* out_condition_list,
         std::vector<ExprPair>& condition_eq_pair);  // NOLINT
 
  private:
     virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
-    bool JoinConditionOptimized(PhysicalOpNode* in, Join* join);
+    bool JoinConditionOptimized(PhysicalOpNode* in,
+                                Join* join);
     void SkipConstExpression(node::ExprListNode input,
                              node::ExprListNode* output);
 };
@@ -253,7 +255,7 @@ class BatchModeTransformer {
     bool GenFilter(ConditionFilter* filter, PhysicalOpNode* in,
                    base::Status& status);  // NOLINT
     bool GenKey(Key* hash, PhysicalOpNode* in,
-                 base::Status& status);  // NOLINT
+                base::Status& status);  // NOLINT
     bool GenWindow(WindowOp* window, PhysicalOpNode* in,
                    base::Status& status);  // NOLINT
 

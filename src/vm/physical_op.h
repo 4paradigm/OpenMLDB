@@ -62,6 +62,8 @@ inline const std::string PhysicalOpTypeName(const PhysicalOpType &type) {
             return "RENAME";
         case kPhysicalOpDistinct:
             return "DISTINCT";
+        case kPhysicalOpWindow:
+            return "WINDOW";
         case kPhysicalOpJoin:
             return "JOIN";
         case kPhysicalOpUnoin:

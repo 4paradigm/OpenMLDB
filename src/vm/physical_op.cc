@@ -151,11 +151,7 @@ void PhysicalGroupAggrerationNode::Print(std::ostream& output,
 
 void PhysicalWindowAggrerationNode::Print(std::ostream& output,
                                           const std::string& tab) const {
-    if (nullptr != join_) {
-        join_->Print(output, tab + INDENT);
-    }
     PhysicalOpNode::Print(output, tab);
-
     output << "(type=" << ProjectTypeName(project_type_);
     if (limit_cnt_ > 0) {
         output << ", limit=" << limit_cnt_;

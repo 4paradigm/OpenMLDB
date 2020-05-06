@@ -1404,6 +1404,11 @@ bool GroupAndSortOptimized::MatchBestIndex(
 
 bool ConditionOptimized::JoinConditionOptimized(PhysicalOpNode* in,
                                                 Join* join) {
+    if (2 != in->producers().size()) {
+        LOG(WARNING)
+            << "Fail to Join Condition Optimized: input produces size isn't 2";
+        return false;
+    }
     node::ExprListNode and_conditions;
     if (!TransfromAndConditionList(join->filter_.condition_, &and_conditions)) {
         return false;
@@ -1411,8 +1416,10 @@ bool ConditionOptimized::JoinConditionOptimized(PhysicalOpNode* in,
 
     node::ExprListNode new_and_conditions;
     std::vector<ExprPair> condition_eq_pair;
-    if (!TransformEqualExprPair(in->GetOutputNameSchemaList(), &and_conditions,
-                                &new_and_conditions, condition_eq_pair)) {
+    if (!TransformEqualExprPair(
+            in->GetOutputNameSchemaList(),
+            in->producers()[0]->GetOutputNameSchemaList().size(),
+            &and_conditions, &new_and_conditions, condition_eq_pair)) {
         return false;
     }
     node::ExprListNode* left_keys = node_manager_->MakeExprList();
@@ -1546,7 +1553,8 @@ bool ConditionOptimized::ExtractEqualExprPair(
 bool ConditionOptimized::TransformEqualExprPair(
     const std::vector<std::pair<const std::string, const vm::Schema*>>
         name_schema_list,
-    node::ExprListNode* and_conditions, node::ExprListNode* out_condition_list,
+    const size_t left_schema_cnt, node::ExprListNode* and_conditions,
+    node::ExprListNode* out_condition_list,
     std::vector<ExprPair>& condition_eq_pair) {  // NOLINT
     vm::SchemasContext ctx(name_schema_list);
     for (auto expr : and_conditions->children_) {
@@ -1570,11 +1578,11 @@ bool ConditionOptimized::TransformEqualExprPair(
                 out_condition_list->AddChild(expr);
                 continue;
             }
-            if (0 == info_left->idx_) {
+            if (left_schema_cnt > info_left->idx_) {
                 ExprPair pair = {expr_pair.first, info_left->idx_,
                                  expr_pair.second, info_right->idx_};
                 condition_eq_pair.push_back(pair);
-            } else if (0 == info_right->idx_) {
+            } else if (left_schema_cnt > info_right->idx_) {
                 ExprPair pair = {expr_pair.second, info_right->idx_,
                                  expr_pair.first, info_left->idx_};
                 condition_eq_pair.push_back(pair);
@@ -1738,8 +1746,8 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
     PhysicalJoinNode* join_op =
         dynamic_cast<PhysicalJoinNode*>(in->producers()[0]);
 
-    if (node::kJoinTypeLeft != join_op->join().join_type() &&
-        node::kJoinTypeLast != join_op->join().join_type()) {
+    auto join_type = join_op->join().join_type();
+    if (node::kJoinTypeLeft != join_type && node::kJoinTypeLast != join_type) {
         // skip optimized for other join type
         return false;
     }
@@ -1747,8 +1755,7 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
         case kPhysicalOpGroupBy: {
             auto group_op = dynamic_cast<PhysicalGroupNode*>(in);
             if (node::ExprListNullOrEmpty(group_op->group_.keys_)) {
-                LOG(WARNING)
-                    << "LeftJoin optimized skip: groups is null or empty";
+                LOG(WARNING) << "Join optimized skip: groups is null or empty";
             }
 
             if (!CheckExprListFromSchema(
@@ -1771,8 +1778,7 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
             auto sort_op = dynamic_cast<PhysicalSortNode*>(in);
             if (nullptr == sort_op->sort_.orders_ ||
                 node::ExprListNullOrEmpty(sort_op->sort_.orders_->order_by_)) {
-                LOG(WARNING)
-                    << "LeftJoin optimized skip: order is null or empty";
+                LOG(WARNING) << "Join optimized skip: order is null or empty";
             }
             if (!CheckExprListFromSchema(
                     sort_op->sort_.orders_->order_by_,
@@ -1794,6 +1800,13 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
             if (kWindowAggregation != project_op->project_type_) {
                 return false;
             }
+
+            if (node::kJoinTypeLast != join_type) {
+                LOG(WARNING) << "Window Join optimized skip: join type should "
+                                "be LAST JOIN, but "
+                             << node::JoinTypeName(join_type);
+                return false;
+            }
             auto window_agg_op =
                 dynamic_cast<PhysicalWindowAggrerationNode*>(in);
             if (node::ExprListNullOrEmpty(
@@ -1801,57 +1814,55 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
                 (nullptr == window_agg_op->window_.sort_.orders_ ||
                  node::ExprListNullOrEmpty(
                      window_agg_op->window_.sort_.orders_->order_by_))) {
-                LOG(WARNING) << "LeftJoin group and sort optimized skip: both "
-                                "order and groups are empty ";
+                LOG(WARNING) << "Window Join optimized skip: both partition and"
+                                "order are empty ";
                 return false;
             }
             if (!CheckExprListFromSchema(
                     window_agg_op->window_.partition_.keys_,
                     (join_op->GetProducers()[0]->output_schema_))) {
+                LOG(WARNING) << "Window Join optimized skip: partition keys "
+                                "are resolved from secondary table";
                 return false;
             }
 
             if (!CheckExprListFromSchema(
                     window_agg_op->window_.sort_.orders_->order_by_,
                     (join_op->GetProducers()[0]->output_schema_))) {
+                LOG(WARNING) << "Window Join optimized skip: order keys are "
+                                "resolved from secondary table";
                 return false;
             }
 
-            // WindowNode
-            //  \ Join
-            //      \ left
-            //      \ right
-            //==>
-            // Join
-            //  \ WindowNode
-            //      \ left
-            //  \ right
             auto left = join_op->producers()[0];
             auto right = join_op->producers()[1];
-            auto join_type = join_op->join().join_type();
+            auto window_ptr = &window_agg_op->window();
             auto window_join = window_agg_op->join();
-            auto window_node = window_agg_op->window();
 
             window_agg_op->SetProducer(0, left);
             if (nullptr == window_join) {
+                window_ptr->SetProducer(0, left);
                 auto new_window_join = new PhysicalJoinNode(
-                    dynamic_cast<PhysicalOpNode*>(&window_agg_op->window()),
-                    right, join_op->join());
+                    dynamic_cast<PhysicalOpNode*>(window_ptr), right,
+                    join_op->join());
                 node_manager_->RegisterNode(new_window_join);
                 window_agg_op->set_join(new_window_join);
+                *output = window_agg_op;
+                Transform(window_agg_op, output);
+                return true;
             } else {
-                window_join->SetProducer(0, right);
-                window_node.SetProducer(0, right);
-
-                auto new_window_join =
-                    new PhysicalJoinNode(window_node, right, join_type);
-                node_manager_->RegisterNode(new_window_join);
-                window_agg_op->set_join(new_window_join);
+                window_ptr->SetProducer(0, left);
+                auto new_join =
+                    new PhysicalJoinNode(window_ptr, right, join_op->join());
+                node_manager_->RegisterNode(new_join);
+                window_join->SetProducer(0, new_join);
+                *output = window_agg_op;
+                Transform(window_agg_op, output);
+                return true;
             }
-            // TODO(chenjing): window agg 和 left jion的优化需要支持window with
             *output = in;
-            Transform(in, output);
-            return true;
+            return false;
+            // TODO(chenjing): window agg 和 left jion的优化需要支持window with
         }
         default: {
             return false;

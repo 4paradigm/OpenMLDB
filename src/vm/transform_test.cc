@@ -345,7 +345,7 @@ TEST_F(TransformTest, TransformEqualExprPairTest) {
         std::vector<vm::ExprPair> mock_expr_pairs;
 
         ConditionOptimized::TransformEqualExprPair(
-            name_schemas, &mock_condition_list, &out_condition_list,
+            name_schemas, 1, &mock_condition_list, &out_condition_list,
             mock_expr_pairs);
 
         ExprPair mock_pair;
@@ -583,6 +583,22 @@ INSTANTIATE_TEST_CASE_P(
             "t2.col1, "
             "sum(t1.col3) OVER w1 as w1_col3_sum, "
             "sum(t1.col2) OVER w1 as w1_col2_sum "
+            "FROM t1 last join t2 on t1.col1 = t2.col1 last join t3 on t2.col2=t3.col2 "
+            "WINDOW w1 AS (PARTITION BY t1.col0 ORDER BY t1.col5 ROWS "
+            "BETWEEN 3 "
+            "PRECEDING AND CURRENT ROW) limit 10;",
+            "LIMIT(limit=10, optimized)\n"
+            "  PROJECT(type=WindowAggregation, partition_keys=(t1.col0), "
+            "orders=(t1.col5) ASC, range=(t1.col5, -3, 0), limit=10)\n"
+            "    JOIN(type=LastJoin, condition=, left_keys=(), right_keys=(), "
+            "index_keys=(t1.col1))\n"
+            "      DATA_PROVIDER(table=t1)\n"
+            "      DATA_PROVIDER(type=Partition, table=t2, index=index1_t2)"),
+        std::make_pair(
+            "SELECT "
+            "t2.col1, "
+            "sum(t1.col3) OVER w1 as w1_col3_sum, "
+            "sum(t1.col2) OVER w1 as w1_col2_sum "
             "FROM t1 last join t2 on t1.col2 = t2.col2 "
             "WINDOW w1 AS (PARTITION BY t1.col1, t1.col2 ORDER BY t1.col5 ROWS "
             "BETWEEN 3 "
@@ -642,6 +658,18 @@ TEST_P(TransformPassOptimizedTest, pass_optimzied_test) {
         ::fesql::type::IndexDef* index = table_def2.add_indexes();
         index->set_name("index1_t2");
         index->add_first_keys("col1");
+        index->set_second_key("col5");
+        std::shared_ptr<::fesql::storage::Table> table2(
+            new ::fesql::storage::Table(1, 1, table_def2));
+        AddTable(catalog, table_def2, table2);
+    }
+    {
+        fesql::type::TableDef table_def2;
+        BuildTableDef(table_def2);
+        table_def2.set_name("t3");
+        ::fesql::type::IndexDef* index = table_def2.add_indexes();
+        index->set_name("index2_t2");
+        index->add_first_keys("col2");
         index->set_second_key("col5");
         std::shared_ptr<::fesql::storage::Table> table2(
             new ::fesql::storage::Table(1, 1, table_def2));
