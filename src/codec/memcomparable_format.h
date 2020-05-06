@@ -75,7 +75,7 @@ __attribute__((unused)) static void CopyInteger(const uchar *from, int length,
 __attribute__((unused)) static int PackInteger(const void *from,
                                                uint32_t length,
                                                bool unsigned_flag, void *to) {
-    if (from == nullptr || length < 2) {
+    if (from == nullptr || length < 1) {
         return -1;
     }
     uchar *ptr = (uchar *)from;  // NOLINT

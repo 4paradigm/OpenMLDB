@@ -11,6 +11,7 @@
 #include <string.h>
 #include <algorithm>
 #include <string>
+#include <vector>
 #include "base/endianconv.h"
 #include "boost/lexical_cast.hpp"
 #include "logging.h"  //NOLINT
@@ -60,7 +61,6 @@ static inline void Convert(double data, char* buffer) {
     memcpy(buffer, static_cast<const void*>(&data), 8);
 }
 
-// TODO(wangbao) resolve timestamp,date
 static inline bool Convert(const std::string& str, DataType data_type,
                     std::string* out) {
     try {
@@ -94,7 +94,8 @@ static inline bool Convert(const std::string& str, DataType data_type,
                 Convert(val, buffer);
                 break;
             }
-            case ::rtidb::type::kBigInt: {
+            case ::rtidb::type::kBigInt:
+            case ::rtidb::type::kTimestamp: {
                 out->resize(8);
                 char* buffer = const_cast<char*>(out->data());
                 int64_t val = boost::lexical_cast<int64_t>(str);
@@ -118,6 +119,28 @@ static inline bool Convert(const std::string& str, DataType data_type,
             case ::rtidb::type::kVarchar:
             case ::rtidb::type::kString: {
                 *out = str;
+                break;
+            }
+            case ::rtidb::type::kDate: {
+                std::vector<std::string> parts;
+                ::rtidb::base::SplitString(str, "-", parts);
+                if (parts.size() != 3) {
+                    PDLOG(WARNING, "bad data format, data type %s.",
+                            rtidb::type::DataType_Name(data_type).c_str());
+                    return false;
+                }
+                uint32_t year = boost::lexical_cast<uint32_t>(parts[0]);
+                uint32_t month = boost::lexical_cast<uint32_t>(parts[1]);
+                uint32_t day = boost::lexical_cast<uint32_t>(parts[2]);
+                if (year > 8099) return false;
+                if (month < 1 || month > 12) return false;
+                if (day < 1 || day > 31) return false;
+                int32_t data = (year - 1900) << 16;
+                data = data | ((month - 1) << 8);
+                data = data | day;
+                out->resize(4);
+                char* buffer = const_cast<char*>(out->data());
+                Convert(data, buffer);
                 break;
             }
             default: {

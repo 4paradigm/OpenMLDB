@@ -368,10 +368,9 @@ bool RelationalTable::GetPackedField(const int8_t* row, uint32_t idx,
     int get_value_ret = 0;
     int ret = 0;
     // TODO(wangbao) resolve null
-    // TODO(wangbao) bool timestamp date
     switch (data_type) {
         case ::rtidb::type::kBool: {
-            bool val = false;
+            int8_t val = 0;
             get_value_ret = row_view_.GetValue(row, idx, data_type, &val);
             ret = PackValue(&val, data_type, key);
             break;
@@ -382,13 +381,15 @@ bool RelationalTable::GetPackedField(const int8_t* row, uint32_t idx,
             ret = PackValue(&val, data_type, key);
             break;
         }
-        case ::rtidb::type::kInt: {
+        case ::rtidb::type::kInt:
+        case ::rtidb::type::kDate: {
             int32_t val = 0;
             get_value_ret = row_view_.GetValue(row, idx, data_type, &val);
             ret = PackValue(&val, data_type, key);
             break;
         }
-        case ::rtidb::type::kBigInt: {
+        case ::rtidb::type::kBigInt:
+        case ::rtidb::type::kTimestamp: {
             int64_t val = 0;
             get_value_ret = row_view_.GetValue(row, idx, data_type, &val);
             ret = PackValue(&val, data_type, key);
@@ -418,12 +419,6 @@ bool RelationalTable::GetPackedField(const int8_t* row, uint32_t idx,
             ret = PackValue(&val, data_type, key);
             break;
         }
-        case ::rtidb::type::kTimestamp: {
-            int64_t val = 0;
-            get_value_ret = row_view_.GetValue(row, idx, data_type, &val);
-            ret = PackValue(&val, data_type, key);
-            break;
-        }
         default: {
             PDLOG(WARNING, "unsupported data type %s, tid %u pid %u",
                   rtidb::type::DataType_Name(data_type).c_str(), id_, pid_);
@@ -448,13 +443,12 @@ bool RelationalTable::PackValue(const void *from,
         std::string* key) {
     int ret = 0;
     // TODO(wangbao) resolve null
-    // TODO(wangbao) bool timestamp date
     switch (data_type) {
         case ::rtidb::type::kBool: {
-            key->resize(sizeof(bool));
+            key->resize(sizeof(int8_t));
             char* to = const_cast<char*>(key->data());
             ret =
-                ::rtidb::codec::PackInteger(from, sizeof(bool), false, to);
+                ::rtidb::codec::PackInteger(from, sizeof(int8_t), false, to);
             break;
         }
         case ::rtidb::type::kSmallInt: {
@@ -464,14 +458,16 @@ bool RelationalTable::PackValue(const void *from,
                 ::rtidb::codec::PackInteger(from, sizeof(int16_t), false, to);
             break;
         }
-        case ::rtidb::type::kInt: {
+        case ::rtidb::type::kInt:
+        case ::rtidb::type::kDate: {
             key->resize(sizeof(int32_t));
             char* to = const_cast<char*>(key->data());
             ret =
                 ::rtidb::codec::PackInteger(from, sizeof(int32_t), false, to);
             break;
         }
-        case ::rtidb::type::kBigInt: {
+        case ::rtidb::type::kBigInt:
+        case ::rtidb::type::kTimestamp: {
             key->resize(sizeof(int64_t));
             char* to = const_cast<char*>(key->data());
             ret =
@@ -488,13 +484,6 @@ bool RelationalTable::PackValue(const void *from,
             key->resize(sizeof(double));
             char* to = const_cast<char*>(key->data());
             ret = ::rtidb::codec::PackDouble(from, to);
-            break;
-        }
-        case ::rtidb::type::kTimestamp: {
-            key->resize(sizeof(int64_t));
-            char* to = const_cast<char*>(key->data());
-            ret =
-                ::rtidb::codec::PackInteger(from, sizeof(int64_t), false, to);
             break;
         }
         default: {
@@ -520,53 +509,77 @@ bool RelationalTable::ConvertIndex(const std::string& name,
     }
     ::rtidb::type::DataType type = column_def->GetType();
     int ret = 0;
-    if (type == ::rtidb::type::kSmallInt) {
-        int16_t val = 0;
-        ::rtidb::codec::GetInt16(value.data(), &val);
-        out_val->resize(sizeof(int16_t));
-        char* to = const_cast<char*>(out_val->data());
-        ret = ::rtidb::codec::PackInteger(&val, sizeof(int16_t), false, to);
-    } else if (type == ::rtidb::type::kInt) {
-        int32_t val = 0;
-        ::rtidb::codec::GetInt32(value.data(), &val);
-        out_val->resize(sizeof(int32_t));
-        char* to = const_cast<char*>(out_val->data());
-        ret = ::rtidb::codec::PackInteger(&val, sizeof(int32_t), false, to);
-    } else if (type == ::rtidb::type::kBigInt) {
-        int64_t val = 0;
-        ::rtidb::codec::GetInt64(value.data(), &val);
-        out_val->resize(sizeof(int64_t));
-        char* to = const_cast<char*>(out_val->data());
-        ret = ::rtidb::codec::PackInteger(&val, sizeof(int64_t), false, to);
-    } else if (type == ::rtidb::type::kFloat) {
-        float val = 0.0;
-        ::rtidb::codec::GetFloat(value.data(), &val);
-        out_val->resize(sizeof(float));
-        char* to = const_cast<char*>(out_val->data());
-        ret = ::rtidb::codec::PackFloat(&val, to);
-    } else if (type == ::rtidb::type::kDouble) {
-        double val = 0.0;
-        ::rtidb::codec::GetDouble(value.data(), &val);
-        out_val->resize(sizeof(double));
-        char* to = const_cast<char*>(out_val->data());
-        ret = ::rtidb::codec::PackDouble(&val, to);
-    } else if (type == ::rtidb::type::kVarchar ||
-               type == ::rtidb::type::kString) {
-        int32_t dst_len = ::rtidb::codec::GetDstStrSize(value.length());
-        out_val->resize(dst_len);
-        char* dst = const_cast<char*>(out_val->data());
-        ret = ::rtidb::codec::PackString(value.data(), value.length(),
-                                         (void**)&dst);  // NOLINT
-    } else {
-        PDLOG(WARNING, "unsupported data type %s, tid %u pid %u",
-              rtidb::type::DataType_Name(type).c_str(), id_, pid_);
-        return false;
+    switch (type) {
+        case ::rtidb::type::kBool: {
+            int8_t val = 0;
+            ::rtidb::codec::GetBool(value.data(), &val);
+            out_val->resize(sizeof(int8_t));
+            char* to = const_cast<char*>(out_val->data());
+            ret = ::rtidb::codec::PackInteger(&val, sizeof(int8_t), false, to);
+            break;
+        }
+        case ::rtidb::type::kSmallInt: {
+            int16_t val = 0;
+            ::rtidb::codec::GetInt16(value.data(), &val);
+            out_val->resize(sizeof(int16_t));
+            char* to = const_cast<char*>(out_val->data());
+            ret = ::rtidb::codec::PackInteger(&val, sizeof(int16_t), false, to);
+            break;
+        }
+        case ::rtidb::type::kInt:
+        case ::rtidb::type::kDate: {
+            int32_t val = 0;
+            ::rtidb::codec::GetInt32(value.data(), &val);
+            out_val->resize(sizeof(int32_t));
+            char* to = const_cast<char*>(out_val->data());
+            ret = ::rtidb::codec::PackInteger(&val, sizeof(int32_t), false, to);
+            break;
+        }
+        case ::rtidb::type::kBigInt:
+        case ::rtidb::type::kTimestamp: {
+            int64_t val = 0;
+            ::rtidb::codec::GetInt64(value.data(), &val);
+            out_val->resize(sizeof(int64_t));
+            char* to = const_cast<char*>(out_val->data());
+            ret = ::rtidb::codec::PackInteger(&val, sizeof(int64_t), false, to);
+            break;
+        }
+        case ::rtidb::type::kFloat: {
+            float val = 0.0;
+            ::rtidb::codec::GetFloat(value.data(), &val);
+            out_val->resize(sizeof(float));
+            char* to = const_cast<char*>(out_val->data());
+            ret = ::rtidb::codec::PackFloat(&val, to);
+            break;
+        }
+        case ::rtidb::type::kDouble: {
+            double val = 0.0;
+            ::rtidb::codec::GetDouble(value.data(), &val);
+            out_val->resize(sizeof(double));
+            char* to = const_cast<char*>(out_val->data());
+            ret = ::rtidb::codec::PackDouble(&val, to);
+            break;
+        }
+        case ::rtidb::type::kVarchar:
+        case ::rtidb::type::kString: {
+            int32_t dst_len = ::rtidb::codec::GetDstStrSize(value.length());
+            out_val->resize(dst_len);
+            char* dst = const_cast<char*>(out_val->data());
+            ret = ::rtidb::codec::PackString(value.data(), value.length(),
+                                             (void**)&dst);  // NOLINT
+            break;
+        }
+        default: {
+            PDLOG(WARNING, "unsupported data type %s, tid %u pid %u",
+                  rtidb::type::DataType_Name(type).c_str(), id_, pid_);
+            return false;
+        }
     }
     if (ret < 0) {
-        PDLOG(WARNING, "pack error, tid %u pid %u", id_, pid_);
+        PDLOG(WARNING, "pack %s error, tid %u pid %u",
+                rtidb::type::DataType_Name(type).c_str(), id_, pid_);
         return false;
     }
-    // PDLOG(DEBUG, "query pk: %s", out_val->c_str());
     return true;
 }
 
@@ -950,14 +963,17 @@ bool RelationalTable::UpdateDB(const std::shared_ptr<IndexDef> index_def,
                     continue;
                 }
             }
+            int get_value_ret = 0;
             rtidb::type::DataType cur_type = schema.Get(i).data_type();
             switch (cur_type) {
                 case rtidb::type::kBool: {
                     bool val = true;
                     if (col_iter != col_idx_map.end()) {
-                        value_view.GetBool(col_iter->second, &val);
+                        get_value_ret =
+                            value_view.GetBool(col_iter->second, &val);
                     } else {
-                        row_view_.GetValue(buf, i, rtidb::type::kBool, &val);
+                        get_value_ret =
+                            row_view_.GetValue(buf, i, cur_type, &val);
                     }
                     builder.AppendBool(val);
                     break;
@@ -965,10 +981,11 @@ bool RelationalTable::UpdateDB(const std::shared_ptr<IndexDef> index_def,
                 case rtidb::type::kSmallInt: {
                     int16_t val = 0;
                     if (col_iter != col_idx_map.end()) {
-                        value_view.GetInt16(col_iter->second, &val);
+                        get_value_ret =
+                            value_view.GetInt16(col_iter->second, &val);
                     } else {
-                        row_view_.GetValue(buf, i, rtidb::type::kSmallInt,
-                                           &val);
+                        get_value_ret =
+                            row_view_.GetValue(buf, i, cur_type, &val);
                     }
                     builder.AppendInt16(val);
                     break;
@@ -976,9 +993,11 @@ bool RelationalTable::UpdateDB(const std::shared_ptr<IndexDef> index_def,
                 case rtidb::type::kInt: {
                     int32_t val = 0;
                     if (col_iter != col_idx_map.end()) {
-                        value_view.GetInt32(col_iter->second, &val);
+                        get_value_ret =
+                            value_view.GetInt32(col_iter->second, &val);
                     } else {
-                        row_view_.GetValue(buf, i, rtidb::type::kInt, &val);
+                        get_value_ret =
+                            row_view_.GetValue(buf, i, cur_type, &val);
                     }
                     builder.AppendInt32(val);
                     break;
@@ -986,9 +1005,11 @@ bool RelationalTable::UpdateDB(const std::shared_ptr<IndexDef> index_def,
                 case rtidb::type::kBigInt: {
                     int64_t val = 0;
                     if (col_iter != col_idx_map.end()) {
-                        value_view.GetInt64(col_iter->second, &val);
+                        get_value_ret =
+                            value_view.GetInt64(col_iter->second, &val);
                     } else {
-                        row_view_.GetValue(buf, i, rtidb::type::kBigInt, &val);
+                        get_value_ret =
+                            row_view_.GetValue(buf, i, cur_type, &val);
                     }
                     builder.AppendInt64(val);
                     break;
@@ -996,10 +1017,11 @@ bool RelationalTable::UpdateDB(const std::shared_ptr<IndexDef> index_def,
                 case rtidb::type::kTimestamp: {
                     int64_t val = 0;
                     if (col_iter != col_idx_map.end()) {
-                        value_view.GetTimestamp(col_iter->second, &val);
+                        get_value_ret =
+                            value_view.GetTimestamp(col_iter->second, &val);
                     } else {
-                        row_view_.GetValue(buf, i, rtidb::type::kTimestamp,
-                                           &val);
+                        get_value_ret =
+                            row_view_.GetValue(buf, i, cur_type, &val);
                     }
                     builder.AppendTimestamp(val);
                     break;
@@ -1007,9 +1029,11 @@ bool RelationalTable::UpdateDB(const std::shared_ptr<IndexDef> index_def,
                 case rtidb::type::kFloat: {
                     float val = 0.0;
                     if (col_iter != col_idx_map.end()) {
-                        value_view.GetFloat(col_iter->second, &val);
+                        get_value_ret =
+                            value_view.GetFloat(col_iter->second, &val);
                     } else {
-                        row_view_.GetValue(buf, i, rtidb::type::kFloat, &val);
+                        get_value_ret =
+                            row_view_.GetValue(buf, i, cur_type, &val);
                     }
                     builder.AppendFloat(val);
                     break;
@@ -1017,9 +1041,11 @@ bool RelationalTable::UpdateDB(const std::shared_ptr<IndexDef> index_def,
                 case rtidb::type::kDouble: {
                     double val = 0.0;
                     if (col_iter != col_idx_map.end()) {
-                        value_view.GetDouble(col_iter->second, &val);
+                        get_value_ret =
+                            value_view.GetDouble(col_iter->second, &val);
                     } else {
-                        row_view_.GetValue(buf, i, rtidb::type::kDouble, &val);
+                        get_value_ret =
+                            row_view_.GetValue(buf, i, cur_type, &val);
                     }
                     builder.AppendDouble(val);
                     break;
@@ -1029,19 +1055,38 @@ bool RelationalTable::UpdateDB(const std::shared_ptr<IndexDef> index_def,
                     char* ch = NULL;
                     uint32_t length = 0;
                     if (col_iter != col_idx_map.end()) {
-                        value_view.GetString(col_iter->second, &ch, &length);
+                        get_value_ret = value_view.GetString(
+                                col_iter->second, &ch, &length);
                     } else {
-                        row_view_.GetValue(buf, i, &ch, &length);
+                        get_value_ret =
+                            row_view_.GetValue(buf, i, &ch, &length);
                     }
                     builder.AppendString(ch, length);
                     break;
                 }
+                case rtidb::type::kDate: {
+                    uint32_t val = 0;
+                    if (col_iter != col_idx_map.end()) {
+                        get_value_ret =
+                            value_view.GetDate(col_iter->second, &val);
+                    } else {
+                        get_value_ret =
+                            row_view_.GetValue(buf, i, cur_type, &val);
+                    }
+                    builder.AppendDate(val);
+                    break;
+                }
                 default: {
                     PDLOG(WARNING, "unsupported data type %s",
-                          rtidb::type::DataType_Name(schema.Get(i).data_type())
-                              .c_str());
+                          rtidb::type::DataType_Name(cur_type).c_str());
                     return false;
                 }
+            }
+            if (get_value_ret < 0) {
+                PDLOG(WARNING, "getValue failed,_type %s, tid %u pid %u",
+                        rtidb::type::DataType_Name(cur_type).c_str(),
+                        id_, pid_);
+                return false;
             }
         }
         if (is_update_index) {
