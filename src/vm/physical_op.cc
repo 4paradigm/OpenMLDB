@@ -170,23 +170,8 @@ void PhysicalWindowAggrerationNode::Print(std::ostream& output,
     }
 }
 bool PhysicalWindowAggrerationNode::InitSchema() {
-    if (producers_.empty() || nullptr == producers_[0]) {
-        LOG(WARNING) << "InitSchema fail: producers is empty or"
-                        "producers[0] is null";
-        return false;
-    }
-    output_schema_.CopyFrom(producers_[0]->output_schema_);
-    for (auto pair : producers_[0]->GetOutputNameSchemaList()) {
-        output_name_schema_list_.push_back(pair);
-    }
-    if (producers_.size() == 3 && nullptr != producers_[2]) {
-        output_schema_.MergeFrom(producers_[2]->output_schema_);
-        for (auto right_pair : producers_[2]->GetOutputNameSchemaList()) {
-            output_name_schema_list_.push_back(right_pair);
-        }
-    }
-    PrintSchema();
-    return true;
+    //TODO(chenjing): Init Schema with window Join
+    return false;
 }
 
 void PhysicalJoinNode::Print(std::ostream& output,
