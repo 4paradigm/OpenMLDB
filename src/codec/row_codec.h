@@ -176,7 +176,6 @@ class RowCodec {
         if (length <= 0 || end > schema.size()) {
             return false;
         }
-        value_vec->clear();
         for (int32_t i = 0; i < end; i++) {
             if (rv.IsNULL(i)) {
                 value_vec->emplace_back(NONETOKEN);

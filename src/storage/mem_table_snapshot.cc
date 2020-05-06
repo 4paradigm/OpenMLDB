@@ -728,7 +728,7 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(
                 } else {
                     ::rtidb::codec::RowCodec::DecodeRow(
                         table_meta.column_desc(), ::rtidb::base::Slice(buff), 0,
-                        max_idx, row);
+                        max_idx + 1, row);
                 }
             } else {
                 if (table_meta.format_version() == 0) {
@@ -738,7 +738,8 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(
                 } else {
                     ::rtidb::codec::RowCodec::DecodeRow(
                         table_meta.column_desc(),
-                        ::rtidb::base::Slice(entry.value()), 0, max_idx, row);
+                        ::rtidb::base::Slice(entry.value()), 0, max_idx + 1,
+                        row);
                 }
             }
             std::string cur_key;
@@ -986,7 +987,7 @@ int MemTableSnapshot::ExtractIndexData(
                     } else {
                         ::rtidb::codec::RowCodec::DecodeRow(
                             table_meta.column_desc(),
-                            ::rtidb::base::Slice(buff), 0, max_idx, row);
+                            ::rtidb::base::Slice(buff), 0, max_idx + 1, row);
                     }
                 } else {
                     if (table_meta.format_version() == 0) {
@@ -996,7 +997,7 @@ int MemTableSnapshot::ExtractIndexData(
                     } else {
                         ::rtidb::codec::RowCodec::DecodeRow(
                             table_meta.column_desc(),
-                            ::rtidb::base::Slice(entry.value()), 0, max_idx,
+                            ::rtidb::base::Slice(entry.value()), 0, max_idx + 1,
                             row);
                     }
                 }
@@ -1148,7 +1149,7 @@ bool MemTableSnapshot::PackNewIndexEntry(
         } else {
             ::rtidb::codec::RowCodec::DecodeRow(table_meta.column_desc(),
                                                 ::rtidb::base::Slice(buff), 0,
-                                                max_idx, row);
+                                                max_idx + 1, row);
         }
     } else {
         if (table_meta.format_version() == 0) {
@@ -1158,7 +1159,7 @@ bool MemTableSnapshot::PackNewIndexEntry(
         } else {
             ::rtidb::codec::RowCodec::DecodeRow(
                 table_meta.column_desc(), ::rtidb::base::Slice(entry->value()),
-                0, max_idx, row);
+                0, max_idx + 1, row);
         }
     }
     std::string key;

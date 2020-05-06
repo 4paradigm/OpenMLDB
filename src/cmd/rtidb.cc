@@ -2330,7 +2330,10 @@ void HandleNSScan(const std::vector<std::string>& parts,
         if (it == NULL) {
             std::cout << "Fail to scan table. error msg: " << msg << std::endl;
         } else {
-            if (tables[0].added_column_desc_size() == 0) {
+            if (tables[0].format_version() == 1) {
+                ::rtidb::base::ShowTableRows(tables[0].column_desc_v1(), it,
+                                             tables[0].compress_type());
+            } else if (tables[0].added_column_desc_size() == 0) {
                 ::rtidb::base::ShowTableRows(columns, it,
                                              tables[0].compress_type());
             } else {
@@ -2930,7 +2933,7 @@ void HandleNSPut(const std::vector<std::string>& parts,
                               << std::endl;
                 }
             }
-            std::string buffer;
+            std::string value;
             std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>
                 dimensions;
             std::vector<uint64_t> ts_dimensions;
@@ -2938,7 +2941,7 @@ void HandleNSPut(const std::vector<std::string>& parts,
                 if (EncodeMultiDimensionData(
                         std::vector<std::string>(parts.begin() + start_index,
                                                  parts.end()),
-                        columns, tables[0].table_partition_size(), buffer,
+                        columns, tables[0].table_partition_size(), value,
                         dimensions, ts_dimensions, modify_index) < 0) {
                     std::cout << "Encode data error" << std::endl;
                     return;
@@ -2949,7 +2952,7 @@ void HandleNSPut(const std::vector<std::string>& parts,
                         std::vector<std::string>(parts.begin() + start_index,
                                                  parts.end()),
                         column_desc_list_1, tables[0].table_partition_size(),
-                        buffer, dimensions, ts_dimensions);
+                        value, dimensions, ts_dimensions);
                     if (ret < 0) {
                         std::cout << "Encode data error" << std::endl;
                         return;
@@ -2958,7 +2961,7 @@ void HandleNSPut(const std::vector<std::string>& parts,
                     if (EncodeMultiDimensionData(
                             std::vector<std::string>(
                                 parts.begin() + start_index, parts.end()),
-                            columns, tables[0].table_partition_size(), buffer,
+                            columns, tables[0].table_partition_size(), value,
                             dimensions, ts_dimensions) < 0) {
                         std::cout << "Encode data error" << std::endl;
                         return;
@@ -2979,7 +2982,6 @@ void HandleNSPut(const std::vector<std::string>& parts,
                     return;
                 }
             }
-            std::string value = buffer;
             if (tables[0].compress_type() == ::rtidb::nameserver::kSnappy) {
                 std::string compressed;
                 ::snappy::Compress(value.c_str(), value.length(), &compressed);
@@ -3024,13 +3026,13 @@ void HandleNSPut(const std::vector<std::string>& parts,
             std::cout << "Input value mismatch schema" << std::endl;
             return;
         }
-        std::string buffer;
+        std::string value;
         std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>
             dimensions;
         if (modify_index > 0) {
             if (EncodeMultiDimensionData(
                     std::vector<std::string>(parts.begin() + 3, parts.end()),
-                    columns, tables[0].table_partition_size(), buffer,
+                    columns, tables[0].table_partition_size(), value,
                     dimensions, modify_index) < 0) {
                 std::cout << "Encode data error" << std::endl;
                 return;
@@ -3038,13 +3040,12 @@ void HandleNSPut(const std::vector<std::string>& parts,
         } else {
             if (EncodeMultiDimensionData(
                     std::vector<std::string>(parts.begin() + 3, parts.end()),
-                    columns, tables[0].table_partition_size(), buffer,
+                    columns, tables[0].table_partition_size(), value,
                     dimensions) < 0) {
                 std::cout << "Encode data error" << std::endl;
                 return;
             }
         }
-        std::string value = buffer;
         if (tables[0].compress_type() == ::rtidb::nameserver::kSnappy) {
             std::string compressed;
             ::snappy::Compress(value.c_str(), value.length(), &compressed);
