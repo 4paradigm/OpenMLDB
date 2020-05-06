@@ -79,8 +79,8 @@ class RunSession {
         return compile_info_->get_sql_context().schema;
     }
 
-    virtual inline const std::string& GetDecodedSchema() const {
-        return decoded_schema_;
+    virtual inline const std::string& GetEncodedSchema() const {
+        return compile_info_->get_sql_context().encoded_schema;
     }
 
     virtual inline vm::PhysicalOpNode* GetPhysicalPlan() {
@@ -107,7 +107,6 @@ class RunSession {
 
     std::shared_ptr<CompileInfo> compile_info_;
     std::shared_ptr<Catalog> cl_;
-    std::string decoded_schema_;
     bool is_debug_;
     friend Engine;
 };

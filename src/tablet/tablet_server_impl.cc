@@ -189,7 +189,7 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
             free(row.buf());
             count += 1;
         }
-        response->set_schema(session.GetDecodedSchema());
+        response->set_schema(session.GetEncodedSchema());
         response->set_byte_size(byte_size);
         response->set_count(count);
         status->set_code(common::kOk);
@@ -221,7 +221,7 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
             return;
         }
         buf.append(reinterpret_cast<void*>(row.buf()), row.size());
-        response->set_schema(session.GetDecodedSchema());
+        response->set_schema(session.GetEncodedSchema());
         response->set_byte_size(row.size());
         response->set_count(1);
         status->set_code(common::kOk);

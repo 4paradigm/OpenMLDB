@@ -54,6 +54,8 @@ struct SQLContext {
     std::string ir;
     std::string logical_plan;
     std::string physical_plan;
+    std::string encoded_schema;
+    std::string encoded_request_schema;
     SQLContext() {
         runner = NULL;
     }

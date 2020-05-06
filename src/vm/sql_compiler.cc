@@ -20,6 +20,7 @@
 #include <utility>
 #include <vector>
 #include "codec/type_codec.h"
+#include "codec/schema_codec.h"
 #include "codegen/ir_base_builder.h"
 #include "glog/logging.h"
 #include "llvm/Bitcode/BitcodeWriter.h"
@@ -166,6 +167,11 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
             return false;
         }
         ctx.request_schema = transformer.request_schema();
+        ok = codec::SchemaCodec::Encode(transformer.request_schema(), &ctx.encoded_request_schema);
+        if (!ok) {
+            LOG(WARNING) << "fail to encode request schema";
+            return false;
+        }
         ctx.request_name = transformer.request_name();
     }
 
@@ -216,6 +222,11 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         return false;
     }
     ctx.schema = ctx.plan->output_schema_;
+    ok = codec::SchemaCodec::Encode(ctx.schema, &ctx.encoded_schema);
+    if (!ok) {
+        LOG(WARNING) << "fail to encode output schema";
+        return false;
+    }
     return true;
 }
 bool SQLCompiler::BuildRunner(SQLContext& ctx, Status& status) {  // NOLINT

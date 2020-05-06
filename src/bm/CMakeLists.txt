@@ -2,7 +2,7 @@ include_directories(${INCLUDE_DIRECTORIES}
         ${PROJECT_SOURCE_DIR}/src
         ${PROJECT_BINARY_DIR}/src)
 
-set(BM_LIBS fesql_sdk fesql_dbms fesql_tablet fesql_flags ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS} ${OS_LIB})
+set(BM_LIBS fesql_sdk fesql_dbms fesql_tablet fesql_flags ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS} tcmalloc ${OS_LIB})
 add_executable(base_bm_test base_bm_test.cc)
 target_link_libraries(base_bm_test gtest fesql_dbms fesql_tablet fesql_flags ${BM_LIBS})
 add_test(base_bm_test base_bm_test --gtest_output=xml:${CMAKE_BINARY_DIR}/base_bm_test.xml)
