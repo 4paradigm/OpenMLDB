@@ -73,6 +73,18 @@ public class TableHandler {
                 }
                 schemaPos.put(cd.getName(), i);
             }
+            for (int i = 0; i < tableInfo.getAddedColumnDescCount(); i++) {
+                Common.ColumnDesc cd = tableInfo.getAddedColumnDesc(i);
+                ColumnDesc ncd = new ColumnDesc();
+                ncd.setName(cd.getName());
+                ncd.setDataType(DataType.valueFrom(cd.getDataType()));
+                ncd.setNotNull(cd.getNotNull());
+                if (cd.getDataType() == Type.DataType.kBlob) {
+                    blobSuffix.add(tableInfo.getColumnDescV1Count() + i);
+                }
+                schema.add(ncd);
+                schemaPos.put(cd.getName(), tableInfo.getColumnDescV1Count() + i);
+            }
             if (tableInfo.getColumnKeyCount() > 0) {
                 indexes.clear();
                 keyMap.clear();

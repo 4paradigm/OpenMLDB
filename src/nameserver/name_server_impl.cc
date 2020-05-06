@@ -4618,6 +4618,14 @@ void NameServerImpl::CreateTable(RpcController* controller,
                 break;
             }
         }
+        if (!has_blob) {
+            for (const auto& col : table_info->added_column_desc()) {
+                if (col.data_type() == rtidb::type::kBlob) {
+                    has_blob = true;
+                    break;
+                }
+            }
+        }
         if (has_blob) {
             std::shared_ptr<::rtidb::nameserver::TableInfo> blob_info(
                 request->table_info().New());
