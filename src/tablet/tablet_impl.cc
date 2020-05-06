@@ -23,11 +23,11 @@
 #ifdef TCMALLOC_ENABLE
 #include "gperftools/malloc_extension.h"
 #endif
-#include "base/codec.h"
 #include "base/file_util.h"
 #include "base/hash.h"
 #include "base/status.h"
 #include "base/strings.h"
+#include "codec/codec.h"
 #include "logging.h"  // NOLINT
 #include "rapidjson/stringbuffer.h"
 #include "rapidjson/writer.h"
@@ -380,7 +380,7 @@ int32_t TabletImpl::GetIndex(uint64_t expire_time, uint64_t expire_cnt,
         return -2;
     }
     bool enable_project = false;
-    ::rtidb::base::RowProject row_project(meta.column_desc(),
+    ::rtidb::codec::RowProject row_project(meta.column_desc(),
                                           request->projection());
     if (request->projection().size() > 0 && meta.format_version() == 1) {
         if (meta.compress_type() == api::kSnappy) {
@@ -993,7 +993,7 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
     const rtidb::api::GetType& et_type = request->et_type();
     bool enable_project = false;
     // TODO(wangtaize) support extend columns
-    ::rtidb::base::RowProject row_project(meta.column_desc(),
+    ::rtidb::codec::RowProject row_project(meta.column_desc(),
                                           request->projection());
     if (request->projection().size() > 0 && meta.format_version() == 1) {
         if (meta.compress_type() == api::kSnappy) {
@@ -1146,7 +1146,7 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
             return -3;
         }
     }
-    int32_t ok = ::rtidb::base::EncodeRows(tmp, total_block_size, pairs);
+    int32_t ok = ::rtidb::codec::EncodeRows(tmp, total_block_size, pairs);
     if (ok == -1) {
         PDLOG(WARNING, "fail to encode rows");
         return -4;
@@ -1660,7 +1660,7 @@ void TabletImpl::Traverse(RpcController* controller,
             for (const auto& pair : kv.second) {
                 PDLOG(DEBUG, "encode pk %s ts %lu size %u", kv.first.c_str(),
                       pair.first, pair.second.size());
-                ::rtidb::base::EncodeFull(kv.first, pair.first,
+                ::rtidb::codec::EncodeFull(kv.first, pair.first,
                                           pair.second.data(),
                                           pair.second.size(), rbuffer, offset);
                 offset += (4 + 4 + 8 + kv.first.length() + pair.second.size());
@@ -1735,7 +1735,7 @@ void TabletImpl::Traverse(RpcController* controller,
         char* rbuffer = reinterpret_cast<char*>(&((*pairs)[0]));
         uint32_t offset = 0;
         for (const auto& value : value_vec) {
-            rtidb::base::Encode(value.data(), value.size(), rbuffer, offset);
+            rtidb::codec::Encode(value.data(), value.size(), rbuffer, offset);
             offset += (4 + value.size());
         }
         PDLOG(DEBUG, "tid %u pid %u, traverse count %d.", request->tid(),

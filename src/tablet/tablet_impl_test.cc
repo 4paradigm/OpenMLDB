@@ -6,27 +6,30 @@
 //
 
 #include "tablet/tablet_impl.h"
+
 #include <fcntl.h>
 #include <gflags/gflags.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/text_format.h>
 #include <sys/stat.h>
+
 #include <algorithm>
 #include <utility>
-#include <boost/lexical_cast.hpp>
-#include "base/codec.h"
+
 #include "base/file_util.h"
-#include "base/flat_array.h"
 #include "base/kv_iterator.h"
-#include "base/schema_codec.h"
 #include "base/strings.h"
+#include "boost/lexical_cast.hpp"
+#include "codec/codec.h"
+#include "codec/flat_array.h"
+#include "codec/schema_codec.h"
 #include "gtest/gtest.h"
 #include "log/log_reader.h"
 #include "log/log_writer.h"
-#include "logging.h" // NOLINT
+#include "logging.h"  // NOLINT
 #include "proto/tablet.pb.h"
 #include "proto/type.pb.h"
-#include "timer.h" // NOLINT
+#include "timer.h"  // NOLINT
 
 DECLARE_string(db_root_path);
 DECLARE_string(ssd_root_path);
@@ -96,7 +99,7 @@ bool RollWLogFile(::rtidb::storage::WriteHandle** wh,
 }
 
 int MultiDimensionEncode(
-    const std::vector<::rtidb::base::ColumnDesc>& colum_desc,
+    const std::vector<::rtidb::codec::ColumnDesc>& colum_desc,
     const std::vector<std::string>& input,
     std::vector<std::pair<std::string, uint32_t>>& dimensions,  // NOLINT
     std::string& buffer) {                                      // NOLINT
@@ -105,7 +108,7 @@ int MultiDimensionEncode(
         std::cout << "Input value mismatch schema" << std::endl;
         return -1;
     }
-    ::rtidb::base::FlatArrayCodec codec(&buffer, (uint8_t)cnt);
+    ::rtidb::codec::FlatArrayCodec codec(&buffer, (uint8_t)cnt);
     uint32_t idx_cnt = 0;
     for (uint32_t i = 0; i < input.size(); i++) {
         if (colum_desc[i].add_ts_idx) {
@@ -113,19 +116,19 @@ int MultiDimensionEncode(
             idx_cnt++;
         }
         bool codec_ok = false;
-        if (colum_desc[i].type == ::rtidb::base::ColType::kInt32) {
+        if (colum_desc[i].type == ::rtidb::codec::ColType::kInt32) {
             codec_ok = codec.Append(boost::lexical_cast<int32_t>(input[i]));
-        } else if (colum_desc[i].type == ::rtidb::base::ColType::kInt64) {
+        } else if (colum_desc[i].type == ::rtidb::codec::ColType::kInt64) {
             codec_ok = codec.Append(boost::lexical_cast<int64_t>(input[i]));
-        } else if (colum_desc[i].type == ::rtidb::base::ColType::kUInt32) {
+        } else if (colum_desc[i].type == ::rtidb::codec::ColType::kUInt32) {
             codec_ok = codec.Append(boost::lexical_cast<uint32_t>(input[i]));
-        } else if (colum_desc[i].type == ::rtidb::base::ColType::kUInt64) {
+        } else if (colum_desc[i].type == ::rtidb::codec::ColType::kUInt64) {
             codec_ok = codec.Append(boost::lexical_cast<uint64_t>(input[i]));
-        } else if (colum_desc[i].type == ::rtidb::base::ColType::kFloat) {
+        } else if (colum_desc[i].type == ::rtidb::codec::ColType::kFloat) {
             codec_ok = codec.Append(boost::lexical_cast<float>(input[i]));
-        } else if (colum_desc[i].type == ::rtidb::base::ColType::kDouble) {
+        } else if (colum_desc[i].type == ::rtidb::codec::ColType::kDouble) {
             codec_ok = codec.Append(boost::lexical_cast<double>(input[i]));
-        } else if (colum_desc[i].type == ::rtidb::base::ColType::kString) {
+        } else if (colum_desc[i].type == ::rtidb::codec::ColType::kString) {
             codec_ok = codec.Append(input[i]);
         }
         if (!codec_ok) {
@@ -140,32 +143,33 @@ int MultiDimensionEncode(
 void MultiDimensionDecode(const std::string& value,
                           std::vector<std::string>& output,  // NOLINT
                           uint16_t column_num) {
-    rtidb::base::FlatArrayIterator fit(value.c_str(), value.size(), column_num);
+    rtidb::codec::FlatArrayIterator fit(value.c_str(), value.size(),
+                                        column_num);
     while (fit.Valid()) {
         std::string col;
-        if (fit.GetType() == ::rtidb::base::ColType::kString) {
+        if (fit.GetType() == ::rtidb::codec::ColType::kString) {
             fit.GetString(&col);
-        } else if (fit.GetType() == ::rtidb::base::ColType::kInt32) {
+        } else if (fit.GetType() == ::rtidb::codec::ColType::kInt32) {
             int32_t int32_col = 0;
             fit.GetInt32(&int32_col);
             col = boost::lexical_cast<std::string>(int32_col);
-        } else if (fit.GetType() == ::rtidb::base::ColType::kInt64) {
+        } else if (fit.GetType() == ::rtidb::codec::ColType::kInt64) {
             int64_t int64_col = 0;
             fit.GetInt64(&int64_col);
             col = boost::lexical_cast<std::string>(int64_col);
-        } else if (fit.GetType() == ::rtidb::base::ColType::kUInt32) {
+        } else if (fit.GetType() == ::rtidb::codec::ColType::kUInt32) {
             uint32_t uint32_col = 0;
             fit.GetUInt32(&uint32_col);
             col = boost::lexical_cast<std::string>(uint32_col);
-        } else if (fit.GetType() == ::rtidb::base::ColType::kUInt64) {
+        } else if (fit.GetType() == ::rtidb::codec::ColType::kUInt64) {
             uint64_t uint64_col = 0;
             fit.GetUInt64(&uint64_col);
             col = boost::lexical_cast<std::string>(uint64_col);
-        } else if (fit.GetType() == ::rtidb::base::ColType::kDouble) {
+        } else if (fit.GetType() == ::rtidb::codec::ColType::kDouble) {
             double double_col = 0.0;
             fit.GetDouble(&double_col);
             col = boost::lexical_cast<std::string>(double_col);
-        } else if (fit.GetType() == ::rtidb::base::ColType::kFloat) {
+        } else if (fit.GetType() == ::rtidb::codec::ColType::kFloat) {
             float float_col = 0.0f;
             fit.GetFloat(&float_col);
             col = boost::lexical_cast<std::string>(float_col);
@@ -609,7 +613,7 @@ TEST_F(TabletImplTest, GetRelationalTable) {
         ASSERT_EQ(148, response.code());
     }
     // put some key
-    ::rtidb::base::RowBuilder builder(schema_t);
+    ::rtidb::codec::RowBuilder builder(schema_t);
     uint32_t size = builder.CalTotalLength(15);
     std::string row;
     row.resize(size);
@@ -639,7 +643,7 @@ TEST_F(TabletImplTest, GetRelationalTable) {
     std::string tmp = "";
     tmp.resize(8);
     char* buf = const_cast<char*>(tmp.data());
-    ::rtidb::base::Convert(int64_val, buf);
+    ::rtidb::codec::Convert(int64_val, buf);
     cols->set_value(tmp);
     request.set_tid(id);
     request.set_pid(1);
@@ -647,8 +651,8 @@ TEST_F(TabletImplTest, GetRelationalTable) {
     tablet.BatchQuery(NULL, &request, &response, &closure);
     ASSERT_EQ(0, response.code());
     std::string res = response.pairs();
-    ::rtidb::base::RowView view(schema_t,
-                                reinterpret_cast<int8_t*>(&(res[0]) + 4), size);
+    ::rtidb::codec::RowView view(
+        schema_t, reinterpret_cast<int8_t*>(&(res[0]) + 4), size);
     int64_t val = 0;
     ASSERT_EQ(view.GetInt64(0, &val), 0);
     ASSERT_EQ(val, 10l);
@@ -706,7 +710,7 @@ TEST_F(TabletImplTest, GetRelationalTable) {
         std::string tmp = "";
         tmp.resize(8);
         char* buf = const_cast<char*>(tmp.data());
-        ::rtidb::base::Convert(int64_val, buf);
+        ::rtidb::codec::Convert(int64_val, buf);
         cols->set_value(tmp);
         batchQuery_request.set_tid(id);
         batchQuery_request.set_pid(1);
@@ -827,7 +831,7 @@ TEST_F(TabletImplTest, StringKeyRelationalTable) {
         ASSERT_EQ(148, response.code());
     }
     // put some key
-    ::rtidb::base::RowBuilder builder(schema_t);
+    ::rtidb::codec::RowBuilder builder(schema_t);
     for (int64_t i = 0; i < 10l; i++) {
         uint32_t size = builder.CalTotalLength(18);
         std::string row;
@@ -876,7 +880,7 @@ TEST_F(TabletImplTest, StringKeyRelationalTable) {
         memcpy(static_cast<void*>(&value_size), buf, 4);
         buf += 4;
 
-        ::rtidb::base::RowView view(
+        ::rtidb::codec::RowView view(
             schema_t, reinterpret_cast<int8_t*>(const_cast<char*>(buf)),
             value_size);
         char* ch = NULL;
@@ -904,7 +908,7 @@ TEST_F(TabletImplTest, StringKeyRelationalTable) {
     ASSERT_TRUE(traverse_response.is_finish());
     const char* buffer = NULL;
     buffer = traverse_response.pairs().data();
-    rtidb::base::RowView view(schema_t);
+    rtidb::codec::RowView view(schema_t);
     for (int64_t i = 0; i < traverse_response.count(); i++) {
         uint32_t value_size = 0;
         memcpy(static_cast<void*>(&value_size), buffer, 4);
@@ -1482,26 +1486,26 @@ TEST_F(TabletImplTest, CreateTableWithSchema) {
         ASSERT_EQ("", response0.schema());
     }
     {
-        std::vector<::rtidb::base::ColumnDesc> columns;
-        ::rtidb::base::ColumnDesc desc1;
-        desc1.type = ::rtidb::base::ColType::kString;
+        std::vector<::rtidb::codec::ColumnDesc> columns;
+        ::rtidb::codec::ColumnDesc desc1;
+        desc1.type = ::rtidb::codec::ColType::kString;
         desc1.name = "card";
         desc1.add_ts_idx = true;
         columns.push_back(desc1);
 
-        ::rtidb::base::ColumnDesc desc2;
-        desc2.type = ::rtidb::base::ColType::kDouble;
+        ::rtidb::codec::ColumnDesc desc2;
+        desc2.type = ::rtidb::codec::ColType::kDouble;
         desc2.name = "amt";
         desc2.add_ts_idx = false;
         columns.push_back(desc2);
 
-        ::rtidb::base::ColumnDesc desc3;
-        desc3.type = ::rtidb::base::ColType::kInt32;
+        ::rtidb::codec::ColumnDesc desc3;
+        desc3.type = ::rtidb::codec::ColType::kInt32;
         desc3.name = "apprv_cde";
         desc3.add_ts_idx = false;
         columns.push_back(desc3);
 
-        ::rtidb::base::SchemaCodec codec;
+        ::rtidb::codec::SchemaCodec codec;
         std::string buffer;
         codec.Encode(columns, buffer);
         uint32_t id = counter++;
@@ -1525,14 +1529,14 @@ TEST_F(TabletImplTest, CreateTableWithSchema) {
         tablet.GetTableSchema(NULL, &request0, &response0, &closure);
         ASSERT_TRUE(response0.schema().size() != 0);  // NOLINT
 
-        std::vector<::rtidb::base::ColumnDesc> ncolumns;
+        std::vector<::rtidb::codec::ColumnDesc> ncolumns;
         codec.Decode(response0.schema(), ncolumns);
         ASSERT_EQ(3, ncolumns.size());
-        ASSERT_EQ(::rtidb::base::ColType::kString, ncolumns[0].type);
+        ASSERT_EQ(::rtidb::codec::ColType::kString, ncolumns[0].type);
         ASSERT_EQ("card", ncolumns[0].name);
-        ASSERT_EQ(::rtidb::base::ColType::kDouble, ncolumns[1].type);
+        ASSERT_EQ(::rtidb::codec::ColType::kDouble, ncolumns[1].type);
         ASSERT_EQ("amt", ncolumns[1].name);
-        ASSERT_EQ(::rtidb::base::ColType::kInt32, ncolumns[2].type);
+        ASSERT_EQ(::rtidb::codec::ColType::kInt32, ncolumns[2].type);
         ASSERT_EQ("apprv_cde", ncolumns[2].name);
     }
 }
@@ -1541,26 +1545,26 @@ TEST_F(TabletImplTest, MultiGet) {
     TabletImpl tablet;
     tablet.Init();
     uint32_t id = counter++;
-    std::vector<::rtidb::base::ColumnDesc> columns;
-    ::rtidb::base::ColumnDesc desc1;
-    desc1.type = ::rtidb::base::ColType::kString;
+    std::vector<::rtidb::codec::ColumnDesc> columns;
+    ::rtidb::codec::ColumnDesc desc1;
+    desc1.type = ::rtidb::codec::ColType::kString;
     desc1.name = "pk";
     desc1.add_ts_idx = true;
     columns.push_back(desc1);
 
-    ::rtidb::base::ColumnDesc desc2;
-    desc2.type = ::rtidb::base::ColType::kString;
+    ::rtidb::codec::ColumnDesc desc2;
+    desc2.type = ::rtidb::codec::ColType::kString;
     desc2.name = "amt";
     desc2.add_ts_idx = true;
     columns.push_back(desc2);
 
-    ::rtidb::base::ColumnDesc desc3;
-    desc3.type = ::rtidb::base::ColType::kInt32;
+    ::rtidb::codec::ColumnDesc desc3;
+    desc3.type = ::rtidb::codec::ColType::kInt32;
     desc3.name = "apprv_cde";
     desc3.add_ts_idx = false;
     columns.push_back(desc3);
 
-    ::rtidb::base::SchemaCodec codec;
+    ::rtidb::codec::SchemaCodec codec;
     std::string buffer;
     codec.Encode(columns, buffer);
     ::rtidb::api::CreateTableRequest request;
@@ -6647,10 +6651,10 @@ TEST_F(TabletImplTest, DumpIndex) {
     column_key->add_ts_name("ts1");
     column_key->add_ts_name("ts2");
 
-    std::vector<::rtidb::base::ColumnDesc> columns;
-    ::rtidb::base::SchemaCodec::ConvertColumnDesc(table_meta->column_desc(),
-                                                  columns);
-    ::rtidb::base::SchemaCodec codec;
+    std::vector<::rtidb::codec::ColumnDesc> columns;
+    ::rtidb::codec::SchemaCodec::ConvertColumnDesc(table_meta->column_desc(),
+                                                   columns);
+    ::rtidb::codec::SchemaCodec codec;
     std::string buffer;
     codec.Encode(columns, buffer);
     table_meta->set_schema(buffer);

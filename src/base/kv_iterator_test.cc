@@ -4,8 +4,8 @@
 
 #include "base/kv_iterator.h"
 #include <iostream>
-#include "base/codec.h"
 #include "base/strings.h"
+#include "codec/codec.h"
 #include "gtest/gtest.h"
 #include "proto/tablet.pb.h"
 
@@ -30,7 +30,7 @@ TEST_F(KvIteratorTest, Iterator_ONE) {
     pairs->resize(17);
     char* data = reinterpret_cast<char*>(&((*pairs)[0]));
     DataBlock* db1 = new DataBlock(1, "hello", 5);
-    Encode(9527, db1, data, 0);
+    ::rtidb::codec::Encode(9527, db1, data, 0);
     KvIterator kv_it(response);
     ASSERT_TRUE(kv_it.Valid());
     ASSERT_EQ(9527, kv_it.GetKey());
@@ -47,8 +47,8 @@ TEST_F(KvIteratorTest, Iterator) {
     char* data = reinterpret_cast<char*>(&((*pairs)[0]));
     DataBlock* db1 = new DataBlock(1, "hello", 5);
     DataBlock* db2 = new DataBlock(1, "hell1", 5);
-    Encode(9527, db1, data, 0);
-    Encode(9528, db2, data, 17);
+    ::rtidb::codec::Encode(9527, db1, data, 0);
+    ::rtidb::codec::Encode(9528, db2, data, 17);
     KvIterator kv_it(response);
     ASSERT_TRUE(kv_it.Valid());
     ASSERT_EQ(9527, kv_it.GetKey());
@@ -70,8 +70,8 @@ TEST_F(KvIteratorTest, HasPK) {
     char* data = reinterpret_cast<char*>(&((*pairs)[0]));
     DataBlock* db1 = new DataBlock(1, "hello", 5);
     DataBlock* db2 = new DataBlock(1, "hell1", 5);
-    EncodeFull("test1", 9527, db1, data, 0);
-    EncodeFull("test2", 9528, db2, data, 26);
+    ::rtidb::codec::EncodeFull("test1", 9527, db1, data, 0);
+    ::rtidb::codec::EncodeFull("test2", 9528, db2, data, 26);
     KvIterator kv_it(response);
     ASSERT_TRUE(kv_it.Valid());
     ASSERT_STREQ("test1", kv_it.GetPK().c_str());

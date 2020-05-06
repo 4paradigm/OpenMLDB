@@ -9,18 +9,20 @@
 
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <unistd.h>
+
 #include <set>
 #include <utility>
+
 #include "base/count_down_latch.h"
 #include "base/display.h"
 #include "base/file_util.h"
-#include "base/flat_array.h"
 #include "base/hash.h"
 #include "base/kv_iterator.h"
 #include "base/slice.h"
 #include "base/strings.h"
 #include "base/taskpool.hpp"
 #include "boost/bind.hpp"
+#include "codec/flat_array.h"
 #include "gflags/gflags.h"
 #include "log/log_reader.h"
 #include "log/sequential_file.h"
@@ -625,7 +627,7 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(
     std::shared_ptr<Table> table, const ::rtidb::api::Manifest& manifest,
     WriteHandle* wh, const ::rtidb::common::ColumnKey& column_key, uint32_t idx,
     uint32_t partition_num,
-    const std::vector<::rtidb::base::ColumnDesc>& columns, uint32_t max_idx,
+    const std::vector<::rtidb::codec::ColumnDesc>& columns, uint32_t max_idx,
     const std::vector<uint32_t>& index_cols, uint64_t& count,
     uint64_t& expired_key_num, uint64_t& deleted_key_num) {
     uint32_t tid = table->GetId();
@@ -815,9 +817,9 @@ int MemTableSnapshot::ExtractIndexData(
     uint64_t last_term = 0;
 
     std::string schema = table->GetSchema();
-    std::vector<::rtidb::base::ColumnDesc> columns;
+    std::vector<::rtidb::codec::ColumnDesc> columns;
     if (!schema.empty()) {
-        ::rtidb::base::SchemaCodec codec;
+        ::rtidb::codec::SchemaCodec codec;
         codec.Decode(schema, columns);
     } else {
         PDLOG(INFO, "schema is empty. tid %u, pid %u", tid, pid);
@@ -1077,16 +1079,16 @@ int MemTableSnapshot::ExtractIndexData(
 bool MemTableSnapshot::PackNewIndexEntry(
     std::shared_ptr<Table> table,
     const std::vector<std::vector<uint32_t>>& index_cols,
-    const std::vector<::rtidb::base::ColumnDesc>& columns, uint32_t max_idx,
+    const std::vector<::rtidb::codec::ColumnDesc>& columns, uint32_t max_idx,
     uint32_t idx, uint32_t partition_num, ::rtidb::api::LogEntry* entry,
     uint32_t* index_pid) {
-    bool has_main_index = false;
     if (entry->dimensions_size() == 0) {
         std::string combined_key = entry->pk() + "|0";
         if (deleted_keys_.find(combined_key) != deleted_keys_.end()) {
             return false;
         }
     } else {
+        bool has_main_index = false;
         for (int pos = 0; pos < entry->dimensions_size(); pos++) {
             if (entry->dimensions(pos).idx() == 0) {
                 std::string combined_key = entry->dimensions(pos).key() + "|0";
@@ -1096,11 +1098,10 @@ bool MemTableSnapshot::PackNewIndexEntry(
                 break;
             }
         }
+        if (!has_main_index) {
+            return false;
+        }
     }
-    if (!has_main_index) {
-        return false;
-    }
-    std::set<uint32_t> pid_set;
     std::vector<std::string> row;
     if (table->GetCompressType() == ::rtidb::api::kSnappy) {
         std::string buff;
@@ -1114,6 +1115,7 @@ bool MemTableSnapshot::PackNewIndexEntry(
                                     entry->value().size(), row);
     }
     std::string key;
+    std::set<uint32_t> pid_set;
     for (uint32_t i = 0; i < index_cols.size(); ++i) {
         std::string cur_key;
         for (uint32_t j : index_cols[i]) {
@@ -1131,7 +1133,7 @@ bool MemTableSnapshot::PackNewIndexEntry(
             key = cur_key;
         }
     }
-    if (!pid_set.count(*index_pid)) {
+    if (pid_set.find(*index_pid) == pid_set.end()) {
         std::string entry_str;
         entry->clear_dimensions();
         ::rtidb::api::Dimension* dim = entry->add_dimensions();
@@ -1145,7 +1147,7 @@ bool MemTableSnapshot::PackNewIndexEntry(
 bool MemTableSnapshot::DumpSnapshotIndexData(
     std::shared_ptr<Table> table,
     const std::vector<std::vector<uint32_t>>& index_cols,
-    const std::vector<::rtidb::base::ColumnDesc>& columns, uint32_t max_idx,
+    const std::vector<::rtidb::codec::ColumnDesc>& columns, uint32_t max_idx,
     uint32_t idx, const std::vector<::rtidb::log::WriteHandle*>& whs,
     uint64_t* snapshot_offset) {
     uint32_t partition_num = whs.size();
@@ -1157,8 +1159,8 @@ bool MemTableSnapshot::DumpSnapshotIndexData(
     }
     *snapshot_offset = manifest.offset();
     std::string path = snapshot_path_ + "/" + manifest.name();
-    std::atomic<uint64_t> succ_cnt, failed_cnt;
-    succ_cnt = failed_cnt = 0;
+    uint64_t succ_cnt = 0;
+    uint64_t failed_cnt = 0;
     FILE* fd = fopen(path.c_str(), "rb");
     if (fd == NULL) {
         PDLOG(WARNING, "fail to open path %s for error %s", path.c_str(),
@@ -1178,23 +1180,21 @@ bool MemTableSnapshot::DumpSnapshotIndexData(
             PDLOG(INFO,
                   "read path %s for table tid %u pid %u completed, succ_cnt "
                   "%lu, failed_cnt %lu",
-                  path.c_str(), tid_, pid_,
-                  succ_cnt.load(std::memory_order_relaxed),
-                  failed_cnt.load(std::memory_order_relaxed));
+                  path.c_str(), tid_, pid_, succ_cnt, failed_cnt);
             break;
         }
         if (!status.ok()) {
             PDLOG(WARNING,
                   "fail to read record for tid %u, pid %u with error %s", tid_,
                   pid_, status.ToString().c_str());
-            failed_cnt.fetch_add(1, std::memory_order_relaxed);
+            failed_cnt++;
             continue;
         }
         entry_buff.assign(record.data(), record.size());
         if (!entry.ParseFromString(entry_buff)) {
             PDLOG(WARNING, "fail to parse record for tid %u, pid %u", tid_,
                   pid_);
-            failed_cnt.fetch_add(1, std::memory_order_relaxed);
+            failed_cnt++;
             continue;
         }
         uint32_t index_pid = 0;
@@ -1213,6 +1213,7 @@ bool MemTableSnapshot::DumpSnapshotIndexData(
                   index_pid, tid_, pid_);
             return false;
         }
+        succ_cnt++;
     }
     return true;
 }
@@ -1223,9 +1224,9 @@ bool MemTableSnapshot::DumpIndexData(
     uint32_t tid = table->GetId();
     uint32_t pid = table->GetPid();
     std::string schema = table->GetSchema();
-    std::vector<::rtidb::base::ColumnDesc> columns;
+    std::vector<::rtidb::codec::ColumnDesc> columns;
     if (!schema.empty()) {
-        ::rtidb::base::SchemaCodec codec;
+        ::rtidb::codec::SchemaCodec codec;
         codec.Decode(schema, columns);
     } else {
         PDLOG(INFO, "schema of table tid[%u] pid[%u]is empty", tid, pid);
@@ -1292,7 +1293,7 @@ bool MemTableSnapshot::DumpIndexData(
 bool MemTableSnapshot::DumpBinlogIndexData(
     std::shared_ptr<Table> table,
     const std::vector<std::vector<uint32_t>>& index_cols,
-    const std::vector<::rtidb::base::ColumnDesc>& columns, uint32_t max_idx,
+    const std::vector<::rtidb::codec::ColumnDesc>& columns, uint32_t max_idx,
     uint32_t idx, const std::vector<::rtidb::log::WriteHandle*>& whs,
     uint64_t snapshot_offset, uint64_t collected_offset) {
     ::rtidb::log::LogReader log_reader(log_part_, log_path_);

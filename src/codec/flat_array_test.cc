@@ -2,13 +2,13 @@
 // flat_array_test.cc
 // Copyright 2017 4paradigm.com
 
-#include "base/flat_array.h"
 #include <iostream>
 #include "base/strings.h"
+#include "codec/flat_array.h"
 #include "gtest/gtest.h"
 
 namespace rtidb {
-namespace base {
+namespace codec {
 
 class FlatArrayTest : public ::testing::Test {
  public:
@@ -151,7 +151,7 @@ TEST_F(FlatArrayTest, DateEncode) {
     std::cout << ::rtidb::base::DebugString(buffer) << std::endl;
 }
 
-}  // namespace base
+}  // namespace codec
 }  // namespace rtidb
 
 int main(int argc, char** argv) {

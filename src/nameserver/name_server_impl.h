@@ -21,10 +21,10 @@
 
 #include "base/hash.h"
 #include "base/random.h"
-#include "base/schema_codec.h"
 #include "client/bs_client.h"
 #include "client/ns_client.h"
 #include "client/tablet_client.h"
+#include "codec/schema_codec.h"
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
 #include "zk/dist_lock.h"
@@ -161,7 +161,7 @@ class NameServerImpl : public NameServer {
     void CreateTableInternel(
         GeneralResponse& response,  // NOLINT
         std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
-        const std::vector<::rtidb::base::ColumnDesc>& columns,
+        const std::vector<::rtidb::codec::ColumnDesc>& columns,
         uint64_t cur_term, uint32_t tid,
         std::shared_ptr<::rtidb::api::TaskInfo> task_ptr);
 
@@ -324,7 +324,7 @@ class NameServerImpl : public NameServer {
 
     int CreateTableOnTablet(
         std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
-        bool is_leader, const std::vector<::rtidb::base::ColumnDesc>& columns,
+        bool is_leader, const std::vector<::rtidb::codec::ColumnDesc>& columns,
         std::map<uint32_t, std::vector<std::string>>& endpoint_map,  // NOLINT
         uint64_t term);
 
