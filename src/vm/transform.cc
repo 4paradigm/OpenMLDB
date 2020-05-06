@@ -396,7 +396,7 @@ bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
         }
         case kPhysicalOpRequestJoin: {
             auto join_op = dynamic_cast<PhysicalRequestJoinNode*>(depend);
-            switch (join_op->join_type_) {
+            switch (join_op->join().join_type()) {
                 case node::kJoinTypeLeft:
                 case node::kJoinTypeLast: {
                     SchemasContext ctx(depend->GetOutputNameSchemaList());
@@ -448,9 +448,9 @@ bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
                             request_op, right, groups, orders,
                             w_ptr->GetStartOffset(), w_ptr->GetEndOffset());
                         node_manager_->RegisterNode(request_union_op);
-                        *output = new PhysicalJoinNode(
-                            request_union_op, join_op->producers()[1],
-                            join_op->join_type_, join_op->join_);
+                        *output = new PhysicalJoinNode(request_union_op,
+                                                       join_op->producers()[1],
+                                                       join_op->join_);
                         return true;
                     } else {
                         status.code = common::kPlanError;
@@ -1738,8 +1738,8 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
     PhysicalJoinNode* join_op =
         dynamic_cast<PhysicalJoinNode*>(in->producers()[0]);
 
-    if (node::kJoinTypeLeft != join_op->join_type_ &&
-        node::kJoinTypeLast != join_op->join_type_) {
+    if (node::kJoinTypeLeft != join_op->join().join_type() &&
+        node::kJoinTypeLast != join_op->join().join_type()) {
         // skip optimized for other join type
         return false;
     }
@@ -1760,9 +1760,8 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
             // 符合优化条件
             PhysicalGroupNode* new_group_op =
                 new PhysicalGroupNode(join_op->producers()[0], group_expr);
-            PhysicalJoinNode* new_join_op =
-                new PhysicalJoinNode(new_group_op, join_op->GetProducers()[1],
-                                     join_op->join_type_, join_op->join_);
+            PhysicalJoinNode* new_join_op = new PhysicalJoinNode(
+                new_group_op, join_op->GetProducers()[1], join_op->join_);
             node_manager_->RegisterNode(new_group_op);
             node_manager_->RegisterNode(new_join_op);
             *output = new_join_op;
@@ -1784,9 +1783,8 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
             PhysicalSortNode* new_order_op =
                 new PhysicalSortNode(join_op->producers()[0], sort_op->sort_);
             node_manager_->RegisterNode(new_order_op);
-            PhysicalJoinNode* new_join_op =
-                new PhysicalJoinNode(new_order_op, join_op->GetProducers()[1],
-                                     join_op->join_type_, join_op->join_);
+            PhysicalJoinNode* new_join_op = new PhysicalJoinNode(
+                new_order_op, join_op->GetProducers()[1], join_op->join_);
             node_manager_->RegisterNode(new_order_op);
             *output = new_join_op;
             return true;
@@ -1796,31 +1794,36 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
             if (kWindowAggregation != project_op->project_type_) {
                 return false;
             }
-            auto group_sort_op =
+            auto window_agg_op =
                 dynamic_cast<PhysicalWindowAggrerationNode*>(in);
             if (node::ExprListNullOrEmpty(
-                    group_sort_op->window_.partition_.keys_) &&
-                (nullptr == group_sort_op->window_.sort_.orders_ ||
+                window_agg_op->window_.partition_.keys_) &&
+                (nullptr == window_agg_op->window_.sort_.orders_ ||
                  node::ExprListNullOrEmpty(
-                     group_sort_op->window_.sort_.orders_->order_by_))) {
+                     window_agg_op->window_.sort_.orders_->order_by_))) {
                 LOG(WARNING) << "LeftJoin group and sort optimized skip: both "
                                 "order and groups are empty ";
+                return false;
             }
             if (!CheckExprListFromSchema(
-                    group_sort_op->window_.partition_.keys_,
+                window_agg_op->window_.partition_.keys_,
                     (join_op->GetProducers()[0]->output_schema_))) {
                 return false;
             }
 
             if (!CheckExprListFromSchema(
-                    group_sort_op->window_.sort_.orders_->order_by_,
+                window_agg_op->window_.sort_.orders_->order_by_,
                     (join_op->GetProducers()[0]->output_schema_))) {
                 return false;
             }
+
+            window_agg_op->SetProducer(0, join_op->producers()[0]);
+            window_agg_op->AddWindowJoin(join_op->producers()[1], join_op->join());
             // TODO(chenjing): window agg 和 left jion的优化需要支持window with
             // join
             *output = in;
-            return false;
+            Transform(in, output);
+            return true;
         }
         default: {
             return false;

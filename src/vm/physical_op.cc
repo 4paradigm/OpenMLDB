@@ -92,7 +92,8 @@ void PhysicalPartitionProviderNode::Print(std::ostream& output,
 void PhysicalGroupNode::Print(std::ostream& output,
                               const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(" << "group_" << group_.ToString() << ")";
+    output << "("
+           << "group_" << group_.ToString() << ")";
     output << "\n";
     PrintChildren(output, tab);
 }
@@ -161,17 +162,15 @@ void PhysicalWindowAggrerationNode::Print(std::ostream& output,
     PrintChildren(output, tab);
 }
 bool PhysicalWindowAggrerationNode::InitSchema() {
-    if (2 != producers_.size() || nullptr == producers_[0] ||
-        nullptr == producers_[1]) {
-        LOG(WARNING) << "InitSchema fail: producers size isn't 2 or left/right "
-                        "producer is null";
+    if (producers_.empty() || nullptr == producers_[0]) {
+        LOG(WARNING) << "InitSchema fail: producers is empty or"
+                        "producers[0] is null";
         return false;
     }
     output_schema_.CopyFrom(producers_[0]->output_schema_);
     for (auto pair : producers_[0]->GetOutputNameSchemaList()) {
         output_name_schema_list_.push_back(pair);
     }
-
     if (producers_.size() == 3 && nullptr != producers_[2]) {
         output_schema_.MergeFrom(producers_[2]->output_schema_);
         for (auto right_pair : producers_[2]->GetOutputNameSchemaList()) {
@@ -185,8 +184,7 @@ bool PhysicalWindowAggrerationNode::InitSchema() {
 void PhysicalJoinNode::Print(std::ostream& output,
                              const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(type=" << node::JoinTypeName(join_type_) << ", "
-           << join_.ToString();
+    output << "(" << join_.ToString();
     if (limit_cnt_ > 0) {
         output << ", limit=" << limit_cnt_;
     }
@@ -345,8 +343,7 @@ bool PhysicalRequestUnionNode::InitSchema() {
 void PhysicalRequestJoinNode::Print(std::ostream& output,
                                     const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(type=" << node::JoinTypeName(join_type_) << ", "
-           << join_.ToString();
+    output << "(" << join_.ToString();
     if (limit_cnt_ > 0) {
         output << ", limit=" << limit_cnt_;
     }

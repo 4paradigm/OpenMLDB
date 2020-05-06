@@ -471,6 +471,7 @@ class PhysicalGroupAggrerationNode : public PhysicalProjectNode {
 
 class PhysicalUnionNode;
 class PhysicalJoinNode;
+
 class Project {
  public:
     Project() {}
@@ -504,26 +505,32 @@ class WindowOp {
 };
 class Join {
  public:
-    Join()
-        : filter_(nullptr),
+    Join(const node::JoinType join_type)
+        : join_type_(join_type),
+          filter_(nullptr),
           left_key_(nullptr),
           right_key_(nullptr),
           index_key_(nullptr) {}
-    explicit Join(const node::ExprNode *condition)
-        : filter_(condition),
+    explicit Join(const node::JoinType join_type,
+                  const node::ExprNode *condition)
+        : join_type_(join_type),
+          filter_(condition),
           left_key_(nullptr),
           right_key_(nullptr),
           index_key_(nullptr) {}
-    Join(const node::ExprNode *condition, const node::ExprListNode *left_keys,
+    Join(const node::JoinType join_type, const node::ExprNode *condition,
+         const node::ExprListNode *left_keys,
          const node::ExprListNode *right_keys)
-        : filter_(condition),
+        : join_type_(join_type),
+          filter_(condition),
           left_key_(left_keys),
           right_key_(right_keys),
           index_key_(nullptr) {}
     virtual ~Join() {}
     const std::string ToString() const {
         std::ostringstream oss;
-        oss << "condition=" << node::ExprString(filter_.condition_)
+        oss << "type=" << node::JoinTypeName(join_type_)
+            << ", condition=" << node::ExprString(filter_.condition_)
             << ", left_keys=" << node::ExprString(left_key_.keys())
             << ", right_keys=" << node::ExprString(right_key_.keys())
             << ", index_keys=" << node::ExprString(index_key_.keys());
@@ -533,6 +540,28 @@ class Join {
     const Key &right_key() const { return right_key_; }
     const Key &index_key() const { return index_key_; }
     const ConditionFilter &filter() const { return filter_; }
+    const node::JoinType join_type() const { return join_type_; }
+    void set_left_schema(
+        const std::vector<std::pair<const std::string, const vm::Schema *>>
+            &left_schema) {
+        left_schema_ = left_schema;
+    }
+    void set_right_schema(
+        const std::vector<std::pair<const std::string, const vm::Schema *>>
+            &right_schema) {
+        right_schema_ = right_schema;
+    }
+    const std::vector<std::pair<const std::string, const vm::Schema *>>
+        &left_schema() const {
+        return left_schema_;
+    }
+    const std::vector<std::pair<const std::string, const vm::Schema *>>
+        &right_schema() const {
+        return right_schema_;
+    }
+    std::vector<std::pair<const std::string, const vm::Schema *>> left_schema_;
+    std::vector<std::pair<const std::string, const vm::Schema *>> right_schema_;
+    node::JoinType join_type_;
     ConditionFilter filter_;
     Key left_key_;
     Key right_key_;
@@ -557,26 +586,7 @@ class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
                               false),
           window_(partition, orders, start_offset, end_offset),
           union_(),
-          join_() {
-        output_type_ = kSchemaTypeTable;
-        InitSchema();
-        fn_infos_.push_back(&window_.partition_.fn_info_);
-        fn_infos_.push_back(&window_.sort_.fn_info_);
-        fn_infos_.push_back(&window_.range_.fn_info_);
-    }
-    PhysicalWindowAggrerationNode(
-        PhysicalOpNode *node, PhysicalOpNode *union_with,
-        PhysicalOpNode *join_with, const node::ExprListNode *partition,
-        const node::OrderByNode *orders, const std::string &fn_name,
-        const Schema &schema, const int64_t start_offset,
-        const int64_t end_offset)
-        : PhysicalProjectNode(node, fn_name, schema, kWindowAggregation, true,
-                              false),
-          window_(partition, orders, start_offset, end_offset),
-          union_(),
-          join_() {
-        AddProducer(union_with);
-        AddProducer(join_with);
+          window_joins_() {
         output_type_ = kSchemaTypeTable;
         InitSchema();
         fn_infos_.push_back(&window_.partition_.fn_info_);
@@ -589,9 +599,13 @@ class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
     static PhysicalWindowAggrerationNode *CastFrom(PhysicalOpNode *node);
     const bool Valid() { return true; }
     const WindowOp &window() const { return window_; }
+    void AddWindowJoin(PhysicalOpNode *right, const Join &join) {
+        window_joins_.push_back(join);
+        producers_.push_back(right);
+    }
     WindowOp window_;
     Union union_;
-    Join join_;
+    std::vector<Join> window_joins_;
 };
 
 class PhysicalJoinNode : public PhysicalBinaryNode {
@@ -599,8 +613,7 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
     PhysicalJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
                      const node::JoinType join_type)
         : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false, true),
-          join_type_(join_type),
-          join_() {
+          join_(join_type) {
         output_type_ = kSchemaTypeTable;
         InitSchema();
         fn_infos_.push_back(&join_.filter_.fn_info_);
@@ -612,8 +625,7 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
                      const node::JoinType join_type,
                      const node::ExprNode *condition)
         : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false, true),
-          join_type_(join_type),
-          join_(condition) {
+          join_(join_type, condition) {
         output_type_ = kSchemaTypeTable;
         InitSchema();
         fn_infos_.push_back(&join_.filter_.fn_info_);
@@ -627,19 +639,19 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
                      const node::ExprListNode *left_keys,
                      const node::ExprListNode *right_keys)
         : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false, true),
-          join_type_(join_type),
-          join_(condition, left_keys, right_keys) {
+          join_(join_type, condition, left_keys, right_keys) {
         output_type_ = kSchemaTypeTable;
         InitSchema();
+        join_.set_left_schema(left->GetOutputNameSchemaList());
+        join_.set_right_schema(right->GetOutputNameSchemaList());
         fn_infos_.push_back(&join_.filter_.fn_info_);
         fn_infos_.push_back(&join_.left_key_.fn_info_);
         fn_infos_.push_back(&join_.right_key_.fn_info_);
         fn_infos_.push_back(&join_.index_key_.fn_info_);
     }
     PhysicalJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
-                     const node::JoinType join_type, const Join &join)
+                     const Join &join)
         : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false, true),
-          join_type_(join_type),
           join_(join) {
         output_type_ = kSchemaTypeTable;
         InitSchema();
@@ -652,10 +664,8 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
     bool InitSchema() override;
     virtual void Print(std::ostream &output, const std::string &tab) const;
     static PhysicalJoinNode *CastFrom(PhysicalOpNode *node);
-    const node::JoinType join_type() const { return join_type_; }
     const bool Valid() { return true; }
     const Join &join() const { return join_; }
-    const node::JoinType join_type_;
     Join join_;
 };
 class PhysicalRequestJoinNode : public PhysicalBinaryNode {
@@ -663,8 +673,7 @@ class PhysicalRequestJoinNode : public PhysicalBinaryNode {
     PhysicalRequestJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
                             const node::JoinType join_type)
         : PhysicalBinaryNode(left, right, kPhysicalOpRequestJoin, false, true),
-          join_type_(join_type),
-          join_() {
+          join_(join_type) {
         output_type_ = kSchemaTypeRow;
         InitSchema();
         fn_infos_.push_back(&join_.filter_.fn_info_);
@@ -676,8 +685,7 @@ class PhysicalRequestJoinNode : public PhysicalBinaryNode {
                             const node::JoinType join_type,
                             const node::ExprNode *condition)
         : PhysicalBinaryNode(left, right, kPhysicalOpRequestJoin, false, true),
-          join_type_(join_type),
-          join_(condition) {
+          join_(join_type, condition) {
         output_type_ = kSchemaTypeRow;
         InitSchema();
         fn_infos_.push_back(&join_.filter_.fn_info_);
@@ -691,8 +699,7 @@ class PhysicalRequestJoinNode : public PhysicalBinaryNode {
                             const node::ExprListNode *left_keys,
                             const node::ExprListNode *right_keys)
         : PhysicalBinaryNode(left, right, kPhysicalOpRequestJoin, false, true),
-          join_type_(join_type),
-          join_(condition, left_keys, right_keys) {
+          join_(join_type, condition, left_keys, right_keys) {
         output_type_ = kSchemaTypeRow;
         InitSchema();
         fn_infos_.push_back(&join_.filter_.fn_info_);
@@ -703,9 +710,7 @@ class PhysicalRequestJoinNode : public PhysicalBinaryNode {
     virtual ~PhysicalRequestJoinNode() {}
     bool InitSchema() override;
     virtual void Print(std::ostream &output, const std::string &tab) const;
-    const node::JoinType join_type() const { return join_type_; }
     const Join &join() const { return join_; }
-    const node::JoinType join_type_;
     Join join_;
 };
 class PhysicalUnionNode : public PhysicalBinaryNode {
