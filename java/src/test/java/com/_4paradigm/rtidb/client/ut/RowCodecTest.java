@@ -415,21 +415,21 @@ public class RowCodecTest {
                 schema.add(col3);
             }
             RowBuilder builder = new RowBuilder(schema);
-            int size = builder.calTotalLength(1);
+            int size = builder.calTotalLength(9);
             ByteBuffer buffer = ByteBuffer.allocate(size).order(ByteOrder.LITTLE_ENDIAN);
             buffer = builder.setBuffer(buffer, size);
             Assert.assertTrue(builder.appendNULL());
             Assert.assertTrue(builder.appendBool(false));
-            Assert.assertTrue(builder.appendString("1"));
+            Assert.assertTrue(builder.appendString("123456789"));
 
             RowView rowView = new RowView(schema, buffer, size);
             Assert.assertTrue(rowView.isNull(0));
             Assert.assertEquals(rowView.getBool(1), new Boolean(false));
-            Assert.assertEquals(rowView.getString(2), "1");
+            Assert.assertEquals(rowView.getString(2), "123456789");
 
             RowView rowView2 = new RowView(schema);
             Object value = rowView2.getValue(buffer, 2, DataType.Varchar);
-            Assert.assertEquals((String) value, "1");
+            Assert.assertEquals((String) value, "123456789");
         } catch (TabletException e) {
             Assert.assertTrue(false);
         }
