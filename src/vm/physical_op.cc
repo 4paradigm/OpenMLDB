@@ -171,7 +171,6 @@ bool PhysicalWindowAggrerationNode::InitSchema() {
     for (auto pair : producers_[0]->GetOutputNameSchemaList()) {
         output_name_schema_list_.push_back(pair);
     }
-
     if (producers_.size() == 3 && nullptr != producers_[2]) {
         output_schema_.MergeFrom(producers_[2]->output_schema_);
         for (auto right_pair : producers_[2]->GetOutputNameSchemaList()) {
@@ -185,8 +184,7 @@ bool PhysicalWindowAggrerationNode::InitSchema() {
 void PhysicalJoinNode::Print(std::ostream& output,
                              const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(type=" << node::JoinTypeName(join_type_) << ", "
-           << join_.ToString();
+    output << "(" << join_.ToString();
     if (limit_cnt_ > 0) {
         output << ", limit=" << limit_cnt_;
     }
@@ -345,8 +343,7 @@ bool PhysicalRequestUnionNode::InitSchema() {
 void PhysicalRequestJoinNode::Print(std::ostream& output,
                                     const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(type=" << node::JoinTypeName(join_type_) << ", "
-           << join_.ToString();
+    output << "(" << join_.ToString();
     if (limit_cnt_ > 0) {
         output << ", limit=" << limit_cnt_;
     }

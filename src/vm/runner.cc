@@ -143,7 +143,7 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 return nullptr;
             }
             auto op = dynamic_cast<const PhysicalRequestJoinNode*>(node);
-            switch (op->join_type_) {
+            switch (op->join().join_type()) {
                 case node::kJoinTypeLast: {
                     auto runner = new RequestLastJoinRunner(
                         id_++, node->GetOutputNameSchemaList(),
@@ -163,7 +163,7 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 default: {
                     status.code = common::kOpGenError;
                     status.msg = "can't handle join type " +
-                                 node::JoinTypeName(op->join_type_);
+                                 node::JoinTypeName(op->join().join_type());
                     LOG(WARNING) << status.msg;
                     return nullptr;
                 }
@@ -179,7 +179,7 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 return nullptr;
             }
             auto op = dynamic_cast<const PhysicalJoinNode*>(node);
-            switch (op->join_type_) {
+            switch (op->join().join_type()) {
                 case node::kJoinTypeLast: {
                     auto runner = new LastJoinRunner(
                         id_++, node->GetOutputNameSchemaList(),
@@ -191,7 +191,7 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 default: {
                     status.code = common::kOpGenError;
                     status.msg = "can't handle join type " +
-                                 node::JoinTypeName(op->join_type_);
+                                 node::JoinTypeName(op->join().join_type());
                     LOG(WARNING) << status.msg;
                     return nullptr;
                 }
