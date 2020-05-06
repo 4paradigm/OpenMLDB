@@ -30,6 +30,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.nio.ByteBuffer;
+import java.sql.Date;
 import java.sql.Timestamp;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
@@ -334,6 +335,13 @@ public class TableSyncClientTest extends TestCaseBase {
         }
         {
             com._4paradigm.rtidb.client.schema.ColumnDesc col = new com._4paradigm.rtidb.client.schema.ColumnDesc();
+            col.setName("sex");
+            col.setDataType(DataType.Bool);
+            col.setNotNull(true);
+            list.add(col);
+        }
+        {
+            com._4paradigm.rtidb.client.schema.ColumnDesc col = new com._4paradigm.rtidb.client.schema.ColumnDesc();
             col.setName("attribute");
             col.setDataType(DataType.Varchar);
             col.setNotNull(true);
@@ -363,14 +371,14 @@ public class TableSyncClientTest extends TestCaseBase {
         {
             com._4paradigm.rtidb.client.schema.ColumnDesc col = new com._4paradigm.rtidb.client.schema.ColumnDesc();
             col.setName("attribute2");
-            col.setDataType(DataType.Double);
+            col.setDataType(DataType.Date);
             col.setNotNull(true);
             list.add(col);
         }
         {
             com._4paradigm.rtidb.client.schema.ColumnDesc col = new com._4paradigm.rtidb.client.schema.ColumnDesc();
-            col.setName("memory2");
-            col.setDataType(DataType.Double);
+            col.setName("ts");
+            col.setDataType(DataType.Timestamp);
             col.setNotNull(false);
             list.add(col);
         }
@@ -384,6 +392,7 @@ public class TableSyncClientTest extends TestCaseBase {
             List<String> colNameList = new ArrayList<>();
             colNameList.add("name");
             colNameList.add("id");
+            colNameList.add("sex");
             indexDef.setColNameList(colNameList);
             indexs.add(indexDef);
         }
@@ -403,7 +412,7 @@ public class TableSyncClientTest extends TestCaseBase {
             indexDef.setIndexType(IndexType.NoUnique);
             List<String> colNameList = new ArrayList<>();
             colNameList.add("memory");
-            colNameList.add("memory2");
+            colNameList.add("ts");
             indexDef.setColNameList(colNameList);
             indexs.add(indexDef);
         }
@@ -1469,48 +1478,52 @@ public class TableSyncClientTest extends TestCaseBase {
             Map data = new HashMap<String, Object>();
             data.put("id", 11l);
             data.put("name", "n1");
+            data.put("sex", true);
             data.put("attribute", "a1");
             data.put("image", "i1");
             data.put("memory", 11);
             data.put("price", 11.1);
-            data.put("attribute2", 11.1);
-            data.put("memory2", 11.1);
+            data.put("attribute2", new Date(2020, 5, 1));
+            data.put("ts", new DateTime(1588756531));
             arr[0] = data;
         }
         {
             Map data = new HashMap<String, Object>();
             data.put("id", 12l);
             data.put("name", "n2");
+            data.put("sex", false);
             data.put("attribute", "a2");
             data.put("image", "i2");
             data.put("memory", 12);
             data.put("price", 12.2);
-            data.put("attribute2", 12.2);
-            data.put("memory2", 12.2);
+            data.put("attribute2", new Date(2020, 5, 2));
+            data.put("ts", new DateTime(1588756532));
             arr[1] = data;
         }
         {
             Map data = new HashMap<String, Object>();
             data.put("id", 13l);
             data.put("name", "n3");
+            data.put("sex", true);
             data.put("attribute", "a3");
             data.put("image", "i3");
             data.put("memory", 12);
             data.put("price", 13.3);
-            data.put("attribute2", 13.3);
-            data.put("memory2", 12.2);
+            data.put("attribute2", new Date(2020, 5, 3));
+            data.put("ts", new DateTime(1588756532));
             arr[2] = data;
         }
         {
             Map data = new HashMap<String, Object>();
             data.put("id", 14l);
             data.put("name", "n4");
+            data.put("sex", false);
             data.put("attribute", "a4");
             data.put("image", "i4");
             data.put("memory", 14);
             data.put("price", 14.4);
-            data.put("attribute2", 14.4);
-            data.put("memory2", 14.4);
+            data.put("attribute2", new Date(2020, 5, 4));
+            data.put("ts", new DateTime(1588756534));
             arr[3] = data;
         }
 
@@ -1519,40 +1532,41 @@ public class TableSyncClientTest extends TestCaseBase {
             Map<String, Object> conditionColumns = new HashMap<>();
             conditionColumns.put("id", 11l);
             conditionColumns.put("name", "n1");
+            conditionColumns.put("sex", true);
             list.add(conditionColumns);
         }
         {
             Map<String, Object> conditionColumns = new HashMap<>();
             conditionColumns.put("attribute", "a1");
-            conditionColumns.put("attribute2", 11.1);
+            conditionColumns.put("attribute2", new Date(2020, 5, 1));
             list.add(conditionColumns);
         }
         {
             Map<String, Object> conditionColumns = new HashMap<>();
             conditionColumns.put("memory", 12);
-            conditionColumns.put("memory2", 12.2);
+            conditionColumns.put("ts", new DateTime(1588756532));
             list.add(conditionColumns);
         }
         {
             Map<String, Object> conditionColumns = new HashMap<>();
             conditionColumns.put("id", 15l);
             conditionColumns.put("name", "n1");
+            conditionColumns.put("sex", true);
             list.add(conditionColumns);
         }
         {
             Map<String, Object> conditionColumns = new HashMap<>();
             conditionColumns.put("attribute", "a5");
-            conditionColumns.put("attribute2", 11.1);
+            conditionColumns.put("attribute2", new Date(2020, 5, 1));
             list.add(conditionColumns);
         }
         {
             Map<String, Object> conditionColumns = new HashMap<>();
             conditionColumns.put("memory", 12);
-            conditionColumns.put("memory2", 15.5);
+            conditionColumns.put("ts", new DateTime(1588756535));
             list.add(conditionColumns);
         }
 
-        System.out.println("come in");
         return new Object[][]{
                 new Object[]{createRelationalWithCombineKeyArgs(arr, list, new Object[]{1, 1, 2, 3, 1, 1, 2})}
         };
@@ -1567,7 +1581,7 @@ public class TableSyncClientTest extends TestCaseBase {
         String name = args.tableDesc.getName();
         try {
             List<com._4paradigm.rtidb.client.schema.ColumnDesc> schema = tableSyncClient.getSchema(name);
-            Assert.assertEquals(schema.size(), 8);
+            Assert.assertEquals(schema.size(), 9);
             //put
             WriteOption wo = new WriteOption();
             ok = tableSyncClient.put(name, (Map) (args.row[0]), wo);
@@ -1589,15 +1603,16 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertTrue(it.valid());
                 Assert.assertEquals(it.getCount(), args.expected[0]);
                 queryMap = it.getDecodedValue();
-                Assert.assertEquals(queryMap.size(), 8);
+                Assert.assertEquals(queryMap.size(), 9);
                 Assert.assertEquals(queryMap.get("id"), 11l);
                 Assert.assertEquals(queryMap.get("name"), "n1");
+                Assert.assertEquals(queryMap.get("sex"), true);
                 Assert.assertEquals(queryMap.get("attribute"), "a1");
                 Assert.assertEquals(queryMap.get("image"), "i1");
                 Assert.assertEquals(queryMap.get("memory"), 11);
                 Assert.assertEquals(queryMap.get("price"), 11.1);
-                Assert.assertEquals(queryMap.get("attribute2"), 11.1);
-                Assert.assertEquals(queryMap.get("memory2"), 11.1);
+                Assert.assertEquals(queryMap.get("attribute2"), new Date(2020, 5, 1));
+                Assert.assertEquals(queryMap.get("ts"), new DateTime(1588756531));
             }
             {
                 //query unique
@@ -1606,15 +1621,16 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertTrue(it.valid());
                 Assert.assertEquals(it.getCount(), args.expected[1]);
                 queryMap = it.getDecodedValue();
-                Assert.assertEquals(queryMap.size(), 8);
+                Assert.assertEquals(queryMap.size(), 9);
                 Assert.assertEquals(queryMap.get("id"), 11l);
                 Assert.assertEquals(queryMap.get("name"), "n1");
+                Assert.assertEquals(queryMap.get("sex"), true);
                 Assert.assertEquals(queryMap.get("attribute"), "a1");
                 Assert.assertEquals(queryMap.get("image"), "i1");
                 Assert.assertEquals(queryMap.get("memory"), 11);
                 Assert.assertEquals(queryMap.get("price"), 11.1);
-                Assert.assertEquals(queryMap.get("attribute2"), 11.1);
-                Assert.assertEquals(queryMap.get("memory2"), 11.1);
+                Assert.assertEquals(queryMap.get("attribute2"), new Date(2020, 5, 1));
+                Assert.assertEquals(queryMap.get("ts"), new DateTime(1588756531));
             }
             {
                 //query no unique
@@ -1623,28 +1639,30 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertTrue(it.valid());
                 Assert.assertEquals(it.getCount(), args.expected[2]);
                 queryMap = it.getDecodedValue();
-                Assert.assertEquals(queryMap.size(), 8);
+                Assert.assertEquals(queryMap.size(), 9);
                 Assert.assertEquals(queryMap.get("id"), 12l);
                 Assert.assertEquals(queryMap.get("name"), "n2");
+                Assert.assertEquals(queryMap.get("sex"), false);
                 Assert.assertEquals(queryMap.get("attribute"), "a2");
                 Assert.assertEquals(queryMap.get("image"), "i2");
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 12.2);
-                Assert.assertEquals(queryMap.get("attribute2"), 12.2);
-                Assert.assertEquals(queryMap.get("memory2"), 12.2);
+                Assert.assertEquals(queryMap.get("attribute2"), new Date(2020, 5, 2));
+                Assert.assertEquals(queryMap.get("ts"), new DateTime(1588756532));
 
                 it.next();
                 Assert.assertTrue(it.valid());
                 queryMap = it.getDecodedValue();
-                Assert.assertEquals(queryMap.size(), 8);
+                Assert.assertEquals(queryMap.size(), 9);
                 Assert.assertEquals(queryMap.get("id"), 13l);
                 Assert.assertEquals(queryMap.get("name"), "n3");
+                Assert.assertEquals(queryMap.get("sex"), true);
                 Assert.assertEquals(queryMap.get("attribute"), "a3");
                 Assert.assertEquals(queryMap.get("image"), "i3");
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 13.3);
-                Assert.assertEquals(queryMap.get("attribute2"), 13.3);
-                Assert.assertEquals(queryMap.get("memory2"), 12.2);
+                Assert.assertEquals(queryMap.get("attribute2"), new Date(2020, 5, 3));
+                Assert.assertEquals(queryMap.get("ts"), new DateTime(1588756532));
 
                 it.next();
                 Assert.assertFalse(it.valid());
@@ -1664,41 +1682,44 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertTrue(it.valid());
                 Assert.assertEquals(it.getCount(), args.expected[3]);
                 queryMap = it.getDecodedValue();
-                Assert.assertEquals(queryMap.size(), 8);
+                Assert.assertEquals(queryMap.size(), 9);
                 Assert.assertEquals(queryMap.get("id"), 11l);
                 Assert.assertEquals(queryMap.get("name"), "n1");
+                Assert.assertEquals(queryMap.get("sex"), true);
                 Assert.assertEquals(queryMap.get("attribute"), "a1");
                 Assert.assertEquals(queryMap.get("image"), "i1");
                 Assert.assertEquals(queryMap.get("memory"), 11);
                 Assert.assertEquals(queryMap.get("price"), 11.1);
-                Assert.assertEquals(queryMap.get("attribute2"), 11.1);
-                Assert.assertEquals(queryMap.get("memory2"), 11.1);
+                Assert.assertEquals(queryMap.get("attribute2"), new Date(2020, 5, 1));
+                Assert.assertEquals(queryMap.get("ts"), new DateTime(1588756531));
 
                 it.next();
                 Assert.assertTrue(it.valid());
                 queryMap = it.getDecodedValue();
-                Assert.assertEquals(queryMap.size(), 8);
+                Assert.assertEquals(queryMap.size(), 9);
                 Assert.assertEquals(queryMap.get("id"), 12l);
                 Assert.assertEquals(queryMap.get("name"), "n2");
+                Assert.assertEquals(queryMap.get("sex"), false);
                 Assert.assertEquals(queryMap.get("attribute"), "a2");
                 Assert.assertEquals(queryMap.get("image"), "i2");
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 12.2);
-                Assert.assertEquals(queryMap.get("attribute2"), 12.2);
-                Assert.assertEquals(queryMap.get("memory2"), 12.2);
+                Assert.assertEquals(queryMap.get("attribute2"), new Date(2020, 5, 2));
+                Assert.assertEquals(queryMap.get("ts"), new DateTime(1588756532));
 
                 it.next();
                 Assert.assertTrue(it.valid());
                 queryMap = it.getDecodedValue();
-                Assert.assertEquals(queryMap.size(), 8);
+                Assert.assertEquals(queryMap.size(), 9);
                 Assert.assertEquals(queryMap.get("id"), 13l);
                 Assert.assertEquals(queryMap.get("name"), "n3");
+                Assert.assertEquals(queryMap.get("sex"), true);
                 Assert.assertEquals(queryMap.get("attribute"), "a3");
                 Assert.assertEquals(queryMap.get("image"), "i3");
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 13.3);
-                Assert.assertEquals(queryMap.get("attribute2"), 13.3);
-                Assert.assertEquals(queryMap.get("memory2"), 12.2);
+                Assert.assertEquals(queryMap.get("attribute2"), new Date(2020, 5, 3));
+                Assert.assertEquals(queryMap.get("ts"), new DateTime(1588756532));
 
                 it.next();
                 Assert.assertFalse(it.valid());
@@ -1719,15 +1740,16 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(it.getCount(), args.expected[4]);
 
                 queryMap = it.getDecodedValue();
-                Assert.assertEquals(queryMap.size(), 8);
+                Assert.assertEquals(queryMap.size(), 9);
                 Assert.assertEquals(queryMap.get("id"), 11l);
                 Assert.assertEquals(queryMap.get("name"), "n1");
+                Assert.assertEquals(queryMap.get("sex"), true);
                 Assert.assertEquals(queryMap.get("attribute"), "a1");
                 Assert.assertEquals(queryMap.get("image"), "i5");
                 Assert.assertEquals(queryMap.get("memory"), 11);
                 Assert.assertEquals(queryMap.get("price"), 15.5);
-                Assert.assertEquals(queryMap.get("attribute2"), 11.1);
-                Assert.assertEquals(queryMap.get("memory2"), 11.1);
+                Assert.assertEquals(queryMap.get("attribute2"), new Date(2020, 5, 1));
+                Assert.assertEquals(queryMap.get("ts"), new DateTime(1588756531));
             }
             //update by unique
             {
@@ -1744,15 +1766,16 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(it.getCount(), args.expected[5]);
 
                 queryMap = it.getDecodedValue();
-                Assert.assertEquals(queryMap.size(), 8);
+                Assert.assertEquals(queryMap.size(), 9);
                 Assert.assertEquals(queryMap.get("id"), 11l);
                 Assert.assertEquals(queryMap.get("name"), "n1");
+                Assert.assertEquals(queryMap.get("sex"), true);
                 Assert.assertEquals(queryMap.get("attribute"), "a1");
                 Assert.assertEquals(queryMap.get("image"), "i6");
                 Assert.assertEquals(queryMap.get("memory"), 11);
                 Assert.assertEquals(queryMap.get("price"), 16.6);
-                Assert.assertEquals(queryMap.get("attribute2"), 11.1);
-                Assert.assertEquals(queryMap.get("memory2"), 11.1);
+                Assert.assertEquals(queryMap.get("attribute2"), new Date(2020, 5, 1));
+                Assert.assertEquals(queryMap.get("ts"), new DateTime(1588756531));
             }
             //update by no unique
             {
@@ -1769,28 +1792,30 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(it.getCount(), args.expected[6]);
 
                 queryMap = it.getDecodedValue();
-                Assert.assertEquals(queryMap.size(), 8);
+                Assert.assertEquals(queryMap.size(), 9);
                 Assert.assertEquals(queryMap.get("id"), 12l);
                 Assert.assertEquals(queryMap.get("name"), "n2");
+                Assert.assertEquals(queryMap.get("sex"), false);
                 Assert.assertEquals(queryMap.get("attribute"), "a2");
                 Assert.assertEquals(queryMap.get("image"), "i7");
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 17.7);
-                Assert.assertEquals(queryMap.get("attribute2"), 12.2);
-                Assert.assertEquals(queryMap.get("memory2"), 12.2);
+                Assert.assertEquals(queryMap.get("attribute2"), new Date(2020, 5, 2));
+                Assert.assertEquals(queryMap.get("ts"), new DateTime(1588756532));
 
                 it.next();
                 Assert.assertTrue(it.valid());
                 queryMap = it.getDecodedValue();
-                Assert.assertEquals(queryMap.size(), 8);
+                Assert.assertEquals(queryMap.size(), 9);
                 Assert.assertEquals(queryMap.get("id"), 13l);
                 Assert.assertEquals(queryMap.get("name"), "n3");
+                Assert.assertEquals(queryMap.get("sex"), true);
                 Assert.assertEquals(queryMap.get("attribute"), "a3");
                 Assert.assertEquals(queryMap.get("image"), "i7");
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 17.7);
-                Assert.assertEquals(queryMap.get("attribute2"), 13.3);
-                Assert.assertEquals(queryMap.get("memory2"), 12.2);
+                Assert.assertEquals(queryMap.get("attribute2"), new Date(2020, 5, 3));
+                Assert.assertEquals(queryMap.get("ts"), new DateTime(1588756532));
 
                 it.next();
                 Assert.assertFalse(it.valid());
@@ -1859,7 +1884,7 @@ public class TableSyncClientTest extends TestCaseBase {
         String name = args.tableDesc.getName();
         try {
             List<com._4paradigm.rtidb.client.schema.ColumnDesc> schema = tableSyncClient.getSchema(name);
-            Assert.assertEquals(schema.size(), 8);
+            Assert.assertEquals(schema.size(), 9);
             //put
             WriteOption wo = new WriteOption();
             ok = tableSyncClient.put(name, (Map) (args.row[0]), wo);
@@ -1893,15 +1918,16 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(it.getCount(), 1);
 
                 queryMap = it.getDecodedValue();
-                Assert.assertEquals(queryMap.size(), 8);
+                Assert.assertEquals(queryMap.size(), 9);
                 Assert.assertEquals(queryMap.get("id"), 15l);
                 Assert.assertEquals(queryMap.get("name"), "n1");
+                Assert.assertEquals(queryMap.get("sex"), true);
                 Assert.assertEquals(queryMap.get("attribute"), "a1");
                 Assert.assertEquals(queryMap.get("image"), "i5");
                 Assert.assertEquals(queryMap.get("memory"), 11);
                 Assert.assertEquals(queryMap.get("price"), 15.5);
-                Assert.assertEquals(queryMap.get("attribute2"), 11.1);
-                Assert.assertEquals(queryMap.get("memory2"), 11.1);
+                Assert.assertEquals(queryMap.get("attribute2"), new Date(2020, 5, 1));
+                Assert.assertEquals(queryMap.get("ts"), new DateTime(1588756531));
             }
             //update by unique
             {
@@ -1909,6 +1935,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 valueColumns.put("attribute", "a5");
                 valueColumns.put("price", 16.6);
                 valueColumns.put("image", "i6");
+                valueColumns.put("sex", false);
                 ok = tableSyncClient.update(name, (Map) args.conditionList.get(1), valueColumns, wo);
                 Assert.assertTrue(ok);
 
@@ -1919,15 +1946,16 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(it.getCount(), 1);
 
                 queryMap = it.getDecodedValue();
-                Assert.assertEquals(queryMap.size(), 8);
+                Assert.assertEquals(queryMap.size(), 9);
                 Assert.assertEquals(queryMap.get("id"), 15l);
                 Assert.assertEquals(queryMap.get("name"), "n1");
+                Assert.assertEquals(queryMap.get("sex"), false);
                 Assert.assertEquals(queryMap.get("attribute"), "a5");
                 Assert.assertEquals(queryMap.get("image"), "i6");
                 Assert.assertEquals(queryMap.get("memory"), 11);
                 Assert.assertEquals(queryMap.get("price"), 16.6);
-                Assert.assertEquals(queryMap.get("attribute2"), 11.1);
-                Assert.assertEquals(queryMap.get("memory2"), 11.1);
+                Assert.assertEquals(queryMap.get("attribute2"), new Date(2020, 5, 1));
+                Assert.assertEquals(queryMap.get("ts"), new DateTime(1588756531));
             }
             //update by no unique
             {
@@ -1935,7 +1963,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 valueColumns.put("name", "n5");
                 valueColumns.put("price", 17.7);
                 valueColumns.put("image", "i7");
-                valueColumns.put("memory2", 15.5);
+                valueColumns.put("ts", new DateTime(1588756535));
                 ok = tableSyncClient.update(name, (Map) args.conditionList.get(2), valueColumns, wo);
                 Assert.assertTrue(ok);
 
@@ -1946,28 +1974,30 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(it.getCount(), args.expected[6]);
 
                 queryMap = it.getDecodedValue();
-                Assert.assertEquals(queryMap.size(), 8);
+                Assert.assertEquals(queryMap.size(), 9);
                 Assert.assertEquals(queryMap.get("id"), 12l);
                 Assert.assertEquals(queryMap.get("name"), "n5");
+                Assert.assertEquals(queryMap.get("sex"), false);
                 Assert.assertEquals(queryMap.get("attribute"), "a2");
                 Assert.assertEquals(queryMap.get("image"), "i7");
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 17.7);
-                Assert.assertEquals(queryMap.get("attribute2"), 12.2);
-                Assert.assertEquals(queryMap.get("memory2"), 15.5);
+                Assert.assertEquals(queryMap.get("attribute2"), new Date(2020, 5, 2));
+                Assert.assertEquals(queryMap.get("ts"), new DateTime(1588756535));
 
                 it.next();
                 Assert.assertTrue(it.valid());
                 queryMap = it.getDecodedValue();
-                Assert.assertEquals(queryMap.size(), 8);
+                Assert.assertEquals(queryMap.size(), 9);
                 Assert.assertEquals(queryMap.get("id"), 13l);
                 Assert.assertEquals(queryMap.get("name"), "n5");
+                Assert.assertEquals(queryMap.get("sex"), true);
                 Assert.assertEquals(queryMap.get("attribute"), "a3");
                 Assert.assertEquals(queryMap.get("image"), "i7");
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 17.7);
-                Assert.assertEquals(queryMap.get("attribute2"), 13.3);
-                Assert.assertEquals(queryMap.get("memory2"), 15.5);
+                Assert.assertEquals(queryMap.get("attribute2"), new Date(2020, 5, 3));
+                Assert.assertEquals(queryMap.get("ts"), new DateTime(1588756535));
 
                 it.next();
                 Assert.assertFalse(it.valid());
