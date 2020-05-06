@@ -283,8 +283,8 @@ class WindowPlanNode : public LeafPlanNode {
 
  private:
     int id;
-    std::string name;
     bool instance_not_in_window_;
+    std::string name;
     int64_t start_offset_;
     int64_t end_offset_;
     bool is_range_between_;

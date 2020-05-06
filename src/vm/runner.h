@@ -37,7 +37,6 @@ class FnGenerator {
     explicit FnGenerator(const FnInfo& info)
         : fn_(info.fn_), fn_schema_(info.fn_schema_), row_view_(fn_schema_) {
         std::vector<int32_t> idxs;
-        int32_t idx = 0;
         for (int32_t idx = 0; idx < info.fn_schema_.size(); idx++) {
             idxs_.push_back(idx);
         }
@@ -271,7 +270,7 @@ class OrderRunner : public Runner {
                 const int32_t limit_cnt, const Sort& sort)
         : Runner(id, kRunnerOrder, schema, limit_cnt),
           order_gen_(sort.fn_info_),
-          is_asc_(sort.GetIsAsc()) {}
+          is_asc_(sort.is_asc()) {}
     ~OrderRunner() {}
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
     OrderGenerator order_gen_;
@@ -311,8 +310,8 @@ class GroupAggRunner : public Runner {
           agg_gen_(project) {}
     ~GroupAggRunner() {}
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
-    AggGenerator agg_gen_;
     KeyGenerator group_;
+    AggGenerator agg_gen_;
 };
 
 class AggRunner : public Runner {
@@ -357,7 +356,7 @@ class RequestUnionRunner : public Runner {
                        const int32_t limit_cnt, const WindowOp& window_op,
                        const Key& hash)
         : Runner(id, kRunnerRequestUnion, schema, limit_cnt),
-          is_asc_(window_op.sort_.GetIsAsc()),
+          is_asc_(window_op.sort_.is_asc()),
           group_gen_(window_op.partition_.fn_info_),
           key_gen_(hash.fn_info_),
           order_gen_(window_op.sort_.fn_info_),

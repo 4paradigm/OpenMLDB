@@ -90,11 +90,9 @@ class Sort {
     virtual ~Sort() {}
     const node::OrderByNode *orders() const { return orders_; }
     void set_orders(const node::OrderByNode *orders) { orders_ = orders; }
-    const std::vector<int32_t> &GetOrdersIdxs() const { return orders_idxs_; }
-    const bool GetIsAsc() const {
+    const bool is_asc() const {
         return nullptr == orders_ ? true : orders_->is_asc_;
     }
-    void SetOrdersIdxs(const std::vector<int32_t> &idxs) {}
     const bool ValidSort() { return nullptr != orders_; }
     const std::string ToString() const {
         std::ostringstream oss;
@@ -103,9 +101,6 @@ class Sort {
     }
     const node::OrderByNode *orders_;
     FnInfo fn_info_;
-
- protected:
-    std::vector<int32_t> orders_idxs_;
 };
 
 class Range {
@@ -149,12 +144,6 @@ class ConditionFilter {
     explicit ConditionFilter(const node::ExprNode *condition)
         : condition_(condition) {}
     virtual ~ConditionFilter() {}
-    void SetConditionIdxs(const std::vector<int32_t> &idxs) {
-        condition_idxs_ = idxs;
-    }
-    const std::vector<int32_t> &GetConditionIdxs() const {
-        return condition_idxs_;
-    }
     const bool ValidCondition() { return nullptr != condition_; }
     void set_condition(const node::ExprNode *condition) {
         condition_ = condition;
@@ -168,9 +157,6 @@ class ConditionFilter {
     const FnInfo &fn_info() const { return fn_info_; }
     const node::ExprNode *condition_;
     FnInfo fn_info_;
-
- protected:
-    std::vector<int32_t> condition_idxs_;
 };
 
 class Key {
@@ -178,23 +164,18 @@ class Key {
     Key() : keys_(nullptr) {}
     explicit Key(const node::ExprListNode *keys) : keys_(keys) {}
     virtual ~Key() {}
-    void SetKeysIdxs(const std::vector<int32_t> &idxs) { key_idxs_ = idxs; }
-    const std::vector<int32_t> &GetKeysIdxs() const { return key_idxs_; }
-    void set_keys(const node::ExprListNode *keys) { keys_ = keys; }
-    const node::ExprListNode *keys() const { return keys_; }
     const std::string ToString() const {
         std::ostringstream oss;
         oss << "keys=" << node::ExprString(keys_);
         return oss.str();
     }
     const bool ValidKey() const { return !node::ExprListNullOrEmpty(keys_); }
+    void set_keys(const node::ExprListNode *keys) { keys_ = keys; }
+    const node::ExprListNode *keys() const { return keys_; }
     const FnInfo &fn_info() const { return fn_info_; }
 
     const node::ExprListNode *keys_;
     FnInfo fn_info_;
-
- protected:
-    std::vector<int32_t> key_idxs_;
 };
 
 class PhysicalOpNode {
@@ -256,7 +237,7 @@ class PhysicalOpNode {
         return output_name_schema_list_.size();
     }
 
-    const vm::Schema* GetOutputSchemaSlice(size_t idx) const {
+    const vm::Schema *GetOutputSchemaSlice(size_t idx) const {
         return output_name_schema_list_[idx].second;
     }
 
@@ -386,7 +367,7 @@ class PhysicalGroupNode : public PhysicalUnaryNode {
     }
     virtual ~PhysicalGroupNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
-    static PhysicalGroupNode* CastFrom(PhysicalOpNode* node);
+    static PhysicalGroupNode *CastFrom(PhysicalOpNode *node);
     bool Valid() { return group_.ValidKey(); }
     Key group() const { return group_; }
     Key group_;
@@ -670,7 +651,8 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
     virtual ~PhysicalJoinNode() {}
     bool InitSchema() override;
     virtual void Print(std::ostream &output, const std::string &tab) const;
-    static PhysicalJoinNode* CastFrom(PhysicalOpNode* node);
+    static PhysicalJoinNode *CastFrom(PhysicalOpNode *node);
+    const node::JoinType join_type() const { return join_type_; }
     const bool Valid() { return true; }
     const Join &join() const { return join_; }
     const node::JoinType join_type_;
@@ -721,6 +703,7 @@ class PhysicalRequestJoinNode : public PhysicalBinaryNode {
     virtual ~PhysicalRequestJoinNode() {}
     bool InitSchema() override;
     virtual void Print(std::ostream &output, const std::string &tab) const;
+    const node::JoinType join_type() const { return join_type_; }
     const Join &join() const { return join_; }
     const node::JoinType join_type_;
     Join join_;

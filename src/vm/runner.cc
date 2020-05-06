@@ -727,7 +727,7 @@ bool WindowAggRunner::WindowAggRun(
         if (window_op_.sort_.ValidSort()) {
             if (order_gen_.Valid()) {
                 segment = std::dynamic_pointer_cast<TableHandler>(TableSort(
-                    segment, order_gen_, window_op_.sort_.GetIsAsc()));
+                    segment, order_gen_, window_op_.sort_.is_asc()));
             } else {
                 segment = TableReverse(segment);
             }

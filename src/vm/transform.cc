@@ -985,7 +985,6 @@ bool BatchModeTransformer::GenFilter(ConditionFilter* filter,
                              &filter->fn_info_, status)) {
             return false;
         }
-        filter->SetConditionIdxs({0});
     }
     return true;
 }
@@ -993,12 +992,9 @@ bool BatchModeTransformer::GenKey(Key* hash, PhysicalOpNode* in,
                                   base::Status& status) {
     // Gen left key function
     node::ExprListNode expr_list;
-    std::vector<int32_t> keys_idxs;
-    int32_t idx = 0;
     if (!node::ExprListNullOrEmpty(hash->keys_)) {
         for (auto expr : hash->keys_->children_) {
             expr_list.AddChild(expr);
-            keys_idxs.push_back(idx++);
         }
     }
     if (!expr_list.children_.empty()) {
@@ -1008,7 +1004,6 @@ bool BatchModeTransformer::GenKey(Key* hash, PhysicalOpNode* in,
                              &hash->fn_info_, status)) {
             return false;
         }
-        hash->SetKeysIdxs(keys_idxs);
     }
     return true;
 }
@@ -1034,17 +1029,13 @@ bool BatchModeTransformer::GenSort(Sort* sort, PhysicalOpNode* in,
     if (nullptr != sort->orders_ &&
         !node::ExprListNullOrEmpty(sort->orders_->order_by_)) {
         node::ExprListNode expr_list;
-        std::vector<int32_t> idxs;
-        int32_t idx = 0;
         for (auto expr : sort->orders_->order_by_->children_) {
             expr_list.AddChild(expr);
-            idxs.push_back(idx++);
         }
         if (!CodeGenExprList(in->GetOutputNameSchemaList(), &expr_list, true,
                              &sort->fn_info_, status)) {
             return false;
         }
-        sort->SetOrdersIdxs(idxs);
     }
     return true;
 }
@@ -1149,7 +1140,6 @@ bool GroupAndSortOptimized::GroupOptimized(PhysicalOpNode* in, Key* group,
         if (kProviderTypeTable == scan_op->provider_type_) {
             const node::ExprListNode* new_groups = nullptr;
             const node::ExprListNode* keys = nullptr;
-            const node::OrderByNode* new_orders = nullptr;
             std::string index_name;
             auto& index_hint = scan_op->table_handler_->GetIndex();
             if (!TransformGroupExpr(group->keys(), index_hint, &index_name,

@@ -619,8 +619,8 @@ class WindowDefNode : public SQLNode {
  public:
     WindowDefNode()
         : SQLNode(kWindowDef, 0, 0),
-          window_name_(""),
           instance_not_in_window_(false),
+          window_name_(""),
           frame_ptr_(NULL),
           union_tables_(nullptr),
           partitions_(nullptr),
