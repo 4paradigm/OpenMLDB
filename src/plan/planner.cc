@@ -399,6 +399,9 @@ bool Planner::CreateWindowPlanNode(
                                           frame->GetFrameType());
             w_node_ptr->SetKeys(w_ptr->GetPartitions());
             w_node_ptr->SetOrders(w_ptr->GetOrders());
+            w_node_ptr->set_union_tables(w_ptr->union_tables());
+            w_node_ptr->set_instance_not_in_window(
+                w_ptr->instance_not_in_window());
         } else {
             status.code = common::kPlanError;
             status.msg =

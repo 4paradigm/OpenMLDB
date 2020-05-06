@@ -28,7 +28,8 @@ void InitCases(std::string yaml_path, std::vector<SQLCase> &cases);  // NOLINT
 void InitCases(std::string yaml_path, std::vector<SQLCase> &cases) {  // NOLINT
     if (!SQLCase::CreateSQLCasesFromYaml(
             fesql::sqlcase::FindFesqlDirPath() + "/" + yaml_path, cases,
-            std::vector<std::string>({"plan-unsupport", "parser-unsupport"}))) {
+            std::vector<std::string>(
+                {"logical-plan-unsupport", "parser-unsupport"}))) {
         FAIL();
     }
 }
@@ -245,9 +246,9 @@ TEST_F(PlannerTest, SelectPlanWithMultiWindowProjectTest) {
         "SELECT sum(col1) OVER w1 as w1_col1_sum, sum(col1) OVER w2 as "
         "w2_col1_sum FROM t1 "
         "WINDOW "
-        "w1 AS (PARTITION BY col2 ORDER BY `TS` RANGE BETWEEN 1d PRECEDING AND "
+        "w1 AS (PARTITION BY col2 ORDER BY `TS` ROWS BETWEEN 1d PRECEDING AND "
         "1s PRECEDING), "
-        "w2 AS (PARTITION BY col3 ORDER BY `TS` RANGE BETWEEN 2d PRECEDING AND "
+        "w2 AS (PARTITION BY col3 ORDER BY `TS` ROWS BETWEEN 2d PRECEDING AND "
         "1s PRECEDING) "
         "limit 10;";
     int ret = parser_->parse(sql, list, manager_, status);
@@ -290,6 +291,7 @@ TEST_F(PlannerTest, SelectPlanWithMultiWindowProjectTest) {
     ASSERT_EQ(-1 * 86400000, project_list->GetW()->GetStartOffset());
     ASSERT_EQ(-1000, project_list->GetW()->GetEndOffset());
     ASSERT_EQ("(col2)", node::ExprString(project_list->GetW()->GetKeys()));
+    ASSERT_FALSE(project_list->GetW()->instance_not_in_window());
 
     // validate projection 1: window agg over w2
     project_list = dynamic_cast<node::ProjectListNode *>(
@@ -301,6 +303,67 @@ TEST_F(PlannerTest, SelectPlanWithMultiWindowProjectTest) {
 
     ASSERT_EQ("(col3)", node::ExprString(project_list->GetW()->GetKeys()));
     ASSERT_TRUE(project_list->IsWindowAgg());
+    ASSERT_FALSE(project_list->GetW()->instance_not_in_window());
+
+    plan_ptr = plan_ptr->GetChildren()[0];
+    ASSERT_EQ(node::kPlanTypeTable, plan_ptr->GetType());
+    node::TablePlanNode *relation_node =
+        reinterpret_cast<node::TablePlanNode *>(plan_ptr);
+    ASSERT_EQ("t1", relation_node->table_);
+    delete planner_ptr;
+}
+
+TEST_F(PlannerTest, WindowWithUnionTest) {
+    node::NodePointVector list;
+    node::PlanNodeList trees;
+    base::Status status;
+    const std::string sql =
+        "SELECT col1, col5, sum(col2) OVER w1 as w1_col2_sum FROM t1\n"
+        "      WINDOW w1 AS (UNION t2,t3 PARTITION BY col1 ORDER BY col5 ROWS "
+        "BETWEEN 3 PRECEDING AND CURRENT ROW INSTANCE_NOT_IN_WINDOW) limit 10;";
+    int ret = parser_->parse(sql, list, manager_, status);
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(1u, list.size());
+    std::cout << sql << std::endl;
+    //        std::cout << *(list[0]) << std::endl;
+    Planner *planner_ptr = new SimplePlanner(manager_);
+    ASSERT_EQ(0, planner_ptr->CreatePlanTree(list, trees, status));
+    ASSERT_EQ(1u, trees.size());
+    PlanNode *plan_ptr = trees[0];
+    ASSERT_TRUE(NULL != plan_ptr);
+
+    std::cout << *plan_ptr << std::endl;
+    // validate select plan
+    ASSERT_EQ(node::kPlanTypeQuery, plan_ptr->GetType());
+    plan_ptr = plan_ptr->GetChildren()[0];
+    // validate limit node
+    ASSERT_EQ(node::kPlanTypeLimit, plan_ptr->GetType());
+    node::LimitPlanNode *limit_ptr = (node::LimitPlanNode *)plan_ptr;
+    // validate project list based on current row
+    ASSERT_EQ(10, limit_ptr->GetLimitCnt());
+    ASSERT_EQ(node::kPlanTypeProject,
+              limit_ptr->GetChildren().at(0)->GetType());
+
+    node::ProjectPlanNode *project_plan_node =
+        (node::ProjectPlanNode *)limit_ptr->GetChildren().at(0);
+    plan_ptr = project_plan_node;
+    ASSERT_EQ(1u, project_plan_node->project_list_vec_.size());
+
+    // validate projection 1: window agg over w1
+    node::ProjectListNode *project_list = dynamic_cast<node::ProjectListNode *>(
+        project_plan_node->project_list_vec_[0]);
+
+    ASSERT_EQ(3u, project_list->GetProjects().size());
+    ASSERT_TRUE(nullptr != project_list->GetW());
+
+    ASSERT_TRUE(project_list->IsWindowAgg());
+
+    ASSERT_EQ(-3, project_list->GetW()->GetStartOffset());
+    ASSERT_EQ(0, project_list->GetW()->GetEndOffset());
+    ASSERT_EQ("(col1)", node::ExprString(project_list->GetW()->GetKeys()));
+    ASSERT_TRUE(project_list->GetW()->instance_not_in_window());
+    ASSERT_TRUE(nullptr != project_list->GetW()->union_tables());
+    ASSERT_EQ(2u, project_list->GetW()->union_tables()->GetList().size());
 
     plan_ptr = plan_ptr->GetChildren()[0];
     ASSERT_EQ(node::kPlanTypeTable, plan_ptr->GetType());
@@ -331,9 +394,9 @@ TEST_F(PlannerTest, MultiProjectListPlanPostTest) {
         "test_col_at(col1, 1) OVER w2 as w2_col1_at_1 "
         "FROM t1 "
         "WINDOW "
-        "w1 AS (PARTITION BY col2 ORDER BY `TS` RANGE BETWEEN 1d PRECEDING AND "
+        "w1 AS (PARTITION BY col2 ORDER BY `TS` ROWS BETWEEN 1d PRECEDING AND "
         "1s PRECEDING), "
-        "w2 AS (PARTITION BY col3 ORDER BY `TS` RANGE BETWEEN 2d PRECEDING AND "
+        "w2 AS (PARTITION BY col3 ORDER BY `TS` ROWS BETWEEN 2d PRECEDING AND "
         "1s PRECEDING) "
         "limit 10;";
     std::cout << sql << std::endl;

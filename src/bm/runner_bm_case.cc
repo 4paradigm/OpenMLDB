@@ -237,22 +237,9 @@ void WindowSumFeature1_RequestUnion(benchmark::State* state, MODE mode,
         "30d "
         "PRECEDING AND CURRENT ROW) limit " +
         std::to_string(limit_cnt) + ";";
-    RequestUnionRunnerCase(sql, 4, state, mode, limit_cnt, size);
+    RequestUnionRunnerCase(sql, 2, state, mode, limit_cnt, size);
 }
 
-void WindowSumFeature1_IndexSeek(benchmark::State* state, MODE mode,
-                                 int64_t limit_cnt, int64_t size) {
-    // prepare data into table
-    const std::string sql =
-        "SELECT "
-        "sum(col4) OVER w1 as w1_col4_sum "
-        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 ROWS "
-        "BETWEEN "
-        "30d "
-        "PRECEDING AND CURRENT ROW) limit " +
-        std::to_string(limit_cnt) + ";";
-    IndexSeekRunnerCase(sql, 3, state, mode, limit_cnt, size);
-}
 void WindowSumFeature1_Aggregation(benchmark::State* state, MODE mode,
                                    int64_t limit_cnt, int64_t size) {
     // prepare data into table
@@ -264,7 +251,7 @@ void WindowSumFeature1_Aggregation(benchmark::State* state, MODE mode,
         "30d "
         "PRECEDING AND CURRENT ROW) limit " +
         std::to_string(limit_cnt) + ";";
-    AggRunnerCase(sql, 5, state, mode, limit_cnt, size);
+    AggRunnerCase(sql, 3, state, mode, limit_cnt, size);
 }
 
 }  // namespace bm

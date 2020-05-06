@@ -43,16 +43,18 @@ object JoinPlan {
     val inputSchemaSlices = FesqlUtil.getOutputSchemaSlices(node)
 
     // get left index
+    val leftKeys = node.join().left_key().keys();
     val leftKeyCols = mutable.ArrayBuffer[Column]()
-    for (i <- 0 until node.getLeft_keys_.GetChildNum()) {
-      val expr = node.getLeft_keys_.GetChild(i)
+    for (i <- 0 until leftKeys.GetChildNum()) {
+      val expr = leftKeys.GetChild(i)
       leftKeyCols += SparkColumnUtil.resolve(expr, leftDf, ctx)
     }
 
     // get right index
+    val rightKeys = node.join().right_key().keys();
     val rightKeyCols = mutable.ArrayBuffer[Column]()
-    for (i <- 0 until node.getLeft_keys_.GetChildNum()) {
-      val expr = node.getRight_keys_.GetChild(i)
+    for (i <- 0 until rightKeys.GetChildNum()) {
+      val expr = rightKeys.GetChild(i)
       rightKeyCols += SparkColumnUtil.resolve(expr, rightDf, ctx)
     }
 
@@ -68,13 +70,15 @@ object JoinPlan {
       joinConditions += leftCol === rightCol
     }
 
+    val filter = node.join().filter();
     // extra conditions
-    if (node.getCondition_ != null) {
+    if (filter.condition() != null) {
+
       val regName = "FESQL_JOIN_CONDITION_" + node.GetFnName()
       val conditionUDF = new JoinConditionUDF(
-        functionName = node.GetFnName(),
+        functionName = filter.fn_info().fn_name(),
         inputSchemaSlices = inputSchemaSlices,
-        outputSchema = node.GetFnSchema(),
+        outputSchema = filter.fn_info().fn_schema(),
         moduleTag = ctx.getTag,
         moduleBroadcast = ctx.getModuleBufferBroadcast
       )

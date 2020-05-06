@@ -23,11 +23,6 @@ namespace fesql {
 namespace bm {
 using namespace ::llvm;  // NOLINT
 
-static void BM_WindowSumFeature1_IndexSeek(benchmark::State& state) {  // NOLINT
-    WindowSumFeature1_IndexSeek(&state, BENCHMARK, state.range(0),
-                                state.range(1));
-}
-
 static void BM_WindowSumFeature1_RequestUnion(
     benchmark::State& state) {  // NOLINT
     WindowSumFeature1_RequestUnion(&state, BENCHMARK, state.range(0),
@@ -39,11 +34,7 @@ static void BM_WindowSumFeature1_Aggregation(
     WindowSumFeature1_Aggregation(&state, BENCHMARK, state.range(0),
                                   state.range(1));
 }
-// request engine window bm
-BENCHMARK(BM_WindowSumFeature1_IndexSeek)
-    ->Args({1, 100})
-    ->Args({1, 1000})
-    ->Args({1, 10000});
+
 // request engine window bm
 BENCHMARK(BM_WindowSumFeature1_RequestUnion)
     ->Args({1, 100})

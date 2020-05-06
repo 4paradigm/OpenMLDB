@@ -582,6 +582,11 @@ std::string RowView::GetAsString(uint32_t idx) {
     if (schema_.size() == 0) {
         return "NA";
     }
+
+    if (row_ == nullptr || size_ == 0) {
+        return "NA";
+    }
+
     if ((int32_t)idx >= schema_.size()) {
         LOG(WARNING) << "idx out of index";
         return "NA";
