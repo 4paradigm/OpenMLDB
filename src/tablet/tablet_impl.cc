@@ -817,7 +817,7 @@ void TabletImpl::Put(RpcController* controller,
 }
 
 int TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta,
-        std::string& msg) {
+                               std::string& msg) {
     msg.clear();
     if (table_meta->name().size() <= 0) {
         msg = "table name is empty";
@@ -1699,7 +1699,7 @@ void TabletImpl::Traverse(RpcController* controller,
             it->SeekToFirst();
         }
         uint32_t scount = 0;
-        std::string* last_pk = response->mutable_pk();;
+        std::string* last_pk = response->mutable_pk();
         std::vector<rtidb::base::Slice> value_vec;
         uint32_t total_block_size = 0;
         for (; it->Valid(); it->Next()) {
@@ -1749,8 +1749,7 @@ void TabletImpl::Traverse(RpcController* controller,
 
 void TabletImpl::Delete(RpcController* controller,
                         const ::rtidb::api::DeleteRequest* request,
-                        ::rtidb::api::GeneralResponse* response,
-                        Closure* done) {
+                        ::rtidb::api::DeleteResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (follower_.load(std::memory_order_relaxed)) {
         response->set_code(::rtidb::base::ReturnCode::kIsFollowerCluster);
@@ -1832,16 +1831,33 @@ void TabletImpl::Delete(RpcController* controller,
         }
         return;
     } else {
-        if (r_table->Delete(request->condition_columns())) {
-            response->set_code(::rtidb::base::ReturnCode::kOk);
-            response->set_msg("ok");
-            PDLOG(DEBUG, "delete ok. tid %u, pid %u, key %s, idx_name %s",
+        bool has_error = true;
+        if (request->recive_blobs()) {
+            auto blobs = response->mutable_blob_keys();
+            bool ok = r_table->Delete(request->condition_columns(), blobs);
+            if (ok) {
+                has_error = false;
+            }
+        } else {
+            if (r_table->Delete(request->condition_columns())) {
+                has_error = false;
+            }
+        }
+
+        has_error = false;
+        if (has_error) {
+            PDLOG(WARNING, "delete fail. tid %u, pid %u, key %s, idx_name %s",
                   request->tid(), request->pid(), request->key().c_str(),
                   request->idx_name().c_str());
-        } else {
             response->set_code(::rtidb::base::ReturnCode::kDeleteFailed);
             response->set_msg("delete failed");
             return;
+        } else {
+            PDLOG(DEBUG, "delete ok. tid %u, pid %u, key %s, idx_name %s",
+                  request->tid(), request->pid(), request->key().c_str(),
+                  request->idx_name().c_str());
+            response->set_code(::rtidb::base::ReturnCode::kOk);
+            response->set_msg("ok");
         }
     }
 }

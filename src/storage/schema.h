@@ -9,10 +9,11 @@
 
 #include <algorithm>
 #include <atomic>
-#include <unordered_map>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
+
 #include "proto/tablet.pb.h"
 #include "proto/type.pb.h"
 
@@ -87,13 +88,14 @@ class TableColumn {
     std::shared_ptr<ColumnDef> GetColumn(const std::string& name);
     void AddColumn(std::shared_ptr<ColumnDef> column_def);
     const std::vector<std::shared_ptr<ColumnDef>>& GetAllColumn();
-    inline uint32_t Size() {
-        return columns_.size();
-    }
+    const google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>&
+    GetPbColumns();
+    inline uint32_t Size() { return columns_.size(); }
 
  private:
     std::vector<std::shared_ptr<ColumnDef>> columns_;
     std::unordered_map<std::string, std::shared_ptr<ColumnDef>> column_map_;
+    google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc> pb_columns_;
 };
 
 class IndexDef {

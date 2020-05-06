@@ -653,7 +653,7 @@ GeneralResult RtidbClient::Put(const std::string& name,
                 return result;
             } else {
                 value.insert(std::make_pair(th->auto_gen_pk_,
-                                          ::rtidb::base::DEFAULT_LONG));
+                                            ::rtidb::base::DEFAULT_LONG));
             }
         } else if (column.name() == th->auto_gen_pk_) {
             result.SetError(-1, "should not input autoGenPk column");
@@ -662,7 +662,8 @@ GeneralResult RtidbClient::Put(const std::string& name,
     }
     std::string err_msg;
     if (!th->blobSuffix.empty()) {
-        std::shared_ptr<rtidb::client::BsClient> blob = client_->GetBlobClient(th->table_info->blobs(0), &err_msg);
+        std::shared_ptr<rtidb::client::BsClient> blob =
+            client_->GetBlobClient(th->table_info->blobs(0), &err_msg);
         if (blob == NULL) {
             result.SetError(-1, err_msg);
             return result;
@@ -675,7 +676,8 @@ GeneralResult RtidbClient::Put(const std::string& name,
                 return result;
             }
             std::string key;
-            bool ok = blob->Put(th->table_info->tid(), 0, &key, iter->second, &err_msg);
+            bool ok = blob->Put(th->table_info->tid(), 0, &key, iter->second,
+                                &err_msg);
             if (!ok) {
                 result.SetError(-1, err_msg);
             }

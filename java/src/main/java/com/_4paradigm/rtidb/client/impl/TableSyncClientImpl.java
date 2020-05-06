@@ -754,9 +754,21 @@ public class TableSyncClientImpl implements TableSyncClient {
                 builder.addConditionColumns(conditionBuilder.build());
             }
         }
+        BlobServer bs = th.getBS();
+        if (bs != null) {
+            builder.setReciveBlobs(true);
+        }
         Tablet.DeleteRequest request = builder.build();
-        Tablet.GeneralResponse response = ts.delete(request);
+        Tablet.DeleteResponse response = ts.delete(request);
         if (response != null && response.getCode() == 0) {
+            for (String key : response.getBlobKeysList()) {
+                oss.DeleteRequest.Builder ossBuilder = oss.DeleteRequest.newBuilder();
+                ossBuilder.setTid(tid);
+                ossBuilder.setPid(0);
+                ossBuilder.setKey(key);
+                oss.DeleteRequest deleteRequest = ossBuilder.build();
+                bs.delete(deleteRequest);
+            }
             return true;
         }
         if (response != null) {
@@ -811,7 +823,7 @@ public class TableSyncClientImpl implements TableSyncClient {
             builder.setIdxName(idxName);
         }
         Tablet.DeleteRequest request = builder.build();
-        Tablet.GeneralResponse response = ts.delete(request);
+        Tablet.DeleteResponse response = ts.delete(request);
         if (response != null && response.getCode() == 0) {
             return true;
         }

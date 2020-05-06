@@ -103,6 +103,7 @@ enum TaskType {
     kLoadIndexData = 24;
     kExtractIndexData = 25;
     kAddIndexToTablet = 26;
+    kTableSyncTask = 27;
 }
 
 enum TaskStatus {
@@ -201,6 +202,7 @@ message DeleteRequest {
     optional string key = 3;
     optional string idx_name = 4;
     repeated Columns condition_columns = 5;
+    optional bool recive_blobs = 6 [default = false];
 }
 
 message ExecuteGcRequest {
@@ -232,6 +234,12 @@ message DeleteTaskRequest {
 message GeneralResponse {
     optional int32 code = 1;
     optional string msg = 2;
+}
+
+message DeleteResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+    repeated string blob_keys = 3;
 }
 
 message ScanRequest {
@@ -367,7 +375,7 @@ message DropTableRequest {
     optional int32 tid = 1;
     optional int32 pid = 2;
     optional TaskInfo task_info = 3;
-    optional rtidb.type.TableType table_type = 4;
+    optional rtidb.type.TableType table_type = 4 [default = kTimeSeries];
 }
 
 message DropTableResponse {
@@ -655,7 +663,8 @@ message HttpResponse { }
 
 message DeleteIndexRequest {
     optional uint32 tid = 1;
-    optional string idx_name = 2;
+    optional uint32 pid = 2;
+    optional string idx_name = 3;
 }
 
 message DumpIndexDataRequest {
@@ -707,6 +716,7 @@ message BatchQueryRequest {
     optional uint32 tid = 1;
     optional uint32 pid = 2;
     repeated ReadOption read_option = 3;
+    repeated string query_key = 4;
 }
 
 message BatchQueryResponse {
@@ -717,13 +727,17 @@ message BatchQueryResponse {
     optional uint32 count = 5;
 }
 
+message CancelOPRequest {
+    optional uint64 op_id = 1;
+}
+
 service TabletServer {
 
     // write and read api for client
     rpc Put(PutRequest) returns (PutResponse);
     rpc Get(GetRequest) returns (GetResponse);
     rpc Scan(ScanRequest) returns (ScanResponse);
-    rpc Delete(DeleteRequest) returns (GeneralResponse);
+    rpc Delete(DeleteRequest) returns (DeleteResponse);
     rpc Count(CountRequest) returns (CountResponse);
     rpc Traverse(TraverseRequest) returns (TraverseResponse);
     rpc Update(UpdateRequest) returns (GeneralResponse);
@@ -774,4 +788,5 @@ service TabletServer {
     rpc DumpIndexData(DumpIndexDataRequest) returns (GeneralResponse);
     rpc LoadIndexData(LoadIndexDataRequest) returns (GeneralResponse);
     rpc ExtractIndexData(ExtractIndexDataRequest) returns (GeneralResponse);
+    rpc CancelOP(CancelOPRequest) returns (GeneralResponse);
 }

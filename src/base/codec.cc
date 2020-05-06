@@ -16,7 +16,9 @@
  */
 
 #include "base/codec.h"
+
 #include <unordered_map>
+
 #include "logging.h"  // NOLINT
 
 using ::baidu::common::DEBUG;
@@ -674,7 +676,8 @@ int32_t RowView::GetString(uint32_t idx, char** val, uint32_t* length) {
     }
 
     if (!CheckValid(idx, ::rtidb::type::kVarchar) &&
-        !CheckValid(idx, ::rtidb::type::kString)) {
+        !CheckValid(idx, ::rtidb::type::kString) &&
+        !CheckValid(idx, rtidb::type::kBlob)) {
         return -1;
     }
     if (IsNULL(row_, idx)) {
