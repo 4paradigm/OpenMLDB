@@ -30,6 +30,7 @@
 #include "client/ns_client.h"
 #include "client/tablet_client.h"
 #include "codec/flat_array.h"
+#include "codec/row_codec.h"
 #include "codec/schema_codec.h"
 #include "logging.h"  // NOLINT
 #include "nameserver/name_server_impl.h"
@@ -851,7 +852,7 @@ void PutRelational(
     }
     std::string value;
     ::rtidb::base::ResultMsg rm =
-        ::rtidb::codec::RowSchemaCodec::Encode(map, schema, value);
+        ::rtidb::codec::RowCodec::Encode(map, schema, value);
     if (rm.code < 0) {
         printf("encode error, msg: %s\n", rm.msg.c_str());
         return;
@@ -1679,10 +1680,10 @@ void HandleNSUpdate(const std::vector<std::string>& parts,
         return;
     }
     Schema new_cd_schema;
-    ::rtidb::codec::RowSchemaCodec::GetSchemaData(
+    ::rtidb::codec::SchemaCodec::GetSchemaData(
         condition_columns_map, tables[0].column_desc_v1(), new_cd_schema);
     std::string cd_value;
-    ::rtidb::base::ResultMsg cd_rm = ::rtidb::codec::RowSchemaCodec::Encode(
+    ::rtidb::base::ResultMsg cd_rm = ::rtidb::codec::RowCodec::Encode(
         condition_columns_map, new_cd_schema, cd_value);
     if (cd_rm.code < 0) {
         printf("encode error, msg: %s\n", cd_rm.msg.c_str());
@@ -1694,10 +1695,10 @@ void HandleNSUpdate(const std::vector<std::string>& parts,
         cd_value = compressed;
     }
     Schema new_value_schema;
-    ::rtidb::codec::RowSchemaCodec::GetSchemaData(
+    ::rtidb::codec::SchemaCodec::GetSchemaData(
         value_columns_map, tables[0].column_desc_v1(), new_value_schema);
     std::string value;
-    ::rtidb::base::ResultMsg value_rm = ::rtidb::codec::RowSchemaCodec::Encode(
+    ::rtidb::base::ResultMsg value_rm = ::rtidb::codec::RowCodec::Encode(
         value_columns_map, new_value_schema, value);
     if (value_rm.code < 0) {
         printf("encode error, msg: %s\n", value_rm.msg.c_str());
@@ -1883,7 +1884,7 @@ void HandleNSQuery(const std::vector<std::string>& parts,
         return;
     }
     Schema schema;
-    rtidb::codec::RowSchemaCodec::ConvertColumnDesc(
+    rtidb::codec::SchemaCodec::ConvertColumnDesc(
         tables[0].column_desc_v1(), schema, tables[0].added_column_desc());
     if (print_column.size() > 0) {
         std::set<std::string> columns;
@@ -1911,7 +1912,7 @@ void HandleNSQuery(const std::vector<std::string>& parts,
         value = compressed;
     }
     std::vector<std::string> value_vec;
-    rtidb::codec::RowSchemaCodec::Decode(schema, value, value_vec);
+    rtidb::codec::RowCodec::Decode(schema, value, value_vec);
     std::vector<std::string> row;
     row.push_back("#");
     ::baidu::common::TPrinter* tp;
@@ -2125,10 +2126,10 @@ void HandleNSGet(const std::vector<std::string>& parts,
         row.push_back("1");
         row.push_back(std::to_string(ts));
         if (tables[0].format_version() == 1) {
-            ::rtidb::base::FillTableRow(tables[0].column_desc_v1(),
+            ::rtidb::codec::FillTableRow(tables[0].column_desc_v1(),
                                         value.c_str(), value.size(), row);
         } else if (tables[0].added_column_desc_size() == 0) {
-            ::rtidb::base::FillTableRow(columns, value.c_str(), value.size(),
+            ::rtidb::codec::FillTableRow(columns, value.c_str(), value.size(),
                                         row);
         } else {
             std::vector<::rtidb::codec::ColumnDesc> base_columns;
@@ -2137,7 +2138,7 @@ void HandleNSGet(const std::vector<std::string>& parts,
                 std::cout << "convert table column desc failed" << std::endl;
                 return;
             }
-            ::rtidb::base::FillTableRow(columns.size(), base_columns,
+            ::rtidb::codec::FillTableRow(columns.size(), base_columns,
                                         value.c_str(), value.size(), row);
         }
         tp.AddRow(row);
@@ -2511,7 +2512,7 @@ void HandleNSPreview(const std::vector<std::string>& parts,
     uint32_t tid = tables[0].tid();
     if (tables[0].table_type() == rtidb::type::kRelational) {
         Schema schema;
-        rtidb::codec::RowSchemaCodec::ConvertColumnDesc(
+        rtidb::codec::SchemaCodec::ConvertColumnDesc(
             tables[0].column_desc_v1(), schema, tables[0].added_column_desc());
         rtidb::codec::RowView rv(schema);
         std::vector<std::string> row;
@@ -2571,7 +2572,7 @@ void HandleNSPreview(const std::vector<std::string>& parts,
                     return;
                 }
                 offset += 4 + value_size;
-                rtidb::codec::RowSchemaCodec::Decode(schema, rv, row);
+                rtidb::codec::RowCodec::Decode(schema, rv, row);
                 for (uint64_t i = 0; i < row.size(); i++) {
                     if (row[i] == rtidb::codec::NONETOKEN) {
                         row[i] = "null";
@@ -2671,11 +2672,11 @@ void HandleNSPreview(const std::vector<std::string>& parts,
                     value.assign(it->GetValue().data(), it->GetValue().size());
                 }
                 if (tables[0].format_version() == 1) {
-                    ::rtidb::base::FillTableRow(tables[0].column_desc_v1(),
+                    ::rtidb::codec::FillTableRow(tables[0].column_desc_v1(),
                                                 value.c_str(), value.size(),
                                                 row);
                 } else if (tables[0].added_column_desc_size() == 0) {
-                    ::rtidb::base::FillTableRow(columns, value.c_str(),
+                    ::rtidb::codec::FillTableRow(columns, value.c_str(),
                                                 value.size(), row);
                 } else {
                     std::vector<::rtidb::codec::ColumnDesc> base_columns;
@@ -2686,7 +2687,7 @@ void HandleNSPreview(const std::vector<std::string>& parts,
                         delete it;
                         return;
                     }
-                    ::rtidb::base::FillTableRow(columns.size(), base_columns,
+                    ::rtidb::codec::FillTableRow(columns.size(), base_columns,
                                                 value.c_str(), value.size(),
                                                 row);
                 }
@@ -5260,7 +5261,7 @@ void HandleClientPreview(const std::vector<std::string>& parts,
                 value.assign(it->GetValue().data(), it->GetValue().size());
             }
             if (table_meta.added_column_desc_size() == 0) {
-                ::rtidb::base::FillTableRow(columns, value.c_str(),
+                ::rtidb::codec::FillTableRow(columns, value.c_str(),
                                             value.size(), row);
             } else {
                 std::vector<::rtidb::codec::ColumnDesc> columns_tmp = columns;
@@ -5269,7 +5270,7 @@ void HandleClientPreview(const std::vector<std::string>& parts,
                      i++) {
                     columns_tmp.pop_back();
                 }
-                ::rtidb::base::FillTableRow(columns.size(), columns_tmp,
+                ::rtidb::codec::FillTableRow(columns.size(), columns_tmp,
                                             value.c_str(), value.size(), row);
             }
         }
@@ -5882,7 +5883,7 @@ void HandleClientSGet(const std::vector<std::string>& parts,
     row.push_back("1");
     row.push_back(std::to_string(ts));
     if (table_meta.added_column_desc_size() == 0) {
-        ::rtidb::base::FillTableRow(raw, value.c_str(), value.size(), row);
+        ::rtidb::codec::FillTableRow(raw, value.c_str(), value.size(), row);
     } else {
         std::vector<::rtidb::codec::ColumnDesc> columns_tmp;
         int32_t size =
@@ -5890,7 +5891,7 @@ void HandleClientSGet(const std::vector<std::string>& parts,
         for (int i = 0; i < size; i++) {
             columns_tmp.push_back(raw.at(i));
         }
-        ::rtidb::base::FillTableRow(raw.size(), columns_tmp, value.c_str(),
+        ::rtidb::codec::FillTableRow(row.size(), columns_tmp, value.c_str(),
                                     value.size(), row);
     }
     tp.AddRow(row);

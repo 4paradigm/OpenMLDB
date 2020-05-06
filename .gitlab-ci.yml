@@ -141,4 +141,5 @@ deploy-package:
         - ln -sf /usr/workdir/thirdparty thirdparty
         - ln -sf /usr/workdir/thirdsrc thirdsrc
         - source /root/.bashrc && bash steps/deploy_package.sh
-
+    only:
+        - tags
