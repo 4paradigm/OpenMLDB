@@ -8,8 +8,8 @@
 #include <string>
 #include <vector>
 
-#include "base/codec.h"
-#include "base/schema_codec.h"
+#include "codec/codec.h"
+#include "codec/schema_codec.h"
 #include "client/bs_client.h"
 #include "client/ns_client.h"
 #include "client/tablet_client.h"
@@ -172,7 +172,7 @@ class ViewResult {
 
     void SetRv(const std::shared_ptr<TableHandler>& th) {
         columns_ = th->columns;
-        rv_ = std::make_shared<rtidb::base::RowView>(*columns_);
+        rv_ = std::make_shared<rtidb::codec::RowView>(*columns_);
         initialed_ = true;
     }
 
@@ -182,7 +182,7 @@ class ViewResult {
 
     int64_t GetInt(uint32_t idx);
 
-    std::shared_ptr<rtidb::base::RowView> rv_;
+    std::shared_ptr<rtidb::codec::RowView> rv_;
 
  private:
     std::shared_ptr<

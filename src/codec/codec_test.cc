@@ -7,8 +7,8 @@
 #include <string>
 #include <vector>
 #include <memory>
-#include "base/codec.h"
 #include "base/kv_iterator.h"
+#include "codec/codec.h"
 #include "gtest/gtest.h"
 #include "proto/common.pb.h"
 #include "proto/tablet.pb.h"
@@ -16,7 +16,7 @@
 #include "boost/container/deque.hpp"
 
 namespace rtidb {
-namespace base {
+namespace codec {
 
 class CodecTest : public ::testing::Test {
  public:
@@ -28,14 +28,14 @@ TEST_F(CodecTest, EncodeRows_empty) {
     boost::container::deque<std::pair<uint64_t, ::rtidb::base::Slice>>
         data;
     std::string pairs;
-    int32_t size = ::rtidb::base::EncodeRows(data, 0, &pairs);
+    int32_t size = ::rtidb::codec::EncodeRows(data, 0, &pairs);
     ASSERT_EQ(size, 0);
 }
 
 TEST_F(CodecTest, EncodeRows_invalid) {
     boost::container::deque<std::pair<uint64_t, ::rtidb::base::Slice>>
         data;
-    int32_t size = ::rtidb::base::EncodeRows(data, 0, NULL);
+    int32_t size = ::rtidb::codec::EncodeRows(data, 0, NULL);
     ASSERT_EQ(size, -1);
 }
 
@@ -54,10 +54,10 @@ TEST_F(CodecTest, EncodeRows) {
     data.emplace_back(
         3, std::move(::rtidb::base::Slice(empty.c_str(), empty.length())));
     std::string pairs;
-    int32_t size = ::rtidb::base::EncodeRows(data, total_block_size, &pairs);
+    int32_t size = ::rtidb::codec::EncodeRows(data, total_block_size, &pairs);
     ASSERT_EQ(size, 3 * 12 + 6 + 6);
     std::vector<std::pair<uint64_t, std::string*>> new_data;
-    ::rtidb::base::Decode(&pairs, new_data);
+    ::rtidb::codec::Decode(&pairs, new_data);
     ASSERT_EQ(data.size(), new_data.size());
     ASSERT_EQ(new_data[0].second->compare(test1), 0);
     ASSERT_EQ(new_data[1].second->compare(test2), 0);
@@ -386,7 +386,7 @@ TEST_F(CodecTest, ManyCol) {
     }
 }
 
-}  // namespace base
+}  // namespace codec
 }  // namespace rtidb
 
 int main(int argc, char** argv) {

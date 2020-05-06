@@ -90,7 +90,7 @@ public class TraverseKvIterator implements KvIterator {
             Tablet.TraverseResponse response = ts.traverse(request);
             if (response != null && response.getCode() == 0) {
                 bs = response.getPairs();
-                bb = bs.asReadOnlyByteBuffer();
+                bb = bs.asReadOnlyByteBuffer().order(ByteOrder.LITTLE_ENDIAN);
                 totalSize = this.bs.size();
                 offset = 0;
                 if (totalSize == 0) {
@@ -232,19 +232,19 @@ public class TraverseKvIterator implements KvIterator {
             offset += 8;
             return;
         }
-        slice = this.bb.slice().asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN);
-        slice.position(offset);
-        int total_size = slice.getInt();
-        int pk_size = slice.getInt();
-        time = slice.getLong();
-
+        bb.position(offset);
+        int total_size = bb.getInt();
+        int pk_size = bb.getInt();
+        time = bb.getLong();
         if (pk_size < 0 || total_size - 8 - pk_size < 0) {
             throw new RuntimeException("bad frame data");
         }
         byte[] pk_buf = new byte[pk_size];
-        slice.get(pk_buf);
+        bb.get(pk_buf);
         pk = new String(pk_buf, charset);
         offset += (8 + total_size);
-        slice.limit(offset);
+        slice = bb.slice().order(ByteOrder.LITTLE_ENDIAN);
+        int length = total_size - 8 - pk_size;
+        slice.limit(length);
     }
 }

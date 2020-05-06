@@ -5,16 +5,18 @@
 // Date 2017-03-31
 //
 
-#ifndef SRC_BASE_CODEC_H_
-#define SRC_BASE_CODEC_H_
+#ifndef SRC_CODEC_CODEC_H_
+#define SRC_CODEC_CODEC_H_
 
 #include <stdio.h>
 #include <stdlib.h>
+
 #include <map>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "base/endianconv.h"
 #include "base/strings.h"
 #include "boost/container/deque.hpp"
@@ -27,7 +29,7 @@ using ::baidu::common::DEBUG;
 using ::baidu::common::WARNING;
 
 namespace rtidb {
-namespace base {
+namespace codec {
 
 static inline void Encode(uint64_t time, const char* data, const size_t size,
                           char* buffer, uint32_t offset) {
@@ -75,7 +77,7 @@ static inline int32_t EncodeRows(const std::vector<::rtidb::base::Slice>& rows,
     uint32_t offset = 0;
     char* rbuffer = reinterpret_cast<char*>(&((*body)[0]));
     for (auto lit = rows.begin(); lit != rows.end(); ++lit) {
-        ::rtidb::base::Encode(lit->data(), lit->size(), rbuffer, offset);
+        ::rtidb::codec::Encode(lit->data(), lit->size(), rbuffer, offset);
         offset += (4 + lit->size());
     }
     return total_size;
@@ -98,8 +100,8 @@ static inline int32_t EncodeRows(
     char* rbuffer = reinterpret_cast<char*>(&((*pairs)[0]));
     uint32_t offset = 0;
     for (auto lit = rows.begin(); lit != rows.end(); ++lit) {
-        ::rtidb::base::Encode(lit->first, lit->second.data(),
-                              lit->second.size(), rbuffer, offset);
+        ::rtidb::codec::Encode(lit->first, lit->second.data(),
+                               lit->second.size(), rbuffer, offset);
         offset += (4 + 8 + lit->second.size());
     }
     return total_size;
@@ -138,7 +140,8 @@ static inline void Decode(
     std::vector<std::pair<uint64_t, std::string*>>& pairs) {  // NOLINT
     const char* buffer = str->c_str();
     uint32_t total_size = str->length();
-    PDLOG(DEBUG, "total size %d %s", total_size, DebugString(*str).c_str());
+    PDLOG(DEBUG, "total size %d %s", total_size,
+          ::rtidb::base::DebugString(*str).c_str());
     while (total_size > 0) {
         uint32_t size = 0;
         memcpy(static_cast<void*>(&size), buffer, 4);
@@ -164,7 +167,8 @@ static inline void DecodeFull(
         value_map) {
     const char* buffer = str->c_str();
     uint32_t total_size = str->length();
-    PDLOG(DEBUG, "total size %u %s", total_size, DebugString(*str).c_str());
+    PDLOG(DEBUG, "total size %u %s", total_size,
+          ::rtidb::base::DebugString(*str).c_str());
     while (total_size > 0) {
         uint32_t size = 0;
         memcpy(static_cast<void*>(&size), buffer, 4);
@@ -455,7 +459,7 @@ int32_t GetStrCol(int8_t* input, int32_t str_field_offset,
                   int32_t type_id, int8_t* data);
 }  // namespace v1
 
-}  // namespace base
+}  // namespace codec
 }  // namespace rtidb
 
-#endif  // SRC_BASE_CODEC_H_
+#endif  // SRC_CODEC_CODEC_H_

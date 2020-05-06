@@ -15,20 +15,21 @@ def return_None(x):
 def return_EmptyStr(x):
   return str()
 
-type_map = {1:bool,2:int,3:int,4:int,5:float,6:float,7:str,8:int,9:int,11:str,100:return_None};
+type_map = {1:bool,2:int,3:int,4:int,5:float,6:float,7:int,8:int,13:str,14:str,100:return_None};
 # todo: current do not have blob type process function
 '''
-  kBool = 1,
-  kSmallInt = 2,
-  kInt = 3,
-  kBigInt = 4,
-  kFloat = 5,
-  kDouble = 6,
-  kVarchar = 7,
-  kDate = 8,
-  kTimestamp = 9,
-  kBlob = 10
-  kString = 11
+kBool = 1;
+kSmallInt = 2;
+kInt = 3;
+kBigInt = 4;
+kFloat = 5;
+kDouble = 6;
+kDate = 7;
+kTimestamp = 8;
+// reserve 9, 10, 11, 12
+kVarchar = 13;
+kString = 14;
+kBlob = 15;
 '''
 
 NONETOKEN="None#*@!"
@@ -56,7 +57,7 @@ class RtidbResult:
     self.__type_to_func = {1:self.__data.GetBool, 
       2:self.__data.GetInt16, 3:self.__data.GetInt32, 
       4:self.__data.GetInt64, 5:self.__data.GetFloat, 
-      6:self.__data.GetDouble, 7:self.__data.GetString,
+      6:self.__data.GetDouble, 13:self.__data.GetString,
       8:return_None, 9:return_None, 100:return_None}
     names = self.__data.GetColumnsName()
     self.__names = [x for x in names]
