@@ -13,6 +13,7 @@
 #include <string>
 #include <vector>
 #include "base/endianconv.h"
+#include "base/strings.h"
 #include "boost/lexical_cast.hpp"
 #include "logging.h"  //NOLINT
 #include "proto/type.pb.h"
