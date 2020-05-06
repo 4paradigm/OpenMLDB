@@ -161,16 +161,8 @@ void PhysicalWindowAggrerationNode::Print(std::ostream& output,
     PrintChildren(output, tab);
 }
 bool PhysicalWindowAggrerationNode::InitSchema() {
-    if (producers_.empty() || nullptr == producers_[0]) {
-        LOG(WARNING) << "InitSchema fail: producers are empty";
-        return false;
-    }
-    output_schema_.CopyFrom(producers_[0]->output_schema_);
-    for (auto pair : producers_[0]->GetOutputNameSchemaList()) {
-        output_name_schema_list_.push_back(pair);
-    }
-    PrintSchema();
-    return true;
+    //TODO(chenjing): Init Schema with window Join
+    return false;
 }
 
 void PhysicalJoinNode::Print(std::ostream& output,
