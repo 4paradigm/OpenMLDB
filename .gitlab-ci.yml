@@ -40,6 +40,20 @@ build_fesql_and_case:
         paths: 
             - "build/coverage"
 
+build_py3sdk_and_case_on_mac:
+    stage: build
+    variables:
+        CICD_RUNNER_THIRDPARTY_PATH: "/opt/depends/thirdparty"
+        CICD_RUNNER_TAG: "macos"
+    tags:
+        - macos
+    script:
+        - bash tools/run_py3_ut.sh
+    artifacts:
+        reports:
+            junit:
+                - python/test/*.xml
+
 build_fesql_and_case_on_mac:
     stage: build
     variables:

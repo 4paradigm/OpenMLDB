@@ -167,7 +167,8 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
             return false;
         }
         ctx.request_schema = transformer.request_schema();
-        ok = codec::SchemaCodec::Encode(transformer.request_schema(), &ctx.encoded_request_schema);
+        ok = codec::SchemaCodec::Encode(transformer.request_schema(),
+                &ctx.encoded_request_schema);
         if (!ok) {
             LOG(WARNING) << "fail to encode request schema";
             return false;
