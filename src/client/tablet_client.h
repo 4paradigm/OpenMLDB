@@ -14,7 +14,7 @@
 #include <utility>
 #include <vector>
 #include "base/kv_iterator.h"
-#include "base/schema_codec.h"
+#include "codec/schema_codec.h"
 #include "proto/tablet.pb.h"
 #include "rpc/rpc_client.h"
 
@@ -49,7 +49,7 @@ class TabletClient {
 
     bool CreateTable(const std::string& name, uint32_t tid, uint32_t pid,
                      uint64_t abs_ttl, uint64_t lat_ttl, uint32_t seg_cnt,
-                     const std::vector<::rtidb::base::ColumnDesc>& columns,
+                     const std::vector<::rtidb::codec::ColumnDesc>& columns,
                      const ::rtidb::api::TTLType& type, bool leader,
                      const std::vector<std::string>& endpoints,
                      uint64_t term = 0,

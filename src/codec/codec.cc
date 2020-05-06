@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-#include "base/codec.h"
-#include <unordered_map>
+#include "codec/codec.h"
+#include <unordered_set>
 #include "logging.h"  // NOLINT
 
 using ::baidu::common::DEBUG;
@@ -24,19 +24,27 @@ using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
 
 namespace rtidb {
-namespace base {
+namespace codec {
 
 #define BitMapSize(size) (((size) >> 3) + !!((size)&0x07))
 
-static const std::unordered_map<::rtidb::type::DataType, uint8_t>
-    TYPE_SIZE_MAP = {{::rtidb::type::kBool, sizeof(bool)},
-                     {::rtidb::type::kSmallInt, sizeof(int16_t)},
-                     {::rtidb::type::kInt, sizeof(int32_t)},
-                     {::rtidb::type::kFloat, sizeof(float)},
-                     {::rtidb::type::kBigInt, sizeof(int64_t)},
-                     {::rtidb::type::kTimestamp, sizeof(int64_t)},
-                     {::rtidb::type::kDate, sizeof(int32_t)},
-                     {::rtidb::type::kDouble, sizeof(double)}};
+static const std::unordered_set<::rtidb::type::DataType> TYPE_SET(
+    {::rtidb::type::kBool, ::rtidb::type::kSmallInt, ::rtidb::type::kInt,
+     ::rtidb::type::kBigInt, ::rtidb::type::kFloat, ::rtidb::type::kDouble,
+     ::rtidb::type::kDate, ::rtidb::type::kTimestamp, ::rtidb::type::kVarchar,
+     ::rtidb::type::kString});
+
+static constexpr std::array<uint32_t, 9> TYPE_SIZE_ARRAY = {
+    0,
+    sizeof(bool),      // kBool
+    sizeof(int16_t),   // kSmallInt
+    sizeof(int32_t),   // kInt
+    sizeof(int64_t),   // kBigInt
+    sizeof(float),     // kFloat
+    sizeof(double),    // kDouble
+    sizeof(uint32_t),  // kDate
+    sizeof(int64_t),   // kTimestamp
+};
 
 static inline uint8_t GetAddrLength(uint32_t size) {
     if (size <= UINT8_MAX) {
@@ -68,12 +76,11 @@ RowBuilder::RowBuilder(const Schema& schema)
             offset_vec_.push_back(str_field_cnt_);
             str_field_cnt_++;
         } else {
-            auto iter = TYPE_SIZE_MAP.find(cur_type);
-            if (iter == TYPE_SIZE_MAP.end()) {
-                PDLOG(WARNING, "type is not supported");
-            } else {
+            if (cur_type < TYPE_SIZE_ARRAY.size() && cur_type > 0) {
                 offset_vec_.push_back(str_field_start_offset_);
-                str_field_start_offset_ += iter->second;
+                str_field_start_offset_ += TYPE_SIZE_ARRAY[cur_type];
+            } else {
+                PDLOG(WARNING, "type is not supported");
             }
         }
     }
@@ -123,12 +130,8 @@ bool RowBuilder::Check(uint32_t index, ::rtidb::type::DataType type) {
     if (column.data_type() != type) {
         return false;
     }
-    if (column.data_type() != ::rtidb::type::kVarchar &&
-        column.data_type() != ::rtidb::type::kString) {
-        auto iter = TYPE_SIZE_MAP.find(column.data_type());
-        if (iter == TYPE_SIZE_MAP.end()) {
-            return false;
-        }
+    if (TYPE_SET.find(column.data_type()) == TYPE_SET.end()) {
+        return false;
     }
     return true;
 }
@@ -358,13 +361,12 @@ bool RowView::Init() {
             offset_vec_.push_back(string_field_cnt_);
             string_field_cnt_++;
         } else {
-            auto iter = TYPE_SIZE_MAP.find(cur_type);
-            if (iter == TYPE_SIZE_MAP.end()) {
+            if (cur_type < TYPE_SIZE_ARRAY.size() && cur_type > 0) {
+                offset_vec_.push_back(offset);
+                offset += TYPE_SIZE_ARRAY[cur_type];
+            } else {
                 is_valid_ = false;
                 return false;
-            } else {
-                offset_vec_.push_back(offset);
-                offset += iter->second;
             }
         }
     }
@@ -897,5 +899,5 @@ bool RowProject::Project(const int8_t* row_ptr, uint32_t size,
     return true;
 }
 
-}  // namespace base
+}  // namespace codec
 }  // namespace rtidb

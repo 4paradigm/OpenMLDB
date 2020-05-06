@@ -278,16 +278,13 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         key = validateKey(key);
         int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
-        ByteString response = get(th.getTableInfo().getTid(), pid, key, idxName, time, tsName, type, th, et, etType);
-        if (response == null || response.isEmpty()) {
-            return null;
-        }
-        Object[] row = null;
-        if (th.getSchemaMap().size() > 0) {
-            row = RowCodec.decode(response.asReadOnlyByteBuffer(), th.getSchema(), th.getSchemaMap().size());
-        } else {
-            row = RowCodec.decode(response.asReadOnlyByteBuffer(), th.getSchema());
-        }
+        GetOption getOption = new GetOption();
+        getOption.setEt(et);
+        getOption.setEtType(etType);
+        getOption.setStType(type);
+        getOption.setTsName(tsName);
+        getOption.setIdxName(idxName);
+        Object[] row = get(pid, key,  time, getOption, th);
         return row;
     }
 

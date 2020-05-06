@@ -29,7 +29,7 @@
 #include <algorithm>
 
 namespace rtidb {
-namespace base {
+namespace codec {
 
 typedef unsigned char uchar; /* Short for unsigned char */
 static constexpr int FLT_EXP_DIG = sizeof(float) * 8 - FLT_MANT_DIG;
@@ -366,5 +366,5 @@ __attribute__((unused)) static int UnpackString(const void *src, void *dst,
     return 0;
 }
 
-}  // namespace base
+}  // namespace codec
 }  // namespace rtidb

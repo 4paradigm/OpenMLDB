@@ -16,6 +16,8 @@ mkdir ${package}
 cp -r release/conf ${package}/conf
 cp -r release/bin ${package}/bin
 cp -r tools ${package}/tools
+rm -rf ${package}/tools/dataImporter
+rm -rf ${package}/tools/rtidbCmdUtil
 cp -r build/bin/rtidb ${package}/bin/rtidb
 cd ${package}/bin
 wget http://pkg.4paradigm.com/rtidb/dev/node_exporter
