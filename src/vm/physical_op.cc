@@ -92,7 +92,8 @@ void PhysicalPartitionProviderNode::Print(std::ostream& output,
 void PhysicalGroupNode::Print(std::ostream& output,
                               const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(" << "group_" << group_.ToString() << ")";
+    output << "("
+           << "group_" << group_.ToString() << ")";
     output << "\n";
     PrintChildren(output, tab);
 }
@@ -161,10 +162,9 @@ void PhysicalWindowAggrerationNode::Print(std::ostream& output,
     PrintChildren(output, tab);
 }
 bool PhysicalWindowAggrerationNode::InitSchema() {
-    if (2 != producers_.size() || nullptr == producers_[0] ||
-        nullptr == producers_[1]) {
-        LOG(WARNING) << "InitSchema fail: producers size isn't 2 or left/right "
-                        "producer is null";
+    if (producers_.empty() || nullptr == producers_[0]) {
+        LOG(WARNING) << "InitSchema fail: producers is empty or"
+                        "producers[0] is null";
         return false;
     }
     output_schema_.CopyFrom(producers_[0]->output_schema_);
