@@ -325,7 +325,7 @@ class ExprNode : public SQLNode {
         : SQLNode(kExpr, 0, 0), expr_type_(expr_type) {}
     ~ExprNode() {}
     void AddChild(ExprNode *expr) { children_.push_back(expr); }
-    const ExprNode* GetChild(size_t idx) const { return children_[idx]; }
+    const ExprNode *GetChild(size_t idx) const { return children_[idx]; }
     int GetChildNum() const { return children_.size(); }
 
     const ExprType GetExprType() const { return expr_type_; }
@@ -434,13 +434,9 @@ class OrderByNode : public ExprNode {
     const std::string GetExprString() const;
     virtual bool Equals(const ExprNode *that) const;
 
-    const ExprListNode* GetOrderBy() const {
-        return order_by_;
-    }
+    const ExprListNode *order_by() const { return order_by_; }
 
-    bool is_asc() const {
-        return is_asc_;
-    }
+    bool is_asc() const { return is_asc_; }
 
     const bool is_asc_;
     const ExprListNode *order_by_;
@@ -623,8 +619,10 @@ class WindowDefNode : public SQLNode {
  public:
     WindowDefNode()
         : SQLNode(kWindowDef, 0, 0),
+          instance_not_in_window_(false),
           window_name_(""),
           frame_ptr_(NULL),
+          union_tables_(nullptr),
           partitions_(nullptr),
           orders_(nullptr) {}
 
@@ -643,14 +641,28 @@ class WindowDefNode : public SQLNode {
     void SetPartitions(ExprListNode *partitions) { partitions_ = partitions; }
     void SetOrders(OrderByNode *orders) { orders_ = orders; }
     void SetFrame(FrameNode *frame) { frame_ptr_ = frame; }
+
+    SQLNodeList *union_tables() const { return union_tables_; }
+    void set_union_tables(SQLNodeList *union_table) {
+        union_tables_ = union_table;
+    }
+
+    const bool instance_not_in_window() const {
+        return instance_not_in_window_;
+    }
+    void set_instance_not_in_window(bool instance_not_in_window) {
+        instance_not_in_window_ = instance_not_in_window;
+    }
     void Print(std::ostream &output, const std::string &org_tab) const;
     virtual bool Equals(const SQLNode *that) const;
 
  private:
-    std::string window_name_;  /* window's own name */
-    FrameNode *frame_ptr_;     /* expression for starting bound, if any */
-    ExprListNode *partitions_; /* PARTITION BY expression list */
-    OrderByNode *orders_;      /* ORDER BY (list of SortBy) */
+    bool instance_not_in_window_;
+    std::string window_name_;   /* window's own name */
+    FrameNode *frame_ptr_;      /* expression for starting bound, if any */
+    SQLNodeList *union_tables_; /* union other table in window */
+    ExprListNode *partitions_;  /* PARTITION BY expression list */
+    OrderByNode *orders_;       /* ORDER BY (list of SortBy) */
 };
 
 class AllNode : public ExprNode {
@@ -896,7 +908,7 @@ class ColumnRefNode : public ExprNode {
         column_name_ = column_name;
     }
 
-    static ColumnRefNode* CastFrom(ExprNode* node);
+    static ColumnRefNode *CastFrom(ExprNode *node);
     void Print(std::ostream &output, const std::string &org_tab) const;
     const std::string GetExprString() const;
     virtual bool Equals(const ExprNode *node) const;

@@ -62,6 +62,10 @@ INSTANTIATE_TEST_CASE_P(
     testing::ValuesIn(InitCases("cases/plan/simple_query.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
+    SqlWindowQueryParse, SqlParserTest,
+    testing::ValuesIn(InitCases("cases/plan/window_query.yaml")));
+
+INSTANTIATE_TEST_CASE_P(
     SqlDistinctParse, SqlParserTest,
     testing::ValuesIn(InitCases("cases/plan/distinct_query.yaml")));
 

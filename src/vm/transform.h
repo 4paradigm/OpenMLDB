@@ -129,6 +129,13 @@ class GroupAndSortOptimized : public TransformUpPysicalPass {
  private:
     virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
 
+    bool JoinKeysOptimized(PhysicalOpNode* in, Join* join,
+                           PhysicalOpNode** new_in);
+    bool KeysFilterOptimized(PhysicalOpNode* in, Key* group, Key* hash,
+                             PhysicalOpNode** new_in);
+    bool GroupOptimized(PhysicalOpNode* in, Key* group,
+                        PhysicalOpNode** new_in);
+    bool SortOptimized(PhysicalOpNode* in, Sort* sort);
     bool TransformGroupExpr(const node::ExprListNode* group,
                             const IndexHint& index_hint, std::string* index,
                             const node::ExprListNode** keys,
@@ -162,11 +169,10 @@ struct ExprPair {
 };
 // Optimize filter condition
 // for FilterNode, JoinNode
-class FilterConditionOptimized : public TransformUpPysicalPass {
+class ConditionOptimized : public TransformUpPysicalPass {
  public:
-    FilterConditionOptimized(node::NodeManager* node_manager,
-                             const std::string& db,
-                             const std::shared_ptr<Catalog>& catalog)
+    ConditionOptimized(node::NodeManager* node_manager, const std::string& db,
+                       const std::shared_ptr<Catalog>& catalog)
         : TransformUpPysicalPass(node_manager, db, catalog) {}
     static bool TransfromAndConditionList(
         const node::ExprNode* condition,
@@ -183,6 +189,7 @@ class FilterConditionOptimized : public TransformUpPysicalPass {
 
  private:
     virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
+    bool JoinConditionOptimized(PhysicalOpNode* in, Join* join);
     void SkipConstExpression(node::ExprListNode input,
                              node::ExprListNode* output);
 };
@@ -240,6 +247,20 @@ class BatchModeTransformer {
     typedef std::unordered_map<LogicalOp, ::fesql::vm::PhysicalOpNode*,
                                HashLogicalOp, EqualLogicalOp>
         LogicalOpMap;
+    bool GenPlanNode(PhysicalOpNode* node, base::Status& status);  // NOLINT
+    bool GenJoin(Join* join, PhysicalOpNode* in,
+                 base::Status& status);  // NOLINT
+    bool GenFilter(ConditionFilter* filter, PhysicalOpNode* in,
+                   base::Status& status);  // NOLINT
+    bool GenKey(Key* hash, PhysicalOpNode* in,
+                 base::Status& status);  // NOLINT
+    bool GenWindow(WindowOp* window, PhysicalOpNode* in,
+                   base::Status& status);  // NOLINT
+
+    bool GenSort(Sort* sort, PhysicalOpNode* in,
+                 base::Status& status);  // NOLINT
+    bool GenRange(Range* sort, PhysicalOpNode* in,
+                  base::Status& status);  // NOLINT
 
  protected:
     virtual bool TransformPlanOp(const ::fesql::node::PlanNode* node,
@@ -297,7 +318,10 @@ class BatchModeTransformer {
                          const node::ExprListNode* expr_list, bool row_mode,
                          std::string& fn_name, Schema* output_schema,  // NOLINT
                          base::Status& status);                        // NOLINT
-    bool GenPlanNode(PhysicalOpNode* node, base::Status& status);      // NOLINT
+    bool CodeGenExprList(const NameSchemaList& input_name_schema_list,
+                         const node::ExprListNode* expr_list, bool row_mode,
+                         FnInfo* fn_info,
+                         base::Status& status);  // NOLINT
 
     node::NodeManager* node_manager_;
     const std::string db_;
@@ -330,6 +354,10 @@ class RequestModeransformer : public BatchModeTransformer {
     const std::string& request_name() const { return request_name_; }
 
  protected:
+    virtual bool TransformProjectOp(node::ProjectListNode* node,
+                                    PhysicalOpNode* depend,
+                                    PhysicalOpNode** output,
+                                    base::Status& status);  // NOLINT
     virtual bool TransformProjecPlantOp(const node::ProjectPlanNode* node,
                                         PhysicalOpNode** output,
                                         base::Status& status);  // NOLINT

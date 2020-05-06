@@ -271,9 +271,9 @@ bool SQLCompiler::ResolvePlanFnAddress(PhysicalOpNode* node,
         status.msg = "fail to resolve project fn address: node is null";
     }
 
-    if (!node->GetProducers().empty()) {
-        for (auto iter = node->GetProducers().cbegin();
-             iter != node->GetProducers().cend(); iter++) {
+    if (!node->producers().empty()) {
+        for (auto iter = node->producers().cbegin();
+             iter != node->producers().cend(); iter++) {
             if (!ResolvePlanFnAddress(*iter, jit, status)) {
                 return false;
             }

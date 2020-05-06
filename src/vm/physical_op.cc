@@ -81,8 +81,8 @@ void PhysicalRequestProviderNode::Print(std::ostream& output,
     output << "(request=" << table_handler_->GetName() << ")";
 }
 
-void PhysicalScanIndexNode::Print(std::ostream& output,
-                                  const std::string& tab) const {
+void PhysicalPartitionProviderNode::Print(std::ostream& output,
+                                          const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "(type=" << DataProviderTypeName(provider_type_)
            << ", table=" << table_handler_->GetName()
@@ -92,26 +92,13 @@ void PhysicalScanIndexNode::Print(std::ostream& output,
 void PhysicalGroupNode::Print(std::ostream& output,
                               const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(groups=" << node::ExprString(groups_) << ")";
+    output << "("
+           << "group_" << group_.ToString() << ")";
     output << "\n";
     PrintChildren(output, tab);
 }
 PhysicalGroupNode* PhysicalGroupNode::CastFrom(PhysicalOpNode* node) {
     return dynamic_cast<PhysicalGroupNode*>(node);
-}
-
-void PhysicalGroupAndSortNode::Print(std::ostream& output,
-                                     const std::string& tab) const {
-    PhysicalOpNode::Print(output, tab);
-    output << "(groups=" << node::ExprString(groups_)
-           << ", orders=" << node::ExprString(orders_) << ")";
-    output << "\n";
-    PrintChildren(output, tab);
-}
-
-PhysicalGroupAndSortNode* PhysicalGroupAndSortNode::CastFrom(
-    PhysicalOpNode* node) {
-    return dynamic_cast<PhysicalGroupAndSortNode*>(node);
 }
 
 void PhysicalProjectNode::Print(std::ostream& output,
@@ -152,8 +139,8 @@ PhysicalWindowAggrerationNode* PhysicalWindowAggrerationNode::CastFrom(
 void PhysicalGroupAggrerationNode::Print(std::ostream& output,
                                          const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(type=" << ProjectTypeName(project_type_)
-           << ", groups=" << node::ExprString(groups_);
+    output << "(type=" << ProjectTypeName(project_type_) << ", "
+           << "group_" << group_.ToString();
     if (limit_cnt_ > 0) {
         output << ", limit=" << limit_cnt_;
     }
@@ -165,11 +152,8 @@ void PhysicalGroupAggrerationNode::Print(std::ostream& output,
 void PhysicalWindowAggrerationNode::Print(std::ostream& output,
                                           const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(type=" << ProjectTypeName(project_type_)
-           << ", groups=" << node::ExprString(groups_)
-           << ", orders=" << node::ExprString(orders_)
-           << ", start=" << std::to_string(start_offset_)
-           << ", end=" << std::to_string(end_offset_);
+    output << "(type=" << ProjectTypeName(project_type_) << ", "
+           << window_.ToString();
     if (limit_cnt_ > 0) {
         output << ", limit=" << limit_cnt_;
     }
@@ -177,14 +161,16 @@ void PhysicalWindowAggrerationNode::Print(std::ostream& output,
     output << "\n";
     PrintChildren(output, tab);
 }
+bool PhysicalWindowAggrerationNode::InitSchema() {
+    // TODO(chenjing): Init Schema with window Join
+    return false;
+}
 
 void PhysicalJoinNode::Print(std::ostream& output,
                              const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(type=" << node::JoinTypeName(join_type_)
-           << ", condition=" << node::ExprString(condition_)
-           << ", left_keys=" << node::ExprString(left_keys_)
-           << ", right_keys=" << node::ExprString(right_keys_);
+    output << "(type=" << node::JoinTypeName(join_type_) << ", "
+           << join_.ToString();
     if (limit_cnt_ > 0) {
         output << ", limit=" << limit_cnt_;
     }
@@ -208,7 +194,7 @@ bool PhysicalJoinNode::InitSchema() {
         output_name_schema_list_.push_back(right_pair);
     }
     PrintSchema();
-    return false;
+    return true;
 }
 PhysicalJoinNode* PhysicalJoinNode::CastFrom(PhysicalOpNode* node) {
     return dynamic_cast<PhysicalJoinNode*>(node);
@@ -217,7 +203,7 @@ PhysicalJoinNode* PhysicalJoinNode::CastFrom(PhysicalOpNode* node) {
 void PhysicalSortNode::Print(std::ostream& output,
                              const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(" << node::ExprString(order_);
+    output << "(" << sort_.ToString();
     if (limit_cnt_ > 0) {
         output << ", limit=" << limit_cnt_;
     }
@@ -243,7 +229,7 @@ void PhysicalRenameNode::Print(std::ostream& output,
 void PhysicalFliterNode::Print(std::ostream& output,
                                const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(condition=" << node::ExprString(condition_);
+    output << "(" << filter_.ToString();
     if (limit_cnt_ > 0) {
         output << ", limit=" << limit_cnt_;
     }
@@ -321,11 +307,9 @@ void PhysicalUnionNode::Print(std::ostream& output,
 void PhysicalRequestUnionNode::Print(std::ostream& output,
                                      const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(groups=" << node::ExprString(groups_)
-           << ", orders=" << node::ExprString(orders_)
-           << ", keys=" << node::ExprString(keys_)
-           << ", start=" << std::to_string(start_offset_)
-           << ", end=" << std::to_string(end_offset_);
+    output << "(";
+    output << window_.ToString();
+    output << ", index_" << index_key_.ToString();
     if (limit_cnt_ > 0) {
         output << ", limit=" << limit_cnt_;
     }
@@ -345,10 +329,8 @@ bool PhysicalRequestUnionNode::InitSchema() {
 void PhysicalRequestJoinNode::Print(std::ostream& output,
                                     const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(type=" << node::JoinTypeName(join_type_)
-           << ", condition=" << node::ExprString(condition_)
-           << ", left_keys=" << node::ExprString(left_keys_)
-           << ", right_keys=" << node::ExprString(right_keys_);
+    output << "(type=" << node::JoinTypeName(join_type_) << ", "
+           << join_.ToString();
     if (limit_cnt_ > 0) {
         output << ", limit=" << limit_cnt_;
     }
@@ -375,24 +357,6 @@ bool PhysicalRequestJoinNode::InitSchema() {
     PrintSchema();
     return true;
 }
-void PhysicalSeekIndexNode::Print(std::ostream& output,
-                                  const std::string& tab) const {
-    PhysicalOpNode::Print(output, tab);
-    output << "(keys=" << node::ExprString(keys_);
-    if (limit_cnt_ > 0) {
-        output << ", limit=" << limit_cnt_;
-    }
-    output << ")";
-    output << "\n";
-    PrintChildren(output, tab);
-}
-bool PhysicalSeekIndexNode::InitSchema() {
-    output_schema_.CopyFrom(producers_[1]->output_schema_);
-    for (auto pair : producers_[1]->GetOutputNameSchemaList()) {
-        output_name_schema_list_.push_back(pair);
-    }
-    PrintSchema();
-    return true;
-}
+
 }  // namespace vm
 }  // namespace fesql

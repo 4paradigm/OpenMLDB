@@ -20,8 +20,10 @@ object WindowAggPlan {
     val outputSchemaSlices = FesqlUtil.getOutputSchemaSlices(node)
     val outputSchema = FesqlUtil.getSparkSchema(node.GetOutputSchema())
 
+    // process window op
+    val windowOp = node.window();
     // process order key
-    val orders = node.GetOrders().GetOrderBy()
+    val orders = windowOp.sort().orders().order_by()
     if (orders.GetChildNum() > 1) {
       throw new FeSQLException("Multiple window order not supported")
     }
@@ -32,7 +34,8 @@ object WindowAggPlan {
     }
 
     // process group-by keys
-    val groups = node.GetGroups()
+    val groups = windowOp.partition().keys();
+
     val groupIdxs = mutable.ArrayBuffer[Int]()
     for (k <- 0 until groups.GetChildNum()) {
       val colName = SparkColumnUtil.resolveColName(groups.GetChild(k), inputDf, ctx)
@@ -44,10 +47,10 @@ object WindowAggPlan {
     }
 
     val windowAggConfig = WindowAggConfig(
-      startOffset = node.GetStartOffset(),
+      startOffset = node.window.range.start_offset,
       orderIdx = orderIdx,
       groupIdxs = groupIdxs.toArray,
-      functionName = node.GetFnName(),
+      functionName = node.project.fn_name,
       moduleTag = ctx.getTag,
       moduleBroadcast = ctx.getModuleBufferBroadcast,
       inputSchema = inputDf.schema,

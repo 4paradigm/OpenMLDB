@@ -72,8 +72,6 @@ class SparkPlanner(session: SparkSession, config: Map[String, Any]) {
             s"Project type ${projectNode.getProject_type_} not supported")
         }
 
-      case PhysicalOpType.kPhysicalOpGroupAndSort =>
-        GroupAndSortPlan.gen(ctx, PhysicalGroupAndSortNode.CastFrom(root), children.head)
 
       case PhysicalOpType.kPhysicalOpGroupBy =>
         GroupByPlan.gen(ctx, PhysicalGroupNode.CastFrom(root), children.head)

@@ -12,7 +12,7 @@ object GroupByPlan {
   def gen(ctx: PlanContext, node: PhysicalGroupNode, input: SparkInstance): SparkInstance = {
     val inputDf = input.getDf(ctx.getSparkSession)
 
-    val groupByExprs = node.GetGroups()
+    val groupByExprs = node.group().keys();
     val groupByCols = mutable.ArrayBuffer[Column]()
     for (i <- 0 until groupByExprs.GetChildNum()) {
       val expr = groupByExprs.GetChild(i)
