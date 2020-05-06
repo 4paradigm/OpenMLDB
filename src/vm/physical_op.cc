@@ -92,7 +92,8 @@ void PhysicalPartitionProviderNode::Print(std::ostream& output,
 void PhysicalGroupNode::Print(std::ostream& output,
                               const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(" << "group_" << group_.ToString() << ")";
+    output << "("
+           << "group_" << group_.ToString() << ")";
     output << "\n";
     PrintChildren(output, tab);
 }
@@ -161,7 +162,7 @@ void PhysicalWindowAggrerationNode::Print(std::ostream& output,
     PrintChildren(output, tab);
 }
 bool PhysicalWindowAggrerationNode::InitSchema() {
-    //TODO(chenjing): Init Schema with window Join
+    // TODO(chenjing): Init Schema with window Join
     return false;
 }
 
