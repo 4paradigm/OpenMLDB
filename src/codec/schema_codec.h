@@ -21,9 +21,9 @@
 
 namespace rtidb {
 namespace codec {
-// 1M
-const uint32_t MAX_ROW_BYTE_SIZE = 1024 * 1024;
-const uint32_t HEADER_BYTE_SIZE = 3;
+
+constexpr uint32_t MAX_ROW_BYTE_SIZE = 1024 * 1024; // 1M
+constexpr uint32_t HEADER_BYTE_SIZE = 3;
 
 const std::string NONETOKEN = "None#*@!";  // NOLINT
 const std::string DEFAULT_LONG = "1";      // NOLINT
@@ -243,11 +243,9 @@ class SchemaCodec {
     }
 
     static int ConvertColumnDesc(
-        const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>&
-            column_desc_field,
+        const Schema& column_desc_field,
         std::vector<ColumnDesc>& columns,  // NOLINT
-        const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>&
-            added_column_field) {
+        const Schema& added_column_field) {
         columns.clear();
         for (const auto& cur_column_desc : column_desc_field) {
             ::rtidb::codec::ColType type = ConvertType(cur_column_desc.type());
@@ -280,44 +278,17 @@ class SchemaCodec {
     }
 
     static int ConvertColumnDesc(
-        const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>&
-            column_desc_field,
+        const Schema& column_desc_field,
         std::vector<ColumnDesc>& columns) {  // NOLINT
-        google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>
-            added_column_field;
+        Schema added_column_field;
         return ConvertColumnDesc(column_desc_field, columns,
                                  added_column_field);
     }
 
-    static bool HasTSCol(const std::vector<ColumnDesc>& columns) {
-        for (const auto& column_desc : columns) {
-            if (column_desc.is_ts_col) {
-                return true;
-            }
-        }
-        return false;
-    }
-
- private:
-    // calc the total size of schema
-    uint32_t GetSize(const std::vector<ColumnDesc>& columns) {
-        uint32_t byte_size = 0;
-        for (uint32_t i = 0; i < columns.size(); i++) {
-            byte_size += (HEADER_BYTE_SIZE + columns[i].name.size());
-        }
-        return byte_size;
-    }
-};
-
-class RowSchemaCodec {
- public:
     static int ConvertColumnDesc(
-        const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>&
-            column_desc_field,
-        google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>&
-            columns,  // NOLINT
-        const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>&
-            added_column_field) {
+        const Schema& column_desc_field,
+        Schema& columns,  // NOLINT
+        const Schema& added_column_field) {
         columns.Clear();
         for (const auto& cur_column_desc : column_desc_field) {
             rtidb::common::ColumnDesc* column_desc = columns.Add();
@@ -360,205 +331,26 @@ class RowSchemaCodec {
         }
     }
 
-    static int32_t CalStrLength(
-        const std::map<std::string, std::string>& str_map, const Schema& schema,
-        ::rtidb::base::ResultMsg& rm) {  // NOLINT
-        int32_t str_len = 0;
-        for (int i = 0; i < schema.size(); i++) {
-            const ::rtidb::common::ColumnDesc& col = schema.Get(i);
-            if (col.data_type() == ::rtidb::type::kVarchar ||
-                col.data_type() == ::rtidb::type::kString) {
-                auto iter = str_map.find(col.name());
-                if (iter == str_map.end()) {
-                    rm.code = -1;
-                    rm.msg = col.name() + " not in str_map";
-                    return -1;
-                }
-                if (!col.not_null() &&
-                    (iter->second == "null" || iter->second == NONETOKEN)) {
-                    continue;
-                } else if (iter->second == "null" ||
-                           iter->second == NONETOKEN) {
-                    rm.code = -1;
-                    rm.msg = col.name() + " should not be null";
-                    return -1;
-                }
-                str_len += iter->second.length();
+    static bool HasTSCol(const std::vector<ColumnDesc>& columns) {
+        for (const auto& column_desc : columns) {
+            if (column_desc.is_ts_col) {
+                return true;
             }
         }
-        return str_len;
+        return false;
     }
 
-    static ::rtidb::base::ResultMsg Encode(
-        const std::map<std::string, std::string>& str_map, const Schema& schema,
-        std::string& row) {  // NOLINT
-        ::rtidb::base::ResultMsg rm;
-        if (str_map.size() == 0 || schema.size() == 0 ||
-            str_map.size() - schema.size() != 0) {
-            rm.code = -1;
-            rm.msg = "input error";
-            return rm;
+ private:
+    // calc the total size of schema
+    uint32_t GetSize(const std::vector<ColumnDesc>& columns) {
+        uint32_t byte_size = 0;
+        for (uint32_t i = 0; i < columns.size(); i++) {
+            byte_size += (HEADER_BYTE_SIZE + columns[i].name.size());
         }
-        int32_t str_len = CalStrLength(str_map, schema, rm);
-        if (str_len < 0) {
-            return rm;
-        }
-        ::rtidb::codec::RowBuilder builder(schema);
-        uint32_t size = builder.CalTotalLength(str_len);
-        row.resize(size);
-        builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
-        for (int i = 0; i < schema.size(); i++) {
-            const ::rtidb::common::ColumnDesc& col = schema.Get(i);
-            auto iter = str_map.find(col.name());
-            if (iter == str_map.end()) {
-                rm.code = -1;
-                rm.msg = col.name() + " not in str_map";
-                return rm;
-            }
-            if (!col.not_null() &&
-                (iter->second == "null" || iter->second == NONETOKEN)) {
-                builder.AppendNULL();
-                continue;
-            } else if (iter->second == "null" || iter->second == NONETOKEN) {
-                rm.code = -1;
-                rm.msg = col.name() + " should not be null";
-                return rm;
-            }
-            bool ok = false;
-            try {
-                switch (col.data_type()) {
-                    case rtidb::type::kString:
-                    case rtidb::type::kVarchar:
-                        ok = builder.AppendString(iter->second.c_str(),
-                                                  iter->second.length());
-                        break;
-                    case rtidb::type::kBool:
-                        ok = builder.AppendBool(
-                            boost::lexical_cast<bool>(iter->second));
-                        break;
-                    case rtidb::type::kSmallInt:
-                        ok = builder.AppendInt16(
-                            boost::lexical_cast<uint16_t>(iter->second));
-                        break;
-                    case rtidb::type::kInt:
-                        ok = builder.AppendInt32(
-                            boost::lexical_cast<uint32_t>(iter->second));
-                        break;
-                    case rtidb::type::kBigInt:
-                        ok = builder.AppendInt64(
-                            boost::lexical_cast<uint64_t>(iter->second));
-                        break;
-                    case rtidb::type::kTimestamp:
-                        ok = builder.AppendTimestamp(
-                            boost::lexical_cast<uint64_t>(iter->second));
-                        break;
-                    case rtidb::type::kFloat:
-                        ok = builder.AppendFloat(
-                            boost::lexical_cast<float>(iter->second));
-                        break;
-                    case rtidb::type::kDouble:
-                        ok = builder.AppendDouble(
-                            boost::lexical_cast<double>(iter->second));
-                        break;
-                    default:
-                        rm.code = -1;
-                        rm.msg = "unsupported data type";
-                        return rm;
-                }
-                if (!ok) {
-                    rm.code = -1;
-                    rm.msg = "append " +
-                             ::rtidb::type::DataType_Name(col.data_type()) +
-                             " error";
-                    return rm;
-                }
-            } catch (std::exception const& e) {
-                rm.code = -1;
-                rm.msg = "input format error";
-                return rm;
-            }
-        }
-        rm.code = 0;
-        rm.msg = "ok";
-        return rm;
-    }
-
-    static void Decode(google::protobuf::RepeatedPtrField<
-                           rtidb::common::ColumnDesc>& schema,  // NOLINT
-                       const std::string& value,
-                       std::vector<std::string>& value_vec) {  // NOLINT
-        rtidb::codec::RowView rv(
-            schema, reinterpret_cast<int8_t*>(const_cast<char*>(&value[0])),
-            value.size());
-        Decode(schema, rv, value_vec);
-    }
-
-    static void Decode(google::protobuf::RepeatedPtrField<
-                           rtidb::common::ColumnDesc>& schema,  // NOLINT
-                       rtidb::codec::RowView& rv,               // NOLINT
-                       std::vector<std::string>& value_vec) {   // NOLINT
-        for (int32_t i = 0; i < schema.size(); i++) {
-            if (rv.IsNULL(i)) {
-                value_vec.push_back(NONETOKEN);
-                continue;
-            }
-            std::string col = "";
-            auto type = schema.Get(i).data_type();
-            if (type == rtidb::type::kInt) {
-                int32_t val;
-                int ret = rv.GetInt32(i, &val);
-                if (ret == 0) {
-                    col = std::to_string(val);
-                }
-            } else if (type == rtidb::type::kTimestamp) {
-                int64_t val;
-                int ret = rv.GetTimestamp(i, &val);
-                if (ret == 0) {
-                    col = std::to_string(val);
-                }
-            } else if (type == rtidb::type::kBigInt) {
-                int64_t val;
-                int ret = rv.GetInt64(i, &val);
-                if (ret == 0) {
-                    col = std::to_string(val);
-                }
-            } else if (type == rtidb::type::kBool) {
-                bool val;
-                int ret = rv.GetBool(i, &val);
-                if (ret == 0) {
-                    col = std::to_string(val);
-                }
-            } else if (type == rtidb::type::kFloat) {
-                float val;
-                int ret = rv.GetFloat(i, &val);
-                if (ret == 0) {
-                    col = std::to_string(val);
-                }
-            } else if (type == rtidb::type::kSmallInt) {
-                int16_t val;
-                int ret = rv.GetInt16(i, &val);
-                if (ret == 0) {
-                    col = std::to_string(val);
-                }
-            } else if (type == rtidb::type::kDouble) {
-                double val;
-                int ret = rv.GetDouble(i, &val);
-                if (ret == 0) {
-                    col = std::to_string(val);
-                }
-            } else if (type == rtidb::type::kVarchar ||
-                       type == rtidb::type::kString) {
-                char* ch = NULL;
-                uint32_t length = 0;
-                int ret = rv.GetString(i, &ch, &length);
-                if (ret == 0) {
-                    col.assign(ch, length);
-                }
-            }
-            value_vec.push_back(col);
-        }
+        return byte_size;
     }
 };
+
 }  // namespace codec
 }  // namespace rtidb
 

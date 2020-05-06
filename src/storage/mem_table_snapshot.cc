@@ -8,13 +8,13 @@
 #include "storage/mem_table_snapshot.h"
 
 #include <google/protobuf/io/zero_copy_stream_impl.h>
+#include <snappy.h>
 #include <unistd.h>
 
 #include <set>
 #include <utility>
 
 #include "base/count_down_latch.h"
-#include "base/display.h"
 #include "base/file_util.h"
 #include "base/hash.h"
 #include "base/kv_iterator.h"
@@ -23,6 +23,7 @@
 #include "base/taskpool.hpp"
 #include "boost/bind.hpp"
 #include "codec/flat_array.h"
+#include "codec/row_codec.h"
 #include "gflags/gflags.h"
 #include "log/log_reader.h"
 #include "log/sequential_file.h"
@@ -723,7 +724,7 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(
                 buff = entry.value();
             }
             std::vector<std::string> row;
-            ::rtidb::base::FillTableRow(max_idx + 1, columns, buff.c_str(),
+            ::rtidb::codec::FillTableRow(max_idx + 1, columns, buff.c_str(),
                                         buff.size(), row);
             std::string cur_key;
             for (uint32_t i : index_cols) {
@@ -964,7 +965,7 @@ int MemTableSnapshot::ExtractIndexData(
                     buff = entry.value();
                 }
                 std::vector<std::string> row;
-                ::rtidb::base::FillTableRow(max_idx + 1, columns, buff.c_str(),
+                ::rtidb::codec::FillTableRow(max_idx + 1, columns, buff.c_str(),
                                             buff.size(), row);
                 std::string cur_key;
                 for (uint32_t i : index_cols) {
@@ -1107,10 +1108,10 @@ bool MemTableSnapshot::PackNewIndexEntry(
         std::string buff;
         ::snappy::Uncompress(entry->value().c_str(), entry->value().size(),
                              &buff);
-        ::rtidb::base::FillTableRow(max_idx + 1, columns, buff.c_str(),
+        ::rtidb::codec::FillTableRow(max_idx + 1, columns, buff.c_str(),
                                     buff.size(), row);
     } else {
-        ::rtidb::base::FillTableRow(max_idx + 1, columns,
+        ::rtidb::codec::FillTableRow(max_idx + 1, columns,
                                     entry->value().c_str(),
                                     entry->value().size(), row);
     }

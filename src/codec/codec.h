@@ -319,6 +319,8 @@ class RowView {
     int32_t GetValue(const int8_t* row, uint32_t idx, char** val,
                      uint32_t* length);
 
+    int32_t GetStrValue(const int8_t* row, uint32_t idx, std::string* val);
+
  private:
     bool Init();
     bool CheckValid(uint32_t idx, ::rtidb::type::DataType type);
