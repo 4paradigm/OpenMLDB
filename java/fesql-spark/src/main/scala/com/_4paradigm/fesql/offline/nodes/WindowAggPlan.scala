@@ -1,14 +1,11 @@
 package com._4paradigm.fesql.offline.nodes
 
-import java.nio.ByteBuffer
-
 import com._4paradigm.fesql.offline._
-import com._4paradigm.fesql.codec.{Row => NativeRow}
+import com._4paradigm.fesql.offline.utils.{FesqlUtil, SparkColumnUtil, SparkRowUtil}
 import com._4paradigm.fesql.vm.{CoreAPI, FeSQLJITWrapper, PhysicalWindowAggrerationNode, WindowInterface}
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types._
-import sun.nio.ch.DirectBuffer
 
 import scala.collection.mutable
 
@@ -18,6 +15,9 @@ object WindowAggPlan {
   def gen(ctx: PlanContext, node: PhysicalWindowAggrerationNode, input: SparkInstance): SparkInstance = {
     val inputDf = input.getDf(ctx.getSparkSession)
     val rdd = input.getRDD
+
+    val inputSchemaSlices = FesqlUtil.getOutputSchemaSlices(node.GetProducer(0))
+    val outputSchemaSlices = FesqlUtil.getOutputSchemaSlices(node)
     val outputSchema = FesqlUtil.getSparkSchema(node.GetOutputSchema())
 
     // process window op
@@ -53,8 +53,9 @@ object WindowAggPlan {
       functionName = node.project.fn_name,
       moduleTag = ctx.getTag,
       moduleBroadcast = ctx.getModuleBufferBroadcast,
-      inputSchema = input.getSchema,
-      outputSchema = outputSchema
+      inputSchema = inputDf.schema,
+      inputSchemaSlices = inputSchemaSlices,
+      outputSchemaSlices = outputSchemaSlices
     )
 
     val resultRDD = rdd.mapPartitions(iter => {
@@ -76,25 +77,24 @@ object WindowAggPlan {
     var window = new WindowInterface(config.startOffset, 0, 0)
 
     // reusable output row inst
-    val outputArr = Array.fill[Any](config.outputSchema.size)(null)
+    val outputFieldNum = config.outputSchemaSlices.map(_.size).sum
+    val outputArr = Array.fill[Any](outputFieldNum)(null)
 
     val fn = jit.FindFunction(config.functionName)
+    val bufferPool = new NativeBufferPool
 
     // TODO: these objects are now leaked
-    val encoder = new SparkRowCodec(config.inputSchema)
-    val decoder = new SparkRowCodec(config.outputSchema)
+    val encoder = new SparkRowCodec(config.inputSchemaSlices, bufferPool)
+    val decoder = new SparkRowCodec(config.outputSchemaSlices, null)
 
     // order key extractor
     val orderField = config.inputSchema(config.orderIdx)
-    val orderKeyExtractor = createOrderKeyExtractor(
+    val orderKeyExtractor = SparkRowUtil.createOrderKeyExtractor(
       config.orderIdx, orderField.dataType, orderField.nullable)
 
     // group key comparation
     val groupKeyComparator = createGroupKeyComparator(
       config.groupIdxs, config.inputSchema)
-
-    // buffer management
-    val bufferPool = mutable.ArrayBuffer[ByteBuffer]()
 
     inputIter.map(row => {
       // build new window for each group
@@ -105,43 +105,31 @@ object WindowAggPlan {
           window.delete()
           window = new WindowInterface(config.startOffset, 0, 0)
 
-          bufferPool.foreach(buf => {
-            buf.asInstanceOf[DirectBuffer].cleaner().clean()
-          })
-          bufferPool.clear()
+          bufferPool.freeAll()
         }
       }
       lastRow = row
 
       // do window compute
-      computeWindow(row, fn, bufferPool, orderKeyExtractor, window, encoder, decoder, outputArr)
+      computeWindow(row, fn, orderKeyExtractor,
+        window, encoder, decoder, outputArr)
     })
   }
 
 
-  def computeWindow(row: Row,
-                    fn: Long,
-                    bufferPool: mutable.ArrayBuffer[ByteBuffer],
+  def computeWindow(row: Row, fn: Long,
                     orderKeyExtractor: Row => Long,
                     window: WindowInterface,
                     encoder: SparkRowCodec,
                     decoder: SparkRowCodec,
                     outputArr: Array[Any]): Row = {
-    // ensure direct buffer
-    val rowSize = encoder.getNativeRowSize(row)
-
-    // TODO: opt memory management
-    val inputBuffer = ByteBuffer.allocateDirect(rowSize)
-    bufferPool += inputBuffer
-
     // call encode
-    encoder.encode(row, inputBuffer)
+    val nativeInputRow = encoder.encode(row, keepBuffer=true)
 
     // extract key
     val key = orderKeyExtractor.apply(row)
 
     // call native compute
-    val nativeInputRow = new NativeRow(inputBuffer)
     val outputNativeRow = CoreAPI.WindowProject(fn, key, nativeInputRow, window)
 
     // call decode
@@ -152,18 +140,6 @@ object WindowAggPlan {
     outputNativeRow.delete()
 
     Row.fromSeq(outputArr)  // can reuse backed array
-  }
-
-
-  def createOrderKeyExtractor(keyIdx: Int, sparkType: DataType, nullable: Boolean): Row => Long = {
-    sparkType match {
-      case ShortType => row: Row => row.getShort(keyIdx).toLong
-      case IntegerType => row: Row => row.getInt(keyIdx).toLong
-      case LongType => row: Row => row.getLong(keyIdx)
-      case TimestampType => row: Row => row.getTimestamp(keyIdx).getTime
-      case _ =>
-        throw new FeSQLException(s"Illegal window key type: $sparkType")
-    }
   }
 
 
@@ -189,5 +165,6 @@ object WindowAggPlan {
                              moduleTag: String,
                              moduleBroadcast: Broadcast[SerializableByteBuffer],
                              inputSchema: StructType,
-                             outputSchema: StructType)
+                             inputSchemaSlices: Array[StructType],
+                             outputSchemaSlices: Array[StructType])
 }

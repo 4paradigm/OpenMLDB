@@ -13,6 +13,7 @@
 #include <map>
 #include <memory>
 #include "codec/row.h"
+#include "codec/row_codec.h"
 #include "vm/catalog.h"
 #include "vm/mem_catalog.h"
 
@@ -67,7 +68,15 @@ class CoreAPI {
                                            const uint64_t key,
                                            const Row row,
                                            WindowInterface* window);
+
+
+    static bool ComputeCondition(const fesql::vm::RawFunctionPtr fn,
+                                 const Row& row,
+                                 fesql::codec::RowView* row_view,
+                                 size_t out_idx);
 };
+
+
 }  // namespace vm
 }  // namespace fesql
 #endif  // SRC_VM_CORE_API_H_

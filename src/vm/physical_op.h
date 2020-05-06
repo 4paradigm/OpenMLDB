@@ -252,6 +252,14 @@ class PhysicalOpNode {
         return output_name_schema_list_;
     }
 
+    const size_t GetOutputSchemaListSize() const {
+        return output_name_schema_list_.size();
+    }
+
+    const vm::Schema* GetOutputSchemaSlice(size_t idx) const {
+        return output_name_schema_list_[idx].second;
+    }
+
     void SetLimitCnt(int32_t limit_cnt) { limit_cnt_ = limit_cnt; }
 
     const int32_t GetLimitCnt() const { return limit_cnt_; }
@@ -378,6 +386,7 @@ class PhysicalGroupNode : public PhysicalUnaryNode {
     }
     virtual ~PhysicalGroupNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
+    static PhysicalGroupNode* CastFrom(PhysicalOpNode* node);
     bool Valid() { return group_.ValidKey(); }
     Key group() const { return group_; }
     Key group_;
@@ -661,6 +670,7 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
     virtual ~PhysicalJoinNode() {}
     bool InitSchema() override;
     virtual void Print(std::ostream &output, const std::string &tab) const;
+    static PhysicalJoinNode* CastFrom(PhysicalOpNode* node);
     const bool Valid() { return true; }
     const Join &join() const { return join_; }
     const node::JoinType join_type_;

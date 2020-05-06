@@ -91,24 +91,45 @@ class TestSparkRowCodec extends FunSuite {
   }
 
 
-  def testRow(row: Row, schema: StructType): Unit = {
-    val codec = new SparkRowCodec(schema)
+  test("Test encode and decode with schema slices") {
+    val schema1 = StructType(Nil)
+      .add("float", FloatType)
+      .add("double", DoubleType)
 
-    val buffer = ByteBuffer.allocateDirect(codec.getNativeRowSize(row))
-    codec.encode(row, buffer)
+    val schema2 = StructType(Nil)
+      .add("boolean", BooleanType)
+      .add("str", StringType)
 
-    val arr = Array.fill[Any](schema.size)(null)
-    val nativeRow = new NativeRow(buffer)
+    val schema3 = StructType(Nil)
+      .add("long", LongType)
+      .add("str2", StringType)
+      .add("int", IntegerType)
+
+    testRow(Row(3.14f, 2.0, false, "hello", 1024L, "world", 5),
+      Array(schema1, schema2, schema3))
+  }
+
+
+  def testRow(row: Row, schemaSlices: Array[StructType]): Unit = {
+    val bufferPool = new NativeBufferPool
+    val codec = new SparkRowCodec(schemaSlices, bufferPool)
+
+    val nativeRow = codec.encode(row, keepBuffer=false)
+
+    val arr = Array.fill[Any](schemaSlices.map(_.size).sum)(null)
     codec.decode(nativeRow, arr)
 
     val res = Row.fromSeq(arr)
 
     codec.delete()
     nativeRow.delete()
-    buffer.asInstanceOf[DirectBuffer].cleaner().clean()
 
     assert(res.equals(row),
       s"\nExpect: ${formatRow(row)}\nGet: ${formatRow(res)}")
+  }
+
+  def testRow(row: Row, schema: StructType): Unit = {
+    testRow(row, Array(schema))
   }
 
 

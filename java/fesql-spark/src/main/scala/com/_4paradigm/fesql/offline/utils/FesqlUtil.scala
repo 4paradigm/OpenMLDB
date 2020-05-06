@@ -1,8 +1,9 @@
-package com._4paradigm.fesql.offline
+package com._4paradigm.fesql.offline.utils
 
 import java.util
 
 import com._4paradigm.fesql.`type`.TypeOuterClass.{ColumnDef, Database, TableDef, Type}
+import com._4paradigm.fesql.vm.PhysicalOpNode
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.types._
 
@@ -10,6 +11,13 @@ import scala.collection.JavaConverters._
 
 
 object FesqlUtil {
+
+  def getOutputSchemaSlices(node: PhysicalOpNode): Array[StructType] = {
+    (0 until node.GetOutputSchemaListSize().toInt).map(i => {
+      val columnDefs = node.GetOutputSchemaSlice(i)
+      getSparkSchema(columnDefs)
+    }).toArray
+  }
 
   def getDatabase(databaseName: String, dict: Map[String, DataFrame]): Database = {
     val databaseBuilder = Database.newBuilder()

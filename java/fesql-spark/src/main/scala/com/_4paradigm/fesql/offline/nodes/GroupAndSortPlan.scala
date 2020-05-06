@@ -1,7 +1,8 @@
 package com._4paradigm.fesql.offline.nodes
 
-import com._4paradigm.fesql.offline.{PlanContext, SparkColumnUtil, SparkInstance}
-import com._4paradigm.fesql.vm.{PhysicalWindowAggrerationNode}
+import com._4paradigm.fesql.offline.utils.SparkColumnUtil
+import com._4paradigm.fesql.offline.{PlanContext, SparkInstance}
+import com._4paradigm.fesql.vm.PhysicalWindowAggrerationNode
 import org.apache.spark.sql.Column
 
 import scala.collection.mutable

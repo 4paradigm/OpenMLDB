@@ -22,6 +22,7 @@ public class SQLEngine implements AutoCloseable {
     public SQLEngine(String sql, TypeOuterClass.Database database) {
         options = new EngineOptions();
         options.set_keep_ir(true);
+        options.set_compile_only(true);
         catalog = new SimpleCatalog();
         session = new BatchRunSession();
         catalog.AddDatabase(database);
