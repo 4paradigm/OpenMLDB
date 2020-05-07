@@ -156,17 +156,23 @@ void PhysicalWindowAggrerationNode::Print(std::ostream& output,
     if (limit_cnt_ > 0) {
         output << ", limit=" << limit_cnt_;
     }
-    output << ")";
-    output << "\n";
+    output << ")\n";
 
-    if (nullptr == join_) {
-        window_.Print(output, tab + INDENT);
-    } else {
-        join_->Print(output, tab + INDENT);
+    output << tab << INDENT << "+-WINDOW(" << window_.ToString() << ")";
+
+    if (!window_joins_.Empty()) {
+        for (auto window_join : window_joins_.window_joins_) {
+            output << "\n";
+            output << tab << INDENT << "+-JOIN("
+                   << window_join.second.ToString() << ")\n";
+            window_join.first->Print(output, tab + INDENT + INDENT + INDENT);
+        }
     }
+    output << "\n";
+    PrintChildren(output, tab);
 }
 bool PhysicalWindowAggrerationNode::InitSchema() {
-    //TODO(chenjing): Init Schema with window Join
+    // TODO(chenjing): Init Schema with window Join
     return false;
 }
 
@@ -310,7 +316,6 @@ void PhysicalUnionNode::Print(std::ostream& output,
 void PhysicalRequestUnionNode::Print(std::ostream& output,
                                      const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(";
     output << "(partition_" << window_.partition_.ToString() << ", "
            << window_.sort_.ToString();
     if (window_.range_.Valid()) {

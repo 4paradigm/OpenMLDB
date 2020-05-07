@@ -12,6 +12,7 @@
 
 #include <map>
 #include <string>
+#include <utility>
 #include <vector>
 #include "base/status.h"
 #include "codec/row_codec.h"
@@ -89,6 +90,42 @@ class ConditionGenerator : public FnGenerator {
     explicit ConditionGenerator(const FnInfo& info) : FnGenerator(info) {}
     virtual ~ConditionGenerator() {}
     const bool Gen(const Row& row);
+};
+
+struct JoinGenerator {
+ public:
+    explicit JoinGenerator(const Join& join)
+        : condition_gen_(join.filter_.fn_info_),
+          left_key_gen_(join.left_key_.fn_info_),
+          index_key_gen_(join.index_key_.fn_info_),
+          right_key_gen_(join.right_key_.fn_info_) {}
+    virtual ~JoinGenerator() {}
+    bool TableJoin(std::shared_ptr<TableHandler> left,
+                   std::shared_ptr<TableHandler> right,
+                   std::shared_ptr<MemTableHandler> output);  // NOLINT
+    bool TableJoin(std::shared_ptr<TableHandler> left,
+                   std::shared_ptr<PartitionHandler> right,
+                   std::shared_ptr<MemTableHandler> output);  // NOLINT
+    bool PartitionJoin(std::shared_ptr<PartitionHandler> left,
+                       std::shared_ptr<TableHandler> right,
+                       std::shared_ptr<MemPartitionHandler> output);  // NOLINT
+    bool PartitionJoin(std::shared_ptr<PartitionHandler> left,
+                       std::shared_ptr<PartitionHandler> right,
+                       std::shared_ptr<MemPartitionHandler>);  // NOLINT
+
+    Row RowLastJoin(const Row& left_row, std::shared_ptr<DataHandler> right);
+
+    ConditionGenerator condition_gen_;
+    KeyGenerator left_key_gen_;
+    KeyGenerator index_key_gen_;
+    KeyGenerator right_key_gen_;
+
+ private:
+    Row RowLastJoinPartition(
+        const Row& left_row,
+        std::shared_ptr<PartitionHandler> partition);  // NOLINT
+    Row RowLastJoinTable(const Row& left_row,
+                         std::shared_ptr<TableHandler> table);  // NOLINT
 };
 enum RunnerType {
     kRunnerData,
@@ -199,9 +236,9 @@ class Runner {
                                     const std::vector<int>& idxs);
     static Row WindowProject(const int8_t* fn, const uint64_t key,
                              const Row row, Window* window);
-    const Row RowLastJoin(const Row& left_row,
-                          std::shared_ptr<TableHandler> right_table,
-                          ConditionGenerator& cond_gen);  // NOLINT
+    static const Row RowLastJoinTable(const Row& left_row,
+                                      std::shared_ptr<TableHandler> right_table,
+                                      ConditionGenerator& filter);  // NOLINT
     static std::shared_ptr<DataHandler> TableGroup(
         const std::shared_ptr<DataHandler> table,
         KeyGenerator& key_gen);  // NOLINT
@@ -335,19 +372,27 @@ class WindowAggRunner : public Runner {
           order_gen_(window_op.sort_.fn_info_),
           range_gen_(window_op.range_.fn_info_) {}
     ~WindowAggRunner() {}
+    void AddWindowJoin(const Join& join, Runner* runner) {
+        joins_gen_.push_back(std::make_pair(JoinGenerator(join), runner));
+    }
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
-    bool WindowAggRun(std::shared_ptr<PartitionHandler> partition,
-                      std::shared_ptr<MemTableHandler> output_table);  // NOLINT
-    bool PartitionRun(std::shared_ptr<PartitionHandler> partition,
-                      std::shared_ptr<MemTableHandler> output_table);  // NOLINT
-    bool TableRun(std::shared_ptr<TableHandler> table,
-                  std::shared_ptr<MemTableHandler> output_table);  // NOLINT
+    bool WindowAggRun(RunnerContext& ctx,                           // NOLINT
+                      std::shared_ptr<PartitionHandler> partition,
+                      std::shared_ptr<MemTableHandler> output_table);
+    bool PartitionRun(RunnerContext& ctx,  // NOLINT
+                      std::shared_ptr<PartitionHandler> partition,
+                      std::shared_ptr<MemTableHandler> output_table);
+    bool TableRun(RunnerContext& ctx,  // NOLINT
+                  std::shared_ptr<TableHandler> table,
+                  std::shared_ptr<MemTableHandler> output_table);
 
     WindowOp window_op_;
+    WindowJoinList window_joins_;
     WindowProjectGenerator window_gen_;
     KeyGenerator group_gen_;
     OrderGenerator order_gen_;
     OrderGenerator range_gen_;
+    std::vector<std::pair<JoinGenerator, Runner*>> joins_gen_;
 };
 
 class RequestUnionRunner : public Runner {
@@ -383,29 +428,11 @@ class LastJoinRunner : public Runner {
  public:
     LastJoinRunner(const int32_t id, const NameSchemaList& schema,
                    const int32_t limit_cnt, const Join& join)
-        : Runner(id, kRunnerLastJoin, schema, limit_cnt),
-          condition_gen_(join.filter_.fn_info_),
-          left_key_gen_(join.left_key_.fn_info_),
-          index_key_gen_(join.index_key_.fn_info_),
-          right_key_gen_(join.right_key_.fn_info_) {}
+        : Runner(id, kRunnerLastJoin, schema, limit_cnt), join_gen_(join) {}
     ~LastJoinRunner() {}
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
-    bool TableJoin(std::shared_ptr<TableHandler> left,
-                   std::shared_ptr<TableHandler> right,
-                   std::shared_ptr<MemTableHandler> output);  // NOLINT
-    bool TableJoin(std::shared_ptr<TableHandler> left,
-                   std::shared_ptr<PartitionHandler> right,
-                   std::shared_ptr<MemTableHandler> output);  // NOLINT
-    bool PartitionJoin(std::shared_ptr<PartitionHandler> left,
-                       std::shared_ptr<TableHandler> right,
-                       std::shared_ptr<MemPartitionHandler> output);  // NOLINT
-    bool PartitionJoin(std::shared_ptr<PartitionHandler> left,
-                       std::shared_ptr<PartitionHandler> right,
-                       std::shared_ptr<MemPartitionHandler>);  // NOLINT
-    ConditionGenerator condition_gen_;
-    KeyGenerator left_key_gen_;
-    KeyGenerator index_key_gen_;
-    KeyGenerator right_key_gen_;
+
+    JoinGenerator join_gen_;
 };
 
 class RequestLastJoinRunner : public Runner {
@@ -413,20 +440,11 @@ class RequestLastJoinRunner : public Runner {
     RequestLastJoinRunner(const int32_t id, const NameSchemaList& schema,
                           const int32_t limit_cnt, const Join& join)
         : Runner(id, kRunnerRequestLastJoin, schema, limit_cnt),
-          condition_gen_(join.filter_.fn_info_),
-          left_key_gen_(join.left_key_.fn_info_),
-          index_key_gen_(join.index_key_.fn_info_),
-          right_key_gen_(join.right_key_.fn_info_) {}
+          join_gen_(join) {}
     ~RequestLastJoinRunner() {}
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
-    Row PartitionRun(const Row& left_row,
-                     std::shared_ptr<PartitionHandler> partition);  // NOLINT
-    Row TableRun(const Row& left_row,
-                 std::shared_ptr<TableHandler> table);  // NOLINT
-    ConditionGenerator condition_gen_;
-    KeyGenerator left_key_gen_;
-    KeyGenerator index_key_gen_;
-    KeyGenerator right_key_gen_;
+
+    JoinGenerator join_gen_;
 };
 
 class ConcatRunner : public Runner {

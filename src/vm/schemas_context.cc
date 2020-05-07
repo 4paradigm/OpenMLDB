@@ -38,13 +38,13 @@ vm::SchemasContext::SchemasContext(
         idx++;
     }
 }
-bool SchemasContext::ExprListResolved(std::vector<node::ExprNode*> expr_list,
-                                      const RowSchemaInfo** info) const {
-    if (expr_list.empty()) {
-        *info = nullptr;
-        return true;
-    }
-    std::set<const RowSchemaInfo*> infos;
+
+// Return true if expression list resolved from context
+// Store row info into {infos}
+bool SchemasContext::ExprListResolved(
+    const std::vector<node::ExprNode*>& expr_list,
+    std::set<const RowSchemaInfo*>& infos) const {  // NOLINT
+    infos.clear();
     for (auto expr : expr_list) {
         const RowSchemaInfo* info = nullptr;
         if (!ExprRefResolved(expr, &info)) {
@@ -54,7 +54,22 @@ bool SchemasContext::ExprListResolved(std::vector<node::ExprNode*> expr_list,
             infos.insert(info);
         }
     }
+    return true;
+}
 
+// Return true if only expression list resolved from same schema
+// Store schema info into {info}
+bool SchemasContext::ExprListResolvedFromSchema(
+    const std::vector<node::ExprNode*>& expr_list,
+    const RowSchemaInfo** info) const {
+    if (expr_list.empty()) {
+        *info = nullptr;
+        return true;
+    }
+    std::set<const RowSchemaInfo*> infos;
+    if (!ExprListResolved(expr_list, infos)) {
+        return false;
+    }
     if (infos.size() > 1) {
         LOG(WARNING) << "Expression based on difference table";
         return false;
@@ -94,7 +109,7 @@ bool SchemasContext::ExprRefResolved(const node::ExprNode* expr,
             expr_list.push_back(between_expr->left_);
             expr_list.push_back(between_expr->right_);
             expr_list.push_back(between_expr->expr_);
-            return ExprListResolved(expr_list, info);
+            return ExprListResolvedFromSchema(expr_list, info);
         }
         case node::kExprCall: {
             std::vector<node::ExprNode*> expr_list;
@@ -115,10 +130,10 @@ bool SchemasContext::ExprRefResolved(const node::ExprNode* expr,
                     }
                 }
             }
-            return ExprListResolved(expr_list, info);
+            return ExprListResolvedFromSchema(expr_list, info);
         }
         default: {
-            return ExprListResolved(expr->children_, info);
+            return ExprListResolvedFromSchema(expr->children_, info);
         }
     }
 }

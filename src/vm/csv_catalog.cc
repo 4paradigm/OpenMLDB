@@ -366,13 +366,11 @@ int32_t CSVTableHandler::GetColumnIndex(const std::string& name) {
     }
     return -1;
 }
-std::unique_ptr<IteratorV<uint64_t, Row>> CSVTableHandler::GetIterator()
-    const {
+std::unique_ptr<IteratorV<uint64_t, Row>> CSVTableHandler::GetIterator() const {
     std::unique_ptr<CSVTableIterator> it(new CSVTableIterator(table_, schema_));
     return std::move(it);
 }
-IteratorV<uint64_t, Row>* CSVTableHandler::GetIterator(
-    int8_t* addr) const {
+IteratorV<uint64_t, Row>* CSVTableHandler::GetIterator(int8_t* addr) const {
     if (nullptr == addr) {
         return new CSVTableIterator(table_, schema_);
     } else {
@@ -389,7 +387,6 @@ std::unique_ptr<WindowIterator> CSVTableHandler::GetWindowIterator(
 }
 const uint64_t CSVTableHandler::GetCount() { return 0; }
 Row CSVTableHandler::At(uint64_t pos) { return Row(); }
-
 
 CSVCatalog::CSVCatalog(const std::string& root_dir)
     : root_dir_(root_dir),
@@ -449,6 +446,7 @@ std::shared_ptr<TableHandler> CSVCatalog::GetTable(const std::string& db,
 std::shared_ptr<type::Database> CSVCatalog::GetDatabase(const std::string& db) {
     return dbs_[db];
 }
+bool CSVCatalog::IndexSupport() { return true; }
 
 }  // namespace vm
 }  // namespace fesql

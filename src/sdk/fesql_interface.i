@@ -87,6 +87,7 @@ using namespace fesql::node;
 using fesql::vm::SQLContext;
 using fesql::vm::Catalog;
 using fesql::vm::PhysicalOpNode;
+using fesql::vm::PhysicalWindowNode;
 using fesql::vm::RowView;
 using fesql::vm::FnInfo;
 using fesql::vm::Sort;

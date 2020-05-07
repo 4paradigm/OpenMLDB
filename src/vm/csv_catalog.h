@@ -139,6 +139,7 @@ class CSVCatalog : public Catalog {
     std::shared_ptr<type::Database> GetDatabase(const std::string& db);
     std::shared_ptr<TableHandler> GetTable(const std::string& db,
                                            const std::string& table_name);
+    bool IndexSupport() override;
 
  private:
     bool InitDatabase(const std::string& db);

@@ -194,6 +194,7 @@ bool TabletCatalog::AddDB(const type::Database& db) {
         std::map<std::string, std::shared_ptr<TabletTableHandler>>()));
     return true;
 }
+bool TabletCatalog::IndexSupport() { return true; }
 
 TabletSegmentHandler::TabletSegmentHandler(
     std::shared_ptr<vm::PartitionHandler> partition_hander,

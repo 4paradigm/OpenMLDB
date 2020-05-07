@@ -27,8 +27,12 @@ class SchemasContext {
     explicit SchemasContext(const vm::NameSchemaList& table_schema_list);
 
     virtual ~SchemasContext() {}
-    bool ExprListResolved(std::vector<node::ExprNode*> expr_list,
-                          const RowSchemaInfo** info) const;
+    bool ExprListResolvedFromSchema(
+        const std::vector<node::ExprNode*>& expr_list,
+        const RowSchemaInfo** info) const;
+    bool ExprListResolved(
+        const std::vector<node::ExprNode*>& expr_list,
+        std::set<const RowSchemaInfo*>& infos) const;  // NOLINT
     bool ExprRefResolved(const node::ExprNode* expr,
                          const RowSchemaInfo** info) const;
 

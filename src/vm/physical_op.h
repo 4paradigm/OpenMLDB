@@ -9,6 +9,7 @@
 
 #ifndef SRC_VM_PHYSICAL_OP_H_
 #define SRC_VM_PHYSICAL_OP_H_
+#include <list>
 #include <memory>
 #include <string>
 #include <utility>
@@ -508,7 +509,7 @@ class WindowOp {
 };
 class Join {
  public:
-    Join(const node::JoinType join_type)
+    explicit Join(const node::JoinType join_type)
         : join_type_(join_type),
           filter_(nullptr),
           left_key_(nullptr),
@@ -557,6 +558,19 @@ class Union {
     bool need_union_;
 };
 
+class WindowJoinList {
+ public:
+    WindowJoinList() : window_joins_() {}
+    virtual ~WindowJoinList() {}
+    void AddWindowJoin(PhysicalOpNode *node, const Join &join) {
+        window_joins_.push_front(std::make_pair(node, join));
+    }
+    const bool Empty() const { return window_joins_.empty(); }
+    std::list<std::pair<PhysicalOpNode *, Join>> &window_joins() {
+        return window_joins_;
+    }
+    std::list<std::pair<PhysicalOpNode *, Join>> window_joins_;
+};
 class PhysicalWindowNode : public PhysicalUnaryNode, public WindowOp {
  public:
     PhysicalWindowNode(PhysicalOpNode *node,
@@ -579,9 +593,8 @@ class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
                                   const int64_t end_offset)
         : PhysicalProjectNode(node, fn_name, schema, kWindowAggregation, true,
                               false),
-          window_(node, partition, orders, start_offset, end_offset),
-          union_(),
-          join_(nullptr) {
+          window_(partition, orders, start_offset, end_offset),
+          union_() {
         output_type_ = kSchemaTypeTable;
         InitSchema();
         fn_infos_.push_back(&window_.partition_.fn_info_);
@@ -593,12 +606,19 @@ class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
     virtual void Print(std::ostream &output, const std::string &tab) const;
     static PhysicalWindowAggrerationNode *CastFrom(PhysicalOpNode *node);
     const bool Valid() { return true; }
-    PhysicalWindowNode &window() { return window_; }
-    void set_join(PhysicalJoinNode *join) { join_ = join; }
-    PhysicalJoinNode *join() const { return join_; }
-    PhysicalWindowNode window_;
+    void AddWindowJoin(PhysicalOpNode *node, const Join &join) {
+        window_joins_.AddWindowJoin(node, join);
+        Join &window_join = window_joins_.window_joins_.front().second;
+        fn_infos_.push_back(&window_join.left_key_.fn_info_);
+        fn_infos_.push_back(&window_join.right_key_.fn_info_);
+        fn_infos_.push_back(&window_join.index_key_.fn_info_);
+        fn_infos_.push_back(&window_join.filter_.fn_info_);
+    }
+    WindowOp &window() { return window_; }
+    WindowJoinList &window_joins() { return window_joins_; }
+    WindowOp window_;
+    WindowJoinList window_joins_;
     Union union_;
-    PhysicalJoinNode *join_;
 };
 
 class PhysicalJoinNode : public PhysicalBinaryNode {
@@ -609,10 +629,6 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
           join_(join_type) {
         output_type_ = kSchemaTypeTable;
         InitSchema();
-        fn_infos_.push_back(&join_.filter_.fn_info_);
-        fn_infos_.push_back(&join_.left_key_.fn_info_);
-        fn_infos_.push_back(&join_.right_key_.fn_info_);
-        fn_infos_.push_back(&join_.index_key_.fn_info_);
     }
     PhysicalJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
                      const node::JoinType join_type,
