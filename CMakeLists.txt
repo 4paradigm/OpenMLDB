@@ -139,3 +139,7 @@ if (COVERAGE_ENABLE)
                 DEPENDENCIES ${test_list})
     endif ()
 endif ()
+install(TARGETS ${VM_LIBS}
+        RUNTIME DESTINATION bin
+        LIBRARY DESTINATION lib
+        ARCHIVE DESTINATION lib)
