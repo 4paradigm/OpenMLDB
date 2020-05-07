@@ -434,8 +434,17 @@ class RowSchemaCodec {
                                                   iter->second.length());
                         break;
                     case rtidb::type::kBool:
-                        ok = builder.AppendBool(
-                            boost::lexical_cast<bool>(iter->second));
+                        if (iter->second == "true") {
+                            ok = builder.AppendBool(
+                                    boost::lexical_cast<bool>(1));
+                        } else if (iter->second == "false") {
+                            ok = builder.AppendBool(
+                                    boost::lexical_cast<bool>(0));
+                        } else {
+                            rm.code = -1;
+                            rm.msg = "bool input format error";
+                            return rm;
+                        }
                         break;
                     case rtidb::type::kSmallInt:
                         ok = builder.AppendInt16(
@@ -461,6 +470,20 @@ class RowSchemaCodec {
                         ok = builder.AppendDouble(
                             boost::lexical_cast<double>(iter->second));
                         break;
+                    case rtidb::type::kDate: {
+                        std::vector<std::string> parts;
+                        ::rtidb::base::SplitString(iter->second, "-", parts);
+                        if (parts.size() != 3) {
+                            rm.code = -1;
+                            rm.msg = "bad data format " + iter->second;
+                            return rm;
+                        }
+                        uint32_t year = boost::lexical_cast<uint32_t>(parts[0]);
+                        uint32_t mon = boost::lexical_cast<uint32_t>(parts[1]);
+                        uint32_t day = boost::lexical_cast<uint32_t>(parts[2]);
+                        ok = builder.AppendDate(year, mon, day);
+                        break;
+                    }
                     default:
                         rm.code = -1;
                         rm.msg = "unsupported data type";
@@ -475,7 +498,8 @@ class RowSchemaCodec {
                 }
             } catch (std::exception const& e) {
                 rm.code = -1;
-                rm.msg = "input format error";
+                rm.msg = "input format error, type: " +
+                    ::rtidb::type::DataType_Name(col.data_type());
                 return rm;
             }
         }
@@ -503,49 +527,50 @@ class RowSchemaCodec {
                 value_vec.push_back(NONETOKEN);
                 continue;
             }
-            std::string col = "";
             auto type = schema.Get(i).data_type();
             if (type == rtidb::type::kInt) {
                 int32_t val;
                 int ret = rv.GetInt32(i, &val);
                 if (ret == 0) {
-                    col = std::to_string(val);
+                    value_vec.push_back(std::to_string(val));
                 }
             } else if (type == rtidb::type::kTimestamp) {
                 int64_t val;
                 int ret = rv.GetTimestamp(i, &val);
                 if (ret == 0) {
-                    col = std::to_string(val);
+                    value_vec.push_back(std::to_string(val));
                 }
             } else if (type == rtidb::type::kBigInt) {
                 int64_t val;
                 int ret = rv.GetInt64(i, &val);
                 if (ret == 0) {
-                    col = std::to_string(val);
+                    value_vec.push_back(std::to_string(val));
                 }
             } else if (type == rtidb::type::kBool) {
-                bool val;
+                bool val = 0;
                 int ret = rv.GetBool(i, &val);
                 if (ret == 0) {
-                    col = std::to_string(val);
+                    if (val) value_vec.push_back("true");
+                    else
+                        value_vec.push_back("false");
                 }
             } else if (type == rtidb::type::kFloat) {
                 float val;
                 int ret = rv.GetFloat(i, &val);
                 if (ret == 0) {
-                    col = std::to_string(val);
+                    value_vec.push_back(std::to_string(val));
                 }
             } else if (type == rtidb::type::kSmallInt) {
                 int16_t val;
                 int ret = rv.GetInt16(i, &val);
                 if (ret == 0) {
-                    col = std::to_string(val);
+                    value_vec.push_back(std::to_string(val));
                 }
             } else if (type == rtidb::type::kDouble) {
                 double val;
                 int ret = rv.GetDouble(i, &val);
                 if (ret == 0) {
-                    col = std::to_string(val);
+                    value_vec.push_back(std::to_string(val));
                 }
             } else if (type == rtidb::type::kVarchar ||
                        type == rtidb::type::kString) {
@@ -553,10 +578,20 @@ class RowSchemaCodec {
                 uint32_t length = 0;
                 int ret = rv.GetString(i, &ch, &length);
                 if (ret == 0) {
-                    col.assign(ch, length);
+                    std::string col(ch, length);
+                    value_vec.push_back(col);
                 }
+            } else if (type == ::rtidb::type::kDate) {
+                uint32_t year = 0;
+                uint32_t month = 0;
+                uint32_t day = 0;
+                rv.GetDate(i, &year, &month, &day);
+                std::stringstream ss;
+                ss << year << "-" << month << "-" << day;
+                value_vec.push_back(ss.str());
+            } else {
+                value_vec.push_back("-");
             }
-            value_vec.push_back(col);
         }
     }
     static rtidb::base::ResultMsg GetCdColumns(const Schema& schema,

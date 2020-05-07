@@ -795,16 +795,13 @@ void PutRelational(
         schema,
     const ::rtidb::nameserver::TableInfo& table_info) {
     bool has_auto_gen = false;
-    std::string pk_col_name;
+    std::string auto_pk_col_name;
     const ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey>&
         column_key_list = table_info.column_key();
     for (const ::rtidb::common::ColumnKey& column_key : column_key_list) {
-        if (column_key.index_type() == ::rtidb::type::kPrimaryKey ||
-            column_key.index_type() == ::rtidb::type::kAutoGen) {
-            pk_col_name = column_key.index_name();
-        }
         if (column_key.index_type() == ::rtidb::type::kAutoGen) {
             has_auto_gen = true;
+            auto_pk_col_name = column_key.col_name(0);
         }
         break;
         // TODO(wangbao): other index type
@@ -819,29 +816,15 @@ void PutRelational(
             map.insert(std::make_pair(schema.Get(i).name(), iter->second));
         }
     }
-    uint32_t pid = 0;
     if (has_auto_gen) {
-        if (map.find(pk_col_name) != map.end()) {
+        if (map.find(auto_pk_col_name) != map.end()) {
             printf("should not input autoGenPk column \n");
             return;
         }
-        map.insert(std::make_pair(pk_col_name, ::rtidb::codec::DEFAULT_LONG));
-        ::rtidb::base::Random rand(0xdeadbeef);
-        pid = (uint32_t)(rand.Next() % table_info.table_partition_size());
-    } else {
-        std::string pk;
-        for (int i = 0; i < schema.size(); i++) {
-            if (pk_col_name == schema.Get(i).name()) {
-                pk = map[schema.Get(i).name()];
-                break;
-            }
-            if (pk != "") {
-                break;
-            }
-        }
-        pid = (uint32_t)(::rtidb::base::hash64(pk) %
-                         table_info.table_partition_size());
+        map.insert(std::make_pair(
+                    auto_pk_col_name, ::rtidb::codec::DEFAULT_LONG));
     }
+    uint32_t pid = 0;
     std::string msg;
     std::shared_ptr<::rtidb::client::TabletClient> tablet_client =
         GetTabletClient(table_info, pid, msg);
