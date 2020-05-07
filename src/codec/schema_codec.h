@@ -5,8 +5,8 @@
 // Date 2017-09-23
 //
 
-#ifndef SRC_BASE_SCHEMA_CODEC_H_
-#define SRC_BASE_SCHEMA_CODEC_H_
+#ifndef SRC_CODEC_SCHEMA_CODEC_H_
+#define SRC_CODEC_SCHEMA_CODEC_H_
 
 #include <cstring>
 #include <iostream>
@@ -15,8 +15,8 @@
 #include <unordered_map>
 #include <vector>
 #include <boost/lexical_cast.hpp>
-#include "base/codec.h"
 #include "base/status.h"
+#include "codec/codec.h"
 #include "proto/name_server.pb.h"
 
 namespace rtidb {
@@ -561,4 +561,4 @@ class RowSchemaCodec {
 }  // namespace base
 }  // namespace rtidb
 
-#endif  // SRC_BASE_SCHEMA_CODEC_H_
+#endif  // SRC_CODEC_SCHEMA_CODEC_H_

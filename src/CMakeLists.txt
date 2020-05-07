@@ -13,7 +13,7 @@ add_library(blobserver STATIC proto/blob_server.pb.cc storage/object_store.cc pr
 add_library(nameserver STATIC proto/name_server.pb.cc nameserver/name_server_impl.cc flags.cc)
 add_library(beans storage/beans/bitcask.c storage/beans/clock_gettime_stub.c storage/beans/codec.c storage/beans/common.c storage/beans/crc32.c storage/beans/diskmgr.c storage/beans/hint.c storage/beans/hstore.c storage/beans/htree.c storage/beans/mfile.c storage/beans/quicklz.c storage/beans/record.c)
 target_link_libraries(beans rt pthread)
-add_library(storage STATIC storage/object_store.cc storage/mem_table.cc storage/disk_table.cc storage/relational_table.cc storage/segment.cc storage/ticket.cc storage/mem_table_snapshot.cc storage/disk_table_snapshot.cc storage/snapshot.cc storage/table.cc storage/binlog.cc base/codec.cc storage/schema.cc)
+add_library(storage STATIC storage/object_store.cc storage/mem_table.cc storage/disk_table.cc storage/relational_table.cc storage/segment.cc storage/ticket.cc storage/mem_table_snapshot.cc storage/disk_table_snapshot.cc storage/snapshot.cc storage/table.cc storage/binlog.cc codec/codec.cc storage/schema.cc)
 target_link_libraries(storage rocksdb z rt pthread)
 target_link_libraries(blobserver beans)
 add_library(client STATIC client/tablet_client.cc client/ns_client.cc client/bs_client.cc)
@@ -56,10 +56,10 @@ target_link_libraries(replica_test gtest gflags replica log tablet storage base 
 add_executable(skiplist_test base/skiplist_test.cc)
 target_link_libraries(skiplist_test gtest pthread)
 
-add_executable(flat_array_test base/flat_array_test.cc)
+add_executable(flat_array_test codec/flat_array_test.cc)
 target_link_libraries(flat_array_test gtest pthread)
 
-add_executable(schema_codec_test base/schema_codec_test.cc proto/tablet.pb.cc proto/name_server.pb.cc proto/common.pb.cc proto/type.pb.cc)
+add_executable(schema_codec_test codec/schema_codec_test.cc proto/tablet.pb.cc proto/name_server.pb.cc proto/common.pb.cc proto/type.pb.cc)
 target_link_libraries(schema_codec_test gtest pthread protobuf)
 
 add_executable(count_down_latch_test base/count_down_latch_test.cc)
@@ -104,13 +104,13 @@ target_link_libraries(tablet_impl_multi_path_test   gtest pthread tablet gflags 
 add_executable(tablet_impl_projection_test  tablet/tablet_impl_projection_test.cc base/status.cc)
 target_link_libraries(tablet_impl_projection_test   gtest pthread tablet gflags storage replica log common brpc rt ssl crypto dl leveldb protobuf z snappy zk_client zookeeper_mt unwind tcmalloc)
 
-add_executable(codec_bench_test  base/codec_bench_test.cc proto/common.pb.cc proto/type.pb.cc)
+add_executable(codec_bench_test  codec/codec_bench_test.cc proto/common.pb.cc proto/type.pb.cc)
 target_link_libraries(codec_bench_test gtest pthread storage tablet gflags common rt protobuf tcmalloc_minimal)
 
-add_executable(codec_test  base/codec_test.cc proto/common.pb.cc proto/type.pb.cc base/codec.cc)
+add_executable(codec_test  codec/codec_test.cc proto/common.pb.cc proto/type.pb.cc codec/codec.cc)
 target_link_libraries(codec_test gtest pthread storage tablet gflags rt common protobuf tcmalloc_minimal)
 
-add_executable(project_codec_test  base/codec_project_test.cc proto/common.pb.cc proto/type.pb.cc base/codec.cc)
+add_executable(project_codec_test  codec/codec_project_test.cc proto/common.pb.cc proto/type.pb.cc codec/codec.cc)
 target_link_libraries(project_codec_test gtest pthread storage tablet gflags rt common protobuf tcmalloc_minimal)
 
 add_executable(log_test  log/log_test.cc)
@@ -137,10 +137,10 @@ target_link_libraries(nameserver_create_remote_test gtest pthread tablet nameser
 add_executable(nameserver_object_store_test nameserver/name_server_object_store_test.cc base/status.cc)
 target_link_libraries(nameserver_object_store_test gtest pthread nameserver blobserver tablet replica log client tablet gflags storage log common brpc ssl crypto dl leveldb protobuf z snappy rt zk_client zookeeper_mt tcmalloc_minimal)
 
-add_executable(memcomparable_format_test base/memcomparable_format_test.cc)
+add_executable(memcomparable_format_test codec/memcomparable_format_test.cc)
 target_link_libraries(memcomparable_format_test gtest pthread)
 
-add_executable(field_codec_test base/field_codec_test.cc)
+add_executable(field_codec_test codec/field_codec_test.cc)
 target_link_libraries(field_codec_test gtest pthread common)
 
 add_executable(rtidb cmd/rtidb.cc base/status.cc proto/client.pb.cc base/linenoise.cc)

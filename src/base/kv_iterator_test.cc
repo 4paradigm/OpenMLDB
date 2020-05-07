@@ -4,8 +4,8 @@
 
 #include "base/kv_iterator.h"
 #include <iostream>
-#include "base/codec.h"
 #include "base/strings.h"
+#include "codec/codec.h"
 #include "gtest/gtest.h"
 #include "proto/tablet.pb.h"
 

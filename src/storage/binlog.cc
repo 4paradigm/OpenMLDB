@@ -6,12 +6,12 @@
 #include <set>
 #include <vector>
 #include "base/display.h"
-#include "base/flat_array.h"
 #include "base/hash.h"
 #include "base/kv_iterator.h"
-#include "base/schema_codec.h"
 #include "base/status.h"
 #include "base/strings.h"
+#include "codec/flat_array.h"
+#include "codec/schema_codec.h"
 #include "gflags/gflags.h"
 #include "log/log_writer.h"
 #include "logging.h" // NOLINT

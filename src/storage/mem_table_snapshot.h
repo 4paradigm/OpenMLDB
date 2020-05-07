@@ -12,7 +12,7 @@
 #include <string>
 #include <vector>
 #include <set>
-#include "base/schema_codec.h"
+#include "codec/schema_codec.h"
 #include "log/log_reader.h"
 #include "log/log_writer.h"
 #include "log/sequential_file.h"

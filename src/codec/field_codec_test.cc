@@ -3,7 +3,7 @@
  * field_codec_test.cc
  */
 #include <vector>
-#include "base/field_codec.h"
+#include "codec/field_codec.h"
 #include "gtest/gtest.h"
 
 namespace rtidb {

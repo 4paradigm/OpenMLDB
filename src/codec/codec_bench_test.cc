@@ -7,8 +7,8 @@
 
 #include <timer.h>
 #include <iostream>
-#include "base/codec.h"
 #include "base/kv_iterator.h"
+#include "codec/codec.h"
 #include "gtest/gtest.h"
 #include "proto/common.pb.h"
 #include "proto/tablet.pb.h"

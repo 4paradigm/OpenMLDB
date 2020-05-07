@@ -17,7 +17,7 @@
 
 #include <string>
 #include <vector>
-#include "base/codec.h"
+#include "codec/codec.h"
 #include "base/strings.h"
 #include "gtest/gtest.h"
 #include "proto/common.pb.h"

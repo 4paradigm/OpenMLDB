@@ -14,7 +14,7 @@
 #include <utility>
 #include <vector>
 #include "base/kv_iterator.h"
-#include "base/schema_codec.h"
+#include "codec/schema_codec.h"
 #include "proto/tablet.pb.h"
 #include "rpc/rpc_client.h"
 

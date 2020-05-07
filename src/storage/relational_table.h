@@ -26,14 +26,13 @@
 #include <mutex>
 #include <string>
 #include <vector>
-
-#include "base/codec.h"
+#include <boost/lexical_cast.hpp>
 #include "base/endianconv.h"
-#include "base/field_codec.h"
 #include "base/id_generator.h"
-#include "base/memcomparable_format.h"
 #include "base/slice.h"
-#include "boost/lexical_cast.hpp"
+#include "codec/codec.h"
+#include "codec/field_codec.h"
+#include "codec/memcomparable_format.h"
 #include "proto/common.pb.h"
 #include "proto/tablet.pb.h"
 #include "storage/iterator.h"

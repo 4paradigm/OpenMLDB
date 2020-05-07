@@ -14,9 +14,9 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
-#include "base/flat_array.h"
 #include "base/kv_iterator.h"
-#include "base/schema_codec.h"
+#include "codec/flat_array.h"
+#include "codec/schema_codec.h"
 #include "proto/client.pb.h"
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"

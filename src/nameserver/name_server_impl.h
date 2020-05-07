@@ -21,10 +21,10 @@
 
 #include "base/hash.h"
 #include "base/random.h"
-#include "base/schema_codec.h"
 #include "client/bs_client.h"
 #include "client/ns_client.h"
 #include "client/tablet_client.h"
+#include "codec/schema_codec.h"
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
 #include "zk/dist_lock.h"

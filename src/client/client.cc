@@ -5,8 +5,8 @@
 
 #include <boost/algorithm/string.hpp>
 
-#include "base/flat_array.h"
 #include "base/hash.h"
+#include "codec/flat_array.h"
 #ifdef DISALLOW_COPY_AND_ASSIGN
 #undef DISALLOW_COPY_AND_ASSIGN
 #endif

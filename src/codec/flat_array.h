@@ -5,15 +5,15 @@
 // Date 2017-09-23
 //
 
-#ifndef SRC_BASE_FLAT_ARRAY_H_
-#define SRC_BASE_FLAT_ARRAY_H_
+#ifndef SRC_CODEC_FLAT_ARRAY_H_
+#define SRC_CODEC_FLAT_ARRAY_H_
 
 #include <stdint.h>
 #include <cstring>
 #include <string>
 #include <vector>
 #include "base/endianconv.h"
-#include "base/schema_codec.h"
+#include "codec/schema_codec.h"
 
 namespace rtidb {
 namespace base {
@@ -555,4 +555,4 @@ class FlatArrayIterator {
 }  // namespace base
 }  // namespace rtidb
 
-#endif  // SRC_BASE_FLAT_ARRAY_H_
+#endif  // SRC_CODEC_FLAT_ARRAY_H_

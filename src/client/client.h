@@ -8,8 +8,8 @@
 #include <string>
 #include <vector>
 
-#include "base/codec.h"
-#include "base/schema_codec.h"
+#include "codec/codec.h"
+#include "codec/schema_codec.h"
 #include "client/bs_client.h"
 #include "client/ns_client.h"
 #include "client/tablet_client.h"
