@@ -39,7 +39,7 @@ bool NsClient::Use(std::string db, std::string& msg) {
     return false;
 }
 
-bool NsClient::CreateDatabase(std::string db, std::string& msg) {
+bool NsClient::CreateDatabase(const std::string& db, std::string& msg) {
     ::rtidb::nameserver::CreateDatabaseRequest request;
     ::rtidb::nameserver::GeneralResponse response;
     request.set_db(db);
@@ -59,6 +59,17 @@ bool NsClient::ShowDatabase(std::vector<std::string>* dbs, std::string& msg) {
     for (auto db : response.db()) {
         dbs->push_back(db);
     }
+    msg = response.msg();
+    return ok && response.code() == 0;
+}
+
+bool NsClient::DropDatabase(const std::string& db, std::string& msg) {
+    ::rtidb::nameserver::DropDatabaseRequest request;
+    ::rtidb::nameserver::GeneralResponse response;
+    request.set_db(db);
+    bool ok = client_.SendRequest(
+        &::rtidb::nameserver::NameServer_Stub::DropDatabase, &request,
+        &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     return ok && response.code() == 0;
 }

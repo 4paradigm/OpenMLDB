@@ -42,10 +42,12 @@ class NsClient {
 
     bool Use(std::string db, std::string& msg);  // NOLINT
 
-    bool CreateDatabase(std::string db, std::string& msg);  // NOLINT
+    bool CreateDatabase(const std::string& db, std::string& msg);  // NOLINT
 
     bool ShowDatabase(std::vector<std::string>* dbs,
             std::string& msg);  // NOLINT
+
+    bool DropDatabase(const std::string& db, std::string& msg);
 
     bool ShowTablet(std::vector<TabletInfo>& tablets,  // NOLINT
                     std::string& msg);                 // NOLINT

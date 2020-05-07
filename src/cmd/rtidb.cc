@@ -1756,6 +1756,31 @@ void HandleNsShowDb(const std::vector<std::string>& parts,
     }
 }
 
+void HandleNsDropDb(const std::vector<std::string>& parts,
+                      ::rtidb::client::NsClient* client) {
+    if (parts.size() < 2) {
+        std::cout << "dropdb format error. eg: dropdb database_name"
+                  << std::endl;
+        return;
+    }
+    if (FLAGS_interactive) {
+        printf("Dropdb will drop all tables in the database %s? yes/no\n", parts[1].c_str());
+        std::string input;
+        std::cin >> input;
+        std::transform(input.begin(), input.end(), input.begin(), ::tolower);
+        if (input != "yes") {
+            printf("'dropdb %s' cmd is canceled!\n", parts[1].c_str());
+            return;
+        }
+    }
+    std::string msg;
+    if (client->DropDatabase(parts[1], msg)) {
+        std::cout << "drop database " << parts[1] << " ok" << std::endl;
+    } else {
+        std::cout << "drop database failed. error msg: " << msg << std::endl;
+    }
+}
+
 bool ParseCondAndOp(const std::string& source, uint64_t& first_end,  // NOLINT
                     uint64_t& value_begin, int32_t& get_type) {      // NOLINT
     for (uint64_t i = 0; i < source.length(); i++) {
@@ -4072,6 +4097,10 @@ void HandleNSClientHelp(const std::vector<std::string>& parts,
             printf("desc: show databases\n");
             printf("usage: showdb\n");
             printf("eg: showdb");
+        } else if (parts[1] == "dropdb") {
+            printf("desc: drop database\n");
+            printf("usage: dropdb database_name\n");
+            printf("eg: dropdb db1");
         } else {
             printf("unsupport cmd %s\n", parts[1].c_str());
         }
@@ -6522,7 +6551,9 @@ void StartNsClient() {
             HandleNsCreateDb(parts, &client);
         } else if (parts[0] == "showdb") {
             HandleNsShowDb(parts, &client);
-        } else if (parts[0] == "exit" || parts[0] == "quit") {
+        } else if (parts[0] == "dropdb") {
+            HandleNsDropDb(parts, &client);
+        }else if (parts[0] == "exit" || parts[0] == "quit") {
             std::cout << "bye" << std::endl;
             return;
         } else if (parts[0] == "help" || parts[0] == "man") {

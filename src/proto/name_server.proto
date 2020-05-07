@@ -409,6 +409,10 @@ message ShowDatabaseResponse {
     repeated string db = 3;
 }
 
+message DropDatabaseRequest {
+    optional string db = 1;
+}
+
 service NameServer {
     rpc CreateTable(CreateTableRequest) returns (GeneralResponse);
     rpc DropTable(DropTableRequest) returns (GeneralResponse);
@@ -451,4 +455,5 @@ service NameServer {
     rpc CreateDatabase(CreateDatabaseRequest) returns (GeneralResponse);
     rpc UseDatabase(UseDatabaseRequest) returns (GeneralResponse);
     rpc ShowDatabase(GeneralRequest) returns (ShowDatabaseResponse);
+    rpc DropDatabase(DropDatabaseRequest) returns (GeneralResponse);
 }

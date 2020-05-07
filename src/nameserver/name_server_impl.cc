@@ -3568,6 +3568,42 @@ void NameServerImpl::ShowTable(RpcController* controller,
     response->set_msg("ok");
 }
 
+void NameServerImpl::DropTableFun(const DropTableRequest* request,
+        GeneralResponse* response,
+        std::shared_ptr<::rtidb::nameserver::TableInfo> table_info) {
+    std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
+    if (request->has_zone_info() && request->has_task_info() &&
+        request->task_info().IsInitialized()) {
+        {
+            std::lock_guard<std::mutex> lock(mu_);
+            std::vector<uint64_t> rep_cluster_op_id_vec;
+            if (AddOPTask(request->task_info(),
+                          ::rtidb::api::TaskType::kDropTableRemote, task_ptr,
+                          rep_cluster_op_id_vec) < 0) {
+                response->set_code(::rtidb::base::ReturnCode::
+                                       kAddTaskInReplicaClusterNsFailed);
+                response->set_msg("add task in replica cluster ns failed");
+                return;
+            }
+            PDLOG(INFO,
+                  "add task in replica cluster ns success, op_id [%lu] "
+                  "task_tpye [%s] task_status [%s]",
+                  task_ptr->op_id(),
+                  ::rtidb::api::TaskType_Name(task_ptr->task_type()).c_str(),
+                  ::rtidb::api::TaskStatus_Name(task_ptr->status()).c_str());
+        }
+        task_thread_pool_.AddTask(
+            boost::bind(&NameServerImpl::DropTableInternel, this, *request,
+                        *response, table_info, task_ptr));
+        response->set_code(::rtidb::base::ReturnCode::kOk);
+        response->set_msg("ok");
+    } else {
+        DropTableInternel(*request, *response, table_info, task_ptr);
+        response->set_code(response->code());
+        response->set_msg(response->msg());
+    }
+}
+
 void NameServerImpl::DropTable(RpcController* controller,
                                const DropTableRequest* request,
                                GeneralResponse* response, Closure* done) {
@@ -3616,38 +3652,7 @@ void NameServerImpl::DropTable(RpcController* controller,
         }
         table_info = iter->second;
     }
-
-    std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
-    if (request->has_zone_info() && request->has_task_info() &&
-        request->task_info().IsInitialized()) {
-        {
-            std::lock_guard<std::mutex> lock(mu_);
-            std::vector<uint64_t> rep_cluster_op_id_vec;
-            if (AddOPTask(request->task_info(),
-                          ::rtidb::api::TaskType::kDropTableRemote, task_ptr,
-                          rep_cluster_op_id_vec) < 0) {
-                response->set_code(::rtidb::base::ReturnCode::
-                                       kAddTaskInReplicaClusterNsFailed);
-                response->set_msg("add task in replica cluster ns failed");
-                return;
-            }
-            PDLOG(INFO,
-                  "add task in replica cluster ns success, op_id [%lu] "
-                  "task_tpye [%s] task_status [%s]",
-                  task_ptr->op_id(),
-                  ::rtidb::api::TaskType_Name(task_ptr->task_type()).c_str(),
-                  ::rtidb::api::TaskStatus_Name(task_ptr->status()).c_str());
-        }
-        task_thread_pool_.AddTask(
-            boost::bind(&NameServerImpl::DropTableInternel, this, *request,
-                        *response, table_info, task_ptr));
-        response->set_code(::rtidb::base::ReturnCode::kOk);
-        response->set_msg("ok");
-    } else {
-        DropTableInternel(*request, *response, table_info, task_ptr);
-        response->set_code(response->code());
-        response->set_msg(response->msg());
-    }
+    DropTableFun(request, response, table_info);
 }
 
 void NameServerImpl::DropTableInternel(
@@ -11374,6 +11379,55 @@ void NameServerImpl::ShowDatabase(RpcController* controller,
         for (auto db : databases_) {
             response->add_db(db);
         }
+    }
+    response->set_code(::rtidb::base::ReturnCode::kOk);
+    response->set_msg("ok");
+}
+
+void NameServerImpl::DropDatabase(RpcController* controller,
+                    const DropDatabaseRequest* request,
+                    GeneralResponse* response, Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    if (!running_.load(std::memory_order_acquire)) {
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
+        response->set_msg("nameserver is not leader");
+        PDLOG(WARNING, "cur nameserver is not leader");
+        return;
+    }
+    std::vector<std::shared_ptr<::rtidb::nameserver::TableInfo>> tables;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        if (databases_.find(request->db()) == databases_.end()) {
+            response->set_code(::rtidb::base::ReturnCode::kDatabaseNotFound);
+            response->set_msg("database not found");
+            return;
+        }
+        for (const auto& table_info : table_info_) {
+            if (table_info.second->db() == request->db()) {
+                tables.push_back(table_info.second);
+            }
+        }
+    }
+    ::rtidb::nameserver::DropTableRequest drequest;
+    ::rtidb::nameserver::GeneralResponse dresponse;
+    for (auto table : tables) {
+        drequest.set_name(table->name());
+        DropTableFun(&drequest, &dresponse, table);
+        if (dresponse.code() != 0) {
+            response->set_code(::rtidb::base::ReturnCode::kDropTableError);
+            response->set_msg("drop table in database fail");
+        }
+    }
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        databases_.erase(request->db());
+    }
+    if (!zk_client_->DeleteNode(zk_db_path_ + "/" + request->db())) {
+        PDLOG(WARNING, "drop db node[%s/%s] failed!", zk_db_path_.c_str(),
+            request->db().c_str());
+        response->set_code(::rtidb::base::ReturnCode::kSetZkFailed);
+        response->set_msg("set zk failed");
+        return;
     }
     response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");

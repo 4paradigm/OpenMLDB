@@ -634,6 +634,23 @@ class TestCaseBase(unittest.TestCase):
                 column_key.append(elements)
         return (schema, column_key)
 
+    def parse_db(rs):
+        arr = rs.strip().split("\n")
+        dbs = []
+        start = False
+        for line in arr:
+            if line.find("----") != -1:
+                start = True
+                continue
+            if not start:
+                continue
+            items = line.split(" ")
+            for db in items:
+                if db != '':
+                    dbs.append(db)
+                    break
+        return db
+
     def showschema(self, endpoint, tid='', pid=''):
         rs = self.run_client(endpoint, 'showschema {} {}'.format(tid, pid))
         return self.parse_schema(rs)
@@ -641,6 +658,10 @@ class TestCaseBase(unittest.TestCase):
     def ns_showschema(self, endpoint, name):
         rs = self.run_client(endpoint, 'showschema {}'.format(name), 'ns_client')
         return self.parse_schema(rs)
+
+    def ns_showdb(self, endpoint):
+        rs = self.run_client(endpoint, 'showdb', 'ns_client')
+        return self.parse_db(rs)
 
     def showtablet(self, endpoint):
         rs = self.run_client(endpoint, 'showtablet', 'ns_client')
