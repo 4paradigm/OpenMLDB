@@ -16,14 +16,12 @@ add_definitions('-g')
 add_definitions('-Wall')
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 option(TCMALLOC_ENABLE "Enable TCMALLOC" ON)
-option(STATIC_COMPILE_ENABLE "Enable STATIC COMPILE" OFF) 
-if (STATIC_COMPILE_ENABLE)
-    set(CMAKE_EXE_LINKER_FLAGS "-static -static-libgcc -static-libstdc++")
-endif()
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(BRPC_LIBS brpc protobuf glog gflags ssl crypto leveldb z snappy dl pthread rt)
+
 if (TCMALLOC_ENABLE)
     set(CMAKE_EXE_LINKER_FLAGS "-fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free ${CMAKE_EXE_LINKER_FLAGS}")
 endif()
@@ -37,14 +35,12 @@ if(POLICY CMP0086)
   cmake_policy(SET CMP0086 NEW)
 endif()
 
-
 configure_file(
     "${PROJECT_SOURCE_DIR}/src/config.h.in"
     "${PROJECT_SOURCE_DIR}/src/config.h")
 include_directories(${PROJECT_SOURCE_DIR}/thirdparty/include)
 link_directories(${PROJECT_SOURCE_DIR}/thirdparty/lib)
 add_subdirectory(src)
-
 add_custom_target(rtidbpy
 COMMAND make
 WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/swig
