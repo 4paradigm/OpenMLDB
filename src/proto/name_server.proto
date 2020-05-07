@@ -403,6 +403,12 @@ message UseDatabaseRequest {
     optional string db = 1;
 }
 
+message ShowDatabaseResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+    repeated string db = 3;
+}
+
 service NameServer {
     rpc CreateTable(CreateTableRequest) returns (GeneralResponse);
     rpc DropTable(DropTableRequest) returns (GeneralResponse);
@@ -444,4 +450,5 @@ service NameServer {
     rpc DeleteIndex(DeleteIndexRequest) returns (GeneralResponse);
     rpc CreateDatabase(CreateDatabaseRequest) returns (GeneralResponse);
     rpc UseDatabase(UseDatabaseRequest) returns (GeneralResponse);
+    rpc ShowDatabase(GeneralRequest) returns (ShowDatabaseResponse);
 }

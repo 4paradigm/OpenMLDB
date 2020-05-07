@@ -1,4 +1,4 @@
-package com._4paradigm.rtidb.client.schema;
+package com._4paradigm.rtidb.client;
 
 import com._4paradigm.rtidb.tablet.Tablet;
 

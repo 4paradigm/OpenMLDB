@@ -8,6 +8,7 @@
 #define SRC_NAMESERVER_NAME_SERVER_IMPL_H_
 
 #include <brpc/server.h>
+
 #include <atomic>
 #include <condition_variable>  // NOLINT
 #include <list>
@@ -18,11 +19,13 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+
+#include "base/hash.h"
 #include "base/random.h"
-#include "base/schema_codec.h"
 #include "client/bs_client.h"
 #include "client/ns_client.h"
 #include "client/tablet_client.h"
+#include "codec/schema_codec.h"
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
 #include "zk/dist_lock.h"
@@ -45,6 +48,7 @@ using ::rtidb::zk::DistLock;
 using ::rtidb::zk::ZkClient;
 
 const uint64_t INVALID_PARENT_ID = UINT64_MAX;
+const uint32_t INVALID_PID = UINT32_MAX;
 
 // tablet info
 struct TabletInfo {
@@ -158,7 +162,7 @@ class NameServerImpl : public NameServer {
     void CreateTableInternel(
         GeneralResponse& response,  // NOLINT
         std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
-        const std::vector<::rtidb::base::ColumnDesc>& columns,
+        const std::vector<::rtidb::codec::ColumnDesc>& columns,
         uint64_t cur_term, uint32_t tid,
         std::shared_ptr<::rtidb::api::TaskInfo> task_ptr);
 
@@ -321,6 +325,10 @@ class NameServerImpl : public NameServer {
                         const CreateDatabaseRequest* request,
                         GeneralResponse* response, Closure* done);
 
+    void ShowDatabase(RpcController* controller,
+                const GeneralRequest* request,
+                ShowDatabaseResponse* response, Closure* done);
+
     int SyncExistTable(
         const std::string& alias, const std::string& name,
         const std::vector<::rtidb::nameserver::TableInfo> tables_remote,
@@ -329,7 +337,7 @@ class NameServerImpl : public NameServer {
 
     int CreateTableOnTablet(
         std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
-        bool is_leader, const std::vector<::rtidb::base::ColumnDesc>& columns,
+        bool is_leader, const std::vector<::rtidb::codec::ColumnDesc>& columns,
         std::map<uint32_t, std::vector<std::string>>& endpoint_map,  // NOLINT
         uint64_t term);
 
@@ -666,6 +674,10 @@ class NameServerImpl : public NameServer {
         const std::string& name, uint32_t pid,
         const std::string& candidate_leader, bool need_restore,
         uint32_t concurrency = FLAGS_name_server_task_concurrency);
+
+    std::shared_ptr<rtidb::nameserver::ClusterInfo> GetHealthCluster(
+        const std::string& alias);
+
     int CreateRecoverTableOP(const std::string& name, uint32_t pid,
                              const std::string& endpoint, bool is_leader,
                              uint64_t offset_delta, uint32_t concurrency);

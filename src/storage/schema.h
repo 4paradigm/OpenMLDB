@@ -7,11 +7,12 @@
 
 #pragma once
 
+#include <algorithm>
 #include <atomic>
+#include <unordered_map>
 #include <memory>
-#include <vector>
-#include <map>
 #include <string>
+#include <vector>
 #include "proto/tablet.pb.h"
 #include "proto/type.pb.h"
 
@@ -63,15 +64,43 @@ struct TTLDesc {
 
 enum class IndexStatus { kReady = 0, kWaiting, kDeleting, kDeleted };
 
+class ColumnDef {
+ public:
+    ColumnDef(const std::string& name, uint32_t id,
+              ::rtidb::type::DataType type);
+    inline uint32_t GetId() const { return id_; }
+    const std::string& GetName() const { return name_; }
+    inline ::rtidb::type::DataType GetType() const { return type_; }
+
+ private:
+    std::string name_;
+    uint32_t id_;
+    ::rtidb::type::DataType type_;
+};
+
+class TableColumn {
+ public:
+    TableColumn() = default;
+    std::shared_ptr<ColumnDef> GetColumn(uint32_t idx);
+    std::shared_ptr<ColumnDef> GetColumn(const std::string& name);
+    void AddColumn(std::shared_ptr<ColumnDef> column_def);
+    const std::vector<std::shared_ptr<ColumnDef>>& GetAllColumn();
+    inline uint32_t Size() {
+        return columns_.size();
+    }
+
+ private:
+    std::vector<std::shared_ptr<ColumnDef>> columns_;
+    std::unordered_map<std::string, std::shared_ptr<ColumnDef>> column_map_;
+};
+
 class IndexDef {
  public:
     IndexDef(const std::string& name, uint32_t id);
     IndexDef(const std::string& name, uint32_t id, IndexStatus stauts);
-    IndexDef(
-        const std::string& name, uint32_t id, const IndexStatus& stauts,
-        ::rtidb::type::IndexType type,
-        const std::map<uint32_t, ::rtidb::common::ColumnDesc>& column_idx_map);
-    ~IndexDef();
+    IndexDef(const std::string& name, uint32_t id, const IndexStatus& stauts,
+             ::rtidb::type::IndexType type,
+             const std::vector<ColumnDef>& column_idx_map);
     const std::string& GetName() { return name_; }
     const std::vector<uint32_t>& GetTsColumn() { return ts_column_; }
     void SetTsColumn(const std::vector<uint32_t>& ts_vec) {
@@ -86,24 +115,22 @@ class IndexDef {
     }
     IndexStatus GetStatus() { return status_.load(std::memory_order_acquire); }
     inline ::rtidb::type::IndexType GetType() { return type_; }
-    inline const std::map<uint32_t, ::rtidb::common::ColumnDesc>&
-    GetColumnIdxMap() {
-        return column_idx_map_;
-    }
+    inline const std::vector<ColumnDef>& GetColumns() { return columns_; }
 
  private:
     std::string name_;
     uint32_t index_id_;
     std::atomic<IndexStatus> status_;
     ::rtidb::type::IndexType type_;
-    std::map<uint32_t, ::rtidb::common::ColumnDesc> column_idx_map_;
+    std::vector<ColumnDef> columns_;
     std::vector<uint32_t> ts_column_;
 };
+
+bool ColumnDefSortFunc(const ColumnDef& cd_a, const ColumnDef& cd_b);
 
 class TableIndex {
  public:
     TableIndex();
-    ~TableIndex();
     void ReSet();
     std::shared_ptr<IndexDef> GetIndex(uint32_t idx);
     std::shared_ptr<IndexDef> GetIndex(const std::string& name);
@@ -115,46 +142,14 @@ class TableIndex {
     }
     bool HasAutoGen();
     std::shared_ptr<IndexDef> GetPkIndex();
+    const std::shared_ptr<IndexDef> GetIndexByCombineStr(
+        const std::string& combine_str);
 
  private:
     std::shared_ptr<std::vector<std::shared_ptr<IndexDef>>> indexs_;
     std::shared_ptr<IndexDef> pk_index_;
-};
-
-class ColumnDef {
- public:
-    ColumnDef(const std::string& name, uint32_t id,
-              ::rtidb::type::DataType type);
-    ~ColumnDef();
-    inline uint32_t GetId() { return id_; }
-    const std::string& GetName() { return name_; }
-    inline ::rtidb::type::DataType GetType() { return type_; }
-
- private:
-    std::string name_;
-    uint32_t id_;
-    ::rtidb::type::DataType type_;
-};
-
-class TableColumn {
- public:
-    TableColumn();
-    ~TableColumn();
-    std::shared_ptr<ColumnDef> GetColumn(uint32_t idx);
-    std::shared_ptr<ColumnDef> GetColumn(const std::string& name);
-    void AddColumn(std::shared_ptr<ColumnDef> column_def);
-    void SetAllColumn(
-        const std::vector<std::shared_ptr<ColumnDef>>& column_def);
-    std::vector<std::shared_ptr<ColumnDef>> GetAllColumn();
-    inline uint32_t Size() {
-        return std::atomic_load_explicit(&columns_, std::memory_order_relaxed)
-            ->size();
-    }
-
- private:
-    std::shared_ptr<std::vector<std::shared_ptr<ColumnDef>>> columns_;
-    std::shared_ptr<std::map<std::string, std::shared_ptr<ColumnDef>>>
-        column_map_;
+    std::shared_ptr<std::unordered_map<std::string, std::shared_ptr<IndexDef>>>
+        combine_col_name_map_;
 };
 
 }  // namespace storage

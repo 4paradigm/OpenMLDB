@@ -21,4 +21,4 @@ namespace std {
 %include "base/slice.h"
 %include "base/status.h"
 %include "client/ns_client.h"
-%include "base/schema_codec.h"
+%include "codec/schema_codec.h"

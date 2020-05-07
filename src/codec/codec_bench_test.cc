@@ -7,8 +7,8 @@
 
 #include <timer.h>
 #include <iostream>
-#include "base/codec.h"
 #include "base/kv_iterator.h"
+#include "codec/codec.h"
 #include "gtest/gtest.h"
 #include "proto/common.pb.h"
 #include "proto/tablet.pb.h"
@@ -16,7 +16,7 @@
 #include "storage/segment.h"
 
 namespace rtidb {
-namespace base {
+namespace codec {
 
 class CodecBenchmarkTest : public ::testing::Test {
  public:
@@ -34,7 +34,7 @@ void RunHasTs(::rtidb::storage::DataBlock* db) {
         total_block_size += db->size;
     }
     std::string pairs;
-    ::rtidb::base::EncodeRows(datas, total_block_size, &pairs);
+    ::rtidb::codec::EncodeRows(datas, total_block_size, &pairs);
 }
 
 void RunNoneTs(::rtidb::storage::DataBlock* db) {
@@ -46,7 +46,7 @@ void RunNoneTs(::rtidb::storage::DataBlock* db) {
         total_block_size += db->size;
     }
     std::string pairs;
-    ::rtidb::base::EncodeRows(datas, total_block_size, &pairs);
+    ::rtidb::codec::EncodeRows(datas, total_block_size, &pairs);
 }
 
 TEST_F(CodecBenchmarkTest, ProjectTest) {
@@ -143,7 +143,7 @@ TEST_F(CodecBenchmarkTest, Encode) {
         char buffer[400 * 1000 + 1000 * 12];
         uint32_t offset = 0;
         for (uint32_t j = 0; j < 1000; j++) {
-            ::rtidb::base::Encode(time, data[j], buffer, offset);
+            ::rtidb::codec::Encode(time, data[j], buffer, offset);
             offset += (4 + 8 + 400);
         }
     }
@@ -184,7 +184,7 @@ TEST_F(CodecBenchmarkTest, Decode) {
     uint32_t offset = 0;
     uint64_t time = 9527;
     for (uint32_t j = 0; j < 1000; j++) {
-        ::rtidb::base::Encode(time, data[j], buffer, offset);
+        ::rtidb::codec::Encode(time, data[j], buffer, offset);
         offset += (4 + 8 + 400);
     }
 
@@ -220,7 +220,7 @@ TEST_F(CodecBenchmarkTest, Decode) {
     std::cout << "Decode protobuf: " << pconsumed / 1000 << std::endl;
 }
 
-}  // namespace base
+}  // namespace codec
 }  // namespace rtidb
 
 int main(int argc, char** argv) {

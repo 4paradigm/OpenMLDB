@@ -50,6 +50,19 @@ bool NsClient::CreateDatabase(std::string db, std::string& msg) {
     return ok && response.code() == 0;
 }
 
+bool NsClient::ShowDatabase(std::vector<std::string>* dbs, std::string& msg) {
+    ::rtidb::nameserver::GeneralRequest request;
+    ::rtidb::nameserver::ShowDatabaseResponse response;
+    bool ok = client_.SendRequest(
+        &::rtidb::nameserver::NameServer_Stub::ShowDatabase, &request,
+        &response, FLAGS_request_timeout_ms, 1);
+    for (auto db : response.db()) {
+        dbs->push_back(db);
+    }
+    msg = response.msg();
+    return ok && response.code() == 0;
+}
+
 bool NsClient::ShowTablet(std::vector<TabletInfo>& tablets, std::string& msg) {
     ::rtidb::nameserver::ShowTabletRequest request;
     ::rtidb::nameserver::ShowTabletResponse response;

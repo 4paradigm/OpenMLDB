@@ -8,7 +8,7 @@
 #include "client/tablet_client.h"
 #include <algorithm>
 #include <iostream>
-#include "base/codec.h"
+#include "codec/codec.h"
 #include "logging.h"  // NOLINT
 #include "timer.h"    // NOLINT
 
@@ -36,12 +36,12 @@ std::string TabletClient::GetEndpoint() { return endpoint_; }
 bool TabletClient::CreateTable(
     const std::string& name, uint32_t tid, uint32_t pid, uint64_t abs_ttl,
     uint64_t lat_ttl, uint32_t seg_cnt,
-    const std::vector<::rtidb::base::ColumnDesc>& columns,
+    const std::vector<::rtidb::codec::ColumnDesc>& columns,
     const ::rtidb::api::TTLType& type, bool leader,
     const std::vector<std::string>& endpoints, uint64_t term,
     const ::rtidb::api::CompressType compress_type) {
     std::string schema;
-    ::rtidb::base::SchemaCodec codec;
+    ::rtidb::codec::SchemaCodec codec;
     bool codec_ok = codec.Encode(columns, schema);
     if (!codec_ok) {
         return false;
@@ -198,11 +198,12 @@ bool TabletClient::Update(uint32_t tid, uint32_t pid,
     ::rtidb::api::GeneralResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
-    ::rtidb::api::Columns* cd = request.mutable_condition_columns();
     for (int i = 0; i < new_cd_schema.size(); i++) {
+        ::rtidb::api::Columns* cd = request.add_condition_columns();
         cd->add_name(new_cd_schema.Get(i).name());
+        // TODO(wangbao) bugfix
+        cd->set_value(cd_value);
     }
-    cd->set_allocated_value(const_cast<std::string*>(&cd_value));
     ::rtidb::api::Columns* val = request.mutable_value_columns();
     for (int i = 0; i < new_value_schema.size(); i++) {
         val->add_name(new_value_schema.Get(i).name());
@@ -211,7 +212,6 @@ bool TabletClient::Update(uint32_t tid, uint32_t pid,
     bool ok =
         client_.SendRequest(&::rtidb::api::TabletServer_Stub::Update, &request,
                             &response, FLAGS_request_timeout_ms, 1);
-    cd->release_value();
     val->release_value();
     if (ok && response.code() == 0) {
         return true;

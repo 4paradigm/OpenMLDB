@@ -5,18 +5,18 @@
 // Date 2017-09-23
 //
 
-#ifndef SRC_BASE_FLAT_ARRAY_H_
-#define SRC_BASE_FLAT_ARRAY_H_
+#ifndef SRC_CODEC_FLAT_ARRAY_H_
+#define SRC_CODEC_FLAT_ARRAY_H_
 
 #include <stdint.h>
 #include <cstring>
 #include <string>
 #include <vector>
 #include "base/endianconv.h"
-#include "base/schema_codec.h"
+#include "codec/schema_codec.h"
 
 namespace rtidb {
-namespace base {
+namespace codec {
 
 static const uint8_t bool_true = 1;
 static const uint8_t bool_false = 0;
@@ -552,7 +552,7 @@ class FlatArrayIterator {
     uint32_t offset_;
 };
 
-}  // namespace base
+}  // namespace codec
 }  // namespace rtidb
 
-#endif  // SRC_BASE_FLAT_ARRAY_H_
+#endif  // SRC_CODEC_FLAT_ARRAY_H_
