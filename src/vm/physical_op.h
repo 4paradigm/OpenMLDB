@@ -248,6 +248,7 @@ class PhysicalOpNode {
     void SetLimitCnt(int32_t limit_cnt) { limit_cnt_ = limit_cnt; }
 
     const int32_t GetLimitCnt() const { return limit_cnt_; }
+
     const PhysicalOpType type_;
     const bool is_block_;
     const bool is_lazy_;
@@ -255,6 +256,28 @@ class PhysicalOpNode {
     vm::Schema output_schema_;
 
  protected:
+    bool IsSameSchema(const vm::Schema &schema,
+                      const vm::Schema &exp_schema) const {
+        if (schema.size() != exp_schema.size()) {
+            LOG(WARNING) << "Schemas aren't consistent";
+            return false;
+        }
+        for (int i = 0; i < schema.size(); i++) {
+            if (schema.Get(i).name() != exp_schema.Get(i).name()) {
+                LOG(WARNING) << "Schemas aren't consistent:\n"
+                             << exp_schema.Get(i).DebugString() << "vs:\n"
+                             << schema.Get(i).DebugString();
+                return false;
+            }
+            if (schema.Get(i).type() != exp_schema.Get(i).type()) {
+                LOG(WARNING) << "Schemas aren't consistent:\n"
+                             << exp_schema.Get(i).DebugString() << "vs:\n"
+                             << schema.Get(i).DebugString();
+                return false;
+            }
+        }
+        return true;
+    }
     FnInfo fn_info_;
     std::vector<FnInfo *> fn_infos_;
     int32_t limit_cnt_;
@@ -571,6 +594,7 @@ class WindowJoinList {
     }
     std::list<std::pair<PhysicalOpNode *, Join>> window_joins_;
 };
+
 class PhysicalWindowNode : public PhysicalUnaryNode, public WindowOp {
  public:
     PhysicalWindowNode(PhysicalOpNode *node,
@@ -594,7 +618,7 @@ class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
         : PhysicalProjectNode(node, fn_name, schema, kWindowAggregation, true,
                               false),
           window_(partition, orders, start_offset, end_offset),
-          union_() {
+          window_unions_() {
         output_type_ = kSchemaTypeTable;
         InitSchema();
         fn_infos_.push_back(&window_.partition_.fn_info_);
@@ -614,11 +638,32 @@ class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
         fn_infos_.push_back(&window_join.index_key_.fn_info_);
         fn_infos_.push_back(&window_join.filter_.fn_info_);
     }
+
+
+    bool AddWindowUnion(PhysicalOpNode *node) {
+        if (nullptr == node) {
+            LOG(WARNING) << "Fail to add window union : table is null";
+            return false;
+        }
+        if (producers_.empty() || nullptr == producers_[0]) {
+            LOG(WARNING)
+                << "Fail to add window union : producer is empty or null";
+            return false;
+        }
+        if (!IsSameSchema(node->output_schema_,
+                          producers_[0]->output_schema_)) {
+            LOG(WARNING)
+                << "Union Table and window input schema aren't consistent";
+            return false;
+        }
+        window_unions_.push_back(node);
+        return true;
+    }
     WindowOp &window() { return window_; }
     WindowJoinList &window_joins() { return window_joins_; }
     WindowOp window_;
     WindowJoinList window_joins_;
-    Union union_;
+    std::vector<PhysicalOpNode *> window_unions_;
 };
 
 class PhysicalJoinNode : public PhysicalBinaryNode {

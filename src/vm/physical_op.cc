@@ -168,6 +168,14 @@ void PhysicalWindowAggrerationNode::Print(std::ostream& output,
             window_join.first->Print(output, tab + INDENT + INDENT + INDENT);
         }
     }
+
+    if (!window_unions_.empty()) {
+        for (auto window_union : window_unions_) {
+            output << "\n";
+            output << tab << INDENT << "+-UNION\n";
+            window_union->Print(output, tab + INDENT + INDENT);
+        }
+    }
     output << "\n";
     PrintChildren(output, tab);
 }

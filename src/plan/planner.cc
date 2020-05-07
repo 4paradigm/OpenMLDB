@@ -399,7 +399,18 @@ bool Planner::CreateWindowPlanNode(
                                           frame->GetFrameType());
             w_node_ptr->SetKeys(w_ptr->GetPartitions());
             w_node_ptr->SetOrders(w_ptr->GetOrders());
-            w_node_ptr->set_union_tables(w_ptr->union_tables());
+            if (nullptr != w_ptr->union_tables() &&
+                !w_ptr->union_tables()->GetList().empty()) {
+                for (auto node : w_ptr->union_tables()->GetList()) {
+                    node::PlanNode *table_plan = nullptr;
+                    if (!CreateTableReferencePlanNode(
+                            dynamic_cast<node::TableRefNode *>(node),
+                            &table_plan, status)) {
+                        return false;
+                    }
+                    w_node_ptr->AddUnionTable(table_plan);
+                }
+            }
             w_node_ptr->set_instance_not_in_window(
                 w_ptr->instance_not_in_window());
         } else {

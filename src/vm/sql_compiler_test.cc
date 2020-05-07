@@ -252,6 +252,22 @@ TEST_P(SQLCompilerTest, compile_batch_mode_test) {
     AddTable(catalog, table_def5, table5);
     AddTable(catalog, table_def6, table6);
 
+    {
+        fesql::type::TableDef table_def;
+        BuildTableA(table_def);
+        table_def.set_name("tb");
+        std::shared_ptr<::fesql::storage::Table> table(
+            new fesql::storage::Table(1, 1, table_def));
+        AddTable(catalog, table_def, table);
+    }
+    {
+        fesql::type::TableDef table_def;
+        BuildTableA(table_def);
+        table_def.set_name("tc");
+        std::shared_ptr<::fesql::storage::Table> table(
+            new fesql::storage::Table(1, 1, table_def));
+        AddTable(catalog, table_def, table);
+    }
     CompilerCheck(catalog, sqlstr, true);
 
     // Check for work with simple catalog
@@ -277,6 +293,27 @@ TEST_P(SQLCompilerTest, compile_batch_mode_test) {
     {
         ::fesql::type::TableDef* p_table = db.add_tables();
         *p_table = table_def5;
+    }
+    {
+        fesql::type::TableDef table_def;
+        BuildTableA(table_def);
+        table_def.set_name("ta");
+        ::fesql::type::TableDef* p_table = db.add_tables();
+        *p_table = table_def;
+    }
+    {
+        fesql::type::TableDef table_def;
+        BuildTableA(table_def);
+        table_def.set_name("tb");
+        ::fesql::type::TableDef* p_table = db.add_tables();
+        *p_table = table_def;
+    }
+    {
+        fesql::type::TableDef table_def;
+        BuildTableA(table_def);
+        table_def.set_name("tc");
+        ::fesql::type::TableDef* p_table = db.add_tables();
+        *p_table = table_def;
     }
 
     simple_catalog->AddDatabase(db);

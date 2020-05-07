@@ -779,47 +779,47 @@ class ExprIdNode : public ExprNode {
 
 class ConstNode : public ExprNode {
  public:
-    ConstNode() : ExprNode(kExprPrimary), date_type_(fesql::node::kNull) {}
+    ConstNode() : ExprNode(kExprPrimary), data_type_(fesql::node::kNull) {}
     explicit ConstNode(int16_t val)
-        : ExprNode(kExprPrimary), date_type_(fesql::node::kInt16) {
+        : ExprNode(kExprPrimary), data_type_(fesql::node::kInt16) {
         val_.vsmallint = val;
     }
     explicit ConstNode(int val)
-        : ExprNode(kExprPrimary), date_type_(fesql::node::kInt32) {
+        : ExprNode(kExprPrimary), data_type_(fesql::node::kInt32) {
         val_.vint = val;
     }
     explicit ConstNode(int64_t val)
-        : ExprNode(kExprPrimary), date_type_(fesql::node::kInt64) {
+        : ExprNode(kExprPrimary), data_type_(fesql::node::kInt64) {
         val_.vlong = val;
     }
     explicit ConstNode(float val)
-        : ExprNode(kExprPrimary), date_type_(fesql::node::kFloat) {
+        : ExprNode(kExprPrimary), data_type_(fesql::node::kFloat) {
         std::cout << val << std::endl;
         val_.vfloat = val;
     }
 
     explicit ConstNode(double val)
-        : ExprNode(kExprPrimary), date_type_(fesql::node::kDouble) {
+        : ExprNode(kExprPrimary), data_type_(fesql::node::kDouble) {
         val_.vdouble = val;
     }
 
     explicit ConstNode(const char *val)
-        : ExprNode(kExprPrimary), date_type_(fesql::node::kVarchar) {
+        : ExprNode(kExprPrimary), data_type_(fesql::node::kVarchar) {
         val_.vstr = strdup(val);
     }
 
     explicit ConstNode(const std::string &val)
-        : ExprNode(kExprPrimary), date_type_(fesql::node::kVarchar) {
+        : ExprNode(kExprPrimary), data_type_(fesql::node::kVarchar) {
         val_.vstr = val.c_str();
     }
 
     ConstNode(int64_t val, DataType time_type)
-        : ExprNode(kExprPrimary), date_type_(time_type) {
+        : ExprNode(kExprPrimary), data_type_(time_type) {
         val_.vlong = val;
     }
 
     ~ConstNode() {
-        if (date_type_ == fesql::node::kVarchar) {
+        if (data_type_ == fesql::node::kVarchar) {
             delete val_.vstr;
         }
     }
@@ -841,10 +841,10 @@ class ConstNode : public ExprNode {
 
     double GetDouble() const { return val_.vdouble; }
 
-    DataType GetDataType() const { return date_type_; }
+    DataType GetDataType() const { return data_type_; }
 
     int64_t GetMillis() const {
-        switch (date_type_) {
+        switch (data_type_) {
             case fesql::node::kDay:
                 return 86400000 * val_.vlong;
             case fesql::node::kHour:
@@ -856,14 +856,14 @@ class ConstNode : public ExprNode {
             default: {
                 LOG(WARNING)
                     << "error occur when get milli second from wrong type "
-                    << DataTypeName(date_type_);
+                    << DataTypeName(data_type_);
                 return -1;
             }
         }
     }
 
  private:
-    DataType date_type_;
+    DataType data_type_;
     union {
         int16_t vsmallint;
         int vint;         /* machine integer */

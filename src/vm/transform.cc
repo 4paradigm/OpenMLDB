@@ -787,11 +787,28 @@ bool BatchModeTransformer::CreatePhysicalProjectNode(
             break;
         }
         case kWindowAggregation: {
-            op = new PhysicalWindowAggrerationNode(
+            auto window_agg_op = new PhysicalWindowAggrerationNode(
                 node, project_list->w_ptr_->GetKeys(),
                 project_list->w_ptr_->GetOrders(), fn_name, output_schema,
                 project_list->w_ptr_->GetStartOffset(),
                 project_list->w_ptr_->GetEndOffset());
+
+            if (!project_list->w_ptr_->union_tables().empty()) {
+                for (auto iter = project_list->w_ptr_->union_tables().cbegin();
+                     iter != project_list->w_ptr_->union_tables().cend();
+                     iter++) {
+                    PhysicalOpNode* union_table_op;
+                    if (!TransformPlanOp(*iter, &union_table_op, status)) {
+                        return false;
+                    }
+                    if (!window_agg_op->AddWindowUnion(union_table_op)) {
+                        status.msg = "Fail to add window union table";
+                        status.code = common::kPlanError;
+                        return false;
+                    }
+                }
+            }
+            op = window_agg_op;
             break;
         }
     }
@@ -1081,7 +1098,7 @@ bool BatchModeTransformer::GenWindowJoinList(WindowJoinList* window_join_list,
             joined_schema.push_back(pair);
         }
 
-        for (auto &window_join : window_join_list->window_joins_) {
+        for (auto& window_join : window_join_list->window_joins_) {
             auto right_schema = window_join.first->GetOutputNameSchemaList();
             auto& left_schema = joined_schema;
             auto join = &window_join.second;
