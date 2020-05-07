@@ -1,0 +1,3 @@
+[submodule "fesql"]
+	path = fesql
+	url = git@gitlab.4pd.io:ai-native-db/fesql.git

@@ -21,6 +21,13 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(BRPC_LIBS brpc protobuf glog gflags ssl crypto leveldb z snappy dl pthread rt)
+set(VM_LIBS fesql_vm fesql_udf fesql_parser fesql_planner fesql_codegen fesql_storage fesql_codec fesql_proto
+    fesql_node fesql_base)
+set(LLVM_DIR "${PROJECT_SOURCE_DIR}/thirdparty/lib/cmake/llvm")
+find_package(LLVM REQUIRED CONFIG)
+message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
+message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
+llvm_map_components_to_libnames(LLVM_LIBS support core orcjit nativecodegen)
 
 if (TCMALLOC_ENABLE)
     set(CMAKE_EXE_LINKER_FLAGS "-fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free ${CMAKE_EXE_LINKER_FLAGS}")
@@ -38,7 +45,8 @@ endif()
 configure_file(
     "${PROJECT_SOURCE_DIR}/src/config.h.in"
     "${PROJECT_SOURCE_DIR}/src/config.h")
-include_directories(${PROJECT_SOURCE_DIR}/thirdparty/include)
+
+include_directories(${PROJECT_SOURCE_DIR}/thirdparty/include ${PROJECT_SOURCE_DIR}/fesql/src)
 link_directories(${PROJECT_SOURCE_DIR}/thirdparty/lib)
 add_subdirectory(src)
 add_custom_target(rtidbpy
