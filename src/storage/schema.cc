@@ -15,14 +15,6 @@ ColumnDef::ColumnDef(const std::string& name, uint32_t id,
                      ::rtidb::type::DataType type)
     : name_(name), id_(id), type_(type) {}
 
-ColumnDef::~ColumnDef() {}
-
-TableColumn::TableColumn() {
-}
-
-TableColumn::~TableColumn() {
-}
-
 std::shared_ptr<ColumnDef> TableColumn::GetColumn(uint32_t idx) {
     if (idx < columns_.size()) {
         return columns_.at(idx);
@@ -64,8 +56,6 @@ IndexDef::IndexDef(const std::string& name, uint32_t id,
       type_(type),
       columns_(columns) {}
 
-IndexDef::~IndexDef() {}
-
 bool ColumnDefSortFunc(const ColumnDef& cd_a, const ColumnDef& cd_b) {
     return (cd_a.GetId() < cd_b.GetId());
 }
@@ -77,12 +67,6 @@ TableIndex::TableIndex() {
         std::make_shared<
         std::unordered_map<std::string, std::shared_ptr<IndexDef>>>();
     col_name_vec_ = std::make_shared<std::vector<std::string>>();
-}
-
-TableIndex::~TableIndex() {
-    indexs_->clear();
-    combine_col_name_map_->clear();
-    col_name_vec_->clear();
 }
 
 void TableIndex::ReSet() {

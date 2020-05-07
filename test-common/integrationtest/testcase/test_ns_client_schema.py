@@ -193,12 +193,14 @@ class TestSchema(TestCaseBase):
         self.assertEqual(len(schema_map), 0)
         self.assertEqual(len(column_key), 0)
 
-    def test_addindex(self):
+    @ddt.data(0, 1)
+    def test_addindex(self, format_version):
         name = 'tname{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         table_meta = {
                 "name": name,
                 "ttl": 14400,
+                "format_version": format_version,
                 "column_desc":[
                     {"name": "card", "type": "string", "add_ts_idx": "false"},
                     {"name": "mcc", "type": "string", "add_ts_idx": "false"},
@@ -248,12 +250,14 @@ class TestSchema(TestCaseBase):
 
         self.ns_drop(self.ns_leader, name)
 
-    def test_addindex_multi(self):
+    @ddt.data(0, 1)
+    def test_addindex_multi(self, format_version):
         name = 'tname{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         table_meta = {
                 "name": name,
                 "ttl": 14400,
+                "format_version": format_version,
                 "partition_num": 8, 
                 "column_desc":[
                     {"name": "card", "type": "string", "add_ts_idx": "false"},

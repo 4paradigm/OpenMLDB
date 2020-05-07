@@ -7,6 +7,7 @@
 
 #include "base/hash.h"
 #include "codec/flat_array.h"
+#include "codec/row_codec.h"
 #ifdef DISALLOW_COPY_AND_ASSIGN
 #undef DISALLOW_COPY_AND_ASSIGN
 #endif
@@ -243,7 +244,7 @@ void BaseClient::RefreshTable() {
             google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>>
             columns = std::make_shared<google::protobuf::RepeatedPtrField<
                 rtidb::common::ColumnDesc>>();
-        int code = rtidb::codec::RowSchemaCodec::ConvertColumnDesc(
+        int code = rtidb::codec::SchemaCodec::ConvertColumnDesc(
             table_info->column_desc_v1(), *columns,
             table_info->added_column_desc());
         if (code != 0) {
@@ -267,7 +268,7 @@ void BaseClient::RefreshTable() {
             if (table_info->column_key(i).has_index_type() &&
                 table_info->column_key(i).index_type() ==
                     ::rtidb::type::IndexType::kAutoGen) {
-                handler->auto_gen_pk = table_info->column_key(i).index_name();
+                handler->auto_gen_pk = table_info->column_key(i).col_name(0);
                 break;
             }
         }
@@ -469,7 +470,7 @@ GeneralResult RtidbClient::Update(
     uint32_t pid = 0;
     ::google::protobuf::RepeatedPtrField<::rtidb::api::Columns> cd_columns;
     ::rtidb::base::ResultMsg cd_rm
-        = ::rtidb::codec::RowSchemaCodec::GetCdColumns(
+        = ::rtidb::codec::SchemaCodec::GetCdColumns(
                 *(th->columns), condition_columns_map, &cd_columns);
     if (cd_rm.code < 0) {
         result.SetError(cd_rm.code, "GetCdColumns error, msg: " + cd_rm.msg);
@@ -478,10 +479,10 @@ GeneralResult RtidbClient::Update(
 
     google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>
         new_value_schema;
-    ::rtidb::codec::RowSchemaCodec::GetSchemaData(
+    ::rtidb::codec::SchemaCodec::GetSchemaData(
         value_columns_map, *(th->columns), new_value_schema);
     std::string value;
-    ::rtidb::base::ResultMsg value_rm = ::rtidb::codec::RowSchemaCodec::Encode(
+    ::rtidb::base::ResultMsg value_rm = ::rtidb::codec::RowCodec::EncodeRow(
         value_columns_map, new_value_schema, value);
     if (value_rm.code < 0) {
         result.SetError(value_rm.code, "encode error, msg: " + value_rm.msg);
@@ -552,11 +553,9 @@ GeneralResult RtidbClient::Put(const std::string& name,
     std::string buffer;
     rtidb::base::ResultMsg rm;
     if (!th->auto_gen_pk.empty()) {
-        rm =
-            ::rtidb::codec::RowSchemaCodec::Encode(val, *(th->columns), buffer);
+        rm = ::rtidb::codec::RowCodec::EncodeRow(val, *(th->columns), buffer);
     } else {
-        rm = ::rtidb::codec::RowSchemaCodec::Encode(value, *(th->columns),
-                                                    buffer);
+        rm = ::rtidb::codec::RowCodec::EncodeRow(value, *(th->columns), buffer);
     }
     if (rm.code != 0) {
         result.SetError(rm.code, "encode error, msg: " + rm.msg);
@@ -595,7 +594,7 @@ GeneralResult RtidbClient::Delete(
     uint32_t pid = 0;
     ::google::protobuf::RepeatedPtrField<::rtidb::api::Columns> cd_columns;
     ::rtidb::base::ResultMsg cd_rm
-        = ::rtidb::codec::RowSchemaCodec::GetCdColumns(
+        = ::rtidb::codec::SchemaCodec::GetCdColumns(
                 *(th->columns), values, &cd_columns);
     if (cd_rm.code < 0) {
         result.SetError(cd_rm.code, "GetCdColumns error, msg: " + cd_rm.msg);
