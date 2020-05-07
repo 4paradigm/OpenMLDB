@@ -325,13 +325,12 @@ class NameServerImpl : public NameServer {
                         const CreateDatabaseRequest* request,
                         GeneralResponse* response, Closure* done);
 
-    void ShowDatabase(RpcController* controller,
-                const GeneralRequest* request,
-                ShowDatabaseResponse* response, Closure* done);
+    void ShowDatabase(RpcController* controller, const GeneralRequest* request,
+                      ShowDatabaseResponse* response, Closure* done);
 
     void DropDatabase(RpcController* controller,
-                    const DropDatabaseRequest* request,
-                    GeneralResponse* response, Closure* done);
+                      const DropDatabaseRequest* request,
+                      GeneralResponse* response, Closure* done);
 
     int SyncExistTable(
         const std::string& alias, const std::string& name,
@@ -814,8 +813,8 @@ class NameServerImpl : public NameServer {
         uint32_t pid, uint64_t end_offset,
         std::shared_ptr<::rtidb::nameserver::TableInfo> table_info);
 
-    void DropTableFun(const DropTableRequest* request,
-        GeneralResponse* response,
+    void DropTableFun(
+        const DropTableRequest* request, GeneralResponse* response,
         std::shared_ptr<::rtidb::nameserver::TableInfo> table_info);
 
  private:

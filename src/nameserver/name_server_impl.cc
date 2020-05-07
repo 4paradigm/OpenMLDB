@@ -10,9 +10,11 @@
 #include <base/strings.h>
 #include <gflags/gflags.h>
 #include <strings.h>
+
 #include <algorithm>
 #include <set>
 #include <utility>
+
 #include "base/status.h"
 #include "boost/algorithm/string.hpp"
 #include "timer.h"  // NOLINT
@@ -3550,7 +3552,7 @@ void NameServerImpl::ShowTable(RpcController* controller,
     for (const auto& kv : table_info_) {
         if ((request->has_name() && request->name() != kv.first) ||
             (request->has_db() && kv.second->has_db() &&
-            request->db() != kv.second->db()) ||
+             request->db() != kv.second->db()) ||
             (!request->has_db() && kv.second->has_db())) {
             continue;
         }
@@ -3568,9 +3570,9 @@ void NameServerImpl::ShowTable(RpcController* controller,
     response->set_msg("ok");
 }
 
-void NameServerImpl::DropTableFun(const DropTableRequest* request,
-        GeneralResponse* response,
-        std::shared_ptr<::rtidb::nameserver::TableInfo> table_info) {
+void NameServerImpl::DropTableFun(
+    const DropTableRequest* request, GeneralResponse* response,
+    std::shared_ptr<::rtidb::nameserver::TableInfo> table_info) {
     std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
     if (request->has_zone_info() && request->has_task_info() &&
         request->task_info().IsInitialized()) {
@@ -3878,7 +3880,7 @@ void NameServerImpl::AddTableField(RpcController* controller,
         }
     } else {
         if (::rtidb::codec::SchemaCodec::ConvertColumnDesc(*table_info,
-                                                          columns) < 0) {
+                                                           columns) < 0) {
             PDLOG(WARNING, "convert table %s column desc failed",
                   request->name().c_str());
             return;
@@ -4587,7 +4589,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
     if (!table_info->has_table_type() ||
         table_info->table_type() == ::rtidb::type::kTimeSeries) {
         if (::rtidb::codec::SchemaCodec::ConvertColumnDesc(*table_info,
-                                                          columns) < 0) {
+                                                           columns) < 0) {
             response->set_code(
                 ::rtidb::base::ReturnCode::kConvertColumnDescFailed);
             response->set_msg("convert column desc failed");
@@ -11365,8 +11367,9 @@ void NameServerImpl::UseDatabase(RpcController* controller,
 }
 
 void NameServerImpl::ShowDatabase(RpcController* controller,
-                                 const GeneralRequest* request,
-                                 ShowDatabaseResponse* response, Closure* done) {
+                                  const GeneralRequest* request,
+                                  ShowDatabaseResponse* response,
+                                  Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (!running_.load(std::memory_order_acquire)) {
         response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
@@ -11385,8 +11388,8 @@ void NameServerImpl::ShowDatabase(RpcController* controller,
 }
 
 void NameServerImpl::DropDatabase(RpcController* controller,
-                    const DropDatabaseRequest* request,
-                    GeneralResponse* response, Closure* done) {
+                                  const DropDatabaseRequest* request,
+                                  GeneralResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (!running_.load(std::memory_order_acquire)) {
         response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
@@ -11424,7 +11427,7 @@ void NameServerImpl::DropDatabase(RpcController* controller,
     }
     if (!zk_client_->DeleteNode(zk_db_path_ + "/" + request->db())) {
         PDLOG(WARNING, "drop db node[%s/%s] failed!", zk_db_path_.c_str(),
-            request->db().c_str());
+              request->db().c_str());
         response->set_code(::rtidb::base::ReturnCode::kSetZkFailed);
         response->set_msg("set zk failed");
         return;

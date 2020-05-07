@@ -9,10 +9,12 @@
 #define SRC_CLIENT_NS_CLIENT_H_
 
 #include <stdint.h>
+
 #include <map>
 #include <set>
 #include <string>
 #include <vector>
+
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
 #include "rpc/rpc_client.h"
@@ -45,7 +47,7 @@ class NsClient {
     bool CreateDatabase(const std::string& db, std::string& msg);  // NOLINT
 
     bool ShowDatabase(std::vector<std::string>* dbs,
-            std::string& msg);  // NOLINT
+                      std::string& msg);  // NOLINT
 
     bool DropDatabase(const std::string& db, std::string& msg);
 

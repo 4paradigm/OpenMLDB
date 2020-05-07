@@ -1748,23 +1748,24 @@ void HandleNsCreateDb(const std::vector<std::string>& parts,
 }
 
 void HandleNsShowDb(const std::vector<std::string>& parts,
-                      ::rtidb::client::NsClient* client) {
+                    ::rtidb::client::NsClient* client) {
     std::string msg;
     std::vector<std::string> dbs;
-    if(client->ShowDatabase(&dbs, msg)) {
+    if (client->ShowDatabase(&dbs, msg)) {
         ::rtidb::base::PrintDatabase(dbs);
     }
 }
 
 void HandleNsDropDb(const std::vector<std::string>& parts,
-                      ::rtidb::client::NsClient* client) {
+                    ::rtidb::client::NsClient* client) {
     if (parts.size() < 2) {
         std::cout << "dropdb format error. eg: dropdb database_name"
                   << std::endl;
         return;
     }
     if (FLAGS_interactive) {
-        printf("Dropdb will drop all tables in the database %s? yes/no\n", parts[1].c_str());
+        printf("Dropdb will drop all tables in the database %s? yes/no\n",
+               parts[1].c_str());
         std::string input;
         std::cin >> input;
         std::transform(input.begin(), input.end(), input.begin(), ::tolower);
@@ -6553,7 +6554,7 @@ void StartNsClient() {
             HandleNsShowDb(parts, &client);
         } else if (parts[0] == "dropdb") {
             HandleNsDropDb(parts, &client);
-        }else if (parts[0] == "exit" || parts[0] == "quit") {
+        } else if (parts[0] == "exit" || parts[0] == "quit") {
             std::cout << "bye" << std::endl;
             return;
         } else if (parts[0] == "help" || parts[0] == "man") {

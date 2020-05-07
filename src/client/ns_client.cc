@@ -6,7 +6,9 @@
 //
 
 #include "client/ns_client.h"
+
 #include <utility>
+
 #include "base/strings.h"
 
 DECLARE_int32(request_timeout_ms);
@@ -53,9 +55,9 @@ bool NsClient::CreateDatabase(const std::string& db, std::string& msg) {
 bool NsClient::ShowDatabase(std::vector<std::string>* dbs, std::string& msg) {
     ::rtidb::nameserver::GeneralRequest request;
     ::rtidb::nameserver::ShowDatabaseResponse response;
-    bool ok = client_.SendRequest(
-        &::rtidb::nameserver::NameServer_Stub::ShowDatabase, &request,
-        &response, FLAGS_request_timeout_ms, 1);
+    bool ok =
+        client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::ShowDatabase,
+                            &request, &response, FLAGS_request_timeout_ms, 1);
     for (auto db : response.db()) {
         dbs->push_back(db);
     }
@@ -67,9 +69,9 @@ bool NsClient::DropDatabase(const std::string& db, std::string& msg) {
     ::rtidb::nameserver::DropDatabaseRequest request;
     ::rtidb::nameserver::GeneralResponse response;
     request.set_db(db);
-    bool ok = client_.SendRequest(
-        &::rtidb::nameserver::NameServer_Stub::DropDatabase, &request,
-        &response, FLAGS_request_timeout_ms, 1);
+    bool ok =
+        client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::DropDatabase,
+                            &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     return ok && response.code() == 0;
 }
