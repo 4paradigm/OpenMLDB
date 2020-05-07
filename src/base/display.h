@@ -753,7 +753,8 @@ __attribute__((unused)) static void PrintTableInformation(
     tp.Print(true);
 }
 
-__attribute__((unused)) static void PrintDatabase(const std::vector<std::string>& dbs) {
+__attribute__((unused)) static void PrintDatabase(
+    const std::vector<std::string>& dbs) {
     std::vector<std::string> row;
     row.push_back("Databases");
     ::baidu::common::TPrinter tp(row.size());
