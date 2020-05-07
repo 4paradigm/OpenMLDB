@@ -7,6 +7,7 @@ import com._4paradigm.rtidb.client.ha.RTIDBClient;
 import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.RowCodec;
+import com._4paradigm.rtidb.client.schema.RowView;
 import com._4paradigm.rtidb.ns.NS;
 import com._4paradigm.rtidb.tablet.Tablet;
 import com._4paradigm.rtidb.utils.Compress;
@@ -42,6 +43,7 @@ public class TraverseKvIterator implements KvIterator {
     private RTIDBClient client = null;
     private TableHandler th = null;
     private static Charset charset = Charset.forName("utf-8");
+    private RowView rv;
 
     public TraverseKvIterator(RTIDBClient client, TableHandler th, String idxName, String tsName) {
         this.offset = 0;
@@ -54,6 +56,9 @@ public class TraverseKvIterator implements KvIterator {
         this.isFinished = false;
         if (th != null) {
             this.compressType = th.getTableInfo().getCompressType();
+        }
+        if (th.getFormatVersion() == 1) {
+            rv = new RowView(th.getSchema());
         }
     }
 
@@ -85,7 +90,7 @@ public class TraverseKvIterator implements KvIterator {
             Tablet.TraverseResponse response = ts.traverse(request);
             if (response != null && response.getCode() == 0) {
                 bs = response.getPairs();
-                bb = bs.asReadOnlyByteBuffer();
+                bb = bs.asReadOnlyByteBuffer().order(ByteOrder.LITTLE_ENDIAN);
                 totalSize = this.bs.size();
                 offset = 0;
                 if (totalSize == 0) {
@@ -167,9 +172,21 @@ public class TraverseKvIterator implements KvIterator {
         if (schema == null || schema.isEmpty()) {
             throw new UnsupportedOperationException("getDecodedValue is not supported");
         }
-        Object[] row = new Object[schema.size() + th.getSchemaMap().size()];
-        getDecodedValue(row, 0, row.length);
-        return row;
+        switch (th.getFormatVersion()) {
+            case 1:
+            {
+                Object[] row = new Object[schema.size()];
+                getDecodedValue(row, 0, row.length);
+                return row;
+            }
+            default:
+            {
+                Object[] row = new Object[schema.size() + th.getSchemaMap().size()];
+                getDecodedValue(row, 0, row.length);
+                return row;
+            }
+        }
+
     }
 
     @Override
@@ -184,9 +201,21 @@ public class TraverseKvIterator implements KvIterator {
             if (uncompressed == null) {
                 throw new TabletException("snappy uncompress error");
             }
-            RowCodec.decode(ByteBuffer.wrap(uncompressed), schema, row, 0, length);
+            switch (th.getFormatVersion()) {
+                case 1:
+                    rv.read(ByteBuffer.wrap(uncompressed), row, 0, length);
+                    break;
+                default:
+                    RowCodec.decode(ByteBuffer.wrap(uncompressed), schema, row, 0, length);
+            }
         } else {
-            RowCodec.decode(slice, schema, row, start, length);
+            switch (th.getFormatVersion()) {
+                case 1:
+                    rv.read(slice, row, 0, length);
+                    break;
+                default:
+                    RowCodec.decode(slice, schema, row, start, length);
+            }
         }
     }
 
@@ -203,19 +232,19 @@ public class TraverseKvIterator implements KvIterator {
             offset += 8;
             return;
         }
-        slice = this.bb.slice().asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN);
-        slice.position(offset);
-        int total_size = slice.getInt();
-        int pk_size = slice.getInt();
-        time = slice.getLong();
-
+        bb.position(offset);
+        int total_size = bb.getInt();
+        int pk_size = bb.getInt();
+        time = bb.getLong();
         if (pk_size < 0 || total_size - 8 - pk_size < 0) {
             throw new RuntimeException("bad frame data");
         }
         byte[] pk_buf = new byte[pk_size];
-        slice.get(pk_buf);
+        bb.get(pk_buf);
         pk = new String(pk_buf, charset);
         offset += (8 + total_size);
-        slice.limit(offset);
+        slice = bb.slice().order(ByteOrder.LITTLE_ENDIAN);
+        int length = total_size - 8 - pk_size;
+        slice.limit(length);
     }
 }

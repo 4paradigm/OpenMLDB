@@ -6,20 +6,23 @@
 //
 //
 #include "storage/mem_table_snapshot.h"
+
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <unistd.h>
+
 #include <set>
 #include <utility>
-#include <boost/bind.hpp>
+
 #include "base/count_down_latch.h"
 #include "base/display.h"
 #include "base/file_util.h"
-#include "base/flat_array.h"
 #include "base/hash.h"
 #include "base/kv_iterator.h"
 #include "base/slice.h"
 #include "base/strings.h"
 #include "base/taskpool.hpp"
+#include "boost/bind.hpp"
+#include "codec/flat_array.h"
 #include "gflags/gflags.h"
 #include "log/log_reader.h"
 #include "log/sequential_file.h"
@@ -40,9 +43,9 @@ DECLARE_uint32(load_table_queue_size);
 namespace rtidb {
 namespace storage {
 
-const std::string SNAPSHOT_SUBFIX = ".sdb"; // NOLINT
-const uint32_t KEY_NUM_DISPLAY = 1000000; // NOLINT
-const std::string MANIFEST = "MANIFEST"; // NOLINT
+const std::string SNAPSHOT_SUBFIX = ".sdb";  // NOLINT
+const uint32_t KEY_NUM_DISPLAY = 1000000;    // NOLINT
+const std::string MANIFEST = "MANIFEST";     // NOLINT
 
 MemTableSnapshot::MemTableSnapshot(uint32_t tid, uint32_t pid,
                                    LogParts* log_part,
@@ -220,7 +223,7 @@ int MemTableSnapshot::TTLSnapshot(std::shared_ptr<Table> table,
     bool has_error = false;
     std::set<uint32_t> deleted_index;
     for (const auto& it : table->GetAllIndex()) {
-        if (it->GetStatus() == ::rtidb::storage::IndexStatus::kDeleted) {
+        if (it->GetStatus() != ::rtidb::storage::IndexStatus::kReady) {
             deleted_index.insert(it->GetId());
         }
     }
@@ -620,9 +623,10 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table,
 
 int MemTableSnapshot::ExtractIndexFromSnapshot(
     std::shared_ptr<Table> table, const ::rtidb::api::Manifest& manifest,
-    WriteHandle* wh, ::rtidb::common::ColumnKey& column_key, uint32_t idx,
-    uint32_t partition_num, std::vector<::rtidb::base::ColumnDesc> columns,
-    uint32_t max_idx, std::vector<uint32_t> index_cols, uint64_t& count,
+    WriteHandle* wh, const ::rtidb::common::ColumnKey& column_key, uint32_t idx,
+    uint32_t partition_num,
+    const std::vector<::rtidb::codec::ColumnDesc>& columns, uint32_t max_idx,
+    const std::vector<uint32_t>& index_cols, uint64_t& count,
     uint64_t& expired_key_num, uint64_t& deleted_key_num) {
     uint32_t tid = table->GetId();
     uint32_t pid = table->GetPid();
@@ -636,12 +640,6 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(
     ::rtidb::log::SequentialFile* seq_file =
         ::rtidb::log::NewSeqFile(manifest.name(), fd);
     ::rtidb::log::Reader reader(seq_file, NULL, false, 0);
-    std::set<uint32_t> deleted_index;
-    for (const auto& it : table->GetAllIndex()) {
-        if (it->GetStatus() == ::rtidb::storage::IndexStatus::kDeleted) {
-            deleted_index.insert(it->GetId());
-        }
-    }
     std::string buffer;
     ::rtidb::api::LogEntry entry;
     bool has_error = false;
@@ -680,7 +678,7 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(
                     entry.dimensions(pos).key() + "|" +
                     std::to_string(entry.dimensions(pos).idx());
                 if (deleted_keys_.find(combined_key) != deleted_keys_.end() ||
-                    deleted_index.count(entry.dimensions(pos).idx())) {
+                    !table->GetIndex(entry.dimensions(pos).idx())->IsReady()) {
                     deleted_pos_set.insert(pos);
                 }
             }
@@ -784,17 +782,15 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(
     return 0;
 }
 
-int MemTableSnapshot::ExtractIndexData(std::shared_ptr<Table> table,
-                                       ::rtidb::common::ColumnKey& column_key,
-                                       uint32_t idx, uint32_t partition_num,
-                                       uint64_t& out_offset) {
+int MemTableSnapshot::ExtractIndexData(
+    std::shared_ptr<Table> table, const ::rtidb::common::ColumnKey& column_key,
+    uint32_t idx, uint32_t partition_num, uint64_t& out_offset) {
     uint32_t tid = table->GetId();
     uint32_t pid = table->GetPid();
-    if (making_snapshot_.load(std::memory_order_acquire)) {
-        PDLOG(INFO, "snapshot is making now. tid %u, pid %u", tid, pid);
-        return 0;
+    if (making_snapshot_.exchange(true, std::memory_order_consume)) {
+        PDLOG(INFO, "snapshot is doing now. tid %u, pid %u", tid, pid);
+        return -1;
     }
-    making_snapshot_.store(true, std::memory_order_release);
     std::string now_time = ::rtidb::base::GetNowTime();
     std::string snapshot_name =
         now_time.substr(0, now_time.length() - 2) + ".sdb";
@@ -819,21 +815,14 @@ int MemTableSnapshot::ExtractIndexData(std::shared_ptr<Table> table,
     uint64_t last_term = 0;
 
     std::string schema = table->GetSchema();
-    std::vector<::rtidb::base::ColumnDesc> columns;
+    std::vector<::rtidb::codec::ColumnDesc> columns;
     if (!schema.empty()) {
-        ::rtidb::base::SchemaCodec codec;
+        ::rtidb::codec::SchemaCodec codec;
         codec.Decode(schema, columns);
     } else {
         PDLOG(INFO, "schema is empty. tid %u, pid %u", tid, pid);
         making_snapshot_.store(false, std::memory_order_release);
         return 0;
-    }
-
-    std::set<uint32_t> deleted_index;
-    for (const auto& it : table->GetAllIndex()) {
-        if (it->GetStatus() == ::rtidb::storage::IndexStatus::kDeleted) {
-            deleted_index.insert(it->GetId());
-        }
     }
 
     // get all columns
@@ -845,7 +834,7 @@ int MemTableSnapshot::ExtractIndexData(std::shared_ptr<Table> table,
     uint32_t max_idx = 0;
     // get columns in new column_key
     for (const auto& name : column_key.col_name()) {
-        if (column_desc_map.count(name)) {
+        if (column_desc_map.find(name) != column_desc_map.end()) {
             uint32_t idx = column_desc_map[name];
             index_cols.push_back(idx);
             if (idx > max_idx) {
@@ -930,7 +919,8 @@ int MemTableSnapshot::ExtractIndexData(std::shared_ptr<Table> table,
                     auto iter = deleted_keys_.find(combined_key);
                     if ((iter != deleted_keys_.end() &&
                          cur_offset <= iter->second) ||
-                        deleted_index.count(entry.dimensions(pos).idx())) {
+                        !table->GetIndex(entry.dimensions(pos).idx())
+                             ->IsReady()) {
                         deleted_pos_set.insert(pos);
                     }
                 }
@@ -1084,12 +1074,80 @@ int MemTableSnapshot::ExtractIndexData(std::shared_ptr<Table> table,
     return ret;
 }
 
+bool MemTableSnapshot::PackNewIndexEntry(
+    std::shared_ptr<Table> table,
+    const std::vector<std::vector<uint32_t>>& index_cols,
+    const std::vector<::rtidb::codec::ColumnDesc>& columns, uint32_t max_idx,
+    uint32_t idx, uint32_t partition_num, ::rtidb::api::LogEntry* entry,
+    uint32_t* index_pid) {
+    if (entry->dimensions_size() == 0) {
+        std::string combined_key = entry->pk() + "|0";
+        if (deleted_keys_.find(combined_key) != deleted_keys_.end()) {
+            return false;
+        }
+    } else {
+        bool has_main_index = false;
+        for (int pos = 0; pos < entry->dimensions_size(); pos++) {
+            if (entry->dimensions(pos).idx() == 0) {
+                std::string combined_key = entry->dimensions(pos).key() + "|0";
+                if (deleted_keys_.find(combined_key) == deleted_keys_.end()) {
+                    has_main_index = true;
+                }
+                break;
+            }
+        }
+        if (!has_main_index) {
+            return false;
+        }
+    }
+    std::vector<std::string> row;
+    if (table->GetCompressType() == ::rtidb::api::kSnappy) {
+        std::string buff;
+        ::snappy::Uncompress(entry->value().c_str(), entry->value().size(),
+                             &buff);
+        ::rtidb::base::FillTableRow(max_idx + 1, columns, buff.c_str(),
+                                    buff.size(), row);
+    } else {
+        ::rtidb::base::FillTableRow(max_idx + 1, columns,
+                                    entry->value().c_str(),
+                                    entry->value().size(), row);
+    }
+    std::string key;
+    std::set<uint32_t> pid_set;
+    for (uint32_t i = 0; i < index_cols.size(); ++i) {
+        std::string cur_key;
+        for (uint32_t j : index_cols[i]) {
+            if (cur_key.empty()) {
+                cur_key = row[j];
+            } else {
+                cur_key += "|" + row[j];
+            }
+        }
+        uint32_t pid = ::rtidb::base::hash64(cur_key) % partition_num;
+        if (i < index_cols.size() - 1) {
+            pid_set.insert(pid);
+        } else {
+            *index_pid = pid;
+            key = cur_key;
+        }
+    }
+    if (pid_set.find(*index_pid) == pid_set.end()) {
+        std::string entry_str;
+        entry->clear_dimensions();
+        ::rtidb::api::Dimension* dim = entry->add_dimensions();
+        dim->set_key(key);
+        dim->set_idx(idx);
+        return true;
+    }
+    return false;
+}
+
 bool MemTableSnapshot::DumpSnapshotIndexData(
-    std::shared_ptr<Table>& table, const ::rtidb::common::ColumnKey& column_key,
-    uint32_t idx, std::vector<::rtidb::log::WriteHandle*>& whs,
-    uint64_t& latest_offset) {
-    uint32_t tid = table->GetId();
-    uint32_t pid = table->GetPid();
+    std::shared_ptr<Table> table,
+    const std::vector<std::vector<uint32_t>>& index_cols,
+    const std::vector<::rtidb::codec::ColumnDesc>& columns, uint32_t max_idx,
+    uint32_t idx, const std::vector<::rtidb::log::WriteHandle*>& whs,
+    uint64_t* snapshot_offset) {
     uint32_t partition_num = whs.size();
     ::rtidb::api::Manifest manifest;
     manifest.set_offset(0);
@@ -1097,126 +1155,225 @@ bool MemTableSnapshot::DumpSnapshotIndexData(
     if (ret == -1) {
         return false;
     }
-    latest_offset = manifest.offset();
+    *snapshot_offset = manifest.offset();
     std::string path = snapshot_path_ + "/" + manifest.name();
+    uint64_t succ_cnt = 0;
+    uint64_t failed_cnt = 0;
+    FILE* fd = fopen(path.c_str(), "rb");
+    if (fd == NULL) {
+        PDLOG(WARNING, "fail to open path %s for error %s", path.c_str(),
+              strerror(errno));
+        return false;
+    }
+    ::rtidb::log::SequentialFile* seq_file = ::rtidb::log::NewSeqFile(path, fd);
+    ::rtidb::log::Reader reader(seq_file, NULL, false, 0);
+    ::rtidb::api::LogEntry entry;
+    std::string buffer;
+    std::string entry_buff;
+    while (true) {
+        buffer.clear();
+        ::rtidb::base::Slice record;
+        ::rtidb::base::Status status = reader.ReadRecord(&record, &buffer);
+        if (status.IsWaitRecord() || status.IsEof()) {
+            PDLOG(INFO,
+                  "read path %s for table tid %u pid %u completed, succ_cnt "
+                  "%lu, failed_cnt %lu",
+                  path.c_str(), tid_, pid_, succ_cnt, failed_cnt);
+            break;
+        }
+        if (!status.ok()) {
+            PDLOG(WARNING,
+                  "fail to read record for tid %u, pid %u with error %s", tid_,
+                  pid_, status.ToString().c_str());
+            failed_cnt++;
+            continue;
+        }
+        entry_buff.assign(record.data(), record.size());
+        if (!entry.ParseFromString(entry_buff)) {
+            PDLOG(WARNING, "fail to parse record for tid %u, pid %u", tid_,
+                  pid_);
+            failed_cnt++;
+            continue;
+        }
+        uint32_t index_pid = 0;
+        if (!PackNewIndexEntry(table, index_cols, columns, max_idx, idx,
+                               partition_num, &entry, &index_pid)) {
+            continue;
+        }
+        std::string entry_str;
+        entry.SerializeToString(&entry_str);
+        ::rtidb::base::Slice new_record(entry_str);
+        status = whs[index_pid]->Write(new_record);
+        if (!status.ok()) {
+            PDLOG(WARNING,
+                  "fail to dump index entrylog in snapshot to pid[%u]. tid "
+                  "%u pid %u",
+                  index_pid, tid_, pid_);
+            return false;
+        }
+        succ_cnt++;
+    }
+    return true;
+}
+
+bool MemTableSnapshot::DumpIndexData(
+    std::shared_ptr<Table> table, const ::rtidb::common::ColumnKey& column_key,
+    uint32_t idx, const std::vector<::rtidb::log::WriteHandle*>& whs) {
+    uint32_t tid = table->GetId();
+    uint32_t pid = table->GetPid();
     std::string schema = table->GetSchema();
-    std::vector<::rtidb::base::ColumnDesc> columns;
+    std::vector<::rtidb::codec::ColumnDesc> columns;
     if (!schema.empty()) {
-        ::rtidb::base::SchemaCodec codec;
+        ::rtidb::codec::SchemaCodec codec;
         codec.Decode(schema, columns);
     } else {
         PDLOG(INFO, "schema of table tid[%u] pid[%u]is empty", tid, pid);
         return true;
     }
+    if (making_snapshot_.exchange(true, std::memory_order_consume)) {
+        PDLOG(INFO, "snapshot is doing now. tid %u, pid %u", tid, pid);
+        return false;
+    }
     std::map<std::string, uint32_t> column_desc_map;
     for (uint32_t i = 0; i < columns.size(); ++i) {
         column_desc_map.insert(std::make_pair(columns[i].name, i));
     }
-    std::vector<uint32_t> index_cols;
+    std::vector<std::vector<uint32_t>> index_cols;
     uint32_t max_idx = 0;
+    for (const auto& ck : table->GetTableMeta().column_key()) {
+        std::vector<uint32_t> cols;
+        if (ck.flag()) {
+            continue;
+        }
+        for (const auto& name : ck.col_name()) {
+            if (column_desc_map.find(name) != column_desc_map.end()) {
+                uint32_t idx = column_desc_map[name];
+                cols.push_back(idx);
+                if (idx > max_idx) {
+                    max_idx = idx;
+                }
+            } else {
+                PDLOG(WARNING, "fail to find column_desc %s", name.c_str());
+                making_snapshot_.store(false, std::memory_order_release);
+                return false;
+            }
+        }
+        index_cols.push_back(cols);
+    }
+    std::vector<uint32_t> cols;
     for (const auto& name : column_key.col_name()) {
-        if (column_desc_map.count(name)) {
+        if (column_desc_map.find(name) != column_desc_map.end()) {
             uint32_t idx = column_desc_map[name];
-            index_cols.push_back(idx);
+            cols.push_back(idx);
             if (idx > max_idx) {
                 max_idx = idx;
             }
         } else {
             PDLOG(WARNING, "fail to find column_desc %s", name.c_str());
+            making_snapshot_.store(false, std::memory_order_release);
             return false;
         }
     }
+    index_cols.push_back(cols);
+    uint64_t collected_offset = CollectDeletedKey(0);
+    uint64_t snapshot_offset = 0;
+    bool ret = true;
+    if (!DumpSnapshotIndexData(table, index_cols, columns, max_idx, idx, whs,
+                               &snapshot_offset) ||
+        !DumpBinlogIndexData(table, index_cols, columns, max_idx, idx, whs,
+                             snapshot_offset, collected_offset)) {
+        ret = false;
+    }
+    making_snapshot_.store(false, std::memory_order_release);
+    return ret;
+}
 
-    std::atomic<uint64_t> succ_cnt, failed_cnt;
-    succ_cnt = failed_cnt = 0;
-    {
-        FILE* fd = fopen(path.c_str(), "rb");
-        if (fd == NULL) {
-            PDLOG(WARNING, "fail to open path %s for error %s", path.c_str(),
-                  strerror(errno));
+bool MemTableSnapshot::DumpBinlogIndexData(
+    std::shared_ptr<Table> table,
+    const std::vector<std::vector<uint32_t>>& index_cols,
+    const std::vector<::rtidb::codec::ColumnDesc>& columns, uint32_t max_idx,
+    uint32_t idx, const std::vector<::rtidb::log::WriteHandle*>& whs,
+    uint64_t snapshot_offset, uint64_t collected_offset) {
+    ::rtidb::log::LogReader log_reader(log_part_, log_path_);
+    log_reader.SetOffset(snapshot_offset);
+    uint64_t cur_offset = snapshot_offset;
+    uint32_t partition_num = whs.size();
+    ::rtidb::api::LogEntry entry;
+    uint64_t succ_cnt = 0;
+    uint64_t failed_cnt = 0;
+    uint64_t consumed = ::baidu::common::timer::now_time();
+    int last_log_index = log_reader.GetLogIndex();
+    std::string buffer;
+    std::string entry_buff;
+    while (cur_offset < collected_offset) {
+        buffer.clear();
+        ::rtidb::base::Slice record;
+        ::rtidb::base::Status status =
+            log_reader.ReadNextRecord(&record, &buffer);
+        if (status.IsWaitRecord()) {
+            int end_log_index = log_reader.GetEndLogIndex();
+            int cur_log_index = log_reader.GetLogIndex();
+            if (end_log_index >= 0 && end_log_index > cur_log_index) {
+                log_reader.RollRLogFile();
+                PDLOG(WARNING,
+                      "read new binlog file. tid[%u] pid[%u] cur_log_index[%d] "
+                      "end_log_index[%d] cur_offset[%lu]",
+                      tid_, pid_, cur_log_index, end_log_index, cur_offset);
+                continue;
+            }
+            consumed = ::baidu::common::timer::now_time() - consumed;
+            PDLOG(INFO,
+                  "table tid %u pid %u completed, succ_cnt %lu, failed_cnt "
+                  "%lu, consumed %us",
+                  tid_, pid_, succ_cnt, failed_cnt, consumed);
+            break;
+        }
+        if (status.IsEof()) {
+            if (log_reader.GetLogIndex() != last_log_index) {
+                last_log_index = log_reader.GetLogIndex();
+                continue;
+            }
+            break;
+        }
+        if (!status.ok()) {
+            failed_cnt++;
+            continue;
+        }
+        entry_buff.assign(record.data(), record.size());
+        if (!entry.ParseFromString(entry_buff)) {
+            PDLOG(WARNING, "fail parse record for tid %u, pid %u with value %s",
+                  tid_, pid_, ::rtidb::base::DebugString(entry_buff).c_str());
+            failed_cnt++;
+            continue;
+        }
+        if (cur_offset >= entry.log_index()) {
+            DEBUGLOG("offset %lu has been made snapshot",
+                  entry.log_index());
+            continue;
+        }
+
+        if (cur_offset + 1 != entry.log_index()) {
+            PDLOG(WARNING,
+                  "missing log entry cur_offset %lu , new entry offset %lu for "
+                  "tid %u, pid %u",
+                  cur_offset, entry.log_index(), tid_, pid_);
+        }
+        uint32_t index_pid = 0;
+        if (!PackNewIndexEntry(table, index_cols, columns, max_idx, idx,
+                               partition_num, &entry, &index_pid)) {
+            continue;
+        }
+        std::string entry_str;
+        entry.SerializeToString(&entry_str);
+        ::rtidb::base::Slice new_record(entry_str);
+        status = whs[index_pid]->Write(new_record);
+        if (!status.ok()) {
+            PDLOG(WARNING, "fail to dump index entrylog in binlog to pid[%u].",
+                  index_pid);
             return false;
         }
-        ::rtidb::log::SequentialFile* seq_file =
-            ::rtidb::log::NewSeqFile(path, fd);
-        ::rtidb::log::Reader reader(seq_file, NULL, false, 0);
-        std::string buffer;
-        while (true) {
-            buffer.clear();
-            ::rtidb::base::Slice record;
-            ::rtidb::base::Status status = reader.ReadRecord(&record, &buffer);
-            if (status.IsWaitRecord() || status.IsEof()) {
-                PDLOG(INFO,
-                      "read path %s for table tid %u pid %u completed, "
-                      "succ_cnt %lu, failed_cnt %lu",
-                      path.c_str(), tid_, pid_,
-                      succ_cnt.load(std::memory_order_relaxed),
-                      failed_cnt.load(std::memory_order_relaxed));
-                break;
-            }
-            if (!status.ok()) {
-                PDLOG(WARNING,
-                      "fail to read record for tid %u, pid %u with error %s",
-                      tid_, pid_, status.ToString().c_str());
-                failed_cnt.fetch_add(1, std::memory_order_relaxed);
-                continue;
-            }
-            std::string* sp = new std::string(record.data(), record.size());
-            ::rtidb::api::LogEntry entry;
-            entry.ParseFromString(*sp);
-            delete sp;
-            std::set<uint32_t> pid_set;
-            bool has_main_index = false;
-            for (const auto& dim : entry.dimensions()) {
-                if (dim.idx() == 0) {
-                    has_main_index = true;
-                }
-                pid_set.insert(::rtidb::base::hash64(dim.key()) %
-                               partition_num);
-            }
-            if (!has_main_index) {
-                continue;
-            }
-            std::string buff;
-            if (table->GetCompressType() == ::rtidb::api::kSnappy) {
-                ::snappy::Uncompress(entry.value().c_str(),
-                                     entry.value().size(), &buff);
-            } else {
-                buff = entry.value();
-            }
-            std::vector<std::string> row;
-            ::rtidb::base::FillTableRow(max_idx + 1, columns, buff.c_str(),
-                                        buff.size(), row);
-            std::string cur_key;
-            for (uint32_t i : index_cols) {
-                if (cur_key.empty()) {
-                    cur_key = row[i];
-                } else {
-                    cur_key += "|" + row[i];
-                }
-            }
-            uint32_t index_pid = ::rtidb::base::hash64(cur_key) % partition_num;
-            if (!pid_set.count(index_pid)) {
-                std::string entry_str;
-                entry.clear_dimensions();
-                ::rtidb::api::Dimension* dim = entry.add_dimensions();
-                dim->set_key(cur_key);
-                dim->set_idx(idx);
-                entry.SerializeToString(&entry_str);
-                ::rtidb::base::Slice new_record(entry_str);
-                ::rtidb::base::Status status =
-                    whs[index_pid]->Write(new_record);
-                if (!status.ok()) {
-                    PDLOG(WARNING,
-                          "fail to dump index entrylog in snapshot to pid[%u]. "
-                          "tid %u pid %u",
-                          index_pid, tid_, pid_);
-                    return false;
-                } else {
-                    DEBUGLOG("dump entry key[%s] into pid[%u]",
-                          cur_key.c_str(), index_pid);
-                }
-            }
-        }
+        cur_offset = entry.log_index();
+        succ_cnt++;
     }
     return true;
 }

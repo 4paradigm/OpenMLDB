@@ -4,6 +4,7 @@ stages:
     - ut
     - it-tablet
     - it-ns
+    - deploy
 
 build_rtidb_new_image:
     stage: build
@@ -34,7 +35,7 @@ style_check:
     artifacts:
         reports:
             junit:
-                - ./style.xml
+                - reports/*.xml
 
 cpp_ut:
     stage: ut
@@ -144,3 +145,11 @@ disktable-java:
                 - rtidb-auto-test/target/surefire-reports/TEST-*.xml
                 - rtidb-auto-test/target/failsafe-reports/junitreports/TEST-*.xml
                 - rtidb-auto-test/target/failsafe-reports/TEST-*.xml
+
+deploy-package:
+    stage: deploy
+    script:
+        - ln -sf /usr/workdir/thirdparty thirdparty
+        - ln -sf /usr/workdir/thirdsrc thirdsrc
+        - source /root/.bashrc && bash steps/deploy_package.sh
+

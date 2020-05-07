@@ -11,16 +11,18 @@ enum DataType {
     kBigInt = 4;
     kFloat = 5;
     kDouble = 6;
-    kVarchar = 7;
-    kDate = 8;
-    kTimestamp = 9;
-    kBlob = 10;
-    kString = 11;
+    kDate = 7;
+    kTimestamp = 8;
+    // reserve 9, 10, 11, 12
+    kVarchar = 13;
+    kString = 14;
+    kBlob = 15;
 }
 
 enum TableType {
     kTimeSeries = 1; 
     kRelational = 2;
+    kObjectStore = 3;
 }
 
 enum IndexType {

@@ -1474,6 +1474,7 @@ TEST_F(NameServerImplTest, CreateRelationalTable) {
     ::rtidb::common::ColumnKey* ck = table_info->add_column_key();
     ck->set_index_name("card");
     ck->add_col_name("card");
+    ck->set_index_type(::rtidb::type::kPrimaryKey);
 
     ok = name_server_client.SendRequest(
         &::rtidb::nameserver::NameServer_Stub::CreateTable, &request, &response,

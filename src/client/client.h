@@ -8,8 +8,9 @@
 #include <string>
 #include <vector>
 
-#include "base/codec.h"
-#include "base/schema_codec.h"
+#include "codec/codec.h"
+#include "codec/schema_codec.h"
+#include "client/bs_client.h"
 #include "client/ns_client.h"
 #include "client/tablet_client.h"
 #include "zk/zk_client.h"
@@ -175,7 +176,7 @@ class ViewResult {
 
     void SetRv(const std::shared_ptr<TableHandler>& th) {
         columns_ = th->columns;
-        rv_ = std::make_shared<rtidb::base::RowView>(*columns_);
+        rv_ = std::make_shared<rtidb::codec::RowView>(*columns_);
         pk_idx_ = th->pk_index;
         data_type_ = th->pk_type;
         initialed_ = true;
@@ -204,6 +205,8 @@ class ViewResult {
                 key = GetString(pk_idx_);
                 break;
             }
+            default:
+                return "";
         }
         return key;
     }
@@ -214,7 +217,7 @@ class ViewResult {
 
     int64_t GetInt(uint32_t idx);
 
-    std::shared_ptr<rtidb::base::RowView> rv_;
+    std::shared_ptr<rtidb::codec::RowView> rv_;
 
  private:
     std::shared_ptr<
@@ -371,6 +374,55 @@ class BatchQueryResult : public ViewResult {
     uint32_t count_;
 };
 
+class BaseClient {
+ public:
+    BaseClient(const std::string& zk_cluster, const std::string& zk_root_path,
+               const std::string& endpoint, int32_t zk_session_timeout,
+               int32_t zk_keep_alive_check)
+        : mu_(),
+          tablets_(),
+          blobs_(),
+          tables_(),
+          zk_client_(NULL),
+          zk_cluster_(zk_cluster),
+          zk_root_path_(zk_root_path),
+          endpoint_(endpoint),
+          zk_session_timeout_(zk_session_timeout),
+          zk_keep_alive_check_(zk_keep_alive_check),
+          zk_table_data_path_() {}
+    ~BaseClient();
+
+    bool Init(std::string* msg);
+    void CheckZkClient();
+    bool RefreshNodeList();
+    void UpdateEndpoint(const std::set<std::string>& alive_endpoints);
+    void UpdateBlobEndpoint(const std::set<std::string>& alive_endpoints);
+    void RefreshTable();
+    void SetZkCheckInterval(int32_t interval);
+    void DoFresh(const std::vector<std::string>& events);
+    bool RegisterZK(std::string* msg);
+    std::shared_ptr<rtidb::client::TabletClient> GetTabletClient(
+        const std::string& endpoint, std::string* msg);
+    std::shared_ptr<rtidb::client::BsClient> GetBlobClient(
+        const std::string& endpoint, std::string* msg);
+    std::shared_ptr<TableHandler> GetTableHandler(const std::string& name);
+
+ private:
+    std::mutex mu_;
+    std::map<std::string, std::shared_ptr<rtidb::client::TabletClient>>
+        tablets_;
+    std::map<std::string, std::shared_ptr<rtidb::client::BsClient>> blobs_;
+    std::map<std::string, std::shared_ptr<TableHandler>> tables_;
+    rtidb::zk::ZkClient* zk_client_;
+    std::string zk_cluster_;
+    std::string zk_root_path_;
+    std::string endpoint_;
+    int32_t zk_session_timeout_;
+    int32_t zk_keep_alive_check_;
+    std::string zk_table_data_path_;
+    baidu::common::ThreadPool task_thread_pool_;
+};
+
 class RtidbClient {
  public:
     RtidbClient();
@@ -402,28 +454,5 @@ class RtidbClient {
         const WriteOption& wo);
 
  private:
-    std::shared_ptr<rtidb::client::TabletClient> GetTabletClient(
-        const std::string& endpoint, std::string* msg);
-    void CheckZkClient();
-    void UpdateEndpoint(const std::set<std::string>& alive_endpoints);
-    bool RefreshNodeList();
-    void RefreshTable();
-    std::shared_ptr<TableHandler> GetTableHandler(const std::string& name);
-    void DoFresh(const std::vector<std::string>& events) {
-        RefreshNodeList();
-        RefreshTable();
-    }
-
- private:
-    std::shared_ptr<rtidb::zk::ZkClient> zk_client_;
-    std::shared_ptr<rtidb::client::NsClient> client_;
-    std::map<std::string, std::shared_ptr<rtidb::client::TabletClient>>
-        tablets_;
-    std::mutex mu_;
-    std::string zk_cluster_;
-    std::string zk_path_;
-    std::string zk_table_data_path_;
-    std::map<std::string, std::shared_ptr<TableHandler>> tables_;
-    baidu::common::ThreadPool task_thread_pool_;
-    int32_t zk_keep_alive_check_;
+    BaseClient* client_;
 };

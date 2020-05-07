@@ -12,6 +12,7 @@ import com.google.protobuf.ByteString;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.BitSet;
 import java.util.List;
 
 public class DefaultKvIterator implements KvIterator {
@@ -30,6 +31,10 @@ public class DefaultKvIterator implements KvIterator {
     private RTIDBClientConfig config = null;
     private NS.CompressType compressType = NS.CompressType.kNoCompress;
     private TableHandler th = null;
+    private List<Integer> projection;
+    private boolean hasProjection = false;
+    private BitSet bitSet;
+    private int maxIndex;
     public DefaultKvIterator(ByteString bs) {
         this.bs = bs;
         this.bb = this.bs.asReadOnlyByteBuffer();
@@ -63,7 +68,16 @@ public class DefaultKvIterator implements KvIterator {
         this(bs);
         this.schema = schema;
     }
-	
+    public DefaultKvIterator(ByteString bs, List<ColumnDesc> schema, BitSet bitSet, List<Integer> projection, int maxIndex) {
+        this(bs);
+        this.schema = schema;
+        this.projection = projection;
+        if (projection != null && projection.size() > 0) {
+            hasProjection = true;
+            this.bitSet = bitSet;
+            this.maxIndex = maxIndex;
+        }
+    }
 	public DefaultKvIterator(ByteString bs, List<ColumnDesc> schema, RTIDBClientConfig config) {
         this(bs, schema);
         this.config = config;
@@ -141,6 +155,11 @@ public class DefaultKvIterator implements KvIterator {
             throw new TabletException("get decoded value is not supported");
         }
         Object[] row;
+        if (hasProjection) {
+            row = new Object[projection.size()];
+            getDecodedValue(row, 0, row.length);
+            return row;
+        }
         if (th != null) {
             row = new Object[schema.size() + th.getSchemaMap().size()];
         } else {
@@ -180,9 +199,17 @@ public class DefaultKvIterator implements KvIterator {
             if (uncompressed == null) {
                 throw new TabletException("snappy uncompress error");
             }
-            RowCodec.decode(ByteBuffer.wrap(uncompressed), schema, row, 0, length);
+            if (hasProjection) {
+                RowCodec.decode(ByteBuffer.wrap(uncompressed), schema, bitSet, projection, maxIndex, row, 0, length);
+            }else {
+                RowCodec.decode(ByteBuffer.wrap(uncompressed), schema, row, 0, length);
+            }
         } else {
-            RowCodec.decode(slice, schema, row, start, length);
+            if (hasProjection) {
+                RowCodec.decode(slice, schema, bitSet, projection,maxIndex, row, start, length);
+            }else {
+                RowCodec.decode(slice, schema, row, start, length);
+            }
         }
     }
 }

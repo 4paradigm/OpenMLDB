@@ -31,7 +31,7 @@ cd $ROOT_DIR
 source /root/.bashrc && rm -rf auto-test-rtidb
 git submodule add https://gitlab.4pd.io/FeatureEngineering/rtidb-auto-test.git auto-test-rtidb
 cd auto-test-rtidb
-git checkout release/1.4.2
+git checkout release/v1.5.1
 echo "rtidb_version:$rtidb_version"
 git pull
 sh run.sh cicd.xml $rtidb_version
