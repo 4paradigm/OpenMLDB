@@ -689,15 +689,11 @@ GeneralResult RtidbClient::Put(const std::string& name,
     }
     std::string buffer;
     rtidb::base::ResultMsg rm;
-<<<<<<< HEAD
-    rm = rtidb::base::RowSchemaCodec::Encode(value, *(th->columns), buffer);
-=======
     if (!th->auto_gen_pk_.empty()) {
         rm = ::rtidb::codec::RowCodec::EncodeRow(val, *(th->columns), buffer);
     } else {
         rm = ::rtidb::codec::RowCodec::EncodeRow(value, *(th->columns), buffer);
     }
->>>>>>> 77114036... refactor: update codec namespace
     if (rm.code != 0) {
         result.SetError(rm.code, "encode error, msg: " + rm.msg);
         return result;
