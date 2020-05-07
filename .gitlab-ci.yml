@@ -6,17 +6,6 @@ stages:
     - it-ns
     - deploy
 
-build_rtidb_new_image:
-    stage: build
-    script:
-        - ln -sf /depends/thirdparty thirdparty
-        - source /root/.bashrc && bash steps/compile2.sh
-    artifacts:
-        expire_in: 2h
-        paths:
-            - build/bin/rtidb
-
-
 build_rtidb:
     stage: build
     script:
