@@ -76,7 +76,6 @@ void SetupLog() {
     if (!FLAGS_log_dir.empty()) {
         ::rtidb::base::Mkdir(FLAGS_log_dir);
         std::string file = FLAGS_log_dir + "/" + FLAGS_role;
-        ::testing::InitGoogleTest(&argc, argv);
         rtidb::base::SetLogFile(file);
     }
 }

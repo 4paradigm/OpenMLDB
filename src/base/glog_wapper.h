@@ -23,7 +23,7 @@ namespace base {
     static int log_level = INFO;
 
     template<typename... Arguments>
-    std::string FormatArgs(const char* fmt, const Arguments&... args) {
+    inline std::string FormatArgs(const char* fmt, const Arguments&... args) {
         boost::format f(fmt);
         std::initializer_list<char> {(static_cast<void>(
             f % args
@@ -32,11 +32,11 @@ namespace base {
         return boost::str(f);
     }
 
-    void SetLogLevel(int level) {
+    inline void SetLogLevel(int level) {
         log_level = level;
     }
 
-    void SetLogFile(std::string path) {
+    inline void SetLogFile(std::string path) {
         ::google::InitGoogleLogging(path.c_str());
     }
 
