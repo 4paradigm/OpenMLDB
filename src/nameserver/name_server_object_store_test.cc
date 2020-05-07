@@ -242,6 +242,7 @@ TEST_F(NameServerImplObjectStoreTest, CreateTableWithBlobField) {
         ::rtidb::common::ColumnKey* ck = table_info->add_column_key();
         ck->set_index_name("card");
         ck->add_col_name("card");
+        ck->set_index_type(::rtidb::type::kPrimaryKey);
         table_info->set_replica_num(1);
         ok = name_server_client.SendRequest(
             &::rtidb::nameserver::NameServer_Stub::CreateTable, &request,
