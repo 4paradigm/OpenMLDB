@@ -17,7 +17,7 @@
 #include "proto/type.pb.h"
 
 namespace rtidb {
-namespace base {
+namespace codec {
 
 using ::baidu::common::WARNING;
 using ::rtidb::type::DataType;
@@ -162,5 +162,5 @@ static inline void GetDouble(const char* ch, void* res) {
     memrev64ifbe(static_cast<void*>(res));
 }
 
-}  // namespace base
+}  // namespace codec
 }  // namespace rtidb

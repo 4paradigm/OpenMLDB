@@ -2784,7 +2784,7 @@ int NameServerImpl::SetPartitionInfo(TableInfo& table_info) {
 
 int NameServerImpl::CreateTableOnTablet(
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info, bool is_leader,
-    const std::vector<::rtidb::base::ColumnDesc>& columns,
+    const std::vector<::rtidb::codec::ColumnDesc>& columns,
     std::map<uint32_t, std::vector<std::string>>& endpoint_map, uint64_t term) {
     ::rtidb::api::TTLType ttl_type = ::rtidb::api::TTLType::kAbsoluteTime;
     if (!table_info->has_table_type() ||
@@ -2839,7 +2839,7 @@ int NameServerImpl::CreateTableOnTablet(
                 table_meta.add_dimensions(columns[i].name);
             }
         }
-        ::rtidb::base::SchemaCodec codec;
+        ::rtidb::codec::SchemaCodec codec;
         bool codec_ok = codec.Encode(columns, schema);
         if (!codec_ok) {
             return -1;
@@ -3916,9 +3916,9 @@ void NameServerImpl::AddTableField(RpcController* controller,
         }
     }
     // update tableMeta.schema
-    std::vector<::rtidb::base::ColumnDesc> columns;
+    std::vector<::rtidb::codec::ColumnDesc> columns;
     if (table_info->added_column_desc_size() > 0) {
-        if (::rtidb::base::SchemaCodec::ConvertColumnDesc(
+        if (::rtidb::codec::SchemaCodec::ConvertColumnDesc(
                 *table_info, columns, table_info->added_column_desc_size()) <
             0) {
             PDLOG(WARNING, "convert table %s column desc failed",
@@ -3926,21 +3926,21 @@ void NameServerImpl::AddTableField(RpcController* controller,
             return;
         }
     } else {
-        if (::rtidb::base::SchemaCodec::ConvertColumnDesc(*table_info,
+        if (::rtidb::codec::SchemaCodec::ConvertColumnDesc(*table_info,
                                                           columns) < 0) {
             PDLOG(WARNING, "convert table %s column desc failed",
                   request->name().c_str());
             return;
         }
     }
-    ::rtidb::base::ColumnDesc column;
+    ::rtidb::codec::ColumnDesc column;
     column.name = request->column_desc().name();
     column.type =
-        rtidb::base::SchemaCodec::ConvertType(request->column_desc().type());
+        rtidb::codec::SchemaCodec::ConvertType(request->column_desc().type());
     column.add_ts_idx = false;
     column.is_ts_col = false;
     columns.push_back(column);
-    ::rtidb::base::SchemaCodec codec;
+    ::rtidb::codec::SchemaCodec codec;
     if (!codec.Encode(columns, schema)) {
         PDLOG(WARNING, "Fail to encode schema from columns in table %s!",
               request->name().c_str());
@@ -4648,10 +4648,10 @@ void NameServerImpl::CreateTable(RpcController* controller,
                 blob_info->table_partition(0).partition_meta(0).endpoint();
         }
     }
-    std::vector<::rtidb::base::ColumnDesc> columns;
+    std::vector<::rtidb::codec::ColumnDesc> columns;
     if (!table_info->has_table_type() ||
         table_info->table_type() == ::rtidb::type::kTimeSeries) {
-        if (::rtidb::base::SchemaCodec::ConvertColumnDesc(*table_info,
+        if (::rtidb::codec::SchemaCodec::ConvertColumnDesc(*table_info,
                                                           columns) < 0) {
             response->set_code(
                 ::rtidb::base::ReturnCode::kConvertColumnDescFailed);
@@ -4741,7 +4741,7 @@ bool NameServerImpl::SaveTableInfo(std::shared_ptr<TableInfo> table_info) {
 void NameServerImpl::CreateTableInternel(
     GeneralResponse& response,
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
-    const std::vector<::rtidb::base::ColumnDesc>& columns, uint64_t cur_term,
+    const std::vector<::rtidb::codec::ColumnDesc>& columns, uint64_t cur_term,
     uint32_t tid, std::shared_ptr<::rtidb::api::TaskInfo> task_ptr) {
     std::map<uint32_t, std::vector<std::string>> endpoint_map;
     do {

@@ -278,7 +278,7 @@ bool RelationalTable::Put(const std::string& value) {
             slice.reset(new_value.data(), new_value.size());
         }
         const ColumnDef& column_def = index_def->GetColumns().at(0);
-        ::rtidb::base::RowBuilder builder(schema);
+        ::rtidb::codec::RowBuilder builder(schema);
         builder.SetBuffer(
             reinterpret_cast<int8_t*>(const_cast<char*>(slice.data())),
             slice.size());
@@ -290,7 +290,7 @@ bool RelationalTable::Put(const std::string& value) {
         }
         pk.resize(sizeof(int64_t));
         char* to = const_cast<char*>(pk.data());
-        ::rtidb::base::PackInteger(&auto_gen_pk, sizeof(int64_t), false, to);
+        ::rtidb::codec::PackInteger(&auto_gen_pk, sizeof(int64_t), false, to);
     } else {
         if (!GetCombineStr(
                 index_def,
@@ -375,8 +375,8 @@ bool RelationalTable::GetPackedField(const int8_t* row, uint32_t idx,
             get_value_ret = row_view_.GetValue(row, idx, data_type, &si_val);
             key->resize(sizeof(int16_t));
             char* to = const_cast<char*>(key->data());
-            ret =
-                ::rtidb::base::PackInteger(&si_val, sizeof(int16_t), false, to);
+            ret = ::rtidb::codec::PackInteger(&si_val, sizeof(int16_t), false,
+                                              to);
             break;
         }
         case ::rtidb::type::kInt: {
@@ -385,7 +385,7 @@ bool RelationalTable::GetPackedField(const int8_t* row, uint32_t idx,
             key->resize(sizeof(int32_t));
             char* to = const_cast<char*>(key->data());
             ret =
-                ::rtidb::base::PackInteger(&i_val, sizeof(int32_t), false, to);
+                ::rtidb::codec::PackInteger(&i_val, sizeof(int32_t), false, to);
             break;
         }
         case ::rtidb::type::kBigInt: {
@@ -393,8 +393,8 @@ bool RelationalTable::GetPackedField(const int8_t* row, uint32_t idx,
             get_value_ret = row_view_.GetValue(row, idx, data_type, &bi_val);
             key->resize(sizeof(int64_t));
             char* to = const_cast<char*>(key->data());
-            ret =
-                ::rtidb::base::PackInteger(&bi_val, sizeof(int64_t), false, to);
+            ret = ::rtidb::codec::PackInteger(&bi_val, sizeof(int64_t), false,
+                                              to);
             break;
         }
         case ::rtidb::type::kVarchar:
@@ -402,11 +402,11 @@ bool RelationalTable::GetPackedField(const int8_t* row, uint32_t idx,
             char* ch = NULL;
             uint32_t length = 0;
             get_value_ret = row_view_.GetValue(row, idx, &ch, &length);
-            int32_t dst_len = ::rtidb::base::GetDstStrSize(length);
+            int32_t dst_len = ::rtidb::codec::GetDstStrSize(length);
             key->resize(dst_len);
             char* dst = const_cast<char*>(key->data());
             ret =
-                ::rtidb::base::PackString(ch, length, (void**)&dst);  // NOLINT
+                ::rtidb::codec::PackString(ch, length, (void**)&dst);  // NOLINT
             break;
         }
         case ::rtidb::type::kFloat: {
@@ -414,7 +414,7 @@ bool RelationalTable::GetPackedField(const int8_t* row, uint32_t idx,
             get_value_ret = row_view_.GetValue(row, idx, data_type, &val);
             key->resize(sizeof(float));
             char* to = const_cast<char*>(key->data());
-            ret = ::rtidb::base::PackFloat(&val, to);
+            ret = ::rtidb::codec::PackFloat(&val, to);
             break;
         }
         case ::rtidb::type::kDouble: {
@@ -422,7 +422,7 @@ bool RelationalTable::GetPackedField(const int8_t* row, uint32_t idx,
             get_value_ret = row_view_.GetValue(row, idx, data_type, &val);
             key->resize(sizeof(double));
             char* to = const_cast<char*>(key->data());
-            ret = ::rtidb::base::PackDouble(&val, to);
+            ret = ::rtidb::codec::PackDouble(&val, to);
             break;
         }
         default: {
@@ -457,41 +457,41 @@ bool RelationalTable::ConvertIndex(const std::string& name,
     int ret = 0;
     if (type == ::rtidb::type::kSmallInt) {
         int16_t val = 0;
-        ::rtidb::base::GetInt16(value.data(), &val);
+        ::rtidb::codec::GetInt16(value.data(), &val);
         out_val->resize(sizeof(int16_t));
         char* to = const_cast<char*>(out_val->data());
-        ret = ::rtidb::base::PackInteger(&val, sizeof(int16_t), false, to);
+        ret = ::rtidb::codec::PackInteger(&val, sizeof(int16_t), false, to);
     } else if (type == ::rtidb::type::kInt) {
         int32_t val = 0;
-        ::rtidb::base::GetInt32(value.data(), &val);
+        ::rtidb::codec::GetInt32(value.data(), &val);
         out_val->resize(sizeof(int32_t));
         char* to = const_cast<char*>(out_val->data());
-        ret = ::rtidb::base::PackInteger(&val, sizeof(int32_t), false, to);
+        ret = ::rtidb::codec::PackInteger(&val, sizeof(int32_t), false, to);
     } else if (type == ::rtidb::type::kBigInt) {
         int64_t val = 0;
-        ::rtidb::base::GetInt64(value.data(), &val);
+        ::rtidb::codec::GetInt64(value.data(), &val);
         out_val->resize(sizeof(int64_t));
         char* to = const_cast<char*>(out_val->data());
-        ret = ::rtidb::base::PackInteger(&val, sizeof(int64_t), false, to);
+        ret = ::rtidb::codec::PackInteger(&val, sizeof(int64_t), false, to);
     } else if (type == ::rtidb::type::kFloat) {
         float val = 0.0;
-        ::rtidb::base::GetFloat(value.data(), &val);
+        ::rtidb::codec::GetFloat(value.data(), &val);
         out_val->resize(sizeof(float));
         char* to = const_cast<char*>(out_val->data());
-        ret = ::rtidb::base::PackFloat(&val, to);
+        ret = ::rtidb::codec::PackFloat(&val, to);
     } else if (type == ::rtidb::type::kDouble) {
         double val = 0.0;
-        ::rtidb::base::GetDouble(value.data(), &val);
+        ::rtidb::codec::GetDouble(value.data(), &val);
         out_val->resize(sizeof(double));
         char* to = const_cast<char*>(out_val->data());
-        ret = ::rtidb::base::PackDouble(&val, to);
+        ret = ::rtidb::codec::PackDouble(&val, to);
     } else if (type == ::rtidb::type::kVarchar ||
                type == ::rtidb::type::kString) {
-        int32_t dst_len = ::rtidb::base::GetDstStrSize(value.length());
+        int32_t dst_len = ::rtidb::codec::GetDstStrSize(value.length());
         out_val->resize(dst_len);
         char* dst = const_cast<char*>(out_val->data());
-        ret = ::rtidb::base::PackString(value.data(), value.length(),
-                                        (void**)&dst);  // NOLINT
+        ret = ::rtidb::codec::PackString(value.data(), value.length(),
+                                         (void**)&dst);  // NOLINT
     } else {
         PDLOG(WARNING, "unsupported data type %s, tid %u pid %u",
               rtidb::type::DataType_Name(type).c_str(), id_, pid_);
@@ -544,7 +544,7 @@ bool RelationalTable::Delete(
         }
         suffix++;
     }
-    rtidb::base::RowView row_view = rtidb::base::RowView(schema);
+    rtidb::codec::RowView row_view = rtidb::codec::RowView(schema);
     for (auto& iter : iter_vec) {
         ok = row_view.Reset(
             reinterpret_cast<int8_t*>(const_cast<char*>(iter->value().data())),
@@ -720,8 +720,8 @@ bool RelationalTable::Query(
     char* rbuffer = reinterpret_cast<char*>(&((*pairs)[0]));
     uint32_t offset = 0;
     for (const auto& iter : iter_vec) {
-        rtidb::base::Encode(iter->value().data(), iter->value().size(), rbuffer,
-                            offset);
+        rtidb::codec::Encode(iter->value().data(), iter->value().size(),
+                             rbuffer, offset);
         offset += (4 + iter->value().size());
     }
     return true;
@@ -883,7 +883,7 @@ bool RelationalTable::UpdateDB(const std::shared_ptr<IndexDef> index_def,
             }
             pk_slice.reset(pk.data(), pk.size());
         }
-        ::rtidb::base::RowView value_view(
+        ::rtidb::codec::RowView value_view(
             value_schema,
             reinterpret_cast<int8_t*>(const_cast<char*>(slice.data())),
             slice.size());
@@ -902,7 +902,7 @@ bool RelationalTable::UpdateDB(const std::shared_ptr<IndexDef> index_def,
                 string_length += length;
             }
         }
-        ::rtidb::base::RowBuilder builder(schema);
+        ::rtidb::codec::RowBuilder builder(schema);
         uint32_t size = builder.CalTotalLength(string_length);
         std::string row;
         row.resize(size);
