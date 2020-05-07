@@ -2161,7 +2161,7 @@ public class TableSyncClientTest extends TestCaseBase {
         String name = args.tableDesc.getName();
         try {
             List<com._4paradigm.rtidb.client.schema.ColumnDesc> schema = tableSyncClient.getSchema(name);
-            Assert.assertEquals(schema.size(), 8);
+            Assert.assertEquals(schema.size(), 9);
 
             //put
             WriteOption wo = new WriteOption();
@@ -2169,12 +2169,13 @@ public class TableSyncClientTest extends TestCaseBase {
             for (int i = 0; i < 1000; i++) {
                 data.put("id", 10L + i);
                 data.put("name", "n" + i);
+                data.put("sex", true);
                 data.put("attribute", "a" + i);
                 data.put("image", "i" + i);
                 data.put("memory", 10 + i);
                 data.put("price", 11.1 + i);
-                data.put("attribute2", 11.1 + i);
-                data.put("memory2", 11.1 + i);
+                data.put("attribute2", new Date(2020, 5, 2));
+                data.put("ts", new DateTime(1588756535));
                 ok = tableSyncClient.put(name, data, wo);
                 data.clear();
                 Assert.assertTrue(ok);
@@ -2183,17 +2184,19 @@ public class TableSyncClientTest extends TestCaseBase {
             //traverse
             RelationalIterator trit = tableSyncClient.traverse(name, ro);
             for (int i = 0; i < 1000; i++) {
+                System.out.println("time: " + i);
                 Assert.assertTrue(trit.valid());
                 Map<String, Object> TraverseMap = trit.getDecodedValue();
-                Assert.assertEquals(TraverseMap.size(), 8);
+                Assert.assertEquals(TraverseMap.size(), 9);
                 Assert.assertEquals(TraverseMap.get("id"), 10L + i);
                 Assert.assertEquals(TraverseMap.get("name"), "n" + i);
+                Assert.assertEquals(TraverseMap.get("sex"), true);
                 Assert.assertEquals(TraverseMap.get("attribute"), "a" + i);
                 Assert.assertEquals(TraverseMap.get("image"), "i" + i);
                 Assert.assertEquals(TraverseMap.get("memory"), 10 + i);
                 Assert.assertEquals(TraverseMap.get("price"), 11.1 + i);
-                Assert.assertEquals(TraverseMap.get("attribute2"), 11.1 + i);
-                Assert.assertEquals(TraverseMap.get("memory2"), 11.1 + i);
+                Assert.assertEquals(TraverseMap.get("attribute2"), new Date(2020, 5, 2));
+                Assert.assertEquals(TraverseMap.get("ts"), new DateTime(1588756535));
                 trit.next();
             }
             Assert.assertEquals(trit.getCount(), 1000);
