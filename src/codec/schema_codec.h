@@ -36,6 +36,7 @@ class SchemaCodec {
  public:
     static bool Encode(const vm::Schema& schema, std::string* buffer) {
         if (buffer == NULL) return false;
+        if (schema.size() == 0) return true;
         uint32_t byte_size = GetSize(schema);
         if (byte_size > MAX_ROW_BYTE_SIZE) {
             return false;
@@ -65,6 +66,7 @@ class SchemaCodec {
 
     static bool Decode(const std::string& buf, vm::Schema* schema) {
         if (schema == NULL) return false;
+        if (buf.size() <= 0) return true;
         const char* buffer = buf.c_str();
         uint32_t buf_size = buf.size();
         if (buf_size < HEADER_SIZE) {

@@ -9,13 +9,16 @@ option java_outer_classname = "Tablet";
 message QueryRequest {
     optional string sql = 1;
     optional string db = 2;
-    optional bool is_batch = 3;
+    optional bool is_batch = 3 [default = true];
+    optional bytes row = 4;
 }
 
 message QueryResponse {
     optional common.Status status = 1;
-    repeated bytes result_set = 2;
-    repeated type.ColumnDef schema = 3;
+    optional bytes schema = 2;
+    // the record size
+    optional uint32 byte_size = 3;
+    optional uint32 count = 4;
 }
 
 message CreateTableRequest {
@@ -26,6 +29,32 @@ message CreateTableRequest {
 }
 
 message CreateTableResponse {
+    optional common.Status status = 1;
+}
+
+message InsertRequest {
+    optional string db = 1;
+    optional string table = 2;
+    optional bytes row = 3;
+    optional string key = 4;
+    optional uint64 ts = 5;
+}
+
+message ExplainRequest {
+    optional string db = 1;
+    optional string sql = 2;
+};
+
+message ExplainResponse {
+    optional bytes input_schema = 1;
+    optional common.Status status = 2;
+    optional string logical_plan = 3;
+    optional string physical_plan = 4;
+    optional string ir = 5;
+    optional bytes output_schema = 6;
+}
+
+message InsertResponse {
     optional common.Status status = 1;
 }
 
@@ -40,21 +69,10 @@ message GetTableSchemaReponse {
     optional common.Status status = 3;
 }
 
-message InsertRequest {
-    optional string db = 1;
-    optional string table = 2;
-    optional bytes row = 3;
-    optional string key = 4;
-    optional uint64 ts = 5;
-}
-
-message InsertResponse {
-    optional common.Status status = 1;
-}
-
 service TabletServer {
     rpc GetTableSchema (GetTablesSchemaRequest) returns (GetTableSchemaReponse);
     rpc CreateTable (CreateTableRequest) returns (CreateTableResponse);
     rpc Query (QueryRequest) returns (QueryResponse);
     rpc Insert (InsertRequest) returns (InsertResponse);
+    rpc Explain(ExplainRequest) returns (ExplainResponse);
 }

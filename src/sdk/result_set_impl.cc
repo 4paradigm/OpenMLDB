@@ -21,50 +21,73 @@
 #include <string>
 #include <utility>
 #include "base/strings.h"
+#include "codec/schema_codec.h"
 #include "glog/logging.h"
 
 namespace fesql {
 namespace sdk {
 
-ResultSetImpl::ResultSetImpl(std::unique_ptr<tablet::QueryResponse> response)
+ResultSetImpl::ResultSetImpl(std::unique_ptr<tablet::QueryResponse> response,
+                             std::unique_ptr<brpc::Controller> cntl)
     : response_(std::move(response)),
       index_(-1),
-      size_(0),
+      byte_size_(0),
+      position_(0),
       row_view_(),
-      schema_() {
-    if (response_) {
-        schema_.SetSchema(response_->schema());
-        size_ = response_->result_set().size();
-    }
-}
+      internal_schema_(),
+      schema_(),
+      cntl_(std::move(cntl)) {}
 
 ResultSetImpl::~ResultSetImpl() {}
 
 bool ResultSetImpl::Init() {
-    std::unique_ptr<codec::RowView> row_view(
-        new codec::RowView(response_->schema()));
+    if (!response_) return false;
+    byte_size_ = response_->byte_size();
+    if (byte_size_ <= 0) return true;
+    bool ok =
+        codec::SchemaCodec::Decode(response_->schema(), &internal_schema_);
+    if (!ok) {
+        LOG(WARNING) << "fail to decode response schema ";
+        return false;
+    }
+    std::unique_ptr<codec::RowIOBufView> row_view(
+        new codec::RowIOBufView(internal_schema_));
     row_view_ = std::move(row_view);
+    schema_.SetSchema(internal_schema_);
     return true;
 }
 
+bool ResultSetImpl::IsNULL(int index) { return row_view_->IsNULL(index); }
+
 bool ResultSetImpl::Next() {
     index_++;
-    if (index_ < size_) {
-        const std::string& row = response_->result_set(index_);
-        row_view_->Reset(reinterpret_cast<const int8_t*>(row.c_str()),
-                         row.size());
+    if (index_ < response_->count() && position_ < byte_size_) {
+        // get row size
+        uint32_t row_size = 0;
+        cntl_->response_attachment().copy_to(reinterpret_cast<void*>(&row_size),
+                                             4, position_ + 2);
+        DLOG(INFO) << "row size " << row_size << " position " << position_
+                   << " byte size " << byte_size_;
+        butil::IOBuf tmp;
+        cntl_->response_attachment().append_to(&tmp, row_size, position_);
+        position_ += row_size;
+        row_view_->Reset(tmp);
         return true;
     }
     return false;
 }
 
-bool ResultSetImpl::GetString(uint32_t index, char** result, uint32_t* size) {
-    if (result == NULL || size == NULL) {
+bool ResultSetImpl::GetString(uint32_t index, std::string* str) {
+    if (str == NULL) {
         LOG(WARNING) << "input ptr is null pointer";
         return false;
     }
-    int32_t ret = row_view_->GetString(index, result, size);
-    if (ret == 0) return true;
+    butil::IOBuf tmp;
+    int32_t ret = row_view_->GetString(index, &tmp);
+    if (ret == 0) {
+        tmp.append_to(str, tmp.size(), 0);
+        return true;
+    }
     return false;
 }
 
@@ -140,10 +163,6 @@ bool ResultSetImpl::GetTime(uint32_t index, int64_t* mills) {
     int32_t ret = row_view_->GetTimestamp(index, mills);
     return ret == 0;
 }
-
-const Schema& ResultSetImpl::GetSchema() { return schema_; }
-
-int32_t ResultSetImpl::Size() { return size_; }
 
 }  // namespace sdk
 }  // namespace fesql

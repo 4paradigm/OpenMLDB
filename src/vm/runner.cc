@@ -462,6 +462,7 @@ std::shared_ptr<DataHandler> Runner::TableGroup(
     }
     return output_partitions;
 }
+
 std::shared_ptr<DataHandler> Runner::PartitionGroup(
     const std::shared_ptr<DataHandler> table, KeyGenerator& key_gen) {
     if (!key_gen.Valid()) {
@@ -1485,6 +1486,7 @@ const bool ConditionGenerator::Gen(const Row& row) {
 const Row ProjectGenerator::Gen(const Row& row) {
     return CoreAPI::RowProject(fn_, row, false);
 }
+
 const Row AggGenerator::Gen(std::shared_ptr<TableHandler> table) {
     auto iter = table->GetIterator();
     iter->SeekToFirst();
@@ -1506,6 +1508,7 @@ const Row AggGenerator::Gen(std::shared_ptr<TableHandler> table) {
     }
     return Row(buf, RowView::GetSize(buf));
 }
+
 const Row WindowProjectGenerator::Gen(const uint64_t key, const Row row,
                                       Window* window) {
     return Runner::WindowProject(fn_, key, row, window);

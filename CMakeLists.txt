@@ -33,30 +33,46 @@ set(CMAKE_BUILD_TYPE RelWithDebInfo)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 #set(CMAKE_BUILD_TYPE DEBUG)
 set(LLVM_DIR "${PROJECT_SOURCE_DIR}/thirdparty/lib/cmake/llvm")
-if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    set(COMMON_LIBS glog gflags unwind lzma)
-    set(g_libs glog gflags unwind lzma)
-    set(arrow_libs parquet arrow_dataset arrow brotlidec brotlienc
-            brotlicommon
-            thrift lz4 z zstd double-conversion boost_filesystem snappy)
-elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin") # TODO: Make sure all libraries can be linked
-    set(COMMON_LIBS glog gflags)
-    set(g_libs glog gflags)
-    set(arrow_libs parquet arrow_dataset arrow brotlidec brotlienc
-            brotlicommon
-            thrift lz4 z zstd double-conversion boost_filesystem snappy)
-endif ()
-set(BOOST_ROOT "${PROJECT_SOURCE_DIR}/thirdparty/")
-
 find_package(LLVM REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
-llvm_map_components_to_libnames(llvm_libs support core orcjit nativecodegen)
+llvm_map_components_to_libnames(LLVM_LIBS support core orcjit nativecodegen)
+
+find_package(Threads)
+set(VM_LIBS fesql_vm fesql_udf fesql_parser fesql_planner fesql_codegen fesql_storage fesql_codec fesql_proto
+    fesql_node fesql_base)
+
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    set(OS_LIB ${CMAKE_THREAD_LIBS_INIT} rt)
+    set(BRPC_LIBS brpc leveldb protobuf glog gflags unwind lzma z snappy ssl crypto dl)
+    set(ARROW_LIBS parquet arrow_dataset arrow brotlidec brotlienc
+            brotlicommon
+            thrift lz4 z zstd double-conversion boost_filesystem snappy)
+elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    set(OS_LIB 
+            ${CMAKE_THREAD_LIBS_INIT}
+            "-framework CoreFoundation"
+            "-framework CoreGraphics"
+            "-framework CoreData"
+            "-framework CoreText"
+            "-framework Security"
+            "-framework Foundation"
+            "-Wl,-U,_MallocExtension_ReleaseFreeMemory"
+            "-Wl,-U,_ProfilerStart"
+            "-Wl,-U,_ProfilerStop")
+    set(BRPC_LIBS brpc leveldb protobuf glog gflags z snappy ssl crypto dl)
+    set(ARROW_LIBS parquet arrow_dataset arrow brotlidec brotlienc
+        brotlicommon
+        thrift lz4 z zstd double-conversion boost_filesystem snappy)
+endif ()
+
+set(BOOST_ROOT "${PROJECT_SOURCE_DIR}/thirdparty/")
 
 configure_file(
         "${PROJECT_SOURCE_DIR}/src/version.h.in"
         "${PROJECT_SOURCE_DIR}/src/version.h"
 )
+
 option(TESTING_ENABLE "Enable Test" ON)
 option(COVERAGE_ENABLE "Enable Coverage" ON)
 if (TESTING_ENABLE)
@@ -69,22 +85,6 @@ if (COVERAGE_ENABLE)
     endif ()
 endif ()
 
-find_package(Threads)
-if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    set(OS_LIB ${CMAKE_THREAD_LIBS_INIT} rt)
-elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    set(OS_LIB ${OS_LIB}
-            ${CMAKE_THREAD_LIBS_INIT}
-            "-framework CoreFoundation"
-            "-framework CoreGraphics"
-            "-framework CoreData"
-            "-framework CoreText"
-            "-framework Security"
-            "-framework Foundation"
-            "-Wl,-U,_MallocExtension_ReleaseFreeMemory"
-            "-Wl,-U,_ProfilerStart"
-            "-Wl,-U,_ProfilerStop")
-endif ()
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     add_definitions('-Wall')
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
@@ -95,8 +95,8 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     add_definitions(-Wno-c++17-extensions)
     add_definitions(-Wno-defaulted-function-deleted)
 endif ()
-set(boost_libs boost_graph)
 
+set(boost_libs boost_graph)
 find_package(yaml-cpp REQUIRED)
 set(yaml_libs yaml-cpp)
 add_definitions('-g')

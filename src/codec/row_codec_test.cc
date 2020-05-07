@@ -45,14 +45,28 @@ TEST_F(CodecTest, NULLTest) {
     ASSERT_TRUE(builder.AppendNULL());
     ASSERT_TRUE(builder.AppendBool(false));
     ASSERT_TRUE(builder.AppendString(st.c_str(), 1));
-    RowView view(schema, reinterpret_cast<int8_t*>(&(row[0])), size);
-    ASSERT_TRUE(view.IsNULL(0));
-    char* ch = NULL;
-    uint32_t length = 0;
-    bool val1 = true;
-    ASSERT_EQ(view.GetBool(1, &val1), 0);
-    ASSERT_FALSE(val1);
-    ASSERT_EQ(view.GetString(2, &ch, &length), 0);
+    butil::IOBuf io_buf;
+    io_buf.append(reinterpret_cast<const void*>(row.c_str()), size);
+    {
+        RowView view(schema, reinterpret_cast<int8_t*>(&(row[0])), size);
+        ASSERT_TRUE(view.IsNULL(0));
+        char* ch = NULL;
+        uint32_t length = 0;
+        bool val1 = true;
+        ASSERT_EQ(view.GetBool(1, &val1), 0);
+        ASSERT_FALSE(val1);
+        ASSERT_EQ(view.GetString(2, &ch, &length), 0);
+    }
+    {
+        RowIOBufView rv(schema);
+        rv.Reset(io_buf);
+        ASSERT_TRUE(rv.IsNULL(0));
+        bool val1 = true;
+        ASSERT_EQ(rv.GetBool(1, &val1), 0);
+        ASSERT_FALSE(val1);
+        butil::IOBuf tmp;
+        ASSERT_EQ(rv.GetString(2, &tmp), 0);
+    }
 }
 
 TEST_F(CodecTest, Normal) {
@@ -82,13 +96,28 @@ TEST_F(CodecTest, Normal) {
     ASSERT_TRUE(builder.AppendFloat(3.1));
     ASSERT_TRUE(builder.AppendDouble(4.1));
     ASSERT_TRUE(builder.AppendInt64(5));
-    RowView view(schema, reinterpret_cast<int8_t*>(&(row[0])), size);
-    int32_t val = 0;
-    ASSERT_EQ(view.GetInt32(0, &val), 0);
-    ASSERT_EQ(val, 1);
-    int16_t val1 = 0;
-    ASSERT_EQ(view.GetInt16(1, &val1), 0);
-    ASSERT_EQ(val1, 2);
+    {
+        RowView view(schema, reinterpret_cast<int8_t*>(&(row[0])), size);
+        int32_t val = 0;
+        ASSERT_EQ(view.GetInt32(0, &val), 0);
+        ASSERT_EQ(val, 1);
+        int16_t val1 = 0;
+        ASSERT_EQ(view.GetInt16(1, &val1), 0);
+        ASSERT_EQ(val1, 2);
+    }
+
+    {
+        butil::IOBuf buf;
+        buf.append(row);
+        RowIOBufView view(schema);
+        view.Reset(buf);
+        int32_t val = 0;
+        ASSERT_EQ(view.GetInt32(0, &val), 0);
+        ASSERT_EQ(val, 1);
+        int16_t val1 = 0;
+        ASSERT_EQ(view.GetInt16(1, &val1), 0);
+        ASSERT_EQ(val1, 2);
+    }
 }
 
 TEST_F(CodecTest, Encode) {
@@ -120,26 +149,52 @@ TEST_F(CodecTest, Encode) {
         }
     }
     ASSERT_FALSE(builder.AppendInt16(1234));
-    RowView view(schema, reinterpret_cast<int8_t*>(&(row[0])), size);
-    for (int i = 0; i < 10; i++) {
-        if (i % 3 == 0) {
-            int16_t val = 0;
-            ASSERT_EQ(view.GetInt16(i, &val), 0);
-            ASSERT_EQ(val, i);
-        } else if (i % 3 == 1) {
-            double val = 0.0;
-            ASSERT_EQ(view.GetDouble(i, &val), 0);
-            ASSERT_EQ(val, 2.3);
-        } else {
-            char* ch = NULL;
-            uint32_t length = 0;
-            ASSERT_EQ(view.GetString(i, &ch, &length), 0);
-            std::string str(ch, length);
-            ASSERT_STREQ(str.c_str(), std::string(10, 'a' + i).c_str());
+
+    {
+        RowView view(schema, reinterpret_cast<int8_t*>(&(row[0])), size);
+        for (int i = 0; i < 10; i++) {
+            if (i % 3 == 0) {
+                int16_t val = 0;
+                ASSERT_EQ(view.GetInt16(i, &val), 0);
+                ASSERT_EQ(val, i);
+            } else if (i % 3 == 1) {
+                double val = 0.0;
+                ASSERT_EQ(view.GetDouble(i, &val), 0);
+                ASSERT_EQ(val, 2.3);
+            } else {
+                char* ch = NULL;
+                uint32_t length = 0;
+                ASSERT_EQ(view.GetString(i, &ch, &length), 0);
+                std::string str(ch, length);
+                ASSERT_STREQ(str.c_str(), std::string(10, 'a' + i).c_str());
+            }
+        }
+        int16_t val = 0;
+        ASSERT_EQ(view.GetInt16(10, &val), -1);
+    }
+
+    {
+        butil::IOBuf buf;
+        buf.append(row);
+        RowIOBufView view(schema);
+        view.Reset(buf);
+        for (int i = 0; i < 10; i++) {
+            if (i % 3 == 0) {
+                int16_t val = 0;
+                ASSERT_EQ(view.GetInt16(i, &val), 0);
+                ASSERT_EQ(val, i);
+            } else if (i % 3 == 1) {
+                double val = 0.0;
+                ASSERT_EQ(view.GetDouble(i, &val), 0);
+                ASSERT_EQ(val, 2.3);
+            } else {
+                butil::IOBuf tmp;
+                ASSERT_EQ(view.GetString(i, &tmp), 0);
+                ASSERT_STREQ(tmp.to_string().c_str(),
+                             std::string(10, 'a' + i).c_str());
+            }
         }
     }
-    int16_t val = 0;
-    ASSERT_EQ(view.GetInt16(10, &val), -1);
 }
 
 TEST_F(CodecTest, AppendNULL) {

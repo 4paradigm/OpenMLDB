@@ -73,14 +73,20 @@ class RunSession {
  public:
     RunSession();
 
-    ~RunSession();
+    virtual ~RunSession();
 
     virtual inline const Schema& GetSchema() const {
         return compile_info_->get_sql_context().schema;
     }
+
+    virtual inline const std::string& GetEncodedSchema() const {
+        return compile_info_->get_sql_context().encoded_schema;
+    }
+
     virtual inline vm::PhysicalOpNode* GetPhysicalPlan() {
         return compile_info_->get_sql_context().plan;
     }
+
     virtual inline vm::Runner* GetRunner() {
         return compile_info_->get_sql_context().runner;
     }
@@ -95,11 +101,10 @@ class RunSession {
     void DisableDebug() { is_debug_ = false; }
 
  protected:
-    inline void SetCompileInfo(
-        const std::shared_ptr<CompileInfo>& compile_info) {
-        compile_info_ = compile_info;
-    }
+    bool SetCompileInfo(const std::shared_ptr<CompileInfo>& compile_info);
+
     inline void SetCatalog(const std::shared_ptr<Catalog>& cl) { cl_ = cl; }
+
     std::shared_ptr<CompileInfo> compile_info_;
     std::shared_ptr<Catalog> cl_;
     bool is_debug_;
@@ -136,6 +141,15 @@ class RequestRunSession : public RunSession {
     }
 };
 
+struct ExplainOutput {
+    // just for request mode
+    vm::Schema input_schema;
+    std::string logical_plan;
+    std::string physical_plan;
+    std::string ir;
+    vm::Schema output_schema;
+};
+
 typedef std::map<std::string,
                  std::map<std::string, std::shared_ptr<CompileInfo>>>
     EngineCache;
@@ -153,13 +167,14 @@ class Engine {
              RunSession& session,    // NOLINT
              base::Status& status);  // NOLINT
 
+    bool Explain(const std::string& sql, const std::string& db, bool is_batch,
+                 ExplainOutput* explain_output, base::Status* status);
+
  private:
     std::shared_ptr<CompileInfo> GetCacheLocked(const std::string& db,
                                                 const std::string& sql);
-
     const std::shared_ptr<Catalog> cl_;
     EngineOptions options_;
-
     base::SpinMutex mu_;
     EngineCache cache_;
     ::fesql::node::NodeManager nm_;

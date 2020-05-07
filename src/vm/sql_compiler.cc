@@ -20,6 +20,7 @@
 #include <utility>
 #include <vector>
 #include "codec/type_codec.h"
+#include "codec/schema_codec.h"
 #include "codegen/ir_base_builder.h"
 #include "glog/logging.h"
 #include "llvm/Bitcode/BitcodeWriter.h"
@@ -39,25 +40,37 @@ void InitCodecSymbol(::llvm::orc::JITDylib& jd,             // NOLINT
                                    (reinterpret_cast<void*>(&malloc)));
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_get_int16_field",
-        reinterpret_cast<void*>(&codec::v1::GetInt16Field));
+        reinterpret_cast<void*>(
+            static_cast<int16_t (*)(const int8_t*, uint32_t)>(
+                &codec::v1::GetInt16Field)));
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_get_int32_field",
-        reinterpret_cast<void*>(&codec::v1::GetInt32Field));
+        reinterpret_cast<void*>(
+            static_cast<int32_t (*)(const int8_t*, uint32_t)>(
+                &codec::v1::GetInt32Field)));
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_get_int64_field",
-        reinterpret_cast<void*>(&codec::v1::GetInt64Field));
+        reinterpret_cast<void*>(
+            static_cast<int64_t (*)(const int8_t*, uint32_t)>(
+                &codec::v1::GetInt64Field)));
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_get_float_field",
-        reinterpret_cast<void*>(&codec::v1::GetFloatField));
+        reinterpret_cast<void*>(static_cast<float (*)(const int8_t*, uint32_t)>(
+            &codec::v1::GetFloatField)));
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_get_double_field",
-        reinterpret_cast<void*>(&codec::v1::GetDoubleField));
+        reinterpret_cast<void*>(
+            static_cast<double (*)(const int8_t*, uint32_t)>(
+                &codec::v1::GetDoubleField)));
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_get_str_addr_space",
         reinterpret_cast<void*>(&codec::v1::GetAddrSpace));
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_get_str_field",
-        reinterpret_cast<void*>(&codec::v1::GetStrField));
+        reinterpret_cast<void*>(
+            static_cast<int32_t (*)(const int8_t*, uint32_t, uint32_t, uint32_t,
+                                    uint32_t, int8_t**, uint32_t*)>(
+                &codec::v1::GetStrField)));
     fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "fesql_storage_get_col",
                                    reinterpret_cast<void*>(&codec::v1::GetCol));
     fesql::vm::FeSQLJIT::AddSymbol(
@@ -102,8 +115,9 @@ void InitCodecSymbol(vm::FeSQLJIT* jit_ptr) {
 using ::fesql::base::Status;
 
 SQLCompiler::SQLCompiler(const std::shared_ptr<Catalog>& cl,
-                         ::fesql::node::NodeManager* nm, bool keep_ir)
-    : cl_(cl), nm_(nm), keep_ir_(keep_ir) {}
+                         ::fesql::node::NodeManager* nm, bool keep_ir,
+                         bool dump_plan)
+    : cl_(cl), nm_(nm), keep_ir_(keep_ir), dump_plan_(dump_plan) {}
 
 SQLCompiler::~SQLCompiler() {}
 
@@ -126,11 +140,14 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     if (!ok) {
         return false;
     }
-
+    if (dump_plan_ && trees.size() > 0) {
+        std::stringstream logical_plan_ss;
+        trees[0]->Print(logical_plan_ss, "\t");
+        ctx.logical_plan = logical_plan_ss.str();
+    }
     auto llvm_ctx = ::llvm::make_unique<::llvm::LLVMContext>();
     auto m = ::llvm::make_unique<::llvm::Module>("sql", *llvm_ctx);
     ::fesql::udf::RegisterUDFToModule(m.get());
-
     if (ctx.is_batch_mode) {
         vm::BatchModeTransformer transformer(nm_, ctx.db, cl_, m.get());
         transformer.AddDefaultPasses();
@@ -150,6 +167,12 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
             return false;
         }
         ctx.request_schema = transformer.request_schema();
+        ok = codec::SchemaCodec::Encode(transformer.request_schema(),
+                &ctx.encoded_request_schema);
+        if (!ok) {
+            LOG(WARNING) << "fail to encode request schema";
+            return false;
+        }
         ctx.request_name = transformer.request_name();
     }
 
@@ -159,7 +182,11 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         LOG(WARNING) << status.msg;
         return false;
     }
-
+    if (dump_plan_) {
+        std::stringstream physical_plan_ss;
+        ctx.plan->Print(physical_plan_ss, "\t");
+        ctx.physical_plan = physical_plan_ss.str();
+    }
     ::llvm::Expected<std::unique_ptr<FeSQLJIT>> jit_expected(
         FeSQLJITBuilder().create());
     {
@@ -196,6 +223,11 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         return false;
     }
     ctx.schema = ctx.plan->output_schema_;
+    ok = codec::SchemaCodec::Encode(ctx.schema, &ctx.encoded_schema);
+    if (!ok) {
+        LOG(WARNING) << "fail to encode output schema";
+        return false;
+    }
     return true;
 }
 bool SQLCompiler::BuildRunner(SQLContext& ctx, Status& status) {  // NOLINT

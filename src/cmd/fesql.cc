@@ -64,7 +64,6 @@ void HandleCmd(const fesql::node::CmdNode *cmd_node,
 void SetupLogging(char *argv[]) { google::InitGoogleLogging(argv[0]); }
 
 void StartTablet(int argc, char *argv[]) {
-    SetupLogging(argv);
     ::llvm::InitLLVM X(argc, argv);
     ::llvm::InitializeNativeTarget();
     ::llvm::InitializeNativeTargetAsmPrinter();
@@ -225,10 +224,9 @@ void PrintResultSet(std::ostream &stream, ::fesql::sdk::ResultSet *result_set) {
                     break;
                 }
                 case fesql::sdk::kTypeString: {
-                    char *data = NULL;
-                    uint32_t size = 0;
-                    result_set->GetString(i, &data, &size);
-                    t.add(std::string(data, size));
+                    std::string val;
+                    result_set->GetString(i, &val);
+                    t.add(val);
                     break;
                 }
                 default: {
@@ -362,13 +360,15 @@ void HandleSQLScript(
                 return;
             }
             case fesql::node::kExplainSmt: {
-                fesql::plan::SimplePlanner planner(&node_manager);
-                fesql::node::PlanNodeList plan_trees;
-                if (!planner.CreatePlanTree(parser_trees, plan_trees,
-                                            sql_status)) {
+                std::string empty;
+                std::string mu_script = script;
+                mu_script.replace(0u, 7u, empty);
+                std::shared_ptr<::fesql::sdk::ExplainInfo> info =
+                    dbms_sdk->Explain(cmd_client_db.name, mu_script, &status);
+                if (0 != status.code) {
                     return;
                 }
-                std::cout << "Logical plan: \n" << plan_trees[0];
+                std::cout << info->GetPhysicalPlan() << std::endl;
                 return;
             }
             case fesql::node::kFnList:

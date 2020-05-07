@@ -51,6 +51,9 @@ class TabletServerImpl : public TabletServer {
     void Insert(RpcController* ctrl, const InsertRequest* request,
                 InsertResponse* response, Closure* done);
 
+    void Explain(RpcController* ctrl, const ExplainRequest* request,
+                 ExplainResponse* response, Closure* done);
+
     void GetTableSchema(RpcController* ctrl,
                         const GetTablesSchemaRequest* request,
                         GetTableSchemaReponse* response, Closure* done);

@@ -22,9 +22,14 @@
 #include "base/strings.h"
 #include "codec/list_iterator_codec.h"
 #include "codec/row_codec.h"
+#include "codec/schema_codec.h"
 #include "codegen/buf_ir_builder.h"
+#include "gflags/gflags.h"
 #include "llvm-c/Target.h"
 #include "vm/mem_catalog.h"
+
+DECLARE_bool(logtostderr);
+DECLARE_string(log_dir);
 
 namespace fesql {
 namespace vm {
@@ -38,6 +43,10 @@ Engine::Engine(const std::shared_ptr<Catalog>& catalog,
 Engine::~Engine() {}
 
 void Engine::InitializeGlobalLLVM() {
+    FLAGS_logtostderr = false;
+    FLAGS_log_dir = "/tmp";
+    const char* arg = "";
+    google::InitGoogleLogging(arg);
     LLVMInitializeNativeTarget();
     LLVMInitializeNativeAsmPrinter();
 }
@@ -92,6 +101,33 @@ bool Engine::Get(const std::string& sql, const std::string& db,
     return true;
 }
 
+bool Engine::Explain(const std::string& sql, const std::string& db,
+                     bool is_batch, ExplainOutput* explain_output,
+                     base::Status* status) {
+    if (explain_output == NULL || status == NULL) {
+        LOG(WARNING) << "input args is invalid";
+        return false;
+    }
+    ::fesql::node::NodeManager nm;
+    SQLContext ctx;
+    ctx.is_batch_mode = is_batch;
+    ctx.sql = sql;
+    ctx.db = db;
+    SQLCompiler compiler(cl_, &nm, true, true);
+    bool ok = compiler.Compile(ctx, *status);
+    if (!ok || 0 != status->code) {
+        LOG(WARNING) << "fail to compile sql " << sql << " in db " << db
+                     << " with error " << status->msg;
+        return false;
+    }
+    explain_output->input_schema.CopyFrom(ctx.request_schema);
+    explain_output->output_schema.CopyFrom(ctx.schema);
+    explain_output->logical_plan = ctx.logical_plan;
+    explain_output->physical_plan = ctx.physical_plan;
+    explain_output->ir = ctx.ir;
+    return true;
+}
+
 std::shared_ptr<CompileInfo> Engine::GetCacheLocked(const std::string& db,
                                                     const std::string& sql) {
     std::lock_guard<base::SpinMutex> lock(mu_);
@@ -109,6 +145,12 @@ std::shared_ptr<CompileInfo> Engine::GetCacheLocked(const std::string& db,
 
 RunSession::RunSession() : is_debug_(false) {}
 RunSession::~RunSession() {}
+
+bool RunSession::SetCompileInfo(
+    const std::shared_ptr<CompileInfo>& compile_info) {
+    compile_info_ = compile_info;
+    return true;
+}
 
 int32_t RequestRunSession::Run(const Row& in_row, Row* out_row) {
     RunnerContext ctx(in_row, is_debug_);

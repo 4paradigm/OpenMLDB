@@ -16,8 +16,8 @@
 
 namespace fesql {
 namespace bm {
-const static std::string host = "172.17.0.2";  // NOLINT
-// const static std::string host = "127.0.0.1";  // NOLINT
+//const static std::string host = "172.17.0.2";  // NOLINT
+const static std::string host = "127.0.0.1";  // NOLINT
 const static std::string user = "root";  // NOLINT
 const static std::string passwd = "";    // NOLINT
 const static size_t port = 3306;         // NOLINT
@@ -429,7 +429,56 @@ static void BM_WINDOW_CASE2_QUERY(benchmark::State &state) {  // NOLINT
     BM_WINDOW_CASE_QUERY(state, select_sql);
 }
 
+static void BM_GROUPBY_CASE0_QUERY(benchmark::State &state) {  // NOLINT
+    const char *select_sql =
+        "SELECT "
+        "sum(col_i32) \n"
+        "FROM tbl\n"
+        "group by col_str64;";
+    std::string query_type = "sum 1 cols";
+    std::string label = query_type + "/group " +
+                        std::to_string(state.range(0)) + "/max window size " +
+                        std::to_string(state.range(1));
+    state.SetLabel(label);
+    BM_WINDOW_CASE_QUERY(state, select_sql);
+}
+
+static void BM_GROUPBY_CASE1_QUERY(benchmark::State &state) {  // NOLINT
+    const char *select_sql =
+        "SELECT "
+        "avg(col_i32),\n"
+        "avg(col_i16),\n"
+        "max(col_i32),\n"
+        "max(col_i16)\n"
+        "FROM tbl\n"
+        "group by col_str64;";
+    std::string query_type = "avg 2 cols and max 2 cols";
+    std::string label = query_type + "/group " +
+                        std::to_string(state.range(0)) + "/max window size " +
+                        std::to_string(state.range(1));
+    state.SetLabel(label);
+    BM_WINDOW_CASE_QUERY(state, select_sql);
+}
+
 BENCHMARK(BM_SIMPLE_QUERY)->Arg(10)->Arg(100)->Arg(1000)->Arg(10000);
+
+BENCHMARK(BM_GROUPBY_CASE0_QUERY)
+    ->Args({1, 100})
+    ->Args({1, 1000})
+    ->Args({1, 10000})
+    ->Args({10, 10})
+    ->Args({10, 100})
+    ->Args({10, 1000});
+
+BENCHMARK(BM_GROUPBY_CASE1_QUERY)
+    ->Args({1, 100})
+    ->Args({1, 1000})
+    ->Args({1, 10000})
+    ->Args({10, 10})
+    ->Args({10, 100})
+    ->Args({10, 1000});
+
+
 BENCHMARK(BM_WINDOW_CASE0_QUERY)
     ->Args({1, 100})
     ->Args({1, 1000})

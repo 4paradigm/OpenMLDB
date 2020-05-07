@@ -13,6 +13,7 @@ SWIG_JAVABODY_PROXY(public, public, SWIGTYPE)
 %include std_string.i
 %include std_shared_ptr.i
 %include stl.i
+#include stdint.i
 namespace std {
     %template(StringVector) vector<string>;
 }
@@ -75,14 +76,13 @@ namespace std {
 #include "vm/physical_op.h"
 #include "vm/simple_catalog.h"
 
-    using namespace fesql;
+using namespace fesql;
 using fesql::sdk::Schema;
 using fesql::sdk::ResultSet;
 using fesql::sdk::Table;
 using fesql::sdk::TableSet;
 using fesql::sdk::DBMSSdk;
 using fesql::sdk::TabletSdk;
-
 using namespace fesql::node;
 using fesql::vm::SQLContext;
 using fesql::vm::Catalog;
@@ -99,6 +99,8 @@ using fesql::codec::RowIterator;
 using fesql::codec::IteratorV;
 using fesql::codec::Row;
 using fesql::node::PlanType;
+using fesql::sdk::ExplainInfo;
+
 %}
 
 
@@ -114,6 +116,7 @@ using fesql::node::PlanType;
 %ignore DataTypeName; // TODO: Geneerate duplicated class
 %ignore fesql::vm::RequestRunSession::RunRequestPlan;
 %ignore fesql::vm::FeSQLJITWrapper::AddModule;
+
 
 %include "base/slice.h"
 %include "base/status.h"
