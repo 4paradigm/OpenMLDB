@@ -160,7 +160,7 @@ public class TableSyncClientTest extends TestCaseBase {
 
         List<IndexDef> indexs = new ArrayList<>();
         IndexDef indexDef = new IndexDef();
-        indexDef.setIndexName("id");
+        indexDef.setIndexName("idx1");
         indexDef.setIndexType(indexType);
         List<String> colNameList = new ArrayList<>();
         colNameList.add("id");
