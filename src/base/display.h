@@ -344,7 +344,8 @@ __attribute__((unused)) static void ShowTableRows(
         } else {
             value.assign(it->GetValue().data(), it->GetValue().size());
         }
-        ::rtidb::codec::FillTableRow(schema, value.c_str(), value.size(), vrow);
+        ::rtidb::codec::RowCodec::DecodeRow(schema, ::rtidb::base::Slice(value),
+                                            vrow);
         tp.AddRow(vrow);
         index++;
         it->Next();

@@ -576,10 +576,10 @@ GeneralResult RtidbClient::Update(
     uint32_t pid = (uint32_t)(::rtidb::base::hash64(pk) %
                               th->table_info->table_partition_size());
     google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc> new_cd_schema;
-    ::rtidb::codec::SchemaCodec::GetSchemaData(
-        condition_columns_map, *(th->columns), new_cd_schema);
+    ::rtidb::codec::SchemaCodec::GetSchemaData(condition_columns_map,
+                                               *(th->columns), new_cd_schema);
     std::string cd_value;
-    ::rtidb::base::ResultMsg cd_rm = ::rtidb::codec::RowCodec::Encode(
+    ::rtidb::base::ResultMsg cd_rm = ::rtidb::codec::RowCodec::EncodeRow(
         condition_columns_map, new_cd_schema, cd_value);
     if (cd_rm.code < 0) {
         result.SetError(cd_rm.code, "encode error, msg: " + cd_rm.msg);
@@ -595,7 +595,7 @@ GeneralResult RtidbClient::Update(
     ::rtidb::codec::SchemaCodec::GetSchemaData(
         value_columns_map, *(th->columns), new_value_schema);
     std::string value;
-    ::rtidb::base::ResultMsg value_rm = ::rtidb::codec::RowCodec::Encode(
+    ::rtidb::base::ResultMsg value_rm = ::rtidb::codec::RowCodec::EncodeRow(
         value_columns_map, new_value_schema, value);
     if (value_rm.code < 0) {
         result.SetError(value_rm.code, "encode error, msg: " + value_rm.msg);
@@ -693,11 +693,9 @@ GeneralResult RtidbClient::Put(const std::string& name,
     rm = rtidb::base::RowSchemaCodec::Encode(value, *(th->columns), buffer);
 =======
     if (!th->auto_gen_pk_.empty()) {
-        rm =
-            ::rtidb::codec::RowCodec::Encode(val, *(th->columns), buffer);
+        rm = ::rtidb::codec::RowCodec::EncodeRow(val, *(th->columns), buffer);
     } else {
-        rm = ::rtidb::codec::RowCodec::Encode(value, *(th->columns),
-                                                    buffer);
+        rm = ::rtidb::codec::RowCodec::EncodeRow(value, *(th->columns), buffer);
     }
 >>>>>>> 77114036... refactor: update codec namespace
     if (rm.code != 0) {
