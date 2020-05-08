@@ -4,8 +4,8 @@ project(rtidb)
 
 set(CMAKE_BUILD_TYPE RelWithDebInfo)
 set(RTIDB_VERSION_MAJOR 1)
-set(RTIDB_VERSION_MEDIUM 4)
-set(RTIDB_VERSION_MINOR 3)
+set(RTIDB_VERSION_MEDIUM 5)
+set(RTIDB_VERSION_MINOR 1)
 set(RTIDB_VERSION_BUG 0)
 configure_file (
   "${PROJECT_SOURCE_DIR}/src/version.h.in"
@@ -14,7 +14,7 @@ configure_file (
 
 add_definitions('-g')
 add_definitions('-Wall')
-add_definitions('-std=c++11')
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 option(TCMALLOC_ENABLE "Enable TCMALLOC" ON)
 option(STATIC_COMPILE_ENABLE "Enable STATIC COMPILE" OFF) 
 if (STATIC_COMPILE_ENABLE)
@@ -34,6 +34,10 @@ message("LOG_FILE_PATH_ENABLE option is ${LOG_FILE_PATH_ENABLE}")
 if (LOG_FILE_PATH_ENABLE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D__FILE__='\"$(subst ${CMAKE_SOURCE_DIR}/,,$(abspath $<))\"' -Wno-builtin-macro-redefined")
 endif()
+if(POLICY CMP0086)
+  cmake_policy(SET CMP0086 NEW)
+endif()
+
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake/modules/")
 #find_package(snappy REQUIRED)
@@ -50,4 +54,10 @@ if (PZFPGA_ENABLE)
     link_directories(BEFORE ${PROJECT_SOURCE_DIR}/thirdparty/aclrte-linux64/lib)
 endif()
 add_subdirectory(src)
+
+add_custom_target(rtidbpy
+COMMAND make
+WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/swig
+)
+
 

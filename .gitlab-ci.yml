@@ -6,7 +6,7 @@ stages:
     - it-ns
     - deploy
 
-build_rtidb_and_case:
+build_rtidb:
     stage: build
     script:
         - ln -sf /usr/workdir/thirdparty thirdparty
@@ -87,7 +87,7 @@ ns_one_demension:
         - rm -rf ./test-output/integrationtest/test-reports/
         - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
         - source /root/.bashrc && LD_LIBRARY_PATH=/usr/workdir/thirdparty/lib:$LD_LIBRARY_PATH
-        - bash steps/integration_test.sh 0 "ns_client"
+        - bash steps/integration_test.sh 0 "ns_client" "disk"
     artifacts:
         reports:
             junit:
@@ -101,7 +101,21 @@ ns_multi_demension:
         - rm -rf ./test-output/integrationtest/test-reports/
         - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
         - source /root/.bashrc && LD_LIBRARY_PATH=/usr/workdir/thirdparty/lib:$LD_LIBRARY_PATH
-        - bash steps/integration_test.sh 1 "ns_client"
+        - bash steps/integration_test.sh 1 "ns_client" "disk"
+    artifacts:
+        reports:
+            junit:
+                - ./test-output/integrationtest/test-reports/*.xml
+
+disk_table:
+    stage: it-ns
+    script:
+        - ln -sf /usr/workdir/thirdparty thirdparty
+        - ln -sf /usr/workdir/thirdsrc thirdsrc
+        - rm -rf ./test-output/integrationtest/test-reports/
+        - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
+        - source /root/.bashrc && LD_LIBRARY_PATH=/usr/workdir/thirdparty/lib:$LD_LIBRARY_PATH
+        - bash steps/integration_test.sh 0 "disk"
     artifacts:
         reports:
             junit:

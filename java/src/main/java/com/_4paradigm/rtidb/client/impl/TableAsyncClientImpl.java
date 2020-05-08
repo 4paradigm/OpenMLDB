@@ -6,6 +6,7 @@ import com._4paradigm.rtidb.client.ha.RTIDBClient;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
+import com._4paradigm.rtidb.client.schema.RowBuilder;
 import com._4paradigm.rtidb.client.schema.RowCodec;
 import com._4paradigm.rtidb.ns.NS;
 import com._4paradigm.rtidb.tablet.Tablet;
@@ -32,6 +33,61 @@ public class TableAsyncClientImpl implements TableAsyncClient {
     }
 
     @Override
+    public GetFuture get(String name, Map<String, Object> keyMap, long time, GetOption getOption) throws TabletException {
+        TableHandler th = client.getHandler(name);
+        if (th == null) {
+            throw new TabletException("no table with name " + name);
+        }
+        if (getOption.getIdxName() == null) {
+            throw new TabletException("index name is required but null");
+        }
+        List<String> list = th.getKeyMap().get(getOption.getIdxName());
+        if (list == null) {
+            throw new TabletException("no index name found ");
+        }
+        String combinedKey = TableClientCommon.getCombinedKey(keyMap, list, client.getConfig().isHandleNull());
+        int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
+        return get(pid, combinedKey, time, getOption, th);
+    }
+
+    @Override
+    public GetFuture get(String name, Object[] keys, long time, GetOption getOption) throws TabletException {
+        TableHandler th = client.getHandler(name);
+        if (th == null) {
+            throw new TabletException("no table with name " + name);
+        }
+        if (getOption.getIdxName() == null) {
+            throw new TabletException("index name is required but null");
+        }
+        List<String> list = th.getKeyMap().get(getOption.getIdxName());
+        if (list == null) {
+            throw new TabletException("no index name found");
+        }
+        if (keys.length != list.size()) {
+            throw new TabletException("check key number failed");
+        }
+        String combinedKey = TableClientCommon.getCombinedKey(keys, client.getConfig().isHandleNull());
+        int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
+        return get(pid, combinedKey, time, getOption, th);
+    }
+
+    @Override
+    public GetFuture get(String name, String key, long time, GetOption getOption) throws TabletException {
+        TableHandler th = client.getHandler(name);
+        if (th == null) {
+            throw new TabletException("no table with name " + name);
+        }
+        key = validateKey(key);
+        int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
+        return get(pid, key, time, getOption, th);
+    }
+
+    @Override
+    public GetFuture get(String name, String key, long time, Object type) throws TabletException {
+        return get(name, key, time, (Tablet.GetType)(type));
+    }
+
+    @Override
     public PutFuture put(int tid, int pid, long time, Object[] row) throws TabletException {
         TableHandler tableHandler = client.getHandler(tid);
         if (tableHandler == null) {
@@ -46,7 +102,13 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         List<Tablet.Dimension> dimList = TableClientCommon.fillTabletDimension(row, tableHandler, client.getConfig().isHandleNull());
         ByteBuffer buffer = null;
         if (row.length == tableHandler.getSchema().size()) {
-            buffer = RowCodec.encode(row, tableHandler.getSchema());
+            switch (tableHandler.getFormatVersion()) {
+                case 1:
+                    buffer = RowBuilder.encode(row, tableHandler.getSchema());
+                    break;
+                default:
+                    buffer = RowCodec.encode(row, tableHandler.getSchema());
+            }
         } else {
             List<ColumnDesc> columnDescs = tableHandler.getSchemaMap().get(row.length);
             if (columnDescs == null) {
@@ -108,7 +170,13 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         Map<Integer, List<Tablet.Dimension>> mapping = TableClientCommon.fillPartitionTabletDimension(row, th, client.getConfig().isHandleNull());
         ByteBuffer buffer = null;
         if (row.length == th.getSchema().size()) {
-            buffer = RowCodec.encode(row, th.getSchema());
+            switch (th.getTableInfo().getFormatVersion()) {
+                case 1:
+                    buffer = RowBuilder.encode(row, th.getSchema());
+                    break;
+                default:
+                    buffer = RowCodec.encode(row, th.getSchema());
+            }
         } else {
             List<ColumnDesc> columnDescs = th.getSchemaMap().get(row.length);
             if (columnDescs == null) {
@@ -143,8 +211,12 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         if (row.length > th.getSchema().size() + th.getSchemaMap().size()) {
             row = Arrays.copyOf(row, th.getSchema().size() + th.getSchemaMap().size());
         }
+        long ts = 0;
         List<Tablet.TSDimension> tsDimensions = TableClientCommon.parseArrayInput(row, th);
-        return put(name, 0, row, tsDimensions);
+        if (tsDimensions.size() <= 0) {
+            ts = System.currentTimeMillis();
+        }
+        return put(name, ts, row, tsDimensions);
     }
 
     @Override
@@ -167,8 +239,12 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         } else {
             arrayRow = new Object[th.getSchema().size()];
         }
+        long ts = 0;
         TableClientCommon.parseMapInput(row, th, arrayRow, tsDimensions);
-        return put(name, 0, arrayRow, tsDimensions);
+        if (tsDimensions.size() <= 0) {
+            ts = System.currentTimeMillis();
+        }
+        return put(name, ts, arrayRow, tsDimensions);
     }
 
     @Override
@@ -252,7 +328,9 @@ public class TableAsyncClientImpl implements TableAsyncClient {
 
     @Override
     public ScanFuture scan(String name, String key, long st, long et) throws TabletException {
-        return scan(name, key, null, st, et, null, 0);
+        ScanOption scanOption = new ScanOption();
+        scanOption.setLimit(0);
+        return scan(name, key, st, et,scanOption);
     }
 
     @Override
@@ -278,8 +356,8 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         }
         String combinedKey = TableClientCommon.getCombinedKey(keyMap, list, client.getConfig().isHandleNull());
         int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
-        return scan(th.getTableInfo().getTid(), pid, combinedKey, option.getIdxName(), st,
-                et, option.getTsName(), option.getLimit(), option.getAtLeast(), th);
+        return scan(th.getTableInfo().getTid(), pid, combinedKey,  st,
+                et, th, option);
     }
 
     @Override
@@ -290,8 +368,8 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         }
         key = validateKey(key);
         int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
-        return scan(th.getTableInfo().getTid(), pid, key, option.getIdxName(), st,
-                et, option.getTsName(), option.getLimit(), option.getAtLeast(), th);
+        return scan(th.getTableInfo().getTid(), pid, key,  st,
+                et, th, option);
     }
 
     @Override
@@ -310,8 +388,8 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         }
         String combinedKey = TableClientCommon.getCombinedKey(keyArr, client.getConfig().isHandleNull());
         int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
-        return scan(th.getTableInfo().getTid(), pid, combinedKey, option.getIdxName(), st,
-                et, option.getTsName(), option.getLimit(), option.getAtLeast(), th);
+        return scan(th.getTableInfo().getTid(), pid, combinedKey,  st,
+                et, th, option);
     }
 
     @Override
@@ -322,6 +400,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         }
         key = validateKey(key);
         int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
+        ScanOption scanOption = new ScanOption();
         return scan(th.getTableInfo().getTid(), pid, key, idxName, st, et, tsName, limit, 0,th);
     }
 
@@ -442,6 +521,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         }
         builder.setPid(pid);
         builder.setTid(tid);
+        builder.setFormatVersion(th.getFormatVersion());
         if (time != 0) {
             builder.setTime(time);
         }
@@ -467,6 +547,70 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         Tablet.PutRequest request = builder.build();
         Future<PutResponse> response = tablet.put(request, putFakeCallback);
         return response;
+    }
+
+    private GetFuture get(int pid, String key, long time, GetOption getOption, TableHandler th) throws TabletException {
+        key = validateKey(key);
+        PartitionHandler ph = th.getHandler(pid);
+        TabletServer ts = ph.getReadHandler(th.getReadStrategy());
+        if (ts == null) {
+            throw new TabletException("Cannot find available tabletServer with tid " + th.getTableInfo().getTid());
+        }
+        List<ColumnDesc> schema = null;
+        Tablet.GetRequest.Builder builder = Tablet.GetRequest.newBuilder();
+        builder.setTid(th.getTableInfo().getTid());
+        builder.setPid(pid);
+        builder.setKey(key);
+        builder.setTs(time);
+        builder.setEt(getOption.getEt());
+        if (getOption.getStType() != null) builder.setType(getOption.getStType());
+        if (getOption.getEtType() != null) builder.setEtType(getOption.getEtType());
+        if (getOption.getIdxName() != null && !getOption.getIdxName().isEmpty()) {
+            builder.setIdxName(getOption.getIdxName());
+        }
+        if (getOption.getTsName()!= null && !getOption.getTsName().isEmpty()) {
+            builder.setTsName(getOption.getTsName());
+        }
+        if (th.getFormatVersion() == 1 ) {
+            if (getOption.getProjection().size() > 0) {
+                schema = new ArrayList<>();
+                for (String name : getOption.getProjection()) {
+                    Integer idx = th.getSchemaPos().get(name);
+                    if (idx == null) {
+                        throw new TabletException("Cannot find column " + name);
+                    }
+                    builder.addProjection(idx);
+                    schema.add(th.getSchema().get(idx));
+                }
+            }
+            Tablet.GetRequest request = builder.build();
+            Future<Tablet.GetResponse> future = ts.get(request, getFakeCallback);
+            return new GetFuture(future, th, client.getConfig(), schema);
+        }else {
+            if (getOption.getProjection().size() > 0) {
+                List<Integer> projectIdx = new ArrayList<>();
+                BitSet bitSet = new BitSet(th.getSchema().size());
+                int maxIndex = -1;
+                for (String name : getOption.getProjection()) {
+                    Integer idx = th.getSchemaPos().get(name);
+                    if (idx == null) {
+                        throw new TabletException("Cannot find column " + name);
+                    }
+                    projectIdx.add(idx);
+                    if (idx > maxIndex) {
+                        maxIndex = idx;
+                    }
+                    bitSet.set(idx, true);
+                }
+                Tablet.GetRequest request = builder.build();
+                Future<Tablet.GetResponse> future = ts.get(request, getFakeCallback);
+                return new GetFuture(future, th, projectIdx, bitSet, maxIndex);
+            }else {
+                Tablet.GetRequest request = builder.build();
+                Future<Tablet.GetResponse> future = ts.get(request, getFakeCallback);
+                return new GetFuture(future, th);
+            }
+        }
     }
 
     private GetFuture get(int tid, int pid, String key, String idxName,
@@ -495,7 +639,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
             throw new TabletException("Cannot find available tabletServer with tid " + tid);
         }
         Future<Tablet.GetResponse> response = ts.get(request, getFakeCallback);
-        return GetFuture.wrappe(response, th, client.getConfig());
+        return new GetFuture(response, th);
     }
 
 
@@ -716,9 +860,15 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         if (keyArr.length != list.size()) {
             throw new TabletException("check key number failed");
         }
+        GetOption option = new GetOption();
+        option.setTsName(tsName);
+        option.setIdxName(idxName);
+        option.setEt(et);
+        option.setEtType(etType);
+        option.setStType(type);
         String combinedKey = TableClientCommon.getCombinedKey(keyArr, client.getConfig().isHandleNull());
         int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
-        return get(th.getTableInfo().getTid(), pid, combinedKey, idxName, time, tsName, type, et, etType, th);
+        return get(pid, combinedKey, time, option, th);
     }
 
     @Override
@@ -732,14 +882,86 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         if (list == null) {
             throw new TabletException("no index name " + idxName + " in table " + name);
         }
+        GetOption option = new GetOption();
+        option.setTsName(tsName);
+        option.setIdxName(idxName);
+        option.setEt(et);
+        option.setEtType(etType);
+        option.setStType(type);
         String combinedKey = TableClientCommon.getCombinedKey(keyMap, list, client.getConfig().isHandleNull());
         int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
-        return get(th.getTableInfo().getTid(), pid, combinedKey, idxName, time, tsName, type, et, etType, th);
+        return get(pid, combinedKey, time, option, th);
     }
 
     @Override
     public GetFuture get(String name, Map<String, Object> keyMap, String idxName, long time, String tsName,
                          Tablet.GetType type) throws TabletException {
         return get(name, keyMap, idxName, time, tsName, type, 0l, null);
+    }
+
+    private ScanFuture scan(int tid, int pid, String key, long st, long et,TableHandler th, ScanOption option) throws TabletException{
+        key = validateKey(key);
+        PartitionHandler ph = th.getHandler(pid);
+        TabletServer ts = ph.getReadHandler(th.getReadStrategy());
+        if (ts == null) {
+            throw new TabletException("Cannot find available tabletServer with tid " + tid);
+        }
+        Tablet.ScanRequest.Builder builder = Tablet.ScanRequest.newBuilder();
+        builder.setPk(key);
+        builder.setTid(tid);
+        builder.setEt(et);
+        builder.setSt(st);
+        builder.setPid(pid);
+        builder.setLimit(option.getLimit());
+        builder.setAtleast(option.getAtLeast());
+        if (option.getIdxName() != null)
+            builder.setIdxName(option.getIdxName());
+        if (option.getTsName() != null)
+            builder.setTsName(option.getTsName());
+        builder.setEnableRemoveDuplicatedRecord(option.isRemoveDuplicateRecordByTime());
+        List<ColumnDesc> schema = th.getSchema();
+        switch (th.getFormatVersion()) {
+            case 1:
+            {
+                if (option.getProjection().size() > 0) {
+                    schema = new ArrayList<>();
+                    for (String name : option.getProjection()) {
+                        Integer idx = th.getSchemaPos().get(name);
+                        if (idx == null) {
+                            throw new TabletException("Cannot find column " + name);
+                        }
+                        builder.addProjection(idx);
+                        schema.add(th.getSchema().get(idx));
+                    }
+                }
+                Tablet.ScanRequest request = builder.build();
+                Future<Tablet.ScanResponse> response = ts.scan(request, scanFakeCallback);
+                return new ScanFuture(response, th, schema);
+            }
+            default:
+            {
+                Tablet.ScanRequest request = builder.build();
+                Future<Tablet.ScanResponse> response = ts.scan(request, scanFakeCallback);
+                if (option.getProjection().size() > 0) {
+                    List<Integer> projectionIdx = new ArrayList<>();
+                    int maxIdx = -1;
+                    BitSet bitSet = new BitSet(schema.size());
+                    for (String name : option.getProjection()) {
+                        Integer idx = th.getSchemaPos().get(name);
+                        if (idx == null) {
+                            throw new TabletException("Cannot find column " + name);
+                        }
+                        bitSet.set(idx, true);
+                        if (idx > maxIdx) {
+                            maxIdx = idx;
+                        }
+                        projectionIdx.add(idx);
+                    }
+                    return new ScanFuture(response, th, projectionIdx, bitSet, maxIdx);
+                }
+                return new ScanFuture(response, th);
+            }
+
+        }
     }
 }

@@ -40,7 +40,6 @@ java/target
 # ignore pb generate code
 src/proto/*.cc
 src/proto/*.h
-
 # ignore some build directory
 build
 thirdparty
@@ -56,3 +55,7 @@ test-common/integrationtest/logs*
 test-common/integrationtest/env.conf
 test-common/integrationtest/rtidb
 test-common/integrationtest/xmlrunner*
+
+# ignore make generate code
+src/version.h
+src/config.h

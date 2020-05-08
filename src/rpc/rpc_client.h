@@ -1,5 +1,5 @@
 //
-// rpc_client.h 
+// rpc_client.h
 // Copyright 2017 elasticlog <elasticlog01@gmail.com>
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,22 +14,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef RTIDB_RPC_CLIENT_H
-#define RTIDB_RPC_CLIENT_H
+#ifndef SRC_RPC_RPC_CLIENT_H_
+#define SRC_RPC_RPC_CLIENT_H_
 
 #include <brpc/channel.h>
-#include <brpc/retry_policy.h>
 #include <brpc/controller.h>
-#include <boost/function.hpp>
-#include <boost/bind.hpp>
+#include <brpc/retry_policy.h>
+#include <gflags/gflags.h>
 #include <mutex.h>
 #include <thread_pool.h>
-#include "logging.h"
-#include <thread>
-#include <gflags/gflags.h>
 
-using ::baidu::common::INFO;
+#include <boost/bind.hpp>
+#include <boost/function.hpp>
+#include <string>  // NOLINT
+#include <thread>  // NOLINT
+
+#include "logging.h"  // NOLINT
+
 using ::baidu::common::DEBUG;
+using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
 
 DECLARE_int32(request_sleep_time);
@@ -37,42 +40,46 @@ DECLARE_int32(request_sleep_time);
 namespace rtidb {
 
 class SleepRetryPolicy : public brpc::RetryPolicy {
-public:
+ public:
     bool DoRetry(const brpc::Controller* controller) const {
         const int error_code = controller->ErrorCode();
         if (!error_code) {
             return false;
         }
         if (EHOSTDOWN == error_code) {
-            PDLOG(WARNING, "error_code is EHOSTDOWN, sleep [%lu] ms", FLAGS_request_sleep_time);
-            std::this_thread::sleep_for(std::chrono::milliseconds(FLAGS_request_sleep_time));
+            PDLOG(WARNING, "error_code is EHOSTDOWN, sleep [%lu] ms",
+                  FLAGS_request_sleep_time);
+            std::this_thread::sleep_for(
+                std::chrono::milliseconds(FLAGS_request_sleep_time));
             return true;
         }
-        return (brpc::EFAILEDSOCKET == error_code
-                || brpc::EEOF == error_code
-                || brpc::ELOGOFF == error_code
-                || ETIMEDOUT == error_code // This is not timeout of RPC.
-                || brpc::ELIMIT == error_code
-                || ENOENT == error_code
-                || EPIPE == error_code
-                || ECONNREFUSED == error_code
-                || ECONNRESET == error_code
-                || ENODATA == error_code
-                || brpc::EOVERCROWDED == error_code);
-    }    
+        return (brpc::EFAILEDSOCKET == error_code || brpc::EEOF == error_code ||
+                brpc::ELOGOFF == error_code ||
+                ETIMEDOUT == error_code  // This is not timeout of RPC.
+                || brpc::ELIMIT == error_code || ENOENT == error_code ||
+                EPIPE == error_code || ECONNREFUSED == error_code ||
+                ECONNRESET == error_code || ENODATA == error_code ||
+                brpc::EOVERCROWDED == error_code);
+    }
 };
 
 static SleepRetryPolicy sleep_retry_policy;
- 
+
 template <class T>
 class RpcClient {
-public:
-    RpcClient(const std::string& endpoint) : endpoint_(endpoint), use_sleep_policy_(false),
-            log_id_(0), stub_(NULL), channel_(NULL) {
-    }
-    RpcClient(const std::string& endpoint, bool use_sleep_policy) : endpoint_(endpoint), 
-            use_sleep_policy_(use_sleep_policy), log_id_(0), stub_(NULL), channel_(NULL) {
-    }
+ public:
+    explicit RpcClient(const std::string& endpoint)
+        : endpoint_(endpoint),
+          use_sleep_policy_(false),
+          log_id_(0),
+          stub_(NULL),
+          channel_(NULL) {}
+    RpcClient(const std::string& endpoint, bool use_sleep_policy)
+        : endpoint_(endpoint),
+          use_sleep_policy_(use_sleep_policy),
+          log_id_(0),
+          stub_(NULL),
+          channel_(NULL) {}
     ~RpcClient() {
         delete channel_;
         delete stub_;
@@ -92,11 +99,10 @@ public:
     }
 
     template <class Request, class Response, class Callback>
-    bool SendRequest(void(T::*func)(
-                    google::protobuf::RpcController*,
-                    const Request*, Response*, Callback*),
-                    const Request* request, Response* response,
-                    uint64_t rpc_timeout, int retry_times) {
+    bool SendRequest(void (T::*func)(google::protobuf::RpcController*,
+                                     const Request*, Response*, Callback*),
+                     const Request* request, Response* response,
+                     uint64_t rpc_timeout, int retry_times) {
         brpc::Controller cntl;
         cntl.set_log_id(log_id_++);
         if (rpc_timeout > 0) {
@@ -106,7 +112,8 @@ public:
             cntl.set_max_retry(retry_times);
         }
         if (stub_ == NULL) {
-            PDLOG(WARNING, "stub is null. client must be init before send request");
+            PDLOG(WARNING,
+                  "stub is null. client must be init before send request");
             return false;
         }
         (stub_->*func)(&cntl, request, response, NULL);
@@ -116,8 +123,36 @@ public:
         PDLOG(WARNING, "request error. %s", cntl.ErrorText().c_str());
         return false;
     }
-  
-private:
+
+    template <class Request, class Response, class Callback>
+    bool SendRequestGetAttachment(
+        void (T::*func)(google::protobuf::RpcController*, const Request*,
+                        Response*, Callback*),
+        const Request* request, Response* response, uint64_t rpc_timeout,
+        int retry_times, butil::IOBuf* buff) {
+        brpc::Controller cntl;
+        cntl.set_log_id(log_id_++);
+        if (rpc_timeout > 0) {
+            cntl.set_timeout_ms(rpc_timeout);
+        }
+        if (retry_times > 0) {
+            cntl.set_max_retry(retry_times);
+        }
+        if (stub_ == NULL) {
+            PDLOG(WARNING,
+                  "stub is null. client must be init before send request");
+            return false;
+        }
+        (stub_->*func)(&cntl, request, response, NULL);
+        if (cntl.Failed()) {
+            PDLOG(WARNING, "request error. %s", cntl.ErrorText().c_str());
+            return false;
+        }
+        buff->append(cntl.response_attachment());
+        return true;
+    }
+
+ private:
     std::string endpoint_;
     bool use_sleep_policy_;
     uint64_t log_id_;
@@ -125,6 +160,6 @@ private:
     brpc::Channel* channel_;
 };
 
-} // namespace rtidb 
+}  // namespace rtidb
 
-#endif /* !RPC_CLIENT_H */
+#endif  // SRC_RPC_RPC_CLIENT_H_

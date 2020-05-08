@@ -6,7 +6,6 @@ import com._4paradigm.rtidb.client.base.TestCaseBase;
 import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.impl.TableClientCommon;
 import com._4paradigm.rtidb.ns.NS.*;
-import com._4paradigm.rtidb.utils.MurmurHash;
 import com.google.protobuf.ByteString;
 import org.testng.Assert;
 import org.testng.annotations.*;
@@ -154,7 +153,6 @@ public class CompressTest extends TestCaseBase {
                 {true, "string", "1111", false, "float", "aaa", false},
                 {true, "string", "1111", false, "float", null, true},
                 {true, "string", "", false, "float", null, false},
-                {false, "float", null, false, "string", "1111", false},
                 {true, "string", "1111", true, "int32", 2147483647, true},
                 {true, "string", "1111", true, "int32", 2147483648L, false},
                 {true, "string", "1111", true, "int32", 1.1, false},
@@ -177,7 +175,6 @@ public class CompressTest extends TestCaseBase {
                 {true, "string", "1111", false, "double", -1e-1d, true},
                 {true, "string", "1111", false, "double", -1e-10d, true},
                 {true, "string", "1111", false, "double", "aaa", false},
-                {false, "double", null, false, "string", "1111", false},
                 {true, "string", "", false, "double", null, false},
                 {true, "string", "1111", false, "double", null, true},
                 {true, "string", "1111", false, "double", null, true},

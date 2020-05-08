@@ -11,6 +11,7 @@ import libs.conf as conf
 
 
 @ddt.ddt
+@multi_dimension(False)
 class TestRecoverEndpoint(TestCaseBase):
 
     def createtable_put(self, data_count):

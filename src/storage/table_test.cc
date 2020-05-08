@@ -1,16 +1,16 @@
 //
 // table_test.cc
 // Copyright (C) 2017 4paradigm.com
-// Author wangtaize 
+// Author wangtaize
 // Date 2017-03-31
 //
 
+#include <gflags/gflags.h>
+#include "gtest/gtest.h"
+#include "logging.h"  // NOLINT
 #include "storage/mem_table.h"
 #include "storage/ticket.h"
-#include "gtest/gtest.h"
-#include <gflags/gflags.h>
-#include "timer.h"
-#include "logging.h"
+#include "timer.h"  // NOLINT
 
 DECLARE_uint32(max_traverse_cnt);
 DECLARE_int32(gc_safe_offset);
@@ -19,8 +19,7 @@ namespace rtidb {
 namespace storage {
 
 class TableTest : public ::testing::Test {
-
-public:
+ public:
     TableTest() {}
     ~TableTest() {}
 };
@@ -28,7 +27,8 @@ public:
 TEST_F(TableTest, Put) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 10, ::rtidb::api::TTLType::kAbsoluteTime);
+    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 10,
+                                   ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
     table->Put("test", 9537, "test", 4);
     ASSERT_EQ(1, table->GetRecordCnt());
@@ -45,17 +45,45 @@ TEST_F(TableTest, Put) {
     delete table;
 }
 
+TEST_F(TableTest, MultiDimissionDelete) {
+    ::rtidb::api::TableMeta* table_meta = new ::rtidb::api::TableMeta();
+    table_meta->set_name("t0");
+    table_meta->set_tid(110);
+    table_meta->set_pid(1);
+    table_meta->set_ttl(5);
+    table_meta->set_seg_cnt(1);
+    ::rtidb::common::ColumnDesc* desc = table_meta->add_column_desc();
+    desc->set_name("card");
+    desc->set_type("string");
+    desc->set_add_ts_idx(true);
+    desc = table_meta->add_column_desc();
+    desc->set_name("mcc");
+    desc->set_type("string");
+    desc->set_add_ts_idx(true);
+    desc = table_meta->add_column_desc();
+    desc->set_name("price");
+    desc->set_type("int64");
+    desc->set_add_ts_idx(false);
+    MemTable* table = new MemTable(*table_meta);
+    table->Init();
+    table->DeleteIndex("mcc");
+    table->SchedGc();
+    table->SchedGc();
+    table->SchedGc();
+}
+
 TEST_F(TableTest, MultiDimissionPut0) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     mapping.insert(std::make_pair("idx1", 1));
     mapping.insert(std::make_pair("idx2", 2));
-    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 10, ::rtidb::api::TTLType::kAbsoluteTime);
+    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 10,
+                                   ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
     ASSERT_EQ(3, table->GetIdxCnt());
     ASSERT_EQ(0, table->GetRecordIdxCnt());
     ASSERT_EQ(0, table->GetRecordCnt());
-    Dimensions  dimensions;
+    Dimensions dimensions;
     ::rtidb::api::Dimension* d0 = dimensions.Add();
     d0->set_key("d0");
     d0->set_idx(0);
@@ -78,7 +106,8 @@ TEST_F(TableTest, MultiDimissionPut1) {
     mapping.insert(std::make_pair("idx0", 0));
     mapping.insert(std::make_pair("idx1", 1));
     mapping.insert(std::make_pair("idx2", 2));
-    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 10, ::rtidb::api::TTLType::kAbsoluteTime);
+    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 10,
+                                   ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
     ASSERT_EQ(3, table->GetIdxCnt());
     DataBlock* db = new DataBlock(3, "helloworld", 10);
@@ -94,7 +123,8 @@ TEST_F(TableTest, MultiDimissionPut1) {
 TEST_F(TableTest, Release) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 10, ::rtidb::api::TTLType::kAbsoluteTime);
+    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 10,
+                                   ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
     table->Put("test", 9537, "test", 4);
     table->Put("test2", 9537, "test", 4);
@@ -107,25 +137,27 @@ TEST_F(TableTest, IsExpired) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     // table ttl is 1
-    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 1, ::rtidb::api::TTLType::kAbsoluteTime);
+    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 1,
+                                   ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
     uint64_t now_time = ::baidu::common::timer::get_micros() / 1000;
     ::rtidb::api::LogEntry entry;
-    uint64_t ts_time = now_time; 
+    uint64_t ts_time = now_time;
     entry.set_ts(ts_time);
-    ASSERT_FALSE(entry.ts() < table->GetExpireTime(1*60*1000));
-    
+    ASSERT_FALSE(entry.ts() < table->GetExpireTime(1 * 60 * 1000));
+
     // ttl_offset_ is 60 * 1000
-    ts_time = now_time - 4 * 60 * 1000; 
+    ts_time = now_time - 4 * 60 * 1000;
     entry.set_ts(ts_time);
-    ASSERT_TRUE(entry.ts() < table->GetExpireTime(1*60*1000));
+    ASSERT_TRUE(entry.ts() < table->GetExpireTime(1 * 60 * 1000));
     delete table;
 }
 
 TEST_F(TableTest, Iterator) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 10, ::rtidb::api::TTLType::kAbsoluteTime);
+    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 10,
+                                   ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
 
     table->Put("pk", 9527, "test", 4);
@@ -150,7 +182,8 @@ TEST_F(TableTest, Iterator) {
 TEST_F(TableTest, Iterator_GetSize) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 10, ::rtidb::api::TTLType::kAbsoluteTime);
+    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 10,
+                                   ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
 
     table->Put("pk", 9527, "test", 4);
@@ -183,7 +216,8 @@ TEST_F(TableTest, SchedGcForMultiDimissionTable) {
     mapping.insert(std::make_pair("idx0", 0));
     mapping.insert(std::make_pair("idx1", 1));
     mapping.insert(std::make_pair("idx2", 2));
-    MemTable* table = new MemTable("tx_log", 1, 1, 8 , mapping, 1, ::rtidb::api::TTLType::kAbsoluteTime);
+    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 1,
+                                   ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
     ASSERT_EQ(3, table->GetIdxCnt());
     DataBlock* db = new DataBlock(3, "helloworld", 10);
@@ -204,7 +238,8 @@ TEST_F(TableTest, SchedGcForMultiDimissionTable) {
 TEST_F(TableTest, SchedGcHead) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    MemTable* table = new MemTable("tx_log", 1, 1, 8 , mapping, 1, ::rtidb::api::TTLType::kLatestTime);
+    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 1,
+                                   ::rtidb::api::TTLType::kLatestTime);
     table->Init();
     table->Put("test", 2, "test1", 5);
     uint64_t bytes = table->GetRecordByteSize();
@@ -240,9 +275,10 @@ TEST_F(TableTest, SchedGcHead1) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     uint64_t keep_cnt = 500;
-    MemTable* table = new MemTable("tx_log", 1, 1, 8 , mapping, keep_cnt, ::rtidb::api::TTLType::kLatestTime);
+    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, keep_cnt,
+                                   ::rtidb::api::TTLType::kLatestTime);
     table->Init();
-	uint64_t ts = 0;
+    uint64_t ts = 0;
     for (int i = 0; i < 10; i++) {
         int count = 5000;
         while (count) {
@@ -276,7 +312,8 @@ TEST_F(TableTest, SchedGcHead1) {
 TEST_F(TableTest, SchedGc) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    MemTable* table = new MemTable("tx_log", 1, 1, 8 , mapping, 1, ::rtidb::api::TTLType::kLatestTime);
+    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 1,
+                                   ::rtidb::api::TTLType::kLatestTime);
     table->Init();
 
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
@@ -308,7 +345,8 @@ TEST_F(TableTest, SchedGc) {
 TEST_F(TableTest, OffSet) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    MemTable* table = new MemTable("tx_log", 1, 1, 8 , mapping, 1, ::rtidb::api::TTLType::kAbsoluteTime);
+    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 1,
+                                   ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
     table->SetTimeOffset(-60 * 4);
@@ -334,7 +372,7 @@ TEST_F(TableTest, OffSet) {
         ASSERT_FALSE(it->Valid());
         delete it;
     }
-    
+
     ASSERT_EQ(table->GetRecordCnt(), 2);
     ASSERT_EQ(table->GetRecordIdxCnt(), 2);
     table->SetTimeOffset(120);
@@ -347,7 +385,8 @@ TEST_F(TableTest, OffSet) {
 TEST_F(TableTest, TableDataCnt) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    MemTable* table = new MemTable("tx_log", 1, 1, 8 , mapping, 1, ::rtidb::api::TTLType::kAbsoluteTime);
+    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 1,
+                                   ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
     ASSERT_EQ(table->GetRecordCnt(), 0);
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
@@ -380,7 +419,8 @@ TEST_F(TableTest, TableDataCnt) {
 TEST_F(TableTest, TableUnref) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    MemTable* table = new MemTable("tx_log", 1, 1 ,8 , mapping, 1, ::rtidb::api::TTLType::kAbsoluteTime);
+    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 1,
+                                   ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
     table->Put("test", 9527, "test", 4);
     delete table;
@@ -389,7 +429,8 @@ TEST_F(TableTest, TableUnref) {
 TEST_F(TableTest, TableIterator) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
+    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 0,
+                                   ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
 
     table->Put("pk", 9527, "test1", 5);
@@ -433,7 +474,8 @@ TEST_F(TableTest, TableIterator) {
     delete it;
     delete table;
 
-    MemTable* table1 = new MemTable("tx_log", 1, 1, 8, mapping, 2, ::rtidb::api::TTLType::kLatestTime);
+    MemTable* table1 = new MemTable("tx_log", 1, 1, 8, mapping, 2,
+                                    ::rtidb::api::TTLType::kLatestTime);
     table1->Init();
 
     table1->Put("pk", 9527, "test1", 5);
@@ -455,13 +497,13 @@ TEST_F(TableTest, TableIterator) {
     it1->Next();
     ASSERT_STREQ("pk1", it1->GetPK().c_str());
     ASSERT_EQ(9527, it1->GetKey());
-
 }
 
 TEST_F(TableTest, TableIteratorNoPk) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
+    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 0,
+                                   ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
 
     table->Put("pk10", 9527, "test10", 5);
@@ -506,7 +548,8 @@ TEST_F(TableTest, TableIteratorNoPk) {
 TEST_F(TableTest, TableIteratorCount) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
+    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 0,
+                                   ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
     for (int i = 0; i < 100000; i = i + 2) {
         std::string key = "pk" + std::to_string(i);
@@ -517,7 +560,7 @@ TEST_F(TableTest, TableIteratorCount) {
     TableIterator* it = table->NewTraverseIterator(0);
     it->SeekToFirst();
     int count = 0;
-    while(it->Valid()) {
+    while (it->Valid()) {
         count++;
         it->Next();
     }
@@ -529,7 +572,7 @@ TEST_F(TableTest, TableIteratorCount) {
     ASSERT_STREQ("pk500", it->GetPK().c_str());
     ASSERT_EQ(9527, it->GetKey());
     count = 0;
-    while(it->Valid()) {
+    while (it->Valid()) {
         count++;
         it->Next();
     }
@@ -607,7 +650,7 @@ TEST_F(TableTest, TableIteratorTS) {
     TableIterator* it = table.NewTraverseIterator(0, 0);
     it->SeekToFirst();
     int count = 0;
-    while(it->Valid()) {
+    while (it->Valid()) {
         count++;
         it->Next();
     }
@@ -617,18 +660,18 @@ TEST_F(TableTest, TableIteratorTS) {
     it = table.NewTraverseIterator(0, 1);
     it->SeekToFirst();
     count = 0;
-    while(it->Valid()) {
+    while (it->Valid()) {
         count++;
         it->Next();
     }
     ASSERT_EQ(1000, count);
     delete it;
-    
+
     Ticket ticket;
     TableIterator* iter = table.NewIterator(0, 0, "card5", ticket);
     iter->SeekToFirst();
     count = 0;
-    while(iter->Valid()) {
+    while (iter->Valid()) {
         count++;
         iter->Next();
     }
@@ -637,7 +680,7 @@ TEST_F(TableTest, TableIteratorTS) {
     iter = table.NewIterator(0, 1, "card5", ticket);
     iter->SeekToFirst();
     count = 0;
-    while(iter->Valid()) {
+    while (iter->Valid()) {
         count++;
         iter->Next();
     }
@@ -646,7 +689,7 @@ TEST_F(TableTest, TableIteratorTS) {
     iter = table.NewIterator(1, 0, "mcc10", ticket);
     iter->SeekToFirst();
     count = 0;
-    while(iter->Valid()) {
+    while (iter->Valid()) {
         count++;
         iter->Next();
     }
@@ -721,7 +764,7 @@ TEST_F(TableTest, TraverseIteratorCount) {
     TableIterator* it = table.NewTraverseIterator(0, 0);
     it->SeekToFirst();
     int count = 0;
-    while(it->Valid()) {
+    while (it->Valid()) {
         count++;
         it->Next();
     }
@@ -732,7 +775,7 @@ TEST_F(TableTest, TraverseIteratorCount) {
     it = table.NewTraverseIterator(0, 1);
     it->SeekToFirst();
     count = 0;
-    while(it->Valid()) {
+    while (it->Valid()) {
         count++;
         it->Next();
     }
@@ -795,7 +838,10 @@ TEST_F(TableTest, UpdateTTL) {
     ASSERT_EQ(20, table.GetTTL(0, 1).abs_ttl);
 }
 
-::rtidb::common::ColumnDesc* AddColumnDesc(::rtidb::api::TableMeta& table_meta, std::string name, std::string type, bool add_ts_idx=false, bool is_ts_col=false, uint64_t abs_ttl=0, uint64_t lat_ttl=0) {
+::rtidb::common::ColumnDesc* AddColumnDesc(
+    ::rtidb::api::TableMeta& table_meta,  // NOLINT
+    std::string name, std::string type, bool add_ts_idx = false,
+    bool is_ts_col = false, uint64_t abs_ttl = 0, uint64_t lat_ttl = 0) {
     ::rtidb::common::ColumnDesc* desc = table_meta.add_column_desc();
     desc->set_name(name);
     desc->set_type(type);
@@ -810,7 +856,8 @@ TEST_F(TableTest, UpdateTTL) {
     return desc;
 }
 
-void BuildTableMeta(::rtidb::api::TableMeta& table_meta, ::rtidb::api::TTLType ttl_type, int abs_ttl, int lat_ttl) {
+void BuildTableMeta(::rtidb::api::TableMeta& table_meta, // NOLINT
+                    ::rtidb::api::TTLType ttl_type, int abs_ttl, int lat_ttl) {
     table_meta.set_name("table1");
     table_meta.set_tid(1);
     table_meta.set_pid(0);
@@ -1024,7 +1071,7 @@ TEST_F(TableTest, GcAbsOrLat) {
     ::rtidb::api::TableMeta table_meta;
     BuildTableMeta(table_meta, ::rtidb::api::TTLType::kAbsOrLat, 4, 3);
     AddColumnDesc(table_meta, "idx0", "string", true, false, 0, 0);
-    
+
     int32_t offset = FLAGS_gc_safe_offset;
     FLAGS_gc_safe_offset = 0;
     MemTable table(table_meta);
@@ -1106,7 +1153,7 @@ TEST_F(TableTest, GcAbsAndLat) {
     ::rtidb::api::TableMeta table_meta;
     BuildTableMeta(table_meta, ::rtidb::api::TTLType::kAbsAndLat, 3, 3);
     AddColumnDesc(table_meta, "idx0", "string", true, false, 0, 0);
-    
+
     int32_t offset = FLAGS_gc_safe_offset;
     FLAGS_gc_safe_offset = 0;
     MemTable table(table_meta);
@@ -1192,8 +1239,8 @@ TEST_F(TableTest, GcAbsAndLat) {
     FLAGS_gc_safe_offset = offset;
 }
 
-}
-}
+}  // namespace storage
+}  // namespace rtidb
 
 int main(int argc, char** argv) {
     FLAGS_max_traverse_cnt = 200000;

@@ -13,6 +13,7 @@ import libs.conf as conf
 
 
 @ddt.ddt
+@multi_dimension(False)
 class TestNameserverHa(TestCaseBase):
 
     def createtable_put(self):
@@ -187,7 +188,7 @@ class TestNameserverHa(TestCaseBase):
         rs1 = self.confget(self.ns_leader, "auto_failover")
         nsc = NsCluster(conf.zk_endpoint, *(i for i in conf.ns_endpoints))
         nsc.kill(*nsc.endpoints)
-        nsc.start(*nsc.endpoints)
+        nsc.start(False, *nsc.endpoints)
         # time.sleep(5)
         self.get_new_ns_leader()
         self.confset(self.ns_leader, 'auto_failover', 'false')
@@ -214,7 +215,7 @@ class TestNameserverHa(TestCaseBase):
         rs = self.showtable(self.ns_slaver)
         nsc = NsCluster(conf.zk_endpoint, *(i for i in conf.ns_endpoints))
         nsc.kill(*nsc.endpoints)
-        nsc.start(*nsc.endpoints)
+        nsc.start(False, *nsc.endpoints)
         time.sleep(3)
         nsc.get_ns_leader()
         self.assertIn('nameserver is not leader', rs)
@@ -231,7 +232,7 @@ class TestNameserverHa(TestCaseBase):
         tbc = TbCluster(conf.zk_endpoint, conf.tb_endpoints)
         nsc.kill(*nsc.endpoints)
         tbc.kill(*tbc.endpoints)
-        nsc.start(*nsc.endpoints)
+        nsc.start(False, *nsc.endpoints)
         tbc.start(tbc.endpoints)
         time.sleep(3)
         self.get_new_ns_leader()

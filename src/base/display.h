@@ -1,18 +1,29 @@
 //
-//// display.h
-//// Copyright (C) 2019 4paradigm.com
-//// Author denglong
-//// Date 2019-05-10
-////
+// display.h
+// Copyright (C) 2019 4paradigm.com
+// Author denglong
+// Date 2019-05-10
+//
 #pragma once
 
+#include <gflags/gflags.h>
+#include <snappy.h>
+#include <tprinter.h>
+
+#include <map>
 #include <string>
+#include <unordered_map>
+#include <utility>
 #include <vector>
-#include "proto/tablet.pb.h"
+
+#include "base/kv_iterator.h"
+#include "codec/flat_array.h"
+#include "codec/row_codec.h"
+#include "codec/schema_codec.h"
 #include "proto/client.pb.h"
 #include "proto/name_server.pb.h"
-#include "tprinter.h"
-#include "base/schema_codec.h"
+#include "proto/tablet.pb.h"
+#include "proto/type.pb.h"
 #include "storage/segment.h"
 
 DECLARE_uint32(max_col_display_length);
@@ -20,7 +31,19 @@ DECLARE_uint32(max_col_display_length);
 namespace rtidb {
 namespace base {
 
-static void PrintSchema(const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>& column_desc_field) {
+static std::string DataTypeToStr(::rtidb::type::DataType data_type) {
+    auto iter = ::rtidb::codec::DATA_TYPE_STR_MAP.find(data_type);
+    if (iter == ::rtidb::codec::DATA_TYPE_STR_MAP.end()) {
+        return "-";
+    } else {
+        return iter->second;
+    }
+}
+
+__attribute__((unused)) static void PrintSchema(
+    const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>&
+        column_desc_field,
+    ::rtidb::type::TableType table_type) {
     std::vector<std::string> row;
     row.push_back("#");
     row.push_back("name");
@@ -32,14 +55,25 @@ static void PrintSchema(const google::protobuf::RepeatedPtrField<::rtidb::common
         row.clear();
         row.push_back(std::to_string(idx));
         row.push_back(column_desc.name());
-        row.push_back(column_desc.type());
+        if (table_type == ::rtidb::type::kTimeSeries) {
+            row.push_back(column_desc.type());
+        } else {
+            row.push_back(DataTypeToStr(column_desc.data_type()));
+        }
         tp.AddRow(row);
         idx++;
     }
     tp.Print(true);
 }
 
-static void PrintSchema(const ::rtidb::nameserver::TableInfo& table_info) {
+__attribute__((unused)) static void PrintSchema(
+    const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>&
+        column_desc_field) {
+    return PrintSchema(column_desc_field, ::rtidb::type::kTimeSeries);
+}
+
+__attribute__((unused)) static void PrintSchema(
+    const ::rtidb::nameserver::TableInfo& table_info) {
     std::vector<std::string> row;
     row.push_back("#");
     row.push_back("name");
@@ -55,7 +89,12 @@ static void PrintSchema(const ::rtidb::nameserver::TableInfo& table_info) {
             row.clear();
             row.push_back(std::to_string(idx));
             row.push_back(column_desc.name());
-            row.push_back(column_desc.type());
+            if (!table_info.has_table_type() ||
+                table_info.table_type() == ::rtidb::type::kTimeSeries) {
+                row.push_back(column_desc.type());
+            } else {
+                row.push_back(DataTypeToStr(column_desc.data_type()));
+            }
             tp.AddRow(row);
             idx++;
         }
@@ -65,7 +104,8 @@ static void PrintSchema(const ::rtidb::nameserver::TableInfo& table_info) {
             row.push_back(std::to_string(idx));
             row.push_back(column_desc.name());
             row.push_back(column_desc.type());
-            column_desc.add_ts_idx() ? row.push_back("yes") : row.push_back("no");
+            column_desc.add_ts_idx() ? row.push_back("yes")
+                                     : row.push_back("no");
             tp.AddRow(row);
             idx++;
         }
@@ -84,7 +124,9 @@ static void PrintSchema(const ::rtidb::nameserver::TableInfo& table_info) {
     tp.Print(true);
 }
 
-static void PrintSchema(const google::protobuf::RepeatedPtrField<::rtidb::nameserver::ColumnDesc>& column_desc_field) {
+__attribute__((unused)) static void PrintSchema(
+    const google::protobuf::RepeatedPtrField<::rtidb::nameserver::ColumnDesc>&
+        column_desc_field) {
     std::vector<std::string> row;
     row.push_back("#");
     row.push_back("name");
@@ -105,9 +147,10 @@ static void PrintSchema(const google::protobuf::RepeatedPtrField<::rtidb::namese
     tp.Print(true);
 }
 
-static void PrintSchema(const std::string& schema, bool has_column_key) {
-    std::vector<::rtidb::base::ColumnDesc> raw;
-    ::rtidb::base::SchemaCodec codec;
+__attribute__((unused)) static void PrintSchema(const std::string& schema,
+                                                bool has_column_key) {
+    std::vector<::rtidb::codec::ColumnDesc> raw;
+    ::rtidb::codec::SchemaCodec codec;
     codec.Decode(schema, raw);
     std::vector<std::string> header;
     header.push_back("#");
@@ -123,40 +166,40 @@ static void PrintSchema(const std::string& schema, bool has_column_key) {
         row.push_back(boost::lexical_cast<std::string>(i));
         row.push_back(raw[i].name);
         switch (raw[i].type) {
-            case ::rtidb::base::ColType::kInt32:
+            case ::rtidb::codec::ColType::kInt32:
                 row.push_back("int32");
                 break;
-            case ::rtidb::base::ColType::kInt64:
+            case ::rtidb::codec::ColType::kInt64:
                 row.push_back("int64");
                 break;
-            case ::rtidb::base::ColType::kUInt32:
+            case ::rtidb::codec::ColType::kUInt32:
                 row.push_back("uint32");
                 break;
-            case ::rtidb::base::ColType::kUInt64:
+            case ::rtidb::codec::ColType::kUInt64:
                 row.push_back("uint64");
                 break;
-            case ::rtidb::base::ColType::kDouble:
+            case ::rtidb::codec::ColType::kDouble:
                 row.push_back("double");
                 break;
-            case ::rtidb::base::ColType::kFloat:
+            case ::rtidb::codec::ColType::kFloat:
                 row.push_back("float");
                 break;
-            case ::rtidb::base::ColType::kString:
+            case ::rtidb::codec::ColType::kString:
                 row.push_back("string");
                 break;
-            case ::rtidb::base::ColType::kTimestamp:
+            case ::rtidb::codec::ColType::kTimestamp:
                 row.push_back("timestamp");
                 break;
-            case ::rtidb::base::ColType::kDate:
+            case ::rtidb::codec::ColType::kDate:
                 row.push_back("date");
                 break;
-            case ::rtidb::base::ColType::kInt16:
+            case ::rtidb::codec::ColType::kInt16:
                 row.push_back("int16");
                 break;
-            case ::rtidb::base::ColType::kUInt16:
+            case ::rtidb::codec::ColType::kUInt16:
                 row.push_back("uint16");
                 break;
-            case ::rtidb::base::ColType::kBool:
+            case ::rtidb::codec::ColType::kBool:
                 row.push_back("bool");
                 break;
             default:
@@ -165,7 +208,7 @@ static void PrintSchema(const std::string& schema, bool has_column_key) {
         if (!has_column_key) {
             if (raw[i].add_ts_idx) {
                 row.push_back("yes");
-            }else {
+            } else {
                 row.push_back("no");
             }
         }
@@ -174,12 +217,17 @@ static void PrintSchema(const std::string& schema, bool has_column_key) {
     tp.Print(true);
 }
 
-static void PrintSchema(const std::string& schema) {
+__attribute__((unused)) static void PrintSchema(const std::string& schema) {
     return PrintSchema(schema, false);
 }
-static void PrintColumnKey(const ::rtidb::api::TTLType& ttl_type, const ::rtidb::storage::TTLDesc& ttl_desc,
-        const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>& column_desc_field,
-        const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey>& column_key_field) {
+
+__attribute__((unused)) static void PrintColumnKey(
+    const ::rtidb::api::TTLType& ttl_type,
+    const ::rtidb::storage::TTLDesc& ttl_desc,
+    const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>&
+        column_desc_field,
+    const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey>&
+        column_key_field) {
     std::vector<std::string> row;
     row.push_back("#");
     row.push_back("index_name");
@@ -192,12 +240,19 @@ static void PrintColumnKey(const ::rtidb::api::TTLType& ttl_type, const ::rtidb:
     for (const auto& column_desc : column_desc_field) {
         if (column_desc.is_ts_col()) {
             if (column_desc.has_abs_ttl() || column_desc.has_lat_ttl()) {
-                ttl_map.insert(std::make_pair(column_desc.name(), ::rtidb::storage::TTLDesc(column_desc.abs_ttl(), column_desc.lat_ttl())));
+                ttl_map.insert(std::make_pair(
+                    column_desc.name(),
+                    ::rtidb::storage::TTLDesc(column_desc.abs_ttl(),
+                                              column_desc.lat_ttl())));
             } else if (column_desc.has_ttl()) {
                 if (ttl_type == ::rtidb::api::kAbsoluteTime) {
-                    ttl_map.insert(std::make_pair(column_desc.name(), ::rtidb::storage::TTLDesc(column_desc.ttl(), 0)));
+                    ttl_map.insert(std::make_pair(
+                        column_desc.name(),
+                        ::rtidb::storage::TTLDesc(column_desc.ttl(), 0)));
                 } else {
-                    ttl_map.insert(std::make_pair(column_desc.name(), ::rtidb::storage::TTLDesc(0, column_desc.ttl())));
+                    ttl_map.insert(std::make_pair(
+                        column_desc.name(),
+                        ::rtidb::storage::TTLDesc(0, column_desc.ttl())));
                 }
             } else {
                 ttl_map.insert(std::make_pair(column_desc.name(), ttl_desc));
@@ -207,6 +262,9 @@ static void PrintColumnKey(const ::rtidb::api::TTLType& ttl_type, const ::rtidb:
     uint32_t idx = 0;
     if (column_key_field.size() > 0) {
         for (const auto& column_key : column_key_field) {
+            if (column_key.flag() == 1) {
+                continue;
+            }
             row.clear();
             row.push_back(std::to_string(idx));
             row.push_back(column_key.index_name());
@@ -265,151 +323,42 @@ static void PrintColumnKey(const ::rtidb::api::TTLType& ttl_type, const ::rtidb:
     tp.Print(true);
 }
 
-static void FillTableRow(const std::vector<::rtidb::base::ColumnDesc>& schema,
-                  const char* row,
-                  const uint32_t row_size,
-                  std::vector<std::string>& vrow) {
-    rtidb::base::FlatArrayIterator fit(row, row_size, schema.size());
-    while (fit.Valid()) {
-        std::string col;
-        if (fit.GetType() == ::rtidb::base::ColType::kString) {
-            fit.GetString(&col);
-        } else if (fit.GetType() == ::rtidb::base::ColType::kUInt16) {
-            uint16_t uint16_col = 0;
-            fit.GetUInt16(&uint16_col);
-            col = boost::lexical_cast<std::string>(uint16_col);
-        } else if (fit.GetType() == ::rtidb::base::ColType::kInt16) {
-            int16_t int16_col = 0;
-            fit.GetInt16(&int16_col);
-            col = boost::lexical_cast<std::string>(int16_col);
-        } else if (fit.GetType() == ::rtidb::base::ColType::kInt32) {
-            int32_t int32_col = 0;
-            fit.GetInt32(&int32_col);
-            col = boost::lexical_cast<std::string>(int32_col);
-        } else if (fit.GetType() == ::rtidb::base::ColType::kInt64) {
-            int64_t int64_col = 0;
-            fit.GetInt64(&int64_col);
-            col = boost::lexical_cast<std::string>(int64_col);
-        } else if (fit.GetType() == ::rtidb::base::ColType::kUInt32) {
-            uint32_t uint32_col = 0;
-            fit.GetUInt32(&uint32_col);
-            col = boost::lexical_cast<std::string>(uint32_col);
-        } else if (fit.GetType() == ::rtidb::base::ColType::kUInt64) {
-            uint64_t uint64_col = 0;
-            fit.GetUInt64(&uint64_col);
-            col = boost::lexical_cast<std::string>(uint64_col);
-        } else if (fit.GetType() == ::rtidb::base::ColType::kDouble) {
-            double double_col = 0.0d;
-            fit.GetDouble(&double_col);
-            col = boost::lexical_cast<std::string>(double_col);
-        } else if (fit.GetType() == ::rtidb::base::ColType::kFloat) {
-            float float_col = 0.0f;
-            fit.GetFloat(&float_col);
-            col = boost::lexical_cast<std::string>(float_col);
-        } else if(fit.GetType() == ::rtidb::base::ColType::kTimestamp) {
-            uint64_t ts = 0;
-            fit.GetTimestamp(&ts);
-            col = boost::lexical_cast<std::string>(ts);
-        } else if(fit.GetType() == ::rtidb::base::ColType::kDate) {
-            uint64_t dt = 0;
-            fit.GetDate(&dt);
-            time_t rawtime = (time_t)dt / 1000;
-            tm* timeinfo = localtime(&rawtime);
-            char buf[20];
-            strftime(buf, 20, "%Y-%m-%d", timeinfo);
-            col.assign(buf);
-        } else if(fit.GetType() == ::rtidb::base::ColType::kBool) {
-            bool value = false;
-            fit.GetBool(&value);
-            if (value) {
-                col = "true";
-            } else {
-                col = "false";
-            }
-        }
-        fit.Next();
-        vrow.push_back(col);
+__attribute__((unused)) static void ShowTableRows(
+    const ::rtidb::codec::Schema& schema, ::rtidb::base::KvIterator* it,
+    const ::rtidb::nameserver::CompressType ctype) {
+    std::vector<std::string> row;
+    row.push_back("#");
+    for (int32_t i = 0; i < schema.size(); i++) {
+        row.push_back(schema.Get(i).name());
     }
+    ::baidu::common::TPrinter tp(row.size(), FLAGS_max_col_display_length);
+    tp.AddRow(row);
+    uint32_t index = 1;
+    while (it->Valid()) {
+        std::vector<std::string> vrow;
+        vrow.push_back(boost::lexical_cast<std::string>(index));
+        std::string value;
+        if (ctype == ::rtidb::nameserver::kSnappy) {
+            ::snappy::Uncompress(it->GetValue().data(), it->GetValue().size(),
+                                 &value);
+        } else {
+            value.assign(it->GetValue().data(), it->GetValue().size());
+        }
+        ::rtidb::codec::RowCodec::DecodeRow(schema, ::rtidb::base::Slice(value),
+                                            vrow);
+        tp.AddRow(vrow);
+        index++;
+        it->Next();
+    }
+    tp.Print(true);
 }
 
-static void FillTableRow(uint32_t full_schema_size,
-        const std::vector<::rtidb::base::ColumnDesc>& base_schema,
-        const char* row,
-        const uint32_t row_size,
-        std::vector<std::string>& vrow) {
-    rtidb::base::FlatArrayIterator fit(row, row_size, base_schema.size());
-    while (full_schema_size > 0) {
-        std::string col;
-        if (!fit.Valid()) {
-            full_schema_size--;
-            vrow.push_back("");
-            continue;
-        } else if (fit.GetType() == ::rtidb::base::ColType::kString) {
-            fit.GetString(&col);
-        } else if (fit.GetType() == ::rtidb::base::ColType::kUInt16) {
-            uint16_t uint16_col = 0;
-            fit.GetUInt16(&uint16_col);
-            col = boost::lexical_cast<std::string>(uint16_col);
-        } else if (fit.GetType() == ::rtidb::base::ColType::kInt16) {
-            int16_t int16_col = 0;
-            fit.GetInt16(&int16_col);
-            col = boost::lexical_cast<std::string>(int16_col);
-        } else if (fit.GetType() == ::rtidb::base::ColType::kInt32) {
-            int32_t int32_col = 0;
-            fit.GetInt32(&int32_col);
-            col = boost::lexical_cast<std::string>(int32_col);
-        } else if (fit.GetType() == ::rtidb::base::ColType::kInt64) {
-            int64_t int64_col = 0;
-            fit.GetInt64(&int64_col);
-            col = boost::lexical_cast<std::string>(int64_col);
-        } else if (fit.GetType() == ::rtidb::base::ColType::kUInt32) {
-            uint32_t uint32_col = 0;
-            fit.GetUInt32(&uint32_col);
-            col = boost::lexical_cast<std::string>(uint32_col);
-        } else if (fit.GetType() == ::rtidb::base::ColType::kUInt64) {
-            uint64_t uint64_col = 0;
-            fit.GetUInt64(&uint64_col);
-            col = boost::lexical_cast<std::string>(uint64_col);
-        } else if (fit.GetType() == ::rtidb::base::ColType::kDouble) {
-            double double_col = 0.0d;
-            fit.GetDouble(&double_col);
-            col = boost::lexical_cast<std::string>(double_col);
-        } else if (fit.GetType() == ::rtidb::base::ColType::kFloat) {
-            float float_col = 0.0f;
-            fit.GetFloat(&float_col);
-            col = boost::lexical_cast<std::string>(float_col);
-        } else if(fit.GetType() == ::rtidb::base::ColType::kTimestamp) {
-            uint64_t ts = 0;
-            fit.GetTimestamp(&ts);
-            col = boost::lexical_cast<std::string>(ts);
-        } else if(fit.GetType() == ::rtidb::base::ColType::kDate) {
-            uint64_t dt = 0;
-            fit.GetDate(&dt);
-            time_t rawtime = (time_t)dt / 1000;
-            tm* timeinfo = localtime(&rawtime);
-            char buf[20];
-            strftime(buf, 20, "%Y-%m-%d", timeinfo);
-            col.assign(buf);
-        } else if(fit.GetType() == ::rtidb::base::ColType::kBool) {
-            bool value = false;
-            fit.GetBool(&value);
-            if (value) {
-                col = "true";
-            } else {
-                col = "false";
-            }
-        }
-        full_schema_size--;
-        fit.Next();
-        vrow.push_back(col);
-    }
-}
-
-static void ShowTableRows(const std::vector<ColumnDesc>& base_columns,
-        const std::vector<ColumnDesc>& raw,
-        ::rtidb::base::KvIterator* it,
-        const ::rtidb::nameserver::CompressType compress_type) {
-    bool has_ts_col = SchemaCodec::HasTSCol(raw);
+__attribute__((unused)) static void ShowTableRows(
+    const std::vector<::rtidb::codec::ColumnDesc>& base_columns,
+    const std::vector<::rtidb::codec::ColumnDesc>& raw,
+    ::rtidb::base::KvIterator* it,
+    const ::rtidb::nameserver::CompressType compress_type) {
+    bool has_ts_col = ::rtidb::codec::SchemaCodec::HasTSCol(raw);
     std::vector<std::string> row;
     row.push_back("#");
     if (!has_ts_col) {
@@ -431,7 +380,8 @@ static void ShowTableRows(const std::vector<ColumnDesc>& base_columns,
         uint32_t str_size = 0;
         if (compress_type == ::rtidb::nameserver::kSnappy) {
             std::string uncompressed;
-            ::snappy::Uncompress(it->GetValue().data(), it->GetValue().size(), &uncompressed);
+            ::snappy::Uncompress(it->GetValue().data(), it->GetValue().size(),
+                                 &uncompressed);
             str = uncompressed.c_str();
             str_size = uncompressed.size();
         } else {
@@ -439,26 +389,29 @@ static void ShowTableRows(const std::vector<ColumnDesc>& base_columns,
             str_size = it->GetValue().size();
         }
         if (base_columns.size() == 0) {
-            ::rtidb::base::FillTableRow(raw, str, str_size, vrow);
+            ::rtidb::codec::FillTableRow(raw, str, str_size, vrow);
         } else {
-            ::rtidb::base::FillTableRow(raw.size(), base_columns, str, str_size, vrow);
+            ::rtidb::codec::FillTableRow(raw.size(), base_columns, str,
+                                         str_size, vrow);
         }
         tp.AddRow(vrow);
-        index ++;
+        index++;
         it->Next();
     }
     tp.Print(true);
 }
 
-static void ShowTableRows(const std::vector<ColumnDesc>& raw,
-                   ::rtidb::base::KvIterator* it,
-                   const ::rtidb::nameserver::CompressType compress_type) {
-    std::vector<ColumnDesc> base_columns;
-    return ShowTableRows(base_columns, raw, it, compress_type);
+__attribute__((unused)) static void ShowTableRows(
+    const std::vector<::rtidb::codec::ColumnDesc>& raw,
+    ::rtidb::base::KvIterator* it,
+    const ::rtidb::nameserver::CompressType compress_type) {
+    std::vector<::rtidb::codec::ColumnDesc> base_columns;
+    ShowTableRows(base_columns, raw, it, compress_type);
 }
 
-static void ShowTableRows(const std::string& key, ::rtidb::base::KvIterator* it,
-                const ::rtidb::nameserver::CompressType compress_type) {
+__attribute__((unused)) static void ShowTableRows(
+    const std::string& key, ::rtidb::base::KvIterator* it,
+    const ::rtidb::nameserver::CompressType compress_type) {
     ::baidu::common::TPrinter tp(4, FLAGS_max_col_display_length);
     std::vector<std::string> row;
     row.push_back("#");
@@ -486,7 +439,8 @@ static void ShowTableRows(const std::string& key, ::rtidb::base::KvIterator* it,
     tp.Print(true);
 }
 
-static void PrintTableInfo(const std::vector<::rtidb::nameserver::TableInfo>& tables) {
+__attribute__((unused)) static void PrintTableInfo(
+    const std::vector<::rtidb::nameserver::TableInfo>& tables) {
     std::vector<std::string> row;
     row.push_back("name");
     row.push_back("tid");
@@ -502,28 +456,67 @@ static void PrintTableInfo(const std::vector<::rtidb::nameserver::TableInfo>& ta
     row.push_back("diskused");
     ::baidu::common::TPrinter tp(row.size());
     tp.AddRow(row);
+    int32_t row_width = row.size();
     for (const auto& value : tables) {
+        if (value.table_partition_size() == 0) {
+            row.clear();
+            row.push_back(value.name());
+            row.push_back(std::to_string(value.tid()));
+            for (int i = row.size(); i < row_width; i++) {
+                row.push_back("-");
+            }
+            tp.AddRow(row);
+            continue;
+        }
         for (int idx = 0; idx < value.table_partition_size(); idx++) {
-            for (int meta_idx = 0; meta_idx < value.table_partition(idx).partition_meta_size(); meta_idx++) {
+            if (value.table_partition(idx).partition_meta_size() == 0) {
                 row.clear();
                 row.push_back(value.name());
                 row.push_back(std::to_string(value.tid()));
                 row.push_back(std::to_string(value.table_partition(idx).pid()));
-                row.push_back(value.table_partition(idx).partition_meta(meta_idx).endpoint());
-                if (value.table_partition(idx).partition_meta(meta_idx).is_leader()) {
+                for (int i = row.size(); i < row_width; i++) {
+                    row.push_back("-");
+                }
+                tp.AddRow(row);
+                continue;
+            }
+            for (int meta_idx = 0;
+                 meta_idx < value.table_partition(idx).partition_meta_size();
+                 meta_idx++) {
+                row.clear();
+                row.push_back(value.name());
+                row.push_back(std::to_string(value.tid()));
+                row.push_back(std::to_string(value.table_partition(idx).pid()));
+                row.push_back(value.table_partition(idx)
+                                  .partition_meta(meta_idx)
+                                  .endpoint());
+                if (value.table_partition(idx)
+                        .partition_meta(meta_idx)
+                        .is_leader()) {
                     row.push_back("leader");
                 } else {
                     row.push_back("follower");
                 }
                 if (value.has_ttl_desc()) {
-                    if (value.ttl_desc().ttl_type() == ::rtidb::api::TTLType::kLatestTime) {
-                        row.push_back(std::to_string(value.ttl_desc().lat_ttl()));
-                    } else if (value.ttl_desc().ttl_type() == ::rtidb::api::TTLType::kAbsAndLat) {
-                        row.push_back(std::to_string(value.ttl_desc().abs_ttl()) + "min&&" + std::to_string(value.ttl_desc().lat_ttl()));
-                    } else if (value.ttl_desc().ttl_type() == ::rtidb::api::TTLType::kAbsOrLat) {
-                        row.push_back(std::to_string(value.ttl_desc().abs_ttl()) + "min||" + std::to_string(value.ttl_desc().lat_ttl()));
+                    if (value.ttl_desc().ttl_type() ==
+                        ::rtidb::api::TTLType::kLatestTime) {
+                        row.push_back(
+                            std::to_string(value.ttl_desc().lat_ttl()));
+                    } else if (value.ttl_desc().ttl_type() ==
+                               ::rtidb::api::TTLType::kAbsAndLat) {
+                        row.push_back(
+                            std::to_string(value.ttl_desc().abs_ttl()) +
+                            "min&&" +
+                            std::to_string(value.ttl_desc().lat_ttl()));
+                    } else if (value.ttl_desc().ttl_type() ==
+                               ::rtidb::api::TTLType::kAbsOrLat) {
+                        row.push_back(
+                            std::to_string(value.ttl_desc().abs_ttl()) +
+                            "min||" +
+                            std::to_string(value.ttl_desc().lat_ttl()));
                     } else {
-                        row.push_back(std::to_string(value.ttl_desc().abs_ttl()) + "min");
+                        row.push_back(
+                            std::to_string(value.ttl_desc().abs_ttl()) + "min");
                     }
                 } else {
                     if (value.ttl_type() == "kLatestTime") {
@@ -532,33 +525,54 @@ static void PrintTableInfo(const std::vector<::rtidb::nameserver::TableInfo>& ta
                         row.push_back(std::to_string(value.ttl()) + "min");
                     }
                 }
-                if (value.table_partition(idx).partition_meta(meta_idx).is_alive()) {
+                if (value.table_partition(idx)
+                        .partition_meta(meta_idx)
+                        .is_alive()) {
                     row.push_back("yes");
                 } else {
                     row.push_back("no");
                 }
                 if (value.has_compress_type()) {
-                    row.push_back(::rtidb::nameserver::CompressType_Name(value.compress_type()));
+                    row.push_back(::rtidb::nameserver::CompressType_Name(
+                        value.compress_type()));
                 } else {
                     row.push_back("kNoCompress");
                 }
-                if (value.table_partition(idx).partition_meta(meta_idx).has_offset()) {
-                    row.push_back(std::to_string(value.table_partition(idx).partition_meta(meta_idx).offset()));
+                if (value.table_partition(idx)
+                        .partition_meta(meta_idx)
+                        .has_offset()) {
+                    row.push_back(std::to_string(value.table_partition(idx)
+                                                     .partition_meta(meta_idx)
+                                                     .offset()));
                 } else {
                     row.push_back("-");
                 }
-                if (value.table_partition(idx).partition_meta(meta_idx).has_record_cnt()) {
-                    row.push_back(std::to_string(value.table_partition(idx).partition_meta(meta_idx).record_cnt()));
+                if (value.table_partition(idx)
+                        .partition_meta(meta_idx)
+                        .has_record_cnt()) {
+                    row.push_back(std::to_string(value.table_partition(idx)
+                                                     .partition_meta(meta_idx)
+                                                     .record_cnt()));
                 } else {
                     row.push_back("-");
                 }
-                if (value.table_partition(idx).partition_meta(meta_idx).has_record_byte_size() &&
-                        (!value.has_storage_mode() || value.storage_mode() == ::rtidb::common::StorageMode::kMemory)) {
-                    row.push_back(::rtidb::base::HumanReadableString(value.table_partition(idx).partition_meta(meta_idx).record_byte_size()));
+                if (value.table_partition(idx)
+                        .partition_meta(meta_idx)
+                        .has_record_byte_size() &&
+                    (!value.has_storage_mode() ||
+                     value.storage_mode() ==
+                         ::rtidb::common::StorageMode::kMemory)) {
+                    row.push_back(::rtidb::base::HumanReadableString(
+                        value.table_partition(idx)
+                            .partition_meta(meta_idx)
+                            .record_byte_size()));
                 } else {
                     row.push_back("-");
                 }
-                row.push_back(::rtidb::base::HumanReadableString(value.table_partition(idx).partition_meta(meta_idx).diskused()));
+                row.push_back(::rtidb::base::HumanReadableString(
+                    value.table_partition(idx)
+                        .partition_meta(meta_idx)
+                        .diskused()));
                 tp.AddRow(row);
             }
         }
@@ -566,7 +580,8 @@ static void PrintTableInfo(const std::vector<::rtidb::nameserver::TableInfo>& ta
     tp.Print(true);
 }
 
-static void PrintTableStatus(const std::vector<::rtidb::api::TableStatus>& status_vec) {
+__attribute__((unused)) static void PrintTableStatus(
+    const std::vector<::rtidb::api::TableStatus>& status_vec) {
     std::vector<std::string> row;
     row.push_back("tid");
     row.push_back("pid");
@@ -596,14 +611,25 @@ static void PrintTableStatus(const std::vector<::rtidb::api::TableStatus>& statu
             row.push_back("false");
         }
         if (table_status.has_ttl_desc()) {
-            if (table_status.ttl_desc().ttl_type() == ::rtidb::api::TTLType::kLatestTime) {
-                row.push_back(std::to_string(table_status.ttl_desc().lat_ttl()));
-            } else if (table_status.ttl_desc().ttl_type() == ::rtidb::api::TTLType::kAbsAndLat) {
-                row.push_back(std::to_string(table_status.ttl_desc().abs_ttl()) + "min&&" + std::to_string(table_status.ttl_desc().lat_ttl()));
-            } else if (table_status.ttl_desc().ttl_type() == ::rtidb::api::TTLType::kAbsOrLat) {
-                row.push_back(std::to_string(table_status.ttl_desc().abs_ttl()) + "min||" + std::to_string(table_status.ttl_desc().lat_ttl()));
+            if (table_status.ttl_desc().ttl_type() ==
+                ::rtidb::api::TTLType::kLatestTime) {
+                row.push_back(
+                    std::to_string(table_status.ttl_desc().lat_ttl()));
+            } else if (table_status.ttl_desc().ttl_type() ==
+                       ::rtidb::api::TTLType::kAbsAndLat) {
+                row.push_back(
+                    std::to_string(table_status.ttl_desc().abs_ttl()) +
+                    "min&&" +
+                    std::to_string(table_status.ttl_desc().lat_ttl()));
+            } else if (table_status.ttl_desc().ttl_type() ==
+                       ::rtidb::api::TTLType::kAbsOrLat) {
+                row.push_back(
+                    std::to_string(table_status.ttl_desc().abs_ttl()) +
+                    "min||" +
+                    std::to_string(table_status.ttl_desc().lat_ttl()));
             } else {
-                row.push_back(std::to_string(table_status.ttl_desc().abs_ttl()) + "min");
+                row.push_back(
+                    std::to_string(table_status.ttl_desc().abs_ttl()) + "min");
             }
         } else {
             if (table_status.ttl_type() == ::rtidb::api::TTLType::kLatestTime) {
@@ -613,25 +639,34 @@ static void PrintTableStatus(const std::vector<::rtidb::api::TableStatus>& statu
             }
         }
         row.push_back(std::to_string(table_status.time_offset()) + "s");
-        if (!table_status.has_storage_mode() || table_status.storage_mode() == ::rtidb::common::StorageMode::kMemory) {
-            row.push_back(::rtidb::base::HumanReadableString(table_status.record_byte_size() + table_status.record_idx_byte_size()));
+        if (!table_status.has_storage_mode() ||
+            table_status.storage_mode() ==
+                ::rtidb::common::StorageMode::kMemory) {
+            row.push_back(::rtidb::base::HumanReadableString(
+                table_status.record_byte_size() +
+                table_status.record_idx_byte_size()));
         } else {
             row.push_back("-");
         }
-        row.push_back(::rtidb::api::CompressType_Name(table_status.compress_type()));
-        if (!table_status.has_storage_mode() || table_status.storage_mode() == ::rtidb::common::StorageMode::kMemory) {
+        row.push_back(
+            ::rtidb::api::CompressType_Name(table_status.compress_type()));
+        if (!table_status.has_storage_mode() ||
+            table_status.storage_mode() ==
+                ::rtidb::common::StorageMode::kMemory) {
             row.push_back(std::to_string(table_status.skiplist_height()));
             row.push_back("kMemory");
         } else {
             row.push_back("-");
-            row.push_back(::rtidb::common::StorageMode_Name(table_status.storage_mode()));
+            row.push_back(
+                ::rtidb::common::StorageMode_Name(table_status.storage_mode()));
         }
         tp.AddRow(row);
     }
     tp.Print(true);
 }
 
-static void PrintTableInformation(std::vector<::rtidb::nameserver::TableInfo>& tables) {
+__attribute__((unused)) static void PrintTableInformation(
+    std::vector<::rtidb::nameserver::TableInfo>& tables) {  // NOLINT
     if (tables.size() < 1) {
         return;
     }
@@ -648,7 +683,7 @@ static void PrintTableInformation(std::vector<::rtidb::nameserver::TableInfo>& t
         ttl_type = table.ttl_desc().ttl_type();
         abs_ttl = table.ttl_desc().abs_ttl();
         lat_ttl = table.ttl_desc().lat_ttl();
-    } else if (table.ttl_type() == "kLatestTime"){
+    } else if (table.ttl_type() == "kLatestTime") {
         ttl_type = ::rtidb::api::kLatestTime;
         abs_ttl = 0;
         lat_ttl = table.ttl();
@@ -657,10 +692,11 @@ static void PrintTableInformation(std::vector<::rtidb::nameserver::TableInfo>& t
     std::string name = table.name();
     std::string replica_num = std::to_string(table.replica_num());
     std::string partition_num = std::to_string(table.partition_num());
-    std::string compress_type = ::rtidb::nameserver::CompressType_Name(table.compress_type());
+    std::string compress_type =
+        ::rtidb::nameserver::CompressType_Name(table.compress_type());
     std::string storage_mode = "kMemory";
     if (table.has_storage_mode()) {
-         storage_mode = ::rtidb::common::StorageMode_Name(table.storage_mode());
+        storage_mode = ::rtidb::common::StorageMode_Name(table.storage_mode());
     }
     uint64_t record_cnt = 0;
     uint64_t memused = 0;
@@ -710,8 +746,12 @@ static void PrintTableInformation(std::vector<::rtidb::nameserver::TableInfo>& t
     row.push_back("diskused");
     row.push_back(::rtidb::base::HumanReadableString(diskused));
     tp.AddRow(row);
+    row.clear();
+    row.push_back("format_version");
+    row.push_back(std::to_string(table.format_version()));
+    tp.AddRow(row);
     tp.Print(true);
 }
 
-}
-}
+}  // namespace base
+}  // namespace rtidb

@@ -5,17 +5,17 @@
 // Date 2017-11-28
 //
 
-#ifndef RTIDB_SET_H
-#define RTIDB_SET_H
+#ifndef SRC_BASE_SET_H_
+#define SRC_BASE_SET_H_
 
+#include <mutex> // NOLINT
 #include <set>
-#include <mutex>
 namespace rtidb {
 namespace base {
 // thread_safe set
-template<class T>
+template <class T>
 class set {
-public:
+ public:
     set() : set_(), mu_() {}
     set(const set&) = delete;
     set& operator=(const set&) = delete;
@@ -35,11 +35,11 @@ public:
         return set_.find(value) != set_.end();
     }
 
-private:
+ private:
     std::set<T> set_;
     std::mutex mu_;
 };
 
-}
-}
-#endif
+}  // namespace base
+}  // namespace rtidb
+#endif  // SRC_BASE_SET_H_

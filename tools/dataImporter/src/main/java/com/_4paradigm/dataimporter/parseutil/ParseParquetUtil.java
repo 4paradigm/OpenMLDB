@@ -30,6 +30,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.sql.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -53,6 +54,7 @@ public class ParseParquetUtil {
     private final int JULIAN_EPOCH_OFFSET_DAYS = 2440588;
     private final long MILLIS_IN_DAY = TimeUnit.DAYS.toMillis(1);
     private final long NANOS_PER_MILLISECOND = TimeUnit.MILLISECONDS.toNanos(1);
+    private static final long ONE_DAY_IN_MILLIS = 86400000;
 
     static {
         if (arr != null) {
@@ -81,35 +83,52 @@ public class ParseParquetUtil {
             } else {
                 index = arr[i];
             }
+            Type type = schema.getType(i);
             columnName = schema.getFieldName(i);
-            columnType = schema.getType(i).asPrimitiveType().getPrimitiveTypeName();
-            switch (columnType) {
-                case INT32:
-                    map.put(columnName, group.getInteger(index, 0));
-                    break;
-                case INT64:
-                    map.put(columnName, group.getLong(index, 0));
-                    break;
-                case INT96:
-                    Binary binary = group.getInt96(index, 0);
-                    map.put(columnName, new DateTime(getTimestamp(binary)));
-                    break;
-                case FLOAT:
-                    map.put(columnName, group.getFloat(index, 0));
-                    break;
-                case DOUBLE:
-                    map.put(columnName, group.getDouble(index, 0));
-                    break;
-                case BOOLEAN:
-                    map.put(columnName, group.getBoolean(index, 0));
-                    break;
-                case BINARY:
-                    map.put(columnName, new String(group.getBinary(index, 0).getBytes()));
-                    break;
-                case FIXED_LEN_BYTE_ARRAY:
-                    map.put(columnName, new String(group.getBinary(index, 0).getBytes()));
-                    break;
-                default:
+            columnType = type.asPrimitiveType().getPrimitiveTypeName();
+            try {
+                switch (columnType) {
+                    case INT32:
+                        if (type.asPrimitiveType().getOriginalType() != null &&
+                                "date".equalsIgnoreCase(type.asPrimitiveType().getOriginalType().name())) {
+                            int offsetDays = group.getInteger(index, 0);
+                            Date date = new Date(offsetDays * ONE_DAY_IN_MILLIS);
+                            map.put(columnName, date);
+                        } else {
+                            map.put(columnName, group.getInteger(index, 0));
+                        }
+                        break;
+                    case INT64:
+                        map.put(columnName, group.getLong(index, 0));
+                        break;
+                    case INT96:
+                        Binary binary = group.getInt96(index, 0);
+                        map.put(columnName, new DateTime(getTimestamp(binary)));
+                        break;
+                    case FLOAT:
+                        map.put(columnName, group.getFloat(index, 0));
+                        break;
+                    case DOUBLE:
+                        map.put(columnName, group.getDouble(index, 0));
+                        break;
+                    case BOOLEAN:
+                        map.put(columnName, group.getBoolean(index, 0));
+                        break;
+                    case BINARY:
+                        map.put(columnName, new String(group.getBinary(index, 0).getBytes()));
+                        break;
+                    case FIXED_LEN_BYTE_ARRAY:
+                        map.put(columnName, new String(group.getBinary(index, 0).getBytes()));
+                        break;
+                    default:
+
+                }
+            } catch (Exception e) {
+                if (InitClient.contains(";", TIMESTAMP, columnName)) {
+                    logger.error("ts column is null");
+                    return new HashMap<>();
+                }
+                map.put(columnName, null);
             }
             if (!hasTs && InitClient.contains(";", TIMESTAMP, columnName)) {
                 hasTs = true;
@@ -125,6 +144,7 @@ public class ParseParquetUtil {
                         logger.error("incorrect format for timestamp!");
                         throw new RuntimeException("incorrect format for timestamp!");
                     }
+
                 }
             }
         }
@@ -140,6 +160,9 @@ public class ParseParquetUtil {
             ParquetReader<Group> reader = builder.build();
             while ((group = (SimpleGroup) reader.read()) != null) {
                 HashMap<String, Object> map = read(group);
+                if (map.size() == 0) {
+                    continue;
+                }
                 if (clientIndex == InitClient.MAX_THREAD_NUM) {
                     clientIndex = 0;
                 }

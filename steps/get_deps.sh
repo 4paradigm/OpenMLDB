@@ -230,7 +230,7 @@ else
     wget --no-check-certificate -O zookeeper-3.4.10.tar.gz http://www-eu.apache.org/dist/zookeeper/zookeeper-3.4.10/zookeeper-3.4.10.tar.gz
     tar -zxvf zookeeper-3.4.10.tar.gz
     cd zookeeper-3.4.10/src/c/
-    ./configure --prefix=${DEPS_PREFIX} --enable-shared=no --enable-static=yes
+    CFLAGS=" -g -O2 -D_GNU_SOURCE -fPIC " ./configure --prefix=${DEPS_PREFIX} --enable-shared=no --enable-static=yes
     make -j4 >/dev/null 
     make install
     cd -
