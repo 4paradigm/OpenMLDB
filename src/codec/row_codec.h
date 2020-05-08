@@ -27,7 +27,8 @@ class RowCodec {
         for (int i = 0; i < schema.size(); i++) {
             const ::rtidb::common::ColumnDesc& col = schema.Get(i);
             if (col.data_type() == ::rtidb::type::kVarchar ||
-                col.data_type() == ::rtidb::type::kString) {
+                col.data_type() == ::rtidb::type::kString ||
+                col.data_type() == ::rtidb::type::kBlob) {
                 auto iter = str_map.find(col.name());
                 if (iter == str_map.end()) {
                     rm.code = -1;
@@ -249,7 +250,8 @@ class RowCodec {
                     col = std::to_string(val);
                 }
             } else if (type == rtidb::type::kVarchar ||
-                       type == rtidb::type::kString) {
+                       type == rtidb::type::kString ||
+                       type == rtidb::type::kBlob) {
                 char* ch = NULL;
                 uint32_t len = 0;
                 int ret = rv.GetString(i, &ch, &len);

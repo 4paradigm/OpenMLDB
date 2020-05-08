@@ -277,25 +277,6 @@ void BaseClient::RefreshTable() {
             new_tables.insert(std::make_pair(table_name, handler));
             continue;
         }
-        std::string pk_col_name;
-        for (const auto& column_key : table_info->column_key()) {
-            if (column_key.index_type() == rtidb::type::kPrimaryKey) {
-                pk_col_name = column_key.index_name();
-                break;
-            }
-        }
-        int pk_index = 0;
-        rtidb::type::DataType pk_type = rtidb::type::kVarchar;
-        for (int i = 0; i < table_info->column_desc_size(); i++) {
-            if (table_info->column_desc_v1(i).name() == pk_col_name) {
-                pk_index = i;
-                pk_type = table_info->column_desc_v1(i).data_type();
-                break;
-            }
-        }
-        if (pk_type_set.find(pk_type) == pk_type_set.end()) {
-            continue;
-        }
         for (int i = 0; i < table_info->column_key_size(); i++) {
             if (table_info->column_key(i).has_index_type() &&
                 table_info->column_key(i).index_type() ==
