@@ -4,10 +4,12 @@
 //
 
 #include "storage/disk_table.h"
+
 #include <utility>
+
 #include "base/file_util.h"
 #include "base/hash.h"
-#include "logging.h" // NOLINT
+#include "logging.h"  // NOLINT
 
 using ::baidu::common::DEBUG;
 using ::baidu::common::INFO;
@@ -75,8 +77,10 @@ DiskTable::~DiskTable() {
 }
 
 void DiskTable::initOptionTemplate() {
-    std::shared_ptr<rocksdb::Cache> cache = rocksdb::NewLRUCache(FLAGS_block_cache_mb << 20, FLAGS_block_cache_shardbits); //Can be set by flags
-    //SSD options template
+    std::shared_ptr<rocksdb::Cache> cache = rocksdb::NewLRUCache(
+        FLAGS_block_cache_mb << 20,
+        FLAGS_block_cache_shardbits);  // Can be set by flags
+    // SSD options template
     ssd_option_template.max_open_files = -1;
     ssd_option_template.env->SetBackgroundThreads(
         1, rocksdb::Env::Priority::HIGH);  // flush threads
@@ -84,13 +88,19 @@ void DiskTable::initOptionTemplate() {
         4, rocksdb::Env::Priority::LOW);  // compaction threads
     ssd_option_template.memtable_prefix_bloom_size_ratio = 0.02;
     ssd_option_template.compaction_style = rocksdb::kCompactionStyleLevel;
-    ssd_option_template.write_buffer_size = FLAGS_write_buffer_mb << 20;    // L0 file size = write_buffer_size
-    ssd_option_template.level0_file_num_compaction_trigger = 1 << 4;        // L0 total size = write_buffer_size * 16
-    ssd_option_template.level0_slowdown_writes_trigger = 1 << 5;            
+    ssd_option_template.write_buffer_size =
+        FLAGS_write_buffer_mb << 20;  // L0 file size = write_buffer_size
+    ssd_option_template.level0_file_num_compaction_trigger =
+        1 << 4;  // L0 total size = write_buffer_size * 16
+    ssd_option_template.level0_slowdown_writes_trigger = 1 << 5;
     ssd_option_template.level0_stop_writes_trigger = 1 << 6;
-    ssd_option_template.max_bytes_for_level_base =  ssd_option_template.write_buffer_size
-                                                    * ssd_option_template.level0_file_num_compaction_trigger; // L1 size ~ L0 total size
-    ssd_option_template.target_file_size_base = ssd_option_template.max_bytes_for_level_base >> 4; // number of L1 files = 16
+    ssd_option_template.max_bytes_for_level_base =
+        ssd_option_template.write_buffer_size *
+        ssd_option_template
+            .level0_file_num_compaction_trigger;  // L1 size ~ L0 total size
+    ssd_option_template.target_file_size_base =
+        ssd_option_template.max_bytes_for_level_base >>
+        4;  // number of L1 files = 16
 
     rocksdb::BlockBasedTableOptions table_options;
     // table_options.cache_index_and_filter_blocks = true;
@@ -101,9 +111,9 @@ void DiskTable::initOptionTemplate() {
     table_options.whole_key_filtering = false;
     table_options.block_size = 256 << 10;
     table_options.use_delta_encoding = false;
-    if (FLAGS_verify_compression)
-        table_options.verify_compression = true;
-    ssd_option_template.table_factory.reset(rocksdb::NewBlockBasedTableFactory(table_options));
+    if (FLAGS_verify_compression) table_options.verify_compression = true;
+    ssd_option_template.table_factory.reset(
+        rocksdb::NewBlockBasedTableFactory(table_options));
 #ifdef PZFPGA
     if (FLAGS_file_compression.compare("pz") == 0) {
         PDLOG(INFO, "initOptionTemplate PZ compression enabled");
@@ -119,7 +129,7 @@ void DiskTable::initOptionTemplate() {
         ssd_option_template.compression = rocksdb::kNoCompression;
     }
 #endif
-    //HDD options template
+    // HDD options template
     hdd_option_template.max_open_files = -1;
     hdd_option_template.env->SetBackgroundThreads(
         1, rocksdb::Env::Priority::HIGH);  // flush threads

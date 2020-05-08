@@ -16,6 +16,8 @@ build_rtidb:
         expire_in: 2h
         paths:
             - build/bin/rtidb
+    except:
+        - /^*pz-fpga*$/
 
 style_check:
     stage: build
