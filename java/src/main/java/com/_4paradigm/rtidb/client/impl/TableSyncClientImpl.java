@@ -1386,21 +1386,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         if (th.getBS() != null) {
             if (!th.IsObjectTable()) {
-                for (Integer idx : th.getBlobSuffix()) {
-                    String[] keys = new String[1];
-                    ColumnDesc colDesc = schema.get(idx);
-                    Object col = row.get(colDesc.getName());
-                    if (colDesc.isNotNull() && col == null) {
-                        throw new TabletException("col " + colDesc.getName() + " should not be null");
-                    } else if (col == null) {
-                        continue;
-                    }
-                    boolean ok = putObjectStore(th.getTableInfo().getTid(), (ByteBuffer) col, keys, th);
-                    if (!ok) {
-                        throw new TabletException("put blob failed");
-                    }
-                    row.put(colDesc.getName(), keys[0]);
-                }
+                putObjectStore(row, th);
             }
         }
         buffer = RowBuilder.encode(row, schema);
@@ -1488,6 +1474,26 @@ public class TableSyncClientImpl implements TableSyncClient {
         return newSchema;
     }
 
+    public void putObjectStore(Map<String, Object> row, TableHandler th) throws TimeoutException, TabletException {
+        List<ColumnDesc> schema = th.getSchema();
+        for (Integer idx : th.getBlobSuffix()) {
+
+            String[] keys = new String[1];
+            ColumnDesc colDesc = schema.get(idx);
+            Object col = row.get(colDesc.getName());
+            if (colDesc.isNotNull() && col == null) {
+                throw new TabletException("col " + colDesc.getName() + " should not be null");
+            } else if (col == null) {
+                continue;
+            }
+            boolean ok = putObjectStore(th.getTableInfo().getTid(), (ByteBuffer) col, keys, th);
+            if (!ok) {
+                throw new TabletException("put blob failed");
+            }
+            row.put(colDesc.getName(), keys[0]);
+        }
+    }
+
     @Override
     public boolean update(String tableName, Map<String, Object> conditionColumns, Map<String, Object> valueColumns, WriteOption wo)
             throws TimeoutException, TabletException {
@@ -1502,6 +1508,11 @@ public class TableSyncClientImpl implements TableSyncClient {
             throw new TabletException("valueColumns is null or empty");
         }
         List<ColumnDesc> newValueSchema = getSchemaData(valueColumns, th.getSchema());
+        if (th.getBS() != null) {
+            if (!th.IsObjectTable()) {
+                putObjectStore(valueColumns, th);
+            }
+        }
         ByteBuffer valueBuffer = RowBuilder.encode(valueColumns, newValueSchema);
 
         return updateRequest(th, 0, conditionColumns, newValueSchema, valueBuffer);
