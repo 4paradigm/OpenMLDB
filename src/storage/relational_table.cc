@@ -372,31 +372,31 @@ bool RelationalTable::GetPackedField(const int8_t* row, uint32_t idx,
         case ::rtidb::type::kBool: {
             int8_t val = 0;
             get_value_ret = row_view_.GetValue(row, idx, data_type, &val);
-            if (get_value_ret < 0) break;
-            ret = ::rtidb::codec::PackValue(&val, data_type, key);
+            if (get_value_ret == 0)
+                ret = ::rtidb::codec::PackValue(&val, data_type, key);
             break;
         }
         case ::rtidb::type::kSmallInt: {
             int16_t val = 0;
             get_value_ret = row_view_.GetValue(row, idx, data_type, &val);
-            if (get_value_ret < 0) break;
-            ret = ::rtidb::codec::PackValue(&val, data_type, key);
+            if (get_value_ret == 0)
+                ret = ::rtidb::codec::PackValue(&val, data_type, key);
             break;
         }
         case ::rtidb::type::kInt:
         case ::rtidb::type::kDate: {
             int32_t val = 0;
             get_value_ret = row_view_.GetValue(row, idx, data_type, &val);
-            if (get_value_ret < 0) break;
-            ret = ::rtidb::codec::PackValue(&val, data_type, key);
+            if (get_value_ret == 0)
+                ret = ::rtidb::codec::PackValue(&val, data_type, key);
             break;
         }
         case ::rtidb::type::kBigInt:
         case ::rtidb::type::kTimestamp: {
             int64_t val = 0;
             get_value_ret = row_view_.GetValue(row, idx, data_type, &val);
-            if (get_value_ret < 0) break;
-            ret = ::rtidb::codec::PackValue(&val, data_type, key);
+            if (get_value_ret == 0)
+                ret = ::rtidb::codec::PackValue(&val, data_type, key);
             break;
         }
         case ::rtidb::type::kVarchar:
@@ -404,26 +404,27 @@ bool RelationalTable::GetPackedField(const int8_t* row, uint32_t idx,
             char* ch = NULL;
             uint32_t length = 0;
             get_value_ret = row_view_.GetValue(row, idx, &ch, &length);
-            if (get_value_ret < 0) break;
-            int32_t dst_len = ::rtidb::codec::GetDstStrSize(length);
-            key->resize(dst_len);
-            char* dst = const_cast<char*>(key->data());
-            ret =
-                ::rtidb::codec::PackString(ch, length, (void**)&dst);  // NOLINT
+            if (get_value_ret == 0) {
+                int32_t dst_len = ::rtidb::codec::GetDstStrSize(length);
+                key->resize(dst_len);
+                char* dst = const_cast<char*>(key->data());
+                ret =
+                    ::rtidb::codec::PackString(ch, length, (void**)&dst);  // NOLINT
+            }
             break;
         }
         case ::rtidb::type::kFloat: {
             float val = 0.0;
             get_value_ret = row_view_.GetValue(row, idx, data_type, &val);
-            if (get_value_ret < 0) break;
-            ret = ::rtidb::codec::PackValue(&val, data_type, key);
+            if (get_value_ret == 0)
+                ret = ::rtidb::codec::PackValue(&val, data_type, key);
             break;
         }
         case ::rtidb::type::kDouble: {
             double val = 0.0;
             get_value_ret = row_view_.GetValue(row, idx, data_type, &val);
-            if (get_value_ret < 0) break;
-            ret = ::rtidb::codec::PackValue(&val, data_type, key);
+            if (get_value_ret == 0)
+                ret = ::rtidb::codec::PackValue(&val, data_type, key);
             break;
         }
         default: {

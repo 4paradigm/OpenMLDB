@@ -277,8 +277,7 @@ void BaseClient::RefreshTable() {
             map.insert(std::make_pair(
                         col_desc.name(), col_desc.data_type()));
         }
-        handler->name_type_map =
-            std::map<std::string, ::rtidb::type::DataType>(std::move(map));
+        handler->name_type_map = std::move(map);
         handler->table_info = table_info;
         handler->columns = columns;
         new_tables.insert(std::make_pair(table_name, handler));
