@@ -106,6 +106,29 @@ ns_multi_demension:
             junit:
                 - ./test-output/integrationtest/test-reports/*.xml
 
+disktable-java:
+    stage: ut
+    script:
+        - ln -sf /usr/workdir/thirdparty thirdparty
+        - ln -sf /usr/workdir/thirdsrc thirdsrc
+        - source /root/.bashrc && bash steps/auto_test.sh
+    artifacts:
+        reports:
+            junit:
+                - rtidb-auto-test/target/surefire-reports/junitreports/TEST-*.xml
+                - rtidb-auto-test/target/surefire-reports/TEST-*.xml
+                - rtidb-auto-test/target/failsafe-reports/junitreports/TEST-*.xml
+                - rtidb-auto-test/target/failsafe-reports/TEST-*.xml
+
+deploy-package:
+    stage: deploy
+    script:
+        - ln -sf /usr/workdir/thirdparty thirdparty
+        - ln -sf /usr/workdir/thirdsrc thirdsrc
+        - source /root/.bashrc && bash steps/deploy_package.sh
+    only:
+        - tags
+        
 build_rtidb_pz:
     stage: build
     script:

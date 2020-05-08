@@ -46,6 +46,7 @@ configure_file(
 include_directories(${PROJECT_SOURCE_DIR}/thirdparty/include)
 link_directories(${PROJECT_SOURCE_DIR}/thirdparty/lib)
 if (PZFPGA_ENABLE) 
+    add_definitions('-DPZFPGA')
     link_directories(BEFORE ${PROJECT_SOURCE_DIR}/thirdparty/aclrte-linux64/lib)
 endif()
 add_subdirectory(src)
