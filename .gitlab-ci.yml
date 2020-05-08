@@ -137,6 +137,7 @@ build_rtidb_pz:
         - ln -sf /usr/workdir/thirdsrc thirdsrc
         - bash steps/get_pz_fpga_deps.sh
         - sed -i 's/\"Enable pz compression for ssd tables\"\ OFF/\"Enable pz compression for ssd tables\"\ ON/g' CMakeLists.txt
+        - echo '\n--file_compression=pz\n' >> release/conf/tablet.flags
         - source /root/.bashrc && bash steps/compile.sh
     artifacts:
         expire_in: 2h
