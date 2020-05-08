@@ -202,7 +202,7 @@ message DeleteRequest {
     optional string key = 3;
     optional string idx_name = 4;
     repeated Columns condition_columns = 5;
-    optional bool recive_blobs = 6 [default = false];
+    optional bool receive_blobs = 6 [default = false];
 }
 
 message ExecuteGcRequest {
@@ -232,11 +232,6 @@ message DeleteTaskRequest {
 }
 
 message GeneralResponse {
-    optional int32 code = 1;
-    optional string msg = 2;
-}
-
-message DeleteResponse {
     optional int32 code = 1;
     optional string msg = 2;
     repeated string blob_keys = 3;
@@ -737,7 +732,7 @@ service TabletServer {
     rpc Put(PutRequest) returns (PutResponse);
     rpc Get(GetRequest) returns (GetResponse);
     rpc Scan(ScanRequest) returns (ScanResponse);
-    rpc Delete(DeleteRequest) returns (DeleteResponse);
+    rpc Delete(DeleteRequest) returns (GeneralResponse);
     rpc Count(CountRequest) returns (CountResponse);
     rpc Traverse(TraverseRequest) returns (TraverseResponse);
     rpc Update(UpdateRequest) returns (GeneralResponse);

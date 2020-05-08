@@ -173,7 +173,7 @@ public class TableHandler {
                     }
                 }
             } else if (tableInfo.getTableType() == Type.TableType.kObjectStore) {
-                this.IsOS = true;
+                this.isObjectStore = true;
             }
         }
     }
@@ -230,7 +230,7 @@ public class TableHandler {
     }
 
     public List<Integer> getBlobSuffix() {
-        return this.blobSuffix;
+        return this.blobSuffixList;
     }
 
     public void setTableInfo(TableInfo tableInfo) {

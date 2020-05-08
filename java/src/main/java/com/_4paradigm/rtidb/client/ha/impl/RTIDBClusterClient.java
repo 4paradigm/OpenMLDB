@@ -289,7 +289,7 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
                             SingleEndpointRpcClient client = new SingleEndpointRpcClient(baseClient);
                             client.updateEndpoint(endPoint, bcg);
                             BlobServer bs = (BlobServer) RpcProxy.getProxy(client, BlobServer.class);
-                            handler.setBS(bs);
+                            handler.setBlobServer(bs);
                         }
                     }
                 }

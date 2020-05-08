@@ -5,5 +5,5 @@ import com._4paradigm.rtidb.object_store.oss;
 public interface BlobServer {
     oss.PutResponse put(oss.PutRequest request);
     oss.GetResponse get(oss.GetRequest reuqest);
-    oss.GeneralResponse delete(oss.DeleteRequest request);
+    oss.DeleteResponse delete(oss.DeleteRequest request);
 }

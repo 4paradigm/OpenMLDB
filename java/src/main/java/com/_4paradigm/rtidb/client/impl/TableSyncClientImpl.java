@@ -753,10 +753,10 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         BlobServer bs = th.getBS();
         if (bs != null) {
-            builder.setReciveBlobs(true);
+            builder.setReceiveBlobs(true);
         }
         Tablet.DeleteRequest request = builder.build();
-        Tablet.DeleteResponse response = ts.delete(request);
+        Tablet.GeneralResponse response = ts.delete(request);
         if (response != null && response.getCode() == 0) {
             for (String key : response.getBlobKeysList()) {
                 oss.DeleteRequest.Builder ossBuilder = oss.DeleteRequest.newBuilder();
@@ -820,7 +820,7 @@ public class TableSyncClientImpl implements TableSyncClient {
             builder.setIdxName(idxName);
         }
         Tablet.DeleteRequest request = builder.build();
-        Tablet.DeleteResponse response = ts.delete(request);
+        Tablet.GeneralResponse response = ts.delete(request);
         if (response != null && response.getCode() == 0) {
             return true;
         }
