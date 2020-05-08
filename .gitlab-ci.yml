@@ -8,6 +8,7 @@ before_script:
 
 stages:
     - build
+    - test
     - benchmark
 
 style_check:
@@ -49,6 +50,11 @@ build_fesql_and_case_on_mac:
         - bash tools/compile_and_test.sh
     tags:
         - macos
+
+test_java_sdk:
+    stage: test
+    script:
+        - bash tools/test_java_sdk.sh
 
 micro_benchmark:
     stage: benchmark

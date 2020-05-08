@@ -38,7 +38,7 @@ object RowProjectPlan {
       projectIter(iter, jit, projectConfig)
     })
 
-    SparkInstance.fromRDD(outputSchema, projectRDD)
+    SparkInstance.fromRDD(null, outputSchema, projectRDD)
   }
 
 
