@@ -97,7 +97,7 @@ class Sort {
     const bool is_asc() const {
         return nullptr == orders_ ? true : orders_->is_asc_;
     }
-    const bool ValidSort() { return nullptr != orders_; }
+    const bool ValidSort() const { return nullptr != orders_; }
     const std::string ToString() const {
         std::ostringstream oss;
         oss << "orders=" << node::ExprString(orders_);
