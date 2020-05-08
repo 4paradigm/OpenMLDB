@@ -17,6 +17,7 @@
 #include "boost/lexical_cast.hpp"
 #include "logging.h"  //NOLINT
 #include "proto/type.pb.h"
+#include "codec/memcomparable_format.h"
 
 namespace rtidb {
 namespace codec {
@@ -133,7 +134,7 @@ static inline bool Convert(const std::string& str, DataType data_type,
                 uint32_t year = boost::lexical_cast<uint32_t>(parts[0]);
                 uint32_t month = boost::lexical_cast<uint32_t>(parts[1]);
                 uint32_t day = boost::lexical_cast<uint32_t>(parts[2]);
-                if (year > 8099) return false;
+                if (year < 1900 || year > 9999) return false;
                 if (month < 1 || month > 12) return false;
                 if (day < 1 || day > 31) return false;
                 int32_t data = (year - 1900) << 16;
@@ -187,5 +188,64 @@ static inline void GetDouble(const char* ch, void* res) {
     memrev64ifbe(static_cast<void*>(res));
 }
 
+__attribute__((unused)) static bool PackValue(const void *from,
+        ::rtidb::type::DataType data_type,
+        std::string* key) {
+    int ret = 0;
+    // TODO(wangbao) resolve null
+    switch (data_type) {
+        case ::rtidb::type::kBool: {
+            key->resize(sizeof(int8_t));
+            char* to = const_cast<char*>(key->data());
+            ret =
+                ::rtidb::codec::PackInteger(from, sizeof(int8_t), false, to);
+            break;
+        }
+        case ::rtidb::type::kSmallInt: {
+            key->resize(sizeof(int16_t));
+            char* to = const_cast<char*>(key->data());
+            ret =
+                ::rtidb::codec::PackInteger(from, sizeof(int16_t), false, to);
+            break;
+        }
+        case ::rtidb::type::kInt:
+        case ::rtidb::type::kDate: {
+            key->resize(sizeof(int32_t));
+            char* to = const_cast<char*>(key->data());
+            ret =
+                ::rtidb::codec::PackInteger(from, sizeof(int32_t), false, to);
+            break;
+        }
+        case ::rtidb::type::kBigInt:
+        case ::rtidb::type::kTimestamp: {
+            key->resize(sizeof(int64_t));
+            char* to = const_cast<char*>(key->data());
+            ret =
+                ::rtidb::codec::PackInteger(from, sizeof(int64_t), false, to);
+            break;
+        }
+        case ::rtidb::type::kFloat: {
+            key->resize(sizeof(float));
+            char* to = const_cast<char*>(key->data());
+            ret = ::rtidb::codec::PackFloat(from, to);
+            break;
+        }
+        case ::rtidb::type::kDouble: {
+            key->resize(sizeof(double));
+            char* to = const_cast<char*>(key->data());
+            ret = ::rtidb::codec::PackDouble(from, to);
+            break;
+        }
+        default: {
+            PDLOG(WARNING, "unsupported data type %s.",
+                  rtidb::type::DataType_Name(data_type).c_str());
+            return false;
+        }
+    }
+    if (ret < 0) {
+        return false;
+    }
+    return true;
+}
 }  // namespace codec
 }  // namespace rtidb

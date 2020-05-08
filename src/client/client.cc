@@ -277,8 +277,8 @@ void BaseClient::RefreshTable() {
             map.insert(std::make_pair(
                         col_desc.name(), col_desc.data_type()));
         }
-        handler->name_type_map = std::make_shared<
-            std::map<std::string, ::rtidb::type::DataType>>(map);
+        handler->name_type_map =
+            std::map<std::string, ::rtidb::type::DataType>(std::move(map));
         handler->table_info = table_info;
         handler->columns = columns;
         new_tables.insert(std::make_pair(table_name, handler));
@@ -518,36 +518,16 @@ GeneralResult RtidbClient::Put(const std::string& name,
         result.SetError(-1, "table not found");
         return result;
     }
-    std::set<std::string> keys_column;
-    for (auto& key : th->table_info->column_key()) {
-        for (auto& col : key.col_name()) {
-            if (value.find(col) == value.end() && th->auto_gen_pk.empty()) {
-                result.SetError(-1, "key col must have ");
-                return result;
-            }
-            keys_column.insert(col);
-        }
-    }
     std::map<std::string, std::string> val;
-    for (auto& column : *(th->columns)) {
-        auto iter = value.find(column.name());
-        auto set_iter = keys_column.find(column.name());
-        if (iter == value.end()) {
-            if (set_iter == keys_column.end()) {
-                std::string err_msg = "miss column " + column.name();
-                result.SetError(-1, err_msg);
-                return result;
-            } else if (th->auto_gen_pk.empty()) {
-                result.SetError(-1, "input value error");
-                return result;
-            } else {
-                val = value;
-                val.insert(std::make_pair(th->auto_gen_pk,
-                                          ::rtidb::codec::DEFAULT_LONG));
-            }
-        } else if (column.name() == th->auto_gen_pk) {
+    if (!th->auto_gen_pk.empty()) {
+        auto iter = value.find(th->auto_gen_pk);
+        if (iter != value.end()) {
             result.SetError(-1, "should not input autoGenPk column");
             return result;
+        } else {
+            val = value;
+            val.insert(std::make_pair(th->auto_gen_pk,
+                        ::rtidb::codec::DEFAULT_LONG));
         }
     }
     std::string buffer;
@@ -621,8 +601,8 @@ BatchQueryResult RtidbClient::BatchQuery(const std::string& name,
     for (const auto& ro : ros) {
         ::rtidb::api::ReadOption* ro_ptr = ros_pb.Add();
         for (const auto& kv : ro.index) {
-            auto iter = th->name_type_map->find(kv.first);
-            if (iter == th->name_type_map->end()) {
+            auto iter = th->name_type_map.find(kv.first);
+            if (iter == th->name_type_map.end()) {
                 result.code_ = -1;
                 result.msg_ = "col_name " + kv.first +" not exist";
                 return result;
@@ -630,13 +610,12 @@ BatchQueryResult RtidbClient::BatchQuery(const std::string& name,
             ::rtidb::api::Columns* index = ro_ptr->add_index();
             index->add_name(kv.first);
             ::rtidb::type::DataType type = iter->second;
-            std::string val = "";
-            if (!rtidb::codec::Convert(kv.second, type, &val)) {
+            std::string* val = index->mutable_value();
+            if (!rtidb::codec::Convert(kv.second, type, val)) {
                 result.code_ = -1;
                 result.msg_ = "convert str " + kv.second + " failed";
                 return result;
             }
-            index->set_value(val);
         }
     }
     std::string* data = new std::string();

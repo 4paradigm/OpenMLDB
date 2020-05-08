@@ -29,7 +29,7 @@
 #include "base/endianconv.h"
 #include "base/id_generator.h"
 #include "base/slice.h"
-#include "codec/codec.h"
+#include "codec/row_codec.h"
 #include "codec/field_codec.h"
 #include "codec/memcomparable_format.h"
 #include "proto/common.pb.h"

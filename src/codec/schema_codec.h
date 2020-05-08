@@ -358,13 +358,12 @@ class SchemaCodec {
             ::rtidb::api::Columns* index = cd_columns->Add();
             index->add_name(kv.first);
             ::rtidb::type::DataType type = iter->second;
-            std::string val = "";
-            if (!::rtidb::codec::Convert(kv.second, type, &val)) {
+            std::string* val = index->mutable_value();
+            if (!::rtidb::codec::Convert(kv.second, type, val)) {
                 rm.code = -1;
                 rm.msg = "convert str " + kv.second + "  failed!";
                 return rm;
             }
-            index->set_value(val);
         }
         rm.code = 0;
         rm.msg = "ok";

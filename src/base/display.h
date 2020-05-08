@@ -31,9 +31,6 @@ DECLARE_uint32(max_col_display_length);
 namespace rtidb {
 namespace base {
 
-using Schema =
-    ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
-
 static std::string DataTypeToStr(::rtidb::type::DataType data_type) {
     auto iter = ::rtidb::codec::DATA_TYPE_STR_MAP.find(data_type);
     if (iter == ::rtidb::codec::DATA_TYPE_STR_MAP.end()) {

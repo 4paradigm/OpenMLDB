@@ -1513,7 +1513,7 @@ void HandleNSDelete(const std::vector<std::string>& parts,
                     ::rtidb::client::NsClient* client) {
     std::vector<std::string> vec;
     ::rtidb::base::SplitString(parts[1], "=", vec);
-    if (vec.size() < 2) {
+    if (vec.size() < 2 || vec.at(0) != "table_name") {
         if (parts.size() < 3) {
             std::cout <<
                 "delete format error. eg: delete table_name key | delete"
@@ -1987,11 +1987,11 @@ void HandleNSQuery(const std::vector<std::string>& parts,
         std::string uncompressed;
         ::snappy::Uncompress(value.c_str(), value.length(),
                 &uncompressed);
-        value = uncompressed;
+        value.swap(uncompressed);
     }
     std::vector<std::vector<std::string>> row_vec;
-    if (!rtidb::codec::FillTableRows(value, count, schema, &row_vec)) {
-        std::cout << "FillTableRows error" << std::endl;
+    if (!rtidb::codec::DecodeRows(value, count, schema, &row_vec)) {
+        std::cout << "DecodeRows error" << std::endl;
         return;
     }
     std::vector<std::string> row;

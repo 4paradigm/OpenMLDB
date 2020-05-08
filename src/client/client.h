@@ -43,8 +43,7 @@ struct TableHandler {
         columns;
     std::vector<PartitionInfo> partition;
     std::string auto_gen_pk;
-    std::shared_ptr<
-        std::map<std::string, ::rtidb::type::DataType>> name_type_map;
+    std::map<std::string, ::rtidb::type::DataType> name_type_map;
 };
 
 struct GeneralResult {
@@ -166,6 +165,12 @@ class ViewResult {
             col.assign(ch, length);
         }
         return col;
+    }
+
+    int64_t GetTimestamp(uint32_t idx) {
+        int64_t val;
+        rv_->GetTimestamp(idx, &val);
+        return val;
     }
 
     bool IsNULL(uint32_t idx) { return rv_->IsNULL(idx); }

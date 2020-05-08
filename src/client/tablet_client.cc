@@ -1163,9 +1163,7 @@ bool TabletClient::Delete(uint32_t tid, uint32_t pid,
     ::rtidb::api::GeneralResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
-    ::google::protobuf::RepeatedPtrField<::rtidb::api::Columns>*
-        cd_columns_ptr = request.mutable_condition_columns();
-    cd_columns_ptr->CopyFrom(cd_columns);
+    request.mutable_condition_columns()->CopyFrom(cd_columns);
     bool ok =
         client_.SendRequest(&::rtidb::api::TabletServer_Stub::Delete, &request,
                             &response, FLAGS_request_timeout_ms, 1);
