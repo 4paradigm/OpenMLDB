@@ -3699,16 +3699,11 @@ void NameServerImpl::DropTable(RpcController* controller,
         }
     }
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info;
-    {
-        std::lock_guard<std::mutex> lock(mu_);
-        auto iter = table_info_.find(request->name());
-        if (iter == table_info_.end()) {
-            response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
-            response->set_msg("table is not exist!");
-            PDLOG(WARNING, "table[%s] is not exist!", request->name().c_str());
-            return;
-        }
-        table_info = iter->second;
+    if (!GetTableInfo(request->name(), request->has_db()?request->db():"", table_info)) {
+        response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
+        response->set_msg("table is not exist!");
+        PDLOG(WARNING, "table[%s] is not exist!", request->name().c_str());
+        return;
     }
     DropTableFun(request, response, table_info);
 }
@@ -4452,7 +4447,7 @@ bool NameServerImpl::SetTableInfo(
             return false;
         }
         PDLOG(INFO,
-              "create db table node[%s/%s] success! value[%s] value_size[%u]",
+              "create db table node[%s/%u] success! value[%s] value_size[%u]",
               zk_db_table_data_path_.c_str(), table_info->tid(),
               table_value.c_str(), table_value.length());
         {
@@ -9785,7 +9780,7 @@ std::shared_ptr<TableInfo> NameServerImpl::GetTableInfo(
 
 bool NameServerImpl::GetTableInfo(const std::string& table_name,
                                   const std::string& db_name,
-                                  std::shared_ptr<TableInfo> table_info) {
+                                  std::shared_ptr<TableInfo>& table_info) {
     std::lock_guard<std::mutex> lock(mu_);
     if (db_name.empty()) {
         auto it = table_info_.find(table_name);
@@ -9798,8 +9793,8 @@ bool NameServerImpl::GetTableInfo(const std::string& table_name,
         if (db_it == db_table_info_.end()) {
             return false;
         } else {
-            auto it = (*db_it).second.find(table_name);
-            if (it == (*db_it).second.end()) {
+            auto it = db_it->second.find(table_name);
+            if (it == db_it->second.end()) {
                 return false;
             }
             table_info = it->second;

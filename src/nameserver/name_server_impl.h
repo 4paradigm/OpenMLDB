@@ -657,7 +657,7 @@ class NameServerImpl : public NameServer {
     std::shared_ptr<TableInfo> GetTableInfo(const std::string& name);
 
     bool GetTableInfo(const std::string& table_name, const std::string& db_name,
-                      std::shared_ptr<TableInfo> table_info);
+                      std::shared_ptr<TableInfo>& table_info);  // NOLINT
 
     int AddOPTask(const ::rtidb::api::TaskInfo& task_info,
                   ::rtidb::api::TaskType task_type,
