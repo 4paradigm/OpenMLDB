@@ -1380,7 +1380,7 @@ public class TableSyncClientImpl implements TableSyncClient {
             schema = th.getSchema();
         } else {
             schema = th.getSchemaMap().get(row.size());
-            if (schema.isEmpty()) {
+            if (schema == null || schema.isEmpty()) {
                 throw new TabletException("no schema for column count " + row.size());
             }
         }

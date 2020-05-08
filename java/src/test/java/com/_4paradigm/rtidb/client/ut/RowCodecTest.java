@@ -415,21 +415,21 @@ public class RowCodecTest {
                 schema.add(col3);
             }
             RowBuilder builder = new RowBuilder(schema);
-            int size = builder.calTotalLength(1);
+            int size = builder.calTotalLength(9);
             ByteBuffer buffer = ByteBuffer.allocate(size).order(ByteOrder.LITTLE_ENDIAN);
             buffer = builder.setBuffer(buffer, size);
             Assert.assertTrue(builder.appendNULL());
             Assert.assertTrue(builder.appendBool(false));
-            Assert.assertTrue(builder.appendString("1"));
+            Assert.assertTrue(builder.appendString("123456789"));
 
             RowView rowView = new RowView(schema, buffer, size);
             Assert.assertTrue(rowView.isNull(0));
             Assert.assertEquals(rowView.getBool(1), new Boolean(false));
-            Assert.assertEquals(rowView.getString(2), "1");
+            Assert.assertEquals(rowView.getString(2), "123456789");
 
             RowView rowView2 = new RowView(schema);
             Object value = rowView2.getValue(buffer, 2, DataType.Varchar);
-            Assert.assertEquals((String) value, "1");
+            Assert.assertEquals((String) value, "123456789");
         } catch (TabletException e) {
             Assert.assertTrue(false);
         }
@@ -740,26 +740,38 @@ public class RowCodecTest {
     }
 
     @Test
-    public void testSingleColumnCodec() {
+    public void testFieldCodec() {
         List<ByteBuffer> list = new ArrayList<>();
-        {
-            /**
-             * encode part
-             */
-            list.add(FieldCodec.convert(false));
-            list.add(FieldCodec.convert(true));
-            short int16Val = 33;
-            list.add(FieldCodec.convert(int16Val));
-            int int32Val = 44;
-            list.add(FieldCodec.convert(int32Val));
-            long int64Val = 55;
-            list.add(FieldCodec.convert(int64Val));
-            float fVal = 3.3f;
-            list.add(FieldCodec.convert(fVal));
-            double dVal = 4.4;
-            list.add(FieldCodec.convert(dVal));
-            list.add(FieldCodec.convert("123"));
+
+        /**
+         * encode part
+         */
+        list.add(FieldCodec.convert(false));
+        list.add(FieldCodec.convert(true));
+        short int16Val = 33;
+        list.add(FieldCodec.convert(int16Val));
+        int int32Val = 44;
+        list.add(FieldCodec.convert(int32Val));
+        long int64Val = 55;
+        list.add(FieldCodec.convert(int64Val));
+        float fVal = 3.3f;
+        list.add(FieldCodec.convert(fVal));
+        double dVal = 4.4;
+        list.add(FieldCodec.convert(dVal));
+        list.add(FieldCodec.convert("123"));
+        Timestamp timestamp = Timestamp.valueOf("2018-11-22 01:10:22");
+        long now = System.currentTimeMillis();
+        DateTime dateTime = new DateTime(now);
+        Date date = new Date(2020, 5, 1);
+        try {
+            list.add(FieldCodec.convert(DataType.Timestamp, timestamp));
+            list.add(FieldCodec.convert(DataType.Timestamp, dateTime));
+            list.add(FieldCodec.convert(DataType.Timestamp, now));
+            list.add(FieldCodec.convert(DataType.Date, date));
+        } catch (TabletException e) {
+            e.printStackTrace();
         }
+
         {
             /**
              * decode part
@@ -772,6 +784,11 @@ public class RowCodecTest {
             Assert.assertEquals(FieldCodec.GetFloat(ByteBufferNoCopy.wrap(list.get(5))), 3.3f);
             Assert.assertEquals(FieldCodec.GetDouble(ByteBufferNoCopy.wrap(list.get(6))), 4.4);
             Assert.assertEquals(FieldCodec.GetString(ByteBufferNoCopy.wrap(list.get(7))), "123");
+            Assert.assertEquals(FieldCodec.GetTimestamp(ByteBufferNoCopy.wrap(list.get(8))),
+                    new DateTime(timestamp.getTime()));
+            Assert.assertEquals(FieldCodec.GetTimestamp(ByteBufferNoCopy.wrap(list.get(9))), dateTime);
+            Assert.assertEquals(FieldCodec.GetTimestamp(ByteBufferNoCopy.wrap(list.get(10))).getMillis(), now);
+            Assert.assertEquals(FieldCodec.GetDate(ByteBufferNoCopy.wrap(list.get(11))), date);
         }
     }
 }

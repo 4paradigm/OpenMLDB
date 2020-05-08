@@ -702,8 +702,8 @@ message UpdateRequest {
 
 message ReadOption {
     repeated Columns index = 1;
-    repeated Columns readFilter = 2;
-    repeated string colSet = 3;
+    repeated Columns read_filter = 2;
+    repeated string col_set = 3;
     optional uint32 limit = 4;
 }
 
