@@ -535,15 +535,7 @@ bool RelationalTable::Delete(
     google::protobuf::RepeatedPtrField<std::string>* blob_keys) {
     std::vector<std::unique_ptr<rocksdb::Iterator>> iter_vec;
     bool ok = Query(condition_columns, &iter_vec);
-    auto schema = table_column_.GetPbColumns();
-    std::vector<int32_t> blob_suffix;
-    int suffix = 0;
-    for (const auto& col : schema) {
-        if (col.data_type() == rtidb::type::kBlob) {
-            blob_suffix.push_back(suffix);
-        }
-        suffix++;
-    }
+    const std::vector<uint32_t>& blob_suffix = table_column_.GetBlobIdxs();
     for (auto& iter : iter_vec) {
         const int8_t* data =
             reinterpret_cast<int8_t*>(const_cast<char*>(iter->value().data()));
@@ -558,7 +550,7 @@ bool RelationalTable::Delete(
                 blob_keys->Clear();
                 return false;
             }
-            blob_keys->Add()->append(ch, length);
+            blob_keys->Add()->assign(ch, length);
         }
     }
     ok = Delete(condition_columns);

@@ -36,16 +36,16 @@ const std::vector<std::shared_ptr<ColumnDef>>& TableColumn::GetAllColumn() {
     return columns_;
 }
 
-const google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>&
-TableColumn::GetPbColumns() {
-    return pb_columns_;
+const std::vector<uint32_t>& TableColumn::GetBlobIdxs() {
+    return blob_idxs;
 }
+
 void TableColumn::AddColumn(std::shared_ptr<ColumnDef> column_def) {
     columns_.push_back(column_def);
     column_map_.insert(std::make_pair(column_def->GetName(), column_def));
-    auto cd = pb_columns_.Add();
-    cd->set_name(column_def->GetName());
-    cd->set_data_type(column_def->GetType());
+    if (column_def->GetType() == rtidb::type::kBlob) {
+        blob_idxs.push_back(column_def->GetId());
+    }
 }
 
 IndexDef::IndexDef(const std::string& name, uint32_t id)
