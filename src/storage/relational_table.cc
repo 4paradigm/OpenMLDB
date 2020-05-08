@@ -887,7 +887,8 @@ bool RelationalTable::UpdateDB(const std::shared_ptr<IndexDef> index_def,
         uint32_t string_length = 0;
         for (int i = 0; i < schema.size(); i++) {
             if (schema.Get(i).data_type() == rtidb::type::kVarchar ||
-                schema.Get(i).data_type() == rtidb::type::kString) {
+                schema.Get(i).data_type() == rtidb::type::kString ||
+                schema.Get(i).data_type() == rtidb::type::kBlob) {
                 auto col_iter = col_idx_map.find(schema.Get(i).name());
                 char* ch = NULL;
                 uint32_t length = 0;
@@ -1019,6 +1020,7 @@ bool RelationalTable::UpdateDB(const std::shared_ptr<IndexDef> index_def,
                     break;
                 }
                 case rtidb::type::kVarchar:
+                case rtidb::type::kBlob:
                 case rtidb::type::kString: {
                     char* ch = NULL;
                     uint32_t length = 0;

@@ -183,7 +183,8 @@ bool RowBuilder::SetNULL(uint32_t index) {
     *(reinterpret_cast<uint8_t*>(ptr)) |= 1 << (index & 0x07);
     const ::rtidb::common::ColumnDesc& column = schema_.Get(index);
     if (column.data_type() == ::rtidb::type::kVarchar ||
-        column.data_type() == rtidb::type::kString) {
+        column.data_type() == rtidb::type::kString ||
+        column.data_type() == rtidb::type::kBlob) {
         ptr = buf_ + str_field_start_offset_ +
               str_addr_length_ * offset_vec_[index];
         if (str_addr_length_ == 1) {
@@ -892,7 +893,8 @@ bool RowProject::Project(const int8_t* row_ptr, uint32_t size,
         uint32_t idx = plist_.Get(i);
         const ::rtidb::common::ColumnDesc& column = schema_.Get(idx);
         if (column.data_type() == ::rtidb::type::kVarchar ||
-            column.data_type() == ::rtidb::type::kString) {
+            column.data_type() == ::rtidb::type::kString ||
+            column.data_type() == ::rtidb::type::kBlob) {
             if (row_view_->IsNULL(idx)) continue;
             uint32_t length = 0;
             char* content = nullptr;
