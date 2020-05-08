@@ -376,6 +376,13 @@ message SyncTableRequest {
     optional uint32 pid = 3;
 }
 
+message AddIndexMeta {
+    optional string name = 1;
+    optional uint32 pid = 2;
+    optional rtidb.common.ColumnKey column_key = 3;
+    optional uint32 idx = 4;
+}
+
 message AddIndexRequest {
     optional string name = 1;
     optional rtidb.common.ColumnKey column_key = 2;

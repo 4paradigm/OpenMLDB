@@ -638,7 +638,8 @@ int32_t RowView::GetValue(const int8_t* row, uint32_t idx,
             break;
         case ::rtidb::type::kDate:
             *(reinterpret_cast<uint32_t*>(val)) =
-                static_cast<uint32_t>(v1::GetInt32Field(row_, offset));
+                static_cast<uint32_t>(v1::GetInt32Field(row, offset));
+            break;
         default:
             return -1;
     }
