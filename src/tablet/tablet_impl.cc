@@ -1692,11 +1692,24 @@ void TabletImpl::Traverse(RpcController* controller,
             }
             return;
         }
-        if (request->has_pk()) {
-            it->Seek(request->pk());
-            it->Next();
+        if (request->has_read_option()) {
+            std::string combine_pk;
+            if (!r_table->GetCombinePk(
+                        request->read_option().index(), &combine_pk)) {
+                response->set_code(
+                        ::rtidb::base::ReturnCode::kGetCombinePkFailed);
+                response->set_msg("get combine pk failed");
+                delete it;
+                return;
+            }
+            it->Seek(combine_pk);
         } else {
-            it->SeekToFirst();
+            if (request->has_pk()) {
+                it->Seek(request->pk());
+                it->Next();
+            } else {
+                it->SeekToFirst();
+            }
         }
         uint32_t scount = 0;
         std::string* last_pk = response->mutable_pk();;

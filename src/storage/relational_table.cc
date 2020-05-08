@@ -1106,6 +1106,41 @@ bool RelationalTable::GetCombineStr(
     return true;
 }
 
+bool RelationalTable::GetCombinePk(
+    const ::google::protobuf::RepeatedPtrField<::rtidb::api::Columns>& indexs,
+    std::string* combine_value) {
+    combine_value->clear();
+    if (indexs.size() == 1) {
+        const std::string& value = indexs.Get(0).value();
+        if (!ConvertIndex(indexs.Get(0).name(0), value, combine_value))
+            return false;
+    } else {
+        std::vector<ColumnDef> vec;
+        std::map<std::string, int> map;
+        for (int i = 0; i < indexs.size(); i++) {
+            const std::string& name = indexs.Get(i).name(0);
+            map.insert(std::make_pair(name, i));
+            vec.push_back(*(table_column_.GetColumn(name)));
+        }
+        std::sort(vec.begin(), vec.end(), ::rtidb::storage::ColumnDefSortFunc);
+        int count = 0;
+        for (auto& col_def : vec) {
+            const std::string& name = col_def.GetName();
+            auto it = map.find(name);
+            if (it == map.end()) return false;
+            const std::string& value = indexs.Get(it->second).value();
+            std::string temp = "";
+            if (!ConvertIndex(name, value, &temp)) return false;
+            if (count > 0) {
+                combine_value->append("|");
+            }
+            combine_value->append(temp);
+            count++;
+        }
+    }
+    return true;
+}
+
 bool RelationalTable::GetCombineStr(const std::shared_ptr<IndexDef> index_def,
                                     const int8_t* data,
                                     std::string* comparable_pk) {
