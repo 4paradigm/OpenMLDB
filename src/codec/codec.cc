@@ -34,7 +34,7 @@ static const std::unordered_set<::rtidb::type::DataType> TYPE_SET(
     {::rtidb::type::kBool, ::rtidb::type::kSmallInt, ::rtidb::type::kInt,
      ::rtidb::type::kBigInt, ::rtidb::type::kFloat, ::rtidb::type::kDouble,
      ::rtidb::type::kDate, ::rtidb::type::kTimestamp, ::rtidb::type::kVarchar,
-     ::rtidb::type::kString});
+     ::rtidb::type::kString, ::rtidb::type::kBlob});
 
 static constexpr std::array<uint32_t, 9> TYPE_SIZE_ARRAY = {
     0,
@@ -74,7 +74,8 @@ RowBuilder::RowBuilder(const Schema& schema)
         const ::rtidb::common::ColumnDesc& column = schema.Get(idx);
         rtidb::type::DataType cur_type = column.data_type();
         if (cur_type == ::rtidb::type::kVarchar ||
-            cur_type == ::rtidb::type::kString) {
+            cur_type == ::rtidb::type::kString ||
+            cur_type == ::rtidb::type::kBlob) {
             offset_vec_.push_back(str_field_cnt_);
             str_field_cnt_++;
         } else {
@@ -300,7 +301,8 @@ bool RowBuilder::AppendString(const char* val, uint32_t length) {
 
 bool RowBuilder::SetString(uint32_t index, const char* val, uint32_t length) {
     if (val == NULL || (!Check(index, ::rtidb::type::kVarchar) &&
-                        !Check(index, rtidb::type::kString)))
+                        !Check(index, rtidb::type::kString) &&
+                        !Check(index, rtidb::type::kBlob)))
         return false;
     if (str_offset_ + length > size_) return false;
     int8_t* ptr =
@@ -759,6 +761,7 @@ int32_t RowView::GetStrValue(const int8_t* row, uint32_t idx,
             break;
         }
         case ::rtidb::type::kVarchar:
+        case ::rtidb::type::kBlob:
         case ::rtidb::type::kString: {
             char* ch = NULL;
             uint32_t size = 0;
@@ -959,6 +962,7 @@ bool RowProject::Project(const int8_t* row_ptr, uint32_t size,
                 break;
             }
             case ::rtidb::type::kString:
+            case ::rtidb::type::kBlob:
             case ::rtidb::type::kVarchar: {
                 char* val = NULL;
                 uint32_t size = 0;

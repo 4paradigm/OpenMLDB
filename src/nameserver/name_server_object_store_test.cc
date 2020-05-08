@@ -219,6 +219,7 @@ TEST_F(NameServerImplObjectStoreTest, CreateTableWithBlobField) {
 
     bool ok = false;
     std::string name = "test" + GenRand();
+    Schema schema;
     {
         CreateTableRequest request;
         GeneralResponse response;
@@ -250,6 +251,7 @@ TEST_F(NameServerImplObjectStoreTest, CreateTableWithBlobField) {
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, response.code());
         sleep(3);
+        schema = table_info->column_desc_v1();
     }
     {
         ::rtidb::nameserver::ShowTableRequest request;
@@ -276,6 +278,48 @@ TEST_F(NameServerImplObjectStoreTest, CreateTableWithBlobField) {
         ::rtidb::api::TableStatus table_status = resp.all_table_status(0);
         ASSERT_EQ(tid, table_status.tid());
         ASSERT_EQ(0u, table_status.pid());
+        std::string err_msg;
+        std::string blob_key;
+        std::string blob_data = "this is blob data";
+        ok = blob_client.Put(tid, 0, &blob_key, blob_data, &err_msg);
+        ASSERT_TRUE(ok);
+        rtidb::codec::RowBuilder builder(schema);
+        uint32_t size = builder.CalTotalLength(4+blob_key.size());
+        std::string row;
+        row.resize(size);
+        builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
+        ASSERT_TRUE(builder.AppendInt64(10l));
+        std::string mcc_data = "mcc0";
+        ASSERT_TRUE(builder.AppendString(mcc_data.data(), mcc_data.size()));
+        ok = builder.AppendString(blob_key.data(), blob_key.size());
+        ASSERT_TRUE(ok);
+        ok = tablet_client.Put(tid, 0, "", 0, row);
+        ASSERT_TRUE(ok);
+        std::vector<std::string> keys{"10"};
+        std::string data;
+        bool is_finish;
+        uint32_t count;
+        ok = tablet_client.BatchQuery(tid, 0, "", keys, &err_msg, &data,
+                                      &is_finish, &count);
+        ASSERT_TRUE(ok);
+        ASSERT_TRUE(is_finish);
+        ASSERT_EQ(count, 1);
+        rtidb::codec::RowView view(schema,
+                              reinterpret_cast<int8_t*>(&(data[0])+4), size);
+        int64_t val = 0;
+        ASSERT_EQ(view.GetInt64(0, &val), 0);
+        ASSERT_EQ(val, 10l);
+        char* ch = NULL;
+        uint32_t length = 0;
+        ASSERT_EQ(view.GetString(1, &ch, &length), 0);
+        ASSERT_STREQ(mcc_data.data(), ch);
+        ASSERT_EQ(view.GetString(2, &ch, &length), 0);
+        ASSERT_STREQ(blob_key.c_str(), ch);
+        data.clear();
+        ok = blob_client.Get(tid, 0, blob_key, &data, &err_msg);
+        ASSERT_TRUE(ok);
+        int ret = memcmp(blob_data.c_str(), data.c_str(), blob_data.size());
+        ASSERT_EQ(ret, 0);
     }
 }
 
