@@ -26,6 +26,8 @@ const std::string& NsClient::GetDb() { return db_; }
 
 bool NsClient::HasDb() { return !db_.empty(); }
 
+void NsClient::ClearDb() { db_.clear(); }
+
 bool NsClient::Use(std::string db, std::string& msg) {
     ::rtidb::nameserver::UseDatabaseRequest request;
     ::rtidb::nameserver::GeneralResponse response;
@@ -213,6 +215,9 @@ bool NsClient::CreateTable(const ::rtidb::nameserver::TableInfo& table_info,
 bool NsClient::DropTable(const std::string& name, std::string& msg) {
     ::rtidb::nameserver::DropTableRequest request;
     request.set_name(name);
+    if (HasDb()) {
+        request.set_db(GetDb());
+    }
     ::rtidb::nameserver::GeneralResponse response;
     bool ok =
         client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::DropTable,

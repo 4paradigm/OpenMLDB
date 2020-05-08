@@ -1720,11 +1720,12 @@ void HandleNSUpdate(const std::vector<std::string>& parts,
 
 void HandleNsUseDb(const std::vector<std::string>& parts,
                    ::rtidb::client::NsClient* client) {
-    if (parts.size() < 2) {
-        std::cout << "use format error. eg: use database_name" << std::endl;
+    std::string msg;
+    if (parts.size() == 1) {
+        client->ClearDb();
+        std::cout << "Use default database" << std::endl;
         return;
     }
-    std::string msg;
     if (client->Use(parts[1], msg)) {
         std::cout << "Use database: " << parts[1] << std::endl;
     } else {

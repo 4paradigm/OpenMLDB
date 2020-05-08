@@ -656,6 +656,10 @@ class NameServerImpl : public NameServer {
 
     std::shared_ptr<TableInfo> GetTableInfo(const std::string& name);
 
+    bool GetTableInfo(const std::string& table_name, 
+            const std::string& db_name,
+            std::shared_ptr<TableInfo> table_info);
+
     int AddOPTask(const ::rtidb::api::TaskInfo& task_info,
                   ::rtidb::api::TaskType task_type,
                   std::shared_ptr<::rtidb::api::TaskInfo>& task_ptr,  // NOLINT
@@ -817,12 +821,21 @@ class NameServerImpl : public NameServer {
         const DropTableRequest* request, GeneralResponse* response,
         std::shared_ptr<::rtidb::nameserver::TableInfo> table_info);
 
+    bool SetTableInfo(std::shared_ptr<::rtidb::nameserver::TableInfo>
+        table_info);
+
+    void UpdateTableStatusFun(const std::map<std::string,
+        std::shared_ptr<::rtidb::nameserver::TableInfo>>& table_info_map,
+        const std::unordered_map<std::string, ::rtidb::api::TableStatus>& pos_response);
+
  private:
     std::mutex mu_;
     Tablets tablets_;
     BlobServers blob_servers_;
     std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>>
         table_info_;
+    std::map<std::string, std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>>>
+        db_table_info_;
     std::map<std::string, std::shared_ptr<::rtidb::nameserver::ClusterInfo>>
         nsc_;
     ZoneInfo zone_info_;
@@ -834,6 +847,7 @@ class NameServerImpl : public NameServer {
     std::string zk_term_node_;
     std::string zk_table_data_path_;
     std::string zk_db_path_;
+    std::string zk_db_table_data_path_;
     std::string zk_auto_failover_node_;
     std::string zk_auto_recover_table_node_;
     std::string zk_table_changed_notify_node_;
