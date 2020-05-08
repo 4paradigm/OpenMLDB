@@ -103,6 +103,7 @@ message DropTableRequest {
     required string name = 1;
     optional ZoneInfo zone_info = 2;
     optional rtidb.api.TaskInfo task_info = 3;
+    optional string db = 4;
 }
 
 message LoadTableRequest {
