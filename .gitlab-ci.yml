@@ -140,6 +140,7 @@ disktable-java:
         - curl -s "http://auto.4paradigm.com/job/rtidb-test-report/buildWithParameters?token=gitlab&pkg=$CI_COMMIT_SHA&buildname=$CI_PIPELINE_ID"-"$CI_JOB_ID"
         - bash steps/get-report-url.sh rtidb-test-report $CI_PIPELINE_ID"-"$CI_JOB_ID
 
+
 deploy-package:
     stage: deploy
     script:
