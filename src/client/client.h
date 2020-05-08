@@ -103,34 +103,6 @@ class ViewResult {
         return val;
     }
 
-    uint64_t GetSchemaSize() {
-        if (!initialed_) {
-            return 0;
-        }
-        return columns_->size();
-    }
-
-    int32_t GetColumnType(int32_t idx) {
-        if (!initialed_) {
-            return -1;
-        }
-        if (idx >= columns_->size()) {
-            return -1;
-        }
-        return columns_->Get(idx).data_type();
-    }
-
-    std::vector<std::string> GetColumnsName() {
-        std::vector<std::string> result;
-        if (!initialed_) {
-            return result;
-        }
-        for (int i = 0; i < columns_->size(); i++) {
-            result.push_back(columns_->Get(i).name());
-        }
-        return result;
-    }
-
     float GetFloat(uint32_t idx) {
         float val;
         rv_->GetFloat(idx, &val);
@@ -173,12 +145,46 @@ class ViewResult {
         return val;
     }
 
+    int32_t GetDate(uint32_t idx) {
+        uint32_t val;
+        rv_->GetDate(idx, &val);
+        return val;
+    }
+
     bool IsNULL(uint32_t idx) { return rv_->IsNULL(idx); }
 
     void SetRv(const std::shared_ptr<TableHandler>& th) {
         columns_ = th->columns;
         rv_ = std::make_shared<rtidb::codec::RowView>(*columns_);
         initialed_ = true;
+    }
+
+    uint64_t GetSchemaSize() {
+        if (!initialed_) {
+            return 0;
+        }
+        return columns_->size();
+    }
+
+    int32_t GetColumnType(int32_t idx) {
+        if (!initialed_) {
+            return -1;
+        }
+        if (idx >= columns_->size()) {
+            return -1;
+        }
+        return columns_->Get(idx).data_type();
+    }
+
+    std::vector<std::string> GetColumnsName() {
+        std::vector<std::string> result;
+        if (!initialed_) {
+            return result;
+        }
+        for (int i = 0; i < columns_->size(); i++) {
+            result.push_back(columns_->Get(i).name());
+        }
+        return result;
     }
 
     ViewResult() : rv_(), columns_(), initialed_(false) {}

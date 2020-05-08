@@ -93,9 +93,11 @@ class RowCodec {
                                                   iter->second.length());
                         break;
                     case rtidb::type::kBool:
-                        if (iter->second == "true") {
+                        if (iter->second == "true" ||
+                                iter->second == "True") {
                             ok = builder.AppendBool(true);
-                        } else if (iter->second == "false") {
+                        } else if (iter->second == "false" ||
+                                iter->second == "False") {
                             ok = builder.AppendBool(false);
                         } else {
                             rm.code = -1;

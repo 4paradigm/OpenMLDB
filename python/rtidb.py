@@ -1,6 +1,7 @@
 import enum
 from . import interclient
 from typing import List
+from datetime import date
 
 class CompareOP(enum.IntEnum):
   EQ = enum.auto()
@@ -15,7 +16,7 @@ def return_None(x):
 def return_EmptyStr(x):
   return str()
 
-type_map = {1:bool,2:int,3:int,4:int,5:float,6:float,7:int,8:int,13:str,14:str,100:return_None};
+type_map = {1:bool,2:int,3:int,4:int,5:float,6:float,7:date,8:int,13:str,14:str,100:return_None};
 # todo: current do not have blob type process function
 '''
 kBool = 1;
@@ -57,8 +58,9 @@ class RtidbResult:
     self.__type_to_func = {1:self.__data.GetBool, 
       2:self.__data.GetInt16, 3:self.__data.GetInt32, 
       4:self.__data.GetInt64, 5:self.__data.GetFloat, 
-      6:self.__data.GetDouble, 13:self.__data.GetString,
-      8:return_None, 9:return_None, 100:return_None}
+      6:self.__data.GetDouble, 7:self.__date.GetDate,
+      8:self.__data.GetTimestamp,13:self.__data.GetString,
+      14:self.__data.GetString, 100:return_None}
     names = self.__data.GetColumnsName()
     self.__names = [x for x in names]
   def __iter__(self):
@@ -76,7 +78,16 @@ class RtidbResult:
         if self.__data.IsNULL(idx):
           result.update({self.__names[idx]: None})
         else:
-          result.update({self.__names[idx]: self.__type_to_func[type](idx)})
+          if type == 7: 
+            date = self.__type_to_func[type](idx)
+            day = date & 0x0000000FF;
+            date = date >> 8;
+            month = 1 + (date & 0x0000FF);
+            year = 1900 + (date >> 8);
+            real_date = date(year, month, day)
+            result.update({self.__names[idx]: real_date})
+          else:
+            result.update({self.__names[idx]: self.__type_to_func[type](idx)})
       return result
     else:
       raise StopIteration
