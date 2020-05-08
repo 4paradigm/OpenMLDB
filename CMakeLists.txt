@@ -20,6 +20,7 @@ option(STATIC_COMPILE_ENABLE "Enable STATIC COMPILE" OFF)
 if (STATIC_COMPILE_ENABLE)
     set(CMAKE_EXE_LINKER_FLAGS "-static -static-libgcc -static-libstdc++")
 endif()
+option(PZFPGA_ENABLE "Enable pz compression for ssd tables" OFF)
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -43,6 +44,9 @@ configure_file(
     "${PROJECT_SOURCE_DIR}/src/config.h.in"
     "${PROJECT_SOURCE_DIR}/src/config.h")
 include_directories(${PROJECT_SOURCE_DIR}/thirdparty/include)
-link_directories(${PROJECT_SOURCE_DIR}/thirdparty/lib ${PROJECT_SOURCE_DIR}/thirdparty/aclrte-linux64/lib)
+link_directories(${PROJECT_SOURCE_DIR}/thirdparty/lib)
+if (PZFPGA_ENABLE) 
+    link_directories(BEFORE ${PROJECT_SOURCE_DIR}/thirdparty/aclrte-linux64/lib)
+endif()
 add_subdirectory(src)
 
