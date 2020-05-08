@@ -50,6 +50,16 @@
 			<version>${spark.version}</version>
 		</dependency>
 		<dependency>
+			<groupId>org.yaml</groupId>
+			<artifactId>snakeyaml</artifactId>
+			<version>1.17</version>
+		</dependency>
+		<dependency>
+			<groupId>org.projectlombok</groupId>
+			<artifactId>lombok</artifactId>
+			<version>1.16.8</version>
+		</dependency>
+		<dependency>
 			<groupId>org.scalatest</groupId>
 			<artifactId>scalatest_${scala.binary.version}</artifactId>
 			<version>3.0.0</version>
@@ -120,6 +130,17 @@
 						<goals>
 							<goal>testCompile</goal>
 						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.projectlombok</groupId>
+				<artifactId>lombok-maven-plugin</artifactId>
+				<version>1.16.8.0</version>
+				<executions>
+					<execution>
+						<phase>generate-sources</phase>
+						<goals><goal>delombok</goal></goals>
 					</execution>
 				</executions>
 			</plugin>

@@ -34,7 +34,7 @@ SQLCases:
           1, 4, 55, 4.4, 44.4, 2, 4444
           2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
     output:
-      schema: col1:int16, col5:int64, w1_col1_sum:int32, w1_col3_sum:float, w1_col4_sum:double, w1_col2_sum:int16, w1_col5_sum:int64, w1_col1_at0:int32, col6:string
+      schema: col2:int16, col5:int64, w1_col1_sum:int32, w1_col3_sum:float, w1_col4_sum:double, w1_col2_sum:int16, w1_col5_sum:int64, w1_col1_at0:int32, col6:string
 
       data: |
         5, 1, 1, 1.1, 11.1, 5, 1, 1, 1

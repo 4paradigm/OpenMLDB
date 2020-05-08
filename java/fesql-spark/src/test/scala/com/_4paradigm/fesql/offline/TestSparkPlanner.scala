@@ -8,7 +8,7 @@ import scala.collection.JavaConverters._
 
 class TestSparkPlanner extends SparkTestSuite {
 
-  test("Spark planner smoke test") {
+  test("Project plan smoke test") {
     val sess = getSparkSession
 
     val table = sess.createDataFrame(Seq(
@@ -97,7 +97,7 @@ class TestSparkPlanner extends SparkTestSuite {
       (1, 2L, "z")
     ).map(Row.fromTuple(_)).asJava, schemaRight)
 
-    val sql ="SELECT * FROM t1 last join t2 on t1.id = t2.id and t1.`time` <= t2.`time`;"
+    val sql = "SELECT * FROM t1 left join t2 on t1.id = t2.id and t1.`time` <= t2.`time`;"
 
     val planner = new SparkPlanner(sess)
     val res = planner.plan(sql, Map("t1" -> left, "t2" -> right))
