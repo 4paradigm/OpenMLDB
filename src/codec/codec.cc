@@ -159,7 +159,7 @@ bool RowBuilder::AppendDate(uint32_t year, uint32_t month, uint32_t day) {
 
 bool RowBuilder::SetDate(uint32_t index, uint32_t year, uint32_t month,
                          uint32_t day) {
-    if (year > 8099) return false;
+    if (year < 1900 || year > 9999) return false;
     if (month < 1 || month > 12) return false;
     if (day < 1 || day > 31) return false;
     if (!Check(index, ::rtidb::type::kDate)) return false;
@@ -638,7 +638,8 @@ int32_t RowView::GetValue(const int8_t* row, uint32_t idx,
             break;
         case ::rtidb::type::kDate:
             *(reinterpret_cast<uint32_t*>(val)) =
-                static_cast<uint32_t>(v1::GetInt32Field(row_, offset));
+                static_cast<uint32_t>(v1::GetInt32Field(row, offset));
+            break;
         default:
             return -1;
     }

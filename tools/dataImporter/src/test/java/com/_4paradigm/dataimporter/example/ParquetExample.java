@@ -144,7 +144,7 @@ public class ParquetExample {
 //        }
         String[] arr = {"60001", "101", "-20", "1563525301439", "2018-11-11 12:12:13"};
         byte[] brr = {'1', '1', '2', '3', '0', '1', '2', '3', '0', '1', '2', '3'};
-        for (int i = 0; i < 2; i++) {
+        for (int i = 0; i < 100000000; i++) {
             writer.write(groupFactory.newGroup()
                     .append("card", arr[0])
                     .append("mcc", arr[1])

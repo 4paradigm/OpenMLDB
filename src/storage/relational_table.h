@@ -29,7 +29,7 @@
 #include "base/endianconv.h"
 #include "base/id_generator.h"
 #include "base/slice.h"
-#include "codec/codec.h"
+#include "codec/row_codec.h"
 #include "codec/field_codec.h"
 #include "codec/memcomparable_format.h"
 #include "proto/common.pb.h"
@@ -186,9 +186,8 @@ class RelationalTable {
     bool GetPackedField(const int8_t* row, uint32_t idx,
                         const ::rtidb::type::DataType& data_type,
                         std::string* key);
-    bool GetPackedField(::rtidb::codec::RowView* view, uint32_t idx,
-                        const ::rtidb::type::DataType& data_type,
-                        std::string* key);
+    bool PackValue(const void *from, ::rtidb::type::DataType data_type,
+            std::string* key);
     bool ConvertIndex(const std::string& name, const std::string& value,
                       std::string* out_val);
     bool GetCombineStr(const ::google::protobuf::RepeatedPtrField<
