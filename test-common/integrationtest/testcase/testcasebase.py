@@ -634,6 +634,7 @@ class TestCaseBase(unittest.TestCase):
                 column_key.append(elements)
         return (schema, column_key)
 
+    @staticmethod
     def parse_db(rs):
         arr = rs.strip().split("\n")
         dbs = []
@@ -649,7 +650,7 @@ class TestCaseBase(unittest.TestCase):
                 if db != '':
                     dbs.append(db)
                     break
-        return db
+        return dbs
 
     def showschema(self, endpoint, tid='', pid=''):
         rs = self.run_client(endpoint, 'showschema {} {}'.format(tid, pid))
@@ -659,7 +660,7 @@ class TestCaseBase(unittest.TestCase):
         rs = self.run_client(endpoint, 'showschema {}'.format(name), 'ns_client')
         return self.parse_schema(rs)
 
-    def ns_usedb(self, endpointm, name=''):
+    def ns_usedb(self, endpoint, name=''):
         rs = self.run_client(endpoint, 'use {}'.format(name), 'ns_client')
         return rs
 
@@ -667,11 +668,11 @@ class TestCaseBase(unittest.TestCase):
         rs = self.run_client(endpoint, 'showdb', 'ns_client')
         return self.parse_db(rs)
 
-    def ns_createdb(self, endpointm, name=''):
+    def ns_createdb(self, endpoint, name=''):
         rs = self.run_client(endpoint, 'createdb {}'.format(name), 'ns_client')
         return rs
 
-    def ns_dropdb(self, endpointm, name=''):
+    def ns_dropdb(self, endpoint, name=''):
         rs = self.run_client(endpoint, 'dropdb {}'.format(name), 'ns_client')
         return rs
 

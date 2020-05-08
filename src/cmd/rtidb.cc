@@ -1726,9 +1726,9 @@ void HandleNsUseDb(const std::vector<std::string>& parts,
     }
     std::string msg;
     if (client->Use(parts[1], msg)) {
-        std::cout << "use database: " << parts[1] << std::endl;
+        std::cout << "Use database: " << parts[1] << std::endl;
     } else {
-        std::cout << "use database failed. error msg: " << msg << std::endl;
+        std::cout << "Use database failed. error msg: " << msg << std::endl;
     }
 }
 
@@ -1741,9 +1741,9 @@ void HandleNsCreateDb(const std::vector<std::string>& parts,
     }
     std::string msg;
     if (client->CreateDatabase(parts[1], msg)) {
-        std::cout << "create database: " << parts[1] << std::endl;
+        std::cout << "Create database " << parts[1] << " ok" << std::endl;
     } else {
-        std::cout << "create database failed. error msg: " << msg << std::endl;
+        std::cout << "Create database failed. error msg: " << msg << std::endl;
     }
 }
 
@@ -1776,9 +1776,9 @@ void HandleNsDropDb(const std::vector<std::string>& parts,
     }
     std::string msg;
     if (client->DropDatabase(parts[1], msg)) {
-        std::cout << "drop database " << parts[1] << " ok" << std::endl;
+        std::cout << "Drop database " << parts[1] << " ok" << std::endl;
     } else {
-        std::cout << "drop database failed. error msg: " << msg << std::endl;
+        std::cout << "Drop database failed. error msg: " << msg << std::endl;
     }
 }
 
