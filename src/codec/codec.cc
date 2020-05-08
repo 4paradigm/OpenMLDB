@@ -361,7 +361,8 @@ bool RowView::Init() {
         const ::rtidb::common::ColumnDesc& column = schema_.Get(idx);
         rtidb::type::DataType cur_type = column.data_type();
         if (cur_type == ::rtidb::type::kVarchar ||
-            cur_type == ::rtidb::type::kString) {
+            cur_type == ::rtidb::type::kString ||
+            cur_type == ::rtidb::type::kBlob) {
             offset_vec_.push_back(string_field_cnt_);
             string_field_cnt_++;
         } else {

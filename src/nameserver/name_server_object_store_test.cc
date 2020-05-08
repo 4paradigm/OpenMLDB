@@ -34,6 +34,7 @@ DECLARE_uint32(name_server_task_max_concurrency);
 DECLARE_bool(auto_failover);
 
 using ::rtidb::zk::ZkClient;
+using google::protobuf::RepeatedPtrField;
 
 namespace rtidb {
 namespace nameserver {
@@ -297,28 +298,39 @@ TEST_F(NameServerImplObjectStoreTest, CreateTableWithBlobField) {
         ASSERT_TRUE(ok);
         std::vector<std::string> keys{"10"};
         std::string data;
-        bool is_finish;
         uint32_t count;
-        ok = tablet_client.BatchQuery(tid, 0, "", keys, &err_msg, &data,
-                                      &is_finish, &count);
+        RepeatedPtrField<rtidb::api::ReadOption> ros;
+        {
+            auto ro = ros.Add();
+            auto index = ro->add_index();
+            index->add_name("card");
+            std::string* val = index->mutable_value();
+            ok = rtidb::codec::Convert("10", rtidb::type::kBigInt, val);
+            ASSERT_TRUE(ok);
+        }
+        ok = tablet_client.BatchQuery(tid, 0, ros, &data, &count, &err_msg);
         ASSERT_TRUE(ok);
-        ASSERT_TRUE(is_finish);
         ASSERT_EQ(count, 1);
-        rtidb::codec::RowView view(schema,
-                              reinterpret_cast<int8_t*>(&(data[0])+4), size);
+        rtidb::codec::RowView view(schema);
+        ok = view.Reset(reinterpret_cast<int8_t*>(&data[0]+4),
+                        size);
+        ASSERT_TRUE(ok);
         int64_t val = 0;
-        ASSERT_EQ(view.GetInt64(0, &val), 0);
+        int ret = view.GetInt64(0, &val);
+        ASSERT_EQ(ret, 0);
         ASSERT_EQ(val, 10l);
         char* ch = NULL;
         uint32_t length = 0;
         ASSERT_EQ(view.GetString(1, &ch, &length), 0);
-        ASSERT_STREQ(mcc_data.data(), ch);
+        std::string get_data(ch, length);
+        ASSERT_STREQ(mcc_data.data(), get_data.c_str());
         ASSERT_EQ(view.GetString(2, &ch, &length), 0);
-        ASSERT_STREQ(blob_key.c_str(), ch);
+        get_data.assign(ch, length);
+        ASSERT_STREQ(blob_key.c_str(), get_data.c_str());
         data.clear();
         ok = blob_client.Get(tid, 0, blob_key, &data, &err_msg);
         ASSERT_TRUE(ok);
-        int ret = memcmp(blob_data.c_str(), data.c_str(), blob_data.size());
+        ret = memcmp(blob_data.c_str(), data.c_str(), blob_data.size());
         ASSERT_EQ(ret, 0);
     }
 }
