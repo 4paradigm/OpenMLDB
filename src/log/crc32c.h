@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
-#ifndef RTIDB_LOG_CRC32C_H
-#define RTIDB_LOG_CRC32C_H
+#ifndef SRC_LOG_CRC32C_H_
+#define SRC_LOG_CRC32C_H_
 
 #include <stddef.h>
 #include <stdint.h>
@@ -17,9 +17,7 @@ namespace log {
 extern uint32_t Extend(uint32_t init_crc, const char* data, size_t n);
 
 // Return the crc32c of data[0,n-1]
-inline uint32_t Value(const char* data, size_t n) {
-    return Extend(0, data, n);
-}
+inline uint32_t Value(const char* data, size_t n) { return Extend(0, data, n); }
 
 static const uint32_t kMaskDelta = 0xa282ead8ul;
 
@@ -42,4 +40,4 @@ inline uint32_t Unmask(uint32_t masked_crc) {
 }  // namespace log
 }  // namespace rtidb
 
-#endif  // RTIDB_LOG_CRC32C_H
+#endif  // SRC_LOG_CRC32C_H_

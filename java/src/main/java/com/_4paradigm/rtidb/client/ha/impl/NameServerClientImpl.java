@@ -3,9 +3,16 @@ package com._4paradigm.rtidb.client.ha.impl;
 import com._4paradigm.rtidb.client.NameServerClient;
 import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
+import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.ColumnType;
+import com._4paradigm.rtidb.client.schema.IndexDef;
+import com._4paradigm.rtidb.client.schema.TableDesc;
+import com._4paradigm.rtidb.client.type.DataType;
+import com._4paradigm.rtidb.client.type.IndexType;
+import com._4paradigm.rtidb.client.type.TableType;
 import com._4paradigm.rtidb.common.Common;
 import com._4paradigm.rtidb.ns.NS.*;
+import com._4paradigm.rtidb.type.Type;
 import io.brpc.client.*;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
@@ -34,6 +41,18 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
     private AtomicBoolean isClose = new AtomicBoolean(false);
     private RTIDBClientConfig config;
     private RpcBaseClient bs = null;
+    private static Map<String, Type.DataType> TYPE_MAPING = new HashMap<>();
+    static {
+        TYPE_MAPING.put("int16", Type.DataType.kSmallInt);
+        TYPE_MAPING.put("int32", Type.DataType.kInt);
+        TYPE_MAPING.put("int64", Type.DataType.kBigInt);
+        TYPE_MAPING.put("float", Type.DataType.kFloat);
+        TYPE_MAPING.put("double", Type.DataType.kDouble);
+        TYPE_MAPING.put("string", Type.DataType.kVarchar);
+        TYPE_MAPING.put("timestamp", Type.DataType.kTimestamp);
+        TYPE_MAPING.put("bool", Type.DataType.kBool);
+        TYPE_MAPING.put("date", Type.DataType.kDate);
+    }
     private final static ScheduledExecutorService clusterGuardThread = Executors.newScheduledThreadPool(1, new ThreadFactory() {
         public Thread newThread(Runnable r) {
             Thread t = Executors.defaultThreadFactory().newThread(r);
@@ -193,13 +212,95 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         }, 1, TimeUnit.MINUTES);
     }
 
+
     @Override
-    public boolean createTable(TableInfo tableInfo) {
-        CreateTableRequest request = CreateTableRequest.newBuilder().setTableInfo(tableInfo).build();
+    public boolean createTable(TableDesc tableDesc) {
+        TableInfo.Builder builder = TableInfo.newBuilder();
+        builder.setName(tableDesc.getName())
+                .setTableType(TableType.valueFrom(tableDesc.getTableType()))
+                .setPartitionNum(1)
+                .setReplicaNum(1)
+                .setStorageMode(Common.StorageMode.kHDD)
+                .setCompressType(CompressType.kNoCompress);
+        for (ColumnDesc col : tableDesc.getColumnDescList()) {
+            //TODO: resolve type blob
+            DataType dataType = col.getDataType();
+            if (col.getDataType().equals(DataType.Blob)) {
+                dataType = DataType.Varchar;
+            }
+            Common.ColumnDesc cd = Common.ColumnDesc.newBuilder()
+                    .setName(col.getName())
+                    .setDataType(DataType.valueFrom(dataType))
+                    .setNotNull(col.isNotNull())
+                    .build();
+            builder.addColumnDescV1(cd);
+        }
+        String indexName = "";
+        for (IndexDef index : tableDesc.getIndexs()) {
+            if (index.getIndexType() == IndexType.PrimaryKey ||
+                    index.getIndexType() == IndexType.AutoGen ||
+                    index.getIndexType() == IndexType.Unique ||
+                    index.getIndexType() == IndexType.NoUnique) {
+                if (index.getIndexType() == IndexType.AutoGen) {
+                    indexName = index.getIndexName();
+                }
+                Common.ColumnKey.Builder colKeyBuilder = Common.ColumnKey.newBuilder();
+                colKeyBuilder.setIndexName(index.getIndexName())
+                        .setIndexType(IndexType.valueFrom(index.getIndexType()));
+                for (String colName : index.getColNameList()) {
+                    colKeyBuilder.addColName(colName);
+                }
+                Common.ColumnKey columnKey = colKeyBuilder.build();
+                builder.addColumnKey(columnKey);
+            } else {
+                //TODO: other index type
+            }
+        }
+        TableInfo tableInfo = builder.build();
+        if (!indexName.isEmpty()) {
+            for (int i = 0; i < tableInfo.getColumnDescV1List().size(); i++) {
+                Common.ColumnDesc columnDesc = tableInfo.getColumnDescV1List().get(i);
+                if (columnDesc.getName().equals(indexName)) {
+                    if (!columnDesc.getDataType().equals(DataType.valueFrom(DataType.BigInt))) {
+                        logger.warn("autoGenPk column dataType must be BigInt");
+                        return false;
+                    }
+                    break;
+                }
+            }
+        }
+        TableInfo newTableInfo = addDataType(tableInfo);
+        CreateTableRequest request = CreateTableRequest.newBuilder().setTableInfo(newTableInfo).build();
         GeneralResponse response = ns.createTable(request);
         if (response != null && response.getCode() == 0) {
             return true;
-        } else if (response != null ) {
+        } else if (response != null) {
+            logger.warn("fail to create table for error {}", response.getMsg());
+        }
+        return false;
+    }
+
+    private TableInfo addDataType(TableInfo tableInfo) {
+        TableInfo.Builder builder = TableInfo.newBuilder(tableInfo);
+        for (int i = 0; i < tableInfo.getColumnDescV1List().size(); i++) {
+            Common.ColumnDesc desc = tableInfo.getColumnDescV1(i);
+            Type.DataType type = TYPE_MAPING.get(desc.getType().toLowerCase());
+            Common.ColumnDesc.Builder descBuilder =Common.ColumnDesc.newBuilder(desc);
+            if (type!=null)
+            descBuilder.setDataType(type);
+            builder.setColumnDescV1(i, descBuilder.build());
+        }
+        return builder.build();
+    }
+
+    @Override
+    public boolean createTable(TableInfo tableInfo) {
+        TableInfo newTableInfo = addDataType(tableInfo);
+        CreateTableRequest request = CreateTableRequest.newBuilder().setTableInfo(newTableInfo).build();
+        GeneralResponse response = ns.createTable(request);
+        if (response != null && response.getCode() == 0) {
+            return true;
+        } else if (response != null) {
             logger.warn("fail to create table for error {}", response.getMsg());
         }
         return false;

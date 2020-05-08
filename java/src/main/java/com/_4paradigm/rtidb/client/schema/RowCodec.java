@@ -1,6 +1,7 @@
 package com._4paradigm.rtidb.client.schema;
 
 import com._4paradigm.rtidb.client.TabletException;
+import com.google.protobuf.ByteString;
 import org.joda.time.DateTime;
 import org.joda.time.LocalDate;
 import org.slf4j.Logger;
@@ -11,6 +12,7 @@ import java.nio.ByteOrder;
 import java.nio.charset.Charset;
 import java.sql.Date;
 import java.sql.Timestamp;
+import java.util.BitSet;
 import java.util.List;
 
 
@@ -141,6 +143,125 @@ public class RowCodec {
         return buffer;
     }
 
+    private static void decodeColumn(ByteBuffer buffer, Object[] row, int index) throws TabletException {
+        byte type = buffer.get();
+        byte tmpSize = buffer.get();
+        int size = 0;
+        if ((tmpSize & 0x80) == 0) {
+            size = tmpSize;
+        } else {
+            byte lowData = buffer.get();
+            size = ((tmpSize & 0x7F) << 8) | (lowData & 0xFF);
+        }
+        ColumnType ctype = ColumnType.valueOf((int) type);
+        if (size == 0 && ctype == ColumnType.kEmptyString) {
+            row[index] = "";
+            return;
+        }
+        if (size == 0) {
+            row[index] = null;
+            return;
+        }
+        switch (ctype) {
+            case kString:
+                byte[] inner = new byte[size];
+                buffer.get(inner);
+                String val = new String(inner, charset);
+                row[index] = val;
+                break;
+            case kInt32:
+                row[index] = buffer.getInt();
+                break;
+            case kInt64:
+                row[index] = buffer.getLong();
+                break;
+            case kDouble:
+                row[index] = buffer.getDouble();
+                break;
+            case kFloat:
+                row[index] = buffer.getFloat();
+                break;
+            case kTimestamp:
+                long time = buffer.getLong();
+                row[index] = new DateTime(time);
+                break;
+            case kInt16:
+                row[index] = buffer.getShort();
+                break;
+            case kDate:
+                long date = buffer.getLong();
+                row[index] = new Date(date);
+                break;
+            case kBool:
+                int byteValue = buffer.get();
+                if (byteValue == 0) {
+                    row[index] = false;
+                } else {
+                    row[index] = true;
+                }
+                break;
+            default:
+                throw new TabletException(ctype.toString() + " is not support on jvm platform");
+        }
+    }
+    public static void decode(ByteBuffer buffer, List<ColumnDesc> schema, BitSet bset,
+                              List<Integer> projection, Integer maxIndex,
+                              Object[] row, int start, int length) throws TabletException {
+        if (buffer.order() == ByteOrder.BIG_ENDIAN) {
+            buffer = buffer.order(ByteOrder.LITTLE_ENDIAN);
+        }
+        int colLength = 0;
+        if (schema.size() < 128) {
+            Byte temp = buffer.asReadOnlyBuffer().get();
+            if ((temp & 0x80) != 0) {
+                colLength = buffer.get() & 0x7F + schema.size();
+            } else {
+                colLength = buffer.get() & 0x7F;
+            }
+        } else {
+            //小端字节序，buffer.putShort(00000000,10000000)后在buffer中存储为10000000,00000000
+            short temp = buffer.getShort();
+            if ((temp & 0x8000) != 0) {
+                int res = temp & 0x007F;
+                colLength = res + schema.size();
+            } else {
+                colLength = temp;
+            }
+        }
+        Object[] rawRow = new Object[colLength];
+        int count = 0;
+        while (buffer.position() < buffer.limit() && count <= maxIndex) {
+            if (bset.get(count)) {
+                decodeColumn(buffer, rawRow, count);
+                count++;
+                continue;
+            }
+            // skip type
+            buffer.get();
+            byte tmpSize = buffer.get();
+            int size = 0;
+            if ((tmpSize & 0x80) == 0) {
+                size = tmpSize;
+            } else {
+                byte lowData = buffer.get();
+                size = ((tmpSize & 0x7F) << 8) | (lowData & 0xFF);
+            }
+            if (size == 0) {
+                count++;
+                continue;
+            }
+            // skip data body
+            buffer.position(buffer.position() + size);
+            count++;
+        }
+        int index = start;
+        for (Integer idx : projection) {
+            if (index >= length) break;
+            row[index] = rawRow[idx];
+            index ++;
+        }
+    }
+
     public static void decode(ByteBuffer buffer, List<ColumnDesc> raw_schema, Object[] row, int start, int length) throws TabletException {
         if (buffer.order() == ByteOrder.BIG_ENDIAN) {
             buffer = buffer.order(ByteOrder.LITTLE_ENDIAN);
@@ -169,88 +290,27 @@ public class RowCodec {
         int index = start;
         int count = 0;
         while (buffer.position() < buffer.limit() && count < colLength) {
-            byte type = buffer.get();
-            byte tmpSize = buffer.get();
-            int size = 0;
-            if ((tmpSize & 0x80) == 0) {
-                size = tmpSize;
-            } else {
-                byte lowData = buffer.get();
-                size = ((tmpSize & 0x7F) << 8) | (lowData & 0xFF);
-            }
-            ColumnType ctype = ColumnType.valueOf((int) type);
-            if (size == 0 && ctype == ColumnType.kEmptyString) {
-                row[index] = "";
-                index++;
-                count++;
-                continue;
-            }
-            if (size == 0) {
-                row[index] = null;
-                index++;
-                count++;
-                continue;
-            }
-            switch (ctype) {
-                case kString:
-                    byte[] inner = new byte[size];
-                    buffer.get(inner);
-                    String val = new String(inner, charset);
-                    row[index] = val;
-                    break;
-                case kInt32:
-                    row[index] = buffer.getInt();
-                    break;
-                case kInt64:
-                    row[index] = buffer.getLong();
-                    break;
-                case kDouble:
-                    row[index] = buffer.getDouble();
-                    break;
-                case kFloat:
-                    row[index] = buffer.getFloat();
-                    break;
-                case kTimestamp:
-                    long time = buffer.getLong();
-                    row[index] = new DateTime(time);
-                    break;
-                case kInt16:
-                    row[index] = buffer.getShort();
-                    break;
-                case kDate:
-                    long date = buffer.getLong();
-                    row[index] = new Date(date);
-                    break;
-                case kBool:
-                    int byteValue = buffer.get();
-                    if (byteValue == 0) {
-                        row[index] = false;
-                    } else {
-                        row[index] = true;
-                    }
-                    break;
-//                case kEmptyString:
-//                    row[index]="";
-//                    break;
-                default:
-                    throw new TabletException(ctype.toString() + " is not support on jvm platform");
-            }
+            decodeColumn(buffer, row, index);
             index++;
             count++;
         }
     }
-
+    public static Object[] decode(ByteBuffer buffer, List<ColumnDesc> schema, BitSet bitSet,List<Integer> projection, int maxIndex) throws TabletException {
+        return decode(buffer, schema, bitSet, projection, maxIndex, 0);
+    }
     public static Object[] decode(ByteBuffer buffer, List<ColumnDesc> schema) throws TabletException {
         return decode(buffer, schema, 0);
     }
-
-    //for adding field
     public static Object[] decode(ByteBuffer buffer, List<ColumnDesc> schema, int modifytimes) throws TabletException {
         Object[] row = new Object[schema.size() + modifytimes];
         decode(buffer, schema, row, 0, row.length);
         return row;
     }
-
+    private static Object[] decode(ByteBuffer buffer, List<ColumnDesc> schema, BitSet bitset, List<Integer> projection, int maxIndex, int modifytimes) throws TabletException {
+        Object[] row = new Object[projection.size()];
+        decode(buffer, schema, bitset, projection, maxIndex, row, 0, row.length);
+        return row;
+    }
     private static int getSize(Object[] row, List<ColumnDesc> schema, Object[] cache) {
         int totalSize = 1;
         if (schema.size() >= 128) {

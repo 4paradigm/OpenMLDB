@@ -15,7 +15,7 @@ clear_debug
 sleep 2
 
 cp build/lib/librtidb_py.so python
-cd python && python rtidb_client_test.py
+cd python && python2 rtidb_client_test.py
 
 clear_debug
 sleep 3

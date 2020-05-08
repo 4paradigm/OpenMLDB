@@ -1,6 +1,6 @@
 //
 // skip_list_test.cc
-// Copyright 2017 4paradigm.com 
+// Copyright 2017 4paradigm.com
 
 #include "base/strings.h"
 #include "gtest/gtest.h"
@@ -9,22 +9,18 @@ namespace rtidb {
 namespace base {
 
 class StringsTest : public ::testing::Test {
-
-public:
-    StringsTest(){}
+ public:
+    StringsTest() {}
     ~StringsTest() {}
 };
 
-
 TEST_F(StringsTest, FormatToString) {
-
     std::string result = FormatToString(98, 4);
     ASSERT_EQ("0098", result);
     result = FormatToString(10298, 4);
     ASSERT_EQ("0298", result);
     result = FormatToString(10298, 1);
     ASSERT_EQ("8", result);
-
 }
 
 TEST_F(StringsTest, Split) {
@@ -37,7 +33,6 @@ TEST_F(StringsTest, Split) {
 }
 
 TEST_F(StringsTest, ReadableTime) {
-
     std::string result = HumanReadableTime(60000);
     ASSERT_EQ("1m", result);
     result = HumanReadableTime(600);
@@ -52,8 +47,13 @@ TEST_F(StringsTest, ReadableTime) {
     ASSERT_EQ("5d", result);
 }
 
+TEST_F(StringsTest, getNowTimeInSecond) {
+    ASSERT_EQ(1573620180, ParseTimeToSecond("20191113124300", "%Y%m%d%H%M%S"));
+    ASSERT_EQ(1582952399, ParseTimeToSecond("20200229125959", "%Y%m%d%H%M%S"));
 }
-}
+
+}  // namespace base
+}  // namespace rtidb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

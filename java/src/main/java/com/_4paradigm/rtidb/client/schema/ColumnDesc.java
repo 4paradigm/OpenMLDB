@@ -1,11 +1,19 @@
 package com._4paradigm.rtidb.client.schema;
 
+import com._4paradigm.rtidb.client.type.DataType;
+
 public class ColumnDesc {
 
 	private ColumnType type;
 	private String name;
 	private boolean addTsIndex;
 	private boolean tsCol;
+	private DataType dataType;
+    private boolean notNull = true;
+
+	public ColumnDesc() {
+	}
+
 	public boolean isAddTsIndex() {
 		return addTsIndex;
 	}
@@ -29,5 +37,21 @@ public class ColumnDesc {
 	}
 	public void setTsCol(boolean isTsCol) {
 		this.tsCol = isTsCol;
+	}
+
+	public DataType getDataType() {
+		return dataType;
+	}
+
+	public void setDataType(DataType dataType) {
+		this.dataType = dataType;
+	}
+
+	public boolean isNotNull() {
+		return notNull;
+	}
+
+	public void setNotNull(boolean notNull) {
+		this.notNull = notNull;
 	}
 }

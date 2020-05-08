@@ -2,14 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
-#ifndef RTIDB_LOG_WRITER_H
-#define RTIDB_LOG_WRITER_H
+#ifndef SRC_LOG_LOG_WRITER_H_
+#define SRC_LOG_LOG_WRITER_H_
 
 #include <stdint.h>
-#include "log/log_format.h"
-#include "log/writable_file.h"
+#include <string>
 #include "base/slice.h"
 #include "base/status.h"
+#include "log/log_format.h"
+#include "log/writable_file.h"
 
 using ::rtidb::base::Slice;
 using ::rtidb::base::Status;
@@ -18,8 +19,7 @@ namespace rtidb {
 namespace log {
 
 class Writer {
-
-public:
+ public:
     // Create a writer that will append data to "*dest".
     // "*dest" must be initially empty.
     // "*dest" must remain live while this Writer is in use.
@@ -35,9 +35,9 @@ public:
     Status AddRecord(const Slice& slice);
     Status EndLog();
 
-private:
+ private:
     WritableFile* dest_;
-    int block_offset_;       // Current offset in block
+    int block_offset_;  // Current offset in block
 
     // crc32c values for all supported record types.  These are
     // pre-computed to reduce the overhead of computing the crc of the
@@ -55,8 +55,8 @@ struct WriteHandle {
     FILE* fd_;
     WritableFile* wf_;
     Writer* lw_;
-    WriteHandle(const std::string& fname, FILE* fd, uint64_t dest_length = 0):fd_(fd),
-    wf_(NULL), lw_(NULL) {
+    WriteHandle(const std::string& fname, FILE* fd, uint64_t dest_length = 0)
+        : fd_(fd), wf_(NULL), lw_(NULL) {
         wf_ = ::rtidb::log::NewWritableFile(fname, fd);
         lw_ = new Writer(wf_, dest_length);
     }
@@ -65,17 +65,11 @@ struct WriteHandle {
         return lw_->AddRecord(slice);
     }
 
-    ::rtidb::base::Status Sync() {
-        return wf_->Sync(); 
-    }
+    ::rtidb::base::Status Sync() { return wf_->Sync(); }
 
-    ::rtidb::base::Status EndLog() {
-        return lw_->EndLog();
-    }
+    ::rtidb::base::Status EndLog() { return lw_->EndLog(); }
 
-    uint64_t GetSize() {
-        return wf_->GetSize();
-    }
+    uint64_t GetSize() { return wf_->GetSize(); }
 
     ~WriteHandle() {
         delete lw_;
@@ -83,8 +77,7 @@ struct WriteHandle {
     }
 };
 
-
 }  // namespace log
 }  // namespace rtidb
 
-#endif  // RTIDB_LOG_WRITER_H
+#endif  // SRC_LOG_LOG_WRITER_H_

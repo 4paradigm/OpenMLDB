@@ -137,6 +137,8 @@ public class Main {
             }
             ParseCsvUtil parseCsvUtil = new ParseCsvUtil(filePath, TABLENAME, schema);
             parseCsvUtil.put();
+        } else {
+            logger.warn("the file name suffix should be .parquet, .csv or .orc");
         }
     }
 

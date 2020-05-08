@@ -11,6 +11,8 @@ DEPS_SOURCE=`pwd`/thirdsrc
 DEPS_PREFIX=`pwd`/thirdparty
 DEPS_CONFIG="--prefix=${DEPS_PREFIX} --disable-shared --with-pic"
 mkdir -p $DEPS_PREFIX/lib $DEPS_PREFIX/include
+export CXXFLAGS="-O3 -fPIC"
+export CFLAGS="-O3 -fPIC"
 
 export PATH=${DEPS_PREFIX}/bin:$PATH
 mkdir -p ${DEPS_SOURCE} ${DEPS_PREFIX}
@@ -229,7 +231,7 @@ else
     wget http://pkg.4paradigm.com/rtidb/dev/zookeeper-3.4.10.tar.gz
     tar -zxvf zookeeper-3.4.10.tar.gz
     cd zookeeper-3.4.10/src/c/
-    ./configure --prefix=${DEPS_PREFIX} --enable-shared=no --enable-static=yes
+    CFLAGS=" -g -O2 -D_GNU_SOURCE -fPIC " ./configure --prefix=${DEPS_PREFIX} --enable-shared=no --enable-static=yes
     make -j4 >/dev/null 
     make install
     cd -

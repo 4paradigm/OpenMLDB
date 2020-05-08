@@ -5,35 +5,35 @@
 // Date 2017-09-01
 //
 
+#include <brpc/server.h>
+#include <gflags/gflags.h>
+#include <gtest/gtest.h>
+#include <sched.h>
+#include <stdio.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include "base/file_util.h"
+#include "client/tablet_client.h"
+#include "logging.h" // NOLINT
+#include "proto/tablet.pb.h"
 #include "replica/log_replicator.h"
 #include "replica/replicate_node.h"
-#include <sched.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <gtest/gtest.h>
-#include <stdio.h>
-#include "proto/tablet.pb.h"
-#include "logging.h"
-#include "thread_pool.h"
-#include <brpc/server.h>
-#include "storage/table.h"
 #include "storage/segment.h"
+#include "storage/table.h"
 #include "storage/ticket.h"
-#include "timer.h"
 #include "tablet/tablet_impl.h"
-#include "client/tablet_client.h"
-#include <gflags/gflags.h>
-#include "base/file_util.h"
+#include "thread_pool.h" // NOLINT
+#include "timer.h" // NOLINT
 
+using ::baidu::common::DEBUG;
+using ::baidu::common::INFO;
 using ::baidu::common::ThreadPool;
+using ::google::protobuf::Closure;
+using ::google::protobuf::RpcController;
+using ::rtidb::storage::DataBlock;
 using ::rtidb::storage::Table;
 using ::rtidb::storage::Ticket;
-using ::rtidb::storage::DataBlock;
-using ::google::protobuf::RpcController;
-using ::google::protobuf::Closure;
-using ::baidu::common::INFO;
-using ::baidu::common::DEBUG;
 using ::rtidb::tablet::TabletImpl;
 
 DECLARE_string(db_root_path);
@@ -44,8 +44,7 @@ namespace rtidb {
 namespace replica {
 
 class BinlogTest : public ::testing::Test {
-
-public:
+ public:
     BinlogTest() {}
 
     ~BinlogTest() {}
@@ -58,10 +57,10 @@ TEST_F(BinlogTest, DeleteBinlog) {
     tablet->Init();
     int offset = FLAGS_make_snapshot_threshold_offset;
     FLAGS_make_snapshot_threshold_offset = 0;
-	brpc::Server server;
+    brpc::Server server;
     if (server.AddService(tablet, brpc::SERVER_OWNS_SERVICE) != 0) {
-       PDLOG(WARNING, "fail to register tablet rpc service");
-       exit(1);
+        PDLOG(WARNING, "fail to register tablet rpc service");
+        exit(1);
     }
     brpc::ServerOptions options;
     std::string leader_point = "127.0.0.1:18529";
@@ -76,19 +75,21 @@ TEST_F(BinlogTest, DeleteBinlog) {
     ::rtidb::client::TabletClient client(leader_point);
     client.Init();
     std::vector<std::string> endpoints;
-    bool ret = client.CreateTable("table1", tid, pid, 100000, 0, true, endpoints,
-                    ::rtidb::api::TTLType::kAbsoluteTime, 16, 0, ::rtidb::api::CompressType::kNoCompress);
+    bool ret =
+        client.CreateTable("table1", tid, pid, 100000, 0, true, endpoints,
+                           ::rtidb::api::TTLType::kAbsoluteTime, 16, 0,
+                           ::rtidb::api::CompressType::kNoCompress);
     ASSERT_TRUE(ret);
-    
+
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     int count = 1000;
-    while(count) {
+    while (count) {
         char key[20];
-        snprintf(key, 20, "testkey_%d", count);
+        snprintf(key, sizeof(key), "testkey_%d", count);
         ret = client.Put(tid, pid, key, cur_time, std::string(10 * 1024, 'a'));
         count--;
     }
-    ret = client.MakeSnapshot(tid, pid);
+    ret = client.MakeSnapshot(tid, pid, 0);
     ASSERT_TRUE(ret);
     sleep(2);
     std::vector<std::string> vec;
@@ -100,19 +101,16 @@ TEST_F(BinlogTest, DeleteBinlog) {
     FLAGS_make_snapshot_threshold_offset = offset;
 }
 
-}
-}
+}  // namespace replica
+}  // namespace rtidb
 
-inline std::string GenRand() {
-    return std::to_string(rand() % 10000000 + 1);
-}
+inline std::string GenRand() { return std::to_string(rand() % 10000000 + 1); } // NOLINT
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
-    srand (time(NULL));
+    srand(time(NULL));
     ::baidu::common::SetLogLevel(::baidu::common::INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     FLAGS_db_root_path = "/tmp/" + ::GenRand();
     return RUN_ALL_TESTS();
 }
-

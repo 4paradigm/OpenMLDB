@@ -6,21 +6,26 @@
 //
 
 #include "tablet/file_receiver.h"
+#include <boost/algorithm/string/predicate.hpp>
 #include "base/file_util.h"
 #include "base/strings.h"
-#include "logging.h"
-#include <boost/algorithm/string/predicate.hpp>
+#include "logging.h" // NOLINT
 
+using ::baidu::common::DEBUG;
 using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
-using ::baidu::common::DEBUG;
 
 namespace rtidb {
 namespace tablet {
 
-FileReceiver::FileReceiver(const std::string& file_name, const std::string& dir_name, const std::string& path):
-        file_name_(file_name), dir_name_(dir_name), path_(path), size_(0), block_id_(0), file_(NULL) {
-}
+FileReceiver::FileReceiver(const std::string& file_name,
+                           const std::string& dir_name, const std::string& path)
+    : file_name_(file_name),
+      dir_name_(dir_name),
+      path_(path),
+      size_(0),
+      block_id_(0),
+      file_(NULL) {}
 
 FileReceiver::~FileReceiver() {
     if (file_) fclose(file_);
@@ -45,12 +50,11 @@ bool FileReceiver::Init() {
         return false;
     }
     file_ = file;
+    block_id_ = 0;
     return true;
 }
 
-uint64_t FileReceiver::GetBlockId() {
-    return block_id_;
-}
+uint64_t FileReceiver::GetBlockId() { return block_id_; }
 
 int FileReceiver::WriteData(const std::string& data, uint64_t block_id) {
     if (file_ == NULL) {
@@ -63,7 +67,8 @@ int FileReceiver::WriteData(const std::string& data, uint64_t block_id) {
     }
     size_t r = fwrite_unlocked(data.c_str(), 1, data.size(), file_);
     if (r < data.size()) {
-        PDLOG(WARNING, "write error. name %s%s", path_.c_str(), file_name_.c_str());
+        PDLOG(WARNING, "write error. name %s%s", path_.c_str(),
+              file_name_.c_str());
         return -1;
     }
     size_ += r;
@@ -82,5 +87,5 @@ void FileReceiver::SaveFile() {
     PDLOG(INFO, "file %s received. size %lu", full_path.c_str(), size_);
 }
 
-}
-}
+}  // namespace tablet
+}  // namespace rtidb

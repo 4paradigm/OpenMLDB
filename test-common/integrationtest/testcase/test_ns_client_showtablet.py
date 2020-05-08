@@ -6,7 +6,7 @@ from libs.test_loader import load
 import libs.utils as utils
 from libs.logger import infoLogger
 
-
+@multi_dimension(True)
 class TestShowTablet(TestCaseBase):
 
     def test_showtablet_healthy(self):
