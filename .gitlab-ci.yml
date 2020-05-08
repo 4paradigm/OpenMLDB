@@ -119,4 +119,4 @@ build_rtidb_pz:
         paths:
             - build/bin/rtidb
     only:
-        - /*pz-fpga*/
+        - *pz-fpga*
