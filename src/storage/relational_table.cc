@@ -544,17 +544,17 @@ bool RelationalTable::Delete(
         }
         suffix++;
     }
-    rtidb::codec::RowView row_view = rtidb::codec::RowView(table_meta_.column_desc());
     for (auto& iter : iter_vec) {
-        const int8_t* data = reinterpret_cast<int8_t*>(const_cast<char*>(iter->value().data()));
+        const int8_t* data =
+            reinterpret_cast<int8_t*>(const_cast<char*>(iter->value().data()));
 
         for (auto i : blob_suffix) {
             char* ch = NULL;
             uint32_t length = 0;
             int ret = row_view_.GetValue(data, i, &ch, &length);
             if (ret != 0) {
-                PDLOG(WARNING, "get string field failed. errno %d tid %u pid %u", ret, id_,
-                      pid_);
+                PDLOG(WARNING, "get string failed. errno %d tid %u pid %u",
+                      ret, id_, pid_);
                 blob_keys->Clear();
                 return false;
             }
