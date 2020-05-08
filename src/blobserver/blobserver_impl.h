@@ -52,20 +52,20 @@ class BlobServerImpl : public ::rtidb::blobserver::BlobServer {
 
     void CreateTable(RpcController* controller,
                      const CreateTableRequest* request,
-                     GeneralResponse* response, Closure* done);
+                     CreateTableResponse* response, Closure* done);
     void Put(RpcController* controller, const PutRequest* request,
              PutResponse* response, Closure* done);
     void Get(RpcController* controller, const GetRequest* request,
              GetResponse* response, Closure* done);
     void Delete(RpcController* controller, const DeleteRequest* request,
-                GeneralResponse* response, Closure* done);
+                DeleteResponse* response, Closure* done);
     void LoadTable(RpcController* controller, const LoadTableRequest* request,
-                   GeneralResponse* response, Closure* done);
+                   LoadTableResponse* response, Closure* done);
     void GetStoreStatus(RpcController* controller,
                         const GetStoreStatusRequest* request,
                         GetStoreStatusResponse* response, Closure* done);
     void DropTable(RpcController* controller, const DropTableRequest* request,
-                   GeneralResponse* response, Closure* done);
+                   DropTableResponse* response, Closure* done);
 
  private:
     void DropTableInternal(uint32_t tid, uint32_t pid);

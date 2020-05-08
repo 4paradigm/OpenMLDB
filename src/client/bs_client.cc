@@ -28,7 +28,7 @@ bool BsClient::CreateTable(const TableMeta &table_meta, std::string *msg) {
     ::rtidb::blobserver::CreateTableRequest request;
     auto meta = request.mutable_table_meta();
     meta->CopyFrom(table_meta);
-    ::rtidb::blobserver::GeneralResponse response;
+    ::rtidb::blobserver::CreateTableResponse response;
     bool ok = client_.SendRequest(&BlobServer_Stub::CreateTable, &request,
                                   &response, FLAGS_request_sleep_time, 1);
     msg->swap(*response.mutable_msg());
@@ -104,7 +104,7 @@ bool BsClient::Get(uint32_t tid, uint32_t pid, const std::string &key,
 bool BsClient::Delete(uint32_t tid, uint32_t pid, const std::string &key,
                       std::string *msg) {
     ::rtidb::blobserver::DeleteRequest request;
-    ::rtidb::blobserver::GeneralResponse response;
+    ::rtidb::blobserver::DeleteResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
     request.set_allocated_key(const_cast<std::string *>(&key));
@@ -120,7 +120,7 @@ bool BsClient::Delete(uint32_t tid, uint32_t pid, const std::string &key,
 
 bool BsClient::DropTable(uint32_t tid, uint32_t pid, std::string *msg) {
     ::rtidb::blobserver::DropTableRequest request;
-    ::rtidb::blobserver::GeneralResponse response;
+    ::rtidb::blobserver::DropTableResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
     bool ok = client_.SendRequest(&BlobServer_Stub::DropTable, &request,

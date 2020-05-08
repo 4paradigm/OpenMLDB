@@ -113,7 +113,7 @@ void BlobServerImpl::CheckZkClient() {
 
 void BlobServerImpl::CreateTable(RpcController *controller,
                                  const CreateTableRequest *request,
-                                 GeneralResponse *response, Closure *done) {
+                                 CreateTableResponse *response, Closure *done) {
     brpc::ClosureGuard done_guard(done);
     const TableMeta &table_meta = request->table_meta();
     uint32_t tid = table_meta.tid();
@@ -221,7 +221,7 @@ void BlobServerImpl::Put(RpcController *controller, const PutRequest *request,
 
 void BlobServerImpl::Delete(RpcController *controller,
                             const DeleteRequest *request,
-                            GeneralResponse *response, Closure *done) {
+                            DeleteResponse *response, Closure *done) {
     brpc::ClosureGuard done_guard(done);
     if (request->key().empty()) {
         response->set_code(ReturnCode::kKeyNotFound);
@@ -248,7 +248,7 @@ void BlobServerImpl::Delete(RpcController *controller,
 
 void BlobServerImpl::LoadTable(RpcController *controller,
                                const LoadTableRequest *request,
-                               GeneralResponse *response, Closure *done) {
+                               LoadTableResponse *response, Closure *done) {
     brpc::ClosureGuard done_guard(done);
     std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
     if (request->has_task_info() && request->task_info().IsInitialized()) {
@@ -341,7 +341,7 @@ void BlobServerImpl::GetStoreStatus(RpcController *controller,
 
 void BlobServerImpl::DropTable(RpcController *controller,
                                const DropTableRequest *request,
-                               GeneralResponse *response, Closure *done) {
+                               DropTableResponse *response, Closure *done) {
     brpc::ClosureGuard done_guard(done);
     if (request->has_tid() && request->has_pid()) {
         uint32_t tid = request->tid();

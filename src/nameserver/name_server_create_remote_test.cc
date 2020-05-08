@@ -93,7 +93,7 @@ void StartNameServer(brpc::Server& server) { // NOLINT
     }
 }
 
-void StartTablet(brpc::Server* server) { // NOLINT
+void StartTablet(brpc::Server* server) {
     ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
     bool ok = tablet->Init();
     ASSERT_TRUE(ok);

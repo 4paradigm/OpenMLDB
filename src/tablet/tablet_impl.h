@@ -86,7 +86,7 @@ class TabletImpl : public ::rtidb::api::TabletServer {
 
     void Delete(RpcController* controller,
                 const ::rtidb::api::DeleteRequest* request,
-                ::rtidb::api::DeleteResponse* response, Closure* done);
+                ::rtidb::api::GeneralResponse* response, Closure* done);
 
     void Count(RpcController* controller,
                const ::rtidb::api::CountRequest* request,

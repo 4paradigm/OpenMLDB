@@ -8,10 +8,21 @@ option java_generic_services = true;
 option java_package = "com._4paradigm.rtidb.object_store";
 option java_outer_classname = "oss";
 
-message GeneralResponse {
-    optional string msg = 1;
-    optional int32 code = 2;
-};
+message TableMeta {
+    optional uint32 tid = 1;
+    optional string name = 2;
+    optional uint32 pid = 3;
+    optional rtidb.common.StorageMode storage_mode = 4 [default = kHDD];
+    optional rtidb.type.TableType table_type = 5;
+    optional rtidb.api.CompressType compress_type = 6;
+    optional uint32 height = 7 [default = 1];
+    optional int64 before_time = 8 [default = 0];
+}
+
+message StoreStatus {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+}
 
 message GetRequest {
     optional uint32 tid = 1;
@@ -20,17 +31,22 @@ message GetRequest {
     optional bool use_attachment = 4 [default = false];
 }
 
+message GetResponse {
+    optional bytes data = 1;
+    optional string msg = 2;
+    optional int32 code = 3;
+}
+
 message DeleteRequest {
     optional uint32 tid = 1;
     optional uint32 pid = 2;
     optional string key = 3;
 }
 
-message GetResponse {
-    optional bytes data = 1;
-    optional string msg = 2;
-    optional int32 code = 3;
-}
+message DeleteResponse {
+    optional string msg = 1;
+    optional int32 code = 2;
+};
 
 message PutRequest {
     optional uint32 tid = 1;
@@ -45,32 +61,26 @@ message PutResponse {
     optional string key = 3;
 }
 
-message TableMeta {
-    optional uint32 tid = 1;
-    optional string name = 2;
-    optional uint32 pid = 3;
-    optional rtidb.common.StorageMode storage_mode = 4 [default = kHDD];
-    optional rtidb.type.TableType table_type = 5;
-    optional rtidb.api.CompressType compress_type = 6;
-    optional uint32 height = 7 [default = 1];
-    optional int64 before_time = 8 [default = 0];
-}
-
 message CreateTableRequest {
     optional TableMeta table_meta = 1;
 }
 
-message StatsRequest {
-    optional uint32 tid = 1;
-    optional uint32 pid = 2;
-}
+message CreateTableResponse {
+    optional string msg = 1;
+    optional int32 code = 2;
+};
 
 message LoadTableRequest {
     optional TableMeta table_meta = 1;
     optional rtidb.api.TaskInfo task_info = 2;
 }
 
-message StoreStatus {
+message LoadTableResponse {
+    optional string msg = 1;
+    optional int32 code = 2;
+};
+
+message GetStoreStatusRequest {
     optional uint32 tid = 1;
     optional uint32 pid = 2;
 }
@@ -81,22 +91,22 @@ message GetStoreStatusResponse {
     optional string msg = 3;
 }
 
-message GetStoreStatusRequest {
-    optional uint32 tid = 1;
-    optional uint32 pid = 2;
-}
-
 message DropTableRequest {
     optional uint32 tid = 1;
     optional uint32 pid = 2;
 }
 
+message DropTableResponse {
+    optional string msg = 1;
+    optional int32 code = 2;
+};
+
 service BlobServer {
-    rpc CreateTable(CreateTableRequest) returns (GeneralResponse);
+    rpc CreateTable(CreateTableRequest) returns (CreateTableResponse);
     rpc Put(PutRequest) returns (PutResponse);
     rpc Get(GetRequest) returns (GetResponse);
-    rpc Delete(DeleteRequest) returns (GeneralResponse);
-    rpc LoadTable(LoadTableRequest) returns (GeneralResponse);
+    rpc Delete(DeleteRequest) returns (DeleteResponse);
+    rpc LoadTable(LoadTableRequest) returns (LoadTableResponse);
     rpc GetStoreStatus(GetStoreStatusRequest) returns (GetStoreStatusResponse);
-    rpc DropTable(DropTableRequest) returns (GeneralResponse);
+    rpc DropTable(DropTableRequest) returns (DropTableResponse);
 }

@@ -544,22 +544,18 @@ bool RelationalTable::Delete(
         }
         suffix++;
     }
-    rtidb::codec::RowView row_view = rtidb::codec::RowView(schema);
+    rtidb::codec::RowView row_view = rtidb::codec::RowView(table_meta_.column_desc());
     for (auto& iter : iter_vec) {
-        ok = row_view.Reset(
-            reinterpret_cast<int8_t*>(const_cast<char*>(iter->value().data())),
-            iter->value().size());
-        if (!ok) {
-            PDLOG(WARNING, "reset data fail. tid %u pid %u", id_, pid_);
-            return false;
-        }
+        const int8_t* data = reinterpret_cast<int8_t*>(const_cast<char*>(iter->value().data()));
+
         for (auto i : blob_suffix) {
             char* ch = NULL;
             uint32_t length = 0;
-            int ret = row_view.GetString(i, &ch, &length);
+            int ret = row_view_.GetValue(data, i, &ch, &length);
             if (ret != 0) {
-                PDLOG(WARNING, "get string field fail. tid %u pid %u", id_,
+                PDLOG(WARNING, "get string field failed. errno %d tid %u pid %u", ret, id_,
                       pid_);
+                blob_keys->Clear();
                 return false;
             }
             blob_keys->Add()->append(ch, length);
@@ -567,7 +563,7 @@ bool RelationalTable::Delete(
     }
     ok = Delete(condition_columns);
     if (!ok) {
-        PDLOG(WARNING, "delete fail. clean blob_keys");
+        PDLOG(WARNING, "delete failed. clean blob_keys");
         blob_keys->Clear();
     }
     return false;

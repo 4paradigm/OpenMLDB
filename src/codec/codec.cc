@@ -655,7 +655,8 @@ int32_t RowView::GetValue(const int8_t* row, uint32_t idx, char** val,
     }
     const ::rtidb::common::ColumnDesc& column = schema_.Get(idx);
     if (column.data_type() != ::rtidb::type::kVarchar &&
-        column.data_type() != ::rtidb::type::kString) {
+        column.data_type() != ::rtidb::type::kString &&
+        column.data_type() != ::rtidb::type::kBlob) {
         return -1;
     }
     uint32_t size = GetSize(row);

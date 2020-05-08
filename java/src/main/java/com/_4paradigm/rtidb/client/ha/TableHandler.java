@@ -25,9 +25,9 @@ public class TableHandler {
     private boolean hasTsCol = false;
     private String autoGenPkName = "";
     private int formatVersion = 0;
-    private boolean IsOS = false;
-    private BlobServer bs = null;
-    private List<Integer> blobSuffix = new ArrayList<Integer>();
+    private boolean isObjectStore = false;
+    private BlobServer blobServer = null;
+    private List<Integer> blobSuffixList = new ArrayList<Integer>();
 
     public int getFormatVersion() {
         return formatVersion;
@@ -59,7 +59,7 @@ public class TableHandler {
                     ncd.setType(ColumnType.valueFrom(cd.getType()));
                 }
                 if (cd.getDataType() == Type.DataType.kBlob) {
-                    blobSuffix.add(i);
+                    blobSuffixList.add(i);
                 }
                 schema.add(ncd);
                 if (cd.getAddTsIdx()) {
@@ -72,18 +72,6 @@ public class TableHandler {
                     index++;
                 }
                 schemaPos.put(cd.getName(), i);
-            }
-            for (int i = 0; i < tableInfo.getAddedColumnDescCount(); i++) {
-                Common.ColumnDesc cd = tableInfo.getAddedColumnDesc(i);
-                ColumnDesc ncd = new ColumnDesc();
-                ncd.setName(cd.getName());
-                ncd.setDataType(DataType.valueFrom(cd.getDataType()));
-                ncd.setNotNull(cd.getNotNull());
-                if (cd.getDataType() == Type.DataType.kBlob) {
-                    blobSuffix.add(tableInfo.getColumnDescV1Count() + i);
-                }
-                schema.add(ncd);
-                schemaPos.put(cd.getName(), tableInfo.getColumnDescV1Count() + i);
             }
             if (tableInfo.getColumnKeyCount() > 0) {
                 indexes.clear();
@@ -225,16 +213,16 @@ public class TableHandler {
         this.partitions = partitions;
     }
 
-    public void setBS(BlobServer bs) {
-        this.bs = bs;
+    public void setBlobServer(BlobServer bs) {
+        this.blobServer = bs;
     }
 
     public BlobServer getBS() {
-        return this.bs;
+        return this.blobServer;
     }
 
     public  boolean IsObjectTable() {
-        return this.IsOS;
+        return this.isObjectStore;
     }
 
     public TableInfo getTableInfo() {

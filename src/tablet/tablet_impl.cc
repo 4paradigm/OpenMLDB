@@ -1749,7 +1749,7 @@ void TabletImpl::Traverse(RpcController* controller,
 
 void TabletImpl::Delete(RpcController* controller,
                         const ::rtidb::api::DeleteRequest* request,
-                        ::rtidb::api::DeleteResponse* response, Closure* done) {
+                        ::rtidb::api::GeneralResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (follower_.load(std::memory_order_relaxed)) {
         response->set_code(::rtidb::base::ReturnCode::kIsFollowerCluster);
@@ -1832,7 +1832,7 @@ void TabletImpl::Delete(RpcController* controller,
         return;
     } else {
         bool has_error = true;
-        if (request->recive_blobs()) {
+        if (request->receive_blobs()) {
             auto blobs = response->mutable_blob_keys();
             bool ok = r_table->Delete(request->condition_columns(), blobs);
             if (ok) {

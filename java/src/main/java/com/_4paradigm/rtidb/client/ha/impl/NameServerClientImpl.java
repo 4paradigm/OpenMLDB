@@ -223,7 +223,6 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
                 .setStorageMode(Common.StorageMode.kHDD)
                 .setCompressType(CompressType.kNoCompress);
         for (ColumnDesc col : tableDesc.getColumnDescList()) {
-            //TODO: resolve type blob
             DataType dataType = col.getDataType();
 
             Common.ColumnDesc cd = Common.ColumnDesc.newBuilder()
