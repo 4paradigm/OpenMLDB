@@ -11,7 +11,6 @@ import com._4paradigm.rtidb.client.schema.RowView;
 import com._4paradigm.rtidb.client.type.DataType;
 import com._4paradigm.rtidb.ns.NS;
 import com._4paradigm.rtidb.object_store.oss;
-import com._4paradigm.rtidb.object_store.oss;
 import com._4paradigm.rtidb.tablet.Tablet;
 import com._4paradigm.rtidb.utils.Compress;
 import com.google.protobuf.ByteBufferNoCopy;
@@ -197,7 +196,7 @@ public class RelationalIterator {
         if (result.length < 1) {
             throw new TabletException("result array size must greather 1");
         }
-        BlobServer bs = th.getBS();
+        BlobServer bs = th.getBlobServer();
         if (bs == null) {
             throw new TabletException("can not found available blobserver with tid " + tid);
         }

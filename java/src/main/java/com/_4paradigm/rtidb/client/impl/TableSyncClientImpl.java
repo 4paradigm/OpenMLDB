@@ -751,7 +751,7 @@ public class TableSyncClientImpl implements TableSyncClient {
                 builder.addConditionColumns(conditionBuilder.build());
             }
         }
-        BlobServer bs = th.getBS();
+        BlobServer bs = th.getBlobServer();
         if (bs != null) {
             builder.setReceiveBlobs(true);
         }
@@ -1246,7 +1246,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (autoKey.length < 1) {
             throw new TabletException("auto gen key array size must greather 1");
         }
-        BlobServer bs = th.getBS();
+        BlobServer bs = th.getBlobServer();
         if (bs == null) {
             throw new TabletException("can not found available blobserver with tid " + tid);
         }
@@ -1384,7 +1384,7 @@ public class TableSyncClientImpl implements TableSyncClient {
                 throw new TabletException("no schema for column count " + row.size());
             }
         }
-        if (th.getBS() != null) {
+        if (th.getBlobServer() != null) {
             if (!th.IsObjectTable()) {
                 putObjectStore(row, th);
             }
@@ -1480,6 +1480,9 @@ public class TableSyncClientImpl implements TableSyncClient {
 
             String[] keys = new String[1];
             ColumnDesc colDesc = schema.get(idx);
+            if (!row.containsKey(colDesc.getName())) {
+                continue;
+            }
             Object col = row.get(colDesc.getName());
             if (colDesc.isNotNull() && col == null) {
                 throw new TabletException("col " + colDesc.getName() + " should not be null");
@@ -1508,7 +1511,7 @@ public class TableSyncClientImpl implements TableSyncClient {
             throw new TabletException("valueColumns is null or empty");
         }
         List<ColumnDesc> newValueSchema = getSchemaData(valueColumns, th.getSchema());
-        if (th.getBS() != null) {
+        if (th.getBlobServer() != null) {
             if (!th.IsObjectTable()) {
                 putObjectStore(valueColumns, th);
             }
