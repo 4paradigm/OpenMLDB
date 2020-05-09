@@ -528,7 +528,7 @@ GeneralResult RtidbClient::Update(
 }
 
 GeneralResult RtidbClient::Put(const std::string& name,
-                               std::map<std::string, std::string>& value,
+                               const std::map<std::string, std::string>& value,
                                const WriteOption& wo) {
     GeneralResult result;
 
@@ -549,30 +549,6 @@ GeneralResult RtidbClient::Put(const std::string& name,
                         ::rtidb::codec::DEFAULT_LONG));
         }
     }
-    std::string err_msg;
-    if (!th->blobSuffix.empty()) {
-        std::shared_ptr<rtidb::client::BsClient> blob =
-            client_->GetBlobClient(th->table_info->blobs(0), &err_msg);
-        if (blob == NULL) {
-            result.SetError(-1, err_msg);
-            return result;
-        }
-        for (const auto& i : th->blobSuffix) {
-            const auto& col = th->columns->Get(i);
-            auto iter = value.find(col.name());
-            if (iter == value.end()) {
-                result.SetError(-1, "key " + col.name() + " pair not found");
-                return result;
-            }
-            std::string key;
-            bool ok = blob->Put(th->table_info->tid(), 0, &key, iter->second,
-                                &err_msg);
-            if (!ok) {
-                result.SetError(-1, err_msg);
-            }
-            value.insert(std::make_pair(col.name(), key));
-        }
-    }
     std::string buffer;
     rtidb::base::ResultMsg rm;
     if (!th->auto_gen_pk.empty()) {
@@ -584,6 +560,7 @@ GeneralResult RtidbClient::Put(const std::string& name,
         result.SetError(rm.code, "encode error, msg: " + rm.msg);
         return result;
     }
+    std::string err_msg;
     auto tablet = client_->GetTabletClient(th->partition[0].leader, &err_msg);
     if (tablet == NULL) {
         result.SetError(-1, err_msg);

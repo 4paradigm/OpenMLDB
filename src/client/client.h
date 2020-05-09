@@ -342,7 +342,7 @@ class RtidbClient {
     GeneralResult Init(const std::string& zk_cluster,
                        const std::string& zk_path);
     GeneralResult Put(const std::string& name,
-                      std::map<std::string, std::string>& values, // NOLINT
+                      const std::map<std::string, std::string>& values,
                       const WriteOption& wo);
     GeneralResult Delete(const std::string& name,
                          const std::map<std::string, std::string>& values);
