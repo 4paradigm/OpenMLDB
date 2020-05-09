@@ -37,14 +37,14 @@ const std::vector<std::shared_ptr<ColumnDef>>& TableColumn::GetAllColumn() {
 }
 
 const std::vector<uint32_t>& TableColumn::GetBlobIdxs() {
-    return blob_idxs;
+    return blob_idxs_;
 }
 
 void TableColumn::AddColumn(std::shared_ptr<ColumnDef> column_def) {
     columns_.push_back(column_def);
     column_map_.insert(std::make_pair(column_def->GetName(), column_def));
     if (column_def->GetType() == rtidb::type::kBlob) {
-        blob_idxs.push_back(column_def->GetId());
+        blob_idxs_.push_back(column_def->GetId());
     }
 }
 
