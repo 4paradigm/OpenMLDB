@@ -35,15 +35,16 @@ static const uint32_t SEED = 0xe17a1465;
 
 BlobServerImpl::BlobServerImpl()
     : spin_mutex_(),
-      zk_client_(NULL),
-      server_(NULL),
+      zk_client_(nullptr),
+      server_(nullptr),
       keep_alive_pool_(1),
       task_pool_(2),
+      follower_(false),
       object_stores_(),
       root_paths_() {}
 
 BlobServerImpl::~BlobServerImpl() {
-    if (zk_client_ != NULL) {
+    if (zk_client_ != nullptr) {
         delete zk_client_;
     }
 }
@@ -130,8 +131,7 @@ void BlobServerImpl::CreateTable(RpcController *controller,
         response->set_code(ReturnCode::kTableAlreadyExists);
         response->set_msg("table already exists");
     }
-    std::string name = table_meta.name();
-    if (root_paths_.size() < 1) {
+    if (root_paths_.empty()) {
         PDLOG(WARNING, "fail to find db root path tid[%u] pid[%u]", tid, pid);
         response->set_code(ReturnCode::kFailToGetDbRootPath);
         response->set_msg("failto find db root path");
@@ -170,7 +170,10 @@ void BlobServerImpl::Get(RpcController *controller, const GetRequest *request,
         return;
     }
     rtidb::base::Slice slice = store->Get(request->key());
-    if (slice.size() > 0) {
+    if (slice.empty()) {
+        response->set_code(ReturnCode::kKeyNotFound);
+        response->set_msg("key not found");
+    } else {
         if (request->use_attachment()) {
             brpc::Controller *cntl =
                 static_cast<brpc::Controller *>(controller);
@@ -182,9 +185,6 @@ void BlobServerImpl::Get(RpcController *controller, const GetRequest *request,
         response->set_code(ReturnCode::kOk);
         const char *ch = slice.data();
         delete[] ch;
-    } else {
-        response->set_code(ReturnCode::kKeyNotFound);
-        response->set_msg("key not found");
     }
 }
 
@@ -201,18 +201,18 @@ void BlobServerImpl::Put(RpcController *controller, const PutRequest *request,
         return;
     }
     bool ok = false;
-    std::string key;
-    if (request->key().empty()) {
-        ok = store->Store(&key, request->data());
-    } else {
+    int64_t key;
+    if (request->has_key()) {
         ok = store->Store(request->key(), request->data());
+    } else {
+        ok = store->Store(&key, request->data());
     }
     if (!ok) {
         response->set_code(ReturnCode::kPutFailed);
         response->set_msg("put failed");
         return;
     }
-    if (request->key().empty()) {
+    if (!request->has_key()) {
         response->set_key(key);
     }
     response->set_code(ReturnCode::kOk);
@@ -223,7 +223,7 @@ void BlobServerImpl::Delete(RpcController *controller,
                             const DeleteRequest *request,
                             DeleteResponse *response, Closure *done) {
     brpc::ClosureGuard done_guard(done);
-    if (request->key().empty()) {
+    if (!request->has_key()) {
         response->set_code(ReturnCode::kKeyNotFound);
         response->set_msg("empty key");
     } else {
@@ -265,7 +265,7 @@ void BlobServerImpl::LoadTable(RpcController *controller,
         return;
     }
     PDLOG(INFO, "start creating table tid[%u] pid[%u]", tid, pid);
-    if (root_paths_.size() < 1) {
+    if (root_paths_.empty()) {
         PDLOG(WARNING, "fail to find db root path tid[%u] pid[%u]", tid, pid);
         response->set_code(ReturnCode::kFailToGetDbRootPath);
         response->set_msg("failto find db root path");
@@ -298,7 +298,7 @@ std::shared_ptr<ObjectStore> BlobServerImpl::GetStore(uint32_t tid,
 
 std::shared_ptr<ObjectStore> BlobServerImpl::GetStoreUnLock(uint32_t tid,
                                                             uint32_t pid) {
-    ObjectStores::iterator it = object_stores_.find(tid);
+    auto it = object_stores_.find(tid);
     if (it != object_stores_.end()) {
         auto tit = it->second.find(pid);
         if (tit != it->second.end()) {

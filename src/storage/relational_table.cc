@@ -543,10 +543,9 @@ bool RelationalTable::Delete(
     }
 }
 
-bool RelationalTable::Delete(
-    const google::protobuf::RepeatedPtrField<rtidb::api::Columns>&
-        condition_columns,
-    google::protobuf::RepeatedPtrField<std::string>* blob_keys) {
+bool RelationalTable::Delete(const
+    RepeatedPtrField<rtidb::api::Columns>& condition_columns,
+    RepeatedField<google::protobuf::int64_t>* blob_keys) {
     std::vector<std::unique_ptr<rocksdb::Iterator>> iter_vec;
     bool ok = Query(condition_columns, &iter_vec);
     const std::vector<uint32_t>& blob_suffix = table_column_.GetBlobIdxs();
@@ -555,16 +554,16 @@ bool RelationalTable::Delete(
             reinterpret_cast<int8_t*>(const_cast<char*>(iter->value().data()));
 
         for (auto i : blob_suffix) {
-            char* ch = NULL;
-            uint32_t length = 0;
-            int ret = row_view_.GetValue(data, i, &ch, &length);
+            int64_t val = 0;
+            int ret = row_view_.GetInt64(i, &val);
             if (ret != 0) {
                 PDLOG(WARNING, "get string failed. errno %d tid %u pid %u",
                       ret, id_, pid_);
                 blob_keys->Clear();
                 return false;
             }
-            blob_keys->Add()->assign(ch, length);
+            int64_t* key = blob_keys->Add();
+            *key = val;
         }
     }
     ok = Delete(condition_columns);

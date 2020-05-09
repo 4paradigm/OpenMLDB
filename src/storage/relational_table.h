@@ -41,6 +41,8 @@
 typedef google::protobuf::RepeatedPtrField<::rtidb::api::Dimension> Dimensions;
 using Schema =
     ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
+using google::protobuf::RepeatedPtrField;
+using google::protobuf::RepeatedField;
 
 namespace rtidb {
 namespace storage {
@@ -96,13 +98,11 @@ class RelationalTable {
                const rocksdb::Slice& key_slice,
                std::vector<std::unique_ptr<rocksdb::Iterator>>* vec);
 
-    bool Delete(
-        const ::google::protobuf::RepeatedPtrField<::rtidb::api::Columns>&
-            condition_columns);
+    bool Delete(const
+        RepeatedPtrField<::rtidb::api::Columns>& condition_columns);
 
-    bool Delete(const google::protobuf::RepeatedPtrField<rtidb::api::Columns>&
-                    condition_columns,
-                google::protobuf::RepeatedPtrField<std::string>* blob_keys);
+    bool Delete(const RepeatedPtrField<rtidb::api::Columns>& condition_columns,
+                RepeatedField<google::protobuf::int64_t>* blob_keys);
 
     bool Delete(const std::shared_ptr<IndexDef> index_def,
                 const std::string& comparable_key, rocksdb::WriteBatch* batch);

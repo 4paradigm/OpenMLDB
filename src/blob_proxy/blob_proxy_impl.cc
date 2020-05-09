@@ -55,21 +55,35 @@ void BlobProxyImpl::Get(RpcController* controller, const HttpRequest* request,
     brpc::ClosureGuard done_guard(done);
     brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
     std::string table;
-    const std::string* blob_id;
+    int64_t blob_id;
     std::string unresolve_path = cntl->http_request().unresolved_path();
     std::vector<std::string> vec;
     boost::split(vec, unresolve_path, boost::is_any_of("/"));
     if (vec.size() == 1) {
         table = unresolve_path;
-        blob_id = cntl->http_request().uri().GetQuery("blob_id");
-        if (blob_id == NULL) {
+        const std::string* id = cntl->http_request().uri().GetQuery("blob_id");
+        if (id == NULL) {
+            cntl->http_response().set_status_code(
+                brpc::HTTP_STATUS_BAD_REQUEST);
+            return;
+        }
+        try {
+            blob_id = boost::lexical_cast<int64_t>(*id);
+        } catch (boost::bad_lexical_cast&) {
             cntl->http_response().set_status_code(
                 brpc::HTTP_STATUS_BAD_REQUEST);
             return;
         }
     } else if (vec.size() == 2) {
         table = vec[0];
-        blob_id = &vec[1];
+
+        try {
+            blob_id = boost::lexical_cast<int64_t>(vec[1]);
+        } catch (boost::bad_lexical_cast&) {
+            cntl->http_response().set_status_code(
+                brpc::HTTP_STATUS_BAD_REQUEST);
+            return;
+        }
     } else {
         cntl->http_response().set_status_code(brpc::HTTP_STATUS_BAD_REQUEST);
         return;
@@ -103,7 +117,7 @@ void BlobProxyImpl::Get(RpcController* controller, const HttpRequest* request,
         return;
     }
     butil::IOBuf buff;
-    bool ok = blob->Get(th->table_info->tid(), 0, *blob_id, &err_msg, &buff);
+    bool ok = blob->Get(th->table_info->tid(), 0, blob_id, &err_msg, &buff);
     if (!ok) {
         cntl->http_response().set_status_code(
             brpc::HTTP_STATUS_INTERNAL_SERVER_ERROR);

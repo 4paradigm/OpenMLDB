@@ -36,24 +36,27 @@ ObjectStore::~ObjectStore() {
     hs_close(db_);
 }
 
-bool ObjectStore::Store(const std::string& key, const std::string& value) {
-    char* hs_key = const_cast<char*>(key.data());
-    char* hs_value = const_cast<char*>(value.data());
-    return hs_set(db_, hs_key, hs_value, value.length(), 0, 0);
-}
-
-bool ObjectStore::Store(std::string* key, const std::string &value) {
-    uint64_t gen_pk = id_generator_.Next();
+bool ObjectStore::Store(int64_t key, const std::string& value) {
     std::stringstream  ss;
-    ss << std::hex << gen_pk;
-    *key = ss.str();
-    char* hs_key = const_cast<char*>(key->data());
+    ss << std::hex << key;
+    char* hs_key = const_cast<char*>(ss.str().data());
     char* hs_value = const_cast<char*>(value.data());
     return hs_set(db_, hs_key, hs_value, value.length(), 0, 0);
 }
 
-rtidb::base::Slice ObjectStore::Get(const std::string& key) {
-    char* hs_key = const_cast<char*>(key.data());
+bool ObjectStore::Store(int64_t* key, const std::string &value) {
+    *key = id_generator_.Next();
+    std::stringstream  ss;
+    ss << std::hex << *key;
+    char* hs_key = const_cast<char*>(ss.str().data());
+    char* hs_value = const_cast<char*>(value.data());
+    return hs_set(db_, hs_key, hs_value, value.length(), 0, 0);
+}
+
+rtidb::base::Slice ObjectStore::Get(int64_t key) {
+    std::stringstream  ss;
+    ss << std::hex << key;
+    char* hs_key = const_cast<char*>(ss.str().data());
     uint32_t vlen = 0, flag;
     char* ch = hs_get(db_, hs_key, &vlen, &flag);
     if (ch == NULL) {
@@ -62,8 +65,10 @@ rtidb::base::Slice ObjectStore::Get(const std::string& key) {
     return rtidb::base::Slice(ch, vlen);
 }
 
-bool ObjectStore::Delete(const std::string &key) {
-    char* hs_key = const_cast<char*>(key.data());
+bool ObjectStore::Delete(int64_t key) {
+    std::stringstream  ss;
+    ss << std::hex << key;
+    char* hs_key = const_cast<char*>(ss.str().data());
     return hs_delete(db_, hs_key);
 }
 

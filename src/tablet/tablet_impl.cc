@@ -30,7 +30,6 @@
 #include "codec/codec.h"
 #include "logging.h"  // NOLINT
 #include "rapidjson/stringbuffer.h"
-#include "rapidjson/writer.h"
 #include "storage/binlog.h"
 #include "storage/segment.h"
 #include "tablet/file_sender.h"
@@ -41,6 +40,7 @@ using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
 using ::rtidb::storage::DataBlock;
 using ::rtidb::storage::Table;
+using google::protobuf::RepeatedPtrField;
 
 DECLARE_int32(gc_interval);
 DECLARE_int32(disk_gc_interval);
@@ -1833,7 +1833,7 @@ void TabletImpl::Delete(RpcController* controller,
     } else {
         bool ok = false;
         if (request->receive_blobs()) {
-            auto blobs = response->mutable_blob_keys();
+            auto blobs = response->mutable_additional_ids();
             ok = r_table->Delete(request->condition_columns(), blobs);
         } else {
             ok = r_table->Delete(request->condition_columns());
