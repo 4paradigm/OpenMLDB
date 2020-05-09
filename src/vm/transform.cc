@@ -252,7 +252,7 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
                            status)) {
                 return false;
             }
-            if (!GenKey(&request_union_op->index_key_,
+            if (!GenKey(&request_union_op->window_.index_key_,
                         node->producers()[0]->GetOutputNameSchemaList(),
                         status)) {
                 return false;
@@ -395,10 +395,28 @@ bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
                 if (table) {
                     auto right = new PhysicalTableProviderNode(table);
                     node_manager_->RegisterNode(right);
-                    *output = new PhysicalRequestUnionNode(
+                    auto request_union_op = new PhysicalRequestUnionNode(
                         depend, right, groups, orders, w_ptr->GetStartOffset(),
                         w_ptr->GetEndOffset());
-                    node_manager_->RegisterNode(*output);
+                    node_manager_->RegisterNode(request_union_op);
+                    if (!w_ptr->union_tables().empty()) {
+                        for (auto iter = w_ptr->union_tables().cbegin();
+                             iter != w_ptr->union_tables().cend(); iter++) {
+                            PhysicalOpNode* union_table_op;
+                            if (!TransformPlanOp(*iter, &union_table_op,
+                                                 status)) {
+                                return false;
+                            }
+                            if (!request_union_op->AddWindowUnion(
+                                    union_table_op)) {
+                                status.msg =
+                                    "Fail to add request window union table";
+                                status.code = common::kPlanError;
+                                return false;
+                            }
+                        }
+                    }
+                    *output = request_union_op;
                     return true;
                 } else {
                     status.code = common::kPlanError;
@@ -465,9 +483,29 @@ bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
                             request_op, right, groups, orders,
                             w_ptr->GetStartOffset(), w_ptr->GetEndOffset());
                         node_manager_->RegisterNode(request_union_op);
-                        *output = new PhysicalJoinNode(request_union_op,
-                                                       join_op->producers()[1],
-                                                       join_op->join_);
+                        if (!w_ptr->union_tables().empty()) {
+                            for (auto iter = w_ptr->union_tables().cbegin();
+                                 iter != w_ptr->union_tables().cend(); iter++) {
+                                PhysicalOpNode* union_table_op;
+                                if (!TransformPlanOp(*iter, &union_table_op,
+                                                     status)) {
+                                    return false;
+                                }
+                                if (!request_union_op->AddWindowUnion(
+                                        union_table_op)) {
+                                    status.msg =
+                                        "Fail to add request window union "
+                                        "table";
+                                    status.code = common::kPlanError;
+                                    return false;
+                                }
+                            }
+                        }
+                        auto join_node = new PhysicalJoinNode(
+                            request_union_op, join_op->producers()[1],
+                            join_op->join_);
+                        node_manager_->RegisterNode(join_node);
+                        *output = join_node;
                         return true;
                     } else {
                         status.code = common::kPlanError;
@@ -1328,9 +1366,9 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
             PhysicalRequestUnionNode* union_op =
                 dynamic_cast<PhysicalRequestUnionNode*>(in);
             PhysicalOpNode* new_producer;
-            if (!KeysFilterOptimized(union_op->GetProducer(1),
-                                     &union_op->window_.partition_,
-                                     &union_op->index_key_, &new_producer)) {
+            if (!KeysFilterOptimized(
+                    union_op->GetProducer(1), &union_op->window_.partition_,
+                    &union_op->window_.index_key_, &new_producer)) {
                 return false;
             }
             union_op->SetProducer(1, new_producer);

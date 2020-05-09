@@ -500,13 +500,13 @@ class WindowAggRunner : public Runner {
 class RequestUnionRunner : public Runner {
  public:
     RequestUnionRunner(const int32_t id, const NameSchemaList& schema,
-                       const int32_t limit_cnt, const WindowOp& window_op,
-                       const Key& hash)
+                       const int32_t limit_cnt,
+                       const RequestWindowOp& window_op)
         : Runner(id, kRunnerRequestUnion, schema, limit_cnt),
           is_asc_(window_op.sort_.is_asc()),
           partition_filter_gen_(window_op.partition_),
           sort_gen_(window_op.sort_),
-          key_gen_(hash.fn_info_),
+          key_gen_(window_op.index_key_.fn_info_),
           ts_gen_(window_op.range_.fn_info_),
           start_offset_(window_op.range_.start_offset_),
           end_offset_(window_op.range_.end_offset_) {}

@@ -325,16 +325,24 @@ void PhysicalUnionNode::Print(std::ostream& output,
 void PhysicalRequestUnionNode::Print(std::ostream& output,
                                      const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(partition_" << window_.partition_.ToString() << ", "
-           << window_.sort_.ToString();
-    if (window_.range_.Valid()) {
-        output << ", " << window_.range_.ToString();
+    output << "(" << window_.ToString() << ")";
+    if (!window_unions_.Empty()) {
+        for (auto window_union : window_unions_.window_unions_) {
+            output << "\n";
+            output << tab << INDENT << "+-UNION("
+                   << window_union.second.ToString() << ")\n";
+            window_union.first->Print(output, tab + INDENT + INDENT);
+        }
     }
-    output << ", index_" << index_key_.ToString();
-    if (limit_cnt_ > 0) {
-        output << ", limit=" << limit_cnt_;
-    }
-    output << ")";
+    //    if (!window_joins_.Empty()) {
+    //        for (auto window_join : window_joins_.window_joins_) {
+    //            output << "\n";
+    //            output << tab << INDENT << "+-JOIN("
+    //                   << window_join.second.ToString() << ")\n";
+    //            window_join.first->Print(output, tab + INDENT + INDENT +
+    //            INDENT);
+    //        }
+    //    }
     output << "\n";
     PrintChildren(output, tab);
 }

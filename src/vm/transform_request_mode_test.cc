@@ -204,6 +204,22 @@ TEST_P(TransformRequestModeTest, transform_physical_plan) {
     AddTable(catalog, table_def5, table5);
     AddTable(catalog, table_def6, table6);
 
+    {
+        fesql::type::TableDef table_def;
+        BuildTableA(table_def);
+        table_def.set_name("tb");
+        std::shared_ptr<::fesql::storage::Table> table(
+            new fesql::storage::Table(1, 1, table_def));
+        AddTable(catalog, table_def, table);
+    }
+    {
+        fesql::type::TableDef table_def;
+        BuildTableA(table_def);
+        table_def.set_name("tc");
+        std::shared_ptr<::fesql::storage::Table> table(
+            new fesql::storage::Table(1, 1, table_def));
+        AddTable(catalog, table_def, table);
+    }
     ::fesql::node::NodeManager manager;
     ::fesql::node::PlanNodeList plan_trees;
     ::fesql::base::Status base_status;

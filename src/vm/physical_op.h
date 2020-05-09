@@ -544,6 +544,27 @@ class WindowOp {
     Sort sort_;
     Range range_;
 };
+
+class RequestWindowOp : public WindowOp {
+ public:
+    RequestWindowOp(const node::ExprListNode *partition,
+                    const node::OrderByNode *orders, const int64_t start_offset,
+                    const int64_t end_offset)
+        : WindowOp(partition, orders, start_offset, end_offset), index_key_() {}
+    virtual ~RequestWindowOp() {}
+    const std::string ToString() const {
+        std::ostringstream oss;
+        oss << WindowOp::ToString() << ", index_" << index_key_.ToString();
+        return oss.str();
+    }
+    const std::string FnDetail() const {
+        std::ostringstream oss;
+        oss << WindowOp::FnDetail() << ", index_" << index_key_.FnDetail();
+        return oss.str();
+    }
+    const Key &index_key() const { return index_key_; }
+    Key index_key_;
+};
 class Join {
  public:
     explicit Join(const node::JoinType join_type)
@@ -613,7 +634,7 @@ class WindowJoinList {
     const bool Empty() const { return window_joins_.empty(); }
     const std::string FnDetail() const {
         std::ostringstream oss;
-        for (auto& window_join : window_joins_) {
+        for (auto &window_join : window_joins_) {
             oss << window_join.second.FnDetail() << "\n";
         }
         return oss.str();
@@ -633,13 +654,31 @@ class WindowUnionList {
     }
     const std::string FnDetail() const {
         std::ostringstream oss;
-        for (auto& window_union : window_unions_) {
+        for (auto &window_union : window_unions_) {
             oss << window_union.second.FnDetail() << "\n";
         }
         return oss.str();
     }
     const bool Empty() const { return window_unions_.empty(); }
     std::list<std::pair<PhysicalOpNode *, WindowOp>> window_unions_;
+};
+
+class RequestWindowUnionList {
+ public:
+    RequestWindowUnionList() : window_unions_() {}
+    virtual ~RequestWindowUnionList() {}
+    void AddWindowUnion(PhysicalOpNode *node, const RequestWindowOp &window) {
+        window_unions_.push_back(std::make_pair(node, window));
+    }
+    const std::string FnDetail() const {
+        std::ostringstream oss;
+        for (auto &window_union : window_unions_) {
+            oss << window_union.second.FnDetail() << "\n";
+        }
+        return oss.str();
+    }
+    const bool Empty() const { return window_unions_.empty(); }
+    std::list<std::pair<PhysicalOpNode *, RequestWindowOp>> window_unions_;
 };
 class PhysicalWindowNode : public PhysicalUnaryNode, public WindowOp {
  public:
@@ -836,23 +875,46 @@ class PhysicalRequestUnionNode : public PhysicalBinaryNode {
                              const int64_t start_offset,
                              const int64_t end_offset)
         : PhysicalBinaryNode(left, right, kPhysicalOpRequestUnoin, true, true),
-          window_(partition, orders, start_offset, end_offset),
-          index_key_(nullptr) {
+          window_(partition, orders, start_offset, end_offset) {
         output_type_ = kSchemaTypeTable;
         InitSchema();
         fn_infos_.push_back(&window_.partition_.fn_info_);
         fn_infos_.push_back(&window_.sort_.fn_info_);
         fn_infos_.push_back(&window_.range_.fn_info_);
-        fn_infos_.push_back(&index_key_.fn_info_);
+        fn_infos_.push_back(&window_.index_key_.fn_info_);
     }
     virtual ~PhysicalRequestUnionNode() {}
     bool InitSchema() override;
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const bool Valid() { return true; }
-    const WindowOp &window() const { return window_; }
-    const Key &index_key() const { return index_key_; }
-    WindowOp window_;
-    Key index_key_;
+    bool AddWindowUnion(PhysicalOpNode *node) {
+        if (nullptr == node) {
+            LOG(WARNING) << "Fail to add window union : table is null";
+            return false;
+        }
+        if (producers_.empty() || nullptr == producers_[0]) {
+            LOG(WARNING)
+                << "Fail to add window union : producer is empty or null";
+            return false;
+        }
+        if (!IsSameSchema(node->output_schema_,
+                          producers_[0]->output_schema_)) {
+            LOG(WARNING)
+                << "Union Table and window input schema aren't consistent";
+            return false;
+        }
+        window_unions_.AddWindowUnion(node, window_);
+        RequestWindowOp &window_union =
+            window_unions_.window_unions_.back().second;
+        fn_infos_.push_back(&window_union.partition_.fn_info_);
+        fn_infos_.push_back(&window_union.sort_.fn_info_);
+        fn_infos_.push_back(&window_union.range_.fn_info_);
+        fn_infos_.push_back(&window_union.index_key_.fn_info_);
+        return true;
+    }
+    const RequestWindowOp &window() const { return window_; }
+    RequestWindowOp window_;
+    RequestWindowUnionList window_unions_;
 };
 
 class PhysicalSortNode : public PhysicalUnaryNode {
