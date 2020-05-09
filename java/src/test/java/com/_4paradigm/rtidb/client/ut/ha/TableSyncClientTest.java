@@ -2257,7 +2257,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 data.put("name", "n" + i);
                 data.put("sex", true);
                 data.put("attribute", "a" + i);
-                data.put("image", StringToBB("i" + i));
+                data.put("image", StringToBB(String.format("i%d", i)));
                 data.put("memory", 10 + i);
                 data.put("price", 11.1 + i);
                 data.put("attribute2", new Date(2020, 5, 2));
@@ -2270,7 +2270,6 @@ public class TableSyncClientTest extends TestCaseBase {
             //traverse
             RelationalIterator trit = tableSyncClient.traverse(name, ro);
             for (int i = 0; i < 1000; i++) {
-                System.out.println("time: " + i);
                 Assert.assertTrue(trit.valid());
                 Map<String, Object> TraverseMap = trit.getDecodedValue();
                 Assert.assertEquals(TraverseMap.size(), 9);
@@ -2278,7 +2277,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(TraverseMap.get("name"), "n" + i);
                 Assert.assertEquals(TraverseMap.get("sex"), true);
                 Assert.assertEquals(TraverseMap.get("attribute"), "a" + i);
-                Assert.assertTrue(StringToBB("i"+i).equals((ByteBuffer)TraverseMap.get("image")));
+                Assert.assertTrue(StringToBB(String.format("i%d", i)).equals((ByteBuffer)TraverseMap.get("image")));
                 Assert.assertEquals(TraverseMap.get("memory"), 10 + i);
                 Assert.assertEquals(TraverseMap.get("price"), 11.1 + i);
                 Assert.assertEquals(TraverseMap.get("attribute2"), new Date(2020, 5, 2));

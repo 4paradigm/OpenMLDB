@@ -168,7 +168,7 @@ public class TableHandler {
                 for (int i = 0; i < tableInfo.getColumnKeyList().size(); i++) {
                     Common.ColumnKey columnKey = tableInfo.getColumnKeyList().get(i);
                     if (columnKey.hasIndexType() && columnKey.getIndexType() == Type.IndexType.kAutoGen) {
-                        autoGenPkName = columnKey.getIndexName();
+                        autoGenPkName = columnKey.getColName(0);
                         break;
                     }
                 }
