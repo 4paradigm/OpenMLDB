@@ -2138,7 +2138,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 queryMap = it.getDecodedValue();
                 Assert.assertEquals(queryMap.get("memory"), 13);
             }
-            it = tableSyncClient.traverse(name, ro);
+            it = tableSyncClient.traverse(name, new ReadOption(null, null, null, 0));
             Assert.assertEquals(it.getCount(), 2);
             Assert.assertTrue(it.valid());
             queryMap = it.getDecodedValue();
