@@ -1836,7 +1836,7 @@ void TabletImpl::Delete(RpcController* controller,
             auto blobs = response->mutable_blob_keys();
             ok = r_table->Delete(request->condition_columns(), blobs);
         } else {
-	    ok = r_table->Delete(request->condition_columns());
+            ok = r_table->Delete(request->condition_columns());
         }
         if (ok) {
             PDLOG(DEBUG, "delete ok. tid %u, pid %u, key %s, idx_name %s",
