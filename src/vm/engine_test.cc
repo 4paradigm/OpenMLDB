@@ -116,38 +116,44 @@ void CheckRows(const vm::Schema& schema, const std::vector<Row>& rows,
         row_view_exp.Reset(exp_rows[row_index].buf());
         for (int i = 0; i < schema.size(); i++) {
             if (row_view_exp.IsNULL(i)) {
-                ASSERT_TRUE(row_view.IsNULL(i));
+                ASSERT_TRUE(row_view.IsNULL(i)) << " At " << i;
                 continue;
             }
             switch (schema.Get(i).type()) {
                 case fesql::type::kInt32: {
                     ASSERT_EQ(row_view.GetInt32Unsafe(i),
-                    row_view_exp.GetInt32Unsafe(i));
+                              row_view_exp.GetInt32Unsafe(i))
+                        << " At " << i;
                     break;
                 }
                 case fesql::type::kInt64: {
                     ASSERT_EQ(row_view.GetInt64Unsafe(i),
-                              row_view_exp.GetInt64Unsafe(i));
+                              row_view_exp.GetInt64Unsafe(i))
+                        << " At " << i;
                     break;
                 }
                 case fesql::type::kInt16: {
                     ASSERT_EQ(row_view.GetInt16Unsafe(i),
-                              row_view_exp.GetInt16Unsafe(i));
+                              row_view_exp.GetInt16Unsafe(i))
+                        << " At " << i;
                     break;
                 }
                 case fesql::type::kFloat: {
                     ASSERT_FLOAT_EQ(row_view.GetFloatUnsafe(i),
-                              row_view_exp.GetFloatUnsafe(i));
+                                    row_view_exp.GetFloatUnsafe(i))
+                        << " At " << i;
                     break;
                 }
                 case fesql::type::kDouble: {
                     ASSERT_DOUBLE_EQ(row_view.GetDoubleUnsafe(i),
-                              row_view_exp.GetDoubleUnsafe(i));
+                                     row_view_exp.GetDoubleUnsafe(i))
+                        << " At " << i;
                     break;
                 }
                 case fesql::type::kVarchar: {
                     ASSERT_EQ(row_view.GetStringUnsafe(i),
-                              row_view_exp.GetStringUnsafe(i));
+                              row_view_exp.GetStringUnsafe(i))
+                        << " At " << i;
                     break;
                 }
                 default: {

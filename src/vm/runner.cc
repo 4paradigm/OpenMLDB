@@ -497,7 +497,8 @@ std::shared_ptr<DataHandler> WindowAggRunner::Run(RunnerContext& ctx) {
     }
 
     // Partition Instance Table
-    auto instance_partition = instance_window_gen_.partition_gen_.Partition(input);
+    auto instance_partition =
+        instance_window_gen_.partition_gen_.Partition(input);
     if (!instance_partition) {
         LOG(WARNING) << "Window Aggregation Fail: input partition is empty";
         return fail_ptr;
@@ -513,7 +514,6 @@ std::shared_ptr<DataHandler> WindowAggRunner::Run(RunnerContext& ctx) {
     // Partition Union Table
     auto union_inpus = windows_union_gen_.RunInputs(ctx);
     auto union_partitions = windows_union_gen_.PartitionEach(union_inpus);
-
     // Prepare Join Tables
     auto join_right_tables = windows_join_gen_.RunInputs(ctx);
 
@@ -535,7 +535,6 @@ void WindowAggRunner::RunWindowAggOnKey(
     std::vector<std::shared_ptr<PartitionHandler>> union_partitions,
     std::vector<std::shared_ptr<DataHandler>> join_right_tables,
     const std::string& key, std::shared_ptr<MemTableHandler> output_table) {
-
     // Prepare Instance Segment
     auto instance_segment =
         instance_partition->GetSegment(instance_partition, key);
@@ -554,9 +553,11 @@ void WindowAggRunner::RunWindowAggOnKey(
     instance_segment_iter->SeekToFirst();
 
     // Prepare Union Segment Iterators
+    std::vector<std::shared_ptr<TableHandler>> union_segments;
     std::vector<std::unique_ptr<RowIterator>> union_segment_iters;
     std::vector<IteratorStatus> union_segment_status;
     size_t unions_cnt = windows_union_gen_.unions_cnt_;
+    union_segments.resize(unions_cnt);
     union_segment_status.resize(unions_cnt);
     union_segment_iters.resize(unions_cnt);
 
@@ -564,6 +565,7 @@ void WindowAggRunner::RunWindowAggOnKey(
         auto segment =
             union_partitions[i]->GetSegment(union_partitions[i], key);
         segment = windows_union_gen_.windows_gen_[i].sort_gen_.Sort(segment);
+        union_segments[i] = segment;
         if (!segment) {
             union_segment_status[i] = IteratorStatus();
         }
@@ -575,9 +577,7 @@ void WindowAggRunner::RunWindowAggOnKey(
         if (!union_segment_iters[i]->Valid()) {
             union_segment_status[i] = IteratorStatus();
         }
-        int64_t ts =
-            windows_union_gen_.windows_gen_[i].OrderKey(
-            union_segment_iters[i]->GetValue());
+        uint64_t ts = union_segment_iters[i]->GetKey();
         union_segment_status[i] = IteratorStatus(ts);
     }
 
@@ -592,8 +592,7 @@ void WindowAggRunner::RunWindowAggOnKey(
             break;
         }
         const Row& instance_row = instance_segment_iter->GetValue();
-        int64_t instance_order =
-            instance_window_gen_.OrderKey(instance_row);
+        uint64_t instance_order = instance_segment_iter->GetKey();
         while (min_union_pos >= 0 &&
                union_segment_status[min_union_pos].key_ < instance_order) {
             Row row = union_segment_iters[min_union_pos]->GetValue();
@@ -604,27 +603,26 @@ void WindowAggRunner::RunWindowAggOnKey(
                 union_segment_iters[min_union_pos]->GetKey(), row, false,
                 &window);
 
-            union_segment_iters[min_union_pos]->Next();
             // Update Iterator Status
+            union_segment_iters[min_union_pos]->Next();
             if (!union_segment_iters[min_union_pos]->Valid()) {
                 union_segment_status[min_union_pos].MarkInValid();
             } else {
-                int64_t ts =
-                    windows_union_gen_.windows_gen_[min_union_pos].OrderKey(
-                        union_segment_iters[min_union_pos]->GetValue());
-                union_segment_status[min_union_pos].set_key(ts);
+                union_segment_status[min_union_pos].set_key(union_segment_iters[min_union_pos]->GetKey());
             }
-
             // Pick new mininum union pos
             min_union_pos = windows_union_gen_.PickIteratorWithMininumKey(
                 &union_segment_status);
         }
-        Row row = instance_row;
         if (windows_join_gen_.Valid()) {
+            Row row = instance_row;
             row = windows_join_gen_.Join(instance_row, join_right_tables);
+            output_table->AddRow(window_project_gen_.Gen(
+                instance_segment_iter->GetKey(), row, true, &window));
+        } else {
+            output_table->AddRow(window_project_gen_.Gen(
+                instance_segment_iter->GetKey(), instance_row, true, &window));
         }
-        output_table->AddRow(window_project_gen_.Gen(
-            instance_segment_iter->GetKey(), row, true, &window));
 
         cnt++;
         instance_segment_iter->Next();
@@ -910,10 +908,10 @@ const Row Runner::RowLastJoinTable(const Row& left_row,
 void Runner::PrintData(const vm::NameSchemaList& schema_list,
                        std::shared_ptr<DataHandler> data) {
     std::ostringstream oss;
-
     std::vector<RowView> row_view_list;
     ::fesql::base::TextTable t('-', '|', '+');
     // Add Header
+    t.add("Order");
     for (auto pair : schema_list) {
         for (int i = 0; i < pair.second->size(); i++) {
             if (pair.first.empty()) {
@@ -938,6 +936,7 @@ void Runner::PrintData(const vm::NameSchemaList& schema_list,
         case kRowHandler: {
             auto row_handler = std::dynamic_pointer_cast<RowHandler>(data);
             auto row = row_handler->GetValue();
+            t.add("0");
             for (size_t id = 0; id < row_view_list.size(); id++) {
                 RowView& row_view = row_view_list[id];
                 row_view.Reset(row.buf(id), row.size(id));
@@ -967,6 +966,7 @@ void Runner::PrintData(const vm::NameSchemaList& schema_list,
                 int cnt = 0;
                 while (iter->Valid() && cnt++ < MAX_DEBUG_LINES_CNT) {
                     auto row = iter->GetValue();
+                    t.add(std::to_string(iter->GetKey()));
                     for (size_t id = 0; id < row_view_list.size(); id++) {
                         RowView& row_view = row_view_list[id];
                         row_view.Reset(row.buf(id));
@@ -1009,6 +1009,7 @@ void Runner::PrintData(const vm::NameSchemaList& schema_list,
                 } else {
                     while (segment_iter->Valid()) {
                         auto row = segment_iter->GetValue();
+                        t.add(std::to_string(segment_iter->GetKey()));
                         for (size_t id = 0; id < row_view_list.size(); id++) {
                             RowView& row_view = row_view_list[id];
                             row_view.Reset(row.buf(id));

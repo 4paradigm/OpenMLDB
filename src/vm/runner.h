@@ -267,7 +267,7 @@ class SortGenerator {
             segment_iter->SeekToFirst();
             while (segment_iter->Valid()) {
                 int64_t ts = order_gen_.Gen(segment_iter->GetValue());
-                output->AddRow(key, ts, segment_iter->GetValue());
+                output->AddRow(key, static_cast<uint64_t >(ts), segment_iter->GetValue());
                 segment_iter->Next();
             }
         }
@@ -294,7 +294,7 @@ class SortGenerator {
         while (iter->Valid()) {
             if (order_gen_.Valid()) {
                 int64_t key = order_gen_.Gen(iter->GetValue());
-                output_table->AddRow(key, iter->GetValue());
+                output_table->AddRow(static_cast<uint64_t >(key), iter->GetValue());
             } else {
                 output_table->AddRow(iter->GetKey(), iter->GetValue());
             }
@@ -445,6 +445,9 @@ class Runner {
 
     static void PrintData(const vm::NameSchemaList& schema_list,
                           std::shared_ptr<DataHandler> data);
+    const vm::NameSchemaList& output_schemas() const {
+        return output_schemas_;
+    }
 
  protected:
     bool need_cache_;
@@ -454,15 +457,15 @@ class Runner {
 class IteratorStatus {
  public:
     IteratorStatus() : is_valid_(false), key_(0) {}
-    IteratorStatus(int64_t key) : is_valid_(true), key_(key) {}
+    IteratorStatus(uint64_t key) : is_valid_(true), key_(key) {}
     virtual ~IteratorStatus() {}
     void MarkInValid() {
         is_valid_ = false;
         key_ = 0;
     }
-    void set_key(int64_t key) { key_ = key; }
+    void set_key(uint64_t key) { key_ = key; }
     bool is_valid_;
-    int64_t key_;
+    uint64_t key_;
 };  // namespace vm
 class WindowUnionGenerator {
  public:
@@ -511,11 +514,6 @@ class WindowUnionGenerator {
         }
         return min_union_pos;
     }
-
-    void UpdateIteratorStatus(
-        std::vector<std::unique_ptr<RowIterator>>* iters_ptr,
-        std::vector<IteratorStatus>* status, int32_t i) {}
-
     size_t unions_cnt_;
     std::vector<WindowGenerator> windows_gen_;
     std::vector<Runner*> union_input_runners_;

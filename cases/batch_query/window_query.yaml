@@ -265,7 +265,7 @@ SQLCases:
       %%sql
       SELECT col2, col5, test_sum(col1) OVER w1 as w1_col1_sum, sum(col3) OVER w1 as w1_col3_sum,
       sum(col4) OVER w1 as w1_col4_sum, sum(col2) OVER w1 as w1_col2_sum,
-      sum(col5) OVER w1 as w1_col5_sum, col1,
+      sum(col5) OVER w1 as w1_col5_sum, count(col1) as w1_col1_cnt, col1,
       col6 as col6 FROM t1
       WINDOW w1 AS (UNION t3 PARTITION BY t1.col2 ORDER BY t1.col5 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
     inputs:
@@ -289,10 +289,10 @@ SQLCases:
           2, 5, 55, 5.0, 50.0, 5, yyy
           2, 6, 55, 6.0, 60.0, 7, yyyy
     output:
-      schema: col2:int16, col5:int64, w1_col1_sum:int32, w1_col3_sum:float, w1_col4_sum:double, w1_col2_sum:int16, w1_col5_sum:int64, col1:int32, col6:string
+      schema: col2:int16, col5:int64, w1_col1_sum:int32, w1_col3_sum:float, w1_col4_sum:double, w1_col2_sum:int16, w1_col5_sum:int64, w1_col1_cnt:int64, col1:int32, col6:string
       data: |
-        55, 2, 6, 6.3, 63.3, 110, 3, 3, 333
-        55, 4, 11, 11.7, 117.7, 165, 9, 4, 4444
-        55,6, 14, 14.9, 149.9, 165, 15, 5, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-        5, 2, 2, 2.1, 21.1, 10, 3, 1, 1
-        5, 4, 6, 6.3, 63.3, 15, 9, 2, 22
+        55, 2, 6, 6.3, 63.3, 110, 3, 2, 3, 333
+        55, 4, 11, 11.7, 117.7, 165, 9, 3, 4, 4444
+        55,6, 14, 14.9, 149.9, 165, 15, 3, 5, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        5, 2, 2, 2.1, 21.1, 10, 3, 2, 1, 1
+        5, 4, 5, 5.3, 53.3, 15, 9, 3, 2, 22
