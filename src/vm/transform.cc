@@ -1102,6 +1102,11 @@ bool BatchModeTransformer::GenWindowUnionList(
         return true;
     }
     for (auto& window_union : window_union_list->window_unions_) {
+        if (!GenPlanNode(window_union.first, status)) {
+            LOG(WARNING) << "Fail Gen Window Union Sub Query Plan"
+                         << status.msg;
+            return false;
+        }
         if (!GenWindow(&window_union.second, in, status)) {
             return false;
         }
@@ -1119,6 +1124,11 @@ bool BatchModeTransformer::GenWindowJoinList(WindowJoinList* window_join_list,
         }
 
         for (auto& window_join : window_join_list->window_joins_) {
+            if (!GenPlanNode(window_join.first, status)) {
+                LOG(WARNING)
+                    << "Fail Gen Window Join Sub Query Plan" << status.msg;
+                return false;
+            }
             auto right_schema = window_join.first->GetOutputNameSchemaList();
             auto& left_schema = joined_schema;
             auto join = &window_join.second;
