@@ -17,7 +17,7 @@
 
 #include "batch/batch_planner.h"
 
-#include "base/status.h"
+#include "base/fe_status.h"
 #include "glog/logging.h"
 #include "vm/sql_compiler.h"
 

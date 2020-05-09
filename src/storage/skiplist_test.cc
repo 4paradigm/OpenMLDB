@@ -5,7 +5,7 @@
 #include "storage/skiplist.h"
 #include <vector>
 #include <string>
-#include "base/slice.h"
+#include "base/fe_slice.h"
 #include "gtest/gtest.h"
 
 namespace fesql {

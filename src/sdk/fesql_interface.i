@@ -117,7 +117,7 @@ using fesql::sdk::ExplainInfo;
 %ignore fesql::vm::FeSQLJITWrapper::AddModule;
 
 
-%include "base/slice.h"
+%include "base/fe_slice.h"
 %include "base/status.h"
 %include "codec/row.h"
 %include "codec/row_codec.h"

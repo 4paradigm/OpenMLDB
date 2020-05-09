@@ -24,7 +24,7 @@
 #include "codec/list_iterator_codec.h"
 #include "glog/logging.h"
 #include "storage/segment.h"
-#include "base/slice.h"
+#include "base/fe_slice.h"
 #include "storage/table.h"
 #include "vm/catalog.h"
 

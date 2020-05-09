@@ -13,7 +13,7 @@
 #include <string>
 #include <vector>
 #include "base/iterator.h"
-#include "base/slice.h"
+#include "base/fe_slice.h"
 #include "base/spin_lock.h"
 #include "proto/type.pb.h"
 #include "storage/list.h"

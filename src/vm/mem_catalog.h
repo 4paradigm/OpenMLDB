@@ -16,7 +16,7 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include "base/slice.h"
+#include "base/fe_slice.h"
 #include "codec/list_iterator_codec.h"
 #include "glog/logging.h"
 #include "vm/catalog.h"
@@ -41,8 +41,8 @@ struct DescComparor {
     }
 };
 
-typedef std::vector<std::pair<uint64_t, Row>> MemTimeTable;
-typedef std::vector<Row> MemTable;
+typedef std::deque<std::pair<uint64_t, Row>> MemTimeTable;
+typedef std::deque<Row> MemTable;
 typedef std::map<std::string, MemTimeTable, std::greater<std::string>>
     MemSegmentMap;
 
