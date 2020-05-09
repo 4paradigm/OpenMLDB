@@ -27,8 +27,7 @@ class RowCodec {
         for (int i = 0; i < schema.size(); i++) {
             const ::rtidb::common::ColumnDesc& col = schema.Get(i);
             if (col.data_type() == ::rtidb::type::kVarchar ||
-                col.data_type() == ::rtidb::type::kString ||
-                col.data_type() == ::rtidb::type::kBlob) {
+                col.data_type() == ::rtidb::type::kString) {
                 auto iter = str_map.find(col.name());
                 if (iter == str_map.end()) {
                     rm.code = -1;
@@ -112,6 +111,7 @@ class RowCodec {
                         ok = builder.AppendInt32(
                             boost::lexical_cast<uint32_t>(iter->second));
                         break;
+                    case rtidb::type::kBlob:
                     case rtidb::type::kBigInt:
                         ok = builder.AppendInt64(
                             boost::lexical_cast<uint64_t>(iter->second));
@@ -217,7 +217,8 @@ class RowCodec {
                 if (ret == 0) {
                     col = std::to_string(val);
                 }
-            } else if (type == rtidb::type::kBigInt) {
+            } else if (type == rtidb::type::kBigInt ||
+                       type == rtidb::type::kBlob) {
                 int64_t val = 0;
                 int ret = rv.GetInt64(i, &val);
                 if (ret == 0) {
@@ -250,8 +251,7 @@ class RowCodec {
                     col = std::to_string(val);
                 }
             } else if (type == rtidb::type::kVarchar ||
-                       type == rtidb::type::kString ||
-                       type == rtidb::type::kBlob) {
+                       type == rtidb::type::kString) {
                 char* ch = NULL;
                 uint32_t len = 0;
                 int ret = rv.GetString(i, &ch, &len);

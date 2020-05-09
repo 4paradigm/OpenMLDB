@@ -74,8 +74,7 @@ RowBuilder::RowBuilder(const Schema& schema)
         const ::rtidb::common::ColumnDesc& column = schema.Get(idx);
         rtidb::type::DataType cur_type = column.data_type();
         if (cur_type == ::rtidb::type::kVarchar ||
-            cur_type == ::rtidb::type::kString ||
-            cur_type == ::rtidb::type::kBlob) {
+            cur_type == ::rtidb::type::kString) {
             offset_vec_.push_back(str_field_cnt_);
             str_field_cnt_++;
         } else {
@@ -183,8 +182,7 @@ bool RowBuilder::SetNULL(uint32_t index) {
     *(reinterpret_cast<uint8_t*>(ptr)) |= 1 << (index & 0x07);
     const ::rtidb::common::ColumnDesc& column = schema_.Get(index);
     if (column.data_type() == ::rtidb::type::kVarchar ||
-        column.data_type() == rtidb::type::kString ||
-        column.data_type() == rtidb::type::kBlob) {
+        column.data_type() == rtidb::type::kString) {
         ptr = buf_ + str_field_start_offset_ +
               str_addr_length_ * offset_vec_[index];
         if (str_addr_length_ == 1) {
@@ -262,7 +260,7 @@ bool RowBuilder::AppendInt64(int64_t val) {
 }
 
 bool RowBuilder::SetInt64(uint32_t index, int64_t val) {
-    if (!Check(index, ::rtidb::type::kBigInt)) return false;
+    if (!Check(index, ::rtidb::type::kBigInt) && !Check(index, ::rtidb::type::kBlob)) return false;
     int8_t* ptr = buf_ + offset_vec_[index];
     *(reinterpret_cast<int64_t*>(ptr)) = val;
     return true;
@@ -302,8 +300,7 @@ bool RowBuilder::AppendString(const char* val, uint32_t length) {
 
 bool RowBuilder::SetString(uint32_t index, const char* val, uint32_t length) {
     if (val == NULL || (!Check(index, ::rtidb::type::kVarchar) &&
-                        !Check(index, rtidb::type::kString) &&
-                        !Check(index, rtidb::type::kBlob)))
+                        !Check(index, rtidb::type::kString)))
         return false;
     if (str_offset_ + length > size_) return false;
     int8_t* ptr =
@@ -362,8 +359,7 @@ bool RowView::Init() {
         const ::rtidb::common::ColumnDesc& column = schema_.Get(idx);
         rtidb::type::DataType cur_type = column.data_type();
         if (cur_type == ::rtidb::type::kVarchar ||
-            cur_type == ::rtidb::type::kString ||
-            cur_type == ::rtidb::type::kBlob) {
+            cur_type == ::rtidb::type::kString) {
             offset_vec_.push_back(string_field_cnt_);
             string_field_cnt_++;
         } else {
@@ -510,7 +506,8 @@ int32_t RowView::GetInt64(uint32_t idx, int64_t* val) {
     if (val == NULL) {
         return -1;
     }
-    if (!CheckValid(idx, ::rtidb::type::kBigInt)) {
+    if (!CheckValid(idx, ::rtidb::type::kBigInt) &&
+        !CheckValid(idx, ::rtidb::type::kBlob)) {
         return -1;
     }
     if (IsNULL(row_, idx)) {
@@ -583,6 +580,7 @@ int32_t RowView::GetInteger(const int8_t* row, uint32_t idx,
             break;
         }
         case ::rtidb::type::kTimestamp:
+        case ::rtidb::type::kBlob:
         case ::rtidb::type::kBigInt: {
             int64_t tmp_val = 0;
             GetValue(row, idx, type, &tmp_val);
@@ -631,6 +629,7 @@ int32_t RowView::GetValue(const int8_t* row, uint32_t idx,
             *(reinterpret_cast<int32_t*>(val)) = v1::GetInt32Field(row, offset);
             break;
         case ::rtidb::type::kTimestamp:
+        case ::rtidb::type::kBlob:
         case ::rtidb::type::kBigInt:
             *(reinterpret_cast<int64_t*>(val)) = v1::GetInt64Field(row, offset);
             break;
@@ -660,8 +659,7 @@ int32_t RowView::GetValue(const int8_t* row, uint32_t idx, char** val,
     }
     const ::rtidb::common::ColumnDesc& column = schema_.Get(idx);
     if (column.data_type() != ::rtidb::type::kVarchar &&
-        column.data_type() != ::rtidb::type::kString &&
-        column.data_type() != ::rtidb::type::kBlob) {
+        column.data_type() != ::rtidb::type::kString) {
         return -1;
     }
     uint32_t size = GetSize(row);
@@ -687,8 +685,7 @@ int32_t RowView::GetString(uint32_t idx, char** val, uint32_t* length) {
     }
 
     if (!CheckValid(idx, ::rtidb::type::kVarchar) &&
-        !CheckValid(idx, ::rtidb::type::kString) &&
-        !CheckValid(idx, rtidb::type::kBlob)) {
+        !CheckValid(idx, rtidb::type::kString)) {
         return -1;
     }
     if (IsNULL(row_, idx)) {
@@ -730,6 +727,7 @@ int32_t RowView::GetStrValue(const int8_t* row, uint32_t idx,
         case ::rtidb::type::kSmallInt:
         case ::rtidb::type::kInt:
         case ::rtidb::type::kTimestamp:
+        case ::rtidb::type::kBlob:
         case ::rtidb::type::kBigInt: {
             int64_t value = 0;
             GetInteger(row, idx, column.data_type(), &value);
@@ -764,7 +762,6 @@ int32_t RowView::GetStrValue(const int8_t* row, uint32_t idx,
             break;
         }
         case ::rtidb::type::kVarchar:
-        case ::rtidb::type::kBlob:
         case ::rtidb::type::kString: {
             char* ch = NULL;
             uint32_t size = 0;
@@ -941,6 +938,7 @@ bool RowProject::Project(const int8_t* row_ptr, uint32_t size,
                 if (ret == 0) row_builder_->AppendDate(val);
                 break;
             }
+            case ::rtidb::type::kBlob:
             case ::rtidb::type::kBigInt: {
                 int64_t val = 0;
                 ret = row_view_->GetInt64(idx, &val);
@@ -966,7 +964,6 @@ bool RowProject::Project(const int8_t* row_ptr, uint32_t size,
                 break;
             }
             case ::rtidb::type::kString:
-            case ::rtidb::type::kBlob:
             case ::rtidb::type::kVarchar: {
                 char* val = NULL;
                 uint32_t size = 0;
