@@ -113,12 +113,15 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                     }
 
                     if (!op->window_unions_.Empty()) {
-                        for (auto window_union : op->window_unions_.window_unions_) {
-                            auto union_table = Build(window_union.first, status);
+                        for (auto window_union :
+                             op->window_unions_.window_unions_) {
+                            auto union_table =
+                                Build(window_union.first, status);
                             if (nullptr == union_table) {
                                 return nullptr;
                             }
-                            runner->AddWindowUnion(window_union.second, union_table);
+                            runner->AddWindowUnion(window_union.second,
+                                                   union_table);
                         }
                     }
                     return runner;
