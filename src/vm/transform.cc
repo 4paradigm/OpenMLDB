@@ -209,10 +209,15 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
                            window_agg_op->producers()[0], status)) {
                 return false;
             }
+            if (!GenWindowUnionList(&window_agg_op->window_unions_,
+                                    window_agg_op->producers()[0], status)) {
+                return false;
+            }
             if (!GenWindowJoinList(&window_agg_op->window_joins_,
                                    window_agg_op->producers()[0], status)) {
                 return false;
             }
+
             break;
         }
         case kPhysicalOpFilter: {
@@ -1089,6 +1094,21 @@ bool BatchModeTransformer::GenRange(
     }
     return true;
 }
+bool BatchModeTransformer::GenWindowUnionList(
+    WindowUnionList* window_union_list, PhysicalOpNode* in,
+    base::Status& status) {
+    if (nullptr == window_union_list || window_union_list->Empty()) {
+        LOG(WARNING) << "Skip GenWindowUnionList when window unions is empty";
+        return true;
+    }
+    for (auto& window_union : window_union_list->window_unions_) {
+        if (!GenWindow(&window_union.second, in, status)) {
+            return false;
+        }
+    }
+    DLOG(INFO) << "GenWindowUnionList:\n" << window_union_list->FnDetail();
+    return true;
+}
 bool BatchModeTransformer::GenWindowJoinList(WindowJoinList* window_join_list,
                                              PhysicalOpNode* in,
                                              base::Status& status) {
@@ -1119,6 +1139,7 @@ bool BatchModeTransformer::GenWindowJoinList(WindowJoinList* window_join_list,
             }
         }
     }
+    DLOG(INFO) << "GenWindowJoinList:\n" << window_join_list->FnDetail();
     return true;
 }
 bool GroupAndSortOptimized::KeysFilterOptimized(PhysicalOpNode* in, Key* group,

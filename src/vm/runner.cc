@@ -112,13 +112,13 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                         }
                     }
 
-                    if (!op->window_unions_.empty()) {
-                        for (auto window_union : op->window_unions_) {
-                            auto union_table = Build(window_union, status);
+                    if (!op->window_unions_.Empty()) {
+                        for (auto window_union : op->window_unions_.window_unions_) {
+                            auto union_table = Build(window_union.first, status);
                             if (nullptr == union_table) {
                                 return nullptr;
                             }
-                            runner->AddWindowUnion(union_table);
+                            runner->AddWindowUnion(window_union.second, union_table);
                         }
                     }
                     return runner;
@@ -562,6 +562,10 @@ void WindowAggRunner::RunWindowAggOnKey(
     union_segment_iters.resize(unions_cnt);
 
     for (size_t i = 0; i < unions_cnt; i++) {
+        if (!union_partitions[i]) {
+            i++;
+            continue;
+        }
         auto segment =
             union_partitions[i]->GetSegment(union_partitions[i], key);
         segment = windows_union_gen_.windows_gen_[i].sort_gen_.Sort(segment);

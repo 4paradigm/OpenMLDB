@@ -482,9 +482,8 @@ class WindowAggRunner : public Runner {
     void AddWindowJoin(const Join& join, Runner* runner) {
         windows_join_gen_.AddWindowJoin(join, runner);
     }
-    void AddWindowUnion(Runner* runner) {
-        windows_union_gen_.AddWindowUnion(instance_window_gen_.window_op_,
-                                          runner);
+    void AddWindowUnion(const WindowOp& window, Runner* runner) {
+        windows_union_gen_.AddWindowUnion(window, runner);
     }
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
     void RunWindowAggOnKey(

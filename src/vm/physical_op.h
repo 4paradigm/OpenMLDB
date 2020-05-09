@@ -103,6 +103,8 @@ class Sort {
         oss << "orders=" << node::ExprString(orders_);
         return oss.str();
     }
+    const FnInfo &fn_info() const { return fn_info_; }
+    const std::string FnDetail() const { return "sort = " + fn_info_.fn_name_; }
     const node::OrderByNode *orders_;
     FnInfo fn_info_;
 };
@@ -137,6 +139,7 @@ class Range {
     const int64_t start_offset() const { return start_offset_; }
     const int64_t end_offset() const { return end_offset_; }
     const FnInfo &fn_info() const { return fn_info_; }
+    const std::string FnDetail() const { return "range=" + fn_info_.fn_name_; }
     FnInfo fn_info_;
     const node::ExprNode *range_key_;
     int64_t start_offset_;
@@ -159,6 +162,7 @@ class ConditionFilter {
     }
     const node::ExprNode *condition() const { return condition_; }
     const FnInfo &fn_info() const { return fn_info_; }
+    const std::string FnDetail() const { return fn_info_.fn_name_; }
     const node::ExprNode *condition_;
     FnInfo fn_info_;
 };
@@ -177,6 +181,7 @@ class Key {
     void set_keys(const node::ExprListNode *keys) { keys_ = keys; }
     const node::ExprListNode *keys() const { return keys_; }
     const FnInfo &fn_info() const { return fn_info_; }
+    const std::string FnDetail() const { return "keys=" + fn_info_.fn_name_; }
 
     const node::ExprListNode *keys_;
     FnInfo fn_info_;
@@ -523,6 +528,15 @@ class WindowOp {
         }
         return oss.str();
     }
+    const std::string FnDetail() const {
+        std::ostringstream oss;
+        oss << "partition_" << partition_.FnDetail();
+        oss << ", " << sort_.FnDetail();
+        if (range_.Valid()) {
+            oss << ", " << range_.FnDetail();
+        }
+        return oss.str();
+    }
     const Key &partition() const { return partition_; }
     const Sort &sort() const { return sort_; }
     const Range &range() const { return range_; }
@@ -563,6 +577,14 @@ class Join {
             << ", index_keys=" << node::ExprString(index_key_.keys());
         return oss.str();
     }
+    const std::string FnDetail() const {
+        std::ostringstream oss;
+        oss << "condition " << filter_.FnDetail()
+            << ", left_keys=" << left_key_.FnDetail()
+            << ", right_keys=" << right_key_.FnDetail()
+            << ", index_keys=" << index_key_.FnDetail();
+        return oss.str();
+    }
     const Key &left_key() const { return left_key_; }
     const Key &right_key() const { return right_key_; }
     const Key &index_key() const { return index_key_; }
@@ -589,12 +611,36 @@ class WindowJoinList {
         window_joins_.push_front(std::make_pair(node, join));
     }
     const bool Empty() const { return window_joins_.empty(); }
+    const std::string FnDetail() const {
+        std::ostringstream oss;
+        for (auto& window_join : window_joins_) {
+            oss << window_join.second.FnDetail() << "\n";
+        }
+        return oss.str();
+    }
     std::list<std::pair<PhysicalOpNode *, Join>> &window_joins() {
         return window_joins_;
     }
+
     std::list<std::pair<PhysicalOpNode *, Join>> window_joins_;
 };
-
+class WindowUnionList {
+ public:
+    WindowUnionList() : window_unions_() {}
+    virtual ~WindowUnionList() {}
+    void AddWindowUnion(PhysicalOpNode *node, const WindowOp &window) {
+        window_unions_.push_back(std::make_pair(node, window));
+    }
+    const std::string FnDetail() const {
+        std::ostringstream oss;
+        for (auto& window_union : window_unions_) {
+            oss << window_union.second.FnDetail() << "\n";
+        }
+        return oss.str();
+    }
+    const bool Empty() const { return window_unions_.empty(); }
+    std::list<std::pair<PhysicalOpNode *, WindowOp>> window_unions_;
+};
 class PhysicalWindowNode : public PhysicalUnaryNode, public WindowOp {
  public:
     PhysicalWindowNode(PhysicalOpNode *node,
@@ -639,7 +685,6 @@ class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
         fn_infos_.push_back(&window_join.filter_.fn_info_);
     }
 
-
     bool AddWindowUnion(PhysicalOpNode *node) {
         if (nullptr == node) {
             LOG(WARNING) << "Fail to add window union : table is null";
@@ -656,14 +701,18 @@ class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
                 << "Union Table and window input schema aren't consistent";
             return false;
         }
-        window_unions_.push_back(node);
+        window_unions_.AddWindowUnion(node, window_);
+        WindowOp &window_union = window_unions_.window_unions_.back().second;
+        fn_infos_.push_back(&window_union.partition_.fn_info_);
+        fn_infos_.push_back(&window_union.sort_.fn_info_);
+        fn_infos_.push_back(&window_union.range_.fn_info_);
         return true;
     }
     WindowOp &window() { return window_; }
     WindowJoinList &window_joins() { return window_joins_; }
     WindowOp window_;
+    WindowUnionList window_unions_;
     WindowJoinList window_joins_;
-    std::vector<PhysicalOpNode *> window_unions_;
 };
 
 class PhysicalJoinNode : public PhysicalBinaryNode {

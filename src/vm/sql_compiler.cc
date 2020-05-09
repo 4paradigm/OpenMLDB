@@ -19,8 +19,8 @@
 #include <memory>
 #include <utility>
 #include <vector>
-#include "codec/type_codec.h"
 #include "codec/schema_codec.h"
+#include "codec/type_codec.h"
 #include "codegen/ir_base_builder.h"
 #include "glog/logging.h"
 #include "llvm/Bitcode/BitcodeWriter.h"
@@ -168,7 +168,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         }
         ctx.request_schema = transformer.request_schema();
         ok = codec::SchemaCodec::Encode(transformer.request_schema(),
-                &ctx.encoded_request_schema);
+                                        &ctx.encoded_request_schema);
         if (!ok) {
             LOG(WARNING) << "fail to encode request schema";
             return false;
@@ -283,6 +283,8 @@ bool SQLCompiler::ResolvePlanFnAddress(PhysicalOpNode* node,
     if (!node->GetFnInfos().empty()) {
         for (auto info_ptr : node->GetFnInfos()) {
             if (!info_ptr->fn_name_.empty()) {
+                DLOG(INFO) << "start to resolve fn address "
+                           << info_ptr->fn_name_;
                 ::llvm::Expected<::llvm::JITEvaluatedSymbol> symbol(
                     jit->lookup(info_ptr->fn_name_));
                 if (symbol.takeError()) {

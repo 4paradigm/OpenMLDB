@@ -332,6 +332,9 @@ class BatchModeTransformer {
         base::Status& status);  // NOLINT
     bool GenWindowJoinList(WindowJoinList* window_join_list, PhysicalOpNode* in,
                            base::Status& status);  // NOLINT
+    bool GenWindowUnionList(WindowUnionList* window_union_list,
+                            PhysicalOpNode* in,
+                            base::Status& status);  // NOLINT
     node::NodeManager* node_manager_;
     const std::string db_;
     const std::shared_ptr<Catalog> catalog_;

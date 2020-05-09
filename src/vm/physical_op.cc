@@ -169,11 +169,12 @@ void PhysicalWindowAggrerationNode::Print(std::ostream& output,
         }
     }
 
-    if (!window_unions_.empty()) {
-        for (auto window_union : window_unions_) {
+    if (!window_unions_.Empty()) {
+        for (auto window_union : window_unions_.window_unions_) {
             output << "\n";
-            output << tab << INDENT << "+-UNION\n";
-            window_union->Print(output, tab + INDENT + INDENT);
+            output << tab << INDENT << "+-UNION("
+                   << window_union.second.ToString() << ")\n";
+            window_union.first->Print(output, tab + INDENT + INDENT);
         }
     }
     output << "\n";
