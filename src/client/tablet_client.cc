@@ -1242,10 +1242,11 @@ bool TabletClient::DeleteBinlog(uint32_t tid, uint32_t pid,
     count = response->count();
     return kv_it;
 }
-bool TabletClient::Traverse(uint32_t tid, uint32_t pid, uint32_t limit,
-                            std::string* pk, uint64_t* snapshot_id,
-                            std::string* data, uint32_t* count,
-                            bool* is_finish, std::string* msg) {
+bool TabletClient::Traverse(uint32_t tid, uint32_t pid,
+        const ::rtidb::api::ReadOption& ro, uint32_t limit,
+        std::string* pk, uint64_t* snapshot_id,
+        std::string* data, uint32_t* count,
+        bool* is_finish, std::string* msg) {
     rtidb::api::TraverseRequest request;
     rtidb::api::TraverseResponse response;
     request.set_tid(tid);
@@ -1254,7 +1255,7 @@ bool TabletClient::Traverse(uint32_t tid, uint32_t pid, uint32_t limit,
     if (*snapshot_id > 0) {
         request.set_snapshot_id(*snapshot_id);
     }
-
+    request.mutable_read_option()->CopyFrom(ro);
     if (!pk->empty()) {
         request.set_pk(*pk);
     }

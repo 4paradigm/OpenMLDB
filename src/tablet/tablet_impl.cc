@@ -1671,7 +1671,8 @@ void TabletImpl::Traverse(RpcController* controller,
             }
             return;
         }
-        if (request->has_read_option()) {
+        if (request->has_read_option() &&
+                request->read_option().index_size() > 0) {
             std::string combine_pk;
             if (!r_table->GetCombinePk(
                         request->read_option().index(), &combine_pk)) {

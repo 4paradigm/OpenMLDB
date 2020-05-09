@@ -1110,7 +1110,10 @@ bool RelationalTable::GetCombinePk(
     const ::google::protobuf::RepeatedPtrField<::rtidb::api::Columns>& indexs,
     std::string* combine_value) {
     combine_value->clear();
-    if (indexs.size() == 1) {
+    if (indexs.size() == 0) {
+        PDLOG(DEBUG, "GetCombinePk failed. tid %u pid.", id_, pid_);
+        return false;
+    } else if (indexs.size() == 1) {
         const std::string& value = indexs.Get(0).value();
         if (!ConvertIndex(indexs.Get(0).name(0), value, combine_value))
             return false;

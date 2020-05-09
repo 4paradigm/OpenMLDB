@@ -58,7 +58,7 @@ class RtidbResult:
     self.__type_to_func = {1:self.__data.GetBool, 
       2:self.__data.GetInt16, 3:self.__data.GetInt32, 
       4:self.__data.GetInt64, 5:self.__data.GetFloat, 
-      6:self.__data.GetDouble, 7:self.__date.GetDate,
+      6:self.__data.GetDouble, 7:self.__data.GetDate,
       8:self.__data.GetTimestamp,13:self.__data.GetString,
       14:self.__data.GetString, 100:return_None}
     names = self.__data.GetColumnsName()
@@ -79,11 +79,11 @@ class RtidbResult:
           result.update({self.__names[idx]: None})
         else:
           if type == 7: 
-            date = self.__type_to_func[type](idx)
-            day = date & 0x0000000FF;
-            date = date >> 8;
-            month = 1 + (date & 0x0000FF);
-            year = 1900 + (date >> 8);
+            value = self.__type_to_func[type](idx)
+            day = value & 0x0000000FF;
+            value = value >> 8;
+            month = 1 + (value & 0x0000FF);
+            year = 1900 + (value >> 8);
             real_date = date(year, month, day)
             result.update({self.__names[idx]: real_date})
           else:
