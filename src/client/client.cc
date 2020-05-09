@@ -252,11 +252,11 @@ void BaseClient::RefreshTable() {
         if (code != 0) {
             continue;
         }
-        std::shared_ptr<TableHandler> handler =
-            std::make_shared<TableHandler>();
         if (table_info->table_partition().empty()) {
             continue;
         }
+        std::shared_ptr<TableHandler> handler =
+            std::make_shared<TableHandler>();
         handler->partition.resize(table_info->table_partition_size());
         int id = 0;
         for (const auto& part : table_info->table_partition()) {
