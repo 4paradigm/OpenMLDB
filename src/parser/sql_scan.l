@@ -380,17 +380,22 @@ ZEROFILL	{ return ZEROFILL; }
 
  /* numbers */
 -?[0-9]+	        { yylval->intval = atoi(yytext); return INTNUM; }
--?[0-9]+['d']	        { yylval->intval = atoi(yytext); return DAYNUM; }
--?[0-9]+['h']	        { yylval->intval = atoi(yytext); return HOURNUM; }
--?[0-9]+['m']	        { yylval->intval = atoi(yytext); return MINUTENUM; }
--?[0-9]+['s']	        { yylval->intval = atoi(yytext); return SECONDNUM; }
+-?[0-9]+['l']	        { yylval->longval = atol(yytext); return LONGNUM; }
+-?[0-9]+['d']	        { yylval->longval = atoi(yytext); return DAYNUM; }
+-?[0-9]+['h']	        { yylval->longval = atoi(yytext); return HOURNUM; }
+-?[0-9]+['m']	        { yylval->longval = atoi(yytext); return MINUTENUM; }
+-?[0-9]+['s']	        { yylval->longval = atoi(yytext); return SECONDNUM; }
 
 -?[0-9]+"."[0-9]* |
 -?"."[0-9]+	|
 -?[0-9]+E[-+]?[0-9]+	|
 -?[0-9]+"."[0-9]*E[-+]?[0-9]+ |
--?"."[0-9]*E[-+]?[0-9]+	{ yylval->floatval = atof(yytext) ;
-                                  return APPROXNUM; }
+-?"."[0-9]*E[-+]?[0-9]+	{ yylval->doubleval = atof(yytext) ;
+                                  return DOUBLENUM; }
+
+-?[0-9]+"."[0-9]*['f'] |
+-?"."[0-9]+['f']    { yylval->floatval = (float)(atof(yytext)) ;
+                                  return FLOATNUM; }
  /* booleans */
 TRUE	{ yylval->intval = 1; return BOOL; }
 UNKNOWN	{ yylval->intval = -1; return BOOL; }

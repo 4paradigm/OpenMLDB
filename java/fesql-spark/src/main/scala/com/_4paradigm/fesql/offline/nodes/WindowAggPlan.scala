@@ -165,7 +165,7 @@ object WindowAggPlan {
     val key = orderKeyExtractor.apply(row)
 
     // call native compute
-    val outputNativeRow = CoreAPI.WindowProject(fn, key, nativeInputRow, window)
+    val outputNativeRow = CoreAPI.WindowProject(fn, key, nativeInputRow, true, window)
 
     // call decode
     decoder.decode(outputNativeRow, outputArr)

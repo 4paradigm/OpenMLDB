@@ -152,12 +152,31 @@ void PhysicalGroupAggrerationNode::Print(std::ostream& output,
 void PhysicalWindowAggrerationNode::Print(std::ostream& output,
                                           const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(type=" << ProjectTypeName(project_type_) << ", "
-           << window_.ToString();
+    output << "(type=" << ProjectTypeName(project_type_);
     if (limit_cnt_ > 0) {
         output << ", limit=" << limit_cnt_;
     }
-    output << ")";
+    output << ")\n";
+
+    output << tab << INDENT << "+-WINDOW(" << window_.ToString() << ")";
+
+    if (!window_joins_.Empty()) {
+        for (auto window_join : window_joins_.window_joins_) {
+            output << "\n";
+            output << tab << INDENT << "+-JOIN("
+                   << window_join.second.ToString() << ")\n";
+            window_join.first->Print(output, tab + INDENT + INDENT + INDENT);
+        }
+    }
+
+    if (!window_unions_.Empty()) {
+        for (auto window_union : window_unions_.window_unions_) {
+            output << "\n";
+            output << tab << INDENT << "+-UNION("
+                   << window_union.second.ToString() << ")\n";
+            window_union.first->Print(output, tab + INDENT + INDENT);
+        }
+    }
     output << "\n";
     PrintChildren(output, tab);
 }
@@ -169,8 +188,7 @@ bool PhysicalWindowAggrerationNode::InitSchema() {
 void PhysicalJoinNode::Print(std::ostream& output,
                              const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(type=" << node::JoinTypeName(join_type_) << ", "
-           << join_.ToString();
+    output << "(" << join_.ToString();
     if (limit_cnt_ > 0) {
         output << ", limit=" << limit_cnt_;
     }
@@ -307,8 +325,11 @@ void PhysicalUnionNode::Print(std::ostream& output,
 void PhysicalRequestUnionNode::Print(std::ostream& output,
                                      const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(";
-    output << window_.ToString();
+    output << "(partition_" << window_.partition_.ToString() << ", "
+           << window_.sort_.ToString();
+    if (window_.range_.Valid()) {
+        output << ", " << window_.range_.ToString();
+    }
     output << ", index_" << index_key_.ToString();
     if (limit_cnt_ > 0) {
         output << ", limit=" << limit_cnt_;
@@ -329,8 +350,7 @@ bool PhysicalRequestUnionNode::InitSchema() {
 void PhysicalRequestJoinNode::Print(std::ostream& output,
                                     const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(type=" << node::JoinTypeName(join_type_) << ", "
-           << join_.ToString();
+    output << "(" << join_.ToString();
     if (limit_cnt_ > 0) {
         output << ", limit=" << limit_cnt_;
     }
@@ -358,5 +378,18 @@ bool PhysicalRequestJoinNode::InitSchema() {
     return true;
 }
 
+void PhysicalWindowNode::Print(std::ostream& output,
+                               const std::string& tab) const {
+    PhysicalOpNode::Print(output, tab);
+
+    output << "(partition_" << partition_.ToString() << ", "
+           << sort_.ToString();
+    if (range_.Valid()) {
+        output << ", " << range_.ToString();
+    }
+    output << ")";
+    output << "\n";
+    PrintChildren(output, tab);
+}
 }  // namespace vm
 }  // namespace fesql

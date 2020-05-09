@@ -183,7 +183,7 @@ class ConditionOptimized : public TransformUpPysicalPass {
     static bool TransformEqualExprPair(
         const std::vector<std::pair<const std::string, const vm::Schema*>>
             name_schema_list,
-        node::ExprListNode* and_conditions,
+        const size_t left_schema_cnt, node::ExprListNode* and_conditions,
         node::ExprListNode* out_condition_list,
         std::vector<ExprPair>& condition_eq_pair);  // NOLINT
 
@@ -250,16 +250,17 @@ class BatchModeTransformer {
     bool GenPlanNode(PhysicalOpNode* node, base::Status& status);  // NOLINT
     bool GenJoin(Join* join, PhysicalOpNode* in,
                  base::Status& status);  // NOLINT
-    bool GenFilter(ConditionFilter* filter, PhysicalOpNode* in,
+    bool GenFilter(ConditionFilter* filter,
+                   const NameSchemaList& input_name_schema_list,
                    base::Status& status);  // NOLINT
-    bool GenKey(Key* hash, PhysicalOpNode* in,
-                 base::Status& status);  // NOLINT
+    bool GenKey(Key* hash, const NameSchemaList& input_name_schema_list,
+                base::Status& status);  // NOLINT
     bool GenWindow(WindowOp* window, PhysicalOpNode* in,
                    base::Status& status);  // NOLINT
 
-    bool GenSort(Sort* sort, PhysicalOpNode* in,
+    bool GenSort(Sort* sort, const NameSchemaList& input_name_schema_list,
                  base::Status& status);  // NOLINT
-    bool GenRange(Range* sort, PhysicalOpNode* in,
+    bool GenRange(Range* sort, const NameSchemaList& input_name_schema_list,
                   base::Status& status);  // NOLINT
 
  protected:
@@ -322,12 +323,6 @@ class BatchModeTransformer {
                          const node::ExprListNode* expr_list, bool row_mode,
                          FnInfo* fn_info,
                          base::Status& status);  // NOLINT
-
-    node::NodeManager* node_manager_;
-    const std::string db_;
-    const std::shared_ptr<Catalog> catalog_;
-
- private:
     bool GenProjects(
         const std::vector<std::pair<const std::string, const Schema*>>&
             input_name_schema_list,
@@ -335,7 +330,16 @@ class BatchModeTransformer {
         std::string& fn_name,   // NOLINT
         Schema* output_schema,  // NOLINT
         base::Status& status);  // NOLINT
+    bool GenWindowJoinList(WindowJoinList* window_join_list, PhysicalOpNode* in,
+                           base::Status& status);  // NOLINT
+    bool GenWindowUnionList(WindowUnionList* window_union_list,
+                            PhysicalOpNode* in,
+                            base::Status& status);  // NOLINT
+    node::NodeManager* node_manager_;
+    const std::string db_;
+    const std::shared_ptr<Catalog> catalog_;
 
+ private:
     ::llvm::Module* module_;
     uint32_t id_;
     std::vector<PhysicalPlanPassType> passes;

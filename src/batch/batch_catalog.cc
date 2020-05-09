@@ -140,6 +140,7 @@ bool BatchCatalog::MapParquetSchema(
     }
     return true;
 }
+bool BatchCatalog::IndexSupport() { return true; }
 
 }  // namespace batch
 }  // namespace fesql

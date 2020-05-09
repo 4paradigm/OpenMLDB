@@ -7,8 +7,8 @@
  *--------------------------------------------------------------------------
  **/
 #include "vm/core_api.h"
-#include "vm/runner.h"
 #include "codec/row_codec.h"
+#include "vm/runner.h"
 
 namespace fesql {
 namespace vm {
@@ -37,20 +37,20 @@ fesql::codec::Row CoreAPI::RowProject(const RawFunctionPtr fn,
 }
 
 fesql::codec::Row CoreAPI::WindowProject(const RawFunctionPtr fn,
-                                         const uint64_t key,
-                                         const Row row,
+                                         const uint64_t key, const Row row,
+                                         const bool is_instance,
                                          WindowInterface* window) {
-    return Runner::WindowProject(fn, key, row, window->GetWindow());
+    return Runner::WindowProject(fn, key, row, is_instance,
+                                 window->GetWindow());
 }
 
 bool CoreAPI::ComputeCondition(const fesql::vm::RawFunctionPtr fn,
-                               const Row& row,
-                               fesql::codec::RowView* row_view,
+                               const Row& row, fesql::codec::RowView* row_view,
                                size_t out_idx) {
     Row cond_row = CoreAPI::RowProject(fn, row, true);
     row_view->Reset(cond_row.buf());
     return Runner::GetColumnBool(row_view, out_idx,
-      row_view->GetSchema()->Get(out_idx).type());
+                                 row_view->GetSchema()->Get(out_idx).type());
 }
 
 }  // namespace vm

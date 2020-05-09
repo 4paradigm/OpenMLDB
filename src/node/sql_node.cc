@@ -221,10 +221,12 @@ void ConstNode::Print(std::ostream &output, const std::string &org_tab) const {
     ExprNode::Print(output, org_tab);
     output << "\n";
     output << org_tab << SPACE_ST;
-    output << "value: " << GetExprString();
+    output << "value: " << GetExprString() << "\n";
+    output << org_tab << SPACE_ST;
+    output << "type: " <<  DataTypeName(data_type_) << "\n";
 }
 const std::string ConstNode::GetExprString() const {
-    switch (date_type_) {
+    switch (data_type_) {
         case fesql::node::kInt16:
             return std::to_string(val_.vsmallint);
         case fesql::node::kInt32:
@@ -262,7 +264,7 @@ bool ConstNode::Equals(const ExprNode *node) const {
         return false;
     }
     const ConstNode *that = dynamic_cast<const ConstNode *>(node);
-    return this->date_type_ == that->date_type_ &&
+    return this->data_type_ == that->data_type_ &&
            GetExprString() == that->GetExprString() && ExprNode::Equals(node);
 }
 

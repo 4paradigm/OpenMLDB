@@ -44,7 +44,8 @@ set(VM_LIBS fesql_vm fesql_udf fesql_parser fesql_planner fesql_codegen fesql_st
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(OS_LIB ${CMAKE_THREAD_LIBS_INIT} rt)
-    set(BRPC_LIBS brpc leveldb protobuf glog gflags unwind lzma z snappy ssl crypto dl)
+    set(COMMON_LIBS leveldb protobuf glog gflags unwind lzma z snappy ssl crypto dl)
+    set(BRPC_LIBS brpc ${COMMON_LIBS})
     set(ARROW_LIBS parquet arrow_dataset arrow brotlidec brotlienc
             brotlicommon
             thrift lz4 z zstd double-conversion boost_filesystem snappy)
@@ -60,7 +61,8 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
             "-Wl,-U,_MallocExtension_ReleaseFreeMemory"
             "-Wl,-U,_ProfilerStart"
             "-Wl,-U,_ProfilerStop")
-    set(BRPC_LIBS brpc leveldb protobuf glog gflags z snappy ssl crypto dl)
+    set(COMMON_LIBS leveldb protobuf glog gflags z snappy ssl crypto dl)
+    set(BRPC_LIBS brpc ${COMMON_LIBS})
     set(ARROW_LIBS parquet arrow_dataset arrow brotlidec brotlienc
         brotlicommon
         thrift lz4 z zstd double-conversion boost_filesystem snappy)
@@ -88,6 +90,7 @@ endif ()
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     add_definitions('-Wall')
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    add_definitions(-Wreorder)
     add_definitions(-Wno-inconsistent-missing-override)
     add_definitions(-Wno-deprecated-declarations)
     add_definitions(-Wno-null-dereference)

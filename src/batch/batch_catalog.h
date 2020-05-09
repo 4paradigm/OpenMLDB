@@ -18,10 +18,10 @@
 #ifndef SRC_BATCH_BATCH_CATALOG_H_
 #define SRC_BATCH_BATCH_CATALOG_H_
 
-#include <memory>
-#include <utility>
 #include <map>
+#include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 #include "arrow/filesystem/filesystem.h"
 #include "parquet/schema.h"
@@ -55,12 +55,10 @@ class BatchTableHandler : public vm::TableHandler {
     inline const vm::Types& GetTypes() { return types_; }
 
     inline const vm::IndexHint& GetIndex() { return index_hint_; }
-    virtual std::unique_ptr<vm::IteratorV<uint64_t, Row>> GetIterator()
-        const {
+    virtual std::unique_ptr<vm::IteratorV<uint64_t, Row>> GetIterator() const {
         return std::unique_ptr<vm::IteratorV<uint64_t, Row>>();
     }
-    virtual vm::IteratorV<uint64_t, Row>* GetIterator(
-        int8_t* addr) const {
+    virtual vm::IteratorV<uint64_t, Row>* GetIterator(int8_t* addr) const {
         return nullptr;
     }
     std::unique_ptr<vm::WindowIterator> GetWindowIterator(
@@ -99,16 +97,16 @@ class BatchCatalog : public vm::Catalog {
 
     std::shared_ptr<vm::TableHandler> GetTable(const std::string& db,
                                                const std::string& table_name);
+    bool IndexSupport() override;
 
  private:
     // get parquet schema and map it to fesql schema
-    bool GetSchemaFromParquet(const std::string& path, vm::Schema& schema);  //NOLINT
+    bool GetSchemaFromParquet(const std::string& path,
+                              vm::Schema& schema);  // NOLINT
 
     // map parquet schema to fesql schema
     bool MapParquetSchema(const parquet::SchemaDescriptor* input_schema,
-                          vm::Schema& output_schema); // NOLINT
-
- private:
+                          vm::Schema& output_schema);  // NOLINT
     std::shared_ptr<::arrow::fs::FileSystem> fs_;
     InputTables input_tables_;
     BatchDB db_;

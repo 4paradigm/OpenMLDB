@@ -362,8 +362,7 @@ TEST_F(PlannerTest, WindowWithUnionTest) {
     ASSERT_EQ(0, project_list->GetW()->GetEndOffset());
     ASSERT_EQ("(col1)", node::ExprString(project_list->GetW()->GetKeys()));
     ASSERT_TRUE(project_list->GetW()->instance_not_in_window());
-    ASSERT_TRUE(nullptr != project_list->GetW()->union_tables());
-    ASSERT_EQ(2u, project_list->GetW()->union_tables()->GetList().size());
+    ASSERT_EQ(2u, project_list->GetW()->union_tables().size());
 
     plan_ptr = plan_ptr->GetChildren()[0];
     ASSERT_EQ(node::kPlanTypeTable, plan_ptr->GetType());

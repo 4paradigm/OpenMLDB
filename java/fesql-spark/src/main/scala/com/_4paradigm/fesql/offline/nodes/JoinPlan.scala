@@ -17,7 +17,7 @@ import scala.collection.mutable
 object JoinPlan {
 
   def gen(ctx: PlanContext, node: PhysicalJoinNode, left: SparkInstance, right: SparkInstance): SparkInstance = {
-    val joinType = node.getJoin_type_
+    val joinType = node.join().join_type()
     if (joinType != JoinType.kJoinTypeLeft && joinType != JoinType.kJoinTypeLast) {
       throw new FeSQLException(s"Join type $joinType not supported")
     }
@@ -26,7 +26,7 @@ object JoinPlan {
 
     val indexName = "__JOIN_INDEX__-" + System.currentTimeMillis()
     val leftDf = {
-      if (node.getJoin_type_ == JoinType.kJoinTypeLast) {
+      if (joinType == JoinType.kJoinTypeLast) {
         val indexedRDD = left.getRDD.zipWithIndex().map {
           case (row, id) => Row.fromSeq(row.toSeq :+ id)
         }
@@ -116,7 +116,7 @@ object JoinPlan {
     }
     joined = joined.select(renameCols: _*)
 
-    val result = if (node.join_type() == JoinType.kJoinTypeLast) {
+    val result = if (joinType == JoinType.kJoinTypeLast) {
       val indexColIdx = leftDf.schema.size - 1
 
       val (_, timeColIdx, _) = SparkColumnUtil.resolveColumn(

@@ -54,6 +54,7 @@ typedef ::google::protobuf::RepeatedPtrField<::fesql::type::IndexDef> IndexList;
 typedef std::map<std::string, ColInfo> Types;
 typedef std::map<std::string, IndexSt> IndexHint;
 typedef std::vector<std::pair<const std::string, const Schema*>> NameSchemaList;
+
 class PartitionHandler;
 
 enum HandlerType { kRowHandler, kTableHandler, kPartitionHandler };
@@ -152,6 +153,7 @@ class Catalog {
 
     virtual ~Catalog() {}
 
+    virtual bool IndexSupport() = 0;
     // get database information
     virtual std::shared_ptr<type::Database> GetDatabase(
         const std::string& db) = 0;

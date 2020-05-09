@@ -19,8 +19,8 @@
 #include <memory>
 #include <utility>
 #include <vector>
-#include "codec/type_codec.h"
 #include "codec/schema_codec.h"
+#include "codec/type_codec.h"
 #include "codegen/ir_base_builder.h"
 #include "glog/logging.h"
 #include "llvm/Bitcode/BitcodeWriter.h"
@@ -168,7 +168,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         }
         ctx.request_schema = transformer.request_schema();
         ok = codec::SchemaCodec::Encode(transformer.request_schema(),
-                &ctx.encoded_request_schema);
+                                        &ctx.encoded_request_schema);
         if (!ok) {
             LOG(WARNING) << "fail to encode request schema";
             return false;
@@ -280,9 +280,43 @@ bool SQLCompiler::ResolvePlanFnAddress(PhysicalOpNode* node,
         }
     }
 
+    // TODO(chenjing):
+    // 待优化，内嵌子查询的Resolved不适合特别处理，需要把子查询的function信息注册到主查询中，
+    // 函数指针的注册需要整体优化一下设计
+    switch (node->type_) {
+        case kPhysicalOpProject: {
+            auto project_op = dynamic_cast<PhysicalProjectNode*>(node);
+            if (kWindowAggregation == project_op->project_type_) {
+                auto window_agg_op =
+                    dynamic_cast<PhysicalWindowAggrerationNode*>(node);
+                if (!window_agg_op->window_joins_.Empty()) {
+                    for (auto window_join :
+                         window_agg_op->window_joins_.window_joins_) {
+                        if (!ResolvePlanFnAddress(window_join.first, jit,
+                                                  status)) {
+                            return false;
+                        }
+                    }
+                }
+                if (!window_agg_op->window_unions_.Empty()) {
+                    for (auto window_union :
+                         window_agg_op->window_unions_.window_unions_) {
+                        if (!ResolvePlanFnAddress(window_union.first, jit,
+                                                  status)) {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+        default: {
+        }
+    }
     if (!node->GetFnInfos().empty()) {
         for (auto info_ptr : node->GetFnInfos()) {
             if (!info_ptr->fn_name_.empty()) {
+                DLOG(INFO) << "start to resolve fn address "
+                           << info_ptr->fn_name_;
                 ::llvm::Expected<::llvm::JITEvaluatedSymbol> symbol(
                     jit->lookup(info_ptr->fn_name_));
                 if (symbol.takeError()) {

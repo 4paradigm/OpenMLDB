@@ -248,7 +248,6 @@ class WindowPlanNode : public LeafPlanNode {
           start_offset_(0L),
           end_offset_(0L),
           is_range_between_(true),
-          union_tables_(nullptr),
           keys_(nullptr),
           orders_(nullptr) {}
     ~WindowPlanNode() {}
@@ -268,11 +267,8 @@ class WindowPlanNode : public LeafPlanNode {
     const std::string &GetName() const { return name; }
     void SetName(const std::string &name) { WindowPlanNode::name = name; }
     const int GetId() const { return id; }
-    SQLNodeList *union_tables() const { return union_tables_; }
-    void set_union_tables(SQLNodeList *union_table) {
-        union_tables_ = union_table;
-    }
-
+    void AddUnionTable(PlanNode* node) { return union_tables_.push_back(node); }
+    const PlanNodeList &union_tables() const { return union_tables_; }
     const bool instance_not_in_window() const {
         return instance_not_in_window_;
     }
@@ -288,9 +284,9 @@ class WindowPlanNode : public LeafPlanNode {
     int64_t start_offset_;
     int64_t end_offset_;
     bool is_range_between_;
-    SQLNodeList *union_tables_;
     ExprListNode *keys_;
     OrderByNode *orders_;
+    PlanNodeList union_tables_;
 };
 
 class ProjectListNode : public LeafPlanNode {
