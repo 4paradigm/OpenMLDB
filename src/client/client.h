@@ -342,7 +342,7 @@ class RtidbClient {
     GeneralResult Init(const std::string& zk_cluster,
                        const std::string& zk_path);
     GeneralResult Put(const std::string& name,
-                      std::map<std::string, std::string>& values, // NOLINT
+                      const std::map<std::string, std::string>& values,
                       const WriteOption& wo);
     GeneralResult Delete(const std::string& name,
                          const std::map<std::string, std::string>& values);
@@ -355,8 +355,8 @@ class RtidbClient {
     BatchQueryResult BatchQuery(const std::string& name,
                                 const std::vector<ReadOption>& ros);
     bool BatchQuery(const std::string& name,
-            ::google::protobuf::RepeatedPtrField<
-            ::rtidb::api::ReadOption> ros_pb,
+            const ::google::protobuf::RepeatedPtrField<
+            ::rtidb::api::ReadOption>& ros_pb,
             std::string* data,
             uint32_t* count,
             std::string* msg);

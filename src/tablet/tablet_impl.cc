@@ -1831,33 +1831,25 @@ void TabletImpl::Delete(RpcController* controller,
         }
         return;
     } else {
-        bool has_error = true;
+        bool ok = false;
         if (request->receive_blobs()) {
             auto blobs = response->mutable_blob_keys();
-            bool ok = r_table->Delete(request->condition_columns(), blobs);
-            if (ok) {
-                has_error = false;
-            }
+            ok = r_table->Delete(request->condition_columns(), blobs);
         } else {
-            if (r_table->Delete(request->condition_columns())) {
-                has_error = false;
-            }
+            ok = r_table->Delete(request->condition_columns());
         }
-
-        has_error = false;
-        if (has_error) {
-            PDLOG(WARNING, "delete fail. tid %u, pid %u, key %s, idx_name %s",
-                  request->tid(), request->pid(), request->key().c_str(),
-                  request->idx_name().c_str());
-            response->set_code(::rtidb::base::ReturnCode::kDeleteFailed);
-            response->set_msg("delete failed");
-            return;
-        } else {
+        if (ok) {
             PDLOG(DEBUG, "delete ok. tid %u, pid %u, key %s, idx_name %s",
                   request->tid(), request->pid(), request->key().c_str(),
                   request->idx_name().c_str());
             response->set_code(::rtidb::base::ReturnCode::kOk);
             response->set_msg("ok");
+        } else {
+            PDLOG(WARNING, "delete fail. tid %u, pid %u, key %s, idx_name %s",
+                  request->tid(), request->pid(), request->key().c_str(),
+                  request->idx_name().c_str());
+            response->set_code(::rtidb::base::ReturnCode::kDeleteFailed);
+            response->set_msg("delete failed");
         }
     }
 }

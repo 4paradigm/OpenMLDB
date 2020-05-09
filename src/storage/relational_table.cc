@@ -571,8 +571,9 @@ bool RelationalTable::Delete(
     if (!ok) {
         PDLOG(WARNING, "delete failed. clean blob_keys");
         blob_keys->Clear();
+        return false;
     }
-    return false;
+    return true;
 }
 
 bool RelationalTable::Delete(const std::shared_ptr<IndexDef> index_def,
