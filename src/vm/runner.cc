@@ -556,13 +556,10 @@ void WindowAggRunner::RunWindowAggOnKey(
     instance_segment_iter->SeekToFirst();
 
     // Prepare Union Segment Iterators
-    std::vector<std::shared_ptr<TableHandler>> union_segments;
-    std::vector<std::unique_ptr<RowIterator>> union_segment_iters;
-    std::vector<IteratorStatus> union_segment_status;
     size_t unions_cnt = windows_union_gen_.unions_cnt_;
-    union_segments.resize(unions_cnt);
-    union_segment_status.resize(unions_cnt);
-    union_segment_iters.resize(unions_cnt);
+    std::vector<std::shared_ptr<TableHandler>> union_segments(unions_cnt);
+    std::vector<std::unique_ptr<RowIterator>> union_segment_iters(unions_cnt);
+    std::vector<IteratorStatus> union_segment_status(unions_cnt);
 
     for (size_t i = 0; i < unions_cnt; i++) {
         if (!union_partitions[i]) {
@@ -588,7 +585,7 @@ void WindowAggRunner::RunWindowAggOnKey(
         union_segment_status[i] = IteratorStatus(ts);
     }
 
-    int32_t min_union_pos =
+    int32_t min_union_pos = 0 == unions_cnt ? -1 :
         windows_union_gen_.PickIteratorWithMininumKey(&union_segment_status);
     int32_t cnt = output_table->GetCount();
     CurrentHistoryWindow window(
