@@ -16,8 +16,8 @@ build_rtidb:
         expire_in: 2h
         paths:
             - build/bin/rtidb
-    except:
-        - /^*pz-fpga*$/
+    #except:
+    #    - /^*pz-fpga*$/
 
 style_check:
     stage: build
@@ -146,18 +146,18 @@ deploy-package:
     only:
         - tags
         
-build_rtidb_pz:
-    stage: build
-    script:
-        - ln -sf /usr/workdir/thirdparty thirdparty
-        - ln -sf /usr/workdir/thirdsrc thirdsrc
-        - bash steps/get_pz_fpga_deps.sh
-        - sed -i 's/\"Enable pz compression for ssd tables\"\ OFF/\"Enable pz compression for ssd tables\"\ ON/g' CMakeLists.txt
-        - echo '\n--file_compression=pz\n' >> release/conf/tablet.flags
-        - source /root/.bashrc && bash steps/compile.sh
-    artifacts:
-        expire_in: 2h
-        paths:
-            - build/bin/rtidb
-    only:
-        - /^*pz-fpga*$/
+#build_rtidb_pz:
+#    stage: build
+#    script:
+#        - ln -sf /usr/workdir/thirdparty thirdparty
+#        - ln -sf /usr/workdir/thirdsrc thirdsrc
+#        - bash steps/get_pz_fpga_deps.sh
+#        - sed -i 's/\"Enable pz compression for ssd tables\"\ OFF/\"Enable pz compression for ssd tables\"\ ON/g' CMakeLists.txt
+#        - echo '\n--file_compression=pz\n' >> release/conf/tablet.flags
+#        - source /root/.bashrc && bash steps/compile.sh
+#    artifacts:
+#        expire_in: 2h
+#        paths:
+#            - build/bin/rtidb
+#    only:
+#        - /^*pz-fpga*$/
