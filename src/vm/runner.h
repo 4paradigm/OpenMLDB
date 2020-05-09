@@ -140,9 +140,9 @@ class PartitionGenerator {
 class SortGenerator {
  public:
     explicit SortGenerator(const Sort& sort)
-        : order_gen_(sort.fn_info_),
-          is_valid_(sort.ValidSort()),
-          is_asc_(sort.is_asc()) {}
+        : is_valid_(sort.ValidSort()),
+          is_asc_(sort.is_asc()),
+          order_gen_(sort.fn_info_) {}
     virtual ~SortGenerator() {}
 
     const bool Valid() const { return is_valid_; }
@@ -159,9 +159,9 @@ class SortGenerator {
 class WindowGenerator {
  public:
     explicit WindowGenerator(const WindowOp& window)
-        : sort_gen_(window.sort_),
+        : window_op_(window),
           partition_gen_(window.partition_),
-          window_op_(window),
+          sort_gen_(window.sort_),
           range_gen_(window.range_.fn_info_) {}
     virtual ~WindowGenerator() {}
     const int64_t OrderKey(const Row& row) { return range_gen_.Gen(row); }
@@ -332,8 +332,8 @@ class JoinGenerator {
     explicit JoinGenerator(const Join& join)
         : condition_gen_(join.filter_.fn_info_),
           left_key_gen_(join.left_key_.fn_info_),
-          index_key_gen_(join.index_key_.fn_info_),
-          right_group_gen_(join.right_key_) {}
+          right_group_gen_(join.right_key_),
+          index_key_gen_(join.index_key_.fn_info_) {}
     virtual ~JoinGenerator() {}
     bool TableJoin(std::shared_ptr<TableHandler> left,
                    std::shared_ptr<TableHandler> right,
@@ -352,8 +352,8 @@ class JoinGenerator {
 
     ConditionGenerator condition_gen_;
     KeyGenerator left_key_gen_;
-    KeyGenerator index_key_gen_;
     PartitionGenerator right_group_gen_;
+    KeyGenerator index_key_gen_;
 
  private:
     Row RowLastJoinPartition(
@@ -474,8 +474,10 @@ class WindowAggRunner : public Runner {
                     const int32_t limit_cnt, const WindowOp& window_op,
                     const FnInfo& fn_info)
         : Runner(id, kRunnerWindowAgg, schema, limit_cnt),
-          window_project_gen_(fn_info),
-          instance_window_gen_(window_op) {}
+          instance_window_gen_(window_op),
+          windows_union_gen_(),
+          windows_join_gen_(),
+          window_project_gen_(fn_info) {}
     ~WindowAggRunner() {}
     void AddWindowJoin(const Join& join, Runner* runner) {
         windows_join_gen_.AddWindowJoin(join, runner);
@@ -491,9 +493,9 @@ class WindowAggRunner : public Runner {
         std::vector<std::shared_ptr<DataHandler>> joins, const std::string& key,
         std::shared_ptr<MemTableHandler> output_table);
 
+    WindowGenerator instance_window_gen_;
     WindowUnionGenerator windows_union_gen_;
     WindowJoinGenerator windows_join_gen_;
-    WindowGenerator instance_window_gen_;
     WindowProjectGenerator window_project_gen_;
 };
 class RequestUnionRunner : public Runner {

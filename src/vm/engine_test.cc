@@ -362,6 +362,11 @@ INSTANTIATE_TEST_CASE_P(
     EngineRequestWindowQuery, EngineTest,
     testing::ValuesIn(InitCases("/cases/query/window_query.yaml")));
 
+
+INSTANTIATE_TEST_CASE_P(
+    EngineBatchWindowWithUnionQuery, EngineTest,
+    testing::ValuesIn(InitCases("/cases/batch_query/window_with_union_query.yaml")));
+
 INSTANTIATE_TEST_CASE_P(
     EngineBatchGroupQuery, EngineTest,
     testing::ValuesIn(InitCases("/cases/batch_query/group_query.yaml")));
