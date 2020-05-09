@@ -449,7 +449,7 @@ std::shared_ptr<DataHandler> GroupRunner::Run(RunnerContext& ctx) {
     }
     return partition_gen_.Partition(input);
 }
-std::shared_ptr<DataHandler> OrderRunner::Run(RunnerContext& ctx) {
+std::shared_ptr<DataHandler> SortRunner::Run(RunnerContext& ctx) {
     auto input = producers_[0]->RunWithCache(ctx);
     auto fail_ptr = std::shared_ptr<DataHandler>();
     if (!input) {
@@ -608,7 +608,8 @@ void WindowAggRunner::RunWindowAggOnKey(
             if (!union_segment_iters[min_union_pos]->Valid()) {
                 union_segment_status[min_union_pos].MarkInValid();
             } else {
-                union_segment_status[min_union_pos].set_key(union_segment_iters[min_union_pos]->GetKey());
+                union_segment_status[min_union_pos].set_key(
+                    union_segment_iters[min_union_pos]->GetKey());
             }
             // Pick new mininum union pos
             min_union_pos = windows_union_gen_.PickIteratorWithMininumKey(
@@ -701,6 +702,165 @@ std::shared_ptr<DataHandler> LastJoinRunner::Run(RunnerContext& ctx) {
     }
 }
 
+std::shared_ptr<PartitionHandler> PartitionGenerator::Partition(
+    std::shared_ptr<DataHandler> input) {
+    switch (input->GetHanlderType()) {
+        case kPartitionHandler: {
+            return Partition(
+                std::dynamic_pointer_cast<PartitionHandler>(input));
+        }
+        case kTableHandler: {
+            return Partition(std::dynamic_pointer_cast<TableHandler>(input));
+        }
+        default: {
+            LOG(WARNING) << "Partition Fail: input isn't partition or table";
+            return std::shared_ptr<PartitionHandler>();
+        }
+    }
+}
+std::shared_ptr<PartitionHandler> PartitionGenerator::Partition(
+    std::shared_ptr<PartitionHandler> table) {
+    if (!key_gen_.Valid()) {
+        return table;
+    }
+    if (!table) {
+        return std::shared_ptr<PartitionHandler>();
+    }
+    auto output_partitions = std::shared_ptr<MemPartitionHandler>(
+        new MemPartitionHandler(table->GetSchema()));
+    auto partitions = std::dynamic_pointer_cast<PartitionHandler>(table);
+    auto iter = partitions->GetWindowIterator();
+    iter->SeekToFirst();
+    while (iter->Valid()) {
+        auto segment_iter = iter->GetValue();
+        auto segment_key = iter->GetKey().ToString();
+        segment_iter->SeekToFirst();
+        while (segment_iter->Valid()) {
+            std::string keys = key_gen_.Gen(segment_iter->GetValue());
+            output_partitions->AddRow(segment_key + "|" + keys,
+                                      segment_iter->GetKey(),
+                                      segment_iter->GetValue());
+            segment_iter->Next();
+        }
+        iter->Next();
+    }
+    return output_partitions;
+}
+std::shared_ptr<PartitionHandler> PartitionGenerator::Partition(
+    std::shared_ptr<TableHandler> table) {
+    auto fail_ptr = std::shared_ptr<PartitionHandler>();
+    if (!key_gen_.Valid()) {
+        return fail_ptr;
+    }
+    if (!table) {
+        return fail_ptr;
+    }
+    if (kTableHandler != table->GetHanlderType()) {
+        return fail_ptr;
+    }
+
+    auto output_partitions = std::shared_ptr<MemPartitionHandler>(
+        new MemPartitionHandler(table->GetSchema()));
+
+    auto iter = std::dynamic_pointer_cast<TableHandler>(table)->GetIterator();
+    if (!iter) {
+        LOG(WARNING) << "fail to group empty table";
+        return fail_ptr;
+    }
+    iter->SeekToFirst();
+    while (iter->Valid()) {
+        std::string keys = key_gen_.Gen(iter->GetValue());
+        output_partitions->AddRow(keys, iter->GetKey(), iter->GetValue());
+        iter->Next();
+    }
+    return output_partitions;
+}
+std::shared_ptr<DataHandler> SortGenerator::Sort(
+    std::shared_ptr<DataHandler> input) {
+    if (!input || !is_valid_ || !order_gen_.Valid()) {
+        return input;
+    }
+    switch (input->GetHanlderType()) {
+        case kTableHandler:
+            return Sort(std::dynamic_pointer_cast<TableHandler>(input));
+        case kPartitionHandler:
+            return Sort(std::dynamic_pointer_cast<PartitionHandler>(input));
+        default: {
+            LOG(WARNING) << "Sort Fail: input isn't partition or table";
+            return std::shared_ptr<PartitionHandler>();
+        }
+    }
+}
+
+std::shared_ptr<PartitionHandler> SortGenerator::Sort(
+    std::shared_ptr<PartitionHandler> partition) {
+    if (!is_valid_) {
+        return partition;
+    }
+    if (!partition) {
+        return std::shared_ptr<PartitionHandler>();
+    }
+    auto output =
+        std::shared_ptr<MemPartitionHandler>(new MemPartitionHandler());
+
+    auto iter = partition->GetWindowIterator();
+    if (!iter) {
+        return std::shared_ptr<PartitionHandler>();
+    }
+    iter->SeekToFirst();
+    while (iter->Valid()) {
+        auto segment_iter = iter->GetValue();
+        if (!segment_iter) {
+            iter->Next();
+            continue;
+        }
+
+        auto key = iter->GetKey().ToString();
+        segment_iter->SeekToFirst();
+        while (segment_iter->Valid()) {
+            int64_t ts = order_gen_.Gen(segment_iter->GetValue());
+            output->AddRow(key, static_cast<uint64_t>(ts),
+                           segment_iter->GetValue());
+            segment_iter->Next();
+        }
+    }
+    if (order_gen_.Valid()) {
+        output->Sort(is_asc_);
+    } else {
+        output->Reverse();
+    }
+    return output;
+}
+
+std::shared_ptr<TableHandler> SortGenerator::Sort(
+    std::shared_ptr<TableHandler> table) {
+    if (!table || !is_valid_) {
+        return table;
+    }
+    auto output_table = std::shared_ptr<MemTimeTableHandler>(
+        new MemTimeTableHandler(table->GetSchema()));
+    auto iter = std::dynamic_pointer_cast<TableHandler>(table)->GetIterator();
+    if (!iter) {
+        return std::shared_ptr<TableHandler>();
+    }
+    iter->SeekToFirst();
+    while (iter->Valid()) {
+        if (order_gen_.Valid()) {
+            int64_t key = order_gen_.Gen(iter->GetValue());
+            output_table->AddRow(static_cast<uint64_t>(key), iter->GetValue());
+        } else {
+            output_table->AddRow(iter->GetKey(), iter->GetValue());
+        }
+        iter->Next();
+    }
+
+    if (order_gen_.Valid()) {
+        output_table->Sort(is_asc_);
+    } else {
+        output_table->Reverse();
+    }
+    return output_table;
+}
 Row JoinGenerator::RowLastJoin(const Row& left_row,
                                std::shared_ptr<DataHandler> right) {
     switch (right->GetHanlderType()) {
@@ -1294,5 +1454,61 @@ const Row WindowProjectGenerator::Gen(const uint64_t key, const Row row,
     return Runner::WindowProject(fn_, key, row, is_instance, window);
 }
 
+std::vector<std::shared_ptr<DataHandler>> WindowUnionGenerator::RunInputs(
+    RunnerContext& ctx) {
+    std::vector<std::shared_ptr<DataHandler>> union_inputs;
+    if (!union_input_runners_.empty()) {
+        for (auto runner : union_input_runners_) {
+            union_inputs.push_back(runner->RunWithCache(ctx));
+        }
+    }
+    return union_inputs;
+}
+std::vector<std::shared_ptr<PartitionHandler>>
+WindowUnionGenerator::PartitionEach(
+    std::vector<std::shared_ptr<DataHandler>> union_inputs) {
+    std::vector<std::shared_ptr<PartitionHandler>> union_partitions;
+    if (!windows_gen_.empty()) {
+        union_partitions.reserve(windows_gen_.size());
+        auto input_iter = union_inputs.cbegin();
+        for (size_t i = 0; i < unions_cnt_; i++) {
+            union_partitions.push_back(
+                windows_gen_[i].partition_gen_.Partition(union_inputs[i]));
+        }
+    }
+    return union_partitions;
+}
+int32_t WindowUnionGenerator::PickIteratorWithMininumKey(
+    std::vector<IteratorStatus>* status_list_ptr) {
+    auto status_list = *status_list_ptr;
+    int32_t min_union_pos = -1;
+    int64_t min_union_order = INT64_MAX;
+    for (size_t i = 0; i < unions_cnt_; i++) {
+        if (status_list[i].is_valid_ && status_list[i].key_ < min_union_order) {
+            min_union_order = status_list[i].key_;
+            min_union_pos = static_cast<int32_t>(i);
+        }
+    }
+    return min_union_pos;
+}
+std::vector<std::shared_ptr<DataHandler>> WindowJoinGenerator::RunInputs(
+    RunnerContext& ctx) {
+    std::vector<std::shared_ptr<DataHandler>> union_inputs;
+    if (!join_input_runners_.empty()) {
+        for (auto runner : join_input_runners_) {
+            union_inputs.push_back(runner->RunWithCache(ctx));
+        }
+    }
+    return union_inputs;
+}
+Row WindowJoinGenerator::Join(
+    const Row& left_row,
+    const std::vector<std::shared_ptr<DataHandler>>& join_right_tables) {
+    Row row = left_row;
+    for (size_t i = 0; i < join_right_tables.size(); i++) {
+        row = joins_gen_[i].RowLastJoin(row, join_right_tables[i]);
+    }
+    return row;
+}
 }  // namespace vm
 }  // namespace fesql

@@ -50,21 +50,18 @@ class FnGenerator {
     RowView row_view_;
     std::vector<int32_t> idxs_;
 };
-
 class ProjectGenerator : public FnGenerator {
  public:
     explicit ProjectGenerator(const FnInfo& info) : FnGenerator(info) {}
     virtual ~ProjectGenerator() {}
     const Row Gen(const Row& row);
 };
-
 class AggGenerator : public FnGenerator {
  public:
     explicit AggGenerator(const FnInfo& info) : FnGenerator(info) {}
     virtual ~AggGenerator() {}
     const Row Gen(std::shared_ptr<TableHandler> table);
 };
-
 class WindowProjectGenerator : public FnGenerator {
  public:
     explicit WindowProjectGenerator(const FnInfo& info) : FnGenerator(info) {}
@@ -72,14 +69,12 @@ class WindowProjectGenerator : public FnGenerator {
     const Row Gen(const uint64_t key, const Row row, const bool is_instance,
                   Window* window);
 };
-
 class KeyGenerator : public FnGenerator {
  public:
     explicit KeyGenerator(const FnInfo& info) : FnGenerator(info) {}
     virtual ~KeyGenerator() {}
     const std::string Gen(const Row& row);
 };
-
 class OrderGenerator : public FnGenerator {
  public:
     explicit OrderGenerator(const FnInfo& info) : FnGenerator(info) {}
@@ -87,14 +82,12 @@ class OrderGenerator : public FnGenerator {
     const int64_t Gen(const Row& row);
     bool is_asc_;
 };
-
 class ConditionGenerator : public FnGenerator {
  public:
     explicit ConditionGenerator(const FnInfo& info) : FnGenerator(info) {}
     virtual ~ConditionGenerator() {}
     const bool Gen(const Row& row);
 };
-
 class FilterGenerator {
  public:
     explicit FilterGenerator(const Key& filter_key)
@@ -134,187 +127,35 @@ class PartitionGenerator {
 
     const bool Valid() const { return key_gen_.Valid(); }
     std::shared_ptr<PartitionHandler> Partition(
-        std::shared_ptr<DataHandler> input) {
-        switch (input->GetHanlderType()) {
-            case kPartitionHandler: {
-                return Partition(
-                    std::dynamic_pointer_cast<PartitionHandler>(input));
-            }
-            case kTableHandler: {
-                return Partition(
-                    std::dynamic_pointer_cast<TableHandler>(input));
-            }
-            default: {
-                LOG(WARNING)
-                    << "Partition Fail: input isn't partition or table";
-                return std::shared_ptr<PartitionHandler>();
-            }
-        }
-    }
+        std::shared_ptr<DataHandler> input);
     std::shared_ptr<PartitionHandler> Partition(
-        std::shared_ptr<PartitionHandler> table) {
-        if (!key_gen_.Valid()) {
-            return table;
-        }
-        if (!table) {
-            return std::shared_ptr<PartitionHandler>();
-        }
-        auto output_partitions = std::shared_ptr<MemPartitionHandler>(
-            new MemPartitionHandler(table->GetSchema()));
-        auto partitions = std::dynamic_pointer_cast<PartitionHandler>(table);
-        auto iter = partitions->GetWindowIterator();
-        iter->SeekToFirst();
-        while (iter->Valid()) {
-            auto segment_iter = iter->GetValue();
-            auto segment_key = iter->GetKey().ToString();
-            segment_iter->SeekToFirst();
-            while (segment_iter->Valid()) {
-                std::string keys = key_gen_.Gen(segment_iter->GetValue());
-                output_partitions->AddRow(segment_key + "|" + keys,
-                                          segment_iter->GetKey(),
-                                          segment_iter->GetValue());
-                segment_iter->Next();
-            }
-            iter->Next();
-        }
-        return output_partitions;
-    }
+        std::shared_ptr<PartitionHandler> table);
     std::shared_ptr<PartitionHandler> Partition(
-        std::shared_ptr<TableHandler> table) {
-        auto fail_ptr = std::shared_ptr<PartitionHandler>();
-        if (!key_gen_.Valid()) {
-            return fail_ptr;
-        }
-        if (!table) {
-            return fail_ptr;
-        }
-        if (kTableHandler != table->GetHanlderType()) {
-            return fail_ptr;
-        }
-
-        auto output_partitions = std::shared_ptr<MemPartitionHandler>(
-            new MemPartitionHandler(table->GetSchema()));
-
-        auto iter =
-            std::dynamic_pointer_cast<TableHandler>(table)->GetIterator();
-        if (!iter) {
-            LOG(WARNING) << "fail to group empty table";
-            return fail_ptr;
-        }
-        iter->SeekToFirst();
-        while (iter->Valid()) {
-            std::string keys = key_gen_.Gen(iter->GetValue());
-            output_partitions->AddRow(keys, iter->GetKey(), iter->GetValue());
-            iter->Next();
-        }
-        return output_partitions;
-    }
+        std::shared_ptr<TableHandler> table);
     const std::string GetKey(const Row& row) { return key_gen_.Gen(row); }
 
  private:
     KeyGenerator key_gen_;
 };
-
 class SortGenerator {
  public:
-    SortGenerator(const Sort& sort)
+    explicit SortGenerator(const Sort& sort)
         : order_gen_(sort.fn_info_),
           is_valid_(sort.ValidSort()),
           is_asc_(sort.is_asc()) {}
     virtual ~SortGenerator() {}
 
     const bool Valid() const { return is_valid_; }
-    std::shared_ptr<DataHandler> Sort(std::shared_ptr<DataHandler> input) {
-        if (!input || !is_valid_ || !order_gen_.Valid()) {
-            return input;
-        }
-        switch (input->GetHanlderType()) {
-            case kTableHandler:
-                return Sort(std::dynamic_pointer_cast<TableHandler>(input));
-            case kPartitionHandler:
-                return Sort(std::dynamic_pointer_cast<PartitionHandler>(input));
-            default: {
-                LOG(WARNING) << "Sort Fail: input isn't partition or table";
-                return std::shared_ptr<PartitionHandler>();
-            }
-        }
-    }
-
+    std::shared_ptr<DataHandler> Sort(std::shared_ptr<DataHandler> input);
     std::shared_ptr<PartitionHandler> Sort(
-        std::shared_ptr<PartitionHandler> partition) {
-        if (!is_valid_) {
-            return partition;
-        }
-        if (!partition) {
-            return std::shared_ptr<PartitionHandler>();
-        }
-        auto output =
-            std::shared_ptr<MemPartitionHandler>(new MemPartitionHandler());
-
-        auto iter = partition->GetWindowIterator();
-        if (!iter) {
-            return std::shared_ptr<PartitionHandler>();
-        }
-        iter->SeekToFirst();
-        while (iter->Valid()) {
-            auto segment_iter = iter->GetValue();
-            if (!segment_iter) {
-                iter->Next();
-                continue;
-            }
-
-            auto key = iter->GetKey().ToString();
-            segment_iter->SeekToFirst();
-            while (segment_iter->Valid()) {
-                int64_t ts = order_gen_.Gen(segment_iter->GetValue());
-                output->AddRow(key, static_cast<uint64_t >(ts), segment_iter->GetValue());
-                segment_iter->Next();
-            }
-        }
-        if (order_gen_.Valid()) {
-            output->Sort(is_asc_);
-        } else {
-            output->Reverse();
-        }
-        return output;
-    }
-
-    std::shared_ptr<TableHandler> Sort(std::shared_ptr<TableHandler> table) {
-        if (!table || !is_valid_) {
-            return table;
-        }
-        auto output_table = std::shared_ptr<MemTimeTableHandler>(
-            new MemTimeTableHandler(table->GetSchema()));
-        auto iter =
-            std::dynamic_pointer_cast<TableHandler>(table)->GetIterator();
-        if (!iter) {
-            return std::shared_ptr<TableHandler>();
-        }
-        iter->SeekToFirst();
-        while (iter->Valid()) {
-            if (order_gen_.Valid()) {
-                int64_t key = order_gen_.Gen(iter->GetValue());
-                output_table->AddRow(static_cast<uint64_t >(key), iter->GetValue());
-            } else {
-                output_table->AddRow(iter->GetKey(), iter->GetValue());
-            }
-            iter->Next();
-        }
-
-        if (order_gen_.Valid()) {
-            output_table->Sort(is_asc_);
-        } else {
-            output_table->Reverse();
-        }
-        return output_table;
-    }
+        std::shared_ptr<PartitionHandler> partition);
+    std::shared_ptr<TableHandler> Sort(std::shared_ptr<TableHandler> table);
 
  private:
     bool is_valid_;
     bool is_asc_;
     OrderGenerator order_gen_;
 };
-
 class WindowGenerator {
  public:
     explicit WindowGenerator(const WindowOp& window)
@@ -350,7 +191,6 @@ enum RunnerType {
     kRunnerLimit,
     kRunnerUnknow,
 };
-
 inline const std::string RunnerTypeName(const RunnerType& type) {
     switch (type) {
         case kRunnerData:
@@ -432,6 +272,7 @@ class Runner {
     virtual std::shared_ptr<DataHandler> Run(RunnerContext& ctx) = 0;  // NOLINT
     virtual std::shared_ptr<DataHandler> RunWithCache(
         RunnerContext& ctx);  // NOLINT
+
     static int64_t GetColumnInt64(RowView* view, int pos, type::Type type);
     static bool GetColumnBool(RowView* view, int idx, type::Type type);
     static Row WindowProject(const int8_t* fn, const uint64_t key,
@@ -445,9 +286,7 @@ class Runner {
 
     static void PrintData(const vm::NameSchemaList& schema_list,
                           std::shared_ptr<DataHandler> data);
-    const vm::NameSchemaList& output_schemas() const {
-        return output_schemas_;
-    }
+    const vm::NameSchemaList& output_schemas() const { return output_schemas_; }
 
  protected:
     bool need_cache_;
@@ -457,7 +296,7 @@ class Runner {
 class IteratorStatus {
  public:
     IteratorStatus() : is_valid_(false), key_(0) {}
-    IteratorStatus(uint64_t key) : is_valid_(true), key_(key) {}
+    explicit IteratorStatus(uint64_t key) : is_valid_(true), key_(key) {}
     virtual ~IteratorStatus() {}
     void MarkInValid() {
         is_valid_ = false;
@@ -472,28 +311,10 @@ class WindowUnionGenerator {
     WindowUnionGenerator() : unions_cnt_(0) {}
     virtual ~WindowUnionGenerator() {}
 
-    std::vector<std::shared_ptr<DataHandler>> RunInputs(RunnerContext& ctx) {
-        std::vector<std::shared_ptr<DataHandler>> union_inputs;
-        if (!union_input_runners_.empty()) {
-            for (auto runner : union_input_runners_) {
-                union_inputs.push_back(runner->RunWithCache(ctx));
-            }
-        }
-        return union_inputs;
-    }
+    std::vector<std::shared_ptr<DataHandler>> RunInputs(
+        RunnerContext& ctx);  // NOLINT
     std::vector<std::shared_ptr<PartitionHandler>> PartitionEach(
-        std::vector<std::shared_ptr<DataHandler>> union_inputs) {
-        std::vector<std::shared_ptr<PartitionHandler>> union_partitions;
-        if (!windows_gen_.empty()) {
-            union_partitions.reserve(windows_gen_.size());
-            auto input_iter = union_inputs.cbegin();
-            for (size_t i = 0; i < unions_cnt_; i++) {
-                union_partitions.push_back(
-                    windows_gen_[i].partition_gen_.Partition(union_inputs[i]));
-            }
-        }
-        return union_partitions;
-    }
+        std::vector<std::shared_ptr<DataHandler>> union_inputs);
     void AddWindowUnion(const WindowOp& window_op, Runner* runner) {
         windows_gen_.push_back(WindowGenerator(window_op));
         union_input_runners_.push_back(runner);
@@ -501,19 +322,7 @@ class WindowUnionGenerator {
     }
 
     int32_t PickIteratorWithMininumKey(
-        std::vector<IteratorStatus>* status_list_ptr) {
-        auto status_list = *status_list_ptr;
-        int32_t min_union_pos = -1;
-        int64_t min_union_order = INT64_MAX;
-        for (size_t i = 0; i < unions_cnt_; i++) {
-            if (status_list[i].is_valid_ &&
-                status_list[i].key_ < min_union_order) {
-                min_union_order = status_list[i].key_;
-                min_union_pos = static_cast<int32_t>(i);
-            }
-        }
-        return min_union_pos;
-    }
+        std::vector<IteratorStatus>* status_list_ptr);
     size_t unions_cnt_;
     std::vector<WindowGenerator> windows_gen_;
     std::vector<Runner*> union_input_runners_;
@@ -553,7 +362,6 @@ class JoinGenerator {
     Row RowLastJoinTable(const Row& left_row,
                          std::shared_ptr<TableHandler> table);  // NOLINT
 };
-
 class WindowJoinGenerator {
  public:
     WindowJoinGenerator() : joins_cnt_(0) {}
@@ -564,25 +372,11 @@ class WindowJoinGenerator {
         joins_cnt_++;
     }
     const bool Valid() const { return 0 != joins_cnt_; }
-    std::vector<std::shared_ptr<DataHandler>> RunInputs(RunnerContext& ctx) {
-        std::vector<std::shared_ptr<DataHandler>> union_inputs;
-        if (!join_input_runners_.empty()) {
-            for (auto runner : join_input_runners_) {
-                union_inputs.push_back(runner->RunWithCache(ctx));
-            }
-        }
-        return union_inputs;
-    }
+    std::vector<std::shared_ptr<DataHandler>> RunInputs(
+        RunnerContext& ctx);  // NOLINT
     Row Join(
         const Row& left_row,
-        const std::vector<std::shared_ptr<DataHandler>>& join_right_tables) {
-        Row row = left_row;
-        for (size_t i = 0; i < join_right_tables.size(); i++) {
-            row = joins_gen_[i].RowLastJoin(row, join_right_tables[i]);
-        }
-        return row;
-    }
-
+        const std::vector<std::shared_ptr<DataHandler>>& join_right_tables);
     size_t joins_cnt_;
     std::vector<JoinGenerator> joins_gen_;
     std::vector<Runner*> join_input_runners_;
@@ -597,7 +391,6 @@ class DataRunner : public Runner {
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
     const std::shared_ptr<DataHandler> data_handler_;
 };
-
 class RequestRunner : public Runner {
  public:
     RequestRunner(const int32_t id, const NameSchemaList& schema)
@@ -614,7 +407,6 @@ class GroupRunner : public Runner {
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
     PartitionGenerator partition_gen_;
 };
-
 class FilterRunner : public Runner {
  public:
     FilterRunner(const int32_t id, const NameSchemaList& schema,
@@ -624,16 +416,15 @@ class FilterRunner : public Runner {
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
     ConditionGenerator cond_gen_;
 };
-class OrderRunner : public Runner {
+class SortRunner : public Runner {
  public:
-    OrderRunner(const int32_t id, const NameSchemaList& schema,
-                const int32_t limit_cnt, const Sort& sort)
+    SortRunner(const int32_t id, const NameSchemaList& schema,
+               const int32_t limit_cnt, const Sort& sort)
         : Runner(id, kRunnerOrder, schema, limit_cnt), sort_gen_(sort) {}
-    ~OrderRunner() {}
+    ~SortRunner() {}
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
     SortGenerator sort_gen_;
 };
-
 class TableProjectRunner : public Runner {
  public:
     TableProjectRunner(const int32_t id, const NameSchemaList& schema,
@@ -645,7 +436,6 @@ class TableProjectRunner : public Runner {
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
     ProjectGenerator project_gen_;
 };
-
 class RowProjectRunner : public Runner {
  public:
     RowProjectRunner(const int32_t id, const NameSchemaList& schema,
@@ -656,7 +446,6 @@ class RowProjectRunner : public Runner {
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
     ProjectGenerator project_gen_;
 };
-
 class GroupAggRunner : public Runner {
  public:
     GroupAggRunner(const int32_t id, const NameSchemaList& schema,
@@ -670,7 +459,6 @@ class GroupAggRunner : public Runner {
     KeyGenerator group_;
     AggGenerator agg_gen_;
 };
-
 class AggRunner : public Runner {
  public:
     AggRunner(const int32_t id, const NameSchemaList& schema,
@@ -708,7 +496,6 @@ class WindowAggRunner : public Runner {
     WindowGenerator instance_window_gen_;
     WindowProjectGenerator window_project_gen_;
 };
-
 class RequestUnionRunner : public Runner {
  public:
     RequestUnionRunner(const int32_t id, const NameSchemaList& schema,
@@ -737,7 +524,6 @@ class RequestUnionRunner : public Runner {
     const int64_t start_offset_;
     const int64_t end_offset_;
 };
-
 class LastJoinRunner : public Runner {
  public:
     LastJoinRunner(const int32_t id, const NameSchemaList& schema,
@@ -748,7 +534,6 @@ class LastJoinRunner : public Runner {
 
     JoinGenerator join_gen_;
 };
-
 class RequestLastJoinRunner : public Runner {
  public:
     RequestLastJoinRunner(const int32_t id, const NameSchemaList& schema,
@@ -760,7 +545,6 @@ class RequestLastJoinRunner : public Runner {
 
     JoinGenerator join_gen_;
 };
-
 class ConcatRunner : public Runner {
  public:
     ConcatRunner(const int32_t id, const NameSchemaList& schema,

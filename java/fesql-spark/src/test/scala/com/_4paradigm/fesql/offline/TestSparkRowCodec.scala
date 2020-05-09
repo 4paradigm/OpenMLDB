@@ -1,13 +1,11 @@
 package com._4paradigm.fesql.offline
 
-import java.nio.ByteBuffer
 import java.sql.Timestamp
 
 import com._4paradigm.fesql.codec.{Row => NativeRow}
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types._
 import org.scalatest.FunSuite
-import sun.nio.ch.DirectBuffer
 
 import scala.util.Random
 
