@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-file="rtidb_integration_test.properties"
+file="steps/rtidb_integration_test.properties"
 
 if [ -f "$file" ]
 then
