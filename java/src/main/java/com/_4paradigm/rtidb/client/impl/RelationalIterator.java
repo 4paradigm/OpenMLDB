@@ -251,9 +251,9 @@ public class RelationalIterator {
             builder.setLimit(client.getConfig().getTraverseLimit());
             if (!ros.isEmpty()) {
                 Map<String, Object> index = ros.get(0).getIndex();
+                Tablet.ReadOption.Builder roBuilder = Tablet.ReadOption.newBuilder();
                 if (index != null && !index.isEmpty()) {
                     Iterator<Map.Entry<String, Object>> it = index.entrySet().iterator();
-                    Tablet.ReadOption.Builder roBuilder = Tablet.ReadOption.newBuilder();
                     while (it.hasNext()) {
                         Map.Entry<String, Object> next = it.next();
                         String idxName = next.getKey();
@@ -273,9 +273,9 @@ public class RelationalIterator {
                             roBuilder.addIndex(indexBuilder.build());
                         }
                     }
-                    builder.setReadOption(roBuilder.build());
-                    ros.clear();
+                    index.clear();
                 }
+                builder.setReadOption(roBuilder.build());
             }
             Tablet.TraverseRequest request = builder.build();
             Tablet.TraverseResponse response = ts.traverse(request);
