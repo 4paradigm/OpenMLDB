@@ -126,9 +126,8 @@ int TableIndex::AddIndex(std::shared_ptr<IndexDef> index_def) {
             std::memory_order_relaxed);
     auto new_vec = std::make_shared<std::vector<std::string>>(*old_vec);
     std::string combine_name = "";
-    int count = 0;
     for (auto& col_def : index_def->GetColumns()) {
-        if (count++ > 0) {
+        if (!combine_name.empty()) {
             combine_name.append("_");
         }
         combine_name.append(col_def.GetName());

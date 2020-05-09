@@ -11,6 +11,7 @@ class TestRtidb(unittest.TestCase):
     with self.assertRaises(Exception) as context:
       nsc = rtidb.RTIDBClient("127.0.0.1:61811", "/issue-5")
     self.assertTrue("zk client init failed" in str(context.exception))
+
   def test_query(self):
     data = {"id":"11","attribute":"a1", "image":"i1"}
     self.assertTrue(self.nsc.put("test1", data, None))
@@ -263,6 +264,7 @@ class TestRtidb(unittest.TestCase):
       self.assertEqual("i1", l["image"])
       id += 1;
     self.assertEqual(1, id);
+
   def test_date_index(self):
     data = {"id":"11","attribute":"a1", "image":"i1", "male":True, "date":date(2020,1,1), "ts":1588756531}
     self.assertTrue(self.nsc.put("date", data, None))

@@ -1655,14 +1655,13 @@ void TabletImpl::Traverse(RpcController* controller,
         response->set_is_finish(is_finish);
     } else {
         uint32_t index = r_table->GetPkIndex()->GetId();
-        rtidb::storage::RelationalTableTraverseIterator* it;
+        rtidb::storage::RelationalTableTraverseIterator* it = nullptr;
         if (request->has_snapshot_id() && request->snapshot_id() > 0) {
             it = r_table->NewTraverse(index, request->snapshot_id());
         } else {
             it = r_table->NewTraverse(index, 0);
         }
         if (it == NULL) {
-            delete it;
             response->set_code(::rtidb::base::ReturnCode::kIdxNameNotFound);
             response->set_msg("idx name not found");
             if (request->has_snapshot_id()) {

@@ -1996,7 +1996,7 @@ void HandleNSQuery(const std::vector<std::string>& parts,
     }
     std::vector<std::string> row;
     row.push_back("#");
-    ::baidu::common::TPrinter* tp;
+    ::baidu::common::TPrinter* tp = nullptr;
     if (print_column.size() == 0) {
         tp = new baidu::common::TPrinter(schema.size() + 1,
                                          FLAGS_max_col_display_length);
