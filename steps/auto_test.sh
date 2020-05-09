@@ -5,7 +5,7 @@ ls -al build/bin
 ROOT_DIR=`pwd`
 rtidb_path=$ROOT_DIR/build/bin/rtidb
 echo "rtidb_path:$rtidb_path"
-source read_properties.sh
+source steps/read_properties.sh
 
 echo "java_client_version:${java_client_version}"
 echo "test_case_xml:${test_case_xml}"
@@ -47,7 +47,7 @@ if [ ! -z ${upgrade_version} ] ; then
 fi
 echo "parameters:$parameters"
 
-sh run-compatibility.sh $parameters
+#sh run-compatibility.sh $parameters
 
 #if [ ! -z ${upgrade_version} ] ; then
 #	sh run-compatibility.sh -c ${test_case_xml} -j $rtidb_version -s ${server_env} -r $rtidb_path -u ${upgrade_version}
