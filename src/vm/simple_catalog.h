@@ -82,6 +82,7 @@ class SimpleCatalog : public Catalog {
     std::shared_ptr<type::Database> GetDatabase(const std::string &db) override;
     std::shared_ptr<TableHandler> GetTable(
         const std::string &db, const std::string &table_name) override;
+    bool IndexSupport() override;
 
  private:
     std::map<std::string,

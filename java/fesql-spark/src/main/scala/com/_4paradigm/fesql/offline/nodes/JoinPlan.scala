@@ -17,7 +17,7 @@ import scala.collection.mutable
 object JoinPlan {
 
   def gen(ctx: PlanContext, node: PhysicalJoinNode, left: SparkInstance, right: SparkInstance): SparkInstance = {
-    val joinType = node.getJoin_type_
+    val joinType = node.join().join_type()
     if (joinType != JoinType.kJoinTypeLeft && joinType != JoinType.kJoinTypeLast) {
       throw new FeSQLException(s"Join type $joinType not supported")
     }
@@ -26,7 +26,7 @@ object JoinPlan {
 
     val indexName = "__JOIN_INDEX__-" + System.currentTimeMillis()
     val leftDf = {
-      if (node.getJoin_type_ == JoinType.kJoinTypeLast) {
+      if (joinType == JoinType.kJoinTypeLast) {
         val indexedRDD = left.getRDD.zipWithIndex().map {
           case (row, id) => Row.fromSeq(row.toSeq :+ id)
         }
@@ -43,19 +43,21 @@ object JoinPlan {
     val inputSchemaSlices = FesqlUtil.getOutputSchemaSlices(node)
 
     // get left index
-    val leftKeys = node.join().left_key().keys();
+    val leftKeys = node.join().left_key().keys()
     val leftKeyCols = mutable.ArrayBuffer[Column]()
     for (i <- 0 until leftKeys.GetChildNum()) {
       val expr = leftKeys.GetChild(i)
-      leftKeyCols += SparkColumnUtil.resolve(expr, leftDf, ctx)
+      val (_, _, column) = SparkColumnUtil.resolveColumn(expr, leftDf, ctx)
+      leftKeyCols += column
     }
 
     // get right index
-    val rightKeys = node.join().right_key().keys();
+    val rightKeys = node.join().right_key().keys()
     val rightKeyCols = mutable.ArrayBuffer[Column]()
     for (i <- 0 until rightKeys.GetChildNum()) {
       val expr = rightKeys.GetChild(i)
-      rightKeyCols += SparkColumnUtil.resolve(expr, rightDf, ctx)
+      val (_, _, column) = SparkColumnUtil.resolveColumn(expr, rightDf, ctx)
+      rightKeyCols += column
     }
 
     // build join condition
@@ -70,7 +72,7 @@ object JoinPlan {
       joinConditions += leftCol === rightCol
     }
 
-    val filter = node.join().filter();
+    val filter = node.join().filter()
     // extra conditions
     if (filter.condition() != null) {
 
@@ -95,12 +97,33 @@ object JoinPlan {
       throw new FeSQLException("No join conditions specified")
     }
 
-    val joined = leftDf.join(rightDf, joinConditions.reduce(_ && _),  "left")
+    var joined = leftDf.join(rightDf, joinConditions.reduce(_ && _),  "left")
 
-    val result = if (node.getJoin_type_ == JoinType.kJoinTypeLast) {
+    // column renaming
+    val leftName = left.getName
+    val rightName = right.getName
+    val renameCols = {
+      leftDf.columns.map(n => {
+        if (n == indexName) {
+          leftDf.col(n)
+        } else {
+          leftDf.col(n).alias(leftName + "." + n)
+        }
+      }) ++
+      rightDf.columns.map(n => {
+        rightDf.col(n).alias(rightName + "." + n)
+      })
+    }
+    joined = joined.select(renameCols: _*)
+
+    val result = if (joinType == JoinType.kJoinTypeLast) {
       val indexColIdx = leftDf.schema.size - 1
-      val timeColIdx = rightDf.schema.indexWhere(_.name == "time")
+
+      val (_, timeColIdx, _) = SparkColumnUtil.resolveColumn(
+        node.join().right_key().keys().GetChild(0), rightDf, ctx)
+
       val timeColType = rightDf.schema(timeColIdx).dataType
+      val timeIdxInJoined = timeColIdx + leftDf.schema.size
 
       import sess.implicits._
 
@@ -111,7 +134,7 @@ object JoinPlan {
         .mapGroups {
           case (_, iter) =>
             val timeExtractor = SparkRowUtil.createOrderKeyExtractor(
-              timeColIdx, timeColType, nullable=false)
+              timeIdxInJoined, timeColType, nullable=false)
 
             iter.maxBy(row => timeExtractor.apply(row))
 
@@ -123,7 +146,7 @@ object JoinPlan {
       joined
     }
 
-    SparkInstance.fromDataFrame(result)
+    SparkInstance.fromDataFrame(null, result)
   }
 
 

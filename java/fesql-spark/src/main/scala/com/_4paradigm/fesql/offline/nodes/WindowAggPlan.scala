@@ -4,7 +4,7 @@ import com._4paradigm.fesql.offline._
 import com._4paradigm.fesql.offline.utils.{FesqlUtil, SparkColumnUtil, SparkRowUtil}
 import com._4paradigm.fesql.vm.{CoreAPI, FeSQLJITWrapper, PhysicalWindowAggrerationNode, WindowInterface}
 import org.apache.spark.broadcast.Broadcast
-import org.apache.spark.sql.Row
+import org.apache.spark.sql.{Column, DataFrame, Row}
 import org.apache.spark.sql.types._
 
 import scala.collection.mutable
@@ -13,33 +13,31 @@ import scala.collection.mutable
 object WindowAggPlan {
 
   def gen(ctx: PlanContext, node: PhysicalWindowAggrerationNode, input: SparkInstance): SparkInstance = {
-    val inputDf = input.getDf(ctx.getSparkSession)
-    val rdd = input.getRDD
+    val inputDf = groupAndSort(ctx, node, input)
 
     val inputSchemaSlices = FesqlUtil.getOutputSchemaSlices(node.GetProducer(0))
     val outputSchemaSlices = FesqlUtil.getOutputSchemaSlices(node)
     val outputSchema = FesqlUtil.getSparkSchema(node.GetOutputSchema())
 
     // process window op
-    val windowOp = node.window();
+    val windowOp = node.window()
+
     // process order key
     val orders = windowOp.sort().orders().order_by()
     if (orders.GetChildNum() > 1) {
       throw new FeSQLException("Multiple window order not supported")
     }
-    val orderName = SparkColumnUtil.resolveColName(orders.GetChild(0), inputDf, ctx)
-    val orderIdx = inputDf.columns.indexOf(orderName)
+    val (orderName, orderIdx, _) = SparkColumnUtil.resolveColumn(orders.GetChild(0), inputDf, ctx)
     if (orderIdx < 0) {
       throw new FeSQLException(s"Fail to find column $orderName")
     }
 
     // process group-by keys
-    val groups = windowOp.partition().keys();
+    val groups = windowOp.partition().keys()
 
     val groupIdxs = mutable.ArrayBuffer[Int]()
     for (k <- 0 until groups.GetChildNum()) {
-      val colName = SparkColumnUtil.resolveColName(groups.GetChild(k), inputDf, ctx)
-      val colIdx = inputDf.columns.indexOf(colName)
+      val (colName, colIdx, _) = SparkColumnUtil.resolveColumn(groups.GetChild(k), inputDf, ctx)
       if (colIdx < 0) {
         throw new FeSQLException(s"Fail to find column $colName")
       }
@@ -58,7 +56,7 @@ object WindowAggPlan {
       outputSchemaSlices = outputSchemaSlices
     )
 
-    val resultRDD = rdd.mapPartitions(iter => {
+    val resultRDD = inputDf.rdd.mapPartitions(iter => {
       // ensure worker native
       val tag = windowAggConfig.moduleTag
       val buffer = windowAggConfig.moduleBroadcast.value.getBuffer
@@ -68,13 +66,50 @@ object WindowAggPlan {
       windowAggIter(iter, jit, windowAggConfig)
     })
 
-    SparkInstance.fromRDD(outputSchema, resultRDD)
+    SparkInstance.fromRDD(null, outputSchema, resultRDD)
+  }
+
+
+  def groupAndSort(ctx: PlanContext, node: PhysicalWindowAggrerationNode, input: SparkInstance): DataFrame = {
+    val inputDf = input.getDf(ctx.getSparkSession)
+    val windowOp = node.window()
+    val groupByExprs = windowOp.partition().keys()
+
+    val groupByCols = mutable.ArrayBuffer[Column]()
+    for (i <- 0 until groupByExprs.GetChildNum()) {
+      val expr = groupByExprs.GetChild(i)
+      val (_, _, column) = SparkColumnUtil.resolveColumn(expr, inputDf, ctx)
+      groupByCols += column
+    }
+
+    val partitions = ctx.getConf("fesql.group.partitions", 0)
+    val groupedDf = if (partitions > 0) {
+      inputDf.repartition(partitions, groupByCols: _*)
+    } else {
+      inputDf.repartition(groupByCols: _*)
+    }
+
+    val orders = windowOp.sort().orders()
+    val orderExprs = orders.order_by()
+    val orderByCols = mutable.ArrayBuffer[Column]()
+    for (i <- 0 until orderExprs.GetChildNum()) {
+      val expr = orderExprs.GetChild(i)
+      val (_, _, column) = SparkColumnUtil.resolveColumn(expr, inputDf, ctx)
+      if (orders.is_asc()) {
+        orderByCols += column.asc
+      } else {
+        orderByCols += column.desc
+      }
+    }
+    val sortedDf = groupedDf.sortWithinPartitions(groupByCols ++ orderByCols: _*)
+    sortedDf
   }
 
 
   def windowAggIter(inputIter: Iterator[Row], jit: FeSQLJITWrapper, config: WindowAggConfig): Iterator[Row] = {
     var lastRow: Row = null
     var window = new WindowInterface(config.startOffset, 0, 0)
+
 
     // reusable output row inst
     val outputFieldNum = config.outputSchemaSlices.map(_.size).sum
@@ -130,7 +165,7 @@ object WindowAggPlan {
     val key = orderKeyExtractor.apply(row)
 
     // call native compute
-    val outputNativeRow = CoreAPI.WindowProject(fn, key, nativeInputRow, window)
+    val outputNativeRow = CoreAPI.WindowProject(fn, key, nativeInputRow, true, window)
 
     // call decode
     decoder.decode(outputNativeRow, outputArr)

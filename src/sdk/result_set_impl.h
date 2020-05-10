@@ -61,7 +61,7 @@ class ResultSetImpl : public ResultSet {
 
     bool GetDate(uint32_t index, uint32_t* days);
 
-    int32_t GetDateUnsafe(uint32_t index) {}
+    int32_t GetDateUnsafe(uint32_t index) { return 0; }
 
     bool GetTime(uint32_t index, int64_t* mills);
 

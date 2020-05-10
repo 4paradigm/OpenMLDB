@@ -427,6 +427,7 @@ class MemCatalog : public Catalog {
                                            const std::string& table_name) {
         return tables_[db][table_name];
     }
+    bool IndexSupport() override { return true; }
 
  private:
     MemTables tables_;

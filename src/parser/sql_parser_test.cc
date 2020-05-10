@@ -125,6 +125,71 @@ TEST_P(SqlParserTest, Parser_Select_Expr_List) {
     std::cout << *(trees.front()) << std::endl;
 }
 
+TEST_F(SqlParserTest, ConstExprTest) {
+    std::string sqlstr = "select col1, 1, 1l, 1.0f, 1.0, \"abc\" from t1;";
+    NodePointVector trees;
+    base::Status status;
+    int ret = parser_->parse(sqlstr.c_str(), trees, manager_, status);
+
+    if (0 != status.code) {
+        std::cout << status.msg << std::endl;
+    }
+    ASSERT_EQ(0, ret);
+    auto node_ptr = trees.front();
+    std::cout << *node_ptr << std::endl;
+    node::SelectQueryNode *query_node =
+        dynamic_cast<node::SelectQueryNode *>(node_ptr);
+    auto iter = query_node->GetSelectList()->GetList().cbegin();
+    auto iter_end = query_node->GetSelectList()->GetList().cend();
+    {
+        ASSERT_EQ("col1", dynamic_cast<node::ColumnRefNode *>(
+                              dynamic_cast<node::ResTarget *>(*iter)->GetVal())
+                              ->GetColumnName());
+    }
+    iter++;
+    {
+        ASSERT_EQ(node::kInt32, dynamic_cast<node::ConstNode *>(
+            dynamic_cast<node::ResTarget *>(*iter)->GetVal())
+            ->GetDataType());
+        ASSERT_EQ(1, dynamic_cast<node::ConstNode *>(
+            dynamic_cast<node::ResTarget *>(*iter)->GetVal())->GetInt());
+    }
+    iter++;
+    {
+        ASSERT_EQ(node::kInt64, dynamic_cast<node::ConstNode *>(
+            dynamic_cast<node::ResTarget *>(*iter)->GetVal())
+            ->GetDataType());
+        ASSERT_EQ(1L, dynamic_cast<node::ConstNode *>(
+            dynamic_cast<node::ResTarget *>(*iter)->GetVal())->GetLong());
+    }
+    iter++;
+    {
+        ASSERT_EQ(node::kFloat, dynamic_cast<node::ConstNode *>(
+            dynamic_cast<node::ResTarget *>(*iter)->GetVal())
+            ->GetDataType());
+        ASSERT_EQ(1.0f, dynamic_cast<node::ConstNode *>(
+            dynamic_cast<node::ResTarget *>(*iter)->GetVal())->GetFloat());
+    }
+    iter++;
+    {
+        ASSERT_EQ(node::kDouble, dynamic_cast<node::ConstNode *>(
+            dynamic_cast<node::ResTarget *>(*iter)->GetVal())
+            ->GetDataType());
+        ASSERT_EQ(1.0, dynamic_cast<node::ConstNode *>(
+            dynamic_cast<node::ResTarget *>(*iter)->GetVal())->GetDouble());
+    }
+    iter++;
+    {
+        ASSERT_EQ(node::kVarchar, dynamic_cast<node::ConstNode *>(
+            dynamic_cast<node::ResTarget *>(*iter)->GetVal())
+            ->GetDataType());
+        const char *str = dynamic_cast<node::ConstNode *>(
+            dynamic_cast<node::ResTarget *>(*iter)->GetVal())->GetStr();
+        ASSERT_EQ("abc", std::string(str));
+    }
+    iter++;
+    ASSERT_TRUE(iter == iter_end);
+}
 TEST_F(SqlParserTest, Assign_Op_Test) {
     std::string sqlstr =
         "%%fun\n"

@@ -26,7 +26,7 @@ int main(int argc, char* argv[]) {
 
     uint32_t j = 0;
     size_t len = buf.copy_to(reinterpret_cast<void*>(&j), 4, 0);
-    printf("read len %u , j %d \n", len, j);
+    printf("read len %lu , j %d \n", len, j);
     return 0;
 }
 

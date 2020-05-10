@@ -164,6 +164,22 @@ TEST_P(RunnerTest, request_mode_test) {
     AddTable(catalog, table_def4, table4);
     AddTable(catalog, table_def5, table5);
     AddTable(catalog, table_def6, table6);
+    {
+        fesql::type::TableDef table_def;
+        BuildTableA(table_def);
+        table_def.set_name("tb");
+        std::shared_ptr<::fesql::storage::Table> table(
+            new fesql::storage::Table(1, 1, table_def));
+        AddTable(catalog, table_def, table);
+    }
+    {
+        fesql::type::TableDef table_def;
+        BuildTableA(table_def);
+        table_def.set_name("tc");
+        std::shared_ptr<::fesql::storage::Table> table(
+            new fesql::storage::Table(1, 1, table_def));
+        AddTable(catalog, table_def, table);
+    }
     RunnerCheck(catalog, sqlstr, false);
 }
 
@@ -218,7 +234,22 @@ TEST_P(RunnerTest, batch_mode_test) {
     AddTable(catalog, table_def4, table4);
     AddTable(catalog, table_def5, table5);
     AddTable(catalog, table_def6, table6);
-
+    {
+        fesql::type::TableDef table_def;
+        BuildTableA(table_def);
+        table_def.set_name("tb");
+        std::shared_ptr<::fesql::storage::Table> table(
+            new fesql::storage::Table(1, 1, table_def));
+        AddTable(catalog, table_def, table);
+    }
+    {
+        fesql::type::TableDef table_def;
+        BuildTableA(table_def);
+        table_def.set_name("tc");
+        std::shared_ptr<::fesql::storage::Table> table(
+            new fesql::storage::Table(1, 1, table_def));
+        AddTable(catalog, table_def, table);
+    }
     RunnerCheck(catalog, sqlstr, true);
 }
 
@@ -275,11 +306,11 @@ TEST_F(RunnerTest, KeyGeneratorTest) {
     std::vector<Row> rows;
     fesql::type::TableDef temp_table;
     BuildRows(temp_table, rows);
-    ASSERT_EQ("1|5", group_runner->group_gen_.Gen(rows[0]));
-    ASSERT_EQ("2|5", group_runner->group_gen_.Gen(rows[1]));
-    ASSERT_EQ("3|55", group_runner->group_gen_.Gen(rows[2]));
-    ASSERT_EQ("4|55", group_runner->group_gen_.Gen(rows[3]));
-    ASSERT_EQ("5|55", group_runner->group_gen_.Gen(rows[4]));
+    ASSERT_EQ("1|5", group_runner->partition_gen_.GetKey(rows[0]));
+    ASSERT_EQ("2|5", group_runner->partition_gen_.GetKey(rows[1]));
+    ASSERT_EQ("3|55", group_runner->partition_gen_.GetKey(rows[2]));
+    ASSERT_EQ("4|55", group_runner->partition_gen_.GetKey(rows[3]));
+    ASSERT_EQ("5|55", group_runner->partition_gen_.GetKey(rows[4]));
 }
 
 TEST_F(RunnerTest, RunnerPrintDataTest) {

@@ -42,6 +42,7 @@ std::shared_ptr<TableHandler> SimpleCatalog::GetTable(
     auto &dict = table_handlers_[db_name];
     return dict[table_name];
 }
+bool SimpleCatalog::IndexSupport() { return false; }
 
 SimpleCatalogTableHandler::SimpleCatalogTableHandler(
     const std::string &db_name, const fesql::type::TableDef &table_def)

@@ -182,14 +182,18 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
     switch (node->type_) {
         case kPhysicalOpGroupBy: {
             auto group_op = dynamic_cast<PhysicalGroupNode*>(node);
-            if (!GenKey(&group_op->group_, node->producers()[0], status)) {
+            if (!GenKey(&group_op->group_,
+                        node->producers()[0]->GetOutputNameSchemaList(),
+                        status)) {
                 return false;
             }
             break;
         }
         case kPhysicalOpSortBy: {
             auto sort_op = dynamic_cast<PhysicalSortNode*>(node);
-            if (!GenSort(&sort_op->sort_, node->producers()[0], status)) {
+            if (!GenSort(&sort_op->sort_,
+                         node->producers()[0]->GetOutputNameSchemaList(),
+                         status)) {
                 return false;
             }
             break;
@@ -201,15 +205,26 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
             }
             auto window_agg_op =
                 dynamic_cast<PhysicalWindowAggrerationNode*>(node);
-            if (!GenWindow(&window_agg_op->window_, node->producers()[0],
-                           status)) {
+            if (!GenWindow(&window_agg_op->window_,
+                           window_agg_op->producers()[0], status)) {
                 return false;
             }
+            if (!GenWindowUnionList(&window_agg_op->window_unions_,
+                                    window_agg_op->producers()[0], status)) {
+                return false;
+            }
+            if (!GenWindowJoinList(&window_agg_op->window_joins_,
+                                   window_agg_op->producers()[0], status)) {
+                return false;
+            }
+
             break;
         }
         case kPhysicalOpFilter: {
             auto op = dynamic_cast<PhysicalFliterNode*>(node);
-            if (!GenFilter(&op->filter_, node->producers()[0], status)) {
+            if (!GenFilter(&op->filter_,
+                           node->producers()[0]->GetOutputNameSchemaList(),
+                           status)) {
                 return false;
             }
             break;
@@ -237,7 +252,8 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
                            status)) {
                 return false;
             }
-            if (!GenKey(&request_union_op->index_key_, node->producers()[0],
+            if (!GenKey(&request_union_op->index_key_,
+                        node->producers()[0]->GetOutputNameSchemaList(),
                         status)) {
                 return false;
             }
@@ -396,13 +412,14 @@ bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
         }
         case kPhysicalOpRequestJoin: {
             auto join_op = dynamic_cast<PhysicalRequestJoinNode*>(depend);
-            switch (join_op->join_type_) {
+            switch (join_op->join().join_type()) {
                 case node::kJoinTypeLeft:
                 case node::kJoinTypeLast: {
                     SchemasContext ctx(depend->GetOutputNameSchemaList());
                     if (!node::ExprListNullOrEmpty(groups)) {
                         const RowSchemaInfo* info;
-                        if (!ctx.ExprListResolved(groups->children_, &info)) {
+                        if (!ctx.ExprListResolvedFromSchema(groups->children_,
+                                                            &info)) {
                             status.msg =
                                 "fail to handle window: group "
                                 "expression should belong to left table";
@@ -420,8 +437,8 @@ bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
                     if (nullptr != orders &&
                         !node::ExprListNullOrEmpty(orders->order_by_)) {
                         const RowSchemaInfo* info;
-                        if (!ctx.ExprListResolved(orders->order_by_->children_,
-                                                  &info)) {
+                        if (!ctx.ExprListResolvedFromSchema(
+                                orders->order_by_->children_, &info)) {
                             status.msg =
                                 "fail to handle window: order "
                                 "expression should belong to left table";
@@ -448,9 +465,9 @@ bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
                             request_op, right, groups, orders,
                             w_ptr->GetStartOffset(), w_ptr->GetEndOffset());
                         node_manager_->RegisterNode(request_union_op);
-                        *output = new PhysicalJoinNode(
-                            request_union_op, join_op->producers()[1],
-                            join_op->join_type_, join_op->join_);
+                        *output = new PhysicalJoinNode(request_union_op,
+                                                       join_op->producers()[1],
+                                                       join_op->join_);
                         return true;
                     } else {
                         status.code = common::kPlanError;
@@ -775,11 +792,28 @@ bool BatchModeTransformer::CreatePhysicalProjectNode(
             break;
         }
         case kWindowAggregation: {
-            op = new PhysicalWindowAggrerationNode(
+            auto window_agg_op = new PhysicalWindowAggrerationNode(
                 node, project_list->w_ptr_->GetKeys(),
                 project_list->w_ptr_->GetOrders(), fn_name, output_schema,
                 project_list->w_ptr_->GetStartOffset(),
                 project_list->w_ptr_->GetEndOffset());
+
+            if (!project_list->w_ptr_->union_tables().empty()) {
+                for (auto iter = project_list->w_ptr_->union_tables().cbegin();
+                     iter != project_list->w_ptr_->union_tables().cend();
+                     iter++) {
+                    PhysicalOpNode* union_table_op;
+                    if (!TransformPlanOp(*iter, &union_table_op, status)) {
+                        return false;
+                    }
+                    if (!window_agg_op->AddWindowUnion(union_table_op)) {
+                        status.msg = "Fail to add window union table";
+                        status.code = common::kPlanError;
+                        return false;
+                    }
+                }
+            }
+            op = window_agg_op;
             break;
         }
     }
@@ -832,10 +866,12 @@ void BatchModeTransformer::ApplyPasses(PhysicalOpNode* node,
                 break;
             }
             case kPassLeftJoinOptimized: {
-                LeftJoinOptimized pass(node_manager_, db_, catalog_);
-                PhysicalOpNode* new_op = nullptr;
-                if (pass.Apply(physical_plan, &new_op)) {
-                    physical_plan = new_op;
+                if (catalog_->IndexSupport()) {
+                    LeftJoinOptimized pass(node_manager_, db_, catalog_);
+                    PhysicalOpNode* new_op = nullptr;
+                    if (pass.Apply(physical_plan, &new_op)) {
+                        physical_plan = new_op;
+                    }
                 }
                 break;
             }
@@ -961,34 +997,39 @@ bool BatchModeTransformer::CodeGenExprList(
 bool BatchModeTransformer::GenJoin(Join* join, PhysicalOpNode* in,
                                    base::Status& status) {
     auto filter = join->filter_;
-    if (!GenFilter(&join->filter_, in, status)) {
+    if (!GenFilter(&join->filter_, in->GetOutputNameSchemaList(), status)) {
         return false;
     }
-    if (!GenKey(&join->left_key_, in->producers()[0], status)) {
+    if (!GenKey(&join->left_key_, in->producers()[0]->GetOutputNameSchemaList(),
+                status)) {
         return false;
     }
-    if (!GenKey(&join->index_key_, in->producers()[0], status)) {
+    if (!GenKey(&join->index_key_,
+                in->producers()[0]->GetOutputNameSchemaList(), status)) {
         return false;
     }
-    if (!GenKey(&join->right_key_, in->producers()[1], status)) {
+    if (!GenKey(&join->right_key_,
+                in->producers()[1]->GetOutputNameSchemaList(), status)) {
         return false;
     }
 
     return true;
 }
-bool BatchModeTransformer::GenFilter(ConditionFilter* filter,
-                                     PhysicalOpNode* in, base::Status& status) {
+bool BatchModeTransformer::GenFilter(
+    ConditionFilter* filter, const NameSchemaList& input_name_schema_list,
+    base::Status& status) {
     if (nullptr != filter->condition_) {
         node::ExprListNode expr_list;
         expr_list.AddChild(const_cast<node::ExprNode*>(filter->condition_));
-        if (!CodeGenExprList(in->GetOutputNameSchemaList(), &expr_list, true,
+        if (!CodeGenExprList(input_name_schema_list, &expr_list, true,
                              &filter->fn_info_, status)) {
             return false;
         }
     }
     return true;
 }
-bool BatchModeTransformer::GenKey(Key* hash, PhysicalOpNode* in,
+bool BatchModeTransformer::GenKey(Key* hash,
+                                  const NameSchemaList& input_name_schema_list,
                                   base::Status& status) {
     // Gen left key function
     node::ExprListNode expr_list;
@@ -999,8 +1040,7 @@ bool BatchModeTransformer::GenKey(Key* hash, PhysicalOpNode* in,
     }
     if (!expr_list.children_.empty()) {
         // Gen left table key
-        FnInfo left_key_fn_info;
-        if (!CodeGenExprList(in->GetOutputNameSchemaList(), &expr_list, true,
+        if (!CodeGenExprList(input_name_schema_list, &expr_list, true,
                              &hash->fn_info_, status)) {
             return false;
         }
@@ -1010,21 +1050,22 @@ bool BatchModeTransformer::GenKey(Key* hash, PhysicalOpNode* in,
 bool BatchModeTransformer::GenWindow(WindowOp* window, PhysicalOpNode* in,
                                      base::Status& status) {
     node::ExprListNode expr_list;
-    if (!GenKey(&window->partition_, in, status)) {
+    if (!GenKey(&window->partition_, in->GetOutputNameSchemaList(), status)) {
         return false;
     }
 
-    if (!GenSort(&window->sort_, in, status)) {
+    if (!GenSort(&window->sort_, in->GetOutputNameSchemaList(), status)) {
         return false;
     }
 
-    if (!GenRange(&window->range_, in, status)) {
+    if (!GenRange(&window->range_, in->GetOutputNameSchemaList(), status)) {
         return false;
     }
     return true;
 }
 
-bool BatchModeTransformer::GenSort(Sort* sort, PhysicalOpNode* in,
+bool BatchModeTransformer::GenSort(Sort* sort,
+                                   const NameSchemaList& input_name_schema_list,
                                    base::Status& status) {
     if (nullptr != sort->orders_ &&
         !node::ExprListNullOrEmpty(sort->orders_->order_by_)) {
@@ -1032,7 +1073,7 @@ bool BatchModeTransformer::GenSort(Sort* sort, PhysicalOpNode* in,
         for (auto expr : sort->orders_->order_by_->children_) {
             expr_list.AddChild(expr);
         }
-        if (!CodeGenExprList(in->GetOutputNameSchemaList(), &expr_list, true,
+        if (!CodeGenExprList(input_name_schema_list, &expr_list, true,
                              &sort->fn_info_, status)) {
             return false;
         }
@@ -1040,22 +1081,83 @@ bool BatchModeTransformer::GenSort(Sort* sort, PhysicalOpNode* in,
     return true;
 }
 
-bool BatchModeTransformer::GenRange(Range* range, PhysicalOpNode* in,
-                                    base::Status& status) {
+bool BatchModeTransformer::GenRange(
+    Range* range, const NameSchemaList& input_name_schema_list,
+    base::Status& status) {
     if (nullptr != range->range_key_) {
         node::ExprListNode expr_list;
         expr_list.AddChild(const_cast<node::ExprNode*>(range->range_key_));
-        if (!CodeGenExprList(in->GetOutputNameSchemaList(), &expr_list, true,
+        if (!CodeGenExprList(input_name_schema_list, &expr_list, true,
                              &range->fn_info_, status)) {
             return false;
         }
     }
     return true;
 }
+bool BatchModeTransformer::GenWindowUnionList(
+    WindowUnionList* window_union_list, PhysicalOpNode* in,
+    base::Status& status) {
+    if (nullptr == window_union_list || window_union_list->Empty()) {
+        LOG(WARNING) << "Skip GenWindowUnionList when window unions is empty";
+        return true;
+    }
+    for (auto& window_union : window_union_list->window_unions_) {
+        if (!GenPlanNode(window_union.first, status)) {
+            LOG(WARNING) << "Fail Gen Window Union Sub Query Plan"
+                         << status.msg;
+            return false;
+        }
+        if (!GenWindow(&window_union.second, in, status)) {
+            return false;
+        }
+    }
+    DLOG(INFO) << "GenWindowUnionList:\n" << window_union_list->FnDetail();
+    return true;
+}
+bool BatchModeTransformer::GenWindowJoinList(WindowJoinList* window_join_list,
+                                             PhysicalOpNode* in,
+                                             base::Status& status) {
+    if (nullptr != window_join_list && !window_join_list->Empty()) {
+        NameSchemaList joined_schema;
+        for (auto pair : in->GetOutputNameSchemaList()) {
+            joined_schema.push_back(pair);
+        }
+
+        for (auto& window_join : window_join_list->window_joins_) {
+            if (!GenPlanNode(window_join.first, status)) {
+                LOG(WARNING)
+                    << "Fail Gen Window Join Sub Query Plan" << status.msg;
+                return false;
+            }
+            auto right_schema = window_join.first->GetOutputNameSchemaList();
+            auto& left_schema = joined_schema;
+            auto join = &window_join.second;
+            if (!GenKey(&join->left_key_, left_schema, status)) {
+                return false;
+            }
+            if (!GenKey(&join->index_key_, left_schema, status)) {
+                return false;
+            }
+            if (!GenKey(&join->right_key_, right_schema, status)) {
+                return false;
+            }
+            for (auto pair : right_schema) {
+                joined_schema.push_back(pair);
+            }
+            if (!GenFilter(&join->filter_, joined_schema, status)) {
+                return false;
+            }
+        }
+    }
+    DLOG(INFO) << "GenWindowJoinList:\n" << window_join_list->FnDetail();
+    return true;
+}
 bool GroupAndSortOptimized::KeysFilterOptimized(PhysicalOpNode* in, Key* group,
                                                 Key* hash,
                                                 PhysicalOpNode** new_in) {
     if (nullptr == group || nullptr == hash) {
+        LOG(WARNING) << "Fail KeysFilterOptimized when window filter key or "
+                        "index key is empty";
         return false;
     }
     if (kPhysicalOpDataProvider == in->type_) {
@@ -1205,15 +1307,28 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
             if (kWindowAggregation == project_op->project_type_) {
                 PhysicalWindowAggrerationNode* union_op =
                     dynamic_cast<PhysicalWindowAggrerationNode*>(project_op);
+
                 PhysicalOpNode* new_producer;
-                if (!GroupOptimized(union_op->GetProducer(0),
-                                    &union_op->window_.partition_,
-                                    &new_producer)) {
-                    return false;
+
+                if (GroupOptimized(union_op->GetProducer(0),
+                                   &union_op->window_.partition_,
+                                   &new_producer)) {
+                    union_op->SetProducer(0, new_producer);
                 }
-                union_op->SetProducer(0, new_producer);
                 SortOptimized(union_op->GetProducer(0),
                               &union_op->window_.sort_);
+
+                if (!union_op->window_joins().Empty()) {
+                    for (auto& window_join :
+                         union_op->window_joins().window_joins()) {
+                        PhysicalOpNode* new_join_right;
+                        if (JoinKeysOptimized(window_join.first,
+                                              &window_join.second,
+                                              &new_join_right)) {
+                            window_join.first = new_join_right;
+                        }
+                    }
+                }
                 return true;
             } else {
                 return false;
@@ -1404,6 +1519,11 @@ bool GroupAndSortOptimized::MatchBestIndex(
 
 bool ConditionOptimized::JoinConditionOptimized(PhysicalOpNode* in,
                                                 Join* join) {
+    if (2 != in->producers().size()) {
+        LOG(WARNING)
+            << "Fail to Join Condition Optimized: input produces size isn't 2";
+        return false;
+    }
     node::ExprListNode and_conditions;
     if (!TransfromAndConditionList(join->filter_.condition_, &and_conditions)) {
         return false;
@@ -1411,8 +1531,10 @@ bool ConditionOptimized::JoinConditionOptimized(PhysicalOpNode* in,
 
     node::ExprListNode new_and_conditions;
     std::vector<ExprPair> condition_eq_pair;
-    if (!TransformEqualExprPair(in->GetOutputNameSchemaList(), &and_conditions,
-                                &new_and_conditions, condition_eq_pair)) {
+    if (!TransformEqualExprPair(
+            in->GetOutputNameSchemaList(),
+            in->producers()[0]->GetOutputNameSchemaList().size(),
+            &and_conditions, &new_and_conditions, condition_eq_pair)) {
         return false;
     }
     node::ExprListNode* left_keys = node_manager_->MakeExprList();
@@ -1546,7 +1668,8 @@ bool ConditionOptimized::ExtractEqualExprPair(
 bool ConditionOptimized::TransformEqualExprPair(
     const std::vector<std::pair<const std::string, const vm::Schema*>>
         name_schema_list,
-    node::ExprListNode* and_conditions, node::ExprListNode* out_condition_list,
+    const size_t left_schema_cnt, node::ExprListNode* and_conditions,
+    node::ExprListNode* out_condition_list,
     std::vector<ExprPair>& condition_eq_pair) {  // NOLINT
     vm::SchemasContext ctx(name_schema_list);
     for (auto expr : and_conditions->children_) {
@@ -1570,11 +1693,11 @@ bool ConditionOptimized::TransformEqualExprPair(
                 out_condition_list->AddChild(expr);
                 continue;
             }
-            if (0 == info_left->idx_) {
+            if (left_schema_cnt > info_left->idx_) {
                 ExprPair pair = {expr_pair.first, info_left->idx_,
                                  expr_pair.second, info_right->idx_};
                 condition_eq_pair.push_back(pair);
-            } else if (0 == info_right->idx_) {
+            } else if (left_schema_cnt > info_right->idx_) {
                 ExprPair pair = {expr_pair.second, info_right->idx_,
                                  expr_pair.first, info_left->idx_};
                 condition_eq_pair.push_back(pair);
@@ -1662,7 +1785,7 @@ bool TransformUpPysicalPass::Apply(PhysicalOpNode* in, PhysicalOpNode** out) {
     for (size_t j = 0; j < producer.size(); ++j) {
         PhysicalOpNode* output = nullptr;
         if (Apply(producer[j], &output)) {
-            in->UpdateProducer(j, output);
+            in->SetProducer(j, output);
         }
     }
     return Transform(in, out);
@@ -1738,8 +1861,8 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
     PhysicalJoinNode* join_op =
         dynamic_cast<PhysicalJoinNode*>(in->producers()[0]);
 
-    if (node::kJoinTypeLeft != join_op->join_type_ &&
-        node::kJoinTypeLast != join_op->join_type_) {
+    auto join_type = join_op->join().join_type();
+    if (node::kJoinTypeLeft != join_type && node::kJoinTypeLast != join_type) {
         // skip optimized for other join type
         return false;
     }
@@ -1747,8 +1870,7 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
         case kPhysicalOpGroupBy: {
             auto group_op = dynamic_cast<PhysicalGroupNode*>(in);
             if (node::ExprListNullOrEmpty(group_op->group_.keys_)) {
-                LOG(WARNING)
-                    << "LeftJoin optimized skip: groups is null or empty";
+                LOG(WARNING) << "Join optimized skip: groups is null or empty";
             }
 
             if (!CheckExprListFromSchema(
@@ -1760,9 +1882,8 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
             // 符合优化条件
             PhysicalGroupNode* new_group_op =
                 new PhysicalGroupNode(join_op->producers()[0], group_expr);
-            PhysicalJoinNode* new_join_op =
-                new PhysicalJoinNode(new_group_op, join_op->GetProducers()[1],
-                                     join_op->join_type_, join_op->join_);
+            PhysicalJoinNode* new_join_op = new PhysicalJoinNode(
+                new_group_op, join_op->GetProducers()[1], join_op->join_);
             node_manager_->RegisterNode(new_group_op);
             node_manager_->RegisterNode(new_join_op);
             *output = new_join_op;
@@ -1772,8 +1893,7 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
             auto sort_op = dynamic_cast<PhysicalSortNode*>(in);
             if (nullptr == sort_op->sort_.orders_ ||
                 node::ExprListNullOrEmpty(sort_op->sort_.orders_->order_by_)) {
-                LOG(WARNING)
-                    << "LeftJoin optimized skip: order is null or empty";
+                LOG(WARNING) << "Join optimized skip: order is null or empty";
             }
             if (!CheckExprListFromSchema(
                     sort_op->sort_.orders_->order_by_,
@@ -1784,9 +1904,8 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
             PhysicalSortNode* new_order_op =
                 new PhysicalSortNode(join_op->producers()[0], sort_op->sort_);
             node_manager_->RegisterNode(new_order_op);
-            PhysicalJoinNode* new_join_op =
-                new PhysicalJoinNode(new_order_op, join_op->GetProducers()[1],
-                                     join_op->join_type_, join_op->join_);
+            PhysicalJoinNode* new_join_op = new PhysicalJoinNode(
+                new_order_op, join_op->GetProducers()[1], join_op->join_);
             node_manager_->RegisterNode(new_order_op);
             *output = new_join_op;
             return true;
@@ -1796,31 +1915,53 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
             if (kWindowAggregation != project_op->project_type_) {
                 return false;
             }
-            auto group_sort_op =
+
+            if (node::kJoinTypeLast != join_type) {
+                LOG(WARNING) << "Window Join optimized skip: join type should "
+                                "be LAST JOIN, but "
+                             << node::JoinTypeName(join_type);
+                return false;
+            }
+            auto window_agg_op =
                 dynamic_cast<PhysicalWindowAggrerationNode*>(in);
             if (node::ExprListNullOrEmpty(
-                    group_sort_op->window_.partition_.keys_) &&
-                (nullptr == group_sort_op->window_.sort_.orders_ ||
+                    window_agg_op->window_.partition_.keys_) &&
+                (nullptr == window_agg_op->window_.sort_.orders_ ||
                  node::ExprListNullOrEmpty(
-                     group_sort_op->window_.sort_.orders_->order_by_))) {
-                LOG(WARNING) << "LeftJoin group and sort optimized skip: both "
-                                "order and groups are empty ";
+                     window_agg_op->window_.sort_.orders_->order_by_))) {
+                LOG(WARNING) << "Window Join optimized skip: both partition and"
+                                "order are empty ";
+                return false;
             }
-            if (!CheckExprListFromSchema(
-                    group_sort_op->window_.partition_.keys_,
-                    (join_op->GetProducers()[0]->output_schema_))) {
+            SchemasContext ctx(
+                join_op->producers()[0]->GetOutputNameSchemaList());
+
+            const RowSchemaInfo* info;
+            if (!ctx.ExprListResolvedFromSchema(
+                    window_agg_op->window_.partition_.keys_->children_,
+                    &info) ||
+                info->idx_ != 0) {
+                LOG(WARNING) << "Window Join optimized skip: partition keys "
+                                "are resolved from secondary table";
                 return false;
             }
 
-            if (!CheckExprListFromSchema(
-                    group_sort_op->window_.sort_.orders_->order_by_,
-                    (join_op->GetProducers()[0]->output_schema_))) {
+            if (!ctx.ExprListResolvedFromSchema(
+                    window_agg_op->window_.sort_.orders_->order_by_->children_,
+                    &info) ||
+                info->idx_ != 0) {
+                LOG(WARNING) << "Window Join optimized skip: order keys are "
+                                "resolved from secondary table";
                 return false;
             }
-            // TODO(chenjing): window agg 和 left jion的优化需要支持window with
-            // join
-            *output = in;
-            return false;
+
+            auto left = join_op->producers()[0];
+            auto right = join_op->producers()[1];
+            window_agg_op->SetProducer(0, left);
+            window_agg_op->AddWindowJoin(right, join_op->join());
+            Transform(window_agg_op, output);
+            *output = window_agg_op;
+            return true;
         }
         default: {
             return false;
@@ -1842,6 +1983,7 @@ bool LeftJoinOptimized::CheckExprListFromSchema(
     if (node::ExprListNullOrEmpty(expr_list)) {
         return true;
     }
+
     for (auto expr : expr_list->children_) {
         switch (expr->expr_type_) {
             case node::kExprColumnRef: {

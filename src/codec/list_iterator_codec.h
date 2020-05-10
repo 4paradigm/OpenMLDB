@@ -43,9 +43,7 @@ class IteratorV {
     virtual const V &GetValue() = 0;
     virtual const K GetKey() = 0;
 };
-
 typedef IteratorV<uint64_t, Row> RowIterator;
-
 class WindowIterator {
  public:
     WindowIterator() {}

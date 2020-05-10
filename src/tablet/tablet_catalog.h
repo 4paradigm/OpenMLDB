@@ -213,6 +213,7 @@ class TabletCatalog : public vm::Catalog {
 
     std::shared_ptr<vm::TableHandler> GetTable(const std::string& db,
                                                const std::string& table_name);
+    bool IndexSupport() override;
 
  private:
     TabletTables tables_;

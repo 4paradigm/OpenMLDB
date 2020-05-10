@@ -46,7 +46,9 @@ typedef void* yyscan_t;
 
 %union {
 	int intval;
-	double floatval;
+	int64_t longval;
+	float floatval;
+	double doubleval;
 	char* strval;
 	int subtok;
 	bool flag;
@@ -66,12 +68,14 @@ typedef void* yyscan_t;
 /* names and literal values */
 %token <strval> STRING
 %token <intval> INTNUM
+%token <longval> LONGNUM
 %token <intval> DAYNUM
 %token <intval> HOURNUM
 %token <intval> MINUTENUM
 %token <intval> SECONDNUM
 %token <intval> BOOL
-%token <floatval> APPROXNUM
+%token <floatval> FLOATNUM
+%token <doubleval> DOUBLENUM
 
 /* user @abc names */
 
@@ -1300,7 +1304,11 @@ expr_const:
         }
   	| INTNUM
         { $$ = (node_manager->MakeConstNode($1)); }
-  	| APPROXNUM
+  	| LONGNUM
+        { $$ = (node_manager->MakeConstNode($1)); }
+  	| DOUBLENUM
+        { $$ = (node_manager->MakeConstNode($1)); }
+  	| FLOATNUM
         { $$ = (node_manager->MakeConstNode($1)); }
   	| BOOL
         { $$ = (node_manager->MakeConstNode($1)); }
