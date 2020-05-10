@@ -22,7 +22,7 @@
 #include <memory>
 #include <string>
 #include "base/spin_lock.h"
-#include "storage/table.h"
+#include "storage/fe_table.h"
 #include "vm/catalog.h"
 
 namespace fesql {
