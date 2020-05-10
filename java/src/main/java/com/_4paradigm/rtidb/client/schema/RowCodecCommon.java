@@ -31,6 +31,7 @@ public class RowCodecCommon {
         TYPE_SIZE_MAP.put(DataType.Int, 4);
         TYPE_SIZE_MAP.put(DataType.Float, 4);
         TYPE_SIZE_MAP.put(DataType.BigInt, 8);
+        TYPE_SIZE_MAP.put(DataType.Blob, 8);
         TYPE_SIZE_MAP.put(DataType.Timestamp, 8);
         TYPE_SIZE_MAP.put(DataType.Double, 8);
         TYPE_SIZE_MAP.put(DataType.Date, 4);
@@ -61,7 +62,7 @@ public class RowCodecCommon {
         for (int i = 0; i < schema.size(); i++) {
             ColumnDesc columnDesc = schema.get(i);
             Object column = row.get(columnDesc.getName());
-            if (columnDesc.getDataType().equals(DataType.Varchar) || columnDesc.getDataType().equals(DataType.String) || columnDesc.getDataType().equals(DataType.Blob)){
+            if (columnDesc.getDataType().equals(DataType.Varchar) || columnDesc.getDataType().equals(DataType.String)){
                 if (!columnDesc.isNotNull() && column == null) {
                     continue;
                 } else if (columnDesc.isNotNull()

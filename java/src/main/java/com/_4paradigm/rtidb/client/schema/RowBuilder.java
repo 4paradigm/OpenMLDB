@@ -33,7 +33,7 @@ public class RowBuilder {
         this.schema = schema;
         for (int idx = 0; idx < schema.size(); idx++) {
             ColumnDesc column = schema.get(idx);
-            if (column.getDataType() == DataType.Varchar || column.getDataType() == DataType.String || column.getDataType() == DataType.Blob) {
+            if (column.getDataType() == DataType.Varchar || column.getDataType() == DataType.String) {
                 offsetVec.add(strFieldCnt);
                 strFieldCnt++;
             } else {
@@ -93,7 +93,7 @@ public class RowBuilder {
         if (column.getDataType() != type) {
             return false;
         }
-        if (column.getDataType() != DataType.Varchar && column.getDataType() != DataType.String && column.getDataType() != DataType.Blob) {
+        if (column.getDataType() != DataType.Varchar && column.getDataType() != DataType.String) {
             if (RowCodecCommon.TYPE_SIZE_MAP.get(column.getDataType()) == null) {
                 return false;
             }
@@ -170,7 +170,7 @@ public class RowBuilder {
     }
 
     public boolean appendInt64(long val) {
-        if (!check(DataType.BigInt)) {
+        if (!check(DataType.BigInt) && !check(DataType.Blob)) {
             return false;
         }
         buf.position(offsetVec.get(cnt));
@@ -214,7 +214,7 @@ public class RowBuilder {
 
     public boolean appendString(String val) {
         int length = val.length();
-        if (val == null || (!check(DataType.Varchar) && !check(DataType.String) && !check(DataType.Blob))) {
+        if (val == null || (!check(DataType.Varchar) && !check(DataType.String))) {
             return false;
         }
         if (strOffset + length > size) {
@@ -284,6 +284,7 @@ public class RowBuilder {
                         ok = builder.appendTimestamp((Long) column);
                     }
                     break;
+                case Blob:
                 case BigInt:
                     ok = builder.appendInt64((Long) column);
                     break;
@@ -327,7 +328,6 @@ public class RowBuilder {
             }
             boolean ok = false;
             switch (columnDesc.getDataType()) {
-                case Blob:
                 case String:
                 case Varchar:
                     ok = builder.appendString((String) column);
@@ -350,6 +350,7 @@ public class RowBuilder {
                         ok = builder.appendTimestamp((Long) column);
                     }
                     break;
+                case Blob:
                 case BigInt:
                     ok = builder.appendInt64((Long) column);
                     break;

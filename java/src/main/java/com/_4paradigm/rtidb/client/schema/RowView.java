@@ -56,7 +56,7 @@ public class RowView {
         strFieldStartOffset = RowCodecCommon.HEADER_LENGTH + RowCodecCommon.getBitMapSize(schema.size());
         for (int idx = 0; idx < schema.size(); idx++) {
             ColumnDesc column = schema.get(idx);
-            if (column.getDataType() == DataType.Varchar || column.getDataType() == DataType.String || column.getDataType() == DataType.Blob) {
+            if (column.getDataType() == DataType.Varchar || column.getDataType() == DataType.String) {
                 offsetVec.add(stringFieldCnt);
                 stringFieldCnt++;
             } else {
@@ -175,6 +175,7 @@ public class RowView {
                 return (Integer) getValue(row, idx, type);
             }
             case Timestamp:
+            case Blob:
             case BigInt: {
                 return (Long) getValue(row, idx, type);
             }
@@ -241,6 +242,7 @@ public class RowView {
                 return buf.getShort(offset);
             case Int:
                 return buf.getInt(offset);
+            case Blob:
             case BigInt:
                 return buf.getLong(offset);
             case Float:
@@ -256,7 +258,6 @@ public class RowView {
                 int month = date & 0x0000FF;
                 int year = date >> 8;
                 return new Date(year, month, day);
-            case Blob:
             case Varchar:
             case String:
                 int nextStrFieldOffset = 0;

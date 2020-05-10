@@ -234,7 +234,7 @@ message DeleteTaskRequest {
 message GeneralResponse {
     optional int32 code = 1;
     optional string msg = 2;
-    repeated string blob_keys = 3;
+    repeated int64 additional_ids = 3;
 }
 
 message ScanRequest {
@@ -702,8 +702,8 @@ message UpdateRequest {
 
 message ReadOption {
     repeated Columns index = 1;
-    repeated Columns readFilter = 2;
-    repeated string colSet = 3;
+    repeated Columns read_filter = 2;
+    repeated string col_set = 3;
     optional uint32 limit = 4;
 }
 

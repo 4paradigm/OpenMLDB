@@ -183,7 +183,7 @@ public class RelationalIterator {
             if (col == null) {
                 continue;
             }
-            boolean ok = getObjectStore(th.getTableInfo().getTid(), (String) col, result, th);
+            boolean ok = getObjectStore(th.getTableInfo().getTid(), (long) col, result, th);
             if (!ok) {
                 throw new TabletException("get blob data failed");
             }
@@ -192,7 +192,7 @@ public class RelationalIterator {
         return map;
     }
 
-    private  boolean getObjectStore(int tid, String key, Object[] result, TableHandler th) throws TabletException {
+    private  boolean getObjectStore(int tid, long key, Object[] result, TableHandler th) throws TabletException {
         if (result.length < 1) {
             throw new TabletException("result array size must greather 1");
         }

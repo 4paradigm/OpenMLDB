@@ -758,7 +758,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         Tablet.DeleteRequest request = builder.build();
         Tablet.GeneralResponse response = ts.delete(request);
         if (response != null && response.getCode() == 0) {
-            for (String key : response.getBlobKeysList()) {
+            for (long key : response.getAdditionalIdsList()) {
                 oss.DeleteRequest.Builder ossBuilder = oss.DeleteRequest.newBuilder();
                 ossBuilder.setTid(tid);
                 ossBuilder.setPid(0);
@@ -1242,7 +1242,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         return false;
     }
 
-    private boolean putObjectStore(int tid, ByteBuffer row, String[] autoKey, TableHandler th) throws TabletException {
+    private boolean putObjectStore(int tid, ByteBuffer row, long[] autoKey, TableHandler th) throws TabletException {
         if (autoKey.length < 1) {
             throw new TabletException("auto gen key array size must greather 1");
         }
@@ -1478,7 +1478,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         List<ColumnDesc> schema = th.getSchema();
         for (Integer idx : th.getBlobSuffix()) {
 
-            String[] keys = new String[1];
+            long[] keys = new long[1];
             ColumnDesc colDesc = schema.get(idx);
             if (!row.containsKey(colDesc.getName())) {
                 continue;
