@@ -39,7 +39,8 @@ ObjectStore::~ObjectStore() {
 bool ObjectStore::Store(int64_t key, const std::string& value) {
     std::stringstream  ss;
     ss << std::hex << key;
-    char* hs_key = const_cast<char*>(ss.str().data());
+    std::string skey = ss.str();
+    char* hs_key = const_cast<char*>(skey.data());
     char* hs_value = const_cast<char*>(value.data());
     return hs_set(db_, hs_key, hs_value, value.length(), 0, 0);
 }
@@ -48,7 +49,8 @@ bool ObjectStore::Store(int64_t* key, const std::string &value) {
     *key = id_generator_.Next();
     std::stringstream  ss;
     ss << std::hex << *key;
-    char* hs_key = const_cast<char*>(ss.str().data());
+    std::string skey = ss.str();
+    char* hs_key = const_cast<char*>(skey.data());
     char* hs_value = const_cast<char*>(value.data());
     return hs_set(db_, hs_key, hs_value, value.length(), 0, 0);
 }
@@ -56,7 +58,8 @@ bool ObjectStore::Store(int64_t* key, const std::string &value) {
 rtidb::base::Slice ObjectStore::Get(int64_t key) {
     std::stringstream  ss;
     ss << std::hex << key;
-    char* hs_key = const_cast<char*>(ss.str().data());
+    std::string skey = ss.str();
+    char* hs_key = const_cast<char*>(skey.data());
     uint32_t vlen = 0, flag;
     char* ch = hs_get(db_, hs_key, &vlen, &flag);
     if (ch == NULL) {
@@ -68,7 +71,8 @@ rtidb::base::Slice ObjectStore::Get(int64_t key) {
 bool ObjectStore::Delete(int64_t key) {
     std::stringstream  ss;
     ss << std::hex << key;
-    char* hs_key = const_cast<char*>(ss.str().data());
+    std::string skey = ss.str();
+    char* hs_key = const_cast<char*>(skey.data());
     return hs_delete(db_, hs_key);
 }
 

@@ -811,8 +811,8 @@ void TabletImpl::Put(RpcController* controller,
             done->Run();
             return;
         }
-        done->Run();
         response->set_code(::rtidb::base::ReturnCode::kOk);
+        done->Run();
     }
 }
 

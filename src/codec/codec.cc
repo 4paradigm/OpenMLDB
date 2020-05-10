@@ -81,6 +81,9 @@ RowBuilder::RowBuilder(const Schema& schema)
             if (cur_type < TYPE_SIZE_ARRAY.size() && cur_type > 0) {
                 offset_vec_.push_back(str_field_start_offset_);
                 str_field_start_offset_ += TYPE_SIZE_ARRAY[cur_type];
+            } else if (cur_type == rtidb::type::kBlob) {
+                offset_vec_.push_back(str_field_start_offset_);
+                str_field_start_offset_ += sizeof(int64_t);
             } else {
                 PDLOG(WARNING, "type is not supported");
             }
@@ -366,6 +369,9 @@ bool RowView::Init() {
             if (cur_type < TYPE_SIZE_ARRAY.size() && cur_type > 0) {
                 offset_vec_.push_back(offset);
                 offset += TYPE_SIZE_ARRAY[cur_type];
+            } else if (cur_type == rtidb::type::kBlob){
+                offset_vec_.push_back(offset);
+                offset += sizeof(int64_t);
             } else {
                 is_valid_ = false;
                 return false;

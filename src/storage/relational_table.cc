@@ -392,6 +392,7 @@ bool RelationalTable::GetPackedField(const int8_t* row, uint32_t idx,
             break;
         }
         case ::rtidb::type::kBigInt:
+        case ::rtidb::type::kBlob:
         case ::rtidb::type::kTimestamp: {
             int64_t val = 0;
             get_value_ret = row_view_.GetValue(row, idx, data_type, &val);
@@ -555,9 +556,9 @@ bool RelationalTable::Delete(const
 
         for (auto i : blob_suffix) {
             int64_t val = 0;
-            int ret = row_view_.GetInt64(i, &val);
+            int ret = row_view_.GetValue(data, i, rtidb::type::kBlob, &val);
             if (ret != 0) {
-                PDLOG(WARNING, "get string failed. errno %d tid %u pid %u",
+                PDLOG(WARNING, "get blob failed. errno %d tid %u pid %u",
                       ret, id_, pid_);
                 blob_keys->Clear();
                 return false;

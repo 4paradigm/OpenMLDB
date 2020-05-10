@@ -152,7 +152,6 @@ void BlobServerImpl::CreateTable(RpcController *controller,
         response->set_code(ReturnCode::kCreateTableFailed);
         response->set_msg("init object store failed");
     }
-    PDLOG(INFO, "creat table tid[%u] pid[%u] success", tid, pid);
     std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
     object_stores_[tid].insert(std::make_pair(pid, store));
 }
