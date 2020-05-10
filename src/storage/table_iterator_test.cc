@@ -20,7 +20,7 @@
 #include <iostream>
 #include <string>
 #include "gtest/gtest.h"
-#include "storage/table.h"
+#include "storage/fe_table.h"
 #include "codec/row.h"
 
 namespace fesql {

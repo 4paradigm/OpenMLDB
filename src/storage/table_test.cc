@@ -5,7 +5,7 @@
 // Date 2019-11-01
 //
 
-#include "storage/table.h"
+#include "storage/fe_table.h"
 #include <sys/time.h>
 #include <string>
 #include "gtest/gtest.h"
