@@ -26,8 +26,8 @@
 #include "plan/planner.h"
 #include "sdk/tablet_sdk.h"
 
-#include "base/linenoise.h"
-#include "base/strings.h"
+#include "base/fe_linenoise.h"
+#include "base/fe_strings.h"
 #include "brpc/server.h"
 #include "dbms/dbms_server_impl.h"
 #include "glog/logging.h"

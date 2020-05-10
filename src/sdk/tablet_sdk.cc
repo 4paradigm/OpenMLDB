@@ -20,7 +20,7 @@
 #include <memory>
 #include <string>
 #include <utility>
-#include "base/strings.h"
+#include "base/fe_strings.h"
 #include "brpc/channel.h"
 #include "codec/row_codec.h"
 #include "codec/schema_codec.h"

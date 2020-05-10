@@ -13,7 +13,7 @@
 #include <map>
 #include <string>
 #include <vector>
-#include "base/status.h"
+#include "base/fe_status.h"
 #include "codec/row_codec.h"
 #include "vm/catalog.h"
 #include "vm/core_api.h"

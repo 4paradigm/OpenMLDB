@@ -9,7 +9,7 @@
 #include "storage/table.h"
 #include <algorithm>
 #include <string>
-#include "base/hash.h"
+#include "base/fe_hash.h"
 #include "base/fe_slice.h"
 #include "glog/logging.h"
 

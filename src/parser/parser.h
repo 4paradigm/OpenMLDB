@@ -23,7 +23,7 @@
 #include <map>
 #include <list>
 #include <string>
-#include "base/status.h"
+#include "base/fe_status.h"
 #include "node/node_manager.h"
 #include "node/sql_node.h"
 #include "parser/sql_parser.gen.h"

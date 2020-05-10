@@ -11,7 +11,7 @@
 #define SRC_CODEGEN_BLOCK_IR_BUILDER_H_
 
 #include <vector>
-#include "base/status.h"
+#include "base/fe_status.h"
 #include "codegen/scope_var.h"
 #include "codegen/variable_ir_builder.h"
 #include "llvm/IR/Module.h"

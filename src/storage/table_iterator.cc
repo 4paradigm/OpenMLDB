@@ -19,7 +19,7 @@
 #include <memory>
 #include <string>
 #include <utility>
-#include "base/hash.h"
+#include "base/fe_hash.h"
 #include "codec/row.h"
 
 namespace fesql {
