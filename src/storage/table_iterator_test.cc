@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-#include "storage/table_iterator.h"
+#include "storage/fe_table_iterator.h"
 #include <sys/time.h>
 #include <iostream>
 #include <string>

@@ -72,11 +72,11 @@ set(BOOST_ROOT "${PROJECT_SOURCE_DIR}/thirdparty/")
 
 configure_file(
         "${PROJECT_SOURCE_DIR}/src/version.h.in"
-        "${PROJECT_SOURCE_DIR}/src/version.h"
+        "${PROJECT_SOURCE_DIR}/src/fe_version.h"
 )
 
 option(TESTING_ENABLE "Enable Test" ON)
-option(COVERAGE_ENABLE "Enable Coverage" ON)
+option(COVERAGE_ENABLE "Enable Coverage" OFF)
 if (TESTING_ENABLE)
     enable_testing()
 endif ()

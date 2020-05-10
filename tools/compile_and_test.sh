@@ -3,6 +3,7 @@
 # compile.sh
 PWD=`pwd`
 PWD=`pwd`
+
 if $(uname -a | grep -e Darwin); then
     JOBS=$(sysctl -n machdep.cpu.core_count)
 else
