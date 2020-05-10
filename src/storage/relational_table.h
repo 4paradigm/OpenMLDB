@@ -98,8 +98,8 @@ class RelationalTable {
                const rocksdb::Slice& key_slice,
                std::vector<std::unique_ptr<rocksdb::Iterator>>* vec);
 
-    bool Delete(const
-        RepeatedPtrField<::rtidb::api::Columns>& condition_columns);
+    bool Delete(const RepeatedPtrField<::rtidb::api::Columns>&
+                condition_columns);
 
     bool Delete(const RepeatedPtrField<rtidb::api::Columns>& condition_columns,
                 RepeatedField<google::protobuf::int64_t>* blob_keys);

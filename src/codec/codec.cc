@@ -263,7 +263,8 @@ bool RowBuilder::AppendInt64(int64_t val) {
 }
 
 bool RowBuilder::SetInt64(uint32_t index, int64_t val) {
-    if (!Check(index, ::rtidb::type::kBigInt) && !Check(index, ::rtidb::type::kBlob)) return false;
+    if (!Check(index, ::rtidb::type::kBigInt) &&
+        !Check(index, ::rtidb::type::kBlob)) return false;
     int8_t* ptr = buf_ + offset_vec_[index];
     *(reinterpret_cast<int64_t*>(ptr)) = val;
     return true;
@@ -369,7 +370,7 @@ bool RowView::Init() {
             if (cur_type < TYPE_SIZE_ARRAY.size() && cur_type > 0) {
                 offset_vec_.push_back(offset);
                 offset += TYPE_SIZE_ARRAY[cur_type];
-            } else if (cur_type == rtidb::type::kBlob){
+            } else if (cur_type == rtidb::type::kBlob) {
                 offset_vec_.push_back(offset);
                 offset += sizeof(int64_t);
             } else {

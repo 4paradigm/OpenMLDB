@@ -520,8 +520,7 @@ bool RelationalTable::ConvertIndex(const std::string& name,
     return true;
 }
 
-bool RelationalTable::Delete(
-    const ::google::protobuf::RepeatedPtrField<::rtidb::api::Columns>&
+bool RelationalTable::Delete(const RepeatedPtrField<::rtidb::api::Columns>&
         condition_columns) {
     std::string combine_name = "";
     std::string combine_value = "";
