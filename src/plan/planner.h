@@ -11,7 +11,7 @@
 
 #include <string>
 #include <vector>
-#include "base/status.h"
+#include "base/fe_status.h"
 #include "glog/logging.h"
 #include "node/node_manager.h"
 #include "node/plan_node.h"

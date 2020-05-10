@@ -119,7 +119,7 @@ using fesql::sdk::ExplainInfo;
 
 
 %include "base/fe_slice.h"
-%include "base/status.h"
+%include "base/fe_status.h"
 %include "codec/row.h"
 %include "codec/row_codec.h"
 %include "sdk/result_set.h"

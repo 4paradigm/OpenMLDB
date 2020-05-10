@@ -20,7 +20,7 @@
 #include <memory>
 #include <string>
 #include <utility>
-#include "base/strings.h"
+#include "base/fe_strings.h"
 #include "codec/schema_codec.h"
 #include "glog/logging.h"
 

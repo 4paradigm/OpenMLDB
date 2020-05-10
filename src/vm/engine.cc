@@ -19,7 +19,7 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include "base/strings.h"
+#include "base/fe_strings.h"
 #include "codec/list_iterator_codec.h"
 #include "codec/row_codec.h"
 #include "codec/schema_codec.h"

@@ -21,7 +21,7 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include "base/status.h"
+#include "base/fe_status.h"
 #include "llvm/IR/Module.h"
 #include "parser/parser.h"
 #include "proto/common.pb.h"

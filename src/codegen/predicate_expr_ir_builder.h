@@ -10,7 +10,7 @@
 #ifndef SRC_CODEGEN_PREDICATE_EXPR_IR_BUILDER_H_
 #define SRC_CODEGEN_PREDICATE_EXPR_IR_BUILDER_H_
 
-#include "base/status.h"
+#include "base/fe_status.h"
 #include "codegen/cast_expr_ir_builder.h"
 #include "codegen/scope_var.h"
 #include "llvm/IR/IRBuilder.h"

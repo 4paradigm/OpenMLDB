@@ -41,8 +41,8 @@ struct DescComparor {
     }
 };
 
-typedef std::deque<std::pair<uint64_t, Row>> MemTimeTable;
-typedef std::deque<Row> MemTable;
+typedef std::vector<std::pair<uint64_t, Row>> MemTimeTable;
+typedef std::vector<Row> MemTable;
 typedef std::map<std::string, MemTimeTable, std::greater<std::string>>
     MemSegmentMap;
 
