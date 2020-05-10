@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-#include "codec/schema_codec.h"
+#include "codec/fe_schema_codec.h"
 
 #include <utility>
 #include "gtest/gtest.h"

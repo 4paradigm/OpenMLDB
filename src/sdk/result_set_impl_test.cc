@@ -23,7 +23,7 @@
 #include <vector>
 #include "brpc/controller.h"
 #include "codec/row_codec.h"
-#include "codec/schema_codec.h"
+#include "codec/fe_schema_codec.h"
 #include "gtest/gtest.h"
 #include "proto/fe_tablet.pb.h"
 

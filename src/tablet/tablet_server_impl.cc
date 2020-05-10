@@ -25,7 +25,7 @@
 #include "base/fe_strings.h"
 #include "brpc/controller.h"
 #include "butil/iobuf.h"
-#include "codec/schema_codec.h"
+#include "codec/fe_schema_codec.h"
 #include "gflags/gflags.h"
 
 DECLARE_string(dbms_endpoint);

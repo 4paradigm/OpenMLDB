@@ -21,7 +21,7 @@
 #include <string>
 #include <utility>
 #include "base/fe_strings.h"
-#include "codec/schema_codec.h"
+#include "codec/fe_schema_codec.h"
 #include "glog/logging.h"
 
 namespace fesql {

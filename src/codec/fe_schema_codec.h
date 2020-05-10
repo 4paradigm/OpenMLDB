@@ -1,5 +1,5 @@
 /*
- * schema_codec.h
+ * fe_schema_codec.h
  * Copyright (C) 4paradigm.com 2020 wangtaize <wangtaize@4paradigm.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
