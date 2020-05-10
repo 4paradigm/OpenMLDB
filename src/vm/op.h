@@ -23,7 +23,7 @@
 #include <utility>
 #include <vector>
 #include <memory>
-#include "proto/type.pb.h"
+#include "proto/fe_type.pb.h"
 #include "vm/catalog.h"
 
 namespace fesql {

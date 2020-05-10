@@ -25,7 +25,7 @@
 #include "brpc/channel.h"
 #include "brpc/server.h"
 #include "proto/dbms.pb.h"
-#include "proto/tablet.pb.h"
+#include "proto/fe_tablet.pb.h"
 #include "tablet/tablet_catalog.h"
 #include "vm/engine.h"
 

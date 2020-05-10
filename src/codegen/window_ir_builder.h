@@ -25,7 +25,7 @@
 #include "codec/row_codec.h"
 #include "codegen/ir_base_builder.h"
 #include "llvm/IR/IRBuilder.h"
-#include "proto/type.pb.h"
+#include "proto/fe_type.pb.h"
 #include "vm/catalog.h"
 #include "vm/schemas_context.h"
 

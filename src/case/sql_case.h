@@ -15,7 +15,7 @@
 #include <string>
 #include <vector>
 #include "codec/row_codec.h"
-#include "proto/type.pb.h"
+#include "proto/fe_type.pb.h"
 namespace fesql {
 namespace sqlcase {
 class SQLCaseBuilder;

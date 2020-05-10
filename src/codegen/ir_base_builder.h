@@ -22,7 +22,7 @@
 #include "glog/logging.h"
 #include "llvm/IR/IRBuilder.h"
 #include "node/sql_node.h"
-#include "proto/type.pb.h"
+#include "proto/fe_type.pb.h"
 
 namespace fesql {
 namespace codegen {

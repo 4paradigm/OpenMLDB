@@ -14,7 +14,7 @@
 #include "base/fe_status.h"
 #include "codegen/scope_var.h"
 #include "llvm/IR/IRBuilder.h"
-#include "proto/type.pb.h"
+#include "proto/fe_type.pb.h"
 namespace fesql {
 namespace codegen {
 

@@ -28,7 +28,7 @@
 #include "node/node_enum.h"
 #include "parser/parser.h"
 #include "plan/planner.h"
-#include "proto/tablet.pb.h"
+#include "proto/fe_tablet.pb.h"
 #include "sdk/result_set_impl.h"
 
 namespace fesql {

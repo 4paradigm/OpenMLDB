@@ -11,8 +11,8 @@
 #define SRC_NODE_NODE_ENUM_H_
 
 #include <string>
-#include "proto/common.pb.h"
-#include "proto/type.pb.h"
+#include "proto/fe_common.pb.h"
+#include "proto/fe_type.pb.h"
 namespace fesql {
 namespace node {
 

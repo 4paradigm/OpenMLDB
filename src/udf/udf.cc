@@ -14,7 +14,7 @@
 #include "codec/list_iterator_codec.h"
 #include "codec/type_codec.h"
 #include "codegen/ir_base_builder.h"
-#include "proto/type.pb.h"
+#include "proto/fe_type.pb.h"
 
 namespace fesql {
 namespace udf {

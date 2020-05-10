@@ -1,5 +1,5 @@
-import "common.proto";
-import "type.proto";
+import "fe_common.proto";
+import "fe_type.proto";
 
 package fesql.dbms;
 option cc_generic_services = true;

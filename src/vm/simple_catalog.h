@@ -23,7 +23,7 @@
 #include <memory>
 
 #include "glog/logging.h"
-#include "proto/type.pb.h"
+#include "proto/fe_type.pb.h"
 #include "vm/catalog.h"
 
 namespace fesql {

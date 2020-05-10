@@ -28,7 +28,7 @@
 #include "codec/list_iterator_codec.h"
 #include "codec/row_codec.h"
 #include "llvm-c/Target.h"
-#include "proto/common.pb.h"
+#include "proto/fe_common.pb.h"
 #include "vm/catalog.h"
 #include "vm/mem_catalog.h"
 #include "vm/sql_compiler.h"
