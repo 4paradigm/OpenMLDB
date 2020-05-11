@@ -1113,11 +1113,6 @@ bool RelationalTable::GetCombinePk(
     if (indexs.size() == 0) {
         DEBUGLOG("GetCombinePk failed. tid %u pid.", id_, pid_);
         return false;
-    } else if (indexs.size() == 1) {
-        const std::string& value = indexs.Get(0).value();
-        if (!ConvertIndex(indexs.Get(0).name(0), value, combine_value)) {
-            return false;
-        }
     } else {
         std::vector<ColumnDef> vec;
         std::map<std::string, int> map;

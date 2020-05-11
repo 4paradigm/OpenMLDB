@@ -43,16 +43,22 @@ public class RelationalIterator {
     private boolean continue_update = false;
     private boolean batch_query = false;
     private long snapshot_id = 0;
-    private List<ReadOption> ros = null;
+    private List<ReadOption> ros = new ArrayList<>();
 
-    public RelationalIterator(RTIDBClient client, TableHandler th, Set<String> colSet) {
+    public RelationalIterator(RTIDBClient client, TableHandler th, ReadOption ro) {
         this.offset = 0;
         this.totalSize = 0;
         this.schema = th.getSchema();
         this.th = th;
         this.client = client;
         this.compressType = th.getTableInfo().getCompressType();
-
+        Set<String> colSet;
+        if (ro != null) {
+            ros.add(ro);
+            colSet = ro.getColSet();
+        } else {
+            colSet = null;
+        }
         if (colSet != null && !colSet.isEmpty()) {
             for (int i = 0; i < this.getSchema().size(); i++) {
                 ColumnDesc columnDesc = this.getSchema().get(i);
@@ -243,6 +249,34 @@ public class RelationalIterator {
                 builder.setSnapshotId(snapshot_id);
             }
             builder.setLimit(client.getConfig().getTraverseLimit());
+            if (!ros.isEmpty()) {
+                Map<String, Object> index = ros.get(0).getIndex();
+                Tablet.ReadOption.Builder roBuilder = Tablet.ReadOption.newBuilder();
+                if (index != null && !index.isEmpty()) {
+                    Iterator<Map.Entry<String, Object>> it = index.entrySet().iterator();
+                    while (it.hasNext()) {
+                        Map.Entry<String, Object> next = it.next();
+                        String idxName = next.getKey();
+                        Object idxValue = next.getValue();
+                        {
+                            Tablet.Columns.Builder indexBuilder = Tablet.Columns.newBuilder();
+                            indexBuilder.addName(idxName);
+                            Map<String, DataType> nameTypeMap = th.getNameTypeMap();
+                            if (!nameTypeMap.containsKey(idxName)) {
+                                throw new TabletException("index name not found with tid " + th.getTableInfo().getTid());
+                            }
+                            DataType dataType = nameTypeMap.get(idxName);
+                            ByteBuffer buffer = FieldCodec.convert(dataType, idxValue);
+                            if (buffer != null) {
+                                indexBuilder.setValue(ByteBufferNoCopy.wrap(buffer));
+                            }
+                            roBuilder.addIndex(indexBuilder.build());
+                        }
+                    }
+                    index.clear();
+                }
+                builder.setReadOption(roBuilder.build());
+            }
             Tablet.TraverseRequest request = builder.build();
             Tablet.TraverseResponse response = ts.traverse(request);
             if (response != null && response.getCode() == 0) {

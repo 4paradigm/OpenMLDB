@@ -15,17 +15,11 @@
  * limitations under the License.
  */
 
-<<<<<<< HEAD:src/base/codec.cc
-#include "base/codec.h"
-#include <unordered_map>
-#include "base/glog_wapper.h" // NOLINT
-
-=======
 #include "codec/codec.h"
-#include <unordered_set>
-#include "base/glog_wapper.h"  // NOLINT
->>>>>>> origin/release/sql_on_rtidb:src/codec/codec.cc
 
+#include <unordered_set>
+
+#include "base/glog_wapper.h"  // NOLINT
 
 namespace rtidb {
 namespace codec {
@@ -161,7 +155,7 @@ bool RowBuilder::AppendDate(uint32_t year, uint32_t month, uint32_t day) {
 
 bool RowBuilder::SetDate(uint32_t index, uint32_t year, uint32_t month,
                          uint32_t day) {
-    if (year > 8099) return false;
+    if (year < 1900 || year > 9999) return false;
     if (month < 1 || month > 12) return false;
     if (day < 1 || day > 31) return false;
     if (!Check(index, ::rtidb::type::kDate)) return false;
@@ -638,6 +632,10 @@ int32_t RowView::GetValue(const int8_t* row, uint32_t idx,
         case ::rtidb::type::kDouble:
             *(reinterpret_cast<double*>(val)) = v1::GetDoubleField(row, offset);
             break;
+        case ::rtidb::type::kDate:
+            *(reinterpret_cast<uint32_t*>(val)) =
+                static_cast<uint32_t>(v1::GetInt32Field(row, offset));
+            break;
         default:
             return -1;
     }
@@ -694,6 +692,82 @@ int32_t RowView::GetString(uint32_t idx, char** val, uint32_t* length) {
     return v1::GetStrField(row_, field_offset, next_str_field_offset,
                            str_field_start_offset_, str_addr_length_,
                            reinterpret_cast<int8_t**>(val), length);
+}
+
+int32_t RowView::GetStrValue(const int8_t* row, uint32_t idx,
+                             std::string* val) {
+    if (schema_.size() == 0 || row == NULL) {
+        return -1;
+    }
+    if ((int32_t)idx >= schema_.size()) {
+        return -1;
+    }
+    const ::rtidb::common::ColumnDesc& column = schema_.Get(idx);
+    if (GetSize(row) <= HEADER_LENGTH) {
+        return -1;
+    }
+    if (IsNULL(row, idx)) {
+        val->assign("null");
+        return 1;
+    }
+    switch (column.data_type()) {
+        case ::rtidb::type::kBool: {
+            bool value = false;
+            GetValue(row, idx, ::rtidb::type::kBool, &value);
+            value == true ? val->assign("true") : val->assign("false");
+            break;
+        }
+        case ::rtidb::type::kSmallInt:
+        case ::rtidb::type::kInt:
+        case ::rtidb::type::kTimestamp:
+        case ::rtidb::type::kBigInt: {
+            int64_t value = 0;
+            GetInteger(row, idx, column.data_type(), &value);
+            val->assign(std::to_string(value));
+            break;
+        }
+        case ::rtidb::type::kFloat: {
+            float value = 0.0;
+            GetValue(row, idx, ::rtidb::type::kFloat, &value);
+            val->assign(std::to_string(value));
+            break;
+        }
+        case ::rtidb::type::kDouble: {
+            double value = 0.0;
+            GetValue(row, idx, ::rtidb::type::kDouble, &value);
+            val->assign(std::to_string(value));
+            break;
+        }
+        case ::rtidb::type::kDate: {
+            uint32_t year = 0;
+            uint32_t month = 0;
+            uint32_t day = 0;
+            uint32_t date = 0;
+            GetValue(row, idx, ::rtidb::type::kDate, &date);
+            day = date & 0x0000000FF;
+            date = date >> 8;
+            month = 1 + (date & 0x0000FF);
+            year = 1900 + (date >> 8);
+            std::stringstream ss;
+            ss << year << "-" << month << "-" << day;
+            val->assign(ss.str());
+            break;
+        }
+        case ::rtidb::type::kVarchar:
+        case ::rtidb::type::kString: {
+            char* ch = NULL;
+            uint32_t size = 0;
+            GetValue(row, idx, &ch, &size);
+            std::string tmp(ch, size);
+            val->swap(tmp);
+            break;
+        }
+        default: {
+            val->assign("-");
+            return -1;
+        }
+    }
+    return 0;
 }
 
 namespace v1 {
