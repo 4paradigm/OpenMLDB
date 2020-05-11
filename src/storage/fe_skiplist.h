@@ -9,7 +9,7 @@
 #include <atomic>
 #include <iostream>
 #include "base/iterator.h"
-#include "base/random.h"
+#include "base/fe_random.h"
 
 namespace fesql {
 namespace storage {

@@ -24,7 +24,7 @@
 #include <utility>
 #include <vector>
 #include "base/raw_buffer.h"
-#include "proto/type.pb.h"
+#include "proto/fe_type.pb.h"
 #include "vm/catalog.h"
 
 namespace fesql {

@@ -15,11 +15,11 @@
  * limitations under the License.
  */
 
-#include "storage/table_iterator.h"
+#include "storage/fe_table_iterator.h"
 #include <memory>
 #include <string>
 #include <utility>
-#include "base/hash.h"
+#include "base/fe_hash.h"
 #include "codec/row.h"
 
 namespace fesql {

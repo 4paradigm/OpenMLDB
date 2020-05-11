@@ -11,7 +11,7 @@
 #define SRC_UDF_UDF_H_
 #include <stdint.h>
 #include <string>
-#include "proto/type.pb.h"
+#include "proto/fe_type.pb.h"
 #include "vm/jit.h"
 
 namespace fesql {

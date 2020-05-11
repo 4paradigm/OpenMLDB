@@ -28,7 +28,7 @@
 #include "codegen/variable_ir_builder.h"
 #include "llvm/IR/IRBuilder.h"
 #include "node/node_enum.h"
-#include "proto/type.pb.h"
+#include "proto/fe_type.pb.h"
 #include "vm/catalog.h"
 
 namespace fesql {

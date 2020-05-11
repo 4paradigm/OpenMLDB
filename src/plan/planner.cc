@@ -13,7 +13,7 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include "proto/common.pb.h"
+#include "proto/fe_common.pb.h"
 namespace fesql {
 namespace plan {
 

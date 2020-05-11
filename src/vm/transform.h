@@ -15,7 +15,7 @@
 #include <utility>
 #include <vector>
 #include "base/graph.h"
-#include "base/status.h"
+#include "base/fe_status.h"
 #include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvm/Support/raw_ostream.h"
 #include "node/node_manager.h"

@@ -23,7 +23,7 @@
 #include "brpc/controller.h"
 #include "butil/iobuf.h"
 #include "codec/row_codec.h"
-#include "proto/tablet.pb.h"
+#include "proto/fe_tablet.pb.h"
 #include "sdk/base_impl.h"
 #include "sdk/result_set.h"
 

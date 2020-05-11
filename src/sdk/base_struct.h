@@ -15,7 +15,7 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include "proto/type.pb.h"
+#include "proto/fe_type.pb.h"
 namespace fesql {
 namespace sdk {
 

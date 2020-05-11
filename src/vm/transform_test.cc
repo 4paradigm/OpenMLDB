@@ -12,7 +12,6 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include "base/status.h"
 #include "boost/algorithm/string.hpp"
 #include "case/sql_case.h"
 #include "gtest/gtest.h"

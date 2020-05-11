@@ -22,7 +22,7 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include "base/status.h"
+#include "base/fe_status.h"
 #include "codegen/arithmetic_expr_ir_builder.h"
 #include "codegen/buf_ir_builder.h"
 #include "codegen/predicate_expr_ir_builder.h"

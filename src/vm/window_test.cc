@@ -9,7 +9,7 @@
 #include <utility>
 #include "codec/list_iterator_codec.h"
 #include "gtest/gtest.h"
-#include "proto/type.pb.h"
+#include "proto/fe_type.pb.h"
 #include "vm/mem_catalog.h"
 namespace fesql {
 namespace vm {

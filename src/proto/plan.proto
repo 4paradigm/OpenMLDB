@@ -1,5 +1,5 @@
-import "type.proto";
-import "common.proto";
+import "fe_type.proto";
+import "fe_common.proto";
 
 package fesql.batch;
 

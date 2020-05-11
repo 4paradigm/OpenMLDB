@@ -23,7 +23,7 @@
 #include <set>
 #include <string>
 #include "proto/dbms.pb.h"
-#include "proto/type.pb.h"
+#include "proto/fe_type.pb.h"
 #include "tablet/tablet_internal_sdk.h"
 
 namespace fesql {

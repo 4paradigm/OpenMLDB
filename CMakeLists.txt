@@ -72,7 +72,7 @@ set(BOOST_ROOT "${PROJECT_SOURCE_DIR}/thirdparty/")
 
 configure_file(
         "${PROJECT_SOURCE_DIR}/src/version.h.in"
-        "${PROJECT_SOURCE_DIR}/src/version.h"
+        "${PROJECT_SOURCE_DIR}/src/fe_version.h"
 )
 
 option(TESTING_ENABLE "Enable Test" ON)
@@ -142,3 +142,10 @@ if (COVERAGE_ENABLE)
                 DEPENDENCIES ${test_list})
     endif ()
 endif ()
+
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    install(TARGETS ${VM_LIBS}
+        RUNTIME DESTINATION bin
+        LIBRARY DESTINATION lib
+        ARCHIVE DESTINATION lib)
+endif()

@@ -1,7 +1,7 @@
 package fesql.type;
 option cc_generic_services = false;
 option java_package = "com._4paradigm.fesql.type";
-
+option java_outer_classname = "TypeOuterClass";
 enum Type {
     kBool = 0;
     kInt16 = 1;

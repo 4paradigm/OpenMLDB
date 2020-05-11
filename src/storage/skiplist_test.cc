@@ -2,11 +2,11 @@
 // skip_list_test.cc
 // Copyright 2017 4paradigm.com
 
-#include "storage/skiplist.h"
 #include <vector>
 #include <string>
-#include "base/slice.h"
+#include "base/fe_slice.h"
 #include "gtest/gtest.h"
+#include "storage/fe_skiplist.h"
 
 namespace fesql {
 namespace storage {

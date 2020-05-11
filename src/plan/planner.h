@@ -11,13 +11,13 @@
 
 #include <string>
 #include <vector>
-#include "base/status.h"
+#include "base/fe_status.h"
 #include "glog/logging.h"
 #include "node/node_manager.h"
 #include "node/plan_node.h"
 #include "node/sql_node.h"
 #include "parser/parser.h"
-#include "proto/type.pb.h"
+#include "proto/fe_type.pb.h"
 
 namespace fesql {
 namespace plan {

@@ -22,7 +22,7 @@
 #include <utility>
 #include "codec/list_iterator_codec.h"
 #include "glog/logging.h"
-#include "storage/table_iterator.h"
+#include "storage/fe_table_iterator.h"
 
 namespace fesql {
 namespace tablet {

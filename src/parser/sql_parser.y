@@ -16,7 +16,7 @@
 #include <utility>
 #include "node/sql_node.h"
 #include "node/node_manager.h"
-#include "base/status.h"
+#include "base/fe_status.h"
 #include "parser/sql_parser.gen.h"
 
 extern int yylex(YYSTYPE* yylvalp, 
@@ -36,7 +36,7 @@ void yyerror(YYLTYPE* yyllocp, yyscan_t unused, ::fesql::node::NodePointVector &
 
 %code requires {
 #include "node/sql_node.h"
-#include "base/status.h"
+#include "base/fe_status.h"
 #include <sstream>
 #ifndef YY_TYPEDEF_YY_SCANNER_T
 #define YY_TYPEDEF_YY_SCANNER_T

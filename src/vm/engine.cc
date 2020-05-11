@@ -19,10 +19,10 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include "base/strings.h"
+#include "base/fe_strings.h"
 #include "codec/list_iterator_codec.h"
 #include "codec/row_codec.h"
-#include "codec/schema_codec.h"
+#include "codec/fe_schema_codec.h"
 #include "codegen/buf_ir_builder.h"
 #include "gflags/gflags.h"
 #include "llvm-c/Target.h"

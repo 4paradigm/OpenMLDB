@@ -16,7 +16,7 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include "base/slice.h"
+#include "base/fe_slice.h"
 #include "codec/list_iterator_codec.h"
 #include "glog/logging.h"
 #include "vm/catalog.h"

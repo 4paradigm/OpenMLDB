@@ -10,7 +10,7 @@
 #include <random>
 #include <string>
 #include "gtest/gtest.h"
-#include "storage/skiplist.h"
+#include "storage/fe_skiplist.h"
 
 namespace fesql {
 namespace storage {

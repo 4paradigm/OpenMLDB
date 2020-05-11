@@ -15,7 +15,7 @@
 #include <vector>
 #include "base/iterator.h"
 #include "codec/row_codec.h"
-#include "storage/segment.h"
+#include "storage/fe_segment.h"
 #include "vm/catalog.h"
 
 namespace fesql {

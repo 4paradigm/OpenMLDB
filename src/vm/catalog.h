@@ -22,10 +22,10 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include "base/slice.h"
+#include "base/fe_slice.h"
 #include "codec/list_iterator_codec.h"
 #include "codec/row.h"
-#include "proto/type.pb.h"
+#include "proto/fe_type.pb.h"
 
 namespace fesql {
 namespace vm {

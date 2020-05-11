@@ -10,11 +10,11 @@
 #include <stdint.h>
 #include <utility>
 #include <vector>
-#include "base/slice.h"
+#include "base/fe_slice.h"
 #include "codec/list_iterator_codec.h"
 #include "codec/type_codec.h"
 #include "codegen/ir_base_builder.h"
-#include "proto/type.pb.h"
+#include "proto/fe_type.pb.h"
 
 namespace fesql {
 namespace udf {

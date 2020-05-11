@@ -17,7 +17,7 @@
 
 #include "sdk/tablet_sdk.h"
 #include <unistd.h>
-#include "base/strings.h"
+#include "base/fe_strings.h"
 #include "brpc/server.h"
 #include "dbms/dbms_server_impl.h"
 #include "gflags/gflags.h"

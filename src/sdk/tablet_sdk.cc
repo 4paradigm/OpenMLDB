@@ -20,15 +20,15 @@
 #include <memory>
 #include <string>
 #include <utility>
-#include "base/strings.h"
+#include "base/fe_strings.h"
 #include "brpc/channel.h"
 #include "codec/row_codec.h"
-#include "codec/schema_codec.h"
+#include "codec/fe_schema_codec.h"
 #include "glog/logging.h"
 #include "node/node_enum.h"
 #include "parser/parser.h"
 #include "plan/planner.h"
-#include "proto/tablet.pb.h"
+#include "proto/fe_tablet.pb.h"
 #include "sdk/result_set_impl.h"
 
 namespace fesql {

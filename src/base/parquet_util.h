@@ -20,7 +20,7 @@
 
 #include "glog/logging.h"
 #include "parquet/schema.h"
-#include "proto/type.pb.h"
+#include "proto/fe_type.pb.h"
 
 namespace fesql {
 namespace base {

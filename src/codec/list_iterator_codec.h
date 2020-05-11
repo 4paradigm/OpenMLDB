@@ -15,7 +15,7 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include "base/slice.h"
+#include "base/fe_slice.h"
 #include "codec/row.h"
 #include "codec/type_codec.h"
 #include "glog/logging.h"

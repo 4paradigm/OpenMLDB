@@ -15,17 +15,17 @@
  * limitations under the License.
  */
 
-#ifndef SRC_STORAGE_TABLE_ITERATOR_H_
-#define SRC_STORAGE_TABLE_ITERATOR_H_
+#ifndef SRC_STORAGE_FE_TABLE_ITERATOR_H_
+#define SRC_STORAGE_FE_TABLE_ITERATOR_H_
 
 #include <memory>
 #include <string>
 #include "base/iterator.h"
 #include "codec/list_iterator_codec.h"
 #include "glog/logging.h"
-#include "storage/segment.h"
-#include "base/slice.h"
-#include "storage/table.h"
+#include "storage/fe_segment.h"
+#include "base/fe_slice.h"
+#include "storage/fe_table.h"
 #include "vm/catalog.h"
 
 namespace fesql {
@@ -151,4 +151,4 @@ class FullTableIterator : public IteratorV<uint64_t, Row> {
 }  // namespace storage
 }  // namespace fesql
 
-#endif  // SRC_STORAGE_TABLE_ITERATOR_H_
+#endif  // SRC_STORAGE_FE_TABLE_ITERATOR_H_

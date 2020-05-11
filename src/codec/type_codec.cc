@@ -20,7 +20,7 @@
 #include <utility>
 #include "codec/list_iterator_codec.h"
 #include "glog/logging.h"
-#include "proto/type.pb.h"
+#include "proto/fe_type.pb.h"
 
 namespace fesql {
 namespace codec {

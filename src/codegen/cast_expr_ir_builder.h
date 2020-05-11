@@ -9,10 +9,10 @@
 
 #ifndef SRC_CODEGEN_CAST_EXPR_IR_BUILDER_H_
 #define SRC_CODEGEN_CAST_EXPR_IR_BUILDER_H_
-#include "base/status.h"
+#include "base/fe_status.h"
 #include "codegen/scope_var.h"
 #include "llvm/IR/IRBuilder.h"
-#include "proto/type.pb.h"
+#include "proto/fe_type.pb.h"
 namespace fesql {
 namespace codegen {
 class CastExprIRBuilder {
