@@ -73,7 +73,7 @@ TEST_F(BlobServerImplTest, Basic_Test) {
     }
     int64_t auto_gen_key;
     std::string value2 = "testvalue2";
-    ok = client.Put(tid, pid, &auto_gen_key, value2, &err_msg);
+    ok = client.Put(tid, pid, value2, &auto_gen_key, &err_msg);
     ASSERT_TRUE(ok);
     get_value.clear();
     ok = client.Get(tid, pid, auto_gen_key, &get_value, &err_msg);

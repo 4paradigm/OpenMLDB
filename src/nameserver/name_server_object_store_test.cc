@@ -282,7 +282,7 @@ TEST_F(NameServerImplObjectStoreTest, CreateTableWithBlobField) {
         std::string err_msg;
         int64_t blob_key;
         std::string blob_data = "this is blob data";
-        ok = blob_client.Put(tid, 0, &blob_key, blob_data, &err_msg);
+        ok = blob_client.Put(tid, 0, blob_data, &blob_key, &err_msg);
         ASSERT_TRUE(ok);
         rtidb::codec::RowBuilder builder(schema);
         uint32_t size = builder.CalTotalLength(4);
