@@ -15,14 +15,6 @@ ColumnDef::ColumnDef(const std::string& name, uint32_t id,
                      ::rtidb::type::DataType type)
     : name_(name), id_(id), type_(type) {}
 
-ColumnDef::~ColumnDef() {}
-
-TableColumn::TableColumn() {
-}
-
-TableColumn::~TableColumn() {
-}
-
 std::shared_ptr<ColumnDef> TableColumn::GetColumn(uint32_t idx) {
     if (idx < columns_.size()) {
         return columns_.at(idx);
@@ -64,8 +56,6 @@ IndexDef::IndexDef(const std::string& name, uint32_t id,
       type_(type),
       columns_(columns) {}
 
-IndexDef::~IndexDef() {}
-
 bool ColumnDefSortFunc(const ColumnDef& cd_a, const ColumnDef& cd_b) {
     return (cd_a.GetId() < cd_b.GetId());
 }
@@ -76,11 +66,7 @@ TableIndex::TableIndex() {
     combine_col_name_map_ =
         std::make_shared<
         std::unordered_map<std::string, std::shared_ptr<IndexDef>>>();
-}
-
-TableIndex::~TableIndex() {
-    indexs_->clear();
-    combine_col_name_map_->clear();
+    col_name_vec_ = std::make_shared<std::vector<std::string>>();
 }
 
 void TableIndex::ReSet() {
@@ -93,6 +79,9 @@ void TableIndex::ReSet() {
         std::unordered_map<std::string, std::shared_ptr<IndexDef>>>();
     std::atomic_store_explicit(&combine_col_name_map_, new_map,
                                std::memory_order_relaxed);
+    auto new_vec = std::make_shared<std::vector<std::string>>();
+    std::atomic_store_explicit(&col_name_vec_, new_vec,
+            std::memory_order_relaxed);
 }
 
 std::shared_ptr<IndexDef> TableIndex::GetIndex(uint32_t idx) {
@@ -133,14 +122,19 @@ int TableIndex::AddIndex(std::shared_ptr<IndexDef> index_def) {
         index_def->GetType() == ::rtidb::type::kAutoGen) {
         pk_index_ = index_def;
     }
+    auto old_vec = std::atomic_load_explicit(&col_name_vec_,
+            std::memory_order_relaxed);
+    auto new_vec = std::make_shared<std::vector<std::string>>(*old_vec);
     std::string combine_name = "";
-    int count = 0;
     for (auto& col_def : index_def->GetColumns()) {
-        if (count++ > 0) {
+        if (!combine_name.empty()) {
             combine_name.append("_");
         }
         combine_name.append(col_def.GetName());
+        new_vec->push_back(col_def.GetName());
     }
+    std::atomic_store_explicit(&col_name_vec_, new_vec,
+            std::memory_order_relaxed);
     auto old_map = std::atomic_load_explicit(&combine_col_name_map_,
                                              std::memory_order_relaxed);
     auto new_map =
@@ -171,6 +165,16 @@ const std::shared_ptr<IndexDef> TableIndex::GetIndexByCombineStr(
     } else {
         return std::shared_ptr<IndexDef>();
     }
+}
+
+bool TableIndex::FindColName(const std::string& name) {
+    auto vec = std::atomic_load_explicit(&col_name_vec_,
+            std::memory_order_relaxed);
+    auto iter = std::find(vec->begin(), vec->end(), name);
+    if (iter == vec->end()) {
+        return false;
+    }
+    return true;
 }
 
 }  // namespace storage

@@ -513,127 +513,106 @@ void TabletImpl::Get(RpcController* controller,
                      ::rtidb::api::GetResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
-    std::shared_ptr<RelationalTable> r_table;
     if (!table) {
-        r_table = GetRelationalTable(request->tid(), request->pid());
-        if (!r_table) {
-            PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(),
-                  request->pid());
-            response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
-            response->set_msg("table is not exist");
-            return;
-        }
+        PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(),
+                request->pid());
+        response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
+        response->set_msg("table is not exist");
+        return;
     }
-    if (table) {
-        uint64_t start_time = ::baidu::common::timer::get_micros();
-        if (table->GetTableStat() == ::rtidb::storage::kLoading) {
-            PDLOG(WARNING, "table is loading. tid %u, pid %u", request->tid(),
-                  request->pid());
-            response->set_code(::rtidb::base::ReturnCode::kTableIsLoading);
-            response->set_msg("table is loading");
+    uint64_t start_time = ::baidu::common::timer::get_micros();
+    if (table->GetTableStat() == ::rtidb::storage::kLoading) {
+        PDLOG(WARNING, "table is loading. tid %u, pid %u", request->tid(),
+                request->pid());
+        response->set_code(::rtidb::base::ReturnCode::kTableIsLoading);
+        response->set_msg("table is loading");
+        return;
+    }
+    uint32_t index = 0;
+    int ts_index = -1;
+    if (request->has_idx_name() && request->idx_name().size() > 0) {
+        std::shared_ptr<IndexDef> index_def =
+            table->GetIndex(request->idx_name());
+        if (!index_def || !index_def->IsReady()) {
+            PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u",
+                    request->idx_name().c_str(), request->tid(),
+                    request->pid());
+            response->set_code(::rtidb::base::ReturnCode::kIdxNameNotFound);
+            response->set_msg("idx name not found");
             return;
         }
-        uint32_t index = 0;
-        int ts_index = -1;
-        if (request->has_idx_name() && request->idx_name().size() > 0) {
-            std::shared_ptr<IndexDef> index_def =
-                table->GetIndex(request->idx_name());
-            if (!index_def || !index_def->IsReady()) {
-                PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u",
-                      request->idx_name().c_str(), request->tid(),
-                      request->pid());
-                response->set_code(::rtidb::base::ReturnCode::kIdxNameNotFound);
-                response->set_msg("idx name not found");
-                return;
-            }
-            index = index_def->GetId();
-        }
-        if (request->has_ts_name() && request->ts_name().size() > 0) {
-            auto iter = table->GetTSMapping().find(request->ts_name());
-            if (iter == table->GetTSMapping().end()) {
-                PDLOG(WARNING, "ts name %s not found in table tid %u, pid %u",
-                      request->ts_name().c_str(), request->tid(),
-                      request->pid());
-                response->set_code(::rtidb::base::ReturnCode::kTsNameNotFound);
-                response->set_msg("ts name not found");
-                return;
-            }
-            ts_index = iter->second;
-        }
-
-        ::rtidb::storage::Ticket ticket;
-        ::rtidb::storage::TableIterator* it = NULL;
-        if (ts_index >= 0) {
-            it = table->NewIterator(index, ts_index, request->key(), ticket);
-        } else {
-            it = table->NewIterator(index, request->key(), ticket);
-        }
-
-        if (it == NULL) {
+        index = index_def->GetId();
+    }
+    if (request->has_ts_name() && request->ts_name().size() > 0) {
+        auto iter = table->GetTSMapping().find(request->ts_name());
+        if (iter == table->GetTSMapping().end()) {
+            PDLOG(WARNING, "ts name %s not found in table tid %u, pid %u",
+                    request->ts_name().c_str(), request->tid(),
+                    request->pid());
             response->set_code(::rtidb::base::ReturnCode::kTsNameNotFound);
             response->set_msg("ts name not found");
             return;
         }
+        ts_index = iter->second;
+    }
 
-        ::rtidb::storage::TTLDesc ttl = ts_index < 0
-                                            ? table->GetTTL(index)
-                                            : table->GetTTL(index, ts_index);
-        std::string* value = response->mutable_value();
-        uint64_t ts = 0;
-        int32_t code = 0;
-        code = GetIndex(table->GetExpireTime(ttl.abs_ttl * 60 * 1000),
-                        ttl.lat_ttl, table->GetTTLType(), it, request,
-                        table->GetTableMeta(), value, &ts);
-        delete it;
-        response->set_ts(ts);
-        response->set_code(code);
-        uint64_t end_time = ::baidu::common::timer::get_micros();
-        if (start_time + FLAGS_query_slow_log_threshold < end_time) {
-            std::string index_name;
-            if (request->has_idx_name() && request->idx_name().size() > 0) {
-                index_name = request->idx_name();
-            }
-            PDLOG(
+    ::rtidb::storage::Ticket ticket;
+    ::rtidb::storage::TableIterator* it = NULL;
+    if (ts_index >= 0) {
+        it = table->NewIterator(index, ts_index, request->key(), ticket);
+    } else {
+        it = table->NewIterator(index, request->key(), ticket);
+    }
+
+    if (it == NULL) {
+        response->set_code(::rtidb::base::ReturnCode::kTsNameNotFound);
+        response->set_msg("ts name not found");
+        return;
+    }
+
+    ::rtidb::storage::TTLDesc ttl = ts_index < 0
+        ? table->GetTTL(index)
+        : table->GetTTL(index, ts_index);
+    std::string* value = response->mutable_value();
+    uint64_t ts = 0;
+    int32_t code = 0;
+    code = GetIndex(table->GetExpireTime(ttl.abs_ttl * 60 * 1000),
+            ttl.lat_ttl, table->GetTTLType(), it, request,
+            table->GetTableMeta(), value, &ts);
+    delete it;
+    response->set_ts(ts);
+    response->set_code(code);
+    uint64_t end_time = ::baidu::common::timer::get_micros();
+    if (start_time + FLAGS_query_slow_log_threshold < end_time) {
+        std::string index_name;
+        if (request->has_idx_name() && request->idx_name().size() > 0) {
+            index_name = request->idx_name();
+        }
+        PDLOG(
                 INFO,
                 "slow log[get]. key %s index_name %s time %lu. tid %u, pid %u",
                 request->key().c_str(), index_name.c_str(),
                 end_time - start_time, request->tid(), request->pid());
-        }
-        switch (code) {
-            case 1:
-                response->set_code(::rtidb::base::ReturnCode::kKeyNotFound);
-                response->set_msg("key not found");
-                return;
-            case 0:
-                return;
-            case -1:
-                response->set_msg("invalid args");
-                response->set_code(
-                    ::rtidb::base::ReturnCode::kInvalidParameter);
-                return;
-            case -2:
-                response->set_code(
-                    ::rtidb::base::ReturnCode::kInvalidParameter);
-                response->set_msg("st/et sub key type is invalid");
-                return;
-            default:
-                return;
-        }
-    } else {
-        /**
-        std::string * value = response->mutable_value();
-        bool ok = false;
-        rtidb::base::Slice slice;
-        ok = r_table->Get(request->idx_name(), request->key(), slice);
-        if (!ok) {
+    }
+    switch (code) {
+        case 1:
             response->set_code(::rtidb::base::ReturnCode::kKeyNotFound);
             response->set_msg("key not found");
             return;
-        }
-        value->assign(slice.data(), slice.size());
-        response->set_code(::rtidb::base::ReturnCode::kOk);
-        response->set_msg("ok");
-        */
+        case 0:
+            return;
+        case -1:
+            response->set_msg("invalid args");
+            response->set_code(
+                    ::rtidb::base::ReturnCode::kInvalidParameter);
+            return;
+        case -2:
+            response->set_code(
+                    ::rtidb::base::ReturnCode::kInvalidParameter);
+            response->set_msg("st/et sub key type is invalid");
+            return;
+        default:
+            return;
     }
 }
 
@@ -1676,14 +1655,13 @@ void TabletImpl::Traverse(RpcController* controller,
         response->set_is_finish(is_finish);
     } else {
         uint32_t index = r_table->GetPkIndex()->GetId();
-        rtidb::storage::RelationalTableTraverseIterator* it;
+        rtidb::storage::RelationalTableTraverseIterator* it = nullptr;
         if (request->has_snapshot_id() && request->snapshot_id() > 0) {
             it = r_table->NewTraverse(index, request->snapshot_id());
         } else {
             it = r_table->NewTraverse(index, 0);
         }
         if (it == NULL) {
-            delete it;
             response->set_code(::rtidb::base::ReturnCode::kIdxNameNotFound);
             response->set_msg("idx name not found");
             if (request->has_snapshot_id()) {
@@ -1692,11 +1670,25 @@ void TabletImpl::Traverse(RpcController* controller,
             }
             return;
         }
-        if (request->has_pk()) {
-            it->Seek(request->pk());
-            it->Next();
+        if (request->has_read_option() &&
+                request->read_option().index_size() > 0) {
+            std::string combine_pk;
+            if (!r_table->GetCombinePk(
+                        request->read_option().index(), &combine_pk)) {
+                response->set_code(
+                        ::rtidb::base::ReturnCode::kGetCombinePkFailed);
+                response->set_msg("get combine pk failed");
+                delete it;
+                return;
+            }
+            it->Seek(combine_pk);
         } else {
-            it->SeekToFirst();
+            if (request->has_pk()) {
+                it->Seek(request->pk());
+                it->Next();
+            } else {
+                it->SeekToFirst();
+            }
         }
         uint32_t scount = 0;
         std::string* last_pk = response->mutable_pk();;

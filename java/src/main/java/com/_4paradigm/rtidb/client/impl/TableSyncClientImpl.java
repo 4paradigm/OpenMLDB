@@ -343,13 +343,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (th == null) {
             throw new TabletException("no table with name " + tableName);
         }
-        Set<String> colSet;
-        if (ro != null) {
-            colSet = ro.getColSet();
-        } else {
-            colSet = null;
-        }
-        return new RelationalIterator(client, th, colSet);
+        return new RelationalIterator(client, th, ro);
     }
 
     @Override
@@ -1341,7 +1335,7 @@ public class TableSyncClientImpl implements TableSyncClient {
             schema = th.getSchema();
         } else {
             schema = th.getSchemaMap().get(row.size());
-            if (schema.isEmpty()) {
+            if (schema == null || schema.isEmpty()) {
                 throw new TabletException("no schema for column count " + row.size());
             }
         }

@@ -18,6 +18,7 @@
 
 #include "base/kv_iterator.h"
 #include "codec/flat_array.h"
+#include "codec/row_codec.h"
 #include "codec/schema_codec.h"
 #include "proto/client.pb.h"
 #include "proto/name_server.pb.h"
@@ -322,229 +323,6 @@ __attribute__((unused)) static void PrintColumnKey(
     tp.Print(true);
 }
 
-static void FillTableRow(const ::rtidb::codec::Schema& schema,
-                         const char* row_ptr, uint32_t row_size,
-                         std::vector<std::string>& row) {  // NOLINT
-    ::rtidb::codec::RowView rv(schema);
-    rv.Reset(reinterpret_cast<const int8_t*>(row_ptr), row_size);
-    for (int32_t i = 0; i < schema.size(); i++) {
-        uint32_t index = (uint32_t)i;
-        const ::rtidb::common::ColumnDesc& column = schema.Get(i);
-        if (rv.IsNULL(index)) {
-            row.push_back("null");
-            continue;
-        }
-        switch (column.data_type()) {
-            case ::rtidb::type::kBool: {
-                bool val = false;
-                rv.GetBool(index, &val);
-                if (val) {
-                    row.push_back("true");
-                } else {
-                    row.push_back("false");
-                }
-                break;
-            }
-            case ::rtidb::type::kSmallInt: {
-                int16_t val = 0;
-                rv.GetInt16(index, &val);
-                row.push_back(boost::lexical_cast<std::string>(val));
-                break;
-            }
-            case ::rtidb::type::kInt: {
-                int32_t val = 0;
-                rv.GetInt32(index, &val);
-                row.push_back(boost::lexical_cast<std::string>(val));
-                break;
-            }
-            case ::rtidb::type::kBigInt: {
-                int64_t val = 0;
-                rv.GetInt64(index, &val);
-                row.push_back(boost::lexical_cast<std::string>(val));
-                break;
-            }
-            case ::rtidb::type::kFloat: {
-                float val = 0;
-                rv.GetFloat(index, &val);
-                row.push_back(boost::lexical_cast<std::string>(val));
-                break;
-            }
-            case ::rtidb::type::kDouble: {
-                double val = 0;
-                rv.GetDouble(index, &val);
-                row.push_back(boost::lexical_cast<std::string>(val));
-                break;
-            }
-            case ::rtidb::type::kVarchar:
-            case ::rtidb::type::kString: {
-                char* val = NULL;
-                uint32_t size = 0;
-                rv.GetString(index, &val, &size);
-                std::string sval(val, size);
-                row.push_back(sval);
-                break;
-            }
-            case ::rtidb::type::kTimestamp: {
-                int64_t time = 0;
-                rv.GetTimestamp(index, &time);
-                row.push_back(boost::lexical_cast<std::string>(time));
-                break;
-            }
-            case ::rtidb::type::kDate: {
-                uint32_t year = 0;
-                uint32_t month = 0;
-                uint32_t day = 0;
-                rv.GetDate(index, &year, &month, &day);
-                std::stringstream ss;
-                ss << year << "-" << month << "-" << day;
-                row.push_back(ss.str());
-                break;
-            }
-            default: {
-                row.push_back("-");
-            }
-        }
-    }
-}
-
-static void FillTableRow(const std::vector<::rtidb::codec::ColumnDesc>& schema,
-                         const char* row, const uint32_t row_size,
-                         std::vector<std::string>& vrow) {  // NOLINT
-    rtidb::codec::FlatArrayIterator fit(row, row_size, schema.size());
-    while (fit.Valid()) {
-        std::string col;
-        if (fit.GetType() == ::rtidb::codec::ColType::kString) {
-            fit.GetString(&col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kUInt16) {
-            uint16_t uint16_col = 0;
-            fit.GetUInt16(&uint16_col);
-            col = boost::lexical_cast<std::string>(uint16_col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kInt16) {
-            int16_t int16_col = 0;
-            fit.GetInt16(&int16_col);
-            col = boost::lexical_cast<std::string>(int16_col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kInt32) {
-            int32_t int32_col = 0;
-            fit.GetInt32(&int32_col);
-            col = boost::lexical_cast<std::string>(int32_col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kInt64) {
-            int64_t int64_col = 0;
-            fit.GetInt64(&int64_col);
-            col = boost::lexical_cast<std::string>(int64_col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kUInt32) {
-            uint32_t uint32_col = 0;
-            fit.GetUInt32(&uint32_col);
-            col = boost::lexical_cast<std::string>(uint32_col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kUInt64) {
-            uint64_t uint64_col = 0;
-            fit.GetUInt64(&uint64_col);
-            col = boost::lexical_cast<std::string>(uint64_col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kDouble) {
-            double double_col = 0.0;
-            fit.GetDouble(&double_col);
-            col = boost::lexical_cast<std::string>(double_col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kFloat) {
-            float float_col = 0.0f;
-            fit.GetFloat(&float_col);
-            col = boost::lexical_cast<std::string>(float_col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kTimestamp) {
-            uint64_t ts = 0;
-            fit.GetTimestamp(&ts);
-            col = boost::lexical_cast<std::string>(ts);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kDate) {
-            uint64_t dt = 0;
-            fit.GetDate(&dt);
-            time_t rawtime = (time_t)dt / 1000;
-            tm* timeinfo = localtime(&rawtime);  // NOLINT
-            char buf[20];
-            strftime(buf, 20, "%Y-%m-%d", timeinfo);
-            col.assign(buf);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kBool) {
-            bool value = false;
-            fit.GetBool(&value);
-            if (value) {
-                col = "true";
-            } else {
-                col = "false";
-            }
-        }
-        fit.Next();
-        vrow.push_back(col);
-    }
-}
-
-static void FillTableRow(
-    uint32_t full_schema_size,
-    const std::vector<::rtidb::codec::ColumnDesc>& base_schema, const char* row,
-    const uint32_t row_size, std::vector<std::string>& vrow) {  // NOLINT
-    rtidb::codec::FlatArrayIterator fit(row, row_size, base_schema.size());
-    while (full_schema_size > 0) {
-        std::string col;
-        if (!fit.Valid()) {
-            full_schema_size--;
-            vrow.push_back("");
-            continue;
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kString) {
-            fit.GetString(&col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kUInt16) {
-            uint16_t uint16_col = 0;
-            fit.GetUInt16(&uint16_col);
-            col = boost::lexical_cast<std::string>(uint16_col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kInt16) {
-            int16_t int16_col = 0;
-            fit.GetInt16(&int16_col);
-            col = boost::lexical_cast<std::string>(int16_col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kInt32) {
-            int32_t int32_col = 0;
-            fit.GetInt32(&int32_col);
-            col = boost::lexical_cast<std::string>(int32_col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kInt64) {
-            int64_t int64_col = 0;
-            fit.GetInt64(&int64_col);
-            col = boost::lexical_cast<std::string>(int64_col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kUInt32) {
-            uint32_t uint32_col = 0;
-            fit.GetUInt32(&uint32_col);
-            col = boost::lexical_cast<std::string>(uint32_col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kUInt64) {
-            uint64_t uint64_col = 0;
-            fit.GetUInt64(&uint64_col);
-            col = boost::lexical_cast<std::string>(uint64_col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kDouble) {
-            double double_col = 0.0;
-            fit.GetDouble(&double_col);
-            col = boost::lexical_cast<std::string>(double_col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kFloat) {
-            float float_col = 0.0f;
-            fit.GetFloat(&float_col);
-            col = boost::lexical_cast<std::string>(float_col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kTimestamp) {
-            uint64_t ts = 0;
-            fit.GetTimestamp(&ts);
-            col = boost::lexical_cast<std::string>(ts);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kDate) {
-            uint64_t dt = 0;
-            fit.GetDate(&dt);
-            time_t rawtime = (time_t)dt / 1000;
-            tm* timeinfo = localtime(&rawtime);  // NOLINT
-            char buf[20];
-            strftime(buf, 20, "%Y-%m-%d", timeinfo);
-            col.assign(buf);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kBool) {
-            bool value = false;
-            fit.GetBool(&value);
-            if (value) {
-                col = "true";
-            } else {
-                col = "false";
-            }
-        }
-        full_schema_size--;
-        fit.Next();
-        vrow.push_back(col);
-    }
-}
-
 __attribute__((unused)) static void ShowTableRows(
     const ::rtidb::codec::Schema& schema, ::rtidb::base::KvIterator* it,
     const ::rtidb::nameserver::CompressType ctype) {
@@ -566,7 +344,8 @@ __attribute__((unused)) static void ShowTableRows(
         } else {
             value.assign(it->GetValue().data(), it->GetValue().size());
         }
-        FillTableRow(schema, value.c_str(), value.size(), vrow);
+        ::rtidb::codec::RowCodec::DecodeRow(schema, ::rtidb::base::Slice(value),
+                                            vrow);
         tp.AddRow(vrow);
         index++;
         it->Next();
@@ -610,10 +389,10 @@ __attribute__((unused)) static void ShowTableRows(
             str_size = it->GetValue().size();
         }
         if (base_columns.size() == 0) {
-            ::rtidb::base::FillTableRow(raw, str, str_size, vrow);
+            ::rtidb::codec::FillTableRow(raw, str, str_size, vrow);
         } else {
-            ::rtidb::base::FillTableRow(raw.size(), base_columns, str, str_size,
-                                        vrow);
+            ::rtidb::codec::FillTableRow(raw.size(), base_columns, str,
+                                         str_size, vrow);
         }
         tp.AddRow(vrow);
         index++;

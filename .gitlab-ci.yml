@@ -141,4 +141,5 @@ deploy-package:
         - ln -sf /depends/thirdparty thirdparty
         - ln -sf /depends/thirdsrc thirdsrc
         - source /root/.bashrc && bash steps/deploy_package.sh
-
+    only:
+        - tags
