@@ -6,7 +6,9 @@
 //
 
 #include "client/ns_client.h"
+
 #include <utility>
+
 #include "base/strings.h"
 #include "glog/logging.h"
 
@@ -815,9 +817,10 @@ bool NsClient::DeleteIndex(const std::string& table_name,
     return ok && code == 0;
 }
 
-bool NsClient::TransformToTableDef(const std::string& table_name,
- 	const ::fesql::node::NodePointVector& column_desc_list,
-	::rtidb::nameserver::TableInfo *table, ::rtidb::base::Status *status) {
+bool NsClient::TransformToTableDef(
+    const std::string& table_name,
+    const ::fesql::node::NodePointVector& column_desc_list,
+    ::rtidb::nameserver::TableInfo* table, ::rtidb::base::Status* status) {
     if (table == NULL || status == NULL) return false;
     return true;
 }

@@ -61,7 +61,7 @@ class NsClient {
     bool CreateTable(const ::rtidb::nameserver::TableInfo& table_info,
                      std::string& msg); // NOLINT
 
-    bool CreateTable(const std::string& script, 
+    bool CreateTable(const std::string& script,
                      std::string& msg); // NOLINT
 
     bool DropTable(const std::string& name, std::string& msg); // NOLINT
