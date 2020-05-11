@@ -4,8 +4,10 @@ include_directories(${INCLUDE_DIRECTORIES}
 
 add_library(fesql_sdk STATIC base_impl.cc dbms_sdk.cc tablet_sdk.cc result_set_impl.cc)
 
+
 set(sdk_deps_libs fesql_sdk fesql_simple_catalog ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS} ${OS_LIB})
 
+if (TESTING_ENABLE)
 add_executable(dbms_sdk_test dbms_sdk_test.cc)
 target_link_libraries(dbms_sdk_test
         gtest fesql_dbms fesql_tablet fesql_flags ${sdk_deps_libs})
@@ -24,7 +26,9 @@ target_link_libraries(result_set_impl_test
          gtest fesql_dbms fesql_tablet fesql_flags ${sdk_deps_libs})
 add_test(result_set_impl_test result_set_impl_test --gtest_output=xml:${CMAKE_BINARY_DIR}/result_set_impl_test.xml)
 list(APPEND test_list result_set_impl_test)
+endif()
 
+if(PYSDK_ENABLE)
 set_property(SOURCE fesql_interface.i PROPERTY CPLUSPLUS ON)
 if (CMAKE_SYSTEM_NAME MATCHES "Darwin")
     set_property(SOURCE fesql_interface.i PROPERTY COMPILE_OPTIONS -python)
@@ -40,7 +44,8 @@ swig_add_library(fesql_pysdk
         SOURCES fesql_interface.i)
 target_include_directories(fesql_pysdk PRIVATE ${PYTHON_INCLUDE_DIRS})
 target_link_libraries(fesql_pysdk ${sdk_deps_libs})
-
+endif()
+if(JAVASDK_ENABLE)
 set_property(SOURCE fesql_interface.i PROPERTY COMPILE_OPTIONS -package com._4paradigm)
 swig_add_library(fesql_jsdk
         TYPE SHARED
@@ -59,6 +64,9 @@ if(APPLE)
   set_property(TARGET fesql_pysdk APPEND PROPERTY
     LINK_FLAGS "-flat_namespace -undefined suppress")
 endif()
+endif()
+
+if(PYSDK_ENABLE)
 
 #######################
 ## Python Packaging  ##
@@ -145,6 +153,8 @@ add_custom_target(python_package ALL
       WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/python
 	)
 
+endif()
+if(JAVASDK_ENABLE)
 add_custom_command(OUTPUT
     cp_java_native_so
     COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:fesql_jsdk> ${PROJECT_SOURCE_DIR}/java/fesql-native/src/main/resources/)
@@ -155,5 +165,7 @@ add_custom_target(java_package ALL
     cp_java_native_so
     COMMAND ${MAVEN_EXECUTABLE} package -DskipTests=true -Dscalatest.skip=true
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/java
-  )
+)
+
 add_dependencies(java_package fesql_proto_java)
+endif()
