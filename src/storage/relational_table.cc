@@ -970,7 +970,18 @@ bool RelationalTable::UpdateDB(const std::shared_ptr<IndexDef> index_def,
                     builder.AppendInt32(val);
                     break;
                 }
-                case rtidb::type::kBlob:
+                case rtidb::type::kBlob: {
+                    int64_t val = 0;
+                    if (col_iter != col_idx_map.end()) {
+                        get_value_ret =
+                            value_view.GetBlob(col_iter->second, &val);
+                    } else {
+                        get_value_ret =
+                            row_view_.GetValue(buf, i, cur_type, &val);
+                    }
+                    builder.AppendBlob(val);
+                    break;
+                }
                 case rtidb::type::kBigInt: {
                     int64_t val = 0;
                     if (col_iter != col_idx_map.end()) {

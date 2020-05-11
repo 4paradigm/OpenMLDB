@@ -27,13 +27,13 @@ class IdGenerator {
     int64_t Next() {
         int64_t ts = ::baidu::common::timer::get_micros();
         pthread_t tid = pthread_self();
-        uint64_t rd = id_.fetch_add(1, std::memory_order_acq_rel);
+        int64_t rd = id_.fetch_add(1, std::memory_order_acq_rel);
         int64_t res = ((ts << 12) | ((tid & 0xFF) << 12) | (rd & 0xFFF));
         return llabs(res);
     }
 
  private:
-    std::atomic<uint64_t> id_;
+    std::atomic<int64_t> id_;
 };
 
 }  // namespace base

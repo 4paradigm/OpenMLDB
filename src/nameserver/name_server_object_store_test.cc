@@ -292,7 +292,7 @@ TEST_F(NameServerImplObjectStoreTest, CreateTableWithBlobField) {
         ASSERT_TRUE(builder.AppendInt64(10l));
         std::string mcc_data = "mcc0";
         ASSERT_TRUE(builder.AppendString(mcc_data.data(), mcc_data.size()));
-        ASSERT_TRUE(builder.AppendInt64(blob_key));
+        ASSERT_TRUE(builder.AppendBlob(blob_key));
         ok = tablet_client.Put(tid, 0, "", 0, row);
         ASSERT_TRUE(ok);
         std::vector<std::string> keys{"10"};

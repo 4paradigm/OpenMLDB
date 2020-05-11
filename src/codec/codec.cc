@@ -263,8 +263,20 @@ bool RowBuilder::AppendInt64(int64_t val) {
 }
 
 bool RowBuilder::SetInt64(uint32_t index, int64_t val) {
-    if (!Check(index, ::rtidb::type::kBigInt) &&
-        !Check(index, ::rtidb::type::kBlob)) return false;
+    if (!Check(index, ::rtidb::type::kBigInt)) return false;
+    int8_t* ptr = buf_ + offset_vec_[index];
+    *(reinterpret_cast<int64_t*>(ptr)) = val;
+    return true;
+}
+
+bool RowBuilder::AppendBlob(int64_t val) {
+    if (!SetBlob(cnt_, val)) return false;
+    cnt_++;
+    return true;
+}
+
+bool RowBuilder::SetBlob(uint32_t index, int64_t val) {
+    if (!Check(index, ::rtidb::type::kBlob)) return false;
     int8_t* ptr = buf_ + offset_vec_[index];
     *(reinterpret_cast<int64_t*>(ptr)) = val;
     return true;
@@ -513,8 +525,22 @@ int32_t RowView::GetInt64(uint32_t idx, int64_t* val) {
     if (val == NULL) {
         return -1;
     }
-    if (!CheckValid(idx, ::rtidb::type::kBigInt) &&
-        !CheckValid(idx, ::rtidb::type::kBlob)) {
+    if (!CheckValid(idx, ::rtidb::type::kBigInt)) {
+        return -1;
+    }
+    if (IsNULL(row_, idx)) {
+        return 1;
+    }
+    uint32_t offset = offset_vec_.at(idx);
+    *val = v1::GetInt64Field(row_, offset);
+    return 0;
+}
+
+int32_t RowView::GetBlob(uint32_t idx, int64_t* val) {
+    if (val == NULL) {
+        return -1;
+    }
+    if (!CheckValid(idx, ::rtidb::type::kBlob)) {
         return -1;
     }
     if (IsNULL(row_, idx)) {
@@ -944,7 +970,12 @@ bool RowProject::Project(const int8_t* row_ptr, uint32_t size,
                 if (ret == 0) row_builder_->AppendDate(val);
                 break;
             }
-            case ::rtidb::type::kBlob:
+            case ::rtidb::type::kBlob: {
+                int64_t val = 0;
+                ret = row_view_->GetBlob(idx, &val);
+                if (ret == 0) row_builder_->AppendBlob(val);
+                break;
+            }
             case ::rtidb::type::kBigInt: {
                 int64_t val = 0;
                 ret = row_view_->GetInt64(idx, &val);

@@ -200,11 +200,11 @@ void BlobServerImpl::Put(RpcController *controller, const PutRequest *request,
         return;
     }
     bool ok = false;
-    int64_t key;
+    int64_t key = 0;
     if (request->has_key()) {
         ok = store->Store(request->key(), request->data());
     } else {
-        ok = store->Store(&key, request->data());
+        ok = store->Store(request->data(), &key);
     }
     if (!ok) {
         response->set_code(ReturnCode::kPutFailed);
@@ -355,11 +355,12 @@ void BlobServerImpl::DropTable(RpcController *controller,
             boost::bind(&BlobServerImpl::DropTableInternal, this, tid, pid));
         response->set_code(ReturnCode::kOk);
         response->set_msg("ok");
+        PDLOG(INFO, "drop table tid[%u] pid[%u]", tid, pid);
     } else {
         response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
         response->set_msg("please provide tid and pid");
+        return;
     }
-    PDLOG(INFO, "drop table tid[%u]", request->tid());
 }
 
 void BlobServerImpl::DropTableInternal(uint32_t tid, uint32_t pid) {

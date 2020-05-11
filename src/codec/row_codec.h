@@ -112,13 +112,16 @@ class RowCodec {
                             boost::lexical_cast<uint32_t>(iter->second));
                         break;
                     case rtidb::type::kBlob:
+                        ok = builder.AppendBlob(
+                            boost::lexical_cast<int64_t>(iter->second));
+                        break;
                     case rtidb::type::kBigInt:
                         ok = builder.AppendInt64(
-                            boost::lexical_cast<uint64_t>(iter->second));
+                            boost::lexical_cast<int64_t>(iter->second));
                         break;
                     case rtidb::type::kTimestamp:
                         ok = builder.AppendTimestamp(
-                            boost::lexical_cast<uint64_t>(iter->second));
+                            boost::lexical_cast<int64_t>(iter->second));
                         break;
                     case rtidb::type::kFloat:
                         ok = builder.AppendFloat(

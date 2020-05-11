@@ -56,8 +56,8 @@ bool BsClient::Put(uint32_t tid, uint32_t pid, int64_t key,
     return false;
 }
 
-bool BsClient::Put(uint32_t tid, uint32_t pid, int64_t* key,
-                   const std::string &value, std::string *msg) {
+bool BsClient::Put(uint32_t tid, uint32_t pid, const std::string &value,
+                   int64_t* key, std::string *msg) {
     ::rtidb::blobserver::PutRequest request;
     ::rtidb::blobserver::PutResponse response;
     request.set_tid(tid);

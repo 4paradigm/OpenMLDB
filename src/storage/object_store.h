@@ -36,7 +36,7 @@ class ObjectStore {
 
     bool Store(int64_t key, const std::string& value);
 
-    bool Store(int64_t* key, const std::string& value);
+    bool Store(const std::string& value, int64_t* key);
 
     bool Delete(int64_t key);
 

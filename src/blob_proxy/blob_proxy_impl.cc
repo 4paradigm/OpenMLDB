@@ -55,7 +55,7 @@ void BlobProxyImpl::Get(RpcController* controller, const HttpRequest* request,
     brpc::ClosureGuard done_guard(done);
     brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
     std::string table;
-    int64_t blob_id;
+    int64_t blob_id = 0;
     std::string unresolve_path = cntl->http_request().unresolved_path();
     std::vector<std::string> vec;
     boost::split(vec, unresolve_path, boost::is_any_of("/"));

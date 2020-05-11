@@ -441,6 +441,9 @@ int EncodeMultiDimensionDataForNewFormat(
             } else if (column.data_type() == ::rtidb::type::kBigInt) {
                 codec_ok =
                     rb.AppendInt64(boost::lexical_cast<int64_t>(data[i]));
+            } else if (column.data_type() == ::rtidb::type::kBlob) {
+                codec_ok =
+                    rb.AppendBlob(boost::lexical_cast<int64_t>(data[i]));
             } else if (column.data_type() == ::rtidb::type::kFloat) {
                 codec_ok = rb.AppendFloat(boost::lexical_cast<float>(data[i]));
             } else if (column.data_type() == ::rtidb::type::kDouble) {
