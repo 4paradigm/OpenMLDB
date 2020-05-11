@@ -76,7 +76,7 @@ configure_file(
 )
 
 option(TESTING_ENABLE "Enable Test" ON)
-option(COVERAGE_ENABLE "Enable Coverage" OFF)
+option(COVERAGE_ENABLE "Enable Coverage" ON)
 if (TESTING_ENABLE)
     enable_testing()
 endif ()

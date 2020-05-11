@@ -12,4 +12,4 @@ fi
 
 export PATH=${PWD}/thirdparty/bin:$PATH
 rm -rf build
-mkdir -p build && cd build && cmake .. && make -j${JOBS} && make test
+mkdir -p build && cd build && cmake -DCOVERAGE_ENABLE=ON -DTESTING_ENABLE=ON .. && make -j${JOBS} && make test
