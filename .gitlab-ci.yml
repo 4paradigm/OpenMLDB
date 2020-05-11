@@ -6,7 +6,7 @@ stages:
     - it-ns
     - deploy
 
-build_rtidb_new_image:
+build:
     stage: build
     script:
         - ln -sf /depends/thirdparty thirdparty
@@ -29,8 +29,8 @@ style_check:
 cpp_ut:
     stage: ut
     script:
-        - ln -sf /usr/workdir/thirdparty thirdparty
-        - ln -sf /usr/workdir/thirdsrc thirdsrc
+        - ln -sf /depends/thirdparty thirdparty
+        - ln -sf /depends/thirdsrc thirdsrc
         - source /root/.bashrc && bash steps/compile.sh
         - source /root/.bashrc && LD_LIBRARY_PATH=/usr/workdir/thirdparty/lib:$LD_LIBRARY_PATH bash steps/ut.sh
     artifacts:
@@ -40,8 +40,8 @@ cpp_ut:
 java_ut:
     stage: ut
     script:
-        - ln -sf /usr/workdir/thirdparty thirdparty
-        - ln -sf /usr/workdir/thirdsrc thirdsrc
+        - ln -sf /depends/thirdparty thirdparty
+        - ln -sf /depends/thirdsrc thirdsrc
         - source /root/.bashrc && LD_LIBRARY_PATH=/usr/workdir/thirdparty/lib:$LD_LIBRARY_PATH bash steps/java_ut.sh
     artifacts:
         reports:
@@ -54,8 +54,8 @@ java_ut:
 tablet_one_demension:
     stage: it-tablet
     script:
-        - ln -sf /usr/workdir/thirdparty thirdparty
-        - ln -sf /usr/workdir/thirdsrc thirdsrc
+        - ln -sf /depends/thirdparty thirdparty
+        - ln -sf /depends/thirdsrc thirdsrc
         - rm -rf ./test-output/integrationtest/test-reports/
         - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
         - source /root/.bashrc && LD_LIBRARY_PATH=/usr/workdir/thirdparty/lib:$LD_LIBRARY_PATH
@@ -68,8 +68,8 @@ tablet_one_demension:
 tablet_multi_demension:
     stage: it-tablet
     script:
-        - ln -sf /usr/workdir/thirdparty thirdparty
-        - ln -sf /usr/workdir/thirdsrc thirdsrc
+        - ln -sf /depends/thirdparty thirdparty
+        - ln -sf /depends/thirdsrc thirdsrc
         - rm -rf ./test-output/integrationtest/test-reports/
         - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
         - source /root/.bashrc && LD_LIBRARY_PATH=/usr/workdir/thirdparty/lib:$LD_LIBRARY_PATH
@@ -82,8 +82,8 @@ tablet_multi_demension:
 ns_one_demension:
     stage: it-ns
     script:
-        - ln -sf /usr/workdir/thirdparty thirdparty
-        - ln -sf /usr/workdir/thirdsrc thirdsrc
+        - ln -sf /depends/thirdparty thirdparty
+        - ln -sf /depends/thirdsrc thirdsrc
         - rm -rf ./test-output/integrationtest/test-reports/
         - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
         - source /root/.bashrc && LD_LIBRARY_PATH=/usr/workdir/thirdparty/lib:$LD_LIBRARY_PATH
@@ -96,8 +96,8 @@ ns_one_demension:
 ns_multi_demension:
     stage: it-ns
     script:
-        - ln -sf /usr/workdir/thirdparty thirdparty
-        - ln -sf /usr/workdir/thirdsrc thirdsrc
+        - ln -sf /depends/thirdparty thirdparty
+        - ln -sf /depends/thirdsrc thirdsrc
         - rm -rf ./test-output/integrationtest/test-reports/
         - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
         - source /root/.bashrc && LD_LIBRARY_PATH=/usr/workdir/thirdparty/lib:$LD_LIBRARY_PATH
@@ -110,8 +110,8 @@ ns_multi_demension:
 disk_table:
     stage: it-ns
     script:
-        - ln -sf /usr/workdir/thirdparty thirdparty
-        - ln -sf /usr/workdir/thirdsrc thirdsrc
+        - ln -sf /depends/thirdparty thirdparty
+        - ln -sf /depends/thirdsrc thirdsrc
         - rm -rf ./test-output/integrationtest/test-reports/
         - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
         - source /root/.bashrc && LD_LIBRARY_PATH=/usr/workdir/thirdparty/lib:$LD_LIBRARY_PATH
@@ -124,8 +124,8 @@ disk_table:
 disktable-java:
     stage: ut
     script:
-        - ln -sf /usr/workdir/thirdparty thirdparty
-        - ln -sf /usr/workdir/thirdsrc thirdsrc
+        - ln -sf /depends/thirdparty thirdparty
+        - ln -sf /depends/thirdsrc thirdsrc
         - source /root/.bashrc && bash steps/auto_test.sh
     artifacts:
         reports:
@@ -138,8 +138,8 @@ disktable-java:
 deploy-package:
     stage: deploy
     script:
-        - ln -sf /usr/workdir/thirdparty thirdparty
-        - ln -sf /usr/workdir/thirdsrc thirdsrc
+        - ln -sf /depends/thirdparty thirdparty
+        - ln -sf /depends/thirdsrc thirdsrc
         - source /root/.bashrc && bash steps/deploy_package.sh
     only:
         - tags
