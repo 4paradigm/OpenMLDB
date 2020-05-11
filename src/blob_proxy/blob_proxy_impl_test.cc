@@ -7,13 +7,13 @@
 
 #include <gflags/gflags.h>
 #include <google/protobuf/stubs/common.h>
-#include <logging.h>
 #include <string>
 
 #include "blobserver/blobserver_impl.h"
 #include "client/bs_client.h"
 #include "gtest/gtest.h"
 #include "nameserver/name_server_impl.h"
+#include "base/glog_wapper.h"
 
 DECLARE_string(endpoint);
 DECLARE_string(hdd_root_path);

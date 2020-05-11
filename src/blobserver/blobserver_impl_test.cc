@@ -6,9 +6,9 @@
 #include "blobserver/blobserver_impl.h"
 #include <gflags/gflags.h>
 #include <google/protobuf/stubs/common.h>
-#include <logging.h>
 #include "client/bs_client.h"
 #include "gtest/gtest.h"
+#include "base/glog_wapper.h"
 
 DECLARE_string(hdd_root_path);
 DECLARE_int32(zk_session_timeout);
