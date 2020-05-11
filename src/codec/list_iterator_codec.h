@@ -247,7 +247,7 @@ class ColumnIterator : public ConstIterator<uint64_t, V> {
 
  private:
     const ColumnImpl<V> *column_impl_;
-    std::unique_ptr<ConstIterator<uint64_t, Row>> row_iter_;
+    std::unique_ptr<RowIterator> row_iter_;
     V value_;
 };
 

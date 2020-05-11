@@ -24,7 +24,6 @@
 namespace fesql {
 namespace vm {
 
-using fesql::codec::ConstIterator;
 using fesql::codec::Row;
 using fesql::codec::RowIterator;
 using fesql::codec::WindowIterator;
@@ -147,8 +146,8 @@ class MemTableHandler : public TableHandler {
     inline const IndexHint& GetIndex() { return index_hint_; }
     inline const std::string& GetDatabase() { return db_; }
 
-    std::unique_ptr<ConstIterator<uint64_t, Row>> GetIterator() const;
-    ConstIterator<uint64_t, Row>* GetIterator(int8_t* addr) const;
+    std::unique_ptr<RowIterator> GetIterator() const;
+    RowIterator* GetIterator(int8_t* addr) const;
     std::unique_ptr<WindowIterator> GetWindowIterator(
         const std::string& idx_name);
 
@@ -183,8 +182,8 @@ class MemTimeTableHandler : public TableHandler {
     inline const Schema* GetSchema() { return schema_; }
     inline const std::string& GetName() { return table_name_; }
     inline const IndexHint& GetIndex() { return index_hint_; }
-    std::unique_ptr<ConstIterator<uint64_t, Row>> GetIterator() const;
-    ConstIterator<uint64_t, Row>* GetIterator(int8_t* addr) const;
+    std::unique_ptr<RowIterator> GetIterator() const;
+    RowIterator* GetIterator(int8_t* addr) const;
     inline const std::string& GetDatabase() { return db_; }
     std::unique_ptr<WindowIterator> GetWindowIterator(
         const std::string& idx_name);
@@ -227,14 +226,13 @@ class Window : public MemTimeTableHandler {
           max_size_(max_size) {}
     virtual ~Window() {}
 
-    std::unique_ptr<vm::ConstIterator<uint64_t, Row>> GetIterator()
-        const override {
+    std::unique_ptr<RowIterator> GetIterator() const override {
         std::unique_ptr<vm::MemTimeTableIterator> it(
             new vm::MemTimeTableIterator(&table_, schema_, start_, end_));
         return std::move(it);
     }
 
-    vm::ConstIterator<uint64_t, Row>* GetIterator(int8_t* addr) const override {
+    RowIterator* GetIterator(int8_t* addr) const override {
         if (nullptr == addr) {
             return new vm::MemTimeTableIterator(&table_, schema_, start_, end_);
         } else {
@@ -330,7 +328,7 @@ class MemSegmentHandler : public TableHandler {
         }
         return std::unique_ptr<RowIterator>();
     }
-    vm::ConstIterator<uint64_t, Row>* GetIterator(int8_t* addr) const override {
+    RowIterator* GetIterator(int8_t* addr) const override {
         LOG(WARNING) << "can't get iterator with given address";
         return nullptr;
     }

@@ -21,7 +21,6 @@
 #include <map>
 #include <memory>
 #include <string>
-#include "vm/catalog.h"
 #include "arrow/array.h"
 #include "arrow/csv/api.h"
 #include "arrow/filesystem/api.h"
@@ -29,6 +28,7 @@
 #include "arrow/table.h"
 #include "arrow/type_fwd.h"
 #include "glog/logging.h"
+#include "vm/catalog.h"
 
 namespace fesql {
 namespace vm {
@@ -83,9 +83,8 @@ class CSVTableHandler : public TableHandler {
         const std::string& idx_name);
     const uint64_t GetCount() override;
     Row At(uint64_t pos) override;
-    std::unique_ptr<ConstIterator<uint64_t, Row>> GetIterator()
-        const override;
-    ConstIterator<uint64_t, Row>* GetIterator(int8_t* addr) const override;
+    std::unique_ptr<RowIterator> GetIterator() const override;
+    RowIterator* GetIterator(int8_t* addr) const override;
 
  private:
     bool InitConfig();

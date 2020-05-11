@@ -62,7 +62,7 @@ class TabletSegmentHandler : public TableHandler {
     }
 
     std::unique_ptr<vm::RowIterator> GetIterator() const;
-    vm::ConstIterator<uint64_t, Row>* GetIterator(int8_t* addr) const override;
+    RowIterator* GetIterator(int8_t* addr) const override;
     std::unique_ptr<vm::WindowIterator> GetWindowIterator(
         const std::string& idx_name);
     virtual const uint64_t GetCount();
@@ -145,7 +145,7 @@ class TabletTableHandler : public vm::TableHandler {
     inline std::shared_ptr<storage::Table> GetTable() { return table_; }
 
     std::unique_ptr<RowIterator> GetIterator() const;
-    vm::ConstIterator<uint64_t, Row>* GetIterator(int8_t* addr) const override;
+    RowIterator* GetIterator(int8_t* addr) const override;
     std::unique_ptr<WindowIterator> GetWindowIterator(
         const std::string& idx_name);
     virtual const uint64_t GetCount();

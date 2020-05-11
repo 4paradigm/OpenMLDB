@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 #include "base/fe_slice.h"
+#include "base/iterator.h"
 #include "codec/list_iterator_codec.h"
 #include "codec/type_codec.h"
 #include "codegen/ir_base_builder.h"
@@ -19,9 +20,9 @@
 namespace fesql {
 namespace udf {
 namespace v1 {
+using fesql::base::ConstIterator;
 using fesql::codec::ColumnImpl;
 using fesql::codec::IteratorRef;
-using fesql::codec::ConstIterator;
 using fesql::codec::ListRef;
 using fesql::codec::ListV;
 using fesql::codec::Row;

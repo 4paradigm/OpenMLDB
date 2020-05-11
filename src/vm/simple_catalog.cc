@@ -117,15 +117,12 @@ std::shared_ptr<PartitionHandler> SimpleCatalogTableHandler::GetPartition(
     return nullptr;
 }
 
-std::unique_ptr<ConstIterator<uint64_t, fesql::codec::Row>>
-SimpleCatalogTableHandler::GetIterator() const {
+std::unique_ptr<RowIterator> SimpleCatalogTableHandler::GetIterator() const {
     LOG(ERROR) << "Unsupported operation: GetIterator()";
     return nullptr;
 }
 
-ConstIterator<uint64_t, fesql::codec::Row>*
-SimpleCatalogTableHandler::GetIterator(
-    int8_t *addr) const {
+RowIterator *SimpleCatalogTableHandler::GetIterator(int8_t *addr) const {
     LOG(ERROR) << "Unsupported operation: GetIterator()";
     return nullptr;
 }

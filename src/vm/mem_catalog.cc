@@ -95,7 +95,7 @@ MemTimeTableHandler::MemTimeTableHandler(const std::string& table_name,
       table_() {}
 
 MemTimeTableHandler::~MemTimeTableHandler() {}
-std::unique_ptr<ConstIterator<uint64_t, Row>> MemTimeTableHandler::GetIterator()
+std::unique_ptr<RowIterator> MemTimeTableHandler::GetIterator()
     const {
     std::unique_ptr<MemTimeTableIterator> it(
         new MemTimeTableIterator(&table_, schema_));
@@ -126,7 +126,7 @@ void MemTimeTableHandler::Sort(const bool is_asc) {
 void MemTimeTableHandler::Reverse() {
     std::reverse(table_.begin(), table_.end());
 }
-ConstIterator<uint64_t, Row>* MemTimeTableHandler::GetIterator(
+RowIterator* MemTimeTableHandler::GetIterator(
     int8_t* addr) const {
     if (nullptr == addr) {
         return new MemTimeTableIterator(&table_, schema_);
@@ -206,13 +206,13 @@ std::unique_ptr<WindowIterator> MemTableHandler::GetWindowIterator(
     const std::string& idx_name) {
     return std::unique_ptr<WindowIterator>();
 }
-std::unique_ptr<ConstIterator<uint64_t, Row>> MemTableHandler::GetIterator()
+std::unique_ptr<RowIterator> MemTableHandler::GetIterator()
     const {
     std::unique_ptr<MemTableIterator> it(
         new MemTableIterator(&table_, schema_));
     return std::move(it);
 }
-ConstIterator<uint64_t, Row>* MemTableHandler::GetIterator(int8_t* addr) const {
+RowIterator* MemTableHandler::GetIterator(int8_t* addr) const {
     return new (addr) MemTableIterator(&table_, schema_);
 }
 
