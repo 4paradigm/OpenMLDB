@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "base/fe_hash.h"
 
 #include <string>
 #include "gtest/gtest.h"
+#include "base/fe_hash.h"
 
 namespace fesql {
 namespace base {

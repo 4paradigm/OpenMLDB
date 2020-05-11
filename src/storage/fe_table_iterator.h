@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_STORAGE_TABLE_ITERATOR_H_
-#define SRC_STORAGE_TABLE_ITERATOR_H_
+#ifndef SRC_STORAGE_FE_TABLE_ITERATOR_H_
+#define SRC_STORAGE_FE_TABLE_ITERATOR_H_
 
 #include <memory>
 #include <string>
@@ -151,4 +151,4 @@ class FullTableIterator : public IteratorV<uint64_t, Row> {
 }  // namespace storage
 }  // namespace fesql
 
-#endif  // SRC_STORAGE_TABLE_ITERATOR_H_
+#endif  // SRC_STORAGE_FE_TABLE_ITERATOR_H_

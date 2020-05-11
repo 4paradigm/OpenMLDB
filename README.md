@@ -10,6 +10,14 @@ The first and fastest AI Native Database in the world
 * texinfo
 * gcc 8.3.1
 
+
+## 安装依赖到rtidb
+
+```
+mkdir build 
+cmake -DCMAKE_INSTALL_PREFIX=/depends/thirdparty -DCOVERAGE_ENABLE=OFF -D .. && make install
+```
+
 Linux安装依赖库
 
 ```
