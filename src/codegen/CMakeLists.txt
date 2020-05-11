@@ -17,6 +17,8 @@ add_library(fesql_codegen STATIC
         list_ir_builder.cc
         predicate_expr_ir_builder.cc)
 
+
+if (TESTING_ENABLE)
 set(vm_deps_libs 
     ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS} ${OS_LIB})
 
@@ -86,3 +88,4 @@ target_link_libraries(fn_let_ir_builder_test gtest ${vm_deps_libs})
 add_test(fn_let_ir_builder_test fn_let_ir_builder_test
         --gtest_output=xml:${CMAKE_BINARY_DIR}/fn_let_ir_builder_test.xml)
 list(APPEND test_list fn_let_ir_builder_test)
+endif ()

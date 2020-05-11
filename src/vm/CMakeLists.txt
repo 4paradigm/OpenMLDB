@@ -8,6 +8,8 @@ add_library(fesql_csv_catalog STATIC csv_catalog.cc csv_table_iterator.cc
         csv_window_iterator.cc)
 add_library(fesql_simple_catalog STATIC simple_catalog.cc)
 
+
+if (TESTING_ENABLE)
 set(vm_deps_libs fesql_case ${yaml_libs} boost_filesystem fesql_dbms fesql_tablet fesql_flags ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS} ${OS_LIB})
 
 
@@ -86,7 +88,6 @@ add_test(engine_test engine_test
         --gtest_output=xml:${CMAKE_BINARY_DIR}/engine_test.xml)
 list(APPEND test_list engine_test)
 
-
-
 add_executable(csv_db csv_db.cc)
 target_link_libraries(csv_db fesql_csv_catalog gtest ${ARROW_LIBS} ${vm_deps_libs})
+endif()

@@ -4,8 +4,10 @@ include_directories(${INCLUDE_DIRECTORIES}
 
 add_library(fesql_sdk STATIC base_impl.cc dbms_sdk.cc tablet_sdk.cc result_set_impl.cc)
 
+
 set(sdk_deps_libs fesql_sdk fesql_simple_catalog ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS} ${OS_LIB})
 
+if (TESTING_ENABLE)
 add_executable(dbms_sdk_test dbms_sdk_test.cc)
 target_link_libraries(dbms_sdk_test
         gtest fesql_dbms fesql_tablet fesql_flags ${sdk_deps_libs})
@@ -24,7 +26,7 @@ target_link_libraries(result_set_impl_test
          gtest fesql_dbms fesql_tablet fesql_flags ${sdk_deps_libs})
 add_test(result_set_impl_test result_set_impl_test --gtest_output=xml:${CMAKE_BINARY_DIR}/result_set_impl_test.xml)
 list(APPEND test_list result_set_impl_test)
-
+endif()
 set_property(SOURCE fesql_interface.i PROPERTY CPLUSPLUS ON)
 if (CMAKE_SYSTEM_NAME MATCHES "Darwin")
     set_property(SOURCE fesql_interface.i PROPERTY COMPILE_OPTIONS -python)

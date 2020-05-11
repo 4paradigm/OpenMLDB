@@ -4,6 +4,7 @@ include_directories(${INCLUDE_DIRECTORIES}
 
 add_library(fesql_storage STATIC fe_table.cc fe_segment.cc fe_table_iterator.cc)
 
+if (TESTING_ENABLE)
 add_executable(table_iterator_test table_iterator_test.cc)
 target_link_libraries(table_iterator_test 
     fesql_storage fesql_codec fesql_proto ${BRPC_LIBS} gtest ${OS_LIB})
@@ -25,3 +26,4 @@ target_link_libraries(table_test fesql_storage fesql_codec fesql_proto
     ${BRPC_LIBS} gtest ${OS_LIB})
 add_test(table_test table_test --gtest_output=xml:${CMAKE_BINARY_DIR}/table_test.xml)
 list(APPEND test_list table_test)
+endif()
