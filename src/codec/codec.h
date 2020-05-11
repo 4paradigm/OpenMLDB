@@ -286,13 +286,6 @@ inline double GetDoubleField(const int8_t* row, uint32_t offset) {
     return *(reinterpret_cast<const double*>(row + offset));
 }
 
-inline std::string Int64ToString(const int64_t key) {
-    std::stringstream ss;
-    ss << std::hex << key;
-    std::string key_str = ss.str();
-    return key_str;
-}
-
 // native get string field method
 int32_t GetStrField(const int8_t* row, uint32_t str_field_offset,
                     uint32_t next_str_field_offset, uint32_t str_start_offset,
@@ -302,6 +295,13 @@ int32_t GetStrCol(int8_t* input, int32_t str_field_offset,
                   int32_t next_str_field_offset, int32_t str_start_offset,
                   int32_t type_id, int8_t* data);
 }  // namespace v1
+
+inline std::string Int64ToString(const int64_t key) {
+    std::stringstream ss;
+    ss << std::hex << key;
+    std::string key_str = ss.str();
+    return key_str;
+}
 
 }  // namespace codec
 }  // namespace rtidb
