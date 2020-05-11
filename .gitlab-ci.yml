@@ -1,6 +1,7 @@
 image: develop-registry.4pd.io/centos6_gcc7_build_env:0.2.0
 variables:
     GIT_SUBMODULE_STRATEGY: recursive
+    GIT_SSH_COMMAND: /usr/bin/ssh -i /root/.ssh/id_rsa
 
 stages:
     - build
