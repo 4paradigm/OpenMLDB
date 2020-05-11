@@ -26,7 +26,7 @@
 
 namespace fesql {
 namespace tablet {
-using fesql::codec::IteratorV;
+using fesql::codec::ConstIterator;
 using fesql::codec::WindowIterator;
 using fesql::codec::RowIterator;
 
@@ -114,7 +114,7 @@ const Row TabletTableHandler::Get(int32_t pos) {
     }
     return iter->Valid() ? iter->GetValue() : Row();
 }
-IteratorV<uint64_t, Row>* TabletTableHandler::GetIterator(
+ConstIterator<uint64_t, Row>* TabletTableHandler::GetIterator(
     int8_t* addr) const {
     return new (addr) storage::FullTableIterator(table_->GetSegments(),
                                                  table_->GetSegCnt(), table_);
@@ -210,7 +210,7 @@ std::unique_ptr<RowIterator> TabletSegmentHandler::GetIterator() const {
     }
     return std::unique_ptr<RowIterator>();
 }
-IteratorV<uint64_t, Row>* TabletSegmentHandler::GetIterator(
+ConstIterator<uint64_t, Row>* TabletSegmentHandler::GetIterator(
     int8_t* addr) const {
     LOG(WARNING) << "can't get iterator with given address";
     return nullptr;

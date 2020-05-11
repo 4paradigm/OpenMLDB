@@ -23,26 +23,27 @@ namespace storage {
 
 using ::fesql::type::IndexDef;
 using ::fesql::type::TableDef;
-using ::fesql::vm::IteratorV;
+using ::fesql::vm::ConstIterator;
 static constexpr uint32_t SEG_CNT = 8;
 
-class TableIterator : public IteratorV<uint64_t, base::Slice> {
+class TableIterator : public ConstIterator<uint64_t, base::Slice> {
  public:
     TableIterator() = default;
     explicit TableIterator(base::Iterator<uint64_t, DataBlock*>* ts_it);
     TableIterator(Segment** segments, uint32_t seg_cnt);
     ~TableIterator();
-    void Seek(uint64_t time);
+    void Seek(const uint64_t& time);
     void Seek(const std::string& key, uint64_t ts);
-    bool Valid();
+    bool Valid() const;
     bool CurrentTsValid();
     void Next();
     void NextTs();
     void NextTsInPks();
     const Slice& GetValue();
-    const uint64_t GetKey();
+    const uint64_t& GetKey() const;
     const Slice GetPK();
     void SeekToFirst();
+    bool IsSeekable() const override;
 
  private:
     bool SeekToNextTsInPks();

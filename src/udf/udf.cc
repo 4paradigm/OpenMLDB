@@ -21,7 +21,7 @@ namespace udf {
 namespace v1 {
 using fesql::codec::ColumnImpl;
 using fesql::codec::IteratorRef;
-using fesql::codec::IteratorV;
+using fesql::codec::ConstIterator;
 using fesql::codec::ListRef;
 using fesql::codec::ListV;
 using fesql::codec::Row;
@@ -164,8 +164,8 @@ bool has_next_iterator(int8_t *input) {
     }
     ::fesql::codec::IteratorRef *iter_ref =
         (::fesql::codec::IteratorRef *)(input);
-    IteratorV<uint64_t, V> *iter =
-        (IteratorV<uint64_t, V> *)(iter_ref->iterator);
+    ConstIterator<uint64_t, V> *iter =
+        (ConstIterator<uint64_t, V> *)(iter_ref->iterator);
     return iter == nullptr ? false : iter->Valid();
 }
 
@@ -173,8 +173,8 @@ template <class V>
 V next_iterator(int8_t *input) {
     ::fesql::codec::IteratorRef *iter_ref =
         (::fesql::codec::IteratorRef *)(input);
-    IteratorV<uint64_t, V> *iter =
-        (IteratorV<uint64_t, V> *)(iter_ref->iterator);
+    ConstIterator<uint64_t, V> *iter =
+        (ConstIterator<uint64_t, V> *)(iter_ref->iterator);
     V v = iter->GetValue();
     iter->Next();
     return v;
@@ -183,8 +183,8 @@ template <class V>
 void delete_iterator(int8_t *input) {
     ::fesql::codec::IteratorRef *iter_ref =
         (::fesql::codec::IteratorRef *)(input);
-    IteratorV<uint64_t, V> *iter =
-        (IteratorV<uint64_t, V> *)(iter_ref->iterator);
+    ConstIterator<uint64_t, V> *iter =
+        (ConstIterator<uint64_t, V> *)(iter_ref->iterator);
     if (iter) {
         delete iter;
     }

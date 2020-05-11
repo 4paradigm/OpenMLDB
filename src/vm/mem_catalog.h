@@ -24,7 +24,7 @@
 namespace fesql {
 namespace vm {
 
-using fesql::codec::IteratorV;
+using fesql::codec::ConstIterator;
 using fesql::codec::Row;
 using fesql::codec::RowIterator;
 using fesql::codec::WindowIterator;
@@ -52,12 +52,13 @@ class MemTimeTableIterator : public RowIterator {
     MemTimeTableIterator(const MemTimeTable* table, const vm::Schema* schema,
                          int32_t start, int32_t end);
     ~MemTimeTableIterator();
-    void Seek(uint64_t ts);
+    void Seek(const uint64_t& ts);
     void SeekToFirst();
-    const uint64_t GetKey();
-    const Row& GetValue();
+    const uint64_t& GetKey() const;
     void Next();
-    bool Valid();
+    bool Valid() const;
+    const Row& GetValue() override;
+    bool IsSeekable() const override;
 
  private:
     const MemTimeTable* table_;
@@ -73,12 +74,13 @@ class MemTableIterator : public RowIterator {
     MemTableIterator(const MemTable* table, const vm::Schema* schema,
                      int32_t start, int32_t end);
     ~MemTableIterator();
-    void Seek(uint64_t ts);
+    void Seek(const uint64_t& ts);
     void SeekToFirst();
-    const uint64_t GetKey();
+    const uint64_t& GetKey() const;
     const Row& GetValue();
     void Next();
-    bool Valid();
+    bool Valid() const;
+    bool IsSeekable() const override;
 
  private:
     const MemTable* table_;
@@ -86,6 +88,7 @@ class MemTableIterator : public RowIterator {
     const MemTable::const_iterator start_iter_;
     const MemTable::const_iterator end_iter_;
     MemTable::const_iterator iter_;
+    uint64_t key_;
 };
 
 class MemWindowIterator : public WindowIterator {
@@ -144,8 +147,8 @@ class MemTableHandler : public TableHandler {
     inline const IndexHint& GetIndex() { return index_hint_; }
     inline const std::string& GetDatabase() { return db_; }
 
-    std::unique_ptr<IteratorV<uint64_t, Row>> GetIterator() const;
-    IteratorV<uint64_t, Row>* GetIterator(int8_t* addr) const;
+    std::unique_ptr<ConstIterator<uint64_t, Row>> GetIterator() const;
+    ConstIterator<uint64_t, Row>* GetIterator(int8_t* addr) const;
     std::unique_ptr<WindowIterator> GetWindowIterator(
         const std::string& idx_name);
 
@@ -180,8 +183,8 @@ class MemTimeTableHandler : public TableHandler {
     inline const Schema* GetSchema() { return schema_; }
     inline const std::string& GetName() { return table_name_; }
     inline const IndexHint& GetIndex() { return index_hint_; }
-    std::unique_ptr<IteratorV<uint64_t, Row>> GetIterator() const;
-    IteratorV<uint64_t, Row>* GetIterator(int8_t* addr) const;
+    std::unique_ptr<ConstIterator<uint64_t, Row>> GetIterator() const;
+    ConstIterator<uint64_t, Row>* GetIterator(int8_t* addr) const;
     inline const std::string& GetDatabase() { return db_; }
     std::unique_ptr<WindowIterator> GetWindowIterator(
         const std::string& idx_name);
@@ -224,13 +227,14 @@ class Window : public MemTimeTableHandler {
           max_size_(max_size) {}
     virtual ~Window() {}
 
-    std::unique_ptr<vm::IteratorV<uint64_t, Row>> GetIterator() const override {
+    std::unique_ptr<vm::ConstIterator<uint64_t, Row>> GetIterator()
+        const override {
         std::unique_ptr<vm::MemTimeTableIterator> it(
             new vm::MemTimeTableIterator(&table_, schema_, start_, end_));
         return std::move(it);
     }
 
-    vm::IteratorV<uint64_t, Row>* GetIterator(int8_t* addr) const override {
+    vm::ConstIterator<uint64_t, Row>* GetIterator(int8_t* addr) const override {
         if (nullptr == addr) {
             return new vm::MemTimeTableIterator(&table_, schema_, start_, end_);
         } else {
@@ -326,7 +330,7 @@ class MemSegmentHandler : public TableHandler {
         }
         return std::unique_ptr<RowIterator>();
     }
-    vm::IteratorV<uint64_t, Row>* GetIterator(int8_t* addr) const override {
+    vm::ConstIterator<uint64_t, Row>* GetIterator(int8_t* addr) const override {
         LOG(WARNING) << "can't get iterator with given address";
         return nullptr;
     }

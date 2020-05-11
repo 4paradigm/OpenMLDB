@@ -30,7 +30,7 @@
 namespace fesql {
 namespace vm {
 
-using fesql::codec::IteratorV;
+using fesql::codec::ConstIterator;
 using fesql::codec::ListV;
 using fesql::codec::Row;
 using fesql::codec::RowIterator;
@@ -79,10 +79,10 @@ class RowHandler : public DataHandler {
     RowHandler() {}
 
     virtual ~RowHandler() {}
-    std::unique_ptr<IteratorV<uint64_t, Row>> GetIterator() const override {
-        return std::unique_ptr<IteratorV<uint64_t, Row>>();
+    std::unique_ptr<ConstIterator<uint64_t, Row>> GetIterator() const override {
+        return std::unique_ptr<ConstIterator<uint64_t, Row>>();
     }
-    IteratorV<uint64_t, Row>* GetIterator(int8_t* addr) const override {
+    ConstIterator<uint64_t, Row>* GetIterator(int8_t* addr) const override {
         return nullptr;
     }
     const uint64_t GetCount() override { return 0; }
@@ -125,7 +125,7 @@ class PartitionHandler : public TableHandler {
     virtual std::unique_ptr<RowIterator> GetIterator() const {
         return std::unique_ptr<RowIterator>();
     }
-    IteratorV<uint64_t, Row>* GetIterator(int8_t* addr) const override {
+    ConstIterator<uint64_t, Row>* GetIterator(int8_t* addr) const override {
         return nullptr;
     }
     virtual std::unique_ptr<WindowIterator> GetWindowIterator(

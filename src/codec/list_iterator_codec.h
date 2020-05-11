@@ -16,12 +16,14 @@
 #include <utility>
 #include <vector>
 #include "base/fe_slice.h"
+#include "base/iterator.h"
 #include "codec/row.h"
 #include "codec/type_codec.h"
 #include "glog/logging.h"
 namespace fesql {
 namespace codec {
 
+using fesql::base::ConstIterator;
 template <class V>
 class ArrayListIterator;
 
@@ -31,19 +33,7 @@ class ColumnImpl;
 template <class V>
 class ColumnIterator;
 
-template <class K, class V>
-class IteratorV {
- public:
-    IteratorV() {}
-    virtual ~IteratorV() {}
-    virtual void Seek(K key) = 0;
-    virtual void SeekToFirst() = 0;
-    virtual bool Valid() = 0;
-    virtual void Next() = 0;
-    virtual const V &GetValue() = 0;
-    virtual const K GetKey() = 0;
-};
-typedef IteratorV<uint64_t, Row> RowIterator;
+typedef ConstIterator<uint64_t, Row> RowIterator;
 class WindowIterator {
  public:
     WindowIterator() {}
@@ -62,8 +52,8 @@ class ListV {
     ListV() {}
     virtual ~ListV() {}
     // TODO(chenjing): at 数组越界处理
-    virtual std::unique_ptr<IteratorV<uint64_t, V>> GetIterator() const = 0;
-    virtual IteratorV<uint64_t, V> *GetIterator(int8_t *addr) const = 0;
+    virtual std::unique_ptr<ConstIterator<uint64_t, V>> GetIterator() const = 0;
+    virtual ConstIterator<uint64_t, V> *GetIterator(int8_t *addr) const = 0;
     virtual const uint64_t GetCount() = 0;
     virtual V At(uint64_t pos) = 0;
 };
@@ -92,12 +82,12 @@ class ColumnImpl : public WrapListImpl<V, Row> {
         value = *((const V *)ptr);
         return value;
     }
-    std::unique_ptr<IteratorV<uint64_t, V>> GetIterator() const override {
-        auto iter = std::unique_ptr<IteratorV<uint64_t, V>>(
+    std::unique_ptr<ConstIterator<uint64_t, V>> GetIterator() const override {
+        auto iter = std::unique_ptr<ConstIterator<uint64_t, V>>(
             new ColumnIterator<V>(root_, this));
         return std::move(iter);
     }
-    IteratorV<uint64_t, V> *GetIterator(int8_t *addr) const override {
+    ConstIterator<uint64_t, V> *GetIterator(int8_t *addr) const override {
         if (nullptr == addr) {
             return new ColumnIterator<V>(root_, this);
         } else {
@@ -153,11 +143,11 @@ class ArrayListV : public ListV<V> {
     ~ArrayListV() {}
     // TODO(chenjing): at 数组越界处理
 
-    std::unique_ptr<IteratorV<uint64_t, V>> GetIterator() const override {
+    std::unique_ptr<ConstIterator<uint64_t, V>> GetIterator() const override {
         return std::unique_ptr<ArrayListIterator<V>>(
             new ArrayListIterator<V>(buffer_, start_, end_));
     }
-    IteratorV<uint64_t, V> *GetIterator(int8_t *addr) const override {
+    ConstIterator<uint64_t, V> *GetIterator(int8_t *addr) const override {
         if (nullptr == addr) {
             return new ArrayListIterator<V>(buffer_, start_, end_);
         } else {
@@ -174,44 +164,48 @@ class ArrayListV : public ListV<V> {
 };
 
 template <class V>
-class ArrayListIterator : public IteratorV<uint64_t, V> {
+class ArrayListIterator : public ConstIterator<uint64_t, V> {
  public:
     explicit ArrayListIterator(const std::vector<V> *buffer,
                                const uint64_t start, const uint64_t end)
         : buffer_(buffer),
           iter_start_(buffer->cbegin() + start),
           iter_end_(buffer->cbegin() + end),
-          iter_(iter_start_) {}
+          iter_(iter_start_),
+          key_(0) {}
 
     explicit ArrayListIterator(const ArrayListIterator<V> &impl)
         : buffer_(impl.buffer_),
           iter_start_(impl.iter_start_),
           iter_end_(impl.iter_end_),
-          iter_(impl.iter_start_) {}
-
+          iter_(impl.iter_start_),
+          key_(0) {}
     explicit ArrayListIterator(const ArrayListIterator<V> &impl, uint64_t start,
                                uint64_t end)
         : buffer_(impl.buffer_),
           iter_start_(impl.iter_start_ + start),
           iter_end_(impl.iter_start_ + end),
-          iter_(iter_start_) {}
+          iter_(iter_start_),
+          key_(0) {}
 
     ~ArrayListIterator() {}
-    void Seek(uint64_t key) override {
+    void Seek(const uint64_t &key) override {
         iter_ =
             (iter_start_ + key) >= iter_end_ ? iter_end_ : iter_start_ + key;
+        key_ = iter_end_ - iter_start_;
     }
 
-    bool Valid() override { return iter_end_ != iter_; }
+    bool Valid() const override { return iter_end_ != iter_; }
 
     void Next() override { iter_++; }
 
     const V &GetValue() override { return *iter_; }
 
-    const uint64_t GetKey() override { return iter_ - iter_start_; }
+    const uint64_t &GetKey() const override { return key_; }
 
     void SeekToFirst() { iter_ = iter_start_; }
 
+    bool IsSeekable() const override { return true; }
     ArrayListIterator<V> *range(int start, int end) {
         if (start > end || end < iter_start_ || start > iter_end_) {
             return new ArrayListIterator(buffer_, iter_start_, iter_start_);
@@ -226,32 +220,34 @@ class ArrayListIterator : public IteratorV<uint64_t, V> {
     const typename std::vector<V>::const_iterator iter_start_;
     const typename std::vector<V>::const_iterator iter_end_;
     typename std::vector<V>::const_iterator iter_;
+    uint64_t key_;
 };
 
 template <class V>
-class ColumnIterator : public IteratorV<uint64_t, V> {
+class ColumnIterator : public ConstIterator<uint64_t, V> {
  public:
     ColumnIterator(ListV<Row> *list, const ColumnImpl<V> *column_impl)
-        : IteratorV<uint64_t, V>(), column_impl_(column_impl) {
+        : ConstIterator<uint64_t, V>(), column_impl_(column_impl) {
         row_iter_ = list->GetIterator();
         if (!row_iter_) {
             row_iter_->SeekToFirst();
         }
     }
     ~ColumnIterator() {}
-    void Seek(uint64_t key) override { row_iter_->Seek(key); }
+    void Seek(const uint64_t &key) override { row_iter_->Seek(key); }
     void SeekToFirst() override { row_iter_->SeekToFirst(); }
-    bool Valid() override { return row_iter_->Valid(); }
+    bool Valid() const override { return row_iter_->Valid(); }
     void Next() override { row_iter_->Next(); }
     const V &GetValue() override {
         value_ = column_impl_->GetField(row_iter_->GetValue());
         return value_;
     }
-    const uint64_t GetKey() override { return row_iter_->GetKey(); }
+    const uint64_t &GetKey() const override { return row_iter_->GetKey(); }
+    bool IsSeekable() const override { return row_iter_->IsSeekable(); }
 
  private:
     const ColumnImpl<V> *column_impl_;
-    std::unique_ptr<IteratorV<uint64_t, Row>> row_iter_;
+    std::unique_ptr<ConstIterator<uint64_t, Row>> row_iter_;
     V value_;
 };
 

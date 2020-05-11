@@ -135,7 +135,7 @@ CSVSegmentIterator::~CSVSegmentIterator() {
     // delete buf_;
 }
 
-void CSVSegmentIterator::Seek(uint64_t ts) {
+void CSVSegmentIterator::Seek(const uint64_t& ts) {
     for (; it_ != rend_; ++it_) {
         if (it_->first <= ts) {
             return;
@@ -146,9 +146,14 @@ void CSVSegmentIterator::Seek(uint64_t ts) {
 
 void CSVSegmentIterator::SeekToFirst() {}
 
-bool CSVSegmentIterator::Valid() {
+bool CSVSegmentIterator::Valid() const {
     bool valid = it_ != rend_;
-    if (valid) {
+    return valid;
+}
+
+void CSVSegmentIterator::Next() {
+    ++it_;
+    if (Valid()) {
         DLOG(INFO) << "key " << it_->first;
         // TODO(wangtaize) memory leak
         //    if (buf_ != NULL) delete buf_;
@@ -159,17 +164,15 @@ bool CSVSegmentIterator::Valid() {
         GetRow(schema_, table_, it_->second.chunk_offset,
                it_->second.array_offset, &rb_);
     }
-    return valid;
 }
 
-void CSVSegmentIterator::Next() { ++it_; }
-
-const uint64_t CSVSegmentIterator::GetKey() { return it_->first; }
+const uint64_t& CSVSegmentIterator::GetKey() const { return it_->first; }
 
 const Row& CSVSegmentIterator::GetValue() {
     value_ = Row(reinterpret_cast<char*>(buf_), buf_size_);
     return value_;
 }
+bool CSVSegmentIterator::IsSeekable() const { return true; }
 
 CSVTableIterator::CSVTableIterator(const std::shared_ptr<arrow::Table>& table,
                                    const Schema& schema)
@@ -179,17 +182,18 @@ CSVTableIterator::CSVTableIterator(const std::shared_ptr<arrow::Table>& table,
       array_offset_(0),
       buf_(NULL),
       rb_(schema),
-      buf_size_(0) {}
+      buf_size_(0),
+      empty_key_(0) {}
 
 CSVTableIterator::~CSVTableIterator() {
     // delete buf_;
 }
 
-void CSVTableIterator::Seek(uint64_t ts) {}
+void CSVTableIterator::Seek(const uint64_t& ts) {}
 
 void CSVTableIterator::SeekToFirst() {}
 
-const uint64_t CSVTableIterator::GetKey() { return 0; }
+const uint64_t& CSVTableIterator::GetKey() const { return empty_key_; }
 
 const Row& CSVTableIterator::GetValue() {
     value_ = Row(reinterpret_cast<char*>(buf_), buf_size_);
@@ -204,14 +208,16 @@ void CSVTableIterator::Next() {
     } else {
         array_offset_ += 1;
     }
+    if (Valid()) {
+        BuildRow();
+    }
 }
 
-bool CSVTableIterator::Valid() {
+bool CSVTableIterator::Valid() const {
     if (table_->num_columns() <= 0) return false;
     if (table_->column(0)->num_chunks() <= chunk_offset_) return false;
     if (table_->column(0)->chunk(chunk_offset_)->length() <= array_offset_)
         return false;
-    BuildRow();
     return true;
 }
 
@@ -224,6 +230,7 @@ void CSVTableIterator::BuildRow() {
     buf_size_ = row_size;
     GetRow(schema_, table_, chunk_offset_, array_offset_, &rb_);
 }
+bool CSVTableIterator::IsSeekable() const { return true; }
 
 }  // namespace vm
 }  // namespace fesql

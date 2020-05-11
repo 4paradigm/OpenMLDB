@@ -83,9 +83,9 @@ class CSVTableHandler : public TableHandler {
         const std::string& idx_name);
     const uint64_t GetCount() override;
     Row At(uint64_t pos) override;
-    std::unique_ptr<IteratorV<uint64_t, Row>> GetIterator()
+    std::unique_ptr<ConstIterator<uint64_t, Row>> GetIterator()
         const override;
-    IteratorV<uint64_t, Row>* GetIterator(int8_t* addr) const override;
+    ConstIterator<uint64_t, Row>* GetIterator(int8_t* addr) const override;
 
  private:
     bool InitConfig();
