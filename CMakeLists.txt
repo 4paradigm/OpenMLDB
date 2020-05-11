@@ -14,7 +14,7 @@ configure_file (
 
 add_definitions('-g')
 add_definitions('-Wall')
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
 option(TCMALLOC_ENABLE "Enable TCMALLOC" ON)
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -46,7 +46,8 @@ configure_file(
     "${PROJECT_SOURCE_DIR}/src/config.h.in"
     "${PROJECT_SOURCE_DIR}/src/config.h")
 
-include_directories(${PROJECT_SOURCE_DIR}/thirdparty/include ${PROJECT_SOURCE_DIR}/fesql/src)
+include_directories(${PROJECT_SOURCE_DIR}/thirdparty/include ${PROJECT_SOURCE_DIR}/fesql/src 
+ ${PROJECT_SOURCE_DIR}/fesql/build/src)
 link_directories(${PROJECT_SOURCE_DIR}/thirdparty/lib)
 add_subdirectory(src)
 add_custom_target(rtidbpy

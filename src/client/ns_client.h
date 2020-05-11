@@ -16,6 +16,9 @@
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
 #include "rpc/rpc_client.h"
+#include "node/node_manager.h"
+#include "parser/parser.h"
+#include "plan/planner.h"
 
 namespace rtidb {
 namespace client {
@@ -55,6 +58,9 @@ class NsClient {
                        std::string& msg); // NOLINT
 
     bool CreateTable(const ::rtidb::nameserver::TableInfo& table_info,
+                     std::string& msg); // NOLINT
+
+    bool CreateTable(const std::string& script, 
                      std::string& msg); // NOLINT
 
     bool DropTable(const std::string& name, std::string& msg); // NOLINT
@@ -171,6 +177,11 @@ class NsClient {
     bool DeleteIndex(const std::string& table_name, const std::string& idx_name,
                      std::string& msg); // NOLINT
 
+ private:
+	bool TransformToTableDef(const std::string &table_name,
+                       const NodePointVector &column_desc_list,
+                       ::rtidb::nameserver::TableInfo *table
+                       ::rtidb::base::Status *status);
  private:
     std::string endpoint_;
     ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> client_;

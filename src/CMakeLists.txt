@@ -1,6 +1,9 @@
 include_directories(${INCLUDE_DIRECTORIES} ${PROJECT_SOURCE_DIR}/src)
 
-set(BIN_LIBS client nameserver tablet client blobserver blob_proxy zk_client replica  base beans storage log common rocksdb zookeeper_mt tcmalloc_minimal ${BRPC_LIBS})
+set(BIN_LIBS client nameserver tablet client blobserver blob_proxy zk_client replica  base beans storage log common rocksdb zookeeper_mt tcmalloc_minimal
+    ${VM_LIBS}
+    ${LLVM_LIBS}
+    ${BRPC_LIBS})
 
 add_library(tablet STATIC proto/tablet.pb.cc proto/common.pb.cc proto/type.pb.cc tablet/tablet_impl.cc flags.cc tablet/file_receiver.cc tablet/file_sender.cc)
 add_library(blobserver STATIC proto/blob_server.pb.cc storage/object_store.cc proto/type.pb.cc blobserver/blobserver_impl.cc flags.cc)
@@ -13,7 +16,6 @@ add_library(log STATIC log/crc32c.cc
                        log/log_writer.cc 
                        log/log_reader.cc
                        log/writable_file.cc flags.cc)
-
 add_library(blob_proxy STATIC proto/blob_proxy.pb.cc blob_proxy/blob_proxy_impl.cc flags.cc client/client.cc)
 
 add_library(base STATIC base/status.cc base/ringqueue.h)

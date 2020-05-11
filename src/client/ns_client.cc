@@ -8,6 +8,7 @@
 #include "client/ns_client.h"
 #include <utility>
 #include "base/strings.h"
+#include "glog/logging.h"
 
 DECLARE_int32(request_timeout_ms);
 namespace rtidb {
@@ -133,6 +134,17 @@ bool NsClient::AddTableField(const std::string& table_name,
         return true;
     }
     return false;
+}
+
+bool NsClient::CreateTable(const std::string& script, std::string& msg) {
+    fesql::node::NodeManager node_manager;
+    fesql::parser::FeSQLParser parser;
+    fesql::plan::SimplePlanner planner(&node_manager);
+    DLOG(INFO) << "start to execute script from dbms:\n" << script;
+    fesql::base::Status sql_status;
+    fesql::node::NodePointVector parser_trees;
+    parser.parse(script, parser_trees, &node_manager, sql_status);
+    return true;
 }
 
 bool NsClient::CreateTable(const ::rtidb::nameserver::TableInfo& table_info,
@@ -801,6 +813,114 @@ bool NsClient::DeleteIndex(const std::string& table_name,
     msg = response.msg();
     int code = response.code();
     return ok && code == 0;
+}
+
+bool NsClient::TransformToTableDef(const std::string& table_name,
+ 	const ::fesql::node::NodePointVector& column_desc_list,
+	::rtidb::nameserver::TableInfo *table, ::rtidb::base::Status *status) {
+    if (table == NULL || status == NULL) return false;
+    std::set<std::string> index_names;
+    std::set<std::string> column_names;
+    for (auto column_desc : column_desc_list) {
+        switch (column_desc->GetType()) {
+            case ::fesql::node::kColumnDesc: {
+                ::fesql::node::ColumnDefNode *column_def =
+                    (::fesql::node::ColumnDefNode *)column_desc;
+                ::rtidb::common::ColumnDesc *column = table->add_column_desc_v1();
+                if (column_names.find(column_def->GetColumnName()) !=
+                    column_names.end()) {
+                    status.msg = "CREATE common: COLUMN NAME " +
+                                 column_def->GetColumnName() + " duplicate";
+                    status.code = common::kSQLError;
+                    LOG(WARNING) << status.msg;
+                    return false;
+                }
+
+                column->set_name(column_def->GetColumnName());
+                column->set_is_not_null(column_def->GetIsNotNull());
+                column_names.insert(column_def->GetColumnName());
+                switch (column_def->GetColumnType()) {
+                    case node::kBool:
+                        column->set_type(type::Type::kBool);
+                        break;
+                    case node::kInt32:
+                        column->set_type(type::Type::kInt32);
+                        break;
+                    case node::kInt64:
+                        column->set_type(type::Type::kInt64);
+                        break;
+                    case node::kFloat:
+                        column->set_type(type::Type::kFloat);
+                        break;
+                    case node::kDouble:
+                        column->set_type(type::Type::kDouble);
+                        break;
+                    case node::kTimestamp: {
+                        column->set_type(type::Type::kTimestamp);
+                        break;
+                    }
+                    case node::kVarchar:
+                        column->set_type(type::Type::kVarchar);
+                        break;
+                    default: {
+                        status.msg =
+                            "CREATE common: column type " +
+                            node::DataTypeName(column_def->GetColumnType()) +
+                            " is not supported";
+                        status.code = common::kSQLError;
+                        LOG(WARNING) << status.msg;
+                        return false;
+                    }
+                }
+                break;
+            }
+
+            case node::kColumnIndex: {
+                node::ColumnIndexNode *column_index =
+                    (node::ColumnIndexNode *)column_desc;
+
+                if (column_index->GetName().empty()) {
+                    column_index->SetName(
+                        GenerateName("INDEX", table->indexes_size()));
+                }
+                if (index_names.find(column_index->GetName()) !=
+                    index_names.end()) {
+                    status.msg = "CREATE common: INDEX NAME " +
+                                 column_index->GetName() + " duplicate";
+                    status.code = common::kSQLError;
+                    LOG(WARNING) << status.msg;
+                    return false;
+                }
+                index_names.insert(column_index->GetName());
+                type::IndexDef *index = table->add_indexes();
+                index->set_name(column_index->GetName());
+
+                // TODO(chenjing): set ttl per key
+                if (-1 != column_index->GetTTL()) {
+                    index->add_ttl(column_index->GetTTL());
+                }
+
+                for (auto key : column_index->GetKey()) {
+                    index->add_first_keys(key);
+                }
+
+                if (!column_index->GetTs().empty()) {
+                    index->set_second_key(column_index->GetTs());
+                }
+                break;
+            }
+            default: {
+                status.msg = "can not support " +
+                             node::NameOfSQLNodeType(column_desc->GetType()) +
+                             " when CREATE TABLE";
+                status.code = common::kSQLError;
+                LOG(WARNING) << status.msg;
+                return false;
+            }
+        }
+    }
+    table->set_name(table_name);
+
 }
 
 }  // namespace client
