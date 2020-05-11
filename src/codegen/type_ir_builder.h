@@ -20,7 +20,7 @@
 
 #include <string>
 #include <vector>
-#include "codec/row_codec.h"
+#include "codec/fe_row_codec.h"
 #include "node/node_enum.h"
 
 namespace fesql {

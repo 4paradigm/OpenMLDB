@@ -9,7 +9,7 @@
 
 #include "codegen/codegen_base_test.h"
 #include <proto/fe_type.pb.h>
-#include "codec/row_codec.h"
+#include "codec/fe_row_codec.h"
 namespace fesql {
 namespace codegen {
 

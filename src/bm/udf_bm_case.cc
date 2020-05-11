@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 #include "bm/base_bm.h"
-#include "codec/row_codec.h"
+#include "codec/fe_row_codec.h"
 #include "codegen/ir_base_builder.h"
 #include "codegen/window_ir_builder.h"
 #include "gtest/gtest.h"

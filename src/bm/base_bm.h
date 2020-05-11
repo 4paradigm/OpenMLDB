@@ -14,7 +14,7 @@
 #include <random>
 #include <string>
 #include <vector>
-#include "codec/row_codec.h"
+#include "codec/fe_row_codec.h"
 #include "tablet/tablet_catalog.h"
 #include "vm/catalog.h"
 #include "vm/mem_catalog.h"

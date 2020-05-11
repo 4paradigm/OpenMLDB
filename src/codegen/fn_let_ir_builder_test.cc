@@ -20,7 +20,7 @@
 #include <string>
 #include <vector>
 #include "codec/list_iterator_codec.h"
-#include "codec/row_codec.h"
+#include "codec/fe_row_codec.h"
 #include "codegen/fn_ir_builder.h"
 #include "gtest/gtest.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"

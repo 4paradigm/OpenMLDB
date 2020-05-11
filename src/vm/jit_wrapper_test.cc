@@ -6,7 +6,7 @@
  * Date: 2020/3/12
  *--------------------------------------------------------------------------
  **/
-#include "codec/row_codec.h"
+#include "codec/fe_row_codec.h"
 #include "vm/jit_wrapper.h"
 #include "vm/engine.h"
 #include "vm/simple_catalog.h"

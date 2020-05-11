@@ -22,7 +22,7 @@
 #include <memory>
 #include <string>
 #include "arrow/table.h"
-#include "codec/row_codec.h"
+#include "codec/fe_row_codec.h"
 #include "vm/catalog.h"
 #include "vm/csv_catalog.h"
 

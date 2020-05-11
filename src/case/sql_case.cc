@@ -11,7 +11,7 @@
 #include "boost/algorithm/string.hpp"
 #include "boost/filesystem/operations.hpp"
 #include "boost/lexical_cast.hpp"
-#include "codec/row_codec.h"
+#include "codec/fe_row_codec.h"
 #include "glog/logging.h"
 #include "string"
 #include "vector"

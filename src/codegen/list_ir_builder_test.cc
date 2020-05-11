@@ -14,7 +14,7 @@
 #include <utility>
 #include <vector>
 #include "codec/list_iterator_codec.h"
-#include "codec/row_codec.h"
+#include "codec/fe_row_codec.h"
 #include "codegen/arithmetic_expr_ir_builder.h"
 #include "codegen/buf_ir_builder.h"
 #include "codegen/codegen_base_test.h"

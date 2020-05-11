@@ -7,7 +7,7 @@
  *--------------------------------------------------------------------------
  **/
 #include "vm/core_api.h"
-#include "codec/row_codec.h"
+#include "codec/fe_row_codec.h"
 #include "vm/runner.h"
 
 namespace fesql {

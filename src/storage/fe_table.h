@@ -14,7 +14,7 @@
 #include <utility>
 #include <vector>
 #include "base/iterator.h"
-#include "codec/row_codec.h"
+#include "codec/fe_row_codec.h"
 #include "storage/fe_segment.h"
 #include "vm/catalog.h"
 
