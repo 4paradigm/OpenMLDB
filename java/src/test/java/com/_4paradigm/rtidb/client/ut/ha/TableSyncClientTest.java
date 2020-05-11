@@ -899,8 +899,7 @@ public class TableSyncClientTest extends TestCaseBase {
             data.put("attribute", "a1");
             data.put("image", "i1");
 
-            boolean ok = tableSyncClient.put(name, data, wo);
-            Assert.assertTrue(ok);
+            Assert.assertTrue(tableSyncClient.put(name, data, wo).isSuccess());
 
             data.clear();
             data.put("id", 12l);
@@ -975,6 +974,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertFalse(it.valid());
             }
 
+            boolean ok = false;
             //update
             {
                 Map<String, Object> conditionColumns = new HashMap<>();
@@ -1074,9 +1074,7 @@ public class TableSyncClientTest extends TestCaseBase {
             data.put("image", "i1");
             data.put("memory", 11);
             data.put("price", 11.1);
-
-            boolean ok = tableSyncClient.put(name, data, wo);
-            Assert.assertTrue(ok);
+            Assert.assertTrue(tableSyncClient.put(name, data, wo).isSuccess());
 
             data.clear();
             data.put("id", 12l);
@@ -1287,6 +1285,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertFalse(it.valid());
             }
 
+            boolean ok = false;
             //update by pk
             {
                 Map<String, Object> conditionColumns = new HashMap<>();
@@ -1444,8 +1443,7 @@ public class TableSyncClientTest extends TestCaseBase {
             //put
             WriteOption wo = new WriteOption();
             Map<String, Object> data = new HashMap<String, Object>();
-            ok = tableSyncClient.put(args.tableDesc.getName(), (Map) (args.row[0]), wo);
-            Assert.assertTrue(ok);
+            Assert.assertTrue(tableSyncClient.put(args.tableDesc.getName(), (Map) (args.row[0]), wo).isSuccess());
 
             //traverse
             ReadOption ro = new ReadOption(null, null, null, 1);
@@ -1584,14 +1582,10 @@ public class TableSyncClientTest extends TestCaseBase {
             Assert.assertEquals(schema.size(), 9);
             //put
             WriteOption wo = new WriteOption();
-            ok = tableSyncClient.put(name, (Map) (args.row[0]), wo);
-            Assert.assertTrue(ok);
-            ok = tableSyncClient.put(name, (Map) (args.row[1]), wo);
-            Assert.assertTrue(ok);
-            ok = tableSyncClient.put(name, (Map) (args.row[2]), wo);
-            Assert.assertTrue(ok);
-            ok = tableSyncClient.put(name, (Map) (args.row[3]), wo);
-            Assert.assertTrue(ok);
+            Assert.assertTrue(tableSyncClient.put(name, (Map) (args.row[0]), wo).isSuccess());
+            Assert.assertTrue(tableSyncClient.put(name, (Map) (args.row[1]), wo).isSuccess());
+            Assert.assertTrue(tableSyncClient.put(name, (Map) (args.row[2]), wo).isSuccess());
+            Assert.assertTrue(tableSyncClient.put(name, (Map) (args.row[3]), wo).isSuccess());
             //query
             ReadOption ro;
             RelationalIterator it;
@@ -1837,8 +1831,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(it.getCount(), 3);
             }
             //put second
-            ok = tableSyncClient.put(name, (Map) (args.row[0]), wo);
-            Assert.assertTrue(ok);
+            Assert.assertTrue(tableSyncClient.put(name, (Map) (args.row[0]), wo).isSuccess());
             {
                 //delete by unique
                 ro = new ReadOption(null, null, null, 1);
@@ -1887,14 +1880,10 @@ public class TableSyncClientTest extends TestCaseBase {
             Assert.assertEquals(schema.size(), 9);
             //put
             WriteOption wo = new WriteOption();
-            ok = tableSyncClient.put(name, (Map) (args.row[0]), wo);
-            Assert.assertTrue(ok);
-            ok = tableSyncClient.put(name, (Map) (args.row[1]), wo);
-            Assert.assertTrue(ok);
-            ok = tableSyncClient.put(name, (Map) (args.row[2]), wo);
-            Assert.assertTrue(ok);
-            ok = tableSyncClient.put(name, (Map) (args.row[3]), wo);
-            Assert.assertTrue(ok);
+            Assert.assertTrue(tableSyncClient.put(name, (Map) (args.row[0]), wo).isSuccess());
+            Assert.assertTrue(tableSyncClient.put(name, (Map) (args.row[1]), wo).isSuccess());
+            Assert.assertTrue(tableSyncClient.put(name, (Map) (args.row[2]), wo).isSuccess());
+            Assert.assertTrue(tableSyncClient.put(name, (Map) (args.row[3]), wo).isSuccess());
             //query
             ReadOption ro;
             RelationalIterator it;
@@ -2026,14 +2015,14 @@ public class TableSyncClientTest extends TestCaseBase {
             data.put("image", "i1");
             data.put("memory", 11);
             data.put("price", 11.1);
-            boolean ok = tableSyncClient.put(name, data, wo);
-            Assert.assertTrue(ok);
+            Assert.assertTrue(tableSyncClient.put(name, data, wo).isSuccess());
 
             //traverse
             ReadOption ro = new ReadOption(null, null, null, 1);
             RelationalIterator it = tableSyncClient.traverse(name, ro);
             Assert.assertEquals(it.getCount(), 1);
 
+            boolean ok = false;
             //delete pk
             {
                 Map<String, Object> conditionColumns2 = new HashMap<>();
@@ -2054,8 +2043,7 @@ public class TableSyncClientTest extends TestCaseBase {
             data.put("image", "i1");
             data.put("memory", 11);
             data.put("price", 11.1);
-            ok = tableSyncClient.put(name, data, wo);
-            Assert.assertTrue(ok);
+            Assert.assertTrue(tableSyncClient.put(name, data, wo).isSuccess());
 
             data.clear();
             data.put("id", 12l);
@@ -2176,9 +2164,8 @@ public class TableSyncClientTest extends TestCaseBase {
                 data.put("price", 11.1 + i);
                 data.put("attribute2", new Date(2020, 5, 2));
                 data.put("ts", new DateTime(1588756535));
-                ok = tableSyncClient.put(name, data, wo);
+                Assert.assertTrue(tableSyncClient.put(name, data, wo).isSuccess());
                 data.clear();
-                Assert.assertTrue(ok);
             }
             ReadOption ro = new ReadOption(null, null, null, 0);
             //traverse
@@ -2248,9 +2235,8 @@ public class TableSyncClientTest extends TestCaseBase {
                 data.put("id", i);
                 data.put("attribute", "a" + i);
                 data.put("image", "i" + i);
-                boolean ok = tableSyncClient.put(name, data, wo);
+                Assert.assertTrue(tableSyncClient.put(name, data, wo).isSuccess());
                 data.clear();
-                Assert.assertTrue(ok);
             }
 
             Set<String> colSet = new HashSet<>();
@@ -2308,9 +2294,8 @@ public class TableSyncClientTest extends TestCaseBase {
                 data.put("id", String.format("%04d", i));
                 data.put("attribute", "a" + i);
                 data.put("image", "i" + i);
-                boolean ok = tableSyncClient.put(name, data, wo);
+                Assert.assertTrue(tableSyncClient.put(name, data, wo).isSuccess());
                 data.clear();
-                Assert.assertTrue(ok);
             }
 
             Set<String> colSet = new HashSet<>();
@@ -2351,9 +2336,8 @@ public class TableSyncClientTest extends TestCaseBase {
                 data.put("id", String.format("%04d", i));
                 data.put("attribute", "a" + i);
                 data.put("image", "i" + i);
-                boolean ok = tableSyncClient.put(name, data, wo);
+                Assert.assertTrue(tableSyncClient.put(name, data, wo).isSuccess());
                 data.clear();
-                Assert.assertTrue(ok);
             }
 
             Set<String> colSet = new HashSet<>();
@@ -2414,9 +2398,8 @@ public class TableSyncClientTest extends TestCaseBase {
                 data.put("id", String.format("%04d", i));
                 data.put("attribute", "a" + i);
                 data.put("image", "i" + i);
-                boolean ok = tableSyncClient.put(name, data, wo);
+                Assert.assertTrue(tableSyncClient.put(name, data, wo).isSuccess());
                 data.clear();
-                Assert.assertTrue(ok);
             }
 
             List<ReadOption> ros = new ArrayList<ReadOption>();
@@ -2473,8 +2456,8 @@ public class TableSyncClientTest extends TestCaseBase {
             data.clear();
             data.put("attribute", "a1");
             data.put("image", "i1");
-            boolean ok = tableSyncClient.put(name, data, wo);
-            Assert.assertTrue(ok);
+            PutResult pr = tableSyncClient.put(name, data, wo);
+            Assert.assertTrue(pr.isSuccess());
 
             //traverse
             ReadOption ro = new ReadOption(null, null, null, 1);
@@ -2482,6 +2465,7 @@ public class TableSyncClientTest extends TestCaseBase {
             Assert.assertTrue(it.valid());
             Map<String, Object> map = it.getDecodedValue();
             Assert.assertEquals(map.size(), 3);
+            Assert.assertEquals(map.get("id"), pr.getAutoGenPk());
             Assert.assertEquals(map.get("attribute"), "a1");
             Assert.assertEquals(map.get("image"), "i1");
 
@@ -2516,8 +2500,8 @@ public class TableSyncClientTest extends TestCaseBase {
             data.clear();
             data.put("attribute", 12l);
             data.put("image", "i1");
-            boolean ok = tableSyncClient.put(name, data, wo);
-            Assert.assertTrue(ok);
+            PutResult pr = tableSyncClient.put(name, data, wo);
+            Assert.assertTrue(pr.isSuccess());
 
             //traverse
             ReadOption ro = new ReadOption(null, null, null, 1);
@@ -2525,6 +2509,7 @@ public class TableSyncClientTest extends TestCaseBase {
             Assert.assertTrue(it.valid());
             Map<String, Object> map = it.getDecodedValue();
             Assert.assertEquals(map.size(), 3);
+            Assert.assertEquals(map.get("id"), pr.getAutoGenPk());
             Assert.assertEquals(map.get("attribute"), 12l);
             Assert.assertEquals(map.get("image"), "i1");
 

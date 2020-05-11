@@ -193,6 +193,7 @@ message PutRequest {
 message PutResponse {
     optional int32 code = 1;
     optional string msg = 2;
+    optional int64 auto_gen_pk = 3;
 }
 
 message DeleteRequest {
