@@ -35,11 +35,11 @@ WindowInternalIterator::WindowInternalIterator(
     : ts_it_(std::move(ts_it)) {}
 WindowInternalIterator::~WindowInternalIterator() {}
 
-void WindowInternalIterator::Seek(uint64_t ts) { ts_it_->Seek(ts); }
+void WindowInternalIterator::Seek(const uint64_t& ts) { ts_it_->Seek(ts); }
 
 void WindowInternalIterator::SeekToFirst() { ts_it_->SeekToFirst(); }
 
-bool WindowInternalIterator::Valid() { return ts_it_->Valid(); }
+bool WindowInternalIterator::Valid() const { return ts_it_->Valid(); }
 
 void WindowInternalIterator::Next() { ts_it_->Next(); }
 
@@ -50,7 +50,10 @@ const Row& WindowInternalIterator::GetValue() {
     return value_;
 }
 
-const uint64_t WindowInternalIterator::GetKey() { return ts_it_->GetKey(); }
+const uint64_t& WindowInternalIterator::GetKey() const {
+    return ts_it_->GetKey();
+}
+bool WindowInternalIterator::IsSeekable() const { return true; }
 
 WindowTableIterator::WindowTableIterator(Segment*** segments, uint32_t seg_cnt,
                                          uint32_t index,
@@ -147,7 +150,8 @@ FullTableIterator::FullTableIterator(Segment*** segments, uint32_t seg_cnt,
       segments_(segments),
       ts_it_(),
       pk_it_(),
-      table_(table) {
+      table_(table),
+      key_(0) {
     GoToStart();
 }
 
@@ -228,7 +232,7 @@ void FullTableIterator::GoToStart() {
     }
 }
 
-bool FullTableIterator::Valid() {
+bool FullTableIterator::Valid() const {
     if (ts_it_ && ts_it_->Valid()) return true;
     return false;
 }
@@ -241,6 +245,7 @@ const Row& FullTableIterator::GetValue() {
                      reinterpret_cast<int8_t*>(ts_it_->GetValue()->data)));
     return value_;
 }
+bool FullTableIterator::IsSeekable() const { return false; }
 
 }  // namespace storage
 }  // namespace fesql

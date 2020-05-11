@@ -42,6 +42,7 @@ using namespace llvm::orc;  // NOLINT
 
 ExitOnError ExitOnErr;
 
+using fesql::base::ConstIterator;
 struct TestString {
     int32_t size;
     char* data = nullptr;
@@ -59,7 +60,7 @@ namespace fesql {
 namespace codegen {
 
 using fesql::codec::ListV;
-using fesql::codec::IteratorV;
+using fesql::codec::ListV;
 using fesql::codec::Row;
 class ListIRBuilderTest : public ::testing::Test {
  public:
@@ -77,8 +78,8 @@ V IteratorSum(int8_t* input) {
     V result = 0;
     ::fesql::codec::IteratorRef* iter_ref =
         (::fesql::codec::IteratorRef*)(input);
-    IteratorV<uint64_t, V>* iter =
-        (IteratorV<uint64_t, V>*)(iter_ref->iterator);
+    ConstIterator<uint64_t, V>* iter =
+        (ConstIterator<uint64_t, V>*)(iter_ref->iterator);
     while (iter->Valid()) {
         result += iter->GetValue();
         iter->Next();

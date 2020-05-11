@@ -28,7 +28,7 @@ MemTimeTableIterator::MemTimeTableIterator(const MemTimeTable* table,
 MemTimeTableIterator::~MemTimeTableIterator() {}
 
 // TODO(chenjing): speed up seek for memory iterator
-void MemTimeTableIterator::Seek(uint64_t ts) {
+void MemTimeTableIterator::Seek(const uint64_t& ts) {
     iter_ = start_iter_;
     while (iter_ != end_iter_) {
         if (iter_->first <= ts) {
@@ -38,12 +38,11 @@ void MemTimeTableIterator::Seek(uint64_t ts) {
     }
 }
 void MemTimeTableIterator::SeekToFirst() { iter_ = start_iter_; }
-const uint64_t MemTimeTableIterator::GetKey() { return iter_->first; }
+const uint64_t& MemTimeTableIterator::GetKey() const { return iter_->first; }
 const Row& fesql::vm::MemTimeTableIterator::GetValue() { return iter_->second; }
 void MemTimeTableIterator::Next() { iter_++; }
-
-bool MemTimeTableIterator::Valid() { return end_iter_ > iter_; }
-
+bool MemTimeTableIterator::Valid() const { return end_iter_ > iter_; }
+bool MemTimeTableIterator::IsSeekable() const { return true; }
 MemWindowIterator::MemWindowIterator(const MemSegmentMap* partitions,
                                      const Schema* schema)
     : WindowIterator(),
@@ -96,7 +95,7 @@ MemTimeTableHandler::MemTimeTableHandler(const std::string& table_name,
       table_() {}
 
 MemTimeTableHandler::~MemTimeTableHandler() {}
-std::unique_ptr<IteratorV<uint64_t, Row>> MemTimeTableHandler::GetIterator()
+std::unique_ptr<RowIterator> MemTimeTableHandler::GetIterator()
     const {
     std::unique_ptr<MemTimeTableIterator> it(
         new MemTimeTableIterator(&table_, schema_));
@@ -127,7 +126,8 @@ void MemTimeTableHandler::Sort(const bool is_asc) {
 void MemTimeTableHandler::Reverse() {
     std::reverse(table_.begin(), table_.end());
 }
-IteratorV<uint64_t, Row>* MemTimeTableHandler::GetIterator(int8_t* addr) const {
+RowIterator* MemTimeTableHandler::GetIterator(
+    int8_t* addr) const {
     if (nullptr == addr) {
         return new MemTimeTableIterator(&table_, schema_);
     } else {
@@ -206,12 +206,13 @@ std::unique_ptr<WindowIterator> MemTableHandler::GetWindowIterator(
     const std::string& idx_name) {
     return std::unique_ptr<WindowIterator>();
 }
-std::unique_ptr<IteratorV<uint64_t, Row>> MemTableHandler::GetIterator() const {
+std::unique_ptr<RowIterator> MemTableHandler::GetIterator()
+    const {
     std::unique_ptr<MemTableIterator> it(
         new MemTableIterator(&table_, schema_));
     return std::move(it);
 }
-IteratorV<uint64_t, Row>* MemTableHandler::GetIterator(int8_t* addr) const {
+RowIterator* MemTableHandler::GetIterator(int8_t* addr) const {
     return new (addr) MemTableIterator(&table_, schema_);
 }
 
@@ -249,7 +250,8 @@ MemTableIterator::MemTableIterator(const MemTable* table,
       schema_(schema),
       start_iter_(table->cbegin()),
       end_iter_(table->cend()),
-      iter_(table->cbegin()) {}
+      iter_(table->cbegin()),
+      key_(0) {}
 MemTableIterator::MemTableIterator(const MemTable* table,
                                    const vm::Schema* schema, int32_t start,
                                    int32_t end)
@@ -257,16 +259,20 @@ MemTableIterator::MemTableIterator(const MemTable* table,
       schema_(schema),
       start_iter_(table_->begin() + start),
       end_iter_(table_->begin() + end),
-      iter_(start_iter_) {}
+      iter_(start_iter_),
+      key_(0) {}
 MemTableIterator::~MemTableIterator() {}
-void MemTableIterator::Seek(uint64_t ts) { iter_ = start_iter_ + ts; }
+void MemTableIterator::Seek(const uint64_t& ts) { iter_ = start_iter_ + ts; }
 void MemTableIterator::SeekToFirst() { iter_ = start_iter_; }
-const uint64_t MemTableIterator::GetKey() {
-    return Valid() ? iter_ - start_iter_ : -1;
+const uint64_t& MemTableIterator::GetKey() const { return key_; }
+
+bool MemTableIterator::Valid() const { return end_iter_ > iter_; }
+void MemTableIterator::Next() {
+    iter_++;
+    key_ = Valid() ? iter_ - start_iter_ : 0;
 }
-bool MemTableIterator::Valid() { return end_iter_ > iter_; }
-void MemTableIterator::Next() { iter_++; }
 const Row& MemTableIterator::GetValue() { return *iter_; }
+bool MemTableIterator::IsSeekable() const { return true; }
 
 }  // namespace vm
 }  // namespace fesql

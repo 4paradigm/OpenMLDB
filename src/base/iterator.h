@@ -21,21 +21,26 @@ struct DefaultComparator {
     }
 };
 
-template <class K, class V>
-class Iterator {
+template <class K, class V, class Ref>
+class AbstractIterator {
  public:
-    Iterator() {}
-    Iterator(const Iterator&) = delete;
-    Iterator& operator=(const Iterator&) = delete;
-    virtual ~Iterator() {}
+    AbstractIterator() {}
+    AbstractIterator(const AbstractIterator&) = delete;
+    AbstractIterator& operator=(const AbstractIterator&) = delete;
+    virtual ~AbstractIterator() {}
     virtual bool Valid() const = 0;
     virtual void Next() = 0;
     virtual const K& GetKey() const = 0;
-    virtual V& GetValue() = 0;
+    virtual Ref GetValue() = 0;
     virtual void Seek(const K& k) = 0;
     virtual void SeekToFirst() = 0;
     virtual bool IsSeekable() const = 0;
 };
 
+template <class K, class V>
+class Iterator : public AbstractIterator<K, V, V&> {};
+
+template <class K, class V>
+class ConstIterator : public fesql::base::AbstractIterator<K, V, const V&> {};
 }  // namespace base
 }  // namespace fesql

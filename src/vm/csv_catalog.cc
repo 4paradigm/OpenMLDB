@@ -366,11 +366,11 @@ int32_t CSVTableHandler::GetColumnIndex(const std::string& name) {
     }
     return -1;
 }
-std::unique_ptr<IteratorV<uint64_t, Row>> CSVTableHandler::GetIterator() const {
+std::unique_ptr<RowIterator> CSVTableHandler::GetIterator() const {
     std::unique_ptr<CSVTableIterator> it(new CSVTableIterator(table_, schema_));
     return std::move(it);
 }
-IteratorV<uint64_t, Row>* CSVTableHandler::GetIterator(int8_t* addr) const {
+RowIterator* CSVTableHandler::GetIterator(int8_t* addr) const {
     if (nullptr == addr) {
         return new CSVTableIterator(table_, schema_);
     } else {
