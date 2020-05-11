@@ -269,8 +269,9 @@ class TabletClient {
                                         uint32_t limit,
                                         uint32_t& count);  // NOLINT
 
-    bool Traverse(uint32_t tid, uint32_t pid, uint32_t limit,
-            std::string* pk, uint64_t* snapshot_id,
+    bool Traverse(uint32_t tid, uint32_t pid,
+            const ::rtidb::api::ReadOption& ro,
+            uint32_t limit, std::string* pk, uint64_t* snapshot_id,
             std::string* data, uint32_t* count,
             bool* is_finish, std::string* msg);
 

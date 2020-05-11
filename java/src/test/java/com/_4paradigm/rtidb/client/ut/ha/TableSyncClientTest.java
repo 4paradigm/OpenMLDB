@@ -2138,7 +2138,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 queryMap = it.getDecodedValue();
                 Assert.assertEquals(queryMap.get("memory"), 13);
             }
-            it = tableSyncClient.traverse(name, ro);
+            it = tableSyncClient.traverse(name, new ReadOption(null, null, null, 0));
             Assert.assertEquals(it.getCount(), 2);
             Assert.assertTrue(it.valid());
             queryMap = it.getDecodedValue();
@@ -2184,7 +2184,6 @@ public class TableSyncClientTest extends TestCaseBase {
             //traverse
             RelationalIterator trit = tableSyncClient.traverse(name, ro);
             for (int i = 0; i < 1000; i++) {
-                System.out.println("time: " + i);
                 Assert.assertTrue(trit.valid());
                 Map<String, Object> TraverseMap = trit.getDecodedValue();
                 Assert.assertEquals(TraverseMap.size(), 9);
@@ -2200,6 +2199,31 @@ public class TableSyncClientTest extends TestCaseBase {
                 trit.next();
             }
             Assert.assertEquals(trit.getCount(), 1000);
+            Assert.assertFalse(trit.valid());
+
+            // traverse according to pk
+            Map<String, Object> index = new HashMap<>();
+            index.put("id", 110l);
+            index.put("name", "n100");
+            index.put("sex", true);
+            ro = new ReadOption(index, null, null, 0);
+            trit = tableSyncClient.traverse(name, ro);
+            for (int i = 100; i < 1000; i++) {
+                Assert.assertTrue(trit.valid());
+                Map<String, Object> TraverseMap = trit.getDecodedValue();
+                Assert.assertEquals(TraverseMap.size(), 9);
+                Assert.assertEquals(TraverseMap.get("id"), 10L + i);
+                Assert.assertEquals(TraverseMap.get("name"), "n" + i);
+                Assert.assertEquals(TraverseMap.get("sex"), true);
+                Assert.assertEquals(TraverseMap.get("attribute"), "a" + i);
+                Assert.assertEquals(TraverseMap.get("image"), "i" + i);
+                Assert.assertEquals(TraverseMap.get("memory"), 10 + i);
+                Assert.assertEquals(TraverseMap.get("price"), 11.1 + i);
+                Assert.assertEquals(TraverseMap.get("attribute2"), new Date(2020, 5, 2));
+                Assert.assertEquals(TraverseMap.get("ts"), new DateTime(1588756535));
+                trit.next();
+            }
+            Assert.assertEquals(trit.getCount(), 900);
             Assert.assertFalse(trit.valid());
         } catch (Exception e) {
             e.printStackTrace();
@@ -2245,6 +2269,22 @@ public class TableSyncClientTest extends TestCaseBase {
                 trit.next();
             }
             Assert.assertEquals(trit.getCount(), 1000);
+            Assert.assertFalse(trit.valid());
+
+            // traverse according to pk
+            Map<String, Object> index = new HashMap<>();
+            index.put("id", 100l);
+            ro = new ReadOption(index, null, null, 0);
+            trit = tableSyncClient.traverse(name, ro);
+            for (long i = 100; i < 1000; i++) {
+                Assert.assertTrue(trit.valid());
+                Map<String, Object> TraverseMap = trit.getDecodedValue();
+                Assert.assertEquals(TraverseMap.size(), 3);
+                Assert.assertEquals(TraverseMap.get("id"), i);
+                Assert.assertEquals(TraverseMap.get("image"), "i" + i);
+                trit.next();
+            }
+            Assert.assertEquals(trit.getCount(), 900);
             Assert.assertFalse(trit.valid());
         } catch (Exception e) {
             e.printStackTrace();

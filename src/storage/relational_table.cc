@@ -1071,10 +1071,15 @@ bool RelationalTable::GetCombineStr(
     std::string* combine_name, std::string* combine_value) {
     combine_name->clear();
     combine_value->clear();
-    if (indexs.size() == 1) {
+    if (indexs.size() == 0) {
+        PDLOG(DEBUG, "GetCombinePk failed. tid %u pid.", id_, pid_);
+        return false;
+    } else if (indexs.size() == 1) {
         *combine_name = indexs.Get(0).name(0);
         const std::string& value = indexs.Get(0).value();
-        if (!ConvertIndex(*combine_name, value, combine_value)) return false;
+        if (!ConvertIndex(*combine_name, value, combine_value)) {
+            return false;
+        }
     } else {
         std::vector<ColumnDef> vec;
         std::map<std::string, int> map;
@@ -1084,10 +1089,9 @@ bool RelationalTable::GetCombineStr(
             vec.push_back(*(table_column_.GetColumn(name)));
         }
         std::sort(vec.begin(), vec.end(), ::rtidb::storage::ColumnDefSortFunc);
-        int count = 0;
-        for (auto& col_def : vec) {
+        for (const auto& col_def : vec) {
             const std::string& name = col_def.GetName();
-            if (count > 0) {
+            if (!combine_name->empty()) {
                 combine_name->append("_");
             }
             combine_name->append(name);
@@ -1096,11 +1100,47 @@ bool RelationalTable::GetCombineStr(
             const std::string& value = indexs.Get(it->second).value();
             std::string temp = "";
             if (!ConvertIndex(name, value, &temp)) return false;
-            if (count > 0) {
+            if (!combine_value->empty()) {
                 combine_value->append("|");
             }
             combine_value->append(temp);
-            count++;
+        }
+    }
+    return true;
+}
+
+bool RelationalTable::GetCombinePk(
+    const ::google::protobuf::RepeatedPtrField<::rtidb::api::Columns>& indexs,
+    std::string* combine_value) {
+    combine_value->clear();
+    if (indexs.size() == 0) {
+        PDLOG(DEBUG, "GetCombinePk failed. tid %u pid.", id_, pid_);
+        return false;
+    } else if (indexs.size() == 1) {
+        const std::string& value = indexs.Get(0).value();
+        if (!ConvertIndex(indexs.Get(0).name(0), value, combine_value)) {
+            return false;
+        }
+    } else {
+        std::vector<ColumnDef> vec;
+        std::map<std::string, int> map;
+        for (int i = 0; i < indexs.size(); i++) {
+            const std::string& name = indexs.Get(i).name(0);
+            map.insert(std::make_pair(name, i));
+            vec.push_back(*(table_column_.GetColumn(name)));
+        }
+        std::sort(vec.begin(), vec.end(), ::rtidb::storage::ColumnDefSortFunc);
+        for (const auto& col_def : vec) {
+            const std::string& name = col_def.GetName();
+            auto it = map.find(name);
+            if (it == map.end()) return false;
+            const std::string& value = indexs.Get(it->second).value();
+            std::string temp;
+            if (!ConvertIndex(name, value, &temp)) return false;
+            if (!combine_value->empty()) {
+                combine_value->append("|");
+            }
+            combine_value->append(temp);
         }
     }
     return true;
@@ -1118,7 +1158,6 @@ bool RelationalTable::GetCombineStr(const std::shared_ptr<IndexDef> index_def,
             return false;
         }
     } else {
-        int count = 0;
         std::string col_val = "";
         for (const auto& col_def : index_def->GetColumns()) {
             uint32_t idx = col_def.GetId();
@@ -1126,7 +1165,7 @@ bool RelationalTable::GetCombineStr(const std::shared_ptr<IndexDef> index_def,
             if (!GetPackedField(data, idx, data_type, &col_val)) {
                 return false;
             }
-            if (count++ > 0) {
+            if (!comparable_pk->empty()) {
                 comparable_pk->append("|");
             }
             comparable_pk->append(col_val);

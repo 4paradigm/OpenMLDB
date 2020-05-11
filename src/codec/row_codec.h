@@ -10,7 +10,7 @@
 #include <string>
 #include <utility>
 #include <vector>
-
+#include <algorithm>
 #include "codec/flat_array.h"
 #include "codec/row_codec.h"
 #include "codec/schema_codec.h"
@@ -92,10 +92,13 @@ class RowCodec {
                         ok = builder.AppendString(iter->second.c_str(),
                                                   iter->second.length());
                         break;
-                    case rtidb::type::kBool:
-                        if (iter->second == "true") {
+                    case rtidb::type::kBool: {
+                        std::string b_val = iter->second;
+                        std::transform(b_val.begin(), b_val.end(),
+                                b_val.begin(), ::tolower);
+                        if (b_val == "true") {
                             ok = builder.AppendBool(true);
-                        } else if (iter->second == "false") {
+                        } else if (b_val == "false") {
                             ok = builder.AppendBool(false);
                         } else {
                             rm.code = -1;
@@ -103,6 +106,7 @@ class RowCodec {
                             return rm;
                         }
                         break;
+                    }
                     case rtidb::type::kSmallInt:
                         ok = builder.AppendInt16(
                             boost::lexical_cast<uint16_t>(iter->second));

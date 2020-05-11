@@ -48,6 +48,7 @@ void TraverseResult::Init(RtidbClient* client, std::string* table_name,
 TraverseResult::~TraverseResult() {}
 
 bool TraverseResult::TraverseNext() {
+    if (!ro_->index.empty()) ro_->index.clear();
     bool ok = client_->Traverse(*table_name_, *ro_, value_.get(), &count_,
                                 &last_pk_, &is_finish_, &snapshot_id_);
     return ok;
@@ -444,7 +445,23 @@ bool RtidbClient::Traverse(const std::string& name, const struct ReadOption& ro,
     if (tablet == NULL) {
         return false;
     }
-    bool ok = tablet->Traverse(th->table_info->tid(), 0, 200,
+    ::rtidb::api::ReadOption ro_pb;
+    if (!ro.index.empty()) {
+        for (const auto& kv : ro.index) {
+            auto iter = th->name_type_map.find(kv.first);
+            if (iter == th->name_type_map.end()) {
+                return false;
+            }
+            ::rtidb::api::Columns* index = ro_pb.add_index();
+            index->add_name(kv.first);
+            ::rtidb::type::DataType type = iter->second;
+            std::string* val = index->mutable_value();
+            if (!rtidb::codec::Convert(kv.second, type, val)) {
+                return false;
+            }
+        }
+    }
+    bool ok = tablet->Traverse(th->table_info->tid(), 0, ro_pb, 200,
             last_key, snapshot_id, data, count, is_finish, &err_msg);
     return ok;
 }

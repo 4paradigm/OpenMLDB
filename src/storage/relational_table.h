@@ -147,6 +147,10 @@ class RelationalTable {
 
     std::shared_ptr<IndexDef> GetPkIndex() { return table_index_.GetPkIndex(); }
 
+    bool GetCombinePk(const ::google::protobuf::RepeatedPtrField<
+            ::rtidb::api::Columns>& indexs,
+            std::string* combine_value);
+
  private:
     inline void CombineNoUniqueAndPk(const std::string& no_unique,
                                      const std::string& pk,

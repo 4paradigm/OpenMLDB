@@ -1996,7 +1996,7 @@ void HandleNSQuery(const std::vector<std::string>& parts,
     }
     std::vector<std::string> row;
     row.push_back("#");
-    ::baidu::common::TPrinter* tp;
+    ::baidu::common::TPrinter* tp = nullptr;
     if (print_column.size() == 0) {
         tp = new baidu::common::TPrinter(schema.size() + 1,
                                          FLAGS_max_col_display_length);
@@ -2635,7 +2635,8 @@ void HandleNSPreview(const std::vector<std::string>& parts,
             std::string err_msg;
             uint64_t snapshot_id = 0;
             std::string pk = "";
-            bool ok = tablet_client->Traverse(tid, pid, limit,
+            ::rtidb::api::ReadOption ro;
+            bool ok = tablet_client->Traverse(tid, pid, ro, limit,
                     &pk, &snapshot_id, &data, &count, &is_finish, &err_msg);
             if (!ok) {
                 std::cerr << "Fail to preview table" << std::endl;
