@@ -27,12 +27,12 @@
 		<dependency>
 			<groupId>com._4paradigm.fesql</groupId>
 			<artifactId>fesql-native</artifactId>
-			<version>0.0.1-SNAPSHOT</version>
+			<version>${project.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>com._4paradigm.fesql</groupId>
 			<artifactId>fesql-proto</artifactId>
-			<version>0.0.1-SNAPSHOT</version>
+			<version>${project.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>junit</groupId>
@@ -141,6 +141,23 @@
 					<execution>
 						<phase>generate-sources</phase>
 						<goals><goal>delombok</goal></goals>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.scoverage</groupId>
+				<artifactId>scoverage-maven-plugin</artifactId>
+				<version>1.4.0-M5</version>
+				<configuration>
+					<scalaVersion>${scala.version}</scalaVersion>
+				</configuration>
+				<executions>
+					<execution>
+						<id>scoverage-report</id>
+						<phase>prepare-package</phase>
+						<goals>
+							<goal>report</goal> <!-- or integration-check -->
+						</goals>
 					</execution>
 				</executions>
 			</plugin>

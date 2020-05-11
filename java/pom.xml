@@ -45,6 +45,20 @@
                     <artifactId>versions-maven-plugin</artifactId>
                     <version>2.2</version>
                 </plugin>
+                <plugin>
+                    <groupId>org.scoverage</groupId>
+                    <artifactId>scoverage-maven-plugin</artifactId>
+                    <version>1.4.0-M5</version>
+                    <executions>
+                        <execution>
+                            <id>scoverage-report</id>
+                            <phase>prepare-package</phase>
+                            <goals>
+                                <goal>report</goal> <!-- or integration-check -->
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
             </plugins>
         </pluginManagement>
     </build>

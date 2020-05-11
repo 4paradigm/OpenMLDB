@@ -2,37 +2,43 @@ package com._4paradigm.fesql.offline.utils
 
 import com._4paradigm.fesql.node.{ColumnRefNode, ExprNode, ExprType}
 import com._4paradigm.fesql.offline.{FeSQLException, PlanContext}
+import com._4paradigm.fesql.vm.{CoreAPI, PhysicalJoinNode, PhysicalOpNode}
 import org.apache.spark.sql.{Column, DataFrame, Row}
 
 
 object SparkColumnUtil {
 
-  def resolveColumn(expr: ExprNode,
-                    dataFrame: DataFrame,
-                    ctx: PlanContext
-                   ): (String, Int, Column) = {
-    expr.GetExprType match {
-      case ExprType.kExprColumnRef =>
-        val colNode = ColumnRefNode.CastFrom(expr)
-        val colName = colNode.GetColumnName()
-        val tblName = colNode.GetRelationName()
-
-        val fullName = tblName + "." + colName
-
-        val cols = dataFrame.columns
-        if (cols.contains(colName)) {
-          (colName, cols.indexOf(colName), dataFrame.col(colName))
-
-        } else if (cols.contains(fullName)) {
-          (fullName, cols.indexOf(fullName), dataFrame.col("`" + fullName + "`"))
-
-        } else {
-          throw new FeSQLException(s"Unknown column: $colName")
-        }
-
-      case _ => throw new FeSQLException(
-        s"Unknown expression: ${expr.GetExprString()}")
+  def resolveLeftColumn(expr: ExprNode,
+                        planNode: PhysicalJoinNode,
+                        left: DataFrame,
+                        ctx: PlanContext): Column = {
+    val index = CoreAPI.ResolveColumnIndex(planNode, expr)
+    if (index < 0) {
+      throw new FeSQLException(s"Can not resolve column of left table: ${expr.GetExprString()}")
     }
+    getCol(left, index)
+  }
+
+  def resolveRightColumn(expr: ExprNode,
+                         planNode: PhysicalJoinNode,
+                         right: DataFrame,
+                         ctx: PlanContext): Column = {
+    val leftSize = planNode.GetProducer(0).GetOutputSchema().size()
+    val index = CoreAPI.ResolveColumnIndex(planNode, expr)
+    if (index < leftSize) {
+      throw new FeSQLException("Can not resolve column of left table")
+    }
+    getCol(right, index - leftSize)
+  }
+
+  def resolveColumnIndex(expr: ExprNode, planNode: PhysicalOpNode): Int = {
+    val index = CoreAPI.ResolveColumnIndex(planNode, expr)
+    if (index < 0) {
+      throw new FeSQLException(s"Fail to resolve ${expr.GetExprString()}")
+    } else if (index >= planNode.GetOutputSchema().size()) {
+      throw new FeSQLException(s"Column index out of bounds: $index")
+    }
+    index
   }
 
   def getCol(dataFrame: DataFrame, index: Int): Column = {
