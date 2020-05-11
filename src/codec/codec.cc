@@ -23,7 +23,7 @@
 =======
 #include "codec/codec.h"
 #include <unordered_set>
-#include "logging.h"  // NOLINT
+#include "base/glog_wapper.h"  // NOLINT
 >>>>>>> origin/release/sql_on_rtidb:src/codec/codec.cc
 
 

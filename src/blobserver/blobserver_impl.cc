@@ -6,7 +6,7 @@
 #include <gflags/gflags.h>
 #include <utility>
 #include "blobserver/blobserver_impl.h"
-#include "logging.h" // NOLINT
+#include "base/glog_wapper.h" // NOLINT
 #include "base/file_util.h"
 #include "base/hash.h"
 #include "base/status.h"
@@ -20,9 +20,6 @@ DECLARE_int32(zk_session_timeout);
 DECLARE_int32(zk_keep_alive_check_interval);
 DECLARE_string(hdd_root_path);
 
-using ::baidu::common::DEBUG;
-using ::baidu::common::INFO;
-using ::baidu::common::WARNING;
 using ::rtidb::base::ReturnCode;
 
 namespace rtidb {

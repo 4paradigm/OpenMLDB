@@ -26,16 +26,9 @@
 
 #include <boost/bind.hpp>
 #include <boost/function.hpp>
-<<<<<<< HEAD
 #include "base/glog_wapper.h" // NOLINT
 #include <thread> // NOLINT
 #include <string> // NOLINT
-=======
-#include <string>  // NOLINT
-#include <thread>  // NOLINT
-
-#include "logging.h"  // NOLINT
->>>>>>> origin/release/sql_on_rtidb
 
 
 

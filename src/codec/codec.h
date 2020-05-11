@@ -21,7 +21,7 @@
 #include "base/glog_wapper.h" // NOLINT
 #include "base/strings.h"
 #include "boost/container/deque.hpp"
-#include "logging.h"  // NOLINT
+#include "base/glog_wapper.h"  // NOLINT
 #include "storage/segment.h"
 
 using ::rtidb::storage::DataBlock;
@@ -36,10 +36,7 @@ static inline void Encode(uint64_t time, const char* data, const size_t size,
                           char* buffer, uint32_t offset) {
     buffer += offset;
     uint32_t total_size = 8 + size;
-<<<<<<< HEAD:src/base/codec.h
     DEBUGLOG("encode size %d", total_size);
-=======
->>>>>>> origin/release/sql_on_rtidb:src/codec/codec.h
     memcpy(buffer, static_cast<const void*>(&total_size), 4);
     memrev32ifbe(buffer);
     buffer += 4;
@@ -145,12 +142,8 @@ static inline void Decode(
     std::vector<std::pair<uint64_t, std::string*>>& pairs) {  // NOLINT
     const char* buffer = str->c_str();
     uint32_t total_size = str->length();
-<<<<<<< HEAD:src/base/codec.h
-    DEBUGLOG("total size %d %s", total_size, DebugString(*str).c_str());
-=======
-    PDLOG(DEBUG, "total size %d %s", total_size,
-          ::rtidb::base::DebugString(*str).c_str());
->>>>>>> origin/release/sql_on_rtidb:src/codec/codec.h
+    DEBUGLOG("total size %d %s", total_size,
+            ::rtidb::base::DebugString(*str).c_str());
     while (total_size > 0) {
         uint32_t size = 0;
         memcpy(static_cast<void*>(&size), buffer, 4);
@@ -176,12 +169,8 @@ static inline void DecodeFull(
         value_map) {
     const char* buffer = str->c_str();
     uint32_t total_size = str->length();
-<<<<<<< HEAD:src/base/codec.h
-    DEBUGLOG("total size %u %s", total_size, DebugString(*str).c_str());
-=======
-    PDLOG(DEBUG, "total size %u %s", total_size,
-          ::rtidb::base::DebugString(*str).c_str());
->>>>>>> origin/release/sql_on_rtidb:src/codec/codec.h
+    DEBUGLOG("total size %u %s", total_size,
+            ::rtidb::base::DebugString(*str).c_str());
     while (total_size > 0) {
         uint32_t size = 0;
         memcpy(static_cast<void*>(&size), buffer, 4);

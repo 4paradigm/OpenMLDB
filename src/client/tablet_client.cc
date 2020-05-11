@@ -14,7 +14,7 @@
 =======
 #include <iostream>
 #include "codec/codec.h"
-#include "logging.h"  // NOLINT
+#include "base/glog_wapper.h"  // NOLINT
 #include "timer.h"    // NOLINT
 >>>>>>> origin/release/sql_on_rtidb
 

@@ -37,7 +37,7 @@
 #include "client/tablet_client.h"
 #include "codec/flat_array.h"
 #include "codec/schema_codec.h"
-#include "logging.h"  // NOLINT
+#include "base/glog_wapper.h"  // NOLINT
 #include "nameserver/name_server_impl.h"
 #include "proto/client.pb.h"
 #include "proto/name_server.pb.h"
