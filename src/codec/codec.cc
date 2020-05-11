@@ -19,7 +19,7 @@
 
 #include <unordered_set>
 
-#include "base/glog_wapper.h"  // NOLINT
+#include "base/glog_wapper.h"
 
 namespace rtidb {
 namespace codec {

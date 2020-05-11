@@ -95,7 +95,7 @@ int main(int argc, char** argv) {
     FLAGS_zk_session_timeout = 100000;
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
-    ::baidu::common::SetLogLevel(::baidu::common::INFO);
+    ::rtidb::base::SetLogLevel(INFO);
     FLAGS_hdd_root_path =
         "/tmp/test_blobserver" + ::rtidb::blobserver::GenRand();
     return RUN_ALL_TESTS();

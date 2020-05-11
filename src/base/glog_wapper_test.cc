@@ -4,10 +4,10 @@
 
 #include "base/glog_wapper.h"
 
-#include <string>
 #include <iostream>
-#include "gtest/gtest.h"
+#include <string>
 
+#include "gtest/gtest.h"
 
 namespace rtidb {
 namespace base {
@@ -27,9 +27,9 @@ TEST_F(GlogWapperTest, Log) {
     PDLOG(INFO, "hello %s", s);
     DEBUGLOG("hello %d", 233);
     uint64_t time = 123456;
-    DEBUGLOG("[Gc4TTL] segment gc with key %lu, consumed %lu, count %lu", time, time + 100, time - 100);
+    DEBUGLOG("[Gc4TTL] segment gc with key %lu, consumed %lu, count %lu", time,
+             time + 100, time - 100);
 }
-
 
 }  // namespace base
 }  // namespace rtidb

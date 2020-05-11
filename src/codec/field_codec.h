@@ -15,7 +15,7 @@
 #include "base/endianconv.h"
 #include "base/strings.h"
 #include "boost/lexical_cast.hpp"
-#include "base/glog_wapper.h"  //NOLINT
+#include "base/glog_wapper.h"
 #include "proto/type.pb.h"
 #include "codec/memcomparable_format.h"
 

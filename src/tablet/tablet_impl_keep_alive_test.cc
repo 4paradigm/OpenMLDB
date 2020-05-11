@@ -82,7 +82,7 @@ TEST_F(TabletImplTest, KeepAlive) {
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
-    ::baidu::common::SetLogLevel(::baidu::common::DEBUG);
+    ::rtidb::base::SetLogLevel(DEBUG);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     FLAGS_db_root_path = "/tmp/" + ::rtidb::tablet::GenRand();
     return RUN_ALL_TESTS();
