@@ -323,7 +323,7 @@ TEST_F(NameServerImplObjectStoreTest, CreateTableWithBlobField) {
         ASSERT_EQ(view.GetString(1, &ch, &length), 0);
         std::string get_data(ch, length);
         ASSERT_STREQ(mcc_data.data(), get_data.c_str());
-        ASSERT_EQ(view.GetInt64(2, &val), 0);
+        ASSERT_EQ(view.GetBlob(2, &val), 0);
         ASSERT_EQ(val, blob_key);
         data.clear();
         ok = blob_client.Get(tid, 0, blob_key, &data, &err_msg);
