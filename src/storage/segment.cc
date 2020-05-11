@@ -576,8 +576,6 @@ void Segment::Gc4TTL(const std::map<uint32_t, TTLDesc>& ttl_desc,
         }
         return;
     }
-    uint64_t consumed = ::baidu::common::timer::get_micros();
-    uint64_t old = gc_idx_cnt;
     KeyEntries::Iterator* it = entries_->NewIterator();
     it->SeekToFirst();
     while (it->Valid()) {
