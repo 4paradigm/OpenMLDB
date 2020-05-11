@@ -26,7 +26,7 @@ public class TableHandler {
     private int formatVersion = 0;
     private boolean isObjectStore = false;
     private BlobServer blobServer = null;
-    private List<Integer> blobSuffixList = new ArrayList<Integer>();
+    private List<Integer> blobIdxList = new ArrayList<Integer>();
 
     public int getFormatVersion() {
         return formatVersion;
@@ -58,7 +58,7 @@ public class TableHandler {
                     ncd.setType(ColumnType.valueFrom(cd.getType()));
                 }
                 if (cd.getDataType() == Type.DataType.kBlob) {
-                    blobSuffixList.add(i);
+                    blobIdxList.add(i);
                 }
                 schema.add(ncd);
                 if (cd.getAddTsIdx()) {
@@ -228,8 +228,8 @@ public class TableHandler {
         return tableInfo;
     }
 
-    public List<Integer> getBlobSuffix() {
-        return this.blobSuffixList;
+    public List<Integer> getBlobIdxList() {
+        return this.blobIdxList;
     }
 
     public void setTableInfo(TableInfo tableInfo) {

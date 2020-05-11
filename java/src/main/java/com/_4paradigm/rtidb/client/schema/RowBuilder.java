@@ -170,7 +170,17 @@ public class RowBuilder {
     }
 
     public boolean appendInt64(long val) {
-        if (!check(DataType.BigInt) && !check(DataType.Blob)) {
+        if (!check(DataType.BigInt)) {
+            return false;
+        }
+        buf.position(offsetVec.get(cnt));
+        buf.putLong(val);
+        cnt++;
+        return true;
+    }
+
+    public boolean appendBlob(long val) {
+        if (!check(DataType.Blob)) {
             return false;
         }
         buf.position(offsetVec.get(cnt));
@@ -285,6 +295,8 @@ public class RowBuilder {
                     }
                     break;
                 case Blob:
+                    ok = builder.appendBlob((long) column);
+                    break;
                 case BigInt:
                     ok = builder.appendInt64((Long) column);
                     break;
@@ -351,6 +363,8 @@ public class RowBuilder {
                     }
                     break;
                 case Blob:
+                    ok = builder.appendBlob((Long) column);
+                    break;
                 case BigInt:
                     ok = builder.appendInt64((Long) column);
                     break;

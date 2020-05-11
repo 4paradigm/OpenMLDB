@@ -1,9 +1,9 @@
 package rtidb.blobserver;
 
-import com._4paradigm.rtidb.object_store.oss;
+import com._4paradigm.rtidb.blobserver.OSS;
 
 public interface BlobServer {
-    oss.PutResponse put(oss.PutRequest request);
-    oss.GetResponse get(oss.GetRequest reuqest);
-    oss.DeleteResponse delete(oss.DeleteRequest request);
+    OSS.PutResponse put(OSS.PutRequest request);
+    OSS.GetResponse get(OSS.GetRequest reuqest);
+    OSS.DeleteResponse delete(OSS.DeleteRequest request);
 }

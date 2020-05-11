@@ -92,7 +92,6 @@ class TableColumn {
  private:
     std::vector<std::shared_ptr<ColumnDef>> columns_;
     std::unordered_map<std::string, std::shared_ptr<ColumnDef>> column_map_;
-    google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc> pb_columns_;
     std::vector<uint32_t> blob_idxs_;
 };
 

@@ -15,7 +15,7 @@ import com.google.protobuf.ByteBufferNoCopy;
 import com.google.protobuf.ByteString;
 import rtidb.api.TabletServer;
 import rtidb.blobserver.BlobServer;
-import com._4paradigm.rtidb.object_store.oss;
+import com._4paradigm.rtidb.blobserver.OSS;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -759,11 +759,11 @@ public class TableSyncClientImpl implements TableSyncClient {
         Tablet.GeneralResponse response = ts.delete(request);
         if (response != null && response.getCode() == 0) {
             for (long key : response.getAdditionalIdsList()) {
-                oss.DeleteRequest.Builder ossBuilder = oss.DeleteRequest.newBuilder();
+                OSS.DeleteRequest.Builder ossBuilder = OSS.DeleteRequest.newBuilder();
                 ossBuilder.setTid(tid);
                 ossBuilder.setPid(0);
                 ossBuilder.setKey(key);
-                oss.DeleteRequest deleteRequest = ossBuilder.build();
+                OSS.DeleteRequest deleteRequest = ossBuilder.build();
                 bs.delete(deleteRequest);
             }
             return true;
@@ -1250,14 +1250,14 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (bs == null) {
             throw new TabletException("can not found available blobserver with tid " + tid);
         }
-        oss.PutRequest.Builder builder = oss.PutRequest.newBuilder();
+        OSS.PutRequest.Builder builder = OSS.PutRequest.newBuilder();
         builder.setTid(tid);
         builder.setPid(0);
         row.rewind();
         builder.setData(ByteBufferNoCopy.wrap(row.asReadOnlyBuffer()));
 
-        oss.PutRequest request = builder.build();
-        oss.PutResponse response = bs.put(request);
+        OSS.PutRequest request = builder.build();
+        OSS.PutResponse response = bs.put(request);
         if (response != null && response.getCode() == 0) {
             autoKey[0] = response.getKey();
             return true;
@@ -1476,7 +1476,7 @@ public class TableSyncClientImpl implements TableSyncClient {
 
     public void putObjectStore(Map<String, Object> row, TableHandler th) throws TimeoutException, TabletException {
         List<ColumnDesc> schema = th.getSchema();
-        for (Integer idx : th.getBlobSuffix()) {
+        for (Integer idx : th.getBlobIdxList()) {
 
             long[] keys = new long[1];
             ColumnDesc colDesc = schema.get(idx);
@@ -1484,9 +1484,10 @@ public class TableSyncClientImpl implements TableSyncClient {
                 continue;
             }
             Object col = row.get(colDesc.getName());
-            if (colDesc.isNotNull() && col == null) {
-                throw new TabletException("col " + colDesc.getName() + " should not be null");
-            } else if (col == null) {
+            if (col == null) {
+                if (colDesc.isNotNull()) {
+                    throw new TabletException("col " + colDesc.getName() + " should not be null");
+                }
                 continue;
             }
             boolean ok = putObjectStore(th.getTableInfo().getTid(), (ByteBuffer) col, keys, th);
@@ -1511,10 +1512,8 @@ public class TableSyncClientImpl implements TableSyncClient {
             throw new TabletException("valueColumns is null or empty");
         }
         List<ColumnDesc> newValueSchema = getSchemaData(valueColumns, th.getSchema());
-        if (th.getBlobServer() != null) {
-            if (!th.IsObjectTable()) {
-                putObjectStore(valueColumns, th);
-            }
+        if (th.getBlobServer() != null && !th.IsObjectTable()) {
+            putObjectStore(valueColumns, th);
         }
         ByteBuffer valueBuffer = RowBuilder.encode(valueColumns, newValueSchema);
 

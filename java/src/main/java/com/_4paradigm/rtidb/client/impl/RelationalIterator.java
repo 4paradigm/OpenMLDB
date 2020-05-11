@@ -10,7 +10,7 @@ import com._4paradigm.rtidb.client.schema.FieldCodec;
 import com._4paradigm.rtidb.client.schema.RowView;
 import com._4paradigm.rtidb.client.type.DataType;
 import com._4paradigm.rtidb.ns.NS;
-import com._4paradigm.rtidb.object_store.oss;
+import com._4paradigm.rtidb.blobserver.OSS;
 import com._4paradigm.rtidb.tablet.Tablet;
 import com._4paradigm.rtidb.utils.Compress;
 import com.google.protobuf.ByteBufferNoCopy;
@@ -176,7 +176,7 @@ public class RelationalIterator {
                 map.put(columnDesc.getName(), value);
             }
         }
-        for (Integer idx : th.getBlobSuffix()) {
+        for (Integer idx : th.getBlobIdxList()) {
             Object[] result = new Object[1];
             ColumnDesc colDesc = schema.get(idx);
             Object col = map.get(colDesc.getName());
@@ -200,13 +200,13 @@ public class RelationalIterator {
         if (bs == null) {
             throw new TabletException("can not found available blobserver with tid " + tid);
         }
-        oss.GetRequest.Builder builder = oss.GetRequest.newBuilder();
+        OSS.GetRequest.Builder builder = OSS.GetRequest.newBuilder();
         builder.setTid(tid);
         builder.setPid(0);
         builder.setKey(key);
 
-        oss.GetRequest request = builder.build();
-        oss.GetResponse response = bs.get(request);
+        OSS.GetRequest request = builder.build();
+        OSS.GetResponse response = bs.get(request);
         if (response != null && response.getCode() == 0) {
             ByteString data = response.getData();
             result[0] = data.asReadOnlyByteBuffer().rewind();
