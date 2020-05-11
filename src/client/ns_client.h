@@ -180,7 +180,7 @@ class NsClient {
  private:
 	bool TransformToTableDef(const std::string &table_name,
                        const ::fesql::node::NodePointVector &column_desc_list,
-                       ::rtidb::nameserver::TableInfo *table
+                       ::rtidb::nameserver::TableInfo *table,
                        ::rtidb::base::Status *status);
  private:
     std::string endpoint_;
