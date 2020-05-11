@@ -3,4 +3,4 @@
 	url = https://github.com/bilke/cmake-modules.git
 [submodule "sql3"]
 	path = fesql
-	url = git@gitlab.4pd.io:ai-native-db/fesql.git
+	url = ../../ai-native-db/fesql.git
