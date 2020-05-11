@@ -42,7 +42,7 @@ class NsClient {
 
     std::string GetEndpoint();
 
-    bool ShowTablet(std::vector<TabletInfo>& tablets,
+    bool ShowTablet(std::vector<TabletInfo>& tablets, // NOLINT
                     std::string& msg);  // NOLINT
 
     bool ShowTable(
@@ -89,7 +89,7 @@ class NsClient {
 
     bool CreateRemoteTableInfoSimply(
         const ::rtidb::nameserver::ZoneInfo& zone_info,
-        ::rtidb::nameserver::TableInfo& table_info,
+        ::rtidb::nameserver::TableInfo& table_info, // NOLINT
         std::string& msg);  // NOLINT
 
     bool DropTableRemote(const ::rtidb::api::TaskInfo& task_info,
@@ -122,7 +122,7 @@ class NsClient {
                  std::string& msg);                             // NOLINT
 
     bool ChangeLeader(const std::string& name, uint32_t pid,
-                      std::string& candidate_leader,
+                      std::string& candidate_leader,  // NOLINT
                       std::string& msg);  // NOLINT
 
     bool OfflineEndpoint(const std::string& endpoint, uint32_t concurrency,
