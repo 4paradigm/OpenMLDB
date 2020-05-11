@@ -19,6 +19,7 @@
 #include "node/node_manager.h"
 #include "parser/parser.h"
 #include "plan/planner.h"
+#include "base/status.h"
 
 namespace rtidb {
 namespace client {
