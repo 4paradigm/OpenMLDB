@@ -85,7 +85,7 @@ add_executable(tablet_impl_keep_alive_test tablet/tablet_impl_keep_alive_test.cc
 target_link_libraries(tablet_impl_keep_alive_test  gtest ${BIN_LIBS})
 
 add_executable(tablet_impl_mem_test  tablet/tablet_impl_mem_test.cc base/status.cc)
-target_link_libraries(tablet_impl_mem_test   gtest  tcmalloc ${BIN_LIBS})
+target_link_libraries(tablet_impl_mem_test   gtest tcmalloc ${BIN_LIBS})
 
 add_executable(tablet_impl_multi_path_test  tablet/tablet_impl_multi_path_test.cc base/status.cc)
 target_link_libraries(tablet_impl_multi_path_test  gtest ${BIN_LIBS})
