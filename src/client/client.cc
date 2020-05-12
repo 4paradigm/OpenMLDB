@@ -563,12 +563,16 @@ GeneralResult RtidbClient::Put(const std::string& name,
         result.SetError(-1, err_msg);
         return result;
     }
-    bool ok = tablet->Put(th->table_info->tid(), 0, "", 0, buffer);
+    int64_t auto_key = 0;
+    bool ok =
+        tablet->Put(th->table_info->tid(), 0, buffer, &auto_key, &err_msg);
     if (!ok) {
-        result.SetError(-1, "put error");
+        result.SetError(-1, "put error, msg: " + err_msg);
         return result;
     }
-
+    if (!th->auto_gen_pk.empty()) {
+        result.SetAutoGenPk(auto_key);
+    }
     return result;
 }
 

@@ -52,6 +52,19 @@ class ReadOption:
     self.read_filter = []
     self.col_set = set()
 
+class PutResult:
+  def __init__(self, data):
+    self.__data = data;
+    self.__success = True if data.code == 0 else False;
+    self.__auto_gen_pk = data.auto_gen_pk;
+  def success(self):
+    return self.__success;
+  def get_auto_gen_pk(self):
+    if not self.__data.has_auto_gen_pk:
+      raise Exception(-1, "don't have auto_gen_pk");    
+    else:
+      return self.__data.auto_gen_pk;
+
 class RtidbResult:
   def __init__(self, data):
     self.__data = data
@@ -115,10 +128,10 @@ class RTIDBClient:
       if columns[k] == None:
         value.update({k: NONETOKEN})
       value.update({k: str(columns[k])})
-    ok = self.__client.Put(table_name, value, _wo)
-    if ok.code != 0:
-      raise Exception(ok.code, ok.msg)
-    return True
+    general_result = self.__client.Put(table_name, value, _wo)
+    if general_result.code != 0:
+      raise Exception(general_result.code, general_result.msg)
+    return PutResult(general_result); 
 
   def update(self, table_name: str, condition_columns: map, value_columns: map, write_option: WriteOption = None):
     _wo = interclient.WriteOption();

@@ -58,9 +58,14 @@ struct GeneralResult {
         code = err_num;
         msg = error_msg;
     }
-
+    void SetAutoGenPk(int64_t num) {
+        has_auto_gen_pk = true;
+        auto_gen_pk = num;
+    }
     int code;
     std::string msg;
+    int64_t auto_gen_pk;
+    bool has_auto_gen_pk = false;
 };
 
 struct ReadOption {

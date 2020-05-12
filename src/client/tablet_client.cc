@@ -219,7 +219,7 @@ bool TabletClient::Update(uint32_t tid, uint32_t pid,
 }
 
 bool TabletClient::Put(uint32_t tid, uint32_t pid, const std::string& value,
-                       std::string& msg) {
+                       int64_t* auto_gen_pk, std::string* msg) {
     ::rtidb::api::PutRequest request;
     request.set_tid(tid);
     request.set_pid(pid);
@@ -235,9 +235,10 @@ bool TabletClient::Put(uint32_t tid, uint32_t pid, const std::string& value,
     }
     request.release_value();
     if (ok && response.code() == 0) {
+        *auto_gen_pk = response.auto_gen_pk();
+        msg->swap(*response.mutable_msg());
         return true;
     }
-    msg.assign(response.msg());
     return false;
 }
 
