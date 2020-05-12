@@ -21,10 +21,10 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include "base/status.h"
+#include "base/fe_status.h"
 #include "llvm/IR/Module.h"
 #include "parser/parser.h"
-#include "proto/common.pb.h"
+#include "proto/fe_common.pb.h"
 #include "vm/catalog.h"
 #include "vm/jit.h"
 #include "vm/runner.h"

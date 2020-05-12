@@ -18,12 +18,12 @@
 #ifndef SRC_VM_SIMPLE_CATALOG_H_
 #define SRC_VM_SIMPLE_CATALOG_H_
 
-#include <string>
 #include <map>
 #include <memory>
+#include <string>
 
 #include "glog/logging.h"
-#include "proto/type.pb.h"
+#include "proto/fe_type.pb.h"
 #include "vm/catalog.h"
 
 namespace fesql {
@@ -55,11 +55,9 @@ class SimpleCatalogTableHandler : public TableHandler {
         std::shared_ptr<TableHandler> table_hander,
         const std::string &index_name) const override;
 
-    std::unique_ptr<IteratorV<uint64_t, fesql::codec::Row>>
-        GetIterator() const override;
+    std::unique_ptr<RowIterator> GetIterator() const override;
 
-    IteratorV<uint64_t, fesql::codec::Row>*
-        GetIterator(int8_t *addr) const override;
+    RowIterator *GetIterator(int8_t *addr) const override;
 
  private:
     std::string db_name_;

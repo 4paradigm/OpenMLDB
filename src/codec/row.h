@@ -25,8 +25,8 @@
 #include <utility>
 #include <vector>
 #include "base/raw_buffer.h"
-#include "base/slice.h"
-#include "proto/type.pb.h"
+#include "base/fe_slice.h"
+#include "proto/fe_type.pb.h"
 
 namespace fesql {
 namespace codec {

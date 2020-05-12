@@ -3,17 +3,17 @@ include_directories(${INCLUDE_DIRECTORIES}
         ${PROJECT_BINARY_DIR}/src)
 
 set(TYPE_PB_CC
-        ${CMAKE_CURRENT_BINARY_DIR}/type.pb.cc)
+        ${CMAKE_CURRENT_BINARY_DIR}/fe_type.pb.cc)
 
 set(COMMON_PB_CC
-        ${CMAKE_CURRENT_BINARY_DIR}/common.pb.cc
+        ${CMAKE_CURRENT_BINARY_DIR}/fe_common.pb.cc
         )
 
 set(DBMS_PB_CC
         ${CMAKE_CURRENT_BINARY_DIR}/dbms.pb.cc)
 
 set(TABLET_PB_CC
-    ${CMAKE_CURRENT_BINARY_DIR}/tablet.pb.cc)
+    ${CMAKE_CURRENT_BINARY_DIR}/fe_tablet.pb.cc)
 
 set(BATCH_PB_CC
     ${CMAKE_CURRENT_BINARY_DIR}/batch.pb.cc)
@@ -22,11 +22,11 @@ set(PLAN_PB_CC
     ${CMAKE_CURRENT_BINARY_DIR}/plan.pb.cc)
 
 add_custom_command(OUTPUT ${COMMON_PB_CC}
-        COMMAND ${PROJECT_SOURCE_DIR}/thirdparty/bin/protoc -I ${PROJECT_SOURCE_DIR}/src/proto --cpp_out=${CMAKE_CURRENT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/src/proto/common.proto
+        COMMAND ${PROJECT_SOURCE_DIR}/thirdparty/bin/protoc -I ${PROJECT_SOURCE_DIR}/src/proto --cpp_out=${CMAKE_CURRENT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/src/proto/fe_common.proto
         )
 
 add_custom_command(OUTPUT ${TYPE_PB_CC}
-        COMMAND ${PROJECT_SOURCE_DIR}/thirdparty/bin/protoc -I ${PROJECT_SOURCE_DIR}/src/proto --cpp_out=${CMAKE_CURRENT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/src/proto/type.proto
+        COMMAND ${PROJECT_SOURCE_DIR}/thirdparty/bin/protoc -I ${PROJECT_SOURCE_DIR}/src/proto --cpp_out=${CMAKE_CURRENT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/src/proto/fe_type.proto
         )
 
 add_custom_command(OUTPUT ${DBMS_PB_CC}
@@ -34,7 +34,7 @@ add_custom_command(OUTPUT ${DBMS_PB_CC}
         )
 
 add_custom_command(OUTPUT ${TABLET_PB_CC}
-        COMMAND ${PROJECT_SOURCE_DIR}/thirdparty/bin/protoc -I ${PROJECT_SOURCE_DIR}/src/proto --cpp_out=${CMAKE_CURRENT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/src/proto/tablet.proto )
+        COMMAND ${PROJECT_SOURCE_DIR}/thirdparty/bin/protoc -I ${PROJECT_SOURCE_DIR}/src/proto --cpp_out=${CMAKE_CURRENT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/src/proto/fe_tablet.proto )
 
 add_custom_command(OUTPUT ${BATCH_PB_CC}
         COMMAND ${PROJECT_SOURCE_DIR}/thirdparty/bin/protoc -I ${PROJECT_SOURCE_DIR}/src/proto --cpp_out=${CMAKE_CURRENT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/src/proto/batch.proto )

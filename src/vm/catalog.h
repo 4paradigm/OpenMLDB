@@ -22,15 +22,14 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include "base/slice.h"
+#include "base/fe_slice.h"
 #include "codec/list_iterator_codec.h"
 #include "codec/row.h"
-#include "proto/type.pb.h"
+#include "proto/fe_type.pb.h"
 
 namespace fesql {
 namespace vm {
 
-using fesql::codec::IteratorV;
 using fesql::codec::ListV;
 using fesql::codec::Row;
 using fesql::codec::RowIterator;
@@ -79,12 +78,10 @@ class RowHandler : public DataHandler {
     RowHandler() {}
 
     virtual ~RowHandler() {}
-    std::unique_ptr<IteratorV<uint64_t, Row>> GetIterator() const override {
-        return std::unique_ptr<IteratorV<uint64_t, Row>>();
+    std::unique_ptr<RowIterator> GetIterator() const override {
+        return std::unique_ptr<RowIterator>();
     }
-    IteratorV<uint64_t, Row>* GetIterator(int8_t* addr) const override {
-        return nullptr;
-    }
+    RowIterator* GetIterator(int8_t* addr) const override { return nullptr; }
     const uint64_t GetCount() override { return 0; }
     Row At(uint64_t pos) override { return Row(); }
     const HandlerType GetHanlderType() override { return kRowHandler; }
@@ -125,7 +122,7 @@ class PartitionHandler : public TableHandler {
     virtual std::unique_ptr<RowIterator> GetIterator() const {
         return std::unique_ptr<RowIterator>();
     }
-    IteratorV<uint64_t, Row>* GetIterator(int8_t* addr) const override {
+    RowIterator* GetIterator(int8_t* addr) const override {
         return nullptr;
     }
     virtual std::unique_ptr<WindowIterator> GetWindowIterator(

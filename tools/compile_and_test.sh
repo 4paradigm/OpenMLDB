@@ -3,6 +3,7 @@
 # compile.sh
 PWD=`pwd`
 PWD=`pwd`
+
 if $(uname -a | grep -e Darwin); then
     JOBS=$(sysctl -n machdep.cpu.core_count)
 else
@@ -11,4 +12,4 @@ fi
 
 export PATH=${PWD}/thirdparty/bin:$PATH
 rm -rf build
-mkdir -p build && cd build && cmake .. && make -j${JOBS} && make test
+mkdir -p build && cd build && cmake -DCOVERAGE_ENABLE=ON -DTESTING_ENABLE=ON .. && make -j${JOBS} && make test

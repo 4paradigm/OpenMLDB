@@ -20,7 +20,7 @@
 
 #include <string>
 #include "brpc/channel.h"
-#include "proto/tablet.pb.h"
+#include "proto/fe_tablet.pb.h"
 
 namespace fesql {
 namespace tablet {

@@ -7,11 +7,11 @@
  *--------------------------------------------------------------------------
  **/
 
-#ifndef SRC_BASE_STATUS_H_
-#define SRC_BASE_STATUS_H_
+#ifndef SRC_BASE_FE_STATUS_H_
+#define SRC_BASE_FE_STATUS_H_
 #include <string>
-#include "proto/common.pb.h"
-#include "proto/type.pb.h"
+#include "proto/fe_common.pb.h"
+#include "proto/fe_type.pb.h"
 
 namespace fesql {
 namespace base {
@@ -24,4 +24,4 @@ struct Status {
 };
 }  // namespace base
 }  // namespace fesql
-#endif  // SRC_BASE_STATUS_H_
+#endif  // SRC_BASE_FE_STATUS_H_

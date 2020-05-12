@@ -67,6 +67,7 @@ namespace std {
 #include "node/plan_node.h"
 #include "node/sql_node.h"
 #include "sdk/base.h"
+#include "base/iterator.h"
 #include "sdk/dbms_sdk.h"
 #include "sdk/result_set.h"
 #include "sdk/tablet_sdk.h"
@@ -95,8 +96,9 @@ using fesql::vm::Range;
 using fesql::vm::ConditionFilter;
 using fesql::vm::Key;
 using fesql::vm::WindowOp;
+using fesql::base::Iterator;
+using fesql::base::ConstIterator;
 using fesql::codec::RowIterator;
-using fesql::codec::IteratorV;
 using fesql::codec::Row;
 using fesql::node::PlanType;
 using fesql::sdk::ExplainInfo;
@@ -118,8 +120,8 @@ using fesql::sdk::ExplainInfo;
 %ignore fesql::vm::FeSQLJITWrapper::AddModule;
 
 
-%include "base/slice.h"
-%include "base/status.h"
+%include "base/fe_slice.h"
+%include "base/fe_status.h"
 %include "codec/row.h"
 %include "codec/row_codec.h"
 %include "sdk/result_set.h"

@@ -103,7 +103,7 @@
  *
  */
 
-#include "base/linenoise.h"
+#include "base/fe_linenoise.h"
 
 #include <ctype.h>
 #include <errno.h>

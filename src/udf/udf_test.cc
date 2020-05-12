@@ -12,7 +12,7 @@
 #include <stdint.h>
 #include <algorithm>
 #include <vector>
-#include "base/slice.h"
+#include "base/fe_slice.h"
 #include "codec/list_iterator_codec.h"
 #include "vm/mem_catalog.h"
 namespace fesql {

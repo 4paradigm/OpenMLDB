@@ -6,11 +6,11 @@
 //
 //
 
-#include "storage/table.h"
+#include "storage/fe_table.h"
 #include <algorithm>
 #include <string>
-#include "base/hash.h"
-#include "base/slice.h"
+#include "base/fe_hash.h"
+#include "base/fe_slice.h"
 #include "glog/logging.h"
 
 namespace fesql {
@@ -219,7 +219,7 @@ TableIterator::~TableIterator() {
     delete pk_it_;
 }
 
-void TableIterator::Seek(uint64_t time) {
+void TableIterator::Seek(const uint64_t& time) {
     if (ts_it_ == NULL) {
         return;
     }
@@ -261,7 +261,7 @@ bool TableIterator::CurrentTsValid() {
     return ts_it_->Valid();
 }
 
-bool TableIterator::Valid() {
+bool TableIterator::Valid() const {
     if (ts_it_ == NULL) {
         return false;
     }
@@ -332,7 +332,7 @@ const Slice& TableIterator::GetValue() {
     return value_;
 }
 
-const uint64_t TableIterator::GetKey() { return ts_it_->GetKey(); }
+const uint64_t& TableIterator::GetKey() const { return ts_it_->GetKey(); }
 
 const Slice TableIterator::GetPK() {
     if (pk_it_ == NULL) {
@@ -369,6 +369,7 @@ void TableIterator::SeekToFirst() {
     }
     ts_it_->SeekToFirst();
 }
+bool TableIterator::IsSeekable() const { return true; }
 
 }  // namespace storage
 }  // namespace fesql

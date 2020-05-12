@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-#include "base/hash.h"
+#include "base/fe_hash.h"
 #include "benchmark/benchmark.h"
 
 static void BM_HashFunction(benchmark::State& state) { //NOLINT

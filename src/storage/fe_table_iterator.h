@@ -15,68 +15,71 @@
  * limitations under the License.
  */
 
-#ifndef SRC_STORAGE_TABLE_ITERATOR_H_
-#define SRC_STORAGE_TABLE_ITERATOR_H_
+#ifndef SRC_STORAGE_FE_TABLE_ITERATOR_H_
+#define SRC_STORAGE_FE_TABLE_ITERATOR_H_
 
 #include <memory>
 #include <string>
+#include "base/fe_slice.h"
 #include "base/iterator.h"
 #include "codec/list_iterator_codec.h"
 #include "glog/logging.h"
-#include "storage/segment.h"
-#include "base/slice.h"
-#include "storage/table.h"
+#include "storage/fe_segment.h"
+#include "storage/fe_table.h"
 #include "vm/catalog.h"
 
 namespace fesql {
 namespace storage {
 using fesql::codec::Row;
-using fesql::codec::IteratorV;
 using fesql::codec::WindowIterator;
 class WindowTableIterator;
 class FullTableIterator;
 class WindowInternalIterator;
 class EmptyWindowIterator;
 
-class EmptyWindowIterator : public IteratorV<uint64_t, Row> {
+class EmptyWindowIterator : public ConstIterator<uint64_t, Row> {
  public:
-    EmptyWindowIterator() : value_() {}
+    EmptyWindowIterator() : value_(), key_(0) {}
 
     ~EmptyWindowIterator() {}
 
-    inline void Seek(uint64_t ts) {}
+    inline void Seek(const uint64_t& ts) {}
 
     inline void SeekToFirst() {}
 
-    inline bool Valid() { return false; }
+    inline bool Valid() const { return false; }
 
     inline void Next() {}
 
     inline const Row& GetValue() { return value_; }
 
-    inline const uint64_t GetKey() { return 0; }
+    inline const uint64_t& GetKey() const { return key_; }
+
+    bool IsSeekable() const override { return true; }
 
  private:
     Row value_;
+    uint64_t key_;
 };
 
-class WindowInternalIterator : public IteratorV<uint64_t, Row> {
+class WindowInternalIterator : public ConstIterator<uint64_t, Row> {
  public:
     explicit WindowInternalIterator(
         std::unique_ptr<base::Iterator<uint64_t, DataBlock*>> ts_it);
     ~WindowInternalIterator();
 
-    inline void Seek(uint64_t ts);
+    inline void Seek(const uint64_t& ts);
 
     inline void SeekToFirst();
 
-    bool Valid();
+    bool Valid() const;
 
     void Next();
 
     const Row& GetValue();
 
-    const uint64_t GetKey();
+    const uint64_t& GetKey() const;
+    bool IsSeekable() const override;
 
  private:
     std::unique_ptr<base::Iterator<uint64_t, DataBlock*>> ts_it_;
@@ -111,28 +114,27 @@ class WindowTableIterator : public WindowIterator {
 };
 
 // the full table iterator
-class FullTableIterator : public IteratorV<uint64_t, Row> {
+class FullTableIterator : public ConstIterator<uint64_t, Row> {
  public:
-    FullTableIterator() : seg_cnt_(0), seg_idx_(0), segments_(NULL) {}
+    FullTableIterator() : seg_cnt_(0), seg_idx_(0), segments_(NULL), key_(0) {}
 
     explicit FullTableIterator(Segment*** segments, uint32_t seg_cnt,
                                std::shared_ptr<Table> table);
 
-    ~FullTableIterator() {
-    }
+    ~FullTableIterator() {}
 
-    inline void Seek(uint64_t ts) {}
+    inline void Seek(const uint64_t& ts) {}
 
     inline void SeekToFirst() {}
 
-    bool Valid();
+    bool Valid() const;
 
     void Next();
 
     const Row& GetValue();
-
+    bool IsSeekable() const override;
     // the key maybe the row num
-    const uint64_t GetKey() { return 0; }
+    const uint64_t& GetKey() const { return key_; }
 
  private:
     void GoToStart();
@@ -146,9 +148,10 @@ class FullTableIterator : public IteratorV<uint64_t, Row> {
     std::unique_ptr<base::Iterator<Slice, void*>> pk_it_;
     std::shared_ptr<Table> table_;
     Row value_;
+    uint64_t key_;
 };
 
 }  // namespace storage
 }  // namespace fesql
 
-#endif  // SRC_STORAGE_TABLE_ITERATOR_H_
+#endif  // SRC_STORAGE_FE_TABLE_ITERATOR_H_

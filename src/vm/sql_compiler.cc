@@ -19,7 +19,7 @@
 #include <memory>
 #include <utility>
 #include <vector>
-#include "codec/schema_codec.h"
+#include "codec/fe_schema_codec.h"
 #include "codec/type_codec.h"
 #include "codegen/ir_base_builder.h"
 #include "glog/logging.h"

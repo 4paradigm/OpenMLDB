@@ -19,7 +19,7 @@
 #include "parser/parser.h"
 #include <utility>
 #include "node/sql_node.h"
-#include "proto/common.pb.h"
+#include "proto/fe_common.pb.h"
 namespace fesql {
 namespace parser {
 

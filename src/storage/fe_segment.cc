@@ -5,7 +5,7 @@
 // Date 2019-11-01
 //
 
-#include "storage/segment.h"
+#include "storage/fe_segment.h"
 #include <mutex>  //NOLINT
 
 namespace fesql {

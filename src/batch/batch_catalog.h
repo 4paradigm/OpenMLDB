@@ -31,6 +31,7 @@ namespace fesql {
 namespace batch {
 
 using fesql::codec::Row;
+using fesql::codec::RowIterator;
 struct Partition {
     std::string path;
 };
@@ -55,10 +56,10 @@ class BatchTableHandler : public vm::TableHandler {
     inline const vm::Types& GetTypes() { return types_; }
 
     inline const vm::IndexHint& GetIndex() { return index_hint_; }
-    virtual std::unique_ptr<vm::IteratorV<uint64_t, Row>> GetIterator() const {
-        return std::unique_ptr<vm::IteratorV<uint64_t, Row>>();
+    virtual std::unique_ptr<RowIterator> GetIterator() const {
+        return std::unique_ptr<RowIterator>();
     }
-    virtual vm::IteratorV<uint64_t, Row>* GetIterator(int8_t* addr) const {
+    virtual RowIterator* GetIterator(int8_t* addr) const {
         return nullptr;
     }
     std::unique_ptr<vm::WindowIterator> GetWindowIterator(

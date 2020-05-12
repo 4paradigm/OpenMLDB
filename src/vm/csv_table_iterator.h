@@ -46,17 +46,18 @@ class CSVSegmentIterator : public RowIterator {
                        const Schema& schema);
     ~CSVSegmentIterator();
 
-    void Seek(uint64_t ts);
+    void Seek(const uint64_t& ts);
 
     void SeekToFirst();
 
-    const uint64_t GetKey();
+    const uint64_t& GetKey() const;
 
     const Row& GetValue();
 
     void Next();
 
-    bool Valid();
+    bool Valid() const;
+    bool IsSeekable() const override;
 
  private:
     const std::shared_ptr<arrow::Table> table_;
@@ -78,17 +79,18 @@ class CSVTableIterator : public RowIterator {
                      const Schema& schema);
     ~CSVTableIterator();
 
-    void Seek(uint64_t ts);
+    void Seek(const uint64_t& ts);
 
     void SeekToFirst();
 
-    const uint64_t GetKey();
+    const uint64_t& GetKey() const;
 
     const Row& GetValue();
 
     void Next();
 
-    bool Valid();
+    bool Valid() const;
+    bool IsSeekable() const override;
 
  private:
     void BuildRow();
@@ -102,6 +104,7 @@ class CSVTableIterator : public RowIterator {
     codec::RowBuilder rb_;
     uint32_t buf_size_;
     Row value_;
+    const uint64_t empty_key_;
 };
 
 }  // namespace vm

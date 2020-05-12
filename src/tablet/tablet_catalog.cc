@@ -22,11 +22,10 @@
 #include <utility>
 #include "codec/list_iterator_codec.h"
 #include "glog/logging.h"
-#include "storage/table_iterator.h"
+#include "storage/fe_table_iterator.h"
 
 namespace fesql {
 namespace tablet {
-using fesql::codec::IteratorV;
 using fesql::codec::WindowIterator;
 using fesql::codec::RowIterator;
 
@@ -114,7 +113,7 @@ const Row TabletTableHandler::Get(int32_t pos) {
     }
     return iter->Valid() ? iter->GetValue() : Row();
 }
-IteratorV<uint64_t, Row>* TabletTableHandler::GetIterator(
+RowIterator* TabletTableHandler::GetIterator(
     int8_t* addr) const {
     return new (addr) storage::FullTableIterator(table_->GetSegments(),
                                                  table_->GetSegCnt(), table_);
@@ -210,7 +209,7 @@ std::unique_ptr<RowIterator> TabletSegmentHandler::GetIterator() const {
     }
     return std::unique_ptr<RowIterator>();
 }
-IteratorV<uint64_t, Row>* TabletSegmentHandler::GetIterator(
+RowIterator* TabletSegmentHandler::GetIterator(
     int8_t* addr) const {
     LOG(WARNING) << "can't get iterator with given address";
     return nullptr;

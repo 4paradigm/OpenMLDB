@@ -6,8 +6,9 @@
  * Date: 2020/4/23
  *--------------------------------------------------------------------------
  **/
+
 #include "codec/row.h"
-#include "base/slice.h"
+
 namespace fesql {
 namespace codec {
 using fesql::base::Slice;
