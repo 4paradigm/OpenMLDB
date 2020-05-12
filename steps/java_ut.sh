@@ -29,5 +29,5 @@ code=$?
 cd $ROOT_DIR
 cd onebox && sh stop_all.sh
 cd $ROOT_DIR
-cd thirdsrc/zookeeper-3.4.10 && ./bin/zkServer.sh stop
+cd thirdsrc/zookeeper-3.4.14 && ./bin/zkServer.sh stop
 exit $code
