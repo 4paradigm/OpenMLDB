@@ -8,6 +8,7 @@ stages:
 
 build_rtidb:
     stage: build
+    retry: 2
     script:
         - source /root/.bashrc && sh tools/install_fesql.sh
         - ln -sf /depends/thirdparty thirdparty
@@ -20,6 +21,7 @@ build_rtidb:
 
 style_check:
     stage: build
+    retry: 2
     script:
         - source /root/.bashrc && bash tools/style_check.sh
     artifacts:
@@ -29,6 +31,7 @@ style_check:
 
 cpp_ut:
     stage: test
+    retry: 2
     script:
         - source /root/.bashrc && sh tools/install_fesql.sh
         - ln -sf /depends/thirdparty thirdparty
@@ -41,6 +44,7 @@ cpp_ut:
                 - reports/*.xml
 java_ut:
     stage: test
+    retry: 2
     script:
         - source /root/.bashrc && sh tools/install_fesql.sh
         - ln -sf /depends/thirdparty thirdparty
@@ -56,6 +60,7 @@ java_ut:
 
 tablet_one_demension:
     stage: test
+    retry: 2
     script:
         - ln -sf /depends/thirdparty thirdparty
         - ln -sf /depends/thirdsrc thirdsrc
@@ -69,6 +74,7 @@ tablet_one_demension:
 
 tablet_multi_demension:
     stage: test
+    retry: 2
     script:
         - ln -sf /depends/thirdparty thirdparty
         - ln -sf /depends/thirdsrc thirdsrc
@@ -82,6 +88,7 @@ tablet_multi_demension:
 
 ns_one_demension:
     stage: test
+    retry: 2
     script:
         - ln -sf /depends/thirdparty thirdparty
         - ln -sf /depends/thirdsrc thirdsrc
@@ -95,6 +102,7 @@ ns_one_demension:
 
 ns_multi_demension:
     stage: test
+    retry: 2
     script:
         - ln -sf /depends/thirdparty thirdparty
         - ln -sf /depends/thirdsrc thirdsrc
@@ -108,6 +116,7 @@ ns_multi_demension:
 
 disk_table:
     stage: test
+    retry: 2
     script:
         - ln -sf /depends/thirdparty thirdparty
         - ln -sf /depends/thirdsrc thirdsrc
@@ -121,6 +130,7 @@ disk_table:
 
 disktable-java:
     stage: test
+    retry: 2
     script:
         - ln -sf /depends/thirdparty thirdparty
         - ln -sf /depends/thirdsrc thirdsrc
