@@ -36,7 +36,7 @@ public class RelationalIterator {
     private int count;
     private NS.CompressType compressType = NS.CompressType.kNoCompress;
     private TableHandler th;
-    private Map<Integer, ColumnDesc> idxDescMap = new HashMap<>();
+    private Map<Integer, DataType> idxTypeMap = new HashMap<>();
     private RowView rowView;
     private boolean isFinished = false;
     private int pid = 0;
@@ -64,7 +64,7 @@ public class RelationalIterator {
             for (int i = 0; i < this.getSchema().size(); i++) {
                 ColumnDesc columnDesc = this.getSchema().get(i);
                 if (colSet.contains(columnDesc.getName())) {
-                    this.idxDescMap.put(i, columnDesc);
+                    this.idxTypeMap.put(i, columnDesc.getDataType());
                     if (th.getBlobIdxList().contains(i)) {
                         blobIdxTypeMap.put(i, columnDesc.getDataType());
                     }
@@ -99,7 +99,7 @@ public class RelationalIterator {
             for (int i = 0; i < this.getSchema().size(); i++) {
                 ColumnDesc columnDesc = this.getSchema().get(i);
                 if (colSet.contains(columnDesc.getName())) {
-                    this.idxDescMap.put(i, columnDesc);
+                    this.idxTypeMap.put(i, columnDesc.getDataType());
                     if (th.getBlobIdxList().contains(i)) {
                         blobIdxTypeMap.put(i, columnDesc.getDataType());
                     }
@@ -208,20 +208,19 @@ public class RelationalIterator {
 
     private Map<String, Object> getInternel() throws TabletException {
         Map<String, Object> map = new HashMap<>();
-        if (idxDescMap.isEmpty()) {
+        if (idxTypeMap.isEmpty()) {
             for (int i = 0; i < this.getSchema().size(); i++) {
                 ColumnDesc columnDesc = this.getSchema().get(i);
                 Object value = rowView.getValue(i, columnDesc.getDataType());
                 map.put(columnDesc.getName(), value);
             }
         } else {
-            Iterator<Map.Entry<Integer, ColumnDesc>> iter = this.idxDescMap.entrySet().iterator();
+            Iterator<Map.Entry<Integer, DataType>> iter = this.idxTypeMap.entrySet().iterator();
             while (iter.hasNext()) {
-                Map.Entry<Integer, ColumnDesc> next = iter.next();
+                Map.Entry<Integer, DataType> next = iter.next();
                 int index = next.getKey();
-                ColumnDesc columnDesc = next.getValue();
-                Object value = rowView.getValue(index, columnDesc.getDataType());
-                map.put(columnDesc.getName(), value);
+                Object value = rowView.getValue(index, next.getValue());
+                map.put(this.getSchema().get(index).getName(), value);
             }
         }
         for (Integer idx : th.getBlobIdxList()) {
