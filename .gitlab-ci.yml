@@ -1,4 +1,4 @@
-image: develop-registry.4pd.io/centos6_gcc7_build_env:0.2.0
+image: develop-registry.4pd.io/centos6_gcc7_build_env:0.3.0
 variables:
     GIT_SUBMODULE_STRATEGY: recursive
 stages:
@@ -14,7 +14,7 @@ build_rtidb:
         - source /root/.bashrc && sh tools/install_fesql.sh
         - ln -sf /depends/thirdparty thirdparty
         - ln -sf /depends/thirdsrc thirdsrc
-        - source /root/.bashrc && bash steps/compile.sh
+        - source /root/.bashrc && bash steps/simple_compile.sh
     artifacts:
         expire_in: 2h
         paths:
@@ -29,7 +29,6 @@ style_check:
         reports:
             junit:
                 - reports/*.xml
-
 ut:
     stage: test
     retry: 2
