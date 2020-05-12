@@ -90,6 +90,7 @@ message TableInfo {
     optional rtidb.api.TTLDesc ttl_desc = 16;
     optional rtidb.type.TableType table_type = 17 [default = kTimeSeries];
     optional uint32 format_version = 18 [default = 0];
+    repeated string blobs = 19;
 }
 
 message CreateTableRequest {
@@ -374,6 +375,13 @@ message SyncTableRequest {
     optional string name = 1;
     optional string cluster_alias = 2;
     optional uint32 pid = 3;
+}
+
+message AddIndexMeta {
+    optional string name = 1;
+    optional uint32 pid = 2;
+    optional rtidb.common.ColumnKey column_key = 3;
+    optional uint32 idx = 4;
 }
 
 message AddIndexRequest {

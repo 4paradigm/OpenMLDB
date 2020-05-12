@@ -42,6 +42,8 @@ struct TableHandler {
         google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>>
         columns;
     std::vector<PartitionInfo> partition;
+    std::string auto_gen_pk_;
+    std::vector<int32_t> blobSuffix;
     std::string auto_gen_pk;
     std::map<std::string, ::rtidb::type::DataType> name_type_map;
 };
@@ -364,8 +366,8 @@ class RtidbClient {
     BatchQueryResult BatchQuery(const std::string& name,
                                 const std::vector<ReadOption>& ros);
     bool BatchQuery(const std::string& name,
-            ::google::protobuf::RepeatedPtrField<
-            ::rtidb::api::ReadOption> ros_pb,
+            const ::google::protobuf::RepeatedPtrField<
+            ::rtidb::api::ReadOption>& ros_pb,
             std::string* data,
             uint32_t* count,
             std::string* msg);

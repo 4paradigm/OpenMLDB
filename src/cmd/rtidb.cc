@@ -441,6 +441,9 @@ int EncodeMultiDimensionDataForNewFormat(
             } else if (column.data_type() == ::rtidb::type::kBigInt) {
                 codec_ok =
                     rb.AppendInt64(boost::lexical_cast<int64_t>(data[i]));
+            } else if (column.data_type() == ::rtidb::type::kBlob) {
+                codec_ok =
+                    rb.AppendBlob(boost::lexical_cast<int64_t>(data[i]));
             } else if (column.data_type() == ::rtidb::type::kFloat) {
                 codec_ok = rb.AppendFloat(boost::lexical_cast<float>(data[i]));
             } else if (column.data_type() == ::rtidb::type::kDouble) {
@@ -3377,9 +3380,6 @@ int SetColumnDesc(const ::rtidb::client::TableInfo& table_info,
             return -1;
         }
         column_desc->set_data_type(tp_iter->second);
-        if (tp_iter->second == ::rtidb::type::kBlob) {
-            column_desc->set_data_type(::rtidb::type::kVarchar);
-        }
     }
     if (table_info.column_key_size() == 0 &&
         (!table_info.has_table_type() ||

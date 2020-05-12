@@ -179,6 +179,16 @@ public class RowBuilder {
         return true;
     }
 
+    public boolean appendBlob(long val) {
+        if (!check(DataType.Blob)) {
+            return false;
+        }
+        buf.position(offsetVec.get(cnt));
+        buf.putLong(val);
+        cnt++;
+        return true;
+    }
+
     public boolean appendFloat(float val) {
         if (!check(DataType.Float)) {
             return false;
@@ -284,6 +294,9 @@ public class RowBuilder {
                         ok = builder.appendTimestamp((Long) column);
                     }
                     break;
+                case Blob:
+                    ok = builder.appendBlob((long) column);
+                    break;
                 case BigInt:
                     ok = builder.appendInt64((Long) column);
                     break;
@@ -348,6 +361,9 @@ public class RowBuilder {
                     }else {
                         ok = builder.appendTimestamp((Long) column);
                     }
+                    break;
+                case Blob:
+                    ok = builder.appendBlob((Long) column);
                     break;
                 case BigInt:
                     ok = builder.appendInt64((Long) column);

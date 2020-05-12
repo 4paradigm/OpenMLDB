@@ -5,11 +5,10 @@
 
 #pragma once
 
-#include <brpc/server.h>
-#include <client/client.h>
-
 #include <mutex>
 
+#include "brpc/server.h"
+#include "client/client.h"
 #include "proto/blob_proxy.pb.h"
 #include "zk/zk_client.h"
 

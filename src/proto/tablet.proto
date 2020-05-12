@@ -203,6 +203,7 @@ message DeleteRequest {
     optional string key = 3;
     optional string idx_name = 4;
     repeated Columns condition_columns = 5;
+    optional bool receive_blobs = 6 [default = false];
 }
 
 message ExecuteGcRequest {
@@ -234,6 +235,7 @@ message DeleteTaskRequest {
 message GeneralResponse {
     optional int32 code = 1;
     optional string msg = 2;
+    repeated int64 additional_ids = 3;
 }
 
 message ScanRequest {

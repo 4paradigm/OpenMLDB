@@ -6,6 +6,7 @@
 //
 
 #include "storage/schema.h"
+
 #include <utility>
 
 namespace rtidb {
@@ -22,8 +23,7 @@ std::shared_ptr<ColumnDef> TableColumn::GetColumn(uint32_t idx) {
     return std::shared_ptr<ColumnDef>();
 }
 
-std::shared_ptr<ColumnDef> TableColumn::GetColumn(
-        const std::string& name) {
+std::shared_ptr<ColumnDef> TableColumn::GetColumn(const std::string& name) {
     auto it = column_map_.find(name);
     if (it != column_map_.end()) {
         return it->second;
@@ -36,9 +36,16 @@ const std::vector<std::shared_ptr<ColumnDef>>& TableColumn::GetAllColumn() {
     return columns_;
 }
 
+const std::vector<uint32_t>& TableColumn::GetBlobIdxs() {
+    return blob_idxs_;
+}
+
 void TableColumn::AddColumn(std::shared_ptr<ColumnDef> column_def) {
     columns_.push_back(column_def);
     column_map_.insert(std::make_pair(column_def->GetName(), column_def));
+    if (column_def->GetType() == rtidb::type::kBlob) {
+        blob_idxs_.push_back(column_def->GetId());
+    }
 }
 
 IndexDef::IndexDef(const std::string& name, uint32_t id)
@@ -63,8 +70,7 @@ bool ColumnDefSortFunc(const ColumnDef& cd_a, const ColumnDef& cd_b) {
 TableIndex::TableIndex() {
     indexs_ = std::make_shared<std::vector<std::shared_ptr<IndexDef>>>();
     pk_index_ = std::shared_ptr<IndexDef>();
-    combine_col_name_map_ =
-        std::make_shared<
+    combine_col_name_map_ = std::make_shared<
         std::unordered_map<std::string, std::shared_ptr<IndexDef>>>();
     col_name_vec_ = std::make_shared<std::vector<std::string>>();
 }
@@ -74,8 +80,7 @@ void TableIndex::ReSet() {
         std::make_shared<std::vector<std::shared_ptr<IndexDef>>>();
     std::atomic_store_explicit(&indexs_, new_indexs, std::memory_order_relaxed);
     pk_index_ = std::shared_ptr<IndexDef>();
-    auto new_map =
-        std::make_shared<
+    auto new_map = std::make_shared<
         std::unordered_map<std::string, std::shared_ptr<IndexDef>>>();
     std::atomic_store_explicit(&combine_col_name_map_, new_map,
                                std::memory_order_relaxed);
@@ -137,9 +142,8 @@ int TableIndex::AddIndex(std::shared_ptr<IndexDef> index_def) {
             std::memory_order_relaxed);
     auto old_map = std::atomic_load_explicit(&combine_col_name_map_,
                                              std::memory_order_relaxed);
-    auto new_map =
-        std::make_shared<std::unordered_map<std::string,
-        std::shared_ptr<IndexDef>>>(*old_map);
+    auto new_map = std::make_shared<
+        std::unordered_map<std::string, std::shared_ptr<IndexDef>>>(*old_map);
     new_map->insert(std::make_pair(combine_name, index_def));
     std::atomic_store_explicit(&combine_col_name_map_, new_map,
                                std::memory_order_relaxed);

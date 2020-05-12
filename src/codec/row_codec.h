@@ -115,13 +115,17 @@ class RowCodec {
                         ok = builder.AppendInt32(
                             boost::lexical_cast<uint32_t>(iter->second));
                         break;
+                    case rtidb::type::kBlob:
+                        ok = builder.AppendBlob(
+                            boost::lexical_cast<int64_t>(iter->second));
+                        break;
                     case rtidb::type::kBigInt:
                         ok = builder.AppendInt64(
-                            boost::lexical_cast<uint64_t>(iter->second));
+                            boost::lexical_cast<int64_t>(iter->second));
                         break;
                     case rtidb::type::kTimestamp:
                         ok = builder.AppendTimestamp(
-                            boost::lexical_cast<uint64_t>(iter->second));
+                            boost::lexical_cast<int64_t>(iter->second));
                         break;
                     case rtidb::type::kFloat:
                         ok = builder.AppendFloat(
@@ -220,7 +224,8 @@ class RowCodec {
                 if (ret == 0) {
                     col = std::to_string(val);
                 }
-            } else if (type == rtidb::type::kBigInt) {
+            } else if (type == rtidb::type::kBigInt ||
+                       type == rtidb::type::kBlob) {
                 int64_t val = 0;
                 int ret = rv.GetInt64(i, &val);
                 if (ret == 0) {
