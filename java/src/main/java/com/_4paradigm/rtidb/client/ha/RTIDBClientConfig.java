@@ -30,6 +30,7 @@ public class RTIDBClientConfig {
 	private String zkTableRootPath = "";
 	private String zkTableNotifyPath = "";
 	private String zkNodeRootPath = "";
+	private String zkOssNodeRootPath = "";
 	private int zkSesstionTimeout = 10000;
 	private int ioThreadNum = 2;
 	private int writeTimeout = 10000;
@@ -126,6 +127,7 @@ public class RTIDBClientConfig {
         this.zkNodeRootPath = zkRootPath + "/nodes";
         this.zkTableRootPath = zkRootPath + "/table/table_data";
         this.zkTableNotifyPath = zkRootPath + "/table/notify";
+        this.zkOssNodeRootPath = zkRootPath + "/ossnodes";
     }
 
     public String getZkRootPath() {
@@ -134,6 +136,10 @@ public class RTIDBClientConfig {
 
     public String getZkNodeRootPath() {
         return zkNodeRootPath;
+    }
+
+    public String getZkOssNodeRootPath() {
+        return zkOssNodeRootPath;
     }
 
     public void setZkNodeRootPath(String zkNodeRootPath) {

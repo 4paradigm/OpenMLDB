@@ -254,7 +254,7 @@ class TabletClient {
 
     bool BatchQuery(uint32_t tid, uint32_t pid,
             const ::google::protobuf::RepeatedPtrField<
-            ::rtidb::api::ReadOption> ros,
+            ::rtidb::api::ReadOption>& ros,
             std::string* data,
             uint32_t* count, std::string* msg);
 

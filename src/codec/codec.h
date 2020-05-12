@@ -16,6 +16,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <sstream>
 
 #include "base/endianconv.h"
 #include "base/strings.h"
@@ -78,6 +79,7 @@ class RowBuilder {
     bool AppendInt32(int32_t val);
     bool AppendInt16(int16_t val);
     bool AppendInt64(int64_t val);
+    bool AppendBlob(int64_t val);
     bool AppendTimestamp(int64_t val);
     bool AppendFloat(float val);
     bool AppendDouble(double val);
@@ -91,6 +93,7 @@ class RowBuilder {
     bool SetInt32(uint32_t index, int32_t val);
     bool SetInt16(uint32_t index, int16_t val);
     bool SetInt64(uint32_t index, int64_t val);
+    bool SetBlob(uint32_t index, int64_t val);
     bool SetTimestamp(uint32_t index, int64_t val);
     bool SetFloat(uint32_t index, float val);
     bool SetDouble(uint32_t index, double val);
@@ -126,6 +129,7 @@ class RowView {
     int32_t GetBool(uint32_t idx, bool* val);
     int32_t GetInt32(uint32_t idx, int32_t* val);
     int32_t GetInt64(uint32_t idx, int64_t* val);
+    int32_t GetBlob(uint32_t idx, int64_t* val);
     int32_t GetTimestamp(uint32_t idx, int64_t* val);
     int32_t GetInt16(uint32_t idx, int16_t* val);
     int32_t GetFloat(uint32_t idx, float* val);
@@ -291,6 +295,13 @@ int32_t GetStrCol(int8_t* input, int32_t str_field_offset,
                   int32_t next_str_field_offset, int32_t str_start_offset,
                   int32_t type_id, int8_t* data);
 }  // namespace v1
+
+inline std::string Int64ToString(const int64_t key) {
+    std::stringstream ss;
+    ss << std::hex << key;
+    std::string key_str = ss.str();
+    return key_str;
+}
 
 }  // namespace codec
 }  // namespace rtidb
