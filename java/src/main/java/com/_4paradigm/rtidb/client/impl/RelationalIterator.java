@@ -1,5 +1,6 @@
 package com._4paradigm.rtidb.client.impl;
 
+import com._4paradigm.rtidb.blobserver.OSS;
 import com._4paradigm.rtidb.client.ReadOption;
 import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.ha.PartitionHandler;
@@ -10,7 +11,6 @@ import com._4paradigm.rtidb.client.schema.FieldCodec;
 import com._4paradigm.rtidb.client.schema.RowView;
 import com._4paradigm.rtidb.client.type.DataType;
 import com._4paradigm.rtidb.ns.NS;
-import com._4paradigm.rtidb.blobserver.OSS;
 import com._4paradigm.rtidb.tablet.Tablet;
 import com._4paradigm.rtidb.utils.Compress;
 import com.google.protobuf.ByteBufferNoCopy;
@@ -46,6 +46,7 @@ public class RelationalIterator {
     private boolean batch_query = false;
     private long snapshot_id = 0;
     private List<ReadOption> ros = new ArrayList<>();
+    private Map<Integer, DataType> blobIdxTypeMap = new HashMap<>();
 
     public RelationalIterator(RTIDBClient client, TableHandler th, ReadOption ro) {
         this.offset = 0;
@@ -54,18 +55,28 @@ public class RelationalIterator {
         this.th = th;
         this.client = client;
         this.compressType = th.getTableInfo().getCompressType();
-        Set<String> colSet;
+        Set<String> colSet = null;
         if (ro != null) {
             ros.add(ro);
             colSet = ro.getColSet();
-        } else {
-            colSet = null;
         }
         if (colSet != null && !colSet.isEmpty()) {
             for (int i = 0; i < this.getSchema().size(); i++) {
                 ColumnDesc columnDesc = this.getSchema().get(i);
                 if (colSet.contains(columnDesc.getName())) {
                     this.idxDescMap.put(i, columnDesc);
+                    if (th.getBlobIdxList().contains(i)) {
+                        blobIdxTypeMap.put(i, columnDesc.getDataType());
+                    }
+                }
+            }
+        } else {
+            if (!th.getBlobIdxList().isEmpty()) {
+                for (int i = 0; i < this.getSchema().size(); i++) {
+                    ColumnDesc columnDesc = this.getSchema().get(i);
+                    if (th.getBlobIdxList().contains(i)) {
+                        blobIdxTypeMap.put(i, columnDesc.getDataType());
+                    }
                 }
             }
         }
@@ -89,6 +100,18 @@ public class RelationalIterator {
                 ColumnDesc columnDesc = this.getSchema().get(i);
                 if (colSet.contains(columnDesc.getName())) {
                     this.idxDescMap.put(i, columnDesc);
+                    if (th.getBlobIdxList().contains(i)) {
+                        blobIdxTypeMap.put(i, columnDesc.getDataType());
+                    }
+                }
+            }
+        } else {
+            if (!th.getBlobIdxList().isEmpty()) {
+                for (int i = 0; i < this.getSchema().size(); i++) {
+                    ColumnDesc columnDesc = this.getSchema().get(i);
+                    if (th.getBlobIdxList().contains(i)) {
+                        blobIdxTypeMap.put(i, columnDesc.getDataType());
+                    }
                 }
             }
         }
@@ -107,6 +130,25 @@ public class RelationalIterator {
 
     public int getCount() {
         return count;
+    }
+
+    public List<String> getUrlList() throws TabletException {
+        // eg. "/v1/get/" + table_name + "/" + key
+        if (blobIdxTypeMap.isEmpty()) {
+            throw new TabletException("can't get url because no blob column!");
+        }
+        List<String> list = new ArrayList<>();
+        StringBuilder sb = new StringBuilder("/v1/get/");
+        sb.append(th.getTableInfo().getName());
+        sb.append("/");
+        String prefix = sb.toString();
+        Iterator<Map.Entry<Integer, DataType>> iter = this.blobIdxTypeMap.entrySet().iterator();
+        while (iter.hasNext()) {
+            Map.Entry<Integer, DataType> next = iter.next();
+            Object value = rowView.getValue(next.getKey(), next.getValue());
+            list.add(prefix + ((Long) value).toString());
+        }
+        return list;
     }
 
     public boolean valid() {
@@ -198,7 +240,7 @@ public class RelationalIterator {
         return map;
     }
 
-    private  boolean getObjectStore(int tid, long key, Object[] result, TableHandler th) throws TabletException {
+    private boolean getObjectStore(int tid, long key, Object[] result, TableHandler th) throws TabletException {
         if (result.length < 1) {
             throw new TabletException("result array size must greather 1");
         }
@@ -216,7 +258,7 @@ public class RelationalIterator {
         if (response != null && response.getCode() == 0) {
             ByteString data = response.getData();
             result[0] = data.asReadOnlyByteBuffer().rewind();
-            return  true;
+            return true;
         }
         return false;
     }
