@@ -20,7 +20,7 @@ option(TCMALLOC_ENABLE "Enable TCMALLOC" ON)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-set(BRPC_LIBS brpc protobuf glog gflags ssl crypto leveldb z snappy dl pthread rt)
+set(BRPC_LIBS brpc protobuf glog unwind gflags ssl crypto leveldb z snappy dl pthread rt)
 set(VM_LIBS fesql_vm fesql_udf fesql_parser fesql_planner fesql_codegen fesql_storage fesql_codec fesql_proto
     fesql_node fesql_base)
 set(LLVM_DIR "${PROJECT_SOURCE_DIR}/thirdparty/lib/cmake/llvm")
