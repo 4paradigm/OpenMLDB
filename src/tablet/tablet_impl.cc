@@ -30,7 +30,6 @@
 #include "codec/codec.h"
 #include "logging.h"  // NOLINT
 #include "rapidjson/stringbuffer.h"
-#include "rapidjson/writer.h"
 #include "storage/binlog.h"
 #include "storage/segment.h"
 #include "tablet/file_sender.h"
@@ -41,6 +40,7 @@ using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
 using ::rtidb::storage::DataBlock;
 using ::rtidb::storage::Table;
+using google::protobuf::RepeatedPtrField;
 
 DECLARE_int32(gc_interval);
 DECLARE_int32(disk_gc_interval);
@@ -790,13 +790,13 @@ void TabletImpl::Put(RpcController* controller,
             done->Run();
             return;
         }
-        done->Run();
         response->set_code(::rtidb::base::ReturnCode::kOk);
+        done->Run();
     }
 }
 
 int TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta,
-        std::string& msg) {
+                               std::string& msg) {
     msg.clear();
     if (table_meta->name().size() <= 0) {
         msg = "table name is empty";
@@ -1691,7 +1691,7 @@ void TabletImpl::Traverse(RpcController* controller,
             }
         }
         uint32_t scount = 0;
-        std::string* last_pk = response->mutable_pk();;
+        std::string* last_pk = response->mutable_pk();
         std::vector<rtidb::base::Slice> value_vec;
         uint32_t total_block_size = 0;
         for (; it->Valid(); it->Next()) {
@@ -1741,8 +1741,7 @@ void TabletImpl::Traverse(RpcController* controller,
 
 void TabletImpl::Delete(RpcController* controller,
                         const ::rtidb::api::DeleteRequest* request,
-                        ::rtidb::api::GeneralResponse* response,
-                        Closure* done) {
+                        rtidb::api::GeneralResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (follower_.load(std::memory_order_relaxed)) {
         response->set_code(::rtidb::base::ReturnCode::kIsFollowerCluster);
@@ -1824,16 +1823,25 @@ void TabletImpl::Delete(RpcController* controller,
         }
         return;
     } else {
-        if (r_table->Delete(request->condition_columns())) {
-            response->set_code(::rtidb::base::ReturnCode::kOk);
-            response->set_msg("ok");
+        bool ok = false;
+        if (request->receive_blobs()) {
+            auto blobs = response->mutable_additional_ids();
+            ok = r_table->Delete(request->condition_columns(), blobs);
+        } else {
+            ok = r_table->Delete(request->condition_columns());
+        }
+        if (ok) {
             PDLOG(DEBUG, "delete ok. tid %u, pid %u, key %s, idx_name %s",
                   request->tid(), request->pid(), request->key().c_str(),
                   request->idx_name().c_str());
+            response->set_code(::rtidb::base::ReturnCode::kOk);
+            response->set_msg("ok");
         } else {
+            PDLOG(WARNING, "delete fail. tid %u, pid %u, key %s, idx_name %s",
+                  request->tid(), request->pid(), request->key().c_str(),
+                  request->idx_name().c_str());
             response->set_code(::rtidb::base::ReturnCode::kDeleteFailed);
             response->set_msg("delete failed");
-            return;
         }
     }
 }
@@ -2330,6 +2338,21 @@ void TabletImpl::GetTableStatus(
             if (request->has_need_schema() && request->need_schema()) {
                 status->set_schema(table->GetSchema());
             }
+        }
+    }
+    for (auto it = relational_tables_.begin(); it != relational_tables_.end();
+         it++) {
+        if (request->has_tid() && request->tid() != it->first) {
+            continue;
+        }
+        for (auto pit = it->second.begin(); pit != it->second.end(); pit++) {
+            if (request->has_pid() && request->pid() != pit->first) {
+                continue;
+            }
+            ::rtidb::api::TableStatus* status =
+                response->add_all_table_status();
+            status->set_tid(it->first);
+            status->set_pid(pit->first);
         }
     }
     response->set_code(::rtidb::base::ReturnCode::kOk);

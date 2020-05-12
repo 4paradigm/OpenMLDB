@@ -22,12 +22,13 @@ enum DataType {
 enum TableType {
     kTimeSeries = 1; 
     kRelational = 2;
+    kObjectStore = 3;
 }
 
 enum IndexType {
     kUnique = 1; // uinque index
     kNoUnique = 2;
-    kPrimaryKey = 3;
+    kPrimaryKey = 3; 
     kAutoGen = 4;  // auto gen primary key
     kIncrement = 5; // auto gen increment id primary key
     kTimeSerise = 6;

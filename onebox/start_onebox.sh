@@ -13,6 +13,7 @@ NS3=$IP:9624
 TABLET1=$IP:9520
 TABLET2=$IP:9521
 TABLET3=$IP:9522
+BLOB1=$IP:9720
 
 # start tablet0
 test -d tablet0-binlogs && rm -rf tablet0-binlogs
@@ -72,6 +73,24 @@ test -d recycle_ssd_bin2 && rm -rf recycle_ssd_bin2
                    --zk_cluster=${ZK_CLUSTER}\
                    --zk_keep_alive_check_interval=100000000\
                    --zk_root_path=/onebox > tablet2.log 2>&1 &
+
+test -d blob1-hdd-binlogs && rm -rf blob1-hdd-binlogs
+test -d blob1-ssd-binlogs && rm -rf blob1-ssd-binlogs
+test -d recycle_bin3 && rm -rf recycle_bin3
+test -d recycle_ssd_bin3 && rm -rf recycle_ssd_bin3
+test -d recycle_hdd_bin3 && rm -rf recycle_hdd_bin3
+
+# start blob1
+../build/bin/rtidb --hdd_root_path=blob1-hdd-binlogs \
+                   --ssd_root_path=blob1-ssd-binlogs \
+                   --recycle_bin_root_path=recycle_bin3 \
+                   --recycle_ssd_bin_root_path=recycle_ssd_bin3 \
+                   --recycle_hdd_bin_root_path=recycle_hdd_bin3 \
+                   --endpoint=${BLOB1} --role=blob \
+                   --binlog_notify_on_put=true\
+                   --zk_cluster=${ZK_CLUSTER}\
+                   --zk_keep_alive_check_interval=100000000\
+                   --zk_root_path=/onebox > blob1.log 2>&1 &
 
 
 # start ns1 
