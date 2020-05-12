@@ -1,4 +1,6 @@
 image: develop-registry.4pd.io/centos6_gcc7_build_env:0.1.0
+variables:
+    GIT_SUBMODULE_STRATEGY: recursive
 stages:
     - build
     - ut
@@ -9,6 +11,7 @@ stages:
 build:
     stage: build
     script:
+        - source /root/.bashrc && sh tools/install_fesql.sh
         - ln -sf /depends/thirdparty thirdparty
         - ln -sf /depends/thirdsrc thirdsrc
         - source /root/.bashrc && bash steps/compile.sh
@@ -29,6 +32,7 @@ style_check:
 cpp_ut:
     stage: ut
     script:
+        - source /root/.bashrc && sh tools/install_fesql.sh
         - ln -sf /depends/thirdparty thirdparty
         - ln -sf /depends/thirdsrc thirdsrc
         - source /root/.bashrc && bash steps/compile.sh
@@ -40,6 +44,7 @@ cpp_ut:
 java_ut:
     stage: ut
     script:
+        - source /root/.bashrc && sh tools/install_fesql.sh
         - ln -sf /depends/thirdparty thirdparty
         - ln -sf /depends/thirdsrc thirdsrc
         - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/java_ut.sh

@@ -6,8 +6,11 @@
 //
 
 #include "client/ns_client.h"
+
 #include <utility>
+
 #include "base/strings.h"
+#include "glog/logging.h"
 
 DECLARE_int32(request_timeout_ms);
 namespace rtidb {
@@ -133,6 +136,17 @@ bool NsClient::AddTableField(const std::string& table_name,
         return true;
     }
     return false;
+}
+
+bool NsClient::CreateTable(const std::string& script, std::string& msg) {
+    fesql::node::NodeManager node_manager;
+    fesql::parser::FeSQLParser parser;
+    fesql::plan::SimplePlanner planner(&node_manager);
+    DLOG(INFO) << "start to execute script from dbms:\n" << script;
+    fesql::base::Status sql_status;
+    fesql::node::NodePointVector parser_trees;
+    parser.parse(script, parser_trees, &node_manager, sql_status);
+    return true;
 }
 
 bool NsClient::CreateTable(const ::rtidb::nameserver::TableInfo& table_info,
@@ -801,6 +815,14 @@ bool NsClient::DeleteIndex(const std::string& table_name,
     msg = response.msg();
     int code = response.code();
     return ok && code == 0;
+}
+
+bool NsClient::TransformToTableDef(
+    const std::string& table_name,
+    const ::fesql::node::NodePointVector& column_desc_list,
+    ::rtidb::nameserver::TableInfo* table, ::rtidb::base::Status* status) {
+    if (table == NULL || status == NULL) return false;
+    return true;
 }
 
 }  // namespace client

@@ -13,8 +13,8 @@ cp -rf src/proto/name_server.proto java/src/main/proto/
 cp -rf src/proto/common.proto java/src/main/proto/
 cp -rf src/proto/type.proto java/src/main/proto/
 
-cp steps/zoo.cfg thirdsrc/zookeeper-3.4.10/conf
-cd thirdsrc/zookeeper-3.4.10
+cp steps/zoo.cfg thirdsrc/zookeeper-3.4.14/conf
+cd thirdsrc/zookeeper-3.4.14
 test -d ut_zookeeper && rm -rf ut_zookeeper
 netstat -anp | grep 6181 | awk '{print $NF}' | awk -F '/' '{print $1}'| xargs kill -9
 ./bin/zkServer.sh start && cd $ROOT_DIR
