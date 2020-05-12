@@ -4,6 +4,7 @@ variables:
 stages:
     - build
     - test
+    - integration_test
     - deploy
 
 build_rtidb:
@@ -29,7 +30,7 @@ style_check:
             junit:
                 - reports/*.xml
 
-cpp_ut:
+ut:
     stage: test
     retry: 2
     script:
@@ -38,28 +39,24 @@ cpp_ut:
         - ln -sf /depends/thirdsrc thirdsrc
         - source /root/.bashrc && bash steps/compile.sh
         - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/ut.sh
+        - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/java_ut.sh
+        - source /root/.bashrc && bash steps/auto_test.sh
     artifacts:
         reports:
             junit:
                 - reports/*.xml
-java_ut:
-    stage: test
-    retry: 2
-    script:
-        - source /root/.bashrc && sh tools/install_fesql.sh
-        - ln -sf /depends/thirdparty thirdparty
-        - ln -sf /depends/thirdsrc thirdsrc
-        - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/java_ut.sh
-    artifacts:
-        reports:
-            junit:
                 - java/target/surefire-reports/junitreports/TEST-*.xml
                 - java/target/surefire-reports/TEST-*.xml
                 - java/target/failsafe-reports/junitreports/TEST-*.xml
                 - java/target/failsafe-reports/TEST-*.xml
+                - rtidb-auto-test/target/surefire-reports/junitreports/TEST-*.xml
+                - rtidb-auto-test/target/surefire-reports/TEST-*.xml
+                - rtidb-auto-test/target/failsafe-reports/junitreports/TEST-*.xml
+                - rtidb-auto-test/target/failsafe-reports/TEST-*.xml
+
 
 tablet_one_demension:
-    stage: test
+    stage: integration_test
     retry: 2
     script:
         - ln -sf /depends/thirdparty thirdparty
@@ -73,7 +70,7 @@ tablet_one_demension:
                 - ./test-output/integrationtest/test-reports/*.xml
 
 tablet_multi_demension:
-    stage: test
+    stage: integration_test
     retry: 2
     script:
         - ln -sf /depends/thirdparty thirdparty
@@ -87,7 +84,7 @@ tablet_multi_demension:
                 - ./test-output/integrationtest/test-reports/*.xml
 
 ns_one_demension:
-    stage: test
+    stage: integration_test
     retry: 2
     script:
         - ln -sf /depends/thirdparty thirdparty
@@ -101,7 +98,7 @@ ns_one_demension:
                 - ./test-output/integrationtest/test-reports/*.xml
 
 ns_multi_demension:
-    stage: test
+    stage: integration_test
     retry: 2
     script:
         - ln -sf /depends/thirdparty thirdparty
@@ -115,7 +112,7 @@ ns_multi_demension:
                 - ./test-output/integrationtest/test-reports/*.xml
 
 disk_table:
-    stage: test
+    stage: integration_test
     retry: 2
     script:
         - ln -sf /depends/thirdparty thirdparty
@@ -127,21 +124,6 @@ disk_table:
         reports:
             junit:
                 - ./test-output/integrationtest/test-reports/*.xml
-
-disktable-java:
-    stage: test
-    retry: 2
-    script:
-        - ln -sf /depends/thirdparty thirdparty
-        - ln -sf /depends/thirdsrc thirdsrc
-        - source /root/.bashrc && bash steps/auto_test.sh
-    artifacts:
-        reports:
-            junit:
-                - rtidb-auto-test/target/surefire-reports/junitreports/TEST-*.xml
-                - rtidb-auto-test/target/surefire-reports/TEST-*.xml
-                - rtidb-auto-test/target/failsafe-reports/junitreports/TEST-*.xml
-                - rtidb-auto-test/target/failsafe-reports/TEST-*.xml
 
 deploy-package:
     stage: deploy

@@ -258,7 +258,6 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
                         }
                         if (localIpAddr.contains(endpoint.getIp().toLowerCase())) {
                             ph.setFastTablet(ts);
-                            logger.info("find fast tablet[{}] server for table {} partition {} local read", endpoint, table.getName(), partition.getPid());
                         }
                     }
                 }
