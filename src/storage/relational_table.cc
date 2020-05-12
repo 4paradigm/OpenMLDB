@@ -389,6 +389,7 @@ bool RelationalTable::GetPackedField(const int8_t* row, uint32_t idx,
             break;
         }
         case ::rtidb::type::kBigInt:
+        case ::rtidb::type::kBlob:
         case ::rtidb::type::kTimestamp: {
             int64_t val = 0;
             get_value_ret = row_view_.GetValue(row, idx, data_type, &val);
@@ -516,8 +517,7 @@ bool RelationalTable::ConvertIndex(const std::string& name,
     return true;
 }
 
-bool RelationalTable::Delete(
-    const ::google::protobuf::RepeatedPtrField<::rtidb::api::Columns>&
+bool RelationalTable::Delete(const RepeatedPtrField<::rtidb::api::Columns>&
         condition_columns) {
     std::string combine_name = "";
     std::string combine_value = "";
@@ -538,6 +538,38 @@ bool RelationalTable::Delete(
               s.ToString().c_str());
         return false;
     }
+}
+
+bool RelationalTable::Delete(const
+    RepeatedPtrField<rtidb::api::Columns>& condition_columns,
+    RepeatedField<google::protobuf::int64_t>* blob_keys) {
+    std::vector<std::unique_ptr<rocksdb::Iterator>> iter_vec;
+    bool ok = Query(condition_columns, &iter_vec);
+    const std::vector<uint32_t>& blob_suffix = table_column_.GetBlobIdxs();
+    for (auto& iter : iter_vec) {
+        const int8_t* data =
+            reinterpret_cast<int8_t*>(const_cast<char*>(iter->value().data()));
+
+        for (auto i : blob_suffix) {
+            int64_t val = 0;
+            int ret = row_view_.GetValue(data, i, rtidb::type::kBlob, &val);
+            if (ret != 0) {
+                PDLOG(WARNING, "get blob failed. errno %d tid %u pid %u",
+                      ret, id_, pid_);
+                blob_keys->Clear();
+                return false;
+            }
+            int64_t* key = blob_keys->Add();
+            *key = val;
+        }
+    }
+    ok = Delete(condition_columns);
+    if (!ok) {
+        PDLOG(WARNING, "delete failed. clean blob_keys");
+        blob_keys->Clear();
+        return false;
+    }
+    return true;
 }
 
 bool RelationalTable::Delete(const std::shared_ptr<IndexDef> index_def,
@@ -933,6 +965,18 @@ bool RelationalTable::UpdateDB(const std::shared_ptr<IndexDef> index_def,
                             row_view_.GetValue(buf, i, cur_type, &val);
                     }
                     builder.AppendInt32(val);
+                    break;
+                }
+                case rtidb::type::kBlob: {
+                    int64_t val = 0;
+                    if (col_iter != col_idx_map.end()) {
+                        get_value_ret =
+                            value_view.GetBlob(col_iter->second, &val);
+                    } else {
+                        get_value_ret =
+                            row_view_.GetValue(buf, i, cur_type, &val);
+                    }
+                    builder.AppendBlob(val);
                     break;
                 }
                 case rtidb::type::kBigInt: {

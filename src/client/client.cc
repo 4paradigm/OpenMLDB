@@ -131,6 +131,8 @@ void BaseClient::CheckZkClient() {
         std::cout << "reconnect zk" << std::endl;
         if (zk_client_->Reconnect()) {
             std::cout << "reconnect zk ok" << std::endl;
+            RefreshNodeList();
+            RefreshTable();
         }
     }
     task_thread_pool_.DelayTask(zk_keep_alive_check_,
@@ -251,9 +253,12 @@ void BaseClient::RefreshTable() {
         if (code != 0) {
             continue;
         }
+        if (table_info->table_partition().empty()) {
+            continue;
+        }
         std::shared_ptr<TableHandler> handler =
             std::make_shared<TableHandler>();
-        handler->partition.resize(table_info->partition_num());
+        handler->partition.resize(table_info->table_partition_size());
         int id = 0;
         for (const auto& part : table_info->table_partition()) {
             for (const auto& meta : part.partition_meta()) {
@@ -265,12 +270,27 @@ void BaseClient::RefreshTable() {
             }
             id++;
         }
+        if (table_info->table_type() == rtidb::type::kObjectStore) {
+            if (handler->partition[0].leader.empty()) {
+                continue;
+            }
+            handler->table_info = table_info;
+            new_tables.insert(std::make_pair(table_name, handler));
+            continue;
+        }
         for (int i = 0; i < table_info->column_key_size(); i++) {
             if (table_info->column_key(i).has_index_type() &&
                 table_info->column_key(i).index_type() ==
                     ::rtidb::type::IndexType::kAutoGen) {
                 handler->auto_gen_pk = table_info->column_key(i).col_name(0);
                 break;
+            }
+        }
+        if (!table_info->blobs().empty()) {
+            for (int i = 0; i < columns->size(); i++) {
+                if (columns->Get(i).data_type() == rtidb::type::kBlob) {
+                    handler->blobSuffix.push_back(i);
+                }
             }
         }
         std::map<std::string, ::rtidb::type::DataType> map;
@@ -649,8 +669,8 @@ BatchQueryResult RtidbClient::BatchQuery(const std::string& name,
 }
 
 bool RtidbClient::BatchQuery(const std::string& name,
-        ::google::protobuf::RepeatedPtrField<
-        ::rtidb::api::ReadOption> ros_pb,
+        const ::google::protobuf::RepeatedPtrField<
+        ::rtidb::api::ReadOption>& ros_pb,
         std::string* data,
         uint32_t* count,
         std::string* msg) {

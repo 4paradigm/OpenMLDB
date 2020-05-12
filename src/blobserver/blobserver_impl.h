@@ -6,16 +6,18 @@
 #pragma once
 
 #include <brpc/server.h>
+
 #include <map>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <vector>
-#include "storage/object_store.h"
-#include "zk/zk_client.h"
+
 #include "base/spinlock.h"
 #include "proto/blob_server.pb.h"
+#include "storage/object_store.h"
 #include "thread_pool.h"  // NOLINT
+#include "zk/zk_client.h"
 
 namespace rtidb {
 namespace blobserver {
@@ -50,24 +52,28 @@ class BlobServerImpl : public ::rtidb::blobserver::BlobServer {
 
     void CreateTable(RpcController* controller,
                      const CreateTableRequest* request,
-                     GeneralResponse* response, Closure* done);
+                     CreateTableResponse* response, Closure* done);
     void Put(RpcController* controller, const PutRequest* request,
              PutResponse* response, Closure* done);
     void Get(RpcController* controller, const GetRequest* request,
              GetResponse* response, Closure* done);
     void Delete(RpcController* controller, const DeleteRequest* request,
-                GeneralResponse* response, Closure* done);
+                DeleteResponse* response, Closure* done);
     void LoadTable(RpcController* controller, const LoadTableRequest* request,
-                   GeneralResponse* response, Closure* done);
+                   LoadTableResponse* response, Closure* done);
     void GetStoreStatus(RpcController* controller,
                         const GetStoreStatusRequest* request,
                         GetStoreStatusResponse* response, Closure* done);
+    void DropTable(RpcController* controller, const DropTableRequest* request,
+                   DropTableResponse* response, Closure* done);
 
  private:
+    void DropTableInternal(uint32_t tid, uint32_t pid);
     SpinMutex spin_mutex_;
     ZkClient* zk_client_;
     brpc::Server* server_;
     ThreadPool keep_alive_pool_;
+    ThreadPool task_pool_;
     std::atomic<bool> follower_;
     ObjectStores object_stores_;
     std::vector<std::string> root_paths_;
