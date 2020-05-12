@@ -29,8 +29,6 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.nio.ByteBuffer;
 import java.sql.Date;
 import java.sql.Timestamp;
@@ -906,8 +904,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 buf.put(bytedata[i]);
             }
             data.put("image", buf);
-            boolean ok = tableSyncClient.put(name, data, wo);
-            Assert.assertTrue(ok);
+            Assert.assertTrue(tableSyncClient.put(name, data, wo).isSuccess());
             Map<String, Object> queryMap;
             //query
             {
@@ -1664,7 +1661,6 @@ public class TableSyncClientTest extends TestCaseBase {
             Assert.assertTrue(tableSyncClient.put(name, (Map) (args.row[1]), wo).isSuccess());
             Assert.assertTrue(tableSyncClient.put(name, (Map) (args.row[2]), wo).isSuccess());
             Assert.assertTrue(tableSyncClient.put(name, (Map) (args.row[3]), wo).isSuccess());
-            ((Map)(args.row[0])).put("image", StringToBB("i1"));
             //query
             ReadOption ro;
             RelationalIterator it;
@@ -1910,6 +1906,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(it.getCount(), 3);
             }
             //put second
+            ((Map) (args.row[0])).put("image", StringToBB("i1"));
             Assert.assertTrue(tableSyncClient.put(name, (Map) (args.row[0]), wo).isSuccess());
             {
                 //delete by unique
@@ -2283,7 +2280,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(TraverseMap.get("name"), "n" + i);
                 Assert.assertEquals(TraverseMap.get("sex"), true);
                 Assert.assertEquals(TraverseMap.get("attribute"), "a" + i);
-                Assert.assertEquals(TraverseMap.get("image"), "i" + i);
+                Assert.assertTrue(StringToBB(String.format("i%d", i)).equals((ByteBuffer) TraverseMap.get("image")));
                 Assert.assertEquals(TraverseMap.get("memory"), 10 + i);
                 Assert.assertEquals(TraverseMap.get("price"), 11.1 + i);
                 Assert.assertEquals(TraverseMap.get("attribute2"), new Date(2020, 5, 2));
@@ -2347,7 +2344,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Map<String, Object> TraverseMap = trit.getDecodedValue();
                 Assert.assertEquals(TraverseMap.size(), 3);
                 Assert.assertEquals(TraverseMap.get("id"), i);
-                Assert.assertEquals(TraverseMap.get("image"), "i" + i);
+                Assert.assertEquals(StringToBB("i" + i), (ByteBuffer) TraverseMap.get("image"));
                 trit.next();
             }
             Assert.assertEquals(trit.getCount(), 900);
