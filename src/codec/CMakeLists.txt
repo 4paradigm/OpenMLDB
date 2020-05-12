@@ -2,7 +2,7 @@ include_directories(${INCLUDE_DIRECTORIES}
     ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_BINARY_DIR}/src)
 
-add_library(fesql_codec STATIC type_codec.cc row_codec.cc list_iterator_codec.cc row.cc)
+add_library(fesql_codec STATIC type_codec.cc fe_row_codec.cc list_iterator_codec.cc row.cc)
 
 if (TESTING_ENABLE)
     set(case_deps_libs fesql_case ${yaml_libs} boost_filesystem ${BRPC_LIBS} ${OS_LIB})

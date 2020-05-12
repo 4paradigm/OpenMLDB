@@ -15,10 +15,10 @@
  * limitations under the License.
  */
 
-#include "codec/row_codec.h"
 #include <string>
 #include <vector>
 #include "gtest/gtest.h"
+#include "codec/fe_row_codec.h"
 
 namespace fesql {
 namespace codec {

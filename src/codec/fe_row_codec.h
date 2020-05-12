@@ -1,5 +1,5 @@
 /*
- * row_codec.h
+ * fe_row_codec.h
  * Copyright (C) 4paradigm.com 2019 wangtaize <wangtaize@4paradigm.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_CODEC_ROW_CODEC_H_
-#define SRC_CODEC_ROW_CODEC_H_
+#ifndef SRC_CODEC_FE_ROW_CODEC_H_
+#define SRC_CODEC_FE_ROW_CODEC_H_
 
 #include <map>
 #include <string>
@@ -245,4 +245,4 @@ class RowDecoder {
 
 }  // namespace codec
 }  // namespace fesql
-#endif  // SRC_CODEC_ROW_CODEC_H_
+#endif  // SRC_CODEC_FE_ROW_CODEC_H_

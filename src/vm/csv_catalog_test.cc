@@ -31,7 +31,7 @@
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/raw_ostream.h"
-#include "codec/row_codec.h"
+#include "codec/fe_row_codec.h"
 #include "vm/engine.h"
 
 using namespace llvm;       // NOLINT (build/namespaces)

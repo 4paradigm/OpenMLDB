@@ -22,7 +22,7 @@
 #include "boost/algorithm/string.hpp"
 #include "case/sql_case.h"
 #include "codec/list_iterator_codec.h"
-#include "codec/row_codec.h"
+#include "codec/fe_row_codec.h"
 #include "gtest/gtest.h"
 #include "gtest/internal/gtest-param-util.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
