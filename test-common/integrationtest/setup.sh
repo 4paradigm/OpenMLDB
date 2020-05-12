@@ -10,7 +10,7 @@ rtidbpath=${projectpath}/build/bin/rtidb
 tbconfpath=${projectpath}/release/conf/tablet.flags
 nsconfpath=${projectpath}/release/conf/nameserver.flags
 reportpath=${projectpath}/test-output/integrationtest/test-reports
-zkpath=${testpath}/../../thirdsrc/zookeeper-3.4.10
+zkpath=${testpath}/../../thirdsrc/zookeeper-3.4.14
 
 echo export rtidbver=${rtidbver} > ${testenvpath}
 echo export testpath=${testpath} >> ${testenvpath}
