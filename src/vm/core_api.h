@@ -13,7 +13,7 @@
 #include <map>
 #include <memory>
 #include "codec/row.h"
-#include "codec/row_codec.h"
+#include "codec/fe_row_codec.h"
 #include "vm/catalog.h"
 #include "vm/mem_catalog.h"
 

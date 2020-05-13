@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 #include "case/sql_case.h"
-#include "codec/row_codec.h"
+#include "codec/fe_row_codec.h"
 #include "gtest/gtest.h"
 
 namespace fesql {

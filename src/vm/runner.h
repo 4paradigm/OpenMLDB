@@ -15,7 +15,7 @@
 #include <utility>
 #include <vector>
 #include "base/fe_status.h"
-#include "codec/row_codec.h"
+#include "codec/fe_row_codec.h"
 #include "vm/catalog.h"
 #include "vm/core_api.h"
 #include "vm/mem_catalog.h"

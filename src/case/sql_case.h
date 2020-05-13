@@ -14,7 +14,7 @@
 #include <yaml-cpp/node/node.h>
 #include <string>
 #include <vector>
-#include "codec/row_codec.h"
+#include "codec/fe_row_codec.h"
 #include "proto/fe_type.pb.h"
 namespace fesql {
 namespace sqlcase {

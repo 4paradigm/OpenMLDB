@@ -22,7 +22,7 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include "codec/row_codec.h"
+#include "codec/fe_row_codec.h"
 #include "codegen/ir_base_builder.h"
 #include "llvm/IR/IRBuilder.h"
 #include "proto/fe_type.pb.h"
