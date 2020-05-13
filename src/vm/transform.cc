@@ -248,13 +248,13 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
         case kPhysicalOpRequestUnoin: {
             auto request_union_op =
                 dynamic_cast<PhysicalRequestUnionNode*>(node);
-            if (!GenWindow(&request_union_op->window_, node->producers()[1],
-                           status)) {
+            if (!GenRequestWindow(&request_union_op->window_,
+                                  node->producers()[1], status)) {
                 return false;
             }
-            if (!GenKey(&request_union_op->window_.index_key_,
-                        node->producers()[0]->GetOutputNameSchemaList(),
-                        status)) {
+            if (!GenRequestWindowUnionList(&request_union_op->window_unions_,
+                                           request_union_op->producers()[0],
+                                           status)) {
                 return false;
             }
             break;
@@ -395,9 +395,14 @@ bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
                 if (table) {
                     auto right = new PhysicalTableProviderNode(table);
                     node_manager_->RegisterNode(right);
+                    node::OrderByNode* request_orders =
+                        nullptr == orders ? nullptr
+                                          : dynamic_cast<node::OrderByNode*>(
+                                                node_manager_->MakeOrderByNode(
+                                                    orders->order_by_, false));
                     auto request_union_op = new PhysicalRequestUnionNode(
-                        depend, right, groups, orders, w_ptr->GetStartOffset(),
-                        w_ptr->GetEndOffset());
+                        depend, right, groups, request_orders,
+                        w_ptr->GetStartOffset(), w_ptr->GetEndOffset());
                     node_manager_->RegisterNode(request_union_op);
                     if (!w_ptr->union_tables().empty()) {
                         for (auto iter = w_ptr->union_tables().cbegin();
@@ -479,8 +484,14 @@ bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
                     if (table) {
                         auto right = new PhysicalTableProviderNode(table);
                         node_manager_->RegisterNode(right);
+                        node::OrderByNode* request_orders =
+                            nullptr == orders
+                                ? nullptr
+                                : dynamic_cast<node::OrderByNode*>(
+                                      node_manager_->MakeOrderByNode(
+                                          orders->order_by_, false));
                         auto request_union_op = new PhysicalRequestUnionNode(
-                            request_op, right, groups, orders,
+                            request_op, right, groups, request_orders,
                             w_ptr->GetStartOffset(), w_ptr->GetEndOffset());
                         node_manager_->RegisterNode(request_union_op);
                         if (!w_ptr->union_tables().empty()) {
@@ -1101,6 +1112,19 @@ bool BatchModeTransformer::GenWindow(WindowOp* window, PhysicalOpNode* in,
     }
     return true;
 }
+bool BatchModeTransformer::GenRequestWindow(RequestWindowOp* window,
+                                            PhysicalOpNode* in,
+                                            base::Status& status) {
+    node::ExprListNode expr_list;
+    if (!GenWindow(window, in, status)) {
+        return false;
+    }
+
+    if (!GenKey(&window->index_key_, in->GetOutputNameSchemaList(), status)) {
+        return false;
+    }
+    return true;
+}
 
 bool BatchModeTransformer::GenSort(Sort* sort,
                                    const NameSchemaList& input_name_schema_list,
@@ -1188,6 +1212,28 @@ bool BatchModeTransformer::GenWindowJoinList(WindowJoinList* window_join_list,
         }
     }
     DLOG(INFO) << "GenWindowJoinList:\n" << window_join_list->FnDetail();
+    return true;
+}
+bool BatchModeTransformer::GenRequestWindowUnionList(
+    RequestWindowUnionList* window_union_list, PhysicalOpNode* in,
+    base::Status& status) {
+    if (nullptr == window_union_list || window_union_list->Empty()) {
+        LOG(WARNING)
+            << "Skip GenRequestWindowUnionList when window unions is empty";
+        return true;
+    }
+    for (auto& window_union : window_union_list->window_unions_) {
+        if (!GenPlanNode(window_union.first, status)) {
+            LOG(WARNING) << "Fail Gen Request Window Union Sub Query Plan"
+                         << status.msg;
+            return false;
+        }
+        if (!GenRequestWindow(&window_union.second, in, status)) {
+            return false;
+        }
+    }
+    DLOG(INFO) << "GenRequestWindowUnionList:\n"
+               << window_union_list->FnDetail();
     return true;
 }
 bool GroupAndSortOptimized::KeysFilterOptimized(PhysicalOpNode* in, Key* group,

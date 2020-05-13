@@ -80,13 +80,24 @@ class OrderGenerator : public FnGenerator {
     explicit OrderGenerator(const FnInfo& info) : FnGenerator(info) {}
     virtual ~OrderGenerator() {}
     const int64_t Gen(const Row& row);
-    bool is_asc_;
 };
 class ConditionGenerator : public FnGenerator {
  public:
     explicit ConditionGenerator(const FnInfo& info) : FnGenerator(info) {}
     virtual ~ConditionGenerator() {}
     const bool Gen(const Row& row);
+};
+class RangeGenerator {
+ public:
+    explicit RangeGenerator(const Range& range)
+        : ts_gen_(range.fn_info_),
+          start_offset_(range.start_offset()),
+          end_offset_(range.end_offset()) {}
+    virtual ~RangeGenerator() {}
+    const bool Valid() const { return ts_gen_.Valid(); }
+    OrderGenerator ts_gen_;
+    int64_t start_offset_;
+    int64_t end_offset_;
 };
 class FilterGenerator {
  public:
@@ -101,6 +112,7 @@ class FilterGenerator {
         }
         auto mem_table =
             std::shared_ptr<MemTimeTableHandler>(new MemTimeTableHandler());
+        mem_table->SetOrderType(table->GetOrderType());
         auto iter = table->GetIterator();
         if (iter) {
             iter->SeekToFirst();
@@ -150,11 +162,25 @@ class SortGenerator {
     std::shared_ptr<PartitionHandler> Sort(
         std::shared_ptr<PartitionHandler> partition);
     std::shared_ptr<TableHandler> Sort(std::shared_ptr<TableHandler> table);
+    const OrderGenerator& order_gen() const { return order_gen_; }
 
  private:
     bool is_valid_;
     bool is_asc_;
     OrderGenerator order_gen_;
+};
+
+class IndexSeekGenerator {
+ public:
+    explicit IndexSeekGenerator(const Key& key)
+        : index_key_gen_(key.fn_info_) {}
+    virtual ~IndexSeekGenerator() {}
+    std::shared_ptr<TableHandler> SegmentOfKey(
+        const Row& row, std::shared_ptr<DataHandler> input);
+    const bool Valid() const { return index_key_gen_.Valid(); }
+
+ private:
+    KeyGenerator index_key_gen_;
 };
 class WindowGenerator {
  public:
@@ -170,6 +196,35 @@ class WindowGenerator {
     SortGenerator sort_gen_;
     OrderGenerator range_gen_;
 };
+
+class RequestWindowGenertor {
+ public:
+    explicit RequestWindowGenertor(const RequestWindowOp& window)
+        : window_op_(window),
+          filter_gen_(window.partition_),
+          sort_gen_(window.sort_),
+          range_gen_(window.range_.fn_info_),
+          index_seek_gen_(window.index_key_) {}
+    virtual ~RequestWindowGenertor() {}
+    std::shared_ptr<TableHandler> GetRequestWindow(
+        const Row& row, std::shared_ptr<DataHandler> input) {
+        auto segment = index_seek_gen_.SegmentOfKey(row, input);
+
+        if (filter_gen_.Valid()) {
+            auto filter_key = filter_gen_.GetKey(row);
+            segment = filter_gen_.Filter(segment, filter_key);
+        }
+        if (sort_gen_.Valid()) {
+            segment = sort_gen_.Sort(segment);
+        }
+        return segment;
+    }
+    RequestWindowOp window_op_;
+    FilterGenerator filter_gen_;
+    SortGenerator sort_gen_;
+    OrderGenerator range_gen_;
+    IndexSeekGenerator index_seek_gen_;
+};  // namespace vm
 
 enum RunnerType {
     kRunnerData,
@@ -298,6 +353,10 @@ class IteratorStatus {
     IteratorStatus() : is_valid_(false), key_(0) {}
     explicit IteratorStatus(uint64_t key) : is_valid_(true), key_(key) {}
     virtual ~IteratorStatus() {}
+    static int32_t PickIteratorWithMininumKey(
+        std::vector<IteratorStatus>* status_list_ptr);
+    static int32_t PickIteratorWithMaximizeKey(
+        std::vector<IteratorStatus>* status_list_ptr);
     void MarkInValid() {
         is_valid_ = false;
         key_ = 0;
@@ -306,26 +365,60 @@ class IteratorStatus {
     bool is_valid_;
     uint64_t key_;
 };  // namespace vm
-class WindowUnionGenerator {
+
+class InputsGenerator {
  public:
-    WindowUnionGenerator() : unions_cnt_(0) {}
-    virtual ~WindowUnionGenerator() {}
+    InputsGenerator() : inputs_cnt_(0), input_runners_() {}
+    virtual ~InputsGenerator() {}
 
     std::vector<std::shared_ptr<DataHandler>> RunInputs(
         RunnerContext& ctx);  // NOLINT
+    const bool Valid() const { return 0 != inputs_cnt_; }
+    void AddInput(Runner* runner) {
+        input_runners_.push_back(runner);
+        inputs_cnt_++;
+    }
+    size_t inputs_cnt_;
+    std::vector<Runner*> input_runners_;
+};
+class WindowUnionGenerator : public InputsGenerator {
+ public:
+    WindowUnionGenerator() : InputsGenerator() {}
+    virtual ~WindowUnionGenerator() {}
     std::vector<std::shared_ptr<PartitionHandler>> PartitionEach(
         std::vector<std::shared_ptr<DataHandler>> union_inputs);
     void AddWindowUnion(const WindowOp& window_op, Runner* runner) {
         windows_gen_.push_back(WindowGenerator(window_op));
-        union_input_runners_.push_back(runner);
-        unions_cnt_++;
+        AddInput(runner);
     }
-
-    int32_t PickIteratorWithMininumKey(
-        std::vector<IteratorStatus>* status_list_ptr);
-    size_t unions_cnt_;
     std::vector<WindowGenerator> windows_gen_;
-    std::vector<Runner*> union_input_runners_;
+};
+
+class RequestWindowUnionGenerator : public InputsGenerator {
+ public:
+    RequestWindowUnionGenerator() : InputsGenerator() {}
+    virtual ~RequestWindowUnionGenerator() {}
+
+    std::vector<std::shared_ptr<PartitionHandler>> PartitionEach(
+        std::vector<std::shared_ptr<DataHandler>> union_inputs);
+    void AddWindowUnion(const RequestWindowOp& window_op, Runner* runner) {
+        windows_gen_.push_back(RequestWindowGenertor(window_op));
+        AddInput(runner);
+    }
+    std::vector<std::shared_ptr<TableHandler>> GetRequestWindows(
+        const Row& row,
+        std::vector<std::shared_ptr<DataHandler>> union_inputs) {
+        std::vector<std::shared_ptr<TableHandler>> union_segments(inputs_cnt_);
+        if (!windows_gen_.empty()) {
+            auto input_iter = union_inputs.cbegin();
+            for (size_t i = 0; i < inputs_cnt_; i++) {
+                union_segments[i] =
+                    windows_gen_[i].GetRequestWindow(row, union_inputs[i]);
+            }
+        }
+        return union_segments;
+    }
+    std::vector<RequestWindowGenertor> windows_gen_;
 };
 class JoinGenerator {
  public:
@@ -362,24 +455,20 @@ class JoinGenerator {
     Row RowLastJoinTable(const Row& left_row,
                          std::shared_ptr<TableHandler> table);  // NOLINT
 };
-class WindowJoinGenerator {
+class WindowJoinGenerator : public InputsGenerator {
  public:
-    WindowJoinGenerator() : joins_cnt_(0) {}
+    WindowJoinGenerator() : InputsGenerator() {}
     virtual ~WindowJoinGenerator() {}
     void AddWindowJoin(const Join& join, Runner* runner) {
         joins_gen_.push_back(JoinGenerator(join));
-        join_input_runners_.push_back(runner);
-        joins_cnt_++;
+        AddInput(runner);
     }
-    const bool Valid() const { return 0 != joins_cnt_; }
     std::vector<std::shared_ptr<DataHandler>> RunInputs(
         RunnerContext& ctx);  // NOLINT
     Row Join(
         const Row& left_row,
         const std::vector<std::shared_ptr<DataHandler>>& join_right_tables);
-    size_t joins_cnt_;
     std::vector<JoinGenerator> joins_gen_;
-    std::vector<Runner*> join_input_runners_;
 };
 
 class DataRunner : public Runner {
@@ -500,30 +589,17 @@ class WindowAggRunner : public Runner {
 class RequestUnionRunner : public Runner {
  public:
     RequestUnionRunner(const int32_t id, const NameSchemaList& schema,
-                       const int32_t limit_cnt,
-                       const RequestWindowOp& window_op)
+                       const int32_t limit_cnt, const Range& range)
         : Runner(id, kRunnerRequestUnion, schema, limit_cnt),
-          is_asc_(window_op.sort_.is_asc()),
-          partition_filter_gen_(window_op.partition_),
-          sort_gen_(window_op.sort_),
-          key_gen_(window_op.index_key_.fn_info_),
-          ts_gen_(window_op.range_.fn_info_),
-          start_offset_(window_op.range_.start_offset_),
-          end_offset_(window_op.range_.end_offset_) {}
+          range_gen_(range) {}
+
     ~RequestUnionRunner() {}
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
-
-    std::shared_ptr<DataHandler> UnionTable(
-        Row row, std::shared_ptr<TableHandler> table);
-    std::shared_ptr<DataHandler> UnionPartition(
-        Row row, std::shared_ptr<PartitionHandler> partition);
-    const bool is_asc_;
-    FilterGenerator partition_filter_gen_;
-    SortGenerator sort_gen_;
-    KeyGenerator key_gen_;
-    OrderGenerator ts_gen_;
-    const int64_t start_offset_;
-    const int64_t end_offset_;
+    void AddWindowUnion(const RequestWindowOp& window, Runner* runner) {
+        windows_union_gen_.AddWindowUnion(window, runner);
+    }
+    RequestWindowUnionGenerator windows_union_gen_;
+    RangeGenerator range_gen_;
 };
 class LastJoinRunner : public Runner {
  public:

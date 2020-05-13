@@ -14,8 +14,8 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
-#include "base/graph.h"
 #include "base/fe_status.h"
+#include "base/graph.h"
 #include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvm/Support/raw_ostream.h"
 #include "node/node_manager.h"
@@ -257,6 +257,8 @@ class BatchModeTransformer {
                 base::Status& status);  // NOLINT
     bool GenWindow(WindowOp* window, PhysicalOpNode* in,
                    base::Status& status);  // NOLINT
+    bool GenRequestWindow(RequestWindowOp* window, PhysicalOpNode* in,
+                          base::Status& status);  // NOLINT
 
     bool GenSort(Sort* sort, const NameSchemaList& input_name_schema_list,
                  base::Status& status);  // NOLINT
@@ -335,6 +337,9 @@ class BatchModeTransformer {
     bool GenWindowUnionList(WindowUnionList* window_union_list,
                             PhysicalOpNode* in,
                             base::Status& status);  // NOLINT
+    bool GenRequestWindowUnionList(RequestWindowUnionList* window_unions,
+                                   PhysicalOpNode* in,
+                                   base::Status& status);  // NOLINT
     node::NodeManager* node_manager_;
     const std::string db_;
     const std::shared_ptr<Catalog> catalog_;

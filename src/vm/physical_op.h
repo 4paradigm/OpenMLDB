@@ -875,7 +875,8 @@ class PhysicalRequestUnionNode : public PhysicalBinaryNode {
                              const int64_t start_offset,
                              const int64_t end_offset)
         : PhysicalBinaryNode(left, right, kPhysicalOpRequestUnoin, true, true),
-          window_(partition, orders, start_offset, end_offset) {
+          window_(partition, orders, start_offset, end_offset),
+          instance_not_in_window_(false) {
         output_type_ = kSchemaTypeTable;
         InitSchema();
         fn_infos_.push_back(&window_.partition_.fn_info_);
@@ -912,8 +913,12 @@ class PhysicalRequestUnionNode : public PhysicalBinaryNode {
         fn_infos_.push_back(&window_union.index_key_.fn_info_);
         return true;
     }
+    const bool instance_not_in_window() const {
+        return instance_not_in_window_;
+    }
     const RequestWindowOp &window() const { return window_; }
     RequestWindowOp window_;
+    const bool instance_not_in_window_;
     RequestWindowUnionList window_unions_;
 };
 

@@ -158,6 +158,8 @@ class MemTableHandler : public TableHandler {
         return pos >= 0 && pos < table_.size() ? table_.at(pos) : Row();
     }
 
+    const OrderType GetOrderType() const { return order_type_; }
+    void SetOrderType(const OrderType order_type) { order_type_ = order_type; }
     const std::string GetHandlerTypeName() override {
         return "MemTableHandler";
     }
@@ -169,6 +171,7 @@ class MemTableHandler : public TableHandler {
     Types types_;
     IndexHint index_hint_;
     MemTable table_;
+    OrderType order_type_;
 };
 
 class MemTimeTableHandler : public TableHandler {
@@ -195,6 +198,8 @@ class MemTimeTableHandler : public TableHandler {
     virtual Row At(uint64_t pos) {
         return pos >= 0 && pos < table_.size() ? table_.at(pos).second : Row();
     }
+    void SetOrderType(const OrderType order_type) { order_type_ = order_type; }
+    const OrderType GetOrderType() const { return order_type_; }
     const std::string GetHandlerTypeName() override {
         return "MemTimeTableHandler";
     }
@@ -206,6 +211,7 @@ class MemTimeTableHandler : public TableHandler {
     Types types_;
     IndexHint index_hint_;
     MemTimeTable table_;
+    OrderType order_type_;
 };
 
 class Window : public MemTimeTableHandler {
@@ -319,6 +325,9 @@ class MemSegmentHandler : public TableHandler {
         return partition_hander_->GetIndex();
     }
 
+    const OrderType GetOrderType() const {
+        return partition_hander_->GetOrderType();
+    }
     std::unique_ptr<vm::RowIterator> GetIterator() const {
         auto iter = partition_hander_->GetWindowIterator();
         if (iter) {
@@ -375,7 +384,7 @@ class MemSegmentHandler : public TableHandler {
 
 class MemPartitionHandler : public PartitionHandler {
  public:
-    MemPartitionHandler() {}
+    MemPartitionHandler();
     explicit MemPartitionHandler(const Schema* schema);
     MemPartitionHandler(const std::string& table_name, const std::string& db,
                         const Schema* schema);
@@ -399,7 +408,8 @@ class MemPartitionHandler : public PartitionHandler {
         return std::shared_ptr<MemSegmentHandler>(
             new MemSegmentHandler(partition_hander, key));
     }
-
+    void SetOrderType(const OrderType order_type) { order_type_ = order_type; }
+    const OrderType GetOrderType() const { return order_type_; }
     const std::string GetHandlerTypeName() override {
         return "MemPartitionHandler";
     }
@@ -411,7 +421,7 @@ class MemPartitionHandler : public PartitionHandler {
     MemSegmentMap partitions_;
     Types types_;
     IndexHint index_hint_;
-    bool is_asc_;
+    OrderType order_type_;
 };
 
 class MemCatalog : public Catalog {
