@@ -2302,7 +2302,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(TraverseMap.get("name"), "n" + i);
                 Assert.assertEquals(TraverseMap.get("sex"), true);
                 Assert.assertEquals(TraverseMap.get("attribute"), "a" + i);
-                Assert.assertEquals(TraverseMap.get("image"), "i" + i);
+                Assert.assertTrue(StringToBB(String.format("i%d", i)).equals((ByteBuffer) TraverseMap.get("image")));
                 Assert.assertEquals(TraverseMap.get("memory"), 10 + i);
                 Assert.assertEquals(TraverseMap.get("price"), 11.1 + i);
                 Assert.assertEquals(TraverseMap.get("attribute2"), new Date(2020, 5, 2));
@@ -2367,7 +2367,8 @@ public class TableSyncClientTest extends TestCaseBase {
                 Map<String, Object> TraverseMap = trit.getDecodedValue();
                 Assert.assertEquals(TraverseMap.size(), 3);
                 Assert.assertEquals(TraverseMap.get("id"), i);
-                Assert.assertEquals(TraverseMap.get("image"), "i" + i);
+                Assert.assertTrue(StringToBB(String.format("i%d", i)).equals((ByteBuffer) TraverseMap.get("image")));
+
                 trit.next();
             }
             Assert.assertEquals(trit.getCount(), 900);
