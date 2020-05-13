@@ -234,11 +234,11 @@ bool TabletClient::Put(uint32_t tid, uint32_t pid, const std::string& value,
         percentile_.push_back(consumed);
     }
     request.release_value();
+    msg->swap(*response.mutable_msg());
     if (ok && response.code() == 0) {
         *auto_gen_pk = response.auto_gen_pk();
         return true;
     }
-    msg->swap(*response.mutable_msg());
     return false;
 }
 
