@@ -43,9 +43,9 @@ class TestCaseBase(unittest.TestCase):
         cls.failfast = conf.failfast
         cls.ns_path_dict = {conf.ns_endpoints[0]: cls.testpath + '/ns1',
                             conf.ns_endpoints[1]: cls.testpath + '/ns2'}
-        cls.node_path_dict = {cls.leader: cls.data_path + '/tablet1',
-                              cls.slave1: cls.data_path + '/tablet2',
-                              cls.slave2: cls.data_path + '/tablet3',
+        cls.node_path_dict = {cls.leader: cls.testpath + '/tablet1',
+                              cls.slave1: cls.testpath + '/tablet2',
+                              cls.slave2: cls.testpath + '/tablet3',
                               cls.ns_leader: cls.ns_path_dict[cls.ns_leader],
                               cls.ns_slaver: cls.ns_path_dict[cls.ns_slaver]}
         cls.leaderpath = cls.node_path_dict[cls.leader]
