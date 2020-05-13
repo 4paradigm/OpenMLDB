@@ -6,12 +6,12 @@ variables:
 stages:
     - build
     - test
-    - integration_test
+    - ts_integration_test
+    - ns_integration_test
     - deploy
 
 build_rtidb:
     stage: build
-    retry: 2
     script:
         - source /root/.bashrc && sh tools/install_fesql.sh
         - ln -sf /depends/thirdparty thirdparty
@@ -41,8 +41,6 @@ java_ut:
       - ln -sf /depends/thirdsrc thirdsrc
       - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/java_ut.sh
       - source /root/.bashrc && bash steps/auto_test.sh
-  after_script:
-      - umount /rambuild
   artifacts:
       reports:
           junit:
@@ -68,7 +66,7 @@ c++_ut:
               - reports/*.xml
 
 tablet_one_demension:
-    stage: integration_test
+    stage: ts_integration_test
     before_script:
         - mkdir /rambuild
         - mount -t tmpfs -o size=3G tmpfs /rambuild
@@ -84,7 +82,7 @@ tablet_one_demension:
                 - ./test-output/integrationtest/test-reports/*.xml
 
 tablet_multi_demension:
-    stage: integration_test
+    stage: ts_integration_test
     before_script:
         - mkdir /rambuild
         - mount -t tmpfs -o size=3G tmpfs /rambuild
@@ -100,7 +98,7 @@ tablet_multi_demension:
                 - ./test-output/integrationtest/test-reports/*.xml
 
 ns_one_demension:
-    stage: integration_test
+    stage: ns_integration_test
     before_script:
         - mkdir /rambuild
         - mount -t tmpfs -o size=3G tmpfs /rambuild
@@ -116,7 +114,7 @@ ns_one_demension:
                 - ./test-output/integrationtest/test-reports/*.xml
 
 ns_multi_demension:
-    stage: integration_test
+    stage: ns_integration_test
     before_script:
         - mkdir /rambuild
         - mount -t tmpfs -o size=3G tmpfs /rambuild
@@ -132,7 +130,7 @@ ns_multi_demension:
                 - ./test-output/integrationtest/test-reports/*.xml
 
 disk_table:
-    stage: integration_test
+    stage: ns_integration_test
     before_script:
         - mkdir /rambuild
         - mount -t tmpfs -o size=3G tmpfs /rambuild
