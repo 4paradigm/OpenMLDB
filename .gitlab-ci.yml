@@ -1,4 +1,6 @@
 image: develop-registry.4pd.io/centos6_gcc7_build_env:0.4.0
+services:
+    - docker:dind
 variables:
     GIT_SUBMODULE_STRATEGY: recursive
 stages:
