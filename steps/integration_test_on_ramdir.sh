@@ -3,7 +3,9 @@
 ulimit -c unlimited
 mkdir -p /rambuild/rtidb/build/bin
 cp build/bin/rtidb /rambuild/rtidb/build/bin
+cp CMakeLists.txt /rambuild/rtidb/
 cp -rf test-common /rambuild/rtidb/
+cp -rf release /rambuild/rtidb/
 cd /rambuild/rtidb/
 ln -sf /depends/thirdparty thirdparty
 ln -sf /depends/thirdsrc thirdsrc
