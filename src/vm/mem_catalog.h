@@ -158,6 +158,8 @@ class MemTableHandler : public TableHandler {
         return pos >= 0 && pos < table_.size() ? table_.at(pos) : Row();
     }
 
+    const OrderType GetOrderType() const { return order_type_; }
+    void SetOrderType(const OrderType order_type) { order_type_ = order_type; }
     const std::string GetHandlerTypeName() override {
         return "MemTableHandler";
     }
@@ -169,6 +171,7 @@ class MemTableHandler : public TableHandler {
     Types types_;
     IndexHint index_hint_;
     MemTable table_;
+    OrderType order_type_;
 };
 
 class MemTimeTableHandler : public TableHandler {
@@ -188,6 +191,7 @@ class MemTimeTableHandler : public TableHandler {
     std::unique_ptr<WindowIterator> GetWindowIterator(
         const std::string& idx_name);
     void AddRow(const uint64_t key, const Row& v);
+    void PopBackRow();
     void AddRow(const Row& v);
     void Sort(const bool is_asc);
     void Reverse();
@@ -195,6 +199,8 @@ class MemTimeTableHandler : public TableHandler {
     virtual Row At(uint64_t pos) {
         return pos >= 0 && pos < table_.size() ? table_.at(pos).second : Row();
     }
+    void SetOrderType(const OrderType order_type) { order_type_ = order_type; }
+    const OrderType GetOrderType() const { return order_type_; }
     const std::string GetHandlerTypeName() override {
         return "MemTimeTableHandler";
     }
@@ -206,6 +212,7 @@ class MemTimeTableHandler : public TableHandler {
     Types types_;
     IndexHint index_hint_;
     MemTimeTable table_;
+    OrderType order_type_;
 };
 
 class Window : public MemTimeTableHandler {
@@ -216,14 +223,16 @@ class Window : public MemTimeTableHandler {
           end_(0),
           start_offset_(start_offset),
           end_offset_(end_offset),
-          max_size_(0) {}
+          max_size_(0),
+          instance_not_in_window_(false) {}
     Window(int64_t start_offset, int64_t end_offset, uint32_t max_size)
         : MemTimeTableHandler(),
           start_(0),
           end_(0),
           start_offset_(start_offset),
           end_offset_(end_offset),
-          max_size_(max_size) {}
+          max_size_(max_size),
+          instance_not_in_window_(false) {}
     virtual ~Window() {}
 
     std::unique_ptr<RowIterator> GetIterator() const override {
@@ -241,12 +250,24 @@ class Window : public MemTimeTableHandler {
         }
     }
     virtual void BufferData(uint64_t key, const Row& row) = 0;
+    virtual void PopData() {
+        if (start_ != end_) {
+            end_ -= 1;
+            PopBackRow();
+        }
+    }
 
     virtual const uint64_t GetCount() { return end_ - start_; }
     virtual Row At(uint64_t pos) {
         return (pos + start_ < end_) ? table_.at(pos + start_).second : Row();
     }
     const std::string GetHandlerTypeName() override { return "Window"; }
+    const bool instance_not_in_window() const {
+        return instance_not_in_window_;
+    }
+    void set_instance_not_in_window(const bool flag) {
+        instance_not_in_window_ = flag;
+    }
 
  protected:
     uint32_t start_;
@@ -254,6 +275,7 @@ class Window : public MemTimeTableHandler {
     int64_t start_offset_;
     int32_t end_offset_;
     uint32_t max_size_;
+    bool instance_not_in_window_;
 };
 
 class CurrentHistoryWindow : public Window {
@@ -319,6 +341,9 @@ class MemSegmentHandler : public TableHandler {
         return partition_hander_->GetIndex();
     }
 
+    const OrderType GetOrderType() const {
+        return partition_hander_->GetOrderType();
+    }
     std::unique_ptr<vm::RowIterator> GetIterator() const {
         auto iter = partition_hander_->GetWindowIterator();
         if (iter) {
@@ -375,13 +400,12 @@ class MemSegmentHandler : public TableHandler {
 
 class MemPartitionHandler : public PartitionHandler {
  public:
-    MemPartitionHandler() {}
+    MemPartitionHandler();
     explicit MemPartitionHandler(const Schema* schema);
     MemPartitionHandler(const std::string& table_name, const std::string& db,
                         const Schema* schema);
 
     ~MemPartitionHandler();
-    const bool IsAsc() override;
     const Types& GetTypes() override;
     const IndexHint& GetIndex() override;
     const Schema* GetSchema() override;
@@ -399,7 +423,8 @@ class MemPartitionHandler : public PartitionHandler {
         return std::shared_ptr<MemSegmentHandler>(
             new MemSegmentHandler(partition_hander, key));
     }
-
+    void SetOrderType(const OrderType order_type) { order_type_ = order_type; }
+    const OrderType GetOrderType() const { return order_type_; }
     const std::string GetHandlerTypeName() override {
         return "MemPartitionHandler";
     }
@@ -411,7 +436,7 @@ class MemPartitionHandler : public PartitionHandler {
     MemSegmentMap partitions_;
     Types types_;
     IndexHint index_hint_;
-    bool is_asc_;
+    OrderType order_type_;
 };
 
 class MemCatalog : public Catalog {

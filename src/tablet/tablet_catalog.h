@@ -29,6 +29,7 @@ namespace fesql {
 namespace tablet {
 
 using codec::Row;
+using vm::OrderType;
 using vm::PartitionHandler;
 using vm::RowIterator;
 using vm::TableHandler;
@@ -61,6 +62,10 @@ class TabletSegmentHandler : public TableHandler {
         return partition_hander_->GetIndex();
     }
 
+    const OrderType GetOrderType() const override {
+        return partition_hander_->GetOrderType();
+    }
+
     std::unique_ptr<vm::RowIterator> GetIterator() const;
     RowIterator* GetIterator(int8_t* addr) const override;
     std::unique_ptr<vm::WindowIterator> GetWindowIterator(
@@ -86,7 +91,7 @@ class TabletPartitionHandler : public PartitionHandler {
 
     ~TabletPartitionHandler() {}
 
-    const bool IsAsc() override { return false; };
+    const OrderType GetOrderType() const { return OrderType::kDescOrder; }
 
     inline const vm::Schema* GetSchema() { return table_handler_->GetSchema(); }
 

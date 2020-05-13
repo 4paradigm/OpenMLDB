@@ -75,7 +75,6 @@ SQLNode *NodeManager::MakeWindowDefNode(ExprListNode *partitions,
     return MakeWindowDefNode(nullptr, partitions, orders, frame, true);
 }
 
-
 SQLNode *NodeManager::MakeWindowDefNode(SQLNodeList *union_tables,
                                         ExprListNode *partitions,
                                         ExprNode *orders, SQLNode *frame,
@@ -129,7 +128,8 @@ SQLNode *NodeManager::MakeRowsFrameNode(SQLNode *node_ptr) {
     return node_ptr;
 }
 
-ExprNode *NodeManager::MakeOrderByNode(ExprListNode *order, const bool is_asc) {
+ExprNode *NodeManager::MakeOrderByNode(const ExprListNode *order,
+                                       const bool is_asc) {
     OrderByNode *node_ptr = new OrderByNode(order, is_asc);
     return RegisterNode(node_ptr);
 }

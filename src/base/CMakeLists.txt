@@ -11,7 +11,7 @@ if (TESTING_ENABLE)
     list(APPEND test_list hash_test)
 
     add_executable(graph_test graph_test.cc graph.cc)
-    target_link_libraries(graph_test fesql_base ${boost_libs} gtest pthread)
+    target_link_libraries(graph_test fesql_base ${boost_libs} glog gflags gtest pthread)
     add_test(graph_test graph_test --gtest_output=xml:${CMAKE_BINARY_DIR}/graph_test.xml)
     list(APPEND test_list graph_test)
 
