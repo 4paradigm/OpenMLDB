@@ -561,8 +561,9 @@ class WindowAggRunner : public Runner {
  public:
     WindowAggRunner(const int32_t id, const NameSchemaList& schema,
                     const int32_t limit_cnt, const WindowOp& window_op,
-                    const FnInfo& fn_info)
+                    const FnInfo& fn_info, const bool instance_not_in_window)
         : Runner(id, kRunnerWindowAgg, schema, limit_cnt),
+          instance_not_in_window_(instance_not_in_window),
           instance_window_gen_(window_op),
           windows_union_gen_(),
           windows_join_gen_(),
@@ -581,6 +582,7 @@ class WindowAggRunner : public Runner {
         std::vector<std::shared_ptr<DataHandler>> joins, const std::string& key,
         std::shared_ptr<MemTableHandler> output_table);
 
+    const bool instance_not_in_window_;
     WindowGenerator instance_window_gen_;
     WindowUnionGenerator windows_union_gen_;
     WindowJoinGenerator windows_join_gen_;

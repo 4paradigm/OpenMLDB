@@ -693,15 +693,14 @@ class PhysicalWindowNode : public PhysicalUnaryNode, public WindowOp {
 };
 class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
  public:
-    PhysicalWindowAggrerationNode(PhysicalOpNode *node,
-                                  const node::ExprListNode *partition,
-                                  const node::OrderByNode *orders,
-                                  const std::string &fn_name,
-                                  const Schema &schema,
-                                  const int64_t start_offset,
-                                  const int64_t end_offset)
+    PhysicalWindowAggrerationNode(
+        PhysicalOpNode *node, const node::ExprListNode *partition,
+        const node::OrderByNode *orders, const std::string &fn_name,
+        const Schema &schema, const int64_t start_offset,
+        const int64_t end_offset, const bool instance_not_in_window)
         : PhysicalProjectNode(node, fn_name, schema, kWindowAggregation, true,
                               false),
+          instance_not_in_window_(instance_not_in_window),
           window_(partition, orders, start_offset, end_offset),
           window_unions_() {
         output_type_ = kSchemaTypeTable;
@@ -747,6 +746,10 @@ class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
         fn_infos_.push_back(&window_union.range_.fn_info_);
         return true;
     }
+    const bool instance_not_in_window() const {
+        return instance_not_in_window_;
+    }
+    const bool instance_not_in_window_;
     WindowOp &window() { return window_; }
     WindowJoinList &window_joins() { return window_joins_; }
     WindowOp window_;
@@ -870,13 +873,24 @@ class PhysicalUnionNode : public PhysicalBinaryNode {
 class PhysicalRequestUnionNode : public PhysicalBinaryNode {
  public:
     PhysicalRequestUnionNode(PhysicalOpNode *left, PhysicalOpNode *right,
+                             const node::ExprListNode *partition)
+        : PhysicalBinaryNode(left, right, kPhysicalOpRequestUnoin, true, true),
+          window_(partition, nullptr, -1, -1),
+          instance_not_in_window_(false) {
+        output_type_ = kSchemaTypeTable;
+        InitSchema();
+        fn_infos_.push_back(&window_.partition_.fn_info_);
+        fn_infos_.push_back(&window_.index_key_.fn_info_);
+    }
+    PhysicalRequestUnionNode(PhysicalOpNode *left, PhysicalOpNode *right,
                              const node::ExprListNode *partition,
                              const node::OrderByNode *orders,
                              const int64_t start_offset,
-                             const int64_t end_offset)
+                             const int64_t end_offset,
+                             const bool instance_not_in_window)
         : PhysicalBinaryNode(left, right, kPhysicalOpRequestUnoin, true, true),
           window_(partition, orders, start_offset, end_offset),
-          instance_not_in_window_(false) {
+          instance_not_in_window_(instance_not_in_window) {
         output_type_ = kSchemaTypeTable;
         InitSchema();
         fn_infos_.push_back(&window_.partition_.fn_info_);

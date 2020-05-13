@@ -191,6 +191,7 @@ class MemTimeTableHandler : public TableHandler {
     std::unique_ptr<WindowIterator> GetWindowIterator(
         const std::string& idx_name);
     void AddRow(const uint64_t key, const Row& v);
+    void PopBackRow();
     void AddRow(const Row& v);
     void Sort(const bool is_asc);
     void Reverse();
@@ -222,14 +223,16 @@ class Window : public MemTimeTableHandler {
           end_(0),
           start_offset_(start_offset),
           end_offset_(end_offset),
-          max_size_(0) {}
+          max_size_(0),
+          instance_not_in_window_(false) {}
     Window(int64_t start_offset, int64_t end_offset, uint32_t max_size)
         : MemTimeTableHandler(),
           start_(0),
           end_(0),
           start_offset_(start_offset),
           end_offset_(end_offset),
-          max_size_(max_size) {}
+          max_size_(max_size),
+          instance_not_in_window_(false) {}
     virtual ~Window() {}
 
     std::unique_ptr<RowIterator> GetIterator() const override {
@@ -247,12 +250,24 @@ class Window : public MemTimeTableHandler {
         }
     }
     virtual void BufferData(uint64_t key, const Row& row) = 0;
+    virtual void PopData() {
+        if (start_ != end_) {
+            end_ -= 1;
+            PopBackRow();
+        }
+    }
 
     virtual const uint64_t GetCount() { return end_ - start_; }
     virtual Row At(uint64_t pos) {
         return (pos + start_ < end_) ? table_.at(pos + start_).second : Row();
     }
     const std::string GetHandlerTypeName() override { return "Window"; }
+    const bool instance_not_in_window() const {
+        return instance_not_in_window_;
+    }
+    void set_instance_not_in_window(const bool flag) {
+        instance_not_in_window_ = flag;
+    }
 
  protected:
     uint32_t start_;
@@ -260,6 +275,7 @@ class Window : public MemTimeTableHandler {
     int64_t start_offset_;
     int32_t end_offset_;
     uint32_t max_size_;
+    bool instance_not_in_window_;
 };
 
 class CurrentHistoryWindow : public Window {

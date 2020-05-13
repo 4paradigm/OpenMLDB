@@ -96,7 +96,8 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                             node);
                     auto runner = new WindowAggRunner(
                         id_++, node->GetOutputNameSchemaList(),
-                        op->GetLimitCnt(), op->window_, op->project_);
+                        op->GetLimitCnt(), op->window_, op->project_,
+                        op->instance_not_in_window());
                     runner->AddProducer(input);
 
                     if (!op->window_joins_.Empty()) {
@@ -358,6 +359,9 @@ Row Runner::WindowProject(const int8_t* fn, const uint64_t key, const Row row,
         LOG(WARNING) << "fail to run udf " << ret;
         return Row();
     }
+    if (window->instance_not_in_window()) {
+        window->PopData();
+    }
     return Row(reinterpret_cast<char*>(out_buf), RowView::GetSize(out_buf));
 }
 
@@ -606,6 +610,7 @@ void WindowAggRunner::RunWindowAggOnKey(
     int32_t cnt = output_table->GetCount();
     CurrentHistoryWindow window(
         instance_window_gen_.window_op_.range_.start_offset_);
+    window.set_instance_not_in_window(instance_not_in_window_);
 
     while (instance_segment_iter->Valid()) {
         if (limit_cnt_ > 0 && cnt >= limit_cnt_) {

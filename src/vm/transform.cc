@@ -402,7 +402,8 @@ bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
                                                     orders->order_by_, false));
                     auto request_union_op = new PhysicalRequestUnionNode(
                         depend, right, groups, request_orders,
-                        w_ptr->GetStartOffset(), w_ptr->GetEndOffset());
+                        w_ptr->GetStartOffset(), w_ptr->GetEndOffset(),
+                        w_ptr->instance_not_in_window());
                     node_manager_->RegisterNode(request_union_op);
                     if (!w_ptr->union_tables().empty()) {
                         for (auto iter = w_ptr->union_tables().cbegin();
@@ -492,7 +493,8 @@ bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
                                           orders->order_by_, false));
                         auto request_union_op = new PhysicalRequestUnionNode(
                             request_op, right, groups, request_orders,
-                            w_ptr->GetStartOffset(), w_ptr->GetEndOffset());
+                            w_ptr->GetStartOffset(), w_ptr->GetEndOffset(),
+                            w_ptr->instance_not_in_window());
                         node_manager_->RegisterNode(request_union_op);
                         if (!w_ptr->union_tables().empty()) {
                             for (auto iter = w_ptr->union_tables().cbegin();
@@ -598,8 +600,8 @@ bool BatchModeTransformer::TransformGroupOp(const node::GroupPlanNode* node,
             if (table) {
                 auto right = new PhysicalTableProviderNode(table);
                 node_manager_->RegisterNode(right);
-                *output = new PhysicalRequestUnionNode(
-                    left, right, node->by_list_, nullptr, -1, -1);
+                *output =
+                    new PhysicalRequestUnionNode(left, right, node->by_list_);
                 node_manager_->RegisterNode(*output);
                 return true;
             } else {
@@ -845,7 +847,8 @@ bool BatchModeTransformer::CreatePhysicalProjectNode(
                 node, project_list->w_ptr_->GetKeys(),
                 project_list->w_ptr_->GetOrders(), fn_name, output_schema,
                 project_list->w_ptr_->GetStartOffset(),
-                project_list->w_ptr_->GetEndOffset());
+                project_list->w_ptr_->GetEndOffset(),
+                project_list->w_ptr_->instance_not_in_window());
 
             if (!project_list->w_ptr_->union_tables().empty()) {
                 for (auto iter = project_list->w_ptr_->union_tables().cbegin();

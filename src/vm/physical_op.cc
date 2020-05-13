@@ -153,6 +153,9 @@ void PhysicalWindowAggrerationNode::Print(std::ostream& output,
                                           const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "(type=" << ProjectTypeName(project_type_);
+    if (instance_not_in_window_) {
+        output << ", INSTANCE_NOT_IN_WINDOW";
+    }
     if (limit_cnt_ > 0) {
         output << ", limit=" << limit_cnt_;
     }
