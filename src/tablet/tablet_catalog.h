@@ -91,7 +91,6 @@ class TabletPartitionHandler : public PartitionHandler {
 
     ~TabletPartitionHandler() {}
 
-    const bool IsAsc() override { return false; };
     const OrderType GetOrderType() const { return OrderType::kDescOrder; }
 
     inline const vm::Schema* GetSchema() { return table_handler_->GetSchema(); }
