@@ -30,29 +30,30 @@ style_check:
         reports:
             junit:
                 - reports/*.xml
-java_ut:
-    stage: test
-    before_script:
-        - mkdir /rambuild
-        - mount -t tmpfs -o size=3G tmpfs /rambuild
-    script:
-        - ln -sf /depends/thirdparty thirdparty
-        - ln -sf /depends/thirdsrc thirdsrc
-        - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/java_ut.sh
-        - source /root/.bashrc && bash steps/auto_test.sh
-    after_script:
-        - umount /rambuild
-    artifacts:
-        reports:
-            junit:
-                - java/target/surefire-reports/junitreports/TEST-*.xml
-                - java/target/surefire-reports/TEST-*.xml
-                - java/target/failsafe-reports/junitreports/TEST-*.xml
-                - java/target/failsafe-reports/TEST-*.xml
-                - rtidb-auto-test/target/surefire-reports/junitreports/TEST-*.xml
-                - rtidb-auto-test/target/surefire-reports/TEST-*.xml
-                - rtidb-auto-test/target/failsafe-reports/junitreports/TEST-*.xml
-                - rtidb-auto-test/target/failsafe-reports/TEST-*.xml
+
+                  #java_ut:
+                  #    stage: test
+                  #    before_script:
+                  #        - mkdir /rambuild
+                  #        - mount -t tmpfs -o size=3G tmpfs /rambuild
+                  #    script:
+                  #        - ln -sf /depends/thirdparty thirdparty
+                  #        - ln -sf /depends/thirdsrc thirdsrc
+                  #        - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/java_ut.sh
+                  #        - source /root/.bashrc && bash steps/auto_test.sh
+                  #    after_script:
+                  #        - umount /rambuild
+                  #    artifacts:
+                  #        reports:
+                  #            junit:
+                  #                - java/target/surefire-reports/junitreports/TEST-*.xml
+                  #                - java/target/surefire-reports/TEST-*.xml
+                  #                - java/target/failsafe-reports/junitreports/TEST-*.xml
+                  #                - java/target/failsafe-reports/TEST-*.xml
+                  #                - rtidb-auto-test/target/surefire-reports/junitreports/TEST-*.xml
+                  #                - rtidb-auto-test/target/surefire-reports/TEST-*.xml
+                  #                - rtidb-auto-test/target/failsafe-reports/junitreports/TEST-*.xml
+                  #                - rtidb-auto-test/target/failsafe-reports/TEST-*.xml
 c++_ut:
     stage: test
     script:
