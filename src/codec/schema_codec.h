@@ -95,8 +95,8 @@ struct Column {
 struct ColumnDesc {
     ColType type;
     std::string name;
-    bool add_ts_idx;
-    bool is_ts_col;
+    bool add_ts_idx = false;
+    bool is_ts_col = false;
 };
 
 class SchemaCodec {
