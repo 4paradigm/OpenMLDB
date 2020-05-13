@@ -13,18 +13,14 @@ class SparkInstance {
 
   private var schema: StructType = _
 
-  private var name: String = _
-
-  def this(name: String, df: DataFrame) = {
+  def this(df: DataFrame) = {
     this()
-    this.name = name
     this.df = df
     this.schema = df.schema
   }
 
-  def this(name: String, schema: StructType, rdd: RDD[Row]) = {
+  def this(schema: StructType, rdd: RDD[Row]) = {
     this()
-    this.name = name
     this.schema = schema
     this.rdd = rdd
   }
@@ -48,20 +44,15 @@ class SparkInstance {
   def getSchema: StructType = {
     schema
   }
-
-  def getName: String = {
-    name
-  }
-
 }
 
 
 object SparkInstance {
   def fromDataFrame(name: String, df: DataFrame): SparkInstance = {
-    new SparkInstance(name, df)
+    new SparkInstance(df)
   }
 
-  def fromRDD(name: String, schema: StructType, rdd: RDD[Row]): SparkInstance = {
-    new SparkInstance(name, schema, rdd)
+  def fromRDD(schema: StructType, rdd: RDD[Row]): SparkInstance = {
+    new SparkInstance(schema, rdd)
   }
 }

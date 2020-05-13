@@ -3,14 +3,15 @@ package com._4paradigm.fesql.offline
 import java.nio.ByteBuffer
 
 import com._4paradigm.fesql.`type`.TypeOuterClass.Type
-import com._4paradigm.fesql.vm.PhysicalOpNode
+import com._4paradigm.fesql.offline.nodes._
+import com._4paradigm.fesql.vm._
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
 import scala.collection.mutable
 
-class PlanContext(tag: String, session: SparkSession, config: Map[String, Any]) {
+class PlanContext(tag: String, session: SparkSession, planner: SparkPlanner, config: Map[String, Any]) {
 
   private var moduleBuffer: SerializableByteBuffer = _
   private var moduleBroadCast: Broadcast[SerializableByteBuffer] = _
@@ -50,6 +51,10 @@ class PlanContext(tag: String, session: SparkSession, config: Map[String, Any]) 
 
   def getConf[T](key: String, default: T): T = {
     config.getOrElse(key, default).asInstanceOf[T]
+  }
+
+  def visitPhysicalNodes(root: PhysicalOpNode): SparkInstance = {
+    planner.visitPhysicalNodes(root, this)
   }
 }
 
