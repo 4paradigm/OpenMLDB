@@ -98,19 +98,19 @@ class RowCodec {
                         break;
                     case rtidb::type::kSmallInt:
                         ok = builder.AppendInt16(
-                            boost::lexical_cast<uint16_t>(iter->second));
+                            boost::lexical_cast<int16_t>(iter->second));
                         break;
                     case rtidb::type::kInt:
                         ok = builder.AppendInt32(
-                            boost::lexical_cast<uint32_t>(iter->second));
+                            boost::lexical_cast<int32_t>(iter->second));
                         break;
                     case rtidb::type::kBigInt:
                         ok = builder.AppendInt64(
-                            boost::lexical_cast<uint64_t>(iter->second));
+                            boost::lexical_cast<int64_t>(iter->second));
                         break;
                     case rtidb::type::kTimestamp:
                         ok = builder.AppendTimestamp(
-                            boost::lexical_cast<uint64_t>(iter->second));
+                            boost::lexical_cast<int64_t>(iter->second));
                         break;
                     case rtidb::type::kFloat:
                         ok = builder.AppendFloat(
