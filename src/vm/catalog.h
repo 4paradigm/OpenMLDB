@@ -130,7 +130,6 @@ class PartitionHandler : public TableHandler {
         return std::unique_ptr<WindowIterator>();
     }
     virtual std::unique_ptr<WindowIterator> GetWindowIterator() = 0;
-    virtual const bool IsAsc() = 0;
     const HandlerType GetHanlderType() override { return kPartitionHandler; }
     virtual Row At(uint64_t pos) { return Row(); }
     virtual std::shared_ptr<TableHandler> GetSegment(

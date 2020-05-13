@@ -210,7 +210,6 @@ void MemPartitionHandler::Reverse() {
                   ? kDescOrder
                   : kDescOrder == order_type_ ? kAscOrder : kNoneOrder;
 }
-const bool MemPartitionHandler::IsAsc() { return kAscOrder == order_type_; }
 void MemPartitionHandler::Print() {
     for (auto iter = partitions_.cbegin(); iter != partitions_.cend(); iter++) {
         std::cout << iter->first << ":";

@@ -406,7 +406,6 @@ class MemPartitionHandler : public PartitionHandler {
                         const Schema* schema);
 
     ~MemPartitionHandler();
-    const bool IsAsc() override;
     const Types& GetTypes() override;
     const IndexHint& GetIndex() override;
     const Schema* GetSchema() override;
