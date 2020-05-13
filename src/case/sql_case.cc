@@ -321,6 +321,11 @@ bool SQLCase::CreateTableInfoFromYamlNode(const YAML::Node& schema_data,
         boost::trim(table->index_);
     }
 
+    if (schema_data["order"]) {
+        table->order_ = schema_data["order"].as<std::string>();
+        boost::trim(table->order_);
+    }
+
     if (schema_data["data"]) {
         table->data_ = schema_data["data"].as<std::string>();
         boost::trim(table->data_);

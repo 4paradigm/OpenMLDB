@@ -28,6 +28,12 @@ using fesql::codec::Row;
 using fesql::codec::RowIterator;
 using fesql::codec::WindowIterator;
 
+struct AscKeyComparor {
+    bool operator()(std::pair<std::string, Row> i,
+                    std::pair<std::string, Row> j) {
+        return i.first < j.first;
+    }
+};
 struct AscComparor {
     bool operator()(std::pair<uint64_t, Row> i, std::pair<uint64_t, Row> j) {
         return i.first < j.first;

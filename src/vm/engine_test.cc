@@ -18,11 +18,12 @@
 #include "vm/engine.h"
 #include <utility>
 #include <vector>
+#include <algorithm>
 #include "base/texttable.h"
 #include "boost/algorithm/string.hpp"
 #include "case/sql_case.h"
-#include "codec/list_iterator_codec.h"
 #include "codec/fe_row_codec.h"
+#include "codec/list_iterator_codec.h"
 #include "gtest/gtest.h"
 #include "gtest/internal/gtest-param-util.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
@@ -106,8 +107,42 @@ void PrintRows(const vm::Schema& schema, const std::vector<Row>& rows) {
     oss << t << std::endl;
     LOG(INFO) << "\n" << oss.str() << "\n";
 }
+
+const std::vector<Row> SortRows(const vm::Schema& schema,
+                                const std::vector<Row>& rows,
+                                const std::string& order_col) {
+    RowView row_view(schema);
+    int idx = -1;
+    for (int i = 0; i < schema.size(); i++) {
+        if (schema.Get(i).name() == order_col) {
+            idx = i;
+            break;
+        }
+    }
+    if (-1 == idx) {
+        return rows;
+    }
+
+    std::vector<std::pair<std::string, Row>> sort_rows;
+    for (auto row : rows) {
+        row_view.Reset(row.buf());
+        row_view.GetAsString(idx);
+        sort_rows.push_back(std::make_pair(row_view.GetAsString(idx), row));
+    }
+    vm::AscKeyComparor comparor;
+    std::sort(sort_rows.begin(), sort_rows.end(), comparor);
+    std::vector<Row> output_rows;
+    for (auto row : sort_rows) {
+        output_rows.push_back(row.second);
+    }
+    return output_rows;
+}
 void CheckRows(const vm::Schema& schema, const std::vector<Row>& rows,
                const std::vector<Row>& exp_rows) {
+    LOG(INFO) << "expect result:\n";
+    PrintRows(schema, exp_rows);
+    LOG(INFO) << "real result:\n";
+    PrintRows(schema, rows);
     ASSERT_EQ(rows.size(), exp_rows.size());
     RowView row_view(schema);
     RowView row_view_exp(schema);
@@ -176,6 +211,9 @@ class EngineTest : public ::testing::TestWithParam<SQLCase> {
     EngineTest() {}
     virtual ~EngineTest() {}
 };
+const std::vector<Row> SortRows(const vm::Schema& schema,
+                                const std::vector<Row>& rows,
+                                const std::string& order_col);
 void RequestModeCheck(SQLCase& sql_case) {  // NOLINT
     int32_t input_cnt = sql_case.CountInputs();
     // Init catalog
@@ -253,12 +291,10 @@ void RequestModeCheck(SQLCase& sql_case) {  // NOLINT
         ASSERT_TRUE(request_table->Put(in_row.data(), in_row.size()));
         output.push_back(out_row);
     }
-    LOG(INFO) << "expect result:\n";
-    PrintRows(case_output_table.columns(), case_output_data);
-    LOG(INFO) << "real result:\n";
-    PrintRows(schema, output);
+
     CheckRows(schema, output, case_output_data);
 }
+
 void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
     int32_t input_cnt = sql_case.CountInputs();
 
@@ -325,69 +361,49 @@ void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
     for (auto ptr : output_ptr) {
         output.push_back(Row(ptr, RowView::GetSize(ptr)));
     }
-    LOG(INFO) << "expect result:\n";
-    PrintRows(case_output_table.columns(), case_output_data);
-    LOG(INFO) << "real result:\n";
-    PrintRows(schema, output);
-    CheckRows(schema, output, case_output_data);
+    CheckRows(schema, SortRows(schema, output, sql_case.output().order_),
+              case_output_data);
 }
+
 INSTANTIATE_TEST_CASE_P(
-    EngineRequstSimpleQuery, EngineTest,
-    testing::ValuesIn(InitCases("/cases/batch_query/simple_query.yaml")));
-INSTANTIATE_TEST_CASE_P(
-    EngineBatchSimpleQuery, EngineTest,
+    EngineSimpleQuery, EngineTest,
     testing::ValuesIn(InitCases("/cases/query/simple_query.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
-    EngineBatchLastJoinQuery, EngineTest,
-    testing::ValuesIn(InitCases("/cases/batch_query/last_join_query.yaml")));
-
-INSTANTIATE_TEST_CASE_P(
-    EngineRequestLastJoinQuery, EngineTest,
+    EngineLastJoinQuery, EngineTest,
     testing::ValuesIn(InitCases("/cases/query/last_join_query.yaml")));
 
-INSTANTIATE_TEST_CASE_P(EngineBatchtLastJoinWindowQuery, EngineTest,
-                        testing::ValuesIn(InitCases(
-                            "/cases/batch_query/last_join_window_query.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineLastJoinWindowQuery, EngineTest,
+    testing::ValuesIn(InitCases("/cases/query/last_join_window_query.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
     EngineRequestLastJoinWindowQuery, EngineTest,
     testing::ValuesIn(InitCases("/cases/query/last_join_window_query.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
-    EngineBatchWindowQuery, EngineTest,
-    testing::ValuesIn(InitCases("/cases/batch_query/window_query.yaml")));
-
-INSTANTIATE_TEST_CASE_P(
-    EngineRequestWindowQuery, EngineTest,
+    EngineWindowQuery, EngineTest,
     testing::ValuesIn(InitCases("/cases/query/window_query.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
-    EngineBatchWindowWithUnionQuery, EngineTest,
-    testing::ValuesIn(
-        InitCases("/cases/batch_query/window_with_union_query.yaml")));
-
-INSTANTIATE_TEST_CASE_P(
-    EngineRequestWindowWithUnionQuery, EngineTest,
-    testing::ValuesIn(
-        InitCases("/cases/query/window_with_union_query.yaml")));
-
+    EngineWindowWithUnionQuery, EngineTest,
+    testing::ValuesIn(InitCases("/cases/query/window_with_union_query.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
     EngineBatchGroupQuery, EngineTest,
-    testing::ValuesIn(InitCases("/cases/batch_query/group_query.yaml")));
+    testing::ValuesIn(InitCases("/cases/query/group_query.yaml")));
 
-TEST_P(EngineTest, test_engine) {
+TEST_P(EngineTest, test_request_engine) {
     ParamType sql_case = GetParam();
     LOG(INFO) << sql_case.desc();
-    if (sql_case.mode() == "request") {
+    if (sql_case.mode() != "request-unsupport") {
         RequestModeCheck(sql_case);
-    } else if (sql_case.mode() == "batch") {
-        BatchModeCheck(sql_case);
-    } else {
-        LOG(WARNING) << "Invalid Check Mode " << sql_case.mode();
-        FAIL();
     }
+}
+TEST_P(EngineTest, test_batch_engine) {
+    ParamType sql_case = GetParam();
+    LOG(INFO) << sql_case.desc();
+    BatchModeCheck(sql_case);
 }
 
 TEST_F(EngineTest, EngineCompileOnlyTest) {

@@ -11,7 +11,7 @@ SQLCases:
           return d
       end
       %%sql
-      SELECT t1.col0, test(t1.col1,t2.col1) test_col1, t1.col2 , str1 FROM t1 last join t2 on t1.col1=t2.col1 and t1.col5 = t2.col5;
+      SELECT t1.col1 as id, t1.col0 as t1_col0, test(t1.col1,t2.col1) test_col1, t1.col2 as t1_col2, str1 FROM t1 last join t2 on t1.col1=t2.col1 and t1.col5 = t2.col5;
     inputs:
       - name: t1
         schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
@@ -32,13 +32,14 @@ SQLCases:
           0, BB, 2.2, 22.2, 50, 2, 2
           0, A, 1.1, 11.1, 50, 1, 1
     output:
-      schema: t1.col0:string, test_col1:int32, t1.col2:int16, str1:string
+      schema: id:int32, t1_col0:string, test_col1:int32, t1_col2:int16, str1:string
+      order: id
       data: |
-        0, 3, 5, A
-        0, 5, 5, BB
-        1, 7, 55, CCC
-        1, 9, 55, DDDD
-        2, 11, 55, EEEEE
+        1, 0, 3, 5, A
+        2, 0, 5, 5, BB
+        3, 1, 7, 55, CCC
+        4, 1, 9, 55, DDDD
+        5, 2, 11, 55, EEEEE
   - id: 1
     desc: LAST JOIN 右表成功命中索引
     mode: request
@@ -51,7 +52,7 @@ SQLCases:
           return d
       end
       %%sql
-      SELECT t1.col0, test(t1.col1,t2.col1) test_col1, t1.col2 , str1 FROM t1 last join t2 on t1.col1=t2.col1 and t1.col5 = t2.col5;
+      SELECT t1.col1 as id, t1.col0 as t1_col0, test(t1.col1,t2.col1) test_col1, t1.col2 as t1_col2, str1 FROM t1 last join t2 on t1.col1=t2.col1 and t1.col5 = t2.col5;
     inputs:
       - name: t1
         schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
@@ -72,10 +73,11 @@ SQLCases:
           0, BB, 2.2, 22.2, 50, 2, 2
           0, A, 1.1, 11.1, 50, 1, 1
     output:
-      schema: t1.col0:string, test_col1:int32, t1.col2:int16, str1:string
+      schema: id:int32, t1_col0:string, test_col1:int32, t1_col2:int16, str1:string
+      order: id
       data: |
-        0, 3, 5, A
-        0, 5, 5, BB
-        1, 7, 55, CCC
-        1, 9, 55, DDDD
-        2, 11, 55, EEEEE
+        1, 0, 3, 5, A
+        2, 0, 5, 5, BB
+        3, 1, 7, 55, CCC
+        4, 1, 9, 55, DDDD
+        5, 2, 11, 55, EEEEE

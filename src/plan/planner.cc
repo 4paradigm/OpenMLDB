@@ -148,10 +148,9 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
             case node::kResTarget: {
                 const node::ResTarget *target_ptr =
                     (const node::ResTarget *)expr;
-
                 project_name = target_ptr->GetName();
                 if (project_name.empty()) {
-                    project_name = target_ptr->GetVal()->GetExprString();
+                    project_name = target_ptr->GetVal()->GenerateExpression();
                 }
                 project_expr = target_ptr->GetVal();
                 break;

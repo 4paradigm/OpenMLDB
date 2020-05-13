@@ -25,6 +25,7 @@ class SQLCase {
         std::string name_;
         std::string schema_;
         std::string index_;
+        std::string order_;
         std::string data_;
     };
     SQLCase() {}
