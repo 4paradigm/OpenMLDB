@@ -284,6 +284,20 @@ bool SQLCompiler::ResolvePlanFnAddress(PhysicalOpNode* node,
     // 待优化，内嵌子查询的Resolved不适合特别处理，需要把子查询的function信息注册到主查询中，
     // 函数指针的注册需要整体优化一下设计
     switch (node->type_) {
+        case kPhysicalOpRequestUnoin: {
+            auto request_union_op =
+                dynamic_cast<PhysicalRequestUnionNode*>(node);
+            if (!request_union_op->window_unions_.Empty()) {
+                for (auto window_union :
+                     request_union_op->window_unions_.window_unions_) {
+                    if (!ResolvePlanFnAddress(window_union.first, jit,
+                                              status)) {
+                        return false;
+                    }
+                }
+            }
+            break;
+        }
         case kPhysicalOpProject: {
             auto project_op = dynamic_cast<PhysicalProjectNode*>(node);
             if (kWindowAggregation == project_op->project_type_) {
@@ -308,6 +322,7 @@ bool SQLCompiler::ResolvePlanFnAddress(PhysicalOpNode* node,
                     }
                 }
             }
+            break;
         }
         default: {
         }

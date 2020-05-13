@@ -57,6 +57,7 @@ typedef std::vector<std::pair<const std::string, const Schema*>> NameSchemaList;
 class PartitionHandler;
 
 enum HandlerType { kRowHandler, kTableHandler, kPartitionHandler };
+enum OrderType { kDescOrder, kAscOrder, kNoneOrder };
 class DataHandler : public ListV<Row> {
  public:
     DataHandler() {}
@@ -113,6 +114,7 @@ class TableHandler : public DataHandler {
         return std::shared_ptr<PartitionHandler>();
     }
     const std::string GetHandlerTypeName() override { return "TableHandler"; }
+    virtual const OrderType GetOrderType() const { return kNoneOrder; }
 };
 
 class PartitionHandler : public TableHandler {
@@ -122,15 +124,12 @@ class PartitionHandler : public TableHandler {
     virtual std::unique_ptr<RowIterator> GetIterator() const {
         return std::unique_ptr<RowIterator>();
     }
-    RowIterator* GetIterator(int8_t* addr) const override {
-        return nullptr;
-    }
+    RowIterator* GetIterator(int8_t* addr) const override { return nullptr; }
     virtual std::unique_ptr<WindowIterator> GetWindowIterator(
         const std::string& idx_name) {
         return std::unique_ptr<WindowIterator>();
     }
     virtual std::unique_ptr<WindowIterator> GetWindowIterator() = 0;
-    virtual const bool IsAsc() = 0;
     const HandlerType GetHanlderType() override { return kPartitionHandler; }
     virtual Row At(uint64_t pos) { return Row(); }
     virtual std::shared_ptr<TableHandler> GetSegment(
@@ -141,6 +140,7 @@ class PartitionHandler : public TableHandler {
     const std::string GetHandlerTypeName() override {
         return "PartitionHandler";
     }
+    const OrderType GetOrderType() const { return kNoneOrder; }
 };
 
 // database/table/schema/type management

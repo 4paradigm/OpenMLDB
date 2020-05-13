@@ -108,7 +108,7 @@ class NodeManager {
     SQLNode *MakeWindowDefNode(SQLNodeList *union_tables,
                                ExprListNode *partitions, ExprNode *orders,
                                SQLNode *frame, bool instance_not_in_window);
-    ExprNode *MakeOrderByNode(ExprListNode *node_ptr, const bool is_asc);
+    ExprNode *MakeOrderByNode(const ExprListNode *node_ptr, const bool is_asc);
     SQLNode *MakeFrameNode(SQLNode *start, SQLNode *end);
     SQLNode *MakeFrameBound(SQLNodeType bound_type);
     SQLNode *MakeFrameBound(SQLNodeType bound_type, ExprNode *offset);

@@ -426,7 +426,7 @@ class JoinNode : public TableRefNode {
 
 class OrderByNode : public ExprNode {
  public:
-    explicit OrderByNode(ExprListNode *order, bool is_asc)
+    explicit OrderByNode(const ExprListNode *order, bool is_asc)
         : ExprNode(kExprOrder), is_asc_(is_asc), order_by_(order) {}
     ~OrderByNode() {}
 

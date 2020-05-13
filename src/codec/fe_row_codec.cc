@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-#include "codec/row_codec.h"
+#include "codec/fe_row_codec.h"
 #include <string>
 #include <utility>
 #include "codec/type_codec.h"

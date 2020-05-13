@@ -22,7 +22,7 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include "codec/row_codec.h"
+#include "codec/fe_row_codec.h"
 #include "codegen/row_ir_builder.h"
 #include "codegen/scope_var.h"
 #include "codegen/variable_ir_builder.h"

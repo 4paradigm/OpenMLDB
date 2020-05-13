@@ -9,7 +9,7 @@
 #include <sys/time.h>
 #include <string>
 #include "gtest/gtest.h"
-#include "codec/row_codec.h"
+#include "codec/fe_row_codec.h"
 #include "storage/fe_table.h"
 
 namespace fesql {

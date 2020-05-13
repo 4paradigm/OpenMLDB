@@ -203,6 +203,22 @@ TEST_P(TransformRequestModeTest, transform_physical_plan) {
     AddTable(catalog, table_def5, table5);
     AddTable(catalog, table_def6, table6);
 
+    {
+        fesql::type::TableDef table_def;
+        BuildTableA(table_def);
+        table_def.set_name("tb");
+        std::shared_ptr<::fesql::storage::Table> table(
+            new fesql::storage::Table(1, 1, table_def));
+        AddTable(catalog, table_def, table);
+    }
+    {
+        fesql::type::TableDef table_def;
+        BuildTableA(table_def);
+        table_def.set_name("tc");
+        std::shared_ptr<::fesql::storage::Table> table(
+            new fesql::storage::Table(1, 1, table_def));
+        AddTable(catalog, table_def, table);
+    }
     ::fesql::node::NodeManager manager;
     ::fesql::node::PlanNodeList plan_trees;
     ::fesql::base::Status base_status;
@@ -261,7 +277,7 @@ INSTANTIATE_TEST_CASE_P(
             "PRECEDING AND CURRENT ROW) limit 10;",
             "LIMIT(limit=10, optimized)\n"
             "  PROJECT(type=Aggregation, limit=10)\n"
-            "    REQUEST_UNION(partition_keys=(), orders=() ASC, "
+            "    REQUEST_UNION(partition_keys=(), orders=() DESC, "
             "range=(col5, -3, 0), index_keys=(col1))\n"
             "      DATA_PROVIDER(request=t1)\n"
             "      DATA_PROVIDER(type=Partition, table=t1, index=index1)"),
@@ -274,7 +290,7 @@ INSTANTIATE_TEST_CASE_P(
             "BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;",
             "LIMIT(limit=10, optimized)\n"
             "  PROJECT(type=Aggregation, limit=10)\n"
-            "    REQUEST_UNION(partition_keys=(), orders=() ASC, "
+            "    REQUEST_UNION(partition_keys=(), orders=() DESC, "
             "range=(col5, -3, 0), index_keys=(col1,col2))\n"
             "      DATA_PROVIDER(request=t1)\n"
             "      DATA_PROVIDER(type=Partition, table=t1, index=index12)"),
@@ -289,7 +305,7 @@ INSTANTIATE_TEST_CASE_P(
             "PRECEDING AND CURRENT ROW) limit 10;",
             "LIMIT(limit=10, optimized)\n"
             "  PROJECT(type=Aggregation, limit=10)\n"
-            "    REQUEST_UNION(partition_keys=(col3), orders=(col5) ASC, "
+            "    REQUEST_UNION(partition_keys=(col3), orders=(col5) DESC, "
             "range=(col5, -3, 0), index_keys=)\n"
             "      DATA_PROVIDER(request=t1)\n"
             "      DATA_PROVIDER(table=t1)")));
@@ -359,7 +375,7 @@ INSTANTIATE_TEST_CASE_P(
             "  PROJECT(type=Aggregation, limit=10)\n"
             "    JOIN(type=LastJoin, condition=, left_keys=(), "
             "right_keys=(), index_keys=(t1.col1))\n"
-            "      REQUEST_UNION(partition_keys=(), orders=() ASC, "
+            "      REQUEST_UNION(partition_keys=(), orders=() DESC, "
             "range=(t1.col5, -3, 0), index_keys=(t1.col1))\n"
             "        DATA_PROVIDER(request=t1)\n"
             "        DATA_PROVIDER(type=Partition, table=t1, index=index1)\n"
@@ -377,7 +393,7 @@ INSTANTIATE_TEST_CASE_P(
             "  PROJECT(type=Aggregation, limit=10)\n"
             "    JOIN(type=LastJoin, condition=, left_keys=(t1.col2), "
             "right_keys=(t2.col2), index_keys=)\n"
-            "      REQUEST_UNION(partition_keys=(), orders=() ASC, "
+            "      REQUEST_UNION(partition_keys=(), orders=() DESC, "
             "range=(t1.col5, -3, 0), index_keys=(t1.col1,t1.col2))\n"
             "        DATA_PROVIDER(request=t1)\n"
             "        DATA_PROVIDER(type=Partition, table=t1, index=index12)\n"
@@ -394,12 +410,59 @@ INSTANTIATE_TEST_CASE_P(
             "  PROJECT(type=Aggregation, limit=10)\n"
             "    JOIN(type=LastJoin, condition=, left_keys=(), "
             "right_keys=(), index_keys=(t1.col1))\n"
-            "      REQUEST_UNION(partition_keys=(), orders=() ASC, "
+            "      REQUEST_UNION(partition_keys=(), orders=() DESC, "
             "range=(t1.col5, -3, 0), index_keys=(t1.col1,t1.col2))\n"
             "        DATA_PROVIDER(request=t1)\n"
             "        DATA_PROVIDER(type=Partition, table=t1, index=index12)\n"
             "      DATA_PROVIDER(type=Partition, table=t2, index=index1_t2)")));
 
+INSTANTIATE_TEST_CASE_P(
+    RequestWindowUnionOptimized, TransformRequestModePassOptimizedTest,
+    testing::Values(
+        // 0
+        std::make_pair(
+            "SELECT col1, col5, sum(col2) OVER w1 as w1_col2_sum FROM t1\n"
+            "      WINDOW w1 AS (UNION t3 PARTITION BY col1 ORDER BY col5 ROWS "
+            "BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;",
+            "LIMIT(limit=10, optimized)\n"
+            "  PROJECT(type=Aggregation, limit=10)\n"
+            "    REQUEST_UNION(partition_keys=(), orders=() DESC, range=(col5, "
+            "-3, 0), index_keys=(col1))\n"
+            "      +-UNION(partition_keys=(col1), orders=(col5) DESC, "
+            "range=(col5, -3, 0), index_keys=)\n"
+            "        DATA_PROVIDER(table=t3)\n"
+            "      DATA_PROVIDER(request=t1)\n"
+            "      DATA_PROVIDER(type=Partition, table=t1, index=index1)"),
+        // 1
+        std::make_pair(
+            "SELECT col1, col5, sum(col2) OVER w1 as w1_col2_sum FROM t1\n"
+            "      WINDOW w1 AS (UNION t3 PARTITION BY col1,col2 ORDER BY col5 "
+            "ROWS "
+            "BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;",
+            "LIMIT(limit=10, optimized)\n"
+            "  PROJECT(type=Aggregation, limit=10)\n"
+            "    REQUEST_UNION(partition_keys=(), orders=() DESC, range=(col5, "
+            "-3, 0), index_keys=(col1,col2))\n"
+            "      +-UNION(partition_keys=(col1,col2), orders=(col5) DESC, "
+            "range=(col5, -3, 0), index_keys=)\n"
+            "        DATA_PROVIDER(table=t3)\n"
+            "      DATA_PROVIDER(request=t1)\n"
+            "      DATA_PROVIDER(type=Partition, table=t1, index=index12)"),
+        std::make_pair(
+            "SELECT col1, col5, sum(col2) OVER w1 as w1_col2_sum FROM t1\n"
+            "      WINDOW w1 AS (UNION t3 PARTITION BY col1 ORDER BY col5 "
+            "ROWS "
+            "BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;",
+            "LIMIT(limit=10, optimized)\n"
+            "  PROJECT(type=Aggregation, limit=10)\n"
+            "    REQUEST_UNION(partition_keys=(), orders=() DESC, "
+            "range=(col5, -3, 0), index_keys=(col1))\n"
+            "      +-UNION(partition_keys=(col1), orders=(col5) DESC, "
+            "range=(col5, -3, 0), index_keys=)\n"
+            "        DATA_PROVIDER(table=t3)\n"
+            "      DATA_PROVIDER(request=t1)\n"
+            "      DATA_PROVIDER(type=Partition, table=t1, "
+            "index=index1)")));
 TEST_P(TransformRequestModePassOptimizedTest, pass_pass_optimized_test) {
     auto in_out = GetParam();
     fesql::type::TableDef table_def;
@@ -432,6 +495,19 @@ TEST_P(TransformRequestModePassOptimizedTest, pass_pass_optimized_test) {
         std::shared_ptr<::fesql::storage::Table> table2(
             new ::fesql::storage::Table(1, 1, table_def2));
         AddTable(catalog, table_def2, table2);
+    }
+
+    {
+        fesql::type::TableDef table_def;
+        BuildTableDef(table_def);
+        table_def.set_name("t3");
+        ::fesql::type::IndexDef* index = table_def.add_indexes();
+        index->set_name("index2_t3");
+        index->add_first_keys("col2");
+        index->set_second_key("col5");
+        std::shared_ptr<::fesql::storage::Table> table(
+            new ::fesql::storage::Table(3, 1, table_def));
+        AddTable(catalog, table_def, table);
     }
     PhysicalPlanCheck(catalog, in_out.first, in_out.second);
 }

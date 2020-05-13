@@ -26,7 +26,7 @@
 #include "base/raw_buffer.h"
 #include "base/spin_lock.h"
 #include "codec/list_iterator_codec.h"
-#include "codec/row_codec.h"
+#include "codec/fe_row_codec.h"
 #include "llvm-c/Target.h"
 #include "proto/fe_common.pb.h"
 #include "vm/catalog.h"
