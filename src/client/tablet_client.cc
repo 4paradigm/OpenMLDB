@@ -236,9 +236,9 @@ bool TabletClient::Put(uint32_t tid, uint32_t pid, const std::string& value,
     request.release_value();
     if (ok && response.code() == 0) {
         *auto_gen_pk = response.auto_gen_pk();
-        msg->swap(*response.mutable_msg());
         return true;
     }
+    msg->swap(*response.mutable_msg());
     return false;
 }
 
