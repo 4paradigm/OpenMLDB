@@ -127,7 +127,8 @@ object WindowAggPlan {
       inputSchema = inputSchema,
       inputSchemaSlices = inputSchemaSlices,
       outputSchemaSlices = outputSchemaSlices,
-      unionFlagIdx = flagIdx
+      unionFlagIdx = flagIdx,
+      instanceNotInWindow = node.instance_not_in_window()
     )
   }
 
@@ -235,7 +236,8 @@ object WindowAggPlan {
                              inputSchema: StructType,
                              inputSchemaSlices: Array[StructType],
                              outputSchemaSlices: Array[StructType],
-                             unionFlagIdx: Int)
+                             unionFlagIdx: Int,
+                             instanceNotInWindow: Boolean)
 
 
   /**
@@ -265,7 +267,8 @@ object WindowAggPlan {
     private val fn = jit.FindFunction(config.functionName)
 
     // window state
-    private var window = new WindowInterface(config.startOffset, 0, 0)
+    private var window = new WindowInterface(
+      config.instanceNotInWindow, config.startOffset, 0, 0)
 
 
     def compute(row: Row): Row = {
@@ -302,7 +305,8 @@ object WindowAggPlan {
       if (groupChanged) {
         // TODO: wrap iter to hook iter end; now last window is leak
         window.delete()
-        window = new WindowInterface(config.startOffset, 0, 0)
+        window = new WindowInterface(
+          config.instanceNotInWindow, config.startOffset, 0, 0)
         bufferPool.freeAll()
       }
     }

@@ -63,7 +63,7 @@ class RunnerContext {
 class CoreAPI {
  public:
     static int ResolveColumnIndex(fesql::vm::PhysicalOpNode* node,
-                                  fesql::node::ExprNode* expr);
+                                  fesql::node::ColumnRefNode* expr);
 
     static fesql::codec::Row RowProject(const fesql::vm::RawFunctionPtr fn,
                                         const fesql::codec::Row row,
