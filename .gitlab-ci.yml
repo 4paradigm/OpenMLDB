@@ -10,6 +10,9 @@ stages:
 build_rtidb:
     stage: build
     retry: 2
+    before_script:
+        - mkdir /rambuild
+        - mount -t tmpfs -o size=1G tmpfs /rambuild
     script:
         - source /root/.bashrc && sh tools/install_fesql.sh
         - ln -sf /depends/thirdparty thirdparty
