@@ -1045,7 +1045,7 @@ bool RelationalTable::UpdateDB(const std::shared_ptr<IndexDef> index_def,
                     break;
                 }
                 case rtidb::type::kDate: {
-                    uint32_t val = 0;
+                    int32_t val = 0;
                     if (col_iter != col_idx_map.end()) {
                         get_value_ret =
                             value_view.GetDate(col_iter->second, &val);

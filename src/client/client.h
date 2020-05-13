@@ -153,7 +153,7 @@ class ViewResult {
     }
 
     int32_t GetDate(uint32_t idx) {
-        uint32_t val;
+        int32_t val;
         rv_->GetDate(idx, &val);
         return val;
     }
