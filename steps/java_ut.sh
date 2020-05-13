@@ -17,11 +17,9 @@ cp steps/zoo.cfg thirdsrc/zookeeper-3.4.14/conf
 cd thirdsrc/zookeeper-3.4.14
 netstat -anp | grep 6181 | awk '{print $NF}' | awk -F '/' '{print $1}'| xargs kill -9
 ./bin/zkServer.sh start && cd $ROOT_DIR
-
 sleep 5
-
 cd onebox && sh start_onebox_on_rambuild.sh && cd $ROOT_DIR
-sleep 3
+sleep 5
 cd $ROOT_DIR/java
 mvn clean test 
 code=$?

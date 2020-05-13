@@ -45,26 +45,13 @@ BLOB1=$IP:9720
                    --hdd_root_path=/rambuild/tablet2-hdd-binlogs \
                    --ssd_root_path=/rambuild/tablet2-ssd-binlogs \
                    --recycle_bin_root_path=/rambuild/recycle_bin2 \
-                   --recycle_ssd_bin_root_path/rambuild/=recycle_ssd_bin2 \
+                   --recycle_ssd_bin_root_path=/rambuild/recycle_ssd_bin2 \
                    --recycle_hdd_bin_root_path=/rambuild/recycle_hdd_bin2 \
                    --endpoint=${TABLET3} --role=tablet \
                    --binlog_notify_on_put=true\
                    --zk_cluster=${ZK_CLUSTER}\
                    --zk_keep_alive_check_interval=100000000\
                    --zk_root_path=/onebox > tablet2.log 2>&1 &
-
-# start blob1
-../build/bin/rtidb --hdd_root_path=/rambuild/blob1-hdd-binlogs \
-                   --ssd_root_path=/rambuild/blob1-ssd-binlogs \
-                   --recycle_bin_root_path=/rambuild/recycle_bin3 \
-                   --recycle_ssd_bin_root_path=/rambuild/recycle_ssd_bin3 \
-                   --recycle_hdd_bin_root_path=/rambuild/recycle_hdd_bin3 \
-                   --endpoint=${BLOB1} --role=blob \
-                   --binlog_notify_on_put=true\
-                   --zk_cluster=${ZK_CLUSTER}\
-                   --zk_keep_alive_check_interval=100000000\
-                   --zk_root_path=/onebox > blob1.log 2>&1 &
-
 
 # start ns1 
 ../build/bin/rtidb --endpoint=${NS1} --role=nameserver \
@@ -87,7 +74,20 @@ BLOB1=$IP:9720
                    --zk_cluster=${ZK_CLUSTER}\
                    --zk_root_path=/onebox > ns3.log 2>&1 &
 
-sleep 3
+sleep 5
+# start blob1
+../build/bin/rtidb --hdd_root_path=/rambuild/blob1-hdd-binlogs \
+                   --ssd_root_path=/rambuild/blob1-ssd-binlogs \
+                   --recycle_bin_root_path=/rambuild/recycle_bin3 \
+                   --recycle_ssd_bin_root_path=/rambuild/recycle_ssd_bin3 \
+                   --recycle_hdd_bin_root_path=/rambuild/recycle_hdd_bin3 \
+                   --endpoint=${BLOB1} --role=blob \
+                   --binlog_notify_on_put=true\
+                   --zk_cluster=${ZK_CLUSTER}\
+                   --zk_keep_alive_check_interval=100000000\
+                   --zk_root_path=/onebox > blob1.log 2>&1 &
+
+sleep 5
 
 echo "start all ok"
 
