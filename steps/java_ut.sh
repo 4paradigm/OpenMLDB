@@ -12,16 +12,15 @@ cp -rf src/proto/tablet.proto java/src/main/proto/
 cp -rf src/proto/name_server.proto java/src/main/proto/
 cp -rf src/proto/common.proto java/src/main/proto/
 cp -rf src/proto/type.proto java/src/main/proto/
-
+test -d /rambuild/ut_zookeeper && rm -rf /rambuild/ut_zookeeper/*
 cp steps/zoo.cfg thirdsrc/zookeeper-3.4.14/conf
 cd thirdsrc/zookeeper-3.4.14
-test -d ut_zookeeper && rm -rf ut_zookeeper
 netstat -anp | grep 6181 | awk '{print $NF}' | awk -F '/' '{print $1}'| xargs kill -9
 ./bin/zkServer.sh start && cd $ROOT_DIR
 
 sleep 5
 
-cd onebox && sh start_onebox.sh && cd $ROOT_DIR
+cd onebox && sh start_onebox_on_rambuild.sh && cd $ROOT_DIR
 sleep 3
 cd $ROOT_DIR/java
 mvn clean test 
