@@ -14,6 +14,7 @@ build_rtidb:
         - mkdir /rambuild
         - mount -t tmpfs -o size=1G tmpfs /rambuild
     script:
+        - df -h
         - source /root/.bashrc && sh tools/install_fesql.sh
         - ln -sf /depends/thirdparty thirdparty
         - ln -sf /depends/thirdsrc thirdsrc
