@@ -250,7 +250,7 @@ bool DiskTable::Put(uint64_t time, const std::string& value,
                 "failed putting key %s to dimension %u in table tid %u pid %u",
                 it->key().c_str(), it->idx(), id_, pid_);
             return false;
-        }        
+        }
         std::string combine_key = CombineKeyTs(it->key(), time);
         rocksdb::Slice spk = rocksdb::Slice(combine_key);
         batch.Put(cf_hs_[it->idx() + 1], spk, value);
