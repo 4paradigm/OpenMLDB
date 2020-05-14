@@ -254,7 +254,6 @@ bool DiskTable::Put(uint64_t time, const std::string& value,
         
         std::string combine_key = CombineKeyTs(it->key(), time);
         rocksdb::Slice spk = rocksdb::Slice(combine_key);
-        PDLOG(WARNING, "Put CombineKeyTs(%s, %lu), spk=%s, size=%lu, to cf[%u]", it->key().c_str(), time, spk.ToString().c_str(), spk.size(), it->idx() + 1);
         batch.Put(cf_hs_[it->idx() + 1], spk, value);
     }
     s = db_->Write(write_opts_, &batch);
@@ -341,66 +340,88 @@ bool DiskTable::Delete(const std::string& pk, uint32_t idx) {
 
 bool DiskTable::Get(uint32_t idx, const std::string& pk, uint64_t ts,
                     uint32_t ts_idx, std::string& value) {
-    std::shared_ptr<IndexDef> index_def = GetIndex(idx);
-    if (!index_def) {
-        PDLOG(WARNING, "index %u not found in table tid %u pid %u", idx, id_,
-              pid_);
-        return false;
-    }
-    const std::vector<uint32_t> ts_vec = index_def->GetTsColumn();
-    if (std::find(ts_vec.begin(), ts_vec.end(), ts_idx) == ts_vec.end()) {
-        PDLOG(WARNING,
-              "ts index %u is not member of index %u, failed getting table tid "
-              "%u pid %u",
-              ts_idx, idx, id_, pid_);
-        return false;
-    }
-    rocksdb::Slice spk;
-    if (ts_vec.size() > 1) {
-        std::string combine_key = CombineKeyTs(pk, ts, ts_idx);
-        spk = rocksdb::Slice(combine_key);
-    } else {
-        std::string combine_key = CombineKeyTs(pk, ts);
-        spk = rocksdb::Slice(combine_key);
-    }
-    rocksdb::Status s;
-    s = db_->Get(rocksdb::ReadOptions(), cf_hs_[idx + 1], spk, &value);
-    if (s.ok()) {
+    // std::shared_ptr<IndexDef> index_def = GetIndex(idx);
+    // if (!index_def) {
+    //     PDLOG(WARNING, "index %u not found in table tid %u pid %u", idx, id_,
+    //           pid_);
+    //     return false;
+    // }
+    // const std::vector<uint32_t> ts_vec = index_def->GetTsColumn();
+    // if (std::find(ts_vec.begin(), ts_vec.end(), ts_idx) == ts_vec.end()) {
+    //     PDLOG(WARNING,
+    //           "ts index %u is not member of index %u, failed getting table tid "
+    //           "%u pid %u",
+    //           ts_idx, idx, id_, pid_);
+    //     return false;
+    // }
+    // rocksdb::Slice spk;
+    // if (ts_vec.size() > 1) {
+    //     std::string combine_key = CombineKeyTs(pk, ts, ts_idx);
+    //     spk = rocksdb::Slice(combine_key);
+    // } else {
+    //     std::string combine_key = CombineKeyTs(pk, ts);
+    //     spk = rocksdb::Slice(combine_key);
+    // }
+    // rocksdb::Status s;
+    // s = db_->Get(rocksdb::ReadOptions(), cf_hs_[idx + 1], spk, &value);
+    // if (s.ok()) {
+    //     return true;
+    // } else {
+
+    //     return false;
+    // }
+    Ticket ticket;
+    auto it = NewIterator(idx, ts_idx, pk, ticket);
+    it->Seek(ts);
+    if ((it->Valid()) && (it->GetKey() == ts)) {
+        value = it->GetValue().ToString();
+        delete it;
         return true;
     } else {
-
+        delete it;
         return false;
     }
 }
 
 bool DiskTable::Get(uint32_t idx, const std::string& pk, uint64_t ts,
                     std::string& value) {
-    rocksdb::Slice spk;
-    std::shared_ptr<IndexDef> index_def = GetIndex(idx);
-    if (!index_def) {
-        PDLOG(WARNING, "index %u not found in table, tid %u pid %u", idx, id_,
-              pid_);
-        return false;
-    }
-    auto ts_vec = index_def->GetTsColumn();
-    if (ts_vec.size() > 1) {
-        std::string combine_key = CombineKeyTs(pk, ts, ts_vec.front());
-        spk = rocksdb::Slice(combine_key);
-        PDLOG(WARNING, "CombineKeyTs(%s, %lu, %u), spk=%s, size=%lu", pk.c_str(), ts, ts_vec.front(), spk.ToString().c_str(), spk.size());
-    } else {
-        std::string combine_key = CombineKeyTs(pk, ts);
-        spk = rocksdb::Slice(combine_key);
-        PDLOG(WARNING, "CombineKeyTs(%s, %lu), spk=%s, size=%lu", pk.c_str(), ts, spk.ToString().c_str(), spk.size());
-    }
-    rocksdb::Status s;
-    PDLOG(WARNING, "index %u tid %u pid %u, Get(%u, %s, %lu) from cf[%u]", idx, id_,
-              pid_, idx, spk.ToString().c_str(), ts, idx + 1);
-    s = db_->Get(rocksdb::ReadOptions(), cf_hs_[idx + 1], spk, &value);
-    if (s.ok()) {
+    // rocksdb::Slice spk;
+    // std::shared_ptr<IndexDef> index_def = GetIndex(idx);
+    // if (!index_def) {
+    //     PDLOG(WARNING, "index %u not found in table, tid %u pid %u", idx, id_,
+    //           pid_);
+    //     return false;
+    // }
+    // auto ts_vec = index_def->GetTsColumn();
+    // if (ts_vec.size() > 1) {
+    //     std::string combine_key = CombineKeyTs(pk, ts, ts_vec.front());
+    //     spk = rocksdb::Slice(combine_key);
+    //     PDLOG(WARNING, "CombineKeyTs(%s, %lu, %u), spk=%s, size=%lu", pk.c_str(), ts, ts_vec.front(), spk.ToString().c_str(), spk.size());
+    // } else {
+    //     std::string combine_key = CombineKeyTs(pk, ts);
+    //     spk = rocksdb::Slice(combine_key);
+    //     PDLOG(WARNING, "CombineKeyTs(%s, %lu), spk=%s, size=%lu", pk.c_str(), ts, spk.ToString().c_str(), spk.size());
+    // }
+    // rocksdb::Status s;
+    // PDLOG(WARNING, "index %u tid %u pid %u, Get(%u, %s, %lu) from cf[%u]", idx, id_,
+    //           pid_, idx, spk.ToString().c_str(), ts, idx + 1);
+    // s = db_->Get(rocksdb::ReadOptions(), cf_hs_[idx + 1], spk, &value);
+    // if (s.ok()) {
+    //     return true;
+    // } else {
+    //     PDLOG(WARNING, "index %u tid %u pid %u, key %s, rocksdb status : %s", idx, id_,
+    //           pid_, spk.ToString().c_str(), s.ToString().c_str());
+    //     return false;
+    // }
+    Ticket ticket;
+    auto it = NewIterator(idx, pk, ticket);
+    it->Seek(ts);
+    if ((it->Valid()) && (it->GetKey() == ts)) {
+        value = it->GetValue().ToString();
+        delete it;
         return true;
     } else {
-        PDLOG(WARNING, "index %u tid %u pid %u, key %s, rocksdb status : %s", idx, id_,
-              pid_, spk.ToString().c_str(), s.ToString().c_str());
+        delete it;
         return false;
     }
 }
