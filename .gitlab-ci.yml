@@ -79,6 +79,9 @@ test_py3sdk_linux:
 
 test_py3sdk_mac:
     stage: test
+    variables:
+        CICD_RUNNER_THIRDPARTY_PATH: "/opt/depends/thirdparty"
+        CICD_RUNNER_TAG: "macos"
     tags:
         - macos
     script:

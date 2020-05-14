@@ -9,5 +9,6 @@ then
     export JAVA_HOME=${PWD}/thirdparty/jdk1.8.0_141
     export PATH=${PWD}/thirdparty/bin:$JAVA_HOME/bin:${PWD}/thirdparty/apache-maven-3.6.3/bin:$PATH
 else
+    source ~/.bash_profile
     ln -sf ${CICD_RUNNER_THIRDPARTY_PATH} thirdparty
 fi
