@@ -59,6 +59,8 @@ test_java_sdk_on_mac:
         CICD_RUNNER_TAG: "macos"
     script:
         - bash tools/test_java_sdk.sh
+    after_script:
+        - cd onebox && sh stop_all.sh
     tags:
         - macos
     artifacts:
@@ -66,11 +68,23 @@ test_java_sdk_on_mac:
             junit:
                 - build/java/fesql-spark/target/surefire-reports/*.xml
                 - build/java/fesql-jdbc/target/surefire-reports/*.xml
-
 test_py3sdk_linux:
     stage: test
     script:
         - bash tools/run_py3_ut.sh
+    artifacts:
+        reports:
+            junit:
+                - python/test/*.xml
+
+test_py3sdk_mac:
+    stage: test
+    tags:
+        - macos
+    script:
+        - bash tools/run_py3_ut.sh
+    after_script:
+        - cd onebox && sh stop_all.sh
     artifacts:
         reports:
             junit:

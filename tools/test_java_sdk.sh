@@ -6,8 +6,6 @@ cd ${WORKSPACE}/onebox && sh start_all.sh
 cd ${WORKSPACE}/java
 mvn scoverage:report
 TEST_SUCCESS=$?
-cd ${WORKSPACE}/onebox && sh stop_all.sh
-cd ${WORKSPACE}/java
 if [[ -x "$(command -v pages)" ]]; then
     rm -rf public
     mkdir public
