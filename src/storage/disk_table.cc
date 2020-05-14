@@ -382,9 +382,11 @@ bool DiskTable::Get(uint32_t idx, const std::string& pk, uint64_t ts,
     }
     auto ts_vec = index_def->GetTsColumn();
     if (ts_vec.size() > 1) {
+        PDLOG(WARNING, "CombineKeyTs(%s, %lu, %u)", pk.c_str(), ts, ts_vec.front());
         std::string combine_key = CombineKeyTs(pk, ts, ts_vec.front());
         spk = rocksdb::Slice(combine_key);
     } else {
+        PDLOG(WARNING, "CombineKeyTs(%s, %lu)", pk.c_str(), ts);
         std::string combine_key = CombineKeyTs(pk, ts);
         spk = rocksdb::Slice(combine_key);
     }
