@@ -244,8 +244,6 @@ void RequestModeCheck(SQLCase& sql_case) {  // NOLINT
     ASSERT_TRUE(ok);
 
     const std::string& request_name = session.GetRequestName();
-    const vm::Schema& request_schema = session.GetRequestSchema();
-
     std::vector<Row> request_data;
     for (int32_t i = 0; i < input_cnt; i++) {
         auto input = sql_case.inputs()[i];
@@ -334,7 +332,6 @@ void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
         }
     }
 
-    int32_t ret = -1;
     DLOG(INFO) << "RUN IN MODE BATCH";
     vm::Schema schema;
     schema = session.GetSchema();

@@ -6,4 +6,5 @@ import lombok.Data;
 public class OutputDesc {
     String schema;
     String data;
+    String order;
 }
