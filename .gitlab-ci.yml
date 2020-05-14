@@ -77,22 +77,22 @@ test_py3sdk_linux:
             junit:
                 - python/test/*.xml
 
-test_py3sdk_mac:
-    stage: test
-    variables:
-        CICD_RUNNER_THIRDPARTY_PATH: "/opt/depends/thirdparty"
-        CICD_RUNNER_TAG: "macos"
-    tags:
-        - macos
-    script:
-        - bash tools/run_py3_ut.sh
-    after_script:
-        - cd onebox && sh stop_all.sh
-    artifacts:
-        reports:
-            junit:
-                - python/test/*.xml
-
+                  #test_py3sdk_mac:
+                  #    stage: test
+                  #    variables:
+                  #        CICD_RUNNER_THIRDPARTY_PATH: "/opt/depends/thirdparty"
+                  #        CICD_RUNNER_TAG: "macos"
+                  #    tags:
+                  #        - macos
+                  #    script:
+                  #        - bash tools/run_py3_ut.sh
+                  #    after_script:
+                  #        - cd onebox && sh stop_all.sh
+                  #    artifacts:
+                  #        reports:
+                  #            junit:
+                  #                - python/test/*.xml
+                  #
 micro_benchmark:
     stage: benchmark
     script:
