@@ -42,12 +42,12 @@
 
 namespace fesql {
 namespace bm {
-using vm::Engine;
-using vm::BatchRunSession;
-using vm::RequestRunSession;
 using codec::Row;
+using vm::BatchRunSession;
+using vm::Engine;
+using vm::RequestRunSession;
 
-using namespace ::llvm;                                      // NOLINT
+using namespace ::llvm;  // NOLINT
 
 static int64_t RunTableRequest(RequestRunSession& session,  // NOLINT
                                std::shared_ptr<vm::TableHandler> table_handler,
@@ -87,9 +87,8 @@ static void EngineRequestMode(const std::string sql, MODE mode,
     std::ostringstream runner_oss;
     session.GetRunner()->Print(runner_oss, "");
     LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
-    std::unique_ptr<codec::RowView> row_view =
-        std::move(std::unique_ptr<codec::RowView>(
-            new codec::RowView(session.GetSchema())));
+    std::unique_ptr<codec::RowView> row_view = std::unique_ptr<codec::RowView>(
+        new codec::RowView(session.GetSchema()));
 
     switch (mode) {
         case BENCHMARK: {

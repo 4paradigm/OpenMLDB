@@ -209,8 +209,8 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         KeepIR(ctx, m.get());
     }
 
-    ::llvm::Error e = ctx.jit->addIRModule(std::move(
-        ::llvm::orc::ThreadSafeModule(std::move(m), std::move(llvm_ctx))));
+    ::llvm::Error e = ctx.jit->addIRModule(
+        ::llvm::orc::ThreadSafeModule(std::move(m), std::move(llvm_ctx)));
     if (e) {
         LOG(WARNING) << "fail to add ir module  for sql " << ctx.sql;
         return false;

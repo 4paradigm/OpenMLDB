@@ -55,7 +55,6 @@ void PrintRows(const Schema& schema, const std::vector<int8_t*>& rows) {
     for (; it != rows.end(); ++it) {
         row_decoder.Reset(*it);
         for (int32_t i = 0; i < schema.size(); i++) {
-            const type::ColumnDef& column = schema.Get(i);
             t.add(row_decoder.GetAsString(i));
         }
         t.endOfRow();

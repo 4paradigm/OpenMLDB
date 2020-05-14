@@ -29,7 +29,6 @@ static inline int64_t get_micros() {
     gettimeofday(&tv, NULL);
     return static_cast<int64_t>(tv.tv_sec) * 1000000 + tv.tv_usec;
 }
-
 uint64_t loop_time = 10000;
 uint64_t record_cnt = 300;
 

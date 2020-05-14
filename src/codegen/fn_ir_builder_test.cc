@@ -99,8 +99,7 @@ void CheckResult(std::string test, R exp, V1 a, V2 b) {
     ::fesql::vm::InitCodecSymbol(jd, mi);
     ::fesql::udf::InitUDFSymbol(jd, mi);
 
-    ExitOnErr(J->addIRModule(
-        std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
+    ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
     auto test_jit =
         ExitOnErr(J->lookup(fn_def->header_->GetCodegenFunctionName()));
     R (*test_fn)(V1, V2) = (R(*)(V1, V2))test_jit.getAddress();
@@ -287,8 +286,8 @@ TEST_F(FnIRBuilderTest, test_for_in_sum_ret) {
     fesql::codec::ArrayListV<int32_t> list(&vec);
     fesql::codec::ListRef list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
-    CheckResult<int32_t, fesql::codec::ListRef *, int32_t>(
-        test, 1 + 3 + 5 + 7, &list_ref, 0);
+    CheckResult<int32_t, fesql::codec::ListRef *, int32_t>(test, 1 + 3 + 5 + 7,
+                                                           &list_ref, 0);
 }
 
 TEST_F(FnIRBuilderTest, test_for_in_condition_sum) {

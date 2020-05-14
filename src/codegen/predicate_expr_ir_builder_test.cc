@@ -72,8 +72,7 @@ void UnaryPredicateExprCheck(::fesql::node::DataType left_type,
     m->print(::llvm::errs(), NULL);
     ASSERT_TRUE(ok);
     auto J = ExitOnErr(LLJITBuilder().create());
-    ExitOnErr(J->addIRModule(
-        std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
+    ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
     auto load_fn_jit = ExitOnErr(J->lookup("load_fn"));
     R (*decode)(V1) = (R(*)(V1))load_fn_jit.getAddress();
     R ret = decode(value1);
@@ -151,8 +150,7 @@ void BinaryPredicateExprCheck(::fesql::node::DataType left_type,
     m->print(::llvm::errs(), NULL);
     ASSERT_TRUE(ok);
     auto J = ExitOnErr(LLJITBuilder().create());
-    ExitOnErr(J->addIRModule(
-        std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
+    ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
     auto load_fn_jit = ExitOnErr(J->lookup("load_fn"));
     R (*decode)(V1, V2) = (R(*)(V1, V2))load_fn_jit.getAddress();
     R ret = decode(value1, value2);

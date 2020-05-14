@@ -28,6 +28,12 @@ using fesql::codec::Row;
 using fesql::codec::RowIterator;
 using fesql::codec::WindowIterator;
 
+struct AscKeyComparor {
+    bool operator()(std::pair<std::string, Row> i,
+                    std::pair<std::string, Row> j) {
+        return i.first < j.first;
+    }
+};
 struct AscComparor {
     bool operator()(std::pair<uint64_t, Row> i, std::pair<uint64_t, Row> j) {
         return i.first < j.first;
@@ -250,7 +256,7 @@ class Window : public MemTimeTableHandler {
         }
     }
     virtual void BufferData(uint64_t key, const Row& row) = 0;
-    virtual void PopData() {
+    virtual void PopBackData() {
         if (start_ != end_) {
             end_ -= 1;
             PopBackRow();
@@ -348,7 +354,7 @@ class MemSegmentHandler : public TableHandler {
         auto iter = partition_hander_->GetWindowIterator();
         if (iter) {
             iter->Seek(key_);
-            return iter->Valid() ? std::move(iter->GetValue())
+            return iter->Valid() ? iter->GetValue()
                                  : std::unique_ptr<RowIterator>();
         }
         return std::unique_ptr<RowIterator>();

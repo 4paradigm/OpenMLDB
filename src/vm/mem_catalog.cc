@@ -61,9 +61,8 @@ void MemWindowIterator::SeekToFirst() { iter_ = start_iter_; }
 void MemWindowIterator::Next() { iter_++; }
 bool MemWindowIterator::Valid() { return end_iter_ != iter_; }
 std::unique_ptr<RowIterator> MemWindowIterator::GetValue() {
-    std::unique_ptr<RowIterator> it = std::unique_ptr<RowIterator>(
+    return std::unique_ptr<RowIterator>(
         new MemTimeTableIterator(&(iter_->second), schema_));
-    return std::move(it);
 }
 const Row MemWindowIterator::GetKey() { return Row(iter_->first); }
 
@@ -111,9 +110,7 @@ std::unique_ptr<WindowIterator> MemTimeTableHandler::GetWindowIterator(
 void MemTimeTableHandler::AddRow(const uint64_t key, const Row& row) {
     table_.push_back(std::make_pair(key, row));
 }
-void MemTimeTableHandler::PopBackRow() {
-    table_.pop_back();
-}
+void MemTimeTableHandler::PopBackRow() { table_.pop_back(); }
 void MemTimeTableHandler::AddRow(const Row& row) {
     table_.push_back(std::make_pair(0, row));
 }
@@ -133,8 +130,8 @@ void MemTimeTableHandler::Sort(const bool is_asc) {
 void MemTimeTableHandler::Reverse() {
     std::reverse(table_.begin(), table_.end());
     order_type_ = kAscOrder == order_type_
-                  ? kDescOrder
-                  : kDescOrder == order_type_ ? kAscOrder : kNoneOrder;
+                      ? kDescOrder
+                      : kDescOrder == order_type_ ? kAscOrder : kNoneOrder;
 }
 RowIterator* MemTimeTableHandler::GetIterator(int8_t* addr) const {
     if (nullptr == addr) {
@@ -183,9 +180,8 @@ bool MemPartitionHandler::AddRow(const std::string& key, uint64_t ts,
     return true;
 }
 std::unique_ptr<WindowIterator> MemPartitionHandler::GetWindowIterator() {
-    std::unique_ptr<WindowIterator> it = std::unique_ptr<WindowIterator>(
+    return std::unique_ptr<WindowIterator>(
         new MemWindowIterator(&partitions_, schema_));
-    return std::move(it);
 }
 void MemPartitionHandler::Sort(const bool is_asc) {
     if (is_asc) {
@@ -207,8 +203,8 @@ void MemPartitionHandler::Reverse() {
         std::reverse(segment.second.begin(), segment.second.end());
     }
     order_type_ = kAscOrder == order_type_
-                  ? kDescOrder
-                  : kDescOrder == order_type_ ? kAscOrder : kNoneOrder;
+                      ? kDescOrder
+                      : kDescOrder == order_type_ ? kAscOrder : kNoneOrder;
 }
 void MemPartitionHandler::Print() {
     for (auto iter = partitions_.cbegin(); iter != partitions_.cend(); iter++) {

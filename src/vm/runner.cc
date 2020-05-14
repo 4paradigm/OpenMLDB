@@ -360,7 +360,7 @@ Row Runner::WindowProject(const int8_t* fn, const uint64_t key, const Row row,
         return Row();
     }
     if (window->instance_not_in_window()) {
-        window->PopData();
+        window->PopBackData();
     }
     return Row(reinterpret_cast<char*>(out_buf), RowView::GetSize(out_buf));
 }
@@ -1510,7 +1510,6 @@ WindowUnionGenerator::PartitionEach(
     std::vector<std::shared_ptr<PartitionHandler>> union_partitions;
     if (!windows_gen_.empty()) {
         union_partitions.reserve(windows_gen_.size());
-        auto input_iter = union_inputs.cbegin();
         for (size_t i = 0; i < inputs_cnt_; i++) {
             union_partitions.push_back(
                 windows_gen_[i].partition_gen_.Partition(union_inputs[i]));

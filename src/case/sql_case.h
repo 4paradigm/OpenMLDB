@@ -26,6 +26,7 @@ class SQLCase {
         std::string schema_;
         std::string index_;
         std::string data_;
+        std::string order_;
     };
     SQLCase() {}
     virtual ~SQLCase() {}
