@@ -20,15 +20,6 @@ style_check:
             junit:
                 - ./style.xml
 
-build_py3sdk_and_case:
-    stage: build
-    script:
-        - bash tools/run_py3_ut.sh
-    artifacts:
-        reports:
-            junit:
-                - python/test/*.xml
-
 build_fesql_and_case:
     stage: build
     script:
@@ -55,6 +46,11 @@ test_java_sdk:
     stage: test
     script:
         - bash tools/test_java_sdk.sh
+    artifacts:
+        reports:
+            junit:
+                - build/java/fesql-spark/target/surefire-reports/*.xml
+                - build/java/fesql-jdbc/target/surefire-reports/*.xml
 
 test_java_sdk_on_mac:
     stage: test
@@ -65,6 +61,20 @@ test_java_sdk_on_mac:
         - bash tools/test_java_sdk.sh
     tags:
         - macos
+    artifacts:
+        reports:
+            junit:
+                - build/java/fesql-spark/target/surefire-reports/*.xml
+                - build/java/fesql-jdbc/target/surefire-reports/*.xml
+
+test_py3sdk_linux:
+    stage: test
+    script:
+        - bash tools/run_py3_ut.sh
+    artifacts:
+        reports:
+            junit:
+                - python/test/*.xml
 
 micro_benchmark:
     stage: benchmark
