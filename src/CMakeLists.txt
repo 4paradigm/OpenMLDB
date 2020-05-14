@@ -34,10 +34,10 @@ add_executable(slice_test base/slice_test.cc)
 target_link_libraries(slice_test gtest pthread)
 
 add_executable(zk_test zk/zk_client_test.cc)
-target_link_libraries(zk_test gtest zk_client zookeeper_mt pthread common glog)
+target_link_libraries(zk_test gtest glog gflags unwind zk_client zookeeper_mt pthread common )
 
 add_executable(dist_lock_test zk/dist_lock_test.cc)
-target_link_libraries(dist_lock_test gtest glog zk_client zookeeper_mt pthread common)
+target_link_libraries(dist_lock_test gtest zk_client glog gflags unwind zookeeper_mt pthread common )
 
 add_executable(replica_test replica/log_replicator_test.cc flags.cc base/status.cc)
 target_link_libraries(replica_test gtest ${BIN_LIBS})
@@ -85,7 +85,7 @@ add_executable(tablet_impl_keep_alive_test tablet/tablet_impl_keep_alive_test.cc
 target_link_libraries(tablet_impl_keep_alive_test  gtest ${BIN_LIBS})
 
 add_executable(tablet_impl_mem_test  tablet/tablet_impl_mem_test.cc base/status.cc)
-target_link_libraries(tablet_impl_mem_test   gtest  tcmalloc ${BIN_LIBS})
+target_link_libraries(tablet_impl_mem_test   gtest tcmalloc ${BIN_LIBS})
 
 add_executable(tablet_impl_multi_path_test  tablet/tablet_impl_multi_path_test.cc base/status.cc)
 target_link_libraries(tablet_impl_multi_path_test  gtest ${BIN_LIBS})
@@ -130,7 +130,7 @@ add_executable(memcomparable_format_test codec/memcomparable_format_test.cc)
 target_link_libraries(memcomparable_format_test gtest pthread)
 
 add_executable(field_codec_test codec/field_codec_test.cc)
-target_link_libraries(field_codec_test  glog gtest pthread common)
+target_link_libraries(field_codec_test  glog gtest gflags unwind pthread common)
 
 add_executable(rtidb cmd/rtidb.cc base/status.cc proto/client.pb.cc base/linenoise.cc)
 

@@ -32,6 +32,7 @@ class TestCaseBase(unittest.TestCase):
         cls.testpath = os.getenv('testpath')
         cls.rtidb_path = os.getenv('rtidbpath')
         cls.conf_path = os.getenv('confpath')
+        cls.data_path = os.getenv('datapath')
         cls.ns_leader = utils.exe_shell('head -n 1 {}/ns_leader'.format(cls.testpath))
         cls.ns_leader_path = utils.exe_shell('tail -n 1 {}/ns_leader'.format(cls.testpath))
         cls.ns_slaver = [i for i in conf.ns_endpoints if i != cls.ns_leader][0]
@@ -169,13 +170,14 @@ class TestCaseBase(unittest.TestCase):
 
     def stop_client(self, endpoint):
         port = endpoint.split(':')[1]
-        cmd = "lsof -i:{}".format(port) + "|grep '(LISTEN)'|awk '{print $2}'|xargs kill"
+        cmd = "lsof -i:{}".format(port) + "|grep '(LISTEN)'|awk '{print $2}'|xargs kill -9"
         utils.exe_shell(cmd)
         rs = utils.exe_shell('lsof -i:{}|grep -v "PID"'.format(port))
         if 'CLOSE_WAIT' in rs:
-            infoLogger.error('Kill failed because of CLOSE_WAIT !!!!!!!!!!!!!!!!')
-            cmd = "lsof -i:{}".format(port) + "|grep '(CLOSE_WAIT)'|awk '{print $2}'|xargs kill -9"
-            utils.exe_shell(cmd)
+            time.sleep(2)
+            #infoLogger.error('Kill failed because of CLOSE_WAIT !!!!!!!!!!!!!!!!')
+            #cmd = "lsof -i:{}".format(port) + "|grep '(CLOSE_WAIT)'|awk '{print $2}'|xargs kill -9"
+            #utils.exe_shell(cmd)
 
     def get_new_ns_leader(self):
         nsc = NsCluster(conf.zk_endpoint, *(i for i in conf.ns_endpoints))
@@ -772,6 +774,7 @@ class TestCaseBase(unittest.TestCase):
 
     def check_op_done(self, tname):
         rs = self.run_client(self.ns_leader, 'showopstatus {} '.format(tname), 'ns_client')
+        infoLogger.info(rs)
         opstatus = self.parse_tb(rs, ' ', [0], [1, 4, 8])
         infoLogger.info(opstatus)
         for op_id in opstatus.keys():

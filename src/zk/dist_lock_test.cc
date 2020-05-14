@@ -10,7 +10,6 @@
 #include <sched.h>
 #include <unistd.h>
 #include <boost/bind.hpp>
-#include "base/glog_wapper.h" // NOLINT
 #include "zk/zk_client.h"
 extern "C" {
 #include "zookeeper/zookeeper.h"
