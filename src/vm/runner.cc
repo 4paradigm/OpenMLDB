@@ -360,7 +360,7 @@ Row Runner::WindowProject(const int8_t* fn, const uint64_t key, const Row row,
         return Row();
     }
     if (window->instance_not_in_window()) {
-        window->PopData();
+        window->PopBackData();
     }
     return Row(reinterpret_cast<char*>(out_buf), RowView::GetSize(out_buf));
 }

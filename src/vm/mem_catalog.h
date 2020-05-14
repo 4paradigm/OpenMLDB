@@ -256,7 +256,7 @@ class Window : public MemTimeTableHandler {
         }
     }
     virtual void BufferData(uint64_t key, const Row& row) = 0;
-    virtual void PopData() {
+    virtual void PopBackData() {
         if (start_ != end_) {
             end_ -= 1;
             PopBackRow();
