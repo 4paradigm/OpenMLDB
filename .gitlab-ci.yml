@@ -16,8 +16,8 @@ build_rtidb:
         expire_in: 2h
         paths:
             - build/bin/rtidb
-    #except:
-    #    - /^*pz-fpga*$/
+    except:
+        - /^*pz-fpga*$/
 
 style_check:
     stage: build
@@ -39,6 +39,8 @@ cpp_ut:
         reports:
             junit:
                 - reports/*.xml
+    except:
+        - /^*pz-fpga*$/
 java_ut:
     stage: ut
     script:
@@ -52,6 +54,8 @@ java_ut:
                 - java/target/surefire-reports/TEST-*.xml
                 - java/target/failsafe-reports/junitreports/TEST-*.xml
                 - java/target/failsafe-reports/TEST-*.xml
+    except:
+        - /^*pz-fpga*$/
 
 tablet_one_demension:
     stage: it-tablet
@@ -66,6 +70,8 @@ tablet_one_demension:
         reports:
             junit:
                 - ./test-output/integrationtest/test-reports/*.xml
+    except:
+        - /^*pz-fpga*$/
 
 tablet_multi_demension:
     stage: it-tablet
@@ -80,6 +86,8 @@ tablet_multi_demension:
         reports:
             junit:
                 - ./test-output/integrationtest/test-reports/*.xml
+    except:
+        - /^*pz-fpga*$/
 
 ns_one_demension:
     stage: it-ns
@@ -94,6 +102,8 @@ ns_one_demension:
         reports:
             junit:
                 - ./test-output/integrationtest/test-reports/*.xml
+    except:
+        - /^*pz-fpga*$/
 
 ns_multi_demension:
     stage: it-ns
@@ -108,6 +118,8 @@ ns_multi_demension:
         reports:
             junit:
                 - ./test-output/integrationtest/test-reports/*.xml
+    except:
+        - /^*pz-fpga*$/
 
 disk_table:
     stage: it-ns
@@ -122,6 +134,8 @@ disk_table:
         reports:
             junit:
                 - ./test-output/integrationtest/test-reports/*.xml
+    except:
+        - /^*pz-fpga*$/
 
 disktable-java:
     stage: ut
@@ -136,6 +150,8 @@ disktable-java:
                 - rtidb-auto-test/target/surefire-reports/TEST-*.xml
                 - rtidb-auto-test/target/failsafe-reports/junitreports/TEST-*.xml
                 - rtidb-auto-test/target/failsafe-reports/TEST-*.xml
+    except:
+        - /^*pz-fpga*$/
 
 deploy-package:
     stage: deploy
@@ -145,19 +161,27 @@ deploy-package:
         - source /root/.bashrc && bash steps/deploy_package.sh
     only:
         - tags
+    except:
+        - /^*pz-fpga*$/
         
-#build_rtidb_pz:
-#    stage: build
-#    script:
-#        - ln -sf /usr/workdir/thirdparty thirdparty
-#        - ln -sf /usr/workdir/thirdsrc thirdsrc
-#        - bash steps/get_pz_fpga_deps.sh
-#        - sed -i 's/\"Enable pz compression for ssd tables\"\ OFF/\"Enable pz compression for ssd tables\"\ ON/g' CMakeLists.txt
-#        - echo '\n--file_compression=pz\n' >> release/conf/tablet.flags
-#        - source /root/.bashrc && bash steps/compile.sh
-#    artifacts:
-#        expire_in: 2h
-#        paths:
-#            - build/bin/rtidb
-#    only:
-#        - /^*pz-fpga*$/
+build_rtidb_pz:
+    image: develop-registry.4pd.io/build-titans-devtoolset7-rhpython36:0.2
+    stage: build
+    script:
+        - ln -sf /workdir/thirdparty thirdparty
+        - ln -sf /workdir/thirdsrc thirdsrc
+        - bash steps/get_pz_fpga_deps.sh
+        - sed -i 's/\"Enable STATIC COMPILE\"\ ON/\"Enable STATIC COMPILE\"\ OFF/g' CMakeLists.txt
+        - sed -i 's/\"Enable pz compression for ssd tables\"\ OFF/\"Enable pz compression for ssd tables\"\ ON/g' CMakeLists.txt
+        # - echo '\n--file_compression=pz\n' >> release/conf/tablet.flags
+        - source /root/.bashrc && bash steps/compile.sh
+        - mkdir TitanSE-rtidb && cp release/* TitanSE-rtidb/ -rf && cp tools TitanSE-rtidb/ -rf && cp build/bin/rtidb TitanSE-rtidb/bin/
+        - mkdir TitanSE-rtidb/lib && cp thirdparty/bin/*.so* TitanSE-rtidb/lib/ -L
+        - tar zcf TitanSE-rtidb-${CI_COMMIT_SHA:0:8}.tar.gz TitanSE-rtidb
+        - curl -T TitanSE-rtidb-${CI_COMMIT_SHA:0:8}.tar.gz ftp://172.27.12.154/pub/team_hpc/pz_rtidb/
+    artifacts:
+        expire_in: 2h
+        paths:
+            - build/bin/rtidb
+    only:
+        - /^*pz-fpga*$/
