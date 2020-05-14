@@ -393,8 +393,8 @@ bool DiskTable::Get(uint32_t idx, const std::string& pk, uint64_t ts,
     if (s.ok()) {
         return true;
     } else {
-        PDLOG(WARNING, "index %u tid %u pid %u, rocksdb status : %s", idx, id_,
-              pid_, s.ToString().c_str());
+        PDLOG(WARNING, "index %u tid %u pid %u, key %s, rocksdb status : %s", idx, id_,
+              pid_, spk.ToString().c_str(), s.ToString().c_str());
         return false;
     }
 }

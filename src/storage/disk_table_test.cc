@@ -1194,11 +1194,11 @@ TEST_F(DiskTableTest, CheckPoint) {
     ASSERT_FALSE(it->Valid());
     delete it;
 
-    std::string snapshot_path = FLAGS_hdd_root_path + "/1_1/snapshot";
+    std::string snapshot_path = FLAGS_hdd_root_path + "/15_1/snapshot";
     ASSERT_EQ(table->CreateCheckPoint(snapshot_path), 0);
     delete table;
 
-    std::string data_path = FLAGS_hdd_root_path + "/1_1/data";
+    std::string data_path = FLAGS_hdd_root_path + "/15_1/data";
     ::rtidb::base::RemoveDir(data_path);
 
     ::rtidb::base::Rename(snapshot_path, data_path);
