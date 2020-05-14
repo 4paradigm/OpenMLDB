@@ -46,7 +46,7 @@ public class RelationalIterator {
     private boolean batch_query = false;
     private long snapshot_id = 0;
     private List<ReadOption> ros = new ArrayList<>();
-    private Map<Integer, DataType> blobIdxTypeMap = new HashMap<>();
+    private List<Integer> blobIdxList = new ArrayList<>();
 
     public RelationalIterator(RTIDBClient client, TableHandler th, ReadOption ro) {
         this.offset = 0;
@@ -66,18 +66,13 @@ public class RelationalIterator {
                 if (colSet.contains(columnDesc.getName())) {
                     this.idxTypeMap.put(i, columnDesc.getDataType());
                     if (th.getBlobIdxList().contains(i)) {
-                        blobIdxTypeMap.put(i, columnDesc.getDataType());
+                        blobIdxList.add(i);
                     }
                 }
             }
         } else {
             if (!th.getBlobIdxList().isEmpty()) {
-                for (int i = 0; i < this.getSchema().size(); i++) {
-                    ColumnDesc columnDesc = this.getSchema().get(i);
-                    if (th.getBlobIdxList().contains(i)) {
-                        blobIdxTypeMap.put(i, columnDesc.getDataType());
-                    }
-                }
+                blobIdxList = th.getBlobIdxList();
             }
         }
         this.rowView = new RowView(th.getSchema());
@@ -101,18 +96,13 @@ public class RelationalIterator {
                 if (colSet.contains(columnDesc.getName())) {
                     this.idxTypeMap.put(i, columnDesc.getDataType());
                     if (th.getBlobIdxList().contains(i)) {
-                        blobIdxTypeMap.put(i, columnDesc.getDataType());
+                        blobIdxList.add(i);
                     }
                 }
             }
         } else {
             if (!th.getBlobIdxList().isEmpty()) {
-                for (int i = 0; i < this.getSchema().size(); i++) {
-                    ColumnDesc columnDesc = this.getSchema().get(i);
-                    if (th.getBlobIdxList().contains(i)) {
-                        blobIdxTypeMap.put(i, columnDesc.getDataType());
-                    }
-                }
+                blobIdxList = th.getBlobIdxList();
             }
         }
         rowView = new RowView(th.getSchema());
@@ -132,23 +122,22 @@ public class RelationalIterator {
         return count;
     }
 
-    public List<String> getUrlList() throws TabletException {
+    public Map<String, String> getUrlMap() throws TabletException {
         // eg. "/v1/get/" + table_name + "/" + key
-        if (blobIdxTypeMap.isEmpty()) {
+        if (blobIdxList.isEmpty()) {
             throw new TabletException("can't get url because no blob column!");
         }
-        List<String> list = new ArrayList<>();
+        Map<String, String> map = new HashMap<>();
         StringBuilder sb = new StringBuilder("/v1/get/");
         sb.append(th.getTableInfo().getName());
         sb.append("/");
         String prefix = sb.toString();
-        Iterator<Map.Entry<Integer, DataType>> iter = this.blobIdxTypeMap.entrySet().iterator();
-        while (iter.hasNext()) {
-            Map.Entry<Integer, DataType> next = iter.next();
-            Object value = rowView.getValue(next.getKey(), next.getValue());
-            list.add(prefix + ((Long) value).toString());
+        for (int idx : blobIdxList) {
+            ColumnDesc columnDesc = th.getSchema().get(idx);
+            Object value = rowView.getValue(idx, columnDesc.getDataType());
+            map.put(columnDesc.getName(), prefix + ((Long) value).toString());
         }
-        return list;
+        return map;
     }
 
     public boolean valid() {

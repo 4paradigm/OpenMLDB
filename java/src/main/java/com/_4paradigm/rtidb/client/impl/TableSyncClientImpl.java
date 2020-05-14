@@ -1,5 +1,6 @@
 package com._4paradigm.rtidb.client.impl;
 
+import com._4paradigm.rtidb.blobserver.OSS;
 import com._4paradigm.rtidb.client.*;
 import com._4paradigm.rtidb.client.ha.PartitionHandler;
 import com._4paradigm.rtidb.client.ha.RTIDBClient;
@@ -15,7 +16,6 @@ import com.google.protobuf.ByteBufferNoCopy;
 import com.google.protobuf.ByteString;
 import rtidb.api.TabletServer;
 import rtidb.blobserver.BlobServer;
-import com._4paradigm.rtidb.blobserver.OSS;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -1392,12 +1392,15 @@ public class TableSyncClientImpl implements TableSyncClient {
         buffer = RowBuilder.encode(row, schema);
 
         int pid = 0;
-//        if (indexName.isEmpty()) {
-//            String pk = RowCodecCommon.getPrimaryKey(row, th.getTableInfo().getColumnKeyList(), schema);
-//            pid = TableClientCommon.computePidByKey(pk, th.getPartitions().length);
-//        } else {
-//            pid = new Random().nextInt() % th.getPartitions().length;
-//        }
+        /*
+        TODO: for distributed
+        if (indexName.isEmpty()) {
+            String pk = RowCodecCommon.getPrimaryKey(row, th.getTableInfo().getColumnKeyList(), schema);
+            pid = TableClientCommon.computePidByKey(pk, th.getPartitions().length);
+        } else {
+            pid = new Random().nextInt() % th.getPartitions().length;
+        }
+        */
         return putRelationTable(th.getTableInfo().getTid(), pid, buffer, th);
 
     }
