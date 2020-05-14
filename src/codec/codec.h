@@ -87,7 +87,7 @@ class RowBuilder {
     bool AppendNULL();
     bool AppendDate(uint32_t year, uint32_t month, uint32_t day);
     // append the date that encoded
-    bool AppendDate(uint32_t date);
+    bool AppendDate(int32_t date);
 
     bool SetBool(uint32_t index, bool val);
     bool SetInt32(uint32_t index, int32_t val);
@@ -101,7 +101,7 @@ class RowBuilder {
     bool SetNULL(uint32_t index);
     bool SetDate(uint32_t index, uint32_t year, uint32_t month, uint32_t day);
     // set the date that encoded
-    bool SetDate(uint32_t index, uint32_t date);
+    bool SetDate(uint32_t index, int32_t date);
 
  private:
     bool Check(uint32_t index, ::rtidb::type::DataType type);
@@ -137,7 +137,7 @@ class RowView {
     int32_t GetString(uint32_t idx, char** val, uint32_t* length);
     int32_t GetDate(uint32_t idx, uint32_t* year, uint32_t* month,
                     uint32_t* day);
-    int32_t GetDate(uint32_t idx, uint32_t* date);
+    int32_t GetDate(uint32_t idx, int32_t* date);
     bool IsNULL(uint32_t idx) { return IsNULL(row_, idx); }
     inline uint32_t GetSize() { return size_; }
 

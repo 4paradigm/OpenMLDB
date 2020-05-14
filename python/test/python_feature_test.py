@@ -14,7 +14,7 @@ class TestRtidb(unittest.TestCase):
 
   def test_query(self):
     data = {"id":"11","attribute":"a1", "image":"i1"}
-    self.assertTrue(self.nsc.put("test1", data, None))
+    self.assertTrue(self.nsc.put("test1", data, None).success())
     ro = rtidb.ReadOption()
     ro.index.update({"id":"11"})
     resp = self.nsc.query("test1", ro)
@@ -40,9 +40,9 @@ class TestRtidb(unittest.TestCase):
     '''
     # multi index
     data = {"id":"1","name":"n1","mcc":"1","attribute":"a1", "image":"i1"}
-    self.assertTrue(self.nsc.put("rt_ck", data, None))
+    self.assertTrue(self.nsc.put("rt_ck", data, None).success())
     data = {"id":"2","name":"n2","mcc":"1","attribute":"a1", "image":"i1"}
-    self.assertTrue(self.nsc.put("rt_ck", data, None))
+    self.assertTrue(self.nsc.put("rt_ck", data, None).success())
     ro = rtidb.ReadOption()
     ro.index.update({"id":"1"})
     ro.index.update({"name":"n1"})
@@ -81,7 +81,7 @@ class TestRtidb(unittest.TestCase):
     else:
       self.assertTrue(False);
     data = {"id":"1","name":"n1","mcc":"1","attribute":"a1", "image":"i1"}
-    self.assertTrue(self.nsc.put("rt_ck", data, None))
+    self.assertTrue(self.nsc.put("rt_ck", data, None).success())
     condition_columns = {"mcc":"1"} 
     ok = self.nsc.delete("rt_ck", condition_columns);
     self.assertEqual(ok, True);
@@ -97,7 +97,7 @@ class TestRtidb(unittest.TestCase):
   def test_traverse(self):
     for i in range(1000) :
         data = {"id":"{:d}".format(i), "attribute":"a{}".format(i), "image":"i{}".format(i)}
-        self.assertTrue(self.nsc.put("test1", data, None))
+        self.assertTrue(self.nsc.put("test1", data, None).success())
     ro = rtidb.ReadOption()
     resp = self.nsc.traverse("test1", ro)
     id = 0;
@@ -123,7 +123,7 @@ class TestRtidb(unittest.TestCase):
     for i in range(1000) :
         data = {"id":"{:d}".format(i), "name":"n{}".format(i), "mcc":"{:d}".format(i), 
             "attribute":"a{}".format(i), "image":"i{}".format(i)}
-        self.assertTrue(self.nsc.put("rt_ck", data, None))
+        self.assertTrue(self.nsc.put("rt_ck", data, None).success())
     ro = rtidb.ReadOption()
     resp = self.nsc.traverse("rt_ck", ro)
     id = 0;
@@ -153,7 +153,7 @@ class TestRtidb(unittest.TestCase):
   def test_batchQuery(self):
     for i in range(1000) :
         data = {"id":"{:d}".format(i), "attribute":"a{}".format(i), "image":"i{}".format(i)}
-        self.assertTrue(self.nsc.put("test1", data, None))
+        self.assertTrue(self.nsc.put("test1", data, None).success())
     ros = list()
     count = 1000;
     for i in range(count):
@@ -172,11 +172,11 @@ class TestRtidb(unittest.TestCase):
     #TODO(kongquan): current put data use java client, when python put feature is complete, put data before traverse
     # multi index
     data = {"id":"1","name":"n1","mcc":"1","attribute":"a1", "image":"i1"}
-    self.assertTrue(self.nsc.put("rt_ck", data, None))
+    self.assertTrue(self.nsc.put("rt_ck", data, None).success())
     data = {"id":"2","name":"n2","mcc":"2","attribute":"a1", "image":"i1"}
-    self.assertTrue(self.nsc.put("rt_ck", data, None))
+    self.assertTrue(self.nsc.put("rt_ck", data, None).success())
     data = {"id":"3","name":"n3","mcc":"2","attribute":"a1", "image":"i1"}
-    self.assertTrue(self.nsc.put("rt_ck", data, None))
+    self.assertTrue(self.nsc.put("rt_ck", data, None).success())
     ros = list();
     ro = rtidb.ReadOption()
     ro.index.update({"id":"1"})
@@ -201,7 +201,7 @@ class TestRtidb(unittest.TestCase):
 
   def test_update(self):
     data = {"id":"11","attribute":"a1", "image":"i1"}
-    self.assertTrue(self.nsc.put("test1", data, None))
+    self.assertTrue(self.nsc.put("test1", data, None).success())
     condition_columns = {"id":"11"} 
     value_columns = {"attribute":"a3","image":"i3"}
     ok = self.nsc.update("test1", condition_columns, value_columns, None);
@@ -216,9 +216,9 @@ class TestRtidb(unittest.TestCase):
       self.assertEqual("i3", l["image"])
     # multi index
     data = {"id":"1","name":"n1","mcc":"1","attribute":"a1", "image":"i1"}
-    self.assertTrue(self.nsc.put("rt_ck", data, None))
+    self.assertTrue(self.nsc.put("rt_ck", data, None).success())
     data = {"id":"2","name":"n2","mcc":"1","attribute":"a1", "image":"i1"}
-    self.assertTrue(self.nsc.put("rt_ck", data, None))
+    self.assertTrue(self.nsc.put("rt_ck", data, None).success())
     condition_columns = {"id":"1", "name":"n1"} 
     value_columns = {"attribute":"a2","image":"i2"}
     ok = self.nsc.update("rt_ck", condition_columns, value_columns, None);
@@ -254,12 +254,21 @@ class TestRtidb(unittest.TestCase):
     self.assertEqual(2, id);
 
   def test_auto_gen(self):
+    data = {"id":11, "attribute":"a1", "image":"i1"}
+    try:
+      self.nsc.put("auto", data, None);
+    except:
+      self.assertTrue(True)
+    else:
+      self.assertTrue(False)
     data = {"attribute":"a1", "image":"i1"}
-    self.assertTrue(self.nsc.put("auto", data, None))
+    put_result = self.nsc.put("auto", data, None);
+    self.assertTrue(put_result.success())
     ro = rtidb.ReadOption()
     resp = self.nsc.traverse("auto", ro)
     id = 0;
     for l in resp:
+      self.assertEqual(put_result.get_auto_gen_pk(), l["id"])
       self.assertEqual("a1", l["attribute"])
       self.assertEqual("i1", l["image"])
       id += 1;
@@ -267,7 +276,7 @@ class TestRtidb(unittest.TestCase):
 
   def test_date_index(self):
     data = {"id":"11","attribute":"a1", "image":"i1", "male":True, "date":date(2020,1,1), "ts":1588756531}
-    self.assertTrue(self.nsc.put("date", data, None))
+    self.assertTrue(self.nsc.put("date", data, None).success())
     ro = rtidb.ReadOption()
     ro.index.update({"date":date(2020,1,1)})
     resp = self.nsc.query("date", ro)

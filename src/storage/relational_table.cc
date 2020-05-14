@@ -262,7 +262,7 @@ bool RelationalTable::Init() {
     return true;
 }
 
-bool RelationalTable::Put(const std::string& value) {
+bool RelationalTable::Put(const std::string& value, int64_t* auto_gen_pk) {
     ::rtidb::base::Slice slice(value);
     std::string new_value;
     if (table_meta_.compress_type() == ::rtidb::api::kSnappy) {
@@ -282,15 +282,15 @@ bool RelationalTable::Put(const std::string& value) {
         builder.SetBuffer(
             reinterpret_cast<int8_t*>(const_cast<char*>(slice.data())),
             slice.size());
-        int64_t auto_gen_pk = id_generator_.Next();
-        if (!builder.SetInt64(column_def.GetId(), auto_gen_pk)) {
+        *auto_gen_pk = id_generator_.Next();
+        if (!builder.SetInt64(column_def.GetId(), *auto_gen_pk)) {
             PDLOG(WARNING, "SetInt64 failed, idx %d, tid %u pid %u",
                   column_def.GetId(), id_, pid_);
             return false;
         }
         pk.resize(sizeof(int64_t));
         char* to = const_cast<char*>(pk.data());
-        ::rtidb::codec::PackInteger(&auto_gen_pk, sizeof(int64_t), false, to);
+        ::rtidb::codec::PackInteger(auto_gen_pk, sizeof(int64_t), false, to);
     } else {
         if (!GetCombineStr(
                 index_def,
@@ -1045,7 +1045,7 @@ bool RelationalTable::UpdateDB(const std::shared_ptr<IndexDef> index_def,
                     break;
                 }
                 case rtidb::type::kDate: {
-                    uint32_t val = 0;
+                    int32_t val = 0;
                     if (col_iter != col_idx_map.end()) {
                         get_value_ret =
                             value_view.GetDate(col_iter->second, &val);

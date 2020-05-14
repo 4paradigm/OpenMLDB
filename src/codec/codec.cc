@@ -44,7 +44,7 @@ static constexpr std::array<uint32_t, 9> TYPE_SIZE_ARRAY = {
     sizeof(int64_t),   // kBigInt
     sizeof(float),     // kFloat
     sizeof(double),    // kDouble
-    sizeof(uint32_t),  // kDate
+    sizeof(int32_t),  // kDate
     sizeof(int64_t),   // kTimestamp
 };
 
@@ -141,16 +141,16 @@ bool RowBuilder::Check(uint32_t index, ::rtidb::type::DataType type) {
     return true;
 }
 
-bool RowBuilder::AppendDate(uint32_t date) {
+bool RowBuilder::AppendDate(int32_t date) {
     if (!SetDate(cnt_, date)) return false;
     cnt_++;
     return true;
 }
 
-bool RowBuilder::SetDate(uint32_t index, uint32_t date) {
+bool RowBuilder::SetDate(uint32_t index, int32_t date) {
     if (!Check(index, ::rtidb::type::kDate)) return false;
     int8_t* ptr = buf_ + offset_vec_[index];
-    *(reinterpret_cast<uint32_t*>(ptr)) = date;
+    *(reinterpret_cast<int32_t*>(ptr)) = date;
     return true;
 }
 
@@ -167,10 +167,10 @@ bool RowBuilder::SetDate(uint32_t index, uint32_t year, uint32_t month,
     if (day < 1 || day > 31) return false;
     if (!Check(index, ::rtidb::type::kDate)) return false;
     int8_t* ptr = buf_ + offset_vec_[index];
-    uint32_t data = (year - 1900) << 16;
+    int32_t data = (year - 1900) << 16;
     data = data | ((month - 1) << 8);
     data = data | day;
-    *(reinterpret_cast<uint32_t*>(ptr)) = data;
+    *(reinterpret_cast<int32_t*>(ptr)) = data;
     return true;
 }
 
@@ -468,7 +468,7 @@ int32_t RowView::GetDate(uint32_t idx, uint32_t* year, uint32_t* month,
         return 1;
     }
     uint32_t offset = offset_vec_.at(idx);
-    uint32_t date = static_cast<uint32_t>(v1::GetInt32Field(row_, offset));
+    int32_t date = static_cast<int32_t>(v1::GetInt32Field(row_, offset));
     *day = date & 0x0000000FF;
     date = date >> 8;
     *month = 1 + (date & 0x0000FF);
@@ -476,7 +476,7 @@ int32_t RowView::GetDate(uint32_t idx, uint32_t* year, uint32_t* month,
     return 0;
 }
 
-int32_t RowView::GetDate(uint32_t idx, uint32_t* val) {
+int32_t RowView::GetDate(uint32_t idx, int32_t* val) {
     if (val == NULL) {
         return -1;
     }
@@ -487,7 +487,7 @@ int32_t RowView::GetDate(uint32_t idx, uint32_t* val) {
         return 1;
     }
     uint32_t offset = offset_vec_.at(idx);
-    *val = static_cast<uint32_t>(v1::GetInt32Field(row_, offset));
+    *val = static_cast<int32_t>(v1::GetInt32Field(row_, offset));
     return 0;
 }
 
@@ -673,8 +673,8 @@ int32_t RowView::GetValue(const int8_t* row, uint32_t idx,
             *(reinterpret_cast<double*>(val)) = v1::GetDoubleField(row, offset);
             break;
         case ::rtidb::type::kDate:
-            *(reinterpret_cast<uint32_t*>(val)) =
-                static_cast<uint32_t>(v1::GetInt32Field(row, offset));
+            *(reinterpret_cast<int32_t*>(val)) =
+                static_cast<int32_t>(v1::GetInt32Field(row, offset));
             break;
         default:
             return -1;
@@ -783,7 +783,7 @@ int32_t RowView::GetStrValue(const int8_t* row, uint32_t idx,
             uint32_t year = 0;
             uint32_t month = 0;
             uint32_t day = 0;
-            uint32_t date = 0;
+            int32_t date = 0;
             GetValue(row, idx, ::rtidb::type::kDate, &date);
             day = date & 0x0000000FF;
             date = date >> 8;
@@ -965,7 +965,7 @@ bool RowProject::Project(const int8_t* row_ptr, uint32_t size,
                 break;
             }
             case ::rtidb::type::kDate: {
-                uint32_t val = 0;
+                int32_t val = 0;
                 ret = row_view_->GetDate(idx, &val);
                 if (ret == 0) row_builder_->AppendDate(val);
                 break;

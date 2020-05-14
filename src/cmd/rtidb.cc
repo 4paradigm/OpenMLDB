@@ -848,7 +848,8 @@ void PutRelational(
         ::snappy::Compress(value.c_str(), value.length(), &compressed);
         value = compressed;
     }
-    bool ok = tablet_client->Put(tid, pid, value, msg);
+    int64_t auto_gen_pk = 0;
+    bool ok = tablet_client->Put(tid, pid, value, &auto_gen_pk, &msg);
     if (!ok) {
         printf("put failed, msg: %s\n", msg.c_str());
     } else {
