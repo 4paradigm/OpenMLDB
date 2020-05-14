@@ -4,8 +4,8 @@
 WORKDIR=`pwd`
 mkdir -p build && cd build 
 cmake .. && make fesql_proto fesql_parser && make -j8 fesql python_package
-cd python && pip3 install .
-pip3 install nose
+cd python && pip install .
+pip install nose
 cd ${WORKDIR}/onebox && sh start_all.sh
 sleep 20
 cd ${WORKDIR}/python/test && nosetests --with-xunit
