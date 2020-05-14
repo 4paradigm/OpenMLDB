@@ -34,18 +34,15 @@ namespace codegen {
 using fesql::vm::RowSchemaInfo;
 class RowFnLetIRBuilder {
  public:
-    RowFnLetIRBuilder(const vm::Schema& schema, ::llvm::Module* module);
-    RowFnLetIRBuilder(const std::string& table_name, const vm::Schema& schema,
+    RowFnLetIRBuilder(const vm::SchemaSourceList& schema_sources,
                       ::llvm::Module* module);
-    RowFnLetIRBuilder(
-        const std::vector<std::pair<const std::string, const vm::Schema*>>&
-            table_schema_list,
-        ::llvm::Module* module);
 
     ~RowFnLetIRBuilder();
 
     bool Build(const std::string& name, const node::PlanNodeList& projects,
-               vm::Schema* output_schema);  // NOLINT (runtime/references)
+               vm::Schema* output_schema,
+               vm::ColumnSourceList*
+                   output_column_sources);  // NOLINT (runtime/references)
 
  private:
     bool BuildFnHeader(const std::string& name,
@@ -66,6 +63,7 @@ class RowFnLetIRBuilder {
         const std::string& col_name, std::map<uint32_t, ::llvm::Value*>* output,
         ExprIRBuilder& expr_ir_builder,  // NOLINT (runtime/references)
         vm::Schema* output_schema,
+        vm::ColumnSourceList* output_column_sources,
         base::Status& status);  // NOLINT (runtime/references)
 
  private:

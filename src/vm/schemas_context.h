@@ -17,14 +17,17 @@
 #include "vm/catalog.h"
 namespace fesql {
 namespace vm {
-struct RowSchemaInfo {
+struct RowSchemaInfo : public vm::SchemaSource {
+ public:
+    RowSchemaInfo(const uint32_t idx, const std::string& table,
+                  const vm::Schema* schema, const vm::ColumnSourceList* sources)
+        : SchemaSource(table, schema, sources), idx_(idx) {}
     const uint32_t idx_;
-    const std::string table_name_;
-    const vm::Schema* schema_;
 };
+
 class SchemasContext {
  public:
-    explicit SchemasContext(const vm::NameSchemaList& table_schema_list);
+    explicit SchemasContext(const vm::SchemaSourceList& table_schema_list);
 
     virtual ~SchemasContext() {}
     bool ExprListResolvedFromSchema(
@@ -41,6 +44,9 @@ class SchemasContext {
     bool ColumnRefResolved(const std::string& relation_name,
                            const std::string& col_name,
                            const RowSchemaInfo** info) const;
+    bool ColumnSourceResolved(const std::string& relation_name,
+                              const std::string& col_name,
+                              ColumnSource* source) const;
 
  public:
     // row ir context list

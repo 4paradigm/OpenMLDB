@@ -727,17 +727,18 @@ bool BatchModeTransformer::AddPass(PhysicalPlanPassType type) {
     return true;
 }
 bool BatchModeTransformer::GenProjects(
-    const std::vector<std::pair<const std::string, const Schema*>>&
-        input_name_schema_list,
+    const SchemaSourceList& input_name_schema_list,
     const node::PlanNodeList& projects, const bool row_project,
-    std::string& fn_name,    // NOLINT
-    Schema* output_schema,   // NOLINT
+    std::string& fn_name,   // NOLINT
+    Schema* output_schema,  // NOLINT
+    ColumnSourceList* output_column_sources,
     base::Status& status) {  // NOLINT
     // TODO(wangtaize) use ops end op output schema
     ::fesql::codegen::RowFnLetIRBuilder builder(input_name_schema_list,
                                                 module_);
     fn_name = "__internal_sql_codegen_" + std::to_string(id_++);
-    bool ok = builder.Build(fn_name, projects, output_schema);
+    bool ok =
+        builder.Build(fn_name, projects, output_schema, output_column_sources);
     if (!ok) {
         status.code = common::kCodegenError;
         status.msg = "fail to codegen projects node";
@@ -800,12 +801,14 @@ bool BatchModeTransformer::CreatePhysicalProjectNode(
     }
 
     Schema output_schema;
+    ColumnSourceList output_column_sources;
     std::string fn_name;
     switch (project_type) {
         case kRowProject:
         case kTableProject: {
             if (!GenProjects((node->GetOutputNameSchemaList()), projects, true,
-                             fn_name, &output_schema, status)) {
+                             fn_name, &output_schema, &output_column_sources,
+                             status)) {
                 return false;
             }
             break;
@@ -815,7 +818,8 @@ bool BatchModeTransformer::CreatePhysicalProjectNode(
         case kWindowAggregation: {
             // TODO(chenjing): gen window aggregation
             if (!GenProjects((node->GetOutputNameSchemaList()), projects, false,
-                             fn_name, &output_schema, status)) {
+                             fn_name, &output_schema, &output_column_sources,
+                             status)) {
                 return false;
             }
             break;
@@ -825,28 +829,32 @@ bool BatchModeTransformer::CreatePhysicalProjectNode(
     PhysicalOpNode* op = nullptr;
     switch (project_type) {
         case kRowProject: {
-            op = new PhysicalRowProjectNode(node, fn_name, output_schema);
+            op = new PhysicalRowProjectNode(node, fn_name, output_schema,
+                                            output_column_sources);
             break;
         }
         case kTableProject: {
-            op = new PhysicalTableProjectNode(node, fn_name, output_schema);
+            op = new PhysicalTableProjectNode(node, fn_name, output_schema,
+                                              output_column_sources);
             break;
         }
         case kAggregation: {
-            op = new PhysicalAggrerationNode(node, fn_name, output_schema);
+            op = new PhysicalAggrerationNode(node, fn_name, output_schema,
+                                             output_column_sources);
             break;
         }
         case kGroupAggregation: {
             auto group_op = dynamic_cast<PhysicalGroupNode*>(node);
             op = new PhysicalGroupAggrerationNode(node, group_op->group_.keys(),
-                                                  fn_name, output_schema);
+                                                  fn_name, output_schema,
+                                                  output_column_sources);
             break;
         }
         case kWindowAggregation: {
             auto window_agg_op = new PhysicalWindowAggrerationNode(
                 node, project_list->w_ptr_->GetKeys(),
                 project_list->w_ptr_->GetOrders(), fn_name, output_schema,
-                project_list->w_ptr_->GetStartOffset(),
+                output_column_sources, project_list->w_ptr_->GetStartOffset(),
                 project_list->w_ptr_->GetEndOffset(),
                 project_list->w_ptr_->instance_not_in_window());
 
@@ -1010,7 +1018,7 @@ bool BatchModeTransformer::GenFnDef(const node::FuncDefPlanNode* fn_plan,
 }
 
 bool BatchModeTransformer::CodeGenExprList(
-    const NameSchemaList& input_name_schema_list,
+    const SchemaSourceList& input_name_schema_list,
     const node::ExprListNode* expr_list, bool row_mode, FnInfo* fn_info,
     base::Status& status) {
     if (node::ExprListNullOrEmpty(expr_list)) {
@@ -1024,28 +1032,12 @@ bool BatchModeTransformer::CodeGenExprList(
         projects.push_back(node_manager_->MakeRowProjectNode(
             pos++, node::ExprString(expr), expr));
     }
+    vm::ColumnSourceList column_sources;
     return GenProjects(input_name_schema_list, projects, true,
-                       fn_info->fn_name_, &fn_info->fn_schema_, status);
+                       fn_info->fn_name_, &fn_info->fn_schema_, &column_sources,
+                       status);
 }
-bool BatchModeTransformer::CodeGenExprList(
-    const NameSchemaList& input_name_schema_list,
-    const node::ExprListNode* expr_list, bool row_mode, std::string& fn_name,
-    Schema* output_schema, base::Status& status) {
-    if (node::ExprListNullOrEmpty(expr_list)) {
-        status.msg = "fail to codegen expr list: null or empty list";
-        status.code = common::kCodegenError;
-        return false;
-    }
-    node::PlanNodeList projects;
-    int32_t pos = 0;
-    for (auto expr : expr_list->children_) {
-        projects.push_back(node_manager_->MakeRowProjectNode(
-            pos++, node::ExprString(expr), expr));
-    }
 
-    return GenProjects(input_name_schema_list, projects, true, fn_name,
-                       output_schema, status);
-}
 bool BatchModeTransformer::GenJoin(Join* join, PhysicalOpNode* in,
                                    base::Status& status) {
     auto filter = join->filter_;
@@ -1068,7 +1060,7 @@ bool BatchModeTransformer::GenJoin(Join* join, PhysicalOpNode* in,
     return true;
 }
 bool BatchModeTransformer::GenFilter(
-    ConditionFilter* filter, const NameSchemaList& input_name_schema_list,
+    ConditionFilter* filter, const SchemaSourceList& input_name_schema_list,
     base::Status& status) {
     if (nullptr != filter->condition_) {
         node::ExprListNode expr_list;
@@ -1080,9 +1072,9 @@ bool BatchModeTransformer::GenFilter(
     }
     return true;
 }
-bool BatchModeTransformer::GenKey(Key* hash,
-                                  const NameSchemaList& input_name_schema_list,
-                                  base::Status& status) {
+bool BatchModeTransformer::GenKey(
+    Key* hash, const SchemaSourceList& input_name_schema_list,
+    base::Status& status) {
     // Gen left key function
     node::ExprListNode expr_list;
     if (!node::ExprListNullOrEmpty(hash->keys_)) {
@@ -1129,9 +1121,9 @@ bool BatchModeTransformer::GenRequestWindow(RequestWindowOp* window,
     return true;
 }
 
-bool BatchModeTransformer::GenSort(Sort* sort,
-                                   const NameSchemaList& input_name_schema_list,
-                                   base::Status& status) {
+bool BatchModeTransformer::GenSort(
+    Sort* sort, const SchemaSourceList& input_name_schema_list,
+    base::Status& status) {
     if (nullptr != sort->orders_ &&
         !node::ExprListNullOrEmpty(sort->orders_->order_by_)) {
         node::ExprListNode expr_list;
@@ -1147,7 +1139,7 @@ bool BatchModeTransformer::GenSort(Sort* sort,
 }
 
 bool BatchModeTransformer::GenRange(
-    Range* range, const NameSchemaList& input_name_schema_list,
+    Range* range, const SchemaSourceList& input_name_schema_list,
     base::Status& status) {
     if (nullptr != range->range_key_) {
         node::ExprListNode expr_list;
@@ -1183,11 +1175,8 @@ bool BatchModeTransformer::GenWindowJoinList(WindowJoinList* window_join_list,
                                              PhysicalOpNode* in,
                                              base::Status& status) {
     if (nullptr != window_join_list && !window_join_list->Empty()) {
-        NameSchemaList joined_schema;
-        for (auto pair : in->GetOutputNameSchemaList()) {
-            joined_schema.push_back(pair);
-        }
-
+        SchemaSourceList joined_schema;
+        joined_schema.AddSchemaSources(in->GetOutputNameSchemaList());
         for (auto& window_join : window_join_list->window_joins_) {
             if (!GenPlanNode(window_join.first, status)) {
                 LOG(WARNING)
@@ -1206,9 +1195,7 @@ bool BatchModeTransformer::GenWindowJoinList(WindowJoinList* window_join_list,
             if (!GenKey(&join->right_key_, right_schema, status)) {
                 return false;
             }
-            for (auto pair : right_schema) {
-                joined_schema.push_back(pair);
-            }
+            joined_schema.AddSchemaSources(right_schema);
             if (!GenFilter(&join->filter_, joined_schema, status)) {
                 return false;
             }
@@ -1618,10 +1605,10 @@ bool ConditionOptimized::JoinConditionOptimized(PhysicalOpNode* in,
 
     node::ExprListNode new_and_conditions;
     std::vector<ExprPair> condition_eq_pair;
-    if (!TransformEqualExprPair(
-            in->GetOutputNameSchemaList(),
-            in->producers()[0]->GetOutputNameSchemaList().size(),
-            &and_conditions, &new_and_conditions, condition_eq_pair)) {
+    if (!TransformEqualExprPair(in->GetOutputNameSchemaList(),
+                                in->producers()[0]->GetOutputSchemaListSize(),
+                                &and_conditions, &new_and_conditions,
+                                condition_eq_pair)) {
         return false;
     }
     node::ExprListNode* left_keys = node_manager_->MakeExprList();
@@ -1753,10 +1740,8 @@ bool ConditionOptimized::ExtractEqualExprPair(
 // Return Equal Expression Pair
 // Left Expr should belongs to first schema
 bool ConditionOptimized::TransformEqualExprPair(
-    const std::vector<std::pair<const std::string, const vm::Schema*>>
-        name_schema_list,
-    const size_t left_schema_cnt, node::ExprListNode* and_conditions,
-    node::ExprListNode* out_condition_list,
+    const SchemaSourceList& name_schema_list, const size_t left_schema_cnt,
+    node::ExprListNode* and_conditions, node::ExprListNode* out_condition_list,
     std::vector<ExprPair>& condition_eq_pair) {  // NOLINT
     vm::SchemasContext ctx(name_schema_list);
     for (auto expr : and_conditions->children_) {
