@@ -389,6 +389,8 @@ bool DiskTable::Get(uint32_t idx, const std::string& pk, uint64_t ts,
         spk = rocksdb::Slice(combine_key);
     }
     rocksdb::Status s;
+    PDLOG(WARNING, "index %u tid %u pid %u, Get(%u, %s, %lu)", idx, id_,
+              pid_, idx, spk.ToString().c_str(), ts);
     s = db_->Get(rocksdb::ReadOptions(), cf_hs_[idx + 1], spk, &value);
     if (s.ok()) {
         return true;
