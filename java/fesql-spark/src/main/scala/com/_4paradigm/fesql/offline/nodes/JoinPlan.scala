@@ -47,7 +47,7 @@ object JoinPlan {
     val leftKeyCols = mutable.ArrayBuffer[Column]()
     for (i <- 0 until leftKeys.GetChildNum()) {
       val expr = leftKeys.GetChild(i)
-      val (_, _, column) = SparkColumnUtil.resolveColumn(expr, leftDf, ctx)
+      val column = SparkColumnUtil.resolveLeftColumn(expr, node, leftDf, ctx)
       leftKeyCols += column
     }
 
@@ -56,7 +56,7 @@ object JoinPlan {
     val rightKeyCols = mutable.ArrayBuffer[Column]()
     for (i <- 0 until rightKeys.GetChildNum()) {
       val expr = rightKeys.GetChild(i)
-      val (_, _, column) = SparkColumnUtil.resolveColumn(expr, rightDf, ctx)
+      val column = SparkColumnUtil.resolveRightColumn(expr, node, rightDf, ctx)
       rightKeyCols += column
     }
 
@@ -97,33 +97,18 @@ object JoinPlan {
       throw new FeSQLException("No join conditions specified")
     }
 
-    var joined = leftDf.join(rightDf, joinConditions.reduce(_ && _),  "left")
-
-    // column renaming
-    val leftName = left.getName
-    val rightName = right.getName
-    val renameCols = {
-      leftDf.columns.map(n => {
-        if (n == indexName) {
-          leftDf.col(n)
-        } else {
-          leftDf.col(n).alias(leftName + "." + n)
-        }
-      }) ++
-      rightDf.columns.map(n => {
-        rightDf.col(n).alias(rightName + "." + n)
-      })
-    }
-    joined = joined.select(renameCols: _*)
+    val joined = leftDf.join(rightDf, joinConditions.reduce(_ && _),  "left")
 
     val result = if (joinType == JoinType.kJoinTypeLast) {
       val indexColIdx = leftDf.schema.size - 1
 
-      val (_, timeColIdx, _) = SparkColumnUtil.resolveColumn(
-        node.join().right_key().keys().GetChild(0), rightDf, ctx)
+      val timeKey = node.join().right_key().keys().GetChild(0)
+      val planLeftSize = node.GetProducer(0).GetOutputSchema().size()
+      val timeColIdx = SparkColumnUtil.resolveColumnIndex(timeKey, node) - planLeftSize
+      assert(timeColIdx >= 0)
 
-      val timeColType = rightDf.schema(timeColIdx).dataType
       val timeIdxInJoined = timeColIdx + leftDf.schema.size
+      val timeColType = rightDf.schema(timeColIdx).dataType
 
       import sess.implicits._
 

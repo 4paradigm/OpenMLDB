@@ -16,6 +16,7 @@
 #include "codec/row.h"
 #include "vm/catalog.h"
 #include "vm/mem_catalog.h"
+#include "vm/physical_op.h"
 
 namespace fesql {
 namespace vm {
@@ -61,6 +62,9 @@ class RunnerContext {
 
 class CoreAPI {
  public:
+    static int ResolveColumnIndex(fesql::vm::PhysicalOpNode* node,
+                                  fesql::node::ColumnRefNode* expr);
+
     static fesql::codec::Row RowProject(const fesql::vm::RawFunctionPtr fn,
                                         const fesql::codec::Row row,
                                         const bool need_free = false);

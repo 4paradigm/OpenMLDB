@@ -642,7 +642,6 @@ class WindowJoinList {
     std::list<std::pair<PhysicalOpNode *, Join>> &window_joins() {
         return window_joins_;
     }
-
     std::list<std::pair<PhysicalOpNode *, Join>> window_joins_;
 };
 class WindowUnionList {
@@ -660,6 +659,14 @@ class WindowUnionList {
         return oss.str();
     }
     const bool Empty() const { return window_unions_.empty(); }
+    size_t GetSize() const { return window_unions_.size(); }
+    PhysicalOpNode* GetUnionNode(size_t idx) const {
+        auto iter = window_unions_.begin();
+        for (size_t i = 0; i < idx; ++i) {
+            ++iter;
+        }
+        return iter->first;
+    }
     std::list<std::pair<PhysicalOpNode *, WindowOp>> window_unions_;
 };
 
@@ -752,6 +759,7 @@ class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
     const bool instance_not_in_window_;
     WindowOp &window() { return window_; }
     WindowJoinList &window_joins() { return window_joins_; }
+    WindowUnionList &window_unions() { return window_unions_; }
     WindowOp window_;
     WindowUnionList window_unions_;
     WindowJoinList window_joins_;

@@ -24,7 +24,7 @@ class SparkPlanner(session: SparkSession, config: Map[String, Any]) {
 
   def plan(sql: String, tableDict: Map[String, DataFrame]): SparkInstance = {
     // spark translation state
-    val planCtx = new PlanContext(sql, session, config)
+    val planCtx = new PlanContext(sql, session, this, config)
 
     // set spark input tables
     tableDict.foreach {
@@ -43,7 +43,7 @@ class SparkPlanner(session: SparkSession, config: Map[String, Any]) {
   }
 
 
-  private def visitPhysicalNodes(root: PhysicalOpNode, ctx: PlanContext): SparkInstance = {
+  def visitPhysicalNodes(root: PhysicalOpNode, ctx: PlanContext): SparkInstance = {
     val optCache = ctx.getPlanResult(root)
     if (optCache.isDefined) {
       return optCache.get

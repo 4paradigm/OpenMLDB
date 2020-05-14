@@ -56,6 +56,16 @@ test_java_sdk:
     script:
         - bash tools/test_java_sdk.sh
 
+test_java_sdk_on_mac:
+    stage: test
+    variables:
+        CICD_RUNNER_THIRDPARTY_PATH: "/opt/depends/thirdparty"
+        CICD_RUNNER_TAG: "macos"
+    script:
+        - bash tools/test_java_sdk.sh
+    tags:
+        - macos
+
 micro_benchmark:
     stage: benchmark
     script:

@@ -9,4 +9,5 @@ class BatchQuerySuites extends SQLBaseSuite {
   testCases("cases/query/window_query.yaml")
   testCases("cases/query/last_join_query.yaml")
   testCases("cases/query/last_join_window_query.yaml")
+  testCases("cases/query/window_with_union_query.yaml")
 }
