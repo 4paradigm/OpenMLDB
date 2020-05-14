@@ -384,8 +384,6 @@ int32_t TabletImpl::GetIndex(uint64_t expire_time, uint64_t expire_cnt,
                                           request->projection());
     if (request->projection().size() > 0 && meta.format_version() == 1) {
         if (meta.compress_type() == api::kSnappy) {
-            PDLOG(WARNING,
-                  "project on compress row data do not being supported");
             return -1;
         }
         bool ok = row_project.Init();
@@ -398,9 +396,6 @@ int32_t TabletImpl::GetIndex(uint64_t expire_time, uint64_t expire_cnt,
     uint32_t cnt = 0;
     if (st > 0) {
         if (st < et) {
-            PDLOG(WARNING,
-                  "invalid args for st %lu less than et %lu or expire time %lu",
-                  st, et, expire_time);
             return -1;
         }
         if (expire_cnt == 0) {
