@@ -1,17 +1,22 @@
-image: develop-registry.4pd.io/centos6_gcc7_rtidb_build:0.0.9
+image: develop-registry.4pd.io/centos6_gcc7_build_env:0.4.0
+services:
+    - docker:dind
+variables:
+    GIT_SUBMODULE_STRATEGY: recursive
 stages:
     - build
-    - ut
-    - it-tablet
-    - it-ns
+    - test
+    - ts_integration_test
+    - ns_integration_test
     - deploy
 
 build_rtidb:
     stage: build
     script:
-        - ln -sf /usr/workdir/thirdparty thirdparty
-        - ln -sf /usr/workdir/thirdsrc thirdsrc
-        - source /root/.bashrc && bash steps/compile.sh
+        - source /root/.bashrc && sh tools/install_fesql.sh
+        - ln -sf /depends/thirdparty thirdparty
+        - ln -sf /depends/thirdsrc thirdsrc
+        - source /root/.bashrc && bash steps/simple_compile.sh
     artifacts:
         expire_in: 2h
         paths:
@@ -28,25 +33,16 @@ style_check:
             junit:
                 - reports/*.xml
 
-cpp_ut:
-    stage: ut
-    script:
-        - ln -sf /usr/workdir/thirdparty thirdparty
-        - ln -sf /usr/workdir/thirdsrc thirdsrc
-        - source /root/.bashrc && bash steps/compile.sh
-        - source /root/.bashrc && LD_LIBRARY_PATH=/usr/workdir/thirdparty/lib:$LD_LIBRARY_PATH bash steps/ut.sh
-    artifacts:
-        reports:
-            junit:
-                - reports/*.xml
-    except:
-        - /^*pz-fpga*$/
 java_ut:
-    stage: ut
+    stage: test
+    before_script:
+        - mkdir /rambuild
+        - mount -t tmpfs -o size=3G tmpfs /rambuild
     script:
-        - ln -sf /usr/workdir/thirdparty thirdparty
-        - ln -sf /usr/workdir/thirdsrc thirdsrc
-        - source /root/.bashrc && LD_LIBRARY_PATH=/usr/workdir/thirdparty/lib:$LD_LIBRARY_PATH bash steps/java_ut.sh
+        - ln -sf /depends/thirdparty thirdparty
+        - ln -sf /depends/thirdsrc thirdsrc
+        - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/java_ut.sh
+        - source /root/.bashrc && bash steps/auto_test.sh
     artifacts:
         reports:
             junit:
@@ -54,18 +50,38 @@ java_ut:
                 - java/target/surefire-reports/TEST-*.xml
                 - java/target/failsafe-reports/junitreports/TEST-*.xml
                 - java/target/failsafe-reports/TEST-*.xml
+                - rtidb-auto-test/target/surefire-reports/junitreports/TEST-*.xml
+                - rtidb-auto-test/target/surefire-reports/TEST-*.xml
+                - rtidb-auto-test/target/failsafe-reports/junitreports/TEST-*.xml
+                - rtidb-auto-test/target/failsafe-reports/TEST-*.xml
+    except:
+        - /^*pz-fpga*$/
+c++_ut:
+    stage: test
+    script:
+      - source /root/.bashrc && sh tools/install_fesql.sh
+      - ln -sf /depends/thirdparty thirdparty
+      - ln -sf /depends/thirdsrc thirdsrc
+      - source /root/.bashrc && bash steps/compile.sh
+      - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/ut.sh
+    artifacts:
+      reports:
+          junit:
+              - reports/*.xml
     except:
         - /^*pz-fpga*$/
 
 tablet_one_demension:
-    stage: it-tablet
+    stage: ts_integration_test
+    before_script:
+        - mkdir /rambuild
+        - mount -t tmpfs -o size=3G tmpfs /rambuild
     script:
-        - ln -sf /usr/workdir/thirdparty thirdparty
-        - ln -sf /usr/workdir/thirdsrc thirdsrc
+        - ln -sf /depends/thirdparty thirdparty
+        - ln -sf /depends/thirdsrc thirdsrc
         - rm -rf ./test-output/integrationtest/test-reports/
         - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
-        - source /root/.bashrc && LD_LIBRARY_PATH=/usr/workdir/thirdparty/lib:$LD_LIBRARY_PATH
-        - sh steps/integration_test.sh 0 "test" "ns_client"
+        - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 0 "test" "ns_client"
     artifacts:
         reports:
             junit:
@@ -74,14 +90,16 @@ tablet_one_demension:
         - /^*pz-fpga*$/
 
 tablet_multi_demension:
-    stage: it-tablet
+    stage: ts_integration_test
+    before_script:
+        - mkdir /rambuild
+        - mount -t tmpfs -o size=3G tmpfs /rambuild
     script:
-        - ln -sf /usr/workdir/thirdparty thirdparty
-        - ln -sf /usr/workdir/thirdsrc thirdsrc
+        - ln -sf /depends/thirdparty thirdparty
+        - ln -sf /depends/thirdsrc thirdsrc
         - rm -rf ./test-output/integrationtest/test-reports/
         - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
-        - source /root/.bashrc && LD_LIBRARY_PATH=/usr/workdir/thirdparty/lib:$LD_LIBRARY_PATH
-        - sh steps/integration_test.sh 1 "test" "ns_client"
+        - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 1 "test" "ns_client"
     artifacts:
         reports:
             junit:
@@ -90,14 +108,16 @@ tablet_multi_demension:
         - /^*pz-fpga*$/
 
 ns_one_demension:
-    stage: it-ns
+    stage: ns_integration_test
+    before_script:
+        - mkdir /rambuild
+        - mount -t tmpfs -o size=3G tmpfs /rambuild
     script:
-        - ln -sf /usr/workdir/thirdparty thirdparty
-        - ln -sf /usr/workdir/thirdsrc thirdsrc
+        - ln -sf /depends/thirdparty thirdparty
+        - ln -sf /depends/thirdsrc thirdsrc
         - rm -rf ./test-output/integrationtest/test-reports/
         - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
-        - source /root/.bashrc && LD_LIBRARY_PATH=/usr/workdir/thirdparty/lib:$LD_LIBRARY_PATH
-        - bash steps/integration_test.sh 0 "ns_client" "disk"
+        - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 0 "ns_client" "disk"
     artifacts:
         reports:
             junit:
@@ -106,14 +126,16 @@ ns_one_demension:
         - /^*pz-fpga*$/
 
 ns_multi_demension:
-    stage: it-ns
+    stage: ns_integration_test
+    before_script:
+        - mkdir /rambuild
+        - mount -t tmpfs -o size=3G tmpfs /rambuild
     script:
-        - ln -sf /usr/workdir/thirdparty thirdparty
-        - ln -sf /usr/workdir/thirdsrc thirdsrc
+        - ln -sf /depends/thirdparty thirdparty
+        - ln -sf /depends/thirdsrc thirdsrc
         - rm -rf ./test-output/integrationtest/test-reports/
         - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
-        - source /root/.bashrc && LD_LIBRARY_PATH=/usr/workdir/thirdparty/lib:$LD_LIBRARY_PATH
-        - bash steps/integration_test.sh 1 "ns_client" "disk"
+        - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 1 "ns_client" "disk"
     artifacts:
         reports:
             junit:
@@ -122,14 +144,16 @@ ns_multi_demension:
         - /^*pz-fpga*$/
 
 disk_table:
-    stage: it-ns
+    stage: ns_integration_test
+    before_script:
+        - mkdir /rambuild
+        - mount -t tmpfs -o size=3G tmpfs /rambuild
     script:
-        - ln -sf /usr/workdir/thirdparty thirdparty
-        - ln -sf /usr/workdir/thirdsrc thirdsrc
+        - ln -sf /depends/thirdparty thirdparty
+        - ln -sf /depends/thirdsrc thirdsrc
         - rm -rf ./test-output/integrationtest/test-reports/
         - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
-        - source /root/.bashrc && LD_LIBRARY_PATH=/usr/workdir/thirdparty/lib:$LD_LIBRARY_PATH
-        - bash steps/integration_test.sh 0 "disk"
+        - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 0 "disk"
     artifacts:
         reports:
             junit:
@@ -137,27 +161,11 @@ disk_table:
     except:
         - /^*pz-fpga*$/
 
-disktable-java:
-    stage: ut
-    script:
-        - ln -sf /usr/workdir/thirdparty thirdparty
-        - ln -sf /usr/workdir/thirdsrc thirdsrc
-        - source /root/.bashrc && bash steps/auto_test.sh
-    artifacts:
-        reports:
-            junit:
-                - rtidb-auto-test/target/surefire-reports/junitreports/TEST-*.xml
-                - rtidb-auto-test/target/surefire-reports/TEST-*.xml
-                - rtidb-auto-test/target/failsafe-reports/junitreports/TEST-*.xml
-                - rtidb-auto-test/target/failsafe-reports/TEST-*.xml
-    except:
-        - /^*pz-fpga*$/
-
 deploy-package:
     stage: deploy
     script:
-        - ln -sf /usr/workdir/thirdparty thirdparty
-        - ln -sf /usr/workdir/thirdsrc thirdsrc
+        - ln -sf /depends/thirdparty thirdparty
+        - ln -sf /depends/thirdsrc thirdsrc
         - source /root/.bashrc && bash steps/deploy_package.sh
     only:
         - tags

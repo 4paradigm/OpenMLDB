@@ -24,7 +24,7 @@ DECLARE_int32(zk_keep_alive_check_interval);
 namespace rtidb {
 namespace blobproxy {
 BlobProxyImpl::BlobProxyImpl()
-    : mu_(), zk_client_(NULL), server_(NULL), client_(NULL) {}
+    : mu_(), server_(NULL), client_(NULL) {}
 
 BlobProxyImpl::~BlobProxyImpl() {
     if (client_ != NULL) {
@@ -55,21 +55,35 @@ void BlobProxyImpl::Get(RpcController* controller, const HttpRequest* request,
     brpc::ClosureGuard done_guard(done);
     brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
     std::string table;
-    const std::string* blob_id;
+    int64_t blob_id = 0;
     std::string unresolve_path = cntl->http_request().unresolved_path();
     std::vector<std::string> vec;
     boost::split(vec, unresolve_path, boost::is_any_of("/"));
     if (vec.size() == 1) {
         table = unresolve_path;
-        blob_id = cntl->http_request().uri().GetQuery("blob_id");
-        if (blob_id == NULL) {
+        const std::string* id = cntl->http_request().uri().GetQuery("blob_id");
+        if (id == NULL) {
+            cntl->http_response().set_status_code(
+                brpc::HTTP_STATUS_BAD_REQUEST);
+            return;
+        }
+        try {
+            blob_id = boost::lexical_cast<int64_t>(*id);
+        } catch (boost::bad_lexical_cast&) {
             cntl->http_response().set_status_code(
                 brpc::HTTP_STATUS_BAD_REQUEST);
             return;
         }
     } else if (vec.size() == 2) {
         table = vec[0];
-        blob_id = &vec[1];
+
+        try {
+            blob_id = boost::lexical_cast<int64_t>(vec[1]);
+        } catch (boost::bad_lexical_cast&) {
+            cntl->http_response().set_status_code(
+                brpc::HTTP_STATUS_BAD_REQUEST);
+            return;
+        }
     } else {
         cntl->http_response().set_status_code(brpc::HTTP_STATUS_BAD_REQUEST);
         return;
@@ -82,8 +96,20 @@ void BlobProxyImpl::Get(RpcController* controller, const HttpRequest* request,
         response_writer.append("table not found");
         return;
     }
+    if (th->table_info->blobs().empty() &&
+        th->table_info->table_type() != rtidb::type::kObjectStore) {
+        PDLOG(INFO, "table %s is not object store", table.c_str());
+        cntl->http_request().set_status_code(brpc::HTTP_STATUS_BAD_REQUEST);
+        response_writer.append("table is not object store");
+        return;
+    }
+    std::shared_ptr<rtidb::client::BsClient> blob;
     std::string err_msg;
-    auto blob = client_->GetBlobClient(th->partition[0].leader, &err_msg);
+    if (!th->table_info->blobs().empty()) {
+        blob = client_->GetBlobClient(th->table_info->blobs(0), &err_msg);
+    } else {
+        blob = client_->GetBlobClient(th->partition[0].leader, &err_msg);
+    }
     if (!blob) {
         cntl->http_response().set_status_code(
             brpc::HTTP_STATUS_INTERNAL_SERVER_ERROR);
@@ -91,7 +117,7 @@ void BlobProxyImpl::Get(RpcController* controller, const HttpRequest* request,
         return;
     }
     butil::IOBuf buff;
-    bool ok = blob->Get(th->table_info->tid(), 0, *blob_id, &err_msg, &buff);
+    bool ok = blob->Get(th->table_info->tid(), 0, blob_id, &err_msg, &buff);
     if (!ok) {
         cntl->http_response().set_status_code(
             brpc::HTTP_STATUS_INTERNAL_SERVER_ERROR);

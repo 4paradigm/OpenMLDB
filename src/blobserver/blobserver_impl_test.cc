@@ -60,9 +60,9 @@ TEST_F(BlobServerImplTest, Basic_Test) {
         bool ok = client.CreateTable(meta, &err_msg);
         ASSERT_TRUE(ok);
     }
-    std::string key = "testkey1";
+    int64_t key = 10010;
     std::string value = "testvalue1";
-    bool ok = client.Put(tid, pid, &key, value, &err_msg);
+    bool ok = client.Put(tid, pid, key, value, &err_msg);
     ASSERT_TRUE(ok);
     std::string get_value;
     ok = client.Get(tid, pid, key, &get_value, &err_msg);
@@ -71,9 +71,9 @@ TEST_F(BlobServerImplTest, Basic_Test) {
         int code = memcmp(value.data(), get_value.data(), value.length());
         ASSERT_EQ(0, code);
     }
-    std::string auto_gen_key;
+    int64_t auto_gen_key;
     std::string value2 = "testvalue2";
-    ok = client.Put(tid, pid, &auto_gen_key, value2, &err_msg);
+    ok = client.Put(tid, pid, value2, &auto_gen_key, &err_msg);
     ASSERT_TRUE(ok);
     get_value.clear();
     ok = client.Get(tid, pid, auto_gen_key, &get_value, &err_msg);

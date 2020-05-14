@@ -6,8 +6,8 @@ WORK_DIR=`pwd`
 ulimit -c unlimited
 test -d reports && rm -rf reports
 mkdir -p reports
-cp steps/zoo.cfg thirdsrc/zookeeper-3.4.10/conf
-cd thirdsrc/zookeeper-3.4.10 && ./bin/zkServer.sh start && cd $WORK_DIR
+cp steps/zoo.cfg thirdsrc/zookeeper-3.4.14/conf
+cd thirdsrc/zookeeper-3.4.14 && ./bin/zkServer.sh start && cd $WORK_DIR
 sleep 5
 TMPFILE="code.tmp"
 echo 0 > $TMPFILE
@@ -23,6 +23,6 @@ done
 code=`cat $TMPFILE`
 echo "code result: $code"
 rm $TMPFILE
-cd thirdsrc/zookeeper-3.4.10 && ./bin/zkServer.sh stop
+cd thirdsrc/zookeeper-3.4.14 && ./bin/zkServer.sh stop
 cd -
 exit $code

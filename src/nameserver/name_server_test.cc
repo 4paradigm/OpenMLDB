@@ -1001,7 +1001,7 @@ TEST_F(NameServerImplTest, SyncTableReplicaCluster) {
     ASSERT_EQ(0, general_response.code());
     ShowTableRequest show_table_request;
     ShowTableResponse show_table_response;
-    sleep(4);
+    sleep(10);
     for (auto& ns : nss) {
         ns->ShowTable(NULL, &show_table_request, &show_table_response,
                       &closure);

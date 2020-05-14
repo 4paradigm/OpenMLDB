@@ -19,17 +19,18 @@
 #undef DISALLOW_COPY_AND_ASSIGN
 #endif
 #include <snappy.h>
+
 #include <atomic>
 #include <map>
 #include <memory>
-#include <mutex>  // NOLINT
+#include <mutex>
 #include <string>
 #include <vector>
 #include <boost/lexical_cast.hpp>
 #include "base/endianconv.h"
 #include "base/id_generator.h"
 #include "base/slice.h"
-#include "codec/codec.h"
+#include "codec/row_codec.h"
 #include "codec/field_codec.h"
 #include "codec/memcomparable_format.h"
 #include "proto/common.pb.h"
@@ -40,6 +41,8 @@
 typedef google::protobuf::RepeatedPtrField<::rtidb::api::Dimension> Dimensions;
 using Schema =
     ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
+using google::protobuf::RepeatedPtrField;
+using google::protobuf::RepeatedField;
 
 namespace rtidb {
 namespace storage {
@@ -83,26 +86,27 @@ class RelationalTable {
     ~RelationalTable();
     bool Init();
 
-    bool Put(const std::string& value);
+    bool Put(const std::string& value, int64_t* auto_gen_pk);
 
     bool Query(const ::google::protobuf::RepeatedPtrField<
                    ::rtidb::api::ReadOption>& ros,
                std::string* pairs, uint32_t* count);
     bool Query(const ::google::protobuf::RepeatedPtrField<
-            ::rtidb::api::Columns>& indexs,
-            std::vector<std::unique_ptr<rocksdb::Iterator>>* return_vec);
+                   ::rtidb::api::Columns>& indexs,
+               std::vector<std::unique_ptr<rocksdb::Iterator>>* return_vec);
     bool Query(const std::shared_ptr<IndexDef> index_def,
                const rocksdb::Slice& key_slice,
                std::vector<std::unique_ptr<rocksdb::Iterator>>* vec);
 
-    bool Delete(
-        const ::google::protobuf::RepeatedPtrField<::rtidb::api::Columns>&
-            condition_columns);
+    bool Delete(const RepeatedPtrField<::rtidb::api::Columns>&
+                condition_columns);
+
+    bool Delete(const RepeatedPtrField<rtidb::api::Columns>& condition_columns,
+                RepeatedField<google::protobuf::int64_t>* blob_keys);
+
     bool Delete(const std::shared_ptr<IndexDef> index_def,
-                const std::string& comparable_key,
-                rocksdb::WriteBatch* batch);
-    bool DeletePk(const rocksdb::Slice& pk_slice,
-            rocksdb::WriteBatch* batch);
+                const std::string& comparable_key, rocksdb::WriteBatch* batch);
+    bool DeletePk(const rocksdb::Slice& pk_slice, rocksdb::WriteBatch* batch);
 
     rtidb::storage::RelationalTableTraverseIterator* NewTraverse(
         uint32_t idx, uint64_t snapshot_id);
@@ -146,6 +150,11 @@ class RelationalTable {
     }
 
     std::shared_ptr<IndexDef> GetPkIndex() { return table_index_.GetPkIndex(); }
+    inline bool HasAutoGen() { return table_index_.HasAutoGen();}
+
+    bool GetCombinePk(const ::google::protobuf::RepeatedPtrField<
+            ::rtidb::api::Columns>& indexs,
+            std::string* combine_value);
 
  private:
     inline void CombineNoUniqueAndPk(const std::string& no_unique,
@@ -176,7 +185,7 @@ class RelationalTable {
                                           const rocksdb::Slice& key_slice);
     rocksdb::Iterator* GetRocksdbIterator(uint32_t idx);
     bool PutDB(const rocksdb::Slice& spk, const char* data, uint32_t size,
-            bool unique_check, rocksdb::WriteBatch* batch);
+               bool unique_check, rocksdb::WriteBatch* batch);
     bool CreateSchema(const ::rtidb::api::Columns& columns,
                       std::map<std::string, int>* idx_map, Schema* new_schema);
     bool UpdateDB(const std::shared_ptr<IndexDef> index_def,
@@ -186,9 +195,8 @@ class RelationalTable {
     bool GetPackedField(const int8_t* row, uint32_t idx,
                         const ::rtidb::type::DataType& data_type,
                         std::string* key);
-    bool GetPackedField(::rtidb::codec::RowView* view, uint32_t idx,
-                        const ::rtidb::type::DataType& data_type,
-                        std::string* key);
+    bool PackValue(const void *from, ::rtidb::type::DataType data_type,
+            std::string* key);
     bool ConvertIndex(const std::string& name, const std::string& value,
                       std::string* out_val);
     bool GetCombineStr(const ::google::protobuf::RepeatedPtrField<

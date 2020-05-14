@@ -198,19 +198,19 @@ class TestAutoFailover(TestCaseBase):
         self.assertIn('kTabletHealthy', rs4[self.slave1])
         self.confset(self.ns_leader, 'auto_failover', 'false')
 
-        self.assertEqual(rs2[(name, tid, '0', self.leader)], ['follower', '144000min', 'yes', 'kNoCompress'])
-        self.assertEqual(rs2[(name, tid, '1', self.leader)], ['follower', '144000min', 'yes', 'kNoCompress'])
-        self.assertEqual(rs2[(name, tid, '2', self.leader)], ['follower', '144000min', 'yes', 'kNoCompress'])
-        self.assertEqual(rs2[(name, tid, '0', self.slave1)], ['leader', '144000min', 'yes', 'kNoCompress'])
-        self.assertEqual(rs2[(name, tid, '1', self.slave1)], ['leader', '144000min', 'yes', 'kNoCompress'])
-        self.assertEqual(rs2[(name, tid, '2', self.slave2)], ['leader', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs2[(name, tid, '0', self.leader)], ['leader', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs2[(name, tid, '1', self.leader)], ['leader', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs2[(name, tid, '2', self.leader)], ['leader', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs2[(name, tid, '0', self.slave1)], ['follower', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs2[(name, tid, '1', self.slave1)], ['follower', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs2[(name, tid, '2', self.slave2)], ['follower', '144000min', 'yes', 'kNoCompress'])
 
         self.assertEqual(rs3[(name, tid, '0', self.leader)], ['leader', '144000min', 'yes', 'kNoCompress'])
         self.assertEqual(rs3[(name, tid, '1', self.leader)], ['leader', '144000min', 'yes', 'kNoCompress'])
-        self.assertEqual(rs3[(name, tid, '2', self.leader)], ['follower', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs3[(name, tid, '2', self.leader)], ['leader', '144000min', 'yes', 'kNoCompress'])
         self.assertEqual(rs3[(name, tid, '0', self.slave1)], ['follower', '144000min', 'yes', 'kNoCompress'])
         self.assertEqual(rs3[(name, tid, '1', self.slave1)], ['follower', '144000min', 'yes', 'kNoCompress'])
-        self.assertEqual(rs3[(name, tid, '2', self.slave2)], ['leader', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs3[(name, tid, '2', self.slave2)], ['follower', '144000min', 'yes', 'kNoCompress'])
         rs = self.ns_drop(self.ns_leader, name)
 
 

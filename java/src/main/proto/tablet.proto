@@ -103,6 +103,7 @@ enum TaskType {
     kLoadIndexData = 24;
     kExtractIndexData = 25;
     kAddIndexToTablet = 26;
+    kTableSyncTask = 27;
 }
 
 enum TaskStatus {
@@ -193,6 +194,7 @@ message PutRequest {
 message PutResponse {
     optional int32 code = 1;
     optional string msg = 2;
+    optional int64 auto_gen_pk = 3;
 }
 
 message DeleteRequest {
@@ -201,6 +203,7 @@ message DeleteRequest {
     optional string key = 3;
     optional string idx_name = 4;
     repeated Columns condition_columns = 5;
+    optional bool receive_blobs = 6 [default = false];
 }
 
 message ExecuteGcRequest {
@@ -232,6 +235,7 @@ message DeleteTaskRequest {
 message GeneralResponse {
     optional int32 code = 1;
     optional string msg = 2;
+    repeated int64 additional_ids = 3;
 }
 
 message ScanRequest {
@@ -282,6 +286,7 @@ message TraverseRequest {
     optional bool enable_remove_duplicated_record = 7 [default=false];
     optional string ts_name = 8;
     optional uint64 snapshot_id = 9;
+    optional ReadOption read_option = 10;
 }
 
 message TraverseResponse {
@@ -367,7 +372,7 @@ message DropTableRequest {
     optional int32 tid = 1;
     optional int32 pid = 2;
     optional TaskInfo task_info = 3;
-    optional rtidb.type.TableType table_type = 4;
+    optional rtidb.type.TableType table_type = 4 [default = kTimeSeries];
 }
 
 message DropTableResponse {
@@ -655,7 +660,8 @@ message HttpResponse { }
 
 message DeleteIndexRequest {
     optional uint32 tid = 1;
-    optional string idx_name = 2;
+    optional uint32 pid = 2;
+    optional string idx_name = 3;
 }
 
 message DumpIndexDataRequest {
@@ -698,8 +704,8 @@ message UpdateRequest {
 
 message ReadOption {
     repeated Columns index = 1;
-    repeated Columns readFilter = 2;
-    repeated string colSet = 3;
+    repeated Columns read_filter = 2;
+    repeated string col_set = 3;
     optional uint32 limit = 4;
 }
 
@@ -707,6 +713,7 @@ message BatchQueryRequest {
     optional uint32 tid = 1;
     optional uint32 pid = 2;
     repeated ReadOption read_option = 3;
+    repeated string query_key = 4;
 }
 
 message BatchQueryResponse {
@@ -715,6 +722,10 @@ message BatchQueryResponse {
     optional int32 code = 3;
     optional bool is_finish = 4;
     optional uint32 count = 5;
+}
+
+message CancelOPRequest {
+    optional uint64 op_id = 1;
 }
 
 service TabletServer {
@@ -774,4 +785,5 @@ service TabletServer {
     rpc DumpIndexData(DumpIndexDataRequest) returns (GeneralResponse);
     rpc LoadIndexData(LoadIndexDataRequest) returns (GeneralResponse);
     rpc ExtractIndexData(ExtractIndexDataRequest) returns (GeneralResponse);
+    rpc CancelOP(CancelOPRequest) returns (GeneralResponse);
 }
