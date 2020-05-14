@@ -175,7 +175,7 @@ std::unique_ptr<TableIterator> Table::NewIterator(
         LOG(WARNING) << "index name \"" << index_name << "\" not exist";
         return nullptr;
     }
-    return std::move(NewIndexIterator(pk, iter->second.index));
+    return NewIndexIterator(pk, iter->second.index);
 }
 
 std::unique_ptr<TableIterator> Table::NewIterator(const std::string& pk,
@@ -183,11 +183,11 @@ std::unique_ptr<TableIterator> Table::NewIterator(const std::string& pk,
     auto iter = NewIndexIterator(pk, 0);
     iter->Seek(ts);
     Slice spk(pk);
-    return std::move(iter);
+    return iter;
 }
 
 std::unique_ptr<TableIterator> Table::NewIterator(const std::string& pk) {
-    return std::move(NewIndexIterator(pk, 0));
+    return NewIndexIterator(pk, 0);
 }
 
 std::unique_ptr<TableIterator> Table::NewTraverseIterator(
@@ -327,8 +327,8 @@ void TableIterator::Next() {
 
 const Slice& TableIterator::GetValue() {
     value_ = Slice(ts_it_->GetValue()->data,
-                 codec::RowView::GetSize(
-                     reinterpret_cast<int8_t*>(ts_it_->GetValue()->data)));
+                   codec::RowView::GetSize(
+                       reinterpret_cast<int8_t*>(ts_it_->GetValue()->data)));
     return value_;
 }
 

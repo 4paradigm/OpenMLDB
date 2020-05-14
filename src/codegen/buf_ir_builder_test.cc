@@ -20,8 +20,8 @@
 #include <cstdlib>
 #include <memory>
 #include <vector>
-#include "codec/list_iterator_codec.h"
 #include "codec/fe_row_codec.h"
+#include "codec/list_iterator_codec.h"
 #include "codec/type_codec.h"
 #include "codegen/codegen_base_test.h"
 #include "codegen/ir_base_builder.h"
@@ -213,8 +213,7 @@ void RunEncode(int8_t** output_ptr) {
     ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
                                       J->getDataLayout());
     ::fesql::vm::InitCodecSymbol(jd, mi);
-    ExitOnErr(J->addIRModule(
-        std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
+    ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
     auto load_fn_jit = ExitOnErr(J->lookup("fn"));
     void (*decode)(int8_t**) =
         reinterpret_cast<void (*)(int8_t**)>(load_fn_jit.getAddress());
@@ -352,8 +351,7 @@ void RunCaseV1(T expected, const ::fesql::type::Type& type,
         ASSERT_TRUE(false);
     }
     ::fesql::vm::InitCodecSymbol(jd, mi);
-    ExitOnErr(J->addIRModule(
-        std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
+    ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
     auto load_fn_jit = ExitOnErr(J->lookup("fn"));
     if (!is_void) {
         T(*decode)
@@ -539,8 +537,7 @@ void RunColCase(T expected, const ::fesql::type::Type& type,
         ASSERT_TRUE(false);
     }
     ::fesql::vm::InitCodecSymbol(jd, mi);
-    ExitOnErr(J->addIRModule(
-        std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
+    ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
     auto load_fn_jit = ExitOnErr(J->lookup("fn"));
     if (!is_void) {
         T(*decode)

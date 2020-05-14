@@ -354,7 +354,7 @@ class MemSegmentHandler : public TableHandler {
         auto iter = partition_hander_->GetWindowIterator();
         if (iter) {
             iter->Seek(key_);
-            return iter->Valid() ? std::move(iter->GetValue())
+            return iter->Valid() ? iter->GetValue()
                                  : std::unique_ptr<RowIterator>();
         }
         return std::unique_ptr<RowIterator>();

@@ -19,8 +19,8 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include "codec/list_iterator_codec.h"
 #include "codec/fe_row_codec.h"
+#include "codec/list_iterator_codec.h"
 #include "codegen/fn_ir_builder.h"
 #include "gtest/gtest.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
@@ -101,13 +101,11 @@ void GetSchemaT1(::fesql::type::TableDef& table) {  // NOLINT
         column->set_type(::fesql::type::kDouble);
         column->set_name("col4");
     }
-
     {
         ::fesql::type::ColumnDef* column = table.add_columns();
         column->set_type(::fesql::type::kInt64);
         column->set_name("col5");
     }
-
     {
         ::fesql::type::ColumnDef* column = table.add_columns();
         column->set_type(::fesql::type::kVarchar);
@@ -429,8 +427,7 @@ void CheckFnLetBuilder(
     ::fesql::vm::InitCodecSymbol(jd, mi);
     ::fesql::udf::InitUDFSymbol(jd, mi);
 
-    ExitOnErr(J->addIRModule(
-        std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
+    ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
     auto load_fn_jit = ExitOnErr(J->lookup("test_at_fn"));
 
     int32_t (*decode)(int8_t**, int8_t*, int32_t*, int8_t**) = (int32_t(*)(

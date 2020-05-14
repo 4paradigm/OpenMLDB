@@ -123,8 +123,7 @@ void CastCheck(::fesql::node::DataType src_type,
     }
     m->print(::llvm::errs(), NULL);
     auto J = ExitOnErr(LLJITBuilder().create());
-    ExitOnErr(J->addIRModule(
-        std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
+    ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
     auto load_fn_jit = ExitOnErr(J->lookup("load_fn"));
     D (*decode)(S) = (D(*)(S))load_fn_jit.getAddress();
     D ret = decode(value);
@@ -181,8 +180,7 @@ void BoolCastCheck(::fesql::node::DataType type, V value, bool result) {
     m->print(::llvm::errs(), NULL);
     ASSERT_TRUE(ok);
     auto J = ExitOnErr(LLJITBuilder().create());
-    ExitOnErr(J->addIRModule(
-        std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
+    ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
     auto load_fn_jit = ExitOnErr(J->lookup("load_fn"));
     bool (*decode)(V) = (bool (*)(V))load_fn_jit.getAddress();
     bool ret = decode(value);

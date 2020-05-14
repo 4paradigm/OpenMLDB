@@ -70,8 +70,7 @@ void CheckResult(std::string test, int32_t res, int32_t a, int32_t b) {
     LOG(INFO) << "after opt with ins cnt " << m->getInstructionCount();
     m->print(::llvm::errs(), NULL, true, true);
     auto J = ExitOnErr(LLJITBuilder().create());
-    ExitOnErr(J->addIRModule(
-        std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
+    ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
     auto test_jit = ExitOnErr(J->lookup("test"));
     int32_t (*test_fn)(int32_t, int32_t) =
         (int32_t(*)(int32_t, int32_t))test_jit.getAddress();

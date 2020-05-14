@@ -18,6 +18,7 @@ SQLCases:
           0, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
     output:
       schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
+      order: col1
       data: |
         0, 1, 5, 1.1, 11.1, 1, 1
         0, 2, 5, 2.2, 22.2, 2, 22
