@@ -546,6 +546,7 @@ TEST_F(DiskTableTest, TraverseIteratorCountTTL) {
     }
     ASSERT_EQ(46, count);
     ASSERT_EQ(50, it->GetCount());
+    delete it;
     delete table;
     FLAGS_max_traverse_cnt = old_max_traverse;
     std::string path = FLAGS_hdd_root_path + "/7_1";
