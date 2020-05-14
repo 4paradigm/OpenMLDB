@@ -60,7 +60,11 @@ object Main {
     val outputDf = if (useSparkSQL) {
       tables.foreach { case (name, df) => df.createOrReplaceTempView(name) }
       sess.sql(sql)
+
     } else {
+      if (! sql.trim.endsWith(";")) {
+        sql = sql.trim + ";"
+      }
       planner.plan(sql, tables.toMap).getDf(sess)
     }
     var endTime = System.currentTimeMillis()
