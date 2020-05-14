@@ -254,7 +254,7 @@ bool DiskTable::Put(uint64_t time, const std::string& value,
         
         std::string combine_key = CombineKeyTs(it->key(), time);
         rocksdb::Slice spk = rocksdb::Slice(combine_key);
-        PDLOG(WARNING, "Put CombineKeyTs(%s, %lu), spk=%s, size=%lu", it->key().c_str(), time, spk.ToString().c_str(), spk.size());
+        PDLOG(WARNING, "Put CombineKeyTs(%s, %lu), spk=%s, size=%lu, to cf[%u]", it->key().c_str(), time, spk.ToString().c_str(), spk.size(), it->idx() + 1);
         batch.Put(cf_hs_[it->idx() + 1], spk, value);
     }
     s = db_->Write(write_opts_, &batch);
@@ -393,8 +393,8 @@ bool DiskTable::Get(uint32_t idx, const std::string& pk, uint64_t ts,
         PDLOG(WARNING, "CombineKeyTs(%s, %lu), spk=%s, size=%lu", pk.c_str(), ts, spk.ToString().c_str(), spk.size());
     }
     rocksdb::Status s;
-    PDLOG(WARNING, "index %u tid %u pid %u, Get(%u, %s, %lu)", idx, id_,
-              pid_, idx, spk.ToString().c_str(), ts);
+    PDLOG(WARNING, "index %u tid %u pid %u, Get(%u, %s, %lu) from cf[%u]", idx, id_,
+              pid_, idx, spk.ToString().c_str(), ts, idx + 1);
     s = db_->Get(rocksdb::ReadOptions(), cf_hs_[idx + 1], spk, &value);
     if (s.ok()) {
         return true;
