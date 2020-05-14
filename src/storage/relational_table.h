@@ -86,7 +86,7 @@ class RelationalTable {
     ~RelationalTable();
     bool Init();
 
-    bool Put(const std::string& value);
+    bool Put(const std::string& value, int64_t* auto_gen_pk);
 
     bool Query(const ::google::protobuf::RepeatedPtrField<
                    ::rtidb::api::ReadOption>& ros,
@@ -150,6 +150,7 @@ class RelationalTable {
     }
 
     std::shared_ptr<IndexDef> GetPkIndex() { return table_index_.GetPkIndex(); }
+    inline bool HasAutoGen() { return table_index_.HasAutoGen();}
 
     bool GetCombinePk(const ::google::protobuf::RepeatedPtrField<
             ::rtidb::api::Columns>& indexs,

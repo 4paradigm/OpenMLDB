@@ -110,11 +110,11 @@ class RowCodec {
                     }
                     case rtidb::type::kSmallInt:
                         ok = builder.AppendInt16(
-                            boost::lexical_cast<uint16_t>(iter->second));
+                            boost::lexical_cast<int16_t>(iter->second));
                         break;
                     case rtidb::type::kInt:
                         ok = builder.AppendInt32(
-                            boost::lexical_cast<uint32_t>(iter->second));
+                            boost::lexical_cast<int32_t>(iter->second));
                         break;
                     case rtidb::type::kBlob:
                         ok = builder.AppendBlob(

@@ -776,13 +776,18 @@ void TabletImpl::Put(RpcController* controller,
             }
         }
     } else {
-        if (!r_table->Put(request->value())) {
+        int64_t auto_gen_pk = 0;
+        if (!r_table->Put(request->value(), &auto_gen_pk)) {
             response->set_code(::rtidb::base::ReturnCode::kPutFailed);
             response->set_msg("put failed");
             done->Run();
             return;
         }
         response->set_code(::rtidb::base::ReturnCode::kOk);
+        response->set_msg("ok");
+        if (r_table->HasAutoGen()) {
+            response->set_auto_gen_pk(auto_gen_pk);
+        }
         done->Run();
     }
 }
