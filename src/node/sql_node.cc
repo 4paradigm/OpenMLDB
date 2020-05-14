@@ -316,7 +316,7 @@ ColumnRefNode *ColumnRefNode::CastFrom(ExprNode *node) {
     return reinterpret_cast<ColumnRefNode *>(node);
 }
 
-const std::string ColumnRefNode::GenerateExpression() const {
+const std::string ColumnRefNode::GenerateExpressionName() const {
     std::string str = "";
     str.append(column_name_);
     return str;
@@ -855,7 +855,7 @@ void ExprNode::Print(std::ostream &output, const std::string &org_tab) const {
     output << org_tab << SPACE_ST << "expr[" << ExprTypeName(expr_type_) << "]";
 }
 const std::string ExprNode::GetExprString() const { return ""; }
-const std::string ExprNode::GenerateExpression() const {
+const std::string ExprNode::GenerateExpressionName() const {
     return GetExprString();
 }
 bool ExprNode::Equals(const ExprNode *that) const {

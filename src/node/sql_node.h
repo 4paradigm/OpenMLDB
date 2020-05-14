@@ -334,7 +334,7 @@ class ExprNode : public SQLNode {
     std::vector<ExprNode *> children_;
     void Print(std::ostream &output, const std::string &org_tab) const override;
     virtual const std::string GetExprString() const;
-    virtual const std::string GenerateExpression() const;
+    virtual const std::string GenerateExpressionName() const;
     virtual bool Equals(const ExprNode *that) const;
 
     const ExprType expr_type_;
@@ -912,7 +912,7 @@ class ColumnRefNode : public ExprNode {
     static ColumnRefNode *CastFrom(ExprNode *node);
     void Print(std::ostream &output, const std::string &org_tab) const;
     const std::string GetExprString() const;
-    const std::string GenerateExpression() const;
+    const std::string GenerateExpressionName() const;
     virtual bool Equals(const ExprNode *node) const;
 
  private:

@@ -150,7 +150,8 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
                     (const node::ResTarget *)expr;
                 project_name = target_ptr->GetName();
                 if (project_name.empty()) {
-                    project_name = target_ptr->GetVal()->GenerateExpression();
+                    project_name =
+                        target_ptr->GetVal()->GenerateExpressionName();
                 }
                 project_expr = target_ptr->GetVal();
                 break;
