@@ -6,7 +6,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--cols", type=int, required=True, help="Final output columns")
     parser.add_argument("--offset", type=int, required=True, help="Final output columns")
-    parser.add_argument("output", type=str, required=True, help="Output script file")
+    parser.add_argument("output", type=str, help="Output script file")
     return parser.parse_args(sys.argv[1:])
 
 
@@ -18,7 +18,7 @@ def main(args):
     with open(args.output, "w") as output_file:
         exprs = []
         for k in range(args.cols):
-            exprs.append("sum(c" + k + ") OVER w")
+            exprs.append("sum(c%d) OVER w" % k)
         content = content.replace("{EXPRS}", ",\n".join(exprs))
         content = content.replace("{OFFSET}", str(args.offset))
         output_file.write(content)
