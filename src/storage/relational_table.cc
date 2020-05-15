@@ -363,14 +363,16 @@ bool RelationalTable::PutDB(const rocksdb::Slice& spk, const char* data,
 }
 
 bool RelationalTable::GetPackedField(const int8_t* row, uint32_t idx,
-                                     const ::rtidb::type::DataType& data_type,
+                                     ::rtidb::type::DataType data_type,
+                                     ::rtidb::type::IndexType idx_type,
                                      std::string* key) {
     char buf[1];
     if (row_view_.IsNULL(row, idx)) {
         memset(buf, 0, sizeof(buf));
         key->append(buf, sizeof(buf));
         return true;
-    } else {
+    } else if (idx_type == ::rtidb::type::kUnique
+            || idx_type == ::rtidb::type::kNoUnique) {
         memset(buf, 1, sizeof(buf));
         key->append(buf, sizeof(buf));
     }
@@ -460,6 +462,7 @@ bool RelationalTable::GetPackedField(const int8_t* row, uint32_t idx,
 bool RelationalTable::ConvertIndex(const std::string& name,
                                    const std::string& value,
                                    bool has_null,
+                                   ::rtidb::type::IndexType idx_type,
                                    std::string* out_val) {
     std::shared_ptr<ColumnDef> column_def = table_column_.GetColumn(name);
     if (!column_def) {
@@ -472,8 +475,9 @@ bool RelationalTable::ConvertIndex(const std::string& name,
         memset(buf, 0, sizeof(buf));
         out_val->append(buf, sizeof(buf));
         return true;
-    } else {
-        memset(buf, 1, sizeof(buf)); 
+    } else if (idx_type == ::rtidb::type::kUnique
+            || idx_type == ::rtidb::type::kNoUnique) {
+        memset(buf, 1, sizeof(buf));
         out_val->append(buf, sizeof(buf));
     }
     std::string pack_val;
@@ -1146,8 +1150,12 @@ bool RelationalTable::GetCombineStr(
         if (!indexs.Get(0).has_value()) {
             has_null = true;
         }
+        std::shared_ptr<IndexDef> index_def =
+            table_index_.GetIndexByCombineStr(*combine_name);
+        if (!index_def) return false;
         const std::string& value = indexs.Get(0).value();
-        if (!ConvertIndex(*combine_name, value, has_null, combine_value)) {
+        if (!ConvertIndex(*combine_name, value, has_null,
+                    index_def->GetType(), combine_value)) {
             return false;
         }
     } else {
@@ -1165,15 +1173,24 @@ bool RelationalTable::GetCombineStr(
                 combine_name->append("_");
             }
             combine_name->append(name);
+        }
+        for (const auto& col_def : vec) {
+            const std::string& name = col_def.GetName();
             auto it = map.find(name);
             if (it == map.end()) return false;
             bool has_null = false;
             if (!indexs.Get(it->second).has_value()) {
                 has_null = true;
             }
+            std::shared_ptr<IndexDef> index_def =
+                table_index_.GetIndexByCombineStr(*combine_name);
+            if (!index_def) return false;
             const std::string& value = indexs.Get(it->second).value();
             std::string temp = "";
-            if (!ConvertIndex(name, value, has_null, &temp)) return false;
+            if (!ConvertIndex(name, value, has_null,
+                        index_def->GetType(), &temp)) {
+                return false;
+            }
             if (!combine_value->empty()) {
                 combine_value->append("|");
             }
@@ -1196,8 +1213,8 @@ bool RelationalTable::GetCombinePk(
             has_null = true;
         }
         const std::string& value = indexs.Get(0).value();
-        if (!ConvertIndex(indexs.Get(0).name(0), value,
-                    has_null, combine_value)) {
+        if (!ConvertIndex(indexs.Get(0).name(0), value, has_null,
+                    table_index_.GetPkIndex()->GetType(), combine_value)) {
             return false;
         }
     } else {
@@ -1219,7 +1236,10 @@ bool RelationalTable::GetCombinePk(
             }
             const std::string& value = indexs.Get(it->second).value();
             std::string temp;
-            if (!ConvertIndex(name, value, has_null, &temp)) return false;
+            if (!ConvertIndex(name, value, has_null,
+                        table_index_.GetPkIndex()->GetType(), &temp)) {
+                return false;
+            }
             if (!combine_value->empty()) {
                 combine_value->append("|");
             }
@@ -1237,7 +1257,8 @@ bool RelationalTable::GetCombineStr(const std::shared_ptr<IndexDef> index_def,
         uint32_t idx = index_def->GetColumns().at(0).GetId();
         ::rtidb::type::DataType data_type =
             index_def->GetColumns().at(0).GetType();
-        if (!GetPackedField(data, idx, data_type, comparable_pk)) {
+        if (!GetPackedField(data, idx, data_type, index_def->GetType(),
+                    comparable_pk)) {
             return false;
         }
     } else {
@@ -1245,7 +1266,8 @@ bool RelationalTable::GetCombineStr(const std::shared_ptr<IndexDef> index_def,
         for (const auto& col_def : index_def->GetColumns()) {
             uint32_t idx = col_def.GetId();
             ::rtidb::type::DataType data_type = col_def.GetType();
-            if (!GetPackedField(data, idx, data_type, &col_val)) {
+            if (!GetPackedField(data, idx, data_type, index_def->GetType(),
+                        &col_val)) {
                 return false;
             }
             if (!comparable_pk->empty()) {
