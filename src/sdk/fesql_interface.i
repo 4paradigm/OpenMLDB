@@ -12,7 +12,7 @@ SWIG_JAVABODY_PROXY(public, public, SWIGTYPE)
 %include std_string.i
 %include std_shared_ptr.i
 %include stl.i
-#include stdint.i
+%include stdint.i
 namespace std {
     %template(StringVector) vector<string>;
 }
@@ -127,7 +127,7 @@ using fesql::sdk::ExplainInfo;
 %include "codec/fe_row_codec.h"
 %include "sdk/result_set.h"
 %include "sdk/base.h"
-#include "sdk/request_row.h"
+%include "sdk/request_row.h"
 %include "sdk/dbms_sdk.h"
 %include "sdk/tablet_sdk.h"
 %include "node/node_enum.h"
