@@ -69,7 +69,7 @@ class TabletClient {
             const std::string& value, std::string* msg);
 
     bool Put(uint32_t tid, uint32_t pid, const std::string& value,
-             std::string& msg);  // NOLINT
+             int64_t* auto_gen_pk, std::string* msg);
 
     bool Put(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time,
              const std::string& value);

@@ -16,6 +16,7 @@ class NsCluster(object):
         self.zk_endpoint = zk_endpoint
         self.zk_path = os.getenv('zkpath')
         self.test_path = os.getenv('testpath')
+        self.data_path = os.getenv('datapath')
         self.ns_edp_path = {endpoints[i]: self.test_path + '/ns{}'.format(i + 1) for i in range(len(endpoints))}
         self.leader = ''
         self.leaderpath = ''
@@ -28,7 +29,7 @@ class NsCluster(object):
         exe_shell("echo tickTime=2000 > {}".format(zoo_cfg))
         exe_shell("echo initLimit=10 >> {}".format(zoo_cfg))
         exe_shell("echo syncLimit=5 >> {}".format(zoo_cfg))
-        exe_shell("echo dataDir={}/data >> {}".format(self.zk_path, zoo_cfg))
+        exe_shell("echo dataDir={}/zkdata >> {}".format(self.data_path, zoo_cfg))
         exe_shell("echo clientPort={} >> {}".format(port, zoo_cfg))
         # exe_shell("echo server.1=127.0.0.1:2888:2890 >> {}".format(zoo_cfg))
         # exe_shell("echo server.2=172.27.2.252:2888:2890 >> {}".format(zoo_cfg))

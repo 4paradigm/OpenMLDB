@@ -11,9 +11,8 @@ else
 fi
 
 sh steps/gen_code.sh
-
 mkdir -p $WORK_DIR/build 
-cd $WORK_DIR/build && cmake .. && make -j10
+cd $WORK_DIR/build && cmake .. && make -j10 rtidb
 code=$?
 cd $WORK_DIR
 exit $code

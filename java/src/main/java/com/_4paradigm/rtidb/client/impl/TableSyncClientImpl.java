@@ -1,5 +1,6 @@
 package com._4paradigm.rtidb.client.impl;
 
+import com._4paradigm.rtidb.blobserver.OSS;
 import com._4paradigm.rtidb.client.*;
 import com._4paradigm.rtidb.client.ha.PartitionHandler;
 import com._4paradigm.rtidb.client.ha.RTIDBClient;
@@ -15,7 +16,6 @@ import com.google.protobuf.ByteBufferNoCopy;
 import com.google.protobuf.ByteString;
 import rtidb.api.TabletServer;
 import rtidb.blobserver.BlobServer;
-import com._4paradigm.rtidb.blobserver.OSS;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -37,7 +37,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         key = validateKey(key);
         int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
-        Object[] row = get(pid, key,  time, getOption, th);
+        Object[] row = get(pid, key, time, getOption, th);
         return row;
     }
 
@@ -59,7 +59,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         String combinedKey = TableClientCommon.getCombinedKey(keyArr, client.getConfig().isHandleNull());
         int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
-        Object[] row = get(pid, combinedKey,  time, option, th);
+        Object[] row = get(pid, combinedKey, time, option, th);
         return row;
     }
 
@@ -78,14 +78,14 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         String combinedKey = TableClientCommon.getCombinedKey(keyMap, list, client.getConfig().isHandleNull());
         int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
-        Object[] row = get(pid, combinedKey,  time, option, th);
+        Object[] row = get(pid, combinedKey, time, option, th);
         return row;
     }
 
     @Override
     public Object[] getRow(String tname, String key, long time, Object type) throws TimeoutException, TabletException {
         GetOption getOption = new GetOption();
-        getOption.setEtType((Tablet.GetType)type);
+        getOption.setEtType((Tablet.GetType) type);
         return getRow(tname, key, time, getOption);
     }
 
@@ -102,7 +102,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         String combinedKey = TableClientCommon.getCombinedKey(keyMap, list, client.getConfig().isHandleNull());
         int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
-        return scan(th.getTableInfo().getTid(), pid, combinedKey, st, et,th, option);
+        return scan(th.getTableInfo().getTid(), pid, combinedKey, st, et, th, option);
     }
 
     @Override
@@ -113,7 +113,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         key = validateKey(key);
         int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
-        return scan(th.getTableInfo().getTid(), pid, key, st, et,th, option);
+        return scan(th.getTableInfo().getTid(), pid, key, st, et, th, option);
     }
 
     @Override
@@ -132,7 +132,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         String combinedKey = TableClientCommon.getCombinedKey(keyArr, client.getConfig().isHandleNull());
         int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
-        return scan(th.getTableInfo().getTid(), pid, combinedKey, st, et,th, option);
+        return scan(th.getTableInfo().getTid(), pid, combinedKey, st, et, th, option);
     }
 
     @Override
@@ -286,7 +286,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         getOption.setStType(type);
         getOption.setTsName(tsName);
         getOption.setIdxName(idxName);
-        Object[] row = get(pid, key,  time, getOption, th);
+        Object[] row = get(pid, key, time, getOption, th);
         return row;
     }
 
@@ -312,7 +312,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         option.setIdxName(idxName);
         option.setTsName(tsName);
         option.setEt(et);
-        Object[] row = get(pid, combinedKey,  time, option, th);
+        Object[] row = get(pid, combinedKey, time, option, th);
         return row;
     }
 
@@ -335,7 +335,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         option.setIdxName(idxName);
         option.setTsName(tsName);
         option.setEt(et);
-        Object[] row = get(pid, combinedKey,  time, option, th);
+        Object[] row = get(pid, combinedKey, time, option, th);
         return row;
     }
 
@@ -413,7 +413,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         return key;
     }
 
-    private Object[]  get(int pid, String key, long time, GetOption getOption, TableHandler th) throws TabletException {
+    private Object[] get(int pid, String key, long time, GetOption getOption, TableHandler th) throws TabletException {
         key = validateKey(key);
         PartitionHandler ph = th.getHandler(pid);
         TabletServer ts = ph.getReadHandler(th.getReadStrategy());
@@ -428,7 +428,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         builder.setTs(time);
         builder.setEt(getOption.getEt());
         boolean isNewFormat = false;
-        if (th.getFormatVersion() == 1 ) {
+        if (th.getFormatVersion() == 1) {
             if (getOption.getProjection().size() > 0) {
                 schema = new ArrayList<>();
                 for (String name : getOption.getProjection()) {
@@ -447,7 +447,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (getOption.getIdxName() != null && !getOption.getIdxName().isEmpty()) {
             builder.setIdxName(getOption.getIdxName());
         }
-        if (getOption.getTsName()!= null && !getOption.getTsName().isEmpty()) {
+        if (getOption.getTsName() != null && !getOption.getTsName().isEmpty()) {
             builder.setTsName(getOption.getTsName());
         }
         Tablet.GetRequest request = builder.build();
@@ -458,13 +458,13 @@ public class TableSyncClientImpl implements TableSyncClient {
                 byte[] uncompressed = Compress.snappyUnCompress(response.getValue().toByteArray());
                 bs = ByteString.copyFrom(uncompressed);
             } else {
-                bs =  response.getValue();
+                bs = response.getValue();
             }
             if (isNewFormat) {
 
                 RowView rv = new RowView(schema);
                 return rv.read(bs.asReadOnlyByteBuffer().order(ByteOrder.LITTLE_ENDIAN));
-            }else {
+            } else {
                 if (getOption.getProjection().size() > 0) {
                     BitSet bset = new BitSet(th.getSchema().size());
                     List<Integer> pschema = new ArrayList<>();
@@ -481,10 +481,10 @@ public class TableSyncClientImpl implements TableSyncClient {
                         pschema.add(idx);
                     }
                     return RowCodec.decode(bs.asReadOnlyByteBuffer().order(ByteOrder.LITTLE_ENDIAN), schema, bset, pschema, maxIndex);
-                }else {
+                } else {
                     if (th.getSchemaMap().size() > 0) {
                         return RowCodec.decode(bs.asReadOnlyByteBuffer().order(ByteOrder.LITTLE_ENDIAN), schema, th.getSchemaMap().size());
-                    }else {
+                    } else {
                         return RowCodec.decode(bs.asReadOnlyByteBuffer().order(ByteOrder.LITTLE_ENDIAN), schema);
                     }
                 }
@@ -939,7 +939,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         scanOption.setLimit(limit);
         scanOption.setIdxName(idxName);
         scanOption.setTsName(tsName);
-        return scan(th.getTableInfo().getTid(), pid, combinedKey,  st, et,th, scanOption);
+        return scan(th.getTableInfo().getTid(), pid, combinedKey, st, et, th, scanOption);
     }
 
     @Override
@@ -1002,7 +1002,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         ScanOption scanOption = new ScanOption();
         scanOption.setIdxName(idxName);
         scanOption.setTsName(tsName);
-        return scan(tid, pid, combinedKey,st, et, th, scanOption);
+        return scan(tid, pid, combinedKey, st, et, th, scanOption);
     }
 
     @Override
@@ -1031,7 +1031,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         return scan(tid, pid, combinedKey, st, et, th, scanOption);
     }
 
-    private KvIterator scan(int tid, int pid, String key, long st, long et,TableHandler th, ScanOption option) throws TimeoutException, TabletException{
+    private KvIterator scan(int tid, int pid, String key, long st, long et, TableHandler th, ScanOption option) throws TimeoutException, TabletException {
         key = validateKey(key);
         PartitionHandler ph = th.getHandler(pid);
         TabletServer ts = ph.getReadHandler(th.getReadStrategy());
@@ -1043,7 +1043,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         List<ColumnDesc> schema = th.getSchema();
         boolean isNewFormat = false;
         // the new format version
-        if (th.getFormatVersion() == 1 ) {
+        if (th.getFormatVersion() == 1) {
             if (option.getProjection().size() > 0) {
                 schema = new ArrayList<>();
                 for (String name : option.getProjection()) {
@@ -1064,9 +1064,9 @@ public class TableSyncClientImpl implements TableSyncClient {
         builder.setLimit(option.getLimit());
         builder.setAtleast(option.getAtLeast());
         if (option.getIdxName() != null)
-        builder.setIdxName(option.getIdxName());
+            builder.setIdxName(option.getIdxName());
         if (option.getTsName() != null)
-        builder.setTsName(option.getTsName());
+            builder.setTsName(option.getTsName());
         builder.setEnableRemoveDuplicatedRecord(option.isRemoveDuplicateRecordByTime());
         Tablet.ScanRequest request = builder.build();
         Tablet.ScanResponse response = ts.scan(request);
@@ -1077,7 +1077,7 @@ public class TableSyncClientImpl implements TableSyncClient {
                     rit.setCompressType(th.getTableInfo().getCompressType());
                 }
                 return rit;
-            }else {
+            } else {
                 if (option.getProjection().size() > 0) {
                     BitSet bset = new BitSet(th.getSchema().size());
                     List<Integer> pschema = new ArrayList<>();
@@ -1099,7 +1099,7 @@ public class TableSyncClientImpl implements TableSyncClient {
                         it.setCompressType(th.getTableInfo().getCompressType());
                     }
                     return it;
-                }else {
+                } else {
                     DefaultKvIterator it = new DefaultKvIterator(response.getPairs(), th);
                     it.setCount(response.getCount());
                     if (th.getTableInfo().hasCompressType()) {
@@ -1204,7 +1204,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         return put(tid, pid, key, time, null, null, ByteBuffer.wrap(bytes), th);
     }
 
-    private boolean putRelationTable(int tid, int pid, ByteBuffer row, TableHandler th) throws TabletException {
+    private PutResult putRelationTable(int tid, int pid, ByteBuffer row, TableHandler th) throws TabletException {
         PartitionHandler ph = th.getHandler(pid);
         if (th.getTableInfo().hasCompressType() && th.getTableInfo().getCompressType() == NS.CompressType.kSnappy) {
             byte[] data = row.array();
@@ -1227,13 +1227,19 @@ public class TableSyncClientImpl implements TableSyncClient {
 
         Tablet.PutRequest request = builder.build();
         Tablet.PutResponse response = tablet.put(request);
-        if (response != null && response.getCode() == 0) {
-            return true;
-        }
         if (response != null) {
-            throw new TabletException(response.getCode(), response.getMsg());
+            if (response.getCode() == 0) {
+                if (!th.getAutoGenPkName().isEmpty() && response.hasAutoGenPk()) {
+                    return new PutResult(true, response.getAutoGenPk());
+                } else {
+                    return new PutResult(true);
+                }
+            } else {
+                throw new TabletException(response.getCode(), response.getMsg());
+            }
+        } else {
+            return new PutResult(false);
         }
-        return false;
     }
 
     private boolean putObjectStore(int tid, ByteBuffer row, long[] autoKey, TableHandler th) throws TabletException {
@@ -1348,7 +1354,7 @@ public class TableSyncClientImpl implements TableSyncClient {
     }
 
     @Override
-    public boolean put(String tname, Map<String, Object> row, WriteOption wo) throws TimeoutException, TabletException {
+    public PutResult put(String tname, Map<String, Object> row, WriteOption wo) throws TimeoutException, TabletException {
         TableHandler th = client.getHandler(tname);
         if (th == null) {
             throw new TabletException("no table with name " + tname);
@@ -1386,12 +1392,15 @@ public class TableSyncClientImpl implements TableSyncClient {
         buffer = RowBuilder.encode(row, schema);
 
         int pid = 0;
+        /*
+        TODO: for distributed
         if (indexName.isEmpty()) {
             String pk = RowCodecCommon.getPrimaryKey(row, th.getTableInfo().getColumnKeyList(), schema);
             pid = TableClientCommon.computePidByKey(pk, th.getPartitions().length);
         } else {
             pid = new Random().nextInt() % th.getPartitions().length;
         }
+        */
         return putRelationTable(th.getTableInfo().getTid(), pid, buffer, th);
 
     }

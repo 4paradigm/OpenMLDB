@@ -1,5 +1,23 @@
 package com._4paradigm.rtidb.client.ha.impl;
 
+import com._4paradigm.rtidb.client.TabletException;
+import com._4paradigm.rtidb.client.ha.*;
+import com._4paradigm.rtidb.ns.NS;
+import com._4paradigm.rtidb.ns.NS.PartitionMeta;
+import com._4paradigm.rtidb.ns.NS.TableInfo;
+import com._4paradigm.rtidb.ns.NS.TablePartition;
+import com._4paradigm.rtidb.type.Type;
+import com.google.protobuf.InvalidProtocolBufferException;
+import io.brpc.client.*;
+import org.apache.zookeeper.WatchedEvent;
+import org.apache.zookeeper.Watcher;
+import org.apache.zookeeper.ZooKeeper;
+import org.apache.zookeeper.data.Stat;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import rtidb.api.TabletServer;
+import rtidb.blobserver.BlobServer;
+
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
@@ -9,36 +27,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-
-import com._4paradigm.rtidb.ns.NS;
-import com._4paradigm.rtidb.type.Type;
-import org.apache.zookeeper.WatchedEvent;
-import org.apache.zookeeper.Watcher;
-import org.apache.zookeeper.ZooKeeper;
-import org.apache.zookeeper.data.Stat;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com._4paradigm.rtidb.client.TabletException;
-import com._4paradigm.rtidb.client.ha.NodeManager;
-import com._4paradigm.rtidb.client.ha.PartitionHandler;
-import com._4paradigm.rtidb.client.ha.RTIDBClient;
-import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
-import com._4paradigm.rtidb.client.ha.TableHandler;
-import com._4paradigm.rtidb.ns.NS.PartitionMeta;
-import com._4paradigm.rtidb.ns.NS.TableInfo;
-import com._4paradigm.rtidb.ns.NS.TablePartition;
-import com._4paradigm.rtidb.utils.Compress;
-import com.google.protobuf.InvalidProtocolBufferException;
-
-import io.brpc.client.BrpcChannelGroup;
-import io.brpc.client.EndPoint;
-import io.brpc.client.RpcBaseClient;
-import io.brpc.client.RpcClientOptions;
-import io.brpc.client.RpcProxy;
-import io.brpc.client.SingleEndpointRpcClient;
-import rtidb.api.TabletServer;
-import rtidb.blobserver.BlobServer;
 
 public class RTIDBClusterClient implements Watcher, RTIDBClient {
     private final static Logger logger = LoggerFactory.getLogger(RTIDBClusterClient.class);
@@ -261,7 +249,6 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
                         }
                         if (localIpAddr.contains(endpoint.getIp().toLowerCase())) {
                             ph.setFastTablet(ts);
-                            logger.info("find fast tablet[{}] server for table {} partition {} local read", endpoint, table.getName(), partition.getPid());
                         }
                     }
                 }
@@ -283,7 +270,7 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
                         EndPoint endPoint = new EndPoint(blobs.get(0));
                         BrpcChannelGroup bcg = nodeManager.getChannel(endPoint);
                         if (bcg == null) {
-                            logger.warn("no alive endpoint for table {}, except endpoint {}", table.getName(),
+                            logger.warn("no alive endpoint for table {}, expect endpoint {}", table.getName(),
                                     endPoint);
                         } else {
                             SingleEndpointRpcClient client = new SingleEndpointRpcClient(baseClient);

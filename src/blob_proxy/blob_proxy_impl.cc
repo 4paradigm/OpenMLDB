@@ -24,7 +24,7 @@ DECLARE_int32(zk_keep_alive_check_interval);
 namespace rtidb {
 namespace blobproxy {
 BlobProxyImpl::BlobProxyImpl()
-    : mu_(), zk_client_(NULL), server_(NULL), client_(NULL) {}
+    : mu_(), server_(NULL), client_(NULL) {}
 
 BlobProxyImpl::~BlobProxyImpl() {
     if (client_ != NULL) {

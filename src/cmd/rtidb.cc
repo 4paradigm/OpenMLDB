@@ -62,7 +62,7 @@ DEFINE_string(role, "tablet | nameserver | client | ns_client",
 DEFINE_string(cmd, "", "Set the command");
 DEFINE_bool(interactive, true, "Set the interactive");
 
-DEFINE_string(log_dir, "", "Config the log dir");
+DECLARE_string(log_dir);
 DEFINE_int32(log_file_size, 1024, "Config the log size in MB");
 DEFINE_int32(log_file_count, 24, "Config the log count");
 DEFINE_string(log_level, "debug", "Set the rtidb log level, eg: debug or info");
@@ -848,7 +848,8 @@ void PutRelational(
         ::snappy::Compress(value.c_str(), value.length(), &compressed);
         value = compressed;
     }
-    bool ok = tablet_client->Put(tid, pid, value, msg);
+    int64_t auto_gen_pk = 0;
+    bool ok = tablet_client->Put(tid, pid, value, &auto_gen_pk, &msg);
     if (!ok) {
         printf("put failed, msg: %s\n", msg.c_str());
     } else {

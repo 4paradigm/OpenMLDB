@@ -34,7 +34,6 @@ class BlobProxyImpl : public ::rtidb::blobproxy::BlobProxy {
 
  private:
     std::mutex mu_;
-    ZkClient* zk_client_;
     brpc::Server* server_;
     BaseClient* client_;
 };

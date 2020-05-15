@@ -101,6 +101,19 @@ class ReadOption:
     self.read_filter = []
     self.col_set = set()
 
+class PutResult:
+  def __init__(self, data):
+    self.__data = data;
+    self.__success = True if data.code == 0 else False;
+    self.__auto_gen_pk = data.auto_gen_pk;
+  def success(self):
+    return self.__success;
+  def get_auto_gen_pk(self):
+    if not self.__data.has_auto_gen_pk:
+      raise Exception(-1, "don't have auto_gen_pk");    
+    else:
+      return self.__data.auto_gen_pk;
+
 class RtidbResult:
   def __init__(self, data):
     self.__data = data
