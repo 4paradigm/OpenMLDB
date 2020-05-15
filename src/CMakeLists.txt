@@ -25,19 +25,19 @@ add_library(replica STATIC replica/replicate_node.cc
                            replica/log_replicator.cc)
 
 add_executable(strings_test base/strings_test.cc)
-target_link_libraries(strings_test gtest pthread)
+target_link_libraries(strings_test gtest ${BIN_LIBS})
 
 add_executable(file_util_test base/file_util_test.cc)
-target_link_libraries(file_util_test gtest pthread common)
+target_link_libraries(file_util_test gtest ${BIN_LIBS})
 
 add_executable(slice_test base/slice_test.cc)
 target_link_libraries(slice_test gtest pthread)
 
 add_executable(zk_test zk/zk_client_test.cc)
-target_link_libraries(zk_test gtest zk_client zookeeper_mt pthread common)
+target_link_libraries(zk_test gtest glog gflags unwind zk_client zookeeper_mt pthread common )
 
 add_executable(dist_lock_test zk/dist_lock_test.cc)
-target_link_libraries(dist_lock_test gtest zk_client zookeeper_mt pthread common)
+target_link_libraries(dist_lock_test gtest zk_client glog gflags unwind zookeeper_mt pthread common )
 
 add_executable(replica_test replica/log_replicator_test.cc flags.cc base/status.cc)
 target_link_libraries(replica_test gtest ${BIN_LIBS})
@@ -52,7 +52,7 @@ add_executable(schema_codec_test codec/schema_codec_test.cc proto/tablet.pb.cc p
 target_link_libraries(schema_codec_test gtest pthread protobuf)
 
 add_executable(count_down_latch_test base/count_down_latch_test.cc)
-target_link_libraries(count_down_latch_test common gtest pthread)
+target_link_libraries(count_down_latch_test common gtest glog pthread)
 
 add_executable(ringqueue_test base/ringqueue_test.cc)
 target_link_libraries(ringqueue_test gtest pthread)
@@ -130,7 +130,10 @@ add_executable(memcomparable_format_test codec/memcomparable_format_test.cc)
 target_link_libraries(memcomparable_format_test gtest pthread)
 
 add_executable(field_codec_test codec/field_codec_test.cc)
-target_link_libraries(field_codec_test gtest pthread common)
+target_link_libraries(field_codec_test  glog gtest gflags unwind pthread common)
+
+add_executable(glog_wapper_test base/glog_wapper_test.cc)
+target_link_libraries(glog_wapper_test glog gtest gflags unwind pthread common)
 
 add_executable(rtidb cmd/rtidb.cc base/status.cc proto/client.pb.cc base/linenoise.cc)
 

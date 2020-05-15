@@ -6,11 +6,9 @@
 #include "storage/table.h"
 #include <algorithm>
 #include <utility>
-#include "logging.h"  // NOLINT
+#include "base/glog_wapper.h"  // NOLINT
 
-using ::baidu::common::DEBUG;
-using ::baidu::common::INFO;
-using ::baidu::common::WARNING;
+
 
 namespace rtidb {
 namespace storage {

@@ -795,9 +795,9 @@ class TestCaseBase(unittest.TestCase):
     def get_task_dict_by_opid(self, tname, opid):
         time.sleep(1)
         task_dict = collections.OrderedDict()
-        cmd = "cat {}/info.log |grep -a -A 10000 '{}'|grep -a \"op_id\[{}\]\"|grep task_type".format(
+        cmd = "cat {}/warning.log |grep -a -A 10000 '{}'|grep -a \"op_id\[{}\]\"|grep task_type".format(
             self.ns_leader_path, tname, opid) \
-              + "|awk -F '\\\\[' '{print $4\"]\"$5\"]\"$6}'" \
+              + "|awk -F '\\\\[' '{print $3\"]\"$4\"]\"$5}'" \
                 "|awk -F '\\\\]' '{print $1\",\"$3\",\"$5}'"
         infoLogger.info(cmd)
         rs = utils.exe_shell(cmd).split('\n')

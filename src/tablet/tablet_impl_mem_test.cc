@@ -9,7 +9,7 @@
 #include "base/kv_iterator.h"
 #include "config.h" // NOLINT
 #include "gtest/gtest.h"
-#include "logging.h" // NOLINT
+#include "base/glog_wapper.h" // NOLINT
 #include "proto/tablet.pb.h"
 #include "tablet/tablet_impl.h"
 #include "timer.h" // NOLINT
@@ -120,7 +120,7 @@ int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    ::baidu::common::SetLogLevel(::baidu::common::INFO);
+    ::rtidb::base::SetLogLevel(INFO);
     FLAGS_db_root_path = "/tmp/" + ::rtidb::tablet::GenRand();
     return RUN_ALL_TESTS();
 }

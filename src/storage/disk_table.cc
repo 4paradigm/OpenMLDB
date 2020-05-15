@@ -7,11 +7,9 @@
 #include <utility>
 #include "base/file_util.h"
 #include "base/hash.h"
-#include "logging.h" // NOLINT
+#include "base/glog_wapper.h" // NOLINT
 
-using ::baidu::common::DEBUG;
-using ::baidu::common::INFO;
-using ::baidu::common::WARNING;
+
 
 DECLARE_bool(disable_wal);
 DECLARE_uint32(max_traverse_cnt);
@@ -157,7 +155,7 @@ bool DiskTable::InitColumnFamilyDescriptor() {
         }
         cf_ds_.push_back(
             rocksdb::ColumnFamilyDescriptor(index_def->GetName(), cfo));
-        PDLOG(DEBUG, "add cf_name %s. tid %u pid %u",
+        DEBUGLOG("add cf_name %s. tid %u pid %u",
               index_def->GetName().c_str(), id_, pid_);
     }
     return true;
@@ -200,7 +198,7 @@ bool DiskTable::Put(const std::string& pk, uint64_t time, const char* data,
         offset_.fetch_add(1, std::memory_order_relaxed);
         return true;
     } else {
-        PDLOG(DEBUG, "Put failed. tid %u pid %u msg %s", id_, pid_,
+        DEBUGLOG("Put failed. tid %u pid %u msg %s", id_, pid_,
               s.ToString().c_str());
         return false;
     }
@@ -229,7 +227,7 @@ bool DiskTable::Put(uint64_t time, const std::string& value,
         offset_.fetch_add(1, std::memory_order_relaxed);
         return true;
     } else {
-        PDLOG(DEBUG, "Put failed. tid %u pid %u msg %s", id_, pid_,
+        DEBUGLOG("Put failed. tid %u pid %u msg %s", id_, pid_,
               s.ToString().c_str());
         return false;
     }
@@ -272,7 +270,7 @@ bool DiskTable::Put(const Dimensions& dimensions,
     if (s.ok()) {
         offset_.fetch_add(1, std::memory_order_relaxed);
     } else {
-        PDLOG(DEBUG, "Put failed. tid %u pid %u msg %s", id_, pid_,
+        DEBUGLOG("Put failed. tid %u pid %u msg %s", id_, pid_,
               s.ToString().c_str());
     }
     return s.ok();
@@ -300,7 +298,7 @@ bool DiskTable::Delete(const std::string& pk, uint32_t idx) {
         offset_.fetch_add(1, std::memory_order_relaxed);
         return true;
     } else {
-        PDLOG(DEBUG, "Delete failed. tid %u pid %u msg %s", id_, pid_,
+        DEBUGLOG("Delete failed. tid %u pid %u msg %s", id_, pid_,
               s.ToString().c_str());
         return false;
     }
@@ -384,7 +382,7 @@ bool DiskTable::LoadTable() {
     options_.create_missing_column_families = false;
     rocksdb::Status s =
         rocksdb::DB::Open(options_, path, cf_ds_, &cf_hs_, &db_);
-    PDLOG(DEBUG, "Load DB. tid %u pid %u ColumnFamilyHandle size %u,", id_,
+    DEBUGLOG("Load DB. tid %u pid %u ColumnFamilyHandle size %u,", id_,
           pid_, GetIdxCnt());
     if (!s.ok()) {
         PDLOG(WARNING, "Load DB failed. tid %u pid %u msg %s", id_, pid_,
