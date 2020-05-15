@@ -38,9 +38,6 @@ inline void SetLogFile(std::string path) {
     std::string warning_log_path = path + ".warning.log.";
     ::google::SetLogDestination(::google::INFO, info_log_path.c_str());
     ::google::SetLogDestination(::google::WARNING, warning_log_path.c_str());
-    FLAGS_logbufsecs = 0;
-    FLAGS_max_log_size = 100;
-    FLAGS_stop_logging_if_full_disk = true;
 }
 
 }  // namespace base
