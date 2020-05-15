@@ -159,7 +159,7 @@ class TestCaseBase(unittest.TestCase):
             if 'rtidb' not in rs:
                 need_start = True
                 time.sleep(1)
-                subprocess.Popen(args, stdout=open('{}/warning.log'.format(client_path), 'a'),
+                subprocess.Popen(args, stdout=open('{}/info.log'.format(client_path), 'a'),
                                  stderr=open('{}/warning.log'.format(client_path), 'a'))
             else:
                 time.sleep(1)
