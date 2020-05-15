@@ -233,6 +233,22 @@ class RowCodec {
                 if (ret == 0) {
                     col.assign(ch, len);
                 }
+            } else if (type == ::rtidb::type::kDate) {
+                uint32_t year = 0;
+                uint32_t month = 0;
+                uint32_t day = 0;
+                rv.GetDate(i, &year, &month, &day);
+                std::stringstream ss;
+                ss << year << "-";
+                if (month < 10) {
+                    ss << "0";
+                }
+                ss << month << "-";
+                if (day < 10) {
+                    ss << "0";
+                }
+                ss << day;
+                col = ss.str();
             }
             value_vec->emplace_back(std::move(col));
         }
