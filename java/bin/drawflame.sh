@@ -28,6 +28,6 @@ fi
 cat ${LOG_FILE_NAME} | grep "ConsoleOutputReporter - Stacktrace:" | awk '{print substr($0,37)}' > ${LOG_FILE_NAME}.json
 python ${SCRIPT_DIR}/flame/stackcollapse.py  -i ${LOG_FILE_NAME}.json > ${LOG_FILE_NAME}.folded
 ${SCRIPT_DIR}/flame/flamegraph.pl  ${LOG_FILE_NAME}.folded > ${LOG_FILE_NAME}.svg
-
+rm ${LOG_FILE_NAME}.folded ${LOG_FILE_NAME}.json
 echo "Output flamegraph to $(pwd)/${LOG_FILE_NAME}.svg"
 

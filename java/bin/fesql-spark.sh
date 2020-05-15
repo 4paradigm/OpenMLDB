@@ -15,7 +15,6 @@ while [[ ${i} -le $# ]]; do
     eval key=\$$i
     let i++
     eval value=\$$i
-    echo $key
     case ${key} in
         -h|--help)       ;;
         --spark-submit)  USE_SPARK_SUBMIT=1;;
@@ -53,7 +52,7 @@ if [[ ${USE_SPARK_SUBMIT} -eq 0 ]]; then
     JAVA_ARGS=""
     JAVA_CP="${FESQL_SPARK_JAR}"
     if [[ ${JVM_PROFILER_JAR} != "" ]]; then
-        JAVA_CP+=",${JVM_PROFILTER_JAR}"
+        JAVA_CP+=":${JVM_PROFILER_JAR}"
         JAVA_ARGS+=" -javaagent:${JVM_PROFILER_JAR}=sampleInterval=50"
     fi
 
