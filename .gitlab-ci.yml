@@ -233,8 +233,6 @@ c++_ut_pz:
         - echo '\n#--file_compression=pz\n' >> release/conf/tablet.flags
         - source /root/.bashrc && bash steps/compile.sh
         - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/ut.sh
-        - mkdir core-dumps && mv core* core-dumps/ && tar zcf core-dumps.tar.gz core-dumps
-        - curl -T core-dumps.tar.gz ftp://172.27.12.154/pub/team_hpc/pz_rtidb/
     artifacts:
       reports:
           junit:
