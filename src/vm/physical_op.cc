@@ -129,11 +129,11 @@ PhysicalTableProjectNode* PhysicalTableProjectNode::CastFrom(
     PhysicalOpNode* node) {
     return dynamic_cast<PhysicalTableProjectNode*>(node);
 }
-PhysicalColumnProjectNode* PhysicalColumnProjectNode::CastFrom(
+PhysicalSimpleProjectNode* PhysicalSimpleProjectNode::CastFrom(
     PhysicalOpNode* node) {
-    return dynamic_cast<PhysicalColumnProjectNode*>(node);
+    return dynamic_cast<PhysicalSimpleProjectNode*>(node);
 }
-void PhysicalColumnProjectNode::Print(std::ostream& output,
+void PhysicalSimpleProjectNode::Print(std::ostream& output,
                                       const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "(sources=(";
@@ -147,10 +147,13 @@ void PhysicalColumnProjectNode::Print(std::ostream& output,
         }
         output << "[" << i << "]" << column_sources[i].ToString();
     }
-    output << ")";
     if (limit_cnt_ > 0) {
         output << ", limit=" << limit_cnt_;
     }
+    output << ")";
+
+    output << "\n";
+    PrintChildren(output, tab);
 }
 PhysicalWindowAggrerationNode* PhysicalWindowAggrerationNode::CastFrom(
     PhysicalOpNode* node) {

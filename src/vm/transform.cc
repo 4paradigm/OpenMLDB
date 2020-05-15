@@ -910,6 +910,15 @@ void BatchModeTransformer::ApplyPasses(PhysicalOpNode* node,
     auto physical_plan = node;
     for (auto type : passes) {
         switch (type) {
+            case kPassColumnProjectOptimized: {
+                ColumnProjectOptimized pass(node_manager_, db_, catalog_);
+                PhysicalOpNode* new_op = nullptr;
+                if (pass.Apply(physical_plan, &new_op)) {
+                    physical_plan = new_op;
+                }
+                break;
+            }
+
             case kPassFilterOptimized: {
                 ConditionOptimized pass(node_manager_, db_, catalog_);
                 PhysicalOpNode* new_op = nullptr;
@@ -1830,6 +1839,7 @@ bool LimitOptimized::ApplyLimitCnt(PhysicalOpNode* node, int32_t limit_cnt) {
         if (false == ApplyLimitCnt(node->producers()[0], limit_cnt)) {
             if (0 == node->GetLimitCnt() || node->GetLimitCnt() > limit_cnt) {
                 node->SetLimitCnt(limit_cnt);
+                return true;
             }
         } else {
             return true;
@@ -2265,7 +2275,7 @@ bool ColumnProjectOptimized::Transform(PhysicalOpNode* in,
                         }
                     }
                     if (all_has_source) {
-                        auto columm_project_op = new PhysicalColumnProjectNode(
+                        auto columm_project_op = new PhysicalSimpleProjectNode(
                             in->producers()[0], project_op->output_schema_,
                             project_op->sources_);
                         *output = columm_project_op;

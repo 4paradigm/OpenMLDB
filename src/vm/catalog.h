@@ -60,10 +60,10 @@ struct ColumnSource {
     const std::string ToString() const {
         switch (type_) {
             case kSourceColumn:
-                return "->Column:" + std::to_string(schema_idx_) + ":" +
-                       std::to_string(column_idx_);
+                return "<-[" + std::to_string(schema_idx_) + ":" +
+                       std::to_string(column_idx_) + "]";
             case kSourceConst:
-                return "->Value:" + const_value_.GetExprString();
+                return "<-" + const_value_.GetExprString();
             case kSourceNone:
                 return "->None";
         }

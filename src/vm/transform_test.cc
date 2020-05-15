@@ -711,6 +711,34 @@ INSTANTIATE_TEST_CASE_P(
             "range=(col5, -3, 0))\n"
             "      DATA_PROVIDER(table=t3)\n"
             "    DATA_PROVIDER(type=Partition, table=t1, index=index12)")));
+
+INSTANTIATE_TEST_CASE_P(
+    SimpleProjectOptimized, TransformPassOptimizedTest,
+    testing::Values(
+        // SIMPLE SELECT COLUMNS
+        std::make_pair("SELECT COL0, COL1, COL2, COL6 FROM t1 LIMIT 10;",
+                       "LIMIT(limit=10, optimized)\n"
+                       "  SIMPLE_PROJECT(sources=([0]<-[0:0], [1]<-[0:1], "
+                       "[2]<-[0:2], [3]<-[0:6], limit=10)\n"
+                       "    DATA_PROVIDER(table=t1)"),
+        // SIMPLE SELECT COLUMNS and CONST VALUES
+        std::make_pair(
+            "SELECT c0 as col0, c1 as col1, c2 as col2, 0.0f as col3, 0.0 as "
+            "col4, c5 as col5, c6 as col6 from tb LIMIT 10;\n",
+            "LIMIT(limit=10, optimized)\n"
+            "  SIMPLE_PROJECT(sources=([0]<-[0:0], [1]<-[0:1], [2]<-[0:2], "
+            "[3]<-0.000000, [4]<-0.000000, [5]<-[0:5], [6]<-[0:6], limit=10)\n"
+            "    DATA_PROVIDER(table=tb)"),
+        // SIMPLE SELECT COLUMNS and CONST VALUES
+        std::make_pair(
+            "SELECT col3+col4 as col01 from (select c0 as col0, c1 as col1, c2 "
+            "as col2, 0.0f as col3, 0.0 as "
+            "col4, c5 as col5, c6 as col6 from tb) LIMIT 10;\n",
+            "LIMIT(limit=10, optimized)\n"
+            "  PROJECT(type=TableProject)\n"
+            "    SIMPLE_PROJECT(sources=([0]<-[0:0], [1]<-[0:1], [2]<-[0:2], "
+            "[3]<-0.000000, [4]<-0.000000, [5]<-[0:5], [6]<-[0:6], limit=10)\n"
+            "      DATA_PROVIDER(table=tb)")));
 TEST_P(TransformPassOptimizedTest, pass_optimzied_test) {
     fesql::type::TableDef table_def;
     BuildTableDef(table_def);
@@ -755,6 +783,15 @@ TEST_P(TransformPassOptimizedTest, pass_optimzied_test) {
         index->set_second_key("col5");
         std::shared_ptr<::fesql::storage::Table> table(
             new ::fesql::storage::Table(3, 1, table_def));
+        AddTable(catalog, table_def, table);
+    }
+
+    {
+        fesql::type::TableDef table_def;
+        BuildTableA(table_def);
+        table_def.set_name("tb");
+        std::shared_ptr<::fesql::storage::Table> table(
+            new fesql::storage::Table(4, 1, table_def));
         AddTable(catalog, table_def, table);
     }
     auto in_out = GetParam();

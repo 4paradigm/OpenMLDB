@@ -29,7 +29,7 @@ enum PhysicalOpType {
     kPhysicalOpAggrerate,
     kPhysicalOpWindowAgg,
     kPhysicalOpProject,
-    kPhysicalOpColumnProject,
+    kPhysicalOpSimpleProject,
     kPhysicalOpLimit,
     kPhysicalOpRename,
     kPhysicalOpDistinct,
@@ -56,6 +56,8 @@ inline const std::string PhysicalOpTypeName(const PhysicalOpType &type) {
             return "FILTER_BY";
         case kPhysicalOpProject:
             return "PROJECT";
+        case kPhysicalOpSimpleProject:
+            return "SIMPLE_PROJECT";
         case kPhysicalOpAggrerate:
             return "AGGRERATE";
         case kPhysicalOpLimit:
@@ -479,18 +481,18 @@ class PhysicalTableProjectNode : public PhysicalProjectNode {
     static PhysicalTableProjectNode *CastFrom(PhysicalOpNode *node);
 };
 
-class PhysicalColumnProjectNode : public PhysicalUnaryNode {
+class PhysicalSimpleProjectNode : public PhysicalUnaryNode {
  public:
-    PhysicalColumnProjectNode(PhysicalOpNode *node, const Schema &schema,
+    PhysicalSimpleProjectNode(PhysicalOpNode *node, const Schema &schema,
                               const ColumnSourceList &sources)
-        : PhysicalUnaryNode(node, kPhysicalOpColumnProject, false, true),
+        : PhysicalUnaryNode(node, kPhysicalOpSimpleProject, false, false),
           column_sources(sources) {
         output_type_ = node->output_type_;
         output_schema_ = schema;
     }
-    virtual ~PhysicalColumnProjectNode() {}
+    virtual ~PhysicalSimpleProjectNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
-    static PhysicalColumnProjectNode *CastFrom(PhysicalOpNode *node);
+    static PhysicalSimpleProjectNode *CastFrom(PhysicalOpNode *node);
     const ColumnSourceList column_sources;
 };
 class PhysicalAggrerationNode : public PhysicalProjectNode {
