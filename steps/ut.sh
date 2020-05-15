@@ -19,13 +19,8 @@ do
     echo "$line result code is: $RET"
     if [ $RET -ne 0 ];then 
         echo $RET > $TMPFILE
-        mv core.* core-dumps/ -f
     fi 
 done
-tar zcf core-dumps.tar.gz core-dumps
-echo "core-dumps saved"
-curl -T core-dumps.tar.gz ftp://172.27.12.154/pub/team_hpc/pz_rtidb/
-echo "core-dumps uploaded"
 code=`cat $TMPFILE`
 echo "code result: $code"
 rm $TMPFILE
