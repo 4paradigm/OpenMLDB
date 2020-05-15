@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.13)
 
 if (POLICY CMP0068)
     cmake_policy(SET CMP0068 NEW)
@@ -154,7 +154,6 @@ if (COVERAGE_ENABLE)
     endif ()
 endif ()
 
-message(${CMAKE_INSTALL_PREFIX})
 set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/release)
 install(TARGETS ${VM_LIBS}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
