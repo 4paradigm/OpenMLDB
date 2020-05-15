@@ -389,11 +389,11 @@ void BuildT2Buf(int8_t** buf, uint32_t* size) {
     *size = total_size;
 }
 
-void CheckFnLetBuilder(
-    const std::vector<std::pair<const std::string, const vm::Schema*>>&
-        name_schemas,
-    std::string udf_str, std::string sql, int8_t** row_ptrs, int8_t* window_ptr,
-    int32_t* row_sizes, vm::Schema* output_schema, int8_t** output) {
+void CheckFnLetBuilder(const vm::SchemaSourceList& name_schemas,
+                       std::string udf_str, std::string sql, int8_t** row_ptrs,
+                       int8_t* window_ptr, int32_t* row_sizes,
+                       vm::Schema* output_schema,
+                       vm::ColumnSourceList* column_sources, int8_t** output) {
     // Create an LLJIT instance.
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_project", *ctx);
@@ -415,7 +415,7 @@ void CheckFnLetBuilder(
 
     RowFnLetIRBuilder ir_builder(name_schemas, m.get());
     bool ok = ir_builder.Build("test_at_fn", pp_node_ptr->GetProjects(),
-                               output_schema);
+                               output_schema, column_sources);
     ASSERT_TRUE(ok);
     LOG(INFO) << "fn let ir build ok";
     m->print(::llvm::errs(), NULL);
@@ -435,15 +435,25 @@ void CheckFnLetBuilder(
     int32_t ret2 = decode(row_ptrs, window_ptr, row_sizes, output);
     ASSERT_EQ(0, ret2);
 }
+
 void CheckFnLetBuilder(type::TableDef& table, std::string udf_str,  // NOLINT
                        std::string sql, int8_t** row_ptrs, int8_t* window_ptr,
                        int32_t* row_sizes, vm::Schema* output_schema,
                        int8_t** output) {
-    std::vector<std::pair<const std::string, const vm::Schema*>>
-        name_schema_list;
-    name_schema_list.push_back(std::make_pair(table.name(), &table.columns()));
+    vm::SchemaSourceList name_schema_list;
+    name_schema_list.AddSchemaSource(table.name(), &table.columns());
+    vm::ColumnSourceList column_sources;
     CheckFnLetBuilder(name_schema_list, udf_str, sql, row_ptrs, window_ptr,
-                      row_sizes, output_schema, output);
+                      row_sizes, output_schema, &column_sources, output);
+}
+void CheckFnLetBuilder(type::TableDef& table, std::string udf_str,  // NOLINT
+                       std::string sql, int8_t** row_ptrs, int8_t* window_ptr,
+                       int32_t* row_sizes, vm::Schema* output_schema,
+                       vm::ColumnSourceList* column_sources, int8_t** output) {
+    vm::SchemaSourceList name_schema_list;
+    name_schema_list.AddSchemaSource(table.name(), &table.columns());
+    CheckFnLetBuilder(name_schema_list, udf_str, sql, row_ptrs, window_ptr,
+                      row_sizes, output_schema, column_sources, output);
 }
 
 TEST_F(FnLetIRBuilderTest, test_primary) {
@@ -457,10 +467,24 @@ TEST_F(FnLetIRBuilderTest, test_primary) {
     int8_t* window_ptr = nullptr;
     int32_t row_sizes[1] = {static_cast<int32_t>(size)};
     vm::Schema schema;
+    vm::ColumnSourceList column_sources;
     CheckFnLetBuilder(table_, "", sql, row_ptrs, window_ptr, row_sizes, &schema,
-                      &output);
+                      &column_sources, &output);
     uint32_t out_size = *reinterpret_cast<uint32_t*>(output + 2);
     ASSERT_EQ(4, schema.size());
+    ASSERT_EQ(4, column_sources.size());
+
+    ASSERT_TRUE(column_sources[0].has_source_);
+    ASSERT_EQ(0, column_sources[0].column_idx_);
+    ASSERT_EQ(0, column_sources[0].schema_idx_);
+
+    ASSERT_TRUE(column_sources[1].has_source_);
+    ASSERT_EQ(5, column_sources[1].column_idx_);
+    ASSERT_EQ(0, column_sources[1].schema_idx_);
+
+    ASSERT_FALSE(column_sources[2].has_source_);
+    ASSERT_FALSE(column_sources[3].has_source_);
+
     ASSERT_EQ(out_size, 27u);
     ASSERT_EQ(32u, *reinterpret_cast<uint32_t*>(output + 7));
     ASSERT_EQ(1.0, *reinterpret_cast<double*>(output + 11));
@@ -481,12 +505,9 @@ TEST_F(FnLetIRBuilderTest, test_multi_row_simple_query) {
 
     // Create the add1 function entry and insert this entry into module M. The
     // function will have a return type of "int" and take an argument of "int".
-    std::vector<std::pair<const std::string, const vm::Schema*>>
-        name_schema_list;
-    name_schema_list.push_back(
-        std::make_pair(table_.name(), &table_.columns()));
-    name_schema_list.push_back(
-        std::make_pair(table2_.name(), &table2_.columns()));
+    vm::SchemaSourceList name_schema_list;
+    name_schema_list.AddSchemaSource(table_.name(), &table_.columns());
+    name_schema_list.AddSchemaSource(table2_.name(), &table2_.columns());
     int8_t* buf = NULL;
     int8_t* buf2 = NULL;
     uint32_t size = 0;
@@ -500,8 +521,10 @@ TEST_F(FnLetIRBuilderTest, test_multi_row_simple_query) {
     int32_t row_sizes[2] = {static_cast<int32_t>(size),
                             static_cast<int32_t>(size2)};
     vm::Schema schema;
+    vm::ColumnSourceList column_sources;
     CheckFnLetBuilder(name_schema_list, "", sql, row_ptrs, window_ptr,
-                      row_sizes, &schema, &output);
+                      row_sizes, &schema, &column_sources, &output);
+
     ASSERT_EQ(4, schema.size());
     uint32_t out_size = *reinterpret_cast<uint32_t*>(output + 2);
     ASSERT_EQ(out_size, 29u);
@@ -707,15 +730,47 @@ TEST_F(FnLetIRBuilderTest, test_join_window_project_mix) {
     int32_t* row_sizes = window_t12.back().GetRowSizes();
     vm::Schema schema;
 
-    std::vector<std::pair<const std::string, const vm::Schema*>>
-        name_schema_list;
-    name_schema_list.push_back(
-        std::make_pair(table_.name(), &table_.columns()));
-    name_schema_list.push_back(
-        std::make_pair(table2_.name(), &table2_.columns()));
+    vm::SchemaSourceList name_schema_list;
+    name_schema_list.AddSchemaSource(table_.name(), &table_.columns());
+    name_schema_list.AddSchemaSource(table2_.name(), &table2_.columns());
 
+    vm::ColumnSourceList column_sources;
     CheckFnLetBuilder(name_schema_list, "", sql, row_ptrs, window_ptr,
-                      row_sizes, &schema, &output);
+                      row_sizes, &schema, &column_sources, &output);
+
+    ASSERT_EQ(8u, column_sources.size());
+    {
+        // t1.col1
+        ASSERT_TRUE(column_sources[0].has_source_);
+        ASSERT_EQ(0, column_sources[0].column_idx_);
+        ASSERT_EQ(0, column_sources[0].schema_idx_);
+    }
+
+    // sum(t1.col1)
+    { ASSERT_FALSE(column_sources[1].has_source_); }
+
+    // t1.col3
+    {
+        ASSERT_TRUE(column_sources[2].has_source_);
+        ASSERT_EQ(2, column_sources[2].column_idx_);
+        ASSERT_EQ(0, column_sources[2].schema_idx_);
+    }
+    // sum(t1.col3)
+    { ASSERT_FALSE(column_sources[3].has_source_); }
+
+    // t2.col4
+    {
+        ASSERT_TRUE(column_sources[4].has_source_);
+        ASSERT_EQ(3, column_sources[4].column_idx_);
+        ASSERT_EQ(1, column_sources[4].schema_idx_);
+    }
+    // sum(t2.col4)
+    { ASSERT_FALSE(column_sources[5].has_source_); }
+    // sum(t2.col2)
+    { ASSERT_FALSE(column_sources[6].has_source_); }
+    // sum(t1.col5)
+    { ASSERT_FALSE(column_sources[7].has_source_); }
+
     // t1.col1
     ASSERT_EQ(11111u, *reinterpret_cast<uint32_t*>(output + 7));
     // sum(t1.col1)

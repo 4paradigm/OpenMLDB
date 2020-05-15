@@ -11,12 +11,12 @@
 namespace fesql {
 namespace vm {
 vm::SchemasContext::SchemasContext(
-    const vm::NameSchemaList& table_schema_list) {
+    const vm::SchemaSourceList& table_schema_list) {
     uint32_t idx = 0;
-    for (auto iter = table_schema_list.cbegin();
-         iter != table_schema_list.cend(); iter++) {
-        RowSchemaInfo info = {
-            .idx_ = idx, .table_name_ = iter->first, .schema_ = iter->second};
+    for (auto iter = table_schema_list.schema_source_list_.cbegin();
+         iter != table_schema_list.schema_source_list_.cend(); iter++) {
+        RowSchemaInfo info(idx, iter->table_name_, iter->schema_,
+                           iter->sources_);
         row_schema_info_list_.push_back(info);
         // init table -> context idx map
         if (!info.table_name_.empty()) {
@@ -216,6 +216,30 @@ bool SchemasContext::ColumnRefResolved(const std::string& relation_name,
         *info = &row_schema_info_list_[col_context_id];
         return true;
     }
+}
+bool SchemasContext::ColumnSourceResolved(const std::string& relation_name,
+                                          const std::string& col_name,
+                                          vm::ColumnSource* source) const {
+    const RowSchemaInfo* row_schema_info;
+    if (!ColumnRefResolved(relation_name, col_name, &row_schema_info)) {
+        return false;
+    }
+    auto schema = row_schema_info->schema_;
+    int32_t column_idx = -1;
+    for (int i = 0; i < schema->size(); ++i) {
+        if (schema->Get(i).name() == col_name) {
+            column_idx = i;
+            break;
+        }
+    }
+
+    if (-1 == column_idx) {
+        return false;
+    }
+    source->column_idx_ = column_idx;
+    source->has_source_ = true;
+    source->schema_idx_ = row_schema_info->idx_;
+    return true;
 }
 
 }  // namespace vm

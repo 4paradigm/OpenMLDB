@@ -21,14 +21,14 @@ int CoreAPI::ResolveColumnIndex(fesql::vm::PhysicalOpNode* node,
     const RowSchemaInfo* info;
     auto column_expr = dynamic_cast<const node::ColumnRefNode*>(expr);
     if (!schema_ctx.ColumnRefResolved(column_expr->GetRelationName(),
-            column_expr->GetColumnName(), &info)) {
+                                      column_expr->GetColumnName(), &info)) {
         LOG(WARNING) << "Resolve column expression failed";
         return -1;
     }
 
     int offset = 0;
     for (int i = 0; i < info->idx_; ++i) {
-        offset += schema_slices[i].second->size();
+        offset += schema_slices.GetSchemaSlice(i)->size();
     }
 
     auto schema = info->schema_;

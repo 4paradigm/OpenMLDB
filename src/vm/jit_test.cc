@@ -85,11 +85,9 @@ TEST_F(JITTest, test_release_module) {
         ::llvm::Value *ret =
             builder.CreateCall(callee, ::llvm::ArrayRef<Value *>{Add});
         builder.CreateRet(ret);
-        ::llvm::Error e =
-            jit->AddIRModule(jd,
-                             std::move(::llvm::orc::ThreadSafeModule(
-                                 std::move(m), std::move(ct2))),
-                             m1);
+        ::llvm::Error e = jit->AddIRModule(
+            jd, ::llvm::orc::ThreadSafeModule(std::move(m), std::move(ct2)),
+            m1);
         jit->AddSymbol(jd, "test_fn", reinterpret_cast<void *>(&test_fn));
         if (e) {
             ASSERT_TRUE(false);
@@ -129,11 +127,9 @@ TEST_F(JITTest, test_udf_invoke_module) {
         ::llvm::Value *ret =
             builder.CreateCall(callee, ::llvm::ArrayRef<Value *>{Add});
         builder.CreateRet(ret);
-        ::llvm::Error e =
-            jit->AddIRModule(jd,
-                             std::move(::llvm::orc::ThreadSafeModule(
-                                 std::move(m), std::move(ct2))),
-                             m1);
+        ::llvm::Error e = jit->AddIRModule(
+            jd, ::llvm::orc::ThreadSafeModule(std::move(m), std::move(ct2)),
+            m1);
         if (e) {
             ASSERT_TRUE(false);
         }
