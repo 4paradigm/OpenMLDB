@@ -26,6 +26,7 @@ namespace sdk {
 
 class RequestRow {
  public:
+    RequestRow() {}
     explicit RequestRow(const fesql::sdk::Schema* schema);
     ~RequestRow() = default;
     bool Init(int str_length);

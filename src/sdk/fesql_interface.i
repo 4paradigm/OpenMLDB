@@ -8,7 +8,6 @@ SWIG_JAVABODY_TYPEWRAPPER(public, public, public, SWIGTYPE)
 SWIG_JAVABODY_PROXY(public, public, SWIGTYPE)
 #endif
 
-
 // Enable string and shared pointers
 %include std_string.i
 %include std_shared_ptr.i
@@ -24,6 +23,7 @@ namespace std {
 %shared_ptr(fesql::sdk::Table);
 %shared_ptr(fesql::sdk::TableSet);
 %shared_ptr(fesql::sdk::ResultSet);
+%shared_ptr(fesql::sdk::RequestRow);
 %shared_ptr(fesql::vm::Catalog);
 %shared_ptr(fesql::vm::SimpleCatalog);
 %shared_ptr(fesql::vm::CompileInfo);
@@ -68,9 +68,10 @@ namespace std {
 #include "node/sql_node.h"
 #include "sdk/base.h"
 #include "base/iterator.h"
-#include "sdk/dbms_sdk.h"
+#include "sdk/request_row.h"
 #include "sdk/result_set.h"
 #include "sdk/tablet_sdk.h"
+#include "sdk/dbms_sdk.h"
 #include "vm/catalog.h"
 #include "vm/engine.h"
 #include "vm/jit_wrapper.h"
@@ -82,6 +83,7 @@ using fesql::sdk::Schema;
 using fesql::sdk::ResultSet;
 using fesql::sdk::Table;
 using fesql::sdk::TableSet;
+using fesql::sdk::RequestRow;
 using fesql::sdk::DBMSSdk;
 using fesql::sdk::TabletSdk;
 using namespace fesql::node;
@@ -102,7 +104,6 @@ using fesql::codec::RowIterator;
 using fesql::codec::Row;
 using fesql::node::PlanType;
 using fesql::sdk::ExplainInfo;
-using fesql::sdk::RequestRow;
 %}
 
 
@@ -126,6 +127,7 @@ using fesql::sdk::RequestRow;
 %include "codec/fe_row_codec.h"
 %include "sdk/result_set.h"
 %include "sdk/base.h"
+#include "sdk/request_row.h"
 %include "sdk/dbms_sdk.h"
 %include "sdk/tablet_sdk.h"
 %include "node/node_enum.h"
@@ -137,4 +139,3 @@ using fesql::sdk::RequestRow;
 %include "vm/physical_op.h"
 %include "vm/jit_wrapper.h"
 %include "vm/core_api.h"
-#include "sdk/request_row.h"
