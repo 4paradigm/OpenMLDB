@@ -67,8 +67,8 @@ bool BsClient::Put(uint32_t tid, uint32_t pid, const std::string &value,
                                   FLAGS_request_timeout_ms, 1);
     request.release_data();
     msg->swap(*response.mutable_msg());
-    *key = response.key();
     if (ok && response.code() == 0) {
+        *key = response.key();
         return true;
     }
     return false;

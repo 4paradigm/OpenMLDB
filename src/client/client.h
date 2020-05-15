@@ -8,12 +8,14 @@
 #include <string>
 #include <vector>
 
-#include "codec/codec.h"
-#include "codec/schema_codec.h"
 #include "client/bs_client.h"
 #include "client/ns_client.h"
 #include "client/tablet_client.h"
+#include "codec/codec.h"
+#include "codec/schema_codec.h"
 #include "zk/zk_client.h"
+
+using google::protobuf::RepeatedPtrField;
 
 struct WriteOption {
     WriteOption() {
@@ -38,8 +40,7 @@ struct PartitionInfo {
 
 struct TableHandler {
     std::shared_ptr<rtidb::nameserver::TableInfo> table_info;
-    std::shared_ptr<
-        google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>>
+    std::shared_ptr<RepeatedPtrField<rtidb::common::ColumnDesc>>
         columns;
     std::vector<PartitionInfo> partition;
     std::string auto_gen_pk_;
@@ -65,6 +66,10 @@ struct GeneralResult {
     std::string msg;
 };
 
+struct BlobPutResult : public GeneralResult {
+    int64_t data;
+};
+
 struct ReadOption {
     explicit ReadOption(const std::map<std::string, std::string>& indexs) {
         index.insert(indexs.begin(), indexs.end());
@@ -79,6 +84,8 @@ struct ReadOption {
     std::set<std::string> col_set;
     uint64_t limit;
 };
+
+class RtidbClient;
 
 class ViewResult {
  public:
@@ -153,6 +160,13 @@ class ViewResult {
         return val;
     }
 
+    int64_t GetBlob(uint32_t idx) {
+        rv_->GetBlob(idx, &curr_blob_key_);
+        return curr_blob_key_;
+    }
+
+    void GetBlobData(char** packet, int64_t *sz);
+
     bool IsNULL(uint32_t idx) { return rv_->IsNULL(idx); }
 
     void SetRv(const std::shared_ptr<TableHandler>& th) {
@@ -195,16 +209,24 @@ class ViewResult {
 
     int64_t GetInt(uint32_t idx);
 
+    void SetTable(const std::string& name) {
+        table_name_ = name;
+    }
+
+    void SetClient(RtidbClient* client) {
+        client_ = client;
+    }
+
     std::shared_ptr<rtidb::codec::RowView> rv_;
 
  private:
-    std::shared_ptr<
-        google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>>
+    std::shared_ptr<RepeatedPtrField<rtidb::common::ColumnDesc>>
         columns_;
     bool initialed_;
+    int64_t curr_blob_key_;
+    std::string table_name_;
+    RtidbClient* client_;
 };
-
-class RtidbClient;
 
 class TraverseResult : public ViewResult {
  public:
@@ -347,9 +369,10 @@ class RtidbClient {
     ~RtidbClient();
     GeneralResult Init(const std::string& zk_cluster,
                        const std::string& zk_path);
-    GeneralResult Put(const std::string& name,
-                      const std::map<std::string, std::string>& values,
-                      const WriteOption& wo);
+    GeneralResult
+    Put(const std::string& name,
+        const std::map<std::string, rtidb::base::Slice>& slice_map,
+        const WriteOption& wo);
     GeneralResult Delete(const std::string& name,
                          const std::map<std::string, std::string>& values);
     TraverseResult Traverse(const std::string& name,
@@ -361,8 +384,7 @@ class RtidbClient {
     BatchQueryResult BatchQuery(const std::string& name,
                                 const std::vector<ReadOption>& ros);
     bool BatchQuery(const std::string& name,
-            const ::google::protobuf::RepeatedPtrField<
-            ::rtidb::api::ReadOption>& ros_pb,
+            const RepeatedPtrField<::rtidb::api::ReadOption>& ros_pb,
             std::string* data,
             uint32_t* count,
             std::string* msg);
@@ -370,9 +392,16 @@ class RtidbClient {
     GeneralResult Update(
         const std::string& table_name,
         const std::map<std::string, std::string>& condition_columns_map,
-        const std::map<std::string, std::string>& value_columns_map,
+        const std::map<std::string, rtidb::base::Slice>& slice_map,
         const WriteOption& wo);
+    BlobPutResult BlobPut(const std::string table_name, const char* const data,
+                          const int64_t length);
+    int BlobPut(std::shared_ptr<TableHandler> th, std::map<std::string, std::string>* value, std::string* msg);
+    bool BlobGet(const std::string table_name, const int64_t key, char** ch, int64_t* size);
 
  private:
     BaseClient* client_;
 };
+
+void SliceMapToStringMap(const std::map<std::string, rtidb::base::Slice>& slice_map,
+                         std::map<std::string, std::string>* value_map);

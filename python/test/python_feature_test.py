@@ -5,7 +5,7 @@ from datetime import date
 class TestRtidb(unittest.TestCase):
   
   def setUp(self):
-    self.nsc = rtidb.RTIDBClient("172.27.128.37:7183", "/rtidb_cluster")
+    self.nsc = rtidb.RTIDBClient("172.27.128.37:6181", "/issue-5")
   
   def test_FailedClient(self):
     with self.assertRaises(Exception) as context:
@@ -39,9 +39,9 @@ class TestRtidb(unittest.TestCase):
       self.assertEqual(3, l["p_biz_date"])
     '''
     # multi index
-    data = {"id":"1","name":"n1","mcc":"1","attribute":"a1", "image":"i1"}
+    data = {"id":"1","name":"n1","mcc":"1","attribute":"a1", "image":b"i1"}
     self.assertTrue(self.nsc.put("rt_ck", data, None))
-    data = {"id":"2","name":"n2","mcc":"1","attribute":"a1", "image":"i1"}
+    data = {"id":"2","name":"n2","mcc":"1","attribute":"a1", "image":b"i1"}
     self.assertTrue(self.nsc.put("rt_ck", data, None))
     ro = rtidb.ReadOption()
     ro.index.update({"id":"1"})
@@ -53,7 +53,7 @@ class TestRtidb(unittest.TestCase):
       self.assertEqual("n1", l["name"])
       self.assertEqual(1, l["mcc"])
       self.assertEqual("a1", l["attribute"])
-      self.assertEqual("i1", l["image"])
+      self.assertEqual(b"i1", l["image"])
     ro = rtidb.ReadOption()
     ro.index.update({"mcc":"1"})
     resp = self.nsc.query("rt_ck", ro)
@@ -64,7 +64,7 @@ class TestRtidb(unittest.TestCase):
       self.assertEqual("n{}".format(id+1), l["name"])
       self.assertEqual(1, l["mcc"])
       self.assertEqual("a1", l["attribute"])
-      self.assertEqual("i1", l["image"])
+      self.assertEqual(b"i1", l["image"])
       id += 1;
     self.assertEqual(2, id);
     # delete
@@ -131,7 +131,7 @@ class TestRtidb(unittest.TestCase):
       self.assertEqual(id, l["id"])
       self.assertEqual("n{}".format(id), l["name"])
       self.assertEqual(id, l["mcc"])
-      self.assertEqual("i{}".format(id), l["image"])
+      self.assertEqual("i{}".format(id).encode("UTF-8"), l["image"])
       self.assertEqual("a{}".format(id), l["attribute"])
       id+=1
     self.assertEqual(1000, id);
@@ -145,7 +145,7 @@ class TestRtidb(unittest.TestCase):
       self.assertEqual(id, l["id"])
       self.assertEqual("n{}".format(id), l["name"])
       self.assertEqual(id, l["mcc"])
-      self.assertEqual("i{}".format(id), l["image"])
+      self.assertEqual("i{}".format(id).encode("UTF-8"), l["image"])
       self.assertEqual("a{}".format(id), l["attribute"])
       id+=1
     self.assertEqual(1000, id);
@@ -169,7 +169,6 @@ class TestRtidb(unittest.TestCase):
       self.assertEqual("a{}".format(id), l["attribute"])
       id+=1
     self.assertEqual(1000, id);
-    #TODO(kongquan): current put data use java client, when python put feature is complete, put data before traverse
     # multi index
     data = {"id":"1","name":"n1","mcc":"1","attribute":"a1", "image":"i1"}
     self.assertTrue(self.nsc.put("rt_ck", data, None))
@@ -196,7 +195,7 @@ class TestRtidb(unittest.TestCase):
       else :
         self.assertEqual(2, l["mcc"])
       self.assertEqual("a1", l["attribute"])
-      self.assertEqual("i1", l["image"])
+      self.assertEqual("i1".encode("UTF-8"), l["image"])
       id += 1;
 
   def test_update(self):
@@ -233,10 +232,10 @@ class TestRtidb(unittest.TestCase):
       self.assertEqual("n1", l["name"])
       self.assertEqual(1, l["mcc"])
       self.assertEqual("a2", l["attribute"])
-      self.assertEqual("i2", l["image"])
+      self.assertEqual("i2".encode("UTF-8"), l["image"])
 
     condition_columns = {"mcc":"1"} 
-    value_columns = {"attribute":"a3","image":"i3"}
+    value_columns = {"attribute":"a3","image":"i3".encode("UTF-8")}
     ok = self.nsc.update("rt_ck", condition_columns, value_columns, None);
     self.assertEqual(ok, True);
     ro = rtidb.ReadOption()
@@ -249,7 +248,7 @@ class TestRtidb(unittest.TestCase):
       self.assertEqual("n{}".format(id+1), l["name"])
       self.assertEqual(1, l["mcc"])
       self.assertEqual("a3", l["attribute"])
-      self.assertEqual("i3", l["image"])
+      self.assertEqual("i3".encode("UTF-8"), l["image"])
       id += 1;
     self.assertEqual(2, id);
 

@@ -8,7 +8,6 @@
 #include <brpc/server.h>
 #include <gflags/gflags.h>
 #include <logging.h>
-#include <sched.h>
 #include <timer.h>
 #include <unistd.h>
 

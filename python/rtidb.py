@@ -16,7 +16,7 @@ def return_None(x):
 def return_EmptyStr(x):
   return str()
 
-type_map = {1:bool,2:int,3:int,4:int,5:float,6:float,7:date,8:int,13:str,14:str,100:return_None};
+type_map = {1:bool,2:int,3:int,4:int,5:float,6:float,7:date,8:int,13:str,14:str,15:int,100:return_None};
 # todo: current do not have blob type process function
 '''
 kBool = 1;
@@ -34,6 +34,55 @@ kBlob = 15;
 '''
 
 NONETOKEN="None#*@!"
+
+byteNonToken = bytes(NONETOKEN, encoding="UTF-8")
+
+def dataToBytes(data):
+  if data == None:
+    return byteNonToken
+  if isinstance(data, str):
+    return bytes(data, encoding="UTF-8");
+  elif isinstance(data, bytes):
+    return data
+  else:
+    strData = str(data)
+    return bytes(strData, encoding="UTF-8")
+
+def makeBytemap(m: map):
+  temp_map = {}
+  for k in m:
+    key = bytes(k, encoding="UTF-8")
+    temp_map.update({key: dataToBytes(m[k])})
+  return temp_map
+
+def buildByteReadFilter(filter):
+  mid_rf = interclient.ReadFilter()
+  mid_rf.column = dataToBytes(filter.name)
+  mid_rf.type = filter.type
+  mid_rf.value = dataToBytes(filter.value)
+  return mid_rf
+
+def buildSliceMap(m: map):
+  value = {}
+  refer_map = {} # must have, void gc bytes object
+  for k in m:
+    key = dataToBytes(k)
+    byteData = dataToBytes(m[k])
+    if m[k] == None:
+      slice = interclient.Slice(byteNonToken);
+    elif isinstance(m[k], bytes):
+      slice = interclient.Slice(m[k], len(m[k]))
+    else:
+      if isinstance(m[k], str):
+        byteStr = bytes(m[k], encoding="UTF-8")
+      else:
+        strData = str(m[k])
+        byteStr = bytes(strData, encoding="UTF-8")
+      refer_map.update({k:byteStr})
+      slice = interclient.Slice(byteStr, len(byteStr))
+    value.update({key: slice})
+  return value, refer_map
+
 
 class WriteOption:
   def __init__(self, updateIfExist = True, updateIfEqual = True):
@@ -59,8 +108,9 @@ class RtidbResult:
       2:self.__data.GetInt16, 3:self.__data.GetInt32, 
       4:self.__data.GetInt64, 5:self.__data.GetFloat, 
       6:self.__data.GetDouble, 7:self.__data.GetDate,
-      8:self.__data.GetTimestamp,13:self.__data.GetString,
-      14:self.__data.GetString, 100:return_None}
+      8:self.__data.GetTimestamp,13: lambda idx : self.__data.GetString(idx).decode("UTF-8"),
+      14:lambda idx : self.__data.GetString(idx).decode("UTF-8"), 15:self.__data.GetBlob,
+      100:return_None}
     names = self.__data.GetColumnsName()
     self.__names = [x for x in names]
   def __iter__(self):
@@ -74,9 +124,10 @@ class RtidbResult:
     if self.__data.Next():
       result = {}
       for idx in range(len(self.__names)):
+        key = self.__names[idx].decode("UTF-8")
         type = self.__data.GetColumnType(idx)
         if self.__data.IsNULL(idx):
-          result.update({self.__names[idx]: None})
+          result.update({key: None})
         else:
           if type == 7: 
             value = self.__type_to_func[type](idx)
@@ -85,9 +136,15 @@ class RtidbResult:
             month = 1 + (value & 0x0000FF);
             year = 1900 + (value >> 8);
             real_date = date(year, month, day)
-            result.update({self.__names[idx]: real_date})
+            result.update({key: real_date})
+          elif type == 15:
+            blob_key = self.__type_to_func[type](idx)
+            blob_data = self.__data.GetBlobData();
+            if blob_data == None:
+              raise Exception("get blob data has been error, blob key is %d", blob_key)
+            result.update({key: blob_data})
           else:
-            result.update({self.__names[idx]: self.__type_to_func[type](idx)})
+            result.update({key: self.__type_to_func[type](idx)})
       return result
     else:
       raise StopIteration
@@ -98,24 +155,20 @@ defaultWriteOption = WriteOption()
 class RTIDBClient:
   def __init__(self, zk_cluster: str, zk_path: str):
     self.__client = interclient.RtidbClient()
-    ok = self.__client.Init(zk_cluster, zk_path)
+    bcluster = bytes(zk_cluster, encoding="ASCII")
+    bpath = bytes(zk_path, encoding="ASCII")
+    ok = self.__client.Init(bcluster, bpath)
     if ok.code != 0:
       raise Exception(ok.code, ok.msg)
-
-  def __del__(self):
-    del self.__client
 
   def put(self, table_name: str, columns: map, write_option: WriteOption = None):
     _wo = interclient.WriteOption();
     if WriteOption != None:
       _wo.updateIfExist = defaultWriteOption.updateIfExist
       _wo.updateIfEqual = defaultWriteOption.updateIfEqual
-    value = {}
-    for k in columns:
-      if columns[k] == None:
-        value.update({k: NONETOKEN})
-      value.update({k: str(columns[k])})
-    ok = self.__client.Put(table_name, value, _wo)
+    bname = bytes(table_name, encoding="UTF-8")
+    value, refer_map = buildSliceMap(columns);
+    ok = self.__client.Put(bname, value, _wo)
     if ok.code != 0:
       raise Exception(ok.code, ok.msg)
     return True
@@ -125,13 +178,10 @@ class RTIDBClient:
     if write_option != None:
       _wo.updateIfExist = defaultWriteOption.updateIfExist
       _wo.updateIfEqual = defaultWriteOption.updateIfEqual
-    cond = {}
-    for k in condition_columns:
-      cond.update({k: str(condition_columns[k])})
-    v = {}
-    for k in value_columns:
-      v.update({k: str(value_columns[k])})
-    ok = self.__client.Update(table_name, cond, v, _wo)
+    cond = makeBytemap(condition_columns);
+    value, refer_value_map = buildSliceMap(value_columns)
+    bname = bytes(table_name, encoding="UTF-8")
+    ok = self.__client.Update(bname, cond, value, _wo)
     if ok.code != 0:
       raise Exception(ok.code, ok.msg)
     return True
@@ -140,20 +190,16 @@ class RTIDBClient:
     if (len(read_option.index) < 1):
       raise Exception("must set index")
     ros = interclient.VectorReadOption()
-    mid_map = {}
-    for k in read_option.index:
-      mid_map.update({k: str(read_option.index[k])})
+    mid_map = makeBytemap(read_option.index)
     ro = interclient.ReadOption(mid_map)
     for filter in read_option.read_filter:
-      mid_rf = interclient.ReadFilter()
-      mid_rf.column = filter.name
-      mid_rf.type = filter.type
-      mid_rf.value = str(filter.value)
+      mid_rf = buildByteReadFilter(filter)
       ro.read_filter.append(mid_rf)
     for col in read_option.col_set:
       ro.col_set.append(col)
     ros.append(ro)
-    resp = self.__client.BatchQuery(table_name, ros)
+    bname = bytes(table_name, encoding="UTF-8")
+    resp = self.__client.BatchQuery(bname, ros)
     if resp.code_ != 0:
       raise Exception(resp.code_, resp.msg_)
     return RtidbResult(resp)
@@ -163,20 +209,16 @@ class RTIDBClient:
       raise Exception("muse set read_options")
     ros = interclient.VectorReadOption()
     for ro in read_options:
-      mid_map = {}
-      for k in ro.index:
-        mid_map.update({k: str(ro.index[k])})
+      mid_map = makeBytemap(ro.index);
       interro = interclient.ReadOption(mid_map)
       for filter in ro.read_filter:
-        mid_rf = interclient.ReadFilter()
-        mid_rf.column = filter.name
-        mid_rf.type = filter.type
-        mid_rf.value = str(filter.value)
+        mid_rf = buildByteReadFilter(filter);
         interro.read_filter.append(mid_rf)
       for col in ro.col_set:
-        interro.col_set.append(col)
+        interro.col_set.append(dataToBytes(col))
       ros.append(interro)
-    resp = self.__client.BatchQuery(table_name, ros);
+    bname = bytes(table_name, encoding="UTF-8")
+    resp = self.__client.BatchQuery(bname, ros);
     if (resp.code_ != 0):
       raise Exception(resp.code_, resp.msg_);
     return RtidbResult(resp)
@@ -184,28 +226,27 @@ class RTIDBClient:
   def delete(self, table_name: str, condition_columns: map):
     v = {}
     for k in condition_columns:
-      v.update({k:str(condition_columns[k])})
-    resp = self.__client.Delete(table_name, v)
+      key = bytes(k, encoding="UTF-8")
+      v.update({key: dataToBytes(condition_columns[k])})
+    bname = bytes(table_name, encoding="UTF-8")
+    resp = self.__client.Delete(bname, v)
     if resp.code != 0:
       raise Exception(resp.code, resp.msg)
     return True
 
   def traverse(self, table_name: str, read_option: ReadOption = None):
-    mid_map = {}
-    ro = interclient.ReadOption(mid_map)
     if read_option != None:
-      for k in read_option.index:
-        mid_map.update({k: str(read_option.index[k])})
+      mid_map = makeBytemap(read_option.index)
       ro = interclient.ReadOption(mid_map)
       for filter in read_option.read_filter:
-        mid_rf = interclient.ReadFilter()
-        mid_rf.column = filter.name
-        mid_rf.type = filter.type
-        mid_rf.value = str(filter.value)
+        mid_rf = buildByteReadFilter(filter);
         ro.read_filter.append(mid_rf)
       for col in read_option.col_set:
-        ro.col_set.append(col)
-    resp = self.__client.Traverse(table_name, ro)
+        ro.col_set.append(dataToBytes(col))
+    else:
+      ro = interclient.ReadOption({})
+    bname = bytes(table_name, encoding="UTF-8")
+    resp = self.__client.Traverse(bname, ro)
     if (resp.code_ != 0):
       raise Exception(resp.code_, resp.msg_);
     return RtidbResult(resp)
