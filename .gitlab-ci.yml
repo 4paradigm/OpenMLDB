@@ -239,3 +239,107 @@ c++_ut_pz:
               - reports/*.xml
     only:
         - /^*pz-fpga*$/
+tablet_one_demension_pz:
+    image: develop-registry.4pd.io/centos6_gcc7_build_env:0.4.0-glibc-2.17
+    stage: ts_integration_test
+    before_script:
+        - mkdir /rambuild
+        - mount -t tmpfs -o size=3G tmpfs /rambuild
+    script:
+        - ln -sf /depends/thirdparty thirdparty
+        - ln -sf /depends/thirdsrc thirdsrc
+        - rm -rf ./test-output/integrationtest/test-reports/
+        - bash steps/get_pz_fpga_deps.sh
+        - sed -i 's/\"Enable pz compression for ssd tables\"\ OFF/\"Enable pz compression for ssd tables\"\ ON/g' CMakeLists.txt
+        - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
+        - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 0 "test" "ns_client"
+    artifacts:
+        reports:
+            junit:
+                - ./test-output/integrationtest/test-reports/*.xml
+    only:
+        - /^*pz-fpga*$/
+
+tablet_multi_demension_pz:
+    image: develop-registry.4pd.io/centos6_gcc7_build_env:0.4.0-glibc-2.17
+    stage: ts_integration_test
+    before_script:
+        - mkdir /rambuild
+        - mount -t tmpfs -o size=3G tmpfs /rambuild
+    script:
+        - ln -sf /depends/thirdparty thirdparty
+        - ln -sf /depends/thirdsrc thirdsrc
+        - rm -rf ./test-output/integrationtest/test-reports/
+        - bash steps/get_pz_fpga_deps.sh
+        - sed -i 's/\"Enable pz compression for ssd tables\"\ OFF/\"Enable pz compression for ssd tables\"\ ON/g' CMakeLists.txt
+        - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
+        - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 1 "test" "ns_client"
+    artifacts:
+        reports:
+            junit:
+                - ./test-output/integrationtest/test-reports/*.xml
+    only:
+        - /^*pz-fpga*$/
+
+ns_one_demension_pz:
+    image: develop-registry.4pd.io/centos6_gcc7_build_env:0.4.0-glibc-2.17
+    stage: ns_integration_test
+    before_script:
+        - mkdir /rambuild
+        - mount -t tmpfs -o size=3G tmpfs /rambuild
+    script:
+        - ln -sf /depends/thirdparty thirdparty
+        - ln -sf /depends/thirdsrc thirdsrc
+        - rm -rf ./test-output/integrationtest/test-reports/
+        - bash steps/get_pz_fpga_deps.sh
+        - sed -i 's/\"Enable pz compression for ssd tables\"\ OFF/\"Enable pz compression for ssd tables\"\ ON/g' CMakeLists.txt
+        - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
+        - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 0 "ns_client" "disk"
+    artifacts:
+        reports:
+            junit:
+                - ./test-output/integrationtest/test-reports/*.xml
+    only:
+        - /^*pz-fpga*$/
+
+ns_multi_demension_pz:
+    image: develop-registry.4pd.io/centos6_gcc7_build_env:0.4.0-glibc-2.17
+    stage: ns_integration_test
+    before_script:
+        - mkdir /rambuild
+        - mount -t tmpfs -o size=3G tmpfs /rambuild
+    script:
+        - ln -sf /depends/thirdparty thirdparty
+        - ln -sf /depends/thirdsrc thirdsrc
+        - rm -rf ./test-output/integrationtest/test-reports/
+        - bash steps/get_pz_fpga_deps.sh
+        - sed -i 's/\"Enable pz compression for ssd tables\"\ OFF/\"Enable pz compression for ssd tables\"\ ON/g' CMakeLists.txt
+        - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
+        - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 1 "ns_client" "disk"
+    artifacts:
+        reports:
+            junit:
+                - ./test-output/integrationtest/test-reports/*.xml
+    only:
+        - /^*pz-fpga*$/
+
+disk_table_pz:
+    image: develop-registry.4pd.io/centos6_gcc7_build_env:0.4.0-glibc-2.17
+    stage: ns_integration_test
+    before_script:
+        - mkdir /rambuild
+        - mount -t tmpfs -o size=3G tmpfs /rambuild
+    script:
+        - ln -sf /depends/thirdparty thirdparty
+        - ln -sf /depends/thirdsrc thirdsrc
+        - rm -rf ./test-output/integrationtest/test-reports/
+        - bash steps/get_pz_fpga_deps.sh
+        - sed -i 's/\"Enable pz compression for ssd tables\"\ OFF/\"Enable pz compression for ssd tables\"\ ON/g' CMakeLists.txt
+        - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
+        - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 0 "disk"
+    artifacts:
+        reports:
+            junit:
+                - ./test-output/integrationtest/test-reports/*.xml
+    only:
+        - /^*pz-fpga*$/
