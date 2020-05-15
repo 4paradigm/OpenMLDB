@@ -410,7 +410,6 @@ class RequestWindowUnionGenerator : public InputsGenerator {
         std::vector<std::shared_ptr<DataHandler>> union_inputs) {
         std::vector<std::shared_ptr<TableHandler>> union_segments(inputs_cnt_);
         if (!windows_gen_.empty()) {
-            auto input_iter = union_inputs.cbegin();
             for (size_t i = 0; i < inputs_cnt_; i++) {
                 union_segments[i] =
                     windows_gen_[i].GetRequestWindow(row, union_inputs[i]);

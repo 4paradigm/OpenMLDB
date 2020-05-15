@@ -20,6 +20,7 @@
 #include <stdint.h>
 #include <unordered_map>
 #include "glog/logging.h"
+#include "base/fe_strings.h"
 
 namespace fesql {
 namespace sdk {
@@ -99,6 +100,14 @@ bool RequestRow::Init(int str_length) {
     val_.resize(total_length);
     buf_ = reinterpret_cast<int8_t*>(&(val_[0]));
     size_ = total_length;
+    *(buf_) = 1;      // FVersion
+    *(buf_ + 1) = 1;  // SVersion
+    *(reinterpret_cast<uint32_t*>(buf_ + SDK_VERSION_LENGTH)) = total_length;
+    uint32_t bitmap_size = BitMapSize(schema_->GetColumnCnt());
+    memset(buf_ + SDK_HEADER_LENGTH, 0, bitmap_size);
+    cnt_ = 0;
+    str_addr_length_ = SDKGetAddrLength(total_length);
+    str_offset_ = str_field_start_offset_ + str_addr_length_ * str_field_cnt_;
     return true;
 }
 

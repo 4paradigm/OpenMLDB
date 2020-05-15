@@ -183,15 +183,15 @@ void PrintResultSet(std::ostream &stream, ::fesql::sdk::ResultSet *result_set) {
         return;
     }
     ::fesql::base::TextTable t('-', '|', '+');
-    const ::fesql::sdk::Schema &schema = result_set->GetSchema();
+    const ::fesql::sdk::Schema *schema = result_set->GetSchema();
     // Add Header
-    for (int32_t i = 0; i < schema.GetColumnCnt(); i++) {
-        t.add(schema.GetColumnName(i));
+    for (int32_t i = 0; i < schema->GetColumnCnt(); i++) {
+        t.add(schema->GetColumnName(i));
     }
     t.endOfRow();
     while (result_set->Next()) {
-        for (int32_t i = 0; i < schema.GetColumnCnt(); i++) {
-            sdk::DataType data_type = schema.GetColumnType(i);
+        for (int32_t i = 0; i < schema->GetColumnCnt(); i++) {
+            sdk::DataType data_type = schema->GetColumnType(i);
             switch (data_type) {
                 case fesql::sdk::kTypeInt16: {
                     int16_t value = 0;

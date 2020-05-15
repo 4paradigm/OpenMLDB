@@ -7,7 +7,7 @@
 
 import fesql
 
-dbms_endpoint="127.0.0.1:9211"
+dbms_endpoint="172.27.128.37:9211"
 
 def exec_query(dbms, db, sql):
     if not dbms:

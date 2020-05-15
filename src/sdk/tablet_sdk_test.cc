@@ -156,19 +156,19 @@ TEST_P(TabletSdkTest, test_normal) {
         sdk::Status query_status;
         std::shared_ptr<ResultSet> rs = sdk->Query(db, sql, &query_status);
         if (rs) {
-            const Schema& schema = rs->GetSchema();
-            ASSERT_EQ(5, schema.GetColumnCnt());
-            ASSERT_EQ("col1", schema.GetColumnName(0));
-            ASSERT_EQ("col2", schema.GetColumnName(1));
-            ASSERT_EQ("col3", schema.GetColumnName(2));
-            ASSERT_EQ("col4", schema.GetColumnName(3));
-            ASSERT_EQ("col5", schema.GetColumnName(4));
+            const Schema* schema = rs->GetSchema();
+            ASSERT_EQ(5, schema->GetColumnCnt());
+            ASSERT_EQ("col1", schema->GetColumnName(0));
+            ASSERT_EQ("col2", schema->GetColumnName(1));
+            ASSERT_EQ("col3", schema->GetColumnName(2));
+            ASSERT_EQ("col4", schema->GetColumnName(3));
+            ASSERT_EQ("col5", schema->GetColumnName(4));
 
-            ASSERT_EQ(kTypeInt32, schema.GetColumnType(0));
-            ASSERT_EQ(kTypeInt16, schema.GetColumnType(1));
-            ASSERT_EQ(kTypeFloat, schema.GetColumnType(2));
-            ASSERT_EQ(kTypeDouble, schema.GetColumnType(3));
-            ASSERT_EQ(kTypeInt64, schema.GetColumnType(4));
+            ASSERT_EQ(kTypeInt32, schema->GetColumnType(0));
+            ASSERT_EQ(kTypeInt16, schema->GetColumnType(1));
+            ASSERT_EQ(kTypeFloat, schema->GetColumnType(2));
+            ASSERT_EQ(kTypeDouble, schema->GetColumnType(3));
+            ASSERT_EQ(kTypeInt64, schema->GetColumnType(4));
 
             ASSERT_EQ(1, rs->Size());
             ASSERT_TRUE(rs->Next());
@@ -207,10 +207,10 @@ TEST_P(TabletSdkTest, test_normal) {
         std::string sql = "select col1, col5 from t1 limit 1;";
         std::shared_ptr<ResultSet> rs = sdk->Query(db, sql, &query_status);
         if (rs) {
-            const Schema& schema = rs->GetSchema();
-            ASSERT_EQ(2, schema.GetColumnCnt());
-            ASSERT_EQ("col1", schema.GetColumnName(0));
-            ASSERT_EQ("col5", schema.GetColumnName(1));
+            const Schema* schema = rs->GetSchema();
+            ASSERT_EQ(2, schema->GetColumnCnt());
+            ASSERT_EQ("col1", schema->GetColumnName(0));
+            ASSERT_EQ("col5", schema->GetColumnName(1));
             ASSERT_EQ(1, rs->Size());
             ASSERT_TRUE(rs->Next());
             {
@@ -330,10 +330,10 @@ TEST_P(TabletSdkTest, test_create_and_query) {
         std::string sql = "select column1, column2 from t1 limit 1;";
         std::shared_ptr<ResultSet> rs = sdk->Query(db, sql, &query_status);
         if (rs) {
-            const Schema& schema = rs->GetSchema();
-            ASSERT_EQ(2u, schema.GetColumnCnt());
-            ASSERT_EQ("column1", schema.GetColumnName(0));
-            ASSERT_EQ("column2", schema.GetColumnName(1));
+            const Schema* schema = rs->GetSchema();
+            ASSERT_EQ(2u, schema->GetColumnCnt());
+            ASSERT_EQ("column1", schema->GetColumnName(0));
+            ASSERT_EQ("column2", schema->GetColumnName(1));
             ASSERT_TRUE(rs->Next());
             {
                 int32_t val = 0;
@@ -360,12 +360,12 @@ TEST_P(TabletSdkTest, test_create_and_query) {
             "limit 10;";
         std::shared_ptr<ResultSet> rs = sdk->Query(db, sql, &query_status);
         if (rs) {
-            const Schema& schema = rs->GetSchema();
-            ASSERT_EQ(4u, schema.GetColumnCnt());
-            ASSERT_EQ("column1", schema.GetColumnName(0));
-            ASSERT_EQ("column2", schema.GetColumnName(1));
-            ASSERT_EQ("f1", schema.GetColumnName(2));
-            ASSERT_EQ("f2", schema.GetColumnName(3));
+            const Schema* schema = rs->GetSchema();
+            ASSERT_EQ(4u, schema->GetColumnCnt());
+            ASSERT_EQ("column1", schema->GetColumnName(0));
+            ASSERT_EQ("column2", schema->GetColumnName(1));
+            ASSERT_EQ("f1", schema->GetColumnName(2));
+            ASSERT_EQ("f2", schema->GetColumnName(3));
             ASSERT_TRUE(rs->Next());
             {
                 int32_t val = 0;
@@ -400,13 +400,13 @@ TEST_P(TabletSdkTest, test_create_and_query) {
             "1;";
         std::shared_ptr<ResultSet> rs = sdk->Query(db, sql, &query_status);
         if (rs) {
-            const Schema& schema = rs->GetSchema();
-            ASSERT_EQ(5, schema.GetColumnCnt());
-            ASSERT_EQ("column1", schema.GetColumnName(0));
-            ASSERT_EQ("column2", schema.GetColumnName(1));
-            ASSERT_EQ("column3", schema.GetColumnName(2));
-            ASSERT_EQ("column4", schema.GetColumnName(3));
-            ASSERT_EQ("column5", schema.GetColumnName(4));
+            const Schema* schema = rs->GetSchema();
+            ASSERT_EQ(5, schema->GetColumnCnt());
+            ASSERT_EQ("column1", schema->GetColumnName(0));
+            ASSERT_EQ("column2", schema->GetColumnName(1));
+            ASSERT_EQ("column3", schema->GetColumnName(2));
+            ASSERT_EQ("column4", schema->GetColumnName(3));
+            ASSERT_EQ("column5", schema->GetColumnName(4));
             ASSERT_TRUE(rs->Next());
             {
                 int32_t val = 0;
@@ -492,14 +492,14 @@ TEST_P(TabletSdkTest, test_udf_query) {
             "1;";
         std::shared_ptr<ResultSet> rs = sdk->Query(name, sql, &query_status);
         if (rs) {
-            const Schema& schema = rs->GetSchema();
-            ASSERT_EQ(6u, schema.GetColumnCnt());
-            ASSERT_EQ("column1", schema.GetColumnName(0));
-            ASSERT_EQ("column2", schema.GetColumnName(1));
-            ASSERT_EQ("column3", schema.GetColumnName(2));
-            ASSERT_EQ("column4", schema.GetColumnName(3));
-            ASSERT_EQ("column5", schema.GetColumnName(4));
-            ASSERT_EQ("column6", schema.GetColumnName(5));
+            const Schema* schema = rs->GetSchema();
+            ASSERT_EQ(6u, schema->GetColumnCnt());
+            ASSERT_EQ("column1", schema->GetColumnName(0));
+            ASSERT_EQ("column2", schema->GetColumnName(1));
+            ASSERT_EQ("column3", schema->GetColumnName(2));
+            ASSERT_EQ("column4", schema->GetColumnName(3));
+            ASSERT_EQ("column5", schema->GetColumnName(4));
+            ASSERT_EQ("column6", schema->GetColumnName(5));
             ASSERT_TRUE(rs->Next());
             {
                 int32_t val = 0;
@@ -543,10 +543,10 @@ TEST_P(TabletSdkTest, test_udf_query) {
             "test(column1,column5) as f1 FROM t1 limit 10;";
         std::shared_ptr<ResultSet> rs = sdk->Query(name, sql, &query_status);
         if (rs) {
-            const Schema& schema = rs->GetSchema();
-            ASSERT_EQ(3u, schema.GetColumnCnt());
-            ASSERT_EQ("column1", schema.GetColumnName(0));
-            ASSERT_EQ("column2", schema.GetColumnName(1));
+            const Schema* schema = rs->GetSchema();
+            ASSERT_EQ(3u, schema->GetColumnCnt());
+            ASSERT_EQ("column1", schema->GetColumnName(0));
+            ASSERT_EQ("column2", schema->GetColumnName(1));
             ASSERT_TRUE(rs->Next());
             {
                 int32_t val = 0;
@@ -653,19 +653,19 @@ TEST_F(TabletSdkTest, test_window_udf_query) {
             "PRECEDING AND CURRENT ROW) limit 10;";
         std::shared_ptr<ResultSet> rs = sdk->Query(name, sql, &query_status);
         if (rs) {
-            const Schema& schema = rs->GetSchema();
-            ASSERT_EQ(5, schema.GetColumnCnt());
-            ASSERT_EQ("w1_col1_sum", schema.GetColumnName(0));
-            ASSERT_EQ("w1_col2_sum", schema.GetColumnName(1));
-            ASSERT_EQ("w1_col3_sum", schema.GetColumnName(2));
-            ASSERT_EQ("w1_col4_sum", schema.GetColumnName(3));
-            ASSERT_EQ("w1_col5_sum", schema.GetColumnName(4));
+            const Schema* schema = rs->GetSchema();
+            ASSERT_EQ(5, schema->GetColumnCnt());
+            ASSERT_EQ("w1_col1_sum", schema->GetColumnName(0));
+            ASSERT_EQ("w1_col2_sum", schema->GetColumnName(1));
+            ASSERT_EQ("w1_col3_sum", schema->GetColumnName(2));
+            ASSERT_EQ("w1_col4_sum", schema->GetColumnName(3));
+            ASSERT_EQ("w1_col5_sum", schema->GetColumnName(4));
 
-            ASSERT_EQ(kTypeInt32, schema.GetColumnType(0));
-            ASSERT_EQ(kTypeInt32, schema.GetColumnType(1));
-            ASSERT_EQ(kTypeFloat, schema.GetColumnType(2));
-            ASSERT_EQ(kTypeInt64, schema.GetColumnType(3));
-            ASSERT_EQ(kTypeInt32, schema.GetColumnType(4));
+            ASSERT_EQ(kTypeInt32, schema->GetColumnType(0));
+            ASSERT_EQ(kTypeInt32, schema->GetColumnType(1));
+            ASSERT_EQ(kTypeFloat, schema->GetColumnType(2));
+            ASSERT_EQ(kTypeInt64, schema->GetColumnType(3));
+            ASSERT_EQ(kTypeInt32, schema->GetColumnType(4));
 
             ASSERT_EQ(5, rs->Size());
             ASSERT_TRUE(rs->Next());
@@ -870,13 +870,13 @@ TEST_F(TabletSdkTest, test_window_udf_batch_query) {
             "PRECEDING AND CURRENT ROW) limit 10;";
         std::shared_ptr<ResultSet> rs = sdk->Query(name, sql, &query_status);
         if (rs) {
-            const Schema& schema = rs->GetSchema();
-            ASSERT_EQ(5u, schema.GetColumnCnt());
-            ASSERT_EQ("w1_col1_sum", schema.GetColumnName(0));
-            ASSERT_EQ("w1_col2_sum", schema.GetColumnName(1));
-            ASSERT_EQ("w1_col3_sum", schema.GetColumnName(2));
-            ASSERT_EQ("w1_col4_sum", schema.GetColumnName(3));
-            ASSERT_EQ("w1_col5_sum", schema.GetColumnName(4));
+            const Schema* schema = rs->GetSchema();
+            ASSERT_EQ(5u, schema->GetColumnCnt());
+            ASSERT_EQ("w1_col1_sum", schema->GetColumnName(0));
+            ASSERT_EQ("w1_col2_sum", schema->GetColumnName(1));
+            ASSERT_EQ("w1_col3_sum", schema->GetColumnName(2));
+            ASSERT_EQ("w1_col4_sum", schema->GetColumnName(3));
+            ASSERT_EQ("w1_col5_sum", schema->GetColumnName(4));
 
             ASSERT_EQ(5, rs->Size());
             ASSERT_TRUE(rs->Next());
@@ -1062,13 +1062,13 @@ TEST_F(TabletSdkTest, test_window_udf_no_partition_query) {
             "PRECEDING AND CURRENT ROW) limit 10;";
         std::shared_ptr<ResultSet> rs = sdk->Query(name, sql, &query_status);
         if (rs) {
-            const Schema& schema = rs->GetSchema();
-            ASSERT_EQ(5u, schema.GetColumnCnt());
-            ASSERT_EQ("w1_col1_sum", schema.GetColumnName(0));
-            ASSERT_EQ("w1_col2_sum", schema.GetColumnName(1));
-            ASSERT_EQ("w1_col3_sum", schema.GetColumnName(2));
-            ASSERT_EQ("w1_col4_sum", schema.GetColumnName(3));
-            ASSERT_EQ("w1_col5_sum", schema.GetColumnName(4));
+            const Schema* schema = rs->GetSchema();
+            ASSERT_EQ(5u, schema->GetColumnCnt());
+            ASSERT_EQ("w1_col1_sum", schema->GetColumnName(0));
+            ASSERT_EQ("w1_col2_sum", schema->GetColumnName(1));
+            ASSERT_EQ("w1_col3_sum", schema->GetColumnName(2));
+            ASSERT_EQ("w1_col4_sum", schema->GetColumnName(3));
+            ASSERT_EQ("w1_col5_sum", schema->GetColumnName(4));
 
             ASSERT_EQ(5, rs->Size());
             ASSERT_TRUE(rs->Next());
@@ -1296,13 +1296,13 @@ TEST_F(TabletSdkTest, test_window_udf_no_partition_batch_query) {
             "PRECEDING AND CURRENT ROW) limit 10;";
         std::shared_ptr<ResultSet> rs = sdk->Query(name, sql, &query_status);
         if (rs) {
-            const Schema& schema = rs->GetSchema();
-            ASSERT_EQ(5, schema.GetColumnCnt());
-            ASSERT_EQ("w1_col1_sum", schema.GetColumnName(0));
-            ASSERT_EQ("w1_col2_sum", schema.GetColumnName(1));
-            ASSERT_EQ("w1_col3_sum", schema.GetColumnName(2));
-            ASSERT_EQ("w1_col4_sum", schema.GetColumnName(3));
-            ASSERT_EQ("w1_col5_sum", schema.GetColumnName(4));
+            const Schema* schema = rs->GetSchema();
+            ASSERT_EQ(5, schema->GetColumnCnt());
+            ASSERT_EQ("w1_col1_sum", schema->GetColumnName(0));
+            ASSERT_EQ("w1_col2_sum", schema->GetColumnName(1));
+            ASSERT_EQ("w1_col3_sum", schema->GetColumnName(2));
+            ASSERT_EQ("w1_col4_sum", schema->GetColumnName(3));
+            ASSERT_EQ("w1_col5_sum", schema->GetColumnName(4));
 
             ASSERT_EQ(5, rs->Size());
             ASSERT_TRUE(rs->Next());

@@ -8,6 +8,13 @@ add_library(fesql_sdk STATIC base_impl.cc dbms_sdk.cc tablet_sdk.cc result_set_i
 set(sdk_deps_libs fesql_sdk fesql_simple_catalog ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS} ${OS_LIB})
 
 if (TESTING_ENABLE)
+
+add_executable(request_row_test request_row_test.cc)
+target_link_libraries(request_row_test
+        gtest fesql_dbms fesql_tablet fesql_flags ${sdk_deps_libs})
+add_test(request_row_test request_row_test --gtest_output=xml:${CMAKE_BINARY_DIR}/request_row_test.xml)
+list(APPEND test_list request_row_test)
+
 add_executable(dbms_sdk_test dbms_sdk_test.cc)
 target_link_libraries(dbms_sdk_test
         gtest fesql_dbms fesql_tablet fesql_flags ${sdk_deps_libs})
