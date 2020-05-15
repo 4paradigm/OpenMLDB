@@ -748,6 +748,7 @@ bool BatchModeTransformer::GenProjects(
     return true;
 }
 bool BatchModeTransformer::AddDefaultPasses() {
+    AddPass(kPassColumnProjectOptimized);
     AddPass(kPassFilterOptimized);
     AddPass(kPassLeftJoinOptimized);
     AddPass(kPassGroupAndSortOptimized);

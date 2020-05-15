@@ -45,7 +45,7 @@ class SchemasContext {
                            const std::string& col_name,
                            const RowSchemaInfo** info) const;
     ColumnSource ColumnSourceResolved(const std::string& relation_name,
-                              const std::string& col_name) const;
+                                      const std::string& col_name) const;
 
  public:
     // row ir context list
@@ -56,6 +56,7 @@ class SchemasContext {
     std::map<std::string, uint32_t> table_context_id_map_;
     int32_t ColumnOffsetResolved(const std::string& relation_name,
                                  const std::string& col_name) const;
+
  private:
     int32_t ColumnIndexResolved(const std::string& column,
                                 const Schema* schema) const;

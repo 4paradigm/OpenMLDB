@@ -46,7 +46,7 @@ enum SourceType { kSourceColumn, kSourceConst, kSourceNone };
 struct ColumnSource {
     ColumnSource()
         : type_(kSourceNone), schema_idx_(0), column_idx_(0), const_value_() {}
-    ColumnSource(const node::ConstNode& node)
+    explicit ColumnSource(const node::ConstNode& node)
         : type_(kSourceConst),
           schema_idx_(0),
           column_idx_(0),

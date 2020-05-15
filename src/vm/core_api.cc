@@ -18,7 +18,8 @@ int CoreAPI::ResolveColumnIndex(fesql::vm::PhysicalOpNode* node,
                                 fesql::node::ColumnRefNode* expr) {
     SchemasContext schema_ctx(node->GetOutputNameSchemaList());
     auto column_expr = dynamic_cast<const node::ColumnRefNode*>(expr);
-    return schema_ctx.ColumnOffsetResolved(column_expr->GetRelationName(), column_expr->GetColumnName());
+    return schema_ctx.ColumnOffsetResolved(column_expr->GetRelationName(),
+                                           column_expr->GetColumnName());
 }
 
 fesql::codec::Row CoreAPI::RowProject(const RawFunctionPtr fn,
