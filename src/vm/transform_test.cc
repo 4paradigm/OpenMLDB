@@ -323,16 +323,16 @@ TEST_F(TransformTest, TransfromConditionsTest) {
 }
 
 TEST_F(TransformTest, TransformEqualExprPairTest) {
-    std::vector<std::pair<const std::string, const vm::Schema*>> name_schemas;
+    vm::SchemaSourceList name_schemas;
     type::TableDef t1;
     type::TableDef t2;
     {
         BuildTableDef(t1);
-        name_schemas.push_back(std::make_pair("t1", &t1.columns()));
+        name_schemas.AddSchemaSource("t1", &t1.columns());
     }
     {
         BuildTableT2Def(t2);
-        name_schemas.push_back(std::make_pair("t2", &t2.columns()));
+        name_schemas.AddSchemaSource("t2", &t2.columns());
     }
 
     std::vector<std::pair<std::string, std::pair<std::string, std::string>>>

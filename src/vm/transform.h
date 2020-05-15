@@ -181,9 +181,8 @@ class ConditionOptimized : public TransformUpPysicalPass {
         node::ExprNode* condition,
         std::pair<node::ExprNode*, node::ExprNode*>* expr_pair);
     static bool TransformEqualExprPair(
-        const std::vector<std::pair<const std::string, const vm::Schema*>>
-            name_schema_list,
-        const size_t left_schema_cnt, node::ExprListNode* and_conditions,
+        const SchemaSourceList& name_schema_list, const size_t left_schema_cnt,
+        node::ExprListNode* and_conditions,
         node::ExprListNode* out_condition_list,
         std::vector<ExprPair>& condition_eq_pair);  // NOLINT
 
@@ -251,18 +250,18 @@ class BatchModeTransformer {
     bool GenJoin(Join* join, PhysicalOpNode* in,
                  base::Status& status);  // NOLINT
     bool GenFilter(ConditionFilter* filter,
-                   const NameSchemaList& input_name_schema_list,
+                   const SchemaSourceList& input_name_schema_list,
                    base::Status& status);  // NOLINT
-    bool GenKey(Key* hash, const NameSchemaList& input_name_schema_list,
+    bool GenKey(Key* hash, const SchemaSourceList& input_name_schema_list,
                 base::Status& status);  // NOLINT
     bool GenWindow(WindowOp* window, PhysicalOpNode* in,
                    base::Status& status);  // NOLINT
     bool GenRequestWindow(RequestWindowOp* window, PhysicalOpNode* in,
                           base::Status& status);  // NOLINT
 
-    bool GenSort(Sort* sort, const NameSchemaList& input_name_schema_list,
+    bool GenSort(Sort* sort, const SchemaSourceList& input_name_schema_list,
                  base::Status& status);  // NOLINT
-    bool GenRange(Range* sort, const NameSchemaList& input_name_schema_list,
+    bool GenRange(Range* sort, const SchemaSourceList& input_name_schema_list,
                   base::Status& status);  // NOLINT
 
  protected:
@@ -317,21 +316,16 @@ class BatchModeTransformer {
     virtual void ApplyPasses(PhysicalOpNode* node, PhysicalOpNode** output);
     bool GenFnDef(const node::FuncDefPlanNode* fn_plan,
                   base::Status& status);  // NOLINT
-    bool CodeGenExprList(const NameSchemaList& input_name_schema_list,
-                         const node::ExprListNode* expr_list, bool row_mode,
-                         std::string& fn_name, Schema* output_schema,  // NOLINT
-                         base::Status& status);                        // NOLINT
-    bool CodeGenExprList(const NameSchemaList& input_name_schema_list,
+    bool CodeGenExprList(const SchemaSourceList& input_name_schema_list,
                          const node::ExprListNode* expr_list, bool row_mode,
                          FnInfo* fn_info,
                          base::Status& status);  // NOLINT
-    bool GenProjects(
-        const std::vector<std::pair<const std::string, const Schema*>>&
-            input_name_schema_list,
-        const node::PlanNodeList& projects, const bool row_mode,
-        std::string& fn_name,   // NOLINT
-        Schema* output_schema,  // NOLINT
-        base::Status& status);  // NOLINT
+    bool GenProjects(const SchemaSourceList& input_name_schema_list,
+                     const node::PlanNodeList& projects, const bool row_mode,
+                     std::string& fn_name,   // NOLINT
+                     Schema* output_schema,  // NOLINT
+                     ColumnSourceList* output_column_sources,
+                     base::Status& status);  // NOLINT
     bool GenWindowJoinList(WindowJoinList* window_join_list, PhysicalOpNode* in,
                            base::Status& status);  // NOLINT
     bool GenWindowUnionList(WindowUnionList* window_union_list,

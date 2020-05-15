@@ -1109,22 +1109,22 @@ const Row Runner::RowLastJoinTable(const Row& left_row,
     }
     return Row(left_row, Row());
 }
-void Runner::PrintData(const vm::NameSchemaList& schema_list,
+void Runner::PrintData(const vm::SchemaSourceList& schema_list,
                        std::shared_ptr<DataHandler> data) {
     std::ostringstream oss;
     std::vector<RowView> row_view_list;
     ::fesql::base::TextTable t('-', '|', '+');
     // Add Header
     t.add("Order");
-    for (auto pair : schema_list) {
-        for (int i = 0; i < pair.second->size(); i++) {
-            if (pair.first.empty()) {
-                t.add(pair.second->Get(i).name());
+    for (auto source : schema_list.schema_source_list_) {
+        for (int i = 0; i < source.schema_->size(); i++) {
+            if (source.table_name_.empty()) {
+                t.add(source.schema_->Get(i).name());
             } else {
-                t.add(pair.first + "." + pair.second->Get(i).name());
+                t.add(source.table_name_ + "." + source.schema_->Get(i).name());
             }
         }
-        row_view_list.push_back(RowView(*pair.second));
+        row_view_list.push_back(RowView(*source.schema_));
     }
 
     t.endOfRow();
@@ -1144,7 +1144,9 @@ void Runner::PrintData(const vm::NameSchemaList& schema_list,
             for (size_t id = 0; id < row_view_list.size(); id++) {
                 RowView& row_view = row_view_list[id];
                 row_view.Reset(row.buf(id), row.size(id));
-                for (int idx = 0; idx < schema_list[id].second->size(); idx++) {
+                for (int idx = 0;
+                     idx < schema_list.schema_source_list_[id].schema_->size();
+                     idx++) {
                     std::string str = row_view.GetAsString(idx);
                     t.add(str);
                 }
@@ -1174,7 +1176,9 @@ void Runner::PrintData(const vm::NameSchemaList& schema_list,
                     for (size_t id = 0; id < row_view_list.size(); id++) {
                         RowView& row_view = row_view_list[id];
                         row_view.Reset(row.buf(id));
-                        for (int idx = 0; idx < schema_list[id].second->size();
+                        for (int idx = 0;
+                             idx < schema_list.schema_source_list_[id]
+                                       .schema_->size();
                              idx++) {
                             std::string str = row_view.GetAsString(idx);
                             t.add(str);
@@ -1218,7 +1222,9 @@ void Runner::PrintData(const vm::NameSchemaList& schema_list,
                             RowView& row_view = row_view_list[id];
                             row_view.Reset(row.buf(id));
                             for (int idx = 0;
-                                 idx < schema_list[id].second->size(); idx++) {
+                                 idx < schema_list.schema_source_list_[id]
+                                           .schema_->size();
+                                 idx++) {
                                 std::string str = row_view.GetAsString(idx);
                                 t.add(str);
                             }

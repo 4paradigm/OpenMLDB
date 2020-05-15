@@ -6,9 +6,9 @@
  * Date: 2020/4/20
  *--------------------------------------------------------------------------
  **/
+#include "vm/schemas_context.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-#include "vm/schemas_context.h"
 namespace fesql {
 namespace vm {
 void BuildTableDef(::fesql::type::TableDef& table) {  // NOLINT
@@ -96,16 +96,16 @@ void BuildTableT2Def(::fesql::type::TableDef& table) {  // NOLINT
 class SchemasContextTest : public ::testing::Test {};
 
 TEST_F(SchemasContextTest, NewSchemasContextTest) {
-    std::vector<std::pair<const std::string, const vm::Schema*>> name_schemas;
+    vm::SchemaSourceList name_schemas;
     type::TableDef t1;
     type::TableDef t2;
     {
         BuildTableDef(t1);
-        name_schemas.push_back(std::make_pair("t1", &t1.columns()));
+        name_schemas.AddSchemaSource("t1", &t1.columns());
     }
     {
         BuildTableT2Def(t2);
-        name_schemas.push_back(std::make_pair("t2", &t2.columns()));
+        name_schemas.AddSchemaSource("t2", &t2.columns());
     }
     SchemasContext ctx(name_schemas);
 
@@ -116,25 +116,27 @@ TEST_F(SchemasContextTest, NewSchemasContextTest) {
     ASSERT_EQ(std::vector<uint32_t>({1u}), ctx.col_context_id_map_["str0"]);
 
     ASSERT_EQ(0u, ctx.row_schema_info_list_[0].idx_);
-    ASSERT_EQ(name_schemas[0].second, ctx.row_schema_info_list_[0].schema_);
+    ASSERT_EQ(name_schemas.schema_source_list_[0].schema_,
+              ctx.row_schema_info_list_[0].schema_);
     ASSERT_EQ("t1", ctx.row_schema_info_list_[0].table_name_);
 
     ASSERT_EQ(1u, ctx.row_schema_info_list_[1].idx_);
-    ASSERT_EQ(name_schemas[1].second, ctx.row_schema_info_list_[1].schema_);
+    ASSERT_EQ(name_schemas.schema_source_list_[1].schema_,
+              ctx.row_schema_info_list_[1].schema_);
     ASSERT_EQ("t2", ctx.row_schema_info_list_[1].table_name_);
 }
 
 TEST_F(SchemasContextTest, ColumnResolvedTest) {
-    std::vector<std::pair<const std::string, const vm::Schema*>> name_schemas;
+    vm::SchemaSourceList name_schemas;
     type::TableDef t1;
     type::TableDef t2;
     {
         BuildTableDef(t1);
-        name_schemas.push_back(std::make_pair("t1", &t1.columns()));
+        name_schemas.AddSchemaSource("t1", &t1.columns());
     }
     {
         BuildTableT2Def(t2);
-        name_schemas.push_back(std::make_pair("t2", &t2.columns()));
+        name_schemas.AddSchemaSource("t2", &t2.columns());
     }
     SchemasContext ctx(name_schemas);
     RowSchemaInfo* info_t1 = &ctx.row_schema_info_list_[0];

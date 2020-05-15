@@ -41,6 +41,20 @@ struct ColInfo {
     std::string name;
 };
 
+struct ColumnSource {
+    bool has_source_ = false;
+    uint32_t schema_idx_ = 0;
+    uint32_t column_idx_ = 0;
+    const std::string ToString() const {
+        if (has_source_) {
+            return "source->" + std::to_string(schema_idx_) + ":" +
+                   std::to_string(column_idx_);
+        } else {
+            return "";
+        }
+    }
+};
+
 struct IndexSt {
     std::string name;
     uint32_t index;
@@ -52,7 +66,58 @@ typedef ::google::protobuf::RepeatedPtrField<::fesql::type::ColumnDef> Schema;
 typedef ::google::protobuf::RepeatedPtrField<::fesql::type::IndexDef> IndexList;
 typedef std::map<std::string, ColInfo> Types;
 typedef std::map<std::string, IndexSt> IndexHint;
-typedef std::vector<std::pair<const std::string, const Schema*>> NameSchemaList;
+typedef std::vector<ColumnSource> ColumnSourceList;
+
+struct SchemaSource {
+ public:
+    explicit SchemaSource(const vm::Schema* schema)
+        : table_name_(""), schema_(schema), sources_(nullptr) {}
+    SchemaSource(const std::string& table_name, const vm::Schema* schema)
+        : table_name_(table_name), schema_(schema), sources_(nullptr) {}
+    SchemaSource(const std::string& table_name, const vm::Schema* schema,
+                 const vm::ColumnSourceList* sources)
+        : table_name_(table_name), schema_(schema), sources_(sources) {}
+    std::string table_name_;
+    const vm::Schema* schema_;
+    const vm::ColumnSourceList* sources_;
+};
+
+struct SchemaSourceList {
+    void AddSchemaSource(const vm::Schema* schema) {
+        schema_source_list_.push_back(SchemaSource("", schema));
+    }
+    void AddSchemaSource(const std::string& table_name,
+                         const vm::Schema* schema) {
+        schema_source_list_.push_back(SchemaSource(table_name, schema));
+    }
+
+    void AddSchemaSource(const std::string& table_name,
+                         const vm::Schema* schema,
+                         const vm::ColumnSourceList* sources) {
+        schema_source_list_.push_back(
+            SchemaSource(table_name, schema, sources));
+    }
+    void AddSchemaSources(const SchemaSourceList& sources) {
+        for (auto source : sources.schema_source_list_) {
+            schema_source_list_.push_back(source);
+        }
+    }
+
+    const std::vector<SchemaSource>& schema_source_list() const {
+        return schema_source_list_;
+    }
+    const vm::SchemaSource& GetSchemaSourceSlice(size_t idx) const {
+        return schema_source_list_[idx];
+    }
+    const vm::Schema* GetSchemaSlice(size_t idx) const {
+        return schema_source_list_[idx].schema_;
+    }
+    const size_t GetSchemaSourceListSize() const {
+        return schema_source_list_.size();
+    }
+
+    std::vector<SchemaSource> schema_source_list_;
+};
 
 class PartitionHandler;
 

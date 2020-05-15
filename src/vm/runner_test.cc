@@ -329,8 +329,8 @@ TEST_F(RunnerTest, RunnerPrintDataTest) {
     fesql::type::TableDef temp_table;
     BuildRows(temp_table, rows);
 
-    NameSchemaList name_schema_list;
-    name_schema_list.push_back(std::make_pair("t1", &table_def.columns()));
+    SchemaSourceList name_schema_list;
+    name_schema_list.AddSchemaSource("t1", &table_def.columns());
     // Print Empty Set
     std::shared_ptr<MemTableHandler> table_handler =
         std::shared_ptr<MemTableHandler>(new MemTableHandler());
