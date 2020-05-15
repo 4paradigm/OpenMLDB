@@ -1,6 +1,5 @@
 package com._4paradigm.fesql.jdbc;
 
-import com._4paradigm.SWIGTYPE_p_Schema;
 import com._4paradigm.fesql.sdk.*;
 import com._4paradigm.fesql_interface;
 import org.testng.Assert;
