@@ -11,14 +11,11 @@ add_library(nameserver STATIC proto/name_server.pb.cc nameserver/name_server_imp
 add_library(beans storage/beans/bitcask.c storage/beans/clock_gettime_stub.c storage/beans/codec.c storage/beans/common.c storage/beans/crc32.c storage/beans/diskmgr.c storage/beans/hint.c storage/beans/hstore.c storage/beans/htree.c storage/beans/mfile.c storage/beans/quicklz.c storage/beans/record.c)
 add_library(storage STATIC storage/object_store.cc storage/mem_table.cc storage/disk_table.cc storage/relational_table.cc storage/segment.cc storage/ticket.cc storage/mem_table_snapshot.cc storage/disk_table_snapshot.cc storage/snapshot.cc storage/table.cc storage/binlog.cc codec/codec.cc storage/schema.cc)
 
-target_link_libraries(storage rocksdb z rt pthread)
 if (PZFPGA_ENABLE)
-    target_link_libraries(storage lz4 pz alteracl OpenCL elf)
+    target_link_libraries(storage lz4 pz alteracl OpenCL elf z rt pthread)
 endif()
-target_link_libraries(blobserver beans)
 
 add_library(client STATIC client/tablet_client.cc client/ns_client.cc client/bs_client.cc)
-
 add_library(log STATIC log/crc32c.cc 
                        log/sequential_file.cc 
                        log/log_writer.cc 

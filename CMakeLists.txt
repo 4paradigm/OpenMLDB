@@ -17,12 +17,7 @@ add_definitions('-Wall')
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
 option(TCMALLOC_ENABLE "Enable TCMALLOC" ON)
 
-option(STATIC_COMPILE_ENABLE "Enable STATIC COMPILE" ON) 
-if (STATIC_COMPILE_ENABLE)
-    set(CMAKE_EXE_LINKER_FLAGS "-static -static-libgcc -static-libstdc++")
-endif()
 option(PZFPGA_ENABLE "Enable pz compression for ssd tables" OFF)
-
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
