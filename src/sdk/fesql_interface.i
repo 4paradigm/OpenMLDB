@@ -102,7 +102,7 @@ using fesql::codec::RowIterator;
 using fesql::codec::Row;
 using fesql::node::PlanType;
 using fesql::sdk::ExplainInfo;
-
+using fesql::sdk::RequestRow;
 %}
 
 
@@ -137,3 +137,4 @@ using fesql::sdk::ExplainInfo;
 %include "vm/physical_op.h"
 %include "vm/jit_wrapper.h"
 %include "vm/core_api.h"
+#include "sdk/request_row.h"

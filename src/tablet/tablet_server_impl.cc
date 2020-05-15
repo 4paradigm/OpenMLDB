@@ -220,12 +220,12 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
             status->set_msg("fail to run sql");
             return;
         }
-        buf.append(reinterpret_cast<void*>(row.buf()), row.size());
+        buf.append(reinterpret_cast<void*>(output.buf()), output.size());
         response->set_schema(session.GetEncodedSchema());
-        response->set_byte_size(row.size());
+        response->set_byte_size(output.size());
         response->set_count(1);
         status->set_code(common::kOk);
-        free(row.buf());
+        free(output.buf());
     }
 }
 

@@ -66,6 +66,10 @@ class DBMSSdkImpl : public DBMSSdk {
                                          const std::string &sql,
                                          sdk::Status *status);
 
+    std::shared_ptr<RequestRow> GetRequestRow(const std::string& catalog,
+            const std::string &sql,
+            sdk::Status *status);
+
  private:
     bool InitTabletSdk();
 
@@ -98,6 +102,17 @@ std::shared_ptr<ExplainInfo> DBMSSdkImpl::Explain(const std::string &catalog,
                                                   const std::string &sql,
                                                   sdk::Status *status) {
     return tablet_sdk_->Explain(catalog, sql, status);
+}
+
+std::shared_ptr<RequestRow> DBMSSdkImpl::GetRequestRow(const std::string& catalog,
+        const std::string &sql,
+        sdk::Status *status) {
+    if (status == NULL) return std::shared_ptr<RequestRow>();
+    const Schema& schema = GetInputSchema(catalog, sql, status);
+    if (status->code != common::kOk) {
+        return std::shared_ptr<RequestRow>();
+    }
+    return std::shared_ptr<RequestRow>(new RequestRow(&schema));
 }
 
 const Schema &DBMSSdkImpl::GetInputSchema(const std::string &catalog,
