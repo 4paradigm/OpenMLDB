@@ -22,16 +22,16 @@
 #include <vector>
 #include "sdk/base.h"
 #include "sdk/base_impl.h"
+#include "sdk/request_row.h"
 #include "sdk/result_set.h"
 #include "sdk/tablet_sdk.h"
-#include "sdk/request_row.h"
 
 namespace fesql {
 namespace sdk {
 
 static const Schema EMPTY;
 
-//TODO(wangtaize) replace shared_ptr with unique_ptr
+// TODO(wangtaize) replace shared_ptr with unique_ptr
 
 class DBMSSdk {
  public:
@@ -55,10 +55,9 @@ class DBMSSdk {
         return std::shared_ptr<ResultSet>();
     }
 
-    virtual std::shared_ptr<ResultSet> ExecuteQuery(const std::string &catalog,
-                                                    const std::string &sql,
-                                                    const std::shared_ptr<RequestRow> &row,
-                                                    sdk::Status *status) {
+    virtual std::shared_ptr<ResultSet> ExecuteQuery(
+        const std::string &catalog, const std::string &sql,
+        const std::shared_ptr<RequestRow> &row, sdk::Status *status) {
         return std::shared_ptr<ResultSet>();
     }
 
@@ -68,9 +67,9 @@ class DBMSSdk {
         return EMPTY;
     }
 
-    virtual std::shared_ptr<RequestRow> GetRequestRow(const std::string& catalog,
-            const std::string &sql,
-            sdk::Status *status) {
+    virtual std::shared_ptr<RequestRow> GetRequestRow(
+        const std::string &catalog, const std::string &sql,
+        sdk::Status *status) {
         return std::shared_ptr<RequestRow>();
     }
 

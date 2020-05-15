@@ -15,10 +15,11 @@
  * limitations under the License.
  */
 
-#ifndef SRC_REQUEST_ROW_H_
-#define SRC_REQUEST_ROW_H_
+#ifndef SRC_SDK_REQUEST_ROW_H_
+#define SRC_SDK_REQUEST_ROW_H_
 
 #include <vector>
+#include <string>
 #include "sdk/base.h"
 
 namespace fesql {
@@ -40,14 +41,12 @@ class RequestRow {
     bool AppendString(const std::string& val);
     bool AppendNULL();
     bool Build();
-    inline const std::string& GetRow() {
-        return val_;
-    }
-    inline const Schema* GetSchema() {
-        return schema_;
-    }
+    inline const std::string& GetRow() { return val_; }
+    inline const Schema* GetSchema() { return schema_; }
+
  private:
     bool Check(fesql::sdk::DataType type);
+
  private:
     const fesql::sdk::Schema* schema_;
     uint32_t cnt_;
@@ -61,6 +60,6 @@ class RequestRow {
     int8_t* buf_;
 };
 
-}  // sdk
-}  // fesql
-#endif  // REQUEST_ROW_H_
+}  // namespace sdk
+}  // namespace fesql
+#endif  // SRC_SDK_REQUEST_ROW_H_

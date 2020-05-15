@@ -18,10 +18,10 @@
 #include "sdk/dbms_sdk.h"
 
 #include <iostream>
+#include <map>
 #include <memory>
 #include <string>
 #include <utility>
-#include <map>
 #include "base/spin_lock.h"
 #include "brpc/channel.h"
 #include "node/node_manager.h"
@@ -52,10 +52,9 @@ class DBMSSdkImpl : public DBMSSdk {
                                             sdk::Status *status);
 
     // support select only
-    std::shared_ptr<ResultSet> ExecuteQuery(const std::string &catalog,
-                                            const std::string &sql,
-                                            const std::shared_ptr<RequestRow> &row,
-                                            sdk::Status *status) {
+    std::shared_ptr<ResultSet> ExecuteQuery(
+        const std::string &catalog, const std::string &sql,
+        const std::shared_ptr<RequestRow> &row, sdk::Status *status) {
         return tablet_sdk_->Query(catalog, sql, row->GetRow(), status);
     }
 
@@ -66,9 +65,9 @@ class DBMSSdkImpl : public DBMSSdk {
                                          const std::string &sql,
                                          sdk::Status *status);
 
-    std::shared_ptr<RequestRow> GetRequestRow(const std::string& catalog,
-            const std::string &sql,
-            sdk::Status *status);
+    std::shared_ptr<RequestRow> GetRequestRow(const std::string &catalog,
+                                              const std::string &sql,
+                                              sdk::Status *status);
 
  private:
     bool InitTabletSdk();
@@ -104,11 +103,10 @@ std::shared_ptr<ExplainInfo> DBMSSdkImpl::Explain(const std::string &catalog,
     return tablet_sdk_->Explain(catalog, sql, status);
 }
 
-std::shared_ptr<RequestRow> DBMSSdkImpl::GetRequestRow(const std::string& catalog,
-        const std::string &sql,
-        sdk::Status *status) {
+std::shared_ptr<RequestRow> DBMSSdkImpl::GetRequestRow(
+    const std::string &catalog, const std::string &sql, sdk::Status *status) {
     if (status == NULL) return std::shared_ptr<RequestRow>();
-    const Schema& schema = GetInputSchema(catalog, sql, status);
+    const Schema &schema = GetInputSchema(catalog, sql, status);
     if (status->code != common::kOk) {
         return std::shared_ptr<RequestRow>();
     }
