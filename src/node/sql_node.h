@@ -811,7 +811,16 @@ class ConstNode : public ExprNode {
 
     explicit ConstNode(const std::string &val)
         : ExprNode(kExprPrimary), data_type_(fesql::node::kVarchar) {
-        val_.vstr = val.c_str();
+        val_.vstr = strdup(val.c_str());
+    }
+
+    explicit ConstNode(const ConstNode& that)
+        : ExprNode(kExprPrimary), data_type_(that.data_type_) {
+        if (kVarchar == that.data_type_) {
+            val_.vstr = strdup(that.val_.vstr);
+        } else {
+            val_ = that.val_;
+        }
     }
 
     ConstNode(int64_t val, DataType time_type)

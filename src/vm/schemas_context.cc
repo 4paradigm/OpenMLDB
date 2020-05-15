@@ -217,29 +217,52 @@ bool SchemasContext::ColumnRefResolved(const std::string& relation_name,
         return true;
     }
 }
-bool SchemasContext::ColumnSourceResolved(const std::string& relation_name,
-                                          const std::string& col_name,
-                                          vm::ColumnSource* source) const {
+
+vm::ColumnSource SchemasContext::ColumnSourceResolved(
+    const std::string& relation_name, const std::string& col_name) const {
     const RowSchemaInfo* row_schema_info;
     if (!ColumnRefResolved(relation_name, col_name, &row_schema_info)) {
-        return false;
+        LOG(WARNING) << "Resolve column expression failed";
+        return ColumnSource();
     }
-    auto schema = row_schema_info->schema_;
+    int32_t column_idx =
+        ColumnIndexResolved(col_name, row_schema_info->schema_);
+    if (-1 == column_idx) {
+        return ColumnSource();
+    }
+    return ColumnSource(row_schema_info->idx_, column_idx);
+}
+
+int32_t SchemasContext::ColumnIndexResolved(const std::string& column,
+                                            const Schema* schema) const {
     int32_t column_idx = -1;
     for (int i = 0; i < schema->size(); ++i) {
-        if (schema->Get(i).name() == col_name) {
+        if (schema->Get(i).name() == column) {
             column_idx = i;
             break;
         }
     }
+    return column_idx;
+}
 
-    if (-1 == column_idx) {
-        return false;
+int32_t SchemasContext::ColumnOffsetResolved(
+    const std::string& relation_name, const std::string& col_name) const {
+    const RowSchemaInfo* row_schema_info;
+    if (!ColumnRefResolved(relation_name, col_name, &row_schema_info)) {
+        LOG(WARNING) << "Resolve column expression failed";
+        return -1;
     }
-    source->column_idx_ = column_idx;
-    source->has_source_ = true;
-    source->schema_idx_ = row_schema_info->idx_;
-    return true;
+
+    int32_t column_index =
+        ColumnIndexResolved(col_name, row_schema_info->schema_);
+    if (-1 == column_index) {
+        return -1;
+    }
+    int offset = column_index;
+    for (int i = 0; i < row_schema_info->idx_; ++i) {
+        offset += this->row_schema_info_list_[i].schema_->size();
+    }
+    return offset;
 }
 
 }  // namespace vm

@@ -474,16 +474,19 @@ TEST_F(FnLetIRBuilderTest, test_primary) {
     ASSERT_EQ(4, schema.size());
     ASSERT_EQ(4, column_sources.size());
 
-    ASSERT_TRUE(column_sources[0].has_source_);
-    ASSERT_EQ(0, column_sources[0].column_idx_);
-    ASSERT_EQ(0, column_sources[0].schema_idx_);
+    ASSERT_EQ(vm::kSourceColumn, column_sources[0].type());
+    ASSERT_EQ(0, column_sources[0].column_idx());
+    ASSERT_EQ(0, column_sources[0].schema_idx());
 
-    ASSERT_TRUE(column_sources[1].has_source_);
-    ASSERT_EQ(5, column_sources[1].column_idx_);
-    ASSERT_EQ(0, column_sources[1].schema_idx_);
+    ASSERT_EQ(vm::kSourceColumn, column_sources[1].type());
+    ASSERT_EQ(5, column_sources[1].column_idx());
+    ASSERT_EQ(0, column_sources[1].schema_idx());
 
-    ASSERT_FALSE(column_sources[2].has_source_);
-    ASSERT_FALSE(column_sources[3].has_source_);
+    ASSERT_EQ(vm::kSourceConst, column_sources[2].type());
+    ASSERT_EQ(1.0, column_sources[2].const_value().GetDouble());
+
+    ASSERT_EQ(vm::kSourceConst, column_sources[3].type());
+    ASSERT_EQ("hello", column_sources[3].const_value().GetExprString());
 
     ASSERT_EQ(out_size, 27u);
     ASSERT_EQ(32u, *reinterpret_cast<uint32_t*>(output + 7));
@@ -741,35 +744,35 @@ TEST_F(FnLetIRBuilderTest, test_join_window_project_mix) {
     ASSERT_EQ(8u, column_sources.size());
     {
         // t1.col1
-        ASSERT_TRUE(column_sources[0].has_source_);
-        ASSERT_EQ(0, column_sources[0].column_idx_);
-        ASSERT_EQ(0, column_sources[0].schema_idx_);
+        ASSERT_EQ(vm::kSourceColumn, column_sources[0].type());
+        ASSERT_EQ(0, column_sources[0].column_idx());
+        ASSERT_EQ(0, column_sources[0].schema_idx());
     }
 
     // sum(t1.col1)
-    { ASSERT_FALSE(column_sources[1].has_source_); }
+    { ASSERT_EQ(vm::kSourceNone, column_sources[1].type()); }
 
     // t1.col3
     {
-        ASSERT_TRUE(column_sources[2].has_source_);
-        ASSERT_EQ(2, column_sources[2].column_idx_);
-        ASSERT_EQ(0, column_sources[2].schema_idx_);
+        ASSERT_EQ(vm::kSourceColumn, column_sources[2].type());
+        ASSERT_EQ(2, column_sources[2].column_idx());
+        ASSERT_EQ(0, column_sources[2].schema_idx());
     }
     // sum(t1.col3)
-    { ASSERT_FALSE(column_sources[3].has_source_); }
+    { ASSERT_EQ(vm::kSourceNone, column_sources[3].type()); }
 
     // t2.col4
     {
-        ASSERT_TRUE(column_sources[4].has_source_);
-        ASSERT_EQ(3, column_sources[4].column_idx_);
-        ASSERT_EQ(1, column_sources[4].schema_idx_);
+        ASSERT_EQ(vm::kSourceColumn, column_sources[4].type());
+        ASSERT_EQ(3, column_sources[4].column_idx());
+        ASSERT_EQ(1, column_sources[4].schema_idx());
     }
     // sum(t2.col4)
-    { ASSERT_FALSE(column_sources[5].has_source_); }
+    { ASSERT_EQ(vm::kSourceNone, column_sources[5].type()); }
     // sum(t2.col2)
-    { ASSERT_FALSE(column_sources[6].has_source_); }
+    { ASSERT_EQ(vm::kSourceNone, column_sources[6].type()); }
     // sum(t1.col5)
-    { ASSERT_FALSE(column_sources[7].has_source_); }
+    { ASSERT_EQ(vm::kSourceNone, column_sources[7].type()); }
 
     // t1.col1
     ASSERT_EQ(11111u, *reinterpret_cast<uint32_t*>(output + 7));

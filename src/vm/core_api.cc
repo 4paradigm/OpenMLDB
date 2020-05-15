@@ -16,28 +16,9 @@ namespace vm {
 
 int CoreAPI::ResolveColumnIndex(fesql::vm::PhysicalOpNode* node,
                                 fesql::node::ColumnRefNode* expr) {
-    auto& schema_slices = node->GetOutputNameSchemaList();
-    SchemasContext schema_ctx(schema_slices);
-    const RowSchemaInfo* info;
+    SchemasContext schema_ctx(node->GetOutputNameSchemaList());
     auto column_expr = dynamic_cast<const node::ColumnRefNode*>(expr);
-    if (!schema_ctx.ColumnRefResolved(column_expr->GetRelationName(),
-                                      column_expr->GetColumnName(), &info)) {
-        LOG(WARNING) << "Resolve column expression failed";
-        return -1;
-    }
-
-    int offset = 0;
-    for (int i = 0; i < info->idx_; ++i) {
-        offset += schema_slices.GetSchemaSlice(i)->size();
-    }
-
-    auto schema = info->schema_;
-    for (int i = 0; i < schema->size(); ++i) {
-        if (schema->Get(i).name() == column_expr->GetColumnName()) {
-            return offset + i;
-        }
-    }
-    return -1;
+    return schema_ctx.ColumnOffsetResolved(column_expr->GetRelationName(), column_expr->GetColumnName());
 }
 
 fesql::codec::Row CoreAPI::RowProject(const RawFunctionPtr fn,

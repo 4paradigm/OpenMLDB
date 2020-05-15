@@ -29,6 +29,7 @@ enum PhysicalOpType {
     kPhysicalOpAggrerate,
     kPhysicalOpWindowAgg,
     kPhysicalOpProject,
+    kPhysicalOpColumnProject,
     kPhysicalOpLimit,
     kPhysicalOpRename,
     kPhysicalOpDistinct,
@@ -476,6 +477,21 @@ class PhysicalTableProjectNode : public PhysicalProjectNode {
     }
     virtual ~PhysicalTableProjectNode() {}
     static PhysicalTableProjectNode *CastFrom(PhysicalOpNode *node);
+};
+
+class PhysicalColumnProjectNode : public PhysicalUnaryNode {
+ public:
+    PhysicalColumnProjectNode(PhysicalOpNode *node, const Schema &schema,
+                              const ColumnSourceList &sources)
+        : PhysicalUnaryNode(node, kPhysicalOpColumnProject, false, true),
+          column_sources(sources) {
+        output_type_ = node->output_type_;
+        output_schema_ = schema;
+    }
+    virtual ~PhysicalColumnProjectNode() {}
+    virtual void Print(std::ostream &output, const std::string &tab) const;
+    static PhysicalColumnProjectNode *CastFrom(PhysicalOpNode *node);
+    const ColumnSourceList column_sources;
 };
 class PhysicalAggrerationNode : public PhysicalProjectNode {
  public:

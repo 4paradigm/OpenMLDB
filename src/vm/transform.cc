@@ -2245,5 +2245,41 @@ bool RequestModeransformer::TransformProjectOp(
     return false;
 }
 
+bool ColumnProjectOptimized::Transform(PhysicalOpNode* in,
+                                       PhysicalOpNode** output) {
+    *output = in;
+    switch (in->type_) {
+        case kPhysicalOpProject: {
+            PhysicalProjectNode* project_op =
+                dynamic_cast<PhysicalProjectNode*>(in);
+            switch (project_op->project_type_) {
+                case kTableProject:
+                case kRowProject: {
+                    bool all_has_source = true;
+                    for (auto iter = project_op->sources_.cbegin();
+                         iter != project_op->sources_.cend(); iter++) {
+                        if (vm::kSourceNone == iter->type()) {
+                            all_has_source = false;
+                            break;
+                        }
+                    }
+                    if (all_has_source) {
+                        auto columm_project_op = new PhysicalColumnProjectNode(
+                            in->producers()[0], project_op->output_schema_,
+                            project_op->sources_);
+                        *output = columm_project_op;
+                        return true;
+                    }
+                }
+                default: {
+                    return false;
+                }
+            }
+        }
+        default: {
+            return false;
+        }
+    }
+}
 }  // namespace vm
 }  // namespace fesql

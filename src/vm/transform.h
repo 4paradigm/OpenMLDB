@@ -161,6 +161,16 @@ class LimitOptimized : public TransformUpPysicalPass {
     static bool ApplyLimitCnt(PhysicalOpNode* node, int32_t limit_cnt);
 };
 
+class ColumnProjectOptimized: public TransformUpPysicalPass{
+ public:
+    ColumnProjectOptimized(node::NodeManager* node_manager, const std::string& db,
+    const std::shared_ptr<Catalog>& catalog)
+    : TransformUpPysicalPass(node_manager, db, catalog) {}
+    ~ColumnProjectOptimized() {}
+
+ private:
+    virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
+};
 struct ExprPair {
     node::ExprNode* left_expr_ = nullptr;
     uint32_t left_idx_ = 0u;

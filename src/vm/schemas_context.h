@@ -44,9 +44,8 @@ class SchemasContext {
     bool ColumnRefResolved(const std::string& relation_name,
                            const std::string& col_name,
                            const RowSchemaInfo** info) const;
-    bool ColumnSourceResolved(const std::string& relation_name,
-                              const std::string& col_name,
-                              ColumnSource* source) const;
+    ColumnSource ColumnSourceResolved(const std::string& relation_name,
+                              const std::string& col_name) const;
 
  public:
     // row ir context list
@@ -55,6 +54,11 @@ class SchemasContext {
     std::map<std::string, std::vector<uint32_t>> col_context_id_map_;
     // table_name -> context_id1
     std::map<std::string, uint32_t> table_context_id_map_;
+    int32_t ColumnOffsetResolved(const std::string& relation_name,
+                                 const std::string& col_name) const;
+ private:
+    int32_t ColumnIndexResolved(const std::string& column,
+                                const Schema* schema) const;
 };
 }  // namespace vm
 }  // namespace fesql

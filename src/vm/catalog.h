@@ -17,6 +17,7 @@
 
 #ifndef SRC_VM_CATALOG_H_
 #define SRC_VM_CATALOG_H_
+#include <node/sql_node.h>
 #include <map>
 #include <memory>
 #include <string>
@@ -41,18 +42,42 @@ struct ColInfo {
     std::string name;
 };
 
+enum SourceType { kSourceColumn, kSourceConst, kSourceNone };
 struct ColumnSource {
-    bool has_source_ = false;
-    uint32_t schema_idx_ = 0;
-    uint32_t column_idx_ = 0;
+    ColumnSource()
+        : type_(kSourceNone), schema_idx_(0), column_idx_(0), const_value_() {}
+    ColumnSource(const node::ConstNode& node)
+        : type_(kSourceConst),
+          schema_idx_(0),
+          column_idx_(0),
+          const_value_(node) {}
+    ColumnSource(uint32_t schema_idx, uint32_t column_idx)
+        : type_(kSourceColumn),
+          schema_idx_(schema_idx),
+          column_idx_(column_idx),
+          const_value_() {}
+
     const std::string ToString() const {
-        if (has_source_) {
-            return "source->" + std::to_string(schema_idx_) + ":" +
-                   std::to_string(column_idx_);
-        } else {
-            return "";
+        switch (type_) {
+            case kSourceColumn:
+                return "->Column:" + std::to_string(schema_idx_) + ":" +
+                       std::to_string(column_idx_);
+            case kSourceConst:
+                return "->Value:" + const_value_.GetExprString();
+            case kSourceNone:
+                return "->None";
         }
     }
+    const SourceType type() const { return type_; }
+    const uint32_t schema_idx() const { return schema_idx_; }
+    const uint32_t column_idx() const { return column_idx_; }
+    const node::ConstNode& const_value() const { return const_value_; }
+
+ private:
+    SourceType type_;
+    uint32_t schema_idx_;
+    uint32_t column_idx_;
+    const node::ConstNode const_value_;
 };
 
 struct IndexSt {
