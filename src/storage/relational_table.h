@@ -198,7 +198,7 @@ class RelationalTable {
     bool PackValue(const void *from, ::rtidb::type::DataType data_type,
             std::string* key);
     bool ConvertIndex(const std::string& name, const std::string& value,
-                      std::string* out_val);
+                      bool has_null, std::string* out_val);
     bool GetCombineStr(const ::google::protobuf::RepeatedPtrField<
                            ::rtidb::api::Columns>& indexs,
                        std::string* combine_name, std::string* combine_value);

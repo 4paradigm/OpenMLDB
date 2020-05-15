@@ -192,7 +192,6 @@ __attribute__((unused)) static bool PackValue(const void *from,
         ::rtidb::type::DataType data_type,
         std::string* key) {
     int ret = 0;
-    // TODO(wangbao) resolve null
     switch (data_type) {
         case ::rtidb::type::kBool: {
             key->resize(sizeof(int8_t));

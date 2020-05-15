@@ -139,6 +139,10 @@ class RowView {
                     uint32_t* day);
     int32_t GetDate(uint32_t idx, int32_t* date);
     bool IsNULL(uint32_t idx) { return IsNULL(row_, idx); }
+    inline bool IsNULL(const int8_t* row, uint32_t idx) {
+        const int8_t* ptr = row + HEADER_LENGTH + (idx >> 3);
+        return *(reinterpret_cast<const uint8_t*>(ptr)) & (1 << (idx & 0x07));
+    }
     inline uint32_t GetSize() { return size_; }
 
     static inline uint32_t GetSize(const int8_t* row) {
@@ -159,11 +163,6 @@ class RowView {
  private:
     bool Init();
     bool CheckValid(uint32_t idx, ::rtidb::type::DataType type);
-
-    inline bool IsNULL(const int8_t* row, uint32_t idx) {
-        const int8_t* ptr = row + HEADER_LENGTH + (idx >> 3);
-        return *(reinterpret_cast<const uint8_t*>(ptr)) & (1 << (idx & 0x07));
-    }
 
  private:
     uint8_t str_addr_length_;

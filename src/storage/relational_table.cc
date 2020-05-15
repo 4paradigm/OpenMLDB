@@ -365,22 +365,31 @@ bool RelationalTable::PutDB(const rocksdb::Slice& spk, const char* data,
 bool RelationalTable::GetPackedField(const int8_t* row, uint32_t idx,
                                      const ::rtidb::type::DataType& data_type,
                                      std::string* key) {
+    char buf[1];
+    if (row_view_.IsNULL(row, idx)) {
+        memset(buf, 0, sizeof(buf));
+        key->append(buf, sizeof(buf));
+        return true;
+    } else {
+        memset(buf, 1, sizeof(buf));
+        key->append(buf, sizeof(buf));
+    }
     int get_value_ret = 0;
     int ret = 0;
-    // TODO(wangbao) resolve null
+    std::string pack_val;
     switch (data_type) {
         case ::rtidb::type::kBool: {
             int8_t val = 0;
             get_value_ret = row_view_.GetValue(row, idx, data_type, &val);
             if (get_value_ret == 0)
-                ret = ::rtidb::codec::PackValue(&val, data_type, key);
+                ret = ::rtidb::codec::PackValue(&val, data_type, &pack_val);
             break;
         }
         case ::rtidb::type::kSmallInt: {
             int16_t val = 0;
             get_value_ret = row_view_.GetValue(row, idx, data_type, &val);
             if (get_value_ret == 0)
-                ret = ::rtidb::codec::PackValue(&val, data_type, key);
+                ret = ::rtidb::codec::PackValue(&val, data_type, &pack_val);
             break;
         }
         case ::rtidb::type::kInt:
@@ -388,7 +397,7 @@ bool RelationalTable::GetPackedField(const int8_t* row, uint32_t idx,
             int32_t val = 0;
             get_value_ret = row_view_.GetValue(row, idx, data_type, &val);
             if (get_value_ret == 0)
-                ret = ::rtidb::codec::PackValue(&val, data_type, key);
+                ret = ::rtidb::codec::PackValue(&val, data_type, &pack_val);
             break;
         }
         case ::rtidb::type::kBigInt:
@@ -397,7 +406,7 @@ bool RelationalTable::GetPackedField(const int8_t* row, uint32_t idx,
             int64_t val = 0;
             get_value_ret = row_view_.GetValue(row, idx, data_type, &val);
             if (get_value_ret == 0)
-                ret = ::rtidb::codec::PackValue(&val, data_type, key);
+                ret = ::rtidb::codec::PackValue(&val, data_type, &pack_val);
             break;
         }
         case ::rtidb::type::kVarchar:
@@ -407,8 +416,8 @@ bool RelationalTable::GetPackedField(const int8_t* row, uint32_t idx,
             get_value_ret = row_view_.GetValue(row, idx, &ch, &length);
             if (get_value_ret == 0) {
                 int32_t dst_len = ::rtidb::codec::GetDstStrSize(length);
-                key->resize(dst_len);
-                char* dst = const_cast<char*>(key->data());
+                pack_val.resize(dst_len);
+                char* dst = const_cast<char*>(pack_val.data());
                 ret =
                     ::rtidb::codec::PackString(ch, length, (void**)&dst);  // NOLINT
             }
@@ -418,14 +427,14 @@ bool RelationalTable::GetPackedField(const int8_t* row, uint32_t idx,
             float val = 0.0;
             get_value_ret = row_view_.GetValue(row, idx, data_type, &val);
             if (get_value_ret == 0)
-                ret = ::rtidb::codec::PackValue(&val, data_type, key);
+                ret = ::rtidb::codec::PackValue(&val, data_type, &pack_val);
             break;
         }
         case ::rtidb::type::kDouble: {
             double val = 0.0;
             get_value_ret = row_view_.GetValue(row, idx, data_type, &val);
             if (get_value_ret == 0)
-                ret = ::rtidb::codec::PackValue(&val, data_type, key);
+                ret = ::rtidb::codec::PackValue(&val, data_type, &pack_val);
             break;
         }
         default: {
@@ -444,11 +453,13 @@ bool RelationalTable::GetPackedField(const int8_t* row, uint32_t idx,
               rtidb::type::DataType_Name(data_type).c_str(), id_, pid_);
         return false;
     }
+    key->append(pack_val);
     return true;
 }
 
 bool RelationalTable::ConvertIndex(const std::string& name,
                                    const std::string& value,
+                                   bool has_null,
                                    std::string* out_val) {
     std::shared_ptr<ColumnDef> column_def = table_column_.GetColumn(name);
     if (!column_def) {
@@ -456,52 +467,62 @@ bool RelationalTable::ConvertIndex(const std::string& name,
               id_, pid_);
         return false;
     }
+    char buf[1];
+    if (has_null) {
+        memset(buf, 0, sizeof(buf));
+        out_val->append(buf, sizeof(buf));
+        return true;
+    } else {
+        memset(buf, 1, sizeof(buf)); 
+        out_val->append(buf, sizeof(buf));
+    }
+    std::string pack_val;
     ::rtidb::type::DataType type = column_def->GetType();
     int ret = 0;
     switch (type) {
         case ::rtidb::type::kBool: {
             int8_t val = 0;
             ::rtidb::codec::GetBool(value.data(), &val);
-            ret = ::rtidb::codec::PackValue(&val, type, out_val);
+            ret = ::rtidb::codec::PackValue(&val, type, &pack_val);
             break;
         }
         case ::rtidb::type::kSmallInt: {
             int16_t val = 0;
             ::rtidb::codec::GetInt16(value.data(), &val);
-            ret = ::rtidb::codec::PackValue(&val, type, out_val);
+            ret = ::rtidb::codec::PackValue(&val, type, &pack_val);
             break;
         }
         case ::rtidb::type::kInt:
         case ::rtidb::type::kDate: {
             int32_t val = 0;
             ::rtidb::codec::GetInt32(value.data(), &val);
-            ret = ::rtidb::codec::PackValue(&val, type, out_val);
+            ret = ::rtidb::codec::PackValue(&val, type, &pack_val);
             break;
         }
         case ::rtidb::type::kBigInt:
         case ::rtidb::type::kTimestamp: {
             int64_t val = 0;
             ::rtidb::codec::GetInt64(value.data(), &val);
-            ret = ::rtidb::codec::PackValue(&val, type, out_val);
+            ret = ::rtidb::codec::PackValue(&val, type, &pack_val);
             break;
         }
         case ::rtidb::type::kFloat: {
             float val = 0.0;
             ::rtidb::codec::GetFloat(value.data(), &val);
-            ret = ::rtidb::codec::PackValue(&val, type, out_val);
+            ret = ::rtidb::codec::PackValue(&val, type, &pack_val);
             break;
         }
         case ::rtidb::type::kDouble: {
             double val = 0.0;
             ::rtidb::codec::GetDouble(value.data(), &val);
-            ret = ::rtidb::codec::PackValue(&val, type, out_val);
+            ret = ::rtidb::codec::PackValue(&val, type, &pack_val);
             break;
         }
         case ::rtidb::type::kVarchar:
         case ::rtidb::type::kString: {
             int32_t dst_len = ::rtidb::codec::GetDstStrSize(value.length());
-            out_val->resize(dst_len);
-            char* dst = const_cast<char*>(out_val->data());
+            pack_val.resize(dst_len);
+            char* dst = const_cast<char*>(pack_val.data());
             ret = ::rtidb::codec::PackString(value.data(), value.length(),
                                              (void**)&dst);  // NOLINT
             break;
@@ -517,6 +538,7 @@ bool RelationalTable::ConvertIndex(const std::string& name,
                 rtidb::type::DataType_Name(type).c_str(), id_, pid_);
         return false;
     }
+    out_val->append(pack_val);
     return true;
 }
 
@@ -1120,8 +1142,12 @@ bool RelationalTable::GetCombineStr(
         return false;
     } else if (indexs.size() == 1) {
         *combine_name = indexs.Get(0).name(0);
+        bool has_null = false;
+        if (!indexs.Get(0).has_value()) {
+            has_null = true;
+        }
         const std::string& value = indexs.Get(0).value();
-        if (!ConvertIndex(*combine_name, value, combine_value)) {
+        if (!ConvertIndex(*combine_name, value, has_null, combine_value)) {
             return false;
         }
     } else {
@@ -1141,9 +1167,13 @@ bool RelationalTable::GetCombineStr(
             combine_name->append(name);
             auto it = map.find(name);
             if (it == map.end()) return false;
+            bool has_null = false;
+            if (!indexs.Get(it->second).has_value()) {
+                has_null = true;
+            }
             const std::string& value = indexs.Get(it->second).value();
             std::string temp = "";
-            if (!ConvertIndex(name, value, &temp)) return false;
+            if (!ConvertIndex(name, value, has_null, &temp)) return false;
             if (!combine_value->empty()) {
                 combine_value->append("|");
             }
@@ -1161,8 +1191,13 @@ bool RelationalTable::GetCombinePk(
         PDLOG(DEBUG, "GetCombinePk failed. tid %u pid.", id_, pid_);
         return false;
     } else if (indexs.size() == 1) {
+        bool has_null = false;
+        if (!indexs.Get(0).has_value()) {
+            has_null = true;
+        }
         const std::string& value = indexs.Get(0).value();
-        if (!ConvertIndex(indexs.Get(0).name(0), value, combine_value)) {
+        if (!ConvertIndex(indexs.Get(0).name(0), value,
+                    has_null, combine_value)) {
             return false;
         }
     } else {
@@ -1178,9 +1213,13 @@ bool RelationalTable::GetCombinePk(
             const std::string& name = col_def.GetName();
             auto it = map.find(name);
             if (it == map.end()) return false;
+            bool has_null = false;
+            if (!indexs.Get(it->second).has_value()) {
+                has_null = true;
+            }
             const std::string& value = indexs.Get(it->second).value();
             std::string temp;
-            if (!ConvertIndex(name, value, &temp)) return false;
+            if (!ConvertIndex(name, value, has_null, &temp)) return false;
             if (!combine_value->empty()) {
                 combine_value->append("|");
             }
