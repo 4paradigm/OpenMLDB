@@ -1262,10 +1262,10 @@ bool RelationalTable::GetCombineStr(const std::shared_ptr<IndexDef> index_def,
             return false;
         }
     } else {
-        std::string col_val = "";
         for (const auto& col_def : index_def->GetColumns()) {
             uint32_t idx = col_def.GetId();
             ::rtidb::type::DataType data_type = col_def.GetType();
+            std::string col_val;
             if (!GetPackedField(data, idx, data_type, index_def->GetType(),
                         &col_val)) {
                 return false;
