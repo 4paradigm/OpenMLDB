@@ -54,9 +54,9 @@ class DBMSSdkImpl : public DBMSSdk {
     // support select only
     std::shared_ptr<ResultSet> ExecuteQuery(const std::string &catalog,
                                             const std::string &sql,
-                                            const std::string &row,
+                                            const std::shared_ptr<RequestRow> &row,
                                             sdk::Status *status) {
-        return tablet_sdk_->Query(catalog, sql, row, status);
+        return tablet_sdk_->Query(catalog, sql, row->GetRow(), status);
     }
 
     const Schema &GetInputSchema(const std::string &catalog,

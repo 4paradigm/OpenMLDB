@@ -57,7 +57,7 @@ class DBMSSdk {
 
     virtual std::shared_ptr<ResultSet> ExecuteQuery(const std::string &catalog,
                                                     const std::string &sql,
-                                                    const std::string &row,
+                                                    const std::shared_ptr<RequestRow> &row,
                                                     sdk::Status *status) {
         return std::shared_ptr<ResultSet>();
     }

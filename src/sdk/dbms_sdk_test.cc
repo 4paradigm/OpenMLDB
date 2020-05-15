@@ -274,7 +274,7 @@ TEST_F(DBMSSdkTest, request_mode) {
         ASSERT_TRUE(row->AppendString(column4));
         ASSERT_TRUE(row->AppendInt32(32));
         ASSERT_TRUE(row->Build());
-        std::shared_ptr<ResultSet> rs = dbms_sdk->ExecuteQuery(name, sql, row->GetRow(), &status);
+        std::shared_ptr<ResultSet> rs = dbms_sdk->ExecuteQuery(name, sql, row, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
         ASSERT_EQ(1, rs->Size());
         ASSERT_TRUE(rs->Next());
@@ -382,19 +382,19 @@ TEST_F(DBMSSdkTest, ExecuteSQLTest) {
             dbms_sdk->ExecuteQuery(name, sql, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
         if (rs) {
-            const Schema &schema = rs->GetSchema();
-            ASSERT_EQ(5, schema.GetColumnCnt());
-            ASSERT_EQ("column1", schema.GetColumnName(0));
-            ASSERT_EQ("column2", schema.GetColumnName(1));
-            ASSERT_EQ("column3", schema.GetColumnName(2));
-            ASSERT_EQ("column4", schema.GetColumnName(3));
-            ASSERT_EQ("column5", schema.GetColumnName(4));
+            const Schema* schema = rs->GetSchema();
+            ASSERT_EQ(5, schema->GetColumnCnt());
+            ASSERT_EQ("column1", schema->GetColumnName(0));
+            ASSERT_EQ("column2", schema->GetColumnName(1));
+            ASSERT_EQ("column3", schema->GetColumnName(2));
+            ASSERT_EQ("column4", schema->GetColumnName(3));
+            ASSERT_EQ("column5", schema->GetColumnName(4));
 
-            ASSERT_EQ(kTypeInt32, schema.GetColumnType(0));
-            ASSERT_EQ(kTypeInt64, schema.GetColumnType(1));
-            ASSERT_EQ(kTypeInt32, schema.GetColumnType(2));
-            ASSERT_EQ(kTypeString, schema.GetColumnType(3));
-            ASSERT_EQ(kTypeInt32, schema.GetColumnType(4));
+            ASSERT_EQ(kTypeInt32, schema->GetColumnType(0));
+            ASSERT_EQ(kTypeInt64, schema->GetColumnType(1));
+            ASSERT_EQ(kTypeInt32, schema->GetColumnType(2));
+            ASSERT_EQ(kTypeString, schema->GetColumnType(3));
+            ASSERT_EQ(kTypeInt32, schema->GetColumnType(4));
 
             ASSERT_TRUE(rs->Next());
             {
