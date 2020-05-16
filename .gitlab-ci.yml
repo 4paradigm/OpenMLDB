@@ -49,8 +49,8 @@ test_java_sdk:
     artifacts:
         reports:
             junit:
-                - build/java/fesql-spark/target/surefire-reports/*.xml
-                - build/java/fesql-jdbc/target/surefire-reports/*.xml
+                - java/fesql-spark/target/surefire-reports/*.xml
+                - java/fesql-jdbc/target/surefire-reports/*.xml
 
 test_java_sdk_on_mac:
     stage: test
@@ -66,8 +66,8 @@ test_java_sdk_on_mac:
     artifacts:
         reports:
             junit:
-                - build/java/fesql-spark/target/surefire-reports/*.xml
-                - build/java/fesql-jdbc/target/surefire-reports/*.xml
+                - java/fesql-spark/target/surefire-reports/*.xml
+                - java/fesql-jdbc/target/surefire-reports/*.xml
 test_py3sdk_linux:
     stage: test
     script:
