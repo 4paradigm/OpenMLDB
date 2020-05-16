@@ -11,7 +11,7 @@
 #include "base/slice.h"
 #include "storage/record.h"
 #include "gtest/gtest.h"
-#include "logging.h" // NOLINT
+#include "base/glog_wapper.h" // NOLINT
 
 using ::rtidb::base::Slice;
 
@@ -414,7 +414,7 @@ TEST_F(SegmentTest, PutAndGetTS) {
 }  // namespace rtidb
 
 int main(int argc, char** argv) {
-    ::baidu::common::SetLogLevel(::baidu::common::INFO);
+    ::rtidb::base::SetLogLevel(INFO);
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }

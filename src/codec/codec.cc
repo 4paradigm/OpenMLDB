@@ -19,11 +19,7 @@
 
 #include <unordered_set>
 
-#include "logging.h"  // NOLINT
-
-using ::baidu::common::DEBUG;
-using ::baidu::common::INFO;
-using ::baidu::common::WARNING;
+#include "base/glog_wapper.h"
 
 namespace rtidb {
 namespace codec {
