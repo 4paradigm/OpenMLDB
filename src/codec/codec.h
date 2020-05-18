@@ -16,6 +16,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <sstream>
 
 #include "base/endianconv.h"
 #include "base/strings.h"
@@ -30,175 +31,6 @@ using ::baidu::common::WARNING;
 
 namespace rtidb {
 namespace codec {
-
-static inline void Encode(uint64_t time, const char* data, const size_t size,
-                          char* buffer, uint32_t offset) {
-    buffer += offset;
-    uint32_t total_size = 8 + size;
-    memcpy(buffer, static_cast<const void*>(&total_size), 4);
-    memrev32ifbe(buffer);
-    buffer += 4;
-    memcpy(buffer, static_cast<const void*>(&time), 8);
-    memrev64ifbe(buffer);
-    buffer += 8;
-    memcpy(buffer, static_cast<const void*>(data), size);
-}
-
-static inline void Encode(uint64_t time, const DataBlock* data, char* buffer,
-                          uint32_t offset) {
-    return Encode(time, data->data, data->size, buffer, offset);
-}
-
-static inline void Encode(const char* data, const size_t size, char* buffer,
-                          uint32_t offset) {
-    buffer += offset;
-    memcpy(buffer, static_cast<const void*>(&size), 4);
-    memrev32ifbe(buffer);
-    buffer += 4;
-    memcpy(buffer, static_cast<const void*>(data), size);
-}
-
-static inline void Encode(const DataBlock* data, char* buffer,
-                          uint32_t offset) {
-    return Encode(data->data, data->size, buffer, offset);
-}
-
-static inline int32_t EncodeRows(const std::vector<::rtidb::base::Slice>& rows,
-                                 uint32_t total_block_size, std::string* body) {
-    if (body == NULL) {
-        PDLOG(WARNING, "invalid output body");
-        return -1;
-    }
-
-    uint32_t total_size = rows.size() * 4 + total_block_size;
-    if (rows.size() > 0) {
-        body->resize(total_size);
-    }
-    uint32_t offset = 0;
-    char* rbuffer = reinterpret_cast<char*>(&((*body)[0]));
-    for (auto lit = rows.begin(); lit != rows.end(); ++lit) {
-        ::rtidb::codec::Encode(lit->data(), lit->size(), rbuffer, offset);
-        offset += (4 + lit->size());
-    }
-    return total_size;
-}
-
-static inline int32_t EncodeRows(
-    const boost::container::deque<std::pair<uint64_t, ::rtidb::base::Slice>>&
-        rows,
-    uint32_t total_block_size, std::string* pairs) {
-    if (pairs == NULL) {
-        PDLOG(WARNING, "invalid output pairs");
-        return -1;
-    }
-
-    uint32_t total_size = rows.size() * (8 + 4) + total_block_size;
-    if (rows.size() > 0) {
-        pairs->resize(total_size);
-    }
-
-    char* rbuffer = reinterpret_cast<char*>(&((*pairs)[0]));
-    uint32_t offset = 0;
-    for (auto lit = rows.begin(); lit != rows.end(); ++lit) {
-        ::rtidb::codec::Encode(lit->first, lit->second.data(),
-                               lit->second.size(), rbuffer, offset);
-        offset += (4 + 8 + lit->second.size());
-    }
-    return total_size;
-}
-
-// encode pk, ts and value
-static inline void EncodeFull(const std::string& pk, uint64_t time,
-                              const char* data, const size_t size, char* buffer,
-                              uint32_t offset) {
-    buffer += offset;
-    uint32_t pk_size = pk.length();
-    uint32_t total_size = 8 + pk_size + size;
-    PDLOG(DEBUG, "encode total size %u pk size %u", total_size, pk_size);
-    memcpy(buffer, static_cast<const void*>(&total_size), 4);
-    memrev32ifbe(buffer);
-    buffer += 4;
-    memcpy(buffer, static_cast<const void*>(&pk_size), 4);
-    memrev32ifbe(buffer);
-    buffer += 4;
-    memcpy(buffer, static_cast<const void*>(&time), 8);
-    memrev64ifbe(buffer);
-    buffer += 8;
-    memcpy(buffer, static_cast<const void*>(pk.c_str()), pk_size);
-    buffer += pk_size;
-    memcpy(buffer, static_cast<const void*>(data), size);
-}
-
-static inline void EncodeFull(const std::string& pk, uint64_t time,
-                              const DataBlock* data, char* buffer,
-                              uint32_t offset) {
-    return EncodeFull(pk, time, data->data, data->size, buffer, offset);
-}
-
-static inline void Decode(
-    const std::string* str,
-    std::vector<std::pair<uint64_t, std::string*>>& pairs) {  // NOLINT
-    const char* buffer = str->c_str();
-    uint32_t total_size = str->length();
-    PDLOG(DEBUG, "total size %d %s", total_size,
-          ::rtidb::base::DebugString(*str).c_str());
-    while (total_size > 0) {
-        uint32_t size = 0;
-        memcpy(static_cast<void*>(&size), buffer, 4);
-        memrev32ifbe(static_cast<void*>(&size));
-        PDLOG(DEBUG, "decode size %d", size);
-        buffer += 4;
-        uint64_t time = 0;
-        memcpy(static_cast<void*>(&time), buffer, 8);
-        memrev64ifbe(static_cast<void*>(&time));
-        buffer += 8;
-        assert(size >= 8);
-        std::string* data = new std::string(size - 8, '0');
-        memcpy(reinterpret_cast<char*>(&((*data)[0])), buffer, size - 8);
-        buffer += (size - 8);
-        pairs.push_back(std::make_pair(time, data));
-        total_size -= (size + 4);
-    }
-}
-
-static inline void DecodeFull(
-    const std::string* str,
-    std::map<std::string, std::vector<std::pair<uint64_t, std::string*>>>&
-        value_map) {
-    const char* buffer = str->c_str();
-    uint32_t total_size = str->length();
-    PDLOG(DEBUG, "total size %u %s", total_size,
-          ::rtidb::base::DebugString(*str).c_str());
-    while (total_size > 0) {
-        uint32_t size = 0;
-        memcpy(static_cast<void*>(&size), buffer, 4);
-        memrev32ifbe(static_cast<void*>(&size));
-        PDLOG(DEBUG, "decode size %u", size);
-        buffer += 4;
-        uint32_t pk_size = 0;
-        memcpy(static_cast<void*>(&pk_size), buffer, 4);
-        buffer += 4;
-        memrev32ifbe(static_cast<void*>(&pk_size));
-        PDLOG(DEBUG, "decode size %u", pk_size);
-        assert(size > pk_size + 8);
-        uint64_t time = 0;
-        memcpy(static_cast<void*>(&time), buffer, 8);
-        memrev64ifbe(static_cast<void*>(&time));
-        buffer += 8;
-        std::string pk(buffer, pk_size);
-        buffer += pk_size;
-        uint32_t value_size = size - 8 - pk_size;
-        std::string* data = new std::string(value_size, '0');
-        memcpy(reinterpret_cast<char*>(&((*data)[0])), buffer, value_size);
-        buffer += value_size;
-        if (value_map.find(pk) == value_map.end()) {
-            value_map.insert(std::make_pair(
-                pk, std::vector<std::pair<uint64_t, std::string*>>()));
-        }
-        value_map[pk].push_back(std::make_pair(time, data));
-        total_size -= (size + 8);
-    }
-}
 
 using ProjectList = ::google::protobuf::RepeatedField<uint32_t>;
 using Schema =
@@ -247,6 +79,7 @@ class RowBuilder {
     bool AppendInt32(int32_t val);
     bool AppendInt16(int16_t val);
     bool AppendInt64(int64_t val);
+    bool AppendBlob(int64_t val);
     bool AppendTimestamp(int64_t val);
     bool AppendFloat(float val);
     bool AppendDouble(double val);
@@ -254,12 +87,13 @@ class RowBuilder {
     bool AppendNULL();
     bool AppendDate(uint32_t year, uint32_t month, uint32_t day);
     // append the date that encoded
-    bool AppendDate(uint32_t date);
+    bool AppendDate(int32_t date);
 
     bool SetBool(uint32_t index, bool val);
     bool SetInt32(uint32_t index, int32_t val);
     bool SetInt16(uint32_t index, int16_t val);
     bool SetInt64(uint32_t index, int64_t val);
+    bool SetBlob(uint32_t index, int64_t val);
     bool SetTimestamp(uint32_t index, int64_t val);
     bool SetFloat(uint32_t index, float val);
     bool SetDouble(uint32_t index, double val);
@@ -267,7 +101,7 @@ class RowBuilder {
     bool SetNULL(uint32_t index);
     bool SetDate(uint32_t index, uint32_t year, uint32_t month, uint32_t day);
     // set the date that encoded
-    bool SetDate(uint32_t index, uint32_t date);
+    bool SetDate(uint32_t index, int32_t date);
 
  private:
     bool Check(uint32_t index, ::rtidb::type::DataType type);
@@ -295,6 +129,7 @@ class RowView {
     int32_t GetBool(uint32_t idx, bool* val);
     int32_t GetInt32(uint32_t idx, int32_t* val);
     int32_t GetInt64(uint32_t idx, int64_t* val);
+    int32_t GetBlob(uint32_t idx, int64_t* val);
     int32_t GetTimestamp(uint32_t idx, int64_t* val);
     int32_t GetInt16(uint32_t idx, int16_t* val);
     int32_t GetFloat(uint32_t idx, float* val);
@@ -302,7 +137,7 @@ class RowView {
     int32_t GetString(uint32_t idx, char** val, uint32_t* length);
     int32_t GetDate(uint32_t idx, uint32_t* year, uint32_t* month,
                     uint32_t* day);
-    int32_t GetDate(uint32_t idx, uint32_t* date);
+    int32_t GetDate(uint32_t idx, int32_t* date);
     bool IsNULL(uint32_t idx) { return IsNULL(row_, idx); }
     inline uint32_t GetSize() { return size_; }
 
@@ -460,6 +295,13 @@ int32_t GetStrCol(int8_t* input, int32_t str_field_offset,
                   int32_t next_str_field_offset, int32_t str_start_offset,
                   int32_t type_id, int8_t* data);
 }  // namespace v1
+
+inline std::string Int64ToString(const int64_t key) {
+    std::stringstream ss;
+    ss << std::hex << key;
+    std::string key_str = ss.str();
+    return key_str;
+}
 
 }  // namespace codec
 }  // namespace rtidb

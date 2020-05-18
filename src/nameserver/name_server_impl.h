@@ -667,6 +667,10 @@ class NameServerImpl : public NameServer {
     std::shared_ptr<::rtidb::api::TaskInfo> FindTask(
         uint64_t op_id, ::rtidb::api::TaskType task_type);
 
+    int CreateBlobTable(std::shared_ptr<TableInfo> table_info);
+
+    bool SaveTableInfo(std::shared_ptr<TableInfo> table_info);
+
     int CreateOPData(::rtidb::api::OPType op_type, const std::string& value,
                      std::shared_ptr<OPData>& op_data,  // NOLINT
                      const std::string& name, uint32_t pid,
@@ -756,6 +760,7 @@ class NameServerImpl : public NameServer {
     void UpdateTableStatus();
     int DropTableOnTablet(
         std::shared_ptr<::rtidb::nameserver::TableInfo> table_info);
+    int DropTableOnBlob(std::shared_ptr<TableInfo> table_info);
     void CheckBinlogSyncProgress(
         const std::string& name, uint32_t pid, const std::string& follower,
         uint64_t offset_delta,

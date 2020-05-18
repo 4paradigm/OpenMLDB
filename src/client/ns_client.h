@@ -15,6 +15,10 @@
 #include <string>
 #include <vector>
 
+#include "base/status.h"
+#include "node/node_manager.h"
+#include "parser/parser.h"
+#include "plan/planner.h"
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
 #include "rpc/rpc_client.h"
@@ -77,6 +81,9 @@ class NsClient {
     bool CreateTable(const ::rtidb::nameserver::TableInfo& table_info,
                      std::string& msg);  // NOLINT
 
+    bool CreateTable(const std::string& script,
+                     std::string& msg);  // NOLINT
+
     bool DropTable(const std::string& name, std::string& msg);  // NOLINT
 
     bool SyncTable(const std::string& name, const std::string& cluster_alias,
@@ -97,8 +104,8 @@ class NsClient {
 
     bool CreateRemoteTableInfoSimply(
         const ::rtidb::nameserver::ZoneInfo& zone_info,
-        ::rtidb::nameserver::TableInfo& table_info,  // NOLINT
-        std::string& msg);                           // NOLINT
+        ::rtidb::nameserver::TableInfo& table_info, // NOLINT
+        std::string& msg);  // NOLINT
 
     bool DropTableRemote(const ::rtidb::api::TaskInfo& task_info,
                          const std::string& name,
@@ -131,7 +138,7 @@ class NsClient {
 
     bool ChangeLeader(const std::string& name, uint32_t pid,
                       std::string& candidate_leader,  // NOLINT
-                      std::string& msg);              // NOLINT
+                      std::string& msg);  // NOLINT
 
     bool OfflineEndpoint(const std::string& endpoint, uint32_t concurrency,
                          std::string& msg);  // NOLINT
@@ -198,6 +205,12 @@ class NsClient {
 
     bool DeleteIndex(const std::string& table_name, const std::string& idx_name,
                      std::string& msg);  // NOLINT
+
+ private:
+    bool TransformToTableDef(
+        const std::string& table_name,
+        const ::fesql::node::NodePointVector& column_desc_list,
+        ::rtidb::nameserver::TableInfo* table, ::rtidb::base::Status* status);
 
  private:
     std::string endpoint_;

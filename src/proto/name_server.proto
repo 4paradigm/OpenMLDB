@@ -90,7 +90,8 @@ message TableInfo {
     optional rtidb.api.TTLDesc ttl_desc = 16;
     optional rtidb.type.TableType table_type = 17 [default = kTimeSeries];
     optional uint32 format_version = 18 [default = 0];
-    optional string db = 19;
+    repeated string blobs = 19;
+    optional string db = 20;
 }
 
 message CreateTableRequest {
