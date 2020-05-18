@@ -220,6 +220,7 @@ bool ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call_fn,
             }
             llvm_args.push_back(llvm_arg);
         } else {
+            LOG(WARNING) << "fail to build arg for " << status.msg;
             std::ostringstream oss;
             oss << "faild to build args: " << *arg;
             status.msg = oss.str();
@@ -417,6 +418,7 @@ bool ExprIRBuilder::BuildColumnIterator(const std::string& relation_name,
         *output = value;
         return true;
     } else {
+        LOG(WARNING) << "fail to store col for " << status.msg;
         return false;
     }
 }
