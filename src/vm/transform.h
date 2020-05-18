@@ -161,13 +161,13 @@ class LimitOptimized : public TransformUpPysicalPass {
     static bool ApplyLimitCnt(PhysicalOpNode* node, int32_t limit_cnt);
 };
 
-class ColumnProjectOptimized : public TransformUpPysicalPass {
+class SimpleProjectOptimized : public TransformUpPysicalPass {
  public:
-    ColumnProjectOptimized(node::NodeManager* node_manager,
+    SimpleProjectOptimized(node::NodeManager* node_manager,
                            const std::string& db,
                            const std::shared_ptr<Catalog>& catalog)
         : TransformUpPysicalPass(node_manager, db, catalog) {}
-    ~ColumnProjectOptimized() {}
+    ~SimpleProjectOptimized() {}
 
  private:
     virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
@@ -279,6 +279,8 @@ class BatchModeTransformer {
                  base::Status& status);  // NOLINT
     bool GenRange(Range* sort, const SchemaSourceList& input_name_schema_list,
                   base::Status& status);  // NOLINT
+    bool GenColumnProject(ColumnProject* project, PhysicalOpNode* in,
+    base::Status& status); //NOLINT
 
  protected:
     virtual bool TransformPlanOp(const ::fesql::node::PlanNode* node,
@@ -359,6 +361,7 @@ class BatchModeTransformer {
     uint32_t id_;
     std::vector<PhysicalPlanPassType> passes;
     LogicalOpMap op_map_;
+    bool IsSimpleProject(const ColumnSourceList& source);
 };
 
 class RequestModeransformer : public BatchModeTransformer {

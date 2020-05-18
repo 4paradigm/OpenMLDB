@@ -59,6 +59,35 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 }
             }
         }
+        case kPhysicalOpSimpleProject: {
+            auto input = Build(node->producers().at(0), status);
+            if (nullptr == input) {
+                return nullptr;
+            }
+
+            auto op = dynamic_cast<const PhysicalColumnProjectNode*>(node);
+
+            switch (op->output_type_) {
+                case kSchemaTypeRow: {
+                    auto runner = new RowProjectRunner(
+                        id_++, node->GetOutputNameSchemaList(),
+                        op->GetLimitCnt(), op->project_.fn_info_);
+                    runner->AddProducer(input);
+                    return runner;
+                }
+                case kSchemaTypeTable: {
+                    auto runner = new TableProjectRunner(
+                        id_++, node->GetOutputNameSchemaList(),
+                        op->GetLimitCnt(), op->project_.fn_info_);
+                    runner->AddProducer(input);
+                    return runner;
+                }
+                default: {
+                    LOG(WARNING) << "Can't support other schema type table";
+                    return nullptr;
+                }
+            }
+        }
         case kPhysicalOpProject: {
             auto input = Build(node->producers().at(0), status);
             if (nullptr == input) {

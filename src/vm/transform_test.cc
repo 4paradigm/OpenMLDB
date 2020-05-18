@@ -562,7 +562,7 @@ INSTANTIATE_TEST_CASE_P(
             "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join "
             "t2 on "
             " t1.col1 = t2.col2 and t2.col5 >= t1.col5;",
-            "PROJECT(type=TableProject)\n"
+            "SIMPLE_PROJECT(sources=([0]<-[0:1], [1]<-[1:2])\n"
             "  JOIN(type=LastJoin, condition=t2.col5 >= t1.col5, "
             "left_keys=(t1.col1), right_keys=(t2.col2), index_keys=)\n"
             "    DATA_PROVIDER(table=t1)\n"
@@ -572,7 +572,7 @@ INSTANTIATE_TEST_CASE_P(
             "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join "
             "t2 on "
             " t1.col1 = t2.col1 and t2.col5 >= t1.col5;",
-            "PROJECT(type=TableProject)\n"
+            "SIMPLE_PROJECT(sources=([0]<-[0:1], [1]<-[1:2])\n"
             "  JOIN(type=LastJoin, condition=t2.col5 >= t1.col5, left_keys=(), "
             "right_keys=(), index_keys=(t1.col1))\n"
             "    DATA_PROVIDER(table=t1)\n"
@@ -729,6 +729,16 @@ INSTANTIATE_TEST_CASE_P(
             "  SIMPLE_PROJECT(sources=([0]<-[0:0], [1]<-[0:1], [2]<-[0:2], "
             "[3]<-0.000000, [4]<-0.000000, [5]<-[0:5], [6]<-[0:6], limit=10)\n"
             "    DATA_PROVIDER(table=tb)"),
+        // SIMPLE SELECT FROM SIMPLE SELECT FROM SIMPLE SELECT
+        std::make_pair(
+            "SELECT x, y , z, 1, 1.0 from (select col0 as x, col1 as y, col2 "
+            "as z from (select c0 as col0, c1 as col1, c2 "
+            "as col2, 0.0f as col3, 0.0 as "
+            "col4, c5 as col5, c6 as col6 from tb)) LIMIT 10;\n",
+            "LIMIT(limit=10, optimized)\n"
+            "  SIMPLE_PROJECT(sources=([0]<-[0:0], [1]<-[0:1], [2]<-[0:2], "
+            "[3]<-1, [4]<-1.000000, limit=10)\n"
+            "    DATA_PROVIDER(table=tb)"),
         // SIMPLE SELECT COLUMNS and CONST VALUES
         std::make_pair(
             "SELECT col3+col4 as col01 from (select c0 as col0, c1 as col1, c2 "
@@ -814,7 +824,7 @@ INSTANTIATE_TEST_CASE_P(
             "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join "
             "t2 on "
             " t1.col1 = t2.col2 and t2.col5 >= t1.col5;",
-            "PROJECT(type=TableProject)\n"
+            "SIMPLE_PROJECT(sources=([0]<-[0:1], [1]<-[1:2])\n"
             "  JOIN(type=LastJoin, condition=t2.col5 >= t1.col5, "
             "left_keys=(t1.col1), right_keys=(t2.col2), index_keys=)\n"
             "    DATA_PROVIDER(table=t1)\n"
@@ -824,7 +834,7 @@ INSTANTIATE_TEST_CASE_P(
             "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join "
             "t2 on "
             " t1.col1 = t2.col1 and t2.col5 >= t1.col5;",
-            "PROJECT(type=TableProject)\n"
+            "SIMPLE_PROJECT(sources=([0]<-[0:1], [1]<-[1:2])\n"
             "  JOIN(type=LastJoin, condition=t2.col5 >= t1.col5, "
             "left_keys=(t1.col1), right_keys=(t2.col1), index_keys=)\n"
             "    DATA_PROVIDER(table=t1)\n"

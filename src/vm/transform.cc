@@ -198,6 +198,15 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
             }
             break;
         }
+        case kPhysicalOpSimpleProject: {
+            auto simple_project =
+                dynamic_cast<PhysicalColumnProjectNode*>(node);
+            if (!GenColumnProject(&simple_project->project_,
+                                  simple_project->producers()[0], status)) {
+                return false;
+            }
+            break;
+        }
         case kPhysicalOpProject: {
             auto project_op = dynamic_cast<PhysicalProjectNode*>(node);
             if (kWindowAggregation != project_op->project_type_) {
@@ -830,13 +839,23 @@ bool BatchModeTransformer::CreatePhysicalProjectNode(
     PhysicalOpNode* op = nullptr;
     switch (project_type) {
         case kRowProject: {
-            op = new PhysicalRowProjectNode(node, fn_name, output_schema,
-                                            output_column_sources);
+            if (IsSimpleProject(output_column_sources)) {
+                op = new PhysicalColumnProjectNode(node, output_schema,
+                                                   output_column_sources);
+            } else {
+                op = new PhysicalRowProjectNode(node, fn_name, output_schema,
+                                                output_column_sources);
+            }
             break;
         }
         case kTableProject: {
-            op = new PhysicalTableProjectNode(node, fn_name, output_schema,
-                                              output_column_sources);
+            if (IsSimpleProject(output_column_sources)) {
+                op = new PhysicalColumnProjectNode(node, output_schema,
+                                                   output_column_sources);
+            } else {
+                op = new PhysicalTableProjectNode(node, fn_name, output_schema,
+                                                  output_column_sources);
+            }
             break;
         }
         case kAggregation: {
@@ -911,7 +930,7 @@ void BatchModeTransformer::ApplyPasses(PhysicalOpNode* node,
     for (auto type : passes) {
         switch (type) {
             case kPassColumnProjectOptimized: {
-                ColumnProjectOptimized pass(node_manager_, db_, catalog_);
+                SimpleProjectOptimized pass(node_manager_, db_, catalog_);
                 PhysicalOpNode* new_op = nullptr;
                 if (pass.Apply(physical_plan, &new_op)) {
                     physical_plan = new_op;
@@ -1161,6 +1180,43 @@ bool BatchModeTransformer::GenRange(
     }
     return true;
 }
+bool BatchModeTransformer::GenColumnProject(ColumnProject* project,
+                                            PhysicalOpNode* in,
+                                            base::Status& status) {
+    if (!project->column_sources().empty()) {
+        auto schema_souces = in->GetOutputNameSchemaList();
+        node::ExprListNode expr_list;
+        for (auto iter = project->column_sources().cbegin();
+             iter != project->column_sources().cend(); iter++) {
+            switch (iter->type()) {
+                case kSourceColumn: {
+                    auto schema_souce = schema_souces.schema_source_list().at(
+                        iter->schema_idx());
+                    auto column = schema_souce.schema_->Get(iter->column_idx());
+                    expr_list.AddChild(node_manager_->MakeColumnRefNode(
+                        column.name(), schema_souce.table_name_));
+                    break;
+                }
+                case kSourceConst: {
+                    expr_list.AddChild(
+                        const_cast<node::ConstNode*>(iter->const_value()));
+                    break;
+                }
+                default: {
+                    LOG(WARNING)
+                        << "Fail Gen Simple Project, invalid source type";
+                    return false;
+                }
+            }
+        }
+        if (!CodeGenExprList(schema_souces, &expr_list, true,
+                             &project->fn_info_, status)) {
+            return false;
+        }
+    }
+    DLOG(INFO) << "GenColumnProject:\n" << project->FnDetail();
+    return true;
+}
 bool BatchModeTransformer::GenWindowUnionList(
     WindowUnionList* window_union_list, PhysicalOpNode* in,
     base::Status& status) {
@@ -1236,6 +1292,17 @@ bool BatchModeTransformer::GenRequestWindowUnionList(
                << window_union_list->FnDetail();
     return true;
 }
+bool BatchModeTransformer::IsSimpleProject(const ColumnSourceList& sources) {
+    bool flag = true;
+    for (auto iter = sources.cbegin(); iter != sources.cend(); iter++) {
+        if (vm::kSourceNone == iter->type()) {
+            flag = false;
+            break;
+        }
+    }
+    return flag;
+}
+
 bool GroupAndSortOptimized::KeysFilterOptimized(PhysicalOpNode* in, Key* group,
                                                 Key* hash,
                                                 PhysicalOpNode** new_in) {
@@ -2256,35 +2323,28 @@ bool RequestModeransformer::TransformProjectOp(
     return false;
 }
 
-bool ColumnProjectOptimized::Transform(PhysicalOpNode* in,
+bool SimpleProjectOptimized::Transform(PhysicalOpNode* in,
                                        PhysicalOpNode** output) {
     *output = in;
     switch (in->type_) {
-        case kPhysicalOpProject: {
-            PhysicalProjectNode* project_op =
-                dynamic_cast<PhysicalProjectNode*>(in);
-            switch (project_op->project_type_) {
-                case kTableProject:
-                case kRowProject: {
-                    bool all_has_source = true;
-                    for (auto iter = project_op->sources_.cbegin();
-                         iter != project_op->sources_.cend(); iter++) {
-                        if (vm::kSourceNone == iter->type()) {
-                            all_has_source = false;
-                            break;
-                        }
-                    }
-                    if (all_has_source) {
-                        auto columm_project_op = new PhysicalSimpleProjectNode(
-                            in->producers()[0], project_op->output_schema_,
-                            project_op->sources_);
-                        *output = columm_project_op;
-                        return true;
-                    }
-                }
-                default: {
+        case kPhysicalOpSimpleProject: {
+            PhysicalColumnProjectNode* simple_project =
+                dynamic_cast<PhysicalColumnProjectNode*>(in);
+            if (kPhysicalOpSimpleProject == in->producers()[0]->type_) {
+                auto depend = dynamic_cast<PhysicalColumnProjectNode*>(
+                    in->producers()[0]);
+                ColumnSourceList new_sources;
+                if (false == ColumnProject::CombineColumnSources(
+                                 simple_project->project().column_sources(),
+                                 depend->project().column_sources(),
+                                 new_sources)) {
+                    LOG(WARNING) << "Fail to Combine Simple Project";
                     return false;
                 }
+                *output = new PhysicalColumnProjectNode(
+                    depend->producers()[0], in->output_schema_, new_sources);
+                node_manager_->RegisterNode(*output);
+                return true;
             }
         }
         default: {

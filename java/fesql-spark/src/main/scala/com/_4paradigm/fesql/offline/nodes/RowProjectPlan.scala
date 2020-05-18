@@ -2,13 +2,51 @@ package com._4paradigm.fesql.offline.nodes
 
 import com._4paradigm.fesql.offline._
 import com._4paradigm.fesql.offline.utils.FesqlUtil
-import com._4paradigm.fesql.vm.{CoreAPI, FeSQLJITWrapper, PhysicalTableProjectNode}
+import com._4paradigm.fesql.vm.{CoreAPI, FeSQLJITWrapper, PhysicalColumnProjectNode, PhysicalTableProjectNode}
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types.StructType
 
 
 object RowProjectPlan {
+
+  /**
+   * TODO(baoxinqi): PhysicalColumnProjectNodefn_name gen --> df.select(column1, column2, ...)
+   * @param ctx
+   * @param node
+   * @param inputs
+   * @return
+   */
+  def gen(ctx: PlanContext, node: PhysicalColumnProjectNode, inputs: Seq[SparkInstance]): SparkInstance = {
+    val inputInstance = inputs.head
+    val inputRDD = inputInstance.getRDD
+
+    val inputSchemaSlices = FesqlUtil.getOutputSchemaSlices(node.GetProducer(0))
+    val outputSchemaSlices = FesqlUtil.getOutputSchemaSlices(node)
+    val outputSchema = FesqlUtil.getSparkSchema(node.GetOutputSchema())
+
+    // spark closure
+    val projectConfig = ProjectConfig(
+      functionName = node.project().fn_info().fn_name(),
+      moduleTag = ctx.getTag,
+      moduleBroadcast = ctx.getModuleBufferBroadcast,
+      inputSchemaSlices = inputSchemaSlices,
+      outputSchemaSlices = outputSchemaSlices
+    )
+
+    // project implementation
+    val projectRDD = inputRDD.mapPartitions(iter => {
+      // ensure worker native
+      val tag = projectConfig.moduleTag
+      val buffer = projectConfig.moduleBroadcast.value.getBuffer
+      JITManager.initJITModule(tag, buffer)
+      val jit = JITManager.getJIT(tag)
+
+      projectIter(iter, jit, projectConfig)
+    })
+
+    SparkInstance.fromRDD(outputSchema, projectRDD)
+  }
 
   def gen(ctx: PlanContext, node: PhysicalTableProjectNode, inputs: Seq[SparkInstance]): SparkInstance = {
     val inputInstance = inputs.head

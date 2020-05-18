@@ -43,10 +43,13 @@ struct ColInfo {
 };
 
 enum SourceType { kSourceColumn, kSourceConst, kSourceNone };
-struct ColumnSource {
+class ColumnSource;
+typedef std::vector<ColumnSource> ColumnSourceList;
+class ColumnSource {
+ public:
     ColumnSource()
         : type_(kSourceNone), schema_idx_(0), column_idx_(0), const_value_() {}
-    explicit ColumnSource(const node::ConstNode& node)
+    explicit ColumnSource(const node::ConstNode* node)
         : type_(kSourceConst),
           schema_idx_(0),
           column_idx_(0),
@@ -63,21 +66,22 @@ struct ColumnSource {
                 return "<-[" + std::to_string(schema_idx_) + ":" +
                        std::to_string(column_idx_) + "]";
             case kSourceConst:
-                return "<-" + const_value_.GetExprString();
+                return "<-" + node::ExprString(const_value_);
             case kSourceNone:
                 return "->None";
         }
     }
     const SourceType type() const { return type_; }
+
     const uint32_t schema_idx() const { return schema_idx_; }
     const uint32_t column_idx() const { return column_idx_; }
-    const node::ConstNode& const_value() const { return const_value_; }
+    const node::ConstNode* const_value() const { return const_value_; }
 
  private:
     SourceType type_;
     uint32_t schema_idx_;
     uint32_t column_idx_;
-    const node::ConstNode const_value_;
+    const node::ConstNode* const_value_;
 };
 
 struct IndexSt {
@@ -91,7 +95,6 @@ typedef ::google::protobuf::RepeatedPtrField<::fesql::type::ColumnDef> Schema;
 typedef ::google::protobuf::RepeatedPtrField<::fesql::type::IndexDef> IndexList;
 typedef std::map<std::string, ColInfo> Types;
 typedef std::map<std::string, IndexSt> IndexHint;
-typedef std::vector<ColumnSource> ColumnSourceList;
 
 struct SchemaSource {
  public:

@@ -116,6 +116,12 @@ bool PhysicalProjectNode::InitSchema() {
     PrintSchema();
     return true;
 }
+bool PhysicalColumnProjectNode::InitSchema() {
+    output_name_schema_list_.AddSchemaSource("", &output_schema_,
+                                             &project_.column_sources());
+    PrintSchema();
+    return true;
+}
 
 PhysicalProjectNode* PhysicalProjectNode::CastFrom(PhysicalOpNode* node) {
     return dynamic_cast<PhysicalProjectNode*>(node);
@@ -129,24 +135,14 @@ PhysicalTableProjectNode* PhysicalTableProjectNode::CastFrom(
     PhysicalOpNode* node) {
     return dynamic_cast<PhysicalTableProjectNode*>(node);
 }
-PhysicalSimpleProjectNode* PhysicalSimpleProjectNode::CastFrom(
+PhysicalColumnProjectNode* PhysicalColumnProjectNode::CastFrom(
     PhysicalOpNode* node) {
-    return dynamic_cast<PhysicalSimpleProjectNode*>(node);
+    return dynamic_cast<PhysicalColumnProjectNode*>(node);
 }
-void PhysicalSimpleProjectNode::Print(std::ostream& output,
+void PhysicalColumnProjectNode::Print(std::ostream& output,
                                       const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(sources=(";
-    for (size_t i = 0; i < column_sources.size(); i++) {
-        if (i > 10) {
-            output << ", ...";
-            break;
-        }
-        if (i > 0) {
-            output << ", ";
-        }
-        output << "[" << i << "]" << column_sources[i].ToString();
-    }
+    output << "(" << project_.ToString();
     if (limit_cnt_ > 0) {
         output << ", limit=" << limit_cnt_;
     }

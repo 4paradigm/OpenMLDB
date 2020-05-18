@@ -241,7 +241,7 @@ bool RowFnLetIRBuilder::BuildProject(
         }
         case fesql::node::kExprPrimary: {
             auto const_expr = dynamic_cast<const node::ConstNode*>(expr);
-            output_column_sources->push_back(vm::ColumnSource(*const_expr));
+            output_column_sources->push_back(vm::ColumnSource(const_expr));
             break;
         }
         default: {
