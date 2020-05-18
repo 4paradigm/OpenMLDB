@@ -2903,6 +2903,9 @@ int NameServerImpl::CreateTableOnTablet(
             return -1;
         }
     }
+    if (table_info->has_db()) {
+        table_meta.set_db(table_info->db());
+    }
     table_meta.set_name(table_info->name());
     table_meta.set_tid(table_info->tid());
     table_meta.set_ttl(table_info->ttl());
