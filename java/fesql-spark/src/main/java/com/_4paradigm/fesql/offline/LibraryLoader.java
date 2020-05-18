@@ -15,7 +15,7 @@ public class LibraryLoader {
 
     private static final Logger logger = LoggerFactory.getLogger(LibraryLoader.class.getName());
 
-    public static void loadLibrary(String libraryPath) {
+    synchronized public static void loadLibrary(String libraryPath) {
         boolean isPath = libraryPath.endsWith(".so") ||
                 libraryPath.endsWith(".dylib");
         if (!isPath) {

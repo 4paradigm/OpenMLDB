@@ -9,10 +9,25 @@
 #include "vm/core_api.h"
 #include "codec/fe_row_codec.h"
 #include "vm/runner.h"
+#include "vm/mem_catalog.h"
 #include "vm/schemas_context.h"
 
 namespace fesql {
 namespace vm {
+
+
+WindowInterface::WindowInterface(bool instance_not_in_window,
+                                 int64_t start_offset,
+                                 int64_t end_offset,
+                                 uint32_t max_size)
+    : window_impl_(std::unique_ptr<Window>(
+          new CurrentHistoryWindow(true, start_offset, max_size))) {
+    window_impl_->set_instance_not_in_window(instance_not_in_window);
+}
+
+void WindowInterface::BufferData(uint64_t key, const Row& row) {
+    window_impl_->BufferData(key, row);
+}
 
 int CoreAPI::ResolveColumnIndex(fesql::vm::PhysicalOpNode* node,
                                 fesql::node::ColumnRefNode* expr) {
@@ -40,7 +55,7 @@ int CoreAPI::ResolveColumnIndex(fesql::vm::PhysicalOpNode* node,
     return -1;
 }
 
-fesql::codec::Row CoreAPI::RowProject(const RawFunctionPtr fn,
+fesql::codec::Row CoreAPI::RowProject(const RawPtrHandle fn,
                                       const fesql::codec::Row row,
                                       const bool need_free) {
     if (row.empty()) {
@@ -63,7 +78,7 @@ fesql::codec::Row CoreAPI::RowProject(const RawFunctionPtr fn,
                fesql::codec::RowView::GetSize(buf), need_free);
 }
 
-fesql::codec::Row CoreAPI::WindowProject(const RawFunctionPtr fn,
+fesql::codec::Row CoreAPI::WindowProject(const RawPtrHandle fn,
                                          const uint64_t key, const Row row,
                                          const bool is_instance,
                                          WindowInterface* window) {
@@ -71,13 +86,37 @@ fesql::codec::Row CoreAPI::WindowProject(const RawFunctionPtr fn,
                                  window->GetWindow());
 }
 
-bool CoreAPI::ComputeCondition(const fesql::vm::RawFunctionPtr fn,
+bool CoreAPI::ComputeCondition(const fesql::vm::RawPtrHandle fn,
                                const Row& row, fesql::codec::RowView* row_view,
                                size_t out_idx) {
     Row cond_row = CoreAPI::RowProject(fn, row, true);
     row_view->Reset(cond_row.buf());
     return Runner::GetColumnBool(row_view, out_idx,
                                  row_view->GetSchema()->Get(out_idx).type());
+}
+
+RawPtrHandle CoreAPI::AllocateRaw(size_t bytes) {
+    auto buf = malloc(bytes);
+    return reinterpret_cast<int8_t*>(buf);
+}
+
+
+void CoreAPI::ReleaseRaw(RawPtrHandle handle) {
+    auto buf = const_cast<int8_t*>(reinterpret_cast<const int8_t*>(handle));
+    if (buf == nullptr) {
+        LOG(ERROR) << "call free to nullptr";
+    } else {
+        free(buf);
+    }
+}
+
+void CoreAPI::ReleaseRow(const Row& row) {
+    for (int i = 0; i < row.GetRowPtrCnt(); ++i) {
+        auto buf = row.buf(i);
+        if (buf != nullptr) {
+            CoreAPI::ReleaseRaw(buf);
+        }
+    }
 }
 
 }  // namespace vm

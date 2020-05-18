@@ -69,6 +69,7 @@ class RowBuilder {
     ~RowBuilder() = default;
     uint32_t CalTotalLength(uint32_t string_length);
     bool SetBuffer(int8_t* buf, uint32_t size);
+    bool SetBuffer(int64_t buf_handle, uint32_t size);
     bool SetBuffer(const fesql::base::RawBuffer& buf);
     bool AppendBool(bool val);
     bool AppendInt32(int32_t val);

@@ -45,7 +45,7 @@ class FeSQLJITWrapper {
 
     bool AddModuleFromBuffer(const base::RawBuffer&);
 
-    fesql::vm::RawFunctionPtr FindFunction(const std::string& funcname);
+    fesql::vm::RawPtrHandle FindFunction(const std::string& funcname);
 
  private:
     std::unique_ptr<FeSQLJIT> jit_;
