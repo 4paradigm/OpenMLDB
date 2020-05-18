@@ -1193,7 +1193,12 @@ void Runner::PrintData(const vm::NameSchemaList& schema_list,
             auto partition = std::dynamic_pointer_cast<PartitionHandler>(data);
             auto iter = partition->GetWindowIterator();
             int cnt = 0;
-            if (!iter || !iter->Valid()) {
+            if (!iter) {
+                t.add("Empty set");
+                t.endOfRow();
+            }
+            iter->SeekToFirst();
+            if (!iter->Valid()) {
                 t.add("Empty set");
                 t.endOfRow();
             }

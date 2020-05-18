@@ -640,7 +640,7 @@ std::string RowView::GetAsString(uint32_t idx) {
             }
             break;
         }
-        case fesql::type::kTimestamp:{
+        case fesql::type::kTimestamp: {
             int64_t value;
             if (0 == GetTimestamp(idx, &value)) {
                 return std::to_string(value);
