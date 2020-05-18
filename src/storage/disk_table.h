@@ -361,6 +361,14 @@ class DiskTable : public Table {
 
     TableIterator* NewTraverseIterator(uint32_t idx, uint32_t ts_idx) override;
 
+    ::fesql::vm::WindowIterator* NewWindowIterator(uint32_t idx) {
+        return NULL;
+    }
+
+    ::fesql::vm::WindowIterator* NewWindowIterator(uint32_t idx, uint32_t ts_idx) {
+        return NULL;
+    }
+
     void SchedGc() override;
 
     void GcHead();

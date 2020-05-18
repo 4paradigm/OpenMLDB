@@ -825,6 +825,51 @@ bool MemTable::DeleteIndex(std::string idx_name) {
     return true;
 }
 
+::fesql::vm::WindowIterator* MemTable::NewWindowIterator(uint32_t index) {
+    std::shared_ptr<IndexDef> index_def = GetIndex(index);
+    if (index_def && index_def->IsReady()) {
+        std::vector<uint32_t> ts_vec = index_def->GetTsColumn();
+        if (!ts_vec.empty()) {
+            return NewWindowIterator(index, ts_vec.front());
+        }
+    }
+    uint64_t expire_time = 0;
+    uint64_t expire_cnt = 0;
+    if (enable_gc_.load(std::memory_order_relaxed)) {
+        expire_time = GetExpireTime(GetTTL(index, 0).abs_ttl * 60 * 1000);
+        expire_cnt = GetTTL(index, 0).lat_ttl;
+    }
+    return new MemTableKeyIterator(segments_[index], seg_cnt_, ttl_type_,
+                                   expire_time, expire_cnt, 0);
+}
+
+::fesql::vm::WindowIterator* MemTable::NewWindowIterator(uint32_t index, uint32_t ts_index) {
+    if (ts_index < 0) {
+        return NULL;
+    }
+    std::shared_ptr<IndexDef> index_def = GetIndex(index);
+    if (!index_def || !index_def->IsReady()) {
+        LOG(WARNING) <<  "index" << index << "  not found. tid " << id_ << " pid "<< pid_;
+        return NULL;
+    }
+    const std::vector<uint32_t> ts_vec = index_def->GetTsColumn();
+    if (std::find(ts_vec.begin(), ts_vec.end(), ts_index) == ts_vec.end()) {
+        LOG(WARNING)<<  "ts index "<< ts_index <<" is not member of index " 
+            <<index <<", tid " << id_ << " pid " << pid_;
+        return NULL;
+    }
+    uint64_t expire_time = 0;
+    uint64_t expire_cnt = 0;
+    if (enable_gc_.load(std::memory_order_relaxed)) {
+        expire_time =
+            GetExpireTime(GetTTL(index, ts_index).abs_ttl * 60 * 1000);
+        expire_cnt = GetTTL(index, ts_index).lat_ttl;
+    }
+    return new MemTableKeyIterator(segments_[index], seg_cnt_, ttl_type_,
+                                        expire_time, expire_cnt, ts_index);
+}
+
+
 TableIterator* MemTable::NewTraverseIterator(uint32_t index) {
     std::shared_ptr<IndexDef> index_def = GetIndex(index);
     if (index_def && index_def->IsReady()) {
@@ -870,6 +915,117 @@ TableIterator* MemTable::NewTraverseIterator(uint32_t index,
                                         expire_time, expire_cnt, ts_index);
 }
 
+MemTableKeyIterator::MemTableKeyIterator(Segment** segments, 
+        uint32_t seg_cnt, ::rtidb::api::TTLType ttl_type,
+    uint64_t expire_time, 
+    uint64_t expire_cnt, 
+    uint32_t ts_index)
+    : segments_(segments),
+      seg_cnt_(seg_cnt),
+      seg_idx_(0),
+      pk_it_(NULL),
+      it_(NULL),
+      ttl_type_(ttl_type),
+      expire_time_(expire_time),
+      expire_cnt_(expire_cnt),
+      ticket_(),
+      ts_idx_(0){
+    uint32_t idx = 0;
+    if (segments_[0]->GetTsIdx(ts_index, idx) == 0) {
+        ts_idx_ = idx;
+    }
+}
+
+MemTableKeyIterator::~MemTableKeyIterator() {
+    if (pk_it_ != NULL) delete pk_it_;
+}
+
+void MemTableKeyIterator::SeekToFirst() {
+    ticket_.Pop();
+    if (pk_it_ != NULL) {
+        delete pk_it_;
+        pk_it_ = NULL;
+    }
+    for (seg_idx_ = 0; seg_idx_ < seg_cnt_; seg_idx_++) {
+        pk_it_ = segments_[seg_idx_]->GetKeyEntries()->NewIterator();
+        pk_it_->SeekToFirst();
+        if (pk_it_->Valid()) return;
+        delete pk_it_;
+        pk_it_ = NULL;
+    }
+}
+
+void MemTableKeyIterator::Seek(const std::string& key) {
+    if (pk_it_ != NULL) {
+        delete pk_it_;
+        pk_it_ = NULL;
+    }
+    ticket_.Pop();
+    if (seg_cnt_ > 1) {
+        seg_idx_ =
+            ::rtidb::base::hash(key.c_str(), key.length(), SEED) % seg_cnt_;
+    }
+    Slice spk(key);
+    pk_it_ = segments_[seg_idx_]->GetKeyEntries()->NewIterator();
+    pk_it_->Seek(spk);
+    if (!pk_it_->Valid()) {
+        NextPK();
+    }
+}
+
+bool MemTableKeyIterator::Valid() {
+    bool valid = pk_it_ != NULL && pk_it_->Valid();
+    return valid;
+}
+
+void MemTableKeyIterator::Next() {
+    NextPK();
+}
+
+std::unique_ptr<::fesql::vm::RowIterator> MemTableKeyIterator::GetValue() {
+    TimeEntries::Iterator* it = NULL;
+    if (segments_[seg_idx_]->GetTsCnt() > 1) {
+        KeyEntry* entry = ((KeyEntry**)pk_it_->GetValue())[0];  // NOLINT
+        it = entry->entries.NewIterator();
+        ticket_.Push(entry);
+    } else {
+        it = ((KeyEntry*)pk_it_->GetValue())  // NOLINT
+                  ->entries.NewIterator();
+        ticket_.Push((KeyEntry*)pk_it_->GetValue());  // NOLINT
+    }
+    it->SeekToFirst();
+    std::unique_ptr<MemTableWindowIterator> wit(new MemTableWindowIterator(it, ttl_type_,
+                expire_time_, expire_cnt_));
+    return std::move(wit);
+}
+
+const fesql::codec::Row MemTableKeyIterator::GetKey() {
+    fesql::codec::Row row(pk_it_->GetKey().data(), pk_it_->GetKey().size());
+    return row;
+}
+
+void MemTableKeyIterator::NextPK() {
+    do {
+        ticket_.Pop();
+        if (pk_it_->Valid()) {
+            pk_it_->Next();
+        }
+        if (!pk_it_->Valid()) {
+            delete pk_it_;
+            pk_it_ = NULL;
+            seg_idx_++;
+            if (seg_idx_ < seg_cnt_) {
+                pk_it_ = segments_[seg_idx_]->GetKeyEntries()->NewIterator();
+                pk_it_->SeekToFirst();
+                if (!pk_it_->Valid()) {
+                    continue;
+                }
+            }
+        }
+        break;
+    } while (true);
+}
+
 MemTableTraverseIterator::MemTableTraverseIterator(
     Segment** segments, uint32_t seg_cnt, ::rtidb::api::TTLType ttl_type,
     const uint64_t& expire_time, const uint64_t& expire_cnt, uint32_t ts_index)
@@ -909,7 +1065,6 @@ void MemTableTraverseIterator::Next() {
         return;
     }
 }
-
 uint64_t MemTableTraverseIterator::GetCount() const { return traverse_cnt_; }
 
 bool MemTableTraverseIterator::IsExpired() {
@@ -920,6 +1075,7 @@ bool MemTableTraverseIterator::IsExpired() {
         return record_idx_ > expire_value_.lat_ttl;
     } else if (ttl_type_ == ::rtidb::api::TTLType::kAbsoluteTime) {
         return it_->GetKey() <= expire_value_.abs_ttl;
+
     } else if (ttl_type_ == ::rtidb::api::TTLType::kAbsAndLat) {
         return it_->GetKey() <= expire_value_.abs_ttl &&
                record_idx_ > expire_value_.lat_ttl;

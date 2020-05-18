@@ -1,13 +1,14 @@
 include_directories(${INCLUDE_DIRECTORIES} ${PROJECT_SOURCE_DIR}/src)
 
-set(BIN_LIBS client nameserver tablet client blobserver blob_proxy zk_client replica  base beans storage log common rocksdb zookeeper_mt tcmalloc_minimal
+set(BIN_LIBS client nameserver tablet client blobserver blob_proxy rtidb_catalog zk_client replica  base beans storage rtidb_proto log common rocksdb zookeeper_mt tcmalloc_minimal
     ${VM_LIBS}
     ${LLVM_LIBS}
     ${BRPC_LIBS})
-
-add_library(tablet STATIC proto/tablet.pb.cc proto/common.pb.cc proto/type.pb.cc tablet/tablet_impl.cc flags.cc tablet/file_receiver.cc tablet/file_sender.cc)
-add_library(blobserver STATIC proto/blob_server.pb.cc storage/object_store.cc proto/type.pb.cc blobserver/blobserver_impl.cc flags.cc)
-add_library(nameserver STATIC proto/name_server.pb.cc nameserver/name_server_impl.cc flags.cc)
+add_library(rtidb_proto STATIC proto/type.pb.cc proto/client.pb.cc proto/common.pb.cc proto/tablet.pb.cc proto/blob_server.pb.cc proto/name_server.pb.cc)
+add_library(rtidb_catalog STATIC catalog/tablet_catalog.cc)
+add_library(tablet STATIC tablet/tablet_impl.cc flags.cc tablet/file_receiver.cc tablet/file_sender.cc)
+add_library(blobserver STATIC storage/object_store.cc proto/type.pb.cc blobserver/blobserver_impl.cc flags.cc)
+add_library(nameserver STATIC nameserver/name_server_impl.cc flags.cc)
 add_library(beans storage/beans/bitcask.c storage/beans/clock_gettime_stub.c storage/beans/codec.c storage/beans/common.c storage/beans/crc32.c storage/beans/diskmgr.c storage/beans/hint.c storage/beans/hstore.c storage/beans/htree.c storage/beans/mfile.c storage/beans/quicklz.c storage/beans/record.c)
 add_library(storage STATIC storage/object_store.cc storage/mem_table.cc storage/disk_table.cc storage/relational_table.cc storage/segment.cc storage/ticket.cc storage/mem_table_snapshot.cc storage/disk_table_snapshot.cc storage/snapshot.cc storage/table.cc storage/binlog.cc codec/codec.cc storage/schema.cc)
 add_library(client STATIC client/tablet_client.cc client/ns_client.cc client/bs_client.cc)
@@ -23,6 +24,12 @@ add_library(zk_client STATIC zk/zk_client.cc zk/dist_lock.cc)
 
 add_library(replica STATIC replica/replicate_node.cc
                            replica/log_replicator.cc)
+
+add_executable(mem_table_iterator_test storage/mem_table_iterator_test.cc)
+target_link_libraries(mem_table_iterator_test gtest ${BIN_LIBS})
+
+add_executable(tablet_catalog_test catalog/tablet_catalog_test.cc)
+target_link_libraries(tablet_catalog_test gtest ${BIN_LIBS})
 
 add_executable(strings_test base/strings_test.cc)
 target_link_libraries(strings_test gtest ${BIN_LIBS})

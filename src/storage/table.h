@@ -16,6 +16,7 @@
 #include "storage/iterator.h"
 #include "storage/schema.h"
 #include "storage/ticket.h"
+#include "vm/catalog.h"
 
 namespace rtidb {
 namespace storage {
@@ -84,6 +85,9 @@ class Table {
     virtual TableIterator* NewTraverseIterator(uint32_t index) = 0;
     virtual TableIterator* NewTraverseIterator(uint32_t index,
                                                uint32_t ts_idx) = 0;
+
+    virtual ::fesql::vm::WindowIterator* NewWindowIterator(uint32_t index) = 0;
+    virtual ::fesql::vm::WindowIterator* NewWindowIterator(uint32_t index, uint32_t ts_idx) = 0;
 
     virtual void SchedGc() = 0;
 
