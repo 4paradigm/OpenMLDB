@@ -43,10 +43,6 @@ Engine::Engine(const std::shared_ptr<Catalog>& catalog,
 Engine::~Engine() {}
 
 void Engine::InitializeGlobalLLVM() {
-    FLAGS_logtostderr = false;
-    FLAGS_log_dir = "/tmp";
-    const char* arg = "";
-    google::InitGoogleLogging(arg);
     LLVMInitializeNativeTarget();
     LLVMInitializeNativeAsmPrinter();
 }

@@ -582,6 +582,10 @@ bool DataType2SchemaType(const ::fesql::node::DataType type,
             *output = ::fesql::type::kVarchar;
             break;
         }
+        case ::fesql::node::kTimestamp: {
+            *output = ::fesql::type::kTimestamp;
+            break;
+        }
         default: {
             LOG(WARNING) << "can't convert to schema for type: "
                          << ::fesql::node::DataTypeName(type);
@@ -615,6 +619,10 @@ bool SchemaType2DataType(const ::fesql::type::Type type,
         }
         case ::fesql::type::kVarchar: {
             *output = ::fesql::node::kVarchar;
+            break;
+        }
+        case ::fesql::type::kTimestamp: {
+            *output = ::fesql::node::kTimestamp;
             break;
         }
         default: {

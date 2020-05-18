@@ -490,7 +490,8 @@ std::shared_ptr<DataHandler> TableProjectRunner::Run(RunnerContext& ctx) {
     }
     auto output_table = std::shared_ptr<MemTableHandler>(new MemTableHandler());
     auto iter = std::dynamic_pointer_cast<TableHandler>(input)->GetIterator();
-
+    if (!iter) return std::shared_ptr<DataHandler>();
+    iter->SeekToFirst();
     int32_t cnt = 0;
     while (iter->Valid()) {
         if (limit_cnt_ > 0 && cnt++ >= limit_cnt_) {
@@ -501,6 +502,7 @@ std::shared_ptr<DataHandler> TableProjectRunner::Run(RunnerContext& ctx) {
     }
     return output_table;
 }
+
 std::shared_ptr<DataHandler> RowProjectRunner::Run(RunnerContext& ctx) {
     auto row =
         std::dynamic_pointer_cast<RowHandler>(producers_[0]->RunWithCache(ctx));

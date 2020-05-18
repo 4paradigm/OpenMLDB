@@ -134,7 +134,6 @@ void SQLCompiler::KeepIR(SQLContext& ctx, llvm::Module* m) {
 }
 
 bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
-    LOG(INFO) << "start to compile sql " << ctx.sql;
     ::fesql::node::PlanNodeList trees;
     bool ok = Parse(ctx, (*nm_), trees, status);
     if (!ok) {
@@ -228,6 +227,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         LOG(WARNING) << "fail to encode output schema";
         return false;
     }
+    LOG(INFO) << "compile sql " << ctx.sql << " done";
     return true;
 }
 bool SQLCompiler::BuildRunner(SQLContext& ctx, Status& status) {  // NOLINT

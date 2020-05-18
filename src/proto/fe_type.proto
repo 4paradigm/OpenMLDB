@@ -34,7 +34,7 @@ message IndexDef {
     repeated string first_keys = 2;
     optional string second_key = 3;
     repeated string partion_keys = 4;
-    optional uint64 ttl = 5;
+    repeated uint64 ttl = 5;
     optional TTLType ttl_type = 6;
     optional uint32 ts_offset = 7;
 }
