@@ -21,10 +21,11 @@
 #include <memory>
 #include <string>
 #include <utility>
-#include "glog/logging.h"
+
 #include "catalog/schema_adapter.h"
-#include "codec/list_iterator_codec.h"
 #include "catalog/table_iterator_adapter.h"
+#include "codec/list_iterator_codec.h"
+#include "glog/logging.h"
 
 namespace rtidb {
 namespace catalog {
@@ -39,7 +40,7 @@ TabletTableHandler::TabletTableHandler(const ::rtidb::api::TableMeta& meta,
       table_(table),
       types_(),
       index_list_(),
-      index_hint_(){}
+      index_hint_() {}
 
 TabletTableHandler::~TabletTableHandler() {}
 
@@ -95,23 +96,24 @@ bool TabletTableHandler::Init() {
     return true;
 }
 
-std::unique_ptr<::fesql::codec::RowIterator> TabletTableHandler::GetIterator() const {
+std::unique_ptr<::fesql::codec::RowIterator> TabletTableHandler::GetIterator()
+    const {
     std::unique_ptr<catalog::FullTableIterator> it(
-        new catalog::FullTableIterator(table_->NewTraverseIterator(0),
-            table_));
+        new catalog::FullTableIterator(table_->NewTraverseIterator(0), table_));
     return std::move(it);
 }
 
-std::unique_ptr<::fesql::codec::WindowIterator> TabletTableHandler::GetWindowIterator(
-    const std::string& idx_name) {
+std::unique_ptr<::fesql::codec::WindowIterator>
+TabletTableHandler::GetWindowIterator(const std::string& idx_name) {
     auto iter = index_hint_.find(idx_name);
     if (iter == index_hint_.end()) {
         LOG(WARNING) << "index name " << idx_name << " not exist";
         return std::unique_ptr<::fesql::codec::WindowIterator>();
     }
-    //TODO(wangtaize) add table ref cnt
+    // TODO(wangtaize) add table ref cnt
+    DLOG(INFO) << "get window it with index " << idx_name;
     std::unique_ptr<::fesql::codec::WindowIterator> it(
-            table_->NewWindowIterator(iter->second.index));
+        table_->NewWindowIterator(iter->second.index));
     return std::move(it);
 }
 
@@ -206,7 +208,6 @@ bool TabletCatalog::AddDB(const ::fesql::type::Database& db) {
 }
 
 bool TabletCatalog::IndexSupport() { return true; }
-
 
 }  // namespace catalog
 }  // namespace rtidb

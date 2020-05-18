@@ -18,28 +18,29 @@
 #ifndef SRC_CATALOG_SCHEMA_ADAPTER_H_
 #define SRC_CATALOG_SCHEMA_ADAPTER_H_
 
+#include "glog/logging.h"
 #include "proto/common.pb.h"
 #include "vm/catalog.h"
-#include "glog/logging.h"
 
 namespace rtidb {
 namespace catalog {
-typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc> RtiDBSchema;
-typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey> RtiDBIndex;
+typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>
+    RtiDBSchema;
+typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey>
+    RtiDBIndex;
 
 class SchemaAdapter {
-
  public:
     SchemaAdapter() {}
     ~SchemaAdapter() {}
 
     static bool ConvertSchema(const ::fesql::vm::Schema& sql_schema,
-            RtiDBSchema* output) {
+                              RtiDBSchema* output) {
         return false;
     }
 
     static bool ConvertIndex(const RtiDBIndex& index,
-            ::fesql::vm::IndexList* output) {
+                             ::fesql::vm::IndexList* output) {
         if (output == NULL) {
             LOG(WARNING) << "output ptr is null";
             return false;
@@ -60,7 +61,7 @@ class SchemaAdapter {
     }
 
     static bool ConvertSchema(const RtiDBSchema& rtidb_schema,
-            ::fesql::vm::Schema* output) {
+                              ::fesql::vm::Schema* output) {
         if (output == NULL) {
             LOG(WARNING) << "output ptr is null";
             return false;
@@ -70,7 +71,7 @@ class SchemaAdapter {
             ::fesql::type::ColumnDef* new_column = output->Add();
             new_column->set_name(column.name());
             new_column->set_is_not_null(column.not_null());
-            switch(column.data_type()) {
+            switch (column.data_type()) {
                 case rtidb::type::kBool:
                     new_column->set_type(::fesql::type::kBool);
                     break;
@@ -100,15 +101,17 @@ class SchemaAdapter {
                     new_column->set_type(::fesql::type::kVarchar);
                     break;
                 default:
-                    LOG(WARNING) << "type " << ::rtidb::type::DataType_Name(column.data_type()) << " is not supported";
+                    LOG(WARNING)
+                        << "type "
+                        << ::rtidb::type::DataType_Name(column.data_type())
+                        << " is not supported";
                     return false;
             }
         }
         return true;
     }
-
 };
 
-}  // catalog
-}  // rtidb
-#endif  // SRC_CATALOG_SCHEMA_ADAPTER_H_ 
+}  // namespace catalog
+}  // namespace rtidb
+#endif  // SRC_CATALOG_SCHEMA_ADAPTER_H_

@@ -12,6 +12,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+
 #include "proto/tablet.pb.h"
 #include "storage/iterator.h"
 #include "storage/schema.h"
@@ -87,7 +88,8 @@ class Table {
                                                uint32_t ts_idx) = 0;
 
     virtual ::fesql::vm::WindowIterator* NewWindowIterator(uint32_t index) = 0;
-    virtual ::fesql::vm::WindowIterator* NewWindowIterator(uint32_t index, uint32_t ts_idx) = 0;
+    virtual ::fesql::vm::WindowIterator* NewWindowIterator(uint32_t index,
+                                                           uint32_t ts_idx) = 0;
 
     virtual void SchedGc() = 0;
 

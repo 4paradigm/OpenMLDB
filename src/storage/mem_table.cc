@@ -8,15 +8,15 @@
 #include "storage/mem_table.h"
 
 #include <gflags/gflags.h>
+
 #include <algorithm>
 #include <utility>
+
+#include "base/glog_wapper.h"  // NOLINT
 #include "base/hash.h"
 #include "base/slice.h"
-#include "base/glog_wapper.h"  // NOLINT
 #include "storage/record.h"
 #include "timer.h"  // NOLINT
-
-
 
 DECLARE_string(db_root_path);
 DECLARE_uint32(skiplist_max_height);
@@ -843,19 +843,21 @@ bool MemTable::DeleteIndex(std::string idx_name) {
                                    expire_time, expire_cnt, 0);
 }
 
-::fesql::vm::WindowIterator* MemTable::NewWindowIterator(uint32_t index, uint32_t ts_index) {
+::fesql::vm::WindowIterator* MemTable::NewWindowIterator(uint32_t index,
+                                                         uint32_t ts_index) {
     if (ts_index < 0) {
         return NULL;
     }
     std::shared_ptr<IndexDef> index_def = GetIndex(index);
     if (!index_def || !index_def->IsReady()) {
-        LOG(WARNING) <<  "index" << index << "  not found. tid " << id_ << " pid "<< pid_;
+        LOG(WARNING) << "index" << index << "  not found. tid " << id_
+                     << " pid " << pid_;
         return NULL;
     }
     const std::vector<uint32_t> ts_vec = index_def->GetTsColumn();
     if (std::find(ts_vec.begin(), ts_vec.end(), ts_index) == ts_vec.end()) {
-        LOG(WARNING)<<  "ts index "<< ts_index <<" is not member of index " 
-            <<index <<", tid " << id_ << " pid " << pid_;
+        LOG(WARNING) << "ts index " << ts_index << " is not member of index "
+                     << index << ", tid " << id_ << " pid " << pid_;
         return NULL;
     }
     uint64_t expire_time = 0;
@@ -866,9 +868,8 @@ bool MemTable::DeleteIndex(std::string idx_name) {
         expire_cnt = GetTTL(index, ts_index).lat_ttl;
     }
     return new MemTableKeyIterator(segments_[index], seg_cnt_, ttl_type_,
-                                        expire_time, expire_cnt, ts_index);
+                                   expire_time, expire_cnt, ts_index);
 }
-
 
 TableIterator* MemTable::NewTraverseIterator(uint32_t index) {
     std::shared_ptr<IndexDef> index_def = GetIndex(index);
@@ -915,11 +916,10 @@ TableIterator* MemTable::NewTraverseIterator(uint32_t index,
                                         expire_time, expire_cnt, ts_index);
 }
 
-MemTableKeyIterator::MemTableKeyIterator(Segment** segments, 
-        uint32_t seg_cnt, ::rtidb::api::TTLType ttl_type,
-    uint64_t expire_time, 
-    uint64_t expire_cnt, 
-    uint32_t ts_index)
+MemTableKeyIterator::MemTableKeyIterator(Segment** segments, uint32_t seg_cnt,
+                                         ::rtidb::api::TTLType ttl_type,
+                                         uint64_t expire_time,
+                                         uint64_t expire_cnt, uint32_t ts_index)
     : segments_(segments),
       seg_cnt_(seg_cnt),
       seg_idx_(0),
@@ -929,7 +929,7 @@ MemTableKeyIterator::MemTableKeyIterator(Segment** segments,
       expire_time_(expire_time),
       expire_cnt_(expire_cnt),
       ticket_(),
-      ts_idx_(0){
+      ts_idx_(0) {
     uint32_t idx = 0;
     if (segments_[0]->GetTsIdx(ts_index, idx) == 0) {
         ts_idx_ = idx;
@@ -978,9 +978,7 @@ bool MemTableKeyIterator::Valid() {
     return valid;
 }
 
-void MemTableKeyIterator::Next() {
-    NextPK();
-}
+void MemTableKeyIterator::Next() { NextPK(); }
 
 std::unique_ptr<::fesql::vm::RowIterator> MemTableKeyIterator::GetValue() {
     TimeEntries::Iterator* it = NULL;
@@ -990,12 +988,12 @@ std::unique_ptr<::fesql::vm::RowIterator> MemTableKeyIterator::GetValue() {
         ticket_.Push(entry);
     } else {
         it = ((KeyEntry*)pk_it_->GetValue())  // NOLINT
-                  ->entries.NewIterator();
+                 ->entries.NewIterator();
         ticket_.Push((KeyEntry*)pk_it_->GetValue());  // NOLINT
     }
     it->SeekToFirst();
-    std::unique_ptr<MemTableWindowIterator> wit(new MemTableWindowIterator(it, ttl_type_,
-                expire_time_, expire_cnt_));
+    std::unique_ptr<MemTableWindowIterator> wit(
+        new MemTableWindowIterator(it, ttl_type_, expire_time_, expire_cnt_));
     return std::move(wit);
 }
 

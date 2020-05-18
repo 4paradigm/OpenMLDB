@@ -13,6 +13,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+
 #include "proto/tablet.pb.h"
 #include "storage/iterator.h"
 #include "storage/segment.h"
@@ -31,16 +32,14 @@ typedef google::protobuf::RepeatedPtrField<::rtidb::api::Dimension> Dimensions;
 class MemTableWindowIterator : public ::fesql::vm::RowIterator {
  public:
     MemTableWindowIterator(TimeEntries::Iterator* it,
-            ::rtidb::api::TTLType ttl_type,
-            uint64_t expire_time,
-            uint64_t expire_cnt):it_(it), 
-    ttl_type_(ttl_type),
-    record_idx_(0),
-    expire_value_(TTLDesc(expire_time, expire_cnt)) {}
+                           ::rtidb::api::TTLType ttl_type, uint64_t expire_time,
+                           uint64_t expire_cnt)
+        : it_(it),
+          ttl_type_(ttl_type),
+          record_idx_(0),
+          expire_value_(TTLDesc(expire_time, expire_cnt)) {}
 
-    ~MemTableWindowIterator() {
-        delete it_; 
-    }
+    ~MemTableWindowIterator() { delete it_; }
 
     inline bool Valid() const {
         if (!it_->Valid() || IsExpired()) {
@@ -54,45 +53,40 @@ class MemTableWindowIterator : public ::fesql::vm::RowIterator {
         record_idx_++;
     }
 
-    inline const uint64_t& GetKey() const {
-        return it_->GetKey();
-    }
+    inline const uint64_t& GetKey() const { return it_->GetKey(); }
 
-    //TODO(wangtaize) unify the row object
+    // TODO(wangtaize) unify the row object
     inline const ::fesql::codec::Row& GetValue() {
-        row_ = ::fesql::codec::Row(it_->GetValue()->data, it_->GetValue()->size);
+        row_ =
+            ::fesql::codec::Row(it_->GetValue()->data, it_->GetValue()->size);
         return row_;
     }
 
-    inline void Seek(const uint64_t& key) {
-        it_->Seek(key);
-    }
-    inline void SeekToFirst() {
-        it_->SeekToFirst();
-    }
-    inline bool IsSeekable() const {
-        return true;
-    }
+    inline void Seek(const uint64_t& key) { it_->Seek(key); }
+    inline void SeekToFirst() { it_->SeekToFirst(); }
+    inline bool IsSeekable() const { return true; }
+
  private:
     inline bool IsExpired() const {
         if (!expire_value_.HasExpire(ttl_type_)) {
             return false;
         }
-        switch(ttl_type_) {
+        switch (ttl_type_) {
             case ::rtidb::api::TTLType::kAbsoluteTime:
                 return it_->GetKey() <= expire_value_.abs_ttl;
             case ::rtidb::api::TTLType::kLatestTime:
                 return record_idx_ > expire_value_.lat_ttl;
             case ::rtidb::api::TTLType::kAbsAndLat:
                 return it_->GetKey() <= expire_value_.abs_ttl &&
-                   record_idx_ > expire_value_.lat_ttl;
+                       record_idx_ > expire_value_.lat_ttl;
             default:
                 return ((it_->GetKey() <= expire_value_.abs_ttl) &&
-                    (expire_value_.abs_ttl != 0)) ||
-                   ((record_idx_ > expire_value_.lat_ttl) &&
-                    (expire_value_.lat_ttl != 0));
+                        (expire_value_.abs_ttl != 0)) ||
+                       ((record_idx_ > expire_value_.lat_ttl) &&
+                        (expire_value_.lat_ttl != 0));
         }
     }
+
  private:
     TimeEntries::Iterator* it_;
     ::rtidb::api::TTLType ttl_type_;
@@ -104,10 +98,8 @@ class MemTableWindowIterator : public ::fesql::vm::RowIterator {
 class MemTableKeyIterator : public ::fesql::vm::WindowIterator {
  public:
     MemTableKeyIterator(Segment** segments, uint32_t seg_cnt,
-                           ::rtidb::api::TTLType ttl_type,
-                           uint64_t expire_time,
-                           uint64_t expire_cnt, 
-                           uint32_t ts_index);
+                        ::rtidb::api::TTLType ttl_type, uint64_t expire_time,
+                        uint64_t expire_cnt, uint32_t ts_index);
 
     ~MemTableKeyIterator();
 
@@ -122,8 +114,10 @@ class MemTableKeyIterator : public ::fesql::vm::WindowIterator {
     std::unique_ptr<::fesql::vm::RowIterator> GetValue();
 
     const fesql::codec::Row GetKey();
+
  private:
     void NextPK();
+
  private:
     Segment** segments_;
     uint32_t const seg_cnt_;
@@ -217,7 +211,8 @@ class MemTable : public Table {
                                        uint32_t ts_idx) override;
 
     ::fesql::vm::WindowIterator* NewWindowIterator(uint32_t index);
-    ::fesql::vm::WindowIterator* NewWindowIterator(uint32_t index, uint32_t ts_idx);
+    ::fesql::vm::WindowIterator* NewWindowIterator(uint32_t index,
+                                                   uint32_t ts_idx);
 
     // release all memory allocated
     uint64_t Release();

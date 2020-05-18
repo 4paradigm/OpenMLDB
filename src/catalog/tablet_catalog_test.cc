@@ -16,14 +16,15 @@
  */
 
 #include "catalog/tablet_catalog.h"
-#include "gtest/gtest.h"
+
+#include "base/fe_status.h"
 #include "catalog/schema_adapter.h"
 #include "codec/fe_row_codec.h"
-#include "storage/table.h"
-#include "storage/mem_table.h"
-#include "vm/engine.h"
-#include "base/fe_status.h"
+#include "gtest/gtest.h"
 #include "proto/fe_common.pb.h"
+#include "storage/mem_table.h"
+#include "storage/table.h"
+#include "vm/engine.h"
 
 namespace rtidb {
 namespace catalog {
@@ -39,9 +40,9 @@ struct TestArgs {
     uint64_t ts;
 };
 
-TestArgs* PrepareTable() {
+TestArgs* PrepareTable(const std::string& tname) {
     TestArgs* args = new TestArgs();
-    args->meta.set_name("t1");
+    args->meta.set_name(tname);
     args->meta.set_tid(1);
     args->meta.set_pid(0);
     args->meta.set_seg_cnt(8);
@@ -54,14 +55,15 @@ TestArgs* PrepareTable() {
     col2->set_name("col2");
     col2->set_data_type(::rtidb::type::kBigInt);
 
-    RtiDBIndex* index =args->meta.mutable_column_key();
+    RtiDBIndex* index = args->meta.mutable_column_key();
     auto key1 = index->Add();
     key1->set_index_name("index0");
     key1->add_col_name("col1");
     key1->add_ts_name("col2");
     args->idx_name = "index0";
 
-    ::rtidb::storage::MemTable* table = new ::rtidb::storage::MemTable(args->meta);
+    ::rtidb::storage::MemTable* table =
+        new ::rtidb::storage::MemTable(args->meta);
     table->Init();
     ::fesql::vm::Schema fe_schema;
     SchemaAdapter::ConvertSchema(args->meta.column_desc(), &fe_schema);
@@ -82,10 +84,8 @@ TestArgs* PrepareTable() {
     return args;
 }
 
-
-
 TEST_F(TabletCatalogTest, tablet_smoke_test) {
-    TestArgs* args = PrepareTable();
+    TestArgs* args = PrepareTable("t1");
     TabletTableHandler handler(args->meta, "db1", args->table);
     ASSERT_TRUE(handler.Init());
     auto it = handler.GetIterator();
@@ -115,8 +115,9 @@ TEST_F(TabletCatalogTest, tablet_smoke_test) {
 TEST_F(TabletCatalogTest, sql_smoke_test) {
     std::shared_ptr<TabletCatalog> catalog(new TabletCatalog());
     ASSERT_TRUE(catalog->Init());
-    TestArgs* args = PrepareTable();
-    std::shared_ptr<TabletTableHandler> handler(new TabletTableHandler(args->meta, "db1", args->table));
+    TestArgs* args = PrepareTable("t1");
+    std::shared_ptr<TabletTableHandler> handler(
+        new TabletTableHandler(args->meta, "db1", args->table));
     ASSERT_TRUE(handler->Init());
     ASSERT_TRUE(catalog->AddTable(handler));
     ::fesql::vm::Engine engine(catalog);
@@ -151,15 +152,27 @@ TEST_F(TabletCatalogTest, sql_smoke_test) {
     ASSERT_EQ(args->pk, pk);
 }
 
-TEST_F(TabletCatalogTest, sql_window_smoke_test) {
+TEST_F(TabletCatalogTest, sql_last_join_smoke_test) {
     std::shared_ptr<TabletCatalog> catalog(new TabletCatalog());
     ASSERT_TRUE(catalog->Init());
-    TestArgs* args = PrepareTable();
-    std::shared_ptr<TabletTableHandler> handler(new TabletTableHandler(args->meta, "db1", args->table));
-    ASSERT_TRUE(handler->Init());
-    ASSERT_TRUE(catalog->AddTable(handler));
+    TestArgs* args = PrepareTable("t1");
+    {
+        std::shared_ptr<TabletTableHandler> handler(
+            new TabletTableHandler(args->meta, "db1", args->table));
+        ASSERT_TRUE(handler->Init());
+        ASSERT_TRUE(catalog->AddTable(handler));
+    }
+    {
+        TestArgs* args1 = PrepareTable("t2");
+        std::shared_ptr<TabletTableHandler> handler(
+            new TabletTableHandler(args1->meta, "db1", args1->table));
+        ASSERT_TRUE(handler->Init());
+        ASSERT_TRUE(catalog->AddTable(handler));
+    }
     ::fesql::vm::Engine engine(catalog);
-    std::string sql = "select sum(col2) over w1  from t1 window w1 as(partition by t1.col1 order by t1.col2 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);";
+    std::string sql =
+        "select t1.col1 as c1, t1.col2 as c2 , t2.col1 as c3, t2.col2 as c4 "
+        "from t1 last join t2 on t1.col1 = t2.col1 and t1.col2 = t2.col2;";
     ::fesql::vm::BatchRunSession session;
     session.EnableDebug();
     ::fesql::base::Status status;
@@ -174,7 +187,98 @@ TEST_F(TabletCatalogTest, sql_window_smoke_test) {
         ASSERT_TRUE(false);
     }
     ::fesql::codec::RowView rv(session.GetSchema());
-    ASSERT_EQ(1, session.GetSchema().size());
+    ASSERT_EQ(4, session.GetSchema().size());
+    auto it = result->GetIterator();
+    ASSERT_TRUE(it->Valid());
+    const ::fesql::codec::Row& row = it->GetValue();
+    rv.Reset(row.buf(), row.size());
+    char* data = NULL;
+    uint32_t data_size = 0;
+    ASSERT_EQ(0, rv.GetString(0, &data, &data_size));
+    std::string pk(data, data_size);
+    ASSERT_EQ(args->pk, pk);
+}
+
+TEST_F(TabletCatalogTest, sql_last_join_smoke_test2) {
+    std::shared_ptr<TabletCatalog> catalog(new TabletCatalog());
+    ASSERT_TRUE(catalog->Init());
+    TestArgs* args = PrepareTable("t1");
+    {
+        std::shared_ptr<TabletTableHandler> handler(
+            new TabletTableHandler(args->meta, "db1", args->table));
+        ASSERT_TRUE(handler->Init());
+        ASSERT_TRUE(catalog->AddTable(handler));
+    }
+    {
+        TestArgs* args1 = PrepareTable("t2");
+        std::shared_ptr<TabletTableHandler> handler(
+            new TabletTableHandler(args1->meta, "db1", args1->table));
+        ASSERT_TRUE(handler->Init());
+        ASSERT_TRUE(catalog->AddTable(handler));
+    }
+    ::fesql::vm::Engine engine(catalog);
+    std::string sql =
+        "select t1.col1 as c1, t1.col2 as c2 , t2.col1 as c3, t2.col2 as c4 "
+        "from t1 last join t2 on t1.col1 = t2.col1 and t1.col2 > t2.col2;";
+    ::fesql::vm::ExplainOutput explain;
+    ::fesql::base::Status status;
+    engine.Explain(sql, "db1", true, &explain, &status);
+    std::cout << "physical " << explain.physical_plan << std::endl;
+    std::cout << "logical_plan " << explain.logical_plan << std::endl;
+    ::fesql::vm::BatchRunSession session;
+    session.EnableDebug();
+    engine.Get(sql, "db1", session, status);
+    if (status.code != ::fesql::common::kOk) {
+        std::cout << status.msg << std::endl;
+    }
+    ASSERT_EQ(::fesql::common::kOk, status.code);
+    std::vector<int8_t*> output;
+    std::shared_ptr<::fesql::vm::TableHandler> result = session.Run();
+    if (!result) {
+        ASSERT_TRUE(false);
+    }
+    ::fesql::codec::RowView rv(session.GetSchema());
+    ASSERT_EQ(4, session.GetSchema().size());
+    auto it = result->GetIterator();
+    ASSERT_TRUE(it->Valid());
+    const ::fesql::codec::Row& row = it->GetValue();
+    rv.Reset(row.buf(), row.size());
+    char* data = NULL;
+    uint32_t data_size = 0;
+    ASSERT_EQ(0, rv.GetString(0, &data, &data_size));
+    std::string pk(data, data_size);
+    ASSERT_EQ(args->pk, pk);
+}
+
+TEST_F(TabletCatalogTest, sql_window_smoke_test) {
+    std::shared_ptr<TabletCatalog> catalog(new TabletCatalog());
+    ASSERT_TRUE(catalog->Init());
+    TestArgs* args = PrepareTable("t1");
+
+    std::shared_ptr<TabletTableHandler> handler(
+        new TabletTableHandler(args->meta, "db1", args->table));
+    ASSERT_TRUE(handler->Init());
+    ASSERT_TRUE(catalog->AddTable(handler));
+    ::fesql::vm::Engine engine(catalog);
+    std::string sql =
+        "select sum(col2) over w1, t1.col1, t1.col2 from t1 window w1 "
+        "as(partition by t1.col1 order by t1.col2 ROWS BETWEEN 3 PRECEDING AND "
+        "CURRENT ROW);";
+    ::fesql::vm::BatchRunSession session;
+    session.EnableDebug();
+    ::fesql::base::Status status;
+    engine.Get(sql, "db1", session, status);
+    if (status.code != ::fesql::common::kOk) {
+        std::cout << status.msg << std::endl;
+    }
+    ASSERT_EQ(::fesql::common::kOk, status.code);
+    std::vector<int8_t*> output;
+    std::shared_ptr<::fesql::vm::TableHandler> result = session.Run();
+    if (!result) {
+        ASSERT_TRUE(false);
+    }
+    ::fesql::codec::RowView rv(session.GetSchema());
+    ASSERT_EQ(3, session.GetSchema().size());
     auto it = result->GetIterator();
     ASSERT_TRUE(it->Valid());
     const ::fesql::codec::Row& row = it->GetValue();
@@ -183,18 +287,20 @@ TEST_F(TabletCatalogTest, sql_window_smoke_test) {
     ASSERT_EQ(0, rv.GetInt64(0, &val));
     int64_t exp = args->ts;
     ASSERT_EQ(val, exp);
+    char* data = NULL;
+    uint32_t data_size = 0;
+    ASSERT_EQ(0, rv.GetString(1, &data, &data_size));
+    std::string pk(data, data_size);
+    ASSERT_EQ(args->pk, pk);
+    ASSERT_EQ(0, rv.GetInt64(2, &val));
+    ASSERT_EQ(val, exp);
 }
 
-
-
-}  // catalog
-}  // rtidb
+}  // namespace catalog
+}  // namespace rtidb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     ::fesql::vm::Engine::InitializeGlobalLLVM();
     return RUN_ALL_TESTS();
 }
-
-
-

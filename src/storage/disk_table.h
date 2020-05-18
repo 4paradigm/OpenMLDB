@@ -15,19 +15,21 @@
 #include <rocksdb/status.h>
 #include <rocksdb/table.h>
 #include <rocksdb/utilities/checkpoint.h>
+
 #include <atomic>
+#include <boost/lexical_cast.hpp>
 #include <map>
 #include <memory>
 #include <string>
 #include <vector>
-#include <boost/lexical_cast.hpp>
+
 #include "base/endianconv.h"
 #include "base/slice.h"
 #include "proto/common.pb.h"
 #include "proto/tablet.pb.h"
 #include "storage/iterator.h"
 #include "storage/table.h"
-#include "timer.h" // NOLINT
+#include "timer.h"  // NOLINT
 
 typedef google::protobuf::RepeatedPtrField<::rtidb::api::Dimension> Dimensions;
 
@@ -39,7 +41,7 @@ static const uint32_t TS_POS_LEN = sizeof(uint8_t);
 
 __attribute__((unused)) static int ParseKeyAndTs(bool has_ts_idx,
                                                  const rocksdb::Slice& s,
-                                                 std::string& key, // NOLINT
+                                                 std::string& key,   // NOLINT
                                                  uint64_t& ts,       // NOLINT
                                                  uint8_t& ts_idx) {  // NOLINT
     auto len = TS_LEN;
@@ -365,7 +367,8 @@ class DiskTable : public Table {
         return NULL;
     }
 
-    ::fesql::vm::WindowIterator* NewWindowIterator(uint32_t idx, uint32_t ts_idx) {
+    ::fesql::vm::WindowIterator* NewWindowIterator(uint32_t idx,
+                                                   uint32_t ts_idx) {
         return NULL;
     }
 

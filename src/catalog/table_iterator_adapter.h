@@ -20,12 +20,13 @@
 
 #include <memory>
 #include <string>
+
 #include "base/fe_slice.h"
 #include "base/iterator.h"
 #include "codec/list_iterator_codec.h"
-#include "vm/catalog.h"
 #include "glog/logging.h"
 #include "storage/table.h"
+#include "vm/catalog.h"
 
 namespace rtidb {
 namespace catalog {
@@ -33,7 +34,8 @@ namespace catalog {
 class FullTableIterator;
 class EmptyWindowIterator;
 
-class EmptyWindowIterator : public ::fesql::codec::ConstIterator<uint64_t, ::fesql::codec::Row> {
+class EmptyWindowIterator
+    : public ::fesql::codec::ConstIterator<uint64_t, ::fesql::codec::Row> {
  public:
     EmptyWindowIterator() : value_(), key_(0) {}
 
@@ -52,47 +54,38 @@ class EmptyWindowIterator : public ::fesql::codec::ConstIterator<uint64_t, ::fes
     inline const uint64_t& GetKey() const { return key_; }
 
     bool IsSeekable() const override { return true; }
+
  private:
     ::fesql::codec::Row value_;
     uint64_t key_;
 };
 
-
 // the full table iterator
-class FullTableIterator : public ::fesql::codec::ConstIterator<uint64_t, ::fesql::codec::Row> {
+class FullTableIterator
+    : public ::fesql::codec::ConstIterator<uint64_t, ::fesql::codec::Row> {
  public:
-    FullTableIterator() :it_(), table_() {}
+    FullTableIterator() : it_(), table_() {}
 
     explicit FullTableIterator(::rtidb::storage::TableIterator* it,
-                               std::shared_ptr<::rtidb::storage::Table> table):it_(it),
-    table_(table), value_(), key_(0) {}
-    ~FullTableIterator() {
-        delete it_;
-    }
+                               std::shared_ptr<::rtidb::storage::Table> table)
+        : it_(it), table_(table), value_(), key_(0) {}
+    ~FullTableIterator() { delete it_; }
 
     inline void Seek(const uint64_t& ts) {}
 
-    inline void SeekToFirst() {
-        it_->SeekToFirst();
-    }
+    inline void SeekToFirst() { it_->SeekToFirst(); }
 
-    inline bool Valid() const {
-        return it_->Valid();
-    }
+    inline bool Valid() const { return it_->Valid(); }
 
-    inline void Next() {
-        it_->Next();
-    }
+    inline void Next() { it_->Next(); }
 
     inline const ::fesql::codec::Row& GetValue() {
-        value_ = ::fesql::codec::Row(it_->GetValue().data(),
-                it_->GetValue().size());
+        value_ =
+            ::fesql::codec::Row(it_->GetValue().data(), it_->GetValue().size());
         return value_;
     }
 
-    inline bool IsSeekable() const override {
-        return true;
-    }
+    inline bool IsSeekable() const override { return true; }
 
     // the key maybe the row num
     inline const uint64_t& GetKey() const { return key_; }
@@ -104,7 +97,7 @@ class FullTableIterator : public ::fesql::codec::ConstIterator<uint64_t, ::fesql
     uint64_t key_;
 };
 
-}  // catalog
-}  // fesql
+}  // namespace catalog
+}  // namespace rtidb
 
 #endif  // SRC_CATALOG_TABLE_ITERATOR_ADAPTER_H_

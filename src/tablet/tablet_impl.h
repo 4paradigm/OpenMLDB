@@ -293,6 +293,7 @@ class TabletImpl : public ::rtidb::api::TabletServer {
                        uint32_t* count);
 
     std::shared_ptr<Table> GetTable(uint32_t tid, uint32_t pid);
+
  private:
     bool CreateMultiDir(const std::vector<std::string>& dirs);
     // Get table by table id , no need external synchronization

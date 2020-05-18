@@ -15,9 +15,9 @@
  * limitations under the License.
  */
 
-#include "storage/mem_table.h"
 #include "gtest/gtest.h"
-#include "timer.h" //NOLINT
+#include "storage/mem_table.h"
+#include "timer.h"  //NOLINT
 
 namespace rtidb {
 namespace storage {
@@ -50,8 +50,8 @@ TEST_F(MemTableIteratorTest, smoketest) {
     ASSERT_FALSE(it->Valid());
 }
 
-}  // storage
-}  // rtidb
+}  // namespace storage
+}  // namespace rtidb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
