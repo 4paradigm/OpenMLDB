@@ -990,30 +990,31 @@ bool JoinGenerator::TableJoin(std::shared_ptr<TableHandler> left,
     }
     return true;
 }
+
 bool JoinGenerator::TableJoin(std::shared_ptr<TableHandler> left,
                               std::shared_ptr<PartitionHandler> right,
                               std::shared_ptr<MemTableHandler> output) {
-    if (!left_key_gen_.Valid()) {
+    if (!left_key_gen_.Valid() && !index_key_gen_.Valid()) {
         LOG(WARNING) << "can't join right partition table when join "
                         "left_key_gen_ is invalid";
         return false;
     }
     auto left_iter = left->GetIterator();
-    if (!left_iter || !left_iter->Valid()) {
+
+    if (!left_iter) {
         LOG(WARNING) << "fail to run last join: left input empty";
         return false;
     }
+
     left_iter->SeekToFirst();
     while (left_iter->Valid()) {
         const Row& left_row = left_iter->GetValue();
-        std::string key_str = "";
-        if (index_key_gen_.Valid()) {
-            key_str = index_key_gen_.Gen(left_row) + "|" +
+        std::string key_str = index_key_gen_.Valid() ? index_key_gen_.Gen(left_row) : "";
+        if (left_key_gen_.Valid()) {
+            key_str = key_str.empty() ? left_key_gen_.Gen(left_row) : key_str + "|" +
                       left_key_gen_.Gen(left_row);
-        } else {
-            key_str = left_key_gen_.Gen(left_row);
         }
-        LOG(INFO) << "key_str " << key_str;
+        DLOG(INFO) << "key_str " << key_str;
         auto right_table = right->GetSegment(right, key_str);
         output->AddRow(
             Runner::RowLastJoinTable(left_row, right_table, condition_gen_));
@@ -1021,6 +1022,7 @@ bool JoinGenerator::TableJoin(std::shared_ptr<TableHandler> left,
     }
     return true;
 }
+
 bool JoinGenerator::PartitionJoin(std::shared_ptr<PartitionHandler> left,
                                   std::shared_ptr<TableHandler> right,
                                   std::shared_ptr<MemPartitionHandler> output) {
