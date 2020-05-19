@@ -168,8 +168,7 @@ object JoinPlan {
     }
 
     // TODO: these are leaked
-    private val bufferPool: NativeBufferPool = new NativeBufferPool
-    private val encoder: SparkRowCodec = new SparkRowCodec(inputSchemaSlices, bufferPool)
+    private val encoder: SparkRowCodec = new SparkRowCodec(inputSchemaSlices)
     private val outView: RowView = new RowView(outputSchema)
 
     def initJIT(): FeSQLJITWrapper = {
@@ -181,12 +180,13 @@ object JoinPlan {
 
     override def apply(row: Row): Boolean = {
       // call encode
-      val nativeInputRow = encoder.encode(row, keepBuffer=false)
+      val nativeInputRow = encoder.encode(row)
 
       // call native compute
       val result = CoreAPI.ComputeCondition(fn, nativeInputRow, outView, 0)
 
       // release swig jni objects
+      CoreAPI.ReleaseRow(nativeInputRow)
       nativeInputRow.delete()
 
       result

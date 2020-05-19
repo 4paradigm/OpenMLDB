@@ -37,6 +37,8 @@ class Row {
  public:
     Row() : slice_() {}
     Row(int8_t *d, size_t n) : slice_(d, n, false) {}
+    Row(int64_t buf_handle, size_t n) :
+        slice_(reinterpret_cast<int8_t*>(buf_handle) , n, false) {}
     Row(int8_t *d, size_t n, bool need_free) : slice_(d, n, need_free) {}
     Row(const char *d, size_t n) : slice_(d, n, false) {}
     Row(const char *d, size_t n, bool need_free) : slice_(d, n, need_free) {}

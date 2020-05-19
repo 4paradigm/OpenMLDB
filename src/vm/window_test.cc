@@ -252,7 +252,7 @@ TEST_F(WindowIteratorTest, CurrentHistoryWindowTest) {
 
     // history current_ts -1000 ~ current_ts
     {
-        CurrentHistoryWindow window(-1000L);
+        CurrentHistoryWindow window(false, -1000L);
         window.BufferData(1L, row);
         ASSERT_EQ(1u, window.GetCount());
         window.BufferData(2L, row);
@@ -289,7 +289,7 @@ TEST_F(WindowIteratorTest, CurrentHistoryWindowTest) {
 
     // history current_ts -1000 ~ current_ts max_size = 5
     {
-        CurrentHistoryWindow window(-1000L, 5);
+        CurrentHistoryWindow window(false, -1000L, 5);
         window.BufferData(1L, row);
         ASSERT_EQ(1u, window.GetCount());
         window.BufferData(2L, row);

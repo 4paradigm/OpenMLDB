@@ -608,7 +608,7 @@ void WindowAggRunner::RunWindowAggOnKey(
             ? -1
             : IteratorStatus::PickIteratorWithMininumKey(&union_segment_status);
     int32_t cnt = output_table->GetCount();
-    CurrentHistoryWindow window(
+    CurrentHistoryWindow window(false,
         instance_window_gen_.window_op_.range_.start_offset_);
     window.set_instance_not_in_window(instance_not_in_window_);
 
