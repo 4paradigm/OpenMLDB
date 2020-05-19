@@ -29,7 +29,8 @@ style_check:
     artifacts:
         reports:
             junit:
-                - reports/*.xml
+                - ./style.xml
+
 
 java_ut:
   stage: test
@@ -41,6 +42,11 @@ java_ut:
       - ln -sf /depends/thirdsrc thirdsrc
       - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/java_ut.sh
       - source /root/.bashrc && bash steps/auto_test.sh
+  after_script:
+      - tar czvf $CI_COMMIT_SHA  auto-test-rtidb/target/allure-results
+      - bash steps/upload-nexus.sh $CI_COMMIT_SHA
+      - curl -s "http://auto.4paradigm.com/job/rtidb-test-report/buildWithParameters?token=gitlab&pkg=$CI_COMMIT_SHA&buildname=$CI_PIPELINE_ID"-"$CI_JOB_ID"
+      - bash steps/get-report-url.sh rtidb-test-report $CI_PIPELINE_ID"-"$CI_JOB_ID
   artifacts:
       reports:
           junit:
