@@ -8,7 +8,9 @@
  **/
 #include "vm/mem_catalog.h"
 #include "gtest/gtest.h"
+#include "vm/catalog_wrapper.h"
 #include "vm/test_base.h"
+
 namespace fesql {
 namespace vm {
 using fesql::codec::Row;
@@ -72,6 +74,148 @@ TEST_F(MemCataLogTest, mem_table_handler_test) {
     vm::MemTableHandler table_handler("t1", "temp", &(table.columns()));
     for (auto row : rows) {
         table_handler.AddRow(row);
+    }
+}
+
+Row project(const Row& row) {
+    type::TableDef table1;
+    BuildTableDef(table1);
+    codec::RowView row_view(table1.columns());
+    row_view.Reset(row.buf());
+
+    type::TableDef table2;
+    {
+        {
+            ::fesql::type::ColumnDef* column = table2.add_columns();
+            column->set_type(::fesql::type::kInt32);
+            column->set_name("c1");
+        }
+        {
+            ::fesql::type::ColumnDef* column = table2.add_columns();
+            column->set_type(::fesql::type::kFloat);
+            column->set_name("c3");
+        }
+    }
+    codec::RowBuilder builder(table2.columns());
+    int32_t total_size = builder.CalTotalLength(0);
+    int8_t* buf = static_cast<int8_t*>(malloc(total_size));
+    builder.SetBuffer(buf, total_size);
+    std::string str0 = row_view.GetStringUnsafe(0);
+    builder.AppendInt32(row_view.GetInt32Unsafe(1) + 1);
+    builder.AppendFloat(row_view.GetFloatUnsafe(3) + 2.0f);
+    return Row(buf, total_size);
+}
+
+class SimpleWrapperFun : public WrapperFun {
+ public:
+    SimpleWrapperFun() : WrapperFun() {}
+    ~SimpleWrapperFun() {}
+    Row operator()(const Row& row) const override {
+        return project(row);
+    }
+};
+
+TEST_F(MemCataLogTest, table_hander_wrapper_test) {
+    std::vector<Row> rows;
+    ::fesql::type::TableDef table;
+    BuildRows(table, rows);
+    std::shared_ptr<MemTableHandler> table_handler =
+        std::shared_ptr<MemTableHandler>(
+            new vm::MemTableHandler("t1", "temp", &(table.columns())));
+    for (auto row : rows) {
+        table_handler->AddRow(row);
+    }
+
+    SimpleWrapperFun fn;
+    vm::TableWrapper wrapper(table_handler, &fn);
+
+    type::TableDef table2;
+    {
+        {
+            ::fesql::type::ColumnDef* column = table2.add_columns();
+            column->set_type(::fesql::type::kInt32);
+            column->set_name("c1");
+        }
+        {
+            ::fesql::type::ColumnDef* column = table2.add_columns();
+            column->set_type(::fesql::type::kFloat);
+            column->set_name("c3");
+        }
+    }
+    codec::RowView row_view(table2.columns());
+    auto iter = wrapper.GetIterator();
+    iter->SeekToFirst();
+    ASSERT_TRUE(iter->Valid());
+    row_view.Reset(iter->GetValue().buf());
+    ASSERT_EQ(2, row_view.GetInt32Unsafe(0));
+    ASSERT_EQ(3.1f, row_view.GetFloatUnsafe(1));
+}
+
+TEST_F(MemCataLogTest, partition_hander_wrapper_test) {
+    std::vector<Row> rows;
+    ::fesql::type::TableDef table;
+    BuildRows(table, rows);
+    std::shared_ptr<vm::MemPartitionHandler> partition_handler =
+        std::shared_ptr<vm::MemPartitionHandler>(
+            new vm::MemPartitionHandler("t1", "temp", &(table.columns())));
+
+    uint64_t ts = 1;
+    for (auto row : rows) {
+        partition_handler->AddRow("group2", ts++, row);
+    }
+
+    for (auto row : rows) {
+        partition_handler->AddRow("group1", ts++, row);
+    }
+
+    partition_handler->Sort(false);
+
+    SimpleWrapperFun fn;
+    vm::PartitionWrapper wrapper(partition_handler, &fn);
+
+    type::TableDef table2;
+    {
+        {
+            ::fesql::type::ColumnDef* column = table2.add_columns();
+            column->set_type(::fesql::type::kInt32);
+            column->set_name("c1");
+        }
+        {
+            ::fesql::type::ColumnDef* column = table2.add_columns();
+            column->set_type(::fesql::type::kFloat);
+            column->set_name("c3");
+        }
+    }
+    codec::RowView row_view(table2.columns());
+    auto window_iter = wrapper.GetWindowIterator();
+    window_iter->SeekToFirst();
+    ASSERT_TRUE(window_iter->Valid());
+
+    {
+        auto iter = window_iter->GetValue();
+        ASSERT_EQ("group2", window_iter->GetKey().ToString());
+        iter->SeekToFirst();
+        ASSERT_TRUE(iter->Valid());
+        row_view.Reset(iter->GetValue().buf());
+        ASSERT_EQ(6, row_view.GetInt32Unsafe(0));
+        ASSERT_EQ(7.5f, row_view.GetFloatUnsafe(1));
+
+        iter->Next();
+        ASSERT_TRUE(iter->Valid());
+        row_view.Reset(iter->GetValue().buf());
+        ASSERT_EQ(5, row_view.GetInt32Unsafe(0));
+        ASSERT_EQ(6.4f, row_view.GetFloatUnsafe(1));
+    }
+    window_iter->Next();
+    ASSERT_TRUE(window_iter->Valid());
+    {
+        auto iter = window_iter->GetValue();
+        ASSERT_EQ("group1", window_iter->GetKey().ToString());
+        iter->SeekToFirst();
+        ASSERT_TRUE(iter->Valid());
+        row_view.Reset(iter->GetValue().buf());
+        ASSERT_EQ(6, row_view.GetInt32Unsafe(0));
+        ASSERT_EQ(7.5f, row_view.GetFloatUnsafe(1));
     }
 }
 TEST_F(MemCataLogTest, mem_segment_handler_test) {

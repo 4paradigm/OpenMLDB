@@ -128,7 +128,7 @@ class MemRowHandler : public RowHandler {
     const Schema* GetSchema() override { return schema_; }
     const std::string& GetName() override { return table_name_; }
     const std::string& GetDatabase() override { return db_; }
-    const Row& GetValue() const override { return row_; }
+    const Row& GetValue() override { return row_; }
     const std::string GetHandlerTypeName() override { return "MemRowHandler"; }
 
  private:

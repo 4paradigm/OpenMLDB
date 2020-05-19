@@ -1897,6 +1897,9 @@ bool LimitOptimized::ApplyLimitCnt(PhysicalOpNode* node, int32_t limit_cnt) {
     if (node->producers().empty()) {
         return false;
     }
+    if (node->type_ == kPhysicalOpSimpleProject) {
+        return false;
+    }
     if (node->is_block_) {
         if (0 == node->GetLimitCnt() || node->GetLimitCnt() > limit_cnt) {
             node->SetLimitCnt(limit_cnt);

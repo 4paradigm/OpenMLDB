@@ -540,7 +540,7 @@ class PhysicalColumnProjectNode : public PhysicalUnaryNode {
  public:
     PhysicalColumnProjectNode(PhysicalOpNode *node, const Schema &schema,
                               const ColumnSourceList &sources)
-        : PhysicalUnaryNode(node, kPhysicalOpSimpleProject, false, false),
+        : PhysicalUnaryNode(node, kPhysicalOpSimpleProject, true, false),
           project_(sources) {
         output_type_ = node->output_type_;
         output_schema_ = schema;

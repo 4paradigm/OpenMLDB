@@ -60,6 +60,7 @@ class RunnerContext {
     std::map<int32_t, std::shared_ptr<DataHandler>> cache_;
 };
 
+
 class CoreAPI {
  public:
     static int ResolveColumnIndex(fesql::vm::PhysicalOpNode* node,

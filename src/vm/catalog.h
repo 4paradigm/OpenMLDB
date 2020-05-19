@@ -179,7 +179,7 @@ class RowHandler : public DataHandler {
     const uint64_t GetCount() override { return 0; }
     Row At(uint64_t pos) override { return Row(); }
     const HandlerType GetHanlderType() override { return kRowHandler; }
-    virtual const Row& GetValue() const = 0;
+    virtual const Row& GetValue() = 0;
     const std::string GetHandlerTypeName() override { return "RowHandler"; }
 };
 
@@ -235,6 +235,7 @@ class PartitionHandler : public TableHandler {
     }
     const OrderType GetOrderType() const { return kNoneOrder; }
 };
+
 
 // database/table/schema/type management
 class Catalog {

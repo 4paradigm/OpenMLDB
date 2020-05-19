@@ -717,17 +717,17 @@ INSTANTIATE_TEST_CASE_P(
     testing::Values(
         // SIMPLE SELECT COLUMNS
         std::make_pair("SELECT COL0, COL1, COL2, COL6 FROM t1 LIMIT 10;",
-                       "LIMIT(limit=10, optimized)\n"
+                       "LIMIT(limit=10)\n"
                        "  SIMPLE_PROJECT(sources=([0]<-[0:0], [1]<-[0:1], "
-                       "[2]<-[0:2], [3]<-[0:6], limit=10)\n"
+                       "[2]<-[0:2], [3]<-[0:6])\n"
                        "    DATA_PROVIDER(table=t1)"),
         // SIMPLE SELECT COLUMNS and CONST VALUES
         std::make_pair(
             "SELECT c0 as col0, c1 as col1, c2 as col2, 0.0f as col3, 0.0 as "
             "col4, c5 as col5, c6 as col6 from tb LIMIT 10;\n",
-            "LIMIT(limit=10, optimized)\n"
+            "LIMIT(limit=10)\n"
             "  SIMPLE_PROJECT(sources=([0]<-[0:0], [1]<-[0:1], [2]<-[0:2], "
-            "[3]<-0.000000, [4]<-0.000000, [5]<-[0:5], [6]<-[0:6], limit=10)\n"
+            "[3]<-0.000000, [4]<-0.000000, [5]<-[0:5], [6]<-[0:6])\n"
             "    DATA_PROVIDER(table=tb)"),
         // SIMPLE SELECT FROM SIMPLE SELECT FROM SIMPLE SELECT
         std::make_pair(
@@ -735,9 +735,9 @@ INSTANTIATE_TEST_CASE_P(
             "as z from (select c0 as col0, c1 as col1, c2 "
             "as col2, 0.0f as col3, 0.0 as "
             "col4, c5 as col5, c6 as col6 from tb)) LIMIT 10;\n",
-            "LIMIT(limit=10, optimized)\n"
+            "LIMIT(limit=10)\n"
             "  SIMPLE_PROJECT(sources=([0]<-[0:0], [1]<-[0:1], [2]<-[0:2], "
-            "[3]<-1, [4]<-1.000000, limit=10)\n"
+            "[3]<-1, [4]<-1.000000)\n"
             "    DATA_PROVIDER(table=tb)"),
         // SIMPLE SELECT COLUMNS and CONST VALUES
         std::make_pair(
@@ -745,9 +745,9 @@ INSTANTIATE_TEST_CASE_P(
             "as col2, 0.0f as col3, 0.0 as "
             "col4, c5 as col5, c6 as col6 from tb) LIMIT 10;\n",
             "LIMIT(limit=10, optimized)\n"
-            "  PROJECT(type=TableProject)\n"
+            "  PROJECT(type=TableProject, limit=10)\n"
             "    SIMPLE_PROJECT(sources=([0]<-[0:0], [1]<-[0:1], [2]<-[0:2], "
-            "[3]<-0.000000, [4]<-0.000000, [5]<-[0:5], [6]<-[0:6], limit=10)\n"
+            "[3]<-0.000000, [4]<-0.000000, [5]<-[0:5], [6]<-[0:6])\n"
             "      DATA_PROVIDER(table=tb)")));
 TEST_P(TransformPassOptimizedTest, pass_optimzied_test) {
     fesql::type::TableDef table_def;
