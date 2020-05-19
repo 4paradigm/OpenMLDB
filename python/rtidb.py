@@ -165,19 +165,19 @@ class RTIDBClient:
     return PutResult(putResult)
 
   def PutBlob(self, name: str, value: map):
-    blob_fields = self.__client.GetBlobSchema(name);
-    BlobInfo = None
-    for k in blob_fields:
-      blob_data = value.get(k, None)
-      if blob_data == None:
+    blobFields = self.__client.GetBlobSchema(name);
+    blobInfo = None
+    for k in blobFields:
+      blobData = value.get(k, None)
+      if blobData == None:
         continue
-      if not isinstance(blob_data, bytes):
-        raise Exception("blob_data only byte type")
-      if BlobInfo == None:
-        BlobInfo = self.__client.GetBlobInfo(name)
-        if BlobInfo.code_ != 0:
-          raise Exception("errored at get blobinfo: {}".format(BlobInfo.msg_))
-      ok = interclient_tools.PutBlob(BlobInfo, blob_data, len(blob_data))
+      if not isinstance(blobData, bytes):
+        raise Exception("blob data only byte type")
+      if blobInfo == None:
+        blobInfo = self.__client.GetBlobInfo(name)
+        if blobInfo.code_ != 0:
+          raise Exception("errored at get blobinfo: {}".format(blobInfo.msg_))
+      ok = interclient_tools.PutBlob(blobInfo, blobData, len(blobData))
       if not ok:
         raise Exception("errored at put blob data: {}".format(BlobInfo.msg_))
       value.update({k: str(BlobInfo.key_)})
