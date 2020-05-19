@@ -42,8 +42,23 @@ class NsClient {
 
     std::string GetEndpoint();
 
-    bool ShowTablet(std::vector<TabletInfo>& tablets, // NOLINT
-                    std::string& msg);  // NOLINT
+    const std::string& GetDb();
+
+    bool HasDb();
+
+    void ClearDb();
+
+    bool Use(std::string db, std::string& msg);  // NOLINT
+
+    bool CreateDatabase(const std::string& db, std::string& msg);  // NOLINT
+
+    bool ShowDatabase(std::vector<std::string>* dbs,
+                      std::string& msg);  // NOLINT
+
+    bool DropDatabase(const std::string& db, std::string& msg);  // NOLINT
+
+    bool ShowTablet(std::vector<TabletInfo>& tablets,  // NOLINT
+                    std::string& msg);                 // NOLINT
 
     bool ShowTable(
         const std::string& name,
@@ -199,6 +214,7 @@ class NsClient {
 
  private:
     std::string endpoint_;
+    std::string db_;
     ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> client_;
 };
 

@@ -732,5 +732,43 @@ class TestCreateTableByNsClient(TestCaseBase):
         self.ns_drop(self.ns_leader, name)
 
 
+    def test_create_db(self):
+        db0 = 'db0'
+        db1 = 'db1'
+        rs = self.ns_dropdb(self.ns_leader, db0)
+        rs = self.ns_dropdb(self.ns_leader, db1)
+        dbs = self.ns_showdb(self.ns_leader)
+        self.assertEqual(len(dbs), 0)
+        rs = self.ns_createdb(self.ns_leader, db0)
+        self.assertIn("ok", rs)
+        rs = self.ns_createdb(self.ns_leader, db1)
+        self.assertIn("ok", rs)
+        rs = self.ns_createdb(self.ns_leader, db1)
+        self.assertIn("failed", rs)
+        dbs = self.ns_showdb(self.ns_leader)
+        self.assertEqual(len(dbs), 2)
+        self.assertEqual(dbs[0], db0)
+        self.assertEqual(dbs[1], db1)
+        rs = self.ns_usedb(self.ns_leader, "db2")
+        self.assertIn("failed", rs)
+        rs = self.ns_usedb(self.ns_leader, db0)
+        self.assertIn("Use database:", rs)
+        table0 = 'tname{}'.format(time.time())
+        rs = self.ns_create_cmd(self.ns_leader, table0, 0, 1, 1)
+        self.assertIn("Create table ok", rs)
+        rs = self.ns_usedb(self.ns_leader, db1)
+        self.assertIn("Use database:", rs)
+        rs = self.ns_dropdb(self.ns_leader, db0)
+        self.assertIn("ok", rs)
+        rs = self.ns_usedb(self.ns_leader, db0)
+        self.assertIn("failed", rs)
+        dbs = self.ns_showdb(self.ns_leader)
+        self.assertEqual(len(dbs), 1)
+        self.assertEqual(dbs[0], db1)
+        rs = self.ns_dropdb(self.ns_leader, db1)
+        self.assertIn("ok", rs)
+        dbs = self.ns_showdb(self.ns_leader)
+        self.assertEqual(len(dbs), 0)
+
 if __name__ == "__main__":
     load(TestCreateTableByNsClient)
