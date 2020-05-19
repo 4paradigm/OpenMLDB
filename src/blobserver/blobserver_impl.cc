@@ -8,13 +8,12 @@
 #include <gflags/gflags.h>
 
 #include <utility>
-
 #include "base/file_util.h"
 #include "base/hash.h"
 #include "base/status.h"
 #include "base/strings.h"
 #include "boost/bind.hpp"
-#include "logging.h"  // NOLINT
+#include "base/glog_wapper.h"
 
 DECLARE_string(endpoint);
 DECLARE_string(zk_cluster);
@@ -23,9 +22,6 @@ DECLARE_int32(zk_session_timeout);
 DECLARE_int32(zk_keep_alive_check_interval);
 DECLARE_string(hdd_root_path);
 
-using ::baidu::common::DEBUG;
-using ::baidu::common::INFO;
-using ::baidu::common::WARNING;
 using ::rtidb::base::ReturnCode;
 
 namespace rtidb {

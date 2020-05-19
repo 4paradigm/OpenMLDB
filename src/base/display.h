@@ -753,5 +753,19 @@ __attribute__((unused)) static void PrintTableInformation(
     tp.Print(true);
 }
 
+__attribute__((unused)) static void PrintDatabase(
+    const std::vector<std::string>& dbs) {
+    std::vector<std::string> row;
+    row.push_back("Databases");
+    ::baidu::common::TPrinter tp(row.size());
+    tp.AddRow(row);
+    for (auto db : dbs) {
+        row.clear();
+        row.push_back(db);
+        tp.AddRow(row);
+    }
+    tp.Print(true);
+}
+
 }  // namespace base
 }  // namespace rtidb

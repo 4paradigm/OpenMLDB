@@ -242,6 +242,8 @@ enum ReturnCode {
     kTooManyPartition = 518,
     kWrongColumnKey = 519,
     kOperatorNotSupport = 701,
+    kDatabaseAlreadyExists = 801,
+    kDatabaseNotFound = 802,
 };
 
 }  // namespace base

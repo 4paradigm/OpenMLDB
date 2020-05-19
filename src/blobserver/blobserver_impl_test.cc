@@ -6,9 +6,9 @@
 #include "blobserver/blobserver_impl.h"
 #include <gflags/gflags.h>
 #include <google/protobuf/stubs/common.h>
-#include <logging.h>
 #include "client/bs_client.h"
 #include "gtest/gtest.h"
+#include "base/glog_wapper.h"
 
 DECLARE_string(hdd_root_path);
 DECLARE_int32(zk_session_timeout);
@@ -95,7 +95,7 @@ int main(int argc, char** argv) {
     FLAGS_zk_session_timeout = 100000;
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
-    ::baidu::common::SetLogLevel(::baidu::common::INFO);
+    ::rtidb::base::SetLogLevel(INFO);
     FLAGS_hdd_root_path =
         "/tmp/test_blobserver" + ::rtidb::blobserver::GenRand();
     return RUN_ALL_TESTS();

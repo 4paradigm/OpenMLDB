@@ -7,7 +7,7 @@
 
 #include <gflags/gflags.h>
 #include "gtest/gtest.h"
-#include "logging.h"  // NOLINT
+#include "base/glog_wapper.h"  // NOLINT
 #include "storage/mem_table.h"
 #include "storage/ticket.h"
 #include "timer.h"  // NOLINT
@@ -1245,6 +1245,6 @@ TEST_F(TableTest, GcAbsAndLat) {
 int main(int argc, char** argv) {
     FLAGS_max_traverse_cnt = 200000;
     ::testing::InitGoogleTest(&argc, argv);
-    ::baidu::common::SetLogLevel(::baidu::common::INFO);
+    ::rtidb::base::SetLogLevel(INFO);
     return RUN_ALL_TESTS();
 }

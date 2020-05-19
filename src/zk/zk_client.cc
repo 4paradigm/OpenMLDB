@@ -11,11 +11,9 @@
 #include <utility>
 #include <boost/algorithm/string.hpp>
 #include "boost/bind.hpp"
-#include "logging.h" // NOLINT
+#include "base/glog_wapper.h" // NOLINT
 
-using ::baidu::common::DEBUG;
-using ::baidu::common::INFO;
-using ::baidu::common::WARNING;
+
 
 namespace rtidb {
 namespace zk {

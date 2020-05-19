@@ -54,5 +54,3 @@ add_custom_target(rtidbpy
 COMMAND make
 WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/swig
 )
-
-

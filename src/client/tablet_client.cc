@@ -9,7 +9,7 @@
 #include <algorithm>
 #include <iostream>
 #include "codec/codec.h"
-#include "logging.h"  // NOLINT
+#include "base/glog_wapper.h"  // NOLINT
 #include "timer.h"    // NOLINT
 
 DECLARE_int32(request_max_retry);
