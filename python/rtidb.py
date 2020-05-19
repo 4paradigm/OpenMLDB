@@ -151,7 +151,7 @@ class RTIDBClient:
     if ok.code != 0:
       raise Exception(ok.code, ok.msg)
 
-  def PutBlob(self, name: str, value: map):
+  def putBlob(self, name: str, value: map):
     blobFields = self.__client.GetBlobSchema(name);
     blobInfo = None
     for k in blobFields:
@@ -174,7 +174,7 @@ class RTIDBClient:
     if WriteOption != None:
       _wo.updateIfExist = defaultWriteOption.updateIfExist
       _wo.updateIfEqual = defaultWriteOption.updateIfEqual
-    self.PutBlob(table_name, columns)
+    self.putBlob(table_name, columns)
     value = buildStrMap(columns)
 
     putResult= self.__client.Put(table_name, value, _wo)
@@ -187,7 +187,7 @@ class RTIDBClient:
     if write_option != None:
       _wo.updateIfExist = defaultWriteOption.updateIfExist
       _wo.updateIfEqual = defaultWriteOption.updateIfEqual
-    self.PutBlob(table_name, value_columns)
+    self.putBlob(table_name, value_columns)
     cond = buildStrMap(condition_columns)
     v = buildStrMap(value_columns)
     ok = self.__client.Update(table_name, cond, v, _wo)
