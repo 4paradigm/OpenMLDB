@@ -12,14 +12,14 @@
 #include <sys/stat.h>
 #include <boost/lexical_cast.hpp>
 #include "base/file_util.h"
-#include "base/flat_array.h"
 #include "base/kv_iterator.h"
-#include "base/schema_codec.h"
 #include "base/strings.h"
+#include "codec/flat_array.h"
+#include "codec/schema_codec.h"
 #include "gtest/gtest.h"
 #include "log/log_reader.h"
 #include "log/log_writer.h"
-#include "logging.h"  // NOLINT
+#include "base/glog_wapper.h" // NOLINT
 #include "proto/tablet.pb.h"
 #include "storage/mem_table.h"
 #include "storage/ticket.h"

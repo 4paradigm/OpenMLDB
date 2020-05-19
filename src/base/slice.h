@@ -8,6 +8,7 @@
 #include <assert.h>
 #include <stddef.h>
 #include <string.h>
+
 #include <string>
 
 namespace rtidb {
@@ -22,10 +23,10 @@ class Slice {
     Slice(const char* d, size_t n) : need_free_(false), size_(n), data_(d) {}
 
     // Create a slice that refers to the contents of "s"
-    Slice(const std::string& s) // NOLINT
+    Slice(const std::string& s)  // NOLINT
         : need_free_(false), size_(s.size()), data_(s.data()) {}
 
-    Slice(const char* s) // NOLINT
+    Slice(const char* s)  // NOLINT
         : need_free_(false), size_(strlen(s)), data_(s) {}
     Slice(const char* d, size_t n, bool need_free)
         : need_free_(need_free), size_(n), data_(d) {}
@@ -49,13 +50,26 @@ class Slice {
         }
     }
 
-    Slice(Slice&& s) {
-        need_free_ = s.need_free_;
-        size_ = s.size();
-        data_ = s.data();
+    Slice(Slice&& s) noexcept
+        : need_free_(s.need_free_), size_(s.size()), data_(s.data()) {
+        s.need_free_ = false;
         s.size_ = 0;
         s.data_ = NULL;
-        s.need_free_ = false;
+    }
+
+    Slice& operator=(Slice&& s) noexcept {
+        if (this != &s) {
+            if (need_free_) {
+                delete[] data_;
+            }
+            need_free_ = s.need_free_;
+            size_ = s.size();
+            data_ = s.data();
+            s.size_ = 0;
+            s.data_ = NULL;
+            s.need_free_ = false;
+        }
+        return *this;
     }
 
     // Return the ith byte in the referenced data.
@@ -66,12 +80,14 @@ class Slice {
     }
 
     Slice& operator=(const Slice& s) {
-        if (need_free_) {
-            delete[] data_;
+        if (this != &s) {
+            if (need_free_) {
+                delete[] data_;
+            }
+            need_free_ = false;
+            size_ = s.size();
+            data_ = s.data();
         }
-        need_free_ = false;
-        size_ = s.size();
-        data_ = s.data();
         return *this;
     }
 

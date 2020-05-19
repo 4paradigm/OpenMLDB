@@ -10,7 +10,8 @@ rtidbpath=${projectpath}/build/bin/rtidb
 tbconfpath=${projectpath}/release/conf/tablet.flags
 nsconfpath=${projectpath}/release/conf/nameserver.flags
 reportpath=${projectpath}/test-output/integrationtest/test-reports
-zkpath=${testpath}/../../thirdsrc/zookeeper-3.4.10
+zkpath=${testpath}/../../thirdsrc/zookeeper-3.4.14
+datapath=/rambuild
 
 echo export rtidbver=${rtidbver} > ${testenvpath}
 echo export testpath=${testpath} >> ${testenvpath}
@@ -22,6 +23,7 @@ echo export tbconfpath=${tbconfpath} >> ${testenvpath}
 echo export nsconfpath=${nsconfpath} >> ${testenvpath}
 echo export reportpath=${reportpath} >> ${testenvpath}
 echo export zkpath=${zkpath} >> ${testenvpath}
+echo export datapath=${datapath} >> ${testenvpath}
 
 mkdir ${testlogpath}
 cp -f ${rtidbpath} ${testpath}
@@ -46,16 +48,5 @@ else
     wget -O ${projectpath}/thirdsrc/ddt.tar.gz http://pkg.4paradigm.com:81/rtidb/dev/ddt.tar.gz >/dev/null
     tar -zxvf ${projectpath}/thirdsrc/ddt.tar.gz -C ${testpath}/libs >/dev/null
     echo "install ddt done"
-fi
-
-# setup zk
-if [ -d "${projectpath}/thirdsrc/zookeeper-3.4.10" ]
-then
-    echo "zookeeper exist"
-else
-    echo "start install zookeeper...."
-    wget -O ${projectpath}/thirdsrc/zookeeper-3.4.10.tar.gz http://pkg.4paradigm.com:81/rtidb/dev/zookeeper-3.4.10.tar.gz >/dev/null
-    tar -zxvf ${projectpath}/thirdsrc/zookeeper-3.4.10.tar.gz -C ${projectpath}/thirdsrc >/dev/null
-    echo "install zookeeper done"
 fi
 

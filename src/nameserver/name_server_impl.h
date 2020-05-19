@@ -21,10 +21,10 @@
 
 #include "base/hash.h"
 #include "base/random.h"
-#include "base/schema_codec.h"
 #include "client/bs_client.h"
 #include "client/ns_client.h"
 #include "client/tablet_client.h"
+#include "codec/schema_codec.h"
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
 #include "zk/dist_lock.h"
@@ -161,7 +161,7 @@ class NameServerImpl : public NameServer {
     void CreateTableInternel(
         GeneralResponse& response,  // NOLINT
         std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
-        const std::vector<::rtidb::base::ColumnDesc>& columns,
+        const std::vector<::rtidb::codec::ColumnDesc>& columns,
         uint64_t cur_term, uint32_t tid,
         std::shared_ptr<::rtidb::api::TaskInfo> task_ptr);
 
@@ -324,7 +324,7 @@ class NameServerImpl : public NameServer {
 
     int CreateTableOnTablet(
         std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
-        bool is_leader, const std::vector<::rtidb::base::ColumnDesc>& columns,
+        bool is_leader, const std::vector<::rtidb::codec::ColumnDesc>& columns,
         std::map<uint32_t, std::vector<std::string>>& endpoint_map,  // NOLINT
         uint64_t term);
 
@@ -646,6 +646,10 @@ class NameServerImpl : public NameServer {
     std::shared_ptr<::rtidb::api::TaskInfo> FindTask(
         uint64_t op_id, ::rtidb::api::TaskType task_type);
 
+    int CreateBlobTable(std::shared_ptr<TableInfo> table_info);
+
+    bool SaveTableInfo(std::shared_ptr<TableInfo> table_info);
+
     int CreateOPData(::rtidb::api::OPType op_type, const std::string& value,
                      std::shared_ptr<OPData>& op_data,  // NOLINT
                      const std::string& name, uint32_t pid,
@@ -735,6 +739,7 @@ class NameServerImpl : public NameServer {
     void UpdateTableStatus();
     int DropTableOnTablet(
         std::shared_ptr<::rtidb::nameserver::TableInfo> table_info);
+    int DropTableOnBlob(std::shared_ptr<TableInfo> table_info);
     void CheckBinlogSyncProgress(
         const std::string& name, uint32_t pid, const std::string& follower,
         uint64_t offset_delta,

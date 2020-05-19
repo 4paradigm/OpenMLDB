@@ -6,20 +6,18 @@
 #include <set>
 #include <vector>
 #include "base/display.h"
-#include "base/flat_array.h"
 #include "base/hash.h"
 #include "base/kv_iterator.h"
-#include "base/schema_codec.h"
 #include "base/status.h"
 #include "base/strings.h"
+#include "codec/flat_array.h"
+#include "codec/schema_codec.h"
 #include "gflags/gflags.h"
 #include "log/log_writer.h"
-#include "logging.h" // NOLINT
+#include "base/glog_wapper.h" // NOLINT
 #include "timer.h" // NOLINT
 
-using ::baidu::common::DEBUG;
-using ::baidu::common::INFO;
-using ::baidu::common::WARNING;
+
 
 DECLARE_uint64(gc_on_table_recover_count);
 DECLARE_int32(binlog_name_length);
@@ -94,7 +92,7 @@ bool Binlog::RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset,
         }
 
         if (cur_offset >= entry.log_index()) {
-            PDLOG(DEBUG, "offset %lu has been made snapshot",
+            DEBUGLOG("offset %lu has been made snapshot",
                   entry.log_index());
             continue;
         }
@@ -138,7 +136,7 @@ bool Binlog::RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset,
             return true;
         }
         uint64_t pos = log_reader.GetLastRecordEndOffset();
-        PDLOG(DEBUG, "last record end offset[%lu] tid[%u] pid[%u]", pos, tid,
+        DEBUGLOG("last record end offset[%lu] tid[%u] pid[%u]", pos, tid,
               pid);
         std::string full_path =
             log_path_ + "/" +

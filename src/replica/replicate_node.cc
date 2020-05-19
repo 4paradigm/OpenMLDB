@@ -9,7 +9,7 @@
 #include <gflags/gflags.h>
 #include <algorithm>
 #include "base/strings.h"
-#include "logging.h" // NOLINT
+#include "base/glog_wapper.h" // NOLINT
 
 DECLARE_int32(binlog_sync_batch_size);
 DECLARE_int32(binlog_sync_wait_time);
@@ -23,9 +23,7 @@ DECLARE_uint32(go_back_max_try_cnt);
 namespace rtidb {
 namespace replica {
 
-using ::baidu::common::DEBUG;
-using ::baidu::common::INFO;
-using ::baidu::common::WARNING;
+
 
 static void* RunSyncTask(void* args) {
     if (args == NULL) {
@@ -174,7 +172,7 @@ int ReplicateNode::MatchLogOffsetFromNode() {
 }
 
 int ReplicateNode::SyncData(uint64_t log_offset) {
-    PDLOG(DEBUG, "node[%s] offset[%lu] log offset[%lu]", endpoint_.c_str(),
+    DEBUGLOG("node[%s] offset[%lu] log offset[%lu]", endpoint_.c_str(),
           last_sync_offset_, log_offset);
     if (log_offset <= last_sync_offset_) {
         PDLOG(WARNING, "log offset [%lu] le last sync offset [%lu], do nothing",
@@ -198,7 +196,7 @@ int ReplicateNode::SyncData(uint64_t log_offset) {
         const ::rtidb::api::LogEntry& entry =
             request.entries(request.entries_size() - 1);
         if (entry.log_index() <= last_sync_offset_) {
-            PDLOG(DEBUG, "duplicate log index from node %s cache",
+            DEBUGLOG("duplicate log index from node %s cache",
                   endpoint_.c_str());
             cache_.clear();
             return -1;
@@ -230,10 +228,10 @@ int ReplicateNode::SyncData(uint64_t log_offset) {
                     request.mutable_entries()->RemoveLast();
                     break;
                 }
-                PDLOG(DEBUG, "entry val %s log index %lld",
+                DEBUGLOG("entry val %s log index %lld",
                       entry->value().c_str(), entry->log_index());
                 if (entry->log_index() <= sync_log_offset) {
-                    PDLOG(DEBUG, "skip duplicate log offset %lld",
+                    DEBUGLOG("skip duplicate log offset %lld",
                           entry->log_index());
                     request.mutable_entries()->RemoveLast();
                     continue;
@@ -260,11 +258,11 @@ int ReplicateNode::SyncData(uint64_t log_offset) {
                 }
                 sync_log_offset = entry->log_index();
             } else if (status.IsWaitRecord()) {
-                PDLOG(DEBUG, "got a coffee time for[%s]", endpoint_.c_str());
+                DEBUGLOG("got a coffee time for[%s]", endpoint_.c_str());
                 need_wait = true;
                 break;
             } else if (status.IsInvalidRecord()) {
-                PDLOG(DEBUG, "fail to get record. %s. tid %u pid %u",
+                DEBUGLOG("fail to get record. %s. tid %u pid %u",
                       status.ToString().c_str(), tid_, pid_);
                 need_wait = true;
                 if (go_back_cnt_ > FLAGS_go_back_max_try_cnt) {
@@ -293,7 +291,7 @@ int ReplicateNode::SyncData(uint64_t log_offset) {
             &::rtidb::api::TabletServer_Stub::AppendEntries, &request,
             &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
         if (ret && response.code() == 0) {
-            PDLOG(DEBUG, "sync log to node[%s] to offset %lld",
+            DEBUGLOG("sync log to node[%s] to offset %lld",
                   endpoint_.c_str(), sync_log_offset);
             last_sync_offset_ = sync_log_offset;
             if (!rep_node_.load(std::memory_order_relaxed) &&

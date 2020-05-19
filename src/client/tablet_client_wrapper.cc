@@ -7,7 +7,7 @@
 
 #include "client/tablet_client.h"
 
-#include "base/codec.h"
+#include "codec/codec.h"
 
 using namespace rtidb::client; // NOLINT
 using namespace rtidb::base; // NOLINT
