@@ -1,8 +1,17 @@
 #! /bin/sh
 
 
-ls -al build/bin
 ROOT_DIR=`pwd`
+
+PROTO_BIN=$ROOT_DIR/thirdparty/bin/protoc
+ulimit -c unlimited
+sed -i "/protocExecutable/c\<protocExecutable>${PROTO_BIN}<\/protocExecutable>" java/pom.xml
+mkdir -p java/src/main/proto/
+cp -rf src/proto/tablet.proto java/src/main/proto/
+cp -rf src/proto/name_server.proto java/src/main/proto/
+cp -rf src/proto/common.proto java/src/main/proto/
+
+ls -al build/bin
 rtidb_path=$ROOT_DIR/build/bin/rtidb
 echo "rtidb_path:$rtidb_path"
 source steps/read_properties.sh
@@ -49,15 +58,5 @@ echo "parameters:$parameters"
 
 sh run-compatibility.sh $parameters
 
-#if [ ! -z ${upgrade_version} ] ; then
-#	sh run-compatibility.sh -c ${test_case_xml} -j $rtidb_version -s ${server_env} -r $rtidb_path -u ${upgrade_version}
-#else
-#    sh run-compatibility.sh -c ${test_case_xml} -j $rtidb_version -s ${server_env} -r $rtidb_path
-#fi
-
 code=$?
-cd $ROOT_DIR
-cd onebox && sh stop_all.sh
-cd $ROOT_DIR
-cd thirdsrc/zookeeper-3.4.10 && ./bin/zkServer.sh stop
 exit $code
