@@ -17,10 +17,8 @@
 #include <unistd.h>
 #include <vector>
 #include <string>
-#include "logging.h" // NOLINT
+#include "base/glog_wapper.h" // NOLINT
 
-using ::baidu::common::INFO;
-using ::baidu::common::WARNING;
 
 namespace rtidb {
 namespace base {

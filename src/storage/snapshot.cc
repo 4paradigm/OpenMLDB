@@ -12,11 +12,9 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include "logging.h" // NOLINT
+#include "base/glog_wapper.h" // NOLINT
 
-using ::baidu::common::DEBUG;
-using ::baidu::common::INFO;
-using ::baidu::common::WARNING;
+
 
 namespace rtidb {
 namespace storage {
@@ -25,7 +23,7 @@ const std::string MANIFEST = "MANIFEST"; // NOLINT
 
 int Snapshot::GenManifest(const std::string& snapshot_name, uint64_t key_count,
                           uint64_t offset, uint64_t term) {
-    PDLOG(DEBUG, "record offset[%lu]. add snapshot[%s] key_count[%lu]", offset,
+    DEBUGLOG("record offset[%lu]. add snapshot[%s] key_count[%lu]", offset,
           snapshot_name.c_str(), key_count);
     std::string full_path = snapshot_path_ + MANIFEST;
     std::string tmp_file = snapshot_path_ + MANIFEST + ".tmp";
@@ -54,7 +52,7 @@ int Snapshot::GenManifest(const std::string& snapshot_name, uint64_t key_count,
     }
     fclose(fd_write);
     if (!io_error && rename(tmp_file.c_str(), full_path.c_str()) == 0) {
-        PDLOG(DEBUG, "%s generate success. path[%s]", MANIFEST.c_str(),
+        DEBUGLOG("%s generate success. path[%s]", MANIFEST.c_str(),
               full_path.c_str());
         return 0;
     }

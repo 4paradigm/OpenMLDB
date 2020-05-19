@@ -15,14 +15,13 @@
 #include "base/endianconv.h"
 #include "base/strings.h"
 #include "boost/lexical_cast.hpp"
-#include "logging.h"  //NOLINT
+#include "base/glog_wapper.h"
 #include "proto/type.pb.h"
 #include "codec/memcomparable_format.h"
 
 namespace rtidb {
 namespace codec {
 
-using ::baidu::common::WARNING;
 using ::rtidb::type::DataType;
 
 /**

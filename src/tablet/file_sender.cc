@@ -7,7 +7,7 @@
 #include <vector>
 #include <boost/algorithm/string/predicate.hpp>
 #include "base/file_util.h"
-#include "logging.h" // NOLINT
+#include "base/glog_wapper.h" // NOLINT
 #include "timer.h" // NOLINT
 
 DECLARE_int32(send_file_max_try);
@@ -20,9 +20,7 @@ DECLARE_int32(retry_send_file_wait_time_ms);
 DECLARE_int32(request_max_retry);
 DECLARE_int32(request_timeout_ms);
 
-using ::baidu::common::DEBUG;
-using ::baidu::common::INFO;
-using ::baidu::common::WARNING;
+
 
 namespace rtidb {
 namespace tablet {
@@ -104,7 +102,7 @@ int FileSender::WriteData(const std::string& file_name,
     uint64_t time_used = ::baidu::common::timer::get_micros() - cur_time;
     if (limit_time_ > time_used && len > FLAGS_stream_block_size / 2) {
         uint64_t sleep_time = limit_time_ - time_used;
-        PDLOG(DEBUG, "sleep %lu us, limit_time %lu time_used %lu", sleep_time,
+        DEBUGLOG("sleep %lu us, limit_time %lu time_used %lu", sleep_time,
               limit_time_, time_used);
         std::this_thread::sleep_for(std::chrono::microseconds(sleep_time));
     }

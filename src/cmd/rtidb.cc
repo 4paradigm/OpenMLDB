@@ -22,6 +22,7 @@
 #include "base/kv_iterator.h"
 #include "base/linenoise.h"
 #include "base/strings.h"
+#include "base/glog_wapper.h"
 #include "blob_proxy/blob_proxy_impl.h"
 #include "blobserver/blobserver_impl.h"
 #include "boost/algorithm/string.hpp"
@@ -32,7 +33,6 @@
 #include "codec/flat_array.h"
 #include "codec/row_codec.h"
 #include "codec/schema_codec.h"
-#include "logging.h"  // NOLINT
 #include "nameserver/name_server_impl.h"
 #include "proto/client.pb.h"
 #include "proto/name_server.pb.h"
@@ -43,9 +43,6 @@
 #include "tprinter.h"  // NOLINT
 #include "version.h"   // NOLINT
 
-using ::baidu::common::DEBUG;
-using ::baidu::common::INFO;
-using ::baidu::common::WARNING;
 using Schema =
     ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
 
@@ -76,20 +73,15 @@ DECLARE_uint32(max_col_display_length);
 void SetupLog() {
     // Config log
     if (FLAGS_log_level == "debug") {
-        ::baidu::common::SetLogLevel(DEBUG);
+        ::rtidb::base::SetLogLevel(DEBUG);
     } else {
-        ::baidu::common::SetLogLevel(INFO);
+        ::rtidb::base::SetLogLevel(INFO);
     }
     if (!FLAGS_log_dir.empty()) {
         ::rtidb::base::Mkdir(FLAGS_log_dir);
-        std::string info_file = FLAGS_log_dir + "/" + FLAGS_role + ".info.log";
-        std::string warning_file =
-            FLAGS_log_dir + "/" + FLAGS_role + ".warning.log";
-        ::baidu::common::SetLogFile(info_file.c_str());
-        ::baidu::common::SetWarningFile(warning_file.c_str());
+        std::string file = FLAGS_log_dir + "/" + FLAGS_role;
+        rtidb::base::SetLogFile(file);
     }
-    ::baidu::common::SetLogCount(FLAGS_log_file_count);
-    ::baidu::common::SetLogSize(FLAGS_log_file_size);
 }
 
 void StartNameServer() {
@@ -1774,6 +1766,71 @@ void HandleNSUpdate(const std::vector<std::string>& parts,
         printf("update failed, msg: %s\n", msg.c_str());
     } else {
         printf("update ok\n");
+    }
+}
+
+void HandleNsUseDb(const std::vector<std::string>& parts,
+                   ::rtidb::client::NsClient* client) {
+    std::string msg;
+    if (parts.size() == 1) {
+        client->ClearDb();
+        std::cout << "Use default database" << std::endl;
+        return;
+    }
+    if (client->Use(parts[1], msg)) {
+        std::cout << "Use database: " << parts[1] << std::endl;
+    } else {
+        std::cout << "Use database failed. error msg: " << msg << std::endl;
+    }
+}
+
+void HandleNsCreateDb(const std::vector<std::string>& parts,
+                      ::rtidb::client::NsClient* client) {
+    if (parts.size() < 2) {
+        std::cout << "createdb format error. eg: createdb database_name"
+                  << std::endl;
+        return;
+    }
+    std::string msg;
+    if (client->CreateDatabase(parts[1], msg)) {
+        std::cout << "Create database " << parts[1] << " ok" << std::endl;
+    } else {
+        std::cout << "Create database failed. error msg: " << msg << std::endl;
+    }
+}
+
+void HandleNsShowDb(const std::vector<std::string>& parts,
+                    ::rtidb::client::NsClient* client) {
+    std::string msg;
+    std::vector<std::string> dbs;
+    if (client->ShowDatabase(&dbs, msg)) {
+        ::rtidb::base::PrintDatabase(dbs);
+    }
+}
+
+void HandleNsDropDb(const std::vector<std::string>& parts,
+                    ::rtidb::client::NsClient* client) {
+    if (parts.size() < 2) {
+        std::cout << "dropdb format error. eg: dropdb database_name"
+                  << std::endl;
+        return;
+    }
+    if (FLAGS_interactive) {
+        printf("Dropdb will drop all tables in the database %s? yes/no\n",
+               parts[1].c_str());
+        std::string input;
+        std::cin >> input;
+        std::transform(input.begin(), input.end(), input.begin(), ::tolower);
+        if (input != "yes") {
+            printf("'dropdb %s' cmd is canceled!\n", parts[1].c_str());
+            return;
+        }
+    }
+    std::string msg;
+    if (client->DropDatabase(parts[1], msg)) {
+        std::cout << "Drop database " << parts[1] << " ok" << std::endl;
+    } else {
+        std::cout << "Drop database failed. error msg: " << msg << std::endl;
     }
 }
 
@@ -3816,6 +3873,9 @@ void HandleNSCreateTable(const std::vector<std::string>& parts,
             }
         }
     }
+    if (client->HasDb()) {
+        ns_table_info.set_db(client->GetDb());
+    }
     std::string msg;
     if (!client->CreateTable(ns_table_info, msg)) {
         std::cout << "Fail to create table. error msg: " << msg << std::endl;
@@ -4117,6 +4177,22 @@ void HandleNSClientHelp(const std::vector<std::string>& parts,
             printf("usage: query table_name=xxx col1 col2 where col3=xxx\n");
             printf("eg: query table_name=test1 card mcc where card=card0\n");
             printf("eg: query table_name=test1 * where card=card0\n");
+        } else if (parts[1] == "createdb") {
+            printf("desc: create database\n");
+            printf("usage: createdb database_name\n");
+            printf("eg: createdb db1");
+        } else if (parts[1] == "use") {
+            printf("desc: use database\n");
+            printf("usage: use database_name\n");
+            printf("eg: use db1");
+        } else if (parts[1] == "showdb") {
+            printf("desc: show databases\n");
+            printf("usage: showdb\n");
+            printf("eg: showdb");
+        } else if (parts[1] == "dropdb") {
+            printf("desc: drop database\n");
+            printf("usage: dropdb database_name\n");
+            printf("eg: dropdb db1");
         } else {
             printf("unsupport cmd %s\n", parts[1].c_str());
         }
@@ -6561,6 +6637,14 @@ void StartNsClient() {
             HandleNSUpdate(parts, &client);
         } else if (parts[0] == "query") {
             HandleNSQuery(parts, &client);
+        } else if (parts[0] == "use") {
+            HandleNsUseDb(parts, &client);
+        } else if (parts[0] == "createdb") {
+            HandleNsCreateDb(parts, &client);
+        } else if (parts[0] == "showdb") {
+            HandleNsShowDb(parts, &client);
+        } else if (parts[0] == "dropdb") {
+            HandleNsDropDb(parts, &client);
         } else if (parts[0] == "exit" || parts[0] == "quit") {
             std::cout << "bye" << std::endl;
             return;
