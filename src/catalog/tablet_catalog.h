@@ -25,6 +25,7 @@
 #include "codec/row.h"
 #include "storage/table.h"
 #include "vm/catalog.h"
+#include "base/spinlock.h"
 
 namespace rtidb {
 namespace catalog {
@@ -276,6 +277,7 @@ class TabletCatalog : public ::fesql::vm::Catalog {
     bool IndexSupport() override;
 
  private:
+    ::rtidb::base::SpinMutex mu_;
     TabletTables tables_;
     TabletDB db_;
 };

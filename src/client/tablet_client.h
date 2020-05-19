@@ -100,6 +100,7 @@ class TabletClient {
              const std::vector<uint64_t>& ts_dimensions,
              const std::string& value,
              uint32_t format_version);
+
     bool Get(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time,
              std::string& value, uint64_t& ts, std::string& msg);  // NOLINT
 

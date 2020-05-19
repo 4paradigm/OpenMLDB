@@ -30,6 +30,8 @@
 #include "tablet/file_receiver.h"
 #include "thread_pool.h"  // NOLINT
 #include "zk/zk_client.h"
+#include "catalog/tablet_catalog.h"
+#include "vm/engine.h"
 
 using ::baidu::common::ThreadPool;
 using ::google::protobuf::Closure;
@@ -264,6 +266,11 @@ class TabletImpl : public ::rtidb::api::TabletServer {
                     const rtidb::api::BatchQueryRequest* request,
                     rtidb::api::BatchQueryResponse* response, Closure* done);
 
+    void Query(RpcController* controller,
+               const rtidb::api::QueryRequest* request,
+               rtidb::api::QueryResponse* response, 
+               Closure* done);
+
     void CancelOP(RpcController* controller,
                   const rtidb::api::CancelOPRequest* request,
                   rtidb::api::GeneralResponse* response, Closure* done);
@@ -308,10 +315,13 @@ class TabletImpl : public ::rtidb::api::TabletServer {
                                                         uint32_t pid);
 
     std::shared_ptr<LogReplicator> GetReplicator(uint32_t tid, uint32_t pid);
+
     std::shared_ptr<LogReplicator> GetReplicatorUnLock(uint32_t tid,
                                                        uint32_t pid);
     std::shared_ptr<Snapshot> GetSnapshot(uint32_t tid, uint32_t pid);
+
     std::shared_ptr<Snapshot> GetSnapshotUnLock(uint32_t tid, uint32_t pid);
+
     void GcTable(uint32_t tid, uint32_t pid, bool execute_once);
 
     void GcTableSnapshot(uint32_t tid, uint32_t pid);
@@ -479,6 +489,10 @@ class TabletImpl : public ::rtidb::api::TabletServer {
     std::map<::rtidb::common::StorageMode, std::vector<std::string>>
         mode_recycle_root_paths_;
     std::atomic<bool> follower_;
+    // thread safe
+    std::shared_ptr<::rtidb::catalog::TabletCatalog> catalog_;
+    // thread safe
+    ::fesql::vm::Engine engine_;
 };
 
 }  // namespace tablet

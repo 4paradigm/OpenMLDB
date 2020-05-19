@@ -33,6 +33,8 @@
 #include "storage/binlog.h"
 #include "storage/segment.h"
 #include "tablet/file_sender.h"
+#include "brpc/controller.h"
+#include "butil/iobuf.h"
 #include "timer.h"  // NOLINT
 
 using ::rtidb::storage::DataBlock;
@@ -102,8 +104,10 @@ TabletImpl::TabletImpl()
       snapshot_pool_(1),
       server_(NULL),
       mode_root_paths_(),
-      mode_recycle_root_paths_() {
-    follower_.store(false);
+      mode_recycle_root_paths_(),
+      follower_(false),
+      catalog_(new ::rtidb::catalog::TabletCatalog()),
+      engine_(catalog_){
 }
 
 TabletImpl::~TabletImpl() {
@@ -1842,6 +1846,85 @@ void TabletImpl::Delete(RpcController* controller,
         }
     }
 }
+
+void TabletImpl::Query(RpcController* ctrl,
+                        const rtidb::api::QueryRequest* request,
+                        rtidb::api::QueryResponse* response,
+                        Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    brpc::Controller* cntl = static_cast<brpc::Controller*>(ctrl);
+    butil::IOBuf& buf = cntl->response_attachment();
+    ::fesql::base::Status status;
+    if (request->is_batch()) {
+        ::fesql::vm::BatchRunSession session;
+        {
+            bool ok = engine_.Get(request->sql(), request->db(), session,
+                                   status);
+            if (!ok) {
+                response->set_msg(status.msg);
+                response->set_code(::rtidb::base::kSQLCompileError);
+                DLOG(WARNING) << "fail to compile sql " << request->sql();
+                return;
+            }
+        }
+        auto table = session.Run();
+        if (!table) {
+            DLOG(WARNING) << "fail to run sql " << request->sql();
+            response->set_code(::rtidb::base::kSQLRunError);
+            response->set_msg("fail to run sql");
+            return;
+        }
+        auto iter = table->GetIterator();
+        uint32_t byte_size = 0;
+        uint32_t count = 0;
+        while (iter->Valid()) {
+            const ::fesql::codec::Row& row = iter->GetValue();
+            byte_size += row.size();
+            iter->Next();
+            buf.append(reinterpret_cast<void*>(row.buf()), row.size());
+            free(row.buf());
+            count += 1;
+        }
+        response->set_schema(session.GetEncodedSchema());
+        response->set_byte_size(byte_size);
+        response->set_count(count);
+        response->set_code(::rtidb::base::kOk);
+    } else {
+        //TODO(wangtaize) validate the row
+        if (request->input_row().empty()) {
+            response->set_code(::rtidb::base::ReturnCode::kInvalidParameter);
+            response->set_msg("input row is empty");
+            return;
+        }
+        ::fesql::vm::RequestRunSession session;
+        {
+            bool ok = engine_.Get(request->sql(), request->db(), session,
+                                   status);
+            if (!ok) {
+                response->set_msg(status.msg);
+                response->set_code(::rtidb::base::kSQLCompileError);
+                DLOG(WARNING) << "fail to run sql " << request->sql();
+                return;
+            }
+        }
+        ::fesql::codec::Row row(request->input_row().c_str(), request->input_row().size());
+        ::fesql::codec::Row output;
+        int32_t ret = session.Run(row, &output);
+        if (ret != 0) {
+            DLOG(WARNING) << "fail to run sql " << request->sql();
+            response->set_code(::rtidb::base::kSQLRunError);
+            response->set_msg("fail to run sql");
+            return;
+        }
+        buf.append(reinterpret_cast<void*>(output.buf()), output.size());
+        response->set_schema(session.GetEncodedSchema());
+        response->set_byte_size(output.size());
+        response->set_count(1);
+        response->set_code(::rtidb::base::kOk);
+        free(output.buf());
+    }
+}
+
 
 void TabletImpl::BatchQuery(RpcController* controller,
                             const rtidb::api::BatchQueryRequest* request,
@@ -3600,6 +3683,22 @@ void TabletImpl::CreateTable(RpcController* controller,
             PDLOG(WARNING, "replicator with tid %u and pid %u does not exist",
                   tid, pid);
             return;
+        }
+        if (table_meta->format_version() == 1
+            && table_meta->storage_mode() == ::rtidb::common::kMemory) {
+            std::shared_ptr<catalog::TabletTableHandler> handler(
+                new catalog::TabletTableHandler(*table_meta, table_meta->db(), table));
+            bool ok = handler->Init();
+            if (ok) {
+                ok = catalog_->AddTable(handler);
+                if (ok) {
+                    LOG(INFO) <<"add table " << table_meta->name() << " to catalog with db " << table_meta->db();
+                }else {
+                    LOG(WARNING) << "fail to add table " << table_meta->name() << " to catalog with db " << table_meta->db();
+                }
+            }else {
+                LOG(WARNING) << "fail to add table " << table_meta->name() << " to catalog with db " << table_meta->db();
+            }
         }
         table->SetTableStat(::rtidb::storage::kNormal);
         replicator->StartSyncing();

@@ -140,6 +140,7 @@ const uint64_t TabletTableHandler::GetCount() {
     }
     return cnt;
 }
+
 ::fesql::codec::Row TabletTableHandler::At(uint64_t pos) {
     auto iter = GetIterator();
     while (pos-- > 0 && iter->Valid()) {
@@ -148,7 +149,7 @@ const uint64_t TabletTableHandler::GetCount() {
     return iter->Valid() ? iter->GetValue() : ::fesql::codec::Row();
 }
 
-TabletCatalog::TabletCatalog() : tables_(), db_() {}
+TabletCatalog::TabletCatalog() : mu_(),tables_(), db_() {}
 
 TabletCatalog::~TabletCatalog() {}
 
@@ -156,6 +157,7 @@ bool TabletCatalog::Init() { return true; }
 
 std::shared_ptr<::fesql::type::Database> TabletCatalog::GetDatabase(
     const std::string& db) {
+    std::lock_guard<::rtidb::base::SpinMutex> spin_lock(mu_);
     auto it = db_.find(db);
     if (it == db_.end()) {
         return std::shared_ptr<::fesql::type::Database>();
@@ -165,6 +167,7 @@ std::shared_ptr<::fesql::type::Database> TabletCatalog::GetDatabase(
 
 std::shared_ptr<::fesql::vm::TableHandler> TabletCatalog::GetTable(
     const std::string& db, const std::string& table_name) {
+    std::lock_guard<::rtidb::base::SpinMutex> spin_lock(mu_);
     auto db_it = tables_.find(db);
     if (db_it == tables_.end()) {
         return std::shared_ptr<::fesql::vm::TableHandler>();
@@ -181,6 +184,8 @@ bool TabletCatalog::AddTable(std::shared_ptr<TabletTableHandler> table) {
         LOG(WARNING) << "input table is null";
         return false;
     }
+
+    std::lock_guard<::rtidb::base::SpinMutex> spin_lock(mu_);
     auto db_it = tables_.find(table->GetDatabase());
     if (db_it == tables_.end()) {
         tables_.insert(std::make_pair(
@@ -197,6 +202,8 @@ bool TabletCatalog::AddTable(std::shared_ptr<TabletTableHandler> table) {
 }
 
 bool TabletCatalog::AddDB(const ::fesql::type::Database& db) {
+
+    std::lock_guard<::rtidb::base::SpinMutex> spin_lock(mu_);
     TabletDB::iterator it = db_.find(db.name());
     if (it != db_.end()) {
         return false;
@@ -206,6 +213,7 @@ bool TabletCatalog::AddDB(const ::fesql::type::Database& db) {
         std::map<std::string, std::shared_ptr<TabletTableHandler>>()));
     return true;
 }
+
 
 bool TabletCatalog::IndexSupport() { return true; }
 

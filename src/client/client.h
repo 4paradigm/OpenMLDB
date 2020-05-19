@@ -352,25 +352,32 @@ class RtidbClient {
     ~RtidbClient();
     GeneralResult Init(const std::string& zk_cluster,
                        const std::string& zk_path);
+
     GeneralResult Put(const std::string& name,
                       const std::map<std::string, std::string>& values,
                       const WriteOption& wo);
+
     GeneralResult Delete(const std::string& name,
                          const std::map<std::string, std::string>& values);
+
     TraverseResult Traverse(const std::string& name,
                             const struct ReadOption& ro);
+
     bool Traverse(const std::string& name, const struct ReadOption& ro,
                   std::string* data, uint32_t* count,
                   std::string* last_key, bool* is_finish,
                   uint64_t* snapshot_id_);
+
     BatchQueryResult BatchQuery(const std::string& name,
                                 const std::vector<ReadOption>& ros);
+
     bool BatchQuery(const std::string& name,
             const ::google::protobuf::RepeatedPtrField<
             ::rtidb::api::ReadOption>& ros_pb,
             std::string* data,
             uint32_t* count,
             std::string* msg);
+
     void SetZkCheckInterval(int32_t interval);
     GeneralResult Update(
         const std::string& table_name,

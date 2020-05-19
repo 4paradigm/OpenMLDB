@@ -244,6 +244,9 @@ enum ReturnCode {
     kOperatorNotSupport = 701,
     kDatabaseAlreadyExists = 801,
     kDatabaseNotFound = 802,
+
+    kSQLCompileError = 1000,
+    kSQLRunError = 1001
 };
 
 }  // namespace base
