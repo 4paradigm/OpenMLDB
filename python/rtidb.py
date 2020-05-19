@@ -128,12 +128,12 @@ class RtidbResult:
             if self.__blobInfo == None:
               blobInfoResult = self.__data.GetBlobInfo()
               if blobInfoResult.code_ != 0:
-                raise Exception("errored at get blob server: {}".format(blobInfoResult.msg_))
+                raise Exception("erred at get blob server: {}".format(blobInfoResult.msg_))
               self.__blobInfo = blobInfoResult
             self.__blobInfo.key_ = blob_key
             blob_data = interclient_tools.GetBlob(self.__blobInfo)
             if self.__blobInfo.code_ != 0:
-              raise Exception("errored at get blob data {}".format(self.__blobInfo.msg_))
+              raise Exception("erred at get blob data {}".format(self.__blobInfo.msg_))
             result.update({self.__names[idx]: blob_data})
           else:
             result.update({self.__names[idx]: self.__type_to_func[type](idx)})
@@ -151,19 +151,6 @@ class RTIDBClient:
     if ok.code != 0:
       raise Exception(ok.code, ok.msg)
 
-  def put(self, table_name: str, columns: map, write_option: WriteOption = None):
-    _wo = interclient.WriteOption()
-    if WriteOption != None:
-      _wo.updateIfExist = defaultWriteOption.updateIfExist
-      _wo.updateIfEqual = defaultWriteOption.updateIfEqual
-    self.PutBlob(table_name, columns)
-    value = buildStrMap(columns)
-
-    putResult= self.__client.Put(table_name, value, _wo)
-    if putResult.code != 0:
-      raise Exception(putResult.code, putResult.msg)
-    return PutResult(putResult)
-
   def PutBlob(self, name: str, value: map):
     blobFields = self.__client.GetBlobSchema(name);
     blobInfo = None
@@ -176,11 +163,24 @@ class RTIDBClient:
       if blobInfo == None:
         blobInfo = self.__client.GetBlobInfo(name)
         if blobInfo.code_ != 0:
-          raise Exception("errored at get blobinfo: {}".format(blobInfo.msg_))
+          raise Exception("erred at get blobinfo: {}".format(blobInfo.msg_))
       ok = interclient_tools.PutBlob(blobInfo, blobData, len(blobData))
       if not ok:
-        raise Exception("errored at put blob data: {}".format(BlobInfo.msg_))
-      value.update({k: str(BlobInfo.key_)})
+        raise Exception("erred at put blob data: {}".format(BlobInfo.msg_))
+      value.update({k: str(blobInfo.key_)})
+
+  def put(self, table_name: str, columns: map, write_option: WriteOption = None):
+    _wo = interclient.WriteOption()
+    if WriteOption != None:
+      _wo.updateIfExist = defaultWriteOption.updateIfExist
+      _wo.updateIfEqual = defaultWriteOption.updateIfEqual
+    self.PutBlob(table_name, columns)
+    value = buildStrMap(columns)
+
+    putResult= self.__client.Put(table_name, value, _wo)
+    if putResult.code != 0:
+      raise Exception(putResult.code, putResult.msg)
+    return PutResult(putResult)
 
   def update(self, table_name: str, condition_columns: map, value_columns: map, write_option: WriteOption = None):
     _wo = interclient.WriteOption()
