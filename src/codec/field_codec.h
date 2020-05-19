@@ -194,16 +194,14 @@ __attribute__((unused)) static bool PackValue(const void *from,
     switch (data_type) {
         case ::rtidb::type::kBool: {
             key->resize(sizeof(int8_t) + k_size);
-            char* to = const_cast<char*>(key->data());
-            if (k_size > 0) to += k_size;
+            char* to = const_cast<char*>(key->data()) + k_size;
             ret =
                 ::rtidb::codec::PackInteger(from, sizeof(int8_t), false, to);
             break;
         }
         case ::rtidb::type::kSmallInt: {
             key->resize(sizeof(int16_t) + k_size);
-            char* to = const_cast<char*>(key->data());
-            if (k_size > 0) to += k_size;
+            char* to = const_cast<char*>(key->data()) + k_size;
             ret =
                 ::rtidb::codec::PackInteger(from, sizeof(int16_t), false, to);
             break;
@@ -211,8 +209,7 @@ __attribute__((unused)) static bool PackValue(const void *from,
         case ::rtidb::type::kInt:
         case ::rtidb::type::kDate: {
             key->resize(sizeof(int32_t) + k_size);
-            char* to = const_cast<char*>(key->data());
-            if (k_size > 0) to += k_size;
+            char* to = const_cast<char*>(key->data()) + k_size;
             ret =
                 ::rtidb::codec::PackInteger(from, sizeof(int32_t), false, to);
             break;
@@ -220,23 +217,20 @@ __attribute__((unused)) static bool PackValue(const void *from,
         case ::rtidb::type::kBigInt:
         case ::rtidb::type::kTimestamp: {
             key->resize(sizeof(int64_t) + k_size);
-            char* to = const_cast<char*>(key->data());
-            if (k_size > 0) to += k_size;
+            char* to = const_cast<char*>(key->data()) + k_size;
             ret =
                 ::rtidb::codec::PackInteger(from, sizeof(int64_t), false, to);
             break;
         }
         case ::rtidb::type::kFloat: {
             key->resize(sizeof(float) + k_size);
-            char* to = const_cast<char*>(key->data());
-            if (k_size > 0) to += k_size;
+            char* to = const_cast<char*>(key->data()) + k_size;
             ret = ::rtidb::codec::PackFloat(from, to);
             break;
         }
         case ::rtidb::type::kDouble: {
             key->resize(sizeof(double) + k_size);
-            char* to = const_cast<char*>(key->data());
-            if (k_size > 0) to += k_size;
+            char* to = const_cast<char*>(key->data()) + k_size;
             ret = ::rtidb::codec::PackDouble(from, to);
             break;
         }

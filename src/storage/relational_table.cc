@@ -370,7 +370,6 @@ bool RelationalTable::GetPackedField(const int8_t* row, uint32_t idx,
             || idx_type == ::rtidb::type::kNoUnique) {
         key->append("1");
     }
-    size_t k_size = key->size();
     int get_value_ret = 0;
     int ret = 0;
     switch (data_type) {
@@ -407,14 +406,14 @@ bool RelationalTable::GetPackedField(const int8_t* row, uint32_t idx,
         }
         case ::rtidb::type::kVarchar:
         case ::rtidb::type::kString: {
+            size_t k_size = key->size();
             char* ch = NULL;
             uint32_t length = 0;
             get_value_ret = row_view_.GetValue(row, idx, &ch, &length);
             if (get_value_ret == 0) {
                 int32_t dst_len = ::rtidb::codec::GetDstStrSize(length);
                 key->resize(dst_len + k_size);
-                char* dst = const_cast<char*>(key->data());
-                if (k_size > 0) dst += k_size;
+                char* dst = const_cast<char*>(key->data()) + k_size;
                 ret =
                     ::rtidb::codec::PackString(ch, length, (void**)&dst);  // NOLINT
             }
@@ -471,7 +470,6 @@ bool RelationalTable::ConvertIndex(const std::string& name,
             || idx_type == ::rtidb::type::kNoUnique) {
         out_val->append("1");
     }
-    size_t k_size = out_val->size();
     ::rtidb::type::DataType type = column_def->GetType();
     int ret = 0;
     switch (type) {
@@ -515,10 +513,10 @@ bool RelationalTable::ConvertIndex(const std::string& name,
         }
         case ::rtidb::type::kVarchar:
         case ::rtidb::type::kString: {
+            size_t k_size = out_val->size();
             int32_t dst_len = ::rtidb::codec::GetDstStrSize(value.length());
             out_val->resize(dst_len + k_size);
-            char* dst = const_cast<char*>(out_val->data());
-            if (k_size > 0) dst += k_size;
+            char* dst = const_cast<char*>(out_val->data()) + k_size;
             ret = ::rtidb::codec::PackString(value.data(), value.length(),
                                              (void**)&dst);  // NOLINT
             break;
