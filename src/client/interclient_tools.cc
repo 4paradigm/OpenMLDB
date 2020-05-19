@@ -1,11 +1,15 @@
+//
+// Copyright 2020 4paradigm
+//
+
 #include "client/interclient_tools.h"
 
-bool PutBlob(BlobInfoResult& blobInfo, char* ch, int64_t len) {
+bool PutBlob(BlobInfoResult& blobInfo, char* ch, int64_t len) { // NOLINT
     return blobInfo.client_->Put(blobInfo.tid_, 0, ch, len, &blobInfo.key_,
                                     &blobInfo.msg_);
 }
 
-void GetBlob(BlobInfoResult& blobInfo, char** packet, int64_t* sz) {
+void GetBlob(BlobInfoResult& blobInfo, char** packet, int64_t* sz) { // NOLINT
     butil::IOBuf buf;
     bool ok = blobInfo.client_->Get(blobInfo.tid_, 0, blobInfo.key_,
                                     &blobInfo.msg_, &buf);

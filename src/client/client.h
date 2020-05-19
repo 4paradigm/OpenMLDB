@@ -4,6 +4,12 @@
 #pragma once
 #include "client/client_type.h"
 
+#include <set>
+#include <memory>
+#include <map>
+#include <string>
+#include <vector>
+
 
 class RtidbClient;
 
