@@ -9,5 +9,3 @@
 #include "client/client_type.h"
 #include "client/interclient_tools.h"
 %}
-%include "client/client_type.h"
-%include "client/interclient_tools.h"

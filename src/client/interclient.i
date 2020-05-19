@@ -11,18 +11,16 @@
 %{
 #include "client/client_type.h"
 #include "client/client.h"
+#include "base/slice.h"
+#include "base/status.h"
+#include "codec/schema_codec.h"
 %}
 namespace std {
    %template(VectorString) vector<string>;
    %template(MapStringString) map<string, string>;
    %template(SetString) set<string>;
 }
-%include "client/client_type.h"
-%include "client/client.h"
 namespace std {
         %template(VectorReadFilter) vector<ReadFilter>;
         %template(VectorReadOption) vector<ReadOption>;
 }
-%include "base/slice.h"
-%include "base/status.h"
-%include "codec/schema_codec.h"
