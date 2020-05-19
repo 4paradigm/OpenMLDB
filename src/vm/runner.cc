@@ -1009,10 +1009,12 @@ bool JoinGenerator::TableJoin(std::shared_ptr<TableHandler> left,
     left_iter->SeekToFirst();
     while (left_iter->Valid()) {
         const Row& left_row = left_iter->GetValue();
-        std::string key_str = index_key_gen_.Valid() ? index_key_gen_.Gen(left_row) : "";
+        std::string key_str =
+            index_key_gen_.Valid() ? index_key_gen_.Gen(left_row) : "";
         if (left_key_gen_.Valid()) {
-            key_str = key_str.empty() ? left_key_gen_.Gen(left_row) : key_str + "|" +
-                      left_key_gen_.Gen(left_row);
+            key_str = key_str.empty()
+                          ? left_key_gen_.Gen(left_row)
+                          : key_str + "|" + left_key_gen_.Gen(left_row);
         }
         DLOG(INFO) << "key_str " << key_str;
         auto right_table = right->GetSegment(right, key_str);
