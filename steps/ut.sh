@@ -11,7 +11,6 @@ cd thirdsrc/zookeeper-3.4.14 && ./bin/zkServer.sh start && cd $WORK_DIR
 sleep 5
 TMPFILE="code.tmp"
 echo 0 > $TMPFILE
-mkdir -p core-dumps
 ls  build/bin/ | grep test | grep -v grep | while read line 
 do 
     ./build/bin/$line --gtest_output=xml:./reports/$line.xml

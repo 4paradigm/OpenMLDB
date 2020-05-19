@@ -111,9 +111,6 @@ void DiskTable::initOptionTemplate() {
     table_options.whole_key_filtering = false;
     table_options.block_size = 256 << 10;
     table_options.use_delta_encoding = false;
-    if (FLAGS_verify_compression) table_options.verify_compression = true;
-    ssd_option_template.table_factory.reset(
-        rocksdb::NewBlockBasedTableFactory(table_options));
 #ifdef PZFPGA
     if (FLAGS_file_compression.compare("pz") == 0) {
         PDLOG(INFO, "initOptionTemplate PZ compression enabled");
@@ -128,7 +125,10 @@ void DiskTable::initOptionTemplate() {
         PDLOG(INFO, "initOptionTemplate NO compression enabled");
         ssd_option_template.compression = rocksdb::kNoCompression;
     }
+    if (FLAGS_verify_compression) table_options.verify_compression = true;
 #endif
+    ssd_option_template.table_factory.reset(
+        rocksdb::NewBlockBasedTableFactory(table_options));
     // HDD options template
     hdd_option_template.max_open_files = -1;
     hdd_option_template.env->SetBackgroundThreads(
