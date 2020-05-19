@@ -1,5 +1,6 @@
 import enum
 from . import interclient
+from . import interclient_tools
 from typing import List
 from datetime import date
 
@@ -37,51 +38,23 @@ NONETOKEN="None#*@!"
 
 byteNonToken = bytes(NONETOKEN, encoding="UTF-8")
 
-def dataToBytes(data):
-  if data == None:
-    return byteNonToken
-  if isinstance(data, str):
-    return bytes(data, encoding="UTF-8");
-  elif isinstance(data, bytes):
-    return data
-  else:
-    strData = str(data)
-    return bytes(strData, encoding="UTF-8")
-
-def makeBytemap(m: map):
-  temp_map = {}
-  for k in m:
-    key = bytes(k, encoding="UTF-8")
-    temp_map.update({key: dataToBytes(m[k])})
-  return temp_map
-
-def buildByteReadFilter(filter):
+def buildReadFilter(filter):
   mid_rf = interclient.ReadFilter()
-  mid_rf.column = dataToBytes(filter.name)
+  mid_rf.column = filter.name
   mid_rf.type = filter.type
-  mid_rf.value = dataToBytes(filter.value)
+  mid_rf.value = filter.value
   return mid_rf
 
-def buildSliceMap(m: map):
-  value = {}
-  refer_map = {} # must have, void gc bytes object
+def buildStrMap(m: map):
+  mid_map = {}
   for k in m:
-    key = dataToBytes(k)
-    byteData = dataToBytes(m[k])
     if m[k] == None:
-      slice = interclient.Slice(byteNonToken);
-    elif isinstance(m[k], bytes):
-      slice = interclient.Slice(m[k], len(m[k]))
+      continue
+    if isinstance(m[k], str):
+      mid_map.update({k: m[k]})
     else:
-      if isinstance(m[k], str):
-        byteStr = bytes(m[k], encoding="UTF-8")
-      else:
-        strData = str(m[k])
-        byteStr = bytes(strData, encoding="UTF-8")
-      refer_map.update({k:byteStr})
-      slice = interclient.Slice(byteStr, len(byteStr))
-    value.update({key: slice})
-  return value, refer_map
+      mid_map.update({k: str(m[k])})
+  return  mid_map
 
 
 class WriteOption:
@@ -121,11 +94,12 @@ class RtidbResult:
       2:self.__data.GetInt16, 3:self.__data.GetInt32, 
       4:self.__data.GetInt64, 5:self.__data.GetFloat, 
       6:self.__data.GetDouble, 7:self.__data.GetDate,
-      8:self.__data.GetTimestamp,13: lambda idx : self.__data.GetString(idx).decode("UTF-8"),
-      14:lambda idx : self.__data.GetString(idx).decode("UTF-8"), 15:self.__data.GetBlob,
+      8:self.__data.GetTimestamp,13: lambda idx : self.__data.GetString(idx),
+      14:lambda idx : self.__data.GetString(idx), 15:self.__data.GetBlob,
       100:return_None}
     names = self.__data.GetColumnsName()
     self.__names = [x for x in names]
+    self.__blobInfo = None
   def __iter__(self):
     return self
   def count(self):
@@ -137,27 +111,32 @@ class RtidbResult:
     if self.__data.Next():
       result = {}
       for idx in range(len(self.__names)):
-        key = self.__names[idx].decode("UTF-8")
         type = self.__data.GetColumnType(idx)
         if self.__data.IsNULL(idx):
-          result.update({key: None})
+          result.update({self.__names[idx]: None})
         else:
           if type == 7: 
             value = self.__type_to_func[type](idx)
-            day = value & 0x0000000FF;
-            value = value >> 8;
-            month = 1 + (value & 0x0000FF);
-            year = 1900 + (value >> 8);
+            day = value & 0x0000000FF
+            value = value >> 8
+            month = 1 + (value & 0x0000FF)
+            year = 1900 + (value >> 8)
             real_date = date(year, month, day)
-            result.update({key: real_date})
+            result.update({self.__names[idx]: real_date})
           elif type == 15:
             blob_key = self.__type_to_func[type](idx)
-            blob_data = self.__data.GetBlobData();
-            if blob_data == None:
-              raise Exception("get blob data has been error, blob key is %d", blob_key)
-            result.update({key: blob_data})
+            if self.__blobInfo == None:
+              blobInfoResult = self.__data.GetBlobInfo()
+              if blobInfoResult.code_ != 0:
+                raise Exception("errored at get blob server: {}".format(blobInfoResult.msg_))
+              self.__blobInfo = blobInfoResult
+            self.__blobInfo.key_ = blob_key
+            blob_data = interclient_tools.GetBlob(self.__blobInfo)
+            if self.__blobInfo.code_ != 0:
+              raise Exception("errored at get blob data {}".format(self.__blobInfo.msg_))
+            result.update({self.__names[idx]: blob_data})
           else:
-            result.update({key: self.__type_to_func[type](idx)})
+            result.update({self.__names[idx]: self.__type_to_func[type](idx)})
       return result
     else:
       raise StopIteration
@@ -168,51 +147,71 @@ defaultWriteOption = WriteOption()
 class RTIDBClient:
   def __init__(self, zk_cluster: str, zk_path: str):
     self.__client = interclient.RtidbClient()
-    bcluster = bytes(zk_cluster, encoding="ASCII")
-    bpath = bytes(zk_path, encoding="ASCII")
-    ok = self.__client.Init(bcluster, bpath)
+    ok = self.__client.Init(zk_cluster, zk_path)
     if ok.code != 0:
       raise Exception(ok.code, ok.msg)
 
   def put(self, table_name: str, columns: map, write_option: WriteOption = None):
-    _wo = interclient.WriteOption();
+    _wo = interclient.WriteOption()
     if WriteOption != None:
       _wo.updateIfExist = defaultWriteOption.updateIfExist
       _wo.updateIfEqual = defaultWriteOption.updateIfEqual
-    bname = bytes(table_name, encoding="UTF-8")
-    value, refer_map = buildSliceMap(columns);
-    ok = self.__client.Put(bname, value, _wo)
+    self.PutBlob(table_name, columns)
+    value = buildStrMap(columns)
+
+    putResult= self.__client.Put(table_name, value, _wo)
+    if putResult.code != 0:
+      raise Exception(putResult.code, putResult.msg)
+    return PutResult(putResult)
+
+  def PutBlob(self, name: str, value: map):
+    blob_fields = self.__client.GetBlobSchema(name);
+    BlobInfo = None
+    for k in blob_fields:
+      blob_data = value.get(k, None)
+      if blob_data == None:
+        continue
+      if not isinstance(blob_data, bytes):
+        raise Exception("blob_data only byte type")
+      if BlobInfo == None:
+        BlobInfo = self.__client.GetBlobInfo(name)
+        if BlobInfo.code_ != 0:
+          raise Exception("errored at get blobinfo: {}".format(BlobInfo.msg_))
+      ok = interclient_tools.PutBlob(BlobInfo, blob_data, len(blob_data))
+      if not ok:
+        raise Exception("errored at put blob data: {}".format(BlobInfo.msg_))
+      value.update({k: str(BlobInfo.key_)})
+
+  def update(self, table_name: str, condition_columns: map, value_columns: map, write_option: WriteOption = None):
+    _wo = interclient.WriteOption()
+    if write_option != None:
+      _wo.updateIfExist = defaultWriteOption.updateIfExist
+      _wo.updateIfEqual = defaultWriteOption.updateIfEqual
+    self.PutBlob(table_name, value_columns)
+    cond = buildStrMap(condition_columns)
+    v = buildStrMap(value_columns)
+    ok = self.__client.Update(table_name, cond, v, _wo)
     if ok.code != 0:
       raise Exception(ok.code, ok.msg)
     return True
 
-  def update(self, table_name: str, condition_columns: map, value_columns: map, write_option: WriteOption = None):
-    _wo = interclient.WriteOption();
-    if write_option != None:
-      _wo.updateIfExist = defaultWriteOption.updateIfExist
-      _wo.updateIfEqual = defaultWriteOption.updateIfEqual
-    cond = makeBytemap(condition_columns);
-    value, refer_value_map = buildSliceMap(value_columns)
-    bname = bytes(table_name, encoding="UTF-8")
-    ok = self.__client.Update(bname, cond, value, _wo)
-    if ok.code != 0:
-      raise Exception(ok.code, ok.msg)
-    return True
-  
+  def __buildReadoption(self, read_option: ReadOption):
+    mid_map = buildStrMap(read_option.index)
+    ro = interclient.ReadOption(mid_map)
+    for filter in read_option.read_filter:
+      mid_rf = buildReadFilter(filter)
+      ro.read_filter.append(mid_rf)
+    for col in read_option.col_set:
+      ro.col_set.append(col)
+    return ro
+
   def query(self, table_name: str, read_option: ReadOption):
     if (len(read_option.index) < 1):
       raise Exception("must set index")
     ros = interclient.VectorReadOption()
-    mid_map = makeBytemap(read_option.index)
-    ro = interclient.ReadOption(mid_map)
-    for filter in read_option.read_filter:
-      mid_rf = buildByteReadFilter(filter)
-      ro.read_filter.append(mid_rf)
-    for col in read_option.col_set:
-      ro.col_set.append(col)
+    ro = self.__buildReadoption(read_option)
     ros.append(ro)
-    bname = bytes(table_name, encoding="UTF-8")
-    resp = self.__client.BatchQuery(bname, ros)
+    resp = self.__client.BatchQuery(table_name, ros)
     if resp.code_ != 0:
       raise Exception(resp.code_, resp.msg_)
     return RtidbResult(resp)
@@ -222,44 +221,26 @@ class RTIDBClient:
       raise Exception("muse set read_options")
     ros = interclient.VectorReadOption()
     for ro in read_options:
-      mid_map = makeBytemap(ro.index);
-      interro = interclient.ReadOption(mid_map)
-      for filter in ro.read_filter:
-        mid_rf = buildByteReadFilter(filter);
-        interro.read_filter.append(mid_rf)
-      for col in ro.col_set:
-        interro.col_set.append(dataToBytes(col))
+      interro = self.__buildReadoption(ro)
       ros.append(interro)
-    bname = bytes(table_name, encoding="UTF-8")
-    resp = self.__client.BatchQuery(bname, ros);
+    resp = self.__client.BatchQuery(table_name, ros)
     if (resp.code_ != 0):
-      raise Exception(resp.code_, resp.msg_);
+      raise Exception(resp.code_, resp.msg_)
     return RtidbResult(resp)
 
   def delete(self, table_name: str, condition_columns: map):
-    v = {}
-    for k in condition_columns:
-      key = bytes(k, encoding="UTF-8")
-      v.update({key: dataToBytes(condition_columns[k])})
-    bname = bytes(table_name, encoding="UTF-8")
-    resp = self.__client.Delete(bname, v)
+    v = buildStrMap(condition_columns)
+    resp = self.__client.Delete(table_name, v)
     if resp.code != 0:
       raise Exception(resp.code, resp.msg)
     return True
 
   def traverse(self, table_name: str, read_option: ReadOption = None):
     if read_option != None:
-      mid_map = makeBytemap(read_option.index)
-      ro = interclient.ReadOption(mid_map)
-      for filter in read_option.read_filter:
-        mid_rf = buildByteReadFilter(filter);
-        ro.read_filter.append(mid_rf)
-      for col in read_option.col_set:
-        ro.col_set.append(dataToBytes(col))
+      ro = self.__buildReadoption(read_option)
     else:
       ro = interclient.ReadOption({})
-    bname = bytes(table_name, encoding="UTF-8")
-    resp = self.__client.Traverse(bname, ro)
+    resp = self.__client.Traverse(table_name, ro)
     if (resp.code_ != 0):
-      raise Exception(resp.code_, resp.msg_);
+      raise Exception(resp.code_, resp.msg_)
     return RtidbResult(resp)

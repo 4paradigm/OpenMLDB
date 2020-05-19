@@ -2,88 +2,8 @@
 // Copyright 2020 4paradigm
 //
 #pragma once
-#include <map>
-#include <memory>
-#include <set>
-#include <string>
-#include <vector>
+#include "client/client_type.h"
 
-#include "client/bs_client.h"
-#include "client/ns_client.h"
-#include "client/tablet_client.h"
-#include "codec/codec.h"
-#include "codec/schema_codec.h"
-#include "zk/zk_client.h"
-
-using google::protobuf::RepeatedPtrField;
-
-struct WriteOption {
-    WriteOption() {
-        update_if_equal = true;
-        update_if_exist = true;
-    }
-
-    bool update_if_exist;
-    bool update_if_equal;
-};
-
-struct ReadFilter {
-    std::string column;
-    uint8_t type;
-    std::string value;
-};
-
-struct PartitionInfo {
-    std::string leader;
-    std::vector<std::string> follower;
-};
-
-struct TableHandler {
-    std::shared_ptr<rtidb::nameserver::TableInfo> table_info;
-    std::shared_ptr<RepeatedPtrField<rtidb::common::ColumnDesc>> columns;
-    std::vector<PartitionInfo> partition;
-    std::string auto_gen_pk_;
-    std::vector<int32_t> blobSuffix;
-    std::string auto_gen_pk;
-    std::map<std::string, ::rtidb::type::DataType> name_type_map;
-};
-
-struct GeneralResult {
-    GeneralResult() : code(0), msg() {}
-
-    explicit GeneralResult(int err_num) : code(err_num), msg() {}
-
-    GeneralResult(int err_num, const std::string& error_msg)
-        : code(err_num), msg(error_msg) {}
-
-    void SetError(int err_num, const std::string& error_msg) {
-        code = err_num;
-        msg = error_msg;
-    }
-    void SetAutoGenPk(int64_t num) {
-        has_auto_gen_pk = true;
-        auto_gen_pk = num;
-    }
-    int code;
-    std::string msg;
-    int64_t auto_gen_pk;
-    bool has_auto_gen_pk = false;
-};
-
-struct ReadOption {
-    explicit ReadOption(const std::map<std::string, std::string>& indexs) {
-        index.insert(indexs.begin(), indexs.end());
-    }
-
-    ReadOption() : index(), read_filter(), col_set(), limit(0) {}
-
-    ~ReadOption() = default;
-
-    std::map<std::string, std::string> index;
-    std::vector<ReadFilter> read_filter;
-    std::set<std::string> col_set;
-    uint64_t limit;
-};
 
 class RtidbClient;
 
@@ -167,6 +87,8 @@ class ViewResult {
 
     void GetBlobData(char** packet, int64_t* sz);
 
+    BlobInfoResult GetBlobInfo();
+
     bool IsNULL(uint32_t idx) { return rv_->IsNULL(idx); }
 
     void SetRv(const std::shared_ptr<TableHandler>& th) {
@@ -217,7 +139,8 @@ class ViewResult {
     std::shared_ptr<rtidb::codec::RowView> rv_;
 
  private:
-    std::shared_ptr<RepeatedPtrField<rtidb::common::ColumnDesc>> columns_;
+    std::shared_ptr<google::protobuf::RepeatedPtrField<
+        rtidb::common::ColumnDesc>> columns_;
     bool initialed_;
     int64_t curr_blob_key_;
     std::string table_name_;
@@ -362,9 +285,9 @@ class RtidbClient {
     ~RtidbClient();
     GeneralResult Init(const std::string& zk_cluster,
                        const std::string& zk_path);
-    GeneralResult Put(
+    PutResult Put(
         const std::string& name,
-        const std::map<std::string, rtidb::base::Slice>& slice_map,
+        const std::map<std::string, std::string>& value,
         const WriteOption& wo);
     GeneralResult Delete(const std::string& name,
                          const std::map<std::string, std::string>& values);
@@ -376,23 +299,23 @@ class RtidbClient {
     BatchQueryResult BatchQuery(const std::string& name,
                                 const std::vector<ReadOption>& ros);
     bool BatchQuery(const std::string& name,
-                    const RepeatedPtrField<::rtidb::api::ReadOption>& ros_pb,
+                    const google::protobuf::RepeatedPtrField<
+                        ::rtidb::api::ReadOption>& ros_pb,
                     std::string* data, uint32_t* count, std::string* msg);
     void SetZkCheckInterval(int32_t interval);
     GeneralResult Update(
         const std::string& table_name,
-        const std::map<std::string, std::string>& condition_columns_map,
-        const std::map<std::string, rtidb::base::Slice>& slice_map,
+        const std::map<std::string, std::string>& condition_map,
+        const std::map<std::string, std::string>& value_map,
         const WriteOption& wo);
-    int BlobPut(std::shared_ptr<TableHandler> th,
+    int PutBlob(std::shared_ptr<TableHandler> th,
                 std::map<std::string, std::string>* value, std::string* msg);
-    bool BlobGet(const std::string table_name, int64_t key, char** ch,
+    bool GetBlob(const std::string table_name, int64_t key, char** ch,
                  int64_t* size);
+    std::vector<std::string>& GetBlobSchema(const std::string& name);
+    BlobInfoResult GetBlobInfo(const std::string& name);
 
  private:
     BaseClient* client_;
+    std::vector<std::string> empty_vector_{};
 };
-
-void SliceMapToStringMap(
-    const std::map<std::string, rtidb::base::Slice>& slice_map,
-    std::map<std::string, std::string>* value_map);

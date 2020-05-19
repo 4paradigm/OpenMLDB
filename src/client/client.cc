@@ -38,16 +38,24 @@ void ViewResult::GetBlobData(char** packet, int64_t* sz) {
     if (table_name_.empty() && client_ == nullptr) {
         return;
     }
-    bool ok = client_->BlobGet(table_name_, curr_blob_key_, packet, sz);
-    if (!ok) {
-        return;
+    client_->GetBlob(table_name_, curr_blob_key_, packet, sz);
+}
+
+BlobInfoResult ViewResult::GetBlobInfo() {
+    if (table_name_.empty() && client_ == nullptr) {
+        BlobInfoResult result;
+        result.SetError(-1,
+                        "do not have table name or rtidb client");
+        return result;
     }
+    return client_->GetBlobInfo(table_name_);
 }
 
 void TraverseResult::Init(RtidbClient* client, std::string* table_name,
                           struct ReadOption* ro, uint32_t count,
                           uint64_t snapshot_id) {
     client_ = client;
+    SetClient(client);
     table_name_.reset(table_name);
     ro_.reset(ro);
     offset_ = 0;
@@ -282,8 +290,10 @@ void BaseClient::RefreshTable() {
                 break;
             }
         }
-        std::shared_ptr<RepeatedPtrField<rtidb::common::ColumnDesc>> columns =
-            std::make_shared<RepeatedPtrField<rtidb::common::ColumnDesc>>();
+        std::shared_ptr<google::protobuf::RepeatedPtrField<
+            rtidb::common::ColumnDesc>> columns =
+            std::make_shared<google::protobuf::RepeatedPtrField<
+                rtidb::common::ColumnDesc>>();
         int code = rtidb::codec::SchemaCodec::ConvertColumnDesc(
             table_info->column_desc_v1(), *columns,
             table_info->added_column_desc());
@@ -294,6 +304,7 @@ void BaseClient::RefreshTable() {
             for (int i = 0; i < columns->size(); i++) {
                 if (columns->Get(i).data_type() == rtidb::type::kBlob) {
                     handler->blobSuffix.push_back(i);
+                    handler->blobFieldNames.push_back(columns->Get(i).name());
                 }
             }
         }
@@ -454,7 +465,6 @@ TraverseResult RtidbClient::Traverse(const std::string& name,
     result.Init(this, table_name, ro_ptr, count, snapshot_id);
     result.SetRv(th);
     result.SetValue(raw_data, is_finish, pk);
-    result.SetClient(this);
     result.SetTable(name);
     return result;
 }
@@ -495,8 +505,8 @@ bool RtidbClient::Traverse(const std::string& name, const struct ReadOption& ro,
 
 GeneralResult RtidbClient::Update(
     const std::string& table_name,
-    const std::map<std::string, std::string>& condition_columns_map,
-    const std::map<std::string, rtidb::base::Slice>& slice_map,
+    const std::map<std::string, std::string>& condition_map,
+    const std::map<std::string, std::string>& value_map,
     const WriteOption& wo) {
     GeneralResult result;
     std::shared_ptr<TableHandler> th = client_->GetTableHandler(table_name);
@@ -504,7 +514,7 @@ GeneralResult RtidbClient::Update(
         result.SetError(-1, "table not found");
         return result;
     }
-    if (condition_columns_map.empty() || slice_map.empty()) {
+    if (condition_map.empty() || value_map.empty()) {
         result.SetError(-1,
                         "condition_columns_map or value_columns_map is empty");
         return result;
@@ -513,29 +523,21 @@ GeneralResult RtidbClient::Update(
     uint32_t pid = 0;
     ::google::protobuf::RepeatedPtrField<::rtidb::api::Columns> cd_columns;
     ::rtidb::base::ResultMsg cd_rm = ::rtidb::codec::SchemaCodec::GetCdColumns(
-        *(th->columns), condition_columns_map, &cd_columns);
+        *(th->columns), condition_map, &cd_columns);
     if (cd_rm.code < 0) {
         result.SetError(cd_rm.code, "GetCdColumns error, msg: " + cd_rm.msg);
         return result;
     }
-    std::map<std::string, std::string> value;
-    SliceMapToStringMap(slice_map, &value);
-    std::string msg;
-    int ret = BlobPut(th, &value, &msg);
-    if (ret != 0) {
-        result.SetError(-1, msg);
-        return result;
-    }
-
     google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>
         new_value_schema;
-    ::rtidb::codec::SchemaCodec::GetSchemaData(value, *(th->columns),
+    ::rtidb::codec::SchemaCodec::GetSchemaData(value_map, *(th->columns),
                                                new_value_schema);
     std::string data;
-    ::rtidb::base::ResultMsg value_rm =
-        ::rtidb::codec::RowCodec::EncodeRow(value, new_value_schema, data);
-    if (value_rm.code < 0) {
-        result.SetError(value_rm.code, "encode error, msg: " + value_rm.msg);
+    ::rtidb::base::ResultMsg rm =
+        ::rtidb::codec::RowCodec::EncodeRow(value_map,
+                                            new_value_schema, data);
+    if (rm.code < 0) {
+        result.SetError(rm.code, "encode error, msg: " + rm.msg);
         return result;
     }
     if (th->table_info->compress_type() == ::rtidb::nameserver::kSnappy) {
@@ -543,6 +545,7 @@ GeneralResult RtidbClient::Update(
         ::snappy::Compress(data.c_str(), data.length(), &compressed);
         data = compressed;
     }
+    std::string msg;
     auto tablet_client =
         client_->GetTabletClient(th->partition[0].leader, &msg);
     if (tablet_client == nullptr) {
@@ -557,41 +560,42 @@ GeneralResult RtidbClient::Update(
     return result;
 }
 
-GeneralResult RtidbClient::Put(
+PutResult RtidbClient::Put(
     const std::string& name,
-    const std::map<std::string, rtidb::base::Slice>& slice_map,
+    const std::map<std::string, std::string>& value,
     const WriteOption& wo) {
-    GeneralResult result;
+    PutResult result;
 
     std::shared_ptr<TableHandler> th = client_->GetTableHandler(name);
     if (th == nullptr) {
         result.SetError(-1, "table not found");
         return result;
     }
-    std::map<std::string, std::string> value;
+    std::map<std::string, std::string> val;
     if (!th->auto_gen_pk.empty()) {
-        auto iter = slice_map.find(th->auto_gen_pk);
-        if (iter != slice_map.end()) {
+        auto iter = value.find(th->auto_gen_pk);
+        if (iter != value.end()) {
             result.SetError(-1, "should not input autoGenPk column");
             return result;
         } else {
-            value.insert(
+            val = value;
+            val.insert(
                 std::make_pair(th->auto_gen_pk, ::rtidb::codec::DEFAULT_LONG));
         }
     }
-    SliceMapToStringMap(slice_map, &value);
-    std::string err_msg;
-    int ret = BlobPut(th, &value, &err_msg);
-    if (ret != 0) {
-        result.SetError(-1, err_msg);
-    }
     std::string buffer;
     rtidb::base::ResultMsg rm;
-    rm = ::rtidb::codec::RowCodec::EncodeRow(value, *(th->columns), buffer);
+    if (!th->auto_gen_pk.empty()) {
+        rm = ::rtidb::codec::RowCodec::EncodeRow(val, *(th->columns), buffer);
+    } else {
+        rm = ::rtidb::codec::RowCodec::EncodeRow(value, *(th->columns), buffer);
+    }
     if (rm.code != 0) {
         result.SetError(rm.code, "encode error, msg: " + rm.msg);
         return result;
     }
+    std::string err_msg;
+
     auto tablet = client_->GetTabletClient(th->partition[0].leader, &err_msg);
     if (tablet == nullptr) {
         result.SetError(-1, err_msg);
@@ -671,7 +675,6 @@ BatchQueryResult RtidbClient::BatchQuery(const std::string& name,
         }
     }
     std::string* data = new std::string();
-    bool is_finish;
     uint32_t count;
     std::string msg;
     bool ok = BatchQuery(name, ros_pb, data, &count, &msg);
@@ -703,7 +706,7 @@ bool RtidbClient::BatchQuery(
                               msg);
 }
 
-int RtidbClient::BlobPut(std::shared_ptr<TableHandler> th,
+int RtidbClient::PutBlob(std::shared_ptr<TableHandler> th,
                          std::map<std::string, std::string>* value,
                          std::string* msg) {
     if (!th->blobSuffix.empty() && th->table_info->blobs_size() < 1) {
@@ -727,7 +730,8 @@ int RtidbClient::BlobPut(std::shared_ptr<TableHandler> th,
     }
     return 0;
 }
-bool RtidbClient::BlobGet(const std::string table_name, int64_t key,
+
+bool RtidbClient::GetBlob(const std::string table_name, int64_t key,
                           char** data, int64_t* size) {
     std::shared_ptr<TableHandler> th = client_->GetTableHandler(table_name);
     if (th == nullptr) {
@@ -765,11 +769,38 @@ bool RtidbClient::BlobGet(const std::string table_name, int64_t key,
     return true;
 }
 
-void SliceMapToStringMap(
-    const std::map<std::string, rtidb::base::Slice>& slice_map,
-    std::map<std::string, std::string>* value_map) {
-    for (auto iter = slice_map.begin(); iter != slice_map.end(); iter++) {
-        std::string v(iter->second.data(), iter->second.size());
-        value_map->insert(std::make_pair(iter->first, v));
+std::vector<std::string>& RtidbClient::GetBlobSchema(const std::string& name) {
+    std::shared_ptr<TableHandler> th = client_->GetTableHandler(name);
+    if (th == nullptr) {
+        return empty_vector_;
     }
+    return th->blobFieldNames;
 }
+
+BlobInfoResult RtidbClient::GetBlobInfo(const std::string& name) {
+    BlobInfoResult result;
+    std::shared_ptr<TableHandler> th = client_->GetTableHandler(name);
+    if (th == nullptr) {
+        result.SetError(-1, "table not found");
+        return result;
+    }
+    std::string msg;
+    std::shared_ptr<rtidb::client::BsClient> blob_server;
+    if (th->table_info->table_type() == rtidb::type::kObjectStore) {
+        if (th->partition.empty()) {
+            result.SetError(-1, "not found available endpoint");
+            return result;
+        }
+        blob_server = client_->GetBlobClient(th->partition[0].leader, &msg);
+    } else {
+        blob_server = client_->GetBlobClient(th->table_info->blobs(0), &msg);
+    }
+    if (!blob_server) {
+        result.SetError(-1, "blob server is unavailable status");
+        return result;
+    }
+    result.client_ = blob_server;
+    result.tid_ = th->table_info->tid();
+    return result;
+}
+

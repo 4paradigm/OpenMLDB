@@ -8,14 +8,24 @@ include(UseSWIG)
 set_property(SOURCE interclient.i PROPERTY CPLUSPLUS ON)
 set_property(SOURCE interclient.i PROPERTY SWIG_MODULE_NAME interclient)
 set_property(SOURCE interclient.i PROPERTY COMPILE_OPTIONS -py3)
-swig_add_library(interclient TYPE SHARED LANGUAGE python OUTPUT_DIR ${CMAKE_BINARY_DIR}/python/${PROJECT_NAME} SOURCES interclient.i client.cc ../flags.cc ../proto/tablet.pb.cc ../proto/common.pb.cc ../proto/type.pb.cc ../proto/name_server.pb.cc ../zk/zk_client.cc ../zk/dist_lock.cc ../client/tablet_client.cc ../client/ns_client.cc ../codec/codec.cc ../base/status.cc ../client/bs_client.cc ../proto/blob_server.pb.cc)
+swig_add_library(interclient TYPE SHARED LANGUAGE python OUTPUT_DIR ${CMAKE_BINARY_DIR}/python/${PROJECT_NAME} SOURCES interclient.i client.cc ../flags.cc ../proto/tablet.pb.cc ../proto/common.pb.cc ../proto/type.pb.cc ../proto/name_server.pb.cc ../zk/zk_client.cc ../zk/dist_lock.cc ../client/tablet_client.cc ../codec/codec.cc ../base/status.cc ../client/bs_client.cc ../proto/blob_server.pb.cc)
 set_property(TARGET interclient PROPERTY SWIG_USE_TARGET_INCLUDE_DIRECTORIES ON)
-target_link_libraries(interclient snappy brpc glog protobuf gflags rt ssl crypto dl leveldb z common zookeeper_mt)
+target_link_libraries(interclient snappy brpc glog protobuf rt ssl crypto dl leveldb z common zookeeper_mt)
 set_property(TARGET interclient PROPERTY POSITION_INDEPENDENT_CODE ON)
-add_custom_target(python_package ALL DEPENDS interclient
+
+set_property(SOURCE interclient_tools.i PROPERTY CPLUSPLUS ON)
+set_property(SOURCE interclient_tools.i PROPERTY SWIG_MODULE_NAME interclient_tools)
+set_property(SOURCE interclient_tools.i PROPERTY COMPILE_OPTIONS -py3)
+swig_add_library(interclient_tools TYPE SHARED LANGUAGE python OUTPUT_DIR ${CMAKE_BINARY_DIR}/python/${PROJECT_NAME} SOURCES interclient_tools.i interclient_tools.cc ../flags.cc ../client/bs_client.cc ../proto/blob_server.pb.cc ../proto/type.pb.cc ../proto/tablet.pb.cc ../proto/common.pb.cc)
+set_property(TARGET interclient_tools PROPERTY SWIG_USE_TARGET_INCLUDE_DIRECTORIES ON)
+target_link_libraries(interclient_tools brpc protobuf glog gflags ssl crypto common z leveldb)
+set_property(TARGET interclient_tools PROPERTY POSITION_INDEPENDENT_CODE ON)
+
+add_custom_target(python_package ALL DEPENDS interclient interclient_tools
     COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/__init__.py ${CMAKE_BINARY_DIR}/python/${PROJECT_NAME}
     COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/rtidb.py ${CMAKE_BINARY_DIR}/python/${PROJECT_NAME}
     COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/lib/_interclient.so ${CMAKE_BINARY_DIR}/python/${PROJECT_NAME}
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/lib/_interclient_tools.so ${CMAKE_BINARY_DIR}/python/${PROJECT_NAME}
     COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/setup.py ${CMAKE_BINARY_DIR}/python
 	COMMAND ${CMAKE_COMMAND} -E remove_directory dist
 	COMMAND ${Python3_EXECUTABLE} setup.py bdist_wheel
