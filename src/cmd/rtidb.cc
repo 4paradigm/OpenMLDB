@@ -22,6 +22,7 @@
 #include "base/kv_iterator.h"
 #include "base/linenoise.h"
 #include "base/strings.h"
+#include "base/glog_wapper.h"
 #include "blob_proxy/blob_proxy_impl.h"
 #include "blobserver/blobserver_impl.h"
 #include "boost/algorithm/string.hpp"
@@ -32,7 +33,6 @@
 #include "codec/flat_array.h"
 #include "codec/row_codec.h"
 #include "codec/schema_codec.h"
-#include "logging.h"  // NOLINT
 #include "nameserver/name_server_impl.h"
 #include "proto/client.pb.h"
 #include "proto/name_server.pb.h"
@@ -43,9 +43,6 @@
 #include "tprinter.h"  // NOLINT
 #include "version.h"   // NOLINT
 
-using ::baidu::common::DEBUG;
-using ::baidu::common::INFO;
-using ::baidu::common::WARNING;
 using Schema =
     ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
 
@@ -76,20 +73,15 @@ DECLARE_uint32(max_col_display_length);
 void SetupLog() {
     // Config log
     if (FLAGS_log_level == "debug") {
-        ::baidu::common::SetLogLevel(DEBUG);
+        ::rtidb::base::SetLogLevel(DEBUG);
     } else {
-        ::baidu::common::SetLogLevel(INFO);
+        ::rtidb::base::SetLogLevel(INFO);
     }
     if (!FLAGS_log_dir.empty()) {
         ::rtidb::base::Mkdir(FLAGS_log_dir);
-        std::string info_file = FLAGS_log_dir + "/" + FLAGS_role + ".info.log";
-        std::string warning_file =
-            FLAGS_log_dir + "/" + FLAGS_role + ".warning.log";
-        ::baidu::common::SetLogFile(info_file.c_str());
-        ::baidu::common::SetWarningFile(warning_file.c_str());
+        std::string file = FLAGS_log_dir + "/" + FLAGS_role;
+        rtidb::base::SetLogFile(file);
     }
-    ::baidu::common::SetLogCount(FLAGS_log_file_count);
-    ::baidu::common::SetLogSize(FLAGS_log_file_size);
 }
 
 void StartNameServer() {

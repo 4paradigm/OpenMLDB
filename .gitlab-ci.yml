@@ -10,7 +10,7 @@ stages:
     - ns_integration_test
     - deploy
 
-build_rtidb:
+build:
     stage: build
     script:
         - source /root/.bashrc && sh tools/install_fesql.sh

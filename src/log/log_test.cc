@@ -18,6 +18,7 @@
 #include "log/log_reader.h"
 #include "log/log_writer.h"
 #include "proto/tablet.pb.h"
+#include "base/glog_wapper.h"
 
 using ::rtidb::base::Slice;
 using ::rtidb::base::Status;
@@ -309,7 +310,7 @@ TEST_F(LogWRTest, TestGoBack) {
 
 int main(int argc, char** argv) {
     srand(time(NULL));
-    ::baidu::common::SetLogLevel(::baidu::common::DEBUG);
+    ::rtidb::base::SetLogLevel(DEBUG);
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }

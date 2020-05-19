@@ -17,6 +17,8 @@
 #include <utility>
 
 #include "base/status.h"
+#include "base/glog_wapper.h"
+#include "timer.h" // NOLINT
 #include "boost/algorithm/string.hpp"
 #include "timer.h"  // NOLINT
 
@@ -947,13 +949,13 @@ bool NameServerImpl::RecoverOPTask() {
         }
         if (op_data->op_info_.task_status() ==
             ::rtidb::api::TaskStatus::kDone) {
-            PDLOG(DEBUG, "op status is kDone. op_id[%lu]",
+            DEBUGLOG("op status is kDone. op_id[%lu]",
                   op_data->op_info_.op_id());
             continue;
         }
         if (op_data->op_info_.task_status() ==
             ::rtidb::api::TaskStatus::kCanceled) {
-            PDLOG(DEBUG, "op status is kCanceled. op_id[%lu]",
+            DEBUGLOG("op status is kCanceled. op_id[%lu]",
                   op_data->op_info_.op_id());
             continue;
         }
@@ -1724,7 +1726,7 @@ int NameServerImpl::UpdateTaskStatus(bool is_recover_op) {
         for (auto iter = tablets_.begin(); iter != tablets_.end(); ++iter) {
             if (iter->second->state_ !=
                 ::rtidb::api::TabletState::kTabletHealthy) {
-                PDLOG(DEBUG, "tablet[%s] is not Healthy", iter->first.c_str());
+                DEBUGLOG("tablet[%s] is not Healthy", iter->first.c_str());
                 uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
                 if (cur_time <
                     iter->second->ctime_ + FLAGS_tablet_heartbeat_timeout) {
@@ -1773,7 +1775,7 @@ int NameServerImpl::UpdateTaskStatus(bool is_recover_op) {
             std::lock_guard<std::mutex> lock(mu_);
             if (last_task_rpc_version !=
                 task_rpc_version_.load(std::memory_order_acquire)) {
-                PDLOG(DEBUG, "task_rpc_version mismatch");
+                DEBUGLOG("task_rpc_version mismatch");
                 break;
             }
             std::string endpoint = iter->first;
@@ -1827,7 +1829,7 @@ int NameServerImpl::UpdateTaskStatusRemote(bool is_recover_op) {
             std::lock_guard<std::mutex> lock(mu_);
             if (last_task_rpc_version !=
                 task_rpc_version_.load(std::memory_order_acquire)) {
-                PDLOG(DEBUG, "task_rpc_version mismatch");
+                DEBUGLOG("task_rpc_version mismatch");
                 break;
             }
             std::string endpoint = iter->first;
@@ -2029,7 +2031,7 @@ int NameServerImpl::UpdateZKTaskStatus() {
             std::string node = zk_op_data_path_ + "/" +
                                std::to_string(op_data->op_info_.op_id());
             if (zk_client_->SetNodeValue(node, value)) {
-                PDLOG(DEBUG, "set zk status value success. node[%s] value[%s]",
+                DEBUGLOG("set zk status value success. node[%s] value[%s]",
                       node.c_str(), value.c_str());
                 op_data->task_list_.pop_front();
                 continue;
@@ -2053,7 +2055,7 @@ void NameServerImpl::UpdateTaskMapStatus(
     const ::rtidb::api::TaskStatus& status) {
     auto iter = task_map_.find(remote_op_id);
     if (iter == task_map_.end()) {
-        PDLOG(DEBUG, "op [%lu] is not in task_map_", remote_op_id);
+        DEBUGLOG("op [%lu] is not in task_map_", remote_op_id);
         return;
     }
     for (auto& task_info : iter->second) {
@@ -2064,16 +2066,14 @@ void NameServerImpl::UpdateTaskMapStatus(
                     status == ::rtidb::api::kCanceled) {
                     task_info->set_status(status);
                     if (status == ::rtidb::api::kFailed) {
-                        PDLOG(
-                            DEBUG,
+                        DEBUGLOG(
                             "update task status from[kDoing] to[kFailed]. "
                             "op_id[%lu], task_type[%s]",
                             task_info->op_id(),
                             ::rtidb::api::TaskType_Name(task_info->task_type())
                                 .c_str());
                     } else {
-                        PDLOG(
-                            DEBUG,
+                        DEBUGLOG(
                             "update task status from[kDoing] to[kCanceled]. "
                             "op_id[%lu], task_type[%s]",
                             task_info->op_id(),
@@ -2086,8 +2086,7 @@ void NameServerImpl::UpdateTaskMapStatus(
                         task_info->status() != ::rtidb::api::kFailed &&
                         task_info->status() != ::rtidb::api::kCanceled) {
                         task_info->set_status(status);
-                        PDLOG(
-                            DEBUG,
+                        DEBUGLOG(
                             "update task status from[kDoing] to[kDone]. "
                             "op_id[%lu], task_type[%s]",
                             task_info->op_id(),
@@ -2155,7 +2154,7 @@ int NameServerImpl::DeleteTask() {
         for (auto iter = tablets_.begin(); iter != tablets_.end(); ++iter) {
             if (iter->second->state_ !=
                 ::rtidb::api::TabletState::kTabletHealthy) {
-                PDLOG(DEBUG, "tablet[%s] is not Healthy", iter->first.c_str());
+                DEBUGLOG("tablet[%s] is not Healthy", iter->first.c_str());
                 continue;
             }
             client_vec.push_back(iter->second->client_);
@@ -2169,7 +2168,7 @@ int NameServerImpl::DeleteTask() {
             has_failed = true;
             continue;
         }
-        PDLOG(DEBUG, "tablet[%s] delete op success",
+        DEBUGLOG("tablet[%s] delete op success",
               (*iter)->GetEndpoint().c_str());
     }
     DeleteTaskRemote(done_task_vec_remote, has_failed);
@@ -2207,7 +2206,7 @@ int NameServerImpl::DeleteTaskRemote(const std::vector<uint64_t>& done_task_vec,
             has_failed = true;
             continue;
         }
-        PDLOG(DEBUG, "replica cluster[%s] delete op success",
+        DEBUGLOG("replica cluster[%s] delete op success",
               (*iter)->GetEndpoint().c_str());
     }
     return 0;
@@ -2333,7 +2332,7 @@ void NameServerImpl::ProcessTask() {
                           task->task_info_->op_id());
                 } else if (task->task_info_->status() ==
                            ::rtidb::api::kInited) {
-                    PDLOG(DEBUG,
+                    DEBUGLOG(
                           "run task. opid[%lu] op_type[%s] task_type[%s]",
                           task->task_info_->op_id(),
                           ::rtidb::api::OPType_Name(task->task_info_->op_type())
@@ -3483,7 +3482,7 @@ void NameServerImpl::CancelOP(RpcController* controller,
         for (auto iter = tablets_.begin(); iter != tablets_.end(); ++iter) {
             if (iter->second->state_ !=
                 ::rtidb::api::TabletState::kTabletHealthy) {
-                PDLOG(DEBUG, "tablet[%s] is not Healthy", iter->first.c_str());
+                DEBUGLOG("tablet[%s] is not Healthy", iter->first.c_str());
                 continue;
             }
             client_vec.push_back(iter->second->client_);
@@ -3496,7 +3495,7 @@ void NameServerImpl::CancelOP(RpcController* controller,
                       client->GetEndpoint().c_str());
                 continue;
             }
-            PDLOG(DEBUG, "tablet[%s] cancel op success",
+            DEBUGLOG("tablet[%s] cancel op success",
                   client->GetEndpoint().c_str());
         }
         response->set_code(::rtidb::base::ReturnCode::kOk);
@@ -6352,7 +6351,7 @@ void NameServerImpl::UpdateTableStatus() {
         }
     }
     if (pos_response.empty()) {
-        PDLOG(DEBUG, "pos_response is empty");
+        DEBUGLOG("pos_response is empty");
     } else {
         std::lock_guard<std::mutex> lock(mu_);
         for (const auto& kv : table_info_) {
@@ -9993,10 +9992,10 @@ void NameServerImpl::AddReplicaClusterByNs(
         return;
     }
     std::lock_guard<std::mutex> lock(mu_);
-    PDLOG(DEBUG, "request zone name is: %s, term is: %lu %d,",
+    DEBUGLOG("request zone name is: %s, term is: %lu %d,",
           request->zone_info().zone_name().c_str(),
           request->zone_info().zone_term(), zone_info_.mode());
-    PDLOG(DEBUG, "cur zone name is: %s", zone_info_.zone_name().c_str());
+    DEBUGLOG("cur zone name is: %s", zone_info_.zone_name().c_str());
     do {
         if ((mode_.load(std::memory_order_acquire) == kFOLLOWER)) {
             if (request->zone_info().replica_alias() !=

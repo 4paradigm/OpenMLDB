@@ -19,7 +19,7 @@
 #include "base/file_util.h"
 #include "base/strings.h"
 #include "log/log_format.h"
-#include "logging.h" // NOLINT
+#include "base/glog_wapper.h" // NOLINT
 #include "storage/segment.h"
 
 DECLARE_int32(binlog_single_file_max_size);
@@ -29,9 +29,7 @@ DECLARE_string(zk_cluster);
 namespace rtidb {
 namespace replica {
 
-using ::baidu::common::DEBUG;
-using ::baidu::common::INFO;
-using ::baidu::common::WARNING;
+
 
 static const ::rtidb::base::DefaultComparator scmp;
 
@@ -249,7 +247,7 @@ void LogReplicator::SetSnapshotLogPartIndex(uint64_t offset) {
 
 void LogReplicator::DeleteBinlog() {
     if (logs_->GetSize() <= 1) {
-        PDLOG(DEBUG, "log part size is one or less, need not delete");
+        DEBUGLOG("log part size is one or less, need not delete");
         return;
     }
     int min_log_index =
@@ -264,10 +262,10 @@ void LogReplicator::DeleteBinlog() {
     }
     min_log_index -= 1;
     if (min_log_index < 0) {
-        PDLOG(DEBUG, "min_log_index is[%d], need not delete!", min_log_index);
+        DEBUGLOG("min_log_index is[%d], need not delete!", min_log_index);
         return;
     }
-    PDLOG(DEBUG, "min_log_index[%d] cur binlog_index[%u]", min_log_index,
+    DEBUGLOG("min_log_index[%d] cur binlog_index[%u]", min_log_index,
           binlog_index_.load(std::memory_order_relaxed));
     ::rtidb::base::Node<uint32_t, uint64_t>* node = NULL;
     {
@@ -386,7 +384,7 @@ bool LogReplicator::AppendEntries(
                           std::memory_order_relaxed);
         response->set_log_offset(GetOffset());
     }
-    PDLOG(DEBUG, "sync log entry to offset %lu for %s", GetOffset(),
+    DEBUGLOG("sync log entry to offset %lu for %s", GetOffset(),
           path_.c_str());
     return true;
 }
@@ -488,7 +486,7 @@ void LogReplicator::GetReplicateInfo(
     std::map<std::string, uint64_t>& info_map) {
     std::lock_guard<bthread::Mutex> lock(mu_);
     if (role_ != kLeaderNode) {
-        PDLOG(DEBUG, "cur table is not leader");
+        DEBUGLOG("cur table is not leader");
         return;
     }
     if (nodes_.empty()) {
@@ -516,7 +514,7 @@ bool LogReplicator::DelAllReplicateNode() {
     std::vector<std::shared_ptr<ReplicateNode>>::iterator it =
         copied_nodes.begin();
     for (; it != copied_nodes.end(); ++it) {
-        PDLOG(DEBUG, "stop replicator node");
+        DEBUGLOG("stop replicator node");
         std::shared_ptr<ReplicateNode> node = *it;
         node->Stop();
     }
