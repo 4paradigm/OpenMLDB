@@ -72,7 +72,7 @@ bool BsClient::Put(uint32_t tid, uint32_t pid, char* value, int64_t len,
     ::rtidb::blobserver::PutResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
-    request.set_data(value, len);
+    request.set_data(static_cast<void*>(value), len);
     return Put(&request, key, msg);
 }
 

@@ -24,9 +24,6 @@ add_library(zk_client STATIC zk/zk_client.cc zk/dist_lock.cc)
 add_library(replica STATIC replica/replicate_node.cc
                            replica/log_replicator.cc)
 
-add_library(rtidb_flag flags.cc)
-set_property(TARGET rtidb_flag PROPERTY POSITION_INDEPENDENT_CODE ON)
-
 add_executable(strings_test base/strings_test.cc)
 target_link_libraries(strings_test gtest ${BIN_LIBS})
 

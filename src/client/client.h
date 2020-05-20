@@ -91,8 +91,6 @@ class ViewResult {
         return curr_blob_key_;
     }
 
-    void GetBlobData(char** packet, int64_t* sz);
-
     BlobInfoResult GetBlobInfo();
 
     bool IsNULL(uint32_t idx) { return rv_->IsNULL(idx); }
@@ -314,14 +312,10 @@ class RtidbClient {
         const std::map<std::string, std::string>& condition_map,
         const std::map<std::string, std::string>& value_map,
         const WriteOption& wo);
-    int PutBlob(std::shared_ptr<TableHandler> th,
-                std::map<std::string, std::string>* value, std::string* msg);
-    bool GetBlob(const std::string table_name, int64_t key, char** ch,
-                 int64_t* size);
     std::vector<std::string>& GetBlobSchema(const std::string& name);
     BlobInfoResult GetBlobInfo(const std::string& name);
 
  private:
     BaseClient* client_;
-    std::vector<std::string> empty_vector_{};
+    std::vector<std::string> empty_vector_;
 };

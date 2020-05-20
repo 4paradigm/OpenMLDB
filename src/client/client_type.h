@@ -103,3 +103,9 @@ class BlobInfoResult {
     int64_t key_;
 };
 
+struct BlobOPResult {
+    int code_;
+    std::string msg_;
+
+};
+

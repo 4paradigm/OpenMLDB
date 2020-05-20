@@ -4,17 +4,19 @@
 
 #include "client/interclient_tools.h"
 
-bool PutBlob(BlobInfoResult& blobInfo, char* ch, int64_t len) { // NOLINT
+bool PutBlob(BlobInfoResult& blobInfo, BlobOPResult& result, // NOLINT
+             char* ch, int64_t len) {
     return blobInfo.client_->Put(blobInfo.tid_, 0, ch, len, &blobInfo.key_,
-                                    &blobInfo.msg_);
+                                    &result.msg_);
 }
 
-void GetBlob(BlobInfoResult& blobInfo, char** packet, int64_t* sz) { // NOLINT
+void GetBlob(BlobInfoResult& blobInfo, BlobOPResult& result, // NOLINT
+             char** packet, int64_t* sz) {
     butil::IOBuf buf;
     bool ok = blobInfo.client_->Get(blobInfo.tid_, 0, blobInfo.key_,
-                                    &blobInfo.msg_, &buf);
+                                    &result.msg_, &buf);
     if (!ok) {
-        blobInfo.code_ = -1;
+        result.code_ = -1;
         return;
     }
     *packet = reinterpret_cast<char*>(malloc(buf.size()));
@@ -28,6 +30,4 @@ void GetBlob(BlobInfoResult& blobInfo, char** packet, int64_t* sz) { // NOLINT
         start_pos += n;
         ch += n;
     }
-
-    return;
 }

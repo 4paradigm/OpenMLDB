@@ -34,13 +34,6 @@ int64_t ViewResult::GetInt(uint32_t idx) {
     return val;
 }
 
-void ViewResult::GetBlobData(char** packet, int64_t* sz) {
-    if (table_name_.empty() && client_ == nullptr) {
-        return;
-    }
-    client_->GetBlob(table_name_, curr_blob_key_, packet, sz);
-}
-
 BlobInfoResult ViewResult::GetBlobInfo() {
     if (table_name_.empty() && client_ == nullptr) {
         BlobInfoResult result;
@@ -407,7 +400,7 @@ BaseClient::BaseClient(
         tablets)
     : tablets_(tablets) {}
 
-RtidbClient::RtidbClient() : client_(nullptr) {}
+RtidbClient::RtidbClient() : client_(nullptr), empty_vector_() {}
 
 RtidbClient::~RtidbClient() {
     if (client_ != nullptr) {
@@ -704,69 +697,6 @@ bool RtidbClient::BatchQuery(
     }
     return tablet->BatchQuery(th->table_info->tid(), 0, ros_pb, data, count,
                               msg);
-}
-
-int RtidbClient::PutBlob(std::shared_ptr<TableHandler> th,
-                         std::map<std::string, std::string>* value,
-                         std::string* msg) {
-    if (!th->blobSuffix.empty() && th->table_info->blobs_size() < 1) {
-        return 0;
-    }
-    for (int32_t idx : th->blobSuffix) {
-        auto col = th->columns->Get(idx);
-        auto iter = value->find(col.name());
-        if (iter == value->end()) {
-            continue;
-        }
-        auto blob_server =
-            client_->GetBlobClient(th->table_info->blobs(0), msg);
-        int64_t key = 0;
-        bool ok =
-            blob_server->Put(th->table_info->tid(), 0, iter->second, &key, msg);
-        if (!ok) {
-            return -1;
-        }
-        iter->second = std::to_string(key);
-    }
-    return 0;
-}
-
-bool RtidbClient::GetBlob(const std::string table_name, int64_t key,
-                          char** data, int64_t* size) {
-    std::shared_ptr<TableHandler> th = client_->GetTableHandler(table_name);
-    if (th == nullptr) {
-        return false;
-    }
-    std::string msg;
-    std::shared_ptr<rtidb::client::BsClient> blob_server;
-    if (th->table_info->table_type() == rtidb::type::kObjectStore) {
-        if (th->partition.empty()) {
-            return false;
-        }
-        blob_server = client_->GetBlobClient(th->partition[0].leader, &msg);
-    } else {
-        blob_server = client_->GetBlobClient(th->table_info->blobs(0), &msg);
-    }
-    if (!blob_server) {
-        return false;
-    }
-    butil::IOBuf buf;
-    bool ok = blob_server->Get(th->table_info->tid(), 0, key, &msg, &buf);
-    if (!ok) {
-        return false;
-    }
-    *data = reinterpret_cast<char*>(malloc(buf.size()));
-    *size = buf.size();
-    char* ch = &(*data)[0];
-    int64_t remain_size = buf.size();
-    int64_t start_pos = 0;
-    while (remain_size > 0) {
-        int64_t n = buf.copy_to(static_cast<void*>(ch), buf.size(), start_pos);
-        remain_size -= n;
-        start_pos += n;
-        ch += n;
-    }
-    return true;
 }
 
 std::vector<std::string>& RtidbClient::GetBlobSchema(const std::string& name) {

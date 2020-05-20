@@ -17,7 +17,7 @@ def return_None(x):
 def return_EmptyStr(x):
   return str()
 
-type_map = {1:bool,2:int,3:int,4:int,5:float,6:float,7:date,8:int,13:str,14:str,15:int,100:return_None};
+type_map = {1:bool,2:int,3:int,4:int,5:float,6:float,7:date,8:int,13:str,14:str,15:int};
 # todo: current do not have blob type process function
 '''
 kBool = 1;
@@ -95,8 +95,7 @@ class RtidbResult:
       4:self.__data.GetInt64, 5:self.__data.GetFloat, 
       6:self.__data.GetDouble, 7:self.__data.GetDate,
       8:self.__data.GetTimestamp,13: lambda idx : self.__data.GetString(idx),
-      14:lambda idx : self.__data.GetString(idx), 15:self.__data.GetBlob,
-      100:return_None}
+      14:lambda idx : self.__data.GetString(idx), 15:self.__data.GetBlob}
     names = self.__data.GetColumnsName()
     self.__names = [x for x in names]
     self.__blobInfo = None
@@ -131,9 +130,10 @@ class RtidbResult:
                 raise Exception("erred at get blob server: {}".format(blobInfoResult.msg_))
               self.__blobInfo = blobInfoResult
             self.__blobInfo.key_ = blob_key
-            blob_data = interclient_tools.GetBlob(self.__blobInfo)
-            if self.__blobInfo.code_ != 0:
-              raise Exception("erred at get blob data {}".format(self.__blobInfo.msg_))
+            blobOPResult = interclient.BlobOPResult()
+            blob_data = interclient_tools.GetBlob(self.__blobInfo, blobOPResult)
+            if blobOPResult.code_ != 0:
+              raise Exception("erred at get blob data {}".format(blobOPResult.msg_))
             result.update({self.__names[idx]: blob_data})
           else:
             result.update({self.__names[idx]: self.__type_to_func[type](idx)})
@@ -164,9 +164,10 @@ class RTIDBClient:
         blobInfo = self.__client.GetBlobInfo(name)
         if blobInfo.code_ != 0:
           raise Exception("erred at get blobinfo: {}".format(blobInfo.msg_))
-      ok = interclient_tools.PutBlob(blobInfo, blobData, len(blobData))
+      blobOPResult = interclient.BlobOPResult()
+      ok = interclient_tools.PutBlob(blobInfo, blobOPResult, blobData, len(blobData))
       if not ok:
-        raise Exception("erred at put blob data: {}".format(BlobInfo.msg_))
+        raise Exception("erred at put blob data: {}".format(blobOPResult.msg_))
       value.update({k: str(blobInfo.key_)})
 
   def put(self, table_name: str, columns: map, write_option: WriteOption = None):
