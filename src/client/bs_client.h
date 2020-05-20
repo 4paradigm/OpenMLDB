@@ -36,9 +36,6 @@ class BsClient {
     bool Put(uint32_t tid, uint32_t pid, char* value, int64_t len,
              int64_t* key, std::string* msg);
 
-    bool Put(rtidb::blobserver::PutRequest* request, int64_t* key,
-             std::string* msg);
-
     bool Put(uint32_t tid, uint32_t pid, int64_t key,
              const std::string& value, std::string* msg);
 
