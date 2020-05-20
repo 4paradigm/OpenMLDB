@@ -36,8 +36,6 @@ kBlob = 15;
 
 NONETOKEN="None#*@!"
 
-byteNonToken = bytes(NONETOKEN, encoding="UTF-8")
-
 def buildReadFilter(filter):
   mid_rf = interclient.ReadFilter()
   mid_rf.column = filter.name
@@ -94,8 +92,8 @@ class RtidbResult:
       2:self.__data.GetInt16, 3:self.__data.GetInt32, 
       4:self.__data.GetInt64, 5:self.__data.GetFloat, 
       6:self.__data.GetDouble, 7:self.__data.GetDate,
-      8:self.__data.GetTimestamp,13: lambda idx : self.__data.GetString(idx),
-      14:lambda idx : self.__data.GetString(idx), 15:self.__data.GetBlob}
+      8:self.__data.GetTimestamp,13: self.__data.GetString,
+      14:: self.__data.GetString, 15:self.__data.GetBlob}
     names = self.__data.GetColumnsName()
     self.__names = [x for x in names]
     self.__blobInfo = None
