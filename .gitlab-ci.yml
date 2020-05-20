@@ -194,7 +194,7 @@ build_rtidb_pz:
         - tar zcf TitanSE-rtidb-${CI_COMMIT_SHA:0:8}.tar.gz TitanSE-rtidb
         - curl -T TitanSE-rtidb-${CI_COMMIT_SHA:0:8}.tar.gz ftp://172.27.12.154/pub/team_hpc/pz_rtidb/
     artifacts:
-        expire_in: 2h
+        expire_in: 3h
         paths:
             - build/bin/rtidb
     only:
@@ -207,12 +207,9 @@ java_ut_pz:
         - mkdir /rambuild
         - mount -t tmpfs -o size=3G tmpfs /rambuild
     script:
-        - source /root/.bashrc && sh tools/install_fesql.sh
         - ln -sf /depends/thirdparty thirdparty
         - ln -sf /depends/thirdsrc thirdsrc
         - bash steps/get_pz_fpga_deps.sh
-        - sed -i 's/\"Enable pz compression for ssd tables\"\ OFF/\"Enable pz compression for ssd tables\"\ ON/g' CMakeLists.txt
-        - source /root/.bashrc && bash steps/simple_compile.sh
         - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/java_ut.sh
         - source /root/.bashrc && bash steps/auto_test.sh
     after_script:
