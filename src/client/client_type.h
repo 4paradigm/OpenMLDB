@@ -106,6 +106,4 @@ class BlobInfoResult {
 struct BlobOPResult {
     int code_;
     std::string msg_;
-
 };
-
