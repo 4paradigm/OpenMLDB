@@ -24,7 +24,6 @@ object RowProjectPlan {
     val inputSchemaSlices = FesqlUtil.getOutputSchemaSlices(node.GetProducer(0))
     val outputSchemaSlices = FesqlUtil.getOutputSchemaSlices(node)
     val outputSchema = FesqlUtil.getSparkSchema(node.GetOutputSchema())
-
     // spark closure
     val projectConfig = ProjectConfig(
       functionName = node.project().fn_info().fn_name(),
@@ -47,6 +46,7 @@ object RowProjectPlan {
 
     SparkInstance.fromRDD(outputSchema, projectRDD)
   }
+
 
   def gen(ctx: PlanContext, node: PhysicalTableProjectNode, inputs: Seq[SparkInstance]): SparkInstance = {
     val inputInstance = inputs.head
