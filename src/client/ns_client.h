@@ -16,6 +16,8 @@
 #include <vector>
 
 #include "base/status.h"
+#include "sdk/dbms_sdk.h"
+#include "sdk/result_set_impl.h"
 #include "node/node_manager.h"
 #include "parser/parser.h"
 #include "plan/planner.h"
@@ -81,7 +83,7 @@ class NsClient {
     bool CreateTable(const ::rtidb::nameserver::TableInfo& table_info,
                      std::string& msg);  // NOLINT
 
-    bool CreateTable(const std::string& script,
+    std::shared_ptr<fesql::sdk::ResultSet> ExecuteSQL(const std::string& script,
                      std::string& msg);  // NOLINT
 
     bool DropTable(const std::string& name, std::string& msg);  // NOLINT
@@ -209,8 +211,8 @@ class NsClient {
  private:
     bool TransformToTableDef(
         const std::string& table_name,
-        const ::fesql::node::NodePointVector& column_desc_list,
-        ::rtidb::nameserver::TableInfo* table, ::rtidb::base::Status* status);
+        const fesql::node::NodePointVector& column_desc_list,
+        ::rtidb::nameserver::TableInfo* table, fesql::plan::Status* status);
 
  private:
     std::string endpoint_;

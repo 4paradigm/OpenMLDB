@@ -4258,6 +4258,11 @@ void HandleNSClientSetTablePartition(const std::vector<std::string>& parts,
     std::cout << "set table partition ok" << std::endl;
 }
 
+void HandleNsClientSQL(const std::string sql, ::rtidb::client::NsClient* client) {
+    std::string msg;
+    client->ExecuteSQL(sql, msg);
+}
+
 void HandleNSClientGetTablePartition(const std::vector<std::string>& parts,
                                      ::rtidb::client::NsClient* client) {
     if (parts.size() < 3) {
@@ -6525,11 +6530,13 @@ void StartNsClient() {
         return;
     }
     ::rtidb::client::NsClient client(endpoint);
+    
     if (client.Init() < 0) {
         std::cout << "client init failed" << std::endl;
         return;
     }
     std::string display_prefix = endpoint + "> ";
+    bool use_sql = false;
     while (true) {
         std::string buffer;
         if (!FLAGS_interactive) {
@@ -6550,6 +6557,15 @@ void StartNsClient() {
             if (buffer.empty()) {
                 continue;
             }
+        }
+        if (use_sql) {
+            if(buffer == "exit" || buffer == "quit") {
+                use_sql = false;
+                display_prefix = endpoint + "> ";
+            } else {
+                HandleNsClientSQL(buffer, &client);
+            }
+            continue;
         }
         std::vector<std::string> parts;
         ::rtidb::base::SplitString(buffer, " ", parts);
@@ -6645,6 +6661,9 @@ void StartNsClient() {
             HandleNsShowDb(parts, &client);
         } else if (parts[0] == "dropdb") {
             HandleNsDropDb(parts, &client);
+        } else if (parts[0] == "sql") {
+            use_sql = true;
+            display_prefix = endpoint + " SQL> ";
         } else if (parts[0] == "exit" || parts[0] == "quit") {
             std::cout << "bye" << std::endl;
             return;

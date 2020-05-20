@@ -197,7 +197,8 @@ bool NsClient::AddTableField(const std::string& table_name,
     return false;
 }
 
-bool NsClient::CreateTable(const std::string& script, std::string& msg) {
+std::shared_ptr<fesql::sdk::ResultSet> NsClient::ExecuteSQL(const std::string& script, std::string& msg) {
+    std::shared_ptr<fesql::sdk::ResultSetImpl> empty;
     fesql::node::NodeManager node_manager;
     fesql::parser::FeSQLParser parser;
     fesql::plan::SimplePlanner planner(&node_manager);
@@ -205,7 +206,55 @@ bool NsClient::CreateTable(const std::string& script, std::string& msg) {
     fesql::base::Status sql_status;
     fesql::node::NodePointVector parser_trees;
     parser.parse(script, parser_trees, &node_manager, sql_status);
-    return true;
+    if (0 != sql_status.code) {
+        LOG(WARNING) << sql_status.msg;
+        msg = sql_status.msg;
+        return empty;
+    }
+    fesql::node::PlanNodeList plan_trees;
+    planner.CreatePlanTree(parser_trees, plan_trees, sql_status);
+
+    if (0 != sql_status.code) {
+        msg = sql_status.msg;
+        LOG(WARNING) << msg;
+        return empty;
+    }
+
+    fesql::node::PlanNode *plan = plan_trees[0];
+
+    if (nullptr == plan) {
+        msg = "fail to execute plan : plan null";
+        LOG(WARNING) << msg;
+        return empty;
+    }
+
+    switch (plan->GetType()) {
+        case fesql::node::kPlanTypeCreate: {
+            fesql::node::CreatePlanNode *create =
+                dynamic_cast<fesql::node::CreatePlanNode *>(plan);
+            ::rtidb::nameserver::CreateTableRequest request;
+            ::rtidb::nameserver::GeneralResponse response;
+            ::rtidb::nameserver::TableInfo* table_info = request.mutable_table_info();
+            TransformToTableDef(create->GetTableName(),
+                                create->GetColumnDescList(), table_info,
+                                &sql_status);
+            if (0 != sql_status.code) {
+                msg = sql_status.msg;
+                LOG(WARNING) << msg;
+                return empty;
+            }
+            client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::CreateTable,
+                                    &request, &response, FLAGS_request_timeout_ms, 1);
+            msg = response.msg();
+            return empty;
+        }
+        default: {
+            msg = "fail to execute script with unSuppurt type" +
+                          fesql::node::NameOfPlanNodeType(plan->GetType());
+            LOG(WARNING) << msg;
+            return empty;
+        }
+    }
 }
 
 bool NsClient::CreateTable(const ::rtidb::nameserver::TableInfo& table_info,
@@ -881,8 +930,8 @@ bool NsClient::DeleteIndex(const std::string& table_name,
 
 bool NsClient::TransformToTableDef(
     const std::string& table_name,
-    const ::fesql::node::NodePointVector& column_desc_list,
-    ::rtidb::nameserver::TableInfo* table, ::rtidb::base::Status* status) {
+    const fesql::node::NodePointVector& column_desc_list,
+    ::rtidb::nameserver::TableInfo* table, fesql::plan::Status* status) {
     if (table == NULL || status == NULL) return false;
     return true;
 }
