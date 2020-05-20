@@ -54,6 +54,17 @@ def buildStrMap(m: map):
       mid_map.update({k: str(m[k])})
   return  mid_map
 
+def buildNoNoneStrMap(m: map):
+  mid_map = {}
+  for k in m:
+    if m[k] == None:
+        raise Exception("{} value is None, don't allow".format(k))
+    if isinstance(m[k], str):
+      mid_map.update({k: m[k]})
+    else:
+      mid_map.update({k: str(m[k])})
+  return  mid_map
+
 
 class WriteOption:
   def __init__(self, updateIfExist = True, updateIfEqual = True):
@@ -93,7 +104,7 @@ class RtidbResult:
       4:self.__data.GetInt64, 5:self.__data.GetFloat, 
       6:self.__data.GetDouble, 7:self.__data.GetDate,
       8:self.__data.GetTimestamp,13: self.__data.GetString,
-      14:: self.__data.GetString, 15:self.__data.GetBlob}
+      14: self.__data.GetString, 15:self.__data.GetBlob}
     names = self.__data.GetColumnsName()
     self.__names = [x for x in names]
     self.__blobInfo = None
@@ -187,7 +198,7 @@ class RTIDBClient:
       _wo.updateIfExist = defaultWriteOption.updateIfExist
       _wo.updateIfEqual = defaultWriteOption.updateIfEqual
     self.putBlob(table_name, value_columns)
-    cond = buildStrMap(condition_columns)
+    cond = buildNoNoneStrMap(condition_columns)
     v = buildStrMap(value_columns)
     ok = self.__client.Update(table_name, cond, v, _wo)
     if ok.code != 0:
@@ -195,7 +206,7 @@ class RTIDBClient:
     return True
 
   def __buildReadoption(self, read_option: ReadOption):
-    mid_map = buildStrMap(read_option.index)
+    mid_map = buildNoNoneStrMap(read_option.index)
     ro = interclient.ReadOption(mid_map)
     for filter in read_option.read_filter:
       mid_rf = buildReadFilter(filter)
@@ -228,7 +239,7 @@ class RTIDBClient:
     return RtidbResult(resp)
 
   def delete(self, table_name: str, condition_columns: map):
-    v = buildStrMap(condition_columns)
+    v = buildNoNoneStrMap(condition_columns)
     resp = self.__client.Delete(table_name, v)
     if resp.code != 0:
       raise Exception(resp.code, resp.msg)
