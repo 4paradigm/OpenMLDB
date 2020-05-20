@@ -207,6 +207,7 @@ java_ut_pz:
         - mkdir /rambuild
         - mount -t tmpfs -o size=3G tmpfs /rambuild
     script:
+        - source /root/.bashrc && sh tools/install_fesql.sh
         - ln -sf /depends/thirdparty thirdparty
         - ln -sf /depends/thirdsrc thirdsrc
         - bash steps/get_pz_fpga_deps.sh
