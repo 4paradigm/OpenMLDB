@@ -47,7 +47,7 @@ def buildStrMap(m: map):
   mid_map = {}
   for k in m:
     if m[k] == None:
-      continue
+      mid_map.update({k: NONETOKEN})
     if isinstance(m[k], str):
       mid_map.update({k: m[k]})
     else:
