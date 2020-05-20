@@ -17,6 +17,7 @@
 
 #ifndef SRC_VM_CATALOG_H_
 #define SRC_VM_CATALOG_H_
+#include <node/sql_node.h>
 #include <map>
 #include <memory>
 #include <string>
@@ -41,6 +42,56 @@ struct ColInfo {
     std::string name;
 };
 
+enum SourceType { kSourceColumn, kSourceConst, kSourceNone };
+class ColumnSource;
+typedef std::vector<ColumnSource> ColumnSourceList;
+class ColumnSource {
+ public:
+    ColumnSource()
+        : type_(kSourceNone),
+          schema_idx_(0),
+          column_idx_(0),
+          column_name_(""),
+          const_value_() {}
+    explicit ColumnSource(const node::ConstNode* node)
+        : type_(kSourceConst),
+          schema_idx_(0),
+          column_idx_(0),
+          column_name_(""),
+          const_value_(node) {}
+    ColumnSource(uint32_t schema_idx, uint32_t column_idx,
+                 const std::string& column_name)
+        : type_(kSourceColumn),
+          schema_idx_(schema_idx),
+          column_idx_(column_idx),
+          column_name_(column_name),
+          const_value_() {}
+
+    const std::string ToString() const {
+        switch (type_) {
+            case kSourceColumn:
+                return "<-[" + std::to_string(schema_idx_) + ":" +
+                       std::to_string(column_idx_) + "]";
+            case kSourceConst:
+                return "<-" + node::ExprString(const_value_);
+            case kSourceNone:
+                return "->None";
+        }
+    }
+    const SourceType type() const { return type_; }
+    const uint32_t schema_idx() const { return schema_idx_; }
+    const uint32_t column_idx() const { return column_idx_; }
+    const std::string& column_name() const { return column_name_; }
+    const node::ConstNode* const_value() const { return const_value_; }
+
+ private:
+    SourceType type_;
+    uint32_t schema_idx_;
+    uint32_t column_idx_;
+    std::string column_name_;
+    const node::ConstNode* const_value_;
+};
+
 struct IndexSt {
     std::string name;
     uint32_t index;
@@ -52,7 +103,60 @@ typedef ::google::protobuf::RepeatedPtrField<::fesql::type::ColumnDef> Schema;
 typedef ::google::protobuf::RepeatedPtrField<::fesql::type::IndexDef> IndexList;
 typedef std::map<std::string, ColInfo> Types;
 typedef std::map<std::string, IndexSt> IndexHint;
-typedef std::vector<std::pair<const std::string, const Schema*>> NameSchemaList;
+
+struct SchemaSource {
+ public:
+    explicit SchemaSource(const vm::Schema* schema)
+        : table_name_(""), schema_(schema), sources_(nullptr) {}
+    SchemaSource(const std::string& table_name, const vm::Schema* schema)
+        : table_name_(table_name), schema_(schema), sources_(nullptr) {}
+    SchemaSource(const std::string& table_name, const vm::Schema* schema,
+                 const vm::ColumnSourceList* sources)
+        : table_name_(table_name), schema_(schema), sources_(sources) {}
+    std::string table_name_;
+    const vm::Schema* schema_;
+    const vm::ColumnSourceList* sources_;
+};
+
+struct SchemaSourceList {
+    void AddSchemaSource(const vm::Schema* schema) {
+        schema_source_list_.push_back(SchemaSource("", schema));
+    }
+    void AddSchemaSource(const std::string& table_name,
+                         const vm::Schema* schema) {
+        schema_source_list_.push_back(SchemaSource(table_name, schema));
+    }
+
+    void AddSchemaSource(const std::string& table_name,
+                         const vm::Schema* schema,
+                         const vm::ColumnSourceList* sources) {
+        schema_source_list_.push_back(
+            SchemaSource(table_name, schema, sources));
+    }
+    void AddSchemaSources(const SchemaSourceList& sources) {
+        for (auto source : sources.schema_source_list_) {
+            schema_source_list_.push_back(source);
+        }
+    }
+
+    const bool Empty() const {
+        return schema_source_list_.empty();
+    }
+    const std::vector<SchemaSource>& schema_source_list() const {
+        return schema_source_list_;
+    }
+    const vm::SchemaSource& GetSchemaSourceSlice(size_t idx) const {
+        return schema_source_list_[idx];
+    }
+    const vm::Schema* GetSchemaSlice(size_t idx) const {
+        return schema_source_list_[idx].schema_;
+    }
+    const size_t GetSchemaSourceListSize() const {
+        return schema_source_list_.size();
+    }
+
+    std::vector<SchemaSource> schema_source_list_;
+};
 
 class PartitionHandler;
 
@@ -86,7 +190,7 @@ class RowHandler : public DataHandler {
     const uint64_t GetCount() override { return 0; }
     Row At(uint64_t pos) override { return Row(); }
     const HandlerType GetHanlderType() override { return kRowHandler; }
-    virtual const Row& GetValue() const = 0;
+    virtual const Row& GetValue() = 0;
     const std::string GetHandlerTypeName() override { return "RowHandler"; }
 };
 

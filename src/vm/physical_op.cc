@@ -45,9 +45,8 @@ bool PhysicalUnaryNode::InitSchema() {
         return false;
     }
     output_schema_.CopyFrom(producers_[0]->output_schema_);
-    for (auto pair : producers_[0]->GetOutputNameSchemaList()) {
-        output_name_schema_list_.push_back(pair);
-    }
+    output_name_schema_list_.AddSchemaSources(
+        producers_[0]->GetOutputNameSchemaList());
     PrintSchema();
     return true;
 }
@@ -113,7 +112,13 @@ void PhysicalProjectNode::Print(std::ostream& output,
     PrintChildren(output, tab);
 }
 bool PhysicalProjectNode::InitSchema() {
-    output_name_schema_list_.push_back(std::make_pair("", &output_schema_));
+    output_name_schema_list_.AddSchemaSource("", &output_schema_, &sources_);
+    PrintSchema();
+    return true;
+}
+bool PhysicalSimpleProjectNode::InitSchema() {
+    output_name_schema_list_.AddSchemaSource("", &output_schema_,
+                                             &project_.column_sources());
     PrintSchema();
     return true;
 }
@@ -130,7 +135,22 @@ PhysicalTableProjectNode* PhysicalTableProjectNode::CastFrom(
     PhysicalOpNode* node) {
     return dynamic_cast<PhysicalTableProjectNode*>(node);
 }
+PhysicalSimpleProjectNode* PhysicalSimpleProjectNode::CastFrom(
+    PhysicalOpNode* node) {
+    return dynamic_cast<PhysicalSimpleProjectNode*>(node);
+}
+void PhysicalSimpleProjectNode::Print(std::ostream& output,
+                                      const std::string& tab) const {
+    PhysicalOpNode::Print(output, tab);
+    output << "(" << project_.ToString();
+    if (limit_cnt_ > 0) {
+        output << ", limit=" << limit_cnt_;
+    }
+    output << ")";
 
+    output << "\n";
+    PrintChildren(output, tab);
+}
 PhysicalWindowAggrerationNode* PhysicalWindowAggrerationNode::CastFrom(
     PhysicalOpNode* node) {
     return dynamic_cast<PhysicalWindowAggrerationNode*>(node);
@@ -177,7 +197,7 @@ void PhysicalWindowAggrerationNode::Print(std::ostream& output,
             output << "\n";
             output << tab << INDENT << "+-UNION("
                    << window_union.second.ToString() << ")\n";
-            window_union.first->Print(output, tab + INDENT + INDENT);
+            window_union.first->Print(output, tab + INDENT + INDENT + INDENT);
         }
     }
     output << "\n";
@@ -208,12 +228,10 @@ bool PhysicalJoinNode::InitSchema() {
     }
     output_schema_.CopyFrom(producers_[0]->output_schema_);
     output_schema_.MergeFrom(producers_[1]->output_schema_);
-    for (auto pair : producers_[0]->GetOutputNameSchemaList()) {
-        output_name_schema_list_.push_back(pair);
-    }
-    for (auto right_pair : producers_[1]->GetOutputNameSchemaList()) {
-        output_name_schema_list_.push_back(right_pair);
-    }
+    output_name_schema_list_.AddSchemaSources(
+        producers_[0]->GetOutputNameSchemaList());
+    output_name_schema_list_.AddSchemaSources(
+        producers_[1]->GetOutputNameSchemaList());
     PrintSchema();
     return true;
 }
@@ -273,8 +291,8 @@ bool PhysicalDataProviderNode::InitSchema() {
         auto schema = table_handler_->GetSchema();
         if (schema) {
             output_schema_.CopyFrom(*schema);
-            output_name_schema_list_.push_back(std::make_pair(
-                table_handler_->GetName(), table_handler_->GetSchema()));
+            output_name_schema_list_.AddSchemaSource(
+                table_handler_->GetName(), table_handler_->GetSchema());
             PrintSchema();
             return true;
         } else {
@@ -289,14 +307,17 @@ bool PhysicalDataProviderNode::InitSchema() {
 void PhysicalOpNode::PrintSchema() {
     std::stringstream ss;
     ss << PhysicalOpTypeName(type_) << " output name schema list: \n";
-    for (auto pair : GetOutputNameSchemaList()) {
-        ss << "pair table: " << pair.first << "\n";
-        for (int32_t i = 0; i < pair.second->size(); i++) {
+    for (auto pair : GetOutputNameSchemaList().schema_source_list_) {
+        ss << "pair table: " << pair.table_name_ << "\n";
+        for (int32_t i = 0; i < pair.schema_->size(); i++) {
             if (i > 0) {
                 ss << "\n";
             }
-            const type::ColumnDef& column = pair.second->Get(i);
+            const type::ColumnDef& column = pair.schema_->Get(i);
             ss << column.name() << " " << type::Type_Name(column.type());
+            if (nullptr != pair.sources_) {
+                ss << " " << pair.sources_->at(i).ToString();
+            }
         }
         ss << "\n";
     }
@@ -312,9 +333,8 @@ void PhysicalOpNode::PrintSchema() {
 }
 bool PhysicalUnionNode::InitSchema() {
     output_schema_.CopyFrom(producers_[0]->output_schema_);
-    for (auto pair : producers_[0]->GetOutputNameSchemaList()) {
-        output_name_schema_list_.push_back(pair);
-    }
+    output_name_schema_list_.AddSchemaSources(
+        producers_[0]->GetOutputNameSchemaList());
     PrintSchema();
     return true;
 }
@@ -334,7 +354,7 @@ void PhysicalRequestUnionNode::Print(std::ostream& output,
             output << "\n";
             output << tab << INDENT << "+-UNION("
                    << window_union.second.ToString() << ")\n";
-            window_union.first->Print(output, tab + INDENT + INDENT);
+            window_union.first->Print(output, tab + INDENT + INDENT + INDENT);
         }
     }
     //    if (!window_joins_.Empty()) {
@@ -351,9 +371,8 @@ void PhysicalRequestUnionNode::Print(std::ostream& output,
 }
 bool PhysicalRequestUnionNode::InitSchema() {
     output_schema_.CopyFrom(producers_[0]->output_schema_);
-    for (auto pair : producers_[0]->GetOutputNameSchemaList()) {
-        output_name_schema_list_.push_back(pair);
-    }
+    output_name_schema_list_.AddSchemaSources(
+        producers_[0]->GetOutputNameSchemaList());
     PrintSchema();
     return true;
 }
@@ -379,12 +398,11 @@ bool PhysicalRequestJoinNode::InitSchema() {
     }
     output_schema_.CopyFrom(producers_[0]->output_schema_);
     output_schema_.MergeFrom(producers_[1]->output_schema_);
-    for (auto pair : producers_[0]->GetOutputNameSchemaList()) {
-        output_name_schema_list_.push_back(pair);
-    }
-    for (auto right_pair : producers_[1]->GetOutputNameSchemaList()) {
-        output_name_schema_list_.push_back(right_pair);
-    }
+    output_name_schema_list_.AddSchemaSources(
+        producers_[0]->GetOutputNameSchemaList());
+    output_name_schema_list_.AddSchemaSources(
+        producers_[1]->GetOutputNameSchemaList());
+
     PrintSchema();
     return true;
 }

@@ -15,9 +15,9 @@
  * limitations under the License.
  */
 
+#include "codegen/ir_base_builder.h"
 #include <memory>
 #include <utility>
-#include "codegen/ir_base_builder.h"
 #include "gtest/gtest.h"
 
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
@@ -34,8 +34,8 @@
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/GVN.h"
 
-using namespace llvm;  // NOLINT
-using namespace llvm::orc; // NOLINT
+using namespace llvm;       // NOLINT
+using namespace llvm::orc;  // NOLINT
 
 ExitOnError ExitOnErr;
 
@@ -68,8 +68,7 @@ TEST_F(IRBaseBuilderTest, test_load_float) {
     builder.CreateRet(output);
     m->print(::llvm::errs(), NULL);
     auto J = ExitOnErr(LLJITBuilder().create());
-    ExitOnErr(J->addIRModule(
-        std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
+    ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
     auto load_fn_jit = ExitOnErr(J->lookup("load_fn"));
     float (*decode)(int8_t *) = (float (*)(int8_t *))load_fn_jit.getAddress();
     float *test = new float[2];
@@ -101,8 +100,7 @@ TEST_F(IRBaseBuilderTest, test_load_int64) {
     builder.CreateRet(output);
     m->print(::llvm::errs(), NULL);
     auto J = ExitOnErr(LLJITBuilder().create());
-    ExitOnErr(J->addIRModule(
-        std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
+    ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
     auto load_fn_jit = ExitOnErr(J->lookup("load_fn"));
     int64_t (*decode)(int8_t *) =
         (int64_t(*)(int8_t *))load_fn_jit.getAddress();

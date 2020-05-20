@@ -321,6 +321,11 @@ bool SQLCase::CreateTableInfoFromYamlNode(const YAML::Node& schema_data,
         boost::trim(table->index_);
     }
 
+    if (schema_data["order"]) {
+        table->order_ = schema_data["order"].as<std::string>();
+        boost::trim(table->order_);
+    }
+
     if (schema_data["data"]) {
         table->data_ = schema_data["data"].as<std::string>();
         boost::trim(table->data_);
@@ -375,6 +380,16 @@ bool SQLCase::CreateSQLCasesFromYaml(
                 sql_case.mode_ = "batch";
             }
 
+            if (sql_case_node["batch_plan"]) {
+                sql_case.batch_plan_ =
+                    sql_case_node["batch_plan"].as<std::string>();
+                boost::trim(sql_case.batch_plan_);
+            }
+            if (sql_case_node["request_plan"]) {
+                sql_case.request_plan_ =
+                    sql_case_node["request_plan"].as<std::string>();
+                boost::trim(sql_case.request_plan_);
+            }
             if (!filter_modes.empty()) {
                 bool need_filter = false;
                 for (auto filter_mode : filter_modes) {

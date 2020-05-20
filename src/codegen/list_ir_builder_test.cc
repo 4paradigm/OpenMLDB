@@ -193,7 +193,7 @@ void GetListAtPos(T* result, const ::fesql::type::Type& type,
     // add codec
     ::fesql::vm::InitCodecSymbol(jd, mi);
     ExitOnErr(J->addIRModule(
-        std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
+        ThreadSafeModule(std::move(m), std::move(ctx))));
     auto load_fn_jit = ExitOnErr(J->lookup("fn"));
     T(*decode)
     (int8_t*, int32_t) =
@@ -384,7 +384,7 @@ void GetListIterator(T expected, const ::fesql::type::Type& type,
     ::fesql::udf::InitUDFSymbol(jd, mi);
     ::fesql::vm::InitCodecSymbol(jd, mi);
     ExitOnErr(J->addIRModule(
-        std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
+        ThreadSafeModule(std::move(m), std::move(ctx))));
     auto load_fn_jit = ExitOnErr(J->lookup("fn"));
     T(*decode)
     (int8_t*) = reinterpret_cast<T (*)(int8_t*)>(load_fn_jit.getAddress());
@@ -514,7 +514,7 @@ void GetListIteratorNext(T expected, const ::fesql::type::Type& type,
     // add codec
     ::fesql::vm::InitCodecSymbol(jd, mi);
     ExitOnErr(J->addIRModule(
-        std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
+        ThreadSafeModule(std::move(m), std::move(ctx))));
     auto load_fn_jit = ExitOnErr(J->lookup("fn"));
     T(*decode)
     (int8_t*) = reinterpret_cast<T (*)(int8_t*)>(load_fn_jit.getAddress());

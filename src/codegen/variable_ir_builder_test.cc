@@ -61,7 +61,7 @@ void MutableVariableCheck(::fesql::node::DataType type, V1 value1, V1 result) {
     m->print(::llvm::errs(), NULL, true, true);
     auto J = ExitOnErr(LLJITBuilder().create());
     ExitOnErr(J->addIRModule(
-        std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
+        ThreadSafeModule(std::move(m), std::move(ctx))));
     auto load_fn_jit = ExitOnErr(J->lookup("load_fn"));
     V1 (*decode)(V1) = (V1(*)(V1))load_fn_jit.getAddress();
     V1 ret = decode(value1);
@@ -102,7 +102,7 @@ void ArrayVariableCheck(node::DataType type, V1 *array, int pos, V1 exp) {
     m->print(::llvm::errs(), NULL, true, true);
     auto J = ExitOnErr(LLJITBuilder().create());
     ExitOnErr(J->addIRModule(
-        std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
+        ThreadSafeModule(std::move(m), std::move(ctx))));
     auto load_fn_jit = ExitOnErr(J->lookup("load_fn"));
     V1 (*decode)(V1[]) = (V1(*)(V1 *))load_fn_jit.getAddress();
     V1 ret = decode(array);

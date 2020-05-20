@@ -347,17 +347,16 @@ INSTANTIATE_TEST_CASE_P(
             "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join "
             "t2 on "
             " t1.col1 = t2.col2 and t2.col5 >= t1.col5;",
-            "PROJECT(type=RowProject)\n"
+            "SIMPLE_PROJECT(sources=([0]<-[0:1], [1]<-[1:2])\n"
             "  REQUEST_JOIN(type=LastJoin, condition=t2.col5 >= t1.col5, "
-            "left_keys=(t1.col1), right_keys=(t2.col2), "
-            "index_keys=)\n"
+            "left_keys=(t1.col1), right_keys=(t2.col2), index_keys=)\n"
             "    DATA_PROVIDER(request=t1)\n"
             "    DATA_PROVIDER(table=t2)"),
         std::make_pair(
             "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join "
             "t2 on "
             " t1.col1 = t2.col1 and t2.col5 >= t1.col5;",
-            "PROJECT(type=RowProject)\n"
+            "SIMPLE_PROJECT(sources=([0]<-[0:1], [1]<-[1:2])\n"
             "  REQUEST_JOIN(type=LastJoin, condition=t2.col5 >= t1.col5, "
             "left_keys=(), right_keys=(), index_keys=(t1.col1))\n"
             "    DATA_PROVIDER(request=t1)\n"
@@ -430,7 +429,7 @@ INSTANTIATE_TEST_CASE_P(
             "-3, 0), index_keys=(col1))\n"
             "      +-UNION(partition_keys=(col1), orders=(col5) DESC, "
             "range=(col5, -3, 0), index_keys=)\n"
-            "        DATA_PROVIDER(table=t3)\n"
+            "          DATA_PROVIDER(table=t3)\n"
             "      DATA_PROVIDER(request=t1)\n"
             "      DATA_PROVIDER(type=Partition, table=t1, index=index1)"),
         // 1
@@ -443,9 +442,10 @@ INSTANTIATE_TEST_CASE_P(
             "  PROJECT(type=Aggregation, limit=10)\n"
             "    REQUEST_UNION(partition_keys=(), orders=() DESC, range=(col5, "
             "-3, 0), index_keys=(col1,col2))\n"
-            "      +-UNION(partition_keys=(col1,col2), orders=(col5) DESC, "
-            "range=(col5, -3, 0), index_keys=)\n"
-            "        DATA_PROVIDER(table=t3)\n"
+            "      +-UNION(partition_keys=(col1), orders=() DESC, range=(col5, "
+            "-3, 0), index_keys=(col2))\n"
+            "          DATA_PROVIDER(type=Partition, table=t3, "
+            "index=index2_t3)\n"
             "      DATA_PROVIDER(request=t1)\n"
             "      DATA_PROVIDER(type=Partition, table=t1, index=index12)"),
         std::make_pair(
@@ -459,7 +459,7 @@ INSTANTIATE_TEST_CASE_P(
             "range=(col5, -3, 0), index_keys=(col1))\n"
             "      +-UNION(partition_keys=(col1), orders=(col5) DESC, "
             "range=(col5, -3, 0), index_keys=)\n"
-            "        DATA_PROVIDER(table=t3)\n"
+            "          DATA_PROVIDER(table=t3)\n"
             "      DATA_PROVIDER(request=t1)\n"
             "      DATA_PROVIDER(type=Partition, table=t1, "
             "index=index1)")));

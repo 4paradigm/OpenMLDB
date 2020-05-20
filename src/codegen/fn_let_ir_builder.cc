@@ -24,19 +24,9 @@
 namespace fesql {
 namespace codegen {
 
-RowFnLetIRBuilder::RowFnLetIRBuilder(const vm::Schema& schema,
+RowFnLetIRBuilder::RowFnLetIRBuilder(const vm::SchemaSourceList& schema_sources,
                                      ::llvm::Module* module)
-    : schema_context_({std::make_pair("", &schema)}), module_(module) {}
-
-RowFnLetIRBuilder::RowFnLetIRBuilder(const std::string& table_name,
-                                     const vm::Schema& schema,
-                                     ::llvm::Module* module)
-    : schema_context_({std::make_pair(table_name, &schema)}), module_(module) {}
-RowFnLetIRBuilder::RowFnLetIRBuilder(
-    const std::vector<std::pair<const std::string, const vm::Schema*>>&
-        table_schema_list,
-    ::llvm::Module* module)
-    : schema_context_(table_schema_list), module_(module) {}
+    : schema_context_(schema_sources), module_(module) {}
 RowFnLetIRBuilder::~RowFnLetIRBuilder() {}
 
 /**
@@ -49,7 +39,9 @@ RowFnLetIRBuilder::~RowFnLetIRBuilder() {}
  */
 bool RowFnLetIRBuilder::Build(
     const std::string& name, const node::PlanNodeList& projects,
-    vm::Schema* output_schema) {  // NOLINT (runtime/references)
+    vm::Schema* output_schema,
+    vm::ColumnSourceList*
+        output_column_sources) {  // NOLINT (runtime/references)
     ::llvm::Function* fn = NULL;
     std::string output_ptr_name = "output_ptr_name";
     ::llvm::StringRef name_ref(name);
@@ -126,7 +118,8 @@ bool RowFnLetIRBuilder::Build(
                     auto column_ref = dynamic_cast<node::ColumnRefNode*>(expr);
                     if (!BuildProject(index, column_ref,
                                       column_ref->GetColumnName(), &outputs,
-                                      expr_ir_builder, output_schema, status)) {
+                                      expr_ir_builder, output_schema,
+                                      output_column_sources, status)) {
                         return false;
                     }
                     index++;
@@ -136,7 +129,8 @@ bool RowFnLetIRBuilder::Build(
             default: {
                 std::string col_name = pp_node->GetName();
                 if (!BuildProject(index, sql_node, col_name, &outputs,
-                                  expr_ir_builder, output_schema, status)) {
+                                  expr_ir_builder, output_schema,
+                                  output_column_sources, status)) {
                     return false;
                 }
                 index++;
@@ -213,8 +207,10 @@ bool RowFnLetIRBuilder::BuildProject(
     const uint32_t index, const node::ExprNode* expr,
     const std::string& col_name, std::map<uint32_t, ::llvm::Value*>* outputs,
     ExprIRBuilder& expr_ir_builder, vm::Schema* output_schema,  // NOLINT
-    base::Status& status) {                                     // NOLINT
+    vm::ColumnSourceList* output_column_sources,
+    base::Status& status) {  // NOLINT
     ::llvm::Value* expr_out_val = NULL;
+
     bool ok = expr_ir_builder.Build(expr, &expr_out_val, status);
     if (!ok) {
         LOG(WARNING) << "fail to codegen project expression: " << status.msg;
@@ -233,8 +229,26 @@ bool RowFnLetIRBuilder::BuildProject(
     ::fesql::type::ColumnDef* cdef = output_schema->Add();
     cdef->set_name(col_name);
     cdef->set_type(ctype);
+    switch (expr->GetExprType()) {
+        case fesql::node::kExprColumnRef: {
+            const ::fesql::node::ColumnRefNode* column_expr =
+                (const ::fesql::node::ColumnRefNode*)expr;
+            output_column_sources->push_back(
+                schema_context_.ColumnSourceResolved(
+                    column_expr->GetRelationName(),
+                    column_expr->GetColumnName()));
+            break;
+        }
+        case fesql::node::kExprPrimary: {
+            auto const_expr = dynamic_cast<const node::ConstNode*>(expr);
+            output_column_sources->push_back(vm::ColumnSource(const_expr));
+            break;
+        }
+        default: {
+            output_column_sources->push_back(vm::ColumnSource());
+        }
+    }
     return true;
 }
-
 }  // namespace codegen
 }  // namespace fesql

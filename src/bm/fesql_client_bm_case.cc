@@ -404,7 +404,6 @@ void WINDOW_CASE0_QUERY(benchmark::State *state_ptr, MODE mode,
 void GROUPBY_CASE0_QUERY(benchmark::State *state_ptr, MODE mode,
                         bool is_batch_mode, int64_t group_size,
                         int64_t window_max_size) {
-    int64_t record_size = group_size * window_max_size;
     std::string select_sql =
         "SELECT "
         "sum(col_i32) \n"

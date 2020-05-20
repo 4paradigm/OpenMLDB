@@ -11,12 +11,12 @@
 namespace fesql {
 namespace vm {
 vm::SchemasContext::SchemasContext(
-    const vm::NameSchemaList& table_schema_list) {
+    const vm::SchemaSourceList& table_schema_list) {
     uint32_t idx = 0;
-    for (auto iter = table_schema_list.cbegin();
-         iter != table_schema_list.cend(); iter++) {
-        RowSchemaInfo info = {
-            .idx_ = idx, .table_name_ = iter->first, .schema_ = iter->second};
+    for (auto iter = table_schema_list.schema_source_list_.cbegin();
+         iter != table_schema_list.schema_source_list_.cend(); iter++) {
+        RowSchemaInfo info(idx, iter->table_name_, iter->schema_,
+                           iter->sources_);
         row_schema_info_list_.push_back(info);
         // init table -> context idx map
         if (!info.table_name_.empty()) {
@@ -216,6 +216,67 @@ bool SchemasContext::ColumnRefResolved(const std::string& relation_name,
         *info = &row_schema_info_list_[col_context_id];
         return true;
     }
+}
+
+const std::string SchemasContext::SourceColumnNameResolved(
+    node::ColumnRefNode* column) {
+    std::string column_name = column->GetColumnName();
+    if (!Empty()) {
+        auto source = ColumnSourceResolved(column->GetRelationName(),
+                                           column->GetColumnName());
+        if (vm::kSourceColumn == source.type()) {
+            column_name = row_schema_info_list_[source.schema_idx()]
+                              .sources_->at(source.column_idx())
+                              .column_name();
+        }
+    }
+    return column_name;
+}
+vm::ColumnSource SchemasContext::ColumnSourceResolved(
+    const std::string& relation_name, const std::string& col_name) const {
+    const RowSchemaInfo* row_schema_info;
+    if (!ColumnRefResolved(relation_name, col_name, &row_schema_info)) {
+        LOG(WARNING) << "Resolve column expression failed";
+        return ColumnSource();
+    }
+    int32_t column_idx =
+        ColumnIndexResolved(col_name, row_schema_info->schema_);
+    if (-1 == column_idx) {
+        return ColumnSource();
+    }
+    return ColumnSource(row_schema_info->idx_, column_idx, col_name);
+}
+
+int32_t SchemasContext::ColumnIndexResolved(const std::string& column,
+                                            const Schema* schema) const {
+    int32_t column_idx = -1;
+    for (int i = 0; i < schema->size(); ++i) {
+        if (schema->Get(i).name() == column) {
+            column_idx = i;
+            break;
+        }
+    }
+    return column_idx;
+}
+
+int32_t SchemasContext::ColumnOffsetResolved(
+    const std::string& relation_name, const std::string& col_name) const {
+    const RowSchemaInfo* row_schema_info;
+    if (!ColumnRefResolved(relation_name, col_name, &row_schema_info)) {
+        LOG(WARNING) << "Resolve column expression failed";
+        return -1;
+    }
+
+    int32_t column_index =
+        ColumnIndexResolved(col_name, row_schema_info->schema_);
+    if (-1 == column_index) {
+        return -1;
+    }
+    int offset = column_index;
+    for (int i = 0; i < row_schema_info->idx_; ++i) {
+        offset += this->row_schema_info_list_[i].schema_->size();
+    }
+    return offset;
 }
 
 }  // namespace vm

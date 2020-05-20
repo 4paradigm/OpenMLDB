@@ -14,8 +14,7 @@ class PhysicalOpTest : public ::testing::Test {
     PhysicalOpTest() {}
     ~PhysicalOpTest() {}
 };
-TEST_F(PhysicalOpTest, test) {
-}
+TEST_F(PhysicalOpTest, test) {}
 }  // namespace vm
 }  // namespace fesql
 int main(int argc, char** argv) {

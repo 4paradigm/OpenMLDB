@@ -1,7 +1,7 @@
 SQLCases:
   - id: 1
     desc: Group By Int16, Group未命中索引
-    mode: batch
+    mode: request-unsupport
     db: db1
     sql: |
       %%fun
@@ -33,7 +33,7 @@ SQLCases:
         5, 3, 3.3, 33.3, 10, 3
   - id: 2
     desc: Group By Int16, Group命中索引
-    mode: batch
+    mode: request-unsupport
     db: db1
     sql: |
       %%fun
@@ -65,7 +65,7 @@ SQLCases:
         5, 3, 3.3, 33.3, 10, 3
   - id: 3
     desc: Group By 字符串, Group未命中索引
-    mode: batch
+    mode: request-unsupport
     db: db1
     sql: |
       %%fun
@@ -98,7 +98,7 @@ SQLCases:
         0, 3, 3.3, 33.3, 10, 3
   - id: 4
     desc: Group By 字符串, Group命中索引
-    mode: batch
+    mode: request-unsupport
     db: db1
     sql: |
       %%fun

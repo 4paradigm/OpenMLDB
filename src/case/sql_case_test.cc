@@ -295,21 +295,27 @@ TEST_F(SQLCaseTest, ExtractSQLCase) {
         "0, 5, 55, 5.5, 55.5, 3, "
         "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
         "a";
+    const std::string order = "col1";
     {
-        SQLCase::TableInfo table_data = {
-            .name_ = "", .schema_ = schema, .index_ = index, .data_ = data};
+        SQLCase::TableInfo table_data = {.name_ = "",
+                                         .schema_ = schema,
+                                         .index_ = index,
+                                         .data_ = data,
+                                         .order_ = order};
         sql_case.AddInput(table_data);
     }
 
-    SQLCase::TableInfo table_data;
-    table_data.name_ = "";
-    table_data.schema_ =
-        "f0:string, f1:float, f2:double, f3:int16, f4:int32, f5:int64, "
-        "f6:timestamp";
-    table_data.data_ =
-        "A, 1.1, 2.2, 3, 4, 5, 1587647803000\n"
-        "BB, 11.1, 22.2, 30, 40, 50, 1587647804000";
-    sql_case.set_output(table_data);
+    {
+        SQLCase::TableInfo table_data;
+        table_data.name_ = "";
+        table_data.schema_ =
+            "f0:string, f1:float, f2:double, f3:int16, f4:int32, f5:int64, "
+            "f6:timestamp";
+        table_data.data_ =
+            "A, 1.1, 2.2, 3, 4, 5, 1587647803000\n"
+            "BB, 11.1, 22.2, 30, 40, 50, 1587647804000";
+        sql_case.set_output(table_data);
+    }
 
     // Check Data Schema
     {
@@ -539,6 +545,7 @@ TEST_F(SQLCaseTest, ExtractYamlSQLCase) {
             sql_case.output().schema_,
             "col0:string, col1:int32, col2:int16, col3:float, col4:double, "
             "col5:int64, col6:string");
+        ASSERT_EQ(sql_case.output().order_, "col1");
         ASSERT_EQ(sql_case.output().data_,
                   "0, 1, 5, 1.1, 11.1, 1, 1\n0, 2, 5, 2.2, 22.2, 2, 22\n0, 3, "
                   "55, 3.3, "
@@ -570,6 +577,7 @@ TEST_F(SQLCaseTest, ExtractYamlSQLCase) {
             sql_case.output().schema_,
             "col0:string, col1:int32, col2:int16, col3:float, col4:double, "
             "col5:int64, col6:string");
+        ASSERT_EQ(sql_case.output().order_, "");
         ASSERT_EQ(sql_case.output().data_,
                   "0, 1, 5, 1.1, 11.1, 1, 1\n0, 2, 5, 2.2, 22.2, 2, 22\n0, 3, "
                   "55, 3.3, "
@@ -605,6 +613,7 @@ TEST_F(SQLCaseTest, ExtractYamlSQLCase) {
                   "0, 1, 5, 1.1, 11.1, 1, 1\n0, 2, 5, 2.2, 22.2, 2, 22");
         ASSERT_EQ(sql_case.output().schema_,
                   "col0:string, col1:int32, col2:int16, col6:string");
+        ASSERT_EQ(sql_case.output().order_, "");
         ASSERT_EQ(sql_case.output().data_, "0, 3, 5, 1\n0, 4, 5, 22");
     }
 }

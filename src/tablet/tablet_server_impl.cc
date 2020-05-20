@@ -48,7 +48,7 @@ bool TabletServerImpl::Init() {
         LOG(WARNING) << "fail to init catalog ";
         return false;
     }
-    engine_ = std::move(std::unique_ptr<vm::Engine>(new vm::Engine(catalog_)));
+    engine_ = std::unique_ptr<vm::Engine>(new vm::Engine(catalog_));
     if (FLAGS_enable_keep_alive) {
         dbms_ch_ = new ::brpc::Channel();
         brpc::ChannelOptions options;

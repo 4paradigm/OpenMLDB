@@ -15,30 +15,26 @@
 #include "codec/fe_row_codec.h"
 #include "codec/row.h"
 #include "vm/catalog.h"
-#include "vm/mem_catalog.h"
 #include "vm/physical_op.h"
 
 namespace fesql {
 namespace vm {
 
 class CoreAPI;
+class Window;
 
-typedef const int8_t* RawFunctionPtr;
+
+typedef const int8_t* RawPtrHandle;
+
 
 class WindowInterface {
  public:
-    WindowInterface(int64_t start_offset, int64_t end_offset, uint32_t max_size)
-        : window_impl_(std::unique_ptr<Window>(
-              new CurrentHistoryWindow(start_offset, max_size))) {}
-    WindowInterface(const bool instance_not_in_window, int64_t start_offset,
-                    int64_t end_offset, uint32_t max_size)
-        : window_impl_(std::unique_ptr<Window>(
-              new CurrentHistoryWindow(start_offset, max_size))) {
-        window_impl_->set_instance_not_in_window(instance_not_in_window);
-    }
-    void BufferData(uint64_t key, const Row& row) {
-        window_impl_->BufferData(key, row);
-    }
+    WindowInterface(bool instance_not_in_window,
+                    int64_t start_offset,
+                    int64_t end_offset,
+                    uint32_t max_size);
+
+    void BufferData(uint64_t key, const Row& row);
 
  private:
     friend CoreAPI;
@@ -60,21 +56,28 @@ class RunnerContext {
     std::map<int32_t, std::shared_ptr<DataHandler>> cache_;
 };
 
+
 class CoreAPI {
  public:
+    static RawPtrHandle AllocateRaw(size_t bytes);
+
+    static void ReleaseRaw(RawPtrHandle handle);
+
+    static void ReleaseRow(const Row&);
+
     static int ResolveColumnIndex(fesql::vm::PhysicalOpNode* node,
                                   fesql::node::ColumnRefNode* expr);
 
-    static fesql::codec::Row RowProject(const fesql::vm::RawFunctionPtr fn,
+    static fesql::codec::Row RowProject(const fesql::vm::RawPtrHandle fn,
                                         const fesql::codec::Row row,
                                         const bool need_free = false);
 
-    static fesql::codec::Row WindowProject(const fesql::vm::RawFunctionPtr fn,
+    static fesql::codec::Row WindowProject(const fesql::vm::RawPtrHandle fn,
                                            const uint64_t key, const Row row,
                                            const bool is_instance,
                                            WindowInterface* window);
 
-    static bool ComputeCondition(const fesql::vm::RawFunctionPtr fn,
+    static bool ComputeCondition(const fesql::vm::RawPtrHandle fn,
                                  const Row& row,
                                  fesql::codec::RowView* row_view,
                                  size_t out_idx);

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.13)
 
 if (POLICY CMP0068)
     cmake_policy(SET CMP0068 NEW)
@@ -93,7 +93,11 @@ endif ()
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     add_definitions('-Wall')
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    add_definitions('-Wall')
     add_definitions(-Wreorder)
+    add_definitions(-Wno-unused-private-field)
+    add_definitions(-Wno-unused-function)
+    add_definitions(-Wno-overloaded-virtual)
     add_definitions(-Wno-inconsistent-missing-override)
     add_definitions(-Wno-deprecated-declarations)
     add_definitions(-Wno-null-dereference)
@@ -150,9 +154,8 @@ if (COVERAGE_ENABLE)
     endif ()
 endif ()
 
-if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    install(TARGETS ${VM_LIBS}
-        RUNTIME DESTINATION bin
-        LIBRARY DESTINATION lib
-        ARCHIVE DESTINATION lib)
-endif()
+set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/release)
+install(TARGETS ${VM_LIBS}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})

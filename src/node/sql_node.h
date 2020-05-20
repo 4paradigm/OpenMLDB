@@ -334,6 +334,7 @@ class ExprNode : public SQLNode {
     std::vector<ExprNode *> children_;
     void Print(std::ostream &output, const std::string &org_tab) const override;
     virtual const std::string GetExprString() const;
+    virtual const std::string GenerateExpressionName() const;
     virtual bool Equals(const ExprNode *that) const;
 
     const ExprType expr_type_;
@@ -810,7 +811,16 @@ class ConstNode : public ExprNode {
 
     explicit ConstNode(const std::string &val)
         : ExprNode(kExprPrimary), data_type_(fesql::node::kVarchar) {
-        val_.vstr = val.c_str();
+        val_.vstr = strdup(val.c_str());
+    }
+
+    explicit ConstNode(const ConstNode& that)
+        : ExprNode(kExprPrimary), data_type_(that.data_type_) {
+        if (kVarchar == that.data_type_) {
+            val_.vstr = strdup(that.val_.vstr);
+        } else {
+            val_ = that.val_;
+        }
     }
 
     ConstNode(int64_t val, DataType time_type)
@@ -911,6 +921,7 @@ class ColumnRefNode : public ExprNode {
     static ColumnRefNode *CastFrom(ExprNode *node);
     void Print(std::ostream &output, const std::string &org_tab) const;
     const std::string GetExprString() const;
+    const std::string GenerateExpressionName() const;
     virtual bool Equals(const ExprNode *node) const;
 
  private:

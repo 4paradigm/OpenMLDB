@@ -223,7 +223,7 @@ void ConstNode::Print(std::ostream &output, const std::string &org_tab) const {
     output << org_tab << SPACE_ST;
     output << "value: " << GetExprString() << "\n";
     output << org_tab << SPACE_ST;
-    output << "type: " <<  DataTypeName(data_type_) << "\n";
+    output << "type: " << DataTypeName(data_type_) << "\n";
 }
 const std::string ConstNode::GetExprString() const {
     switch (data_type_) {
@@ -316,6 +316,11 @@ ColumnRefNode *ColumnRefNode::CastFrom(ExprNode *node) {
     return reinterpret_cast<ColumnRefNode *>(node);
 }
 
+const std::string ColumnRefNode::GenerateExpressionName() const {
+    std::string str = "";
+    str.append(column_name_);
+    return str;
+}
 const std::string ColumnRefNode::GetExprString() const {
     std::string str = "";
     if (!relation_name_.empty()) {
@@ -850,6 +855,9 @@ void ExprNode::Print(std::ostream &output, const std::string &org_tab) const {
     output << org_tab << SPACE_ST << "expr[" << ExprTypeName(expr_type_) << "]";
 }
 const std::string ExprNode::GetExprString() const { return ""; }
+const std::string ExprNode::GenerateExpressionName() const {
+    return GetExprString();
+}
 bool ExprNode::Equals(const ExprNode *that) const {
     if (this == that) {
         return true;

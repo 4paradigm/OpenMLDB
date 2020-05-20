@@ -173,6 +173,15 @@ add_custom_target(java_package ALL
     COMMAND ${MAVEN_EXECUTABLE} package -DskipTests=true -Dscalatest.skip=true
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/java
 )
+set(FESQL_SPARK_JAR_VERSION 0.0.1-SNAPSHOT)
+install(FILES ${CMAKE_SOURCE_DIR}/java/fesql-spark/target/fesql-spark-${FESQL_SPARK_JAR_VERSION}-with-dependencies.jar
+    DESTINATION ${CMAKE_BINARY_DIR}/release/java/)
+install(PROGRAMS ${CMAKE_SOURCE_DIR}/java/bin/fesql-spark.sh
+    RENAME fesql-spark DESTINATION ${CMAKE_BINARY_DIR}/release/bin)
+install(PROGRAMS ${CMAKE_SOURCE_DIR}/java/bin/benchspark.sh
+    RENAME benchspark DESTINATION ${CMAKE_BINARY_DIR}/release/bin)
+install(PROGRAMS ${CMAKE_SOURCE_DIR}/java/bin/drawflame.sh
+    RENAME drawflame DESTINATION ${CMAKE_BINARY_DIR}/release/bin)
 
 add_dependencies(java_package fesql_proto_java)
 endif()

@@ -89,8 +89,7 @@ TEST_F(ExprIRBuilderTest, test_add_int32) {
     builder.CreateRet(output);
     m->print(::llvm::errs(), NULL);
     auto J = ExitOnErr(LLJITBuilder().create());
-    ExitOnErr(J->addIRModule(
-        std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
+    ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
     auto load_fn_jit = ExitOnErr(J->lookup("load_fn"));
     int32_t (*decode)(int32_t) = (int32_t(*)(int32_t))load_fn_jit.getAddress();
     int32_t ret = decode(1);
@@ -137,16 +136,12 @@ void BinaryExprCheck(::fesql::node::DataType left_type,
     builder.CreateRet(output);
     m->print(::llvm::errs(), NULL);
     auto J = ExitOnErr(LLJITBuilder().create());
-    ExitOnErr(J->addIRModule(
-        std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
+    ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
     auto load_fn_jit = ExitOnErr(J->lookup("load_fn"));
     R (*decode)(V1, V2) = (R(*)(V1, V2))load_fn_jit.getAddress();
     R ret = decode(v1, v2);
     ASSERT_EQ(ret, r);
 }
-
-
-
 
 TEST_F(ExprIRBuilderTest, test_add_int16_x_expr) {
     BinaryExprCheck<int16_t, int16_t, int16_t>(

@@ -42,12 +42,12 @@
 
 namespace fesql {
 namespace bm {
-using vm::Engine;
-using vm::BatchRunSession;
-using vm::RequestRunSession;
 using codec::Row;
+using vm::BatchRunSession;
+using vm::Engine;
+using vm::RequestRunSession;
 
-using namespace ::llvm;                                      // NOLINT
+using namespace ::llvm;  // NOLINT
 
 static int64_t RunTableRequest(RequestRunSession& session,  // NOLINT
                                std::shared_ptr<vm::TableHandler> table_handler,
@@ -87,9 +87,8 @@ static void EngineRequestMode(const std::string sql, MODE mode,
     std::ostringstream runner_oss;
     session.GetRunner()->Print(runner_oss, "");
     LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
-    std::unique_ptr<codec::RowView> row_view =
-        std::move(std::unique_ptr<codec::RowView>(
-            new codec::RowView(session.GetSchema())));
+    std::unique_ptr<codec::RowView> row_view = std::unique_ptr<codec::RowView>(
+        new codec::RowView(session.GetSchema()));
 
     switch (mode) {
         case BENCHMARK: {
@@ -222,6 +221,7 @@ void EngineSimpleSelectDouble(benchmark::State* state, MODE mode) {  // NOLINT
     const std::string sql = "SELECT col4 FROM t1 limit 2;";
     Engine engine(catalog);
     BatchRunSession session;
+    session.EnableDebug();
     base::Status query_status;
     engine.Get(sql, "db", session, query_status);
     std::ostringstream runner_oss;
@@ -302,8 +302,13 @@ void EngineSimpleSelectInt32(benchmark::State* state, MODE mode) {  // NOLINT
     const std::string sql = "SELECT col1 FROM t1 limit 1;";
     Engine engine(catalog);
     BatchRunSession session(true);
+    session.EnableDebug();
     base::Status query_status;
     engine.Get(sql, "db", session, query_status);
+    std::ostringstream plan_oss;
+    session.GetPhysicalPlan()->Print(plan_oss, "");
+    LOG(INFO) << "physical plan:\n" << plan_oss.str() << std::endl;
+
     std::ostringstream runner_oss;
     session.GetRunner()->Print(runner_oss, "");
     LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;

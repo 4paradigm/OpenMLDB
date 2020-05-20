@@ -29,6 +29,7 @@ enum PhysicalOpType {
     kPhysicalOpAggrerate,
     kPhysicalOpWindowAgg,
     kPhysicalOpProject,
+    kPhysicalOpSimpleProject,
     kPhysicalOpLimit,
     kPhysicalOpRename,
     kPhysicalOpDistinct,
@@ -55,6 +56,8 @@ inline const std::string PhysicalOpTypeName(const PhysicalOpType &type) {
             return "FILTER_BY";
         case kPhysicalOpProject:
             return "PROJECT";
+        case kPhysicalOpSimpleProject:
+            return "SIMPLE_PROJECT";
         case kPhysicalOpAggrerate:
             return "AGGRERATE";
         case kPhysicalOpLimit:
@@ -79,6 +82,7 @@ inline const std::string PhysicalOpTypeName(const PhysicalOpType &type) {
             return "UNKNOW";
     }
 }
+
 struct FnInfo {
     std::string fn_name_ = "";
     int8_t *fn_ = nullptr;
@@ -187,6 +191,61 @@ class Key {
     FnInfo fn_info_;
 };
 
+class ColumnProject {
+ public:
+    explicit ColumnProject(const ColumnSourceList &sources)
+        : column_sources_(sources) {}
+    virtual ~ColumnProject() {}
+    const std::string ToString() const {
+        std::ostringstream oss;
+        oss << "sources=(";
+        for (size_t i = 0; i < column_sources_.size(); i++) {
+            if (i > 10) {
+                oss << ", ...";
+                break;
+            }
+            if (i > 0) {
+                oss << ", ";
+            }
+            oss << "[" << i << "]" << column_sources_[i].ToString();
+        }
+        return oss.str();
+    }
+    const FnInfo &fn_info() const { return fn_info_; }
+    const std::string FnDetail() const {
+        return "simple_project=" + fn_info_.fn_name_;
+    }
+    const ColumnSourceList &column_sources() const { return column_sources_; }
+
+    static const bool CombineColumnSources(
+        const ColumnSourceList &sources1, const ColumnSourceList &sources2,
+        ColumnSourceList &sources) {  // NOLINT
+        for (auto source1 : sources1) {
+            switch (source1.type()) {
+                case kSourceConst: {
+                    sources.push_back(source1);
+                    break;
+                }
+                case kSourceColumn: {
+                    if (source1.column_idx() >= sources2.size()) {
+                        LOG(WARNING) << "Fail to combine column sources";
+                        return false;
+                    }
+                    sources.push_back(sources2[source1.column_idx()]);
+                    break;
+                }
+                case kSourceNone: {
+                    LOG(WARNING) << "Fail to combine column sources";
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+    FnInfo fn_info_;
+    ColumnSourceList column_sources_;
+};
+
 class PhysicalOpNode {
  public:
     PhysicalOpNode(PhysicalOpType type, bool is_block, bool is_lazy)
@@ -237,17 +296,16 @@ class PhysicalOpNode {
 
     const vm::Schema &GetFnSchema() const { return fn_info_.fn_schema_; }
 
-    const std::vector<std::pair<const std::string, const vm::Schema *>>
-        &GetOutputNameSchemaList() {
+    const vm::SchemaSourceList &GetOutputNameSchemaList() {
         return output_name_schema_list_;
     }
 
     const size_t GetOutputSchemaListSize() const {
-        return output_name_schema_list_.size();
+        return output_name_schema_list_.GetSchemaSourceListSize();
     }
 
     const vm::Schema *GetOutputSchemaSlice(size_t idx) const {
-        return output_name_schema_list_[idx].second;
+        return output_name_schema_list_.GetSchemaSlice(idx);
     }
 
     void SetLimitCnt(int32_t limit_cnt) { limit_cnt_ = limit_cnt; }
@@ -287,8 +345,7 @@ class PhysicalOpNode {
     std::vector<FnInfo *> fn_infos_;
     int32_t limit_cnt_;
     std::vector<PhysicalOpNode *> producers_;
-    std::vector<std::pair<const std::string, const vm::Schema *>>
-        output_name_schema_list_;
+    vm::SchemaSourceList output_name_schema_list_;
 };
 
 class PhysicalUnaryNode : public PhysicalOpNode {
@@ -432,14 +489,16 @@ inline const std::string ProjectTypeName(const ProjectType &type) {
 class PhysicalProjectNode : public PhysicalUnaryNode {
  public:
     PhysicalProjectNode(PhysicalOpNode *node, const std::string &fn_name,
-                        const Schema &schema, ProjectType project_type,
-                        const bool is_block, const bool is_lazy)
+                        const Schema &schema, const ColumnSourceList &sources,
+                        ProjectType project_type, const bool is_block,
+                        const bool is_lazy)
         : PhysicalUnaryNode(node, kPhysicalOpProject, is_block, is_lazy),
           project_type_(project_type),
-          project_({fn_name, nullptr, schema}) {
+          project_({fn_name, nullptr, schema}),
+          sources_(sources) {
+        fn_infos_.push_back(&project_);
         output_schema_ = schema;
         InitSchema();
-        fn_infos_.push_back(&project_);
     }
     virtual ~PhysicalProjectNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
@@ -448,14 +507,16 @@ class PhysicalProjectNode : public PhysicalUnaryNode {
     const FnInfo &project() const { return project_; }
     const ProjectType project_type_;
     FnInfo project_;
+    const ColumnSourceList sources_;
 };
 
 class PhysicalRowProjectNode : public PhysicalProjectNode {
  public:
     PhysicalRowProjectNode(PhysicalOpNode *node, const std::string fn_name,
-                           const Schema &schema)
-        : PhysicalProjectNode(node, fn_name, schema, kRowProject, false,
-                              false) {
+                           const Schema &schema,
+                           const ColumnSourceList &sources)
+        : PhysicalProjectNode(node, fn_name, schema, sources, kRowProject,
+                              false, false) {
         output_type_ = kSchemaTypeRow;
     }
     virtual ~PhysicalRowProjectNode() {}
@@ -465,20 +526,41 @@ class PhysicalRowProjectNode : public PhysicalProjectNode {
 class PhysicalTableProjectNode : public PhysicalProjectNode {
  public:
     PhysicalTableProjectNode(PhysicalOpNode *node, const std::string fn_name,
-                             const Schema &schema)
-        : PhysicalProjectNode(node, fn_name, schema, kTableProject, false,
-                              false) {
+                             const Schema &schema,
+                             const ColumnSourceList &sources)
+        : PhysicalProjectNode(node, fn_name, schema, sources, kTableProject,
+                              false, false) {
         output_type_ = kSchemaTypeTable;
     }
     virtual ~PhysicalTableProjectNode() {}
     static PhysicalTableProjectNode *CastFrom(PhysicalOpNode *node);
 };
+
+class PhysicalSimpleProjectNode : public PhysicalUnaryNode {
+ public:
+    PhysicalSimpleProjectNode(PhysicalOpNode *node, const Schema &schema,
+                              const ColumnSourceList &sources)
+        : PhysicalUnaryNode(node, kPhysicalOpSimpleProject, true, false),
+          project_(sources) {
+        output_type_ = node->output_type_;
+        output_schema_ = schema;
+        InitSchema();
+        fn_infos_.push_back(&project_.fn_info_);
+    }
+    virtual ~PhysicalSimpleProjectNode() {}
+    bool InitSchema() override;
+    virtual void Print(std::ostream &output, const std::string &tab) const;
+    static PhysicalSimpleProjectNode *CastFrom(PhysicalOpNode *node);
+    const ColumnProject &project() const { return project_; }
+    ColumnProject project_;
+};
 class PhysicalAggrerationNode : public PhysicalProjectNode {
  public:
     PhysicalAggrerationNode(PhysicalOpNode *node, const std::string &fn_name,
-                            const Schema &schema)
-        : PhysicalProjectNode(node, fn_name, schema, kAggregation, true,
-                              false) {
+                            const Schema &schema,
+                            const ColumnSourceList &sources)
+        : PhysicalProjectNode(node, fn_name, schema, sources, kAggregation,
+                              true, false) {
         output_type_ = kSchemaTypeRow;
     }
     virtual ~PhysicalAggrerationNode() {}
@@ -489,9 +571,10 @@ class PhysicalGroupAggrerationNode : public PhysicalProjectNode {
     PhysicalGroupAggrerationNode(PhysicalOpNode *node,
                                  const node::ExprListNode *groups,
                                  const std::string &fn_name,
-                                 const Schema &schema)
-        : PhysicalProjectNode(node, fn_name, schema, kGroupAggregation, true,
-                              false),
+                                 const Schema &schema,
+                                 const ColumnSourceList &sources)
+        : PhysicalProjectNode(node, fn_name, schema, sources, kGroupAggregation,
+                              true, false),
           group_(groups) {
         output_type_ = kSchemaTypeTable;
         fn_infos_.push_back(&group_.fn_info_);
@@ -660,7 +743,7 @@ class WindowUnionList {
     }
     const bool Empty() const { return window_unions_.empty(); }
     size_t GetSize() const { return window_unions_.size(); }
-    PhysicalOpNode* GetUnionNode(size_t idx) const {
+    PhysicalOpNode *GetUnionNode(size_t idx) const {
         auto iter = window_unions_.begin();
         for (size_t i = 0; i < idx; ++i) {
             ++iter;
@@ -703,10 +786,11 @@ class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
     PhysicalWindowAggrerationNode(
         PhysicalOpNode *node, const node::ExprListNode *partition,
         const node::OrderByNode *orders, const std::string &fn_name,
-        const Schema &schema, const int64_t start_offset,
-        const int64_t end_offset, const bool instance_not_in_window)
-        : PhysicalProjectNode(node, fn_name, schema, kWindowAggregation, true,
-                              false),
+        const Schema &schema, const ColumnSourceList &sources,
+        const int64_t start_offset, const int64_t end_offset,
+        const bool instance_not_in_window)
+        : PhysicalProjectNode(node, fn_name, schema, sources,
+                              kWindowAggregation, true, false),
           instance_not_in_window_(instance_not_in_window),
           window_(partition, orders, start_offset, end_offset),
           window_unions_() {
@@ -939,6 +1023,9 @@ class PhysicalRequestUnionNode : public PhysicalBinaryNode {
         return instance_not_in_window_;
     }
     const RequestWindowOp &window() const { return window_; }
+    const RequestWindowUnionList& window_unions() const {
+        return window_unions_;
+    }
     RequestWindowOp window_;
     const bool instance_not_in_window_;
     RequestWindowUnionList window_unions_;

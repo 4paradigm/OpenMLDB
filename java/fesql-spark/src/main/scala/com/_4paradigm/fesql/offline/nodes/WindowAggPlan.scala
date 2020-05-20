@@ -1,7 +1,7 @@
 package com._4paradigm.fesql.offline.nodes
 
 import com._4paradigm.fesql.offline._
-import com._4paradigm.fesql.offline.utils.{FesqlUtil, SparkColumnUtil, SparkRowUtil}
+import com._4paradigm.fesql.offline.utils.{AutoDestructibleIterator, FesqlUtil, SparkColumnUtil, SparkRowUtil}
 import com._4paradigm.fesql.vm.{CoreAPI, FeSQLJITWrapper, PhysicalWindowAggrerationNode, WindowInterface}
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
@@ -174,13 +174,17 @@ object WindowAggPlan {
                     config: WindowAggConfig): Iterator[Row] = {
     val computer = new WindowComputer(config, jit)
     var lastRow: Row = null
-    inputIter.map(row => {
+
+    val resIter = inputIter.map(row => {
       if (lastRow != null) {
         computer.checkPartition(row, lastRow)
       }
       lastRow = row
       computer.compute(row)
     })
+    AutoDestructibleIterator(resIter) {
+      computer.delete()
+    }
   }
 
 
@@ -191,7 +195,7 @@ object WindowAggPlan {
     val flagIdx = config.unionFlagIdx
     var lastRow: Row = null
 
-    inputIter.flatMap(row => {
+    val resIter = inputIter.flatMap(row => {
       if (lastRow != null) {
         computer.checkPartition(row, lastRow)
       }
@@ -207,6 +211,10 @@ object WindowAggPlan {
         None
       }
     })
+
+    AutoDestructibleIterator(resIter) {
+        computer.delete()
+    }
   }
 
 
@@ -250,9 +258,8 @@ object WindowAggPlan {
     private val outputArr = Array.fill[Any](outputFieldNum)(null)
 
     // native row codecs
-    private val bufferPool = new NativeBufferPool
-    private val encoder = new SparkRowCodec(config.inputSchemaSlices, bufferPool)
-    private val decoder = new SparkRowCodec(config.outputSchemaSlices, null)
+    private var encoder = new SparkRowCodec(config.inputSchemaSlices)
+    private var decoder = new SparkRowCodec(config.outputSchemaSlices)
 
     // order key extractor
     private val orderField = config.inputSchema(config.orderIdx)
@@ -273,7 +280,7 @@ object WindowAggPlan {
 
     def compute(row: Row): Row = {
       // call encode
-      val nativeInputRow = encoder.encode(row, keepBuffer=true)
+      val nativeInputRow = encoder.encode(row)
 
       // extract key
       val key = orderKeyExtractor.apply(row)
@@ -294,7 +301,7 @@ object WindowAggPlan {
 
 
     def bufferRowOnly(row: Row): Unit = {
-      val nativeInputRow = encoder.encode(row, keepBuffer=true)
+      val nativeInputRow = encoder.encode(row)
       val key = orderKeyExtractor.apply(row)
       window.BufferData(key, nativeInputRow)
     }
@@ -307,8 +314,19 @@ object WindowAggPlan {
         window.delete()
         window = new WindowInterface(
           config.instanceNotInWindow, config.startOffset, 0, 0)
-        bufferPool.freeAll()
       }
+    }
+
+
+    def delete(): Unit = {
+      encoder.delete()
+      encoder = null
+
+      decoder.delete()
+      decoder = null
+
+      window.delete()
+      window = null
     }
   }
 }

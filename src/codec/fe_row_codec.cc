@@ -52,6 +52,10 @@ RowBuilder::RowBuilder(const Schema& schema)
     }
 }
 
+bool RowBuilder::SetBuffer(int64_t buf_handle, uint32_t size) {
+    return SetBuffer(reinterpret_cast<int8_t*>(buf_handle), size);
+}
+
 bool RowBuilder::SetBuffer(int8_t* buf, uint32_t size) {
     if (buf == NULL || size == 0 ||
         size < str_field_start_offset_ + str_field_cnt_) {

@@ -28,12 +28,12 @@ namespace std {
 %shared_ptr(fesql::vm::SimpleCatalog);
 %shared_ptr(fesql::vm::CompileInfo);
 
-%typemap(jni) fesql::vm::RawFunctionPtr "jlong"
-%typemap(jtype) fesql::vm::RawFunctionPtr "long"
-%typemap(jstype) fesql::vm::RawFunctionPtr "long"
-%typemap(javain) fesql::vm::RawFunctionPtr "$javainput"
-%typemap(javaout) fesql::vm::RawFunctionPtr "{ return $jnicall; }"
-%typemap(in) fesql::vm::RawFunctionPtr %{ $1 = reinterpret_cast<fesql::vm::RawFunctionPtr>($input); %}
+%typemap(jni) fesql::vm::RawPtrHandle "jlong"
+%typemap(jtype) fesql::vm::RawPtrHandle "long"
+%typemap(jstype) fesql::vm::RawPtrHandle "long"
+%typemap(javain) fesql::vm::RawPtrHandle "$javainput"
+%typemap(javaout) fesql::vm::RawPtrHandle "{ return $jnicall; }"
+%typemap(in) fesql::vm::RawPtrHandle %{ $1 = reinterpret_cast<fesql::vm::RawPtrHandle>($input); %}
 
 
 // Fix for Java shared_ptr unref
@@ -91,17 +91,20 @@ using fesql::vm::SQLContext;
 using fesql::vm::Catalog;
 using fesql::vm::PhysicalOpNode;
 using fesql::vm::PhysicalWindowNode;
+using fesql::vm::PhysicalSimpleProjectNode;
 using fesql::vm::RowView;
 using fesql::vm::FnInfo;
 using fesql::vm::Sort;
 using fesql::vm::Range;
 using fesql::vm::ConditionFilter;
+using fesql::vm::ColumnProject;
 using fesql::vm::Key;
 using fesql::vm::WindowOp;
 using fesql::base::Iterator;
 using fesql::base::ConstIterator;
 using fesql::codec::RowIterator;
 using fesql::codec::Row;
+using fesql::vm::ColumnSource;
 using fesql::node::PlanType;
 using fesql::sdk::ExplainInfo;
 %}

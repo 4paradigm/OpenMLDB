@@ -16,10 +16,12 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <deque>
 #include "base/fe_slice.h"
 #include "codec/list_iterator_codec.h"
 #include "glog/logging.h"
 #include "vm/catalog.h"
+#include "vm/core_api.h"
 
 namespace fesql {
 namespace vm {
@@ -28,6 +30,12 @@ using fesql::codec::Row;
 using fesql::codec::RowIterator;
 using fesql::codec::WindowIterator;
 
+struct AscKeyComparor {
+    bool operator()(std::pair<std::string, Row> i,
+                    std::pair<std::string, Row> j) {
+        return i.first < j.first;
+    }
+};
 struct AscComparor {
     bool operator()(std::pair<uint64_t, Row> i, std::pair<uint64_t, Row> j) {
         return i.first < j.first;
@@ -40,7 +48,7 @@ struct DescComparor {
     }
 };
 
-typedef std::vector<std::pair<uint64_t, Row>> MemTimeTable;
+typedef std::deque<std::pair<uint64_t, Row>> MemTimeTable;
 typedef std::vector<Row> MemTable;
 typedef std::map<std::string, MemTimeTable, std::greater<std::string>>
     MemSegmentMap;
@@ -122,7 +130,7 @@ class MemRowHandler : public RowHandler {
     const Schema* GetSchema() override { return schema_; }
     const std::string& GetName() override { return table_name_; }
     const std::string& GetDatabase() override { return db_; }
-    const Row& GetValue() const override { return row_; }
+    const Row& GetValue() override { return row_; }
     const std::string GetHandlerTypeName() override { return "MemRowHandler"; }
 
  private:
@@ -155,7 +163,7 @@ class MemTableHandler : public TableHandler {
     void Reverse();
     virtual const uint64_t GetCount() { return table_.size(); }
     virtual Row At(uint64_t pos) {
-        return pos >= 0 && pos < table_.size() ? table_.at(pos) : Row();
+        return pos < table_.size() ? table_.at(pos) : Row();
     }
 
     const OrderType GetOrderType() const { return order_type_; }
@@ -192,12 +200,14 @@ class MemTimeTableHandler : public TableHandler {
         const std::string& idx_name);
     void AddRow(const uint64_t key, const Row& v);
     void PopBackRow();
+    void PopFrontRow();
+    const Row& GetFrontRow() const;
     void AddRow(const Row& v);
     void Sort(const bool is_asc);
     void Reverse();
     virtual const uint64_t GetCount() { return table_.size(); }
     virtual Row At(uint64_t pos) {
-        return pos >= 0 && pos < table_.size() ? table_.at(pos).second : Row();
+        return pos < table_.size() ? table_.at(pos).second : Row();
     }
     void SetOrderType(const OrderType order_type) { order_type_ = order_type; }
     const OrderType GetOrderType() const { return order_type_; }
@@ -219,16 +229,12 @@ class Window : public MemTimeTableHandler {
  public:
     Window(int64_t start_offset, int64_t end_offset)
         : MemTimeTableHandler(),
-          start_(0),
-          end_(0),
           start_offset_(start_offset),
           end_offset_(end_offset),
           max_size_(0),
           instance_not_in_window_(false) {}
     Window(int64_t start_offset, int64_t end_offset, uint32_t max_size)
         : MemTimeTableHandler(),
-          start_(0),
-          end_(0),
           start_offset_(start_offset),
           end_offset_(end_offset),
           max_size_(max_size),
@@ -237,29 +243,33 @@ class Window : public MemTimeTableHandler {
 
     std::unique_ptr<RowIterator> GetIterator() const override {
         std::unique_ptr<vm::MemTimeTableIterator> it(
-            new vm::MemTimeTableIterator(&table_, schema_, start_, end_));
+            new vm::MemTimeTableIterator(&table_, schema_));
         return std::move(it);
     }
 
     RowIterator* GetIterator(int8_t* addr) const override {
         if (nullptr == addr) {
-            return new vm::MemTimeTableIterator(&table_, schema_, start_, end_);
+            return new vm::MemTimeTableIterator(&table_, schema_);
         } else {
             return new (addr)
-                vm::MemTimeTableIterator(&table_, schema_, start_, end_);
+                vm::MemTimeTableIterator(&table_, schema_);
         }
     }
     virtual void BufferData(uint64_t key, const Row& row) = 0;
-    virtual void PopData() {
-        if (start_ != end_) {
-            end_ -= 1;
-            PopBackRow();
-        }
+    virtual void PopBackData() { PopBackRow(); }
+    virtual void PopFrontData() { PopFrontRow(); }
+
+    virtual const std::pair<uint64_t, Row>& GetFrontData() const {
+        return table_.front();
     }
 
-    virtual const uint64_t GetCount() { return end_ - start_; }
+    virtual const uint64_t GetCount() { return table_.size(); }
     virtual Row At(uint64_t pos) {
-        return (pos + start_ < end_) ? table_.at(pos + start_).second : Row();
+        if (pos >= table_.size()) {
+            return Row();
+        } else {
+            return table_[pos].second;
+        }
     }
     const std::string GetHandlerTypeName() override { return "Window"; }
     const bool instance_not_in_window() const {
@@ -270,8 +280,6 @@ class Window : public MemTimeTableHandler {
     }
 
  protected:
-    uint32_t start_;
-    uint32_t end_;
     int64_t start_offset_;
     int32_t end_offset_;
     uint32_t max_size_;
@@ -280,23 +288,45 @@ class Window : public MemTimeTableHandler {
 
 class CurrentHistoryWindow : public Window {
  public:
-    explicit CurrentHistoryWindow(int64_t start_offset)
-        : Window(start_offset, 0) {}
-    CurrentHistoryWindow(int64_t start_offset, uint32_t max_size)
-        : Window(start_offset, 0, max_size) {}
+    CurrentHistoryWindow(bool memory_own, int64_t start_offset)
+        : Window(start_offset, 0), memory_own_(memory_own) {}
+    CurrentHistoryWindow(
+        bool memory_own, int64_t start_offset, uint32_t max_size)
+        : Window(start_offset, 0, max_size), memory_own_(memory_own) {}
+
+    ~CurrentHistoryWindow() {
+        if (memory_own_) {
+            for (const auto& pair : table_) {
+                CoreAPI::ReleaseRow(pair.second);
+            }
+        }
+    }
 
     void BufferData(uint64_t key, const Row& row) {
         AddRow(key, row);
-        end_++;
         int64_t sub = (key + start_offset_);
         uint64_t start_ts = sub < 0 ? 0u : static_cast<uint64_t>(sub);
-        while (start_ < end_ &&
-               ((0 != max_size_ && (end_ - start_) > max_size_) ||
-                (start_ts > 0 && table_[start_].first <= start_ts))) {
-            start_++;
+
+        auto cur_size = table_.size();
+        auto max_size = max_size_ > 0 ? max_size_ : 0;
+        while (cur_size > max_size) {
+            const auto& pair = GetFrontData();
+            if (start_ts > 0 && pair.first <= start_ts) {
+                if (memory_own_) {
+                    CoreAPI::ReleaseRow(pair.second);
+                }
+                PopFrontRow();
+                --cur_size;
+            } else {
+                break;
+            }
         }
     }
+
+ private:
+    bool memory_own_;
 };
+
 
 class CurrentHistoryUnboundWindow : public Window {
  public:
@@ -305,9 +335,9 @@ class CurrentHistoryUnboundWindow : public Window {
         : Window(INT64_MIN, 0, max_size) {}
     void BufferData(uint64_t key, const Row& row) {
         AddRow(key, row);
-        end_++;
-        while ((0 != max_size_ && (end_ - start_) > max_size_)) {
-            start_++;
+        auto max_size = max_size_ > 0 ? max_size_ : 0;
+        while (table_.size() > max_size) {
+            PopFrontRow();
         }
     }
 };
@@ -348,7 +378,7 @@ class MemSegmentHandler : public TableHandler {
         auto iter = partition_hander_->GetWindowIterator();
         if (iter) {
             iter->Seek(key_);
-            return iter->Valid() ? std::move(iter->GetValue())
+            return iter->Valid() ? iter->GetValue()
                                  : std::unique_ptr<RowIterator>();
         }
         return std::unique_ptr<RowIterator>();
@@ -376,9 +406,6 @@ class MemSegmentHandler : public TableHandler {
         return cnt;
     }
     Row At(uint64_t pos) override {
-        if (pos < 0) {
-            return Row();
-        }
         auto iter = GetIterator();
         if (!iter) {
             return Row();

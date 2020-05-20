@@ -12,6 +12,8 @@ public class SQLCase {
     String db;
     String sql;
     String tag;
+    String batch_plan;
+    String request_plan;
     List<InputDesc> inputs;
     OutputDesc output;
 }

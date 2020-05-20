@@ -30,12 +30,12 @@
 #include "base/fe_strings.h"
 #include "brpc/server.h"
 #include "dbms/dbms_server_impl.h"
+#include "fe_version.h"  //NOLINT
 #include "glog/logging.h"
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/TargetSelect.h"
 #include "sdk/dbms_sdk.h"
 #include "tablet/tablet_server_impl.h"
-#include "fe_version.h"  //NOLINT
 
 DECLARE_string(endpoint);
 DECLARE_string(tablet_endpoint);
@@ -422,7 +422,7 @@ void HandleCmd(const fesql::node::CmdNode *cmd_node,
         }
         case fesql::node::kCmdShowTables: {
             std::shared_ptr<fesql::sdk::TableSet> rs =
-                std::move(dbms_sdk->GetTables(db, &status));
+                dbms_sdk->GetTables(db, &status);
             if (status.code == 0) {
                 std::ostringstream oss;
                 std::vector<std::string> names;
@@ -435,7 +435,7 @@ void HandleCmd(const fesql::node::CmdNode *cmd_node,
         }
         case fesql::node::kCmdDescTable: {
             std::shared_ptr<fesql::sdk::TableSet> rs =
-                std::move(dbms_sdk->GetTables(db, &status));
+                dbms_sdk->GetTables(db, &status);
             if (rs) {
                 while (rs->Next()) {
                     if (rs->GetTable()->GetName() == cmd_node->GetArgs()[0]) {

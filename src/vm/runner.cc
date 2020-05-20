@@ -12,6 +12,7 @@
 #include <utility>
 #include <vector>
 #include "base/texttable.h"
+#include "vm/catalog_wrapper.h"
 #include "vm/core_api.h"
 #include "vm/mem_catalog.h"
 namespace fesql {
@@ -58,6 +59,19 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                     return nullptr;
                 }
             }
+        }
+        case kPhysicalOpSimpleProject: {
+            auto input = Build(node->producers().at(0), status);
+            if (nullptr == input) {
+                return nullptr;
+            }
+
+            auto op = dynamic_cast<const PhysicalSimpleProjectNode*>(node);
+            auto runner = new SimpleProjectRunner(
+                id_++, node->GetOutputNameSchemaList(), op->GetLimitCnt(),
+                op->project_.fn_info_);
+            runner->AddProducer(input);
+            return runner;
         }
         case kPhysicalOpProject: {
             auto input = Build(node->producers().at(0), status);
@@ -360,7 +374,7 @@ Row Runner::WindowProject(const int8_t* fn, const uint64_t key, const Row row,
         return Row();
     }
     if (window->instance_not_in_window()) {
-        window->PopData();
+        window->PopBackData();
     }
     return Row(reinterpret_cast<char*>(out_buf), RowView::GetSize(out_buf));
 }
@@ -510,6 +524,38 @@ std::shared_ptr<DataHandler> RowProjectRunner::Run(RunnerContext& ctx) {
         new MemRowHandler(project_gen_.Gen(row->GetValue())));
 }
 
+std::shared_ptr<DataHandler> SimpleProjectRunner::Run(RunnerContext& ctx) {
+    auto input = producers_[0]->RunWithCache(ctx);
+    auto fail_ptr = std::shared_ptr<DataHandler>();
+    if (!input) {
+        LOG(WARNING) << "simple project fail: input is null";
+        return fail_ptr;
+    }
+
+    switch (input->GetHanlderType()) {
+        case kTableHandler: {
+            return std::shared_ptr<TableHandler>(
+                new TableWrapper(std::dynamic_pointer_cast<TableHandler>(input),
+                                 &project_gen_.fun_));
+        }
+        case kPartitionHandler: {
+            return std::shared_ptr<TableHandler>(new PartitionWrapper(
+                std::dynamic_pointer_cast<PartitionHandler>(input),
+                &project_gen_.fun_));
+        }
+        case kRowHandler: {
+            return std::shared_ptr<RowHandler>(
+                new RowWrapper(std::dynamic_pointer_cast<RowHandler>(input),
+                               &project_gen_.fun_));
+        }
+        default: {
+            LOG(WARNING) << "Fail run simple project, invalid handler type "
+                         << input->GetHandlerTypeName();
+        }
+    }
+
+    return std::shared_ptr<DataHandler>();
+}
 std::shared_ptr<DataHandler> WindowAggRunner::Run(RunnerContext& ctx) {
     auto input = producers_[0]->RunWithCache(ctx);
     auto fail_ptr = std::shared_ptr<DataHandler>();
@@ -561,8 +607,6 @@ void WindowAggRunner::RunWindowAggOnKey(
     auto instance_segment =
         instance_partition->GetSegment(instance_partition, key);
     instance_segment = instance_window_gen_.sort_gen_.Sort(instance_segment);
-    DLOG(INFO) << "Instance Segment";
-    PrintData(producers_[0]->output_schemas(), instance_segment);
     if (!instance_segment) {
         LOG(WARNING) << "Instance Segment is Empty";
         return;
@@ -583,7 +627,6 @@ void WindowAggRunner::RunWindowAggOnKey(
 
     for (size_t i = 0; i < unions_cnt; i++) {
         if (!union_partitions[i]) {
-            i++;
             continue;
         }
         auto segment =
@@ -592,14 +635,17 @@ void WindowAggRunner::RunWindowAggOnKey(
         union_segments[i] = segment;
         if (!segment) {
             union_segment_status[i] = IteratorStatus();
+            continue;
         }
         union_segment_iters[i] = segment->GetIterator();
         if (!union_segment_iters[i]) {
             union_segment_status[i] = IteratorStatus();
+            continue;
         }
         union_segment_iters[i]->SeekToFirst();
         if (!union_segment_iters[i]->Valid()) {
             union_segment_status[i] = IteratorStatus();
+            continue;
         }
         uint64_t ts = union_segment_iters[i]->GetKey();
         union_segment_status[i] = IteratorStatus(ts);
@@ -610,7 +656,7 @@ void WindowAggRunner::RunWindowAggOnKey(
             ? -1
             : IteratorStatus::PickIteratorWithMininumKey(&union_segment_status);
     int32_t cnt = output_table->GetCount();
-    CurrentHistoryWindow window(
+    CurrentHistoryWindow window(false,
         instance_window_gen_.window_op_.range_.start_offset_);
     window.set_instance_not_in_window(instance_not_in_window_);
 
@@ -961,11 +1007,15 @@ Row JoinGenerator::RowLastJoinTable(const Row& left_row,
         left_key_str = left_key_gen_.Gen(left_row);
     }
     while (right_iter->Valid()) {
-        auto right_key_str = right_group_gen_.GetKey(right_iter->GetValue());
-        if (left_key_gen_.Valid() && left_key_str != right_key_str) {
-            right_iter->Next();
-            continue;
+        if (right_group_gen_.Valid()) {
+            auto right_key_str =
+                right_group_gen_.GetKey(right_iter->GetValue());
+            if (left_key_gen_.Valid() && left_key_str != right_key_str) {
+                right_iter->Next();
+                continue;
+            }
         }
+
         Row joined_row(left_row, right_iter->GetValue());
         if (!condition_gen_.Valid()) {
             return joined_row;
@@ -996,7 +1046,7 @@ bool JoinGenerator::TableJoin(std::shared_ptr<TableHandler> left,
                               std::shared_ptr<MemTableHandler> output) {
     if (!left_key_gen_.Valid() && !index_key_gen_.Valid()) {
         LOG(WARNING) << "can't join right partition table when join "
-                        "left_key_gen_ is invalid";
+                        "left_key_gen_ and index_key_gen_ is invalid";
         return false;
     }
     auto left_iter = left->GetIterator();
@@ -1115,22 +1165,22 @@ const Row Runner::RowLastJoinTable(const Row& left_row,
     }
     return Row(left_row, Row());
 }
-void Runner::PrintData(const vm::NameSchemaList& schema_list,
+void Runner::PrintData(const vm::SchemaSourceList& schema_list,
                        std::shared_ptr<DataHandler> data) {
     std::ostringstream oss;
     std::vector<RowView> row_view_list;
     ::fesql::base::TextTable t('-', '|', '+');
     // Add Header
     t.add("Order");
-    for (auto pair : schema_list) {
-        for (int i = 0; i < pair.second->size(); i++) {
-            if (pair.first.empty()) {
-                t.add(pair.second->Get(i).name());
+    for (auto source : schema_list.schema_source_list_) {
+        for (int i = 0; i < source.schema_->size(); i++) {
+            if (source.table_name_.empty()) {
+                t.add(source.schema_->Get(i).name());
             } else {
-                t.add(pair.first + "." + pair.second->Get(i).name());
+                t.add(source.table_name_ + "." + source.schema_->Get(i).name());
             }
         }
-        row_view_list.push_back(RowView(*pair.second));
+        row_view_list.push_back(RowView(*source.schema_));
     }
 
     t.endOfRow();
@@ -1150,7 +1200,9 @@ void Runner::PrintData(const vm::NameSchemaList& schema_list,
             for (size_t id = 0; id < row_view_list.size(); id++) {
                 RowView& row_view = row_view_list[id];
                 row_view.Reset(row.buf(id), row.size(id));
-                for (int idx = 0; idx < schema_list[id].second->size(); idx++) {
+                for (int idx = 0;
+                     idx < schema_list.schema_source_list_[id].schema_->size();
+                     idx++) {
                     std::string str = row_view.GetAsString(idx);
                     t.add(str);
                 }
@@ -1180,7 +1232,9 @@ void Runner::PrintData(const vm::NameSchemaList& schema_list,
                     for (size_t id = 0; id < row_view_list.size(); id++) {
                         RowView& row_view = row_view_list[id];
                         row_view.Reset(row.buf(id));
-                        for (int idx = 0; idx < schema_list[id].second->size();
+                        for (int idx = 0;
+                             idx < schema_list.schema_source_list_[id]
+                                       .schema_->size();
                              idx++) {
                             std::string str = row_view.GetAsString(idx);
                             t.add(str);
@@ -1229,7 +1283,9 @@ void Runner::PrintData(const vm::NameSchemaList& schema_list,
                             RowView& row_view = row_view_list[id];
                             row_view.Reset(row.buf(id));
                             for (int idx = 0;
-                                 idx < schema_list[id].second->size(); idx++) {
+                                 idx < schema_list.schema_source_list_[id]
+                                           .schema_->size();
+                                 idx++) {
                                 std::string str = row_view.GetAsString(idx);
                                 t.add(str);
                             }
@@ -1381,10 +1437,6 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(RunnerContext& ctx) {
     auto union_segments =
         windows_union_gen_.GetRequestWindows(request, union_inputs);
 
-    for (auto segment : union_segments) {
-        DLOG(INFO) << "Segment :";
-        PrintData(producers_[0]->output_schemas(), segment);
-    }
     // Prepare Union Segment Iterators
     size_t unions_cnt = windows_union_gen_.inputs_cnt_;
 
@@ -1521,7 +1573,6 @@ WindowUnionGenerator::PartitionEach(
     std::vector<std::shared_ptr<PartitionHandler>> union_partitions;
     if (!windows_gen_.empty()) {
         union_partitions.reserve(windows_gen_.size());
-        auto input_iter = union_inputs.cbegin();
         for (size_t i = 0; i < inputs_cnt_; i++) {
             union_partitions.push_back(
                 windows_gen_[i].partition_gen_.Partition(union_inputs[i]));

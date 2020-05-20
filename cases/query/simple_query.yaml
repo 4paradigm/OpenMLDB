@@ -3,7 +3,7 @@ SQLCases:
     desc: SELECT所有列
     mode: request
     db: db1
-    sql: select col0, col1, col2, col3, col4, col5, col6 from t1;
+    sql: select col0, col1 as id, col2, col3, col4, col5, col6 from t1;
     inputs:
       - name: t1
         schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
@@ -15,7 +15,8 @@ SQLCases:
           1, 4, 55, 4.4, 44.4, 2, 4444
           2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
     output:
-      schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
+      schema: col0:string, id:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
+      order: id
       data: |
         0, 1, 5, 1.1, 11.1, 1, 1
         0, 2, 5, 2.2, 22.2, 2, 22
@@ -27,19 +28,19 @@ SQLCases:
     desc: SELECT简单表达式
     mode: request
     db: db1
-    sql: select col0, col1+1 as f1, col2*2 as f2 from t1;
+    sql: select id, col0, col1+1 as f1, col2*2 as f2 from t1;
     inputs:
       - name: t1
         index: index1:col2:col5
-        schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
+        schema: id:int32, col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
         data: |
-          0, 3, 55, 3.3, 33.3, 1, 333
-          0, 1, 5, 1.1, 11.1, 1, 1
+          1, 0, 3, 55, 3.3, 33.3, 1, 333
+          2, 0, 1, 5, 1.1, 11.1, 1, 1
     output:
-      schema: col0:string, f1:int32, f2:int32
+      schema: id:int32, col0:string, f1:int32, f2:int32
       data: |
-        0, 4, 110
-        0, 2, 10
+        1, 0, 4, 110
+        2, 0, 2, 10
   - id: 3
     desc: SELECT SIMPLE UDF
     mode: request
@@ -52,15 +53,16 @@ SQLCases:
           return d
       end
       %%sql
-      SELECT col0, test(col1,col1) as test_col1, col2 , col6 FROM t1;
+      SELECT col1 as id, col0, test(col1,col1) as test_col1, col2 , col6 FROM t1;
     inputs:
       - name: t1
         resource: cases/resource/simple_t1.yaml
     output:
-      schema: col0:string, test_col1:int32, col2:int16, col6:string
+      schema: id:int32, col0:string, test_col1:int32, col2:int16, col6:string
+      order: id
       data: |
-        0, 3, 5, 1
-        0, 5, 5, 22
-        1, 7, 55, 333
-        1, 9, 55, 4444
-        2, 11, 55, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        1, 0, 3, 5, 1
+        2, 0, 5, 5, 22
+        3, 1, 7, 55, 333
+        4, 1, 9, 55, 4444
+        5, 2, 11, 55, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
