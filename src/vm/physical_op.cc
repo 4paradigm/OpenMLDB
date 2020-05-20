@@ -116,7 +116,7 @@ bool PhysicalProjectNode::InitSchema() {
     PrintSchema();
     return true;
 }
-bool PhysicalColumnProjectNode::InitSchema() {
+bool PhysicalSimpleProjectNode::InitSchema() {
     output_name_schema_list_.AddSchemaSource("", &output_schema_,
                                              &project_.column_sources());
     PrintSchema();
@@ -135,11 +135,11 @@ PhysicalTableProjectNode* PhysicalTableProjectNode::CastFrom(
     PhysicalOpNode* node) {
     return dynamic_cast<PhysicalTableProjectNode*>(node);
 }
-PhysicalColumnProjectNode* PhysicalColumnProjectNode::CastFrom(
+PhysicalSimpleProjectNode* PhysicalSimpleProjectNode::CastFrom(
     PhysicalOpNode* node) {
-    return dynamic_cast<PhysicalColumnProjectNode*>(node);
+    return dynamic_cast<PhysicalSimpleProjectNode*>(node);
 }
-void PhysicalColumnProjectNode::Print(std::ostream& output,
+void PhysicalSimpleProjectNode::Print(std::ostream& output,
                                       const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "(" << project_.ToString();
@@ -197,7 +197,7 @@ void PhysicalWindowAggrerationNode::Print(std::ostream& output,
             output << "\n";
             output << tab << INDENT << "+-UNION("
                    << window_union.second.ToString() << ")\n";
-            window_union.first->Print(output, tab + INDENT + INDENT);
+            window_union.first->Print(output, tab + INDENT + INDENT + INDENT);
         }
     }
     output << "\n";
@@ -354,7 +354,7 @@ void PhysicalRequestUnionNode::Print(std::ostream& output,
             output << "\n";
             output << tab << INDENT << "+-UNION("
                    << window_union.second.ToString() << ")\n";
-            window_union.first->Print(output, tab + INDENT + INDENT);
+            window_union.first->Print(output, tab + INDENT + INDENT + INDENT);
         }
     }
     //    if (!window_joins_.Empty()) {

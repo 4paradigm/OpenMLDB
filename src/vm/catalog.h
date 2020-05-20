@@ -48,16 +48,23 @@ typedef std::vector<ColumnSource> ColumnSourceList;
 class ColumnSource {
  public:
     ColumnSource()
-        : type_(kSourceNone), schema_idx_(0), column_idx_(0), const_value_() {}
+        : type_(kSourceNone),
+          schema_idx_(0),
+          column_idx_(0),
+          column_name_(""),
+          const_value_() {}
     explicit ColumnSource(const node::ConstNode* node)
         : type_(kSourceConst),
           schema_idx_(0),
           column_idx_(0),
+          column_name_(""),
           const_value_(node) {}
-    ColumnSource(uint32_t schema_idx, uint32_t column_idx)
+    ColumnSource(uint32_t schema_idx, uint32_t column_idx,
+                 const std::string& column_name)
         : type_(kSourceColumn),
           schema_idx_(schema_idx),
           column_idx_(column_idx),
+          column_name_(column_name),
           const_value_() {}
 
     const std::string ToString() const {
@@ -72,15 +79,16 @@ class ColumnSource {
         }
     }
     const SourceType type() const { return type_; }
-
     const uint32_t schema_idx() const { return schema_idx_; }
     const uint32_t column_idx() const { return column_idx_; }
+    const std::string& column_name() const { return column_name_; }
     const node::ConstNode* const_value() const { return const_value_; }
 
  private:
     SourceType type_;
     uint32_t schema_idx_;
     uint32_t column_idx_;
+    std::string column_name_;
     const node::ConstNode* const_value_;
 };
 
@@ -131,6 +139,9 @@ struct SchemaSourceList {
         }
     }
 
+    const bool Empty() const {
+        return schema_source_list_.empty();
+    }
     const std::vector<SchemaSource>& schema_source_list() const {
         return schema_source_list_;
     }
@@ -235,7 +246,6 @@ class PartitionHandler : public TableHandler {
     }
     const OrderType GetOrderType() const { return kNoneOrder; }
 };
-
 
 // database/table/schema/type management
 class Catalog {

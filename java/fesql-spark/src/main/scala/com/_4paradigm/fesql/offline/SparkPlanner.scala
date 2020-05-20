@@ -59,7 +59,7 @@ class SparkPlanner(session: SparkSession, config: Map[String, Any]) {
       case PhysicalOpType.kPhysicalOpDataProvider =>
         DataProviderPlan.gen(ctx, PhysicalDataProviderNode.CastFrom(root), children)
       case PhysicalOpType.kPhysicalOpSimpleProject =>
-        RowProjectPlan.gen(ctx, PhysicalColumnProjectNode.CastFrom(root), children)
+        RowProjectPlan.gen(ctx, PhysicalSimpleProjectNode.CastFrom(root), children)
       case PhysicalOpType.kPhysicalOpProject =>
         val projectNode = PhysicalProjectNode.CastFrom(root)
         projectNode.getProject_type_ match {

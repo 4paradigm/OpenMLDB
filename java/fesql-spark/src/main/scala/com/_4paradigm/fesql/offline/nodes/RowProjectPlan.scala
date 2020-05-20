@@ -2,7 +2,7 @@ package com._4paradigm.fesql.offline.nodes
 
 import com._4paradigm.fesql.offline._
 import com._4paradigm.fesql.offline.utils.FesqlUtil
-import com._4paradigm.fesql.vm.{CoreAPI, FeSQLJITWrapper, PhysicalColumnProjectNode, PhysicalTableProjectNode}
+import com._4paradigm.fesql.vm.{CoreAPI, FeSQLJITWrapper, PhysicalSimpleProjectNode, PhysicalTableProjectNode}
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types.StructType
@@ -17,7 +17,7 @@ object RowProjectPlan {
    * @param inputs
    * @return
    */
-  def gen(ctx: PlanContext, node: PhysicalColumnProjectNode, inputs: Seq[SparkInstance]): SparkInstance = {
+  def gen(ctx: PlanContext, node: PhysicalSimpleProjectNode, inputs: Seq[SparkInstance]): SparkInstance = {
     val inputInstance = inputs.head
     val inputRDD = inputInstance.getRDD
 

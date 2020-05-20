@@ -28,8 +28,10 @@ struct RowSchemaInfo : public vm::SchemaSource {
 class SchemasContext {
  public:
     explicit SchemasContext(const vm::SchemaSourceList& table_schema_list);
-
     virtual ~SchemasContext() {}
+    const bool Empty() const {
+        return row_schema_info_list_.empty();
+    }
     bool ExprListResolvedFromSchema(
         const std::vector<node::ExprNode*>& expr_list,
         const RowSchemaInfo** info) const;
@@ -46,6 +48,7 @@ class SchemasContext {
                            const RowSchemaInfo** info) const;
     ColumnSource ColumnSourceResolved(const std::string& relation_name,
                                       const std::string& col_name) const;
+    const std::string SourceColumnNameResolved(node::ColumnRefNode* column);
 
  public:
     // row ir context list
@@ -56,8 +59,6 @@ class SchemasContext {
     std::map<std::string, uint32_t> table_context_id_map_;
     int32_t ColumnOffsetResolved(const std::string& relation_name,
                                  const std::string& col_name) const;
-
- private:
     int32_t ColumnIndexResolved(const std::string& column,
                                 const Schema* schema) const;
 };

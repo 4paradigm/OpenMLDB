@@ -536,9 +536,9 @@ class PhysicalTableProjectNode : public PhysicalProjectNode {
     static PhysicalTableProjectNode *CastFrom(PhysicalOpNode *node);
 };
 
-class PhysicalColumnProjectNode : public PhysicalUnaryNode {
+class PhysicalSimpleProjectNode : public PhysicalUnaryNode {
  public:
-    PhysicalColumnProjectNode(PhysicalOpNode *node, const Schema &schema,
+    PhysicalSimpleProjectNode(PhysicalOpNode *node, const Schema &schema,
                               const ColumnSourceList &sources)
         : PhysicalUnaryNode(node, kPhysicalOpSimpleProject, true, false),
           project_(sources) {
@@ -547,10 +547,10 @@ class PhysicalColumnProjectNode : public PhysicalUnaryNode {
         InitSchema();
         fn_infos_.push_back(&project_.fn_info_);
     }
-    virtual ~PhysicalColumnProjectNode() {}
+    virtual ~PhysicalSimpleProjectNode() {}
     bool InitSchema() override;
     virtual void Print(std::ostream &output, const std::string &tab) const;
-    static PhysicalColumnProjectNode *CastFrom(PhysicalOpNode *node);
+    static PhysicalSimpleProjectNode *CastFrom(PhysicalOpNode *node);
     const ColumnProject &project() const { return project_; }
     ColumnProject project_;
 };
@@ -1023,6 +1023,9 @@ class PhysicalRequestUnionNode : public PhysicalBinaryNode {
         return instance_not_in_window_;
     }
     const RequestWindowOp &window() const { return window_; }
+    const RequestWindowUnionList& window_unions() const {
+        return window_unions_;
+    }
     RequestWindowOp window_;
     const bool instance_not_in_window_;
     RequestWindowUnionList window_unions_;

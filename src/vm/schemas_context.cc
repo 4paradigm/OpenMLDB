@@ -218,6 +218,20 @@ bool SchemasContext::ColumnRefResolved(const std::string& relation_name,
     }
 }
 
+const std::string SchemasContext::SourceColumnNameResolved(
+    node::ColumnRefNode* column) {
+    std::string column_name = column->GetColumnName();
+    if (!Empty()) {
+        auto source = ColumnSourceResolved(column->GetRelationName(),
+                                           column->GetColumnName());
+        if (vm::kSourceColumn == source.type()) {
+            column_name = row_schema_info_list_[source.schema_idx()]
+                              .sources_->at(source.column_idx())
+                              .column_name();
+        }
+    }
+    return column_name;
+}
 vm::ColumnSource SchemasContext::ColumnSourceResolved(
     const std::string& relation_name, const std::string& col_name) const {
     const RowSchemaInfo* row_schema_info;
@@ -230,7 +244,7 @@ vm::ColumnSource SchemasContext::ColumnSourceResolved(
     if (-1 == column_idx) {
         return ColumnSource();
     }
-    return ColumnSource(row_schema_info->idx_, column_idx);
+    return ColumnSource(row_schema_info->idx_, column_idx, col_name);
 }
 
 int32_t SchemasContext::ColumnIndexResolved(const std::string& column,

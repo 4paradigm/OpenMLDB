@@ -66,7 +66,7 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 return nullptr;
             }
 
-            auto op = dynamic_cast<const PhysicalColumnProjectNode*>(node);
+            auto op = dynamic_cast<const PhysicalSimpleProjectNode*>(node);
             auto runner = new SimpleProjectRunner(
                 id_++, node->GetOutputNameSchemaList(), op->GetLimitCnt(),
                 op->project_.fn_info_);
@@ -625,7 +625,6 @@ void WindowAggRunner::RunWindowAggOnKey(
 
     for (size_t i = 0; i < unions_cnt; i++) {
         if (!union_partitions[i]) {
-            i++;
             continue;
         }
         auto segment =
@@ -634,14 +633,17 @@ void WindowAggRunner::RunWindowAggOnKey(
         union_segments[i] = segment;
         if (!segment) {
             union_segment_status[i] = IteratorStatus();
+            continue;
         }
         union_segment_iters[i] = segment->GetIterator();
         if (!union_segment_iters[i]) {
             union_segment_status[i] = IteratorStatus();
+            continue;
         }
         union_segment_iters[i]->SeekToFirst();
         if (!union_segment_iters[i]->Valid()) {
             union_segment_status[i] = IteratorStatus();
+            continue;
         }
         uint64_t ts = union_segment_iters[i]->GetKey();
         union_segment_status[i] = IteratorStatus(ts);

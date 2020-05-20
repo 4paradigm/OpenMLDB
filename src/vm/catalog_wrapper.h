@@ -60,44 +60,7 @@ class WindowIteratorWrapper : public WindowIterator {
     const WrapperFun* fun_;
 };
 
-class TableWrapper : public TableHandler {
- public:
-    TableWrapper(std::shared_ptr<TableHandler> table_handler,
-                 const WrapperFun* fun)
-        : TableHandler(), table_hander_(table_handler), value_(), fun_(fun) {}
-    virtual ~TableWrapper() {}
-
-    std::unique_ptr<RowIterator> GetIterator() const {
-        return std::unique_ptr<RowIterator>(
-            new IteratorWrapper(table_hander_->GetIterator(), fun_));
-    }
-    const Types& GetTypes() override { return table_hander_->GetTypes(); }
-    const IndexHint& GetIndex() override { return table_hander_->GetIndex(); }
-    std::unique_ptr<WindowIterator> GetWindowIterator(
-        const std::string& idx_name) override {
-        return std::unique_ptr<WindowIterator>(new WindowIteratorWrapper(
-            table_hander_->GetWindowIterator(idx_name), fun_));
-    }
-    const Schema* GetSchema() override { return table_hander_->GetSchema(); }
-    const std::string& GetName() override { return table_hander_->GetName(); }
-    const std::string& GetDatabase() override {
-        return table_hander_->GetDatabase();
-    }
-    base::ConstIterator<uint64_t, Row>* GetIterator(
-        int8_t* addr) const override {
-        return new IteratorWrapper(static_cast<std::unique_ptr<RowIterator>>(
-                                       table_hander_->GetIterator(addr)),
-                                   fun_);
-    }
-    Row At(uint64_t pos) override {
-        value_ = fun_->operator()(table_hander_->At(pos));
-        return value_;
-    }
-    const uint64_t GetCount() override { return table_hander_->GetCount(); }
-    std::shared_ptr<TableHandler> table_hander_;
-    Row value_;
-    const WrapperFun* fun_;
-};
+class TableWrapper;
 
 class PartitionWrapper : public PartitionHandler {
  public:
@@ -132,11 +95,7 @@ class PartitionWrapper : public PartitionHandler {
             new IteratorWrapper(partition_handler_->GetIterator(), fun_));
     }
     base::ConstIterator<uint64_t, Row>* GetIterator(
-        int8_t* addr) const override {
-        return new IteratorWrapper(static_cast<std::unique_ptr<RowIterator>>(
-                                       partition_handler_->GetIterator(addr)),
-                                   fun_);
-    }
+        int8_t* addr) const override;
     Row At(uint64_t pos) override {
         value_ = fun_->operator()(partition_handler_->At(pos));
         return value_;
@@ -144,8 +103,60 @@ class PartitionWrapper : public PartitionHandler {
     const uint64_t GetCount() override {
         return partition_handler_->GetCount();
     }
-
+    virtual std::shared_ptr<TableHandler> GetSegment(
+        std::shared_ptr<PartitionHandler> partition_hander,
+        const std::string& key);
+    virtual const OrderType GetOrderType() const {
+        return partition_handler_->GetOrderType();
+    }
+    const std::string GetHandlerTypeName() override {
+        return "PartitionHandler";
+    }
     std::shared_ptr<PartitionHandler> partition_handler_;
+    Row value_;
+    const WrapperFun* fun_;
+};
+class TableWrapper : public TableHandler {
+ public:
+    TableWrapper(std::shared_ptr<TableHandler> table_handler,
+                 const WrapperFun* fun)
+        : TableHandler(), table_hander_(table_handler), value_(), fun_(fun) {}
+    virtual ~TableWrapper() {}
+
+    std::unique_ptr<RowIterator> GetIterator() const {
+        return std::unique_ptr<RowIterator>(
+            new IteratorWrapper(table_hander_->GetIterator(), fun_));
+    }
+    const Types& GetTypes() override { return table_hander_->GetTypes(); }
+    const IndexHint& GetIndex() override { return table_hander_->GetIndex(); }
+    std::unique_ptr<WindowIterator> GetWindowIterator(
+        const std::string& idx_name) override {
+        return std::unique_ptr<WindowIterator>(new WindowIteratorWrapper(
+            table_hander_->GetWindowIterator(idx_name), fun_));
+    }
+    const Schema* GetSchema() override { return table_hander_->GetSchema(); }
+    const std::string& GetName() override { return table_hander_->GetName(); }
+    const std::string& GetDatabase() override {
+        return table_hander_->GetDatabase();
+    }
+    base::ConstIterator<uint64_t, Row>* GetIterator(
+        int8_t* addr) const override {
+        return new IteratorWrapper(static_cast<std::unique_ptr<RowIterator>>(
+                                       table_hander_->GetIterator(addr)),
+                                   fun_);
+    }
+    Row At(uint64_t pos) override {
+        value_ = fun_->operator()(table_hander_->At(pos));
+        return value_;
+    }
+    const uint64_t GetCount() override { return table_hander_->GetCount(); }
+    virtual std::shared_ptr<PartitionHandler> GetPartition(
+        std::shared_ptr<TableHandler> table_hander,
+        const std::string& index_name) const;
+    virtual const OrderType GetOrderType() const {
+        return table_hander_->GetOrderType();
+    }
+    std::shared_ptr<TableHandler> table_hander_;
     Row value_;
     const WrapperFun* fun_;
 };
