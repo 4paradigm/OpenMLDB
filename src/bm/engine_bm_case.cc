@@ -221,6 +221,7 @@ void EngineSimpleSelectDouble(benchmark::State* state, MODE mode) {  // NOLINT
     const std::string sql = "SELECT col4 FROM t1 limit 2;";
     Engine engine(catalog);
     BatchRunSession session;
+    session.EnableDebug();
     base::Status query_status;
     engine.Get(sql, "db", session, query_status);
     std::ostringstream runner_oss;
@@ -301,8 +302,13 @@ void EngineSimpleSelectInt32(benchmark::State* state, MODE mode) {  // NOLINT
     const std::string sql = "SELECT col1 FROM t1 limit 1;";
     Engine engine(catalog);
     BatchRunSession session(true);
+    session.EnableDebug();
     base::Status query_status;
     engine.Get(sql, "db", session, query_status);
+    std::ostringstream plan_oss;
+    session.GetPhysicalPlan()->Print(plan_oss, "");
+    LOG(INFO) << "physical plan:\n" << plan_oss.str() << std::endl;
+
     std::ostringstream runner_oss;
     session.GetRunner()->Print(runner_oss, "");
     LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;

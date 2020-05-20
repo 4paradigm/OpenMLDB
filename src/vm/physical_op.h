@@ -29,6 +29,7 @@ enum PhysicalOpType {
     kPhysicalOpAggrerate,
     kPhysicalOpWindowAgg,
     kPhysicalOpProject,
+    kPhysicalOpSimpleProject,
     kPhysicalOpLimit,
     kPhysicalOpRename,
     kPhysicalOpDistinct,
@@ -55,6 +56,8 @@ inline const std::string PhysicalOpTypeName(const PhysicalOpType &type) {
             return "FILTER_BY";
         case kPhysicalOpProject:
             return "PROJECT";
+        case kPhysicalOpSimpleProject:
+            return "SIMPLE_PROJECT";
         case kPhysicalOpAggrerate:
             return "AGGRERATE";
         case kPhysicalOpLimit:
@@ -186,6 +189,61 @@ class Key {
 
     const node::ExprListNode *keys_;
     FnInfo fn_info_;
+};
+
+class ColumnProject {
+ public:
+    explicit ColumnProject(const ColumnSourceList &sources)
+        : column_sources_(sources) {}
+    virtual ~ColumnProject() {}
+    const std::string ToString() const {
+        std::ostringstream oss;
+        oss << "sources=(";
+        for (size_t i = 0; i < column_sources_.size(); i++) {
+            if (i > 10) {
+                oss << ", ...";
+                break;
+            }
+            if (i > 0) {
+                oss << ", ";
+            }
+            oss << "[" << i << "]" << column_sources_[i].ToString();
+        }
+        return oss.str();
+    }
+    const FnInfo &fn_info() const { return fn_info_; }
+    const std::string FnDetail() const {
+        return "simple_project=" + fn_info_.fn_name_;
+    }
+    const ColumnSourceList &column_sources() const { return column_sources_; }
+
+    static const bool CombineColumnSources(
+        const ColumnSourceList &sources1, const ColumnSourceList &sources2,
+        ColumnSourceList &sources) {  // NOLINT
+        for (auto source1 : sources1) {
+            switch (source1.type()) {
+                case kSourceConst: {
+                    sources.push_back(source1);
+                    break;
+                }
+                case kSourceColumn: {
+                    if (source1.column_idx() >= sources2.size()) {
+                        LOG(WARNING) << "Fail to combine column sources";
+                        return false;
+                    }
+                    sources.push_back(sources2[source1.column_idx()]);
+                    break;
+                }
+                case kSourceNone: {
+                    LOG(WARNING) << "Fail to combine column sources";
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+    FnInfo fn_info_;
+    ColumnSourceList column_sources_;
 };
 
 class PhysicalOpNode {
@@ -476,6 +534,25 @@ class PhysicalTableProjectNode : public PhysicalProjectNode {
     }
     virtual ~PhysicalTableProjectNode() {}
     static PhysicalTableProjectNode *CastFrom(PhysicalOpNode *node);
+};
+
+class PhysicalSimpleProjectNode : public PhysicalUnaryNode {
+ public:
+    PhysicalSimpleProjectNode(PhysicalOpNode *node, const Schema &schema,
+                              const ColumnSourceList &sources)
+        : PhysicalUnaryNode(node, kPhysicalOpSimpleProject, true, false),
+          project_(sources) {
+        output_type_ = node->output_type_;
+        output_schema_ = schema;
+        InitSchema();
+        fn_infos_.push_back(&project_.fn_info_);
+    }
+    virtual ~PhysicalSimpleProjectNode() {}
+    bool InitSchema() override;
+    virtual void Print(std::ostream &output, const std::string &tab) const;
+    static PhysicalSimpleProjectNode *CastFrom(PhysicalOpNode *node);
+    const ColumnProject &project() const { return project_; }
+    ColumnProject project_;
 };
 class PhysicalAggrerationNode : public PhysicalProjectNode {
  public:
@@ -946,6 +1023,9 @@ class PhysicalRequestUnionNode : public PhysicalBinaryNode {
         return instance_not_in_window_;
     }
     const RequestWindowOp &window() const { return window_; }
+    const RequestWindowUnionList& window_unions() const {
+        return window_unions_;
+    }
     RequestWindowOp window_;
     const bool instance_not_in_window_;
     RequestWindowUnionList window_unions_;

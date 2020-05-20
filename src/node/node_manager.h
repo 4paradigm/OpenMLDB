@@ -251,6 +251,9 @@ class NodeManager {
                                        const node::ExprListNode *expr_list);
 
     node::ExprNode *MakeAndExpr(ExprListNode *expr_list);
+    node ::ExprListNode *BuildExprListFromSchemaSource(
+        const vm::ColumnSourceList column_sources,
+        const vm::SchemaSourceList &schema_souces);
 
  private:
     ProjectNode *MakeProjectNode(const int32_t pos, const std::string &name,

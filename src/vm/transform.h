@@ -129,18 +129,24 @@ class GroupAndSortOptimized : public TransformUpPysicalPass {
  private:
     virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
 
-    bool JoinKeysOptimized(PhysicalOpNode* in, Join* join,
+    bool JoinKeysOptimized(const vm::SchemaSourceList& column_sources,
+                           PhysicalOpNode* in, Join* join,
                            PhysicalOpNode** new_in);
-    bool KeysFilterOptimized(PhysicalOpNode* in, Key* group, Key* hash,
+    bool KeysFilterOptimized(const vm::SchemaSourceList& column_sources,
+                             PhysicalOpNode* in, Key* group, Key* hash,
                              PhysicalOpNode** new_in);
-    bool GroupOptimized(PhysicalOpNode* in, Key* group,
+    bool GroupOptimized(const vm::SchemaSourceList& column_sources,
+                        PhysicalOpNode* in, Key* group,
                         PhysicalOpNode** new_in);
-    bool SortOptimized(PhysicalOpNode* in, Sort* sort);
-    bool TransformGroupExpr(const node::ExprListNode* group,
+    bool SortOptimized(const vm::SchemaSourceList& column_sources,
+                       PhysicalOpNode* in, Sort* sort);
+    bool TransformGroupExpr(const vm::SchemaSourceList& column_sources,
+                            const node::ExprListNode* group,
                             const IndexHint& index_hint, std::string* index,
                             const node::ExprListNode** keys,
                             const node::ExprListNode** output);
-    bool TransformOrderExpr(const node::OrderByNode* order,
+    bool TransformOrderExpr(const vm::SchemaSourceList& column_sources,
+                            const node::OrderByNode* order,
                             const Schema& schema, const IndexSt& index_st,
                             const node::OrderByNode** output);
     bool MatchBestIndex(const std::vector<std::string>& columns,
@@ -161,6 +167,17 @@ class LimitOptimized : public TransformUpPysicalPass {
     static bool ApplyLimitCnt(PhysicalOpNode* node, int32_t limit_cnt);
 };
 
+class SimpleProjectOptimized : public TransformUpPysicalPass {
+ public:
+    SimpleProjectOptimized(node::NodeManager* node_manager,
+                           const std::string& db,
+                           const std::shared_ptr<Catalog>& catalog)
+        : TransformUpPysicalPass(node_manager, db, catalog) {}
+    ~SimpleProjectOptimized() {}
+
+ private:
+    virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
+};
 struct ExprPair {
     node::ExprNode* left_expr_ = nullptr;
     uint32_t left_idx_ = 0u;
@@ -208,6 +225,7 @@ typedef fesql::base::Graph<LogicalOp, HashLogicalOp, EqualLogicalOp>
     LogicalGraph;
 
 enum PhysicalPlanPassType {
+    kPassColumnProjectOptimized,
     kPassFilterOptimized,
     kPassGroupAndSortOptimized,
     kPassLeftJoinOptimized,
@@ -216,6 +234,10 @@ enum PhysicalPlanPassType {
 
 inline std::string PhysicalPlanPassTypeName(PhysicalPlanPassType type) {
     switch (type) {
+        case kPassColumnProjectOptimized:
+            return "PassColumnProjectOptimized";
+        case kPassFilterOptimized:
+            return "PassFilterOptimized";
         case kPassGroupAndSortOptimized:
             return "PassGroupByOptimized";
         case kPassLeftJoinOptimized:
@@ -263,6 +285,8 @@ class BatchModeTransformer {
                  base::Status& status);  // NOLINT
     bool GenRange(Range* sort, const SchemaSourceList& input_name_schema_list,
                   base::Status& status);  // NOLINT
+    bool GenSimpleProject(ColumnProject* project, PhysicalOpNode* in,
+                          base::Status& status);  // NOLINT
 
  protected:
     virtual bool TransformPlanOp(const ::fesql::node::PlanNode* node,
@@ -343,6 +367,10 @@ class BatchModeTransformer {
     uint32_t id_;
     std::vector<PhysicalPlanPassType> passes;
     LogicalOpMap op_map_;
+    bool IsSimpleProject(const ColumnSourceList& source);
+    bool BuildExprListFromSchemaSource(const ColumnSourceList column_sources,
+                                       const SchemaSourceList& schema_souces,
+                                       node::ExprListNode* expr_list);
 };
 
 class RequestModeransformer : public BatchModeTransformer {

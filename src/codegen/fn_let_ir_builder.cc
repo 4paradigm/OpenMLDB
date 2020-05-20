@@ -229,13 +229,24 @@ bool RowFnLetIRBuilder::BuildProject(
     ::fesql::type::ColumnDef* cdef = output_schema->Add();
     cdef->set_name(col_name);
     cdef->set_type(ctype);
-    output_column_sources->push_back(vm::ColumnSource());
-    if (expr->GetExprType() == fesql::node::kExprColumnRef) {
-        const ::fesql::node::ColumnRefNode* column_expr =
-            (const ::fesql::node::ColumnRefNode*)expr;
-        schema_context_.ColumnSourceResolved(column_expr->GetRelationName(),
-                                             column_expr->GetColumnName(),
-                                             &output_column_sources->back());
+    switch (expr->GetExprType()) {
+        case fesql::node::kExprColumnRef: {
+            const ::fesql::node::ColumnRefNode* column_expr =
+                (const ::fesql::node::ColumnRefNode*)expr;
+            output_column_sources->push_back(
+                schema_context_.ColumnSourceResolved(
+                    column_expr->GetRelationName(),
+                    column_expr->GetColumnName()));
+            break;
+        }
+        case fesql::node::kExprPrimary: {
+            auto const_expr = dynamic_cast<const node::ConstNode*>(expr);
+            output_column_sources->push_back(vm::ColumnSource(const_expr));
+            break;
+        }
+        default: {
+            output_column_sources->push_back(vm::ColumnSource());
+        }
     }
     return true;
 }

@@ -508,7 +508,15 @@ INSTANTIATE_TEST_CASE_P(
             "SELECT sum(col1) as col1sum FROM t1 group by col3, col2, col1;",
             "PROJECT(type=GroupAggregation, group_keys=(col3,col2,col1))\n"
             "  GROUP_BY(group_keys=(col3))\n"
-            "    DATA_PROVIDER(type=Partition, table=t1, index=index12)")));
+            "    DATA_PROVIDER(type=Partition, table=t1, index=index12)"),
+        std::make_pair(
+            "SELECT sum(col1) as col1sum FROM (select c1 as col1, c2 as col2 , "
+            "c3 as col3 from tc) group by col3, col2, col1;",
+            "PROJECT(type=GroupAggregation, group_keys=(col3,col2,col1))\n"
+            "  GROUP_BY(group_keys=(col3))\n"
+            "    SIMPLE_PROJECT(sources=([0]<-[0:1], [1]<-[0:2], [2]<-[0:3])\n"
+            "      DATA_PROVIDER(type=Partition, table=tc, "
+            "index=index12_tc)")));
 
 INSTANTIATE_TEST_CASE_P(
     SortOptimized, TransformPassOptimizedTest,
@@ -562,7 +570,7 @@ INSTANTIATE_TEST_CASE_P(
             "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join "
             "t2 on "
             " t1.col1 = t2.col2 and t2.col5 >= t1.col5;",
-            "PROJECT(type=TableProject)\n"
+            "SIMPLE_PROJECT(sources=([0]<-[0:1], [1]<-[1:2])\n"
             "  JOIN(type=LastJoin, condition=t2.col5 >= t1.col5, "
             "left_keys=(t1.col1), right_keys=(t2.col2), index_keys=)\n"
             "    DATA_PROVIDER(table=t1)\n"
@@ -572,7 +580,7 @@ INSTANTIATE_TEST_CASE_P(
             "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join "
             "t2 on "
             " t1.col1 = t2.col1 and t2.col5 >= t1.col5;",
-            "PROJECT(type=TableProject)\n"
+            "SIMPLE_PROJECT(sources=([0]<-[0:1], [1]<-[1:2])\n"
             "  JOIN(type=LastJoin, condition=t2.col5 >= t1.col5, left_keys=(), "
             "right_keys=(), index_keys=(t1.col1))\n"
             "    DATA_PROVIDER(table=t1)\n"
@@ -695,7 +703,7 @@ INSTANTIATE_TEST_CASE_P(
             "0))\n"
             "    +-UNION(partition_keys=(col1), orders=(col5) ASC, "
             "range=(col5, -3, 0))\n"
-            "      DATA_PROVIDER(table=t3)\n"
+            "        DATA_PROVIDER(table=t3)\n"
             "    DATA_PROVIDER(type=Partition, table=t1, index=index1)"),
         // 1
         std::make_pair(
@@ -707,9 +715,86 @@ INSTANTIATE_TEST_CASE_P(
             "  PROJECT(type=WindowAggregation, limit=10)\n"
             "    +-WINDOW(partition_keys=(), orders=() ASC, range=(col5, -3, "
             "0))\n"
+            "    +-UNION(partition_keys=(col1), orders=() ASC, range=(col5, "
+            "-3, 0))\n"
+            "        DATA_PROVIDER(type=Partition, table=t3, index=index2_t3)\n"
+            "    DATA_PROVIDER(type=Partition, table=t1, index=index12)")));
+
+INSTANTIATE_TEST_CASE_P(
+    SimpleProjectOptimized, TransformPassOptimizedTest,
+    testing::Values(
+        // SIMPLE SELECT COLUMNS
+        std::make_pair("SELECT COL0, COL1, COL2, COL6 FROM t1 LIMIT 10;",
+                       "LIMIT(limit=10)\n"
+                       "  SIMPLE_PROJECT(sources=([0]<-[0:0], [1]<-[0:1], "
+                       "[2]<-[0:2], [3]<-[0:6])\n"
+                       "    DATA_PROVIDER(table=t1)"),
+        // SIMPLE SELECT COLUMNS and CONST VALUES
+        std::make_pair(
+            "SELECT c0 as col0, c1 as col1, c2 as col2, 0.0f as col3, 0.0 as "
+            "col4, c5 as col5, c6 as col6 from tb LIMIT 10;\n",
+            "LIMIT(limit=10)\n"
+            "  SIMPLE_PROJECT(sources=([0]<-[0:0], [1]<-[0:1], [2]<-[0:2], "
+            "[3]<-0.000000, [4]<-0.000000, [5]<-[0:5], [6]<-[0:6])\n"
+            "    DATA_PROVIDER(table=tb)"),
+        // SIMPLE SELECT FROM SIMPLE SELECT FROM SIMPLE SELECT
+        std::make_pair(
+            "SELECT x, y , z, 1, 1.0 from (select col0 as x, col1 as y, col2 "
+            "as z from (select c0 as col0, c1 as col1, c2 "
+            "as col2, 0.0f as col3, 0.0 as "
+            "col4, c5 as col5, c6 as col6 from tb)) LIMIT 10;\n",
+            "LIMIT(limit=10)\n"
+            "  SIMPLE_PROJECT(sources=([0]<-[0:0], [1]<-[0:1], [2]<-[0:2], "
+            "[3]<-1, [4]<-1.000000)\n"
+            "    DATA_PROVIDER(table=tb)"),
+        // SIMPLE SELECT COLUMNS and CONST VALUES
+        std::make_pair(
+            "SELECT col3+col4 as col01 from (select c0 as col0, c1 as col1, c2 "
+            "as col2, 0.0f as col3, 0.0 as "
+            "col4, c5 as col5, c6 as col6 from tb) LIMIT 10;\n",
+            "LIMIT(limit=10, optimized)\n"
+            "  PROJECT(type=TableProject, limit=10)\n"
+            "    SIMPLE_PROJECT(sources=([0]<-[0:0], [1]<-[0:1], [2]<-[0:2], "
+            "[3]<-0.000000, [4]<-0.000000, [5]<-[0:5], [6]<-[0:6])\n"
+            "      DATA_PROVIDER(table=tb)"),
+        // SIMPLE SELECT COLUMNS and CONST VALUES
+        std::make_pair(
+            "SELECT col1, col5, sum(col2) OVER w1 as w1_col2_sum FROM t1\n"
+            "      WINDOW w1 AS (UNION (select c0 as col0, c1 as col1, c2 as "
+            "col2, 0.0f as col3, 0.0 as col4, c5 as col5, c6 as col6 from tb) "
+            "PARTITION BY col1,col2 ORDER BY col5 "
+            "ROWS "
+            "BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;",
+            "LIMIT(limit=10, optimized)\n"
+            "  PROJECT(type=WindowAggregation, limit=10)\n"
+            "    +-WINDOW(partition_keys=(), orders=() ASC, range=(col5, -3, "
+            "0))\n"
             "    +-UNION(partition_keys=(col1,col2), orders=(col5) ASC, "
             "range=(col5, -3, 0))\n"
-            "      DATA_PROVIDER(table=t3)\n"
+            "        SIMPLE_PROJECT(sources=([0]<-[0:0], [1]<-[0:1], "
+            "[2]<-[0:2], "
+            "[3]<-0.000000, [4]<-0.000000, [5]<-[0:5], [6]<-[0:6])\n"
+            "          DATA_PROVIDER(table=tb)\n"
+            "    DATA_PROVIDER(type=Partition, table=t1, index=index12)"),
+        // SIMPLE SELECT COLUMNS and CONST VALUES
+        std::make_pair(
+            "SELECT col1, col5, sum(col2) OVER w1 as w1_col2_sum FROM t1\n"
+            "      WINDOW w1 AS (UNION (select c0 as col0, c1 as col1, c2 as "
+            "col2, 0.0f as col3, 0.0 as col4, c5 as col5, c6 as col6 from tc) "
+            "PARTITION BY col1,col2 ORDER BY col5 "
+            "ROWS "
+            "BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;",
+            "LIMIT(limit=10, optimized)\n"
+            "  PROJECT(type=WindowAggregation, limit=10)\n"
+            "    +-WINDOW(partition_keys=(), orders=() ASC, range=(col5, -3, "
+            "0))\n"
+            "    +-UNION(partition_keys=(), orders=() ASC, range=(col5, -3, "
+            "0))\n"
+            "        SIMPLE_PROJECT(sources=([0]<-[0:0], [1]<-[0:1], "
+            "[2]<-[0:2], "
+            "[3]<-0.000000, [4]<-0.000000, [5]<-[0:5], [6]<-[0:6])\n"
+            "          DATA_PROVIDER(type=Partition, table=tc, "
+            "index=index12_tc)\n"
             "    DATA_PROVIDER(type=Partition, table=t1, index=index12)")));
 TEST_P(TransformPassOptimizedTest, pass_optimzied_test) {
     fesql::type::TableDef table_def;
@@ -757,6 +842,30 @@ TEST_P(TransformPassOptimizedTest, pass_optimzied_test) {
             new ::fesql::storage::Table(3, 1, table_def));
         AddTable(catalog, table_def, table);
     }
+
+    {
+        fesql::type::TableDef table_def;
+        BuildTableA(table_def);
+        table_def.set_name("tb");
+        std::shared_ptr<::fesql::storage::Table> table(
+            new fesql::storage::Table(4, 1, table_def));
+        AddTable(catalog, table_def, table);
+    }
+    {
+        fesql::type::TableDef table_def;
+        BuildTableA(table_def);
+        table_def.set_name("tc");
+        {
+            ::fesql::type::IndexDef* index = table_def.add_indexes();
+            index->set_name("index12_tc");
+            index->add_first_keys("c1");
+            index->add_first_keys("c2");
+            index->set_second_key("c5");
+        }
+        std::shared_ptr<::fesql::storage::Table> table(
+            new fesql::storage::Table(5, 1, table_def));
+        AddTable(catalog, table_def, table);
+    }
     auto in_out = GetParam();
     PhysicalPlanCheck(catalog, in_out.first, in_out.second);
 }
@@ -777,7 +886,7 @@ INSTANTIATE_TEST_CASE_P(
             "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join "
             "t2 on "
             " t1.col1 = t2.col2 and t2.col5 >= t1.col5;",
-            "PROJECT(type=TableProject)\n"
+            "SIMPLE_PROJECT(sources=([0]<-[0:1], [1]<-[1:2])\n"
             "  JOIN(type=LastJoin, condition=t2.col5 >= t1.col5, "
             "left_keys=(t1.col1), right_keys=(t2.col2), index_keys=)\n"
             "    DATA_PROVIDER(table=t1)\n"
@@ -787,7 +896,7 @@ INSTANTIATE_TEST_CASE_P(
             "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join "
             "t2 on "
             " t1.col1 = t2.col1 and t2.col5 >= t1.col5;",
-            "PROJECT(type=TableProject)\n"
+            "SIMPLE_PROJECT(sources=([0]<-[0:1], [1]<-[1:2])\n"
             "  JOIN(type=LastJoin, condition=t2.col5 >= t1.col5, "
             "left_keys=(t1.col1), right_keys=(t2.col1), index_keys=)\n"
             "    DATA_PROVIDER(table=t1)\n"

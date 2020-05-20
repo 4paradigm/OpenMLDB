@@ -17,6 +17,7 @@
 
 #ifndef SRC_VM_CATALOG_H_
 #define SRC_VM_CATALOG_H_
+#include <node/sql_node.h>
 #include <map>
 #include <memory>
 #include <string>
@@ -41,18 +42,54 @@ struct ColInfo {
     std::string name;
 };
 
-struct ColumnSource {
-    bool has_source_ = false;
-    uint32_t schema_idx_ = 0;
-    uint32_t column_idx_ = 0;
+enum SourceType { kSourceColumn, kSourceConst, kSourceNone };
+class ColumnSource;
+typedef std::vector<ColumnSource> ColumnSourceList;
+class ColumnSource {
+ public:
+    ColumnSource()
+        : type_(kSourceNone),
+          schema_idx_(0),
+          column_idx_(0),
+          column_name_(""),
+          const_value_() {}
+    explicit ColumnSource(const node::ConstNode* node)
+        : type_(kSourceConst),
+          schema_idx_(0),
+          column_idx_(0),
+          column_name_(""),
+          const_value_(node) {}
+    ColumnSource(uint32_t schema_idx, uint32_t column_idx,
+                 const std::string& column_name)
+        : type_(kSourceColumn),
+          schema_idx_(schema_idx),
+          column_idx_(column_idx),
+          column_name_(column_name),
+          const_value_() {}
+
     const std::string ToString() const {
-        if (has_source_) {
-            return "source->" + std::to_string(schema_idx_) + ":" +
-                   std::to_string(column_idx_);
-        } else {
-            return "";
+        switch (type_) {
+            case kSourceColumn:
+                return "<-[" + std::to_string(schema_idx_) + ":" +
+                       std::to_string(column_idx_) + "]";
+            case kSourceConst:
+                return "<-" + node::ExprString(const_value_);
+            case kSourceNone:
+                return "->None";
         }
     }
+    const SourceType type() const { return type_; }
+    const uint32_t schema_idx() const { return schema_idx_; }
+    const uint32_t column_idx() const { return column_idx_; }
+    const std::string& column_name() const { return column_name_; }
+    const node::ConstNode* const_value() const { return const_value_; }
+
+ private:
+    SourceType type_;
+    uint32_t schema_idx_;
+    uint32_t column_idx_;
+    std::string column_name_;
+    const node::ConstNode* const_value_;
 };
 
 struct IndexSt {
@@ -66,7 +103,6 @@ typedef ::google::protobuf::RepeatedPtrField<::fesql::type::ColumnDef> Schema;
 typedef ::google::protobuf::RepeatedPtrField<::fesql::type::IndexDef> IndexList;
 typedef std::map<std::string, ColInfo> Types;
 typedef std::map<std::string, IndexSt> IndexHint;
-typedef std::vector<ColumnSource> ColumnSourceList;
 
 struct SchemaSource {
  public:
@@ -103,6 +139,9 @@ struct SchemaSourceList {
         }
     }
 
+    const bool Empty() const {
+        return schema_source_list_.empty();
+    }
     const std::vector<SchemaSource>& schema_source_list() const {
         return schema_source_list_;
     }
@@ -151,7 +190,7 @@ class RowHandler : public DataHandler {
     const uint64_t GetCount() override { return 0; }
     Row At(uint64_t pos) override { return Row(); }
     const HandlerType GetHanlderType() override { return kRowHandler; }
-    virtual const Row& GetValue() const = 0;
+    virtual const Row& GetValue() = 0;
     const std::string GetHandlerTypeName() override { return "RowHandler"; }
 };
 
