@@ -209,6 +209,9 @@ java_ut_pz:
     script:
         - ln -sf /depends/thirdparty thirdparty
         - ln -sf /depends/thirdsrc thirdsrc
+        - bash steps/get_pz_fpga_deps.sh
+        - sed -i 's/\"Enable pz compression for ssd tables\"\ OFF/\"Enable pz compression for ssd tables\"\ ON/g' CMakeLists.txt
+        - source /root/.bashrc && bash steps/simple_compile.sh
         - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/java_ut.sh
         - source /root/.bashrc && bash steps/auto_test.sh
     after_script:
