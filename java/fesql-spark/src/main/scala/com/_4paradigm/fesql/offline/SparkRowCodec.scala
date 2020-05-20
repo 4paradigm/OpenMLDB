@@ -1,15 +1,15 @@
 package com._4paradigm.fesql.offline
 
-import java.nio.ByteBuffer
 import java.sql.Timestamp
 
 import com._4paradigm.fesql.codec.{RowBuilder, RowView, Row => NativeRow}
 import com._4paradigm.fesql.offline.utils.FesqlUtil
+import com._4paradigm.fesql.vm.CoreAPI
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types._
 
 
-class SparkRowCodec(sliceSchemas: Array[StructType], bufferPool: NativeBufferPool) {
+class SparkRowCodec(sliceSchemas: Array[StructType]) {
 
   private val sliceNum = sliceSchemas.length
   private val columnDefSegmentList = sliceSchemas.map(FesqlUtil.getFeSQLSchema)
@@ -26,20 +26,16 @@ class SparkRowCodec(sliceSchemas: Array[StructType], bufferPool: NativeBufferPoo
     (cur, schema) => cur + schema.size)
 
 
-  def encode(row: Row, keepBuffer: Boolean): NativeRow = {
+  def encode(row: Row): NativeRow = {
     var result: NativeRow = null
     var offset = 0
 
     val sliceSizes = getNativeRowSliceSizes(row)
-    val totalSize = sliceSizes.sum
-
-    val managedBuffer = bufferPool.getBuffer(totalSize)
-    val buffer = managedBuffer.buffer
 
     for (i <- 0 until sliceNum) {
-      buffer.position(offset)
-      buffer.limit(offset + sliceSizes(i))
-      val rowSlice = encodeSingle(row, buffer.slice(), i)
+      val sliceSize = sliceSizes(i)
+      val buffer = CoreAPI.AllocateRaw(sliceSize)
+      val rowSlice = encodeSingle(row, buffer, sliceSize, i)
 
       if (i == 0) {
         result = rowSlice
@@ -50,11 +46,6 @@ class SparkRowCodec(sliceSchemas: Array[StructType], bufferPool: NativeBufferPoo
 
       offset += sliceSizes(i)
     }
-
-    if (!keepBuffer) {
-      bufferPool.releaseBuffer(managedBuffer)
-    }
-
     result
   }
 
@@ -66,11 +57,11 @@ class SparkRowCodec(sliceSchemas: Array[StructType], bufferPool: NativeBufferPoo
   }
 
 
-  def encodeSingle(row: Row, buffer: ByteBuffer, sliceIndex: Int): NativeRow = {
+  def encodeSingle(row: Row, buffer: Long, size: Int, sliceIndex: Int): NativeRow = {
     val rowBuilder = rowBuilders(sliceIndex)
     val schema = sliceSchemas(sliceIndex)
 
-    rowBuilder.SetBuffer(buffer)
+    rowBuilder.SetBuffer(buffer, size)
 
     val fieldNum = schema.size
     var fieldOffset = sliceFieldOffsets(sliceIndex)
@@ -104,7 +95,8 @@ class SparkRowCodec(sliceSchemas: Array[StructType], bufferPool: NativeBufferPoo
       }
       fieldOffset += 1
     }
-    new NativeRow(buffer)
+
+    new NativeRow(buffer, size)
   }
 
 

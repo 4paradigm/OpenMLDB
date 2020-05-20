@@ -69,7 +69,7 @@ bool FeSQLJITWrapper::AddModuleFromBuffer(const base::RawBuffer& buf) {
     return this->AddModule(std::move(res.get()), std::move(llvm_ctx));
 }
 
-RawFunctionPtr FeSQLJITWrapper::FindFunction(const std::string& funcname) {
+RawPtrHandle FeSQLJITWrapper::FindFunction(const std::string& funcname) {
     if (funcname == "") {
         return 0;
     }

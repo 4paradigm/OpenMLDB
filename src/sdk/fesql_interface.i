@@ -28,12 +28,12 @@ namespace std {
 %shared_ptr(fesql::vm::SimpleCatalog);
 %shared_ptr(fesql::vm::CompileInfo);
 
-%typemap(jni) fesql::vm::RawFunctionPtr "jlong"
-%typemap(jtype) fesql::vm::RawFunctionPtr "long"
-%typemap(jstype) fesql::vm::RawFunctionPtr "long"
-%typemap(javain) fesql::vm::RawFunctionPtr "$javainput"
-%typemap(javaout) fesql::vm::RawFunctionPtr "{ return $jnicall; }"
-%typemap(in) fesql::vm::RawFunctionPtr %{ $1 = reinterpret_cast<fesql::vm::RawFunctionPtr>($input); %}
+%typemap(jni) fesql::vm::RawPtrHandle "jlong"
+%typemap(jtype) fesql::vm::RawPtrHandle "long"
+%typemap(jstype) fesql::vm::RawPtrHandle "long"
+%typemap(javain) fesql::vm::RawPtrHandle "$javainput"
+%typemap(javaout) fesql::vm::RawPtrHandle "{ return $jnicall; }"
+%typemap(in) fesql::vm::RawPtrHandle %{ $1 = reinterpret_cast<fesql::vm::RawPtrHandle>($input); %}
 
 
 // Fix for Java shared_ptr unref

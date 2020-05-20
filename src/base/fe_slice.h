@@ -18,6 +18,10 @@ class Slice {
 
     // Create a slice that refers to d[0,n-1].
     Slice(const char* d, size_t n) : need_free_(false), size_(n), data_(d) {}
+    Slice(int64_t buf_handle, size_t n) :
+        need_free_(false), size_(n),
+        data_(reinterpret_cast<char*>(buf_handle)) {}
+
     Slice(int8_t* d, size_t n)
         : need_free_(false), size_(n), data_(reinterpret_cast<char*>(d)) {}
     Slice(int8_t* d, size_t n, bool need_free)

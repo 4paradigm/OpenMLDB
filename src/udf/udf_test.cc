@@ -419,7 +419,7 @@ TEST_F(UDFTest, GetColTest) {
     }
 }
 TEST_F(UDFTest, GetWindowColTest) {
-    vm::CurrentHistoryWindow table(-2);
+    vm::CurrentHistoryWindow table(false, -2);
     uint64_t ts = 1000;
     for (auto row : rows) {
         table.BufferData(ts++, row);

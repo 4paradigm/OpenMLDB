@@ -109,10 +109,9 @@ class TestSparkRowCodec extends FunSuite {
 
 
   def testRow(row: Row, schemaSlices: Array[StructType]): Unit = {
-    val bufferPool = new NativeBufferPool
-    val codec = new SparkRowCodec(schemaSlices, bufferPool)
+    val codec = new SparkRowCodec(schemaSlices)
 
-    val nativeRow = codec.encode(row, keepBuffer=false)
+    val nativeRow = codec.encode(row)
 
     val arr = Array.fill[Any](schemaSlices.map(_.size).sum)(null)
     codec.decode(nativeRow, arr)
