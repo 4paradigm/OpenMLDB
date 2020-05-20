@@ -20,6 +20,7 @@
 #include "codec/codec.h"
 #include "proto/name_server.pb.h"
 #include "codec/field_codec.h"
+#include "base/glog_wapper.h"
 
 namespace rtidb {
 namespace codec {
