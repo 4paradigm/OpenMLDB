@@ -133,6 +133,7 @@ class NodeManager {
     SQLNode *MakeIndexKeyNode(const std::string &key);
     SQLNode *MakeIndexTsNode(const std::string &ts);
     SQLNode *MakeIndexTTLNode(ExprNode *ttl_expr);
+    SQLNode *MakeIndexTTLTypeNode(const std::string &ttl_type);
     SQLNode *MakeIndexVersionNode(const std::string &version);
     SQLNode *MakeIndexVersionNode(const std::string &version, int count);
 
