@@ -3,7 +3,6 @@
 //
 
 #pragma once
-#include <memory>
 #include "client/client_type.h"
 
 bool PutBlob(BlobInfoResult& blobInfo, BlobOPResult& result, // NOLINT

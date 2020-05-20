@@ -202,7 +202,6 @@ void BaseClient::UpdateBlobEndpoint(
         old_blobs = blobs_;
     }
     for (const auto& endpoint : alive_endpoints) {
-        PDLOG(INFO, "update blob endpoint %s", endpoint.c_str());
         auto iter = old_blobs.find(endpoint);
         if (iter == old_blobs.end()) {
             std::shared_ptr<rtidb::client::BsClient> blob =
