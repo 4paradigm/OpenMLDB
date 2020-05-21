@@ -208,7 +208,6 @@ std::shared_ptr<fesql::sdk::ResultSet> NsClient::ExecuteSQL(
     fesql::node::NodePointVector parser_trees;
     parser.parse(script, parser_trees, &node_manager, sql_status);
     if (0 != sql_status.code) {
-        LOG(WARNING) << sql_status.msg;
         msg = sql_status.msg;
         std::cout << msg << std::endl;
         return empty;
@@ -218,7 +217,6 @@ std::shared_ptr<fesql::sdk::ResultSet> NsClient::ExecuteSQL(
 
     if (0 != sql_status.code) {
         msg = sql_status.msg;
-        LOG(WARNING) << msg;
         std::cout << msg << std::endl;
         return empty;
     }
@@ -227,7 +225,6 @@ std::shared_ptr<fesql::sdk::ResultSet> NsClient::ExecuteSQL(
 
     if (nullptr == plan) {
         msg = "fail to execute plan : plan null";
-        LOG(WARNING) << msg;
         std::cout << msg << std::endl;
         return empty;
     }
@@ -245,7 +242,6 @@ std::shared_ptr<fesql::sdk::ResultSet> NsClient::ExecuteSQL(
                                 &sql_status);
             if (0 != sql_status.code) {
                 msg = sql_status.msg;
-                LOG(WARNING) << msg;
                 std::cout << msg << std::endl;
                 return empty;
             }
@@ -258,7 +254,6 @@ std::shared_ptr<fesql::sdk::ResultSet> NsClient::ExecuteSQL(
         default: {
             msg = "fail to execute script with unSuppurt type" +
                   fesql::node::NameOfPlanNodeType(plan->GetType());
-            LOG(WARNING) << msg;
         }
     }
     std::cout << msg << std::endl;
@@ -945,6 +940,8 @@ bool NsClient::TransformToTableDef(
     std::map<std::string, ::rtidb::common::ColumnDesc*> column_names;
     table->set_name(table_name);
     // todo: change default setting
+    table->set_partition_num(1);
+    table->set_replica_num(1);
     ::rtidb::api::TTLDesc* ttl_desc = table->mutable_ttl_desc();
     ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsoluteTime);
     ttl_desc->set_abs_ttl(0);
@@ -964,7 +961,6 @@ bool NsClient::TransformToTableDef(
                     status->msg = "CREATE common: COLUMN NAME " +
                                   column_def->GetColumnName() + " duplicate";
                     status->code = fesql::common::kSQLError;
-                    LOG(WARNING) << status->msg;
                     return false;
                 }
                 column_desc->set_name(column_def->GetColumnName());
@@ -1013,7 +1009,6 @@ bool NsClient::TransformToTableDef(
                                           column_def->GetColumnType()) +
                                       " is not supported";
                         status->code = fesql::common::kSQLError;
-                        LOG(WARNING) << status->msg;
                         return false;
                     }
                 }
@@ -1033,7 +1028,6 @@ bool NsClient::TransformToTableDef(
                     status->msg = "CREATE common: INDEX NAME " +
                                   column_index->GetName() + " duplicate";
                     status->code = fesql::common::kSQLError;
-                    LOG(WARNING) << status->msg;
                     return false;
                 }
                 index_names.insert(column_index->GetName());
@@ -1049,14 +1043,25 @@ bool NsClient::TransformToTableDef(
                         status->msg = "CREATE common: TS NAME " +
                                       column_index->GetTs() + " not exists";
                         status->code = fesql::common::kSQLError;
-                        LOG(WARNING) << status->msg;
                         return false;
                     } else {
                         it->second->set_is_ts_col(true);
+                        if (!column_index->ttl_type().empty()) {
+                            if (column_index->ttl_type() == "absolute") {
+                                table->mutable_ttl_desc()->set_ttl_type(rtidb::api::kAbsoluteTime);
+                            } else if (column_index->ttl_type() == "latest") {
+                                table->mutable_ttl_desc()->set_ttl_type(rtidb::api::kLatestTime);
+                            } else {
+                                status->msg = "CREATE common: ttl_type " +
+                                column_index->ttl_type() + " not support";
+                                status->code = fesql::common::kSQLError;
+                                return false;
+                            }
+                        }
                         if (-1 != column_index->GetTTL()) {
                             // todo: support multi ttl
-                            if (table->ttl_type() == "kAbsoluteTime") {
-                                it->second->set_abs_ttl(column_index->GetTTL());
+                            if (table->ttl_desc().ttl_type() == rtidb::api::kAbsoluteTime) {
+                                it->second->set_abs_ttl(column_index->GetTTL() / 60000);
                             } else {
                                 it->second->set_lat_ttl(column_index->GetTTL());
                             }
@@ -1072,7 +1077,6 @@ bool NsClient::TransformToTableDef(
                     fesql::node::NameOfSQLNodeType(column_desc->GetType()) +
                     " when CREATE TABLE";
                 status->code = fesql::common::kSQLError;
-                LOG(WARNING) << status->msg;
                 return false;
             }
         }
