@@ -5,7 +5,7 @@ from datetime import date
 class TestRtidb(unittest.TestCase):
   
   def setUp(self):
-    self.nsc = rtidb.RTIDBClient("172.27.128.37:6181", "/issue-5")
+    self.nsc = rtidb.RTIDBClient("127.0.0.1:6181", "/onebox")
 
   def test_query(self):
     data = {"id":"11","attribute":"a1", "image":"i1"}
