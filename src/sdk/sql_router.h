@@ -18,26 +18,31 @@
 #ifndef SRC_SDK_SQL_ROUTER_H_
 #define SRC_SDK_SQL_ROUTER_H_
 
-#include "sdk/result_set.h"
 #include "sdk/base.h"
+#include "sdk/result_set.h"
 
 namespace rtidb {
 namespace sdk {
 
-class SQLRouter {
+struct SQLRouterOptions {
+    std::string zk_cluster;
+    std::string zk_path;
+    uint32_t session_timeout = 2000;
+};
 
+class SQLRouter {
  public:
     SQLRouter() {}
 
     virtual ~SQLRouter() {}
 
     virtual std::shared_ptr<::fesql::sdk::ResultSet> ExecuteSQL(
-            const std::string& db,
-            const std::string& sql,
-            ::fesql::sdk::Status* status) = 0;
-
+        const std::string& db, const std::string& sql,
+        ::fesql::sdk::Status* status) = 0;
 };
 
-}  // sdk
-}  // rtidb
+std::shared_ptr<SQLRouter> NewClusterSQLRouter(const SQLRouterOptions& options);
+
+}  // namespace sdk
+}  // namespace rtidb
 #endif  // SRC_SDK_SQL_ROUTER_H_

@@ -16,19 +16,29 @@
  */
 
 #include "sdk/cluster_sdk.h"
+
+#include <map>
+#include <set>
+#include <vector>
+#include <utility>
+#include <string>
+#include <memory>
 #include "glog/logging.h"
 
 namespace rtidb {
 namespace sdk {
 
-
-ClusterSDK::ClusterSDK(
-        const ClusterOptions& options):cluster_version_(0),
-    options_(options), nodes_root_path_(options.zk_path +"/nodes"),
-    table_root_path_(options.zk_path + "/table/table_data"),
-    notify_path_(options.zk_path + "/table/notify"),
-    zk_client_(NULL), mu_(), alive_tablets_(),
-    table_to_tablets_(), catalog_(new ::rtidb::catalog::SDKCatalog()) {}
+ClusterSDK::ClusterSDK(const ClusterOptions& options)
+    : cluster_version_(0),
+      options_(options),
+      nodes_root_path_(options.zk_path + "/nodes"),
+      table_root_path_(options.zk_path + "/table/db_table_data"),
+      notify_path_(options.zk_path + "/table/notify"),
+      zk_client_(NULL),
+      mu_(),
+      alive_tablets_(),
+      table_to_tablets_(),
+      catalog_(new ::rtidb::catalog::SDKCatalog()) {}
 
 ClusterSDK::~ClusterSDK() {
     if (zk_client_ != NULL) {
@@ -39,44 +49,60 @@ ClusterSDK::~ClusterSDK() {
 }
 
 bool ClusterSDK::Init() {
-    zk_client_ = new ::rtidb::zk::ZkClient(options_.zk_cluster, options_.session_timeout,
-            "", options_.zk_path);
+    zk_client_ = new ::rtidb::zk::ZkClient(
+        options_.zk_cluster, options_.session_timeout, "", options_.zk_path);
     bool ok = zk_client_->Init();
     if (!ok) {
-        LOG(WARNING) << "fail to init zk client with zk cluster " << options_.zk_cluster
-            << " , zk path " << options_.zk_path  << " and session timeout " << options_.session_timeout;
+        LOG(WARNING) << "fail to init zk client with zk cluster "
+                     << options_.zk_cluster << " , zk path " << options_.zk_path
+                     << " and session timeout " << options_.session_timeout;
         return false;
     }
     LOG(WARNING) << "init zk client with zk cluster " << options_.zk_cluster
-                 << " , zk path " << options_.zk_path  << " and session timeout ok" << options_.session_timeout;
-    InitCatalog();
-    InitTabletClient();
+                 << " , zk path " << options_.zk_path
+                 << " and session timeout ok" << options_.session_timeout;
+    ok = InitCatalog();
+    if (!ok) return false;
+    ok = InitTabletClient();
+    if (!ok) return false;
     return true;
 }
 
 bool ClusterSDK::RefreshCatalog(const std::vector<std::string>& table_datas) {
     std::vector<::rtidb::nameserver::TableInfo> tables;
-    std::map<std::string, std::map<std::string, ::rtidb::nameserver::TableInfo>> mapping;
+    std::map<std::string, std::map<std::string, ::rtidb::nameserver::TableInfo>>
+        mapping;
     for (uint32_t i = 0; i < table_datas.size(); i++) {
-        ::rtidb::nameserver::TableInfo table_info;
-        bool ok = table_info.ParseFromString(table_datas[i]);
+        if (table_datas[i].empty()) continue;
+        std::string value;
+        bool ok = zk_client_->GetNodeValue(
+            table_root_path_ + "/" + table_datas[i], value);
         if (!ok) {
-            LOG(WARNING) << "fail to parse table proto";
+            LOG(WARNING) << "fail to get table data";
+            continue;
+        }
+        ::rtidb::nameserver::TableInfo table_info;
+        ok = table_info.ParseFromString(value);
+        if (!ok) {
+            LOG(WARNING) << "fail to parse table proto with " << value;
             return false;
         }
         if (table_info.format_version() != 1) {
             continue;
         }
+        LOG(INFO) << "add table " << table_info.name() << " with db "
+                  << table_info.db();
         tables.push_back(table_info);
         auto it = mapping.find(table_info.db());
         if (it == mapping.end()) {
             std::map<std::string, ::rtidb::nameserver::TableInfo> table_in_db;
             table_in_db.insert(std::make_pair(table_info.name(), table_info));
             mapping.insert(std::make_pair(table_info.db(), table_in_db));
-        }else {
+        } else {
             it->second.insert(std::make_pair(table_info.name(), table_info));
         }
-        LOG(INFO) << "load table info with name " << table_info.name() << " in db " << table_info.db();
+        LOG(INFO) << "load table info with name " << table_info.name()
+                  << " in db " << table_info.db();
     }
     bool ok = catalog_->Init(tables);
     if (!ok) {
@@ -97,11 +123,13 @@ bool ClusterSDK::InitTabletClient() {
         LOG(WARNING) << "fail to get tablet";
         return false;
     }
-    std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>> tablet_clients;
+    std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>>
+        tablet_clients;
     for (uint32_t i = 0; i < tablets.size(); i++) {
-        std::shared_ptr<::rtidb::client::TabletClient> client(new ::rtidb::client::TabletClient(tablets[i]));
-        ok = client->Init();
-        if (!ok) {
+        std::shared_ptr<::rtidb::client::TabletClient> client(
+            new ::rtidb::client::TabletClient(tablets[i]));
+        int ret = client->Init();
+        if (ret != 0) {
             LOG(WARNING) << "fail to init tablet client " << tablets[i];
             return false;
         }
@@ -125,8 +153,9 @@ bool ClusterSDK::InitCatalog() {
     return RefreshCatalog(table_datas);
 }
 
-bool ClusterSDK::GetTabletByTable(const std::string& db, const std::string& name,
-     std::vector<std::shared_ptr<::rtidb::client::TabletClient>>* tablets) {
+bool ClusterSDK::GetTabletByTable(
+    const std::string& db, const std::string& name,
+    std::vector<std::shared_ptr<::rtidb::client::TabletClient>>* tablets) {
     if (tablets == NULL) return false;
     {
         std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
@@ -138,22 +167,40 @@ bool ClusterSDK::GetTabletByTable(const std::string& db, const std::string& name
         if (sit == it->second.end()) {
             return false;
         }
+        std::set<std::string> endpoints;
         const ::rtidb::nameserver::TableInfo& table_info = sit->second;
         for (int32_t i = 0; i < table_info.table_partition_size(); i++) {
-            const ::rtidb::nameserver::TablePartition& partition = table_info.table_partition(i);
+            const ::rtidb::nameserver::TablePartition& partition =
+                table_info.table_partition(i);
             for (int32_t j = 0; j < partition.partition_meta_size(); j++) {
                 std::string endpoint = partition.partition_meta(j).endpoint();
+                if (endpoints.find(endpoint) != endpoints.end()) continue;
+                endpoints.insert(endpoint);
                 auto ait = alive_tablets_.find(endpoint);
                 if (ait != alive_tablets_.end()) {
                     tablets->push_back(ait->second);
                 }
             }
-
         }
         return true;
     }
 }
 
+uint32_t ClusterSDK::GetTableId(const std::string& db,
+                                const std::string& tname) {
+    std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
+    auto it = table_to_tablets_.find(db);
+    if (it == table_to_tablets_.end()) {
+        return 0;
+    }
+    auto sit = it->second.find(tname);
+    if (sit == it->second.end()) {
+        return 0;
+    }
+    std::set<std::string> endpoints;
+    const ::rtidb::nameserver::TableInfo& table_info = sit->second;
+    return table_info.tid();
+}
 
-}  // sdk
-}  // rtidb
+}  // namespace sdk
+}  // namespace rtidb

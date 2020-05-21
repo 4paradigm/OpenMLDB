@@ -20,6 +20,7 @@
 
 #include "base/set.h"
 #include "base/spinlock.h"
+#include "catalog/tablet_catalog.h"
 #include "proto/tablet.pb.h"
 #include "replica/log_replicator.h"
 #include "storage/disk_table.h"
@@ -29,9 +30,8 @@
 #include "storage/relational_table.h"
 #include "tablet/file_receiver.h"
 #include "thread_pool.h"  // NOLINT
-#include "zk/zk_client.h"
-#include "catalog/tablet_catalog.h"
 #include "vm/engine.h"
+#include "zk/zk_client.h"
 
 using ::baidu::common::ThreadPool;
 using ::google::protobuf::Closure;
@@ -67,6 +67,9 @@ class TabletImpl : public ::rtidb::api::TabletServer {
     TabletImpl();
 
     ~TabletImpl();
+
+    bool Init(const std::string& zk_cluster, const std::string& zk_path,
+              const std::string& endpoint);
 
     bool Init();
 
@@ -268,8 +271,7 @@ class TabletImpl : public ::rtidb::api::TabletServer {
 
     void Query(RpcController* controller,
                const rtidb::api::QueryRequest* request,
-               rtidb::api::QueryResponse* response, 
-               Closure* done);
+               rtidb::api::QueryResponse* response, Closure* done);
 
     void CancelOP(RpcController* controller,
                   const rtidb::api::CancelOPRequest* request,
@@ -493,6 +495,9 @@ class TabletImpl : public ::rtidb::api::TabletServer {
     std::shared_ptr<::rtidb::catalog::TabletCatalog> catalog_;
     // thread safe
     ::fesql::vm::Engine engine_;
+    std::string zk_cluster_;
+    std::string zk_path_;
+    std::string endpoint_;
 };
 
 }  // namespace tablet

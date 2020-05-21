@@ -18,11 +18,11 @@
 #ifndef SRC_SDK_CLUSTER_SDK_H_
 #define SRC_SDK_CLUSTER_SDK_H_
 
-#include "vm/catalog.h"
 #include "base/spinlock.h"
-#include "zk/zk_client.h"
 #include "catalog/sdk_catalog.h"
 #include "client/tablet_client.h"
+#include "vm/catalog.h"
+#include "zk/zk_client.h"
 
 namespace rtidb {
 namespace sdk {
@@ -34,7 +34,6 @@ struct ClusterOptions {
 };
 
 class ClusterSDK {
-
  public:
     ClusterSDK(const ClusterOptions& options);
 
@@ -50,13 +49,16 @@ class ClusterSDK {
         return catalog_;
     }
 
-    bool GetTabletByTable(const std::string& db, const std::string& tname,
-                          std::vector<std::shared_ptr<::rtidb::client::TabletClient>>* tablets);
+    bool GetTabletByTable(
+        const std::string& db, const std::string& tname,
+        std::vector<std::shared_ptr<::rtidb::client::TabletClient>>* tablets);
+    uint32_t GetTableId(const std::string& db, const std::string& tname);
 
  private:
     bool InitCatalog();
     bool RefreshCatalog(const std::vector<std::string>& table_datas);
     bool InitTabletClient();
+
  private:
     std::atomic<uint64_t> cluster_version_;
     ClusterOptions options_;
@@ -65,11 +67,13 @@ class ClusterSDK {
     std::string notify_path_;
     ::rtidb::zk::ZkClient* zk_client_;
     ::rtidb::base::SpinMutex mu_;
-    std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>> alive_tablets_;
-    std::map<std::string, std::map<std::string, ::rtidb::nameserver::TableInfo>> table_to_tablets_;
+    std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>>
+        alive_tablets_;
+    std::map<std::string, std::map<std::string, ::rtidb::nameserver::TableInfo>>
+        table_to_tablets_;
     std::shared_ptr<::rtidb::catalog::SDKCatalog> catalog_;
 };
 
-}  // sdk
-}  // rtidb
-#endif // SRC_SDK_CLUSTER_SDK_H_
+}  // namespace sdk
+}  // namespace rtidb
+#endif  // SRC_SDK_CLUSTER_SDK_H_

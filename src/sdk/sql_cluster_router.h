@@ -18,4 +18,44 @@
 #ifndef SRC_SDK_SQL_CLUSTER_ROUTER_H_
 #define SRC_SDK_SQL_CLUSTER_ROUTER_H_
 
+#include <set>
+#include <vector>
+#include <memory>
+#include <utility>
+#include <string>
+#include "client/tablet_client.h"
+#include "sdk/cluster_sdk.h"
+#include "sdk/sql_router.h"
+#include "vm/engine.h"
+
+namespace rtidb {
+namespace sdk {
+
+class SQLClusterRouter : public SQLRouter {
+ public:
+    explicit SQLClusterRouter(const SQLRouterOptions& options);
+    ~SQLClusterRouter();
+
+    bool Init();
+
+    std::shared_ptr<::fesql::sdk::ResultSet> ExecuteSQL(
+        const std::string& db, const std::string& sql,
+        ::fesql::sdk::Status* status);
+
+ private:
+    bool GetTablet(
+        const std::string& db, const std::string& sql,
+        std::vector<std::shared_ptr<::rtidb::client::TabletClient>>* tablets);
+
+    void GetTables(::fesql::vm::PhysicalOpNode* node,
+                   std::set<std::string>* tables);
+
+ private:
+    SQLRouterOptions options_;
+    ClusterSDK* cluster_sdk_;
+    ::fesql::vm::Engine* engine_;
+};
+
+}  // namespace sdk
+}  // namespace rtidb
 #endif  // SRC_SDK_SQL_CLUSTER_ROUTER_H_

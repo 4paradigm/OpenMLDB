@@ -15,10 +15,10 @@
 #include <set>
 #include <utility>
 
-#include "base/status.h"
 #include "base/glog_wapper.h"
-#include "timer.h" // NOLINT
+#include "base/status.h"
 #include "boost/algorithm/string.hpp"
+#include "timer.h"  // NOLINT
 #include "timer.h"  // NOLINT
 
 DECLARE_string(endpoint);
@@ -698,32 +698,7 @@ NameServerImpl::NameServerImpl()
       task_thread_pool_(FLAGS_name_server_task_pool_size),
       cv_(),
       rand_(0xdeadbeef),
-      session_term_(0) {
-    std::string zk_table_path = FLAGS_zk_root_path + "/table";
-    zk_table_index_node_ = zk_table_path + "/table_index";
-    zk_table_data_path_ = zk_table_path + "/table_data";
-    zk_db_path_ = FLAGS_zk_root_path + "/db";
-    zk_db_table_data_path_ = zk_table_path + "/db_table_data";
-    zk_term_node_ = zk_table_path + "/term";
-    std::string zk_op_path = FLAGS_zk_root_path + "/op";
-    zk_op_index_node_ = zk_op_path + "/op_index";
-    zk_op_data_path_ = zk_op_path + "/op_data";
-    zk_op_sync_path_ = zk_op_path + "/op_sync";
-    zk_offline_endpoint_lock_node_ =
-        FLAGS_zk_root_path + "/offline_endpoint_lock";
-    std::string zk_config_path = FLAGS_zk_root_path + "/config";
-    zk_zone_data_path_ = FLAGS_zk_root_path + "/cluster";
-    zk_auto_failover_node_ = zk_config_path + "/auto_failover";
-    zk_table_changed_notify_node_ = zk_table_path + "/notify";
-    running_.store(false, std::memory_order_release);
-    mode_.store(kNORMAL, std::memory_order_release);
-    auto_failover_.store(FLAGS_auto_failover, std::memory_order_release);
-    task_rpc_version_.store(0, std::memory_order_relaxed);
-    zone_info_.set_mode(kNORMAL);
-    zone_info_.set_zone_name(FLAGS_endpoint + FLAGS_zk_root_path);
-    zone_info_.set_replica_alias("");
-    zone_info_.set_zone_term(1);
-}
+      session_term_(0) {}
 
 NameServerImpl::~NameServerImpl() {
     running_.store(false, std::memory_order_release);
@@ -1008,13 +983,13 @@ bool NameServerImpl::RecoverOPTask() {
         if (op_data->op_info_.task_status() ==
             ::rtidb::api::TaskStatus::kDone) {
             DEBUGLOG("op status is kDone. op_id[%lu]",
-                  op_data->op_info_.op_id());
+                     op_data->op_info_.op_id());
             continue;
         }
         if (op_data->op_info_.task_status() ==
             ::rtidb::api::TaskStatus::kCanceled) {
             DEBUGLOG("op status is kCanceled. op_id[%lu]",
-                  op_data->op_info_.op_id());
+                     op_data->op_info_.op_id());
             continue;
         }
         switch (op_data->op_info_.op_type()) {
@@ -1583,7 +1558,7 @@ void NameServerImpl::OnTabletOnline(const std::string& endpoint) {
                   endpoint.c_str());
             return;
         }
-        if (!zk_client_->GetNodeValue(FLAGS_zk_root_path + "/nodes/" + endpoint,
+        if (!zk_client_->GetNodeValue(zk_root_path_ + "/nodes/" + endpoint,
                                       value)) {
             PDLOG(WARNING, "get tablet node value failed");
             offline_endpoint_map_.erase(iter);
@@ -1698,17 +1673,46 @@ void NameServerImpl::ShowTablet(RpcController* controller,
     response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
-
 bool NameServerImpl::Init() {
-    if (FLAGS_zk_cluster.empty()) {
+    return Init(FLAGS_zk_cluster, FLAGS_zk_root_path, FLAGS_endpoint);
+}
+
+bool NameServerImpl::Init(const std::string& zk_cluster,
+                          const std::string& zk_path,
+                          const std::string& endpoint) {
+    if (zk_cluster.empty()) {
         PDLOG(WARNING, "zk cluster disabled");
         return false;
     }
-    zk_client_ = new ZkClient(FLAGS_zk_cluster, FLAGS_zk_session_timeout,
-                              FLAGS_endpoint, FLAGS_zk_root_path);
+    zk_root_path_ = zk_path;
+    std::string zk_table_path = zk_path + "/table";
+    zk_table_index_node_ = zk_table_path + "/table_index";
+    zk_table_data_path_ = zk_table_path + "/table_data";
+    zk_db_path_ = zk_path + "/db";
+    zk_db_table_data_path_ = zk_table_path + "/db_table_data";
+    zk_term_node_ = zk_table_path + "/term";
+    std::string zk_op_path = zk_path + "/op";
+    zk_op_index_node_ = zk_op_path + "/op_index";
+    zk_op_data_path_ = zk_op_path + "/op_data";
+    zk_op_sync_path_ = zk_op_path + "/op_sync";
+    zk_offline_endpoint_lock_node_ = zk_path + "/offline_endpoint_lock";
+    std::string zk_config_path = zk_path + "/config";
+    zk_zone_data_path_ = zk_path + "/cluster";
+    zk_auto_failover_node_ = zk_config_path + "/auto_failover";
+    zk_table_changed_notify_node_ = zk_table_path + "/notify";
+    running_.store(false, std::memory_order_release);
+    mode_.store(kNORMAL, std::memory_order_release);
+    auto_failover_.store(FLAGS_auto_failover, std::memory_order_release);
+    task_rpc_version_.store(0, std::memory_order_relaxed);
+    zone_info_.set_mode(kNORMAL);
+    zone_info_.set_zone_name(FLAGS_endpoint + zk_path);
+    zone_info_.set_replica_alias("");
+    zone_info_.set_zone_term(1);
+    zk_client_ =
+        new ZkClient(zk_cluster, FLAGS_zk_session_timeout, endpoint, zk_path);
     if (!zk_client_->Init()) {
         PDLOG(WARNING, "fail to init zookeeper with cluster[%s]",
-              FLAGS_zk_cluster.c_str());
+              zk_cluster.c_str());
         return false;
     }
     task_vec_.resize(FLAGS_name_server_task_max_concurrency +
@@ -1716,11 +1720,11 @@ bool NameServerImpl::Init() {
     std::string value;
     std::vector<std::string> endpoints;
     if (!zk_client_->GetNodes(endpoints)) {
-        zk_client_->CreateNode(FLAGS_zk_root_path + "/nodes", "");
+        zk_client_->CreateNode(zk_path + "/nodes", "");
     } else {
         UpdateTablets(endpoints);
     }
-    std::string oss_path = FLAGS_zk_root_path + "/ossnodes";
+    std::string oss_path = zk_path + "/ossnodes";
     endpoints.clear();
     bool ok = zk_client_->GetChildren(oss_path, endpoints);
     if (!ok) {
@@ -1746,7 +1750,7 @@ bool NameServerImpl::Init() {
 
     thread_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval,
                            boost::bind(&NameServerImpl::CheckZkClient, this));
-    dist_lock_ = new DistLock(FLAGS_zk_root_path + "/leader", zk_client_,
+    dist_lock_ = new DistLock(zk_path + "/leader", zk_client_,
                               boost::bind(&NameServerImpl::OnLocked, this),
                               boost::bind(&NameServerImpl::OnLostLock, this),
                               FLAGS_endpoint);
@@ -2090,7 +2094,7 @@ int NameServerImpl::UpdateZKTaskStatus() {
                                std::to_string(op_data->op_info_.op_id());
             if (zk_client_->SetNodeValue(node, value)) {
                 DEBUGLOG("set zk status value success. node[%s] value[%s]",
-                      node.c_str(), value.c_str());
+                         node.c_str(), value.c_str());
                 op_data->task_list_.pop_front();
                 continue;
             }
@@ -2227,7 +2231,7 @@ int NameServerImpl::DeleteTask() {
             continue;
         }
         DEBUGLOG("tablet[%s] delete op success",
-              (*iter)->GetEndpoint().c_str());
+                 (*iter)->GetEndpoint().c_str());
     }
     DeleteTaskRemote(done_task_vec_remote, has_failed);
     if (!has_failed) {
@@ -2265,7 +2269,7 @@ int NameServerImpl::DeleteTaskRemote(const std::vector<uint64_t>& done_task_vec,
             continue;
         }
         DEBUGLOG("replica cluster[%s] delete op success",
-              (*iter)->GetEndpoint().c_str());
+                 (*iter)->GetEndpoint().c_str());
     }
     return 0;
 }
@@ -2391,13 +2395,13 @@ void NameServerImpl::ProcessTask() {
                 } else if (task->task_info_->status() ==
                            ::rtidb::api::kInited) {
                     DEBUGLOG(
-                          "run task. opid[%lu] op_type[%s] task_type[%s]",
-                          task->task_info_->op_id(),
-                          ::rtidb::api::OPType_Name(task->task_info_->op_type())
-                              .c_str(),
-                          ::rtidb::api::TaskType_Name(
-                              task->task_info_->task_type())
-                              .c_str());
+                        "run task. opid[%lu] op_type[%s] task_type[%s]",
+                        task->task_info_->op_id(),
+                        ::rtidb::api::OPType_Name(task->task_info_->op_type())
+                            .c_str(),
+                        ::rtidb::api::TaskType_Name(
+                            task->task_info_->task_type())
+                            .c_str());
                     task_thread_pool_.AddTask(task->fun_);
                     task->task_info_->set_status(::rtidb::api::kDoing);
                 } else if (task->task_info_->status() == ::rtidb::api::kDoing) {
@@ -3557,7 +3561,7 @@ void NameServerImpl::CancelOP(RpcController* controller,
                 continue;
             }
             DEBUGLOG("tablet[%s] cancel op success",
-                  client->GetEndpoint().c_str());
+                     client->GetEndpoint().c_str());
         }
         response->set_code(::rtidb::base::ReturnCode::kOk);
         response->set_msg("ok");
@@ -10155,8 +10159,8 @@ void NameServerImpl::AddReplicaClusterByNs(
     }
     std::lock_guard<std::mutex> lock(mu_);
     DEBUGLOG("request zone name is: %s, term is: %lu %d,",
-          request->zone_info().zone_name().c_str(),
-          request->zone_info().zone_term(), zone_info_.mode());
+             request->zone_info().zone_name().c_str(),
+             request->zone_info().zone_term(), zone_info_.mode());
     DEBUGLOG("cur zone name is: %s", zone_info_.zone_name().c_str());
     do {
         if ((mode_.load(std::memory_order_acquire) == kFOLLOWER)) {
@@ -10360,7 +10364,7 @@ void NameServerImpl::RemoveReplicaClusterByNs(
         ZoneInfo zone_info;
         zone_info.CopyFrom(request->zone_info());
         zone_info.set_mode(kNORMAL);
-        zone_info.set_zone_name(FLAGS_endpoint + FLAGS_zk_root_path);
+        zone_info.set_zone_name(FLAGS_endpoint + zk_root_path_);
         zone_info.set_replica_alias("");
         zone_info.set_zone_term(1);
         zone_info.SerializeToString(&value);

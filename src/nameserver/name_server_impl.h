@@ -141,6 +141,8 @@ class NameServerImpl : public NameServer {
 
     ~NameServerImpl();
 
+    bool Init(const std::string& zk_cluster, const std::string& zk_path,
+              const std::string& endpoint);
     bool Init();
 
     NameServerImpl(const NameServerImpl&) = delete;
@@ -881,6 +883,7 @@ class NameServerImpl : public NameServer {
     std::map<uint64_t, std::list<std::shared_ptr<::rtidb::api::TaskInfo>>>
         task_map_;
     std::set<std::string> databases_;
+    std::string zk_root_path_;
 };
 
 }  // namespace nameserver
