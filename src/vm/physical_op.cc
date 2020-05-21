@@ -116,6 +116,12 @@ bool PhysicalProjectNode::InitSchema() {
     PrintSchema();
     return true;
 }
+bool PhysicalSimpleProjectNode::InitSchema() {
+    output_name_schema_list_.AddSchemaSource("", &output_schema_,
+                                             &project_.column_sources());
+    PrintSchema();
+    return true;
+}
 
 PhysicalProjectNode* PhysicalProjectNode::CastFrom(PhysicalOpNode* node) {
     return dynamic_cast<PhysicalProjectNode*>(node);
@@ -129,7 +135,22 @@ PhysicalTableProjectNode* PhysicalTableProjectNode::CastFrom(
     PhysicalOpNode* node) {
     return dynamic_cast<PhysicalTableProjectNode*>(node);
 }
+PhysicalSimpleProjectNode* PhysicalSimpleProjectNode::CastFrom(
+    PhysicalOpNode* node) {
+    return dynamic_cast<PhysicalSimpleProjectNode*>(node);
+}
+void PhysicalSimpleProjectNode::Print(std::ostream& output,
+                                      const std::string& tab) const {
+    PhysicalOpNode::Print(output, tab);
+    output << "(" << project_.ToString();
+    if (limit_cnt_ > 0) {
+        output << ", limit=" << limit_cnt_;
+    }
+    output << ")";
 
+    output << "\n";
+    PrintChildren(output, tab);
+}
 PhysicalWindowAggrerationNode* PhysicalWindowAggrerationNode::CastFrom(
     PhysicalOpNode* node) {
     return dynamic_cast<PhysicalWindowAggrerationNode*>(node);
@@ -176,7 +197,7 @@ void PhysicalWindowAggrerationNode::Print(std::ostream& output,
             output << "\n";
             output << tab << INDENT << "+-UNION("
                    << window_union.second.ToString() << ")\n";
-            window_union.first->Print(output, tab + INDENT + INDENT);
+            window_union.first->Print(output, tab + INDENT + INDENT + INDENT);
         }
     }
     output << "\n";
@@ -333,7 +354,7 @@ void PhysicalRequestUnionNode::Print(std::ostream& output,
             output << "\n";
             output << tab << INDENT << "+-UNION("
                    << window_union.second.ToString() << ")\n";
-            window_union.first->Print(output, tab + INDENT + INDENT);
+            window_union.first->Print(output, tab + INDENT + INDENT + INDENT);
         }
     }
     //    if (!window_joins_.Empty()) {

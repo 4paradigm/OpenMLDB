@@ -17,10 +17,10 @@
 #include "base/fe_status.h"
 #include "codec/fe_row_codec.h"
 #include "vm/catalog.h"
+#include "vm/catalog_wrapper.h"
 #include "vm/core_api.h"
 #include "vm/mem_catalog.h"
 #include "vm/physical_op.h"
-
 namespace fesql {
 namespace vm {
 
@@ -50,12 +50,26 @@ class FnGenerator {
     RowView row_view_;
     std::vector<int32_t> idxs_;
 };
+
+class RowProjectFun : public WrapperFun {
+ public:
+    explicit RowProjectFun(int8_t* fn) : WrapperFun(), fn_(fn) {}
+    ~RowProjectFun() {}
+    Row operator()(const Row& row) const override {
+        return CoreAPI::RowProject(fn_, row, false);
+    }
+    int8_t* fn_;
+};
+
 class ProjectGenerator : public FnGenerator {
  public:
-    explicit ProjectGenerator(const FnInfo& info) : FnGenerator(info) {}
+    explicit ProjectGenerator(const FnInfo& info)
+        : FnGenerator(info), fun_(info.fn_) {}
     virtual ~ProjectGenerator() {}
     const Row Gen(const Row& row);
+    RowProjectFun fun_;
 };
+
 class AggGenerator : public FnGenerator {
  public:
     explicit AggGenerator(const FnInfo& info) : FnGenerator(info) {}
@@ -235,6 +249,7 @@ enum RunnerType {
     kRunnerGroupAndSort,
     kRunnerTableProject,
     kRunnerRowProject,
+    kRunnerSimpleProject,
     kRunnerGroupAgg,
     kRunnerAgg,
     kRunnerWindowAgg,
@@ -262,6 +277,8 @@ inline const std::string RunnerTypeName(const RunnerType& type) {
             return "TABLE_PROJECT";
         case kRunnerRowProject:
             return "ROW_PROJECT";
+        case kRunnerSimpleProject:
+            return "SIMPLE_PROJECT";
         case kRunnerGroupAgg:
             return "GROUP_AGG_PROJECT";
         case kRunnerAgg:
@@ -533,6 +550,17 @@ class RowProjectRunner : public Runner {
         : Runner(id, kRunnerRowProject, schema, limit_cnt),
           project_gen_(fn_info) {}
     ~RowProjectRunner() {}
+    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
+    ProjectGenerator project_gen_;
+};
+
+class SimpleProjectRunner : public Runner {
+ public:
+    SimpleProjectRunner(const int32_t id, const SchemaSourceList& schema,
+                        const int32_t limit_cnt, const FnInfo& fn_info)
+        : Runner(id, kRunnerSimpleProject, schema, limit_cnt),
+          project_gen_(fn_info) {}
+    ~SimpleProjectRunner() {}
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
     ProjectGenerator project_gen_;
 };

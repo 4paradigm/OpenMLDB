@@ -805,5 +805,40 @@ ExprNode *NodeManager::MakeAndExpr(ExprListNode *expr_list) {
     }
     return left_node;
 }
+
+// Build expression list from column sources
+node::ExprListNode *NodeManager::BuildExprListFromSchemaSource(
+    const vm::ColumnSourceList column_sources,
+    const vm::SchemaSourceList &schema_souces) {
+    node::ExprListNode *output = MakeExprList();
+    if (nullptr == output) {
+        LOG(WARNING)
+            << "Fail Build Expr List from column sources: output is nullptr";
+        return nullptr;
+    }
+    for (auto iter = column_sources.cbegin(); iter != column_sources.cend();
+         iter++) {
+        switch (iter->type()) {
+            case vm::kSourceColumn: {
+                auto schema_souce =
+                    schema_souces.schema_source_list().at(iter->schema_idx());
+                auto column = schema_souce.schema_->Get(iter->column_idx());
+                output->AddChild(
+                    MakeColumnRefNode(column.name(), schema_souce.table_name_));
+                break;
+            }
+            case vm::kSourceConst: {
+                output->AddChild(
+                    const_cast<node::ConstNode *>(iter->const_value()));
+                break;
+            }
+            default: {
+                LOG(WARNING) << "Fail Gen Simple Project, invalid source type";
+                return nullptr;
+            }
+        }
+    }
+    return output;
+}
 }  // namespace node
 }  // namespace fesql

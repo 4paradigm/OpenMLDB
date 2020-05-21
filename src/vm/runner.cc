@@ -12,6 +12,7 @@
 #include <utility>
 #include <vector>
 #include "base/texttable.h"
+#include "vm/catalog_wrapper.h"
 #include "vm/core_api.h"
 #include "vm/mem_catalog.h"
 namespace fesql {
@@ -58,6 +59,19 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                     return nullptr;
                 }
             }
+        }
+        case kPhysicalOpSimpleProject: {
+            auto input = Build(node->producers().at(0), status);
+            if (nullptr == input) {
+                return nullptr;
+            }
+
+            auto op = dynamic_cast<const PhysicalSimpleProjectNode*>(node);
+            auto runner = new SimpleProjectRunner(
+                id_++, node->GetOutputNameSchemaList(), op->GetLimitCnt(),
+                op->project_.fn_info_);
+            runner->AddProducer(input);
+            return runner;
         }
         case kPhysicalOpProject: {
             auto input = Build(node->producers().at(0), status);
@@ -508,6 +522,38 @@ std::shared_ptr<DataHandler> RowProjectRunner::Run(RunnerContext& ctx) {
         new MemRowHandler(project_gen_.Gen(row->GetValue())));
 }
 
+std::shared_ptr<DataHandler> SimpleProjectRunner::Run(RunnerContext& ctx) {
+    auto input = producers_[0]->RunWithCache(ctx);
+    auto fail_ptr = std::shared_ptr<DataHandler>();
+    if (!input) {
+        LOG(WARNING) << "simple project fail: input is null";
+        return fail_ptr;
+    }
+
+    switch (input->GetHanlderType()) {
+        case kTableHandler: {
+            return std::shared_ptr<TableHandler>(
+                new TableWrapper(std::dynamic_pointer_cast<TableHandler>(input),
+                                 &project_gen_.fun_));
+        }
+        case kPartitionHandler: {
+            return std::shared_ptr<TableHandler>(new PartitionWrapper(
+                std::dynamic_pointer_cast<PartitionHandler>(input),
+                &project_gen_.fun_));
+        }
+        case kRowHandler: {
+            return std::shared_ptr<RowHandler>(
+                new RowWrapper(std::dynamic_pointer_cast<RowHandler>(input),
+                               &project_gen_.fun_));
+        }
+        default: {
+            LOG(WARNING) << "Fail run simple project, invalid handler type "
+                         << input->GetHandlerTypeName();
+        }
+    }
+
+    return std::shared_ptr<DataHandler>();
+}
 std::shared_ptr<DataHandler> WindowAggRunner::Run(RunnerContext& ctx) {
     auto input = producers_[0]->RunWithCache(ctx);
     auto fail_ptr = std::shared_ptr<DataHandler>();
@@ -559,8 +605,6 @@ void WindowAggRunner::RunWindowAggOnKey(
     auto instance_segment =
         instance_partition->GetSegment(instance_partition, key);
     instance_segment = instance_window_gen_.sort_gen_.Sort(instance_segment);
-    DLOG(INFO) << "Instance Segment";
-    PrintData(producers_[0]->output_schemas(), instance_segment);
     if (!instance_segment) {
         LOG(WARNING) << "Instance Segment is Empty";
         return;
@@ -581,7 +625,6 @@ void WindowAggRunner::RunWindowAggOnKey(
 
     for (size_t i = 0; i < unions_cnt; i++) {
         if (!union_partitions[i]) {
-            i++;
             continue;
         }
         auto segment =
@@ -590,14 +633,17 @@ void WindowAggRunner::RunWindowAggOnKey(
         union_segments[i] = segment;
         if (!segment) {
             union_segment_status[i] = IteratorStatus();
+            continue;
         }
         union_segment_iters[i] = segment->GetIterator();
         if (!union_segment_iters[i]) {
             union_segment_status[i] = IteratorStatus();
+            continue;
         }
         union_segment_iters[i]->SeekToFirst();
         if (!union_segment_iters[i]->Valid()) {
             union_segment_status[i] = IteratorStatus();
+            continue;
         }
         uint64_t ts = union_segment_iters[i]->GetKey();
         union_segment_status[i] = IteratorStatus(ts);
@@ -959,11 +1005,15 @@ Row JoinGenerator::RowLastJoinTable(const Row& left_row,
         left_key_str = left_key_gen_.Gen(left_row);
     }
     while (right_iter->Valid()) {
-        auto right_key_str = right_group_gen_.GetKey(right_iter->GetValue());
-        if (left_key_gen_.Valid() && left_key_str != right_key_str) {
-            right_iter->Next();
-            continue;
+        if (right_group_gen_.Valid()) {
+            auto right_key_str =
+                right_group_gen_.GetKey(right_iter->GetValue());
+            if (left_key_gen_.Valid() && left_key_str != right_key_str) {
+                right_iter->Next();
+                continue;
+            }
         }
+
         Row joined_row(left_row, right_iter->GetValue());
         if (!condition_gen_.Valid()) {
             return joined_row;
@@ -991,9 +1041,9 @@ bool JoinGenerator::TableJoin(std::shared_ptr<TableHandler> left,
 bool JoinGenerator::TableJoin(std::shared_ptr<TableHandler> left,
                               std::shared_ptr<PartitionHandler> right,
                               std::shared_ptr<MemTableHandler> output) {
-    if (!left_key_gen_.Valid()) {
+    if (!left_key_gen_.Valid() && !index_key_gen_.Valid()) {
         LOG(WARNING) << "can't join right partition table when join "
-                        "left_key_gen_ is invalid";
+                        "left_key_gen_ and index_key_gen_ is invalid";
         return false;
     }
     auto left_iter = left->GetIterator();
@@ -1004,12 +1054,13 @@ bool JoinGenerator::TableJoin(std::shared_ptr<TableHandler> left,
     left_iter->SeekToFirst();
     while (left_iter->Valid()) {
         const Row& left_row = left_iter->GetValue();
-        std::string key_str = "";
-        if (index_key_gen_.Valid()) {
-            key_str = index_key_gen_.Gen(left_row) + "|" +
-                      left_key_gen_.Gen(left_row);
-        } else {
-            key_str = left_key_gen_.Gen(left_row);
+        std::string key_str =
+            index_key_gen_.Valid() ? index_key_gen_.Gen(left_row) : "";
+
+        if (left_key_gen_.Valid()) {
+            key_str = key_str.empty()
+                          ? left_key_gen_.Gen(left_row)
+                          : key_str + "|" + left_key_gen_.Gen(left_row);
         }
         LOG(INFO) << "key_str " << key_str;
         auto right_table = right->GetSegment(right, key_str);
@@ -1376,10 +1427,6 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(RunnerContext& ctx) {
     auto union_segments =
         windows_union_gen_.GetRequestWindows(request, union_inputs);
 
-    for (auto segment : union_segments) {
-        DLOG(INFO) << "Segment :";
-        PrintData(producers_[0]->output_schemas(), segment);
-    }
     // Prepare Union Segment Iterators
     size_t unions_cnt = windows_union_gen_.inputs_cnt_;
 

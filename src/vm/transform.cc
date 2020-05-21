@@ -198,6 +198,15 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
             }
             break;
         }
+        case kPhysicalOpSimpleProject: {
+            auto simple_project =
+                dynamic_cast<PhysicalSimpleProjectNode*>(node);
+            if (!GenSimpleProject(&simple_project->project_,
+                                  simple_project->producers()[0], status)) {
+                return false;
+            }
+            break;
+        }
         case kPhysicalOpProject: {
             auto project_op = dynamic_cast<PhysicalProjectNode*>(node);
             if (kWindowAggregation != project_op->project_type_) {
@@ -748,6 +757,7 @@ bool BatchModeTransformer::GenProjects(
     return true;
 }
 bool BatchModeTransformer::AddDefaultPasses() {
+    AddPass(kPassColumnProjectOptimized);
     AddPass(kPassFilterOptimized);
     AddPass(kPassLeftJoinOptimized);
     AddPass(kPassGroupAndSortOptimized);
@@ -829,13 +839,23 @@ bool BatchModeTransformer::CreatePhysicalProjectNode(
     PhysicalOpNode* op = nullptr;
     switch (project_type) {
         case kRowProject: {
-            op = new PhysicalRowProjectNode(node, fn_name, output_schema,
-                                            output_column_sources);
+            if (IsSimpleProject(output_column_sources)) {
+                op = new PhysicalSimpleProjectNode(node, output_schema,
+                                                   output_column_sources);
+            } else {
+                op = new PhysicalRowProjectNode(node, fn_name, output_schema,
+                                                output_column_sources);
+            }
             break;
         }
         case kTableProject: {
-            op = new PhysicalTableProjectNode(node, fn_name, output_schema,
-                                              output_column_sources);
+            if (IsSimpleProject(output_column_sources)) {
+                op = new PhysicalSimpleProjectNode(node, output_schema,
+                                                   output_column_sources);
+            } else {
+                op = new PhysicalTableProjectNode(node, fn_name, output_schema,
+                                                  output_column_sources);
+            }
             break;
         }
         case kAggregation: {
@@ -909,6 +929,15 @@ void BatchModeTransformer::ApplyPasses(PhysicalOpNode* node,
     auto physical_plan = node;
     for (auto type : passes) {
         switch (type) {
+            case kPassColumnProjectOptimized: {
+                SimpleProjectOptimized pass(node_manager_, db_, catalog_);
+                PhysicalOpNode* new_op = nullptr;
+                if (pass.Apply(physical_plan, &new_op)) {
+                    physical_plan = new_op;
+                }
+                break;
+            }
+
             case kPassFilterOptimized: {
                 ConditionOptimized pass(node_manager_, db_, catalog_);
                 PhysicalOpNode* new_op = nullptr;
@@ -1151,6 +1180,26 @@ bool BatchModeTransformer::GenRange(
     }
     return true;
 }
+bool BatchModeTransformer::GenSimpleProject(ColumnProject* project,
+                                            PhysicalOpNode* in,
+                                            base::Status& status) {
+    if (!project->column_sources().empty()) {
+        auto schema_souces = in->GetOutputNameSchemaList();
+        node::ExprListNode* expr_list =
+            node_manager_->BuildExprListFromSchemaSource(
+                project->column_sources(), schema_souces);
+        if (nullptr == expr_list) {
+            LOG(WARNING) << "Fail to Build Expr List";
+            return false;
+        }
+        if (!CodeGenExprList(schema_souces, expr_list, true, &project->fn_info_,
+                             status)) {
+            return false;
+        }
+    }
+    DLOG(INFO) << "GenSimpleProject:\n" << project->FnDetail();
+    return true;
+}
 bool BatchModeTransformer::GenWindowUnionList(
     WindowUnionList* window_union_list, PhysicalOpNode* in,
     base::Status& status) {
@@ -1226,9 +1275,20 @@ bool BatchModeTransformer::GenRequestWindowUnionList(
                << window_union_list->FnDetail();
     return true;
 }
-bool GroupAndSortOptimized::KeysFilterOptimized(PhysicalOpNode* in, Key* group,
-                                                Key* hash,
-                                                PhysicalOpNode** new_in) {
+bool BatchModeTransformer::IsSimpleProject(const ColumnSourceList& sources) {
+    bool flag = true;
+    for (auto iter = sources.cbegin(); iter != sources.cend(); iter++) {
+        if (vm::kSourceNone == iter->type()) {
+            flag = false;
+            break;
+        }
+    }
+    return flag;
+}
+
+bool GroupAndSortOptimized::KeysFilterOptimized(
+    const vm::SchemaSourceList& column_sources, PhysicalOpNode* in, Key* group,
+    Key* hash, PhysicalOpNode** new_in) {
     if (nullptr == group || nullptr == hash) {
         LOG(WARNING) << "Fail KeysFilterOptimized when window filter key or "
                         "index key is empty";
@@ -1241,8 +1301,8 @@ bool GroupAndSortOptimized::KeysFilterOptimized(PhysicalOpNode* in, Key* group,
             const node::ExprListNode* new_groups = nullptr;
             const node::ExprListNode* keys = nullptr;
             auto& index_hint = scan_op->table_handler_->GetIndex();
-            if (!TransformGroupExpr(group->keys(), index_hint, &index_name,
-                                    &keys, &new_groups)) {
+            if (!TransformGroupExpr(column_sources, group->keys(), index_hint,
+                                    &index_name, &keys, &new_groups)) {
                 return false;
             }
             PhysicalPartitionProviderNode* scan_index_op =
@@ -1253,11 +1313,26 @@ bool GroupAndSortOptimized::KeysFilterOptimized(PhysicalOpNode* in, Key* group,
             *new_in = scan_index_op;
             return true;
         }
+    } else if (kPhysicalOpSimpleProject == in->type_) {
+        auto simple_project = dynamic_cast<PhysicalSimpleProjectNode*>(in);
+        PhysicalOpNode* new_depend;
+        if (!KeysFilterOptimized(simple_project->GetOutputNameSchemaList(),
+                                 simple_project->producers()[0], group, hash,
+                                 &new_depend)) {
+            return false;
+        }
+        PhysicalSimpleProjectNode* new_simple_op =
+            new PhysicalSimpleProjectNode(
+                new_depend, simple_project->output_schema_,
+                simple_project->project_.column_sources());
+        *new_in = new_simple_op;
+        return true;
     }
     return false;
 }
-bool GroupAndSortOptimized::JoinKeysOptimized(PhysicalOpNode* in, Join* join,
-                                              PhysicalOpNode** new_in) {
+bool GroupAndSortOptimized::JoinKeysOptimized(
+    const vm::SchemaSourceList& column_sources, PhysicalOpNode* in, Join* join,
+    PhysicalOpNode** new_in) {
     if (nullptr == join || node::ExprListNullOrEmpty(join->right_key_.keys())) {
         return false;
     }
@@ -1272,8 +1347,9 @@ bool GroupAndSortOptimized::JoinKeysOptimized(PhysicalOpNode* in, Join* join,
             std::string index_name;
             auto& index_hint = scan_op->table_handler_->GetIndex();
             const node::ExprListNode* right_partition = join->right_key_.keys();
-            if (!TransformGroupExpr(right_partition, index_hint, &index_name,
-                                    &index_keys, &new_right_partition)) {
+            if (!TransformGroupExpr(SchemaSourceList(), right_partition,
+                                    index_hint, &index_name, &index_keys,
+                                    &new_right_partition)) {
                 return false;
             }
             PhysicalPartitionProviderNode* partition_op =
@@ -1303,14 +1379,31 @@ bool GroupAndSortOptimized::JoinKeysOptimized(PhysicalOpNode* in, Join* join,
             join->left_key_.set_keys(new_left_keys);
             return true;
         }
+    } else if (kPhysicalOpSimpleProject == in->type_) {
+        auto simple_project = dynamic_cast<PhysicalSimpleProjectNode*>(in);
+        PhysicalOpNode* new_depend;
+        if (!JoinKeysOptimized(simple_project->GetOutputNameSchemaList(),
+                               simple_project->producers()[0], join,
+                               &new_depend)) {
+            return false;
+        }
+        PhysicalSimpleProjectNode* new_simple_op =
+            new PhysicalSimpleProjectNode(
+                new_depend, simple_project->output_schema_,
+                simple_project->project_.column_sources());
+        *new_in = new_simple_op;
+        return true;
     }
     return false;
 }
-bool GroupAndSortOptimized::GroupOptimized(PhysicalOpNode* in, Key* group,
-                                           PhysicalOpNode** new_in) {
+
+bool GroupAndSortOptimized::GroupOptimized(
+    const vm::SchemaSourceList& schema_sources, PhysicalOpNode* in, Key* group,
+    PhysicalOpNode** new_in) {
     if (nullptr == group) {
         return false;
     }
+
     if (kPhysicalOpDataProvider == in->type_) {
         auto scan_op = dynamic_cast<PhysicalDataProviderNode*>(in);
         if (kProviderTypeTable == scan_op->provider_type_) {
@@ -1318,8 +1411,8 @@ bool GroupAndSortOptimized::GroupOptimized(PhysicalOpNode* in, Key* group,
             const node::ExprListNode* keys = nullptr;
             std::string index_name;
             auto& index_hint = scan_op->table_handler_->GetIndex();
-            if (!TransformGroupExpr(group->keys(), index_hint, &index_name,
-                                    &keys, &new_groups)) {
+            if (!TransformGroupExpr(schema_sources, group->keys(), index_hint,
+                                    &index_name, &keys, &new_groups)) {
                 return false;
             }
             PhysicalPartitionProviderNode* partition_op =
@@ -1330,11 +1423,28 @@ bool GroupAndSortOptimized::GroupOptimized(PhysicalOpNode* in, Key* group,
             group->set_keys(new_groups);
             return true;
         }
+    } else if (kPhysicalOpSimpleProject == in->type_) {
+        auto simple_project = dynamic_cast<PhysicalSimpleProjectNode*>(in);
+        PhysicalOpNode* new_depend;
+        if (!GroupOptimized(simple_project->GetOutputNameSchemaList(),
+                            simple_project->producers()[0], group,
+                            &new_depend)) {
+            return false;
+        }
+        PhysicalSimpleProjectNode* new_simple_op =
+            new PhysicalSimpleProjectNode(
+                new_depend, simple_project->output_schema_,
+                simple_project->project_.column_sources());
+        *new_in = new_simple_op;
+        return true;
     }
+
     return false;
 }
 
-bool GroupAndSortOptimized::SortOptimized(PhysicalOpNode* in, Sort* sort) {
+bool GroupAndSortOptimized::SortOptimized(
+    const vm::SchemaSourceList& schema_sources, PhysicalOpNode* in,
+    Sort* sort) {
     if (nullptr == sort) {
         return false;
     }
@@ -1350,11 +1460,15 @@ bool GroupAndSortOptimized::SortOptimized(PhysicalOpNode* in, Sort* sort) {
         auto& index_hint = partition_provider->table_handler_->GetIndex();
         std::string index_name = partition_provider->index_name_;
         auto index_st = index_hint.at(index_name);
-        TransformOrderExpr(sort->orders(),
+        TransformOrderExpr(schema_sources, sort->orders(),
                            *(scan_op->table_handler_->GetSchema()), index_st,
                            &new_orders);
         sort->set_orders(new_orders);
         return true;
+    } else if (kPhysicalOpSimpleProject == in->type_) {
+        auto simple_project = dynamic_cast<PhysicalSimpleProjectNode*>(in);
+        return SortOptimized(simple_project->GetOutputNameSchemaList(),
+                             simple_project->producers()[0], sort);
     }
     return false;
 }
@@ -1366,8 +1480,8 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
         case kPhysicalOpGroupBy: {
             PhysicalGroupNode* group_op = dynamic_cast<PhysicalGroupNode*>(in);
             PhysicalOpNode* new_producer;
-            if (!GroupOptimized(group_op->GetProducer(0), &group_op->group_,
-                                &new_producer)) {
+            if (!GroupOptimized(SchemaSourceList(), group_op->GetProducer(0),
+                                &group_op->group_, &new_producer)) {
                 return false;
             }
             group_op->SetProducer(0, new_producer);
@@ -1384,41 +1498,72 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
 
                 PhysicalOpNode* new_producer;
 
-                if (GroupOptimized(union_op->GetProducer(0),
+                if (GroupOptimized(SchemaSourceList(), union_op->GetProducer(0),
                                    &union_op->window_.partition_,
                                    &new_producer)) {
                     union_op->SetProducer(0, new_producer);
                 }
-                SortOptimized(union_op->GetProducer(0),
+                SortOptimized(SchemaSourceList(), union_op->GetProducer(0),
                               &union_op->window_.sort_);
 
                 if (!union_op->window_joins().Empty()) {
                     for (auto& window_join :
                          union_op->window_joins().window_joins()) {
                         PhysicalOpNode* new_join_right;
-                        if (JoinKeysOptimized(window_join.first,
-                                              &window_join.second,
-                                              &new_join_right)) {
+                        if (JoinKeysOptimized(
+                                SchemaSourceList(), window_join.first,
+                                &window_join.second, &new_join_right)) {
                             window_join.first = new_join_right;
                         }
                     }
                 }
+                if (!union_op->window_unions().Empty()) {
+                    for (auto& window_union :
+                         union_op->window_unions().window_unions_) {
+                        PhysicalOpNode* new_producer;
+
+                        if (GroupOptimized(SchemaSourceList(),
+                                           window_union.first,
+                                           &window_union.second.partition_,
+                                           &new_producer)) {
+                            window_union.first = new_producer;
+                        }
+                        SortOptimized(SchemaSourceList(), window_union.first,
+                                      &window_union.second.sort_);
+                    }
+                }
                 return true;
-            } else {
-                return false;
             }
+            break;
         }
         case kPhysicalOpRequestUnoin: {
             PhysicalRequestUnionNode* union_op =
                 dynamic_cast<PhysicalRequestUnionNode*>(in);
             PhysicalOpNode* new_producer;
-            if (!KeysFilterOptimized(
-                    union_op->GetProducer(1), &union_op->window_.partition_,
+            if (KeysFilterOptimized(
+                    SchemaSourceList(), union_op->GetProducer(1),
+                    &union_op->window_.partition_,
                     &union_op->window_.index_key_, &new_producer)) {
-                return false;
+                union_op->SetProducer(1, new_producer);
             }
-            union_op->SetProducer(1, new_producer);
-            SortOptimized(union_op->GetProducer(1), &union_op->window_.sort_);
+            SortOptimized(SchemaSourceList(), union_op->GetProducer(1),
+                          &union_op->window_.sort_);
+
+            if (!union_op->window_unions().Empty()) {
+                for (auto& window_union :
+                     union_op->window_unions_.window_unions_) {
+                    PhysicalOpNode* new_producer;
+                    auto& window = window_union.second;
+                    if (KeysFilterOptimized(
+                            SchemaSourceList(), window_union.first,
+                            &window.partition_,
+                            &window.index_key_, &new_producer)) {
+                        window_union.first = new_producer;
+                    }
+                    SortOptimized(SchemaSourceList(), window_union.first,
+                                  &window.sort_);
+                }
+            }
             return true;
         }
         case kPhysicalOpRequestJoin: {
@@ -1426,8 +1571,8 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                 dynamic_cast<PhysicalRequestJoinNode*>(in);
             PhysicalOpNode* new_producer;
             // Optimized Right Table Partition
-            if (!JoinKeysOptimized(join_op->GetProducer(1), &join_op->join_,
-                                   &new_producer)) {
+            if (!JoinKeysOptimized(SchemaSourceList(), join_op->GetProducer(1),
+                                   &join_op->join_, &new_producer)) {
                 return false;
             }
             join_op->SetProducer(1, new_producer);
@@ -1437,8 +1582,8 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
             PhysicalJoinNode* join_op = dynamic_cast<PhysicalJoinNode*>(in);
             PhysicalOpNode* new_producer;
             // Optimized Right Table Partition
-            if (!JoinKeysOptimized(join_op->GetProducer(1), &join_op->join_,
-                                   &new_producer)) {
+            if (!JoinKeysOptimized(SchemaSourceList(), join_op->GetProducer(1),
+                                   &join_op->join_, &new_producer)) {
                 return false;
             }
             join_op->SetProducer(1, new_producer);
@@ -1451,6 +1596,7 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
     return false;
 }
 bool GroupAndSortOptimized::TransformGroupExpr(
+    const vm::SchemaSourceList& schema_sources,
     const node::ExprListNode* groups, const IndexHint& index_hint,
     std::string* index_name, const node::ExprListNode** keys_expr,
     const node::ExprListNode** output) {
@@ -1459,13 +1605,15 @@ bool GroupAndSortOptimized::TransformGroupExpr(
                         "or index_name ptr is null";
         return false;
     }
+    SchemasContext schema_ctx(schema_sources);
     std::vector<std::string> columns;
     for (auto group : groups->children_) {
         switch (group->expr_type_) {
-            case node::kExprColumnRef:
-                columns.push_back(
-                    dynamic_cast<node::ColumnRefNode*>(group)->GetColumnName());
+            case node::kExprColumnRef: {
+                auto column = dynamic_cast<node::ColumnRefNode*>(group);
+                columns.push_back(schema_ctx.SourceColumnNameResolved(column));
                 break;
+            }
             default: {
                 break;
             }
@@ -1493,11 +1641,11 @@ bool GroupAndSortOptimized::TransformGroupExpr(
             for (auto group : groups->children_) {
                 switch (group->expr_type_) {
                     case node::kExprColumnRef: {
-                        std::string column =
-                            dynamic_cast<node::ColumnRefNode*>(group)
-                                ->GetColumnName();
+                        auto column = dynamic_cast<node::ColumnRefNode*>(group);
+                        std::string column_name =
+                            schema_ctx.SourceColumnNameResolved(column);
                         // skip group when match index keys
-                        if (column == iter->name) {
+                        if (column_name == iter->name) {
                             key_expr_list->AddChild(group);
                             break;
                         }
@@ -1511,20 +1659,19 @@ bool GroupAndSortOptimized::TransformGroupExpr(
         }
 
         // generate new groups expr
-        for (auto group : groups->children_) {
-            switch (group->expr_type_) {
+        for (auto expr : groups->children_) {
+            switch (expr->expr_type_) {
                 case node::kExprColumnRef: {
-                    std::string column =
-                        dynamic_cast<node::ColumnRefNode*>(group)
-                            ->GetColumnName();
+                    std::string column = schema_ctx.SourceColumnNameResolved(
+                        dynamic_cast<node::ColumnRefNode*>(expr));
                     // skip group when match index keys
                     if (keys.find(column) == keys.cend()) {
-                        new_groups->AddChild(group);
+                        new_groups->AddChild(expr);
                     }
                     break;
                 }
                 default: {
-                    new_groups->AddChild(group);
+                    new_groups->AddChild(expr);
                 }
             }
         }
@@ -1820,6 +1967,9 @@ bool LimitOptimized::ApplyLimitCnt(PhysicalOpNode* node, int32_t limit_cnt) {
     if (node->producers().empty()) {
         return false;
     }
+    if (node->type_ == kPhysicalOpSimpleProject) {
+        return false;
+    }
     if (node->is_block_) {
         if (0 == node->GetLimitCnt() || node->GetLimitCnt() > limit_cnt) {
             node->SetLimitCnt(limit_cnt);
@@ -1829,6 +1979,7 @@ bool LimitOptimized::ApplyLimitCnt(PhysicalOpNode* node, int32_t limit_cnt) {
         if (false == ApplyLimitCnt(node->producers()[0], limit_cnt)) {
             if (0 == node->GetLimitCnt() || node->GetLimitCnt() > limit_cnt) {
                 node->SetLimitCnt(limit_cnt);
+                return true;
             }
         } else {
             return true;
@@ -1864,8 +2015,9 @@ bool TransformUpPysicalPass::Apply(PhysicalOpNode* in, PhysicalOpNode** out) {
 }
 
 bool GroupAndSortOptimized::TransformOrderExpr(
-    const node::OrderByNode* order, const Schema& schema,
-    const IndexSt& index_st, const node::OrderByNode** output) {
+    const vm::SchemaSourceList& schema_sources, const node::OrderByNode* order,
+    const Schema& schema, const IndexSt& index_st,
+    const node::OrderByNode** output) {
     if (nullptr == order || nullptr == output) {
         LOG(WARNING) << "fail to transform order expr : order expr or "
                         "data_provider op "
@@ -1876,18 +2028,19 @@ bool GroupAndSortOptimized::TransformOrderExpr(
     auto& ts_column = schema.Get(index_st.ts_pos);
     std::vector<std::string> columns;
     *output = order;
-
     bool succ = false;
-    for (auto expr : order->order_by_->children_) {
+    SchemasContext schema_ctx(schema_sources);
+    for (auto expr : order->order_by()->children_) {
         switch (expr->expr_type_) {
-            case node::kExprColumnRef:
-                columns.push_back(
-                    dynamic_cast<node::ColumnRefNode*>(expr)->GetColumnName());
-                if (ts_column.name() ==
-                    dynamic_cast<node::ColumnRefNode*>(expr)->GetColumnName()) {
+            case node::kExprColumnRef: {
+                std::string column_name = schema_ctx.SourceColumnNameResolved(
+                    dynamic_cast<node::ColumnRefNode*>(expr));
+                columns.push_back(column_name);
+                if (ts_column.name() == column_name) {
                     succ = true;
                 }
                 break;
+            }
             default: {
                 break;
             }
@@ -1899,11 +2052,11 @@ bool GroupAndSortOptimized::TransformOrderExpr(
         for (auto expr : order->order_by_->children_) {
             switch (expr->expr_type_) {
                 case node::kExprColumnRef: {
-                    std::string column =
-                        dynamic_cast<node::ColumnRefNode*>(expr)
-                            ->GetColumnName();
+                    std::string column_name =
+                        schema_ctx.SourceColumnNameResolved(
+                            dynamic_cast<node::ColumnRefNode*>(expr));
                     // skip group when match index keys
-                    if (ts_column.name() != column) {
+                    if (ts_column.name() != column_name) {
                         expr_list->AddChild(expr);
                     }
                     break;
@@ -2245,5 +2398,34 @@ bool RequestModeransformer::TransformProjectOp(
     return false;
 }
 
+bool SimpleProjectOptimized::Transform(PhysicalOpNode* in,
+                                       PhysicalOpNode** output) {
+    *output = in;
+    switch (in->type_) {
+        case kPhysicalOpSimpleProject: {
+            PhysicalSimpleProjectNode* simple_project =
+                dynamic_cast<PhysicalSimpleProjectNode*>(in);
+            if (kPhysicalOpSimpleProject == in->producers()[0]->type_) {
+                auto depend = dynamic_cast<PhysicalSimpleProjectNode*>(
+                    in->producers()[0]);
+                ColumnSourceList new_sources;
+                if (false == ColumnProject::CombineColumnSources(
+                                 simple_project->project().column_sources(),
+                                 depend->project().column_sources(),
+                                 new_sources)) {
+                    LOG(WARNING) << "Fail to Combine Simple Project";
+                    return false;
+                }
+                *output = new PhysicalSimpleProjectNode(
+                    depend->producers()[0], in->output_schema_, new_sources);
+                node_manager_->RegisterNode(*output);
+                return true;
+            }
+        }
+        default: {
+            return false;
+        }
+    }
+}
 }  // namespace vm
 }  // namespace fesql

@@ -16,9 +16,9 @@
  */
 
 #include "vm/engine.h"
+#include <algorithm>
 #include <utility>
 #include <vector>
-#include <algorithm>
 #include "base/texttable.h"
 #include "boost/algorithm/string.hpp"
 #include "case/sql_case.h"
@@ -266,11 +266,15 @@ void RequestModeCheck(SQLCase& sql_case) {  // NOLINT
     PrintSchema(schema);
     std::ostringstream oss;
     session.GetPhysicalPlan()->Print(oss, "");
-    std::cout << "physical plan:\n" << oss.str() << std::endl;
+    LOG(INFO) << "physical plan:\n" << oss.str() << std::endl;
+
+    if (!sql_case.request_plan().empty()) {
+        ASSERT_EQ(oss.str(), sql_case.request_plan());
+    }
 
     std::ostringstream runner_oss;
     session.GetRunner()->Print(runner_oss, "");
-    std::cout << "runner plan:\n" << runner_oss.str() << std::endl;
+    LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
 
     // Check Output Schema
     std::vector<Row> case_output_data;
@@ -338,11 +342,15 @@ void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
     PrintSchema(schema);
     std::ostringstream oss;
     session.GetPhysicalPlan()->Print(oss, "");
-    std::cout << "physical plan:\n" << oss.str() << std::endl;
+    LOG(INFO) << "physical plan:\n" << oss.str() << std::endl;
+
+    if (!sql_case.batch_plan().empty()) {
+        ASSERT_EQ(oss.str(), sql_case.batch_plan());
+    }
 
     std::ostringstream runner_oss;
     session.GetRunner()->Print(runner_oss, "");
-    std::cout << "runner plan:\n" << runner_oss.str() << std::endl;
+    LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
 
     // Check Output Schema
     std::vector<Row> case_output_data;
