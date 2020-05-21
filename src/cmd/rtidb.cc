@@ -6535,8 +6535,9 @@ void StartNsClient() {
         std::cout << "client init failed" << std::endl;
         return;
     }
-    std::string display_prefix = endpoint + " " + client.GetDb()+ "> ";
-    std::string multi_line_perfix = std::string(display_prefix.length() - 3, ' ') + "-> ";
+    std::string display_prefix = endpoint + " " + client.GetDb() + "> ";
+    std::string multi_line_perfix =
+        std::string(display_prefix.length() - 3, ' ') + "-> ";
     std::string sql;
     bool use_sql = false;
     bool multi_line = false;
@@ -6545,8 +6546,9 @@ void StartNsClient() {
         if (!FLAGS_interactive) {
             buffer = FLAGS_cmd;
         } else {
-            char* line = ::rtidb::base::linenoise(multi_line ?
-                multi_line_perfix.c_str() : display_prefix.c_str());
+            char* line =
+                ::rtidb::base::linenoise(multi_line ? multi_line_perfix.c_str()
+                                                    : display_prefix.c_str());
             if (line == NULL) {
                 return;
             }
@@ -6566,8 +6568,9 @@ void StartNsClient() {
             sql.append(buffer);
             if (sql == "exit" || sql == "quit") {
                 use_sql = false;
-                display_prefix = endpoint + " " + client.GetDb()+ "> ";
-                multi_line_perfix = std::string(display_prefix.length() - 3, ' ') + "-> ";
+                display_prefix = endpoint + " " + client.GetDb() + "> ";
+                multi_line_perfix =
+                    std::string(display_prefix.length() - 3, ' ') + "-> ";
                 ::rtidb::base::linenoiseSetMultiLine(0);
             } else if (sql.back() == ';') {
                 HandleNsClientSQL(sql, &client);
@@ -6677,7 +6680,8 @@ void StartNsClient() {
         } else if (parts[0] == "sql") {
             use_sql = true;
             display_prefix = endpoint + " " + client.GetDb() + " SQL> ";
-            multi_line_perfix = std::string(display_prefix.length() - 3, ' ') + "-> ";
+            multi_line_perfix =
+                std::string(display_prefix.length() - 3, ' ') + "-> ";
             ::rtidb::base::linenoiseSetMultiLine(1);
             sql.clear();
         } else if (parts[0] == "exit" || parts[0] == "quit") {
