@@ -261,7 +261,7 @@ tablet_one_demension_pz:
         - bash steps/get_pz_fpga_deps.sh
         - sed -i 's/\"Enable pz compression for ssd tables\"\ OFF/\"Enable pz compression for ssd tables\"\ ON/g' CMakeLists.txt
         - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
-        - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 0 "test" "ns_client"
+        - source /root/.bashrc && source /opt/rh/python27/enable && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH sh steps/integration_test_on_ramdir.sh 0 "test" "ns_client"
     artifacts:
         reports:
             junit:
@@ -282,7 +282,7 @@ tablet_multi_demension_pz:
         - bash steps/get_pz_fpga_deps.sh
         - sed -i 's/\"Enable pz compression for ssd tables\"\ OFF/\"Enable pz compression for ssd tables\"\ ON/g' CMakeLists.txt
         - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
-        - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 1 "test" "ns_client"
+        - source /root/.bashrc && source /opt/rh/python27/enable && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH sh steps/integration_test_on_ramdir.sh 1 "test" "ns_client"
     artifacts:
         reports:
             junit:
@@ -303,7 +303,7 @@ ns_one_demension_pz:
         - bash steps/get_pz_fpga_deps.sh
         - sed -i 's/\"Enable pz compression for ssd tables\"\ OFF/\"Enable pz compression for ssd tables\"\ ON/g' CMakeLists.txt
         - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
-        - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 0 "ns_client" "disk"
+        - source /root/.bashrc && source /opt/rh/python27/enable && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH sh steps/integration_test_on_ramdir.sh 0 "ns_client" "disk"
     artifacts:
         reports:
             junit:
@@ -324,7 +324,7 @@ ns_multi_demension_pz:
         - bash steps/get_pz_fpga_deps.sh
         - sed -i 's/\"Enable pz compression for ssd tables\"\ OFF/\"Enable pz compression for ssd tables\"\ ON/g' CMakeLists.txt
         - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
-        - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 1 "ns_client" "disk"
+        - source /root/.bashrc && source /opt/rh/python27/enable && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH sh steps/integration_test_on_ramdir.sh 1 "ns_client" "disk"
     artifacts:
         reports:
             junit:
@@ -345,7 +345,7 @@ disk_table_pz:
         - bash steps/get_pz_fpga_deps.sh
         - sed -i 's/\"Enable pz compression for ssd tables\"\ OFF/\"Enable pz compression for ssd tables\"\ ON/g' CMakeLists.txt
         - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
-        - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 0 "disk"
+        - source /root/.bashrc && source /opt/rh/python27/enable && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH sh steps/integration_test_on_ramdir.sh 0 "disk"
     artifacts:
         reports:
             junit:
