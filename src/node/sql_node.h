@@ -1097,6 +1097,21 @@ class IndexTTLNode : public SQLNode {
  private:
     ExprNode *ttl_expr_;
 };
+class IndexTTLTypeNode : public SQLNode {
+ public:
+    IndexTTLTypeNode() : SQLNode(kIndexTTLType, 0, 0) {}
+    explicit IndexTTLTypeNode(const std::string& ttl_type)
+        : SQLNode(kIndexTTLType, 0, 0), ttl_type_(ttl_type) {}
+
+    void set_ttl_type(const std::string& ttl_type) {
+        this->ttl_type_ = ttl_type;
+    }
+    const std::string& ttl_type() const { return ttl_type_; }
+
+ private:
+    std::string ttl_type_;
+};
+
 class ColumnIndexNode : public SQLNode {
  public:
     ColumnIndexNode()
@@ -1105,6 +1120,7 @@ class ColumnIndexNode : public SQLNode {
           version_(""),
           version_count_(0),
           ttl_(-1L),
+          ttl_type_(""),
           name_("") {}
 
     std::vector<std::string> &GetKey() { return key_; }
@@ -1125,6 +1141,12 @@ class ColumnIndexNode : public SQLNode {
 
     void SetVersionCount(int count) { version_count_ = count; }
 
+    const std::string & ttl_type() const {
+        return ttl_type_;
+    }
+    void set_ttl_type(const std::string& ttl_type) {
+        ttl_type_ = ttl_type;
+    }
     int64_t GetTTL() const { return ttl_; }
     void SetTTL(ExprNode *ttl_node) {
         if (nullptr == ttl_node) {
@@ -1168,6 +1190,7 @@ class ColumnIndexNode : public SQLNode {
     std::string version_;
     int version_count_;
     int64_t ttl_;
+    std::string ttl_type_;
     std::string name_;
 };
 class CmdNode : public SQLNode {
