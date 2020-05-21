@@ -82,8 +82,8 @@ py3_ut:
     - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/run_py3_ut.sh
   artifacts:
     reports:
-    junit:
-      - ./python/test/*xml
+      junit:
+        - ./python/test/*xml
 
 
 tablet_one_demension:
