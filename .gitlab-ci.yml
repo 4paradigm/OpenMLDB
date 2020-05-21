@@ -71,6 +71,21 @@ c++_ut:
           junit:
               - reports/*.xml
 
+py3_ut:
+  stage: test
+  before_script:
+    - mkdir /rambuild
+    - mount -t tmpfs -o size=3G tmpfs /rambuild
+  script:
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/run_py3_ut.sh
+  artifacts:
+    reports:
+    junit:
+      - ./python/test/*xml
+
+
 tablet_one_demension:
     stage: ts_integration_test
     before_script:

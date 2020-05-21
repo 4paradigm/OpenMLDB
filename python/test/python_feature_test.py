@@ -27,12 +27,6 @@ class TestRtidb(unittest.TestCase):
       self.assertTrue(True);
     else:
       self.assertTrue(False);
-    ''' 
-    for l in resp:
-      self.assertEqual("card3", l["card"])
-      #self.assertEqual("mcc3", l["mcc"]) #TODO: current skip verify mcc, beacuse mcc value is mcc3\x00 maybe server problem
-      self.assertEqual(3, l["p_biz_date"])
-    '''
     # multi index
     data = {"id":"1","name":"n1","mcc":"1","attribute":"a1", "image":b"i1"}
     self.assertTrue(self.nsc.put("rt_ck", data, None).success())
