@@ -34,6 +34,7 @@ DECLARE_string(log_dir);
 namespace fesql {
 namespace vm {
 
+static bool LLVM_IS_INITIALIZED = false;
 Engine::Engine(const std::shared_ptr<Catalog>& catalog) : cl_(catalog) {}
 
 Engine::Engine(const std::shared_ptr<Catalog>& catalog,
@@ -43,10 +44,11 @@ Engine::Engine(const std::shared_ptr<Catalog>& catalog,
 Engine::~Engine() {}
 
 void Engine::InitializeGlobalLLVM() {
+    if (LLVM_IS_INITIALIZED) return;
     LLVMInitializeNativeTarget();
     LLVMInitializeNativeAsmPrinter();
+    LLVM_IS_INITIALIZED = true;
 }
-
 bool Engine::Get(const std::string& sql, const std::string& db,
                  RunSession& session,
                  base::Status& status) {  // NOLINT (runtime/references)
