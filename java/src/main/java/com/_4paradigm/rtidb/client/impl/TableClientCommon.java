@@ -7,6 +7,7 @@ import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.ColumnType;
 import com._4paradigm.rtidb.tablet.Tablet;
 import com._4paradigm.rtidb.utils.MurmurHash;
+import io.brpc.client.RpcCallback;
 import org.joda.time.DateTime;
 
 import java.sql.Timestamp;
@@ -16,6 +17,43 @@ import java.util.List;
 import java.util.Map;
 
 public class TableClientCommon {
+
+    public static RpcCallback<Tablet.PutResponse> putFakeCallback = new RpcCallback<Tablet.PutResponse>() {
+
+        @Override
+        public void success(Tablet.PutResponse response) {
+        }
+
+        @Override
+        public void fail(Throwable e) {
+
+        }
+
+    };
+
+    public static RpcCallback<Tablet.GetResponse> getFakeCallback = new RpcCallback<Tablet.GetResponse>() {
+
+        @Override
+        public void success(Tablet.GetResponse response) {
+        }
+
+        @Override
+        public void fail(Throwable e) {
+        }
+
+    };
+
+    public static RpcCallback<Tablet.ScanResponse> scanFakeCallback = new RpcCallback<Tablet.ScanResponse>() {
+
+        @Override
+        public void success(Tablet.ScanResponse response) {
+        }
+
+        @Override
+        public void fail(Throwable e) {
+        }
+
+    };
 
     public static void parseMapInput(Map<String, Object> row, TableHandler th, Object[] arrayRow, List<Tablet.TSDimension> tsDimensions) throws TabletException {
         if (row == null) {

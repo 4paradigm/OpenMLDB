@@ -545,7 +545,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         }
         builder.setValue(ByteBufferNoCopy.wrap(row.asReadOnlyBuffer()));
         Tablet.PutRequest request = builder.build();
-        Future<PutResponse> response = tablet.put(request, putFakeCallback);
+        Future<PutResponse> response = tablet.put(request, TableClientCommon.putFakeCallback);
         return response;
     }
 
@@ -584,7 +584,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
                 }
             }
             Tablet.GetRequest request = builder.build();
-            Future<Tablet.GetResponse> future = ts.get(request, getFakeCallback);
+            Future<Tablet.GetResponse> future = ts.get(request, TableClientCommon.getFakeCallback);
             return new GetFuture(future, th, client.getConfig(), schema);
         }else {
             if (getOption.getProjection().size() > 0) {
@@ -603,11 +603,11 @@ public class TableAsyncClientImpl implements TableAsyncClient {
                     bitSet.set(idx, true);
                 }
                 Tablet.GetRequest request = builder.build();
-                Future<Tablet.GetResponse> future = ts.get(request, getFakeCallback);
+                Future<Tablet.GetResponse> future = ts.get(request, TableClientCommon.getFakeCallback);
                 return new GetFuture(future, th, projectIdx, bitSet, maxIndex);
             }else {
                 Tablet.GetRequest request = builder.build();
-                Future<Tablet.GetResponse> future = ts.get(request, getFakeCallback);
+                Future<Tablet.GetResponse> future = ts.get(request, TableClientCommon.getFakeCallback);
                 return new GetFuture(future, th);
             }
         }
@@ -638,7 +638,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         if (ts == null) {
             throw new TabletException("Cannot find available tabletServer with tid " + tid);
         }
-        Future<Tablet.GetResponse> response = ts.get(request, getFakeCallback);
+        Future<Tablet.GetResponse> response = ts.get(request, TableClientCommon.getFakeCallback);
         return new GetFuture(response, th);
     }
 
@@ -670,46 +670,10 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         if (ts == null) {
             throw new TabletException("Cannot find available tabletServer with tid " + tid);
         }
-        Future<Tablet.ScanResponse> response = ts.scan(request, scanFakeCallback);
+        Future<Tablet.ScanResponse> response = ts.scan(request, TableClientCommon.scanFakeCallback);
         return ScanFuture.wrappe(response, th, startTime);
     }
 
-    private static RpcCallback<Tablet.PutResponse> putFakeCallback = new RpcCallback<Tablet.PutResponse>() {
-
-        @Override
-        public void success(PutResponse response) {
-        }
-
-        @Override
-        public void fail(Throwable e) {
-
-        }
-
-    };
-
-    private static RpcCallback<Tablet.GetResponse> getFakeCallback = new RpcCallback<Tablet.GetResponse>() {
-
-        @Override
-        public void success(GetResponse response) {
-        }
-
-        @Override
-        public void fail(Throwable e) {
-        }
-
-    };
-
-    private static RpcCallback<Tablet.ScanResponse> scanFakeCallback = new RpcCallback<Tablet.ScanResponse>() {
-
-        @Override
-        public void success(ScanResponse response) {
-        }
-
-        @Override
-        public void fail(Throwable e) {
-        }
-
-    };
 
     @Override
     public PutFuture put(String name, long time, Map<String, Object> row) throws TabletException {
@@ -935,13 +899,13 @@ public class TableAsyncClientImpl implements TableAsyncClient {
                     }
                 }
                 Tablet.ScanRequest request = builder.build();
-                Future<Tablet.ScanResponse> response = ts.scan(request, scanFakeCallback);
+                Future<Tablet.ScanResponse> response = ts.scan(request, TableClientCommon.scanFakeCallback);
                 return new ScanFuture(response, th, schema);
             }
             default:
             {
                 Tablet.ScanRequest request = builder.build();
-                Future<Tablet.ScanResponse> response = ts.scan(request, scanFakeCallback);
+                Future<Tablet.ScanResponse> response = ts.scan(request, TableClientCommon.scanFakeCallback);
                 if (option.getProjection().size() > 0) {
                     List<Integer> projectionIdx = new ArrayList<>();
                     int maxIdx = -1;

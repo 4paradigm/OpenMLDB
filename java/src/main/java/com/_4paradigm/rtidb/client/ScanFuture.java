@@ -121,6 +121,10 @@ public class ScanFuture implements Future<KvIterator> {
         }
     }
 
+    public ScanResponse getResponse() throws InterruptedException, ExecutionException {
+        return f.get();
+    }
+
     @Override
     public KvIterator get(long timeout, TimeUnit unit)
             throws InterruptedException, ExecutionException, TimeoutException {

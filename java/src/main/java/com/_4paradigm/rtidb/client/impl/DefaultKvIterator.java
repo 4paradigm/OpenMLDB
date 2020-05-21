@@ -12,19 +12,62 @@ import com.google.protobuf.ByteString;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 
 public class DefaultKvIterator implements KvIterator {
 
-    private ByteString bs;
-    private int offset;
-    private ByteBuffer bb;
+    public class QueryResultData {
+        private ByteBuffer bb;
+        private int offset;
+        private long ts;
+        private ByteBuffer slice;
+        private int totalSize;
+
+        public QueryResultData(ByteString bs) {
+            this.bb = bs.asReadOnlyByteBuffer();
+            this.totalSize = bs.size();
+            this.offset = 0;
+            this.ts = 0;
+            parseData();
+        }
+
+        public long GetTs() {
+            return ts;
+        }
+
+        public boolean valid() {
+            return offset <= totalSize;
+        }
+
+        public ByteBuffer fetchData() {
+            ByteBuffer cur_slice = slice;
+            parseData();
+            return cur_slice;
+        }
+
+        private void parseData() {
+            if (offset + 4 > totalSize) {
+                offset += 4;
+                return;
+            }
+            slice = this.bb.slice().asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN);
+            slice.position(offset);
+            int size = slice.getInt();
+            if (size < 8) {
+                throw new RuntimeException("bad frame data");
+            }
+            ts = slice.getLong();
+            offset += (4 + size);
+            slice.limit(offset);
+        }
+    }
+
+    private List<QueryResultData> dataList = new ArrayList<>();
     // no copy
-    private ByteBuffer slice;
-    private int length;
+    private ByteBuffer slice = null;
     private long time;
-    private int totalSize;
     private List<ColumnDesc> schema;
     private Long network = 0l;
     private int count;
@@ -36,10 +79,7 @@ public class DefaultKvIterator implements KvIterator {
     private BitSet bitSet;
     private int maxIndex;
     public DefaultKvIterator(ByteString bs) {
-        this.bs = bs;
-        this.bb = this.bs.asReadOnlyByteBuffer();
-        this.offset = 0;
-        this.totalSize = this.bs.size();
+        this.dataList.add(new QueryResultData(bs));
         next();
     }
     
@@ -84,30 +124,27 @@ public class DefaultKvIterator implements KvIterator {
     }
     
     public DefaultKvIterator(ByteString bs, Long network) {
-        this.bs = bs;
-        this.bb = this.bs.asReadOnlyByteBuffer();
-        this.offset = 0;
-        this.totalSize = this.bs.size();
-        next();
+        this(bs);
         this.network = network;
     }
 
     public DefaultKvIterator(ByteString bs, TableHandler th) {
-        this.bs = bs;
-        this.bb = this.bs.asReadOnlyByteBuffer();
-        this.offset = 0;
-        this.totalSize = this.bs.size();
+        this(bs);
+        this.schema = th.getSchema();
+        this.th = th;
+    }
+
+    public DefaultKvIterator(List<ByteString> bsList, TableHandler th) {
+        for (ByteString bs : bsList) {
+            this.dataList.add(new QueryResultData(bs));
+        }
         next();
         this.schema = th.getSchema();
         this.th = th;
     }
 
     public DefaultKvIterator(ByteString bs, List<ColumnDesc> schema, Long network) {
-        this.bs = bs;
-        this.bb = this.bs.asReadOnlyByteBuffer();
-        this.offset = 0;
-        this.totalSize = this.bs.size();
-        next();
+        this(bs);
         this.schema = schema;
         if (network != null) {
             this.network = network;
@@ -122,11 +159,7 @@ public class DefaultKvIterator implements KvIterator {
 	}
 
 	public boolean valid() {
-        if (offset <= totalSize) {
-            return true;
-        }
-
-        return false;
+        return slice != null;
     }
 
     public long getKey() {
@@ -170,21 +203,22 @@ public class DefaultKvIterator implements KvIterator {
     }
 
     public void next() {
-        if (offset + 4 > totalSize) {
-            offset += 4;
-            return;
+        int maxTsIndex = -1;
+        long ts = -1;
+        for (int i = 0; i < dataList.size(); i++) {
+            QueryResultData queryResult = dataList.get(i);
+            if (queryResult.valid() && queryResult.GetTs() > ts) {
+                maxTsIndex = i;
+                ts = queryResult.GetTs();
+            }
         }
-        slice = this.bb.slice().asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN);
-        slice.position(offset);
-        int size = slice.getInt();
-        time = slice.getLong();
-        // calc the data size
-        length = size - 8;
-        if (length < 0) {
-            throw new RuntimeException("bad frame data");
+        if (maxTsIndex >= 0) {
+            QueryResultData queryResult = dataList.get(maxTsIndex);
+            time = queryResult.GetTs();
+            slice = queryResult.fetchData();
+        } else {
+            slice = null;
         }
-        offset += (4 + size);
-        slice.limit(offset);
     }
 
     @Override
