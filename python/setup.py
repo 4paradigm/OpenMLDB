@@ -7,6 +7,6 @@ setup(
         author_email='kongquan@4paradigm.com',
         url='https://www.4paradigm.com',
         packages=['rtidb'],
-        package_data={'': ['_interclient.so']},
+        package_data={'': ['_interclient.so', '_interclient_tools.so']},
         include_package_data=True,
 )
