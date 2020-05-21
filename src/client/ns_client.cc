@@ -1048,20 +1048,25 @@ bool NsClient::TransformToTableDef(
                         it->second->set_is_ts_col(true);
                         if (!column_index->ttl_type().empty()) {
                             if (column_index->ttl_type() == "absolute") {
-                                table->mutable_ttl_desc()->set_ttl_type(rtidb::api::kAbsoluteTime);
+                                table->mutable_ttl_desc()->set_ttl_type(
+                                    rtidb::api::kAbsoluteTime);
                             } else if (column_index->ttl_type() == "latest") {
-                                table->mutable_ttl_desc()->set_ttl_type(rtidb::api::kLatestTime);
+                                table->mutable_ttl_desc()->set_ttl_type(
+                                    rtidb::api::kLatestTime);
                             } else {
                                 status->msg = "CREATE common: ttl_type " +
-                                column_index->ttl_type() + " not support";
+                                              column_index->ttl_type() +
+                                              " not support";
                                 status->code = fesql::common::kSQLError;
                                 return false;
                             }
                         }
                         if (-1 != column_index->GetTTL()) {
                             // todo: support multi ttl
-                            if (table->ttl_desc().ttl_type() == rtidb::api::kAbsoluteTime) {
-                                it->second->set_abs_ttl(column_index->GetTTL() / 60000);
+                            if (table->ttl_desc().ttl_type() ==
+                                rtidb::api::kAbsoluteTime) {
+                                it->second->set_abs_ttl(column_index->GetTTL() /
+                                                        60000);
                             } else {
                                 it->second->set_lat_ttl(column_index->GetTTL());
                             }
