@@ -10,10 +10,11 @@
 #include <string>
 #include <utility>
 #include <vector>
-
+#include <algorithm>
 #include "codec/flat_array.h"
 #include "codec/row_codec.h"
 #include "codec/schema_codec.h"
+#include "base/glog_wapper.h"
 
 namespace rtidb {
 namespace codec {
@@ -92,25 +93,40 @@ class RowCodec {
                         ok = builder.AppendString(iter->second.c_str(),
                                                   iter->second.length());
                         break;
-                    case rtidb::type::kBool:
-                        ok = builder.AppendBool(
-                            boost::lexical_cast<bool>(iter->second));
+                    case rtidb::type::kBool: {
+                        std::string b_val = iter->second;
+                        std::transform(b_val.begin(), b_val.end(),
+                                b_val.begin(), ::tolower);
+                        if (b_val == "true") {
+                            ok = builder.AppendBool(true);
+                        } else if (b_val == "false") {
+                            ok = builder.AppendBool(false);
+                        } else {
+                            rm.code = -1;
+                            rm.msg = "bool input format error";
+                            return rm;
+                        }
                         break;
+                    }
                     case rtidb::type::kSmallInt:
                         ok = builder.AppendInt16(
-                            boost::lexical_cast<uint16_t>(iter->second));
+                            boost::lexical_cast<int16_t>(iter->second));
                         break;
                     case rtidb::type::kInt:
                         ok = builder.AppendInt32(
-                            boost::lexical_cast<uint32_t>(iter->second));
+                            boost::lexical_cast<int32_t>(iter->second));
+                        break;
+                    case rtidb::type::kBlob:
+                        ok = builder.AppendBlob(
+                            boost::lexical_cast<int64_t>(iter->second));
                         break;
                     case rtidb::type::kBigInt:
                         ok = builder.AppendInt64(
-                            boost::lexical_cast<uint64_t>(iter->second));
+                            boost::lexical_cast<int64_t>(iter->second));
                         break;
                     case rtidb::type::kTimestamp:
                         ok = builder.AppendTimestamp(
-                            boost::lexical_cast<uint64_t>(iter->second));
+                            boost::lexical_cast<int64_t>(iter->second));
                         break;
                     case rtidb::type::kFloat:
                         ok = builder.AppendFloat(
@@ -120,6 +136,20 @@ class RowCodec {
                         ok = builder.AppendDouble(
                             boost::lexical_cast<double>(iter->second));
                         break;
+                    case rtidb::type::kDate: {
+                        std::vector<std::string> parts;
+                        ::rtidb::base::SplitString(iter->second, "-", parts);
+                        if (parts.size() != 3) {
+                            rm.code = -1;
+                            rm.msg = "bad data format " + iter->second;
+                            return rm;
+                        }
+                        uint32_t year = boost::lexical_cast<uint32_t>(parts[0]);
+                        uint32_t mon = boost::lexical_cast<uint32_t>(parts[1]);
+                        uint32_t day = boost::lexical_cast<uint32_t>(parts[2]);
+                        ok = builder.AppendDate(year, mon, day);
+                        break;
+                    }
                     default:
                         rm.code = -1;
                         rm.msg = "unsupported data type";
@@ -184,43 +214,46 @@ class RowCodec {
             std::string col;
             auto type = schema.Get(i).data_type();
             if (type == rtidb::type::kInt) {
-                int32_t val;
+                int32_t val = 0;
                 int ret = rv.GetInt32(i, &val);
                 if (ret == 0) {
                     col = std::to_string(val);
                 }
             } else if (type == rtidb::type::kTimestamp) {
-                int64_t val;
+                int64_t val = 0;
                 int ret = rv.GetTimestamp(i, &val);
                 if (ret == 0) {
                     col = std::to_string(val);
                 }
-            } else if (type == rtidb::type::kBigInt) {
-                int64_t val;
+            } else if (type == rtidb::type::kBigInt ||
+                       type == rtidb::type::kBlob) {
+                int64_t val = 0;
                 int ret = rv.GetInt64(i, &val);
                 if (ret == 0) {
                     col = std::to_string(val);
                 }
             } else if (type == rtidb::type::kBool) {
-                bool val;
+                bool val = false;
                 int ret = rv.GetBool(i, &val);
                 if (ret == 0) {
-                    col = std::to_string(val);
+                    if (val) col = "true";
+                    else
+                        col = "false";
                 }
             } else if (type == rtidb::type::kFloat) {
-                float val;
+                float val = 0.0;
                 int ret = rv.GetFloat(i, &val);
                 if (ret == 0) {
                     col = std::to_string(val);
                 }
             } else if (type == rtidb::type::kSmallInt) {
-                int16_t val;
+                int16_t val = 0;
                 int ret = rv.GetInt16(i, &val);
                 if (ret == 0) {
                     col = std::to_string(val);
                 }
             } else if (type == rtidb::type::kDouble) {
-                double val;
+                double val = 0;
                 int ret = rv.GetDouble(i, &val);
                 if (ret == 0) {
                     col = std::to_string(val);
@@ -233,13 +266,52 @@ class RowCodec {
                 if (ret == 0) {
                     col.assign(ch, len);
                 }
+            } else if (type == ::rtidb::type::kDate) {
+                uint32_t year = 0;
+                uint32_t month = 0;
+                uint32_t day = 0;
+                rv.GetDate(i, &year, &month, &day);
+                std::stringstream ss;
+                ss << year << "-" << month << "-" << day;
+                col = ss.str();
             }
             value_vec->emplace_back(std::move(col));
         }
         return true;
     }
 };
-
+__attribute__((unused)) static bool DecodeRows(
+        const std::string& data,
+        uint32_t count,
+        const Schema& schema,
+        std::vector<std::vector<std::string>>* row_vec) {
+    rtidb::codec::RowView rv(schema);
+    uint32_t offset = 0;
+    for (uint32_t i = 0; i < count; i++) {
+        std::vector<std::string> row;
+        const char* ch = data.c_str();
+        ch += offset;
+        uint32_t value_size = 0;
+        memcpy(static_cast<void*>(&value_size), ch, 4);
+        ch += 4;
+        bool ok = rv.Reset(reinterpret_cast<int8_t*>(const_cast<char*>(ch)),
+                value_size);
+        if (!ok) {
+            return false;
+        }
+        offset += 4 + value_size;
+        if (!rtidb::codec::RowCodec::DecodeRow(schema, rv, row)) {
+            return false;
+        }
+        for (uint64_t i = 0; i < row.size(); i++) {
+            if (row[i] == rtidb::codec::NONETOKEN) {
+                row[i] = "null";
+            }
+        }
+        row_vec->push_back(std::move(row));
+    }
+    return true;
+}
 __attribute__((unused)) static void FillTableRow(
     uint32_t full_schema_size,
     const std::vector<::rtidb::codec::ColumnDesc>& base_schema, const char* row,
@@ -317,6 +389,172 @@ __attribute__((unused)) static void FillTableRow(
     const uint32_t row_size,
     std::vector<std::string>& vrow) {  // NOLINT
     return FillTableRow(schema.size(), schema, row, row_size, vrow);
+}
+static inline void Encode(uint64_t time, const char* data, const size_t size,
+                          char* buffer, uint32_t offset) {
+    buffer += offset;
+    uint32_t total_size = 8 + size;
+    memcpy(buffer, static_cast<const void*>(&total_size), 4);
+    memrev32ifbe(buffer);
+    buffer += 4;
+    memcpy(buffer, static_cast<const void*>(&time), 8);
+    memrev64ifbe(buffer);
+    buffer += 8;
+    memcpy(buffer, static_cast<const void*>(data), size);
+}
+
+static inline void Encode(uint64_t time, const DataBlock* data, char* buffer,
+                          uint32_t offset) {
+    return Encode(time, data->data, data->size, buffer, offset);
+}
+
+static inline void Encode(const char* data, const size_t size, char* buffer,
+                          uint32_t offset) {
+    buffer += offset;
+    memcpy(buffer, static_cast<const void*>(&size), 4);
+    memrev32ifbe(buffer);
+    buffer += 4;
+    memcpy(buffer, static_cast<const void*>(data), size);
+}
+
+static inline void Encode(const DataBlock* data, char* buffer,
+                          uint32_t offset) {
+    return Encode(data->data, data->size, buffer, offset);
+}
+static inline int32_t EncodeRows(const std::vector<::rtidb::base::Slice>& rows,
+                                 uint32_t total_block_size, std::string* body) {
+    if (body == NULL) {
+        PDLOG(WARNING, "invalid output body");
+        return -1;
+    }
+
+    uint32_t total_size = rows.size() * 4 + total_block_size;
+    if (rows.size() > 0) {
+        body->resize(total_size);
+    }
+    uint32_t offset = 0;
+    char* rbuffer = reinterpret_cast<char*>(&((*body)[0]));
+    for (auto lit = rows.begin(); lit != rows.end(); ++lit) {
+        ::rtidb::codec::Encode(lit->data(), lit->size(), rbuffer, offset);
+        offset += (4 + lit->size());
+    }
+    return total_size;
+}
+
+static inline int32_t EncodeRows(
+    const boost::container::deque<std::pair<uint64_t, ::rtidb::base::Slice>>&
+        rows,
+    uint32_t total_block_size, std::string* pairs) {
+    if (pairs == NULL) {
+        PDLOG(WARNING, "invalid output pairs");
+        return -1;
+    }
+
+    uint32_t total_size = rows.size() * (8 + 4) + total_block_size;
+    if (rows.size() > 0) {
+        pairs->resize(total_size);
+    }
+
+    char* rbuffer = reinterpret_cast<char*>(&((*pairs)[0]));
+    uint32_t offset = 0;
+    for (auto lit = rows.begin(); lit != rows.end(); ++lit) {
+        ::rtidb::codec::Encode(lit->first, lit->second.data(),
+                               lit->second.size(), rbuffer, offset);
+        offset += (4 + 8 + lit->second.size());
+    }
+    return total_size;
+}
+
+// encode pk, ts and value
+static inline void EncodeFull(const std::string& pk, uint64_t time,
+                              const char* data, const size_t size, char* buffer,
+                              uint32_t offset) {
+    buffer += offset;
+    uint32_t pk_size = pk.length();
+    uint32_t total_size = 8 + pk_size + size;
+    DEBUGLOG("encode total size %u pk size %u", total_size, pk_size);
+    memcpy(buffer, static_cast<const void*>(&total_size), 4);
+    memrev32ifbe(buffer);
+    buffer += 4;
+    memcpy(buffer, static_cast<const void*>(&pk_size), 4);
+    memrev32ifbe(buffer);
+    buffer += 4;
+    memcpy(buffer, static_cast<const void*>(&time), 8);
+    memrev64ifbe(buffer);
+    buffer += 8;
+    memcpy(buffer, static_cast<const void*>(pk.c_str()), pk_size);
+    buffer += pk_size;
+    memcpy(buffer, static_cast<const void*>(data), size);
+}
+static inline void EncodeFull(const std::string& pk, uint64_t time,
+                              const DataBlock* data, char* buffer,
+                              uint32_t offset) {
+    return EncodeFull(pk, time, data->data, data->size, buffer, offset);
+}
+
+static inline void Decode(
+    const std::string* str,
+    std::vector<std::pair<uint64_t, std::string*>>& pairs) {  // NOLINT
+    const char* buffer = str->c_str();
+    uint32_t total_size = str->length();
+    DEBUGLOG("total size %d %s", total_size,
+          ::rtidb::base::DebugString(*str).c_str());
+    while (total_size > 0) {
+        uint32_t size = 0;
+        memcpy(static_cast<void*>(&size), buffer, 4);
+        memrev32ifbe(static_cast<void*>(&size));
+        DEBUGLOG("decode size %d", size);
+        buffer += 4;
+        uint64_t time = 0;
+        memcpy(static_cast<void*>(&time), buffer, 8);
+        memrev64ifbe(static_cast<void*>(&time));
+        buffer += 8;
+        assert(size >= 8);
+        std::string* data = new std::string(size - 8, '0');
+        memcpy(reinterpret_cast<char*>(&((*data)[0])), buffer, size - 8);
+        buffer += (size - 8);
+        pairs.push_back(std::make_pair(time, data));
+        total_size -= (size + 4);
+    }
+}
+
+static inline void DecodeFull(
+    const std::string* str,
+    std::map<std::string, std::vector<std::pair<uint64_t, std::string*>>>&
+        value_map) {
+    const char* buffer = str->c_str();
+    uint32_t total_size = str->length();
+    DEBUGLOG("total size %u %s", total_size,
+          ::rtidb::base::DebugString(*str).c_str());
+    while (total_size > 0) {
+        uint32_t size = 0;
+        memcpy(static_cast<void*>(&size), buffer, 4);
+        memrev32ifbe(static_cast<void*>(&size));
+        DEBUGLOG("decode size %u", size);
+        buffer += 4;
+        uint32_t pk_size = 0;
+        memcpy(static_cast<void*>(&pk_size), buffer, 4);
+        buffer += 4;
+        memrev32ifbe(static_cast<void*>(&pk_size));
+        DEBUGLOG("decode size %u", pk_size);
+        assert(size > pk_size + 8);
+        uint64_t time = 0;
+        memcpy(static_cast<void*>(&time), buffer, 8);
+        memrev64ifbe(static_cast<void*>(&time));
+        buffer += 8;
+        std::string pk(buffer, pk_size);
+        buffer += pk_size;
+        uint32_t value_size = size - 8 - pk_size;
+        std::string* data = new std::string(value_size, '0');
+        memcpy(reinterpret_cast<char*>(&((*data)[0])), buffer, value_size);
+        buffer += value_size;
+        if (value_map.find(pk) == value_map.end()) {
+            value_map.insert(std::make_pair(
+                pk, std::vector<std::pair<uint64_t, std::string*>>()));
+        }
+        value_map[pk].push_back(std::make_pair(time, data));
+        total_size -= (size + 8);
+    }
 }
 
 }  // namespace codec

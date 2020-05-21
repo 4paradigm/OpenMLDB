@@ -7,13 +7,13 @@
 
 #include <gflags/gflags.h>
 #include <google/protobuf/stubs/common.h>
-#include <logging.h>
 #include <string>
 
 #include "blobserver/blobserver_impl.h"
 #include "client/bs_client.h"
 #include "gtest/gtest.h"
 #include "nameserver/name_server_impl.h"
+#include "base/glog_wapper.h"
 
 DECLARE_string(endpoint);
 DECLARE_string(hdd_root_path);
@@ -162,10 +162,10 @@ TEST_F(BlobProxyImplTest, Basic_Test) {
         ASSERT_EQ(tid, status.tid());
         ASSERT_EQ(0u, status.pid());
     }
-    std::string key = "testkey1";
+    int64_t key = 10086;
     std::string value = "testvalue1";
     std::string err_msg;
-    ok = blob_client.Put(tid, pid, &key, value, &err_msg);
+    ok = blob_client.Put(tid, pid, key, value, &err_msg);
     ASSERT_TRUE(ok);
     std::string get_value;
     ok = blob_client.Get(tid, pid, key, &get_value, &err_msg);
@@ -186,7 +186,7 @@ TEST_F(BlobProxyImplTest, Basic_Test) {
         ASSERT_EQ(0, ret);
         brpc::Controller cntl;
         cntl.http_request().uri() =
-            FLAGS_endpoint + "/v1/get/" + name + "/" + key;
+            FLAGS_endpoint + "/v1/get/" + name + "/" + std::to_string(key);
         cntl.http_request().set_method(brpc::HTTP_METHOD_GET);
         channel.CallMethod(NULL, &cntl, NULL, NULL, NULL);
         ASSERT_EQ(200, cntl.http_response().status_code());
@@ -205,7 +205,7 @@ int main(int argc, char** argv) {
     FLAGS_zk_session_timeout = 100000;
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
-    ::baidu::common::SetLogLevel(::baidu::common::INFO);
+    ::rtidb::base::SetLogLevel(INFO);
     FLAGS_hdd_root_path =
         "/tmp/test_blobserver" + ::rtidb::blobproxy::GenRand();
     return RUN_ALL_TESTS();

@@ -19,11 +19,9 @@
 #include "log/coding.h"
 #include "log/crc32c.h"
 #include "log/log_format.h"
-#include "logging.h" // NOLINT
+#include "base/glog_wapper.h" // NOLINT
 
-using ::baidu::common::DEBUG;
-using ::baidu::common::INFO;
-using ::baidu::common::WARNING;
+
 using ::rtidb::base::Status;
 
 DECLARE_bool(binlog_enable_crc);
@@ -116,7 +114,7 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
                     // of a block followed by a kFullType or kFirstType record
                     // at the beginning of the next block.
                     if (!scratch->empty()) {
-                        PDLOG(DEBUG, "partial record without end(1)");
+                        DEBUGLOG("partial record without end(1)");
                     }
                 }
                 prospective_record_offset = physical_record_offset;
@@ -148,7 +146,7 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
                     // of a block followed by a kFullType or kFirstType record
                     // at the beginning of the next block.
                     if (!scratch->empty()) {
-                        PDLOG(DEBUG, "partial record without end(2)");
+                        DEBUGLOG("partial record without end(2)");
                     }
                 }
                 prospective_record_offset = physical_record_offset;
@@ -158,7 +156,7 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
 
             case kMiddleType:
                 if (!in_fragmented_record) {
-                    PDLOG(DEBUG,
+                    DEBUGLOG(
                           "missing start of fragmented record(1). fragment "
                           "size %u",
                           fragment.size());
@@ -169,7 +167,7 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
 
             case kLastType:
                 if (!in_fragmented_record) {
-                    PDLOG(DEBUG,
+                    DEBUGLOG(
                           "missing start of fragmented record(2). fragment "
                           "size %u",
                           fragment.size());
@@ -198,7 +196,7 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
 
             case kBadRecord:
                 if (in_fragmented_record) {
-                    PDLOG(DEBUG, "error in middle of record");
+                    DEBUGLOG("error in middle of record");
                     in_fragmented_record = false;
                     scratch->clear();
                 }
@@ -208,7 +206,7 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
                 char buf[40];
                 snprintf(buf, sizeof(buf), "unknown record type %u",
                          record_type);
-                PDLOG(DEBUG, "%s", buf);
+                DEBUGLOG("%s", buf);
                 ReportCorruption((fragment.size() +
                                   (in_fragmented_record ? scratch->size() : 0)),
                                  buf);
@@ -242,7 +240,7 @@ void Reader::GoBackToLastBlock() {
     if (last_end_of_buffer_offset_ > offset_in_block) {
         block_start_location = last_end_of_buffer_offset_ - offset_in_block;
     }
-    PDLOG(DEBUG, "go back block from[%lu] to [%lu]", end_of_buffer_offset_,
+    DEBUGLOG("go back block from[%lu] to [%lu]", end_of_buffer_offset_,
           block_start_location);
     end_of_buffer_offset_ = block_start_location;
     buffer_.clear();
@@ -272,7 +270,7 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
             return kWaitRecord;
         }
         if (buffer_.size() < kHeaderSize) {
-            PDLOG(DEBUG, "read buffer size[%d] less than kHeaderSize[%d]",
+            DEBUGLOG("read buffer size[%d] less than kHeaderSize[%d]",
                   buffer_.size(), kHeaderSize);
             return kWaitRecord;
         }
@@ -285,7 +283,7 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
     const unsigned int type = header[6];
     const uint32_t length = a | (b << 8);
     if (kHeaderSize + length > buffer_.size()) {
-        PDLOG(DEBUG, "end of file %d, header size %d data length %d",
+        DEBUGLOG("end of file %d, header size %d data length %d",
               buffer_.size(), kHeaderSize, length);
         return kWaitRecord;
     }
@@ -424,7 +422,7 @@ int LogReader::RollRLogFile() {
     int index = -1;
     if (log_part_index_ < 0) {
         while (it->Valid()) {
-            PDLOG(DEBUG, "log index[%u] and start offset %lld", it->GetKey(),
+            DEBUGLOG("log index[%u] and start offset %lld", it->GetKey(),
                   it->GetValue());
             if (it->GetValue() <= start_offset_) {
                 break;
@@ -440,14 +438,14 @@ int LogReader::RollRLogFile() {
     } else {
         uint32_t log_part_index = (uint32_t)log_part_index_;
         while (it->Valid()) {
-            PDLOG(DEBUG, "log index[%u] and start offset %lu", it->GetKey(),
+            DEBUGLOG("log index[%u] and start offset %lu", it->GetKey(),
                   it->GetValue());
             // find the next of current index log file part
             if (it->GetKey() == log_part_index + 1) {
                 index = (int)it->GetKey(); // NOLINT
                 break;
             } else if (it->GetKey() == log_part_index) {
-                PDLOG(DEBUG, "no new file. log_part_index %d", log_part_index);
+                DEBUGLOG("no new file. log_part_index %d", log_part_index);
                 break;
             }
             uint32_t cur_index = it->GetKey();

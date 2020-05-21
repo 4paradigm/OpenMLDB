@@ -19,6 +19,7 @@
 #include "boost/lexical_cast.hpp"
 #include "codec/codec.h"
 #include "proto/name_server.pb.h"
+#include "codec/field_codec.h"
 
 namespace rtidb {
 namespace codec {
@@ -94,8 +95,8 @@ struct Column {
 struct ColumnDesc {
     ColType type;
     std::string name;
-    bool add_ts_idx;
-    bool is_ts_col;
+    bool add_ts_idx = false;
+    bool is_ts_col = false;
 };
 
 class SchemaCodec {
@@ -336,6 +337,37 @@ class SchemaCodec {
             }
         }
         return false;
+    }
+    static rtidb::base::ResultMsg GetCdColumns(const Schema& schema,
+            const std::map<std::string, std::string>& cd_columns_map,
+            ::google::protobuf::RepeatedPtrField<::rtidb::api::Columns>*
+            cd_columns) {
+        rtidb::base::ResultMsg rm;
+        std::map<std::string, ::rtidb::type::DataType> name_type_map;
+        for (const auto& col_desc : schema) {
+            name_type_map.insert(std::make_pair(
+                        col_desc.name(), col_desc.data_type()));
+        }
+        for (const auto& kv : cd_columns_map) {
+            auto iter = name_type_map.find(kv.first);
+            if (iter == name_type_map.end()) {
+                rm.code = -1;
+                rm.msg = "query failed! col_name " + kv.first + " not exist";
+                return rm;
+            }
+            ::rtidb::api::Columns* index = cd_columns->Add();
+            index->add_name(kv.first);
+            ::rtidb::type::DataType type = iter->second;
+            std::string* val = index->mutable_value();
+            if (!::rtidb::codec::Convert(kv.second, type, val)) {
+                rm.code = -1;
+                rm.msg = "convert str " + kv.second + "  failed!";
+                return rm;
+            }
+        }
+        rm.code = 0;
+        rm.msg = "ok";
+        return rm;
     }
 
  private:

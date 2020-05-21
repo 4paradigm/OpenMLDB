@@ -12,7 +12,7 @@
 #include "base/file_util.h"
 #include "client/ns_client.h"
 #include "gtest/gtest.h"
-#include "logging.h" // NOLINT
+#include "base/glog_wapper.h" // NOLINT
 #include "nameserver/name_server_impl.h"
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
@@ -1001,7 +1001,7 @@ TEST_F(NameServerImplTest, SyncTableReplicaCluster) {
     ASSERT_EQ(0, general_response.code());
     ShowTableRequest show_table_request;
     ShowTableResponse show_table_response;
-    sleep(4);
+    sleep(10);
     for (auto& ns : nss) {
         ns->ShowTable(NULL, &show_table_request, &show_table_response,
                       &closure);
@@ -1525,7 +1525,7 @@ int main(int argc, char** argv) {
     FLAGS_zk_session_timeout = 100000;
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
-    ::baidu::common::SetLogLevel(::baidu::common::INFO);
+    ::rtidb::base::SetLogLevel(INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
     return RUN_ALL_TESTS();

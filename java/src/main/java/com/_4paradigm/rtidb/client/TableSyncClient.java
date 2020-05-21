@@ -65,9 +65,9 @@ public interface TableSyncClient {
     boolean put(String tname, long time, Map<String, Object> row) throws TimeoutException, TabletException;
     boolean put(String tname, Map<String, Object> row) throws TimeoutException, TabletException;
 
-    boolean put(String tname, Map<String, Object> row, WriteOption wo) throws TimeoutException, TabletException;
+    PutResult put(String tname, Map<String, Object> row, WriteOption wo) throws TimeoutException, TabletException;
 
-    public boolean update(String tableName, Map<String, Object> conditionColumns, Map<String, Object> valueColumns, WriteOption wo)
+    boolean update(String tableName, Map<String, Object> conditionColumns, Map<String, Object> valueColumns, WriteOption wo)
             throws TimeoutException, TabletException;
     List<ColumnDesc> getSchema(String tname) throws TabletException;
     ByteString get(String tname, String key) throws TimeoutException, TabletException;

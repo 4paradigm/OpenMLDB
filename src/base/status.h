@@ -176,6 +176,7 @@ enum ReturnCode {
     kQueryFailed = 148,
     kPutBadFormat = 149,
     kUnkownTableType = 150,
+    kGetCombinePkFailed = 151,
     kNameserverIsNotLeader = 300,
     kAutoFailoverIsEnabled = 301,
     kEndpointIsNotExist = 302,
@@ -241,6 +242,8 @@ enum ReturnCode {
     kTooManyPartition = 518,
     kWrongColumnKey = 519,
     kOperatorNotSupport = 701,
+    kDatabaseAlreadyExists = 801,
+    kDatabaseNotFound = 802,
 };
 
 }  // namespace base

@@ -14,7 +14,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <utility>
-#include "logging.h" // NOLINT
+#include "base/glog_wapper.h" // NOLINT
 #include "proto/tablet.pb.h"
 #include "replica/replicate_node.h"
 #include "storage/mem_table.h"
@@ -23,8 +23,6 @@
 #include "thread_pool.h" // NOLINT
 #include "timer.h" // NOLINT
 
-using ::baidu::common::DEBUG;
-using ::baidu::common::INFO;
 using ::baidu::common::ThreadPool;
 using ::google::protobuf::Closure;
 using ::google::protobuf::RpcController;
@@ -658,7 +656,7 @@ TEST_F(LogReplicatorTest, Leader_Remove_local_follower) {
 
 int main(int argc, char** argv) {
     srand(time(NULL));
-    ::baidu::common::SetLogLevel(::baidu::common::INFO);
+    ::rtidb::base::SetLogLevel(INFO);
     ::testing::InitGoogleTest(&argc, argv);
     int ok = RUN_ALL_TESTS();
     return ok;

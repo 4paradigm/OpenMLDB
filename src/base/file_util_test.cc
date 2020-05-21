@@ -117,6 +117,7 @@ TEST_F(FileUtilTest, CopyFile) {
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
+    ::rtidb::base::SetLogLevel(INFO);
     ::rtidb::base::RemoveDirRecursive("/tmp/gtest");
     int ret = RUN_ALL_TESTS();
     ::rtidb::base::RemoveDirRecursive("/tmp/gtest");

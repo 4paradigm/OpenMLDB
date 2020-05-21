@@ -9,10 +9,11 @@
 
 #include <algorithm>
 #include <atomic>
-#include <unordered_map>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
+
 #include "proto/tablet.pb.h"
 #include "proto/type.pb.h"
 
@@ -85,13 +86,13 @@ class TableColumn {
     std::shared_ptr<ColumnDef> GetColumn(const std::string& name);
     void AddColumn(std::shared_ptr<ColumnDef> column_def);
     const std::vector<std::shared_ptr<ColumnDef>>& GetAllColumn();
-    inline uint32_t Size() {
-        return columns_.size();
-    }
+    const std::vector<uint32_t>& GetBlobIdxs();
+    inline uint32_t Size() { return columns_.size(); }
 
  private:
     std::vector<std::shared_ptr<ColumnDef>> columns_;
     std::unordered_map<std::string, std::shared_ptr<ColumnDef>> column_map_;
+    std::vector<uint32_t> blob_idxs_;
 };
 
 class IndexDef {
@@ -144,12 +145,14 @@ class TableIndex {
     std::shared_ptr<IndexDef> GetPkIndex();
     const std::shared_ptr<IndexDef> GetIndexByCombineStr(
         const std::string& combine_str);
+    bool FindColName(const std::string& name);
 
  private:
     std::shared_ptr<std::vector<std::shared_ptr<IndexDef>>> indexs_;
     std::shared_ptr<IndexDef> pk_index_;
     std::shared_ptr<std::unordered_map<std::string, std::shared_ptr<IndexDef>>>
         combine_col_name_map_;
+    std::shared_ptr<std::vector<std::string>> col_name_vec_;
 };
 
 }  // namespace storage

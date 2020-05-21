@@ -8,7 +8,7 @@
 #include <vector>
 #include <memory>
 #include "base/kv_iterator.h"
-#include "codec/codec.h"
+#include "codec/row_codec.h"
 #include "gtest/gtest.h"
 #include "proto/common.pb.h"
 #include "proto/tablet.pb.h"
