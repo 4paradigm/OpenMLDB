@@ -312,6 +312,7 @@ TINYTEXT	{ return TINYTEXT; }
 TO	{ return TO; }
 TS  { return TS; }
 TTL  { return TTL; }
+TTL_TYPE  { return TTL_TYPE; }
 TRAILING	{ return TRAILING; }
 TRIGGER	{ return TRIGGER; }
 UNDO	{ return UNDO; }

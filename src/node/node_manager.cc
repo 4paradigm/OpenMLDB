@@ -251,6 +251,12 @@ SQLNode *NodeManager::MakeColumnIndexNode(SQLNodeList *index_item_list) {
                     index_ptr->SetTTL(ttl_node->GetTTLExpr());
                     break;
                 }
+                case kIndexTTLType: {
+                    IndexTTLTypeNode *ttl_type_node =
+                        dynamic_cast<IndexTTLTypeNode *>(node_ptr);
+                    index_ptr->set_ttl_type(ttl_type_node->ttl_type());
+                    break;
+                }
                 default: {
                     LOG(WARNING) << "can not handle type "
                                  << NameOfSQLNodeType(node_ptr->GetType())
@@ -465,6 +471,10 @@ SQLNode *NodeManager::MakeIndexTsNode(const std::string &ts) {
 
 SQLNode *NodeManager::MakeIndexTTLNode(ExprNode *ttl_expr) {
     SQLNode *node_ptr = new IndexTTLNode(ttl_expr);
+    return RegisterNode(node_ptr);
+}
+SQLNode *NodeManager::MakeIndexTTLTypeNode(const std::string &ttl_type) {
+    SQLNode *node_ptr = new IndexTTLTypeNode(ttl_type);
     return RegisterNode(node_ptr);
 }
 SQLNode *NodeManager::MakeIndexVersionNode(const std::string &version) {

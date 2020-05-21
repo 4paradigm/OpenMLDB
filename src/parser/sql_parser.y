@@ -331,6 +331,7 @@ typedef void* yyscan_t;
 %token TRIGGER
 %token TS
 %token TTL
+%token TTL_TYPE
 
 %token UNDO
 %token UNION
@@ -641,6 +642,12 @@ primary_time:
     |SECONDNUM{
         $$ = node_manager->MakeConstNode($1, fesql::node::kSecond);
     }
+    |LONGNUM {
+        $$ = node_manager->MakeConstNode($1);
+    }
+    |INTNUM {
+        $$ = node_manager->MakeConstNode($1);
+    };
 var: FUN_IDENTIFIER {
         $$ = node_manager->MakeExprIdNode($1);
      };
@@ -835,6 +842,10 @@ column_index_item:  KEY EQUALS column_name
                     | TTL EQUALS primary_time
                     {
                         $$ = node_manager->MakeIndexTTLNode($3);
+                    }
+                    | TTL_TYPE EQUALS SQL_IDENTIFIER
+                    {
+                        $$ = node_manager->MakeIndexTTLTypeNode($3);
                     }
                     | VERSION EQUALS column_name
                     {
