@@ -1,6 +1,7 @@
 #!/bin/bash
 WORKDIR=$(pwd)
 mkdir -p build && cd build
+bash steps/gen_code.sh
 cmake .. && make -j8 python_package
 cd python && python3 -m pip install .
 python3 -m pip install nose
