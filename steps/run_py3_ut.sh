@@ -1,5 +1,9 @@
 #!/bin/bash
 WORKDIR=$(pwd)
+mkdir -p build && cd build
+cmake .. && make -j8 python_package
+cd python && python3 -m pip install .
+python3 -m pip install nose
 cp steps/zoo.cfg thirdsrc/zookeeper-3.4.14/conf
 cd thirdsrc/zookeeper-3.4.14
 netstat -anp | grep 6181 | awk '{print $NF}' | awk -F '/' '{print $1}'| xargs kill -9
