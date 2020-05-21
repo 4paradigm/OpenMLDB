@@ -115,7 +115,7 @@ class ResultSet {
         return mills;
     }
 
-    virtual const Schema& GetSchema() = 0;
+    virtual const Schema* GetSchema() = 0;
 
     virtual bool IsNULL(int index) = 0;
 

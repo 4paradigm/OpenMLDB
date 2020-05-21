@@ -12,6 +12,7 @@ enum Type {
     kVarchar = 9;
     kDate = 10;
     kTimestamp = 11;
+    kBlob = 12;
     kNull = 101;
 }
 
@@ -35,6 +36,7 @@ message IndexDef {
     repeated string partion_keys = 4;
     repeated uint64 ttl = 5;
     optional TTLType ttl_type = 6;
+    optional uint32 ts_offset = 7;
 }
 
 message User {

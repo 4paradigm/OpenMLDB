@@ -504,7 +504,8 @@ std::shared_ptr<DataHandler> TableProjectRunner::Run(RunnerContext& ctx) {
     }
     auto output_table = std::shared_ptr<MemTableHandler>(new MemTableHandler());
     auto iter = std::dynamic_pointer_cast<TableHandler>(input)->GetIterator();
-
+    if (!iter) return std::shared_ptr<DataHandler>();
+    iter->SeekToFirst();
     int32_t cnt = 0;
     while (iter->Valid()) {
         if (limit_cnt_ > 0 && cnt++ >= limit_cnt_) {
@@ -515,6 +516,7 @@ std::shared_ptr<DataHandler> TableProjectRunner::Run(RunnerContext& ctx) {
     }
     return output_table;
 }
+
 std::shared_ptr<DataHandler> RowProjectRunner::Run(RunnerContext& ctx) {
     auto row =
         std::dynamic_pointer_cast<RowHandler>(producers_[0]->RunWithCache(ctx));
@@ -1038,6 +1040,7 @@ bool JoinGenerator::TableJoin(std::shared_ptr<TableHandler> left,
     }
     return true;
 }
+
 bool JoinGenerator::TableJoin(std::shared_ptr<TableHandler> left,
                               std::shared_ptr<PartitionHandler> right,
                               std::shared_ptr<MemTableHandler> output) {
@@ -1047,22 +1050,23 @@ bool JoinGenerator::TableJoin(std::shared_ptr<TableHandler> left,
         return false;
     }
     auto left_iter = left->GetIterator();
-    if (!left_iter || !left_iter->Valid()) {
+
+    if (!left_iter) {
         LOG(WARNING) << "fail to run last join: left input empty";
         return false;
     }
+
     left_iter->SeekToFirst();
     while (left_iter->Valid()) {
         const Row& left_row = left_iter->GetValue();
         std::string key_str =
             index_key_gen_.Valid() ? index_key_gen_.Gen(left_row) : "";
-
         if (left_key_gen_.Valid()) {
             key_str = key_str.empty()
                           ? left_key_gen_.Gen(left_row)
                           : key_str + "|" + left_key_gen_.Gen(left_row);
         }
-        LOG(INFO) << "key_str " << key_str;
+        DLOG(INFO) << "key_str " << key_str;
         auto right_table = right->GetSegment(right, key_str);
         output->AddRow(
             Runner::RowLastJoinTable(left_row, right_table, condition_gen_));
@@ -1070,6 +1074,7 @@ bool JoinGenerator::TableJoin(std::shared_ptr<TableHandler> left,
     }
     return true;
 }
+
 bool JoinGenerator::PartitionJoin(std::shared_ptr<PartitionHandler> left,
                                   std::shared_ptr<TableHandler> right,
                                   std::shared_ptr<MemPartitionHandler> output) {
@@ -1246,7 +1251,12 @@ void Runner::PrintData(const vm::SchemaSourceList& schema_list,
             auto partition = std::dynamic_pointer_cast<PartitionHandler>(data);
             auto iter = partition->GetWindowIterator();
             int cnt = 0;
-            if (!iter || !iter->Valid()) {
+            if (!iter) {
+                t.add("Empty set");
+                t.endOfRow();
+            }
+            iter->SeekToFirst();
+            if (!iter->Valid()) {
                 t.add("Empty set");
                 t.endOfRow();
             }

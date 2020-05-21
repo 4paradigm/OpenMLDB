@@ -8,4 +8,3 @@ add_executable(sql_case_test sql_case_test.cc)
 target_link_libraries(sql_case_test gtest ${case_deps_libs})
 add_test(sql_case_test sql_case_test --gtest_output=xml:${CMAKE_BINARY_DIR}/sql_case_test.xml)
 list(APPEND test_list sql_case_test)
-

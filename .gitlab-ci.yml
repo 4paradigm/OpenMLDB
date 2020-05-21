@@ -1,4 +1,4 @@
-image: develop-registry.4pd.io/centos6_gcc7_build_env:0.1.0
+image: develop-registry.4pd.io/centos6_gcc7_build_env:0.4.0
 variables:
     GIT_SUBMODULE_STRATEGY: normal
     CICD_RUNNER_THIRDPARTY_PATH: "/depends/thirdparty"
@@ -19,15 +19,6 @@ style_check:
         reports:
             junit:
                 - ./style.xml
-
-build_py3sdk_and_case:
-    stage: build
-    script:
-        - bash tools/run_py3_ut.sh
-    artifacts:
-        reports:
-            junit:
-                - python/test/*.xml
 
 build_fesql_and_case:
     stage: build
@@ -55,6 +46,11 @@ test_java_sdk:
     stage: test
     script:
         - bash tools/test_java_sdk.sh
+    artifacts:
+        reports:
+            junit:
+                - java/fesql-spark/target/surefire-reports/*.xml
+                - java/fesql-jdbc/target/surefire-reports/*.xml
 
 test_java_sdk_on_mac:
     stage: test
@@ -63,9 +59,40 @@ test_java_sdk_on_mac:
         CICD_RUNNER_TAG: "macos"
     script:
         - bash tools/test_java_sdk.sh
+    after_script:
+        - cd onebox && sh stop_all.sh
     tags:
         - macos
+    artifacts:
+        reports:
+            junit:
+                - java/fesql-spark/target/surefire-reports/*.xml
+                - java/fesql-jdbc/target/surefire-reports/*.xml
+test_py3sdk_linux:
+    stage: test
+    script:
+        - bash tools/run_py3_ut.sh
+    artifacts:
+        reports:
+            junit:
+                - python/test/*.xml
 
+                  #test_py3sdk_mac:
+                  #    stage: test
+                  #    variables:
+                  #        CICD_RUNNER_THIRDPARTY_PATH: "/opt/depends/thirdparty"
+                  #        CICD_RUNNER_TAG: "macos"
+                  #    tags:
+                  #        - macos
+                  #    script:
+                  #        - bash tools/run_py3_ut.sh
+                  #    after_script:
+                  #        - cd onebox && sh stop_all.sh
+                  #    artifacts:
+                  #        reports:
+                  #            junit:
+                  #                - python/test/*.xml
+                  #
 micro_benchmark:
     stage: benchmark
     script:

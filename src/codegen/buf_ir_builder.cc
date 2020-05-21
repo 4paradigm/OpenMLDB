@@ -63,7 +63,8 @@ bool BufNativeIRBuilder::BuildGetField(const std::string& name,
             return BuildGetPrimaryField("fesql_storage_get_int32_field",
                                         row_ptr, offset, i32_ty, output);
         }
-        case ::fesql::node::kInt64: {
+        case ::fesql::node::kInt64:
+        case ::fesql::node::kTimestamp: {
             llvm::Type* i64_ty = builder.getInt64Ty();
             return BuildGetPrimaryField("fesql_storage_get_int64_field",
                                         row_ptr, offset, i64_ty, output);

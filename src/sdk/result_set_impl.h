@@ -65,7 +65,7 @@ class ResultSetImpl : public ResultSet {
 
     bool GetTime(uint32_t index, int64_t* mills);
 
-    inline const Schema& GetSchema() { return schema_; }
+    inline const Schema* GetSchema() { return &schema_; }
 
     inline int32_t Size() { return response_->count(); }
 
