@@ -740,6 +740,8 @@ void ColumnIndexNode::Print(std::ostream &output,
     output << "\n";
     PrintValue(output, tab, std::to_string(ttl_), "ttl", false);
     output << "\n";
+    PrintValue(output, tab, ttl_type_, "ttl_type", false);
+    output << "\n";
     PrintValue(output, tab, version_, "version_column", false);
     output << "\n";
     PrintValue(output, tab, std::to_string(version_count_), "version_count",

@@ -42,6 +42,7 @@ enum SQLNodeType {
     kIndexTs,
     kIndexVersion,
     kIndexTTL,
+    kIndexTTLType,
     kName,
     kConst,
     kLimit,
