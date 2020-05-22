@@ -346,6 +346,11 @@ __attribute__((unused)) static void ShowTableRows(
         }
         ::rtidb::codec::RowCodec::DecodeRow(schema, ::rtidb::base::Slice(value),
                                             vrow);
+        std::for_each(vrow.begin(), vrow.end(), [](std::string& str) {
+            if (str == ::rtidb::codec::NONETOKEN) {
+                str = "-";
+            }
+        });
         tp.AddRow(vrow);
         index++;
         it->Next();

@@ -2279,6 +2279,11 @@ void HandleNSGet(const std::vector<std::string>& parts,
         if (tables[0].format_version() == 1) {
             ::rtidb::codec::RowCodec::DecodeRow(
                 tables[0].column_desc_v1(), ::rtidb::base::Slice(value), row);
+            std::for_each(row.begin(), row.end(), [](std::string& str) {
+                if (str == ::rtidb::codec::NONETOKEN) {
+                    str = "-";
+                }
+            });
         } else if (tables[0].added_column_desc_size() == 0) {
             ::rtidb::codec::FillTableRow(columns, value.c_str(), value.size(),
                                          row);
@@ -2826,6 +2831,11 @@ void HandleNSPreview(const std::vector<std::string>& parts,
                     ::rtidb::codec::RowCodec::DecodeRow(
                         tables[0].column_desc_v1(), ::rtidb::base::Slice(value),
                         row);
+                    std::for_each(row.begin(), row.end(), [](std::string& str) {
+                        if (str == ::rtidb::codec::NONETOKEN) {
+                            str = "-";
+                        }
+                    });
                 } else if (tables[0].added_column_desc_size() == 0) {
                     ::rtidb::codec::FillTableRow(columns, value.c_str(),
                                                  value.size(), row);
