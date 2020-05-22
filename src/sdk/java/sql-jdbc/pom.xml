@@ -11,7 +11,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<artifactId>sql-jdbc</artifactId>
 	<packaging>jar</packaging>
-	<name>sql-native</name>
+	<name>sql-jdbc</name>
 	<version>0.0.1-SNAPSHOT</version>
 
 	<properties>
