@@ -4,6 +4,7 @@ set(BIN_LIBS client nameserver tablet rtidb_sdk client blobserver blob_proxy rti
     ${VM_LIBS}
     ${LLVM_LIBS}
     ${BRPC_LIBS})
+
 add_library(rtidb_proto STATIC proto/type.pb.cc proto/client.pb.cc proto/common.pb.cc proto/tablet.pb.cc proto/blob_server.pb.cc proto/name_server.pb.cc)
 add_library(rtidb_catalog STATIC catalog/tablet_catalog.cc catalog/sdk_catalog.cc)
 add_library(tablet STATIC tablet/tablet_impl.cc flags.cc tablet/file_receiver.cc tablet/file_sender.cc)
@@ -12,12 +13,12 @@ add_library(nameserver STATIC nameserver/name_server_impl.cc flags.cc)
 add_library(beans storage/beans/bitcask.c storage/beans/clock_gettime_stub.c storage/beans/codec.c storage/beans/common.c storage/beans/crc32.c storage/beans/diskmgr.c storage/beans/hint.c storage/beans/hstore.c storage/beans/htree.c storage/beans/mfile.c storage/beans/quicklz.c storage/beans/record.c)
 add_library(storage STATIC storage/object_store.cc storage/mem_table.cc storage/disk_table.cc storage/relational_table.cc storage/segment.cc storage/ticket.cc storage/mem_table_snapshot.cc storage/disk_table_snapshot.cc storage/snapshot.cc storage/table.cc storage/binlog.cc codec/codec.cc storage/schema.cc)
 add_library(client STATIC client/tablet_client.cc client/ns_client.cc client/bs_client.cc)
-add_library(rtidb_sdk STATIC sdk/cluster_sdk.cc sdk/sql_cluster_router.cc sdk/sql_router.cc sdk/result_set_sql.cc)
 add_library(log STATIC log/crc32c.cc 
                        log/sequential_file.cc 
                        log/log_writer.cc 
                        log/log_reader.cc
                        log/writable_file.cc flags.cc)
+add_library(rtidb_flags flags.cc)
 add_library(blob_proxy STATIC proto/blob_proxy.pb.cc blob_proxy/blob_proxy_impl.cc flags.cc client/client.cc)
 add_library(base STATIC base/status.cc base/ringqueue.h)
 add_library(zk_client STATIC zk/zk_client.cc zk/dist_lock.cc)
@@ -26,17 +27,11 @@ add_library(replica STATIC replica/replicate_node.cc
 add_executable(mem_table_iterator_test storage/mem_table_iterator_test.cc)
 target_link_libraries(mem_table_iterator_test gtest ${BIN_LIBS})
 
-add_executable(cluster_sdk_test sdk/cluster_sdk_test.cc)
-target_link_libraries(cluster_sdk_test gtest ${BIN_LIBS})
-
 add_executable(tablet_catalog_test catalog/tablet_catalog_test.cc)
 target_link_libraries(tablet_catalog_test gtest ${BIN_LIBS})
 
 add_executable(sdk_catalog_test catalog/sdk_catalog_test.cc)
 target_link_libraries(sdk_catalog_test gtest ${BIN_LIBS})
-
-add_executable(sql_router_test sdk/sql_router_test.cc)
-target_link_libraries(sql_router_test gtest ${BIN_LIBS})
 
 add_executable(strings_test base/strings_test.cc)
 target_link_libraries(strings_test gtest ${BIN_LIBS})
@@ -153,3 +148,4 @@ add_executable(rtidb cmd/rtidb.cc base/status.cc proto/client.pb.cc base/linenoi
 
 target_link_libraries(rtidb ${BIN_LIBS})
 add_subdirectory(client)
+add_subdirectory(sdk)

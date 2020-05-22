@@ -1,4 +1,23 @@
-cmake_minimum_required (VERSION 2.8)
+cmake_minimum_required (VERSION 3.13)
+if (POLICY CMP0068)
+    cmake_policy(SET CMP0068 NEW)
+endif ()
+# Define file(GENERATE) behavior for relative paths.
+if (POLICY CMP0070)
+    cmake_policy(SET CMP0070 NEW)
+endif ()
+# target_sources: use absolute path for INTERFACE_SOURCES.
+if (POLICY CMP0076)
+    cmake_policy(SET CMP0076 NEW)
+endif ()
+# SWIG: use standard target name.
+if (POLICY CMP0078)
+    cmake_policy(SET CMP0078 NEW)
+endif ()
+# SWIG: use SWIG_MODULE_NAME property.
+if (POLICY CMP0086)
+    cmake_policy(SET CMP0086 NEW)
+endif ()
 
 project(rtidb)
 
@@ -11,14 +30,13 @@ configure_file (
   "${PROJECT_SOURCE_DIR}/src/version.h.in"
   "${PROJECT_SOURCE_DIR}/src/version.h"
 )
-
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 add_definitions('-g')
 add_definitions('-Wall')
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
 option(TCMALLOC_ENABLE "Enable TCMALLOC" ON)
-
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+option(SQL_PYSDK_ENABLE "Enable sql pysdk" ON)
+option(SQL_JAVASDK_ENABLE "Enable sql javasdk" ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(BRPC_LIBS brpc protobuf glog gflags unwind ssl crypto leveldb z snappy dl pthread rt)
 set(VM_LIBS fesql_vm fesql_sdk fesql_udf fesql_parser fesql_planner fesql_codegen fesql_storage fesql_codec fesql_proto
@@ -29,6 +47,8 @@ message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 llvm_map_components_to_libnames(LLVM_LIBS support core orcjit nativecodegen)
 add_definitions(${LLVM_DEFINITIONS})
+find_package(SWIG REQUIRED)
+include(UseSWIG)
 if (TCMALLOC_ENABLE)
     set(CMAKE_EXE_LINKER_FLAGS "-fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free ${CMAKE_EXE_LINKER_FLAGS}")
 endif()

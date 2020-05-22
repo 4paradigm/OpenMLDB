@@ -92,7 +92,6 @@ test -d recycle_hdd_bin3 && rm -rf recycle_hdd_bin3
                    --zk_keep_alive_check_interval=100000000\
                    --zk_root_path=/onebox > blob1.log 2>&1 &
 
-
 # start ns1 
 ../build/bin/rtidb --endpoint=${NS1} --role=nameserver \
                    --zk_cluster=${ZK_CLUSTER}\

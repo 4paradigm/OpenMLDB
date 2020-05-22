@@ -1,5 +1,5 @@
 /*
- * sql_router.h
+ * sql_router.cc
  * Copyright (C) 4paradigm.com 2020 wangtaize <wangtaize@4paradigm.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,34 +15,23 @@
  * limitations under the License.
  */
 
-#ifndef SRC_SDK_SQL_ROUTER_H_
-#define SRC_SDK_SQL_ROUTER_H_
-
-#include "sdk/base.h"
-#include "sdk/result_set.h"
+#include "sdk/sql_router.h"
+#include "sdk/sql_cluster_router.h"
+#include "glog/logging.h"
 
 namespace rtidb {
 namespace sdk {
 
-struct SQLRouterOptions {
-    std::string zk_cluster;
-    std::string zk_path;
-    uint32_t session_timeout = 2000;
-};
+std::shared_ptr<SQLRouter> NewClusterSQLRouter(const SQLRouterOptions& options) {
+    std::shared_ptr<SQLClusterRouter> router(new SQLClusterRouter(options));
+    if (!router->Init()) {
+        LOG(WARNING) << "fail to init sql cluster router";
+        return std::shared_ptr<SQLRouter>();
+    }
+    return router;
+}
 
-class SQLRouter {
- public:
-    SQLRouter() {}
+}
+}
 
-    virtual ~SQLRouter() {}
 
-    virtual std::shared_ptr<fesql::sdk::ResultSet> ExecuteSQL(
-        const std::string& db, const std::string& sql,
-        fesql::sdk::Status* status) = 0;
-};
-
-std::shared_ptr<SQLRouter> NewClusterSQLRouter(const SQLRouterOptions& options);
-
-}  // namespace sdk
-}  // namespace rtidb
-#endif  // SRC_SDK_SQL_ROUTER_H_

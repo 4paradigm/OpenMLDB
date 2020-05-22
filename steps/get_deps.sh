@@ -213,7 +213,7 @@ else
     tar -zxvf brpc-legacy-1.3.7.tar.gz
     BRPC_DIR=$DEPS_SOURCE/brpc-legacy
     cd brpc-legacy
-    sh config_brpc.sh --headers=${DEPS_PREFIX}/include --libs=${DEPS_PREFIX}/lib
+    sh config_brpc.sh --with-glog --headers=${DEPS_PREFIX}/include --libs=${DEPS_PREFIX}/lib
     make -j5 libbrpc.a
     make output/include
     cp -rf output/include/* ${DEPS_PREFIX}/include

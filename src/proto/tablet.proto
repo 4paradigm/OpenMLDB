@@ -692,7 +692,7 @@ message ExtractIndexDataRequest {
 
 message Columns {
     repeated string name = 1;
-    optional bytes value = 2;
+    optional bytes value = 2 [default = ""];
     optional GetType type = 3 [default = kSubKeyEq];
 }
 

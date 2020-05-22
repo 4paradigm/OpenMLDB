@@ -60,6 +60,7 @@ bool BlobServerImpl::Init() {
         if (!ok) {
             PDLOG(WARNING, "fail to init zookeeper with cluster %s",
                   FLAGS_zk_cluster.c_str());
+            return false;
         }
     } else {
         PDLOG(INFO, "zk cluster disabled");

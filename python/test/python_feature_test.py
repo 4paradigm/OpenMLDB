@@ -5,12 +5,7 @@ from datetime import date
 class TestRtidb(unittest.TestCase):
   
   def setUp(self):
-    self.nsc = rtidb.RTIDBClient("172.27.128.37:7183", "/rtidb_cluster")
-  
-  def test_FailedClient(self):
-    with self.assertRaises(Exception) as context:
-      nsc = rtidb.RTIDBClient("127.0.0.1:61811", "/issue-5")
-    self.assertTrue("zk client init failed" in str(context.exception))
+    self.nsc = rtidb.RTIDBClient("172.27.128.37:6181", "/issue-5")
 
   def test_query(self):
     data = {"id":"11","attribute":"a1", "image":"i1"}
@@ -39,9 +34,9 @@ class TestRtidb(unittest.TestCase):
       self.assertEqual(3, l["p_biz_date"])
     '''
     # multi index
-    data = {"id":"1","name":"n1","mcc":"1","attribute":"a1", "image":"i1"}
+    data = {"id":"1","name":"n1","mcc":"1","attribute":"a1", "image":b"i1"}
     self.assertTrue(self.nsc.put("rt_ck", data, None).success())
-    data = {"id":"2","name":"n2","mcc":"1","attribute":"a1", "image":"i1"}
+    data = {"id":"2","name":"n2","mcc":"1","attribute":"a1", "image":b"i1"}
     self.assertTrue(self.nsc.put("rt_ck", data, None).success())
     ro = rtidb.ReadOption()
     ro.index.update({"id":"1"})
@@ -53,7 +48,7 @@ class TestRtidb(unittest.TestCase):
       self.assertEqual("n1", l["name"])
       self.assertEqual(1, l["mcc"])
       self.assertEqual("a1", l["attribute"])
-      self.assertEqual("i1", l["image"])
+      self.assertEqual(b"i1", l["image"])
     ro = rtidb.ReadOption()
     ro.index.update({"mcc":"1"})
     resp = self.nsc.query("rt_ck", ro)
@@ -64,7 +59,7 @@ class TestRtidb(unittest.TestCase):
       self.assertEqual("n{}".format(id+1), l["name"])
       self.assertEqual(1, l["mcc"])
       self.assertEqual("a1", l["attribute"])
-      self.assertEqual("i1", l["image"])
+      self.assertEqual(b"i1", l["image"])
       id += 1;
     self.assertEqual(2, id);
     # delete
@@ -80,7 +75,7 @@ class TestRtidb(unittest.TestCase):
       self.assertTrue(True);
     else:
       self.assertTrue(False);
-    data = {"id":"1","name":"n1","mcc":"1","attribute":"a1", "image":"i1"}
+    data = {"id":"1","name":"n1","mcc":"1","attribute":"a1", "image":b"i1"}
     self.assertTrue(self.nsc.put("rt_ck", data, None).success())
     condition_columns = {"mcc":"1"} 
     ok = self.nsc.delete("rt_ck", condition_columns);
@@ -118,11 +113,10 @@ class TestRtidb(unittest.TestCase):
       self.assertEqual("a{}".format(id), l["attribute"])
       id+=1
     self.assertEqual(1000, id);
-    #TODO(kongquan): current put data use java client, when python put feature is complete, put data before traverse
     # multi index
     for i in range(1000) :
         data = {"id":"{:d}".format(i), "name":"n{}".format(i), "mcc":"{:d}".format(i), 
-            "attribute":"a{}".format(i), "image":"i{}".format(i)}
+            "attribute":"a{}".format(i), "image":"i{}".format(i).encode("UTF-8")}
         self.assertTrue(self.nsc.put("rt_ck", data, None).success())
     ro = rtidb.ReadOption()
     resp = self.nsc.traverse("rt_ck", ro)
@@ -131,7 +125,7 @@ class TestRtidb(unittest.TestCase):
       self.assertEqual(id, l["id"])
       self.assertEqual("n{}".format(id), l["name"])
       self.assertEqual(id, l["mcc"])
-      self.assertEqual("i{}".format(id), l["image"])
+      self.assertEqual("i{}".format(id).encode("UTF-8"), l["image"])
       self.assertEqual("a{}".format(id), l["attribute"])
       id+=1
     self.assertEqual(1000, id);
@@ -145,7 +139,7 @@ class TestRtidb(unittest.TestCase):
       self.assertEqual(id, l["id"])
       self.assertEqual("n{}".format(id), l["name"])
       self.assertEqual(id, l["mcc"])
-      self.assertEqual("i{}".format(id), l["image"])
+      self.assertEqual("i{}".format(id).encode("UTF-8"), l["image"])
       self.assertEqual("a{}".format(id), l["attribute"])
       id+=1
     self.assertEqual(1000, id);
@@ -169,13 +163,12 @@ class TestRtidb(unittest.TestCase):
       self.assertEqual("a{}".format(id), l["attribute"])
       id+=1
     self.assertEqual(1000, id);
-    #TODO(kongquan): current put data use java client, when python put feature is complete, put data before traverse
     # multi index
-    data = {"id":"1","name":"n1","mcc":"1","attribute":"a1", "image":"i1"}
+    data = {"id":"1","name":"n1","mcc":"1","attribute":"a1", "image":b"i1"}
     self.assertTrue(self.nsc.put("rt_ck", data, None).success())
-    data = {"id":"2","name":"n2","mcc":"2","attribute":"a1", "image":"i1"}
+    data = {"id":"2","name":"n2","mcc":"2","attribute":"a1", "image":b"i1"}
     self.assertTrue(self.nsc.put("rt_ck", data, None).success())
-    data = {"id":"3","name":"n3","mcc":"2","attribute":"a1", "image":"i1"}
+    data = {"id":"3","name":"n3","mcc":"2","attribute":"a1", "image":b"i1"}
     self.assertTrue(self.nsc.put("rt_ck", data, None).success())
     ros = list();
     ro = rtidb.ReadOption()
@@ -196,7 +189,7 @@ class TestRtidb(unittest.TestCase):
       else :
         self.assertEqual(2, l["mcc"])
       self.assertEqual("a1", l["attribute"])
-      self.assertEqual("i1", l["image"])
+      self.assertEqual("i1".encode("UTF-8"), l["image"])
       id += 1;
 
   def test_update(self):
@@ -215,12 +208,12 @@ class TestRtidb(unittest.TestCase):
       self.assertEqual("a3", l["attribute"])
       self.assertEqual("i3", l["image"])
     # multi index
-    data = {"id":"1","name":"n1","mcc":"1","attribute":"a1", "image":"i1"}
+    data = {"id":"1","name":"n1","mcc":"1","attribute":"a1", "image":b"i1"}
     self.assertTrue(self.nsc.put("rt_ck", data, None).success())
-    data = {"id":"2","name":"n2","mcc":"1","attribute":"a1", "image":"i1"}
+    data = {"id":"2","name":"n2","mcc":"1","attribute":"a1", "image":b"i1"}
     self.assertTrue(self.nsc.put("rt_ck", data, None).success())
     condition_columns = {"id":"1", "name":"n1"} 
-    value_columns = {"attribute":"a2","image":"i2"}
+    value_columns = {"attribute":"a2","image":b"i2"}
     ok = self.nsc.update("rt_ck", condition_columns, value_columns, None);
     self.assertEqual(ok, True);
     ro = rtidb.ReadOption()
@@ -233,10 +226,10 @@ class TestRtidb(unittest.TestCase):
       self.assertEqual("n1", l["name"])
       self.assertEqual(1, l["mcc"])
       self.assertEqual("a2", l["attribute"])
-      self.assertEqual("i2", l["image"])
+      self.assertEqual("i2".encode("UTF-8"), l["image"])
 
     condition_columns = {"mcc":"1"} 
-    value_columns = {"attribute":"a3","image":"i3"}
+    value_columns = {"attribute":"a3","image":"i3".encode("UTF-8")}
     ok = self.nsc.update("rt_ck", condition_columns, value_columns, None);
     self.assertEqual(ok, True);
     ro = rtidb.ReadOption()
@@ -249,7 +242,7 @@ class TestRtidb(unittest.TestCase):
       self.assertEqual("n{}".format(id+1), l["name"])
       self.assertEqual(1, l["mcc"])
       self.assertEqual("a3", l["attribute"])
-      self.assertEqual("i3", l["image"])
+      self.assertEqual("i3".encode("UTF-8"), l["image"])
       id += 1;
     self.assertEqual(2, id);
 
