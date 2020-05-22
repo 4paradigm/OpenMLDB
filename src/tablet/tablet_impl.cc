@@ -4982,10 +4982,11 @@ void TabletImpl::SendIndexData(
             PDLOG(INFO, "pid endpoint map is empty. tid %u, pid %u",
                   request->tid(), request->pid());
             SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kDone);
-            return;
+        } else {
+            task_pool_.AddTask(boost::bind(&TabletImpl::SendIndexDataInternal,
+                                           this, table, pid_endpoint_map,
+                                           task_ptr));
         }
-        task_pool_.AddTask(boost::bind(&TabletImpl::SendIndexDataInternal, this,
-                                       table, pid_endpoint_map, task_ptr));
         return;
     } while (0);
     SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kFailed);
