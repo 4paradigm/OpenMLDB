@@ -103,7 +103,6 @@ std::shared_ptr<::fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
     std::unique_ptr<::rtidb::api::QueryResponse> response(
         new ::rtidb::api::QueryResponse());
     std::vector<std::shared_ptr<::rtidb::client::TabletClient>> tablets;
-    // TODO(wangtaize) cache the tablet
     bool ok = GetTablet(db, sql, &tablets);
     if (!ok || tablets.size() <= 0) {
         return std::shared_ptr<::fesql::sdk::ResultSet>();

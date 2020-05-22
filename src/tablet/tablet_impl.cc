@@ -1859,7 +1859,6 @@ void TabletImpl::Query(RpcController* ctrl,
     ::fesql::base::Status status;
     if (request->is_batch()) {
         ::fesql::vm::BatchRunSession session;
-        session.EnableDebug();
         {
             bool ok =
                 engine_.Get(request->sql(), request->db(), session, status);
