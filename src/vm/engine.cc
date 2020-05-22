@@ -65,7 +65,7 @@ bool Engine::Get(const std::string& sql, const std::string& db,
     info->get_sql_context().sql = sql;
     info->get_sql_context().db = db;
     info->get_sql_context().is_batch_mode = session.IsBatchRun();
-    SQLCompiler compiler(cl_, &nm_, options_.is_keep_ir());
+    SQLCompiler compiler(cl_, options_.is_keep_ir());
     bool ok = compiler.Compile(info->get_sql_context(), status);
     if (!ok || 0 != status.code) {
         // TODO(chenjing): do clean
@@ -106,12 +106,11 @@ bool Engine::Explain(const std::string& sql, const std::string& db,
         LOG(WARNING) << "input args is invalid";
         return false;
     }
-    ::fesql::node::NodeManager nm;
     SQLContext ctx;
     ctx.is_batch_mode = is_batch;
     ctx.sql = sql;
     ctx.db = db;
-    SQLCompiler compiler(cl_, &nm, true, true);
+    SQLCompiler compiler(cl_, true, true);
     bool ok = compiler.Compile(ctx, *status);
     if (!ok || 0 != status->code) {
         LOG(WARNING) << "fail to compile sql " << sql << " in db " << db

@@ -115,9 +115,9 @@ void InitCodecSymbol(vm::FeSQLJIT* jit_ptr) {
 using ::fesql::base::Status;
 
 SQLCompiler::SQLCompiler(const std::shared_ptr<Catalog>& cl,
-                         ::fesql::node::NodeManager* nm, bool keep_ir,
+                         bool keep_ir,
                          bool dump_plan)
-    : cl_(cl), nm_(nm), keep_ir_(keep_ir), dump_plan_(dump_plan) {}
+    : cl_(cl), keep_ir_(keep_ir), dump_plan_(dump_plan) {}
 
 SQLCompiler::~SQLCompiler() {}
 
@@ -135,7 +135,7 @@ void SQLCompiler::KeepIR(SQLContext& ctx, llvm::Module* m) {
 
 bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     ::fesql::node::PlanNodeList trees;
-    bool ok = Parse(ctx, (*nm_), trees, status);
+    bool ok = Parse(ctx, ctx.nm, trees, status);
     if (!ok) {
         return false;
     }
@@ -148,7 +148,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     auto m = ::llvm::make_unique<::llvm::Module>("sql", *llvm_ctx);
     ::fesql::udf::RegisterUDFToModule(m.get());
     if (ctx.is_batch_mode) {
-        vm::BatchModeTransformer transformer(nm_, ctx.db, cl_, m.get());
+        vm::BatchModeTransformer transformer(&(ctx.nm), ctx.db, cl_, m.get());
         transformer.AddDefaultPasses();
         if (!transformer.TransformPhysicalPlan(trees, &ctx.plan, status)) {
             LOG(WARNING) << "fail to generate physical plan (batch mode): "
@@ -157,7 +157,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
             return false;
         }
     } else {
-        vm::RequestModeransformer transformer(nm_, ctx.db, cl_, m.get());
+        vm::RequestModeransformer transformer(&(ctx.nm), ctx.db, cl_, m.get());
         transformer.AddDefaultPasses();
         if (!transformer.TransformPhysicalPlan(trees, &ctx.plan, status)) {
             LOG(WARNING) << "fail to generate physical plan (request mode) "

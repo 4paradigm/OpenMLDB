@@ -177,7 +177,6 @@ class Engine {
     EngineOptions options_;
     base::SpinMutex mu_;
     EngineCache cache_;
-    ::fesql::node::NodeManager nm_;
 };
 
 }  // namespace vm
