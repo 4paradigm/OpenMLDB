@@ -942,6 +942,7 @@ bool NsClient::TransformToTableDef(
     // todo: change default setting
     table->set_partition_num(1);
     table->set_replica_num(1);
+    table->set_format_version(1);
     ::rtidb::api::TTLDesc* ttl_desc = table->mutable_ttl_desc();
     ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsoluteTime);
     ttl_desc->set_abs_ttl(0);
