@@ -108,6 +108,7 @@ class RtidbResult:
     names = self.__data.GetColumnsName()
     self.__names = [x for x in names]
     self.__blobInfo = None
+    self.__blob_idx_vec = data.GetBlobIdxVec()
   def __iter__(self):
     return self
   def count(self):
@@ -115,6 +116,17 @@ class RtidbResult:
       return self.__data.Count()
     else:
       raise Exception(-1, "result not support count")
+  def get_url_map(self):
+    # eg. "/v1/get/" + table_name + "/" + key
+    if (len(self.__blob_idx_vec) == 0):
+      raise Exception(-1, "can't get url because no blob column!")
+    result = {}
+    prefix = "/v1/get/" + self.__data.GetTableName() + "/"
+    for idx in self.__blob_idx_vec:
+      blob_key = self.__type_to_func[15](idx)
+      url = prefix + str(blob_key) 
+      result.update({self.__names[idx]: url})
+    return result
   def __next__(self):
     if self.__data.Next():
       result = {}

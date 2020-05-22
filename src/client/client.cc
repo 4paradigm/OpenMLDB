@@ -458,6 +458,7 @@ TraverseResult RtidbClient::Traverse(const std::string& name,
     result.SetRv(th);
     result.SetValue(raw_data, is_finish, pk);
     result.SetTable(name);
+    result.SetBlobIdxVec(th->blobSuffix);
     return result;
 }
 
@@ -678,6 +679,7 @@ BatchQueryResult RtidbClient::BatchQuery(const std::string& name,
     result.SetValue(data, count);
     result.SetTable(name);
     result.SetClient(this);
+    result.SetBlobIdxVec(th->blobSuffix);
     return result;
 }
 
