@@ -27,14 +27,12 @@
 #include "gflags/gflags.h"
 #include "log/log_reader.h"
 #include "log/sequential_file.h"
-#include "logging.h"  // NOLINT
+#include "base/glog_wapper.h"  // NOLINT
 #include "proto/tablet.pb.h"
 #include "thread_pool.h"  // NOLINT
 #include "timer.h"        // NOLINT
 
-using ::baidu::common::DEBUG;
-using ::baidu::common::INFO;
-using ::baidu::common::WARNING;
+
 
 DECLARE_uint64(gc_on_table_recover_count);
 DECLARE_int32(binlog_name_length);
@@ -374,7 +372,7 @@ uint64_t MemTableSnapshot::CollectDeletedKey(uint64_t end_offset) {
                     entry.dimensions(0).key() + "|" +
                     std::to_string(entry.dimensions(0).idx());
                 deleted_keys_[combined_key] = cur_offset;
-                PDLOG(DEBUG, "insert key %s offset %lu. tid %u pid %u",
+                DEBUGLOG("insert key %s offset %lu. tid %u pid %u",
                       combined_key.c_str(), cur_offset, tid_, pid_);
             }
         } else if (status.IsEof()) {
@@ -391,7 +389,7 @@ uint64_t MemTableSnapshot::CollectDeletedKey(uint64_t end_offset) {
                       tid_, pid_, cur_log_index, end_log_index, cur_offset);
                 continue;
             }
-            PDLOG(DEBUG, "has read all record!");
+            DEBUGLOG("has read all record!");
             break;
         } else {
             PDLOG(WARNING, "fail to get record. status is %s",
@@ -444,7 +442,7 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table,
             has_error = true;
         }
         last_term = manifest.term();
-        PDLOG(DEBUG, "old manifest term is %lu", last_term);
+        DEBUGLOG("old manifest term is %lu", last_term);
     } else if (result < 0) {
         // parse manifest error
         has_error = true;
@@ -495,7 +493,7 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table,
                 std::string combined_key = entry.pk() + "|0";
                 auto iter = deleted_keys_.find(combined_key);
                 if (iter != deleted_keys_.end() && cur_offset <= iter->second) {
-                    PDLOG(DEBUG, "delete key %s  offset %lu",
+                    DEBUGLOG("delete key %s  offset %lu",
                           entry.pk().c_str(), entry.log_index());
                     deleted_key_num++;
                     continue;
@@ -568,7 +566,7 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table,
                       tid_, pid_, cur_log_index, end_log_index, cur_offset);
                 continue;
             }
-            PDLOG(DEBUG, "has read all record!");
+            DEBUGLOG("has read all record!");
             break;
         } else {
             PDLOG(WARNING, "fail to get record. status is %s",
@@ -592,7 +590,7 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table,
                             last_term) == 0) {
                 // delete old snapshot
                 if (manifest.has_name() && manifest.name() != snapshot_name) {
-                    PDLOG(DEBUG, "old snapshot[%s] has deleted",
+                    DEBUGLOG("old snapshot[%s] has deleted",
                           manifest.name().c_str());
                     unlink((snapshot_path_ + manifest.name()).c_str());
                 }
@@ -876,7 +874,7 @@ int MemTableSnapshot::ExtractIndexData(
             has_error = true;
         }
         last_term = manifest.term();
-        PDLOG(DEBUG, "old manifest term is %lu", last_term);
+        DEBUGLOG("old manifest term is %lu", last_term);
     } else if (result < 0) {
         // parse manifest error
         has_error = true;
@@ -924,7 +922,7 @@ int MemTableSnapshot::ExtractIndexData(
                 std::string combined_key = entry.pk() + "|0";
                 auto iter = deleted_keys_.find(combined_key);
                 if (iter != deleted_keys_.end() && cur_offset <= iter->second) {
-                    PDLOG(DEBUG, "delete key %s  offset %lu",
+                    DEBUGLOG("delete key %s  offset %lu",
                           entry.pk().c_str(), entry.log_index());
                     deleted_key_num++;
                     continue;
@@ -1055,7 +1053,7 @@ int MemTableSnapshot::ExtractIndexData(
                       tid_, pid_, cur_log_index, end_log_index, cur_offset);
                 continue;
             }
-            PDLOG(DEBUG, "has read all record!");
+            DEBUGLOG("has read all record!");
             break;
         } else {
             PDLOG(WARNING, "fail to get record. status is %s",
@@ -1079,7 +1077,7 @@ int MemTableSnapshot::ExtractIndexData(
                             last_term) == 0) {
                 // delete old snapshot
                 if (manifest.has_name() && manifest.name() != snapshot_name) {
-                    PDLOG(DEBUG, "old snapshot[%s] has deleted",
+                    DEBUGLOG("old snapshot[%s] has deleted",
                           manifest.name().c_str());
                     unlink((snapshot_path_ + manifest.name()).c_str());
                 }
@@ -1397,7 +1395,7 @@ bool MemTableSnapshot::DumpBinlogIndexData(
             continue;
         }
         if (cur_offset >= entry.log_index()) {
-            PDLOG(DEBUG, "offset %lu has been made snapshot",
+            DEBUGLOG("offset %lu has been made snapshot",
                   entry.log_index());
             continue;
         }

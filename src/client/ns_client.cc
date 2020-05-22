@@ -6,8 +6,11 @@
 //
 
 #include "client/ns_client.h"
+
 #include <utility>
+
 #include "base/strings.h"
+#include "glog/logging.h"
 
 DECLARE_int32(request_timeout_ms);
 namespace rtidb {
@@ -19,6 +22,62 @@ NsClient::NsClient(const std::string& endpoint)
 int NsClient::Init() { return client_.Init(); }
 
 std::string NsClient::GetEndpoint() { return endpoint_; }
+
+const std::string& NsClient::GetDb() { return db_; }
+
+bool NsClient::HasDb() { return !db_.empty(); }
+
+void NsClient::ClearDb() { db_.clear(); }
+
+bool NsClient::Use(std::string db, std::string& msg) {
+    ::rtidb::nameserver::UseDatabaseRequest request;
+    ::rtidb::nameserver::GeneralResponse response;
+    request.set_db(db);
+    bool ok =
+        client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::UseDatabase,
+                            &request, &response, FLAGS_request_timeout_ms, 1);
+    msg = response.msg();
+    if (ok && response.code() == 0) {
+        db_ = db;
+        return true;
+    }
+    return false;
+}
+
+bool NsClient::CreateDatabase(const std::string& db, std::string& msg) {
+    ::rtidb::nameserver::CreateDatabaseRequest request;
+    ::rtidb::nameserver::GeneralResponse response;
+    request.set_db(db);
+    bool ok = client_.SendRequest(
+        &::rtidb::nameserver::NameServer_Stub::CreateDatabase, &request,
+        &response, FLAGS_request_timeout_ms, 1);
+    msg = response.msg();
+    return ok && response.code() == 0;
+}
+
+bool NsClient::ShowDatabase(std::vector<std::string>* dbs, std::string& msg) {
+    ::rtidb::nameserver::GeneralRequest request;
+    ::rtidb::nameserver::ShowDatabaseResponse response;
+    bool ok =
+        client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::ShowDatabase,
+                            &request, &response, FLAGS_request_timeout_ms, 1);
+    for (auto db : response.db()) {
+        dbs->push_back(db);
+    }
+    msg = response.msg();
+    return ok && response.code() == 0;
+}
+
+bool NsClient::DropDatabase(const std::string& db, std::string& msg) {
+    ::rtidb::nameserver::DropDatabaseRequest request;
+    ::rtidb::nameserver::GeneralResponse response;
+    request.set_db(db);
+    bool ok =
+        client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::DropDatabase,
+                            &request, &response, FLAGS_request_timeout_ms, 1);
+    msg = response.msg();
+    return ok && response.code() == 0;
+}
 
 bool NsClient::ShowTablet(std::vector<TabletInfo>& tablets, std::string& msg) {
     ::rtidb::nameserver::ShowTabletRequest request;
@@ -48,6 +107,9 @@ bool NsClient::ShowTable(const std::string& name,
     ::rtidb::nameserver::ShowTableRequest request;
     if (!name.empty()) {
         request.set_name(name);
+    }
+    if (!db_.empty()) {
+        request.set_db(db_);
     }
     ::rtidb::nameserver::ShowTableResponse response;
     bool ok =
@@ -135,6 +197,17 @@ bool NsClient::AddTableField(const std::string& table_name,
     return false;
 }
 
+bool NsClient::CreateTable(const std::string& script, std::string& msg) {
+    fesql::node::NodeManager node_manager;
+    fesql::parser::FeSQLParser parser;
+    fesql::plan::SimplePlanner planner(&node_manager);
+    DLOG(INFO) << "start to execute script from dbms:\n" << script;
+    fesql::base::Status sql_status;
+    fesql::node::NodePointVector parser_trees;
+    parser.parse(script, parser_trees, &node_manager, sql_status);
+    return true;
+}
+
 bool NsClient::CreateTable(const ::rtidb::nameserver::TableInfo& table_info,
                            std::string& msg) {
     ::rtidb::nameserver::CreateTableRequest request;
@@ -154,6 +227,9 @@ bool NsClient::CreateTable(const ::rtidb::nameserver::TableInfo& table_info,
 bool NsClient::DropTable(const std::string& name, std::string& msg) {
     ::rtidb::nameserver::DropTableRequest request;
     request.set_name(name);
+    if (HasDb()) {
+        request.set_db(GetDb());
+    }
     ::rtidb::nameserver::GeneralResponse response;
     bool ok =
         client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::DropTable,
@@ -801,6 +877,14 @@ bool NsClient::DeleteIndex(const std::string& table_name,
     msg = response.msg();
     int code = response.code();
     return ok && code == 0;
+}
+
+bool NsClient::TransformToTableDef(
+    const std::string& table_name,
+    const ::fesql::node::NodePointVector& column_desc_list,
+    ::rtidb::nameserver::TableInfo* table, ::rtidb::base::Status* status) {
+    if (table == NULL || status == NULL) return false;
+    return true;
 }
 
 }  // namespace client

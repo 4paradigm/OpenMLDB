@@ -15,7 +15,7 @@
 #include <unistd.h>
 #include "base/file_util.h"
 #include "client/tablet_client.h"
-#include "logging.h" // NOLINT
+#include "base/glog_wapper.h" // NOLINT
 #include "proto/tablet.pb.h"
 #include "replica/log_replicator.h"
 #include "replica/replicate_node.h"
@@ -26,8 +26,6 @@
 #include "thread_pool.h" // NOLINT
 #include "timer.h" // NOLINT
 
-using ::baidu::common::DEBUG;
-using ::baidu::common::INFO;
 using ::baidu::common::ThreadPool;
 using ::google::protobuf::Closure;
 using ::google::protobuf::RpcController;
@@ -312,7 +310,7 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollowerTS) {
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
-    ::baidu::common::SetLogLevel(::baidu::common::INFO);
+    ::rtidb::base::SetLogLevel(INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     FLAGS_db_root_path = "/tmp/" + ::GenRand();
     return RUN_ALL_TESTS();

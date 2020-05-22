@@ -10,12 +10,12 @@
 #include <sched.h>
 #include <unistd.h>
 #include <boost/bind.hpp>
-#include "logging.h" // NOLINT
+#include "base/glog_wapper.h" // NOLINT
 extern "C" {
 #include "zookeeper/zookeeper.h"
 }
 
-using ::baidu::common::INFO;
+
 
 namespace rtidb {
 namespace zk {

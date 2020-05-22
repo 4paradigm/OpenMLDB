@@ -5,11 +5,10 @@
 
 #pragma once
 
-#include <brpc/server.h>
-#include <client/client.h>
-
 #include <mutex>
 
+#include "brpc/server.h"
+#include "client/client.h"
 #include "proto/blob_proxy.pb.h"
 #include "zk/zk_client.h"
 
@@ -35,7 +34,6 @@ class BlobProxyImpl : public ::rtidb::blobproxy::BlobProxy {
 
  private:
     std::mutex mu_;
-    ZkClient* zk_client_;
     brpc::Server* server_;
     BaseClient* client_;
 };

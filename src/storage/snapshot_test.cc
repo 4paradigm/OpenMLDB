@@ -18,7 +18,7 @@
 #include "base/strings.h"
 #include "gtest/gtest.h"
 #include "log/log_writer.h"
-#include "logging.h" // NOLINT
+#include "base/glog_wapper.h" // NOLINT
 #include "proto/tablet.pb.h"
 #include "storage/binlog.h"
 #include "storage/disk_table_snapshot.h"
@@ -1587,7 +1587,7 @@ int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    ::baidu::common::SetLogLevel(::baidu::common::INFO);
+    ::rtidb::base::SetLogLevel(INFO);
     FLAGS_db_root_path = "/tmp/" + std::to_string(::rtidb::storage::GenRand());
     FLAGS_hdd_root_path = "/tmp/" + std::to_string(::rtidb::storage::GenRand());
     return RUN_ALL_TESTS();

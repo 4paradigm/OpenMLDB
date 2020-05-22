@@ -90,6 +90,8 @@ message TableInfo {
     optional rtidb.api.TTLDesc ttl_desc = 16;
     optional rtidb.type.TableType table_type = 17 [default = kTimeSeries];
     optional uint32 format_version = 18 [default = 0];
+    repeated string blobs = 19;
+    optional string db = 20;
 }
 
 message CreateTableRequest {
@@ -102,6 +104,7 @@ message DropTableRequest {
     required string name = 1;
     optional ZoneInfo zone_info = 2;
     optional rtidb.api.TaskInfo task_info = 3;
+    optional string db = 4;
 }
 
 message LoadTableRequest {
@@ -119,6 +122,7 @@ message CreateTableInfoRequest {
 
 message ShowTableRequest {
     optional string name = 1;
+    optional string db = 2;
 }
 
 message ShowTableResponse {
@@ -393,6 +397,24 @@ message DeleteIndexRequest {
     optional string idx_name = 2;
 }
 
+message CreateDatabaseRequest {
+    optional string db = 1;
+}
+
+message UseDatabaseRequest {
+    optional string db = 1;
+}
+
+message ShowDatabaseResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+    repeated string db = 3;
+}
+
+message DropDatabaseRequest {
+    optional string db = 1;
+}
+
 service NameServer {
     rpc CreateTable(CreateTableRequest) returns (GeneralResponse);
     rpc DropTable(DropTableRequest) returns (GeneralResponse);
@@ -432,4 +454,8 @@ service NameServer {
     rpc SyncTable(SyncTableRequest) returns (GeneralResponse);
     rpc AddIndex(AddIndexRequest) returns (GeneralResponse);
     rpc DeleteIndex(DeleteIndexRequest) returns (GeneralResponse);
+    rpc CreateDatabase(CreateDatabaseRequest) returns (GeneralResponse);
+    rpc UseDatabase(UseDatabaseRequest) returns (GeneralResponse);
+    rpc ShowDatabase(GeneralRequest) returns (ShowDatabaseResponse);
+    rpc DropDatabase(DropDatabaseRequest) returns (GeneralResponse);
 }

@@ -3,15 +3,17 @@
 // Author kongquan
 // Date 2020-04-16
 
-#include <gflags/gflags.h>
-#include <utility>
 #include "blobserver/blobserver_impl.h"
-#include "logging.h" // NOLINT
+
+#include <gflags/gflags.h>
+
+#include <utility>
 #include "base/file_util.h"
 #include "base/hash.h"
 #include "base/status.h"
 #include "base/strings.h"
 #include "boost/bind.hpp"
+#include "base/glog_wapper.h"
 
 DECLARE_string(endpoint);
 DECLARE_string(zk_cluster);
@@ -20,9 +22,6 @@ DECLARE_int32(zk_session_timeout);
 DECLARE_int32(zk_keep_alive_check_interval);
 DECLARE_string(hdd_root_path);
 
-using ::baidu::common::DEBUG;
-using ::baidu::common::INFO;
-using ::baidu::common::WARNING;
 using ::rtidb::base::ReturnCode;
 
 namespace rtidb {
@@ -32,14 +31,16 @@ static const uint32_t SEED = 0xe17a1465;
 
 BlobServerImpl::BlobServerImpl()
     : spin_mutex_(),
-      zk_client_(NULL),
-      server_(NULL),
+      zk_client_(nullptr),
+      server_(nullptr),
       keep_alive_pool_(1),
+      task_pool_(2),
+      follower_(false),
       object_stores_(),
       root_paths_() {}
 
 BlobServerImpl::~BlobServerImpl() {
-    if (zk_client_ != NULL) {
+    if (zk_client_ != nullptr) {
         delete zk_client_;
     }
 }
@@ -59,6 +60,7 @@ bool BlobServerImpl::Init() {
         if (!ok) {
             PDLOG(WARNING, "fail to init zookeeper with cluster %s",
                   FLAGS_zk_cluster.c_str());
+            return false;
         }
     } else {
         PDLOG(INFO, "zk cluster disabled");
@@ -109,7 +111,7 @@ void BlobServerImpl::CheckZkClient() {
 
 void BlobServerImpl::CreateTable(RpcController *controller,
                                  const CreateTableRequest *request,
-                                 GeneralResponse *response, Closure *done) {
+                                 CreateTableResponse *response, Closure *done) {
     brpc::ClosureGuard done_guard(done);
     const TableMeta &table_meta = request->table_meta();
     uint32_t tid = table_meta.tid();
@@ -126,8 +128,7 @@ void BlobServerImpl::CreateTable(RpcController *controller,
         response->set_code(ReturnCode::kTableAlreadyExists);
         response->set_msg("table already exists");
     }
-    std::string name = table_meta.name();
-    if (root_paths_.size() < 1) {
+    if (root_paths_.empty()) {
         PDLOG(WARNING, "fail to find db root path tid[%u] pid[%u]", tid, pid);
         response->set_code(ReturnCode::kFailToGetDbRootPath);
         response->set_msg("failto find db root path");
@@ -148,14 +149,12 @@ void BlobServerImpl::CreateTable(RpcController *controller,
         response->set_code(ReturnCode::kCreateTableFailed);
         response->set_msg("init object store failed");
     }
-    PDLOG(INFO, "creat table tid[%u] pid[%u] success", tid, pid);
     std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
     object_stores_[tid].insert(std::make_pair(pid, store));
 }
 
-void BlobServerImpl::Get(RpcController *controller,
-                         const GetRequest *request, GetResponse *response,
-                         Closure *done) {
+void BlobServerImpl::Get(RpcController *controller, const GetRequest *request,
+                         GetResponse *response, Closure *done) {
     brpc::ClosureGuard done_guard(done);
     uint32_t tid = request->tid();
     uint32_t pid = request->pid();
@@ -167,9 +166,13 @@ void BlobServerImpl::Get(RpcController *controller,
         return;
     }
     rtidb::base::Slice slice = store->Get(request->key());
-    if (slice.size() > 0) {
+    if (slice.empty()) {
+        response->set_code(ReturnCode::kKeyNotFound);
+        response->set_msg("key not found");
+    } else {
         if (request->use_attachment()) {
-            brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
+            brpc::Controller *cntl =
+                static_cast<brpc::Controller *>(controller);
             cntl->response_attachment().append(slice.data(), slice.size());
         } else {
             std::string *value = response->mutable_data();
@@ -178,14 +181,11 @@ void BlobServerImpl::Get(RpcController *controller,
         response->set_code(ReturnCode::kOk);
         const char *ch = slice.data();
         delete[] ch;
-    } else {
-        response->set_code(ReturnCode::kKeyNotFound);
-        response->set_msg("key not found");
     }
 }
 
-void BlobServerImpl::Put(RpcController* controller, const PutRequest* request,
-                         PutResponse* response, Closure* done) {
+void BlobServerImpl::Put(RpcController *controller, const PutRequest *request,
+                         PutResponse *response, Closure *done) {
     brpc::ClosureGuard done_guard(done);
     uint32_t tid = request->tid();
     uint32_t pid = request->pid();
@@ -197,18 +197,18 @@ void BlobServerImpl::Put(RpcController* controller, const PutRequest* request,
         return;
     }
     bool ok = false;
-    std::string key;
-    if (request->key().empty()) {
-        ok = store->Store(&key, request->data());
-    } else {
+    int64_t key = 0;
+    if (request->has_key()) {
         ok = store->Store(request->key(), request->data());
+    } else {
+        ok = store->Store(request->data(), &key);
     }
     if (!ok) {
         response->set_code(ReturnCode::kPutFailed);
         response->set_msg("put failed");
         return;
     }
-    if (request->key().empty()) {
+    if (!request->has_key()) {
         response->set_key(key);
     }
     response->set_code(ReturnCode::kOk);
@@ -217,9 +217,9 @@ void BlobServerImpl::Put(RpcController* controller, const PutRequest* request,
 
 void BlobServerImpl::Delete(RpcController *controller,
                             const DeleteRequest *request,
-                            GeneralResponse *response, Closure *done) {
+                            DeleteResponse *response, Closure *done) {
     brpc::ClosureGuard done_guard(done);
-    if (request->key().empty()) {
+    if (!request->has_key()) {
         response->set_code(ReturnCode::kKeyNotFound);
         response->set_msg("empty key");
     } else {
@@ -244,7 +244,7 @@ void BlobServerImpl::Delete(RpcController *controller,
 
 void BlobServerImpl::LoadTable(RpcController *controller,
                                const LoadTableRequest *request,
-                               GeneralResponse *response, Closure *done) {
+                               LoadTableResponse *response, Closure *done) {
     brpc::ClosureGuard done_guard(done);
     std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
     if (request->has_task_info() && request->task_info().IsInitialized()) {
@@ -261,7 +261,7 @@ void BlobServerImpl::LoadTable(RpcController *controller,
         return;
     }
     PDLOG(INFO, "start creating table tid[%u] pid[%u]", tid, pid);
-    if (root_paths_.size() < 1) {
+    if (root_paths_.empty()) {
         PDLOG(WARNING, "fail to find db root path tid[%u] pid[%u]", tid, pid);
         response->set_code(ReturnCode::kFailToGetDbRootPath);
         response->set_msg("failto find db root path");
@@ -294,7 +294,7 @@ std::shared_ptr<ObjectStore> BlobServerImpl::GetStore(uint32_t tid,
 
 std::shared_ptr<ObjectStore> BlobServerImpl::GetStoreUnLock(uint32_t tid,
                                                             uint32_t pid) {
-    ObjectStores::iterator it = object_stores_.find(tid);
+    auto it = object_stores_.find(tid);
     if (it != object_stores_.end()) {
         auto tit = it->second.find(pid);
         if (tit != it->second.end()) {
@@ -304,28 +304,30 @@ std::shared_ptr<ObjectStore> BlobServerImpl::GetStoreUnLock(uint32_t tid,
     return std::shared_ptr<ObjectStore>();
 }
 
-void BlobServerImpl::GetStoreStatus(RpcController* controller,
-                    const GetStoreStatusRequest* request,
-                    GetStoreStatusResponse* response, Closure* done) {
+void BlobServerImpl::GetStoreStatus(RpcController *controller,
+                                    const GetStoreStatusRequest *request,
+                                    GetStoreStatusResponse *response,
+                                    Closure *done) {
     brpc::ClosureGuard done_guard(done);
     if (request->has_tid() && request->has_pid()) {
         uint32_t tid = request->tid();
         uint32_t pid = request->pid();
         std::shared_ptr<ObjectStore> store = GetStore(tid, pid);
         if (!store) {
+            PDLOG(WARNING, "tid[%u] pid[%u] does not exist", tid, pid);
             response->set_code(ReturnCode::kOk);
             return;
         }
-        StoreStatus* status = response->add_all_status();
+        StoreStatus *status = response->add_all_status();
         status->set_tid(tid);
         status->set_pid(pid);
         response->set_code(ReturnCode::kOk);
         return;
     }
     std::lock_guard<SpinMutex> lock_guard(spin_mutex_);
-    for (const auto& it : object_stores_) {
-        for (const auto& tit : it.second) {
-            StoreStatus* status = response->add_all_status();
+    for (const auto &it : object_stores_) {
+        for (const auto &tit : it.second) {
+            StoreStatus *status = response->add_all_status();
             status->set_tid(it.first);
             status->set_pid(tit.first);
         }
@@ -333,7 +335,44 @@ void BlobServerImpl::GetStoreStatus(RpcController* controller,
     response->set_code(ReturnCode::kOk);
 }
 
+void BlobServerImpl::DropTable(RpcController *controller,
+                               const DropTableRequest *request,
+                               DropTableResponse *response, Closure *done) {
+    brpc::ClosureGuard done_guard(done);
+    if (request->has_tid() && request->has_pid()) {
+        uint32_t tid = request->tid();
+        uint32_t pid = request->pid();
+        std::shared_ptr<ObjectStore> store = GetStore(tid, pid);
+        if (!store) {
+            response->set_code(ReturnCode::kOk);
+            PDLOG(WARNING, "tid[%u] pid[%u] does not exist", tid, pid);
+            return;
+        }
+        task_pool_.AddTask(
+            boost::bind(&BlobServerImpl::DropTableInternal, this, tid, pid));
+        response->set_code(ReturnCode::kOk);
+        response->set_msg("ok");
+        PDLOG(INFO, "drop table tid[%u] pid[%u]", tid, pid);
+    } else {
+        response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
+        response->set_msg("please provide tid and pid");
+        return;
+    }
+}
 
+void BlobServerImpl::DropTableInternal(uint32_t tid, uint32_t pid) {
+    std::shared_ptr<ObjectStore> store = GetStore(tid, pid);
+    if (!store) {
+        PDLOG(WARNING, "tid[%u] pid[%u] does not exist", tid, pid);
+        return;
+    }
+
+    std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+    object_stores_[tid].erase(pid);
+    if (object_stores_[tid].empty()) {
+        object_stores_.erase(tid);
+    }
+}
 
 }  // namespace blobserver
 }  // namespace rtidb

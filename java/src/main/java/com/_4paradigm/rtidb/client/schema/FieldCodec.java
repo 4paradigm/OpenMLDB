@@ -4,9 +4,12 @@ import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.type.DataType;
 import com.google.protobuf.ByteBufferNoCopy;
 import com.google.protobuf.ByteString;
+import org.joda.time.DateTime;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.sql.Date;
+import java.sql.Timestamp;
 
 public class FieldCodec {
     /**
@@ -80,18 +83,33 @@ public class FieldCodec {
             case Int:
                 return convert((Integer) data);
             case BigInt:
-            case Timestamp:
                 return convert((Long) data);
+            case Timestamp:
+                if (data instanceof DateTime) {
+                    return convert(((DateTime) data).getMillis());
+                } else if (data instanceof Timestamp) {
+                    return convert(((Timestamp) data).getTime());
+                } else {
+                    return convert((Long) data);
+                }
+            case Date:
+                Date date = (Date) data;
+                int year = date.getYear();
+                int month = date.getMonth();
+                int day = date.getDate();
+                int res = year << 16;
+                res = res | (month << 8);
+                res = res | day;
+                return convert(res);
             case Float:
                 return convert((Float) data);
             case Double:
                 return convert((Double) data);
             case String:
             case Varchar:
-            case Blob:
                 return convert((String) data);
             default:
-                throw new TabletException("unsupported data type");
+                throw new TabletException("unsupported data type " + dataType.toString());
         }
     }
 
@@ -154,6 +172,27 @@ public class FieldCodec {
             buffer = buffer.order(ByteOrder.LITTLE_ENDIAN);
         }
         return ByteBufferNoCopy.wrap(buffer).toString(RowCodecCommon.CHARSET);
+    }
+
+    public static DateTime GetTimestamp(ByteString bs) {
+        ByteBuffer buffer = bs.asReadOnlyByteBuffer();
+        if (buffer.order() == ByteOrder.BIG_ENDIAN) {
+            buffer = buffer.order(ByteOrder.LITTLE_ENDIAN);
+        }
+        return new DateTime(buffer.getLong());
+    }
+
+    public static Date GetDate(ByteString bs) {
+        ByteBuffer buffer = bs.asReadOnlyByteBuffer();
+        if (buffer.order() == ByteOrder.BIG_ENDIAN) {
+            buffer = buffer.order(ByteOrder.LITTLE_ENDIAN);
+        }
+        int date = buffer.getInt();
+        int day = date & 0x0000000FF;
+        date = date >> 8;
+        int month = date & 0x0000FF;
+        int year = date >> 8;
+        return new Date(year, month, day);
     }
 
 }

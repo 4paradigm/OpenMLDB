@@ -5,7 +5,7 @@
 #include "base/kv_iterator.h"
 #include <iostream>
 #include "base/strings.h"
-#include "codec/codec.h"
+#include "codec/row_codec.h"
 #include "gtest/gtest.h"
 #include "proto/tablet.pb.h"
 

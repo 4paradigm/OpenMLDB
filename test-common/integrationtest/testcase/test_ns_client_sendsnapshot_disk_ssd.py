@@ -123,12 +123,12 @@ class TestSendSnapshot(TestCaseBase):
 
 
     def assert_send_fail_by_log(self):
-        rs = utils.exe_shell('cat {}/info.log | grep "Init file receiver failed. '
+        rs = utils.exe_shell('cat {}/warning.log | grep "Init file receiver failed. '
                               'tid\[{}\] pid\[{}\]"'.format(self.leaderpath, self.tid, self.pid, self.tid, self.pid))
         self.assertTrue(rs)
 
     def assert_init_fail_by_log(self):
-        rs = utils.exe_shell('cat {}/info.log |grep "tid\[{}\] pid\[{}\]"'
+        rs = utils.exe_shell('cat {}/warning.log |grep "tid\[{}\] pid\[{}\]"'
                              '|grep "Init FileSender failed"'.format(self.leaderpath, self.tid, self.pid))
         self.assertTrue(rs)
 

@@ -175,6 +175,7 @@ public class RowView {
                 return (Integer) getValue(row, idx, type);
             }
             case Timestamp:
+            case Blob:
             case BigInt: {
                 return (Long) getValue(row, idx, type);
             }
@@ -241,6 +242,7 @@ public class RowView {
                 return buf.getShort(offset);
             case Int:
                 return buf.getInt(offset);
+            case Blob:
             case BigInt:
                 return buf.getLong(offset);
             case Float:

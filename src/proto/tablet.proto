@@ -194,6 +194,7 @@ message PutRequest {
 message PutResponse {
     optional int32 code = 1;
     optional string msg = 2;
+    optional int64 auto_gen_pk = 3;
 }
 
 message DeleteRequest {
@@ -202,6 +203,7 @@ message DeleteRequest {
     optional string key = 3;
     optional string idx_name = 4;
     repeated Columns condition_columns = 5;
+    optional bool receive_blobs = 6 [default = false];
 }
 
 message ExecuteGcRequest {
@@ -233,6 +235,7 @@ message DeleteTaskRequest {
 message GeneralResponse {
     optional int32 code = 1;
     optional string msg = 2;
+    repeated int64 additional_ids = 3;
 }
 
 message ScanRequest {
@@ -283,6 +286,7 @@ message TraverseRequest {
     optional bool enable_remove_duplicated_record = 7 [default=false];
     optional string ts_name = 8;
     optional uint64 snapshot_id = 9;
+    optional ReadOption read_option = 10;
 }
 
 message TraverseResponse {
@@ -343,6 +347,7 @@ message TableMeta {
     optional rtidb.type.TableType table_type = 20;
     // format_version 0 , the legacy format 1 ,the new one
     optional uint32 format_version = 21 [default = 0];
+    optional string db = 22;
 }
 
 message CreateTableRequest {
@@ -687,7 +692,7 @@ message ExtractIndexDataRequest {
 
 message Columns {
     repeated string name = 1;
-    optional bytes value = 2;
+    optional bytes value = 2 [default = ""];
     optional GetType type = 3 [default = kSubKeyEq];
 }
 
@@ -700,8 +705,8 @@ message UpdateRequest {
 
 message ReadOption {
     repeated Columns index = 1;
-    repeated Columns readFilter = 2;
-    repeated string colSet = 3;
+    repeated Columns read_filter = 2;
+    repeated string col_set = 3;
     optional uint32 limit = 4;
 }
 
