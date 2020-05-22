@@ -874,29 +874,29 @@ public class TableSyncClientImpl implements TableSyncClient {
 
     @Override
     public KvIterator scan(int tid, int pid, String key, String idxName, int limit) throws TimeoutException, TabletException {
-        return scan(tid, pid, key, idxName, 0, 0, limit);
+        return scan(tid, pid, key, idxName, 0, 0,limit);
     }
 
     @Override
     public KvIterator scan(String tname, String key, long st, long et) throws TimeoutException, TabletException {
 
-        return scan(tname, key, null, st, et, 0);
+        return scan(tname, key, null, st, et, null,0);
     }
 
     @Override
     public KvIterator scan(String tname, String key, int limit) throws TimeoutException, TabletException {
-        return scan(tname, key, null, 0, 0, limit);
+        return scan(tname, key, null, 0, 0, null, limit);
     }
 
     @Override
     public KvIterator scan(String tname, String key, long st, long et, int limit) throws TimeoutException, TabletException {
-        return scan(tname, key, null, st, et, limit);
+        return scan(tname, key, null, st, et, null, limit);
     }
 
     @Override
     public KvIterator scan(String tname, String key, String idxName, long st, long et)
             throws TimeoutException, TabletException {
-        return scan(tname, key, idxName, st, et, 0);
+        return scan(tname, key, idxName, st, et, null,0);
     }
 
     @Override
@@ -905,18 +905,12 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (th == null) {
             throw new TabletException("no table with name " + tname);
         }
-        key = validateKey(key);
-        int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
-        ScanOption scanOption = new ScanOption();
-        scanOption.setLimit(limit);
-        scanOption.setIdxName(idxName);
-        scanOption.setRemoveDuplicateRecordByTime(client.getConfig().isRemoveDuplicateByTime());
-        return scan(th.getTableInfo().getTid(), pid, key, st, et, th, scanOption);
+        return scan(tname, key, idxName, st, et, null, limit);
     }
 
     @Override
     public KvIterator scan(String tname, String key, String idxName, int limit) throws TimeoutException, TabletException {
-        return scan(tname, key, idxName, 0, 0, limit);
+        return scan(tname, key, idxName, 0, 0, null, limit);
     }
 
     @Override
@@ -927,12 +921,11 @@ public class TableSyncClientImpl implements TableSyncClient {
             throw new TabletException("no table with name " + tname);
         }
         key = validateKey(key);
-        int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
         ScanOption scanOption = new ScanOption();
         scanOption.setLimit(limit);
         scanOption.setIdxName(idxName);
         scanOption.setTsName(tsName);
-        return scan(th.getTableInfo().getTid(), pid, key, st, et, th, scanOption);
+        return scan(tname, key, st, et, scanOption);
     }
 
     @Override
@@ -950,12 +943,7 @@ public class TableSyncClientImpl implements TableSyncClient {
             throw new TabletException("check key number failed");
         }
         String combinedKey = TableClientCommon.getCombinedKey(keyArr, client.getConfig().isHandleNull());
-        int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
-        ScanOption scanOption = new ScanOption();
-        scanOption.setLimit(limit);
-        scanOption.setIdxName(idxName);
-        scanOption.setTsName(tsName);
-        return scan(th.getTableInfo().getTid(), pid, combinedKey,  st, et,th, scanOption);
+        return scan(tname, combinedKey, idxName, st, et, tsName, limit);
     }
 
     @Override
@@ -971,12 +959,7 @@ public class TableSyncClientImpl implements TableSyncClient {
             throw new TabletException("no index name in table" + idxName);
         }
         String combinedKey = TableClientCommon.getCombinedKey(keyMap, list, client.getConfig().isHandleNull());
-        int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
-        ScanOption scanOption = new ScanOption();
-        scanOption.setIdxName(idxName);
-        scanOption.setLimit(limit);
-        scanOption.setTsName(tsName);
-        return scan(th.getTableInfo().getTid(), pid, combinedKey, st, et, th, scanOption);
+        return scan(tname, combinedKey, idxName, st, et, tsName, limit);
     }
 
     @Override
