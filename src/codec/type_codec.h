@@ -38,9 +38,6 @@ struct String {
     uint32_t size;
     char* data;
 };
-struct Timestamp {
-    uint64_t ts;
-};
 
 struct ListRef {
     int8_t* list;

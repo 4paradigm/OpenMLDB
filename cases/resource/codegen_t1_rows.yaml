@@ -1,0 +1,9 @@
+table:
+  name: t1
+  schema: col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string, std_ts:timestamp
+  data: |
+    1, 2, 3.1, 4.1, 5, 1, 1590115420000
+    11, 22, 33.1, 44.1, 55, 22, 1590115430000
+    111, 222, 333.1, 444.1, 555, 333, 1590115440000
+    1111, 2222, 3333.1, 4444.1, 5555, 4444, 1590115450000
+    11111, 22222, 33333.1, 44444.1, 55555, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa, 1590115460000

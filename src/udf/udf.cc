@@ -206,6 +206,8 @@ void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
               reinterpret_cast<void *>(&v1::sum_list<int32_t>));
     AddSymbol(jd, mi, "sum_list_int64",
               reinterpret_cast<void *>(&v1::sum_list<int64_t>));
+    AddSymbol(jd, mi, "sum_list_timestamp",
+              reinterpret_cast<void *>(&v1::sum_list<int64_t>));
     AddSymbol(jd, mi, "sum_list_double",
               reinterpret_cast<void *>(&v1::sum_list<double>));
     AddSymbol(jd, mi, "sum_list_float",
@@ -332,6 +334,7 @@ void RegisterUDFToModule(::llvm::Module *m) {
     number_types.push_back(std::make_pair(fesql::node::kInt16, i16_ty));
     number_types.push_back(std::make_pair(fesql::node::kInt32, i32_ty));
     number_types.push_back(std::make_pair(fesql::node::kInt64, i64_ty));
+    number_types.push_back(std::make_pair(fesql::node::kTimestamp, i64_ty));
     number_types.push_back(std::make_pair(fesql::node::kFloat, float_ty));
     number_types.push_back(std::make_pair(fesql::node::kDouble, double_ty));
 

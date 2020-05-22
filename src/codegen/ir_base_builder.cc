@@ -130,6 +130,10 @@ bool GetLLVMColumnSize(const ::fesql::node::DataType& v_type, uint32_t* size) {
             *size = sizeof(::fesql::codec::StringColumnImpl);
             break;
         }
+        case ::fesql::node::kTimestamp: {
+            *size = sizeof(::fesql::codec::ColumnImpl<int64_t>);
+            break;
+        }
         default: {
             LOG(WARNING) << "not supported type "
                          << ::fesql::node::DataTypeName(v_type);
@@ -158,6 +162,10 @@ bool GetLLVMListType(::llvm::Module* m,
         }
         case ::fesql::node::kInt64: {
             name = "fe.list_ref_int64";
+            break;
+        }
+        case ::fesql::node::kTimestamp: {
+            name = "fe.list_ref_timestamp";
             break;
         }
         case ::fesql::node::kFloat: {
@@ -227,6 +235,10 @@ bool GetLLVMIteratorType(::llvm::Module* m,
             name = "fe.iterator_ref_string";
             break;
         }
+        case ::fesql::node::kTimestamp: {
+            name = "fe.iterator_ref_timestamp";
+            break;
+        }
         default: {
             LOG(WARNING) << "not supported list<type> when type is  "
                          << ::fesql::node::DataTypeName(v_type);
@@ -259,7 +271,8 @@ bool GetLLVMType(::llvm::Module* m, const fesql::node::TypeNode* data_type,
         case fesql::node::kList: {
             if (data_type->generics_.size() != 1) {
                 LOG(WARNING) << "fail to convert data type: list generic types "
-                                "number is " << data_type->generics_.size();
+                                "number is "
+                             << data_type->generics_.size();
                 return false;
             }
             ::llvm::Type* list_type = nullptr;
@@ -377,6 +390,9 @@ bool GetFullType(::llvm::Type* type, ::fesql::node::TypeNode* type_node) {
                 return true;
             } else if (type->getStructName().equals("fe.list_ref_int64")) {
                 type_node->generics_.push_back(fesql::node::kInt64);
+                return true;
+            } else if (type->getStructName().equals("fe.list_ref_timestamp")) {
+                type_node->generics_.push_back(fesql::node::kTimestamp);
                 return true;
             } else if (type->getStructName().equals("fe.list_ref_float")) {
                 type_node->generics_.push_back(fesql::node::kFloat);

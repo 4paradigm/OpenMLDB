@@ -343,6 +343,42 @@ bool SQLCase::CreateSQLCasesFromYaml(const std::string& yaml_path,
         return CreateSQLCasesFromYaml(yaml_path, sql_cases, filter_modes);
     }
 }
+bool SQLCase::CreateTableInfoFromYaml(const std::string& yaml_path,
+                                      TableInfo* table_info) {
+    LOG(INFO) << "Resource path: " << yaml_path;
+    if (!boost::filesystem::is_regular_file(yaml_path)) {
+        LOG(WARNING) << yaml_path << ": No such file";
+        return false;
+    }
+    YAML::Node table_config = YAML::LoadFile(yaml_path);
+    if (table_config["table"]) {
+        if (!CreateTableInfoFromYamlNode(table_config["table"], table_info)) {
+            return false;
+        }
+    } else {
+        LOG(WARNING) << "SQL Input Resource is invalid";
+        return false;
+    }
+    return true;
+}
+
+bool SQLCase::LoadSchemaAndRowsFromYaml(const std::string& resource_path,
+                                        type::TableDef& table,
+                                        std::vector<fesql::codec::Row>& rows) {
+    TableInfo table_info;
+    if (!CreateTableInfoFromYaml(resource_path, &table_info)) {
+        return false;
+    }
+    if (!SQLCase::ExtractTableDef(table_info.schema_, table_info.index_,
+                                  table)) {
+        return false;
+    }
+    table.set_name(table_info.name_);
+    if (!SQLCase::ExtractRows(table.columns(), table_info.data_, rows)) {
+        return false;
+    }
+    return true;
+}
 bool SQLCase::CreateSQLCasesFromYaml(
     const std::string& yaml_path, std::vector<SQLCase>& sql_cases,
     const std::vector<std::string>& filter_modes) {
@@ -428,25 +464,13 @@ bool SQLCase::CreateSQLCasesFromYaml(
                         boost::trim(resource);
                         std::string resource_path =
                             FindFesqlDirPath() + "/" + resource;
-                        LOG(INFO) << "Resource path: " << resource_path;
-                        if (!boost::filesystem::is_regular_file(
-                                resource_path)) {
-                            LOG(WARNING) << resource_path << ": No such file";
+                        if (!CreateTableInfoFromYaml(resource_path, &table)) {
                             return false;
                         }
-                        YAML::Node table_config = YAML::LoadFile(resource_path);
-                        if (table_config["table"]) {
-                            if (!CreateTableInfoFromYamlNode(
-                                    table_config["table"], &table)) {
-                                return false;
-                            }
-                        } else {
-                            LOG(WARNING) << "SQL Input Resource is invalid";
+                    } else {
+                        if (!CreateTableInfoFromYamlNode(schema_data, &table)) {
                             return false;
                         }
-                    }
-                    if (!CreateTableInfoFromYamlNode(schema_data, &table)) {
-                        return false;
                     }
                     sql_case.inputs_.push_back(table);
                 }
@@ -465,20 +489,15 @@ bool SQLCase::CreateSQLCasesFromYaml(
                         LOG(WARNING) << resource_path << ": No such file";
                         return false;
                     }
-                    YAML::Node table_config = YAML::LoadFile(resource_path);
-                    if (table_config["table"]) {
-                        if (!CreateTableInfoFromYamlNode(table_config["table"],
-                                                         &sql_case.output_)) {
-                            return false;
-                        }
-                    } else {
-                        LOG(WARNING) << "SQL Input Resource is invalid";
+                    if (!CreateTableInfoFromYaml(resource_path,
+                                                 &sql_case.output_)) {
                         return false;
                     }
-                }
-                if (!CreateTableInfoFromYamlNode(schema_data,
-                                                 &sql_case.output_)) {
-                    return false;
+                } else {
+                    if (!CreateTableInfoFromYamlNode(schema_data,
+                                                     &sql_case.output_)) {
+                        return false;
+                    }
                 }
             }
             sql_cases.push_back(sql_case);
@@ -492,8 +511,6 @@ bool SQLCase::CreateSQLCasesFromYaml(
 }
 std::string FindFesqlDirPath() {
     boost::filesystem::path current_path(boost::filesystem::current_path());
-    std::cout << "Current path is : " << current_path << std::endl;
-
     boost::filesystem::path fesql_path;
 
     while (current_path.has_parent_path()) {

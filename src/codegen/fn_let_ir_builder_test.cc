@@ -19,6 +19,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "case/sql_case.h"
 #include "codec/fe_row_codec.h"
 #include "codec/list_iterator_codec.h"
 #include "codegen/fn_ir_builder.h"
@@ -41,6 +42,7 @@
 #include "udf/udf.h"
 #include "vm/jit.h"
 #include "vm/sql_compiler.h"
+#include "codegen/codegen_base_test.h"
 
 using namespace llvm;       // NOLINT
 using namespace llvm::orc;  // NOLINT
@@ -78,90 +80,12 @@ node::ProjectListNode* GetPlanNodeList(node::PlanNodeList trees) {
             plan_node->project_list_vec_[0]);
     return pp_node_ptr;
 }
-void GetSchemaT1(::fesql::type::TableDef& table) {  // NOLINT
-    table.set_name("t1");
-    table.set_catalog("db");
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt32);
-        column->set_name("col1");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt16);
-        column->set_name("col2");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kFloat);
-        column->set_name("col3");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kDouble);
-        column->set_name("col4");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt64);
-        column->set_name("col5");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kVarchar);
-        column->set_name("col6");
-    }
-}
-void GetSchemaT2(::fesql::type::TableDef& table) {  // NOLINT
-    table.set_name("t2");
-    table.set_catalog("db");
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kVarchar);
-        column->set_name("str0");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kVarchar);
-        column->set_name("str1");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kFloat);
-        column->set_name("col3");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kDouble);
-        column->set_name("col4");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt16);
-        column->set_name("col2");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt32);
-        column->set_name("col1");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt64);
-        column->set_name("col5");
-    }
-}
+
 class FnLetIRBuilderTest : public ::testing::Test {
  public:
     FnLetIRBuilderTest() {
-        GetSchemaT1(table_);
-        GetSchemaT2(table2_);
     }
     ~FnLetIRBuilderTest() {}
-
- protected:
-    fesql::type::TableDef table_;
-    fesql::type::TableDef table2_;
 };
 
 void AddFunc(const std::string& fn, ::llvm::Module* m) {
@@ -180,213 +104,6 @@ void AddFunc(const std::string& fn, ::llvm::Module* m) {
             fn_ir_builder.Build(dynamic_cast<node::FnNodeFnDef*>(node), status);
         ASSERT_TRUE(ok);
     }
-}
-void BuildWindow(std::vector<Row>& rows,  // NOLINT
-                 int8_t** buf) {
-    ::fesql::type::TableDef table;
-    GetSchemaT1(table);
-
-    {
-        codec::RowBuilder builder(table.columns());
-        std::string str = "1";
-        uint32_t total_size = builder.CalTotalLength(str.size());
-        int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
-
-        builder.SetBuffer(ptr, total_size);
-        builder.AppendInt32(1);
-        builder.AppendInt16(2);
-        builder.AppendFloat(3.1f);
-        builder.AppendDouble(4.1);
-        builder.AppendInt64(5);
-        builder.AppendString(str.c_str(), 1);
-        rows.push_back(Row(ptr, total_size));
-    }
-    {
-        codec::RowBuilder builder(table.columns());
-        std::string str = "22";
-        uint32_t total_size = builder.CalTotalLength(str.size());
-        int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
-        builder.SetBuffer(ptr, total_size);
-        builder.AppendInt32(11);
-        builder.AppendInt16(22);
-        builder.AppendFloat(33.1f);
-        builder.AppendDouble(44.1);
-        builder.AppendInt64(55);
-        builder.AppendString(str.c_str(), str.size());
-        rows.push_back(Row(ptr, total_size));
-    }
-    {
-        codec::RowBuilder builder(table.columns());
-        std::string str = "333";
-        uint32_t total_size = builder.CalTotalLength(str.size());
-        int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
-        builder.SetBuffer(ptr, total_size);
-        builder.AppendInt32(111);
-        builder.AppendInt16(222);
-        builder.AppendFloat(333.1f);
-        builder.AppendDouble(444.1);
-        builder.AppendInt64(555);
-        builder.AppendString(str.c_str(), str.size());
-        rows.push_back(Row(ptr, total_size));
-    }
-    {
-        codec::RowBuilder builder(table.columns());
-        std::string str = "4444";
-        uint32_t total_size = builder.CalTotalLength(str.size());
-        int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
-        builder.SetBuffer(ptr, total_size);
-        builder.AppendInt32(1111);
-        builder.AppendInt16(2222);
-        builder.AppendFloat(3333.1f);
-        builder.AppendDouble(4444.1);
-        builder.AppendInt64(5555);
-        builder.AppendString("4444", str.size());
-        rows.push_back(Row(ptr, total_size));
-    }
-    {
-        codec::RowBuilder builder(table.columns());
-        std::string str =
-            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-            "a";
-        uint32_t total_size = builder.CalTotalLength(str.size());
-        int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
-        builder.SetBuffer(ptr, total_size);
-        builder.AppendInt32(11111);
-        builder.AppendInt16(22222);
-        builder.AppendFloat(33333.1f);
-        builder.AppendDouble(44444.1);
-        builder.AppendInt64(55555);
-        builder.AppendString(str.c_str(), str.size());
-        rows.push_back(Row(ptr, total_size));
-    }
-
-    ArrayListV<Row>* w = new ArrayListV<Row>(&rows);
-
-    *buf = reinterpret_cast<int8_t*>(w);
-}
-
-void BuildWindow2(std::vector<Row>& rows,  // NOLINT
-                  int8_t** buf) {
-    ::fesql::type::TableDef table;
-
-    GetSchemaT2(table);
-    {
-        codec::RowBuilder builder(table.columns());
-        std::string str = "A";
-        std::string str0 = "0";
-        uint32_t total_size = builder.CalTotalLength(str.size() + str0.size());
-        int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
-
-        builder.SetBuffer(ptr, total_size);
-        builder.AppendString(str0.c_str(), 1);
-        builder.AppendString(str.c_str(), 1);
-        builder.AppendFloat(1.1f);
-        builder.AppendDouble(11.1);
-        builder.AppendInt16(5);
-        builder.AppendInt32(1);
-        builder.AppendInt64(1);
-        rows.push_back(Row(ptr, total_size));
-    }
-    {
-        codec::RowBuilder builder(table.columns());
-        std::string str = "BB";
-        std::string str0 = "0";
-        uint32_t total_size = builder.CalTotalLength(str.size() + str0.size());
-        int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
-        builder.SetBuffer(ptr, total_size);
-        builder.AppendString(str0.c_str(), 1);
-        builder.AppendString(str.c_str(), str.size());
-        builder.AppendFloat(2.2f);
-        builder.AppendDouble(22.2);
-        builder.AppendInt16(5);
-        builder.AppendInt32(2);
-        builder.AppendInt64(2);
-        rows.push_back(Row(ptr, total_size));
-    }
-    {
-        codec::RowBuilder builder(table.columns());
-        std::string str = "CCC";
-        std::string str0 = "1";
-        uint32_t total_size = builder.CalTotalLength(str.size() + str0.size());
-        int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
-        builder.SetBuffer(ptr, total_size);
-        builder.AppendString(str0.c_str(), 1);
-        builder.AppendString(str.c_str(), str.size());
-        builder.AppendFloat(3.3f);
-        builder.AppendDouble(33.3);
-        builder.AppendInt16(55);
-        builder.AppendInt32(3);
-        builder.AppendInt64(1);
-        rows.push_back(Row(ptr, total_size));
-    }
-    {
-        codec::RowBuilder builder(table.columns());
-        std::string str = "DDDD";
-        std::string str0 = "1";
-        uint32_t total_size = builder.CalTotalLength(str.size() + str0.size());
-        int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
-        builder.SetBuffer(ptr, total_size);
-        builder.AppendString(str0.c_str(), 1);
-        builder.AppendString(str.c_str(), str.size());
-        builder.AppendFloat(4.4f);
-        builder.AppendDouble(44.4);
-        builder.AppendInt16(55);
-        builder.AppendInt32(4);
-        builder.AppendInt64(2);
-        rows.push_back(Row(ptr, total_size));
-    }
-    {
-        codec::RowBuilder builder(table.columns());
-        std::string str = "EEEEE";
-        std::string str0 = "2";
-        uint32_t total_size = builder.CalTotalLength(str.size() + str0.size());
-        int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
-        builder.SetBuffer(ptr, total_size);
-        builder.AppendString(str0.c_str(), 1);
-        builder.AppendString(str.c_str(), str.size());
-        builder.AppendFloat(5.5f);
-        builder.AppendDouble(55.5);
-        builder.AppendInt16(55);
-        builder.AppendInt32(5);
-        builder.AppendInt64(3);
-        rows.push_back(Row(ptr, total_size));
-    }
-    ArrayListV<Row>* w = new ArrayListV<Row>(&rows);
-
-    *buf = reinterpret_cast<int8_t*>(w);
-}
-void BuildT1Buf(int8_t** buf, uint32_t* size) {
-    ::fesql::type::TableDef table;
-    GetSchemaT1(table);
-    codec::RowBuilder builder(table.columns());
-    uint32_t total_size = builder.CalTotalLength(1);
-    int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
-    builder.SetBuffer(ptr, total_size);
-    builder.AppendInt32(32);
-    builder.AppendInt16(16);
-    builder.AppendFloat(2.1f);
-    builder.AppendDouble(3.1);
-    builder.AppendInt64(64);
-    builder.AppendString("1", 1);
-    *buf = ptr;
-    *size = total_size;
-}
-void BuildT2Buf(int8_t** buf, uint32_t* size) {
-    ::fesql::type::TableDef table;
-    GetSchemaT2(table);
-    codec::RowBuilder builder(table.columns());
-    uint32_t total_size = builder.CalTotalLength(2);
-    int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
-    builder.SetBuffer(ptr, total_size);
-    builder.AppendString("A", 1);
-    builder.AppendString("B", 1);
-    builder.AppendFloat(22.1);
-    builder.AppendDouble(33.1);
-    builder.AppendInt16(160);
-    builder.AppendInt32(32);
-    builder.AppendInt64(640);
-    *buf = ptr;
-    *size = total_size;
 }
 
 void CheckFnLetBuilder(::fesql::node::NodeManager* manager,
@@ -463,9 +180,11 @@ void CheckFnLetBuilder(::fesql::node::NodeManager* manager,
 TEST_F(FnLetIRBuilderTest, test_primary) {
     // Create an LLJIT instance.
     std::string sql = "SELECT col1, col6, 1.0, \"hello\"  FROM t1 limit 10;";
+
     int8_t* buf = NULL;
     uint32_t size = 0;
-    BuildT1Buf(&buf, &size);
+    fesql::type::TableDef table1;
+    BuildT1Buf(table1, &buf, &size);
     int8_t* output = NULL;
     int8_t* row_ptrs[1] = {buf};
     int8_t* window_ptr = nullptr;
@@ -473,7 +192,7 @@ TEST_F(FnLetIRBuilderTest, test_primary) {
     vm::Schema schema;
     vm::ColumnSourceList column_sources;
     node::NodeManager manager;
-    CheckFnLetBuilder(&manager, table_, "", sql, row_ptrs, window_ptr,
+    CheckFnLetBuilder(&manager, table1, "", sql, row_ptrs, window_ptr,
                       row_sizes, &schema, &column_sources, &output);
     uint32_t out_size = *reinterpret_cast<uint32_t*>(output + 2);
     ASSERT_EQ(4, schema.size());
@@ -513,15 +232,15 @@ TEST_F(FnLetIRBuilderTest, test_multi_row_simple_query) {
 
     // Create the add1 function entry and insert this entry into module M. The
     // function will have a return type of "int" and take an argument of "int".
-    vm::SchemaSourceList name_schema_list;
-    name_schema_list.AddSchemaSource(table_.name(), &table_.columns());
-    name_schema_list.AddSchemaSource(table2_.name(), &table2_.columns());
+    fesql::type::TableDef table1;
+    fesql::type::TableDef table2;
+
     int8_t* buf = NULL;
     int8_t* buf2 = NULL;
     uint32_t size = 0;
     uint32_t size2 = 0;
-    BuildT1Buf(&buf, &size);
-    BuildT2Buf(&buf2, &size2);
+    BuildT1Buf(table1, &buf, &size);
+    BuildT2Buf(table2, &buf2, &size2);
     int8_t* output = NULL;
 
     int8_t* row_ptrs[2] = {buf, buf2};
@@ -531,6 +250,10 @@ TEST_F(FnLetIRBuilderTest, test_multi_row_simple_query) {
     vm::Schema schema;
     vm::ColumnSourceList column_sources;
     node::NodeManager manager;
+
+    vm::SchemaSourceList name_schema_list;
+    name_schema_list.AddSchemaSource(table1.name(), &table1.columns());
+    name_schema_list.AddSchemaSource(table2.name(), &table2.columns());
     CheckFnLetBuilder(&manager, name_schema_list, "", sql, row_ptrs, window_ptr,
                       row_sizes, &schema, &column_sources, &output);
 
@@ -572,14 +295,15 @@ TEST_F(FnLetIRBuilderTest, test_udf) {
     const std::string sql = "SELECT test(col1,col1), col6 FROM t1 limit 10;";
     int8_t* buf = NULL;
     uint32_t size = 0;
-    BuildT1Buf(&buf, &size);
+    type::TableDef table1;
+    BuildT1Buf(table1, &buf, &size);
     int8_t* output = NULL;
     int8_t* row_ptrs[1] = {buf};
     int8_t* window_ptr = nullptr;
     int32_t row_sizes[1] = {static_cast<int32_t>(size)};
     vm::Schema schema;
     node::NodeManager manager;
-    CheckFnLetBuilder(&manager, table_, udf_sql, sql, row_ptrs, window_ptr,
+    CheckFnLetBuilder(&manager, table1, udf_sql, sql, row_ptrs, window_ptr,
                       row_sizes, &schema, &output);
     ASSERT_EQ(2, schema.size());
     uint32_t out_size = *reinterpret_cast<uint32_t*>(output + 2);
@@ -595,14 +319,15 @@ TEST_F(FnLetIRBuilderTest, test_simple_project) {
     std::string sql = "SELECT col1 FROM t1 limit 10;";
     int8_t* ptr = NULL;
     uint32_t size = 0;
-    BuildT1Buf(&ptr, &size);
+    type::TableDef table1;
+    BuildT1Buf(table1, &ptr, &size);
     int8_t* output = NULL;
     int8_t* row_ptrs[1] = {ptr};
     int8_t* window_ptr = nullptr;
     int32_t row_sizes[1] = {static_cast<int32_t>(size)};
     vm::Schema schema;
     node::NodeManager manager;
-    CheckFnLetBuilder(&manager, table_, "", sql, row_ptrs, window_ptr,
+    CheckFnLetBuilder(&manager, table1, "", sql, row_ptrs, window_ptr,
                       row_sizes, &schema, &output);
     ASSERT_EQ(1, schema.size());
     ASSERT_EQ(11u, *reinterpret_cast<uint32_t*>(output + 2));
@@ -614,14 +339,15 @@ TEST_F(FnLetIRBuilderTest, test_extern_udf_project) {
     std::string sql = "SELECT inc_int32(col1) FROM t1 limit 10;";
     int8_t* ptr = NULL;
     uint32_t size = 0;
-    BuildT1Buf(&ptr, &size);
+    type::TableDef table1;
+    BuildT1Buf(table1, &ptr, &size);
     int8_t* output = NULL;
     int8_t* row_ptrs[1] = {ptr};
     int8_t* window_ptr = nullptr;
     int32_t row_sizes[1] = {static_cast<int32_t>(size)};
     vm::Schema schema;
     node::NodeManager manager;
-    CheckFnLetBuilder(&manager, table_, "", sql, row_ptrs, window_ptr,
+    CheckFnLetBuilder(&manager, table1, "", sql, row_ptrs, window_ptr,
                       row_sizes, &schema, &output);
     ASSERT_EQ(1, schema.size());
     ASSERT_EQ(11u, *reinterpret_cast<uint32_t*>(output + 2));
@@ -643,14 +369,15 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_sum_project) {
 
     int8_t* ptr = NULL;
     std::vector<Row> window;
-    BuildWindow(window, &ptr);
+    type::TableDef table1;
+    BuildWindow(table1, window, &ptr);
     int8_t* output = NULL;
     int8_t* row_ptrs[1] = {window.back().buf()};
     int8_t* window_ptr = ptr;
     int32_t row_sizes[1] = {static_cast<int32_t>(window.back().size())};
     vm::Schema schema;
     node::NodeManager manager;
-    CheckFnLetBuilder(&manager, table_, "", sql, row_ptrs, window_ptr,
+    CheckFnLetBuilder(&manager, table1, "", sql, row_ptrs, window_ptr,
                       row_sizes, &schema, &output);
     ASSERT_EQ(1u + 11u + 111u + 1111u + 11111u,
               *reinterpret_cast<uint32_t*>(output + 7));
@@ -681,14 +408,15 @@ TEST_F(FnLetIRBuilderTest, test_simple_window_project_mix) {
 
     int8_t* ptr = NULL;
     std::vector<Row> window;
-    BuildWindow(window, &ptr);
+    type::TableDef table1;
+    BuildWindow(table1, window, &ptr);
     int8_t* output = NULL;
     int8_t* row_ptrs[1] = {window.back().buf()};
     int8_t* window_ptr = ptr;
     int32_t row_sizes[1] = {static_cast<int32_t>(window.back().size())};
     vm::Schema schema;
     node::NodeManager manager;
-    CheckFnLetBuilder(&manager, table_, "", sql, row_ptrs, window_ptr,
+    CheckFnLetBuilder(&manager, table1, "", sql, row_ptrs, window_ptr,
                       row_sizes, &schema, &output);
     ASSERT_EQ(11111u, *reinterpret_cast<uint32_t*>(output + 7));
     ASSERT_EQ(1u + 11u + 111u + 1111u + 11111u,
@@ -724,11 +452,13 @@ TEST_F(FnLetIRBuilderTest, test_join_window_project_mix) {
 
     int8_t* ptr = NULL;
     std::vector<Row> window;
-    BuildWindow(window, &ptr);
+    type::TableDef table1;
+    BuildWindow(table1, window, &ptr);
 
     int8_t* ptr2 = NULL;
     std::vector<Row> window2;
-    BuildWindow2(window2, &ptr2);
+    type::TableDef table2;
+    BuildWindow2(table2, window2, &ptr2);
 
     ASSERT_EQ(window.size(), window2.size());
     std::vector<Row> window_t12;
@@ -745,8 +475,8 @@ TEST_F(FnLetIRBuilderTest, test_join_window_project_mix) {
     vm::Schema schema;
 
     vm::SchemaSourceList name_schema_list;
-    name_schema_list.AddSchemaSource(table_.name(), &table_.columns());
-    name_schema_list.AddSchemaSource(table2_.name(), &table2_.columns());
+    name_schema_list.AddSchemaSource(table1.name(), &table1.columns());
+    name_schema_list.AddSchemaSource(table2.name(), &table2.columns());
 
     vm::ColumnSourceList column_sources;
     node::NodeManager manager;
@@ -820,14 +550,15 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_min_project) {
         "PRECEDING AND 3 FOLLOWING) limit 10;";
     int8_t* ptr = NULL;
     std::vector<Row> window;
-    BuildWindow(window, &ptr);
+    type::TableDef table1;
+    BuildWindow(table1, window, &ptr);
     int8_t* output = NULL;
     int8_t* row_ptrs[1] = {window.back().buf()};
     int8_t* window_ptr = ptr;
     int32_t row_sizes[1] = {static_cast<int32_t>(window.back().size())};
     vm::Schema schema;
     node::NodeManager manager;
-    CheckFnLetBuilder(&manager, table_, "", sql, row_ptrs, window_ptr,
+    CheckFnLetBuilder(&manager, table1, "", sql, row_ptrs, window_ptr,
                       row_sizes, &schema, &output);
     ASSERT_EQ(7u + 4u + 4u + 8u + 2u + 8u,
               *reinterpret_cast<uint32_t*>(output + 2));
@@ -852,14 +583,15 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_max_project) {
 
     int8_t* ptr = NULL;
     std::vector<Row> window;
-    BuildWindow(window, &ptr);
+    type::TableDef table1;
+    BuildWindow(table1, window, &ptr);
     int8_t* output = NULL;
     int8_t* row_ptrs[1] = {window.back().buf()};
     int8_t* window_ptr = ptr;
     int32_t row_sizes[1] = {static_cast<int32_t>(window.back().size())};
     vm::Schema schema;
     node::NodeManager manager;
-    CheckFnLetBuilder(&manager, table_, "", sql, row_ptrs, window_ptr,
+    CheckFnLetBuilder(&manager, table1, "", sql, row_ptrs, window_ptr,
                       row_sizes, &schema, &output);
     ASSERT_EQ(7u + 4u + 4u + 8u + 2u + 8u,
               *reinterpret_cast<uint32_t*>(output + 2));
@@ -902,14 +634,15 @@ TEST_F(FnLetIRBuilderTest, test_col_at_udf) {
 
     int8_t* ptr = NULL;
     std::vector<Row> window;
-    BuildWindow(window, &ptr);
+    type::TableDef table1;
+    BuildWindow(table1, window, &ptr);
     int8_t* output = NULL;
     int8_t* row_ptrs[1] = {window.back().buf()};
     int8_t* window_ptr = ptr;
     int32_t row_sizes[1] = {static_cast<int32_t>(window.back().size())};
     vm::Schema schema;
     node::NodeManager manager;
-    CheckFnLetBuilder(&manager, table_, udf_str, sql, row_ptrs, window_ptr,
+    CheckFnLetBuilder(&manager, table1, udf_str, sql, row_ptrs, window_ptr,
                       row_sizes, &schema, &output);
     ASSERT_EQ(3, schema.size());
     ASSERT_EQ(7u + 4u + 4u + 4u, *reinterpret_cast<uint32_t*>(output + 2));

@@ -545,7 +545,8 @@ void RunListIteratorNextCase(V expected, const ::fesql::type::Type& type,
 TEST_F(ListIRBuilderTest, list_int16_at_test) {
     int8_t* ptr = NULL;
     std::vector<Row> rows;
-    BuildWindow2(rows, &ptr);
+    type::TableDef table;
+    BuildWindow(table, rows, &ptr);
     RunListAtCase<int16_t>(2, ::fesql::type::kInt16, "col2", ptr, 0);
     RunListAtCase<int16_t>(22, ::fesql::type::kInt16, "col2", ptr, 1);
     RunListAtCase<int16_t>(22222, ::fesql::type::kInt16, "col2", ptr, 4);
@@ -557,7 +558,8 @@ TEST_F(ListIRBuilderTest, list_int16_at_test) {
 TEST_F(ListIRBuilderTest, list_int32_at_test) {
     int8_t* ptr = NULL;
     std::vector<Row> rows;
-    BuildWindow2(rows, &ptr);
+    type::TableDef table;
+    BuildWindow(table, rows, &ptr);
     RunListAtCase<int32_t>(1, ::fesql::type::kInt32, "col1", ptr, 0);
     RunListAtCase<int32_t>(11, ::fesql::type::kInt32, "col1", ptr, 1);
     RunListAtCase<int32_t>(11111, ::fesql::type::kInt32, "col1", ptr, 4);
@@ -569,7 +571,8 @@ TEST_F(ListIRBuilderTest, list_int32_at_test) {
 TEST_F(ListIRBuilderTest, list_int64_at_test) {
     int8_t* ptr = NULL;
     std::vector<Row> rows;
-    BuildWindow2(rows, &ptr);
+    type::TableDef table;
+    BuildWindow(table, rows, &ptr);
     RunListAtCase<int64_t>(5, ::fesql::type::kInt32, "col5", ptr, 0);
     RunListAtCase<int64_t>(55, ::fesql::type::kInt32, "col5", ptr, 1);
     RunListAtCase<int64_t>(55555, ::fesql::type::kInt32, "col5", ptr, 4);
@@ -580,7 +583,8 @@ TEST_F(ListIRBuilderTest, list_int64_at_test) {
 TEST_F(ListIRBuilderTest, list_float_at_test) {
     int8_t* ptr = NULL;
     std::vector<Row> rows;
-    BuildWindow2(rows, &ptr);
+    type::TableDef table;
+    BuildWindow(table, rows, &ptr);
     RunListAtCase<float>(3.1f, ::fesql::type::kFloat, "col3", ptr, 0);
     RunListAtCase<float>(33.1f, ::fesql::type::kFloat, "col3", ptr, 1);
     free(ptr);
@@ -589,7 +593,8 @@ TEST_F(ListIRBuilderTest, list_float_at_test) {
 TEST_F(ListIRBuilderTest, list_double_at_test) {
     int8_t* ptr = NULL;
     std::vector<Row> rows;
-    BuildWindow2(rows, &ptr);
+    type::TableDef table;
+    BuildWindow(table, rows, &ptr);
     RunListAtCase<double>(4.1, ::fesql::type::kDouble, "col4", ptr, 0);
     RunListAtCase<double>(44.1, ::fesql::type::kDouble, "col4", ptr, 1);
     free(ptr);
@@ -609,7 +614,8 @@ TEST_F(ListIRBuilderTest, list_double_at_test) {
 TEST_F(ListIRBuilderTest, list_int32_iterator_sum_test) {
     int8_t* ptr = NULL;
     std::vector<Row> rows;
-    BuildWindow2(rows, &ptr);
+    type::TableDef table;
+    BuildWindow(table, rows, &ptr);
     RunListIteratorCase<int32_t>(1 + 11 + 111 + 1111 + 11111,
                                  ::fesql::type::kInt32, "col1", ptr);
     free(ptr);
@@ -618,7 +624,8 @@ TEST_F(ListIRBuilderTest, list_int32_iterator_sum_test) {
 TEST_F(ListIRBuilderTest, list_int16_iterator_sum_test) {
     int8_t* ptr = NULL;
     std::vector<Row> rows;
-    BuildWindow2(rows, &ptr);
+    type::TableDef table;
+    BuildWindow(table, rows, &ptr);
     RunListIteratorCase<int16_t>(2 + 22 + 222 + 2222 + 22222,
                                  ::fesql::type::kInt16, "col2", ptr);
     free(ptr);
@@ -627,7 +634,8 @@ TEST_F(ListIRBuilderTest, list_int16_iterator_sum_test) {
 TEST_F(ListIRBuilderTest, list_int64_iterator_sum_test) {
     int8_t* ptr = NULL;
     std::vector<Row> rows;
-    BuildWindow2(rows, &ptr);
+    type::TableDef table;
+    BuildWindow(table, rows, &ptr);
     RunListIteratorCase<int64_t>(5L + 55L + 555L + 5555L + 55555L,
                                  ::fesql::type::kInt64, "col5", ptr);
     free(ptr);
@@ -636,7 +644,8 @@ TEST_F(ListIRBuilderTest, list_int64_iterator_sum_test) {
 TEST_F(ListIRBuilderTest, list_float_iterator_sum_test) {
     int8_t* ptr = NULL;
     std::vector<Row> rows;
-    BuildWindow2(rows, &ptr);
+    type::TableDef table;
+    BuildWindow(table, rows, &ptr);
     RunListIteratorCase<float>(3.1f + 33.1f + 333.1f + 3333.1f + 33333.1f,
                                ::fesql::type::kFloat, "col3", ptr);
     free(ptr);
@@ -645,7 +654,8 @@ TEST_F(ListIRBuilderTest, list_float_iterator_sum_test) {
 TEST_F(ListIRBuilderTest, list_double_iterator_sum_test) {
     int8_t* ptr = NULL;
     std::vector<Row> rows;
-    BuildWindow2(rows, &ptr);
+    type::TableDef table;
+    BuildWindow(table, rows, &ptr);
     RunListIteratorCase<double>(4.1 + 44.1 + 444.1 + 4444.1 + 44444.1,
                                 ::fesql::type::kDouble, "col4", ptr);
     free(ptr);
@@ -654,7 +664,8 @@ TEST_F(ListIRBuilderTest, list_double_iterator_sum_test) {
 TEST_F(ListIRBuilderTest, list_int32_iterator_next_test) {
     int8_t* ptr = NULL;
     std::vector<Row> rows;
-    BuildWindow2(rows, &ptr);
+    type::TableDef table;
+    BuildWindow(table, rows, &ptr);
     RunListIteratorNextCase<int32_t>(1 + 11 + 111 + 1111 + 11111,
                                      ::fesql::type::kInt16, "col1", ptr);
     free(ptr);
@@ -663,7 +674,8 @@ TEST_F(ListIRBuilderTest, list_int32_iterator_next_test) {
 TEST_F(ListIRBuilderTest, list_int16_iterator_next_test) {
     int8_t* ptr = NULL;
     std::vector<Row> rows;
-    BuildWindow2(rows, &ptr);
+    type::TableDef table;
+    BuildWindow(table, rows, &ptr);
     RunListIteratorNextCase<int16_t>(2 + 22 + 222 + 2222 + 22222,
                                      ::fesql::type::kInt32, "col2", ptr);
     free(ptr);
@@ -672,7 +684,8 @@ TEST_F(ListIRBuilderTest, list_int16_iterator_next_test) {
 TEST_F(ListIRBuilderTest, list_int64_iterator_next_test) {
     int8_t* ptr = NULL;
     std::vector<Row> rows;
-    BuildWindow2(rows, &ptr);
+    type::TableDef table;
+    BuildWindow(table, rows, &ptr);
     RunListIteratorNextCase<int64_t>(5L + 55L + 555L + 5555L + 55555L,
                                      ::fesql::type::kInt64, "col5", ptr);
     free(ptr);
@@ -681,7 +694,8 @@ TEST_F(ListIRBuilderTest, list_int64_iterator_next_test) {
 TEST_F(ListIRBuilderTest, list_float_iterator_next_test) {
     int8_t* ptr = NULL;
     std::vector<Row> rows;
-    BuildWindow2(rows, &ptr);
+    type::TableDef table;
+    BuildWindow(table, rows, &ptr);
     RunListIteratorNextCase<float>(3.1f + 33.1f + 333.1f + 3333.1f + 33333.1f,
                                    ::fesql::type::kFloat, "col3", ptr);
     free(ptr);
@@ -690,7 +704,8 @@ TEST_F(ListIRBuilderTest, list_float_iterator_next_test) {
 TEST_F(ListIRBuilderTest, list_double_iterator_next_test) {
     int8_t* ptr = NULL;
     std::vector<Row> rows;
-    BuildWindow2(rows, &ptr);
+    type::TableDef table;
+    BuildWindow(table, rows, &ptr);
     RunListIteratorNextCase<double>(4.1 + 44.1 + 444.1 + 4444.1 + 44444.1,
                                     ::fesql::type::kDouble, "col4", ptr);
     free(ptr);

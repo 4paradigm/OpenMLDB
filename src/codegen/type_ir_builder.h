@@ -36,10 +36,6 @@ struct String {
     char* data;
 };
 
-struct Timestamp {
-    int64_t ts;
-};
-
 inline const bool ConvertFeSQLType2LLVMType(const node::TypeNode* data_type,
                                             ::llvm::Module* m,  // NOLINT
                                             ::llvm::Type** llvm_type) {

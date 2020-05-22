@@ -12,16 +12,27 @@
 
 #include <cstdint>
 #include <vector>
+#include <string>
 #include "codec/list_iterator_codec.h"
 
 namespace fesql {
 namespace codegen {
 using fesql::codec::Row;
-void BuildBuf(int8_t** buf, uint32_t* size);
-void BuildWindow(std::vector<Row>& rows,  // NOLINT
+
+bool BuildWindowFromResource(const std::string& resource_path,
+                             ::fesql::type::TableDef& table_def,  // NOLINT
+                             std::vector<Row>& rows,              // NOLINT
+                             int8_t** buf);
+bool BuildWindow(::fesql::type::TableDef& table_def,  // NOLINT
+                 std::vector<Row>& rows,              // NOLINT
                  int8_t** buf);
-void BuildWindow2(std::vector<Row>& rows,  // NOLINT
+bool BuildWindow2(::fesql::type::TableDef& table_def,  // NOLINT
+                  std::vector<Row>& rows,              // NOLINT
                   int8_t** buf);
+bool BuildT1Buf(type::TableDef& table_def, int8_t** buf,  // NOLINT
+                uint32_t* size);                          // NOLINT
+bool BuildT2Buf(type::TableDef& table_def, int8_t** buf,  // NOLINT
+                uint32_t* size);                          // NOLINT
 }  // namespace codegen
 }  // namespace fesql
 

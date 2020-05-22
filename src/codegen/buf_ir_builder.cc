@@ -273,6 +273,7 @@ bool BufNativeEncoderIRBuilder::BuildEncode(::llvm::Value* output_ptr) {
             case ::fesql::type::kInt16:
             case ::fesql::type::kInt32:
             case ::fesql::type::kInt64:
+            case ::fesql::type::kTimestamp:
             case ::fesql::type::kFloat:
             case ::fesql::type::kDouble: {
                 uint32_t offset = offset_vec_.at(idx);
