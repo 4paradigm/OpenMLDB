@@ -218,8 +218,10 @@ class FlatArrayCodec {
                 memcpy(cbuffer, static_cast<const void*>(&second_value), 1);
                 cbuffer += 1;
             }
-            memcpy(cbuffer, static_cast<const void*>(col.buffer.c_str()),
-                   col.buffer.size());
+            if (!col.buffer.empty()) {
+                memcpy(cbuffer, static_cast<const void*>(col.buffer.c_str()),
+                       col.buffer.size());
+            }
             cbuffer += col.buffer.size();
         }
     }
@@ -298,6 +300,13 @@ class FlatArrayIterator {
 
     // Get the column count
     uint16_t Size() { return col_cnt_; }
+
+    bool IsNULL() {
+        if (type_ == kNull || fsize_ == 0) {
+            return true;
+        }
+        return false;
+    }
 
     // Get float can be only invoked once when after Next
     bool GetFloat(float* value) {

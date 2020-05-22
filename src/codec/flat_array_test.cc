@@ -151,6 +151,32 @@ TEST_F(FlatArrayTest, DateEncode) {
     std::cout << ::rtidb::base::DebugString(buffer) << std::endl;
 }
 
+TEST_F(FlatArrayTest, EncodeNULL) {
+    std::string buffer;
+    FlatArrayCodec codec(&buffer, 2);
+    bool ok = codec.Append(1.2f);
+    ASSERT_TRUE(ok);
+    ok = codec.AppendNull();
+    ASSERT_TRUE(ok);
+    codec.Build();
+    ASSERT_EQ(buffer.size(), 9);
+    FlatArrayIterator it(buffer.c_str(), buffer.size(), 2);
+    ASSERT_EQ(kFloat, it.GetType());
+    ASSERT_TRUE(it.Valid());
+    ASSERT_FALSE(it.IsNULL());
+    ASSERT_EQ(2, it.Size());
+    float value = 0;
+    ok = it.GetFloat(&value);
+    ASSERT_TRUE(ok);
+    ASSERT_EQ(1.2f, value);
+    std::cout << value << std::endl;
+    it.Next();
+    ASSERT_TRUE(it.Valid());
+    ASSERT_TRUE(it.IsNULL());
+    it.Next();
+    ASSERT_FALSE(it.Valid());
+}
+
 }  // namespace codec
 }  // namespace rtidb
 

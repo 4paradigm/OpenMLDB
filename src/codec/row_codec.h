@@ -331,6 +331,8 @@ __attribute__((unused)) static void FillTableRow(
             full_schema_size--;
             vrow.emplace_back("");
             continue;
+        } else if (fit.IsNULL()) {
+            col = NONETOKEN;
         } else if (fit.GetType() == ::rtidb::codec::ColType::kString) {
             fit.GetString(&col);
         } else if (fit.GetType() == ::rtidb::codec::ColType::kUInt16) {
