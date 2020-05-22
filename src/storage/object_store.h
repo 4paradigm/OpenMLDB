@@ -34,13 +34,13 @@ class ObjectStore {
     ObjectStore& operator=(const ObjectStore&) = delete;
     ~ObjectStore();
 
-    bool Store(const std::string& key, const std::string& value);
+    bool Store(int64_t key, const std::string& value);
 
-    bool Store(std::string* key, const std::string& value);
+    bool Store(const std::string& value, int64_t* key);
 
-    bool Delete(const std::string& key);
+    bool Delete(int64_t key);
 
-    rtidb::base::Slice Get(const std::string& key);
+    rtidb::base::Slice Get(int64_t key);
 
     ::rtidb::common::StorageMode GetStorageMode() const;
 

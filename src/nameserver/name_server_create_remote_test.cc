@@ -12,7 +12,7 @@
 #include "base/file_util.h"
 #include "client/ns_client.h"
 #include "gtest/gtest.h"
-#include "logging.h" // NOLINT
+#include "base/glog_wapper.h" // NOLINT
 #include "nameserver/name_server_impl.h"
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
@@ -93,17 +93,17 @@ void StartNameServer(brpc::Server& server) { // NOLINT
     }
 }
 
-void StartTablet(brpc::Server& server) { // NOLINT
+void StartTablet(brpc::Server* server) {
     ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
     bool ok = tablet->Init();
     ASSERT_TRUE(ok);
     sleep(2);
     brpc::ServerOptions options1;
-    if (server.AddService(tablet, brpc::SERVER_OWNS_SERVICE) != 0) {
+    if (server->AddService(tablet, brpc::SERVER_OWNS_SERVICE) != 0) {
         PDLOG(WARNING, "Fail to add service");
         exit(1);
     }
-    if (server.Start(FLAGS_endpoint.c_str(), &options1) != 0) {
+    if (server->Start(FLAGS_endpoint.c_str(), &options1) != 0) {
         PDLOG(WARNING, "Fail to start server");
         exit(1);
     }
@@ -130,7 +130,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableRemoteBeforeAddRepCluster) {
     // tablet
     FLAGS_endpoint = "127.0.0.1:9931";
     brpc::Server server1;
-    StartTablet(server1);
+    StartTablet(&server1);
 
     // remote ns and tablet
     // ns
@@ -149,7 +149,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableRemoteBeforeAddRepCluster) {
     // tablet
     FLAGS_endpoint = "127.0.0.1:9932";
     brpc::Server server3;
-    StartTablet(server3);
+    StartTablet(&server3);
     bool ok = false;
     std::string name = "test" + GenRand();
     {
@@ -304,7 +304,7 @@ TEST_F(NameServerImplRemoteTest, CreateAndDropTableRemote) {
     // tablet
     FLAGS_endpoint = "127.0.0.1:9931";
     brpc::Server server1;
-    StartTablet(server1);
+    StartTablet(&server1);
 
     // remote ns and tablet
     // ns
@@ -323,7 +323,7 @@ TEST_F(NameServerImplRemoteTest, CreateAndDropTableRemote) {
     // tablet
     FLAGS_endpoint = "127.0.0.1:9932";
     brpc::Server server3;
-    StartTablet(server3);
+    StartTablet(&server3);
     bool ok = false;
     {
         ::rtidb::nameserver::SwitchModeRequest request;
@@ -468,17 +468,17 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
     FLAGS_endpoint = "127.0.0.1:9931";
     FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
     brpc::Server server1;
-    StartTablet(server1);
+    StartTablet(&server1);
 
     FLAGS_endpoint = "127.0.0.1:9941";
     FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
     brpc::Server server2;
-    StartTablet(server2);
+    StartTablet(&server2);
 
     FLAGS_endpoint = "127.0.0.1:9951";
     FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
     brpc::Server server3;
-    StartTablet(server3);
+    StartTablet(&server3);
 
     // remote ns and tablet
     // ns
@@ -496,12 +496,12 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
     FLAGS_endpoint = "127.0.0.1:9932";
     FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
     brpc::Server server5;
-    StartTablet(server5);
+    StartTablet(&server5);
 
     FLAGS_endpoint = "127.0.0.1:9942";
     FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
     brpc::Server server6;
-    StartTablet(server6);
+    StartTablet(&server6);
 
     bool ok = false;
     {
@@ -727,7 +727,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
     FLAGS_endpoint = "127.0.0.1:9952";
     FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
     brpc::Server server7;
-    StartTablet(server7);
+    StartTablet(&server7);
 
     name = "test" + GenRand();
     {
@@ -936,17 +936,17 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
     FLAGS_endpoint = "127.0.0.1:9931";
     FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
     brpc::Server server1;
-    StartTablet(server1);
+    StartTablet(&server1);
 
     FLAGS_endpoint = "127.0.0.1:9941";
     FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
     brpc::Server server2;
-    StartTablet(server2);
+    StartTablet(&server2);
 
     FLAGS_endpoint = "127.0.0.1:9951";
     FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
     brpc::Server server3;
-    StartTablet(server3);
+    StartTablet(&server3);
 
     // remote ns and tablet
     // ns
@@ -964,12 +964,12 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
     FLAGS_endpoint = "127.0.0.1:9932";
     FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
     brpc::Server server5;
-    StartTablet(server5);
+    StartTablet(&server5);
 
     FLAGS_endpoint = "127.0.0.1:9942";
     FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
     brpc::Server server6;
-    StartTablet(server6);
+    StartTablet(&server6);
 
     bool ok = false;
     {
@@ -1138,7 +1138,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
     FLAGS_endpoint = "127.0.0.1:9952";
     FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
     brpc::Server server7;
-    StartTablet(server7);
+    StartTablet(&server7);
 
     name = "test" + GenRand();
     {
@@ -1283,7 +1283,7 @@ int main(int argc, char** argv) {
     FLAGS_zk_session_timeout = 100000;
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
-    ::baidu::common::SetLogLevel(::baidu::common::INFO);
+    ::rtidb::base::SetLogLevel(INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     // FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
     return RUN_ALL_TESTS();

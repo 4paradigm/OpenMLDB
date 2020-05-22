@@ -6,6 +6,7 @@ import com._4paradigm.rtidb.client.type.DataType;
 import com._4paradigm.rtidb.common.Common;
 import com._4paradigm.rtidb.ns.NS.TableInfo;
 import com._4paradigm.rtidb.type.Type;
+import rtidb.blobserver.BlobServer;
 
 import java.util.*;
 
@@ -23,6 +24,9 @@ public class TableHandler {
     private boolean hasTsCol = false;
     private String autoGenPkName = "";
     private int formatVersion = 0;
+    private boolean isObjectStore = false;
+    private BlobServer blobServer = null;
+    private List<Integer> blobIdxList = new ArrayList<Integer>();
 
     public int getFormatVersion() {
         return formatVersion;
@@ -52,6 +56,9 @@ public class TableHandler {
                     }
                     ncd.setTsCol(cd.getIsTsCol());
                     ncd.setType(ColumnType.valueFrom(cd.getType()));
+                }
+                if (cd.getDataType() == Type.DataType.kBlob) {
+                    blobIdxList.add(i);
                 }
                 schema.add(ncd);
                 if (cd.getAddTsIdx()) {
@@ -155,14 +162,17 @@ public class TableHandler {
                 nameTypeMap.put(ncd.getName(), ncd.getDataType());
             }
         }
-        if (tableInfo.hasTableType() &&
-                tableInfo.getTableType() == Type.TableType.kRelational) {
-            for (int i = 0; i < tableInfo.getColumnKeyList().size(); i++) {
-                Common.ColumnKey columnKey = tableInfo.getColumnKeyList().get(i);
-                if (columnKey.hasIndexType() && columnKey.getIndexType() == Type.IndexType.kAutoGen) {
-                    autoGenPkName = columnKey.getIndexName();
-                    break;
+        if (tableInfo.hasTableType()) {
+            if (tableInfo.getTableType() == Type.TableType.kRelational) {
+                for (int i = 0; i < tableInfo.getColumnKeyList().size(); i++) {
+                    Common.ColumnKey columnKey = tableInfo.getColumnKeyList().get(i);
+                    if (columnKey.hasIndexType() && columnKey.getIndexType() == Type.IndexType.kAutoGen) {
+                        autoGenPkName = columnKey.getColName(0);
+                        break;
+                    }
                 }
+            } else if (tableInfo.getTableType() == Type.TableType.kObjectStore) {
+                this.isObjectStore = true;
             }
         }
     }
@@ -202,8 +212,24 @@ public class TableHandler {
         this.partitions = partitions;
     }
 
+    public void setBlobServer(BlobServer bs) {
+        this.blobServer = bs;
+    }
+
+    public BlobServer getBlobServer() {
+        return this.blobServer;
+    }
+
+    public  boolean IsObjectTable() {
+        return this.isObjectStore;
+    }
+
     public TableInfo getTableInfo() {
         return tableInfo;
+    }
+
+    public List<Integer> getBlobIdxList() {
+        return this.blobIdxList;
     }
 
     public void setTableInfo(TableInfo tableInfo) {

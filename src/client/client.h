@@ -2,86 +2,16 @@
 // Copyright 2020 4paradigm
 //
 #pragma once
-#include <map>
-#include <memory>
+#include "client/client_type.h"
+
 #include <set>
+#include <memory>
+#include <map>
 #include <string>
 #include <vector>
 
-#include "codec/codec.h"
-#include "codec/schema_codec.h"
-#include "client/bs_client.h"
-#include "client/ns_client.h"
-#include "client/tablet_client.h"
-#include "zk/zk_client.h"
 
-const std::set<rtidb::type::DataType> pk_type_set = {
-    rtidb::type::kSmallInt, rtidb::type::kInt, rtidb::type::kBigInt,
-    rtidb::type::kVarchar, rtidb::type::kString};
-
-struct WriteOption {
-    WriteOption() {
-        update_if_equal = true;
-        update_if_exist = true;
-    }
-
-    bool update_if_exist;
-    bool update_if_equal;
-};
-
-struct ReadFilter {
-    std::string column;
-    uint8_t type;
-    std::string value;
-};
-
-struct PartitionInfo {
-    std::string leader;
-    std::vector<std::string> follower;
-};
-
-struct TableHandler {
-    std::shared_ptr<rtidb::nameserver::TableInfo> table_info;
-    std::shared_ptr<
-        google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>>
-        columns;
-    std::vector<PartitionInfo> partition;
-    int pk_index;
-    rtidb::type::DataType pk_type;
-    std::string auto_gen_pk_;
-};
-
-struct GeneralResult {
-    GeneralResult() : code(0), msg() {}
-
-    explicit GeneralResult(int err_num) : code(err_num), msg() {}
-
-    GeneralResult(int err_num, const std::string error_msg)
-        : code(err_num), msg(error_msg) {}
-
-    void SetError(int err_num, const std::string& error_msg) {
-        code = err_num;
-        msg = error_msg;
-    }
-
-    int code;
-    std::string msg;
-};
-
-struct ReadOption {
-    explicit ReadOption(const std::map<std::string, std::string>& indexs) {
-        index.insert(indexs.begin(), indexs.end());
-    }
-
-    ReadOption() : index(), read_filter(), col_set(), limit(0) {}
-
-    ~ReadOption() {}
-
-    std::map<std::string, std::string> index;
-    std::vector<ReadFilter> read_filter;
-    std::set<std::string> col_set;
-    uint64_t limit;
-};
+class RtidbClient;
 
 class ViewResult {
  public:
@@ -106,6 +36,69 @@ class ViewResult {
         int64_t val;
         rv_->GetInt64(idx, &val);
         return val;
+    }
+
+    float GetFloat(uint32_t idx) {
+        float val;
+        rv_->GetFloat(idx, &val);
+        return val;
+    }
+
+    double GetDouble(uint32_t idx) {
+        double val;
+        rv_->GetDouble(idx, &val);
+        return val;
+    }
+
+    double GetFloatNum(uint32_t idx) {
+        double val;
+        auto type = columns_->Get(idx).data_type();
+        if (type == rtidb::type::kFloat) {
+            float f_val;
+            rv_->GetFloat(idx, &f_val);
+            val = f_val;
+        } else {
+            rv_->GetDouble(idx, &val);
+        }
+        return val;
+    }
+
+    std::string GetString(uint32_t idx) {
+        std::string col;
+        char* ch = nullptr;
+        uint32_t length = 0;
+        int ret = rv_->GetString(idx, &ch, &length);
+        if (ret == 0) {
+            col.assign(ch, length);
+        }
+        return col;
+    }
+
+    int64_t GetTimestamp(uint32_t idx) {
+        int64_t val;
+        rv_->GetTimestamp(idx, &val);
+        return val;
+    }
+
+    int32_t GetDate(uint32_t idx) {
+        int32_t val;
+        rv_->GetDate(idx, &val);
+        return val;
+    }
+
+    int64_t GetBlob(uint32_t idx) {
+        rv_->GetBlob(idx, &curr_blob_key_);
+        return curr_blob_key_;
+    }
+
+    BlobInfoResult GetBlobInfo();
+
+    bool IsNULL(uint32_t idx) { return rv_->IsNULL(idx); }
+
+    void SetRv(const std::shared_ptr<TableHandler>& th) {
+        columns_ = th->columns;
+        rv_ = std::make_shared<rtidb::codec::RowView>(*columns_);
+        initialed_ = true;
     }
 
     uint64_t GetSchemaSize() {
@@ -136,146 +129,27 @@ class ViewResult {
         return result;
     }
 
-    float GetFloat(uint32_t idx) {
-        float val;
-        rv_->GetFloat(idx, &val);
-        return val;
-    }
+    ViewResult() : rv_(), columns_(), initialed_(false), curr_blob_key_(),
+                    table_name_(), client_(nullptr) {}
 
-    double GetDouble(uint32_t idx) {
-        double val;
-        rv_->GetDouble(idx, &val);
-        return val;
-    }
-
-    double GetFloatNum(uint32_t idx) {
-        double val;
-        auto type = columns_->Get(idx).data_type();
-        if (type == rtidb::type::kFloat) {
-            float f_val;
-            rv_->GetFloat(idx, &f_val);
-            val = f_val;
-        } else {
-            rv_->GetDouble(idx, &val);
-        }
-        return val;
-    }
-
-    std::string GetString(uint32_t idx) {
-        std::string col = "";
-        char* ch = NULL;
-        uint32_t length = 0;
-        int ret = rv_->GetString(idx, &ch, &length);
-        if (ret == 0) {
-            col.assign(ch, length);
-        }
-        return col;
-    }
-
-    bool IsNULL(uint32_t idx) { return rv_->IsNULL(idx); }
-
-    void SetRv(const std::shared_ptr<TableHandler>& th) {
-        columns_ = th->columns;
-        rv_ = std::make_shared<rtidb::codec::RowView>(*columns_);
-        pk_idx_ = th->pk_index;
-        data_type_ = th->pk_type;
-        initialed_ = true;
-    }
-
-    std::string GetKey() {
-        std::string key = "";
-        switch (data_type_) {
-            case rtidb::type::kSmallInt: {
-                int16_t val = GetInt16(pk_idx_);
-                key = std::to_string(val);
-                break;
-            }
-            case rtidb::type::kInt: {
-                int32_t val = GetInt32(pk_idx_);
-                key = std::to_string(val);
-                break;
-            }
-            case rtidb::type::kBigInt: {
-                int64_t val = GetInt64(pk_idx_);
-                key = std::to_string(val);
-                break;
-            }
-            case rtidb::type::kVarchar:
-            case rtidb::type::kString: {
-                key = GetString(pk_idx_);
-                break;
-            }
-            default:
-                return "";
-        }
-        return key;
-    }
-
-    ViewResult() : rv_(), columns_(), initialed_(false) {}
-
-    ~ViewResult() {}
+    ~ViewResult() = default;
 
     int64_t GetInt(uint32_t idx);
+
+    void SetTable(const std::string& name) { table_name_ = name; }
+
+    void SetClient(RtidbClient* client) { client_ = client; }
 
     std::shared_ptr<rtidb::codec::RowView> rv_;
 
  private:
-    std::shared_ptr<
-        google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>>
-        columns_;
+    std::shared_ptr<google::protobuf::RepeatedPtrField<
+        rtidb::common::ColumnDesc>> columns_;
     bool initialed_;
-    int pk_idx_;
-    rtidb::type::DataType data_type_;
+    int64_t curr_blob_key_;
+    std::string table_name_;
+    RtidbClient* client_;
 };
-
-class QueryResult : public ViewResult {
- public:
-    void SetError(int err_code, const std::string& err_msg) {
-        code_ = err_code;
-        msg_ = err_msg;
-    }
-
-    bool Next() {
-        int size = values_->size();
-        if (size < 1 || index_ >= size) {
-            return false;
-        }
-        uint32_t old_index = index_;
-        index_++;
-        return rv_->Reset(
-            reinterpret_cast<int8_t*>(&((*(*values_)[old_index])[0])),
-            (*values_)[old_index]->size());
-    }
-
-    uint64_t ValueSize() { return values_->size(); }
-
-    QueryResult() : code_(0), msg_(), index_(0) {
-        values_ = std::make_shared<std::vector<std::shared_ptr<std::string>>>();
-    }
-
-    ~QueryResult() {}
-
-    void AddValue(const std::shared_ptr<std::string>& value) {
-        values_->push_back(value);
-    }
-
-    void CleanValue() {
-        values_->clear();
-        index_ = 0;
-    }
-
-    bool IsEnd() { return static_cast<uint64_t>(index_) >= values_->size(); }
-
- public:
-    int code_;
-    std::string msg_;
-
- private:
-    int32_t index_;
-    std::shared_ptr<std::vector<std::shared_ptr<std::string>>> values_;
-};
-
-class RtidbClient;
 
 class TraverseResult : public ViewResult {
  public:
@@ -289,7 +163,8 @@ class TraverseResult : public ViewResult {
           ro_(),
           table_name_(),
           count_(0),
-          last_pk_() {}
+          last_pk_(),
+          snapshot_id_() {}
 
     void SetError(int err_code, const std::string& err_msg) {
         code_ = err_code;
@@ -299,11 +174,12 @@ class TraverseResult : public ViewResult {
     void Init(RtidbClient* client, std::string* table_name,
               struct ReadOption* ro, uint32_t count, uint64_t snapshot_id);
 
-    ~TraverseResult();
+    ~TraverseResult() = default;
 
-    void SetValue(std::string* value, bool is_finish) {
+    void SetValue(std::string* value, bool is_finish, const std::string& pk) {
         value_.reset(value);
         is_finish_ = is_finish;
+        last_pk_ = pk;
     }
 
     bool Next();
@@ -328,49 +204,30 @@ class TraverseResult : public ViewResult {
 
 class BatchQueryResult : public ViewResult {
  public:
-    BatchQueryResult()
-        : code_(0),
-          msg_(),
-          offset_(0),
-          value_(),
-          client_(nullptr),
-          is_finish_(false),
-          keys_(),
-          table_name_(),
-          already_get_(),
-          count_(0) {}
+    BatchQueryResult() : code_(0), msg_(), offset_(0), value_(), count_(0) {}
 
     void SetError(int err_code, const std::string& err_msg) {
         code_ = err_code;
         msg_ = err_msg;
     }
 
-    void Init(RtidbClient* client, std::string* table_name,
-              const std::vector<std::string>& keys, uint32_t count);
+    ~BatchQueryResult() = default;
 
-    ~BatchQueryResult();
-
-    void SetValue(std::string* value, bool is_finish) {
+    void SetValue(std::string* value, uint32_t count) {
         value_.reset(value);
-        is_finish_ = is_finish;
+        count_ = count;
     }
 
     bool Next();
+    uint64_t Count() const { return count_; }
 
  public:
     int code_;
     std::string msg_;
 
  private:
-    bool BatchQueryNext(const std::vector<std::string>& get_keys);
-
     uint32_t offset_;
     std::shared_ptr<std::string> value_;
-    RtidbClient* client_;
-    bool is_finish_;
-    std::shared_ptr<std::vector<std::string>> keys_;
-    std::shared_ptr<std::string> table_name_;
-    std::set<std::string> already_get_;
     uint32_t count_;
 };
 
@@ -383,13 +240,16 @@ class BaseClient {
           tablets_(),
           blobs_(),
           tables_(),
-          zk_client_(NULL),
+          zk_client_(nullptr),
           zk_cluster_(zk_cluster),
           zk_root_path_(zk_root_path),
           endpoint_(endpoint),
           zk_session_timeout_(zk_session_timeout),
           zk_keep_alive_check_(zk_keep_alive_check),
           zk_table_data_path_() {}
+    explicit BaseClient(
+        const std::map<std::string,
+                       std::shared_ptr<rtidb::client::TabletClient>>& tablets);
     ~BaseClient();
 
     bool Init(std::string* msg);
@@ -429,30 +289,33 @@ class RtidbClient {
     ~RtidbClient();
     GeneralResult Init(const std::string& zk_cluster,
                        const std::string& zk_path);
-    QueryResult Query(const std::string& name, const struct ReadOption& ro);
-    GeneralResult Put(const std::string& name,
-                      const std::map<std::string, std::string>& values,
-                      const WriteOption& wo);
+    PutResult Put(
+        const std::string& name,
+        const std::map<std::string, std::string>& value,
+        const WriteOption& wo);
     GeneralResult Delete(const std::string& name,
                          const std::map<std::string, std::string>& values);
     TraverseResult Traverse(const std::string& name,
                             const struct ReadOption& ro);
     bool Traverse(const std::string& name, const struct ReadOption& ro,
-                  std::string* data, uint32_t* count,
-                  const std::string& last_key, bool* is_finish,
-                  uint64_t* snapshot_id_);
+                  std::string* data, uint32_t* count, std::string* last_key,
+                  bool* is_finish, uint64_t* snapshot_id_);
     BatchQueryResult BatchQuery(const std::string& name,
                                 const std::vector<ReadOption>& ros);
     bool BatchQuery(const std::string& name,
-                    const std::vector<std::string>& keys, std::string* data,
-                    bool* is_finish, uint32_t* count);
+                    const google::protobuf::RepeatedPtrField<
+                        ::rtidb::api::ReadOption>& ros_pb,
+                    std::string* data, uint32_t* count, std::string* msg);
     void SetZkCheckInterval(int32_t interval);
     GeneralResult Update(
         const std::string& table_name,
-        const std::map<std::string, std::string>& condition_columns_map,
-        const std::map<std::string, std::string>& value_columns_map,
+        const std::map<std::string, std::string>& condition_map,
+        const std::map<std::string, std::string>& value_map,
         const WriteOption& wo);
+    std::vector<std::string>& GetBlobSchema(const std::string& name);
+    BlobInfoResult GetBlobInfo(const std::string& name);
 
  private:
     BaseClient* client_;
+    std::vector<std::string> empty_vector_;
 };

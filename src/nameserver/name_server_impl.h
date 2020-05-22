@@ -15,6 +15,7 @@
 #include <map>
 #include <memory>
 #include <mutex>  // NOLINT
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -316,6 +317,21 @@ class NameServerImpl : public NameServer {
     void AddIndex(RpcController* controller, const AddIndexRequest* request,
                   GeneralResponse* response, Closure* done);
 
+    void UseDatabase(RpcController* controller,
+                     const UseDatabaseRequest* request,
+                     GeneralResponse* response, Closure* done);
+
+    void CreateDatabase(RpcController* controller,
+                        const CreateDatabaseRequest* request,
+                        GeneralResponse* response, Closure* done);
+
+    void ShowDatabase(RpcController* controller, const GeneralRequest* request,
+                      ShowDatabaseResponse* response, Closure* done);
+
+    void DropDatabase(RpcController* controller,
+                      const DropDatabaseRequest* request,
+                      GeneralResponse* response, Closure* done);
+
     int SyncExistTable(
         const std::string& alias, const std::string& name,
         const std::vector<::rtidb::nameserver::TableInfo> tables_remote,
@@ -369,6 +385,8 @@ class NameServerImpl : public NameServer {
     // 1.recover table meta from zookeeper
     // 2.recover table status from all tablets
     bool Recover();
+
+    bool RecoverDb();
 
     bool RecoverTableInfo();
 
@@ -638,6 +656,9 @@ class NameServerImpl : public NameServer {
 
     std::shared_ptr<TableInfo> GetTableInfo(const std::string& name);
 
+    bool GetTableInfo(const std::string& table_name, const std::string& db_name,
+                      std::shared_ptr<TableInfo>& table_info);  // NOLINT
+
     int AddOPTask(const ::rtidb::api::TaskInfo& task_info,
                   ::rtidb::api::TaskType task_type,
                   std::shared_ptr<::rtidb::api::TaskInfo>& task_ptr,  // NOLINT
@@ -645,6 +666,10 @@ class NameServerImpl : public NameServer {
 
     std::shared_ptr<::rtidb::api::TaskInfo> FindTask(
         uint64_t op_id, ::rtidb::api::TaskType task_type);
+
+    int CreateBlobTable(std::shared_ptr<TableInfo> table_info);
+
+    bool SaveTableInfo(std::shared_ptr<TableInfo> table_info);
 
     int CreateOPData(::rtidb::api::OPType op_type, const std::string& value,
                      std::shared_ptr<OPData>& op_data,  // NOLINT
@@ -735,6 +760,7 @@ class NameServerImpl : public NameServer {
     void UpdateTableStatus();
     int DropTableOnTablet(
         std::shared_ptr<::rtidb::nameserver::TableInfo> table_info);
+    int DropTableOnBlob(std::shared_ptr<TableInfo> table_info);
     void CheckBinlogSyncProgress(
         const std::string& name, uint32_t pid, const std::string& follower,
         uint64_t offset_delta,
@@ -795,12 +821,30 @@ class NameServerImpl : public NameServer {
         uint32_t pid, uint64_t end_offset,
         std::shared_ptr<::rtidb::nameserver::TableInfo> table_info);
 
+    void DropTableFun(
+        const DropTableRequest* request, GeneralResponse* response,
+        std::shared_ptr<::rtidb::nameserver::TableInfo> table_info);
+
+    bool SetTableInfo(
+        std::shared_ptr<::rtidb::nameserver::TableInfo> table_info);
+
+    void UpdateTableStatusFun(
+        const std::map<std::string,
+                       std::shared_ptr<::rtidb::nameserver::TableInfo>>&
+            table_info_map,
+        const std::unordered_map<std::string, ::rtidb::api::TableStatus>&
+            pos_response);
+
  private:
     std::mutex mu_;
     Tablets tablets_;
     BlobServers blob_servers_;
     std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>>
         table_info_;
+    std::map<
+        std::string,
+        std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>>>
+        db_table_info_;
     std::map<std::string, std::shared_ptr<::rtidb::nameserver::ClusterInfo>>
         nsc_;
     ZoneInfo zone_info_;
@@ -811,6 +855,8 @@ class NameServerImpl : public NameServer {
     std::string zk_table_index_node_;
     std::string zk_term_node_;
     std::string zk_table_data_path_;
+    std::string zk_db_path_;
+    std::string zk_db_table_data_path_;
     std::string zk_auto_failover_node_;
     std::string zk_auto_recover_table_node_;
     std::string zk_table_changed_notify_node_;
@@ -834,6 +880,7 @@ class NameServerImpl : public NameServer {
     std::atomic<uint64_t> task_rpc_version_;
     std::map<uint64_t, std::list<std::shared_ptr<::rtidb::api::TaskInfo>>>
         task_map_;
+    std::set<std::string> databases_;
 };
 
 }  // namespace nameserver

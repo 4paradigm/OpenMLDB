@@ -9,6 +9,7 @@
 #define SRC_TABLET_TABLET_IMPL_H_
 
 #include <brpc/server.h>
+
 #include <list>
 #include <map>
 #include <memory>
@@ -16,6 +17,7 @@
 #include <set>
 #include <string>
 #include <vector>
+
 #include "base/set.h"
 #include "base/spinlock.h"
 #include "proto/tablet.pb.h"
@@ -270,21 +272,19 @@ class TabletImpl : public ::rtidb::api::TabletServer {
 
     // get on value from specified ttl type index
     int32_t GetIndex(uint64_t expire_time, uint64_t expire_cnt,
-                          ::rtidb::api::TTLType ttl_type,
-                          ::rtidb::storage::TableIterator* it,
-                          const ::rtidb::api::GetRequest* request,
-                          const ::rtidb::api::TableMeta& meta,
-                          std::string* value,
-                          uint64_t* ts);
+                     ::rtidb::api::TTLType ttl_type,
+                     ::rtidb::storage::TableIterator* it,
+                     const ::rtidb::api::GetRequest* request,
+                     const ::rtidb::api::TableMeta& meta, std::string* value,
+                     uint64_t* ts);
 
     // scan specified ttl type index
     int32_t ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
-                          ::rtidb::api::TTLType ttl_type,
-                          ::rtidb::storage::TableIterator* it,
-                          const ::rtidb::api::ScanRequest* request,
-                          const ::rtidb::api::TableMeta& meta,
-                          std::string* pairs,
-                          uint32_t* count);
+                      ::rtidb::api::TTLType ttl_type,
+                      ::rtidb::storage::TableIterator* it,
+                      const ::rtidb::api::ScanRequest* request,
+                      const ::rtidb::api::TableMeta& meta, std::string* pairs,
+                      uint32_t* count);
 
     int32_t CountIndex(uint64_t expire_time, uint64_t expire_cnt,
                        ::rtidb::api::TTLType ttl_type,
@@ -337,7 +337,8 @@ class TabletImpl : public ::rtidb::api::TabletServer {
     void DumpIndexDataInternal(
         std::shared_ptr<::rtidb::storage::Table> table,
         std::shared_ptr<::rtidb::storage::MemTableSnapshot> memtable_snapshot,
-        uint32_t partition_num, ::rtidb::common::ColumnKey& column_key,  // NOLINT
+        uint32_t partition_num,
+        ::rtidb::common::ColumnKey& column_key,  // NOLINT
         uint32_t idx, std::shared_ptr<::rtidb::api::TaskInfo> task);
 
     void SendIndexDataInternal(

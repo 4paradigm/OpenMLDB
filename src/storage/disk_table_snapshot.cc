@@ -14,11 +14,9 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include "base/file_util.h"
 #include "base/strings.h"
-#include "logging.h" // NOLINT
+#include "base/glog_wapper.h" // NOLINT
 
-using ::baidu::common::DEBUG;
-using ::baidu::common::INFO;
-using ::baidu::common::WARNING;
+
 
 namespace rtidb {
 namespace storage {
@@ -116,7 +114,7 @@ int DiskTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table,
         if (GenManifest(snapshot_dir_name, record_count, cur_offset, term_) ==
             0) {
             if (manifest.has_name() && manifest.name() != snapshot_dir) {
-                PDLOG(DEBUG, "delete old checkpoint[%s]",
+                DEBUGLOG("delete old checkpoint[%s]",
                       manifest.name().c_str());
                 if (!::rtidb::base::RemoveDir(snapshot_path_ +
                                               manifest.name())) {

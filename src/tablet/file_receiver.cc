@@ -9,11 +9,9 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include "base/file_util.h"
 #include "base/strings.h"
-#include "logging.h" // NOLINT
+#include "base/glog_wapper.h" // NOLINT
 
-using ::baidu::common::DEBUG;
-using ::baidu::common::INFO;
-using ::baidu::common::WARNING;
+
 
 namespace rtidb {
 namespace tablet {
@@ -62,7 +60,7 @@ int FileReceiver::WriteData(const std::string& data, uint64_t block_id) {
         return -1;
     }
     if (block_id <= block_id_) {
-        PDLOG(DEBUG, "block id %lu has been received", block_id);
+        DEBUGLOG("block id %lu has been received", block_id);
         return 0;
     }
     size_t r = fwrite_unlocked(data.c_str(), 1, data.size(), file_);
