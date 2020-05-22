@@ -11,6 +11,7 @@
 #include <stdint.h>
 
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
@@ -22,6 +23,8 @@
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
 #include "rpc/rpc_client.h"
+#include "sdk/dbms_sdk.h"
+#include "sdk/result_set_impl.h"
 
 namespace rtidb {
 namespace client {
@@ -81,8 +84,9 @@ class NsClient {
     bool CreateTable(const ::rtidb::nameserver::TableInfo& table_info,
                      std::string& msg);  // NOLINT
 
-    bool CreateTable(const std::string& script,
-                     std::string& msg);  // NOLINT
+    std::shared_ptr<fesql::sdk::ResultSet> ExecuteSQL(
+        const std::string& script,
+        std::string& msg);  // NOLINT
 
     bool DropTable(const std::string& name, std::string& msg);  // NOLINT
 
@@ -104,8 +108,8 @@ class NsClient {
 
     bool CreateRemoteTableInfoSimply(
         const ::rtidb::nameserver::ZoneInfo& zone_info,
-        ::rtidb::nameserver::TableInfo& table_info, // NOLINT
-        std::string& msg);  // NOLINT
+        ::rtidb::nameserver::TableInfo& table_info,  // NOLINT
+        std::string& msg);                           // NOLINT
 
     bool DropTableRemote(const ::rtidb::api::TaskInfo& task_info,
                          const std::string& name,
@@ -138,7 +142,7 @@ class NsClient {
 
     bool ChangeLeader(const std::string& name, uint32_t pid,
                       std::string& candidate_leader,  // NOLINT
-                      std::string& msg);  // NOLINT
+                      std::string& msg);              // NOLINT
 
     bool OfflineEndpoint(const std::string& endpoint, uint32_t concurrency,
                          std::string& msg);  // NOLINT
@@ -209,8 +213,8 @@ class NsClient {
  private:
     bool TransformToTableDef(
         const std::string& table_name,
-        const ::fesql::node::NodePointVector& column_desc_list,
-        ::rtidb::nameserver::TableInfo* table, ::rtidb::base::Status* status);
+        const fesql::node::NodePointVector& column_desc_list,
+        ::rtidb::nameserver::TableInfo* table, fesql::plan::Status* status);
 
  private:
     std::string endpoint_;
