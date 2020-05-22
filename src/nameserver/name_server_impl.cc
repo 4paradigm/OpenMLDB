@@ -3036,24 +3036,31 @@ int NameServerImpl::DropTableOnTablet(
             }
         }
     }
+    if (!table_info->has_blob_info()) {
+        return 0;
+    }
     std::string msg;
-    for (const auto& endpoint : table_info->blobs()) {
-        std::lock_guard<std::mutex> lock(mu_);
-        auto iter = blob_servers_.find(endpoint);
-        if (iter == blob_servers_.end()) {
-            PDLOG(WARNING, "endpoint[%s] can not find client",
-                  endpoint.c_str());
-            continue;
-        }
-        std::shared_ptr<BlobServerInfo> blob_ptr = iter->second;
-        // check tablet healthy
-        if (blob_ptr->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
-            PDLOG(WARNING, "endpoint [%s] is offline", endpoint.c_str());
-            continue;
-        }
-        if (!blob_ptr->client_->DropTable(tid, 0, &msg)) {
-            PDLOG(WARNING, "drop table failed. tid[%u] pid[0] endpoint[%s]: %s",
-                  tid, endpoint.c_str(), msg.c_str());
+    for (const auto& part : table_info->blob_info().blob_partition()) {
+        for (const auto& meta : part.partition_meta()) {
+            auto& ep = meta.endpoint();
+            std::lock_guard<std::mutex> lock(mu_);
+            auto iter = blob_servers_.find(ep);
+            if (iter == blob_servers_.end()) {
+                PDLOG(WARNING, "endpoint[%s] can not find blob client",
+                      ep.c_str());
+                continue;
+            }
+            std::shared_ptr<BlobServerInfo> blob_ptr = iter->second;
+            // check tablet healthy
+            if (blob_ptr->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+                PDLOG(WARNING, "blob endpoint[%s] is offline", ep.c_str());
+                continue;
+            }
+            if (!blob_ptr->client_->DropTable(tid, 0, &msg)) {
+                PDLOG(WARNING,
+                      "drop blob table failed. tid[%u] pid[0] endpoint[%s]: %s",
+                      tid, ep.c_str(), msg.c_str());
+            }
         }
     }
     return 0;
@@ -3837,19 +3844,29 @@ void NameServerImpl::DropTableInternel(
                   pkv.first, kv.first.c_str());
         }
     }
-    {
-        for (const auto& endpoint : table_info->blobs()) {
-            auto it = blob_servers_.find(endpoint);
-            if (it != blob_servers_.end()) {
-                std::string msg;
-                bool ok = it->second->client_->DropTable(tid, 0, &msg);
-                if (!ok) {
-                    PDLOG(WARNING, "drop object table[%u] endpoint[%s] fail",
-                          tid, endpoint.c_str());
+    if (table_info->has_blob_info()) {
+        std::string msg;
+        for (const auto& part : table_info->blob_info().blob_partition()) {
+            for (const auto& meta : part.partition_meta()) {
+                auto& ep = meta.endpoint();
+                std::lock_guard<std::mutex> lock(mu_);
+                auto iter = blob_servers_.find(ep);
+                if (iter == blob_servers_.end()) {
+                    PDLOG(WARNING, "object endpoint[%s] not find table[%u]",
+                          ep.c_str()), tid;
                     continue;
                 }
-                PDLOG(INFO, "drop object table. tid[%u] endpoint[%s]", tid,
-                      endpoint.c_str());
+                std::shared_ptr<BlobServerInfo> blob = iter->second;
+                // check tablet healthy
+                if (blob->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+                    PDLOG(WARNING, "blob endpoint[%s] is offline", ep.c_str());
+                    continue;
+                }
+                if (!blob->client_->DropTable(tid, 0, &msg)) {
+                    PDLOG(WARNING,
+                          "drop blob table failed tid[%u] endpoint[%s]: %s",
+                          tid, ep.c_str(), msg.c_str());
+                }
             }
         }
     }
@@ -4773,11 +4790,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
             }
         }
         if (has_blob) {
-            std::shared_ptr<::rtidb::nameserver::TableInfo> blob_info(
-                request->table_info().New());
-            blob_info->set_tid(table_info->tid());
-            blob_info->set_name(table_info->name());
-            int ret = CreateBlobTable(blob_info);
+            int ret = CreateBlobTable(table_info);
             if (ret != 0) {
                 if (ret == 1) {
                     response->set_code(ReturnCode::kSetPartitionInfoFailed);
@@ -4788,9 +4801,6 @@ void NameServerImpl::CreateTable(RpcController* controller,
                 }
                 return;
             }
-            std::string* endpoint = table_info->add_blobs();
-            *endpoint =
-                blob_info->table_partition(0).partition_meta(0).endpoint();
         }
     }
     std::vector<::rtidb::codec::ColumnDesc> columns;
@@ -4848,8 +4858,6 @@ int NameServerImpl::CreateBlobTable(std::shared_ptr<TableInfo> table_info) {
     meta.set_pid(0);
     meta.set_name(table_info->name());
     meta.set_table_type(::rtidb::type::kObjectStore);
-    table_info->clear_table_partition();
-    table_info->set_partition_num(1);
 
     std::shared_ptr<BlobServerInfo> blob_info =
         SetBlobTableInfo(table_info.get());
@@ -4980,9 +4988,8 @@ void NameServerImpl::CreateTableInternel(
 
 std::shared_ptr<BlobServerInfo> NameServerImpl::SetBlobTableInfo(
     TableInfo* table_info) {
-    table_info->clear_table_partition();
-    auto new_part = table_info->add_table_partition();
-    new_part->set_pid(0);
+    auto blob_info = table_info->mutable_blob_info();
+    auto new_part = blob_info->add_blob_partition();
     auto new_meta = new_part->add_partition_meta();
 
     std::map<std::string, uint64_t> endpoint_count;
@@ -4992,17 +4999,15 @@ std::shared_ptr<BlobServerInfo> NameServerImpl::SetBlobTableInfo(
     }
     for (const auto& iter : table_info_) {
         auto info = iter.second;
-        if (info->table_type() != ::rtidb::type::kObjectStore) {
+        if (!info->has_blob_info()) {
             continue;
         }
-        for (const auto& part : info->table_partition()) {
+        for (const auto& part : info->blob_info().blob_partition()) {
             for (const auto& meta : part.partition_meta()) {
-                std::string ep = meta.endpoint();
-                if (endpoint_count.find(ep) == endpoint_count.end() ||
-                    !meta.is_alive()) {
-                    endpoint_count.insert(std::make_pair(ep, 1));
+                if (!meta.is_alive()) {
                     continue;
                 }
+                auto& ep = meta.endpoint();
                 endpoint_count[ep]++;
             }
         }
@@ -5022,7 +5027,7 @@ std::shared_ptr<BlobServerInfo> NameServerImpl::SetBlobTableInfo(
         new_meta->set_is_alive(true);
         return it->second;
     }
-    PDLOG(INFO, "no available blob server");
+    PDLOG(WARNING, "no available blob server");
     return std::shared_ptr<BlobServerInfo>();
 }
 

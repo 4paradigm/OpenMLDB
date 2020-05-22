@@ -82,7 +82,7 @@ message BlobPartition{
 }
 
 message BlobInfo {
-    optional uint32 replica_num = 1;
+    optional uint32 replica_num = 1 [default = 1];
     repeated BlobPartition blob_partition = 2;
     optional uint32 height = 3 [default = 1];
 }
