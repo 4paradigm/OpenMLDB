@@ -38,6 +38,22 @@ bool BsClient::CreateTable(const TableMeta &table_meta, std::string *msg) {
     return false;
 }
 
+bool BsClient::LoadTable(uint32_t tid, uint32_t pid, std::string *msg) {
+    ::rtidb::blobserver::LoadTableRequest request;
+    ::rtidb::blobserver::TableMeta* table_meta = request.mutable_table_meta();
+    table_meta->set_tid(tid);
+    table_meta->set_pid(pid);
+    ::rtidb::blobserver::LoadTableResponse response;
+    bool ok =
+        client_.SendRequest(&::rtidb::blobserver::BlobServer_Stub::LoadTable,
+                            &request, &response, FLAGS_request_timeout_ms, 1);
+    msg->swap(*response.mutable_msg());
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    return false;
+}
+
 bool BsClient::Put(uint32_t tid, uint32_t pid, int64_t key,
                    const std::string &value, std::string *msg) {
     ::rtidb::blobserver::PutRequest request;
