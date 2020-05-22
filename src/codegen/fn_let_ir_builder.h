@@ -66,6 +66,28 @@ class RowFnLetIRBuilder {
         vm::ColumnSourceList* output_column_sources,
         base::Status& status);  // NOLINT (runtime/references)
 
+    bool AddOutputColumnInfo(
+      const std::string& col_name,
+      ::fesql::type::Type ctype,
+      const node::ExprNode* expr,
+      vm::Schema* output_schema,
+      vm::ColumnSourceList* output_column_sources);
+
+    // TODO(someone): remove temporary implementations for row-wise agg
+    bool EnableColumnSumOpt() const;
+    bool IsColumnSum(const node::ExprNode* expr,
+                     node::ColumnRefNode** col,
+                     fesql::type::Type* sum_type);
+    bool BuildMultiColumnSum(
+      const std::string& base_funcname,
+      const std::vector<
+        std::pair<::fesql::node::ColumnRefNode*, uint32_t>>& cols,
+      ExprIRBuilder* expr_ir_builder,
+      VariableIRBuilder* variable_ir_builder,
+      ::llvm::BasicBlock* cur_block,
+      const std::string& output_ptr_name,
+      vm::Schema* output_schema);
+
  private:
     // input schema
     const vm::SchemasContext schema_context_;
