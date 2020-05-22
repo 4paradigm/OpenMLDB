@@ -31,7 +31,7 @@ inline std::string GenRand() {
     return std::to_string(rand() % 10000000 + 1);  // NOLINT
 }
 
-static void BM_SimpleQuery10_2Function(benchmark::State& state) { //NOLINT
+static void BM_SimpleQueryFunction(benchmark::State& state) { //NOLINT
     ::rtidb::sdk::MiniCluster mc(6181);
     mc.SetUp();
     ::rtidb::nameserver::TableInfo table_info;
@@ -54,6 +54,22 @@ static void BM_SimpleQuery10_2Function(benchmark::State& state) { //NOLINT
     col2->set_data_type(::rtidb::type::kBigInt);
     col2->set_type("int64");
     col2->set_is_ts_col(true);
+    auto col3 = schema->Add();
+    col3->set_name("col3");
+    col3->set_data_type(::rtidb::type::kBigInt);
+    col3->set_type("int64");
+    col3->set_is_ts_col(false);
+    auto col4 = schema->Add();
+    col4->set_name("col4");
+    col4->set_data_type(::rtidb::type::kBigInt);
+    col4->set_type("int64");
+    col4->set_is_ts_col(false);
+    auto col5 = schema->Add();
+    col5->set_name("col5");
+    col5->set_data_type(::rtidb::type::kBigInt);
+    col5->set_type("int64");
+    col5->set_is_ts_col(false);
+
     RtiDBIndex* index = table_info.mutable_column_key();
     auto key1 = index->Add();
     key1->set_index_name("index0");
@@ -73,6 +89,9 @@ static void BM_SimpleQuery10_2Function(benchmark::State& state) { //NOLINT
     rb.SetBuffer(reinterpret_cast<int8_t*>(&(value[0])), size);
     rb.AppendString(pk.c_str(), pk.size());
     rb.AppendInt64(ts);
+    rb.AppendInt64(ts);
+    rb.AppendInt64(ts);
+    rb.AppendInt64(ts);
     ::rtidb::sdk::ClusterOptions option;
     option.zk_cluster = mc.GetZkCluster();
     option.zk_path = mc.GetZkPath();
@@ -80,25 +99,32 @@ static void BM_SimpleQuery10_2Function(benchmark::State& state) { //NOLINT
     sdk.Init();
     std::vector<std::shared_ptr<::rtidb::client::TabletClient>> tablet;
     ok = sdk.GetTabletByTable(db, name, &tablet);
+    if (!ok || tablet.size() <= 0) return;
     uint32_t tid = sdk.GetTableId(db, name);
     {
-        for (int32_t i = 0;  i < 10; i++)
+        for (int32_t i = 0;  i < state.range(0); i++)
         ok = tablet[0]->Put(tid, 0, pk, ts + i, value, 1);
     }
-    std::string sql = "select col1, col2 + 1 from " + name + " ;";
+    std::string sql = "select col1, col2 + 1, col3, col4, col5 from " + name + " ;";
 
     ::fesql::sdk::Status status;
     ::rtidb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc.GetZkCluster();
     sql_opt.zk_path = mc.GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
+    if (!router) return;
     for (auto _ : state) {
-        int32_t i = -1;
         benchmark::DoNotOptimize(
                 router->ExecuteSQL(db, sql, &status));
     }
     mc.Close();
 }
 
-BENCHMARK(BM_SimpleQuery10_2Function);
+BENCHMARK(BM_SimpleQueryFunction)
+    ->Args({1})
+    ->Args({10})
+    ->Args({100})
+    ->Args({1000})
+    ->Args({10000});
+
 BENCHMARK_MAIN();

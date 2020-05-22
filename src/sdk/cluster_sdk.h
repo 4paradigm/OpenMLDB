@@ -52,7 +52,11 @@ class ClusterSDK {
     bool GetTabletByTable(
         const std::string& db, const std::string& tname,
         std::vector<std::shared_ptr<::rtidb::client::TabletClient>>* tablets);
+
     uint32_t GetTableId(const std::string& db, const std::string& tname);
+
+    std::shared_ptr<::rtidb::nameserver::TableInfo> GetTableInfo(const std::string& db,
+            const std::string& tname);
 
  private:
     bool InitCatalog();
@@ -69,7 +73,7 @@ class ClusterSDK {
     ::rtidb::base::SpinMutex mu_;
     std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>>
         alive_tablets_;
-    std::map<std::string, std::map<std::string, ::rtidb::nameserver::TableInfo>>
+    std::map<std::string, std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>>>
         table_to_tablets_;
     std::shared_ptr<::rtidb::catalog::SDKCatalog> catalog_;
 };

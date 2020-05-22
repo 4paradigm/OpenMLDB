@@ -25,6 +25,9 @@
 #include "proto/tablet.pb.h"
 #include "sdk/base.h"
 #include "sdk/result_set_sql.h"
+#include "parser/parser.h"
+#include "plan/planner.h"
+
 
 namespace rtidb {
 namespace sdk {
@@ -32,7 +35,10 @@ namespace sdk {
 SQLClusterRouter::SQLClusterRouter(const SQLRouterOptions& options)
     : options_(options), cluster_sdk_(NULL), engine_(NULL) {}
 
-SQLClusterRouter::~SQLClusterRouter() {}
+SQLClusterRouter::~SQLClusterRouter() {
+    delete cluster_sdk_;
+    delete engine_;
+}
 
 bool SQLClusterRouter::Init() {
     ClusterOptions coptions;
@@ -115,6 +121,13 @@ std::shared_ptr<::fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
         new rtidb::sdk::ResultSetSQL(std::move(response), std::move(cntl)));
     rs->Init();
     return rs;
+}
+
+bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& sql,
+        ::fesql::sdk::Status* status)  {
+
+    return false; 
+
 }
 
 }  // namespace sdk

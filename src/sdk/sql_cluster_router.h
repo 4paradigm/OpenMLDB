@@ -18,11 +18,12 @@
 #ifndef SRC_SDK_SQL_CLUSTER_ROUTER_H_
 #define SRC_SDK_SQL_CLUSTER_ROUTER_H_
 
-#include <set>
-#include <vector>
 #include <memory>
-#include <utility>
+#include <set>
 #include <string>
+#include <utility>
+#include <vector>
+
 #include "client/tablet_client.h"
 #include "sdk/cluster_sdk.h"
 #include "sdk/sql_router.h"
@@ -37,6 +38,9 @@ class SQLClusterRouter : public SQLRouter {
     ~SQLClusterRouter();
 
     bool Init();
+
+    bool ExecuteInsert(const std::string& db, const std::string& sql,
+                       ::fesql::sdk::Status* status);
 
     std::shared_ptr<::fesql::sdk::ResultSet> ExecuteSQL(
         const std::string& db, const std::string& sql,

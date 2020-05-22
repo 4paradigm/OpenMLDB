@@ -105,6 +105,9 @@ TEST_F(ClusterSDKTest, smoketest) {
     ASSERT_EQ(1, tablet.size());
     uint32_t tid = sdk.GetTableId(db, name);
     ASSERT_TRUE(tid != 0);
+    auto table_ptr = sdk.GetTableInfo(db, name);
+    ASSERT_EQ(table_ptr->db(), db);
+    ASSERT_EQ(table_ptr->name(), name);
 }
 
 }  // sdk

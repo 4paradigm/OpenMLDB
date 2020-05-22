@@ -33,8 +33,9 @@ struct SQLRouterOptions {
 class SQLRouter {
  public:
     SQLRouter() {}
-
     virtual ~SQLRouter() {}
+    virtual bool ExecuteInsert(const std::string& db, const std::string& sql,
+            fesql::sdk::Status* status) = 0;
 
     virtual std::shared_ptr<fesql::sdk::ResultSet> ExecuteSQL(
         const std::string& db, const std::string& sql,

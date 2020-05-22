@@ -70,7 +70,8 @@ bool ClusterSDK::Init() {
 
 bool ClusterSDK::RefreshCatalog(const std::vector<std::string>& table_datas) {
     std::vector<::rtidb::nameserver::TableInfo> tables;
-    std::map<std::string, std::map<std::string, ::rtidb::nameserver::TableInfo>>
+    std::map<std::string, std::map<std::string, 
+        std::shared_ptr<::rtidb::nameserver::TableInfo>>>
         mapping;
     for (uint32_t i = 0; i < table_datas.size(); i++) {
         if (table_datas[i].empty()) continue;
@@ -81,28 +82,27 @@ bool ClusterSDK::RefreshCatalog(const std::vector<std::string>& table_datas) {
             LOG(WARNING) << "fail to get table data";
             continue;
         }
-        ::rtidb::nameserver::TableInfo table_info;
-        ok = table_info.ParseFromString(value);
+        std::shared_ptr<::rtidb::nameserver::TableInfo> table_info(
+                new ::rtidb::nameserver::TableInfo());
+        ok = table_info->ParseFromString(value);
         if (!ok) {
             LOG(WARNING) << "fail to parse table proto with " << value;
             return false;
         }
-        if (table_info.format_version() != 1) {
+        if (table_info->format_version() != 1) {
             continue;
         }
-        LOG(INFO) << "add table " << table_info.name() << " with db "
-                  << table_info.db();
-        tables.push_back(table_info);
-        auto it = mapping.find(table_info.db());
+        tables.push_back(*(table_info.get()));
+        auto it = mapping.find(table_info->db());
         if (it == mapping.end()) {
-            std::map<std::string, ::rtidb::nameserver::TableInfo> table_in_db;
-            table_in_db.insert(std::make_pair(table_info.name(), table_info));
-            mapping.insert(std::make_pair(table_info.db(), table_in_db));
+            std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>> table_in_db;
+            table_in_db.insert(std::make_pair(table_info->name(), table_info));
+            mapping.insert(std::make_pair(table_info->db(), table_in_db));
         } else {
-            it->second.insert(std::make_pair(table_info.name(), table_info));
+            it->second.insert(std::make_pair(table_info->name(), table_info));
         }
-        LOG(INFO) << "load table info with name " << table_info.name()
-                  << " in db " << table_info.db();
+        LOG(INFO) << "load table info with name " << table_info->name()
+                  << " in db " << table_info->db();
     }
     bool ok = catalog_->Init(tables);
     if (!ok) {
@@ -168,10 +168,10 @@ bool ClusterSDK::GetTabletByTable(
             return false;
         }
         std::set<std::string> endpoints;
-        const ::rtidb::nameserver::TableInfo& table_info = sit->second;
-        for (int32_t i = 0; i < table_info.table_partition_size(); i++) {
+        auto table_info = sit->second;
+        for (int32_t i = 0; i < table_info->table_partition_size(); i++) {
             const ::rtidb::nameserver::TablePartition& partition =
-                table_info.table_partition(i);
+                table_info->table_partition(i);
             for (int32_t j = 0; j < partition.partition_meta_size(); j++) {
                 std::string endpoint = partition.partition_meta(j).endpoint();
                 if (endpoints.find(endpoint) != endpoints.end()) continue;
@@ -198,8 +198,24 @@ uint32_t ClusterSDK::GetTableId(const std::string& db,
         return 0;
     }
     std::set<std::string> endpoints;
-    const ::rtidb::nameserver::TableInfo& table_info = sit->second;
-    return table_info.tid();
+    auto table_info = sit->second;
+    return table_info->tid();
+}
+
+std::shared_ptr<::rtidb::nameserver::TableInfo> ClusterSDK::GetTableInfo(const std::string& db,
+        const std::string& tname) {
+    std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
+    auto it = table_to_tablets_.find(db);
+    if (it == table_to_tablets_.end()) {
+        return 0;
+    }
+    auto sit = it->second.find(tname);
+    if (sit == it->second.end()) {
+        return 0;
+    }
+    std::set<std::string> endpoints;
+    auto table_info = sit->second;
+    return table_info;
 }
 
 }  // namespace sdk

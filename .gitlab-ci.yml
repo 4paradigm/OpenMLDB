@@ -29,7 +29,7 @@ style_check:
     artifacts:
         reports:
             junit:
-                - ./style.xml
+                - ./reports/style.xml
 
 
 java_ut:
