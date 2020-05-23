@@ -33,12 +33,41 @@ configure_file (
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 add_definitions('-g')
 add_definitions('-Wall')
+if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    add_definitions(-Wreorder)
+    add_definitions(-Wno-unused-private-field)
+    add_definitions(-Wno-unused-function)
+    add_definitions(-Wno-overloaded-virtual)
+    add_definitions(-Wno-inconsistent-missing-override)
+    add_definitions(-Wno-deprecated-declarations)
+    add_definitions(-Wno-null-dereference)
+    add_definitions(-Wno-deprecated-register)
+    add_definitions(-Wno-c++17-extensions)
+    add_definitions(-Wno-defaulted-function-deleted)
+endif ()
+
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
 option(TCMALLOC_ENABLE "Enable TCMALLOC" ON)
 option(SQL_PYSDK_ENABLE "Enable sql pysdk" ON)
 option(SQL_JAVASDK_ENABLE "Enable sql javasdk" ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-set(BRPC_LIBS brpc protobuf glog gflags unwind ssl crypto leveldb z snappy dl pthread rt)
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    set(OS_LIB ${CMAKE_THREAD_LIBS_INIT} rt)
+    set(BRPC_LIBS brpc protobuf glog gflags unwind ssl crypto leveldb z snappy dl pthread ${OS_LIB})
+elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    set(OS_LIB 
+            ${CMAKE_THREAD_LIBS_INIT}
+            "-framework CoreFoundation"
+            "-framework CoreGraphics"
+            "-framework CoreData"
+            "-framework CoreText"
+            "-framework Security"
+            "-framework Foundation"
+            "-Wl,-U,_MallocExtension_ReleaseFreeMemory"
+            "-Wl,-U,_ProfilerStart"
+            "-Wl,-U,_ProfilerStop")
+    set(BRPC_LIBS brpc protobuf glog gflags ssl crypto leveldb z snappy dl pthread ${OS_LIB})
+endif ()
 set(VM_LIBS fesql_vm fesql_sdk fesql_udf fesql_parser fesql_planner fesql_codegen fesql_storage fesql_codec fesql_proto
     fesql_node fesql_base)
 set(LLVM_DIR "${PROJECT_SOURCE_DIR}/thirdparty/lib/cmake/llvm")

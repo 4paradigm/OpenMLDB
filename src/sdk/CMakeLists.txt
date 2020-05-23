@@ -25,7 +25,12 @@ if(SQL_PYSDK_ENABLE)
 			SOURCES sql_router_sdk.i)
 	target_include_directories(sql_pysdk PRIVATE ${Python3_INCLUDE_DIRS})
 	target_link_libraries(sql_pysdk ${SDK_LIBS})
-
+    if(APPLE)
+      set_target_properties(sql_pysdk PROPERTIES
+               SUFFIX ".so")
+      set_property(TARGET sql_pysdk APPEND PROPERTY
+        LINK_FLAGS "-flat_namespace -undefined suppress")
+    endif()
 	add_custom_command(OUTPUT
 		setup.py
 		COMMAND ${CMAKE_COMMAND} -E echo "from setuptools import find_packages, setup" > setup.py
@@ -124,11 +129,11 @@ if(SQL_JAVASDK_ENABLE)
 	target_compile_options(sql_jsdk PRIVATE -w)
     target_link_libraries(sql_jsdk PRIVATE ${SDK_LIBS})
 	if(APPLE)
-	  set_target_properties(fesql_jsdk PROPERTIES
+	  set_target_properties(sql_jsdk PROPERTIES
 			   SUFFIX ".dylib")
-	  set_target_properties(fesql_pysdk PROPERTIES
+	  set_target_properties(sql_jsdk PROPERTIES
 			   SUFFIX ".so")
-	  set_property(TARGET fesql_pysdk APPEND PROPERTY
+	  set_property(TARGET sql_jsdk APPEND PROPERTY
 		LINK_FLAGS "-flat_namespace -undefined suppress")
 	endif()
 

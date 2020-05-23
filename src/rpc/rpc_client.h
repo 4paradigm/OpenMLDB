@@ -21,8 +21,6 @@
 #include <brpc/controller.h>
 #include <brpc/retry_policy.h>
 #include <gflags/gflags.h>
-#include <mutex.h>
-#include <thread_pool.h>
 
 #include <boost/bind.hpp>
 #include <boost/function.hpp>
