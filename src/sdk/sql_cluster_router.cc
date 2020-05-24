@@ -68,12 +68,7 @@ bool SQLClusterRouter::ExecuteDDL(const std::string& db, const std::string& sql,
     }
     // TODO(wangtaize) update ns client to thread safe
     std::string err;
-    bool ok = ns_ptr->Use(db, err);
-    if (!ok) {
-        LOG(WARNING) << "db " << db << " does not exist";
-        return false;
-    }
-    ok = ns_ptr->ExecuteSQL(sql, err);
+    bool ok = ns_ptr->ExecuteSQL(db, sql, err);
     if (!ok) {
         LOG(WARNING) << "fail to execute sql " << sql << " for error " << err;
         return false;
@@ -187,7 +182,7 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db,
         cluster_sdk_->GetTableInfo(db, insert_stmt->table_name_);
     if (!table_info) {
         LOG(WARNING) << "table with name " << insert_stmt->table_name_
-                     << " does exist";
+            << " does not exist";
         return false;
     }
     std::string value;

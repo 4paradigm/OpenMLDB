@@ -16,9 +16,8 @@
  */
 
 #include "codec/codec.h"
-
+#include <array>
 #include <unordered_set>
-
 #include "base/glog_wapper.h"
 
 namespace rtidb {

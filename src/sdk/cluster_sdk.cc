@@ -124,6 +124,7 @@ bool ClusterSDK::RefreshCatalog(const std::vector<std::string>& table_datas) {
             LOG(WARNING) << "fail to parse table proto with " << value;
             return false;
         }
+        DLOG(INFO) << "parse table " << table_info->name() << " ok";
         if (table_info->format_version() != 1) {
             continue;
         }
@@ -190,6 +191,8 @@ bool ClusterSDK::InitCatalog() {
                          << table_root_path_;
             return false;
         }
+    }else {
+        LOG(INFO) << "no tables in db";
     }
     return RefreshCatalog(table_datas);
 }

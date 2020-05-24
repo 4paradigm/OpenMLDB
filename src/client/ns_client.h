@@ -89,6 +89,12 @@ class NsClient {
         const std::string& script,
         std::string& msg);  // NOLINT
 
+    bool ExecuteSQL(
+        const std::string& db,
+        const std::string& script,
+        std::string& msg);  // NOLINT
+
+
     bool DropTable(const std::string& name, std::string& msg);  // NOLINT
 
     bool SyncTable(const std::string& name, const std::string& cluster_alias,
