@@ -20,8 +20,8 @@
 
 #include "base/spinlock.h"
 #include "catalog/sdk_catalog.h"
-#include "client/tablet_client.h"
 #include "client/ns_client.h"
+#include "client/tablet_client.h"
 #include "vm/catalog.h"
 #include "zk/zk_client.h"
 
@@ -36,7 +36,7 @@ struct ClusterOptions {
 
 class ClusterSDK {
  public:
-    ClusterSDK(const ClusterOptions& options);
+    explicit ClusterSDK(const ClusterOptions& options);
 
     ~ClusterSDK();
 
@@ -53,17 +53,16 @@ class ClusterSDK {
     }
 
     bool GetTabletByTable(
-        const std::string& db, 
-        const std::string& tname,
+        const std::string& db, const std::string& tname,
         std::vector<std::shared_ptr<::rtidb::client::TabletClient>>* tablets);
 
-    std::shared_ptr<::rtidb::client::TabletClient> GetLeaderTabletByTable(const std::string& db,
-            const std::string& name);
+    std::shared_ptr<::rtidb::client::TabletClient> GetLeaderTabletByTable(
+        const std::string& db, const std::string& name);
 
     uint32_t GetTableId(const std::string& db, const std::string& tname);
 
-    std::shared_ptr<::rtidb::nameserver::TableInfo> GetTableInfo(const std::string& db,
-            const std::string& tname);
+    std::shared_ptr<::rtidb::nameserver::TableInfo> GetTableInfo(
+        const std::string& db, const std::string& tname);
 
     inline std::shared_ptr<::rtidb::client::NsClient> GetNsClient() {
         if (ns_client_) return ns_client_;
@@ -76,6 +75,7 @@ class ClusterSDK {
     bool RefreshCatalog(const std::vector<std::string>& table_datas);
     bool InitTabletClient();
     bool CreateNsClient();
+
  private:
     std::atomic<uint64_t> cluster_version_;
     ClusterOptions options_;
@@ -86,7 +86,9 @@ class ClusterSDK {
     ::rtidb::base::SpinMutex mu_;
     std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>>
         alive_tablets_;
-    std::map<std::string, std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>>>
+    std::map<
+        std::string,
+        std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>>>
         table_to_tablets_;
     std::shared_ptr<::rtidb::catalog::SDKCatalog> catalog_;
     std::shared_ptr<::rtidb::client::NsClient> ns_client_;

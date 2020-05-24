@@ -326,7 +326,8 @@ bool TabletClient::Put(
     if (ok && response.code() == 0) {
         return true;
     }
-    DLOG(INFO) << "put row to table " << tid << " failed with error " << response.msg();
+    DLOG(INFO) << "put row to table " << tid << " failed with error "
+               << response.msg();
     return false;
 }
 

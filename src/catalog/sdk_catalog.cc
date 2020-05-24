@@ -18,15 +18,15 @@
 #include "catalog/sdk_catalog.h"
 
 #include <mutex>
-#include "glog/logging.h"
+
 #include "catalog/schema_adapter.h"
+#include "glog/logging.h"
 
 namespace rtidb {
 namespace catalog {
 
-SDKTableHandler::SDKTableHandler(
-        const ::rtidb::nameserver::TableInfo& meta):meta_(meta),
-    schema_(), name_(meta.name()), db_(meta.db()) {}
+SDKTableHandler::SDKTableHandler(const ::rtidb::nameserver::TableInfo& meta)
+    : meta_(meta), schema_(), name_(meta.name()), db_(meta.db()) {}
 
 SDKTableHandler::~SDKTableHandler() {}
 
@@ -73,8 +73,8 @@ bool SDKTableHandler::Init() {
             const std::string& key = index_def.first_keys(j);
             auto it = types_.find(key);
             if (it == types_.end()) {
-                LOG(WARNING) << "column " << key << " does not exist in table "
-                             << name_;
+                LOG(WARNING)
+                    << "column " << key << " does not exist in table " << name_;
                 return false;
             }
             index_st.keys.push_back(it->second);
@@ -86,7 +86,8 @@ bool SDKTableHandler::Init() {
     return true;
 }
 
-bool SDKCatalog::Init(const std::vector<::rtidb::nameserver::TableInfo>& tables) {
+bool SDKCatalog::Init(
+    const std::vector<::rtidb::nameserver::TableInfo>& tables) {
     table_metas_ = tables;
     for (size_t i = 0; i < tables.size(); i++) {
         const ::rtidb::nameserver::TableInfo& table_meta = tables[i];
@@ -109,7 +110,7 @@ bool SDKCatalog::Init(const std::vector<::rtidb::nameserver::TableInfo>& tables)
 }
 
 std::shared_ptr<::fesql::vm::TableHandler> SDKCatalog::GetTable(
-        const std::string& db, const std::string& table_name) {
+    const std::string& db, const std::string& table_name) {
     std::lock_guard<::rtidb::base::SpinMutex> spin_lock(mu_);
     auto db_it = tables_.find(db);
     if (db_it == tables_.end()) {
@@ -122,9 +123,5 @@ std::shared_ptr<::fesql::vm::TableHandler> SDKCatalog::GetTable(
     return it->second;
 }
 
-
-}  // catalog
-}  // rtidb
-
-
-
+}  // namespace catalog
+}  // namespace rtidb

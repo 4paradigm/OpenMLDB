@@ -18,11 +18,12 @@
 #include "sdk/cluster_sdk.h"
 
 #include <map>
-#include <set>
-#include <vector>
-#include <utility>
-#include <string>
 #include <memory>
+#include <set>
+#include <string>
+#include <utility>
+#include <vector>
+
 #include "glog/logging.h"
 
 namespace rtidb {
@@ -68,9 +69,7 @@ bool ClusterSDK::Init() {
     return true;
 }
 
-bool ClusterSDK::Refresh() {
-    return InitCatalog();
-}
+bool ClusterSDK::Refresh() { return InitCatalog(); }
 
 bool ClusterSDK::CreateNsClient() {
     std::string ns_node = options_.zk_path + "/leader";
@@ -86,14 +85,14 @@ bool ClusterSDK::CreateNsClient() {
         return false;
     }
 
-    DLOG(INFO) << "leader path " << real_path << " with value " << endpoint ;
+    DLOG(INFO) << "leader path " << real_path << " with value " << endpoint;
     std::shared_ptr<::rtidb::client::NsClient> ns_client(
-            new ::rtidb::client::NsClient(endpoint));
+        new ::rtidb::client::NsClient(endpoint));
     int ret = ns_client->Init();
     if (ret != 0) {
         LOG(WARNING) << "fail to init ns client with endpoint " << endpoint;
         return false;
-    }else {
+    } else {
         LOG(INFO) << "init ns client with endpoint " << endpoint << " done";
         std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
         ns_client_ = ns_client;
@@ -103,10 +102,12 @@ bool ClusterSDK::CreateNsClient() {
 
 bool ClusterSDK::RefreshCatalog(const std::vector<std::string>& table_datas) {
     std::vector<::rtidb::nameserver::TableInfo> tables;
-    std::map<std::string, std::map<std::string, 
-        std::shared_ptr<::rtidb::nameserver::TableInfo>>>
+    std::map<
+        std::string,
+        std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>>>
         mapping;
-    std::shared_ptr<::rtidb::catalog::SDKCatalog> new_catalog(new ::rtidb::catalog::SDKCatalog());
+    std::shared_ptr<::rtidb::catalog::SDKCatalog> new_catalog(
+        new ::rtidb::catalog::SDKCatalog());
     for (uint32_t i = 0; i < table_datas.size(); i++) {
         if (table_datas[i].empty()) continue;
         std::string value;
@@ -117,7 +118,7 @@ bool ClusterSDK::RefreshCatalog(const std::vector<std::string>& table_datas) {
             continue;
         }
         std::shared_ptr<::rtidb::nameserver::TableInfo> table_info(
-                new ::rtidb::nameserver::TableInfo());
+            new ::rtidb::nameserver::TableInfo());
         ok = table_info->ParseFromString(value);
         if (!ok) {
             LOG(WARNING) << "fail to parse table proto with " << value;
@@ -129,7 +130,9 @@ bool ClusterSDK::RefreshCatalog(const std::vector<std::string>& table_datas) {
         tables.push_back(*(table_info.get()));
         auto it = mapping.find(table_info->db());
         if (it == mapping.end()) {
-            std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>> table_in_db;
+            std::map<std::string,
+                     std::shared_ptr<::rtidb::nameserver::TableInfo>>
+                table_in_db;
             table_in_db.insert(std::make_pair(table_info->name(), table_info));
             mapping.insert(std::make_pair(table_info->db(), table_in_db));
         } else {
@@ -183,15 +186,17 @@ bool ClusterSDK::InitCatalog() {
     if (zk_client_->IsExistNode(table_root_path_) == 0) {
         bool ok = zk_client_->GetChildren(table_root_path_, table_datas);
         if (!ok) {
-            LOG(WARNING) << "fail to get table list with path " << table_root_path_;
+            LOG(WARNING) << "fail to get table list with path "
+                         << table_root_path_;
             return false;
         }
     }
     return RefreshCatalog(table_datas);
 }
 
-std::shared_ptr<::rtidb::client::TabletClient> ClusterSDK::GetLeaderTabletByTable(const std::string& db,
-        const std::string& name) {
+std::shared_ptr<::rtidb::client::TabletClient>
+ClusterSDK::GetLeaderTabletByTable(const std::string& db,
+                                   const std::string& name) {
     std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
     auto it = table_to_tablets_.find(db);
     if (it == table_to_tablets_.end()) {
@@ -266,8 +271,8 @@ uint32_t ClusterSDK::GetTableId(const std::string& db,
     return table_info->tid();
 }
 
-std::shared_ptr<::rtidb::nameserver::TableInfo> ClusterSDK::GetTableInfo(const std::string& db,
-        const std::string& tname) {
+std::shared_ptr<::rtidb::nameserver::TableInfo> ClusterSDK::GetTableInfo(
+    const std::string& db, const std::string& tname) {
     std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
     auto it = table_to_tablets_.find(db);
     if (it == table_to_tablets_.end()) {

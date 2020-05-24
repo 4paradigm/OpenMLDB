@@ -24,12 +24,12 @@
 #include <utility>
 #include <vector>
 
+#include "catalog/schema_adapter.h"
 #include "client/tablet_client.h"
+#include "parser/parser.h"
 #include "sdk/cluster_sdk.h"
 #include "sdk/sql_router.h"
 #include "vm/engine.h"
-#include "catalog/schema_adapter.h"
-#include "parser/parser.h"
 
 namespace rtidb {
 namespace sdk {
@@ -41,12 +41,10 @@ class SQLClusterRouter : public SQLRouter {
 
     bool Init();
 
-    bool CreateDB(const std::string& db,
-            fesql::sdk::Status* status);
+    bool CreateDB(const std::string& db, fesql::sdk::Status* status);
 
-    bool ExecuteDDL(const std::string& db, 
-            const std::string& sql,
-            fesql::sdk::Status* status);
+    bool ExecuteDDL(const std::string& db, const std::string& sql,
+                    fesql::sdk::Status* status);
 
     bool ExecuteInsert(const std::string& db, const std::string& sql,
                        ::fesql::sdk::Status* status);
@@ -66,14 +64,13 @@ class SQLClusterRouter : public SQLRouter {
                    std::set<std::string>* tables);
 
     bool EncodeFromat(const catalog::RtiDBSchema& schema,
-             const ::fesql::node::InsertPlanNode* plan,
-             std::string* value,
-             std::vector<std::pair<std::string, uint32_t>> *dimensions,
-             std::vector<uint64_t> *ts_dimensions);
+                      const ::fesql::node::InsertPlanNode* plan,
+                      std::string* value,
+                      std::vector<std::pair<std::string, uint32_t>>* dimensions,
+                      std::vector<uint64_t>* ts_dimensions);
 
-    bool GetSQLPlan(const std::string& sql,
-            ::fesql::node::NodeManager* nm,
-            ::fesql::node::PlanNodeList* plan);
+    bool GetSQLPlan(const std::string& sql, ::fesql::node::NodeManager* nm,
+                    ::fesql::node::PlanNodeList* plan);
 
  private:
     SQLRouterOptions options_;

@@ -15,25 +15,27 @@
  * limitations under the License.
  */
 
+#include "sdk/cluster_sdk.h"
+
+#include <string>
+#include <memory>
+#include <vector>
 #include <sched.h>
 #include <unistd.h>
-#include "sdk/cluster_sdk.h"
-#include "gtest/gtest.h"
-#include "brpc/server.h"
-#include "gflags/gflags.h"
 #include "base/file_util.h"
+#include "base/glog_wapper.h"  // NOLINT
+#include "brpc/server.h"
 #include "client/ns_client.h"
+#include "gflags/gflags.h"
 #include "gtest/gtest.h"
-#include "base/glog_wapper.h" // NOLINT
 #include "nameserver/name_server_impl.h"
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
 #include "proto/type.pb.h"
 #include "rpc/rpc_client.h"
-#include "tablet/tablet_impl.h"
-#include "timer.h" // NOLINT
 #include "sdk/mini_cluster.h"
-
+#include "tablet/tablet_impl.h"
+#include "timer.h"  // NOLINT
 
 namespace rtidb {
 namespace sdk {
@@ -42,7 +44,9 @@ typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>
     RtiDBSchema;
 typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey>
     RtiDBIndex;
-inline std::string GenRand() { return std::to_string(rand() % 10000000 + 1); } // NOLINT
+inline std::string GenRand() {
+    return std::to_string(rand() % 10000000 + 1); // NOLINT
+}
 
 class MockClosure : public ::google::protobuf::Closure {
  public:
@@ -53,15 +57,14 @@ class MockClosure : public ::google::protobuf::Closure {
 
 class ClusterSDKTest : public ::testing::Test {
  public:
-    ClusterSDKTest():mc_(6181) {}
+    ClusterSDKTest() : mc_(6181) {}
     ~ClusterSDKTest() {}
     void SetUp() {
         bool ok = mc_.SetUp();
         ASSERT_TRUE(ok);
     }
-    void TearDown() {
-        mc_.Close();
-    }
+    void TearDown() { mc_.Close(); }
+
  public:
     MiniCluster mc_;
 };
@@ -69,7 +72,7 @@ class ClusterSDKTest : public ::testing::Test {
 TEST_F(ClusterSDKTest, smoke_empty_cluster) {
     ClusterOptions option;
     option.zk_cluster = mc_.GetZkCluster();
-    option.zk_path =mc_.GetZkPath();
+    option.zk_path = mc_.GetZkPath();
     ClusterSDK sdk(option);
     ASSERT_TRUE(sdk.Init());
 }
@@ -104,7 +107,7 @@ TEST_F(ClusterSDKTest, smoketest) {
     ASSERT_TRUE(ok);
     ClusterOptions option;
     option.zk_cluster = mc_.GetZkCluster();
-    option.zk_path =mc_.GetZkPath();
+    option.zk_path = mc_.GetZkPath();
     ClusterSDK sdk(option);
     ASSERT_TRUE(sdk.Init());
     std::vector<std::shared_ptr<::rtidb::client::TabletClient>> tablet;
@@ -112,22 +115,20 @@ TEST_F(ClusterSDKTest, smoketest) {
     ASSERT_TRUE(ok);
     ASSERT_EQ(1, tablet.size());
     auto leader_tablet = sdk.GetLeaderTabletByTable(db, name);
-    if (!leader_tablet)ASSERT_TRUE(false);
+    if (!leader_tablet) ASSERT_TRUE(false);
     uint32_t tid = sdk.GetTableId(db, name);
     ASSERT_TRUE(tid != 0);
     auto table_ptr = sdk.GetTableInfo(db, name);
     ASSERT_EQ(table_ptr->db(), db);
     ASSERT_EQ(table_ptr->name(), name);
     auto ns_ptr = sdk.GetNsClient();
-    if(!ns_ptr) ASSERT_TRUE(false);
+    if (!ns_ptr) ASSERT_TRUE(false);
     ASSERT_EQ(ns_ptr->GetEndpoint(), ns_client->GetEndpoint());
     ASSERT_TRUE(sdk.Refresh());
 }
 
-
-
-}  // sdk
-}  // rtidb
+}  // namespace sdk
+}  // namespace rtidb
 
 int main(int argc, char** argv) {
     FLAGS_zk_session_timeout = 100000;
@@ -136,5 +137,3 @@ int main(int argc, char** argv) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     return RUN_ALL_TESTS();
 }
-
-

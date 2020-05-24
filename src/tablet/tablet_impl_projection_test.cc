@@ -394,8 +394,8 @@ std::vector<TestArgs*> GenCommonCase() {
     return args;
 }
 inline std::string GenRand() {
-    return std::to_string(rand() % 10000000 + 1);
-}  // NOLINT
+    return std::to_string(rand() % 10000000 + 1); // NOLINT
+}
 
 void CompareRow(codec::RowView* left, codec::RowView* right,
                 const Schema& schema) {

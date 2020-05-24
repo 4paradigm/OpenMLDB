@@ -915,11 +915,14 @@ bool NameServerImpl::RecoverTableInfo() {
         table_info_.insert(std::make_pair(table_name, table_info));
         PDLOG(INFO, "recover table[%s] success", table_name.c_str());
     }
-    if (!zk_client_->GetChildren(zk_db_table_data_path_, db_table_vec)) {
-        if (zk_client_->IsExistNode(zk_db_table_data_path_) > 0) {
-            PDLOG(WARNING, "db table data node is not exist");
-            return true;
+    if (zk_client_->IsExistNode(zk_db_table_data_path_) > 0) {
+        bool ok = zk_client_->Mkdir(zk_db_table_data_path_);
+        if (!ok) {
+            LOG(WARNING) << "fail to mkdir " << zk_db_table_data_path_;
+            return false;
         }
+    }
+    if (!zk_client_->GetChildren(zk_db_table_data_path_, db_table_vec)) {
         PDLOG(WARNING, "get db table id failed!");
         return false;
     }

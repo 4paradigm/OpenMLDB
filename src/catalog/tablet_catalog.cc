@@ -149,7 +149,7 @@ const uint64_t TabletTableHandler::GetCount() {
     return iter->Valid() ? iter->GetValue() : ::fesql::codec::Row();
 }
 
-TabletCatalog::TabletCatalog() : mu_(),tables_(), db_() {}
+TabletCatalog::TabletCatalog() : mu_(), tables_(), db_() {}
 
 TabletCatalog::~TabletCatalog() {}
 
@@ -202,7 +202,6 @@ bool TabletCatalog::AddTable(std::shared_ptr<TabletTableHandler> table) {
 }
 
 bool TabletCatalog::AddDB(const ::fesql::type::Database& db) {
-
     std::lock_guard<::rtidb::base::SpinMutex> spin_lock(mu_);
     TabletDB::iterator it = db_.find(db.name());
     if (it != db_.end()) {
@@ -213,7 +212,6 @@ bool TabletCatalog::AddDB(const ::fesql::type::Database& db) {
         std::map<std::string, std::shared_ptr<TabletTableHandler>>()));
     return true;
 }
-
 
 bool TabletCatalog::IndexSupport() { return true; }
 
