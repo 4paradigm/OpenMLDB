@@ -9,6 +9,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include "thread_pool.h"
 
 
 class RtidbClient;

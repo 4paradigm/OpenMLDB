@@ -197,9 +197,8 @@ bool NsClient::AddTableField(const std::string& table_name,
     return false;
 }
 
-std::shared_ptr<fesql::sdk::ResultSet> NsClient::ExecuteSQL(
+bool NsClient::ExecuteSQL(
     const std::string& script, std::string& msg) {
-    std::shared_ptr<fesql::sdk::ResultSetImpl> empty;
     fesql::node::NodeManager node_manager;
     fesql::parser::FeSQLParser parser;
     fesql::plan::SimplePlanner planner(&node_manager);
@@ -209,24 +208,20 @@ std::shared_ptr<fesql::sdk::ResultSet> NsClient::ExecuteSQL(
     parser.parse(script, parser_trees, &node_manager, sql_status);
     if (0 != sql_status.code) {
         msg = sql_status.msg;
-        std::cout << msg << std::endl;
-        return empty;
+        return false;
     }
     fesql::node::PlanNodeList plan_trees;
     planner.CreatePlanTree(parser_trees, plan_trees, sql_status);
 
     if (0 != sql_status.code) {
         msg = sql_status.msg;
-        std::cout << msg << std::endl;
-        return empty;
+        return false;
     }
 
     fesql::node::PlanNode* plan = plan_trees[0];
-
     if (nullptr == plan) {
         msg = "fail to execute plan : plan null";
-        std::cout << msg << std::endl;
-        return empty;
+        return false;
     }
 
     switch (plan->GetType()) {
@@ -243,7 +238,7 @@ std::shared_ptr<fesql::sdk::ResultSet> NsClient::ExecuteSQL(
             if (0 != sql_status.code) {
                 msg = sql_status.msg;
                 std::cout << msg << std::endl;
-                return empty;
+                return false;
             }
             client_.SendRequest(
                 &::rtidb::nameserver::NameServer_Stub::CreateTable, &request,
@@ -254,10 +249,10 @@ std::shared_ptr<fesql::sdk::ResultSet> NsClient::ExecuteSQL(
         default: {
             msg = "fail to execute script with unSuppurt type" +
                   fesql::node::NameOfPlanNodeType(plan->GetType());
+            return false;
         }
     }
-    std::cout << msg << std::endl;
-    return empty;
+    return true;
 }
 
 bool NsClient::CreateTable(const ::rtidb::nameserver::TableInfo& table_info,
@@ -1003,6 +998,11 @@ bool NsClient::TransformToTableDef(
                         column_desc->set_data_type(
                             rtidb::type::DataType::kVarchar);
                         column_desc->set_type("string");
+                        break;
+                    case fesql::node::kDate:
+                        column_desc->set_data_type(
+                            rtidb::type::DataType::kDate);
+                        column_desc->set_type("date");
                         break;
                     default: {
                         status->msg = "CREATE common: column type " +

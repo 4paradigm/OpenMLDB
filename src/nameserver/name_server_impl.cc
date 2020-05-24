@@ -1705,7 +1705,7 @@ bool NameServerImpl::Init(const std::string& zk_cluster,
     auto_failover_.store(FLAGS_auto_failover, std::memory_order_release);
     task_rpc_version_.store(0, std::memory_order_relaxed);
     zone_info_.set_mode(kNORMAL);
-    zone_info_.set_zone_name(FLAGS_endpoint + zk_path);
+    zone_info_.set_zone_name(endpoint + zk_path);
     zone_info_.set_replica_alias("");
     zone_info_.set_zone_term(1);
     zk_client_ =
@@ -1753,7 +1753,7 @@ bool NameServerImpl::Init(const std::string& zk_cluster,
     dist_lock_ = new DistLock(zk_path + "/leader", zk_client_,
                               boost::bind(&NameServerImpl::OnLocked, this),
                               boost::bind(&NameServerImpl::OnLostLock, this),
-                              FLAGS_endpoint);
+                              endpoint);
     dist_lock_->Lock();
     task_thread_pool_.DelayTask(
         FLAGS_make_snapshot_check_interval,

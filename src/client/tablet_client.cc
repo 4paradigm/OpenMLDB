@@ -323,13 +323,10 @@ bool TabletClient::Put(
     bool ok =
         client_.SendRequest(&::rtidb::api::TabletServer_Stub::Put, &request,
                             &response, FLAGS_request_timeout_ms, 1);
-    if (FLAGS_enable_show_tp) {
-        consumed = ::baidu::common::timer::get_micros() - consumed;
-        percentile_.push_back(consumed);
-    }
     if (ok && response.code() == 0) {
         return true;
     }
+    DLOG(INFO) << "put row to table " << tid << " failed with error " << response.msg();
     return false;
 }
 

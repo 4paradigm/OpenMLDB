@@ -34,12 +34,23 @@ class SQLRouter {
  public:
     SQLRouter() {}
     virtual ~SQLRouter() {}
-    virtual bool ExecuteInsert(const std::string& db, const std::string& sql,
+
+    virtual bool CreateDB(const std::string& db,
+            fesql::sdk::Status* status) = 0;
+
+    virtual bool ExecuteDDL(const std::string& db, 
+            const std::string& sql,
+            fesql::sdk::Status* status) = 0;
+
+    virtual bool ExecuteInsert(const std::string& db,
+            const std::string& sql,
             fesql::sdk::Status* status) = 0;
 
     virtual std::shared_ptr<fesql::sdk::ResultSet> ExecuteSQL(
         const std::string& db, const std::string& sql,
         fesql::sdk::Status* status) = 0;
+
+    virtual bool RefreshCatalog() = 0;
 };
 
 std::shared_ptr<SQLRouter> NewClusterSQLRouter(const SQLRouterOptions& options);

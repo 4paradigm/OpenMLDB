@@ -68,11 +68,45 @@ bool ClusterSDK::Init() {
     return true;
 }
 
+bool ClusterSDK::Refresh() {
+    return InitCatalog();
+}
+
+bool ClusterSDK::CreateNsClient() {
+    std::string ns_node = options_.zk_path + "/leader";
+    std::vector<std::string> children;
+    if (!zk_client_->GetChildren(ns_node, children) || children.empty()) {
+        LOG(WARNING) << "no nameserver exists";
+        return false;
+    }
+    std::string real_path = ns_node + "/" + children[0];
+    std::string endpoint;
+    if (!zk_client_->GetNodeValue(real_path, endpoint)) {
+        LOG(WARNING) << "fail to get zk value with path " << real_path;
+        return false;
+    }
+
+    DLOG(INFO) << "leader path " << real_path << " with value " << endpoint ;
+    std::shared_ptr<::rtidb::client::NsClient> ns_client(
+            new ::rtidb::client::NsClient(endpoint));
+    int ret = ns_client->Init();
+    if (ret != 0) {
+        LOG(WARNING) << "fail to init ns client with endpoint " << endpoint;
+        return false;
+    }else {
+        LOG(INFO) << "init ns client with endpoint " << endpoint << " done";
+        std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
+        ns_client_ = ns_client;
+        return true;
+    }
+}
+
 bool ClusterSDK::RefreshCatalog(const std::vector<std::string>& table_datas) {
     std::vector<::rtidb::nameserver::TableInfo> tables;
     std::map<std::string, std::map<std::string, 
         std::shared_ptr<::rtidb::nameserver::TableInfo>>>
         mapping;
+    std::shared_ptr<::rtidb::catalog::SDKCatalog> new_catalog(new ::rtidb::catalog::SDKCatalog());
     for (uint32_t i = 0; i < table_datas.size(); i++) {
         if (table_datas[i].empty()) continue;
         std::string value;
@@ -104,7 +138,7 @@ bool ClusterSDK::RefreshCatalog(const std::vector<std::string>& table_datas) {
         LOG(INFO) << "load table info with name " << table_info->name()
                   << " in db " << table_info->db();
     }
-    bool ok = catalog_->Init(tables);
+    bool ok = new_catalog->Init(tables);
     if (!ok) {
         LOG(WARNING) << "fail to init catalog";
         return false;
@@ -112,6 +146,7 @@ bool ClusterSDK::RefreshCatalog(const std::vector<std::string>& table_datas) {
     {
         std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
         table_to_tablets_ = mapping;
+        catalog_ = new_catalog;
         return true;
     }
 }
@@ -145,12 +180,41 @@ bool ClusterSDK::InitTabletClient() {
 
 bool ClusterSDK::InitCatalog() {
     std::vector<std::string> table_datas;
-    bool ok = zk_client_->GetChildren(table_root_path_, table_datas);
-    if (!ok) {
-        LOG(WARNING) << "fail to get table list with path " << table_root_path_;
-        return false;
+    if (zk_client_->IsExistNode(table_root_path_) == 0) {
+        bool ok = zk_client_->GetChildren(table_root_path_, table_datas);
+        if (!ok) {
+            LOG(WARNING) << "fail to get table list with path " << table_root_path_;
+            return false;
+        }
     }
     return RefreshCatalog(table_datas);
+}
+
+std::shared_ptr<::rtidb::client::TabletClient> ClusterSDK::GetLeaderTabletByTable(const std::string& db,
+        const std::string& name) {
+    std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
+    auto it = table_to_tablets_.find(db);
+    if (it == table_to_tablets_.end()) {
+        return std::shared_ptr<::rtidb::client::TabletClient>();
+    }
+    auto sit = it->second.find(name);
+    if (sit == it->second.end()) {
+        return std::shared_ptr<::rtidb::client::TabletClient>();
+    }
+    auto table_info = sit->second;
+    for (int32_t i = 0; i < table_info->table_partition_size(); i++) {
+        const ::rtidb::nameserver::TablePartition& partition =
+            table_info->table_partition(i);
+        for (int32_t j = 0; j < partition.partition_meta_size(); j++) {
+            if (!partition.partition_meta(j).is_leader()) continue;
+            std::string endpoint = partition.partition_meta(j).endpoint();
+            auto ait = alive_tablets_.find(endpoint);
+            if (ait != alive_tablets_.end()) {
+                return ait->second;
+            }
+        }
+    }
+    return std::shared_ptr<::rtidb::client::TabletClient>();
 }
 
 bool ClusterSDK::GetTabletByTable(

@@ -58,13 +58,15 @@ class MiniCluster {
  public:
     explicit MiniCluster(int32_t zk_port)
         : zk_port_(zk_port),
-          ns_(),
-          ts_(),
+          ns_(NULL),
+          ts_(NULL),
           zk_cluster_(),
           zk_path_(),
           ns_client_(NULL) {}
     ~MiniCluster() {}
     bool SetUp() {
+        ns_ = new brpc::Server();
+        ts_ = new brpc::Server();
         srand(time(NULL));
         FLAGS_db_root_path = "/tmp/mini_cluster" + GenRand();
         zk_cluster_ = "127.0.0.1:" + std::to_string(zk_port_);
@@ -79,11 +81,11 @@ class MiniCluster {
             return false;
         }
         brpc::ServerOptions options;
-        if (ns_.AddService(nameserver, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
+        if (ns_->AddService(nameserver, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
             LOG(WARNING) << "fail to start ns";
             return false;
         }
-        if (ns_.Start(ns_endpoint.c_str(), &options) != 0) {
+        if (ns_->Start(ns_endpoint.c_str(), &options) != 0) {
             return false;
         }
         sleep(2);
@@ -98,11 +100,11 @@ class MiniCluster {
             return false;
         }
         brpc::ServerOptions ts_opt;
-        if (ts_.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
+        if (ts_->AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
             LOG(WARNING) << "fail to start ns";
             return false;
         }
-        if (ts_.Start(ts_endpoint.c_str(), &ts_opt) != 0) {
+        if (ts_->Start(ts_endpoint.c_str(), &ts_opt) != 0) {
             return false;
         }
         ok = tablet->RegisterZK();
@@ -118,8 +120,10 @@ class MiniCluster {
     }
 
     void Close() {
-        ns_.Stop(10);
-        ts_.Stop(10);
+        ns_->Stop(10);
+        ts_->Stop(10);
+        delete ns_;
+        delete ts_;
     }
 
     std::string GetZkCluster() { return zk_cluster_; }
@@ -136,8 +140,8 @@ class MiniCluster {
     int32_t zk_port_;
     int32_t ns_port_;
     int32_t ts_port_;
-    brpc::Server ns_;
-    brpc::Server ts_;
+    brpc::Server* ns_;
+    brpc::Server* ts_;
     std::string zk_cluster_;
     std::string zk_path_;
     ::rtidb::client::NsClient* ns_client_;

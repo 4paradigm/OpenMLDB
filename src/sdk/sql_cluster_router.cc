@@ -59,6 +59,45 @@ bool SQLClusterRouter::Init() {
     return true;
 }
 
+bool SQLClusterRouter::ExecuteDDL(const std::string& db,
+        const std::string& sql,
+        fesql::sdk::Status* status) {
+    auto ns_ptr = cluster_sdk_->GetNsClient();
+    if (!ns_ptr) {
+        LOG(WARNING) << "no nameserver exist";
+        return false;
+    }
+    //TODO(wangtaize) update ns client to thread safe
+    std::string err;
+    bool ok = ns_ptr->Use(db, err);
+    if (!ok) {
+        LOG(WARNING) << "db " << db << " does not exist";
+        return false;
+    }
+    ok = ns_ptr->ExecuteSQL(sql, err);
+    if (!ok) {
+        LOG(WARNING) << "fail to execute sql " << sql << " for error " << err;
+        return false;
+    }
+    return true;
+}
+
+bool SQLClusterRouter::CreateDB(const std::string& db,
+        fesql::sdk::Status* status) {
+    auto ns_ptr = cluster_sdk_->GetNsClient();
+    if (!ns_ptr) {
+        LOG(WARNING) << "no nameserver exist";
+        return false;
+    }
+    std::string err;
+    bool ok = ns_ptr->CreateDatabase(db, err);
+    if (!ok) {
+        LOG(WARNING) << "fail to create db " << db << " for error " << err;
+        return false;
+    }
+    return true;
+}
+
 bool SQLClusterRouter::GetTablet(
     const std::string& db, const std::string& sql,
     std::vector<std::shared_ptr<::rtidb::client::TabletClient>>* tablets) {
@@ -126,8 +165,183 @@ std::shared_ptr<::fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
 bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& sql,
         ::fesql::sdk::Status* status)  {
 
-    return false; 
+    ::fesql::node::NodeManager nm;
+    ::fesql::plan::PlanNodeList plans;
+    bool ok = GetSQLPlan(sql, &nm, &plans);
+    if (!ok || plans.size() == 0) {
+        LOG(WARNING) << "fail to get sql plan with sql " << sql;
+        return false;
+    }
+    ::fesql::node::PlanNode* plan = plans[0];
+    if (plan->GetType() != fesql::node::kPlanTypeInsert) {
+        LOG(WARNING) << "invalid sql node expect insert";
+        return false;
+    }
+    ::fesql::node::InsertPlanNode* iplan =
+                dynamic_cast<::fesql::node::InsertPlanNode*>(plan);
+    const ::fesql::node::InsertStmt* insert_stmt = iplan->GetInsertNode();
+    if (insert_stmt == NULL) {
+        LOG(WARNING) << "insert stmt is null";
+        return false;
+    }
+    std::shared_ptr<::rtidb::nameserver::TableInfo> table_info
+        = cluster_sdk_->GetTableInfo(db, insert_stmt->table_name_);
+    if (!table_info) {
+        LOG(WARNING) << "table with name " << insert_stmt->table_name_ << " does exist";
+        return false;
+    }
+    std::string value;
+    std::vector<std::pair<std::string, uint32_t>> dimensions;
+    std::vector<uint64_t> ts;
+    ok = EncodeFromat(table_info->column_desc_v1(), iplan,
+            &value, &dimensions, &ts);
+    if (!ok) {
+        LOG(WARNING) << "fail to encode row for table " << insert_stmt->table_name_;
+        return false;
+    }
+    std::shared_ptr<::rtidb::client::TabletClient> tablet
+        = cluster_sdk_->GetLeaderTabletByTable(db, insert_stmt->table_name_);
+    if (!tablet) {
+        LOG(WARNING) << "fail to get table " << insert_stmt->table_name_ << " tablet";
+        return false;
+    }
+    ok = tablet->Put(table_info->tid(), 0, dimensions, ts, value, 1);
+    if (!ok) return false;
+    return true; 
+}
 
+bool SQLClusterRouter::EncodeFromat(const catalog::RtiDBSchema& schema,
+             const ::fesql::node::InsertPlanNode* plan,
+             std::string* value,
+             std::vector<std::pair<std::string, uint32_t>> *dimensions,
+             std::vector<uint64_t> *ts_dimensions) {
+    if (plan == NULL || value == NULL || dimensions == NULL
+            || ts_dimensions == NULL) return false;
+    auto insert_stmt = plan->GetInsertNode();
+    if (nullptr == insert_stmt
+            || insert_stmt->values_.size() != schema.size()) {
+        LOG(WARNING) << "insert stmt is null or schema mismatch";
+        return false;
+    }
+    uint32_t str_size = 0;
+    //TODO use a safe way
+    for (auto value : insert_stmt->values_) {
+        if(value->GetExprType() == ::fesql::node::kExprPrimary) {
+            ::fesql::node::ConstNode* primary =
+                dynamic_cast<::fesql::node::ConstNode*>(value);
+            if (primary->GetDataType() == ::fesql::node::kVarchar) {
+                str_size += strlen(primary->GetStr());
+            }
+        }
+    }
+    ::rtidb::codec::RowBuilder rb(schema);
+    uint32_t row_size = rb.CalTotalLength(str_size);
+    value->resize(row_size);
+    char* buf = reinterpret_cast<char*>(&(value->at(0)));
+    bool ok = rb.SetBuffer(reinterpret_cast<int8_t*>(buf), row_size);
+    if (!ok) {
+        return false;
+    }
+    int32_t idx_cnt = 0;
+    for (int32_t i = 0; i < schema.size(); i++) {
+        const ::rtidb::common::ColumnDesc& column = schema.Get(i);
+        const ::fesql::node::ConstNode* primary 
+            = dynamic_cast<const ::fesql::node::ConstNode*>(
+            insert_stmt->values_.at(i));
+        switch (column.data_type()) {
+            case ::rtidb::type::kSmallInt: {
+                ok = rb.AppendInt16(primary->GetSmallInt());
+                if (column.add_ts_idx()) {
+                    dimensions->push_back(std::make_pair(std::to_string(primary->GetSmallInt()),
+                                    idx_cnt));
+                    idx_cnt++;
+                }
+                break;
+            }
+            case ::rtidb::type::kInt: {
+                ok = rb.AppendInt32(primary->GetInt());
+                if (column.add_ts_idx()) {
+                    dimensions->push_back(std::make_pair(std::to_string(primary->GetInt()),
+                                    idx_cnt));
+                    idx_cnt++;
+                }
+                break;
+            }
+            case ::rtidb::type::kBigInt: {
+                if (column.is_ts_col()) {
+                    ts_dimensions->push_back(primary->GetInt());
+                }
+                if (column.add_ts_idx()) {
+                    dimensions->push_back(std::make_pair(std::to_string(primary->GetInt()),
+                                    idx_cnt));
+                    idx_cnt++;
+                }
+                ok = rb.AppendInt64(primary->GetInt());
+                break;
+            }
+            case ::rtidb::type::kFloat: {
+                ok = rb.AppendFloat(static_cast<float>(primary->GetDouble()));
+                break;
+            }
+            case ::rtidb::type::kDouble: {
+                ok = rb.AppendDouble(primary->GetDouble());
+                break;
+            }
+            case ::rtidb::type::kVarchar:
+            case ::rtidb::type::kString:{
+                ok = rb.AppendString(primary->GetStr(),
+                                     strlen(primary->GetStr()));
+                if (column.add_ts_idx()) {
+                    dimensions->push_back(std::make_pair(std::string(primary->GetStr(), 
+                                    strlen(primary->GetStr())),
+                                    idx_cnt));
+                    idx_cnt++;
+                }
+                break;
+            }
+            case ::rtidb::type::kTimestamp: {
+                if (column.is_ts_col()) {
+                    ts_dimensions->push_back(primary->GetInt());
+                }
+                ok = rb.AppendTimestamp(primary->GetInt());
+                break;
+            }
+            default: {
+                LOG(WARNING) <<" not supported type";
+                return false;
+            }
+        }
+        if (!ok) {
+            LOG(WARNING) << "fail encode column " << column.type();
+            return false;
+        }
+    }
+    return true;
+}
+
+bool SQLClusterRouter::GetSQLPlan(const std::string& sql,
+        ::fesql::node::NodeManager* nm,
+        ::fesql::node::PlanNodeList* plan) {
+    if (nm == NULL || plan == NULL) return false;
+    ::fesql::parser::FeSQLParser parser;
+    ::fesql::plan::SimplePlanner planner(nm);
+    ::fesql::base::Status sql_status;
+    ::fesql::node::NodePointVector parser_trees;
+    parser.parse(sql, parser_trees, nm, sql_status);
+    if (0 != sql_status.code) {
+        LOG(WARNING) << sql_status.msg;
+        return false;
+    }
+    planner.CreatePlanTree(parser_trees, *plan, sql_status);
+    if (0 != sql_status.code) {
+        LOG(WARNING) << sql_status.msg;
+        return false;
+    }
+    return true;
+}
+
+bool SQLClusterRouter::RefreshCatalog() {
+    return cluster_sdk_->Refresh();
 }
 
 }  // namespace sdk

@@ -133,6 +133,28 @@ TEST_F(SQLRouterTest, smoketest) {
     ASSERT_EQ(pk, rs->GetStringUnsafe(0));
 }
 
+TEST_F(SQLRouterTest, smoketest_on_sql) { 
+    SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc_.GetZkCluster();
+    sql_opt.zk_path = mc_.GetZkPath();
+    auto router = NewClusterSQLRouter(sql_opt);
+    if (!router) ASSERT_TRUE(false);
+    std::string name = "test" + GenRand();
+    std::string db = "db" + GenRand();
+    ::fesql::sdk::Status status;
+    bool ok = router->CreateDB(db, &status);
+    ASSERT_TRUE(ok);
+    std::string ddl = "create table " + name + "("
+        "col1 string, col2 bigint,"
+        "index(key=col1, ts=col2));";
+    ok = router->ExecuteDDL(db, ddl, &status);
+    ASSERT_TRUE(ok);
+    ASSERT_TRUE(router->RefreshCatalog());
+    std::string insert = "insert into " + name + " values('hello', 1590285591000);";
+    ok = router->ExecuteInsert(db, insert, &status);
+    ASSERT_TRUE(ok);
+}
+
 }  // namespace sdk
 }  // namespace rtidb
 
@@ -140,7 +162,6 @@ int main(int argc, char** argv) {
     FLAGS_zk_session_timeout = 100000;
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
-    ::rtidb::base::SetLogLevel(INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     return RUN_ALL_TESTS();
 }

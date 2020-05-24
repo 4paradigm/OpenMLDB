@@ -66,6 +66,14 @@ class ClusterSDKTest : public ::testing::Test {
     MiniCluster mc_;
 };
 
+TEST_F(ClusterSDKTest, smoke_empty_cluster) {
+    ClusterOptions option;
+    option.zk_cluster = mc_.GetZkCluster();
+    option.zk_path =mc_.GetZkPath();
+    ClusterSDK sdk(option);
+    ASSERT_TRUE(sdk.Init());
+}
+
 TEST_F(ClusterSDKTest, smoketest) {
     ::rtidb::nameserver::TableInfo table_info;
     table_info.set_format_version(1);
@@ -103,12 +111,20 @@ TEST_F(ClusterSDKTest, smoketest) {
     ok = sdk.GetTabletByTable(db, name, &tablet);
     ASSERT_TRUE(ok);
     ASSERT_EQ(1, tablet.size());
+    auto leader_tablet = sdk.GetLeaderTabletByTable(db, name);
+    if (!leader_tablet)ASSERT_TRUE(false);
     uint32_t tid = sdk.GetTableId(db, name);
     ASSERT_TRUE(tid != 0);
     auto table_ptr = sdk.GetTableInfo(db, name);
     ASSERT_EQ(table_ptr->db(), db);
     ASSERT_EQ(table_ptr->name(), name);
+    auto ns_ptr = sdk.GetNsClient();
+    if(!ns_ptr) ASSERT_TRUE(false);
+    ASSERT_EQ(ns_ptr->GetEndpoint(), ns_client->GetEndpoint());
+    ASSERT_TRUE(sdk.Refresh());
 }
+
+
 
 }  // sdk
 }  // rtidb
@@ -117,7 +133,6 @@ int main(int argc, char** argv) {
     FLAGS_zk_session_timeout = 100000;
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
-    ::rtidb::base::SetLogLevel(INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     return RUN_ALL_TESTS();
 }
