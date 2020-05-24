@@ -5,7 +5,7 @@ target_link_libraries(cluster_sdk_test gtest ${BIN_LIBS})
 add_executable(sql_router_test sql_router_test.cc)
 target_link_libraries(sql_router_test gtest ${BIN_LIBS})
 
-set(SDK_LIBS rtidb_sdk rtidb_catalog client zk_client rtidb_flags rtidb_proto base fesql_sdk zookeeper_mt ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS})
+set(SDK_LIBS rtidb_sdk rtidb_catalog client zk_client rtidb_flags rtidb_codec rtidb_proto base fesql_sdk zookeeper_mt ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS})
 add_executable(mini_cluster_bm mini_cluster_microbenchmark.cc)
 target_link_libraries(mini_cluster_bm benchmark_main benchmark ${BIN_LIBS})
 
@@ -123,7 +123,7 @@ if(SQL_JAVASDK_ENABLE)
 	swig_add_library(sql_jsdk
 			TYPE SHARED
 			LANGUAGE java
-            OUTPUT_DIR ${CMAKE_BINARY_DIR}/src/sdk/java/sql-native/src/main/java/com/_4paradigm/sql/
+            OUTPUT_DIR ${PROJECT_SOURCE_DIR}/src/sdk/java/sql-native/src/main/java/com/_4paradigm/sql/
 			SOURCES sql_router_sdk.i)
 	target_include_directories(sql_jsdk PRIVATE ${JNI_INCLUDE_DIRS})
 	target_compile_options(sql_jsdk PRIVATE -w)
@@ -138,19 +138,15 @@ if(SQL_JAVASDK_ENABLE)
 	endif()
 
     add_custom_command(OUTPUT
-          cp_sql_resurce
+          cp_sql_resource
           COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/src/sdk/java/sql-native/src/main/resources
-          COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/src/sdk/java/sql-jdbc
-          COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/sdk/java/pom.xml  ${CMAKE_BINARY_DIR}/src/sdk/java/
-          COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/sdk/java/sql-jdbc/pom.xml ${CMAKE_BINARY_DIR}/src/sdk/java/sql-jdbc/
-          COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/sdk/java/sql-native/pom.xml ${CMAKE_BINARY_DIR}/src/sdk/java/sql-native/
-          COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:sql_jsdk> ${CMAKE_BINARY_DIR}/src/sdk/java/sql-native/src/main/resources/)
+          COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:sql_jsdk> ${PROJECT_SOURCE_DIR}/src/sdk/java/sql-native/src/main/resources/)
 	add_custom_target(sql_javasdk_package ALL
 	  DEPENDS
         sql_jsdk
-        cp_sql_resurce
+        cp_sql_resource
 		COMMAND ${MAVEN_EXECUTABLE} package -DskipTests=true -Dscalatest.skip=true
-		WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/src/sdk/java
+        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src/sdk/java
 	)
 endif()
 

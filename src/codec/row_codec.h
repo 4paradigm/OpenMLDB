@@ -12,7 +12,6 @@
 #include <vector>
 #include <algorithm>
 #include "codec/flat_array.h"
-#include "codec/row_codec.h"
 #include "codec/schema_codec.h"
 #include "base/glog_wapper.h"
 

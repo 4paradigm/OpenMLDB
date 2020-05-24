@@ -59,3 +59,8 @@ test-common/integrationtest/xmlrunner*
 # ignore make generate code
 src/version.h
 src/config.h
+src/sdk/java/sql-native/src/main/resources
+src/sdk/java/sql-native/src/main/java
+src/sdk/java/sql-native/target/
+src/sdk/java/sql-jdbc/target/
+src/sdk/java/sql-jmh/target/

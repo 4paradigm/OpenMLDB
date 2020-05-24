@@ -198,7 +198,15 @@ bool NsClient::AddTableField(const std::string& table_name,
 }
 
 bool NsClient::ExecuteSQL(
-    const std::string& script, std::string& msg) {
+    const std::string& script,
+    std::string& msg) {
+    return ExecuteSQL(GetDb(), script, msg);
+}
+
+bool NsClient::ExecuteSQL(
+    const std::string& db,
+    const std::string& script,
+    std::string& msg) {
     fesql::node::NodeManager node_manager;
     fesql::parser::FeSQLParser parser;
     fesql::plan::SimplePlanner planner(&node_manager);
@@ -232,6 +240,7 @@ bool NsClient::ExecuteSQL(
             ::rtidb::nameserver::GeneralResponse response;
             ::rtidb::nameserver::TableInfo* table_info =
                 request.mutable_table_info();
+            table_info->set_db(db);
             TransformToTableDef(create->GetTableName(),
                                 create->GetColumnDescList(), table_info,
                                 &sql_status);
@@ -942,9 +951,6 @@ bool NsClient::TransformToTableDef(
     ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsoluteTime);
     ttl_desc->set_abs_ttl(0);
     ttl_desc->set_lat_ttl(0);
-    if (HasDb()) {
-        table->set_db(GetDb());
-    }
     for (auto column_desc : column_desc_list) {
         switch (column_desc->GetType()) {
             case fesql::node::kColumnDesc: {
