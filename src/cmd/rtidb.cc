@@ -4867,7 +4867,7 @@ void HandleClientDisConnectZK(const std::vector<std::string> parts,
 
 void HandleBsClientHelp(const std::vector<std::string>& parts) {
     if (parts.size() < 2) {
-        printf("loadtable - load blob table");
+        printf("loadtable - load blob table\n");
     } else if (parts.size() == 2) {
         if (parts[1] == "loadtable") {
             printf("desc: create table and load data\n");
@@ -5325,8 +5325,8 @@ void HandleBsClientLoadTable(const std::vector<std::string>& parts,
     }
     try {
         std::string msg;
-        bool ok = client->LoadTable(boost::lexical_cast<uint32_t>(parts[0]),
-                boost::lexical_cast<uint32_t>(parts[1]), &msg);
+        bool ok = client->LoadTable(boost::lexical_cast<uint32_t>(parts[1]),
+                boost::lexical_cast<uint32_t>(parts[2]), &msg);
         if (ok) {
             std::cout << "LoadTable ok" << std::endl;
         } else {
