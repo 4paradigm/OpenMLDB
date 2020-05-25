@@ -9,9 +9,11 @@
 #define SRC_CODEC_FLAT_ARRAY_H_
 
 #include <stdint.h>
+
 #include <cstring>
 #include <string>
 #include <vector>
+
 #include "base/endianconv.h"
 #include "codec/schema_codec.h"
 
@@ -163,8 +165,12 @@ class FlatArrayCodec {
             return false;
         }
 
-        uint16_t size = (uint16_t)data.length();
-        Encode(kString, static_cast<const void*>(data.c_str()), size);
+        if (data.empty()) {
+            Encode(kEmptyString, static_cast<const void*>(data.c_str()), 0);
+        } else {
+            uint16_t size = (uint16_t)data.length();
+            Encode(kString, static_cast<const void*>(data.c_str()), size);
+        }
         cur_cnt_++;
         return true;
     }
@@ -247,10 +253,10 @@ class FlatArrayCodec {
     // encode data to buffer
     void Encode(const ColType& type, const void* data, uint16_t size) {
         Column& col = datas_[cur_cnt_];
-        col.buffer.resize(size);
-        char* buffer = reinterpret_cast<char*>(&(col.buffer[0]));
         col.type = type;
-        if (type != kNull) {
+        if (size != 0) {
+            col.buffer.resize(size);
+            char* buffer = reinterpret_cast<char*>(&(col.buffer[0]));
             memcpy(buffer, data, size);
         }
     }
