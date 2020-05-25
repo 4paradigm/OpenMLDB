@@ -179,27 +179,29 @@ class RowCodec {
         rtidb::codec::RowView rv(
             schema, reinterpret_cast<int8_t*>(const_cast<char*>(value.data())),
             value.size());
-        return DecodeRow(schema, rv, 0, schema.size(), &value_vec);
+        return DecodeRow(schema, rv, false, 0, schema.size(), &value_vec);
     }
 
     static bool DecodeRow(const Schema& schema,  // NOLINT
                           const ::rtidb::base::Slice& value,
+                          bool replace_empty_str,
                           int start, int length,
                           std::vector<std::string>& value_vec) {  // NOLINT
         rtidb::codec::RowView rv(
             schema, reinterpret_cast<int8_t*>(const_cast<char*>(value.data())),
             value.size());
-        return DecodeRow(schema, rv, start, length, &value_vec);
+        return DecodeRow(schema, rv, replace_empty_str, start, length, &value_vec);
     }
 
     static bool DecodeRow(const Schema& schema,                   // NOLINT
                           rtidb::codec::RowView& rv,              // NOLINT
                           std::vector<std::string>& value_vec) {  // NOLINT
-        return DecodeRow(schema, rv, 0, schema.size(), &value_vec);
+        return DecodeRow(schema, rv, false, 0, schema.size(), &value_vec);
     }
 
     static bool DecodeRow(const Schema& schema,
                           rtidb::codec::RowView& rv,  // NOLINT
+                          bool replace_empty_str,
                           int start, int length,
                           std::vector<std::string>* value_vec) {
         int end = start + length;
@@ -264,7 +266,11 @@ class RowCodec {
                 uint32_t len = 0;
                 int ret = rv.GetString(i, &ch, &len);
                 if (ret == 0) {
-                    col.assign(ch, len);
+                    if (len == 0) {
+                        col = replace_empty_str ? EMPTY_STRING : "";
+                    } else {
+                        col.assign(ch, len);
+                    }
                 }
             } else if (type == ::rtidb::type::kDate) {
                 uint32_t year = 0;

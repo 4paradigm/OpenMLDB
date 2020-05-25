@@ -5265,7 +5265,7 @@ void TabletImpl::LoadIndexData(
         response->set_code(::rtidb::base::ReturnCode::kOk);
         response->set_msg("ok");
         if (request->partition_num() <= 1) {
-            PDLOG(INFO, "partition is %d need not load. tid %u, pid %u",
+            PDLOG(INFO, "partition num is %d need not load. tid %u, pid %u",
                   request->partition_num(), tid, pid);
             SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kDone);
         } else {
