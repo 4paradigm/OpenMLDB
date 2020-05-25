@@ -57,14 +57,8 @@ public class MemSQLBenchmark {
             } catch (Exception e) {
             }
             st = cnn.createStatement();
-            boolean ok = st.execute(ddl);
-            if (!ok) {
-                return;
-            }
-            ok = st.execute(ddl1);
-            if (!ok) {
-                return;
-            }
+            st.execute(ddl);
+            st.execute(ddl1);
             for (int i = 0; i < recordSize/100; i++) {
                 for (int j = 0; j < 100; j++) {
                     dataset.add(String.format(format, "perf", "pkxxx" + i, System.currentTimeMillis()));
