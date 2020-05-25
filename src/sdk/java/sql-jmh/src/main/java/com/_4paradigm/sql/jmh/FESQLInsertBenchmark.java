@@ -27,9 +27,14 @@ public class FESQLInsertBenchmark {
             "col4 double," +
             "col5 string," +
             "index(key=col1, ts=col2));";
+    private String ddl1 = "create table perf2 (col1 string, col2 bigint, " +
+            "col3 float," +
+            "col4 double," +
+            "col5 string," +
+            "index(key=col1, ts=col2));";
     private boolean setupOk = false;
     private int recordSize = 100000;
-    private String format = "insert into perf values('%s', %d," +
+    private String format = "insert into %s values('%s', %d," +
             "100.0, 200.0, 'hello world');";
     private long counter = 0;
     public FESQLInsertBenchmark() {
@@ -55,10 +60,14 @@ public class FESQLInsertBenchmark {
         if (!setupOk) {
             return;
         }
+        setupOk = executor.executeDDL(db, ddl1);
         for (int i = 0; i < recordSize/100; i++) {
             for (int j = 0; j < 100; j++) {
-                dataset.add(String.format(format, "pkxxx" + i, System.currentTimeMillis()));
+                dataset.add(String.format(format, "perf","pkxxx" + i, System.currentTimeMillis()));
+
             }
+            String sql = String.format(format, "perf2", "pkxxx" + i, System.currentTimeMillis());
+            executor.executeInsert(db, sql);
         }
     }
 
@@ -68,6 +77,12 @@ public class FESQLInsertBenchmark {
         String sql = dataset.get((int)idx);
         executor.executeInsert(db, sql);
         counter ++;
+    }
+
+    @Benchmark
+    public void selectBm() {
+        String sql = "select col1, col2, col3 from perf2 limit 10;";
+        executor.executeSQL(db, sql);
     }
 
     public static void main(String[] args) throws RunnerException {

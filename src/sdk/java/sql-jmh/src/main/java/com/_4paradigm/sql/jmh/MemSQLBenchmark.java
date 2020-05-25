@@ -29,9 +29,14 @@ public class MemSQLBenchmark {
     private ArrayList<String> dataset = new ArrayList<>();
     private int recordSize = 100000;
     private Connection cnn;
-    private String format = "insert into perf values('%s', %d," +
+    private String format = "insert into %s values('%s', %d," +
             "100.0, 200.0, 'hello world');";
     private String ddl = "create table perf (col1 varchar(20), col2 bigint, " +
+            "col3 float," +
+            "col4 double," +
+            "col5 varchar(2)," +
+            "KEY (col1, col2));";
+    private String ddl1 = "create table perf2 (col1 varchar(20), col2 bigint, " +
             "col3 float," +
             "col4 double," +
             "col5 varchar(2)," +
@@ -43,24 +48,30 @@ public class MemSQLBenchmark {
     @Setup
     public void setup() {
         try {
-            for (int i = 0; i < recordSize/100; i++) {
-                for (int j = 0; j < 100; j++) {
-                    dataset.add(String.format(format, "pkxxx" + i, System.currentTimeMillis()));
-                }
-            }
+
             cnn = DriverManager.getConnection(BenchmarkConfig.MEMSQL_URL);
             Statement st = cnn.createStatement();
             try {
                 st.execute(ddl0);
+                st.execute("drop table perf2;");
             } catch (Exception e) {
-
             }
             st = cnn.createStatement();
             boolean ok = st.execute(ddl);
             if (!ok) {
                 return;
             }
-
+            ok = st.execute(ddl1);
+            if (!ok) {
+                return;
+            }
+            for (int i = 0; i < recordSize/100; i++) {
+                for (int j = 0; j < 100; j++) {
+                    dataset.add(String.format(format, "perf", "pkxxx" + i, System.currentTimeMillis()));
+                }
+                Statement st0 = cnn.createStatement();
+                st0.execute(String.format(format, "perf2", "pkxxx" + i, System.currentTimeMillis()));
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -71,6 +82,17 @@ public class MemSQLBenchmark {
         long idx = counter % dataset.size();
         String sql = dataset.get((int)idx);
         counter ++;
+        try {
+            Statement st = cnn.createStatement();
+            st.execute(sql);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Benchmark
+    public void selectBm() {
+        String sql = "select col1, col2, col3 from perf2 limit 10;";
         try {
             Statement st = cnn.createStatement();
             st.execute(sql);
