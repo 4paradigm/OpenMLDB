@@ -170,10 +170,15 @@ class Engine {
     bool Explain(const std::string& sql, const std::string& db, bool is_batch,
                  ExplainOutput* explain_output, base::Status* status);
 
+    inline void UpdateCatalog(std::shared_ptr<Catalog> cl) {
+        std::lock_guard<base::SpinMutex> lock(mu_);
+        cl_ = cl;
+    }
+
  private:
     std::shared_ptr<CompileInfo> GetCacheLocked(const std::string& db,
                                                 const std::string& sql);
-    const std::shared_ptr<Catalog> cl_;
+    std::shared_ptr<Catalog> cl_;
     EngineOptions options_;
     base::SpinMutex mu_;
     EngineCache cache_;
