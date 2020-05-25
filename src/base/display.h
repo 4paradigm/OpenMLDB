@@ -41,7 +41,7 @@ static std::string DataTypeToStr(::rtidb::type::DataType data_type) {
 }
 
 static void TransferString(std::vector<std::string>* vec) {
-    std::for_each(vec.begin(), vec.end(), [](std::string& str) {
+    std::for_each(vec->begin(), vec->end(), [](std::string& str) {
         if (str == ::rtidb::codec::NONETOKEN) {
             str = "-";
         } else if (str == ::rtidb::codec::EMPTY_STRING) {
