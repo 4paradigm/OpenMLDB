@@ -338,8 +338,15 @@ __attribute__((unused)) static void ShowTableRows(
     const ::rtidb::nameserver::CompressType ctype) {
     std::vector<std::string> row;
     row.push_back("#");
+    bool has_ts_col = false;
     for (int32_t i = 0; i < schema.size(); i++) {
         row.push_back(schema.Get(i).name());
+        if (schema.Get(i).is_ts_col()) {
+            has_ts_col = true;
+        }
+    }
+    if (!has_ts_col) {
+        row.insert(row.begin() + 1, "ts");
     }
     ::baidu::common::TPrinter tp(row.size(), FLAGS_max_col_display_length);
     tp.AddRow(row);
@@ -347,6 +354,9 @@ __attribute__((unused)) static void ShowTableRows(
     while (it->Valid()) {
         std::vector<std::string> vrow;
         vrow.push_back(boost::lexical_cast<std::string>(index));
+        if (!has_ts_col) {
+            vrow.push_back(std::to_string(it->GetKey()));
+        }
         std::string value;
         if (ctype == ::rtidb::nameserver::kSnappy) {
             ::snappy::Uncompress(it->GetValue().data(), it->GetValue().size(),
