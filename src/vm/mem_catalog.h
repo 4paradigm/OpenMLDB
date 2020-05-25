@@ -488,6 +488,16 @@ class MemCatalog : public Catalog {
     Databases dbs_;
 };
 
+
+// row iter interfaces for llvm
+void GetRowIter(int8_t* input, int8_t* iter);
+bool RowIterHasNext(int8_t* iter);
+void RowIterNext(int8_t* iter);
+int8_t* RowIterGetCurSlice(int8_t* iter, size_t idx);
+size_t RowIterGetCurSliceSize(int8_t* iter, size_t idx);
+void RowIterDelete(int8_t* iter);
+
+
 }  // namespace vm
 }  // namespace fesql
 #endif  // SRC_VM_MEM_CATALOG_H_
