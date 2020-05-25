@@ -1,7 +1,6 @@
 package com._4paradigm.sql.jmh;
 
 import com._4paradigm.sql.sdk.SdkOption;
-import com._4paradigm.sql.sdk.SqlException;
 import com._4paradigm.sql.sdk.SqlExecutor;
 import com._4paradigm.sql.sdk.impl.SqlClusterExecutor;
 import org.openjdk.jmh.annotations.*;
@@ -14,11 +13,11 @@ import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
 
 @BenchmarkMode(Mode.All)
-@OutputTimeUnit(TimeUnit.SECONDS)
+@OutputTimeUnit(TimeUnit.MILLISECONDS)
 @State(Scope.Benchmark)
 @Fork(value = 1, jvmArgs = {"-Xms4G", "-Xmx4G"})
 @Warmup(iterations = 2)
-public class InsertBenchmark {
+public class FESQLInsertBenchmark {
     private ArrayList<String> dataset = new ArrayList<>();
     private SqlExecutor executor;
     private SdkOption option;
@@ -33,7 +32,7 @@ public class InsertBenchmark {
     private String format = "insert into perf values('%s', %d," +
             "100.0, 200.0, 'hello world');";
     private long counter = 0;
-    public InsertBenchmark() {
+    public FESQLInsertBenchmark() {
         SdkOption sdkOption = new SdkOption();
         sdkOption.setSessionTimeout(30000);
         sdkOption.setZkCluster(BenchmarkConfig.ZK_CLUSTER);
@@ -44,7 +43,6 @@ public class InsertBenchmark {
         } catch (Exception e) {
             e.printStackTrace();
         }
-
     }
 
     @Setup
@@ -69,11 +67,13 @@ public class InsertBenchmark {
         long idx = counter % dataset.size();
         String sql = dataset.get((int)idx);
         executor.executeInsert(db, sql);
+        counter ++;
     }
+
     public static void main(String[] args) throws RunnerException {
 
         Options opt = new OptionsBuilder()
-                .include(InsertBenchmark.class.getSimpleName())
+                .include(FESQLInsertBenchmark.class.getSimpleName())
                 .forks(1)
                 .build();
 
