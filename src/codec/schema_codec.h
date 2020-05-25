@@ -28,6 +28,7 @@ constexpr uint32_t MAX_ROW_BYTE_SIZE = 1024 * 1024;  // 1M
 constexpr uint32_t HEADER_BYTE_SIZE = 3;
 
 const std::string NONETOKEN = "!N@U#L$L%";  // NOLINT
+const std::string EMPTY_STRING = "!@#$%";
 const std::string DEFAULT_LONG = "1";      // NOLINT
 
 static const std::unordered_map<std::string, ::rtidb::type::DataType>

@@ -331,47 +331,50 @@ __attribute__((unused)) static void FillTableRow(
             full_schema_size--;
             vrow.emplace_back("");
             continue;
-        } else if (fit.IsNULL()) {
+        }
+        ColType type = fit.GetType();
+        if (fit.IsNULL()) {
             col = NONETOKEN;
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kString) {
+        } else if (type == ::rtidb::codec::ColType::kString ||
+                type == ::rtidb::codec::ColType::kEmptyString) {
             fit.GetString(&col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kUInt16) {
+        } else if (type == ::rtidb::codec::ColType::kUInt16) {
             uint16_t uint16_col = 0;
             fit.GetUInt16(&uint16_col);
             col = boost::lexical_cast<std::string>(uint16_col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kInt16) {
+        } else if (type == ::rtidb::codec::ColType::kInt16) {
             int16_t int16_col = 0;
             fit.GetInt16(&int16_col);
             col = boost::lexical_cast<std::string>(int16_col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kInt32) {
+        } else if (type == ::rtidb::codec::ColType::kInt32) {
             int32_t int32_col = 0;
             fit.GetInt32(&int32_col);
             col = boost::lexical_cast<std::string>(int32_col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kInt64) {
+        } else if (type == ::rtidb::codec::ColType::kInt64) {
             int64_t int64_col = 0;
             fit.GetInt64(&int64_col);
             col = boost::lexical_cast<std::string>(int64_col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kUInt32) {
+        } else if (type == ::rtidb::codec::ColType::kUInt32) {
             uint32_t uint32_col = 0;
             fit.GetUInt32(&uint32_col);
             col = boost::lexical_cast<std::string>(uint32_col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kUInt64) {
+        } else if (type == ::rtidb::codec::ColType::kUInt64) {
             uint64_t uint64_col = 0;
             fit.GetUInt64(&uint64_col);
             col = boost::lexical_cast<std::string>(uint64_col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kDouble) {
+        } else if (type == ::rtidb::codec::ColType::kDouble) {
             double double_col = 0.0;
             fit.GetDouble(&double_col);
             col = boost::lexical_cast<std::string>(double_col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kFloat) {
+        } else if (type == ::rtidb::codec::ColType::kFloat) {
             float float_col = 0.0f;
             fit.GetFloat(&float_col);
             col = boost::lexical_cast<std::string>(float_col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kTimestamp) {
+        } else if (type == ::rtidb::codec::ColType::kTimestamp) {
             uint64_t ts = 0;
             fit.GetTimestamp(&ts);
             col = boost::lexical_cast<std::string>(ts);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kDate) {
+        } else if (type == ::rtidb::codec::ColType::kDate) {
             uint64_t dt = 0;
             fit.GetDate(&dt);
             time_t rawtime = (time_t)dt / 1000;
@@ -379,7 +382,7 @@ __attribute__((unused)) static void FillTableRow(
             char buf[20];
             strftime(buf, 20, "%Y-%m-%d", timeinfo);
             col.assign(buf);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kBool) {
+        } else if (type == ::rtidb::codec::ColType::kBool) {
             bool value = false;
             fit.GetBool(&value);
             if (value) {

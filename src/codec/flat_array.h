@@ -302,7 +302,7 @@ class FlatArrayIterator {
     uint16_t Size() { return col_cnt_; }
 
     bool IsNULL() {
-        if (type_ == kNull || fsize_ == 0) {
+        if (type_ == kNull || (fsize_ == 0 && type_ != kEmptyString)) {
             return true;
         }
         return false;
@@ -507,6 +507,7 @@ class FlatArrayIterator {
             return false;
         }
         if (fsize_ == 0) {
+            value->assign(EMPTY_STRING);
             return true;
         }
         if (offset_ + fsize_ > bsize_) {
