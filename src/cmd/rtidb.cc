@@ -3693,6 +3693,10 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
     if (SetColumnDesc(table_info, type_set, ns_table_info) < 0) {
         return -1;
     }
+
+    for (int idx = 0; idx < table_info.partition_key_size(); idx++) {
+        ns_table_info.add_partition_key(table_info.partition_key(idx));
+    }
     return 0;
 }
 

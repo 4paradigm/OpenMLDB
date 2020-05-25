@@ -2617,8 +2617,8 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller,
 
 int NameServerImpl::CheckTableMeta(const TableInfo& table_info) {
     bool has_index = false;
+    std::map<std::string, std::string> column_map;
     if (table_info.column_desc_v1_size() > 0) {
-        std::map<std::string, std::string> column_map;
         for (const auto& column_desc : table_info.column_desc_v1()) {
             if (column_desc.add_ts_idx()) {
                 has_index = true;
@@ -2687,9 +2687,62 @@ int NameServerImpl::CheckTableMeta(const TableInfo& table_info) {
                       column_desc.name().c_str());
                 return -1;
             }
+            column_map.emplace(column_desc.name(), column_desc.type());
         }
         if (!has_index) {
             PDLOG(WARNING, "no index in table_meta");
+            return -1;
+        }
+    }
+
+    std::set<std::string> partition_keys;
+    for (int idx = 0; idx < table_info.partition_key_size(); idx++) {
+        const std::string& partition_column = table_info.partition_key(idx);
+        if (column_map.find(partition_column) == column_map.end()) {
+            PDLOG(WARNING, "not found column %s", partition_column.c_str());
+            return -1;
+        }
+        if (partition_keys.find(partition_column) != partition_keys.end()) {
+            PDLOG(WARNING, "repeated column %s", partition_column.c_str());
+            return -1;
+        }
+        partition_keys.insert(partition_column);
+    }
+
+    if (table_info.has_ttl_desc()) {
+        if ((table_info.ttl_desc().abs_ttl() > FLAGS_absolute_ttl_max) ||
+            (table_info.ttl_desc().lat_ttl() > FLAGS_latest_ttl_max)) {
+            uint32_t max_ttl = table_info.ttl_desc().ttl_type() ==
+                                       ::rtidb::api::TTLType::kAbsoluteTime
+                                   ? FLAGS_absolute_ttl_max
+                                   : FLAGS_latest_ttl_max;
+            uint64_t ttl =
+                table_info.ttl_desc().abs_ttl() > FLAGS_absolute_ttl_max
+                    ? table_info.ttl_desc().abs_ttl()
+                    : table_info.ttl_desc().lat_ttl();
+            PDLOG(WARNING,
+                  "ttl is greater than conf value. ttl[%lu] ttl_type[%s] "
+                  "max ttl[%u]",
+                  ttl,
+                  ::rtidb::api::TTLType_Name(
+                      table_info.ttl_desc().ttl_type())
+                      .c_str(),
+                  max_ttl);
+            return -1;
+        }
+    } else if (table_info.has_ttl()) {
+        if ((table_info.ttl_type() == "kAbsoluteTime" &&
+             table_info.ttl() > FLAGS_absolute_ttl_max) ||
+            (table_info.ttl_type() == "kLatestTime" &&
+             table_info.ttl() > FLAGS_latest_ttl_max)) {
+            uint32_t max_ttl = table_info.ttl_type() == "kAbsoluteTime"
+                                   ? FLAGS_absolute_ttl_max
+                                   : FLAGS_latest_ttl_max;
+            PDLOG(WARNING,
+                  "ttl is greater than conf value. ttl[%lu] ttl_type[%s] "
+                  "max ttl[%u]",
+                  table_info.ttl(), table_info.ttl_type().c_str(),
+                  max_ttl);
             return -1;
         }
     }
@@ -4631,49 +4684,6 @@ void NameServerImpl::CreateTable(RpcController* controller,
             response->set_code(::rtidb::base::ReturnCode::kInvalidParameter);
             response->set_msg("check TableMeta failed");
             return;
-        }
-        if (table_info->has_ttl_desc()) {
-            if ((table_info->ttl_desc().abs_ttl() > FLAGS_absolute_ttl_max) ||
-                (table_info->ttl_desc().lat_ttl() > FLAGS_latest_ttl_max)) {
-                response->set_code(
-                    ::rtidb::base::ReturnCode::kInvalidParameter);
-                uint32_t max_ttl = table_info->ttl_desc().ttl_type() ==
-                                           ::rtidb::api::TTLType::kAbsoluteTime
-                                       ? FLAGS_absolute_ttl_max
-                                       : FLAGS_latest_ttl_max;
-                uint64_t ttl =
-                    table_info->ttl_desc().abs_ttl() > FLAGS_absolute_ttl_max
-                        ? table_info->ttl_desc().abs_ttl()
-                        : table_info->ttl_desc().lat_ttl();
-                response->set_msg("invalid parameter");
-                PDLOG(WARNING,
-                      "ttl is greater than conf value. ttl[%lu] ttl_type[%s] "
-                      "max ttl[%u]",
-                      ttl,
-                      ::rtidb::api::TTLType_Name(
-                          table_info->ttl_desc().ttl_type())
-                          .c_str(),
-                      max_ttl);
-                return;
-            }
-        } else if (table_info->has_ttl()) {
-            if ((table_info->ttl_type() == "kAbsoluteTime" &&
-                 table_info->ttl() > FLAGS_absolute_ttl_max) ||
-                (table_info->ttl_type() == "kLatestTime" &&
-                 table_info->ttl() > FLAGS_latest_ttl_max)) {
-                response->set_code(
-                    ::rtidb::base::ReturnCode::kInvalidParameter);
-                uint32_t max_ttl = table_info->ttl_type() == "kAbsoluteTime"
-                                       ? FLAGS_absolute_ttl_max
-                                       : FLAGS_latest_ttl_max;
-                response->set_msg("invalid parameter");
-                PDLOG(WARNING,
-                      "ttl is greater than conf value. ttl[%lu] ttl_type[%s] "
-                      "max ttl[%u]",
-                      table_info->ttl(), table_info->ttl_type().c_str(),
-                      max_ttl);
-                return;
-            }
         }
     }
     if (!request->has_zone_info() &&

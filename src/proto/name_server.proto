@@ -92,6 +92,7 @@ message TableInfo {
     optional uint32 format_version = 18 [default = 0];
     repeated string blobs = 19;
     optional string db = 20;
+    repeated string partition_key = 21;
 }
 
 message CreateTableRequest {
