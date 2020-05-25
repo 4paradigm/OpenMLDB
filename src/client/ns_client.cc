@@ -197,7 +197,9 @@ bool NsClient::AddTableField(const std::string& table_name,
     return false;
 }
 
-bool NsClient::CreateTable(const std::string& script, std::string& msg) {
+std::shared_ptr<fesql::sdk::ResultSet> NsClient::ExecuteSQL(
+    const std::string& script, std::string& msg) {
+    std::shared_ptr<fesql::sdk::ResultSetImpl> empty;
     fesql::node::NodeManager node_manager;
     fesql::parser::FeSQLParser parser;
     fesql::plan::SimplePlanner planner(&node_manager);
@@ -205,7 +207,57 @@ bool NsClient::CreateTable(const std::string& script, std::string& msg) {
     fesql::base::Status sql_status;
     fesql::node::NodePointVector parser_trees;
     parser.parse(script, parser_trees, &node_manager, sql_status);
-    return true;
+    if (0 != sql_status.code) {
+        msg = sql_status.msg;
+        std::cout << msg << std::endl;
+        return empty;
+    }
+    fesql::node::PlanNodeList plan_trees;
+    planner.CreatePlanTree(parser_trees, plan_trees, sql_status);
+
+    if (0 != sql_status.code) {
+        msg = sql_status.msg;
+        std::cout << msg << std::endl;
+        return empty;
+    }
+
+    fesql::node::PlanNode* plan = plan_trees[0];
+
+    if (nullptr == plan) {
+        msg = "fail to execute plan : plan null";
+        std::cout << msg << std::endl;
+        return empty;
+    }
+
+    switch (plan->GetType()) {
+        case fesql::node::kPlanTypeCreate: {
+            fesql::node::CreatePlanNode* create =
+                dynamic_cast<fesql::node::CreatePlanNode*>(plan);
+            ::rtidb::nameserver::CreateTableRequest request;
+            ::rtidb::nameserver::GeneralResponse response;
+            ::rtidb::nameserver::TableInfo* table_info =
+                request.mutable_table_info();
+            TransformToTableDef(create->GetTableName(),
+                                create->GetColumnDescList(), table_info,
+                                &sql_status);
+            if (0 != sql_status.code) {
+                msg = sql_status.msg;
+                std::cout << msg << std::endl;
+                return empty;
+            }
+            client_.SendRequest(
+                &::rtidb::nameserver::NameServer_Stub::CreateTable, &request,
+                &response, FLAGS_request_timeout_ms, 1);
+            msg = response.msg();
+            break;
+        }
+        default: {
+            msg = "fail to execute script with unSuppurt type" +
+                  fesql::node::NameOfPlanNodeType(plan->GetType());
+        }
+    }
+    std::cout << msg << std::endl;
+    return empty;
 }
 
 bool NsClient::CreateTable(const ::rtidb::nameserver::TableInfo& table_info,
@@ -881,9 +933,160 @@ bool NsClient::DeleteIndex(const std::string& table_name,
 
 bool NsClient::TransformToTableDef(
     const std::string& table_name,
-    const ::fesql::node::NodePointVector& column_desc_list,
-    ::rtidb::nameserver::TableInfo* table, ::rtidb::base::Status* status) {
+    const fesql::node::NodePointVector& column_desc_list,
+    ::rtidb::nameserver::TableInfo* table, fesql::plan::Status* status) {
     if (table == NULL || status == NULL) return false;
+    std::set<std::string> index_names;
+    std::map<std::string, ::rtidb::common::ColumnDesc*> column_names;
+    table->set_name(table_name);
+    // todo: change default setting
+    table->set_partition_num(1);
+    table->set_replica_num(1);
+    table->set_format_version(1);
+    ::rtidb::api::TTLDesc* ttl_desc = table->mutable_ttl_desc();
+    ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsoluteTime);
+    ttl_desc->set_abs_ttl(0);
+    ttl_desc->set_lat_ttl(0);
+    if (HasDb()) {
+        table->set_db(GetDb());
+    }
+    for (auto column_desc : column_desc_list) {
+        switch (column_desc->GetType()) {
+            case fesql::node::kColumnDesc: {
+                fesql::node::ColumnDefNode* column_def =
+                    (fesql::node::ColumnDefNode*)column_desc;
+                ::rtidb::common::ColumnDesc* column_desc =
+                    table->add_column_desc_v1();
+                if (column_names.find(column_desc->name()) !=
+                    column_names.end()) {
+                    status->msg = "CREATE common: COLUMN NAME " +
+                                  column_def->GetColumnName() + " duplicate";
+                    status->code = fesql::common::kSQLError;
+                    return false;
+                }
+                column_desc->set_name(column_def->GetColumnName());
+                column_desc->set_not_null(column_def->GetIsNotNull());
+                column_names.insert(
+                    std::make_pair(column_def->GetColumnName(), column_desc));
+                switch (column_def->GetColumnType()) {
+                    case fesql::node::kBool:
+                        column_desc->set_data_type(
+                            rtidb::type::DataType::kBool);
+                        column_desc->set_type("bool");
+                        break;
+                    case fesql::node::kInt32:
+                        column_desc->set_data_type(rtidb::type::DataType::kInt);
+                        column_desc->set_type("int32");
+                        break;
+                    case fesql::node::kInt64:
+                        column_desc->set_data_type(
+                            rtidb::type::DataType::kBigInt);
+                        column_desc->set_type("int64");
+                        break;
+                    case fesql::node::kFloat:
+                        column_desc->set_data_type(
+                            rtidb::type::DataType::kFloat);
+                        column_desc->set_type("float");
+                        break;
+                    case fesql::node::kDouble:
+                        column_desc->set_data_type(
+                            rtidb::type::DataType::kDouble);
+                        column_desc->set_type("double");
+                        break;
+                    case fesql::node::kTimestamp: {
+                        column_desc->set_data_type(
+                            rtidb::type::DataType::kTimestamp);
+                        column_desc->set_type("timestamp");
+                        break;
+                    }
+                    case fesql::node::kVarchar:
+                        column_desc->set_data_type(
+                            rtidb::type::DataType::kVarchar);
+                        column_desc->set_type("string");
+                        break;
+                    default: {
+                        status->msg = "CREATE common: column type " +
+                                      fesql::node::DataTypeName(
+                                          column_def->GetColumnType()) +
+                                      " is not supported";
+                        status->code = fesql::common::kSQLError;
+                        return false;
+                    }
+                }
+                break;
+            }
+
+            case fesql::node::kColumnIndex: {
+                fesql::node::ColumnIndexNode* column_index =
+                    (fesql::node::ColumnIndexNode*)column_desc;
+
+                if (column_index->GetName().empty()) {
+                    column_index->SetName(fesql::plan::GenerateName(
+                        "INDEX", table->column_key_size()));
+                }
+                if (index_names.find(column_index->GetName()) !=
+                    index_names.end()) {
+                    status->msg = "CREATE common: INDEX NAME " +
+                                  column_index->GetName() + " duplicate";
+                    status->code = fesql::common::kSQLError;
+                    return false;
+                }
+                index_names.insert(column_index->GetName());
+                ::rtidb::common::ColumnKey* index = table->add_column_key();
+                index->set_index_name(column_index->GetName());
+                for (auto key : column_index->GetKey()) {
+                    index->add_col_name(key);
+                }
+                if (!column_index->GetTs().empty()) {
+                    index->add_ts_name(column_index->GetTs());
+                    auto it = column_names.find(column_index->GetTs());
+                    if (it == column_names.end()) {
+                        status->msg = "CREATE common: TS NAME " +
+                                      column_index->GetTs() + " not exists";
+                        status->code = fesql::common::kSQLError;
+                        return false;
+                    } else {
+                        it->second->set_is_ts_col(true);
+                        if (!column_index->ttl_type().empty()) {
+                            if (column_index->ttl_type() == "absolute") {
+                                table->mutable_ttl_desc()->set_ttl_type(
+                                    rtidb::api::kAbsoluteTime);
+                            } else if (column_index->ttl_type() == "latest") {
+                                table->mutable_ttl_desc()->set_ttl_type(
+                                    rtidb::api::kLatestTime);
+                            } else {
+                                status->msg = "CREATE common: ttl_type " +
+                                              column_index->ttl_type() +
+                                              " not support";
+                                status->code = fesql::common::kSQLError;
+                                return false;
+                            }
+                        }
+                        if (-1 != column_index->GetTTL()) {
+                            // todo: support multi ttl
+                            if (table->ttl_desc().ttl_type() ==
+                                rtidb::api::kAbsoluteTime) {
+                                it->second->set_abs_ttl(column_index->GetTTL() /
+                                                        60000);
+                            } else {
+                                it->second->set_lat_ttl(column_index->GetTTL());
+                            }
+                        }
+                    }
+                }
+                break;
+            }
+
+            default: {
+                status->msg =
+                    "can not support " +
+                    fesql::node::NameOfSQLNodeType(column_desc->GetType()) +
+                    " when CREATE TABLE";
+                status->code = fesql::common::kSQLError;
+                return false;
+            }
+        }
+    }
     return true;
 }
 
