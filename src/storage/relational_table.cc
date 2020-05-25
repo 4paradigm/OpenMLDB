@@ -165,6 +165,7 @@ int RelationalTable::InitColumnDesc() {
             std::make_shared<ColumnDef>(col_name, col_idx, type));
         col_idx++;
     }
+    uint32_t pk_idx_count = 0;
     uint32_t key_idx = 0;
     for (const auto& column_key : table_meta_.column_key()) {
         const std::string& index_name = column_key.index_name();
@@ -174,6 +175,16 @@ int RelationalTable::InitColumnDesc() {
             return -1;
         }
         const ::rtidb::type::IndexType index_type = column_key.index_type();
+        if (index_type == ::rtidb::type::kPrimaryKey
+                || index_type == ::rtidb::type::kAutoGen
+                || index_type == ::rtidb::type::kIncrement) {
+            pk_idx_count++;
+            if (pk_idx_count > 1) {
+                PDLOG(WARNING, "primaryKey count more than 1, tid %u pid %u",
+                        id_, pid_);
+                return -1;
+            }
+        }
         std::vector<ColumnDef> index_columns;
         for (const std::string& col_name : column_key.col_name()) {
             auto iter = column_map.find(col_name);
@@ -848,8 +859,7 @@ bool RelationalTable::UpdateDB(const std::shared_ptr<IndexDef> index_def,
                                const Schema& value_schema,
                                const std::string& col_value) {
     ::rtidb::type::IndexType index_type = index_def->GetType();
-    if (index_type == ::rtidb::type::kAutoGen ||
-        index_type == ::rtidb::type::kIncrement) {
+    if (index_type == ::rtidb::type::kIncrement) {
         PDLOG(WARNING, "unsupported index type %s, tid %u pid %u.",
               rtidb::type::IndexType_Name(index_type).c_str(), id_, pid_);
         return false;
@@ -930,6 +940,12 @@ bool RelationalTable::UpdateDB(const std::shared_ptr<IndexDef> index_def,
                     for (const auto& col_def :
                             table_index_.GetPkIndex()->GetColumns()) {
                         if (col_def.GetName() == schema.Get(i).name()) {
+                            if (table_index_.GetPkIndex()->GetType()
+                                    == ::rtidb::type::kAutoGen) {
+                                PDLOG(WARNING, "no support update AutoGen"
+                                        "tid %u pid %u", id_, pid_);
+                                return false;
+                            }
                             is_update_pk = true;
                         }
                     }
