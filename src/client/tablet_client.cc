@@ -319,7 +319,6 @@ bool TabletClient::Put(
     }
     request.set_format_version(format_version);
     ::rtidb::api::PutResponse response;
-    uint64_t consumed = ::baidu::common::timer::get_micros();
     bool ok =
         client_.SendRequest(&::rtidb::api::TabletServer_Stub::Put, &request,
                             &response, FLAGS_request_timeout_ms, 1);

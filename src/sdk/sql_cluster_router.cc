@@ -339,7 +339,13 @@ bool SQLClusterRouter::GetSQLPlan(const std::string& sql,
     return true;
 }
 
-bool SQLClusterRouter::RefreshCatalog() { return cluster_sdk_->Refresh(); }
+bool SQLClusterRouter::RefreshCatalog() { 
+    bool ok = cluster_sdk_->Refresh(); 
+    if (ok) {
+        engine_->UpdateCatalog(cluster_sdk_->GetCatalog());
+    }
+    return ok;
+}
 
 }  // namespace sdk
 }  // namespace rtidb

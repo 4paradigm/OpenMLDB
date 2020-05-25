@@ -24,8 +24,8 @@ set_property(TARGET interclient_tools PROPERTY POSITION_INDEPENDENT_CODE ON)
 add_custom_target(python_package ALL DEPENDS interclient interclient_tools
     COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/__init__.py ${CMAKE_BINARY_DIR}/python/${PROJECT_NAME}
     COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/rtidb.py ${CMAKE_BINARY_DIR}/python/${PROJECT_NAME}
-    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/lib/_interclient.so ${CMAKE_BINARY_DIR}/python/${PROJECT_NAME}
-    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/lib/_interclient_tools.so ${CMAKE_BINARY_DIR}/python/${PROJECT_NAME}
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:interclient> ${CMAKE_BINARY_DIR}/python/${PROJECT_NAME}
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:interclient_tools> ${CMAKE_BINARY_DIR}/python/${PROJECT_NAME}
     COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/setup.py ${CMAKE_BINARY_DIR}/python
 	COMMAND ${CMAKE_COMMAND} -E remove_directory dist
 	COMMAND ${Python3_EXECUTABLE} setup.py bdist_wheel

@@ -39,6 +39,7 @@
 #include "proto/tablet.pb.h"
 #include "proto/type.pb.h"
 #include "tablet/tablet_impl.h"
+#include "vm/engine.h"
 #include "timer.h"     // NOLINT
 #include "tprinter.h"  // NOLINT
 #include "version.h"   // NOLINT
@@ -192,6 +193,7 @@ void StartTablet() {
               "To fix this issue run the command 'swapoff -a' as root");
     }
     SetupLog();
+    ::fesql::vm::Engine::InitializeGlobalLLVM();
     ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
     bool ok = tablet->Init();
     if (!ok) {

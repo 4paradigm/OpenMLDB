@@ -41,31 +41,31 @@ add_executable(file_util_test base/file_util_test.cc)
 target_link_libraries(file_util_test gtest ${BIN_LIBS})
 
 add_executable(slice_test base/slice_test.cc)
-target_link_libraries(slice_test gtest pthread)
+target_link_libraries(slice_test gtest ${BIN_LIBS})
 
 add_executable(zk_test zk/zk_client_test.cc)
-target_link_libraries(zk_test gtest glog gflags unwind zk_client zookeeper_mt pthread common )
+target_link_libraries(zk_test gtest ${BIN_LIBS})
 
 add_executable(dist_lock_test zk/dist_lock_test.cc)
-target_link_libraries(dist_lock_test gtest zk_client glog gflags unwind zookeeper_mt pthread common )
+target_link_libraries(dist_lock_test gtest ${BIN_LIBS})
 
 add_executable(replica_test replica/log_replicator_test.cc flags.cc base/status.cc)
 target_link_libraries(replica_test gtest ${BIN_LIBS})
 
 add_executable(skiplist_test base/skiplist_test.cc)
-target_link_libraries(skiplist_test gtest pthread)
+target_link_libraries(skiplist_test gtest ${BIN_LIBS})
 
 add_executable(flat_array_test codec/flat_array_test.cc)
-target_link_libraries(flat_array_test gtest pthread)
+target_link_libraries(flat_array_test gtest ${BIN_LIBS})
 
 add_executable(schema_codec_test codec/schema_codec_test.cc proto/tablet.pb.cc proto/name_server.pb.cc proto/common.pb.cc proto/type.pb.cc)
-target_link_libraries(schema_codec_test gtest pthread protobuf)
+target_link_libraries(schema_codec_test gtest ${BIN_LIBS})
 
 add_executable(count_down_latch_test base/count_down_latch_test.cc)
-target_link_libraries(count_down_latch_test common gtest glog pthread)
+target_link_libraries(count_down_latch_test  gtest ${BIN_LIBS})
 
 add_executable(ringqueue_test base/ringqueue_test.cc)
-target_link_libraries(ringqueue_test gtest pthread)
+target_link_libraries(ringqueue_test gtest ${BIN_LIBS})
 
 add_executable(segment_test storage/segment_test.cc flags.cc)
 target_link_libraries(segment_test gtest ${BIN_LIBS})
@@ -137,13 +137,13 @@ add_executable(nameserver_object_store_test nameserver/name_server_object_store_
 target_link_libraries(nameserver_object_store_test gtest ${BIN_LIBS})
 
 add_executable(memcomparable_format_test codec/memcomparable_format_test.cc)
-target_link_libraries(memcomparable_format_test gtest pthread)
+target_link_libraries(memcomparable_format_test gtest ${BIN_LIBS})
 
 add_executable(field_codec_test codec/field_codec_test.cc)
-target_link_libraries(field_codec_test  glog gtest gflags unwind pthread common)
+target_link_libraries(field_codec_test gtest ${BIN_LIBS})
 
 add_executable(glog_wapper_test base/glog_wapper_test.cc)
-target_link_libraries(glog_wapper_test glog gtest gflags unwind pthread common)
+target_link_libraries(glog_wapper_test  gtest ${BIN_LIBS})
 
 add_executable(rtidb cmd/rtidb.cc base/status.cc proto/client.pb.cc base/linenoise.cc)
 
