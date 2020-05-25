@@ -45,6 +45,9 @@ class BufNativeEncoderIRBuilder : public RowEncodeIRBuilder {
     // the output_ptr like int8_t**
     bool BuildEncode(::llvm::Value* output_ptr);
 
+    bool BuildEncodePrimaryField(
+      ::llvm::Value* buf, size_t idx, ::llvm::Value* val);
+
  private:
     bool CalcTotalSize(::llvm::Value** output, ::llvm::Value* str_addr_space);
     bool CalcStrBodyStart(::llvm::Value** output, ::llvm::Value* str_add_space);

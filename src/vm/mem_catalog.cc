@@ -299,5 +299,42 @@ void MemTableIterator::Next() {
 const Row& MemTableIterator::GetValue() { return *iter_; }
 bool MemTableIterator::IsSeekable() const { return true; }
 
+
+// row iter interfaces for llvm
+void GetRowIter(int8_t* input, int8_t* iter_addr) {
+    auto handler = reinterpret_cast<ListV<Row>*>(input);
+    auto local_iter = new (iter_addr) std::unique_ptr<RowIterator>(
+        handler->GetIterator());
+    (*local_iter)->SeekToFirst();
+}
+bool RowIterHasNext(int8_t* iter_ptr) {
+    auto& local_iter = *reinterpret_cast<std::unique_ptr<RowIterator>*>(
+        iter_ptr);
+    return local_iter->Valid();
+}
+void RowIterNext(int8_t* iter_ptr) {
+    auto& local_iter = *reinterpret_cast<std::unique_ptr<RowIterator>*>(
+        iter_ptr);
+    local_iter->Next();
+}
+int8_t* RowIterGetCurSlice(int8_t* iter_ptr, size_t idx) {
+    auto& local_iter = *reinterpret_cast<std::unique_ptr<RowIterator>*>(
+        iter_ptr);
+    const Row& row = local_iter->GetValue();
+    return row.buf(idx);
+}
+size_t RowIterGetCurSliceSize(int8_t* iter_ptr, size_t idx) {
+    auto& local_iter = *reinterpret_cast<std::unique_ptr<RowIterator>*>(
+        iter_ptr);
+    const Row& row = local_iter->GetValue();
+    return row.size(idx);
+}
+void RowIterDelete(int8_t* iter_ptr) {
+    auto& local_iter = *reinterpret_cast<std::unique_ptr<RowIterator>*>(
+        iter_ptr);
+    local_iter = nullptr;
+}
+
+
 }  // namespace vm
 }  // namespace fesql

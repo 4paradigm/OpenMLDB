@@ -93,6 +93,12 @@ bool RowFnLetIRBuilder::Build(
     ExprIRBuilder expr_ir_builder(block, &sv, &schema_context_, true, module_);
     ::fesql::node::PlanNodeList::const_iterator it = projects.cbegin();
     std::map<uint32_t, ::llvm::Value*> outputs;
+
+    // collect sum expressions
+    bool enable_column_sum_opt = this->EnableColumnSumOpt();
+    std::vector<std::pair<::fesql::node::ColumnRefNode*, uint32_t>>
+        col_sum_exprs;
+
     uint32_t index = 0;
     for (; it != projects.cend(); it++) {
         const ::fesql::node::PlanNode* pn = *it;
@@ -109,6 +115,19 @@ bool RowFnLetIRBuilder::Build(
         const ::fesql::node::ProjectNode* pp_node =
             (const ::fesql::node::ProjectNode*)pn;
         const ::fesql::node::ExprNode* sql_node = pp_node->GetExpression();
+
+        ::fesql::type::Type col_sum_type;
+        ::fesql::node::ColumnRefNode* maybe_sum_col = nullptr;
+        if (enable_column_sum_opt && IsColumnSum(
+                sql_node, &maybe_sum_col, &col_sum_type)) {
+            col_sum_exprs.push_back({maybe_sum_col, index});
+            AddOutputColumnInfo(
+                pp_node->GetName(),
+                col_sum_type, sql_node,
+                output_schema, output_column_sources);
+            index++;
+            continue;
+        }
 
         switch (sql_node->expr_type_) {
             case node::kExprAll: {
@@ -143,6 +162,17 @@ bool RowFnLetIRBuilder::Build(
                    output_ptr_name);
     if (!ok) {
         return false;
+    }
+
+    if (!col_sum_exprs.empty()) {
+        if (!BuildMultiColumnSum(name, col_sum_exprs,
+                                 &expr_ir_builder,
+                                 &variable_ir_builder,
+                                 block, output_ptr_name,
+                                 output_schema)) {
+            LOG(INFO) << "Multi column sum codegen failed";
+            return false;
+        }
     }
 
     ::llvm::IRBuilder<> ir_builder(block);
@@ -226,6 +256,19 @@ bool RowFnLetIRBuilder::BuildProject(
         return false;
     }
     outputs->insert(std::make_pair(index, expr_out_val));
+
+    return AddOutputColumnInfo(col_name, ctype, expr,
+        output_schema, output_column_sources);
+}
+
+
+bool RowFnLetIRBuilder::AddOutputColumnInfo(
+    const std::string& col_name,
+    ::fesql::type::Type ctype,
+    const node::ExprNode* expr,
+    vm::Schema* output_schema,
+    vm::ColumnSourceList* output_column_sources) {
+
     ::fesql::type::ColumnDef* cdef = output_schema->Add();
     cdef->set_name(col_name);
     cdef->set_type(ctype);
@@ -250,5 +293,6 @@ bool RowFnLetIRBuilder::BuildProject(
     }
     return true;
 }
+
 }  // namespace codegen
 }  // namespace fesql
