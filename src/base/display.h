@@ -40,7 +40,7 @@ static std::string DataTypeToStr(::rtidb::type::DataType data_type) {
     }
 }
 
-static void TransferString(std::vector<std::string>& vec) {
+static void TransferString(std::vector<std::string>* vec) {
     std::for_each(vec.begin(), vec.end(), [](std::string& str) {
         if (str == ::rtidb::codec::NONETOKEN) {
             str = "-";
@@ -356,7 +356,7 @@ __attribute__((unused)) static void ShowTableRows(
         }
         ::rtidb::codec::RowCodec::DecodeRow(schema, ::rtidb::base::Slice(value),
                                             vrow);
-        TransferString(vrow);
+        TransferString(&vrow);
         tp.AddRow(vrow);
         index++;
         it->Next();
@@ -405,7 +405,7 @@ __attribute__((unused)) static void ShowTableRows(
             ::rtidb::codec::FillTableRow(raw.size(), base_columns, str,
                                          str_size, vrow);
         }
-        TransferString(vrow);
+        TransferString(&vrow);
         tp.AddRow(vrow);
         index++;
         it->Next();

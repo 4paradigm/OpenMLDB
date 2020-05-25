@@ -2292,7 +2292,7 @@ void HandleNSGet(const std::vector<std::string>& parts,
             ::rtidb::codec::FillTableRow(columns.size(), base_columns,
                                          value.c_str(), value.size(), row);
         }
-        ::rtidb::base::TransferString(row);
+        ::rtidb::base::TransferString(&row);
         tp.AddRow(row);
         tp.Print(true);
     }
@@ -2843,7 +2843,7 @@ void HandleNSPreview(const std::vector<std::string>& parts,
                                                  value.c_str(), value.size(),
                                                  row);
                 }
-                ::rtidb::base::TransferString(row);
+                ::rtidb::base::TransferString(&row);
             }
             tp.AddRow(row);
             index++;
