@@ -15,6 +15,7 @@ import com._4paradigm.rtidb.tablet.Tablet;
 import com._4paradigm.rtidb.utils.Compress;
 import com.google.protobuf.ByteBufferNoCopy;
 import com.google.protobuf.ByteString;
+import org.slf4j.LoggerFactory;
 import rtidb.api.TabletServer;
 import rtidb.blobserver.BlobServer;
 
@@ -25,6 +26,7 @@ import java.util.concurrent.TimeoutException;
 
 public class RelationalIterator {
 
+    private final static org.slf4j.Logger logger = LoggerFactory.getLogger(RelationalIterator.class);
     private ByteString bs;
     private int offset;
     private ByteBuffer bb;
@@ -245,6 +247,11 @@ public class RelationalIterator {
             ByteString data = response.getData();
             result[0] = data.asReadOnlyByteBuffer().rewind();
             return true;
+        }
+        if (response != null) {
+            logger.warn("response code is: " + response.getCode());
+        } else {
+            logger.warn("response is null");
         }
         return false;
     }
