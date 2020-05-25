@@ -139,7 +139,7 @@ if(SQL_JAVASDK_ENABLE)
 
     add_custom_command(OUTPUT
           cp_sql_resource
-          COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/src/sdk/java/sql-native/src/main/resources
+          COMMAND ${CMAKE_COMMAND} -E make_directory ${PROJECT_SOURCE_DIR}/src/sdk/java/sql-native/src/main/resources
           COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:sql_jsdk> ${PROJECT_SOURCE_DIR}/src/sdk/java/sql-native/src/main/resources/)
 	add_custom_target(sql_javasdk_package ALL
 	  DEPENDS
