@@ -103,6 +103,18 @@ class ColumnImpl : public WrapListImpl<V, Row> {
     const uint32_t offset_;
 };
 
+class TimestampColumnImpl : public ColumnImpl<Timestamp> {
+ public:
+    TimestampColumnImpl(ListV<Row> *impl, int32_t row_idx, uint32_t offset)
+        : ColumnImpl(impl, row_idx, offset) {}
+    ~TimestampColumnImpl() {}
+    const Timestamp GetField(Row row) const override {
+        int64_t ts;
+        const int8_t *ptr = row.buf(row_idx_) + offset_;
+        ts = *((const int64_t *)ptr);
+        return ts > 0 ? Timestamp(ts) : Timestamp(0);
+    }
+};
 class StringColumnImpl : public ColumnImpl<StringRef> {
  public:
     StringColumnImpl(ListV<Row> *impl, int32_t row_idx,

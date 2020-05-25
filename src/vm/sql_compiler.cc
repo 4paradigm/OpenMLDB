@@ -63,6 +63,12 @@ void InitCodecSymbol(::llvm::orc::JITDylib& jd,             // NOLINT
             static_cast<double (*)(const int8_t*, uint32_t)>(
                 &codec::v1::GetDoubleField)));
     fesql::vm::FeSQLJIT::AddSymbol(
+        jd, mi, "fesql_storage_get_timestamp_field",
+        reinterpret_cast<void*>(
+            static_cast<codec::Timestamp (*)(const int8_t*, uint32_t)>(
+                &codec::v1::GetTimestampField)));
+
+    fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_get_str_addr_space",
         reinterpret_cast<void*>(&codec::v1::GetAddrSpace));
     fesql::vm::FeSQLJIT::AddSymbol(

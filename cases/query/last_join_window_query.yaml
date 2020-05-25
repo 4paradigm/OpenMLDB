@@ -121,7 +121,7 @@ SQLCases:
           0, BB, 2.2, 220.2, 50, 2, 2
           0, A, 1.1, 110.1, 50, 1, 1
     output:
-      schema: id:int32, t1_col2:int16, t1_col5:int64, w1_col5_sum:int64
+      schema: id:int32, t1_col2:i16, t1_col5:timestamp, w1_col5_sum:timestamp
       order: id
       data: |
         1, 5, 1, 1

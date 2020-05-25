@@ -418,6 +418,13 @@ int64_t Runner::GetColumnInt64(RowView* row_view, int key_idx,
             }
             break;
         }
+        case fesql::type::kTimestamp: {
+            int64_t value;
+            if (0 == row_view->GetTimestamp(key_idx, &value)) {
+                return static_cast<int64_t>(value);
+            }
+            break;
+        }
         default: {
             LOG(WARNING) << "fail to get int64 for "
                             "current row";

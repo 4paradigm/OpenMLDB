@@ -8,6 +8,8 @@
  **/
 #include "codegen/arithmetic_expr_ir_builder.h"
 #include "codegen/ir_base_builder.h"
+#include "codegen/timestamp_ir_builder.h"
+#include "codegen/type_ir_builder.h"
 namespace fesql {
 namespace codegen {
 
@@ -17,7 +19,8 @@ ArithmeticIRBuilder::~ArithmeticIRBuilder() {}
 
 bool ArithmeticIRBuilder::IsAcceptType(::llvm::Type* type) {
     return nullptr != type &&
-           (type->isIntegerTy() || type->isFloatTy() || type->isDoubleTy());
+           (type->isIntegerTy() || type->isFloatTy() || type->isDoubleTy() ||
+            TypeIRBuilder::IsTimestampPtr(type));
 }
 
 bool ArithmeticIRBuilder::InferBaseTypes(::llvm::Value* left,
@@ -28,6 +31,7 @@ bool ArithmeticIRBuilder::InferBaseTypes(::llvm::Value* left,
     if (NULL == left || NULL == right) {
         status.msg = "left or right value is null";
         status.code = common::kCodegenError;
+        LOG(WARNING) << status.msg;
         return false;
     }
 
@@ -37,12 +41,14 @@ bool ArithmeticIRBuilder::InferBaseTypes(::llvm::Value* left,
     if (!IsAcceptType(left_type) || !IsAcceptType(right_type)) {
         status.msg = "invalid type for arithmetic expression";
         status.code = common::kCodegenError;
+        LOG(WARNING) << status.msg;
         return false;
     }
+
     *casted_left = left;
     *casted_right = right;
 
-    if (casted_left != casted_right) {
+    if (left_type != right_type) {
         if (cast_expr_ir_builder_.IsSafeCast(left_type, right_type)) {
             if (!cast_expr_ir_builder_.SafeCast(left, right_type, casted_left,
                                                 status)) {
@@ -145,6 +151,22 @@ bool ArithmeticIRBuilder::BuildAddExpr(
     } else if (casted_left->getType()->isFloatTy() ||
                casted_left->getType()->isDoubleTy()) {
         *output = builder.CreateFAdd(casted_left, casted_right, "expr_add");
+    } else if (TypeIRBuilder::IsTimestampPtr(casted_left->getType()) &&
+               TypeIRBuilder::IsTimestampPtr(casted_right->getType())) {
+        ::llvm::Value* ts1;
+        ::llvm::Value* ts2;
+        ::llvm::Value* ts_add;
+        TimestampIRBuilder ts_builder;
+        if (!ts_builder.GetTs(block_, casted_left, &ts1)) {
+            return false;
+        }
+        if (!ts_builder.GetTs(block_, casted_right, &ts2)) {
+            return false;
+        }
+        BuildAddExpr(ts1, ts2, &ts_add, status);
+        if (!ts_builder.NewTimestamp(block_, ts_add, output)) {
+            return false;
+        }
     } else {
         status.msg = "fail to codegen add expr: value types are invalid";
         status.code = common::kCodegenError;
@@ -171,6 +193,22 @@ bool ArithmeticIRBuilder::BuildSubExpr(
     } else if (casted_left->getType()->isFloatTy() ||
                casted_left->getType()->isDoubleTy()) {
         *output = builder.CreateFSub(casted_left, casted_right);
+    } else if (TypeIRBuilder::IsTimestampPtr(casted_left->getType()) &&
+               TypeIRBuilder::IsTimestampPtr(casted_right->getType())) {
+        ::llvm::Value* ts1;
+        ::llvm::Value* ts2;
+        ::llvm::Value* ts_add;
+        TimestampIRBuilder ts_builder;
+        if (!ts_builder.GetTs(block_, casted_left, &ts1)) {
+            return false;
+        }
+        if (!ts_builder.GetTs(block_, casted_right, &ts2)) {
+            return false;
+        }
+        BuildSubExpr(ts1, ts2, &ts_add, status);
+        if (!ts_builder.NewTimestamp(block_, ts_add, output)) {
+            return false;
+        }
     } else {
         status.msg = "fail to codegen sub expr: value types are invalid";
         status.code = common::kCodegenError;

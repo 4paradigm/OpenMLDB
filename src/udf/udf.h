@@ -41,6 +41,9 @@ template <class V>
 bool iterator_list(int8_t *input, int8_t *output);
 
 template <class V>
+bool at_struct_list(int8_t *input, int32_t pos, V* v);
+
+template <class V>
 bool has_next_iterator(int8_t *input);
 
 template <class V>

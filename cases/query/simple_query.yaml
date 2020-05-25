@@ -8,7 +8,7 @@ SQLCases:
       - name: t1
         resource: cases/resource/simple_t1_ts.yaml
     output:
-      schema: col0:string, id:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string, std_ts:int64
+      schema: col0:string, id:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string, std_ts:timestamp
       order: id
       data: |
         0, 1, 5, 1.1, 11.1, 1, 1, 1590115420000
@@ -69,7 +69,7 @@ SQLCases:
       - name: t1
         resource: cases/resource/simple_t1_ts.yaml
     output:
-      schema: id:int32, inc_ts:int64
+      schema: id:int32, inc_ts:timestamp
       order: id
       data: |
         1, 1590115420001

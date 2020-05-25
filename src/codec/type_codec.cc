@@ -282,7 +282,7 @@ int32_t GetCol(int8_t* input, int32_t row_idx, int32_t offset, int32_t type_id,
             break;
         }
         case fesql::type::kTimestamp: {
-            new (data) ColumnImpl<int64_t>(w, row_idx, offset);
+            new (data) TimestampColumnImpl(w, row_idx, offset);
             break;
         }
         default: {

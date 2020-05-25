@@ -44,7 +44,7 @@ template <class V>
 V sum_list(int8_t *input) {
     V result = 0;
     if (nullptr == input) {
-        return result;
+        return true;
     }
     ::fesql::codec::ListRef *list_ref = (::fesql::codec::ListRef *)(input);
     ::fesql::codec::ListV<V> *col =
@@ -58,11 +58,29 @@ V sum_list(int8_t *input) {
     return result;
 }
 
+bool sum_list_timestamp(int8_t *input, codec::Timestamp *ts) {
+    int64_t result = 0;
+    if (nullptr == input) {
+        return new codec::Timestamp();
+    }
+    ::fesql::codec::ListRef *list_ref = (::fesql::codec::ListRef *)(input);
+    ::fesql::codec::ListV<codec::Timestamp> *col =
+        (::fesql::codec::ListV<codec::Timestamp> *)(list_ref->list);
+    auto iter = col->GetIterator();
+    iter->SeekToFirst();
+    while (iter->Valid()) {
+        result += iter->GetValue().ts_;
+        iter->Next();
+    }
+    ts->ts_ = result;
+    return true;
+}
+
 template <class V>
 double avg_list(int8_t *input) {
     V result = 0;
     if (nullptr == input) {
-        return result;
+        return true;
     }
     ::fesql::codec::ListRef *list_ref = (::fesql::codec::ListRef *)(input);
     ListV<V> *col = (ListV<V> *)(list_ref->list);
@@ -75,6 +93,29 @@ double avg_list(int8_t *input) {
         cnt++;
     }
     return static_cast<double>(result) / cnt;
+}
+
+bool avg_list_timestamp(int8_t *input, codec::Timestamp *ts) {
+    int64_t result = 0;
+    if (nullptr == input) {
+        return new codec::Timestamp();
+    }
+    ::fesql::codec::ListRef *list_ref = (::fesql::codec::ListRef *)(input);
+    ::fesql::codec::ListV<codec::Timestamp> *col =
+        (::fesql::codec::ListV<codec::Timestamp> *)(list_ref->list);
+    auto iter = col->GetIterator();
+    iter->SeekToFirst();
+    int32_t cnt = 0;
+    while (iter->Valid()) {
+        result += iter->GetValue().ts_;
+        iter->Next();
+        cnt++;
+    }
+    if (cnt == 0) {
+        return false;
+    }
+    ts->ts_ = (static_cast<int64_t>(result / cnt));
+    return true;
 }
 template <class V>
 int64_t count_list(int8_t *input) {
@@ -89,7 +130,7 @@ int64_t count_list(int8_t *input) {
 
 template <class V>
 V max_list(int8_t *input) {
-    V result = 0;
+    V result = V(0);
     if (nullptr == input) {
         return result;
     }
@@ -113,7 +154,7 @@ V max_list(int8_t *input) {
 
 template <class V>
 V min_list(int8_t *input) {
-    V result = 0;
+    V result = V(0);
     if (nullptr == input) {
         return result;
     }
@@ -142,7 +183,11 @@ V at_list(int8_t *input, int32_t pos) {
     ListV<V> *list = (ListV<V> *)(list_ref->list);
     return list->At(pos);
 }
-
+template <class V>
+bool at_struct_list(int8_t *input, int32_t pos, V *v) {
+    *v = at_list<V>(input, pos);
+    return true;
+}
 template <class V>
 bool iterator_list(int8_t *input, int8_t *output) {
     if (nullptr == input || nullptr == output) {
@@ -181,6 +226,16 @@ V next_iterator(int8_t *input) {
     return v;
 }
 template <class V>
+bool next_struct_iterator(int8_t *input, V *v) {
+    ::fesql::codec::IteratorRef *iter_ref =
+        (::fesql::codec::IteratorRef *)(input);
+    ConstIterator<uint64_t, V> *iter =
+        (ConstIterator<uint64_t, V> *)(iter_ref->iterator);
+    *v = iter->GetValue();
+    iter->Next();
+    return true;
+}
+template <class V>
 void delete_iterator(int8_t *input) {
     ::fesql::codec::IteratorRef *iter_ref =
         (::fesql::codec::IteratorRef *)(input);
@@ -206,12 +261,12 @@ void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
               reinterpret_cast<void *>(&v1::sum_list<int32_t>));
     AddSymbol(jd, mi, "sum_list_int64",
               reinterpret_cast<void *>(&v1::sum_list<int64_t>));
-    AddSymbol(jd, mi, "sum_list_timestamp",
-              reinterpret_cast<void *>(&v1::sum_list<int64_t>));
     AddSymbol(jd, mi, "sum_list_double",
               reinterpret_cast<void *>(&v1::sum_list<double>));
     AddSymbol(jd, mi, "sum_list_float",
               reinterpret_cast<void *>(&v1::sum_list<float>));
+    AddSymbol(jd, mi, "sum_list_timestamp",
+              reinterpret_cast<void *>(&v1::sum_list_timestamp));
 
     AddSymbol(jd, mi, "count_list_int16",
               reinterpret_cast<void *>(&v1::count_list<int16_t>));
@@ -225,6 +280,9 @@ void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
               reinterpret_cast<void *>(&v1::count_list<float>));
     AddSymbol(jd, mi, "count_list_row",
               reinterpret_cast<void *>(&v1::count_list<fesql::codec::Row>));
+    AddSymbol(
+        jd, mi, "count_list_timestamp",
+        reinterpret_cast<void *>(&v1::count_list<fesql::codec::Timestamp>));
 
     AddSymbol(jd, mi, "avg_list_int16",
               reinterpret_cast<void *>(&v1::avg_list<int16_t>));
@@ -236,6 +294,8 @@ void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
               reinterpret_cast<void *>(&v1::avg_list<double>));
     AddSymbol(jd, mi, "avg_list_float",
               reinterpret_cast<void *>(&v1::avg_list<float>));
+    AddSymbol(jd, mi, "avg_list_timestamp",
+              reinterpret_cast<void *>(&v1::avg_list_timestamp));
 
     AddSymbol(jd, mi, "max_list_int16",
               reinterpret_cast<void *>(&v1::max_list<int16_t>));
@@ -247,6 +307,8 @@ void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
               reinterpret_cast<void *>(&v1::max_list<float>));
     AddSymbol(jd, mi, "max_list_double",
               reinterpret_cast<void *>(&v1::max_list<double>));
+    AddSymbol(jd, mi, "max_list_timestamp",
+              reinterpret_cast<void *>(&v1::max_list<fesql::codec::Timestamp>));
 
     AddSymbol(jd, mi, "min_list_int16",
               reinterpret_cast<void *>(&v1::min_list<int16_t>));
@@ -258,6 +320,8 @@ void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
               reinterpret_cast<void *>(&v1::min_list<float>));
     AddSymbol(jd, mi, "min_list_double",
               reinterpret_cast<void *>(&v1::min_list<double>));
+    AddSymbol(jd, mi, "min_list_timestamp",
+              reinterpret_cast<void *>(&v1::min_list<fesql::codec::Timestamp>));
 
     AddSymbol(jd, mi, "at_list_int16",
               reinterpret_cast<void *>(&v1::at_list<int16_t>));
@@ -269,6 +333,8 @@ void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
               reinterpret_cast<void *>(&v1::at_list<float>));
     AddSymbol(jd, mi, "at_list_double",
               reinterpret_cast<void *>(&v1::at_list<double>));
+    AddSymbol(jd, mi, "at_list_timestamp",
+              reinterpret_cast<void *>(&v1::at_struct_list<codec::Timestamp>));
 
     AddSymbol(jd, mi, "iterator_list_int16",
               reinterpret_cast<void *>(&v1::iterator_list<int16_t>));
@@ -280,6 +346,8 @@ void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
               reinterpret_cast<void *>(&v1::iterator_list<float>));
     AddSymbol(jd, mi, "iterator_list_double",
               reinterpret_cast<void *>(&v1::iterator_list<double>));
+    AddSymbol(jd, mi, "iterator_list_timestamp",
+              reinterpret_cast<void *>(&v1::iterator_list<codec::Timestamp>));
 
     AddSymbol(jd, mi, "has_next_iterator_int16",
               reinterpret_cast<void *>(&v1::has_next_iterator<int16_t>));
@@ -291,6 +359,9 @@ void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
               reinterpret_cast<void *>(&v1::has_next_iterator<float>));
     AddSymbol(jd, mi, "has_next_iterator_double",
               reinterpret_cast<void *>(&v1::has_next_iterator<double>));
+    AddSymbol(
+        jd, mi, "has_next_iterator_timestamp",
+        reinterpret_cast<void *>(&v1::has_next_iterator<codec::Timestamp>));
 
     AddSymbol(jd, mi, "next_iterator_int16",
               reinterpret_cast<void *>(&v1::next_iterator<int16_t>));
@@ -302,6 +373,9 @@ void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
               reinterpret_cast<void *>(&v1::next_iterator<float>));
     AddSymbol(jd, mi, "next_iterator_double",
               reinterpret_cast<void *>(&v1::next_iterator<double>));
+    AddSymbol(
+        jd, mi, "next_iterator_timestamp",
+        reinterpret_cast<void *>(&v1::next_struct_iterator<codec::Timestamp>));
 
     AddSymbol(jd, mi, "delete_iterator_int16",
               reinterpret_cast<void *>(&v1::delete_iterator<int16_t>));
@@ -313,6 +387,8 @@ void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
               reinterpret_cast<void *>(&v1::delete_iterator<float>));
     AddSymbol(jd, mi, "delete_iterator_double",
               reinterpret_cast<void *>(&v1::delete_iterator<double>));
+    AddSymbol(jd, mi, "delete_iterator_timestamp",
+              reinterpret_cast<void *>(&v1::delete_iterator<codec::Timestamp>));
 }
 bool AddSymbol(::llvm::orc::JITDylib &jd,           // NOLINT
                ::llvm::orc::MangleAndInterner &mi,  // NOLINT
@@ -329,26 +405,48 @@ void RegisterUDFToModule(::llvm::Module *m) {
     ::llvm::Type *float_ty = ::llvm::Type::getFloatTy(m->getContext());
     ::llvm::Type *double_ty = ::llvm::Type::getDoubleTy(m->getContext());
     ::llvm::Type *i8_ptr_ty = ::llvm::Type::getInt8PtrTy(m->getContext());
+    ::llvm::Type *ts_ty;
+    codegen::GetLLVMType(m, node::DataType::kTimestamp, &ts_ty);
+    ::llvm::Type::getDoubleTy(m->getContext());
+
+    std::vector<std::pair<fesql::node::DataType, ::llvm::Type *>> basic_types;
+    basic_types.push_back(std::make_pair(fesql::node::kInt16, i16_ty));
+    basic_types.push_back(std::make_pair(fesql::node::kInt32, i32_ty));
+    basic_types.push_back(std::make_pair(fesql::node::kInt64, i64_ty));
+    basic_types.push_back(std::make_pair(fesql::node::kFloat, float_ty));
+    basic_types.push_back(std::make_pair(fesql::node::kDouble, double_ty));
+    basic_types.push_back(
+        std::make_pair(fesql::node::kTimestamp, ts_ty->getPointerTo()));
 
     std::vector<std::pair<fesql::node::DataType, ::llvm::Type *>> number_types;
     number_types.push_back(std::make_pair(fesql::node::kInt16, i16_ty));
     number_types.push_back(std::make_pair(fesql::node::kInt32, i32_ty));
     number_types.push_back(std::make_pair(fesql::node::kInt64, i64_ty));
-    number_types.push_back(std::make_pair(fesql::node::kTimestamp, i64_ty));
     number_types.push_back(std::make_pair(fesql::node::kFloat, float_ty));
     number_types.push_back(std::make_pair(fesql::node::kDouble, double_ty));
+
+    std::vector<std::pair<fesql::node::DataType, ::llvm::Type *>> struct_types;
+    struct_types.push_back(std::make_pair(fesql::node::kTimestamp, ts_ty));
 
     m->getOrInsertFunction("inc_int32", i32_ty, i32_ty);
 
     {
         std::string prefix =
             "sum_" + node::DataTypeName(fesql::node::kList) + "_";
-
         for (auto type : number_types) {
             ::llvm::Type *llvm_type;
             ::fesql::codegen::GetLLVMListType(m, type.first, &llvm_type);
             m->getOrInsertFunction(prefix + node::DataTypeName(type.first),
                                    type.second, llvm_type->getPointerTo());
+        }
+
+        {
+            ::llvm::Type *llvm_type;
+            ::fesql::codegen::GetLLVMListType(m, fesql::node::kTimestamp,
+                                              &llvm_type);
+            m->getOrInsertFunction(
+                prefix + node::DataTypeName(fesql::node::kTimestamp), i1_ty,
+                llvm_type->getPointerTo(), ts_ty->getPointerTo());
         }
     }
 
@@ -356,7 +454,7 @@ void RegisterUDFToModule(::llvm::Module *m) {
         std::string prefix =
             "count_" + node::DataTypeName(fesql::node::kList) + "_";
 
-        for (auto type : number_types) {
+        for (auto type : basic_types) {
             ::llvm::Type *llvm_type;
             ::fesql::codegen::GetLLVMListType(m, type.first, &llvm_type);
             m->getOrInsertFunction(prefix + node::DataTypeName(type.first),
@@ -374,6 +472,15 @@ void RegisterUDFToModule(::llvm::Module *m) {
             m->getOrInsertFunction(prefix + node::DataTypeName(type.first),
                                    double_ty, llvm_type->getPointerTo());
         }
+
+        {
+            ::llvm::Type *llvm_type;
+            ::fesql::codegen::GetLLVMListType(m, fesql::node::kTimestamp,
+                                              &llvm_type);
+            m->getOrInsertFunction(
+                prefix + node::DataTypeName(fesql::node::kTimestamp), i1_ty,
+                llvm_type->getPointerTo(), ts_ty->getPointerTo());
+        }
     }
     {
         std::string prefix =
@@ -383,6 +490,13 @@ void RegisterUDFToModule(::llvm::Module *m) {
             ::fesql::codegen::GetLLVMListType(m, type.first, &llvm_type);
             m->getOrInsertFunction(prefix + node::DataTypeName(type.first),
                                    type.second, llvm_type->getPointerTo());
+        }
+        for (auto type : struct_types) {
+            ::llvm::Type *llvm_type;
+            ::fesql::codegen::GetLLVMListType(m, type.first, &llvm_type);
+            m->getOrInsertFunction(prefix + node::DataTypeName(type.first),
+                                   i1_ty, llvm_type->getPointerTo(),
+                                   type.second->getPointerTo());
         }
     }
 
@@ -394,6 +508,13 @@ void RegisterUDFToModule(::llvm::Module *m) {
             ::fesql::codegen::GetLLVMListType(m, type.first, &llvm_type);
             m->getOrInsertFunction(prefix + node::DataTypeName(type.first),
                                    type.second, llvm_type->getPointerTo());
+        }
+        for (auto type : struct_types) {
+            ::llvm::Type *llvm_type;
+            ::fesql::codegen::GetLLVMListType(m, type.first, &llvm_type);
+            m->getOrInsertFunction(prefix + node::DataTypeName(type.first),
+                                   i1_ty, llvm_type->getPointerTo(),
+                                   type.second->getPointerTo());
         }
     }
 
@@ -407,12 +528,20 @@ void RegisterUDFToModule(::llvm::Module *m) {
                                    type.second, llvm_type->getPointerTo(),
                                    i32_ty);
         }
+
+        for (auto type : struct_types) {
+            ::llvm::Type *llvm_type;
+            ::fesql::codegen::GetLLVMListType(m, type.first, &llvm_type);
+            m->getOrInsertFunction(prefix + node::DataTypeName(type.first),
+                                   i1_ty, llvm_type->getPointerTo(),
+                                   type.second->getPointerTo());
+        }
     }
 
     {
         std::string prefix =
             "iterator_" + node::DataTypeName(fesql::node::kList) + "_";
-        for (auto type : number_types) {
+        for (auto type : basic_types) {
             ::llvm::Type *llvm_type;
             ::fesql::codegen::GetLLVMListType(m, type.first, &llvm_type);
             m->getOrInsertFunction(prefix + (node::DataTypeName(type.first)),
@@ -428,12 +557,18 @@ void RegisterUDFToModule(::llvm::Module *m) {
             m->getOrInsertFunction(prefix + (node::DataTypeName(type.first)),
                                    type.second, llvm_type->getPointerTo());
         }
+        for (auto type : struct_types) {
+            ::llvm::Type *llvm_type;
+            ::fesql::codegen::GetLLVMListType(m, type.first, &llvm_type);
+            m->getOrInsertFunction(prefix + node::DataTypeName(type.first),
+                                   i1_ty, llvm_type->getPointerTo(),
+                                   type.second->getPointerTo());
+        }
     }
-
     {
         std::string prefix =
             "delete_" + node::DataTypeName(fesql::node::kIterator) + "_";
-        for (auto type : number_types) {
+        for (auto type : basic_types) {
             ::llvm::Type *llvm_type;
             ::fesql::codegen::GetLLVMIteratorType(m, type.first, &llvm_type);
             m->getOrInsertFunction(prefix + (node::DataTypeName(type.first)),
@@ -443,7 +578,7 @@ void RegisterUDFToModule(::llvm::Module *m) {
     {
         std::string prefix =
             "has_next_" + node::DataTypeName(fesql::node::kIterator) + "_";
-        for (auto type : number_types) {
+        for (auto type : basic_types) {
             ::llvm::Type *llvm_type;
             ::fesql::codegen::GetLLVMIteratorType(m, type.first, &llvm_type);
             m->getOrInsertFunction(prefix + (node::DataTypeName(type.first)),

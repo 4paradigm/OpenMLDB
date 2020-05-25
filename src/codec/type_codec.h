@@ -25,7 +25,6 @@
 #include "butil/iobuf.h"
 #include "glog/logging.h"
 
-
 namespace fesql {
 namespace codec {
 
@@ -34,6 +33,29 @@ struct StringRef {
     char* data;
 };
 
+struct Timestamp {
+    Timestamp() : ts_(0) {}
+    explicit Timestamp(int64_t ts) : ts_(ts) {}
+    int64_t ts_;
+};
+static bool operator>(const Timestamp& a, const Timestamp& b) {
+    return a.ts_ > b.ts_;
+}
+static bool operator<(const Timestamp& a, const Timestamp& b) {
+    return a.ts_ < b.ts_;
+}
+static bool operator>=(const Timestamp& a, const Timestamp& b) {
+    return a.ts_ >= b.ts_;
+}
+static bool operator<=(const Timestamp& a, const Timestamp& b) {
+    return a.ts_ <= b.ts_;
+}
+static bool operator==(const Timestamp& a, const Timestamp& b) {
+    return a.ts_ == b.ts_;
+}
+static bool operator!=(const Timestamp& a, const Timestamp& b) {
+    return a.ts_ != b.ts_;
+}
 struct String {
     uint32_t size;
     char* data;
@@ -193,6 +215,9 @@ inline float GetFloatField(const butil::IOBuf& row, uint32_t offset) {
 inline float GetFloatField(const int8_t* row, uint32_t offset) {
     return *(reinterpret_cast<const float*>(row + offset));
 }
+inline Timestamp GetTimestampField(const int8_t* row, uint32_t offset) {
+    return Timestamp(*(reinterpret_cast<const int64_t*>(row + offset)));
+}
 
 inline double GetDoubleField(const butil::IOBuf& row, uint32_t offset) {
     double value = 0;
@@ -209,8 +234,7 @@ int32_t GetStrField(const int8_t* row, uint32_t str_field_offset,
                     uint32_t next_str_field_offset, uint32_t str_start_offset,
                     uint32_t addr_space, int8_t** data, uint32_t* size);
 
-int32_t GetStrField(const butil::IOBuf& row,
-                    uint32_t str_field_offset,
+int32_t GetStrField(const butil::IOBuf& row, uint32_t str_field_offset,
                     uint32_t next_str_field_offset, uint32_t str_start_offset,
                     uint32_t addr_space, butil::IOBuf* output);
 

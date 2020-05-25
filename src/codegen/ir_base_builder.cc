@@ -19,6 +19,7 @@
 #include <string>
 #include <vector>
 #include "codec/list_iterator_codec.h"
+#include "codegen/timestamp_ir_builder.h"
 #include "glog/logging.h"
 
 namespace fesql {
@@ -82,6 +83,10 @@ bool GetLLVMType(::llvm::Module* m, const ::fesql::node::DataType& type,
             elements.push_back(data_ptr_ty);
             stype->setBody(::llvm::ArrayRef<::llvm::Type*>(elements));
             *llvm_type = stype;
+            return true;
+        }
+        case node::kTimestamp: {
+            *llvm_type = TimestampIRBuilder::GetType(m);
             return true;
         }
         case node::kList:
@@ -403,6 +408,9 @@ bool GetFullType(::llvm::Type* type, ::fesql::node::TypeNode* type_node) {
             } else if (type->getStructName().equals("fe.list_ref_string")) {
                 type_node->generics_.push_back(fesql::node::kVarchar);
                 return true;
+            } else if (type->getStructName().equals("fe.list_ref_timestamp")) {
+                type_node->generics_.push_back(fesql::node::kTimestamp);
+                return true;
             }
             LOG(WARNING) << "fail to get type of llvm type for "
                          << type->getStructName().str();
@@ -438,6 +446,11 @@ bool GetFullType(::llvm::Type* type, ::fesql::node::TypeNode* type_node) {
                 type_node->base_ = fesql::node::kIterator;
                 type_node->generics_.push_back(fesql::node::kVarchar);
                 return true;
+            } else if (type->getStructName().equals(
+                           "fe.iterator_ref_timestamp")) {
+                type_node->base_ = fesql::node::kIterator;
+                type_node->generics_.push_back(fesql::node::kTimestamp);
+                return true;
             }
             LOG(WARNING) << "fail to get type of llvm type for "
                          << type->getStructName().str();
@@ -453,6 +466,13 @@ bool GetFullType(::llvm::Type* type, ::fesql::node::TypeNode* type_node) {
     }
 }
 
+bool IsStringType(::llvm::Type* type) {
+    ::fesql::node::DataType data_type;
+    if (!GetBaseType(type, &data_type)) {
+        return false;
+    }
+    return data_type == node::kVarchar;
+}
 bool GetBaseType(::llvm::Type* type, ::fesql::node::DataType* output) {
     if (type == NULL || output == NULL) {
         LOG(WARNING) << "type or output is null";
@@ -505,6 +525,9 @@ bool GetBaseType(::llvm::Type* type, ::fesql::node::DataType* output) {
                 return true;
             } else if (type->getStructName().equals("fe.string_ref")) {
                 *output = fesql::node::kVarchar;
+                return true;
+            } else if (type->getStructName().equals("fe.timestamp")) {
+                *output = fesql::node::kTimestamp;
                 return true;
             }
             LOG(WARNING) << "no mapping type for llvm type "
@@ -648,6 +671,25 @@ bool SchemaType2DataType(const ::fesql::type::Type type,
         }
     }
     return true;
+}
+bool TypeIRBuilder::IsTimestampPtr(::llvm::Type* type) {
+    ::fesql::node::DataType data_type;
+    if (!type->isPointerTy()) {
+        return false;
+    }
+
+    if (!GetBaseType(type, &data_type)) {
+        return false;
+    }
+    return data_type == node::kTimestamp;
+}
+
+bool TypeIRBuilder::IsStructPtr(::llvm::Type* type) {
+    if (type->getTypeID() == ::llvm::Type::PointerTyID) {
+        type = reinterpret_cast<::llvm::PointerType*>(type)->getElementType();
+        return type->isStructTy();
+    }
+    return false;
 }
 
 }  // namespace codegen

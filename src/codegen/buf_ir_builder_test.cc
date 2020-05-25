@@ -220,13 +220,20 @@ void RunCaseV1(T expected, ::fesql::type::TableDef& table,  // NOLINT
         case ::fesql::type::kFloat:
             retTy = Type::getFloatTy(*ctx);
             break;
+        case ::fesql::type::kTimestamp: {
+            const node::TypeNode type_node(fesql::node::kTimestamp);
+            ASSERT_TRUE(codegen::GetLLVMType(m.get(), &type_node, &retTy));
+            break;
+        }
         default:
             is_void = true;
             retTy = Type::getVoidTy(*ctx);
     }
     Function* fn = Function::Create(
-        FunctionType::get(
-            retTy, {Type::getInt8PtrTy(*ctx), Type::getInt32Ty(*ctx)}, false),
+        FunctionType::get(llvm::Type::getVoidTy(*ctx),
+                          {Type::getInt8PtrTy(*ctx), Type::getInt32Ty(*ctx),
+                           retTy->getPointerTo()},
+                          false),
         Function::ExternalLinkage, "fn", m.get());
     BasicBlock* entry_block = BasicBlock::Create(*ctx, "EntryBlock", fn);
     ScopeVar sv;
@@ -470,6 +477,13 @@ void RunColCase(T expected, type::TableDef& table,  // NOLINT
             reinterpret_cast<void (*)(int8_t*)>(load_fn_jit.getAddress());
         decode(window);
     }
+}
+
+static bool operator==(const codec::Timestamp& a, const codec::Timestamp& b) {
+    return a.ts_ == b.ts_;
+}
+static bool operator!=(const codec::Timestamp& a, const codec::Timestamp& b) {
+    return a.ts_ != b.ts_;
 }
 
 TEST_F(BufIRBuilderTest, native_test_load_int16) {
