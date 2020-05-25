@@ -2,15 +2,14 @@
 // Copyright 2020 4paradigm
 //
 #pragma once
-#include "client/client_type.h"
-
-#include <set>
-#include <memory>
 #include <map>
+#include <memory>
+#include <set>
 #include <string>
 #include <vector>
-#include "thread_pool.h"
 
+#include "client/client_type.h"
+#include "thread_pool.h"
 
 class RtidbClient;
 
@@ -130,8 +129,13 @@ class ViewResult {
         return result;
     }
 
-    ViewResult() : rv_(), columns_(), initialed_(false), curr_blob_key_(),
-                    table_name_(), client_(nullptr) {}
+    ViewResult()
+        : rv_(),
+          columns_(),
+          initialed_(false),
+          curr_blob_key_(),
+          table_name_(),
+          client_(nullptr) {}
 
     ~ViewResult() = default;
 
@@ -144,8 +148,9 @@ class ViewResult {
     std::shared_ptr<rtidb::codec::RowView> rv_;
 
  private:
-    std::shared_ptr<google::protobuf::RepeatedPtrField<
-        rtidb::common::ColumnDesc>> columns_;
+    std::shared_ptr<
+        google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>>
+        columns_;
     bool initialed_;
     int64_t curr_blob_key_;
     std::string table_name_;
@@ -290,10 +295,9 @@ class RtidbClient {
     ~RtidbClient();
     GeneralResult Init(const std::string& zk_cluster,
                        const std::string& zk_path);
-    PutResult Put(
-        const std::string& name,
-        const std::map<std::string, std::string>& value,
-        const WriteOption& wo);
+    PutResult Put(const std::string& name,
+                  const std::map<std::string, std::string>& value,
+                  const WriteOption& wo);
     GeneralResult Delete(const std::string& name,
                          const std::map<std::string, std::string>& values);
 
@@ -306,10 +310,11 @@ class RtidbClient {
     BatchQueryResult BatchQuery(const std::string& name,
                                 const std::vector<ReadOption>& ros);
 
-    bool BatchQuery(const std::string& name,
-                    const google::protobuf::RepeatedPtrField<
-                        ::rtidb::api::ReadOption>& ros_pb,
-                    std::string* data, uint32_t* count, std::string* msg);
+    bool BatchQuery(
+        const std::string& name,
+        const google::protobuf::RepeatedPtrField<::rtidb::api::ReadOption>&
+            ros_pb,
+        std::string* data, uint32_t* count, std::string* msg);
     void SetZkCheckInterval(int32_t interval);
     GeneralResult Update(
         const std::string& table_name,

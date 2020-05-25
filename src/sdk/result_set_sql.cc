@@ -20,6 +20,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+
 #include "base/fe_strings.h"
 #include "codec/fe_schema_codec.h"
 #include "glog/logging.h"
@@ -27,8 +28,9 @@
 namespace rtidb {
 namespace sdk {
 
-ResultSetSQL::ResultSetSQL(std::unique_ptr<::rtidb::api::QueryResponse> response,
-                             std::unique_ptr<brpc::Controller> cntl)
+ResultSetSQL::ResultSetSQL(
+    std::unique_ptr<::rtidb::api::QueryResponse> response,
+    std::unique_ptr<brpc::Controller> cntl)
     : response_(std::move(response)),
       index_(-1),
       byte_size_(0),
@@ -45,8 +47,8 @@ bool ResultSetSQL::Init() {
     byte_size_ = response_->byte_size();
     DLOG(INFO) << "byte size " << byte_size_ << " count " << response_->count();
     if (byte_size_ <= 0) return true;
-    bool ok =
-        ::fesql::codec::SchemaCodec::Decode(response_->schema(), &internal_schema_);
+    bool ok = ::fesql::codec::SchemaCodec::Decode(response_->schema(),
+                                                  &internal_schema_);
     if (!ok) {
         LOG(WARNING) << "fail to decode response schema ";
         return false;

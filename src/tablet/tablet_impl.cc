@@ -855,7 +855,7 @@ int TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta,
                 if (column_desc.type() != "int64" &&
                     column_desc.type() != "uint64" &&
                     column_desc.type() != "timestamp") {
-                    msg = "ttl column type must be int64, uint64, timestamp";
+                    msg = "ttl column type must be int64, uint64, timestamp but " + column_desc.type();
                     return -1;
                 }
                 if (column_desc.has_abs_ttl() || column_desc.has_lat_ttl()) {

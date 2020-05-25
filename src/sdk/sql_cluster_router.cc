@@ -17,17 +17,17 @@
 
 #include "sdk/sql_cluster_router.h"
 
-#include <string>
 #include <memory>
+#include <string>
 #include <utility>
+
 #include "brpc/channel.h"
 #include "glog/logging.h"
+#include "parser/parser.h"
+#include "plan/planner.h"
 #include "proto/tablet.pb.h"
 #include "sdk/base.h"
 #include "sdk/result_set_sql.h"
-#include "parser/parser.h"
-#include "plan/planner.h"
-
 
 namespace rtidb {
 namespace sdk {
@@ -59,14 +59,14 @@ bool SQLClusterRouter::Init() {
     return true;
 }
 
-bool SQLClusterRouter::ExecuteDDL(const std::string& db,
-        const std::string& sql,
-        fesql::sdk::Status* status) {
+bool SQLClusterRouter::ExecuteDDL(const std::string& db, const std::string& sql,
+                                  fesql::sdk::Status* status) {
     auto ns_ptr = cluster_sdk_->GetNsClient();
     if (!ns_ptr) {
         LOG(WARNING) << "no nameserver exist";
         return false;
     }
+    // TODO(wangtaize) update ns client to thread safe
     std::string err;
     bool ok = ns_ptr->ExecuteSQL(db, sql, err);
     if (!ok) {
@@ -77,7 +77,7 @@ bool SQLClusterRouter::ExecuteDDL(const std::string& db,
 }
 
 bool SQLClusterRouter::CreateDB(const std::string& db,
-        fesql::sdk::Status* status) {
+                                fesql::sdk::Status* status) {
     auto ns_ptr = cluster_sdk_->GetNsClient();
     if (!ns_ptr) {
         LOG(WARNING) << "no nameserver exist";
@@ -156,9 +156,9 @@ std::shared_ptr<::fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
     return rs;
 }
 
-bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& sql,
-        ::fesql::sdk::Status* status)  {
-
+bool SQLClusterRouter::ExecuteInsert(const std::string& db,
+                                     const std::string& sql,
+                                     ::fesql::sdk::Status* status) {
     ::fesql::node::NodeManager nm;
     ::fesql::plan::PlanNodeList plans;
     bool ok = GetSQLPlan(sql, &nm, &plans);
@@ -172,55 +172,59 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& s
         return false;
     }
     ::fesql::node::InsertPlanNode* iplan =
-                dynamic_cast<::fesql::node::InsertPlanNode*>(plan);
+        dynamic_cast<::fesql::node::InsertPlanNode*>(plan);
     const ::fesql::node::InsertStmt* insert_stmt = iplan->GetInsertNode();
     if (insert_stmt == NULL) {
         LOG(WARNING) << "insert stmt is null";
         return false;
     }
-    std::shared_ptr<::rtidb::nameserver::TableInfo> table_info
-        = cluster_sdk_->GetTableInfo(db, insert_stmt->table_name_);
+    std::shared_ptr<::rtidb::nameserver::TableInfo> table_info =
+        cluster_sdk_->GetTableInfo(db, insert_stmt->table_name_);
     if (!table_info) {
-        LOG(WARNING) << "table with name " << insert_stmt->table_name_ << " does not exist";
+        LOG(WARNING) << "table with name " << insert_stmt->table_name_
+            << " does not exist";
         return false;
     }
     std::string value;
     std::vector<std::pair<std::string, uint32_t>> dimensions;
     std::vector<uint64_t> ts;
-    ok = EncodeFromat(table_info->column_desc_v1(), iplan,
-            &value, &dimensions, &ts);
+    ok = EncodeFromat(table_info->column_desc_v1(), iplan, &value, &dimensions,
+                      &ts);
     if (!ok) {
-        LOG(WARNING) << "fail to encode row for table " << insert_stmt->table_name_;
+        LOG(WARNING) << "fail to encode row for table "
+                     << insert_stmt->table_name_;
         return false;
     }
-    std::shared_ptr<::rtidb::client::TabletClient> tablet
-        = cluster_sdk_->GetLeaderTabletByTable(db, insert_stmt->table_name_);
+    std::shared_ptr<::rtidb::client::TabletClient> tablet =
+        cluster_sdk_->GetLeaderTabletByTable(db, insert_stmt->table_name_);
     if (!tablet) {
-        LOG(WARNING) << "fail to get table " << insert_stmt->table_name_ << " tablet";
+        LOG(WARNING) << "fail to get table " << insert_stmt->table_name_
+                     << " tablet";
         return false;
     }
     ok = tablet->Put(table_info->tid(), 0, dimensions, ts, value, 1);
     if (!ok) return false;
-    return true; 
+    return true;
 }
 
-bool SQLClusterRouter::EncodeFromat(const catalog::RtiDBSchema& schema,
-             const ::fesql::node::InsertPlanNode* plan,
-             std::string* value,
-             std::vector<std::pair<std::string, uint32_t>> *dimensions,
-             std::vector<uint64_t> *ts_dimensions) {
-    if (plan == NULL || value == NULL || dimensions == NULL
-            || ts_dimensions == NULL) return false;
+bool SQLClusterRouter::EncodeFromat(
+    const catalog::RtiDBSchema& schema,
+    const ::fesql::node::InsertPlanNode* plan, std::string* value,
+    std::vector<std::pair<std::string, uint32_t>>* dimensions,
+    std::vector<uint64_t>* ts_dimensions) {
+    if (plan == NULL || value == NULL || dimensions == NULL ||
+        ts_dimensions == NULL)
+        return false;
     auto insert_stmt = plan->GetInsertNode();
-    if (nullptr == insert_stmt
-            || insert_stmt->values_.size() != schema.size()) {
+    if (nullptr == insert_stmt ||
+        insert_stmt->values_.size() != schema.size()) {
         LOG(WARNING) << "insert stmt is null or schema mismatch";
         return false;
     }
     uint32_t str_size = 0;
-    //TODO use a safe way
+    //TODO(wangtaize) use a safe way
     for (auto value : insert_stmt->values_) {
-        if(value->GetExprType() == ::fesql::node::kExprPrimary) {
+        if (value->GetExprType() == ::fesql::node::kExprPrimary) {
             ::fesql::node::ConstNode* primary =
                 dynamic_cast<::fesql::node::ConstNode*>(value);
             if (primary->GetDataType() == ::fesql::node::kVarchar) {
@@ -239,15 +243,15 @@ bool SQLClusterRouter::EncodeFromat(const catalog::RtiDBSchema& schema,
     int32_t idx_cnt = 0;
     for (int32_t i = 0; i < schema.size(); i++) {
         const ::rtidb::common::ColumnDesc& column = schema.Get(i);
-        const ::fesql::node::ConstNode* primary 
-            = dynamic_cast<const ::fesql::node::ConstNode*>(
-            insert_stmt->values_.at(i));
+        const ::fesql::node::ConstNode* primary =
+            dynamic_cast<const ::fesql::node::ConstNode*>(
+                insert_stmt->values_.at(i));
         switch (column.data_type()) {
             case ::rtidb::type::kSmallInt: {
                 ok = rb.AppendInt16(primary->GetSmallInt());
                 if (column.add_ts_idx()) {
-                    dimensions->push_back(std::make_pair(std::to_string(primary->GetSmallInt()),
-                                    idx_cnt));
+                    dimensions->push_back(std::make_pair(
+                        std::to_string(primary->GetSmallInt()), idx_cnt));
                     idx_cnt++;
                 }
                 break;
@@ -255,8 +259,8 @@ bool SQLClusterRouter::EncodeFromat(const catalog::RtiDBSchema& schema,
             case ::rtidb::type::kInt: {
                 ok = rb.AppendInt32(primary->GetInt());
                 if (column.add_ts_idx()) {
-                    dimensions->push_back(std::make_pair(std::to_string(primary->GetInt()),
-                                    idx_cnt));
+                    dimensions->push_back(std::make_pair(
+                        std::to_string(primary->GetInt()), idx_cnt));
                     idx_cnt++;
                 }
                 break;
@@ -266,8 +270,8 @@ bool SQLClusterRouter::EncodeFromat(const catalog::RtiDBSchema& schema,
                     ts_dimensions->push_back(primary->GetInt());
                 }
                 if (column.add_ts_idx()) {
-                    dimensions->push_back(std::make_pair(std::to_string(primary->GetInt()),
-                                    idx_cnt));
+                    dimensions->push_back(std::make_pair(
+                        std::to_string(primary->GetInt()), idx_cnt));
                     idx_cnt++;
                 }
                 ok = rb.AppendInt64(primary->GetInt());
@@ -282,13 +286,14 @@ bool SQLClusterRouter::EncodeFromat(const catalog::RtiDBSchema& schema,
                 break;
             }
             case ::rtidb::type::kVarchar:
-            case ::rtidb::type::kString:{
+            case ::rtidb::type::kString: {
                 ok = rb.AppendString(primary->GetStr(),
                                      strlen(primary->GetStr()));
                 if (column.add_ts_idx()) {
-                    dimensions->push_back(std::make_pair(std::string(primary->GetStr(), 
-                                    strlen(primary->GetStr())),
-                                    idx_cnt));
+                    dimensions->push_back(
+                        std::make_pair(std::string(primary->GetStr(),
+                                                   strlen(primary->GetStr())),
+                                       idx_cnt));
                     idx_cnt++;
                 }
                 break;
@@ -301,7 +306,7 @@ bool SQLClusterRouter::EncodeFromat(const catalog::RtiDBSchema& schema,
                 break;
             }
             default: {
-                LOG(WARNING) <<" not supported type";
+                LOG(WARNING) << " not supported type";
                 return false;
             }
         }
@@ -314,8 +319,8 @@ bool SQLClusterRouter::EncodeFromat(const catalog::RtiDBSchema& schema,
 }
 
 bool SQLClusterRouter::GetSQLPlan(const std::string& sql,
-        ::fesql::node::NodeManager* nm,
-        ::fesql::node::PlanNodeList* plan) {
+                                  ::fesql::node::NodeManager* nm,
+                                  ::fesql::node::PlanNodeList* plan) {
     if (nm == NULL || plan == NULL) return false;
     ::fesql::parser::FeSQLParser parser;
     ::fesql::plan::SimplePlanner planner(nm);
@@ -334,9 +339,7 @@ bool SQLClusterRouter::GetSQLPlan(const std::string& sql,
     return true;
 }
 
-bool SQLClusterRouter::RefreshCatalog() {
-    return cluster_sdk_->Refresh();
-}
+bool SQLClusterRouter::RefreshCatalog() { return cluster_sdk_->Refresh(); }
 
 }  // namespace sdk
 }  // namespace rtidb

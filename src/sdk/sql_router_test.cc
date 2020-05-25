@@ -19,9 +19,11 @@
 
 #include <sched.h>
 #include <unistd.h>
-#include <string>
+
 #include <memory>
+#include <string>
 #include <vector>
+
 #include "base/file_util.h"
 #include "base/glog_wapper.h"  // NOLINT
 #include "catalog/schema_adapter.h"
@@ -133,7 +135,7 @@ TEST_F(SQLRouterTest, smoketest) {
     ASSERT_EQ(pk, rs->GetStringUnsafe(0));
 }
 
-TEST_F(SQLRouterTest, smoketest_on_sql) { 
+TEST_F(SQLRouterTest, smoketest_on_sql) {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_.GetZkCluster();
     sql_opt.zk_path = mc_.GetZkPath();
@@ -144,13 +146,15 @@ TEST_F(SQLRouterTest, smoketest_on_sql) {
     ::fesql::sdk::Status status;
     bool ok = router->CreateDB(db, &status);
     ASSERT_TRUE(ok);
-    std::string ddl = "create table " + name + "("
-        "col1 string, col2 bigint,"
-        "index(key=col1, ts=col2));";
+    std::string ddl = "create table " + name +
+                      "("
+                      "col1 string, col2 bigint,"
+                      "index(key=col1, ts=col2));";
     ok = router->ExecuteDDL(db, ddl, &status);
     ASSERT_TRUE(ok);
     ASSERT_TRUE(router->RefreshCatalog());
-    std::string insert = "insert into " + name + " values('hello', 1590285591000);";
+    std::string insert =
+        "insert into " + name + " values('hello', 1590285591000);";
     ok = router->ExecuteInsert(db, insert, &status);
     ASSERT_TRUE(ok);
 }

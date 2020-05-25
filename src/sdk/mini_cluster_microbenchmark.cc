@@ -15,13 +15,13 @@
  * limitations under the License.
  */
 
-#include "sdk/mini_cluster.h"
 #include "benchmark/benchmark.h"
 #include "catalog/schema_adapter.h"
 #include "codec/fe_row_codec.h"
 #include "sdk/base.h"
-#include "vm/catalog.h"
+#include "sdk/mini_cluster.h"
 #include "sdk/sql_router.h"
+#include "vm/catalog.h"
 
 typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>
     RtiDBSchema;
@@ -31,7 +31,7 @@ inline std::string GenRand() {
     return std::to_string(rand() % 10000000 + 1);  // NOLINT
 }
 
-static void BM_SimpleQueryFunction(benchmark::State& state) { //NOLINT
+static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
     ::rtidb::sdk::MiniCluster mc(6181);
     mc.SetUp();
     ::rtidb::nameserver::TableInfo table_info;
@@ -102,10 +102,11 @@ static void BM_SimpleQueryFunction(benchmark::State& state) { //NOLINT
     if (!ok || tablet.size() <= 0) return;
     uint32_t tid = sdk.GetTableId(db, name);
     {
-        for (int32_t i = 0;  i < 1000; i++)
-        ok = tablet[0]->Put(tid, 0, pk, ts + i, value, 1);
+        for (int32_t i = 0; i < 1000; i++)
+            ok = tablet[0]->Put(tid, 0, pk, ts + i, value, 1);
     }
-    std::string sql = "select col1, col2 + 1, col3, col4, col5 from " + name + " ;";
+    std::string sql =
+        "select col1, col2 + 1, col3, col4, col5 from " + name + " ;";
     ::fesql::sdk::Status status;
     ::rtidb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc.GetZkCluster();
@@ -113,8 +114,7 @@ static void BM_SimpleQueryFunction(benchmark::State& state) { //NOLINT
     auto router = NewClusterSQLRouter(sql_opt);
     if (!router) return;
     for (auto _ : state) {
-        benchmark::DoNotOptimize(
-                router->ExecuteSQL(db, sql, &status));
+        benchmark::DoNotOptimize(router->ExecuteSQL(db, sql, &status));
     }
     mc.Close();
 }

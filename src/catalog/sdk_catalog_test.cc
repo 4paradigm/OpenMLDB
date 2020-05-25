@@ -33,8 +33,7 @@ struct TestArgs {
     ::rtidb::nameserver::TableInfo meta;
 };
 
-TestArgs* PrepareTable(const std::string& tname,
-        const std::string& db) {
+TestArgs* PrepareTable(const std::string& tname, const std::string& db) {
     TestArgs* args = new TestArgs();
     args->meta.set_name(tname);
     args->meta.set_format_version(1);
@@ -94,7 +93,6 @@ TEST_F(SDKCatalogTest, sdk_window_smoke_test) {
     session.GetPhysicalPlan()->Print(ss, "\t");
     std::cout << ss.str() << std::endl;
 }
-
 
 TEST_F(SDKCatalogTest, sdk_lastjoin_smoke_test) {
     TestArgs* args = PrepareTable("t1", "db1");

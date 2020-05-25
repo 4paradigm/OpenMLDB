@@ -16,13 +16,15 @@
  */
 
 #include "sdk/sql_router.h"
-#include "sdk/sql_cluster_router.h"
+
 #include "glog/logging.h"
+#include "sdk/sql_cluster_router.h"
 
 namespace rtidb {
 namespace sdk {
 
-std::shared_ptr<SQLRouter> NewClusterSQLRouter(const SQLRouterOptions& options) {
+std::shared_ptr<SQLRouter> NewClusterSQLRouter(
+    const SQLRouterOptions& options) {
     std::shared_ptr<SQLClusterRouter> router(new SQLClusterRouter(options));
     if (!router->Init()) {
         LOG(WARNING) << "fail to init sql cluster router";
@@ -31,7 +33,5 @@ std::shared_ptr<SQLRouter> NewClusterSQLRouter(const SQLRouterOptions& options) 
     return router;
 }
 
-}
-}
-
-
+}  // namespace sdk
+}  // namespace rtidb

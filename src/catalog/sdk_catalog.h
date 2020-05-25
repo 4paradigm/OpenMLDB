@@ -19,8 +19,8 @@
 #define SRC_CATALOG_SDK_CATALOG_H_
 
 #include "base/spinlock.h"
-#include "vm/catalog.h"
 #include "proto/name_server.pb.h"
+#include "vm/catalog.h"
 
 namespace rtidb {
 namespace catalog {
@@ -43,13 +43,16 @@ class SDKTableHandler : public ::fesql::vm::TableHandler {
 
     inline const ::fesql::vm::IndexHint& GetIndex() { return index_hint_; }
 
-    inline const ::fesql::codec::Row Get(int32_t pos) {return ::fesql::codec::Row();}
+    inline const ::fesql::codec::Row Get(int32_t pos) {
+        return ::fesql::codec::Row();
+    }
 
     inline std::unique_ptr<::fesql::codec::RowIterator> GetIterator() const {
         return std::move(std::unique_ptr<::fesql::codec::RowIterator>());
     }
 
-    inline ::fesql::codec::RowIterator* GetIterator(int8_t* addr) const override {
+    inline ::fesql::codec::RowIterator* GetIterator(
+        int8_t* addr) const override {
         return nullptr;
     }
 
@@ -58,9 +61,7 @@ class SDKTableHandler : public ::fesql::vm::TableHandler {
         return std::move(std::unique_ptr<::fesql::codec::WindowIterator>());
     }
 
-    virtual const uint64_t GetCount() {
-        return cnt_;
-    }
+    virtual const uint64_t GetCount() { return cnt_; }
 
     inline ::fesql::codec::Row At(uint64_t pos) override {
         return ::fesql::codec::Row();
@@ -99,13 +100,11 @@ class SDKTableHandler : public ::fesql::vm::TableHandler {
 typedef std::map<std::string,
                  std::map<std::string, std::shared_ptr<SDKTableHandler>>>
     SDKTables;
-typedef std::map<std::string, std::shared_ptr<::fesql::type::Database>>
-    SDKDB;
+typedef std::map<std::string, std::shared_ptr<::fesql::type::Database>> SDKDB;
 
 class SDKCatalog : public ::fesql::vm::Catalog {
  public:
-    SDKCatalog():mu_(), table_metas_(), tables_(),
-    db_(){}
+    SDKCatalog() : mu_(), table_metas_(), tables_(), db_() {}
 
     ~SDKCatalog() {}
 
@@ -113,16 +112,15 @@ class SDKCatalog : public ::fesql::vm::Catalog {
 
     bool Refresh(const std::vector<::rtidb::nameserver::TableInfo>& tables) {}
 
-    std::shared_ptr<::fesql::type::Database> GetDatabase(const std::string& db) {
+    std::shared_ptr<::fesql::type::Database> GetDatabase(
+        const std::string& db) {
         return std::shared_ptr<::fesql::type::Database>();
     }
 
     std::shared_ptr<::fesql::vm::TableHandler> GetTable(
         const std::string& db, const std::string& table_name);
 
-    inline bool IndexSupport() override {
-        return true;
-    }
+    inline bool IndexSupport() override { return true; }
 
  private:
     ::rtidb::base::SpinMutex mu_;
@@ -131,6 +129,6 @@ class SDKCatalog : public ::fesql::vm::Catalog {
     SDKDB db_;
 };
 
-}  // catalog
-}  // rtidb
+}  // namespace catalog
+}  // namespace rtidb
 #endif  // SRC_CATALOG_SDK_CATALOG_H_
