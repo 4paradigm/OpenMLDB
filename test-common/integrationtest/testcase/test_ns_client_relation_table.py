@@ -52,7 +52,7 @@ class TestRelationTable(TestCaseBase):
         self.assertEqual(rs[0]['mcc'], '1')
         self.assertEqual(rs[0]['attribute'], 'a1')
         self.assertEqual(rs[0]['image'], 'i1')
-        self.assertEqual(rs[0]['date'], "2020-2-21")
+        self.assertEqual(rs[0]['date'], "2020-02-21")
         self.assertEqual(rs[0]['ts'], "1588756531")
         self.assertEqual(rs[1]['id'], '12')
         self.assertEqual(rs[1]['name'], 'n2')
