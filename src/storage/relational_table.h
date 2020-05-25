@@ -85,6 +85,7 @@ class RelationalTable {
     RelationalTable& operator=(const RelationalTable&) = delete;
     ~RelationalTable();
     bool Init();
+    bool LoadTable();
 
     bool Put(const std::string& value, int64_t* auto_gen_pk);
 

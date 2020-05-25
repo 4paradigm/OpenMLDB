@@ -2701,7 +2701,8 @@ void HandleNSPreview(const std::vector<std::string>& parts,
             bool ok = tablet_client->Traverse(tid, pid, ro, limit,
                     &pk, &snapshot_id, &data, &count, &is_finish, &err_msg);
             if (!ok) {
-                std::cerr << "Fail to preview table" << std::endl;
+                std::cerr << "Fail to preview table, msg: "
+                    <<  err_msg << std::endl;
                 return;
             }
             if (tables[0].compress_type() == ::rtidb::nameserver::kSnappy) {
@@ -5232,6 +5233,38 @@ void HandleClientSendSnapshot(const std::vector<std::string> parts,
 
 void HandleClientLoadTable(const std::vector<std::string> parts,
                            ::rtidb::client::TabletClient* client) {
+    if (parts.size() == 4) {
+        try {
+            ::rtidb::common::StorageMode storage_mode =
+                ::rtidb::common::StorageMode::kSSD;
+            std::string storage_str;
+            storage_str.resize(parts[3].size());
+            std::transform(parts[3].begin(), parts[3].end(),
+                    storage_str.begin(), ::tolower);
+            if (storage_str == "kssd" || storage_str == "ssd") {
+                storage_mode = ::rtidb::common::StorageMode::kSSD;
+            } else if (storage_str == "khdd" || storage_str == "hdd") {
+                storage_mode = ::rtidb::common::StorageMode::kHDD;
+            } else {
+                std::cout << "Bad LoadRelationalTable format, "
+                    "eg: loadtable tid pid [ssd]" << std::endl;
+            }
+            std::string msg;
+            bool ok =
+                client->LoadTable(boost::lexical_cast<uint32_t>(parts[1]),
+                        boost::lexical_cast<uint32_t>(parts[2]), storage_mode,
+                        &msg);
+            if (ok) {
+                std::cout << "LoadTable ok" << std::endl;
+            } else {
+                std::cout << "Fail to LoadTable, msg: " << msg << std::endl;
+            }
+        } catch (boost::bad_lexical_cast& e) {
+            std::cout << "Bad LoadRelationalTable format, "
+                "eg: loadtable tid pid [ssd]" << std::endl;
+        }
+        return;
+    }
     if (parts.size() < 6) {
         std::cout << "Bad LoadTable format eg loadtable <name> <tid> <pid> "
                      "<ttl> <seg_cnt> [<is_leader> [<storage_mode>]]"
