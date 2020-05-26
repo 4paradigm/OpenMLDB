@@ -872,19 +872,6 @@ public class TableSyncClientTest extends TestCaseBase {
     }
 
     @Test
-    public void testCreateRelationalTable() {
-        String name = "";
-        try {
-            name = createRelationalTable(IndexType.PrimaryKey);
-        } catch (Exception e) {
-            e.printStackTrace();
-            Assert.assertTrue(false);
-        } finally {
-            nsc.dropTable(name);
-        }
-    }
-
-    @Test
     public void TestWriteBinary() {
         String name = "";
         try {
@@ -939,7 +926,7 @@ public class TableSyncClientTest extends TestCaseBase {
     }
 
     @Test
-    public void TestCreateRelationTableError() {
+    public void TestCreateRelationTableErrorMultiPk() {
         String name = "";
         try {
             name = String.valueOf(id.incrementAndGet());
@@ -992,6 +979,59 @@ public class TableSyncClientTest extends TestCaseBase {
             boolean ok = nsc.createTable(tableDesc);
             Assert.assertFalse(ok);
 
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.assertTrue(false);
+        } finally {
+            nsc.dropTable(name);
+        }
+    }
+
+    @Test
+    public void TestCreateRelationTableErrorNoPk() {
+        String name = "";
+        try {
+            name = String.valueOf(id.incrementAndGet());
+            nsc.dropTable(name);
+            TableDesc tableDesc = new TableDesc();
+            tableDesc.setName(name);
+            tableDesc.setTableType(TableType.kRelational);
+            List<com._4paradigm.rtidb.client.schema.ColumnDesc> list = new ArrayList<>();
+            {
+                com._4paradigm.rtidb.client.schema.ColumnDesc col = new com._4paradigm.rtidb.client.schema.ColumnDesc();
+                col.setName("id");
+                col.setDataType(DataType.BigInt);
+                col.setNotNull(true);
+                list.add(col);
+            }
+            {
+                com._4paradigm.rtidb.client.schema.ColumnDesc col = new com._4paradigm.rtidb.client.schema.ColumnDesc();
+                col.setName("attribute");
+                col.setDataType(DataType.Varchar);
+                col.setNotNull(true);
+                list.add(col);
+            }
+            {
+                com._4paradigm.rtidb.client.schema.ColumnDesc col = new com._4paradigm.rtidb.client.schema.ColumnDesc();
+                col.setName("image");
+                col.setDataType(DataType.Blob);
+                col.setNotNull(false);
+                list.add(col);
+            }
+            tableDesc.setColumnDescList(list);
+
+            List<IndexDef> indexs = new ArrayList<>();
+            IndexDef indexDef = new IndexDef();
+            indexDef.setIndexName("idx1");
+            indexDef.setIndexType(IndexType.NoUnique);
+            List<String> colNameList = new ArrayList<>();
+            colNameList.add("id");
+            indexDef.setColNameList(colNameList);
+            indexs.add(indexDef);
+
+            tableDesc.setIndexs(indexs);
+            boolean ok = nsc.createTable(tableDesc);
+            Assert.assertFalse(ok);
         } catch (Exception e) {
             e.printStackTrace();
             Assert.assertTrue(false);
