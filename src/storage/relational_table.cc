@@ -962,6 +962,11 @@ bool RelationalTable::UpdateDB(const std::shared_ptr<IndexDef> index_def,
                     builder.AppendNULL();
                     continue;
                 }
+            } else {
+                if (row_view_.IsNULL(buf, i)) {
+                    builder.AppendNULL();
+                    continue;
+                }
             }
             int get_value_ret = 0;
             rtidb::type::DataType cur_type = schema.Get(i).data_type();
