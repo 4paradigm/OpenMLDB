@@ -605,7 +605,8 @@ bool RelationalTable::Delete(const std::shared_ptr<IndexDef> index_def,
                              const std::string& comparable_key,
                              rocksdb::WriteBatch* batch) {
     ::rtidb::type::IndexType index_type = index_def->GetType();
-    if (index_type == ::rtidb::type::kPrimaryKey) {
+    if (index_type == ::rtidb::type::kPrimaryKey
+        || index_type == ::rtidb::type::kAutoGen) {
         return DeletePk(rocksdb::Slice(comparable_key), batch);
     }
     std::unique_ptr<rocksdb::Iterator> it(
