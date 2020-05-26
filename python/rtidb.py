@@ -34,7 +34,7 @@ kString = 14;
 kBlob = 15;
 '''
 
-NONETOKEN="None#*@!"
+NONETOKEN="!N@U#L$L%"
 
 def buildReadFilter(filter):
   mid_rf = interclient.ReadFilter()
@@ -198,7 +198,7 @@ class RTIDBClient:
       _wo.updateIfExist = defaultWriteOption.updateIfExist
       _wo.updateIfEqual = defaultWriteOption.updateIfEqual
     self.putBlob(table_name, value_columns)
-    cond = buildNoNoneStrMap(condition_columns)
+    cond = buildStrMap(condition_columns)
     v = buildStrMap(value_columns)
     ok = self.__client.Update(table_name, cond, v, _wo)
     if ok.code != 0:
@@ -206,7 +206,7 @@ class RTIDBClient:
     return True
 
   def __buildReadoption(self, read_option: ReadOption):
-    mid_map = buildNoNoneStrMap(read_option.index)
+    mid_map = buildStrMap(read_option.index)
     ro = interclient.ReadOption(mid_map)
     for filter in read_option.read_filter:
       mid_rf = buildReadFilter(filter)
@@ -239,7 +239,7 @@ class RTIDBClient:
     return RtidbResult(resp)
 
   def delete(self, table_name: str, condition_columns: map):
-    v = buildNoNoneStrMap(condition_columns)
+    v = buildStrMap(condition_columns)
     resp = self.__client.Delete(table_name, v)
     if resp.code != 0:
       raise Exception(resp.code, resp.msg)
