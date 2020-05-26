@@ -4,6 +4,7 @@ import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.impl.DefaultKvIterator;
 import com._4paradigm.rtidb.client.impl.RowKvIterator;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
+import com._4paradigm.rtidb.client.schema.ProjectionInfo;
 import com._4paradigm.rtidb.tablet.Tablet;
 import com._4paradigm.rtidb.tablet.Tablet.ScanResponse;
 
@@ -18,25 +19,18 @@ public class ScanFuture implements Future<KvIterator> {
 
     private Future<Tablet.ScanResponse> f;
     private TableHandler t;
+    private ProjectionInfo projectionInfo = null;
     private List<ColumnDesc> projection;
-
-    private List<Integer> projectionIdx;
-    private BitSet bitSet;
-    private int maxProjectionIdx;
-
 
     public ScanFuture(Future<Tablet.ScanResponse> f, TableHandler t) {
         this.f = f;
         this.t = t;
     }
 
-    public ScanFuture(Future<Tablet.ScanResponse> f, TableHandler t, List<Integer> projectionIdx,
-                      BitSet bitSet, int maxProjectionIdx) {
+    public ScanFuture(Future<Tablet.ScanResponse> f, TableHandler t, ProjectionInfo projectionInfo) {
         this.f = f;
         this.t = t;
-        this.projectionIdx = projectionIdx;
-        this.bitSet = bitSet;
-        this.maxProjectionIdx = maxProjectionIdx;
+        this.projectionInfo = projectionInfo;
     }
 
     public ScanFuture(Future<Tablet.ScanResponse> f, TableHandler t, Long startTime) {
@@ -93,11 +87,15 @@ public class ScanFuture implements Future<KvIterator> {
         throw new ExecutionException(msg, null);
     }
 
+    public ProjectionInfo getProjectionInfo() {
+        return projectionInfo;
+    }
+
     private KvIterator getLegacyKvIterator(ScanResponse response) {
         DefaultKvIterator kit = null;
         if (t != null) {
-            if (projectionIdx != null && projectionIdx.size() >0) {
-                kit = new DefaultKvIterator(response.getPairs(), t.getSchema(), bitSet, projectionIdx, maxProjectionIdx);
+            if (projectionInfo.getProjectionCol() != null && projectionInfo.getProjectionCol().size() > 0) {
+                kit = new DefaultKvIterator(response.getPairs(), t.getSchema(), projectionInfo);
             }else if (t.getSchemaMap().size() > 0) {
                 kit = new DefaultKvIterator(response.getPairs(), t);
             } else {

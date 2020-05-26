@@ -6,6 +6,7 @@ import com._4paradigm.rtidb.client.ha.RTIDBClient;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
+import com._4paradigm.rtidb.client.schema.ProjectionInfo;
 import com._4paradigm.rtidb.client.schema.RowBuilder;
 import com._4paradigm.rtidb.client.schema.RowCodec;
 import com._4paradigm.rtidb.ns.NS;
@@ -921,7 +922,8 @@ public class TableAsyncClientImpl implements TableAsyncClient {
                         }
                         projectionIdx.add(idx);
                     }
-                    return new ScanFuture(response, th, projectionIdx, bitSet, maxIdx);
+                    ProjectionInfo projectionInfo = new ProjectionInfo(projectionIdx, bitSet, maxIdx);
+                    return new ScanFuture(response, th, projectionInfo);
                 }
                 return new ScanFuture(response, th);
             }

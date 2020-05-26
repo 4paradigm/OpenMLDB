@@ -8,6 +8,7 @@ import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.ColumnType;
+import com._4paradigm.rtidb.client.schema.ProjectionInfo;
 import com._4paradigm.rtidb.tablet.Tablet;
 import com._4paradigm.rtidb.utils.MurmurHash;
 import io.brpc.client.RpcCallback;
@@ -15,10 +16,7 @@ import org.joda.time.DateTime;
 import rtidb.api.TabletServer;
 
 import java.sql.Timestamp;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeoutException;
 
@@ -372,7 +370,6 @@ public class TableClientCommon {
         }
         Tablet.ScanRequest.Builder builder = Tablet.ScanRequest.newBuilder();
         builder.setPk(key);
-        List<ColumnDesc> schema = th.getSchema();
         builder.setTid(tid);
         builder.setEt(et);
         builder.setSt(st);
@@ -384,10 +381,51 @@ public class TableClientCommon {
         if (option.getTsName() != null)
             builder.setTsName(option.getTsName());
         builder.setEnableRemoveDuplicatedRecord(option.isRemoveDuplicateRecordByTime());
-        Tablet.ScanRequest request = builder.build();
-        Long startTime = System.nanoTime();
-        Future<Tablet.ScanResponse> response = ts.scan(request, TableClientCommon.scanFakeCallback);
-        return ScanFuture.wrappe(response, th, startTime);
+        List<ColumnDesc> schema = th.getSchema();
+        switch (th.getFormatVersion()) {
+            case 1:
+            {
+                if (option.getProjection().size() > 0) {
+                    schema = new ArrayList<>();
+                    for (String name : option.getProjection()) {
+                        Integer idx = th.getSchemaPos().get(name);
+                        if (idx == null) {
+                            throw new TabletException("Cannot find column " + name);
+                        }
+                        builder.addProjection(idx);
+                        schema.add(th.getSchema().get(idx));
+                    }
+                }
+                Tablet.ScanRequest request = builder.build();
+                Future<Tablet.ScanResponse> response = ts.scan(request, TableClientCommon.scanFakeCallback);
+                return new ScanFuture(response, th, schema);
+            }
+            default:
+            {
+                Tablet.ScanRequest request = builder.build();
+                Future<Tablet.ScanResponse> response = ts.scan(request, TableClientCommon.scanFakeCallback);
+                if (option.getProjection().size() > 0) {
+                    List<Integer> projectionIdx = new ArrayList<>();
+                    int maxIdx = -1;
+                    BitSet bitSet = new BitSet(schema.size());
+                    for (String name : option.getProjection()) {
+                        Integer idx = th.getSchemaPos().get(name);
+                        if (idx == null) {
+                            throw new TabletException("Cannot find column " + name);
+                        }
+                        bitSet.set(idx, true);
+                        if (idx > maxIdx) {
+                            maxIdx = idx;
+                        }
+                        projectionIdx.add(idx);
+                    }
+                    ProjectionInfo projectionInfo = new ProjectionInfo(projectionIdx, bitSet, maxIdx);
+                    return new ScanFuture(response, th, projectionInfo);
+                }
+                return new ScanFuture(response, th);
+            }
+
+        }
     }
 
     public static boolean isQueryByPartitionKey(String idxName, TableHandler th) {

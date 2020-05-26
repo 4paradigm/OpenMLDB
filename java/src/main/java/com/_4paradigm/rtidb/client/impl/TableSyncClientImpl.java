@@ -125,6 +125,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         List<ByteString> byteStrings = new ArrayList<>();
         int count = 0;
+        ProjectionInfo projectionInfo = null;
         try {
             for (ScanFuture scanFuture : futureList) {
                 Tablet.ScanResponse response = scanFuture.getResponse();
@@ -136,11 +137,14 @@ public class TableSyncClientImpl implements TableSyncClient {
                 }
                 count += response.getCount();
                 byteStrings.add(response.getPairs());
+                if (projectionInfo == null) {
+                    projectionInfo = scanFuture.getProjectionInfo();
+                }
             }
         } catch (Exception e) {
             throw new TabletException("rtidb internal server error");
         }
-        DefaultKvIterator iter = new DefaultKvIterator(byteStrings, th);
+        DefaultKvIterator iter = new DefaultKvIterator(byteStrings, th, projectionInfo);
         iter.setCount(count);
         return iter;
     }
@@ -509,7 +513,8 @@ public class TableSyncClientImpl implements TableSyncClient {
                         }
                         pschema.add(idx);
                     }
-                    return RowCodec.decode(bs.asReadOnlyByteBuffer().order(ByteOrder.LITTLE_ENDIAN), schema, bset, pschema, maxIndex);
+                    ProjectionInfo projectionInfo = new ProjectionInfo(pschema, bset, maxIndex);
+                    return RowCodec.decode(bs.asReadOnlyByteBuffer().order(ByteOrder.LITTLE_ENDIAN), schema, projectionInfo);
                 } else {
                     if (th.getSchemaMap().size() > 0) {
                         return RowCodec.decode(bs.asReadOnlyByteBuffer().order(ByteOrder.LITTLE_ENDIAN), schema, th.getSchemaMap().size());
@@ -1105,7 +1110,8 @@ public class TableSyncClientImpl implements TableSyncClient {
                         }
                         pschema.add(idx);
                     }
-                    DefaultKvIterator it = new DefaultKvIterator(response.getPairs(), schema, bset, pschema, maxIndex);
+                    ProjectionInfo projectionInfo = new ProjectionInfo(pschema, bset, maxIndex);
+                    DefaultKvIterator it = new DefaultKvIterator(response.getPairs(), schema, projectionInfo);
                     it.setCount(response.getCount());
                     if (th.getTableInfo().hasCompressType()) {
                         it.setCompressType(th.getTableInfo().getCompressType());

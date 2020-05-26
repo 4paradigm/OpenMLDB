@@ -5,6 +5,7 @@ import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
+import com._4paradigm.rtidb.client.schema.ProjectionInfo;
 import com._4paradigm.rtidb.client.schema.RowCodec;
 import com._4paradigm.rtidb.ns.NS;
 import com._4paradigm.rtidb.utils.Compress;
@@ -74,10 +75,7 @@ public class DefaultKvIterator implements KvIterator {
     private RTIDBClientConfig config = null;
     private NS.CompressType compressType = NS.CompressType.kNoCompress;
     private TableHandler th = null;
-    private List<Integer> projection;
-    private boolean hasProjection = false;
-    private BitSet bitSet;
-    private int maxIndex;
+    private ProjectionInfo projectionInfo = null;
     public DefaultKvIterator(ByteString bs) {
         this.dataList.add(new QueryResultData(bs));
         next();
@@ -108,15 +106,10 @@ public class DefaultKvIterator implements KvIterator {
         this(bs);
         this.schema = schema;
     }
-    public DefaultKvIterator(ByteString bs, List<ColumnDesc> schema, BitSet bitSet, List<Integer> projection, int maxIndex) {
+    public DefaultKvIterator(ByteString bs, List<ColumnDesc> schema, ProjectionInfo projectionInfo) {
         this(bs);
         this.schema = schema;
-        this.projection = projection;
-        if (projection != null && projection.size() > 0) {
-            hasProjection = true;
-            this.bitSet = bitSet;
-            this.maxIndex = maxIndex;
-        }
+        this.projectionInfo = projectionInfo;
     }
 	public DefaultKvIterator(ByteString bs, List<ColumnDesc> schema, RTIDBClientConfig config) {
         this(bs, schema);
@@ -134,10 +127,11 @@ public class DefaultKvIterator implements KvIterator {
         this.th = th;
     }
 
-    public DefaultKvIterator(List<ByteString> bsList, TableHandler th) {
+    public DefaultKvIterator(List<ByteString> bsList, TableHandler th, ProjectionInfo projectionInfo) {
         for (ByteString bs : bsList) {
             this.dataList.add(new QueryResultData(bs));
         }
+        this.projectionInfo = projectionInfo;
         next();
         this.schema = th.getSchema();
         this.th = th;
@@ -188,8 +182,8 @@ public class DefaultKvIterator implements KvIterator {
             throw new TabletException("get decoded value is not supported");
         }
         Object[] row;
-        if (hasProjection) {
-            row = new Object[projection.size()];
+        if (projectionInfo != null) {
+            row = new Object[projectionInfo.getProjectionCol().size()];
             getDecodedValue(row, 0, row.length);
             return row;
         }
@@ -233,14 +227,14 @@ public class DefaultKvIterator implements KvIterator {
             if (uncompressed == null) {
                 throw new TabletException("snappy uncompress error");
             }
-            if (hasProjection) {
-                RowCodec.decode(ByteBuffer.wrap(uncompressed), schema, bitSet, projection, maxIndex, row, 0, length);
+            if (projectionInfo != null) {
+                RowCodec.decode(ByteBuffer.wrap(uncompressed), schema, projectionInfo, row, 0, length);
             }else {
                 RowCodec.decode(ByteBuffer.wrap(uncompressed), schema, row, 0, length);
             }
         } else {
-            if (hasProjection) {
-                RowCodec.decode(slice, schema, bitSet, projection,maxIndex, row, start, length);
+            if (projectionInfo != null) {
+                RowCodec.decode(slice, schema, projectionInfo, row, start, length);
             }else {
                 RowCodec.decode(slice, schema, row, start, length);
             }
