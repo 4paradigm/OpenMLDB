@@ -74,7 +74,7 @@ bool BufNativeIRBuilder::BuildGetField(const std::string& name,
                                       offset, builder.getInt64Ty(), &ts)) {
                 return false;
             }
-            codegen::TimestampIRBuilder timestamp_builder;
+            codegen::TimestampIRBuilder timestamp_builder(block_->getModule());
             return timestamp_builder.NewTimestamp(block_, ts, output);
         }
         case ::fesql::node::kInt64: {
@@ -277,7 +277,7 @@ bool BufNativeEncoderIRBuilder::BuildEncode(::llvm::Value* output_ptr) {
 
     ::llvm::Value* str_body_offset = NULL;
     ::llvm::Value* str_addr_space_val = NULL;
-    TimestampIRBuilder timestamp_builder;
+    TimestampIRBuilder timestamp_builder(block_->getModule());
     for (int32_t idx = 0; idx < schema_.size(); idx++) {
         const ::fesql::type::ColumnDef& column = schema_.Get(idx);
         // TODO(wangtaize) null check

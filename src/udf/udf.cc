@@ -42,9 +42,9 @@ int32_t inc_int32(int32_t i) { return inc<int32_t>(i); }
 
 template <class V>
 V sum_list(int8_t *input) {
-    V result = 0;
+    V result = V(0);
     if (nullptr == input) {
-        return true;
+        return result;
     }
     ::fesql::codec::ListRef *list_ref = (::fesql::codec::ListRef *)(input);
     ::fesql::codec::ListV<V> *col =
@@ -58,21 +58,12 @@ V sum_list(int8_t *input) {
     return result;
 }
 
-bool sum_list_timestamp(int8_t *input, codec::Timestamp *ts) {
-    int64_t result = 0;
+template <class V>
+bool sum_struct_list(int8_t *input, V *v) {
     if (nullptr == input) {
-        return new codec::Timestamp();
+        return false;
     }
-    ::fesql::codec::ListRef *list_ref = (::fesql::codec::ListRef *)(input);
-    ::fesql::codec::ListV<codec::Timestamp> *col =
-        (::fesql::codec::ListV<codec::Timestamp> *)(list_ref->list);
-    auto iter = col->GetIterator();
-    iter->SeekToFirst();
-    while (iter->Valid()) {
-        result += iter->GetValue().ts_;
-        iter->Next();
-    }
-    ts->ts_ = result;
+    *v = sum_list<V>(input);
     return true;
 }
 
@@ -95,26 +86,27 @@ double avg_list(int8_t *input) {
     return static_cast<double>(result) / cnt;
 }
 
-bool avg_list_timestamp(int8_t *input, codec::Timestamp *ts) {
-    int64_t result = 0;
+template <class V>
+bool avg_struct_list(int8_t *input, V *v) {
     if (nullptr == input) {
-        return new codec::Timestamp();
+        return false;
     }
+    V result = V(0);
     ::fesql::codec::ListRef *list_ref = (::fesql::codec::ListRef *)(input);
-    ::fesql::codec::ListV<codec::Timestamp> *col =
-        (::fesql::codec::ListV<codec::Timestamp> *)(list_ref->list);
+    ::fesql::codec::ListV<V> *col =
+        (::fesql::codec::ListV<V> *)(list_ref->list);
     auto iter = col->GetIterator();
     iter->SeekToFirst();
     int32_t cnt = 0;
     while (iter->Valid()) {
-        result += iter->GetValue().ts_;
+        result += iter->GetValue();
         iter->Next();
         cnt++;
     }
     if (cnt == 0) {
         return false;
     }
-    ts->ts_ = (static_cast<int64_t>(result / cnt));
+    *v = result / cnt;
     return true;
 }
 template <class V>
@@ -151,6 +143,14 @@ V max_list(int8_t *input) {
     }
     return result;
 }
+template <class V>
+bool max_struct_list(int8_t *input, V *v) {
+    if (nullptr == input) {
+        return false;
+    }
+    *v = max_list<V>(input);
+    return true;
+}
 
 template <class V>
 V min_list(int8_t *input) {
@@ -176,7 +176,14 @@ V min_list(int8_t *input) {
     }
     return result;
 }
-
+template <class V>
+bool min_struct_list(int8_t *input, V *v) {
+    if (nullptr == input) {
+        return false;
+    }
+    *v = min_list<V>(input);
+    return true;
+}
 template <class V>
 V at_list(int8_t *input, int32_t pos) {
     ::fesql::codec::ListRef *list_ref = (::fesql::codec::ListRef *)(input);
@@ -266,7 +273,7 @@ void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
     AddSymbol(jd, mi, "sum_list_float",
               reinterpret_cast<void *>(&v1::sum_list<float>));
     AddSymbol(jd, mi, "sum_list_timestamp",
-              reinterpret_cast<void *>(&v1::sum_list_timestamp));
+              reinterpret_cast<void *>(&v1::sum_struct_list<codec::Timestamp>));
 
     AddSymbol(jd, mi, "count_list_int16",
               reinterpret_cast<void *>(&v1::count_list<int16_t>));
@@ -295,7 +302,7 @@ void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
     AddSymbol(jd, mi, "avg_list_float",
               reinterpret_cast<void *>(&v1::avg_list<float>));
     AddSymbol(jd, mi, "avg_list_timestamp",
-              reinterpret_cast<void *>(&v1::avg_list_timestamp));
+              reinterpret_cast<void *>(&v1::avg_struct_list<codec::Timestamp>));
 
     AddSymbol(jd, mi, "max_list_int16",
               reinterpret_cast<void *>(&v1::max_list<int16_t>));
@@ -308,7 +315,8 @@ void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
     AddSymbol(jd, mi, "max_list_double",
               reinterpret_cast<void *>(&v1::max_list<double>));
     AddSymbol(jd, mi, "max_list_timestamp",
-              reinterpret_cast<void *>(&v1::max_list<fesql::codec::Timestamp>));
+              reinterpret_cast<void *>(
+                  &v1::max_struct_list<fesql::codec::Timestamp>));
 
     AddSymbol(jd, mi, "min_list_int16",
               reinterpret_cast<void *>(&v1::min_list<int16_t>));
@@ -321,7 +329,8 @@ void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
     AddSymbol(jd, mi, "min_list_double",
               reinterpret_cast<void *>(&v1::min_list<double>));
     AddSymbol(jd, mi, "min_list_timestamp",
-              reinterpret_cast<void *>(&v1::min_list<fesql::codec::Timestamp>));
+              reinterpret_cast<void *>(
+                  &v1::min_struct_list<fesql::codec::Timestamp>));
 
     AddSymbol(jd, mi, "at_list_int16",
               reinterpret_cast<void *>(&v1::at_list<int16_t>));
@@ -439,14 +448,12 @@ void RegisterUDFToModule(::llvm::Module *m) {
             m->getOrInsertFunction(prefix + node::DataTypeName(type.first),
                                    type.second, llvm_type->getPointerTo());
         }
-
-        {
+        for (auto type : struct_types) {
             ::llvm::Type *llvm_type;
-            ::fesql::codegen::GetLLVMListType(m, fesql::node::kTimestamp,
-                                              &llvm_type);
-            m->getOrInsertFunction(
-                prefix + node::DataTypeName(fesql::node::kTimestamp), i1_ty,
-                llvm_type->getPointerTo(), ts_ty->getPointerTo());
+            ::fesql::codegen::GetLLVMListType(m, type.first, &llvm_type);
+            m->getOrInsertFunction(prefix + node::DataTypeName(type.first),
+                                   i1_ty, llvm_type->getPointerTo(),
+                                   type.second->getPointerTo());
         }
     }
 
@@ -473,13 +480,12 @@ void RegisterUDFToModule(::llvm::Module *m) {
                                    double_ty, llvm_type->getPointerTo());
         }
 
-        {
+        for (auto type : struct_types) {
             ::llvm::Type *llvm_type;
-            ::fesql::codegen::GetLLVMListType(m, fesql::node::kTimestamp,
-                                              &llvm_type);
-            m->getOrInsertFunction(
-                prefix + node::DataTypeName(fesql::node::kTimestamp), i1_ty,
-                llvm_type->getPointerTo(), ts_ty->getPointerTo());
+            ::fesql::codegen::GetLLVMListType(m, type.first, &llvm_type);
+            m->getOrInsertFunction(prefix + node::DataTypeName(type.first),
+                                   i1_ty, llvm_type->getPointerTo(),
+                                   type.second->getPointerTo());
         }
     }
     {

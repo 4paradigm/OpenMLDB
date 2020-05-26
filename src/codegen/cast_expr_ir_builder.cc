@@ -158,7 +158,7 @@ bool CastExprIRBuilder::TimestampCast(llvm::Value* value,
                   status)) {
         return false;
     }
-    TimestampIRBuilder builder;
+    TimestampIRBuilder builder(block_->getModule());
     return builder.NewTimestamp(block_, ts, casted_value);
 }
 

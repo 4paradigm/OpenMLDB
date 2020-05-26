@@ -30,9 +30,9 @@ class TimestampIRBuilderTest : public ::testing::Test {
 TEST_F(TimestampIRBuilderTest, BuildTimestampWithTs_TEST) {
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("timestamp_test", *ctx);
-    TimestampIRBuilder timestamp_builder;
+    TimestampIRBuilder timestamp_builder(m.get());
     Int64IRBuilder int64_builder;
-    ::llvm::Type *timestamp_type = timestamp_builder.GetType(m.get());
+    ::llvm::Type *timestamp_type = timestamp_builder.GetType();
     Function *load_fn = Function::Create(
         FunctionType::get(timestamp_type->getPointerTo(),
                           {int64_builder.GetType(m.get())}, false),
@@ -63,7 +63,7 @@ TEST_F(TimestampIRBuilderTest, BuildTimestampWithTs_TEST) {
 TEST_F(TimestampIRBuilderTest, GetTsTest) {
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("timestamp_test", *ctx);
-    TimestampIRBuilder timestamp_builder;
+    TimestampIRBuilder timestamp_builder(m.get());
     Int64IRBuilder int64_builder;
     Function *load_fn = Function::Create(
         FunctionType::get(int64_builder.GetType(m.get()),
@@ -93,11 +93,11 @@ TEST_F(TimestampIRBuilderTest, GetTsTest) {
 TEST_F(TimestampIRBuilderTest, SetTsTest) {
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("timestamp_test", *ctx);
-    TimestampIRBuilder timestamp_builder;
+    TimestampIRBuilder timestamp_builder(m.get());
     Int64IRBuilder int64_builder;
     Function *load_fn = Function::Create(
         FunctionType::get(::llvm::Type::getVoidTy(m->getContext()),
-                          {TimestampIRBuilder::GetType(m.get())->getPointerTo(),
+                          {timestamp_builder.GetType()->getPointerTo(),
                            int64_builder.GetType(m.get())},
                           false),
         Function::ExternalLinkage, "build_timestamp", m.get());

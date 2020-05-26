@@ -18,30 +18,21 @@ namespace fesql {
 namespace udf {
 namespace v1 {
 int32_t inc_int32(int32_t i);
-
-template <class V>
-V sum_list(int8_t *input);
-
-template <class V>
-double avg_list(int8_t *input);
-
 template <class V>
 int64_t count_list(int8_t *input);
 
 template <class V>
+V sum_list(int8_t *input);
+template <class V>
+double avg_list(int8_t *input);
+template <class V>
 V max_list(int8_t *input);
-
 template <class V>
 V min_list(int8_t *input);
-
 template <class V>
 V at_list(int8_t *input, int32_t pos);
-
 template <class V>
 bool iterator_list(int8_t *input, int8_t *output);
-
-template <class V>
-bool at_struct_list(int8_t *input, int32_t pos, V* v);
 
 template <class V>
 bool has_next_iterator(int8_t *input);
@@ -49,11 +40,23 @@ bool has_next_iterator(int8_t *input);
 template <class V>
 V next_iterator(int8_t *input);
 
-
 template <class V>
 void delete_iterator(int8_t *input);
-}  // namespace v1
 
+template <class V>
+bool at_struct_list(int8_t *input, int32_t pos, V *v);
+template <class V>
+bool next_struct_iterator(int8_t *input, V *v);
+template <class V>
+bool sum_struct_list(int8_t *input, V *v);
+template <class V>
+bool avg_struct_list(int8_t *input, V *v);
+template <class V>
+bool max_strcut_list(int8_t *input, V *v);
+template <class V>
+bool min_struct_list(int8_t *input, V *v);
+
+}  // namespace v1
 void InitUDFSymbol(vm::FeSQLJIT *jit_ptr);                // NOLINT
 void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
                    ::llvm::orc::MangleAndInterner &mi);   // NOLINT

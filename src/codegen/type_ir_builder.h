@@ -39,7 +39,7 @@ struct String {
 class TypeIRBuilder {
  public:
     TypeIRBuilder() {}
-    ~TypeIRBuilder() {}
+    virtual ~TypeIRBuilder() {}
     static bool IsTimestampPtr(::llvm::Type* type);
     static bool IsStructPtr(::llvm::Type* type);
 };
@@ -52,6 +52,7 @@ class Int64IRBuilder : public TypeIRBuilder {
         return ::llvm::Type::getInt64Ty(m->getContext());
     }
 };
+
 inline const bool ConvertFeSQLType2LLVMType(const node::TypeNode* data_type,
                                             ::llvm::Module* m,  // NOLINT
                                             ::llvm::Type** llvm_type) {

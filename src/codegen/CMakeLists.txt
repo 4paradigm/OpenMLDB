@@ -15,6 +15,7 @@ add_library(fesql_codegen STATIC
         arithmetic_expr_ir_builder.cc
         variable_ir_builder.cc
         timestamp_ir_builder.cc
+        struct_ir_builder.cc
         list_ir_builder.cc
         predicate_expr_ir_builder.cc)
 if (TESTING_ENABLE)

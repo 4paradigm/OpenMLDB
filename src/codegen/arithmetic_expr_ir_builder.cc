@@ -156,7 +156,7 @@ bool ArithmeticIRBuilder::BuildAddExpr(
         ::llvm::Value* ts1;
         ::llvm::Value* ts2;
         ::llvm::Value* ts_add;
-        TimestampIRBuilder ts_builder;
+        TimestampIRBuilder ts_builder(block_->getModule());
         if (!ts_builder.GetTs(block_, casted_left, &ts1)) {
             return false;
         }
@@ -198,7 +198,7 @@ bool ArithmeticIRBuilder::BuildSubExpr(
         ::llvm::Value* ts1;
         ::llvm::Value* ts2;
         ::llvm::Value* ts_add;
-        TimestampIRBuilder ts_builder;
+        TimestampIRBuilder ts_builder(block_->getModule());
         if (!ts_builder.GetTs(block_, casted_left, &ts1)) {
             return false;
         }

@@ -178,7 +178,7 @@ void GetListAtPos(const type::TableDef& table, T* result,
 
     switch (type) {
         case type::kTimestamp: {
-            codegen::TimestampIRBuilder timestamp_builder;
+            codegen::TimestampIRBuilder timestamp_builder(m.get());
             ::llvm::Value* ts_output;
             ASSERT_TRUE(timestamp_builder.GetTs(builder.GetInsertBlock(), val,
                                                 &ts_output));
@@ -465,7 +465,7 @@ void GetListIteratorNext(T* result, const type::TableDef& table,
     list_builder.BuildIteratorDelete(iter, &ret_delete, status);
     switch (type) {
         case type::kTimestamp: {
-            codegen::TimestampIRBuilder timestamp_builder;
+            codegen::TimestampIRBuilder timestamp_builder(m.get());
             ::llvm::Value* ts_output;
             ASSERT_TRUE(timestamp_builder.GetTs(builder.GetInsertBlock(), res,
                                                 &ts_output));

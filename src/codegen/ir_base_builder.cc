@@ -86,7 +86,8 @@ bool GetLLVMType(::llvm::Module* m, const ::fesql::node::DataType& type,
             return true;
         }
         case node::kTimestamp: {
-            *llvm_type = TimestampIRBuilder::GetType(m);
+            TimestampIRBuilder timestamp_ir_builder(m);
+            *llvm_type = timestamp_ir_builder.GetType();
             return true;
         }
         case node::kList:

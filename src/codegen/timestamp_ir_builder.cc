@@ -15,55 +15,53 @@
 #include "node/sql_node.h"
 namespace fesql {
 namespace codegen {
-TimestampIRBuilder::TimestampIRBuilder() : TypeIRBuilder() {}
+TimestampIRBuilder::TimestampIRBuilder(::llvm::Module* m)
+    : StructTypeIRBuilder(m) {
+    InitStructType();
+}
 TimestampIRBuilder::~TimestampIRBuilder() {}
-
-::llvm::Type* TimestampIRBuilder::GetType(::llvm::Module* m) {
+void TimestampIRBuilder::InitStructType() {
     std::string name = "fe.timestamp";
     ::llvm::StringRef sr(name);
-    ::llvm::StructType* stype = m->getTypeByName(sr);
+    ::llvm::StructType* stype = m_->getTypeByName(sr);
     if (stype != NULL) {
-        return stype;
+        struct_type_ = stype;
+        return;
     }
-    stype = ::llvm::StructType::create(m->getContext(), name);
-    ::llvm::Type* ts_ty = (::llvm::Type::getInt64Ty(m->getContext()));
+    stype = ::llvm::StructType::create(m_->getContext(), name);
+    ::llvm::Type* ts_ty = (::llvm::Type::getInt64Ty(m_->getContext()));
     std::vector<::llvm::Type*> elements;
     elements.push_back(ts_ty);
     stype->setBody(::llvm::ArrayRef<::llvm::Type*>(elements));
-    return stype;
+    struct_type_ = stype;
+    return;
 }
 
 bool TimestampIRBuilder::GetTs(::llvm::BasicBlock* block,
                                ::llvm::Value* timestamp,
                                ::llvm::Value** output) {
+    return Get(block, timestamp, 0, output);
+}
+bool TimestampIRBuilder::SetTs(::llvm::BasicBlock* block,
+                               ::llvm::Value* timestamp, ::llvm::Value* ts) {
+    return Set(block, timestamp, 0, ts);
+}
+bool TimestampIRBuilder::NewTimestamp(::llvm::BasicBlock* block,
+                                      ::llvm::Value** output) {
     if (block == NULL || output == NULL) {
         LOG(WARNING) << "the output ptr or block is NULL ";
         return false;
     }
-
-    ::llvm::Type* timestamp_type = NULL;
-    bool ok = GetLLVMType(block, ::fesql::node::kTimestamp, &timestamp_type);
-    if (!ok) return false;
-    ::llvm::IRBuilder<> builder(block);
-    ::llvm::Value* ts_ptr =
-        builder.CreateStructGEP(timestamp_type, timestamp, 0);
-    *output = builder.CreateLoad(ts_ptr);
-    return true;
-}
-bool TimestampIRBuilder::SetTs(::llvm::BasicBlock* block,
-                               ::llvm::Value* timestamp, ::llvm::Value* ts) {
-    if (block == NULL) {
-        LOG(WARNING) << "the output ptr or block is NULL ";
+    ::llvm::Value* timestamp;
+    if (!Create(block, &timestamp)) {
         return false;
     }
-
-    ::llvm::Type* timestamp_type = NULL;
-    bool ok = GetLLVMType(block, ::fesql::node::kTimestamp, &timestamp_type);
-    if (!ok) return false;
-    ::llvm::IRBuilder<> builder(block);
-    ::llvm::Value* ts_ptr =
-        builder.CreateStructGEP(timestamp_type, timestamp, 0);
-    builder.CreateStore(ts, ts_ptr);
+    if (!SetTs(block, timestamp,
+               ::llvm::ConstantInt::get(
+                   ::llvm::Type::getInt64Ty(m_->getContext()), 0, false))) {
+        return false;
+    }
+    *output = timestamp;
     return true;
 }
 bool TimestampIRBuilder::NewTimestamp(::llvm::BasicBlock* block,
@@ -73,14 +71,13 @@ bool TimestampIRBuilder::NewTimestamp(::llvm::BasicBlock* block,
         LOG(WARNING) << "the output ptr or block is NULL ";
         return false;
     }
-    ::llvm::Type* timestamp_type = NULL;
-    bool ok = GetLLVMType(block, ::fesql::node::kTimestamp, &timestamp_type);
-    if (!ok) return false;
-    ::llvm::IRBuilder<> builder(block);
-    ::llvm::Value* timestamp = builder.CreateAlloca(timestamp_type);
-    ::llvm::Value* ts_ptr =
-        builder.CreateStructGEP(timestamp_type, timestamp, 0);
-    builder.CreateStore(ts, ts_ptr, false);
+    ::llvm::Value* timestamp;
+    if (!Create(block, &timestamp)) {
+        return false;
+    }
+    if (!SetTs(block, timestamp, ts)) {
+        return false;
+    }
     *output = timestamp;
     return true;
 }

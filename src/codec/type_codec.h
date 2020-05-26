@@ -36,8 +36,25 @@ struct StringRef {
 struct Timestamp {
     Timestamp() : ts_(0) {}
     explicit Timestamp(int64_t ts) : ts_(ts) {}
+    Timestamp& operator+=(const Timestamp& t1) {
+        ts_ += t1.ts_;
+        return *this;
+    }
+    Timestamp& operator-=(const Timestamp& t1) {
+        ts_ -= t1.ts_;
+        return *this;
+    }
     int64_t ts_;
 };
+static const Timestamp operator+(const Timestamp& a, const Timestamp& b) {
+    return Timestamp(a.ts_ + b.ts_);
+}
+static const Timestamp operator-(const Timestamp& a, const Timestamp& b) {
+    return Timestamp(a.ts_ - b.ts_);
+}
+static const Timestamp operator/(const Timestamp& a, const int64_t b) {
+    return Timestamp(static_cast<int64_t>(a.ts_ / b));
+}
 static bool operator>(const Timestamp& a, const Timestamp& b) {
     return a.ts_ > b.ts_;
 }

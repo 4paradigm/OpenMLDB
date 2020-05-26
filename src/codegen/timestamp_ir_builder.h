@@ -12,18 +12,20 @@
 #include "base/fe_status.h"
 #include "codegen/cast_expr_ir_builder.h"
 #include "codegen/scope_var.h"
-#include "codegen/type_ir_builder.h"
+#include "codegen/struct_ir_builder.h"
 #include "llvm/IR/IRBuilder.h"
 #include "proto/fe_type.pb.h"
 
 namespace fesql {
 namespace codegen {
 
-class TimestampIRBuilder : public TypeIRBuilder {
+class TimestampIRBuilder : public StructTypeIRBuilder {
  public:
-    TimestampIRBuilder();
+    explicit TimestampIRBuilder(::llvm::Module* m);
     ~TimestampIRBuilder();
-    static ::llvm::Type* GetType(::llvm::Module* m);
+    void InitStructType();
+    bool NewTimestamp(::llvm::BasicBlock* block,
+                      ::llvm::Value** output);
     bool NewTimestamp(::llvm::BasicBlock* block, ::llvm::Value* ts,
                       ::llvm::Value** output);
     bool GetTs(::llvm::BasicBlock* block, ::llvm::Value* timestamp,
