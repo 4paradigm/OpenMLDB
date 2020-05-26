@@ -151,6 +151,41 @@ TEST_F(FlatArrayTest, DateEncode) {
     std::cout << ::rtidb::base::DebugString(buffer) << std::endl;
 }
 
+TEST_F(FlatArrayTest, EncodeNullEmpty) {
+    std::string buffer;
+    FlatArrayCodec codec(&buffer, 3);
+    bool ok = codec.Append(1.2f);
+    ASSERT_TRUE(ok);
+    ok = codec.AppendNull();
+    ASSERT_TRUE(ok);
+    std::string empty_str;
+    ok = codec.Append(empty_str);
+    ASSERT_TRUE(ok);
+    codec.Build();
+    std::cout << ::rtidb::base::DebugString(buffer) << std::endl;
+    ASSERT_EQ(buffer.size(), 11);
+    FlatArrayIterator it(buffer.c_str(), buffer.size(), 3);
+    ASSERT_EQ(kFloat, it.GetType());
+    ASSERT_TRUE(it.Valid());
+    ASSERT_FALSE(it.IsNULL());
+    ASSERT_EQ(3, it.Size());
+    float value = 0;
+    ASSERT_TRUE(it.GetFloat(&value));
+    ASSERT_EQ(1.2f, value);
+    std::cout << value << std::endl;
+    it.Next();
+    ASSERT_TRUE(it.Valid());
+    ASSERT_TRUE(it.IsNULL());
+    it.Next();
+    ASSERT_TRUE(it.Valid());
+    ASSERT_FALSE(it.IsNULL());
+    std::string str_value;
+    ASSERT_TRUE(it.GetString(&str_value));
+    ASSERT_STREQ(str_value.c_str(), EMPTY_STRING.c_str());
+    it.Next();
+    ASSERT_FALSE(it.Valid());
+}
+
 }  // namespace codec
 }  // namespace rtidb
 
