@@ -1,5 +1,6 @@
 package com._4paradigm.fesql.jdbc;
 
+import com._4paradigm.fesql.FeSqlLibrary;
 import com._4paradigm.fesql.sdk.*;
 import com._4paradigm.fesql_interface;
 import org.testng.Assert;
@@ -7,14 +8,7 @@ import org.testng.annotations.Test;
 
 public class JDBCSmokeTest {
     static {
-        String os = System.getProperty("os.name").toLowerCase();
-        if (os.contains("mac")) {
-            String path = JDBCSmokeTest.class.getResource("/libfesql_jsdk.dylib").getPath();
-            System.load(path);
-        }else {
-            String path = JDBCSmokeTest.class.getResource("/libfesql_jsdk.so").getPath();
-            System.load(path);
-        }
+        FeSqlLibrary.init();
     }
 
     @Test

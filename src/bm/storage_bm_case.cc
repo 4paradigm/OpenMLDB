@@ -19,7 +19,7 @@
 
 namespace fesql {
 namespace bm {
-using base::Slice;
+
 using codec::RowView;
 using codec::Row;
 using ::fesql::base::DefaultComparator;

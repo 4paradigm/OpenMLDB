@@ -108,7 +108,7 @@ class WindowTableIterator : public WindowIterator {
     uint32_t seg_cnt_;
     uint32_t index_;
     uint32_t seg_idx_;
-    std::unique_ptr<base::Iterator<Slice, void*>> pk_it_;
+    std::unique_ptr<base::Iterator<base::Slice, void*>> pk_it_;
     // hold the reference
     std::shared_ptr<Table> table_;
 };
@@ -116,7 +116,9 @@ class WindowTableIterator : public WindowIterator {
 // the full table iterator
 class FullTableIterator : public ConstIterator<uint64_t, Row> {
  public:
-    FullTableIterator() : seg_cnt_(0), seg_idx_(0), segments_(NULL), key_(0) {}
+    FullTableIterator():
+        seg_cnt_(0), seg_idx_(0), segments_(NULL),
+        value_(), key_(0) {}
 
     explicit FullTableIterator(Segment*** segments, uint32_t seg_cnt,
                                std::shared_ptr<Table> table);
@@ -145,7 +147,7 @@ class FullTableIterator : public ConstIterator<uint64_t, Row> {
     uint32_t seg_idx_;
     Segment*** segments_;
     std::unique_ptr<base::Iterator<uint64_t, DataBlock*>> ts_it_;
-    std::unique_ptr<base::Iterator<Slice, void*>> pk_it_;
+    std::unique_ptr<base::Iterator<base::Slice, void*>> pk_it_;
     std::shared_ptr<Table> table_;
     Row value_;
     uint64_t key_;

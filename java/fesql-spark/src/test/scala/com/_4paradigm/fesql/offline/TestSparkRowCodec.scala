@@ -2,6 +2,7 @@ package com._4paradigm.fesql.offline
 
 import java.sql.Timestamp
 
+import com._4paradigm.fesql.FeSqlLibrary
 import com._4paradigm.fesql.codec.{Row => NativeRow}
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types._

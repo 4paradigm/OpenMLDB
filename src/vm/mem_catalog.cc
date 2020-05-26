@@ -64,7 +64,9 @@ std::unique_ptr<RowIterator> MemWindowIterator::GetValue() {
     return std::unique_ptr<RowIterator>(
         new MemTimeTableIterator(&(iter_->second), schema_));
 }
-const Row MemWindowIterator::GetKey() { return Row(iter_->first); }
+const Row MemWindowIterator::GetKey() {
+  return Row(iter_->first);
+}
 
 MemTimeTableHandler::MemTimeTableHandler()
     : TableHandler(),

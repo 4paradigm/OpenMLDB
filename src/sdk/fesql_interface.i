@@ -79,6 +79,7 @@ namespace std {
 #include "vm/simple_catalog.h"
 
 using namespace fesql;
+using fesql::base::SharedSliceRef;
 using fesql::sdk::Schema;
 using fesql::sdk::ResultSet;
 using fesql::sdk::Table;
@@ -123,8 +124,6 @@ using fesql::sdk::ExplainInfo;
 %ignore fesql::vm::RequestRunSession::RunRequestPlan;
 %ignore fesql::vm::FeSQLJITWrapper::AddModule;
 
-
-%include "base/fe_slice.h"
 %include "base/fe_status.h"
 %include "codec/row.h"
 %include "codec/fe_row_codec.h"

@@ -59,11 +59,7 @@ class RunnerContext {
 
 class CoreAPI {
  public:
-    static RawPtrHandle AllocateRaw(size_t bytes);
-
-    static void ReleaseRaw(RawPtrHandle handle);
-
-    static void ReleaseRow(const Row&);
+    static fesql::codec::Row* NewRow(size_t bytes);
 
     static int ResolveColumnIndex(fesql::vm::PhysicalOpNode* node,
                                   fesql::node::ColumnRefNode* expr);

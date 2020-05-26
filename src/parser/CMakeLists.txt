@@ -20,6 +20,7 @@ ADD_CUSTOM_TARGET(run_gen_parser DEPENDS ${SQL_AST_LEXER_GEN}
     ${SQL_AST_PARSER_GEN})
 
 add_library(fesql_parser STATIC ${CMAKE_CURRENT_BINARY_DIR}/sql_scan.gen.cc ${CMAKE_CURRENT_BINARY_DIR}/sql_parser.gen.cc parser.cc)
+target_link_libraries(fesql_parser fesql_base)
 
 if (TESTING_ENABLE)
 add_executable(sql_parser_test sql_parser_test.cc)

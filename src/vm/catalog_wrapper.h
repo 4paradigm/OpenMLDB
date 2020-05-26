@@ -24,7 +24,8 @@ class WrapperFun {
 class IteratorWrapper : public RowIterator {
  public:
     IteratorWrapper(std::unique_ptr<RowIterator> iter, const WrapperFun* fun)
-        : RowIterator(), iter_(std::move(iter)), fun_(fun) {}
+        : RowIterator(), iter_(std::move(iter)),
+          fun_(fun), value_() {}
     virtual ~IteratorWrapper() {}
     bool Valid() const override { return iter_->Valid(); }
     void Next() override { iter_->Next(); }
@@ -120,7 +121,8 @@ class TableWrapper : public TableHandler {
  public:
     TableWrapper(std::shared_ptr<TableHandler> table_handler,
                  const WrapperFun* fun)
-        : TableHandler(), table_hander_(table_handler), value_(), fun_(fun) {}
+        : TableHandler(), table_hander_(table_handler),
+          value_(), fun_(fun) {}
     virtual ~TableWrapper() {}
 
     std::unique_ptr<RowIterator> GetIterator() const {
@@ -164,7 +166,8 @@ class TableWrapper : public TableHandler {
 class RowWrapper : public RowHandler {
  public:
     RowWrapper(std::shared_ptr<RowHandler> row_handler, const WrapperFun* fun)
-        : RowHandler(), row_handler_(row_handler), value_(), fun_(fun) {}
+        : RowHandler(), row_handler_(row_handler),
+          value_(), fun_(fun) {}
     virtual ~RowWrapper() {}
     const Row& GetValue() override {
         value_ = fun_->operator()(row_handler_->GetValue());

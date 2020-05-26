@@ -31,8 +31,9 @@ using fesql::vm::RowIterator;
 static constexpr uint32_t SEED = 0xe17a1465;
 
 WindowInternalIterator::WindowInternalIterator(
-    std::unique_ptr<base::Iterator<uint64_t, DataBlock*>> ts_it)
-    : ts_it_(std::move(ts_it)) {}
+    std::unique_ptr<base::Iterator<uint64_t, DataBlock*>> ts_it):
+    ts_it_(std::move(ts_it)),
+    value_() {}
 WindowInternalIterator::~WindowInternalIterator() {}
 
 void WindowInternalIterator::Seek(const uint64_t& ts) { ts_it_->Seek(ts); }
@@ -44,9 +45,8 @@ bool WindowInternalIterator::Valid() const { return ts_it_->Valid(); }
 void WindowInternalIterator::Next() { ts_it_->Next(); }
 
 const Row& WindowInternalIterator::GetValue() {
-    value_ = Row(ts_it_->GetValue()->data,
-                 codec::RowView::GetSize(
-                     reinterpret_cast<int8_t*>(ts_it_->GetValue()->data)));
+    auto buf = reinterpret_cast<int8_t*>(ts_it_->GetValue()->data);
+    value_ = Row(base::Slice::Create(buf, codec::RowView::GetSize(buf)));
     return value_;
 }
 
@@ -130,7 +130,7 @@ void WindowTableIterator::Next() { GoToNext(); }
 const Row WindowTableIterator::GetKey() {
     if (pk_it_) {
         auto key = pk_it_->GetKey();
-        return Row(key.buf(), key.size(), false);
+        return Row(base::Slice::Create(key.buf(), key.size()));
     }
     return Row();
 }
@@ -233,9 +233,8 @@ bool FullTableIterator::Valid() const {
 void FullTableIterator::Next() { GoToNext(); }
 
 const Row& FullTableIterator::GetValue() {
-    value_ = Row(ts_it_->GetValue()->data,
-                 codec::RowView::GetSize(
-                     reinterpret_cast<int8_t*>(ts_it_->GetValue()->data)));
+    auto buf = reinterpret_cast<int8_t*>(ts_it_->GetValue()->data);
+    value_ = Row(base::Slice::Create(buf, codec::RowView::GetSize(buf)));
     return value_;
 }
 bool FullTableIterator::IsSeekable() const { return false; }

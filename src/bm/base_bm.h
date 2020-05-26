@@ -201,7 +201,7 @@ void BuildOnePkTableData(type::TableDef& table_def,   // NOLINT
         builder.AppendDouble(col4.GetValue());
         builder.AppendInt64(col5.GetValue());
         builder.AppendString(str2.c_str(), str2.size());
-        buffer.push_back(Row(ptr, total_size));
+        buffer.push_back(Row(base::Slice::Create(ptr, total_size)));
     }
 }
 std::shared_ptr<tablet::TabletCatalog> BuildOnePkTableStorage(
@@ -224,50 +224,10 @@ std::shared_ptr<tablet::TabletCatalog> BuildOnePkTableStorage(
     auto catalog = BuildCommonCatalog(table_def, table);
     for (auto row : buffer) {
         table->Put(reinterpret_cast<char*>(row.buf()), row.size());
-        delete row.buf();
     }
     return catalog;
 }
 
-int64_t DeleteData(vm::DataHandler* data_handler) {
-    if (!data_handler) {
-        return 0;
-    }
-    switch (data_handler->GetHanlderType()) {
-        case vm::kRowHandler: {
-            auto row = dynamic_cast<vm::RowHandler*>(data_handler);
-            delete row->GetValue().buf();
-            return 1;
-        }
-        case vm::kTableHandler: {
-            auto table = dynamic_cast<vm::TableHandler*>(data_handler);
-            auto iter = table->GetIterator();
-            int64_t cnt = 0;
-            while (iter->Valid()) {
-                delete iter->GetValue().buf();
-                iter->Next();
-                cnt++;
-            }
-            return cnt;
-        }
-        case vm::kPartitionHandler: {
-            auto partition = dynamic_cast<vm::PartitionHandler*>(data_handler);
-            auto iter = partition->GetWindowIterator();
-            int64_t group_cnt = 0;
-            while (iter->Valid()) {
-                auto seg_iter = iter->GetValue();
-                while (seg_iter->Valid()) {
-                    delete seg_iter->GetValue().buf();
-                    seg_iter->Next();
-                }
-                iter->Next();
-                group_cnt++;
-            }
-            return group_cnt;
-        }
-    }
-    return 0;
-}
 }  // namespace bm
 }  // namespace fesql
 

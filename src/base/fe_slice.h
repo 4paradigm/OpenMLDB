@@ -4,37 +4,34 @@
 #include <assert.h>
 #include <stddef.h>
 #include <string.h>
+#include <memory.h>
 #include <string>
+#include <memory>
 
 #include "base/raw_buffer.h"
 
 namespace fesql {
 namespace base {
 
+class Slice;
+typedef std::shared_ptr<Slice> SharedSliceRef;
+
+
 class Slice {
  public:
-    // Create an empty slice.
-    Slice() : need_free_(false), size_(0), data_("") {}
+    // Create slice own the buffer
+    static SharedSliceRef CreateManaged(const int8_t* buf, size_t size);
 
-    // Create a slice that refers to d[0,n-1].
-    Slice(const char* d, size_t n) : need_free_(false), size_(n), data_(d) {}
-    Slice(int64_t buf_handle, size_t n) :
-        need_free_(false), size_(n),
-        data_(reinterpret_cast<char*>(buf_handle)) {}
+    // Create slice without ownership
+    static SharedSliceRef Create(const int8_t* buf, size_t size);
 
-    Slice(int8_t* d, size_t n)
-        : need_free_(false), size_(n), data_(reinterpret_cast<char*>(d)) {}
-    Slice(int8_t* d, size_t n, bool need_free)
-        : need_free_(need_free), size_(n), data_(reinterpret_cast<char*>(d)) {}
-    // Create a slice that refers to the contents of "s"
-    explicit Slice(const std::string& s)
-        : need_free_(false), size_(s.size()), data_(s.data()) {}
-    explicit Slice(const fesql::base::RawBuffer& buf)
-        : need_free_(false), size_(buf.size), data_(buf.addr) {}
-    explicit Slice(const char* s)
-        : need_free_(false), size_(strlen(s)), data_(s) {}
-    Slice(const char* d, size_t n, bool need_free)
-        : need_free_(need_free), size_(n), data_(d) {}
+    // Create slice from c-str without ownership
+    static SharedSliceRef CreateFromCStr(const char* str);
+    static SharedSliceRef CreateFromCStr(const std::string& str);
+
+    // Create empty slice
+    static SharedSliceRef CreateEmpty();
+
     // Return a pointer to the beginning of the referenced data
     inline const char* data() const { return data_; }
     inline int8_t* buf() const {
@@ -47,15 +44,27 @@ class Slice {
     // Return true if the length of the referenced data is zero
     inline bool empty() const { return 0 == size_; }
 
-    inline void reset(const char* d, size_t size) {
-        // TODO(wangtaize) if need free is true, reset is forbidden
-        data_ = d;
-        size_ = size;
-    }
+    // Create an empty slice.
+    Slice() : need_free_(false), size_(0), data_("") {}
+
+    // Create a slice that refers to d[0,n-1].
+    Slice(const char* d, size_t n) : need_free_(false), size_(n), data_(d) {}
+
+    // Create slice from string
+    explicit Slice(const std::string& s)
+        : need_free_(false), size_(s.size()), data_(s.data()) {}
+
+    // Create slice from buffer
+    explicit Slice(const fesql::base::RawBuffer& buf)
+        : need_free_(false), size_(buf.size), data_(buf.addr) {}
+
+    // Create slice from c string
+    explicit Slice(const char* s)
+        : need_free_(false), size_(strlen(s)), data_(s) {}
 
     ~Slice() {
         if (need_free_) {
-            delete[] data_;
+            free(const_cast<char*>(data_));
         }
     }
 
@@ -65,12 +74,6 @@ class Slice {
         assert(n < size());
         return data_[n];
     }
-
-    Slice(const Slice& s)
-        : need_free_(false), size_(s.size()), data_(s.data()) {}
-
-    Slice(const Slice& s, bool need_free)
-        : need_free_(need_free), size_(s.size()), data_(s.data()) {}
 
     // Change this slice to refer to an empty array
     void clear() {
@@ -100,10 +103,12 @@ class Slice {
     }
 
  private:
+    Slice(const char* d, size_t n, bool need_free)
+        : need_free_(need_free), size_(n), data_(d) {}
+
     bool need_free_;
     uint32_t size_;
     const char* data_;
-    // Intentionally copyable
 };
 
 inline bool operator==(const Slice& x, const Slice& y) {
@@ -124,6 +129,7 @@ inline int Slice::compare(const Slice& b) const {
     }
     return r;
 }
+
 
 }  // namespace base
 }  // namespace fesql

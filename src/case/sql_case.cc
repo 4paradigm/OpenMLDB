@@ -286,7 +286,8 @@ bool SQLCase::ExtractRows(const vm::Schema& schema, const std::string& data_str,
         if (!ExtractRow(schema, row_str, &row_ptr, &row_size)) {
             return false;
         }
-        rows.push_back(Row(row_ptr, row_size));
+        rows.push_back(
+            Row(base::Slice::Create(row_ptr, row_size)));
     }
     return true;
 }
