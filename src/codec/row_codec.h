@@ -6,15 +6,15 @@
 //
 #pragma once
 
+#include <algorithm>
 #include <map>
 #include <string>
 #include <utility>
 #include <vector>
-#include <algorithm>
-#include "codec/flat_array.h"
-#include "codec/row_codec.h"
-#include "codec/schema_codec.h"
+
 #include "base/glog_wapper.h"
+#include "codec/flat_array.h"
+#include "codec/schema_codec.h"
 
 namespace rtidb {
 namespace codec {
@@ -96,7 +96,7 @@ class RowCodec {
                     case rtidb::type::kBool: {
                         std::string b_val = iter->second;
                         std::transform(b_val.begin(), b_val.end(),
-                                b_val.begin(), ::tolower);
+                                       b_val.begin(), ::tolower);
                         if (b_val == "true") {
                             ok = builder.AppendBool(true);
                         } else if (b_val == "false") {
@@ -179,28 +179,29 @@ class RowCodec {
         rtidb::codec::RowView rv(
             schema, reinterpret_cast<int8_t*>(const_cast<char*>(value.data())),
             value.size());
-        return DecodeRow(schema, rv, 0, schema.size(), &value_vec);
+        return DecodeRow(schema, rv, false, 0, schema.size(), &value_vec);
     }
 
     static bool DecodeRow(const Schema& schema,  // NOLINT
                           const ::rtidb::base::Slice& value,
-                          int start, int length,
+                          bool replace_empty_str, int start, int length,
                           std::vector<std::string>& value_vec) {  // NOLINT
         rtidb::codec::RowView rv(
             schema, reinterpret_cast<int8_t*>(const_cast<char*>(value.data())),
             value.size());
-        return DecodeRow(schema, rv, start, length, &value_vec);
+        return DecodeRow(schema, rv, replace_empty_str, start, length,
+                         &value_vec);
     }
 
     static bool DecodeRow(const Schema& schema,                   // NOLINT
                           rtidb::codec::RowView& rv,              // NOLINT
                           std::vector<std::string>& value_vec) {  // NOLINT
-        return DecodeRow(schema, rv, 0, schema.size(), &value_vec);
+        return DecodeRow(schema, rv, false, 0, schema.size(), &value_vec);
     }
 
     static bool DecodeRow(const Schema& schema,
                           rtidb::codec::RowView& rv,  // NOLINT
-                          int start, int length,
+                          bool replace_empty_str, int start, int length,
                           std::vector<std::string>* value_vec) {
         int end = start + length;
         if (length <= 0 || end > schema.size()) {
@@ -236,7 +237,8 @@ class RowCodec {
                 bool val = false;
                 int ret = rv.GetBool(i, &val);
                 if (ret == 0) {
-                    if (val) col = "true";
+                    if (val)
+                        col = "true";
                     else
                         col = "false";
                 }
@@ -264,7 +266,11 @@ class RowCodec {
                 uint32_t len = 0;
                 int ret = rv.GetString(i, &ch, &len);
                 if (ret == 0) {
-                    col.assign(ch, len);
+                    if (len == 0) {
+                        col = replace_empty_str ? EMPTY_STRING : "";
+                    } else {
+                        col.assign(ch, len);
+                    }
                 }
             } else if (type == ::rtidb::type::kDate) {
                 uint32_t year = 0;
@@ -272,7 +278,15 @@ class RowCodec {
                 uint32_t day = 0;
                 rv.GetDate(i, &year, &month, &day);
                 std::stringstream ss;
-                ss << year << "-" << month << "-" << day;
+                ss << year << "-";
+                if (month < 10) {
+                    ss << "0";
+                }
+                ss << month << "-";
+                if (day < 10) {
+                    ss << "0";
+                }
+                ss << day;
                 col = ss.str();
             }
             value_vec->emplace_back(std::move(col));
@@ -281,10 +295,8 @@ class RowCodec {
     }
 };
 __attribute__((unused)) static bool DecodeRows(
-        const std::string& data,
-        uint32_t count,
-        const Schema& schema,
-        std::vector<std::vector<std::string>>* row_vec) {
+    const std::string& data, uint32_t count, const Schema& schema,
+    std::vector<std::vector<std::string>>* row_vec) {
     rtidb::codec::RowView rv(schema);
     uint32_t offset = 0;
     for (uint32_t i = 0; i < count; i++) {
@@ -295,7 +307,7 @@ __attribute__((unused)) static bool DecodeRows(
         memcpy(static_cast<void*>(&value_size), ch, 4);
         ch += 4;
         bool ok = rv.Reset(reinterpret_cast<int8_t*>(const_cast<char*>(ch)),
-                value_size);
+                           value_size);
         if (!ok) {
             return false;
         }
@@ -323,45 +335,50 @@ __attribute__((unused)) static void FillTableRow(
             full_schema_size--;
             vrow.emplace_back("");
             continue;
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kString) {
+        }
+        ColType type = fit.GetType();
+        if (fit.IsNULL()) {
+            col = NONETOKEN;
+        } else if (type == ::rtidb::codec::ColType::kString ||
+                   type == ::rtidb::codec::ColType::kEmptyString) {
             fit.GetString(&col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kUInt16) {
+        } else if (type == ::rtidb::codec::ColType::kUInt16) {
             uint16_t uint16_col = 0;
             fit.GetUInt16(&uint16_col);
             col = boost::lexical_cast<std::string>(uint16_col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kInt16) {
+        } else if (type == ::rtidb::codec::ColType::kInt16) {
             int16_t int16_col = 0;
             fit.GetInt16(&int16_col);
             col = boost::lexical_cast<std::string>(int16_col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kInt32) {
+        } else if (type == ::rtidb::codec::ColType::kInt32) {
             int32_t int32_col = 0;
             fit.GetInt32(&int32_col);
             col = boost::lexical_cast<std::string>(int32_col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kInt64) {
+        } else if (type == ::rtidb::codec::ColType::kInt64) {
             int64_t int64_col = 0;
             fit.GetInt64(&int64_col);
             col = boost::lexical_cast<std::string>(int64_col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kUInt32) {
+        } else if (type == ::rtidb::codec::ColType::kUInt32) {
             uint32_t uint32_col = 0;
             fit.GetUInt32(&uint32_col);
             col = boost::lexical_cast<std::string>(uint32_col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kUInt64) {
+        } else if (type == ::rtidb::codec::ColType::kUInt64) {
             uint64_t uint64_col = 0;
             fit.GetUInt64(&uint64_col);
             col = boost::lexical_cast<std::string>(uint64_col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kDouble) {
+        } else if (type == ::rtidb::codec::ColType::kDouble) {
             double double_col = 0.0;
             fit.GetDouble(&double_col);
             col = boost::lexical_cast<std::string>(double_col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kFloat) {
+        } else if (type == ::rtidb::codec::ColType::kFloat) {
             float float_col = 0.0f;
             fit.GetFloat(&float_col);
             col = boost::lexical_cast<std::string>(float_col);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kTimestamp) {
+        } else if (type == ::rtidb::codec::ColType::kTimestamp) {
             uint64_t ts = 0;
             fit.GetTimestamp(&ts);
             col = boost::lexical_cast<std::string>(ts);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kDate) {
+        } else if (type == ::rtidb::codec::ColType::kDate) {
             uint64_t dt = 0;
             fit.GetDate(&dt);
             time_t rawtime = (time_t)dt / 1000;
@@ -369,7 +386,7 @@ __attribute__((unused)) static void FillTableRow(
             char buf[20];
             strftime(buf, 20, "%Y-%m-%d", timeinfo);
             col.assign(buf);
-        } else if (fit.GetType() == ::rtidb::codec::ColType::kBool) {
+        } else if (type == ::rtidb::codec::ColType::kBool) {
             bool value = false;
             fit.GetBool(&value);
             if (value) {
@@ -498,7 +515,7 @@ static inline void Decode(
     const char* buffer = str->c_str();
     uint32_t total_size = str->length();
     DEBUGLOG("total size %d %s", total_size,
-          ::rtidb::base::DebugString(*str).c_str());
+             ::rtidb::base::DebugString(*str).c_str());
     while (total_size > 0) {
         uint32_t size = 0;
         memcpy(static_cast<void*>(&size), buffer, 4);
@@ -525,7 +542,7 @@ static inline void DecodeFull(
     const char* buffer = str->c_str();
     uint32_t total_size = str->length();
     DEBUGLOG("total size %u %s", total_size,
-          ::rtidb::base::DebugString(*str).c_str());
+             ::rtidb::base::DebugString(*str).c_str());
     while (total_size > 0) {
         uint32_t size = 0;
         memcpy(static_cast<void*>(&size), buffer, 4);

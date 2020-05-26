@@ -9,9 +9,11 @@
 #define SRC_CODEC_FLAT_ARRAY_H_
 
 #include <stdint.h>
+
 #include <cstring>
 #include <string>
 #include <vector>
+
 #include "base/endianconv.h"
 #include "codec/schema_codec.h"
 
@@ -163,8 +165,12 @@ class FlatArrayCodec {
             return false;
         }
 
-        uint16_t size = (uint16_t)data.length();
-        Encode(kString, static_cast<const void*>(data.c_str()), size);
+        if (data.empty()) {
+            Encode(kEmptyString, static_cast<const void*>(data.c_str()), 0);
+        } else {
+            uint16_t size = (uint16_t)data.length();
+            Encode(kString, static_cast<const void*>(data.c_str()), size);
+        }
         cur_cnt_++;
         return true;
     }
@@ -218,8 +224,10 @@ class FlatArrayCodec {
                 memcpy(cbuffer, static_cast<const void*>(&second_value), 1);
                 cbuffer += 1;
             }
-            memcpy(cbuffer, static_cast<const void*>(col.buffer.c_str()),
-                   col.buffer.size());
+            if (!col.buffer.empty()) {
+                memcpy(cbuffer, static_cast<const void*>(col.buffer.c_str()),
+                       col.buffer.size());
+            }
             cbuffer += col.buffer.size();
         }
     }
@@ -245,10 +253,10 @@ class FlatArrayCodec {
     // encode data to buffer
     void Encode(const ColType& type, const void* data, uint16_t size) {
         Column& col = datas_[cur_cnt_];
-        col.buffer.resize(size);
-        char* buffer = reinterpret_cast<char*>(&(col.buffer[0]));
         col.type = type;
-        if (type != kNull) {
+        if (size != 0) {
+            col.buffer.resize(size);
+            char* buffer = reinterpret_cast<char*>(&(col.buffer[0]));
             memcpy(buffer, data, size);
         }
     }
@@ -298,6 +306,13 @@ class FlatArrayIterator {
 
     // Get the column count
     uint16_t Size() { return col_cnt_; }
+
+    bool IsNULL() {
+        if (type_ == kNull || (fsize_ == 0 && type_ != kEmptyString)) {
+            return true;
+        }
+        return false;
+    }
 
     // Get float can be only invoked once when after Next
     bool GetFloat(float* value) {
@@ -498,6 +513,7 @@ class FlatArrayIterator {
             return false;
         }
         if (fsize_ == 0) {
+            value->assign(EMPTY_STRING);
             return true;
         }
         if (offset_ + fsize_ > bsize_) {

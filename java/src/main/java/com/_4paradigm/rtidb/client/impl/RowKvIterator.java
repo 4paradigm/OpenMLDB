@@ -5,6 +5,7 @@ import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.RowView;
 import com._4paradigm.rtidb.ns.NS;
+import com._4paradigm.rtidb.utils.Compress;
 import com.google.protobuf.ByteString;
 
 import java.nio.ByteBuffer;
@@ -101,7 +102,7 @@ public class RowKvIterator implements KvIterator {
             throw new RuntimeException("bad frame data");
         }
         offset += (4 + size);
-        slice = bb.slice().order(ByteOrder.LITTLE_ENDIAN);
+        slice = bb.slice();
         slice.limit(length);
     }
 
@@ -110,6 +111,14 @@ public class RowKvIterator implements KvIterator {
         if (schema == null) {
             throw new TabletException("get decoded value is not supported");
         }
-        rv.read(slice, row, start, length);
+        if (compressType == NS.CompressType.kSnappy) {
+            byte[] data = new byte[slice.remaining()];
+            slice.get(data);
+            byte[] uncompressed = Compress.snappyUnCompress(data);
+            rv.read(ByteBuffer.wrap(uncompressed).order(ByteOrder.LITTLE_ENDIAN), row, start, length);
+        }else {
+            rv.read(slice.order(ByteOrder.LITTLE_ENDIAN), row, start, length);
+        }
+
     }
 }
