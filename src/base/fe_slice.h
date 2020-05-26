@@ -7,14 +7,14 @@
 #include <memory.h>
 #include <string>
 #include <memory>
-
+#include <boost/smart_ptr/local_shared_ptr.hpp>
 #include "base/raw_buffer.h"
 
 namespace fesql {
 namespace base {
 
 class Slice;
-typedef std::shared_ptr<Slice> SharedSliceRef;
+typedef boost::local_shared_ptr<Slice> SharedSliceRef;
 
 
 class Slice {

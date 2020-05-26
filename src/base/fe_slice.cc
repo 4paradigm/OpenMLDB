@@ -5,25 +5,25 @@ namespace fesql {
 namespace base {
 
 SharedSliceRef Slice::CreateManaged(const int8_t* buf, size_t size) {
-    return std::shared_ptr<Slice>(
+    return SharedSliceRef(
         new Slice(reinterpret_cast<const char*>(buf), size, true));
 }
 
 SharedSliceRef Slice::Create(const int8_t* buf, size_t size) {
-    return std::shared_ptr<Slice>(
+    return SharedSliceRef(
         new Slice(reinterpret_cast<const char*>(buf), size, false));
 }
 
 SharedSliceRef Slice::CreateFromCStr(const char* str) {
-    return std::shared_ptr<Slice>(new Slice(str));
+    return SharedSliceRef(new Slice(str));
 }
 
 SharedSliceRef Slice::CreateFromCStr(const std::string& str) {
-    return std::shared_ptr<Slice>(new Slice(str));
+    return SharedSliceRef(new Slice(str));
 }
 
 SharedSliceRef Slice::CreateEmpty() {
-    return std::shared_ptr<Slice>(new Slice());
+    return SharedSliceRef(new Slice());
 }
 
 
