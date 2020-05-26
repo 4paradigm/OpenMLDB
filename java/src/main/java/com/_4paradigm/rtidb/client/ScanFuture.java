@@ -94,7 +94,8 @@ public class ScanFuture implements Future<KvIterator> {
     private KvIterator getLegacyKvIterator(ScanResponse response) {
         DefaultKvIterator kit = null;
         if (t != null) {
-            if (projectionInfo.getProjectionCol() != null && projectionInfo.getProjectionCol().size() > 0) {
+            if (projectionInfo != null && projectionInfo.getProjectionCol() != null &&
+                !projectionInfo.getProjectionCol().isEmpty()) {
                 kit = new DefaultKvIterator(response.getPairs(), t.getSchema(), projectionInfo);
             }else if (t.getSchemaMap().size() > 0) {
                 kit = new DefaultKvIterator(response.getPairs(), t);

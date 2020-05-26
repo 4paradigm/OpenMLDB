@@ -113,8 +113,7 @@ public class TableSyncClientImpl implements TableSyncClient {
             throw new TabletException("no table with name " + tname);
         }
         key = validateKey(key);
-
-        if (TableClientCommon.isQueryByPartitionKey(option.getIdxName(), th)) {
+        if (th.GetPartitionKeyList().isEmpty() || TableClientCommon.isQueryByPartitionKey(option.getIdxName(), th)) {
             int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
             return scan(th.getTableInfo().getTid(), pid, key, st, et, th, option);
         }

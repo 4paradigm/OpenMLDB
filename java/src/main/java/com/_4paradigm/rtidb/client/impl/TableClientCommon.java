@@ -429,7 +429,7 @@ public class TableClientCommon {
     }
 
     public static boolean isQueryByPartitionKey(String idxName, TableHandler th) {
-        if (idxName == null) {
+        if (idxName == null || th.GetPartitionKeyList().isEmpty()) {
             return false;
         }
         Object obj = th.getKeyMap().get(idxName);

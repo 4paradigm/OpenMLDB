@@ -7,9 +7,9 @@ import java.util.Map;
 public class ProjectionInfo {
     private int formatVersion;
     private int maxIndex;
-    private List<Integer> cols;
-    private BitSet bset;
-    private List<ColumnDesc> schema;
+    private List<Integer> cols = null;
+    private BitSet bset = null;
+    private List<ColumnDesc> schema = null;
 
     public ProjectionInfo(List<Integer> cols, BitSet bset, int maxIndex) {
         this.cols = cols;

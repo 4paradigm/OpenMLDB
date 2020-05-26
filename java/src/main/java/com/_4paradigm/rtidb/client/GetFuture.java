@@ -149,7 +149,8 @@ public class GetFuture implements Future<ByteString>{
 				rv.read(raw.asReadOnlyByteBuffer().order(ByteOrder.LITTLE_ENDIAN), row, start, length);
 				break;
 			default:
-			    if (projectionInfo.getProjectionCol() != null && projectionInfo.getProjectionCol().size() > 0) {
+			    if (projectionInfo != null && projectionInfo.getProjectionCol() != null &&
+						!projectionInfo.getProjectionCol().isEmpty()) {
 					RowCodec.decode(raw.asReadOnlyByteBuffer(), th.getSchema(), projectionInfo, row, start, length);
 				}else {
 					RowCodec.decode(raw.asReadOnlyByteBuffer(), th.getSchema(), row, start, length);
