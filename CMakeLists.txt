@@ -50,10 +50,10 @@ configure_file(
 
 include_directories(${PROJECT_SOURCE_DIR}/thirdparty/include ${PROJECT_SOURCE_DIR}/fesql/src 
  ${PROJECT_SOURCE_DIR}/fesql/build/src)
-link_directories(${PROJECT_SOURCE_DIR}/thirdparty/lib)
 if (PZFPGA_ENABLE) 
     add_definitions('-DPZFPGA')
 endif()
+link_directories(${PROJECT_SOURCE_DIR}/thirdparty/lib ${PROJECT_SOURCE_DIR}/fesql/build/release/lib)
 add_subdirectory(src)
 add_custom_target(rtidbpy
 COMMAND make
