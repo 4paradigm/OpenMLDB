@@ -1613,7 +1613,6 @@ public class TableSyncClientTest extends TestCaseBase {
             data.put("memory", 12);
             data.put("price", 12.2);
             tableSyncClient.put(name, data, wo);
-
             {
                 //query no unique
                 Map<String, Object> index3 = new HashMap<>();
@@ -1642,6 +1641,65 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.get("price"), 12.2);
 
                 it.next();
+                Assert.assertFalse(it.valid());
+            }
+            // traverse
+            {
+                ro = new ReadOption(null, null, null, 1);
+                it = tableSyncClient.traverse(name, ro);
+                Assert.assertTrue(it.valid());
+                Assert.assertEquals(it.getCount(), 3);
+
+                queryMap = it.getDecodedValue();
+                Assert.assertTrue(it.valid());
+                queryMap = it.getDecodedValue();
+                Assert.assertEquals(queryMap.size(), 5);
+                Assert.assertEquals(queryMap.get("id"), 11l);
+
+                it.next();
+                Assert.assertTrue(it.valid());
+                queryMap = it.getDecodedValue();
+                Assert.assertEquals(queryMap.size(), 5);
+                Assert.assertEquals(queryMap.get("id"), 12l);
+
+                it.next();
+                Assert.assertTrue(it.valid());
+                queryMap = it.getDecodedValue();
+                Assert.assertEquals(queryMap.size(), 5);
+                Assert.assertEquals(queryMap.get("id"), 13l);
+            }
+            // update
+            {
+                Map<String, Object> conditionColumns = new HashMap<>();
+                conditionColumns.put("attribute", null);
+                Map<String, Object> valueColumns = new HashMap<>();
+                valueColumns.put("price", 14.4);
+                boolean ok = tableSyncClient.update(name, conditionColumns, valueColumns, wo);
+                Assert.assertTrue(ok);
+
+                //query
+                Map<String, Object> index3 = new HashMap<>();
+                index3.put("attribute", null);
+                ro = new ReadOption(index3, null, null, 1);
+                it = tableSyncClient.query(name, ro);
+                Assert.assertTrue(it.valid());
+
+                queryMap = it.getDecodedValue();
+                Assert.assertEquals(queryMap.size(), 5);
+                Assert.assertEquals(queryMap.get("id"), 12l);
+                Assert.assertEquals(queryMap.get("attribute"), null);
+                Assert.assertTrue(buf2.equals((ByteBuffer) queryMap.get("image")));
+                Assert.assertEquals(queryMap.get("memory"), 12);
+                Assert.assertEquals(queryMap.get("price"), 14.4);
+            }
+            //delete
+            {
+                Map<String, Object> conditionColumns2 = new HashMap<>();
+                conditionColumns2.put("attribute", null);
+                boolean ok = tableSyncClient.delete(name, conditionColumns2);
+                Assert.assertTrue(ok);
+                ro = new ReadOption(conditionColumns2, null, null, 0);
+                it = tableSyncClient.query(name, ro);
                 Assert.assertFalse(it.valid());
             }
         } catch (Exception e) {

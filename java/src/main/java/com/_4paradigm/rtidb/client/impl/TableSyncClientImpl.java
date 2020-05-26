@@ -724,6 +724,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         Tablet.DeleteRequest.Builder builder = Tablet.DeleteRequest.newBuilder();
         builder.setTid(tid);
         builder.setPid(pid);
+        Map<String, DataType> nameTypeMap = th.getNameTypeMap();
         {
             String colName = "";
             Object colValue = "";
@@ -733,15 +734,15 @@ public class TableSyncClientImpl implements TableSyncClient {
                 Map.Entry<String, Object> entry = iter.next();
                 colName = entry.getKey();
                 colValue = entry.getValue();
-                Map<String, DataType> nameTypeMap = th.getNameTypeMap();
                 if (!nameTypeMap.containsKey(colName)) {
                     throw new TabletException("index name not found with tid " + tid);
                 }
+                conditionBuilder.addName(colName);
                 DataType dataType = nameTypeMap.get(colName);
                 ByteBuffer buffer = FieldCodec.convert(dataType, colValue);
-
-                conditionBuilder.addName(colName);
-                conditionBuilder.setValue(ByteBufferNoCopy.wrap(buffer));
+                if (buffer != null) {
+                    conditionBuilder.setValue(ByteBufferNoCopy.wrap(buffer));
+                }
                 builder.addConditionColumns(conditionBuilder.build());
             }
         }
@@ -1424,6 +1425,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         Tablet.UpdateRequest.Builder builder = Tablet.UpdateRequest.newBuilder();
         builder.setTid(tid);
         builder.setPid(pid);
+        Map<String, DataType> nameTypeMap = th.getNameTypeMap();
         {
             String colName = "";
             Object colValue = "";
@@ -1433,15 +1435,15 @@ public class TableSyncClientImpl implements TableSyncClient {
                 Map.Entry<String, Object> entry = iter.next();
                 colName = entry.getKey();
                 colValue = entry.getValue();
-                Map<String, DataType> nameTypeMap = th.getNameTypeMap();
                 if (!nameTypeMap.containsKey(colName)) {
                     throw new TabletException("index name not found with tid " + tid);
                 }
+                conditionBuilder.addName(colName);
                 DataType dataType = nameTypeMap.get(colName);
                 ByteBuffer buffer = FieldCodec.convert(dataType, colValue);
-
-                conditionBuilder.addName(colName);
-                conditionBuilder.setValue(ByteBufferNoCopy.wrap(buffer));
+                if (buffer != null) {
+                    conditionBuilder.setValue(ByteBufferNoCopy.wrap(buffer));
+                }
                 builder.addConditionColumns(conditionBuilder.build());
             }
         }
