@@ -885,7 +885,7 @@ public class TableSyncClientTest extends TestCaseBase {
     }
 
     @Test
-    public  void TestWriteBinary() {
+    public void TestWriteBinary() {
         String name = "";
         try {
             name = createRelationalTable(IndexType.PrimaryKey);
@@ -936,6 +936,68 @@ public class TableSyncClientTest extends TestCaseBase {
         }
         buf.rewind();
         return buf;
+    }
+
+    @Test
+    public void TestCreateRelationTable() {
+        String name = "";
+        try {
+            name = String.valueOf(id.incrementAndGet());
+            nsc.dropTable(name);
+            TableDesc tableDesc = new TableDesc();
+            tableDesc.setName(name);
+            tableDesc.setTableType(TableType.kRelational);
+            List<com._4paradigm.rtidb.client.schema.ColumnDesc> list = new ArrayList<>();
+            {
+                com._4paradigm.rtidb.client.schema.ColumnDesc col = new com._4paradigm.rtidb.client.schema.ColumnDesc();
+                col.setName("id");
+                col.setDataType(DataType.BigInt);
+                col.setNotNull(true);
+                list.add(col);
+            }
+            {
+                com._4paradigm.rtidb.client.schema.ColumnDesc col = new com._4paradigm.rtidb.client.schema.ColumnDesc();
+                col.setName("attribute");
+                col.setDataType(DataType.Varchar);
+                col.setNotNull(true);
+                list.add(col);
+            }
+            {
+                com._4paradigm.rtidb.client.schema.ColumnDesc col = new com._4paradigm.rtidb.client.schema.ColumnDesc();
+                col.setName("image");
+                col.setDataType(DataType.Blob);
+                col.setNotNull(false);
+                list.add(col);
+            }
+            tableDesc.setColumnDescList(list);
+
+            List<IndexDef> indexs = new ArrayList<>();
+            IndexDef indexDef = new IndexDef();
+            indexDef.setIndexName("idx1");
+            indexDef.setIndexType(IndexType.PrimaryKey);
+            List<String> colNameList = new ArrayList<>();
+            colNameList.add("id");
+            indexDef.setColNameList(colNameList);
+            indexs.add(indexDef);
+
+            indexDef = new IndexDef();
+            indexDef.setIndexName("idx2");
+            indexDef.setIndexType(IndexType.AutoGen);
+            colNameList = new ArrayList<>();
+            colNameList.add("attribute");
+            indexDef.setColNameList(colNameList);
+            indexs.add(indexDef);
+
+            tableDesc.setIndexs(indexs);
+            boolean ok = nsc.createTable(tableDesc);
+            Assert.assertFalse(ok);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.assertTrue(false);
+        } finally {
+            nsc.dropTable(name);
+        }
     }
 
     @Test
@@ -2659,6 +2721,39 @@ public class TableSyncClientTest extends TestCaseBase {
             Assert.assertEquals(map.get("id"), pr.getAutoGenPk());
             Assert.assertEquals(map.get("attribute"), "a1");
             Assert.assertTrue(StringToBB("i1").equals((ByteBuffer)map.get("image")));
+
+            //update key
+            {
+                data.clear();
+                Map<String, Object> conditionColumns = new HashMap<>();
+                conditionColumns.put("id", pr.getAutoGenPk());
+                data.put("id", 111l);
+                data.put("image", StringToBB("i2"));
+                try {
+                    tableSyncClient.update(name, conditionColumns, data, wo);
+                    Assert.fail();
+                } catch (Exception e) {
+                    Assert.assertTrue(true);
+                }
+
+                data.clear();
+                conditionColumns = new HashMap<>();
+                conditionColumns.put("id", pr.getAutoGenPk());
+                data.put("attribute", "a2");
+                data.put("image", StringToBB("i2"));
+                boolean ok = tableSyncClient.update(name, conditionColumns, data, wo);
+                Assert.assertTrue(ok);
+
+                ro = new ReadOption(conditionColumns, null, null, 1);
+                it = tableSyncClient.query(name, ro);
+                Map<String, Object> valueMap = new HashMap<>();
+                valueMap = it.getDecodedValue();
+                Assert.assertEquals(valueMap.size(), 3);
+                Assert.assertEquals(valueMap.get("id"), pr.getAutoGenPk());
+                Assert.assertEquals(valueMap.get("attribute"), "a2");
+                Assert.assertEquals(valueMap.get("image"), StringToBB("i2"));
+            }
+
 
         } catch (Exception e) {
             e.printStackTrace();
