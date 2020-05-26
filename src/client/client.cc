@@ -483,6 +483,9 @@ bool RtidbClient::Traverse(const std::string& name, const struct ReadOption& ro,
             }
             ::rtidb::api::Columns* index = ro_pb.add_index();
             index->add_name(kv.first);
+            if (kv.second == ::rtidb::codec::NONETOKEN) {
+                continue;
+            }
             ::rtidb::type::DataType type = iter->second;
             std::string* val = index->mutable_value();
             if (!rtidb::codec::Convert(kv.second, type, val)) {
@@ -657,6 +660,9 @@ BatchQueryResult RtidbClient::BatchQuery(const std::string& name,
             }
             ::rtidb::api::Columns* index = ro_ptr->add_index();
             index->add_name(kv.first);
+            if (kv.second == ::rtidb::codec::NONETOKEN) {
+                continue;
+            }
             ::rtidb::type::DataType type = iter->second;
             std::string* val = index->mutable_value();
             if (!rtidb::codec::Convert(kv.second, type, val)) {

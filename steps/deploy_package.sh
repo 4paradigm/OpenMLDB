@@ -37,8 +37,8 @@ fi
 
 sh -x steps/package.sh $VERSION
 
-URL="http://pkg.4paradigm.com:81/rtidb/test/"
-CHECKURL="http://pkg.4paradigm.com/rtidb/test/"
+URL="http://pkg.4paradigm.com:81/rtidb/"
+CHECKURL="http://pkg.4paradigm.com/rtidb/"
 FILE=rtidb-cluster-$VERSION.tar.gz
 checkFileExist $CHECKURL $FILE
 if [ $? -ne 0 ]; then
