@@ -939,7 +939,7 @@ public class TableSyncClientTest extends TestCaseBase {
     }
 
     @Test
-    public void TestCreateRelationTable() {
+    public void TestCreateRelationTableError() {
         String name = "";
         try {
             name = String.valueOf(id.incrementAndGet());
@@ -2722,7 +2722,7 @@ public class TableSyncClientTest extends TestCaseBase {
             Assert.assertEquals(map.get("attribute"), "a1");
             Assert.assertTrue(StringToBB("i1").equals((ByteBuffer)map.get("image")));
 
-            //update key
+            //update
             {
                 data.clear();
                 Map<String, Object> conditionColumns = new HashMap<>();
@@ -2753,8 +2753,16 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(valueMap.get("attribute"), "a2");
                 Assert.assertEquals(valueMap.get("image"), StringToBB("i2"));
             }
-
-
+            //delete
+            {
+                Map<String, Object> conditionColumns2 = new HashMap<>();
+                conditionColumns2.put("id", pr.getAutoGenPk());
+                boolean ok = tableSyncClient.delete(name, conditionColumns2);
+                Assert.assertTrue(ok);
+                ro = new ReadOption(conditionColumns2, null, null, 1);
+                it = tableSyncClient.query(name, ro);
+                Assert.assertFalse(it.valid());
+            }
         } catch (Exception e) {
             e.printStackTrace();
             Assert.assertTrue(false);
