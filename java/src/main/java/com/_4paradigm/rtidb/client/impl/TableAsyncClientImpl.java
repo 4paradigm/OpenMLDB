@@ -603,9 +603,10 @@ public class TableAsyncClientImpl implements TableAsyncClient {
                     }
                     bitSet.set(idx, true);
                 }
+                ProjectionInfo projectionInfo = new ProjectionInfo(projectIdx, bitSet, maxIndex);
                 Tablet.GetRequest request = builder.build();
                 Future<Tablet.GetResponse> future = ts.get(request, TableClientCommon.getFakeCallback);
-                return new GetFuture(future, th, projectIdx, bitSet, maxIndex);
+                return new GetFuture(future, th, projectionInfo);
             }else {
                 Tablet.GetRequest request = builder.build();
                 Future<Tablet.GetResponse> future = ts.get(request, TableClientCommon.getFakeCallback);

@@ -22,11 +22,8 @@ public class GetFuture implements Future<ByteString>{
 	private TableHandler th;
 	private RowView rv;
 	private List<ColumnDesc> projection;
+	private ProjectionInfo projectionInfo = null;
 
-	// the legacy format var
-	private List<Integer> projectionIdx;
-	private int maxProjectIndex;
-	private BitSet bitSet;
 	private int rowLength;
 	public static GetFuture wrappe(Future<Tablet.GetResponse> f, RTIDBClientConfig config) {
 		return new GetFuture(f, config);
@@ -36,15 +33,11 @@ public class GetFuture implements Future<ByteString>{
 		return new GetFuture(f, t);
 	}
 	// for legacy format
-	public GetFuture(Future<Tablet.GetResponse> f, TableHandler t,
-					 List<Integer> projectionIdx,
-					 BitSet bitSet, int maxProjectIndex) {
+	public GetFuture(Future<Tablet.GetResponse> f, TableHandler t, ProjectionInfo projectionInfo) {
 		this.f = f;
 		this.th = t;
-		this.projectionIdx = projectionIdx;
-		this.maxProjectIndex = maxProjectIndex;
-		this.bitSet = bitSet;
-		this.rowLength = projectionIdx.size();
+		this.projectionInfo = projectionInfo;
+		this.rowLength = projectionInfo.getProjectionCol().size();
 	}
 
 	public GetFuture(Future<Tablet.GetResponse> f, TableHandler t) {
@@ -156,8 +149,8 @@ public class GetFuture implements Future<ByteString>{
 				rv.read(raw.asReadOnlyByteBuffer().order(ByteOrder.LITTLE_ENDIAN), row, start, length);
 				break;
 			default:
-			    if (projectionIdx != null && projectionIdx.size() > 0) {
-					RowCodec.decode(raw.asReadOnlyByteBuffer(), th.getSchema(), bitSet, projectionIdx, maxProjectIndex, row, start, length);
+			    if (projectionInfo.getProjectionCol() != null && projectionInfo.getProjectionCol().size() > 0) {
+					RowCodec.decode(raw.asReadOnlyByteBuffer(), th.getSchema(), projectionInfo, row, start, length);
 				}else {
 					RowCodec.decode(raw.asReadOnlyByteBuffer(), th.getSchema(), row, start, length);
 				}
