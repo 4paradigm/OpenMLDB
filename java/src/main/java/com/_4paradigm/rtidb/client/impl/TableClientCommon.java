@@ -1,6 +1,9 @@
 package com._4paradigm.rtidb.client.impl;
 
+import com._4paradigm.rtidb.client.ScanFuture;
+import com._4paradigm.rtidb.client.ScanOption;
 import com._4paradigm.rtidb.client.TabletException;
+import com._4paradigm.rtidb.client.ha.PartitionHandler;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
@@ -9,12 +12,15 @@ import com._4paradigm.rtidb.tablet.Tablet;
 import com._4paradigm.rtidb.utils.MurmurHash;
 import io.brpc.client.RpcCallback;
 import org.joda.time.DateTime;
+import rtidb.api.TabletServer;
 
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeoutException;
 
 public class TableClientCommon {
 
@@ -336,6 +342,69 @@ public class TableClientCommon {
             pid = pid * -1;
         }
         return pid;
+    }
+
+    public static String combinePartitionKey(Object[] row, List<Integer> partitionKeyList, int pidNum) throws TabletException {
+        if (partitionKeyList.size() > 1) {
+            Object[] partitionRow = new Object[partitionKeyList.size()];
+            int pos = 0;
+            for (Integer idx : partitionKeyList) {
+                if (partitionKeyList.get(idx) >= row.length) {
+                    throw new TabletException("out of index");
+                }
+                partitionRow[pos] = row[partitionKeyList.get(idx)];
+                pos++;
+            }
+            return getCombinedKey(partitionRow, true);
+        } else {
+            if (partitionKeyList.get(0) >= row.length) {
+                throw new TabletException("out of index");
+            }
+            return row[partitionKeyList.get(0)].toString();
+        }
+    }
+
+    public static ScanFuture scanInternal(int tid, int pid, String key, long st, long et, TableHandler th, ScanOption option) throws TimeoutException, TabletException{
+        PartitionHandler ph = th.getHandler(pid);
+        TabletServer ts = ph.getReadHandler(th.getReadStrategy());
+        if (ts == null) {
+            throw new TabletException("Cannot find available tabletServer with tid " + tid);
+        }
+        Tablet.ScanRequest.Builder builder = Tablet.ScanRequest.newBuilder();
+        builder.setPk(key);
+        List<ColumnDesc> schema = th.getSchema();
+        builder.setTid(tid);
+        builder.setEt(et);
+        builder.setSt(st);
+        builder.setPid(pid);
+        builder.setLimit(option.getLimit());
+        builder.setAtleast(option.getAtLeast());
+        if (option.getIdxName() != null)
+            builder.setIdxName(option.getIdxName());
+        if (option.getTsName() != null)
+            builder.setTsName(option.getTsName());
+        builder.setEnableRemoveDuplicatedRecord(option.isRemoveDuplicateRecordByTime());
+        Tablet.ScanRequest request = builder.build();
+        Long startTime = System.nanoTime();
+        Future<Tablet.ScanResponse> response = ts.scan(request, TableClientCommon.scanFakeCallback);
+        return ScanFuture.wrappe(response, th, startTime);
+    }
+
+    public static boolean isQueryByPartitionKey(String idxName, TableHandler th) {
+        if (idxName == null) {
+            return false;
+        }
+        Object obj = th.getKeyMap().get(idxName);
+        if (obj != null) {
+            for (String col : (List<String>)obj) {
+                Integer colPos = th.getSchemaPos().get(col);
+                if (colPos == null || !th.GetPartitionKeyList().contains(colPos)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        return false;
     }
 
 }

@@ -113,9 +113,15 @@ public class TableSyncClientImpl implements TableSyncClient {
             throw new TabletException("no table with name " + tname);
         }
         key = validateKey(key);
+
+        if (TableClientCommon.isQueryByPartitionKey(option.getIdxName(), th)) {
+            int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
+            return scan(th.getTableInfo().getTid(), pid, key, st, et, th, option);
+        }
+
         List<ScanFuture> futureList = new ArrayList<>();
         for (int pid = 0; pid < th.getPartitions().length; pid++) {
-            futureList.add(scanInternal(th.getTableInfo().getTid(), pid, key, st, et, th, option));
+            futureList.add(TableClientCommon.scanInternal(th.getTableInfo().getTid(), pid, key, st, et, th, option));
         }
         List<ByteString> byteStrings = new ArrayList<>();
         int count = 0;
@@ -1122,33 +1128,6 @@ public class TableSyncClientImpl implements TableSyncClient {
         throw new TabletException("rtidb internal server error");
     }
 
-    private ScanFuture scanInternal(int tid, int pid, String key, long st, long et, TableHandler th, ScanOption option) throws TimeoutException, TabletException{
-        key = validateKey(key);
-        PartitionHandler ph = th.getHandler(pid);
-        TabletServer ts = ph.getReadHandler(th.getReadStrategy());
-        if (ts == null) {
-            throw new TabletException("Cannot find available tabletServer with tid " + tid);
-        }
-        Tablet.ScanRequest.Builder builder = Tablet.ScanRequest.newBuilder();
-        builder.setPk(key);
-        List<ColumnDesc> schema = th.getSchema();
-        builder.setTid(tid);
-        builder.setEt(et);
-        builder.setSt(st);
-        builder.setPid(pid);
-        builder.setLimit(option.getLimit());
-        builder.setAtleast(option.getAtLeast());
-        if (option.getIdxName() != null)
-            builder.setIdxName(option.getIdxName());
-        if (option.getTsName() != null)
-            builder.setTsName(option.getTsName());
-        builder.setEnableRemoveDuplicatedRecord(option.isRemoveDuplicateRecordByTime());
-        Tablet.ScanRequest request = builder.build();
-        Long startTime = System.nanoTime();
-        Future<Tablet.ScanResponse> response = ts.scan(request, TableClientCommon.scanFakeCallback);
-        return ScanFuture.wrappe(response, th, startTime);
-    }
-
     @Override
     public boolean put(String name, String key, long time, byte[] bytes) throws TimeoutException, TabletException {
         TableHandler th = client.getHandler(name);
@@ -1222,18 +1201,22 @@ public class TableSyncClientImpl implements TableSyncClient {
             }
             buffer = RowCodec.encode(row, columnDescs, modifyTimes);
         }
-        //Map<Integer, List<Tablet.Dimension>> mapping = TableClientCommon.fillPartitionTabletDimension(row, th, handleNull);
-        List<Tablet.Dimension> dims = TableClientCommon.fillTabletDimension(row, th, handleNull);
-        int pid = TableClientCommon.computePidByKey(dims.get(0).getKey(), th.getPartitions().length);
-        return put(th.getTableInfo().getTid(), pid, null, time, dims,ts, buffer, th);
-        /*Iterator<Map.Entry<Integer, List<Tablet.Dimension>>> it = mapping.entrySet().iterator();
-        boolean ret = true;
-        while (it.hasNext()) {
-            Map.Entry<Integer, List<Tablet.Dimension>> entry = it.next();
-            ret = ret && put(th.getTableInfo().getTid(), entry.getKey(), null,
-                    time, entry.getValue(), ts, buffer, th);
+        if (!th.GetPartitionKeyList().isEmpty()) {
+            List<Tablet.Dimension> dims = TableClientCommon.fillTabletDimension(row, th, handleNull);
+            int pid = TableClientCommon.computePidByKey(TableClientCommon.combinePartitionKey(row, th.GetPartitionKeyList(),
+                    th.getPartitions().length), th.getPartitions().length);
+            return put(th.getTableInfo().getTid(), pid, null, time, dims,ts, buffer, th);
+        } else {
+            Map<Integer, List<Tablet.Dimension>> mapping = TableClientCommon.fillPartitionTabletDimension(row, th, handleNull);
+            Iterator<Map.Entry<Integer, List<Tablet.Dimension>>> it = mapping.entrySet().iterator();
+            boolean ret = true;
+            while (it.hasNext()) {
+                Map.Entry<Integer, List<Tablet.Dimension>> entry = it.next();
+                ret = ret && put(th.getTableInfo().getTid(), entry.getKey(), null,
+                        time, entry.getValue(), ts, buffer, th);
+            }
+            return ret;
         }
-        return ret;*/
     }
 
     private boolean put(int tid, int pid, String key, long time, byte[] bytes, TableHandler th) throws TabletException {
