@@ -28,12 +28,14 @@
 #include "proto/tablet.pb.h"
 #include "sdk/base.h"
 #include "sdk/result_set_sql.h"
+#include "sdk/base_impl.h"
 
 namespace rtidb {
 namespace sdk {
 
 SQLClusterRouter::SQLClusterRouter(const SQLRouterOptions& options)
-    : options_(options), cluster_sdk_(NULL), engine_(NULL) {}
+    : options_(options), cluster_sdk_(NULL), engine_(NULL),
+input_schema_map_(), mu_(){}
 
 SQLClusterRouter::~SQLClusterRouter() {
     delete cluster_sdk_;
@@ -57,6 +59,46 @@ bool SQLClusterRouter::Init() {
     eopt.set_compile_only(true);
     engine_ = new ::fesql::vm::Engine(catalog, eopt);
     return true;
+}
+
+std::shared_ptr<SQLRequestRow> SQLClusterRouter::GetRequestRow(const std::string& db,
+        const std::string& sql, ::fesql::sdk::Status* status) {
+    if (status == NULL) return std::shared_ptr<SQLRequestRow>();
+    {
+        std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
+        auto it = input_schema_map_.find(db);
+        if (it != input_schema_map_.end()) {
+            auto iit = it->second.find(sql);
+            if (iit != it->second.end()) {
+                status->code = 0;
+                std::shared_ptr<SQLRequestRow> row(new SQLRequestRow(iit->second));
+                return row;
+            }
+        }
+    }
+    ::fesql::vm::ExplainOutput explain;
+    ::fesql::base::Status vm_status;
+    bool ok = engine_->Explain(sql, db, false, &explain, &vm_status);
+    if (!ok) {
+        status->code = -1;
+        status->msg = vm_status.msg;
+        LOG(WARNING) << "fail to explain sql " << sql << " for " << vm_status.msg;
+        return std::shared_ptr<SQLRequestRow>();
+    }
+    std::shared_ptr<::fesql::sdk::SchemaImpl> schema(new ::fesql::sdk::SchemaImpl(explain.input_schema));
+    {
+        std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
+        auto it = input_schema_map_.find(db);
+        if (it == input_schema_map_.end()) {
+            std::map<std::string, std::shared_ptr<::fesql::sdk::Schema>> sql_schema;
+            sql_schema.insert(std::make_pair(sql, schema));
+            input_schema_map_.insert(std::make_pair(db, sql_schema));
+        }else {
+            it->second.insert(std::make_pair(sql, schema));
+        }
+    }
+    std::shared_ptr<SQLRequestRow> row(new SQLRequestRow(schema));
+    return row;
 }
 
 bool SQLClusterRouter::ExecuteDDL(const std::string& db, const std::string& sql,
@@ -135,6 +177,36 @@ void SQLClusterRouter::GetTables(::fesql::vm::PhysicalOpNode* node,
     }
 }
 
+
+std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
+        const std::string& db, const std::string& sql,
+        std::shared_ptr<SQLRequestRow> row,
+        fesql::sdk::Status* status) {
+    if (!row || status == NULL) {
+        LOG(WARNING) << "input is invalid";
+        return std::shared_ptr<::fesql::sdk::ResultSet>();
+    }
+    std::unique_ptr<::brpc::Controller> cntl(new ::brpc::Controller());
+    std::unique_ptr<::rtidb::api::QueryResponse> response(
+        new ::rtidb::api::QueryResponse());
+    std::vector<std::shared_ptr<::rtidb::client::TabletClient>> tablets;
+    bool ok = GetTablet(db, sql, &tablets);
+    if (!ok || tablets.size() <= 0) {
+        status->msg = "not tablet found";
+        return std::shared_ptr<::fesql::sdk::ResultSet>();
+    }
+    ok = tablets[0]->Query(db, sql, row->GetRow(),
+            cntl.get(), response.get());
+    if (!ok) {
+        status->msg = "request server error";
+        return std::shared_ptr<::fesql::sdk::ResultSet>();
+    }
+    std::shared_ptr<::rtidb::sdk::ResultSetSQL> rs(
+        new rtidb::sdk::ResultSetSQL(std::move(response), std::move(cntl)));
+    rs->Init();
+    return rs;
+}
+
 std::shared_ptr<::fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
     const std::string& db, const std::string& sql,
     ::fesql::sdk::Status* status) {
@@ -146,13 +218,17 @@ std::shared_ptr<::fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
     if (!ok || tablets.size() <= 0) {
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
+    DLOG(INFO) <<" send query to tablet " << tablets[0]->GetEndpoint();
     ok = tablets[0]->Query(db, sql, cntl.get(), response.get());
     if (!ok) {
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
     std::shared_ptr<::rtidb::sdk::ResultSetSQL> rs(
         new rtidb::sdk::ResultSetSQL(std::move(response), std::move(cntl)));
-    rs->Init();
+    ok = rs->Init();
+    if (!ok) {
+        DLOG(INFO) << "fail to init result set for sql " << sql;
+    }
     return rs;
 }
 
@@ -202,6 +278,7 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db,
                      << " tablet";
         return false;
     }
+    DLOG(INFO) << "put data to endpoint " << tablet->GetEndpoint() << " with dimensions size " << dimensions.size();
     ok = tablet->Put(table_info->tid(), 0, dimensions, ts, value, 1);
     if (!ok) return false;
     return true;
@@ -232,6 +309,7 @@ bool SQLClusterRouter::EncodeFromat(
             }
         }
     }
+    DLOG(INFO) << "row str size " << str_size;
     ::rtidb::codec::RowBuilder rb(schema);
     uint32_t row_size = rb.CalTotalLength(str_size);
     value->resize(row_size);
@@ -249,6 +327,7 @@ bool SQLClusterRouter::EncodeFromat(
         switch (column.data_type()) {
             case ::rtidb::type::kSmallInt: {
                 ok = rb.AppendInt16(primary->GetSmallInt());
+                DLOG(INFO) << "parse column " << column.name() << " with value " << primary->GetSmallInt();
                 if (column.add_ts_idx()) {
                     dimensions->push_back(std::make_pair(
                         std::to_string(primary->GetSmallInt()), idx_cnt));
@@ -257,6 +336,7 @@ bool SQLClusterRouter::EncodeFromat(
                 break;
             }
             case ::rtidb::type::kInt: {
+                DLOG(INFO) << "parse column " << column.name() << " with value " << primary->GetInt();
                 ok = rb.AppendInt32(primary->GetInt());
                 if (column.add_ts_idx()) {
                     dimensions->push_back(std::make_pair(
@@ -274,14 +354,17 @@ bool SQLClusterRouter::EncodeFromat(
                         std::to_string(primary->GetInt()), idx_cnt));
                     idx_cnt++;
                 }
+                DLOG(INFO) << "parse column " << column.name() << " with value " << primary->GetInt();
                 ok = rb.AppendInt64(primary->GetInt());
                 break;
             }
             case ::rtidb::type::kFloat: {
+                DLOG(INFO) << "parse column " << column.name() << " with value " << primary->GetDouble();
                 ok = rb.AppendFloat(static_cast<float>(primary->GetDouble()));
                 break;
             }
             case ::rtidb::type::kDouble: {
+                DLOG(INFO) << "parse column " << column.name() << " with value " << primary->GetDouble();
                 ok = rb.AppendDouble(primary->GetDouble());
                 break;
             }
@@ -289,6 +372,7 @@ bool SQLClusterRouter::EncodeFromat(
             case ::rtidb::type::kString: {
                 ok = rb.AppendString(primary->GetStr(),
                                      strlen(primary->GetStr()));
+                DLOG(INFO) << "parse column " << column.name() << " with value " << std::string(primary->GetStr(), strlen(primary->GetStr()));
                 if (column.add_ts_idx()) {
                     dimensions->push_back(
                         std::make_pair(std::string(primary->GetStr(),

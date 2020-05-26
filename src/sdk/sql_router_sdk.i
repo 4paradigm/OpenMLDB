@@ -11,13 +11,16 @@
 #include "sdk/sql_router.h"
 #include "sdk/result_set.h"
 #include "sdk/base.h"
+#include "sdk/sql_request_row.h"
 using fesql::sdk::Schema;
 using fesql::sdk::ResultSet;
 using rtidb::sdk::SQLRouter;
 using rtidb::sdk::SQLRouterOptions;
+using rtidb::sdk::SQLRequestRow;
 %}
 
 %include "sdk/sql_router.h"
 %include "sdk/base.h"
 %include "sdk/result_set.h"
+%include "sdk/sql_request_row.h"
 

@@ -24,6 +24,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/spinlock.h"
 #include "catalog/schema_adapter.h"
 #include "client/tablet_client.h"
 #include "parser/parser.h"
@@ -37,9 +38,11 @@ namespace sdk {
 class SQLClusterRouter : public SQLRouter {
  public:
     explicit SQLClusterRouter(const SQLRouterOptions& options);
+
     ~SQLClusterRouter();
 
     bool Init();
+
 
     bool CreateDB(const std::string& db, fesql::sdk::Status* status);
 
@@ -48,6 +51,15 @@ class SQLClusterRouter : public SQLRouter {
 
     bool ExecuteInsert(const std::string& db, const std::string& sql,
                        ::fesql::sdk::Status* status);
+
+    std::shared_ptr<SQLRequestRow> GetRequestRow(const std::string& db,
+            const std::string& sql,
+            ::fesql::sdk::Status* status);
+
+    std::shared_ptr<fesql::sdk::ResultSet> ExecuteSQL(
+        const std::string& db, const std::string& sql,
+        std::shared_ptr<SQLRequestRow> row,
+        fesql::sdk::Status* status);
 
     std::shared_ptr<::fesql::sdk::ResultSet> ExecuteSQL(
         const std::string& db, const std::string& sql,
@@ -76,6 +88,11 @@ class SQLClusterRouter : public SQLRouter {
     SQLRouterOptions options_;
     ClusterSDK* cluster_sdk_;
     ::fesql::vm::Engine* engine_;
+    //TODO(wangtaize) add update strategy
+    std::map<std::string,
+        std::map<std::string,
+                 std::shared_ptr<::fesql::sdk::Schema>>> input_schema_map_;
+    ::rtidb::base::SpinMutex mu_;
 };
 
 }  // namespace sdk

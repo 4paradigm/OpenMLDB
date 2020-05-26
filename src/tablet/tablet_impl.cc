@@ -36,6 +36,7 @@
 #include "storage/segment.h"
 #include "tablet/file_sender.h"
 #include "timer.h"  // NOLINT
+#include "glog/logging.h"
 
 using google::protobuf::RepeatedPtrField;
 using ::rtidb::storage::DataBlock;
@@ -675,6 +676,8 @@ void TabletImpl::Put(RpcController* controller,
         }
     }
     if (table) {
+        DLOG(INFO) <<" request format_version " << request->format_version() 
+            << " request dimension size " << request->dimensions_size() << " request time " << request->time();
         if ((!request->has_format_version() &&
              table->GetTableMeta().format_version() == 1) ||
             (request->has_format_version() &&
@@ -717,9 +720,14 @@ void TabletImpl::Put(RpcController* controller,
                 return;
             }
             if (request->ts_dimensions_size() > 0) {
+                DLOG(INFO) << "put data to tid " << request->tid() << " pid " <<request->pid()
+                << " with key "  << request->dimensions(0).key() << " ts " << request->ts_dimensions(0).ts();
                 ok = table->Put(request->dimensions(), request->ts_dimensions(),
                                 request->value());
             } else {
+                DLOG(INFO) << "put data to tid " << request->tid() << " pid " <<request->pid()
+                << " with key "  << request->dimensions(0).key() << " ts " << request->time();
+
                 ok = table->Put(request->time(), request->value(),
                                 request->dimensions());
             }
@@ -1877,6 +1885,7 @@ void TabletImpl::Query(RpcController* ctrl,
             return;
         }
         auto iter = table->GetIterator();
+        iter->SeekToFirst();
         uint32_t byte_size = 0;
         uint32_t count = 0;
         while (iter->Valid()) {
@@ -1902,6 +1911,7 @@ void TabletImpl::Query(RpcController* ctrl,
             return;
         }
         ::fesql::vm::RequestRunSession session;
+        session.EnableDebug();
         {
             bool ok =
                 engine_.Get(request->sql(), request->db(), session, status);
@@ -1912,6 +1922,9 @@ void TabletImpl::Query(RpcController* ctrl,
                 return;
             }
         }
+        std::stringstream ss;
+        session.GetPhysicalPlan()->Print(ss, "\t");
+        DLOG(INFO) << "sql plan \n" <<ss.str();
         ::fesql::codec::Row row(request->input_row().c_str(),
                                 request->input_row().size());
         ::fesql::codec::Row output;

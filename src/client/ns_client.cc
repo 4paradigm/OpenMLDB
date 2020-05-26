@@ -1041,6 +1041,13 @@ bool NsClient::TransformToTableDef(
                 ::rtidb::common::ColumnKey* index = table->add_column_key();
                 index->set_index_name(column_index->GetName());
                 for (auto key : column_index->GetKey()) {
+                    auto cit = column_names.find(key);
+                    if (cit == column_names.end()){
+                        status->msg = "column " + key + " does not exist";
+                        status->code = fesql::common::kSQLError;
+                        return false;
+                    }
+                    cit->second->set_add_ts_idx(true);
                     index->add_col_name(key);
                 }
                 if (!column_index->GetTs().empty()) {

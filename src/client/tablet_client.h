@@ -74,6 +74,11 @@ class TabletClient {
     bool Query(const std::string& db, const std::string& sql,
                brpc::Controller* cntl, ::rtidb::api::QueryResponse* response);
 
+    bool Query(const std::string& db, const std::string& sql,
+               const std::string& row,
+               brpc::Controller* cntl,
+               ::rtidb::api::QueryResponse* response);
+
     bool Put(uint32_t tid, uint32_t pid, const std::string& value,
              int64_t* auto_gen_pk, std::string* msg);
 

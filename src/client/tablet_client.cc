@@ -107,6 +107,27 @@ bool TabletClient::CreateTable(
 }
 
 bool TabletClient::Query(const std::string& db, const std::string& sql,
+        const std::string& row,
+        brpc::Controller* cntl,
+        rtidb::api::QueryResponse* response) {
+    if (cntl == NULL || response == NULL) return false;
+    ::rtidb::api::QueryRequest request;
+    request.set_sql(sql);
+    request.set_db(db);
+    request.set_is_batch(false);
+    request.set_input_row(row);
+    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Query, cntl,
+                                  &request, response);
+
+    if (!ok) {
+        LOG(WARNING) << "fail to query tablet";
+        return false;
+    }
+    return true;
+}
+
+
+bool TabletClient::Query(const std::string& db, const std::string& sql,
                          brpc::Controller* cntl,
                          ::rtidb::api::QueryResponse* response) {
     if (cntl == NULL || response == NULL) return false;

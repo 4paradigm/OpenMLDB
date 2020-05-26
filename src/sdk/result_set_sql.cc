@@ -74,7 +74,11 @@ bool ResultSetSQL::Next() {
         butil::IOBuf tmp;
         cntl_->response_attachment().append_to(&tmp, row_size, position_);
         position_ += row_size;
-        row_view_->Reset(tmp);
+        bool ok = row_view_->Reset(tmp);
+        if (!ok) {
+            LOG(WARNING) << "reset row buf failed";
+            return false;
+        }
         return true;
     }
     return false;
@@ -88,9 +92,11 @@ bool ResultSetSQL::GetString(uint32_t index, std::string* str) {
     butil::IOBuf tmp;
     int32_t ret = row_view_->GetString(index, &tmp);
     if (ret == 0) {
+        DLOG(INFO) << "get str size " << tmp.size();
         tmp.append_to(str, tmp.size(), 0);
         return true;
     }
+    DLOG(INFO) << "fail to get string with ret " << ret;
     return false;
 }
 
