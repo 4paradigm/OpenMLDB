@@ -93,7 +93,17 @@ test_py3sdk_linux:
                   #            junit:
                   #                - python/test/*.xml
                   #
+                  
 micro_benchmark:
     stage: benchmark
     script:
-        - bash tools/micro_bench.sh
+        - bash tools/micro_bench.sh | tee micro_bench_report.txt
+        - bash tools/gen_micro_bench_compare.sh
+    artifacts:
+        paths:
+            - ./micro_bench_report.txt
+            - ./benchmark_compare.html
+        ## expose_as: "micro_benchmark"
+            
+
+
