@@ -161,13 +161,14 @@ int RelationalTable::InitColumnDesc() {
         }
         column_map.insert(std::make_pair(col_name, type));
 
-        table_column_.AddColumn(
-            std::make_shared<ColumnDef>(col_name, col_idx, type));
+        table_column_.AddColumn(std::make_shared<ColumnDef>(
+                    col_name, col_idx, type, col_desc.not_null()));
         col_idx++;
     }
     uint32_t pk_idx_count = 0;
     uint32_t key_idx = 0;
     for (const auto& column_key : table_meta_.column_key()) {
+        bool is_pk = false;
         const std::string& index_name = column_key.index_name();
         if (table_index_.GetIndex(index_name)) {
             PDLOG(WARNING, "index_name %s is duplicated, tid %u pid %u",
@@ -178,6 +179,7 @@ int RelationalTable::InitColumnDesc() {
         if (index_type == ::rtidb::type::kPrimaryKey
                 || index_type == ::rtidb::type::kAutoGen
                 || index_type == ::rtidb::type::kIncrement) {
+            is_pk = true;
             pk_idx_count++;
             if (pk_idx_count > 1) {
                 PDLOG(WARNING, "primaryKey count more than 1, tid %u pid %u",
@@ -199,7 +201,14 @@ int RelationalTable::InitColumnDesc() {
                       pid_);
                 return -1;
             }
-            index_columns.push_back(*(table_column_.GetColumn(col_name)));
+            std::shared_ptr<ColumnDef> col_def =
+                table_column_.GetColumn(col_name);
+            if (is_pk && !col_def->NotNull()) {
+                PDLOG(WARNING, "pk column name %s not_null must be true,"
+                    "tid %u pid %u", col_def->GetName().c_str(), id_, pid_);
+                return -1;
+            }
+            index_columns.push_back(*col_def);
         }
         std::sort(index_columns.begin(), index_columns.end(),
                   ::rtidb::storage::ColumnDefSortFunc);
