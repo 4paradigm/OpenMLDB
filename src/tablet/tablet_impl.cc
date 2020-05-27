@@ -1862,12 +1862,21 @@ void TabletImpl::BatchQuery(RpcController* controller,
         response->set_msg("table is not exist");
         return;
     }
+    int32_t code = 0;
+    std::string msg;
     uint32_t scount = 0;
     std::string* pairs = response->mutable_pairs();
-    bool ok = r_table->Query(request->read_option(), pairs, &scount);
+    bool ok = r_table->Query(request->read_option(), pairs, &scount,
+            &code, &msg);
     if (!ok) {
-        response->set_code(::rtidb::base::ReturnCode::kQueryFailed);
-        response->set_msg("query failed");
+        if (code == rtidb::base::ReturnCode::kIdxNameNotFound ||
+                code == rtidb::base::ReturnCode::kGetCombineStrFailed) {
+            response->set_code(code);
+            response->set_msg(msg);
+        } else {
+            response->set_code(::rtidb::base::ReturnCode::kQueryFailed);
+            response->set_msg("query failed");
+        }
         response->set_is_finish(true);
         response->set_count(0);
         PDLOG(WARNING, "query failed, tid %u pid %u", request->tid(),
