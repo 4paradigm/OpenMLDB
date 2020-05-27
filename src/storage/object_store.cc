@@ -9,6 +9,9 @@
 
 namespace rtidb {
 namespace storage {
+
+static bool options_initialized = false;
+
 ObjectStore::ObjectStore(const ::rtidb::blobserver::TableMeta& table_meta,
                          const std::string& db_root_path)
     : db_(NULL),
@@ -19,17 +22,22 @@ ObjectStore::ObjectStore(const ::rtidb::blobserver::TableMeta& table_meta,
       is_leader_(false),
       storage_mode_(table_meta.storage_mode()),
       id_generator_(),
-      thread_pool_(1) {}
+      thread_pool_(2) {}
 
 bool ObjectStore::Init() {
     db_root_path_ = db_root_path_ + "/" + std::to_string(tid_) + "_" +
-                    std::to_string(pid_);
+                   std::to_string(pid_);
+    if (!options_initialized) {
+        settings_init();
+        options_initialized = true;
+    }
     char* path = const_cast<char*>(db_root_path_.data());
-    db_ = hs_open(path, 1, 0, 16);
+    time_t before_time = 0;
+    db_ = hs_open(path, 1, before_time, 16);
     if (db_ != NULL) {
+        thread_pool_.DelayTask(1000, boost::bind(&ObjectStore::DoFlash, this));
         return true;
     }
-    thread_pool_.DelayTask(1000, boost::bind(&ObjectStore::DoFlash, this));
     return false;
 }
 
@@ -68,7 +76,7 @@ bool ObjectStore::Delete(int64_t key) {
 }
 
 void ObjectStore::DoFlash() {
-    hs_flush(db_, 1024, 60 * 10);
+    hs_flush(db_, 1024, 600);
     thread_pool_.DelayTask(1000, boost::bind(&ObjectStore::DoFlash, this));
 }
 

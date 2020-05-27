@@ -9,6 +9,7 @@
 extern "C" {
 #endif
 #include "storage/beans/hstore.h"
+#include "storage/beans/common.h"
 #ifdef __cplusplus
 };
 #endif
