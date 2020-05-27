@@ -1,6 +1,7 @@
 package com._4paradigm.fesql.offline.sql
 
 import java.io.{File, FileInputStream}
+import java.sql.Timestamp
 
 import com._4paradigm.fesql.offline.{SparkPlanner, SparkTestSuite}
 import com._4paradigm.fesql.offline.sqlcase.model._
@@ -22,9 +23,9 @@ class SQLBaseSuite extends SparkTestSuite {
   final private val rootDir = {
     val pwd = new File(System.getProperty("user.dir"))
     if (pwd.getAbsolutePath.endsWith("fesql-spark")) {
-      pwd.getParentFile.getParentFile  // ../../
+      pwd.getParentFile.getParentFile // ../../
     } else {
-      pwd.getParentFile  // ../
+      pwd.getParentFile // ../
     }
   }
 
@@ -82,9 +83,9 @@ class SQLBaseSuite extends SparkTestSuite {
         case ((expectVal, outputVal), colIdx) =>
           assert(compareVal(expectVal, outputVal, expectSchema(colIdx).dataType),
             s"${colIdx}th col mismatch at ${expectId}th row: " +
-            s"expect $expectVal but get $outputVal\n" +
-            s"Expect: ${expectArr.mkString(", ")}\n" +
-            s"Output: ${outputArr.mkString(", ")}")
+              s"expect $expectVal but get $outputVal\n" +
+              s"Expect: ${expectArr.mkString(", ")}\n" +
+              s"Output: ${outputArr.mkString(", ")}")
       }
     }
   }
@@ -156,12 +157,16 @@ class SQLBaseSuite extends SparkTestSuite {
       val colName = part(0)
       val typeName = part(1)
       val dataType = typeName match {
+        case "i16" => ShortType
         case "int16" => ShortType
+        case "i32" => IntegerType
         case "int32" => IntegerType
+        case "i64" => LongType
         case "int64" => LongType
         case "float" => FloatType
         case "double" => DoubleType
         case "string" => StringType
+        case "timestamp" => TimestampType
         case _ => throw new IllegalArgumentException(
           s"Unknown type name $typeName")
       }
@@ -188,6 +193,7 @@ class SQLBaseSuite extends SparkTestSuite {
               case FloatType => str.trim.toFloat
               case DoubleType => str.trim.toDouble
               case StringType => str
+              case TimestampType => new Timestamp(str.trim.toLong)
               case _ => throw new IllegalArgumentException(
                 s"Unknown type ${field.dataType}")
             }
