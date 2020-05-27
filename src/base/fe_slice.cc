@@ -4,18 +4,6 @@
 namespace fesql {
 namespace base {
 
-RefCountedSlice RefCountedSlice::CreateManaged(int8_t* buf, size_t size) {
-    return RefCountedSlice(buf, size, true);
-}
-
-RefCountedSlice RefCountedSlice::Create(int8_t* buf, size_t size) {
-    return RefCountedSlice(buf, size, false);
-}
-
-RefCountedSlice RefCountedSlice::CreateEmpty() {
-    return RefCountedSlice(nullptr, 0, false);
-}
-
 RefCountedSlice::~RefCountedSlice() {
     if (this->ref_cnt_ != nullptr) {
         auto& cnt = *this->ref_cnt_;

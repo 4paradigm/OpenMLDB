@@ -76,6 +76,10 @@ class Row {
     // Return a string that contains the copy of the referenced data.
     std::string ToString() const;
 
+    void Reset(const int8_t* buf, size_t size) {
+        slice_.reset(reinterpret_cast<const char*>(buf), size);
+    }
+
  private:
     RefCountedSlice slice_;
     std::vector<RefCountedSlice> slices_;

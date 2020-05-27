@@ -114,16 +114,22 @@ inline int Slice::compare(const Slice& b) const {
 
 class RefCountedSlice : public Slice {
  public:
+    ~RefCountedSlice();
+
     // Create slice own the buffer
-    static RefCountedSlice CreateManaged(int8_t* buf, size_t size);
+    inline static RefCountedSlice CreateManaged(int8_t* buf, size_t size) {
+        return RefCountedSlice(buf, size, true);
+    }
 
     // Create slice without ownership
-    static RefCountedSlice Create(int8_t* buf, size_t size);
+    inline static RefCountedSlice Create(int8_t* buf, size_t size) {
+        return RefCountedSlice(buf, size, false);
+    }
 
     // Create empty slice
-    static RefCountedSlice CreateEmpty();
-
-    ~RefCountedSlice();
+    inline static RefCountedSlice CreateEmpty() {
+        return RefCountedSlice(nullptr, 0, false);
+    }
 
     RefCountedSlice(const RefCountedSlice& slice);
     RefCountedSlice(RefCountedSlice&&);

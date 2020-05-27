@@ -46,8 +46,7 @@ void WindowInternalIterator::Next() { ts_it_->Next(); }
 
 const Row& WindowInternalIterator::GetValue() {
     auto buf = reinterpret_cast<int8_t*>(ts_it_->GetValue()->data);
-    value_ = Row(base::RefCountedSlice::Create(
-        buf, codec::RowView::GetSize(buf)));
+    value_.Reset(buf, codec::RowView::GetSize(buf));
     return value_;
 }
 
