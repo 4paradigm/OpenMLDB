@@ -21,7 +21,6 @@ import rtidb.blobserver.BlobServer;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.*;
-import java.util.concurrent.TimeoutException;
 
 public class RelationalIterator {
 
@@ -249,7 +248,7 @@ public class RelationalIterator {
         return false;
     }
 
-    private void getData() throws TimeoutException, TabletException {
+    private void getData() throws TabletException {
         if (batch_query) {
             PartitionHandler ph = th.getHandler(0);
             TabletServer ts = ph.getReadHandler(th.getReadStrategy());
@@ -294,6 +293,9 @@ public class RelationalIterator {
                 }
                 return;
             } else if (response.getCode() != 0) {
+                if (response.getCode() == 152 || response.getCode() == 108) {
+                    throw new TabletException(response.getCode(), response.getMsg());
+                }
                 offset = 0;
                 totalSize = 0;
                 return;
