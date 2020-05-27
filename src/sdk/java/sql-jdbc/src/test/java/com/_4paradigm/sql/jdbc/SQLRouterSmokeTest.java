@@ -1,12 +1,9 @@
 package com._4paradigm.sql.jdbc;
 
-import com._4paradigm.sql.SQLRouter;
-import com._4paradigm.sql.SQLRouterOptions;
-import com._4paradigm.sql.Status;
+import com._4paradigm.sql.*;
 import com._4paradigm.sql.sdk.SdkOption;
 import com._4paradigm.sql.sdk.SqlExecutor;
 import com._4paradigm.sql.sdk.impl.SqlClusterExecutor;
-import com._4paradigm.sql.sql_router_sdk;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -37,6 +34,9 @@ public class SQLRouterSmokeTest {
             String insert = "insert into tsql1010 values(1000, 'hello');";
             ok = router.executeInsert(dbname, insert);
             Assert.assertTrue(ok);
+            String select = "select col1 from tsql1010 limit 1;";
+            ResultSet rs = router.executeSQL(dbname, select);
+            Assert.assertEquals(1, rs.Size());
         } catch (Exception e) {
             e.printStackTrace();
             Assert.fail();

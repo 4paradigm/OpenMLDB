@@ -1,5 +1,6 @@
 package com._4paradigm.sql.jmh;
 
+import com._4paradigm.sql.ResultSet;
 import com._4paradigm.sql.sdk.SdkOption;
 import com._4paradigm.sql.sdk.SqlExecutor;
 import com._4paradigm.sql.sdk.impl.SqlClusterExecutor;
@@ -17,27 +18,18 @@ import java.util.concurrent.TimeUnit;
 @State(Scope.Benchmark)
 @Fork(value = 1, jvmArgs = {"-Xms4G", "-Xmx4G"})
 @Warmup(iterations = 2)
-public class FESQLInsertBenchmark {
+public class FESQLGroupByBenchmark {
     private ArrayList<String> dataset = new ArrayList<>();
     private SqlExecutor executor;
     private SdkOption option;
     private String db = "db" + System.nanoTime();
-    private String ddl = "create table perf (col1 string, col2 bigint, " +
-            "col3 float," +
-            "col4 double," +
-            "col5 string," +
-            "index(key=col1, ts=col2));";
-    private String ddl1 = "create table perf2 (col1 string, col2 bigint, " +
-            "col3 float," +
-            "col4 double," +
-            "col5 string," +
-            "index(key=col1, ts=col2));";
+    private String ddl = "";
+    private String query = "";
     private boolean setupOk = false;
-    private int recordSize = 100000;
-    private String format = "insert into %s values('%s', %d," +
-            "100.0, 200.0, 'hello world');";
+    private int recordSize = 10;
+    private String format = "insert into %s values('%s', %d,";
     private long counter = 0;
-    public FESQLInsertBenchmark() {
+    public FESQLGroupByBenchmark() {
         SdkOption sdkOption = new SdkOption();
         sdkOption.setSessionTimeout(30000);
         sdkOption.setZkCluster(BenchmarkConfig.ZK_CLUSTER);
@@ -49,9 +41,31 @@ public class FESQLInsertBenchmark {
             e.printStackTrace();
         }
     }
-
     @Setup
     public void setup() {
+        String header = "create table perf (col1 string, col2 bigint, ";
+        for (int i = 0; i < 50; i++) {
+            header += "col_agg" + i + " double,";
+        }
+        header += "index(key=col1, ts=col2));" ;
+        ddl = header;
+        query = "select ";
+        for (int i = 0; i < 50; i++) {
+            if (i == 49) {
+                query += "sum(col_agg" + i + ")";
+            }else {
+                query += "sum(col_agg" + i + "),";
+            }
+        }
+        query += " from perf group by col1;";
+        for (int i = 0; i < 50; i++) {
+            if (i == 49) {
+                format += "2.0";
+            }else {
+                format += "2.0,";
+            }
+        }
+        format+=");";
         setupOk = executor.createDB(db);
         if (!setupOk) {
             return;
@@ -60,41 +74,21 @@ public class FESQLInsertBenchmark {
         if (!setupOk) {
             return;
         }
-        setupOk = executor.executeDDL(db, ddl1);
-        if (!setupOk) {
-            return;
-        }
-        for (int i = 0; i < recordSize/100; i++) {
-            for (int j = 0; j < 100; j++) {
-                dataset.add(String.format(format, "perf","pkxxx" + i, System.currentTimeMillis()));
-
-            }
-            String sql = String.format(format, "perf2", "pkxxx" + i, System.currentTimeMillis());
-            executor.executeInsert(db, sql);
+        for (int i = 0; i < recordSize; i++) {
+            String sql = String.format(format, "perf","pkxxx", System.currentTimeMillis());
+            System.out.println(executor.executeInsert(db, sql));
         }
     }
 
     @Benchmark
-    public void insertBm() {
-        long idx = counter % dataset.size();
-        String sql = dataset.get((int)idx);
-        executor.executeInsert(db, sql);
-        counter ++;
+    public void groupByBm() {
+        executor.executeSQL(db, query);
     }
-
-    @Benchmark
-    public void selectBm() {
-        String sql = "select col1, col2, col3 from perf2 limit 10;";
-        executor.executeSQL(db, sql);
-    }
-
     public static void main(String[] args) throws RunnerException {
-
-        Options opt = new OptionsBuilder()
-                .include(FESQLInsertBenchmark.class.getSimpleName())
+       Options opt = new OptionsBuilder()
+                .include(FESQLGroupByBenchmark.class.getSimpleName())
                 .forks(1)
                 .build();
-
         new Runner(opt).run();
     }
 }
