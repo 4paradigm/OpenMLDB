@@ -1,6 +1,6 @@
 self_dir=$(dirname $0)
 cd ${self_dir}
-python generate_table_file.py
+python3 generate_table_file.py
 IP=127.0.0.1
 ZK_CLUSTER=$IP:6181
 ${WORKDIR}/build/bin/rtidb --zk_cluster=${ZK_CLUSTER} --zk_root_path=/onebox --role=ns_client --interactive=false --cmd='drop auto'
