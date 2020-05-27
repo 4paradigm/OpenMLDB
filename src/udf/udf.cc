@@ -464,7 +464,7 @@ void RegisterUDFToModule(::llvm::Module *m) {
 
     std::vector<std::pair<fesql::node::DataType, ::llvm::Type *>>
         struct_time_types;
-    struct_types.push_back(std::make_pair(fesql::node::kTimestamp, ts_ty));
+    struct_time_types.push_back(std::make_pair(fesql::node::kTimestamp, ts_ty));
 
     m->getOrInsertFunction("inc_int32", i32_ty, i32_ty);
 
