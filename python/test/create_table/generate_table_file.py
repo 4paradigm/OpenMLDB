@@ -115,7 +115,7 @@ def generate_auto():
 def generate_ck():
   table = "ck"
   b = tableBuilder(table, "hdd", "Relational")
-  b.addCol("id", "bigint", True).addCol("name", "varchar", True).addCol("mcc", "int", True).addCol("attribute", "varchar", True).addCol("image", "blob", False).addCol("date", "date", True).addCol("ts", "timestamp", True).addIdx("index_1", ["id","name"], "primaryKey").addIdx("index_2", "mcc", "nounique").addIdx("index_3",["date","ts"], "unique")
+  b.addCol("id", "bigint", True).addCol("name", "varchar", True).addCol("mcc", "int", True).addCol("attribute", "varchar", True).addCol("image", "blob", False).addCol("date", "date", True).addCol("ts", "timestamp", True).addIdx("index_1", ["id","name"], "primaryKey").addIdx("index_2", ["mcc"], "nounique").addIdx("index_3",["date","ts"], "unique")
   with open("{}.txt".format(table), "w") as f:
     f.write(b.SerializeToString())
 
