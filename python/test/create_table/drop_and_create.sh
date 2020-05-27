@@ -16,5 +16,5 @@ ${WORKDIR}/build/bin/rtidb --zk_cluster=${ZK_CLUSTER} --zk_root_path=/onebox --r
 sleep 3
 ${WORKDIR}/build/bin/rtidb --zk_cluster=${ZK_CLUSTER} --zk_root_path=/onebox --role=ns_client --interactive=false --cmd='create rt_ck.txt'
 sleep 3
-${WORKDIR}/build/bin/rtidb --zk_cluster=${ZK_CLUSTER} --zk_root_path=/onebox --role=ns_client --interactive=false --cmd='create rt.txt'
+${WORKDIR}/build/bin/rtidb --zk_cluster=${ZK_CLUSTER} --zk_root_path=/onebox --role=ns_client --interactive=false --cmd='create test1.txt'
 cd -
