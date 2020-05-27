@@ -18,7 +18,8 @@ ObjectStore::ObjectStore(const ::rtidb::blobserver::TableMeta& table_meta,
       db_root_path_(db_root_path),
       is_leader_(false),
       storage_mode_(table_meta.storage_mode()),
-      id_generator_() {}
+      id_generator_(),
+      thread_pool_(1) {}
 
 bool ObjectStore::Init() {
     db_root_path_ = db_root_path_ + "/" + std::to_string(tid_) + "_" +
@@ -28,11 +29,12 @@ bool ObjectStore::Init() {
     if (db_ != NULL) {
         return true;
     }
+    thread_pool_.DelayTask(1000, boost::bind(&ObjectStore::DoFlash, this));
     return false;
 }
 
 ObjectStore::~ObjectStore() {
-    DoFlash();
+    thread_pool_.Stop(true);
     hs_close(db_);
 }
 
@@ -65,7 +67,10 @@ bool ObjectStore::Delete(int64_t key) {
     return hs_delete(db_, hs_key);
 }
 
-void ObjectStore::DoFlash() { hs_flush(db_, 1024, 60 * 10); }
+void ObjectStore::DoFlash() {
+    hs_flush(db_, 1024, 60 * 10);
+    thread_pool_.DelayTask(1000, boost::bind(&ObjectStore::DoFlash, this));
+}
 
 ::rtidb::common::StorageMode ObjectStore::GetStorageMode() const {
     return storage_mode_;

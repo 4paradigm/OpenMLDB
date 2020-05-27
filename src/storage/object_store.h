@@ -17,6 +17,8 @@ extern "C" {
 
 #include "proto/blob_server.pb.h"
 #include "proto/common.pb.h"
+#include "boost/bind.hpp"
+#include "thread_pool.h" // NOLINT
 
 namespace rtidb {
 namespace storage {
@@ -55,6 +57,7 @@ class ObjectStore {
     bool is_leader_;
     ::rtidb::common::StorageMode storage_mode_;
     ::rtidb::base::IdGenerator id_generator_;
+    ::baidu::common::ThreadPool thread_pool_;
 };
 
 }  // namespace storage
