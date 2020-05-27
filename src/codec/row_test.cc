@@ -46,18 +46,18 @@ TEST_F(RowTest, NewRowTest) {
         int32_t ptr_size1;
         ASSERT_TRUE(fesql::sqlcase::SQLCase::ExtractRow(table1.columns(), data1,
                                                         &ptr1, &ptr_size1));
-        Row row1(base::Slice::Create(ptr1, ptr_size1));
+        Row row1(base::RefCountedSlice::Create(ptr1, ptr_size1));
         int8_t* ptr2;
         int32_t ptr_size2;
         ASSERT_TRUE(fesql::sqlcase::SQLCase::ExtractRow(table2.columns(), data2,
                                                         &ptr2, &ptr_size2));
-        Row row2(base::Slice::Create(ptr2, ptr_size2));
+        Row row2(base::RefCountedSlice::Create(ptr2, ptr_size2));
 
         int8_t* ptr3;
         int32_t ptr_size3;
         ASSERT_TRUE(fesql::sqlcase::SQLCase::ExtractRow(table3.columns(), data3,
                                                         &ptr3, &ptr_size3));
-        Row row3(base::Slice::Create(ptr3, ptr_size3));
+        Row row3(base::RefCountedSlice::Create(ptr3, ptr_size3));
 
 
         Row row12(row1, row2);

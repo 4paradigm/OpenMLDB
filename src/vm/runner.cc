@@ -376,7 +376,7 @@ Row Runner::WindowProject(const int8_t* fn, const uint64_t key, const Row row,
     if (window->instance_not_in_window()) {
         window->PopBackData();
     }
-    return Row(base::Slice::CreateManaged(
+    return Row(base::RefCountedSlice::CreateManaged(
         out_buf, RowView::GetSize(out_buf)));
 }
 
@@ -1554,7 +1554,7 @@ const Row AggGenerator::Gen(std::shared_ptr<TableHandler> table) {
         LOG(WARNING) << "fail to run udf " << ret;
         return Row();
     }
-    return Row(base::Slice::CreateManaged(
+    return Row(base::RefCountedSlice::CreateManaged(
         buf, RowView::GetSize(buf)));
 }
 

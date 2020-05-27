@@ -15,21 +15,24 @@ class SliceTest : public ::testing::Test {
 };
 
 TEST_F(SliceTest, Compare) {
-    auto a = Slice::CreateFromCStr("test1");
-    auto b = Slice::CreateFromCStr("test1");
-    ASSERT_EQ(0, a->compare(*b));
-    ASSERT_TRUE(*a == *b);
-    ASSERT_EQ(sizeof(*a), 16u);
+    Slice a("test1");
+    Slice b("test1");
+    ASSERT_EQ(0, a.compare(b));
+    ASSERT_TRUE(a == b);
+    ASSERT_EQ(sizeof(a), 16u);
 }
 
-TEST_F(SliceTest, managed_slice) {
+TEST_F(SliceTest, ref_cnt_slice) {
     auto buf = reinterpret_cast<int8_t*>(malloc(1024));
     strcpy(reinterpret_cast<char*>(buf), "hello world");  // NOLINT
-    auto slice = Slice::CreateManaged(buf, 1024);
-    auto ref = slice;
-    slice = nullptr;
+
+    auto ref = RefCountedSlice::CreateEmpty();
+    {
+        auto slice = RefCountedSlice::CreateManaged(buf, 1024);
+        ref = slice;
+    }
     ASSERT_EQ(0, strcmp(
-        reinterpret_cast<char*>(ref->buf()), "hello world"));
+        reinterpret_cast<char*>(ref.buf()), "hello world"));
 }
 
 }  // namespace base

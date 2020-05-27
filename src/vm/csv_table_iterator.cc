@@ -170,7 +170,7 @@ void CSVSegmentIterator::Next() {
 const uint64_t& CSVSegmentIterator::GetKey() const { return it_->first; }
 
 const Row& CSVSegmentIterator::GetValue() {
-    value_ = Row(base::Slice::Create(buf_, buf_size_));
+    value_ = Row(base::RefCountedSlice::Create(buf_, buf_size_));
     return value_;
 }
 bool CSVSegmentIterator::IsSeekable() const { return true; }
@@ -197,7 +197,7 @@ void CSVTableIterator::SeekToFirst() {}
 const uint64_t& CSVTableIterator::GetKey() const { return empty_key_; }
 
 const Row& CSVTableIterator::GetValue() {
-    value_ = Row(base::Slice::Create(buf_, buf_size_));
+    value_ = Row(base::RefCountedSlice::Create(buf_, buf_size_));
     return value_;
 }
 

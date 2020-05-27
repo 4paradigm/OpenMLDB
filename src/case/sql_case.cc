@@ -287,7 +287,7 @@ bool SQLCase::ExtractRows(const vm::Schema& schema, const std::string& data_str,
             return false;
         }
         rows.push_back(
-            Row(base::Slice::Create(row_ptr, row_size)));
+            Row(base::RefCountedSlice::Create(row_ptr, row_size)));
     }
     return true;
 }

@@ -79,7 +79,6 @@ namespace std {
 #include "vm/simple_catalog.h"
 
 using namespace fesql;
-using fesql::base::SharedSliceRef;
 using fesql::sdk::Schema;
 using fesql::sdk::ResultSet;
 using fesql::sdk::Table;

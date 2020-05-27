@@ -201,7 +201,7 @@ void BuildOnePkTableData(type::TableDef& table_def,   // NOLINT
         builder.AppendDouble(col4.GetValue());
         builder.AppendInt64(col5.GetValue());
         builder.AppendString(str2.c_str(), str2.size());
-        buffer.push_back(Row(base::Slice::Create(ptr, total_size)));
+        buffer.push_back(Row(base::RefCountedSlice::Create(ptr, total_size)));
     }
 }
 std::shared_ptr<tablet::TabletCatalog> BuildOnePkTableStorage(

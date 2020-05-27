@@ -4,28 +4,54 @@
 namespace fesql {
 namespace base {
 
-SharedSliceRef Slice::CreateManaged(const int8_t* buf, size_t size) {
-    return SharedSliceRef(
-        new Slice(reinterpret_cast<const char*>(buf), size, true));
+RefCountedSlice RefCountedSlice::CreateManaged(int8_t* buf, size_t size) {
+    return RefCountedSlice(buf, size, true);
 }
 
-SharedSliceRef Slice::Create(const int8_t* buf, size_t size) {
-    return SharedSliceRef(
-        new Slice(reinterpret_cast<const char*>(buf), size, false));
+RefCountedSlice RefCountedSlice::Create(int8_t* buf, size_t size) {
+    return RefCountedSlice(buf, size, false);
 }
 
-SharedSliceRef Slice::CreateFromCStr(const char* str) {
-    return SharedSliceRef(new Slice(str));
+RefCountedSlice RefCountedSlice::CreateEmpty() {
+    return RefCountedSlice(nullptr, 0, false);
 }
 
-SharedSliceRef Slice::CreateFromCStr(const std::string& str) {
-    return SharedSliceRef(new Slice(str));
+RefCountedSlice::~RefCountedSlice() {
+    if (this->ref_cnt_ != nullptr) {
+        auto& cnt = *this->ref_cnt_;
+        cnt -= 1;
+        if (cnt == 0) {
+            free(buf());
+            delete this->ref_cnt_;
+        }
+    }
 }
 
-SharedSliceRef Slice::CreateEmpty() {
-    return SharedSliceRef(new Slice());
+void RefCountedSlice::Update(const RefCountedSlice& slice) {
+    reset(slice.data(), slice.size());
+    this->ref_cnt_ = slice.ref_cnt_;
+    if (this->ref_cnt_ != nullptr) {
+        (*this->ref_cnt_) += 1;
+    }
 }
 
+RefCountedSlice::RefCountedSlice(const RefCountedSlice& slice) {
+    this->Update(slice);
+}
+
+RefCountedSlice::RefCountedSlice(RefCountedSlice&& slice) {
+    this->Update(slice);
+}
+
+RefCountedSlice& RefCountedSlice::operator=(const RefCountedSlice& slice) {
+    this->Update(slice);
+    return *this;
+}
+
+RefCountedSlice& RefCountedSlice::operator=(RefCountedSlice&& slice) {
+    this->Update(slice);
+    return *this;
+}
 
 }  // namespace base
 }  // namespace fesql

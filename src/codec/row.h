@@ -31,7 +31,7 @@
 namespace fesql {
 namespace codec {
 
-using fesql::base::SharedSliceRef;
+using fesql::base::RefCountedSlice;
 using fesql::base::Slice;
 
 class Row {
@@ -41,22 +41,22 @@ class Row {
     Row(const Row &s);
     Row(const Row &major, const Row &secondary);
 
-    explicit Row(const SharedSliceRef& s);
+    explicit Row(const fesql::base::RefCountedSlice& s);
 
     virtual ~Row();
 
-    inline int8_t* buf() const { return slice_->buf(); }
+    inline int8_t* buf() const { return slice_.buf(); }
     inline int8_t* buf(int32_t pos) const {
-        return 0 == pos ? slice_->buf() : slices_[pos - 1]->buf();
+        return 0 == pos ? slice_.buf() : slices_[pos - 1].buf();
     }
 
-    inline int32_t size() const { return slice_->size(); }
+    inline int32_t size() const { return slice_.size(); }
     inline int32_t size(int32_t pos) const {
-        return 0 == pos ? slice_->size() : slices_[pos - 1]->size();
+        return 0 == pos ? slice_.size() : slices_[pos - 1].size();
     }
 
     // Return true if the length of the referenced data is zero
-    inline bool empty() const { return slice_->empty() && slices_.empty(); }
+    inline bool empty() const { return slice_.empty() && slices_.empty(); }
 
     // Three-way comparison.  Returns value:
     //   <  0 iff "*this" <  "b",
@@ -64,7 +64,7 @@ class Row {
     //   >  0 iff "*this" >  "b"
     int compare(const Row &b) const;
 
-    void Append(const std::vector<SharedSliceRef> &slices);
+    void Append(const std::vector<fesql::base::RefCountedSlice> &slices);
     void Append(const Row &b);
 
     int8_t **GetRowPtrs() const;
@@ -76,8 +76,9 @@ class Row {
     // Return a string that contains the copy of the referenced data.
     std::string ToString() const;
 
-    SharedSliceRef slice_;
-    std::vector<SharedSliceRef> slices_;
+ private:
+    RefCountedSlice slice_;
+    std::vector<RefCountedSlice> slices_;
 };
 
 }  // namespace codec

@@ -46,7 +46,8 @@ void WindowInternalIterator::Next() { ts_it_->Next(); }
 
 const Row& WindowInternalIterator::GetValue() {
     auto buf = reinterpret_cast<int8_t*>(ts_it_->GetValue()->data);
-    value_ = Row(base::Slice::Create(buf, codec::RowView::GetSize(buf)));
+    value_ = Row(base::RefCountedSlice::Create(
+        buf, codec::RowView::GetSize(buf)));
     return value_;
 }
 
@@ -130,7 +131,7 @@ void WindowTableIterator::Next() { GoToNext(); }
 const Row WindowTableIterator::GetKey() {
     if (pk_it_) {
         auto key = pk_it_->GetKey();
-        return Row(base::Slice::Create(key.buf(), key.size()));
+        return Row(base::RefCountedSlice::Create(key.buf(), key.size()));
     }
     return Row();
 }
@@ -234,7 +235,8 @@ void FullTableIterator::Next() { GoToNext(); }
 
 const Row& FullTableIterator::GetValue() {
     auto buf = reinterpret_cast<int8_t*>(ts_it_->GetValue()->data);
-    value_ = Row(base::Slice::Create(buf, codec::RowView::GetSize(buf)));
+    value_ = Row(base::RefCountedSlice::Create(
+        buf, codec::RowView::GetSize(buf)));
     return value_;
 }
 bool FullTableIterator::IsSeekable() const { return false; }

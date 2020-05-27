@@ -56,7 +56,7 @@ fesql::codec::Row CoreAPI::RowProject(const RawPtrHandle fn,
         LOG(WARNING) << "fail to run udf " << ret;
         return fesql::codec::Row();
     }
-    return Row(base::Slice::CreateManaged(
+    return Row(base::RefCountedSlice::CreateManaged(
         buf, fesql::codec::RowView::GetSize(buf)));
 }
 
@@ -82,7 +82,7 @@ fesql::codec::Row* CoreAPI::NewRow(size_t bytes) {
     if (buf == nullptr) {
         return nullptr;
     }
-    auto slice = base::Slice::CreateManaged(buf, bytes);
+    auto slice = base::RefCountedSlice::CreateManaged(buf, bytes);
     return new fesql::codec::Row(slice);
 }
 

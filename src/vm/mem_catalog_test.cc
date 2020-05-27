@@ -103,7 +103,7 @@ Row project(const Row& row) {
     std::string str0 = row_view.GetStringUnsafe(0);
     builder.AppendInt32(row_view.GetInt32Unsafe(1) + 1);
     builder.AppendFloat(row_view.GetFloatUnsafe(3) + 2.0f);
-    return Row(base::Slice::Create(buf, total_size));
+    return Row(base::RefCountedSlice::Create(buf, total_size));
 }
 
 class SimpleWrapperFun : public WrapperFun {

@@ -74,7 +74,7 @@ TEST_F(JITWrapperTest, test) {
     row_builder.AppendDouble(3.14);
     row_builder.AppendInt32(42);
 
-    fesql::codec::Row row(base::Slice::Create(buf, 1024));
+    fesql::codec::Row row(base::RefCountedSlice::Create(buf, 1024));
 
     fesql::codec::Row output = CoreAPI::RowProject(fn, row);
 

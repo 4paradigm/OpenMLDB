@@ -14,10 +14,12 @@ namespace codec {
 
 
 Row::Row():
-    slice_(Slice::CreateEmpty()) {}
+    slice_(RefCountedSlice::CreateEmpty()) {}
 
 Row::Row(const std::string& str):
-    slice_(Slice::CreateFromCStr(str)) {}
+    slice_(RefCountedSlice::Create(
+        reinterpret_cast<int8_t*>(
+            const_cast<char*>(str.data())), str.length())) {}
 
 Row::Row(const Row &s) : slice_(s.slice_), slices_(s.slices_) {}
 
@@ -26,11 +28,11 @@ Row::Row(const Row &major, const Row &secondary) : slice_(major.slice_) {
     Append(secondary);
 }
 
-Row::Row(const SharedSliceRef& s): slice_(s) {}
+Row::Row(const RefCountedSlice& s): slice_(s) {}
 
 Row::~Row() {}
 
-void Row::Append(const std::vector<SharedSliceRef> &slices) {
+void Row::Append(const std::vector<RefCountedSlice> &slices) {
     if (!slices.empty()) {
         for (auto iter = slices.cbegin(); iter != slices.cend(); iter++) {
             slices_.push_back(*iter);
@@ -47,14 +49,14 @@ int32_t Row::GetRowPtrCnt() const {
 }
 
 void Row::AppendEmptyRow() {
-    slices_.push_back(Slice::CreateEmpty());
+    slices_.push_back(RefCountedSlice::CreateEmpty());
 }
 
 // Return a string that contains the copy of the referenced data.
-std::string Row::ToString() const { return slice_->ToString(); }
+std::string Row::ToString() const { return slice_.ToString(); }
 
 int Row::compare(const Row &b) const {
-    int r = slice_->compare(*b.slice_);
+    int r = slice_.compare(b.slice_);
     if (r != 0) {
         return r;
     }
@@ -62,7 +64,7 @@ int Row::compare(const Row &b) const {
     size_t b_len = b.slices_.size();
     size_t min_len = this_len < b_len ? this_len : b_len;
     for (size_t i = 0; i < min_len; i++) {
-        int slice_compared = slices_[i]->compare(*b.slices_[i]);
+        int slice_compared = slices_[i].compare(b.slices_[i]);
         if (0 == slice_compared) {
             continue;
         }
@@ -74,26 +76,26 @@ int Row::compare(const Row &b) const {
 
 int8_t **Row::GetRowPtrs() const {
     if (slices_.empty()) {
-        return new int8_t *[1] { slice_->buf() };
+        return new int8_t *[1] { slice_.buf() };
     } else {
         int8_t **ptrs = new int8_t *[slices_.size() + 1];
         int pos = 0;
-        ptrs[pos++] = slice_->buf();
+        ptrs[pos++] = slice_.buf();
         for (auto slice : slices_) {
-            ptrs[pos++] = slice->buf();
+            ptrs[pos++] = slice.buf();
         }
         return ptrs;
     }
 }
 int32_t *Row::GetRowSizes() const {
     if (slices_.empty()) {
-        return new int32_t[1]{static_cast<int32_t>(slice_->size())};
+        return new int32_t[1]{static_cast<int32_t>(slice_.size())};
     } else {
         int32_t *sizes = new int32_t[slices_.size() + 1];
         int pos = 0;
-        sizes[pos++] = slice_->size();
+        sizes[pos++] = slice_.size();
         for (auto slice : slices_) {
-            sizes[pos++] = static_cast<int32_t>(slice->size());
+            sizes[pos++] = static_cast<int32_t>(slice.size());
         }
         return sizes;
     }
