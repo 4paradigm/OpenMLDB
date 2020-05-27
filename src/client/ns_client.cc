@@ -197,16 +197,12 @@ bool NsClient::AddTableField(const std::string& table_name,
     return false;
 }
 
-bool NsClient::ExecuteSQL(
-    const std::string& script,
-    std::string& msg) {
+bool NsClient::ExecuteSQL(const std::string& script, std::string& msg) {
     return ExecuteSQL(GetDb(), script, msg);
 }
 
-bool NsClient::ExecuteSQL(
-    const std::string& db,
-    const std::string& script,
-    std::string& msg) {
+bool NsClient::ExecuteSQL(const std::string& db, const std::string& script,
+                          std::string& msg) {
     fesql::node::NodeManager node_manager;
     fesql::parser::FeSQLParser parser;
     fesql::plan::SimplePlanner planner(&node_manager);
@@ -1042,7 +1038,7 @@ bool NsClient::TransformToTableDef(
                 index->set_index_name(column_index->GetName());
                 for (auto key : column_index->GetKey()) {
                     auto cit = column_names.find(key);
-                    if (cit == column_names.end()){
+                    if (cit == column_names.end()) {
                         status->msg = "column " + key + " does not exist";
                         status->code = fesql::common::kSQLError;
                         return false;

@@ -16,6 +16,7 @@
  */
 
 #include "sdk/sql_request_row.h"
+
 #include "codec/fe_row_codec.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
@@ -43,7 +44,8 @@ TEST_F(SQLRequestRowTest, normal_test) {
         column->set_type(::fesql::type::kInt64);
         column->set_name("col2");
     }
-    ::fesql::sdk::SchemaImpl* schema_impl = new ::fesql::sdk::SchemaImpl(schema);
+    ::fesql::sdk::SchemaImpl* schema_impl =
+        new ::fesql::sdk::SchemaImpl(schema);
     std::shared_ptr<::fesql::sdk::Schema> schema_shared(schema_impl);
     SQLRequestRow rr(schema_shared);
     ASSERT_TRUE(rr.Init(5));

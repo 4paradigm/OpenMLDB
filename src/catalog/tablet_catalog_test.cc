@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
+#include <vector>
 #include "catalog/tablet_catalog.h"
-
 #include "base/fe_status.h"
 #include "catalog/schema_adapter.h"
 #include "codec/fe_row_codec.h"

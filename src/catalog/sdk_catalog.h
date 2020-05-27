@@ -18,6 +18,12 @@
 #ifndef SRC_CATALOG_SDK_CATALOG_H_
 #define SRC_CATALOG_SDK_CATALOG_H_
 
+#include <vector>
+#include <map>
+#include <utility>
+#include <string>
+#include <memory>
+#include <mutex>
 #include "base/spinlock.h"
 #include "proto/name_server.pb.h"
 #include "vm/catalog.h"
@@ -27,7 +33,7 @@ namespace catalog {
 
 class SDKTableHandler : public ::fesql::vm::TableHandler {
  public:
-    SDKTableHandler(const ::rtidb::nameserver::TableInfo& meta);
+    explicit SDKTableHandler(const ::rtidb::nameserver::TableInfo& meta);
 
     ~SDKTableHandler();
 

@@ -17,11 +17,11 @@
 
 #include "sdk/cluster_sdk.h"
 
-#include <string>
-#include <memory>
-#include <vector>
-#include <sched.h>
 #include <unistd.h>
+#include <sched.h>
+#include <memory>
+#include <string>
+#include <vector>
 #include "base/file_util.h"
 #include "base/glog_wapper.h"  // NOLINT
 #include "brpc/server.h"
@@ -45,7 +45,7 @@ typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>
 typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey>
     RtiDBIndex;
 inline std::string GenRand() {
-    return std::to_string(rand() % 10000000 + 1); // NOLINT
+    return std::to_string(rand() % 10000000 + 1);  // NOLINT
 }
 
 class MockClosure : public ::google::protobuf::Closure {
@@ -117,7 +117,7 @@ TEST_F(ClusterSDKTest, smoketest) {
     auto leader_tablet = sdk.GetLeaderTabletByTable(db, name);
     if (!leader_tablet) ASSERT_TRUE(false);
     uint32_t tid = sdk.GetTableId(db, name);
-    ASSERT_TRUE(tid != 0);
+    ASSERT_NE(tid, 0);
     auto table_ptr = sdk.GetTableInfo(db, name);
     ASSERT_EQ(table_ptr->db(), db);
     ASSERT_EQ(table_ptr->name(), name);

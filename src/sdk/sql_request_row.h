@@ -19,8 +19,9 @@
 #define SRC_SDK_SQL_REQUEST_ROW_H_
 
 #include <memory>
-#include <vector>
 #include <string>
+#include <vector>
+
 #include "sdk/base.h"
 
 namespace rtidb {
@@ -43,7 +44,9 @@ class SQLRequestRow {
     bool AppendNULL();
     bool Build();
     inline const std::string& GetRow() { return val_; }
-    inline const std::shared_ptr<::fesql::sdk::Schema> GetSchema() { return schema_; }
+    inline const std::shared_ptr<::fesql::sdk::Schema> GetSchema() {
+        return schema_;
+    }
 
  private:
     bool Check(fesql::sdk::DataType type);

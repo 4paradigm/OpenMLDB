@@ -20,6 +20,7 @@
 
 #include <memory>
 #include <set>
+#include <map>
 #include <string>
 #include <utility>
 #include <vector>
@@ -43,7 +44,6 @@ class SQLClusterRouter : public SQLRouter {
 
     bool Init();
 
-
     bool CreateDB(const std::string& db, fesql::sdk::Status* status);
 
     bool ExecuteDDL(const std::string& db, const std::string& sql,
@@ -53,13 +53,12 @@ class SQLClusterRouter : public SQLRouter {
                        ::fesql::sdk::Status* status);
 
     std::shared_ptr<SQLRequestRow> GetRequestRow(const std::string& db,
-            const std::string& sql,
-            ::fesql::sdk::Status* status);
+                                                 const std::string& sql,
+                                                 ::fesql::sdk::Status* status);
 
     std::shared_ptr<fesql::sdk::ResultSet> ExecuteSQL(
         const std::string& db, const std::string& sql,
-        std::shared_ptr<SQLRequestRow> row,
-        fesql::sdk::Status* status);
+        std::shared_ptr<SQLRequestRow> row, fesql::sdk::Status* status);
 
     std::shared_ptr<::fesql::sdk::ResultSet> ExecuteSQL(
         const std::string& db, const std::string& sql,
@@ -88,10 +87,10 @@ class SQLClusterRouter : public SQLRouter {
     SQLRouterOptions options_;
     ClusterSDK* cluster_sdk_;
     ::fesql::vm::Engine* engine_;
-    //TODO(wangtaize) add update strategy
+    // TODO(wangtaize) add update strategy
     std::map<std::string,
-        std::map<std::string,
-                 std::shared_ptr<::fesql::sdk::Schema>>> input_schema_map_;
+             std::map<std::string, std::shared_ptr<::fesql::sdk::Schema>>>
+        input_schema_map_;
     ::rtidb::base::SpinMutex mu_;
 };
 

@@ -191,7 +191,7 @@ bool ClusterSDK::InitCatalog() {
                          << table_root_path_;
             return false;
         }
-    }else {
+    } else {
         LOG(INFO) << "no tables in db";
     }
     return RefreshCatalog(table_datas);

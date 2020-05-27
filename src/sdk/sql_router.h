@@ -18,6 +18,8 @@
 #ifndef SRC_SDK_SQL_ROUTER_H_
 #define SRC_SDK_SQL_ROUTER_H_
 
+#include <memory>
+#include <string>
 #include "sdk/base.h"
 #include "sdk/result_set.h"
 #include "sdk/sql_request_row.h"
@@ -45,20 +47,19 @@ class SQLRouter {
     virtual bool ExecuteInsert(const std::string& db, const std::string& sql,
                                fesql::sdk::Status* status) = 0;
 
-    virtual std::shared_ptr<SQLRequestRow> GetRequestRow(const std::string& db,
-            const std::string& sql, fesql::sdk::Status* status) = 0;
+    virtual std::shared_ptr<SQLRequestRow> GetRequestRow(
+        const std::string& db, const std::string& sql,
+        fesql::sdk::Status* status) = 0;
 
     virtual std::shared_ptr<fesql::sdk::ResultSet> ExecuteSQL(
         const std::string& db, const std::string& sql,
-        std::shared_ptr<SQLRequestRow> row,
-        fesql::sdk::Status* status) = 0;
+        std::shared_ptr<SQLRequestRow> row, fesql::sdk::Status* status) = 0;
 
     virtual std::shared_ptr<fesql::sdk::ResultSet> ExecuteSQL(
         const std::string& db, const std::string& sql,
         fesql::sdk::Status* status) = 0;
 
     virtual bool RefreshCatalog() = 0;
-
 };
 
 std::shared_ptr<SQLRouter> NewClusterSQLRouter(const SQLRouterOptions& options);

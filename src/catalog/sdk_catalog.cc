@@ -17,8 +17,6 @@
 
 #include "catalog/sdk_catalog.h"
 
-#include <mutex>
-
 #include "catalog/schema_adapter.h"
 #include "glog/logging.h"
 

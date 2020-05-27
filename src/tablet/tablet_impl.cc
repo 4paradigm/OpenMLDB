@@ -31,12 +31,12 @@
 #include "brpc/controller.h"
 #include "butil/iobuf.h"
 #include "codec/codec.h"
+#include "glog/logging.h"
 #include "rapidjson/stringbuffer.h"
 #include "storage/binlog.h"
 #include "storage/segment.h"
 #include "tablet/file_sender.h"
 #include "timer.h"  // NOLINT
-#include "glog/logging.h"
 
 using google::protobuf::RepeatedPtrField;
 using ::rtidb::storage::DataBlock;
@@ -676,8 +676,9 @@ void TabletImpl::Put(RpcController* controller,
         }
     }
     if (table) {
-        DLOG(INFO) <<" request format_version " << request->format_version() 
-            << " request dimension size " << request->dimensions_size() << " request time " << request->time();
+        DLOG(INFO) << " request format_version " << request->format_version()
+                   << " request dimension size " << request->dimensions_size()
+                   << " request time " << request->time();
         if ((!request->has_format_version() &&
              table->GetTableMeta().format_version() == 1) ||
             (request->has_format_version() &&
@@ -720,13 +721,17 @@ void TabletImpl::Put(RpcController* controller,
                 return;
             }
             if (request->ts_dimensions_size() > 0) {
-                DLOG(INFO) << "put data to tid " << request->tid() << " pid " <<request->pid()
-                << " with key "  << request->dimensions(0).key() << " ts " << request->ts_dimensions(0).ts();
+                DLOG(INFO) << "put data to tid " << request->tid() << " pid "
+                           << request->pid() << " with key "
+                           << request->dimensions(0).key() << " ts "
+                           << request->ts_dimensions(0).ts();
                 ok = table->Put(request->dimensions(), request->ts_dimensions(),
                                 request->value());
             } else {
-                DLOG(INFO) << "put data to tid " << request->tid() << " pid " <<request->pid()
-                << " with key "  << request->dimensions(0).key() << " ts " << request->time();
+                DLOG(INFO) << "put data to tid " << request->tid() << " pid "
+                           << request->pid() << " with key "
+                           << request->dimensions(0).key() << " ts "
+                           << request->time();
 
                 ok = table->Put(request->time(), request->value(),
                                 request->dimensions());
@@ -863,7 +868,10 @@ int TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta,
                 if (column_desc.type() != "int64" &&
                     column_desc.type() != "uint64" &&
                     column_desc.type() != "timestamp") {
-                    msg = "ttl column type must be int64, uint64, timestamp but " + column_desc.type();
+                    msg =
+                        "ttl column type must be int64, uint64, timestamp "
+                        "but " +
+                        column_desc.type();
                     return -1;
                 }
                 if (column_desc.has_abs_ttl() || column_desc.has_lat_ttl()) {
@@ -1924,7 +1932,7 @@ void TabletImpl::Query(RpcController* ctrl,
         }
         std::stringstream ss;
         session.GetPhysicalPlan()->Print(ss, "\t");
-        DLOG(INFO) << "sql plan \n" <<ss.str();
+        DLOG(INFO) << "sql plan \n" << ss.str();
         ::fesql::codec::Row row(request->input_row().c_str(),
                                 request->input_row().size());
         ::fesql::codec::Row output;

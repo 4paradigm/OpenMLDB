@@ -153,8 +153,7 @@ TEST_F(SQLRouterTest, smoketest_on_sql) {
     ok = router->ExecuteDDL(db, ddl, &status);
     ASSERT_TRUE(ok);
     ASSERT_TRUE(router->RefreshCatalog());
-    std::string insert =
-        "insert into " + name + " values('hello', 1590);";
+    std::string insert = "insert into " + name + " values('hello', 1590);";
     ok = router->ExecuteInsert(db, insert, &status);
     ASSERT_TRUE(ok);
     ASSERT_TRUE(router->RefreshCatalog());
@@ -164,13 +163,16 @@ TEST_F(SQLRouterTest, smoketest_on_sql) {
     ASSERT_EQ(1, rs->Size());
     ASSERT_TRUE(rs->Next());
     ASSERT_EQ("hello", rs->GetStringUnsafe(0));
-    std::string sql_window_batch = "select sum(col2) over w from " + name +
-        " window w as (partition by " + name + ".col1 order by " + name + ".col2 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);" ;
+    std::string sql_window_batch =
+        "select sum(col2) over w from " + name + " window w as (partition by " +
+        name + ".col1 order by " + name +
+        ".col2 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);";
     rs = router->ExecuteSQL(db, sql_window_batch, &status);
     ASSERT_EQ(1, rs->Size());
     ASSERT_TRUE(rs->Next());
     ASSERT_EQ(1590, rs->GetInt64Unsafe(0));
-    std::shared_ptr<SQLRequestRow> row = router->GetRequestRow(db, sql_window_batch, &status);
+    std::shared_ptr<SQLRequestRow> row =
+        router->GetRequestRow(db, sql_window_batch, &status);
     if (!row) ASSERT_FALSE(true);
     ASSERT_EQ(2, row->GetSchema()->GetColumnCnt());
     ASSERT_TRUE(row->Init(5));
@@ -178,8 +180,10 @@ TEST_F(SQLRouterTest, smoketest_on_sql) {
     ASSERT_TRUE(row->AppendInt64(100));
     ASSERT_TRUE(row->Build());
 
-    std::string sql_window_request = "select sum(col2)  over w as sum_col2 from " + name +
-        " window w as (partition by " + name + ".col1 order by " + name + ".col2 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);" ;
+    std::string sql_window_request =
+        "select sum(col2)  over w as sum_col2 from " + name +
+        " window w as (partition by " + name + ".col1 order by " + name +
+        ".col2 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);";
 
     rs = router->ExecuteSQL(db, sql_window_request, row, &status);
     if (!rs) ASSERT_FALSE(true);
