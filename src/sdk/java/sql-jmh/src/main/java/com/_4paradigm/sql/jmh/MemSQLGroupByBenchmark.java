@@ -80,6 +80,7 @@ public class MemSQLGroupByBenchmark {
                     String sql =String.format(format, "perf", pk, System.currentTimeMillis()) ;
                     st.execute(sql);
                 }
+                if (i % 1000 == 0) System.out.println(i * 10);
                 querySet.add(pk);
             }
         } catch (Exception e) {
