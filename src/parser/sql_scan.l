@@ -384,7 +384,7 @@ ZEROFILL	{ return ZEROFILL; }
                         long value = atol(yytext);
                         if (value <= INT32_MAX && value >= INT32_MIN) {
                             yylval->intval = static_cast<int>(value);
-                            return LONGNUM;
+                            return INTNUM;
                         } else {
                             yylval->longval = value;
                             return LONGNUM;
