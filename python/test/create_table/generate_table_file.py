@@ -120,7 +120,7 @@ def generate_ck():
     f.write(b.SerializeToString())
 
 def generate_date():
-  table = "data"
+  table = "date"
   b = tableBuilder(table, "hdd", "Relational")
   b.addCol("id", "bigint", True).addCol("attribute", "varchar", True).addCol("image", "varchar", False).addCol("male", "bool", False).addCol("date", "date", True).addCol("ts", "timestamp", True).addIdx("idx1", ["date"], "primaryKey").addIdx("idx2", ["male", "ts"], "nounique")
   with open("{}.txt".format(table), "w") as f:
