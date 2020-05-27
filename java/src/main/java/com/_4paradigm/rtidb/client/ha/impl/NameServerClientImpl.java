@@ -233,6 +233,11 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
             builder.addColumnDescV1(cd);
         }
         String indexName = "";
+        if (tableDesc.getIndexs() == null ||
+                tableDesc.getIndexs().size() == 0) {
+            logger.warn("no index");
+            return false;
+        }
         for (IndexDef index : tableDesc.getIndexs()) {
             if (index.getIndexType() == IndexType.PrimaryKey ||
                     index.getIndexType() == IndexType.AutoGen ||
