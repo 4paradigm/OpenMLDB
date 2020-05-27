@@ -9,7 +9,7 @@
 #include <vector>
 
 #include "client/client_type.h"
-#include "thread_pool.h"
+#include "thread_pool.h" // NOLINT
 
 class RtidbClient;
 

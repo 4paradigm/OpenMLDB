@@ -18,6 +18,10 @@
 #ifndef SRC_SDK_CLUSTER_SDK_H_
 #define SRC_SDK_CLUSTER_SDK_H_
 
+#include <vector>
+#include <map>
+#include <string>
+#include <memory>
 #include "base/spinlock.h"
 #include "catalog/sdk_catalog.h"
 #include "client/ns_client.h"
