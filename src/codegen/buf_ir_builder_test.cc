@@ -20,16 +20,16 @@
 #include <cstdlib>
 #include <memory>
 #include <vector>
+#include "case/sql_case.h"
 #include "codec/fe_row_codec.h"
 #include "codec/list_iterator_codec.h"
 #include "codec/type_codec.h"
 #include "codegen/codegen_base_test.h"
 #include "codegen/ir_base_builder.h"
+#include "codegen/string_ir_builder.h"
+#include "codegen/timestamp_ir_builder.h"
 #include "codegen/window_ir_builder.h"
 #include "gtest/gtest.h"
-#include "vm/sql_compiler.h"
-
-#include "case/sql_case.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
@@ -43,7 +43,7 @@
 #include "llvm/Transforms/InstCombine/InstCombine.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/GVN.h"
-
+#include "vm/sql_compiler.h"
 using namespace llvm;       // NOLINT
 using namespace llvm::orc;  // NOLINT
 
@@ -112,7 +112,7 @@ int32_t PrintListString(int8_t* input) {
     while (col->Valid()) {
         ::fesql::codec::StringRef v = col->GetValue();
         col->Next();
-        std::string str(v.data, v.size);
+        std::string str(v.data_, v.size_);
         std::cout << str << ", ";
         cnt++;
     }
@@ -193,16 +193,14 @@ void RunEncode(::fesql::type::TableDef& table, int8_t** output_ptr) {  // NOLINT
         reinterpret_cast<void (*)(int8_t**)>(load_fn_jit.getAddress());
     decode(output_ptr);
 }
-
 template <class T>
-void RunCaseV1(T expected, ::fesql::type::TableDef& table,  // NOLINT
+void LoadValue(T* result, ::fesql::type::TableDef& table,  // NOLINT
                const ::fesql::type::Type& type, const std::string& col,
                int8_t* row, int32_t row_size) {
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_load_buf", *ctx);
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
-    bool is_void = false;
     ::llvm::Type* retTy = NULL;
     switch (type) {
         case ::fesql::type::kInt16:
@@ -220,13 +218,17 @@ void RunCaseV1(T expected, ::fesql::type::TableDef& table,  // NOLINT
         case ::fesql::type::kFloat:
             retTy = Type::getFloatTy(*ctx);
             break;
+        case ::fesql::type::kVarchar: {
+            const node::TypeNode type_node(fesql::node::kVarchar);
+            ASSERT_TRUE(codegen::GetLLVMType(m.get(), &type_node, &retTy));
+            break;
+        }
         case ::fesql::type::kTimestamp: {
             const node::TypeNode type_node(fesql::node::kTimestamp);
             ASSERT_TRUE(codegen::GetLLVMType(m.get(), &type_node, &retTy));
             break;
         }
         default:
-            is_void = true;
             retTy = Type::getVoidTy(*ctx);
     }
     Function* fn = Function::Create(
@@ -244,77 +246,57 @@ void RunCaseV1(T expected, ::fesql::type::TableDef& table,  // NOLINT
     Argument* arg0 = &*it;
     ++it;
     Argument* arg1 = &*it;
+    ++it;
+    Argument* arg2 = &*it;
+
     ::llvm::Value* val = NULL;
     bool ok = buf_builder.BuildGetField(col, arg0, arg1, &val);
     ASSERT_TRUE(ok);
-    if (type == ::fesql::type::kVarchar) {
-        ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
-        ::llvm::Value* i8_ptr = builder.CreatePointerCast(val, i8_ptr_ty);
-        ::llvm::Type* void_ty = builder.getVoidTy();
-        ::llvm::FunctionCallee callee =
-            m->getOrInsertFunction("print_str", void_ty, i8_ptr_ty);
-        builder.CreateCall(callee, ::llvm::ArrayRef<Value*>(i8_ptr));
+    switch (type) {
+        case ::fesql::type::kVarchar: {
+            codegen::StringIRBuilder string_builder(m.get());
+            ASSERT_TRUE(
+                string_builder.CopyFrom(builder.GetInsertBlock(), val, arg2));
+            break;
+        }
+        case ::fesql::type::kTimestamp: {
+            codegen::TimestampIRBuilder timestamp_builder(m.get());
+            ::llvm::Value* ts_output;
+            ASSERT_TRUE(timestamp_builder.GetTs(builder.GetInsertBlock(), val,
+                                                &ts_output));
+            ASSERT_TRUE(timestamp_builder.SetTs(builder.GetInsertBlock(), arg2,
+                                                ts_output));
+            break;
+        }
+        default: {
+            builder.CreateStore(val, arg2);
+        }
     }
-    if (!is_void) {
-        builder.CreateRet(val);
-    } else {
-        builder.CreateRetVoid();
-    }
+    builder.CreateRetVoid();
     m->print(::llvm::errs(), NULL);
     auto J = ExitOnErr(::llvm::orc::LLJITBuilder().create());
     auto& jd = J->getMainJITDylib();
     ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
                                       J->getDataLayout());
-    ::llvm::StringRef symbol1("print_str");
-    ::llvm::StringRef symbol2("print_i16");
-    ::llvm::StringRef symbol3("print_i32");
-    ::llvm::StringRef symbol4("print_ptr");
-    ::llvm::orc::SymbolMap symbol_map;
-    ::llvm::JITEvaluatedSymbol jit_symbol1(
-        ::llvm::pointerToJITTargetAddress(
-            reinterpret_cast<void*>(&AssertStrEq)),
-        ::llvm::JITSymbolFlags());
-
-    ::llvm::JITEvaluatedSymbol jit_symbol2(
-        ::llvm::pointerToJITTargetAddress(reinterpret_cast<void*>(&PrintInt16)),
-        ::llvm::JITSymbolFlags());
-
-    ::llvm::JITEvaluatedSymbol jit_symbol3(
-        ::llvm::pointerToJITTargetAddress(reinterpret_cast<void*>(&PrintInt32)),
-        ::llvm::JITSymbolFlags());
-
-    ::llvm::JITEvaluatedSymbol jit_symbol4(
-        ::llvm::pointerToJITTargetAddress(
-            reinterpret_cast<void*>(&AssertStrEq)),
-        ::llvm::JITSymbolFlags());
-
-    symbol_map.insert(std::make_pair(mi(symbol1), jit_symbol1));
-    symbol_map.insert(std::make_pair(mi(symbol2), jit_symbol2));
-    symbol_map.insert(std::make_pair(mi(symbol3), jit_symbol3));
-    symbol_map.insert(std::make_pair(mi(symbol4), jit_symbol4));
     // add codec
-
-    auto err = jd.define(::llvm::orc::absoluteSymbols(symbol_map));
-    if (err) {
-        ASSERT_TRUE(false);
-    }
     ::fesql::vm::InitCodecSymbol(jd, mi);
     ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
     auto load_fn_jit = ExitOnErr(J->lookup("fn"));
-    if (!is_void) {
-        T(*decode)
-        (int8_t*, int32_t) =
-            reinterpret_cast<T (*)(int8_t*, int32_t)>(load_fn_jit.getAddress());
-        ASSERT_EQ(expected, decode(row, row_size));
 
-    } else {
-        void (*decode)(int8_t*, int32_t) =
-            reinterpret_cast<void (*)(int8_t*, int32_t)>(
-                load_fn_jit.getAddress());
-        decode(row, row_size);
-    }
+    void (*decode)(int8_t*, int32_t, T*) =
+        reinterpret_cast<void (*)(int8_t*, int32_t, T*)>(
+            load_fn_jit.getAddress());
+    decode(row, row_size, result);
 }
 
+template <class T>
+void RunCaseV1(T expected, ::fesql::type::TableDef& table,  // NOLINT
+               const ::fesql::type::Type& type, const std::string& col,
+               int8_t* row, int32_t row_size) {
+    T result;
+    LoadValue(&result, table, type, col, row, row_size);
+    ASSERT_EQ(result, expected);
+}
 template <class T>
 void RunColCase(T expected, type::TableDef& table,  // NOLINT
                 const ::fesql::type::Type& type, const std::string& col,
@@ -500,7 +482,8 @@ TEST_F(BufIRBuilderTest, native_test_load_string) {
     uint32_t size = 0;
     type::TableDef table;
     BuildT1Buf(table, &ptr, &size);
-    RunCaseV1<int16_t>(16, table, ::fesql::type::kVarchar, "col6", ptr, size);
+    RunCaseV1<codec::StringRef>(codec::StringRef("1"), table,
+                                ::fesql::type::kVarchar, "col6", ptr, size);
     free(ptr);
 }
 

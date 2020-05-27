@@ -11,7 +11,8 @@
 namespace fesql {
 namespace codegen {
 StructTypeIRBuilder::StructTypeIRBuilder(::llvm::Module* m)
-    : TypeIRBuilder(), m_(m), struct_type_(nullptr) {}
+    : TypeIRBuilder(), m_(m), struct_type_(nullptr) {
+}
 StructTypeIRBuilder::~StructTypeIRBuilder() {}
 
 ::llvm::Type* StructTypeIRBuilder::GetType() {

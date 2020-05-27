@@ -19,6 +19,7 @@
 #include <string>
 #include <vector>
 #include "codec/list_iterator_codec.h"
+#include "codegen/string_ir_builder.h"
 #include "codegen/timestamp_ir_builder.h"
 #include "glog/logging.h"
 
@@ -67,23 +68,9 @@ bool GetLLVMType(::llvm::Module* m, const ::fesql::node::DataType& type,
             *llvm_type = (::llvm::Type::getInt8PtrTy(m->getContext()));
             break;
         case node::kVarchar: {
-            std::string name = "fe.string_ref";
-            ::llvm::StringRef sr(name);
-            ::llvm::StructType* stype = m->getTypeByName(sr);
-            if (stype != NULL) {
-                *llvm_type = stype;
-                return true;
-            }
-            stype = ::llvm::StructType::create(m->getContext(), name);
-            ::llvm::Type* size_ty = (::llvm::Type::getInt32Ty(m->getContext()));
-            ::llvm::Type* data_ptr_ty =
-                (::llvm::Type::getInt8PtrTy(m->getContext()));
-            std::vector<::llvm::Type*> elements;
-            elements.push_back(size_ty);
-            elements.push_back(data_ptr_ty);
-            stype->setBody(::llvm::ArrayRef<::llvm::Type*>(elements));
-            *llvm_type = stype;
-            return true;
+            StringIRBuilder string_ir_builder(m);
+            *llvm_type = string_ir_builder.GetType();
+            break;
         }
         case node::kTimestamp: {
             TimestampIRBuilder timestamp_ir_builder(m);
@@ -675,7 +662,7 @@ bool SchemaType2DataType(const ::fesql::type::Type type,
 }
 bool TypeIRBuilder::IsTimestampPtr(::llvm::Type* type) {
     ::fesql::node::DataType data_type;
-    if (!type->isPointerTy()) {
+    if (!IsStructPtr(type)) {
         return false;
     }
 
@@ -684,10 +671,23 @@ bool TypeIRBuilder::IsTimestampPtr(::llvm::Type* type) {
     }
     return data_type == node::kTimestamp;
 }
+bool TypeIRBuilder::IsStringPtr(::llvm::Type* type) {
+    ::fesql::node::DataType data_type;
+    if (!type->isPointerTy()) {
+        return false;
+    }
 
+    if (!GetBaseType(type, &data_type)) {
+        return false;
+    }
+    return data_type == node::kVarchar;
+}
 bool TypeIRBuilder::IsStructPtr(::llvm::Type* type) {
     if (type->getTypeID() == ::llvm::Type::PointerTyID) {
         type = reinterpret_cast<::llvm::PointerType*>(type)->getElementType();
+        if (type->isStructTy()) {
+            LOG(WARNING) << "Struct Name " << type->getStructName().str();
+        }
         return type->isStructTy();
     }
     return false;

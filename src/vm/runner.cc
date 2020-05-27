@@ -1591,7 +1591,7 @@ int32_t IteratorStatus::PickIteratorWithMininumKey(
     std::vector<IteratorStatus>* status_list_ptr) {
     auto status_list = *status_list_ptr;
     int32_t min_union_pos = -1;
-    int64_t min_union_order = INT64_MAX;
+    uint64_t min_union_order = UINT64_MAX;
     for (size_t i = 0; i < status_list.size(); i++) {
         if (status_list[i].is_valid_ && status_list[i].key_ < min_union_order) {
             min_union_order = status_list[i].key_;

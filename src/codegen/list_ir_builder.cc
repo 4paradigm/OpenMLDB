@@ -10,6 +10,7 @@
 #include "codegen/cast_expr_ir_builder.h"
 #include "codegen/ir_base_builder.h"
 #include "codegen/predicate_expr_ir_builder.h"
+#include "codegen/type_ir_builder.h"
 #include "glog/logging.h"
 namespace fesql {
 namespace codegen {
@@ -176,8 +177,7 @@ bool ListIRBuilder::BuildIterator(::llvm::Value* list, ::llvm::Value** output,
     ::llvm::Function* fn =
         block_->getModule()->getFunction(::llvm::StringRef(fn_name));
     if (nullptr == fn) {
-        status.msg =
-            "faili to codegen iterator: can't find function " + fn_name;
+        status.msg = "fail to codegen iterator: can't find function " + fn_name;
         status.code = common::kCodegenError;
         LOG(WARNING) << status.msg;
         return false;
@@ -288,6 +288,11 @@ bool ListIRBuilder::BuildStructTypeIteratorNext(::llvm::Value* iterator,
         LOG(WARNING) << status.msg;
         return false;
     }
+    LOG(INFO) << "fn name " << fn_name;
+    LOG(INFO) << "iterator type "
+              << TypeIRBuilder::IsStructPtr(iterator->getType());
+    LOG(INFO) << "next_value_ptr type "
+              << TypeIRBuilder::IsTimestampPtr(next_value_ptr->getType());
     ::llvm::Value* ret = builder.CreateCall(
         fn->getFunctionType(), fn,
         ::llvm::ArrayRef<::llvm::Value*>{iterator, next_value_ptr});

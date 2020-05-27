@@ -273,7 +273,7 @@ int32_t SchemasContext::ColumnOffsetResolved(
         return -1;
     }
     int offset = column_index;
-    for (int i = 0; i < row_schema_info->idx_; ++i) {
+    for (uint32_t i = 0; i < row_schema_info->idx_; ++i) {
         offset += this->row_schema_info_list_[i].schema_->size();
     }
     return offset;

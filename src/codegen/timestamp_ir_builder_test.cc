@@ -126,6 +126,35 @@ TEST_F(TimestampIRBuilderTest, SetTsTest) {
     set_ts(&data, 1L);
     ASSERT_EQ(data.ts_, 1L);
 }
+
+TEST_F(TimestampIRBuilderTest, TimestampOp) {
+    codec::Timestamp t1(1);
+    codec::Timestamp t2(10);
+
+    ASSERT_EQ(11L, (t1 + t2).ts_);
+    ASSERT_EQ(9L, (t2 - t1).ts_);
+    ASSERT_EQ(3, (t2 / 3L).ts_);
+
+    ASSERT_TRUE(t2 >= codec::Timestamp(10));
+    ASSERT_TRUE(t2 <= codec::Timestamp(10));
+
+    ASSERT_TRUE(t2 > codec::Timestamp(9));
+    ASSERT_TRUE(t2 < codec::Timestamp(11));
+
+    ASSERT_TRUE(t2 == codec::Timestamp(10));
+    ASSERT_TRUE(t2 != codec::Timestamp(9));
+    if (t2.ts_ > INT32_MAX) {
+        codec::Timestamp t3(10);
+        t3 += t1;
+        ASSERT_EQ(11, t3.ts_);
+    }
+    {
+        codec::Timestamp t3(10);
+        t3 -= t1;
+        ASSERT_EQ(9, t3.ts_);
+    }
+}
+
 }  // namespace codegen
 }  // namespace fesql
 

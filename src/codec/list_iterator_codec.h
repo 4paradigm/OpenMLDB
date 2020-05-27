@@ -131,8 +131,8 @@ class StringColumnImpl : public ColumnImpl<StringRef> {
         StringRef value;
         v1::GetStrField(row.buf(row_idx_), str_field_offset_,
                         next_str_field_offset_, str_start_offset_, addr_space,
-                        reinterpret_cast<int8_t **>(&(value.data)),
-                        &(value.size));
+                        reinterpret_cast<int8_t **>(&(value.data_)),
+                        &(value.size_));
         return value;
     }
 

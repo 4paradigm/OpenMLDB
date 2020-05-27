@@ -1,0 +1,154 @@
+/*-------------------------------------------------------------------------
+ * Copyright (C) 2020, 4paradigm
+ * string_ir_builder_test.cc
+ *
+ * Author: chenjing
+ * Date: 2020/5/26
+ *--------------------------------------------------------------------------
+ **/
+#include "codegen/string_ir_builder.h"
+#include <memory>
+#include <string>
+#include <utility>
+#include "codegen/ir_base_builder.h"
+#include "gtest/gtest.h"
+#include "llvm/ExecutionEngine/Orc/LLJIT.h"
+#include "llvm/Support/TargetSelect.h"
+#include "llvm/Support/raw_ostream.h"
+#include "node/node_manager.h"
+
+using namespace llvm;       // NOLINT
+using namespace llvm::orc;  // NOLINT
+ExitOnError ExitOnErr;
+namespace fesql {
+namespace codegen {
+class StringIRBuilderTest : public ::testing::Test {
+ public:
+    StringIRBuilderTest() {}
+    ~StringIRBuilderTest() {}
+};
+
+TEST_F(StringIRBuilderTest, NewStringTest) {
+    auto ctx = llvm::make_unique<LLVMContext>();
+    auto m = make_unique<Module>("string_ir_test", *ctx);
+    StringIRBuilder string_ir_builder(m.get());
+    Int64IRBuilder int64_builder;
+    Function *load_fn = Function::Create(
+        FunctionType::get(::llvm::Type::getVoidTy(m->getContext()),
+                          {string_ir_builder.GetType()->getPointerTo()}, false),
+        Function::ExternalLinkage, "new_empty_string", m.get());
+
+    BasicBlock *entry_block = BasicBlock::Create(*ctx, "EntryBlock", load_fn);
+    IRBuilder<> builder(entry_block);
+    auto iter = load_fn->arg_begin();
+    Argument *arg0 = &(*iter);
+    iter++;
+    ::llvm::Value *string;
+    ASSERT_TRUE(string_ir_builder.NewString(entry_block, &string));
+    ::llvm::Value *data;
+    ::llvm::Value *size;
+    ASSERT_TRUE(string_ir_builder.GetSize(entry_block, string, &size));
+    ASSERT_TRUE(string_ir_builder.GetData(entry_block, string, &data));
+    ASSERT_TRUE(string_ir_builder.SetData(entry_block, arg0, data));
+    ASSERT_TRUE(string_ir_builder.SetSize(entry_block, arg0, size));
+
+    builder.CreateRetVoid();
+    m->print(::llvm::errs(), NULL);
+    auto J = ExitOnErr(LLJITBuilder().create());
+    ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
+    auto load_fn_jit = ExitOnErr(J->lookup("new_empty_string"));
+    void (*decode)(codec::StringRef *) =
+        (void (*)(codec::StringRef *))load_fn_jit.getAddress();
+    codec::StringRef dist("no empty");
+    decode(&dist);
+    ASSERT_EQ("", dist.ToString());
+}
+TEST_F(StringIRBuilderTest, StringGetAndSet) {
+    auto ctx = llvm::make_unique<LLVMContext>();
+    auto m = make_unique<Module>("string_ir_test", *ctx);
+    StringIRBuilder string_ir_builder(m.get());
+    Int64IRBuilder int64_builder;
+    Function *load_fn = Function::Create(
+        FunctionType::get(::llvm::Type::getVoidTy(m->getContext()),
+                          {string_ir_builder.GetType()->getPointerTo(),
+                           string_ir_builder.GetType()->getPointerTo()},
+                          false),
+        Function::ExternalLinkage, "new_string", m.get());
+
+    auto iter = load_fn->arg_begin();
+    Argument *arg0 = &(*iter);
+    iter++;
+    Argument *arg1 = &(*iter);
+    iter++;
+    BasicBlock *entry_block = BasicBlock::Create(*ctx, "EntryBlock", load_fn);
+    IRBuilder<> builder(entry_block);
+    ::llvm::Value *data;
+    ::llvm::Value *size;
+    ASSERT_TRUE(string_ir_builder.GetSize(entry_block, arg0, &size));
+    ASSERT_TRUE(string_ir_builder.GetData(entry_block, arg0, &data));
+    ASSERT_TRUE(string_ir_builder.SetData(entry_block, arg1, data));
+    ASSERT_TRUE(string_ir_builder.SetSize(entry_block, arg1, size));
+    builder.CreateRetVoid();
+
+    m->print(::llvm::errs(), NULL);
+    auto J = ExitOnErr(LLJITBuilder().create());
+    ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
+    auto load_fn_jit = ExitOnErr(J->lookup("new_string"));
+    codec::StringRef src("hello");
+    codec::StringRef dist("");
+    void (*decode)(codec::StringRef *, codec::StringRef *) = (void (*)(
+        codec::StringRef *, codec::StringRef *))load_fn_jit.getAddress();
+    decode(&src, &dist);
+    ASSERT_EQ("hello", dist.ToString());
+}
+
+TEST_F(StringIRBuilderTest, StringCopyFromTest) {
+    auto ctx = llvm::make_unique<LLVMContext>();
+    auto m = make_unique<Module>("string_ir_test", *ctx);
+    StringIRBuilder string_ir_builder(m.get());
+    Int64IRBuilder int64_builder;
+    Function *load_fn = Function::Create(
+        FunctionType::get(::llvm::Type::getVoidTy(m->getContext()),
+                          {string_ir_builder.GetType()->getPointerTo(),
+                           string_ir_builder.GetType()->getPointerTo()},
+                          false),
+        Function::ExternalLinkage, "copy_from_string", m.get());
+
+    auto iter = load_fn->arg_begin();
+    Argument *arg0 = &(*iter);
+    iter++;
+    Argument *arg1 = &(*iter);
+    iter++;
+    BasicBlock *entry_block = BasicBlock::Create(*ctx, "EntryBlock", load_fn);
+    IRBuilder<> builder(entry_block);
+    ASSERT_TRUE(string_ir_builder.CopyFrom(entry_block, arg0, arg1));
+    builder.CreateRetVoid();
+
+    m->print(::llvm::errs(), NULL);
+    auto J = ExitOnErr(LLJITBuilder().create());
+    ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
+    auto load_fn_jit = ExitOnErr(J->lookup("copy_from_string"));
+    codec::StringRef src("hello");
+    codec::StringRef dist("");
+    void (*decode)(codec::StringRef *, codec::StringRef *) = (void (*)(
+        codec::StringRef *, codec::StringRef *))load_fn_jit.getAddress();
+    decode(&src, &dist);
+    ASSERT_EQ("hello", dist.ToString());
+}
+
+TEST_F(StringIRBuilderTest, StringRefOp) {
+    codec::StringRef s1("string1");
+    codec::StringRef s2("string2");
+    ASSERT_TRUE(s1 == codec::StringRef("string1"));
+    ASSERT_TRUE(s1 != s2);
+}
+
+}  // namespace codegen
+}  // namespace fesql
+
+int main(int argc, char **argv) {
+    ::testing::InitGoogleTest(&argc, argv);
+    InitializeNativeTarget();
+    InitializeNativeTargetAsmPrinter();
+    return RUN_ALL_TESTS();
+}

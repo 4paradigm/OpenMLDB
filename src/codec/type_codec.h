@@ -29,9 +29,46 @@ namespace fesql {
 namespace codec {
 
 struct StringRef {
-    uint32_t size;
-    char* data;
+    StringRef() : size_(0), data_(nullptr) {}
+    explicit StringRef(const std::string& str)
+        : size_(str.size()), data_(strdup(str.data())) {}
+    StringRef(uint32_t size, char* data) : size_(size), data_(data) {}
+    const std::string ToString() const {
+        return size_ == 0 ? "" : std::string(data_, size_);
+    }
+    uint32_t size_;
+    char* data_;
 };
+
+inline static int compare(const StringRef& a, const StringRef& b) {
+    const size_t min_len = (a.size_ < b.size_) ? a.size_ : b.size_;
+    int r = memcmp(a.data_, b.data_, min_len);
+    if (r == 0) {
+        if (a.size_ < b.size_)
+            r = -1;
+        else if (a.size_ > b.size_)
+            r = +1;
+    }
+    return r;
+}
+static bool operator==(const StringRef& a, const StringRef& b) {
+    return 0 == compare(a, b);
+}
+static bool operator!=(const StringRef& a, const StringRef& b) {
+    return 0 != compare(a, b);
+}
+static bool operator>=(const StringRef& a, const StringRef& b) {
+    return compare(a, b) >= 0;
+}
+static bool operator>(const StringRef& a, const StringRef& b) {
+    return compare(a, b) > 0;
+}
+static bool operator<=(const StringRef& a, const StringRef& b) {
+    return compare(a, b) <= 0;
+}
+static bool operator<(const StringRef& a, const StringRef& b) {
+    return compare(a, b) < 0;
+}
 
 struct Timestamp {
     Timestamp() : ts_(0) {}

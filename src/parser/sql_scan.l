@@ -380,7 +380,17 @@ ZEROFILL	{ return ZEROFILL; }
  /* operator */
 
  /* numbers */
--?[0-9]+	        { yylval->intval = atoi(yytext); return INTNUM; }
+-?[0-9]+	        {
+                        long value = atol(yytext);
+                        if (value <= INT32_MAX && value >= INT32_MIN) {
+                            yylval->intval = static_cast<int>(value);
+                            return LONGNUM;
+                        } else {
+                            yylval->longval = value;
+                            return LONGNUM;
+                        }
+
+                    }
 -?[0-9]+['l']	        { yylval->longval = atol(yytext); return LONGNUM; }
 -?[0-9]+['d']	        { yylval->longval = atoi(yytext); return DAYNUM; }
 -?[0-9]+['h']	        { yylval->longval = atoi(yytext); return HOURNUM; }
