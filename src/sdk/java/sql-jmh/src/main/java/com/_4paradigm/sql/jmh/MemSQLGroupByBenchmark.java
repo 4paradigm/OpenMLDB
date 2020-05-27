@@ -9,6 +9,7 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
 @BenchmarkMode(Mode.All)
@@ -27,11 +28,11 @@ public class MemSQLGroupByBenchmark {
     }
     private ArrayList<String> dataset = new ArrayList<>();
     private ArrayList<String> querySet = new ArrayList<>();
-    private int recordSize = 100000;
     private Connection cnn;
     private String query;
     private String format = "insert into %s values('%s', %d,";
     private long counter = 0;
+    private Random random = new Random(System.currentTimeMillis());
     public MemSQLGroupByBenchmark() {
     }
     @Setup
@@ -72,7 +73,7 @@ public class MemSQLGroupByBenchmark {
             }
             format+=");";
             query += " from perf where col1 = ? group by col1";
-            for (int i = 0; i < recordSize/1000; i++) {
+            for (int i = 0; i < 100000; i++) {
                 String pk = "pkxxx" + i;
                 for (int j = 0; j < 10; j++) {
                     st = cnn.createStatement();
@@ -88,12 +89,12 @@ public class MemSQLGroupByBenchmark {
 
 
     @Benchmark
-    public void selectBm() {
-        long index = counter / querySet.size();
+    public void groupByBm() {
+        long index = random.nextInt(querySet.size());
         try {
+            if (index < 0) index = index * -1;
             String key = querySet.get((int) index);
             PreparedStatement ps = cnn.prepareStatement(query);
-            System.out.println(query);
             ps.setString(1, key);
             ps.executeQuery();
         } catch (Exception e) {
