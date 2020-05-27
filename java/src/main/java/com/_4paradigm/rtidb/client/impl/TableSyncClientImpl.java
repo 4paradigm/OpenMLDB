@@ -886,6 +886,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         ScanOption scanOption = new ScanOption();
         scanOption.setLimit(limit);
         scanOption.setIdxName(idxName);
+        scanOption.setRemoveDuplicateRecordByTime(client.getConfig().isRemoveDuplicateByTime());
         return scan(tid, pid, key, st, et, th, scanOption);
     }
 
@@ -937,11 +938,11 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (th == null) {
             throw new TabletException("no table with name " + tname);
         }
-        key = validateKey(key);
         ScanOption scanOption = new ScanOption();
         scanOption.setLimit(limit);
         scanOption.setIdxName(idxName);
         scanOption.setTsName(tsName);
+        scanOption.setRemoveDuplicateRecordByTime(client.getConfig().isRemoveDuplicateByTime());
         return scan(tname, key, st, et, scanOption);
     }
 
@@ -1018,6 +1019,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         ScanOption scanOption = new ScanOption();
         scanOption.setIdxName(idxName);
         scanOption.setTsName(tsName);
+        scanOption.setRemoveDuplicateRecordByTime(client.getConfig().isRemoveDuplicateByTime());
         return scan(tid, pid, combinedKey, st, et, th, scanOption);
     }
 
@@ -1044,6 +1046,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         scanOption.setTsName(tsName);
         scanOption.setLimit(limit);
         scanOption.setAtLeast(atLeast);
+        scanOption.setRemoveDuplicateRecordByTime(client.getConfig().isRemoveDuplicateByTime());
         return scan(tid, pid, combinedKey, st, et, th, scanOption);
     }
 
