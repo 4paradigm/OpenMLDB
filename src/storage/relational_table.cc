@@ -1282,10 +1282,10 @@ void RelationalTable::ReleaseSnpashot(uint64_t snapshot_id, bool finish) {
 }
 
 void RelationalTable::TTLSnapshot() {
-    uint64_t cur_time = baidu::common::timer::get_micros() / 1000000;
+    uint64_t cur_time = baidu::common::timer::get_micros() / 1000;
     std::lock_guard<std::mutex> lock(mu_);
     for (auto iter = snapshots_.begin(); iter != snapshots_.end();) {
-        if (iter->second->atime + FLAGS_snapshot_ttl_time <= cur_time) {
+        if (iter->second->atime + FLAGS_snapshot_ttl_time * 60 <= cur_time) {
             std::shared_ptr<SnapshotInfo> sc = iter->second;
             iter = snapshots_.erase(iter);
             db_->ReleaseSnapshot(sc->snapshot);
