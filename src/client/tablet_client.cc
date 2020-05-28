@@ -196,7 +196,7 @@ bool TabletClient::Update(uint32_t tid, uint32_t pid,
         const std::string& value,
         std::string* msg) {
     ::rtidb::api::UpdateRequest request;
-    ::rtidb::api::GeneralResponse response;
+    ::rtidb::api::UpdateResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
     ::google::protobuf::RepeatedPtrField<::rtidb::api::Columns>*
@@ -1137,7 +1137,7 @@ bool TabletClient::Get(uint32_t tid, uint32_t pid, const std::string& pk,
 bool TabletClient::Delete(uint32_t tid, uint32_t pid, const std::string& pk,
                           const std::string& idx_name, std::string& msg) {
     ::rtidb::api::DeleteRequest request;
-    ::rtidb::api::GeneralResponse response;
+    ::rtidb::api::DeleteResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
     request.set_key(pk);
@@ -1161,7 +1161,7 @@ bool TabletClient::Delete(uint32_t tid, uint32_t pid,
         ::rtidb::api::Columns>& cd_columns,
         std::string* msg) {
     ::rtidb::api::DeleteRequest request;
-    ::rtidb::api::GeneralResponse response;
+    ::rtidb::api::DeleteResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
     request.mutable_condition_columns()->CopyFrom(cd_columns);

@@ -72,7 +72,7 @@ class TabletImpl : public ::rtidb::api::TabletServer {
 
     void Update(RpcController* controller,
                 const ::rtidb::api::UpdateRequest* request,
-                ::rtidb::api::GeneralResponse* response, Closure* done);
+                ::rtidb::api::UpdateResponse* response, Closure* done);
 
     void Put(RpcController* controller, const ::rtidb::api::PutRequest* request,
              ::rtidb::api::PutResponse* response, Closure* done);
@@ -86,7 +86,7 @@ class TabletImpl : public ::rtidb::api::TabletServer {
 
     void Delete(RpcController* controller,
                 const ::rtidb::api::DeleteRequest* request,
-                ::rtidb::api::GeneralResponse* response, Closure* done);
+                ::rtidb::api::DeleteResponse* response, Closure* done);
 
     void Count(RpcController* controller,
                const ::rtidb::api::CountRequest* request,

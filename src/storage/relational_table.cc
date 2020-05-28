@@ -176,6 +176,9 @@ int RelationalTable::InitColumnDesc() {
             return -1;
         }
         const ::rtidb::type::IndexType index_type = column_key.index_type();
+        if (index_type == ::rtidb::type::kIncrement) {
+            return -1;
+        }
         if (index_type == ::rtidb::type::kPrimaryKey
                 || index_type == ::rtidb::type::kAutoGen
                 || index_type == ::rtidb::type::kIncrement) {
@@ -555,18 +558,27 @@ bool RelationalTable::ConvertIndex(const std::string& name,
     return true;
 }
 
-bool RelationalTable::Delete(const RepeatedPtrField<::rtidb::api::Columns>&
-        condition_columns) {
+bool RelationalTable::Delete(
+        const RepeatedPtrField<::rtidb::api::Columns>& condition_columns,
+        int32_t* code, std::string* msg, uint32_t* count) {
     std::string combine_name = "";
     std::string combine_value = "";
     if (!GetCombineStr(condition_columns, &combine_name, &combine_value)) {
+        *code = ::rtidb::base::ReturnCode::kIdxNameNotFound;
+        *msg = "index col name not found";
         return false;
     }
     std::shared_ptr<IndexDef> index_def =
         table_index_.GetIndexByCombineStr(combine_name);
-    if (!index_def) return false;
+    if (!index_def) {
+        *code = ::rtidb::base::ReturnCode::kIdxNameNotFound;
+        *msg = "index col name not found";
+        return false;
+    }
     rocksdb::WriteBatch batch;
-    if (!Delete(index_def, combine_value, &batch)) return false;
+    if (!Delete(index_def, combine_value, &batch, count)) {
+        return false;
+    }
     rocksdb::Status s = db_->Write(write_opts_, &batch);
     if (s.ok()) {
         offset_.fetch_add(1, std::memory_order_relaxed);
@@ -578,13 +590,12 @@ bool RelationalTable::Delete(const RepeatedPtrField<::rtidb::api::Columns>&
     }
 }
 
-bool RelationalTable::Delete(const
-    RepeatedPtrField<rtidb::api::Columns>& condition_columns,
-    RepeatedField<google::protobuf::int64_t>* blob_keys) {
+bool RelationalTable::Delete(
+        const RepeatedPtrField<rtidb::api::Columns>& condition_columns,
+        RepeatedField<google::protobuf::int64_t>* blob_keys,
+        int32_t* code, std::string* msg, uint32_t* count) {
     std::vector<std::unique_ptr<rocksdb::Iterator>> iter_vec;
-    int32_t code = 0;
-    std::string msg;
-    bool ok = Query(condition_columns, &iter_vec, &code, &msg);
+    bool ok = Query(condition_columns, &iter_vec, code, msg);
     if (!ok) {
         DEBUGLOG("query of delete failed. tid %u pid %u", id_, pid_);
         return false;
@@ -607,7 +618,7 @@ bool RelationalTable::Delete(const
             *key = val;
         }
     }
-    ok = Delete(condition_columns);
+    ok = Delete(condition_columns, code, msg, count);
     if (!ok) {
         PDLOG(WARNING, "delete failed. clean blob_keys");
         blob_keys->Clear();
@@ -617,44 +628,44 @@ bool RelationalTable::Delete(const
 }
 
 bool RelationalTable::Delete(const std::shared_ptr<IndexDef> index_def,
-                             const std::string& comparable_key,
-                             rocksdb::WriteBatch* batch) {
+        const std::string& comparable_key, rocksdb::WriteBatch* batch,
+        uint32_t* count) {
     ::rtidb::type::IndexType index_type = index_def->GetType();
     if (index_type == ::rtidb::type::kPrimaryKey
         || index_type == ::rtidb::type::kAutoGen) {
-        return DeletePk(rocksdb::Slice(comparable_key), batch);
+        return DeletePk(rocksdb::Slice(comparable_key), batch, count);
     }
     std::unique_ptr<rocksdb::Iterator> it(
         GetIteratorAndSeek(index_def->GetId(), rocksdb::Slice(comparable_key)));
     if (!it) {
-        return false;
+        return true;
     }
     if (index_type == ::rtidb::type::kUnique) {
         if (it->key() != rocksdb::Slice(comparable_key)) {
             DEBUGLOG("unique key %s not found. tid %u pid %u",
                   comparable_key.c_str(), id_, pid_);
-            return false;
+            return true;
         }
-        return DeletePk(it->value(), batch);
+        return DeletePk(it->value(), batch, count);
     } else if (index_type == ::rtidb::type::kNoUnique) {
-        int count = 0;
+        int num = 0;
         while (it->Valid()) {
             rocksdb::Slice pk_slice = ParsePk(it->key(), comparable_key);
             if (pk_slice.empty()) {
-                if (count == 0) {
+                if (num == 0) {
                     DEBUGLOG(
                           "ParsePk failed, key %s not exist, tid %u pid %u",
                           comparable_key.c_str(), id_, pid_);
-                    return false;
+                    return true;
                 } else {
                     break;
                 }
             }
-            if (!DeletePk(pk_slice, batch)) {
+            if (!DeletePk(pk_slice, batch, count)) {
                 return false;
             }
             it->Next();
-            count++;
+            num++;
         }
     } else {
         PDLOG(WARNING, "unsupported index type %s, tid %u pid %u",
@@ -665,19 +676,19 @@ bool RelationalTable::Delete(const std::shared_ptr<IndexDef> index_def,
 }
 
 bool RelationalTable::DeletePk(const rocksdb::Slice& pk_slice,
-                               rocksdb::WriteBatch* batch) {
+        rocksdb::WriteBatch* batch, uint32_t* count) {
     std::shared_ptr<IndexDef> pk_index_def = table_index_.GetPkIndex();
     uint32_t pk_id = pk_index_def->GetId();
 
     std::unique_ptr<rocksdb::Iterator> pk_it(
         GetIteratorAndSeek(pk_id, pk_slice));
     if (!pk_it) {
-        return false;
+        return true;
     }
     if (pk_it->key() != pk_slice) {
         DEBUGLOG("pk %s not found. tid %u pid %u",
               pk_slice.ToString().c_str(), id_, pid_);
-        return false;
+        return true;
     }
     batch->Delete(cf_hs_[pk_id + 1], pk_slice);
     rocksdb::Slice slice = pk_it->value();
@@ -705,6 +716,7 @@ bool RelationalTable::DeletePk(const rocksdb::Slice& pk_slice,
             }
         }
     }
+    *count = *count + 1;
     return true;
 }
 
@@ -775,8 +787,8 @@ bool RelationalTable::Query(
     std::string combine_name = "";
     std::string combine_value = "";
     if (!GetCombineStr(indexs, &combine_name, &combine_value)) {
-        *code = ::rtidb::base::ReturnCode::kGetCombineStrFailed;
-        *msg = "GetCombineStr failed";
+        *code = ::rtidb::base::ReturnCode::kIdxNameNotFound;
+        *msg = "index col name not found";
         return false;
     }
     std::shared_ptr<IndexDef> index_def =
@@ -785,7 +797,7 @@ bool RelationalTable::Query(
         DEBUGLOG("combine_name %s not found. tid %u pid %u",
               combine_name.c_str(), id_, pid_);
         *code = ::rtidb::base::ReturnCode::kIdxNameNotFound;
-        *msg = "index col name found";
+        *msg = "index col name not found";
         return false;
     }
     Query(index_def, rocksdb::Slice(combine_value), return_vec);
@@ -840,23 +852,33 @@ bool RelationalTable::Query(
 }
 
 bool RelationalTable::Update(const ::google::protobuf::RepeatedPtrField<
-                                 ::rtidb::api::Columns>& cd_columns,
-                             const ::rtidb::api::Columns& col_columns) {
+        ::rtidb::api::Columns>& cd_columns,
+        const ::rtidb::api::Columns& col_columns,
+        int32_t* code, std::string* msg, uint32_t* count) {
     std::string combine_name = "";
     std::string combine_value = "";
     if (!GetCombineStr(cd_columns, &combine_name, &combine_value)) {
+        *code = ::rtidb::base::ReturnCode::kIdxNameNotFound;
+        *msg = "index col name not found";
         return false;
     }
     std::shared_ptr<IndexDef> index_def =
         table_index_.GetIndexByCombineStr(combine_name);
-    if (!index_def) return false;
-
+    if (!index_def) {
+        *code = ::rtidb::base::ReturnCode::kIdxNameNotFound;
+        *msg = "index col name not found";
+        return false;
+    }
     const std::string& col_value = col_columns.value();
     std::map<std::string, int> col_idx_map;
     Schema value_schema;
-    if (!CreateSchema(col_columns, &col_idx_map, &value_schema)) return false;
+    if (!CreateSchema(col_columns, &col_idx_map, &value_schema)) {
+        *code = ::rtidb::base::ReturnCode::kColNameNotFound;
+        *msg = "col name not found";
+        return false;
+    }
     return UpdateDB(index_def, combine_value, col_idx_map, value_schema,
-                    col_value);
+                    col_value, count);
 }
 
 bool RelationalTable::CreateSchema(const ::rtidb::api::Columns& columns,
@@ -882,13 +904,8 @@ bool RelationalTable::UpdateDB(const std::shared_ptr<IndexDef> index_def,
                                const std::string& comparable_key,
                                const std::map<std::string, int>& col_idx_map,
                                const Schema& value_schema,
-                               const std::string& col_value) {
-    ::rtidb::type::IndexType index_type = index_def->GetType();
-    if (index_type == ::rtidb::type::kIncrement) {
-        PDLOG(WARNING, "unsupported index type %s, tid %u pid %u.",
-              rtidb::type::IndexType_Name(index_type).c_str(), id_, pid_);
-        return false;
-    }
+                               const std::string& col_value,
+                               uint32_t* count) {
     ::rtidb::base::Slice slice(col_value);
     std::string uncompressed;
     if (table_meta_.compress_type() == ::rtidb::api::kSnappy) {
@@ -902,9 +919,10 @@ bool RelationalTable::UpdateDB(const std::shared_ptr<IndexDef> index_def,
     if (!ok) {
         PDLOG(WARNING, "query failed, update table tid %u pid %u failed", id_,
               pid_);
-        return false;
+        return true;
     }
 
+    ::rtidb::type::IndexType index_type = index_def->GetType();
     bool is_update_index = false;
     bool is_update_pk = false;
     const Schema& schema = table_meta_.column_desc();
@@ -1131,8 +1149,9 @@ bool RelationalTable::UpdateDB(const std::shared_ptr<IndexDef> index_def,
             }
         }
         if (is_update_index) {
+            uint32_t count = 0;
             ok = DeletePk(rocksdb::Slice(pk_slice.data(), pk_slice.size()),
-                          &batch);
+                          &batch, &count);
             if (!ok) {
                 PDLOG(WARNING,
                       "delete failed,"
@@ -1161,6 +1180,7 @@ bool RelationalTable::UpdateDB(const std::shared_ptr<IndexDef> index_def,
     }
     rocksdb::Status s = db_->Write(write_opts_, &batch);
     if (s.ok()) {
+        *count = iter_vec.size();
         offset_.fetch_add(1, std::memory_order_relaxed);
         return true;
     } else {

@@ -100,15 +100,19 @@ class RelationalTable {
                const rocksdb::Slice& key_slice,
                std::vector<std::unique_ptr<rocksdb::Iterator>>* vec);
 
-    bool Delete(const RepeatedPtrField<::rtidb::api::Columns>&
-                condition_columns);
+    bool Delete(
+            const RepeatedPtrField<::rtidb::api::Columns>& condition_columns,
+            int32_t* code, std::string* msg, uint32_t* count);
 
     bool Delete(const RepeatedPtrField<rtidb::api::Columns>& condition_columns,
-                RepeatedField<google::protobuf::int64_t>* blob_keys);
+                RepeatedField<google::protobuf::int64_t>* blob_keys,
+                int32_t* code, std::string* msg, uint32_t* count);
 
     bool Delete(const std::shared_ptr<IndexDef> index_def,
-                const std::string& comparable_key, rocksdb::WriteBatch* batch);
-    bool DeletePk(const rocksdb::Slice& pk_slice, rocksdb::WriteBatch* batch);
+                const std::string& comparable_key, rocksdb::WriteBatch* batch,
+                uint32_t* count);
+    bool DeletePk(const rocksdb::Slice& pk_slice, rocksdb::WriteBatch* batch,
+            uint32_t* count);
 
     rtidb::storage::RelationalTableTraverseIterator* NewTraverse(
         uint32_t idx, uint64_t snapshot_id);
@@ -119,7 +123,8 @@ class RelationalTable {
 
     bool Update(const ::google::protobuf::RepeatedPtrField<
                     ::rtidb::api::Columns>& cd_columns,
-                const ::rtidb::api::Columns& col_columns);
+                const ::rtidb::api::Columns& col_columns,
+                int32_t* code, std::string* msg, uint32_t* count);
 
     inline ::rtidb::common::StorageMode GetStorageMode() const {
         return storage_mode_;
@@ -197,7 +202,8 @@ class RelationalTable {
     bool UpdateDB(const std::shared_ptr<IndexDef> index_def,
                   const std::string& comparable_key,
                   const std::map<std::string, int>& col_idx_map,
-                  const Schema& value_schema, const std::string& col_value);
+                  const Schema& value_schema, const std::string& col_value,
+                  uint32_t* count);
     bool GetPackedField(const int8_t* row, uint32_t idx,
                         ::rtidb::type::DataType data_type,
                         ::rtidb::type::IndexType idx_type,

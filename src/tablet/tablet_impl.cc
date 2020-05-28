@@ -610,7 +610,7 @@ void TabletImpl::Get(RpcController* controller,
 
 void TabletImpl::Update(RpcController* controller,
                         const ::rtidb::api::UpdateRequest* request,
-                        ::rtidb::api::GeneralResponse* response,
+                        ::rtidb::api::UpdateResponse* response,
                         Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (follower_.load(std::memory_order_relaxed)) {
@@ -630,17 +630,27 @@ void TabletImpl::Update(RpcController* controller,
             return;
         }
     }
-    bool ok =
-        r_table->Update(request->condition_columns(), request->value_columns());
+    int32_t code = 0;
+    std::string msg;
+    uint32_t count = 0;
+    bool ok = r_table->Update(request->condition_columns(),
+            request->value_columns(), &code, &msg, &count);
     if (!ok) {
-        response->set_code(::rtidb::base::ReturnCode::kUpdateFailed);
-        response->set_msg("update failed");
+        if (code == rtidb::base::ReturnCode::kIdxNameNotFound
+                || code == rtidb::base::ReturnCode::kColNameNotFound) {
+            response->set_code(code);
+            response->set_msg(msg);
+        } else {
+            response->set_code(::rtidb::base::ReturnCode::kUpdateFailed);
+            response->set_msg("update failed");
+        }
         PDLOG(WARNING, "update failed. tid %u, pid %u", request->tid(),
               request->pid());
         return;
     }
     response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
+    response->set_count(count);
 }
 
 void TabletImpl::Put(RpcController* controller,
@@ -1673,8 +1683,8 @@ void TabletImpl::Traverse(RpcController* controller,
             if (!r_table->GetCombinePk(
                         request->read_option().index(), &combine_pk)) {
                 response->set_code(
-                        ::rtidb::base::ReturnCode::kGetCombinePkFailed);
-                response->set_msg("get combine pk failed");
+                        ::rtidb::base::ReturnCode::kIdxNameNotFound);
+                response->set_msg("index col name not found");
                 delete it;
                 return;
             }
@@ -1738,7 +1748,7 @@ void TabletImpl::Traverse(RpcController* controller,
 
 void TabletImpl::Delete(RpcController* controller,
                         const ::rtidb::api::DeleteRequest* request,
-                        rtidb::api::GeneralResponse* response, Closure* done) {
+                        rtidb::api::DeleteResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (follower_.load(std::memory_order_relaxed)) {
         response->set_code(::rtidb::base::ReturnCode::kIsFollowerCluster);
@@ -1820,12 +1830,17 @@ void TabletImpl::Delete(RpcController* controller,
         }
         return;
     } else {
+        int32_t code = 0;
+        std::string msg;
+        uint32_t count = 0;
         bool ok = false;
         if (request->receive_blobs()) {
             auto blobs = response->mutable_additional_ids();
-            ok = r_table->Delete(request->condition_columns(), blobs);
+            ok = r_table->Delete(request->condition_columns(), blobs,
+                    &code, &msg, &count);
         } else {
-            ok = r_table->Delete(request->condition_columns());
+            ok = r_table->Delete(request->condition_columns(),
+                    &code, &msg, &count);
         }
         if (ok) {
             DEBUGLOG("delete ok. tid %u, pid %u, key %s, idx_name %s",
@@ -1834,12 +1849,18 @@ void TabletImpl::Delete(RpcController* controller,
             response->set_code(::rtidb::base::ReturnCode::kOk);
             response->set_msg("ok");
         } else {
+            if (code == rtidb::base::ReturnCode::kIdxNameNotFound) {
+                response->set_code(code);
+                response->set_msg(msg);
+            } else {
+                response->set_code(::rtidb::base::ReturnCode::kDeleteFailed);
+                response->set_msg("delete failed");
+            }
             PDLOG(WARNING, "delete fail. tid %u, pid %u, key %s, idx_name %s",
-                  request->tid(), request->pid(), request->key().c_str(),
-                  request->idx_name().c_str());
-            response->set_code(::rtidb::base::ReturnCode::kDeleteFailed);
-            response->set_msg("delete failed");
+                    request->tid(), request->pid(), request->key().c_str(),
+                    request->idx_name().c_str());
         }
+        response->set_count(count);
     }
 }
 
@@ -1869,8 +1890,7 @@ void TabletImpl::BatchQuery(RpcController* controller,
     bool ok = r_table->Query(request->read_option(), pairs, &scount,
             &code, &msg);
     if (!ok) {
-        if (code == rtidb::base::ReturnCode::kIdxNameNotFound ||
-                code == rtidb::base::ReturnCode::kGetCombineStrFailed) {
+        if (code == rtidb::base::ReturnCode::kIdxNameNotFound) {
             response->set_code(code);
             response->set_msg(msg);
         } else {
