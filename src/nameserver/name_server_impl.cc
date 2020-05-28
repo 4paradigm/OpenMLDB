@@ -4757,11 +4757,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
             }
         }
         if (has_blob) {
-            std::shared_ptr<::rtidb::nameserver::TableInfo> blob_info(
-                request->table_info().New());
-            blob_info->set_tid(table_info->tid());
-            blob_info->set_name(table_info->name());
-            int ret = CreateBlobTable(blob_info);
+            int ret = CreateBlobTable(table_info);
             if (ret != 0) {
                 if (ret == 1) {
                     response->set_code(ReturnCode::kSetPartitionInfoFailed);
