@@ -3077,16 +3077,16 @@ int NameServerImpl::DropTableOnBlob(std::shared_ptr<TableInfo> table_info) {
     std::string endpoint;
     const std::string& name = table_info->name();
     if (!table_info->has_blob_info()) {
-        PDLOG(WARNING, "table[%s] don't have blob", name);
+        PDLOG(WARNING, "table[%s] don't have blob", name.c_str());
         return 0;
     }
     if (table_info->blob_info().blob_partition_size() < 1) {
-        PDLOG(WARNING, "table[%s] blob partition is empty", name);
+        PDLOG(WARNING, "table[%s] blob partition is empty", name.c_str());
         return 0;
     }
 
     uint32_t pid = 0;
-    PDLOG(INFO, "begin drop table[%s] blob", name);
+    PDLOG(INFO, "begin drop table[%s] blob", name.c_str());
     for (const auto& part : table_info->blob_info().blob_partition()) {
         for (const auto& meta : part.partition_meta()) {
             auto& ep = meta.endpoint();
@@ -3094,7 +3094,7 @@ int NameServerImpl::DropTableOnBlob(std::shared_ptr<TableInfo> table_info) {
         }
         pid++;
     }
-    PDLOG(INFO, "drop table[%s] blob done", name);
+    PDLOG(INFO, "drop table[%s] blob done", name.c_str());
     return 0;
 }
 
