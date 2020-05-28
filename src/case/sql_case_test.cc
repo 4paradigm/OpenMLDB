@@ -249,7 +249,21 @@ TEST_F(SQLCaseTest, ExtractDataTest) {
         }
     }
 }
+TEST_F(SQLCaseTest, ExtractInsertSqlTest) {
+    const std::string schema_str =
+        "col0:string, col1:int32, col2:int16, col3:float, col4:double, "
+        "col5:int64, col6:string, col7:timestamp";
 
+    std::string row_str = "0, 1, 5, 1.1, 11.1, 1, 1, 1587647803000\n";
+    type::TableDef output_table;
+    ASSERT_TRUE(SQLCase::ExtractSchema(schema_str, output_table));
+    std::string create_sql;
+    ASSERT_TRUE(
+        SQLCase::BuildInsertSQLFromRow(output_table, row_str, &create_sql));
+    ASSERT_EQ(
+        "Insert into  values('0', 1, 5, 1.1, 11.1, 1, '1', 1587647803000)",
+        create_sql);
+}
 TEST_F(SQLCaseTest, ExtractRowTest) {
     {
         const std::string schema_str =
@@ -368,6 +382,30 @@ TEST_F(SQLCaseTest, ExtractSQLCase) {
         output_table.set_name(table.name());
         output_table.set_catalog(table.catalog());
         ASSERT_EQ(table.DebugString(), output_table.DebugString());
+
+        // Check Create SQL
+        {
+            std::string create_sql;
+            ASSERT_TRUE(
+                SQLCase::BuildCreateSQLFromSchema(output_table, &create_sql));
+            LOG(INFO) << create_sql;
+            ASSERT_EQ(
+                "CREATE TABLE t1(\n"
+                "col0 string,\n"
+                "col1 int,\n"
+                "col2 smallint,\n"
+                "col3 float,\n"
+                "col4 double,\n"
+                "col5 bigint,\n"
+                "col6 string,\n"
+                "index(key=(col1), ts=col5)\n"
+                ")",
+                create_sql);
+        }
+    }
+
+    {
+
     }
 
     // Check Data

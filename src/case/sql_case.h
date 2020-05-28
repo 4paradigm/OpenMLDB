@@ -53,8 +53,11 @@ class SQLCase {
 
     bool AddInput(const TableInfo& table_data);
     static bool TypeParse(const std::string& row_str, fesql::type::Type* type);
+    static const std::string TypeString(fesql::type::Type type);
     static bool ExtractSchema(const std::string& schema_str,
                               type::TableDef& table);  // NOLINT
+    static bool BuildCreateSQLFromSchema(const type::TableDef& table,
+                                         std::string* create_sql);  // NOLINT
     static bool ExtractIndex(const std::string& index_str,
                              type::TableDef& table);  // NOLINT
     static bool ExtractTableDef(const std::string& schema_str,
@@ -63,6 +66,9 @@ class SQLCase {
     static bool ExtractRows(const vm::Schema& schema,
                             const std::string& data_str,
                             std::vector<fesql::codec::Row>& rows);  // NOLINT
+    static bool BuildInsertSQLFromRow(const type::TableDef& table,
+                                        const std::string& row_str,
+                                        std::string* create_sql);
     static bool ExtractRow(const vm::Schema& schema, const std::string& row_str,
                            int8_t** out_ptr, int32_t* out_size);
     static bool CreateTableInfoFromYamlNode(const YAML::Node& node,
