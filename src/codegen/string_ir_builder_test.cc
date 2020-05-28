@@ -138,9 +138,15 @@ TEST_F(StringIRBuilderTest, StringCopyFromTest) {
 
 TEST_F(StringIRBuilderTest, StringRefOp) {
     codec::StringRef s1("string1");
-    codec::StringRef s2("string2");
+    ASSERT_EQ(7, s1.size_);
+    ASSERT_TRUE(s1 != codec::StringRef("string0"));
+    ASSERT_TRUE(s1 >= codec::StringRef("string"));
+    ASSERT_TRUE(s1 > codec::StringRef("string0"));
     ASSERT_TRUE(s1 == codec::StringRef("string1"));
-    ASSERT_TRUE(s1 != s2);
+    ASSERT_TRUE(s1 < codec::StringRef("string2"));
+    ASSERT_TRUE(s1 <= codec::StringRef("string10"));
+    ASSERT_EQ(codec::StringRef("string1string2"),
+              codec::StringRef("string1") + codec::StringRef("string2"));
 }
 
 }  // namespace codegen

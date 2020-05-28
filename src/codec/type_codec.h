@@ -32,7 +32,9 @@ struct StringRef {
     StringRef() : size_(0), data_(nullptr) {}
     explicit StringRef(const std::string& str)
         : size_(str.size()), data_(strdup(str.data())) {}
-    StringRef(uint32_t size, char* data) : size_(size), data_(data) {}
+    StringRef(uint32_t size, char* data) : size_(size), data_(strdup(data)) {}
+    ~StringRef() {}
+    const bool IsNull() const { return nullptr == data_; }
     const std::string ToString() const {
         return size_ == 0 ? "" : std::string(data_, size_);
     }
@@ -50,6 +52,19 @@ inline static int compare(const StringRef& a, const StringRef& b) {
             r = +1;
     }
     return r;
+}
+static const StringRef operator+(const StringRef& a, const StringRef& b) {
+    StringRef str;
+    str.size_ = a.size_ + b.size_;
+    str.data_ = static_cast<char*>(malloc(str.size_ + 1));
+    if (a.size_ > 0) {
+        memcpy(str.data_, a.data_, a.size_);
+    }
+    if (b.size_ > 0) {
+        memcpy(str.data_ + a.size_, b.data_, b.size_);
+    }
+    str.data_[str.size_] = '\0';
+    return str;
 }
 static bool operator==(const StringRef& a, const StringRef& b) {
     return 0 == compare(a, b);
@@ -110,11 +125,6 @@ static bool operator==(const Timestamp& a, const Timestamp& b) {
 static bool operator!=(const Timestamp& a, const Timestamp& b) {
     return a.ts_ != b.ts_;
 }
-struct String {
-    uint32_t size;
-    char* data;
-};
-
 struct ListRef {
     int8_t* list;
 };
