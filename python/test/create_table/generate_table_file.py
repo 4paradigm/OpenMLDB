@@ -1,4 +1,5 @@
 import io
+from typing import List
 
 storageModSet = set(["ssd", "hdd"])
 dataTypeSet = set(["bool", "smallint", "int", "bigint", "float", "double", "timestamp", "date", "varchar", "string", "blob"])
@@ -20,7 +21,7 @@ class Column:
     return output.getvalue()
 
 class Idx:
-  def __init__(self, name: str, cols: [str], idxType: str):
+  def __init__(self, name: str, cols: List[str], idxType: str):
     self.name = name
     self.cols = []
     colSet = set()
@@ -70,7 +71,7 @@ class tableBuilder:
 
     return self
 
-  def addIdx(self, name: str, cols: [str], idxType: str):
+  def addIdx(self, name: str, cols: List[str], idxType: str):
     name = name.lower()
     cols = [ i.lower() for i in cols]
     idxType = idxType.lower()
@@ -129,7 +130,7 @@ def generate_date():
 def generate_rt_ck():
   table = "rt_ck"
   b = tableBuilder(table, "hdd", "Relational")
-  b.addCol("id", "bigint", True).addCol("name", "varchar", True).addCol("mcc", "int", True).addCol("attribute", "varchar", True).addCol("image", "blob", False).addIdx("index_1", ["id","name"], "primaryKey").addIdx("index_2", "mcc", "nounique")
+  b.addCol("id", "bigint", True).addCol("name", "varchar", True).addCol("mcc", "int", True).addCol("attribute", "varchar", True).addCol("image", "blob", False).addIdx("index_1", ["id","name"], "primaryKey").addIdx("index_2", ["mcc"], "nounique")
   with open("{}.txt".format(table), "w") as f:
     f.write(b.SerializeToString())
 
