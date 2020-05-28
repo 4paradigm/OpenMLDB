@@ -5,6 +5,8 @@
 
 #include "storage/object_store.h"
 
+#include <utility>
+
 #include "codec/codec.h"
 
 namespace rtidb {
@@ -13,12 +15,12 @@ namespace storage {
 static bool options_initialized = false;
 
 ObjectStore::ObjectStore(const ::rtidb::blobserver::TableMeta& table_meta,
-                         const std::string& db_root_path)
-    : db_(NULL),
+                         std::string db_root_path)
+    : db_(nullptr),
       tid_(table_meta.tid()),
       pid_(table_meta.pid()),
       name_(table_meta.name()),
-      db_root_path_(db_root_path),
+      db_root_path_(std::move(db_root_path)),
       is_leader_(false),
       storage_mode_(table_meta.storage_mode()),
       id_generator_(),
@@ -33,7 +35,7 @@ bool ObjectStore::Init() {
     time_t before_time = 0;
     db_ = hs_open(path, 1, before_time, 16);
     if (db_ != NULL) {
-        thread_pool_.DelayTask(1000, boost::bind(&ObjectStore::DoFlash, this));
+        thread_pool_.DelayTask(1000, [this] { DoFlash(); });
         return true;
     }
     return false;
@@ -75,7 +77,7 @@ bool ObjectStore::Delete(int64_t key) {
 
 void ObjectStore::DoFlash() {
     hs_flush(db_, 1024, 600);
-    thread_pool_.DelayTask(1000, boost::bind(&ObjectStore::DoFlash, this));
+    thread_pool_.DelayTask(1000, [this] { DoFlash(); });
 }
 
 ::rtidb::common::StorageMode ObjectStore::GetStorageMode() const {

@@ -18,7 +18,6 @@ extern "C" {
 
 #include "proto/blob_server.pb.h"
 #include "proto/common.pb.h"
-#include "boost/bind.hpp"
 #include "thread_pool.h" // NOLINT
 
 namespace rtidb {
@@ -27,7 +26,7 @@ namespace storage {
 class ObjectStore {
  public:
     ObjectStore(const ::rtidb::blobserver::TableMeta& table_meta,
-                const std::string& db_root_path);
+                std::string  db_root_path);
 
     bool Init();
 
