@@ -64,16 +64,16 @@ SQLCases:
     desc: SELECT简单timestamp表达式
     mode: request
     db: db1
-    sql: select col1 as id, std_ts+1 as inc_ts from t1;
+    sql: select col1 as id, std_ts+1 as inc_ts, std_ts+1 > 1590115422000 as flag from t1;
     inputs:
       - name: t1
         resource: cases/resource/simple_t1_ts.yaml
     output:
-      schema: id:int32, inc_ts:timestamp
+      schema: id:int32, inc_ts:timestamp, flag:bool
       order: id
       data: |
-        1, 1590115420001
-        2, 1590115421001
-        3, 1590115422001
-        4, 1590115423001
-        5, 1590115424001
+        1, 1590115420001, 0
+        2, 1590115421001, 0
+        3, 1590115422001, 1
+        4, 1590115423001, 1
+        5, 1590115424001, 1

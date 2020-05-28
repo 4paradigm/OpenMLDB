@@ -258,18 +258,21 @@ SQLCases:
     desc: Window SQL Order By Timestamp, timestamp列聚合
     db: db1
     sql: |
-      SELECT col1 as id, col2, std_ts, sum(std_ts) OVER w1 as w1_col5_sum FROM t1
+      SELECT col1 as id, col2, std_ts, sum(std_ts) OVER w1 as w1_ts_sum,
+      min(std_ts) OVER w1 as w1_ts_min,
+      max(std_ts) OVER w1 as w1_ts_max
+      FROM t1
       WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.std_ts ROWS BETWEEN 3s PRECEDING AND CURRENT ROW) limit 10;
     inputs:
       - name: t1
         resource: cases/resource/simple_t1_ts.yaml
         index: index2:col2:std_ts
     output:
-      schema: id:int32, col2:int16, std_ts:timestamp, w1_col5_sum:timestamp
+      schema: id:int32, col2:int16, std_ts:timestamp, w1_ts_sum:timestamp, w1_ts_min:timestamp, w1_ts_max:timestamp
       order: id
       data: |
-        1, 5, 1590115420000, 1590115420000
-        2, 5, 1590115421000, 3180230841000
-        3, 55, 1590115422000, 1590115422000
-        4, 55, 1590115423000, 3180230845000
-        5, 55, 1590115424000, 4770346269000
+        1, 5, 1590115420000, 1590115420000, 1590115420000, 1590115420000
+        2, 5, 1590115421000, 3180230841000, 1590115420000, 1590115421000
+        3, 55, 1590115422000, 1590115422000, 1590115422000, 1590115422000
+        4, 55, 1590115423000, 3180230845000, 1590115422000, 1590115423000
+        5, 55, 1590115424000, 4770346269000, 1590115422000, 1590115424000

@@ -41,6 +41,8 @@ bool SQLCase::TypeParse(const std::string& type_str, fesql::type::Type* type) {
         *type = type::kVarchar;
     } else if ("timestamp" == type_str) {
         *type = type::kTimestamp;
+    } else if ("bool" == type_str) {
+        *type = type::kBool;
     } else {
         LOG(WARNING) << "Invalid Type";
         return false;
@@ -238,6 +240,14 @@ bool SQLCase::ExtractRow(const vm::Schema& schema, const std::string& row_str,
             case type::kDouble: {
                 double d = boost::lexical_cast<double>(item_vec[index]);
                 if (!rb.AppendDouble(d)) {
+                    LOG(WARNING) << "Fail Append Column " << index;
+                    return false;
+                }
+                break;
+            }
+            case type::kBool: {
+                bool d = boost::lexical_cast<bool>(item_vec[index]);
+                if (!rb.AppendBool(d)) {
                     LOG(WARNING) << "Fail Append Column " << index;
                     return false;
                 }

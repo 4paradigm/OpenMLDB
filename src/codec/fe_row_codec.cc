@@ -636,6 +636,13 @@ std::string RowView::GetAsString(uint32_t idx) {
             }
             break;
         }
+        case fesql::type::kBool: {
+            bool value;
+            if (0 == GetBool(idx, &value)) {
+                return std::to_string(value);
+            }
+            break;
+        }
         case fesql::type::kVarchar: {
             char* str = nullptr;
             uint32_t str_size;
