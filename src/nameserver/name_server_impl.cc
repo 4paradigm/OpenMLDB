@@ -3095,6 +3095,7 @@ int NameServerImpl::DropTableOnBlob(std::shared_ptr<TableInfo> table_info) {
         pid++;
     }
     PDLOG(INFO, "drop table[%s] blob done", name);
+    return 0;
 }
 
 void NameServerImpl::ConfSet(RpcController* controller,
