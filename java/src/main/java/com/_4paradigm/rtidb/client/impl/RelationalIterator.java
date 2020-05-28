@@ -293,7 +293,7 @@ public class RelationalIterator {
                 }
                 return;
             } else if (response.getCode() != 0) {
-                if (response.getCode() == 152 || response.getCode() == 108) {
+                if (response.getCode() == 108) {
                     throw new TabletException(response.getCode(), response.getMsg());
                 }
                 offset = 0;

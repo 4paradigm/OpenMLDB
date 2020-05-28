@@ -7,12 +7,13 @@ import java.util.concurrent.Future;
 
 public interface TabletServer {
 
-    Tablet.GeneralResponse update(Tablet.UpdateRequest request);
+    Tablet.UpdateResponse update(Tablet.UpdateRequest request);
     Tablet.PutResponse put(Tablet.PutRequest request);
     Tablet.GetResponse get(Tablet.GetRequest request);
     Tablet.ScanResponse scan(Tablet.ScanRequest request);
     Tablet.CountResponse count(Tablet.CountRequest request);
-    Tablet.GeneralResponse delete(Tablet.DeleteRequest request);
+
+    Tablet.DeleteResponse delete(Tablet.DeleteRequest request);
     Tablet.TraverseResponse traverse(Tablet.TraverseRequest request);
     Tablet.BatchQueryResponse batchQuery(Tablet.BatchQueryRequest request);
     Tablet.CreateTableResponse createTable(Tablet.CreateTableRequest request);
