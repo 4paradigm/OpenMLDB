@@ -149,6 +149,8 @@ void BlobServerImpl::CreateTable(RpcController *controller,
         response->set_code(ReturnCode::kCreateTableFailed);
         response->set_msg("init object store failed");
     }
+    response->set_code(ReturnCode::kOk);
+    response->set_msg("ok");
     std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
     object_stores_[tid].insert(std::make_pair(pid, store));
 }
@@ -160,13 +162,15 @@ void BlobServerImpl::Get(RpcController *controller, const GetRequest *request,
     uint32_t pid = request->pid();
     std::shared_ptr<ObjectStore> store = GetStore(tid, pid);
     if (!store) {
-        PDLOG(WARNING, "table is not exist. tid[%u] pid[%u", tid, pid);
+        PDLOG(WARNING, "table is not exist. tid[%u] pid[%u]", tid, pid);
         response->set_code(ReturnCode::kTableIsNotExist);
         response->set_msg("table is not exist");
         return;
     }
     rtidb::base::Slice slice = store->Get(request->key());
     if (slice.empty()) {
+        PDLOG(WARNING, "key %lld not found. tid[%u] pid[%u]",
+              request->key(), tid, pid);
         response->set_code(ReturnCode::kKeyNotFound);
         response->set_msg("key not found");
     } else {
@@ -204,6 +208,8 @@ void BlobServerImpl::Put(RpcController *controller, const PutRequest *request,
         ok = store->Store(request->data(), &key);
     }
     if (!ok) {
+        PDLOG(WARNING, "put %lld failed. tid[%u] pid[%u]",
+              request->has_key() ? request->key() : key, tid, pid);
         response->set_code(ReturnCode::kPutFailed);
         response->set_msg("put failed");
         return;
@@ -227,18 +233,21 @@ void BlobServerImpl::Delete(RpcController *controller,
         uint32_t pid = request->pid();
         std::shared_ptr<ObjectStore> store = GetStore(tid, pid);
         if (!store) {
-            PDLOG(WARNING, "table is not exist. tid[%u] pid[%u", tid, pid);
+            PDLOG(WARNING, "table is not exist. tid[%u] pid[%u]", tid, pid);
             response->set_code(ReturnCode::kTableIsNotExist);
             response->set_msg("table is not exist");
             return;
         }
         bool ok = store->Delete(request->key());
         if (!ok) {
+            PDLOG(WARNING, "delete %ll failed. tid[%u] pid[%u]", request->key(),
+                  tid, pid);
             response->set_code(ReturnCode::kKeyNotFound);
             response->set_msg("key not found");
             return;
         }
         response->set_code(ReturnCode::kOk);
+        response->set_msg("ok");
     }
 }
 
@@ -282,6 +291,8 @@ void BlobServerImpl::LoadTable(RpcController *controller,
         response->set_code(ReturnCode::kCreateTableFailed);
         response->set_msg("init object store failed");
     }
+    response->set_code(ReturnCode::kOk);
+    response->set_msg("ok");
     std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
     object_stores_[tid].insert(std::make_pair(pid, store));
 }
@@ -372,6 +383,7 @@ void BlobServerImpl::DropTableInternal(uint32_t tid, uint32_t pid) {
     if (object_stores_[tid].empty()) {
         object_stores_.erase(tid);
     }
+    PDLOG(INFO, "drop table tid[%u] pid[%u] success", tid, pid);
 }
 
 }  // namespace blobserver
