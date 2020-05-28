@@ -482,8 +482,9 @@ TEST_F(BufIRBuilderTest, native_test_load_string) {
     uint32_t size = 0;
     type::TableDef table;
     BuildT1Buf(table, &ptr, &size);
-    RunCaseV1<codec::StringRef>(codec::StringRef("1"), table,
-                                ::fesql::type::kVarchar, "col6", ptr, size);
+    RunCaseV1<codec::StringRef>(codec::StringRef(strlen("1"), strdup("1")),
+                                table, ::fesql::type::kVarchar, "col6", ptr,
+                                size);
     free(ptr);
 }
 

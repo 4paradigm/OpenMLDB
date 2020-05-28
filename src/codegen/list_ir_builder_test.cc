@@ -729,8 +729,9 @@ TEST_F(ListIRBuilderTest, list_string_at_test) {
     std::vector<Row> rows;
     type::TableDef table;
     BuildWindow(table, rows, &ptr);
-    RunListAtCase<codec::StringRef>(codec::StringRef("1"), table,
-                                    ::fesql::type::kVarchar, "col6", ptr, 0);
+    RunListAtCase<codec::StringRef>(codec::StringRef(strlen("1"), strdup("1")),
+                                    table, ::fesql::type::kVarchar, "col6", ptr,
+                                    0);
     free(ptr);
 }
 
@@ -860,7 +861,7 @@ TEST_F(ListIRBuilderTest, list_string_iterator_next_test) {
     std::vector<Row> rows;
     type::TableDef table;
     BuildWindow(table, rows, &ptr);
-    codec::StringRef str("1");
+    codec::StringRef str(strlen("1"), strdup("1"));
     RunListIteratorNextCase(str, table, ::fesql::type::kVarchar, "col6", ptr);
     free(ptr);
 }

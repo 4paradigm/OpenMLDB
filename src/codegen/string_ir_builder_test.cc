@@ -59,7 +59,7 @@ TEST_F(StringIRBuilderTest, NewStringTest) {
     auto load_fn_jit = ExitOnErr(J->lookup("new_empty_string"));
     void (*decode)(codec::StringRef *) =
         (void (*)(codec::StringRef *))load_fn_jit.getAddress();
-    codec::StringRef dist("no empty");
+    codec::StringRef dist;
     decode(&dist);
     ASSERT_EQ("", dist.ToString());
 }
@@ -94,12 +94,16 @@ TEST_F(StringIRBuilderTest, StringGetAndSet) {
     auto J = ExitOnErr(LLJITBuilder().create());
     ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
     auto load_fn_jit = ExitOnErr(J->lookup("new_string"));
-    codec::StringRef src("hello");
-    codec::StringRef dist("");
+    char *hello_data = strdup("hello");
+    size_t hello_size = strlen("hello");
+
+    codec::StringRef src(hello_size, hello_data);
+    codec::StringRef dist;
     void (*decode)(codec::StringRef *, codec::StringRef *) = (void (*)(
         codec::StringRef *, codec::StringRef *))load_fn_jit.getAddress();
     decode(&src, &dist);
     ASSERT_EQ("hello", dist.ToString());
+    free(hello_data);
 }
 
 TEST_F(StringIRBuilderTest, StringCopyFromTest) {
@@ -128,25 +132,32 @@ TEST_F(StringIRBuilderTest, StringCopyFromTest) {
     auto J = ExitOnErr(LLJITBuilder().create());
     ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
     auto load_fn_jit = ExitOnErr(J->lookup("copy_from_string"));
-    codec::StringRef src("hello");
-    codec::StringRef dist("");
+    codec::StringRef src(strlen("hello"), strdup("hello"));
+    codec::StringRef dist;
     void (*decode)(codec::StringRef *, codec::StringRef *) = (void (*)(
         codec::StringRef *, codec::StringRef *))load_fn_jit.getAddress();
     decode(&src, &dist);
     ASSERT_EQ("hello", dist.ToString());
+    free(src.data_);
 }
 
 TEST_F(StringIRBuilderTest, StringRefOp) {
-    codec::StringRef s1("string1");
+    codec::StringRef s1(strlen("string1"), strdup("string1"));
+    codec::StringRef s0(strlen("string0"), strdup("string0"));
+    codec::StringRef s2(strlen("string2"), strdup("string2"));
+    codec::StringRef s1_2(strlen("string1"), strdup("string1"));
     ASSERT_EQ(7, s1.size_);
-    ASSERT_TRUE(s1 != codec::StringRef("string0"));
-    ASSERT_TRUE(s1 >= codec::StringRef("string"));
-    ASSERT_TRUE(s1 > codec::StringRef("string0"));
-    ASSERT_TRUE(s1 == codec::StringRef("string1"));
-    ASSERT_TRUE(s1 < codec::StringRef("string2"));
-    ASSERT_TRUE(s1 <= codec::StringRef("string10"));
-    ASSERT_EQ(codec::StringRef("string1string2"),
-              codec::StringRef("string1") + codec::StringRef("string2"));
+    ASSERT_TRUE(s1 == s1_2);
+    ASSERT_TRUE(s1 != s2);
+    ASSERT_TRUE(s1 >= s0);
+    ASSERT_TRUE(s1 > s0);
+    ASSERT_TRUE(s1 < s2);
+    ASSERT_TRUE(s1 <= s2);
+
+    free(s0.data_);
+    free(s1.data_);
+    free(s2.data_);
+    free(s1_2.data_);
 }
 
 }  // namespace codegen

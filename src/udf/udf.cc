@@ -42,7 +42,7 @@ int32_t inc_int32(int32_t i) { return inc<int32_t>(i); }
 
 template <class V>
 V sum_list(int8_t *input) {
-    V result = V(0);
+    V result = V();
     if (nullptr == input) {
         return result;
     }
@@ -91,7 +91,7 @@ bool avg_struct_list(int8_t *input, V *v) {
     if (nullptr == input) {
         return false;
     }
-    V result = V(0);
+    V result = V();
     ::fesql::codec::ListRef *list_ref = (::fesql::codec::ListRef *)(input);
     ::fesql::codec::ListV<V> *col =
         (::fesql::codec::ListV<V> *)(list_ref->list);
@@ -122,7 +122,7 @@ int64_t count_list(int8_t *input) {
 
 template <class V>
 V max_list(int8_t *input) {
-    V result = V(0);
+    V result = V();
     if (nullptr == input) {
         return result;
     }
@@ -154,7 +154,7 @@ bool max_struct_list(int8_t *input, V *v) {
 
 template <class V>
 V min_list(int8_t *input) {
-    V result = V(0);
+    V result = V();
     if (nullptr == input) {
         return result;
     }
