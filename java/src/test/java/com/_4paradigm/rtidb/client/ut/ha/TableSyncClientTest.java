@@ -2579,7 +2579,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 it = tableSyncClient.query(name, ro);
                 Assert.assertFalse(it.valid());
             }
-            it = tableSyncClient.traverse(name, ro);
+            it = tableSyncClient.traverse(name, (ReadOption) null);
             Assert.assertEquals(it.getCount(), 2);
             Assert.assertTrue(it.valid());
             Map queryMap = it.getDecodedValue();
@@ -2607,7 +2607,7 @@ public class TableSyncClientTest extends TestCaseBase {
             tableSyncClient.put(name, data, wo);
 
             //traverse
-            it = tableSyncClient.traverse(name, ro);
+            it = tableSyncClient.traverse(name, (ReadOption) null);
             Assert.assertEquals(it.getCount(), 4);
 
             //delete no unique
