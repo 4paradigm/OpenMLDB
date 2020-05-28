@@ -72,6 +72,7 @@ public class DefaultKvIterator implements KvIterator {
     private List<ColumnDesc> schema;
     private Long network = 0l;
     private int count;
+    private int iter_count = 0;
     private RTIDBClientConfig config = null;
     private NS.CompressType compressType = NS.CompressType.kNoCompress;
     private TableHandler th = null;
@@ -153,7 +154,7 @@ public class DefaultKvIterator implements KvIterator {
 	}
 
 	public boolean valid() {
-        return slice != null;
+        return slice != null && iter_count <= count;
     }
 
     public long getKey() {
@@ -213,6 +214,7 @@ public class DefaultKvIterator implements KvIterator {
         } else {
             slice = null;
         }
+        iter_count++;
     }
 
     @Override

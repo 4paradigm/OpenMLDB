@@ -20,7 +20,6 @@ public class ScanFuture implements Future<KvIterator> {
     private Future<Tablet.ScanResponse> f;
     private TableHandler t;
     private ProjectionInfo projectionInfo = null;
-    private List<ColumnDesc> projection;
 
     public ScanFuture(Future<Tablet.ScanResponse> f, TableHandler t) {
         this.f = f;
@@ -39,11 +38,6 @@ public class ScanFuture implements Future<KvIterator> {
     }
 
     public ScanFuture() {}
-    public ScanFuture(Future<Tablet.ScanResponse> f, TableHandler t, List<ColumnDesc> projection) {
-        this.f = f;
-        this.t = t;
-        this.projection = projection;
-    }
 
     public static ScanFuture wrappe(Future<Tablet.ScanResponse> f, TableHandler t) {
         return new ScanFuture(f, t);
@@ -71,7 +65,6 @@ public class ScanFuture implements Future<KvIterator> {
     @Override
     public KvIterator get() throws InterruptedException, ExecutionException {
         ScanResponse response = f.get();
-        Long network = -1l;
         if (response == null) {
             throw new ExecutionException("Connection error", null);
         }
@@ -114,11 +107,12 @@ public class ScanFuture implements Future<KvIterator> {
 
     private KvIterator getNewKvIterator(ScanResponse response) {
         RowKvIterator kit = null;
-        if (projection != null) {
-            kit = new RowKvIterator(response.getPairs(), projection, response.getCount());
+        if (projectionInfo != null && projectionInfo.getProjectionSchema() != null) {
+            kit = new RowKvIterator(response.getPairs(), projectionInfo.getProjectionSchema(), response.getCount());
         }else {
             kit = new RowKvIterator(response.getPairs(), t.getSchema(), response.getCount());
         }
+        kit.setCount(response.getCount());
         kit.setCompressType(t.getTableInfo().getCompressType());
         return kit;
 

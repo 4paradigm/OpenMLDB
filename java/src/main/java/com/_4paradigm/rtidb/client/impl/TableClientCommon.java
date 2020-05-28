@@ -1,8 +1,6 @@
 package com._4paradigm.rtidb.client.impl;
 
-import com._4paradigm.rtidb.client.ScanFuture;
-import com._4paradigm.rtidb.client.ScanOption;
-import com._4paradigm.rtidb.client.TabletException;
+import com._4paradigm.rtidb.client.*;
 import com._4paradigm.rtidb.client.ha.PartitionHandler;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.TableHandler;
@@ -362,7 +360,7 @@ public class TableClientCommon {
         }
     }
 
-    public static ScanFuture scanInternal(int tid, int pid, String key, long st, long et, TableHandler th, ScanOption option) throws TimeoutException, TabletException{
+    public static ScanFuture scanInternal(int tid, int pid, String key, long st, long et, TableHandler th, ScanOption option) throws TabletException{
         PartitionHandler ph = th.getHandler(pid);
         TabletServer ts = ph.getReadHandler(th.getReadStrategy());
         if (ts == null) {
@@ -398,7 +396,8 @@ public class TableClientCommon {
                 }
                 Tablet.ScanRequest request = builder.build();
                 Future<Tablet.ScanResponse> response = ts.scan(request, TableClientCommon.scanFakeCallback);
-                return new ScanFuture(response, th, schema);
+                ProjectionInfo projectionInfo = new ProjectionInfo(schema);
+                return new ScanFuture(response, th, projectionInfo);
             }
             default:
             {
@@ -443,6 +442,71 @@ public class TableClientCommon {
             return true;
         }
         return false;
+    }
+
+    public static GetFuture getInternal(int pid, String key, long time, GetOption getOption, TableHandler th) throws TabletException {
+        PartitionHandler ph = th.getHandler(pid);
+        TabletServer ts = ph.getReadHandler(th.getReadStrategy());
+        if (ts == null) {
+            throw new TabletException("Cannot find available tabletServer with tid " + th.getTableInfo().getTid());
+        }
+        List<ColumnDesc> schema = null;
+        Tablet.GetRequest.Builder builder = Tablet.GetRequest.newBuilder();
+        builder.setTid(th.getTableInfo().getTid());
+        builder.setPid(pid);
+        builder.setKey(key);
+        builder.setTs(time);
+        builder.setEt(getOption.getEt());
+        if (getOption.getStType() != null) builder.setType(getOption.getStType());
+        if (getOption.getEtType() != null) builder.setEtType(getOption.getEtType());
+        if (getOption.getIdxName() != null && !getOption.getIdxName().isEmpty()) {
+            builder.setIdxName(getOption.getIdxName());
+        }
+        if (getOption.getTsName()!= null && !getOption.getTsName().isEmpty()) {
+            builder.setTsName(getOption.getTsName());
+        }
+        if (th.getFormatVersion() == 1 ) {
+            if (getOption.getProjection().size() > 0) {
+                schema = new ArrayList<>();
+                for (String name : getOption.getProjection()) {
+                    Integer idx = th.getSchemaPos().get(name);
+                    if (idx == null) {
+                        throw new TabletException("Cannot find column " + name);
+                    }
+                    builder.addProjection(idx);
+                    schema.add(th.getSchema().get(idx));
+                }
+            }
+            Tablet.GetRequest request = builder.build();
+            Future<Tablet.GetResponse> future = ts.get(request, TableClientCommon.getFakeCallback);
+            ProjectionInfo projectionInfo = new ProjectionInfo(schema);
+            return new GetFuture(future, th, projectionInfo);
+        }else {
+            if (getOption.getProjection().size() > 0) {
+                List<Integer> projectIdx = new ArrayList<>();
+                BitSet bitSet = new BitSet(th.getSchema().size());
+                int maxIndex = -1;
+                for (String name : getOption.getProjection()) {
+                    Integer idx = th.getSchemaPos().get(name);
+                    if (idx == null) {
+                        throw new TabletException("Cannot find column " + name);
+                    }
+                    projectIdx.add(idx);
+                    if (idx > maxIndex) {
+                        maxIndex = idx;
+                    }
+                    bitSet.set(idx, true);
+                }
+                ProjectionInfo projectionInfo = new ProjectionInfo(projectIdx, bitSet, maxIndex);
+                Tablet.GetRequest request = builder.build();
+                Future<Tablet.GetResponse> future = ts.get(request, TableClientCommon.getFakeCallback);
+                return new GetFuture(future, th, projectionInfo);
+            }else {
+                Tablet.GetRequest request = builder.build();
+                Future<Tablet.GetResponse> future = ts.get(request, TableClientCommon.getFakeCallback);
+                return new GetFuture(future, th);
+            }
+        }
     }
 
 }

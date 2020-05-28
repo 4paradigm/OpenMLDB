@@ -2,7 +2,6 @@ package com._4paradigm.rtidb.client.schema;
 
 import java.util.BitSet;
 import java.util.List;
-import java.util.Map;
 
 public class ProjectionInfo {
     private int formatVersion;
@@ -29,6 +28,10 @@ public class ProjectionInfo {
 
     public List<Integer> getProjectionCol() {
         return cols;
+    }
+
+    public List<ColumnDesc> getProjectionSchema() {
+        return schema;
     }
 
     public BitSet getBitSet() {

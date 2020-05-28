@@ -20,6 +20,7 @@ import rtidb.blobserver.BlobServer;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeoutException;
 
@@ -143,9 +144,16 @@ public class TableSyncClientImpl implements TableSyncClient {
         } catch (Exception e) {
             throw new TabletException("rtidb internal server error");
         }
-        DefaultKvIterator iter = new DefaultKvIterator(byteStrings, th, projectionInfo);
-        iter.setCount(count);
-        return iter;
+        //if (th.getTableInfo().getFormatVersion() == 1) {
+            // TODO(denglong) new format
+        //} else {
+            DefaultKvIterator iter = new DefaultKvIterator(byteStrings, th, projectionInfo);
+            if (option.getLimit() != 0) {
+                count = Math.min(option.getLimit(), count);
+            }
+            iter.setCount(count);
+            return iter;
+        //}
     }
 
     @Override
@@ -311,15 +319,13 @@ public class TableSyncClientImpl implements TableSyncClient {
             throw new TabletException("no table with name " + tname);
         }
         key = validateKey(key);
-        int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
         GetOption getOption = new GetOption();
         getOption.setEt(et);
         getOption.setEtType(etType);
         getOption.setStType(type);
         getOption.setTsName(tsName);
         getOption.setIdxName(idxName);
-        Object[] row = get(pid, key, time, getOption, th);
-        return row;
+        return getRow(key, time, getOption, th);
     }
 
     @Override
@@ -337,15 +343,13 @@ public class TableSyncClientImpl implements TableSyncClient {
             throw new TabletException("check key number failed");
         }
         String combinedKey = TableClientCommon.getCombinedKey(keyArr, client.getConfig().isHandleNull());
-        int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
         GetOption option = new GetOption();
         option.setStType(type);
         option.setEtType(etType);
         option.setIdxName(idxName);
         option.setTsName(tsName);
         option.setEt(et);
-        Object[] row = get(pid, combinedKey, time, option, th);
-        return row;
+        return getRow(combinedKey, time, option, th);
     }
 
     @Override
@@ -360,15 +364,58 @@ public class TableSyncClientImpl implements TableSyncClient {
             throw new TabletException("no index name in table" + idxName);
         }
         String combinedKey = TableClientCommon.getCombinedKey(keyMap, list, client.getConfig().isHandleNull());
-        int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
         GetOption option = new GetOption();
         option.setStType(type);
         option.setEtType(etType);
         option.setIdxName(idxName);
         option.setTsName(tsName);
         option.setEt(et);
-        Object[] row = get(pid, combinedKey, time, option, th);
-        return row;
+        return getRow(combinedKey, time, option, th);
+    }
+
+    private Object[] getRow(String key, long time, GetOption option, TableHandler th) throws TabletException {
+        if (th.GetPartitionKeyList().isEmpty() || TableClientCommon.isQueryByPartitionKey(option.getIdxName(), th)) {
+            int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
+            return get(pid, key, time, option, th);
+        }
+
+        List<GetFuture> futureList = new ArrayList<>();
+        for (int pid = 0; pid < th.getPartitions().length; pid++) {
+            futureList.add(TableClientCommon.getInternal(pid, key, time, option, th));
+        }
+        GetFuture realFuture = null;
+        long maxTS = 0;
+        int notFountCnt = 0;
+        try {
+            for (GetFuture getFuture : futureList) {
+                Tablet.GetResponse response = getFuture.getResponse();
+                if (response == null) {
+                    throw new TabletException("response is null");
+                }
+                if (response.getCode() == 0) {
+                    if (response.getTs() > maxTS && !response.getValue().isEmpty()) {
+                        realFuture = getFuture;
+                        maxTS = response.getTs();
+                    }
+                } else if (response.getCode() == 109) {
+                    notFountCnt++;
+                }
+
+            }
+            if (realFuture == null) {
+                if (notFountCnt == futureList.size()) {
+                    return null;
+                } else {
+                    throw new TabletException("bad request error");
+                }
+            } else {
+                return realFuture.getRowWithNoWait();
+            }
+        } catch (ExecutionException e) {
+            throw new TabletException("rtidb internal server error");
+        } catch (InterruptedException e) {
+            throw new TabletException("rtidb internal server error");
+        }
     }
 
     @Override
