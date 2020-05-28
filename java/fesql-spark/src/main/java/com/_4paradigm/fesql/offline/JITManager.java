@@ -1,9 +1,9 @@
 package com._4paradigm.fesql.offline;
 
+import com._4paradigm.fesql.FeSqlLibrary;
 import com._4paradigm.fesql.vm.FeSQLJITWrapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import scala.Byte;
 
 import java.nio.ByteBuffer;
 import java.util.HashMap;

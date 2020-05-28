@@ -9,7 +9,6 @@
 		<relativePath>../pom.xml</relativePath>
 	</parent>
 	<modelVersion>4.0.0</modelVersion>
-	<groupId>com._4paradigm.fesql</groupId>
 	<artifactId>fesql-jdbc</artifactId>
 	<packaging>jar</packaging>
 	<name>fesql-jdbc</name>
@@ -20,6 +19,11 @@
 	</properties>
 
 	<dependencies>
+		<dependency>
+			<groupId>com._4paradigm.fesql</groupId>
+			<artifactId>fesql-common</artifactId>
+			<version>${version}</version>
+		</dependency>
 
 		<dependency>
 			<groupId>org.slf4j</groupId>

@@ -39,9 +39,9 @@ class TableIterator : public ConstIterator<uint64_t, base::Slice> {
     void Next();
     void NextTs();
     void NextTsInPks();
-    const Slice& GetValue();
+    const base::Slice& GetValue();
     const uint64_t& GetKey() const;
-    const Slice GetPK();
+    const base::Slice GetPK();
     void SeekToFirst();
     bool IsSeekable() const override;
 
@@ -52,7 +52,7 @@ class TableIterator : public ConstIterator<uint64_t, base::Slice> {
     Segment** segments_ = NULL;
     uint32_t seg_cnt_ = 0;
     uint32_t seg_idx_ = 0;
-    base::Iterator<Slice, void*>* pk_it_ = NULL;
+    base::Iterator<base::Slice, void*>* pk_it_ = NULL;
     base::Iterator<uint64_t, DataBlock*>* ts_it_ = NULL;
     base::Slice value_;
 };

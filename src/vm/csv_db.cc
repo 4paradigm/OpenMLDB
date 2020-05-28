@@ -42,7 +42,7 @@ using namespace llvm::orc;  // NOLINT (build/namespaces)
 namespace fesql {
 namespace vm {
 
-void PrintRows(const Schema& schema, const std::vector<int8_t*>& rows) {
+void PrintRows(const Schema& schema, const std::vector<Row>& rows) {
     base::TextTable t('-', '|', '+');
     // Add Header
     for (int32_t i = 0; i < schema.size(); i++) {
@@ -53,7 +53,7 @@ void PrintRows(const Schema& schema, const std::vector<int8_t*>& rows) {
     codec::RowView row_decoder(schema);
     auto it = rows.begin();
     for (; it != rows.end(); ++it) {
-        row_decoder.Reset(*it);
+        row_decoder.Reset(it->buf());
         for (int32_t i = 0; i < schema.size(); i++) {
             t.add(row_decoder.GetAsString(i));
         }
@@ -81,7 +81,7 @@ void Run() {
         std::cout << "fail to compile sql for " << status.msg << std::endl;
         return;
     }
-    std::vector<int8_t*> buf;
+    std::vector<Row> buf;
     int32_t code = session.Run(buf, 1000);
     if (code == 0) {
         ::fesql::base::TextTable t('-', '|', '+');

@@ -1,5 +1,6 @@
 package com._4paradigm.fesql.offline
 
+import com._4paradigm.fesql.FeSqlLibrary
 import com._4paradigm.fesql.`type`.TypeOuterClass._
 import com._4paradigm.fesql.offline.nodes._
 import com._4paradigm.fesql.offline.utils.FesqlUtil

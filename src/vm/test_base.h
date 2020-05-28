@@ -205,7 +205,7 @@ void BuildRows(::fesql::type::TableDef& table,  // NOLINT
         builder.AppendDouble(11.1);
         builder.AppendInt64(1);
         builder.AppendString(str.c_str(), 1);
-        rows.push_back(Row(ptr, total_size));
+        rows.push_back(Row(base::RefCountedSlice::Create(ptr, total_size)));
     }
     {
         codec::RowBuilder builder(table.columns());
@@ -221,7 +221,7 @@ void BuildRows(::fesql::type::TableDef& table,  // NOLINT
         builder.AppendDouble(22.2);
         builder.AppendInt64(2);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(Row(ptr, total_size));
+        rows.push_back(Row(base::RefCountedSlice::Create(ptr, total_size)));
     }
     {
         codec::RowBuilder builder(table.columns());
@@ -237,7 +237,7 @@ void BuildRows(::fesql::type::TableDef& table,  // NOLINT
         builder.AppendDouble(33.3);
         builder.AppendInt64(1);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(Row(ptr, total_size));
+        rows.push_back(Row(base::RefCountedSlice::Create(ptr, total_size)));
     }
     {
         codec::RowBuilder builder(table.columns());
@@ -253,7 +253,7 @@ void BuildRows(::fesql::type::TableDef& table,  // NOLINT
         builder.AppendDouble(44.4);
         builder.AppendInt64(2);
         builder.AppendString("4444", str.size());
-        rows.push_back(Row(ptr, total_size));
+        rows.push_back(Row(base::RefCountedSlice::Create(ptr, total_size)));
     }
     {
         codec::RowBuilder builder(table.columns());
@@ -271,7 +271,7 @@ void BuildRows(::fesql::type::TableDef& table,  // NOLINT
         builder.AppendDouble(55.5);
         builder.AppendInt64(3);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(Row(ptr, total_size));
+        rows.push_back(Row(base::RefCountedSlice::Create(ptr, total_size)));
     }
 }
 void BuildT2Rows(::fesql::type::TableDef& table,  // NOLINT
@@ -292,7 +292,7 @@ void BuildT2Rows(::fesql::type::TableDef& table,  // NOLINT
         builder.AppendInt16(50);
         builder.AppendInt32(1);
         builder.AppendInt64(1);
-        rows.push_back(Row(ptr, total_size));
+        rows.push_back(Row(base::RefCountedSlice::Create(ptr, total_size)));
     }
     {
         codec::RowBuilder builder(table.columns());
@@ -308,7 +308,7 @@ void BuildT2Rows(::fesql::type::TableDef& table,  // NOLINT
         builder.AppendInt16(50);
         builder.AppendInt32(2);
         builder.AppendInt64(2);
-        rows.push_back(Row(ptr, total_size));
+        rows.push_back(Row(base::RefCountedSlice::Create(ptr, total_size)));
     }
     {
         codec::RowBuilder builder(table.columns());
@@ -324,7 +324,7 @@ void BuildT2Rows(::fesql::type::TableDef& table,  // NOLINT
         builder.AppendInt16(550);
         builder.AppendInt32(3);
         builder.AppendInt64(1);
-        rows.push_back(Row(ptr, total_size));
+        rows.push_back(Row(base::RefCountedSlice::Create(ptr, total_size)));
     }
     {
         codec::RowBuilder builder(table.columns());
@@ -340,7 +340,7 @@ void BuildT2Rows(::fesql::type::TableDef& table,  // NOLINT
         builder.AppendInt16(550);
         builder.AppendInt32(4);
         builder.AppendInt64(2);
-        rows.push_back(Row(ptr, total_size));
+        rows.push_back(Row(base::RefCountedSlice::Create(ptr, total_size)));
     }
     {
         codec::RowBuilder builder(table.columns());
@@ -356,7 +356,7 @@ void BuildT2Rows(::fesql::type::TableDef& table,  // NOLINT
         builder.AppendInt16(550);
         builder.AppendInt32(5);
         builder.AppendInt64(3);
-        rows.push_back(Row(ptr, total_size));
+        rows.push_back(Row(base::RefCountedSlice::Create(ptr, total_size)));
     }
 }
 void ExtractExprListFromSimpleSQL(::fesql::node::NodeManager* nm,

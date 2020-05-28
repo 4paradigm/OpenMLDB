@@ -126,7 +126,8 @@ CSVSegmentIterator::CSVSegmentIterator(
       buf_(NULL),
       rb_(schema),
       buf_size_(0),
-      it_() {
+      it_(),
+      value_() {
     it_ = index_datas_->at(index_name_).at(pk).rbegin();
     rend_ = index_datas_->at(index_name_).at(pk).rend();
 }
@@ -169,7 +170,7 @@ void CSVSegmentIterator::Next() {
 const uint64_t& CSVSegmentIterator::GetKey() const { return it_->first; }
 
 const Row& CSVSegmentIterator::GetValue() {
-    value_ = Row(reinterpret_cast<char*>(buf_), buf_size_);
+    value_ = Row(base::RefCountedSlice::Create(buf_, buf_size_));
     return value_;
 }
 bool CSVSegmentIterator::IsSeekable() const { return true; }
@@ -196,7 +197,7 @@ void CSVTableIterator::SeekToFirst() {}
 const uint64_t& CSVTableIterator::GetKey() const { return empty_key_; }
 
 const Row& CSVTableIterator::GetValue() {
-    value_ = Row(reinterpret_cast<char*>(buf_), buf_size_);
+    value_ = Row(base::RefCountedSlice::Create(buf_, buf_size_));
     return value_;
 }
 

@@ -70,14 +70,10 @@ void CopyArrayList(benchmark::State* state, MODE mode, int64_t data_size) {
             for (auto _ : *state) {
                 benchmark::DoNotOptimize(RunCopyToArrayList(window, table_def));
             }
-            DeleteData(&window);
             break;
         }
         case TEST: {
-            if (data_size == RunCopyToArrayList(window, table_def)) {
-                DeleteData(&window);
-            } else {
-                DeleteData(&window);
+            if (data_size != RunCopyToArrayList(window, table_def)) {
                 FAIL();
             }
         }
@@ -93,14 +89,10 @@ void CopyMemTable(benchmark::State* state, MODE mode, int64_t data_size) {
                 benchmark::DoNotOptimize(
                     RunCopyToTable(&table, &(table_def.columns())));
             }
-            DeleteData(&table);
             break;
         }
         case TEST: {
-            if (data_size == RunCopyToTable(&table, &(table_def.columns()))) {
-                DeleteData(&table);
-            } else {
-                DeleteData(&table);
+            if (data_size != RunCopyToTable(&table, &(table_def.columns()))) {
                 FAIL();
             }
         }
@@ -196,14 +188,10 @@ void CopyMemSegment(benchmark::State* state, MODE mode, int64_t data_size) {
             for (auto _ : *state) {
                 benchmark::DoNotOptimize(RunCopyToTimeTable(table, table_def));
             }
-            DeleteData(&table);
             break;
         }
         case TEST: {
-            if (data_size == RunCopyToTimeTable(table, table_def)) {
-                DeleteData(&table);
-            } else {
-                DeleteData(&table);
+            if (data_size != RunCopyToTimeTable(table, table_def)) {
                 FAIL();
             }
         }
@@ -355,28 +343,24 @@ void SumArrayListCol(benchmark::State* state, MODE mode, int64_t data_size,
                 switch (type) {
                     case node::kInt32: {
                         if (fesql::udf::v1::sum_list<int32_t>(col) <= 0) {
-                            DeleteData(&window);
                             FAIL();
                         }
                         break;
                     }
                     case node::kInt64: {
                         if (fesql::udf::v1::sum_list<int64_t>(col) <= 0) {
-                            DeleteData(&window);
                             FAIL();
                         }
                         break;
                     }
                     case node::kDouble: {
                         if (fesql::udf::v1::sum_list<double>(col) <= 0) {
-                            DeleteData(&window);
                             FAIL();
                         }
                         break;
                     }
                     case node::kFloat: {
                         if (fesql::udf::v1::sum_list<float>(col) <= 0) {
-                            DeleteData(&window);
                             FAIL();
                         }
                         break;
@@ -388,7 +372,6 @@ void SumArrayListCol(benchmark::State* state, MODE mode, int64_t data_size,
             }
         }
     }
-    DeleteData(&window);
 }
 void SumMemTableCol(benchmark::State* state, MODE mode, int64_t data_size,
                     const std::string& col_name) {
@@ -452,28 +435,24 @@ void SumMemTableCol(benchmark::State* state, MODE mode, int64_t data_size,
                 switch (type) {
                     case node::kInt32: {
                         if (fesql::udf::v1::sum_list<int32_t>(col) <= 0) {
-                            DeleteData(&window);
                             FAIL();
                         }
                         break;
                     }
                     case node::kInt64: {
                         if (fesql::udf::v1::sum_list<int64_t>(col) <= 0) {
-                            DeleteData(&window);
                             FAIL();
                         }
                         break;
                     }
                     case node::kDouble: {
                         if (fesql::udf::v1::sum_list<double>(col) <= 0) {
-                            DeleteData(&window);
                             FAIL();
                         }
                         break;
                     }
                     case node::kFloat: {
                         if (fesql::udf::v1::sum_list<float>(col) <= 0) {
-                            DeleteData(&window);
                             FAIL();
                         }
                         break;
@@ -485,7 +464,6 @@ void SumMemTableCol(benchmark::State* state, MODE mode, int64_t data_size,
             }
         }
     }
-    DeleteData(&window);
 }
 
 }  // namespace bm

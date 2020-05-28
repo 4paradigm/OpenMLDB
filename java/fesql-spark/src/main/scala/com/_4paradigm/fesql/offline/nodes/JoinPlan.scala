@@ -186,7 +186,6 @@ object JoinPlan {
       val result = CoreAPI.ComputeCondition(fn, nativeInputRow, outView, 0)
 
       // release swig jni objects
-      CoreAPI.ReleaseRow(nativeInputRow)
       nativeInputRow.delete()
 
       result

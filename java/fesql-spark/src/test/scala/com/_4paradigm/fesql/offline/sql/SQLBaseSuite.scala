@@ -3,7 +3,7 @@ package com._4paradigm.fesql.offline.sql
 import java.io.{File, FileInputStream}
 
 import com._4paradigm.fesql.offline.{SparkPlanner, SparkTestSuite}
-import com._4paradigm.fesql.offline.sqlcase.model._
+import com._4paradigm.fesql.sqlcase.model._
 import org.apache.spark.sql.{DataFrame, Row}
 import org.apache.spark.sql.types._
 import org.slf4j.LoggerFactory

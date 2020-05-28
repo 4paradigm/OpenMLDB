@@ -21,7 +21,7 @@ WindowInterface::WindowInterface(bool instance_not_in_window,
                                  int64_t end_offset,
                                  uint32_t max_size)
     : window_impl_(std::unique_ptr<Window>(
-          new CurrentHistoryWindow(true, start_offset, max_size))) {
+          new CurrentHistoryWindow(start_offset, max_size))) {
     window_impl_->set_instance_not_in_window(instance_not_in_window);
 }
 
@@ -56,8 +56,8 @@ fesql::codec::Row CoreAPI::RowProject(const RawPtrHandle fn,
         LOG(WARNING) << "fail to run udf " << ret;
         return fesql::codec::Row();
     }
-    return Row(reinterpret_cast<char*>(buf),
-               fesql::codec::RowView::GetSize(buf), need_free);
+    return Row(base::RefCountedSlice::CreateManaged(
+        buf, fesql::codec::RowView::GetSize(buf)));
 }
 
 fesql::codec::Row CoreAPI::WindowProject(const RawPtrHandle fn,
@@ -77,28 +77,13 @@ bool CoreAPI::ComputeCondition(const fesql::vm::RawPtrHandle fn,
                                  row_view->GetSchema()->Get(out_idx).type());
 }
 
-RawPtrHandle CoreAPI::AllocateRaw(size_t bytes) {
-    auto buf = malloc(bytes);
-    return reinterpret_cast<int8_t*>(buf);
-}
-
-
-void CoreAPI::ReleaseRaw(RawPtrHandle handle) {
-    auto buf = const_cast<int8_t*>(reinterpret_cast<const int8_t*>(handle));
+fesql::codec::Row* CoreAPI::NewRow(size_t bytes) {
+    auto buf = reinterpret_cast<int8_t*>(malloc(bytes));
     if (buf == nullptr) {
-        LOG(ERROR) << "call free to nullptr";
-    } else {
-        free(buf);
+        return nullptr;
     }
-}
-
-void CoreAPI::ReleaseRow(const Row& row) {
-    for (int i = 0; i < row.GetRowPtrCnt(); ++i) {
-        auto buf = row.buf(i);
-        if (buf != nullptr) {
-            CoreAPI::ReleaseRaw(buf);
-        }
-    }
+    auto slice = base::RefCountedSlice::CreateManaged(buf, bytes);
+    return new fesql::codec::Row(slice);
 }
 
 }  // namespace vm

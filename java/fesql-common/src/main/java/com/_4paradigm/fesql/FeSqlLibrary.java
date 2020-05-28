@@ -1,4 +1,4 @@
-package com._4paradigm.fesql.offline;
+package com._4paradigm.fesql;
 
 import com._4paradigm.fesql.vm.Engine;
 

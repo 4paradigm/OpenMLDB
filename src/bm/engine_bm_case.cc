@@ -59,7 +59,6 @@ static int64_t RunTableRequest(RequestRunSession& session,  // NOLINT
         Row row;
         session.Run(iter->GetValue(), &row);
         iter->Next();
-        delete row.buf();
     }
     return cnt;
 }
@@ -123,7 +122,6 @@ static void EngineBatchMode(const std::string sql, MODE mode, int64_t limit_cnt,
             for (auto _ : *state) {
                 std::shared_ptr<vm::TableHandler> res;
                 benchmark::DoNotOptimize(res = session.Run());
-                DeleteData(res.get());
             }
             break;
         }
@@ -133,7 +131,6 @@ static void EngineBatchMode(const std::string sql, MODE mode, int64_t limit_cnt,
                 FAIL();
             }
             ASSERT_EQ(static_cast<uint64_t>(limit_cnt), res->GetCount());
-            DeleteData(res.get());
             break;
         }
     }
@@ -221,7 +218,6 @@ void EngineSimpleSelectDouble(benchmark::State* state, MODE mode) {  // NOLINT
     const std::string sql = "SELECT col4 FROM t1 limit 2;";
     Engine engine(catalog);
     BatchRunSession session;
-    session.EnableDebug();
     base::Status query_status;
     engine.Get(sql, "db", session, query_status);
     std::ostringstream runner_oss;
@@ -302,7 +298,6 @@ void EngineSimpleSelectInt32(benchmark::State* state, MODE mode) {  // NOLINT
     const std::string sql = "SELECT col1 FROM t1 limit 1;";
     Engine engine(catalog);
     BatchRunSession session(true);
-    session.EnableDebug();
     base::Status query_status;
     engine.Get(sql, "db", session, query_status);
     std::ostringstream plan_oss;

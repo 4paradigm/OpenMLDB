@@ -1,4 +1,4 @@
-package com._4paradigm.fesql.offline.sqlcase.model;
+package com._4paradigm.fesql.sqlcase.model;
 
 import lombok.Data;
 

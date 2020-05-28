@@ -3,6 +3,7 @@ include_directories(${INCLUDE_DIRECTORIES}
     ${PROJECT_BINARY_DIR}/src)
 
 add_library(fesql_storage STATIC fe_table.cc fe_segment.cc fe_table_iterator.cc)
+target_link_libraries(fesql_storage fesql_base)
 
 if (TESTING_ENABLE)
 add_executable(table_iterator_test table_iterator_test.cc)

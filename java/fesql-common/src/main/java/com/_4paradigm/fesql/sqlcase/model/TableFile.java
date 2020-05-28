@@ -1,10 +1,8 @@
-package com._4paradigm.fesql.offline.sqlcase.model;
+package com._4paradigm.fesql.sqlcase.model;
 
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
-
-import java.util.List;
 
 @Getter
 @Setter
