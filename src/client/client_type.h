@@ -40,6 +40,7 @@ struct TableHandler {
     std::shared_ptr<google::protobuf::RepeatedPtrField<
         rtidb::common::ColumnDesc>> columns;
     std::vector<PartitionInfo> partition;
+    std::vector<PartitionInfo> blob_partition;
     std::string auto_gen_pk_;
     std::vector<int32_t> blobSuffix;
     std::vector<std::string> blobFieldNames;
