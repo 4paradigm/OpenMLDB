@@ -96,20 +96,19 @@ void BlobProxyImpl::Get(RpcController* controller, const HttpRequest* request,
         response_writer.append("table not found");
         return;
     }
-    if (th->table_info->blobs().empty() &&
-        th->table_info->table_type() != rtidb::type::kObjectStore) {
-        PDLOG(INFO, "table %s is not object store", table.c_str());
+    if (th->blob_partition.empty()) {
+        PDLOG(INFO, "table %s is not blob store", table.c_str());
         cntl->http_request().set_status_code(brpc::HTTP_STATUS_BAD_REQUEST);
         response_writer.append("table is not object store");
         return;
     }
     std::shared_ptr<rtidb::client::BsClient> blob;
     std::string err_msg;
-    if (!th->table_info->blobs().empty()) {
-        blob = client_->GetBlobClient(th->table_info->blobs(0), &err_msg);
-    } else {
-        blob = client_->GetBlobClient(th->partition[0].leader, &err_msg);
+    if (th->blob_partition[0].leader.empty()) {
+        PDLOG(INFO, "table[%s] pid[%u] not found available endpoint",
+              table.c_str(), 0);
     }
+    blob = client_->GetBlobClient(th->blob_partition[0].leader, &err_msg);
     if (!blob) {
         cntl->http_response().set_status_code(
             brpc::HTTP_STATUS_INTERNAL_SERVER_ERROR);
