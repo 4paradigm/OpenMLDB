@@ -1,0 +1,13 @@
+SQLCases:
+  - id: 0
+    desc: 简单INSERT
+    sql: insert into t1 values("hello", 1, 2, 3.3f, 4.4, 5L, "world");
+    inputs:
+      - name: t1
+        schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
+        index: index2:col2:col5
+    output:
+      schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
+      order: col1
+      data: |
+        hello, 1, 2, 3.3, 4.4, 5, world
