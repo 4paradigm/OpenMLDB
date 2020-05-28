@@ -89,11 +89,13 @@ class RelationalTable {
     bool Put(const std::string& value, int64_t* auto_gen_pk);
 
     bool Query(const ::google::protobuf::RepeatedPtrField<
-                   ::rtidb::api::ReadOption>& ros,
-               std::string* pairs, uint32_t* count);
+            ::rtidb::api::ReadOption>& ros,
+            std::string* pairs, uint32_t* count,
+            int32_t* code, std::string* msg);
     bool Query(const ::google::protobuf::RepeatedPtrField<
-                   ::rtidb::api::Columns>& indexs,
-               std::vector<std::unique_ptr<rocksdb::Iterator>>* return_vec);
+            ::rtidb::api::Columns>& indexs,
+            std::vector<std::unique_ptr<rocksdb::Iterator>>* return_vec,
+            int32_t* code, std::string* msg);
     bool Query(const std::shared_ptr<IndexDef> index_def,
                const rocksdb::Slice& key_slice,
                std::vector<std::unique_ptr<rocksdb::Iterator>>* vec);
@@ -155,6 +157,10 @@ class RelationalTable {
     bool GetCombinePk(const ::google::protobuf::RepeatedPtrField<
             ::rtidb::api::Columns>& indexs,
             std::string* combine_value);
+    const std::shared_ptr<IndexDef> GetIndexByCombineStr(
+        const std::string& combine_str) {
+        return table_index_.GetIndexByCombineStr(combine_str);
+    }
 
  private:
     inline void CombineNoUniqueAndPk(const std::string& no_unique,
@@ -202,8 +208,8 @@ class RelationalTable {
             bool has_null, ::rtidb::type::IndexType idx_type,
             std::string* out_val);
     bool GetCombineStr(const ::google::protobuf::RepeatedPtrField<
-                           ::rtidb::api::Columns>& indexs,
-                       std::string* combine_name, std::string* combine_value);
+            ::rtidb::api::Columns>& indexs,
+            std::string* combine_name, std::string* combine_value);
     bool GetCombineStr(const std::shared_ptr<IndexDef> index_def,
                        const int8_t* data, std::string* comparable_pk);
 
