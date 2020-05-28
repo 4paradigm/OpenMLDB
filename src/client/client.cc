@@ -282,6 +282,11 @@ void BaseClient::RefreshTable() {
                 id++;
             }
         }
+        if (table_info->table_type() == rtidb::type::kObjectStore) {
+            handler->table_info = table_info;
+            new_tables.insert(std::make_pair(table_name, handler));
+            continue;
+        }
         for (int i = 0; i < table_info->column_key_size(); i++) {
             if (table_info->column_key(i).has_index_type() &&
                 table_info->column_key(i).index_type() ==
@@ -289,11 +294,6 @@ void BaseClient::RefreshTable() {
                 handler->auto_gen_pk = table_info->column_key(i).col_name(0);
                 break;
             }
-        }
-        if (table_info->table_type() == rtidb::type::kObjectStore) {
-            handler->table_info = table_info;
-            new_tables.insert(std::make_pair(table_name, handler));
-            continue;
         }
         std::shared_ptr<google::protobuf::RepeatedPtrField<
             rtidb::common::ColumnDesc>> columns =

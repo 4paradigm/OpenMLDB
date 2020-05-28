@@ -104,6 +104,10 @@ void BlobProxyImpl::Get(RpcController* controller, const HttpRequest* request,
     }
     std::shared_ptr<rtidb::client::BsClient> blob;
     std::string err_msg;
+    if (th->blob_partition[0].leader.empty()) {
+        PDLOG(INFO, "table[%s] pid[%u] not found available endpoint",
+              table.c_str(), 0);
+    }
     blob = client_->GetBlobClient(th->blob_partition[0].leader, &err_msg);
     if (!blob) {
         cntl->http_response().set_status_code(
