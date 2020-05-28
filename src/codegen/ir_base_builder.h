@@ -40,6 +40,8 @@ bool GetLLVMIteratorType(::llvm::Module* m, const ::fesql::node::DataType& type,
 bool GetLLVMColumnSize(const ::fesql::node::DataType& v_type, uint32_t* size);
 
 bool GetBaseType(::llvm::Type* type, ::fesql::node::DataType* output);
+bool IsStringType(::llvm::Type* type);
+
 bool GetFullType(::llvm::Type* type, ::fesql::node::TypeNode* type_node);
 
 bool SchemaType2DataType(const ::fesql::type::Type type,
@@ -49,6 +51,7 @@ bool DataType2SchemaType(const ::fesql::node::DataType type,
 
 bool GetConstFeString(const std::string& val, ::llvm::BasicBlock* block,
                       ::llvm::Value** output);
+
 
 inline bool GetConstFloat(::llvm::LLVMContext& ctx, float val,  // NOLINT
                           ::llvm::Value** output) {

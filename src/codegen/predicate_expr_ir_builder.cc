@@ -9,6 +9,9 @@
 
 #include "codegen/predicate_expr_ir_builder.h"
 #include "codegen/ir_base_builder.h"
+#include "codegen/string_ir_builder.h"
+#include "codegen/timestamp_ir_builder.h"
+#include "codegen/type_ir_builder.h"
 namespace fesql {
 namespace codegen {
 
@@ -299,7 +302,6 @@ bool PredicateIRBuilder::IsAcceptType(::llvm::Type* type) {
     switch (fesql_type) {
         case ::fesql::node::kVoid:
         case ::fesql::node::kList:
-        case ::fesql::node::kTimestamp:
         case ::fesql::node::kDate:
         case ::fesql::node::kVarchar:
             return false;
@@ -355,9 +357,27 @@ bool PredicateIRBuilder::InferBaseTypes(::llvm::Value* left,
         status.code = common::kCodegenError;
         return false;
     }
+
     *casted_left = left;
     *casted_right = right;
+    TimestampIRBuilder timestamp_builder(block_->getModule());
+    if (TypeIRBuilder::IsTimestampPtr(left_type)) {
+        if (false == timestamp_builder.GetTs(block_, left, casted_left)) {
+            status.msg = "fail to get ts";
+            LOG(WARNING) << status.msg;
+            return false;
+        }
+        left_type = (*casted_left)->getType();
+    }
 
+    if (TypeIRBuilder::IsTimestampPtr(right_type)) {
+        if (false == timestamp_builder.GetTs(block_, right, casted_right)) {
+            status.msg = "fail to get ts";
+            LOG(WARNING) << status.msg;
+            return false;
+        }
+        right_type = (*casted_right)->getType();
+    }
     if (left_type != right_type) {
         if (cast_expr_ir_builder_.IsSafeCast(left_type, right_type)) {
             if (!cast_expr_ir_builder_.SafeCast(left, right_type, casted_left,

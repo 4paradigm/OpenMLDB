@@ -21,6 +21,7 @@
 #include <vector>
 #include "codec/fe_row_codec.h"
 #include "codegen/ir_base_builder.h"
+#include "codegen/timestamp_ir_builder.h"
 #include "glog/logging.h"
 
 namespace fesql {
@@ -63,8 +64,20 @@ bool BufNativeIRBuilder::BuildGetField(const std::string& name,
             return BuildGetPrimaryField("fesql_storage_get_int32_field",
                                         row_ptr, offset, i32_ty, output);
         }
-        case ::fesql::node::kInt64:
         case ::fesql::node::kTimestamp: {
+            llvm::Type* ts_type;
+            if (!GetLLVMType(block_, ::fesql::node::kTimestamp, &ts_type)) {
+                return false;
+            }
+            ::llvm::Value* ts;
+            if (!BuildGetPrimaryField("fesql_storage_get_int64_field", row_ptr,
+                                      offset, builder.getInt64Ty(), &ts)) {
+                return false;
+            }
+            codegen::TimestampIRBuilder timestamp_builder(block_->getModule());
+            return timestamp_builder.NewTimestamp(block_, ts, output);
+        }
+        case ::fesql::node::kInt64: {
             llvm::Type* i64_ty = builder.getInt64Ty();
             return BuildGetPrimaryField("fesql_storage_get_int64_field",
                                         row_ptr, offset, i64_ty, output);
@@ -273,6 +286,7 @@ bool BufNativeEncoderIRBuilder::BuildEncode(::llvm::Value* output_ptr) {
 
     ::llvm::Value* str_body_offset = NULL;
     ::llvm::Value* str_addr_space_val = NULL;
+    TimestampIRBuilder timestamp_builder(block_->getModule());
     for (int32_t idx = 0; idx < schema_.size(); idx++) {
         const ::fesql::type::ColumnDef& column = schema_.Get(idx);
         // TODO(wangtaize) null check
@@ -287,6 +301,7 @@ bool BufNativeEncoderIRBuilder::BuildEncode(::llvm::Value* output_ptr) {
             case ::fesql::type::kInt16:
             case ::fesql::type::kInt32:
             case ::fesql::type::kInt64:
+            case ::fesql::type::kTimestamp:
             case ::fesql::type::kFloat:
             case ::fesql::type::kDouble: {
                 uint32_t offset = offset_vec_.at(idx);
@@ -297,6 +312,18 @@ bool BufNativeEncoderIRBuilder::BuildEncode(::llvm::Value* output_ptr) {
                     if (!ok) {
                         LOG(WARNING) << "fail to append number for output col "
                                      << column.name();
+                        return false;
+                    }
+                    break;
+                } else if (codegen::TypeIRBuilder::IsTimestampPtr(
+                               val->getType())) {
+                    ::llvm::Value* ts;
+                    timestamp_builder.GetTs(block_, val, &ts);
+                    ok = AppendPrimary(i8_ptr, ts, offset);
+                    if (!ok) {
+                        LOG(WARNING)
+                            << "fail to append timestamp for output col "
+                            << column.name();
                         return false;
                     }
                     break;

@@ -36,8 +36,22 @@ struct String {
     char* data;
 };
 
-struct Timestamp {
-    int64_t ts;
+class TypeIRBuilder {
+ public:
+    TypeIRBuilder() {}
+    virtual ~TypeIRBuilder() {}
+    static bool IsTimestampPtr(::llvm::Type* type);
+    static bool IsStringPtr(::llvm::Type* type);
+    static bool IsStructPtr(::llvm::Type* type);
+};
+
+class Int64IRBuilder : public TypeIRBuilder {
+ public:
+    Int64IRBuilder() : TypeIRBuilder() {}
+    ~Int64IRBuilder() {}
+    static ::llvm::Type* GetType(::llvm::Module* m) {
+        return ::llvm::Type::getInt64Ty(m->getContext());
+    }
 };
 
 inline const bool ConvertFeSQLType2LLVMType(const node::TypeNode* data_type,

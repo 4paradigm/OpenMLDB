@@ -1,0 +1,9 @@
+table:
+  name: t2
+  schema: str0:string, str1:string, col3:float, col4:double, col2:int16, col1:int32, col2:int16, std_ts:timestamp
+  data: |
+    0, A, 1.1, 11.1, 5, 1, 1, 1590115420000
+    0, BB, 2.2, 22.2, 5, 2, 2, 1590115430000
+    1, CCC, 3.3, 33.3, 55, 3, 1, 1590115440000
+    1, DDDD, 4.4, 44.4, 55, 4, 2, 1590115450000
+    2, EEEEE, 5.5, 55.5, 55, 5, 3, 1590115460000

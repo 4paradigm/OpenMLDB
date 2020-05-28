@@ -5,7 +5,7 @@
  * Author: chenjing
  * Date: 2020/1/8
  *--------------------------------------------------------------------------
- **/
+ ***/
 
 #ifndef SRC_CODEGEN_CAST_EXPR_IR_BUILDER_H_
 #define SRC_CODEGEN_CAST_EXPR_IR_BUILDER_H_
@@ -32,6 +32,8 @@ class CastExprIRBuilder {
     bool StringCast(llvm::Value* value, llvm::Value** casted_value,
                     base::Status& status);  // NOLINT
 
+    bool TimestampCast(llvm::Value* value, llvm::Value** cated_value,
+                       base::Status& status);  // NOLINT
     bool IsSafeCast(::llvm::Type* src, ::llvm::Type* dist);
     bool IsIntFloat2PointerCast(::llvm::Type* src, ::llvm::Type* dist);
     bool IsStringCast(llvm::Type* type);

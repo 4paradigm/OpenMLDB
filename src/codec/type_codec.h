@@ -25,23 +25,104 @@
 #include "butil/iobuf.h"
 #include "glog/logging.h"
 
-
 namespace fesql {
 namespace codec {
 
 struct StringRef {
-    uint32_t size;
-    char* data;
+    StringRef() : size_(0), data_(nullptr) {}
+    StringRef(uint32_t size, char* data) : size_(size), data_(strdup(data)) {}
+    ~StringRef() {}
+    const bool IsNull() const { return nullptr == data_; }
+    const std::string ToString() const {
+        return size_ == 0 ? "" : std::string(data_, size_);
+    }
+    uint32_t size_;
+    char* data_;
 };
 
-struct String {
-    uint32_t size;
-    char* data;
-};
+inline static int compare(const StringRef& a, const StringRef& b) {
+    const size_t min_len = (a.size_ < b.size_) ? a.size_ : b.size_;
+    int r = memcmp(a.data_, b.data_, min_len);
+    if (r == 0) {
+        if (a.size_ < b.size_)
+            r = -1;
+        else if (a.size_ > b.size_)
+            r = +1;
+    }
+    return r;
+}
+static const StringRef operator+(const StringRef& a, const StringRef& b) {
+    StringRef str;
+    str.size_ = a.size_ + b.size_;
+    str.data_ = static_cast<char*>(malloc(str.size_ + 1));
+    if (a.size_ > 0) {
+        memcpy(str.data_, a.data_, a.size_);
+    }
+    if (b.size_ > 0) {
+        memcpy(str.data_ + a.size_, b.data_, b.size_);
+    }
+    str.data_[str.size_] = '\0';
+    return str;
+}
+static bool operator==(const StringRef& a, const StringRef& b) {
+    return 0 == compare(a, b);
+}
+static bool operator!=(const StringRef& a, const StringRef& b) {
+    return 0 != compare(a, b);
+}
+static bool operator>=(const StringRef& a, const StringRef& b) {
+    return compare(a, b) >= 0;
+}
+static bool operator>(const StringRef& a, const StringRef& b) {
+    return compare(a, b) > 0;
+}
+static bool operator<=(const StringRef& a, const StringRef& b) {
+    return compare(a, b) <= 0;
+}
+static bool operator<(const StringRef& a, const StringRef& b) {
+    return compare(a, b) < 0;
+}
+
 struct Timestamp {
-    uint64_t ts;
+    Timestamp() : ts_(0) {}
+    explicit Timestamp(int64_t ts) : ts_(ts) {}
+    Timestamp& operator+=(const Timestamp& t1) {
+        ts_ += t1.ts_;
+        return *this;
+    }
+    Timestamp& operator-=(const Timestamp& t1) {
+        ts_ -= t1.ts_;
+        return *this;
+    }
+    int64_t ts_;
 };
-
+static const Timestamp operator+(const Timestamp& a, const Timestamp& b) {
+    return Timestamp(a.ts_ + b.ts_);
+}
+static const Timestamp operator-(const Timestamp& a, const Timestamp& b) {
+    return Timestamp(a.ts_ - b.ts_);
+}
+static const Timestamp operator/(const Timestamp& a, const int64_t b) {
+    return Timestamp(static_cast<int64_t>(a.ts_ / b));
+}
+static bool operator>(const Timestamp& a, const Timestamp& b) {
+    return a.ts_ > b.ts_;
+}
+static bool operator<(const Timestamp& a, const Timestamp& b) {
+    return a.ts_ < b.ts_;
+}
+static bool operator>=(const Timestamp& a, const Timestamp& b) {
+    return a.ts_ >= b.ts_;
+}
+static bool operator<=(const Timestamp& a, const Timestamp& b) {
+    return a.ts_ <= b.ts_;
+}
+static bool operator==(const Timestamp& a, const Timestamp& b) {
+    return a.ts_ == b.ts_;
+}
+static bool operator!=(const Timestamp& a, const Timestamp& b) {
+    return a.ts_ != b.ts_;
+}
 struct ListRef {
     int8_t* list;
 };
@@ -196,6 +277,9 @@ inline float GetFloatField(const butil::IOBuf& row, uint32_t offset) {
 inline float GetFloatField(const int8_t* row, uint32_t offset) {
     return *(reinterpret_cast<const float*>(row + offset));
 }
+inline Timestamp GetTimestampField(const int8_t* row, uint32_t offset) {
+    return Timestamp(*(reinterpret_cast<const int64_t*>(row + offset)));
+}
 
 inline double GetDoubleField(const butil::IOBuf& row, uint32_t offset) {
     double value = 0;
@@ -212,8 +296,7 @@ int32_t GetStrField(const int8_t* row, uint32_t str_field_offset,
                     uint32_t next_str_field_offset, uint32_t str_start_offset,
                     uint32_t addr_space, int8_t** data, uint32_t* size);
 
-int32_t GetStrField(const butil::IOBuf& row,
-                    uint32_t str_field_offset,
+int32_t GetStrField(const butil::IOBuf& row, uint32_t str_field_offset,
                     uint32_t next_str_field_offset, uint32_t str_start_offset,
                     uint32_t addr_space, butil::IOBuf* output);
 
