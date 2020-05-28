@@ -16,9 +16,11 @@ import com.google.protobuf.ByteBufferNoCopy;
 import com.google.protobuf.ByteString;
 import rtidb.api.TabletServer;
 import rtidb.blobserver.BlobServer;
+import sun.tools.jconsole.Tab;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.sql.Time;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -144,16 +146,20 @@ public class TableSyncClientImpl implements TableSyncClient {
         } catch (Exception e) {
             throw new TabletException("rtidb internal server error");
         }
-        //if (th.getTableInfo().getFormatVersion() == 1) {
-            // TODO(denglong) new format
-        //} else {
-            DefaultKvIterator iter = new DefaultKvIterator(byteStrings, th, projectionInfo);
-            if (option.getLimit() != 0) {
-                count = Math.min(option.getLimit(), count);
+        if (option.getLimit() != 0) {
+            count = Math.min(option.getLimit(), count);
+        }
+        if (th.getTableInfo().getFormatVersion() == 1) {
+            if (projectionInfo != null) {
+                return new RowKvIterator(byteStrings, projectionInfo.getProjectionSchema(), count);
+            } else {
+                return new RowKvIterator(byteStrings, th.getSchema(), count);
             }
+        } else {
+            DefaultKvIterator iter = new DefaultKvIterator(byteStrings, th, projectionInfo);
             iter.setCount(count);
             return iter;
-        //}
+        }
     }
 
     @Override
@@ -643,13 +649,7 @@ public class TableSyncClientImpl implements TableSyncClient {
 
     @Override
     public int count(String tname, String key, long st, long et) throws TimeoutException, TabletException {
-        TableHandler th = client.getHandler(tname);
-        if (th == null) {
-            throw new TabletException("no table with name " + tname);
-        }
-        key = validateKey(key);
-        int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
-        return count(th.getTableInfo().getTid(), pid, key, null, null, true, th, st, et);
+        return count(tname, key, null, st, et);
     }
 
     @Override
@@ -659,8 +659,7 @@ public class TableSyncClientImpl implements TableSyncClient {
             throw new TabletException("no table with name " + tname);
         }
         key = validateKey(key);
-        int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
-        return count(th.getTableInfo().getTid(), pid, key, idxName, null, true, th, st, et);
+        return count(key, idxName, null, true, st, et, th);
     }
 
     @Override
@@ -670,8 +669,7 @@ public class TableSyncClientImpl implements TableSyncClient {
             throw new TabletException("no table with name " + tname);
         }
         key = validateKey(key);
-        int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
-        return count(th.getTableInfo().getTid(), pid, key, idxName, tsName, true, th, st, et);
+        return count(key, idxName, tsName, true, st, et, th);
     }
 
 
@@ -683,8 +681,7 @@ public class TableSyncClientImpl implements TableSyncClient {
             throw new TabletException("no table with name " + tname);
         }
         key = validateKey(key);
-        int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
-        return count(th.getTableInfo().getTid(), pid, key, idxName, tsName, filter_expired_data, th, 0, 0);
+        return count(key, idxName, tsName, filter_expired_data, 0, 0, th);
     }
 
     @Override
@@ -699,8 +696,7 @@ public class TableSyncClientImpl implements TableSyncClient {
             throw new TabletException("no index name in table" + idxName);
         }
         String combinedKey = TableClientCommon.getCombinedKey(keyMap, list, client.getConfig().isHandleNull());
-        int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
-        return count(th.getTableInfo().getTid(), pid, combinedKey, idxName, tsName, filter_expired_data, th, 0, 0);
+        return count(combinedKey, idxName, tsName, filter_expired_data, 0 ,0, th);
     }
 
     @Override
@@ -715,8 +711,7 @@ public class TableSyncClientImpl implements TableSyncClient {
             throw new TabletException("no index name in table" + idxName);
         }
         String combinedKey = TableClientCommon.getCombinedKey(keyMap, list, client.getConfig().isHandleNull());
-        int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
-        return count(th.getTableInfo().getTid(), pid, combinedKey, idxName, tsName, true, th, st, et);
+        return count(combinedKey, idxName, tsName,  true, st, et, th);
     }
 
     @Override
@@ -734,8 +729,21 @@ public class TableSyncClientImpl implements TableSyncClient {
             throw new TabletException("check key number failed");
         }
         String combinedKey = TableClientCommon.getCombinedKey(keyArr, client.getConfig().isHandleNull());
-        int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
-        return count(th.getTableInfo().getTid(), pid, combinedKey, idxName, tsName, filter_expired_data, th, 0, 0);
+        return count(combinedKey, idxName, tsName, filter_expired_data, 0, 0, th);
+    }
+
+    private int count(String key, String idxName, String tsName, boolean filter_expired_data, long st, long et, TableHandler th)
+        throws TabletException, TimeoutException {
+        if (th.GetPartitionKeyList().isEmpty()) {
+            int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
+            return count(th.getTableInfo().getTid(), pid, key, idxName, tsName, filter_expired_data, th, st, et);
+        } else {
+            int num = 0;
+            for (int pid = 0; pid < th.getPartitions().length; pid++) {
+                num += count(th.getTableInfo().getTid(), pid, key, idxName, tsName, filter_expired_data, th, st, et);
+            }
+            return num;
+        }
     }
 
     @Override
@@ -860,8 +868,17 @@ public class TableSyncClientImpl implements TableSyncClient {
             throw new TabletException("no table with name " + tname);
         }
         key = validateKey(key);
-        int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
-        return delete(th.getTableInfo().getTid(), pid, key, idxName, th);
+        if (th.GetPartitionKeyList().isEmpty()) {
+            int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
+            return delete(th.getTableInfo().getTid(), pid, key, idxName, th);
+        } else {
+            for (int pid = 0; pid < th.getPartitions().length; pid++) {
+                if (!delete(th.getTableInfo().getTid(), pid, key, idxName, th)) {
+                    return  false;
+                }
+            }
+            return true;
+        }
 
     }
 
@@ -1032,6 +1049,51 @@ public class TableSyncClientImpl implements TableSyncClient {
         TableHandler th = client.getHandler(tname);
         if (th == null) {
             throw new TabletException("no table with name " + tname);
+        }
+        if (!th.GetPartitionKeyList().isEmpty()) {
+            List<Integer> partitionKeyList = th.GetPartitionKeyList();
+            if (idxName != null) {
+                boolean isIdxNameMatch = true;
+                Object val = th.getKeyMap().get(idxName);
+                if (val != null) {
+                    if (partitionKeyList.size() == ((List<String>)val).size()) {
+                        for(String col : (List<String>)val) {
+                            Integer pos = th.getSchemaPos().get(col);
+                            if (pos == null || partitionKeyList.contains(pos)) {
+                                isIdxNameMatch = false;
+                                break;
+                            }
+                        }
+                    } else {
+                        isIdxNameMatch = false;
+                    }
+                } else {
+                    isIdxNameMatch = false;
+                }
+                if (!isIdxNameMatch) {
+                    throw new TabletException("idx name is not partition key");
+                }
+            } else {
+                for (Map.Entry<String, List<String>> entry : th.getKeyMap().entrySet()) {
+                    if (entry.getValue().size() == partitionKeyList.size()) {
+                        boolean isIdxNameMatch = true;
+                        for (String col : entry.getValue()) {
+                            Integer pos = th.getSchemaPos().get(col);
+                            if (pos == null && !partitionKeyList.contains(pos)) {
+                                isIdxNameMatch = false;
+                                break;
+                            }
+                        }
+                        if (isIdxNameMatch) {
+                            idxName = entry.getKey();
+                            break;
+                        }
+                    }
+                }
+                if (idxName == null) {
+                    throw new TabletException("has not match partition key");
+                }
+            }
         }
         TraverseKvIterator it = new TraverseKvIterator(client, th, idxName, tsName);
         it.next();

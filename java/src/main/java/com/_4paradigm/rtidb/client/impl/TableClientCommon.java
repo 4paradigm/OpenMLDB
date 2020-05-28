@@ -16,7 +16,6 @@ import rtidb.api.TabletServer;
 import java.sql.Timestamp;
 import java.util.*;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeoutException;
 
 public class TableClientCommon {
 
@@ -380,50 +379,44 @@ public class TableClientCommon {
             builder.setTsName(option.getTsName());
         builder.setEnableRemoveDuplicatedRecord(option.isRemoveDuplicateRecordByTime());
         List<ColumnDesc> schema = th.getSchema();
-        switch (th.getFormatVersion()) {
-            case 1:
-            {
-                if (option.getProjection().size() > 0) {
-                    schema = new ArrayList<>();
-                    for (String name : option.getProjection()) {
-                        Integer idx = th.getSchemaPos().get(name);
-                        if (idx == null) {
-                            throw new TabletException("Cannot find column " + name);
-                        }
-                        builder.addProjection(idx);
-                        schema.add(th.getSchema().get(idx));
+        ProjectionInfo projectionInfo = null;
+        if (th.getFormatVersion() == 1) {
+            if (option.getProjection().size() > 0) {
+                schema = new ArrayList<>();
+                for (String name : option.getProjection()) {
+                    Integer idx = th.getSchemaPos().get(name);
+                    if (idx == null) {
+                        throw new TabletException("Cannot find column " + name);
                     }
+                    builder.addProjection(idx);
+                    schema.add(th.getSchema().get(idx));
                 }
-                Tablet.ScanRequest request = builder.build();
-                Future<Tablet.ScanResponse> response = ts.scan(request, TableClientCommon.scanFakeCallback);
-                ProjectionInfo projectionInfo = new ProjectionInfo(schema);
-                return new ScanFuture(response, th, projectionInfo);
+                projectionInfo = new ProjectionInfo(schema);
             }
-            default:
-            {
-                Tablet.ScanRequest request = builder.build();
-                Future<Tablet.ScanResponse> response = ts.scan(request, TableClientCommon.scanFakeCallback);
-                if (option.getProjection().size() > 0) {
-                    List<Integer> projectionIdx = new ArrayList<>();
-                    int maxIdx = -1;
-                    BitSet bitSet = new BitSet(schema.size());
-                    for (String name : option.getProjection()) {
-                        Integer idx = th.getSchemaPos().get(name);
-                        if (idx == null) {
-                            throw new TabletException("Cannot find column " + name);
-                        }
-                        bitSet.set(idx, true);
-                        if (idx > maxIdx) {
-                            maxIdx = idx;
-                        }
-                        projectionIdx.add(idx);
+            Tablet.ScanRequest request = builder.build();
+            Future<Tablet.ScanResponse> response = ts.scan(request, TableClientCommon.scanFakeCallback);
+            return new ScanFuture(response, th, projectionInfo);
+        } else {
+            Tablet.ScanRequest request = builder.build();
+            if (option.getProjection().size() > 0) {
+                List<Integer> projectionIdx = new ArrayList<>();
+                int maxIdx = -1;
+                BitSet bitSet = new BitSet(schema.size());
+                for (String name : option.getProjection()) {
+                    Integer idx = th.getSchemaPos().get(name);
+                    if (idx == null) {
+                        throw new TabletException("Cannot find column " + name);
                     }
-                    ProjectionInfo projectionInfo = new ProjectionInfo(projectionIdx, bitSet, maxIdx);
-                    return new ScanFuture(response, th, projectionInfo);
+                    bitSet.set(idx, true);
+                    if (idx > maxIdx) {
+                        maxIdx = idx;
+                    }
+                    projectionIdx.add(idx);
                 }
-                return new ScanFuture(response, th);
+                projectionInfo = new ProjectionInfo(projectionIdx, bitSet, maxIdx);
             }
-
+            Future<Tablet.ScanResponse> response = ts.scan(request, TableClientCommon.scanFakeCallback);
+            return new ScanFuture(response, th, projectionInfo);
         }
     }
 

@@ -38,7 +38,7 @@ public class GetFuture implements Future<ByteString>{
 		this.th = t;
 		rowLength = t.getSchema().size();
 		this.projectionInfo = projectionInfo;
-		if (t != null && t.getTableInfo().getFormatVersion() == 1) {
+		if (t.getTableInfo().getFormatVersion() == 1) {
 			if (projectionInfo != null && projectionInfo.getProjectionSchema() != null) {
 				rv = new RowView(projectionInfo.getProjectionSchema());
 				rowLength = projectionInfo.getProjectionSchema().size();
