@@ -576,6 +576,7 @@ TEST_F(TabletImplTest, GetRelationalTable) {
         ::rtidb::common::ColumnDesc* col = schema->Add();
         col->set_name("card");
         col->set_data_type(::rtidb::type::kBigInt);
+        col->set_not_null(true);
         col = schema->Add();
         col->set_name("mcc");
         col->set_data_type(::rtidb::type::kVarchar);
@@ -797,6 +798,7 @@ TEST_F(TabletImplTest, StringKeyRelationalTable) {
         ::rtidb::common::ColumnDesc* col = schema->Add();
         col->set_name("card");
         col->set_data_type(::rtidb::type::kString);
+        col->set_not_null(true);
         col = schema->Add();
         col->set_name("mcc");
         col->set_data_type(::rtidb::type::kVarchar);
