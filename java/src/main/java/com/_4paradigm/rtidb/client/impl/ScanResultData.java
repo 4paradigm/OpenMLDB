@@ -5,14 +5,14 @@ import com.google.protobuf.ByteString;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
-public class QueryResultData {
+public class ScanResultData {
     private ByteBuffer bb;
     private int offset;
     private long ts;
     private ByteBuffer slice;
     private int totalSize;
 
-    public QueryResultData(ByteString bs) {
+    public ScanResultData(ByteString bs) {
         this.bb = bs.asReadOnlyByteBuffer();
         this.totalSize = bs.size();
         this.offset = 0;

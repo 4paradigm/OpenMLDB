@@ -16,14 +16,11 @@ import com.google.protobuf.ByteBufferNoCopy;
 import com.google.protobuf.ByteString;
 import rtidb.api.TabletServer;
 import rtidb.blobserver.BlobServer;
-import sun.tools.jconsole.Tab;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.sql.Time;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeoutException;
 
 public class TableSyncClientImpl implements TableSyncClient {

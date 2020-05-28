@@ -17,7 +17,7 @@ import java.util.List;
 
 public class DefaultKvIterator implements KvIterator {
 
-    private List<QueryResultData> dataList = new ArrayList<>();
+    private List<ScanResultData> dataList = new ArrayList<>();
     // no copy
     private ByteBuffer slice = null;
     private long time;
@@ -31,7 +31,7 @@ public class DefaultKvIterator implements KvIterator {
     private ProjectionInfo projectionInfo = null;
 
     public DefaultKvIterator(ByteString bs) {
-        this.dataList.add(new QueryResultData(bs));
+        this.dataList.add(new ScanResultData(bs));
         next();
     }
     
@@ -84,7 +84,7 @@ public class DefaultKvIterator implements KvIterator {
     public DefaultKvIterator(List<ByteString> bsList, TableHandler th, ProjectionInfo projectionInfo) {
         for (ByteString bs : bsList) {
             if (!bs.isEmpty()) {
-                this.dataList.add(new QueryResultData(bs));
+                this.dataList.add(new ScanResultData(bs));
             }
         }
         this.projectionInfo = projectionInfo;
@@ -156,14 +156,14 @@ public class DefaultKvIterator implements KvIterator {
         int maxTsIndex = -1;
         long ts = -1;
         for (int i = 0; i < dataList.size(); i++) {
-            QueryResultData queryResult = dataList.get(i);
+            ScanResultData queryResult = dataList.get(i);
             if (queryResult.valid() && queryResult.GetTs() > ts) {
                 maxTsIndex = i;
                 ts = queryResult.GetTs();
             }
         }
         if (maxTsIndex >= 0) {
-            QueryResultData queryResult = dataList.get(maxTsIndex);
+            ScanResultData queryResult = dataList.get(maxTsIndex);
             time = queryResult.GetTs();
             slice = queryResult.fetchData();
         } else {
