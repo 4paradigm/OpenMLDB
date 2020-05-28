@@ -63,7 +63,7 @@ class WrapListImpl : public ListV<V> {
  public:
     WrapListImpl() : ListV<V>() {}
     ~WrapListImpl() {}
-    virtual const V GetField(R row) const = 0;
+    virtual const V GetField(const R& row) const = 0;
 };
 
 template <class V>
@@ -76,7 +76,7 @@ class ColumnImpl : public WrapListImpl<V, Row> {
           offset_(offset) {}
 
     ~ColumnImpl() {}
-    const V GetField(Row row) const override {
+    const V GetField(const Row& row) const override {
         V value;
         const int8_t *ptr = row.buf(row_idx_) + offset_;
         value = *((const V *)ptr);
@@ -108,7 +108,7 @@ class TimestampColumnImpl : public ColumnImpl<Timestamp> {
     TimestampColumnImpl(ListV<Row> *impl, int32_t row_idx, uint32_t offset)
         : ColumnImpl(impl, row_idx, offset) {}
     ~TimestampColumnImpl() {}
-    const Timestamp GetField(Row row) const override {
+    const Timestamp GetField(const Row& row) const override {
         int64_t ts;
         const int8_t *ptr = row.buf(row_idx_) + offset_;
         ts = *((const int64_t *)ptr);
@@ -126,7 +126,7 @@ class StringColumnImpl : public ColumnImpl<StringRef> {
           str_start_offset_(str_start_offset) {}
 
     ~StringColumnImpl() {}
-    const StringRef GetField(Row row) const override {
+    const StringRef GetField(const Row& row) const override {
         int32_t addr_space = v1::GetAddrSpace(row.size(row_idx_));
         StringRef value;
         v1::GetStrField(row.buf(row_idx_), str_field_offset_,

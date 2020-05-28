@@ -288,19 +288,12 @@ class Window : public MemTimeTableHandler {
 
 class CurrentHistoryWindow : public Window {
  public:
-    CurrentHistoryWindow(bool memory_own, int64_t start_offset)
-        : Window(start_offset, 0), memory_own_(memory_own) {}
-    CurrentHistoryWindow(
-        bool memory_own, int64_t start_offset, uint32_t max_size)
-        : Window(start_offset, 0, max_size), memory_own_(memory_own) {}
+    explicit CurrentHistoryWindow(int64_t start_offset)
+        : Window(start_offset, 0) {}
+    CurrentHistoryWindow(int64_t start_offset, uint32_t max_size)
+        : Window(start_offset, 0, max_size) {}
 
-    ~CurrentHistoryWindow() {
-        if (memory_own_) {
-            for (const auto& pair : table_) {
-                CoreAPI::ReleaseRow(pair.second);
-            }
-        }
-    }
+    ~CurrentHistoryWindow() {}
 
     void BufferData(uint64_t key, const Row& row) {
         AddRow(key, row);
@@ -312,9 +305,6 @@ class CurrentHistoryWindow : public Window {
         while (cur_size > max_size) {
             const auto& pair = GetFrontData();
             if (start_ts > 0 && pair.first <= start_ts) {
-                if (memory_own_) {
-                    CoreAPI::ReleaseRow(pair.second);
-                }
                 PopFrontRow();
                 --cur_size;
             } else {
@@ -414,7 +404,8 @@ class MemSegmentHandler : public TableHandler {
         while (pos-- > 0 && iter->Valid()) {
             iter->Next();
         }
-        return iter->Valid() ? iter->GetValue() : Row();
+        return iter->Valid() ?
+            iter->GetValue() : Row();
     }
     const std::string GetHandlerTypeName() override {
         return "MemSegmentHandler";
@@ -487,6 +478,16 @@ class MemCatalog : public Catalog {
     MemTables tables_;
     Databases dbs_;
 };
+
+
+// row iter interfaces for llvm
+void GetRowIter(int8_t* input, int8_t* iter);
+bool RowIterHasNext(int8_t* iter);
+void RowIterNext(int8_t* iter);
+int8_t* RowIterGetCurSlice(int8_t* iter, size_t idx);
+size_t RowIterGetCurSliceSize(int8_t* iter, size_t idx);
+void RowIterDelete(int8_t* iter);
+
 
 }  // namespace vm
 }  // namespace fesql

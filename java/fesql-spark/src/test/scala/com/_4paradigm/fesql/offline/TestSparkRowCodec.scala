@@ -2,6 +2,7 @@ package com._4paradigm.fesql.offline
 
 import java.sql.Timestamp
 
+import com._4paradigm.fesql.FeSqlLibrary
 import com._4paradigm.fesql.codec.{Row => NativeRow}
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types._
@@ -14,12 +15,12 @@ class TestSparkRowCodec extends FunSuite {
   FeSqlLibrary.init()
 
   private val baseSchema = StructType(Seq(
+    StructField("bool", BooleanType),
     StructField("short", ShortType),
     StructField("int", IntegerType),
     StructField("long", LongType),
     StructField("float", FloatType),
     StructField("double", DoubleType),
-    StructField("bool", BooleanType),
     StructField("timestamp", TimestampType)
   ))
 

@@ -639,7 +639,7 @@ std::string RowView::GetAsString(uint32_t idx) {
         case fesql::type::kBool: {
             bool value;
             if (0 == GetBool(idx, &value)) {
-                return std::to_string(value);
+                return value ? "true" : "false";
             }
             break;
         }

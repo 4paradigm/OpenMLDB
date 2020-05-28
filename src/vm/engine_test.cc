@@ -302,7 +302,8 @@ void RequestModeCheck(SQLCase& sql_case) {  // NOLINT
         Row out_row;
         ret = session.Run(in_row, &out_row);
         ASSERT_EQ(0, ret);
-        ASSERT_TRUE(request_table->Put(in_row.data(), in_row.size()));
+        ASSERT_TRUE(request_table->Put(
+            reinterpret_cast<const char*>(in_row.buf()), in_row.size()));
         output.push_back(out_row);
     }
 
@@ -373,11 +374,7 @@ void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
 
     // Check Output Data
     std::vector<Row> output;
-    std::vector<int8_t*> output_ptr;
-    ASSERT_EQ(0, session.Run(output_ptr));
-    for (auto ptr : output_ptr) {
-        output.push_back(Row(ptr, RowView::GetSize(ptr)));
-    }
+    ASSERT_EQ(0, session.Run(output));
     CheckRows(schema, SortRows(schema, output, sql_case.output().order_),
               case_output_data);
 }

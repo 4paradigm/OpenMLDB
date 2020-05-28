@@ -246,8 +246,10 @@ bool SQLCase::ExtractRow(const vm::Schema& schema, const std::string& row_str,
                 break;
             }
             case type::kBool: {
-                bool d = boost::lexical_cast<bool>(item_vec[index]);
-                if (!rb.AppendBool(d)) {
+                bool b;
+                std::istringstream ss(item_vec[index]);
+                ss >> std::boolalpha >> b;
+                if (!rb.AppendBool(b)) {
                     LOG(WARNING) << "Fail Append Column " << index;
                     return false;
                 }
@@ -296,7 +298,8 @@ bool SQLCase::ExtractRows(const vm::Schema& schema, const std::string& data_str,
         if (!ExtractRow(schema, row_str, &row_ptr, &row_size)) {
             return false;
         }
-        rows.push_back(Row(row_ptr, row_size));
+        rows.push_back(
+            Row(base::RefCountedSlice::Create(row_ptr, row_size)));
     }
     return true;
 }

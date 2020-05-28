@@ -376,7 +376,8 @@ Row Runner::WindowProject(const int8_t* fn, const uint64_t key, const Row row,
     if (window->instance_not_in_window()) {
         window->PopBackData();
     }
-    return Row(reinterpret_cast<char*>(out_buf), RowView::GetSize(out_buf));
+    return Row(base::RefCountedSlice::CreateManaged(
+        out_buf, RowView::GetSize(out_buf)));
 }
 
 int64_t Runner::GetColumnInt64(RowView* row_view, int key_idx,
@@ -663,7 +664,7 @@ void WindowAggRunner::RunWindowAggOnKey(
             ? -1
             : IteratorStatus::PickIteratorWithMininumKey(&union_segment_status);
     int32_t cnt = output_table->GetCount();
-    CurrentHistoryWindow window(false,
+    CurrentHistoryWindow window(
         instance_window_gen_.window_op_.range_.start_offset_);
     window.set_instance_not_in_window(instance_not_in_window_);
 
@@ -1093,9 +1094,10 @@ bool JoinGenerator::PartitionJoin(std::shared_ptr<PartitionHandler> left,
         left_iter->SeekToFirst();
         while (left_iter->Valid()) {
             const Row& left_row = left_iter->GetValue();
-            output->AddRow(
-                std::string(left_key.data(), left_key.size()),
-                left_iter->GetKey(),
+            auto key_str = std::string(
+                reinterpret_cast<const char*>(left_key.buf()),
+                left_key.size());
+            output->AddRow(key_str, left_iter->GetKey(),
                 Runner::RowLastJoinTable(left_row, right, condition_gen_));
             left_iter->Next();
         }
@@ -1132,10 +1134,12 @@ bool JoinGenerator::PartitionJoin(std::shared_ptr<PartitionHandler> left,
                                              left_key_gen_.Gen(left_row)
                                        : left_key_gen_.Gen(left_row);
             auto right_table = right->GetSegment(right, key_str);
-            output->AddRow(std::string(left_key.data(), left_key.size()),
-                           left_iter->GetKey(),
-                           Runner::RowLastJoinTable(left_row, right_table,
-                                                    condition_gen_));
+            auto left_key_str = std::string(
+                reinterpret_cast<const char*>(left_key.buf()),
+                left_key.size());
+            output->AddRow(left_key_str, left_iter->GetKey(),
+                Runner::RowLastJoinTable(left_row, right_table,
+                                         condition_gen_));
             left_iter->Next();
         }
         left_partition_iter->Next();
@@ -1268,8 +1272,9 @@ void Runner::PrintData(const vm::SchemaSourceList& schema_list,
                 t.endOfRow();
             }
             while (iter->Valid() && cnt++ < MAX_DEBUG_LINES_CNT) {
-                t.add("KEY: " + std::string(iter->GetKey().data(),
-                                            iter->GetKey().size()));
+                t.add("KEY: " + std::string(
+                    reinterpret_cast<const char*>(iter->GetKey().buf()),
+                    iter->GetKey().size()));
                 t.endOfRow();
                 auto segment_iter = iter->GetValue();
                 if (!segment_iter) {
@@ -1556,7 +1561,8 @@ const Row AggGenerator::Gen(std::shared_ptr<TableHandler> table) {
         LOG(WARNING) << "fail to run udf " << ret;
         return Row();
     }
-    return Row(buf, RowView::GetSize(buf));
+    return Row(base::RefCountedSlice::CreateManaged(
+        buf, RowView::GetSize(buf)));
 }
 
 const Row WindowProjectGenerator::Gen(const uint64_t key, const Row row,

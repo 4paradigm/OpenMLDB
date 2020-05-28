@@ -1,4 +1,4 @@
-package com._4paradigm.fesql.offline;
+package com._4paradigm.fesql;
 
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;

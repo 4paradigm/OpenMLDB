@@ -186,7 +186,6 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
             byte_size += row.size();
             iter->Next();
             buf.append(reinterpret_cast<void*>(row.buf()), row.size());
-            free(row.buf());
             count += 1;
         }
         response->set_schema(session.GetEncodedSchema());
@@ -211,7 +210,7 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
                 return;
             }
         }
-        codec::Row row(request->row().c_str(), request->row().size());
+        codec::Row row(request->row());
         codec::Row output;
         int32_t ret = session.Run(row, &output);
         if (ret != 0) {
@@ -225,7 +224,6 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
         response->set_byte_size(output.size());
         response->set_count(1);
         status->set_code(common::kOk);
-        free(output.buf());
     }
 }
 

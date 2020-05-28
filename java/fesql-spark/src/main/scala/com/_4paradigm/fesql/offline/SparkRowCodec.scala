@@ -34,8 +34,7 @@ class SparkRowCodec(sliceSchemas: Array[StructType]) {
 
     for (i <- 0 until sliceNum) {
       val sliceSize = sliceSizes(i)
-      val buffer = CoreAPI.AllocateRaw(sliceSize)
-      val rowSlice = encodeSingle(row, buffer, sliceSize, i)
+      val rowSlice = encodeSingle(row, sliceSize, i)
 
       if (i == 0) {
         result = rowSlice
@@ -57,12 +56,12 @@ class SparkRowCodec(sliceSchemas: Array[StructType]) {
   }
 
 
-  def encodeSingle(row: Row, buffer: Long, size: Int, sliceIndex: Int): NativeRow = {
+  def encodeSingle(row: Row, size: Int, sliceIndex: Int): NativeRow = {
     val rowBuilder = rowBuilders(sliceIndex)
     val schema = sliceSchemas(sliceIndex)
+    val nativeRow = CoreAPI.NewRow(size)
 
-    rowBuilder.SetBuffer(buffer, size)
-
+    rowBuilder.SetBuffer(nativeRow.buf(), size)
     val fieldNum = schema.size
     var fieldOffset = sliceFieldOffsets(sliceIndex)
 
@@ -72,6 +71,8 @@ class SparkRowCodec(sliceSchemas: Array[StructType]) {
         rowBuilder.AppendNULL()
       } else {
         field.dataType match {
+          case BooleanType =>
+            rowBuilder.AppendBool(row.getBoolean(fieldOffset))
           case ShortType =>
             rowBuilder.AppendInt16(row.getShort(fieldOffset))
           case IntegerType =>
@@ -95,8 +96,7 @@ class SparkRowCodec(sliceSchemas: Array[StructType]) {
       }
       fieldOffset += 1
     }
-
-    new NativeRow(buffer, size)
+    nativeRow
   }
 
 
@@ -116,6 +116,8 @@ class SparkRowCodec(sliceSchemas: Array[StructType]) {
         output(i) = null
       } else {
         field.dataType match {
+          case BooleanType =>
+            output(fieldOffset) = rowView.GetBoolUnsafe(i)
           case ShortType =>
             output(fieldOffset) = rowView.GetInt16Unsafe(i)
           case IntegerType =>

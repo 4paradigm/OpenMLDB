@@ -31,67 +31,58 @@
 namespace fesql {
 namespace codec {
 
+using fesql::base::RefCountedSlice;
 using fesql::base::Slice;
 
 class Row {
  public:
-    Row() : slice_() {}
-    Row(int8_t *d, size_t n) : slice_(d, n, false) {}
-    Row(int64_t buf_handle, size_t n) :
-        slice_(reinterpret_cast<int8_t*>(buf_handle) , n, false) {}
-    Row(int8_t *d, size_t n, bool need_free) : slice_(d, n, need_free) {}
-    Row(const char *d, size_t n) : slice_(d, n, false) {}
-    Row(const char *d, size_t n, bool need_free) : slice_(d, n, need_free) {}
-    explicit Row(const base::RawBuffer &buf) : slice_(buf) {}
-    Row(Row &s) : slice_(s.slice_), slices_(s.slices_) {}
-    Row(const Row &s) : slice_(s.slice_), slices_(s.slices_) {}
-    Row(const Row &major, const Row &secondary) : slice_(major.slice_) {
-        Append(major.slices_);
-        Append(secondary);
-    }
-    explicit Row(const Slice &s) : slice_(s) {}
-    explicit Row(const std::string &s) : slice_(s) {}
+    Row();
+    explicit Row(const std::string& str);
+    Row(const Row &s);
+    Row(const Row &major, const Row &secondary);
 
-    explicit Row(const char *s) : slice_(s) {}
-    virtual ~Row() {}
-    inline int8_t *buf() const { return slice_.buf(); }
-    inline int8_t *buf(int32_t pos) const {
+    explicit Row(const fesql::base::RefCountedSlice& s);
+
+    virtual ~Row();
+
+    inline int8_t* buf() const { return slice_.buf(); }
+    inline int8_t* buf(int32_t pos) const {
         return 0 == pos ? slice_.buf() : slices_[pos - 1].buf();
     }
 
-    inline const char *data() const { return slice_.data(); }
     inline int32_t size() const { return slice_.size(); }
     inline int32_t size(int32_t pos) const {
         return 0 == pos ? slice_.size() : slices_[pos - 1].size();
     }
+
     // Return true if the length of the referenced data is zero
     inline bool empty() const { return slice_.empty() && slices_.empty(); }
+
     // Three-way comparison.  Returns value:
     //   <  0 iff "*this" <  "b",
     //   == 0 iff "*this" == "b",
     //   >  0 iff "*this" >  "b"
     int compare(const Row &b) const;
-    void Append(const std::vector<Slice> &slices) {
-        if (!slices.empty()) {
-            for (auto iter = slices.cbegin(); iter != slices.cend(); iter++) {
-                slices_.push_back(*iter);
-            }
-        }
-    }
-    void Append(const Row &b) {
-        slices_.push_back(b.slice_);
-        Append(b.slices_);
-    }
+
+    void Append(const std::vector<fesql::base::RefCountedSlice> &slices);
+    void Append(const Row &b);
 
     int8_t **GetRowPtrs() const;
 
-    int32_t GetRowPtrCnt() const { return 1 + slices_.size(); }
+    int32_t GetRowPtrCnt() const;
     int32_t *GetRowSizes() const;
-    void AppendEmptyRow() { slices_.push_back(Slice()); }
+    void AppendEmptyRow();
+
     // Return a string that contains the copy of the referenced data.
-    std::string ToString() const { return slice_.ToString(); }
-    Slice slice_;
-    std::vector<Slice> slices_;
+    std::string ToString() const;
+
+    void Reset(const int8_t* buf, size_t size) {
+        slice_.reset(reinterpret_cast<const char*>(buf), size);
+    }
+
+ private:
+    RefCountedSlice slice_;
+    std::vector<RefCountedSlice> slices_;
 };
 
 }  // namespace codec

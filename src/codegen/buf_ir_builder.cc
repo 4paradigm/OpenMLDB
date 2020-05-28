@@ -246,6 +246,15 @@ BufNativeEncoderIRBuilder::BufNativeEncoderIRBuilder(
 
 BufNativeEncoderIRBuilder::~BufNativeEncoderIRBuilder() {}
 
+
+bool BufNativeEncoderIRBuilder::BuildEncodePrimaryField(::llvm::Value* i8_ptr,
+                                                        size_t idx,
+                                                        ::llvm::Value* val) {
+    uint32_t offset = offset_vec_.at(idx);
+    return AppendPrimary(i8_ptr, val, offset);
+}
+
+
 bool BufNativeEncoderIRBuilder::BuildEncode(::llvm::Value* output_ptr) {
     ::llvm::IRBuilder<> builder(block_);
     ::llvm::Type* i32_ty = builder.getInt32Ty();
@@ -281,7 +290,12 @@ bool BufNativeEncoderIRBuilder::BuildEncode(::llvm::Value* output_ptr) {
     for (int32_t idx = 0; idx < schema_.size(); idx++) {
         const ::fesql::type::ColumnDef& column = schema_.Get(idx);
         // TODO(wangtaize) null check
-        ::llvm::Value* val = outputs_->at(idx);
+        auto output_iter = outputs_->find(idx);
+        if (output_iter == outputs_->end()) {
+            continue;
+        }
+
+        ::llvm::Value* val = output_iter->second;
         switch (column.type()) {
             case ::fesql::type::kBool:
             case ::fesql::type::kInt16:

@@ -11,6 +11,7 @@ add_library(fesql_codegen STATIC
         window_ir_builder.cc
         block_ir_builder.cc
         fn_let_ir_builder.cc
+        fn_let_ir_builder_optsum.cc
         cast_expr_ir_builder.cc
         arithmetic_expr_ir_builder.cc
         variable_ir_builder.cc

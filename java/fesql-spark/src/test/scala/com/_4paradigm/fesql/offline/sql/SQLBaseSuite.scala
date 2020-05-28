@@ -4,7 +4,7 @@ import java.io.{File, FileInputStream}
 import java.sql.Timestamp
 
 import com._4paradigm.fesql.offline.{SparkPlanner, SparkTestSuite}
-import com._4paradigm.fesql.offline.sqlcase.model._
+import com._4paradigm.fesql.sqlcase.model._
 import org.apache.spark.sql.{DataFrame, Row}
 import org.apache.spark.sql.types._
 import org.slf4j.LoggerFactory
@@ -167,6 +167,7 @@ class SQLBaseSuite extends SparkTestSuite {
         case "double" => DoubleType
         case "string" => StringType
         case "timestamp" => TimestampType
+        case "bool" => BooleanType
         case _ => throw new IllegalArgumentException(
           s"Unknown type name $typeName")
       }
@@ -194,6 +195,7 @@ class SQLBaseSuite extends SparkTestSuite {
               case DoubleType => str.trim.toDouble
               case StringType => str
               case TimestampType => new Timestamp(str.trim.toLong)
+              case BooleanType => str.trim.toBoolean
               case _ => throw new IllegalArgumentException(
                 s"Unknown type ${field.dataType}")
             }

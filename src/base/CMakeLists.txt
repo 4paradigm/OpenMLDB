@@ -2,7 +2,7 @@ include_directories(${INCLUDE_DIRECTORIES}
         ${PROJECT_SOURCE_DIR}/src
         ${PROJECT_BINARY_DIR}/src)
 
-add_library(fesql_base STATIC fs_util.cc fe_linenoise.cc texttable.cc graph.cc)
+add_library(fesql_base STATIC fe_slice.cc fs_util.cc fe_linenoise.cc texttable.cc graph.cc)
 
 if (TESTING_ENABLE)
     add_executable(hash_test hash_test.cc)
@@ -23,8 +23,8 @@ if (TESTING_ENABLE)
     add_test(texttable_test texttable_test --gtest_output=xml:${CMAKE_BINARY_DIR}/hash_test.xml)
     list(APPEND test_list texttable_test)
 
-    add_executable(slice_test slice_test.cc)
-    target_link_libraries(slice_test gflags gtest pthread)
+    add_executable(slice_test fe_slice_test.cc)
+    target_link_libraries(slice_test fesql_base gflags gtest pthread)
     list(APPEND test_list slice_test)
 endif ()
 

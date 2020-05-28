@@ -642,6 +642,12 @@ primary_time:
     |SECONDNUM{
         $$ = node_manager->MakeConstNode($1, fesql::node::kSecond);
     }
+    |LONGNUM {
+        $$ = node_manager->MakeConstNode($1);
+    }
+    |INTNUM {
+        $$ = node_manager->MakeConstNode($1);
+    };
 var: FUN_IDENTIFIER {
         $$ = node_manager->MakeExprIdNode($1);
      };

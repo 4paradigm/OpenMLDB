@@ -110,6 +110,26 @@ void InitCodecSymbol(::llvm::orc::JITDylib& jd,             // NOLINT
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_encode_calc_size",
         reinterpret_cast<void*>(&codec::v1::CalcTotalLength));
+
+    // row iteration
+    fesql::vm::FeSQLJIT::AddSymbol(
+        jd, mi, "fesql_storage_get_row_iter",
+        reinterpret_cast<void*>(&fesql::vm::GetRowIter));
+    fesql::vm::FeSQLJIT::AddSymbol(
+        jd, mi, "fesql_storage_row_iter_has_next",
+        reinterpret_cast<void*>(&fesql::vm::RowIterHasNext));
+    fesql::vm::FeSQLJIT::AddSymbol(
+        jd, mi, "fesql_storage_row_iter_next",
+        reinterpret_cast<void*>(&fesql::vm::RowIterNext));
+    fesql::vm::FeSQLJIT::AddSymbol(
+        jd, mi, "fesql_storage_row_iter_get_cur_slice",
+        reinterpret_cast<void*>(&fesql::vm::RowIterGetCurSlice));
+    fesql::vm::FeSQLJIT::AddSymbol(
+        jd, mi, "fesql_storage_row_iter_get_cur_slice_size",
+        reinterpret_cast<void*>(&fesql::vm::RowIterGetCurSliceSize));
+    fesql::vm::FeSQLJIT::AddSymbol(
+        jd, mi, "fesql_storage_row_iter_delete",
+        reinterpret_cast<void*>(&fesql::vm::RowIterDelete));
 }
 
 void InitCodecSymbol(vm::FeSQLJIT* jit_ptr) {
