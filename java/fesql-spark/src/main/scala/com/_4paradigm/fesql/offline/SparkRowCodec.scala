@@ -71,8 +71,6 @@ class SparkRowCodec(sliceSchemas: Array[StructType]) {
         rowBuilder.AppendNULL()
       } else {
         field.dataType match {
-          case BooleanType =>
-            rowBuilder.AppendBool(row.getBoolean(fieldOffset))
           case ShortType =>
             rowBuilder.AppendInt16(row.getShort(fieldOffset))
           case IntegerType =>
@@ -116,8 +114,6 @@ class SparkRowCodec(sliceSchemas: Array[StructType]) {
         output(i) = null
       } else {
         field.dataType match {
-          case BooleanType =>
-            output(fieldOffset) = rowView.GetBoolUnsafe(i)
           case ShortType =>
             output(fieldOffset) = rowView.GetInt16Unsafe(i)
           case IntegerType =>

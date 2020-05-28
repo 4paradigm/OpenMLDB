@@ -15,12 +15,12 @@ class TestSparkRowCodec extends FunSuite {
   FeSqlLibrary.init()
 
   private val baseSchema = StructType(Seq(
-    StructField("bool", BooleanType),
     StructField("short", ShortType),
     StructField("int", IntegerType),
     StructField("long", LongType),
     StructField("float", FloatType),
     StructField("double", DoubleType),
+    StructField("bool", BooleanType),
     StructField("timestamp", TimestampType)
   ))
 
