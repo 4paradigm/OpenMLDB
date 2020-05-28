@@ -25,8 +25,6 @@ ObjectStore::ObjectStore(const ::rtidb::blobserver::TableMeta& table_meta,
       thread_pool_(2) {}
 
 bool ObjectStore::Init() {
-    db_root_path_ = db_root_path_ + "/" + std::to_string(tid_) + "_" +
-                   std::to_string(pid_);
     if (!options_initialized) {
         settings_init();
         options_initialized = true;
