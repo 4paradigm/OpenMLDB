@@ -5,10 +5,10 @@
 
 #include "blobserver/blobserver_impl.h"
 
+#include <utility>
+
 #include "gflags/gflags.h"
 #include "google/protobuf/text_format.h"
-
-#include <utility>
 
 #include "base/file_util.h"
 #include "base/glog_wapper.h"
@@ -146,7 +146,6 @@ void BlobServerImpl::CreateTable(RpcController *controller,
 
 int BlobServerImpl::WriteTableMeta(const std::string& path,
                                    const TableMeta& meta) {
-
     if (!::rtidb::base::MkdirRecur(path)) {
         PDLOG(WARNING, "fail to create path %s", path.c_str());
         return 1;
