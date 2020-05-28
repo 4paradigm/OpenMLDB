@@ -174,17 +174,11 @@ void AggRunnerCase(const std::string sql, int runner_id,
                 std::vector<std::shared_ptr<DataHandler>> res;
                 benchmark::DoNotOptimize(
                     RunnerRun(start_runner, table, limit_cnt, res));
-                for (auto data : res) {
-                    DeleteData(data.get());
-                }
             }
         }
         case TEST: {
             std::vector<std::shared_ptr<DataHandler>> res;
             ASSERT_TRUE(RunnerRun(start_runner, table, limit_cnt, res));
-            for (auto data : res) {
-                DeleteData(data.get());
-            }
         }
     }
 }

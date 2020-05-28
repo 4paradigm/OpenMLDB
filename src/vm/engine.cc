@@ -203,7 +203,7 @@ std::shared_ptr<TableHandler> BatchRunSession::Run() {
     }
     return std::shared_ptr<TableHandler>();
 }
-int32_t BatchRunSession::Run(std::vector<int8_t*>& buf, uint64_t limit) {
+int32_t BatchRunSession::Run(std::vector<Row>& rows, uint64_t limit) {
     RunnerContext ctx(is_debug_);
     auto output = compile_info_->get_sql_context().runner->RunWithCache(ctx);
     if (!output) {
@@ -215,15 +215,14 @@ int32_t BatchRunSession::Run(std::vector<int8_t*>& buf, uint64_t limit) {
             auto iter =
                 std::dynamic_pointer_cast<TableHandler>(output)->GetIterator();
             while (iter->Valid()) {
-                buf.push_back(iter->GetValue().buf());
+                rows.push_back(iter->GetValue());
                 iter->Next();
             }
             return 0;
         }
         case kRowHandler: {
-            buf.push_back(std::dynamic_pointer_cast<RowHandler>(output)
-                              ->GetValue()
-                              .buf());
+            rows.push_back(std::dynamic_pointer_cast<RowHandler>(output)
+                              ->GetValue());
             return 0;
         }
         case kPartitionHandler: {

@@ -1,10 +1,7 @@
 package com._4paradigm.fesql.offline;
 
+import com._4paradigm.fesql.LibraryLoader;
 import com._4paradigm.fesql.base.BaseStatus;
-import com._4paradigm.fesql.base.Slice;
-import com._4paradigm.fesql.codec.Row;
-import com._4paradigm.fesql.codec.RowBuilder;
-import com._4paradigm.fesql.codec.RowView;
 import com._4paradigm.fesql.type.TypeOuterClass;
 import com._4paradigm.fesql.type.TypeOuterClass.TableDef;
 import com._4paradigm.fesql.type.TypeOuterClass.ColumnDef;
@@ -15,7 +12,6 @@ import org.junit.Test;
 import java.nio.ByteBuffer;
 
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.assertEquals;
 
 
 public class TestParseSQL {

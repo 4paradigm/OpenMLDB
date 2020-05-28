@@ -7,6 +7,7 @@
     <artifactId>fesql-sdk</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <modules>
+           <module>fesql-common</module>
            <module>fesql-jdbc</module>
            <module>fesql-native</module>
            <module>fesql-proto</module>

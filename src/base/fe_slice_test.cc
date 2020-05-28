@@ -22,13 +22,17 @@ TEST_F(SliceTest, Compare) {
     ASSERT_EQ(sizeof(a), 16u);
 }
 
-TEST_F(SliceTest, Assign) {
+TEST_F(SliceTest, ref_cnt_slice) {
+    auto buf = reinterpret_cast<int8_t*>(malloc(1024));
+    strcpy(reinterpret_cast<char*>(buf), "hello world");  // NOLINT
+
+    auto ref = RefCountedSlice::CreateEmpty();
     {
-        char* data = new char[2];
-        Slice a(data, 2, true);
-        Slice b = a;
+        auto slice = RefCountedSlice::CreateManaged(buf, 1024);
+        ref = slice;
     }
-    ASSERT_TRUE(true);
+    ASSERT_EQ(0, strcmp(
+        reinterpret_cast<char*>(ref.buf()), "hello world"));
 }
 
 }  // namespace base

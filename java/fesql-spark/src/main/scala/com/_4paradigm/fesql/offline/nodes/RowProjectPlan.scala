@@ -115,7 +115,6 @@ object RowProjectPlan {
     decoder.decode(outputNativeRow, outputArr)
 
     // release swig jni objects
-    CoreAPI.ReleaseRow(nativeInputRow)
     nativeInputRow.delete()
     outputNativeRow.delete()
 
