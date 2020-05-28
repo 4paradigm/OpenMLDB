@@ -414,7 +414,6 @@ void RtidbClient::SetZkCheckInterval(int32_t interval) {
 GeneralResult RtidbClient::Init(const std::string& zk_cluster,
                                 const std::string& zk_path) {
     GeneralResult result;
-    std::string value;
     std::shared_ptr<rtidb::zk::ZkClient> zk_client;
     if (zk_cluster.empty()) {
         result.SetError(-1, "initial failed! not set zk_cluster");
