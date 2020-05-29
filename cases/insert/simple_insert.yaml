@@ -47,7 +47,7 @@ SQLCases:
         hello, 11, 22, 33.3, 44.4, 55, fesql
 
   - id: 2
-    desc: 简单INSERT timestamp
+    desc: insert 制定列,其他列默认为NULL
     db: db_1
     create: |
       create table t1 (
