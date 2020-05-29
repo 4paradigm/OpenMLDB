@@ -404,10 +404,6 @@ TEST_F(SQLCaseTest, ExtractSQLCase) {
         }
     }
 
-    {
-
-    }
-
     // Check Data
     {
         type::TableDef output_table;

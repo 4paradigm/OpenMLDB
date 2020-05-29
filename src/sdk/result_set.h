@@ -41,7 +41,72 @@ class ResultSet {
         GetString(index, &val);
         return val;
     }
+    const std::string GetAsString(uint32_t idx) {
+        if (nullptr == GetSchema()) {
+            return "NA";
+        }
+        int schema_size = GetSchema()->GetColumnCnt();
+        if (0 == schema_size) {
+            return "NA";
+        }
 
+        if ((int32_t)idx >= schema_size) {
+            return "NA";
+        }
+
+        if (IsNULL(idx)) {
+            return "NULL";
+        }
+        auto type = GetSchema()->GetColumnType(idx);
+        switch (type) {
+            case kTypeInt32: {
+                return std::to_string(GetInt32Unsafe(idx));
+            }
+            case kTypeInt64: {
+                return std::to_string(GetInt64Unsafe(idx));
+            }
+            case kTypeInt16: {
+                return std::to_string(GetInt16Unsafe(idx));
+            }
+            case kTypeFloat: {
+                return std::to_string(GetFloatUnsafe(idx));
+            }
+            case kTypeDouble: {
+                return std::to_string(GetDoubleUnsafe(idx));
+            }
+            case kTypeBool: {
+                return std::to_string(GetBoolUnsafe(idx));
+            }
+            case kTypeString: {
+                return GetStringUnsafe(idx);
+                break;
+            }
+            case kTypeTimestamp: {
+                return std::to_string(GetTimeUnsafe(idx));
+            }
+            default: {
+                break;
+            }
+        }
+
+        return "NA";
+    }
+
+    inline std::string GetRowString() {
+        int schema_size = GetSchema()->GetColumnCnt();
+        if (schema_size == 0) {
+            return "NA";
+        }
+        std::string row_str = "";
+
+        for (int i = 0; i < schema_size; i++) {
+            row_str.append(GetAsString(i));
+            if (i != schema_size - 1) {
+                row_str.append(", ");
+            }
+        }
+        return row_str;
+    }
     virtual bool GetBool(uint32_t index, bool* result) = 0;
 
     inline bool GetBoolUnsafe(int index) {
@@ -60,7 +125,7 @@ class ResultSet {
 
     virtual bool GetInt16(uint32_t index, int16_t* result) = 0;
 
-    virtual short GetInt16Unsafe(int index) { // NOLINT
+    virtual short GetInt16Unsafe(int index) {  // NOLINT
         if (IsNULL(index)) return 0;
         short val = 0;  // NOLINT
         GetInt16(index, &val);

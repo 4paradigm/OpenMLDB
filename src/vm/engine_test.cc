@@ -417,7 +417,9 @@ TEST_P(EngineTest, test_request_engine) {
 TEST_P(EngineTest, test_batch_engine) {
     ParamType sql_case = GetParam();
     LOG(INFO) << sql_case.desc();
-    BatchModeCheck(sql_case);
+    if (sql_case.mode() != "batch-unsupport") {
+        BatchModeCheck(sql_case);
+    }
 }
 
 TEST_F(EngineTest, EngineCompileOnlyTest) {

@@ -213,6 +213,8 @@ inline const std::string DataTypeName(const DataType &type) {
             return "string";
         case fesql::node::kTimestamp:
             return "timestamp";
+        case fesql::node::kDate:
+            return "date";
         case fesql::node::kList:
             return "list";
         case fesql::node::kMap:

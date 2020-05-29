@@ -430,8 +430,7 @@ bool SQLCase::ExtractRows(const vm::Schema& schema, const std::string& data_str,
         if (!ExtractRow(schema, row_str, &row_ptr, &row_size)) {
             return false;
         }
-        rows.push_back(
-            Row(base::RefCountedSlice::Create(row_ptr, row_size)));
+        rows.push_back(Row(base::RefCountedSlice::Create(row_ptr, row_size)));
     }
     return true;
 }
@@ -593,12 +592,14 @@ bool SQLCase::CreateSQLCasesFromYaml(
             }
 
             if (sql_case_node["create"]) {
-                sql_case.create_str_ = sql_case_node["create"].as<std::string>();
+                sql_case.create_str_ =
+                    sql_case_node["create"].as<std::string>();
                 boost::trim(sql_case.create_str_);
             }
 
             if (sql_case_node["insert"]) {
-                sql_case.insert_str_= sql_case_node["insert"].as<std::string>();
+                sql_case.insert_str_ =
+                    sql_case_node["insert"].as<std::string>();
                 boost::trim(sql_case.insert_str_);
             }
 

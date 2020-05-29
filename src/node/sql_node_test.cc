@@ -194,8 +194,10 @@ TEST_F(SqlNodeTest, MakeInsertNodeTest) {
     value_expr_list->PushBack(value1);
     value_expr_list->PushBack(value2);
     value_expr_list->PushBack(value3);
+    ExprListNode *insert_values = node_manager_->MakeExprList();
+    insert_values->PushBack(value_expr_list);
     SQLNode *node_ptr = node_manager_->MakeInsertTableNode(
-        "t1", column_expr_list, value_expr_list);
+        "t1", column_expr_list, insert_values);
 
     ASSERT_EQ(kInsertStmt, node_ptr->GetType());
     InsertStmt *insert_stmt = dynamic_cast<InsertStmt *>(node_ptr);
@@ -203,11 +205,11 @@ TEST_F(SqlNodeTest, MakeInsertNodeTest) {
     ASSERT_EQ(std::vector<std::string>({"col1", "col2", "col3"}),
               insert_stmt->columns_);
 
-    ASSERT_EQ(dynamic_cast<ConstNode *>(insert_stmt->values_[0])->GetInt(), 1);
-    ASSERT_EQ(dynamic_cast<ConstNode *>(insert_stmt->values_[1])->GetFloat(),
-              2.3f);
-    ASSERT_EQ(dynamic_cast<ConstNode *>(insert_stmt->values_[2])->GetDouble(),
-              2.3);
+    auto value =
+        dynamic_cast<ExprListNode *>(insert_stmt->values_[0])->children_;
+    ASSERT_EQ(dynamic_cast<ConstNode *>(value[0])->GetInt(), 1);
+    ASSERT_EQ(dynamic_cast<ConstNode *>(value[1])->GetFloat(), 2.3f);
+    ASSERT_EQ(dynamic_cast<ConstNode *>(value[2])->GetDouble(), 2.3);
 }
 
 }  // namespace node

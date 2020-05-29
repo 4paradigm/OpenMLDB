@@ -9,8 +9,12 @@
 
 #include "sdk/dbms_sdk.h"
 #include <unistd.h>
+#include <map>
 #include <string>
+#include <utility>
+#include "base/texttable.h"
 #include "brpc/server.h"
+#include "case/sql_case.h"
 #include "dbms/dbms_server_impl.h"
 #include "gflags/gflags.h"
 #include "glog/logging.h"
@@ -18,7 +22,6 @@
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/TargetSelect.h"
 #include "tablet/tablet_server_impl.h"
-#include "case/sql_case.h"
 
 DECLARE_string(dbms_endpoint);
 DECLARE_string(endpoint);
@@ -32,11 +35,11 @@ namespace fesql {
 namespace sdk {
 using fesql::sqlcase::SQLCase;
 std::vector<SQLCase> InitCases(std::string yaml_path);
-void InitCases(std::string yaml_path, std::vector<SQLCase>& cases);  // NOLINT
+void InitCases(std::string yaml_path, std::vector<SQLCase> &cases);  // NOLINT
 
-void InitCases(std::string yaml_path, std::vector<SQLCase>& cases) {  // NOLINT
+void InitCases(std::string yaml_path, std::vector<SQLCase> &cases) {  // NOLINT
     if (!SQLCase::CreateSQLCasesFromYaml(
-        fesql::sqlcase::FindFesqlDirPath() + "/" + yaml_path, cases)) {
+            fesql::sqlcase::FindFesqlDirPath() + "/" + yaml_path, cases)) {
         FAIL();
     }
 }
@@ -51,7 +54,7 @@ class MockClosure : public ::google::protobuf::Closure {
     ~MockClosure() {}
     void Run() {}
 };
-class DBMSSdkTest :  public ::testing::TestWithParam<SQLCase> {
+class DBMSSdkTest : public ::testing::TestWithParam<SQLCase> {
  public:
     DBMSSdkTest()
         : dbms_server_(), tablet_server_(), tablet_(NULL), dbms_(NULL) {}
@@ -91,72 +94,6 @@ class DBMSSdkTest :  public ::testing::TestWithParam<SQLCase> {
     tablet::TabletServerImpl *tablet_;
     dbms::DBMSServerImpl *dbms_;
 };
-
-INSTANTIATE_TEST_CASE_P(
-    SimpleQuery, DBMSSdkTest,
-    testing::ValuesIn(InitCases("/cases/query/simple_query.yaml")));
-
-
-TEST_P(DBMSSdkTest, BatchModeQuery) {
-    usleep(2000 * 1000);
-    auto sql_case = GetParam();
-    const std::string endpoint = "127.0.0.1:" + std::to_string(dbms_port);
-    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk =
-        ::fesql::sdk::CreateDBMSSdk(endpoint);
-    std::string name = sql_case.db();
-    {
-        Status status;
-        dbms_sdk->CreateDatabase(name, &status);
-        ASSERT_EQ(0, static_cast<int>(status.code));
-    }
-
-    {
-        Status status;
-        // create table db1
-        std::string sql =
-            "create table test3(\n"
-            "    column1 int NOT NULL,\n"
-            "    column2 bigint NOT NULL,\n"
-            "    column3 int NOT NULL,\n"
-            "    column4 string NOT NULL,\n"
-            "    column5 int NOT NULL,\n"
-            "    index(key=column4, ts=column2)\n"
-            ");";
-        dbms_sdk->ExecuteQuery(name, sql, &status);
-        ASSERT_EQ(0, static_cast<int>(status.code));
-    }
-    {
-        Status status;
-        // insert
-        std::string sql = "insert into test3 values(1, 4000, 2, \"hello\", 3);";
-        dbms_sdk->ExecuteQuery(name, sql, &status);
-        ASSERT_EQ(0, static_cast<int>(status.code));
-    }
-    {
-        Status status;
-        // select
-        std::string sql = "select column1 + 5 from test3;";
-        std::shared_ptr<RequestRow> row =
-            dbms_sdk->GetRequestRow(name, sql, &status);
-        ASSERT_EQ(0, static_cast<int>(status.code));
-        std::string column4 = "hello";
-        ASSERT_EQ(5, row->GetSchema()->GetColumnCnt());
-        ASSERT_TRUE(row->Init(column4.size()));
-        ASSERT_TRUE(row->AppendInt32(32));
-        ASSERT_TRUE(row->AppendInt64(64));
-        ASSERT_TRUE(row->AppendInt32(32));
-        ASSERT_TRUE(row->AppendString(column4));
-        ASSERT_TRUE(row->AppendInt32(32));
-        ASSERT_TRUE(row->Build());
-        std::shared_ptr<ResultSet> rs =
-            dbms_sdk->ExecuteQuery(name, sql, row, &status);
-        ASSERT_EQ(0, static_cast<int>(status.code));
-        ASSERT_EQ(1, rs->Size());
-        ASSERT_TRUE(rs->Next());
-        ASSERT_EQ(37, rs->GetInt32Unsafe(0));
-    }
-}
-
 
 TEST_F(DBMSSdkTest, DatabasesAPITest) {
     usleep(2000 * 1000);
@@ -558,6 +495,189 @@ TEST_F(DBMSSdkTest, ExecuteScriptAPITest) {
         Status status;
         dbms_sdk->ExecuteQuery(name, sql, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
+    }
+}
+
+void PrintRows(const vm::Schema &schema, const std::vector<codec::Row> &rows) {
+    std::ostringstream oss;
+    codec::RowView row_view(schema);
+    ::fesql::base::TextTable t('-', '|', '+');
+    // Add Header
+    for (int i = 0; i < schema.size(); i++) {
+        t.add(schema.Get(i).name());
+    }
+    t.endOfRow();
+    if (rows.empty()) {
+        t.add("Empty set");
+        t.endOfRow();
+        return;
+    }
+
+    for (auto row : rows) {
+        row_view.Reset(row.buf());
+        for (int idx = 0; idx < schema.size(); idx++) {
+            std::string str = row_view.GetAsString(idx);
+            t.add(str);
+        }
+        t.endOfRow();
+    }
+    oss << t << std::endl;
+    LOG(INFO) << "\n" << oss.str() << "\n";
+}
+
+void PrintResultSet(std::shared_ptr<ResultSet> rs) {
+    std::ostringstream oss;
+    ::fesql::base::TextTable t('-', '|', '+');
+    auto schema = rs->GetSchema();
+    // Add Header
+    for (int i = 0; i < schema->GetColumnCnt(); i++) {
+        t.add(schema->GetColumnName(i));
+    }
+    t.endOfRow();
+    if (0 == rs->Size()) {
+        t.add("Empty set");
+        t.endOfRow();
+        return;
+    }
+
+    while (rs->Next()) {
+        for (int idx = 0; idx < schema->GetColumnCnt(); idx++) {
+            std::string str = rs->GetAsString(idx);
+            t.add(str);
+        }
+        t.endOfRow();
+    }
+    oss << t << std::endl;
+    LOG(INFO) << "\n" << oss.str() << "\n";
+}
+void CheckRows(const vm::Schema &schema, const std::string &order_col,
+               const std::vector<codec::Row> &rows,
+               std::shared_ptr<ResultSet> rs) {
+    ASSERT_EQ(rows.size(), rs->Size());
+
+    LOG(INFO) << "Expected Rows: \n";
+    PrintRows(schema, rows);
+    LOG(INFO) << "ResultSet Rows: \n";
+    PrintResultSet(rs);
+    codec::RowView row_view(schema);
+    int order_idx = -1;
+    for (int i = 0; i < schema.size(); i++) {
+        if (schema.Get(i).name() == order_col) {
+            order_idx = i;
+            break;
+        }
+    }
+    std::map<std::string, codec::Row> rows_map;
+    for (auto row : rows) {
+        row_view.Reset(row.buf());
+        std::string key = row_view.GetAsString(order_idx);
+        rows_map.insert(std::make_pair(key, row));
+    }
+    while (rs->Next()) {
+        if (order_idx) {
+            std::string key = rs->GetAsString(order_idx);
+            row_view.Reset(rows_map[key].buf());
+        }
+        for (int i = 0; i < schema.size(); i++) {
+            if (row_view.IsNULL(i)) {
+                ASSERT_TRUE(rs->IsNULL(i)) << " At " << i;
+                continue;
+            }
+            switch (schema.Get(i).type()) {
+                case fesql::type::kInt32: {
+                    ASSERT_EQ(row_view.GetInt32Unsafe(i), rs->GetInt32Unsafe(i))
+                        << " At " << i;
+                    break;
+                }
+                case fesql::type::kInt64: {
+                    ASSERT_EQ(row_view.GetInt64Unsafe(i), rs->GetInt64Unsafe(i))
+                        << " At " << i;
+                    break;
+                }
+                case fesql::type::kInt16: {
+                    ASSERT_EQ(row_view.GetInt16Unsafe(i), rs->GetInt16Unsafe(i))
+                        << " At " << i;
+                    break;
+                }
+                case fesql::type::kFloat: {
+                    ASSERT_FLOAT_EQ(row_view.GetFloatUnsafe(i),
+                                    rs->GetFloatUnsafe(i))
+                        << " At " << i;
+                    break;
+                }
+                case fesql::type::kDouble: {
+                    ASSERT_DOUBLE_EQ(row_view.GetDoubleUnsafe(i),
+                                     rs->GetDoubleUnsafe(i))
+                        << " At " << i;
+                    break;
+                }
+                case fesql::type::kVarchar: {
+                    ASSERT_EQ(row_view.GetStringUnsafe(i),
+                              rs->GetStringUnsafe(i))
+                        << " At " << i;
+                    break;
+                }
+                case fesql::type::kTimestamp: {
+                    ASSERT_EQ(row_view.GetTimestampUnsafe(i),
+                              rs->GetTimeUnsafe(i))
+                        << " At " << i;
+                    break;
+                }
+                case fesql::type::kBool: {
+                    ASSERT_EQ(row_view.GetBoolUnsafe(i), rs->GetBoolUnsafe(i))
+                        << " At " << i;
+                    break;
+                }
+                default: {
+                    FAIL() << "Invalid Column Type";
+                    break;
+                }
+            }
+        }
+    }
+}
+INSTANTIATE_TEST_CASE_P(
+    SdkInsert, DBMSSdkTest,
+    testing::ValuesIn(InitCases("/cases/insert/simple_insert.yaml")));
+
+TEST_P(DBMSSdkTest, ExecuteQueryTest) {
+    auto sql_case = GetParam();
+    usleep(500 * 1000);
+    const std::string endpoint = "127.0.0.1:" + std::to_string(dbms_port);
+    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk =
+        ::fesql::sdk::CreateDBMSSdk(endpoint);
+    {
+        Status status;
+        std::string name = sql_case.db();
+        dbms_sdk->CreateDatabase(name, &status);
+        ASSERT_EQ(0, static_cast<int>(status.code));
+    }
+
+    {
+        // create table db1
+        std::string name = sql_case.db();
+        Status status;
+        dbms_sdk->ExecuteQuery(name, sql_case.create_str(), &status);
+        ASSERT_EQ(0, static_cast<int>(status.code));
+    }
+
+    {
+        std::string name = sql_case.db();
+        Status status;
+        dbms_sdk->ExecuteQuery(name, sql_case.insert_str(), &status);
+        ASSERT_EQ(0, static_cast<int>(status.code));
+    }
+    {
+        std::string name = sql_case.db();
+        Status status;
+        std::shared_ptr<ResultSet> rs =
+            dbms_sdk->ExecuteQuery(name, sql_case.sql_str(), &status);
+        ASSERT_EQ(0, static_cast<int>(status.code));
+        std::vector<codec::Row> rows;
+        sql_case.ExtractOutputData(rows);
+        type::TableDef output_table;
+        sql_case.ExtractOutputSchema(output_table);
+        CheckRows(output_table.columns(), sql_case.output().order_, rows, rs);
     }
 }
 
