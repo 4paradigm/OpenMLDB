@@ -292,6 +292,26 @@ TEST_F(SQLCaseTest, ExtractRowTest) {
             ASSERT_EQ(1587647803000, row_view.GetTimestampUnsafe(7));
         }
     }
+
+    {
+        const std::string schema_str = "col0:string, col1:int32";
+
+        std::string row_str = "0, NULL\n";
+        type::TableDef output_table;
+        ASSERT_TRUE(SQLCase::ExtractSchema(schema_str, output_table));
+        std::vector<fesql::codec::Row> rows;
+        int8_t* row_ptr = nullptr;
+        int32_t row_size = 0;
+        ASSERT_TRUE(SQLCase::ExtractRow(output_table.columns(), row_str,
+                                        &row_ptr, &row_size));
+        fesql::codec::RowView row_view(output_table.columns());
+
+        {
+            row_view.Reset(row_ptr);
+            ASSERT_EQ("0", row_view.GetAsString(0));
+            ASSERT_TRUE(row_view.IsNULL(1));
+        }
+    }
 }
 
 TEST_F(SQLCaseTest, ExtractSQLCase) {

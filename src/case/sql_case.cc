@@ -331,10 +331,15 @@ bool SQLCase::ExtractRow(const vm::Schema& schema, const std::string& row_str,
     rb.SetBuffer(ptr, row_size);
     auto it = schema.begin();
     uint32_t index = 0;
+
     for (; it != schema.end(); ++it) {
         if (index >= item_vec.size()) {
             LOG(WARNING) << "Invalid Row: Row doesn't match with schema";
             return false;
+        }
+        if (item_vec[index] == "NULL" || item_vec[index] == "null") {
+            rb.AppendNULL();
+            continue;
         }
         switch (it->type()) {
             case type::kInt16: {
