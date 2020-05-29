@@ -303,8 +303,8 @@ void BlobServerImpl::Delete(RpcController *controller,
         }
         bool ok = store->Delete(request->key());
         if (!ok) {
-            PDLOG(WARNING, "delete %ll failed. tid[%u] pid[%u]", request->key(),
-                  tid, pid);
+            PDLOG(WARNING, "delete %lld failed. tid[%u] pid[%u]",
+                  request->key(), tid, pid);
             response->set_code(ReturnCode::kKeyNotFound);
             response->set_msg("key not found");
             return;
