@@ -6,7 +6,9 @@
 %include stdint.i
 
 %shared_ptr(fesql::sdk::ResultSet);
-%shared_ptr(rtidb::sdk::SQLRouter)
+%shared_ptr(rtidb::sdk::SQLRouter);
+%shared_ptr(rtidb::sdk::SQLRequestRow);
+
 %{
 #include "sdk/sql_router.h"
 #include "sdk/result_set.h"

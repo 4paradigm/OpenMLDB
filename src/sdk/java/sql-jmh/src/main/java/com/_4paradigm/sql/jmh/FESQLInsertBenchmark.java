@@ -1,5 +1,6 @@
 package com._4paradigm.sql.jmh;
 
+import com._4paradigm.sql.ResultSet;
 import com._4paradigm.sql.sdk.SdkOption;
 import com._4paradigm.sql.sdk.SqlExecutor;
 import com._4paradigm.sql.sdk.impl.SqlClusterExecutor;
@@ -67,10 +68,10 @@ public class FESQLInsertBenchmark {
         for (int i = 0; i < recordSize/100; i++) {
             for (int j = 0; j < 100; j++) {
                 dataset.add(String.format(format, "perf","pkxxx" + i, System.currentTimeMillis()));
-
             }
             String sql = String.format(format, "perf2", "pkxxx" + i, System.currentTimeMillis());
-            executor.executeInsert(db, sql);
+            boolean ok = executor.executeInsert(db, sql);
+            System.out.println(ok);
         }
     }
 
@@ -85,16 +86,19 @@ public class FESQLInsertBenchmark {
     @Benchmark
     public void selectBm() {
         String sql = "select col1, col2, col3 from perf2 limit 10;";
-        executor.executeSQL(db, sql);
+        ResultSet rs = executor.executeSQL(db, sql);
     }
 
     public static void main(String[] args) throws RunnerException {
 
-        Options opt = new OptionsBuilder()
+        /*Options opt = new OptionsBuilder()
                 .include(FESQLInsertBenchmark.class.getSimpleName())
                 .forks(1)
                 .build();
 
-        new Runner(opt).run();
+        new Runner(opt).run();*/
+        FESQLInsertBenchmark insertBenchmark = new FESQLInsertBenchmark();
+        insertBenchmark.setup();
+        insertBenchmark.selectBm();
     }
 }
