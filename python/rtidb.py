@@ -96,6 +96,16 @@ class PutResult:
     else:
       return self.__data.auto_gen_pk;
 
+class UpdateResult:
+  def __init__(self, data):
+    self.__data = data
+    self.__success = True if data.code == 0 else False
+    self.__affected_count = data.affected_count
+  def success(self):
+    return self.__success
+  def affected_count(self):
+    return self.__affected_count
+
 class RtidbResult:
   def __init__(self, data):
     self.__data = data

@@ -358,7 +358,7 @@ class SchemaCodec {
             }
             ::rtidb::api::Columns* index = cd_columns->Add();
             index->add_name(kv.first);
-            if (kv.second == NONETOKEN) {
+            if (kv.second == NONETOKEN || kv.second == "null") {
                 continue;
             }
             ::rtidb::type::DataType type = iter->second;
