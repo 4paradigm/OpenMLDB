@@ -331,6 +331,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
     public ScanFuture scan(String name, String key, long st, long et) throws TabletException {
         ScanOption scanOption = new ScanOption();
         scanOption.setLimit(0);
+        scanOption.setRemoveDuplicateRecordByTime(client.getConfig().isRemoveDuplicateByTime());
         return scan(name, key, st, et,scanOption);
     }
 
@@ -401,7 +402,10 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         key = validateKey(key);
         int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
         ScanOption option = new ScanOption();
+        option.setIdxName(idxName);
+        option.setTsName(tsName);
         option.setLimit(limit);
+        option.setRemoveDuplicateRecordByTime(client.getConfig().isRemoveDuplicateByTime());
         return TableClientCommon.scanInternal(th.getTableInfo().getTid(), pid, key, st, et, th, option);
     }
 
