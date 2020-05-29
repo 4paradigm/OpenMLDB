@@ -11,7 +11,7 @@ add_library(fesql_simple_catalog STATIC simple_catalog.cc)
 
 
 if (TESTING_ENABLE)
-set(vm_deps_libs fesql_case ${yaml_libs} boost_filesystem fesql_dbms fesql_tablet fesql_flags ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS} ${OS_LIB})
+set(vm_deps_libs fesql_case ${yaml_libs} boost_filesystem fesql_dbms fesql_tablet  ${VM_LIBS} fesql_flags ${LLVM_LIBS} ${BRPC_LIBS} ${OS_LIB})
 
 
 add_executable(physical_op_test physical_op_test.cc)

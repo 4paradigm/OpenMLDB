@@ -1354,6 +1354,11 @@ std::shared_ptr<DataHandler> LimitRunner::Run(RunnerContext& ctx) {
         case kTableHandler: {
             auto iter =
                 std::dynamic_pointer_cast<TableHandler>(input)->GetIterator();
+            if (!iter) {
+                LOG(WARNING) << "fail to get table it";
+                return fail_ptr;
+            }
+            iter->SeekToFirst();
             auto output_table = std::shared_ptr<MemTableHandler>(
                 new MemTableHandler(input->GetSchema()));
             int32_t cnt = 0;

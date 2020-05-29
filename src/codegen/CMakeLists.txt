@@ -21,7 +21,7 @@ add_library(fesql_codegen STATIC
 
 if (TESTING_ENABLE)
 set(vm_deps_libs 
-    ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS} ${OS_LIB})
+    ${VM_LIBS} fesql_flags ${LLVM_LIBS} ${BRPC_LIBS} ${OS_LIB})
 
 add_executable(ir_base_builder_test ir_base_builder_test.cc)
 target_link_libraries(ir_base_builder_test gtest ${vm_deps_libs})
