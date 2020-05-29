@@ -1048,51 +1048,6 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (th == null) {
             throw new TabletException("no table with name " + tname);
         }
-        if (!th.GetPartitionKeyList().isEmpty()) {
-            List<Integer> partitionKeyList = th.GetPartitionKeyList();
-            if (idxName != null) {
-                boolean isIdxNameMatch = true;
-                Object val = th.getKeyMap().get(idxName);
-                if (val != null) {
-                    if (partitionKeyList.size() == ((List<String>)val).size()) {
-                        for(String col : (List<String>)val) {
-                            Integer pos = th.getSchemaPos().get(col);
-                            if (pos == null || partitionKeyList.contains(pos)) {
-                                isIdxNameMatch = false;
-                                break;
-                            }
-                        }
-                    } else {
-                        isIdxNameMatch = false;
-                    }
-                } else {
-                    isIdxNameMatch = false;
-                }
-                if (!isIdxNameMatch) {
-                    throw new TabletException("idx name is not partition key");
-                }
-            } else {
-                for (Map.Entry<String, List<String>> entry : th.getKeyMap().entrySet()) {
-                    if (entry.getValue().size() == partitionKeyList.size()) {
-                        boolean isIdxNameMatch = true;
-                        for (String col : entry.getValue()) {
-                            Integer pos = th.getSchemaPos().get(col);
-                            if (pos == null && !partitionKeyList.contains(pos)) {
-                                isIdxNameMatch = false;
-                                break;
-                            }
-                        }
-                        if (isIdxNameMatch) {
-                            idxName = entry.getKey();
-                            break;
-                        }
-                    }
-                }
-                if (idxName == null) {
-                    throw new TabletException("has not match partition key");
-                }
-            }
-        }
         TraverseKvIterator it = new TraverseKvIterator(client, th, idxName, tsName);
         it.next();
         return it;

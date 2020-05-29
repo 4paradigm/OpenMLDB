@@ -39,6 +39,9 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         if (th == null) {
             throw new TabletException("no table with name " + name);
         }
+        if (!th.GetPartitionKeyList().isEmpty()) {
+            throw new TabletException("async client does not support partition key");
+        }
         if (getOption.getIdxName() == null) {
             throw new TabletException("index name is required but null");
         }
@@ -56,6 +59,9 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         TableHandler th = client.getHandler(name);
         if (th == null) {
             throw new TabletException("no table with name " + name);
+        }
+        if (!th.GetPartitionKeyList().isEmpty()) {
+            throw new TabletException("async client does not support partition key");
         }
         if (getOption.getIdxName() == null) {
             throw new TabletException("index name is required but null");
@@ -77,6 +83,9 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         TableHandler th = client.getHandler(name);
         if (th == null) {
             throw new TabletException("no table with name " + name);
+        }
+        if (!th.GetPartitionKeyList().isEmpty()) {
+            throw new TabletException("async client does not support partition key");
         }
         key = validateKey(key);
         int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
@@ -167,6 +176,9 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         }
         if (row == null) {
             throw new TabletException("putting data is null");
+        }
+        if (!th.GetPartitionKeyList().isEmpty()) {
+            throw new TabletException("async client does not support partition key");
         }
         Map<Integer, List<Tablet.Dimension>> mapping = TableClientCommon.fillPartitionTabletDimension(row, th, client.getConfig().isHandleNull());
         ByteBuffer buffer = null;
@@ -352,6 +364,9 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         if (th == null) {
             throw new TabletException("no table with name " + tname);
         }
+        if (!th.GetPartitionKeyList().isEmpty()) {
+            throw new TabletException("async client does not support partition key");
+        }
         List<String> list = th.getKeyMap().get(option.getIdxName());
         if (list == null) {
             throw new TabletException("no index name in table" + option.getIdxName());
@@ -399,6 +414,9 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         if (th == null) {
             throw new TabletException("no table with name " + name);
         }
+        if (!th.GetPartitionKeyList().isEmpty()) {
+            throw new TabletException("async client does not support partition key");
+        }
         key = validateKey(key);
         int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
         ScanOption option = new ScanOption();
@@ -414,6 +432,9 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         TableHandler th = client.getHandler(name);
         if (th == null) {
             throw new TabletException("no table with name " + name);
+        }
+        if (!th.GetPartitionKeyList().isEmpty()) {
+            throw new TabletException("async client does not support partition key");
         }
         List<String> list = th.getKeyMap().get(idxName);
         if (list == null) {
@@ -434,6 +455,9 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         if (th == null) {
             throw new TabletException("no table with name " + name);
         }
+        if (!th.GetPartitionKeyList().isEmpty()) {
+            throw new TabletException("async client does not support partition key");
+        }
         List<String> list = th.getKeyMap().get(idxName);
         if (list == null) {
             throw new TabletException("no index name in table" + idxName);
@@ -453,6 +477,9 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         TableHandler th = client.getHandler(name);
         if (th == null) {
             throw new TabletException("no table with name " + name);
+        }
+        if (!th.GetPartitionKeyList().isEmpty()) {
+            throw new TabletException("async client does not support partition key");
         }
         key = validateKey(key);
         int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
