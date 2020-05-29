@@ -756,7 +756,7 @@ bool RelationalTable::Query(
         }
     }
     if (iter_vec.empty()) {
-        return false;
+        return true;
     }
     for (const auto& iter : iter_vec) {
         total_block_size += iter->value().size();
