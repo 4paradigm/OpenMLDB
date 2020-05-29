@@ -1,4 +1,7 @@
 SQLCases:
+  - id: 0
+    desc: SELECT ALL
+    sql: SELECT * FROM t1;
   - id: 1
     desc: SELECT列
     sql: SELECT COL1 FROM t1;

@@ -213,6 +213,8 @@ inline const std::string DataTypeName(const DataType &type) {
             return "string";
         case fesql::node::kTimestamp:
             return "timestamp";
+        case fesql::node::kDate:
+            return "date";
         case fesql::node::kList:
             return "list";
         case fesql::node::kMap:
@@ -838,7 +840,6 @@ class ConstNode : public ExprNode {
     virtual bool Equals(const ExprNode *node) const;
 
     const std::string GetExprString() const;
-
     int16_t GetSmallInt() const { return val_.vsmallint; }
 
     int GetInt() const { return val_.vint; }
@@ -868,6 +869,96 @@ class ConstNode : public ExprNode {
                     << "error occur when get milli second from wrong type "
                     << DataTypeName(data_type_);
                 return -1;
+            }
+        }
+    }
+
+    const int32_t GetAsInt32() const {
+        switch (data_type_) {
+            case kInt32:
+                return static_cast<int32_t>(val_.vint);
+            case kInt16:
+                return static_cast<int32_t>(val_.vsmallint);
+            case kInt64:
+                return static_cast<int64_t>(val_.vlong);
+            case kFloat:
+                return static_cast<int64_t>(val_.vfloat);
+            case kDouble:
+                return static_cast<int64_t>(val_.vdouble);
+            default: {
+                return 0;
+            }
+        }
+    }
+
+    const int16_t GetAsInt16() const {
+        switch (data_type_) {
+            case kInt32:
+                return static_cast<int16_t>(val_.vint);
+            case kInt16:
+                return static_cast<int16_t>(val_.vsmallint);
+            case kInt64:
+                return static_cast<int16_t>(val_.vlong);
+            case kFloat:
+                return static_cast<int16_t>(val_.vfloat);
+            case kDouble:
+                return static_cast<int16_t>(val_.vdouble);
+            default: {
+                return 0;
+            }
+        }
+    }
+
+    const int64_t GetAsInt64() const {
+        switch (data_type_) {
+            case kInt32:
+                return static_cast<int64_t>(val_.vint);
+            case kInt16:
+                return static_cast<int64_t>(val_.vsmallint);
+            case kInt64:
+                return static_cast<int64_t>(val_.vlong);
+            case kFloat:
+                return static_cast<int64_t>(val_.vfloat);
+            case kDouble:
+                return static_cast<int64_t>(val_.vdouble);
+            default: {
+                return 0;
+            }
+        }
+    }
+
+    const float GetAsFloat() const {
+        switch (data_type_) {
+            case kInt32:
+                return static_cast<float>(val_.vint);
+            case kInt16:
+                return static_cast<float>(val_.vsmallint);
+            case kInt64:
+                return static_cast<float>(val_.vlong);
+            case kFloat:
+                return static_cast<float>(val_.vfloat);
+            case kDouble:
+                return static_cast<float>(val_.vdouble);
+            default: {
+                return 0.0;
+            }
+        }
+    }
+
+    const double GetAsDouble() const {
+        switch (data_type_) {
+            case kInt32:
+                return static_cast<double>(val_.vint);
+            case kInt16:
+                return static_cast<double>(val_.vsmallint);
+            case kInt64:
+                return static_cast<double>(val_.vlong);
+            case kFloat:
+                return static_cast<double>(val_.vfloat);
+            case kDouble:
+                return static_cast<double>(val_.vdouble);
+            default: {
+                return 0.0;
             }
         }
     }

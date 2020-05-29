@@ -249,7 +249,21 @@ TEST_F(SQLCaseTest, ExtractDataTest) {
         }
     }
 }
+TEST_F(SQLCaseTest, ExtractInsertSqlTest) {
+    const std::string schema_str =
+        "col0:string, col1:int32, col2:int16, col3:float, col4:double, "
+        "col5:int64, col6:string, col7:timestamp";
 
+    std::string row_str = "0, 1, 5, 1.1, 11.1, 1, 1, 1587647803000\n";
+    type::TableDef output_table;
+    ASSERT_TRUE(SQLCase::ExtractSchema(schema_str, output_table));
+    std::string create_sql;
+    ASSERT_TRUE(
+        SQLCase::BuildInsertSQLFromRow(output_table, row_str, &create_sql));
+    ASSERT_EQ(
+        "Insert into  values('0', 1, 5, 1.1, 11.1, 1, '1', 1587647803000)",
+        create_sql);
+}
 TEST_F(SQLCaseTest, ExtractRowTest) {
     {
         const std::string schema_str =
@@ -368,6 +382,26 @@ TEST_F(SQLCaseTest, ExtractSQLCase) {
         output_table.set_name(table.name());
         output_table.set_catalog(table.catalog());
         ASSERT_EQ(table.DebugString(), output_table.DebugString());
+
+        // Check Create SQL
+        {
+            std::string create_sql;
+            ASSERT_TRUE(
+                SQLCase::BuildCreateSQLFromSchema(output_table, &create_sql));
+            LOG(INFO) << create_sql;
+            ASSERT_EQ(
+                "CREATE TABLE t1(\n"
+                "col0 string,\n"
+                "col1 int,\n"
+                "col2 smallint,\n"
+                "col3 float,\n"
+                "col4 double,\n"
+                "col5 bigint,\n"
+                "col6 string,\n"
+                "index(key=(col1), ts=col5)\n"
+                ")",
+                create_sql);
+        }
     }
 
     // Check Data
@@ -521,7 +555,7 @@ TEST_F(SQLCaseTest, ExtractYamlSQLCase) {
 
     ASSERT_TRUE(
         fesql::sqlcase::SQLCase::CreateSQLCasesFromYaml(case_path, cases));
-    ASSERT_EQ(3, cases.size());
+    ASSERT_EQ(4, cases.size());
     {
         SQLCase& sql_case = cases[0];
         ASSERT_EQ(sql_case.id(), 1);
@@ -615,6 +649,27 @@ TEST_F(SQLCaseTest, ExtractYamlSQLCase) {
                   "col0:string, col1:int32, col2:int16, col6:string");
         ASSERT_EQ(sql_case.output().order_, "");
         ASSERT_EQ(sql_case.output().data_, "0, 3, 5, 1\n0, 4, 5, 22");
+    }
+
+    {
+        SQLCase& sql_case = cases[3];
+        ASSERT_EQ(sql_case.id(), 4);
+        ASSERT_EQ("简单INSERT", sql_case.desc());
+        ASSERT_EQ(sql_case.db(), "test");
+        ASSERT_EQ(
+            sql_case.create_str(),
+            "create table t1 (\n  col0 string not null,\n  col1 int not "
+            "null,\n  col2 smallint not null,\n  col3 float not null,\n  col4 "
+            "double not null,\n  col5 bigint not null,\n  col6 string not "
+            "null,\n  index(name=index1, key=(col2), ts=col5)\n);");
+        ASSERT_EQ(sql_case.insert_str(),
+                  "insert into t1 values(\"hello\", 1, 2, 3.3f, 4.4, 5L, "
+                  "\"world\");");
+        ASSERT_EQ(sql_case.output().schema_,
+                  "col0:string, col1:int32, col2:int16, col3:float, "
+                  "col4:double, col5:int64, col6:string");
+        ASSERT_EQ(sql_case.output().order_, "col1");
+        ASSERT_EQ(sql_case.output().data_, "hello, 1, 2, 3.3, 4.4, 5, world");
     }
 }
 }  // namespace sqlcase

@@ -151,3 +151,41 @@ SQLCases:
         3, 1, 55, 1590115422000, CCC
         4, 1, 55, 1590115423000, DDDD
         5, 2, 55, 1590115424000, EEEEE
+  - id: 4
+    desc: LAST JOIN 多张表
+    db: db1
+    sql: |
+      SELECT t1.col1 as id, t1.col0, t2.c0, t3.column0 FROM t1 last join t2 on t1.col1=t2.c1 last join t3 on t1.col1 = t3.column1;
+    inputs:
+      - name: t1
+        schema: col0:string, col1:int32, col5:bigint
+        index: index2:col1:col5
+        data: |
+          A, 1, 1
+          B, 2, 2
+          C, 3, 3
+      - name: t2
+        schema: c0:string, c1:int32, c5:int64
+        index: index1:c1:c5
+        data: |
+          O, 1, 1
+          P, 2, 2
+          Q, 3, 3
+          R, 4, 4
+          S, 5, 5
+      - name: t3
+        schema: column0:string, column1:int32, column5:int64
+        index: index1:column1:column5
+        data: |
+          X, 1, 1
+          Y, 2, 2
+          Z, 3, 3
+          U, 4, 4
+          V, 5, 5
+    output:
+      schema: id:int32, col0:string, c0:string, column0:string
+      order: id
+      data: |
+        1, A, O, X
+        2, B, P, Y
+        3, C, Q, Z
