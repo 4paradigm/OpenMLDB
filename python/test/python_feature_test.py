@@ -19,8 +19,9 @@ class TestRtidb(unittest.TestCase):
       self.assertEqual("a1", l["attribute"])
       self.assertEqual("i1", l["image"])
     condition_columns = {"id":"11"} 
-    ok = self.nsc.delete("test1", condition_columns);
-    self.assertEqual(ok, True);
+    update_result = self.nsc.delete("test1", condition_columns);
+    self.assertEqual(True, update_result.success())
+    self.assertEqual(1, update_result.affected_count())
     try:
       resp = self.nsc.query("test1", ro)
     except:
@@ -58,8 +59,9 @@ class TestRtidb(unittest.TestCase):
     self.assertEqual(2, id);
     # delete
     condition_columns = {"id":"1", "name":"n1"} 
-    ok = self.nsc.delete("rt_ck", condition_columns);
-    self.assertEqual(ok, True);
+    update_result = self.nsc.delete("rt_ck", condition_columns);
+    self.assertEqual(True, update_result.success())
+    self.assertEqual(1, update_result.affected_count())
     ro = rtidb.ReadOption()
     ro.index.update({"id":"1"})
     ro.index.update({"name":"n1"})
@@ -72,8 +74,9 @@ class TestRtidb(unittest.TestCase):
     data = {"id":"1","name":"n1","mcc":"1","attribute":"a1", "image":b"i1"}
     self.assertTrue(self.nsc.put("rt_ck", data, None).success())
     condition_columns = {"mcc":"1"} 
-    ok = self.nsc.delete("rt_ck", condition_columns);
-    self.assertEqual(ok, True);
+    update_result = self.nsc.delete("rt_ck", condition_columns);
+    self.assertEqual(True, update_result.success())
+    self.assertEqual(2, update_result.affected_count())
     ro = rtidb.ReadOption()
     ro.index.update({"mcc":"1"})
     try:
@@ -191,8 +194,9 @@ class TestRtidb(unittest.TestCase):
     self.assertTrue(self.nsc.put("test1", data, None).success())
     condition_columns = {"id":"11"} 
     value_columns = {"attribute":"a3","image":"i3"}
-    ok = self.nsc.update("test1", condition_columns, value_columns, None);
-    self.assertEqual(ok, True);
+    update_result = self.nsc.update("test1", condition_columns, value_columns, None);
+    self.assertEqual(True, update_result.success())
+    self.assertEqual(1, update_result.affected_count())
     ro = rtidb.ReadOption()
     ro.index.update({"id":"11"})
     resp = self.nsc.query("test1", ro)
@@ -208,8 +212,9 @@ class TestRtidb(unittest.TestCase):
     self.assertTrue(self.nsc.put("rt_ck", data, None).success())
     condition_columns = {"id":"1", "name":"n1"} 
     value_columns = {"attribute":"a2","image":b"i2"}
-    ok = self.nsc.update("rt_ck", condition_columns, value_columns, None);
-    self.assertEqual(ok, True);
+    update_result = self.nsc.update("rt_ck", condition_columns, value_columns, None);
+    self.assertEqual(True, update_result.success())
+    self.assertEqual(1, update_result.affected_count())
     ro = rtidb.ReadOption()
     ro.index.update({"id":"1"})
     ro.index.update({"name":"n1"})
@@ -222,10 +227,27 @@ class TestRtidb(unittest.TestCase):
       self.assertEqual("a2", l["attribute"])
       self.assertEqual("i2".encode("UTF-8"), l["image"])
 
+    # update empty
+    condition_columns_2 = {"mcc":-1} 
+    value_columns = {"attribute":"a3","image":"i3".encode("UTF-8")}
+    update_result = self.nsc.update("rt_ck", condition_columns_2, value_columns, None);
+    self.assertEqual(True, update_result.success())
+    self.assertEqual(0, update_result.affected_count())
+    # update error 
+    condition_columns = {"image":b"i1"} 
+    value_columns = {"attribute":"a3","image":"i3".encode("UTF-8")}
+    try:
+      update_result = self.nsc.update("rt_ck", condition_columns, value_columns, None);
+    except:
+      self.assertTrue(True)
+    else:
+      self.assertTrue(False)
+
     condition_columns = {"mcc":"1"} 
     value_columns = {"attribute":"a3","image":"i3".encode("UTF-8")}
-    ok = self.nsc.update("rt_ck", condition_columns, value_columns, None);
-    self.assertEqual(ok, True);
+    update_result = self.nsc.update("rt_ck", condition_columns, value_columns, None);
+    self.assertEqual(True, update_result.success())
+    self.assertEqual(2, update_result.affected_count())
     ro = rtidb.ReadOption()
     ro.index.update({"mcc":"1"})
     resp = self.nsc.query("rt_ck", ro)
@@ -290,8 +312,9 @@ class TestRtidb(unittest.TestCase):
     # update
     condition_columns = {"date":date(2020,1,1)} 
     value_columns = {"male":False,"ts":"1588756532"}
-    ok = self.nsc.update("date", condition_columns, value_columns, None);
-    self.assertEqual(ok, True);
+    update_result = self.nsc.update("date", condition_columns, value_columns, None);
+    self.assertEqual(True, update_result.success())
+    self.assertEqual(1, update_result.affected_count())
     ro = rtidb.ReadOption()
     ro.index.update({"date":date(2020,1,1)})
     resp = self.nsc.query("date", ro)
@@ -305,8 +328,9 @@ class TestRtidb(unittest.TestCase):
       self.assertEqual(1588756532, l["ts"])
     condition_columns = {"male":False,"ts":"1588756532"} 
     value_columns = {"male":True}
-    ok = self.nsc.update("date", condition_columns, value_columns, None);
-    self.assertEqual(ok, True);
+    update_result = self.nsc.update("date", condition_columns, value_columns, None);
+    self.assertEqual(True, update_result.success())
+    self.assertEqual(1, update_result.affected_count())
     ro = rtidb.ReadOption()
     ro.index.update({"male":True,"ts":"1588756532"})
     resp = self.nsc.query("date", ro)
@@ -318,10 +342,24 @@ class TestRtidb(unittest.TestCase):
       self.assertEqual(True, l["male"])
       self.assertEqual(date(2020,1,1), l["date"])
       self.assertEqual(1588756532, l["ts"])
+    # delete empty
+    condition_columns = {"date":date(2021,1,1)} 
+    update_result = self.nsc.delete("date", condition_columns);
+    self.assertEqual(True, update_result.success())
+    self.assertEqual(0, update_result.affected_count())
+    # delete error 
+    condition_columns = {"ts": 123} 
+    try:
+      update_result = self.nsc.delete("date", condition_columns);
+    except:
+      self.assertTrue(True)
+    else:
+      self.assertTrue(False)
     # delete
     condition_columns = {"date":date(2020,1,1)} 
-    ok = self.nsc.delete("date", condition_columns);
-    self.assertEqual(ok, True);
+    update_result = self.nsc.delete("date", condition_columns);
+    self.assertEqual(True, update_result.success())
+    self.assertEqual(1, update_result.affected_count())
     try:
       resp = self.nsc.query("date", ro)
     except:

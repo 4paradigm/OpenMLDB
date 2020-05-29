@@ -211,10 +211,10 @@ class RTIDBClient:
     self.putBlob(table_name, value_columns)
     cond = buildStrMap(condition_columns)
     v = buildStrMap(value_columns)
-    ok = self.__client.Update(table_name, cond, v, _wo)
-    if ok.code != 0:
-      raise Exception(ok.code, ok.msg)
-    return True
+    update_result = self.__client.Update(table_name, cond, v, _wo)
+    if update_result.code != 0:
+      raise Exception(update_result.code, update_result.msg)
+    return UpdateResult(update_result)
 
   def __buildReadoption(self, read_option: ReadOption):
     mid_map = buildStrMap(read_option.index)
@@ -254,7 +254,7 @@ class RTIDBClient:
     resp = self.__client.Delete(table_name, v)
     if resp.code != 0:
       raise Exception(resp.code, resp.msg)
-    return True
+    return UpdateResult(resp); 
 
   def traverse(self, table_name: str, read_option: ReadOption = None):
     if read_option != None:
