@@ -191,12 +191,6 @@ int BlobServerImpl::CreateTable(const TableMeta& meta) {
     std::string db_path_suffix = "/" + std::to_string(tid) + "_" +
                                    std::to_string(pid);
     std::string paths;
-    if (root_paths.size() > 1) {
-        paths.reserve(FLAGS_hdd_root_path.size() +
-                     db_path_suffix.size() * root_paths.size());
-    } else {
-        paths.reserve(FLAGS_hdd_root_path.size() + db_path_suffix.size());
-    }
     for (auto &it : root_paths) {
         it += db_path_suffix;
         int ret = WriteTableMeta(it, meta);

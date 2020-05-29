@@ -9,10 +9,13 @@
 
 #include "codec/codec.h"
 
+DECLARE_int32(oss_flush_size);
+DECLARE_int32(oss_flush_period);
+
 namespace rtidb {
 namespace storage {
 
-static bool options_initialized = false;
+static std::once_flag options_initialized;
 
 ObjectStore::ObjectStore(const ::rtidb::blobserver::TableMeta& table_meta,
                          std::string db_root_path)
@@ -27,10 +30,7 @@ ObjectStore::ObjectStore(const ::rtidb::blobserver::TableMeta& table_meta,
       thread_pool_(2) {}
 
 bool ObjectStore::Init() {
-    if (!options_initialized) {
-        settings_init();
-        options_initialized = true;
-    }
+    std::call_once(options_initialized, settings_init);
     char* path = const_cast<char*>(db_root_path_.data());
     time_t before_time = 0;
     db_ = hs_open(path, 1, before_time, 16);
@@ -43,6 +43,7 @@ bool ObjectStore::Init() {
 
 ObjectStore::~ObjectStore() {
     thread_pool_.Stop(true);
+    DoFlash();
     hs_close(db_);
 }
 
@@ -76,7 +77,7 @@ bool ObjectStore::Delete(int64_t key) {
 }
 
 void ObjectStore::DoFlash() {
-    hs_flush(db_, 1024, 600);
+    hs_flush(db_, FLAGS_oss_flush_size, FLAGS_oss_flush_period);
     thread_pool_.DelayTask(1000, [this] { DoFlash(); });
 }
 
