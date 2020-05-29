@@ -1898,10 +1898,17 @@ void TabletImpl::Query(RpcController* ctrl,
         uint32_t count = 0;
         while (iter->Valid()) {
             const ::fesql::codec::Row& row = iter->GetValue();
+            if (byte_size > FLAGS_scan_max_bytes_size) {
+                LOG(WARNING) <<  "reach the max byte size truncate result";
+                response->set_schema(session.GetEncodedSchema());
+                response->set_byte_size(byte_size);
+                response->set_count(count);
+                response->set_code(::rtidb::base::kOk);
+                return;
+            }
             byte_size += row.size();
             iter->Next();
             buf.append(reinterpret_cast<void*>(row.buf()), row.size());
-            free(row.buf());
             count += 1;
         }
         response->set_schema(session.GetEncodedSchema());
@@ -1919,7 +1926,6 @@ void TabletImpl::Query(RpcController* ctrl,
             return;
         }
         ::fesql::vm::RequestRunSession session;
-        session.EnableDebug();
         {
             bool ok =
                 engine_.Get(request->sql(), request->db(), session, status);
@@ -1933,8 +1939,7 @@ void TabletImpl::Query(RpcController* ctrl,
         std::stringstream ss;
         session.GetPhysicalPlan()->Print(ss, "\t");
         DLOG(INFO) << "sql plan \n" << ss.str();
-        ::fesql::codec::Row row(request->input_row().c_str(),
-                                request->input_row().size());
+        ::fesql::codec::Row row(request->input_row());
         ::fesql::codec::Row output;
         int32_t ret = session.Run(row, &output);
         if (ret != 0) {
@@ -1948,7 +1953,6 @@ void TabletImpl::Query(RpcController* ctrl,
         response->set_byte_size(output.size());
         response->set_count(1);
         response->set_code(::rtidb::base::kOk);
-        free(output.buf());
         DLOG(INFO) << "handle request sql " << request->sql()
                    << " with record cnt 1";
     }

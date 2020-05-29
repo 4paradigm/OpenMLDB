@@ -26,7 +26,7 @@ public class FESQLGroupByBenchmark {
     private String ddl = "";
     private String query = "";
     private boolean setupOk = false;
-    private int recordSize = 10;
+    private int recordSize = 3000;
     private String format = "insert into %s values('%s', %d,";
     private long counter = 0;
     public FESQLGroupByBenchmark() {

@@ -57,11 +57,10 @@ class MemTableWindowIterator : public ::fesql::vm::RowIterator {
 
     // TODO(wangtaize) unify the row object
     inline const ::fesql::codec::Row& GetValue() {
-        row_ =
-            ::fesql::codec::Row(it_->GetValue()->data, it_->GetValue()->size);
+        row_.Reset(reinterpret_cast<const int8_t*>(it_->GetValue()->data),
+                it_->GetValue()->size);
         return row_;
     }
-
     inline void Seek(const uint64_t& key) { it_->Seek(key); }
     inline void SeekToFirst() { it_->SeekToFirst(); }
     inline bool IsSeekable() const { return true; }

@@ -73,14 +73,14 @@ public class MemSQLGroupByBenchmark {
             }
             format+=");";
             query += " from perf where col1 = ? group by col1";
-            for (int i = 0; i < 100000; i++) {
+            for (int i = 0; i < 20000; i++) {
                 String pk = "pkxxx" + i;
-                for (int j = 0; j < 10; j++) {
+                for (int j = 0; j < 100; j++) {
                     st = cnn.createStatement();
                     String sql =String.format(format, "perf", pk, System.currentTimeMillis()) ;
                     st.execute(sql);
                 }
-                if (i % 1000 == 0) System.out.println(i * 10);
+                if (i % 1000 == 0) System.out.println(i * 100);
                 querySet.add(pk);
             }
         } catch (Exception e) {
