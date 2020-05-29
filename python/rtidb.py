@@ -167,10 +167,11 @@ defaultWriteOption = WriteOption()
 
 class RTIDBClient:
   def __init__(self, zk_cluster: str, zk_path: str):
-    self.__client = interclient.RtidbClient()
-    ok = self.__client.Init(zk_cluster, zk_path)
+    client = interclient.RtidbClient()
+    ok = client.Init(zk_cluster, zk_path)
     if ok.code != 0:
       raise Exception(ok.code, ok.msg)
+    self.__client = client
 
   def putBlob(self, name: str, value: map):
     blobFields = self.__client.GetBlobSchema(name);

@@ -254,15 +254,14 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
                 }
                 if (table.hasTableType()) {
                     List<String> blobs = new ArrayList<String>();
-                    if (table.getTableType() == Type.TableType.kRelational) {
-                        for (String blob : table.getBlobsList()) {
-                            blobs.add(blob);
-                        }
-                    } else if (table.getTableType() == Type.TableType.kObjectStore) {
-                        if (table.getTablePartitionList().size() > 1) {
-                            List<NS.PartitionMeta> metas = table.getTablePartition(0).getPartitionMetaList();
-                            if (metas.size() > 1) {
-                                blobs.add(metas.get(0).getEndpoint());
+                    if (table.hasBlobInfo()) {
+                        NS.BlobInfo blobInfo = table.getBlobInfo();
+                        for (NS.BlobPartition part : blobInfo.getBlobPartitionList()) {
+                            for (NS.BlobPartitionMeta meta : part.getPartitionMetaList()) {
+                                if (!meta.getIsAlive()) {
+                                    continue;
+                                }
+                                blobs.add(meta.getEndpoint());
                             }
                         }
                     }

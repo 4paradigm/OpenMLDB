@@ -5,7 +5,7 @@ from datetime import date
 class TestRtidb(unittest.TestCase):
   
   def setUp(self):
-    self.nsc = rtidb.RTIDBClient("172.27.128.37:6181", "/issue-5")
+    self.nsc = rtidb.RTIDBClient("127.0.0.1:6181", "/onebox")
 
   def test_query(self):
     data = {"id":"11","attribute":"a1", "image":"i1"}
@@ -27,12 +27,6 @@ class TestRtidb(unittest.TestCase):
       self.assertTrue(True);
     else:
       self.assertTrue(False);
-    ''' 
-    for l in resp:
-      self.assertEqual("card3", l["card"])
-      #self.assertEqual("mcc3", l["mcc"]) #TODO: current skip verify mcc, beacuse mcc value is mcc3\x00 maybe server problem
-      self.assertEqual(3, l["p_biz_date"])
-    '''
     # multi index
     data = {"id":"1","name":"n1","mcc":"1","attribute":"a1", "image":b"i1"}
     self.assertTrue(self.nsc.put("rt_ck", data, None).success())

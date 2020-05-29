@@ -378,7 +378,7 @@ int32_t TabletImpl::GetIndex(uint64_t expire_time, uint64_t expire_cnt,
     }
     bool enable_project = false;
     ::rtidb::codec::RowProject row_project(meta.column_desc(),
-                                          request->projection());
+                                           request->projection());
     if (request->projection().size() > 0 && meta.format_version() == 1) {
         if (meta.compress_type() == api::kSnappy) {
             return -1;
@@ -970,7 +970,7 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
     bool enable_project = false;
     // TODO(wangtaize) support extend columns
     ::rtidb::codec::RowProject row_project(meta.column_desc(),
-                                          request->projection());
+                                           request->projection());
     if (request->projection().size() > 0 && meta.format_version() == 1) {
         if (meta.compress_type() == api::kSnappy) {
             PDLOG(WARNING,
@@ -1637,8 +1637,8 @@ void TabletImpl::Traverse(RpcController* controller,
                 DEBUGLOG("encode pk %s ts %lu size %u", kv.first.c_str(),
                       pair.first, pair.second.size());
                 ::rtidb::codec::EncodeFull(kv.first, pair.first,
-                                          pair.second.data(),
-                                          pair.second.size(), rbuffer, offset);
+                                           pair.second.data(),
+                                           pair.second.size(), rbuffer, offset);
                 offset += (4 + 4 + 8 + kv.first.length() + pair.second.size());
             }
         }
@@ -5006,17 +5006,17 @@ void TabletImpl::SendIndexData(
             pid_endpoint_map.insert(std::make_pair(
                 request->pairs(idx).pid(), request->pairs(idx).endpoint()));
         }
-        if (pid_endpoint_map.empty()) {
-            PDLOG(WARNING, "pid and endpoint pair is empty. tid %u, pid %u",
-                  request->tid(), request->pid());
-            response->set_code(::rtidb::base::ReturnCode::kInvalidParameter);
-            response->set_msg("pid and endpoint pair is empty");
-            break;
-        }
-        task_pool_.AddTask(boost::bind(&TabletImpl::SendIndexDataInternal, this,
-                                       table, pid_endpoint_map, task_ptr));
         response->set_code(::rtidb::base::ReturnCode::kOk);
         response->set_msg("ok");
+        if (pid_endpoint_map.empty()) {
+            PDLOG(INFO, "pid endpoint map is empty. tid %u, pid %u",
+                  request->tid(), request->pid());
+            SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kDone);
+        } else {
+            task_pool_.AddTask(boost::bind(&TabletImpl::SendIndexDataInternal,
+                                           this, table, pid_endpoint_map,
+                                           task_ptr));
+        }
         return;
     } while (0);
     SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kFailed);
@@ -5292,12 +5292,18 @@ void TabletImpl::LoadIndexData(
             response->set_msg("table status is not kNormal");
             break;
         }
-        uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
-        task_pool_.AddTask(boost::bind(&TabletImpl::LoadIndexDataInternal, this,
-                                       tid, pid, 0, request->partition_num(),
-                                       cur_time, task_ptr));
         response->set_code(::rtidb::base::ReturnCode::kOk);
         response->set_msg("ok");
+        if (request->partition_num() <= 1) {
+            PDLOG(INFO, "partition num is %d need not load. tid %u, pid %u",
+                  request->partition_num(), tid, pid);
+            SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kDone);
+        } else {
+            uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
+            task_pool_.AddTask(
+                boost::bind(&TabletImpl::LoadIndexDataInternal, this, tid, pid,
+                            0, request->partition_num(), cur_time, task_ptr));
+        }
         return;
     } while (0);
     SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kFailed);
