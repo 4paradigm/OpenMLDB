@@ -133,11 +133,12 @@ public class TableSyncClientImpl implements TableSyncClient {
                 }
                 if (response.getCode() != 0) {
                     throw new TabletException(response.getCode(), response.getMsg());
-                }
-                count += response.getCount();
-                byteStrings.add(response.getPairs());
-                if (projectionInfo == null) {
-                    projectionInfo = scanFuture.getProjectionInfo();
+                } else if (response.getCount() > 0) {
+                    count += response.getCount();
+                    byteStrings.add(response.getPairs());
+                    if (projectionInfo == null) {
+                        projectionInfo = scanFuture.getProjectionInfo();
+                    }
                 }
             }
         } catch (Exception e) {

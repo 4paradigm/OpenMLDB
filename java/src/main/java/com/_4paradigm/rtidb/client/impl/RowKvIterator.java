@@ -14,7 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class RowKvIterator implements KvIterator {
-    private List<ScanResultData> dataList = new ArrayList<>();
+    private List<ScanResultParser> dataList = new ArrayList<>();
     // no copy
     private ByteBuffer slice = null;
     private int length;
@@ -26,7 +26,7 @@ public class RowKvIterator implements KvIterator {
     private RowView rv;
 
     public RowKvIterator(ByteString bs, List<ColumnDesc> schema, int count) {
-        this.dataList.add(new ScanResultData(bs));
+        this.dataList.add(new ScanResultParser(bs));
         this.count = count;
         next();
         this.schema = schema;
@@ -36,7 +36,7 @@ public class RowKvIterator implements KvIterator {
     public RowKvIterator(List<ByteString> bsList, List<ColumnDesc> schema, int count) {
         for (ByteString bs : bsList) {
             if (!bs.isEmpty()) {
-                this.dataList.add(new ScanResultData(bs));
+                this.dataList.add(new ScanResultParser(bs));
             }
         }
         this.count = count;
@@ -100,16 +100,16 @@ public class RowKvIterator implements KvIterator {
         int maxTsIndex = -1;
         long ts = -1;
         for (int i = 0; i < dataList.size(); i++) {
-            ScanResultData queryResult = dataList.get(i);
+            ScanResultParser queryResult = dataList.get(i);
             if (queryResult.valid() && queryResult.GetTs() > ts) {
                 maxTsIndex = i;
                 ts = queryResult.GetTs();
             }
         }
         if (maxTsIndex >= 0) {
-            ScanResultData queryResult = dataList.get(maxTsIndex);
+            ScanResultParser queryResult = dataList.get(maxTsIndex);
             key = queryResult.GetTs();
-            slice = queryResult.fetchData();
+            slice = queryResult.fetchData().slice();
         } else {
             slice = null;
         }

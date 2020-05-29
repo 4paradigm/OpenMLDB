@@ -5,14 +5,14 @@ import com.google.protobuf.ByteString;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
-public class ScanResultData {
+public class ScanResultParser {
     private ByteBuffer bb;
     private int offset;
     private long ts;
     private ByteBuffer slice;
     private int totalSize;
 
-    public ScanResultData(ByteString bs) {
+    public ScanResultParser(ByteString bs) {
         this.bb = bs.asReadOnlyByteBuffer();
         this.totalSize = bs.size();
         this.offset = 0;
@@ -21,12 +21,12 @@ public class ScanResultData {
     }
 
     public long GetTs() {
-                      return ts;
-                                }
+        return ts;
+    }
 
     public boolean valid() {
-                         return offset <= totalSize;
-                                                    }
+        return offset <= totalSize;
+    }
 
     public ByteBuffer fetchData() {
         ByteBuffer cur_slice = slice;

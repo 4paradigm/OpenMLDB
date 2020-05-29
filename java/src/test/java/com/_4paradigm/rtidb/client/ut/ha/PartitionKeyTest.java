@@ -30,17 +30,16 @@ public class PartitionKeyTest extends TestCaseBase {
         super.tearDown();
     }
 
-    @DataProvider(name = "StorageMode")
-    public Object[][] StorageMode() {
+    @DataProvider(name = "FormatVersion")
+    public Object[][] FormatVersion() {
         return new Object[][] {
-                new Object[] { Common.StorageMode.kMemory },
-                new Object[] { Common.StorageMode.kSSD },
-                new Object[] { Common.StorageMode.kHDD },
+                new Object[] { 1 },
+                new Object[] { 0 },
         };
     }
 
-    @Test
-    public void testPartitionKey() {
+    @Test (dataProvider = "FormatVersion")
+    public void testPartitionKey(int formatVersion) {
         String name = String.valueOf(id.incrementAndGet());
         nsc.dropTable(name);
         Common.ColumnDesc col0 = Common.ColumnDesc.newBuilder().setName("card").setAddTsIdx(true).setType("string").build();
@@ -50,6 +49,7 @@ public class PartitionKeyTest extends TestCaseBase {
                 .setName(name).setTtl(0)
                 .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2)
                 .addPartitionKey("mcc")
+                .setFormatVersion(formatVersion)
                 .build();
         boolean ok = nsc.createTable(table);
         Assert.assertTrue(ok);
@@ -68,6 +68,8 @@ public class PartitionKeyTest extends TestCaseBase {
             KvIterator it = tableSyncClient.scan(name, "card0", "card", 1235, 0);
             Assert.assertTrue(it.valid());
             Assert.assertTrue(it.getCount() == 2);
+            Object[] value = it.getDecodedValue();
+            Assert.assertEquals(value[1], "mcc1");
             Object[] row = tableSyncClient.getRow(name, "card0", "card", 0);
             Assert.assertEquals(row.length, 3);
             Assert.assertEquals(row[0], "card0");
