@@ -67,6 +67,10 @@ class SQLCase {
                            int8_t** out_ptr, int32_t* out_size);
     static bool CreateTableInfoFromYamlNode(const YAML::Node& node,
                                             SQLCase::TableInfo* output);
+    static bool LoadSchemaAndRowsFromYaml(
+        const std::string& resource_path,
+        type::TableDef& table,                  // NOLINT
+        std::vector<fesql::codec::Row>& rows);  // NOLINT
     static bool CreateSQLCasesFromYaml(
         const std::string& yaml_path,
         std::vector<SQLCase>& sql_case_ptr,  // NOLINT
@@ -75,6 +79,8 @@ class SQLCase {
         const std::string& yaml_path,
         std::vector<SQLCase>& sql_case_ptr,  // NOLINT
         const std::vector<std::string>& filter_modes);
+    static bool CreateTableInfoFromYaml(const std::string& yaml_path,
+                                        TableInfo* table_info);
     friend SQLCaseBuilder;
     friend std::ostream& operator<<(std::ostream& output, const SQLCase& thiz);
 

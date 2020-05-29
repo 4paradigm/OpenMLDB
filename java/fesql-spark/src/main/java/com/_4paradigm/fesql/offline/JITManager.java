@@ -1,6 +1,7 @@
 package com._4paradigm.fesql.offline;
 
 import com._4paradigm.fesql.FeSqlLibrary;
+import com._4paradigm.fesql.vm.Engine;
 import com._4paradigm.fesql.vm.FeSQLJITWrapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,9 +12,14 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+
 public class JITManager {
 
     static private Logger logger = LoggerFactory.getLogger(JITManager.class);
+
+    static {
+        Engine.InitializeGlobalLLVM();
+    }
 
     // One jit currently only take one llvm module, since symbol may duplicate
     static private Map<String, FeSQLJITWrapper> jits = new HashMap<>();

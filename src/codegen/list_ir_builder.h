@@ -35,6 +35,12 @@ class ListIRBuilder {
                              base::Status& status);  // NOLINT
 
  private:
+    bool BuildStructTypeIteratorNext(::llvm::Value* iterator,
+                                     ::llvm::Value** output,
+                                     base::Status& status);  // NOLINT
+    bool BuilStructTypedAt(::llvm::Value* list, ::llvm::Value* pos,
+                           ::llvm::Value** output,
+                           base::Status& status);  // NOLINT
     ::llvm::BasicBlock* block_;
     ScopeVar* sv_;
 };

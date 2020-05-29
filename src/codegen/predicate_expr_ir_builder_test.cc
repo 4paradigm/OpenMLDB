@@ -36,7 +36,6 @@ void UnaryPredicateExprCheck(::fesql::node::DataType left_type,
                              R result, fesql::node::FnOperator op) {
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("predicate_func", *ctx);
-
     llvm::Type *left_llvm_type = NULL;
     llvm::Type *dist_llvm_type = NULL;
     ASSERT_TRUE(

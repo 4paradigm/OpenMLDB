@@ -15,18 +15,29 @@ add_library(fesql_codegen STATIC
         cast_expr_ir_builder.cc
         arithmetic_expr_ir_builder.cc
         variable_ir_builder.cc
+        timestamp_ir_builder.cc
+        string_ir_builder.cc
+        struct_ir_builder.cc
         list_ir_builder.cc
         predicate_expr_ir_builder.cc)
-
-
 if (TESTING_ENABLE)
-set(vm_deps_libs 
-    ${VM_LIBS} fesql_flags ${LLVM_LIBS} ${BRPC_LIBS} ${OS_LIB})
+set(vm_deps_libs
+        fesql_case ${yaml_libs} boost_filesystem ${VM_LIBS} fesql_flags ${LLVM_LIBS} ${BRPC_LIBS} ${OS_LIB})
 
 add_executable(ir_base_builder_test ir_base_builder_test.cc)
 target_link_libraries(ir_base_builder_test gtest ${vm_deps_libs})
 add_test(ir_base_builder_test ir_base_builder_test --gtest_output=xml:${CMAKE_BINARY_DIR}/ir_base_builder_test.xml)
 list(APPEND test_list ir_base_builder_test)
+
+add_executable(string_ir_builder_test string_ir_builder_test.cc codegen_base_test.cc)
+target_link_libraries(string_ir_builder_test gtest ${vm_deps_libs})
+add_test(string_ir_builder_test string_ir_builder_test --gtest_output=xml:${CMAKE_BINARY_DIR}/string_ir_builder_test.xml)
+list(APPEND test_list string_ir_builder_test)
+
+add_executable(timestamp_ir_builder_test timestamp_ir_builder_test.cc codegen_base_test.cc)
+target_link_libraries(timestamp_ir_builder_test gtest ${vm_deps_libs})
+add_test(timestamp_ir_builder_test timestamp_ir_builder_test --gtest_output=xml:${CMAKE_BINARY_DIR}/timestamp_ir_builder_test.xml)
+list(APPEND test_list timestamp_ir_builder_test)
 
 add_executable(variable_ir_builder_test variable_ir_builder_test.cc)
 target_link_libraries(variable_ir_builder_test  gtest ${vm_deps_libs})
@@ -63,7 +74,7 @@ target_link_libraries(block_ir_builder_test gtest ${vm_deps_libs} fesql_vm)
 add_test(block_ir_builder_test block_ir_builder_test --gtest_output=xml:${CMAKE_BINARY_DIR}/block_ir_builder_test.xml)
 list(APPEND test_list block_ir_builder_test)
 
-add_executable(fn_ir_builder_test fn_ir_builder_test.cc)
+add_executable(fn_ir_builder_test fn_ir_builder_test.cc codegen_base_test)
 target_link_libraries(fn_ir_builder_test gtest
         ${vm_deps_libs} )
 
@@ -84,7 +95,7 @@ add_test(list_ir_builder_test list_ir_builder_test
         --gtest_output=xml:${CMAKE_BINARY_DIR}/list_ir_builder_test.xml)
 list(APPEND test_list list_ir_builder_test)
 
-add_executable(fn_let_ir_builder_test fn_let_ir_builder_test.cc)
+add_executable(fn_let_ir_builder_test fn_let_ir_builder_test.cc codegen_base_test)
 target_link_libraries(fn_let_ir_builder_test gtest ${vm_deps_libs})
 add_test(fn_let_ir_builder_test fn_let_ir_builder_test
         --gtest_output=xml:${CMAKE_BINARY_DIR}/fn_let_ir_builder_test.xml)

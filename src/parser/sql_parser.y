@@ -855,6 +855,10 @@ column_index_item:  KEY EQUALS column_name
                     {
                         $$ = node_manager->MakeIndexVersionNode($4, $6);
                     }
+                    | VERSION EQUALS '(' column_name ',' LONGNUM ')'
+                    {
+                        $$ = node_manager->MakeIndexVersionNode($4, $6);
+                    }
                     ;
 
 column_index_key:   column_name
@@ -1434,6 +1438,10 @@ opt_instance_not_in_window:
 			| /*EMPTY*/ {$$ = false;}
 limit_clause:
             LIMIT INTNUM
+            {
+                $$ = node_manager->MakeLimitNode($2);
+            }
+            | LIMIT LONGNUM
             {
                 $$ = node_manager->MakeLimitNode($2);
             }

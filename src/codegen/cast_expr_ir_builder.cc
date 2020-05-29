@@ -8,6 +8,7 @@
  **/
 #include "codegen/cast_expr_ir_builder.h"
 #include "codegen/ir_base_builder.h"
+#include "codegen/timestamp_ir_builder.h"
 #include "glog/logging.h"
 namespace fesql {
 namespace codegen {
@@ -48,6 +49,9 @@ bool CastExprIRBuilder::IsSafeCast(::llvm::Type* src, ::llvm::Type* dist) {
             return true;
         }
         case ::fesql::node::kInt64: {
+            return ::fesql::node::kTimestamp == dist_type;
+        }
+        case ::fesql::node::kTimestamp: {
             return false;
         }
         case ::fesql::node::kFloat: {
@@ -68,15 +72,22 @@ bool CastExprIRBuilder::IsSafeCast(::llvm::Type* src, ::llvm::Type* dist) {
 bool CastExprIRBuilder::SafeCast(::llvm::Value* value, ::llvm::Type* type,
                                  ::llvm::Value** output, base::Status& status) {
     ::llvm::IRBuilder<> builder(block_);
-    // Block entry (label_entry)
-    if (false == ::llvm::CastInst::isCastable(value->getType(), type)) {
-        status.msg = "can not safe cast";
+    if (false == IsSafeCast(value->getType(), type)) {
+        status.msg = "unsafe cast";
         status.code = common::kCodegenError;
         LOG(WARNING) << status.msg;
         return false;
     }
-    if (false == IsSafeCast(value->getType(), type)) {
-        status.msg = "unsafe cast";
+
+    if (TypeIRBuilder::IsTimestampPtr(type)) {
+        return TimestampCast(value, output, status);
+    } else if (codegen::IsStringType(type)) {
+        return StringCast(value, output, status);
+    }
+
+    // Block entry (label_entry)
+    if (false == ::llvm::CastInst::isCastable(value->getType(), type)) {
+        status.msg = "can not safe cast";
         status.code = common::kCodegenError;
         LOG(WARNING) << status.msg;
         return false;
@@ -137,6 +148,18 @@ bool CastExprIRBuilder::StringCast(llvm::Value* value,
                                    llvm::Value** casted_value,
                                    base::Status& status) {
     return false;
+}
+
+bool CastExprIRBuilder::TimestampCast(llvm::Value* value,
+                                      llvm::Value** casted_value,
+                                      base::Status& status) {
+    ::llvm::Value* ts;
+    if (!SafeCast(value, ::llvm::Type::getInt64Ty(block_->getContext()), &ts,
+                  status)) {
+        return false;
+    }
+    TimestampIRBuilder builder(block_->getModule());
+    return builder.NewTimestamp(block_, ts, casted_value);
 }
 
 // cast fesql type to bool: compare value with 0

@@ -77,6 +77,7 @@ class ColumnSource {
             case kSourceNone:
                 return "->None";
         }
+        return "";
     }
     const SourceType type() const { return type_; }
     const uint32_t schema_idx() const { return schema_idx_; }

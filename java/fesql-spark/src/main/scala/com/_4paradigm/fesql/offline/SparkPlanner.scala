@@ -17,7 +17,7 @@ class SparkPlanner(session: SparkSession, config: Map[String, Any]) {
 
   // Ensure native initialized
   FeSqlLibrary.init()
-
+  Engine.InitializeGlobalLLVM()
 
   def this(session: SparkSession) = {
     this(session, Map())

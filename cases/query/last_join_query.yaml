@@ -1,5 +1,5 @@
 SQLCases:
-  - id: 1
+  - id: 0
     desc: LAST JOIN 右表未命中索引
     mode: request
     db: db1
@@ -82,7 +82,7 @@ SQLCases:
         4, 1, 9, 55, DDDD
         5, 2, 11, 55, EEEEE
 
-  - id: 3
+  - id: 2
     desc: LAST JOIN 右表成功命中一个索引
     mode: request
     db: db1
@@ -124,3 +124,30 @@ SQLCases:
         3, 1, 7, 55, CCC
         4, 1, 9, 55, DDDD
         5, 2, 11, 55, EEEEE
+  - id: 3
+    desc: LAST JOIN 拼表条件包含timestamp列
+    mode: request
+    db: db1
+    sql: |
+      SELECT t1.col1 as id, t1.col0 as t1_col0, t1.col2 as t1_col2, t1.std_ts as t1_std_ts, str1 FROM t1 last join t2 on t1.col1=t2.col1 and t1.std_ts = t2.std_ts;
+    inputs:
+      - name: t1
+        resource: cases/resource/simple_t1_ts.yaml
+      - name: t2
+        schema: str0:string, str1:string,col1:int32, std_ts:timestamp
+        index: index1:col1:std_ts
+        data: |
+          2, EEEEE, 5, 1590115424000
+          1, DDDD, 4, 1590115423000
+          1, CCC, 3, 1590115422000
+          0, BB, 2, 1590115421000
+          0, A, 1, 1590115420000
+    output:
+      schema: id:int32, t1_col0:string, t1_col2:int16, t1_std_ts:timestamp, str1:string
+      order: id
+      data: |
+        1, 0, 5, 1590115420000, A
+        2, 0, 5, 1590115421000, BB
+        3, 1, 55, 1590115422000, CCC
+        4, 1, 55, 1590115423000, DDDD
+        5, 2, 55, 1590115424000, EEEEE

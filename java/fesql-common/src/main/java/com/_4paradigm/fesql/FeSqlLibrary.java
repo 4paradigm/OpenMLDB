@@ -1,8 +1,5 @@
 package com._4paradigm.fesql;
 
-import com._4paradigm.fesql.vm.Engine;
-
-
 public class FeSqlLibrary {
 
     static private final String FESQL_LIBRARY_NAME = "fesql_jsdk";
@@ -14,7 +11,6 @@ public class FeSqlLibrary {
             return;
         }
         LibraryLoader.loadLibrary(FESQL_LIBRARY_NAME);
-        Engine.InitializeGlobalLLVM();
         initialized = true;
     }
 }

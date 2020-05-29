@@ -238,15 +238,44 @@ bool ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call_fn,
         return false;
     }
 
-    if (args->children_.size() != fn->arg_size()) {
+    if (args->children_.size() == fn->arg_size()) {
+        ::llvm::ArrayRef<::llvm::Value*> array_ref(llvm_args);
+        *output = builder.CreateCall(fn->getFunctionType(), fn, array_ref);
+        return true;
+    } else if (args->children_.size() == fn->arg_size() - 1) {
+        auto it = fn->arg_end();
+        it--;
+        ::llvm::Argument* last_arg = &*it;
+        if (!TypeIRBuilder::IsStructPtr(last_arg->getType())) {
+            status.msg = ("Incorrect arguments passed");
+            status.code = (common::kCallMethodError);
+            LOG(WARNING) << status.msg;
+            return false;
+        }
+        ::llvm::Type* struct_type =
+            reinterpret_cast<::llvm::PointerType*>(last_arg->getType())
+                ->getElementType();
+        ::llvm::Value* struct_value = builder.CreateAlloca(struct_type);
+        llvm_args.push_back(struct_value);
+        ::llvm::Value* ret =
+            builder.CreateCall(fn->getFunctionType(), fn,
+                               ::llvm::ArrayRef<::llvm::Value*>(llvm_args));
+        if (nullptr == ret) {
+            status.code = common::kCallMethodError;
+            status.msg = "Fail to Call Function";
+            LOG(WARNING) << status.msg;
+            return false;
+        }
+        *output = struct_value;
+        return true;
+
+    } else {
         status.msg = ("Incorrect arguments passed");
         status.code = (common::kCallMethodError);
+        LOG(WARNING) << status.msg;
         return false;
     }
-
-    ::llvm::ArrayRef<::llvm::Value*> array_ref(llvm_args);
-    *output = builder.CreateCall(fn->getFunctionType(), fn, array_ref);
-    return true;
+    return false;
 }
 
 // Build Struct Expr IR:

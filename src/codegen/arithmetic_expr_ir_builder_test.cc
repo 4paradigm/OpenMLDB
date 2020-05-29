@@ -10,6 +10,8 @@
 #include <memory>
 #include <utility>
 #include "codegen/ir_base_builder.h"
+#include "codegen/string_ir_builder.h"
+#include "codegen/timestamp_ir_builder.h"
 #include "gtest/gtest.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/IR/Function.h"
@@ -28,6 +30,7 @@ using namespace llvm::orc;  // NOLINT
 ExitOnError ExitOnErr;
 namespace fesql {
 namespace codegen {
+using fesql::codec::Timestamp;
 class ArithmeticIRBuilderTest : public ::testing::Test {
  public:
     ArithmeticIRBuilderTest() { manager_ = new node::NodeManager(); }
@@ -41,7 +44,7 @@ template <class V1, class V2, class R>
 void BinaryArithmeticExprCheck(::fesql::node::DataType left_type,
                                ::fesql::node::DataType right_type,
                                ::fesql::node::DataType dist_type, V1 value1,
-                               V2 value2, R result,
+                               V2 value2, R expected,
                                fesql::node::FnOperator op) {
     // Create an LLJIT instance.
     // Create an LLJIT instance.
@@ -57,11 +60,18 @@ void BinaryArithmeticExprCheck(::fesql::node::DataType left_type,
         ::fesql::codegen::GetLLVMType(m.get(), right_type, &right_llvm_type));
     ASSERT_TRUE(GetLLVMType(m.get(), dist_type, &dist_llvm_type));
 
-    // Create the add1 function entry and insert this entry into module M.  The
-    // function will have a return type of "D" and take an argument of "S".
+    if (left_llvm_type->isStructTy()) {
+        left_llvm_type = left_llvm_type->getPointerTo();
+    }
+
+    if (right_llvm_type->isStructTy()) {
+        right_llvm_type = right_llvm_type->getPointerTo();
+    }
     Function *load_fn = Function::Create(
-        FunctionType::get(dist_llvm_type, {left_llvm_type, right_llvm_type},
-                          false),
+        FunctionType::get(
+            ::llvm::Type::getVoidTy(*ctx),
+            {left_llvm_type, right_llvm_type, dist_llvm_type->getPointerTo()},
+            false),
         Function::ExternalLinkage, "load_fn", m.get());
     BasicBlock *entry_block = BasicBlock::Create(*ctx, "EntryBlock", load_fn);
     IRBuilder<> builder(entry_block);
@@ -69,6 +79,8 @@ void BinaryArithmeticExprCheck(::fesql::node::DataType left_type,
     Argument *arg0 = &(*iter);
     iter++;
     Argument *arg1 = &(*iter);
+    iter++;
+    Argument *arg2 = &(*iter);
 
     ScopeVar scope_var;
     scope_var.Enter("fn_base");
@@ -105,7 +117,28 @@ void BinaryArithmeticExprCheck(::fesql::node::DataType left_type,
         }
     }
     ASSERT_TRUE(ok);
-    builder.CreateRet(output);
+
+    switch (dist_type) {
+        case node::kTimestamp: {
+            codegen::TimestampIRBuilder timestamp_builder(m.get());
+            ::llvm::Value *ts_output;
+            ASSERT_TRUE(timestamp_builder.GetTs(builder.GetInsertBlock(),
+                                                output, &ts_output));
+            ASSERT_TRUE(timestamp_builder.SetTs(builder.GetInsertBlock(), arg2,
+                                                ts_output));
+            break;
+        }
+        case node::kVarchar: {
+            codegen::StringIRBuilder string_builder(m.get());
+            ASSERT_TRUE(string_builder.CopyFrom(builder.GetInsertBlock(),
+                                                output, arg2));
+            break;
+        }
+        default: {
+            builder.CreateStore(output, arg2);
+        }
+    }
+    builder.CreateRetVoid();
     m->print(::llvm::errs(), NULL);
     auto J = ExitOnErr(::llvm::orc::LLJITBuilder().create());
     auto &jd = J->getMainJITDylib();
@@ -115,11 +148,13 @@ void BinaryArithmeticExprCheck(::fesql::node::DataType left_type,
     ::fesql::udf::InitCLibSymbol(jd, mi);
     ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
     auto load_fn_jit = ExitOnErr(J->lookup("load_fn"));
-    R (*decode)(V1, V2) = (R(*)(V1, V2))load_fn_jit.getAddress();
-    R ret = decode(value1, value2);
-    std::cout << std::to_string(ret) << std::endl;
-    ASSERT_EQ(ret, result);
+    void (*decode)(V1, V2, R *) =
+        (void (*)(V1, V2, R *))load_fn_jit.getAddress();
+    R result;
+    decode(value1, value2, &result);
+    ASSERT_EQ(expected, result);
 }
+
 TEST_F(ArithmeticIRBuilderTest, test_add_int16_x_expr) {
     BinaryArithmeticExprCheck<int16_t, int16_t, int16_t>(
         ::fesql::node::kInt16, ::fesql::node::kInt16, ::fesql::node::kInt16, 1,
@@ -183,6 +218,41 @@ TEST_F(ArithmeticIRBuilderTest, test_add_int64_x_expr) {
         1, 12345678.5, 12345678.5 + 1.0, ::fesql::node::kFnOpAdd);
 }
 
+TEST_F(ArithmeticIRBuilderTest, test_add_timestamp_expr) {
+    Timestamp t1(8000000000L);
+    Timestamp t2(1L);
+    BinaryArithmeticExprCheck<Timestamp *, Timestamp *, Timestamp>(
+        ::fesql::node::kTimestamp, ::fesql::node::kTimestamp,
+        ::fesql::node::kTimestamp, &t1, &t2, Timestamp(8000000001L),
+        ::fesql::node::kFnOpAdd);
+
+    BinaryArithmeticExprCheck<Timestamp *, int64_t, Timestamp>(
+        ::fesql::node::kTimestamp, ::fesql::node::kInt64,
+        ::fesql::node::kTimestamp, &t1, 1L, Timestamp(8000000001L),
+        ::fesql::node::kFnOpAdd);
+    BinaryArithmeticExprCheck<Timestamp *, int32_t, Timestamp>(
+        ::fesql::node::kTimestamp, ::fesql::node::kInt32,
+        ::fesql::node::kTimestamp, &t1, 1, Timestamp(8000000001L),
+        ::fesql::node::kFnOpAdd);
+}
+
+TEST_F(ArithmeticIRBuilderTest, test_sub_timestamp_expr) {
+    Timestamp t1(8000000000L);
+    Timestamp t2(1L);
+    BinaryArithmeticExprCheck<Timestamp *, Timestamp *, Timestamp>(
+        ::fesql::node::kTimestamp, ::fesql::node::kTimestamp,
+        ::fesql::node::kTimestamp, &t1, &t2, Timestamp(7999999999L),
+        ::fesql::node::kFnOpMinus);
+
+    BinaryArithmeticExprCheck<Timestamp *, int64_t, Timestamp>(
+        ::fesql::node::kTimestamp, ::fesql::node::kInt64,
+        ::fesql::node::kTimestamp, &t1, 1L, Timestamp(7999999999L),
+        ::fesql::node::kFnOpMinus);
+    BinaryArithmeticExprCheck<Timestamp *, int32_t, Timestamp>(
+        ::fesql::node::kTimestamp, ::fesql::node::kInt32,
+        ::fesql::node::kTimestamp, &t1, 1, Timestamp(7999999999L),
+        ::fesql::node::kFnOpMinus);
+}
 TEST_F(ArithmeticIRBuilderTest, test_add_float_x_expr) {
     BinaryArithmeticExprCheck<float, int16_t, float>(
         ::fesql::node::kFloat, ::fesql::node::kInt16, ::fesql::node::kFloat,
