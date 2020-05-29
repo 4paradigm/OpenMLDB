@@ -80,9 +80,8 @@ class FullTableIterator
     inline void Next() { it_->Next(); }
 
     inline const ::fesql::codec::Row& GetValue() {
-        value_ =
-            ::fesql::codec::Row(::fesql::base::RefCountedSlice::Create(it_->GetValue().data(),
-                        it_->GetValue().size()));
+        value_ = ::fesql::codec::Row(::fesql::base::RefCountedSlice::Create(
+            it_->GetValue().data(), it_->GetValue().size()));
         return value_;
     }
 

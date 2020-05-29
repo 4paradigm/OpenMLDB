@@ -12,10 +12,10 @@
 #include <algorithm>
 #include <utility>
 
+#include "base/fe_slice.h"
 #include "base/glog_wapper.h"  // NOLINT
 #include "base/hash.h"
 #include "base/slice.h"
-#include "base/fe_slice.h"
 #include "storage/record.h"
 #include "timer.h"  // NOLINT
 
@@ -999,8 +999,8 @@ std::unique_ptr<::fesql::vm::RowIterator> MemTableKeyIterator::GetValue() {
 }
 
 const fesql::codec::Row MemTableKeyIterator::GetKey() {
-    fesql::codec::Row row(::fesql::base::RefCountedSlice::Create(pk_it_->GetKey().data(),
-                pk_it_->GetKey().size()));
+    fesql::codec::Row row(::fesql::base::RefCountedSlice::Create(
+        pk_it_->GetKey().data(), pk_it_->GetKey().size()));
     return row;
 }
 

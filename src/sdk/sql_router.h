@@ -20,6 +20,7 @@
 
 #include <memory>
 #include <string>
+
 #include "sdk/base.h"
 #include "sdk/result_set.h"
 #include "sdk/sql_request_row.h"
@@ -53,7 +54,8 @@ class SQLRouter {
 
     virtual std::shared_ptr<fesql::sdk::ResultSet> ExecuteSQL(
         const std::string& db, const std::string& sql,
-        std::shared_ptr<rtidb::sdk::SQLRequestRow> row, fesql::sdk::Status* status) = 0;
+        std::shared_ptr<rtidb::sdk::SQLRequestRow> row,
+        fesql::sdk::Status* status) = 0;
 
     virtual std::shared_ptr<fesql::sdk::ResultSet> ExecuteSQL(
         const std::string& db, const std::string& sql,
