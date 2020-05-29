@@ -23,6 +23,8 @@ DECLARE_string(zk_root_path);
 DECLARE_int32(zk_session_timeout);
 DECLARE_int32(zk_keep_alive_check_interval);
 DECLARE_string(hdd_root_path);
+DECLARE_uint32(oss_flush_size);
+DECLARE_int32(oss_flush_period);
 
 using ::rtidb::base::ReturnCode;
 
@@ -202,7 +204,8 @@ int BlobServerImpl::CreateTable(const TableMeta& meta) {
         }
         paths.append(it);
     }
-    store = std::make_shared<ObjectStore>(meta, paths);
+    store = std::make_shared<ObjectStore>(meta, paths, FLAGS_oss_flush_size,
+                                          FLAGS_oss_flush_period);
     if (!store->Init()) {
         PDLOG(WARNING, "init table faield. tid[%u] pid[%u]", tid, pid);
         return 4;
