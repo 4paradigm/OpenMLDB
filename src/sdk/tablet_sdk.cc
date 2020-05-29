@@ -350,23 +350,23 @@ void TabletSdkImpl::BuildInsertRequest(const std::string& db,
         bool ok = false;
         switch (it->type()) {
             case type::kInt16: {
-                ok = rb.AppendInt16(primary->GetSmallInt());
+                ok = rb.AppendInt16(primary->GetAsInt16());
                 break;
             }
             case type::kInt32: {
-                ok = rb.AppendInt32(primary->GetInt());
+                ok = rb.AppendInt32(primary->GetAsInt32());
                 break;
             }
             case type::kInt64: {
-                ok = rb.AppendInt64(primary->GetInt());
+                ok = rb.AppendInt64(primary->GetAsInt64());
                 break;
             }
             case type::kFloat: {
-                ok = rb.AppendFloat(static_cast<float>(primary->GetDouble()));
+                ok = rb.AppendFloat(primary->GetAsFloat());
                 break;
             }
             case type::kDouble: {
-                ok = rb.AppendDouble(primary->GetDouble());
+                ok = rb.AppendDouble(primary->GetAsDouble());
                 break;
             }
             case type::kVarchar: {
@@ -375,7 +375,7 @@ void TabletSdkImpl::BuildInsertRequest(const std::string& db,
                 break;
             }
             case type::kTimestamp: {
-                ok = rb.AppendTimestamp(primary->GetInt());
+                ok = rb.AppendTimestamp(primary->GetAsInt64());
                 break;
             }
             default: {
