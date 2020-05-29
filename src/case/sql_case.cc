@@ -592,6 +592,16 @@ bool SQLCase::CreateSQLCasesFromYaml(
                 sql_case.db_ = "test";
             }
 
+            if (sql_case_node["create"]) {
+                sql_case.create_str_ = sql_case_node["create"].as<std::string>();
+                boost::trim(sql_case.create_str_);
+            }
+
+            if (sql_case_node["insert"]) {
+                sql_case.insert_str_= sql_case_node["insert"].as<std::string>();
+                boost::trim(sql_case.insert_str_);
+            }
+
             if (sql_case_node["sql"]) {
                 sql_case.sql_str_ = sql_case_node["sql"].as<std::string>();
                 boost::trim(sql_case.sql_str_);

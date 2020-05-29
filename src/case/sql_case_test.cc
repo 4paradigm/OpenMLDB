@@ -559,7 +559,7 @@ TEST_F(SQLCaseTest, ExtractYamlSQLCase) {
 
     ASSERT_TRUE(
         fesql::sqlcase::SQLCase::CreateSQLCasesFromYaml(case_path, cases));
-    ASSERT_EQ(3, cases.size());
+    ASSERT_EQ(4, cases.size());
     {
         SQLCase& sql_case = cases[0];
         ASSERT_EQ(sql_case.id(), 1);
@@ -653,6 +653,27 @@ TEST_F(SQLCaseTest, ExtractYamlSQLCase) {
                   "col0:string, col1:int32, col2:int16, col6:string");
         ASSERT_EQ(sql_case.output().order_, "");
         ASSERT_EQ(sql_case.output().data_, "0, 3, 5, 1\n0, 4, 5, 22");
+    }
+
+    {
+        SQLCase& sql_case = cases[3];
+        ASSERT_EQ(sql_case.id(), 4);
+        ASSERT_EQ("简单INSERT", sql_case.desc());
+        ASSERT_EQ(sql_case.db(), "test");
+        ASSERT_EQ(
+            sql_case.create_str(),
+            "create table t1 (\n  col0 string not null,\n  col1 int not "
+            "null,\n  col2 smallint not null,\n  col3 float not null,\n  col4 "
+            "double not null,\n  col5 bigint not null,\n  col6 string not "
+            "null,\n  index(name=index1, key=(col2), ts=col5)\n);");
+        ASSERT_EQ(sql_case.insert_str(),
+                  "insert into t1 values(\"hello\", 1, 2, 3.3f, 4.4, 5L, "
+                  "\"world\");");
+        ASSERT_EQ(sql_case.output().schema_,
+                  "col0:string, col1:int32, col2:int16, col3:float, "
+                  "col4:double, col5:int64, col6:string");
+        ASSERT_EQ(sql_case.output().order_, "col1");
+        ASSERT_EQ(sql_case.output().data_, "hello, 1, 2, 3.3, 4.4, 5, world");
     }
 }
 }  // namespace sqlcase

@@ -37,6 +37,8 @@ class SQLCase {
     const std::string& request_plan() const { return request_plan_; }
     const std::string& batch_plan() const { return batch_plan_; }
     const std::string& sql_str() const { return sql_str_; }
+    const std::string& create_str() const { return create_str_; }
+    const std::string& insert_str() const { return insert_str_; }
     const std::string& db() const { return db_; }
     const std::vector<TableInfo>& inputs() const { return inputs_; }
     const TableInfo& output() const { return output_; }
@@ -95,6 +97,8 @@ class SQLCase {
     std::string mode_;
     std::string desc_;
     std::string db_;
+    std::string create_str_;
+    std::string insert_str_;
     std::string sql_str_;
     std::string batch_plan_;
     std::string request_plan_;
