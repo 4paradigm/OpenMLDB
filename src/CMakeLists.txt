@@ -4,7 +4,6 @@ set(BIN_LIBS client nameserver tablet rtidb_sdk client blobserver blob_proxy rti
     ${VM_LIBS}
     ${LLVM_LIBS}
     ${BRPC_LIBS})
-
 add_library(rtidb_proto STATIC proto/type.pb.cc proto/client.pb.cc proto/common.pb.cc proto/tablet.pb.cc proto/blob_server.pb.cc proto/name_server.pb.cc)
 add_library(rtidb_codec STATIC codec/codec.cc)
 add_library(rtidb_catalog STATIC catalog/tablet_catalog.cc catalog/sdk_catalog.cc)
@@ -146,7 +145,6 @@ add_executable(glog_wapper_test base/glog_wapper_test.cc)
 target_link_libraries(glog_wapper_test  gtest ${BIN_LIBS})
 
 add_executable(rtidb cmd/rtidb.cc base/status.cc proto/client.pb.cc base/linenoise.cc)
-
 target_link_libraries(rtidb ${BIN_LIBS})
 add_subdirectory(client)
 add_subdirectory(sdk)

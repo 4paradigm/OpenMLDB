@@ -67,6 +67,7 @@ class ClusterSDK {
 
     std::shared_ptr<::rtidb::nameserver::TableInfo> GetTableInfo(
         const std::string& db, const std::string& tname);
+    std::vector<std::shared_ptr<::rtidb::nameserver::TableInfo>> GetTables(const std::string& db);
 
     inline std::shared_ptr<::rtidb::client::NsClient> GetNsClient() {
         if (ns_client_) return ns_client_;

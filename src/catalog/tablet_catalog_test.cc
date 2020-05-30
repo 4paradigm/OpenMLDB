@@ -226,7 +226,6 @@ TEST_F(TabletCatalogTest, sql_last_join_smoke_test2) {
     std::cout << "physical " << explain.physical_plan << std::endl;
     std::cout << "logical_plan " << explain.logical_plan << std::endl;
     ::fesql::vm::BatchRunSession session;
-    session.EnableDebug();
     engine.Get(sql, "db1", session, status);
     if (status.code != ::fesql::common::kOk) {
         std::cout << status.msg << std::endl;

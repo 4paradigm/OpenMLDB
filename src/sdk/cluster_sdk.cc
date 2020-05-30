@@ -279,15 +279,29 @@ std::shared_ptr<::rtidb::nameserver::TableInfo> ClusterSDK::GetTableInfo(
     std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
     auto it = table_to_tablets_.find(db);
     if (it == table_to_tablets_.end()) {
-        return 0;
+        return std::shared_ptr<::rtidb::nameserver::TableInfo>();
     }
     auto sit = it->second.find(tname);
     if (sit == it->second.end()) {
-        return 0;
+        return std::shared_ptr<::rtidb::nameserver::TableInfo>();
     }
     std::set<std::string> endpoints;
     auto table_info = sit->second;
     return table_info;
+}
+
+std::vector<std::shared_ptr<::rtidb::nameserver::TableInfo>> ClusterSDK::GetTables(const std::string& db) {
+    std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
+    std::vector<std::shared_ptr<::rtidb::nameserver::TableInfo>> tables;
+    auto it = table_to_tablets_.find(db);
+    if (it == table_to_tablets_.end()) {
+        return tables;
+    }
+    auto iit = it->second.begin();
+    for (; iit != it->second.end(); ++iit) {
+        tables.push_back(iit->second);
+    }
+    return tables;
 }
 
 }  // namespace sdk

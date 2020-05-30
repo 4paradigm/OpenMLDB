@@ -40,21 +40,31 @@ SQLClusterRouter::SQLClusterRouter(const SQLRouterOptions& options)
       input_schema_map_(),
       mu_() {}
 
+SQLClusterRouter::SQLClusterRouter(ClusterSDK* sdk)
+    : options_(),
+      cluster_sdk_(sdk),
+      engine_(NULL),
+      input_schema_map_(),
+      mu_() {}
+
+
 SQLClusterRouter::~SQLClusterRouter() {
     delete cluster_sdk_;
     delete engine_;
 }
 
 bool SQLClusterRouter::Init() {
-    ClusterOptions coptions;
-    coptions.zk_cluster = options_.zk_cluster;
-    coptions.zk_path = options_.zk_path;
-    coptions.session_timeout = options_.session_timeout;
-    cluster_sdk_ = new ClusterSDK(coptions);
-    bool ok = cluster_sdk_->Init();
-    if (!ok) {
-        LOG(WARNING) << "fail to init cluster sdk";
-        return false;
+    if (cluster_sdk_ == NULL) {
+        ClusterOptions coptions;
+        coptions.zk_cluster = options_.zk_cluster;
+        coptions.zk_path = options_.zk_path;
+        coptions.session_timeout = options_.session_timeout;
+        cluster_sdk_ = new ClusterSDK(coptions);
+        bool ok = cluster_sdk_->Init();
+        if (!ok) {
+            LOG(WARNING) << "fail to init cluster sdk";
+            return false;
+        }
     }
     ::fesql::vm::Engine::InitializeGlobalLLVM();
     std::shared_ptr<::fesql::vm::Catalog> catalog = cluster_sdk_->GetCatalog();
@@ -245,10 +255,12 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db,
     bool ok = GetSQLPlan(sql, &nm, &plans);
     if (!ok || plans.size() == 0) {
         LOG(WARNING) << "fail to get sql plan with sql " << sql;
+        status->msg = "fail to get sql plan with";
         return false;
     }
     ::fesql::node::PlanNode* plan = plans[0];
     if (plan->GetType() != fesql::node::kPlanTypeInsert) {
+        status->msg = "invalid sql node expect insert";
         LOG(WARNING) << "invalid sql node expect insert";
         return false;
     }

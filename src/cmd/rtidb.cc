@@ -40,6 +40,7 @@
 #include "proto/type.pb.h"
 #include "tablet/tablet_impl.h"
 #include "vm/engine.h"
+#include "cmd/sql_cmd.h"
 #include "timer.h"     // NOLINT
 #include "tprinter.h"  // NOLINT
 #include "version.h"   // NOLINT
@@ -55,7 +56,7 @@ DECLARE_int32(thread_pool_size);
 DECLARE_int32(put_concurrency_limit);
 DECLARE_int32(scan_concurrency_limit);
 DECLARE_int32(get_concurrency_limit);
-DEFINE_string(role, "tablet | nameserver | client | ns_client",
+DEFINE_string(role, "tablet | nameserver | client | ns_client | sql_client",
               "Set the rtidb role for start");
 DEFINE_string(cmd, "", "Set the command");
 DEFINE_bool(interactive, true, "Set the interactive");
@@ -70,6 +71,7 @@ DECLARE_uint32(skiplist_max_height);
 DECLARE_uint32(preview_limit_max_num);
 DECLARE_uint32(preview_default_limit);
 DECLARE_uint32(max_col_display_length);
+
 
 void SetupLog() {
     // Config log
@@ -6670,18 +6672,9 @@ void StartNsClient() {
             HandleNSUpdate(parts, &client);
         } else if (parts[0] == "query") {
             HandleNSQuery(parts, &client);
-        } else if (parts[0] == "use") {
-            HandleNsUseDb(parts, &client);
-            display_prefix = endpoint + " " + client.GetDb() + "> ";
-        } else if (parts[0] == "createdb") {
-            HandleNsCreateDb(parts, &client);
-        } else if (parts[0] == "showdb") {
-            HandleNsShowDb(parts, &client);
-        } else if (parts[0] == "dropdb") {
-            HandleNsDropDb(parts, &client);
         } else if (parts[0] == "sql") {
             use_sql = true;
-            display_prefix = endpoint + " " + client.GetDb() + " SQL> ";
+            display_prefix = endpoint + " " + client.GetDb() + " sql> ";
             multi_line_perfix =
                 std::string(display_prefix.length() - 3, ' ') + "-> ";
             ::rtidb::base::linenoiseSetMultiLine(1);
@@ -6714,6 +6707,8 @@ int main(int argc, char* argv[]) {
         StartBlob();
     } else if (FLAGS_role == "ns_client") {
         StartNsClient();
+    } else if (FLAGS_role == "sql_client") {
+        ::rtidb::cmd::HandleCli();
     } else {
         std::cout << "Start failed! FLAGS_role must be tablet, client, "
                      "nameserver or ns_client"

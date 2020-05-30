@@ -39,6 +39,7 @@ namespace sdk {
 class SQLClusterRouter : public SQLRouter {
  public:
     explicit SQLClusterRouter(const SQLRouterOptions& options);
+    explicit SQLClusterRouter(ClusterSDK* sdk);
 
     ~SQLClusterRouter();
 

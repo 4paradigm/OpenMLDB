@@ -7,4 +7,4 @@ def test_create_db():
     options.zk_path = "/onebox"
     sdk = sql_router_sdk.NewClusterSQLRouter(options)
     status = sql_router_sdk.Status()
-    sdk.CreateDB("dx", status)
+    assert sdk.CreateDB("dx", status)
