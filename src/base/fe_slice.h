@@ -151,7 +151,7 @@ class RefCountedSlice : public Slice {
         ref_cnt_(managed ? new int(1) : nullptr) {}
 
     RefCountedSlice():
-        Slice(nullptr, 0),ref_cnt_(nullptr) {}
+        Slice(nullptr, 0), ref_cnt_(nullptr) {}
     void Update(const RefCountedSlice& slice);
 
     int32_t* ref_cnt_;

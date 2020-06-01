@@ -253,7 +253,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         LOG(WARNING) << "fail to encode output schema";
         return false;
     }
-    LOG(INFO) << "compile sql " << ctx.sql << " done";
+    DLOG(INFO) << "compile sql " << ctx.sql << " done";
     return true;
 }
 bool SQLCompiler::BuildRunner(SQLContext& ctx, Status& status) {  // NOLINT
