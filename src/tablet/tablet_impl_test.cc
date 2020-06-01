@@ -611,7 +611,8 @@ TEST_F(TabletImplTest, GetRelationalTable) {
         ::rtidb::api::BatchQueryResponse response;
         MockClosure closure;
         tablet.BatchQuery(NULL, &request, &response, &closure);
-        ASSERT_EQ(148, response.code());
+        ASSERT_EQ(0, response.code());
+        ASSERT_EQ(0, response.count());
     }
     // put some key
     ::rtidb::codec::RowBuilder builder(schema_t);
@@ -830,7 +831,8 @@ TEST_F(TabletImplTest, StringKeyRelationalTable) {
         ::rtidb::api::BatchQueryResponse response;
         MockClosure closure;
         tablet.BatchQuery(NULL, &request, &response, &closure);
-        ASSERT_EQ(148, response.code());
+        ASSERT_EQ(0, response.code());
+        ASSERT_EQ(0, response.count());
     }
     // put some key
     ::rtidb::codec::RowBuilder builder(schema_t);
