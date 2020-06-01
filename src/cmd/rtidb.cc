@@ -9,7 +9,7 @@
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/text_format.h>
 #include <sched.h>
-#include <signal.h>
+#include <csignal>
 #include <snappy.h>
 #include <unistd.h>
 
@@ -69,6 +69,9 @@ DECLARE_uint32(skiplist_max_height);
 DECLARE_uint32(preview_limit_max_num);
 DECLARE_uint32(preview_default_limit);
 DECLARE_uint32(max_col_display_length);
+
+std::function<void(int)> quit_signal_handler;
+void shutdown_signal_handler(int signal) { quit_signal_handler(signal); };
 
 void SetupLog() {
     // Config log
@@ -320,6 +323,12 @@ void StartBlob() {
         PDLOG(WARNING, "Fail to register zk");
         exit(1);
     }
+    std::signal(SIGTERM, shutdown_signal_handler);
+    quit_signal_handler = [server_impl](int signal) {
+        std::cout << "catch signal num " << signal << std::endl;
+        delete server_impl;
+        exit(1);
+    };
     std::ostringstream oss;
     oss << RTIDB_VERSION_MAJOR << "." << RTIDB_VERSION_MEDIUM << "."
         << RTIDB_VERSION_MINOR << "." << RTIDB_VERSION_BUG;
