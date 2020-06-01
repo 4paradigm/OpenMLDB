@@ -1,6 +1,5 @@
 include_directories(${INCLUDE_DIRECTORIES} ${PROJECT_SOURCE_DIR}/src)
 
-
 add_library(rtidb_proto STATIC proto/type.pb.cc proto/client.pb.cc proto/common.pb.cc proto/tablet.pb.cc proto/blob_server.pb.cc proto/name_server.pb.cc)
 add_library(rtidb_codec STATIC codec/codec.cc)
 add_library(rtidb_catalog STATIC catalog/tablet_catalog.cc catalog/sdk_catalog.cc)
@@ -21,7 +20,6 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
                        log/writable_file.cc flags.cc)
 
     set(BIN_LIBS client nameserver tablet rtidb_sdk client blobserver blob_proxy rtidb_catalog zk_client replica  base beans storage rtidb_codec rtidb_proto log common rocksdb zookeeper_mt tcmalloc_minimal
-
     ${VM_LIBS}
     ${LLVM_LIBS}
     ${BRPC_LIBS})
@@ -35,7 +33,7 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     add_executable(tablet_catalog_test catalog/tablet_catalog_test.cc)
     target_link_libraries(tablet_catalog_test gtest ${BIN_LIBS})
 
-    add_executable(sdk_catalog_test catalog/sdk_catalog_test.cc)
+    add_executable(sdk_catalog_test catalog/sdk_catalog_test.cc flags.cc)
     target_link_libraries(sdk_catalog_test gtest ${BIN_LIBS})
 
     add_executable(strings_test base/strings_test.cc)
