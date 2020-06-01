@@ -305,6 +305,16 @@ void BaseClient::RefreshTable() {
         if (code != 0) {
             continue;
         }
+        if (table_info->has_blob_info()) {
+            for (int i = 0; i < columns->size(); i++) {
+                const auto& type = columns->Get(i).data_type();
+                if (type == rtidb::type::kBlob) {
+                    handler->blobSuffix.push_back(i);
+                    const std::string& col_name = columns->Get(i).name();
+                    handler->blobFieldNames.push_back(col_name);
+                }
+            }
+        }
         std::map<std::string, ::rtidb::type::DataType> map;
         for (const auto& col_desc : *columns) {
             map.insert(std::make_pair(col_desc.name(), col_desc.data_type()));
