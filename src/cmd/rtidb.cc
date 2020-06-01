@@ -9,12 +9,12 @@
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/text_format.h>
 #include <sched.h>
-#include <csignal>
 #include <snappy.h>
 #include <unistd.h>
 
 #include <iostream>
 #include <random>
+#include <csignal>
 
 #include "base/display.h"
 #include "base/file_util.h"
@@ -71,7 +71,7 @@ DECLARE_uint32(preview_default_limit);
 DECLARE_uint32(max_col_display_length);
 
 std::function<void(int)> quit_signal_handler;
-void shutdown_signal_handler(int signal) { quit_signal_handler(signal); };
+void shutdown_signal_handler(int signal) { quit_signal_handler(signal); }
 
 void SetupLog() {
     // Config log
