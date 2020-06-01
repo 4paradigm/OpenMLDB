@@ -17,17 +17,18 @@
 
 #ifndef SRC_CMD_SQL_CMD_H_
 #define SRC_CMD_SQL_CMD_H_
-
+#include <string>
+#include <vector>
+#include "base/linenoise.h"
+#include "base/texttable.h"
+#include "catalog/schema_adapter.h"
 #include "gflags/gflags.h"
-#include "version.h"   // NOLINT
-#include "sdk/sql_cluster_router.h"
-#include "sdk/cluster_sdk.h"
 #include "node/node_manager.h"
 #include "parser/parser.h"
-#include "base/texttable.h"
 #include "proto/fe_type.pb.h"
-#include "catalog/schema_adapter.h"
-#include "base/linenoise.h"
+#include "sdk/cluster_sdk.h"
+#include "sdk/sql_cluster_router.h"
+#include "version.h"  // NOLINT
 
 DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
@@ -36,22 +37,23 @@ DECLARE_bool(interactive);
 namespace rtidb {
 namespace cmd {
 
-const std::string LOGO="" 
-"  ______   _____  ___\n" 
-" |  ____|  |  __ \\|  _ \\\n" 
-" | |__ ___ | |  | | |_) |\n" 
-" |  __/ _  \\ |  | |  _ <\n" 
-" | | |  __ / |__| | |_) |\n" 
-" |_|  \\___||_____/|____/\n";
+const std::string LOGO = // NOLINT
+    ""
+    "  ______   _____  ___\n"
+    " |  ____|  |  __ \\|  _ \\\n"
+    " | |__ ___ | |  | | |_) |\n"
+    " |  __/ _  \\ |  | |  _ <\n"
+    " | | |  __ / |__| | |_) |\n"
+    " |_|  \\___||_____/|____/\n";
 
-const std::string VERSION = std::to_string(RTIDB_VERSION_MAJOR) + "." + 
-std::to_string(RTIDB_VERSION_MEDIUM) + "." +
-std::to_string(RTIDB_VERSION_MINOR) +"." +
-std::to_string(RTIDB_VERSION_BUG);
+const std::string VERSION = std::to_string(RTIDB_VERSION_MAJOR) + "." + // NOLINT
+                            std::to_string(RTIDB_VERSION_MEDIUM) + "." +
+                            std::to_string(RTIDB_VERSION_MINOR) + "." +
+                            std::to_string(RTIDB_VERSION_BUG);
 
-std::string db = "";
-::rtidb::sdk::ClusterSDK* cs = NULL;
-::rtidb::sdk::SQLClusterRouter* sr = NULL;
+std::string db = "";  // NOLINT
+::rtidb::sdk::ClusterSDK *cs = NULL;
+::rtidb::sdk::SQLClusterRouter *sr = NULL;
 
 void PrintResultSet(std::ostream &stream, ::fesql::sdk::ResultSet *result_set) {
     if (!result_set || result_set->Size() == 0) {
@@ -115,8 +117,7 @@ void PrintResultSet(std::ostream &stream, ::fesql::sdk::ResultSet *result_set) {
     stream << t << std::endl;
     stream << result_set->Size() << " rows in set" << std::endl;
 }
-void PrintTableSchema(std::ostream &stream,
-                      const ::fesql::vm::Schema &schema) {
+void PrintTableSchema(std::ostream &stream, const ::fesql::vm::Schema &schema) {
     if (schema.size() == 0) {
         stream << "Empty set" << std::endl;
         return;
@@ -167,13 +168,12 @@ void PrintItems(std::ostream &stream, const std::string &head,
 }
 
 void HandleCmd(const fesql::node::CmdNode *cmd_node) {
-
     switch (cmd_node->GetCmdType()) {
         case fesql::node::kCmdShowDatabases: {
             std::string error;
             std::vector<std::string> dbs;
             auto ns = cs->GetNsClient();
-            if (!ns){ 
+            if (!ns) {
                 std::cout << "Fail to connect to db" << std::endl;
             }
             ns->ShowDatabase(&dbs, error);
@@ -203,7 +203,8 @@ void HandleCmd(const fesql::node::CmdNode *cmd_node) {
             }
             auto table = cs->GetTableInfo(db, cmd_node->GetArgs()[0]);
             ::fesql::vm::Schema output_schema;
-            ::rtidb::catalog::SchemaAdapter::ConvertSchema(table->column_desc_v1(), &output_schema);
+            ::rtidb::catalog::SchemaAdapter::ConvertSchema(
+                table->column_desc_v1(), &output_schema);
             PrintTableSchema(std::cout, output_schema);
             break;
         }
@@ -215,8 +216,9 @@ void HandleCmd(const fesql::node::CmdNode *cmd_node) {
             bool ok = ns->CreateDatabase(name, error);
             if (ok) {
                 std::cout << "Create database success" << std::endl;
-            }else {
-                std::cout << "Create database failed for " << error << std::endl;
+            } else {
+                std::cout << "Create database failed for " << error
+                          << std::endl;
             }
             break;
         }
@@ -227,7 +229,7 @@ void HandleCmd(const fesql::node::CmdNode *cmd_node) {
             bool ok = ns->Use(name, error);
             if (!ok) {
                 std::cout << error << std::endl;
-            }else {
+            } else {
                 db = name;
                 std::cout << "Database changed" << std::endl;
             }
@@ -242,7 +244,7 @@ void HandleCmd(const fesql::node::CmdNode *cmd_node) {
     }
 }
 
-void HandleSQL(const std::string& sql) {
+void HandleSQL(const std::string &sql) {
     fesql::node::NodeManager node_manager;
     fesql::parser::FeSQLParser parser;
     fesql::base::Status sql_status;
@@ -255,59 +257,60 @@ void HandleSQL(const std::string& sql) {
     fesql::node::SQLNode *node = parser_trees[0];
     switch (node->GetType()) {
         case fesql::node::kCmdStmt: {
-           fesql::node::CmdNode *cmd =
-               dynamic_cast<fesql::node::CmdNode *>(node);
-           HandleCmd(cmd);
-           return;
+            fesql::node::CmdNode *cmd =
+                dynamic_cast<fesql::node::CmdNode *>(node);
+            HandleCmd(cmd);
+            return;
         }
         case fesql::node::kCreateStmt: {
-           if (db.empty()) {
-               std::cout << "please use database first" << std::endl;
-               return;
-           }
-           ::fesql::sdk::Status status ;
-           bool ok = sr->ExecuteDDL(db, sql, &status);
-           if (!ok) {
-               std::cout << "fail to execute ddl" << std::endl;
-           }else {
-               sr->RefreshCatalog();
-           }
-           return;
+            if (db.empty()) {
+                std::cout << "please use database first" << std::endl;
+                return;
+            }
+            ::fesql::sdk::Status status;
+            bool ok = sr->ExecuteDDL(db, sql, &status);
+            if (!ok) {
+                std::cout << "fail to execute ddl" << std::endl;
+            } else {
+                sr->RefreshCatalog();
+            }
+            return;
         }
         case fesql::node::kInsertStmt: {
-           if (db.empty()) {
-               std::cout << "please use database first" << std::endl;
-               return;
-           }
-           ::fesql::sdk::Status status;
-           bool ok = sr->ExecuteInsert(db, sql, &status);
-           if (!ok) {
-               std::cout << "fail to execute insert" << std::endl;
-           }
-           return;
+            if (db.empty()) {
+                std::cout << "please use database first" << std::endl;
+                return;
+            }
+            ::fesql::sdk::Status status;
+            bool ok = sr->ExecuteInsert(db, sql, &status);
+            if (!ok) {
+                std::cout << "fail to execute insert" << std::endl;
+            }
+            return;
         }
         case fesql::node::kFnList:
         case fesql::node::kQuery: {
-           if (db.empty()) {
-               std::cout << "please use database first" << std::endl;
-               return;
-           }
-           ::fesql::sdk::Status status;
-           auto rs = sr->ExecuteSQL(db, sql, &status);
-           if (!rs) {
-               std::cout << "fail to execute query" << std::endl;
-           }else {
+            if (db.empty()) {
+                std::cout << "please use database first" << std::endl;
+                return;
+            }
+            ::fesql::sdk::Status status;
+            auto rs = sr->ExecuteSQL(db, sql, &status);
+            if (!rs) {
+                std::cout << "fail to execute query" << std::endl;
+            } else {
                 PrintResultSet(std::cout, rs.get());
-           }
-           return;
+            }
+            return;
         }
-        default:{}
+        default: {
+        }
     }
 }
 
 void HandleCli() {
     std::cout << LOGO << std::endl;
-    std::cout << "v"<< VERSION << std::endl;
+    std::cout << "v" << VERSION << std::endl;
     ::rtidb::sdk::ClusterOptions copt;
     copt.zk_cluster = FLAGS_zk_cluster;
     copt.zk_path = FLAGS_zk_root_path;
@@ -324,14 +327,14 @@ void HandleCli() {
     }
     std::string ns_endpoint = cs->GetNsClient()->GetEndpoint();
     std::string display_prefix = ns_endpoint + " " + db + "> ";
-    std::string multi_line_perfix = std::string(display_prefix.length() - 3, ' ') + "-> ";
+    std::string multi_line_perfix =
+        std::string(display_prefix.length() - 3, ' ') + "-> ";
     std::string sql;
     bool multi_line = false;
     while (true) {
         std::string buffer;
-        char* line =
-            ::rtidb::base::linenoise(multi_line ? multi_line_perfix.c_str()
-                                                : display_prefix.c_str());
+        char *line = ::rtidb::base::linenoise(
+            multi_line ? multi_line_perfix.c_str() : display_prefix.c_str());
         if (line == NULL) {
             return;
         }
@@ -352,7 +355,7 @@ void HandleCli() {
             multi_line = false;
             display_prefix = ns_endpoint + " " + db + "> ";
             multi_line_perfix =
-            std::string(display_prefix.length() - 3, ' ') + "-> ";
+                std::string(display_prefix.length() - 3, ' ') + "-> ";
             sql.clear();
         } else {
             sql.append("\n");
@@ -362,7 +365,7 @@ void HandleCli() {
     }
 }
 
-}  // cmd
-}  // rtidb
+}  // namespace cmd
+}  // namespace rtidb
 
 #endif  // SRC_CMD_SQL_CMD_H_

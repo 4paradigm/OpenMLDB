@@ -290,7 +290,8 @@ std::shared_ptr<::rtidb::nameserver::TableInfo> ClusterSDK::GetTableInfo(
     return table_info;
 }
 
-std::vector<std::shared_ptr<::rtidb::nameserver::TableInfo>> ClusterSDK::GetTables(const std::string& db) {
+std::vector<std::shared_ptr<::rtidb::nameserver::TableInfo>>
+ClusterSDK::GetTables(const std::string& db) {
     std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
     std::vector<std::shared_ptr<::rtidb::nameserver::TableInfo>> tables;
     auto it = table_to_tablets_.find(db);
