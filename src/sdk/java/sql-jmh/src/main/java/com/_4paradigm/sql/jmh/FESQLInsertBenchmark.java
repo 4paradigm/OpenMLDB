@@ -84,21 +84,35 @@ public class FESQLInsertBenchmark {
     }
 
     @Benchmark
-    public void selectBm() {
+    public void selectSimpleBm() {
         String sql = "select col1, col2, col3 from perf2 limit 10;";
         ResultSet rs = executor.executeSQL(db, sql);
     }
-
+    @Benchmark
+    public void select100Feature() {
+        String sql = "select col1, col2, col3";
+        for (int i = 0; i < 30; i++) {
+            sql += String.format(", col1 as col1%d, col2 as col2%d, col3 as col3%d", i, i, i);
+        }
+        sql += " from perf2 limit 1;";
+        ResultSet rs = executor.executeSQL(db, sql);
+    }
+    @Benchmark
+    public void select200Feature() {
+        String sql = "select col1, col2, col3";
+        for (int i = 0; i < 60; i++) {
+            sql += String.format(", col1 as col1%d, col2 as col2%d, col3 as col3%d", i, i, i);
+        }
+        sql += " from perf2 limit 1;";
+        ResultSet rs = executor.executeSQL(db, sql);
+    }
     public static void main(String[] args) throws RunnerException {
 
-        /*Options opt = new OptionsBuilder()
+        Options opt = new OptionsBuilder()
                 .include(FESQLInsertBenchmark.class.getSimpleName())
                 .forks(1)
                 .build();
 
-        new Runner(opt).run();*/
-        FESQLInsertBenchmark insertBenchmark = new FESQLInsertBenchmark();
-        insertBenchmark.setup();
-        insertBenchmark.selectBm();
+        new Runner(opt).run();
     }
 }
