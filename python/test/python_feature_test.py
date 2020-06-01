@@ -362,6 +362,52 @@ class TestRtidb(unittest.TestCase):
     resp = self.nsc.query("date", ro)
     self.assertTrue(True);
     self.assertEqual(0, resp.count())
+    
+  def test_index_null(self):
+    data = {"id": 1,"name":"n1","mcc": None,"attribute":"a1", "image":b"i1"}
+    self.assertTrue(self.nsc.put("rt_ck", data, None).success())
+    ro = rtidb.ReadOption()
+    ro.index.update({"mcc":None})
+    resp = self.nsc.query("rt_ck", ro)
+    self.assertEqual(1, resp.count())
+    id = 0;
+    for l in resp:
+      self.assertEqual(1 + id, l["id"])
+      self.assertEqual("n{}".format(id+1), l["name"])
+      self.assertEqual(None, l["mcc"])
+      self.assertEqual("a1", l["attribute"])
+      self.assertEqual(b"i1", l["image"])
+      id += 1;
+    self.assertEqual(1, id);
+    # update
+    condition_columns = {"mcc":None} 
+    value_columns = {"attribute":"a2"}
+    update_result = self.nsc.update("rt_ck", condition_columns, value_columns, None);
+    self.assertEqual(True, update_result.success())
+    self.assertEqual(1, update_result.affected_count())
+    ro = rtidb.ReadOption()
+    ro.index.update({"mcc":None})
+    resp = self.nsc.query("rt_ck", ro)
+    self.assertEqual(1, resp.count())
+    id = 0;
+    for l in resp:
+      self.assertEqual(1 + id, l["id"])
+      self.assertEqual("n{}".format(id+1), l["name"])
+      self.assertEqual(None, l["mcc"])
+      self.assertEqual("a2", l["attribute"])
+      self.assertEqual(b"i1", l["image"])
+      id += 1;
+    self.assertEqual(1, id);
+    # delete
+    condition_columns = {"mcc":None} 
+    update_result = self.nsc.delete("rt_ck", condition_columns);
+    self.assertEqual(True, update_result.success())
+    self.assertEqual(1, update_result.affected_count())
+    ro = rtidb.ReadOption()
+    ro.index.update({"mcc":None})
+    resp = self.nsc.query("rt_ck", ro)
+    self.assertTrue(True);
+    self.assertEqual(0, resp.count())
 
 if __name__ == "__main__":
   unittest.main()
