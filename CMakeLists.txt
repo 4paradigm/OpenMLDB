@@ -14,6 +14,7 @@ configure_file (
 
 add_definitions('-g')
 add_definitions('-Wall')
+add_definitions(-DHAVE_STDBOOL_H=1)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
 option(TCMALLOC_ENABLE "Enable TCMALLOC" ON)
 

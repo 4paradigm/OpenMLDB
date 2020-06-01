@@ -68,6 +68,10 @@ class BlobServerImpl : public ::rtidb::blobserver::BlobServer {
                    DropTableResponse* response, Closure* done);
 
  private:
+    int CreateTable(const TableMeta& meta);
+
+    int WriteTableMeta(const std::string& path, const TableMeta& meta);
+
     void DropTableInternal(uint32_t tid, uint32_t pid);
     SpinMutex spin_mutex_;
     ZkClient* zk_client_;
@@ -76,7 +80,6 @@ class BlobServerImpl : public ::rtidb::blobserver::BlobServer {
     ThreadPool task_pool_;
     std::atomic<bool> follower_;
     ObjectStores object_stores_;
-    std::vector<std::string> root_paths_;
 };
 
 }  // namespace blobserver
