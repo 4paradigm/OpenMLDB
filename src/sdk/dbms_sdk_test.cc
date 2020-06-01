@@ -573,10 +573,14 @@ void CheckRows(const vm::Schema &schema, const std::string &order_col,
         std::string key = row_view.GetAsString(order_idx);
         rows_map.insert(std::make_pair(key, row));
     }
+    int32_t index = 0;
+    rs->Reset();
     while (rs->Next()) {
         if (order_idx) {
             std::string key = rs->GetAsString(order_idx);
             row_view.Reset(rows_map[key].buf());
+        } else {
+            row_view.Reset(rows[index++].buf());
         }
         for (int i = 0; i < schema.size(); i++) {
             if (row_view.IsNULL(i)) {
@@ -620,6 +624,11 @@ void CheckRows(const vm::Schema &schema, const std::string &order_col,
                 case fesql::type::kTimestamp: {
                     ASSERT_EQ(row_view.GetTimestampUnsafe(i),
                               rs->GetTimeUnsafe(i))
+                        << " At " << i;
+                    break;
+                }
+                case fesql::type::kDate: {
+                    ASSERT_EQ(row_view.GetDateUnsafe(i), rs->GetDateUnsafe(i))
                         << " At " << i;
                     break;
                 }

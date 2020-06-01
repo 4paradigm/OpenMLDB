@@ -59,6 +59,11 @@ bool ResultSetImpl::Init() {
 
 bool ResultSetImpl::IsNULL(int index) { return row_view_->IsNULL(index); }
 
+bool ResultSetImpl::Reset() {
+    index_ = -1;
+    position_ = 0;
+    return true;
+}
 bool ResultSetImpl::Next() {
     index_++;
     if (index_ < response_->count() && position_ < byte_size_) {
@@ -147,14 +152,22 @@ bool ResultSetImpl::GetDouble(uint32_t index, double* result) {
     return ret == 0;
 }
 
-bool ResultSetImpl::GetDate(uint32_t index, uint32_t* days) {
+bool ResultSetImpl::GetDate(uint32_t index, int32_t* days) {
     if (days == NULL) {
         LOG(WARNING) << "input ptr is null pointer";
         return false;
     }
-    return false;
+    int32_t ret = row_view_->GetDate(index, days);
+    return ret == 0;
 }
-
+bool ResultSetImpl::GetDate(uint32_t index, int32_t* year, int32_t* month,
+                            int32_t* day) {
+    if (day == NULL) {
+        LOG(WARNING) << "input ptr is null pointer";
+        return false;
+    }
+    return 0 == row_view_->GetDate(index, year, month, day);
+}
 bool ResultSetImpl::GetTime(uint32_t index, int64_t* mills) {
     if (mills == NULL) {
         LOG(WARNING) << "input ptr is null pointer";

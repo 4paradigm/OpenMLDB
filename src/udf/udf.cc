@@ -291,6 +291,9 @@ void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
         jd, mi, "count_list_timestamp",
         reinterpret_cast<void *>(&v1::count_list<fesql::codec::Timestamp>));
     AddSymbol(
+        jd, mi, "count_list_date",
+        reinterpret_cast<void *>(&v1::count_list<fesql::codec::Date>));
+    AddSymbol(
         jd, mi, "count_list_string",
         reinterpret_cast<void *>(&v1::count_list<fesql::codec::StringRef>));
 
@@ -320,6 +323,9 @@ void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
     AddSymbol(jd, mi, "max_list_timestamp",
               reinterpret_cast<void *>(
                   &v1::max_struct_list<fesql::codec::Timestamp>));
+    AddSymbol(jd, mi, "max_list_date",
+              reinterpret_cast<void *>(
+                  &v1::max_struct_list<fesql::codec::Date>));
     AddSymbol(jd, mi, "max_list_string",
               reinterpret_cast<void *>(
                   &v1::max_struct_list<fesql::codec::StringRef>));
@@ -337,6 +343,9 @@ void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
     AddSymbol(jd, mi, "min_list_timestamp",
               reinterpret_cast<void *>(
                   &v1::min_struct_list<fesql::codec::Timestamp>));
+    AddSymbol(jd, mi, "min_list_date",
+              reinterpret_cast<void *>(
+                  &v1::min_struct_list<fesql::codec::Date>));
     AddSymbol(jd, mi, "min_list_string",
               reinterpret_cast<void *>(
                   &v1::min_struct_list<fesql::codec::StringRef>));
@@ -353,6 +362,8 @@ void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
               reinterpret_cast<void *>(&v1::at_list<double>));
     AddSymbol(jd, mi, "at_list_timestamp",
               reinterpret_cast<void *>(&v1::at_struct_list<codec::Timestamp>));
+    AddSymbol(jd, mi, "at_list_date",
+              reinterpret_cast<void *>(&v1::at_struct_list<codec::Date>));
     AddSymbol(jd, mi, "at_list_string",
               reinterpret_cast<void *>(&v1::at_struct_list<codec::StringRef>));
 
@@ -368,6 +379,8 @@ void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
               reinterpret_cast<void *>(&v1::iterator_list<double>));
     AddSymbol(jd, mi, "iterator_list_timestamp",
               reinterpret_cast<void *>(&v1::iterator_list<codec::Timestamp>));
+    AddSymbol(jd, mi, "iterator_list_date",
+              reinterpret_cast<void *>(&v1::iterator_list<codec::Date>));
     AddSymbol(jd, mi, "iterator_list_string",
               reinterpret_cast<void *>(&v1::iterator_list<codec::StringRef>));
 
@@ -384,6 +397,9 @@ void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
     AddSymbol(
         jd, mi, "has_next_iterator_timestamp",
         reinterpret_cast<void *>(&v1::has_next_iterator<codec::Timestamp>));
+    AddSymbol(
+        jd, mi, "has_next_iterator_date",
+        reinterpret_cast<void *>(&v1::has_next_iterator<codec::Date>));
     AddSymbol(
         jd, mi, "has_next_iterator_string",
         reinterpret_cast<void *>(&v1::has_next_iterator<codec::StringRef>));
@@ -402,6 +418,9 @@ void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
         jd, mi, "next_iterator_timestamp",
         reinterpret_cast<void *>(&v1::next_struct_iterator<codec::Timestamp>));
     AddSymbol(
+        jd, mi, "next_iterator_date",
+        reinterpret_cast<void *>(&v1::next_struct_iterator<codec::Date>));
+    AddSymbol(
         jd, mi, "next_iterator_string",
         reinterpret_cast<void *>(&v1::next_struct_iterator<codec::StringRef>));
 
@@ -417,6 +436,8 @@ void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
               reinterpret_cast<void *>(&v1::delete_iterator<double>));
     AddSymbol(jd, mi, "delete_iterator_timestamp",
               reinterpret_cast<void *>(&v1::delete_iterator<codec::Timestamp>));
+    AddSymbol(jd, mi, "delete_iterator_date",
+              reinterpret_cast<void *>(&v1::delete_iterator<codec::Date>));
     AddSymbol(jd, mi, "delete_iterator_string",
               reinterpret_cast<void *>(&v1::delete_iterator<codec::StringRef>));
 }
@@ -436,8 +457,10 @@ void RegisterUDFToModule(::llvm::Module *m) {
     ::llvm::Type *double_ty = ::llvm::Type::getDoubleTy(m->getContext());
     ::llvm::Type *i8_ptr_ty = ::llvm::Type::getInt8PtrTy(m->getContext());
     ::llvm::Type *ts_ty;
+    ::llvm::Type *date_ty;
     ::llvm::Type *string_ty;
     codegen::GetLLVMType(m, node::DataType::kTimestamp, &ts_ty);
+    codegen::GetLLVMType(m, node::DataType::kDate, &date_ty);
     codegen::GetLLVMType(m, node::DataType::kVarchar, &string_ty);
     ::llvm::Type::getDoubleTy(m->getContext());
 
@@ -461,6 +484,7 @@ void RegisterUDFToModule(::llvm::Module *m) {
     std::vector<std::pair<fesql::node::DataType, ::llvm::Type *>> struct_types;
     struct_types.push_back(std::make_pair(fesql::node::kTimestamp, ts_ty));
     struct_types.push_back(std::make_pair(fesql::node::kVarchar, string_ty));
+    struct_types.push_back(std::make_pair(fesql::node::kDate, date_ty));
 
     std::vector<std::pair<fesql::node::DataType, ::llvm::Type *>>
         struct_time_types;

@@ -36,7 +36,25 @@ void TimestampIRBuilder::InitStructType() {
     struct_type_ = stype;
     return;
 }
-
+bool TimestampIRBuilder::CopyFrom(::llvm::BasicBlock* block, ::llvm::Value* src,
+              ::llvm::Value* dist) {
+    if (nullptr == src || nullptr == dist) {
+        LOG(WARNING) << "Fail to copy string: src or dist is null";
+        return false;
+    }
+    if (!IsTimestampPtr(src->getType()) || !IsTimestampPtr(dist->getType())) {
+        LOG(WARNING) << "Fail to copy string: src or dist isn't Timestamp Ptr";
+        return false;
+    }
+    ::llvm::Value* ts;
+    if (!GetTs(block, src, &ts)) {
+        return false;
+    }
+    if (!SetTs(block, dist, ts)) {
+        return false;
+    }
+    return true;
+}
 bool TimestampIRBuilder::GetTs(::llvm::BasicBlock* block,
                                ::llvm::Value* timestamp,
                                ::llvm::Value** output) {

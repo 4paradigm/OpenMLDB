@@ -41,6 +41,8 @@ bool SQLCase::TypeParse(const std::string& type_str, fesql::type::Type* type) {
         *type = type::kVarchar;
     } else if ("timestamp" == type_str) {
         *type = type::kTimestamp;
+    } else if ("date" == type_str) {
+        *type = type::kDate;
     } else if ("bool" == type_str) {
         *type = type::kBool;
     } else {
@@ -338,6 +340,7 @@ bool SQLCase::ExtractRow(const vm::Schema& schema, const std::string& row_str,
             return false;
         }
         if (item_vec[index] == "NULL" || item_vec[index] == "null") {
+            index++;
             rb.AppendNULL();
             continue;
         }
@@ -404,6 +407,19 @@ bool SQLCase::ExtractRow(const vm::Schema& schema, const std::string& row_str,
             case type::kTimestamp: {
                 if (!rb.AppendTimestamp(
                         boost::lexical_cast<int64_t>(item_vec[index]))) {
+                    return false;
+                }
+                break;
+            }
+            case type::kDate: {
+                std::vector<std::string> date_strs;
+                boost::split(date_strs, item_vec[index], boost::is_any_of("-"),
+                             boost::token_compress_on);
+
+                if (!rb.AppendDate(
+                        boost::lexical_cast<int32_t>(date_strs[0]),
+                        boost::lexical_cast<int32_t>(date_strs[1]),
+                        boost::lexical_cast<int32_t>(date_strs[2]))) {
                     return false;
                 }
                 break;

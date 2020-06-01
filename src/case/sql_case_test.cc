@@ -265,55 +265,60 @@ TEST_F(SQLCaseTest, ExtractInsertSqlTest) {
         create_sql);
 }
 TEST_F(SQLCaseTest, ExtractRowTest) {
-    {
-        const std::string schema_str =
-            "col0:string, col1:int32, col2:int16, col3:float, col4:double, "
-            "col5:int64, col6:string, col7:timestamp";
+    const std::string schema_str =
+        "col0:string, col1:int32, col2:int16, col3:float, col4:double, "
+        "col5:int64, col6:string, col7:timestamp, col8:date";
 
-        std::string row_str = "0, 1, 5, 1.1, 11.1, 1, 1, 1587647803000\n";
-        type::TableDef output_table;
-        ASSERT_TRUE(SQLCase::ExtractSchema(schema_str, output_table));
-        std::vector<fesql::codec::Row> rows;
-        int8_t* row_ptr = nullptr;
-        int32_t row_size = 0;
-        ASSERT_TRUE(SQLCase::ExtractRow(output_table.columns(), row_str,
-                                        &row_ptr, &row_size));
-        fesql::codec::RowView row_view(output_table.columns());
-
-        {
-            row_view.Reset(row_ptr);
-            ASSERT_EQ("0", row_view.GetAsString(0));
-            ASSERT_EQ(1, row_view.GetInt32Unsafe(1));
-            ASSERT_EQ(5, row_view.GetInt16Unsafe(2));
-            ASSERT_EQ(1.1f, row_view.GetFloatUnsafe(3));
-            ASSERT_EQ(11.1, row_view.GetDoubleUnsafe(4));
-            ASSERT_EQ(1L, row_view.GetInt64Unsafe(5));
-            ASSERT_EQ("1", row_view.GetStringUnsafe(6));
-            ASSERT_EQ(1587647803000, row_view.GetTimestampUnsafe(7));
-        }
-    }
+    std::string row_str =
+        "0, 1, 5, 1.1, 11.1, 1, 1, 1587647803000, 2020-05-28\n";
+    type::TableDef output_table;
+    ASSERT_TRUE(SQLCase::ExtractSchema(schema_str, output_table));
+    std::vector<fesql::codec::Row> rows;
+    int8_t* row_ptr = nullptr;
+    int32_t row_size = 0;
+    ASSERT_TRUE(SQLCase::ExtractRow(output_table.columns(), row_str, &row_ptr,
+                                    &row_size));
+    fesql::codec::RowView row_view(output_table.columns());
 
     {
-        const std::string schema_str = "col0:string, col1:int32";
-
-        std::string row_str = "0, NULL\n";
-        type::TableDef output_table;
-        ASSERT_TRUE(SQLCase::ExtractSchema(schema_str, output_table));
-        std::vector<fesql::codec::Row> rows;
-        int8_t* row_ptr = nullptr;
-        int32_t row_size = 0;
-        ASSERT_TRUE(SQLCase::ExtractRow(output_table.columns(), row_str,
-                                        &row_ptr, &row_size));
-        fesql::codec::RowView row_view(output_table.columns());
-
-        {
-            row_view.Reset(row_ptr);
-            ASSERT_EQ("0", row_view.GetAsString(0));
-            ASSERT_TRUE(row_view.IsNULL(1));
-        }
+        row_view.Reset(row_ptr);
+        ASSERT_EQ("0", row_view.GetAsString(0));
+        ASSERT_EQ(1, row_view.GetInt32Unsafe(1));
+        ASSERT_EQ(5, row_view.GetInt16Unsafe(2));
+        ASSERT_EQ(1.1f, row_view.GetFloatUnsafe(3));
+        ASSERT_EQ(11.1, row_view.GetDoubleUnsafe(4));
+        ASSERT_EQ(1L, row_view.GetInt64Unsafe(5));
+        ASSERT_EQ("1", row_view.GetStringUnsafe(6));
+        ASSERT_EQ(1587647803000, row_view.GetTimestampUnsafe(7));
+        int32_t year;
+        int32_t month;
+        int32_t day;
+        ASSERT_EQ(0, row_view.GetDate(8, &year, &month, &day));
+        ASSERT_EQ(2020, year);
+        ASSERT_EQ(5, month);
+        ASSERT_EQ(28, day);
     }
 }
 
+TEST_F(SQLCaseTest, ExtractRowWithNullTest) {
+    const std::string schema_str = "col0:string, col1:int32";
+
+    std::string row_str = "0, NULL\n";
+    type::TableDef output_table;
+    ASSERT_TRUE(SQLCase::ExtractSchema(schema_str, output_table));
+    std::vector<fesql::codec::Row> rows;
+    int8_t* row_ptr = nullptr;
+    int32_t row_size = 0;
+    ASSERT_TRUE(SQLCase::ExtractRow(output_table.columns(), row_str, &row_ptr,
+                                    &row_size));
+    fesql::codec::RowView row_view(output_table.columns());
+
+    {
+        row_view.Reset(row_ptr);
+        ASSERT_EQ("0", row_view.GetAsString(0));
+        ASSERT_TRUE(row_view.IsNULL(1));
+    }
+}
 TEST_F(SQLCaseTest, ExtractSQLCase) {
     SQLCase sql_case;
 

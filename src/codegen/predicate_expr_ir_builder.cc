@@ -8,6 +8,7 @@
  **/
 
 #include "codegen/predicate_expr_ir_builder.h"
+#include "codegen/date_ir_builder.h"
 #include "codegen/ir_base_builder.h"
 #include "codegen/string_ir_builder.h"
 #include "codegen/timestamp_ir_builder.h"
@@ -120,6 +121,14 @@ bool PredicateIRBuilder::BuildEqExpr(::llvm::Value* left, ::llvm::Value* right,
     } else if (casted_left->getType()->isFloatTy() ||
                casted_left->getType()->isDoubleTy()) {
         *output = builder.CreateFCmpOEQ(casted_left, casted_right);
+    } else if (TypeIRBuilder::IsDatePtr(casted_left->getType()) &&
+               TypeIRBuilder::IsDatePtr(casted_right->getType())) {
+        llvm::Value* left_days;
+        llvm::Value* right_days;
+        DateIRBuilder date_ir_builder(block_->getModule());
+        date_ir_builder.GetDays(block_, casted_left, &left_days);
+        date_ir_builder.GetDays(block_, casted_right, &right_days);
+        return BuildEqExpr(left_days, right_days, output, status);
     } else {
         status.msg = "fail to codegen == expr: value types are invalid";
         status.code = common::kCodegenError;
@@ -302,7 +311,6 @@ bool PredicateIRBuilder::IsAcceptType(::llvm::Type* type) {
     switch (fesql_type) {
         case ::fesql::node::kVoid:
         case ::fesql::node::kList:
-        case ::fesql::node::kDate:
         case ::fesql::node::kVarchar:
             return false;
         default: {
@@ -422,6 +430,12 @@ bool PredicateIRBuilder::InferBaseTypes(::llvm::Value* left,
             LOG(WARNING) << status.msg;
             return false;
         }
+    }
+    if (TypeIRBuilder::IsDatePtr((*casted_left)->getType()) &&
+        TypeIRBuilder::IsDatePtr((*casted_right)->getType())) {
+        DateIRBuilder date_ir_builder(block_->getModule());
+        date_ir_builder.GetDays(block_, *casted_left, casted_left);
+        date_ir_builder.GetDays(block_, *casted_right, casted_right);
     }
     return true;
 }

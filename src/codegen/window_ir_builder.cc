@@ -65,10 +65,10 @@ bool MemoryWindowDecodeIRBuilder::BuildGetCol(const std::string& name,
         case ::fesql::node::kInt64:
         case ::fesql::node::kFloat:
         case ::fesql::node::kDouble:
-        case ::fesql::node::kTimestamp: {
+        case ::fesql::node::kTimestamp:
+        case ::fesql::node::kDate: {
             return BuildGetPrimaryCol("fesql_storage_get_col", window_ptr,
-                                      row_idx, offset, data_type,
-                                      output);
+                                      row_idx, offset, data_type, output);
         }
         case ::fesql::node::kVarchar: {
             uint32_t next_offset = 0;

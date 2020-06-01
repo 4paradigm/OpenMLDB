@@ -31,6 +31,7 @@ class ResultSet {
 
     virtual ~ResultSet() {}
 
+    virtual bool Reset() = 0;
     virtual bool Next() = 0;
 
     virtual bool GetString(uint32_t index, std::string* val) = 0;
@@ -83,6 +84,18 @@ class ResultSet {
             }
             case kTypeTimestamp: {
                 return std::to_string(GetTimeUnsafe(idx));
+            }
+            case kTypeDate: {
+                int32_t year;
+                int32_t month;
+                int32_t day;
+                if (GetDate(idx, &year, &month, &day)) {
+                    char date[11];
+                    snprintf(date, 11u, "%4d-%.2d-%.2d", year, month, day);
+                    return std::string(date);
+                } else {
+                    return "NA";
+                }
             }
             default: {
                 break;
@@ -168,9 +181,17 @@ class ResultSet {
         return val;
     }
 
-    virtual bool GetDate(uint32_t index, uint32_t* days) = 0;
+    virtual bool GetDate(uint32_t index, int32_t* year, int32_t* month,
+                         int32_t* day) = 0;
 
-    virtual int32_t GetDateUnsafe(uint32_t index) = 0;
+    virtual bool GetDate(uint32_t index, int32_t* days) = 0;
+
+    virtual int32_t GetDateUnsafe(uint32_t index) {
+        if (IsNULL(index)) return 0;
+        int32_t val = 0;
+        GetDate(index, &val);
+        return val;
+    }
 
     virtual bool GetTime(uint32_t index, int64_t* mills) = 0;
     int64_t GetTimeUnsafe(int index) {

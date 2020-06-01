@@ -100,6 +100,7 @@ class TabletSdkImpl : public TabletSdk {
 
  private:
     void BuildInsertRequest(const std::string& db, const std::string& table,
+                            const std::vector<std::string>& columns,
                             node::ExprListNode* insert_value,
                             tablet::InsertRequest* request,
                             sdk::Status* status);
@@ -286,9 +287,9 @@ void TabletSdkImpl::GetSqlPlan(const std::string& db, const std::string& sql,
         return;
     }
 }
-
 void TabletSdkImpl::BuildInsertRequest(const std::string& db,
                                        const std::string& table_name,
+                                       const std::vector<std::string>& columns,
                                        node::ExprListNode* values,
                                        tablet::InsertRequest* request,
                                        sdk::Status* status) {
@@ -307,6 +308,33 @@ void TabletSdkImpl::BuildInsertRequest(const std::string& db,
     }
     request->set_table(table_name);
     request->set_db(db);
+
+    std::map<std::string, node::ExprNode*> column_value_map;
+    if (!columns.empty()) {
+        if (columns.size() != values->children_.size()) {
+            status->msg =
+                "Fail Build Request: insert column size != value size";
+            status->code = -1;
+            LOG(WARNING) << status->msg;
+            return;
+        }
+        for (size_t i = 0; i < columns.size(); i++) {
+            column_value_map.insert(
+                std::make_pair(columns[i], values->children_[i]));
+        }
+    } else {
+        if (schema.columns().size() != values->children_.size()) {
+            status->msg =
+                "Fail Build Request: insert column size != value size";
+            status->code = -1;
+            LOG(WARNING) << status->msg;
+            return;
+        }
+        for (size_t i = 0; i < schema.columns().size(); i++) {
+            column_value_map.insert(
+                std::make_pair(schema.columns(i).name(), values->children_[i]));
+        }
+    }
     uint32_t str_size = 0;
     for (auto value : values->children_) {
         switch (value->GetExprType()) {
@@ -341,14 +369,21 @@ void TabletSdkImpl::BuildInsertRequest(const std::string& db,
     auto it = schema.columns().begin();
     uint32_t index = 0;
     for (; it != schema.columns().end(); ++it) {
-        if (index >= values->children_.size()) {
-            break;
+        index++;
+        std::string column_name = it->name();
+        auto expr_node_it = column_value_map.find(column_name);
+        if (expr_node_it == column_value_map.cend()) {
+            rb.AppendNULL();
+            continue;
         }
         const node::ConstNode* primary =
-            dynamic_cast<const node::ConstNode*>(values->children_.at(index));
-        index++;
+            dynamic_cast<const node::ConstNode*>(expr_node_it->second);
         bool ok = false;
         switch (it->type()) {
+            case type::kNull: {
+                ok = rb.AppendNULL();
+                break;
+            }
             case type::kInt16: {
                 ok = rb.AppendInt16(primary->GetAsInt16());
                 break;
@@ -376,6 +411,17 @@ void TabletSdkImpl::BuildInsertRequest(const std::string& db,
             }
             case type::kTimestamp: {
                 ok = rb.AppendTimestamp(primary->GetAsInt64());
+                break;
+            }
+            case type::kDate: {
+                int32_t year;
+                int32_t month;
+                int32_t day;
+                if (!primary->GetAsDate(&year, &month, &day)) {
+                    ok = false;
+                } else {
+                    ok = rb.AppendDate(year, month, day);
+                }
                 break;
             }
             default: {
@@ -431,9 +477,9 @@ void TabletSdkImpl::Insert(const std::string& db, const std::string& sql,
             for (auto iter = insert_stmt->values_.cbegin();
                  iter != insert_stmt->values_.cend(); iter++) {
                 tablet::InsertRequest request;
-                BuildInsertRequest(db, insert_stmt->table_name_,
-                                   dynamic_cast<node::ExprListNode*>(*iter),
-                                   &request, status);
+                BuildInsertRequest(
+                    db, insert_stmt->table_name_, insert_stmt->columns_,
+                    dynamic_cast<node::ExprListNode*>(*iter), &request, status);
                 if (status->code != 0) {
                     return;
                 }

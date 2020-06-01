@@ -22,6 +22,9 @@
 #include <map>
 #include <string>
 #include <vector>
+#include "boost/algorithm/string.hpp"
+#include "boost/filesystem/operations.hpp"
+#include "boost/lexical_cast.hpp"
 #include "node/node_enum.h"
 
 namespace fesql {
@@ -781,6 +784,12 @@ class ExprIdNode : public ExprNode {
 };
 
 class ConstNode : public ExprNode {
+    struct FeDate {
+        int32_t year = -1;
+        int32_t month = -1;
+        int32_t day = -1;
+    };
+
  public:
     ConstNode() : ExprNode(kExprPrimary), data_type_(fesql::node::kNull) {}
     explicit ConstNode(int16_t val)
@@ -839,6 +848,7 @@ class ConstNode : public ExprNode {
 
     virtual bool Equals(const ExprNode *node) const;
 
+    const bool IsNull() const { return kNull == data_type_; }
     const std::string GetExprString() const;
     int16_t GetSmallInt() const { return val_.vsmallint; }
 
@@ -945,6 +955,28 @@ class ConstNode : public ExprNode {
         }
     }
 
+    const bool GetAsDate(int32_t* year, int32_t* month, int32_t* day) const {
+        switch (data_type_) {
+            case kVarchar: {
+                std::string date_str(val_.vstr);
+                std::vector<std::string> date_vec;
+                boost::split(date_vec, date_str, boost::is_any_of("-"),
+                             boost::token_compress_on);
+                if (date_vec.empty()) {
+                    LOG(WARNING) << "Invalid Date Format";
+                    return false;
+                }
+                *year = boost::lexical_cast<int32_t>(date_vec[0]);
+                *month = boost::lexical_cast<int32_t>(date_vec[1]);
+                *day = boost::lexical_cast<int32_t>(date_vec[2]);
+                return true;
+            }
+            default: {
+                LOG(WARNING) << "Invalid data type for date";
+                return false;
+            }
+        }
+    }
     const double GetAsDouble() const {
         switch (data_type_) {
             case kInt32:
@@ -1191,13 +1223,13 @@ class IndexTTLNode : public SQLNode {
 class IndexTTLTypeNode : public SQLNode {
  public:
     IndexTTLTypeNode() : SQLNode(kIndexTTLType, 0, 0) {}
-    explicit IndexTTLTypeNode(const std::string& ttl_type)
+    explicit IndexTTLTypeNode(const std::string &ttl_type)
         : SQLNode(kIndexTTLType, 0, 0), ttl_type_(ttl_type) {}
 
-    void set_ttl_type(const std::string& ttl_type) {
+    void set_ttl_type(const std::string &ttl_type) {
         this->ttl_type_ = ttl_type;
     }
-    const std::string& ttl_type() const { return ttl_type_; }
+    const std::string &ttl_type() const { return ttl_type_; }
 
  private:
     std::string ttl_type_;
@@ -1232,12 +1264,8 @@ class ColumnIndexNode : public SQLNode {
 
     void SetVersionCount(int count) { version_count_ = count; }
 
-    const std::string & ttl_type() const {
-        return ttl_type_;
-    }
-    void set_ttl_type(const std::string& ttl_type) {
-        ttl_type_ = ttl_type;
-    }
+    const std::string &ttl_type() const { return ttl_type_; }
+    void set_ttl_type(const std::string &ttl_type) { ttl_type_ = ttl_type; }
     int64_t GetTTL() const { return ttl_; }
     void SetTTL(ExprNode *ttl_node) {
         if (nullptr == ttl_node) {

@@ -439,6 +439,7 @@ bool ExprIRBuilder::BuildColumnIterator(const std::string& relation_name,
     if (!ok || value == NULL) {
         status.msg = "fail to find column " + col;
         status.code = common::kCodegenError;
+        LOG(WARNING) << status.msg;
         return false;
     }
     ok = variable_ir_builder_.StoreColumnRef(info->table_name_, col, value,

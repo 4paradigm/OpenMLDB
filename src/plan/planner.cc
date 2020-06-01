@@ -840,6 +840,10 @@ bool TransformTableDef(const std::string &table_name,
                         column->set_type(type::Type::kTimestamp);
                         break;
                     }
+                    case node::kDate: {
+                        column->set_type(type::Type::kDate);
+                        break;
+                    }
                     case node::kVarchar:
                         column->set_type(type::Type::kVarchar);
                         break;
