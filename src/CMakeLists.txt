@@ -1,6 +1,6 @@
 include_directories(${INCLUDE_DIRECTORIES} ${PROJECT_SOURCE_DIR}/src)
 
-set(BIN_LIBS client nameserver tablet rtidb_sdk client blobserver blob_proxy rtidb_catalog zk_client replica  base beans storage rtidb_codec rtidb_proto log common rocksdb zookeeper_mt tcmalloc_minimal
+set(BIN_LIBS client nameserver tablet rtidb_sdk client blobserver blob_proxy rtidb_catalog rtidb_flags zk_client replica  base beans storage rtidb_codec rtidb_proto log common rocksdb zookeeper_mt tcmalloc_minimal
     ${VM_LIBS}
     ${LLVM_LIBS}
     ${BRPC_LIBS})
@@ -30,7 +30,7 @@ target_link_libraries(mem_table_iterator_test gtest ${BIN_LIBS})
 add_executable(tablet_catalog_test catalog/tablet_catalog_test.cc)
 target_link_libraries(tablet_catalog_test gtest ${BIN_LIBS})
 
-add_executable(sdk_catalog_test catalog/sdk_catalog_test.cc)
+add_executable(sdk_catalog_test catalog/sdk_catalog_test.cc flags.cc)
 target_link_libraries(sdk_catalog_test gtest ${BIN_LIBS})
 
 add_executable(strings_test base/strings_test.cc)
