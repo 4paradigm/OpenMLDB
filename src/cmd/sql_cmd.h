@@ -43,7 +43,6 @@ const std::string LOGO=""
 " |  __/ _  \\ |  | |  _ <\n" 
 " | | |  __ / |__| | |_) |\n" 
 " |_|  \\___||_____/|____/\n";
-
 const std::string VERSION = std::to_string(RTIDB_VERSION_MAJOR) + "." + 
 std::to_string(RTIDB_VERSION_MEDIUM) + "." +
 std::to_string(RTIDB_VERSION_MINOR) +"." +
@@ -115,6 +114,7 @@ void PrintResultSet(std::ostream &stream, ::fesql::sdk::ResultSet *result_set) {
     stream << t << std::endl;
     stream << result_set->Size() << " rows in set" << std::endl;
 }
+
 void PrintTableSchema(std::ostream &stream,
                       const ::fesql::vm::Schema &schema) {
     if (schema.size() == 0) {
@@ -132,7 +132,7 @@ void PrintTableSchema(std::ostream &stream,
         auto column = schema.Get(i);
         t.add(column.name());
         t.add(::fesql::type::Type_Name(column.type()));
-        t.add(column.is_not_null() ? "YES" : "NO");
+        t.add(column.is_not_null() ? "NO" : "YES");
         t.endOfRow();
     }
     stream << t;
@@ -323,7 +323,7 @@ void HandleCli() {
         return;
     }
     std::string ns_endpoint = cs->GetNsClient()->GetEndpoint();
-    std::string display_prefix = ns_endpoint + " " + db + "> ";
+    std::string display_prefix = ns_endpoint + "/" + db + "> ";
     std::string multi_line_perfix = std::string(display_prefix.length() - 3, ' ') + "-> ";
     std::string sql;
     bool multi_line = false;
@@ -350,7 +350,7 @@ void HandleCli() {
         if (sql.back() == ';') {
             HandleSQL(sql);
             multi_line = false;
-            display_prefix = ns_endpoint + " " + db + "> ";
+            display_prefix = ns_endpoint + "/" + db + "> ";
             multi_line_perfix =
             std::string(display_prefix.length() - 3, ' ') + "-> ";
             sql.clear();

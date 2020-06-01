@@ -24,7 +24,11 @@
 #include "base/linenoise.h"
 #include "base/strings.h"
 #include "blob_proxy/blob_proxy_impl.h"
+#if __linux__
 #include "blobserver/blobserver_impl.h"
+#include "tablet/tablet_impl.h"
+#include "nameserver/name_server_impl.h"
+#endif 
 #include "boost/algorithm/string.hpp"
 #include "boost/lexical_cast.hpp"
 #include "brpc/server.h"
@@ -33,12 +37,10 @@
 #include "codec/flat_array.h"
 #include "codec/row_codec.h"
 #include "codec/schema_codec.h"
-#include "nameserver/name_server_impl.h"
 #include "proto/client.pb.h"
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
 #include "proto/type.pb.h"
-#include "tablet/tablet_impl.h"
 #include "vm/engine.h"
 #include "cmd/sql_cmd.h"
 #include "timer.h"     // NOLINT
@@ -87,6 +89,7 @@ void SetupLog() {
     }
 }
 
+#if __linux__
 void StartNameServer() {
     SetupLog();
     ::rtidb::nameserver::NameServerImpl* name_server =
@@ -282,7 +285,10 @@ void StartBlobProxy() {
     server.set_version(oss.str());
     server.RunUntilAskedToQuit();
 }
+#endif
 
+
+#if __linux__
 void StartBlob() {
     SetupLog();
     ::rtidb::blobserver::BlobServerImpl* server_impl =
@@ -330,6 +336,7 @@ void StartBlob() {
     server.set_version(oss.str());
     server.RunUntilAskedToQuit();
 }
+#endif
 
 int SetDimensionData(
     const std::map<std::string, std::string>& raw_data,
@@ -6695,7 +6702,12 @@ void StartNsClient() {
 
 int main(int argc, char* argv[]) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    if (FLAGS_role == "tablet") {
+if (FLAGS_role == "ns_client") {
+        StartNsClient();
+    } else if (FLAGS_role == "sql_client") {
+       ::rtidb::cmd::HandleCli();
+#if __linux__
+    } else if (FLAGS_role == "tablet") {
         StartTablet();
     } else if (FLAGS_role == "blob_proxy") {
         StartBlobProxy();
@@ -6705,10 +6717,7 @@ int main(int argc, char* argv[]) {
         StartNameServer();
     } else if (FLAGS_role == "blob") {
         StartBlob();
-    } else if (FLAGS_role == "ns_client") {
-        StartNsClient();
-    } else if (FLAGS_role == "sql_client") {
-        ::rtidb::cmd::HandleCli();
+#endif
     } else {
         std::cout << "Start failed! FLAGS_role must be tablet, client, "
                      "nameserver or ns_client"
