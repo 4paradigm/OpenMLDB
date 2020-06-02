@@ -202,136 +202,65 @@ void EngineWindowSumFeature5(benchmark::State* state, MODE mode,
 }
 
 void EngineSimpleSelectDouble(benchmark::State* state, MODE mode) {  // NOLINT
-    InitializeNativeTarget();
-    InitializeNativeTargetAsmPrinter();
-    type::TableDef table_def;
-    int8_t* ptr = NULL;
-    uint32_t size = 0;
-    BuildBuf(&ptr, &size, table_def);
-    std::shared_ptr<::fesql::storage::Table> table(
-        new ::fesql::storage::Table(1, 1, table_def));
-    ASSERT_TRUE(table->Init());
-    table->Put(reinterpret_cast<char*>(ptr), size);
-    table->Put(reinterpret_cast<char*>(ptr), size);
-    delete ptr;
-    auto catalog = BuildCommonCatalog(table_def, table);
     const std::string sql = "SELECT col4 FROM t1 limit 2;";
-    Engine engine(catalog);
-    BatchRunSession session;
-    base::Status query_status;
-    engine.Get(sql, "db", session, query_status);
-    std::ostringstream runner_oss;
-    session.GetRunner()->Print(runner_oss, "");
-    LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
-    switch (mode) {
-        case BENCHMARK: {
-            for (auto _ : *state) {
-                benchmark::DoNotOptimize(session.Run());
-            }
-            break;
-        }
-        case TEST: {
-            auto res = session.Run();
-            if (!res) {
-                FAIL();
-            }
-            ASSERT_EQ(2u, res->GetCount());
-            break;
-        }
-    }
+    const std::string resource =
+        "cases/resource/benchmark_t1_basic_one_row.yaml";
+    EngineBatchModeSimpleQueryBM("db", sql, resource, state, mode);
 }
 
 void EngineSimpleSelectVarchar(benchmark::State* state, MODE mode) {  // NOLINT
-    InitializeNativeTarget();
-    InitializeNativeTargetAsmPrinter();
-    type::TableDef table_def;
-    int8_t* ptr = NULL;
-    uint32_t size = 0;
-    BuildBuf(&ptr, &size, table_def);
-    std::shared_ptr<::fesql::storage::Table> table(
-        new ::fesql::storage::Table(1, 1, table_def));
-    ASSERT_TRUE(table->Init());
-    table->Put(reinterpret_cast<char*>(ptr), size);
-    table->Put(reinterpret_cast<char*>(ptr), size);
-    delete ptr;
-    auto catalog = BuildCommonCatalog(table_def, table);
     const std::string sql = "SELECT col6 FROM t1 limit 1;";
-    Engine engine(catalog);
-    BatchRunSession session(true);
-    base::Status query_status;
-    engine.Get(sql, "db", session, query_status);
-    std::ostringstream runner_oss;
-    session.GetRunner()->Print(runner_oss, "");
-    LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
-    switch (mode) {
-        case BENCHMARK: {
-            for (auto _ : *state) {
-                benchmark::DoNotOptimize(session.Run());
-            }
-            break;
-        }
-        case TEST: {
-            auto res = session.Run();
-            if (!res) {
-                FAIL();
-            }
-            ASSERT_EQ(1u, res->GetCount());
-            break;
-        }
-    }
+    const std::string resource =
+        "cases/resource/benchmark_t1_basic_one_row.yaml";
+    EngineBatchModeSimpleQueryBM("db", sql, resource, state, mode);
 }
 
-void EngineSimpleSelectInt32(benchmark::State* state, MODE mode) {  // NOLINT
-    InitializeNativeTarget();
-    InitializeNativeTargetAsmPrinter();
-    type::TableDef table_def;
-    int8_t* ptr = NULL;
-    uint32_t size = 0;
-    BuildBuf(&ptr, &size, table_def);
-    std::shared_ptr<::fesql::storage::Table> table(
-        new ::fesql::storage::Table(1, 1, table_def));
-    ASSERT_TRUE(table->Init());
-    table->Put(reinterpret_cast<char*>(ptr), size);
-    table->Put(reinterpret_cast<char*>(ptr), size);
-    delete ptr;
-    auto catalog = BuildCommonCatalog(table_def, table);
-    const std::string sql = "SELECT col1 FROM t1 limit 1;";
-    Engine engine(catalog);
-    BatchRunSession session(true);
-    base::Status query_status;
-    engine.Get(sql, "db", session, query_status);
-    std::ostringstream plan_oss;
-    session.GetPhysicalPlan()->Print(plan_oss, "");
-    LOG(INFO) << "physical plan:\n" << plan_oss.str() << std::endl;
+void EngineSimpleSelectTimestamp(benchmark::State* state,
+                                 MODE mode) {  // NOLINT
+    const std::string sql = "SELECT std_ts FROM t1 limit 1;";
+    const std::string resource =
+        "cases/resource/benchmark_t1_with_time_one_row.yaml";
+    EngineBatchModeSimpleQueryBM("db", sql, resource, state, mode);
+}
 
-    std::ostringstream runner_oss;
-    session.GetRunner()->Print(runner_oss, "");
-    LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
-    switch (mode) {
-        case BENCHMARK: {
-            for (auto _ : *state) {
-                benchmark::DoNotOptimize(session.Run());
-            }
-            break;
-        }
-        case TEST: {
-            auto res = session.Run();
-            if (!res) {
-                FAIL();
-            }
-            ASSERT_EQ(1u, res->GetCount());
-            break;
-        }
-    }
+void EngineSimpleSelectDate(benchmark::State* state, MODE mode) {  // NOLINT
+    const std::string sql = "SELECT std_date FROM t1 limit 1;";
+    const std::string resource =
+        "cases/resource/benchmark_t1_with_time_one_row.yaml";
+    EngineBatchModeSimpleQueryBM("db", sql, resource, state, mode);
+}
+void EngineSimpleSelectInt32(benchmark::State* state, MODE mode) {  // NOLINT
+    const std::string sql = "SELECT col1 FROM t1 limit 1;";
+    const std::string resource =
+        "cases/resource/benchmark_t1_with_time_one_row.yaml";
+    EngineBatchModeSimpleQueryBM("db", sql, resource, state, mode);
 }
 
 void EngineSimpleUDF(benchmark::State* state, MODE mode) {  // NOLINT
+    const std::string sql =
+        "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return "
+        "d\nend\n%%sql\nSELECT test(col1,col1) FROM t1 limit 1;";
+    const std::string resource =
+        "cases/resource/benchmark_t1_basic_one_row.yaml";
+    EngineBatchModeSimpleQueryBM("db", sql, resource, state, mode);
+}
+
+void EngineRequestModeSimpleQueryBM(const std::string& db,
+                                    const std::string& query_table,
+                                    const std::string& sql, int32_t limit_cnt,
+                                    const std::string& resource_path,
+                                    benchmark::State* state, MODE mode) {
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
     type::TableDef table_def;
     int8_t* ptr = NULL;
     uint32_t size = 0;
-    BuildBuf(&ptr, &size, table_def);
+    std::vector<Row> rows;
+    LoadResource(resource_path, table_def, rows);
+    ptr = rows[0].buf();
+    size = static_cast<uint32_t>(rows[0].size());
+    table_def.set_catalog(db);
+
     std::shared_ptr<::fesql::storage::Table> table(
         new ::fesql::storage::Table(1, 1, table_def));
     ASSERT_TRUE(table->Init());
@@ -339,13 +268,58 @@ void EngineSimpleUDF(benchmark::State* state, MODE mode) {  // NOLINT
     table->Put(reinterpret_cast<char*>(ptr), size);
     delete ptr;
     auto catalog = BuildCommonCatalog(table_def, table);
-    const std::string sql =
-        "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return "
-        "d\nend\n%%sql\nSELECT test(col1,col1) FROM t1 limit 1;";
+
     Engine engine(catalog);
-    BatchRunSession session(true);
+    RequestRunSession session;
     base::Status query_status;
-    engine.Get(sql, "db", session, query_status);
+    engine.Get(sql, db, session, query_status);
+    std::ostringstream runner_oss;
+    session.GetRunner()->Print(runner_oss, "");
+    LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
+    auto table_handler = catalog->GetTable(db, query_table);
+    switch (mode) {
+        case BENCHMARK: {
+            for (auto _ : *state) {
+                benchmark::DoNotOptimize(
+                    RunTableRequest(session, table_handler, limit_cnt));
+            }
+            break;
+        }
+        case TEST: {
+            session.EnableDebug();
+            ASSERT_EQ(limit_cnt,
+                      RunTableRequest(session, table_handler, limit_cnt));
+            break;
+        }
+    }
+}
+
+void EngineBatchModeSimpleQueryBM(const std::string& db, const std::string& sql,
+                                  const std::string& resource_path,
+                                  benchmark::State* state, MODE mode) {
+    InitializeNativeTarget();
+    InitializeNativeTargetAsmPrinter();
+    type::TableDef table_def;
+    int8_t* ptr = NULL;
+    uint32_t size = 0;
+    std::vector<Row> rows;
+    LoadResource(resource_path, table_def, rows);
+    ptr = rows[0].buf();
+    size = static_cast<uint32_t>(rows[0].size());
+    table_def.set_catalog(db);
+
+    std::shared_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, table_def));
+    ASSERT_TRUE(table->Init());
+    table->Put(reinterpret_cast<char*>(ptr), size);
+    table->Put(reinterpret_cast<char*>(ptr), size);
+    delete ptr;
+    auto catalog = BuildCommonCatalog(table_def, table);
+
+    Engine engine(catalog);
+    BatchRunSession session;
+    base::Status query_status;
+    engine.Get(sql, db, session, query_status);
     std::ostringstream runner_oss;
     session.GetRunner()->Print(runner_oss, "");
     LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
@@ -357,183 +331,61 @@ void EngineSimpleUDF(benchmark::State* state, MODE mode) {  // NOLINT
             break;
         }
         case TEST: {
+            session.EnableDebug();
             auto res = session.Run();
             if (!res) {
                 FAIL();
             }
-            ASSERT_EQ(1u, res->GetCount());
+            ASSERT_GT(res->GetCount(), 0u);
             break;
         }
     }
 }
-
-void EngineRequestSimpleSelectDouble(benchmark::State* state,
-                                     MODE mode) {  // NOLINT
-    InitializeNativeTarget();
-    InitializeNativeTargetAsmPrinter();
-    type::TableDef table_def;
-    int8_t* ptr = NULL;
-    uint32_t size = 0;
-    BuildBuf(&ptr, &size, table_def);
-    std::shared_ptr<::fesql::storage::Table> table(
-        new ::fesql::storage::Table(1, 1, table_def));
-    ASSERT_TRUE(table->Init());
-    table->Put(reinterpret_cast<char*>(ptr), size);
-    table->Put(reinterpret_cast<char*>(ptr), size);
-    delete ptr;
-    auto catalog = BuildCommonCatalog(table_def, table);
-
+void EngineRequestSimpleSelectDouble(benchmark::State* state, MODE mode) {
     const std::string sql = "SELECT col4 FROM t1 limit 2;";
-    Engine engine(catalog);
-    RequestRunSession session;
-    base::Status query_status;
-    engine.Get(sql, "db", session, query_status);
-    std::ostringstream runner_oss;
-    session.GetRunner()->Print(runner_oss, "");
-    LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
-    auto table_handler = catalog->GetTable("db", "t1");
-    int32_t limit_cnt = 2;
-    switch (mode) {
-        case BENCHMARK: {
-            for (auto _ : *state) {
-                benchmark::DoNotOptimize(
-                    RunTableRequest(session, table_handler, limit_cnt));
-            }
-            break;
-        }
-        case TEST: {
-            ASSERT_EQ(limit_cnt,
-                      RunTableRequest(session, table_handler, limit_cnt));
-            break;
-        }
-    }
+    const std::string resource =
+        "cases/resource/benchmark_t1_basic_one_row.yaml";
+    EngineRequestModeSimpleQueryBM("db", "t1", sql, 2, resource, state, mode);
 }
-
 void EngineRequestSimpleSelectVarchar(benchmark::State* state,
                                       MODE mode) {  // NOLINT
-    InitializeNativeTarget();
-    InitializeNativeTargetAsmPrinter();
-    type::TableDef table_def;
-    int8_t* ptr = NULL;
-    uint32_t size = 0;
-    BuildBuf(&ptr, &size, table_def);
-    std::shared_ptr<::fesql::storage::Table> table(
-        new ::fesql::storage::Table(1, 1, table_def));
-    ASSERT_TRUE(table->Init());
-    table->Put(reinterpret_cast<char*>(ptr), size);
-    table->Put(reinterpret_cast<char*>(ptr), size);
-    delete ptr;
-    auto catalog = BuildCommonCatalog(table_def, table);
-
     const std::string sql = "SELECT col6 FROM t1 limit 1;";
-    Engine engine(catalog);
-    RequestRunSession session;
-    base::Status query_status;
-    engine.Get(sql, "db", session, query_status);
-    std::ostringstream runner_oss;
-    session.GetRunner()->Print(runner_oss, "");
-    LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
-    auto table_handler = catalog->GetTable("db", "t1");
-    int32_t limit_cnt = 1;
-    switch (mode) {
-        case BENCHMARK: {
-            for (auto _ : *state) {
-                benchmark::DoNotOptimize(
-                    RunTableRequest(session, table_handler, limit_cnt));
-            }
-            break;
-        }
-        case TEST: {
-            ASSERT_EQ(limit_cnt,
-                      RunTableRequest(session, table_handler, limit_cnt));
-            break;
-        }
-    }
+    const std::string resource =
+        "cases/resource/benchmark_t1_basic_one_row.yaml";
+    EngineRequestModeSimpleQueryBM("db", "t1", sql, 1, resource, state, mode);
 }
 
 void EngineRequestSimpleSelectInt32(benchmark::State* state,
                                     MODE mode) {  // NOLINT
-    InitializeNativeTarget();
-    InitializeNativeTargetAsmPrinter();
-    type::TableDef table_def;
-    int8_t* ptr = NULL;
-    uint32_t size = 0;
-    BuildBuf(&ptr, &size, table_def);
-    std::shared_ptr<::fesql::storage::Table> table(
-        new ::fesql::storage::Table(1, 1, table_def));
-    ASSERT_TRUE(table->Init());
-    table->Put(reinterpret_cast<char*>(ptr), size);
-    table->Put(reinterpret_cast<char*>(ptr), size);
-    delete ptr;
-    auto catalog = BuildCommonCatalog(table_def, table);
     const std::string sql = "SELECT col1 FROM t1 limit 1;";
-    Engine engine(catalog);
-    RequestRunSession session;
-    base::Status query_status;
-    engine.Get(sql, "db", session, query_status);
-    std::ostringstream runner_oss;
-    session.GetRunner()->Print(runner_oss, "");
-    LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
-    auto table_handler = catalog->GetTable("db", "t1");
-    int32_t limit_cnt = 1;
-    switch (mode) {
-        case BENCHMARK: {
-            for (auto _ : *state) {
-                benchmark::DoNotOptimize(
-                    RunTableRequest(session, table_handler, limit_cnt));
-            }
-            break;
-        }
-        case TEST: {
-            ASSERT_EQ(limit_cnt,
-                      RunTableRequest(session, table_handler, limit_cnt));
-            break;
-        }
-    }
+    const std::string resource =
+        "cases/resource/benchmark_t1_basic_one_row.yaml";
+    EngineRequestModeSimpleQueryBM("db", "t1", sql, 1, resource, state, mode);
 }
 
 void EngineRequestSimpleUDF(benchmark::State* state, MODE mode) {  // NOLINT
-    InitializeNativeTarget();
-    InitializeNativeTargetAsmPrinter();
-    type::TableDef table_def;
-    int8_t* ptr = NULL;
-    uint32_t size = 0;
-    BuildBuf(&ptr, &size, table_def);
-    std::shared_ptr<::fesql::storage::Table> table(
-        new ::fesql::storage::Table(1, 1, table_def));
-    ASSERT_TRUE(table->Init());
-    table->Put(reinterpret_cast<char*>(ptr), size);
-    table->Put(reinterpret_cast<char*>(ptr), size);
-    delete ptr;
-    auto catalog = BuildCommonCatalog(table_def, table);
-
     const std::string sql =
         "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return "
         "d\nend\n%%sql\nSELECT test(col1,col1) FROM t1 limit 1;";
-    Engine engine(catalog);
-    RequestRunSession session;
-    base::Status query_status;
-    engine.Get(sql, "db", session, query_status);
-    std::ostringstream runner_oss;
-    session.GetRunner()->Print(runner_oss, "");
-    LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
-    auto table_handler = catalog->GetTable("db", "t1");
-    int32_t limit_cnt = 1;
-    switch (mode) {
-        case BENCHMARK: {
-            for (auto _ : *state) {
-                benchmark::DoNotOptimize(
-                    RunTableRequest(session, table_handler, limit_cnt));
-            }
-            break;
-        }
-        case TEST: {
-            ASSERT_EQ(limit_cnt,
-                      RunTableRequest(session, table_handler, limit_cnt));
-            break;
-        }
-    }
+    const std::string resource =
+        "cases/resource/benchmark_t1_basic_one_row.yaml";
+    EngineRequestModeSimpleQueryBM("db", "t1", sql, 1, resource, state, mode);
 }
 
+void EngineRequestSimpleSelectTimestamp(benchmark::State* state,
+                                        MODE mode) {  // NOLINT
+    const std::string sql = "SELECT std_ts FROM t1 limit 1;";
+    const std::string resource =
+        "cases/resource/benchmark_t1_with_time_one_row.yaml";
+    EngineRequestModeSimpleQueryBM("db", "t1", sql, 1, resource, state, mode);
+}
+
+void EngineRequestSimpleSelectDate(benchmark::State* state,
+                                   MODE mode) {  // NOLINT
+    const std::string sql = "SELECT std_date FROM t1 limit 1;";
+    const std::string resource =
+        "cases/resource/benchmark_t1_with_time_one_row.yaml";
+    EngineRequestModeSimpleQueryBM("db", "t1", sql, 1, resource, state, mode);
+}
 }  // namespace bm
 }  // namespace fesql
