@@ -42,7 +42,7 @@ class TestRtidb(unittest.TestCase):
       self.assertEqual("n1", l["name"])
       self.assertEqual(1, l["mcc"])
       self.assertEqual("a1", l["attribute"])
-      self.assertEqual(b"i1", l["image"])
+      self.assertEqual(b"i1", l["image"].getData())
     ro = rtidb.ReadOption()
     ro.index.update({"mcc":"1"})
     resp = self.nsc.query("rt_ck", ro)
@@ -53,7 +53,7 @@ class TestRtidb(unittest.TestCase):
       self.assertEqual("n{}".format(id+1), l["name"])
       self.assertEqual(1, l["mcc"])
       self.assertEqual("a1", l["attribute"])
-      self.assertEqual(b"i1", l["image"])
+      self.assertEqual(b"i1", l["image"].getData())
       id += 1;
     self.assertEqual(2, id);
     # delete
@@ -119,7 +119,7 @@ class TestRtidb(unittest.TestCase):
       self.assertEqual(id, l["id"])
       self.assertEqual("n{}".format(id), l["name"])
       self.assertEqual(id, l["mcc"])
-      self.assertEqual("i{}".format(id).encode("UTF-8"), l["image"])
+      self.assertEqual("i{}".format(id).encode("UTF-8"), l["image"].getData())
       self.assertEqual("a{}".format(id), l["attribute"])
       id+=1
     self.assertEqual(1000, id);
@@ -133,7 +133,7 @@ class TestRtidb(unittest.TestCase):
       self.assertEqual(id, l["id"])
       self.assertEqual("n{}".format(id), l["name"])
       self.assertEqual(id, l["mcc"])
-      self.assertEqual("i{}".format(id).encode("UTF-8"), l["image"])
+      self.assertEqual("i{}".format(id).encode("UTF-8"), l["image"].getData())
       self.assertEqual("a{}".format(id), l["attribute"])
       id+=1
     self.assertEqual(1000, id);
@@ -183,7 +183,7 @@ class TestRtidb(unittest.TestCase):
       else :
         self.assertEqual(2, l["mcc"])
       self.assertEqual("a1", l["attribute"])
-      self.assertEqual("i1".encode("UTF-8"), l["image"])
+      self.assertEqual("i1".encode("UTF-8"), l["image"].getData())
       id += 1;
 
   def test_update(self):
@@ -220,7 +220,7 @@ class TestRtidb(unittest.TestCase):
       self.assertEqual("n1", l["name"])
       self.assertEqual(1, l["mcc"])
       self.assertEqual("a2", l["attribute"])
-      self.assertEqual("i2".encode("UTF-8"), l["image"])
+      self.assertEqual("i2".encode("UTF-8"), l["image"].getData())
 
     condition_columns = {"mcc":"1"} 
     value_columns = {"attribute":"a3","image":"i3".encode("UTF-8")}
@@ -236,7 +236,7 @@ class TestRtidb(unittest.TestCase):
       self.assertEqual("n{}".format(id+1), l["name"])
       self.assertEqual(1, l["mcc"])
       self.assertEqual("a3", l["attribute"])
-      self.assertEqual("i3".encode("UTF-8"), l["image"])
+      self.assertEqual("i3".encode("UTF-8"), l["image"].getData())
       id += 1;
     self.assertEqual(2, id);
 
