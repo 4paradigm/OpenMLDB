@@ -34,7 +34,7 @@ kString = 14;
 kBlob = 15;
 '''
 
-NONETOKEN="None#*@!"
+NONETOKEN="!N@U#L$L%"
 
 def buildReadFilter(filter):
   mid_rf = interclient.ReadFilter()
@@ -48,23 +48,11 @@ def buildStrMap(m: map):
   for k in m:
     if m[k] == None:
       mid_map.update({k: NONETOKEN})
-    if isinstance(m[k], str):
+    elif isinstance(m[k], str):
       mid_map.update({k: m[k]})
     else:
       mid_map.update({k: str(m[k])})
   return  mid_map
-
-def buildNoNoneStrMap(m: map):
-  mid_map = {}
-  for k in m:
-    if m[k] == None:
-        raise Exception("{} value is None, don't allow".format(k))
-    if isinstance(m[k], str):
-      mid_map.update({k: m[k]})
-    else:
-      mid_map.update({k: str(m[k])})
-  return  mid_map
-
 
 class WriteOption:
   def __init__(self, updateIfExist = True, updateIfEqual = True):
@@ -117,6 +105,16 @@ class BlobData:
       msg = blobOPResult.GetMsg()
       raise Exception("erred at get blob data {}".format(msg.decode("UTF-8")))
     return data
+
+class UpdateResult:
+  def __init__(self, data):
+    self.__data = data
+    self.__success = True if data.code == 0 else False
+    self.__affected_count = data.affected_count
+  def success(self):
+    return self.__success
+  def affected_count(self):
+    return self.__affected_count
 
 class RtidbResult:
   def __init__(self, table_name, data):
@@ -218,15 +216,15 @@ class RTIDBClient:
       _wo.updateIfExist = defaultWriteOption.updateIfExist
       _wo.updateIfEqual = defaultWriteOption.updateIfEqual
     self.putBlob(table_name, value_columns)
-    cond = buildNoNoneStrMap(condition_columns)
+    cond = buildStrMap(condition_columns)
     v = buildStrMap(value_columns)
-    ok = self.__client.Update(table_name, cond, v, _wo)
-    if ok.code != 0:
-      raise Exception(ok.code, ok.msg)
-    return True
+    update_result = self.__client.Update(table_name, cond, v, _wo)
+    if update_result.code != 0:
+      raise Exception(update_result.code, update_result.msg)
+    return UpdateResult(update_result)
 
   def __buildReadoption(self, read_option: ReadOption):
-    mid_map = buildNoNoneStrMap(read_option.index)
+    mid_map = buildStrMap(read_option.index)
     ro = interclient.ReadOption(mid_map)
     for filter in read_option.read_filter:
       mid_rf = buildReadFilter(filter)
@@ -259,11 +257,11 @@ class RTIDBClient:
     return RtidbResult(table_name, resp)
 
   def delete(self, table_name: str, condition_columns: map):
-    v = buildNoNoneStrMap(condition_columns)
+    v = buildStrMap(condition_columns)
     resp = self.__client.Delete(table_name, v)
     if resp.code != 0:
       raise Exception(resp.code, resp.msg)
-    return True
+    return UpdateResult(resp); 
 
   def traverse(self, table_name: str, read_option: ReadOption = None):
     if read_option != None:

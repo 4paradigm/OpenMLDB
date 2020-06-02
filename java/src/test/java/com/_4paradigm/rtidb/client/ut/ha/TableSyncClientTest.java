@@ -873,20 +873,7 @@ public class TableSyncClientTest extends TestCaseBase {
     }
 
     @Test
-    public void testCreateRelationalTable() {
-        String name = "";
-        try {
-            name = createRelationalTable(IndexType.PrimaryKey);
-        } catch (Exception e) {
-            e.printStackTrace();
-            Assert.assertTrue(false);
-        } finally {
-            nsc.dropTable(name);
-        }
-    }
-
-    @Test
-    public  void TestWriteBinary() {
+    public void TestWriteBinary() {
         String name = "";
         try {
             name = createRelationalTable(IndexType.PrimaryKey);
@@ -901,7 +888,7 @@ public class TableSyncClientTest extends TestCaseBase {
 
             byte[] bytedata = "Any String you want".getBytes();
             ByteBuffer buf = ByteBuffer.allocate(bytedata.length);
-            for (int i = 0 ; i < bytedata.length; i++) {
+            for (int i = 0; i < bytedata.length; i++) {
                 buf.put(bytedata[i]);
             }
             data.put("image", buf);
@@ -937,6 +924,121 @@ public class TableSyncClientTest extends TestCaseBase {
         }
         buf.rewind();
         return buf;
+    }
+
+    @Test
+    public void TestCreateRelationTableErrorMultiPk() {
+        String name = "";
+        try {
+            name = String.valueOf(id.incrementAndGet());
+            nsc.dropTable(name);
+            TableDesc tableDesc = new TableDesc();
+            tableDesc.setName(name);
+            tableDesc.setTableType(TableType.kRelational);
+            List<com._4paradigm.rtidb.client.schema.ColumnDesc> list = new ArrayList<>();
+            {
+                com._4paradigm.rtidb.client.schema.ColumnDesc col = new com._4paradigm.rtidb.client.schema.ColumnDesc();
+                col.setName("id");
+                col.setDataType(DataType.BigInt);
+                col.setNotNull(true);
+                list.add(col);
+            }
+            {
+                com._4paradigm.rtidb.client.schema.ColumnDesc col = new com._4paradigm.rtidb.client.schema.ColumnDesc();
+                col.setName("attribute");
+                col.setDataType(DataType.Varchar);
+                col.setNotNull(true);
+                list.add(col);
+            }
+            {
+                com._4paradigm.rtidb.client.schema.ColumnDesc col = new com._4paradigm.rtidb.client.schema.ColumnDesc();
+                col.setName("image");
+                col.setDataType(DataType.Blob);
+                col.setNotNull(false);
+                list.add(col);
+            }
+            tableDesc.setColumnDescList(list);
+
+            List<IndexDef> indexs = new ArrayList<>();
+            IndexDef indexDef = new IndexDef();
+            indexDef.setIndexName("idx1");
+            indexDef.setIndexType(IndexType.PrimaryKey);
+            List<String> colNameList = new ArrayList<>();
+            colNameList.add("id");
+            indexDef.setColNameList(colNameList);
+            indexs.add(indexDef);
+
+            indexDef = new IndexDef();
+            indexDef.setIndexName("idx2");
+            indexDef.setIndexType(IndexType.AutoGen);
+            colNameList = new ArrayList<>();
+            colNameList.add("attribute");
+            indexDef.setColNameList(colNameList);
+            indexs.add(indexDef);
+
+            tableDesc.setIndexs(indexs);
+            boolean ok = nsc.createTable(tableDesc);
+            Assert.assertFalse(ok);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.assertTrue(false);
+        } finally {
+            nsc.dropTable(name);
+        }
+    }
+
+    @Test
+    public void TestCreateRelationTableErrorNoPk() {
+        String name = "";
+        try {
+            name = String.valueOf(id.incrementAndGet());
+            nsc.dropTable(name);
+            TableDesc tableDesc = new TableDesc();
+            tableDesc.setName(name);
+            tableDesc.setTableType(TableType.kRelational);
+            List<com._4paradigm.rtidb.client.schema.ColumnDesc> list = new ArrayList<>();
+            {
+                com._4paradigm.rtidb.client.schema.ColumnDesc col = new com._4paradigm.rtidb.client.schema.ColumnDesc();
+                col.setName("id");
+                col.setDataType(DataType.BigInt);
+                col.setNotNull(true);
+                list.add(col);
+            }
+            {
+                com._4paradigm.rtidb.client.schema.ColumnDesc col = new com._4paradigm.rtidb.client.schema.ColumnDesc();
+                col.setName("attribute");
+                col.setDataType(DataType.Varchar);
+                col.setNotNull(true);
+                list.add(col);
+            }
+            {
+                com._4paradigm.rtidb.client.schema.ColumnDesc col = new com._4paradigm.rtidb.client.schema.ColumnDesc();
+                col.setName("image");
+                col.setDataType(DataType.Blob);
+                col.setNotNull(false);
+                list.add(col);
+            }
+            tableDesc.setColumnDescList(list);
+
+            List<IndexDef> indexs = new ArrayList<>();
+            IndexDef indexDef = new IndexDef();
+            indexDef.setIndexName("idx1");
+            indexDef.setIndexType(IndexType.NoUnique);
+            List<String> colNameList = new ArrayList<>();
+            colNameList.add("id");
+            indexDef.setColNameList(colNameList);
+            indexs.add(indexDef);
+
+            tableDesc.setIndexs(indexs);
+            boolean ok = nsc.createTable(tableDesc);
+            Assert.assertFalse(ok);
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.assertTrue(false);
+        } finally {
+            nsc.dropTable(name);
+        }
     }
 
     @Test
@@ -997,6 +1099,18 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.get("attribute"), "a2");
                 Assert.assertTrue(buf2.equals(((BlobData)queryMap.get("image")).getData()));
             }
+            // query error
+            {
+                Map<String, Object> index2 = new HashMap<>();
+                index2.put("attribute", "a1");
+                ro = new ReadOption(index2, null, null, 1);
+                try {
+                    it = tableSyncClient.query(name, ro);
+                    Assert.fail();
+                } catch (Exception e) {
+                    Assert.assertTrue(true);
+                }
+            }
             //batch query
             {
                 List<ReadOption> ros = new ArrayList<ReadOption>();
@@ -1032,8 +1146,75 @@ public class TableSyncClientTest extends TestCaseBase {
                 it.next();
                 Assert.assertFalse(it.valid());
             }
+            //batchQuery error
+            {
+                List<ReadOption> ros = new ArrayList<ReadOption>();
+                {
+                    Map<String, Object> index = new HashMap<>();
+                    index.put("price", 11.1);
+                    ro = new ReadOption(index, null, null, 1);
+                    ros.add(ro);
+                }
+                {
+                    Map<String, Object> index2 = new HashMap<>();
+                    index2.put("id", 11l);
+                    ro = new ReadOption(index2, null, null, 1);
+                    ros.add(ro);
+                }
+                try {
+                    it = tableSyncClient.batchQuery(name, ros);
+                    Assert.fail();
+                } catch (Exception e) {
+                    Assert.assertTrue(true);
+                }
+            }
+            //batch query partial
+            {
+                List<ReadOption> ros = new ArrayList<ReadOption>();
+                {
+                    Map<String, Object> index = new HashMap<>();
+                    index.put("id", 18l);
+                    ro = new ReadOption(index, null, null, 1);
+                    ros.add(ro);
+                }
+                {
+                    Map<String, Object> index2 = new HashMap<>();
+                    index2.put("id", 11l);
+                    ro = new ReadOption(index2, null, null, 1);
+                    ros.add(ro);
+                }
+                it = tableSyncClient.batchQuery(name, ros);
+                Assert.assertEquals(it.getCount(), 1);
+                Assert.assertTrue(it.valid());
+                queryMap = it.getDecodedValue();
+                Assert.assertEquals(queryMap.size(), 3);
+                Assert.assertEquals(queryMap.get("id"), 11l);
+                Assert.assertEquals(queryMap.get("attribute"), "a1");
+                Assert.assertTrue(buf1.equals((ByteBuffer) queryMap.get("image")));
 
+                it.next();
+                Assert.assertFalse(it.valid());
+            }
+            //batch query empty
+            {
+                List<ReadOption> ros = new ArrayList<ReadOption>();
+                {
+                    Map<String, Object> index = new HashMap<>();
+                    index.put("id", 18l);
+                    ro = new ReadOption(index, null, null, 1);
+                    ros.add(ro);
+                }
+                {
+                    Map<String, Object> index2 = new HashMap<>();
+                    index2.put("id", 17l);
+                    ro = new ReadOption(index2, null, null, 1);
+                    ros.add(ro);
+                }
+                it = tableSyncClient.batchQuery(name, ros);
+                Assert.assertFalse(it.valid());
+            }
             boolean ok = false;
+            UpdateResult updateResult;
             String imageData3 = "i3";
             ByteBuffer buf3 = StringToBB(imageData3);
             //update
@@ -1044,8 +1225,9 @@ public class TableSyncClientTest extends TestCaseBase {
                 valueColumns.put("attribute", "a3");
 
                 valueColumns.put("image", buf3);
-                ok = tableSyncClient.update(name, conditionColumns, valueColumns, wo);
-                Assert.assertTrue(ok);
+                updateResult = tableSyncClient.update(name, conditionColumns, valueColumns, wo);
+                Assert.assertTrue(updateResult.isSuccess());
+                Assert.assertEquals(updateResult.getAffectedCount(), 1);
 
                 Map<String, Object> index = new HashMap<>();
                 index.put("id", 11l);
@@ -1060,12 +1242,37 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertTrue(buf3.equals(((BlobData)queryMap.get("image")).getData()));
             }
             {
+                //update empty
+                Map<String, Object> conditionColumns = new HashMap<>();
+                conditionColumns.put("id", 18l);
+                Map<String, Object> valueColumns = new HashMap<>();
+                valueColumns.put("attribute", "a3");
+
+                updateResult = tableSyncClient.update(name, conditionColumns, valueColumns, wo);
+                Assert.assertTrue(updateResult.isSuccess());
+                Assert.assertEquals(updateResult.getAffectedCount(), 0);
+            }
+            {
+                //update error
+                Map<String, Object> conditionColumns = new HashMap<>();
+                conditionColumns.put("price", 11.1);
+                Map<String, Object> valueColumns = new HashMap<>();
+                valueColumns.put("attribute", "a3");
+                try {
+                    updateResult = tableSyncClient.update(name, conditionColumns, valueColumns, wo);
+                    Assert.fail();
+                } catch (Exception e) {
+                    Assert.assertTrue(true);
+                }
+            }
+            {
                 Map<String, Object> conditionColumns2 = new HashMap<>();
                 conditionColumns2.put("id", 12l);
                 Map<String, Object> valueColumns2 = new HashMap<>();
                 valueColumns2.put("attribute", "a3");
-                ok = tableSyncClient.update(name, conditionColumns2, valueColumns2, wo);
-                Assert.assertTrue(ok);
+                updateResult = tableSyncClient.update(name, conditionColumns2, valueColumns2, wo);
+                Assert.assertTrue(updateResult.isSuccess());
+                Assert.assertEquals(updateResult.getAffectedCount(), 1);
 
                 Map<String, Object> index2 = new HashMap<>();
                 index2.put("id", 12l);
@@ -1097,8 +1304,9 @@ public class TableSyncClientTest extends TestCaseBase {
                 conditionColumns2.put("id", 12l);
                 Map<String, Object> valueColumns2 = new HashMap<>();
                 valueColumns2.put("image", null);
-                ok = tableSyncClient.update(name, conditionColumns2, valueColumns2, wo);
-                Assert.assertTrue(ok);
+                updateResult = tableSyncClient.update(name, conditionColumns2, valueColumns2, wo);
+                Assert.assertTrue(updateResult.isSuccess());
+                Assert.assertEquals(updateResult.getAffectedCount(), 1);
 
                 Map<String, Object> index3 = new HashMap<>();
                 index3.put("id", 12l);
@@ -1180,6 +1388,18 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.get("id"), 11l);
                 Assert.assertTrue(buf1.equals(((BlobData)queryMap.get("image")).getData()));
                 Assert.assertEquals(queryMap.get("price"), 11.1);
+            }
+            // query error
+            {
+                Map<String, Object> index2 = new HashMap<>();
+                index2.put("price", 11.1);
+                ro = new ReadOption(index2, null, null, 1);
+                try {
+                    it = tableSyncClient.query(name, ro);
+                    Assert.fail();
+                } catch (Exception e) {
+                    Assert.assertTrue(true);
+                }
             }
             {
                 Map<String, Object> index2 = new HashMap<>();
@@ -1349,8 +1569,71 @@ public class TableSyncClientTest extends TestCaseBase {
                 it.next();
                 Assert.assertFalse(it.valid());
             }
+            //batchQuery partial
+            {
+                List<ReadOption> ros = new ArrayList<ReadOption>();
+                {
+                    Map<String, Object> index = new HashMap<>();
+                    index.put("id", 18l);
+                    ro = new ReadOption(index, null, null, 1);
+                    ros.add(ro);
+                }
+                {
+                    Map<String, Object> index2 = new HashMap<>();
+                    index2.put("memory", 12);
+                    ro = new ReadOption(index2, null, null, 2);
+                    ros.add(ro);
+                }
+                it = tableSyncClient.batchQuery(name, ros);
+                Assert.assertEquals(it.getCount(), 2);
+
+                Assert.assertTrue(it.valid());
+                queryMap = it.getDecodedValue();
+                Assert.assertEquals(queryMap.size(), 5);
+                Assert.assertEquals(queryMap.get("id"), 12l);
+                Assert.assertEquals(queryMap.get("attribute"), "a2");
+                Assert.assertTrue(buf2.equals((ByteBuffer) queryMap.get("image")));
+                Assert.assertEquals(queryMap.get("memory"), 12);
+                Assert.assertEquals(queryMap.get("price"), 12.2);
+
+                it.next();
+                Assert.assertTrue(it.valid());
+                queryMap = it.getDecodedValue();
+                Assert.assertEquals(queryMap.size(), 5);
+                Assert.assertEquals(queryMap.get("id"), 13l);
+                Assert.assertEquals(queryMap.get("attribute"), "a3");
+                Assert.assertTrue(buf2.equals((ByteBuffer) queryMap.get("image")));
+                Assert.assertEquals(queryMap.get("memory"), 12);
+                Assert.assertEquals(queryMap.get("price"), 12.2);
+
+                it.next();
+                Assert.assertFalse(it.valid());
+            }
+            //batch query error
+            {
+                List<ReadOption> ros = new ArrayList<ReadOption>();
+                {
+                    Map<String, Object> index = new HashMap<>();
+                    index.put("price", 12.2);
+                    ro = new ReadOption(index, null, null, 1);
+                    ros.add(ro);
+                }
+                {
+                    Map<String, Object> index2 = new HashMap<>();
+                    index2.put("memory", 12);
+                    ro = new ReadOption(index2, null, null, 2);
+                    ros.add(ro);
+                }
+                try {
+                    it = tableSyncClient.batchQuery(name, ros);
+                    Assert.fail();
+                } catch (Exception e) {
+                    Assert.assertTrue(true);
+                }
+            }
 
             boolean ok = false;
+            UpdateResult updateResult;
             //update by pk
             ByteBuffer buf3 = StringToBB("i3");
             {
@@ -1359,8 +1642,9 @@ public class TableSyncClientTest extends TestCaseBase {
                 Map<String, Object> valueColumns = new HashMap<>();
                 valueColumns.put("price", 13.3);
                 valueColumns.put("image", buf3);
-                ok = tableSyncClient.update(name, conditionColumns, valueColumns, wo);
-                Assert.assertTrue(ok);
+                updateResult = tableSyncClient.update(name, conditionColumns, valueColumns, wo);
+                Assert.assertTrue(updateResult.isSuccess());
+                Assert.assertEquals(updateResult.getAffectedCount(), 1);
 
                 //query pk
                 Map<String, Object> index3 = new HashMap<>();
@@ -1377,17 +1661,42 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 13.3);
             }
+            {
+                // update empty
+                Map<String, Object> conditionColumns = new HashMap<>();
+                conditionColumns.put("id", 18l);
+                Map<String, Object> valueColumns = new HashMap<>();
+                valueColumns.put("price", 13.3);
+                valueColumns.put("image", buf3);
+                updateResult = tableSyncClient.update(name, conditionColumns, valueColumns, wo);
+                Assert.assertTrue(updateResult.isSuccess());
+                Assert.assertEquals(updateResult.getAffectedCount(), 0);
+            }
+            {
+                // update error
+                Map<String, Object> conditionColumns = new HashMap<>();
+                conditionColumns.put("price", 13.3);
+                Map<String, Object> valueColumns = new HashMap<>();
+                valueColumns.put("price", 13.3);
+                valueColumns.put("image", buf3);
+                try {
+                    updateResult = tableSyncClient.update(name, conditionColumns, valueColumns, wo);
+                    Assert.fail();
+                } catch (Exception e) {
+                    Assert.assertTrue(true);
+                }
+            }
             //update by unique
             ByteBuffer buf4 = StringToBB("i4");
-
             {
                 Map<String, Object> conditionColumns = new HashMap<>();
                 conditionColumns.put("attribute", "a2");
                 Map<String, Object> valueColumns = new HashMap<>();
                 valueColumns.put("price", 14.4);
                 valueColumns.put("image", buf4);
-                ok = tableSyncClient.update(name, conditionColumns, valueColumns, wo);
-                Assert.assertTrue(ok);
+                updateResult = tableSyncClient.update(name, conditionColumns, valueColumns, wo);
+                Assert.assertTrue(updateResult.isSuccess());
+                Assert.assertEquals(updateResult.getAffectedCount(), 1);
 
                 //query unique
                 Map<String, Object> index3 = new HashMap<>();
@@ -1404,16 +1713,28 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 14.4);
             }
-            //update by no unique
+            //update by no unique empty
             ByteBuffer buf5 = StringToBB("i5");
+            {
+                Map<String, Object> conditionColumns = new HashMap<>();
+                conditionColumns.put("memory", 18);
+                Map<String, Object> valueColumns = new HashMap<>();
+                valueColumns.put("price", 15.5);
+                valueColumns.put("image", buf5);
+                updateResult = tableSyncClient.update(name, conditionColumns, valueColumns, wo);
+                Assert.assertTrue(updateResult.isSuccess());
+                Assert.assertEquals(updateResult.getAffectedCount(), 0);
+            }
+            //update by no unique
             {
                 Map<String, Object> conditionColumns = new HashMap<>();
                 conditionColumns.put("memory", 12);
                 Map<String, Object> valueColumns = new HashMap<>();
                 valueColumns.put("price", 15.5);
                 valueColumns.put("image", buf5);
-                ok = tableSyncClient.update(name, conditionColumns, valueColumns, wo);
-                Assert.assertTrue(ok);
+                updateResult = tableSyncClient.update(name, conditionColumns, valueColumns, wo);
+                Assert.assertTrue(updateResult.isSuccess());
+                Assert.assertEquals(updateResult.getAffectedCount(), 2);
 
                 //query no unique
                 Map<String, Object> index3 = new HashMap<>();
@@ -1450,8 +1771,9 @@ public class TableSyncClientTest extends TestCaseBase {
                 valueColumns.put("id", 16l);
                 valueColumns.put("price", 16.6);
                 valueColumns.put("image", buf6);
-                ok = tableSyncClient.update(name, conditionColumns, valueColumns, wo);
-                Assert.assertTrue(ok);
+                updateResult = tableSyncClient.update(name, conditionColumns, valueColumns, wo);
+                Assert.assertTrue(updateResult.isSuccess());
+                Assert.assertEquals(updateResult.getAffectedCount(), 2);
 
                 //query no unique
                 Map<String, Object> index3 = new HashMap<>();
@@ -1552,7 +1874,6 @@ public class TableSyncClientTest extends TestCaseBase {
             data.put("memory", 12);
             data.put("price", 12.2);
             tableSyncClient.put(name, data, wo);
-
             {
                 //query no unique
                 Map<String, Object> index3 = new HashMap<>();
@@ -1583,6 +1904,68 @@ public class TableSyncClientTest extends TestCaseBase {
                 it.next();
                 Assert.assertFalse(it.valid());
             }
+            // traverse
+            {
+                ro = new ReadOption(null, null, null, 1);
+                it = tableSyncClient.traverse(name, ro);
+                Assert.assertTrue(it.valid());
+                Assert.assertEquals(it.getCount(), 3);
+
+                queryMap = it.getDecodedValue();
+                Assert.assertTrue(it.valid());
+                queryMap = it.getDecodedValue();
+                Assert.assertEquals(queryMap.size(), 5);
+                Assert.assertEquals(queryMap.get("id"), 11l);
+
+                it.next();
+                Assert.assertTrue(it.valid());
+                queryMap = it.getDecodedValue();
+                Assert.assertEquals(queryMap.size(), 5);
+                Assert.assertEquals(queryMap.get("id"), 12l);
+
+                it.next();
+                Assert.assertTrue(it.valid());
+                queryMap = it.getDecodedValue();
+                Assert.assertEquals(queryMap.size(), 5);
+                Assert.assertEquals(queryMap.get("id"), 13l);
+            }
+            // update
+            UpdateResult updateResult;
+            {
+                Map<String, Object> conditionColumns = new HashMap<>();
+                conditionColumns.put("attribute", null);
+                Map<String, Object> valueColumns = new HashMap<>();
+                valueColumns.put("price", 14.4);
+                updateResult = tableSyncClient.update(name, conditionColumns, valueColumns, wo);
+                Assert.assertTrue(updateResult.isSuccess());
+                Assert.assertEquals(updateResult.getAffectedCount(), 1);
+
+                //query
+                Map<String, Object> index3 = new HashMap<>();
+                index3.put("attribute", null);
+                ro = new ReadOption(index3, null, null, 1);
+                it = tableSyncClient.query(name, ro);
+                Assert.assertTrue(it.valid());
+
+                queryMap = it.getDecodedValue();
+                Assert.assertEquals(queryMap.size(), 5);
+                Assert.assertEquals(queryMap.get("id"), 12l);
+                Assert.assertEquals(queryMap.get("attribute"), null);
+                Assert.assertTrue(buf2.equals((ByteBuffer) queryMap.get("image")));
+                Assert.assertEquals(queryMap.get("memory"), 12);
+                Assert.assertEquals(queryMap.get("price"), 14.4);
+            }
+            //delete
+            {
+                Map<String, Object> conditionColumns2 = new HashMap<>();
+                conditionColumns2.put("attribute", null);
+                updateResult = tableSyncClient.delete(name, conditionColumns2);
+                Assert.assertTrue(updateResult.isSuccess());
+                Assert.assertEquals(updateResult.getAffectedCount(), 1);
+                ro = new ReadOption(conditionColumns2, null, null, 0);
+                it = tableSyncClient.query(name, ro);
+                Assert.assertFalse(it.valid());
+            }
         } catch (Exception e) {
             e.printStackTrace();
             Assert.assertTrue(false);
@@ -1603,9 +1986,21 @@ public class TableSyncClientTest extends TestCaseBase {
         arr[0] = new HashMap<>(data);
 
         List<Object> list = new ArrayList<>();
-        Map<String, Object> conditionColumns = new HashMap<>();
-        conditionColumns.put("id", 11l);
-        list.add(conditionColumns);
+        {
+            Map<String, Object> conditionColumns = new HashMap<>();
+            conditionColumns.put("id", 12l);
+            list.add(conditionColumns);
+        }
+        {
+            Map<String, Object> conditionColumns = new HashMap<>();
+            conditionColumns.put("price", 11.1);
+            list.add(conditionColumns);
+        }
+        {
+            Map<String, Object> conditionColumns = new HashMap<>();
+            conditionColumns.put("id", 11l);
+            list.add(conditionColumns);
+        }
 
         return new Object[][]{
                 new Object[]{createRelationalArgs(arr, list, new Object[]{5, 1, 0})}
@@ -1635,9 +2030,26 @@ public class TableSyncClientTest extends TestCaseBase {
             Assert.assertEquals(it.getCount(), args.expected[1]);
 
             //delete pk
+            UpdateResult updateResult;
             {
-                ok = tableSyncClient.delete(name, (Map) args.conditionList.get(0));
-                Assert.assertTrue(ok);
+                // delete empty
+                updateResult = tableSyncClient.delete(name, (Map) args.conditionList.get(0));
+                Assert.assertTrue(updateResult.isSuccess());
+                Assert.assertEquals(updateResult.getAffectedCount(), 0);
+            }
+            {
+                // delete error
+                try {
+                    tableSyncClient.delete(name, (Map) args.conditionList.get(1));
+                    Assert.fail();
+                } catch (Exception e) {
+                    Assert.assertTrue(true);
+                }
+            }
+            {
+                updateResult = tableSyncClient.delete(name, (Map) args.conditionList.get(2));
+                Assert.assertTrue(updateResult.isSuccess());
+                Assert.assertEquals(updateResult.getAffectedCount(), 1);
                 ro = new ReadOption((Map) args.conditionList.get(0), null, null, 1);
                 it = tableSyncClient.query(name, ro);
                 Assert.assertFalse(it.valid());
@@ -1752,6 +2164,19 @@ public class TableSyncClientTest extends TestCaseBase {
             Map<String, Object> conditionColumns = new HashMap<>();
             conditionColumns.put("memory", 12);
             conditionColumns.put("ts", new DateTime(1588756535));
+            list.add(conditionColumns);
+        }
+        {
+            Map<String, Object> conditionColumns = new HashMap<>();
+            conditionColumns.put("id", 18l);
+            conditionColumns.put("name", "n1");
+            conditionColumns.put("sex", true);
+            list.add(conditionColumns);
+        }
+        {
+            Map<String, Object> conditionColumns = new HashMap<>();
+            conditionColumns.put("id", 18l);
+            conditionColumns.put("name", "n1");
             list.add(conditionColumns);
         }
 
@@ -1910,12 +2335,35 @@ public class TableSyncClientTest extends TestCaseBase {
             }
 
             //update by pk
+            UpdateResult updateResult;
+            {
+                // update empty
+                Map<String, Object> valueColumns = new HashMap<>();
+                valueColumns.put("price", 15.5);
+                valueColumns.put("image", StringToBB("i5"));
+                updateResult = tableSyncClient.update(name, (Map) args.conditionList.get(6), valueColumns, wo);
+                Assert.assertTrue(updateResult.isSuccess());
+                Assert.assertEquals(updateResult.getAffectedCount(), 0);
+            }
+            {
+                // update error
+                Map<String, Object> valueColumns = new HashMap<>();
+                valueColumns.put("price", 15.5);
+                valueColumns.put("image", StringToBB("i5"));
+                try {
+                    updateResult = tableSyncClient.update(name, (Map) args.conditionList.get(7), valueColumns, wo);
+                    Assert.fail();
+                } catch (Exception e) {
+                    Assert.assertTrue(true);
+                }
+            }
             {
                 Map<String, Object> valueColumns = new HashMap<>();
                 valueColumns.put("price", 15.5);
                 valueColumns.put("image", StringToBB("i5"));
-                ok = tableSyncClient.update(name, (Map) args.conditionList.get(0), valueColumns, wo);
-                Assert.assertTrue(ok);
+                updateResult = tableSyncClient.update(name, (Map) args.conditionList.get(0), valueColumns, wo);
+                Assert.assertTrue(updateResult.isSuccess());
+                Assert.assertEquals(updateResult.getAffectedCount(), 1);
 
                 //query pk
                 ro = new ReadOption((Map) args.conditionList.get(0), null, null, 1);
@@ -1940,8 +2388,9 @@ public class TableSyncClientTest extends TestCaseBase {
                 Map<String, Object> valueColumns = new HashMap<>();
                 valueColumns.put("price", 16.6);
                 valueColumns.put("image", StringToBB("i6"));
-                ok = tableSyncClient.update(name, (Map) args.conditionList.get(1), valueColumns, wo);
-                Assert.assertTrue(ok);
+                updateResult = tableSyncClient.update(name, (Map) args.conditionList.get(1), valueColumns, wo);
+                Assert.assertTrue(updateResult.isSuccess());
+                Assert.assertEquals(updateResult.getAffectedCount(), 1);
 
                 //query unique
                 ro = new ReadOption((Map) args.conditionList.get(1), null, null, 1);
@@ -1966,8 +2415,9 @@ public class TableSyncClientTest extends TestCaseBase {
                 Map<String, Object> valueColumns = new HashMap<>();
                 valueColumns.put("price", 17.7);
                 valueColumns.put("image", StringToBB("i7"));
-                ok = tableSyncClient.update(name, (Map) args.conditionList.get(2), valueColumns, wo);
-                Assert.assertTrue(ok);
+                updateResult = tableSyncClient.update(name, (Map) args.conditionList.get(2), valueColumns, wo);
+                Assert.assertTrue(updateResult.isSuccess());
+                Assert.assertEquals(updateResult.getAffectedCount(), 2);
 
                 //query no unique
                 ro = new ReadOption((Map) args.conditionList.get(2), null, null, 2);
@@ -2010,8 +2460,9 @@ public class TableSyncClientTest extends TestCaseBase {
                 it = tableSyncClient.traverse(name, ro);
                 Assert.assertEquals(it.getCount(), 4);
 
-                ok = tableSyncClient.delete(name, (Map) args.conditionList.get(0));
-                Assert.assertTrue(ok);
+                updateResult = tableSyncClient.delete(name, (Map) args.conditionList.get(0));
+                Assert.assertTrue(updateResult.isSuccess());
+                Assert.assertEquals(updateResult.getAffectedCount(), 1);
                 ro = new ReadOption((Map) args.conditionList.get(0), null, null, 1);
                 it = tableSyncClient.query(name, ro);
                 Assert.assertFalse(it.valid());
@@ -2019,6 +2470,21 @@ public class TableSyncClientTest extends TestCaseBase {
                 ro = new ReadOption(null, null, null, 1);
                 it = tableSyncClient.traverse(name, ro);
                 Assert.assertEquals(it.getCount(), 3);
+            }
+            {
+                //delete empty
+                updateResult = tableSyncClient.delete(name, (Map) args.conditionList.get(6));
+                Assert.assertTrue(updateResult.isSuccess());
+                Assert.assertEquals(updateResult.getAffectedCount(), 0);
+            }
+            {
+                //delete error
+                try {
+                    tableSyncClient.delete(name, (Map) args.conditionList.get(7));
+                    Assert.fail();
+                } catch (Exception e) {
+                    Assert.assertTrue(true);
+                }
             }
             //put second
             ((Map) (args.row[0])).put("image", StringToBB("i1"));
@@ -2029,8 +2495,9 @@ public class TableSyncClientTest extends TestCaseBase {
                 it = tableSyncClient.traverse(name, ro);
                 Assert.assertEquals(it.getCount(), 4);
 
-                ok = tableSyncClient.delete(name, (Map) args.conditionList.get(1));
-                Assert.assertTrue(ok);
+                updateResult = tableSyncClient.delete(name, (Map) args.conditionList.get(1));
+                Assert.assertTrue(updateResult.isSuccess());
+                Assert.assertEquals(updateResult.getAffectedCount(), 1);
                 ro = new ReadOption((Map) args.conditionList.get(1), null, null, 1);
                 it = tableSyncClient.query(name, ro);
                 Assert.assertFalse(it.valid());
@@ -2041,8 +2508,9 @@ public class TableSyncClientTest extends TestCaseBase {
             }
             {
                 //delete by no unique
-                ok = tableSyncClient.delete(name, (Map) args.conditionList.get(2));
-                Assert.assertTrue(ok);
+                updateResult = tableSyncClient.delete(name, (Map) args.conditionList.get(2));
+                Assert.assertTrue(updateResult.isSuccess());
+                Assert.assertEquals(updateResult.getAffectedCount(), 2);
                 ro = new ReadOption((Map) args.conditionList.get(2), null, null, 1);
                 it = tableSyncClient.query(name, ro);
                 Assert.assertFalse(it.valid());
@@ -2080,13 +2548,15 @@ public class TableSyncClientTest extends TestCaseBase {
             RelationalIterator it;
             Map<String, Object> queryMap;
             //update by pk
+            UpdateResult updateResult;
             {
                 Map<String, Object> valueColumns = new HashMap<>();
                 valueColumns.put("id", 15l);
                 valueColumns.put("image", StringToBB("i5"));
                 valueColumns.put("price", 15.5);
-                ok = tableSyncClient.update(name, (Map) args.conditionList.get(0), valueColumns, wo);
-                Assert.assertTrue(ok);
+                updateResult = tableSyncClient.update(name, (Map) args.conditionList.get(0), valueColumns, wo);
+                Assert.assertTrue(updateResult.isSuccess());
+                Assert.assertEquals(updateResult.getAffectedCount(), 1);
 
                 //query pk
                 ro = new ReadOption((Map) args.conditionList.get(0), null, null, 1);
@@ -2116,8 +2586,9 @@ public class TableSyncClientTest extends TestCaseBase {
                 valueColumns.put("price", 16.6);
                 valueColumns.put("image", StringToBB("i6"));
                 valueColumns.put("sex", false);
-                ok = tableSyncClient.update(name, (Map) args.conditionList.get(1), valueColumns, wo);
-                Assert.assertTrue(ok);
+                updateResult = tableSyncClient.update(name, (Map) args.conditionList.get(1), valueColumns, wo);
+                Assert.assertTrue(updateResult.isSuccess());
+                Assert.assertEquals(updateResult.getAffectedCount(), 1);
 
                 //query unique
                 ro = new ReadOption((Map) args.conditionList.get(4), null, null, 1);
@@ -2144,8 +2615,9 @@ public class TableSyncClientTest extends TestCaseBase {
                 valueColumns.put("price", 17.7);
                 valueColumns.put("image", StringToBB("i7"));
                 valueColumns.put("ts", new DateTime(1588756535));
-                ok = tableSyncClient.update(name, (Map) args.conditionList.get(2), valueColumns, wo);
-                Assert.assertTrue(ok);
+                updateResult = tableSyncClient.update(name, (Map) args.conditionList.get(2), valueColumns, wo);
+                Assert.assertTrue(updateResult.isSuccess());
+                Assert.assertEquals(updateResult.getAffectedCount(), 2);
 
                 //query no unique
                 ro = new ReadOption((Map) args.conditionList.get(5), null, null, 2);
@@ -2215,12 +2687,14 @@ public class TableSyncClientTest extends TestCaseBase {
             Assert.assertEquals(it.getCount(), 1);
 
             boolean ok = false;
+            UpdateResult updateResult;
             //delete pk
             {
                 Map<String, Object> conditionColumns2 = new HashMap<>();
                 conditionColumns2.put("id", 11l);
-                ok = tableSyncClient.delete(name, conditionColumns2);
-                Assert.assertTrue(ok);
+                updateResult = tableSyncClient.delete(name, conditionColumns2);
+                Assert.assertTrue(updateResult.isSuccess());
+                Assert.assertEquals(updateResult.getAffectedCount(), 1);
                 ro = new ReadOption(conditionColumns2, null, null, 1);
                 it = tableSyncClient.query(name, ro);
                 Assert.assertFalse(it.valid());
@@ -2262,13 +2736,14 @@ public class TableSyncClientTest extends TestCaseBase {
             {
                 Map<String, Object> conditionColumns2 = new HashMap<>();
                 conditionColumns2.put("attribute", "a3");
-                ok = tableSyncClient.delete(name, conditionColumns2);
-                Assert.assertTrue(ok);
+                updateResult = tableSyncClient.delete(name, conditionColumns2);
+                Assert.assertTrue(updateResult.isSuccess());
+                Assert.assertEquals(updateResult.getAffectedCount(), 1);
                 ro = new ReadOption(conditionColumns2, null, null, 1);
                 it = tableSyncClient.query(name, ro);
                 Assert.assertFalse(it.valid());
             }
-            it = tableSyncClient.traverse(name, ro);
+            it = tableSyncClient.traverse(name, (ReadOption) null);
             Assert.assertEquals(it.getCount(), 2);
             Assert.assertTrue(it.valid());
             Map queryMap = it.getDecodedValue();
@@ -2296,15 +2771,35 @@ public class TableSyncClientTest extends TestCaseBase {
             tableSyncClient.put(name, data, wo);
 
             //traverse
-            it = tableSyncClient.traverse(name, ro);
+            it = tableSyncClient.traverse(name, (ReadOption) null);
             Assert.assertEquals(it.getCount(), 4);
 
             //delete no unique
             {
+                // delete empty
+                Map<String, Object> conditionColumns = new HashMap<>();
+                conditionColumns.put("id", 18l);
+                updateResult = tableSyncClient.delete(name, conditionColumns);
+                Assert.assertTrue(updateResult.isSuccess());
+                Assert.assertEquals(updateResult.getAffectedCount(), 0);
+            }
+            {
+                // delete error
+                Map<String, Object> conditionColumns = new HashMap<>();
+                conditionColumns.put("price", 11.1);
+                try {
+                    tableSyncClient.delete(name, conditionColumns);
+                    Assert.fail();
+                } catch (Exception e) {
+                    Assert.assertTrue(true);
+                }
+            }
+            {
                 Map<String, Object> conditionColumns = new HashMap<>();
                 conditionColumns.put("memory", 12);
-                ok = tableSyncClient.delete(name, conditionColumns);
-                Assert.assertTrue(ok);
+                updateResult = tableSyncClient.delete(name, conditionColumns);
+                Assert.assertTrue(updateResult.isSuccess());
+                Assert.assertEquals(updateResult.getAffectedCount(), 2);
                 ro = new ReadOption(conditionColumns, null, null, 1);
                 it = tableSyncClient.query(name, ro);
                 Assert.assertFalse(it.valid());
@@ -2404,6 +2899,18 @@ public class TableSyncClientTest extends TestCaseBase {
             }
             Assert.assertEquals(trit.getCount(), 900);
             Assert.assertFalse(trit.valid());
+
+            // traverse failed
+            index = new HashMap<>();
+            index.put("attribute", "a1");
+            index.put("attribute2", new Date(2020, 5, 1));
+            ro = new ReadOption(index, null, null, 0);
+            try {
+                tableSyncClient.traverse(name, ro);
+                Assert.fail();
+            } catch (Exception e) {
+                Assert.assertTrue(true);
+            }
         } catch (Exception e) {
             e.printStackTrace();
             Assert.assertTrue(false);
@@ -2426,7 +2933,7 @@ public class TableSyncClientTest extends TestCaseBase {
             for (long i = 0; i < 1000; i++) {
                 data.put("id", i);
                 data.put("attribute", "a" + i);
-                data.put("image", StringToBB("i"+i));
+                data.put("image", StringToBB("i" + i));
                 Assert.assertTrue(tableSyncClient.put(name, data, wo).isSuccess());
                 data.clear();
             }
@@ -2464,6 +2971,17 @@ public class TableSyncClientTest extends TestCaseBase {
             }
             Assert.assertEquals(trit.getCount(), 900);
             Assert.assertFalse(trit.valid());
+
+            // traverse failed
+            index = new HashMap<>();
+            index.put("attribute", "a1");
+            ro = new ReadOption(index, null, null, 0);
+            try {
+                tableSyncClient.traverse(name, ro);
+                Assert.fail();
+            } catch (Exception e) {
+                Assert.assertTrue(true);
+            }
         } catch (Exception e) {
             e.printStackTrace();
             Assert.assertTrue(false);
@@ -2540,14 +3058,16 @@ public class TableSyncClientTest extends TestCaseBase {
             //traverse
             RelationalIterator trit = tableSyncClient.traverse(name, ro);
             //update key
+            UpdateResult updateResult;
             {
                 data.clear();
                 Map<String, Object> conditionColumns = new HashMap<>();
                 conditionColumns.put("id", "0110");
                 data.put("attribute", "aup1110");
                 data.put("image", "iup1110");
-                boolean ok = tableSyncClient.update(name, conditionColumns, data, wo);
-                Assert.assertTrue(ok);
+                updateResult = tableSyncClient.update(name, conditionColumns, data, wo);
+                Assert.assertTrue(updateResult.isSuccess());
+                Assert.assertEquals(updateResult.getAffectedCount(), 1);
 
                 ro = new ReadOption(conditionColumns, null, null, 1);
                 RelationalIterator it = tableSyncClient.query(name, ro);
@@ -2661,6 +3181,50 @@ public class TableSyncClientTest extends TestCaseBase {
             Assert.assertEquals(map.get("attribute"), "a1");
             Assert.assertTrue(StringToBB("i1").equals(((BlobData)map.get("image")).getData()));
 
+            //update
+            UpdateResult updateResult;
+            {
+                data.clear();
+                Map<String, Object> conditionColumns = new HashMap<>();
+                conditionColumns.put("id", pr.getAutoGenPk());
+                data.put("id", 111l);
+                data.put("image", StringToBB("i2"));
+                try {
+                    tableSyncClient.update(name, conditionColumns, data, wo);
+                    Assert.fail();
+                } catch (Exception e) {
+                    Assert.assertTrue(true);
+                }
+
+                data.clear();
+                conditionColumns = new HashMap<>();
+                conditionColumns.put("id", pr.getAutoGenPk());
+                data.put("attribute", "a2");
+                data.put("image", StringToBB("i2"));
+                updateResult = tableSyncClient.update(name, conditionColumns, data, wo);
+                Assert.assertTrue(updateResult.isSuccess());
+                Assert.assertEquals(updateResult.getAffectedCount(), 1);
+
+                ro = new ReadOption(conditionColumns, null, null, 1);
+                it = tableSyncClient.query(name, ro);
+                Map<String, Object> valueMap = new HashMap<>();
+                valueMap = it.getDecodedValue();
+                Assert.assertEquals(valueMap.size(), 3);
+                Assert.assertEquals(valueMap.get("id"), pr.getAutoGenPk());
+                Assert.assertEquals(valueMap.get("attribute"), "a2");
+                Assert.assertEquals(valueMap.get("image"), StringToBB("i2"));
+            }
+            //delete
+            {
+                Map<String, Object> conditionColumns2 = new HashMap<>();
+                conditionColumns2.put("id", pr.getAutoGenPk());
+                updateResult = tableSyncClient.delete(name, conditionColumns2);
+                Assert.assertTrue(updateResult.isSuccess());
+                Assert.assertEquals(updateResult.getAffectedCount(), 1);
+                ro = new ReadOption(conditionColumns2, null, null, 1);
+                it = tableSyncClient.query(name, ro);
+                Assert.assertFalse(it.valid());
+            }
         } catch (Exception e) {
             e.printStackTrace();
             Assert.assertTrue(false);

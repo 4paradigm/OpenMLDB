@@ -21,7 +21,6 @@ import rtidb.blobserver.BlobServer;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.*;
-import java.util.concurrent.TimeoutException;
 
 public class RelationalIterator {
 
@@ -222,7 +221,30 @@ public class RelationalIterator {
         return map;
     }
 
-    private void getData() throws TimeoutException, TabletException {
+    private boolean getObjectStore(int tid, long key, Object[] result, TableHandler th) throws TabletException {
+        if (result.length < 1) {
+            throw new TabletException("result array size must greather 1");
+        }
+        BlobServer bs = th.getBlobServer();
+        if (bs == null) {
+            throw new TabletException("can not found available blobserver with tid " + tid);
+        }
+        OSS.GetRequest.Builder builder = OSS.GetRequest.newBuilder();
+        builder.setTid(tid);
+        builder.setPid(0);
+        builder.setKey(key);
+
+        OSS.GetRequest request = builder.build();
+        OSS.GetResponse response = bs.get(request);
+        if (response != null && response.getCode() == 0) {
+            ByteString data = response.getData();
+            result[0] = data.asReadOnlyByteBuffer().rewind();
+            return true;
+        }
+        return false;
+    }
+
+    private void getData() throws TabletException {
         if (batch_query) {
             PartitionHandler ph = th.getHandler(0);
             TabletServer ts = ph.getReadHandler(th.getReadStrategy());
@@ -267,9 +289,7 @@ public class RelationalIterator {
                 }
                 return;
             } else if (response.getCode() != 0) {
-                offset = 0;
-                totalSize = 0;
-                return;
+                throw new TabletException(response.getCode(), response.getMsg());
             }
         }
         do {
