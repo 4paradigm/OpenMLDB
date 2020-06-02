@@ -70,8 +70,10 @@ DECLARE_uint32(preview_limit_max_num);
 DECLARE_uint32(preview_default_limit);
 DECLARE_uint32(max_col_display_length);
 
-std::function<void(int)> quit_signal_handler;
-void shutdown_signal_handler(int signal) { quit_signal_handler(signal); }
+void shutdown_signal_handler(int signal) {
+    std::cout << "catch signal: " << signal << std::endl;
+    brpc::AskToQuit();
+}
 
 void SetupLog() {
     // Config log
@@ -323,10 +325,6 @@ void StartBlob() {
         exit(1);
     }
     std::signal(SIGTERM, shutdown_signal_handler);
-    quit_signal_handler = [server_impl](int signal) {
-        std::cout << "catch signal num " << signal << std::endl;
-        brpc::AskToQuit();
-    };
     std::ostringstream oss;
     oss << RTIDB_VERSION_MAJOR << "." << RTIDB_VERSION_MEDIUM << "."
         << RTIDB_VERSION_MINOR << "." << RTIDB_VERSION_BUG;
