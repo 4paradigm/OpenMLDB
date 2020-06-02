@@ -54,18 +54,6 @@ def buildStrMap(m: map):
       mid_map.update({k: str(m[k])})
   return  mid_map
 
-def buildNoNoneStrMap(m: map):
-  mid_map = {}
-  for k in m:
-    if m[k] == None:
-        raise Exception("{} value is None, don't allow".format(k))
-    if isinstance(m[k], str):
-      mid_map.update({k: m[k]})
-    else:
-      mid_map.update({k: str(m[k])})
-  return  mid_map
-
-
 class WriteOption:
   def __init__(self, updateIfExist = True, updateIfEqual = True):
     self.updateIfExist = updateIfExist
