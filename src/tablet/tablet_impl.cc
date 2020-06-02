@@ -1038,9 +1038,6 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
     uint32_t cnt = 0;
     if (st > 0) {
         if (st < et) {
-            PDLOG(WARNING,
-                  "invalid args for st %lu less than et %lu or expire time %lu",
-                  st, et, expire_time);
             return -1;
         }
         if (expire_cnt == 0) {
@@ -1193,9 +1190,6 @@ int32_t TabletImpl::CountIndex(uint64_t expire_time, uint64_t expire_cnt,
     uint32_t cnt = 0;
     if (st > 0) {
         if (st < et) {
-            PDLOG(WARNING,
-                  "invalid args for st %lu less than et %lu or expire time %lu",
-                  st, et, expire_time);
             return -1;
         }
         if (expire_cnt == 0) {
