@@ -298,7 +298,6 @@ void StartBlob() {
         PDLOG(WARNING, "Fail to add service");
         exit(1);
     }
-    server.MaxConcurrencyOf(server_impl, "Get") = FLAGS_scan_concurrency_limit;
     server.MaxConcurrencyOf(server_impl, "Put") = FLAGS_put_concurrency_limit;
     server_impl->SetServer(&server);
     server.MaxConcurrencyOf(server_impl, "Get") = FLAGS_get_concurrency_limit;
@@ -307,7 +306,7 @@ void StartBlob() {
             PDLOG(WARNING, "Fail to start server");
             exit(1);
         }
-        PDLOG(INFO, "start tablet on port %d with version %d.%d.%d.%d",
+        PDLOG(INFO, "start blob on port %d with version %d.%d.%d.%d",
               FLAGS_port, RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
               RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
     } else {
@@ -315,7 +314,7 @@ void StartBlob() {
             PDLOG(WARNING, "Fail to start server");
             exit(1);
         }
-        PDLOG(INFO, "start tablet on endpoint %s with version %d.%d.%d.%d",
+        PDLOG(INFO, "start blob on endpoint %s with version %d.%d.%d.%d",
               FLAGS_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
               RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
     }
@@ -326,8 +325,7 @@ void StartBlob() {
     std::signal(SIGTERM, shutdown_signal_handler);
     quit_signal_handler = [server_impl](int signal) {
         std::cout << "catch signal num " << signal << std::endl;
-        delete server_impl;
-        exit(1);
+        brpc::AskToQuit();
     };
     std::ostringstream oss;
     oss << RTIDB_VERSION_MAJOR << "." << RTIDB_VERSION_MEDIUM << "."
