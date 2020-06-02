@@ -234,7 +234,7 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         }
         String indexName = "";
         if (tableDesc.getIndexs() == null ||
-                tableDesc.getIndexs().size() == 0) {
+                tableDesc.getIndexs().isEmpty()) {
             logger.warn("no index");
             return false;
         }

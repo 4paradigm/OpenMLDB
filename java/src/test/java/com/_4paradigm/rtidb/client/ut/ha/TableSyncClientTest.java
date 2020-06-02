@@ -1712,8 +1712,19 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 14.4);
             }
-            //update by no unique
+            //update by no unique empty
             ByteBuffer buf5 = StringToBB("i5");
+            {
+                Map<String, Object> conditionColumns = new HashMap<>();
+                conditionColumns.put("memory", 18);
+                Map<String, Object> valueColumns = new HashMap<>();
+                valueColumns.put("price", 15.5);
+                valueColumns.put("image", buf5);
+                updateResult = tableSyncClient.update(name, conditionColumns, valueColumns, wo);
+                Assert.assertTrue(updateResult.isSuccess());
+                Assert.assertEquals(updateResult.getAffectedCount(), 0);
+            }
+            //update by no unique
             {
                 Map<String, Object> conditionColumns = new HashMap<>();
                 conditionColumns.put("memory", 12);
