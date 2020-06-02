@@ -6,6 +6,7 @@ import com._4paradigm.rtidb.client.base.Config;
 import com._4paradigm.rtidb.client.base.TestCaseBase;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.impl.RTIDBClusterClient;
+import com._4paradigm.rtidb.client.impl.BlobData;
 import com._4paradigm.rtidb.client.impl.RelationalIterator;
 import com._4paradigm.rtidb.client.impl.TableSyncClientImpl;
 import com._4paradigm.rtidb.client.schema.ColumnType;
@@ -919,7 +920,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 queryMap = it.getDecodedValue();
                 Assert.assertEquals(queryMap.size(), 2);
                 Assert.assertEquals(queryMap.get("id"), 11l);
-                Assert.assertTrue(buf.equals((ByteBuffer) queryMap.get("image")));
+                Assert.assertTrue(buf.equals(((BlobData) queryMap.get("image")).getData()));
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -981,7 +982,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 queryMap = it.getDecodedValue();
                 Assert.assertEquals(queryMap.size(), 2);
                 Assert.assertEquals(queryMap.get("id"), 11l);
-                Assert.assertTrue(buf1.equals((ByteBuffer) queryMap.get("image")));
+                Assert.assertTrue(buf1.equals(((BlobData) queryMap.get("image")).getData()));
             }
             {
                 Map<String, Object> index2 = new HashMap<>();
@@ -994,7 +995,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.size(), 3);
                 Assert.assertEquals(queryMap.get("id"), 12l);
                 Assert.assertEquals(queryMap.get("attribute"), "a2");
-                Assert.assertTrue(buf2.equals((ByteBuffer)queryMap.get("image")));
+                Assert.assertTrue(buf2.equals(((BlobData)queryMap.get("image")).getData()));
             }
             //batch query
             {
@@ -1019,14 +1020,14 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.size(), 3);
                 Assert.assertEquals(queryMap.get("id"), 12l);
                 Assert.assertEquals(queryMap.get("attribute"), "a2");
-                Assert.assertTrue(buf2.equals((ByteBuffer) queryMap.get("image")));
+                Assert.assertTrue(buf2.equals(((BlobData) queryMap.get("image")).getData()));
 
                 it.next();
                 queryMap = it.getDecodedValue();
                 Assert.assertEquals(queryMap.size(), 3);
                 Assert.assertEquals(queryMap.get("id"), 11l);
                 Assert.assertEquals(queryMap.get("attribute"), "a1");
-                Assert.assertTrue(buf1.equals((ByteBuffer) queryMap.get("image")));
+                Assert.assertTrue(buf1.equals(((BlobData) queryMap.get("image")).getData()));
 
                 it.next();
                 Assert.assertFalse(it.valid());
@@ -1056,7 +1057,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.size(), 3);
                 Assert.assertEquals(queryMap.get("id"), 11l);
                 Assert.assertEquals(queryMap.get("attribute"), "a3");
-                Assert.assertTrue(buf3.equals((ByteBuffer)queryMap.get("image")));
+                Assert.assertTrue(buf3.equals(((BlobData)queryMap.get("image")).getData()));
             }
             {
                 Map<String, Object> conditionColumns2 = new HashMap<>();
@@ -1076,7 +1077,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.size(), 3);
                 Assert.assertEquals(queryMap.get("id"), 12l);
                 Assert.assertEquals(queryMap.get("attribute"), "a3");
-                Assert.assertTrue(buf2.equals((ByteBuffer) queryMap.get("image")));
+                Assert.assertTrue(buf2.equals(((BlobData) queryMap.get("image")).getData()));
 
             }
             {
@@ -1177,7 +1178,10 @@ public class TableSyncClientTest extends TestCaseBase {
                 queryMap = it.getDecodedValue();
                 Assert.assertEquals(queryMap.size(), 3);
                 Assert.assertEquals(queryMap.get("id"), 11l);
-                Assert.assertTrue(buf1.equals((ByteBuffer)queryMap.get("image")));
+                Assert.assertTrue(buf1.equals(((BlobData)queryMap.get("image")).getData()));
+                Assert.assertTrue(buf1.equals(((BlobData)queryMap.get("image")).getData()));
+                Assert.assertTrue(buf1.equals(((BlobData)queryMap.get("image")).getData()));
+                Assert.assertTrue(buf1.equals(((BlobData)queryMap.get("image")).getData()));
                 Assert.assertEquals(queryMap.get("price"), 11.1);
             }
             {
@@ -1191,7 +1195,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.size(), 5);
                 Assert.assertEquals(queryMap.get("id"), 12l);
                 Assert.assertEquals(queryMap.get("attribute"), "a2");
-                Assert.assertTrue(buf2.equals((ByteBuffer)queryMap.get("image")));
+                Assert.assertTrue(buf2.equals(((BlobData)queryMap.get("image")).getData()));
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 12.2);
             }
@@ -1207,7 +1211,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.size(), 5);
                 Assert.assertEquals(queryMap.get("id"), 12l);
                 Assert.assertEquals(queryMap.get("attribute"), "a2");
-                Assert.assertTrue(buf2.equals((ByteBuffer)queryMap.get("image")));
+                Assert.assertTrue(buf2.equals(((BlobData)queryMap.get("image")).getData()));
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 12.2);
             }
@@ -1237,7 +1241,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.size(), 5);
                 Assert.assertEquals(queryMap.get("id"), 12l);
                 Assert.assertEquals(queryMap.get("attribute"), "a2");
-                Assert.assertTrue(buf2.equals((ByteBuffer)queryMap.get("image")));
+                Assert.assertTrue(buf2.equals(((BlobData)queryMap.get("image")).getData()));
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 12.2);
 
@@ -1280,7 +1284,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.size(), 5);
                 Assert.assertEquals(queryMap.get("id"), 12l);
                 Assert.assertEquals(queryMap.get("attribute"), "a2");
-                Assert.assertTrue(buf2.equals((ByteBuffer)queryMap.get("image")));
+                Assert.assertTrue(buf2.equals(((BlobData)queryMap.get("image")).getData()));
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 12.2);
 
@@ -1290,7 +1294,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.size(), 5);
                 Assert.assertEquals(queryMap.get("id"), 13l);
                 Assert.assertEquals(queryMap.get("attribute"), "a3");
-                Assert.assertTrue(buf2.equals((ByteBuffer)queryMap.get("image")));
+                Assert.assertTrue(buf2.equals(((BlobData)queryMap.get("image")).getData()));
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 12.2);
 
@@ -1321,7 +1325,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.size(), 5);
                 Assert.assertEquals(queryMap.get("id"), 12l);
                 Assert.assertEquals(queryMap.get("attribute"), "a2");
-                Assert.assertTrue(buf2.equals((ByteBuffer)queryMap.get("image")));
+                Assert.assertTrue(buf2.equals(((BlobData)queryMap.get("image")).getData()));
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 12.2);
 
@@ -1331,7 +1335,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.size(), 5);
                 Assert.assertEquals(queryMap.get("id"), 12l);
                 Assert.assertEquals(queryMap.get("attribute"), "a2");
-                Assert.assertTrue(buf2.equals((ByteBuffer)queryMap.get("image")));
+                Assert.assertTrue(buf2.equals(((BlobData)queryMap.get("image")).getData()));
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 12.2);
 
@@ -1341,7 +1345,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.size(), 5);
                 Assert.assertEquals(queryMap.get("id"), 13l);
                 Assert.assertEquals(queryMap.get("attribute"), "a3");
-                Assert.assertTrue(buf2.equals((ByteBuffer)queryMap.get("image")));
+                Assert.assertTrue(buf2.equals(((BlobData)queryMap.get("image")).getData()));
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 12.2);
 
@@ -1372,7 +1376,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.size(), 5);
                 Assert.assertEquals(queryMap.get("id"), 12l);
                 Assert.assertEquals(queryMap.get("attribute"), "a2");
-                Assert.assertEquals(queryMap.get("image"), buf3);
+                Assert.assertEquals(((BlobData)queryMap.get("image")).getData(), buf3);
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 13.3);
             }
@@ -1399,7 +1403,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.size(), 5);
                 Assert.assertEquals(queryMap.get("id"), 12l);
                 Assert.assertEquals(queryMap.get("attribute"), "a2");
-                Assert.assertTrue(buf4.equals((ByteBuffer)queryMap.get("image")));
+                Assert.assertTrue(buf4.equals(((BlobData)queryMap.get("image")).getData()));
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 14.4);
             }
@@ -1426,7 +1430,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.size(), 5);
                 Assert.assertEquals(queryMap.get("id"), 12l);
                 Assert.assertEquals(queryMap.get("attribute"), "a2");
-                Assert.assertTrue(buf5.equals((ByteBuffer)queryMap.get("image")));
+                Assert.assertTrue(buf5.equals(((BlobData)queryMap.get("image")).getData()));
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 15.5);
 
@@ -1436,7 +1440,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.size(), 5);
                 Assert.assertEquals(queryMap.get("id"), 13l);
                 Assert.assertEquals(queryMap.get("attribute"), "a3");
-                Assert.assertTrue(buf5.equals((ByteBuffer)queryMap.get("image")));
+                Assert.assertTrue(buf5.equals(((BlobData)queryMap.get("image")).getData()));
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 15.5);
             }
@@ -1464,7 +1468,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.size(), 5);
                 Assert.assertEquals(queryMap.get("id"), 16l);
                 Assert.assertEquals(queryMap.get("attribute"), "a3");
-                Assert.assertTrue(buf6.equals((ByteBuffer)queryMap.get("image")));
+                Assert.assertTrue(buf6.equals(((BlobData)queryMap.get("image")).getData()));
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 16.6);
             }
@@ -1520,7 +1524,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.size(), 5);
                 Assert.assertEquals(queryMap.get("id"), 12l);
                 Assert.assertEquals(queryMap.get("attribute"), null);
-                Assert.assertTrue(buf2.equals((ByteBuffer) queryMap.get("image")));
+                Assert.assertTrue(buf2.equals(((BlobData) queryMap.get("image")).getData()));
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 12.2);
             }
@@ -1536,7 +1540,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.size(), 5);
                 Assert.assertEquals(queryMap.get("id"), 11l);
                 Assert.assertEquals(queryMap.get("attribute"), "a1");
-                Assert.assertTrue(buf1.equals((ByteBuffer) queryMap.get("image")));
+                Assert.assertTrue(buf1.equals(((BlobData) queryMap.get("image")).getData()));
                 Assert.assertEquals(queryMap.get("memory"), null);
                 Assert.assertEquals(queryMap.get("price"), 11.1);
 
@@ -1565,7 +1569,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.size(), 5);
                 Assert.assertEquals(queryMap.get("id"), 12l);
                 Assert.assertEquals(queryMap.get("attribute"), null);
-                Assert.assertTrue(buf2.equals((ByteBuffer) queryMap.get("image")));
+                Assert.assertTrue(buf2.equals(((BlobData) queryMap.get("image")).getData()));
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 12.2);
 
@@ -1575,7 +1579,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.size(), 5);
                 Assert.assertEquals(queryMap.get("id"), 13l);
                 Assert.assertEquals(queryMap.get("attribute"), "a3");
-                Assert.assertTrue(buf2.equals((ByteBuffer) queryMap.get("image")));
+                Assert.assertTrue(buf2.equals(((BlobData) queryMap.get("image")).getData()));
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 12.2);
 
@@ -1791,7 +1795,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.get("name"), "n1");
                 Assert.assertEquals(queryMap.get("sex"), true);
                 Assert.assertEquals(queryMap.get("attribute"), "a1");
-                Assert.assertTrue(StringToBB("i1").equals((ByteBuffer)queryMap.get("image")));
+                Assert.assertTrue(StringToBB("i1").equals(((BlobData)queryMap.get("image")).getData()));
                 Assert.assertEquals(queryMap.get("memory"), 11);
                 Assert.assertEquals(queryMap.get("price"), 11.1);
                 Assert.assertEquals(queryMap.get("attribute2"), new Date(2020, 5, 1));
@@ -1809,7 +1813,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.get("name"), "n1");
                 Assert.assertEquals(queryMap.get("sex"), true);
                 Assert.assertEquals(queryMap.get("attribute"), "a1");
-                Assert.assertTrue(StringToBB("i1").equals((ByteBuffer) queryMap.get("image")));
+                Assert.assertTrue(StringToBB("i1").equals(((BlobData) queryMap.get("image")).getData()));
                 Assert.assertEquals(queryMap.get("memory"), 11);
                 Assert.assertEquals(queryMap.get("price"), 11.1);
                 Assert.assertEquals(queryMap.get("attribute2"), new Date(2020, 5, 1));
@@ -1827,7 +1831,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.get("name"), "n2");
                 Assert.assertEquals(queryMap.get("sex"), false);
                 Assert.assertEquals(queryMap.get("attribute"), "a2");
-                Assert.assertTrue(StringToBB("i2").equals((ByteBuffer) queryMap.get("image")));
+                Assert.assertTrue(StringToBB("i2").equals(((BlobData) queryMap.get("image")).getData()));
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 12.2);
                 Assert.assertEquals(queryMap.get("attribute2"), new Date(2020, 5, 2));
@@ -1841,7 +1845,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.get("name"), "n3");
                 Assert.assertEquals(queryMap.get("sex"), true);
                 Assert.assertEquals(queryMap.get("attribute"), "a3");
-                Assert.assertTrue(StringToBB("i3").equals((ByteBuffer) queryMap.get("image")));
+                Assert.assertTrue(StringToBB("i3").equals(((BlobData) queryMap.get("image")).getData()));
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 13.3);
                 Assert.assertEquals(queryMap.get("attribute2"), new Date(2020, 5, 3));
@@ -1870,7 +1874,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.get("name"), "n1");
                 Assert.assertEquals(queryMap.get("sex"), true);
                 Assert.assertEquals(queryMap.get("attribute"), "a1");
-                Assert.assertTrue(StringToBB("i1").equals((ByteBuffer) queryMap.get("image")));
+                Assert.assertTrue(StringToBB("i1").equals(((BlobData) queryMap.get("image")).getData()));
                 Assert.assertEquals(queryMap.get("memory"), 11);
                 Assert.assertEquals(queryMap.get("price"), 11.1);
                 Assert.assertEquals(queryMap.get("attribute2"), new Date(2020, 5, 1));
@@ -1884,7 +1888,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.get("name"), "n2");
                 Assert.assertEquals(queryMap.get("sex"), false);
                 Assert.assertEquals(queryMap.get("attribute"), "a2");
-                Assert.assertTrue(StringToBB("i2").equals((ByteBuffer) queryMap.get("image")));
+                Assert.assertTrue(StringToBB("i2").equals(((BlobData) queryMap.get("image")).getData()));
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 12.2);
                 Assert.assertEquals(queryMap.get("attribute2"), new Date(2020, 5, 2));
@@ -1898,7 +1902,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.get("name"), "n3");
                 Assert.assertEquals(queryMap.get("sex"), true);
                 Assert.assertEquals(queryMap.get("attribute"), "a3");
-                Assert.assertTrue(StringToBB("i3").equals((ByteBuffer) queryMap.get("image")));
+                Assert.assertTrue(StringToBB("i3").equals(((BlobData) queryMap.get("image")).getData()));
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 13.3);
                 Assert.assertEquals(queryMap.get("attribute2"), new Date(2020, 5, 3));
@@ -1928,7 +1932,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.get("name"), "n1");
                 Assert.assertEquals(queryMap.get("sex"), true);
                 Assert.assertEquals(queryMap.get("attribute"), "a1");
-                Assert.assertTrue(StringToBB("i5").equals((ByteBuffer) queryMap.get("image")));
+                Assert.assertTrue(StringToBB("i5").equals(((BlobData) queryMap.get("image")).getData()));
                 Assert.assertEquals(queryMap.get("memory"), 11);
                 Assert.assertEquals(queryMap.get("price"), 15.5);
                 Assert.assertEquals(queryMap.get("attribute2"), new Date(2020, 5, 1));
@@ -1954,7 +1958,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.get("name"), "n1");
                 Assert.assertEquals(queryMap.get("sex"), true);
                 Assert.assertEquals(queryMap.get("attribute"), "a1");
-                Assert.assertTrue(StringToBB("i6").equals((ByteBuffer) queryMap.get("image")));
+                Assert.assertTrue(StringToBB("i6").equals(((BlobData) queryMap.get("image")).getData()));
                 Assert.assertEquals(queryMap.get("memory"), 11);
                 Assert.assertEquals(queryMap.get("price"), 16.6);
                 Assert.assertEquals(queryMap.get("attribute2"), new Date(2020, 5, 1));
@@ -1980,7 +1984,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.get("name"), "n2");
                 Assert.assertEquals(queryMap.get("sex"), false);
                 Assert.assertEquals(queryMap.get("attribute"), "a2");
-                Assert.assertTrue(StringToBB("i7").equals((ByteBuffer) queryMap.get("image")));
+                Assert.assertTrue(StringToBB("i7").equals(((BlobData) queryMap.get("image")).getData()));
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 17.7);
                 Assert.assertEquals(queryMap.get("attribute2"), new Date(2020, 5, 2));
@@ -1994,7 +1998,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.get("name"), "n3");
                 Assert.assertEquals(queryMap.get("sex"), true);
                 Assert.assertEquals(queryMap.get("attribute"), "a3");
-                Assert.assertTrue(StringToBB("i7").equals((ByteBuffer) queryMap.get("image")));
+                Assert.assertTrue(StringToBB("i7").equals(((BlobData) queryMap.get("image")).getData()));
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 17.7);
                 Assert.assertEquals(queryMap.get("attribute2"), new Date(2020, 5, 3));
@@ -2102,7 +2106,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.get("name"), "n1");
                 Assert.assertEquals(queryMap.get("sex"), true);
                 Assert.assertEquals(queryMap.get("attribute"), "a1");
-                Assert.assertTrue(StringToBB("i5").equals((ByteBuffer) queryMap.get("image")));
+                Assert.assertTrue(StringToBB("i5").equals(((BlobData) queryMap.get("image")).getData()));
                 Assert.assertEquals(queryMap.get("memory"), 11);
                 Assert.assertEquals(queryMap.get("price"), 15.5);
                 Assert.assertEquals(queryMap.get("attribute2"), new Date(2020, 5, 1));
@@ -2130,7 +2134,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.get("name"), "n1");
                 Assert.assertEquals(queryMap.get("sex"), false);
                 Assert.assertEquals(queryMap.get("attribute"), "a5");
-                Assert.assertTrue(StringToBB("i6").equals((ByteBuffer) queryMap.get("image")));
+                Assert.assertTrue(StringToBB("i6").equals(((BlobData) queryMap.get("image")).getData()));
                 Assert.assertEquals(queryMap.get("memory"), 11);
                 Assert.assertEquals(queryMap.get("price"), 16.6);
                 Assert.assertEquals(queryMap.get("attribute2"), new Date(2020, 5, 1));
@@ -2158,7 +2162,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.get("name"), "n5");
                 Assert.assertEquals(queryMap.get("sex"), false);
                 Assert.assertEquals(queryMap.get("attribute"), "a2");
-                Assert.assertTrue(StringToBB("i7").equals((ByteBuffer) queryMap.get("image")));
+                Assert.assertTrue(StringToBB("i7").equals(((BlobData) queryMap.get("image")).getData()));
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 17.7);
                 Assert.assertEquals(queryMap.get("attribute2"), new Date(2020, 5, 2));
@@ -2172,7 +2176,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.get("name"), "n5");
                 Assert.assertEquals(queryMap.get("sex"), true);
                 Assert.assertEquals(queryMap.get("attribute"), "a3");
-                Assert.assertTrue(StringToBB("i7").equals((ByteBuffer) queryMap.get("image")));
+                Assert.assertTrue(StringToBB("i7").equals(((BlobData) queryMap.get("image")).getData()));
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 17.7);
                 Assert.assertEquals(queryMap.get("attribute2"), new Date(2020, 5, 3));
@@ -2369,7 +2373,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(TraverseMap.get("name"), "n" + i);
                 Assert.assertEquals(TraverseMap.get("sex"), true);
                 Assert.assertEquals(TraverseMap.get("attribute"), "a" + i);
-                Assert.assertTrue(StringToBB(String.format("i%d", i)).equals((ByteBuffer)TraverseMap.get("image")));
+                Assert.assertTrue(StringToBB(String.format("i%d", i)).equals(((BlobData)TraverseMap.get("image")).getData()));
                 Assert.assertEquals(TraverseMap.get("memory"), 10 + i);
                 Assert.assertEquals(TraverseMap.get("price"), 11.1 + i);
                 Assert.assertEquals(TraverseMap.get("attribute2"), new Date(2020, 5, 2));
@@ -2394,7 +2398,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(TraverseMap.get("name"), "n" + i);
                 Assert.assertEquals(TraverseMap.get("sex"), true);
                 Assert.assertEquals(TraverseMap.get("attribute"), "a" + i);
-                Assert.assertTrue(StringToBB(String.format("i%d", i)).equals((ByteBuffer) TraverseMap.get("image")));
+                Assert.assertTrue(StringToBB(String.format("i%d", i)).equals(((BlobData) TraverseMap.get("image")).getData()));
                 Assert.assertEquals(TraverseMap.get("memory"), 10 + i);
                 Assert.assertEquals(TraverseMap.get("price"), 11.1 + i);
                 Assert.assertEquals(TraverseMap.get("attribute2"), new Date(2020, 5, 2));
@@ -2442,7 +2446,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Map<String, Object> TraverseMap = trit.getDecodedValue();
                 Assert.assertEquals(TraverseMap.size(), 2);
                 Assert.assertEquals(TraverseMap.get("id"), i);
-                Assert.assertEquals(StringToBB("i"+i), (ByteBuffer)TraverseMap.get("image"));
+                Assert.assertEquals(StringToBB("i"+i), ((BlobData)TraverseMap.get("image")).getData());
                 trit.next();
             }
             Assert.assertEquals(trit.getCount(), 1000);
@@ -2458,7 +2462,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Map<String, Object> TraverseMap = trit.getDecodedValue();
                 Assert.assertEquals(TraverseMap.size(), 3);
                 Assert.assertEquals(TraverseMap.get("id"), i);
-                Assert.assertEquals(StringToBB("i" + i), (ByteBuffer) TraverseMap.get("image"));
+                Assert.assertEquals(StringToBB("i" + i), ((BlobData) TraverseMap.get("image")).getData());
                 trit.next();
             }
             Assert.assertEquals(trit.getCount(), 900);
@@ -2658,7 +2662,7 @@ public class TableSyncClientTest extends TestCaseBase {
             Assert.assertEquals(map.size(), 3);
             Assert.assertEquals(map.get("id"), pr.getAutoGenPk());
             Assert.assertEquals(map.get("attribute"), "a1");
-            Assert.assertTrue(StringToBB("i1").equals((ByteBuffer)map.get("image")));
+            Assert.assertTrue(StringToBB("i1").equals(((BlobData)map.get("image")).getData()));
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -2702,7 +2706,7 @@ public class TableSyncClientTest extends TestCaseBase {
             Assert.assertEquals(map.size(), 3);
             Assert.assertEquals(map.get("id"), pr.getAutoGenPk());
             Assert.assertEquals(map.get("attribute"), 12l);
-            Assert.assertEquals(map.get("image"), StringToBB("i1"));
+            Assert.assertEquals(((BlobData)map.get("image")).getData(), StringToBB("i1"));
 
         } catch (Exception e) {
             e.printStackTrace();

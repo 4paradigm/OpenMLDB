@@ -211,42 +211,15 @@ public class RelationalIterator {
             }
         }
         for (Integer idx : blobIdxList) {
-            Object[] result = new Object[1];
             ColumnDesc colDesc = schema.get(idx);
             Object col = map.get(colDesc.getName());
             if (col == null) {
                 continue;
             }
-            boolean ok = getObjectStore(th.getTableInfo().getTid(), (long) col, result, th);
-            if (!ok) {
-                throw new TabletException("get blob data failed");
-            }
-            map.put(colDesc.getName(), result[0]);
+            BlobData blobData = new BlobData(th, (long)col);
+            map.put(colDesc.getName(), blobData);
         }
         return map;
-    }
-
-    private boolean getObjectStore(int tid, long key, Object[] result, TableHandler th) throws TabletException {
-        if (result.length < 1) {
-            throw new TabletException("result array size must greather 1");
-        }
-        BlobServer bs = th.getBlobServer();
-        if (bs == null) {
-            throw new TabletException("can not found available blobserver with tid " + tid);
-        }
-        OSS.GetRequest.Builder builder = OSS.GetRequest.newBuilder();
-        builder.setTid(tid);
-        builder.setPid(0);
-        builder.setKey(key);
-
-        OSS.GetRequest request = builder.build();
-        OSS.GetResponse response = bs.get(request);
-        if (response != null && response.getCode() == 0) {
-            ByteString data = response.getData();
-            result[0] = data.asReadOnlyByteBuffer().rewind();
-            return true;
-        }
-        return false;
     }
 
     private void getData() throws TimeoutException, TabletException {
