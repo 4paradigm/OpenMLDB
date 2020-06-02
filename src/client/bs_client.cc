@@ -43,6 +43,7 @@ bool BsClient::LoadTable(uint32_t tid, uint32_t pid, std::string *msg) {
     ::rtidb::blobserver::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_tid(tid);
     table_meta->set_pid(pid);
+    table_meta->set_table_type(::rtidb::type::kObjectStore);
     ::rtidb::blobserver::LoadTableResponse response;
     bool ok =
         client_.SendRequest(&::rtidb::blobserver::BlobServer_Stub::LoadTable,
