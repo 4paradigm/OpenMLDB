@@ -11,6 +11,7 @@ public class UpdateResult {
 
     public UpdateResult(boolean success) {
         this.success = success;
+        this.affectedCount = 0;
     }
 
     public boolean isSuccess() {
