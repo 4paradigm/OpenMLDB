@@ -96,8 +96,29 @@ class PutResult:
     else:
       return self.__data.auto_gen_pk;
 
+class BlobData:
+  def __init__(self, name, info, key):
+    self._name = name
+    self._info = info
+    self._key = key
+
+  def getKey(self):
+    return self._key
+
+  def getUrl(self):
+    blobUrl = "/v1/get/{}/{}".format(self._name, self._key)
+    return blobUrl
+
+  def getData(self):
+    blobOPResult = interclient.BlobOPResult()
+    self._info.key_ = self._key
+    data = interclient_tools.GetBlob(self._info, blobOPResult)
+    if blobOPResult.code_ != 0:
+      raise Exception("erred at get blob data {}".format(blobOPResult.msg_))
+    return data
+
 class RtidbResult:
-  def __init__(self, data):
+  def __init__(self, table_name, data):
     self.__data = data
     self.__type_to_func = {1:self.__data.GetBool, 
       2:self.__data.GetInt16, 3:self.__data.GetInt32, 
@@ -107,7 +128,7 @@ class RtidbResult:
       14: self.__data.GetString, 15:self.__data.GetBlob}
     names = self.__data.GetColumnsName()
     self.__names = [x for x in names]
-    self.__blobInfo = None
+    self._table_name = table_name
   def __iter__(self):
     return self
   def count(self):
@@ -132,18 +153,12 @@ class RtidbResult:
             real_date = date(year, month, day)
             result.update({self.__names[idx]: real_date})
           elif type == 15:
-            blob_key = self.__type_to_func[type](idx)
-            if self.__blobInfo == None:
-              blobInfoResult = self.__data.GetBlobInfo()
-              if blobInfoResult.code_ != 0:
-                raise Exception("erred at get blob server: {}".format(blobInfoResult.msg_))
-              self.__blobInfo = blobInfoResult
-            self.__blobInfo.key_ = blob_key
-            blobOPResult = interclient.BlobOPResult()
-            blob_data = interclient_tools.GetBlob(self.__blobInfo, blobOPResult)
-            if blobOPResult.code_ != 0:
-              raise Exception("erred at get blob data {}".format(blobOPResult.msg_))
-            result.update({self.__names[idx]: blob_data})
+            blobKey = self.__type_to_func[type](idx)
+            blobInfoResult = self.__data.GetBlobInfo()
+            if blobInfoResult.code_ != 0:
+              raise Exception("erred at get blob server: {}".format(blobInfoResult.msg_))
+            blobData = BlobData(self._table_name, blobInfoResult, blobKey)
+            result.update({self.__names[idx] : blobData})
           else:
             result.update({self.__names[idx]: self.__type_to_func[type](idx)})
       return result
@@ -225,7 +240,7 @@ class RTIDBClient:
     resp = self.__client.BatchQuery(table_name, ros)
     if resp.code_ != 0:
       raise Exception(resp.code_, resp.msg_)
-    return RtidbResult(resp)
+    return RtidbResult(table_name, resp)
 
   def batch_query(self, table_name: str, read_options: ReadOptions):
     if (len(read_options) < 1):
@@ -237,7 +252,7 @@ class RTIDBClient:
     resp = self.__client.BatchQuery(table_name, ros)
     if (resp.code_ != 0):
       raise Exception(resp.code_, resp.msg_)
-    return RtidbResult(resp)
+    return RtidbResult(table_name, resp)
 
   def delete(self, table_name: str, condition_columns: map):
     v = buildNoNoneStrMap(condition_columns)
@@ -254,4 +269,4 @@ class RTIDBClient:
     resp = self.__client.Traverse(table_name, ro)
     if (resp.code_ != 0):
       raise Exception(resp.code_, resp.msg_)
-    return RtidbResult(resp)
+    return RtidbResult(table_name, resp)
