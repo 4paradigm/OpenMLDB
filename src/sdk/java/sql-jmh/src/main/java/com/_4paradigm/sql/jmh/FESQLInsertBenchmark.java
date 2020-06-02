@@ -34,7 +34,7 @@ public class FESQLInsertBenchmark {
             "col5 string," +
             "index(key=col1, ts=col2));";
     private boolean setupOk = false;
-    private int recordSize = 100000;
+    private int recordSize = 100;
     private String format = "insert into %s values('%s', %d," +
             "100.0, 200.0, 'hello world');";
     private long counter = 0;
@@ -70,8 +70,7 @@ public class FESQLInsertBenchmark {
                 dataset.add(String.format(format, "perf","pkxxx" + i, System.currentTimeMillis()));
             }
             String sql = String.format(format, "perf2", "pkxxx" + i, System.currentTimeMillis());
-            boolean ok = executor.executeInsert(db, sql);
-            System.out.println(ok);
+            executor.executeInsert(db, sql);
         }
     }
 
@@ -89,18 +88,9 @@ public class FESQLInsertBenchmark {
         ResultSet rs = executor.executeSQL(db, sql);
     }
     @Benchmark
-    public void select100Feature() {
+    public void select150Feature() {
         String sql = "select col1, col2, col3";
-        for (int i = 0; i < 30; i++) {
-            sql += String.format(", col1 as col1%d, col2 as col2%d, col3 as col3%d", i, i, i);
-        }
-        sql += " from perf2 limit 1;";
-        ResultSet rs = executor.executeSQL(db, sql);
-    }
-    @Benchmark
-    public void select200Feature() {
-        String sql = "select col1, col2, col3";
-        for (int i = 0; i < 60; i++) {
+        for (int i = 0; i < 50; i++) {
             sql += String.format(", col1 as col1%d, col2 as col2%d, col3 as col3%d", i, i, i);
         }
         sql += " from perf2 limit 1;";
@@ -112,7 +102,6 @@ public class FESQLInsertBenchmark {
                 .include(FESQLInsertBenchmark.class.getSimpleName())
                 .forks(1)
                 .build();
-
         new Runner(opt).run();
     }
 }
