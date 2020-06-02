@@ -249,9 +249,6 @@ void BaseClient::RefreshTable() {
             tb != rtidb::type::TableType::kObjectStore) {
             continue;
         }
-        if (table_info->table_partition().empty()) {
-            continue;
-        }
         std::shared_ptr<TableHandler> handler =
             std::make_shared<TableHandler>();
         handler->partition.resize(table_info->table_partition_size());
@@ -266,10 +263,26 @@ void BaseClient::RefreshTable() {
             }
             id++;
         }
-        if (table_info->table_type() == rtidb::type::kObjectStore) {
-            if (handler->partition[0].leader.empty()) {
-                continue;
+        if (table_info->has_blob_info()) {
+            handler->blob_partition.resize(
+                table_info->blob_info().blob_partition_size());
+            int id = 0;
+            for (const auto& part : table_info->blob_info().blob_partition()) {
+                for (const auto& meta : part.partition_meta()) {
+                    if (!meta.is_alive()) {
+                        continue;
+                    }
+                    if (meta.is_leader()) {
+                        handler->blob_partition[id].leader = meta.endpoint();
+                    } else {
+                        handler->blob_partition[id].follower.push_back(
+                            meta.endpoint());
+                    }
+                }
+                id++;
             }
+        }
+        if (table_info->table_type() == rtidb::type::kObjectStore) {
             handler->table_info = table_info;
             new_tables.insert(std::make_pair(table_name, handler));
             continue;
@@ -292,11 +305,13 @@ void BaseClient::RefreshTable() {
         if (code != 0) {
             continue;
         }
-        if (!table_info->blobs().empty()) {
+        if (table_info->has_blob_info()) {
             for (int i = 0; i < columns->size(); i++) {
-                if (columns->Get(i).data_type() == rtidb::type::kBlob) {
+                const auto& type = columns->Get(i).data_type();
+                if (type == rtidb::type::kBlob) {
                     handler->blobSuffix.push_back(i);
-                    handler->blobFieldNames.push_back(columns->Get(i).name());
+                    const std::string& col_name = columns->Get(i).name();
+                    handler->blobFieldNames.push_back(col_name);
                 }
             }
         }
@@ -414,7 +429,6 @@ void RtidbClient::SetZkCheckInterval(int32_t interval) {
 GeneralResult RtidbClient::Init(const std::string& zk_cluster,
                                 const std::string& zk_path) {
     GeneralResult result;
-    std::string value;
     std::shared_ptr<rtidb::zk::ZkClient> zk_client;
     if (zk_cluster.empty()) {
         result.SetError(-1, "initial failed! not set zk_cluster");
@@ -483,6 +497,9 @@ bool RtidbClient::Traverse(const std::string& name, const struct ReadOption& ro,
             }
             ::rtidb::api::Columns* index = ro_pb.add_index();
             index->add_name(kv.first);
+            if (kv.second == ::rtidb::codec::NONETOKEN) {
+                continue;
+            }
             ::rtidb::type::DataType type = iter->second;
             std::string* val = index->mutable_value();
             if (!rtidb::codec::Convert(kv.second, type, val)) {
@@ -495,12 +512,12 @@ bool RtidbClient::Traverse(const std::string& name, const struct ReadOption& ro,
     return ok;
 }
 
-GeneralResult RtidbClient::Update(
+UpdateResult RtidbClient::Update(
     const std::string& table_name,
     const std::map<std::string, std::string>& condition_map,
     const std::map<std::string, std::string>& value_map,
     const WriteOption& wo) {
-    GeneralResult result;
+    UpdateResult result;
     std::shared_ptr<TableHandler> th = client_->GetTableHandler(table_name);
     if (th == nullptr) {
         result.SetError(-1, "table not found");
@@ -544,11 +561,13 @@ GeneralResult RtidbClient::Update(
         result.SetError(-1, msg);
         return result;
     }
+    uint32_t count = 0;
     bool ok = tablet_client->Update(tid, pid, cd_columns, new_value_schema,
-                                    data, &msg);
+                                    data, &count, &msg);
     if (!ok) {
         result.SetError(-1, msg);
     }
+    result.SetAffectedCount(count);
     return result;
 }
 
@@ -606,9 +625,9 @@ PutResult RtidbClient::Put(
     return result;
 }
 
-GeneralResult RtidbClient::Delete(
+UpdateResult RtidbClient::Delete(
     const std::string& name, const std::map<std::string, std::string>& values) {
-    GeneralResult result;
+    UpdateResult result;
     std::shared_ptr<TableHandler> th = client_->GetTableHandler(name);
     if (th == nullptr) {
         result.SetError(-1, "table not found");
@@ -629,11 +648,13 @@ GeneralResult RtidbClient::Delete(
         result.SetError(cd_rm.code, "GetCdColumns error, msg: " + cd_rm.msg);
         return result;
     }
-    bool ok = tablet->Delete(tid, pid, cd_columns, &result.msg);
+    uint32_t count = 0;
+    bool ok = tablet->Delete(tid, pid, cd_columns, &count, &result.msg);
     if (!ok) {
         result.code = -1;
         return result;
     }
+    result.SetAffectedCount(count);
     return result;
 }
 
@@ -657,6 +678,9 @@ BatchQueryResult RtidbClient::BatchQuery(const std::string& name,
             }
             ::rtidb::api::Columns* index = ro_ptr->add_index();
             index->add_name(kv.first);
+            if (kv.second == ::rtidb::codec::NONETOKEN) {
+                continue;
+            }
             ::rtidb::type::DataType type = iter->second;
             std::string* val = index->mutable_value();
             if (!rtidb::codec::Convert(kv.second, type, val)) {
@@ -715,15 +739,11 @@ BlobInfoResult RtidbClient::GetBlobInfo(const std::string& name) {
     }
     std::string msg;
     std::shared_ptr<rtidb::client::BsClient> blob_server;
-    if (th->table_info->table_type() == rtidb::type::kObjectStore) {
-        if (th->partition.empty()) {
-            result.SetError(-1, "not found available endpoint");
-            return result;
-        }
-        blob_server = client_->GetBlobClient(th->partition[0].leader, &msg);
-    } else {
-        blob_server = client_->GetBlobClient(th->table_info->blobs(0), &msg);
+    if (th->blob_partition.empty()) {
+        result.SetError(-1, "not found available blob endpoint");
+        return result;
     }
+    blob_server = client_->GetBlobClient(th->blob_partition[0].leader, &msg);
     if (!blob_server) {
         result.SetError(-1, "blob server is unavailable status");
         return result;

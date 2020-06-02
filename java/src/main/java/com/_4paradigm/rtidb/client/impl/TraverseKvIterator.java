@@ -203,18 +203,18 @@ public class TraverseKvIterator implements KvIterator {
             }
             switch (th.getFormatVersion()) {
                 case 1:
-                    rv.read(ByteBuffer.wrap(uncompressed), row, 0, length);
+                    rv.read(ByteBuffer.wrap(uncompressed).order(ByteOrder.LITTLE_ENDIAN), row, 0, length);
                     break;
                 default:
-                    RowCodec.decode(ByteBuffer.wrap(uncompressed), schema, row, 0, length);
+                    RowCodec.decode(ByteBuffer.wrap(uncompressed).order(ByteOrder.LITTLE_ENDIAN), schema, row, 0, length);
             }
         } else {
             switch (th.getFormatVersion()) {
                 case 1:
-                    rv.read(slice, row, 0, length);
+                    rv.read(slice.order(ByteOrder.LITTLE_ENDIAN), row, 0, length);
                     break;
                 default:
-                    RowCodec.decode(slice, schema, row, start, length);
+                    RowCodec.decode(slice.order(ByteOrder.LITTLE_ENDIAN), schema, row, start, length);
             }
         }
     }
@@ -243,7 +243,7 @@ public class TraverseKvIterator implements KvIterator {
         bb.get(pk_buf);
         pk = new String(pk_buf, charset);
         offset += (8 + total_size);
-        slice = bb.slice().order(ByteOrder.LITTLE_ENDIAN);
+        slice = bb.slice();
         int length = total_size - 8 - pk_size;
         slice.limit(length);
     }

@@ -114,11 +114,15 @@ public class ScanFuture implements Future<KvIterator> {
     }
 
     private KvIterator getNewKvIterator(ScanResponse response) {
+        RowKvIterator kit = null;
         if (projection != null) {
-            return new RowKvIterator(response.getPairs(), projection, response.getCount());
+            kit = new RowKvIterator(response.getPairs(), projection, response.getCount());
         }else {
-            return new RowKvIterator(response.getPairs(), t.getSchema(), response.getCount());
+            kit = new RowKvIterator(response.getPairs(), t.getSchema(), response.getCount());
         }
+        kit.setCompressType(t.getTableInfo().getCompressType());
+        return kit;
+
     }
 
     @Override

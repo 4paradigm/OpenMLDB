@@ -295,10 +295,11 @@ class RtidbClient {
     ~RtidbClient();
     GeneralResult Init(const std::string& zk_cluster,
                        const std::string& zk_path);
-    PutResult Put(const std::string& name,
-                  const std::map<std::string, std::string>& value,
-                  const WriteOption& wo);
-    GeneralResult Delete(const std::string& name,
+    PutResult Put(
+        const std::string& name,
+        const std::map<std::string, std::string>& value,
+        const WriteOption& wo);
+    UpdateResult Delete(const std::string& name,
                          const std::map<std::string, std::string>& values);
 
     TraverseResult Traverse(const std::string& name,
@@ -316,7 +317,7 @@ class RtidbClient {
             ros_pb,
         std::string* data, uint32_t* count, std::string* msg);
     void SetZkCheckInterval(int32_t interval);
-    GeneralResult Update(
+    UpdateResult Update(
         const std::string& table_name,
         const std::map<std::string, std::string>& condition_map,
         const std::map<std::string, std::string>& value_map,

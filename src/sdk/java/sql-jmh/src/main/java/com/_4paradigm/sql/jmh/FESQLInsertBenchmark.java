@@ -34,7 +34,7 @@ public class FESQLInsertBenchmark {
             "col5 string," +
             "index(key=col1, ts=col2));";
     private boolean setupOk = false;
-    private int recordSize = 100;
+    private int recordSize = 10000;
     private String format = "insert into %s values('%s', %d," +
             "100.0, 200.0, 'hello world');";
     private long counter = 0;
@@ -87,6 +87,7 @@ public class FESQLInsertBenchmark {
         String sql = "select col1, col2, col3 from perf2 limit 10;";
         ResultSet rs = executor.executeSQL(db, sql);
     }
+
     @Benchmark
     public void select150Feature() {
         String sql = "select col1, col2, col3";
@@ -96,6 +97,17 @@ public class FESQLInsertBenchmark {
         sql += " from perf2 limit 1;";
         ResultSet rs = executor.executeSQL(db, sql);
     }
+
+    @Benchmark
+    public void select510Feature() {
+        String sql = "select col1, col2, col3";
+        for (int i = 0; i < 170; i++) {
+            sql += String.format(", col1 as col1%d, col2 as col2%d, col3 as col3%d", i, i, i);
+        }
+        sql += " from perf2 limit 1;";
+        ResultSet rs = executor.executeSQL(db, sql);
+    }
+
     public static void main(String[] args) throws RunnerException {
 
         Options opt = new OptionsBuilder()

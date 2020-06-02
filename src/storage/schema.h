@@ -67,16 +67,18 @@ enum class IndexStatus { kReady = 0, kWaiting, kDeleting, kDeleted };
 
 class ColumnDef {
  public:
-    ColumnDef(const std::string& name, uint32_t id,
-              ::rtidb::type::DataType type);
+     ColumnDef(const std::string& name, uint32_t id,
+             ::rtidb::type::DataType type, bool not_null);
     inline uint32_t GetId() const { return id_; }
     const std::string& GetName() const { return name_; }
     inline ::rtidb::type::DataType GetType() const { return type_; }
+    bool NotNull() { return not_null_; }
 
  private:
     std::string name_;
     uint32_t id_;
     ::rtidb::type::DataType type_;
+    bool not_null_;
 };
 
 class TableColumn {

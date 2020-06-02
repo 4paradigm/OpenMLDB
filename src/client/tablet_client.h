@@ -64,13 +64,6 @@ class TabletClient {
         uint32_t tid, const ::rtidb::common::ColumnDesc& column_desc,
         const std::string& schema, std::string& msg);  // NOLINT
 
-    bool Update(
-        uint32_t tid, uint32_t pid,
-        const ::google::protobuf::RepeatedPtrField<::rtidb::api::Columns>&
-            cd_columns,
-        const Schema& new_value_schema, const std::string& value,
-        std::string* msg);
-
     bool Query(const std::string& db, const std::string& sql,
                brpc::Controller* cntl, ::rtidb::api::QueryResponse* response);
 
@@ -78,6 +71,11 @@ class TabletClient {
                const std::string& row,
                brpc::Controller* cntl,
                ::rtidb::api::QueryResponse* response);
+    bool Update(uint32_t tid, uint32_t pid,
+            const ::google::protobuf::RepeatedPtrField<
+            ::rtidb::api::Columns>& cd_columns,
+            const Schema& new_value_schema,
+            const std::string& value, uint32_t* count, std::string* msg);
 
     bool Put(uint32_t tid, uint32_t pid, const std::string& value,
              int64_t* auto_gen_pk, std::string* msg);
@@ -122,11 +120,18 @@ class TabletClient {
     bool Delete(uint32_t tid, uint32_t pid, const std::string& pk,
                 const std::string& idx_name, std::string& msg);  // NOLINT
 
+<<<<<<< HEAD
     bool Delete(
         uint32_t tid, uint32_t pid,
         const ::google::protobuf::RepeatedPtrField<::rtidb::api::Columns>&
             cd_columns,
         std::string* msg);
+=======
+    bool Delete(uint32_t tid, uint32_t pid,
+            const ::google::protobuf::RepeatedPtrField<
+            ::rtidb::api::Columns>& cd_columns,
+            uint32_t* count, std::string* msg);
+>>>>>>> origin/develop
 
     bool Count(uint32_t tid, uint32_t pid, const std::string& pk,
                const std::string& idx_name, bool filter_expired_data,

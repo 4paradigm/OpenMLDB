@@ -40,6 +40,7 @@ struct TableHandler {
     std::shared_ptr<google::protobuf::RepeatedPtrField<
         rtidb::common::ColumnDesc>> columns;
     std::vector<PartitionInfo> partition;
+    std::vector<PartitionInfo> blob_partition;
     std::string auto_gen_pk_;
     std::vector<int32_t> blobSuffix;
     std::vector<std::string> blobFieldNames;
@@ -70,6 +71,14 @@ struct PutResult : public GeneralResult {
     }
     int64_t auto_gen_pk;
     bool has_auto_gen_pk = false;
+};
+
+struct UpdateResult : public GeneralResult {
+    UpdateResult(): affected_count(0) {}
+    void SetAffectedCount(uint32_t num) {
+        affected_count = num;
+    }
+    uint32_t affected_count;
 };
 
 struct ReadOption {

@@ -5,11 +5,19 @@ from datetime import date
 class TestRtidb(unittest.TestCase):
   
   def setUp(self):
-    self.nsc = rtidb.RTIDBClient("172.27.128.37:6181", "/issue-5")
+    self.nsc = rtidb.RTIDBClient("127.0.0.1:6181", "/onebox")
 
   def test_query(self):
     data = {"id":"11","attribute":"a1", "image":"i1"}
     self.assertTrue(self.nsc.put("test1", data, None).success())
+    ro = rtidb.ReadOption()
+    ro.index.update({"image":"i1"})
+    try:
+      resp = self.nsc.query("test1", ro)
+    except:
+      self.assertTrue(True);
+    else:
+      self.assertTrue(False);
     ro = rtidb.ReadOption()
     ro.index.update({"id":"11"})
     resp = self.nsc.query("test1", ro)
@@ -19,20 +27,12 @@ class TestRtidb(unittest.TestCase):
       self.assertEqual("a1", l["attribute"])
       self.assertEqual("i1", l["image"])
     condition_columns = {"id":"11"} 
-    ok = self.nsc.delete("test1", condition_columns);
-    self.assertEqual(ok, True);
-    try:
-      resp = self.nsc.query("test1", ro)
-    except:
-      self.assertTrue(True);
-    else:
-      self.assertTrue(False);
-    ''' 
-    for l in resp:
-      self.assertEqual("card3", l["card"])
-      #self.assertEqual("mcc3", l["mcc"]) #TODO: current skip verify mcc, beacuse mcc value is mcc3\x00 maybe server problem
-      self.assertEqual(3, l["p_biz_date"])
-    '''
+    update_result = self.nsc.delete("test1", condition_columns);
+    self.assertEqual(True, update_result.success())
+    self.assertEqual(1, update_result.affected_count())
+    resp = self.nsc.query("test1", ro)
+    self.assertTrue(True);
+    self.assertEqual(0, resp.count())
     # multi index
     data = {"id":"1","name":"n1","mcc":"1","attribute":"a1", "image":b"i1"}
     self.assertTrue(self.nsc.put("rt_ck", data, None).success())
@@ -64,31 +64,27 @@ class TestRtidb(unittest.TestCase):
     self.assertEqual(2, id);
     # delete
     condition_columns = {"id":"1", "name":"n1"} 
-    ok = self.nsc.delete("rt_ck", condition_columns);
-    self.assertEqual(ok, True);
+    update_result = self.nsc.delete("rt_ck", condition_columns);
+    self.assertEqual(True, update_result.success())
+    self.assertEqual(1, update_result.affected_count())
     ro = rtidb.ReadOption()
     ro.index.update({"id":"1"})
     ro.index.update({"name":"n1"})
-    try:
-      resp = self.nsc.query("test1", ro)
-    except:
-      self.assertTrue(True);
-    else:
-      self.assertTrue(False);
+    resp = self.nsc.query("rt_ck", ro)
+    self.assertTrue(True);
+    self.assertEqual(0, resp.count())
     data = {"id":"1","name":"n1","mcc":"1","attribute":"a1", "image":b"i1"}
     self.assertTrue(self.nsc.put("rt_ck", data, None).success())
     condition_columns = {"mcc":"1"} 
-    ok = self.nsc.delete("rt_ck", condition_columns);
-    self.assertEqual(ok, True);
+    update_result = self.nsc.delete("rt_ck", condition_columns);
+    self.assertEqual(True, update_result.success())
+    self.assertEqual(2, update_result.affected_count())
     ro = rtidb.ReadOption()
     ro.index.update({"mcc":"1"})
-    try:
-      resp = self.nsc.query("test1", ro)
-    except:
-      self.assertTrue(True);
-    else:
-      self.assertTrue(False);
-
+    resp = self.nsc.query("rt_ck", ro)
+    self.assertTrue(True);
+    self.assertEqual(0, resp.count())
+    
   def test_traverse(self):
     for i in range(1000) :
         data = {"id":"{:d}".format(i), "attribute":"a{}".format(i), "image":"i{}".format(i)}
@@ -197,8 +193,9 @@ class TestRtidb(unittest.TestCase):
     self.assertTrue(self.nsc.put("test1", data, None).success())
     condition_columns = {"id":"11"} 
     value_columns = {"attribute":"a3","image":"i3"}
-    ok = self.nsc.update("test1", condition_columns, value_columns, None);
-    self.assertEqual(ok, True);
+    update_result = self.nsc.update("test1", condition_columns, value_columns, None);
+    self.assertEqual(True, update_result.success())
+    self.assertEqual(1, update_result.affected_count())
     ro = rtidb.ReadOption()
     ro.index.update({"id":"11"})
     resp = self.nsc.query("test1", ro)
@@ -214,8 +211,9 @@ class TestRtidb(unittest.TestCase):
     self.assertTrue(self.nsc.put("rt_ck", data, None).success())
     condition_columns = {"id":"1", "name":"n1"} 
     value_columns = {"attribute":"a2","image":b"i2"}
-    ok = self.nsc.update("rt_ck", condition_columns, value_columns, None);
-    self.assertEqual(ok, True);
+    update_result = self.nsc.update("rt_ck", condition_columns, value_columns, None);
+    self.assertEqual(True, update_result.success())
+    self.assertEqual(1, update_result.affected_count())
     ro = rtidb.ReadOption()
     ro.index.update({"id":"1"})
     ro.index.update({"name":"n1"})
@@ -228,10 +226,27 @@ class TestRtidb(unittest.TestCase):
       self.assertEqual("a2", l["attribute"])
       self.assertEqual("i2".encode("UTF-8"), l["image"])
 
+    # update empty
+    condition_columns_2 = {"mcc":-1} 
+    value_columns = {"attribute":"a3","image":"i3".encode("UTF-8")}
+    update_result = self.nsc.update("rt_ck", condition_columns_2, value_columns, None);
+    self.assertEqual(True, update_result.success())
+    self.assertEqual(0, update_result.affected_count())
+    # update error 
+    condition_columns = {"image":b"i1"} 
+    value_columns = {"attribute":"a3","image":"i3".encode("UTF-8")}
+    try:
+      update_result = self.nsc.update("rt_ck", condition_columns, value_columns, None);
+    except:
+      self.assertTrue(True)
+    else:
+      self.assertTrue(False)
+
     condition_columns = {"mcc":"1"} 
     value_columns = {"attribute":"a3","image":"i3".encode("UTF-8")}
-    ok = self.nsc.update("rt_ck", condition_columns, value_columns, None);
-    self.assertEqual(ok, True);
+    update_result = self.nsc.update("rt_ck", condition_columns, value_columns, None);
+    self.assertEqual(True, update_result.success())
+    self.assertEqual(2, update_result.affected_count())
     ro = rtidb.ReadOption()
     ro.index.update({"mcc":"1"})
     resp = self.nsc.query("rt_ck", ro)
@@ -296,8 +311,9 @@ class TestRtidb(unittest.TestCase):
     # update
     condition_columns = {"date":date(2020,1,1)} 
     value_columns = {"male":False,"ts":"1588756532"}
-    ok = self.nsc.update("date", condition_columns, value_columns, None);
-    self.assertEqual(ok, True);
+    update_result = self.nsc.update("date", condition_columns, value_columns, None);
+    self.assertEqual(True, update_result.success())
+    self.assertEqual(1, update_result.affected_count())
     ro = rtidb.ReadOption()
     ro.index.update({"date":date(2020,1,1)})
     resp = self.nsc.query("date", ro)
@@ -311,8 +327,9 @@ class TestRtidb(unittest.TestCase):
       self.assertEqual(1588756532, l["ts"])
     condition_columns = {"male":False,"ts":"1588756532"} 
     value_columns = {"male":True}
-    ok = self.nsc.update("date", condition_columns, value_columns, None);
-    self.assertEqual(ok, True);
+    update_result = self.nsc.update("date", condition_columns, value_columns, None);
+    self.assertEqual(True, update_result.success())
+    self.assertEqual(1, update_result.affected_count())
     ro = rtidb.ReadOption()
     ro.index.update({"male":True,"ts":"1588756532"})
     resp = self.nsc.query("date", ro)
@@ -324,16 +341,73 @@ class TestRtidb(unittest.TestCase):
       self.assertEqual(True, l["male"])
       self.assertEqual(date(2020,1,1), l["date"])
       self.assertEqual(1588756532, l["ts"])
+    # delete empty
+    condition_columns = {"date":date(2021,1,1)} 
+    update_result = self.nsc.delete("date", condition_columns);
+    self.assertEqual(True, update_result.success())
+    self.assertEqual(0, update_result.affected_count())
+    # delete error 
+    condition_columns = {"ts": 123} 
+    try:
+      update_result = self.nsc.delete("date", condition_columns);
+    except:
+      self.assertTrue(True)
+    else:
+      self.assertTrue(False)
     # delete
     condition_columns = {"date":date(2020,1,1)} 
-    ok = self.nsc.delete("date", condition_columns);
-    self.assertEqual(ok, True);
-    try:
-      resp = self.nsc.query("date", ro)
-    except:
-      self.assertTrue(True);
-    else:
-      self.assertTrue(False);
+    update_result = self.nsc.delete("date", condition_columns);
+    self.assertEqual(True, update_result.success())
+    self.assertEqual(1, update_result.affected_count())
+    resp = self.nsc.query("date", ro)
+    self.assertTrue(True);
+    self.assertEqual(0, resp.count())
+    
+  def test_index_null(self):
+    data = {"id": 1,"name":"n1","mcc": None,"attribute":"a1", "image":b"i1"}
+    self.assertTrue(self.nsc.put("rt_ck", data, None).success())
+    ro = rtidb.ReadOption()
+    ro.index.update({"mcc":None})
+    resp = self.nsc.query("rt_ck", ro)
+    self.assertEqual(1, resp.count())
+    id = 0;
+    for l in resp:
+      self.assertEqual(1 + id, l["id"])
+      self.assertEqual("n{}".format(id+1), l["name"])
+      self.assertEqual(None, l["mcc"])
+      self.assertEqual("a1", l["attribute"])
+      self.assertEqual(b"i1", l["image"])
+      id += 1;
+    self.assertEqual(1, id);
+    # update
+    condition_columns = {"mcc":None} 
+    value_columns = {"attribute":"a2"}
+    update_result = self.nsc.update("rt_ck", condition_columns, value_columns, None);
+    self.assertEqual(True, update_result.success())
+    self.assertEqual(1, update_result.affected_count())
+    ro = rtidb.ReadOption()
+    ro.index.update({"mcc":None})
+    resp = self.nsc.query("rt_ck", ro)
+    self.assertEqual(1, resp.count())
+    id = 0;
+    for l in resp:
+      self.assertEqual(1 + id, l["id"])
+      self.assertEqual("n{}".format(id+1), l["name"])
+      self.assertEqual(None, l["mcc"])
+      self.assertEqual("a2", l["attribute"])
+      self.assertEqual(b"i1", l["image"])
+      id += 1;
+    self.assertEqual(1, id);
+    # delete
+    condition_columns = {"mcc":None} 
+    update_result = self.nsc.delete("rt_ck", condition_columns);
+    self.assertEqual(True, update_result.success())
+    self.assertEqual(1, update_result.affected_count())
+    ro = rtidb.ReadOption()
+    ro.index.update({"mcc":None})
+    resp = self.nsc.query("rt_ck", ro)
+    self.assertTrue(True);
+    self.assertEqual(0, resp.count())
 
 if __name__ == "__main__":
   unittest.main()

@@ -1654,8 +1654,9 @@ void HandleNSDelete(const std::vector<std::string>& parts,
             printf("GetCdColumns error, msg: %s\n", cd_rm.msg.c_str());
             return;
         }
-        if (tablet_client->Delete(tid, pid, cd_columns, &msg)) {
-            std::cout << "delete ok" << std::endl;
+        uint32_t count = 0;
+        if (tablet_client->Delete(tid, pid, cd_columns, &count, &msg)) {
+            std::cout << "delete ok, affected count: " << count  << std::endl;
         } else {
             std::cout << "delete failed. error msg: " << msg << std::endl;
         }
@@ -1772,12 +1773,13 @@ void HandleNSUpdate(const std::vector<std::string>& parts,
         ::snappy::Compress(value.c_str(), value.length(), &compressed);
         value = compressed;
     }
+    uint32_t count = 0;
     bool ok = tablet_client->Update(tid, pid, cd_columns, new_value_schema,
-                                    value, &msg);
+                                    value, &count, &msg);
     if (!ok) {
         printf("update failed, msg: %s\n", msg.c_str());
     } else {
-        printf("update ok\n");
+        printf("update ok, affected count: %u\n", count);
     }
 }
 
@@ -2040,6 +2042,9 @@ void HandleNSQuery(const std::vector<std::string>& parts,
         }
         ::rtidb::api::Columns* index = ro->add_index();
         index->add_name(kv.first);
+        if (kv.second == ::rtidb::codec::NONETOKEN || kv.second == "null") {
+            continue;
+        }
         ::rtidb::type::DataType type = iter->second;
         std::string val = "";
         if (!rtidb::codec::Convert(kv.second, type, &val)) {
@@ -2302,6 +2307,7 @@ void HandleNSGet(const std::vector<std::string>& parts,
             ::rtidb::codec::FillTableRow(columns.size(), base_columns,
                                          value.c_str(), value.size(), row);
         }
+        ::rtidb::base::TransferString(&row);
         tp.AddRow(row);
         tp.Print(true);
     }
@@ -2853,6 +2859,7 @@ void HandleNSPreview(const std::vector<std::string>& parts,
                                                  value.c_str(), value.size(),
                                                  row);
                 }
+                ::rtidb::base::TransferString(&row);
             }
             tp.AddRow(row);
             index++;

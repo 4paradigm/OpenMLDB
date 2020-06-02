@@ -71,6 +71,22 @@ message UpdateTTLResponse {
     optional string msg = 2;
 }
 
+message BlobPartitionMeta {
+    optional string endpoint = 1;
+    optional bool is_leader = 2 [default = false];
+    optional bool is_alive = 3 [default = true];
+}
+
+message BlobPartition{
+    repeated BlobPartitionMeta partition_meta = 1;
+}
+
+message BlobInfo {
+    optional uint32 replica_num = 1 [default = 1];
+    repeated BlobPartition blob_partition = 2;
+    optional uint32 height = 3 [default = 1];
+}
+
 message TableInfo {
     optional string name = 1;
     optional uint64 ttl = 2 [default = 0, deprecated = true];
@@ -90,7 +106,7 @@ message TableInfo {
     optional rtidb.api.TTLDesc ttl_desc = 16;
     optional rtidb.type.TableType table_type = 17 [default = kTimeSeries];
     optional uint32 format_version = 18 [default = 0];
-    repeated string blobs = 19;
+    optional BlobInfo blob_info = 19;
     optional string db = 20;
 }
 

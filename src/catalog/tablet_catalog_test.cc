@@ -249,6 +249,41 @@ TEST_F(TabletCatalogTest, sql_last_join_smoke_test2) {
     ASSERT_EQ(args->pk, pk);
 }
 
+TEST_F(TabletCatalogTest, sql_window_smoke_500_test) {
+    std::shared_ptr<TabletCatalog> catalog(new TabletCatalog());
+    ASSERT_TRUE(catalog->Init());
+    TestArgs* args = PrepareTable("t1");
+
+    std::shared_ptr<TabletTableHandler> handler(
+        new TabletTableHandler(args->meta, "db1", args->table));
+    ASSERT_TRUE(handler->Init());
+    ASSERT_TRUE(catalog->AddTable(handler));
+    ::fesql::vm::Engine engine(catalog);
+    std::stringstream ss;
+    ss << "select ";
+    for (uint32_t i = 0; i < 100; i++) {
+        if (i > 0) ss << ",";
+        ss << "col1 as col1" << i << ", col2 as col2" << i;
+    }
+    ss << " from t1 limit 1;";
+    std::string sql = ss.str();
+    ::fesql::vm::BatchRunSession session;
+    session.EnableDebug();
+    ::fesql::base::Status status;
+    engine.Get(sql, "db1", session, status);
+    if (status.code != ::fesql::common::kOk) {
+        std::cout << status.msg << std::endl;
+    }
+    ASSERT_EQ(::fesql::common::kOk, status.code);
+    std::vector<int8_t*> output;
+    std::shared_ptr<::fesql::vm::TableHandler> result = session.Run();
+    if (!result) {
+        ASSERT_TRUE(false);
+    }
+    ::fesql::codec::RowView rv(session.GetSchema());
+    ASSERT_EQ(200, session.GetSchema().size());
+}
+
 TEST_F(TabletCatalogTest, sql_window_smoke_test) {
     std::shared_ptr<TabletCatalog> catalog(new TabletCatalog());
     ASSERT_TRUE(catalog->Init());

@@ -109,6 +109,20 @@ public class MemSQLBenchmark {
         }
     }
 
+    @Benchmark
+    public void select510Feature() {
+        String sql = "select col1, col2, col3";
+        for (int i = 0; i < 170; i++) {
+            sql += String.format(", col1 as col1%d, col2 as col2%d, col3 as col3%d", i, i, i);
+        }
+        sql += " from perf2 limit 1;";
+        try {
+            Statement st = cnn.createStatement();
+            st.execute(sql);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
     public static void main(String[] args) throws RunnerException {
         Options opt = new OptionsBuilder()
                 .include(MemSQLBenchmark.class.getSimpleName())

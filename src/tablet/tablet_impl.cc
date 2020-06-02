@@ -619,7 +619,7 @@ void TabletImpl::Get(RpcController* controller,
 
 void TabletImpl::Update(RpcController* controller,
                         const ::rtidb::api::UpdateRequest* request,
-                        ::rtidb::api::GeneralResponse* response,
+                        ::rtidb::api::UpdateResponse* response,
                         Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (follower_.load(std::memory_order_relaxed)) {
@@ -639,17 +639,27 @@ void TabletImpl::Update(RpcController* controller,
             return;
         }
     }
-    bool ok =
-        r_table->Update(request->condition_columns(), request->value_columns());
+    int32_t code = 0;
+    std::string msg;
+    uint32_t count = 0;
+    bool ok = r_table->Update(request->condition_columns(),
+            request->value_columns(), &code, &msg, &count);
     if (!ok) {
-        response->set_code(::rtidb::base::ReturnCode::kUpdateFailed);
-        response->set_msg("update failed");
+        if (code == rtidb::base::ReturnCode::kIdxNameNotFound
+                || code == rtidb::base::ReturnCode::kColNameNotFound) {
+            response->set_code(code);
+            response->set_msg(msg);
+        } else {
+            response->set_code(::rtidb::base::ReturnCode::kUpdateFailed);
+            response->set_msg("update failed");
+        }
         PDLOG(WARNING, "update failed. tid %u, pid %u", request->tid(),
               request->pid());
         return;
     }
     response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
+    response->set_count(count);
 }
 
 void TabletImpl::Put(RpcController* controller,
@@ -1690,8 +1700,8 @@ void TabletImpl::Traverse(RpcController* controller,
             if (!r_table->GetCombinePk(request->read_option().index(),
                                        &combine_pk)) {
                 response->set_code(
-                    ::rtidb::base::ReturnCode::kGetCombinePkFailed);
-                response->set_msg("get combine pk failed");
+                        ::rtidb::base::ReturnCode::kIdxNameNotFound);
+                response->set_msg("index col name not found");
                 delete it;
                 return;
             }
@@ -1837,12 +1847,17 @@ void TabletImpl::Delete(RpcController* controller,
         }
         return;
     } else {
+        int32_t code = 0;
+        std::string msg;
+        uint32_t count = 0;
         bool ok = false;
         if (request->receive_blobs()) {
             auto blobs = response->mutable_additional_ids();
-            ok = r_table->Delete(request->condition_columns(), blobs);
+            ok = r_table->Delete(request->condition_columns(), blobs,
+                    &code, &msg, &count);
         } else {
-            ok = r_table->Delete(request->condition_columns());
+            ok = r_table->Delete(request->condition_columns(),
+                    &code, &msg, &count);
         }
         if (ok) {
             DEBUGLOG("delete ok. tid %u, pid %u, key %s, idx_name %s",
@@ -1851,12 +1866,18 @@ void TabletImpl::Delete(RpcController* controller,
             response->set_code(::rtidb::base::ReturnCode::kOk);
             response->set_msg("ok");
         } else {
+            if (code == rtidb::base::ReturnCode::kIdxNameNotFound) {
+                response->set_code(code);
+                response->set_msg(msg);
+            } else {
+                response->set_code(::rtidb::base::ReturnCode::kDeleteFailed);
+                response->set_msg("delete failed");
+            }
             PDLOG(WARNING, "delete fail. tid %u, pid %u, key %s, idx_name %s",
-                  request->tid(), request->pid(), request->key().c_str(),
-                  request->idx_name().c_str());
-            response->set_code(::rtidb::base::ReturnCode::kDeleteFailed);
-            response->set_msg("delete failed");
+                    request->tid(), request->pid(), request->key().c_str(),
+                    request->idx_name().c_str());
         }
+        response->set_count(count);
     }
 }
 
@@ -1971,12 +1992,20 @@ void TabletImpl::BatchQuery(RpcController* controller,
         response->set_msg("table is not exist");
         return;
     }
+    int32_t code = 0;
+    std::string msg;
     uint32_t scount = 0;
     std::string* pairs = response->mutable_pairs();
-    bool ok = r_table->Query(request->read_option(), pairs, &scount);
+    bool ok = r_table->Query(request->read_option(), pairs, &scount,
+            &code, &msg);
     if (!ok) {
-        response->set_code(::rtidb::base::ReturnCode::kQueryFailed);
-        response->set_msg("query failed");
+        if (code == rtidb::base::ReturnCode::kIdxNameNotFound) {
+            response->set_code(code);
+            response->set_msg(msg);
+        } else {
+            response->set_code(::rtidb::base::ReturnCode::kQueryFailed);
+            response->set_msg("query failed");
+        }
         response->set_is_finish(true);
         response->set_count(0);
         PDLOG(WARNING, "query failed, tid %u pid %u", request->tid(),
@@ -5105,17 +5134,17 @@ void TabletImpl::SendIndexData(
             pid_endpoint_map.insert(std::make_pair(
                 request->pairs(idx).pid(), request->pairs(idx).endpoint()));
         }
-        if (pid_endpoint_map.empty()) {
-            PDLOG(WARNING, "pid and endpoint pair is empty. tid %u, pid %u",
-                  request->tid(), request->pid());
-            response->set_code(::rtidb::base::ReturnCode::kInvalidParameter);
-            response->set_msg("pid and endpoint pair is empty");
-            break;
-        }
-        task_pool_.AddTask(boost::bind(&TabletImpl::SendIndexDataInternal, this,
-                                       table, pid_endpoint_map, task_ptr));
         response->set_code(::rtidb::base::ReturnCode::kOk);
         response->set_msg("ok");
+        if (pid_endpoint_map.empty()) {
+            PDLOG(INFO, "pid endpoint map is empty. tid %u, pid %u",
+                  request->tid(), request->pid());
+            SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kDone);
+        } else {
+            task_pool_.AddTask(boost::bind(&TabletImpl::SendIndexDataInternal,
+                                           this, table, pid_endpoint_map,
+                                           task_ptr));
+        }
         return;
     } while (0);
     SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kFailed);
@@ -5391,12 +5420,18 @@ void TabletImpl::LoadIndexData(
             response->set_msg("table status is not kNormal");
             break;
         }
-        uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
-        task_pool_.AddTask(boost::bind(&TabletImpl::LoadIndexDataInternal, this,
-                                       tid, pid, 0, request->partition_num(),
-                                       cur_time, task_ptr));
         response->set_code(::rtidb::base::ReturnCode::kOk);
         response->set_msg("ok");
+        if (request->partition_num() <= 1) {
+            PDLOG(INFO, "partition num is %d need not load. tid %u, pid %u",
+                  request->partition_num(), tid, pid);
+            SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kDone);
+        } else {
+            uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
+            task_pool_.AddTask(
+                boost::bind(&TabletImpl::LoadIndexDataInternal, this, tid, pid,
+                            0, request->partition_num(), cur_time, task_ptr));
+        }
         return;
     } while (0);
     SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kFailed);
