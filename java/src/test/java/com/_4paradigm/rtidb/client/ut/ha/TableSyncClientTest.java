@@ -1179,9 +1179,6 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.size(), 3);
                 Assert.assertEquals(queryMap.get("id"), 11l);
                 Assert.assertTrue(buf1.equals(((BlobData)queryMap.get("image")).getData()));
-                Assert.assertTrue(buf1.equals(((BlobData)queryMap.get("image")).getData()));
-                Assert.assertTrue(buf1.equals(((BlobData)queryMap.get("image")).getData()));
-                Assert.assertTrue(buf1.equals(((BlobData)queryMap.get("image")).getData()));
                 Assert.assertEquals(queryMap.get("price"), 11.1);
             }
             {
