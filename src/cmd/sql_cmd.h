@@ -19,6 +19,7 @@
 #define SRC_CMD_SQL_CMD_H_
 #include <string>
 #include <vector>
+
 #include "base/linenoise.h"
 #include "base/texttable.h"
 #include "catalog/schema_adapter.h"
@@ -37,8 +38,7 @@ DECLARE_bool(interactive);
 namespace rtidb {
 namespace cmd {
 
-
-const std::string LOGO = // NOLINT
+const std::string LOGO =  // NOLINT
     ""
     "  ______   _____  ___\n"
     " |  ____|  |  __ \\|  _ \\\n"
@@ -47,7 +47,8 @@ const std::string LOGO = // NOLINT
     " | | |  __ / |__| | |_) |\n"
     " |_|  \\___||_____/|____/\n";
 
-const std::string VERSION = std::to_string(RTIDB_VERSION_MAJOR) + "." + // NOLINT
+const std::string VERSION = std::to_string(RTIDB_VERSION_MAJOR) + // NOLINT
+                            "." +  // NOLINT
                             std::to_string(RTIDB_VERSION_MEDIUM) + "." +
                             std::to_string(RTIDB_VERSION_MINOR) + "." +
                             std::to_string(RTIDB_VERSION_BUG);
@@ -328,7 +329,8 @@ void HandleCli() {
     }
     std::string ns_endpoint = cs->GetNsClient()->GetEndpoint();
     std::string display_prefix = ns_endpoint + "/" + db + "> ";
-    std::string multi_line_perfix = std::string(display_prefix.length() - 3, ' ') + "-> ";
+    std::string multi_line_perfix =
+        std::string(display_prefix.length() - 3, ' ') + "-> ";
     std::string sql;
     bool multi_line = false;
     while (true) {

@@ -26,14 +26,15 @@
 #include "blob_proxy/blob_proxy_impl.h"
 #if __linux__
 #include "blobserver/blobserver_impl.h"
-#include "tablet/tablet_impl.h"
 #include "nameserver/name_server_impl.h"
-#endif 
+#include "tablet/tablet_impl.h"
+#endif
 #include "boost/algorithm/string.hpp"
 #include "boost/lexical_cast.hpp"
 #include "brpc/server.h"
 #include "client/ns_client.h"
 #include "client/tablet_client.h"
+#include "cmd/sql_cmd.h"
 #include "codec/flat_array.h"
 #include "codec/row_codec.h"
 #include "codec/schema_codec.h"
@@ -41,11 +42,10 @@
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
 #include "proto/type.pb.h"
-#include "vm/engine.h"
-#include "cmd/sql_cmd.h"
 #include "timer.h"     // NOLINT
 #include "tprinter.h"  // NOLINT
 #include "version.h"   // NOLINT
+#include "vm/engine.h"
 
 using Schema =
     ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
@@ -73,7 +73,6 @@ DECLARE_uint32(skiplist_max_height);
 DECLARE_uint32(preview_limit_max_num);
 DECLARE_uint32(preview_default_limit);
 DECLARE_uint32(max_col_display_length);
-
 
 void SetupLog() {
     // Config log
@@ -286,7 +285,6 @@ void StartBlobProxy() {
     server.RunUntilAskedToQuit();
 }
 #endif
-
 
 #if __linux__
 void StartBlob() {
@@ -1656,7 +1654,7 @@ void HandleNSDelete(const std::vector<std::string>& parts,
         }
         uint32_t count = 0;
         if (tablet_client->Delete(tid, pid, cd_columns, &count, &msg)) {
-            std::cout << "delete ok, affected count: " << count  << std::endl;
+            std::cout << "delete ok, affected count: " << count << std::endl;
         } else {
             std::cout << "delete failed. error msg: " << msg << std::endl;
         }
@@ -6709,10 +6707,10 @@ void StartNsClient() {
 
 int main(int argc, char* argv[]) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-if (FLAGS_role == "ns_client") {
+    if (FLAGS_role == "ns_client") {
         StartNsClient();
     } else if (FLAGS_role == "sql_client") {
-       ::rtidb::cmd::HandleCli();
+        ::rtidb::cmd::HandleCli();
 #if __linux__
     } else if (FLAGS_role == "tablet") {
         StartTablet();

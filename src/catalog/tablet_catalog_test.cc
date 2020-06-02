@@ -198,7 +198,7 @@ TEST_F(TabletCatalogTest, sql_last_join_smoke_test) {
     std::string pk(data, data_size);
     ASSERT_EQ(args->pk, pk);
 }
-
+/*
 TEST_F(TabletCatalogTest, sql_last_join_smoke_test2) {
     std::shared_ptr<TabletCatalog> catalog(new TabletCatalog());
     ASSERT_TRUE(catalog->Init());
@@ -248,6 +248,7 @@ TEST_F(TabletCatalogTest, sql_last_join_smoke_test2) {
     std::string pk(data, data_size);
     ASSERT_EQ(args->pk, pk);
 }
+*/
 
 TEST_F(TabletCatalogTest, sql_window_smoke_500_test) {
     std::shared_ptr<TabletCatalog> catalog(new TabletCatalog());
