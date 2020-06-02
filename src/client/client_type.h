@@ -73,6 +73,14 @@ struct PutResult : public GeneralResult {
     bool has_auto_gen_pk = false;
 };
 
+struct UpdateResult : public GeneralResult {
+    UpdateResult(): affected_count(0) {}
+    void SetAffectedCount(uint32_t num) {
+        affected_count = num;
+    }
+    uint32_t affected_count;
+};
+
 struct ReadOption {
     explicit ReadOption(const std::map<std::string, std::string>& indexs) {
         index.insert(indexs.begin(), indexs.end());

@@ -358,6 +358,9 @@ class SchemaCodec {
             }
             ::rtidb::api::Columns* index = cd_columns->Add();
             index->add_name(kv.first);
+            if (kv.second == NONETOKEN || kv.second == "null") {
+                continue;
+            }
             ::rtidb::type::DataType type = iter->second;
             std::string* val = index->mutable_value();
             if (!::rtidb::codec::Convert(kv.second, type, val)) {
