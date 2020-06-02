@@ -390,6 +390,10 @@ INSTANTIATE_TEST_CASE_P(
     testing::ValuesIn(InitCases("/cases/query/simple_query.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
+    EngineExtreamQuery, EngineTest,
+    testing::ValuesIn(InitCases("/cases/query/extream_query.yaml")));
+
+INSTANTIATE_TEST_CASE_P(
     EngineLastJoinQuery, EngineTest,
     testing::ValuesIn(InitCases("/cases/query/last_join_query.yaml")));
 
