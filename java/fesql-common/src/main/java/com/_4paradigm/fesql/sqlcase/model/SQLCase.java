@@ -11,6 +11,8 @@ public class SQLCase {
     String mode;
     String db;
     String sql;
+    String create;
+    String insert;
     String tag;
     String batch_plan;
     String request_plan;

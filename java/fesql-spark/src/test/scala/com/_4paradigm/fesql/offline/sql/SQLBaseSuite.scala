@@ -1,8 +1,8 @@
 package com._4paradigm.fesql.offline.sql
 
 import java.io.{File, FileInputStream}
-import java.sql.Timestamp
-
+import java.sql.{Date, Timestamp}
+import java.text.SimpleDateFormat
 import com._4paradigm.fesql.offline.{SparkPlanner, SparkTestSuite}
 import com._4paradigm.fesql.sqlcase.model._
 import org.apache.spark.sql.{DataFrame, Row}
@@ -162,11 +162,13 @@ class SQLBaseSuite extends SparkTestSuite {
         case "i32" => IntegerType
         case "int32" => IntegerType
         case "i64" => LongType
+        case "bigint" => LongType
         case "int64" => LongType
         case "float" => FloatType
         case "double" => DoubleType
         case "string" => StringType
         case "timestamp" => TimestampType
+        case "date" => DateType
         case "bool" => BooleanType
         case _ => throw new IllegalArgumentException(
           s"Unknown type name $typeName")
@@ -195,6 +197,10 @@ class SQLBaseSuite extends SparkTestSuite {
               case DoubleType => str.trim.toDouble
               case StringType => str
               case TimestampType => new Timestamp(str.trim.toLong)
+              case DateType => {
+                logger.info("parser data date {}" ,new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").parse(str.trim+" 00:00:00"));
+                new Date(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").parse(str.trim+" 00:00:00").getTime)
+              }
               case BooleanType => str.trim.toBoolean
               case _ => throw new IllegalArgumentException(
                 s"Unknown type ${field.dataType}")

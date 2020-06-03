@@ -45,6 +45,7 @@ static const std::unordered_map<::fesql::type::Type, uint8_t> TYPE_SIZE_MAP = {
     {::fesql::type::kFloat, sizeof(float)},
     {::fesql::type::kInt64, sizeof(int64_t)},
     {::fesql::type::kTimestamp, sizeof(int64_t)},
+    {::fesql::type::kDate, sizeof(int32_t)},
     {::fesql::type::kDouble, sizeof(double)}};
 
 static inline uint8_t GetAddrLength(uint32_t size) {
@@ -76,6 +77,7 @@ class RowBuilder {
     bool AppendInt16(int16_t val);
     bool AppendInt64(int64_t val);
     bool AppendTimestamp(int64_t val);
+    bool AppendDate(int32_t year, int32_t month, int32_t day);
     bool AppendFloat(float val);
     bool AppendDouble(double val);
     bool AppendString(const char* val, uint32_t length);
@@ -123,6 +125,8 @@ class RowIOBufView : public RowBaseView {
     int32_t GetFloat(uint32_t idx, float* val);
     int32_t GetDouble(uint32_t idx, double* val);
     int32_t GetTimestamp(uint32_t, int64_t* val);
+    int32_t GetDate(uint32_t, int32_t *year, int32_t *month, int32_t * day);
+    int32_t GetDate(uint32_t, int32_t *date);
     int32_t GetString(uint32_t idx, butil::IOBuf* buf);
     int32_t GetString(uint32_t idx, char** val, uint32_t* length) { return -1; }
 
@@ -173,11 +177,17 @@ class RowView {
     int32_t GetFloat(uint32_t idx, float* val);
     int32_t GetDouble(uint32_t idx, double* val);
     int32_t GetString(uint32_t idx, char** val, uint32_t* length);
+    int32_t GetDate(uint32_t idx, int32_t* year, int32_t* month, int32_t* day);
+    int32_t GetDate(uint32_t idx, int32_t* date);
 
     bool GetBoolUnsafe(uint32_t idx);
     int32_t GetInt32Unsafe(uint32_t idx);
     int64_t GetInt64Unsafe(uint32_t idx);
     int64_t GetTimestampUnsafe(uint32_t idx);
+    int32_t GetDateUnsafe(uint32_t idx);
+    int32_t GetYearUnsafe(int32_t days);
+    int32_t GetMonthUnsafe(int32_t days);
+    int32_t GetDayUnsafe(int32_t idx);
     int16_t GetInt16Unsafe(uint32_t idx);
     float GetFloatUnsafe(uint32_t idx);
     double GetDoubleUnsafe(uint32_t idx);

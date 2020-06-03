@@ -64,6 +64,14 @@ TEST_F(EngineBMCaseTest, EngineRequestSimpleSelectVarchar_TEST) {
     EngineRequestSimpleSelectVarchar(nullptr, TEST);
 }
 
+TEST_F(EngineBMCaseTest, EngineRequestSimpleSelectDate_TEST) {
+    EngineRequestSimpleSelectDate(nullptr, TEST);
+}
+
+TEST_F(EngineBMCaseTest, EngineRequestSimpleSelectTimestamp_TEST) {
+    EngineRequestSimpleSelectTimestamp(nullptr, TEST);
+}
+
 TEST_F(EngineBMCaseTest, EngineRequestSimpleUDF_TEST) {
     EngineRequestSimpleUDF(nullptr, TEST);
 }
@@ -78,6 +86,14 @@ TEST_F(EngineBMCaseTest, EngineSimpleSelectInt32_TEST) {
 
 TEST_F(EngineBMCaseTest, EngineSimpleSelectVarchar_TEST) {
     EngineSimpleSelectVarchar(nullptr, TEST);
+}
+
+TEST_F(EngineBMCaseTest, EngineSimpleSelectTimestamp_TEST) {
+    EngineSimpleSelectTimestamp(nullptr, TEST);
+}
+
+TEST_F(EngineBMCaseTest, EngineSimpleSelectDate_TEST) {
+    EngineSimpleSelectDate(nullptr, TEST);
 }
 
 TEST_F(EngineBMCaseTest, EngineSimpleUDF_TEST) {

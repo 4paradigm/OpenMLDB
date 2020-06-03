@@ -12,6 +12,7 @@
 #include <utility>
 #include "glog/logging.h"
 #include "node/node_manager.h"
+
 namespace fesql {
 namespace node {
 
@@ -267,6 +268,7 @@ bool ConstNode::Equals(const ExprNode *node) const {
     return this->data_type_ == that->data_type_ &&
            GetExprString() == that->GetExprString() && ExprNode::Equals(node);
 }
+
 
 void LimitNode::Print(std::ostream &output, const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);

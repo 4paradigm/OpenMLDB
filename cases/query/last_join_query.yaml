@@ -151,3 +151,68 @@ SQLCases:
         3, 1, 55, 1590115422000, CCC
         4, 1, 55, 1590115423000, DDDD
         5, 2, 55, 1590115424000, EEEEE
+  - id: 4
+    desc: LAST JOIN 多张表
+    db: db1
+    sql: |
+      SELECT t1.col1 as id, t1.col0, t2.c0, t3.column0 FROM t1 last join t2 on t1.col1=t2.c1 last join t3 on t1.col1 = t3.column1;
+    inputs:
+      - name: t1
+        schema: col0:string, col1:int32, col5:bigint
+        index: index2:col1:col5
+        data: |
+          A, 1, 1
+          B, 2, 2
+          C, 3, 3
+      - name: t2
+        schema: c0:string, c1:int32, c5:int64
+        index: index1:c1:c5
+        data: |
+          O, 1, 1
+          P, 2, 2
+          Q, 3, 3
+          R, 4, 4
+          S, 5, 5
+      - name: t3
+        schema: column0:string, column1:int32, column5:int64
+        index: index1:column1:column5
+        data: |
+          X, 1, 1
+          Y, 2, 2
+          Z, 3, 3
+          U, 4, 4
+          V, 5, 5
+    output:
+      schema: id:int32, col0:string, c0:string, column0:string
+      order: id
+      data: |
+        1, A, O, X
+        2, B, P, Y
+        3, C, Q, Z
+  - id: 5
+    desc: LAST JOIN 拼表条件包含date列
+    mode: request
+    db: db1
+    sql: |
+      SELECT t1.col1 as id, t1.col0 as t1_col0, t1.col2 as t1_col2, t1.std_date as t1_std_date, str1 FROM t1 last join t2 on t1.std_date = t2.std_date;
+    inputs:
+      - name: t1
+        resource: cases/resource/simple_t1_date.yaml
+      - name: t2
+        schema: str0:string, str1:string, col1:int32, col5:int64, std_date:date
+        index: index1:col1:col5
+        data: |
+          2, EEEEE, 5, 5, 2020-05-24
+          1, DDDD, 4, 4, 2020-05-23
+          1, CCC, 3, 3, 2020-05-22
+          0, BB, 2, 2, 2020-05-21
+          0, A, 1, 1, 2020-05-20
+    output:
+      schema: id:int32, t1_col0:string, t1_col2:int16, t1_std_date:date, str1:string
+      order: id
+      data: |
+        1, 0, 5, 2020-05-20, A
+        2, 0, 5, 2020-05-21, BB
+        3, 1, 55, 2020-05-22, CCC
+        4, 1, 55, 2020-05-23, DDDD
+        5, 2, 55, 2020-05-24, EEEEE

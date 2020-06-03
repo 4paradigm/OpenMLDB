@@ -96,6 +96,7 @@ struct Timestamp {
     }
     int64_t ts_;
 };
+
 static const Timestamp operator+(const Timestamp& a, const Timestamp& b) {
     return Timestamp(a.ts_ + b.ts_);
 }
@@ -123,6 +124,46 @@ static bool operator==(const Timestamp& a, const Timestamp& b) {
 static bool operator!=(const Timestamp& a, const Timestamp& b) {
     return a.ts_ != b.ts_;
 }
+
+struct Date {
+    Date() : date_(0) {}
+    explicit Date(int32_t date) : date_(date) {}
+    Date(int32_t year, int32_t month, int32_t day) : date_(0) {
+        if (year < 1900 || year > 9999) {
+            return;
+        }
+        if (month < 1 || month > 12) {
+            return;
+        }
+        if (day < 1 || day > 31) {
+            return;
+        }
+        int32_t data = (year - 1900) << 16;
+        data = data | ((month - 1) << 8);
+        data = data | day;
+        date_ = data;
+    }
+    int32_t date_;
+};
+static bool operator>(const Date& a, const Date& b) {
+    return a.date_ > b.date_;
+}
+static bool operator<(const Date& a, const Date& b) {
+    return a.date_ < b.date_;
+}
+static bool operator>=(const Date& a, const Date& b) {
+    return a.date_ >= b.date_;
+}
+static bool operator<=(const Date& a, const Date& b) {
+    return a.date_ <= b.date_;
+}
+static bool operator==(const Date& a, const Date& b) {
+    return a.date_ == b.date_;
+}
+static bool operator!=(const Date& a, const Date& b) {
+    return a.date_ != b.date_;
+}
+
 struct ListRef {
     int8_t* list;
 };

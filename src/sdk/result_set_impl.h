@@ -39,6 +39,8 @@ class ResultSetImpl : public ResultSet {
 
     bool Init();
 
+    bool Reset();
+
     bool Next();
 
     bool IsNULL(int index);
@@ -59,9 +61,9 @@ class ResultSetImpl : public ResultSet {
 
     bool GetDouble(uint32_t index, double* result);
 
-    bool GetDate(uint32_t index, uint32_t* days);
+    bool GetDate(uint32_t index, int32_t* days);
 
-    int32_t GetDateUnsafe(uint32_t index) { return 0; }
+    bool GetDate(uint32_t index, int32_t* year, int32_t* month, int32_t* day);
 
     bool GetTime(uint32_t index, int64_t* mills);
 

@@ -37,6 +37,8 @@ class SQLCase {
     const std::string& request_plan() const { return request_plan_; }
     const std::string& batch_plan() const { return batch_plan_; }
     const std::string& sql_str() const { return sql_str_; }
+    const std::string& create_str() const { return create_str_; }
+    const std::string& insert_str() const { return insert_str_; }
     const std::string& db() const { return db_; }
     const std::vector<TableInfo>& inputs() const { return inputs_; }
     const TableInfo& output() const { return output_; }
@@ -53,8 +55,11 @@ class SQLCase {
 
     bool AddInput(const TableInfo& table_data);
     static bool TypeParse(const std::string& row_str, fesql::type::Type* type);
+    static const std::string TypeString(fesql::type::Type type);
     static bool ExtractSchema(const std::string& schema_str,
                               type::TableDef& table);  // NOLINT
+    static bool BuildCreateSQLFromSchema(const type::TableDef& table,
+                                         std::string* create_sql);  // NOLINT
     static bool ExtractIndex(const std::string& index_str,
                              type::TableDef& table);  // NOLINT
     static bool ExtractTableDef(const std::string& schema_str,
@@ -63,6 +68,9 @@ class SQLCase {
     static bool ExtractRows(const vm::Schema& schema,
                             const std::string& data_str,
                             std::vector<fesql::codec::Row>& rows);  // NOLINT
+    static bool BuildInsertSQLFromRow(const type::TableDef& table,
+                                        const std::string& row_str,
+                                        std::string* create_sql);
     static bool ExtractRow(const vm::Schema& schema, const std::string& row_str,
                            int8_t** out_ptr, int32_t* out_size);
     static bool CreateTableInfoFromYamlNode(const YAML::Node& node,
@@ -89,6 +97,8 @@ class SQLCase {
     std::string mode_;
     std::string desc_;
     std::string db_;
+    std::string create_str_;
+    std::string insert_str_;
     std::string sql_str_;
     std::string batch_plan_;
     std::string request_plan_;
