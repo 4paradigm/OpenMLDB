@@ -528,6 +528,26 @@ bool TabletClient::LoadTable(const ::rtidb::api::TableMeta& table_meta,
     return false;
 }
 
+bool TabletClient::LoadTable(uint32_t tid, uint32_t pid,
+        ::rtidb::common::StorageMode storage_mode, std::string* msg) {
+    ::rtidb::api::LoadTableRequest request;
+    ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+    table_meta->set_table_type(::rtidb::type::kRelational);
+    table_meta->set_tid(tid);
+    table_meta->set_pid(pid);
+    table_meta->set_storage_mode(storage_mode);
+    table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
+    ::rtidb::api::GeneralResponse response;
+    bool ok =
+        client_.SendRequest(&::rtidb::api::TabletServer_Stub::LoadTable,
+                            &request, &response, FLAGS_request_timeout_ms, 1);
+    msg->swap(*response.mutable_msg());
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    return false;
+}
+
 bool TabletClient::ChangeRole(uint32_t tid, uint32_t pid, bool leader,
                               uint64_t term) {
     std::vector<std::string> endpoints;

@@ -212,6 +212,8 @@ class TabletClient {
     bool LoadTable(const ::rtidb::api::TableMeta& table_meta,
                    std::shared_ptr<TaskInfo> task_info);
 
+    bool LoadTable(uint32_t tid, uint32_t pid,
+            ::rtidb::common::StorageMode storage_mode, std::string* msg);
     bool ChangeRole(uint32_t tid, uint32_t pid, bool leader, uint64_t term);
 
     bool ChangeRole(

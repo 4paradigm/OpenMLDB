@@ -196,6 +196,54 @@ class TestRelationTable(TestCaseBase):
         self.assertEqual(len(rs), 1)
         self.assertEqual(rs[0]['image'], 'i1')
         self.assertEqual(rs[0]['attribute'], 'a1')
+
+    def test_load(self):
+        name = 'tname{}'.format(time.time())
+        metadata_path = '{}/metadata.txt'.format(self.testpath)
+        table_meta = {
+                "name": name,
+                "table_type" : "Relational",
+               "column_desc":[
+                   {"name": "id", "type": "bigint", "not_null": "true"},
+                   {"name": "attribute", "type": "varchar", "not_null": "true"},
+                   {"name": "image", "type": "varchar", "not_null": "true"},
+                   ],
+               "index":[
+                   {"index_name":"idx1", "col_name":["id"], "index_type":["PrimaryKey"]},
+                   ]
+               }
+        utils.gen_table_meta_file(table_meta, metadata_path)
+        rs = self.ns_create(self.ns_leader, metadata_path)
+        self.assertIn('Create table ok', rs)
+        (schema, column_key) = self.ns_showschema(self.ns_leader, name)
+        self.assertEqual(len(schema), 3)
+        # put 
+        rs = self.ns_put_relation(self.ns_leader, name, "id=11 attribute=a1 image=i1")
+        self.assertIn('put ok', rs)
+        # preview
+        rs = self.ns_preview(self.ns_leader, name)
+        self.assertEqual(len(rs), 1)
+        self.assertEqual(rs[0]['id'], "11")
+        self.assertEqual(rs[0]['image'], 'i1')
+        self.assertEqual(rs[0]['attribute'], 'a1')
+        table_info = self.showtable(self.ns_leader, name)
+        tid = table_info.keys()[0][1]
+        pid = 0 
      
+        self.stop_client(self.leader)
+        self.start_client(self.leader)
+        time.sleep(5)
+        rs = self.ns_preview(self.ns_leader, name)
+        self.assertEqual(len(rs), 0)
+
+        rs = self.load_relation_table(self.leader, tid, pid, "ssd");
+        self.assertIn('LoadTable ok', rs)
+        # preview
+        rs = self.ns_preview(self.ns_leader, name)
+        self.assertEqual(len(rs), 1)
+        self.assertEqual(rs[0]['id'], "11")
+        self.assertEqual(rs[0]['image'], 'i1')
+        self.assertEqual(rs[0]['attribute'], 'a1')
+
 if __name__ == "__main__":
     load(TestRelationTable)

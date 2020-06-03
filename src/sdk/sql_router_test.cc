@@ -192,6 +192,47 @@ TEST_F(SQLRouterTest, smoketest_on_sql) {
     ASSERT_EQ(100, rs->GetInt64Unsafe(0));
 }
 
+TEST_F(SQLRouterTest, smoketimestamptest_on_sql) {
+    SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc_.GetZkCluster();
+    sql_opt.zk_path = mc_.GetZkPath();
+    auto router = NewClusterSQLRouter(sql_opt);
+    if (!router) ASSERT_TRUE(false);
+    std::string name = "test" + GenRand();
+    std::string db = "db" + GenRand();
+    ::fesql::sdk::Status status;
+    bool ok = router->CreateDB(db, &status);
+    ASSERT_TRUE(ok);
+    std::string ddl = "create table " + name +
+                      "("
+                      "col1 string, col2 timestamp, col3 date,"
+                      "index(key=col1, ts=col2));";
+    ok = router->ExecuteDDL(db, ddl, &status);
+    ASSERT_TRUE(ok);
+
+    ASSERT_TRUE(router->RefreshCatalog());
+    std::string insert = "insert into " + name + " values('hello', 1591174600000l, '2020-06-03');";
+    ok = router->ExecuteInsert(db, insert, &status);
+    ASSERT_TRUE(ok);
+    ASSERT_TRUE(router->RefreshCatalog());
+    std::string sql_select = "select * from " + name + " ;";
+    auto rs = router->ExecuteSQL(db, sql_select, &status);
+    if (!rs) ASSERT_TRUE(false);
+    ASSERT_EQ(1, rs->Size());
+    ASSERT_EQ(3, rs->GetSchema()->GetColumnCnt());
+    ASSERT_TRUE(rs->Next());
+    ASSERT_EQ("hello", rs->GetStringUnsafe(0));
+    ASSERT_EQ(1591174600000l, rs->GetTimeUnsafe(1));
+    int32_t year = 0;
+    int32_t month = 0;
+    int32_t day = 0;
+    ASSERT_TRUE(rs->GetDate(2, &year, &month, &day));
+    ASSERT_EQ(2020, year);
+    ASSERT_EQ(6, month);
+    ASSERT_EQ(3, day);
+    ASSERT_FALSE(rs->Next());
+}
+
 }  // namespace sdk
 }  // namespace rtidb
 

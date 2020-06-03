@@ -133,7 +133,7 @@ DEFINE_uint32(make_snapshot_offline_interval, 60 * 60 * 24,
 DEFINE_uint32(snapshot_ttl_time, 6 * 60,
               "config relational table snapshot TTL time in minutes");
 DEFINE_uint32(snapshot_ttl_check_interval, 60,
-              "config relational table snapshot TTL time in minutes");
+              "config relational table snapshot TTL check in minutes");
 
 DEFINE_uint32(load_index_max_wait_time, 120 * 60 * 1000,
               "config the max wait time of load index");
@@ -173,3 +173,7 @@ DEFINE_uint32(get_replica_status_interval, 10000,
               "config the interval to sync replica cluster status time");
 DEFINE_bool(enable_column_sum_opt, false,
               "enable column sum merge");
+
+// object sotre
+DEFINE_uint32(oss_flush_size, 1024, "set oss cache flush kilobyte size");
+DEFINE_int32(oss_flush_period, 600, "set oss cache flush period seconds");

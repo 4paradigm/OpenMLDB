@@ -75,11 +75,16 @@ class SQLClusterRouter : public SQLRouter {
     void GetTables(::fesql::vm::PhysicalOpNode* node,
                    std::set<std::string>* tables);
 
-    bool EncodeFromat(const catalog::RtiDBSchema& schema,
+    bool EncodeFormat(const catalog::RtiDBSchema& schema,
                       const ::fesql::node::InsertPlanNode* plan,
                       std::string* value,
                       std::vector<std::pair<std::string, uint32_t>>* dimensions,
                       std::vector<uint64_t>* ts_dimensions);
+    bool EncodeFullColumns(const catalog::RtiDBSchema& schema,
+            const ::fesql::node::InsertPlanNode* plan,
+            std::string* value,
+            std::vector<std::pair<std::string, uint32_t>>* dimensions,
+            std::vector<uint64_t>* ts_dimensions);
 
     bool GetSQLPlan(const std::string& sql, ::fesql::node::NodeManager* nm,
                     ::fesql::node::PlanNodeList* plan);

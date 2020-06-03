@@ -3198,14 +3198,20 @@ void TabletImpl::LoadTable(RpcController* controller,
     do {
         ::rtidb::api::TableMeta table_meta;
         table_meta.CopyFrom(request->table_meta());
-        std::string msg;
-        if (CheckTableMeta(&table_meta, msg) != 0) {
-            response->set_code(::rtidb::base::ReturnCode::kTableMetaIsIllegal);
-            response->set_msg(msg);
-            break;
-        }
         uint32_t tid = table_meta.tid();
         uint32_t pid = table_meta.pid();
+        std::string msg;
+        if (!table_meta.has_table_type() ||
+                table_meta.table_type() == ::rtidb::type::kTimeSeries) {
+            if (CheckTableMeta(&table_meta, msg) != 0) {
+                response->set_code(
+                        ::rtidb::base::ReturnCode::kTableMetaIsIllegal);
+                response->set_msg(msg);
+                PDLOG(WARNING, "CheckTableMeta failed. tid %u, pid %u",
+                        tid, pid);
+                break;
+            }
+        }
         std::string root_path;
         bool ok =
             ChooseDBRootPath(tid, pid, table_meta.storage_mode(), root_path);
@@ -3268,13 +3274,10 @@ void TabletImpl::LoadTable(RpcController* controller,
             task_pool_.AddTask(boost::bind(&TabletImpl::LoadTableInternal, this,
                                            tid, pid, task_ptr));
         } else if (table_meta.table_type() == ::rtidb::type::kRelational) {
-            std::string msg;
-            if (CreateRelationalTableInternal(&table_meta, msg) < 0) {
-                PDLOG(INFO, "%s", msg.c_str());
-                response->set_code(
-                    ::rtidb::base::ReturnCode::kCreateTableFailed);
-                response->set_msg(msg);
-            }
+            task_pool_.AddTask(
+                    boost::bind(&TabletImpl::LoadRelationalTableInternal,
+                        this, table_meta, task_ptr));
+            PDLOG(INFO, "load table tid[%u] pid[%u] ", tid, pid);
         } else {
             task_pool_.AddTask(boost::bind(&TabletImpl::LoadDiskTableInternal,
                                            this, tid, pid, table_meta,
@@ -3404,6 +3407,24 @@ int TabletImpl::LoadDiskTableInternal(
             DeleteTableInternal(tid, pid,
                                 std::shared_ptr<::rtidb::api::TaskInfo>());
         }
+    } while (0);
+    SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kFailed);
+    return -1;
+}
+
+int TabletImpl::LoadRelationalTableInternal(
+    const ::rtidb::api::TableMeta& table_meta,
+    std::shared_ptr<::rtidb::api::TaskInfo> task_ptr) {
+    do {
+        std::string msg;
+        if (CreateRelationalTableInternal(&table_meta, true, msg) < 0) {
+            PDLOG(WARNING, "create table failed. tid %u pid %u msg %s",
+                    table_meta.tid(), table_meta.pid(), msg.c_str());
+            break;
+        }
+        PDLOG(INFO, "create table success. tid %u pid %u ",
+                table_meta.tid(), table_meta.pid());
+        SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kDone);
     } while (0);
     SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kFailed);
     return -1;
@@ -3698,7 +3719,7 @@ void TabletImpl::CreateTable(RpcController* controller,
     if (table_meta->has_table_type() &&
         table_meta->table_type() == rtidb::type::kRelational) {
         std::string msg;
-        if (CreateRelationalTableInternal(table_meta, msg) < 0) {
+        if (CreateRelationalTableInternal(table_meta, false, msg) < 0) {
             response->set_code(::rtidb::base::ReturnCode::kCreateTableFailed);
             response->set_msg(msg.c_str());
             return;
@@ -4368,7 +4389,8 @@ int TabletImpl::CreateDiskTableInternal(
 }
 
 int TabletImpl::CreateRelationalTableInternal(
-    const ::rtidb::api::TableMeta* table_meta, std::string& msg) {
+        const ::rtidb::api::TableMeta* table_meta,
+        bool is_load, std::string& msg) {
     uint32_t tid = table_meta->tid();
     uint32_t pid = table_meta->pid();
     std::string db_root_path;
@@ -4381,8 +4403,16 @@ int TabletImpl::CreateRelationalTableInternal(
     }
     std::shared_ptr<RelationalTable> table_ptr =
         std::make_shared<RelationalTable>(*table_meta, db_root_path);
-    if (!table_ptr->Init()) {
-        return -1;
+    if (is_load) {
+        if (!table_ptr->LoadTable()) {
+            return -1;
+        }
+        PDLOG(INFO, "load relation table. tid %u pid %u", tid, pid);
+    } else {
+        if (!table_ptr->Init()) {
+            return -1;
+        }
+        PDLOG(INFO, "create relation table. tid %u pid %u", tid, pid);
     }
     PDLOG(INFO, "create relation table. tid %u pid %u", tid, pid);
     std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
