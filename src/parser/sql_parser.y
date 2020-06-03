@@ -715,7 +715,8 @@ create_stmt:    CREATE TABLE op_if_not_exist relation_name '(' column_desc_list 
                 }
                 |CREATE INDEX column_name ON table_name '(' column_index_item_list ')'
                 {
-                    $$ = node_manager->MakeCreateIndexNode($3, $5, node_manager->MakeColumnIndexNode($7));
+                    $$ = node_manager->MakeCreateIndexNode($3, $5,
+                    dynamic_cast<fesql::node::ColumnIndexNode *>(node_manager->MakeColumnIndexNode($7)));
                     free($3);
                     free($5);
                 }
