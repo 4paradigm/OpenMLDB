@@ -1343,12 +1343,6 @@ void NameServerImpl::UpdateTabletsLocked(
     UpdateTablets(endpoints);
 }
 
-void NameServerImpl::UpdateBlobServersLocked(
-    const std::vector<std::string>& endpoints) {
-    std::lock_guard<std::mutex> lock(mu_);
-    UpdateBlobServers(endpoints);
-}
-
 void NameServerImpl::UpdateBlobServers(
     const std::vector<std::string>& endpoints) {
     std::set<std::string> alive;
@@ -1408,8 +1402,26 @@ void NameServerImpl::UpdateBlobServers(
 void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
     // check exist and newly add tablets
     std::set<std::string> alive;
-    std::vector<std::string>::const_iterator it = endpoints.begin();
-    for (; it != endpoints.end(); ++it) {
+    std::vector<std::string> blobs;
+    std::vector<std::string> tablet_endpoints;
+    {
+        std::vector<std::string>::const_iterator it = endpoints.begin();
+        for (; it != endpoints.end(); ++it) {
+            if (it->size() < rtidb::base::BLOB_PREFIX.size()) {
+                continue;
+            }
+            const char* curr_ch = it->data();
+            const char* blob_ch = rtidb::base::BLOB_PREFIX.data();
+            int ret = memcmp(curr_ch, blob_ch, rtidb::base::BLOB_PREFIX.size());
+            if (ret == 0) {
+                blobs.push_back(*it);
+            } else {
+                tablet_endpoints.push_back(*it);
+            }
+        }
+    }
+    auto it = tablet_endpoints.begin();
+    for (; it != tablet_endpoints.end(); ++it) {
         alive.insert(*it);
         Tablets::iterator tit = tablets_.find(*it);
         // register a new tablet
@@ -1464,6 +1476,7 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
             }
         }
     }
+    UpdateBlobServers(blobs);
     thread_pool_.AddTask(
         boost::bind(&NameServerImpl::DistributeTabletMode, this));
 }
@@ -1720,26 +1733,11 @@ bool NameServerImpl::Init() {
     } else {
         UpdateTablets(endpoints);
     }
-    std::string oss_path = FLAGS_zk_root_path + "/ossnodes";
-    endpoints.clear();
-    bool ok = zk_client_->GetChildren(oss_path, endpoints);
-    if (!ok) {
-        zk_client_->CreateNode(oss_path, "");
-    } else {
-        UpdateBlobServers(endpoints);
-    }
     zk_client_->WatchNodes(
         boost::bind(&NameServerImpl::UpdateTabletsLocked, this, _1));
-    ok = zk_client_->WatchNodes();
+    bool ok = zk_client_->WatchNodes();
     if (!ok) {
         PDLOG(WARNING, "fail to watch nodes");
-        return false;
-    }
-    ok = zk_client_->WatchChildren(
-        oss_path,
-        boost::bind(&NameServerImpl::UpdateBlobServersLocked, this, _1));
-    if (!ok) {
-        PDLOG(WARNING, "fail to watch ossnodes");
         return false;
     }
     session_term_ = zk_client_->GetSessionTerm();

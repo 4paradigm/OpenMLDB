@@ -80,6 +80,7 @@ class BlobServerImpl : public ::rtidb::blobserver::BlobServer {
     ThreadPool task_pool_;
     std::atomic<bool> follower_;
     ObjectStores object_stores_;
+    std::string node_name_;
 };
 
 }  // namespace blobserver
