@@ -197,9 +197,8 @@ class NodeManager {
 
     SQLNode *MakeCmdNode(node::CmdType cmd_type);
     SQLNode *MakeCmdNode(node::CmdType cmd_type, const std::string &arg);
-    SQLNode *MakeCmdNode(node::CmdType cmd_type, 
-                        const std::string &index_name,
-                        const std::string &table_name);
+    SQLNode *MakeCmdNode(node::CmdType cmd_type, const std::string &index_name,
+                         const std::string &table_name);
     // Make NodeList
     SQLNode *MakeExplainNode(const QueryNode *query,
                              node::ExplainType explain_type);
