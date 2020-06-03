@@ -396,6 +396,7 @@ typedef void* yyscan_t;
 %type<exprlist> insert_expr_list column_ref_list opt_partition_clause
 				group_expr sql_id_list
 				sql_expr_list fun_expr_list
+				insert_values insert_value
 
 %type<expr> insert_expr where_expr having_expr
 
@@ -578,6 +579,10 @@ types:  I32
         {
             $$ = ::fesql::node::kInt32;
         }
+        |SMALLINT
+        {
+        	$$ = ::fesql::node::kInt16;
+        }
         |INTEGER
         {
             $$ = ::fesql::node::kInt32;
@@ -601,6 +606,10 @@ types:  I32
         |TIMESTAMP
         {
             $$ = ::fesql::node::kTimestamp;
+        }
+        |DATE
+        {
+        	$$ = ::fesql::node::kDate;
         }
         ;
 
@@ -723,17 +732,32 @@ create_stmt:    CREATE TABLE op_if_not_exist relation_name '(' column_desc_list 
                 ;
 
 
-insert_stmt:	INSERT INTO table_name VALUES '(' insert_expr_list ')'
+insert_stmt:	INSERT INTO table_name VALUES insert_values
 				{
-					$$ = node_manager->MakeInsertTableNode($3, NULL, $6);
+					$$ = node_manager->MakeInsertTableNode($3, NULL, $5);
 				}
-				|INSERT INTO table_name '(' column_ref_list ')' VALUES '(' insert_expr_list ')'
+				|INSERT INTO table_name '(' column_ref_list ')' VALUES insert_values
 				{
 
-					$$ = node_manager->MakeInsertTableNode($3, $5, $9);
+					$$ = node_manager->MakeInsertTableNode($3, $5, $8);
+				}
+				;
+insert_values:	insert_value
+				{
+					$$ = node_manager->MakeExprList($1);
+				}
+				| insert_values ',' insert_value
+				{
+					$$ = $1;
+					$$->PushBack($3);
 				}
 				;
 
+insert_value:	'(' insert_expr_list ')'
+				{
+					$$ = $2;
+				}
+				;
 column_ref_list:	column_ref
 					{
 						$$ = node_manager->MakeExprList($1);

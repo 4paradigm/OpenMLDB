@@ -3,7 +3,7 @@ include_directories(${INCLUDE_DIRECTORIES}
         ${PROJECT_BINARY_DIR}/src)
 
 if (TESTING_ENABLE)
-    set(BM_LIBS fesql_sdk fesql_dbms fesql_tablet  ${VM_LIBS} fesql_flags ${LLVM_LIBS} ${BRPC_LIBS} tcmalloc ${OS_LIB})
+    set(BM_LIBS fesql_sdk fesql_dbms fesql_tablet fesql_flags fesql_case ${yaml_libs} boost_filesystem ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS} tcmalloc ${OS_LIB})
     add_executable(base_bm_test base_bm_test.cc)
 
 

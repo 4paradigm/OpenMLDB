@@ -9,7 +9,10 @@
 #include "codegen/predicate_expr_ir_builder.h"
 #include <memory>
 #include <utility>
+#include "codegen/date_ir_builder.h"
 #include "codegen/ir_base_builder.h"
+#include "codegen/string_ir_builder.h"
+#include "codegen/timestamp_ir_builder.h"
 #include "gtest/gtest.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/Support/TargetSelect.h"
@@ -82,7 +85,8 @@ template <class V1, class V2, class R>
 void BinaryPredicateExprCheck(::fesql::node::DataType left_type,
                               ::fesql::node::DataType right_type,
                               ::fesql::node::DataType dist_type, V1 value1,
-                              V2 value2, R result, fesql::node::FnOperator op) {
+                              V2 value2, R expected,
+                              fesql::node::FnOperator op) {
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("predicate_func", *ctx);
 
@@ -95,11 +99,20 @@ void BinaryPredicateExprCheck(::fesql::node::DataType left_type,
         ::fesql::codegen::GetLLVMType(m.get(), right_type, &right_llvm_type));
     ASSERT_TRUE(GetLLVMType(m.get(), dist_type, &dist_llvm_type));
 
+    if (left_llvm_type->isStructTy()) {
+        left_llvm_type = left_llvm_type->getPointerTo();
+    }
+
+    if (right_llvm_type->isStructTy()) {
+        right_llvm_type = right_llvm_type->getPointerTo();
+    }
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "D" and take an argument of "S".
     Function *load_fn = Function::Create(
-        FunctionType::get(dist_llvm_type, {left_llvm_type, right_llvm_type},
-                          false),
+        FunctionType::get(
+            ::llvm::Type::getVoidTy(*ctx),
+            {left_llvm_type, right_llvm_type, dist_llvm_type->getPointerTo()},
+            false),
         Function::ExternalLinkage, "load_fn", m.get());
     BasicBlock *entry_block = BasicBlock::Create(*ctx, "EntryBlock", load_fn);
     IRBuilder<> builder(entry_block);
@@ -107,6 +120,8 @@ void BinaryPredicateExprCheck(::fesql::node::DataType left_type,
     Argument *arg0 = &(*iter);
     iter++;
     Argument *arg1 = &(*iter);
+    iter++;
+    Argument *arg2 = &(*iter);
 
     ScopeVar scope_var;
     scope_var.Enter("fn_base");
@@ -132,6 +147,7 @@ void BinaryPredicateExprCheck(::fesql::node::DataType left_type,
             break;
         case fesql::node::kFnOpLe:
             ok = ir_builder.BuildLeExpr(arg0, arg1, &output, status);
+            break;
         case fesql::node::kFnOpGt:
             ok = ir_builder.BuildGtExpr(arg0, arg1, &output, status);
             break;
@@ -145,15 +161,40 @@ void BinaryPredicateExprCheck(::fesql::node::DataType left_type,
             FAIL();
         }
     }
+    switch (dist_type) {
+        case node::kTimestamp: {
+            codegen::TimestampIRBuilder timestamp_builder(m.get());
+            ASSERT_TRUE(timestamp_builder.CopyFrom(builder.GetInsertBlock(),
+                                                   output, arg2));
+            break;
+        }
+        case node::kDate: {
+            codegen::DateIRBuilder date_builder(m.get());
+            ASSERT_TRUE(
+                date_builder.CopyFrom(builder.GetInsertBlock(), output, arg2));
+            break;
+        }
+        case node::kVarchar: {
+            codegen::StringIRBuilder string_builder(m.get());
+            ASSERT_TRUE(string_builder.CopyFrom(builder.GetInsertBlock(),
+                                                output, arg2));
+            break;
+        }
+        default: {
+            builder.CreateStore(output, arg2);
+        }
+    }
     builder.CreateRet(output);
     m->print(::llvm::errs(), NULL);
     ASSERT_TRUE(ok);
     auto J = ExitOnErr(LLJITBuilder().create());
     ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
     auto load_fn_jit = ExitOnErr(J->lookup("load_fn"));
-    R (*decode)(V1, V2) = (R(*)(V1, V2))load_fn_jit.getAddress();
-    R ret = decode(value1, value2);
-    ASSERT_EQ(ret, result);
+    void (*decode)(V1, V2, R *) =
+        (void (*)(V1, V2, R *))load_fn_jit.getAddress();
+    R result;
+    decode(value1, value2, &result);
+    ASSERT_EQ(expected, result);
 }
 
 TEST_F(PredicateIRBuilderTest, test_eq_expr_true) {
@@ -184,6 +225,71 @@ TEST_F(PredicateIRBuilderTest, test_eq_expr_true) {
     BinaryPredicateExprCheck<int32_t, double, bool>(
         ::fesql::node::kInt32, ::fesql::node::kDouble, ::fesql::node::kBool, 1,
         1.0, true, ::fesql::node::kFnOpEq);
+}
+
+TEST_F(PredicateIRBuilderTest, test_timestamp_compare) {
+    codec::Timestamp t1(1590115420000L);
+    codec::Timestamp t2(1590115420000L);
+    codec::Timestamp t3(1590115430000L);
+    codec::Timestamp t4(1590115410000L);
+    BinaryPredicateExprCheck<codec::Timestamp *, codec::Timestamp *, bool>(
+        ::fesql::node::kTimestamp, ::fesql::node::kTimestamp,
+        ::fesql::node::kBool, &t1, &t2, true, ::fesql::node::kFnOpEq);
+
+    BinaryPredicateExprCheck<codec::Timestamp *, codec::Timestamp *, bool>(
+        ::fesql::node::kTimestamp, ::fesql::node::kTimestamp,
+        ::fesql::node::kBool, &t1, &t3, true, ::fesql::node::kFnOpNeq);
+
+    BinaryPredicateExprCheck<codec::Timestamp *, codec::Timestamp *, bool>(
+        ::fesql::node::kTimestamp, ::fesql::node::kTimestamp,
+        ::fesql::node::kBool, &t1, &t3, true, ::fesql::node::kFnOpLe);
+
+    BinaryPredicateExprCheck<codec::Timestamp *, codec::Timestamp *, bool>(
+        ::fesql::node::kTimestamp, ::fesql::node::kTimestamp,
+        ::fesql::node::kBool, &t1, &t3, true, ::fesql::node::kFnOpLt);
+
+    BinaryPredicateExprCheck<codec::Timestamp *, codec::Timestamp *, bool>(
+        ::fesql::node::kTimestamp, ::fesql::node::kTimestamp,
+        ::fesql::node::kBool, &t1, &t4, true, ::fesql::node::kFnOpGe);
+    BinaryPredicateExprCheck<codec::Timestamp *, codec::Timestamp *, bool>(
+        ::fesql::node::kTimestamp, ::fesql::node::kTimestamp,
+        ::fesql::node::kBool, &t1, &t4, true, ::fesql::node::kFnOpGt);
+}
+
+TEST_F(PredicateIRBuilderTest, test_date_compare) {
+    codec::Date d1(2020, 05, 27);
+    codec::Date d2(2020, 05, 27);
+    codec::Date d3(2020, 05, 28);
+    codec::Date d4(2020, 05, 26);
+    BinaryPredicateExprCheck<codec::Date *, codec::Date *, bool>(
+        ::fesql::node::kDate, ::fesql::node::kDate, ::fesql::node::kBool, &d1,
+        &d2, true, ::fesql::node::kFnOpEq);
+
+    BinaryPredicateExprCheck<codec::Date *, codec::Date *, bool>(
+        ::fesql::node::kDate, ::fesql::node::kDate, ::fesql::node::kBool, &d1,
+        &d3, true, ::fesql::node::kFnOpNeq);
+
+    BinaryPredicateExprCheck<codec::Date *, codec::Date *, bool>(
+        ::fesql::node::kDate, ::fesql::node::kDate, ::fesql::node::kBool, &d1,
+        &d3, true, ::fesql::node::kFnOpLt);
+
+    BinaryPredicateExprCheck<codec::Date *, codec::Date *, bool>(
+        ::fesql::node::kDate, ::fesql::node::kDate, ::fesql::node::kBool, &d1,
+        &d3, true, ::fesql::node::kFnOpLe);
+
+    BinaryPredicateExprCheck<codec::Date *, codec::Date *, bool>(
+        ::fesql::node::kDate, ::fesql::node::kDate, ::fesql::node::kBool, &d1,
+        &d2, true, ::fesql::node::kFnOpLe);
+
+    BinaryPredicateExprCheck<codec::Date *, codec::Date *, bool>(
+        ::fesql::node::kDate, ::fesql::node::kDate, ::fesql::node::kBool, &d1,
+        &d2, true, ::fesql::node::kFnOpGe);
+    BinaryPredicateExprCheck<codec::Date *, codec::Date *, bool>(
+        ::fesql::node::kDate, ::fesql::node::kDate, ::fesql::node::kBool, &d1,
+        &d4, true, ::fesql::node::kFnOpGe);
+    BinaryPredicateExprCheck<codec::Date *, codec::Date *, bool>(
+        ::fesql::node::kDate, ::fesql::node::kDate, ::fesql::node::kBool, &d1,
+        &d4, true, ::fesql::node::kFnOpGt);
 }
 
 TEST_F(PredicateIRBuilderTest, test_eq_expr_false) {

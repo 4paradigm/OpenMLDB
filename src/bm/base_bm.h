@@ -14,6 +14,7 @@
 #include <random>
 #include <string>
 #include <vector>
+#include "case/sql_case.h"
 #include "codec/fe_row_codec.h"
 #include "tablet/tablet_catalog.h"
 #include "vm/catalog.h"
@@ -21,7 +22,7 @@
 namespace fesql {
 namespace bm {
 using fesql::codec::Row;
-
+using fesql::sqlcase::SQLCase;
 template <class T>
 class Repeater {
  public:
@@ -145,30 +146,26 @@ void BuildTableDef(::fesql::type::TableDef& table) {  // NOLINT
     }
 }
 
+bool LoadResource(const std::string& resource_path,
+                  type::TableDef& table_def,  // NOLINT
+                  std::vector<Row>& rows) {   // NOLINT
+    if (!SQLCase::LoadSchemaAndRowsFromYaml(
+            fesql::sqlcase::FindFesqlDirPath() + "/" + resource_path, table_def,
+            rows)) {
+        return false;
+    }
+    return true;
+}
 void BuildBuf(int8_t** buf, uint32_t* size,
               ::fesql::type::TableDef& table) {  // NOLINT
-    BuildTableDef(table);
-    ::fesql::type::IndexDef* index = table.add_indexes();
-    index->set_name("index1");
-    index->add_first_keys("col6");
-    index->set_second_key("col5");
-    codec::RowBuilder builder(table.columns());
-    uint32_t total_size = builder.CalTotalLength(2);
-    int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
-    builder.SetBuffer(ptr, total_size);
-    builder.AppendString("0", 1);
-    builder.AppendInt32(32);
-    builder.AppendInt16(16);
-    builder.AppendFloat(2.1f);
-    builder.AppendDouble(3.1);
-    builder.AppendInt64(64);
-    builder.AppendString("1", 1);
-    *buf = ptr;
-    *size = total_size;
+    std::vector<Row> rows;
+    LoadResource("cases/resource/benchmark_t1_basic_one_row.yaml", table, rows);
+    *buf = rows[0].buf();
+    *size = rows[0].size();
 }
 
-void BuildOnePkTableData(type::TableDef& table_def,   // NOLINT
-                         std::vector<Row>& buffer,  // NOLINT
+void BuildOnePkTableData(type::TableDef& table_def,  // NOLINT
+                         std::vector<Row>& buffer,   // NOLINT
                          int64_t data_size) {
     ::fesql::bm::Repeater<std::string> col0(
         std::vector<std::string>({"hello"}));

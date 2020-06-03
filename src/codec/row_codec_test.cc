@@ -17,8 +17,8 @@
 
 #include <string>
 #include <vector>
-#include "gtest/gtest.h"
 #include "codec/fe_row_codec.h"
+#include "gtest/gtest.h"
 
 namespace fesql {
 namespace codec {
@@ -117,6 +117,100 @@ TEST_F(CodecTest, Normal) {
         int16_t val1 = 0;
         ASSERT_EQ(view.GetInt16(1, &val1), 0);
         ASSERT_EQ(val1, 2);
+    }
+}
+
+TEST_F(CodecTest, TimestampTest) {
+    Schema schema;
+    ::fesql::type::ColumnDef* col = schema.Add();
+    col->set_name("col1");
+    col->set_type(::fesql::type::kInt32);
+    col = schema.Add();
+    col->set_name("std_ts");
+    col->set_type(::fesql::type::kTimestamp);
+    RowBuilder builder(schema);
+    uint32_t size = builder.CalTotalLength(0);
+    std::string row;
+    row.resize(size);
+    builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
+    ASSERT_TRUE(builder.AppendInt32(1));
+    ASSERT_TRUE(builder.AppendTimestamp(1590115420000L));
+    {
+        RowView view(schema, reinterpret_cast<int8_t*>(&(row[0])), size);
+        int32_t val = 0;
+        ASSERT_EQ(view.GetInt32(0, &val), 0);
+        ASSERT_EQ(val, 1);
+        int64_t val1 = 0;
+        ASSERT_EQ(view.GetTimestamp(1, &val1), 0);
+        ASSERT_EQ(val1, 1590115420000L);
+        ASSERT_EQ("1590115420000", view.GetAsString(1));
+    }
+
+    {
+        butil::IOBuf buf;
+        buf.append(row);
+        RowIOBufView view(schema);
+        view.Reset(buf);
+        int32_t val = 0;
+        ASSERT_EQ(view.GetInt32(0, &val), 0);
+        ASSERT_EQ(val, 1);
+        int64_t val1 = 0;
+        ASSERT_EQ(view.GetTimestamp(1, &val1), 0);
+        ASSERT_EQ(val1, 1590115420000L);
+    }
+}
+
+TEST_F(CodecTest, DateTest) {
+    Schema schema;
+    ::fesql::type::ColumnDef* col = schema.Add();
+    col->set_name("col1");
+    col->set_type(::fesql::type::kInt32);
+    col = schema.Add();
+    col->set_name("std_date");
+    col->set_type(::fesql::type::kDate);
+    RowBuilder builder(schema);
+    uint32_t size = builder.CalTotalLength(0);
+    std::string row;
+    row.resize(size);
+    builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
+    ASSERT_TRUE(builder.AppendInt32(1));
+    ASSERT_TRUE(builder.AppendDate(2020, 05, 27));
+
+    {
+        RowView view(schema, reinterpret_cast<int8_t*>(&(row[0])), size);
+        int32_t val = 0;
+        ASSERT_EQ(view.GetInt32(0, &val), 0);
+        ASSERT_EQ(val, 1);
+        int32_t year;
+        int32_t month;
+        int32_t day;
+        ASSERT_EQ(view.GetDate(1, &year, &month, &day), 0);
+        ASSERT_EQ(year, 2020);
+        ASSERT_EQ(month, 05);
+        ASSERT_EQ(day, 27);
+        ASSERT_EQ("2020-05-27", view.GetAsString(1));
+
+        ASSERT_EQ(view.GetDateUnsafe(1), 7865371);
+        ASSERT_EQ(view.GetYearUnsafe(7865371), 2020);
+        ASSERT_EQ(view.GetMonthUnsafe(7865371), 5);
+        ASSERT_EQ(view.GetDayUnsafe(7865371), 27);
+    }
+
+    {
+        butil::IOBuf buf;
+        buf.append(row);
+        RowIOBufView view(schema);
+        view.Reset(buf);
+        int32_t val = 0;
+        ASSERT_EQ(view.GetInt32(0, &val), 0);
+        ASSERT_EQ(val, 1);
+        int32_t year;
+        int32_t month;
+        int32_t day;
+        ASSERT_EQ(view.GetDate(1, &year, &month, &day), 0);
+        ASSERT_EQ(year, 2020);
+        ASSERT_EQ(month, 05);
+        ASSERT_EQ(day, 27);
     }
 }
 

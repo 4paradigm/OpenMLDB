@@ -22,6 +22,9 @@
 #include <map>
 #include <string>
 #include <vector>
+#include "boost/algorithm/string.hpp"
+#include "boost/filesystem/operations.hpp"
+#include "boost/lexical_cast.hpp"
 #include "node/node_enum.h"
 
 namespace fesql {
@@ -213,6 +216,8 @@ inline const std::string DataTypeName(const DataType &type) {
             return "string";
         case fesql::node::kTimestamp:
             return "timestamp";
+        case fesql::node::kDate:
+            return "date";
         case fesql::node::kList:
             return "list";
         case fesql::node::kMap:
@@ -779,6 +784,12 @@ class ExprIdNode : public ExprNode {
 };
 
 class ConstNode : public ExprNode {
+    struct FeDate {
+        int32_t year = -1;
+        int32_t month = -1;
+        int32_t day = -1;
+    };
+
  public:
     ConstNode() : ExprNode(kExprPrimary), data_type_(fesql::node::kNull) {}
     explicit ConstNode(int16_t val)
@@ -837,8 +848,8 @@ class ConstNode : public ExprNode {
 
     virtual bool Equals(const ExprNode *node) const;
 
+    const bool IsNull() const { return kNull == data_type_; }
     const std::string GetExprString() const;
-
     int16_t GetSmallInt() const { return val_.vsmallint; }
 
     int GetInt() const { return val_.vint; }
@@ -868,6 +879,118 @@ class ConstNode : public ExprNode {
                     << "error occur when get milli second from wrong type "
                     << DataTypeName(data_type_);
                 return -1;
+            }
+        }
+    }
+
+    const int32_t GetAsInt32() const {
+        switch (data_type_) {
+            case kInt32:
+                return static_cast<int32_t>(val_.vint);
+            case kInt16:
+                return static_cast<int32_t>(val_.vsmallint);
+            case kInt64:
+                return static_cast<int64_t>(val_.vlong);
+            case kFloat:
+                return static_cast<int64_t>(val_.vfloat);
+            case kDouble:
+                return static_cast<int64_t>(val_.vdouble);
+            default: {
+                return 0;
+            }
+        }
+    }
+
+    const int16_t GetAsInt16() const {
+        switch (data_type_) {
+            case kInt32:
+                return static_cast<int16_t>(val_.vint);
+            case kInt16:
+                return static_cast<int16_t>(val_.vsmallint);
+            case kInt64:
+                return static_cast<int16_t>(val_.vlong);
+            case kFloat:
+                return static_cast<int16_t>(val_.vfloat);
+            case kDouble:
+                return static_cast<int16_t>(val_.vdouble);
+            default: {
+                return 0;
+            }
+        }
+    }
+
+    const int64_t GetAsInt64() const {
+        switch (data_type_) {
+            case kInt32:
+                return static_cast<int64_t>(val_.vint);
+            case kInt16:
+                return static_cast<int64_t>(val_.vsmallint);
+            case kInt64:
+                return static_cast<int64_t>(val_.vlong);
+            case kFloat:
+                return static_cast<int64_t>(val_.vfloat);
+            case kDouble:
+                return static_cast<int64_t>(val_.vdouble);
+            default: {
+                return 0;
+            }
+        }
+    }
+
+    const float GetAsFloat() const {
+        switch (data_type_) {
+            case kInt32:
+                return static_cast<float>(val_.vint);
+            case kInt16:
+                return static_cast<float>(val_.vsmallint);
+            case kInt64:
+                return static_cast<float>(val_.vlong);
+            case kFloat:
+                return static_cast<float>(val_.vfloat);
+            case kDouble:
+                return static_cast<float>(val_.vdouble);
+            default: {
+                return 0.0;
+            }
+        }
+    }
+
+    const bool GetAsDate(int32_t* year, int32_t* month, int32_t* day) const {
+        switch (data_type_) {
+            case kVarchar: {
+                std::string date_str(val_.vstr);
+                std::vector<std::string> date_vec;
+                boost::split(date_vec, date_str, boost::is_any_of("-"),
+                             boost::token_compress_on);
+                if (date_vec.empty()) {
+                    LOG(WARNING) << "Invalid Date Format";
+                    return false;
+                }
+                *year = boost::lexical_cast<int32_t>(date_vec[0]);
+                *month = boost::lexical_cast<int32_t>(date_vec[1]);
+                *day = boost::lexical_cast<int32_t>(date_vec[2]);
+                return true;
+            }
+            default: {
+                LOG(WARNING) << "Invalid data type for date";
+                return false;
+            }
+        }
+    }
+    const double GetAsDouble() const {
+        switch (data_type_) {
+            case kInt32:
+                return static_cast<double>(val_.vint);
+            case kInt16:
+                return static_cast<double>(val_.vsmallint);
+            case kInt64:
+                return static_cast<double>(val_.vlong);
+            case kFloat:
+                return static_cast<double>(val_.vfloat);
+            case kDouble:
+                return static_cast<double>(val_.vdouble);
+            default: {
+                return 0.0;
             }
         }
     }

@@ -41,6 +41,7 @@ class TypeIRBuilder {
     TypeIRBuilder() {}
     virtual ~TypeIRBuilder() {}
     static bool IsTimestampPtr(::llvm::Type* type);
+    static bool IsDatePtr(::llvm::Type* type);
     static bool IsStringPtr(::llvm::Type* type);
     static bool IsStructPtr(::llvm::Type* type);
 };

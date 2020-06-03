@@ -191,6 +191,12 @@ void CheckRows(const vm::Schema& schema, const std::vector<Row>& rows,
                         << " At " << i;
                     break;
                 }
+                case fesql::type::kDate: {
+                    ASSERT_EQ(row_view.GetDateUnsafe(i),
+                              row_view_exp.GetDateUnsafe(i))
+                                        << " At " << i;
+                    break;
+                }
                 case fesql::type::kTimestamp: {
                     ASSERT_EQ(row_view.GetTimestampUnsafe(i),
                               row_view_exp.GetTimestampUnsafe(i))
@@ -417,7 +423,9 @@ TEST_P(EngineTest, test_request_engine) {
 TEST_P(EngineTest, test_batch_engine) {
     ParamType sql_case = GetParam();
     LOG(INFO) << sql_case.desc();
-    BatchModeCheck(sql_case);
+    if (sql_case.mode() != "batch-unsupport") {
+        BatchModeCheck(sql_case);
+    }
 }
 
 TEST_F(EngineTest, EngineCompileOnlyTest) {

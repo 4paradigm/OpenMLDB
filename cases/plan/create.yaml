@@ -4,10 +4,13 @@ SQLCases:
     sql: |
       create table test(
           column1 int NOT NULL,
-          column2 timestamp NOT NULL,
-          column3 int NOT NULL,
-          column4 string NOT NULL,
-          column5 int NOT NULL
+          column2 smallint NOT NULL,
+          column3 float NOT NULL,
+          column4 double NOT NULL,
+          column5 bigint NOT NULL,
+          std_ts timestamp NOT NULL,
+          std_date date NOT NULL,
+          index(key=(column2), ts=std_ts)
       );
   - id: 2
     desc: 简单CREATE NOT EXIST
