@@ -41,7 +41,7 @@ bool DateIRBuilder::NewDate(::llvm::BasicBlock* block, ::llvm::Value** output) {
     if (!Create(block, &date)) {
         return false;
     }
-    if (!SetDays(block, date,
+    if (!SetDate(block, date,
                  ::llvm::ConstantInt::get(
                      ::llvm::Type::getInt32Ty(m_->getContext()), 0, false))) {
         return false;
@@ -59,7 +59,7 @@ bool DateIRBuilder::NewDate(::llvm::BasicBlock* block, ::llvm::Value* days,
     if (!Create(block, &date)) {
         return false;
     }
-    if (!SetDays(block, date, days)) {
+    if (!SetDate(block, date, days)) {
         return false;
     }
     *output = date;
@@ -76,21 +76,21 @@ bool DateIRBuilder::CopyFrom(::llvm::BasicBlock* block, ::llvm::Value* src,
         return false;
     }
     ::llvm::Value* days;
-    if (!GetDays(block, src, &days)) {
+    if (!GetDate(block, src, &days)) {
         return false;
     }
-    if (!SetDays(block, dist, days)) {
+    if (!SetDate(block, dist, days)) {
         return false;
     }
     return true;
 }
-bool DateIRBuilder::GetDays(::llvm::BasicBlock* block, ::llvm::Value* date,
+bool DateIRBuilder::GetDate(::llvm::BasicBlock* block, ::llvm::Value* timestamp,
                             ::llvm::Value** output) {
-    return Get(block, date, 0, output);
+    return Get(block, timestamp, 0, output);
 }
-bool DateIRBuilder::SetDays(::llvm::BasicBlock* block, ::llvm::Value* date,
-                            ::llvm::Value* days) {
-    return Set(block, date, 0, days);
+bool DateIRBuilder::SetDate(::llvm::BasicBlock* block, ::llvm::Value* timestamp,
+                            ::llvm::Value* ts) {
+    return Set(block, timestamp, 0, ts);
 }
 }  // namespace codegen
 }  // namespace fesql

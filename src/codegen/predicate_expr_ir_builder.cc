@@ -126,8 +126,8 @@ bool PredicateIRBuilder::BuildEqExpr(::llvm::Value* left, ::llvm::Value* right,
         llvm::Value* left_days;
         llvm::Value* right_days;
         DateIRBuilder date_ir_builder(block_->getModule());
-        date_ir_builder.GetDays(block_, casted_left, &left_days);
-        date_ir_builder.GetDays(block_, casted_right, &right_days);
+        date_ir_builder.GetDate(block_, casted_left, &left_days);
+        date_ir_builder.GetDate(block_, casted_right, &right_days);
         return BuildEqExpr(left_days, right_days, output, status);
     } else {
         status.msg = "fail to codegen == expr: value types are invalid";
@@ -434,8 +434,8 @@ bool PredicateIRBuilder::InferBaseTypes(::llvm::Value* left,
     if (TypeIRBuilder::IsDatePtr((*casted_left)->getType()) &&
         TypeIRBuilder::IsDatePtr((*casted_right)->getType())) {
         DateIRBuilder date_ir_builder(block_->getModule());
-        date_ir_builder.GetDays(block_, *casted_left, casted_left);
-        date_ir_builder.GetDays(block_, *casted_right, casted_right);
+        date_ir_builder.GetDate(block_, *casted_left, casted_left);
+        date_ir_builder.GetDate(block_, *casted_right, casted_right);
     }
     return true;
 }
