@@ -224,9 +224,16 @@ class ViewResult {
 
     int64_t GetInt(uint32_t idx);
 
+    const std::string& GetTableName() { return table_name_; }
+
     void SetTable(const std::string& name) { table_name_ = name; }
 
     void SetClient(RtidbClient* client) { client_ = client; }
+
+    void SetBlobIdxVec(const std::vector<int32_t>& vec) {
+        blob_idx_vec_ = vec;
+    }
+    const std::vector<int32_t>& GetBlobIdxVec() { return blob_idx_vec_; }
 
     std::shared_ptr<rtidb::codec::RowView> rv_;
 
@@ -237,6 +244,7 @@ class ViewResult {
     int64_t curr_blob_key_;
     std::string table_name_;
     RtidbClient* client_;
+    std::vector<int32_t> blob_idx_vec_;
 };
 
 class TraverseResult : public ViewResult {

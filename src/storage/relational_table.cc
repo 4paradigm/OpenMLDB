@@ -46,7 +46,7 @@ RelationalTable::RelationalTable(const ::rtidb::api::TableMeta& table_meta,
         initOptionTemplate();
     }
     diskused_ = 0;
-    write_opts_.disableWAL = FLAGS_disable_wal;
+    write_opts_.disableWAL = false;
     db_ = nullptr;
 }
 
@@ -279,6 +279,31 @@ bool RelationalTable::Init() {
     PDLOG(INFO,
           "Open DB. tid %u pid %u ColumnFamilyHandle size %d with data path %s",
           id_, pid_, idx_cnt_, path.c_str());
+    return true;
+}
+
+bool RelationalTable::LoadTable() {
+    if (!InitFromMeta()) {
+        return false;
+    }
+    InitColumnFamilyDescriptor();
+    std::string path = db_root_path_ + "/" + std::to_string(id_) + "_" +
+        std::to_string(pid_) + "/data";
+    if (!rtidb::base::IsExists(path)) {
+        return false;
+    }
+    options_.create_if_missing = false;
+    options_.error_if_exists = false;
+    options_.create_missing_column_families = false;
+    rocksdb::Status s =
+        rocksdb::DB::Open(options_, path, cf_ds_, &cf_hs_, &db_);
+    DEBUGLOG("Load DB. tid %u pid %u ColumnFamilyHandle size %u,", id_,
+            pid_, GetIdxCnt());
+    if (!s.ok()) {
+        PDLOG(WARNING, "Load DB failed. tid %u pid %u msg %s", id_, pid_,
+                s.ToString().c_str());
+        return false;
+    }
     return true;
 }
 

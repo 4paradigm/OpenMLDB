@@ -121,24 +121,6 @@ public class RelationalIterator {
         return count;
     }
 
-    public Map<String, String> getUrlMap() throws TabletException {
-        // eg. "/v1/get/" + table_name + "/" + key
-        if (blobIdxList.isEmpty()) {
-            throw new TabletException("can't get url because no blob column!");
-        }
-        Map<String, String> map = new HashMap<>();
-        StringBuilder sb = new StringBuilder("/v1/get/");
-        sb.append(th.getTableInfo().getName());
-        sb.append("/");
-        String prefix = sb.toString();
-        for (int idx : blobIdxList) {
-            ColumnDesc columnDesc = th.getSchema().get(idx);
-            Object value = rowView.getValue(idx, columnDesc.getDataType());
-            map.put(columnDesc.getName(), prefix + ((Long) value).toString());
-        }
-        return map;
-    }
-
     public boolean valid() {
         if (offset <= totalSize && totalSize != 0) {
             return true;
