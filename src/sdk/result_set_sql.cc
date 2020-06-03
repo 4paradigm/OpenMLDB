@@ -84,6 +84,12 @@ bool ResultSetSQL::Next() {
     return false;
 }
 
+bool ResultSetSQL::Reset() {
+    index_ = -1;
+    position_ = 0;
+    return true;
+}
+
 bool ResultSetSQL::GetString(uint32_t index, std::string* str) {
     if (str == NULL) {
         LOG(WARNING) << "input ptr is null pointer";
@@ -166,7 +172,7 @@ bool ResultSetSQL::GetDate(uint32_t index, int32_t* date) {
 }
 
 bool ResultSetSQL::GetDate(uint32_t index, int32_t* year, int32_t* month,
-                            int32_t* day) {
+                           int32_t* day) {
     if (day == NULL) {
         LOG(WARNING) << "input ptr is null pointer";
         return false;

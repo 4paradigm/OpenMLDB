@@ -17,6 +17,7 @@
 
 #ifndef SRC_CMD_SQL_CMD_H_
 #define SRC_CMD_SQL_CMD_H_
+#include <algorithm>
 #include <string>
 #include <vector>
 
@@ -47,8 +48,8 @@ const std::string LOGO =  // NOLINT
     " | | |  __ / |__| | |_) |\n"
     " |_|  \\___||_____/|____/\n";
 
-const std::string VERSION = std::to_string(RTIDB_VERSION_MAJOR) + // NOLINT
-                            "." +  // NOLINT
+const std::string VERSION = std::to_string(RTIDB_VERSION_MAJOR) +  // NOLINT
+                            "." +                                  // NOLINT
                             std::to_string(RTIDB_VERSION_MEDIUM) + "." +
                             std::to_string(RTIDB_VERSION_MINOR) + "." +
                             std::to_string(RTIDB_VERSION_BUG);
@@ -237,12 +238,80 @@ void HandleCmd(const fesql::node::CmdNode *cmd_node) {
             }
             break;
         }
+        case fesql::node::kCmdDropTable: {
+            std::string name = cmd_node->GetArgs()[0];
+            std::string error;
+            printf("Drop table %s? yes/no\n", name.c_str());
+            std::string input;
+            std::cin >> input;
+            std::transform(input.begin(), input.end(), input.begin(),
+                           ::tolower);
+            if (input != "yes") {
+                printf("'drop %s' cmd is canceled!\n", name.c_str());
+                return;
+            }
+            auto ns = cs->GetNsClient();
+            bool ok = ns->DropTable(name, error);
+            if (ok) {
+                std::cout << "drop ok" << std::endl;
+                sr->RefreshCatalog();
+            } else {
+                std::cout << "failed to drop. error msg: " << error
+                          << std::endl;
+            }
+            break;
+        }
+        case fesql::node::kCmdDropIndex: {
+            std::string index_name = cmd_node->GetArgs()[0];
+            std::string table_name = cmd_node->GetArgs()[1];
+            std::string error;
+            printf("Drop index %s on %s? yes/no\n", index_name.c_str(),
+                   table_name.c_str());
+            std::string input;
+            std::cin >> input;
+            std::transform(input.begin(), input.end(), input.begin(),
+                           ::tolower);
+            if (input != "yes") {
+                printf("'Drop index %s on %s' cmd is canceled!\n",
+                       index_name.c_str(), table_name.c_str());
+                return;
+            }
+            auto ns = cs->GetNsClient();
+            bool ok = ns->DeleteIndex(table_name, index_name, error);
+            if (ok) {
+                std::cout << "drop index ok" << std::endl;
+            } else {
+                std::cout << "Fail to drop index. error msg: " << error
+                          << std::endl;
+            }
+            break;
+        }
         case fesql::node::kCmdExit: {
             exit(0);
         }
         default: {
             return;
         }
+    }
+}
+
+void HandleCreateIndex(const fesql::node::CreateIndexNode *create_index_node) {
+    ::rtidb::common::ColumnKey column_key;
+    column_key.set_index_name(create_index_node->index_name_);
+    for (const auto &key : create_index_node->index_->GetKey()) {
+        column_key.add_col_name(key);
+    }
+    column_key.add_ts_name(create_index_node->index_->GetTs());
+
+    std::string error;
+    auto ns = cs->GetNsClient();
+    bool ok = ns->AddIndex(create_index_node->table_name_, column_key, error);
+    if (ok) {
+        std::cout << "create index ok" << std::endl;
+    } else {
+        std::cout << "failed to create index. error msg: " << error
+                  << std::endl;
+        return;
     }
 }
 
@@ -276,6 +345,16 @@ void HandleSQL(const std::string &sql) {
             } else {
                 sr->RefreshCatalog();
             }
+            return;
+        }
+        case fesql::node::kCreateIndexStmt: {
+            if (db.empty()) {
+                std::cout << "please use database first" << std::endl;
+                return;
+            }
+            fesql::node::CreateIndexNode *create_index_node =
+                dynamic_cast<fesql::node::CreateIndexNode *>(node);
+            HandleCreateIndex(create_index_node);
             return;
         }
         case fesql::node::kInsertStmt: {
