@@ -19,6 +19,7 @@
 #define SRC_CMD_SQL_CMD_H_
 #include <string>
 #include <vector>
+#include <algorithm>
 
 #include "base/linenoise.h"
 #include "base/texttable.h"
