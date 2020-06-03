@@ -156,12 +156,22 @@ bool ResultSetSQL::GetDouble(uint32_t index, double* result) {
     return ret == 0;
 }
 
-bool ResultSetSQL::GetDate(uint32_t index, uint32_t* days) {
-    if (days == NULL) {
+bool ResultSetSQL::GetDate(uint32_t index, int32_t* date) {
+    if (date == NULL) {
         LOG(WARNING) << "input ptr is null pointer";
         return false;
     }
-    return false;
+    int32_t ret = row_view_->GetDate(index, date);
+    return ret == 0;
+}
+
+bool ResultSetSQL::GetDate(uint32_t index, int32_t* year, int32_t* month,
+                            int32_t* day) {
+    if (day == NULL) {
+        LOG(WARNING) << "input ptr is null pointer";
+        return false;
+    }
+    return 0 == row_view_->GetDate(index, year, month, day);
 }
 
 bool ResultSetSQL::GetTime(uint32_t index, int64_t* mills) {

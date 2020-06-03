@@ -282,7 +282,7 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db,
     std::string value;
     std::vector<std::pair<std::string, uint32_t>> dimensions;
     std::vector<uint64_t> ts;
-    ok = EncodeFromat(table_info->column_desc_v1(), iplan, &value, &dimensions,
+    ok = EncodeFullColumns(table_info->column_desc_v1(), iplan, &value, &dimensions,
                       &ts);
     if (!ok) {
         LOG(WARNING) << "fail to encode row for table "
@@ -303,7 +303,162 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db,
     return true;
 }
 
-bool SQLClusterRouter::EncodeFromat(
+bool SQLClusterRouter::EncodeFullColumns(const catalog::RtiDBSchema& schema,
+        const ::fesql::node::InsertPlanNode* plan,
+        std::string* value,
+        std::vector<std::pair<std::string, uint32_t>>* dimensions,
+        std::vector<uint64_t>* ts_dimensions) {
+    if (plan == NULL || value == NULL || dimensions == NULL ||
+        ts_dimensions == NULL)
+        return false;
+    auto insert_stmt = plan->GetInsertNode();
+    if (nullptr == insert_stmt 
+            || insert_stmt->values_.size() <= 0) {
+        LOG(WARNING) << "insert stmt is null";
+        return false;
+    }
+    //TODO(wangtaize) support batch put
+    ::fesql::node::ExprListNode* row
+        = dynamic_cast<::fesql::node::ExprListNode*>(insert_stmt->values_[0]);
+    if (row->children_.size() != schema.size()) {
+        LOG(WARNING) << "schema mismatch";
+        return false;
+    }
+    uint32_t str_size = 0;
+    for (uint32_t idx = 0; idx < row->children_.size(); idx++) {
+        const ::rtidb::common::ColumnDesc& column = schema.Get(idx);
+        auto val = row->children_.at(idx);
+        if (val->GetExprType() != ::fesql::node::kExprPrimary) {
+            LOG(WARNING) << "unsupported  data type";
+            return false;
+        }
+        ::fesql::node::ConstNode* primary =
+                dynamic_cast<::fesql::node::ConstNode*>(val);
+        if (primary->IsNull()) {
+            continue;
+        }
+        if (column.data_type() == ::rtidb::type::kVarchar
+            || column.data_type() == ::rtidb::type::kString) {
+            str_size += strlen(primary->GetStr());
+        }
+    }
+    DLOG(INFO) << "row str size " << str_size;
+    ::rtidb::codec::RowBuilder rb(schema);
+    uint32_t row_size = rb.CalTotalLength(str_size);
+    value->resize(row_size);
+    char* buf = reinterpret_cast<char*>(&(value->at(0)));
+    bool ok = rb.SetBuffer(reinterpret_cast<int8_t*>(buf), row_size);
+    if (!ok) {
+        return false;
+    }
+    int32_t idx_cnt = 0;
+    for (int32_t i = 0; i < schema.size(); i++) {
+        const ::rtidb::common::ColumnDesc& column = schema.Get(i);
+        const ::fesql::node::ConstNode* primary =
+            dynamic_cast<const ::fesql::node::ConstNode*>(
+                row->children_.at(i));
+        if (primary->IsNull()) {
+            rb.AppendNULL();
+            continue;
+        }
+        switch (column.data_type()) {
+            case ::rtidb::type::kSmallInt: {
+                ok = rb.AppendInt16(primary->GetSmallInt());
+                DLOG(INFO) << "parse column " << column.name() << " with value "
+                           << primary->GetSmallInt();
+                if (column.add_ts_idx()) {
+                    dimensions->push_back(std::make_pair(
+                        std::to_string(primary->GetSmallInt()), idx_cnt));
+                    idx_cnt++;
+                }
+                break;
+            }
+            case ::rtidb::type::kInt: {
+                DLOG(INFO) << "parse column " << column.name() << " with value "
+                           << primary->GetInt();
+                ok = rb.AppendInt32(primary->GetInt());
+                if (column.add_ts_idx()) {
+                    dimensions->push_back(std::make_pair(
+                        std::to_string(primary->GetInt()), idx_cnt));
+                    idx_cnt++;
+                }
+                break;
+            }
+            case ::rtidb::type::kBigInt: {
+                if (column.is_ts_col()) {
+                    ts_dimensions->push_back(primary->GetAsInt64());
+                }
+                if (column.add_ts_idx()) {
+                    dimensions->push_back(std::make_pair(
+                        std::to_string(primary->GetAsInt64()), idx_cnt));
+                    idx_cnt++;
+                }
+                DLOG(INFO) << "parse column " << column.name() << " with value "
+                           << primary->GetAsInt64();
+                ok = rb.AppendInt64(primary->GetAsInt64());
+                break;
+            }
+            case ::rtidb::type::kFloat: {
+                DLOG(INFO) << "parse column " << column.name() << " with value "
+                           << primary->GetDouble();
+                ok = rb.AppendFloat(static_cast<float>(primary->GetDouble()));
+                break;
+            }
+            case ::rtidb::type::kDouble: {
+                DLOG(INFO) << "parse column " << column.name() << " with value "
+                           << primary->GetDouble();
+                ok = rb.AppendDouble(primary->GetDouble());
+                break;
+            }
+            case ::rtidb::type::kVarchar:
+            case ::rtidb::type::kString: {
+                ok = rb.AppendString(primary->GetStr(),
+                                     strlen(primary->GetStr()));
+                DLOG(INFO) << "parse column " << column.name() << " with value "
+                           << std::string(primary->GetStr(),
+                                          strlen(primary->GetStr()));
+                if (column.add_ts_idx()) {
+                    dimensions->push_back(
+                        std::make_pair(std::string(primary->GetStr(),
+                                                   strlen(primary->GetStr())),
+                                       idx_cnt));
+                    idx_cnt++;
+                }
+                break;
+            }
+            case ::rtidb::type::kTimestamp: {
+                if (column.is_ts_col()) {
+                    ts_dimensions->push_back(primary->GetAsInt64());
+                }
+                ok = rb.AppendTimestamp(primary->GetAsInt64());
+                break;
+            }
+            case ::rtidb::type::kDate: {
+				int32_t year;
+                int32_t month;
+                int32_t day;
+                if (!primary->GetAsDate(&year, &month, &day)) {
+                    ok = false;
+                } else {
+                    ok = rb.AppendDate(year, month, day);
+                }
+                break;
+            }
+            default: {
+                LOG(WARNING) << " not supported type";
+                return false;
+            }
+        }
+        if (!ok) {
+            LOG(WARNING) << "fail encode column " << column.type();
+            return false;
+        }
+    }
+    return true;
+
+}
+
+bool SQLClusterRouter::EncodeFormat(
     const catalog::RtiDBSchema& schema,
     const ::fesql::node::InsertPlanNode* plan, std::string* value,
     std::vector<std::pair<std::string, uint32_t>>* dimensions,
@@ -317,6 +472,7 @@ bool SQLClusterRouter::EncodeFromat(
         LOG(WARNING) << "insert stmt is null or schema mismatch";
         return false;
     }
+    std::map<std::string, uint32_t> column_idx;
     uint32_t str_size = 0;
     // TODO(wangtaize) use a safe way
     for (auto value : insert_stmt->values_) {

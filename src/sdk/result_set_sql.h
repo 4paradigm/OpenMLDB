@@ -58,9 +58,10 @@ class ResultSetSQL : public ::fesql::sdk::ResultSet {
 
     bool GetDouble(uint32_t index, double* result);
 
-    bool GetDate(uint32_t index, uint32_t* days);
+    bool GetDate(uint32_t index, int32_t* date);
 
-    int32_t GetDateUnsafe(uint32_t index) { return 0; }
+    bool GetDate(uint32_t index, int32_t* year, int32_t* month,
+                         int32_t* day);
 
     bool GetTime(uint32_t index, int64_t* mills);
 
@@ -68,6 +69,9 @@ class ResultSetSQL : public ::fesql::sdk::ResultSet {
 
     inline int32_t Size() { return response_->count(); }
 
+    bool Reset() {
+        return false;
+    }
  private:
     inline uint32_t GetRecordSize() { return response_->count(); }
 
