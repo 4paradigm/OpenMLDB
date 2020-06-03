@@ -45,7 +45,7 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     add_definitions(-Wno-c++17-extensions)
     add_definitions(-Wno-defaulted-function-deleted)
 endif ()
-
+add_definitions(-DHAVE_STDBOOL_H=1)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
 option(TCMALLOC_ENABLE "Enable TCMALLOC" ON)
 option(SQL_PYSDK_ENABLE "Enable sql pysdk" ON)
