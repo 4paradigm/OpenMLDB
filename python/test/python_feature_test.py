@@ -376,7 +376,7 @@ class TestRtidb(unittest.TestCase):
       self.assertEqual("n{}".format(id+1), l["name"])
       self.assertEqual(None, l["mcc"])
       self.assertEqual("a1", l["attribute"])
-      self.assertEqual(b"i1", l["image"])
+      self.assertEqual(b"i1", l["image"].getData())
       id += 1;
     self.assertEqual(1, id);
     # update
@@ -395,7 +395,7 @@ class TestRtidb(unittest.TestCase):
       self.assertEqual("n{}".format(id+1), l["name"])
       self.assertEqual(None, l["mcc"])
       self.assertEqual("a2", l["attribute"])
-      self.assertEqual(b"i1", l["image"])
+      self.assertEqual(b"i1", l["image"].getData())
       id += 1;
     self.assertEqual(1, id);
     # delete

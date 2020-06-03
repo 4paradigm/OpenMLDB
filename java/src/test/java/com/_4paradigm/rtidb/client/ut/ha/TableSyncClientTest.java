@@ -3212,7 +3212,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(valueMap.size(), 3);
                 Assert.assertEquals(valueMap.get("id"), pr.getAutoGenPk());
                 Assert.assertEquals(valueMap.get("attribute"), "a2");
-                Assert.assertEquals(valueMap.get("image"), StringToBB("i2"));
+                Assert.assertEquals(((BlobData)valueMap.get("image")).getData(), StringToBB("i2"));
             }
             //delete
             {
