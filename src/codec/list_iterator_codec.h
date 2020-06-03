@@ -115,6 +115,19 @@ class TimestampColumnImpl : public ColumnImpl<Timestamp> {
         return ts > 0 ? Timestamp(ts) : Timestamp(0);
     }
 };
+
+class DateColumnImpl : public ColumnImpl<Date> {
+ public:
+    DateColumnImpl(ListV<Row> *impl, int32_t row_idx, uint32_t offset)
+        : ColumnImpl(impl, row_idx, offset) {}
+    ~DateColumnImpl() {}
+    const Date GetField(const Row& row) const override {
+        int32_t days;
+        const int8_t *ptr = row.buf(row_idx_) + offset_;
+        days = *((const int32_t *)ptr);
+        return days > 0 ? Date(days) : Date(0);
+    }
+};
 class StringColumnImpl : public ColumnImpl<StringRef> {
  public:
     StringColumnImpl(ListV<Row> *impl, int32_t row_idx,

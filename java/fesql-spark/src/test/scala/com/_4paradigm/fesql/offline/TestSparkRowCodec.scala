@@ -1,6 +1,6 @@
 package com._4paradigm.fesql.offline
 
-import java.sql.Timestamp
+import java.sql.{Date, Timestamp}
 
 import com._4paradigm.fesql.FeSqlLibrary
 import com._4paradigm.fesql.codec.{Row => NativeRow}
@@ -34,7 +34,12 @@ class TestSparkRowCodec extends FunSuite {
       baseSchema)
   }
 
-
+  test("Test encode and decode with date") {
+    val withDateSchema = baseSchema.add("date1", DateType)
+    testRow(
+      Row(1.toShort, 1, 1L, 1.0f, 1.0, true, new Timestamp(1), new Date(2020-1900, 5, 27)),
+      withDateSchema)
+  }
   test("Test encode and decode with strings") {
     val withStrSchema = baseSchema.add("str1", StringType).add("str2", StringType)
     testRow(

@@ -1,16 +1,19 @@
 package com._4paradigm.fesql.offline
 
-import java.sql.Timestamp
+import java.sql.{Date, Timestamp}
 
 import com._4paradigm.fesql.codec.{RowBuilder, RowView, Row => NativeRow}
 import com._4paradigm.fesql.offline.utils.FesqlUtil
 import com._4paradigm.fesql.vm.CoreAPI
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types._
+import org.slf4j.LoggerFactory
 
 
 class SparkRowCodec(sliceSchemas: Array[StructType]) {
 
+
+  private val logger = LoggerFactory.getLogger(this.getClass)
   private val sliceNum = sliceSchemas.length
   private val columnDefSegmentList = sliceSchemas.map(FesqlUtil.getFeSQLSchema)
 
@@ -88,6 +91,11 @@ class SparkRowCodec(sliceSchemas: Array[StructType]) {
             rowBuilder.AppendString(str, str.length)
           case TimestampType =>
             rowBuilder.AppendTimestamp(row.getTimestamp(fieldOffset).getTime)
+          case DateType => {
+            val date = row.getDate(fieldOffset)
+            logger.info("Encode date: {}", date)
+            rowBuilder.AppendDate(date.getYear+1900, date.getMonth, date.getDate)
+          }
           case _ => throw new IllegalArgumentException(
             s"Spark type ${field.dataType} not supported")
         }
@@ -130,6 +138,13 @@ class SparkRowCodec(sliceSchemas: Array[StructType]) {
             output(fieldOffset) = rowView.GetStringUnsafe(i)
           case TimestampType =>
             output(fieldOffset) = new Timestamp(rowView.GetTimestampUnsafe(i))
+          case DateType => {
+            val days = rowView.GetDateUnsafe(i);
+            logger.info("Date Type: date =  {} ", days)
+            output(fieldOffset) = new Date(rowView.GetYearUnsafe(days)-1900,
+              rowView.GetMonthUnsafe(days), rowView.GetDayUnsafe(days))
+          }
+
           case _ => throw new IllegalArgumentException(
             s"Spark type ${field.dataType} not supported")
         }
@@ -143,7 +158,7 @@ class SparkRowCodec(sliceSchemas: Array[StructType]) {
     stringFields.zipWithIndex.map { case (fields, idx) =>
       var length = 0
       fields.foreach(idx => {
-        if (! row.isNullAt(idx)) {
+        if (!row.isNullAt(idx)) {
           val str = row.getString(idx)
           if (str != null) {
             length += str.length

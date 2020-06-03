@@ -41,6 +41,8 @@ bool SQLCase::TypeParse(const std::string& type_str, fesql::type::Type* type) {
         *type = type::kVarchar;
     } else if ("timestamp" == type_str) {
         *type = type::kTimestamp;
+    } else if ("date" == type_str) {
+        *type = type::kDate;
     } else if ("bool" == type_str) {
         *type = type::kBool;
     } else {
@@ -48,6 +50,30 @@ bool SQLCase::TypeParse(const std::string& type_str, fesql::type::Type* type) {
         return false;
     }
     return true;
+}
+
+const std::string SQLCase::TypeString(fesql::type::Type type) {
+    switch (type) {
+        case type::kInt16:
+            return "smallint";
+        case type::kInt32:
+            return "int";
+        case type::kInt64:
+            return "bigint";
+        case type::kFloat:
+            return "float";
+        case type::kDouble:
+            return "double";
+        case type::kVarchar:
+            return "string";
+        case type::kTimestamp:
+            return "timestamp";
+        case type::kDate:
+            return "date";
+        default: {
+            return "";
+        }
+    }
 }
 bool SQLCase::ExtractTableDef(const std::string& schema_str,
                               const std::string& index_str,
@@ -146,6 +172,63 @@ bool SQLCase::ExtractSchema(const std::string& schema_str,
     return true;
 }
 
+bool SQLCase::BuildCreateSQLFromSchema(const type::TableDef& table,
+                                       std::string* create_sql) {
+    std::string sql = "CREATE TABLE " + table.name() + "(\n";
+    for (int i = 0; i < table.columns_size(); i++) {
+        auto column = table.columns(i);
+        sql.append(column.name()).append(" ").append(TypeString(column.type()));
+
+        if (column.is_not_null()) {
+            sql.append(" NOT NULL");
+        }
+        sql.append(",\n");
+    }
+
+    for (int i = 0; i < table.indexes_size(); i++) {
+        auto index = table.indexes(i);
+        sql.append("index(");
+
+        sql.append("key=(");
+        for (int k = 0; k < index.first_keys_size(); k++) {
+            if (k > 0) {
+                sql.append(",");
+            }
+            sql.append(index.first_keys(k));
+        }
+        sql.append(")");
+        // end key
+
+        sql.append(", ts=").append(index.second_key());
+
+        if (index.ttl_size() > 0) {
+            sql.append(", ttl=").append(std::to_string(index.ttl(0)));
+            switch (index.ttl_type()) {
+                case type::kTTLCountLive: {
+                    sql.append(", ttl_type=latest");
+                    break;
+                }
+                case type::kTTLTimeLive: {
+                    sql.append(", ttl_type=absolute");
+                    break;
+                }
+                case type::kTTLNone: {
+                    sql.append("");
+                    break;
+                }
+                default: {
+                    LOG(WARNING) << "Unrecognized ttl type";
+                }
+            }
+        }
+
+        sql.append(")\n");
+        // end each index
+    }
+    sql.append(")");
+    *create_sql = sql;
+    return true;
+}
 bool SQLCase::AddInput(const TableInfo& table_data) {
     inputs_.push_back(table_data);
     return true;
@@ -175,6 +258,57 @@ bool SQLCase::ExtractOutputData(std::vector<Row>& rows) {
     }
     return ExtractRows(table.columns(), output_.data_, rows);
 }
+bool SQLCase::BuildInsertSQLFromRow(const type::TableDef& table,
+                                    const std::string& row_str,
+                                    std::string* insert_sql) {
+    std::string sql = "";
+    sql.append("Insert into ").append(table.name()).append(" values(");
+    auto schema = table.columns();
+    std::vector<std::string> item_vec;
+    boost::split(item_vec, row_str, boost::is_any_of(","),
+                 boost::token_compress_on);
+    if (item_vec.size() != static_cast<size_t>(schema.size())) {
+        LOG(WARNING) << "Invalid Row: Row doesn't match with schema : "
+                     << row_str;
+        return false;
+    }
+
+    auto it = schema.begin();
+    uint32_t index = 0;
+    for (; it != schema.end(); ++it) {
+        if (index >= item_vec.size()) {
+            LOG(WARNING) << "Invalid Row: Row doesn't match with schema";
+            return false;
+        }
+        if (index > 0) {
+            sql.append(", ");
+        }
+        boost::trim(item_vec[index]);
+        switch (it->type()) {
+            case type::kInt16:
+            case type::kInt32:
+            case type::kInt64:
+            case type::kFloat:
+            case type::kDouble:
+            case type::kTimestamp: {
+                sql.append(item_vec[index]);
+                break;
+            }
+            case type::kVarchar: {
+                sql.append("'").append(item_vec[index]).append("'");
+                break;
+            }
+            default: {
+                LOG(WARNING) << "Invalid Column Type";
+                return false;
+            }
+        }
+        index++;
+    }
+    sql.append(")");
+    *insert_sql = sql;
+    return true;
+}
 bool SQLCase::ExtractRow(const vm::Schema& schema, const std::string& row_str,
                          int8_t** out_ptr, int32_t* out_size) {
     std::vector<std::string> item_vec;
@@ -199,10 +333,16 @@ bool SQLCase::ExtractRow(const vm::Schema& schema, const std::string& row_str,
     rb.SetBuffer(ptr, row_size);
     auto it = schema.begin();
     uint32_t index = 0;
+
     for (; it != schema.end(); ++it) {
         if (index >= item_vec.size()) {
             LOG(WARNING) << "Invalid Row: Row doesn't match with schema";
             return false;
+        }
+        if (item_vec[index] == "NULL" || item_vec[index] == "null") {
+            index++;
+            rb.AppendNULL();
+            continue;
         }
         switch (it->type()) {
             case type::kInt16: {
@@ -271,6 +411,19 @@ bool SQLCase::ExtractRow(const vm::Schema& schema, const std::string& row_str,
                 }
                 break;
             }
+            case type::kDate: {
+                std::vector<std::string> date_strs;
+                boost::split(date_strs, item_vec[index], boost::is_any_of("-"),
+                             boost::token_compress_on);
+
+                if (!rb.AppendDate(
+                        boost::lexical_cast<int32_t>(date_strs[0]),
+                        boost::lexical_cast<int32_t>(date_strs[1]),
+                        boost::lexical_cast<int32_t>(date_strs[2]))) {
+                    return false;
+                }
+                break;
+            }
             default: {
                 LOG(WARNING) << "Invalid Column Type";
                 return false;
@@ -298,8 +451,7 @@ bool SQLCase::ExtractRows(const vm::Schema& schema, const std::string& data_str,
         if (!ExtractRow(schema, row_str, &row_ptr, &row_size)) {
             return false;
         }
-        rows.push_back(
-            Row(base::RefCountedSlice::Create(row_ptr, row_size)));
+        rows.push_back(Row(base::RefCountedSlice::Create(row_ptr, row_size)));
     }
     return true;
 }
@@ -458,6 +610,18 @@ bool SQLCase::CreateSQLCasesFromYaml(
                 sql_case.db_ = sql_case_node["db"].as<std::string>();
             } else {
                 sql_case.db_ = "test";
+            }
+
+            if (sql_case_node["create"]) {
+                sql_case.create_str_ =
+                    sql_case_node["create"].as<std::string>();
+                boost::trim(sql_case.create_str_);
+            }
+
+            if (sql_case_node["insert"]) {
+                sql_case.insert_str_ =
+                    sql_case_node["insert"].as<std::string>();
+                boost::trim(sql_case.insert_str_);
             }
 
             if (sql_case_node["sql"]) {

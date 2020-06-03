@@ -19,6 +19,7 @@
 #include <string>
 #include <vector>
 #include "codec/list_iterator_codec.h"
+#include "codegen/date_ir_builder.h"
 #include "codegen/string_ir_builder.h"
 #include "codegen/timestamp_ir_builder.h"
 #include "glog/logging.h"
@@ -77,6 +78,11 @@ bool GetLLVMType(::llvm::Module* m, const ::fesql::node::DataType& type,
             *llvm_type = timestamp_ir_builder.GetType();
             return true;
         }
+        case node::kDate: {
+            DateIRBuilder date_ir_builder(m);
+            *llvm_type = date_ir_builder.GetType();
+            return true;
+        }
         case node::kList:
         case node::kMap:
         case node::kIterator: {
@@ -124,7 +130,11 @@ bool GetLLVMColumnSize(const ::fesql::node::DataType& v_type, uint32_t* size) {
             break;
         }
         case ::fesql::node::kTimestamp: {
-            *size = sizeof(::fesql::codec::ColumnImpl<int64_t>);
+            *size = sizeof(::fesql::codec::TimestampColumnImpl);
+            break;
+        }
+        case ::fesql::node::kDate: {
+            *size = sizeof(::fesql::codec::DateColumnImpl);
             break;
         }
         default: {
@@ -159,6 +169,10 @@ bool GetLLVMListType(::llvm::Module* m,
         }
         case ::fesql::node::kTimestamp: {
             name = "fe.list_ref_timestamp";
+            break;
+        }
+        case ::fesql::node::kDate: {
+            name = "fe.list_ref_date";
             break;
         }
         case ::fesql::node::kFloat: {
@@ -230,6 +244,10 @@ bool GetLLVMIteratorType(::llvm::Module* m,
         }
         case ::fesql::node::kTimestamp: {
             name = "fe.iterator_ref_timestamp";
+            break;
+        }
+        case ::fesql::node::kDate: {
+            name = "fe.iterator_ref_date";
             break;
         }
         default: {
@@ -399,6 +417,9 @@ bool GetFullType(::llvm::Type* type, ::fesql::node::TypeNode* type_node) {
             } else if (type->getStructName().equals("fe.list_ref_timestamp")) {
                 type_node->generics_.push_back(fesql::node::kTimestamp);
                 return true;
+            } else if (type->getStructName().equals("fe.list_ref_date")) {
+                type_node->generics_.push_back(fesql::node::kDate);
+                return true;
             }
             LOG(WARNING) << "fail to get type of llvm type for "
                          << type->getStructName().str();
@@ -517,6 +538,9 @@ bool GetBaseType(::llvm::Type* type, ::fesql::node::DataType* output) {
             } else if (type->getStructName().equals("fe.timestamp")) {
                 *output = fesql::node::kTimestamp;
                 return true;
+            } else if (type->getStructName().equals("fe.date")) {
+                *output = fesql::node::kDate;
+                return true;
             }
             LOG(WARNING) << "no mapping type for llvm type "
                          << type->getStructName().str();
@@ -613,6 +637,10 @@ bool DataType2SchemaType(const ::fesql::node::DataType type,
             *output = ::fesql::type::kTimestamp;
             break;
         }
+        case ::fesql::node::kDate: {
+            *output = ::fesql::type::kDate;
+            break;
+        }
         default: {
             LOG(WARNING) << "can't convert to schema for type: "
                          << ::fesql::node::DataTypeName(type);
@@ -652,6 +680,10 @@ bool SchemaType2DataType(const ::fesql::type::Type type,
             *output = ::fesql::node::kTimestamp;
             break;
         }
+        case ::fesql::type::kDate: {
+            *output = ::fesql::node::kDate;
+            break;
+        }
         default: {
             LOG(WARNING) << "unrecognized schema type "
                          << ::fesql::type::Type_Name(type);
@@ -670,6 +702,17 @@ bool TypeIRBuilder::IsTimestampPtr(::llvm::Type* type) {
         return false;
     }
     return data_type == node::kTimestamp;
+}
+bool TypeIRBuilder::IsDatePtr(::llvm::Type* type) {
+    ::fesql::node::DataType data_type;
+    if (!IsStructPtr(type)) {
+        return false;
+    }
+
+    if (!GetBaseType(type, &data_type)) {
+        return false;
+    }
+    return data_type == node::kDate;
 }
 bool TypeIRBuilder::IsStringPtr(::llvm::Type* type) {
     ::fesql::node::DataType data_type;
