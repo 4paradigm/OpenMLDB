@@ -1191,7 +1191,7 @@ void Runner::PrintData(const vm::SchemaSourceList& schema_list,
                 t.add(source.table_name_ + "." + source.schema_->Get(i).name());
             }
 
-            if (t.current_columns_size()>= MAX_DEBUG_COLUMN_MAX) {
+            if (t.current_columns_size() >= MAX_DEBUG_COLUMN_MAX) {
                 break;
             }
         }
@@ -1264,7 +1264,8 @@ void Runner::PrintData(const vm::SchemaSourceList& schema_list,
                              idx++) {
                             std::string str = row_view.GetAsString(idx);
                             t.add(str);
-                            if (t.current_columns_size() >= MAX_DEBUG_COLUMN_MAX) {
+                            if (t.current_columns_size() >=
+                                MAX_DEBUG_COLUMN_MAX) {
                                 break;
                             }
                         }
@@ -1322,11 +1323,13 @@ void Runner::PrintData(const vm::SchemaSourceList& schema_list,
                                  idx++) {
                                 std::string str = row_view.GetAsString(idx);
                                 t.add(str);
-                                if (t.current_columns_size() >= MAX_DEBUG_COLUMN_MAX) {
+                                if (t.current_columns_size() >=
+                                    MAX_DEBUG_COLUMN_MAX) {
                                     break;
                                 }
                             }
-                            if (t.current_columns_size() >= MAX_DEBUG_COLUMN_MAX) {
+                            if (t.current_columns_size() >=
+                                MAX_DEBUG_COLUMN_MAX) {
                                 t.add("...");
                                 break;
                             }
