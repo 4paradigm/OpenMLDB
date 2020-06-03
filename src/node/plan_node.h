@@ -150,6 +150,16 @@ class JoinPlanNode : public BinaryPlanNode {
     const ExprNode *condition_;
 };
 
+class LastJoinPlanNode : public JoinPlanNode {
+ public:
+    LastJoinPlanNode(PlanNode *left, PlanNode *right, JoinType join_type,
+                     const ExprNode *expression, const OrderByNode *order)
+        : JoinPlanNode(left, right, join_type, expression), orders_(order) {}
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+    virtual bool Equals(const PlanNode *that) const;
+    const OrderByNode *orders_;
+};
+
 class UnionPlanNode : public BinaryPlanNode {
  public:
     UnionPlanNode(PlanNode *left, PlanNode *right, bool is_all)
@@ -267,7 +277,7 @@ class WindowPlanNode : public LeafPlanNode {
     const std::string &GetName() const { return name; }
     void SetName(const std::string &name) { WindowPlanNode::name = name; }
     const int GetId() const { return id; }
-    void AddUnionTable(PlanNode* node) { return union_tables_.push_back(node); }
+    void AddUnionTable(PlanNode *node) { return union_tables_.push_back(node); }
     const PlanNodeList &union_tables() const { return union_tables_; }
     const bool instance_not_in_window() const {
         return instance_not_in_window_;

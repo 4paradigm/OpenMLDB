@@ -269,7 +269,6 @@ bool ConstNode::Equals(const ExprNode *node) const {
            GetExprString() == that->GetExprString() && ExprNode::Equals(node);
 }
 
-
 void LimitNode::Print(std::ostream &output, const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
@@ -1095,6 +1094,15 @@ void JoinNode::Print(std::ostream &output, const std::string &org_tab) const {
     output << "\n";
     PrintSQLNode(output, tab, condition_, "on", true);
 }
+
+void LastJoinNode::Print(std::ostream &output,
+                         const std::string &org_tab) const {
+    JoinNode::Print(output, org_tab);
+
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintSQLNode(output, tab, order_by_, "order_by", true);
+}
 bool JoinNode::Equals(const SQLNode *node) const {
     if (!TableRefNode::Equals(node)) {
         return false;
@@ -1103,6 +1111,14 @@ bool JoinNode::Equals(const SQLNode *node) const {
     return join_type_ == that->join_type_ &&
            ExprEquals(condition_, that->condition_) &&
            SQLEquals(this->left_, that->right_);
+}
+
+bool LastJoinNode::Equals(const SQLNode *node) const {
+    if (!JoinNode::Equals(node)) {
+        return false;
+    }
+    const LastJoinNode *that = dynamic_cast<const LastJoinNode *>(node);
+    return ExprEquals(this->order_by_, that->order_by_);
 }
 void UnionQueryNode::Print(std::ostream &output,
                            const std::string &org_tab) const {

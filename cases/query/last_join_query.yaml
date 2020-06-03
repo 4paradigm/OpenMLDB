@@ -11,7 +11,8 @@ SQLCases:
           return d
       end
       %%sql
-      SELECT t1.col1 as id, t1.col0 as t1_col0, test(t1.col1,t2.col1) test_col1, t1.col2 as t1_col2, str1 FROM t1 last join t2 on t1.col1=t2.col1 and t1.col5 = t2.col5;
+      SELECT t1.col1 as id, t1.col0 as t1_col0, test(t1.col1,t2.col1) test_col1, t1.col2 as t1_col2, str1 FROM t1
+      last join t2 order by t2.col5 on t1.col1=t2.col1 and t1.col5 = t2.col5;
     inputs:
       - name: t1
         schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
@@ -52,7 +53,9 @@ SQLCases:
           return d
       end
       %%sql
-      SELECT t1.col1 as id, t1.col0 as t1_col0, test(t1.col1,t2.col1) test_col1, t1.col2 as t1_col2, str1 FROM t1 last join t2 on t1.col1=t2.col1 and t1.col5 = t2.col5;
+      SELECT t1.col1 as id, t1.col0 as t1_col0, test(t1.col1,t2.col1) test_col1, t1.col2 as t1_col2, str1 FROM t1
+      last join t2 order by t2.col5 on t1.col1=t2.col1 and t1.col5 = t2.col5;
+
     inputs:
       - name: t1
         schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
@@ -94,7 +97,8 @@ SQLCases:
           return d
       end
       %%sql
-      SELECT t1.col1 as id, t1.col0 as t1_col0, test(t1.col1,t2.col1) test_col1, t1.col2 as t1_col2, str1 FROM t1 last join t2 on t1.col1=t2.col1 and t1.col5 >= t2.col5;
+      SELECT t1.col1 as id, t1.col0 as t1_col0, test(t1.col1,t2.col1) test_col1, t1.col2 as t1_col2, str1 FROM t1
+      last join t2 order by t2.col5 on t1.col1=t2.col1 and t1.col5 >= t2.col5;
 
     inputs:
       - name: t1
@@ -129,7 +133,8 @@ SQLCases:
     mode: request
     db: db1
     sql: |
-      SELECT t1.col1 as id, t1.col0 as t1_col0, t1.col2 as t1_col2, t1.std_ts as t1_std_ts, str1 FROM t1 last join t2 on t1.col1=t2.col1 and t1.std_ts = t2.std_ts;
+      SELECT t1.col1 as id, t1.col0 as t1_col0, t1.col2 as t1_col2, t1.std_ts as t1_std_ts, str1 FROM t1
+      last join t2 order by t2.col5 on t1.col1=t2.col1 and t1.std_ts = t2.std_ts;
     inputs:
       - name: t1
         resource: cases/resource/simple_t1_ts.yaml
@@ -155,7 +160,9 @@ SQLCases:
     desc: LAST JOIN 多张表
     db: db1
     sql: |
-      SELECT t1.col1 as id, t1.col0, t2.c0, t3.column0 FROM t1 last join t2 on t1.col1=t2.c1 last join t3 on t1.col1 = t3.column1;
+      SELECT t1.col1 as id, t1.col0, t2.c0, t3.column0 FROM t1
+      last join t2 order by t2.c5 on t1.col1=t2.c1
+      last join t3 order by t3.column5 on t1.col1 = t3.column1;
     inputs:
       - name: t1
         schema: col0:string, col1:int32, col5:bigint
@@ -194,7 +201,8 @@ SQLCases:
     mode: request
     db: db1
     sql: |
-      SELECT t1.col1 as id, t1.col0 as t1_col0, t1.col2 as t1_col2, t1.std_date as t1_std_date, str1 FROM t1 last join t2 on t1.std_date = t2.std_date;
+      SELECT t1.col1 as id, t1.col0 as t1_col0, t1.col2 as t1_col2, t1.std_date as t1_std_date, str1 FROM t1
+      last join t2 order by t2.col5 on t1.std_date = t2.std_date;
     inputs:
       - name: t1
         resource: cases/resource/simple_t1_date.yaml

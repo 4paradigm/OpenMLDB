@@ -567,8 +567,16 @@ bool BatchModeTransformer::TransformJoinOp(const node::JoinPlanNode* node,
     if (!TransformPlanOp(node->GetChildren()[1], &right, status)) {
         return false;
     }
-    *output =
-        new PhysicalJoinNode(left, right, node->join_type_, node->condition_);
+
+    if (node::kJoinTypeLast == node->join_type_) {
+        *output = new PhysicalJoinNode(
+            left, right, node->join_type_,
+            dynamic_cast<const node::LastJoinPlanNode*>(node)->orders_,
+            node->condition_);
+    } else {
+        *output = new PhysicalJoinNode(left, right, node->join_type_,
+                                       node->condition_);
+    }
     node_manager_->RegisterNode(*output);
     return true;
 }
@@ -1515,6 +1523,8 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                                 &window_join.second, &new_join_right)) {
                             window_join.first = new_join_right;
                         }
+                        SortOptimized(SchemaSourceList(), window_join.first,
+                                      &window_join.second.right_sort_);
                     }
                 }
                 if (!union_op->window_unions().Empty()) {
@@ -1556,8 +1566,8 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                     auto& window = window_union.second;
                     if (KeysFilterOptimized(
                             SchemaSourceList(), window_union.first,
-                            &window.partition_,
-                            &window.index_key_, &new_producer)) {
+                            &window.partition_, &window.index_key_,
+                            &new_producer)) {
                         window_union.first = new_producer;
                     }
                     SortOptimized(SchemaSourceList(), window_union.first,
@@ -1576,6 +1586,8 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                 return false;
             }
             join_op->SetProducer(1, new_producer);
+            SortOptimized(SchemaSourceList(), join_op->GetProducer(1),
+                          &join_op->join_.right_sort_);
             return true;
         }
         case kPhysicalOpJoin: {
@@ -1587,6 +1599,8 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                 return false;
             }
             join_op->SetProducer(1, new_producer);
+            SortOptimized(SchemaSourceList(), join_op->GetProducer(1),
+                          &join_op->join_.right_sort_);
             return true;
         }
         default: {
@@ -2339,8 +2353,16 @@ bool RequestModeransformer::TransformJoinOp(const node::JoinPlanNode* node,
     if (!TransformPlanOp(node->GetChildren()[1], &right, status)) {
         return false;
     }
-    *output = new PhysicalRequestJoinNode(left, right, node->join_type_,
-                                          node->condition_);
+    if (node::kJoinTypeLast == node->join_type_) {
+        *output = new PhysicalRequestJoinNode(
+            left, right, node->join_type_,
+            dynamic_cast<const node::LastJoinPlanNode*>(node)->orders_,
+            node->condition_);
+    } else {
+        *output = new PhysicalRequestJoinNode(left, right, node->join_type_,
+                                              node->condition_);
+    }
+
     node_manager_->RegisterNode(*output);
     return true;
 }

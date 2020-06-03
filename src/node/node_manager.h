@@ -82,6 +82,9 @@ class NodeManager {
     PlanNode *MakeTablePlanNode(const std::string &node);
     PlanNode *MakeJoinNode(PlanNode *left, PlanNode *right, JoinType join_type,
                            const ExprNode *condition);
+    PlanNode *MakeLastJoinNode(PlanNode *left, PlanNode *right,
+                               JoinType join_type, const OrderByNode *order_by,
+                               const ExprNode *condition);
     // Make SQLxxx Node
     QueryNode *MakeSelectQueryNode(
         bool is_distinct, SQLNodeList *select_list_ptr,
@@ -95,6 +98,11 @@ class NodeManager {
                                 const std::string &alias);
     TableRefNode *MakeJoinNode(const TableRefNode *left,
                                const TableRefNode *right, const JoinType type,
+                               const ExprNode *condition,
+                               const std::string alias);
+    TableRefNode *MakeLastJoinNode(const TableRefNode *left,
+                               const TableRefNode *right, const JoinType type,
+                                   const ExprNode* order,
                                const ExprNode *condition,
                                const std::string alias);
     TableRefNode *MakeQueryRefNode(const QueryNode *sub_query,

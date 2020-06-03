@@ -540,7 +540,7 @@ TEST_F(PlannerTest, LastJoinPlanTest) {
     node::PlanNodeList trees;
     base::Status status;
     const std::string sql =
-        "SELECT t1.col1 as t1_col1, t2.col1 as t2_col2 from t1 LAST JOIN t2 on "
+        "SELECT t1.col1 as t1_col1, t2.col1 as t2_col2 from t1 LAST JOIN t2 order by t2.col5 on "
         "t1.col1 = t2.col1 and t2.col5 between t1.col5 - 30d and t1.col5 "
         "- 1d limit 10;";
     int ret = parser_->parse(sql, list, manager_, status);
@@ -604,13 +604,14 @@ TEST_F(PlannerTest, LastJoinPlanTest) {
 
     plan_ptr = plan_ptr->GetChildren()[0];
     ASSERT_EQ(node::kPlanTypeJoin, plan_ptr->GetType());
-    auto join = dynamic_cast<node::JoinPlanNode *>(plan_ptr);
+    auto join = dynamic_cast<node::LastJoinPlanNode *>(plan_ptr);
     ASSERT_EQ(node::kJoinTypeLast, join->join_type_);
     ASSERT_EQ(
         "t1.col1 = t2.col1 AND t2.col5 between t1.col5 - 30d and t1.col5 - "
         "1d",
         join->condition_->GetExprString());
 
+    ASSERT_EQ("(t2.col5) ASC", join->orders_->GetExprString());
     auto left = plan_ptr->GetChildren()[0];
     ASSERT_EQ(node::kPlanTypeTable, left->GetType());
     {

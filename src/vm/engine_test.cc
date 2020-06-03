@@ -194,19 +194,19 @@ void CheckRows(const vm::Schema& schema, const std::vector<Row>& rows,
                 case fesql::type::kDate: {
                     ASSERT_EQ(row_view.GetDateUnsafe(i),
                               row_view_exp.GetDateUnsafe(i))
-                                        << " At " << i;
+                        << " At " << i;
                     break;
                 }
                 case fesql::type::kTimestamp: {
                     ASSERT_EQ(row_view.GetTimestampUnsafe(i),
                               row_view_exp.GetTimestampUnsafe(i))
-                                        << " At " << i;
+                        << " At " << i;
                     break;
                 }
                 case fesql::type::kBool: {
                     ASSERT_EQ(row_view.GetBoolUnsafe(i),
                               row_view_exp.GetBoolUnsafe(i))
-                                        << " At " << i;
+                        << " At " << i;
                     break;
                 }
                 default: {
@@ -461,8 +461,8 @@ TEST_F(EngineTest, EngineCompileOnlyTest) {
             "SELECT t1.COL1, t1.COL2, t2.COL1, t2.COL2 FROM t1 right join t2 "
             "on "
             "t1.col1 = t2.col2;",
-            "SELECT t1.COL1, t1.COL2, t2.COL1, t2.COL2 FROM t1 last join t2 on "
-            "t1.col1 = t2.col2;"};
+            "SELECT t1.COL1, t1.COL2, t2.COL1, t2.COL2 FROM t1 last join t2 "
+            "order by t2.col5 on t1.col1 = t2.col2;"};
         EngineOptions options;
         options.set_compile_only(true);
         Engine engine(catalog, options);

@@ -719,8 +719,16 @@ bool Planner::CreateTableReferencePlanNode(const node::TableRefNode *root,
                                               status)) {
                 return false;
             }
-            plan_node = node_manager_->MakeJoinNode(
-                left, right, join_node->join_type_, join_node->condition_);
+            if (node::kJoinTypeLast == join_node->join_type_) {
+                plan_node = node_manager_->MakeLastJoinNode(
+                    left, right, join_node->join_type_,
+                    dynamic_cast<const node::LastJoinNode *>(join_node)
+                        ->order_by_,
+                    join_node->condition_);
+            } else {
+                plan_node = node_manager_->MakeJoinNode(
+                    left, right, join_node->join_type_, join_node->condition_);
+            }
             if (!join_node->alias_table_name_.empty()) {
                 *output = node_manager_->MakeRenamePlanNode(
                     plan_node, join_node->alias_table_name_);

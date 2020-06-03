@@ -447,6 +447,19 @@ class OrderByNode : public ExprNode {
     const bool is_asc_;
     const ExprListNode *order_by_;
 };
+class LastJoinNode : public JoinNode {
+ public:
+    LastJoinNode(const TableRefNode *left, const TableRefNode *right,
+                 const JoinType join_type, const ExprNode *condition,
+                 const std::string &alias_name,
+                 const OrderByNode *order_by)
+        : JoinNode(left, right, join_type, condition, alias_name),
+          order_by_(order_by) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    virtual bool Equals(const SQLNode *node) const;
+    const node::OrderByNode *order_by_;
+};
+
 class SelectQueryNode : public QueryNode {
  public:
     SelectQueryNode(bool is_distinct, SQLNodeList *select_list,
@@ -955,7 +968,7 @@ class ConstNode : public ExprNode {
         }
     }
 
-    const bool GetAsDate(int32_t* year, int32_t* month, int32_t* day) const {
+    const bool GetAsDate(int32_t *year, int32_t *month, int32_t *day) const {
         switch (data_type_) {
             case kVarchar: {
                 std::string date_str(val_.vstr);

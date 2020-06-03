@@ -652,6 +652,7 @@ class Join {
  public:
     explicit Join(const node::JoinType join_type)
         : join_type_(join_type),
+          right_sort_(nullptr),
           filter_(nullptr),
           left_key_(nullptr),
           right_key_(nullptr),
@@ -659,6 +660,15 @@ class Join {
     explicit Join(const node::JoinType join_type,
                   const node::ExprNode *condition)
         : join_type_(join_type),
+          right_sort_(nullptr),
+          filter_(condition),
+          left_key_(nullptr),
+          right_key_(nullptr),
+          index_key_(nullptr) {}
+    Join(const node::JoinType join_type, const node::OrderByNode *orders,
+         const node::ExprNode *condition)
+        : join_type_(join_type),
+          right_sort_(orders),
           filter_(condition),
           left_key_(nullptr),
           right_key_(nullptr),
@@ -667,6 +677,16 @@ class Join {
          const node::ExprListNode *left_keys,
          const node::ExprListNode *right_keys)
         : join_type_(join_type),
+          right_sort_(nullptr),
+          filter_(condition),
+          left_key_(left_keys),
+          right_key_(right_keys),
+          index_key_(nullptr) {}
+    Join(const node::JoinType join_type, const node::OrderByNode *orders,
+         const node::ExprNode *condition, const node::ExprListNode *left_keys,
+         const node::ExprListNode *right_keys)
+        : join_type_(join_type),
+          right_sort_(orders),
           filter_(condition),
           left_key_(left_keys),
           right_key_(right_keys),
@@ -674,8 +694,11 @@ class Join {
     virtual ~Join() {}
     const std::string ToString() const {
         std::ostringstream oss;
-        oss << "type=" << node::JoinTypeName(join_type_)
-            << ", condition=" << node::ExprString(filter_.condition_)
+        oss << "type=" << node::JoinTypeName(join_type_);
+        if (right_sort_.ValidSort()) {
+            oss << ", right_sort=" << node::ExprString(right_sort_.orders());
+        }
+        oss << ", condition=" << node::ExprString(filter_.condition_)
             << ", left_keys=" << node::ExprString(left_key_.keys())
             << ", right_keys=" << node::ExprString(right_key_.keys())
             << ", index_keys=" << node::ExprString(index_key_.keys());
@@ -683,8 +706,11 @@ class Join {
     }
     const std::string FnDetail() const {
         std::ostringstream oss;
-        oss << "condition " << filter_.FnDetail()
-            << ", left_keys=" << left_key_.FnDetail()
+        oss << "condition " << filter_.FnDetail();
+        if (right_sort_.ValidSort()) {
+            oss << ", right_sort_=" << right_sort_.FnDetail();
+        }
+        oss << ", left_keys=" << left_key_.FnDetail()
             << ", right_keys=" << right_key_.FnDetail()
             << ", index_keys=" << index_key_.FnDetail();
         return oss.str();
@@ -694,7 +720,9 @@ class Join {
     const Key &index_key() const { return index_key_; }
     const ConditionFilter &filter() const { return filter_; }
     const node::JoinType join_type() const { return join_type_; }
+    const Sort &right_sort() const { return right_sort_; }
     node::JoinType join_type_;
+    Sort right_sort_;
     ConditionFilter filter_;
     Key left_key_;
     Key right_key_;
@@ -865,10 +893,17 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
           join_(join_type, condition) {
         output_type_ = kSchemaTypeTable;
         InitSchema();
-        fn_infos_.push_back(&join_.filter_.fn_info_);
-        fn_infos_.push_back(&join_.left_key_.fn_info_);
-        fn_infos_.push_back(&join_.right_key_.fn_info_);
-        fn_infos_.push_back(&join_.index_key_.fn_info_);
+        RegisterFunctionInfo();
+    }
+    PhysicalJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
+                     const node::JoinType join_type,
+                     const node::OrderByNode *orders,
+                     const node::ExprNode *condition)
+        : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false, true),
+          join_(join_type, orders, condition) {
+        output_type_ = kSchemaTypeTable;
+        InitSchema();
+        RegisterFunctionInfo();
     }
     PhysicalJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
                      const node::JoinType join_type,
@@ -879,10 +914,19 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
           join_(join_type, condition, left_keys, right_keys) {
         output_type_ = kSchemaTypeTable;
         InitSchema();
-        fn_infos_.push_back(&join_.filter_.fn_info_);
-        fn_infos_.push_back(&join_.left_key_.fn_info_);
-        fn_infos_.push_back(&join_.right_key_.fn_info_);
-        fn_infos_.push_back(&join_.index_key_.fn_info_);
+        RegisterFunctionInfo();
+    }
+    PhysicalJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
+                     const node::JoinType join_type,
+                     const node::OrderByNode *orders,
+                     const node::ExprNode *condition,
+                     const node::ExprListNode *left_keys,
+                     const node::ExprListNode *right_keys)
+        : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false, true),
+          join_(join_type, orders, condition, left_keys, right_keys) {
+        output_type_ = kSchemaTypeTable;
+        InitSchema();
+        RegisterFunctionInfo();
     }
     PhysicalJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
                      const Join &join)
@@ -890,19 +934,24 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
           join_(join) {
         output_type_ = kSchemaTypeTable;
         InitSchema();
+        RegisterFunctionInfo();
+    }
+    virtual ~PhysicalJoinNode() {}
+    bool InitSchema() override;
+    void RegisterFunctionInfo() {
+        fn_infos_.push_back(&join_.right_sort_.fn_info_);
         fn_infos_.push_back(&join_.filter_.fn_info_);
         fn_infos_.push_back(&join_.left_key_.fn_info_);
         fn_infos_.push_back(&join_.right_key_.fn_info_);
         fn_infos_.push_back(&join_.index_key_.fn_info_);
     }
-    virtual ~PhysicalJoinNode() {}
-    bool InitSchema() override;
     virtual void Print(std::ostream &output, const std::string &tab) const;
     static PhysicalJoinNode *CastFrom(PhysicalOpNode *node);
     const bool Valid() { return true; }
     const Join &join() const { return join_; }
     Join join_;
 };
+
 class PhysicalRequestJoinNode : public PhysicalBinaryNode {
  public:
     PhysicalRequestJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
@@ -911,10 +960,7 @@ class PhysicalRequestJoinNode : public PhysicalBinaryNode {
           join_(join_type) {
         output_type_ = kSchemaTypeRow;
         InitSchema();
-        fn_infos_.push_back(&join_.filter_.fn_info_);
-        fn_infos_.push_back(&join_.left_key_.fn_info_);
-        fn_infos_.push_back(&join_.right_key_.fn_info_);
-        fn_infos_.push_back(&join_.index_key_.fn_info_);
+        RegisterFunctionInfo();
     }
     PhysicalRequestJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
                             const node::JoinType join_type,
@@ -923,10 +969,17 @@ class PhysicalRequestJoinNode : public PhysicalBinaryNode {
           join_(join_type, condition) {
         output_type_ = kSchemaTypeRow;
         InitSchema();
-        fn_infos_.push_back(&join_.filter_.fn_info_);
-        fn_infos_.push_back(&join_.left_key_.fn_info_);
-        fn_infos_.push_back(&join_.right_key_.fn_info_);
-        fn_infos_.push_back(&join_.index_key_.fn_info_);
+        RegisterFunctionInfo();
+    }
+    PhysicalRequestJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
+                            const node::JoinType join_type,
+                            const node::OrderByNode *orders,
+                            const node::ExprNode *condition)
+        : PhysicalBinaryNode(left, right, kPhysicalOpRequestJoin, false, true),
+          join_(join_type, orders, condition) {
+        output_type_ = kSchemaTypeRow;
+        InitSchema();
+        RegisterFunctionInfo();
     }
     PhysicalRequestJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
                             const node::JoinType join_type,
@@ -937,13 +990,29 @@ class PhysicalRequestJoinNode : public PhysicalBinaryNode {
           join_(join_type, condition, left_keys, right_keys) {
         output_type_ = kSchemaTypeRow;
         InitSchema();
+        RegisterFunctionInfo();
+    }
+    PhysicalRequestJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
+                            const node::JoinType join_type,
+                            const node::OrderByNode *orders,
+                            const node::ExprNode *condition,
+                            const node::ExprListNode *left_keys,
+                            const node::ExprListNode *right_keys)
+        : PhysicalBinaryNode(left, right, kPhysicalOpRequestJoin, false, true),
+          join_(join_type, orders, condition, left_keys, right_keys) {
+        output_type_ = kSchemaTypeRow;
+        InitSchema();
+        RegisterFunctionInfo();
+    }
+    virtual ~PhysicalRequestJoinNode() {}
+    bool InitSchema() override;
+    void RegisterFunctionInfo() {
+        fn_infos_.push_back(&join_.right_sort_.fn_info_);
         fn_infos_.push_back(&join_.filter_.fn_info_);
         fn_infos_.push_back(&join_.left_key_.fn_info_);
         fn_infos_.push_back(&join_.right_key_.fn_info_);
         fn_infos_.push_back(&join_.index_key_.fn_info_);
     }
-    virtual ~PhysicalRequestJoinNode() {}
-    bool InitSchema() override;
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const Join &join() const { return join_; }
     Join join_;
@@ -1023,7 +1092,7 @@ class PhysicalRequestUnionNode : public PhysicalBinaryNode {
         return instance_not_in_window_;
     }
     const RequestWindowOp &window() const { return window_; }
-    const RequestWindowUnionList& window_unions() const {
+    const RequestWindowUnionList &window_unions() const {
         return window_unions_;
     }
     RequestWindowOp window_;

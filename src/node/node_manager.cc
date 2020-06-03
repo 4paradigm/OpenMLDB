@@ -54,6 +54,25 @@ TableRefNode *NodeManager::MakeJoinNode(const TableRefNode *left,
     return node_ptr;
 }
 
+TableRefNode *NodeManager::MakeLastJoinNode(const TableRefNode *left,
+                                            const TableRefNode *right,
+                                            const JoinType type,
+                                            const ExprNode *orders,
+                                            const ExprNode *condition,
+                                            const std::string alias) {
+    if (nullptr == orders || node::kExprOrder != orders->GetExprType()) {
+        LOG(WARNING)
+            << "fail to create last join node with invalid order type " +
+                   NameOfSQLNodeType(orders->GetType());
+        return nullptr;
+    }
+    TableRefNode *node_ptr =
+        new LastJoinNode(left, right, type, condition, alias,
+                         dynamic_cast<const OrderByNode *>(orders));
+    RegisterNode(node_ptr);
+    return node_ptr;
+}
+
 TableRefNode *NodeManager::MakeQueryRefNode(const QueryNode *sub_query,
                                             const std::string &alias) {
     TableRefNode *node_ptr = new QueryRefNode(sub_query, alias);
@@ -584,6 +603,15 @@ PlanNode *NodeManager::MakeJoinNode(PlanNode *left, PlanNode *right,
                                     const ExprNode *condition) {
     node::JoinPlanNode *node_ptr =
         new JoinPlanNode(left, right, join_type, condition);
+    return RegisterNode(node_ptr);
+}
+
+PlanNode *NodeManager::MakeLastJoinNode(PlanNode *left, PlanNode *right,
+                                        JoinType join_type,
+                                        const OrderByNode *order_by,
+                                        const ExprNode *condition) {
+    node::LastJoinPlanNode *node_ptr =
+        new LastJoinPlanNode(left, right, join_type, condition, order_by);
     return RegisterNode(node_ptr);
 }
 PlanNode *NodeManager::MakeSelectPlanNode(PlanNode *node) {
