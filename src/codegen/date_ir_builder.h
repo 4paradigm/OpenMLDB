@@ -30,9 +30,9 @@ class DateIRBuilder : public StructTypeIRBuilder {
                       ::llvm::Value** output);
     bool CopyFrom(::llvm::BasicBlock* block, ::llvm::Value* src,
                   ::llvm::Value* dist);
-    bool GetDays(::llvm::BasicBlock* block, ::llvm::Value* timestamp,
+    bool GetDate(::llvm::BasicBlock* block, ::llvm::Value* timestamp,
                ::llvm::Value** output);
-    bool SetDays(::llvm::BasicBlock* block, ::llvm::Value* timestamp,
+    bool SetDate(::llvm::BasicBlock* block, ::llvm::Value* timestamp,
                ::llvm::Value* ts);
 };
 }  // namespace codegen

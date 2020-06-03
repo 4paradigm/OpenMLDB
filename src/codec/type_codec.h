@@ -126,9 +126,9 @@ static bool operator!=(const Timestamp& a, const Timestamp& b) {
 }
 
 struct Date {
-    Date() : days_(0) {}
-    explicit Date(int32_t days) : days_(days) {}
-    Date(int32_t year, int32_t month, int32_t day) : days_(0) {
+    Date() : date_(0) {}
+    explicit Date(int32_t date) : date_(date) {}
+    Date(int32_t year, int32_t month, int32_t day) : date_(0) {
         if (year < 1900 || year > 9999) {
             return;
         }
@@ -141,27 +141,27 @@ struct Date {
         int32_t data = (year - 1900) << 16;
         data = data | ((month - 1) << 8);
         data = data | day;
-        days_ = data;
+        date_ = data;
     }
-    int32_t days_;
+    int32_t date_;
 };
 static bool operator>(const Date& a, const Date& b) {
-    return a.days_ > b.days_;
+    return a.date_ > b.date_;
 }
 static bool operator<(const Date& a, const Date& b) {
-    return a.days_ < b.days_;
+    return a.date_ < b.date_;
 }
 static bool operator>=(const Date& a, const Date& b) {
-    return a.days_ >= b.days_;
+    return a.date_ >= b.date_;
 }
 static bool operator<=(const Date& a, const Date& b) {
-    return a.days_ <= b.days_;
+    return a.date_ <= b.date_;
 }
 static bool operator==(const Date& a, const Date& b) {
-    return a.days_ == b.days_;
+    return a.date_ == b.date_;
 }
 static bool operator!=(const Date& a, const Date& b) {
-    return a.days_ != b.days_;
+    return a.date_ != b.date_;
 }
 
 struct ListRef {

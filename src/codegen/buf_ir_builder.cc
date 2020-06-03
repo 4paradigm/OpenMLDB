@@ -344,7 +344,7 @@ bool BufNativeEncoderIRBuilder::BuildEncode(::llvm::Value* output_ptr) {
                                val->getType())) {
                     ::llvm::Value* days;
                     DateIRBuilder date_builder(block_->getModule());
-                    date_builder.GetDays(block_, val, &days);
+                    date_builder.GetDate(block_, val, &days);
                     ok = AppendPrimary(i8_ptr, days, offset);
                     if (!ok) {
                         LOG(WARNING)
