@@ -46,6 +46,7 @@ DECLARE_int32(make_snapshot_time);
 DECLARE_int32(make_snapshot_check_interval);
 
 using ::rtidb::base::ReturnCode;
+using ::rtodb::base::BLOB_PREFIX;
 
 namespace rtidb {
 namespace nameserver {
@@ -1410,11 +1411,13 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
             if (it->size() < rtidb::base::BLOB_PREFIX.size()) {
                 continue;
             }
-            const char* curr_ch = it->data();
-            const char* blob_ch = rtidb::base::BLOB_PREFIX.data();
-            int ret = memcmp(curr_ch, blob_ch, rtidb::base::BLOB_PREFIX.size());
+            const char* it_ch = it->data();
+            const char* blob_ch = BLOB_PREFIX.data();
+            int ret = memcmp(it_ch, blob_ch, BLOB_PREFIX.size());
             if (ret == 0) {
-                blobs.push_back(*it);
+                std::string origin_endpoint(it_ch + BLOB_PREFIX.size(),
+                               it->size() - BLOB_PREFIX.size());
+                blobs.push_back(origin_endpoint);
             } else {
                 tablet_endpoints.push_back(*it);
             }

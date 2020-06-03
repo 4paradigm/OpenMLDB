@@ -16,6 +16,8 @@
 #include <memory>
 #include <utility>
 
+#include "base/strings.h"
+
 int64_t ViewResult::GetInt(uint32_t idx) {
     int64_t val = 0;
     auto type = columns_->Get(idx).data_type();
@@ -150,20 +152,26 @@ bool BaseClient::RefreshNodeList() {
     if (!zk_client_->GetNodes(endpoints)) {
         return false;
     }
-    std::set<std::string> endpoint_set;
+    std::set<std::string> tablet_set;
+    std::set<std::string> blob_set;
     for (const auto& endpoint : endpoints) {
-        endpoint_set.insert(endpoint);
+        if (endpoint.size() < rtidb::base::BLOB_PREFIX.size()) {
+            tablet_set.insert(endpoint);
+            continue;
+        }
+        const char* t_ch = endpoint.data();
+        const char* b_ch = rtidb::base::BLOB_PREFIX.data();
+        int ret = memcmp(t_ch, b_ch, rtidb::base::BLOB_PREFIX.size());
+        if (ret == 0) {
+            std::string ep(t_ch+rtidb::base::BLOB_PREFIX.size(),
+                           endpoint.size() - rtidb::base::BLOB_PREFIX.size());
+            blob_set.insert(endpoint);
+        } else {
+            tablet_set.insert(endpoint);
+        }
     }
-    UpdateEndpoint(endpoint_set);
-    endpoints.clear();
-    if (!zk_client_->GetChildren(zk_root_path_ + "/ossnodes", endpoints)) {
-        return false;
-    }
-    endpoint_set.clear();
-    for (const auto& endpoint : endpoints) {
-        endpoint_set.insert(endpoint);
-    }
-    UpdateBlobEndpoint(endpoint_set);
+    UpdateEndpoint(tablet_set);
+    UpdateBlobEndpoint(blob_set);
     return true;
 }
 
