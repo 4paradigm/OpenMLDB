@@ -30,6 +30,7 @@
 #include "brpc/server.h"
 #include "client/ns_client.h"
 #include "client/tablet_client.h"
+#include "client/bs_client.h"
 #include "codec/flat_array.h"
 #include "codec/row_codec.h"
 #include "codec/schema_codec.h"
@@ -2711,7 +2712,8 @@ void HandleNSPreview(const std::vector<std::string>& parts,
                 tablet_client->Traverse(tid, pid, ro, limit, &pk, &snapshot_id,
                                         &data, &count, &is_finish, &err_msg);
             if (!ok) {
-                std::cerr << "Fail to preview table" << std::endl;
+                std::cerr << "Fail to preview table, msg: "
+                    <<  err_msg << std::endl;
                 return;
             }
             if (tables[0].compress_type() == ::rtidb::nameserver::kSnappy) {
@@ -4880,6 +4882,25 @@ void HandleClientDisConnectZK(const std::vector<std::string> parts,
     }
 }
 
+void HandleBsClientHelp(const std::vector<std::string>& parts) {
+    if (parts.size() < 2) {
+        printf("loadtable - load blob table\n");
+    } else if (parts.size() == 2) {
+        if (parts[1] == "loadtable") {
+            printf("desc: create table and load data\n");
+            printf("usage: loadtable tid pid \n");
+            printf("ex: loadtable 0 0\n");
+        } else {
+            printf("unsupport cmd %s\n", parts[1].c_str());
+        }
+    } else {
+        printf("help format error!\n");
+        printf("usage: help [cmd]\n");
+        printf("ex: help\n");
+        printf("ex: help create\n");
+    }
+}
+
 void HandleClientHelp(const std::vector<std::string> parts,
                       ::rtidb::client::TabletClient* client) {
     if (parts.size() < 2) {
@@ -5229,6 +5250,38 @@ void HandleClientSendSnapshot(const std::vector<std::string> parts,
 
 void HandleClientLoadTable(const std::vector<std::string> parts,
                            ::rtidb::client::TabletClient* client) {
+    if (parts.size() == 4) {
+        try {
+            ::rtidb::common::StorageMode storage_mode =
+                ::rtidb::common::StorageMode::kSSD;
+            std::string storage_str;
+            storage_str.resize(parts[3].size());
+            std::transform(parts[3].begin(), parts[3].end(),
+                    storage_str.begin(), ::tolower);
+            if (storage_str == "kssd" || storage_str == "ssd") {
+                storage_mode = ::rtidb::common::StorageMode::kSSD;
+            } else if (storage_str == "khdd" || storage_str == "hdd") {
+                storage_mode = ::rtidb::common::StorageMode::kHDD;
+            } else {
+                std::cout << "Bad LoadRelationalTable format, "
+                    "eg: loadtable tid pid [ssd]" << std::endl;
+            }
+            std::string msg;
+            bool ok =
+                client->LoadTable(boost::lexical_cast<uint32_t>(parts[1]),
+                        boost::lexical_cast<uint32_t>(parts[2]), storage_mode,
+                        &msg);
+            if (ok) {
+                std::cout << "LoadTable ok" << std::endl;
+            } else {
+                std::cout << "Fail to LoadTable, msg: " << msg << std::endl;
+            }
+        } catch (boost::bad_lexical_cast& e) {
+            std::cout << "Bad LoadRelationalTable format, "
+                "eg: loadtable tid pid [ssd]" << std::endl;
+        }
+        return;
+    }
     if (parts.size() < 6) {
         std::cout << "Bad LoadTable format eg loadtable <name> <tid> <pid> "
                      "<ttl> <seg_cnt> [<is_leader> [<storage_mode>]]"
@@ -5275,6 +5328,26 @@ void HandleClientLoadTable(const std::vector<std::string> parts,
             std::cout << "LoadTable ok" << std::endl;
         } else {
             std::cout << "Fail to LoadTable" << std::endl;
+        }
+    } catch (boost::bad_lexical_cast& e) {
+        std::cout << "Bad LoadTable format" << std::endl;
+    }
+}
+
+void HandleBsClientLoadTable(const std::vector<std::string>& parts,
+                           ::rtidb::client::BsClient* client) {
+    if (parts.size() < 3) {
+        std::cout << "Bad LoadTable format eg loadtable tid pid "<< std::endl;
+        return;
+    }
+    try {
+        std::string msg;
+        bool ok = client->LoadTable(boost::lexical_cast<uint32_t>(parts[1]),
+                boost::lexical_cast<uint32_t>(parts[2]), &msg);
+        if (ok) {
+            std::cout << "LoadTable ok" << std::endl;
+        } else {
+            std::cout << "Fail to LoadTable, msg: " << msg << std::endl;
         }
     } catch (boost::bad_lexical_cast& e) {
         std::cout << "Bad LoadTable format" << std::endl;
@@ -6710,6 +6783,60 @@ void StartNsClient() {
     }
 }
 
+void StartBsClient() {
+    if (FLAGS_endpoint.empty()) {
+        std::cout << "Start failed! not set endpoint" << std::endl;
+        return;
+    }
+    if (FLAGS_interactive) {
+        std::cout << "Welcome to rtidb with version " << RTIDB_VERSION_MAJOR
+                  << "." << RTIDB_VERSION_MEDIUM << "." << RTIDB_VERSION_MINOR
+                  << "." << RTIDB_VERSION_BUG << std::endl;
+    }
+    ::rtidb::client::BsClient client(FLAGS_endpoint);
+    client.Init();
+    std::string display_prefix = FLAGS_endpoint + "> ";
+    while (true) {
+        std::string buffer;
+        if (!FLAGS_interactive) {
+            buffer = FLAGS_cmd;
+        } else {
+            char* line = ::rtidb::base::linenoise(display_prefix.c_str());
+            if (line == NULL) {
+                return;
+            }
+            if (line[0] != '\0' && line[0] != '/') {
+                buffer.assign(line);
+                boost::trim(buffer);
+                if (!buffer.empty()) {
+                    ::rtidb::base::linenoiseHistoryAdd(line);
+                }
+            }
+            ::rtidb::base::linenoiseFree(line);
+            if (buffer.empty()) {
+                continue;
+            }
+        }
+        std::vector<std::string> parts;
+        ::rtidb::base::SplitString(buffer, " ", parts);
+        if (parts.empty()) {
+            continue;
+        } else if (parts[0] == "loadtable") {
+            HandleBsClientLoadTable(parts, &client);
+        } else if (parts[0] == "exit" || parts[0] == "quit") {
+            std::cout << "bye" << std::endl;
+            return;
+        } else if (parts[0] == "help" || parts[0] == "man") {
+            HandleBsClientHelp(parts);
+        } else {
+            std::cout << "unsupported cmd" << std::endl;
+        }
+        if (!FLAGS_interactive) {
+            return;
+        }
+    }
+}
+
 int main(int argc, char* argv[]) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     if (FLAGS_role == "tablet") {
@@ -6724,10 +6851,12 @@ int main(int argc, char* argv[]) {
         StartBlob();
     } else if (FLAGS_role == "ns_client") {
         StartNsClient();
+    } else if (FLAGS_role == "bs_client") {
+        StartBsClient();
     } else {
         std::cout << "Start failed! FLAGS_role must be tablet, client, "
-                     "nameserver or ns_client"
-                  << std::endl;
+            "nameserver, ns_client, blob, bs_client or blob_proxy"
+            << std::endl;
     }
     return 0;
 }

@@ -3026,7 +3026,8 @@ int NameServerImpl::DropTableOnTablet(
                     continue;
                 }
             }
-            if (!tablet_ptr->client_->DropTable(tid, pid)) {
+            if (!tablet_ptr->client_->DropTable(tid, pid,
+                        table_info->table_type())) {
                 PDLOG(WARNING,
                       "drop table failed. tid[%u] pid[%u] endpoint[%s]", tid,
                       pid, endpoint.c_str());
