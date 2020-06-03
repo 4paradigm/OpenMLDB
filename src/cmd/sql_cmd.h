@@ -47,8 +47,8 @@ const std::string LOGO =  // NOLINT
     " | | |  __ / |__| | |_) |\n"
     " |_|  \\___||_____/|____/\n";
 
-const std::string VERSION = std::to_string(RTIDB_VERSION_MAJOR) + // NOLINT
-                            "." +  // NOLINT
+const std::string VERSION = std::to_string(RTIDB_VERSION_MAJOR) +  // NOLINT
+                            "." +                                  // NOLINT
                             std::to_string(RTIDB_VERSION_MEDIUM) + "." +
                             std::to_string(RTIDB_VERSION_MINOR) + "." +
                             std::to_string(RTIDB_VERSION_BUG);
@@ -234,6 +234,29 @@ void HandleCmd(const fesql::node::CmdNode *cmd_node) {
             } else {
                 db = name;
                 std::cout << "Database changed" << std::endl;
+            }
+            break;
+        }
+        case fesql::node::kCmdDropTable: {
+            std::string name = cmd_node->GetArgs()[0];
+            std::string error;
+            printf("Drop table %s? yes/no\n", name.c_str());
+            std::string input;
+            std::cin >> input;
+            std::transform(input.begin(), input.end(), input.begin(),
+                           ::tolower);
+            if (input != "yes") {
+                printf("'drop %s' cmd is canceled!\n", name.c_str());
+                return;
+            }
+            auto ns = cs->GetNsClient();
+            bool ok = ns->DropTable(name, error);
+            if (ok) {
+                std::cout << "drop ok" << std::endl;
+                sr->RefreshCatalog();
+            } else {
+                std::cout << "failed to drop. error msg: " << error
+                          << std::endl;
             }
             break;
         }
