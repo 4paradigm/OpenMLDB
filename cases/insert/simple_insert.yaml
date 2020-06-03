@@ -118,3 +118,24 @@ SQLCases:
       data: |
         1, NULL, NULL, NULL, 10000, 2020-05-27, NULL
         2, NULL, NULL, NULL, 20000, 2020-05-28, NULL
+  - id: 5
+    desc: 简单INSERT NULL value
+    db: db_1
+    create: |
+      create table t1 (
+        col0 string not null,
+        col1 int not null,
+        col2 smallint not null,
+        col3 float not null,
+        col4 double not null,
+        col5 bigint not null,
+        col6 string not null,
+        index(key=(col2), ts=col5)
+        );
+    insert: insert into t1 values("hello", 1, NULL, 3.3f, 4.4, 5L, "world");
+    sql: select * from t1;
+    output:
+      schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
+      order: col1
+      data: |
+        hello, 1, NULL, 3.3, 4.4, 5, world
