@@ -1100,13 +1100,13 @@ class IndexTTLNode : public SQLNode {
 class IndexTTLTypeNode : public SQLNode {
  public:
     IndexTTLTypeNode() : SQLNode(kIndexTTLType, 0, 0) {}
-    explicit IndexTTLTypeNode(const std::string& ttl_type)
+    explicit IndexTTLTypeNode(const std::string &ttl_type)
         : SQLNode(kIndexTTLType, 0, 0), ttl_type_(ttl_type) {}
 
-    void set_ttl_type(const std::string& ttl_type) {
+    void set_ttl_type(const std::string &ttl_type) {
         this->ttl_type_ = ttl_type;
     }
-    const std::string& ttl_type() const { return ttl_type_; }
+    const std::string &ttl_type() const { return ttl_type_; }
 
  private:
     std::string ttl_type_;
@@ -1141,12 +1141,8 @@ class ColumnIndexNode : public SQLNode {
 
     void SetVersionCount(int count) { version_count_ = count; }
 
-    const std::string & ttl_type() const {
-        return ttl_type_;
-    }
-    void set_ttl_type(const std::string& ttl_type) {
-        ttl_type_ = ttl_type;
-    }
+    const std::string &ttl_type() const { return ttl_type_; }
+    void set_ttl_type(const std::string &ttl_type) { ttl_type_ = ttl_type; }
     int64_t GetTTL() const { return ttl_; }
     void SetTTL(ExprNode *ttl_node) {
         if (nullptr == ttl_node) {
@@ -1211,10 +1207,26 @@ class CmdNode : public SQLNode {
     std::vector<std::string> args_;
 };
 
+class CreateIndexNode : public SQLNode {
+ public:
+    explicit CreateIndexNode(const std::string &index_name,
+                             const std::string &table_name,
+                             ColumnIndexNode *index)
+        : SQLNode(kCreateIndexStmt, 0, 0),
+          index_name_(index_name),
+          table_name_(table_name),
+          index_(index) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+
+    const std::string index_name_;
+    const std::string table_name_;
+    node::ColumnIndexNode *index_;
+};
+
 class ExplainNode : public SQLNode {
  public:
     explicit ExplainNode(const QueryNode *query, node::ExplainType explain_type)
-        : SQLNode(kExplainSmt, 0, 0),
+        : SQLNode(kExplainStmt, 0, 0),
           explain_type_(explain_type),
           query_(query) {}
     void Print(std::ostream &output, const std::string &org_tab) const;

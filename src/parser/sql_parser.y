@@ -713,6 +713,12 @@ create_stmt:    CREATE TABLE op_if_not_exist relation_name '(' column_desc_list 
                 {
                     $$ = node_manager->MakeCreateTableNode($3, $4, $6);
                 }
+                |CREATE INDEX column_name ON table_name '(' column_index_item_list ')'
+                {
+                    $$ = node_manager->MakeCreateIndexNode($3, $5, node_manager->MakeColumnIndexNode($7));
+                    free($3);
+                    free($5);
+                }
                 ;
 
 
@@ -789,12 +795,6 @@ cmd_stmt:
             {
                 $$ = node_manager->MakeCmdNode(::fesql::node::kCmdDropTable, $3);
                 free($3);
-            }
-            |CREATE INDEX column_name ON table_name
-            {
-                $$ = node_manager->MakeCmdNode(::fesql::node::kCmdCreateIndex, $3, $5);
-                free($3);
-                free($5);
             }
             |DROP INDEX column_name ON table_name
             {
