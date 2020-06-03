@@ -9,12 +9,12 @@
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/text_format.h>
 #include <sched.h>
-#include <signal.h>
 #include <snappy.h>
 #include <unistd.h>
 
 #include <iostream>
 #include <random>
+#include <csignal>
 
 #include "base/display.h"
 #include "base/file_util.h"
@@ -69,6 +69,11 @@ DECLARE_uint32(skiplist_max_height);
 DECLARE_uint32(preview_limit_max_num);
 DECLARE_uint32(preview_default_limit);
 DECLARE_uint32(max_col_display_length);
+
+void shutdown_signal_handler(int signal) {
+    std::cout << "catch signal: " << signal << std::endl;
+    brpc::AskToQuit();
+}
 
 void SetupLog() {
     // Config log
@@ -295,7 +300,6 @@ void StartBlob() {
         PDLOG(WARNING, "Fail to add service");
         exit(1);
     }
-    server.MaxConcurrencyOf(server_impl, "Get") = FLAGS_scan_concurrency_limit;
     server.MaxConcurrencyOf(server_impl, "Put") = FLAGS_put_concurrency_limit;
     server_impl->SetServer(&server);
     server.MaxConcurrencyOf(server_impl, "Get") = FLAGS_get_concurrency_limit;
@@ -304,7 +308,7 @@ void StartBlob() {
             PDLOG(WARNING, "Fail to start server");
             exit(1);
         }
-        PDLOG(INFO, "start tablet on port %d with version %d.%d.%d.%d",
+        PDLOG(INFO, "start blob on port %d with version %d.%d.%d.%d",
               FLAGS_port, RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
               RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
     } else {
@@ -312,7 +316,7 @@ void StartBlob() {
             PDLOG(WARNING, "Fail to start server");
             exit(1);
         }
-        PDLOG(INFO, "start tablet on endpoint %s with version %d.%d.%d.%d",
+        PDLOG(INFO, "start blob on endpoint %s with version %d.%d.%d.%d",
               FLAGS_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
               RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
     }
@@ -320,6 +324,7 @@ void StartBlob() {
         PDLOG(WARNING, "Fail to register zk");
         exit(1);
     }
+    std::signal(SIGTERM, shutdown_signal_handler);
     std::ostringstream oss;
     oss << RTIDB_VERSION_MAJOR << "." << RTIDB_VERSION_MEDIUM << "."
         << RTIDB_VERSION_MINOR << "." << RTIDB_VERSION_BUG;
