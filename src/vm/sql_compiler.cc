@@ -147,7 +147,7 @@ SQLCompiler::SQLCompiler(const std::shared_ptr<Catalog>& cl,
                          bool dump_plan,
                          bool plan_only)
     : cl_(cl), keep_ir_(keep_ir), dump_plan_(dump_plan),
-plan_only_(plan_only){}
+plan_only_(plan_only) {}
 
 SQLCompiler::~SQLCompiler() {}
 
