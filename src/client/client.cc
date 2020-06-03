@@ -498,6 +498,9 @@ bool RtidbClient::Traverse(const std::string& name, const struct ReadOption& ro,
             }
             ::rtidb::api::Columns* index = ro_pb.add_index();
             index->add_name(kv.first);
+            if (kv.second == ::rtidb::codec::NONETOKEN) {
+                continue;
+            }
             ::rtidb::type::DataType type = iter->second;
             std::string* val = index->mutable_value();
             if (!rtidb::codec::Convert(kv.second, type, val)) {
@@ -510,12 +513,12 @@ bool RtidbClient::Traverse(const std::string& name, const struct ReadOption& ro,
     return ok;
 }
 
-GeneralResult RtidbClient::Update(
+UpdateResult RtidbClient::Update(
     const std::string& table_name,
     const std::map<std::string, std::string>& condition_map,
     const std::map<std::string, std::string>& value_map,
     const WriteOption& wo) {
-    GeneralResult result;
+    UpdateResult result;
     std::shared_ptr<TableHandler> th = client_->GetTableHandler(table_name);
     if (th == nullptr) {
         result.SetError(-1, "table not found");
@@ -559,11 +562,13 @@ GeneralResult RtidbClient::Update(
         result.SetError(-1, msg);
         return result;
     }
+    uint32_t count = 0;
     bool ok = tablet_client->Update(tid, pid, cd_columns, new_value_schema,
-                                    data, &msg);
+                                    data, &count, &msg);
     if (!ok) {
         result.SetError(-1, msg);
     }
+    result.SetAffectedCount(count);
     return result;
 }
 
@@ -621,9 +626,9 @@ PutResult RtidbClient::Put(
     return result;
 }
 
-GeneralResult RtidbClient::Delete(
+UpdateResult RtidbClient::Delete(
     const std::string& name, const std::map<std::string, std::string>& values) {
-    GeneralResult result;
+    UpdateResult result;
     std::shared_ptr<TableHandler> th = client_->GetTableHandler(name);
     if (th == nullptr) {
         result.SetError(-1, "table not found");
@@ -644,11 +649,13 @@ GeneralResult RtidbClient::Delete(
         result.SetError(cd_rm.code, "GetCdColumns error, msg: " + cd_rm.msg);
         return result;
     }
-    bool ok = tablet->Delete(tid, pid, cd_columns, &result.msg);
+    uint32_t count = 0;
+    bool ok = tablet->Delete(tid, pid, cd_columns, &count, &result.msg);
     if (!ok) {
         result.code = -1;
         return result;
     }
+    result.SetAffectedCount(count);
     return result;
 }
 
@@ -672,6 +679,9 @@ BatchQueryResult RtidbClient::BatchQuery(const std::string& name,
             }
             ::rtidb::api::Columns* index = ro_ptr->add_index();
             index->add_name(kv.first);
+            if (kv.second == ::rtidb::codec::NONETOKEN) {
+                continue;
+            }
             ::rtidb::type::DataType type = iter->second;
             std::string* val = index->mutable_value();
             if (!rtidb::codec::Convert(kv.second, type, val)) {

@@ -193,10 +193,10 @@ bool TabletClient::Update(uint32_t tid, uint32_t pid,
         const ::google::protobuf::RepeatedPtrField<
         ::rtidb::api::Columns>& cd_columns,
         const Schema& new_value_schema,
-        const std::string& value,
+        const std::string& value, uint32_t* count,
         std::string* msg) {
     ::rtidb::api::UpdateRequest request;
-    ::rtidb::api::GeneralResponse response;
+    ::rtidb::api::UpdateResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
     ::google::protobuf::RepeatedPtrField<::rtidb::api::Columns>*
@@ -212,6 +212,7 @@ bool TabletClient::Update(uint32_t tid, uint32_t pid,
                             &response, FLAGS_request_timeout_ms, 1);
     val->release_value();
     if (ok && response.code() == 0) {
+        *count = response.count();
         return true;
     }
     *msg = response.msg();
@@ -1179,7 +1180,7 @@ bool TabletClient::Delete(uint32_t tid, uint32_t pid, const std::string& pk,
 bool TabletClient::Delete(uint32_t tid, uint32_t pid,
         const ::google::protobuf::RepeatedPtrField<
         ::rtidb::api::Columns>& cd_columns,
-        std::string* msg) {
+        uint32_t* count, std::string* msg) {
     ::rtidb::api::DeleteRequest request;
     ::rtidb::api::GeneralResponse response;
     request.set_tid(tid);
@@ -1189,6 +1190,7 @@ bool TabletClient::Delete(uint32_t tid, uint32_t pid,
         client_.SendRequest(&::rtidb::api::TabletServer_Stub::Delete, &request,
                             &response, FLAGS_request_timeout_ms, 1);
     if (ok && response.code() == 0) {
+        *count = response.count();
         return true;
     }
     *msg = response.msg();

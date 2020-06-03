@@ -301,7 +301,7 @@ class RtidbClient {
         const std::string& name,
         const std::map<std::string, std::string>& value,
         const WriteOption& wo);
-    GeneralResult Delete(const std::string& name,
+    UpdateResult Delete(const std::string& name,
                          const std::map<std::string, std::string>& values);
     TraverseResult Traverse(const std::string& name,
                             const struct ReadOption& ro);
@@ -315,7 +315,7 @@ class RtidbClient {
                         ::rtidb::api::ReadOption>& ros_pb,
                     std::string* data, uint32_t* count, std::string* msg);
     void SetZkCheckInterval(int32_t interval);
-    GeneralResult Update(
+    UpdateResult Update(
         const std::string& table_name,
         const std::map<std::string, std::string>& condition_map,
         const std::map<std::string, std::string>& value_map,

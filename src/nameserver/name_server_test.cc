@@ -1467,6 +1467,7 @@ TEST_F(NameServerImplTest, CreateRelationalTable) {
 
     ::rtidb::common::ColumnDesc* col = table_info->add_column_desc_v1();
     col->set_name("card");
+    col->set_not_null(true);
     col->set_data_type(::rtidb::type::kBigInt);
     ::rtidb::common::ColumnDesc* col2 = table_info->add_column_desc_v1();
     col2->set_name("mcc");

@@ -66,7 +66,7 @@ class TabletClient {
             const ::google::protobuf::RepeatedPtrField<
             ::rtidb::api::Columns>& cd_columns,
             const Schema& new_value_schema,
-            const std::string& value, std::string* msg);
+            const std::string& value, uint32_t* count, std::string* msg);
 
     bool Put(uint32_t tid, uint32_t pid, const std::string& value,
              int64_t* auto_gen_pk, std::string* msg);
@@ -118,7 +118,7 @@ class TabletClient {
     bool Delete(uint32_t tid, uint32_t pid,
             const ::google::protobuf::RepeatedPtrField<
             ::rtidb::api::Columns>& cd_columns,
-            std::string* msg);
+            uint32_t* count, std::string* msg);
 
     bool Count(uint32_t tid, uint32_t pid, const std::string& pk,
                const std::string& idx_name, bool filter_expired_data,

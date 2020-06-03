@@ -13,8 +13,8 @@ namespace rtidb {
 namespace storage {
 
 ColumnDef::ColumnDef(const std::string& name, uint32_t id,
-                     ::rtidb::type::DataType type)
-    : name_(name), id_(id), type_(type) {}
+                     ::rtidb::type::DataType type, bool not_null)
+    : name_(name), id_(id), type_(type), not_null_(not_null) {}
 
 std::shared_ptr<ColumnDef> TableColumn::GetColumn(uint32_t idx) {
     if (idx < columns_.size()) {
