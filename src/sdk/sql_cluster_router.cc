@@ -70,6 +70,7 @@ bool SQLClusterRouter::Init() {
     std::shared_ptr<::fesql::vm::Catalog> catalog = cluster_sdk_->GetCatalog();
     ::fesql::vm::EngineOptions eopt;
     eopt.set_compile_only(true);
+    eopt.set_plan_only(true);
     engine_ = new ::fesql::vm::Engine(catalog, eopt);
     return true;
 }
