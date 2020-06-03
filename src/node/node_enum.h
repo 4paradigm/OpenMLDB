@@ -181,6 +181,8 @@ enum CmdType {
     kCmdShowTables,
     kCmdDescTable,
     kCmdDropTable,
+    kCmdCreateIndex,
+    kCmdDropIndex,
     kCmdExit
 };
 enum ExplainType {

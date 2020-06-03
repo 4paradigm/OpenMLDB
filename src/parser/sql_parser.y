@@ -785,6 +785,23 @@ cmd_stmt:
 				$$ = node_manager->MakeCmdNode(::fesql::node::kCmdUseDatabase, $2);
 				free($2);
 			}
+            |DROP TABLE table_name
+            {
+                $$ = node_manager->MakeCmdNode(::fesql::node::kCmdDropTable, $3);
+                free($3);
+            }
+            |CREATE INDEX column_name ON table_name
+            {
+                $$ = node_manager->MakeCmdNode(::fesql::node::kCmdCreateIndex, $3, $5);
+                free($3);
+                free($5);
+            }
+            |DROP INDEX column_name ON table_name
+            {
+                $$ = node_manager->MakeCmdNode(::fesql::node::kCmdDropIndex, $3, $5);
+                free($3);
+                free($5);
+            }
             |EXIT {
                 $$ = node_manager->MakeCmdNode(::fesql::node::kCmdExit);
             }
