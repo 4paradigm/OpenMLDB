@@ -39,8 +39,6 @@ class ResultSetSQL : public ::fesql::sdk::ResultSet {
 
     bool Init();
 
-    bool Reset();
-
     bool Next();
 
     bool IsNULL(int index);
