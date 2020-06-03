@@ -38,6 +38,8 @@ void InitCodecSymbol(::llvm::orc::JITDylib& jd,             // NOLINT
                      ::llvm::orc::MangleAndInterner& mi) {  // NOLINT
     fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "malloc",
                                    (reinterpret_cast<void*>(&malloc)));
+    fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "memset",
+                                   (reinterpret_cast<void*>(&memset)));
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_get_int16_field",
         reinterpret_cast<void*>(
@@ -141,9 +143,11 @@ void InitCodecSymbol(vm::FeSQLJIT* jit_ptr) {
 using ::fesql::base::Status;
 
 SQLCompiler::SQLCompiler(const std::shared_ptr<Catalog>& cl,
-                         ::fesql::node::NodeManager* nm, bool keep_ir,
-                         bool dump_plan)
-    : cl_(cl), nm_(nm), keep_ir_(keep_ir), dump_plan_(dump_plan) {}
+                         bool keep_ir,
+                         bool dump_plan,
+                         bool plan_only)
+    : cl_(cl), keep_ir_(keep_ir), dump_plan_(dump_plan),
+plan_only_(plan_only) {}
 
 SQLCompiler::~SQLCompiler() {}
 
@@ -161,7 +165,7 @@ void SQLCompiler::KeepIR(SQLContext& ctx, llvm::Module* m) {
 
 bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     ::fesql::node::PlanNodeList trees;
-    bool ok = Parse(ctx, (*nm_), trees, status);
+    bool ok = Parse(ctx, ctx.nm, trees, status);
     if (!ok) {
         return false;
     }
@@ -174,7 +178,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     auto m = ::llvm::make_unique<::llvm::Module>("sql", *llvm_ctx);
     ::fesql::udf::RegisterUDFToModule(m.get());
     if (ctx.is_batch_mode) {
-        vm::BatchModeTransformer transformer(nm_, ctx.db, cl_, m.get());
+        vm::BatchModeTransformer transformer(&(ctx.nm), ctx.db, cl_, m.get());
         transformer.AddDefaultPasses();
         if (!transformer.TransformPhysicalPlan(trees, &ctx.plan, status)) {
             LOG(WARNING) << "fail to generate physical plan (batch mode): "
@@ -183,7 +187,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
             return false;
         }
     } else {
-        vm::RequestModeransformer transformer(nm_, ctx.db, cl_, m.get());
+        vm::RequestModeransformer transformer(&(ctx.nm), ctx.db, cl_, m.get());
         transformer.AddDefaultPasses();
         if (!transformer.TransformPhysicalPlan(trees, &ctx.plan, status)) {
             LOG(WARNING) << "fail to generate physical plan (request mode) "
@@ -211,6 +215,9 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         std::stringstream physical_plan_ss;
         ctx.plan->Print(physical_plan_ss, "\t");
         ctx.physical_plan = physical_plan_ss.str();
+    }
+    if (plan_only_) {
+        return true;
     }
     ::llvm::Expected<std::unique_ptr<FeSQLJIT>> jit_expected(
         FeSQLJITBuilder().create());
@@ -253,7 +260,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         LOG(WARNING) << "fail to encode output schema";
         return false;
     }
-    LOG(INFO) << "compile sql " << ctx.sql << " done";
+    DLOG(INFO) << "compile sql " << ctx.sql << " done";
     return true;
 }
 bool SQLCompiler::BuildRunner(SQLContext& ctx, Status& status) {  // NOLINT
@@ -360,9 +367,11 @@ bool SQLCompiler::ResolvePlanFnAddress(PhysicalOpNode* node,
                            << info_ptr->fn_name_;
                 ::llvm::Expected<::llvm::JITEvaluatedSymbol> symbol(
                     jit->lookup(info_ptr->fn_name_));
-                if (symbol.takeError()) {
+                ::llvm::Error e = symbol.takeError();
+                if (e) {
                     LOG(WARNING) << "fail to resolve fn address "
                                  << info_ptr->fn_name_ << " not found in jit";
+                    return false;
                 }
                 info_ptr->fn_ =
                     (reinterpret_cast<int8_t*>(symbol->getAddress()));

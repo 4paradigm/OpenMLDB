@@ -56,6 +56,7 @@ struct SQLContext {
     std::string physical_plan;
     std::string encoded_schema;
     std::string encoded_request_schema;
+    ::fesql::node::NodeManager nm;
     SQLContext() {
         runner = NULL;
     }
@@ -71,8 +72,9 @@ void InitCodecSymbol(vm::FeSQLJIT* jit_ptr);
 class SQLCompiler {
  public:
     SQLCompiler(const std::shared_ptr<Catalog>& cl,
-                ::fesql::node::NodeManager* nm, bool keep_ir = false,
-                bool dump_plan = false);
+                bool keep_ir = false,
+                bool dump_plan = false,
+                bool plan_only = false);
 
     ~SQLCompiler();
 
@@ -91,9 +93,9 @@ class SQLCompiler {
 
  private:
     const std::shared_ptr<Catalog> cl_;
-    ::fesql::node::NodeManager* nm_;
     bool keep_ir_;
     bool dump_plan_;
+    bool plan_only_;
 };
 }  // namespace vm
 }  // namespace fesql

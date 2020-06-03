@@ -1256,6 +1256,7 @@ bool BatchModeTransformer::GenWindowJoinList(WindowJoinList* window_join_list,
 bool BatchModeTransformer::GenRequestWindowUnionList(
     RequestWindowUnionList* window_union_list, PhysicalOpNode* in,
     base::Status& status) {
+
     if (nullptr == window_union_list || window_union_list->Empty()) {
         LOG(WARNING)
             << "Skip GenRequestWindowUnionList when window unions is empty";

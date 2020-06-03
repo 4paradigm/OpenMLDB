@@ -21,22 +21,20 @@
 #include "codegen/ir_base_builder.h"
 #include "codegen/variable_ir_builder.h"
 #include "glog/logging.h"
+#include "gflags/gflags.h"
 
+DECLARE_bool(enable_column_sum_opt);
 namespace fesql {
 namespace codegen {
 
 
-// TODO(someone): configurable codegen
 bool RowFnLetIRBuilder::EnableColumnSumOpt() const {
-    const char* env_name = "ENABLE_COLUMN_SUM_OPT";
-    char* value = getenv(env_name);
-    if (value != nullptr && strcmp(value, "true") == 0) {
+    if (FLAGS_enable_column_sum_opt) {
         LOG(INFO) << "Multi column sum opt is enabled";
         return true;
     }
     return false;
 }
-
 
 bool RowFnLetIRBuilder::IsColumnSum(const fesql::node::ExprNode* expr,
                                     fesql::node::ColumnRefNode** col,

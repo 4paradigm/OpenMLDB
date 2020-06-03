@@ -1361,6 +1361,11 @@ std::shared_ptr<DataHandler> LimitRunner::Run(RunnerContext& ctx) {
         case kTableHandler: {
             auto iter =
                 std::dynamic_pointer_cast<TableHandler>(input)->GetIterator();
+            if (!iter) {
+                LOG(WARNING) << "fail to get table it";
+                return fail_ptr;
+            }
+            iter->SeekToFirst();
             auto output_table = std::shared_ptr<MemTableHandler>(
                 new MemTableHandler(input->GetSchema()));
             int32_t cnt = 0;
@@ -1443,12 +1448,12 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(RunnerContext& ctx) {
                   : (key + range_gen_.end_offset_);
         DLOG(INFO) << "request key: " << key;
     }
+    DLOG(INFO) << " start " << start << " end " << end;
     window_table->AddRow(request);
     // Prepare Union Window
     auto union_inputs = windows_union_gen_.RunInputs(ctx);
     auto union_segments =
         windows_union_gen_.GetRequestWindows(request, union_inputs);
-
     // Prepare Union Segment Iterators
     size_t unions_cnt = windows_union_gen_.inputs_cnt_;
 
@@ -1465,7 +1470,6 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(RunnerContext& ctx) {
             union_segment_status[i] = IteratorStatus();
             continue;
         }
-        union_segment_iters[i]->SeekToFirst();
         union_segment_iters[i]->Seek(end);
         if (!union_segment_iters[i]->Valid()) {
             union_segment_status[i] = IteratorStatus();
@@ -1474,12 +1478,10 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(RunnerContext& ctx) {
         uint64_t ts = union_segment_iters[i]->GetKey();
         union_segment_status[i] = IteratorStatus(ts);
     }
-
     int32_t max_union_pos = 0 == unions_cnt
                                 ? -1
                                 : IteratorStatus::PickIteratorWithMaximizeKey(
                                       &union_segment_status);
-
     while (-1 != max_union_pos) {
         if (union_segment_status[max_union_pos].key_ <= start) {
             break;

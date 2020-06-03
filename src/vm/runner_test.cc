@@ -89,7 +89,7 @@ INSTANTIATE_TEST_CASE_P(
 void RunnerCheck(std::shared_ptr<Catalog> catalog, const std::string sql,
                  const bool is_batch) {
     node::NodeManager nm;
-    SQLCompiler sql_compiler(catalog, &nm);
+    SQLCompiler sql_compiler(catalog);
     SQLContext sql_context;
     sql_context.sql = sql;
     sql_context.db = "db";
@@ -290,7 +290,7 @@ TEST_F(RunnerTest, KeyGeneratorTest) {
     RunnerCheck(catalog, sqlstr, true);
 
     node::NodeManager nm;
-    SQLCompiler sql_compiler(catalog, &nm);
+    SQLCompiler sql_compiler(catalog);
     SQLContext sql_context;
     sql_context.sql = sqlstr;
     sql_context.db = "db";

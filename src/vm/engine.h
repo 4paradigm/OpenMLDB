@@ -43,15 +43,20 @@ class Engine;
 
 class EngineOptions {
  public:
-    EngineOptions() : keep_ir_(false), compile_only_(false) {}
-    void set_keep_ir(bool flag) { this->keep_ir_ = flag; }
-    bool is_keep_ir() const { return this->keep_ir_; }
-    void set_compile_only(bool flag) { this->compile_only_ = flag; }
-    bool is_compile_only() const { return compile_only_; }
-
+    EngineOptions() : keep_ir_(false), compile_only_(false),
+    plan_only_(false) {}
+    inline void set_keep_ir(bool flag) { this->keep_ir_ = flag; }
+    inline bool is_keep_ir() const { return this->keep_ir_; }
+    inline void set_compile_only(bool flag) { this->compile_only_ = flag; }
+    inline bool is_compile_only() const { return compile_only_; }
+    inline bool is_plan_only() const { return plan_only_;}
+    inline void set_plan_only(bool flag) {
+        plan_only_= flag;
+    }
  private:
     bool keep_ir_;
     bool compile_only_;
+    bool plan_only_;
 };
 
 class CompileInfo {
@@ -170,14 +175,18 @@ class Engine {
     bool Explain(const std::string& sql, const std::string& db, bool is_batch,
                  ExplainOutput* explain_output, base::Status* status);
 
+    inline void UpdateCatalog(std::shared_ptr<Catalog> cl) {
+        std::lock_guard<base::SpinMutex> lock(mu_);
+        cl_ = cl;
+    }
+
  private:
     std::shared_ptr<CompileInfo> GetCacheLocked(const std::string& db,
                                                 const std::string& sql);
-    const std::shared_ptr<Catalog> cl_;
+    std::shared_ptr<Catalog> cl_;
     EngineOptions options_;
     base::SpinMutex mu_;
     EngineCache cache_;
-    ::fesql::node::NodeManager nm_;
 };
 
 }  // namespace vm

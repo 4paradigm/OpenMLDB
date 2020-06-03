@@ -88,7 +88,7 @@ INSTANTIATE_TEST_CASE_P(
 void CompilerCheck(std::shared_ptr<Catalog> catalog, const std::string sql,
                    const bool is_batch) {
     node::NodeManager nm;
-    SQLCompiler sql_compiler(catalog, &nm);
+    SQLCompiler sql_compiler(catalog);
     SQLContext sql_context;
     sql_context.sql = sql;
     sql_context.db = "db";
@@ -109,7 +109,7 @@ void CompilerCheck(std::shared_ptr<Catalog> catalog, const std::string sql,
 void RequestSchemaCheck(std::shared_ptr<Catalog> catalog, const std::string sql,
                         const type::TableDef& exp_table_def) {
     node::NodeManager nm;
-    SQLCompiler sql_compiler(catalog, &nm);
+    SQLCompiler sql_compiler(catalog);
     SQLContext sql_context;
     sql_context.sql = sql;
     sql_context.db = "db";
