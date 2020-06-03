@@ -1,9 +1,8 @@
-package com._4paradigm.rtidb.client.impl;
+package com._4paradigm.rtidb.client;
 
 import com._4paradigm.rtidb.blobserver.OSS;
 import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.ha.TableHandler;
-import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com.google.protobuf.ByteString;
 import rtidb.blobserver.BlobServer;
 

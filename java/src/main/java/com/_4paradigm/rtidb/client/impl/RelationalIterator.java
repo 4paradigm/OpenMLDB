@@ -1,6 +1,7 @@
 package com._4paradigm.rtidb.client.impl;
 
 import com._4paradigm.rtidb.blobserver.OSS;
+import com._4paradigm.rtidb.client.BlobData;
 import com._4paradigm.rtidb.client.ReadOption;
 import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.ha.PartitionHandler;
