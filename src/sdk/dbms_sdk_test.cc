@@ -505,6 +505,10 @@ void PrintRows(const vm::Schema &schema, const std::vector<codec::Row> &rows) {
     // Add Header
     for (int i = 0; i < schema.size(); i++) {
         t.add(schema.Get(i).name());
+        if (t.current_columns_size() >= 20) {
+            t.add("...");
+            break;
+        }
     }
     t.endOfRow();
     if (rows.empty()) {
@@ -518,8 +522,15 @@ void PrintRows(const vm::Schema &schema, const std::vector<codec::Row> &rows) {
         for (int idx = 0; idx < schema.size(); idx++) {
             std::string str = row_view.GetAsString(idx);
             t.add(str);
+            if (t.current_columns_size() >= 20) {
+                t.add("...");
+                break;
+            }
         }
         t.endOfRow();
+        if (t.rows().size() > 10) {
+            break;
+        }
     }
     oss << t << std::endl;
     LOG(INFO) << "\n" << oss.str() << "\n";
@@ -532,6 +543,10 @@ void PrintResultSet(std::shared_ptr<ResultSet> rs) {
     // Add Header
     for (int i = 0; i < schema->GetColumnCnt(); i++) {
         t.add(schema->GetColumnName(i));
+        if (t.current_columns_size() >= 20) {
+            t.add("...");
+            break;
+        }
     }
     t.endOfRow();
     if (0 == rs->Size()) {
@@ -544,8 +559,15 @@ void PrintResultSet(std::shared_ptr<ResultSet> rs) {
         for (int idx = 0; idx < schema->GetColumnCnt(); idx++) {
             std::string str = rs->GetAsString(idx);
             t.add(str);
+            if (t.current_columns_size() >= 20) {
+                t.add("...");
+                break;
+            }
         }
         t.endOfRow();
+        if (t.rows().size() > 10) {
+            break;
+        }
     }
     oss << t << std::endl;
     LOG(INFO) << "\n" << oss.str() << "\n";

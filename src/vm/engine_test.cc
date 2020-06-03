@@ -42,7 +42,8 @@
 #include "parser/parser.h"
 #include "plan/planner.h"
 #include "vm/test_base.h"
-
+#define MAX_DEBUG_LINES_CNT 10
+#define MAX_DEBUG_COLUMN_CNT 20
 using namespace llvm;       // NOLINT (build/namespaces)
 using namespace llvm::orc;  // NOLINT (build/namespaces)
 
@@ -88,6 +89,10 @@ void PrintRows(const vm::Schema& schema, const std::vector<Row>& rows) {
     // Add Header
     for (int i = 0; i < schema.size(); i++) {
         t.add(schema.Get(i).name());
+        if (t.current_columns_size() >= MAX_DEBUG_COLUMN_CNT) {
+            t.add("...");
+            break;
+        }
     }
     t.endOfRow();
     if (rows.empty()) {
@@ -101,8 +106,15 @@ void PrintRows(const vm::Schema& schema, const std::vector<Row>& rows) {
         for (int idx = 0; idx < schema.size(); idx++) {
             std::string str = row_view.GetAsString(idx);
             t.add(str);
+            if (t.current_columns_size() >= MAX_DEBUG_COLUMN_CNT) {
+                t.add("...");
+                break;
+            }
         }
         t.endOfRow();
+        if (t.rows().size() >= MAX_DEBUG_LINES_CNT) {
+            break;
+        }
     }
     oss << t << std::endl;
     LOG(INFO) << "\n" << oss.str() << "\n";
@@ -194,19 +206,19 @@ void CheckRows(const vm::Schema& schema, const std::vector<Row>& rows,
                 case fesql::type::kDate: {
                     ASSERT_EQ(row_view.GetDateUnsafe(i),
                               row_view_exp.GetDateUnsafe(i))
-                                        << " At " << i;
+                        << " At " << i;
                     break;
                 }
                 case fesql::type::kTimestamp: {
                     ASSERT_EQ(row_view.GetTimestampUnsafe(i),
                               row_view_exp.GetTimestampUnsafe(i))
-                                        << " At " << i;
+                        << " At " << i;
                     break;
                 }
                 case fesql::type::kBool: {
                     ASSERT_EQ(row_view.GetBoolUnsafe(i),
                               row_view_exp.GetBoolUnsafe(i))
-                                        << " At " << i;
+                        << " At " << i;
                     break;
                 }
                 default: {

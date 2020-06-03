@@ -38,6 +38,11 @@ void InitCodecSymbol(::llvm::orc::JITDylib& jd,             // NOLINT
                      ::llvm::orc::MangleAndInterner& mi) {  // NOLINT
     fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "malloc",
                                    (reinterpret_cast<void*>(&malloc)));
+    fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "memset",
+                                   (reinterpret_cast<void*>(&memset)));
+    fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "__bzero",
+                                   (reinterpret_cast<void*>(&bzero)));
+
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_get_int16_field",
         reinterpret_cast<void*>(
