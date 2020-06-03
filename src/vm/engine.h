@@ -51,7 +51,7 @@ class EngineOptions {
     inline bool is_compile_only() const { return compile_only_; }
     inline bool is_plan_only() const { return plan_only_;}
     inline void set_plan_only(bool flag) {
-        plan_only_= flag;
+        plan_only_ = flag;
     }
  private:
     bool keep_ir_;
