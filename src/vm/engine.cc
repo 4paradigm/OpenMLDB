@@ -65,13 +65,13 @@ bool Engine::Get(const std::string& sql, const std::string& db,
     info->get_sql_context().sql = sql;
     info->get_sql_context().db = db;
     info->get_sql_context().is_batch_mode = session.IsBatchRun();
-    SQLCompiler compiler(cl_, options_.is_keep_ir());
+    SQLCompiler compiler(cl_, options_.is_keep_ir(), false,
+            options_.is_plan_only());
     bool ok = compiler.Compile(info->get_sql_context(), status);
     if (!ok || 0 != status.code) {
         // TODO(chenjing): do clean
         return false;
     }
-
     if (!options_.is_compile_only()) {
         ok = compiler.BuildRunner(info->get_sql_context(), status);
         if (!ok || 0 != status.code) {
@@ -79,7 +79,6 @@ bool Engine::Get(const std::string& sql, const std::string& db,
             return false;
         }
     }
-
     {
         session.SetCatalog(cl_);
         // check

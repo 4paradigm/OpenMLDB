@@ -38,6 +38,8 @@ void InitCodecSymbol(::llvm::orc::JITDylib& jd,             // NOLINT
                      ::llvm::orc::MangleAndInterner& mi) {  // NOLINT
     fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "malloc",
                                    (reinterpret_cast<void*>(&malloc)));
+    fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "memset",
+                                   (reinterpret_cast<void*>(&memset)));
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_get_int16_field",
         reinterpret_cast<void*>(
@@ -142,8 +144,10 @@ using ::fesql::base::Status;
 
 SQLCompiler::SQLCompiler(const std::shared_ptr<Catalog>& cl,
                          bool keep_ir,
-                         bool dump_plan)
-    : cl_(cl), keep_ir_(keep_ir), dump_plan_(dump_plan) {}
+                         bool dump_plan,
+                         bool plan_only)
+    : cl_(cl), keep_ir_(keep_ir), dump_plan_(dump_plan),
+plan_only_(plan_only){}
 
 SQLCompiler::~SQLCompiler() {}
 
@@ -211,6 +215,9 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         std::stringstream physical_plan_ss;
         ctx.plan->Print(physical_plan_ss, "\t");
         ctx.physical_plan = physical_plan_ss.str();
+    }
+    if (plan_only_) {
+        return true;
     }
     ::llvm::Expected<std::unique_ptr<FeSQLJIT>> jit_expected(
         FeSQLJITBuilder().create());
@@ -360,9 +367,11 @@ bool SQLCompiler::ResolvePlanFnAddress(PhysicalOpNode* node,
                            << info_ptr->fn_name_;
                 ::llvm::Expected<::llvm::JITEvaluatedSymbol> symbol(
                     jit->lookup(info_ptr->fn_name_));
-                if (symbol.takeError()) {
+                ::llvm::Error e = symbol.takeError();
+                if (e) {
                     LOG(WARNING) << "fail to resolve fn address "
                                  << info_ptr->fn_name_ << " not found in jit";
+                    return false;
                 }
                 info_ptr->fn_ =
                     (reinterpret_cast<int8_t*>(symbol->getAddress()));

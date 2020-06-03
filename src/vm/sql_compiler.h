@@ -73,7 +73,8 @@ class SQLCompiler {
  public:
     SQLCompiler(const std::shared_ptr<Catalog>& cl,
                 bool keep_ir = false,
-                bool dump_plan = false);
+                bool dump_plan = false,
+                bool plan_only = false);
 
     ~SQLCompiler();
 
@@ -94,6 +95,7 @@ class SQLCompiler {
     const std::shared_ptr<Catalog> cl_;
     bool keep_ir_;
     bool dump_plan_;
+    bool plan_only_;
 };
 }  // namespace vm
 }  // namespace fesql
