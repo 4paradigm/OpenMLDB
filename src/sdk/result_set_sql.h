@@ -20,6 +20,7 @@
 
 #include <memory>
 #include <string>
+
 #include "brpc/controller.h"
 #include "butil/iobuf.h"
 #include "codec/fe_row_codec.h"
@@ -33,10 +34,12 @@ namespace sdk {
 class ResultSetSQL : public ::fesql::sdk::ResultSet {
  public:
     ResultSetSQL(std::unique_ptr<::rtidb::api::QueryResponse> response,
-                  std::unique_ptr<brpc::Controller> cntl);
+                 std::unique_ptr<brpc::Controller> cntl);
     ~ResultSetSQL();
 
     bool Init();
+
+    bool Reset();
 
     bool Next();
 
@@ -58,9 +61,9 @@ class ResultSetSQL : public ::fesql::sdk::ResultSet {
 
     bool GetDouble(uint32_t index, double* result);
 
-    bool GetDate(uint32_t index, uint32_t* days);
+    bool GetDate(uint32_t index, int32_t* days);
 
-    int32_t GetDateUnsafe(uint32_t index) { return 0; }
+    bool GetDate(uint32_t index, int32_t* year, int32_t* month, int32_t* day);
 
     bool GetTime(uint32_t index, int64_t* mills);
 
