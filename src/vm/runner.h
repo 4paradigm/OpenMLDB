@@ -172,10 +172,14 @@ class SortGenerator {
     virtual ~SortGenerator() {}
 
     const bool Valid() const { return is_valid_; }
-    std::shared_ptr<DataHandler> Sort(std::shared_ptr<DataHandler> input);
+
+    std::shared_ptr<DataHandler> Sort(std::shared_ptr<DataHandler> input,
+                                      const bool reverse = false);
     std::shared_ptr<PartitionHandler> Sort(
-        std::shared_ptr<PartitionHandler> partition);
-    std::shared_ptr<TableHandler> Sort(std::shared_ptr<TableHandler> table);
+        std::shared_ptr<PartitionHandler> partition,
+        const bool reverse = false);
+    std::shared_ptr<TableHandler> Sort(std::shared_ptr<TableHandler> table,
+                                       const bool reverse = false);
     const OrderGenerator& order_gen() const { return order_gen_; }
 
  private:
@@ -352,6 +356,7 @@ class Runner {
                              Window* window);
     static const Row RowLastJoinTable(const Row& left_row,
                                       std::shared_ptr<TableHandler> right_table,
+                                      SortGenerator& right_sort,
                                       ConditionGenerator& filter);  // NOLINT
     static std::shared_ptr<TableHandler> TableReverse(
         std::shared_ptr<TableHandler> table);
@@ -444,7 +449,8 @@ class JoinGenerator {
         : condition_gen_(join.filter_.fn_info_),
           left_key_gen_(join.left_key_.fn_info_),
           right_group_gen_(join.right_key_),
-          index_key_gen_(join.index_key_.fn_info_) {}
+          index_key_gen_(join.index_key_.fn_info_),
+          right_sort_gen_(join.right_sort_) {}
     virtual ~JoinGenerator() {}
     bool TableJoin(std::shared_ptr<TableHandler> left,
                    std::shared_ptr<TableHandler> right,
@@ -465,6 +471,7 @@ class JoinGenerator {
     KeyGenerator left_key_gen_;
     PartitionGenerator right_group_gen_;
     KeyGenerator index_key_gen_;
+    SortGenerator right_sort_gen_;
 
  private:
     Row RowLastJoinPartition(

@@ -1094,6 +1094,13 @@ bool BatchModeTransformer::GenJoin(Join* join, PhysicalOpNode* in,
         return false;
     }
 
+    if (join->join_type_ == node::kJoinTypeLast) {
+        if (!GenSort(&join->right_sort_,
+                     in->producers()[1]->GetOutputNameSchemaList(), status)) {
+            return false;
+        }
+    }
+
     return true;
 }
 bool BatchModeTransformer::GenFilter(

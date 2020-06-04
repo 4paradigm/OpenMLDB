@@ -348,7 +348,8 @@ INSTANTIATE_TEST_CASE_P(
             "t2 order by t2.col5 on "
             " t1.col1 = t2.col2 and t2.col5 >= t1.col5;",
             "SIMPLE_PROJECT(sources=([0]<-[0:1], [1]<-[1:2])\n"
-            "  REQUEST_JOIN(type=LastJoin, right_sort=(t2.col5) ASC, condition=t2.col5 >= t1.col5, "
+            "  REQUEST_JOIN(type=LastJoin, right_sort=(t2.col5) ASC, "
+            "condition=t2.col5 >= t1.col5, "
             "left_keys=(t1.col1), right_keys=(t2.col2), index_keys=)\n"
             "    DATA_PROVIDER(request=t1)\n"
             "    DATA_PROVIDER(table=t2)"),
@@ -357,7 +358,8 @@ INSTANTIATE_TEST_CASE_P(
             "t2 order by t2.col5 on "
             " t1.col1 = t2.col1 and t2.col5 >= t1.col5;",
             "SIMPLE_PROJECT(sources=([0]<-[0:1], [1]<-[1:2])\n"
-            "  REQUEST_JOIN(type=LastJoin, right_sort=() ASC, condition=t2.col5 >= t1.col5, "
+            "  REQUEST_JOIN(type=LastJoin, right_sort=() ASC, "
+            "condition=t2.col5 >= t1.col5, "
             "left_keys=(), right_keys=(), index_keys=(t1.col1))\n"
             "    DATA_PROVIDER(request=t1)\n"
             "    DATA_PROVIDER(type=Partition, table=t2, index=index1_t2)"),
@@ -372,7 +374,8 @@ INSTANTIATE_TEST_CASE_P(
             "PRECEDING AND CURRENT ROW) limit 10;",
             "LIMIT(limit=10, optimized)\n"
             "  PROJECT(type=Aggregation, limit=10)\n"
-            "    JOIN(type=LastJoin, right_sort=() ASC, condition=, left_keys=(), "
+            "    JOIN(type=LastJoin, right_sort=() ASC, condition=, "
+            "left_keys=(), "
             "right_keys=(), index_keys=(t1.col1))\n"
             "      REQUEST_UNION(partition_keys=(), orders=() DESC, "
             "range=(t1.col5, -3, 0), index_keys=(t1.col1))\n"
@@ -390,7 +393,8 @@ INSTANTIATE_TEST_CASE_P(
             "PRECEDING AND CURRENT ROW) limit 10;",
             "LIMIT(limit=10, optimized)\n"
             "  PROJECT(type=Aggregation, limit=10)\n"
-            "    JOIN(type=LastJoin, right_sort=(t2.col5) ASC, condition=, left_keys=(t1.col2), "
+            "    JOIN(type=LastJoin, right_sort=(t2.col5) ASC, condition=, "
+            "left_keys=(t1.col2), "
             "right_keys=(t2.col2), index_keys=)\n"
             "      REQUEST_UNION(partition_keys=(), orders=() DESC, "
             "range=(t1.col5, -3, 0), index_keys=(t1.col1,t1.col2))\n"
@@ -407,7 +411,8 @@ INSTANTIATE_TEST_CASE_P(
             "BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;",
             "LIMIT(limit=10, optimized)\n"
             "  PROJECT(type=Aggregation, limit=10)\n"
-            "    JOIN(type=LastJoin, right_sort=() ASC, condition=, left_keys=(), "
+            "    JOIN(type=LastJoin, right_sort=() ASC, condition=, "
+            "left_keys=(), "
             "right_keys=(), index_keys=(t1.col1))\n"
             "      REQUEST_UNION(partition_keys=(), orders=() DESC, "
             "range=(t1.col5, -3, 0), index_keys=(t1.col1,t1.col2))\n"
