@@ -11175,35 +11175,25 @@ void NameServerImpl::AddIndex(RpcController* controller,
 }
 
 bool NameServerImpl::AddIndexToTableInfo(
-    const std::string& name, const ::rtidb::common::ColumnKey& column_key,
+    const std::string& name, const std::string& db, const ::rtidb::common::ColumnKey& column_key,
     uint32_t index_pos) {
     std::lock_guard<std::mutex> lock(mu_);
     auto iter = table_info_.find(name);
-    if (iter == table_info_.end()) {
+    std::shared_ptr<::rtidb::nameserver::TableInfo> table_info;
+    if (!GetTableInfo(name, db, table_info)) {
         PDLOG(WARNING, "table[%s] is not exist!", name.c_str());
         return false;
     }
-    std::shared_ptr<::rtidb::nameserver::TableInfo> new_table_info(
-        iter->second->New());
-    new_table_info->CopyFrom(*(iter->second));
-    if (index_pos < (uint32_t)new_table_info->column_key_size()) {
+    if (index_pos < (uint32_t)table_info->column_key_size()) {
         ::rtidb::common::ColumnKey* cur_column_key =
-            new_table_info->mutable_column_key(index_pos);
+            table_info->mutable_column_key(index_pos);
         cur_column_key->CopyFrom(column_key);
     } else {
         ::rtidb::common::ColumnKey* cur_column_key =
-            new_table_info->add_column_key();
+            table_info->add_column_key();
         cur_column_key->CopyFrom(column_key);
     }
-    std::string table_value;
-    new_table_info->SerializeToString(&table_value);
-    if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + name,
-                                  table_value)) {
-        PDLOG(WARNING, "update table node[%s/%s] failed! value[%s]",
-              zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
-        return false;
-    }
-    iter->second = new_table_info;
+    UpdateZkTableNode(table_info);
     NotifyTableChanged();
     PDLOG(INFO, "add index ok. table[%s] index[%s]", name.c_str(),
           column_key.index_name().c_str());
@@ -11384,7 +11374,7 @@ int NameServerImpl::CreateAddIndexOPTask(std::shared_ptr<OPData> op_data) {
     }
     op_data->task_list_.push_back(task);
     boost::function<bool()> fun =
-        boost::bind(&NameServerImpl::AddIndexToTableInfo, this, name,
+        boost::bind(&NameServerImpl::AddIndexToTableInfo, this, name, db,
                     add_index_meta.column_key(), add_index_meta.idx());
     task = CreateTableSyncTask(op_index, ::rtidb::api::OPType::kAddIndexOP,
                                tid, fun);

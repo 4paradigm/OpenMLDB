@@ -6762,6 +6762,8 @@ void StartNsClient() {
             HandleNSUpdate(parts, &client);
         } else if (parts[0] == "query") {
             HandleNSQuery(parts, &client);
+        } else if (parts[0] == "use") {
+            HandleNsUseDb(parts, &client);
         } else if (parts[0] == "sql") {
             use_sql = true;
             display_prefix = endpoint + " " + client.GetDb() + " sql> ";

@@ -784,7 +784,7 @@ class NameServerImpl : public NameServer {
         uint64_t offset_delta,
         std::shared_ptr<::rtidb::api::TaskInfo> task_info);
 
-    bool AddIndexToTableInfo(const std::string& name,
+    bool AddIndexToTableInfo(const std::string& name, const std::string& db,
                              const ::rtidb::common::ColumnKey& column_key,
                              uint32_t index_pos);
 
