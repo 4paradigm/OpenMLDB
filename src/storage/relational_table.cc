@@ -1041,7 +1041,7 @@ bool RelationalTable::UpdateDB(const std::shared_ptr<IndexDef> index_def,
                 }
                 if (iter_vec.size() > 1 &&
                         (is_update_pk || is_update_unique)) {
-                    PDLOG(WARNING, "duplicated pk or unique key"
+                    PDLOG(WARNING, "duplicate pk or unique key"
                             "tid %u pid %u", id_, pid_);
                     return false;
                 }
