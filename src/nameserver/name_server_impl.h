@@ -448,8 +448,6 @@ class NameServerImpl : public NameServer {
 
     void UpdateBlobServers(const std::vector<std::string>& endpoints);
 
-    void UpdateBlobServersLocked(const std::vector<std::string>& endpoints);
-
     void OnTabletOffline(const std::string& endpoint, bool startup_flag);
 
     void RecoverOfflineTablet();
@@ -477,7 +475,8 @@ class NameServerImpl : public NameServer {
                       std::shared_ptr<::rtidb::api::TaskInfo> task_info,
                       uint32_t flag);
 
-    std::shared_ptr<BlobServerInfo> SetBlobTableInfo(TableInfo* table_info);
+    std::shared_ptr<BlobServerInfo> SetBlobTableInfo(
+        std::shared_ptr<TableInfo> table_info);
 
     void UpdatePartitionStatus(
         const std::string& name, const std::string& endpoint, uint32_t pid,
@@ -760,7 +759,12 @@ class NameServerImpl : public NameServer {
     void UpdateTableStatus();
     int DropTableOnTablet(
         std::shared_ptr<::rtidb::nameserver::TableInfo> table_info);
+
+    int DropTableOnBlobClient(const std::string& endpoint, uint32_t tid,
+                              uint32_t pid);
+
     int DropTableOnBlob(std::shared_ptr<TableInfo> table_info);
+
     void CheckBinlogSyncProgress(
         const std::string& name, uint32_t pid, const std::string& follower,
         uint64_t offset_delta,

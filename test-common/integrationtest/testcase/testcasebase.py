@@ -81,7 +81,6 @@ class TestCaseBase(unittest.TestCase):
             utils.exe_shell('rm -rf {}/recycle/*'.format(cls.node_path_dict_r[edp]))
             utils.exe_shell('rm -rf {}/db/*'.format(cls.node_path_dict_r[edp]))
         infoLogger.info('\n' + '=' * 50 + ' TEST {} FINISHED '.format(cls) + '=' * 50 + '\n' * 5)
-
     def setUp(self):
         infoLogger.info('\nTEST CASE NAME: {} {} {}'.format(
             self, self._testMethodDoc, '\n' + '|' * 50 + ' SETUP STARTED ' + '|' * 50 + '\n'))
@@ -531,6 +530,11 @@ class TestCaseBase(unittest.TestCase):
     def loadtable(self, endpoint, tname, tid, pid, ttl=144000, segment=8, isleader='false', *slave_endpoints):
         rs = self.run_client(endpoint, 'loadtable {} {} {} {} {} {} {}'.format(
             tname, tid, pid, ttl, segment, isleader, ' '.join(slave_endpoints)))
+        time.sleep(2)
+        return rs
+
+    def load_relation_table(self, endpoint, tid, pid, storage_mode):
+        rs = self.run_client(endpoint, 'loadtable {} {} {}'.format(tid, pid, storage_mode))
         time.sleep(2)
         return rs
 

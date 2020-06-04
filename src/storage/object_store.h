@@ -9,6 +9,7 @@
 extern "C" {
 #endif
 #include "storage/beans/hstore.h"
+#include "storage/beans/common.h"
 #ifdef __cplusplus
 };
 #endif
@@ -17,6 +18,7 @@ extern "C" {
 
 #include "proto/blob_server.pb.h"
 #include "proto/common.pb.h"
+#include "thread_pool.h" // NOLINT
 
 namespace rtidb {
 namespace storage {
@@ -24,7 +26,8 @@ namespace storage {
 class ObjectStore {
  public:
     ObjectStore(const ::rtidb::blobserver::TableMeta& table_meta,
-                const std::string& db_root_path);
+                std::string  db_root_path, uint32_t flush_size,
+                int32_t flush_period_);
 
     bool Init();
 
@@ -55,6 +58,9 @@ class ObjectStore {
     bool is_leader_;
     ::rtidb::common::StorageMode storage_mode_;
     ::rtidb::base::IdGenerator id_generator_;
+    ::baidu::common::ThreadPool thread_pool_;
+    uint32_t flush_size_;
+    int32_t flush_period_;
 };
 
 }  // namespace storage

@@ -235,6 +235,7 @@ TEST_F(NameServerImplObjectStoreTest, CreateTableWithBlobField) {
         ::rtidb::common::ColumnDesc* col0 = table_info->add_column_desc_v1();
         col0->set_name("card");
         col0->set_data_type(::rtidb::type::kBigInt);
+        col0->set_not_null(true);
         ::rtidb::common::ColumnDesc* col1 = table_info->add_column_desc_v1();
         col1->set_name("mcc");
         col1->set_data_type(::rtidb::type::kVarchar);
@@ -265,7 +266,7 @@ TEST_F(NameServerImplObjectStoreTest, CreateTableWithBlobField) {
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(1, response.table_info_size());
         const auto& info = response.table_info(0);
-        ASSERT_EQ(1, info.blobs_size());
+        ASSERT_EQ(1, info.blob_info().blob_partition_size());
         uint32_t tid = info.tid();
         ::rtidb::blobserver::StoreStatus blob_status;
         ok = blob_client.GetStoreStatus(tid, 0, &blob_status);

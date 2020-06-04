@@ -5,15 +5,17 @@
 
 #include "blobserver/blobserver_impl.h"
 
-#include <gflags/gflags.h>
-
 #include <utility>
+
+#include "gflags/gflags.h"
+#include "google/protobuf/text_format.h"
+
 #include "base/file_util.h"
+#include "base/glog_wapper.h"
 #include "base/hash.h"
 #include "base/status.h"
 #include "base/strings.h"
 #include "boost/bind.hpp"
-#include "base/glog_wapper.h"
 
 DECLARE_string(endpoint);
 DECLARE_string(zk_cluster);
@@ -21,8 +23,11 @@ DECLARE_string(zk_root_path);
 DECLARE_int32(zk_session_timeout);
 DECLARE_int32(zk_keep_alive_check_interval);
 DECLARE_string(hdd_root_path);
+DECLARE_uint32(oss_flush_size);
+DECLARE_int32(oss_flush_period);
 
 using ::rtidb::base::ReturnCode;
+using ::rtidb::base::BLOB_PREFIX;
 
 namespace rtidb {
 namespace blobserver {
@@ -36,8 +41,7 @@ BlobServerImpl::BlobServerImpl()
       keep_alive_pool_(1),
       task_pool_(2),
       follower_(false),
-      object_stores_(),
-      root_paths_() {}
+      object_stores_() {}
 
 BlobServerImpl::~BlobServerImpl() {
     if (zk_client_ != nullptr) {
@@ -52,10 +56,9 @@ bool BlobServerImpl::Init() {
         return false;
     }
     if (!FLAGS_zk_cluster.empty()) {
-        std::string oss_zk_path = FLAGS_zk_root_path + "/ossnodes";
         zk_client_ =
             new ZkClient(FLAGS_zk_cluster, FLAGS_zk_session_timeout,
-                         FLAGS_endpoint, FLAGS_zk_root_path, oss_zk_path);
+                         BLOB_PREFIX + FLAGS_endpoint, FLAGS_zk_root_path);
         bool ok = zk_client_->Init();
         if (!ok) {
             PDLOG(WARNING, "fail to init zookeeper with cluster %s",
@@ -65,8 +68,9 @@ bool BlobServerImpl::Init() {
     } else {
         PDLOG(INFO, "zk cluster disabled");
     }
-    ::rtidb::base::SplitString(FLAGS_hdd_root_path, ",", root_paths_);
-    for (auto &it : root_paths_) {
+    std::vector<std::string> root_paths;
+    ::rtidb::base::SplitString(FLAGS_hdd_root_path, ",", root_paths);
+    for (auto &it : root_paths) {
         bool ok = ::rtidb::base::MkdirRecur(it);
         if (!ok) {
             PDLOG(WARNING, "fail to creat dir %s", it.c_str());
@@ -79,12 +83,13 @@ bool BlobServerImpl::Init() {
 bool BlobServerImpl::RegisterZK() {
     if (!FLAGS_zk_cluster.empty()) {
         if (!zk_client_->Register(true)) {
-            PDLOG(WARNING, "fail to register tablet with endpoint %s",
-                  FLAGS_endpoint.c_str());
+            PDLOG(WARNING, "fail to register blob with value %s%s",
+                  BLOB_PREFIX.c_str(), FLAGS_endpoint.c_str());
             return false;
         }
-        PDLOG(INFO, "oss with endpoint %s register to zk cluster %s ok",
-              FLAGS_endpoint.c_str(), FLAGS_zk_cluster.c_str());
+        PDLOG(INFO, "blob with value %s%s register to zk cluster %s ok",
+              BLOB_PREFIX.c_str(), FLAGS_endpoint.c_str(),
+              FLAGS_zk_cluster.c_str());
         keep_alive_pool_.DelayTask(
             FLAGS_zk_keep_alive_check_interval,
             boost::bind(&BlobServerImpl::CheckZkClient, this));
@@ -113,44 +118,102 @@ void BlobServerImpl::CreateTable(RpcController *controller,
                                  const CreateTableRequest *request,
                                  CreateTableResponse *response, Closure *done) {
     brpc::ClosureGuard done_guard(done);
-    const TableMeta &table_meta = request->table_meta();
-    uint32_t tid = table_meta.tid();
-    uint32_t pid = table_meta.pid();
-    if (table_meta.table_type() != ::rtidb::type::kObjectStore) {
-        response->set_code(ReturnCode::kTableMetaIsIllegal);
-        response->set_msg("table type illegal");
-        PDLOG(WARNING, "check table meta failed. tid[%u] pid[%u]", tid, pid);
-        return;
+    int ret = CreateTable(request->table_meta());
+    switch (ret) {
+        case 1:
+            response->set_code(ReturnCode::kTableMetaIsIllegal);
+            response->set_msg("table type illegal");
+            break;
+        case 2:
+            response->set_code(ReturnCode::kTableAlreadyExists);
+            response->set_msg("table already exists");
+            break;
+        case 3:
+            response->set_code(ReturnCode::kFailToGetDbRootPath);
+            response->set_msg("failto find db root path");
+            break;
+        case 4:
+            response->set_code(ReturnCode::kCreateTableFailed);
+            response->set_msg("init object store failed");
+            break;
+        case 5:
+            response->set_code(ReturnCode::kWriteDataFailed);
+            response->set_msg("write data failed");
+            break;
+        default:
+            response->set_code(ReturnCode::kOk);
+            response->set_msg("ok");
+            break;
+    }
+}
+
+int BlobServerImpl::WriteTableMeta(const std::string& path,
+                                   const TableMeta& meta) {
+    if (!::rtidb::base::MkdirRecur(path)) {
+        PDLOG(WARNING, "fail to create path %s", path.c_str());
+        return 1;
+    }
+    std::string full_path = path + "/table_meta.txt";
+    std::string table_meta_info;
+    google::protobuf::TextFormat::PrintToString(meta, &table_meta_info);
+    FILE* fd_write = fopen(full_path.c_str(), "w");
+    if (fd_write == NULL) {
+        PDLOG(WARNING, "fail to open file %s. err[%d: %s]", full_path.c_str(),
+              errno, strerror(errno));
+        return -1;
+    }
+    if (fputs(table_meta_info.c_str(), fd_write) == EOF) {
+        PDLOG(WARNING, "write error. path[%s], err[%d: %s]", full_path.c_str(),
+              errno, strerror(errno));
+        fclose(fd_write);
+        return -1;
+    }
+    fclose(fd_write);
+    return 0;
+}
+
+int BlobServerImpl::CreateTable(const TableMeta& meta) {
+    uint32_t tid = meta.tid();
+    uint32_t pid = meta.pid();
+    if (meta.table_type() != ::rtidb::type::kObjectStore) {
+        PDLOG(WARNING, "wrong table type check table meta. tid[%u] pid[%u]",
+              tid, pid);
+        return 1;
     }
     std::shared_ptr<ObjectStore> store = GetStore(tid, pid);
     if (store) {
-        PDLOG(WARNING, "table with tid[%u] and pid[%u] exists", tid, pid);
-        response->set_code(ReturnCode::kTableAlreadyExists);
-        response->set_msg("table already exists");
+        PDLOG(WARNING, "table tid[%u] pid[%u] exists", tid, pid);
+        return 2;
     }
-    if (root_paths_.empty()) {
-        PDLOG(WARNING, "fail to find db root path tid[%u] pid[%u]", tid, pid);
-        response->set_code(ReturnCode::kFailToGetDbRootPath);
-        response->set_msg("failto find db root path");
-        return;
+    if (FLAGS_hdd_root_path.empty()) {
+        PDLOG(WARNING, "hdd root path is empty. tid[%u] pid[%u]", tid, pid);
+        return 3;
     }
-    std::string path;
-    if (root_paths_.size() == 1) {
-        path.assign(root_paths_[0]);
-    } else {
-        std::string key = std::to_string(tid) + std::to_string(pid);
-        uint32_t index = ::rtidb::base::hash(key.c_str(), key.size(), SEED) %
-                         root_paths_.size();
-        path.assign(root_paths_[index]);
+    std::vector<std::string> root_paths;
+    ::rtidb::base::SplitString(FLAGS_hdd_root_path, ",", root_paths);
+    std::string db_path_suffix = "/" + std::to_string(tid) + "_" +
+                                   std::to_string(pid);
+    std::string paths;
+    for (auto &it : root_paths) {
+        it += db_path_suffix;
+        int ret = WriteTableMeta(it, meta);
+        if (ret != 0) {
+            return 5;
+        }
+        if (!paths.empty()) {
+            paths.append(",");
+        }
+        paths.append(it);
     }
-    store = std::make_shared<ObjectStore>(table_meta, path);
+    store = std::make_shared<ObjectStore>(meta, paths, FLAGS_oss_flush_size,
+                                          FLAGS_oss_flush_period);
     if (!store->Init()) {
-        PDLOG(WARNING, "init object store failed");
-        response->set_code(ReturnCode::kCreateTableFailed);
-        response->set_msg("init object store failed");
+        PDLOG(WARNING, "init table faield. tid[%u] pid[%u]", tid, pid);
+        return 4;
     }
     std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
     object_stores_[tid].insert(std::make_pair(pid, store));
+    return 0;
 }
 
 void BlobServerImpl::Get(RpcController *controller, const GetRequest *request,
@@ -160,13 +223,15 @@ void BlobServerImpl::Get(RpcController *controller, const GetRequest *request,
     uint32_t pid = request->pid();
     std::shared_ptr<ObjectStore> store = GetStore(tid, pid);
     if (!store) {
-        PDLOG(WARNING, "table is not exist. tid[%u] pid[%u", tid, pid);
+        PDLOG(WARNING, "table is not exist. tid[%u] pid[%u]", tid, pid);
         response->set_code(ReturnCode::kTableIsNotExist);
         response->set_msg("table is not exist");
         return;
     }
     rtidb::base::Slice slice = store->Get(request->key());
     if (slice.empty()) {
+        PDLOG(WARNING, "key %lld not found. tid[%u] pid[%u]",
+              request->key(), tid, pid);
         response->set_code(ReturnCode::kKeyNotFound);
         response->set_msg("key not found");
     } else {
@@ -204,6 +269,8 @@ void BlobServerImpl::Put(RpcController *controller, const PutRequest *request,
         ok = store->Store(request->data(), &key);
     }
     if (!ok) {
+        PDLOG(WARNING, "put %lld failed. tid[%u] pid[%u]",
+              request->has_key() ? request->key() : key, tid, pid);
         response->set_code(ReturnCode::kPutFailed);
         response->set_msg("put failed");
         return;
@@ -227,18 +294,21 @@ void BlobServerImpl::Delete(RpcController *controller,
         uint32_t pid = request->pid();
         std::shared_ptr<ObjectStore> store = GetStore(tid, pid);
         if (!store) {
-            PDLOG(WARNING, "table is not exist. tid[%u] pid[%u", tid, pid);
+            PDLOG(WARNING, "table is not exist. tid[%u] pid[%u]", tid, pid);
             response->set_code(ReturnCode::kTableIsNotExist);
             response->set_msg("table is not exist");
             return;
         }
         bool ok = store->Delete(request->key());
         if (!ok) {
+            PDLOG(WARNING, "delete %lld failed. tid[%u] pid[%u]",
+                  request->key(), tid, pid);
             response->set_code(ReturnCode::kKeyNotFound);
             response->set_msg("key not found");
             return;
         }
         response->set_code(ReturnCode::kOk);
+        response->set_msg("ok");
     }
 }
 
@@ -250,40 +320,34 @@ void BlobServerImpl::LoadTable(RpcController *controller,
     if (request->has_task_info() && request->task_info().IsInitialized()) {
         // TODO(kongquan): process taskinfo
     }
-    const TableMeta &table_meta = request->table_meta();
-    uint32_t tid = table_meta.tid();
-    uint32_t pid = table_meta.pid();
-    std::shared_ptr<ObjectStore> store = GetStore(tid, pid);
-    if (store) {
-        PDLOG(WARNING, "table with tid[%u] and pid[%u] exists", tid, pid);
-        response->set_code(::rtidb::base::ReturnCode::kTableAlreadyExists);
-        response->set_msg("table already exists");
-        return;
+    int ret = CreateTable(request->table_meta());
+    switch (ret) {
+        case 1:
+            response->set_code(ReturnCode::kTableMetaIsIllegal);
+            response->set_msg("table type illegal");
+            break;
+        case 2:
+            response->set_code(ReturnCode::kTableAlreadyExists);
+            response->set_msg("table already exists");
+            break;
+        case 3:
+            response->set_code(ReturnCode::kFailToGetDbRootPath);
+            response->set_msg("failto find db root path");
+            break;
+        case 4:
+            response->set_code(ReturnCode::kCreateTableFailed);
+            response->set_msg("init object store failed");
+            break;
+        case 5:
+            response->set_code(ReturnCode::kWriteDataFailed);
+            response->set_msg("write data failed");
+            break;
+
+        default:
+            response->set_code(ReturnCode::kOk);
+            response->set_msg("ok");
+            break;
     }
-    PDLOG(INFO, "start creating table tid[%u] pid[%u]", tid, pid);
-    if (root_paths_.empty()) {
-        PDLOG(WARNING, "fail to find db root path tid[%u] pid[%u]", tid, pid);
-        response->set_code(ReturnCode::kFailToGetDbRootPath);
-        response->set_msg("failto find db root path");
-        return;
-    }
-    std::string path;
-    if (root_paths_.size() == 1) {
-        path.assign(root_paths_[0]);
-    } else {
-        std::string key = std::to_string(tid) + std::to_string(pid);
-        uint32_t index = ::rtidb::base::hash(key.c_str(), key.size(), SEED) %
-                         root_paths_.size();
-        path.assign(root_paths_[index]);
-    }
-    store = std::make_shared<ObjectStore>(table_meta, path);
-    if (!store->Init()) {
-        PDLOG(WARNING, "init object store failed");
-        response->set_code(ReturnCode::kCreateTableFailed);
-        response->set_msg("init object store failed");
-    }
-    std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-    object_stores_[tid].insert(std::make_pair(pid, store));
 }
 
 std::shared_ptr<ObjectStore> BlobServerImpl::GetStore(uint32_t tid,
@@ -372,6 +436,7 @@ void BlobServerImpl::DropTableInternal(uint32_t tid, uint32_t pid) {
     if (object_stores_[tid].empty()) {
         object_stores_.erase(tid);
     }
+    PDLOG(INFO, "drop table tid[%u] pid[%u] success", tid, pid);
 }
 
 }  // namespace blobserver

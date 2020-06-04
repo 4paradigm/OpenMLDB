@@ -47,6 +47,7 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
     private Watcher notifyWatcher;
     private AtomicBoolean watching = new AtomicBoolean(true);
     private AtomicBoolean isClose = new AtomicBoolean(false);
+    private final String blobPrefix = "blob_";
     public RTIDBClusterClient(RTIDBClientConfig config) {
         this.config = config;
     }
@@ -254,15 +255,14 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
                 }
                 if (table.hasTableType()) {
                     List<String> blobs = new ArrayList<String>();
-                    if (table.getTableType() == Type.TableType.kRelational) {
-                        for (String blob : table.getBlobsList()) {
-                            blobs.add(blob);
-                        }
-                    } else if (table.getTableType() == Type.TableType.kObjectStore) {
-                        if (table.getTablePartitionList().size() > 1) {
-                            List<NS.PartitionMeta> metas = table.getTablePartition(0).getPartitionMetaList();
-                            if (metas.size() > 1) {
-                                blobs.add(metas.get(0).getEndpoint());
+                    if (table.hasBlobInfo()) {
+                        NS.BlobInfo blobInfo = table.getBlobInfo();
+                        for (NS.BlobPartition part : blobInfo.getBlobPartitionList()) {
+                            for (NS.BlobPartitionMeta meta : part.getPartitionMetaList()) {
+                                if (!meta.getIsAlive()) {
+                                    continue;
+                                }
+                                blobs.add(meta.getEndpoint());
                             }
                         }
                     }
@@ -308,6 +308,9 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
                 if (path.isEmpty()) {
                     continue;
                 }
+                if (path.startsWith(blobPrefix)) {
+                    path = path.substring(blobPrefix.length());
+                }
                 logger.info("alive endpoint {}", path);
                 String[] parts = path.split(":");
                 if (parts.length != 2) {
@@ -318,24 +321,6 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
                     endpoinSet.add(new EndPoint(parts[0], Integer.parseInt(parts[1])));
                 } catch (Exception e) {
                     logger.error("fail to add endpoint", e);
-                }
-            }
-            children.clear();;
-            children = zookeeper.getChildren(config.getZkOssNodeRootPath(), false);
-            for (String path : children) {
-                if (path.isEmpty()) {
-                    continue;
-                }
-                logger.info("alive blob endpoint {}", path);
-                String[] parts = path.split(":");
-                if (parts.length != 2) {
-                    logger.warn("invalid blob endpoint {}", path);
-                    continue;
-                }
-                try {
-                    endpoinSet.add(new EndPoint(parts[0], Integer.parseInt(parts[1])));
-                } catch (Exception e) {
-                    logger.error("fail to add blob endpoint", e);
                 }
             }
             nodeManager.update(endpoinSet);

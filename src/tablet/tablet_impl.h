@@ -73,7 +73,7 @@ class TabletImpl : public ::rtidb::api::TabletServer {
 
     void Update(RpcController* controller,
                 const ::rtidb::api::UpdateRequest* request,
-                ::rtidb::api::GeneralResponse* response, Closure* done);
+                ::rtidb::api::UpdateResponse* response, Closure* done);
 
     void Put(RpcController* controller, const ::rtidb::api::PutRequest* request,
              ::rtidb::api::PutResponse* response, Closure* done);
@@ -324,7 +324,7 @@ class TabletImpl : public ::rtidb::api::TabletServer {
                                 bool is_load, std::string& msg);  // NOLINT
 
     int CreateRelationalTableInternal(const ::rtidb::api::TableMeta* table_meta,
-                                      std::string& msg);  // NOLINT
+                                      bool is_load, std::string& msg);  // NOLINT
 
     void MakeSnapshotInternal(uint32_t tid, uint32_t pid, uint64_t end_offset,
                               std::shared_ptr<::rtidb::api::TaskInfo> task);
@@ -376,7 +376,9 @@ class TabletImpl : public ::rtidb::api::TabletServer {
     int LoadDiskTableInternal(uint32_t tid, uint32_t pid,
                               const ::rtidb::api::TableMeta& table_meta,
                               std::shared_ptr<::rtidb::api::TaskInfo> task_ptr);
-
+    int LoadRelationalTableInternal(
+            const ::rtidb::api::TableMeta& table_meta,
+            std::shared_ptr<::rtidb::api::TaskInfo> task_ptr);
     int WriteTableMeta(const std::string& path,
                        const ::rtidb::api::TableMeta* table_meta);
 

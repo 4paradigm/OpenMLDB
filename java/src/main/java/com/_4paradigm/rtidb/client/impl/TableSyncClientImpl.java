@@ -794,7 +794,7 @@ public class TableSyncClientImpl implements TableSyncClient {
     }
 
     @Override
-    public boolean delete(String tableName, Map<String, Object> conditionColumns) throws TimeoutException, TabletException {
+    public UpdateResult delete(String tableName, Map<String, Object> conditionColumns) throws TimeoutException, TabletException {
         TableHandler th = client.getHandler(tableName);
         if (th == null) {
             throw new TabletException("no table with name " + tableName);
@@ -810,6 +810,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         Tablet.DeleteRequest.Builder builder = Tablet.DeleteRequest.newBuilder();
         builder.setTid(tid);
         builder.setPid(pid);
+        Map<String, DataType> nameTypeMap = th.getNameTypeMap();
         {
             String colName = "";
             Object colValue = "";
@@ -819,15 +820,15 @@ public class TableSyncClientImpl implements TableSyncClient {
                 Map.Entry<String, Object> entry = iter.next();
                 colName = entry.getKey();
                 colValue = entry.getValue();
-                Map<String, DataType> nameTypeMap = th.getNameTypeMap();
                 if (!nameTypeMap.containsKey(colName)) {
                     throw new TabletException("index name not found with tid " + tid);
                 }
+                conditionBuilder.addName(colName);
                 DataType dataType = nameTypeMap.get(colName);
                 ByteBuffer buffer = FieldCodec.convert(dataType, colValue);
-
-                conditionBuilder.addName(colName);
-                conditionBuilder.setValue(ByteBufferNoCopy.wrap(buffer));
+                if (buffer != null) {
+                    conditionBuilder.setValue(ByteBufferNoCopy.wrap(buffer));
+                }
                 builder.addConditionColumns(conditionBuilder.build());
             }
         }
@@ -846,12 +847,12 @@ public class TableSyncClientImpl implements TableSyncClient {
                 OSS.DeleteRequest deleteRequest = ossBuilder.build();
                 bs.delete(deleteRequest);
             }
-            return true;
+            return new UpdateResult(true, response.getCount());
         }
         if (response != null) {
             throw new TabletException(response.getCode(), response.getMsg());
         }
-        return false;
+        return new UpdateResult(false);
     }
 
     @Override
@@ -1494,8 +1495,8 @@ public class TableSyncClientImpl implements TableSyncClient {
 
     }
 
-    private boolean updateRequest(TableHandler th, int pid, Map<String, Object> conditionColumns, List<ColumnDesc> newValueSchema,
-                                  ByteBuffer valueBuffer) throws TimeoutException, TabletException {
+    private UpdateResult updateRequest(TableHandler th, int pid, Map<String, Object> conditionColumns, List<ColumnDesc> newValueSchema,
+                                       ByteBuffer valueBuffer) throws TabletException {
         PartitionHandler ph = th.getHandler(pid);
         if (th.getTableInfo().hasCompressType() && th.getTableInfo().getCompressType() == NS.CompressType.kSnappy) {
             byte[] data = valueBuffer.array();
@@ -1513,6 +1514,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         Tablet.UpdateRequest.Builder builder = Tablet.UpdateRequest.newBuilder();
         builder.setTid(tid);
         builder.setPid(pid);
+        Map<String, DataType> nameTypeMap = th.getNameTypeMap();
         {
             String colName = "";
             Object colValue = "";
@@ -1522,15 +1524,15 @@ public class TableSyncClientImpl implements TableSyncClient {
                 Map.Entry<String, Object> entry = iter.next();
                 colName = entry.getKey();
                 colValue = entry.getValue();
-                Map<String, DataType> nameTypeMap = th.getNameTypeMap();
                 if (!nameTypeMap.containsKey(colName)) {
                     throw new TabletException("index name not found with tid " + tid);
                 }
+                conditionBuilder.addName(colName);
                 DataType dataType = nameTypeMap.get(colName);
                 ByteBuffer buffer = FieldCodec.convert(dataType, colValue);
-
-                conditionBuilder.addName(colName);
-                conditionBuilder.setValue(ByteBufferNoCopy.wrap(buffer));
+                if (buffer != null) {
+                    conditionBuilder.setValue(ByteBufferNoCopy.wrap(buffer));
+                }
                 builder.addConditionColumns(conditionBuilder.build());
             }
         }
@@ -1544,14 +1546,14 @@ public class TableSyncClientImpl implements TableSyncClient {
             builder.setValueColumns(valueBuilder.build());
         }
         Tablet.UpdateRequest request = builder.build();
-        Tablet.GeneralResponse response = tablet.update(request);
+        Tablet.UpdateResponse response = tablet.update(request);
         if (response != null && response.getCode() == 0) {
-            return true;
+            return new UpdateResult(true, response.getCount());
         }
         if (response != null) {
             throw new TabletException(response.getCode(), response.getMsg());
         }
-        return false;
+        return new UpdateResult(false);
     }
 
     private List<ColumnDesc> getSchemaData(Map<String, Object> columns, List<ColumnDesc> schema) {
@@ -1591,7 +1593,7 @@ public class TableSyncClientImpl implements TableSyncClient {
     }
 
     @Override
-    public boolean update(String tableName, Map<String, Object> conditionColumns, Map<String, Object> valueColumns, WriteOption wo)
+    public UpdateResult update(String tableName, Map<String, Object> conditionColumns, Map<String, Object> valueColumns, WriteOption wo)
             throws TimeoutException, TabletException {
         TableHandler th = client.getHandler(tableName);
         if (th == null) {

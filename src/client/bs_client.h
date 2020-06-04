@@ -30,6 +30,8 @@ class BsClient {
 
     bool CreateTable(const TableMeta& table_meta, std::string* msg);
 
+    bool LoadTable(uint32_t tid, uint32_t pid, std::string *msg);
+
     bool Put(uint32_t tid, uint32_t pid, const std::string& value,
              int64_t* key, std::string* msg);
 

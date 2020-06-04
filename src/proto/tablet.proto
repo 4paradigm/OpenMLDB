@@ -236,6 +236,7 @@ message GeneralResponse {
     optional int32 code = 1;
     optional string msg = 2;
     repeated int64 additional_ids = 3;
+    optional uint32 count = 4;
 }
 
 message ScanRequest {
@@ -704,6 +705,12 @@ message UpdateRequest {
     optional Columns value_columns = 4;
 }
 
+message UpdateResponse {
+    optional string msg = 1;
+    optional int32 code = 2;
+    optional uint32 count = 3;
+}
+
 message ReadOption {
     repeated Columns index = 1;
     repeated Columns read_filter = 2;
@@ -739,7 +746,7 @@ service TabletServer {
     rpc Delete(DeleteRequest) returns (GeneralResponse);
     rpc Count(CountRequest) returns (CountResponse);
     rpc Traverse(TraverseRequest) returns (TraverseResponse);
-    rpc Update(UpdateRequest) returns (GeneralResponse);
+    rpc Update(UpdateRequest) returns (UpdateResponse);
     rpc BatchQuery(BatchQueryRequest) returns (BatchQueryResponse);
 
     // table api for master
