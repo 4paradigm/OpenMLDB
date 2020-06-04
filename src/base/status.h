@@ -177,6 +177,7 @@ enum ReturnCode {
     kPutBadFormat = 149,
     kUnkownTableType = 150,
     kGetCombinePkFailed = 151,
+    kEncodeError = 152,
     kNameserverIsNotLeader = 300,
     kAutoFailoverIsEnabled = 301,
     kEndpointIsNotExist = 302,

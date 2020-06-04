@@ -5,7 +5,7 @@ set(BIN_LIBS client nameserver tablet client blobserver blob_proxy zk_client rep
     ${LLVM_LIBS}
     ${BRPC_LIBS})
 
-add_library(tablet STATIC proto/tablet.pb.cc proto/common.pb.cc proto/type.pb.cc tablet/tablet_impl.cc flags.cc tablet/file_receiver.cc tablet/file_sender.cc)
+add_library(tablet STATIC proto/tablet.pb.cc proto/common.pb.cc proto/type.pb.cc tablet/tablet_impl.cc flags.cc tablet/file_receiver.cc tablet/file_sender.cc tablet/combine_iterator.cc)
 add_library(blobserver STATIC proto/blob_server.pb.cc storage/object_store.cc proto/type.pb.cc blobserver/blobserver_impl.cc flags.cc)
 add_library(nameserver STATIC proto/name_server.pb.cc nameserver/name_server_impl.cc flags.cc)
 add_library(beans storage/beans/bitcask.c storage/beans/clock_gettime_stub.c storage/beans/codec.c storage/beans/common.c storage/beans/crc32.c storage/beans/diskmgr.c storage/beans/hint.c storage/beans/hstore.c storage/beans/htree.c storage/beans/mfile.c storage/beans/quicklz.c storage/beans/record.c)

@@ -19,16 +19,12 @@
 #include <sstream>
 
 #include "base/endianconv.h"
-#include "base/glog_wapper.h" // NOLINT
+#include "base/glog_wapper.h"
 #include "base/strings.h"
 #include "boost/container/deque.hpp"
-#include "base/glog_wapper.h"  // NOLINT
 #include "storage/segment.h"
 
 using ::rtidb::storage::DataBlock;
-
-
-
 
 namespace rtidb {
 namespace codec {

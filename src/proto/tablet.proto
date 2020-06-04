@@ -257,6 +257,7 @@ message ScanRequest {
     optional bool enable_remove_ts = 13 [default = false];
     optional uint32 atleast = 14 [default = 0];
     repeated uint32 projection = 15;
+    repeated uint32 pid_group = 16;
 }
 
 message RpcMetric {
