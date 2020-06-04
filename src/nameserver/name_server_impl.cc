@@ -1408,7 +1408,7 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
     {
         std::vector<std::string>::const_iterator it = endpoints.begin();
         for (; it != endpoints.end(); ++it) {
-            if (boost::starts_with(*it, BLOB_PREFiX)) {
+            if (boost::starts_with(*it, BLOB_PREFIX)) {
                 blobs.push_back(it->substr(BLOB_PREFIX.size()));
             } else {
                 tablet_endpoints.push_back(*it);
