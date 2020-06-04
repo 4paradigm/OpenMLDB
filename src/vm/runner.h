@@ -356,7 +356,7 @@ class Runner {
                              Window* window);
     static const Row RowLastJoinTable(const Row& left_row,
                                       std::shared_ptr<TableHandler> right_table,
-                                      SortGenerator& right_sort,
+                                      SortGenerator& right_sort, // NOLINT
                                       ConditionGenerator& filter);  // NOLINT
     static std::shared_ptr<TableHandler> TableReverse(
         std::shared_ptr<TableHandler> table);

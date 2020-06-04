@@ -540,7 +540,8 @@ TEST_F(PlannerTest, LastJoinPlanTest) {
     node::PlanNodeList trees;
     base::Status status;
     const std::string sql =
-        "SELECT t1.col1 as t1_col1, t2.col1 as t2_col2 from t1 LAST JOIN t2 order by t2.col5 on "
+        "SELECT t1.col1 as t1_col1, t2.col1 as t2_col2 from t1 LAST JOIN t2 "
+        "order by t2.col5 on "
         "t1.col1 = t2.col1 and t2.col5 between t1.col5 - 30d and t1.col5 "
         "- 1d limit 10;";
     int ret = parser_->parse(sql, list, manager_, status);
