@@ -16,6 +16,8 @@
 #include <memory>
 #include <utility>
 
+#include "base/strings.h"
+
 int64_t ViewResult::GetInt(uint32_t idx) {
     int64_t val = 0;
     auto type = columns_->Get(idx).data_type();
@@ -120,20 +122,21 @@ bool BaseClient::Init(std::string* msg) {
     zk_table_data_path_ = zk_root_path_ + "/table/table_data";
     RefreshNodeList();
     RefreshTable();
-    bool ok = zk_client_->WatchChildren(
-        zk_root_path_ + "/table", boost::bind(&BaseClient::DoFresh, this, _1));
+    bool ok = zk_client_->WatchItem(
+        table_notify_, boost::bind(&BaseClient::DoFresh, this));
     if (!ok) {
         zk_client_->CloseZK();
         *msg = "zk watch table notify failed";
         return false;
     }
     task_thread_pool_.DelayTask(zk_keep_alive_check_,
-                                boost::bind(&BaseClient::CheckZkClient, this));
+                                [this] { CheckZkClient(); });
     return true;
 }
 
 void BaseClient::CheckZkClient() {
     if (!zk_client_->IsConnected()) {
+        // TODO(konquan): use log
         std::cout << "reconnect zk" << std::endl;
         if (zk_client_->Reconnect()) {
             std::cout << "reconnect zk ok" << std::endl;
@@ -141,8 +144,16 @@ void BaseClient::CheckZkClient() {
             RefreshTable();
         }
     }
+    if (zk_client_session_term_ != zk_client_->GetSessionTerm()) {
+        if (zk_client_->WatchItem(table_notify_,
+                      boost::bind(&BaseClient::DoFresh, this))) {
+            zk_client_session_term_ = zk_client_->GetSessionTerm();
+        } else {
+            // TODO(kongquan): print log
+        }
+    }
     task_thread_pool_.DelayTask(zk_keep_alive_check_,
-                                boost::bind(&BaseClient::CheckZkClient, this));
+                                [this] { CheckZkClient(); });
 }
 
 bool BaseClient::RefreshNodeList() {
@@ -150,20 +161,17 @@ bool BaseClient::RefreshNodeList() {
     if (!zk_client_->GetNodes(endpoints)) {
         return false;
     }
-    std::set<std::string> endpoint_set;
+    std::set<std::string> tablet_set;
+    std::set<std::string> blob_set;
     for (const auto& endpoint : endpoints) {
-        endpoint_set.insert(endpoint);
+        if (boost::starts_with(endpoint, rtidb::base::BLOB_PREFIX)) {
+            blob_set.insert(endpoint.substr(rtidb::base::BLOB_PREFIX.size()));
+        } else {
+            tablet_set.insert(endpoint);
+        }
     }
-    UpdateEndpoint(endpoint_set);
-    endpoints.clear();
-    if (!zk_client_->GetChildren(zk_root_path_ + "/ossnodes", endpoints)) {
-        return false;
-    }
-    endpoint_set.clear();
-    for (const auto& endpoint : endpoints) {
-        endpoint_set.insert(endpoint);
-    }
-    UpdateBlobEndpoint(endpoint_set);
+    UpdateEndpoint(tablet_set);
+    UpdateBlobEndpoint(blob_set);
     return true;
 }
 
@@ -332,7 +340,7 @@ void BaseClient::SetZkCheckInterval(int32_t interval) {
     zk_keep_alive_check_ = interval;
 }
 
-void BaseClient::DoFresh(const std::vector<std::string>& events) {
+void BaseClient::DoFresh() {
     RefreshNodeList();
     RefreshTable();
 }

@@ -99,6 +99,36 @@ TEST_F(ZkClientTest, CreateNode) {
     ASSERT_TRUE(ok);
 }
 
+TEST_F(ZkClientTest, ZkNodeChange) {
+    ZkClient client("127.0.0.1:6181", 1000, "127.0.0.1:9527", "/rtidb1");
+    bool ok = client.Init();
+    ASSERT_TRUE(ok);
+
+    std::string node = "/rtidb1/test/node" + GenRand();
+    int ret = client.IsExistNode(node);
+    ASSERT_EQ(ret, 1);
+    ok = client.CreateNode(node, "1");
+    ASSERT_TRUE(ok);
+    ret = client.IsExistNode(node);
+    ASSERT_EQ(ret, 0);
+
+    ZkClient client2("127.0.0.1:6181", 1000, "127.0.0.1:9527", "/rtidb1");
+    ok = client2.Init();
+    ASSERT_TRUE(ok);
+    bool detect = false;
+    ok = client2.WatchItem(node, [&detect]{ detect = true; });
+    ASSERT_TRUE(ok);
+    ok = client.SetNodeValue(node, "2");
+    ASSERT_TRUE(ok);
+    for (int i = 0 ; i < 10; i++) {
+        if (detect) {
+            break;
+        }
+        sleep(1);
+    }
+    ASSERT_TRUE(detect);
+}
+
 }  // namespace zk
 }  // namespace rtidb
 

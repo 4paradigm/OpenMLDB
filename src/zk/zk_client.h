@@ -26,6 +26,8 @@ namespace zk {
 typedef boost::function<void(const std::vector<std::string>& endpoint)>
     NodesChangedCallback;
 
+typedef boost::function<void(void)> ItemChangedCallback;
+
 const uint32_t ZK_MAX_BUFFER_SIZE = 1024 * 1024;
 
 class ZkClient {
@@ -92,6 +94,10 @@ class ZkClient {
 
     bool WatchNodes();
 
+    void HandleItemChanged(const std::string& path, int type, int state);
+
+    bool WatchItem(const std::string& path, ItemChangedCallback callback);
+
     int IsExistNode(const std::string& node);
 
     inline bool IsConnected() {
@@ -134,6 +140,7 @@ class ZkClient {
     bool connected_;
     std::atomic<bool> registed_;
     std::map<std::string, NodesChangedCallback> children_callbacks_;
+    std::map<std::string, ItemChangedCallback> item_callbacks_;
     char buffer_[ZK_MAX_BUFFER_SIZE];
     std::atomic<uint64_t> session_term_;
 };

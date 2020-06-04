@@ -46,6 +46,18 @@ void NodeWatcher(zhandle_t* zh, int type, int state, const char* path,
     }
 }
 
+void ItemWatcher(zhandle_t* zh, int type, int state, const char* path,
+                 void* watcher_ctx) {
+    PDLOG(INFO, "node watcher with event type %d, state %d", type, state);
+    if (zoo_get_context(zh)) {
+        ZkClient* client = const_cast<ZkClient*>(
+            reinterpret_cast<const ZkClient*>(zoo_get_context(zh)));
+        std::string path_str(path);
+        client->HandleItemChanged(path_str, type, state);
+    }
+}
+
+
 ZkClient::ZkClient(const std::string& hosts, int32_t session_timeout,
                    const std::string& endpoint, const std::string& zk_root_path)
     : hosts_(hosts),
@@ -62,6 +74,7 @@ ZkClient::ZkClient(const std::string& hosts, int32_t session_timeout,
       connected_(false),
       registed_(false),
       children_callbacks_(),
+      item_callbacks_(),
       session_term_(0) {
     data_.count = 0;
     data_.data = NULL;
@@ -84,6 +97,7 @@ ZkClient::ZkClient(const std::string& hosts, int32_t session_timeout,
       connected_(false),
       registed_(false),
       children_callbacks_(),
+      item_callbacks_(),
       session_term_(0) {
     data_.count = 0;
     data_.data = NULL;
@@ -335,6 +349,46 @@ bool ZkClient::WatchNodes() {
     if (ret != ZOK) {
         PDLOG(WARNING, "fail to watch path %s errno %d",
               nodes_root_path_.c_str(), ret);
+        return false;
+    }
+    return true;
+}
+
+void ZkClient::HandleItemChanged(const std::string& path, int type, int state) {
+    ItemChangedCallback callback;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        auto it = item_callbacks_.find(path);
+        if (it == item_callbacks_.end()) {
+            PDLOG(INFO, "watch for path %s does not exist", path.c_str());
+            return;
+        }
+        callback = it->second;
+    }
+    if (type == ZOO_CHANGED_EVENT) {
+        callback();
+    }
+    WatchItem(path, callback);
+}
+
+bool ZkClient::WatchItem(const std::string& path,
+                         ItemChangedCallback callback) {
+    std::lock_guard<std::mutex> lock(mu_);
+    if (zk_ == NULL || !connected_) {
+        return false;
+    }
+    auto it = item_callbacks_.find(path);
+    if (it == item_callbacks_.end()) {
+        item_callbacks_.insert(std::make_pair(path, callback));
+    }
+    deallocate_String_vector(&data_);
+    int buffer_len = ZK_MAX_BUFFER_SIZE;
+    int ret =
+        zoo_wget(zk_, path.data(), ItemWatcher,
+                   NULL, buffer_, &buffer_len, NULL);
+    if (ret != ZOK) {
+        PDLOG(WARNING,
+              "fail to watch item %s errno %d", nodes_root_path_.c_str(), ret);
         return false;
     }
     return true;
