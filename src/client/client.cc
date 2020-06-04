@@ -134,11 +134,20 @@ bool BaseClient::Init(std::string* msg) {
 
 void BaseClient::CheckZkClient() {
     if (!zk_client_->IsConnected()) {
+        // TODO(konquan): use log
         std::cout << "reconnect zk" << std::endl;
         if (zk_client_->Reconnect()) {
             std::cout << "reconnect zk ok" << std::endl;
             RefreshNodeList();
             RefreshTable();
+        }
+    }
+    if (zk_client_session_term_ != zk_client_->GetSessionTerm()) {
+        if (zk_client_->WatchChildren(zk_root_path_ + "/table",
+                      boost::bind(&BaseClient::DoFresh, this))) {
+            zk_client_session_term_ = zk_client_->GetSessionTerm();
+        } else {
+            // TODO(kongquan): print log
         }
     }
     task_thread_pool_.DelayTask(zk_keep_alive_check_,

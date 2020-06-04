@@ -342,7 +342,9 @@ class BaseClient {
           endpoint_(endpoint),
           zk_session_timeout_(zk_session_timeout),
           zk_keep_alive_check_(zk_keep_alive_check),
-          zk_table_data_path_() {}
+          zk_table_data_path_(),
+          task_thread_pool_(1),
+          zk_client_session_term_(0) {}
     explicit BaseClient(
         const std::map<std::string,
                        std::shared_ptr<rtidb::client::TabletClient>>& tablets);
@@ -377,6 +379,7 @@ class BaseClient {
     int32_t zk_keep_alive_check_;
     std::string zk_table_data_path_;
     baidu::common::ThreadPool task_thread_pool_;
+    uint64_t zk_client_session_term_;
 };
 
 class RtidbClient {
