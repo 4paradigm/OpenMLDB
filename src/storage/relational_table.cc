@@ -307,7 +307,8 @@ bool RelationalTable::LoadTable() {
     return true;
 }
 
-bool RelationalTable::Put(const std::string& value, int64_t* auto_gen_pk) {
+bool RelationalTable::Put(const std::string& value, int64_t* auto_gen_pk,
+        ::rtidb::api::WriteOption wo) {
     ::rtidb::base::Slice slice(value);
     std::string new_value;
     if (table_meta_.compress_type() == ::rtidb::api::kSnappy) {
@@ -1290,8 +1291,9 @@ bool RelationalTable::GetCombinePk(
     } else if (indexs.size() == 1) {
         std::shared_ptr<IndexDef> index_def =
             table_index_.GetIndexByCombineStr(indexs.Get(0).name(0));
-        if (!index_def
-                || index_def->GetType() != ::rtidb::type::kPrimaryKey) {
+        if (!index_def ||
+                (index_def->GetType() != ::rtidb::type::kPrimaryKey) &&
+                (index_def->GetType() != ::rtidb::type::kAutoGen)) {
             DEBUGLOG("combine_name %s not found or not pk. tid %u pid %u",
                     indexs.Get(0).name(0).c_str(), id_, pid_);
             return false;
@@ -1324,8 +1326,9 @@ bool RelationalTable::GetCombinePk(
         }
         std::shared_ptr<IndexDef> index_def =
             table_index_.GetIndexByCombineStr(combine_name);
-        if (!index_def
-                || index_def->GetType() != ::rtidb::type::kPrimaryKey) {
+        if (!index_def ||
+            (index_def->GetType() != ::rtidb::type::kPrimaryKey) &&
+            (index_def->GetType() != ::rtidb::type::kAutoGen)) {
             DEBUGLOG("combine_name %s not found or not pk. tid %u pid %u",
                     combine_name.c_str(), id_, pid_);
             return false;

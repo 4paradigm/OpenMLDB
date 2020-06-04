@@ -3552,7 +3552,7 @@ int SetColumnDesc(const ::rtidb::client::TableInfo& table_info,
                 return -1;
             }
             if (idx_iter->second == ::rtidb::type::kAutoGen) {
-                auto_gen_pk_name = table_info.index(idx).index_name();
+                auto_gen_pk_name = table_info.index(idx).col_name(0);
             }
             column_key->set_index_type(idx_iter->second);
             index_set.insert(table_info.index(idx).index_name());
@@ -4885,6 +4885,8 @@ void HandleClientDisConnectZK(const std::vector<std::string> parts,
 void HandleBsClientHelp(const std::vector<std::string>& parts) {
     if (parts.size() < 2) {
         printf("loadtable - load blob table\n");
+        printf("help - get cmd info\n");
+        printf("man - get cmd info\n");
     } else if (parts.size() == 2) {
         if (parts[1] == "loadtable") {
             printf("desc: create table and load data\n");
