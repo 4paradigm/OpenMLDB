@@ -45,9 +45,9 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
     private NodeManager nodeManager;
     private RTIDBClientConfig config;
     private Watcher notifyWatcher;
-    private String blobPrefix = "blob_";
     private AtomicBoolean watching = new AtomicBoolean(true);
     private AtomicBoolean isClose = new AtomicBoolean(false);
+    final String blobPrefix = "blob_";
     public RTIDBClusterClient(RTIDBClientConfig config) {
         this.config = config;
     }

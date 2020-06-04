@@ -155,17 +155,8 @@ bool BaseClient::RefreshNodeList() {
     std::set<std::string> tablet_set;
     std::set<std::string> blob_set;
     for (const auto& endpoint : endpoints) {
-        if (endpoint.size() < rtidb::base::BLOB_PREFIX.size()) {
-            tablet_set.insert(endpoint);
-            continue;
-        }
-        const char* t_ch = endpoint.data();
-        const char* b_ch = rtidb::base::BLOB_PREFIX.data();
-        int ret = memcmp(t_ch, b_ch, rtidb::base::BLOB_PREFIX.size());
-        if (ret == 0) {
-            std::string ep(t_ch+rtidb::base::BLOB_PREFIX.size(),
-                           endpoint.size() - rtidb::base::BLOB_PREFIX.size());
-            blob_set.insert(endpoint);
+        if (boost::starts_with(endpoint, rtidb::base::BLOB_PREFIX)) {
+            blob_set.insert(endpoint.substr(rtidb::base::BLOB_PREFIX.size()));
         } else {
             tablet_set.insert(endpoint);
         }

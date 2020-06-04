@@ -1408,16 +1408,8 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
     {
         std::vector<std::string>::const_iterator it = endpoints.begin();
         for (; it != endpoints.end(); ++it) {
-            if (it->size() < rtidb::base::BLOB_PREFIX.size()) {
-                continue;
-            }
-            const char* it_ch = it->data();
-            const char* blob_ch = BLOB_PREFIX.data();
-            int ret = memcmp(it_ch, blob_ch, BLOB_PREFIX.size());
-            if (ret == 0) {
-                std::string origin_endpoint(it_ch + BLOB_PREFIX.size(),
-                               it->size() - BLOB_PREFIX.size());
-                blobs.push_back(origin_endpoint);
+            if (boost::starts_with(*it, BLOB_PREFiX)) {
+                blobs.push_back(it->substr(BLOB_PREFIX.size()));
             } else {
                 tablet_endpoints.push_back(*it);
             }
