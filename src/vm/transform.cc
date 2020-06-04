@@ -623,8 +623,9 @@ bool BatchModeTransformer::TransformJoinOp(const node::JoinPlanNode* node,
     if (!TransformPlanOp(node->GetChildren()[1], &right, status)) {
         return false;
     }
-    *output =
-        new PhysicalJoinNode(left, right, node->join_type_, node->condition_);
+
+    *output = new PhysicalJoinNode(left, right, node->join_type_, node->orders_,
+                                   node->condition_);
     node_manager_->RegisterNode(*output);
     return true;
 }
@@ -1142,6 +1143,13 @@ bool BatchModeTransformer::GenJoin(Join* join, PhysicalOpNode* in,
         return false;
     }
 
+    if (join->join_type_ == node::kJoinTypeLast) {
+        if (!GenSort(&join->right_sort_,
+                     in->producers()[1]->GetOutputNameSchemaList(), status)) {
+            return false;
+        }
+    }
+
     return true;
 }
 bool BatchModeTransformer::GenFilter(
@@ -1571,6 +1579,8 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                                 &window_join.second, &new_join_right)) {
                             window_join.first = new_join_right;
                         }
+                        SortOptimized(SchemaSourceList(), window_join.first,
+                                      &window_join.second.right_sort_);
                     }
                 }
                 if (!union_op->window_unions().Empty()) {
@@ -1632,6 +1642,8 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                 return false;
             }
             join_op->SetProducer(1, new_producer);
+            SortOptimized(SchemaSourceList(), join_op->GetProducer(1),
+                          &join_op->join_.right_sort_);
             return true;
         }
         case kPhysicalOpJoin: {
@@ -1643,6 +1655,8 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                 return false;
             }
             join_op->SetProducer(1, new_producer);
+            SortOptimized(SchemaSourceList(), join_op->GetProducer(1),
+                          &join_op->join_.right_sort_);
             return true;
         }
         default: {
@@ -2396,7 +2410,8 @@ bool RequestModeransformer::TransformJoinOp(const node::JoinPlanNode* node,
         return false;
     }
     *output = new PhysicalRequestJoinNode(left, right, node->join_type_,
-                                          node->condition_);
+                                          node->orders_, node->condition_);
+
     node_manager_->RegisterNode(*output);
     return true;
 }

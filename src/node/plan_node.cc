@@ -441,7 +441,6 @@ bool WindowPlanNode::Equals(const PlanNode *node) const {
            LeafPlanNode::Equals(node);
 }
 
-
 void SortPlanNode::Print(std::ostream &output,
                          const std::string &org_tab) const {
     PlanNode::Print(output, org_tab);
@@ -506,6 +505,10 @@ void JoinPlanNode::Print(std::ostream &output,
     PrintValue(output, tab,
                nullptr == condition_ ? "" : condition_->GetExprString(),
                "condition", true);
+    if (nullptr != orders_) {
+        output << "\n";
+        PrintValue(output, tab, ExprString(orders_), "orders", true);
+    }
     output << "\n";
     PrintChildren(output, org_tab);
 }
@@ -524,8 +527,10 @@ bool JoinPlanNode::Equals(const PlanNode *node) const {
     const JoinPlanNode *that = dynamic_cast<const JoinPlanNode *>(node);
     return join_type_ == that->join_type_ &&
            node::ExprEquals(this->condition_, that->condition_) &&
-           BinaryPlanNode::Equals(that);
+        node::ExprEquals(this->orders_, that->orders_) &&
+        BinaryPlanNode::Equals(that);
 }
+
 void UnionPlanNode::Print(std::ostream &output,
                           const std::string &org_tab) const {
     PlanNode::Print(output, org_tab);

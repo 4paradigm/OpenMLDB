@@ -97,7 +97,8 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
     // cross product if there are multi tables
     for (; iter != relation_nodes.cend(); iter++) {
         current_node = node_manager_->MakeJoinNode(
-            current_node, *iter, node::JoinType::kJoinTypeFull, nullptr);
+            current_node, *iter, node::JoinType::kJoinTypeFull, nullptr,
+            nullptr);
     }
 
     // TODO(chenjing): 处理子查询
@@ -720,7 +721,8 @@ bool Planner::CreateTableReferencePlanNode(const node::TableRefNode *root,
                 return false;
             }
             plan_node = node_manager_->MakeJoinNode(
-                left, right, join_node->join_type_, join_node->condition_);
+                left, right, join_node->join_type_, join_node->orders_,
+                join_node->condition_);
             if (!join_node->alias_table_name_.empty()) {
                 *output = node_manager_->MakeRenamePlanNode(
                     plan_node, join_node->alias_table_name_);
