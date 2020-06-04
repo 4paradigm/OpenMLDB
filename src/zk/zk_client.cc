@@ -385,7 +385,8 @@ bool ZkClient::WatchItem(const std::string& path,
     int ret;
     char value[128] = {0};
     int value_len = sizeof(value);
-    ret = zoo_wget(zk_, path.data(), ItemWatcher, NULL, value, &value_len, NULL);
+    ret = zoo_wget(zk_, path.data(), ItemWatcher,
+                   NULL, value, &value_len, NULL);
     if (ret != ZOK) {
         PDLOG(WARNING,
               "fail to watch item %s errno %d", nodes_root_path_.c_str(), ret);

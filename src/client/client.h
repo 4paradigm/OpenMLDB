@@ -339,6 +339,7 @@ class BaseClient {
           zk_client_(nullptr),
           zk_cluster_(zk_cluster),
           zk_root_path_(zk_root_path),
+          table_notify_(zk_root_path + "/table/notify"),
           endpoint_(endpoint),
           zk_session_timeout_(zk_session_timeout),
           zk_keep_alive_check_(zk_keep_alive_check),
@@ -374,6 +375,7 @@ class BaseClient {
     rtidb::zk::ZkClient* zk_client_;
     std::string zk_cluster_;
     std::string zk_root_path_;
+    std::string table_notify_;
     std::string endpoint_;
     int32_t zk_session_timeout_;
     int32_t zk_keep_alive_check_;

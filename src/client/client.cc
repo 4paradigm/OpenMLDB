@@ -121,7 +121,7 @@ bool BaseClient::Init(std::string* msg) {
     RefreshNodeList();
     RefreshTable();
     bool ok = zk_client_->WatchItem(
-        zk_root_path_ + "/table/notify", boost::bind(&BaseClient::DoFresh, this));
+        table_notify_, boost::bind(&BaseClient::DoFresh, this));
     if (!ok) {
         zk_client_->CloseZK();
         *msg = "zk watch table notify failed";
@@ -143,7 +143,7 @@ void BaseClient::CheckZkClient() {
         }
     }
     if (zk_client_session_term_ != zk_client_->GetSessionTerm()) {
-        if (zk_client_->WatchItem(zk_root_path_ + "/table/notify",
+        if (zk_client_->WatchItem(table_notify_,
                       boost::bind(&BaseClient::DoFresh, this))) {
             zk_client_session_term_ = zk_client_->GetSessionTerm();
         } else {

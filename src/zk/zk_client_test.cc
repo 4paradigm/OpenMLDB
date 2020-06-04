@@ -116,7 +116,7 @@ TEST_F(ZkClientTest, ZkNodeChange) {
     ok = client2.Init();
     ASSERT_TRUE(ok);
     bool detect = false;
-    ok = client2.WatchItem(node, [&detect]{ std::cout << "changed item" << std::endl; detect = true; });
+    ok = client2.WatchItem(node, [&detect]{ detect = true; });
     ASSERT_TRUE(ok);
     ok = client.SetNodeValue(node, "2");
     ASSERT_TRUE(ok);
