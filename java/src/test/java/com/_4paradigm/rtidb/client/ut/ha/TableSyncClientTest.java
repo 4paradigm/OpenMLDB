@@ -1057,7 +1057,6 @@ public class TableSyncClientTest extends TestCaseBase {
             String imageData1 = "i1";
             ByteBuffer buf1 = StringToBB(imageData1);
             data.put("image", buf1);
-
             Assert.assertTrue(tableSyncClient.put(name, data, wo).isSuccess());
 
             data.clear();
@@ -1068,6 +1067,18 @@ public class TableSyncClientTest extends TestCaseBase {
             data.put("image", buf2);
             tableSyncClient.put(name, data, wo);
 
+            data.clear();
+            data.put("id", 12l);
+            data.put("attribute", "a2");
+            imageData2 = "i1";
+            buf2 = StringToBB(imageData2);
+            data.put("image", buf2);
+            try {
+                tableSyncClient.put(name, data, wo);
+                Assert.fail();
+            } catch (Exception e) {
+                Assert.assertTrue(true);
+            }
             ReadOption ro;
             RelationalIterator it;
             Map<String, Object> queryMap;
@@ -1417,6 +1428,20 @@ public class TableSyncClientTest extends TestCaseBase {
             data.put("memory", 12);
             data.put("price", 12.2);
             tableSyncClient.put(name, data, wo);
+
+            data.clear();
+            data.put("id", 12l);
+            data.put("attribute", "a2");
+            buf2 = StringToBB("i2");
+            data.put("image", buf2);
+            data.put("memory", 12);
+            data.put("price", 12.2);
+            try {
+                tableSyncClient.put(name, data, wo);
+                Assert.fail();
+            } catch (Exception e) {
+                Assert.assertTrue(true);
+            }
 
             //query
             ReadOption ro;
@@ -1824,33 +1849,32 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.get("price"), 15.5);
             }
             //update pk by no unique
-            ByteBuffer buf6 = StringToBB("i5");
             {
                 Map<String, Object> conditionColumns = new HashMap<>();
                 conditionColumns.put("memory", 12);
                 Map<String, Object> valueColumns = new HashMap<>();
                 valueColumns.put("id", 16l);
                 valueColumns.put("price", 16.6);
-                valueColumns.put("image", buf6);
-                updateResult = tableSyncClient.update(name, conditionColumns, valueColumns, wo);
-                Assert.assertTrue(updateResult.isSuccess());
-                Assert.assertEquals(updateResult.getAffectedCount(), 2);
-
-                //query no unique
-                Map<String, Object> index3 = new HashMap<>();
-                index3.put("memory", 12);
-                ro = new ReadOption(index3, null, null, 2);
-                it = tableSyncClient.query(name, ro);
-                Assert.assertTrue(it.valid());
-                Assert.assertEquals(it.getCount(), 1);
-
-                queryMap = it.getDecodedValue();
-                Assert.assertEquals(queryMap.size(), 5);
-                Assert.assertEquals(queryMap.get("id"), 16l);
-                Assert.assertEquals(queryMap.get("attribute"), "a3");
-                Assert.assertTrue(buf6.equals(((BlobData)queryMap.get("image")).getData()));
-                Assert.assertEquals(queryMap.get("memory"), 12);
-                Assert.assertEquals(queryMap.get("price"), 16.6);
+                try {
+                    updateResult = tableSyncClient.update(name, conditionColumns, valueColumns, wo);
+                    Assert.fail();
+                } catch (Exception e) {
+                    Assert.assertTrue(true);
+                }
+            }
+            //update unique by no unique
+            {
+                Map<String, Object> conditionColumns = new HashMap<>();
+                conditionColumns.put("memory", 12);
+                Map<String, Object> valueColumns = new HashMap<>();
+                valueColumns.put("id", 16l);
+                valueColumns.put("price", 16.6);
+                try {
+                    updateResult = tableSyncClient.update(name, conditionColumns, valueColumns, wo);
+                    Assert.fail();
+                } catch (Exception e) {
+                    Assert.assertTrue(true);
+                }
             }
         } catch (Exception e) {
             e.printStackTrace();
