@@ -201,6 +201,48 @@ void EngineWindowSumFeature5(benchmark::State* state, MODE mode,
     EngineRequestMode(sql, mode, limit_cnt, size, state);
 }
 
+void EngineWindowMultiAggFeature5(benchmark::State* state, MODE mode,
+                                  int64_t limit_cnt,
+                                  int64_t size) {  // NOLINT
+    // prepare data into table
+    const std::string sql =
+        "SELECT "
+        "sum(col1) OVER w1 as w1_col1_sum, "
+        "sum(col3) OVER w1 as w1_col3_sum, "
+        "sum(col4) OVER w1 as w1_col4_sum, "
+        "sum(col2) OVER w1 as w1_col2_sum, "
+        "sum(col5) OVER w1 as w1_col5_sum, "
+
+        "count(col1) OVER w1 as w1_col1_cnt, "
+        "count(col3) OVER w1 as w1_col3_cnt, "
+        "count(col4) OVER w1 as w1_col4_cnt, "
+        "count(col2) OVER w1 as w1_col2_cnt, "
+        "count(col5) OVER w1 as w1_col5_cnt, "
+
+        "avg(col1) OVER w1 as w1_col1_avg, "
+        "avg(col3) OVER w1 as w1_col3_avg, "
+        "avg(col4) OVER w1 as w1_col4_avg, "
+        "avg(col2) OVER w1 as w1_col2_avg, "
+        "avg(col5) OVER w1 as w1_col5_avg, "
+
+        "min(col1) OVER w1 as w1_col1_min, "
+        "min(col3) OVER w1 as w1_col3_min, "
+        "min(col4) OVER w1 as w1_col4_min, "
+        "min(col2) OVER w1 as w1_col2_min, "
+        "min(col5) OVER w1 as w1_col5_min, "
+
+        "max(col1) OVER w1 as w1_col1_max, "
+        "max(col3) OVER w1 as w1_col3_max, "
+        "max(col4) OVER w1 as w1_col4_max, "
+        "max(col2) OVER w1 as w1_col2_max, "
+        "max(col5) OVER w1 as w1_col5_max "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 ROWS BETWEEN "
+        "30d "
+        "PRECEDING AND CURRENT ROW) limit " +
+        std::to_string(limit_cnt) + ";";
+    EngineRequestMode(sql, mode, limit_cnt, size, state);
+}
+
 void EngineSimpleSelectDouble(benchmark::State* state, MODE mode) {  // NOLINT
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();

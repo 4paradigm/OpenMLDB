@@ -19,6 +19,7 @@
 #include "codegen/expr_ir_builder.h"
 #include "codegen/ir_base_builder.h"
 #include "codegen/variable_ir_builder.h"
+#include "codegen/aggregate_ir_builder.h"
 #include "glog/logging.h"
 
 namespace fesql {
@@ -28,6 +29,7 @@ RowFnLetIRBuilder::RowFnLetIRBuilder(const vm::SchemaSourceList& schema_sources,
                                      ::llvm::Module* module)
     : schema_context_(schema_sources), module_(module) {}
 RowFnLetIRBuilder::~RowFnLetIRBuilder() {}
+
 
 /**
  * Codegen For int32 RowFnLetUDF(int_8* row_ptrs, int8_t* window_ptr, int32 *
@@ -94,11 +96,9 @@ bool RowFnLetIRBuilder::Build(
     ::fesql::node::PlanNodeList::const_iterator it = projects.cbegin();
     std::map<uint32_t, ::llvm::Value*> outputs;
 
-    // collect sum expressions
-    bool enable_column_sum_opt = this->EnableColumnSumOpt();
-    std::vector<std::pair<::fesql::node::ColumnRefNode*, uint32_t>>
-        col_sum_exprs;
-
+    // maybe collect agg expressions
+    AggregateIRBuilder agg_builder(&schema_context_, module_);
+    
     uint32_t index = 0;
     for (; it != projects.cend(); it++) {
         const ::fesql::node::PlanNode* pn = *it;
@@ -116,14 +116,11 @@ bool RowFnLetIRBuilder::Build(
             (const ::fesql::node::ProjectNode*)pn;
         const ::fesql::node::ExprNode* sql_node = pp_node->GetExpression();
 
-        ::fesql::type::Type col_sum_type;
-        ::fesql::node::ColumnRefNode* maybe_sum_col = nullptr;
-        if (enable_column_sum_opt && IsColumnSum(
-                sql_node, &maybe_sum_col, &col_sum_type)) {
-            col_sum_exprs.push_back({maybe_sum_col, index});
+        ::fesql::type::Type col_agg_type;
+        if (agg_builder.CollectAggColumn(sql_node, index, &col_agg_type)) {
             AddOutputColumnInfo(
                 pp_node->GetName(),
-                col_sum_type, sql_node,
+                col_agg_type, sql_node,
                 output_schema, output_column_sources);
             index++;
             continue;
@@ -164,13 +161,12 @@ bool RowFnLetIRBuilder::Build(
         return false;
     }
 
-    if (!col_sum_exprs.empty()) {
-        if (!BuildMultiColumnSum(name, col_sum_exprs,
-                                 &expr_ir_builder,
-                                 &variable_ir_builder,
-                                 block, output_ptr_name,
-                                 output_schema)) {
-            LOG(INFO) << "Multi column sum codegen failed";
+    if (!agg_builder.empty()) {
+        if (!agg_builder.BuildMulti(name, &expr_ir_builder,
+                                    &variable_ir_builder,
+                                    block, output_ptr_name,
+                                    output_schema)) {
+            LOG(WARNING) << "Multi column sum codegen failed";
             return false;
         }
     }
