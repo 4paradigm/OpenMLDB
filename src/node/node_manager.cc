@@ -496,6 +496,21 @@ SQLNode *NodeManager::MakeCmdNode(node::CmdType cmd_type,
     node_ptr->AddArg(arg);
     return RegisterNode(node_ptr);
 }
+SQLNode *NodeManager::MakeCmdNode(node::CmdType cmd_type,
+                                  const std::string &index_name,
+                                  const std::string &table_name) {
+    CmdNode *node_ptr = new CmdNode(cmd_type);
+    node_ptr->AddArg(index_name);
+    node_ptr->AddArg(table_name);
+    return RegisterNode(node_ptr);
+}
+SQLNode *NodeManager::MakeCreateIndexNode(const std::string &index_name,
+                                          const std::string &table_name,
+                                          ColumnIndexNode *index) {
+    CreateIndexNode *node_ptr =
+        new CreateIndexNode(index_name, table_name, index);
+    return RegisterNode(node_ptr);
+}
 ExprNode *NodeManager::MakeAllNode(const std::string &relation_name) {
     return MakeAllNode(relation_name, "");
 }

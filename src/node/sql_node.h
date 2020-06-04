@@ -1330,10 +1330,26 @@ class CmdNode : public SQLNode {
     std::vector<std::string> args_;
 };
 
+class CreateIndexNode : public SQLNode {
+ public:
+    explicit CreateIndexNode(const std::string &index_name,
+                             const std::string &table_name,
+                             ColumnIndexNode *index)
+        : SQLNode(kCreateIndexStmt, 0, 0),
+          index_name_(index_name),
+          table_name_(table_name),
+          index_(index) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+
+    const std::string index_name_;
+    const std::string table_name_;
+    node::ColumnIndexNode *index_;
+};
+
 class ExplainNode : public SQLNode {
  public:
     explicit ExplainNode(const QueryNode *query, node::ExplainType explain_type)
-        : SQLNode(kExplainSmt, 0, 0),
+        : SQLNode(kExplainStmt, 0, 0),
           explain_type_(explain_type),
           query_(query) {}
     void Print(std::ostream &output, const std::string &org_tab) const;

@@ -359,7 +359,7 @@ void HandleSQLScript(
                 std::cout << "Insert success" << std::endl;
                 return;
             }
-            case fesql::node::kExplainSmt: {
+            case fesql::node::kExplainStmt: {
                 std::string empty;
                 std::string mu_script = script;
                 mu_script.replace(0u, 7u, empty);

@@ -31,7 +31,7 @@ BatchPlanner::BatchPlanner(const std::shared_ptr<BatchCatalog>& catalog,
 BatchPlanner::~BatchPlanner() {}
 
 bool BatchPlanner::MakePlan(GraphDesc* graph) {
-    vm::SQLCompiler compiler(catalog_, &nm_, true);
+    vm::SQLCompiler compiler(catalog_, true);
     vm::SQLContext ctx;
     ctx.db = db_;
     ctx.sql = sql_;

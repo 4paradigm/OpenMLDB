@@ -722,6 +722,13 @@ create_stmt:    CREATE TABLE op_if_not_exist relation_name '(' column_desc_list 
                 {
                     $$ = node_manager->MakeCreateTableNode($3, $4, $6);
                 }
+                |CREATE INDEX column_name ON table_name '(' column_index_item_list ')'
+                {
+                    $$ = node_manager->MakeCreateIndexNode($3, $5,
+                    dynamic_cast<fesql::node::ColumnIndexNode *>(node_manager->MakeColumnIndexNode($7)));
+                    free($3);
+                    free($5);
+                }
                 ;
 
 
@@ -809,6 +816,17 @@ cmd_stmt:
 				$$ = node_manager->MakeCmdNode(::fesql::node::kCmdUseDatabase, $2);
 				free($2);
 			}
+            |DROP TABLE table_name
+            {
+                $$ = node_manager->MakeCmdNode(::fesql::node::kCmdDropTable, $3);
+                free($3);
+            }
+            |DROP INDEX column_name ON table_name
+            {
+                $$ = node_manager->MakeCmdNode(::fesql::node::kCmdDropIndex, $3, $5);
+                free($3);
+                free($5);
+            }
             |EXIT {
                 $$ = node_manager->MakeCmdNode(::fesql::node::kCmdExit);
             }
