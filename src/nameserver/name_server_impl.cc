@@ -46,7 +46,7 @@ DECLARE_int32(make_snapshot_time);
 DECLARE_int32(make_snapshot_check_interval);
 
 using ::rtidb::base::ReturnCode;
-using ::rtodb::base::BLOB_PREFIX;
+using ::rtidb::base::BLOB_PREFIX;
 
 namespace rtidb {
 namespace nameserver {
