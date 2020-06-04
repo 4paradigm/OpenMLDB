@@ -888,15 +888,6 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
     }
     PhysicalJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
                      const node::JoinType join_type,
-                     const node::ExprNode *condition)
-        : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false, true),
-          join_(join_type, condition) {
-        output_type_ = kSchemaTypeTable;
-        InitSchema();
-        RegisterFunctionInfo();
-    }
-    PhysicalJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
-                     const node::JoinType join_type,
                      const node::OrderByNode *orders,
                      const node::ExprNode *condition)
         : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false, true),
@@ -958,15 +949,6 @@ class PhysicalRequestJoinNode : public PhysicalBinaryNode {
                             const node::JoinType join_type)
         : PhysicalBinaryNode(left, right, kPhysicalOpRequestJoin, false, true),
           join_(join_type) {
-        output_type_ = kSchemaTypeRow;
-        InitSchema();
-        RegisterFunctionInfo();
-    }
-    PhysicalRequestJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
-                            const node::JoinType join_type,
-                            const node::ExprNode *condition)
-        : PhysicalBinaryNode(left, right, kPhysicalOpRequestJoin, false, true),
-          join_(join_type, condition) {
         output_type_ = kSchemaTypeRow;
         InitSchema();
         RegisterFunctionInfo();

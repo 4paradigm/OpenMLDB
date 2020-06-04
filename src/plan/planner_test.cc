@@ -605,7 +605,7 @@ TEST_F(PlannerTest, LastJoinPlanTest) {
 
     plan_ptr = plan_ptr->GetChildren()[0];
     ASSERT_EQ(node::kPlanTypeJoin, plan_ptr->GetType());
-    auto join = dynamic_cast<node::LastJoinPlanNode *>(plan_ptr);
+    auto join = dynamic_cast<node::JoinPlanNode *>(plan_ptr);
     ASSERT_EQ(node::kJoinTypeLast, join->join_type_);
     ASSERT_EQ(
         "t1.col1 = t2.col1 AND t2.col5 between t1.col5 - 30d and t1.col5 - "

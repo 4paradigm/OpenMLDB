@@ -568,15 +568,8 @@ bool BatchModeTransformer::TransformJoinOp(const node::JoinPlanNode* node,
         return false;
     }
 
-    if (node::kJoinTypeLast == node->join_type_) {
-        *output = new PhysicalJoinNode(
-            left, right, node->join_type_,
-            dynamic_cast<const node::LastJoinPlanNode*>(node)->orders_,
-            node->condition_);
-    } else {
-        *output = new PhysicalJoinNode(left, right, node->join_type_,
-                                       node->condition_);
-    }
+    *output = new PhysicalJoinNode(left, right, node->join_type_, node->orders_,
+                                   node->condition_);
     node_manager_->RegisterNode(*output);
     return true;
 }
@@ -1271,7 +1264,6 @@ bool BatchModeTransformer::GenWindowJoinList(WindowJoinList* window_join_list,
 bool BatchModeTransformer::GenRequestWindowUnionList(
     RequestWindowUnionList* window_union_list, PhysicalOpNode* in,
     base::Status& status) {
-
     if (nullptr == window_union_list || window_union_list->Empty()) {
         LOG(WARNING)
             << "Skip GenRequestWindowUnionList when window unions is empty";
@@ -2361,15 +2353,8 @@ bool RequestModeransformer::TransformJoinOp(const node::JoinPlanNode* node,
     if (!TransformPlanOp(node->GetChildren()[1], &right, status)) {
         return false;
     }
-    if (node::kJoinTypeLast == node->join_type_) {
-        *output = new PhysicalRequestJoinNode(
-            left, right, node->join_type_,
-            dynamic_cast<const node::LastJoinPlanNode*>(node)->orders_,
-            node->condition_);
-    } else {
-        *output = new PhysicalRequestJoinNode(left, right, node->join_type_,
-                                              node->condition_);
-    }
+    *output = new PhysicalRequestJoinNode(left, right, node->join_type_,
+                                          node->orders_, node->condition_);
 
     node_manager_->RegisterNode(*output);
     return true;

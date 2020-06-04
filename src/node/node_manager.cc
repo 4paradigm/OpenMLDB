@@ -49,14 +49,14 @@ TableRefNode *NodeManager::MakeJoinNode(const TableRefNode *left,
                                         const JoinType type,
                                         const ExprNode *condition,
                                         const std::string alias) {
-    TableRefNode *node_ptr = new JoinNode(left, right, type, condition, alias);
+    TableRefNode *node_ptr =
+        new JoinNode(left, right, type, nullptr, condition, alias);
     RegisterNode(node_ptr);
     return node_ptr;
 }
 
 TableRefNode *NodeManager::MakeLastJoinNode(const TableRefNode *left,
                                             const TableRefNode *right,
-                                            const JoinType type,
                                             const ExprNode *orders,
                                             const ExprNode *condition,
                                             const std::string alias) {
@@ -66,9 +66,9 @@ TableRefNode *NodeManager::MakeLastJoinNode(const TableRefNode *left,
                    NameOfSQLNodeType(orders->GetType());
         return nullptr;
     }
-    TableRefNode *node_ptr =
-        new LastJoinNode(left, right, type, condition, alias,
-                         dynamic_cast<const OrderByNode *>(orders));
+    TableRefNode *node_ptr = new JoinNode(
+        left, right, node::kJoinTypeLast,
+        dynamic_cast<const OrderByNode *>(orders), condition, alias);
     RegisterNode(node_ptr);
     return node_ptr;
 }
@@ -614,19 +614,11 @@ FnForInBlock *NodeManager::MakeForInBlock(FnForInNode *for_in_node,
     return node_ptr;
 }
 PlanNode *NodeManager::MakeJoinNode(PlanNode *left, PlanNode *right,
-                                    JoinType join_type,
-                                    const ExprNode *condition) {
-    node::JoinPlanNode *node_ptr =
-        new JoinPlanNode(left, right, join_type, condition);
-    return RegisterNode(node_ptr);
-}
-
-PlanNode *NodeManager::MakeLastJoinNode(PlanNode *left, PlanNode *right,
                                         JoinType join_type,
                                         const OrderByNode *order_by,
                                         const ExprNode *condition) {
-    node::LastJoinPlanNode *node_ptr =
-        new LastJoinPlanNode(left, right, join_type, condition, order_by);
+    node::JoinPlanNode *node_ptr =
+        new JoinPlanNode(left, right, join_type, order_by, condition);
     return RegisterNode(node_ptr);
 }
 PlanNode *NodeManager::MakeSelectPlanNode(PlanNode *node) {

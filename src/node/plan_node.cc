@@ -505,21 +505,10 @@ void JoinPlanNode::Print(std::ostream &output,
     PrintValue(output, tab,
                nullptr == condition_ ? "" : condition_->GetExprString(),
                "condition", true);
-    output << "\n";
-    PrintChildren(output, org_tab);
-}
-void LastJoinPlanNode::Print(std::ostream &output,
-                             const std::string &org_tab) const {
-    PlanNode::Print(output, org_tab);
-    output << "\n";
-    std::string tab = org_tab + INDENT;
-    PrintValue(output, tab, JoinTypeName(join_type_), "type", true);
-    output << "\n";
-    PrintValue(output, tab,
-               nullptr == condition_ ? "" : condition_->GetExprString(),
-               "condition", true);
-    output << "\n";
-    PrintValue(output, tab, ExprString(orders_), "order", true);
+    if (nullptr != orders_) {
+        output << "\n";
+        PrintValue(output, tab, ExprString(orders_), "orders", true);
+    }
     output << "\n";
     PrintChildren(output, org_tab);
 }
@@ -538,25 +527,10 @@ bool JoinPlanNode::Equals(const PlanNode *node) const {
     const JoinPlanNode *that = dynamic_cast<const JoinPlanNode *>(node);
     return join_type_ == that->join_type_ &&
            node::ExprEquals(this->condition_, that->condition_) &&
-           BinaryPlanNode::Equals(that);
+        node::ExprEquals(this->orders_, that->orders_) &&
+        BinaryPlanNode::Equals(that);
 }
 
-bool LastJoinPlanNode::Equals(const PlanNode *node) const {
-    if (nullptr == node) {
-        return false;
-    }
-
-    if (this == node) {
-        return true;
-    }
-
-    if (type_ != node->type_) {
-        return false;
-    }
-    const LastJoinPlanNode *that = dynamic_cast<const LastJoinPlanNode *>(node);
-    return node::ExprEquals(this->orders_, that->orders_) &&
-           LastJoinPlanNode::Equals(that);
-}
 void UnionPlanNode::Print(std::ostream &output,
                           const std::string &org_tab) const {
     PlanNode::Print(output, org_tab);

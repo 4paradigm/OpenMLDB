@@ -370,6 +370,23 @@ class FnNodeList : public FnNode {
     std::vector<FnNode *> children;
 };
 
+class OrderByNode : public ExprNode {
+ public:
+    explicit OrderByNode(const ExprListNode *order, bool is_asc)
+        : ExprNode(kExprOrder), is_asc_(is_asc), order_by_(order) {}
+    ~OrderByNode() {}
+
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const std::string GetExprString() const;
+    virtual bool Equals(const ExprNode *that) const;
+
+    const ExprListNode *order_by() const { return order_by_; }
+
+    bool is_asc() const { return is_asc_; }
+
+    const bool is_asc_;
+    const ExprListNode *order_by_;
+};
 class TableRefNode : public SQLNode {
  public:
     explicit TableRefNode(TableRefType ref_type, std::string alias_table_name)
@@ -415,49 +432,21 @@ class QueryRefNode : public TableRefNode {
 class JoinNode : public TableRefNode {
  public:
     JoinNode(const TableRefNode *left, const TableRefNode *right,
-             const JoinType join_type, const ExprNode *condition,
-             const std::string &alias_name)
+             const JoinType join_type, const OrderByNode *orders,
+             const ExprNode *condition, const std::string &alias_name)
         : TableRefNode(kRefJoin, alias_name),
           left_(left),
           right_(right),
           join_type_(join_type),
+          orders_(orders),
           condition_(condition) {}
     void Print(std::ostream &output, const std::string &org_tab) const;
     virtual bool Equals(const SQLNode *node) const;
     const TableRefNode *left_;
     const TableRefNode *right_;
     const JoinType join_type_;
+    const node::OrderByNode *orders_;
     const ExprNode *condition_;
-};
-
-class OrderByNode : public ExprNode {
- public:
-    explicit OrderByNode(const ExprListNode *order, bool is_asc)
-        : ExprNode(kExprOrder), is_asc_(is_asc), order_by_(order) {}
-    ~OrderByNode() {}
-
-    void Print(std::ostream &output, const std::string &org_tab) const;
-    const std::string GetExprString() const;
-    virtual bool Equals(const ExprNode *that) const;
-
-    const ExprListNode *order_by() const { return order_by_; }
-
-    bool is_asc() const { return is_asc_; }
-
-    const bool is_asc_;
-    const ExprListNode *order_by_;
-};
-class LastJoinNode : public JoinNode {
- public:
-    LastJoinNode(const TableRefNode *left, const TableRefNode *right,
-                 const JoinType join_type, const ExprNode *condition,
-                 const std::string &alias_name,
-                 const OrderByNode *order_by)
-        : JoinNode(left, right, join_type, condition, alias_name),
-          order_by_(order_by) {}
-    void Print(std::ostream &output, const std::string &org_tab) const;
-    virtual bool Equals(const SQLNode *node) const;
-    const node::OrderByNode *order_by_;
 };
 
 class SelectQueryNode : public QueryNode {

@@ -80,9 +80,7 @@ class NodeManager {
     ProjectNode *MakeAggProjectNode(const int32_t pos, const std::string &name,
                                     node::ExprNode *expression);
     PlanNode *MakeTablePlanNode(const std::string &node);
-    PlanNode *MakeJoinNode(PlanNode *left, PlanNode *right, JoinType join_type,
-                           const ExprNode *condition);
-    PlanNode *MakeLastJoinNode(PlanNode *left, PlanNode *right,
+    PlanNode *MakeJoinNode(PlanNode *left, PlanNode *right,
                                JoinType join_type, const OrderByNode *order_by,
                                const ExprNode *condition);
     // Make SQLxxx Node
@@ -101,10 +99,10 @@ class NodeManager {
                                const ExprNode *condition,
                                const std::string alias);
     TableRefNode *MakeLastJoinNode(const TableRefNode *left,
-                               const TableRefNode *right, const JoinType type,
-                                   const ExprNode* order,
-                               const ExprNode *condition,
-                               const std::string alias);
+                                   const TableRefNode *right,
+                                   const ExprNode *order,
+                                   const ExprNode *condition,
+                                   const std::string alias);
     TableRefNode *MakeQueryRefNode(const QueryNode *sub_query,
                                    const std::string &alias);
     ExprNode *MakeFuncNode(const std::string &name, const ExprListNode *args,

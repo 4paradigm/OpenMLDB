@@ -1081,15 +1081,15 @@ join_clause:
 last_join_clause:
 		table_reference LAST JOIN table_reference sort_clause join_condition
 		{
-			$$ = node_manager->MakeLastJoinNode($1, $4, fesql::node::kJoinTypeLast, $5, $6, "");
+			$$ = node_manager->MakeLastJoinNode($1, $4, $5, $6, "");
 		}
 		| table_reference LAST JOIN table_reference sort_clause join_condition relation_name
 		{
-			$$ = node_manager->MakeLastJoinNode($1, $4, fesql::node::kJoinTypeLast, $5, $6, $7);
+			$$ = node_manager->MakeLastJoinNode($1, $4, $5, $6, $7);
 		}
 		| table_reference LAST JOIN table_reference sort_clause join_condition AS relation_name
 		{
-			$$ = node_manager->MakeLastJoinNode($1, $4, fesql::node::kJoinTypeLast, $5, $6, $8);
+			$$ = node_manager->MakeLastJoinNode($1, $4, $5, $6, $8);
 		}
 		;
 union_stmt:

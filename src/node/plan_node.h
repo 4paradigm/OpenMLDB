@@ -140,24 +140,16 @@ class DistinctPlanNode : public UnaryPlanNode {
 class JoinPlanNode : public BinaryPlanNode {
  public:
     JoinPlanNode(PlanNode *left, PlanNode *right, JoinType join_type,
-                 const ExprNode *expression)
+                 const OrderByNode *orders, const ExprNode *expression)
         : BinaryPlanNode(kPlanTypeJoin, left, right),
           join_type_(join_type),
+          orders_(orders),
           condition_(expression) {}
     void Print(std::ostream &output, const std::string &org_tab) const override;
     virtual bool Equals(const PlanNode *that) const;
     const JoinType join_type_;
-    const ExprNode *condition_;
-};
-
-class LastJoinPlanNode : public JoinPlanNode {
- public:
-    LastJoinPlanNode(PlanNode *left, PlanNode *right, JoinType join_type,
-                     const ExprNode *expression, const OrderByNode *order)
-        : JoinPlanNode(left, right, join_type, expression), orders_(order) {}
-    void Print(std::ostream &output, const std::string &org_tab) const override;
-    virtual bool Equals(const PlanNode *that) const;
     const OrderByNode *orders_;
+    const ExprNode *condition_;
 };
 
 class UnionPlanNode : public BinaryPlanNode {

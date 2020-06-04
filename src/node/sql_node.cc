@@ -1102,17 +1102,11 @@ void JoinNode::Print(std::ostream &output, const std::string &org_tab) const {
     output << "\n";
     PrintSQLNode(output, tab, right_, "right", true);
     output << "\n";
+    PrintSQLNode(output, tab, orders_, "order_by", true);
+    output << "\n";
     PrintSQLNode(output, tab, condition_, "on", true);
 }
 
-void LastJoinNode::Print(std::ostream &output,
-                         const std::string &org_tab) const {
-    JoinNode::Print(output, org_tab);
-
-    const std::string tab = org_tab + INDENT + SPACE_ED;
-    output << "\n";
-    PrintSQLNode(output, tab, order_by_, "order_by", true);
-}
 bool JoinNode::Equals(const SQLNode *node) const {
     if (!TableRefNode::Equals(node)) {
         return false;
@@ -1120,16 +1114,10 @@ bool JoinNode::Equals(const SQLNode *node) const {
     const JoinNode *that = dynamic_cast<const JoinNode *>(node);
     return join_type_ == that->join_type_ &&
            ExprEquals(condition_, that->condition_) &&
+           ExprEquals(this->orders_, that->orders_) &&
            SQLEquals(this->left_, that->right_);
 }
 
-bool LastJoinNode::Equals(const SQLNode *node) const {
-    if (!JoinNode::Equals(node)) {
-        return false;
-    }
-    const LastJoinNode *that = dynamic_cast<const LastJoinNode *>(node);
-    return ExprEquals(this->order_by_, that->order_by_);
-}
 void UnionQueryNode::Print(std::ostream &output,
                            const std::string &org_tab) const {
     QueryNode::Print(output, org_tab);
