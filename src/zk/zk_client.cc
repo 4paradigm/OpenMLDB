@@ -50,10 +50,10 @@ void ItemWatcher(zhandle_t* zh, int type, int state, const char* path,
                  void* watcher_ctx) {
     PDLOG(INFO, "node watcher with event type %d, state %d", type, state);
     if (zoo_get_context(zh)) {
-        ZkClient* client = (ZkClient*)zoo_get_context(zh); // NOLINT
+        ZkClient* client = const_cast<ZkClient*>(
+            reinterpret_cast<const ZkClient*>(zoo_get_context(zh)));
         std::string path_str(path);
-        // zookeeper is just one time watching, so need to watch nodes again
-        client->HandleItemChanged(path, type, state);
+        client->HandleItemChanged(path_str, type, state);
     }
 }
 
@@ -374,19 +374,18 @@ void ZkClient::HandleItemChanged(const std::string& path, int type, int state) {
 bool ZkClient::WatchItem(const std::string& path,
                          ItemChangedCallback callback) {
     std::lock_guard<std::mutex> lock(mu_);
+    if (zk_ == NULL || !connected_) {
+        return false;
+    }
     auto it = item_callbacks_.find(path);
     if (it == item_callbacks_.end()) {
         item_callbacks_.insert(std::make_pair(path, callback));
     }
-    if (zk_ == NULL || !connected_) {
-        return false;
-    }
     deallocate_String_vector(&data_);
-    int ret;
-    char value[128] = {0};
-    int value_len = sizeof(value);
-    ret = zoo_wget(zk_, path.data(), ItemWatcher,
-                   NULL, value, &value_len, NULL);
+    int buf_size = sizeof(wget_buff_);
+    int ret =
+        zoo_wget(zk_, path.data(), ItemWatcher,
+                   NULL, wget_buff_, &buf_size, NULL);
     if (ret != ZOK) {
         PDLOG(WARNING,
               "fail to watch item %s errno %d", nodes_root_path_.c_str(), ret);
