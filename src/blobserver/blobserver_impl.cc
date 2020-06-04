@@ -27,6 +27,7 @@ DECLARE_uint32(oss_flush_size);
 DECLARE_int32(oss_flush_period);
 
 using ::rtidb::base::ReturnCode;
+using ::rtidb::base::BLOB_PREFIX;
 
 namespace rtidb {
 namespace blobserver {
@@ -55,10 +56,9 @@ bool BlobServerImpl::Init() {
         return false;
     }
     if (!FLAGS_zk_cluster.empty()) {
-        std::string oss_zk_path = FLAGS_zk_root_path + "/ossnodes";
         zk_client_ =
             new ZkClient(FLAGS_zk_cluster, FLAGS_zk_session_timeout,
-                         FLAGS_endpoint, FLAGS_zk_root_path, oss_zk_path);
+                         BLOB_PREFIX + FLAGS_endpoint, FLAGS_zk_root_path);
         bool ok = zk_client_->Init();
         if (!ok) {
             PDLOG(WARNING, "fail to init zookeeper with cluster %s",
@@ -83,12 +83,13 @@ bool BlobServerImpl::Init() {
 bool BlobServerImpl::RegisterZK() {
     if (!FLAGS_zk_cluster.empty()) {
         if (!zk_client_->Register(true)) {
-            PDLOG(WARNING, "fail to register tablet with endpoint %s",
-                  FLAGS_endpoint.c_str());
+            PDLOG(WARNING, "fail to register blob with value %s%s",
+                  BLOB_PREFIX.c_str(), FLAGS_endpoint.c_str());
             return false;
         }
-        PDLOG(INFO, "oss with endpoint %s register to zk cluster %s ok",
-              FLAGS_endpoint.c_str(), FLAGS_zk_cluster.c_str());
+        PDLOG(INFO, "blob with value %s%s register to zk cluster %s ok",
+              BLOB_PREFIX.c_str(), FLAGS_endpoint.c_str(),
+              FLAGS_zk_cluster.c_str());
         keep_alive_pool_.DelayTask(
             FLAGS_zk_keep_alive_check_interval,
             boost::bind(&BlobServerImpl::CheckZkClient, this));

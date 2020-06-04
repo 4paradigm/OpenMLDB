@@ -47,6 +47,7 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
     private Watcher notifyWatcher;
     private AtomicBoolean watching = new AtomicBoolean(true);
     private AtomicBoolean isClose = new AtomicBoolean(false);
+    private final String blobPrefix = "blob_";
     public RTIDBClusterClient(RTIDBClientConfig config) {
         this.config = config;
     }
@@ -307,6 +308,9 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
                 if (path.isEmpty()) {
                     continue;
                 }
+                if (path.startsWith(blobPrefix)) {
+                    path = path.substring(blobPrefix.length());
+                }
                 logger.info("alive endpoint {}", path);
                 String[] parts = path.split(":");
                 if (parts.length != 2) {
@@ -317,24 +321,6 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
                     endpoinSet.add(new EndPoint(parts[0], Integer.parseInt(parts[1])));
                 } catch (Exception e) {
                     logger.error("fail to add endpoint", e);
-                }
-            }
-            children.clear();;
-            children = zookeeper.getChildren(config.getZkOssNodeRootPath(), false);
-            for (String path : children) {
-                if (path.isEmpty()) {
-                    continue;
-                }
-                logger.info("alive blob endpoint {}", path);
-                String[] parts = path.split(":");
-                if (parts.length != 2) {
-                    logger.warn("invalid blob endpoint {}", path);
-                    continue;
-                }
-                try {
-                    endpoinSet.add(new EndPoint(parts[0], Integer.parseInt(parts[1])));
-                } catch (Exception e) {
-                    logger.error("fail to add blob endpoint", e);
                 }
             }
             nodeManager.update(endpoinSet);
