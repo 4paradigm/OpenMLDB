@@ -8918,7 +8918,7 @@ void NameServerImpl::CheckBinlogSyncProgress(
         return;
     }
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info;
-    if (!GetTableInfo(name, db, table_info)) {
+    if (!GetTableInfoUnlock(name, db, table_info)) {
         PDLOG(WARNING, "not found table %s in table_info map. op_id[%lu]",
               name.c_str(), task_info->op_id());
         task_info->set_status(::rtidb::api::TaskStatus::kFailed);
@@ -9958,6 +9958,12 @@ bool NameServerImpl::GetTableInfo(const std::string& table_name,
                                   const std::string& db_name,
                                   std::shared_ptr<TableInfo>& table_info) {
     std::lock_guard<std::mutex> lock(mu_);
+    return GetTableInfo(table_name, db_name, table_info);
+}
+
+bool NameServerImpl::GetTableInfoUnlock(const std::string& table_name,
+                                  const std::string& db_name,
+                                  std::shared_ptr<TableInfo>& table_info) {
     if (db_name.empty()) {
         auto it = table_info_.find(table_name);
         if (it == table_info_.end()) {
@@ -11180,7 +11186,7 @@ bool NameServerImpl::AddIndexToTableInfo(
     std::lock_guard<std::mutex> lock(mu_);
     auto iter = table_info_.find(name);
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info;
-    if (!GetTableInfo(name, db, table_info)) {
+    if (!GetTableInfoUnlock(name, db, table_info)) {
         PDLOG(WARNING, "table[%s] is not exist!", name.c_str());
         return false;
     }
