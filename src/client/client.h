@@ -357,7 +357,7 @@ class BaseClient {
     void UpdateBlobEndpoint(const std::set<std::string>& alive_endpoints);
     void RefreshTable();
     void SetZkCheckInterval(int32_t interval);
-    void DoFresh(const std::vector<std::string>& events);
+    void DoFresh();
     bool RegisterZK(std::string* msg);
     std::shared_ptr<rtidb::client::TabletClient> GetTabletClient(
         const std::string& endpoint, std::string* msg);
