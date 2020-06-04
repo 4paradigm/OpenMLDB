@@ -787,7 +787,14 @@ void TabletImpl::Put(RpcController* controller,
         }
     } else {
         int64_t auto_gen_pk = 0;
-        if (!r_table->Put(request->value(), &auto_gen_pk)) {
+        bool ok = false;
+        if (request->has_wo()) {
+            ok = r_table->Put(request->value(), &auto_gen_pk, request->wo());
+        } else {
+            ::rtidb::api::WriteOption wo;
+            ok = r_table->Put(request->value(), &auto_gen_pk, wo);
+        }
+        if (!ok) {
             response->set_code(::rtidb::base::ReturnCode::kPutFailed);
             response->set_msg("put failed");
             done->Run();
@@ -1684,7 +1691,7 @@ void TabletImpl::Traverse(RpcController* controller,
                         request->read_option().index(), &combine_pk)) {
                 response->set_code(
                         ::rtidb::base::ReturnCode::kIdxNameNotFound);
-                response->set_msg("index col name not found");
+                response->set_msg("pk index col name not found");
                 delete it;
                 return;
             }
