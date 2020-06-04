@@ -130,7 +130,7 @@ bool BaseClient::Init(std::string* msg) {
         return false;
     }
     task_thread_pool_.DelayTask(zk_keep_alive_check_,
-                                boost::bind(&BaseClient::CheckZkClient, this));
+                                [this] { CheckZkClient(); });
     return true;
 }
 
@@ -144,7 +144,7 @@ void BaseClient::CheckZkClient() {
         }
     }
     task_thread_pool_.DelayTask(zk_keep_alive_check_,
-                                boost::bind(&BaseClient::CheckZkClient, this));
+                                [this] { CheckZkClient(); });
 }
 
 bool BaseClient::RefreshNodeList() {
