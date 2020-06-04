@@ -34,6 +34,7 @@ DECLARE_string(log_dir);
 namespace fesql {
 namespace vm {
 
+static bool LLVM_IS_INITIALIZED = false;
 Engine::Engine(const std::shared_ptr<Catalog>& catalog) : cl_(catalog) {}
 
 Engine::Engine(const std::shared_ptr<Catalog>& catalog,
@@ -43,10 +44,11 @@ Engine::Engine(const std::shared_ptr<Catalog>& catalog,
 Engine::~Engine() {}
 
 void Engine::InitializeGlobalLLVM() {
+    if (LLVM_IS_INITIALIZED) return;
     LLVMInitializeNativeTarget();
     LLVMInitializeNativeAsmPrinter();
+    LLVM_IS_INITIALIZED = true;
 }
-
 bool Engine::Get(const std::string& sql, const std::string& db,
                  RunSession& session,
                  base::Status& status) {  // NOLINT (runtime/references)
@@ -63,13 +65,13 @@ bool Engine::Get(const std::string& sql, const std::string& db,
     info->get_sql_context().sql = sql;
     info->get_sql_context().db = db;
     info->get_sql_context().is_batch_mode = session.IsBatchRun();
-    SQLCompiler compiler(cl_, &nm_, options_.is_keep_ir());
+    SQLCompiler compiler(cl_, options_.is_keep_ir(), false,
+            options_.is_plan_only());
     bool ok = compiler.Compile(info->get_sql_context(), status);
     if (!ok || 0 != status.code) {
         // TODO(chenjing): do clean
         return false;
     }
-
     if (!options_.is_compile_only()) {
         ok = compiler.BuildRunner(info->get_sql_context(), status);
         if (!ok || 0 != status.code) {
@@ -77,7 +79,6 @@ bool Engine::Get(const std::string& sql, const std::string& db,
             return false;
         }
     }
-
     {
         session.SetCatalog(cl_);
         // check
@@ -104,12 +105,11 @@ bool Engine::Explain(const std::string& sql, const std::string& db,
         LOG(WARNING) << "input args is invalid";
         return false;
     }
-    ::fesql::node::NodeManager nm;
     SQLContext ctx;
     ctx.is_batch_mode = is_batch;
     ctx.sql = sql;
     ctx.db = db;
-    SQLCompiler compiler(cl_, &nm, true, true);
+    SQLCompiler compiler(cl_, true, true);
     bool ok = compiler.Compile(ctx, *status);
     if (!ok || 0 != status->code) {
         LOG(WARNING) << "fail to compile sql " << sql << " in db " << db

@@ -536,7 +536,7 @@ std::string NameOfSQLNodeType(const SQLNodeType &type) {
         case kCmdStmt:
             output = "CMD";
             break;
-        case kExplainSmt:
+        case kExplainStmt:
             output = "EXPLAIN";
         case kName:
             output = "kName";
@@ -756,7 +756,17 @@ void CmdNode::Print(std::ostream &output, const std::string &org_tab) const {
     output << "\n";
     PrintValue(output, tab, args_, "args", true);
 }
-
+void CreateIndexNode::Print(std::ostream &output,
+                            const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, index_name_, "index_name", false);
+    output << "\n";
+    PrintValue(output, tab, table_name_, "table_name", false);
+    output << "\n";
+    PrintSQLNode(output, tab, index_, "index", true);
+}
 void ExplainNode::Print(std::ostream &output,
                         const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);

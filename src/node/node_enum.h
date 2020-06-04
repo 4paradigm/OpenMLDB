@@ -26,7 +26,8 @@ enum SQLNodeType {
     kCreateStmt,
     kInsertStmt,
     kCmdStmt,
-    kExplainSmt,
+    kExplainStmt,
+    kCreateIndexStmt,
     kExpr,
     kType,
     kResTarget,
@@ -181,6 +182,8 @@ enum CmdType {
     kCmdShowTables,
     kCmdDescTable,
     kCmdDropTable,
+    kCmdCreateIndex,
+    kCmdDropIndex,
     kCmdExit
 };
 enum ExplainType {
