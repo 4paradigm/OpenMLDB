@@ -603,6 +603,11 @@ class NameServerImpl : public NameServer {
 
     std::shared_ptr<Task> CreateCheckBinlogSyncProgressTask(
         uint64_t op_index, ::rtidb::api::OPType op_type,
+        const std::string& name, const std::string& db, uint32_t pid, const std::string& follower,
+        uint64_t offset_delta);
+    
+    std::shared_ptr<Task> CreateCheckBinlogSyncProgressTask(
+        uint64_t op_index, ::rtidb::api::OPType op_type,
         const std::string& name, uint32_t pid, const std::string& follower,
         uint64_t offset_delta);
 
@@ -655,7 +660,7 @@ class NameServerImpl : public NameServer {
 
     std::shared_ptr<Task> CreateTableSyncTask(
         uint64_t op_index, ::rtidb::api::OPType op_type,
-        const std::string& name, const boost::function<bool()>& fun);
+        uint32_t tid, const boost::function<bool()>& fun);
 
     std::shared_ptr<TableInfo> GetTableInfo(const std::string& name);
 
@@ -677,6 +682,11 @@ class NameServerImpl : public NameServer {
     int CreateOPData(::rtidb::api::OPType op_type, const std::string& value,
                      std::shared_ptr<OPData>& op_data,  // NOLINT
                      const std::string& name, uint32_t pid,
+                     uint64_t parent_id = INVALID_PARENT_ID,
+                     uint64_t remote_op_id = INVALID_PARENT_ID);
+    int CreateOPData(::rtidb::api::OPType op_type, const std::string& value,
+                     std::shared_ptr<OPData>& op_data,  // NOLINT
+                     const std::string& name, const std::string& db, uint32_t pid,
                      uint64_t parent_id = INVALID_PARENT_ID,
                      uint64_t remote_op_id = INVALID_PARENT_ID);
     int AddOPData(const std::shared_ptr<OPData>& op_data,
@@ -747,8 +757,8 @@ class NameServerImpl : public NameServer {
         uint32_t concurrency =
             FLAGS_name_server_task_concurrency_for_replica_cluster);
 
-    int CreateAddIndexOP(const std::string& name, uint32_t pid,
-                         const ::rtidb::common::ColumnKey& column_key,
+    int CreateAddIndexOP(const std::string& name, const std::string& db,
+                         uint32_t pid, const ::rtidb::common::ColumnKey& column_key,
                          uint32_t idx);
 
     int CreateAddIndexOPTask(std::shared_ptr<OPData> op_data);
@@ -770,7 +780,7 @@ class NameServerImpl : public NameServer {
     int DropTableOnBlob(std::shared_ptr<TableInfo> table_info);
 
     void CheckBinlogSyncProgress(
-        const std::string& name, uint32_t pid, const std::string& follower,
+        const std::string& name, const std::string& db, uint32_t pid, const std::string& follower,
         uint64_t offset_delta,
         std::shared_ptr<::rtidb::api::TaskInfo> task_info);
 
@@ -781,7 +791,7 @@ class NameServerImpl : public NameServer {
     void WrapTaskFun(const boost::function<bool()>& fun,
                      std::shared_ptr<::rtidb::api::TaskInfo> task_info);
 
-    void RunSyncTaskFun(const std::string& name,
+    void RunSyncTaskFun(uint32_t tid,
                         const boost::function<bool()>& fun,
                         std::shared_ptr<::rtidb::api::TaskInfo> task_info);
 
@@ -842,6 +852,9 @@ class NameServerImpl : public NameServer {
             table_info_map,
         const std::unordered_map<std::string, ::rtidb::api::TableStatus>&
             pos_response);
+
+    bool UpdateZkTableNode(std::shared_ptr<::rtidb::nameserver::TableInfo>&
+        table_info);                                             // NOLINT
 
  private:
     std::mutex mu_;
