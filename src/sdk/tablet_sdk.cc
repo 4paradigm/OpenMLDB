@@ -378,6 +378,10 @@ void TabletSdkImpl::BuildInsertRequest(const std::string& db,
         }
         const node::ConstNode* primary =
             dynamic_cast<const node::ConstNode*>(expr_node_it->second);
+        if (primary->IsNull()) {
+            rb.AppendNULL();
+            continue;
+        }
         bool ok = false;
         switch (it->type()) {
             case type::kNull: {

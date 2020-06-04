@@ -6,7 +6,7 @@ add_library(fesql_sdk STATIC base_impl.cc dbms_sdk.cc tablet_sdk.cc result_set_i
 
 
 #set(sdk_deps_libs fesql_sdk fesql_simple_catalog ${VM_LIBS} fesql_flags ${LLVM_LIBS} ${BRPC_LIBS} ${OS_LIB})
-set(sdk_deps_libs fesql_case ${yaml_libs} boost_filesystem fesql_sdk fesql_simple_catalog ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS} ${OS_LIB})
+set(sdk_deps_libs fesql_case ${yaml_libs} boost_filesystem fesql_sdk fesql_simple_catalog ${VM_LIBS} fesql_flags ${LLVM_LIBS} ${BRPC_LIBS} ${OS_LIB})
 
 if (TESTING_ENABLE)
 

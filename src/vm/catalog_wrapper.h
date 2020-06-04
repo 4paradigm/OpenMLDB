@@ -170,6 +170,11 @@ class RowWrapper : public RowHandler {
           value_(), fun_(fun) {}
     virtual ~RowWrapper() {}
     const Row& GetValue() override {
+        auto row = row_handler_->GetValue();
+        if (row.empty()) {
+            value_ = row;
+            return value_;
+        }
         value_ = fun_->operator()(row_handler_->GetValue());
         return value_;
     }
