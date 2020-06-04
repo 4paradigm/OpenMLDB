@@ -110,6 +110,22 @@ void PrintResultSet(std::ostream &stream, ::fesql::sdk::ResultSet *result_set) {
                     t.add(val);
                     break;
                 }
+                case fesql::sdk::kTypeTimestamp: {
+                    int64_t ts = 0;
+                    result_set->GetTime(i, &ts);
+                    t.add(std::to_string(ts));
+                    break;
+                }
+                case fesql::sdk::kTypeDate: {
+                    int32_t year = 0;
+                    int32_t month = 0;
+                    int32_t day = 0;
+                    std::stringstream ss;
+                    result_set->GetDate(i, &year, &month, &day);
+                    ss << year << "-" << month << "-" << day;
+                    t.add(ss.str());
+                    break;
+                }
                 default: {
                     t.add("NA");
                 }

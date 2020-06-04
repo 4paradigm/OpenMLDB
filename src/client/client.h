@@ -98,7 +98,6 @@ struct ReadOption {
     uint64_t limit;
 };
 
->>>>>>> origin/develop
 
 class RtidbClient;
 
