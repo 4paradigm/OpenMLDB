@@ -40,6 +40,9 @@ void InitCodecSymbol(::llvm::orc::JITDylib& jd,             // NOLINT
                                    (reinterpret_cast<void*>(&malloc)));
     fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "memset",
                                    (reinterpret_cast<void*>(&memset)));
+    fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "__bzero",
+                                   (reinterpret_cast<void*>(&bzero)));
+
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_get_int16_field",
         reinterpret_cast<void*>(
@@ -142,12 +145,12 @@ void InitCodecSymbol(vm::FeSQLJIT* jit_ptr) {
 
 using ::fesql::base::Status;
 
-SQLCompiler::SQLCompiler(const std::shared_ptr<Catalog>& cl,
-                         bool keep_ir,
-                         bool dump_plan,
-                         bool plan_only)
-    : cl_(cl), keep_ir_(keep_ir), dump_plan_(dump_plan),
-plan_only_(plan_only) {}
+SQLCompiler::SQLCompiler(const std::shared_ptr<Catalog>& cl, bool keep_ir,
+                         bool dump_plan, bool plan_only)
+    : cl_(cl),
+      keep_ir_(keep_ir),
+      dump_plan_(dump_plan),
+      plan_only_(plan_only) {}
 
 SQLCompiler::~SQLCompiler() {}
 
