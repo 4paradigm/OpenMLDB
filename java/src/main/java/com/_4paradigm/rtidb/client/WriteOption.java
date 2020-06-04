@@ -2,7 +2,7 @@ package com._4paradigm.rtidb.client;
 
 public class WriteOption {
 
-    private boolean updateIfExist = true;
+    private boolean updateIfExist = false;
     private boolean updateIfEqual = true;
 
     public WriteOption() {

@@ -3181,6 +3181,18 @@ public class TableSyncClientTest extends TestCaseBase {
             Assert.assertEquals(map.get("attribute"), "a1");
             Assert.assertTrue(StringToBB("i1").equals(((BlobData)map.get("image")).getData()));
 
+            //traverse by pk
+            Map<String, Object> index = new HashMap<>();
+            index.put("id", pr.getAutoGenPk());
+            ro = new ReadOption(index, null, null, 1);
+            it = tableSyncClient.traverse(name, ro);
+            Assert.assertTrue(it.valid());
+            map = it.getDecodedValue();
+            Assert.assertEquals(map.size(), 3);
+            Assert.assertEquals(map.get("id"), pr.getAutoGenPk());
+            Assert.assertEquals(map.get("attribute"), "a1");
+            Assert.assertTrue(StringToBB("i1").equals(((BlobData)map.get("image")).getData()));
+
             //update
             UpdateResult updateResult;
             {
