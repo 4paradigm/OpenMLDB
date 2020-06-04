@@ -22,6 +22,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <utility>
 #include "case/sql_case.h"
 #include "codec/fe_row_codec.h"
 #include "codec/list_iterator_codec.h"
@@ -82,8 +83,8 @@ node::ProjectListNode* GetPlanNodeList(node::PlanNodeList trees) {
     return pp_node_ptr;
 }
 
-void AddFunc(const std::string& fn, ::fesql::node::NodeManager* manager, 
-			 ::llvm::Module* m) {
+void AddFunc(const std::string& fn, ::fesql::node::NodeManager* manager,
+    ::llvm::Module* m) {
     if (fn.empty()) {
         return;
     }

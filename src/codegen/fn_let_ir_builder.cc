@@ -98,7 +98,7 @@ bool RowFnLetIRBuilder::Build(
 
     // maybe collect agg expressions
     AggregateIRBuilder agg_builder(&schema_context_, module_);
-    
+
     uint32_t index = 0;
     for (; it != projects.cend(); it++) {
         const ::fesql::node::PlanNode* pn = *it;

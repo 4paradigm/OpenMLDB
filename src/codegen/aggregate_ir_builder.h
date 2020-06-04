@@ -17,7 +17,7 @@
 
 #ifndef SRC_CODEGEN_AGGREGATE_IR_BUILDER_H_
 #define SRC_CODEGEN_AGGREGATE_IR_BUILDER_H_
-#include <map>
+#include <unordered_map>
 #include <set>
 #include <string>
 #include <utility>
@@ -76,7 +76,7 @@ struct AggColumnInfo {
             }
         }
         ss << "]\n";
-        LOG(DEBUG) << ss.str();
+        LOG(INFO) << ss.str();
     }
 };
 
@@ -96,8 +96,8 @@ class AggregateIRBuilder {
     bool IsAggFuncName(const std::string& fname);
 
     static llvm::Type* GetOutputLLVMType(
-        ::llvm::LLVMContext& llvm_ctx,
-        const std::string& fname, 
+        ::llvm::LLVMContext& llvm_ctx,  // NOLINT
+        const std::string& fname,
         const node::DataType& node_type);
 
     bool BuildMulti(

@@ -14,10 +14,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "codegen/aggregate_ir_builder.h"
+
 #include <stdlib.h>
 #include <limits>
+#include <memory>
+#include <map>
+#include <algorithm>
 
-#include "codegen/aggregate_ir_builder.h"
 #include "codegen/expr_ir_builder.h"
 #include "codegen/ir_base_builder.h"
 #include "codegen/variable_ir_builder.h"
@@ -28,7 +32,7 @@ namespace codegen {
 
 
 AggregateIRBuilder::AggregateIRBuilder(const vm::SchemasContext* sc,
-                                       ::llvm::Module* module): 
+                                       ::llvm::Module* module):
     schema_context_(sc), module_(module),
     agg_enabled_(AggregateIRBuilder::EnableColumnAggOpt()) {
     available_agg_func_set_.insert("sum");
@@ -40,7 +44,7 @@ AggregateIRBuilder::AggregateIRBuilder(const vm::SchemasContext* sc,
 
 
 bool AggregateIRBuilder::IsAggFuncName(const std::string& fname) {
-    return available_agg_func_set_.find(fname) != 
+    return available_agg_func_set_.find(fname) !=
         available_agg_func_set_.end();
 }
 
@@ -108,7 +112,7 @@ bool AggregateIRBuilder::CollectAggColumn(const fesql::node::ExprNode* expr,
                     fesql::type::Type_Name(col_type);
                 return false;
             }
-            if (GetOutputLLVMType(module_->getContext(), 
+            if (GetOutputLLVMType(module_->getContext(),
                     agg_func_name, node_type) == nullptr) {
                 return false;
             }
@@ -119,7 +123,7 @@ bool AggregateIRBuilder::CollectAggColumn(const fesql::node::ExprNode* expr,
             } else {
                 *res_agg_type = col_type;
             }
-            
+
             std::string col_key = rel_name + "." + col_name;
             auto iter = agg_col_infos_.find(col_key);
             if (iter == agg_col_infos_.end()) {
@@ -332,7 +336,7 @@ class StatisticalAggGenerator {
                    const std::vector<::llvm::Value*>& inputs) {
         bool count_updated = false;
         for (size_t i = 0; i < col_num_; ++i) {
-            if (sum_idxs_[i] >= 0 || 
+            if (sum_idxs_[i] >= 0 ||
                 (avg_idxs_[i] >= 0 && avg_states_[i] == nullptr)) {
                 GenSumUpdate(i, inputs[i], builder);
             }
@@ -403,7 +407,7 @@ class StatisticalAggGenerator {
     void RegisterMin(size_t pos, size_t out_idx) {
         min_idxs_[pos] = out_idx;
     }
-    
+
     void RegisterMax(size_t pos, size_t out_idx) {
         max_idxs_[pos] = out_idx;
     }
@@ -434,7 +438,7 @@ class StatisticalAggGenerator {
 
 llvm::Type* AggregateIRBuilder::GetOutputLLVMType(
     ::llvm::LLVMContext& llvm_ctx,
-    const std::string& fname, 
+    const std::string& fname,
     const node::DataType& node_type) {
 
     if (fname == "count") {
@@ -514,22 +518,18 @@ bool ScheduleAggGenerators(
                     finish_seq = true;
                 }
             }
-            LOG(INFO) << "Input: ";
-            info->Show();
         }
 
         if (finish_seq) {
             // create generator from contiguous seq
             StatisticalAggGenerator agg_gen(cur_col_type, agg_gen_col_seq);
-            LOG(INFO) << "Agg segment: ";
             for (size_t i = 0; i < agg_gen_col_seq.size(); ++i) {
                 auto& geninfo = agg_col_infos[agg_gen_col_seq[i]];
-                LOG(INFO) << i << " " << agg_gen_col_seq[i];
                 geninfo.Show();
                 for (size_t j = 0; j < geninfo.GetOutputNum(); j++) {
                     auto& fname = geninfo.agg_funcs[j];
                     size_t out_idx = geninfo.output_idxs[j];
-               
+
                     if (fname == "sum") {
                         agg_gen.RegisterSum(i, out_idx);
                     } else if (fname == "min") {
@@ -549,7 +549,7 @@ bool ScheduleAggGenerators(
             res->emplace_back(agg_gen);
             agg_gen_col_seq.clear();
         }
-        
+
         if (info != nullptr) {
             agg_gen_col_seq.emplace_back(col_keys[idx]);
             cur_offset = info->offset;
@@ -625,7 +625,7 @@ bool AggregateIRBuilder::BuildMulti(
     for (auto& agg_generator : generators) {
         agg_generator.GenInitState(&builder);
     }
-    
+
     ::llvm::Value* input_arg = fn->arg_begin();
     ::llvm::Value* output_arg = fn->arg_begin() + 1;
 

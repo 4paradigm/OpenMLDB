@@ -29,7 +29,6 @@ static void BM_EngineRequestSimpleSelectVarchar(
 }
 static void BM_EngineRequestSimpleSelectDouble(
     benchmark::State& state) {  // NOLINT
-
     EngineRequestSimpleSelectDouble(&state, BENCHMARK);
 }
 static void BM_EngineRequestSimpleSelectInt32(

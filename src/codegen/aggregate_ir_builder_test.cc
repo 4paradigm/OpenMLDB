@@ -14,11 +14,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-#include "codegen/fn_let_ir_builder_test.h"
 #include <memory>
 #include <string>
 #include <vector>
+#include "codegen/fn_let_ir_builder_test.h"
 
 namespace fesql {
 namespace codegen {

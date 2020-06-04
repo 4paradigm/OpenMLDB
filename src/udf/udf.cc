@@ -439,7 +439,7 @@ void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
               reinterpret_cast<void *>(&v1::maximum<float>));
     AddSymbol(jd, mi, "max_double",
               reinterpret_cast<void *>(&v1::maximum<double>));
-  
+
     AddSymbol(jd, mi, "min_int16",
               reinterpret_cast<void *>(&v1::minimum<int16_t>));
     AddSymbol(jd, mi, "min_int32",

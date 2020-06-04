@@ -14,8 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-#include "codegen/fn_let_ir_builder.h"
 #include "codegen/fn_let_ir_builder_test.h"
 #include <memory>
 #include <string>
@@ -43,6 +41,7 @@
 #include "udf/udf.h"
 #include "vm/jit.h"
 #include "vm/sql_compiler.h"
+#include "codegen/fn_let_ir_builder.h"
 #include "codegen/codegen_base_test.h"
 
 using namespace llvm;       // NOLINT
