@@ -10,11 +10,7 @@ import org.testng.annotations.Test;
 import java.util.Random;
 
 public class SQLRouterSmokeTest {
-    static {
-        String os = System.getProperty("os.name").toLowerCase();
-        String path = SQLRouterSmokeTest.class.getResource("/libsql_jsdk.so").getPath();
-        System.load(path);
-    }
+
     private Random random = new Random(System.currentTimeMillis());
 
     @Test

@@ -1,15 +1,20 @@
 package com._4paradigm.sql.sdk.impl;
 
 import com._4paradigm.sql.*;
+import com._4paradigm.sql.common.LibraryLoader;
 import com._4paradigm.sql.sdk.SdkOption;
 import com._4paradigm.sql.sdk.SqlException;
 import com._4paradigm.sql.sdk.SqlExecutor;
 
 public class SqlClusterExecutor implements SqlExecutor {
     static {
-        String os = System.getProperty("os.name").toLowerCase();
-        String path = SqlClusterExecutor.class.getResource("/libsql_jsdk.so").getPath();
-        System.load(path);
+        String libname = "sql_jsdk";
+        String osName = System.getProperty("os.name").toLowerCase();
+        if (osName.equals("mac os x")) {
+            LibraryLoader.loadLibrary(libname);
+        }else {
+            LibraryLoader.loadLibrary(libname);
+        }
     }
     private SdkOption option;
     private SQLRouter sqlRouter;
