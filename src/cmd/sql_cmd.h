@@ -63,7 +63,7 @@ void PrintResultSet(std::ostream &stream, ::fesql::sdk::ResultSet *result_set) {
         stream << "Empty set" << std::endl;
         return;
     }
-    ::fesql::base::TextTable t('-', '|', '+');
+    ::fesql::base::TextTable t('-', ' ', ' ');
     auto *schema = result_set->GetSchema();
     // Add Header
     for (int32_t i = 0; i < schema->GetColumnCnt(); i++) {
@@ -126,7 +126,7 @@ void PrintTableSchema(std::ostream &stream, const ::fesql::vm::Schema &schema) {
         return;
     }
     uint32_t items_size = schema.size();
-    ::fesql::base::TextTable t('-', '|', '+');
+    ::fesql::base::TextTable t('-', ' ', ' ');
     t.add("Field");
     t.add("Type");
     t.add("Null");
@@ -154,7 +154,7 @@ void PrintItems(std::ostream &stream, const std::string &head,
         return;
     }
 
-    ::fesql::base::TextTable t('-', '|', '+');
+    ::fesql::base::TextTable t('-', ' ', ' ');
     t.add(head);
     t.endOfRow();
     for (auto item : items) {

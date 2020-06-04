@@ -72,9 +72,6 @@ class ResultSetSQL : public ::fesql::sdk::ResultSet {
 
     inline int32_t Size() { return response_->count(); }
 
-    bool Reset() {
-        return false;
-    }
  private:
     inline uint32_t GetRecordSize() { return response_->count(); }
 
