@@ -143,7 +143,6 @@ class ZkClient {
     std::map<std::string, ItemChangedCallback> item_callbacks_;
     char buffer_[ZK_MAX_BUFFER_SIZE];
     std::atomic<uint64_t> session_term_;
-    char wget_buff_[128];
 };
 
 }  // namespace zk
