@@ -448,8 +448,6 @@ class NameServerImpl : public NameServer {
 
     void UpdateBlobServers(const std::vector<std::string>& endpoints);
 
-    void UpdateBlobServersLocked(const std::vector<std::string>& endpoints);
-
     void OnTabletOffline(const std::string& endpoint, bool startup_flag);
 
     void RecoverOfflineTablet();

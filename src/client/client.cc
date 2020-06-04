@@ -16,6 +16,8 @@
 #include <memory>
 #include <utility>
 
+#include "base/strings.h"
+
 int64_t ViewResult::GetInt(uint32_t idx) {
     int64_t val = 0;
     auto type = columns_->Get(idx).data_type();
@@ -128,7 +130,7 @@ bool BaseClient::Init(std::string* msg) {
         return false;
     }
     task_thread_pool_.DelayTask(zk_keep_alive_check_,
-                                boost::bind(&BaseClient::CheckZkClient, this));
+                                [this] { CheckZkClient(); });
     return true;
 }
 
@@ -142,7 +144,7 @@ void BaseClient::CheckZkClient() {
         }
     }
     task_thread_pool_.DelayTask(zk_keep_alive_check_,
-                                boost::bind(&BaseClient::CheckZkClient, this));
+                                [this] { CheckZkClient(); });
 }
 
 bool BaseClient::RefreshNodeList() {
@@ -150,20 +152,17 @@ bool BaseClient::RefreshNodeList() {
     if (!zk_client_->GetNodes(endpoints)) {
         return false;
     }
-    std::set<std::string> endpoint_set;
+    std::set<std::string> tablet_set;
+    std::set<std::string> blob_set;
     for (const auto& endpoint : endpoints) {
-        endpoint_set.insert(endpoint);
+        if (boost::starts_with(endpoint, rtidb::base::BLOB_PREFIX)) {
+            blob_set.insert(endpoint.substr(rtidb::base::BLOB_PREFIX.size()));
+        } else {
+            tablet_set.insert(endpoint);
+        }
     }
-    UpdateEndpoint(endpoint_set);
-    endpoints.clear();
-    if (!zk_client_->GetChildren(zk_root_path_ + "/ossnodes", endpoints)) {
-        return false;
-    }
-    endpoint_set.clear();
-    for (const auto& endpoint : endpoints) {
-        endpoint_set.insert(endpoint);
-    }
-    UpdateBlobEndpoint(endpoint_set);
+    UpdateEndpoint(tablet_set);
+    UpdateBlobEndpoint(blob_set);
     return true;
 }
 
