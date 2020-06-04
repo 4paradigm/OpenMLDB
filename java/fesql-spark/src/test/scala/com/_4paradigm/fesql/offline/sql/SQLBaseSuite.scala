@@ -31,13 +31,15 @@ class SQLBaseSuite extends SparkTestSuite {
 
   def testCases(yamlPath: String) {
     val caseFile = loadYaml[CaseFile](yamlPath)
-    caseFile.getSQLCases.asScala.foreach(c => testCase(c))
+    caseFile.getSQLCases.asScala.filter(c => needFilter(c)).foreach(c => testCase(c))
   }
 
+  def needFilter(sqlCase: SQLCase) : Boolean = {
+    sqlCase.getMode != ("offline-unsupport")
+  }
   def testCase(sqlCase: SQLCase): Unit = {
     test(SQLBaseSuite.getTestName(sqlCase)) {
       logger.info(s"Test ${sqlCase.getId}:${sqlCase.getDesc}")
-
       val inputDict = mutable.HashMap[String, DataFrame]()
       sqlCase.getInputs.asScala.foreach(desc => {
         val (name, df) = loadInputData(desc)
