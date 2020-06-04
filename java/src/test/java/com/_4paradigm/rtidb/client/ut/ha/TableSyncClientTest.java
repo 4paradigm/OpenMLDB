@@ -1117,7 +1117,70 @@ public class TableSyncClientTest extends TestCaseBase {
                 {
                     Map<String, Object> index = new HashMap<>();
                     index.put("id", 12l);
-                    ro = new ReadOption(index, null, null, 1);
+                    Set<String> colSet = new HashSet<>();
+                    colSet.add("id");
+                    colSet.add("image");
+                    ro = new ReadOption(index, null, colSet, 1);
+                    ros.add(ro);
+                }
+                {
+                    Map<String, Object> index2 = new HashMap<>();
+                    index2.put("id", 11l);
+                    Set<String> colSet = new HashSet<>();
+                    colSet.add("id");
+                    ro = new ReadOption(index2, null, colSet, 1);
+                    ros.add(ro);
+                }
+                try {
+                    it = tableSyncClient.batchQuery(name, ros);
+                    Assert.fail();
+                } catch (Exception e) {
+                    Assert.assertTrue(true);
+                }
+                ros.clear();
+                {
+                    Map<String, Object> index = new HashMap<>();
+                    index.put("id", 12l);
+                    Set<String> colSet = new HashSet<>();
+                    colSet.add("id");
+                    colSet.add("image");
+                    ro = new ReadOption(index, null, colSet, 1);
+                    ros.add(ro);
+                }
+                {
+                    Map<String, Object> index2 = new HashMap<>();
+                    index2.put("id", 11l);
+                    Set<String> colSet = new HashSet<>();
+                    colSet.add("id");
+                    colSet.add("image");
+                    ro = new ReadOption(index2, null, null, 1);
+                    ros.add(ro);
+                }
+                it = tableSyncClient.batchQuery(name, ros);
+                Assert.assertEquals(it.getCount(), 2);
+
+                Assert.assertTrue(it.valid());
+                queryMap = it.getDecodedValue();
+                Assert.assertEquals(queryMap.size(), 2);
+                Assert.assertEquals(queryMap.get("id"), 12l);
+                Assert.assertTrue(buf2.equals(((BlobData) queryMap.get("image")).getData()));
+
+                it.next();
+                queryMap = it.getDecodedValue();
+                Assert.assertEquals(queryMap.size(), 2);
+                Assert.assertEquals(queryMap.get("id"), 11l);
+                Assert.assertTrue(buf1.equals(((BlobData) queryMap.get("image")).getData()));
+                it.next();
+                Assert.assertFalse(it.valid());
+
+                ros.clear();
+                {
+                    Map<String, Object> index = new HashMap<>();
+                    index.put("id", 12l);
+                    Set<String> colSet = new HashSet<>();
+                    colSet.add("id");
+                    colSet.add("image");
+                    ro = new ReadOption(index, null, colSet, 1);
                     ros.add(ro);
                 }
                 {
@@ -1131,16 +1194,14 @@ public class TableSyncClientTest extends TestCaseBase {
 
                 Assert.assertTrue(it.valid());
                 queryMap = it.getDecodedValue();
-                Assert.assertEquals(queryMap.size(), 3);
+                Assert.assertEquals(queryMap.size(), 2);
                 Assert.assertEquals(queryMap.get("id"), 12l);
-                Assert.assertEquals(queryMap.get("attribute"), "a2");
                 Assert.assertTrue(buf2.equals(((BlobData) queryMap.get("image")).getData()));
 
                 it.next();
                 queryMap = it.getDecodedValue();
-                Assert.assertEquals(queryMap.size(), 3);
+                Assert.assertEquals(queryMap.size(), 2);
                 Assert.assertEquals(queryMap.get("id"), 11l);
-                Assert.assertEquals(queryMap.get("attribute"), "a1");
                 Assert.assertTrue(buf1.equals(((BlobData) queryMap.get("image")).getData()));
 
                 it.next();
