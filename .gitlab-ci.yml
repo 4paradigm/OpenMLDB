@@ -4,11 +4,7 @@ services:
 variables:
     GIT_SUBMODULE_STRATEGY: recursive
 stages:
-    - build
-    - test
-    - ts_integration_test
-    - ns_integration_test
-    - deploy
+    - make_docker
 
 build:
     stage: build
@@ -174,3 +170,10 @@ deploy-package:
         - source /root/.bashrc && bash steps/deploy_package.sh
     only:
         - tags
+make_docker:
+    stage: make_docker
+    script:
+        - source /root/.bashrc && sh tools/install_fesql.sh
+        - ln -sf /depends/thirdparty thirdparty
+        - ln -sf /depends/thirdsrc thirdsrc
+        - make blob_proxy
