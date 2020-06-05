@@ -888,6 +888,10 @@ std::shared_ptr<PartitionHandler> SortGenerator::Sort(
     if (!partition) {
         return std::shared_ptr<PartitionHandler>();
     }
+    if (!order_gen().Valid() &&
+        is_asc == (partition->GetOrderType() == kAscOrder)) {
+        return partition;
+    }
     auto output =
         std::shared_ptr<MemPartitionHandler>(new MemPartitionHandler());
 
@@ -924,6 +928,10 @@ std::shared_ptr<TableHandler> SortGenerator::Sort(
     std::shared_ptr<TableHandler> table, const bool reverse) {
     bool is_asc = reverse ? !is_asc_ : is_asc_;
     if (!table || !is_valid_) {
+        return table;
+    }
+    if (!order_gen().Valid() &&
+        is_asc == (table->GetOrderType() == kAscOrder)) {
         return table;
     }
     auto output_table = std::shared_ptr<MemTimeTableHandler>(
