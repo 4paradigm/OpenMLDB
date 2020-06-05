@@ -80,9 +80,9 @@ class NodeManager {
     ProjectNode *MakeAggProjectNode(const int32_t pos, const std::string &name,
                                     node::ExprNode *expression);
     PlanNode *MakeTablePlanNode(const std::string &node);
-    PlanNode *MakeJoinNode(PlanNode *left, PlanNode *right,
-                               JoinType join_type, const OrderByNode *order_by,
-                               const ExprNode *condition);
+    PlanNode *MakeJoinNode(PlanNode *left, PlanNode *right, JoinType join_type,
+                           const OrderByNode *order_by,
+                           const ExprNode *condition);
     // Make SQLxxx Node
     QueryNode *MakeSelectQueryNode(
         bool is_distinct, SQLNodeList *select_list_ptr,
@@ -115,11 +115,11 @@ class NodeManager {
                                ExprListNode *partitions, ExprNode *orders,
                                SQLNode *frame, bool instance_not_in_window);
     ExprNode *MakeOrderByNode(const ExprListNode *node_ptr, const bool is_asc);
-    SQLNode *MakeFrameNode(SQLNode *start, SQLNode *end);
+    SQLNode *MakeFrameExtent(SQLNode *start, SQLNode *end);
     SQLNode *MakeFrameBound(SQLNodeType bound_type);
     SQLNode *MakeFrameBound(SQLNodeType bound_type, ExprNode *offset);
-    SQLNode *MakeRangeFrameNode(SQLNode *node_ptr);
-    SQLNode *MakeRowsFrameNode(SQLNode *node_ptr);
+    SQLNode *MakeFrameNode(FrameType frame_type, SQLNode *node_ptr,
+                           ExprNode *frame_size);
     SQLNode *MakeLimitNode(int count);
 
     SQLNode *MakeNameNode(const std::string &name);

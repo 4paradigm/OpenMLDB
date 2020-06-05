@@ -198,6 +198,16 @@ inline const std::string ExprTypeName(const ExprType &type) {
     }
 }
 
+inline const std::string FrameTypeName(const FrameType &type) {
+    switch (type) {
+        case fesql::node::kFrameRange:
+            return "RANGE";
+        case fesql::node::kFrameRows:
+            return "ROWS";
+        case fesql::node::kFrameRowsRange:
+            return "ROWS_RANGE";
+    }
+}
 inline const std::string DataTypeName(const DataType &type) {
     switch (type) {
         case fesql::node::kBool:
@@ -448,7 +458,6 @@ class JoinNode : public TableRefNode {
     const node::OrderByNode *orders_;
     const ExprNode *condition_;
 };
-
 class SelectQueryNode : public QueryNode {
  public:
     SelectQueryNode(bool is_distinct, SQLNodeList *select_list,
@@ -527,259 +536,6 @@ class NameNode : public SQLNode {
 
     std::string GetName() const { return name_; }
     virtual bool Equals(const SQLNode *node) const;
-
- private:
-    std::string name_;
-};
-
-class LimitNode : public SQLNode {
- public:
-    LimitNode() : SQLNode(kLimit, 0, 0), limit_cnt_(0) {}
-
-    explicit LimitNode(int limit_cnt)
-        : SQLNode(kLimit, 0, 0), limit_cnt_(limit_cnt) {}
-
-    int GetLimitCount() const { return limit_cnt_; }
-
-    void Print(std::ostream &output, const std::string &org_tab) const;
-    virtual bool Equals(const SQLNode *node) const;
-
- private:
-    int limit_cnt_;
-};
-
-class FrameBound : public SQLNode {
- public:
-    FrameBound()
-        : SQLNode(kFrameBound, 0, 0),
-          bound_type_(kPreceding),
-          offset_(nullptr) {}
-
-    explicit FrameBound(SQLNodeType bound_type)
-        : SQLNode(kFrameBound, 0, 0),
-          bound_type_(bound_type),
-          offset_(nullptr) {}
-
-    FrameBound(SQLNodeType bound_type, ExprNode *offset)
-        : SQLNode(kFrameBound, 0, 0),
-          bound_type_(bound_type),
-          offset_(offset) {}
-
-    ~FrameBound() {}
-
-    void Print(std::ostream &output, const std::string &org_tab) const {
-        SQLNode::Print(output, org_tab);
-        const std::string tab = org_tab + INDENT + SPACE_ED;
-        std::string space = org_tab + INDENT + INDENT;
-        output << "\n";
-        output << tab << SPACE_ST << "bound: " << NameOfSQLNodeType(bound_type_)
-               << "\n";
-        if (NULL == offset_) {
-            output << space << "UNBOUNDED";
-        } else {
-            offset_->Print(output, space);
-        }
-    }
-
-    SQLNodeType GetBoundType() const { return bound_type_; }
-
-    ExprNode *GetOffset() const { return offset_; }
-    virtual bool Equals(const SQLNode *node) const;
-
- private:
-    SQLNodeType bound_type_;
-    ExprNode *offset_;
-};
-
-class FrameNode : public SQLNode {
- public:
-    FrameNode()
-        : SQLNode(kFrames, 0, 0),
-          frame_type_(kFrameRange),
-          start_(nullptr),
-          end_(nullptr) {}
-
-    FrameNode(SQLNodeType frame_type, FrameBound *start, FrameBound *end)
-        : SQLNode(kFrames, 0, 0),
-          frame_type_(frame_type),
-          start_(start),
-          end_(end) {}
-
-    ~FrameNode() {}
-
-    SQLNodeType GetFrameType() const { return frame_type_; }
-
-    void SetFrameType(SQLNodeType frame_type) { frame_type_ = frame_type; }
-
-    FrameBound *GetStart() const { return start_; }
-
-    FrameBound *GetEnd() const { return end_; }
-
-    void Print(std::ostream &output, const std::string &org_tab) const;
-    virtual bool Equals(const SQLNode *node) const;
-
- private:
-    SQLNodeType frame_type_;
-    FrameBound *start_;
-    FrameBound *end_;
-};
-class WindowDefNode : public SQLNode {
- public:
-    WindowDefNode()
-        : SQLNode(kWindowDef, 0, 0),
-          instance_not_in_window_(false),
-          window_name_(""),
-          frame_ptr_(NULL),
-          union_tables_(nullptr),
-          partitions_(nullptr),
-          orders_(nullptr) {}
-
-    ~WindowDefNode() {}
-
-    const std::string &GetName() const { return window_name_; }
-
-    void SetName(const std::string &name) { window_name_ = name; }
-
-    ExprListNode *GetPartitions() const { return partitions_; }
-
-    OrderByNode *GetOrders() const { return orders_; }
-
-    SQLNode *GetFrame() const { return frame_ptr_; }
-
-    void SetPartitions(ExprListNode *partitions) { partitions_ = partitions; }
-    void SetOrders(OrderByNode *orders) { orders_ = orders; }
-    void SetFrame(FrameNode *frame) { frame_ptr_ = frame; }
-
-    SQLNodeList *union_tables() const { return union_tables_; }
-    void set_union_tables(SQLNodeList *union_table) {
-        union_tables_ = union_table;
-    }
-
-    const bool instance_not_in_window() const {
-        return instance_not_in_window_;
-    }
-    void set_instance_not_in_window(bool instance_not_in_window) {
-        instance_not_in_window_ = instance_not_in_window;
-    }
-    void Print(std::ostream &output, const std::string &org_tab) const;
-    virtual bool Equals(const SQLNode *that) const;
-
- private:
-    bool instance_not_in_window_;
-    std::string window_name_;   /* window's own name */
-    FrameNode *frame_ptr_;      /* expression for starting bound, if any */
-    SQLNodeList *union_tables_; /* union other table in window */
-    ExprListNode *partitions_;  /* PARTITION BY expression list */
-    OrderByNode *orders_;       /* ORDER BY (list of SortBy) */
-};
-
-class AllNode : public ExprNode {
- public:
-    AllNode() : ExprNode(kExprAll), relation_name_("") {}
-
-    explicit AllNode(const std::string &relation_name)
-        : ExprNode(kExprAll), relation_name_(relation_name) {}
-    explicit AllNode(const std::string &relation_name,
-                     const std::string &db_name)
-        : ExprNode(kExprAll),
-          relation_name_(relation_name),
-          db_name_(db_name) {}
-
-    std::string GetRelationName() const { return relation_name_; }
-    std::string GetDBName() const { return db_name_; }
-
-    void SetRelationName(const std::string &relation_name) {
-        relation_name_ = relation_name;
-    }
-    const std::string GetExprString() const;
-    virtual bool Equals(const ExprNode *that) const;
-
- private:
-    std::string relation_name_;
-    std::string db_name_;
-};
-class CallExprNode : public ExprNode {
- public:
-    explicit CallExprNode(const std::string &function_name,
-                          const ExprListNode *args, const WindowDefNode *over)
-        : ExprNode(kExprCall),
-          is_agg_(true),
-          function_name_(function_name),
-          over_(over),
-          args_(args) {}
-
-    ~CallExprNode() {}
-
-    void Print(std::ostream &output, const std::string &org_tab) const;
-    const std::string GetExprString() const;
-    virtual bool Equals(const ExprNode *that) const;
-
-    std::string GetFunctionName() const { return function_name_; }
-
-    const WindowDefNode *GetOver() const { return over_; }
-
-    void SetOver(WindowDefNode *over) { over_ = over; }
-
-    bool GetIsAgg() const { return is_agg_; }
-
-    void SetAgg(bool is_agg) { is_agg_ = is_agg; }
-    const ExprListNode *GetArgs() const { return args_; }
-
-    const int GetArgsSize() const {
-        return nullptr == args_ ? 0 : args_->children_.size();
-    }
-
- private:
-    bool is_agg_;
-    const std::string function_name_;
-    const WindowDefNode *over_;
-    const ExprListNode *args_;
-};
-
-class QueryExpr : public ExprNode {
- public:
-    explicit QueryExpr(const QueryNode *query)
-        : ExprNode(kExprQuery), query_(query) {}
-    void Print(std::ostream &output, const std::string &org_tab) const;
-    virtual bool Equals(const ExprNode *node) const;
-    const std::string GetExprString() const;
-
-    const QueryNode *query_;
-};
-
-class BinaryExpr : public ExprNode {
- public:
-    BinaryExpr() : ExprNode(kExprBinary) {}
-    explicit BinaryExpr(FnOperator op) : ExprNode(kExprBinary), op_(op) {}
-    FnOperator GetOp() const { return op_; }
-    void Print(std::ostream &output, const std::string &org_tab) const;
-    const std::string GetExprString() const;
-    virtual bool Equals(const ExprNode *node) const;
-
- private:
-    FnOperator op_;
-};
-class UnaryExpr : public ExprNode {
- public:
-    UnaryExpr() : ExprNode(kExprUnary) {}
-    explicit UnaryExpr(FnOperator op) : ExprNode(kExprUnary), op_(op) {}
-    FnOperator GetOp() const { return op_; }
-    void Print(std::ostream &output, const std::string &org_tab) const override;
-    const std::string GetExprString() const;
-    virtual bool Equals(const ExprNode *node) const;
-
- private:
-    FnOperator op_;
-};
-class ExprIdNode : public ExprNode {
- public:
-    ExprIdNode() : ExprNode(kExprId) {}
-    explicit ExprIdNode(const std::string &name)
-        : ExprNode(kExprId), name_(name) {}
-    const std::string GetName() const { return name_; }
-    void Print(std::ostream &output, const std::string &org_tab) const override;
-    const std::string GetExprString() const override;
-    bool Equals(const ExprNode *node) const override;
 
  private:
     std::string name_;
@@ -1008,6 +764,265 @@ class ConstNode : public ExprNode {
         double vdouble;
     } val_;
 };
+class LimitNode : public SQLNode {
+ public:
+    LimitNode() : SQLNode(kLimit, 0, 0), limit_cnt_(0) {}
+
+    explicit LimitNode(int limit_cnt)
+        : SQLNode(kLimit, 0, 0), limit_cnt_(limit_cnt) {}
+
+    int GetLimitCount() const { return limit_cnt_; }
+
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    virtual bool Equals(const SQLNode *node) const;
+
+ private:
+    int limit_cnt_;
+};
+
+class FrameBound : public SQLNode {
+ public:
+    FrameBound()
+        : SQLNode(kFrameBound, 0, 0),
+          bound_type_(kPreceding),
+          offset_(nullptr) {}
+
+    explicit FrameBound(SQLNodeType bound_type)
+        : SQLNode(kFrameBound, 0, 0),
+          bound_type_(bound_type),
+          offset_(nullptr) {}
+
+    FrameBound(SQLNodeType bound_type, ExprNode *offset)
+        : SQLNode(kFrameBound, 0, 0),
+          bound_type_(bound_type),
+          offset_(offset) {}
+
+    ~FrameBound() {}
+
+    void Print(std::ostream &output, const std::string &org_tab) const {
+        SQLNode::Print(output, org_tab);
+        const std::string tab = org_tab + INDENT + SPACE_ED;
+        std::string space = org_tab + INDENT + INDENT;
+        output << "\n";
+        output << tab << SPACE_ST << "bound: " << NameOfSQLNodeType(bound_type_)
+               << "\n";
+        if (NULL == offset_) {
+            output << space << "UNBOUNDED";
+        } else {
+            offset_->Print(output, space);
+        }
+    }
+    SQLNodeType GetBoundType() const { return bound_type_; }
+    ExprNode *GetOffset() const { return offset_; }
+    virtual bool Equals(const SQLNode *node) const;
+
+ private:
+    SQLNodeType bound_type_;
+    ExprNode *offset_;
+};
+
+class FrameExtent : public SQLNode {
+ public:
+    explicit FrameExtent(FrameBound *start)
+        : SQLNode(kFrameExtent, 0, 0), start_(start) {}
+
+    FrameExtent(FrameBound *start, FrameBound *end)
+        : SQLNode(kFrameExtent, 0, 0), start_(start), end_(end) {}
+
+    ~FrameExtent() {}
+
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    virtual bool Equals(const SQLNode *node) const;
+    FrameBound *start() const { return start_; }
+    FrameBound *end() const { return end_; }
+
+ private:
+    FrameBound *start_;
+    FrameBound *end_;
+};
+class FrameNode : public SQLNode {
+ public:
+    FrameNode(FrameType frame_type, FrameExtent *frame_extent,
+              ConstNode *frame_size)
+        : SQLNode(kFrames, 0, 0),
+          frame_type_(frame_type),
+          frame_extent_(frame_extent),
+          frame_size_(frame_size) {}
+    ~FrameNode() {}
+    FrameType GetFrameType() const { return frame_type_; }
+    void SetFrameType(FrameType frame_type) { frame_type_ = frame_type; }
+    FrameExtent *frame_extent() const { return frame_extent_; }
+    ConstNode *frame_size() const { return frame_size_; }
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    virtual bool Equals(const SQLNode *node) const;
+
+ private:
+    FrameType frame_type_;
+    FrameExtent *frame_extent_;
+    ConstNode *frame_size_;
+};
+class WindowDefNode : public SQLNode {
+ public:
+    WindowDefNode()
+        : SQLNode(kWindowDef, 0, 0),
+          instance_not_in_window_(false),
+          window_name_(""),
+          frame_ptr_(NULL),
+          union_tables_(nullptr),
+          partitions_(nullptr),
+          orders_(nullptr) {}
+
+    ~WindowDefNode() {}
+
+    const std::string &GetName() const { return window_name_; }
+
+    void SetName(const std::string &name) { window_name_ = name; }
+
+    ExprListNode *GetPartitions() const { return partitions_; }
+
+    OrderByNode *GetOrders() const { return orders_; }
+
+    SQLNode *GetFrame() const { return frame_ptr_; }
+
+    void SetPartitions(ExprListNode *partitions) { partitions_ = partitions; }
+    void SetOrders(OrderByNode *orders) { orders_ = orders; }
+    void SetFrame(FrameNode *frame) { frame_ptr_ = frame; }
+
+    SQLNodeList *union_tables() const { return union_tables_; }
+    void set_union_tables(SQLNodeList *union_table) {
+        union_tables_ = union_table;
+    }
+
+    const bool instance_not_in_window() const {
+        return instance_not_in_window_;
+    }
+    void set_instance_not_in_window(bool instance_not_in_window) {
+        instance_not_in_window_ = instance_not_in_window;
+    }
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    virtual bool Equals(const SQLNode *that) const;
+
+ private:
+    bool instance_not_in_window_;
+    std::string window_name_;   /* window's own name */
+    FrameNode *frame_ptr_;      /* expression for starting bound, if any */
+    SQLNodeList *union_tables_; /* union other table in window */
+    ExprListNode *partitions_;  /* PARTITION BY expression list */
+    OrderByNode *orders_;       /* ORDER BY (list of SortBy) */
+};
+
+class AllNode : public ExprNode {
+ public:
+    AllNode() : ExprNode(kExprAll), relation_name_("") {}
+
+    explicit AllNode(const std::string &relation_name)
+        : ExprNode(kExprAll), relation_name_(relation_name) {}
+    explicit AllNode(const std::string &relation_name,
+                     const std::string &db_name)
+        : ExprNode(kExprAll),
+          relation_name_(relation_name),
+          db_name_(db_name) {}
+
+    std::string GetRelationName() const { return relation_name_; }
+    std::string GetDBName() const { return db_name_; }
+
+    void SetRelationName(const std::string &relation_name) {
+        relation_name_ = relation_name;
+    }
+    const std::string GetExprString() const;
+    virtual bool Equals(const ExprNode *that) const;
+
+ private:
+    std::string relation_name_;
+    std::string db_name_;
+};
+class CallExprNode : public ExprNode {
+ public:
+    explicit CallExprNode(const std::string &function_name,
+                          const ExprListNode *args, const WindowDefNode *over)
+        : ExprNode(kExprCall),
+          is_agg_(true),
+          function_name_(function_name),
+          over_(over),
+          args_(args) {}
+
+    ~CallExprNode() {}
+
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const std::string GetExprString() const;
+    virtual bool Equals(const ExprNode *that) const;
+
+    std::string GetFunctionName() const { return function_name_; }
+
+    const WindowDefNode *GetOver() const { return over_; }
+
+    void SetOver(WindowDefNode *over) { over_ = over; }
+
+    bool GetIsAgg() const { return is_agg_; }
+
+    void SetAgg(bool is_agg) { is_agg_ = is_agg; }
+    const ExprListNode *GetArgs() const { return args_; }
+
+    const int GetArgsSize() const {
+        return nullptr == args_ ? 0 : args_->children_.size();
+    }
+
+ private:
+    bool is_agg_;
+    const std::string function_name_;
+    const WindowDefNode *over_;
+    const ExprListNode *args_;
+};
+
+class QueryExpr : public ExprNode {
+ public:
+    explicit QueryExpr(const QueryNode *query)
+        : ExprNode(kExprQuery), query_(query) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    virtual bool Equals(const ExprNode *node) const;
+    const std::string GetExprString() const;
+
+    const QueryNode *query_;
+};
+
+class BinaryExpr : public ExprNode {
+ public:
+    BinaryExpr() : ExprNode(kExprBinary) {}
+    explicit BinaryExpr(FnOperator op) : ExprNode(kExprBinary), op_(op) {}
+    FnOperator GetOp() const { return op_; }
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const std::string GetExprString() const;
+    virtual bool Equals(const ExprNode *node) const;
+
+ private:
+    FnOperator op_;
+};
+class UnaryExpr : public ExprNode {
+ public:
+    UnaryExpr() : ExprNode(kExprUnary) {}
+    explicit UnaryExpr(FnOperator op) : ExprNode(kExprUnary), op_(op) {}
+    FnOperator GetOp() const { return op_; }
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+    const std::string GetExprString() const;
+    virtual bool Equals(const ExprNode *node) const;
+
+ private:
+    FnOperator op_;
+};
+class ExprIdNode : public ExprNode {
+ public:
+    ExprIdNode() : ExprNode(kExprId) {}
+    explicit ExprIdNode(const std::string &name)
+        : ExprNode(kExprId), name_(name) {}
+    const std::string GetName() const { return name_; }
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+    const std::string GetExprString() const override;
+    bool Equals(const ExprNode *node) const override;
+
+ private:
+    std::string name_;
+};
+
 class ColumnRefNode : public ExprNode {
  public:
     ColumnRefNode()

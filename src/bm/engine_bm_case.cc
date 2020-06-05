@@ -145,7 +145,7 @@ void EngineWindowSumFeature1(benchmark::State* state, MODE mode,
     const std::string sql =
         "SELECT "
         "sum(col4) OVER w1 as w1_col4_sum "
-        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 ROWS BETWEEN "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN "
         "30d "
         "PRECEDING AND CURRENT ROW) limit " +
         std::to_string(limit_cnt) + ";";
@@ -159,7 +159,7 @@ void EngineRunBatchWindowSumFeature1(benchmark::State* state, MODE mode,
     const std::string sql =
         "SELECT "
         "sum(col4) OVER w1 as w1_col4_sum "
-        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 ROWS BETWEEN "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN "
         "30d "
         "PRECEDING AND CURRENT ROW) limit " +
         std::to_string(limit_cnt) + ";";
@@ -176,7 +176,7 @@ void EngineRunBatchWindowSumFeature5(benchmark::State* state, MODE mode,
         "sum(col4) OVER w1 as w1_col4_sum, "
         "sum(col2) OVER w1 as w1_col2_sum, "
         "sum(col5) OVER w1 as w1_col5_sum "
-        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 ROWS BETWEEN "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN "
         "30d "
         "PRECEDING AND CURRENT ROW) limit " +
         std::to_string(limit_cnt) + ";";
@@ -194,7 +194,7 @@ void EngineWindowSumFeature5(benchmark::State* state, MODE mode,
         "sum(col4) OVER w1 as w1_col4_sum, "
         "sum(col2) OVER w1 as w1_col2_sum, "
         "sum(col5) OVER w1 as w1_col5_sum "
-        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 ROWS BETWEEN "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN "
         "30d "
         "PRECEDING AND CURRENT ROW) limit " +
         std::to_string(limit_cnt) + ";";
@@ -236,7 +236,7 @@ void EngineWindowMultiAggFeature5(benchmark::State* state, MODE mode,
         "max(col4) OVER w1 as w1_col4_max, "
         "max(col2) OVER w1 as w1_col2_max, "
         "max(col5) OVER w1 as w1_col5_max "
-        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 ROWS BETWEEN "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN "
         "30d "
         "PRECEDING AND CURRENT ROW) limit " +
         std::to_string(limit_cnt) + ";";

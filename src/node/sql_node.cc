@@ -370,17 +370,25 @@ bool OrderByNode::Equals(const ExprNode *node) const {
 void FrameNode::Print(std::ostream &output, const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
-
     output << "\n";
-    PrintValue(output, tab, NameOfSQLNodeType(frame_type_), "type", false);
-
+    PrintValue(output, tab, FrameTypeName(frame_type_), "frame_type", false);
+    output << "\n";
+    PrintSQLNode(output, tab, frame_extent_, "frame_extent", false);
+    if (nullptr != frame_size_) {
+        output << "\n";
+        PrintValue(output, tab, ExprString(frame_size_), "frame_size", false);
+    }
+}
+void FrameExtent::Print(std::ostream &output,
+                        const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
     if (NULL == start_) {
         PrintValue(output, tab, "UNBOUNDED", "start", false);
     } else {
         PrintSQLNode(output, tab, start_, "start", false);
     }
-
     output << "\n";
     if (NULL == end_) {
         PrintValue(output, tab, "UNBOUNDED", "end", true);
@@ -388,13 +396,22 @@ void FrameNode::Print(std::ostream &output, const std::string &org_tab) const {
         PrintSQLNode(output, tab, end_, "end", true);
     }
 }
+bool FrameExtent::Equals(const SQLNode *node) const {
+    if (!SQLNode::Equals(node)) {
+        return false;
+    }
+    const FrameExtent *that = dynamic_cast<const FrameExtent *>(node);
+    return SQLEquals(this->start_, that->start_) &&
+           SQLEquals(this->end_, that->end_);
+}
 bool FrameNode::Equals(const SQLNode *node) const {
     if (!SQLNode::Equals(node)) {
         return false;
     }
     const FrameNode *that = dynamic_cast<const FrameNode *>(node);
-    return this->frame_type_ == that->frame_type_;
-    SQLEquals(this->start_, that->start_) && SQLEquals(this->end_, that->end_);
+    return this->frame_type_ == that->frame_type_ &&
+           SQLEquals(this->frame_extent_, that->frame_extent_) &&
+           SQLEquals(this->frame_size_, that->frame_size_);
 }
 
 void CallExprNode::Print(std::ostream &output,
@@ -579,12 +596,6 @@ std::string NameOfSQLNodeType(const SQLNodeType &type) {
             break;
         case kCurrent:
             output = "kCurrent";
-            break;
-        case kFrameRange:
-            output = "kFrameRange";
-            break;
-        case kFrameRows:
-            output = "kFrameRows";
             break;
         case kConst:
             output = "kConst";

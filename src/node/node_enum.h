@@ -36,6 +36,7 @@ enum SQLNodeType {
     kWindowFunc,
     kWindowDef,
     kFrameBound,
+    kFrameExtent,
     kFrames,
     kColumnDesc,
     kColumnIndex,
@@ -47,9 +48,6 @@ enum SQLNodeType {
     kName,
     kConst,
     kLimit,
-
-    kFrameRange,
-    kFrameRows,
 
     kPreceding,
     kFollowing,
@@ -160,6 +158,11 @@ enum FnOperator {
     kFnOpNone
 };
 
+enum FrameType {
+    kFrameRange,
+    kFrameRows,
+    kFrameRowsRange
+};
 enum JoinType {
     kJoinTypeFull,
     kJoinTypeLast,

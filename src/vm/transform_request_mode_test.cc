@@ -272,7 +272,7 @@ INSTANTIATE_TEST_CASE_P(
             "col1, "
             "sum(col3) OVER w1 as w1_col3_sum, "
             "sum(col2) OVER w1 as w1_col2_sum "
-            "FROM t1 WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS "
+            "FROM t1 WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 RANGE "
             "BETWEEN 3 "
             "PRECEDING AND CURRENT ROW) limit 10;",
             "LIMIT(limit=10, optimized)\n"
@@ -286,7 +286,7 @@ INSTANTIATE_TEST_CASE_P(
             "col1, "
             "sum(col3) OVER w1 as w1_col3_sum, "
             "sum(col2) OVER w1 as w1_col2_sum "
-            "FROM t1 WINDOW w1 AS (PARTITION BY col2, col1 ORDER BY col5 ROWS "
+            "FROM t1 WINDOW w1 AS (PARTITION BY col2, col1 ORDER BY col5 RANGE "
             "BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;",
             "LIMIT(limit=10, optimized)\n"
             "  PROJECT(type=Aggregation, limit=10)\n"
@@ -300,7 +300,7 @@ INSTANTIATE_TEST_CASE_P(
             "sum(col3) OVER w1 as w1_col3_sum, "
             "*, "
             "sum(col2) OVER w1 as w1_col2_sum "
-            "FROM t1 WINDOW w1 AS (PARTITION BY col3 ORDER BY col5 ROWS "
+            "FROM t1 WINDOW w1 AS (PARTITION BY col3 ORDER BY col5 RANGE "
             "BETWEEN 3"
             "PRECEDING AND CURRENT ROW) limit 10;",
             "LIMIT(limit=10, optimized)\n"
@@ -369,7 +369,7 @@ INSTANTIATE_TEST_CASE_P(
             "sum(t1.col3) OVER w1 as w1_col3_sum, "
             "sum(t1.col2) OVER w1 as w1_col2_sum "
             "FROM t1 last join t2 order by t2.col5 on t1.col1 = t2.col1 "
-            "WINDOW w1 AS (PARTITION BY t1.col1 ORDER BY t1.col5 ROWS "
+            "WINDOW w1 AS (PARTITION BY t1.col1 ORDER BY t1.col5 RANGE "
             "BETWEEN 3 "
             "PRECEDING AND CURRENT ROW) limit 10;",
             "LIMIT(limit=10, optimized)\n"
@@ -388,7 +388,7 @@ INSTANTIATE_TEST_CASE_P(
             "sum(t1.col3) OVER w1 as w1_col3_sum, "
             "sum(t1.col2) OVER w1 as w1_col2_sum "
             "FROM t1 last join t2 order by t2.col5 on t1.col2 = t2.col2 "
-            "WINDOW w1 AS (PARTITION BY t1.col1, t1.col2 ORDER BY t1.col5 ROWS "
+            "WINDOW w1 AS (PARTITION BY t1.col1, t1.col2 ORDER BY t1.col5 RANGE "
             "BETWEEN 3 "
             "PRECEDING AND CURRENT ROW) limit 10;",
             "LIMIT(limit=10, optimized)\n"
@@ -407,7 +407,7 @@ INSTANTIATE_TEST_CASE_P(
             "sum(t1.col3) OVER w1 as w1_col3_sum, "
             "sum(t1.col2) OVER w1 as w1_col2_sum "
             "FROM t1 last join t2 order by t2.col5 on t1.col1 = t2.col1 "
-            "WINDOW w1 AS (PARTITION BY t1.col1, t1.col2 ORDER BY t1.col5 ROWS "
+            "WINDOW w1 AS (PARTITION BY t1.col1, t1.col2 ORDER BY t1.col5 RANGE "
             "BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;",
             "LIMIT(limit=10, optimized)\n"
             "  PROJECT(type=Aggregation, limit=10)\n"
@@ -426,7 +426,7 @@ INSTANTIATE_TEST_CASE_P(
         // 0
         std::make_pair(
             "SELECT col1, col5, sum(col2) OVER w1 as w1_col2_sum FROM t1\n"
-            "      WINDOW w1 AS (UNION t3 PARTITION BY col1 ORDER BY col5 ROWS "
+            "      WINDOW w1 AS (UNION t3 PARTITION BY col1 ORDER BY col5 RANGE "
             "BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;",
             "LIMIT(limit=10, optimized)\n"
             "  PROJECT(type=Aggregation, limit=10)\n"
@@ -441,7 +441,7 @@ INSTANTIATE_TEST_CASE_P(
         std::make_pair(
             "SELECT col1, col5, sum(col2) OVER w1 as w1_col2_sum FROM t1\n"
             "      WINDOW w1 AS (UNION t3 PARTITION BY col1,col2 ORDER BY col5 "
-            "ROWS "
+            "RANGE "
             "BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;",
             "LIMIT(limit=10, optimized)\n"
             "  PROJECT(type=Aggregation, limit=10)\n"
@@ -456,7 +456,7 @@ INSTANTIATE_TEST_CASE_P(
         std::make_pair(
             "SELECT col1, col5, sum(col2) OVER w1 as w1_col2_sum FROM t1\n"
             "      WINDOW w1 AS (UNION t3 PARTITION BY col1 ORDER BY col5 "
-            "ROWS "
+            "RANGE "
             "BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;",
             "LIMIT(limit=10, optimized)\n"
             "  PROJECT(type=Aggregation, limit=10)\n"

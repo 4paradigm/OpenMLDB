@@ -372,8 +372,8 @@ bool Planner::CreateWindowPlanNode(
         if (nullptr != w_ptr->GetFrame()) {
             node::FrameNode *frame =
                 dynamic_cast<node::FrameNode *>(w_ptr->GetFrame());
-            node::FrameBound *start = frame->GetStart();
-            node::FrameBound *end = frame->GetEnd();
+            node::FrameBound *start = frame->frame_extent()->start();
+            node::FrameBound *end = frame->frame_extent()->end();
 
             start_offset = CreateFrameOffset(start, status);
             if (common::kOk != status.code) {

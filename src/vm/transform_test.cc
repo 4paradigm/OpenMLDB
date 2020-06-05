@@ -526,7 +526,7 @@ INSTANTIATE_TEST_CASE_P(
             "col1, "
             "sum(col3) OVER w1 as w1_col3_sum, "
             "sum(col2) OVER w1 as w1_col2_sum "
-            "FROM t1 WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS "
+            "FROM t1 WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 RANGE "
             "BETWEEN 3 "
             "PRECEDING AND CURRENT ROW) limit 10;",
             "LIMIT(limit=10, optimized)\n"
@@ -539,7 +539,7 @@ INSTANTIATE_TEST_CASE_P(
             "col1, "
             "sum(col3) OVER w1 as w1_col3_sum, "
             "sum(col2) OVER w1 as w1_col2_sum "
-            "FROM t1 WINDOW w1 AS (PARTITION BY col2, col1 ORDER BY col5 ROWS "
+            "FROM t1 WINDOW w1 AS (PARTITION BY col2, col1 ORDER BY col5 RANGE "
             "BETWEEN 3 "
             "PRECEDING AND CURRENT ROW) limit 10;",
             "LIMIT(limit=10, optimized)\n"
@@ -552,7 +552,7 @@ INSTANTIATE_TEST_CASE_P(
             "col1, "
             "sum(col3) OVER w1 as w1_col3_sum, "
             "sum(col2) OVER w1 as w1_col2_sum "
-            "FROM t1 WINDOW w1 AS (PARTITION BY col3 ORDER BY col5 ROWS "
+            "FROM t1 WINDOW w1 AS (PARTITION BY col3 ORDER BY col5 RANGE "
             "BETWEEN 3 "
             "PRECEDING AND CURRENT ROW) limit 10;",
             "LIMIT(limit=10, optimized)\n"
@@ -594,7 +594,7 @@ INSTANTIATE_TEST_CASE_P(
             "sum(t1.col3) OVER w1 as w1_col3_sum, "
             "sum(t1.col2) OVER w1 as w1_col2_sum "
             "FROM t1 last join t2 order by t2.col5 on t1.col1 = t2.col1 "
-            "WINDOW w1 AS (PARTITION BY t1.col0 ORDER BY t1.col5 ROWS "
+            "WINDOW w1 AS (PARTITION BY t1.col0 ORDER BY t1.col5 RANGE "
             "BETWEEN 3 "
             "PRECEDING AND CURRENT ROW) limit 10;",
             "LIMIT(limit=10, optimized)\n"
@@ -613,7 +613,7 @@ INSTANTIATE_TEST_CASE_P(
             "sum(t1.col3) OVER w1 as w1_col3_sum, "
             "sum(t1.col2) OVER w1 as w1_col2_sum "
             "FROM t1 last join t2 order by t2.col5 on t1.col1 = t2.col1 "
-            "WINDOW w1 AS (PARTITION BY t1.col1 ORDER BY t1.col5 ROWS "
+            "WINDOW w1 AS (PARTITION BY t1.col1 ORDER BY t1.col5 RANGE "
             "BETWEEN 3 "
             "PRECEDING AND CURRENT ROW) limit 10;",
             "LIMIT(limit=10, optimized)\n"
@@ -634,7 +634,7 @@ INSTANTIATE_TEST_CASE_P(
             "FROM t1 last join t2 order by t2.col5 on t1.col0 = t2.col0 last "
             "join t3 order by t3.col5 on "
             "t2.col0=t3.col0 "
-            "WINDOW w1 AS (PARTITION BY t1.col1 ORDER BY t1.col5 ROWS "
+            "WINDOW w1 AS (PARTITION BY t1.col1 ORDER BY t1.col5 RANGE "
             "BETWEEN 3 "
             "PRECEDING AND CURRENT ROW) limit 10;",
             "LIMIT(limit=10, optimized)\n"
@@ -659,7 +659,7 @@ INSTANTIATE_TEST_CASE_P(
             "FROM t1 last join t2 order by t2.col5 on t1.col2 = t2.col2 last "
             "join t3 order by t3.col5 on "
             "t2.col2=t3.col2 "
-            "WINDOW w1 AS (PARTITION BY t1.col0 ORDER BY t1.col5 ROWS "
+            "WINDOW w1 AS (PARTITION BY t1.col0 ORDER BY t1.col5 RANGE "
             "BETWEEN 3 "
             "PRECEDING AND CURRENT ROW) limit 10;",
             "LIMIT(limit=10, optimized)\n"
@@ -685,7 +685,7 @@ INSTANTIATE_TEST_CASE_P(
             "FROM t1 last join t2 order by t2.col5 on t1.col2 = t2.col2 last "
             "join t3 order by t3.col5 on "
             "t2.col2=t3.col2 "
-            "WINDOW w1 AS (PARTITION BY t3.col0 ORDER BY t1.col5 ROWS "
+            "WINDOW w1 AS (PARTITION BY t3.col0 ORDER BY t1.col5 RANGE "
             "BETWEEN 3 "
             "PRECEDING AND CURRENT ROW) limit 10;",
             "LIMIT(limit=10, optimized)\n"
@@ -708,7 +708,7 @@ INSTANTIATE_TEST_CASE_P(
         // 0
         std::make_pair(
             "SELECT col1, col5, sum(col2) OVER w1 as w1_col2_sum FROM t1\n"
-            "      WINDOW w1 AS (UNION t3 PARTITION BY col1 ORDER BY col5 ROWS "
+            "      WINDOW w1 AS (UNION t3 PARTITION BY col1 ORDER BY col5 RANGE "
             "BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;",
             "LIMIT(limit=10, optimized)\n"
             "  PROJECT(type=WindowAggregation, limit=10)\n"
@@ -722,7 +722,7 @@ INSTANTIATE_TEST_CASE_P(
         std::make_pair(
             "SELECT col1, col5, sum(col2) OVER w1 as w1_col2_sum FROM t1\n"
             "      WINDOW w1 AS (UNION t3 PARTITION BY col1,col2 ORDER BY col5 "
-            "ROWS "
+            "RANGE "
             "BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;",
             "LIMIT(limit=10, optimized)\n"
             "  PROJECT(type=WindowAggregation, limit=10)\n"
@@ -776,7 +776,7 @@ INSTANTIATE_TEST_CASE_P(
             "      WINDOW w1 AS (UNION (select c0 as col0, c1 as col1, c2 as "
             "col2, 0.0f as col3, 0.0 as col4, c5 as col5, c6 as col6 from tb) "
             "PARTITION BY col1,col2 ORDER BY col5 "
-            "ROWS "
+            "RANGE "
             "BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;",
             "LIMIT(limit=10, optimized)\n"
             "  PROJECT(type=WindowAggregation, limit=10)\n"
@@ -795,7 +795,7 @@ INSTANTIATE_TEST_CASE_P(
             "      WINDOW w1 AS (UNION (select c0 as col0, c1 as col1, c2 as "
             "col2, 0.0f as col3, 0.0 as col4, c5 as col5, c6 as col6 from tc) "
             "PARTITION BY col1,col2 ORDER BY col5 "
-            "ROWS "
+            "RANGE "
             "BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;",
             "LIMIT(limit=10, optimized)\n"
             "  PROJECT(type=WindowAggregation, limit=10)\n"
@@ -923,7 +923,7 @@ INSTANTIATE_TEST_CASE_P(
             "sum(t1.col3) OVER w1 as w1_col3_sum, "
             "sum(t1.col2) OVER w1 as w1_col2_sum "
             "FROM t1 last join t2 order by t2.col5 on t1.col1 = t2.col1 "
-            "WINDOW w1 AS (PARTITION BY t1.col0 ORDER BY t1.col5 ROWS "
+            "WINDOW w1 AS (PARTITION BY t1.col0 ORDER BY t1.col5 RANGE "
             "BETWEEN 3 "
             "PRECEDING AND CURRENT ROW) limit 10;",
             "LIMIT(limit=10, optimized)\n"

@@ -58,6 +58,7 @@ typedef void* yyscan_t;
 	::fesql::node::ExprNode* expr;
 	::fesql::node::TableRefNode* table_ref;
 	::fesql::node::JoinType join_type;
+	::fesql::node::FrameType frame_type;
 	::fesql::node::DataType type;
 	::fesql::node::TypeNode* typenode;
 	::fesql::node::FnNodeList* fnlist;
@@ -243,6 +244,7 @@ typedef void* yyscan_t;
 %token LOW_PRIORITY
 %token MATCH
 %token MAP
+%token MAXSIZE
 %token MEDIUMBLOB
 %token MEDIUMINT
 %token MEDIUMTEXT
@@ -291,6 +293,7 @@ typedef void* yyscan_t;
 %token ROLLUP
 %token ROW
 %token ROWS
+%token ROWS_RANGE
 %token SCHEMA
 %token SCHEMAS
 %token SECOND_MICROSECOND
@@ -371,6 +374,7 @@ typedef void* yyscan_t;
  /* udf */
 %type <type> types
 %type <join_type> join_type
+%type <frame_type> frame_unit
 %type <typenode> complex_types
 %type <fnnode> grammar line_list
 			   fun_def_block fn_header_indent_op  func_stmt
@@ -380,7 +384,7 @@ typedef void* yyscan_t;
 %type<fnlist> plist stmt_block func_stmts
 
 %type <expr> 	var primary_time  expr_const
-				sql_call_expr column_ref frame_expr join_condition
+				sql_call_expr column_ref frame_expr join_condition opt_frame_size
 				fun_expr sql_expr
 				sort_clause opt_sort_clause
  /* select stmt */
@@ -1536,30 +1540,55 @@ sort_clause:
  *
  *===========================================================*/
 opt_frame_clause:
-	        RANGE frame_extent opt_window_exclusion_clause
-				{
-				    $$ = node_manager->MakeRangeFrameNode($2);
+			frame_unit frame_extent opt_frame_size opt_window_exclusion_clause
+			{
+				$$ = node_manager->MakeFrameNode($1, $2, $3);
 
-				}
-			| ROWS frame_extent opt_window_exclusion_clause
-				{
-				    $$ = node_manager->MakeRowsFrameNode($2);
-				}
-			|
-			/*EMPTY*/
+			}
+			|/*EMPTY*/
 			{
 			    $$ = NULL;
 		    }
 		    ;
+frame_unit:
+			RANGE
+			{
+				$$ = fesql::node::kFrameRange;
+			}
+			|ROWS
+			{
+				$$ = fesql::node::kFrameRows;
+			}
+			|ROWS_RANGE
+			{
+				$$ = fesql::node::kFrameRowsRange;
+			}
+			;
+
+opt_frame_size:
+			MAXSIZE expr_const
+			{
+				$$ = $2;
+			}
+			|
+			/*EMPTY*/
+           	{
+            	$$ = NULL;
+           	}
 
 opt_window_exclusion_clause:
              /*EMPTY*/				{ $$ = 0; }
             ;
-frame_extent: BETWEEN frame_bound AND frame_bound
-				{
-				    $$ = node_manager->MakeFrameNode($2, $4);
-				}
-		;
+frame_extent:
+			frame_bound
+			{
+				$$ = node_manager->MakeFrameExtent($1, NULL);
+			}
+			| BETWEEN frame_bound AND frame_bound
+			{
+				$$ = node_manager->MakeFrameExtent($2, $4);
+			}
+			;
 
 
 frame_bound:

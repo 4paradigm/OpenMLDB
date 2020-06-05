@@ -69,7 +69,7 @@ TEST_F(AggregateIRBuilderTest, test_mixed_multiple_agg) {
 
         "FROM t1 WINDOW "
         "w1 AS "
-        "(PARTITION BY COL2 ORDER BY `TS` ROWS BETWEEN 3 PRECEDING AND 3 "
+        "(PARTITION BY COL2 ORDER BY `TS` RANGE BETWEEN 3 PRECEDING AND 3 "
         "FOLLOWING) limit 10;";
 
     int8_t* ptr = NULL;

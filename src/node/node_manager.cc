@@ -131,22 +131,28 @@ SQLNode *NodeManager::MakeFrameBound(SQLNodeType bound_type, ExprNode *offset) {
     FrameBound *node_ptr = new FrameBound(bound_type, offset);
     return RegisterNode(node_ptr);
 }
-SQLNode *NodeManager::MakeFrameNode(SQLNode *start, SQLNode *end) {
-    FrameNode *node_ptr =
-        new FrameNode(kFrameRange, dynamic_cast<FrameBound *>(start),
-                      dynamic_cast<FrameBound *>(end));
+SQLNode *NodeManager::MakeFrameExtent(SQLNode *start, SQLNode *end) {
+    FrameExtent *node_ptr = new FrameExtent(dynamic_cast<FrameBound *>(start),
+                                            dynamic_cast<FrameBound *>(end));
     return RegisterNode(node_ptr);
 }
-SQLNode *NodeManager::MakeRangeFrameNode(SQLNode *node_ptr) {
-    dynamic_cast<FrameNode *>(node_ptr)->SetFrameType(kFrameRange);
-    return node_ptr;
-}
+SQLNode *NodeManager::MakeFrameNode(FrameType frame_type, SQLNode *frame_extent,
+                                    ExprNode *frame_size) {
+    if (nullptr != frame_extent && node::kFrameExtent != frame_extent->type_) {
+        LOG(WARNING) << "Fail Make Frame Node: 2nd arg isn't frame extent";
+        return nullptr;
+    }
 
-SQLNode *NodeManager::MakeRowsFrameNode(SQLNode *node_ptr) {
-    dynamic_cast<FrameNode *>(node_ptr)->SetFrameType(kFrameRows);
-    return node_ptr;
-}
+    if (nullptr != frame_size && node::kExprPrimary != frame_size->expr_type_) {
+        LOG(WARNING) << "Fail Make Frame Node: 3nd arg isn't const expression";
+        return nullptr;
+    }
 
+    FrameNode *node_ptr =
+        new FrameNode(frame_type, dynamic_cast<FrameExtent *>(frame_extent),
+                      dynamic_cast<ConstNode *>(frame_size));
+    return RegisterNode(node_ptr);
+}
 ExprNode *NodeManager::MakeOrderByNode(const ExprListNode *order,
                                        const bool is_asc) {
     OrderByNode *node_ptr = new OrderByNode(order, is_asc);
@@ -614,9 +620,9 @@ FnForInBlock *NodeManager::MakeForInBlock(FnForInNode *for_in_node,
     return node_ptr;
 }
 PlanNode *NodeManager::MakeJoinNode(PlanNode *left, PlanNode *right,
-                                        JoinType join_type,
-                                        const OrderByNode *order_by,
-                                        const ExprNode *condition) {
+                                    JoinType join_type,
+                                    const OrderByNode *order_by,
+                                    const ExprNode *condition) {
     node::JoinPlanNode *node_ptr =
         new JoinPlanNode(left, right, join_type, order_by, condition);
     return RegisterNode(node_ptr);

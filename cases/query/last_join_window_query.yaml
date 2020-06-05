@@ -17,7 +17,7 @@ SQLCases:
       sum(t1.col5) OVER w1 as w1_col5_sum,
       str1 as t2_str1 FROM t1
       last join t2 order by t2.col5 on t1.col1=t2.col1 and t1.col5 = t2.col5
-      WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.col5 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
+      WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
     inputs:
       - name: t1
         schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
@@ -64,7 +64,7 @@ SQLCases:
       sum(t1.col5) OVER w1 as w1_col5_sum,
       str1 as t2_str1 FROM t1
       last join t2 order by t2.col5 on t1.col1=t2.col1 and t1.col5 = t2.col5
-      WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.col5 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
+      WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
     inputs:
       - name: t1
         schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
@@ -99,7 +99,7 @@ SQLCases:
     sql: |
       SELECT t1.col1 as id, t1.col2 as t1_col2, t1.col5 as t1_col5, sum(t1.col5) OVER w1 as w1_col5_sum
       FROM t1 last join t2 order by t2.col5 on t1.col1=t2.col1 and t1.col5 = t2.col5
-      WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.col5 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
+      WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
     inputs:
       - name: t1
         schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:timestamp, col6:string
@@ -135,7 +135,7 @@ SQLCases:
     sql: |
       SELECT t1.col1 as id, t1.col2 as t1_col2, t1.col5 as t1_col5, t2.col5 as t2_col5, str1, sum(t1.col1) OVER w1 as w1_col1_sum
       FROM t1 last join t2 order by t2.col5 on t1.col1=t2.col1 and t1.col5 >= t2.col5
-      WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.col5 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
+      WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
     inputs:
       - name: t1
         schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:timestamp, col6:string
