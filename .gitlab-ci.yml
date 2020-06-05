@@ -23,7 +23,6 @@ build:
             - build/bin/rtidb
 mac_build:
     variables:
-        CICD_RUNNER_THIRDPARTY_PATH: "/opt/depends/thirdparty"
         CICD_RUNNER_TAG: "rtidb_mac"
     tags:
         - rtidb_mac
