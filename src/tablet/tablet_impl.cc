@@ -2382,10 +2382,13 @@ void TabletImpl::GetTableStatus(
             if (request->has_pid() && request->pid() != pit->first) {
                 continue;
             }
+            std::shared_ptr<RelationalTable> r_table = pit->second;
             ::rtidb::api::TableStatus* status =
                 response->add_all_table_status();
             status->set_tid(it->first);
             status->set_pid(pit->first);
+            status->set_record_cnt(r_table->GetRecordCnt());
+            status->set_offset(r_table->GetOffset());
         }
     }
     response->set_code(::rtidb::base::ReturnCode::kOk);
@@ -3323,6 +3326,7 @@ int TabletImpl::LoadRelationalTableInternal(
         PDLOG(INFO, "create table success. tid %u pid %u ",
                 table_meta.tid(), table_meta.pid());
         SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kDone);
+        return 0;
     } while (0);
     SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kFailed);
     return -1;
