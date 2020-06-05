@@ -388,7 +388,8 @@ int32_t TabletImpl::GetIndex(const ::rtidb::api::GetRequest* request,
     }
     if (it->Valid()) {
         *ts = it->GetTs();
-        if (st_type == ::rtidb::api::GetType::kSubKeyEq && *ts != st) {
+        if (st_type == ::rtidb::api::GetType::kSubKeyEq && st > 0 &&
+            *ts != st) {
             return 1;
         }
         bool jump_out = false;
@@ -520,6 +521,11 @@ void TabletImpl::Get(RpcController* controller,
         }
         GetIterator(table, request->key(), index, ts_index, &query_its[idx].it,
                     &query_its[idx].ticket);
+        if (!query_its[idx].it) {
+            response->set_code(::rtidb::base::ReturnCode::kTsNameNotFound);
+            response->set_msg("ts name not found");
+            return;
+        }
         query_its[idx].table = table;
         if (expire_time == 0) {
             ::rtidb::storage::TTLDesc ttl =
@@ -1241,6 +1247,11 @@ void TabletImpl::Scan(RpcController* controller,
         }
         GetIterator(table, request->pk(), index, ts_index, &query_its[idx].it,
                     &query_its[idx].ticket);
+        if (!query_its[idx].it) {
+            response->set_code(::rtidb::base::ReturnCode::kTsNameNotFound);
+            response->set_msg("ts name not found");
+            return;
+        }
         query_its[idx].table = table;
         if (expire_time == 0) {
             ::rtidb::storage::TTLDesc ttl =
