@@ -31,6 +31,7 @@ mac_build:
     script:
         - sh tools/install_fesql_mac.sh
         - ln -sf /opt/depends/thirdsrc thirdsrc
+        - ln -sf /opt/depends/thirdparty thirdparty
         - bash steps/simple_compile.sh
         - mv build/bin/rtidb build/bin/rtidb_mac
     artifacts:
