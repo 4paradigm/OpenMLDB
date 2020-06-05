@@ -2696,7 +2696,6 @@ public class TableSyncClientTest extends TestCaseBase {
             //update by no unique
             {
                 Map<String, Object> valueColumns = new HashMap<>();
-                valueColumns.put("name", "n5");
                 valueColumns.put("price", 17.7);
                 valueColumns.put("image", StringToBB("i7"));
                 valueColumns.put("ts", new DateTime(1588756535));
@@ -2713,7 +2712,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 queryMap = it.getDecodedValue();
                 Assert.assertEquals(queryMap.size(), 9);
                 Assert.assertEquals(queryMap.get("id"), 12l);
-                Assert.assertEquals(queryMap.get("name"), "n5");
+                Assert.assertEquals(queryMap.get("name"), "n2");
                 Assert.assertEquals(queryMap.get("sex"), false);
                 Assert.assertEquals(queryMap.get("attribute"), "a2");
                 Assert.assertTrue(StringToBB("i7").equals(((BlobData) queryMap.get("image")).getData()));
@@ -2727,7 +2726,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 queryMap = it.getDecodedValue();
                 Assert.assertEquals(queryMap.size(), 9);
                 Assert.assertEquals(queryMap.get("id"), 13l);
-                Assert.assertEquals(queryMap.get("name"), "n5");
+                Assert.assertEquals(queryMap.get("name"), "n3");
                 Assert.assertEquals(queryMap.get("sex"), true);
                 Assert.assertEquals(queryMap.get("attribute"), "a3");
                 Assert.assertTrue(StringToBB("i7").equals(((BlobData) queryMap.get("image")).getData()));
