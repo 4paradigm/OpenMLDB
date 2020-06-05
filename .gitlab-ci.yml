@@ -28,10 +28,7 @@ mac_build:
         - rtidb_mac
     stage: build
     script:
-        - sh tools/install_fesql_mac.sh
-        - ln -sf /opt/depends/thirdparty thirdparty
-        - ln -sf /opt/depends/thirdsrc thirdsrc
-        - bash steps/simple_compile.sh
+        - bash steps/simple_compile_mac.sh
         - mv build/bin/rtidb build/bin/rtidb_mac
     artifacts:
         expire_in: 2h
