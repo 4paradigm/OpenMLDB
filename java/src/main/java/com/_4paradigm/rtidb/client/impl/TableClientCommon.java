@@ -4,6 +4,7 @@ import com._4paradigm.rtidb.client.*;
 import com._4paradigm.rtidb.client.ha.PartitionHandler;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.TableHandler;
+import com._4paradigm.rtidb.client.ha.TabletServerWapper;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.ColumnType;
 import com._4paradigm.rtidb.client.schema.ProjectionInfo;
@@ -12,6 +13,7 @@ import com._4paradigm.rtidb.utils.MurmurHash;
 import io.brpc.client.RpcCallback;
 import org.joda.time.DateTime;
 import rtidb.api.TabletServer;
+import sun.tools.jconsole.Tab;
 
 import java.sql.Timestamp;
 import java.util.*;
@@ -359,9 +361,35 @@ public class TableClientCommon {
         }
     }
 
+    public static List<ScanFuture> scanInternal(int tid, String key, long st, long et, TableHandler th, ScanOption option)
+            throws TabletException {
+        List<TabletServerWapper> serverList = new ArrayList<>();
+        Map<String, List<Integer>> endpointMap = new HashMap<>();
+        for (int pid = 0; pid < th.getPartitions().length; pid++) {
+            TabletServerWapper tabletServerWapper = th.getHandler(pid).getTabletServerWapper(th.getReadStrategy());
+            serverList.add(tabletServerWapper);
+            if (!endpointMap.containsKey(tabletServerWapper.getEndpoint())) {
+                endpointMap.put(tabletServerWapper.getEndpoint(), new ArrayList<Integer>());
+            }
+            endpointMap.get(tabletServerWapper.getEndpoint()).add(pid);
+        }
+        List<ScanFuture> futureList = new ArrayList<>();
+        for (List<Integer> list : endpointMap.values()) {
+            futureList.add(scanInternal(tid, 0, list, key, st, et, th, option, serverList.get(list.get(0)).getServer()));
+        }
+        return futureList;
+    }
+
     public static ScanFuture scanInternal(int tid, int pid, String key, long st, long et, TableHandler th, ScanOption option) throws TabletException{
-        PartitionHandler ph = th.getHandler(pid);
-        TabletServer ts = ph.getReadHandler(th.getReadStrategy());
+        return scanInternal(tid, pid, null, key, st, et, th, option, null);
+    }
+
+    public static ScanFuture scanInternal(int tid, int pid, List<Integer> pidGroup, String key, long st, long et,
+                                          TableHandler th, ScanOption option, TabletServer ts) throws TabletException{
+        if (ts == null) {
+            PartitionHandler ph = th.getHandler(pid);
+            ts = ph.getReadHandler(th.getReadStrategy());
+        }
         if (ts == null) {
             throw new TabletException("Cannot find available tabletServer with tid " + tid);
         }
@@ -370,6 +398,11 @@ public class TableClientCommon {
         builder.setTid(tid);
         builder.setEt(et);
         builder.setSt(st);
+        if (pidGroup != null) {
+            for (Integer curPid : pidGroup) {
+                builder.addPidGroup(curPid);
+            }
+        }
         builder.setPid(pid);
         builder.setLimit(option.getLimit());
         builder.setAtleast(option.getAtLeast());
@@ -436,17 +469,47 @@ public class TableClientCommon {
         }
         return false;
     }
+    public static List<GetFuture> getInternal(String key, long time, GetOption getOption, TableHandler th) throws TabletException {
+        List<TabletServerWapper> serverList = new ArrayList<>();
+        Map<String, List<Integer>> endpointMap = new HashMap<>();
+        for (int pid = 0; pid < th.getPartitions().length; pid++) {
+            TabletServerWapper tabletServerWapper = th.getHandler(pid).getTabletServerWapper(th.getReadStrategy());
+            serverList.add(tabletServerWapper);
+            if (!endpointMap.containsKey(tabletServerWapper.getEndpoint())) {
+                endpointMap.put(tabletServerWapper.getEndpoint(), new ArrayList<Integer>());
+            }
+            endpointMap.get(tabletServerWapper.getEndpoint()).add(pid);
+        }
+        List<GetFuture> futureList = new ArrayList<>();
+        for (List<Integer> list : endpointMap.values()) {
+            futureList.add(getInternal(0, list, key, time, getOption, th, serverList.get(list.get(0)).getServer()));
+        }
+        return futureList;
+    }
 
     public static GetFuture getInternal(int pid, String key, long time, GetOption getOption, TableHandler th) throws TabletException {
-        PartitionHandler ph = th.getHandler(pid);
-        TabletServer ts = ph.getReadHandler(th.getReadStrategy());
+        return getInternal(pid, null, key, time, getOption, th, null);
+    }
+
+    public static GetFuture getInternal(int pid, List<Integer> pidGroup, String key, long time, GetOption getOption,
+                                        TableHandler th, TabletServer ts) throws TabletException {
+        if (ts == null) {
+            PartitionHandler ph = th.getHandler(pid);
+            ts = ph.getReadHandler(th.getReadStrategy());
+        }
         if (ts == null) {
             throw new TabletException("Cannot find available tabletServer with tid " + th.getTableInfo().getTid());
         }
         List<ColumnDesc> schema = null;
         Tablet.GetRequest.Builder builder = Tablet.GetRequest.newBuilder();
         builder.setTid(th.getTableInfo().getTid());
-        builder.setPid(pid);
+        if (pidGroup != null) {
+            for (Integer curPid : pidGroup) {
+                builder.addPidGroup(curPid);
+            }
+        } else {
+            builder.setPid(pid);
+        }
         builder.setKey(key);
         builder.setTs(time);
         builder.setEt(getOption.getEt());

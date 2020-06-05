@@ -118,10 +118,7 @@ public class TableSyncClientImpl implements TableSyncClient {
             return scan(th.getTableInfo().getTid(), pid, key, st, et, th, option);
         }
 
-        List<ScanFuture> futureList = new ArrayList<>();
-        for (int pid = 0; pid < th.getPartitions().length; pid++) {
-            futureList.add(TableClientCommon.scanInternal(th.getTableInfo().getTid(), pid, key, st, et, th, option));
-        }
+        List<ScanFuture> futureList = TableClientCommon.scanInternal(th.getTableInfo().getTid(), key, st, et, th, option);
         List<ByteString> byteStrings = new ArrayList<>();
         int count = 0;
         ProjectionInfo projectionInfo = null;
@@ -383,10 +380,7 @@ public class TableSyncClientImpl implements TableSyncClient {
             return get(pid, key, time, option, th);
         }
 
-        List<GetFuture> futureList = new ArrayList<>();
-        for (int pid = 0; pid < th.getPartitions().length; pid++) {
-            futureList.add(TableClientCommon.getInternal(pid, key, time, option, th));
-        }
+        List<GetFuture> futureList = TableClientCommon.getInternal(key, time, option, th);
         GetFuture realFuture = null;
         long maxTS = 0;
         int notFountCnt = 0;
