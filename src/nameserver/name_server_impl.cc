@@ -1735,14 +1735,6 @@ bool NameServerImpl::Init(const std::string& zk_cluster,
     } else {
         UpdateTablets(endpoints);
     }
-    std::string oss_path = zk_path + "/ossnodes";
-    endpoints.clear();
-    bool ok = zk_client_->GetChildren(oss_path, endpoints);
-    if (!ok) {
-        zk_client_->CreateNode(oss_path, "");
-    } else {
-        UpdateBlobServers(endpoints);
-    }
     zk_client_->WatchNodes(
         boost::bind(&NameServerImpl::UpdateTabletsLocked, this, _1));
     bool ok = zk_client_->WatchNodes();
