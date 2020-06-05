@@ -211,7 +211,8 @@ TEST_F(SQLRouterTest, smoketimestamptest_on_sql) {
     ASSERT_TRUE(ok);
 
     ASSERT_TRUE(router->RefreshCatalog());
-    std::string insert = "insert into " + name + " values('hello', 1591174600000l, '2020-06-03');";
+    std::string insert = "insert into " + name +
+                         " values('hello', 1591174600000l, '2020-06-03');";
     ok = router->ExecuteInsert(db, insert, &status);
     ASSERT_TRUE(ok);
     ASSERT_TRUE(router->RefreshCatalog());

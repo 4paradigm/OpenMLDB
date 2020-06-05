@@ -47,7 +47,6 @@ SQLClusterRouter::SQLClusterRouter(ClusterSDK* sdk)
       input_schema_map_(),
       mu_() {}
 
-
 SQLClusterRouter::~SQLClusterRouter() {
     delete cluster_sdk_;
     delete engine_;
@@ -282,8 +281,8 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db,
     std::string value;
     std::vector<std::pair<std::string, uint32_t>> dimensions;
     std::vector<uint64_t> ts;
-    ok = EncodeFullColumns(table_info->column_desc_v1(), iplan, &value, &dimensions,
-                      &ts);
+    ok = EncodeFullColumns(table_info->column_desc_v1(), iplan, &value,
+                           &dimensions, &ts);
     if (!ok) {
         LOG(WARNING) << "fail to encode row for table "
                      << insert_stmt->table_name_;
@@ -303,23 +302,22 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db,
     return true;
 }
 
-bool SQLClusterRouter::EncodeFullColumns(const catalog::RtiDBSchema& schema,
-        const ::fesql::node::InsertPlanNode* plan,
-        std::string* value,
-        std::vector<std::pair<std::string, uint32_t>>* dimensions,
-        std::vector<uint64_t>* ts_dimensions) {
+bool SQLClusterRouter::EncodeFullColumns(
+    const catalog::RtiDBSchema& schema,
+    const ::fesql::node::InsertPlanNode* plan, std::string* value,
+    std::vector<std::pair<std::string, uint32_t>>* dimensions,
+    std::vector<uint64_t>* ts_dimensions) {
     if (plan == NULL || value == NULL || dimensions == NULL ||
         ts_dimensions == NULL)
         return false;
     auto insert_stmt = plan->GetInsertNode();
-    if (nullptr == insert_stmt 
-            || insert_stmt->values_.size() <= 0) {
+    if (nullptr == insert_stmt || insert_stmt->values_.size() <= 0) {
         LOG(WARNING) << "insert stmt is null";
         return false;
     }
-    //TODO(wangtaize) support batch put
-    ::fesql::node::ExprListNode* row
-        = dynamic_cast<::fesql::node::ExprListNode*>(insert_stmt->values_[0]);
+    // TODO(wangtaize) support batch put
+    ::fesql::node::ExprListNode* row =
+        dynamic_cast<::fesql::node::ExprListNode*>(insert_stmt->values_[0]);
     if (row->children_.size() != schema.size()) {
         LOG(WARNING) << "schema mismatch";
         return false;
@@ -333,12 +331,12 @@ bool SQLClusterRouter::EncodeFullColumns(const catalog::RtiDBSchema& schema,
             return false;
         }
         ::fesql::node::ConstNode* primary =
-                dynamic_cast<::fesql::node::ConstNode*>(val);
+            dynamic_cast<::fesql::node::ConstNode*>(val);
         if (primary->IsNull()) {
             continue;
         }
-        if (column.data_type() == ::rtidb::type::kVarchar
-            || column.data_type() == ::rtidb::type::kString) {
+        if (column.data_type() == ::rtidb::type::kVarchar ||
+            column.data_type() == ::rtidb::type::kString) {
             str_size += strlen(primary->GetStr());
         }
     }
@@ -355,8 +353,7 @@ bool SQLClusterRouter::EncodeFullColumns(const catalog::RtiDBSchema& schema,
     for (int32_t i = 0; i < schema.size(); i++) {
         const ::rtidb::common::ColumnDesc& column = schema.Get(i);
         const ::fesql::node::ConstNode* primary =
-            dynamic_cast<const ::fesql::node::ConstNode*>(
-                row->children_.at(i));
+            dynamic_cast<const ::fesql::node::ConstNode*>(row->children_.at(i));
         if (primary->IsNull()) {
             rb.AppendNULL();
             continue;
@@ -434,7 +431,7 @@ bool SQLClusterRouter::EncodeFullColumns(const catalog::RtiDBSchema& schema,
                 break;
             }
             case ::rtidb::type::kDate: {
-				int32_t year;
+                int32_t year;
                 int32_t month;
                 int32_t day;
                 if (!primary->GetAsDate(&year, &month, &day)) {
@@ -455,7 +452,6 @@ bool SQLClusterRouter::EncodeFullColumns(const catalog::RtiDBSchema& schema,
         }
     }
     return true;
-
 }
 
 bool SQLClusterRouter::EncodeFormat(
