@@ -521,6 +521,11 @@ void TabletImpl::Get(RpcController* controller,
         }
         GetIterator(table, request->key(), index, ts_index, &query_its[idx].it,
                     &query_its[idx].ticket);
+        if (!query_its[idx].it) {
+            response->set_code(::rtidb::base::ReturnCode::kTsNameNotFound);
+            response->set_msg("ts name not found");
+            return;
+        }
         query_its[idx].table = table;
         if (expire_time == 0) {
             ::rtidb::storage::TTLDesc ttl =
@@ -1242,6 +1247,11 @@ void TabletImpl::Scan(RpcController* controller,
         }
         GetIterator(table, request->pk(), index, ts_index, &query_its[idx].it,
                     &query_its[idx].ticket);
+        if (!query_its[idx].it) {
+            response->set_code(::rtidb::base::ReturnCode::kTsNameNotFound);
+            response->set_msg("ts name not found");
+            return;
+        }
         query_its[idx].table = table;
         if (expire_time == 0) {
             ::rtidb::storage::TTLDesc ttl =

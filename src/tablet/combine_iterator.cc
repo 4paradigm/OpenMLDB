@@ -45,7 +45,8 @@ void CombineIterator::SeekToFirst() {
     if (st_type_ != ::rtidb::api::GetType::kSubKeyEq &&
         st_type_ != ::rtidb::api::GetType::kSubKeyLe &&
         st_type_ != ::rtidb::api::GetType::kSubKeyLt &&
-        st_type_ != ::rtidb::api::GetType::kSubKeyGe) {
+        st_type_ != ::rtidb::api::GetType::kSubKeyGe &&
+        st_type_ != ::rtidb::api::GetType::kSubKeyGt) {
         PDLOG(WARNING, "invalid st type %s",
               ::rtidb::api::GetType_Name(st_type_).c_str());
         q_its_.clear();
