@@ -4,6 +4,7 @@ services:
 variables:
     GIT_SUBMODULE_STRATEGY: recursive
 stages:
+    - build
     - make_docker
 
 build:
