@@ -51,10 +51,10 @@ bool AggregateIRBuilder::IsAggFuncName(const std::string& fname) {
 
 // TODO(someone): configurable codegen
 bool AggregateIRBuilder::EnableColumnAggOpt() {
-    const char* env_name = "ENABLE_COLUMN_SUM_OPT";
+    const char* env_name = "ENABLE_COLUMN_AGG_OPT";
     char* value = getenv(env_name);
     if (value != nullptr && strcmp(value, "true") == 0) {
-        LOG(INFO) << "Multi column sum opt is enabled";
+        LOG(INFO) << "Multi column agg opt is enabled";
         return true;
     }
     return false;
