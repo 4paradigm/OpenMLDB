@@ -44,7 +44,7 @@ TEST_F(EngineBMCaseTest, EngineRunBatchWindowSumFeature1_TEST) {
     EngineRunBatchWindowSumFeature1(nullptr, TEST, 1000L, 1000L);
 }
 TEST_F(EngineBMCaseTest, EngineWindowMultiAggFeature5_TEST) {
-    EngineWindowMultiAggFeature5 (nullptr, TEST, 100L, 100L);
+    EngineWindowMultiAggFeature5(nullptr, TEST, 100L, 100L);
 }
 TEST_F(EngineBMCaseTest, WINDOW_CASE0_QUERY_BATCH_TEST) {
     EngineRunBatchWindowSumFeature5(nullptr, TEST, 1L, 2L);
