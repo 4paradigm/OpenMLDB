@@ -35,11 +35,13 @@ namespace fesql {
 namespace vm {
 
 static bool LLVM_IS_INITIALIZED = false;
-Engine::Engine(const std::shared_ptr<Catalog>& catalog) : cl_(catalog) {}
+Engine::Engine(const std::shared_ptr<Catalog>& catalog) : cl_(catalog),
+    options_(), mu_(), batch_cache_(), request_cache_(){}
 
 Engine::Engine(const std::shared_ptr<Catalog>& catalog,
                const EngineOptions& options)
-    : cl_(catalog), options_(options) {}
+    : cl_(catalog), options_(options), mu_(), batch_cache_(),
+request_cache_(){}
 
 Engine::~Engine() {}
 
@@ -53,7 +55,8 @@ bool Engine::Get(const std::string& sql, const std::string& db,
                  RunSession& session,
                  base::Status& status) {  // NOLINT (runtime/references)
     {
-        std::shared_ptr<CompileInfo> info = GetCacheLocked(db, sql);
+        std::shared_ptr<CompileInfo> info = GetCacheLocked(db, sql,
+                session.IsBatchRun());
         if (info) {
             session.SetCompileInfo(info);
             session.SetCatalog(cl_);
@@ -83,16 +86,30 @@ bool Engine::Get(const std::string& sql, const std::string& db,
         session.SetCatalog(cl_);
         // check
         std::lock_guard<base::SpinMutex> lock(mu_);
-        std::map<std::string, std::shared_ptr<CompileInfo>>& sql_in_db =
-            cache_[db];
-        std::map<std::string, std::shared_ptr<CompileInfo>>::iterator it =
-            sql_in_db.find(sql);
-        if (it == sql_in_db.end()) {
-            // TODO(wangtaize) clean
-            sql_in_db.insert(std::make_pair(sql, info));
-            session.SetCompileInfo(info);
-        } else {
-            session.SetCompileInfo(it->second);
+        if (session.IsBatchRun()) {
+            std::map<std::string, std::shared_ptr<CompileInfo>>& sql_in_db =
+                batch_cache_[db];
+            std::map<std::string, std::shared_ptr<CompileInfo>>::iterator it =
+                sql_in_db.find(sql);
+            if (it == sql_in_db.end()) {
+                // TODO(wangtaize) clean
+                sql_in_db.insert(std::make_pair(sql, info));
+                session.SetCompileInfo(info);
+            } else {
+                session.SetCompileInfo(it->second);
+            }
+        }else {
+            std::map<std::string, std::shared_ptr<CompileInfo>>& sql_in_db =
+                request_cache_[db];
+            std::map<std::string, std::shared_ptr<CompileInfo>>::iterator it =
+                sql_in_db.find(sql);
+            if (it == sql_in_db.end()) {
+                // TODO(wangtaize) clean
+                sql_in_db.insert(std::make_pair(sql, info));
+                session.SetCompileInfo(info);
+            } else {
+                session.SetCompileInfo(it->second);
+            }
         }
     }
     return true;
@@ -125,18 +142,32 @@ bool Engine::Explain(const std::string& sql, const std::string& db,
 }
 
 std::shared_ptr<CompileInfo> Engine::GetCacheLocked(const std::string& db,
-                                                    const std::string& sql) {
+                                                    const std::string& sql,
+                                                    bool is_batch) {
     std::lock_guard<base::SpinMutex> lock(mu_);
-    EngineCache::iterator it = cache_.find(db);
-    if (it == cache_.end()) {
-        return std::shared_ptr<CompileInfo>();
+    if (is_batch) {
+        EngineCache::iterator it = batch_cache_.find(db);
+        if (it == batch_cache_.end()) {
+            return std::shared_ptr<CompileInfo>();
+        }
+        std::map<std::string, std::shared_ptr<CompileInfo>>::iterator iit =
+            it->second.find(sql);
+        if (iit == it->second.end()) {
+            return std::shared_ptr<CompileInfo>();
+        }
+        return iit->second;
+    }else {
+        EngineCache::iterator it = request_cache_.find(db);
+        if (it == request_cache_.end()) {
+            return std::shared_ptr<CompileInfo>();
+        }
+        std::map<std::string, std::shared_ptr<CompileInfo>>::iterator iit =
+            it->second.find(sql);
+        if (iit == it->second.end()) {
+            return std::shared_ptr<CompileInfo>();
+        }
+        return iit->second;
     }
-    std::map<std::string, std::shared_ptr<CompileInfo>>::iterator iit =
-        it->second.find(sql);
-    if (iit == it->second.end()) {
-        return std::shared_ptr<CompileInfo>();
-    }
-    return iit->second;
 }
 
 RunSession::RunSession() : is_debug_(false) {}
