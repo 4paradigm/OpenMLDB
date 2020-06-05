@@ -88,7 +88,7 @@ class RelationalTable {
     bool LoadTable();
 
     bool Put(const std::string& value, int64_t* auto_gen_pk,
-            ::rtidb::api::WriteOption wo);
+            const ::rtidb::api::WriteOption& wo);
 
     bool Query(const ::google::protobuf::RepeatedPtrField<
             ::rtidb::api::ReadOption>& ros,
