@@ -13,8 +13,6 @@ import com._4paradigm.rtidb.utils.MurmurHash;
 import io.brpc.client.RpcCallback;
 import org.joda.time.DateTime;
 import rtidb.api.TabletServer;
-import sun.tools.jconsole.Tab;
-
 import java.sql.Timestamp;
 import java.util.*;
 import java.util.concurrent.Future;
