@@ -21,6 +21,24 @@ build:
         expire_in: 2h
         paths:
             - build/bin/rtidb
+mac_build:
+    variables:
+        CICD_RUNNER_THIRDPARTY_PATH: "/opt/depends/thirdparty"
+        CICD_RUNNER_TAG: "rtidb_mac"
+    tags:
+	- rtidb_mac
+    stage: build
+    script:
+        - sh tools/install_fesql_mac.sh
+        - ln -sf /opt/depends/thirdsrc thirdsrc
+        - bash steps/simple_compile.sh
+        - mv build/bin/rtidb build/bin/rtidb_mac
+    artifacts:
+        expire_in: 2h
+        paths:
+            - build/bin/rtidb_mac
+            - build/src/sdk/libsql_jsdk.dylib
+	    - build/sql_pysdk/dist/
 
 style_check:
     stage: build
