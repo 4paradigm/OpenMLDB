@@ -11,7 +11,7 @@ add_library(fesql_codegen STATIC
         window_ir_builder.cc
         block_ir_builder.cc
         fn_let_ir_builder.cc
-        fn_let_ir_builder_optsum.cc
+        aggregate_ir_builder.cc
         cast_expr_ir_builder.cc
         arithmetic_expr_ir_builder.cc
         variable_ir_builder.cc
@@ -84,6 +84,9 @@ list(APPEND test_list block_ir_builder_test)
 add_executable(fn_ir_builder_test fn_ir_builder_test.cc codegen_base_test)
 target_link_libraries(fn_ir_builder_test gtest
         ${vm_deps_libs} )
+
+add_executable(aggregate_ir_builder_test aggregate_ir_builder_test.cc codegen_base_test)
+target_link_libraries(aggregate_ir_builder_test gtest ${vm_deps_libs} )
 
 add_test(fn_ir_builder_test fn_ir_builder_test --gtest_output=xml:${CMAKE_BINARY_DIR}/fn_ir_builder_test.xml)
 list(APPEND test_list fn_ir_builder_test)

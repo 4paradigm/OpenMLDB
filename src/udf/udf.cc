@@ -253,6 +253,15 @@ void delete_iterator(int8_t *input) {
     }
 }
 
+template <class V>
+V minimum(V l, V r) {
+    return l < r ? l : r;
+}
+template <class V>
+V maximum(V l, V r) {
+  return l > r ? l : r;
+}
+
 }  // namespace v1
 void InitUDFSymbol(vm::FeSQLJIT *jit_ptr) {
     ::llvm::orc::MangleAndInterner mi(jit_ptr->getExecutionSession(),
@@ -440,6 +449,28 @@ void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
               reinterpret_cast<void *>(&v1::delete_iterator<codec::Date>));
     AddSymbol(jd, mi, "delete_iterator_string",
               reinterpret_cast<void *>(&v1::delete_iterator<codec::StringRef>));
+
+    AddSymbol(jd, mi, "max_int16",
+              reinterpret_cast<void *>(&v1::maximum<int16_t>));
+    AddSymbol(jd, mi, "max_int32",
+              reinterpret_cast<void *>(&v1::maximum<int32_t>));
+    AddSymbol(jd, mi, "max_int64",
+              reinterpret_cast<void *>(&v1::maximum<int64_t>));
+    AddSymbol(jd, mi, "max_float",
+              reinterpret_cast<void *>(&v1::maximum<float>));
+    AddSymbol(jd, mi, "max_double",
+              reinterpret_cast<void *>(&v1::maximum<double>));
+
+    AddSymbol(jd, mi, "min_int16",
+              reinterpret_cast<void *>(&v1::minimum<int16_t>));
+    AddSymbol(jd, mi, "min_int32",
+              reinterpret_cast<void *>(&v1::minimum<int32_t>));
+    AddSymbol(jd, mi, "min_int64",
+              reinterpret_cast<void *>(&v1::minimum<int64_t>));
+    AddSymbol(jd, mi, "min_float",
+              reinterpret_cast<void *>(&v1::minimum<float>));
+    AddSymbol(jd, mi, "min_double",
+              reinterpret_cast<void *>(&v1::minimum<double>));
 }
 bool AddSymbol(::llvm::orc::JITDylib &jd,           // NOLINT
                ::llvm::orc::MangleAndInterner &mi,  // NOLINT
