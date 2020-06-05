@@ -170,7 +170,7 @@ deploy-package:
         - source /root/.bashrc && bash steps/deploy_package.sh
     only:
         - tags
-make_docker:
+docker-image:
     stage: make_docker
     script:
         - source /root/.bashrc && sh tools/install_fesql.sh
