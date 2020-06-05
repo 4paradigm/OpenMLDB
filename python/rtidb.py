@@ -198,7 +198,6 @@ class RTIDBClient:
     _wo = interclient.WriteOption()
     if WriteOption != None:
       _wo.updateIfExist = defaultWriteOption.updateIfExist
-      _wo.updateIfEqual = defaultWriteOption.updateIfEqual
     self.putBlob(table_name, columns)
     value = buildStrMap(columns)
 
@@ -211,7 +210,6 @@ class RTIDBClient:
     _wo = interclient.WriteOption()
     if write_option != None:
       _wo.updateIfExist = defaultWriteOption.updateIfExist
-      _wo.updateIfEqual = defaultWriteOption.updateIfEqual
     self.putBlob(table_name, value_columns)
     cond = buildStrMap(condition_columns)
     v = buildStrMap(value_columns)
