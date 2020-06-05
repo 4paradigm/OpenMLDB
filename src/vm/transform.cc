@@ -544,6 +544,62 @@ bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
                 }
             }
         }
+        case kPhysicalOpSimpleProject: {
+            auto simple_project =
+                dynamic_cast<PhysicalSimpleProjectNode*>(depend);
+            if (depend->GetProducer(0)->type_ != kPhysicalOpDataProvider) {
+                break;
+            }
+            auto data_op =
+                dynamic_cast<PhysicalDataProviderNode*>(depend->GetProducer(0));
+            if (kProviderTypeRequest == data_op->provider_type_) {
+                auto name = data_op->table_handler_->GetName();
+                auto table = catalog_->GetTable(db_, name);
+                if (table) {
+                    auto right = new PhysicalTableProviderNode(table);
+                    node_manager_->RegisterNode(right);
+                    auto right_simple_project = new PhysicalSimpleProjectNode(
+                        right, simple_project->output_schema_,
+                        simple_project->project_.column_sources_);
+                    node::OrderByNode* request_orders =
+                        nullptr == orders ? nullptr
+                                          : dynamic_cast<node::OrderByNode*>(
+                                                node_manager_->MakeOrderByNode(
+                                                    orders->order_by_, false));
+                    auto request_union_op = new PhysicalRequestUnionNode(
+                        depend, right_simple_project, groups, request_orders,
+                        w_ptr->GetStartOffset(), w_ptr->GetEndOffset(),
+                        w_ptr->instance_not_in_window());
+                    node_manager_->RegisterNode(request_union_op);
+                    if (!w_ptr->union_tables().empty()) {
+                        for (auto iter = w_ptr->union_tables().cbegin();
+                             iter != w_ptr->union_tables().cend(); iter++) {
+                            PhysicalOpNode* union_table_op;
+                            if (!TransformPlanOp(*iter, &union_table_op,
+                                                 status)) {
+                                return false;
+                            }
+                            if (!request_union_op->AddWindowUnion(
+                                    union_table_op)) {
+                                status.msg =
+                                    "Fail to add request window union table";
+                                status.code = common::kPlanError;
+                                return false;
+                            }
+                        }
+                    }
+                    *output = request_union_op;
+                    return true;
+                } else {
+                    status.code = common::kPlanError;
+                    status.msg = "fail to transform data provider op: table " +
+                                 name + "not exists";
+                    LOG(WARNING) << status.msg;
+                    return false;
+                }
+            }
+            break;
+        }
         default: {
             // do nothing
         }
@@ -567,8 +623,9 @@ bool BatchModeTransformer::TransformJoinOp(const node::JoinPlanNode* node,
     if (!TransformPlanOp(node->GetChildren()[1], &right, status)) {
         return false;
     }
-    *output =
-        new PhysicalJoinNode(left, right, node->join_type_, node->condition_);
+
+    *output = new PhysicalJoinNode(left, right, node->join_type_, node->orders_,
+                                   node->condition_);
     node_manager_->RegisterNode(*output);
     return true;
 }
@@ -1086,6 +1143,13 @@ bool BatchModeTransformer::GenJoin(Join* join, PhysicalOpNode* in,
         return false;
     }
 
+    if (join->join_type_ == node::kJoinTypeLast) {
+        if (!GenSort(&join->right_sort_,
+                     in->producers()[1]->GetOutputNameSchemaList(), status)) {
+            return false;
+        }
+    }
+
     return true;
 }
 bool BatchModeTransformer::GenFilter(
@@ -1256,7 +1320,6 @@ bool BatchModeTransformer::GenWindowJoinList(WindowJoinList* window_join_list,
 bool BatchModeTransformer::GenRequestWindowUnionList(
     RequestWindowUnionList* window_union_list, PhysicalOpNode* in,
     base::Status& status) {
-
     if (nullptr == window_union_list || window_union_list->Empty()) {
         LOG(WARNING)
             << "Skip GenRequestWindowUnionList when window unions is empty";
@@ -1516,6 +1579,8 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                                 &window_join.second, &new_join_right)) {
                             window_join.first = new_join_right;
                         }
+                        SortOptimized(SchemaSourceList(), window_join.first,
+                                      &window_join.second.right_sort_);
                     }
                 }
                 if (!union_op->window_unions().Empty()) {
@@ -1557,8 +1622,8 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                     auto& window = window_union.second;
                     if (KeysFilterOptimized(
                             SchemaSourceList(), window_union.first,
-                            &window.partition_,
-                            &window.index_key_, &new_producer)) {
+                            &window.partition_, &window.index_key_,
+                            &new_producer)) {
                         window_union.first = new_producer;
                     }
                     SortOptimized(SchemaSourceList(), window_union.first,
@@ -1577,6 +1642,8 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                 return false;
             }
             join_op->SetProducer(1, new_producer);
+            SortOptimized(SchemaSourceList(), join_op->GetProducer(1),
+                          &join_op->join_.right_sort_);
             return true;
         }
         case kPhysicalOpJoin: {
@@ -1588,6 +1655,8 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                 return false;
             }
             join_op->SetProducer(1, new_producer);
+            SortOptimized(SchemaSourceList(), join_op->GetProducer(1),
+                          &join_op->join_.right_sort_);
             return true;
         }
         default: {
@@ -2341,7 +2410,8 @@ bool RequestModeransformer::TransformJoinOp(const node::JoinPlanNode* node,
         return false;
     }
     *output = new PhysicalRequestJoinNode(left, right, node->join_type_,
-                                          node->condition_);
+                                          node->orders_, node->condition_);
+
     node_manager_->RegisterNode(*output);
     return true;
 }

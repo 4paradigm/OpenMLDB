@@ -35,6 +35,11 @@ template <class V>
 bool iterator_list(int8_t *input, int8_t *output);
 
 template <class V>
+V minimum(V l, V r);
+template <class V>
+V maximum(V l, V r);
+
+template <class V>
 bool has_next_iterator(int8_t *input);
 
 template <class V>

@@ -390,7 +390,7 @@ typedef void* yyscan_t;
               window_definition window_specification over_clause
               limit_clause
 %type<query_node> sql_stmt union_stmt select_stmt query_clause
-%type <table_ref> table_reference join_clause table_factor query_reference
+%type <table_ref> table_reference join_clause last_join_clause table_factor query_reference
  /* insert table */
 %type<node> insert_stmt
 %type<exprlist> insert_expr_list column_ref_list opt_partition_clause
@@ -1019,6 +1019,10 @@ table_reference:
 			{
 				$$ = $1;
 			}
+			|last_join_clause
+			{
+				$$ = $1;
+			}
 			|query_reference
 			{
 				$$ = $1;
@@ -1074,7 +1078,20 @@ join_clause:
 			$$ = node_manager->MakeJoinNode($1, $4, $2, $5, $7);
 		}
 		;
-
+last_join_clause:
+		table_reference LAST JOIN table_reference sort_clause join_condition
+		{
+			$$ = node_manager->MakeLastJoinNode($1, $4, $5, $6, "");
+		}
+		| table_reference LAST JOIN table_reference sort_clause join_condition relation_name
+		{
+			$$ = node_manager->MakeLastJoinNode($1, $4, $5, $6, $7);
+		}
+		| table_reference LAST JOIN table_reference sort_clause join_condition AS relation_name
+		{
+			$$ = node_manager->MakeLastJoinNode($1, $4, $5, $6, $8);
+		}
+		;
 union_stmt:
 		query_clause UNION query_clause
 		{
@@ -1089,7 +1106,6 @@ union_stmt:
 			$$ = node_manager->MakeUnionQueryNode($1, $4, true);
 		}
 		;
-
 join_type:
 		FULL join_outer
 		{

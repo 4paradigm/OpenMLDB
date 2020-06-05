@@ -15,12 +15,6 @@
 
     <dependencies>
 		<dependency>
-			<groupId>com._4paradigm.fesql</groupId>
-			<artifactId>fesql-native</artifactId>
-			<version>${version}</version>
-		</dependency>
-
-		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
 			<version>1.16.8</version>

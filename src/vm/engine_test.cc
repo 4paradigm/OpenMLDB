@@ -477,8 +477,8 @@ TEST_F(EngineTest, EngineCompileOnlyTest) {
             "SELECT t1.COL1, t1.COL2, t2.COL1, t2.COL2 FROM t1 right join t2 "
             "on "
             "t1.col1 = t2.col2;",
-            "SELECT t1.COL1, t1.COL2, t2.COL1, t2.COL2 FROM t1 last join t2 on "
-            "t1.col1 = t2.col2;"};
+            "SELECT t1.COL1, t1.COL2, t2.COL1, t2.COL2 FROM t1 last join t2 "
+            "order by t2.col5 on t1.col1 = t2.col2;"};
         EngineOptions options;
         options.set_compile_only(true);
         Engine engine(catalog, options);

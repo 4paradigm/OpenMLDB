@@ -37,6 +37,10 @@ void EngineWindowSumFeature5(benchmark::State* state, MODE mode,
                              int64_t limit_cnt,
                              int64_t size);  // NOLINT
 
+void EngineWindowMultiAggFeature5(benchmark::State* state, MODE mode,
+                                  int64_t limit_cnt,
+                                  int64_t size);  // NOLINT
+
 void EngineSimpleSelectDouble(benchmark::State* state, MODE mode);
 
 void EngineSimpleSelectVarchar(benchmark::State* state, MODE mode);

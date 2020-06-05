@@ -1,8 +1,6 @@
 SQLCases:
   - id: 0
     desc: LAST JOIN 右表未命中索引
-    mode: request
-    db: db1
     sql: |
       %%fun
       def test(a:i32,b:i32):i32
@@ -11,7 +9,8 @@ SQLCases:
           return d
       end
       %%sql
-      SELECT t1.col1 as id, t1.col0 as t1_col0, test(t1.col1,t2.col1) test_col1, t1.col2 as t1_col2, str1 FROM t1 last join t2 on t1.col1=t2.col1 and t1.col5 = t2.col5;
+      SELECT t1.col1 as id, t1.col0 as t1_col0, test(t1.col1,t2.col1) test_col1, t1.col2 as t1_col2, str1 FROM t1
+      last join t2 order by t2.col5 on t1.col1=t2.col1 and t1.col5 = t2.col5;
     inputs:
       - name: t1
         schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
@@ -42,7 +41,6 @@ SQLCases:
         5, 2, 11, 55, EEEEE
   - id: 1
     desc: LAST JOIN 右表成功命中索引
-    mode: request
     db: db1
     sql: |
       %%fun
@@ -52,7 +50,9 @@ SQLCases:
           return d
       end
       %%sql
-      SELECT t1.col1 as id, t1.col0 as t1_col0, test(t1.col1,t2.col1) test_col1, t1.col2 as t1_col2, str1 FROM t1 last join t2 on t1.col1=t2.col1 and t1.col5 = t2.col5;
+      SELECT t1.col1 as id, t1.col0 as t1_col0, test(t1.col1,t2.col1) test_col1, t1.col2 as t1_col2, str1 FROM t1
+      last join t2 order by t2.col5 on t1.col1=t2.col1 and t1.col5 = t2.col5;
+
     inputs:
       - name: t1
         schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
@@ -84,7 +84,6 @@ SQLCases:
 
   - id: 2
     desc: LAST JOIN 右表成功命中一个索引
-    mode: request
     db: db1
     sql: |
       %%fun
@@ -94,7 +93,8 @@ SQLCases:
           return d
       end
       %%sql
-      SELECT t1.col1 as id, t1.col0 as t1_col0, test(t1.col1,t2.col1) test_col1, t1.col2 as t1_col2, str1 FROM t1 last join t2 on t1.col1=t2.col1 and t1.col5 >= t2.col5;
+      SELECT t1.col1 as id, t1.col0 as t1_col0, test(t1.col1,t2.col1) test_col1, t1.col2 as t1_col2, str1 FROM t1
+      last join t2 order by t2.col5 on t1.col1=t2.col1 and t1.col5 >= t2.col5;
 
     inputs:
       - name: t1
@@ -126,10 +126,10 @@ SQLCases:
         5, 2, 11, 55, EEEEE
   - id: 3
     desc: LAST JOIN 拼表条件包含timestamp列
-    mode: request
     db: db1
     sql: |
-      SELECT t1.col1 as id, t1.col0 as t1_col0, t1.col2 as t1_col2, t1.std_ts as t1_std_ts, str1 FROM t1 last join t2 on t1.col1=t2.col1 and t1.std_ts = t2.std_ts;
+      SELECT t1.col1 as id, t1.col0 as t1_col0, t1.col2 as t1_col2, t1.std_ts as t1_std_ts, str1 FROM t1
+      last join t2 order by t2.std_ts on t1.col1=t2.col1 and t1.std_ts = t2.std_ts;
     inputs:
       - name: t1
         resource: cases/resource/simple_t1_ts.yaml
@@ -155,7 +155,9 @@ SQLCases:
     desc: LAST JOIN 多张表
     db: db1
     sql: |
-      SELECT t1.col1 as id, t1.col0, t2.c0, t3.column0 FROM t1 last join t2 on t1.col1=t2.c1 last join t3 on t1.col1 = t3.column1;
+      SELECT t1.col1 as id, t1.col0, t2.c0, t3.column0 FROM t1
+      last join t2 order by t2.c5 on t1.col1=t2.c1
+      last join t3 order by t3.column5 on t1.col1 = t3.column1;
     inputs:
       - name: t1
         schema: col0:string, col1:int32, col5:bigint
@@ -191,10 +193,10 @@ SQLCases:
         3, C, Q, Z
   - id: 5
     desc: LAST JOIN 拼表条件包含date列
-    mode: request
     db: db1
     sql: |
-      SELECT t1.col1 as id, t1.col0 as t1_col0, t1.col2 as t1_col2, t1.std_date as t1_std_date, str1 FROM t1 last join t2 on t1.std_date = t2.std_date;
+      SELECT t1.col1 as id, t1.col0 as t1_col0, t1.col2 as t1_col2, t1.std_date as t1_std_date, str1 FROM t1
+      last join t2 order by t2.col5 on t1.std_date = t2.std_date;
     inputs:
       - name: t1
         resource: cases/resource/simple_t1_date.yaml
@@ -216,3 +218,33 @@ SQLCases:
         3, 1, 55, 2020-05-22, CCC
         4, 1, 55, 2020-05-23, DDDD
         5, 2, 55, 2020-05-24, EEEEE
+  - id: 6
+    desc: LAST JOIN 命中多个Key取Last Order
+    db: db1
+    mode: offline-unsupport
+    sql: |
+      SELECT t1.col1 as id, t1.col0 as t1_col0, t1.col2 as t1_col2, t1.std_ts as t1_std_ts, t2.std_ts as t2_std_ts, str1 FROM t1
+      last join t2 order by t2.std_ts on t1.col1=t2.col1 and t1.std_ts >= t2.std_ts;
+    inputs:
+      - name: t1
+        resource: cases/resource/simple_t1_ts.yaml
+      - name: t2
+        schema: str0:string, str1:string,col1:int32, std_ts:timestamp
+        index: index1:col1:std_ts
+        data: |
+          2, GGGGGGG, 5, 1590115428000
+          2, FFFFFF, 5, 1590115423900
+          2, EEEEE, 5, 1590115427000
+          1, DDDD, 4, 1590115423000
+          1, CCC, 3, 1590115422000
+          0, BB, 2, 1590115421000
+          0, A, 1, 1590115420000
+    output:
+      schema: id:int32, t1_col0:string, t1_col2:int16, t1_std_ts:timestamp, t2_std_ts:timestamp, str1:string
+      order: id
+      data: |
+        1, 0, 5, 1590115420000, 1590115420000, A
+        2, 0, 5, 1590115421000, 1590115421000, BB
+        3, 1, 55, 1590115422000, 1590115422000, CCC
+        4, 1, 55, 1590115423000, 1590115423000, DDDD
+        5, 2, 55, 1590115424000, 1590115423900, FFFFFF

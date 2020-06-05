@@ -29,7 +29,6 @@ static void BM_EngineRequestSimpleSelectVarchar(
 }
 static void BM_EngineRequestSimpleSelectDouble(
     benchmark::State& state) {  // NOLINT
-
     EngineRequestSimpleSelectDouble(&state, BENCHMARK);
 }
 static void BM_EngineRequestSimpleSelectInt32(
@@ -56,6 +55,11 @@ static void BM_EngineWindowSumFeature1(benchmark::State& state) {  // NOLINT
 
 static void BM_EngineWindowSumFeature5(benchmark::State& state) {  // NOLINT
     EngineWindowSumFeature5(&state, BENCHMARK, state.range(0), state.range(1));
+}
+
+static void BM_EngineWindowMultiAggFeature5(benchmark::State& state) {  // NOLINT
+    EngineWindowMultiAggFeature5(
+        &state, BENCHMARK, state.range(0), state.range(1));
 }
 
 static void BM_EngineSimpleSelectVarchar(benchmark::State& state) {  // NOLINT
@@ -115,6 +119,14 @@ BENCHMARK(BM_EngineWindowSumFeature1)
     ->Args({10000, 10000});
 BENCHMARK(BM_EngineWindowSumFeature5)
     ->Args({1, 2})
+    ->Args({1, 10})
+    ->Args({1, 100})
+    ->Args({1, 1000})
+    ->Args({1, 10000})
+    ->Args({100, 100})
+    ->Args({1000, 1000})
+    ->Args({10000, 10000});
+BENCHMARK(BM_EngineWindowMultiAggFeature5)
     ->Args({1, 2})
     ->Args({1, 10})
     ->Args({1, 100})

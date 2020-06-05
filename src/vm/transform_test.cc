@@ -568,20 +568,22 @@ INSTANTIATE_TEST_CASE_P(
         // 0
         std::make_pair(
             "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join "
-            "t2 on "
+            "t2 order by t2.col5 on "
             " t1.col1 = t2.col2 and t2.col5 >= t1.col5;",
             "SIMPLE_PROJECT(sources=([0]<-[0:1], [1]<-[1:2])\n"
-            "  JOIN(type=LastJoin, condition=t2.col5 >= t1.col5, "
+            "  JOIN(type=LastJoin, right_sort=(t2.col5) ASC, condition=t2.col5 "
+            ">= t1.col5, "
             "left_keys=(t1.col1), right_keys=(t2.col2), index_keys=)\n"
             "    DATA_PROVIDER(table=t1)\n"
             "    DATA_PROVIDER(table=t2)"),
         // 1
         std::make_pair(
             "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join "
-            "t2 on "
+            "t2 order by t2.col5 on "
             " t1.col1 = t2.col1 and t2.col5 >= t1.col5;",
             "SIMPLE_PROJECT(sources=([0]<-[0:1], [1]<-[1:2])\n"
-            "  JOIN(type=LastJoin, condition=t2.col5 >= t1.col5, left_keys=(), "
+            "  JOIN(type=LastJoin, right_sort=() ASC, condition=t2.col5 >= "
+            "t1.col5, left_keys=(), "
             "right_keys=(), index_keys=(t1.col1))\n"
             "    DATA_PROVIDER(table=t1)\n"
             "    DATA_PROVIDER(type=Partition, table=t2, index=index1_t2)"),
@@ -591,7 +593,7 @@ INSTANTIATE_TEST_CASE_P(
             "t2.col1, "
             "sum(t1.col3) OVER w1 as w1_col3_sum, "
             "sum(t1.col2) OVER w1 as w1_col2_sum "
-            "FROM t1 last join t2 on t1.col1 = t2.col1 "
+            "FROM t1 last join t2 order by t2.col5 on t1.col1 = t2.col1 "
             "WINDOW w1 AS (PARTITION BY t1.col0 ORDER BY t1.col5 ROWS "
             "BETWEEN 3 "
             "PRECEDING AND CURRENT ROW) limit 10;",
@@ -599,7 +601,8 @@ INSTANTIATE_TEST_CASE_P(
             "  PROJECT(type=WindowAggregation, limit=10)\n"
             "    +-WINDOW(partition_keys=(t1.col0), orders=(t1.col5) ASC, "
             "range=(t1.col5, -3, 0))\n"
-            "    +-JOIN(type=LastJoin, condition=, left_keys=(), "
+            "    +-JOIN(type=LastJoin, right_sort=() ASC, condition=, "
+            "left_keys=(), "
             "right_keys=(), index_keys=(t1.col1))\n"
             "        DATA_PROVIDER(type=Partition, table=t2, index=index1_t2)\n"
             "    DATA_PROVIDER(table=t1)"),
@@ -609,7 +612,7 @@ INSTANTIATE_TEST_CASE_P(
             "t2.col1, "
             "sum(t1.col3) OVER w1 as w1_col3_sum, "
             "sum(t1.col2) OVER w1 as w1_col2_sum "
-            "FROM t1 last join t2 on t1.col1 = t2.col1 "
+            "FROM t1 last join t2 order by t2.col5 on t1.col1 = t2.col1 "
             "WINDOW w1 AS (PARTITION BY t1.col1 ORDER BY t1.col5 ROWS "
             "BETWEEN 3 "
             "PRECEDING AND CURRENT ROW) limit 10;",
@@ -617,7 +620,8 @@ INSTANTIATE_TEST_CASE_P(
             "  PROJECT(type=WindowAggregation, limit=10)\n"
             "    +-WINDOW(partition_keys=(), orders=() ASC, range=(t1.col5, "
             "-3, 0))\n"
-            "    +-JOIN(type=LastJoin, condition=, left_keys=(), "
+            "    +-JOIN(type=LastJoin, right_sort=() ASC, condition=, "
+            "left_keys=(), "
             "right_keys=(), index_keys=(t1.col1))\n"
             "        DATA_PROVIDER(type=Partition, table=t2, index=index1_t2)\n"
             "    DATA_PROVIDER(type=Partition, table=t1, index=index1)"),
@@ -627,7 +631,8 @@ INSTANTIATE_TEST_CASE_P(
             "t2.col1, "
             "sum(t1.col3) OVER w1 as w1_col3_sum, "
             "sum(t1.col2) OVER w1 as w1_col2_sum "
-            "FROM t1 last join t2 on t1.col0 = t2.col0 last join t3 on "
+            "FROM t1 last join t2 order by t2.col5 on t1.col0 = t2.col0 last "
+            "join t3 order by t3.col5 on "
             "t2.col0=t3.col0 "
             "WINDOW w1 AS (PARTITION BY t1.col1 ORDER BY t1.col5 ROWS "
             "BETWEEN 3 "
@@ -636,10 +641,12 @@ INSTANTIATE_TEST_CASE_P(
             "  PROJECT(type=WindowAggregation, limit=10)\n"
             "    +-WINDOW(partition_keys=(), orders=() ASC, range=(t1.col5, "
             "-3, 0))\n"
-            "    +-JOIN(type=LastJoin, condition=, left_keys=(t1.col0), "
+            "    +-JOIN(type=LastJoin, right_sort=(t2.col5) ASC, condition=, "
+            "left_keys=(t1.col0), "
             "right_keys=(t2.col0), index_keys=)\n"
             "        DATA_PROVIDER(table=t2)\n"
-            "    +-JOIN(type=LastJoin, condition=, left_keys=(t2.col0), "
+            "    +-JOIN(type=LastJoin, right_sort=(t3.col5) ASC, condition=, "
+            "left_keys=(t2.col0), "
             "right_keys=(t3.col0), index_keys=)\n"
             "        DATA_PROVIDER(table=t3)\n"
             "    DATA_PROVIDER(type=Partition, table=t1, index=index1)"),
@@ -649,7 +656,8 @@ INSTANTIATE_TEST_CASE_P(
             "t2.col1, "
             "sum(t1.col3) OVER w1 as w1_col3_sum, "
             "sum(t1.col2) OVER w1 as w1_col2_sum "
-            "FROM t1 last join t2 on t1.col2 = t2.col2 last join t3 on "
+            "FROM t1 last join t2 order by t2.col5 on t1.col2 = t2.col2 last "
+            "join t3 order by t3.col5 on "
             "t2.col2=t3.col2 "
             "WINDOW w1 AS (PARTITION BY t1.col0 ORDER BY t1.col5 ROWS "
             "BETWEEN 3 "
@@ -658,10 +666,12 @@ INSTANTIATE_TEST_CASE_P(
             "  PROJECT(type=WindowAggregation, limit=10)\n"
             "    +-WINDOW(partition_keys=(t1.col0), orders=(t1.col5) ASC, "
             "range=(t1.col5, -3, 0))\n"
-            "    +-JOIN(type=LastJoin, condition=, left_keys=(t1.col2), "
+            "    +-JOIN(type=LastJoin, right_sort=(t2.col5) ASC, condition=, "
+            "left_keys=(t1.col2), "
             "right_keys=(t2.col2), index_keys=)\n"
             "        DATA_PROVIDER(table=t2)\n"
-            "    +-JOIN(type=LastJoin, condition=, left_keys=(), "
+            "    +-JOIN(type=LastJoin, right_sort=() ASC, condition=, "
+            "left_keys=(), "
             "right_keys=(), index_keys=(t2.col2))\n"
             "        DATA_PROVIDER(type=Partition, table=t3, index=index2_t3)\n"
             "    DATA_PROVIDER(table=t1)"),
@@ -672,7 +682,8 @@ INSTANTIATE_TEST_CASE_P(
             "t2.col1, "
             "sum(t1.col3) OVER w1 as w1_col3_sum, "
             "sum(t1.col2) OVER w1 as w1_col2_sum "
-            "FROM t1 last join t2 on t1.col2 = t2.col2 last join t3 on "
+            "FROM t1 last join t2 order by t2.col5 on t1.col2 = t2.col2 last "
+            "join t3 order by t3.col5 on "
             "t2.col2=t3.col2 "
             "WINDOW w1 AS (PARTITION BY t3.col0 ORDER BY t1.col5 ROWS "
             "BETWEEN 3 "
@@ -681,9 +692,11 @@ INSTANTIATE_TEST_CASE_P(
             "  PROJECT(type=WindowAggregation, limit=10)\n"
             "    +-WINDOW(partition_keys=(t3.col0), orders=(t1.col5) ASC, "
             "range=(t1.col5, -3, 0))\n"
-            "    JOIN(type=LastJoin, condition=, left_keys=(), right_keys=(), "
+            "    JOIN(type=LastJoin, right_sort=() ASC, condition=, "
+            "left_keys=(), right_keys=(), "
             "index_keys=(t2.col2))\n"
-            "      JOIN(type=LastJoin, condition=, left_keys=(t1.col2), "
+            "      JOIN(type=LastJoin, right_sort=(t2.col5) ASC, condition=, "
+            "left_keys=(t1.col2), "
             "right_keys=(t2.col2), index_keys=)\n"
             "        DATA_PROVIDER(table=t1)\n"
             "        DATA_PROVIDER(table=t2)\n"
@@ -884,20 +897,22 @@ INSTANTIATE_TEST_CASE_P(
         // 0
         std::make_pair(
             "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join "
-            "t2 on "
+            "t2 order by t2.col5 on "
             " t1.col1 = t2.col2 and t2.col5 >= t1.col5;",
             "SIMPLE_PROJECT(sources=([0]<-[0:1], [1]<-[1:2])\n"
-            "  JOIN(type=LastJoin, condition=t2.col5 >= t1.col5, "
+            "  JOIN(type=LastJoin, right_sort=(t2.col5) ASC, condition=t2.col5 "
+            ">= t1.col5, "
             "left_keys=(t1.col1), right_keys=(t2.col2), index_keys=)\n"
             "    DATA_PROVIDER(table=t1)\n"
             "    DATA_PROVIDER(table=t2)"),
         // 1
         std::make_pair(
             "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join "
-            "t2 on "
+            "t2 order by t2.col5 on "
             " t1.col1 = t2.col1 and t2.col5 >= t1.col5;",
             "SIMPLE_PROJECT(sources=([0]<-[0:1], [1]<-[1:2])\n"
-            "  JOIN(type=LastJoin, condition=t2.col5 >= t1.col5, "
+            "  JOIN(type=LastJoin, right_sort=(t2.col5) ASC, condition=t2.col5 "
+            ">= t1.col5, "
             "left_keys=(t1.col1), right_keys=(t2.col1), index_keys=)\n"
             "    DATA_PROVIDER(table=t1)\n"
             "    DATA_PROVIDER(table=t2)"),
@@ -907,7 +922,7 @@ INSTANTIATE_TEST_CASE_P(
             "t2.col1, "
             "sum(t1.col3) OVER w1 as w1_col3_sum, "
             "sum(t1.col2) OVER w1 as w1_col2_sum "
-            "FROM t1 last join t2 on t1.col1 = t2.col1 "
+            "FROM t1 last join t2 order by t2.col5 on t1.col1 = t2.col1 "
             "WINDOW w1 AS (PARTITION BY t1.col0 ORDER BY t1.col5 ROWS "
             "BETWEEN 3 "
             "PRECEDING AND CURRENT ROW) limit 10;",
@@ -915,7 +930,8 @@ INSTANTIATE_TEST_CASE_P(
             "  PROJECT(type=WindowAggregation, limit=10)\n"
             "    +-WINDOW(partition_keys=(t1.col0), orders=(t1.col5) ASC, "
             "range=(t1.col5, -3, 0))\n"
-            "    JOIN(type=LastJoin, condition=, left_keys=(t1.col1), "
+            "    JOIN(type=LastJoin, right_sort=(t2.col5) ASC, condition=, "
+            "left_keys=(t1.col1), "
             "right_keys=(t2.col1), index_keys=)\n"
             "      DATA_PROVIDER(table=t1)\n"
             "      DATA_PROVIDER(table=t2)")));

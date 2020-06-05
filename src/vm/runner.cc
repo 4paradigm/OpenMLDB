@@ -861,15 +861,17 @@ std::shared_ptr<PartitionHandler> PartitionGenerator::Partition(
     return output_partitions;
 }
 std::shared_ptr<DataHandler> SortGenerator::Sort(
-    std::shared_ptr<DataHandler> input) {
+    std::shared_ptr<DataHandler> input, const bool reverse) {
     if (!input || !is_valid_ || !order_gen_.Valid()) {
         return input;
     }
     switch (input->GetHanlderType()) {
         case kTableHandler:
-            return Sort(std::dynamic_pointer_cast<TableHandler>(input));
+            return Sort(std::dynamic_pointer_cast<TableHandler>(input),
+                        reverse);
         case kPartitionHandler:
-            return Sort(std::dynamic_pointer_cast<PartitionHandler>(input));
+            return Sort(std::dynamic_pointer_cast<PartitionHandler>(input),
+                        reverse);
         default: {
             LOG(WARNING) << "Sort Fail: input isn't partition or table";
             return std::shared_ptr<PartitionHandler>();
@@ -878,7 +880,8 @@ std::shared_ptr<DataHandler> SortGenerator::Sort(
 }
 
 std::shared_ptr<PartitionHandler> SortGenerator::Sort(
-    std::shared_ptr<PartitionHandler> partition) {
+    std::shared_ptr<PartitionHandler> partition, const bool reverse) {
+    bool is_asc = reverse ? !is_asc_ : is_asc_;
     if (!is_valid_) {
         return partition;
     }
@@ -910,15 +913,16 @@ std::shared_ptr<PartitionHandler> SortGenerator::Sort(
         }
     }
     if (order_gen_.Valid()) {
-        output->Sort(is_asc_);
-    } else if (is_asc_ && OrderType::kDescOrder == partition->GetOrderType()) {
+        output->Sort(is_asc);
+    } else if (is_asc && OrderType::kDescOrder == partition->GetOrderType()) {
         output->Reverse();
     }
     return output;
 }
 
 std::shared_ptr<TableHandler> SortGenerator::Sort(
-    std::shared_ptr<TableHandler> table) {
+    std::shared_ptr<TableHandler> table, const bool reverse) {
+    bool is_asc = reverse ? !is_asc_ : is_asc_;
     if (!table || !is_valid_) {
         return table;
     }
@@ -941,16 +945,16 @@ std::shared_ptr<TableHandler> SortGenerator::Sort(
     }
 
     if (order_gen_.Valid()) {
-        output_table->Sort(is_asc_);
+        output_table->Sort(is_asc);
     } else {
         switch (table->GetOrderType()) {
             case kDescOrder:
-                if (is_asc_) {
+                if (is_asc) {
                     output_table->Reverse();
                 }
                 break;
             case kAscOrder:
-                if (!is_asc_) {
+                if (!is_asc) {
                     output_table->Reverse();
                 }
                 break;
@@ -1043,8 +1047,8 @@ bool JoinGenerator::TableJoin(std::shared_ptr<TableHandler> left,
     auto left_iter = left->GetIterator();
     while (left_iter->Valid()) {
         const Row& left_row = left_iter->GetValue();
-        output->AddRow(
-            Runner::RowLastJoinTable(left_row, right, condition_gen_));
+        output->AddRow(Runner::RowLastJoinTable(
+            left_row, right, right_sort_gen_, condition_gen_));
         left_iter->Next();
     }
     return true;
@@ -1077,8 +1081,8 @@ bool JoinGenerator::TableJoin(std::shared_ptr<TableHandler> left,
         }
         DLOG(INFO) << "key_str " << key_str;
         auto right_table = right->GetSegment(right, key_str);
-        output->AddRow(
-            Runner::RowLastJoinTable(left_row, right_table, condition_gen_));
+        output->AddRow(Runner::RowLastJoinTable(
+            left_row, right_table, right_sort_gen_, condition_gen_));
         left_iter->Next();
     }
     return true;
@@ -1099,7 +1103,8 @@ bool JoinGenerator::PartitionJoin(std::shared_ptr<PartitionHandler> left,
                 reinterpret_cast<const char*>(left_key.buf()), left_key.size());
             output->AddRow(
                 key_str, left_iter->GetKey(),
-                Runner::RowLastJoinTable(left_row, right, condition_gen_));
+                Runner::RowLastJoinTable(left_row, right, right_sort_gen_,
+                                         condition_gen_));
             left_iter->Next();
         }
     }
@@ -1137,9 +1142,10 @@ bool JoinGenerator::PartitionJoin(std::shared_ptr<PartitionHandler> left,
             auto right_table = right->GetSegment(right, key_str);
             auto left_key_str = std::string(
                 reinterpret_cast<const char*>(left_key.buf()), left_key.size());
-            output->AddRow(left_key_str, left_iter->GetKey(),
-                           Runner::RowLastJoinTable(left_row, right_table,
-                                                    condition_gen_));
+            output->AddRow(
+                left_key_str, left_iter->GetKey(),
+                Runner::RowLastJoinTable(left_row, right_table, right_sort_gen_,
+                                         condition_gen_));
             left_iter->Next();
         }
         left_partition_iter->Next();
@@ -1148,11 +1154,13 @@ bool JoinGenerator::PartitionJoin(std::shared_ptr<PartitionHandler> left,
 }
 const Row Runner::RowLastJoinTable(const Row& left_row,
                                    std::shared_ptr<TableHandler> right_table,
+                                   SortGenerator& right_sort,
                                    ConditionGenerator& cond_gen) {
     if (!right_table) {
         LOG(WARNING) << "Last Join right table is empty";
         return Row(left_row, Row());
     }
+    right_table = right_sort.Sort(right_table, true);
     auto right_iter = right_table->GetIterator();
     if (!right_iter) {
         LOG(WARNING) << "Last Join right table is empty";
