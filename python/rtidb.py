@@ -102,8 +102,7 @@ class BlobData:
     self._info.key_ = self._key
     data = interclient_tools.GetBlob(self._info, blobOPResult)
     if blobOPResult.code_ != 0:
-      msg = blobOPResult.GetMsg()
-      raise Exception("erred at get blob data {}".format(msg.decode("UTF-8")))
+      raise Exception("erred at get blob data {}".format(blobOPResult.msg_))
     return data
 
 class UpdateResult:
@@ -193,8 +192,7 @@ class RTIDBClient:
       blobOPResult = interclient.BlobOPResult()
       ok = interclient_tools.PutBlob(blobInfo, blobOPResult, blobData, len(blobData))
       if not ok:
-        msg = blobOPResult.GetMsg()
-        raise Exception("erred at put blob data: {}".format(msg.decode("UTF-8")))
+        raise Exception("erred at put blob data: {}".format(blobOPResult.msg_))
       value.update({k: str(blobInfo.key_)})
 
   def put(self, table_name: str, columns: map, write_option: WriteOption = None):
