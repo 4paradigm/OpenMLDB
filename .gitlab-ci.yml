@@ -6,6 +6,10 @@ variables:
 stages:
     - build
     - make_docker
+    - test
+    - ts_integration_test
+    - ns_integration_test
+    - deploy
 
 build:
     stage: build
