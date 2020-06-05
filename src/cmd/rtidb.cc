@@ -3686,7 +3686,7 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
         ns_table_info.set_storage_mode(::rtidb::common::kHDD);
         if (storage_mode == "kssd" || storage_mode == "ssd") {
             ns_table_info.set_storage_mode(::rtidb::common::kSSD);
-        } 
+        }
     }
     if (table_info.has_key_entry_max_height()) {
         if (table_info.key_entry_max_height() > FLAGS_skiplist_max_height) {
