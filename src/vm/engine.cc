@@ -20,9 +20,9 @@
 #include <utility>
 #include <vector>
 #include "base/fe_strings.h"
-#include "codec/list_iterator_codec.h"
 #include "codec/fe_row_codec.h"
 #include "codec/fe_schema_codec.h"
+#include "codec/list_iterator_codec.h"
 #include "codegen/buf_ir_builder.h"
 #include "gflags/gflags.h"
 #include "llvm-c/Target.h"
@@ -35,13 +35,16 @@ namespace fesql {
 namespace vm {
 
 static bool LLVM_IS_INITIALIZED = false;
-Engine::Engine(const std::shared_ptr<Catalog>& catalog) : cl_(catalog),
-    options_(), mu_(), batch_cache_(), request_cache_(){}
+Engine::Engine(const std::shared_ptr<Catalog>& catalog)
+    : cl_(catalog), options_(), mu_(), batch_cache_(), request_cache_() {}
 
 Engine::Engine(const std::shared_ptr<Catalog>& catalog,
                const EngineOptions& options)
-    : cl_(catalog), options_(options), mu_(), batch_cache_(),
-request_cache_(){}
+    : cl_(catalog),
+      options_(options),
+      mu_(),
+      batch_cache_(),
+      request_cache_() {}
 
 Engine::~Engine() {}
 
@@ -55,8 +58,8 @@ bool Engine::Get(const std::string& sql, const std::string& db,
                  RunSession& session,
                  base::Status& status) {  // NOLINT (runtime/references)
     {
-        std::shared_ptr<CompileInfo> info = GetCacheLocked(db, sql,
-                session.IsBatchRun());
+        std::shared_ptr<CompileInfo> info =
+            GetCacheLocked(db, sql, session.IsBatchRun());
         if (info) {
             session.SetCompileInfo(info);
             session.SetCatalog(cl_);
@@ -69,7 +72,7 @@ bool Engine::Get(const std::string& sql, const std::string& db,
     info->get_sql_context().db = db;
     info->get_sql_context().is_batch_mode = session.IsBatchRun();
     SQLCompiler compiler(cl_, options_.is_keep_ir(), false,
-            options_.is_plan_only());
+                         options_.is_plan_only());
     bool ok = compiler.Compile(info->get_sql_context(), status);
     if (!ok || 0 != status.code) {
         // TODO(chenjing): do clean
@@ -98,7 +101,7 @@ bool Engine::Get(const std::string& sql, const std::string& db,
             } else {
                 session.SetCompileInfo(it->second);
             }
-        }else {
+        } else {
             std::map<std::string, std::shared_ptr<CompileInfo>>& sql_in_db =
                 request_cache_[db];
             std::map<std::string, std::shared_ptr<CompileInfo>>::iterator it =
@@ -156,7 +159,7 @@ std::shared_ptr<CompileInfo> Engine::GetCacheLocked(const std::string& db,
             return std::shared_ptr<CompileInfo>();
         }
         return iit->second;
-    }else {
+    } else {
         EngineCache::iterator it = request_cache_.find(db);
         if (it == request_cache_.end()) {
             return std::shared_ptr<CompileInfo>();
@@ -251,8 +254,8 @@ int32_t BatchRunSession::Run(std::vector<Row>& rows, uint64_t limit) {
             return 0;
         }
         case kRowHandler: {
-            rows.push_back(std::dynamic_pointer_cast<RowHandler>(output)
-                              ->GetValue());
+            rows.push_back(
+                std::dynamic_pointer_cast<RowHandler>(output)->GetValue());
             return 0;
         }
         case kPartitionHandler: {
