@@ -720,7 +720,6 @@ message ReadOption {
 
 message WriteOption {
     optional bool update_if_exist = 1 [default = false];
-    optional bool update_if_equal = 2 [default = true]; 
 }
 
 message BatchQueryRequest {

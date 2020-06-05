@@ -190,7 +190,7 @@ const std::shared_ptr<IndexDef> TableIndex::GetIndexByCombineStr(
     }
 }
 
-bool TableIndex::FindColName(const std::string& name) {
+bool TableIndex::IsColName(const std::string& name) {
     auto vec = std::atomic_load_explicit(&col_name_vec_,
             std::memory_order_relaxed);
     auto iter = std::find(vec->begin(), vec->end(), name);
@@ -200,7 +200,7 @@ bool TableIndex::FindColName(const std::string& name) {
     return true;
 }
 
-bool TableIndex::FindUniqueColName(const std::string& name) {
+bool TableIndex::IsUniqueColName(const std::string& name) {
     auto vec = std::atomic_load_explicit(&unique_col_name_vec_,
             std::memory_order_relaxed);
     auto iter = std::find(vec->begin(), vec->end(), name);

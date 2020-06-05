@@ -55,9 +55,8 @@ def buildStrMap(m: map):
   return  mid_map
 
 class WriteOption:
-  def __init__(self, updateIfExist = True, updateIfEqual = True):
+  def __init__(self, updateIfExist = False):
     self.updateIfExist = updateIfExist
-    self.updateIfEqual = updateIfEqual
     
 class ReadFilter:
   def __init__(self, column, compare: int, value):

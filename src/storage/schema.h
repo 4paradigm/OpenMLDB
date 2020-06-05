@@ -147,8 +147,8 @@ class TableIndex {
     std::shared_ptr<IndexDef> GetPkIndex();
     const std::shared_ptr<IndexDef> GetIndexByCombineStr(
         const std::string& combine_str);
-    bool FindColName(const std::string& name);
-    bool FindUniqueColName(const std::string& name);
+    bool IsColName(const std::string& name);
+    bool IsUniqueColName(const std::string& name);
 
  private:
     std::shared_ptr<std::vector<std::shared_ptr<IndexDef>>> indexs_;

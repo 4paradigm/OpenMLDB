@@ -308,7 +308,7 @@ bool RelationalTable::LoadTable() {
 }
 
 bool RelationalTable::Put(const std::string& value, int64_t* auto_gen_pk,
-        ::rtidb::api::WriteOption wo) {
+        const ::rtidb::api::WriteOption& wo) {
     ::rtidb::base::Slice slice(value);
     std::string new_value;
     if (table_meta_.compress_type() == ::rtidb::api::kSnappy) {
@@ -1018,7 +1018,7 @@ bool RelationalTable::UpdateDB(const std::shared_ptr<IndexDef> index_def,
             auto col_iter = col_idx_map.find(schema.Get(i).name());
             if (col_iter != col_idx_map.end()) {
                 if ((!is_update_index)
-                        && table_index_.FindColName(schema.Get(i).name())) {
+                        && table_index_.IsColName(schema.Get(i).name())) {
                     is_update_index = true;
                 }
                 if (!is_update_pk) {
@@ -1035,13 +1035,13 @@ bool RelationalTable::UpdateDB(const std::shared_ptr<IndexDef> index_def,
                         }
                     }
                 }
-                if ((!is_update_unique) && table_index_.FindUniqueColName(
+                if ((!is_update_unique) && table_index_.IsUniqueColName(
                             schema.Get(i).name())) {
                     is_update_unique = true;
                 }
                 if (iter_vec.size() > 1 &&
                         (is_update_pk || is_update_unique)) {
-                    PDLOG(WARNING, "duplicate pk or unique key"
+                    DEBUGLOG("duplicate pk or unique key"
                             "tid %u pid %u", id_, pid_);
                     return false;
                 }
