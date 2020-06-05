@@ -272,11 +272,9 @@ class TabletImpl : public ::rtidb::api::TabletServer {
     inline void SetServer(brpc::Server* server) { server_ = server; }
 
     // get on value from specified ttl type index
-    int32_t GetIndex(uint64_t expire_time, uint64_t expire_cnt,
-                     ::rtidb::api::TTLType ttl_type,
-                     ::rtidb::storage::TableIterator* it,
-                     const ::rtidb::api::GetRequest* request,
-                     const ::rtidb::api::TableMeta& meta, std::string* value,
+    int32_t GetIndex(const ::rtidb::api::GetRequest* request,
+                     const ::rtidb::api::TableMeta& meta,
+                     CombineIterator* combine_it, std::string* value,
                      uint64_t* ts);
 
     // scan specified ttl type index
@@ -324,7 +322,8 @@ class TabletImpl : public ::rtidb::api::TabletServer {
                                 bool is_load, std::string& msg);  // NOLINT
 
     int CreateRelationalTableInternal(const ::rtidb::api::TableMeta* table_meta,
-                                      bool is_load, std::string& msg);  // NOLINT
+                                      bool is_load,
+                                      std::string& msg);  // NOLINT
 
     void MakeSnapshotInternal(uint32_t tid, uint32_t pid, uint64_t end_offset,
                               std::shared_ptr<::rtidb::api::TaskInfo> task);
@@ -377,8 +376,8 @@ class TabletImpl : public ::rtidb::api::TabletServer {
                               const ::rtidb::api::TableMeta& table_meta,
                               std::shared_ptr<::rtidb::api::TaskInfo> task_ptr);
     int LoadRelationalTableInternal(
-            const ::rtidb::api::TableMeta& table_meta,
-            std::shared_ptr<::rtidb::api::TaskInfo> task_ptr);
+        const ::rtidb::api::TableMeta& table_meta,
+        std::shared_ptr<::rtidb::api::TaskInfo> task_ptr);
     int WriteTableMeta(const std::string& path,
                        const ::rtidb::api::TableMeta* table_meta);
 
