@@ -26,7 +26,7 @@ mac_build:
         CICD_RUNNER_THIRDPARTY_PATH: "/opt/depends/thirdparty"
         CICD_RUNNER_TAG: "rtidb_mac"
     tags:
-	- rtidb_mac
+	    - rtidb_mac
     stage: build
     script:
         - sh tools/install_fesql_mac.sh
@@ -38,7 +38,7 @@ mac_build:
         paths:
             - build/bin/rtidb_mac
             - build/src/sdk/libsql_jsdk.dylib
-	    - build/sql_pysdk/dist/
+	        - build/sql_pysdk/dist/
 
 style_check:
     stage: build
