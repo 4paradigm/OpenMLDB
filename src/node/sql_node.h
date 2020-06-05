@@ -22,6 +22,9 @@
 #include <map>
 #include <string>
 #include <vector>
+#include "boost/algorithm/string.hpp"
+#include "boost/filesystem/operations.hpp"
+#include "boost/lexical_cast.hpp"
 #include "node/node_enum.h"
 
 namespace fesql {
@@ -213,6 +216,8 @@ inline const std::string DataTypeName(const DataType &type) {
             return "string";
         case fesql::node::kTimestamp:
             return "timestamp";
+        case fesql::node::kDate:
+            return "date";
         case fesql::node::kList:
             return "list";
         case fesql::node::kMap:
@@ -365,6 +370,23 @@ class FnNodeList : public FnNode {
     std::vector<FnNode *> children;
 };
 
+class OrderByNode : public ExprNode {
+ public:
+    explicit OrderByNode(const ExprListNode *order, bool is_asc)
+        : ExprNode(kExprOrder), is_asc_(is_asc), order_by_(order) {}
+    ~OrderByNode() {}
+
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const std::string GetExprString() const;
+    virtual bool Equals(const ExprNode *that) const;
+
+    const ExprListNode *order_by() const { return order_by_; }
+
+    bool is_asc() const { return is_asc_; }
+
+    const bool is_asc_;
+    const ExprListNode *order_by_;
+};
 class TableRefNode : public SQLNode {
  public:
     explicit TableRefNode(TableRefType ref_type, std::string alias_table_name)
@@ -410,38 +432,23 @@ class QueryRefNode : public TableRefNode {
 class JoinNode : public TableRefNode {
  public:
     JoinNode(const TableRefNode *left, const TableRefNode *right,
-             const JoinType join_type, const ExprNode *condition,
-             const std::string &alias_name)
+             const JoinType join_type, const OrderByNode *orders,
+             const ExprNode *condition, const std::string &alias_name)
         : TableRefNode(kRefJoin, alias_name),
           left_(left),
           right_(right),
           join_type_(join_type),
+          orders_(orders),
           condition_(condition) {}
     void Print(std::ostream &output, const std::string &org_tab) const;
     virtual bool Equals(const SQLNode *node) const;
     const TableRefNode *left_;
     const TableRefNode *right_;
     const JoinType join_type_;
+    const node::OrderByNode *orders_;
     const ExprNode *condition_;
 };
 
-class OrderByNode : public ExprNode {
- public:
-    explicit OrderByNode(const ExprListNode *order, bool is_asc)
-        : ExprNode(kExprOrder), is_asc_(is_asc), order_by_(order) {}
-    ~OrderByNode() {}
-
-    void Print(std::ostream &output, const std::string &org_tab) const;
-    const std::string GetExprString() const;
-    virtual bool Equals(const ExprNode *that) const;
-
-    const ExprListNode *order_by() const { return order_by_; }
-
-    bool is_asc() const { return is_asc_; }
-
-    const bool is_asc_;
-    const ExprListNode *order_by_;
-};
 class SelectQueryNode : public QueryNode {
  public:
     SelectQueryNode(bool is_distinct, SQLNodeList *select_list,
@@ -779,6 +786,12 @@ class ExprIdNode : public ExprNode {
 };
 
 class ConstNode : public ExprNode {
+    struct FeDate {
+        int32_t year = -1;
+        int32_t month = -1;
+        int32_t day = -1;
+    };
+
  public:
     ConstNode() : ExprNode(kExprPrimary), data_type_(fesql::node::kNull) {}
     explicit ConstNode(int16_t val)
@@ -837,8 +850,8 @@ class ConstNode : public ExprNode {
 
     virtual bool Equals(const ExprNode *node) const;
 
+    const bool IsNull() const { return kNull == data_type_; }
     const std::string GetExprString() const;
-
     int16_t GetSmallInt() const { return val_.vsmallint; }
 
     int GetInt() const { return val_.vint; }
@@ -868,6 +881,118 @@ class ConstNode : public ExprNode {
                     << "error occur when get milli second from wrong type "
                     << DataTypeName(data_type_);
                 return -1;
+            }
+        }
+    }
+
+    const int32_t GetAsInt32() const {
+        switch (data_type_) {
+            case kInt32:
+                return static_cast<int32_t>(val_.vint);
+            case kInt16:
+                return static_cast<int32_t>(val_.vsmallint);
+            case kInt64:
+                return static_cast<int64_t>(val_.vlong);
+            case kFloat:
+                return static_cast<int64_t>(val_.vfloat);
+            case kDouble:
+                return static_cast<int64_t>(val_.vdouble);
+            default: {
+                return 0;
+            }
+        }
+    }
+
+    const int16_t GetAsInt16() const {
+        switch (data_type_) {
+            case kInt32:
+                return static_cast<int16_t>(val_.vint);
+            case kInt16:
+                return static_cast<int16_t>(val_.vsmallint);
+            case kInt64:
+                return static_cast<int16_t>(val_.vlong);
+            case kFloat:
+                return static_cast<int16_t>(val_.vfloat);
+            case kDouble:
+                return static_cast<int16_t>(val_.vdouble);
+            default: {
+                return 0;
+            }
+        }
+    }
+
+    const int64_t GetAsInt64() const {
+        switch (data_type_) {
+            case kInt32:
+                return static_cast<int64_t>(val_.vint);
+            case kInt16:
+                return static_cast<int64_t>(val_.vsmallint);
+            case kInt64:
+                return static_cast<int64_t>(val_.vlong);
+            case kFloat:
+                return static_cast<int64_t>(val_.vfloat);
+            case kDouble:
+                return static_cast<int64_t>(val_.vdouble);
+            default: {
+                return 0;
+            }
+        }
+    }
+
+    const float GetAsFloat() const {
+        switch (data_type_) {
+            case kInt32:
+                return static_cast<float>(val_.vint);
+            case kInt16:
+                return static_cast<float>(val_.vsmallint);
+            case kInt64:
+                return static_cast<float>(val_.vlong);
+            case kFloat:
+                return static_cast<float>(val_.vfloat);
+            case kDouble:
+                return static_cast<float>(val_.vdouble);
+            default: {
+                return 0.0;
+            }
+        }
+    }
+
+    const bool GetAsDate(int32_t *year, int32_t *month, int32_t *day) const {
+        switch (data_type_) {
+            case kVarchar: {
+                std::string date_str(val_.vstr);
+                std::vector<std::string> date_vec;
+                boost::split(date_vec, date_str, boost::is_any_of("-"),
+                             boost::token_compress_on);
+                if (date_vec.empty()) {
+                    LOG(WARNING) << "Invalid Date Format";
+                    return false;
+                }
+                *year = boost::lexical_cast<int32_t>(date_vec[0]);
+                *month = boost::lexical_cast<int32_t>(date_vec[1]);
+                *day = boost::lexical_cast<int32_t>(date_vec[2]);
+                return true;
+            }
+            default: {
+                LOG(WARNING) << "Invalid data type for date";
+                return false;
+            }
+        }
+    }
+    const double GetAsDouble() const {
+        switch (data_type_) {
+            case kInt32:
+                return static_cast<double>(val_.vint);
+            case kInt16:
+                return static_cast<double>(val_.vsmallint);
+            case kInt64:
+                return static_cast<double>(val_.vlong);
+            case kFloat:
+                return static_cast<double>(val_.vfloat);
+            case kDouble:
+                return static_cast<double>(val_.vdouble);
+            default: {
+                return 0.0;
             }
         }
     }
@@ -1100,13 +1225,13 @@ class IndexTTLNode : public SQLNode {
 class IndexTTLTypeNode : public SQLNode {
  public:
     IndexTTLTypeNode() : SQLNode(kIndexTTLType, 0, 0) {}
-    explicit IndexTTLTypeNode(const std::string& ttl_type)
+    explicit IndexTTLTypeNode(const std::string &ttl_type)
         : SQLNode(kIndexTTLType, 0, 0), ttl_type_(ttl_type) {}
 
-    void set_ttl_type(const std::string& ttl_type) {
+    void set_ttl_type(const std::string &ttl_type) {
         this->ttl_type_ = ttl_type;
     }
-    const std::string& ttl_type() const { return ttl_type_; }
+    const std::string &ttl_type() const { return ttl_type_; }
 
  private:
     std::string ttl_type_;
@@ -1141,12 +1266,8 @@ class ColumnIndexNode : public SQLNode {
 
     void SetVersionCount(int count) { version_count_ = count; }
 
-    const std::string & ttl_type() const {
-        return ttl_type_;
-    }
-    void set_ttl_type(const std::string& ttl_type) {
-        ttl_type_ = ttl_type;
-    }
+    const std::string &ttl_type() const { return ttl_type_; }
+    void set_ttl_type(const std::string &ttl_type) { ttl_type_ = ttl_type; }
     int64_t GetTTL() const { return ttl_; }
     void SetTTL(ExprNode *ttl_node) {
         if (nullptr == ttl_node) {
@@ -1211,10 +1332,26 @@ class CmdNode : public SQLNode {
     std::vector<std::string> args_;
 };
 
+class CreateIndexNode : public SQLNode {
+ public:
+    explicit CreateIndexNode(const std::string &index_name,
+                             const std::string &table_name,
+                             ColumnIndexNode *index)
+        : SQLNode(kCreateIndexStmt, 0, 0),
+          index_name_(index_name),
+          table_name_(table_name),
+          index_(index) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+
+    const std::string index_name_;
+    const std::string table_name_;
+    node::ColumnIndexNode *index_;
+};
+
 class ExplainNode : public SQLNode {
  public:
     explicit ExplainNode(const QueryNode *query, node::ExplainType explain_type)
-        : SQLNode(kExplainSmt, 0, 0),
+        : SQLNode(kExplainStmt, 0, 0),
           explain_type_(explain_type),
           query_(query) {}
     void Print(std::ostream &output, const std::string &org_tab) const;

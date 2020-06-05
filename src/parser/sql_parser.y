@@ -390,12 +390,13 @@ typedef void* yyscan_t;
               window_definition window_specification over_clause
               limit_clause
 %type<query_node> sql_stmt union_stmt select_stmt query_clause
-%type <table_ref> table_reference join_clause table_factor query_reference
+%type <table_ref> table_reference join_clause last_join_clause table_factor query_reference
  /* insert table */
 %type<node> insert_stmt
 %type<exprlist> insert_expr_list column_ref_list opt_partition_clause
 				group_expr sql_id_list
 				sql_expr_list fun_expr_list
+				insert_values insert_value
 
 %type<expr> insert_expr where_expr having_expr
 
@@ -578,6 +579,10 @@ types:  I32
         {
             $$ = ::fesql::node::kInt32;
         }
+        |SMALLINT
+        {
+        	$$ = ::fesql::node::kInt16;
+        }
         |INTEGER
         {
             $$ = ::fesql::node::kInt32;
@@ -601,6 +606,10 @@ types:  I32
         |TIMESTAMP
         {
             $$ = ::fesql::node::kTimestamp;
+        }
+        |DATE
+        {
+        	$$ = ::fesql::node::kDate;
         }
         ;
 
@@ -713,20 +722,42 @@ create_stmt:    CREATE TABLE op_if_not_exist relation_name '(' column_desc_list 
                 {
                     $$ = node_manager->MakeCreateTableNode($3, $4, $6);
                 }
+                |CREATE INDEX column_name ON table_name '(' column_index_item_list ')'
+                {
+                    $$ = node_manager->MakeCreateIndexNode($3, $5,
+                    dynamic_cast<fesql::node::ColumnIndexNode *>(node_manager->MakeColumnIndexNode($7)));
+                    free($3);
+                    free($5);
+                }
                 ;
 
 
-insert_stmt:	INSERT INTO table_name VALUES '(' insert_expr_list ')'
+insert_stmt:	INSERT INTO table_name VALUES insert_values
 				{
-					$$ = node_manager->MakeInsertTableNode($3, NULL, $6);
+					$$ = node_manager->MakeInsertTableNode($3, NULL, $5);
 				}
-				|INSERT INTO table_name '(' column_ref_list ')' VALUES '(' insert_expr_list ')'
+				|INSERT INTO table_name '(' column_ref_list ')' VALUES insert_values
 				{
 
-					$$ = node_manager->MakeInsertTableNode($3, $5, $9);
+					$$ = node_manager->MakeInsertTableNode($3, $5, $8);
+				}
+				;
+insert_values:	insert_value
+				{
+					$$ = node_manager->MakeExprList($1);
+				}
+				| insert_values ',' insert_value
+				{
+					$$ = $1;
+					$$->PushBack($3);
 				}
 				;
 
+insert_value:	'(' insert_expr_list ')'
+				{
+					$$ = $2;
+				}
+				;
 column_ref_list:	column_ref
 					{
 						$$ = node_manager->MakeExprList($1);
@@ -785,6 +816,17 @@ cmd_stmt:
 				$$ = node_manager->MakeCmdNode(::fesql::node::kCmdUseDatabase, $2);
 				free($2);
 			}
+            |DROP TABLE table_name
+            {
+                $$ = node_manager->MakeCmdNode(::fesql::node::kCmdDropTable, $3);
+                free($3);
+            }
+            |DROP INDEX column_name ON table_name
+            {
+                $$ = node_manager->MakeCmdNode(::fesql::node::kCmdDropIndex, $3, $5);
+                free($3);
+                free($5);
+            }
             |EXIT {
                 $$ = node_manager->MakeCmdNode(::fesql::node::kCmdExit);
             }
@@ -977,6 +1019,10 @@ table_reference:
 			{
 				$$ = $1;
 			}
+			|last_join_clause
+			{
+				$$ = $1;
+			}
 			|query_reference
 			{
 				$$ = $1;
@@ -1032,7 +1078,20 @@ join_clause:
 			$$ = node_manager->MakeJoinNode($1, $4, $2, $5, $7);
 		}
 		;
-
+last_join_clause:
+		table_reference LAST JOIN table_reference sort_clause join_condition
+		{
+			$$ = node_manager->MakeLastJoinNode($1, $4, $5, $6, "");
+		}
+		| table_reference LAST JOIN table_reference sort_clause join_condition relation_name
+		{
+			$$ = node_manager->MakeLastJoinNode($1, $4, $5, $6, $7);
+		}
+		| table_reference LAST JOIN table_reference sort_clause join_condition AS relation_name
+		{
+			$$ = node_manager->MakeLastJoinNode($1, $4, $5, $6, $8);
+		}
+		;
 union_stmt:
 		query_clause UNION query_clause
 		{
@@ -1047,7 +1106,6 @@ union_stmt:
 			$$ = node_manager->MakeUnionQueryNode($1, $4, true);
 		}
 		;
-
 join_type:
 		FULL join_outer
 		{

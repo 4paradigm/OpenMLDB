@@ -121,11 +121,8 @@ void BinaryArithmeticExprCheck(::fesql::node::DataType left_type,
     switch (dist_type) {
         case node::kTimestamp: {
             codegen::TimestampIRBuilder timestamp_builder(m.get());
-            ::llvm::Value *ts_output;
-            ASSERT_TRUE(timestamp_builder.GetTs(builder.GetInsertBlock(),
-                                                output, &ts_output));
-            ASSERT_TRUE(timestamp_builder.SetTs(builder.GetInsertBlock(), arg2,
-                                                ts_output));
+            ASSERT_TRUE(timestamp_builder.CopyFrom(builder.GetInsertBlock(),
+                                                output, arg2));
             break;
         }
         case node::kVarchar: {

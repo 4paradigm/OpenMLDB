@@ -42,7 +42,8 @@
 #include "parser/parser.h"
 #include "plan/planner.h"
 #include "vm/test_base.h"
-
+#define MAX_DEBUG_LINES_CNT 10
+#define MAX_DEBUG_COLUMN_CNT 20
 using namespace llvm;       // NOLINT (build/namespaces)
 using namespace llvm::orc;  // NOLINT (build/namespaces)
 
@@ -88,6 +89,10 @@ void PrintRows(const vm::Schema& schema, const std::vector<Row>& rows) {
     // Add Header
     for (int i = 0; i < schema.size(); i++) {
         t.add(schema.Get(i).name());
+        if (t.current_columns_size() >= MAX_DEBUG_COLUMN_CNT) {
+            t.add("...");
+            break;
+        }
     }
     t.endOfRow();
     if (rows.empty()) {
@@ -101,8 +106,15 @@ void PrintRows(const vm::Schema& schema, const std::vector<Row>& rows) {
         for (int idx = 0; idx < schema.size(); idx++) {
             std::string str = row_view.GetAsString(idx);
             t.add(str);
+            if (t.current_columns_size() >= MAX_DEBUG_COLUMN_CNT) {
+                t.add("...");
+                break;
+            }
         }
         t.endOfRow();
+        if (t.rows().size() >= MAX_DEBUG_LINES_CNT) {
+            break;
+        }
     }
     oss << t << std::endl;
     LOG(INFO) << "\n" << oss.str() << "\n";
@@ -191,16 +203,22 @@ void CheckRows(const vm::Schema& schema, const std::vector<Row>& rows,
                         << " At " << i;
                     break;
                 }
+                case fesql::type::kDate: {
+                    ASSERT_EQ(row_view.GetDateUnsafe(i),
+                              row_view_exp.GetDateUnsafe(i))
+                        << " At " << i;
+                    break;
+                }
                 case fesql::type::kTimestamp: {
                     ASSERT_EQ(row_view.GetTimestampUnsafe(i),
                               row_view_exp.GetTimestampUnsafe(i))
-                                        << " At " << i;
+                        << " At " << i;
                     break;
                 }
                 case fesql::type::kBool: {
                     ASSERT_EQ(row_view.GetBoolUnsafe(i),
                               row_view_exp.GetBoolUnsafe(i))
-                                        << " At " << i;
+                        << " At " << i;
                     break;
                 }
                 default: {
@@ -384,6 +402,10 @@ INSTANTIATE_TEST_CASE_P(
     testing::ValuesIn(InitCases("/cases/query/simple_query.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
+    EngineExtreamQuery, EngineTest,
+    testing::ValuesIn(InitCases("/cases/query/extream_query.yaml")));
+
+INSTANTIATE_TEST_CASE_P(
     EngineLastJoinQuery, EngineTest,
     testing::ValuesIn(InitCases("/cases/query/last_join_query.yaml")));
 
@@ -417,7 +439,9 @@ TEST_P(EngineTest, test_request_engine) {
 TEST_P(EngineTest, test_batch_engine) {
     ParamType sql_case = GetParam();
     LOG(INFO) << sql_case.desc();
-    BatchModeCheck(sql_case);
+    if (sql_case.mode() != "batch-unsupport") {
+        BatchModeCheck(sql_case);
+    }
 }
 
 TEST_F(EngineTest, EngineCompileOnlyTest) {
@@ -453,8 +477,8 @@ TEST_F(EngineTest, EngineCompileOnlyTest) {
             "SELECT t1.COL1, t1.COL2, t2.COL1, t2.COL2 FROM t1 right join t2 "
             "on "
             "t1.col1 = t2.col2;",
-            "SELECT t1.COL1, t1.COL2, t2.COL1, t2.COL2 FROM t1 last join t2 on "
-            "t1.col1 = t2.col2;"};
+            "SELECT t1.COL1, t1.COL2, t2.COL1, t2.COL2 FROM t1 last join t2 "
+            "order by t2.col5 on t1.col1 = t2.col2;"};
         EngineOptions options;
         options.set_compile_only(true);
         Engine engine(catalog, options);

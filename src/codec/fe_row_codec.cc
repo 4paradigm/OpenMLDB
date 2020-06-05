@@ -175,6 +175,19 @@ bool RowBuilder::AppendTimestamp(int64_t val) {
     cnt_++;
     return true;
 }
+bool RowBuilder::AppendDate(int32_t year, int32_t month, int32_t day) {
+    if (year < 1900 || year > 9999) return false;
+    if (month < 1 || month > 12) return false;
+    if (day < 1 || day > 31) return false;
+    if (!Check(::fesql::type::kDate)) return false;
+    int8_t* ptr = buf_ + offset_vec_[cnt_];
+    int32_t data = (year - 1900) << 16;
+    data = data | ((month - 1) << 8);
+    data = data | day;
+    *(reinterpret_cast<int32_t*>(ptr)) = data;
+    cnt_++;
+    return true;
+}
 
 bool RowBuilder::AppendInt64(int64_t val) {
     if (!Check(::fesql::type::kInt64)) return false;
@@ -343,7 +356,10 @@ int64_t RowView::GetInt64Unsafe(uint32_t idx) {
     uint32_t offset = offset_vec_.at(idx);
     return v1::GetInt64Field(row_, offset);
 }
-
+int32_t RowView::GetDateUnsafe(uint32_t idx) {
+    uint32_t offset = offset_vec_.at(idx);
+    return static_cast<int32_t>(v1::GetInt32Field(row_, offset));
+}
 int64_t RowView::GetTimestampUnsafe(uint32_t idx) {
     uint32_t offset = offset_vec_.at(idx);
     return v1::GetInt64Field(row_, offset);
@@ -483,6 +499,43 @@ int32_t RowView::GetDouble(uint32_t idx, double* val) {
     return 0;
 }
 
+int32_t RowView::GetDate(uint32_t idx, int32_t* date) {
+    if (date) {
+        return -1;
+    }
+    if (!CheckValid(idx, ::fesql::type::kDate)) {
+        return -1;
+    }
+    if (IsNULL(row_, idx)) {
+        return 1;
+    }
+    *date = GetDateUnsafe(idx);
+    return 0;
+}
+int32_t RowView::GetYearUnsafe(int32_t days) { return 1900 + (days >> 16); }
+int32_t RowView::GetMonthUnsafe(int32_t days) {
+    days = days >> 8;
+    return 1 + (days & 0x0000FF);
+}
+int32_t RowView::GetDayUnsafe(int32_t days) { return days & 0x0000000FF; }
+int32_t RowView::GetDate(uint32_t idx, int32_t* year, int32_t* month,
+                         int32_t* day) {
+    if (year == NULL || month == NULL || day == NULL) {
+        return -1;
+    }
+    if (!CheckValid(idx, ::fesql::type::kDate)) {
+        return -1;
+    }
+    if (IsNULL(row_, idx)) {
+        return 1;
+    }
+    int32_t date = GetDateUnsafe(idx);
+    *day = date & 0x0000000FF;
+    date = date >> 8;
+    *month = 1 + (date & 0x0000FF);
+    *year = 1900 + (date >> 8);
+    return 0;
+}
 int32_t RowView::GetInteger(const int8_t* row, uint32_t idx,
                             ::fesql::type::Type type, int64_t* val) {
     int32_t ret = 0;
@@ -655,6 +708,17 @@ std::string RowView::GetAsString(uint32_t idx) {
             int64_t value;
             if (0 == GetTimestamp(idx, &value)) {
                 return std::to_string(value);
+            }
+            break;
+        }
+        case fesql::type::kDate: {
+            int32_t year;
+            int32_t month;
+            int32_t day;
+            if (0 == GetDate(idx, &year, &month, &day)) {
+                char date[11];
+                snprintf(date, 11u, "%4d-%.2d-%.2d", year, month, day);
+                return std::string(date);
             }
             break;
         }
@@ -860,6 +924,7 @@ bool RowIOBufView::Reset(const butil::IOBuf& buf) {
         return false;
     }
     str_addr_length_ = GetAddrLength(size_);
+    DLOG(INFO) << "size " << size_ << " addr length " << str_addr_length_;
     return true;
 }
 
@@ -922,7 +987,33 @@ int32_t RowIOBufView::GetTimestamp(uint32_t idx, int64_t* val) {
     *val = v1::GetInt64Field(row_, offset);
     return 0;
 }
-
+int32_t RowIOBufView::GetDate(uint32_t idx, int32_t* date) {
+    if (date == NULL) {
+        return -1;
+    }
+    if (IsNULL(idx)) {
+        return 1;
+    }
+    uint32_t offset = offset_vec_.at(idx);
+    *date = static_cast<int32_t>(v1::GetInt32Field(row_, offset));
+    return 0;
+}
+int32_t RowIOBufView::GetDate(uint32_t idx, int32_t* year, int32_t* month,
+                              int32_t* day) {
+    if (year == NULL || month == NULL || day == NULL) {
+        return -1;
+    }
+    if (IsNULL(idx)) {
+        return 1;
+    }
+    uint32_t offset = offset_vec_.at(idx);
+    int32_t date = static_cast<int32_t>(v1::GetInt32Field(row_, offset));
+    *day = date & 0x0000000FF;
+    date = date >> 8;
+    *month = 1 + (date & 0x0000FF);
+    *year = 1900 + (date >> 8);
+    return 0;
+}
 int32_t RowIOBufView::GetString(uint32_t idx, butil::IOBuf* buf) {
     if (buf == NULL) return -1;
     if (IsNULL(idx)) {

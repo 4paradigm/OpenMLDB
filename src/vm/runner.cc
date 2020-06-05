@@ -18,6 +18,7 @@
 namespace fesql {
 namespace vm {
 #define MAX_DEBUG_LINES_CNT 10
+#define MAX_DEBUG_COLUMN_MAX 20
 
 Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
     if (nullptr == node) {
@@ -376,8 +377,8 @@ Row Runner::WindowProject(const int8_t* fn, const uint64_t key, const Row row,
     if (window->instance_not_in_window()) {
         window->PopBackData();
     }
-    return Row(base::RefCountedSlice::CreateManaged(
-        out_buf, RowView::GetSize(out_buf)));
+    return Row(base::RefCountedSlice::CreateManaged(out_buf,
+                                                    RowView::GetSize(out_buf)));
 }
 
 int64_t Runner::GetColumnInt64(RowView* row_view, int key_idx,
@@ -860,15 +861,17 @@ std::shared_ptr<PartitionHandler> PartitionGenerator::Partition(
     return output_partitions;
 }
 std::shared_ptr<DataHandler> SortGenerator::Sort(
-    std::shared_ptr<DataHandler> input) {
+    std::shared_ptr<DataHandler> input, const bool reverse) {
     if (!input || !is_valid_ || !order_gen_.Valid()) {
         return input;
     }
     switch (input->GetHanlderType()) {
         case kTableHandler:
-            return Sort(std::dynamic_pointer_cast<TableHandler>(input));
+            return Sort(std::dynamic_pointer_cast<TableHandler>(input),
+                        reverse);
         case kPartitionHandler:
-            return Sort(std::dynamic_pointer_cast<PartitionHandler>(input));
+            return Sort(std::dynamic_pointer_cast<PartitionHandler>(input),
+                        reverse);
         default: {
             LOG(WARNING) << "Sort Fail: input isn't partition or table";
             return std::shared_ptr<PartitionHandler>();
@@ -877,7 +880,8 @@ std::shared_ptr<DataHandler> SortGenerator::Sort(
 }
 
 std::shared_ptr<PartitionHandler> SortGenerator::Sort(
-    std::shared_ptr<PartitionHandler> partition) {
+    std::shared_ptr<PartitionHandler> partition, const bool reverse) {
+    bool is_asc = reverse ? !is_asc_ : is_asc_;
     if (!is_valid_) {
         return partition;
     }
@@ -909,15 +913,16 @@ std::shared_ptr<PartitionHandler> SortGenerator::Sort(
         }
     }
     if (order_gen_.Valid()) {
-        output->Sort(is_asc_);
-    } else if (is_asc_ && OrderType::kDescOrder == partition->GetOrderType()) {
+        output->Sort(is_asc);
+    } else if (is_asc && OrderType::kDescOrder == partition->GetOrderType()) {
         output->Reverse();
     }
     return output;
 }
 
 std::shared_ptr<TableHandler> SortGenerator::Sort(
-    std::shared_ptr<TableHandler> table) {
+    std::shared_ptr<TableHandler> table, const bool reverse) {
+    bool is_asc = reverse ? !is_asc_ : is_asc_;
     if (!table || !is_valid_) {
         return table;
     }
@@ -940,16 +945,16 @@ std::shared_ptr<TableHandler> SortGenerator::Sort(
     }
 
     if (order_gen_.Valid()) {
-        output_table->Sort(is_asc_);
+        output_table->Sort(is_asc);
     } else {
         switch (table->GetOrderType()) {
             case kDescOrder:
-                if (is_asc_) {
+                if (is_asc) {
                     output_table->Reverse();
                 }
                 break;
             case kAscOrder:
-                if (!is_asc_) {
+                if (!is_asc) {
                     output_table->Reverse();
                 }
                 break;
@@ -1042,8 +1047,8 @@ bool JoinGenerator::TableJoin(std::shared_ptr<TableHandler> left,
     auto left_iter = left->GetIterator();
     while (left_iter->Valid()) {
         const Row& left_row = left_iter->GetValue();
-        output->AddRow(
-            Runner::RowLastJoinTable(left_row, right, condition_gen_));
+        output->AddRow(Runner::RowLastJoinTable(
+            left_row, right, right_sort_gen_, condition_gen_));
         left_iter->Next();
     }
     return true;
@@ -1076,8 +1081,8 @@ bool JoinGenerator::TableJoin(std::shared_ptr<TableHandler> left,
         }
         DLOG(INFO) << "key_str " << key_str;
         auto right_table = right->GetSegment(right, key_str);
-        output->AddRow(
-            Runner::RowLastJoinTable(left_row, right_table, condition_gen_));
+        output->AddRow(Runner::RowLastJoinTable(
+            left_row, right_table, right_sort_gen_, condition_gen_));
         left_iter->Next();
     }
     return true;
@@ -1095,10 +1100,11 @@ bool JoinGenerator::PartitionJoin(std::shared_ptr<PartitionHandler> left,
         while (left_iter->Valid()) {
             const Row& left_row = left_iter->GetValue();
             auto key_str = std::string(
-                reinterpret_cast<const char*>(left_key.buf()),
-                left_key.size());
-            output->AddRow(key_str, left_iter->GetKey(),
-                Runner::RowLastJoinTable(left_row, right, condition_gen_));
+                reinterpret_cast<const char*>(left_key.buf()), left_key.size());
+            output->AddRow(
+                key_str, left_iter->GetKey(),
+                Runner::RowLastJoinTable(left_row, right, right_sort_gen_,
+                                         condition_gen_));
             left_iter->Next();
         }
     }
@@ -1135,10 +1141,10 @@ bool JoinGenerator::PartitionJoin(std::shared_ptr<PartitionHandler> left,
                                        : left_key_gen_.Gen(left_row);
             auto right_table = right->GetSegment(right, key_str);
             auto left_key_str = std::string(
-                reinterpret_cast<const char*>(left_key.buf()),
-                left_key.size());
-            output->AddRow(left_key_str, left_iter->GetKey(),
-                Runner::RowLastJoinTable(left_row, right_table,
+                reinterpret_cast<const char*>(left_key.buf()), left_key.size());
+            output->AddRow(
+                left_key_str, left_iter->GetKey(),
+                Runner::RowLastJoinTable(left_row, right_table, right_sort_gen_,
                                          condition_gen_));
             left_iter->Next();
         }
@@ -1148,11 +1154,13 @@ bool JoinGenerator::PartitionJoin(std::shared_ptr<PartitionHandler> left,
 }
 const Row Runner::RowLastJoinTable(const Row& left_row,
                                    std::shared_ptr<TableHandler> right_table,
+                                   SortGenerator& right_sort,
                                    ConditionGenerator& cond_gen) {
     if (!right_table) {
         LOG(WARNING) << "Last Join right table is empty";
         return Row(left_row, Row());
     }
+    right_table = right_sort.Sort(right_table, true);
     auto right_iter = right_table->GetIterator();
     if (!right_iter) {
         LOG(WARNING) << "Last Join right table is empty";
@@ -1190,8 +1198,16 @@ void Runner::PrintData(const vm::SchemaSourceList& schema_list,
             } else {
                 t.add(source.table_name_ + "." + source.schema_->Get(i).name());
             }
+
+            if (t.current_columns_size() >= MAX_DEBUG_COLUMN_MAX) {
+                break;
+            }
         }
         row_view_list.push_back(RowView(*source.schema_));
+        if (t.current_columns_size() >= MAX_DEBUG_COLUMN_MAX) {
+            t.add("...");
+            break;
+        }
     }
 
     t.endOfRow();
@@ -1216,6 +1232,13 @@ void Runner::PrintData(const vm::SchemaSourceList& schema_list,
                      idx++) {
                     std::string str = row_view.GetAsString(idx);
                     t.add(str);
+                    if (t.current_columns_size() >= MAX_DEBUG_COLUMN_MAX) {
+                        break;
+                    }
+                }
+                if (t.current_columns_size() >= MAX_DEBUG_COLUMN_MAX) {
+                    t.add("...");
+                    break;
                 }
             }
 
@@ -1249,6 +1272,14 @@ void Runner::PrintData(const vm::SchemaSourceList& schema_list,
                              idx++) {
                             std::string str = row_view.GetAsString(idx);
                             t.add(str);
+                            if (t.current_columns_size() >=
+                                MAX_DEBUG_COLUMN_MAX) {
+                                break;
+                            }
+                        }
+                        if (t.current_columns_size() >= MAX_DEBUG_COLUMN_MAX) {
+                            t.add("...");
+                            break;
                         }
                     }
                     iter->Next();
@@ -1272,9 +1303,9 @@ void Runner::PrintData(const vm::SchemaSourceList& schema_list,
                 t.endOfRow();
             }
             while (iter->Valid() && cnt++ < MAX_DEBUG_LINES_CNT) {
-                t.add("KEY: " + std::string(
-                    reinterpret_cast<const char*>(iter->GetKey().buf()),
-                    iter->GetKey().size()));
+                t.add("KEY: " + std::string(reinterpret_cast<const char*>(
+                                                iter->GetKey().buf()),
+                                            iter->GetKey().size()));
                 t.endOfRow();
                 auto segment_iter = iter->GetValue();
                 if (!segment_iter) {
@@ -1300,6 +1331,15 @@ void Runner::PrintData(const vm::SchemaSourceList& schema_list,
                                  idx++) {
                                 std::string str = row_view.GetAsString(idx);
                                 t.add(str);
+                                if (t.current_columns_size() >=
+                                    MAX_DEBUG_COLUMN_MAX) {
+                                    break;
+                                }
+                            }
+                            if (t.current_columns_size() >=
+                                MAX_DEBUG_COLUMN_MAX) {
+                                t.add("...");
+                                break;
                             }
                         }
                         segment_iter->Next();
@@ -1361,6 +1401,11 @@ std::shared_ptr<DataHandler> LimitRunner::Run(RunnerContext& ctx) {
         case kTableHandler: {
             auto iter =
                 std::dynamic_pointer_cast<TableHandler>(input)->GetIterator();
+            if (!iter) {
+                LOG(WARNING) << "fail to get table it";
+                return fail_ptr;
+            }
+            iter->SeekToFirst();
             auto output_table = std::shared_ptr<MemTableHandler>(
                 new MemTableHandler(input->GetSchema()));
             int32_t cnt = 0;
@@ -1443,12 +1488,12 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(RunnerContext& ctx) {
                   : (key + range_gen_.end_offset_);
         DLOG(INFO) << "request key: " << key;
     }
+    DLOG(INFO) << " start " << start << " end " << end;
     window_table->AddRow(request);
     // Prepare Union Window
     auto union_inputs = windows_union_gen_.RunInputs(ctx);
     auto union_segments =
         windows_union_gen_.GetRequestWindows(request, union_inputs);
-
     // Prepare Union Segment Iterators
     size_t unions_cnt = windows_union_gen_.inputs_cnt_;
 
@@ -1465,7 +1510,6 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(RunnerContext& ctx) {
             union_segment_status[i] = IteratorStatus();
             continue;
         }
-        union_segment_iters[i]->SeekToFirst();
         union_segment_iters[i]->Seek(end);
         if (!union_segment_iters[i]->Valid()) {
             union_segment_status[i] = IteratorStatus();
@@ -1474,12 +1518,10 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(RunnerContext& ctx) {
         uint64_t ts = union_segment_iters[i]->GetKey();
         union_segment_status[i] = IteratorStatus(ts);
     }
-
     int32_t max_union_pos = 0 == unions_cnt
                                 ? -1
                                 : IteratorStatus::PickIteratorWithMaximizeKey(
                                       &union_segment_status);
-
     while (-1 != max_union_pos) {
         if (union_segment_status[max_union_pos].key_ <= start) {
             break;
@@ -1561,8 +1603,8 @@ const Row AggGenerator::Gen(std::shared_ptr<TableHandler> table) {
         LOG(WARNING) << "fail to run udf " << ret;
         return Row();
     }
-    return Row(base::RefCountedSlice::CreateManaged(
-        buf, RowView::GetSize(buf)));
+    return Row(
+        base::RefCountedSlice::CreateManaged(buf, RowView::GetSize(buf)));
 }
 
 const Row WindowProjectGenerator::Gen(const uint64_t key, const Row row,

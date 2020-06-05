@@ -330,7 +330,7 @@ TEST_F(FnLetIRBuilderTest, test_join_window_project_mix) {
         "sum(t2.col4) OVER w1 as w1_col4_sum,  "
         "sum(t2.col2) OVER w1 as w1_col2_sum,  "
         "sum(t1.col5) OVER w1 as w1_col5_sum  "
-        "FROM t1 last join t2 on t1.col1=t2.col1 "
+        "FROM t1 last join t2 order by t2.col5 on t1.col1=t2.col1 "
         "WINDOW w1 AS (PARTITION BY COL2 ORDER BY `TS` ROWS BETWEEN 3 "
         "PRECEDING AND 3 FOLLOWING) limit 10;";
 

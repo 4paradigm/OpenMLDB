@@ -126,9 +126,14 @@ class RefCountedSlice : public Slice {
         return RefCountedSlice(buf, size, false);
     }
 
+    // Create slice without ownership
+    inline static RefCountedSlice Create(const char* buf, size_t size) {
+        return RefCountedSlice(buf, size, false);
+    }
+
     // Create empty slice
     inline static RefCountedSlice CreateEmpty() {
-        return RefCountedSlice(nullptr, 0, false);
+        return RefCountedSlice();
     }
 
     RefCountedSlice(const RefCountedSlice& slice);
@@ -141,6 +146,12 @@ class RefCountedSlice : public Slice {
         Slice(reinterpret_cast<const char*>(data), size),
         ref_cnt_(managed ? new int(1) : nullptr) {}
 
+    RefCountedSlice(const char* data, size_t size, bool managed):
+        Slice(data, size),
+        ref_cnt_(managed ? new int(1) : nullptr) {}
+
+    RefCountedSlice():
+        Slice(nullptr, 0), ref_cnt_(nullptr) {}
     void Update(const RefCountedSlice& slice);
 
     int32_t* ref_cnt_;

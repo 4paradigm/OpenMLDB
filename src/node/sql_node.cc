@@ -12,6 +12,7 @@
 #include <utility>
 #include "glog/logging.h"
 #include "node/node_manager.h"
+
 namespace fesql {
 namespace node {
 
@@ -535,7 +536,7 @@ std::string NameOfSQLNodeType(const SQLNodeType &type) {
         case kCmdStmt:
             output = "CMD";
             break;
-        case kExplainSmt:
+        case kExplainStmt:
             output = "EXPLAIN";
         case kName:
             output = "kName";
@@ -755,7 +756,17 @@ void CmdNode::Print(std::ostream &output, const std::string &org_tab) const {
     output << "\n";
     PrintValue(output, tab, args_, "args", true);
 }
-
+void CreateIndexNode::Print(std::ostream &output,
+                            const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, index_name_, "index_name", false);
+    output << "\n";
+    PrintValue(output, tab, table_name_, "table_name", false);
+    output << "\n";
+    PrintSQLNode(output, tab, index_, "index", true);
+}
 void ExplainNode::Print(std::ostream &output,
                         const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);
@@ -1091,8 +1102,11 @@ void JoinNode::Print(std::ostream &output, const std::string &org_tab) const {
     output << "\n";
     PrintSQLNode(output, tab, right_, "right", true);
     output << "\n";
+    PrintSQLNode(output, tab, orders_, "order_by", true);
+    output << "\n";
     PrintSQLNode(output, tab, condition_, "on", true);
 }
+
 bool JoinNode::Equals(const SQLNode *node) const {
     if (!TableRefNode::Equals(node)) {
         return false;
@@ -1100,8 +1114,10 @@ bool JoinNode::Equals(const SQLNode *node) const {
     const JoinNode *that = dynamic_cast<const JoinNode *>(node);
     return join_type_ == that->join_type_ &&
            ExprEquals(condition_, that->condition_) &&
+           ExprEquals(this->orders_, that->orders_) &&
            SQLEquals(this->left_, that->right_);
 }
+
 void UnionQueryNode::Print(std::ostream &output,
                            const std::string &org_tab) const {
     QueryNode::Print(output, org_tab);

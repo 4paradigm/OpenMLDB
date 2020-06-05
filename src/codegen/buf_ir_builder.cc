@@ -20,6 +20,7 @@
 #include <utility>
 #include <vector>
 #include "codec/fe_row_codec.h"
+#include "codegen/date_ir_builder.h"
 #include "codegen/ir_base_builder.h"
 #include "codegen/timestamp_ir_builder.h"
 #include "glog/logging.h"
@@ -76,6 +77,19 @@ bool BufNativeIRBuilder::BuildGetField(const std::string& name,
             }
             codegen::TimestampIRBuilder timestamp_builder(block_->getModule());
             return timestamp_builder.NewTimestamp(block_, ts, output);
+        }
+        case ::fesql::node::kDate: {
+            llvm::Type* ts_type;
+            if (!GetLLVMType(block_, ::fesql::node::kDate, &ts_type)) {
+                return false;
+            }
+            ::llvm::Value* days;
+            if (!BuildGetPrimaryField("fesql_storage_get_int32_field", row_ptr,
+                                      offset, builder.getInt32Ty(), &days)) {
+                return false;
+            }
+            codegen::DateIRBuilder date_ir_builder(block_->getModule());
+            return date_ir_builder.NewDate(block_, days, output);
         }
         case ::fesql::node::kInt64: {
             llvm::Type* i64_ty = builder.getInt64Ty();
@@ -246,14 +260,12 @@ BufNativeEncoderIRBuilder::BufNativeEncoderIRBuilder(
 
 BufNativeEncoderIRBuilder::~BufNativeEncoderIRBuilder() {}
 
-
 bool BufNativeEncoderIRBuilder::BuildEncodePrimaryField(::llvm::Value* i8_ptr,
                                                         size_t idx,
                                                         ::llvm::Value* val) {
     uint32_t offset = offset_vec_.at(idx);
     return AppendPrimary(i8_ptr, val, offset);
 }
-
 
 bool BufNativeEncoderIRBuilder::BuildEncode(::llvm::Value* output_ptr) {
     ::llvm::IRBuilder<> builder(block_);
@@ -302,6 +314,7 @@ bool BufNativeEncoderIRBuilder::BuildEncode(::llvm::Value* output_ptr) {
             case ::fesql::type::kInt32:
             case ::fesql::type::kInt64:
             case ::fesql::type::kTimestamp:
+            case ::fesql::type::kDate:
             case ::fesql::type::kFloat:
             case ::fesql::type::kDouble: {
                 uint32_t offset = offset_vec_.at(idx);
@@ -320,6 +333,19 @@ bool BufNativeEncoderIRBuilder::BuildEncode(::llvm::Value* output_ptr) {
                     ::llvm::Value* ts;
                     timestamp_builder.GetTs(block_, val, &ts);
                     ok = AppendPrimary(i8_ptr, ts, offset);
+                    if (!ok) {
+                        LOG(WARNING)
+                            << "fail to append timestamp for output col "
+                            << column.name();
+                        return false;
+                    }
+                    break;
+                } else if (codegen::TypeIRBuilder::IsDatePtr(
+                               val->getType())) {
+                    ::llvm::Value* days;
+                    DateIRBuilder date_builder(block_->getModule());
+                    date_builder.GetDate(block_, val, &days);
+                    ok = AppendPrimary(i8_ptr, days, offset);
                     if (!ok) {
                         LOG(WARNING)
                             << "fail to append timestamp for output col "

@@ -34,7 +34,7 @@
 namespace fesql {
 namespace sdk {
 
-static const std::string EMPTY_STR; // NOLINT
+static const std::string EMPTY_STR;  // NOLINT
 
 class ExplainInfoImpl : public ExplainInfo {
  public:
@@ -99,9 +99,11 @@ class TabletSdkImpl : public TabletSdk {
                                          sdk::Status* status);
 
  private:
-    void BuildInsertRequest(const node::InsertPlanNode* iplan,
-                            const std::string& db,
-                            tablet::InsertRequest* request, Status* status);
+    void BuildInsertRequest(const std::string& db, const std::string& table,
+                            const std::vector<std::string>& columns,
+                            node::ExprListNode* insert_value,
+                            tablet::InsertRequest* request,
+                            sdk::Status* status);
 
     void Insert(const tablet::InsertRequest& request, sdk::Status* status);
 
@@ -285,29 +287,56 @@ void TabletSdkImpl::GetSqlPlan(const std::string& db, const std::string& sql,
         return;
     }
 }
-
-void TabletSdkImpl::BuildInsertRequest(const node::InsertPlanNode* iplan,
-                                       const std::string& db,
+void TabletSdkImpl::BuildInsertRequest(const std::string& db,
+                                       const std::string& table_name,
+                                       const std::vector<std::string>& columns,
+                                       node::ExprListNode* values,
                                        tablet::InsertRequest* request,
                                        sdk::Status* status) {
-    const node::InsertStmt* insert_stmt = iplan->GetInsertNode();
-    if (nullptr == insert_stmt) {
-        status->code = common::kNullPointer;
-        status->msg = "fail to execute insert statement with null node";
+    if (nullptr == values) {
+        status->code = -1;
+        status->msg = "Insert Values Is Null";
         return;
     }
     type::TableDef schema;
-    if (!GetSchema(db, insert_stmt->table_name_, &schema, status)) {
+    if (!GetSchema(db, table_name, &schema, status)) {
         if (0 == status->code) {
             status->code = -1;
             status->msg = "Table Not Exist";
         }
         return;
     }
-    request->set_table(insert_stmt->table_name_);
+    request->set_table(table_name);
     request->set_db(db);
+
+    std::map<std::string, node::ExprNode*> column_value_map;
+    if (!columns.empty()) {
+        if (columns.size() != values->children_.size()) {
+            status->msg =
+                "Fail Build Request: insert column size != value size";
+            status->code = -1;
+            LOG(WARNING) << status->msg;
+            return;
+        }
+        for (size_t i = 0; i < columns.size(); i++) {
+            column_value_map.insert(
+                std::make_pair(columns[i], values->children_[i]));
+        }
+    } else {
+        if (schema.columns().size() != values->children_.size()) {
+            status->msg =
+                "Fail Build Request: insert column size != value size";
+            status->code = -1;
+            LOG(WARNING) << status->msg;
+            return;
+        }
+        for (size_t i = 0; i < schema.columns().size(); i++) {
+            column_value_map.insert(
+                std::make_pair(schema.columns(i).name(), values->children_[i]));
+        }
+    }
     uint32_t str_size = 0;
-    for (auto value : insert_stmt->values_) {
+    for (auto value : values->children_) {
         switch (value->GetExprType()) {
             case node::kExprPrimary: {
                 node::ConstNode* primary =
@@ -340,32 +369,43 @@ void TabletSdkImpl::BuildInsertRequest(const node::InsertPlanNode* iplan,
     auto it = schema.columns().begin();
     uint32_t index = 0;
     for (; it != schema.columns().end(); ++it) {
-        if (index >= insert_stmt->values_.size()) {
-            break;
-        }
-        const node::ConstNode* primary = dynamic_cast<const node::ConstNode*>(
-            insert_stmt->values_.at(index));
         index++;
+        std::string column_name = it->name();
+        auto expr_node_it = column_value_map.find(column_name);
+        if (expr_node_it == column_value_map.cend()) {
+            rb.AppendNULL();
+            continue;
+        }
+        const node::ConstNode* primary =
+            dynamic_cast<const node::ConstNode*>(expr_node_it->second);
+        if (primary->IsNull()) {
+            rb.AppendNULL();
+            continue;
+        }
         bool ok = false;
         switch (it->type()) {
+            case type::kNull: {
+                ok = rb.AppendNULL();
+                break;
+            }
             case type::kInt16: {
-                ok = rb.AppendInt16(primary->GetSmallInt());
+                ok = rb.AppendInt16(primary->GetAsInt16());
                 break;
             }
             case type::kInt32: {
-                ok = rb.AppendInt32(primary->GetInt());
+                ok = rb.AppendInt32(primary->GetAsInt32());
                 break;
             }
             case type::kInt64: {
-                ok = rb.AppendInt64(primary->GetInt());
+                ok = rb.AppendInt64(primary->GetAsInt64());
                 break;
             }
             case type::kFloat: {
-                ok = rb.AppendFloat(static_cast<float>(primary->GetDouble()));
+                ok = rb.AppendFloat(primary->GetAsFloat());
                 break;
             }
             case type::kDouble: {
-                ok = rb.AppendDouble(primary->GetDouble());
+                ok = rb.AppendDouble(primary->GetAsDouble());
                 break;
             }
             case type::kVarchar: {
@@ -374,7 +414,18 @@ void TabletSdkImpl::BuildInsertRequest(const node::InsertPlanNode* iplan,
                 break;
             }
             case type::kTimestamp: {
-                ok = rb.AppendTimestamp(primary->GetInt());
+                ok = rb.AppendTimestamp(primary->GetAsInt64());
+                break;
+            }
+            case type::kDate: {
+                int32_t year;
+                int32_t month;
+                int32_t day;
+                if (!primary->GetAsDate(&year, &month, &day)) {
+                    ok = false;
+                } else {
+                    ok = rb.AppendDate(year, month, day);
+                }
                 break;
             }
             default: {
@@ -420,12 +471,28 @@ void TabletSdkImpl::Insert(const std::string& db, const std::string& sql,
         case node::kPlanTypeInsert: {
             node::InsertPlanNode* insert_plan =
                 dynamic_cast<node::InsertPlanNode*>(plan);
-            tablet::InsertRequest request;
-            BuildInsertRequest(insert_plan, db, &request, status);
-            if (status->code != 0) {
+
+            const node::InsertStmt* insert_stmt = insert_plan->GetInsertNode();
+            if (nullptr == insert_stmt) {
+                status->code = common::kNullPointer;
+                status->msg = "fail to execute insert statement with null node";
                 return;
             }
-            Insert(request, status);
+            for (auto iter = insert_stmt->values_.cbegin();
+                 iter != insert_stmt->values_.cend(); iter++) {
+                tablet::InsertRequest request;
+                BuildInsertRequest(
+                    db, insert_stmt->table_name_, insert_stmt->columns_,
+                    dynamic_cast<node::ExprListNode*>(*iter), &request, status);
+                if (status->code != 0) {
+                    return;
+                }
+                Insert(request, status);
+                if (common::kOk != status->code) {
+                    return;
+                }
+            }
+
             return;
         }
         default: {

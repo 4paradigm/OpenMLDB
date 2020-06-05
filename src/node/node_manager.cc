@@ -49,7 +49,26 @@ TableRefNode *NodeManager::MakeJoinNode(const TableRefNode *left,
                                         const JoinType type,
                                         const ExprNode *condition,
                                         const std::string alias) {
-    TableRefNode *node_ptr = new JoinNode(left, right, type, condition, alias);
+    TableRefNode *node_ptr =
+        new JoinNode(left, right, type, nullptr, condition, alias);
+    RegisterNode(node_ptr);
+    return node_ptr;
+}
+
+TableRefNode *NodeManager::MakeLastJoinNode(const TableRefNode *left,
+                                            const TableRefNode *right,
+                                            const ExprNode *orders,
+                                            const ExprNode *condition,
+                                            const std::string alias) {
+    if (nullptr == orders || node::kExprOrder != orders->GetExprType()) {
+        LOG(WARNING)
+            << "fail to create last join node with invalid order type " +
+                   NameOfSQLNodeType(orders->GetType());
+        return nullptr;
+    }
+    TableRefNode *node_ptr = new JoinNode(
+        left, right, node::kJoinTypeLast,
+        dynamic_cast<const OrderByNode *>(orders), condition, alias);
     RegisterNode(node_ptr);
     return node_ptr;
 }
@@ -496,6 +515,21 @@ SQLNode *NodeManager::MakeCmdNode(node::CmdType cmd_type,
     node_ptr->AddArg(arg);
     return RegisterNode(node_ptr);
 }
+SQLNode *NodeManager::MakeCmdNode(node::CmdType cmd_type,
+                                  const std::string &index_name,
+                                  const std::string &table_name) {
+    CmdNode *node_ptr = new CmdNode(cmd_type);
+    node_ptr->AddArg(index_name);
+    node_ptr->AddArg(table_name);
+    return RegisterNode(node_ptr);
+}
+SQLNode *NodeManager::MakeCreateIndexNode(const std::string &index_name,
+                                          const std::string &table_name,
+                                          ColumnIndexNode *index) {
+    CreateIndexNode *node_ptr =
+        new CreateIndexNode(index_name, table_name, index);
+    return RegisterNode(node_ptr);
+}
 ExprNode *NodeManager::MakeAllNode(const std::string &relation_name) {
     return MakeAllNode(relation_name, "");
 }
@@ -580,10 +614,11 @@ FnForInBlock *NodeManager::MakeForInBlock(FnForInNode *for_in_node,
     return node_ptr;
 }
 PlanNode *NodeManager::MakeJoinNode(PlanNode *left, PlanNode *right,
-                                    JoinType join_type,
-                                    const ExprNode *condition) {
+                                        JoinType join_type,
+                                        const OrderByNode *order_by,
+                                        const ExprNode *condition) {
     node::JoinPlanNode *node_ptr =
-        new JoinPlanNode(left, right, join_type, condition);
+        new JoinPlanNode(left, right, join_type, order_by, condition);
     return RegisterNode(node_ptr);
 }
 PlanNode *NodeManager::MakeSelectPlanNode(PlanNode *node) {

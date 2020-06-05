@@ -35,6 +35,16 @@ static void BM_EngineRequestSimpleSelectInt32(
     benchmark::State& state) {  // NOLINT
     EngineRequestSimpleSelectInt32(&state, BENCHMARK);
 }
+
+static void BM_EngineRequestSimpleSelectTimestamp(
+    benchmark::State& state) {  // NOLINT
+    EngineRequestSimpleSelectTimestamp(&state, BENCHMARK);
+}
+
+static void BM_EngineRequestSimpleSelectDate(
+    benchmark::State& state) {  // NOLINT
+    EngineRequestSimpleSelectDate(&state, BENCHMARK);
+}
 static void BM_EngineRequestSimpleUDF(benchmark::State& state) {  // NOLINT
     EngineRequestSimpleUDF(&state, BENCHMARK);
 }
@@ -61,6 +71,12 @@ static void BM_EngineSimpleSelectDouble(benchmark::State& state) {  // NOLINT
 static void BM_EngineSimpleSelectInt32(benchmark::State& state) {  // NOLINT
     EngineSimpleSelectInt32(&state, BENCHMARK);
 }
+static void BM_EngineSimpleSelectTimestamp(benchmark::State& state) {  // NOLINT
+    EngineSimpleSelectTimestamp(&state, BENCHMARK);
+}
+static void BM_EngineSimpleSelectDate(benchmark::State& state) {  // NOLINT
+    EngineSimpleSelectDate(&state, BENCHMARK);
+}
 static void BM_EngineSimpleUDF(benchmark::State& state) {  // NOLINT
     EngineSimpleUDF(&state, BENCHMARK);
 }
@@ -79,12 +95,16 @@ static void BM_EngineRunBatchWindowSumFeature5(
 BENCHMARK(BM_EngineRequestSimpleSelectVarchar);
 BENCHMARK(BM_EngineRequestSimpleSelectDouble);
 BENCHMARK(BM_EngineRequestSimpleSelectInt32);
+BENCHMARK(BM_EngineRequestSimpleSelectTimestamp);
+BENCHMARK(BM_EngineRequestSimpleSelectDate);
 BENCHMARK(BM_EngineRequestSimpleUDF);
 
 // batch engine simple bm
 BENCHMARK(BM_EngineSimpleSelectVarchar);
 BENCHMARK(BM_EngineSimpleSelectDouble);
 BENCHMARK(BM_EngineSimpleSelectInt32);
+BENCHMARK(BM_EngineSimpleSelectTimestamp);
+BENCHMARK(BM_EngineSimpleSelectDate);
 BENCHMARK(BM_EngineSimpleUDF);
 
 // request engine window bm

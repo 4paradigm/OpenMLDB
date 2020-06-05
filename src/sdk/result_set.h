@@ -31,6 +31,7 @@ class ResultSet {
 
     virtual ~ResultSet() {}
 
+    virtual bool Reset() = 0;
     virtual bool Next() = 0;
 
     virtual bool GetString(uint32_t index, std::string* val) = 0;
@@ -41,7 +42,84 @@ class ResultSet {
         GetString(index, &val);
         return val;
     }
+    const std::string GetAsString(uint32_t idx) {
+        if (nullptr == GetSchema()) {
+            return "NA";
+        }
+        int schema_size = GetSchema()->GetColumnCnt();
+        if (0 == schema_size) {
+            return "NA";
+        }
 
+        if ((int32_t)idx >= schema_size) {
+            return "NA";
+        }
+
+        if (IsNULL(idx)) {
+            return "NULL";
+        }
+        auto type = GetSchema()->GetColumnType(idx);
+        switch (type) {
+            case kTypeInt32: {
+                return std::to_string(GetInt32Unsafe(idx));
+            }
+            case kTypeInt64: {
+                return std::to_string(GetInt64Unsafe(idx));
+            }
+            case kTypeInt16: {
+                return std::to_string(GetInt16Unsafe(idx));
+            }
+            case kTypeFloat: {
+                return std::to_string(GetFloatUnsafe(idx));
+            }
+            case kTypeDouble: {
+                return std::to_string(GetDoubleUnsafe(idx));
+            }
+            case kTypeBool: {
+                return std::to_string(GetBoolUnsafe(idx));
+            }
+            case kTypeString: {
+                return GetStringUnsafe(idx);
+                break;
+            }
+            case kTypeTimestamp: {
+                return std::to_string(GetTimeUnsafe(idx));
+            }
+            case kTypeDate: {
+                int32_t year;
+                int32_t month;
+                int32_t day;
+                if (GetDate(idx, &year, &month, &day)) {
+                    char date[11];
+                    snprintf(date, 11u, "%4d-%.2d-%.2d", year, month, day);
+                    return std::string(date);
+                } else {
+                    return "NA";
+                }
+            }
+            default: {
+                break;
+            }
+        }
+
+        return "NA";
+    }
+
+    inline std::string GetRowString() {
+        int schema_size = GetSchema()->GetColumnCnt();
+        if (schema_size == 0) {
+            return "NA";
+        }
+        std::string row_str = "";
+
+        for (int i = 0; i < schema_size; i++) {
+            row_str.append(GetAsString(i));
+            if (i != schema_size - 1) {
+                row_str.append(", ");
+            }
+        }
+        return row_str;
+    }
     virtual bool GetBool(uint32_t index, bool* result) = 0;
 
     inline bool GetBoolUnsafe(int index) {
@@ -60,7 +138,7 @@ class ResultSet {
 
     virtual bool GetInt16(uint32_t index, int16_t* result) = 0;
 
-    virtual short GetInt16Unsafe(int index) { // NOLINT
+    virtual short GetInt16Unsafe(int index) {  // NOLINT
         if (IsNULL(index)) return 0;
         short val = 0;  // NOLINT
         GetInt16(index, &val);
@@ -103,9 +181,17 @@ class ResultSet {
         return val;
     }
 
-    virtual bool GetDate(uint32_t index, uint32_t* days) = 0;
+    virtual bool GetDate(uint32_t index, int32_t* year, int32_t* month,
+                         int32_t* day) = 0;
 
-    virtual int32_t GetDateUnsafe(uint32_t index) = 0;
+    virtual bool GetDate(uint32_t index, int32_t* days) = 0;
+
+    virtual int32_t GetDateUnsafe(uint32_t index) {
+        if (IsNULL(index)) return 0;
+        int32_t val = 0;
+        GetDate(index, &val);
+        return val;
+    }
 
     virtual bool GetTime(uint32_t index, int64_t* mills) = 0;
     int64_t GetTimeUnsafe(int index) {
