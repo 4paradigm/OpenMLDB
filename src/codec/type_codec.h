@@ -51,7 +51,8 @@ inline static int compare(const StringRef& a, const StringRef& b) {
     }
     return r;
 }
-inline static const StringRef operator+(const StringRef& a, const StringRef& b) {
+inline static const StringRef operator+(const StringRef& a,
+                                        const StringRef& b) {
     StringRef str;
     str.size_ = a.size_ + b.size_;
     str.data_ = static_cast<char*>(malloc(str.size_ + 1));
@@ -97,10 +98,12 @@ struct Timestamp {
     int64_t ts_;
 };
 
-inline static const Timestamp operator+(const Timestamp& a, const Timestamp& b) {
+inline static const Timestamp operator+(const Timestamp& a,
+                                        const Timestamp& b) {
     return Timestamp(a.ts_ + b.ts_);
 }
-inline static const Timestamp operator-(const Timestamp& a, const Timestamp& b) {
+inline static const Timestamp operator-(const Timestamp& a,
+                                        const Timestamp& b) {
     return Timestamp(a.ts_ - b.ts_);
 }
 inline static const Timestamp operator/(const Timestamp& a, const int64_t b) {
