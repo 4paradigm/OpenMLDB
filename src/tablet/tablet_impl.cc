@@ -388,8 +388,8 @@ int32_t TabletImpl::GetIndex(const ::rtidb::api::GetRequest* request,
     }
     if (it->Valid()) {
         *ts = it->GetTs();
-        if (st_type == ::rtidb::api::GetType::kSubKeyEq 
-                && st > 0 && *ts != st) {
+        if (st_type == ::rtidb::api::GetType::kSubKeyEq && st > 0 &&
+            *ts != st) {
             return 1;
         }
         bool jump_out = false;
