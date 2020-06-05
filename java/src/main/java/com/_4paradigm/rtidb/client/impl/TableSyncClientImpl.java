@@ -1228,7 +1228,6 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (wo != null) {
             Tablet.WriteOption.Builder woBuilder = Tablet.WriteOption.newBuilder();
             woBuilder.setUpdateIfExist(wo.isUpdateIfExist());
-            woBuilder.setUpdateIfEqual(wo.isUpdateIfEqual());
             builder.setWo(woBuilder.build());
         }
         Tablet.PutRequest request = builder.build();
