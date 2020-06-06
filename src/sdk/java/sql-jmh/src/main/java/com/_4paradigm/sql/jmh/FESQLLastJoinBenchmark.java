@@ -73,7 +73,7 @@ public class FESQLLastJoinBenchmark {
             for (int j = 0; j < 1000; j++) {
                 String sql = String.format(format, "t1","pk" + i, System.currentTimeMillis());
                 executor.executeInsert(db, sql);
-                sql = String.format(format, "t2", "pk" + i, System.currentTimeMillis() - i);
+                sql = String.format(format, "t2", "pk" + i, System.currentTimeMillis() - j);
                 executor.executeInsert(db, sql);
             }
         }
