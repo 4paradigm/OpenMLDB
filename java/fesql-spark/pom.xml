@@ -190,6 +190,30 @@
 						<configuration>
 							<shadedArtifactAttached>true</shadedArtifactAttached>
 							<shadedClassifierName>with-dependencies</shadedClassifierName>
+							<minimizeJar>true</minimizeJar>
+							<!-- Reuse the jars from Spark libraries -->
+							<artifactSet>
+								<excludes>
+									<exclude>org.apache.spark:*</exclude>
+									<exclude>org.scala-lang:*</exclude>
+									<exclude>org.scala-lang.modules:*</exclude>
+									<exclude>org.apache.hadoop:hadoop-annotations</exclude>
+									<exclude>org.apache.hadoop:hadoop-auth</exclude>
+									<exclude>org.apache.hadoop:hadoop-client</exclude>
+									<exclude>org.apache.hadoop:hadoop-common</exclude>
+									<exclude>org.apache.hadoop:hadoop-hdfs</exclude>
+									<exclude>org.apache.hadoop:hadoop-mapreduce-client-app</exclude>
+									<exclude>org.apache.hadoop:hadoop-mapreduce-client-common</exclude>
+									<exclude>org.apache.hadoop:hadoop-mapreduce-client-core</exclude>
+									<exclude>org.apache.hadoop:hadoop-mapreduce-client-jobclient</exclude>
+									<exclude>org.apache.hadoop:hadoop-mapreduce-client-shuffle</exclude>
+									<exclude>org.apache.hadoop:hadoop-yarn-api</exclude>
+									<exclude>org.apache.hadoop:hadoop-yarn-client</exclude>
+									<exclude>org.apache.hadoop:hadoop-yarn-common</exclude>
+									<exclude>org.apache.hadoop:hadoop-yarn-server-common</exclude>
+									<exclude>org.apache.hadoop:hadoop-yarn-server-web-proxy</exclude>
+								</excludes>
+							</artifactSet>
 							<filters>
 								<filter>
 									<artifact>*:*</artifact>
