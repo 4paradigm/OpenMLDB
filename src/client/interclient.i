@@ -17,6 +17,7 @@ namespace std {
    %template(MapStringString) map<string, string>;
    %template(SetString) set<string>;
    %template(VectorInt32) vector<int32_t>;
+   %template(VectorInt64) vector<int64_t>;
 }
 %include "client/client_type.h"
 %include "client/client.h"

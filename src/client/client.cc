@@ -634,6 +634,25 @@ PutResult RtidbClient::Put(
     return result;
 }
 
+bool RtidbClient::DeleteBlobs(const std::string& name,
+                              const std::vector<int64_t>& keys) {
+    std::shared_ptr<TableHandler> th = client_->GetTableHandler(name);
+    if (th == nullptr) {
+        return false;
+    }
+    std::string msg;
+    auto blob = client_->GetBlobClient(th->blob_partition[0].leader, &msg);
+    if (blob == nullptr) {
+        return false;
+    }
+    uint32_t tid = th->table_info->tid();
+    uint32_t pid = 0;
+    for (auto& key : keys) {
+        blob->Delete(tid, pid, key, &msg);
+    }
+    return true;
+}
+
 UpdateResult RtidbClient::Delete(
     const std::string& name, const std::map<std::string, std::string>& values) {
     UpdateResult result;
@@ -658,10 +677,19 @@ UpdateResult RtidbClient::Delete(
         return result;
     }
     uint32_t count = 0;
-    bool ok = tablet->Delete(tid, pid, cd_columns, &count, &result.msg);
+    bool ok = false;
+    std::vector<int64_t> blobs;
+    if (th->blobSuffix.empty()) {
+        ok = tablet->Delete(tid, pid, cd_columns, &count, &result.msg);
+    } else {
+        ok = tablet->Delete(tid, pid, cd_columns, &count, &result.msg, &blobs);
+    }
     if (!ok) {
         result.code = -1;
         return result;
+    }
+    if (!blobs.empty()) {
+        DeleteBlobs(name, blobs);
     }
     result.SetAffectedCount(count);
     return result;
