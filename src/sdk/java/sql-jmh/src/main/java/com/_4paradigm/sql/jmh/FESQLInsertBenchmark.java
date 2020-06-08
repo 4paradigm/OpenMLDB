@@ -13,11 +13,12 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
 
-@BenchmarkMode(Mode.All)
-@OutputTimeUnit(TimeUnit.MILLISECONDS)
+@BenchmarkMode(Mode.Throughput)
+@OutputTimeUnit(TimeUnit.SECONDS)
 @State(Scope.Benchmark)
+@Threads(10)
 @Fork(value = 1, jvmArgs = {"-Xms4G", "-Xmx4G"})
-@Warmup(iterations = 2)
+@Warmup(iterations = 1)
 public class FESQLInsertBenchmark {
     private ArrayList<String> dataset = new ArrayList<>();
     private SqlExecutor executor;

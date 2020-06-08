@@ -15,10 +15,10 @@ import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
 
 @BenchmarkMode(Mode.All)
-@OutputTimeUnit(TimeUnit.SECONDS)
+@OutputTimeUnit(TimeUnit.MILLISECONDS)
 @State(Scope.Benchmark)
 @Fork(value = 1, jvmArgs = {"-Xms4G", "-Xmx4G"})
-@Warmup(iterations = 2)
+@Warmup(iterations = 1)
 public class FESQLLastJoinBenchmark {
     private ArrayList<String> dataset = new ArrayList<>();
     private SqlExecutor executor;
@@ -37,7 +37,7 @@ public class FESQLLastJoinBenchmark {
             "index(key=col1, ts=col2));";
 
     private boolean setupOk = false;
-    private int recordSize = 10000000;
+    private int recordSize = 10000;
     private String format = "insert into %s values('%s', %d," +
             "100.0, 200.0, 'hello world');";
     private long counter = 0;

@@ -172,10 +172,15 @@ TEST_F(TabletCatalogTest, sql_last_join_smoke_test) {
     ::fesql::vm::Engine engine(catalog);
     std::string sql =
         "select t1.col1 as c1, t1.col2 as c2 , t2.col1 as c3, t2.col2 as c4 "
-        "from t1 last join t2 on t1.col1 = t2.col1 and t1.col2 = t2.col2;";
+        "from t1 last join t2 order by t2.col2 on t1.col1 = t2.col1 and t1.col2 = t2.col2;";
+     ::fesql::vm::ExplainOutput explain;
+    ::fesql::base::Status status;
+    engine.Explain(sql, "db1", true, &explain, &status);
+    std::cout << "physical " << explain.physical_plan << std::endl;
+    std::cout << "logical_plan " << explain.logical_plan << std::endl;
+
     ::fesql::vm::BatchRunSession session;
     session.EnableDebug();
-    ::fesql::base::Status status;
     engine.Get(sql, "db1", session, status);
     if (status.code != ::fesql::common::kOk) {
         std::cout << status.msg << std::endl;
@@ -198,8 +203,8 @@ TEST_F(TabletCatalogTest, sql_last_join_smoke_test) {
     std::string pk(data, data_size);
     ASSERT_EQ(args->pk, pk);
 }
-/*
-TEST_F(TabletCatalogTest, sql_last_join_smoke_test2) {
+
+/*TEST_F(TabletCatalogTest, sql_last_join_smoke_test2) {
     std::shared_ptr<TabletCatalog> catalog(new TabletCatalog());
     ASSERT_TRUE(catalog->Init());
     TestArgs* args = PrepareTable("t1");
@@ -216,16 +221,18 @@ TEST_F(TabletCatalogTest, sql_last_join_smoke_test2) {
         ASSERT_TRUE(handler->Init());
         ASSERT_TRUE(catalog->AddTable(handler));
     }
+
     ::fesql::vm::Engine engine(catalog);
     std::string sql =
         "select t1.col1 as c1, t1.col2 as c2 , t2.col1 as c3, t2.col2 as c4 "
-        "from t1 last join t2 on t1.col1 = t2.col1 and t1.col2 > t2.col2;";
+        "from t1 last join t2 order by t2.col2 desc on t1.col1 = t2.col1 and t1.col2 >= t2.col2;";
     ::fesql::vm::ExplainOutput explain;
     ::fesql::base::Status status;
     engine.Explain(sql, "db1", true, &explain, &status);
     std::cout << "physical " << explain.physical_plan << std::endl;
     std::cout << "logical_plan " << explain.logical_plan << std::endl;
     ::fesql::vm::BatchRunSession session;
+    session.EnableDebug();
     engine.Get(sql, "db1", session, status);
     if (status.code != ::fesql::common::kOk) {
         std::cout << status.msg << std::endl;
@@ -247,8 +254,7 @@ TEST_F(TabletCatalogTest, sql_last_join_smoke_test2) {
     ASSERT_EQ(0, rv.GetString(0, &data, &data_size));
     std::string pk(data, data_size);
     ASSERT_EQ(args->pk, pk);
-}
-*/
+}*/
 
 TEST_F(TabletCatalogTest, sql_window_smoke_500_test) {
     std::shared_ptr<TabletCatalog> catalog(new TabletCatalog());

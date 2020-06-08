@@ -166,7 +166,8 @@ bool ClusterSDK::InitTabletClient() {
     std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>>
         tablet_clients;
     for (uint32_t i = 0; i < tablets.size(); i++) {
-        if (boost::starts_with(tablets[i], ::rtidb::base::BLOB_PREFIX)) continue;
+        if (boost::starts_with(tablets[i],
+                    ::rtidb::base::BLOB_PREFIX)) continue;
         std::shared_ptr<::rtidb::client::TabletClient> client(
             new ::rtidb::client::TabletClient(tablets[i]));
         int ret = client->Init();
