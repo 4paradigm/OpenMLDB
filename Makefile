@@ -21,4 +21,7 @@ blob_proxy:
 	bash steps/compile.sh
 	wget -P /bin http://pkg-plus.4paradigm.com/software/docker/docker && chmod +x /bin/docker
 	cd docker && tar -zcvf ../release/blob_proxy.meta.tar.gz META-INFO/meta META-INFO/k8s/blob_proxy.yaml
+	echo ${CI_PIPELINE_IID}
+	echo ${CI_COMMIT_SHA:0:8}
+	echo ${CI_COMMIT_SHA}
 	cd docker/blob_proxy && docker build -t docker.4pd.io:env/${REF}/rtidb/blob_proxy:${docker_tag}  . && docker push docker.4pd.io:env/${REF}/rtidb/blob_proxy:${docker_tag}
