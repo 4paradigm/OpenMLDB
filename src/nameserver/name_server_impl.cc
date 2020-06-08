@@ -1684,16 +1684,18 @@ void NameServerImpl::ShowTablet(RpcController* controller,
     response->set_msg("ok");
 }
 
-bool NameServerImpl::Init() {
-    if (FLAGS_zk_cluster.empty()) {
+bool NameServerImpl::Init(const std::string& zk_cluster,
+                          const std::string& zk_path,
+                          const std::string& endpoint) {
+    if (zk_cluster.empty()) {
         PDLOG(WARNING, "zk cluster disabled");
         return false;
     }
-    zk_client_ = new ZkClient(FLAGS_zk_cluster, FLAGS_zk_session_timeout,
-                              FLAGS_endpoint, FLAGS_zk_root_path);
+    zk_client_ =
+        new ZkClient(zk_cluster, FLAGS_zk_session_timeout, endpoint, zk_path);
     if (!zk_client_->Init()) {
         PDLOG(WARNING, "fail to init zookeeper with cluster[%s]",
-              FLAGS_zk_cluster.c_str());
+              zk_cluster.c_str());
         return false;
     }
     task_vec_.resize(FLAGS_name_server_task_max_concurrency +
@@ -1701,7 +1703,7 @@ bool NameServerImpl::Init() {
     std::string value;
     std::vector<std::string> endpoints;
     if (!zk_client_->GetNodes(endpoints)) {
-        zk_client_->CreateNode(FLAGS_zk_root_path + "/nodes", "");
+        zk_client_->CreateNode(zk_path + "/nodes", "");
     } else {
         UpdateTablets(endpoints);
     }
@@ -1716,15 +1718,19 @@ bool NameServerImpl::Init() {
 
     thread_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval,
                            boost::bind(&NameServerImpl::CheckZkClient, this));
-    dist_lock_ = new DistLock(FLAGS_zk_root_path + "/leader", zk_client_,
-                              boost::bind(&NameServerImpl::OnLocked, this),
-                              boost::bind(&NameServerImpl::OnLostLock, this),
-                              FLAGS_endpoint);
+    dist_lock_ =
+        new DistLock(zk_path + "/leader", zk_client_,
+                     boost::bind(&NameServerImpl::OnLocked, this),
+                     boost::bind(&NameServerImpl::OnLostLock, this), endpoint);
     dist_lock_->Lock();
     task_thread_pool_.DelayTask(
         FLAGS_make_snapshot_check_interval,
         boost::bind(&NameServerImpl::SchedMakeSnapshot, this));
     return true;
+}
+
+bool NameServerImpl::Init() {
+    return Init(FLAGS_zk_cluster, FLAGS_zk_root_path, FLAGS_endpoint);
 }
 
 void NameServerImpl::CheckZkClient() {
