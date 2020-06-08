@@ -1205,7 +1205,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         return put(tid, pid, key, time, null, null, ByteBuffer.wrap(bytes), th);
     }
 
-    private PutResult putRelationTable(int tid, int pid, ByteBuffer row, TableHandler th) throws TabletException {
+    private PutResult putRelationTable(int tid, int pid, ByteBuffer row, TableHandler th, WriteOption wo) throws TabletException {
         PartitionHandler ph = th.getHandler(pid);
         if (th.getTableInfo().hasCompressType() && th.getTableInfo().getCompressType() == NS.CompressType.kSnappy) {
             byte[] data = row.array();
@@ -1225,7 +1225,11 @@ public class TableSyncClientImpl implements TableSyncClient {
         builder.setTid(tid);
         row.rewind();
         builder.setValue(ByteBufferNoCopy.wrap(row.asReadOnlyBuffer()));
-
+        if (wo != null) {
+            Tablet.WriteOption.Builder woBuilder = Tablet.WriteOption.newBuilder();
+            woBuilder.setUpdateIfExist(wo.isUpdateIfExist());
+            builder.setWo(woBuilder.build());
+        }
         Tablet.PutRequest request = builder.build();
         Tablet.PutResponse response = tablet.put(request);
         if (response != null) {
@@ -1402,7 +1406,7 @@ public class TableSyncClientImpl implements TableSyncClient {
             pid = new Random().nextInt() % th.getPartitions().length;
         }
         */
-        return putRelationTable(th.getTableInfo().getTid(), pid, buffer, th);
+        return putRelationTable(th.getTableInfo().getTid(), pid, buffer, th, wo);
 
     }
 

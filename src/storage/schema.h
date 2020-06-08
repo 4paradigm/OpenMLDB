@@ -147,7 +147,8 @@ class TableIndex {
     std::shared_ptr<IndexDef> GetPkIndex();
     const std::shared_ptr<IndexDef> GetIndexByCombineStr(
         const std::string& combine_str);
-    bool FindColName(const std::string& name);
+    bool IsColName(const std::string& name);
+    bool IsUniqueColName(const std::string& name);
 
  private:
     std::shared_ptr<std::vector<std::shared_ptr<IndexDef>>> indexs_;
@@ -155,6 +156,7 @@ class TableIndex {
     std::shared_ptr<std::unordered_map<std::string, std::shared_ptr<IndexDef>>>
         combine_col_name_map_;
     std::shared_ptr<std::vector<std::string>> col_name_vec_;
+    std::shared_ptr<std::vector<std::string>> unique_col_name_vec_;
 };
 
 }  // namespace storage

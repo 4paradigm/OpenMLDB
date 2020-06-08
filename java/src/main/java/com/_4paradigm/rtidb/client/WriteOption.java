@@ -2,15 +2,13 @@ package com._4paradigm.rtidb.client;
 
 public class WriteOption {
 
-    private boolean updateIfExist = true;
-    private boolean updateIfEqual = true;
+    private boolean updateIfExist = false;
 
     public WriteOption() {
     }
 
     public WriteOption(boolean updateIfExist, boolean updateIfEqual) {
         this.updateIfExist = updateIfExist;
-        this.updateIfEqual = updateIfEqual;
     }
 
     public boolean isUpdateIfExist() {
@@ -19,13 +17,5 @@ public class WriteOption {
 
     public void setUpdateIfExist(boolean updateIfExist) {
         this.updateIfExist = updateIfExist;
-    }
-
-    public boolean isUpdateIfEqual() {
-        return updateIfEqual;
-    }
-
-    public void setUpdateIfEqual(boolean updateIfEqual) {
-        this.updateIfEqual = updateIfEqual;
     }
 }
