@@ -4,8 +4,8 @@ services:
 variables:
     GIT_SUBMODULE_STRATEGY: recursive
 stages:
-    - build
     - make_docker
+    - build
     - test
     - ts_integration_test
     - ns_integration_test
