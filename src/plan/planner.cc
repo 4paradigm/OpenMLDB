@@ -315,72 +315,6 @@ bool Planner::CreateUnionQueryPlan(const node::UnionQueryNode *root,
         node_manager_->MakeUnionPlanNode(left_plan, right_plan, root->is_all_);
     return true;
 }
-
-int64_t Planner::CreateFrameOffset(const node::FrameBound *bound,
-                                   Status &status) {
-    bool negtive = false;
-    switch (bound->GetBoundType()) {
-        case node::kCurrent: {
-            return 0;
-        }
-        case node::kPreceding: {
-            negtive = true;
-            break;
-        }
-        case node::kFollowing: {
-            negtive = false;
-            break;
-        }
-        default: {
-            status.msg =
-                "cannot create window frame with unrecognized bound type, "
-                "only "
-                "support CURRENT|PRECEDING|FOLLOWING";
-            status.code = common::kUnSupport;
-            return INT64_MAX;
-        }
-    }
-    if (nullptr == bound->GetOffset()) {
-        return negtive ? INT64_MIN : INT64_MAX;
-    }
-    if (node::kExprPrimary != bound->GetOffset()->GetExprType()) {
-        status.msg =
-            "cannot create window frame, only support "
-            "primary frame";
-        status.code = common::kTypeError;
-        return INT64_MAX;
-    }
-
-    int64_t offset = 0;
-    node::ConstNode *primary =
-        dynamic_cast<node::ConstNode *>(bound->GetOffset());
-    switch (primary->GetDataType()) {
-        case node::DataType::kInt16:
-            offset = static_cast<int64_t>(primary->GetSmallInt());
-            break;
-        case node::DataType::kInt32:
-            offset = static_cast<int64_t>(primary->GetInt());
-            break;
-        case node::DataType::kInt64:
-            offset = (primary->GetLong());
-            break;
-        case node::DataType::kDay:
-        case node::DataType::kHour:
-        case node::DataType::kMinute:
-        case node::DataType::kSecond:
-            offset = (primary->GetMillis());
-            break;
-        default: {
-            status.msg =
-                "cannot create window frame, only support "
-                "smallint|int|bigint offset of frame";
-            status.code = common::kTypeError;
-            return INT64_MAX;
-        }
-    }
-    return negtive ? -1 * offset : offset;
-}
-
 bool Planner::CreateWindowPlanNode(
     const node::WindowDefNode *w_ptr, node::WindowPlanNode *w_node_ptr,
     Status &status) {  // NOLINT (runtime/references)
@@ -394,29 +328,19 @@ bool Planner::CreateWindowPlanNode(
             node::FrameBound *start = frame->frame_extent()->start();
             node::FrameBound *end = frame->frame_extent()->end();
 
-            start_offset = CreateFrameOffset(start, status);
-            if (common::kOk != status.code) {
-                LOG(WARNING)
-                    << "fail to create project list node: " << status.msg;
-                return false;
-            }
-            end_offset = CreateFrameOffset(end, status);
-            if (common::kOk != status.code) {
-                LOG(WARNING)
-                    << "fail to create project list node: " << status.msg;
-                return false;
-            }
-
+            start_offset =
+                nullptr == start ? INT64_MIN : start->GetSignedOffset();
+            end_offset = nullptr == end ? INT64_MAX : end->GetSignedOffset();
             if (w_ptr->GetName().empty()) {
                 w_node_ptr->SetName(
-                    GenerateName("anonymous_w_", w_node_ptr->GetId()));
+                    GenerateName("anonymous_w", w_node_ptr->GetId()));
             } else {
                 w_node_ptr->SetName(w_ptr->GetName());
             }
             w_node_ptr->SetStartOffset(start_offset);
             w_node_ptr->SetEndOffset(end_offset);
             w_node_ptr->SetIsRangeBetween(node::kFrameRange ==
-                                          frame->GetFrameType());
+                                          frame->frame_type());
             w_node_ptr->SetKeys(w_ptr->GetPartitions());
             w_node_ptr->SetOrders(w_ptr->GetOrders());
             if (nullptr != w_ptr->union_tables() &&
@@ -787,12 +711,6 @@ void Planner::MergeProjectMap(
     if (map.size() == 1) {
         DLOG(INFO) << "Nothing to merge, project list map size = 1";
         return;
-    }
-
-    for (auto iter_left = map.cbegin(); iter_left != map.cend(); iter_left++) {
-        for (auto iter_right = map.cbegin(); iter_right != map.cend();
-             iter_right++) {
-        }
     }
 }
 

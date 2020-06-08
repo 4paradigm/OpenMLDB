@@ -48,11 +48,6 @@ enum SQLNodeType {
     kName,
     kConst,
     kLimit,
-
-    kPreceding,
-    kFollowing,
-    kCurrent,
-
     kFn,
     kFnDef,
     kFnHeader,
@@ -158,10 +153,13 @@ enum FnOperator {
     kFnOpNone
 };
 
-enum FrameType {
-    kFrameRange,
-    kFrameRows,
-    kFrameRowsRange
+enum FrameType { kFrameRange, kFrameRows, kFrameRowsRange };
+enum BoundType {
+    kPrecedingUnbound = 0,
+    kPreceding,
+    kCurrent,
+    kFollowing,
+    kFollowingUnbound,
 };
 enum JoinType {
     kJoinTypeFull,
@@ -172,9 +170,7 @@ enum JoinType {
     kJoinTypeConcat,
 };
 
-enum UnionType {
-    kUnionTypeLeft
-};
+enum UnionType { kUnionTypeLeft };
 enum UnoinType { kUnionTypeDistinct, kUnionTypeAll };
 enum CmdType {
     kCmdCreateGroup,

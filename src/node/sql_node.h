@@ -208,6 +208,21 @@ inline const std::string FrameTypeName(const FrameType &type) {
             return "ROWS_RANGE";
     }
 }
+
+inline const std::string BoundTypeName(const BoundType &type) {
+    switch (type) {
+        case fesql::node::kPrecedingUnbound:
+            return "PRECEDING UNBOUND";
+        case fesql::node::kPreceding:
+            return "PRECEDING";
+        case fesql::node::kCurrent:
+            return "CURRENT";
+        case fesql::node::kFollowing:
+            return "FOLLOWING";
+        case fesql::node::kFollowingUnbound:
+            return "FOLLOWING UNBOUND";
+    }
+}
 inline const std::string DataTypeName(const DataType &type) {
     switch (type) {
         case fesql::node::kBool:
@@ -791,14 +806,14 @@ class FrameBound : public SQLNode {
     FrameBound()
         : SQLNode(kFrameBound, 0, 0),
           bound_type_(kPreceding),
-          offset_(nullptr) {}
+          offset_(0) {}
 
-    explicit FrameBound(SQLNodeType bound_type)
+    explicit FrameBound(BoundType bound_type)
         : SQLNode(kFrameBound, 0, 0),
           bound_type_(bound_type),
-          offset_(nullptr) {}
+          offset_(0) {}
 
-    FrameBound(SQLNodeType bound_type, ExprNode *offset)
+    FrameBound(BoundType bound_type, int64_t offset)
         : SQLNode(kFrameBound, 0, 0),
           bound_type_(bound_type),
           offset_(offset) {}
@@ -810,25 +825,35 @@ class FrameBound : public SQLNode {
         const std::string tab = org_tab + INDENT + SPACE_ED;
         std::string space = org_tab + INDENT + INDENT;
         output << "\n";
-        output << tab << SPACE_ST << "bound: " << NameOfSQLNodeType(bound_type_)
+        output << tab << SPACE_ST << "bound: " << BoundTypeName(bound_type_)
                << "\n";
-        if (NULL == offset_) {
-            if (bound_type_ == kCurrent) {
-                output << space << "CURRENT";
-            } else {
-                output << space << "UNBOUNDED";
-            }
-        } else {
-            offset_->Print(output, space);
+
+        if (kFollowing == bound_type_ ||kPreceding == bound_type_) {
+            output << space << offset_;
         }
     }
-    SQLNodeType GetBoundType() const { return bound_type_; }
-    ExprNode *GetOffset() const { return offset_; }
+    BoundType bound_type() const { return bound_type_; }
+    int64_t GetOffset() const { return offset_; }
+    int64_t GetSignedOffset() const {
+        switch (bound_type_) {
+            case node::kCurrent:
+                return 0;
+            case node::kFollowing:
+                return offset_;
+            case node::kPreceding:
+                return -1 * offset_;
+            case node::kPrecedingUnbound:
+                return INT64_MIN;
+            case node::kFollowingUnbound:
+                return INT64_MAX;
+        }
+    }
     virtual bool Equals(const SQLNode *node) const;
+    static int Compare(const FrameBound *bound1, const FrameBound *bound2);
 
  private:
-    SQLNodeType bound_type_;
-    ExprNode *offset_;
+    BoundType bound_type_;
+    int64_t offset_;
 };
 
 class FrameExtent : public SQLNode {
@@ -853,17 +878,26 @@ class FrameExtent : public SQLNode {
 class FrameNode : public SQLNode {
  public:
     FrameNode(FrameType frame_type, FrameExtent *frame_extent,
-              ConstNode *frame_maxsize)
+              int64_t frame_maxsize)
         : SQLNode(kFrames, 0, 0),
           frame_type_(frame_type),
           frame_extent_(frame_extent),
           frame_maxsize_(frame_maxsize),
-          frame_minsize_(nullptr) {}
+          rows_size_(0) {}
+
+    FrameNode(FrameType frame_type, FrameExtent *frame_extent,
+              int64_t frame_maxsize, int64_t rows_size)
+        : SQLNode(kFrames, 0, 0),
+          frame_type_(frame_type),
+          frame_extent_(frame_extent),
+          frame_maxsize_(frame_maxsize),
+          rows_size_(rows_size) {}
     ~FrameNode() {}
-    FrameType GetFrameType() const { return frame_type_; }
-    void SetFrameType(FrameType frame_type) { frame_type_ = frame_type; }
+    FrameType frame_type() const { return frame_type_; }
+    void set_frame_type(FrameType frame_type) { frame_type_ = frame_type; }
     FrameExtent *frame_extent() const { return frame_extent_; }
-    ConstNode *frame_maxsize() const { return frame_maxsize_; }
+    int64_t frame_maxsize() const { return frame_maxsize_; }
+    int64_t rows_size() const { return rows_size_; }
     void Print(std::ostream &output, const std::string &org_tab) const;
     virtual bool Equals(const SQLNode *node) const;
     bool CanMergeWith(const FrameNode *that) const;
@@ -871,8 +905,8 @@ class FrameNode : public SQLNode {
  private:
     FrameType frame_type_;
     FrameExtent *frame_extent_;
-    ConstNode *frame_maxsize_;
-    ConstNode *frame_minsize_;
+    int64_t frame_maxsize_;
+    int64_t rows_size_;
 };
 class WindowDefNode : public SQLNode {
  public:
@@ -895,7 +929,7 @@ class WindowDefNode : public SQLNode {
 
     OrderByNode *GetOrders() const { return orders_; }
 
-    SQLNode *GetFrame() const { return frame_ptr_; }
+    FrameNode *GetFrame() const { return frame_ptr_; }
 
     void SetPartitions(ExprListNode *partitions) { partitions_ = partitions; }
     void SetOrders(OrderByNode *orders) { orders_ = orders; }

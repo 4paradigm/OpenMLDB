@@ -78,8 +78,6 @@ class Planner {
     bool CreateWindowPlanNode(const node::WindowDefNode *w_ptr,
                               node::WindowPlanNode *plan_node,
                               Status &status);  // NOLINT (runtime/references)
-    int64_t CreateFrameOffset(const node::FrameBound *bound,
-                              Status &status);  // NOLINT (runtime/references)
     node::NodeManager *node_manager_;
     std::string MakeTableName(const PlanNode *node) const;
     void MergeProjectMap(

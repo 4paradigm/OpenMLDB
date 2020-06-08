@@ -114,12 +114,20 @@ class NodeManager {
     SQLNode *MakeWindowDefNode(SQLNodeList *union_tables,
                                ExprListNode *partitions, ExprNode *orders,
                                SQLNode *frame, bool instance_not_in_window);
+    WindowDefNode *MergeWindow(const WindowDefNode *w1, const WindowDefNode *w2,
+                               WindowDefNode *output);
     ExprNode *MakeOrderByNode(const ExprListNode *node_ptr, const bool is_asc);
     SQLNode *MakeFrameExtent(SQLNode *start, SQLNode *end);
-    SQLNode *MakeFrameBound(SQLNodeType bound_type);
-    SQLNode *MakeFrameBound(SQLNodeType bound_type, ExprNode *offset);
+    SQLNode *MakeFrameBound(BoundType bound_type);
+    SQLNode *MakeFrameBound(BoundType bound_type, ExprNode *offset);
+    SQLNode *MakeFrameBound(BoundType bound_type, int64_t offset);
     SQLNode *MakeFrameNode(FrameType frame_type, SQLNode *node_ptr,
                            ExprNode *frame_size);
+    SQLNode *MakeFrameNode(FrameType frame_type, SQLNode *node_ptr,
+                           int64_t maxsize);
+    SQLNode *MakeFrameNode(FrameType frame_type, SQLNode *node_ptr,
+                           int64_t maxsize, int rows_size);
+    FrameNode* MergeFrameNode(const FrameNode* frame1, const FrameNode* frame2);
     SQLNode *MakeLimitNode(int count);
 
     SQLNode *MakeNameNode(const std::string &name);
