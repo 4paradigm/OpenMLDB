@@ -2,7 +2,7 @@
 docker_tag := $(shell export LC_CTYPE=C && LANG=C cat /dev/urandom | tr -cd 'a-f0-9' | head -c 32) 
 REF = $(shell echo ${CI_COMMIT_REF_NAME} | tr '[A-Z]' '[a-z]')
 module = rtidb
-tag = "pipe-$(shell echo ${CI_PIPELINE_IID} | sed 's/(//g' | sed 's/)//g')-commit-${CI_COMMIT_SHA:0:8}"
+tag = "pipe-$(shell echo ${CI_PIPELINE_IID} | sed 's/(//g' | sed 's/)//g')-commit-$(shell echo ${CI_COMMIT_SHA:0:8})"
  
 tablet: 
 	rm -rfv release/tablet.meta.tar.gz
