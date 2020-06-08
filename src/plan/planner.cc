@@ -138,13 +138,15 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
         root->GetSelectList()->GetList();
 
     // prepare window list
-    std::map<node::WindowDefNode *, node::ProjectListNode *> project_list_map;
+    std::map<const node::WindowDefNode *, node::ProjectListNode *>
+        project_list_map;
     // prepare window def
     int w_id = 1;
-    std::map<std::string, node::WindowDefNode *> windows;
+    std::map<std::string, const node::WindowDefNode *> windows;
     if (nullptr != root->GetWindowList() && !root->GetWindowList()->IsEmpty()) {
         for (auto node : root->GetWindowList()->GetList()) {
-            node::WindowDefNode *w = dynamic_cast<node::WindowDefNode *>(node);
+            const node::WindowDefNode *w =
+                dynamic_cast<node::WindowDefNode *>(node);
             windows[w->GetName()] = w;
         }
     }
@@ -174,7 +176,7 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
             }
         }
 
-        node::WindowDefNode *w_ptr =
+        const node::WindowDefNode *w_ptr =
             node::WindowOfExpression(windows, project_expr);
 
         if (project_list_map.find(w_ptr) == project_list_map.end()) {
@@ -201,11 +203,18 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
         project_list_map[w_ptr]->AddProject(project_node_ptr);
     }
 
-
+    // merge window map
+    std::map<const node::WindowDefNode *, node::ProjectListNode *>
+        merged_project_list_map;
+    if (this->window_merge_enable_) {
+        MergeProjectMap(project_list_map, &merged_project_list_map);
+    } else {
+        merged_project_list_map = project_list_map;
+    }
 
     // add MergeNode if multi ProjectionLists exist
     PlanNodeList project_list_vec(w_id);
-    for (auto &v : project_list_map) {
+    for (auto &v : merged_project_list_map) {
         node::ProjectListNode *project_list = v.second;
         int pos =
             nullptr == project_list->GetW() ? 0 : project_list->GetW()->GetId();
@@ -221,8 +230,8 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
         node::ProjectListNode *merged_project =
             node_manager_->MakeProjectListPlanNode(first_window_project->GetW(),
                                                    true);
-        if (node::ProjectListNode::MergeProjectList(simple_project, first_window_project,
-                             merged_project)) {
+        if (node::ProjectListNode::MergeProjectList(
+                simple_project, first_window_project, merged_project)) {
             project_list_vec[0] = nullptr;
             project_list_vec[1] = merged_project;
         }
@@ -373,7 +382,7 @@ int64_t Planner::CreateFrameOffset(const node::FrameBound *bound,
 }
 
 bool Planner::CreateWindowPlanNode(
-    node::WindowDefNode *w_ptr, node::WindowPlanNode *w_node_ptr,
+    const node::WindowDefNode *w_ptr, node::WindowPlanNode *w_node_ptr,
     Status &status) {  // NOLINT (runtime/references)
 
     if (nullptr != w_ptr) {
@@ -766,6 +775,25 @@ bool Planner::CreateTableReferencePlanNode(const node::TableRefNode *root,
     }
 
     return true;
+}
+void Planner::MergeProjectMap(
+    std::map<const node::WindowDefNode *, node::ProjectListNode *> map,
+    std::map<const node::WindowDefNode *, node::ProjectListNode *> *output) {
+    if (map.empty()) {
+        DLOG(INFO) << "Nothing to merge, project list map is empty";
+        return;
+    }
+
+    if (map.size() == 1) {
+        DLOG(INFO) << "Nothing to merge, project list map size = 1";
+        return;
+    }
+
+    for (auto iter_left = map.cbegin(); iter_left != map.cend(); iter_left++) {
+        for (auto iter_right = map.cbegin(); iter_right != map.cend();
+             iter_right++) {
+        }
+    }
 }
 
 bool TransformTableDef(const std::string &table_name,

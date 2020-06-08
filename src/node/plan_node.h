@@ -316,8 +316,8 @@ class ProjectListNode : public LeafPlanNode {
     virtual bool Equals(const PlanNode *node) const;
 
     static bool MergeProjectList(node::ProjectListNode *project_list1,
-                          node::ProjectListNode *project_list2,
-                          node::ProjectListNode *merged_project);
+                                 node::ProjectListNode *project_list2,
+                                 node::ProjectListNode *merged_project);
     const bool is_window_agg_;
     const WindowPlanNode *w_ptr_;
 

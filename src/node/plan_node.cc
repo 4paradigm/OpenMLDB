@@ -261,8 +261,8 @@ void ProjectListNode::Print(std::ostream &output,
     }
 }
 bool ProjectListNode::MergeProjectList(node::ProjectListNode *project_list1,
-                                            node::ProjectListNode *project_list2,
-                                            node::ProjectListNode *merged_project) {
+                                       node::ProjectListNode *project_list2,
+                                       node::ProjectListNode *merged_project) {
     if (nullptr == project_list1 || nullptr == project_list2 ||
         nullptr == merged_project) {
         LOG(WARNING) << "can't merge project list: input projects or output "
@@ -563,8 +563,8 @@ bool JoinPlanNode::Equals(const PlanNode *node) const {
     const JoinPlanNode *that = dynamic_cast<const JoinPlanNode *>(node);
     return join_type_ == that->join_type_ &&
            node::ExprEquals(this->condition_, that->condition_) &&
-        node::ExprEquals(this->orders_, that->orders_) &&
-        BinaryPlanNode::Equals(that);
+           node::ExprEquals(this->orders_, that->orders_) &&
+           BinaryPlanNode::Equals(that);
 }
 
 void UnionPlanNode::Print(std::ostream &output,

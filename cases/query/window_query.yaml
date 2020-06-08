@@ -235,7 +235,7 @@ SQLCases:
         2, 555, 3, 7, 7.7, 77.7, 555, 3, 7, ccccccc
         2, 555, 4, 15, 16.5, 166.5, 1110, 7,  8, dddddddd
         2, 555, 5, 24, 26.4, 266.4, 1665, 12, 9, eeeeeeeee
-  - id: 7
+  - id: 8
     desc: Window SQL Order By Timestamp
     db: db1
     sql: |
@@ -254,7 +254,7 @@ SQLCases:
         3, 55, 1590115422000, 3.3
         4, 55, 1590115423000, 7.7
         5, 55, 1590115424000, 13.2
-  - id: 8
+  - id: 9
     desc: Window SQL Order By Timestamp, timestamp列聚合
     db: db1
     sql: |
@@ -277,7 +277,7 @@ SQLCases:
         4, 55, 1590115423000, 3180230845000, 1590115422000, 1590115423000
         5, 55, 1590115424000, 4770346269000, 1590115422000, 1590115424000
 
-  - id: 8
+  - id: 10
     desc: Window SQL Order By Timestamp, Date列聚合
     db: db1
     sql: |
@@ -306,3 +306,22 @@ SQLCases:
         3, 55, 1590115422000, 2020-05-20,  2020-05-20
         4, 55, 1590115423000,  2020-05-20,  2020-05-21
         5, 55, 1590115424000,  2020-05-20,  2020-05-22
+  - id: 11
+    desc: 匿名Window
+    db: db1
+    sql: |
+      SELECT col1 as id, col2, std_ts, sum(col3) OVER
+      (PARTITION BY t1.col2 ORDER BY t1.std_ts ROWS_RANGE BETWEEN 3s PRECEDING AND CURRENT ROW) as w1_col3_sum FROM t1 limit 10;
+    inputs:
+      - name: t1
+        resource: cases/resource/simple_t1_ts.yaml
+        index: index2:col2:std_ts
+    output:
+      schema: id:int32, col2:int16, std_ts:timestamp, w1_col3_sum:float
+      order: id
+      data: |
+        1, 5, 1590115420000, 1.1
+        2, 5, 1590115421000, 3.3
+        3, 55, 1590115422000, 3.3
+        4, 55, 1590115423000, 7.7
+        5, 55, 1590115424000, 13.2

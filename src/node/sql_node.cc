@@ -707,22 +707,35 @@ void FillSQLNodeList2NodeVector(
     }
 }
 
-WindowDefNode *WindowOfExpression(
-    std::map<std::string, WindowDefNode *> windows, ExprNode *node_ptr) {
+const WindowDefNode *WindowOfExpression(
+    std::map<std::string, const WindowDefNode *> windows, ExprNode *node_ptr) {
     WindowDefNode *w_ptr = nullptr;
     switch (node_ptr->GetExprType()) {
         case kExprCall: {
             CallExprNode *func_node_ptr =
                 dynamic_cast<CallExprNode *>(node_ptr);
             if (nullptr != func_node_ptr->GetOver()) {
-                return windows.at(func_node_ptr->GetOver()->GetName());
+                if (func_node_ptr->GetOver()->GetName().empty()) {
+                    return func_node_ptr->GetOver();
+                } else {
+                    auto iter =
+                        windows.find(func_node_ptr->GetOver()->GetName());
+                    if (iter == windows.cend()) {
+                        LOG(WARNING)
+                            << "Fail to resolved window from expression: "
+                            << func_node_ptr->GetOver()->GetName()
+                            << " undefined";
+                        return nullptr;
+                    }
+                    return iter->second;
+                }
             }
             if (nullptr == func_node_ptr->GetArgs() ||
                 func_node_ptr->GetArgs()->IsEmpty()) {
                 return nullptr;
             }
             for (auto arg : func_node_ptr->GetArgs()->children_) {
-                WindowDefNode *ptr =
+                const WindowDefNode *ptr =
                     WindowOfExpression(windows, dynamic_cast<ExprNode *>(arg));
                 if (nullptr != ptr && nullptr != w_ptr) {
                     LOG(WARNING)

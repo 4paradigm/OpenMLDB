@@ -353,9 +353,6 @@ TEST_F(SqlNodeTest, WindowAndFrameNodeMergeTest) {
             node_manager_->MakeWindowDefNode(pk1, orders1, range_frame1));
         ASSERT_FALSE(w1->CanMergeWith(w));
     }
-
-
-
 }
 }  // namespace node
 }  // namespace fesql

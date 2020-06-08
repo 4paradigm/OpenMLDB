@@ -11,6 +11,7 @@
 
 #include <string>
 #include <vector>
+#include <map>
 #include "base/fe_status.h"
 #include "glog/logging.h"
 #include "node/node_manager.h"
@@ -74,13 +75,16 @@ class Planner {
 
     bool CreateFuncDefPlan(const SQLNode *root, node::PlanNode **output,
                            Status &status);  // NOLINT (runtime/references)
-    bool CreateWindowPlanNode(node::WindowDefNode *w_ptr,
+    bool CreateWindowPlanNode(const node::WindowDefNode *w_ptr,
                               node::WindowPlanNode *plan_node,
                               Status &status);  // NOLINT (runtime/references)
     int64_t CreateFrameOffset(const node::FrameBound *bound,
                               Status &status);  // NOLINT (runtime/references)
     node::NodeManager *node_manager_;
     std::string MakeTableName(const PlanNode *node) const;
+    void MergeProjectMap(
+        std::map<const node::WindowDefNode *, node::ProjectListNode *> map,
+        std::map<const node::WindowDefNode *, node::ProjectListNode *> *output);
 };
 
 class SimplePlanner : public Planner {
