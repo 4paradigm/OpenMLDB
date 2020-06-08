@@ -374,9 +374,10 @@ void FrameNode::Print(std::ostream &output, const std::string &org_tab) const {
     PrintValue(output, tab, FrameTypeName(frame_type_), "frame_type", false);
     output << "\n";
     PrintSQLNode(output, tab, frame_extent_, "frame_extent", false);
-    if (nullptr != frame_size_) {
+    if (nullptr != frame_maxsize_) {
         output << "\n";
-        PrintValue(output, tab, ExprString(frame_size_), "frame_size", false);
+        PrintValue(output, tab, ExprString(frame_maxsize_), "frame_maxsize",
+                   false);
     }
 }
 void FrameExtent::Print(std::ostream &output,
@@ -411,9 +412,26 @@ bool FrameNode::Equals(const SQLNode *node) const {
     const FrameNode *that = dynamic_cast<const FrameNode *>(node);
     return this->frame_type_ == that->frame_type_ &&
            SQLEquals(this->frame_extent_, that->frame_extent_) &&
-           SQLEquals(this->frame_size_, that->frame_size_);
+           ExprEquals(this->frame_maxsize_, that->frame_maxsize_) &&
+           ExprEquals(this->frame_minsize_, that->frame_minsize_);
 }
+bool FrameNode::CanMergeWith(const FrameNode *that) const {
+    if (Equals(that)) {
+        return true;
+    }
+    if (nullptr == that) {
+        return false;
+    }
+    if (this->frame_type_ == that->frame_type_) {
+        return true;
+    }
 
+    if (this->frame_type_ == kFrameRange || that->frame_type_ == kFrameRange) {
+        return false;
+    }
+
+    return true;
+}
 void CallExprNode::Print(std::ostream &output,
                          const std::string &org_tab) const {
     ExprNode::Print(output, org_tab);
@@ -472,14 +490,23 @@ void WindowDefNode::Print(std::ostream &output,
     output << "\n";
     PrintSQLNode(output, tab, frame_ptr_, "frame", true);
 }
+bool WindowDefNode::CanMergeWith(const WindowDefNode *that) const {
+    if (Equals(that)) {
+        return true;
+    }
+    return ExprEquals(this->orders_, that->orders_) &&
+           ExprEquals(this->partitions_, that->partitions_) &&
+           nullptr != frame_ptr_ &&
+           this->frame_ptr_->CanMergeWith(that->frame_ptr_);
+}
 bool WindowDefNode::Equals(const SQLNode *node) const {
     if (!SQLNode::Equals(node)) {
         return false;
     }
     const WindowDefNode *that = dynamic_cast<const WindowDefNode *>(node);
     return this->window_name_ == that->window_name_ &&
-           this->orders_ == that->orders_ &&
-           this->partitions_ == that->partitions_ &&
+           ExprEquals(this->orders_, that->orders_) &&
+           ExprEquals(this->partitions_, that->partitions_) &&
            SQLEquals(this->frame_ptr_, that->frame_ptr_);
 }
 
@@ -584,6 +611,9 @@ std::string NameOfSQLNodeType(const SQLNodeType &type) {
             break;
         case kFrames:
             output = "kFrame";
+            break;
+        case kFrameExtent:
+            output = "kFrameExtent";
             break;
         case kFrameBound:
             output = "kBound";

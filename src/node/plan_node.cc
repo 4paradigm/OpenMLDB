@@ -260,6 +260,42 @@ void ProjectListNode::Print(std::ostream &output,
                         "projects on window ", false);
     }
 }
+bool ProjectListNode::MergeProjectList(node::ProjectListNode *project_list1,
+                                            node::ProjectListNode *project_list2,
+                                            node::ProjectListNode *merged_project) {
+    if (nullptr == project_list1 || nullptr == project_list2 ||
+        nullptr == merged_project) {
+        LOG(WARNING) << "can't merge project list: input projects or output "
+                        "projects is null";
+        return false;
+    }
+    auto iter1 = project_list1->GetProjects().cbegin();
+    auto end1 = project_list1->GetProjects().cend();
+    auto iter2 = project_list2->GetProjects().cbegin();
+    auto end2 = project_list2->GetProjects().cend();
+    while (iter1 != end1 && iter2 != end2) {
+        auto project1 = dynamic_cast<node::ProjectNode *>(*iter1);
+        auto project2 = dynamic_cast<node::ProjectNode *>(*iter2);
+        if (project1->GetPos() < project2->GetPos()) {
+            merged_project->AddProject(project1);
+            iter1++;
+        } else {
+            merged_project->AddProject(project2);
+            iter2++;
+        }
+    }
+    while (iter1 != end1) {
+        auto project1 = dynamic_cast<node::ProjectNode *>(*iter1);
+        merged_project->AddProject(project1);
+        iter1++;
+    }
+    while (iter2 != end2) {
+        auto project2 = dynamic_cast<node::ProjectNode *>(*iter2);
+        merged_project->AddProject(project2);
+        iter2++;
+    }
+    return true;
+}
 bool ProjectListNode::Equals(const PlanNode *node) const {
     if (nullptr == node) {
         return false;

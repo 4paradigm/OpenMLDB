@@ -16,7 +16,15 @@
 #include "proto/fe_common.pb.h"
 namespace fesql {
 namespace plan {
-
+const bool Planner::IsWindowMergeOptimizedEnable() {
+    const char *env_name = "ENABLE_WINDOW_MERGE_OPT";
+    char *value = getenv(env_name);
+    if (value != nullptr && strcmp(value, "true") == 0) {
+        LOG(INFO) << "Window merge opt is enabled";
+        return true;
+    }
+    return false;
+}
 bool Planner::CreateQueryPlan(const node::QueryNode *root, PlanNode **plan_tree,
                               Status &status) {
     if (nullptr == root) {
@@ -192,6 +200,9 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
 
         project_list_map[w_ptr]->AddProject(project_node_ptr);
     }
+
+
+
     // add MergeNode if multi ProjectionLists exist
     PlanNodeList project_list_vec(w_id);
     for (auto &v : project_list_map) {
@@ -210,8 +221,7 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
         node::ProjectListNode *merged_project =
             node_manager_->MakeProjectListPlanNode(first_window_project->GetW(),
                                                    true);
-
-        if (MergeProjectList(simple_project, first_window_project,
+        if (node::ProjectListNode::MergeProjectList(simple_project, first_window_project,
                              merged_project)) {
             project_list_vec[0] = nullptr;
             project_list_vec[1] = merged_project;
@@ -755,42 +765,6 @@ bool Planner::CreateTableReferencePlanNode(const node::TableRefNode *root,
         }
     }
 
-    return true;
-}
-bool Planner::MergeProjectList(node::ProjectListNode *project_list1,
-                               node::ProjectListNode *project_list2,
-                               node::ProjectListNode *merged_project) {
-    if (nullptr == project_list1 || nullptr == project_list2 ||
-        nullptr == merged_project) {
-        LOG(WARNING) << "can't merge project list: input projects or output "
-                        "projects is null";
-        return false;
-    }
-    auto iter1 = project_list1->GetProjects().cbegin();
-    auto end1 = project_list1->GetProjects().cend();
-    auto iter2 = project_list2->GetProjects().cbegin();
-    auto end2 = project_list2->GetProjects().cend();
-    while (iter1 != end1 && iter2 != end2) {
-        auto project1 = dynamic_cast<node::ProjectNode *>(*iter1);
-        auto project2 = dynamic_cast<node::ProjectNode *>(*iter2);
-        if (project1->GetPos() < project2->GetPos()) {
-            merged_project->AddProject(project1);
-            iter1++;
-        } else {
-            merged_project->AddProject(project2);
-            iter2++;
-        }
-    }
-    while (iter1 != end1) {
-        auto project1 = dynamic_cast<node::ProjectNode *>(*iter1);
-        merged_project->AddProject(project1);
-        iter1++;
-    }
-    while (iter2 != end2) {
-        auto project2 = dynamic_cast<node::ProjectNode *>(*iter2);
-        merged_project->AddProject(project2);
-        iter2++;
-    }
     return true;
 }
 

@@ -123,9 +123,9 @@ TEST_F(SqlNodeTest, MakeWindowDefNodetTest) {
     SQLNode *frame = node_manager_->MakeFrameNode(
         kFrameRange,
         node_manager_->MakeFrameExtent(
-        node_manager_->MakeFrameBound(kPreceding, NULL),
-        node_manager_->MakeFrameBound(kPreceding,
-                                      node_manager_->MakeConstNode(val))),
+            node_manager_->MakeFrameBound(kPreceding, NULL),
+            node_manager_->MakeFrameBound(kPreceding,
+                                          node_manager_->MakeConstNode(val))),
         NULL);
     WindowDefNode *node_ptr =
         dynamic_cast<WindowDefNode *>(node_manager_->MakeWindowDefNode(
@@ -183,8 +183,8 @@ TEST_F(SqlNodeTest, NewFrameNodeTest) {
     ASSERT_EQ(fesql::node::kInt64, const_ptr->GetDataType());
     ASSERT_EQ(86400000, const_ptr->GetLong());
 
-    ASSERT_EQ(fesql::node::kInt32, node_ptr->frame_size()->GetDataType());
-    ASSERT_EQ(100, node_ptr->frame_size()->GetInt());
+    ASSERT_EQ(fesql::node::kInt32, node_ptr->frame_maxsize()->GetDataType());
+    ASSERT_EQ(100, node_ptr->frame_maxsize()->GetInt());
 }
 
 TEST_F(SqlNodeTest, MakeInsertNodeTest) {
@@ -222,6 +222,141 @@ TEST_F(SqlNodeTest, MakeInsertNodeTest) {
     ASSERT_EQ(dynamic_cast<ConstNode *>(value[2])->GetDouble(), 2.3);
 }
 
+TEST_F(SqlNodeTest, WindowAndFrameNodeMergeTest) {
+    // Range between preceding 1d and current
+    FrameNode *range_frame1 =
+        dynamic_cast<FrameNode *>(node_manager_->MakeFrameNode(
+            kFrameRange,
+            node_manager_->MakeFrameExtent(
+                node_manager_->MakeFrameBound(
+                    kPreceding, node_manager_->MakeConstNode(1, node::kDay)),
+                node_manager_->MakeFrameBound(kCurrent)),
+            nullptr));
+
+    // Range between preceding 2d and current
+    FrameNode *range_frame2 =
+        dynamic_cast<FrameNode *>(node_manager_->MakeFrameNode(
+            kFrameRange,
+            node_manager_->MakeFrameExtent(
+                node_manager_->MakeFrameBound(
+                    kPreceding, node_manager_->MakeConstNode(2, node::kDay)),
+                node_manager_->MakeFrameBound(kCurrent)),
+            nullptr));
+
+    // Range and Range can be merge
+    ASSERT_TRUE(range_frame1->CanMergeWith(range_frame2));
+
+    // RowsRange between preceding 1d and current
+    FrameNode *rowsrange_frame1 =
+        dynamic_cast<FrameNode *>(node_manager_->MakeFrameNode(
+            kFrameRowsRange,
+            node_manager_->MakeFrameExtent(
+                node_manager_->MakeFrameBound(
+                    kPreceding, node_manager_->MakeConstNode(1, node::kDay)),
+                node_manager_->MakeFrameBound(kCurrent)),
+            nullptr));
+
+    // RowsRange between preceding 2d and current
+    FrameNode *rowsrange_frame2 =
+        dynamic_cast<FrameNode *>(node_manager_->MakeFrameNode(
+            kFrameRowsRange,
+            node_manager_->MakeFrameExtent(
+                node_manager_->MakeFrameBound(
+                    kPreceding, node_manager_->MakeConstNode(2, node::kDay)),
+                node_manager_->MakeFrameBound(kCurrent)),
+            nullptr));
+
+    // Range and Range can be merge
+    ASSERT_TRUE(rowsrange_frame1->CanMergeWith(rowsrange_frame2));
+
+    // Rows between preceding 200 and current
+    FrameNode *rows_frame1 =
+        dynamic_cast<FrameNode *>(node_manager_->MakeFrameNode(
+            kFrameRows,
+            node_manager_->MakeFrameExtent(
+                node_manager_->MakeFrameBound(
+                    kPreceding, node_manager_->MakeConstNode(200)),
+                node_manager_->MakeFrameBound(kCurrent)),
+            nullptr));
+
+    // Rows between preceding 100 and current
+    FrameNode *rows_frame2 =
+        dynamic_cast<FrameNode *>(node_manager_->MakeFrameNode(
+            kFrameRows,
+            node_manager_->MakeFrameExtent(
+                node_manager_->MakeFrameBound(
+                    kPreceding, node_manager_->MakeConstNode(100)),
+                node_manager_->MakeFrameBound(kCurrent)),
+            nullptr));
+
+    // Rows and Rows can be merge
+    ASSERT_TRUE(rows_frame1->CanMergeWith(rows_frame2));
+
+    // Range and Rows can't be merged
+    ASSERT_FALSE(range_frame1->CanMergeWith(rows_frame1));
+    ASSERT_FALSE(rows_frame1->CanMergeWith(range_frame1));
+
+    // RowsRange and Rows can be merged
+    ASSERT_TRUE(rows_frame1->CanMergeWith(rowsrange_frame1));
+    ASSERT_TRUE(rows_frame1->CanMergeWith(rowsrange_frame2));
+    ASSERT_TRUE(rowsrange_frame1->CanMergeWith(rows_frame1));
+    ASSERT_TRUE(rowsrange_frame1->CanMergeWith(rows_frame2));
+
+    ExprListNode *pk1 = node_manager_->MakeExprList();
+    pk1->AddChild(node_manager_->MakeColumnRefNode("col1", "t1"));
+
+    ExprListNode *pk2 = node_manager_->MakeExprList();
+    pk2->AddChild(node_manager_->MakeColumnRefNode("col1", "t1"));
+    pk2->AddChild(node_manager_->MakeColumnRefNode("col2", "t1"));
+
+    ExprListNode *pk3 = node_manager_->MakeExprList();
+    pk1->AddChild(node_manager_->MakeColumnRefNode("col1", "t2"));
+
+    ExprListNode *orders1_exprs = node_manager_->MakeExprList();
+    orders1_exprs->AddChild(node_manager_->MakeColumnRefNode("ts1", "t1"));
+    ExprNode *orders1 = node_manager_->MakeOrderByNode(orders1_exprs, false);
+
+    ExprListNode *orders2_exprs = node_manager_->MakeExprList();
+    orders2_exprs->AddChild(node_manager_->MakeColumnRefNode("ts2", "t1"));
+    ExprNode *orders2 = node_manager_->MakeOrderByNode(orders2_exprs, false);
+
+    WindowDefNode *w1 = dynamic_cast<WindowDefNode *>(
+        node_manager_->MakeWindowDefNode(pk1, orders1, rows_frame1));
+    WindowDefNode *w2 = dynamic_cast<WindowDefNode *>(
+        node_manager_->MakeWindowDefNode(pk1, orders1, rows_frame2));
+    ASSERT_TRUE(w1->CanMergeWith(w2));
+    ASSERT_TRUE(w2->CanMergeWith(w1));
+
+    // Window with different pks, can't be merged
+    {
+        WindowDefNode *w = dynamic_cast<WindowDefNode *>(
+            node_manager_->MakeWindowDefNode(pk2, orders1, rows_frame2));
+        ASSERT_FALSE(w1->CanMergeWith(w));
+    }
+
+    {
+        WindowDefNode *w = dynamic_cast<WindowDefNode *>(
+            node_manager_->MakeWindowDefNode(pk3, orders1, rows_frame2));
+        ASSERT_FALSE(w1->CanMergeWith(w));
+    }
+
+    // Window with different orders, can't be merged
+    {
+        WindowDefNode *w = dynamic_cast<WindowDefNode *>(
+            node_manager_->MakeWindowDefNode(pk1, orders2, rows_frame2));
+        ASSERT_FALSE(w1->CanMergeWith(w));
+    }
+
+    // Window can't be merged when their frame can't be merge
+    {
+        WindowDefNode *w = dynamic_cast<WindowDefNode *>(
+            node_manager_->MakeWindowDefNode(pk1, orders1, range_frame1));
+        ASSERT_FALSE(w1->CanMergeWith(w));
+    }
+
+
+
+}
 }  // namespace node
 }  // namespace fesql
 

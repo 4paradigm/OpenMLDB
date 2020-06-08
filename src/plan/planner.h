@@ -31,13 +31,21 @@ using node::SQLNode;
 class Planner {
  public:
     Planner(node::NodeManager *manager, const bool is_batch_mode)
-        : is_batch_mode_(is_batch_mode), node_manager_(manager) {}
+        : is_batch_mode_(is_batch_mode),
+          window_merge_enable_(false),
+          node_manager_(manager) {
+        window_merge_enable_ = Planner::IsWindowMergeOptimizedEnable();
+    }
     virtual ~Planner() {}
     virtual int CreatePlanTree(
         const NodePointVector &parser_trees,
         PlanNodeList &plan_trees,  // NOLINT (runtime/references)
         Status &status) = 0;       // NOLINT (runtime/references)
+    static const bool IsWindowMergeOptimizedEnable();
+    void set_window_merge_enable(bool flag) { window_merge_enable_ = flag; }
+    const bool window_merge_enable() const { return window_merge_enable_; }
     const bool is_batch_mode_;
+    bool window_merge_enable_;
 
  protected:
     bool ValidatePrimaryPath(
@@ -73,9 +81,6 @@ class Planner {
                               Status &status);  // NOLINT (runtime/references)
     node::NodeManager *node_manager_;
     std::string MakeTableName(const PlanNode *node) const;
-    bool MergeProjectList(node::ProjectListNode *project_list1,
-                          node::ProjectListNode *project_list2,
-                          node::ProjectListNode *merged_project);
 };
 
 class SimplePlanner : public Planner {

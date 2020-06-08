@@ -236,6 +236,12 @@ inline const std::string DataTypeName(const DataType &type) {
             return "iterator";
         case fesql::node::kRow:
             return "row";
+        case fesql::node::kSecond:
+            return "second";
+        case fesql::node::kMinute:
+            return "minute";
+        case fesql::node::kHour:
+            return "hour";
         case fesql::node::kNull:
             return "null";
         case fesql::node::kVoid:
@@ -807,7 +813,11 @@ class FrameBound : public SQLNode {
         output << tab << SPACE_ST << "bound: " << NameOfSQLNodeType(bound_type_)
                << "\n";
         if (NULL == offset_) {
-            output << space << "UNBOUNDED";
+            if (bound_type_ == kCurrent) {
+                output << space << "CURRENT";
+            } else {
+                output << space << "UNBOUNDED";
+            }
         } else {
             offset_->Print(output, space);
         }
@@ -843,23 +853,26 @@ class FrameExtent : public SQLNode {
 class FrameNode : public SQLNode {
  public:
     FrameNode(FrameType frame_type, FrameExtent *frame_extent,
-              ConstNode *frame_size)
+              ConstNode *frame_maxsize)
         : SQLNode(kFrames, 0, 0),
           frame_type_(frame_type),
           frame_extent_(frame_extent),
-          frame_size_(frame_size) {}
+          frame_maxsize_(frame_maxsize),
+          frame_minsize_(nullptr) {}
     ~FrameNode() {}
     FrameType GetFrameType() const { return frame_type_; }
     void SetFrameType(FrameType frame_type) { frame_type_ = frame_type; }
     FrameExtent *frame_extent() const { return frame_extent_; }
-    ConstNode *frame_size() const { return frame_size_; }
+    ConstNode *frame_maxsize() const { return frame_maxsize_; }
     void Print(std::ostream &output, const std::string &org_tab) const;
     virtual bool Equals(const SQLNode *node) const;
+    bool CanMergeWith(const FrameNode *that) const;
 
  private:
     FrameType frame_type_;
     FrameExtent *frame_extent_;
-    ConstNode *frame_size_;
+    ConstNode *frame_maxsize_;
+    ConstNode *frame_minsize_;
 };
 class WindowDefNode : public SQLNode {
  public:
@@ -901,6 +914,7 @@ class WindowDefNode : public SQLNode {
     }
     void Print(std::ostream &output, const std::string &org_tab) const;
     virtual bool Equals(const SQLNode *that) const;
+    bool CanMergeWith(const WindowDefNode *that) const;
 
  private:
     bool instance_not_in_window_;
