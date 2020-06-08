@@ -708,7 +708,8 @@ INSTANTIATE_TEST_CASE_P(
         // 0
         std::make_pair(
             "SELECT col1, col5, sum(col2) OVER w1 as w1_col2_sum FROM t1\n"
-            "      WINDOW w1 AS (UNION t3 PARTITION BY col1 ORDER BY col5 RANGE "
+            "      WINDOW w1 AS (UNION t3 PARTITION BY col1 ORDER BY col5 "
+            "RANGE "
             "BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;",
             "LIMIT(limit=10, optimized)\n"
             "  PROJECT(type=WindowAggregation, limit=10)\n"

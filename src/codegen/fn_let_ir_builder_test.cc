@@ -21,7 +21,9 @@
 #include "case/sql_case.h"
 #include "codec/fe_row_codec.h"
 #include "codec/list_iterator_codec.h"
+#include "codegen/codegen_base_test.h"
 #include "codegen/fn_ir_builder.h"
+#include "codegen/fn_let_ir_builder.h"
 #include "gtest/gtest.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/IR/Function.h"
@@ -41,8 +43,6 @@
 #include "udf/udf.h"
 #include "vm/jit.h"
 #include "vm/sql_compiler.h"
-#include "codegen/fn_let_ir_builder.h"
-#include "codegen/codegen_base_test.h"
 
 using namespace llvm;       // NOLINT
 using namespace llvm::orc;  // NOLINT
@@ -55,11 +55,9 @@ static node::NodeManager manager;
 
 class FnLetIRBuilderTest : public ::testing::Test {
  public:
-    FnLetIRBuilderTest() {
-    }
+    FnLetIRBuilderTest() {}
     ~FnLetIRBuilderTest() {}
 };
-
 
 TEST_F(FnLetIRBuilderTest, test_primary) {
     // Create an LLJIT instance.
@@ -248,7 +246,8 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_sum_project) {
         "sum(col2) OVER w1 as w1_col2_sum,  "
         "sum(col5) OVER w1 as w1_col5_sum  "
         "FROM t1 WINDOW "
-        "w1 AS (PARTITION BY COL2 ORDER BY `TS` RANGE BETWEEN 3 PRECEDING AND 3 "
+        "w1 AS (PARTITION BY COL2 ORDER BY `TS` RANGE BETWEEN 3 PRECEDING AND "
+        "3 "
         "FOLLOWING) limit 10;";
 
     int8_t* ptr = NULL;
@@ -462,7 +461,8 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_max_project) {
         "max(col2) OVER w1 as w1_col2_max,  "
         "max(col5) OVER w1 as w1_col5_max  "
         "FROM t1 WINDOW "
-        "w1 AS (PARTITION BY COL2 ORDER BY `TS` RANGE BETWEEN 3 PRECEDING AND 3 "
+        "w1 AS (PARTITION BY COL2 ORDER BY `TS` RANGE BETWEEN 3 PRECEDING AND "
+        "3 "
         "FOLLOWING) limit 10;";
 
     int8_t* ptr = NULL;
@@ -513,7 +513,8 @@ TEST_F(FnLetIRBuilderTest, test_col_at_udf) {
         "test_at(col1,1) OVER w1 as col1_at_1, "
         "count_list(col3,2) OVER w1 as col3_at_1 "
         "FROM t1 WINDOW "
-        "w1 AS (PARTITION BY COL2 ORDER BY `TS` RANGE BETWEEN 3 PRECEDING AND 3 "
+        "w1 AS (PARTITION BY COL2 ORDER BY `TS` RANGE BETWEEN 3 PRECEDING AND "
+        "3 "
         "FOLLOWING) limit 10;";
 
     int8_t* ptr = NULL;
