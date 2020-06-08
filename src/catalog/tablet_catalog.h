@@ -212,7 +212,6 @@ class TabletTableHandler : public ::fesql::vm::TableHandler {
     virtual std::shared_ptr<::fesql::vm::PartitionHandler> GetPartition(
         std::shared_ptr<::fesql::vm::TableHandler> table_hander,
         const std::string& index_name) const {
-
         if (!table_hander) {
             LOG(WARNING) << "fail to get partition for tablet table handler: "
                             "table handler is null";
