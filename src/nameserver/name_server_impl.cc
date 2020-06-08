@@ -1683,46 +1683,17 @@ void NameServerImpl::ShowTablet(RpcController* controller,
     response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
-bool NameServerImpl::Init() {
-    return Init(FLAGS_zk_cluster, FLAGS_zk_root_path, FLAGS_endpoint);
-}
 
-bool NameServerImpl::Init(const std::string& zk_cluster,
-                          const std::string& zk_path,
-                          const std::string& endpoint) {
-    if (zk_cluster.empty()) {
+bool NameServerImpl::Init() {
+    if (FLAGS_zk_cluster.empty()) {
         PDLOG(WARNING, "zk cluster disabled");
         return false;
     }
-    zk_root_path_ = zk_path;
-    std::string zk_table_path = zk_path + "/table";
-    zk_table_index_node_ = zk_table_path + "/table_index";
-    zk_table_data_path_ = zk_table_path + "/table_data";
-    zk_db_path_ = zk_path + "/db";
-    zk_db_table_data_path_ = zk_table_path + "/db_table_data";
-    zk_term_node_ = zk_table_path + "/term";
-    std::string zk_op_path = zk_path + "/op";
-    zk_op_index_node_ = zk_op_path + "/op_index";
-    zk_op_data_path_ = zk_op_path + "/op_data";
-    zk_op_sync_path_ = zk_op_path + "/op_sync";
-    zk_offline_endpoint_lock_node_ = zk_path + "/offline_endpoint_lock";
-    std::string zk_config_path = zk_path + "/config";
-    zk_zone_data_path_ = zk_path + "/cluster";
-    zk_auto_failover_node_ = zk_config_path + "/auto_failover";
-    zk_table_changed_notify_node_ = zk_table_path + "/notify";
-    running_.store(false, std::memory_order_release);
-    mode_.store(kNORMAL, std::memory_order_release);
-    auto_failover_.store(FLAGS_auto_failover, std::memory_order_release);
-    task_rpc_version_.store(0, std::memory_order_relaxed);
-    zone_info_.set_mode(kNORMAL);
-    zone_info_.set_zone_name(endpoint + zk_path);
-    zone_info_.set_replica_alias("");
-    zone_info_.set_zone_term(1);
-    zk_client_ =
-        new ZkClient(zk_cluster, FLAGS_zk_session_timeout, endpoint, zk_path);
+    zk_client_ = new ZkClient(FLAGS_zk_cluster, FLAGS_zk_session_timeout,
+                              FLAGS_endpoint, FLAGS_zk_root_path);
     if (!zk_client_->Init()) {
         PDLOG(WARNING, "fail to init zookeeper with cluster[%s]",
-              zk_cluster.c_str());
+              FLAGS_zk_cluster.c_str());
         return false;
     }
     task_vec_.resize(FLAGS_name_server_task_max_concurrency +
@@ -1730,17 +1701,9 @@ bool NameServerImpl::Init(const std::string& zk_cluster,
     std::string value;
     std::vector<std::string> endpoints;
     if (!zk_client_->GetNodes(endpoints)) {
-        zk_client_->CreateNode(zk_path + "/nodes", "");
+        zk_client_->CreateNode(FLAGS_zk_root_path + "/nodes", "");
     } else {
         UpdateTablets(endpoints);
-    }
-    std::string oss_path = zk_path + "/ossnodes";
-    endpoints.clear();
-    bool ok = zk_client_->GetChildren(oss_path, endpoints);
-    if (!ok) {
-        zk_client_->CreateNode(oss_path, "");
-    } else {
-        UpdateBlobServers(endpoints);
     }
     zk_client_->WatchNodes(
         boost::bind(&NameServerImpl::UpdateTabletsLocked, this, _1));
@@ -1753,10 +1716,10 @@ bool NameServerImpl::Init(const std::string& zk_cluster,
 
     thread_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval,
                            boost::bind(&NameServerImpl::CheckZkClient, this));
-    dist_lock_ =
-        new DistLock(zk_path + "/leader", zk_client_,
-                     boost::bind(&NameServerImpl::OnLocked, this),
-                     boost::bind(&NameServerImpl::OnLostLock, this), endpoint);
+    dist_lock_ = new DistLock(FLAGS_zk_root_path + "/leader", zk_client_,
+                              boost::bind(&NameServerImpl::OnLocked, this),
+                              boost::bind(&NameServerImpl::OnLostLock, this),
+                              FLAGS_endpoint);
     dist_lock_->Lock();
     task_thread_pool_.DelayTask(
         FLAGS_make_snapshot_check_interval,
