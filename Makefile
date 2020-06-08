@@ -2,7 +2,8 @@
 docker_tag := $(shell export LC_CTYPE=C && LANG=C cat /dev/urandom | tr -cd 'a-f0-9' | head -c 32) 
 REF = $(shell echo ${CI_COMMIT_REF_NAME} | tr '[A-Z]' '[a-z]')
 module = rtidb
-tag = "pipe-$(shell echo ${CI_PIPELINE_IID} | sed 's/(//g' | sed 's/)//g')-commit-$(shell echo ${CI_COMMIT_SHA:0:8})"
+commit_sha_prefix = $(shell v='${CI_COMMIT_SHA}'; echo $${v:0:8})
+tag = "pipe-$(shell echo ${CI_PIPELINE_IID} | sed 's/(//g' | sed 's/)//g')-commit-${commit_sha_prefix}"
  
 tablet: 
 	rm -rfv release/tablet.meta.tar.gz
@@ -21,8 +22,4 @@ blob_proxy:
 	bash steps/compile.sh
 	wget -P /bin http://pkg-plus.4paradigm.com/software/docker/docker && chmod +x /bin/docker
 	cd docker && tar -zcvf ../release/blob_proxy.meta.tar.gz META-INFO/meta META-INFO/k8s/blob_proxy.yaml
-	echo ${CI_PIPELINE_IID}
-	echo ${CI_COMMIT_SHA:0:8}
-	echo ${CI_COMMIT_SHA}
-	echo ${tag}
 	cd docker/blob_proxy && docker build -t docker.4pd.io:env/${REF}/rtidb/blob_proxy:${tag}  . && docker push docker.4pd.io:env/${REF}/rtidb/blob_proxy:${tag}
