@@ -307,7 +307,8 @@ bool RelationalTable::LoadTable() {
     return true;
 }
 
-bool RelationalTable::Put(const std::string& value, int64_t* auto_gen_pk) {
+bool RelationalTable::Put(const std::string& value, int64_t* auto_gen_pk,
+        const ::rtidb::api::WriteOption& wo) {
     ::rtidb::base::Slice slice(value);
     std::string new_value;
     if (table_meta_.compress_type() == ::rtidb::api::kSnappy) {
@@ -345,7 +346,8 @@ bool RelationalTable::Put(const std::string& value, int64_t* auto_gen_pk) {
         }
     }
     rocksdb::WriteBatch batch;
-    if (!PutDB(rocksdb::Slice(pk), slice.data(), slice.size(), true, &batch)) {
+    if (!PutDB(rocksdb::Slice(pk), slice.data(), slice.size(),
+                true, true, &batch)) {
         return false;
     }
     rocksdb::Status s = db_->Write(write_opts_, &batch);
@@ -360,16 +362,30 @@ bool RelationalTable::Put(const std::string& value, int64_t* auto_gen_pk) {
 }
 
 bool RelationalTable::PutDB(const rocksdb::Slice& spk, const char* data,
-                            uint32_t size, bool unique_check,
-                            rocksdb::WriteBatch* batch) {
-    std::shared_ptr<IndexDef> index_def = table_index_.GetPkIndex();
+        uint32_t size, bool pk_check, bool unique_check,
+        rocksdb::WriteBatch* batch) {
+    std::shared_ptr<IndexDef> pk_index_def = table_index_.GetPkIndex();
+    if (pk_check) {
+        std::unique_ptr<rocksdb::Iterator> pk_it(
+            GetRocksdbIterator(pk_index_def->GetId()));
+        if (!pk_it) {
+            return false;
+        } else {
+            pk_it->Seek(spk);
+            if (pk_it->Valid() && pk_it->key() == spk) {
+                DEBUGLOG("Put failed, pk %s repeated. tid %u pid %u",
+                        spk.ToString().c_str(), id_, pid_);
+                return false;
+            }
+        }
+    }
     if (table_meta_.compress_type() == ::rtidb::api::kSnappy) {
         std::string compressed;
         ::snappy::Compress(data, size, &compressed);
-        batch->Put(cf_hs_[index_def->GetId() + 1], spk,
+        batch->Put(cf_hs_[pk_index_def->GetId() + 1], spk,
                    rocksdb::Slice(compressed.data(), compressed.size()));
     } else {
-        batch->Put(cf_hs_[index_def->GetId() + 1], spk,
+        batch->Put(cf_hs_[pk_index_def->GetId() + 1], spk,
                    rocksdb::Slice(data, size));
     }
     for (uint32_t i = 0; i < table_index_.Size(); i++) {
@@ -950,6 +966,7 @@ bool RelationalTable::UpdateDB(const std::shared_ptr<IndexDef> index_def,
     ::rtidb::type::IndexType index_type = index_def->GetType();
     bool is_update_index = false;
     bool is_update_pk = false;
+    bool is_update_unique = false;
     const Schema& schema = table_meta_.column_desc();
     ::rtidb::base::Slice pk_slice(comparable_key);
     rocksdb::WriteBatch batch;
@@ -1001,7 +1018,7 @@ bool RelationalTable::UpdateDB(const std::shared_ptr<IndexDef> index_def,
             auto col_iter = col_idx_map.find(schema.Get(i).name());
             if (col_iter != col_idx_map.end()) {
                 if ((!is_update_index)
-                        && table_index_.FindColName(schema.Get(i).name())) {
+                        && table_index_.IsColName(schema.Get(i).name())) {
                     is_update_index = true;
                 }
                 if (!is_update_pk) {
@@ -1018,12 +1035,21 @@ bool RelationalTable::UpdateDB(const std::shared_ptr<IndexDef> index_def,
                         }
                     }
                 }
+                if ((!is_update_unique) && table_index_.IsUniqueColName(
+                            schema.Get(i).name())) {
+                    is_update_unique = true;
+                }
+                if (iter_vec.size() > 1 &&
+                        (is_update_pk || is_update_unique)) {
+                    DEBUGLOG("duplicate pk or unique key"
+                            "tid %u pid %u", id_, pid_);
+                    return false;
+                }
                 if (schema.Get(i).not_null() &&
                     value_view.IsNULL(col_iter->second)) {
                     PDLOG(WARNING,
                           "not_null is true but value is null, update table "
-                          "tid %u pid %u failed",
-                          id_, pid_);
+                          "tid %u pid %u failed", id_, pid_);
                     return false;
                 } else if (value_view.IsNULL(col_iter->second)) {
                     builder.AppendNULL();
@@ -1196,7 +1222,7 @@ bool RelationalTable::UpdateDB(const std::shared_ptr<IndexDef> index_def,
             pk_slice.reset(new_pk.data(), new_pk.size());
         }
         ok = PutDB(rocksdb::Slice(pk_slice.data(), pk_slice.size()),
-                   row.c_str(), row.length(), false, &batch);
+                   row.c_str(), row.length(), false, false, &batch);
         if (!ok) {
             PDLOG(WARNING, "put failed, update table tid %u pid %u failed", id_,
                   pid_);
@@ -1290,8 +1316,9 @@ bool RelationalTable::GetCombinePk(
     } else if (indexs.size() == 1) {
         std::shared_ptr<IndexDef> index_def =
             table_index_.GetIndexByCombineStr(indexs.Get(0).name(0));
-        if (!index_def
-                || index_def->GetType() != ::rtidb::type::kPrimaryKey) {
+        if (!index_def ||
+                ((index_def->GetType() != ::rtidb::type::kPrimaryKey) &&
+                (index_def->GetType() != ::rtidb::type::kAutoGen))) {
             DEBUGLOG("combine_name %s not found or not pk. tid %u pid %u",
                     indexs.Get(0).name(0).c_str(), id_, pid_);
             return false;
@@ -1324,8 +1351,9 @@ bool RelationalTable::GetCombinePk(
         }
         std::shared_ptr<IndexDef> index_def =
             table_index_.GetIndexByCombineStr(combine_name);
-        if (!index_def
-                || index_def->GetType() != ::rtidb::type::kPrimaryKey) {
+        if (!index_def ||
+            ((index_def->GetType() != ::rtidb::type::kPrimaryKey) &&
+            (index_def->GetType() != ::rtidb::type::kAutoGen))) {
             DEBUGLOG("combine_name %s not found or not pk. tid %u pid %u",
                     combine_name.c_str(), id_, pid_);
             return false;

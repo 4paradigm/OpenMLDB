@@ -55,9 +55,8 @@ def buildStrMap(m: map):
   return  mid_map
 
 class WriteOption:
-  def __init__(self, updateIfExist = True, updateIfEqual = True):
+  def __init__(self, updateIfExist = False):
     self.updateIfExist = updateIfExist
-    self.updateIfEqual = updateIfEqual
     
 class ReadFilter:
   def __init__(self, column, compare: int, value):
@@ -199,7 +198,6 @@ class RTIDBClient:
     _wo = interclient.WriteOption()
     if WriteOption != None:
       _wo.updateIfExist = defaultWriteOption.updateIfExist
-      _wo.updateIfEqual = defaultWriteOption.updateIfEqual
     self.putBlob(table_name, columns)
     value = buildStrMap(columns)
 
@@ -212,7 +210,6 @@ class RTIDBClient:
     _wo = interclient.WriteOption()
     if write_option != None:
       _wo.updateIfExist = defaultWriteOption.updateIfExist
-      _wo.updateIfEqual = defaultWriteOption.updateIfEqual
     self.putBlob(table_name, value_columns)
     cond = buildStrMap(condition_columns)
     v = buildStrMap(value_columns)
