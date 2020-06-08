@@ -693,6 +693,9 @@ NameServerImpl::NameServerImpl()
     : mu_(),
       tablets_(),
       table_info_(),
+      db_table_info_(),
+      nsc_(),
+      zone_info_(),
       zk_client_(NULL),
       dist_lock_(NULL),
       thread_pool_(1),
@@ -1696,6 +1699,7 @@ bool NameServerImpl::Init(const std::string& zk_cluster,
         return false;
     }
     zk_root_path_ = zk_path;
+    endpoint_ = endpoint;
     std::string zk_table_path = zk_path + "/table";
     zk_table_index_node_ = zk_table_path + "/table_index";
     zk_table_data_path_ = zk_table_path + "/table_data";
@@ -1719,6 +1723,7 @@ bool NameServerImpl::Init(const std::string& zk_cluster,
     zone_info_.set_zone_name(endpoint + zk_path);
     zone_info_.set_replica_alias("");
     zone_info_.set_zone_term(1);
+    LOG(INFO) << "zone name " << zone_info_.zone_name();
     zk_client_ =
         new ZkClient(zk_cluster, FLAGS_zk_session_timeout, endpoint, zk_path);
     if (!zk_client_->Init()) {
@@ -10334,7 +10339,7 @@ void NameServerImpl::RemoveReplicaClusterByNs(
         ZoneInfo zone_info;
         zone_info.CopyFrom(request->zone_info());
         zone_info.set_mode(kNORMAL);
-        zone_info.set_zone_name(FLAGS_endpoint + zk_root_path_);
+        zone_info.set_zone_name(endpoint_ + zk_root_path_);
         zone_info.set_replica_alias("");
         zone_info.set_zone_term(1);
         zone_info.SerializeToString(&value);

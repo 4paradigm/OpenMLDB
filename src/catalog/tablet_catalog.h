@@ -152,6 +152,7 @@ class TabletPartitionHandler : public ::fesql::vm::PartitionHandler {
         auto iter = GetWindowIterator();
         if (!iter) return 0;
         uint64_t cnt = 0;
+	iter->SeekToFirst();
         while (iter->Valid()) {
             cnt++;
             iter->Next();

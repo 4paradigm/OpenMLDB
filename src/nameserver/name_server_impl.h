@@ -888,6 +888,7 @@ class NameServerImpl : public NameServer {
         task_map_;
     std::set<std::string> databases_;
     std::string zk_root_path_;
+    std::string endpoint_;
 };
 
 }  // namespace nameserver
