@@ -1,4 +1,5 @@
 #! /bin/sh
+set -e 
 cp ./build/bin/rtidb ./docker/tablet/bin/
 cp ./build/bin/rtidb ./docker/nameserver/bin/
 cp ./build/bin/rtidb ./docker/blob_proxy/bin/
