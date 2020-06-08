@@ -3768,7 +3768,7 @@ void NameServerImpl::DropTable(RpcController* controller,
     }
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info;
     if (!GetTableInfo(request->name(), request->has_db() ? request->db() : "",
-                      table_info)) {
+                    table_info)) {
         response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
         response->set_msg("table is not exist!");
         PDLOG(WARNING, "table[%s] is not exist!", request->name().c_str());
@@ -9958,7 +9958,7 @@ bool NameServerImpl::GetTableInfo(const std::string& table_name,
                                   const std::string& db_name,
                                   std::shared_ptr<TableInfo>& table_info) {
     std::lock_guard<std::mutex> lock(mu_);
-    return GetTableInfo(table_name, db_name, table_info);
+    return GetTableInfoUnlock(table_name, db_name, table_info);
 }
 
 bool NameServerImpl::GetTableInfoUnlock(
