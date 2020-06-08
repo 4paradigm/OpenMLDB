@@ -24,4 +24,5 @@ blob_proxy:
 	echo ${CI_PIPELINE_IID}
 	echo ${CI_COMMIT_SHA:0:8}
 	echo ${CI_COMMIT_SHA}
-	cd docker/blob_proxy && docker build -t docker.4pd.io:env/${REF}/rtidb/blob_proxy:${docker_tag}  . && docker push docker.4pd.io:env/${REF}/rtidb/blob_proxy:${docker_tag}
+	echo ${tag}
+	cd docker/blob_proxy && docker build -t docker.4pd.io:env/${REF}/rtidb/blob_proxy:${tag}  . && docker push docker.4pd.io:env/${REF}/rtidb/blob_proxy:${tag}
