@@ -172,7 +172,8 @@ TEST_F(TabletCatalogTest, sql_last_join_smoke_test) {
     ::fesql::vm::Engine engine(catalog);
     std::string sql =
         "select t1.col1 as c1, t1.col2 as c2 , t2.col1 as c3, t2.col2 as c4 "
-        "from t1 last join t2 order by t2.col2 on t1.col1 = t2.col1 and t1.col2 = t2.col2;";
+        "from t1 last join t2 order by t2.col2"
+        "on t1.col1 = t2.col1 and t1.col2 = t2.col2;";
      ::fesql::vm::ExplainOutput explain;
     ::fesql::base::Status status;
     engine.Explain(sql, "db1", true, &explain, &status);
