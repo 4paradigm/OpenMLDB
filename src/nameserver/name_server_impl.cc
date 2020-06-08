@@ -44,6 +44,7 @@ DECLARE_uint32(get_replica_status_interval);
 DECLARE_int32(make_snapshot_time);
 DECLARE_int32(make_snapshot_check_interval);
 
+using ::rtidb::base::BLOB_PREFIX;
 using ::rtidb::base::ReturnCode;
 
 namespace rtidb {
@@ -1320,12 +1321,6 @@ void NameServerImpl::UpdateTabletsLocked(
     UpdateTablets(endpoints);
 }
 
-void NameServerImpl::UpdateBlobServersLocked(
-    const std::vector<std::string>& endpoints) {
-    std::lock_guard<std::mutex> lock(mu_);
-    UpdateBlobServers(endpoints);
-}
-
 void NameServerImpl::UpdateBlobServers(
     const std::vector<std::string>& endpoints) {
     std::set<std::string> alive;
@@ -1385,8 +1380,20 @@ void NameServerImpl::UpdateBlobServers(
 void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
     // check exist and newly add tablets
     std::set<std::string> alive;
-    std::vector<std::string>::const_iterator it = endpoints.begin();
-    for (; it != endpoints.end(); ++it) {
+    std::vector<std::string> blobs;
+    std::vector<std::string> tablet_endpoints;
+    {
+        std::vector<std::string>::const_iterator it = endpoints.begin();
+        for (; it != endpoints.end(); ++it) {
+            if (boost::starts_with(*it, BLOB_PREFIX)) {
+                blobs.push_back(it->substr(BLOB_PREFIX.size()));
+            } else {
+                tablet_endpoints.push_back(*it);
+            }
+        }
+    }
+    auto it = tablet_endpoints.begin();
+    for (; it != tablet_endpoints.end(); ++it) {
         alive.insert(*it);
         Tablets::iterator tit = tablets_.find(*it);
         // register a new tablet
@@ -1441,6 +1448,7 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
             }
         }
     }
+    UpdateBlobServers(blobs);
     thread_pool_.AddTask(
         boost::bind(&NameServerImpl::DistributeTabletMode, this));
 }
@@ -1736,16 +1744,9 @@ bool NameServerImpl::Init(const std::string& zk_cluster,
     }
     zk_client_->WatchNodes(
         boost::bind(&NameServerImpl::UpdateTabletsLocked, this, _1));
-    ok = zk_client_->WatchNodes();
+    bool ok = zk_client_->WatchNodes();
     if (!ok) {
         PDLOG(WARNING, "fail to watch nodes");
-        return false;
-    }
-    ok = zk_client_->WatchChildren(
-        oss_path,
-        boost::bind(&NameServerImpl::UpdateBlobServersLocked, this, _1));
-    if (!ok) {
-        PDLOG(WARNING, "fail to watch ossnodes");
         return false;
     }
     session_term_ = zk_client_->GetSessionTerm();
@@ -3768,7 +3769,7 @@ void NameServerImpl::DropTable(RpcController* controller,
     }
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info;
     if (!GetTableInfo(request->name(), request->has_db() ? request->db() : "",
-                    table_info)) {
+                      table_info)) {
         response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
         response->set_msg("table is not exist!");
         PDLOG(WARNING, "table[%s] is not exist!", request->name().c_str());
