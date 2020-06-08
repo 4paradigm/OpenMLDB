@@ -1457,7 +1457,11 @@ std::shared_ptr<DataHandler> GroupAggRunner::Run(RunnerContext& ctx) {
         return std::shared_ptr<DataHandler>();
     }
     iter->SeekToFirst();
+    int32_t cnt = 0;
     while (iter->Valid()) {
+        if (limit_cnt_ > 0 && cnt++ >= limit_cnt_) {
+            break;
+        }
         auto segment_iter = iter->GetValue();
         if (!segment_iter) {
             LOG(WARNING) << "group aggregation fail: segment iterator is null";
