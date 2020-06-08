@@ -22,10 +22,11 @@
 #include <memory>
 #include <string>
 #include <utility>
+
+#include "base/spinlock.h"
 #include "codec/row.h"
 #include "storage/table.h"
 #include "vm/catalog.h"
-#include "base/spinlock.h"
 
 namespace rtidb {
 namespace catalog {
@@ -152,6 +153,7 @@ class TabletPartitionHandler : public ::fesql::vm::PartitionHandler {
         auto iter = GetWindowIterator();
         if (!iter) return 0;
         uint64_t cnt = 0;
+        iter->SeekToFirst();
         while (iter->Valid()) {
             cnt++;
             iter->Next();

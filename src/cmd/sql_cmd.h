@@ -63,7 +63,7 @@ void PrintResultSet(std::ostream &stream, ::fesql::sdk::ResultSet *result_set) {
         stream << "Empty set" << std::endl;
         return;
     }
-    ::fesql::base::TextTable t('-', '|', '+');
+    ::fesql::base::TextTable t('-', ' ', ' ');
     auto *schema = result_set->GetSchema();
     // Add Header
     for (int32_t i = 0; i < schema->GetColumnCnt(); i++) {
@@ -110,6 +110,22 @@ void PrintResultSet(std::ostream &stream, ::fesql::sdk::ResultSet *result_set) {
                     t.add(val);
                     break;
                 }
+                case fesql::sdk::kTypeTimestamp: {
+                    int64_t ts = 0;
+                    result_set->GetTime(i, &ts);
+                    t.add(std::to_string(ts));
+                    break;
+                }
+                case fesql::sdk::kTypeDate: {
+                    int32_t year = 0;
+                    int32_t month = 0;
+                    int32_t day = 0;
+                    std::stringstream ss;
+                    result_set->GetDate(i, &year, &month, &day);
+                    ss << year << "-" << month << "-" << day;
+                    t.add(ss.str());
+                    break;
+                }
                 default: {
                     t.add("NA");
                 }
@@ -126,7 +142,7 @@ void PrintTableSchema(std::ostream &stream, const ::fesql::vm::Schema &schema) {
         return;
     }
     uint32_t items_size = schema.size();
-    ::fesql::base::TextTable t('-', '|', '+');
+    ::fesql::base::TextTable t('-', ' ', ' ');
     t.add("Field");
     t.add("Type");
     t.add("Null");
@@ -154,7 +170,7 @@ void PrintItems(std::ostream &stream, const std::string &head,
         return;
     }
 
-    ::fesql::base::TextTable t('-', '|', '+');
+    ::fesql::base::TextTable t('-', ' ', ' ');
     t.add(head);
     t.endOfRow();
     for (auto item : items) {

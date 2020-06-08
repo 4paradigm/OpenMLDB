@@ -692,6 +692,9 @@ NameServerImpl::NameServerImpl()
     : mu_(),
       tablets_(),
       table_info_(),
+      db_table_info_(),
+      nsc_(),
+      zone_info_(),
       zk_client_(NULL),
       dist_lock_(NULL),
       thread_pool_(1),
@@ -1691,6 +1694,32 @@ bool NameServerImpl::Init(const std::string& zk_cluster,
         PDLOG(WARNING, "zk cluster disabled");
         return false;
     }
+    zk_root_path_ = zk_path;
+    endpoint_ = endpoint;
+    std::string zk_table_path = zk_path + "/table";
+    zk_table_index_node_ = zk_table_path + "/table_index";
+    zk_table_data_path_ = zk_table_path + "/table_data";
+    zk_db_path_ = zk_path + "/db";
+    zk_db_table_data_path_ = zk_table_path + "/db_table_data";
+    zk_term_node_ = zk_table_path + "/term";
+    std::string zk_op_path = zk_path + "/op";
+    zk_op_index_node_ = zk_op_path + "/op_index";
+    zk_op_data_path_ = zk_op_path + "/op_data";
+    zk_op_sync_path_ = zk_op_path + "/op_sync";
+    zk_offline_endpoint_lock_node_ = zk_path + "/offline_endpoint_lock";
+    std::string zk_config_path = zk_path + "/config";
+    zk_zone_data_path_ = zk_path + "/cluster";
+    zk_auto_failover_node_ = zk_config_path + "/auto_failover";
+    zk_table_changed_notify_node_ = zk_table_path + "/notify";
+    running_.store(false, std::memory_order_release);
+    mode_.store(kNORMAL, std::memory_order_release);
+    auto_failover_.store(FLAGS_auto_failover, std::memory_order_release);
+    task_rpc_version_.store(0, std::memory_order_relaxed);
+    zone_info_.set_mode(kNORMAL);
+    zone_info_.set_zone_name(endpoint + zk_path);
+    zone_info_.set_replica_alias("");
+    zone_info_.set_zone_term(1);
+    LOG(INFO) << "zone name " << zone_info_.zone_name();
     zk_client_ =
         new ZkClient(zk_cluster, FLAGS_zk_session_timeout, endpoint, zk_path);
     if (!zk_client_->Init()) {
@@ -10361,7 +10390,7 @@ void NameServerImpl::RemoveReplicaClusterByNs(
         ZoneInfo zone_info;
         zone_info.CopyFrom(request->zone_info());
         zone_info.set_mode(kNORMAL);
-        zone_info.set_zone_name(FLAGS_endpoint + zk_root_path_);
+        zone_info.set_zone_name(endpoint_ + zk_root_path_);
         zone_info.set_replica_alias("");
         zone_info.set_zone_term(1);
         zone_info.SerializeToString(&value);

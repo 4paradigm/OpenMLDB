@@ -84,6 +84,12 @@ bool ResultSetSQL::Next() {
     return false;
 }
 
+bool ResultSetSQL::Reset() {
+    index_ = -1;
+    position_ = 0;
+    return true;
+}
+
 bool ResultSetSQL::GetString(uint32_t index, std::string* str) {
     if (str == NULL) {
         LOG(WARNING) << "input ptr is null pointer";

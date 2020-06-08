@@ -39,6 +39,8 @@ class ResultSetSQL : public ::fesql::sdk::ResultSet {
 
     bool Init();
 
+    bool Reset();
+
     bool Next();
 
     bool IsNULL(int index);
@@ -61,15 +63,14 @@ class ResultSetSQL : public ::fesql::sdk::ResultSet {
 
     bool GetDate(uint32_t index, int32_t* date);
 
-    bool GetDate(uint32_t index, int32_t* year, int32_t* month, int32_t* day);
+    bool GetDate(uint32_t index, int32_t* year, int32_t* month,
+                         int32_t* day);
 
     bool GetTime(uint32_t index, int64_t* mills);
 
     inline const ::fesql::sdk::Schema* GetSchema() { return &schema_; }
 
     inline int32_t Size() { return response_->count(); }
-
-    bool Reset() { return false; }
 
  private:
     inline uint32_t GetRecordSize() { return response_->count(); }

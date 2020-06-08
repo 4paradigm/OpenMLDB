@@ -57,8 +57,8 @@ class NameServerImplRemoteTest : public ::testing::Test {
     GetTableInfo(NameServerImpl* nameserver) {
         return nameserver->table_info_;
     }
-    ZoneInfo& GetZoneInfo(NameServerImpl* nameserver) {
-        return nameserver->zone_info_;
+    ZoneInfo* GetZoneInfo(NameServerImpl* nameserver) {
+        return &(nameserver->zone_info_);
     }
 };
 
@@ -459,7 +459,8 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
 
     brpc::Server server;
     NameServerImpl* nameserver_1 = new NameServerImpl();
-    StartNameServer(server);
+    StartNameServer(server, nameserver_1);
+
     ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>
         name_server_client_1(FLAGS_endpoint);
     name_server_client_1.Init();
@@ -528,14 +529,14 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
         sleep(2);
     }
 
-    ZoneInfo zone_info = GetZoneInfo(nameserver_1);
+    ZoneInfo* zone_info = GetZoneInfo(nameserver_1);
     std::string name = "test" + GenRand();
     {
         ::rtidb::nameserver::CreateTableInfoRequest request;
         ::rtidb::nameserver::CreateTableInfoResponse response;
         ::rtidb::nameserver::ZoneInfo* zone_info_p =
             request.mutable_zone_info();
-        zone_info_p->CopyFrom(zone_info);
+        zone_info_p->CopyFrom(*zone_info);
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
 
@@ -610,7 +611,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
         ::rtidb::nameserver::CreateTableInfoResponse response;
         ::rtidb::nameserver::ZoneInfo* zone_info_p =
             request.mutable_zone_info();
-        zone_info_p->CopyFrom(zone_info);
+        zone_info_p->CopyFrom(*zone_info);
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
 
@@ -667,7 +668,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
         ::rtidb::nameserver::CreateTableInfoResponse response;
         ::rtidb::nameserver::ZoneInfo* zone_info_p =
             request.mutable_zone_info();
-        zone_info_p->CopyFrom(zone_info);
+        zone_info_p->CopyFrom(*zone_info);
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
 
@@ -735,7 +736,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
         ::rtidb::nameserver::CreateTableInfoResponse response;
         ::rtidb::nameserver::ZoneInfo* zone_info_p =
             request.mutable_zone_info();
-        zone_info_p->CopyFrom(zone_info);
+        zone_info_p->CopyFrom(*zone_info);
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
 
@@ -810,7 +811,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
         ::rtidb::nameserver::CreateTableInfoResponse response;
         ::rtidb::nameserver::ZoneInfo* zone_info_p =
             request.mutable_zone_info();
-        zone_info_p->CopyFrom(zone_info);
+        zone_info_p->CopyFrom(*zone_info);
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
 
@@ -876,7 +877,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
         ::rtidb::nameserver::CreateTableInfoResponse response;
         ::rtidb::nameserver::ZoneInfo* zone_info_p =
             request.mutable_zone_info();
-        zone_info_p->CopyFrom(zone_info);
+        zone_info_p->CopyFrom(*zone_info);
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
 
@@ -996,14 +997,14 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
         sleep(2);
     }
 
-    ZoneInfo zone_info = GetZoneInfo(nameserver_1);
+    ZoneInfo* zone_info = GetZoneInfo(nameserver_1);
     std::string name = "test" + GenRand();
     {
         ::rtidb::nameserver::CreateTableInfoRequest request;
         ::rtidb::nameserver::CreateTableInfoResponse response;
         ::rtidb::nameserver::ZoneInfo* zone_info_p =
             request.mutable_zone_info();
-        zone_info_p->CopyFrom(zone_info);
+        zone_info_p->CopyFrom(*zone_info);
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
 
@@ -1059,7 +1060,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
         ::rtidb::nameserver::CreateTableInfoResponse response;
         ::rtidb::nameserver::ZoneInfo* zone_info_p =
             request.mutable_zone_info();
-        zone_info_p->CopyFrom(zone_info);
+        zone_info_p->CopyFrom(*zone_info);
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
 
@@ -1097,7 +1098,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
         ::rtidb::nameserver::CreateTableInfoResponse response;
         ::rtidb::nameserver::ZoneInfo* zone_info_p =
             request.mutable_zone_info();
-        zone_info_p->CopyFrom(zone_info);
+        zone_info_p->CopyFrom(*zone_info);
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
 
@@ -1146,7 +1147,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
         ::rtidb::nameserver::CreateTableInfoResponse response;
         ::rtidb::nameserver::ZoneInfo* zone_info_p =
             request.mutable_zone_info();
-        zone_info_p->CopyFrom(zone_info);
+        zone_info_p->CopyFrom(*zone_info);
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
 
@@ -1202,7 +1203,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
         ::rtidb::nameserver::CreateTableInfoResponse response;
         ::rtidb::nameserver::ZoneInfo* zone_info_p =
             request.mutable_zone_info();
-        zone_info_p->CopyFrom(zone_info);
+        zone_info_p->CopyFrom(*zone_info);
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
 
@@ -1249,7 +1250,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
         ::rtidb::nameserver::CreateTableInfoResponse response;
         ::rtidb::nameserver::ZoneInfo* zone_info_p =
             request.mutable_zone_info();
-        zone_info_p->CopyFrom(zone_info);
+        zone_info_p->CopyFrom(*zone_info);
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
 

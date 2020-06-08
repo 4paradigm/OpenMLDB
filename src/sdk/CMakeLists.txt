@@ -137,8 +137,6 @@ if(SQL_JAVASDK_ENABLE)
 	if(APPLE)
 	  set_target_properties(sql_jsdk PROPERTIES
 			   SUFFIX ".dylib")
-	  set_target_properties(sql_jsdk PROPERTIES
-			   SUFFIX ".so")
 	  set_property(TARGET sql_jsdk APPEND PROPERTY
 		LINK_FLAGS "-flat_namespace -undefined suppress")
 	endif()
