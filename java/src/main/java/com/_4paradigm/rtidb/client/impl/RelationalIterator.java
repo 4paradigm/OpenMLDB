@@ -80,7 +80,8 @@ public class RelationalIterator {
         next();
     }
 
-    public RelationalIterator(RTIDBClient client, TableHandler th, List<ReadOption> ros) {
+    public RelationalIterator(RTIDBClient client, TableHandler th, List<ReadOption> ros)
+            throws TabletException {
         this.offset = 0;
         this.totalSize = 0;
         this.schema = th.getSchema();
@@ -90,6 +91,14 @@ public class RelationalIterator {
         this.ros = ros;
 
         Set<String> colSet = ros.get(0).getColSet();
+        for (int i = 1; i < ros.size(); i++) {
+            Set<String> tmpColSet = ros.get(i).getColSet();
+            if (tmpColSet != null && !tmpColSet.isEmpty()) {
+                if (!tmpColSet.equals(colSet)) {
+                    throw new TabletException("colsets in ros are not equal");
+                }
+            }
+        }
         if (colSet != null && !colSet.isEmpty()) {
             for (int i = 0; i < this.getSchema().size(); i++) {
                 ColumnDesc columnDesc = this.getSchema().get(i);
@@ -198,7 +207,7 @@ public class RelationalIterator {
             if (col == null) {
                 continue;
             }
-            BlobData blobData = new BlobData(th, (long)col);
+            BlobData blobData = new BlobData(th, (long) col);
             map.put(colDesc.getName(), blobData);
         }
         return map;
