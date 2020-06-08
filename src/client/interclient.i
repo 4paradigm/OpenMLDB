@@ -17,13 +17,13 @@ namespace std {
    %template(MapStringString) map<string, string>;
    %template(SetString) set<string>;
    %template(VectorInt32) vector<int32_t>;
-   %template(VectorInt64) vector<int64_t>;
 }
 %include "client/client_type.h"
 %include "client/client.h"
 namespace std {
-        %template(VectorReadFilter) vector<ReadFilter>;
-        %template(VectorReadOption) vector<ReadOption>;
+   %template(VectorReadFilter) vector<ReadFilter>;
+   %template(VectorReadOption) vector<ReadOption>;
+   %template(VectorInt64) vector<long long>;
 }
 %include "base/slice.h"
 %include "base/status.h"
