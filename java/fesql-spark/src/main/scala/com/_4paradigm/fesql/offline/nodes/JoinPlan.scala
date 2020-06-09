@@ -102,9 +102,12 @@ object JoinPlan {
     val result = if (joinType == JoinType.kJoinTypeLast) {
       val indexColIdx = leftDf.schema.size - 1
 
-      val timeKey = node.join().right_key().keys().GetChild(0)
+      // TODO: Support multiple order by columns
+
+      // Resolve order by column index
+      val orderbyExprListNode = node.getJoin_.getRight_sort_.getOrders_.getOrder_by_
       val planLeftSize = node.GetProducer(0).GetOutputSchema().size()
-      val timeColIdx = SparkColumnUtil.resolveColumnIndex(timeKey, node) - planLeftSize
+      val timeColIdx = SparkColumnUtil.resolveColumnIndex(orderbyExprListNode.GetChild(0), node) - planLeftSize
       assert(timeColIdx >= 0)
 
       val timeIdxInJoined = timeColIdx + leftDf.schema.size
