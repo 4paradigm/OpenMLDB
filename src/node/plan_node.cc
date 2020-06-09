@@ -469,11 +469,9 @@ bool WindowPlanNode::Equals(const PlanNode *node) const {
     }
     const WindowPlanNode *that = dynamic_cast<const WindowPlanNode *>(node);
     return this->name == that->name &&
-           this->is_range_between_ == that->is_range_between_ &&
-           this->start_offset_ == that->start_offset_ &&
-           this->end_offset_ == that->end_offset_ &&
-           this->start_offset_ == that->end_offset_ &&
+           SQLEquals(this->frame_node_, that->frame_node_) &&
            this->orders_ == that->orders_ && this->keys_ == that->keys_ &&
+           PlanListEquals(this->union_tables_, that->union_tables_) &&
            LeafPlanNode::Equals(node);
 }
 

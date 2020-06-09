@@ -151,40 +151,50 @@ FrameNode *NodeManager::MergeFrameNode(const FrameNode *frame1,
         return nullptr;
     }
 
-    if (frame1->frame_type() == frame2->frame_type()) {
-        FrameBound *start1 = frame1->frame_extent()->start();
-        FrameBound *start2 = frame2->frame_extent()->start();
+    FrameType frame_type = frame1->frame_type() == frame2->frame_type()
+                               ? frame1->frame_type()
+                               : kFrameRowsRange;
+    FrameExtent *frame_range = nullptr;
+    if (nullptr == frame1->frame_range()) {
+        frame_range = frame2->frame_range();
+    } else if (nullptr == frame2->frame_range()) {
+        frame_range = frame1->frame_range();
+    } else {
+        FrameBound *start1 = frame1->frame_range()->start();
+        FrameBound *start2 = frame2->frame_range()->start();
         int start_compared = FrameBound::Compare(start1, start2);
         FrameBound *start = start_compared < 1 ? start1 : start2;
 
-        FrameBound *end1 = frame1->frame_extent()->end();
-        FrameBound *end2 = frame2->frame_extent()->end();
-        int end_compared = FrameBound::Compare(start1, start2);
+        FrameBound *end1 = frame1->frame_range()->end();
+        FrameBound *end2 = frame2->frame_range()->end();
+        int end_compared = FrameBound::Compare(end1, end2);
         FrameBound *end = end_compared >= 1 ? end1 : end2;
-
-        int64_t maxsize = frame1->frame_maxsize() > frame2->frame_maxsize()
-                              ? frame1->frame_maxsize()
-                              : frame2->frame_maxsize();
-
-        int64_t rows_size = frame1->rows_size() > frame2->rows_size()
-                                ? frame1->rows_size()
-                                : frame2->rows_size();
-        return dynamic_cast<FrameNode *>(
-            MakeFrameNode(frame1->frame_type(), MakeFrameExtent(start, end),
-                          maxsize, rows_size));
-    } else {
-        const FrameNode *row_frame =
-            kFrameRows == frame1->frame_type() ? frame1 : frame2;
-        const FrameNode *rowsrange_frame =
-            kFrameRows == frame1->frame_type() ? frame2 : frame1;
-        int64_t rows_size =
-            row_frame->rows_size() > rowsrange_frame->rows_size()
-                ? row_frame->rows_size()
-                : rowsrange_frame->rows_size();
-        return dynamic_cast<FrameNode *>(
-            MakeFrameNode(kFrameRowsRange, rowsrange_frame->frame_extent(),
-                          rowsrange_frame->frame_maxsize(), rows_size));
+        frame_range = dynamic_cast<FrameExtent *>(MakeFrameExtent(start, end));
     }
+
+    FrameExtent *frame_rows = nullptr;
+    if (nullptr == frame1->frame_rows()) {
+        frame_rows = frame2->frame_rows();
+    } else if (nullptr == frame2->frame_rows()) {
+        frame_rows = frame1->frame_rows();
+    } else {
+        FrameBound *start1 = frame1->frame_rows()->start();
+        FrameBound *start2 = frame2->frame_rows()->start();
+        int start_compared = FrameBound::Compare(start1, start2);
+        FrameBound *start = start_compared < 1 ? start1 : start2;
+
+        FrameBound *end1 = frame1->frame_rows()->end();
+        FrameBound *end2 = frame2->frame_rows()->end();
+        int end_compared = FrameBound::Compare(end1, end2);
+        FrameBound *end = end_compared >= 1 ? end1 : end2;
+        frame_rows = dynamic_cast<FrameExtent *>(MakeFrameExtent(start, end));
+    }
+    int64_t maxsize = frame1->frame_maxsize() > frame2->frame_maxsize()
+                          ? frame1->frame_maxsize()
+                          : frame2->frame_maxsize();
+
+    return dynamic_cast<FrameNode *>(
+        MakeFrameNode(frame_type, frame_range, frame_rows, maxsize));
 }
 SQLNode *NodeManager::MakeFrameBound(BoundType bound_type) {
     FrameBound *node_ptr = new FrameBound(bound_type);
@@ -226,6 +236,11 @@ SQLNode *NodeManager::MakeFrameExtent(SQLNode *start, SQLNode *end) {
                                             dynamic_cast<FrameBound *>(end));
     return RegisterNode(node_ptr);
 }
+SQLNode *NodeManager::MakeFrameNode(FrameType frame_type,
+                                    SQLNode *frame_extent) {
+    int64_t max_size = 0;
+    return MakeFrameNode(frame_type, frame_extent, max_size);
+}
 SQLNode *NodeManager::MakeFrameNode(FrameType frame_type, SQLNode *frame_extent,
                                     ExprNode *frame_size) {
     if (nullptr != frame_extent && node::kFrameExtent != frame_extent->type_) {
@@ -237,12 +252,9 @@ SQLNode *NodeManager::MakeFrameNode(FrameType frame_type, SQLNode *frame_extent,
         LOG(WARNING) << "Fail Make Frame Node: 3nd arg isn't const expression";
         return nullptr;
     }
-    int64_t maxsize = nullptr == frame_size
-                          ? 0
-                          : dynamic_cast<ConstNode *>(frame_size)->GetAsInt64();
-    FrameNode *node_ptr = new FrameNode(
-        frame_type, dynamic_cast<FrameExtent *>(frame_extent), maxsize);
-    return RegisterNode(node_ptr);
+    return MakeFrameNode(frame_type, frame_extent,
+                         nullptr == frame_size ? 0L :
+                         dynamic_cast<ConstNode *>(frame_size)->GetAsInt64());
 }
 
 SQLNode *NodeManager::MakeFrameNode(FrameType frame_type, SQLNode *frame_extent,
@@ -251,20 +263,29 @@ SQLNode *NodeManager::MakeFrameNode(FrameType frame_type, SQLNode *frame_extent,
         LOG(WARNING) << "Fail Make Frame Node: 2nd arg isn't frame extent";
         return nullptr;
     }
-    FrameNode *node_ptr = new FrameNode(
-        frame_type, dynamic_cast<FrameExtent *>(frame_extent), maxsize);
-    return RegisterNode(node_ptr);
+
+    switch (frame_type) {
+        case kFrameRows: {
+            FrameNode *node_ptr = new FrameNode(
+                frame_type, nullptr, dynamic_cast<FrameExtent *>(frame_extent),
+                maxsize);
+            return RegisterNode(node_ptr);
+        }
+        case kFrameRange:
+        case kFrameRowsRange: {
+            FrameNode *node_ptr = new FrameNode(
+                frame_type, dynamic_cast<FrameExtent *>(frame_extent), nullptr,
+                maxsize);
+            return RegisterNode(node_ptr);
+        }
+    }
 }
 
-SQLNode *NodeManager::MakeFrameNode(FrameType frame_type, SQLNode *frame_extent,
-                                    int64_t maxsize, int rows_size) {
-    if (nullptr != frame_extent && node::kFrameExtent != frame_extent->type_) {
-        LOG(WARNING) << "Fail Make Frame Node: 2nd arg isn't frame extent";
-        return nullptr;
-    }
+SQLNode *NodeManager::MakeFrameNode(FrameType frame_type,
+                                    FrameExtent *frame_range,
+                                    FrameExtent *frame_rows, int64_t maxsize) {
     FrameNode *node_ptr =
-        new FrameNode(frame_type, dynamic_cast<FrameExtent *>(frame_extent),
-                      maxsize, rows_size);
+        new FrameNode(frame_type, frame_range, frame_rows, maxsize);
     return RegisterNode(node_ptr);
 }
 ExprNode *NodeManager::MakeOrderByNode(const ExprListNode *order,

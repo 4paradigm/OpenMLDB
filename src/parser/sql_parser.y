@@ -1594,11 +1594,11 @@ frame_extent:
 frame_bound:
 			UNBOUNDED PRECEDING
 				{
-				    $$ = (fesql::node::SQLNode*)(node_manager->MakeFrameBound(fesql::node::kPreceding));
+				    $$ = (fesql::node::SQLNode*)(node_manager->MakeFrameBound(fesql::node::kPrecedingUnbound));
 				}
 			| UNBOUNDED FOLLOWING
 				{
-				    $$ = (fesql::node::SQLNode*)(node_manager->MakeFrameBound(fesql::node::kFollowing));
+				    $$ = (fesql::node::SQLNode*)(node_manager->MakeFrameBound(fesql::node::kFollowingUnbound));
 				}
 			| CURRENT ROW
 				{

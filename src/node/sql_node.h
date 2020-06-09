@@ -804,14 +804,10 @@ class LimitNode : public SQLNode {
 class FrameBound : public SQLNode {
  public:
     FrameBound()
-        : SQLNode(kFrameBound, 0, 0),
-          bound_type_(kPreceding),
-          offset_(0) {}
+        : SQLNode(kFrameBound, 0, 0), bound_type_(kPreceding), offset_(0) {}
 
     explicit FrameBound(BoundType bound_type)
-        : SQLNode(kFrameBound, 0, 0),
-          bound_type_(bound_type),
-          offset_(0) {}
+        : SQLNode(kFrameBound, 0, 0), bound_type_(bound_type), offset_(0) {}
 
     FrameBound(BoundType bound_type, int64_t offset)
         : SQLNode(kFrameBound, 0, 0),
@@ -828,7 +824,7 @@ class FrameBound : public SQLNode {
         output << tab << SPACE_ST << "bound: " << BoundTypeName(bound_type_)
                << "\n";
 
-        if (kFollowing == bound_type_ ||kPreceding == bound_type_) {
+        if (kFollowing == bound_type_ || kPreceding == bound_type_) {
             output << space << offset_;
         }
     }
@@ -877,36 +873,49 @@ class FrameExtent : public SQLNode {
 };
 class FrameNode : public SQLNode {
  public:
-    FrameNode(FrameType frame_type, FrameExtent *frame_extent,
-              int64_t frame_maxsize)
+    FrameNode(FrameType frame_type, FrameExtent *frame_range,
+              FrameExtent *frame_rows, int64_t frame_maxsize)
         : SQLNode(kFrames, 0, 0),
           frame_type_(frame_type),
-          frame_extent_(frame_extent),
-          frame_maxsize_(frame_maxsize),
-          rows_size_(0) {}
-
-    FrameNode(FrameType frame_type, FrameExtent *frame_extent,
-              int64_t frame_maxsize, int64_t rows_size)
-        : SQLNode(kFrames, 0, 0),
-          frame_type_(frame_type),
-          frame_extent_(frame_extent),
-          frame_maxsize_(frame_maxsize),
-          rows_size_(rows_size) {}
+          frame_range_(frame_range),
+          frame_rows_(frame_rows),
+          frame_maxsize_(frame_maxsize) {}
     ~FrameNode() {}
     FrameType frame_type() const { return frame_type_; }
     void set_frame_type(FrameType frame_type) { frame_type_ = frame_type; }
-    FrameExtent *frame_extent() const { return frame_extent_; }
+    FrameExtent *frame_range() const { return frame_range_; }
+    FrameExtent *frame_rows() const { return frame_rows_; }
     int64_t frame_maxsize() const { return frame_maxsize_; }
-    int64_t rows_size() const { return rows_size_; }
+    int64_t GetRangeStart() const {
+        return nullptr == frame_range_ || nullptr == frame_range_->start()
+                   ? INT64_MIN
+                   : frame_range_->start()->GetSignedOffset();
+    }
+    int64_t GetRangeEnd() const {
+        return nullptr == frame_range_ || nullptr == frame_range_->end()
+                   ? INT64_MAX
+                   : frame_range_->end()->GetSignedOffset();
+    }
+
+    int64_t GetRowsStart() const {
+        return nullptr == frame_rows_ || nullptr == frame_rows_->start()
+                   ? INT64_MIN
+                   : frame_rows_->start()->GetSignedOffset();
+    }
+    int64_t GetRowsEnd() const {
+        return nullptr == frame_rows_ || nullptr == frame_rows_->end()
+                   ? INT64_MAX
+                   : frame_rows_->end()->GetSignedOffset();
+    }
     void Print(std::ostream &output, const std::string &org_tab) const;
     virtual bool Equals(const SQLNode *node) const;
     bool CanMergeWith(const FrameNode *that) const;
 
  private:
     FrameType frame_type_;
-    FrameExtent *frame_extent_;
+    FrameExtent *frame_range_;
+    FrameExtent *frame_rows_;
     int64_t frame_maxsize_;
-    int64_t rows_size_;
 };
 class WindowDefNode : public SQLNode {
  public:

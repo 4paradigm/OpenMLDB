@@ -371,6 +371,8 @@ class BatchModeTransformer {
     bool BuildExprListFromSchemaSource(const ColumnSourceList column_sources,
                                        const SchemaSourceList& schema_souces,
                                        node::ExprListNode* expr_list);
+    bool CheckRequestWindowFrame(const node::WindowPlanNode* w_ptr,
+                                 base::Status& status);  // NOLINT
 };
 
 class RequestModeransformer : public BatchModeTransformer {

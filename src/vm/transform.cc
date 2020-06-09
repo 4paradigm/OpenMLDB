@@ -409,6 +409,9 @@ bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
                                           : dynamic_cast<node::OrderByNode*>(
                                                 node_manager_->MakeOrderByNode(
                                                     orders->order_by_, false));
+                    if (!CheckRequestWindowFrame(w_ptr, status)) {
+                        return false;
+                    }
                     auto request_union_op = new PhysicalRequestUnionNode(
                         depend, right, groups, request_orders,
                         w_ptr->GetStartOffset(), w_ptr->GetEndOffset(),
@@ -1348,6 +1351,33 @@ bool BatchModeTransformer::IsSimpleProject(const ColumnSourceList& sources) {
         }
     }
     return flag;
+}
+bool BatchModeTransformer::CheckRequestWindowFrame(
+    const node::WindowPlanNode* w_ptr, base::Status& status) {
+    if (nullptr == w_ptr) {
+        status.code = common::kPlanError;
+        status.msg = "Invalid Request Window: null window";
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+    const node::FrameNode* frame = w_ptr->frame_node();
+    if (frame->GetRangeEnd() > 0 && frame->GetRowsEnd() > 0) {
+        status.code = common::kPlanError;
+        status.msg =
+            "Invalid Request Window: end frame can't exceed "
+            "CURRENT";
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+    if (frame->GetRangeStart() > 0 || frame->GetRowsStart() > 0) {
+        status.code = common::kPlanError;
+        status.msg =
+            "Invalid Request Window: start frame can't exceed "
+            "CURRENT";
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+    return true;
 }
 
 bool GroupAndSortOptimized::KeysFilterOptimized(

@@ -320,51 +320,46 @@ bool Planner::CreateWindowPlanNode(
     Status &status) {  // NOLINT (runtime/references)
 
     if (nullptr != w_ptr) {
-        int64_t start_offset = 0;
-        int64_t end_offset = 0;
-        if (nullptr != w_ptr->GetFrame()) {
-            node::FrameNode *frame =
-                dynamic_cast<node::FrameNode *>(w_ptr->GetFrame());
-            node::FrameBound *start = frame->frame_extent()->start();
-            node::FrameBound *end = frame->frame_extent()->end();
-
-            start_offset =
-                nullptr == start ? INT64_MIN : start->GetSignedOffset();
-            end_offset = nullptr == end ? INT64_MAX : end->GetSignedOffset();
-            if (w_ptr->GetName().empty()) {
-                w_node_ptr->SetName(
-                    GenerateName("anonymous_w", w_node_ptr->GetId()));
-            } else {
-                w_node_ptr->SetName(w_ptr->GetName());
-            }
-            w_node_ptr->SetStartOffset(start_offset);
-            w_node_ptr->SetEndOffset(end_offset);
-            w_node_ptr->SetIsRangeBetween(node::kFrameRange ==
-                                          frame->frame_type());
-            w_node_ptr->SetKeys(w_ptr->GetPartitions());
-            w_node_ptr->SetOrders(w_ptr->GetOrders());
-            if (nullptr != w_ptr->union_tables() &&
-                !w_ptr->union_tables()->GetList().empty()) {
-                for (auto node : w_ptr->union_tables()->GetList()) {
-                    node::PlanNode *table_plan = nullptr;
-                    if (!CreateTableReferencePlanNode(
-                            dynamic_cast<node::TableRefNode *>(node),
-                            &table_plan, status)) {
-                        return false;
-                    }
-                    w_node_ptr->AddUnionTable(table_plan);
-                }
-            }
-            w_node_ptr->set_instance_not_in_window(
-                w_ptr->instance_not_in_window());
-        } else {
+        // Prepare Window Frame
+        if (nullptr == w_ptr->GetFrame()) {
             status.code = common::kPlanError;
             status.msg =
-                "fail to create project list node: right frame "
+                "fail to create project list node: frame "
                 "can't be unbound ";
             LOG(WARNING) << status.msg;
             return false;
         }
+
+        node::FrameNode *frame =
+            dynamic_cast<node::FrameNode *>(w_ptr->GetFrame());
+        w_node_ptr->set_frame_node(frame);
+
+        // Prepare Window Name
+        if (w_ptr->GetName().empty()) {
+            w_node_ptr->SetName(
+                GenerateName("anonymous_w", w_node_ptr->GetId()));
+        } else {
+            w_node_ptr->SetName(w_ptr->GetName());
+        }
+
+        // Prepare Window partitions and orders
+        w_node_ptr->SetKeys(w_ptr->GetPartitions());
+        w_node_ptr->SetOrders(w_ptr->GetOrders());
+
+        // Prepare Window Union Info
+        if (nullptr != w_ptr->union_tables() &&
+            !w_ptr->union_tables()->GetList().empty()) {
+            for (auto node : w_ptr->union_tables()->GetList()) {
+                node::PlanNode *table_plan = nullptr;
+                if (!CreateTableReferencePlanNode(
+                        dynamic_cast<node::TableRefNode *>(node), &table_plan,
+                        status)) {
+                    return false;
+                }
+                w_node_ptr->AddUnionTable(table_plan);
+            }
+        }
+        w_node_ptr->set_instance_not_in_window(w_ptr->instance_not_in_window());
     }
     return true;
 }

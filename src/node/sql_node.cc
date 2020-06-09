@@ -372,16 +372,18 @@ void FrameNode::Print(std::ostream &output, const std::string &org_tab) const {
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
     PrintValue(output, tab, FrameTypeName(frame_type_), "frame_type", false);
-    output << "\n";
-    PrintSQLNode(output, tab, frame_extent_, "frame_extent", false);
+    if (nullptr != frame_range_) {
+        output << "\n";
+        PrintSQLNode(output, tab, frame_range_, "frame_range", false);
+    }
+    if (nullptr != frame_rows_) {
+        output << "\n";
+        PrintSQLNode(output, tab, frame_rows_, "frame_rows", false);
+    }
     if (0 != frame_maxsize_) {
         output << "\n";
         PrintValue(output, tab, std::to_string(frame_maxsize_), "frame_maxsize",
                    false);
-    }
-    if (0 != rows_size_) {
-        output << "\n";
-        PrintValue(output, tab, std::to_string(rows_size_), "rows_size", false);
     }
 }
 void FrameExtent::Print(std::ostream &output,
@@ -415,9 +417,9 @@ bool FrameNode::Equals(const SQLNode *node) const {
     }
     const FrameNode *that = dynamic_cast<const FrameNode *>(node);
     return this->frame_type_ == that->frame_type_ &&
-           SQLEquals(this->frame_extent_, that->frame_extent_) &&
-           (this->frame_maxsize_ == that->frame_maxsize_) &&
-           (this->rows_size_ == that->rows_size_);
+           SQLEquals(this->frame_range_, that->frame_range_) &&
+           SQLEquals(this->frame_rows_, that->frame_rows_) &&
+           (this->frame_maxsize_ == that->frame_maxsize_);
 }
 bool FrameNode::CanMergeWith(const FrameNode *that) const {
     if (Equals(that)) {

@@ -163,15 +163,15 @@ TEST_F(SqlNodeTest, NewFrameNodeTest) {
     ASSERT_EQ(kFrameRange, node_ptr->frame_type());
 
     // assert frame node start
-    ASSERT_EQ(kFrameBound, node_ptr->frame_extent()->start()->GetType());
+    ASSERT_EQ(kFrameBound, node_ptr->frame_range()->start()->GetType());
     FrameBound *start =
-        dynamic_cast<FrameBound *>(node_ptr->frame_extent()->start());
+        dynamic_cast<FrameBound *>(node_ptr->frame_range()->start());
     ASSERT_EQ(kPreceding, start->bound_type());
     ASSERT_EQ(0L, start->GetOffset());
 
-    ASSERT_EQ(kFrameBound, node_ptr->frame_extent()->end()->GetType());
+    ASSERT_EQ(kFrameBound, node_ptr->frame_range()->end()->GetType());
     FrameBound *end =
-        dynamic_cast<FrameBound *>(node_ptr->frame_extent()->end());
+        dynamic_cast<FrameBound *>(node_ptr->frame_range()->end());
     ASSERT_EQ(kPreceding, end->bound_type());
 
     ASSERT_EQ(86400000, end->GetOffset());

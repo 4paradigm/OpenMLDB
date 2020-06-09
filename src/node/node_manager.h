@@ -123,11 +123,12 @@ class NodeManager {
     SQLNode *MakeFrameBound(BoundType bound_type, int64_t offset);
     SQLNode *MakeFrameNode(FrameType frame_type, SQLNode *node_ptr,
                            ExprNode *frame_size);
+    SQLNode *MakeFrameNode(FrameType frame_type, SQLNode *node_ptr);
     SQLNode *MakeFrameNode(FrameType frame_type, SQLNode *node_ptr,
                            int64_t maxsize);
-    SQLNode *MakeFrameNode(FrameType frame_type, SQLNode *node_ptr,
-                           int64_t maxsize, int rows_size);
-    FrameNode* MergeFrameNode(const FrameNode* frame1, const FrameNode* frame2);
+    SQLNode *MakeFrameNode(FrameType frame_type, FrameExtent *frame_range,
+                           FrameExtent *frame_rows, int64_t maxsize);
+    FrameNode *MergeFrameNode(const FrameNode *frame1, const FrameNode *frame2);
     SQLNode *MakeLimitNode(int count);
 
     SQLNode *MakeNameNode(const std::string &name);
