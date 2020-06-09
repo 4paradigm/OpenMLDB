@@ -18,7 +18,6 @@
 
 #pragma once
 #include <atomic>
-#include <memory>
 #include <thread> // NOLINT
 
 namespace rtidb {

@@ -19,7 +19,8 @@ namespace zk {
 void LogEventWrapper(zhandle_t* zh, int type, int state, const char* path,
                      void* watcher_ctx) {
     if (zoo_get_context(zh)) {
-        ZkClient* client = (ZkClient*)zoo_get_context(zh);  // NOLINT
+        ZkClient* client = const_cast<ZkClient*>(
+            reinterpret_cast<const ZkClient*>(zoo_get_context(zh)));
         client->LogEvent(type, state, path);
     }
 }
@@ -27,7 +28,8 @@ void LogEventWrapper(zhandle_t* zh, int type, int state, const char* path,
 void ChildrenWatcher(zhandle_t* zh, int type, int state, const char* path,
                      void* watcher_ctx) {
     if (zoo_get_context(zh)) {
-        ZkClient* client = (ZkClient*)zoo_get_context(zh);  // NOLINT
+        ZkClient* client = const_cast<ZkClient*>(
+            reinterpret_cast<const ZkClient*>(zoo_get_context(zh)));
         std::string path_str(path);
         client->HandleChildrenChanged(path_str, type, state);
     }
@@ -37,7 +39,8 @@ void NodeWatcher(zhandle_t* zh, int type, int state, const char* path,
                  void* watcher_ctx) {
     PDLOG(INFO, "node watcher with event type %d, state %d", type, state);
     if (zoo_get_context(zh)) {
-        ZkClient* client = (ZkClient*)zoo_get_context(zh);  // NOLINT
+        ZkClient* client = const_cast<ZkClient*>(
+            reinterpret_cast<const ZkClient*>(zoo_get_context(zh)));
         client->HandleNodesChanged(type, state);
         // zookeeper is just one time watching, so need to watch nodes again
         client->WatchNodes();

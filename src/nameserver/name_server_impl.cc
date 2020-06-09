@@ -19,7 +19,6 @@
 #include "base/status.h"
 #include "boost/algorithm/string.hpp"
 #include "timer.h"  // NOLINT
-#include "timer.h"  // NOLINT
 
 DECLARE_string(endpoint);
 DECLARE_string(zk_cluster);
