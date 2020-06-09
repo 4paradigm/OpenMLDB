@@ -645,7 +645,7 @@ bool RtidbClient::DeleteBlobs(const std::string& name,
     if (th->blob_partition.empty()) {
         return true;
     }
-    if (th->blob_partition[0].leader) {
+    if (th->blob_partition[0].leader.empty()) {
         return false;
     }
     std::string msg;
