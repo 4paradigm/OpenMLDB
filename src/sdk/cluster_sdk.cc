@@ -23,9 +23,11 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include "boost/algorithm/string.hpp"
-#include "glog/logging.h"
+
 #include "base/strings.h"
+#include "boost/algorithm/string.hpp"
+#include "boost/function.hpp"
+#include "glog/logging.h"
 
 namespace rtidb {
 namespace sdk {
@@ -40,14 +42,32 @@ ClusterSDK::ClusterSDK(const ClusterOptions& options)
       mu_(),
       alive_tablets_(),
       table_to_tablets_(),
-      catalog_(new ::rtidb::catalog::SDKCatalog()) {}
+      catalog_(new ::rtidb::catalog::SDKCatalog()),
+      pool_(1),
+      session_id_(0),
+      running_(true) {}
 
 ClusterSDK::~ClusterSDK() {
+    running_.store(false, std::memory_order_relaxed);
+    pool_.Stop(false);
     if (zk_client_ != NULL) {
         zk_client_->CloseZK();
         delete zk_client_;
         zk_client_ = NULL;
     }
+}
+
+void ClusterSDK::CheckZk() {
+    if (!running_.load(std::memory_order_relaxed)) {
+        return;
+    }
+    if (session_id_ == 0) {
+        WatchNotify();
+    } else if (session_id_ != zk_client_->GetSessionTerm()) {
+        LOG(WARNING) << "session changed rewatch notity";
+        WatchNotify();
+    }
+    pool_.DelayTask(2000, boost::bind(&ClusterSDK::CheckZk, this));
 }
 
 bool ClusterSDK::Init() {
@@ -61,16 +81,26 @@ bool ClusterSDK::Init() {
         return false;
     }
     LOG(WARNING) << "init zk client with zk cluster " << options_.zk_cluster
-                 << " , zk path " << options_.zk_path
-                 << " and session timeout ok" << options_.session_timeout;
+                 << " , zk path " << options_.zk_path << ",session timeout "
+                 << options_.session_timeout << " and session id "
+                 << zk_client_->GetSessionTerm();
     ok = InitCatalog();
     if (!ok) return false;
     ok = InitTabletClient();
     if (!ok) return false;
+    CheckZk();
     return true;
 }
 
 bool ClusterSDK::Refresh() { return InitCatalog(); }
+
+void ClusterSDK::WatchNotify() {
+    LOG(INFO) << "start to watch table notify";
+    session_id_ = zk_client_->GetSessionTerm();
+    zk_client_->CancelWatchItem(notify_path_);
+    zk_client_->WatchItem(notify_path_,
+                          boost::bind(&ClusterSDK::Refresh, this));
+}
 
 bool ClusterSDK::CreateNsClient() {
     std::string ns_node = options_.zk_path + "/leader";
@@ -166,8 +196,8 @@ bool ClusterSDK::InitTabletClient() {
     std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>>
         tablet_clients;
     for (uint32_t i = 0; i < tablets.size(); i++) {
-        if (boost::starts_with(tablets[i],
-                    ::rtidb::base::BLOB_PREFIX)) continue;
+        if (boost::starts_with(tablets[i], ::rtidb::base::BLOB_PREFIX))
+            continue;
         std::shared_ptr<::rtidb::client::TabletClient> client(
             new ::rtidb::client::TabletClient(tablets[i]));
         int ret = client->Init();

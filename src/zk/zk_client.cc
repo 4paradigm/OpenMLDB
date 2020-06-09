@@ -9,11 +9,9 @@
 
 #include <algorithm>
 #include <utility>
-#include <boost/algorithm/string.hpp>
+#include "base/glog_wapper.h"
+#include "boost/algorithm/string.hpp"
 #include "boost/bind.hpp"
-#include "base/glog_wapper.h" // NOLINT
-
-
 
 namespace rtidb {
 namespace zk {
@@ -21,7 +19,7 @@ namespace zk {
 void LogEventWrapper(zhandle_t* zh, int type, int state, const char* path,
                      void* watcher_ctx) {
     if (zoo_get_context(zh)) {
-        ZkClient* client = (ZkClient*)zoo_get_context(zh); // NOLINT
+        ZkClient* client = (ZkClient*)zoo_get_context(zh);  // NOLINT
         client->LogEvent(type, state, path);
     }
 }
@@ -29,7 +27,7 @@ void LogEventWrapper(zhandle_t* zh, int type, int state, const char* path,
 void ChildrenWatcher(zhandle_t* zh, int type, int state, const char* path,
                      void* watcher_ctx) {
     if (zoo_get_context(zh)) {
-        ZkClient* client = (ZkClient*)zoo_get_context(zh); // NOLINT
+        ZkClient* client = (ZkClient*)zoo_get_context(zh);  // NOLINT
         std::string path_str(path);
         client->HandleChildrenChanged(path_str, type, state);
     }
@@ -39,7 +37,7 @@ void NodeWatcher(zhandle_t* zh, int type, int state, const char* path,
                  void* watcher_ctx) {
     PDLOG(INFO, "node watcher with event type %d, state %d", type, state);
     if (zoo_get_context(zh)) {
-        ZkClient* client = (ZkClient*)zoo_get_context(zh); // NOLINT
+        ZkClient* client = (ZkClient*)zoo_get_context(zh);  // NOLINT
         client->HandleNodesChanged(type, state);
         // zookeeper is just one time watching, so need to watch nodes again
         client->WatchNodes();
@@ -56,7 +54,6 @@ void ItemWatcher(zhandle_t* zh, int type, int state, const char* path,
         client->HandleItemChanged(path_str, type, state);
     }
 }
-
 
 ZkClient::ZkClient(const std::string& hosts, int32_t session_timeout,
                    const std::string& endpoint, const std::string& zk_root_path)
@@ -112,7 +109,7 @@ ZkClient::~ZkClient() {
 bool ZkClient::Init() {
     std::unique_lock<std::mutex> lock(mu_);
     zk_ = zookeeper_init(hosts_.c_str(), LogEventWrapper, session_timeout_, 0,
-                         (void*)this, 0); // NOLINT
+                         (void*)this, 0);  // NOLINT
     // one second
     cv_.wait_for(lock, std::chrono::milliseconds(session_timeout_));
     if (zk_ == NULL || !connected_) {
@@ -210,7 +207,7 @@ bool ZkClient::CreateNode(const std::string& node, const std::string& value,
         return false;
     }
     uint32_t size = node.size() + 11;
-    char path_buffer[size]; // NOLINT
+    char path_buffer[size];  // NOLINT
     int ret = zoo_create(zk_, node.c_str(), value.c_str(), value.size(),
                          &ZOO_OPEN_ACL_UNSAFE, flags, path_buffer, size);
     if (ret == ZOK) {
@@ -371,6 +368,11 @@ void ZkClient::HandleItemChanged(const std::string& path, int type, int state) {
     WatchItem(path, callback);
 }
 
+bool ZkClient::CancelWatchItem(const std::string& path) {
+    std::lock_guard<std::mutex> lock(mu_);
+    item_callbacks_.erase(path);
+}
+
 bool ZkClient::WatchItem(const std::string& path,
                          ItemChangedCallback callback) {
     std::lock_guard<std::mutex> lock(mu_);
@@ -383,12 +385,11 @@ bool ZkClient::WatchItem(const std::string& path,
     }
     deallocate_String_vector(&data_);
     int buffer_len = ZK_MAX_BUFFER_SIZE;
-    int ret =
-        zoo_wget(zk_, path.data(), ItemWatcher,
-                   NULL, buffer_, &buffer_len, NULL);
+    int ret = zoo_wget(zk_, path.data(), ItemWatcher, NULL, buffer_,
+                       &buffer_len, NULL);
     if (ret != ZOK) {
-        PDLOG(WARNING,
-              "fail to watch item %s errno %d", nodes_root_path_.c_str(), ret);
+        PDLOG(WARNING, "fail to watch item %s errno %d",
+              nodes_root_path_.c_str(), ret);
         return false;
     }
     return true;
@@ -447,7 +448,7 @@ bool ZkClient::Reconnect() {
     }
     registed_.store(false, std::memory_order_relaxed);
     zk_ = zookeeper_init(hosts_.c_str(), LogEventWrapper, session_timeout_, 0,
-                         (void*)this, 0); // NOLINT
+                         (void*)this, 0);  // NOLINT
 
     cv_.wait_for(lock, std::chrono::milliseconds(session_timeout_));
     if (zk_ == NULL || !connected_) {
