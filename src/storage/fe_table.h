@@ -85,16 +85,11 @@ class Table {
 
     inline uint32_t GetPid() const { return pid_; }
 
-    struct ColInfo {
-        ::fesql::type::Type type;
-        uint32_t pos;
-    };
-
     struct IndexSt {
         std::string name;
         uint32_t index;
         uint32_t ts_pos;
-        std::vector<ColInfo> keys;
+        std::vector<std::pair<::fesql::type::Type, size_t>> keys;
     };
 
     const std::map<std::string, IndexSt>& GetIndexMap() const {

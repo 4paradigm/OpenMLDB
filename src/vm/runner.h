@@ -354,7 +354,9 @@ class Runner {
     static Row WindowProject(const int8_t* fn, const uint64_t key,
                              const Row row, const bool is_instance,
                              Window* window);
-    static const Row RowLastJoinTable(const Row& left_row,
+    static const Row RowLastJoinTable(size_t left_slices,
+                                      const Row& left_row,
+                                      size_t right_slices,
                                       std::shared_ptr<TableHandler> right_table,
                                       SortGenerator& right_sort, // NOLINT
                                       ConditionGenerator& filter);  // NOLINT
@@ -445,12 +447,16 @@ class RequestWindowUnionGenerator : public InputsGenerator {
 };
 class JoinGenerator {
  public:
-    explicit JoinGenerator(const Join& join)
+    explicit JoinGenerator(const Join& join, 
+                           size_t left_slices,
+                           size_t right_slices)
         : condition_gen_(join.filter_.fn_info_),
           left_key_gen_(join.left_key_.fn_info_),
           right_group_gen_(join.right_key_),
           index_key_gen_(join.index_key_.fn_info_),
-          right_sort_gen_(join.right_sort_) {}
+          right_sort_gen_(join.right_sort_),
+          left_slices_(left_slices),
+          right_slices_(right_slices) {}
     virtual ~JoinGenerator() {}
     bool TableJoin(std::shared_ptr<TableHandler> left,
                    std::shared_ptr<TableHandler> right,
@@ -465,7 +471,8 @@ class JoinGenerator {
                        std::shared_ptr<PartitionHandler> right,
                        std::shared_ptr<MemPartitionHandler>);  // NOLINT
 
-    Row RowLastJoin(const Row& left_row, std::shared_ptr<DataHandler> right);
+    Row RowLastJoin(const Row& left_row,
+                    std::shared_ptr<DataHandler> right);
 
     ConditionGenerator condition_gen_;
     KeyGenerator left_key_gen_;
@@ -479,13 +486,21 @@ class JoinGenerator {
         std::shared_ptr<PartitionHandler> partition);  // NOLINT
     Row RowLastJoinTable(const Row& left_row,
                          std::shared_ptr<TableHandler> table);  // NOLINT
+
+    size_t left_slices_;
+    size_t right_slices_;
 };
 class WindowJoinGenerator : public InputsGenerator {
  public:
     WindowJoinGenerator() : InputsGenerator() {}
     virtual ~WindowJoinGenerator() {}
-    void AddWindowJoin(const Join& join, Runner* runner) {
-        joins_gen_.push_back(JoinGenerator(join));
+    void AddWindowJoin(const Join& join, 
+                       size_t left_slices,
+                       Runner* runner) {
+        size_t right_slices =
+            runner->output_schemas().GetSchemaSourceListSize();
+        joins_gen_.push_back(JoinGenerator(
+            join, left_slices, right_slices));
         AddInput(runner);
     }
     std::vector<std::shared_ptr<DataHandler>> RunInputs(
@@ -605,8 +620,10 @@ class WindowAggRunner : public Runner {
           windows_join_gen_(),
           window_project_gen_(fn_info) {}
     ~WindowAggRunner() {}
-    void AddWindowJoin(const Join& join, Runner* runner) {
-        windows_join_gen_.AddWindowJoin(join, runner);
+    void AddWindowJoin(const Join& join,
+                       size_t left_slices,
+                       Runner* runner) {
+        windows_join_gen_.AddWindowJoin(join, left_slices, runner);
     }
     void AddWindowUnion(const WindowOp& window, Runner* runner) {
         windows_union_gen_.AddWindowUnion(window, runner);
@@ -642,8 +659,10 @@ class RequestUnionRunner : public Runner {
 class LastJoinRunner : public Runner {
  public:
     LastJoinRunner(const int32_t id, const SchemaSourceList& schema,
-                   const int32_t limit_cnt, const Join& join)
-        : Runner(id, kRunnerLastJoin, schema, limit_cnt), join_gen_(join) {}
+                   const int32_t limit_cnt, const Join& join,
+                   size_t left_slices, size_t right_slices)
+        : Runner(id, kRunnerLastJoin, schema, limit_cnt),
+          join_gen_(join, left_slices, right_slices) {}
     ~LastJoinRunner() {}
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
 
@@ -652,9 +671,10 @@ class LastJoinRunner : public Runner {
 class RequestLastJoinRunner : public Runner {
  public:
     RequestLastJoinRunner(const int32_t id, const SchemaSourceList& schema,
-                          const int32_t limit_cnt, const Join& join)
+                          const int32_t limit_cnt, const Join& join,
+                          size_t left_slices, size_t right_slices)
         : Runner(id, kRunnerRequestLastJoin, schema, limit_cnt),
-          join_gen_(join) {}
+          join_gen_(join, left_slices, right_slices) {}
     ~RequestLastJoinRunner() {}
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
 

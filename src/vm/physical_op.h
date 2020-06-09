@@ -282,7 +282,7 @@ class PhysicalOpNode {
         return producers_[index];
     }
 
-    const vm::Schema *GetOutputSchema() const { return &output_schema_; }
+    const fesql::codec::Schema *GetOutputSchema() const { return &output_schema_; }
 
     void SetProducer(size_t index, PhysicalOpNode *produce) {
         producers_[index] = produce;
@@ -294,7 +294,7 @@ class PhysicalOpNode {
 
     void SetFnSchema(const Schema schema) { fn_info_.fn_schema_ = schema; }
 
-    const vm::Schema &GetFnSchema() const { return fn_info_.fn_schema_; }
+    const fesql::codec::Schema &GetFnSchema() const { return fn_info_.fn_schema_; }
 
     const vm::SchemaSourceList &GetOutputNameSchemaList() {
         return output_name_schema_list_;

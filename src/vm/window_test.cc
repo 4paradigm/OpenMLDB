@@ -173,7 +173,7 @@ TEST_F(WindowIteratorTest, MemColumnIteratorImplTest) {
         table.AddRow(Row(base::RefCountedSlice::Create(ptr, 28)));
     }
 
-    auto column = new ColumnImpl<int32_t>(&table, 0, 2);
+    auto column = new ColumnImpl<int32_t>(&table, 0, 0, 2);
     auto impl = column->GetIterator();
     ASSERT_TRUE(impl->Valid());
     ASSERT_EQ(1, impl->GetValue());
@@ -224,10 +224,10 @@ TEST_F(WindowIteratorTest, MemGetColTest) {
     const uint32_t size = sizeof(ColumnImpl<int32_t>);
     int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
     ASSERT_EQ(
-        0, GetCol(reinterpret_cast<int8_t*>(&table), 0, 2, type::kInt32, buf));
+        0, GetCol(reinterpret_cast<int8_t*>(&table), 0, 0, 2, type::kInt32, buf));
 
     ListV<Row>* list = reinterpret_cast<ListV<Row>*>(&table);
-    new (buf) ColumnImpl<int32_t>(list, 0, 2);
+    new (buf) ColumnImpl<int32_t>(list, 0, 0, 2);
     auto column = reinterpret_cast<ColumnImpl<int32_t>*>(buf);
     auto impl = column->GetIterator();
     ASSERT_TRUE(impl->Valid());

@@ -343,41 +343,41 @@ bool RowView::CheckValid(uint32_t idx, ::fesql::type::Type type) {
 
 bool RowView::GetBoolUnsafe(uint32_t idx) {
     uint32_t offset = offset_vec_.at(idx);
-    int8_t v = v1::GetBoolField(row_, offset);
+    int8_t v = v1::GetBoolFieldUnsafe(row_, offset);
     return v == 1 ? true : false;
 }
 
 int32_t RowView::GetInt32Unsafe(uint32_t idx) {
     uint32_t offset = offset_vec_.at(idx);
-    return v1::GetInt32Field(row_, offset);
+    return v1::GetInt32FieldUnsafe(row_, offset);
 }
 
 int64_t RowView::GetInt64Unsafe(uint32_t idx) {
     uint32_t offset = offset_vec_.at(idx);
-    return v1::GetInt64Field(row_, offset);
+    return v1::GetInt64FieldUnsafe(row_, offset);
 }
 int32_t RowView::GetDateUnsafe(uint32_t idx) {
     uint32_t offset = offset_vec_.at(idx);
-    return static_cast<int32_t>(v1::GetInt32Field(row_, offset));
+    return static_cast<int32_t>(v1::GetInt32FieldUnsafe(row_, offset));
 }
 int64_t RowView::GetTimestampUnsafe(uint32_t idx) {
     uint32_t offset = offset_vec_.at(idx);
-    return v1::GetInt64Field(row_, offset);
+    return v1::GetInt64FieldUnsafe(row_, offset);
 }
 
 int16_t RowView::GetInt16Unsafe(uint32_t idx) {
     uint32_t offset = offset_vec_.at(idx);
-    return v1::GetInt16Field(row_, offset);
+    return v1::GetInt16FieldUnsafe(row_, offset);
 }
 
 float RowView::GetFloatUnsafe(uint32_t idx) {
     uint32_t offset = offset_vec_.at(idx);
-    return v1::GetFloatField(row_, offset);
+    return v1::GetFloatFieldUnsafe(row_, offset);
 }
 
 double RowView::GetDoubleUnsafe(uint32_t idx) {
     uint32_t offset = offset_vec_.at(idx);
-    return v1::GetDoubleField(row_, offset);
+    return v1::GetDoubleFieldUnsafe(row_, offset);
 }
 
 std::string RowView::GetStringUnsafe(uint32_t idx) {
@@ -388,7 +388,7 @@ std::string RowView::GetStringUnsafe(uint32_t idx) {
     }
     char* val;
     uint32_t length;
-    v1::GetStrField(row_, field_offset, next_str_field_offset,
+    v1::GetStrFieldUnsafe(row_, field_offset, next_str_field_offset,
                     str_field_start_offset_, str_addr_length_,
                     reinterpret_cast<int8_t**>(&val), &length);
     return std::string(val, length);
@@ -592,7 +592,7 @@ int32_t RowView::GetValue(const int8_t* row, uint32_t idx,
     uint32_t offset = offset_vec_.at(idx);
     switch (type) {
         case ::fesql::type::kBool: {
-            int8_t v = v1::GetBoolField(row, offset);
+            int8_t v = v1::GetBoolFieldUnsafe(row, offset);
             if (v == 1) {
                 *(reinterpret_cast<bool*>(val)) = true;
             } else {
@@ -601,20 +601,20 @@ int32_t RowView::GetValue(const int8_t* row, uint32_t idx,
             break;
         }
         case ::fesql::type::kInt16:
-            *(reinterpret_cast<int16_t*>(val)) = v1::GetInt16Field(row, offset);
+            *(reinterpret_cast<int16_t*>(val)) = v1::GetInt16FieldUnsafe(row, offset);
             break;
         case ::fesql::type::kInt32:
-            *(reinterpret_cast<int32_t*>(val)) = v1::GetInt32Field(row, offset);
+            *(reinterpret_cast<int32_t*>(val)) = v1::GetInt32FieldUnsafe(row, offset);
             break;
         case ::fesql::type::kTimestamp:
         case ::fesql::type::kInt64:
-            *(reinterpret_cast<int64_t*>(val)) = v1::GetInt64Field(row, offset);
+            *(reinterpret_cast<int64_t*>(val)) = v1::GetInt64FieldUnsafe(row, offset);
             break;
         case ::fesql::type::kFloat:
-            *(reinterpret_cast<float*>(val)) = v1::GetFloatField(row, offset);
+            *(reinterpret_cast<float*>(val)) = v1::GetFloatFieldUnsafe(row, offset);
             break;
         case ::fesql::type::kDouble:
-            *(reinterpret_cast<double*>(val)) = v1::GetDoubleField(row, offset);
+            *(reinterpret_cast<double*>(val)) = v1::GetDoubleFieldUnsafe(row, offset);
             break;
         default:
             return -1;
@@ -760,7 +760,7 @@ int32_t RowView::GetValue(const int8_t* row, uint32_t idx, char** val,
     if (offset_vec_.at(idx) < string_field_cnt_ - 1) {
         next_str_field_offset = field_offset + 1;
     }
-    return v1::GetStrField(row, field_offset, next_str_field_offset,
+    return v1::GetStrFieldUnsafe(row, field_offset, next_str_field_offset,
                            str_field_start_offset_, GetAddrLength(size),
                            reinterpret_cast<int8_t**>(val), length);
 }
@@ -782,21 +782,20 @@ int32_t RowView::GetString(uint32_t idx, char** val, uint32_t* length) {
     if (offset_vec_.at(idx) < string_field_cnt_ - 1) {
         next_str_field_offset = field_offset + 1;
     }
-    return v1::GetStrField(row_, field_offset, next_str_field_offset,
+    return v1::GetStrFieldUnsafe(row_, field_offset, next_str_field_offset,
                            str_field_start_offset_, str_addr_length_,
                            reinterpret_cast<int8_t**>(val), length);
 }
 
-RowDecoder::RowDecoder(const vm::Schema& schema)
-    : schema_(schema), types_(), next_str_pos_(), str_field_start_offset_(0) {
+RowDecoder::RowDecoder(const fesql::codec::Schema& schema)
+    : schema_(schema), infos_(), next_str_pos_(), str_field_start_offset_(0) {
     uint32_t offset = codec::GetStartOffset(schema_.size());
     uint32_t string_field_cnt = 0;
     for (int32_t i = 0; i < schema_.size(); i++) {
         const ::fesql::type::ColumnDef& column = schema_.Get(i);
         if (column.type() == ::fesql::type::kVarchar) {
-            types_.insert(std::make_pair(
-                column.name(),
-                std::make_pair(column.type(), string_field_cnt)));
+            infos_.insert(std::make_pair(column.name(), ColInfo(
+                column.name(), column.type(), i, string_field_cnt)));
             next_str_pos_.insert(
                 std::make_pair(string_field_cnt, string_field_cnt));
             string_field_cnt += 1;
@@ -806,8 +805,8 @@ RowDecoder::RowDecoder(const vm::Schema& schema)
                 LOG(WARNING) << "fail to find column type "
                              << ::fesql::type::Type_Name(column.type());
             } else {
-                types_.insert(std::make_pair(
-                    column.name(), std::make_pair(column.type(), offset)));
+                infos_.insert(std::make_pair(column.name(), ColInfo(
+                    column.name(), column.type(), i, offset)));
                 offset += it->second;
             }
         }
@@ -821,39 +820,35 @@ RowDecoder::RowDecoder(const vm::Schema& schema)
     }
     str_field_start_offset_ = offset;
 }
-bool RowDecoder::GetPrimayFieldOffsetType(const std::string& name,
-                                          uint32_t* offset_ptr,
-                                          type::Type* type_ptr) {
-    if (nullptr == offset_ptr || nullptr == type_ptr) {
+
+bool RowDecoder::ResolveColumn(const std::string& name, ColInfo* res) {
+    if (nullptr == res) {
         LOG(WARNING) << "input args have null";
         return false;
     }
-    Types::iterator it = types_.find(name);
-    if (it == types_.end()) {
+    auto it = infos_.find(name);
+    if (it == infos_.end()) {
         LOG(WARNING) << "no column " << name << " in schema";
         return false;
     }
-    // TODO(wangtaize) support null check
-    *type_ptr = it->second.first;
-    *offset_ptr = it->second.second;
+    *res = it->second;
     return true;
 }
-bool RowDecoder::GetStringFieldOffset(const std::string& name,
-                                      uint32_t* str_offset_ptr,
-                                      uint32_t* str_next_offset_ptr,
-                                      uint32_t* str_start_offset_ptr) {
-    if (nullptr == str_offset_ptr || nullptr == str_next_offset_ptr ||
-        nullptr == str_start_offset_ptr) {
+
+bool RowDecoder::ResolveStringCol(const std::string& name, StringColInfo* res) {
+    if (nullptr == res) {
         LOG(WARNING) << "input args have null";
         return false;
     }
-    Types::iterator it = types_.find(name);
-    if (it == types_.end()) {
+    auto it = infos_.find(name);
+    if (it == infos_.end()) {
         LOG(WARNING) << "no column " << name << " in schema";
         return false;
     }
     // TODO(wangtaize) support null check
-    uint32_t offset = it->second.second;
+    auto ty = it->second.type;
+    uint32_t col_idx = it->second.idx;
+    uint32_t offset = it->second.offset;
     uint32_t next_offset;
     auto nit = next_str_pos_.find(offset);
     if (nit != next_str_pos_.end()) {
@@ -864,14 +859,12 @@ bool RowDecoder::GetStringFieldOffset(const std::string& name,
     }
     DLOG(INFO) << "get string with offset " << offset << " next offset "
                << next_offset << " for col " << name;
-
-    *str_offset_ptr = offset;
-    *str_next_offset_ptr = next_offset;
-    *str_start_offset_ptr = str_field_start_offset_;
+    *res = StringColInfo(name, ty, col_idx, offset, 
+        next_offset, str_field_start_offset_);
     return true;
 }
 
-RowIOBufView::RowIOBufView(const fesql::vm::Schema& schema)
+RowIOBufView::RowIOBufView(const fesql::codec::Schema& schema)
     : row_(),
       str_addr_length_(0),
       is_valid_(true),

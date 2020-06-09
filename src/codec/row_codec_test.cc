@@ -501,28 +501,24 @@ TEST_F(CodecTest, RowDecoderTest) {
         RowDecoder decoder(def.columns());
         for (int i = 0; i < col_num; i++) {
             if (i % 3 == 0) {
-                uint32_t offset;
-                uint32_t next_offset;
-                uint32_t str_start_offset;
-                fesql::type::Type type;
-                ASSERT_TRUE(decoder.GetPrimayFieldOffsetType(
-                    "col" + std::to_string(i), &offset, &type));
-                ASSERT_EQ(::fesql::type::kVarchar, type);
-                ASSERT_TRUE(decoder.GetStringFieldOffset(
-                    "col" + std::to_string(i), &offset, &next_offset,
-                    &str_start_offset));
+                codec::ColInfo info;
+                ASSERT_TRUE(decoder.ResolveColumn(
+                    "col" + std::to_string(i), &info));
+                ASSERT_EQ(::fesql::type::kVarchar, info.type);
+
+                codec::StringColInfo str_info;
+                ASSERT_TRUE(decoder.ResolveStringCol(
+                    "col" + std::to_string(i), &str_info));
             } else if (i % 3 == 1) {
-                uint32_t offset;
-                fesql::type::Type type;
-                ASSERT_TRUE(decoder.GetPrimayFieldOffsetType(
-                    "col" + std::to_string(i), &offset, &type));
-                ASSERT_EQ(::fesql::type::kInt64, type);
+                codec::ColInfo info;
+                ASSERT_TRUE(decoder.ResolveColumn(
+                    "col" + std::to_string(i), &info));
+                ASSERT_EQ(::fesql::type::kInt64, info.type);
             } else if (i % 3 == 2) {
-                uint32_t offset;
-                fesql::type::Type type;
-                ASSERT_TRUE(decoder.GetPrimayFieldOffsetType(
-                    "col" + std::to_string(i), &offset, &type));
-                ASSERT_EQ(::fesql::type::kDouble, type);
+                codec::ColInfo info;
+                ASSERT_TRUE(decoder.ResolveColumn(
+                    "col" + std::to_string(i), &info));
+                ASSERT_EQ(::fesql::type::kDouble, info.type);
             }
         }
     }
@@ -571,74 +567,67 @@ TEST_F(CodecTest, RowDecoderOffsetTest) {
 
     RowDecoder decoder(table.columns());
     {
-        uint32_t offset;
-        type::Type type;
-        decoder.GetPrimayFieldOffsetType("col1", &offset, &type);
-        ASSERT_EQ(::fesql::type::kInt32, type);
-        LOG(INFO) << "offset: " << offset;
-        ASSERT_EQ(7u, offset);
+        codec::ColInfo info;
+        decoder.ResolveColumn("col1", &info);
+        ASSERT_EQ(::fesql::type::kInt32, info.type);
+        LOG(INFO) << "offset: " << info.offset;
+        ASSERT_EQ(7u, info.offset);
     }
     {
-        uint32_t offset;
-        type::Type type;
-        decoder.GetPrimayFieldOffsetType("col2", &offset, &type);
-        ASSERT_EQ(::fesql::type::kInt16, type);
-        LOG(INFO) << "offset: " << offset;
-        ASSERT_EQ(7u + 4u, offset);
+        codec::ColInfo info;
+        decoder.ResolveColumn("col2", &info);
+        ASSERT_EQ(::fesql::type::kInt16, info.type);
+        LOG(INFO) << "offset: " << info.offset;
+        ASSERT_EQ(7u + 4u, info.offset);
     }
     {
-        uint32_t offset;
-        type::Type type;
-        decoder.GetPrimayFieldOffsetType("col3", &offset, &type);
-        ASSERT_EQ(::fesql::type::kFloat, type);
-        LOG(INFO) << "offset: " << offset;
-        ASSERT_EQ(7u + 4u + 2u, offset);
+        codec::ColInfo info;
+        decoder.ResolveColumn("col3", &info);
+        ASSERT_EQ(::fesql::type::kFloat, info.type);
+        LOG(INFO) << "offset: " << info.offset;
+        ASSERT_EQ(7u + 4u + 2u, info.offset);
     }
     {
-        uint32_t offset;
-        type::Type type;
-        decoder.GetPrimayFieldOffsetType("col4", &offset, &type);
-        ASSERT_EQ(::fesql::type::kDouble, type);
-        LOG(INFO) << "offset: " << offset;
-        ASSERT_EQ(7u + 4u + 2u + 4u, offset);
+        codec::ColInfo info;
+        decoder.ResolveColumn("col4", &info);
+        ASSERT_EQ(::fesql::type::kDouble, info.type);
+        LOG(INFO) << "offset: " << info.offset;
+        ASSERT_EQ(7u + 4u + 2u + 4u, info.offset);
     }
     {
-        uint32_t offset;
-        type::Type type;
-        decoder.GetPrimayFieldOffsetType("col5", &offset, &type);
-        ASSERT_EQ(::fesql::type::kInt64, type);
-        LOG(INFO) << "offset: " << offset;
-        ASSERT_EQ(7u + 4u + 2u + 4u + 8u, offset);
+        codec::ColInfo info;
+        decoder.ResolveColumn("col5", &info);
+        ASSERT_EQ(::fesql::type::kInt64, info.type);
+        LOG(INFO) << "offset: " << info.offset;
+        ASSERT_EQ(7u + 4u + 2u + 4u + 8u, info.offset);
     }
     {
-        uint32_t offset;
-        type::Type type;
-        decoder.GetPrimayFieldOffsetType("col6", &offset, &type);
-        ASSERT_EQ(::fesql::type::kVarchar, type);
-        uint32_t next_offset;
-        uint32_t str_start_offset;
-        decoder.GetStringFieldOffset("col6", &offset, &next_offset,
-                                     &str_start_offset);
-        LOG(INFO) << "offset: " << offset << " next_offset: " << next_offset
-                  << " str_start_offset " << str_start_offset;
-        ASSERT_EQ(0u, offset);
-        ASSERT_EQ(1u, next_offset);
-        ASSERT_EQ(33u, str_start_offset);
+        codec::ColInfo info;
+        decoder.ResolveColumn("col6", &info);
+        ASSERT_EQ(::fesql::type::kVarchar, info.type);
+        
+        codec::StringColInfo str_info;
+        decoder.ResolveStringCol("col6", &str_info);
+        LOG(INFO) << "offset: " << str_info.offset 
+                  << " next_offset: " << str_info.str_next_offset
+                  << " str_start_offset " << str_info.str_start_offset;
+        ASSERT_EQ(0u, str_info.offset);
+        ASSERT_EQ(1u, str_info.str_next_offset);
+        ASSERT_EQ(33u, str_info.str_start_offset);
     }
     {
-        uint32_t offset;
-        type::Type type;
-        decoder.GetPrimayFieldOffsetType("col7", &offset, &type);
-        ASSERT_EQ(::fesql::type::kVarchar, type);
-        uint32_t next_offset;
-        uint32_t str_start_offset;
-        decoder.GetStringFieldOffset("col7", &offset, &next_offset,
-                                     &str_start_offset);
-        LOG(INFO) << "offset: " << offset << " next_offset: " << next_offset
-                  << " str_start_offset " << str_start_offset;
-        ASSERT_EQ(1u, offset);
-        ASSERT_EQ(0u, next_offset);
-        ASSERT_EQ(33u, str_start_offset);
+        codec::ColInfo info;
+        decoder.ResolveColumn("col7", &info);
+        ASSERT_EQ(::fesql::type::kVarchar, info.type);
+
+        codec::StringColInfo str_info;
+        decoder.ResolveStringCol("col7", &str_info);
+        LOG(INFO) << "offset: "<< str_info.offset 
+                  << " next_offset: " << str_info.str_next_offset
+                  << " str_start_offset " << str_info.str_start_offset;
+        ASSERT_EQ(1u, str_info.offset);
+        ASSERT_EQ(0u, str_info.str_next_offset);
+        ASSERT_EQ(33u, str_info.str_start_offset);
     }
 }
 TEST_F(CodecTest, RowDecoderOffsetLongHeaderTest) {
@@ -694,74 +683,67 @@ TEST_F(CodecTest, RowDecoderOffsetLongHeaderTest) {
 
     RowDecoder decoder(table.columns());
     {
-        uint32_t offset;
-        type::Type type;
-        decoder.GetPrimayFieldOffsetType("col1", &offset, &type);
-        ASSERT_EQ(::fesql::type::kInt32, type);
-        LOG(INFO) << "offset: " << offset;
-        ASSERT_EQ(8u, offset);
+        codec::ColInfo info;
+        decoder.ResolveColumn("col1", &info);
+        ASSERT_EQ(::fesql::type::kInt32, info.type);
+        LOG(INFO) << "offset: " << info.offset;
+        ASSERT_EQ(8u, info.offset);
     }
     {
-        uint32_t offset;
-        type::Type type;
-        decoder.GetPrimayFieldOffsetType("col2", &offset, &type);
-        ASSERT_EQ(::fesql::type::kInt16, type);
-        LOG(INFO) << "offset: " << offset;
-        ASSERT_EQ(8u + 4u, offset);
+        codec::ColInfo info;
+        decoder.ResolveColumn("col2", &info);
+        ASSERT_EQ(::fesql::type::kInt16, info.type);
+        LOG(INFO) << "offset: " << info.offset;
+        ASSERT_EQ(8u + 4u, info.offset);
     }
     {
-        uint32_t offset;
-        type::Type type;
-        decoder.GetPrimayFieldOffsetType("col3", &offset, &type);
-        ASSERT_EQ(::fesql::type::kFloat, type);
-        LOG(INFO) << "offset: " << offset;
-        ASSERT_EQ(8u + 4u + 2u, offset);
+        codec::ColInfo info;
+        decoder.ResolveColumn("col3", &info);
+        ASSERT_EQ(::fesql::type::kFloat, info.type);
+        LOG(INFO) << "offset: " << info.offset;
+        ASSERT_EQ(8u + 4u + 2u, info.offset);
     }
     {
-        uint32_t offset;
-        type::Type type;
-        decoder.GetPrimayFieldOffsetType("col4", &offset, &type);
-        ASSERT_EQ(::fesql::type::kDouble, type);
-        LOG(INFO) << "offset: " << offset;
-        ASSERT_EQ(8u + 4u + 2u + 4u, offset);
+        codec::ColInfo info;
+        decoder.ResolveColumn("col4", &info);
+        ASSERT_EQ(::fesql::type::kDouble, info.type);
+        LOG(INFO) << "offset: " << info.offset;
+        ASSERT_EQ(8u + 4u + 2u + 4u, info.offset);
     }
     {
-        uint32_t offset;
-        type::Type type;
-        decoder.GetPrimayFieldOffsetType("col5", &offset, &type);
-        ASSERT_EQ(::fesql::type::kInt64, type);
-        LOG(INFO) << "offset: " << offset;
-        ASSERT_EQ(8u + 4u + 2u + 4u + 8u, offset);
+        codec::ColInfo info;
+        decoder.ResolveColumn("col5", &info);
+        ASSERT_EQ(::fesql::type::kInt64, info.type);
+        LOG(INFO) << "offset: " << info.offset;
+        ASSERT_EQ(8u + 4u + 2u + 4u + 8u, info.offset);
     }
     {
-        uint32_t offset;
-        type::Type type;
-        decoder.GetPrimayFieldOffsetType("col6", &offset, &type);
-        ASSERT_EQ(::fesql::type::kVarchar, type);
-        uint32_t next_offset;
-        uint32_t str_start_offset;
-        decoder.GetStringFieldOffset("col6", &offset, &next_offset,
-                                     &str_start_offset);
-        LOG(INFO) << "offset: " << offset << " next_offset: " << next_offset
-                  << " str_start_offset " << str_start_offset;
-        ASSERT_EQ(0u, offset);
-        ASSERT_EQ(1u, next_offset);
-        ASSERT_EQ(50u, str_start_offset);
+        codec::ColInfo info;
+        decoder.ResolveColumn("col6", &info);
+        ASSERT_EQ(::fesql::type::kVarchar, info.type);
+
+        codec::StringColInfo str_info;
+        decoder.ResolveStringCol("col6", &str_info);
+        LOG(INFO) << "offset: " << str_info.offset
+                  << " next_offset: " << str_info.str_next_offset
+                  << " str_start_offset " << str_info.str_start_offset;
+        ASSERT_EQ(0u, str_info.offset);
+        ASSERT_EQ(1u, str_info.str_next_offset);
+        ASSERT_EQ(50u, str_info.str_start_offset);
     }
     {
-        uint32_t offset;
-        type::Type type;
-        decoder.GetPrimayFieldOffsetType("col7", &offset, &type);
-        ASSERT_EQ(::fesql::type::kVarchar, type);
-        uint32_t next_offset;
-        uint32_t str_start_offset;
-        decoder.GetStringFieldOffset("col7", &offset, &next_offset,
-                                     &str_start_offset);
-        LOG(INFO) << "offset: " << offset << " next_offset: " << next_offset
-                  << " str_start_offset " << str_start_offset;
-        ASSERT_EQ(1u, offset);
-        ASSERT_EQ(0u, next_offset);
-        ASSERT_EQ(50u, str_start_offset);
+        codec::ColInfo info;
+        decoder.ResolveColumn("col7", &info);
+        ASSERT_EQ(::fesql::type::kVarchar, info.type);
+
+        codec::StringColInfo str_info;
+        decoder.ResolveStringCol("col7", &str_info);
+        LOG(INFO) << "offset: " << str_info.offset
+                  << " next_offset: " << str_info.str_next_offset
+                  << " str_start_offset " << str_info.str_start_offset;
+        ASSERT_EQ(1u, str_info.offset);
+        ASSERT_EQ(0u, str_info.str_next_offset);
+        ASSERT_EQ(50u, str_info.str_start_offset);
     }
 }
 }  // namespace codec

@@ -82,11 +82,11 @@ TEST_F(ExprIRBuilderTest, test_add_int32) {
     ExprIRBuilder expr_builder(entry_block, &scope_var);
     ::fesql::node::ExprNode *node = NULL;
     GenAddExpr(manager_, &node);
-    llvm::Value *output;
+    NativeValue output;
     base::Status status;
     bool ok = expr_builder.Build(node, &output, status);
     ASSERT_TRUE(ok);
-    builder.CreateRet(output);
+    builder.CreateRet(output.GetValue(&builder));
     m->print(::llvm::errs(), NULL);
     auto J = ExitOnErr(LLJITBuilder().create());
     ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
@@ -129,11 +129,11 @@ void BinaryExprCheck(::fesql::node::DataType left_type,
     ScopeVar scope_var;
     scope_var.Enter("fn_base");
     ExprIRBuilder expr_builder(entry_block, &scope_var);
-    llvm::Value *output;
+    NativeValue output;
     base::Status status;
     bool ok = expr_builder.Build(expr_node, &output, status);
     ASSERT_TRUE(ok);
-    builder.CreateRet(output);
+    builder.CreateRet(output.GetValue(&builder));
     m->print(::llvm::errs(), NULL);
     auto J = ExitOnErr(LLJITBuilder().create());
     ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));

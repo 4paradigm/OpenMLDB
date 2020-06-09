@@ -114,6 +114,8 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                         op->GetLimitCnt(), op->window_, op->project_,
                         op->instance_not_in_window());
                     runner->AddProducer(input);
+                    size_t input_slices = 
+                        input->output_schemas().GetSchemaSourceListSize();
 
                     if (!op->window_joins_.Empty()) {
                         for (auto window_join :
@@ -124,6 +126,7 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                                 return nullptr;
                             }
                             runner->AddWindowJoin(window_join.second,
+                                                  input_slices,
                                                   join_right_runner);
                         }
                     }
@@ -202,7 +205,9 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 case node::kJoinTypeLast: {
                     auto runner = new RequestLastJoinRunner(
                         id_++, node->GetOutputNameSchemaList(),
-                        op->GetLimitCnt(), op->join_);
+                        op->GetLimitCnt(), op->join_,
+                        left->output_schemas().GetSchemaSourceListSize(),
+                        right->output_schemas().GetSchemaSourceListSize());
                     runner->AddProducer(left);
                     runner->AddProducer(right);
                     return runner;
@@ -238,7 +243,9 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 case node::kJoinTypeLast: {
                     auto runner = new LastJoinRunner(
                         id_++, node->GetOutputNameSchemaList(),
-                        op->GetLimitCnt(), op->join_);
+                        op->GetLimitCnt(), op->join_,
+                        left->output_schemas().GetSchemaSourceListSize(),
+                        right->output_schemas().GetSchemaSourceListSize());
                     runner->AddProducer(left);
                     runner->AddProducer(right);
                     return runner;
@@ -987,7 +994,7 @@ Row JoinGenerator::RowLastJoin(const Row& left_row,
         }
         default: {
             LOG(WARNING) << "Last Join right isn't table or partition";
-            return Row(left_row, Row());
+            return Row(left_slices_, left_row, right_slices_, Row());
         }
     }
 }
@@ -1006,21 +1013,22 @@ Row JoinGenerator::RowLastJoinTable(const Row& left_row,
                                     std::shared_ptr<TableHandler> table) {
     if (!table) {
         LOG(WARNING) << "Last Join right table is empty";
-        return Row(left_row, Row());
+        return Row(left_slices_, left_row, right_slices_, Row());
     }
     auto right_iter = table->GetIterator();
     if (!right_iter) {
         LOG(WARNING) << "Last Join right table is empty";
-        return Row(left_row, Row());
+        return Row(left_slices_, left_row, right_slices_, Row());
     }
     right_iter->SeekToFirst();
     if (!right_iter->Valid()) {
         LOG(WARNING) << "Last Join right table is empty";
-        return Row(left_row, Row());
+        return Row(left_slices_, left_row, right_slices_, Row());
     }
 
     if (!left_key_gen_.Valid() && !condition_gen_.Valid()) {
-        return Row(left_row, right_iter->GetValue());
+        return Row(
+            left_slices_, left_row, right_slices_, right_iter->GetValue());
     }
 
     std::string left_key_str = "";
@@ -1037,7 +1045,8 @@ Row JoinGenerator::RowLastJoinTable(const Row& left_row,
             }
         }
 
-        Row joined_row(left_row, right_iter->GetValue());
+        Row joined_row(left_slices_, left_row,
+            right_slices_, right_iter->GetValue());
         if (!condition_gen_.Valid()) {
             return joined_row;
         }
@@ -1046,7 +1055,7 @@ Row JoinGenerator::RowLastJoinTable(const Row& left_row,
         }
         right_iter->Next();
     }
-    return Row(left_row, Row());
+    return Row(left_slices_, left_row, right_slices_, Row());
 }
 
 bool JoinGenerator::TableJoin(std::shared_ptr<TableHandler> left,
@@ -1056,7 +1065,9 @@ bool JoinGenerator::TableJoin(std::shared_ptr<TableHandler> left,
     while (left_iter->Valid()) {
         const Row& left_row = left_iter->GetValue();
         output->AddRow(Runner::RowLastJoinTable(
-            left_row, right, right_sort_gen_, condition_gen_));
+            left_slices_, left_row, 
+            right_slices_, right,
+            right_sort_gen_, condition_gen_));
         left_iter->Next();
     }
     return true;
@@ -1090,7 +1101,9 @@ bool JoinGenerator::TableJoin(std::shared_ptr<TableHandler> left,
         DLOG(INFO) << "key_str " << key_str;
         auto right_table = right->GetSegment(right, key_str);
         output->AddRow(Runner::RowLastJoinTable(
-            left_row, right_table, right_sort_gen_, condition_gen_));
+            left_slices_, left_row,
+            right_slices_, right_table,
+            right_sort_gen_, condition_gen_));
         left_iter->Next();
     }
     return true;
@@ -1111,8 +1124,10 @@ bool JoinGenerator::PartitionJoin(std::shared_ptr<PartitionHandler> left,
                 reinterpret_cast<const char*>(left_key.buf()), left_key.size());
             output->AddRow(
                 key_str, left_iter->GetKey(),
-                Runner::RowLastJoinTable(left_row, right, right_sort_gen_,
-                                         condition_gen_));
+                Runner::RowLastJoinTable(
+                    left_slices_, left_row, 
+                    right_slices_, right,
+                    right_sort_gen_, condition_gen_));
             left_iter->Next();
         }
     }
@@ -1152,45 +1167,49 @@ bool JoinGenerator::PartitionJoin(std::shared_ptr<PartitionHandler> left,
                 reinterpret_cast<const char*>(left_key.buf()), left_key.size());
             output->AddRow(
                 left_key_str, left_iter->GetKey(),
-                Runner::RowLastJoinTable(left_row, right_table, right_sort_gen_,
-                                         condition_gen_));
+                Runner::RowLastJoinTable(
+                    left_slices_, left_row,
+                    right_slices_, right_table,
+                    right_sort_gen_, condition_gen_));
             left_iter->Next();
         }
         left_partition_iter->Next();
     }
     return true;
 }
-const Row Runner::RowLastJoinTable(const Row& left_row,
+const Row Runner::RowLastJoinTable(size_t left_slices,
+                                   const Row& left_row,
+                                   size_t right_slices,
                                    std::shared_ptr<TableHandler> right_table,
                                    SortGenerator& right_sort,
                                    ConditionGenerator& cond_gen) {
     if (!right_table) {
         LOG(WARNING) << "Last Join right table is empty";
-        return Row(left_row, Row());
+        return Row(left_slices, left_row, right_slices, Row());
     }
     right_table = right_sort.Sort(right_table, true);
     auto right_iter = right_table->GetIterator();
     if (!right_iter) {
         LOG(WARNING) << "Last Join right table is empty";
-        return Row(left_row, Row());
+        return Row(left_slices, left_row, right_slices, Row());
     }
     right_iter->SeekToFirst();
     if (!right_iter->Valid()) {
         LOG(WARNING) << "Last Join right table is empty";
-        return Row(left_row, Row());
+        return Row(left_slices, left_row, right_slices, Row());
     }
 
     if (!cond_gen.Valid()) {
-        return Row(left_row, right_iter->GetValue());
+        return Row(left_slices, left_row, right_slices, right_iter->GetValue());
     }
     while (right_iter->Valid()) {
-        Row joined_row(left_row, right_iter->GetValue());
+        Row joined_row(left_slices, left_row, right_slices, right_iter->GetValue());
         if (cond_gen.Gen(joined_row)) {
             return joined_row;
         }
         right_iter->Next();
     }
-    return Row(left_row, Row());
+    return Row(left_slices, left_row, right_slices, Row());
 }
 void Runner::PrintData(const vm::SchemaSourceList& schema_list,
                        std::shared_ptr<DataHandler> data) {
@@ -1371,6 +1390,10 @@ std::shared_ptr<DataHandler> ConcatRunner::Run(RunnerContext& ctx) {
     auto fail_ptr = std::shared_ptr<DataHandler>();
     auto left = producers_[0]->RunWithCache(ctx);
     auto right = producers_[1]->RunWithCache(ctx);
+    size_t left_slices =
+        producers_[0]->output_schemas().GetSchemaSourceListSize();
+    size_t right_slices =
+        producers_[1]->output_schemas().GetSchemaSourceListSize();
     if (!left || !right) {
         return std::shared_ptr<DataHandler>();
     }
@@ -1383,17 +1406,17 @@ std::shared_ptr<DataHandler> ConcatRunner::Run(RunnerContext& ctx) {
         auto right_row =
             std::dynamic_pointer_cast<RowHandler>(right)->GetValue();
         return std::shared_ptr<RowHandler>(
-            new MemRowHandler(Row(left_row, right_row)));
+            new MemRowHandler(Row(left_slices, left_row, right_slices, right_row)));
     } else if (kTableHandler == right->GetHanlderType()) {
         auto left_row = std::dynamic_pointer_cast<RowHandler>(left)->GetValue();
         auto right_table = std::dynamic_pointer_cast<TableHandler>(right);
         auto right_iter = right_table->GetIterator();
         if (!right_iter) {
             return std::shared_ptr<RowHandler>(
-                new MemRowHandler(Row(left_row, Row())));
+                new MemRowHandler(Row(left_slices, left_row, right_slices, Row())));
         }
         return std::shared_ptr<RowHandler>(
-            new MemRowHandler(Row(left_row, right_iter->GetValue())));
+            new MemRowHandler(Row(left_slices, left_row, right_slices, right_iter->GetValue())));
     } else {
         return std::shared_ptr<DataHandler>();
     }
