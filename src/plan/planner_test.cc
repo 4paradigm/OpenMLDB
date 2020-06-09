@@ -123,8 +123,34 @@ TEST_P(PlannerTest, PlannerSucessTest) {
     Planner *planner_ptr = new SimplePlanner(manager_);
     node::PlanNodeList plan_trees;
     ASSERT_EQ(0, planner_ptr->CreatePlanTree(trees, plan_trees, status));
+    LOG(INFO) << "logical plan:\n";
     for (auto tree : plan_trees) {
-        std::cout << *tree << std::endl;
+        LOG(INFO) << *tree << std::endl;
+    }
+}
+
+
+TEST_P(PlannerTest, PlannerWindowOptTest) {
+    std::string sqlstr = GetParam().sql_str();
+    std::cout << sqlstr << std::endl;
+
+    NodePointVector trees;
+    base::Status status;
+    int ret = parser_->parse(sqlstr.c_str(), trees, manager_, status);
+
+    if (0 != status.code) {
+        std::cout << status.msg << std::endl;
+    }
+    ASSERT_EQ(0, ret);
+    //    ASSERT_EQ(1, trees.size());
+    //    std::cout << *(trees.front()) << std::endl;
+    Planner *planner_ptr = new SimplePlanner(manager_);
+    planner_ptr->set_window_merge_enable(true);
+    node::PlanNodeList plan_trees;
+    ASSERT_EQ(0, planner_ptr->CreatePlanTree(trees, plan_trees, status));
+    LOG(INFO) << "logical plan:\n";
+    for (auto tree : plan_trees) {
+        LOG(INFO) << *tree << std::endl;
     }
 }
 
@@ -1091,11 +1117,9 @@ TEST_F(PlannerTest, MergeWindowsTest) {
     auto partitions =
         manager_->MakeExprList(manager_->MakeColumnRefNode("col1", "t1"));
 
-    auto orders = dynamic_cast<node::OrderByNode *>(
-        manager_->MakeOrderByNode(
-            manager_->MakeExprList(
-                manager_->MakeColumnRefNode("ts", "t1")),
-            false));
+    auto orders = dynamic_cast<node::OrderByNode *>(manager_->MakeOrderByNode(
+        manager_->MakeExprList(manager_->MakeColumnRefNode("ts", "t1")),
+        false));
     auto frame_1day = manager_->MakeFrameNode(
         node::kFrameRowsRange,
         manager_->MakeFrameExtent(
@@ -1106,8 +1130,8 @@ TEST_F(PlannerTest, MergeWindowsTest) {
     auto frame_30m = manager_->MakeFrameNode(
         node::kFrameRowsRange,
         manager_->MakeFrameExtent(
-            manager_->MakeFrameBound(node::kPreceding,
-                                     manager_->MakeConstNode(30, node::kMinute)),
+            manager_->MakeFrameBound(
+                node::kPreceding, manager_->MakeConstNode(30, node::kMinute)),
             manager_->MakeFrameBound(node::kCurrent)));
 
     auto frame_1hour = manager_->MakeFrameNode(
@@ -1117,7 +1141,6 @@ TEST_F(PlannerTest, MergeWindowsTest) {
                                      manager_->MakeConstNode(1, node::kHour)),
             manager_->MakeFrameBound(node::kCurrent)));
 
-
     // window:col1,ts,[-1d, 0]
     {
         std::map<const node::WindowDefNode *, node::ProjectListNode *> map;
@@ -1126,17 +1149,17 @@ TEST_F(PlannerTest, MergeWindowsTest) {
         map.insert(std::make_pair(
             dynamic_cast<node::WindowDefNode *>(
                 manager_->MakeWindowDefNode(partitions, orders, frame_1day)),
-            manager_->MakeProjectListPlanNode(nullptr, false)));
+            manager_->MakeProjectListPlanNode(manager_->MakeWindowPlanNode(1), false)));
 
         map.insert(std::make_pair(
             dynamic_cast<node::WindowDefNode *>(
                 manager_->MakeWindowDefNode(partitions, orders, frame_30m)),
-            manager_->MakeProjectListPlanNode(nullptr, false)));
+            manager_->MakeProjectListPlanNode(manager_->MakeWindowPlanNode(2), false)));
 
         map.insert(std::make_pair(
             dynamic_cast<node::WindowDefNode *>(
                 manager_->MakeWindowDefNode(partitions, orders, frame_1hour)),
-            manager_->MakeProjectListPlanNode(nullptr, false)));
+            manager_->MakeProjectListPlanNode(manager_->MakeWindowPlanNode(3), false)));
         ASSERT_TRUE(planner_ptr.MergeWindows(map, &windows));
         ASSERT_EQ(1u, windows.size());
         std::cout << *windows[0] << std::endl;
@@ -1155,17 +1178,17 @@ TEST_F(PlannerTest, MergeWindowsTest) {
         map.insert(std::make_pair(
             dynamic_cast<node::WindowDefNode *>(
                 manager_->MakeWindowDefNode(partitions2, orders, frame_1day)),
-            manager_->MakeProjectListPlanNode(nullptr, false)));
+            manager_->MakeProjectListPlanNode(manager_->MakeWindowPlanNode(1), false)));
 
         map.insert(std::make_pair(
             dynamic_cast<node::WindowDefNode *>(
                 manager_->MakeWindowDefNode(partitions, orders, frame_30m)),
-            manager_->MakeProjectListPlanNode(nullptr, false)));
+            manager_->MakeProjectListPlanNode(manager_->MakeWindowPlanNode(2), false)));
 
         map.insert(std::make_pair(
             dynamic_cast<node::WindowDefNode *>(
                 manager_->MakeWindowDefNode(partitions, orders, frame_1hour)),
-            manager_->MakeProjectListPlanNode(nullptr, false)));
+            manager_->MakeProjectListPlanNode(manager_->MakeWindowPlanNode(3), false)));
         ASSERT_TRUE(planner_ptr.MergeWindows(map, &windows));
         ASSERT_EQ(2u, windows.size());
         std::cout << *(windows[0]) << std::endl;
@@ -1196,17 +1219,17 @@ TEST_F(PlannerTest, MergeWindowsTest) {
         map.insert(std::make_pair(
             dynamic_cast<node::WindowDefNode *>(
                 manager_->MakeWindowDefNode(partitions, orders, frame_1day)),
-            manager_->MakeProjectListPlanNode(nullptr, false)));
+            manager_->MakeProjectListPlanNode(manager_->MakeWindowPlanNode(1), false)));
 
         map.insert(std::make_pair(
             dynamic_cast<node::WindowDefNode *>(
                 manager_->MakeWindowDefNode(partitions, orders, frame_100)),
-            manager_->MakeProjectListPlanNode(nullptr, false)));
+            manager_->MakeProjectListPlanNode(manager_->MakeWindowPlanNode(2), false)));
 
         map.insert(std::make_pair(
             dynamic_cast<node::WindowDefNode *>(
                 manager_->MakeWindowDefNode(partitions, orders, frame_1000)),
-            manager_->MakeProjectListPlanNode(nullptr, false)));
+            manager_->MakeProjectListPlanNode(manager_->MakeWindowPlanNode(2), false)));
 
         ASSERT_TRUE(planner_ptr.MergeWindows(map, &windows));
         ASSERT_EQ(1u, windows.size());
@@ -1218,22 +1241,21 @@ TEST_F(PlannerTest, MergeWindowsTest) {
 
     // null window merge
     {
-
-        const node::WindowDefNode * empty_w1 = nullptr;
+        const node::WindowDefNode *empty_w1 = nullptr;
         std::map<const node::WindowDefNode *, node::ProjectListNode *> map;
         std::vector<const node::WindowDefNode *> windows;
 
-        map.insert(std::make_pair(empty_w1,
-            manager_->MakeProjectListPlanNode(nullptr, false)));
+        map.insert(std::make_pair(
+            empty_w1, manager_->MakeProjectListPlanNode(nullptr, false)));
         map.insert(std::make_pair(
             dynamic_cast<node::WindowDefNode *>(
                 manager_->MakeWindowDefNode(partitions, orders, frame_1day)),
-            manager_->MakeProjectListPlanNode(nullptr, false)));
+            manager_->MakeProjectListPlanNode(manager_->MakeWindowPlanNode(1), false)));
 
         map.insert(std::make_pair(
             dynamic_cast<node::WindowDefNode *>(
                 manager_->MakeWindowDefNode(partitions, orders, frame_30m)),
-            manager_->MakeProjectListPlanNode(nullptr, false)));
+            manager_->MakeProjectListPlanNode(manager_->MakeWindowPlanNode(2), false)));
         ASSERT_TRUE(planner_ptr.MergeWindows(map, &windows));
         ASSERT_EQ(2u, windows.size());
         ASSERT_TRUE(nullptr == windows[0]);
@@ -1249,15 +1271,52 @@ TEST_F(PlannerTest, MergeWindowsTest) {
         map.insert(std::make_pair(
             dynamic_cast<node::WindowDefNode *>(
                 manager_->MakeWindowDefNode(partitions2, orders, frame_1day)),
-            manager_->MakeProjectListPlanNode(nullptr, false)));
+            manager_->MakeProjectListPlanNode(manager_->MakeWindowPlanNode(1), false)));
 
         map.insert(std::make_pair(
             dynamic_cast<node::WindowDefNode *>(
                 manager_->MakeWindowDefNode(partitions, orders, frame_30m)),
-            manager_->MakeProjectListPlanNode(nullptr, false)));
+            manager_->MakeProjectListPlanNode(manager_->MakeWindowPlanNode(2), false)));
         ASSERT_FALSE(planner_ptr.MergeWindows(map, &windows));
     }
 }
+TEST_F(PlannerTest, WindowMergeOptTest) {
+    const std::string sql =
+        "      SELECT\n"
+        "      sum(col1) OVER (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 2d PRECEDING AND CURRENT ROW) as w_col1_sum,\n"
+        "      sum(col2) OVER w1 as w1_col2_sum,\n"
+        "      sum(col3) OVER (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 1000 PRECEDING AND CURRENT ROW) as w_col3_sum\n"
+        "      FROM t1\n"
+        "      WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW) limit 10;";
+
+    base::Status status;
+    node::NodePointVector parser_trees;
+    int ret = parser_->parse(sql, parser_trees, manager_, status);
+    ASSERT_EQ(0, ret);
+    SimplePlanner planner_ptr(manager_, false);
+    planner_ptr.set_window_merge_enable(true);
+    node::PlanNodeList plan_trees;
+    ASSERT_EQ(common::kOk,
+              planner_ptr.CreatePlanTree(parser_trees, plan_trees, status));
+    ASSERT_EQ(1u, plan_trees.size());
+    PlanNode *plan_ptr = plan_trees[0];
+    ASSERT_TRUE(NULL != plan_ptr);
+    LOG(INFO) <<"logical plan:\n"<< *plan_ptr << std::endl;
+
+    auto project_plan_node = dynamic_cast<node::ProjectPlanNode *>(
+        plan_ptr->GetChildren()[0]->GetChildren()[0]);
+    ASSERT_EQ(node::kPlanTypeProject, project_plan_node->type_);
+    ASSERT_EQ(1u, project_plan_node->project_list_vec_.size());
+
+
+    auto project_list =
+        dynamic_cast<node::ProjectListNode*>(project_plan_node->project_list_vec_[0]);
+    auto w = project_list->GetW();
+    ASSERT_EQ("(col1)", node::ExprString(w->GetKeys()));
+    ASSERT_EQ("(col5) ASC", node::ExprString(w->GetOrders()));
+    ASSERT_EQ("range[-172800000,0],rows[-1000,0]", w->frame_node()->GetExprString());
+}
+
 }  // namespace plan
 }  // namespace fesql
 

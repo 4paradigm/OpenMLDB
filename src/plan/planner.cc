@@ -724,7 +724,10 @@ bool Planner::MergeWindows(
             return p1.second < p2.second;
         });
 
-    for (auto iter = window_id_pairs.cbegin(); iter != window_id_pairs.cend(); iter++) {
+
+    for (auto iter = window_id_pairs.cbegin(); iter != window_id_pairs.cend();
+         iter++) {
+        LOG(INFO) << "window id: " << iter->second;
         if (windows.empty()) {
             windows.push_back(iter->first);
             continue;
@@ -792,16 +795,16 @@ bool Planner::MergeProjectMap(
 
     for (auto map_iter = map.cbegin(); map_iter != map.cend(); map_iter++) {
         bool merge_ok = false;
-        for (auto iter = output->cbegin(); iter != output->cend(); iter++) {
+        for (auto iter = output->begin(); iter != output->end(); iter++) {
             if (node::SQLEquals(map_iter->first, iter->first) ||
-                nullptr == map_iter->first &&
-                    map_iter->first->CanMergeWith(iter->first)) {
+                (nullptr != map_iter->first &&
+                 map_iter->first->CanMergeWith(iter->first))) {
                 node::ProjectListNode *merged_project =
-                    node_manager_->MakeProjectListPlanNode(
-                        map_iter->second->GetW(), true);
+                    node_manager_->MakeProjectListPlanNode(iter->second->GetW(),
+                                                           true);
                 node::ProjectListNode::MergeProjectList(
-                    map_iter->second, iter->second, merged_project);
-                output->insert(std::make_pair(map_iter->first, merged_project));
+                    iter->second, map_iter->second, merged_project);
+                iter->second = merged_project;
                 merge_ok = true;
                 break;
             }

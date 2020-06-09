@@ -828,6 +828,19 @@ class FrameBound : public SQLNode {
             output << space << offset_;
         }
     }
+    const std::string GetExprString() const {
+        switch (bound_type_) {
+            case node::kCurrent:
+                return "0";
+            case node::kFollowing:
+            case node::kPreceding:
+                return std::to_string(GetSignedOffset());
+            case node::kPrecedingUnbound:
+            case node::kFollowingUnbound:
+                return "UNBOUND";
+        }
+    }
+
     BoundType bound_type() const { return bound_type_; }
     int64_t GetOffset() const { return offset_; }
     int64_t GetSignedOffset() const {
@@ -866,7 +879,23 @@ class FrameExtent : public SQLNode {
     virtual bool Equals(const SQLNode *node) const;
     FrameBound *start() const { return start_; }
     FrameBound *end() const { return end_; }
+    const std::string GetExprString() const {
+        std::string str = "[";
+        if (nullptr == start_) {
+            str.append("UNBOUND");
+        } else {
+            str.append(start_->GetExprString());
+        }
+        str.append(",");
+        if (nullptr == end_) {
+            str.append("UNBOUND");
+        } else {
+            str.append(end_->GetExprString());
+        }
 
+        str.append("]");
+        return str;
+    }
  private:
     FrameBound *start_;
     FrameBound *end_;
@@ -909,6 +938,7 @@ class FrameNode : public SQLNode {
     }
     void Print(std::ostream &output, const std::string &org_tab) const;
     virtual bool Equals(const SQLNode *node) const;
+    const std::string GetExprString() const;
     bool CanMergeWith(const FrameNode *that) const;
 
  private:

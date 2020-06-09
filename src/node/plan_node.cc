@@ -138,6 +138,12 @@ void ProjectNode::Print(std::ostream &output, const std::string &orgTab) const {
     output << "\n";
     PrintValue(output, orgTab + INDENT, expression_->GetExprString(),
                "[" + std::to_string(pos_) + "]" + name_, false);
+
+    if (nullptr != frame_) {
+        output << "\n";
+        PrintValue(output, orgTab + INDENT, frame_->GetExprString(), "frame",
+                   true);
+    }
 }
 bool ProjectNode::Equals(const PlanNode *node) const {
     if (nullptr == node) {

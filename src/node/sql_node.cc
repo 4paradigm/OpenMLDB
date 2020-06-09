@@ -421,6 +421,21 @@ bool FrameNode::Equals(const SQLNode *node) const {
            SQLEquals(this->frame_rows_, that->frame_rows_) &&
            (this->frame_maxsize_ == that->frame_maxsize_);
 }
+
+const std::string FrameNode::GetExprString() const {
+    std::string str = "";
+
+    if (nullptr != frame_range_) {
+        str.append("range").append(frame_range_->GetExprString());
+    }
+    if (nullptr != frame_rows_) {
+        if (!str.empty()) {
+            str.append(",");
+        }
+        str.append("rows").append(frame_rows_->GetExprString());
+    }
+    return str;
+}
 bool FrameNode::CanMergeWith(const FrameNode *that) const {
     if (Equals(that)) {
         return true;

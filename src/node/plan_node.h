@@ -235,6 +235,7 @@ class ProjectNode : public LeafPlanNode {
     node::FrameNode *frame() const { return frame_; }
     void set_frame(node::FrameNode *frame) { frame_ = frame; }
     virtual bool Equals(const PlanNode *node) const;
+
     const bool is_aggregation_;
 
  private:
