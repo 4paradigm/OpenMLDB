@@ -46,7 +46,7 @@ object SparkColumnUtil {
   def resolveColumnIndex(expr: ExprNode, planNode: PhysicalOpNode): Int = {
     expr.getExpr_type_ match {
       case ExprType.kExprColumnRef =>
-        val index = CoreAPI.ResolveColumnIndex(planNode,  ColumnRefNode.CastFrom(expr))
+        val index = CoreAPI.ResolveColumnIndex(planNode, ColumnRefNode.CastFrom(expr))
         if (index < 0) {
           throw new FeSQLException(s"Fail to resolve ${expr.GetExprString()}")
         } else if (index >= planNode.GetOutputSchema().size()) {
@@ -57,6 +57,16 @@ object SparkColumnUtil {
       case _ => throw new FeSQLException(
         s"Expr ${expr.GetExprString()} not supported")
     }
+  }
+
+  def resolveColumnIndex(schema_idx: Int, column_idx: Int, planNode: PhysicalOpNode): Int = {
+    val index = CoreAPI.ResolveColumnIndex(planNode, schema_idx, column_idx)
+    if (index < 0) {
+      throw new FeSQLException(s"Fail to resolve schema_idx: $schema_idx, column_idx: $column_idx")
+    } else if (index >= planNode.GetOutputSchema().size()) {
+      throw new FeSQLException(s"Column index out of bounds: $index")
+    }
+    index
   }
 
   def getCol(dataFrame: DataFrame, index: Int): Column = {
