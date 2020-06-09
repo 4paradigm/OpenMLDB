@@ -258,7 +258,20 @@ int32_t SchemasContext::ColumnIndexResolved(const std::string& column,
     }
     return column_idx;
 }
+int32_t SchemasContext::ColumnOffsetResolved(const int32_t schema_idx,
+                                             const int32_t column_idx) const {
+    if (schema_idx < 0 || schema_idx >= row_schema_info_list_.size()) {
+        LOG(WARNING) << "Resolved column offset failed, schema idx invalid";
+        return -1;
+    }
 
+    const RowSchemaInfo* row_schema_info = &row_schema_info_list_[schema_idx];
+    int offset = column_idx;
+    for (uint32_t i = 0; i < row_schema_info->idx_; ++i) {
+        offset += this->row_schema_info_list_[i].schema_->size();
+    }
+    return offset;
+}
 int32_t SchemasContext::ColumnOffsetResolved(
     const std::string& relation_name, const std::string& col_name) const {
     const RowSchemaInfo* row_schema_info;
