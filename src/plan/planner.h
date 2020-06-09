@@ -45,9 +45,9 @@ class Planner {
     static const bool IsWindowMergeOptimizedEnable();
     void set_window_merge_enable(bool flag) { window_merge_enable_ = flag; }
     const bool window_merge_enable() const { return window_merge_enable_; }
-    bool MergeWindows(
-        std::map<const node::WindowDefNode *, node::ProjectListNode *> &map,
-        std::vector<const node::WindowDefNode *> *windows);
+    bool MergeWindows(const std::map<const node::WindowDefNode *,
+                                     node::ProjectListNode *> &map,
+                      std::vector<const node::WindowDefNode *> *windows);
     const bool is_batch_mode_;
     bool window_merge_enable_;
 
@@ -84,7 +84,8 @@ class Planner {
     node::NodeManager *node_manager_;
     std::string MakeTableName(const PlanNode *node) const;
     bool MergeProjectMap(
-        std::map<const node::WindowDefNode *, node::ProjectListNode *> &map,
+        const std::map<const node::WindowDefNode *, node::ProjectListNode *>
+            &map,
         std::map<const node::WindowDefNode *, node::ProjectListNode *> *output,
         Status &status);  // NOLINT (runtime/references)
 };

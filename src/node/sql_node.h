@@ -896,6 +896,7 @@ class FrameExtent : public SQLNode {
         str.append("]");
         return str;
     }
+
  private:
     FrameBound *start_;
     FrameBound *end_;

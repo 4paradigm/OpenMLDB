@@ -702,7 +702,7 @@ bool Planner::CreateTableReferencePlanNode(const node::TableRefNode *root,
     return true;
 }
 bool Planner::MergeWindows(
-    std::map<const node::WindowDefNode *, node::ProjectListNode *> &map,
+    const std::map<const node::WindowDefNode *, node::ProjectListNode *> &map,
     std::vector<const node::WindowDefNode *> *windows_ptr) {
     if (nullptr == windows_ptr) {
         return false;
@@ -758,7 +758,7 @@ bool Planner::MergeWindows(
 }
 
 bool Planner::MergeProjectMap(
-    std::map<const node::WindowDefNode *, node::ProjectListNode *> &map,
+    const std::map<const node::WindowDefNode *, node::ProjectListNode *> &map,
     std::map<const node::WindowDefNode *, node::ProjectListNode *> *output,
     Status &status) {
     if (map.empty()) {
