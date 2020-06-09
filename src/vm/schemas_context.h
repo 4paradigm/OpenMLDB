@@ -59,7 +59,7 @@ class SchemasContext {
                                  const std::string& col_name) const;
     int32_t ColumnOffsetResolved(const int32_t schema_idx,
                                  const int32_t column_idx) const;
-    int32_t ColumnIndexResolved(const std::string& column,
+    int32_t ColumnIdxResolved(const std::string& column,
                                 const Schema* schema) const;
 };
 }  // namespace vm

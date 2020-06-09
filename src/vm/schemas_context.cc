@@ -239,15 +239,14 @@ vm::ColumnSource SchemasContext::ColumnSourceResolved(
         LOG(WARNING) << "Resolve column expression failed";
         return ColumnSource();
     }
-    int32_t column_idx =
-        ColumnIndexResolved(col_name, row_schema_info->schema_);
+    int32_t column_idx = ColumnIdxResolved(col_name, row_schema_info->schema_);
     if (-1 == column_idx) {
         return ColumnSource();
     }
     return ColumnSource(row_schema_info->idx_, column_idx, col_name);
 }
 
-int32_t SchemasContext::ColumnIndexResolved(const std::string& column,
+int32_t SchemasContext::ColumnIdxResolved(const std::string& column,
                                             const Schema* schema) const {
     int32_t column_idx = -1;
     for (int i = 0; i < schema->size(); ++i) {
@@ -281,7 +280,7 @@ int32_t SchemasContext::ColumnOffsetResolved(
     }
 
     int32_t column_index =
-        ColumnIndexResolved(col_name, row_schema_info->schema_);
+        ColumnIdxResolved(col_name, row_schema_info->schema_);
     if (-1 == column_index) {
         return -1;
     }
