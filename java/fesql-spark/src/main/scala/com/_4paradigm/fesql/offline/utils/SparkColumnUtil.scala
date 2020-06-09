@@ -3,6 +3,7 @@ package com._4paradigm.fesql.offline.utils
 import com._4paradigm.fesql.node.{ColumnRefNode, ExprNode, ExprType}
 import com._4paradigm.fesql.offline.{FeSQLException, PlanContext}
 import com._4paradigm.fesql.vm.{CoreAPI, PhysicalJoinNode, PhysicalOpNode}
+import org.apache.spark.sql.types.{StructField, StructType}
 import org.apache.spark.sql.{Column, DataFrame}
 
 
@@ -72,4 +73,13 @@ object SparkColumnUtil {
   def getCol(dataFrame: DataFrame, index: Int): Column = {
     new Column(dataFrame.queryExecution.analyzed.output(index))
   }
+
+  // Set the nullable property of the dataframe
+  def setDataframeNullable(df: DataFrame, nullable: Boolean) : DataFrame = {
+    val newSchema = StructType(df.schema.map {
+      case StructField(c, t, _, m) => StructField(c, t, nullable = nullable, m)
+    })
+    df.sqlContext.createDataFrame(df.rdd, newSchema)
+  }
+
 }

@@ -40,7 +40,7 @@ class TestSparkPlanner extends SparkTestSuite {
     ).map(Row.fromTuple(_)).asJava, schema)
 
     val planner = new SparkPlanner(sess)
-    val res = planner.plan("select id as new_id, amt from t1;", Map("t1" -> t1))
+    val res = planner.plan("select id as new_id, 0.0 as col2 from t1;", Map("t1" -> t1))
 
     val output = res.getDf(sess)
     output.show()
