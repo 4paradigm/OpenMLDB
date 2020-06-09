@@ -131,7 +131,7 @@ object JoinPlan {
       joined
     }
 
-    SparkInstance.fromDataFrame(null, result)
+    SparkInstance.fromDataFrame(result)
   }
 
 

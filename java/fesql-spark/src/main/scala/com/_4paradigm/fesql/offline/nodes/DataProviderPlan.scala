@@ -10,6 +10,6 @@ object DataProviderPlan {
     val df = ctx.getDataFrame(tableName).getOrElse {
       throw new FeSQLException(s"Input table $tableName not found")
     }
-    SparkInstance.fromDataFrame(tableName, df)
+    SparkInstance.fromDataFrame(df)
   }
 }

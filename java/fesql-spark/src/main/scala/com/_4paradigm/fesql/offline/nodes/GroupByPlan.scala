@@ -27,6 +27,6 @@ object GroupByPlan {
     } else {
       inputDf.repartition(groupByCols: _*)
     }
-    SparkInstance.fromDataFrame(null, groupedDf)
+    SparkInstance.fromDataFrame(groupedDf)
   }
 }
