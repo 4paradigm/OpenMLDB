@@ -1,10 +1,8 @@
 package com._4paradigm.fesql.offline.nodes
 
 import com._4paradigm.fesql.offline._
-import com._4paradigm.fesql.offline.utils.FesqlUtil
-import com._4paradigm.fesql.offline.utils.FesqlUtil.getSparkType
+import com._4paradigm.fesql.offline.utils.SparkColumnUtil
 import com._4paradigm.fesql.vm.PhysicalSimpleProjectNode
-import org.apache.spark.sql.types.{StructField, StructType}
 import org.apache.spark.sql.functions.col
 import scala.collection.JavaConverters._
 
@@ -25,15 +23,16 @@ object SimpleProjectPlan {
       col.getName
     ).toList
 
-    // Get the select column names from node
+    // Get the select column indexes from node
     val columnSourceList = node.getProject_().getColumn_sources_()
 
     val selectColList = (0 until columnSourceList.size()).map(i => {
-      // Take the select column and rename with output schema
-      col(columnSourceList.get(i).column_name()).as(outputColNameList(i))
-    }).toList
+      // Resolved the column index to get column and rename
+      val colIndex = SparkColumnUtil.resolveColumnIndex(columnSourceList.get(i).schema_idx(), columnSourceList.get(i).column_idx(), node.GetProducer(0))
+      SparkColumnUtil.getCol(inputDf, colIndex).alias(outputColNameList(i));
+    })
 
-    // Use Spark DataFrame to select
+    // Use Spark DataFrame to select columns
     val result = inputDf.select(selectColList:_*)
 
     SparkInstance.fromDataFrame(result)
