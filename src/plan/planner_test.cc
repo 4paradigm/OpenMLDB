@@ -1169,7 +1169,11 @@ TEST_F(PlannerTest, MergeWindowsTest) {
         ASSERT_TRUE(planner_ptr.MergeWindows(map, &windows));
         ASSERT_EQ(2u, windows.size());
         std::cout << *(windows[0]) << std::endl;
+        ASSERT_EQ(-86400000, windows[0]->GetFrame()->GetRangeStart());
+        ASSERT_EQ(0, windows[0]->GetFrame()->GetRangeEnd());
         std::cout << *(windows[1]) << std::endl;
+        ASSERT_EQ(-3600000, windows[1]->GetFrame()->GetRangeStart());
+        ASSERT_EQ(0, windows[1]->GetFrame()->GetRangeEnd());
     }
 
     auto frame_100 = manager_->MakeFrameNode(

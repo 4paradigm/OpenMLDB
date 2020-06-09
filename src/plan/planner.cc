@@ -182,7 +182,8 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
         if (project_list_map.find(w_ptr) == project_list_map.end()) {
             if (w_ptr == nullptr) {
                 project_list_map[w_ptr] =
-                    node_manager_->MakeProjectListPlanNode(nullptr, group_by_agg);
+                    node_manager_->MakeProjectListPlanNode(nullptr,
+                                                           group_by_agg);
 
             } else {
                 node::WindowPlanNode *w_node_ptr =
@@ -709,7 +710,21 @@ bool Planner::MergeWindows(
     bool has_window_merged = false;
     auto &windows = *windows_ptr;
 
-    for (auto iter = map.cbegin(); iter != map.cend(); iter++) {
+    std::vector<std::pair<const node::WindowDefNode *, int32_t>>
+        window_id_pairs;
+    for (auto it = map.begin(); it != map.end(); it++) {
+        window_id_pairs.push_back(std::make_pair(
+            it->first,
+            nullptr == it->second->GetW() ? 0 : it->second->GetW()->GetId()));
+    }
+    std::sort(
+        window_id_pairs.begin(), window_id_pairs.end(),
+        [](const std::pair<const node::WindowDefNode *, int32_t> &p1,
+           const std::pair<const node::WindowDefNode *, int32_t> &p2) -> bool {
+            return p1.second < p2.second;
+        });
+
+    for (auto iter = window_id_pairs.cbegin(); iter != window_id_pairs.cend(); iter++) {
         if (windows.empty()) {
             windows.push_back(iter->first);
             continue;
