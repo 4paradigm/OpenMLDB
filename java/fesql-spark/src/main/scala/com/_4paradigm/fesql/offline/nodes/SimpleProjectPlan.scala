@@ -29,6 +29,9 @@ object SimpleProjectPlan {
     val selectColList = (0 until columnSourceList.size()).map(i => {
       // Resolved the column index to get column and rename
       val colIndex = SparkColumnUtil.resolveColumnIndex(columnSourceList.get(i).schema_idx(), columnSourceList.get(i).column_idx(), node.GetProducer(0))
+
+      // TODO: Handle constant value which has no corresponding col index, make sure the data type consistent
+
       SparkColumnUtil.getCol(inputDf, colIndex).alias(outputColNameList(i));
     })
 
