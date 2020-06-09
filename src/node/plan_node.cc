@@ -154,6 +154,7 @@ bool ProjectNode::Equals(const PlanNode *node) const {
     const ProjectNode *that = dynamic_cast<const ProjectNode *>(node);
     return this->name_ == that->name_ &&
            node::ExprEquals(this->expression_, that->expression_) &&
+           node::SQLEquals(this->frame_, that->frame_) &&
            LeafPlanNode::Equals(node);
 }
 
@@ -260,6 +261,7 @@ void ProjectListNode::Print(std::ostream &output,
                         "projects on window ", false);
     }
 }
+
 bool ProjectListNode::MergeProjectList(node::ProjectListNode *project_list1,
                                        node::ProjectListNode *project_list2,
                                        node::ProjectListNode *merged_project) {

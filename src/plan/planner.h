@@ -9,9 +9,9 @@
 #ifndef SRC_PLAN_PLANNER_H_
 #define SRC_PLAN_PLANNER_H_
 
+#include <map>
 #include <string>
 #include <vector>
-#include <map>
 #include "base/fe_status.h"
 #include "glog/logging.h"
 #include "node/node_manager.h"
@@ -45,6 +45,9 @@ class Planner {
     static const bool IsWindowMergeOptimizedEnable();
     void set_window_merge_enable(bool flag) { window_merge_enable_ = flag; }
     const bool window_merge_enable() const { return window_merge_enable_; }
+    bool MergeWindows(
+        std::map<const node::WindowDefNode *, node::ProjectListNode *> &map,
+        std::vector<const node::WindowDefNode *> *windows);
     const bool is_batch_mode_;
     bool window_merge_enable_;
 
@@ -80,9 +83,10 @@ class Planner {
                               Status &status);  // NOLINT (runtime/references)
     node::NodeManager *node_manager_;
     std::string MakeTableName(const PlanNode *node) const;
-    void MergeProjectMap(
-        std::map<const node::WindowDefNode *, node::ProjectListNode *> map,
-        std::map<const node::WindowDefNode *, node::ProjectListNode *> *output);
+    bool MergeProjectMap(
+        std::map<const node::WindowDefNode *, node::ProjectListNode *> &map,
+        std::map<const node::WindowDefNode *, node::ProjectListNode *> *output,
+        Status &status);  // NOLINT (runtime/references)
 };
 
 class SimplePlanner : public Planner {

@@ -123,8 +123,7 @@ SQLNode *NodeManager::MakeWindowDefNode(const std::string &name) {
 }
 
 WindowDefNode *NodeManager::MergeWindow(const WindowDefNode *w1,
-                                        const WindowDefNode *w2,
-                                        WindowDefNode *output) {
+                                        const WindowDefNode *w2) {
     if (nullptr == w1 || nullptr == w2) {
         LOG(WARNING) << "Fail to Merge Window: input windows are null";
         return nullptr;
@@ -252,9 +251,11 @@ SQLNode *NodeManager::MakeFrameNode(FrameType frame_type, SQLNode *frame_extent,
         LOG(WARNING) << "Fail Make Frame Node: 3nd arg isn't const expression";
         return nullptr;
     }
-    return MakeFrameNode(frame_type, frame_extent,
-                         nullptr == frame_size ? 0L :
-                         dynamic_cast<ConstNode *>(frame_size)->GetAsInt64());
+    return MakeFrameNode(
+        frame_type, frame_extent,
+        nullptr == frame_size
+            ? 0L
+            : dynamic_cast<ConstNode *>(frame_size)->GetAsInt64());
 }
 
 SQLNode *NodeManager::MakeFrameNode(FrameType frame_type, SQLNode *frame_extent,
@@ -786,9 +787,10 @@ PlanNode *NodeManager::MakeLimitPlanNode(PlanNode *node, int limit_cnt) {
 ProjectNode *NodeManager::MakeProjectNode(const int32_t pos,
                                           const std::string &name,
                                           const bool is_aggregation,
-                                          node::ExprNode *expression) {
+                                          node::ExprNode *expression,
+                                          node::FrameNode *frame) {
     node::ProjectNode *node_ptr =
-        new ProjectNode(pos, name, is_aggregation, expression);
+        new ProjectNode(pos, name, is_aggregation, expression, frame);
     RegisterNode(node_ptr);
     return node_ptr;
 }
@@ -841,13 +843,14 @@ SQLNode *NodeManager::MakeExplainNode(const QueryNode *query,
 }
 ProjectNode *NodeManager::MakeAggProjectNode(const int32_t pos,
                                              const std::string &name,
-                                             node::ExprNode *expression) {
-    return MakeProjectNode(pos, name, true, expression);
+                                             node::ExprNode *expression,
+                                             node::FrameNode *frame) {
+    return MakeProjectNode(pos, name, true, expression, frame);
 }
 ProjectNode *NodeManager::MakeRowProjectNode(const int32_t pos,
                                              const std::string &name,
                                              node::ExprNode *expression) {
-    return MakeProjectNode(pos, name, false, expression);
+    return MakeProjectNode(pos, name, false, expression, nullptr);
 }
 ExprNode *NodeManager::MakeEqualCondition(const std::string &db1,
                                           const std::string &table1,

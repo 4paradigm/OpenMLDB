@@ -219,18 +219,21 @@ class LimitPlanNode : public UnaryPlanNode {
 class ProjectNode : public LeafPlanNode {
  public:
     ProjectNode(int32_t pos, const std::string &name, const bool is_aggregation,
-                node::ExprNode *expression)
+                node::ExprNode *expression, node::FrameNode* frame)
         : LeafPlanNode(kProjectNode),
           is_aggregation_(is_aggregation),
           pos_(pos),
           name_(name),
-          expression_(expression) {}
+          expression_(expression),
+          frame_(frame) {}
 
     ~ProjectNode() {}
     void Print(std::ostream &output, const std::string &orgTab) const;
     const uint32_t GetPos() const { return pos_; }
     std::string GetName() const { return name_; }
     node::ExprNode *GetExpression() const { return expression_; }
+    node::FrameNode *frame() const { return frame_; }
+    void set_frame(node::FrameNode *frame) { frame_ = frame; }
     virtual bool Equals(const PlanNode *node) const;
     const bool is_aggregation_;
 
@@ -238,6 +241,7 @@ class ProjectNode : public LeafPlanNode {
     uint32_t pos_;
     std::string name_;
     node::ExprNode *expression_;
+    node::FrameNode *frame_;
 };
 
 class WindowPlanNode : public LeafPlanNode {
@@ -303,7 +307,6 @@ class ProjectListNode : public LeafPlanNode {
     const WindowPlanNode *GetW() const { return w_ptr_; }
 
     const bool IsWindowAgg() const { return is_window_agg_; }
-
     virtual bool Equals(const PlanNode *node) const;
 
     static bool MergeProjectList(node::ProjectListNode *project_list1,

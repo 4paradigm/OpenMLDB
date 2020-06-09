@@ -118,11 +118,11 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
     }
 
     // group by
-    bool need_agg = false;
+    bool group_by_agg = false;
     if (nullptr != root->group_clause_ptr_) {
         current_node = node_manager_->MakeGroupPlanNode(
             current_node, root->group_clause_ptr_);
-        need_agg = true;
+        group_by_agg = true;
     }
 
     // select target_list
@@ -182,7 +182,7 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
         if (project_list_map.find(w_ptr) == project_list_map.end()) {
             if (w_ptr == nullptr) {
                 project_list_map[w_ptr] =
-                    node_manager_->MakeProjectListPlanNode(nullptr, need_agg);
+                    node_manager_->MakeProjectListPlanNode(nullptr, group_by_agg);
 
             } else {
                 node::WindowPlanNode *w_node_ptr =
@@ -195,10 +195,11 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
             }
         }
         node::ProjectNode *project_node_ptr =
-            nullptr == w_ptr ? node_manager_->MakeRowProjectNode(
-                                   pos, project_name, project_expr)
-                             : node_manager_->MakeAggProjectNode(
-                                   pos, project_name, project_expr);
+            nullptr == w_ptr
+                ? node_manager_->MakeRowProjectNode(pos, project_name,
+                                                    project_expr)
+                : node_manager_->MakeAggProjectNode(
+                      pos, project_name, project_expr, w_ptr->GetFrame());
 
         project_list_map[w_ptr]->AddProject(project_node_ptr);
     }
@@ -207,7 +208,11 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
     std::map<const node::WindowDefNode *, node::ProjectListNode *>
         merged_project_list_map;
     if (this->window_merge_enable_) {
-        MergeProjectMap(project_list_map, &merged_project_list_map);
+        if (!MergeProjectMap(project_list_map, &merged_project_list_map,
+                             status)) {
+            LOG(WARNING) << "Fail t merge window project";
+            return false;
+        }
     } else {
         merged_project_list_map = project_list_map;
     }
@@ -695,18 +700,106 @@ bool Planner::CreateTableReferencePlanNode(const node::TableRefNode *root,
 
     return true;
 }
-void Planner::MergeProjectMap(
-    std::map<const node::WindowDefNode *, node::ProjectListNode *> map,
-    std::map<const node::WindowDefNode *, node::ProjectListNode *> *output) {
+bool Planner::MergeWindows(
+    std::map<const node::WindowDefNode *, node::ProjectListNode *> &map,
+    std::vector<const node::WindowDefNode *> *windows_ptr) {
+    if (nullptr == windows_ptr) {
+        return false;
+    }
+    bool has_window_merged = false;
+    auto &windows = *windows_ptr;
+
+    for (auto iter = map.cbegin(); iter != map.cend(); iter++) {
+        if (windows.empty()) {
+            windows.push_back(iter->first);
+            continue;
+        }
+        bool can_be_merged = false;
+        for (auto iter_w = windows.begin(); iter_w != windows.end(); iter_w++) {
+            if (node::SQLEquals(iter->first, *iter_w)) {
+                can_be_merged = true;
+                has_window_merged = true;
+                break;
+            }
+            if (nullptr == *iter_w) {
+                continue;
+            }
+            if (iter->first->CanMergeWith(*iter_w)) {
+                can_be_merged = true;
+                *iter_w = node_manager_->MergeWindow(iter->first, *iter_w);
+                has_window_merged = true;
+                break;
+            }
+        }
+
+        if (!can_be_merged) {
+            windows.push_back(iter->first);
+        }
+    }
+    return has_window_merged;
+}
+
+bool Planner::MergeProjectMap(
+    std::map<const node::WindowDefNode *, node::ProjectListNode *> &map,
+    std::map<const node::WindowDefNode *, node::ProjectListNode *> *output,
+    Status &status) {
     if (map.empty()) {
         DLOG(INFO) << "Nothing to merge, project list map is empty";
-        return;
+        return true;
     }
 
     if (map.size() == 1) {
         DLOG(INFO) << "Nothing to merge, project list map size = 1";
-        return;
+        return true;
     }
+    std::vector<const node::WindowDefNode *> windows;
+    if (!MergeWindows(map, &windows)) {
+        DLOG(INFO) << "No window can be merged";
+        *output = map;
+        return true;
+    }
+    int32_t w_id = 1;
+    for (auto iter = windows.cbegin(); iter != windows.cend(); iter++) {
+        if (nullptr == *iter) {
+            output->insert(std::make_pair(
+                nullptr,
+                node_manager_->MakeProjectListPlanNode(nullptr, false)));
+            continue;
+        }
+        node::WindowPlanNode *w_node_ptr =
+            node_manager_->MakeWindowPlanNode(w_id++);
+        if (!CreateWindowPlanNode(*iter, w_node_ptr, status)) {
+            return false;
+        }
+        output->insert(std::make_pair(
+            *iter, node_manager_->MakeProjectListPlanNode(w_node_ptr, true)));
+    }
+
+    for (auto map_iter = map.cbegin(); map_iter != map.cend(); map_iter++) {
+        bool merge_ok = false;
+        for (auto iter = output->cbegin(); iter != output->cend(); iter++) {
+            if (node::SQLEquals(map_iter->first, iter->first) ||
+                nullptr == map_iter->first &&
+                    map_iter->first->CanMergeWith(iter->first)) {
+                node::ProjectListNode *merged_project =
+                    node_manager_->MakeProjectListPlanNode(
+                        map_iter->second->GetW(), true);
+                node::ProjectListNode::MergeProjectList(
+                    map_iter->second, iter->second, merged_project);
+                output->insert(std::make_pair(map_iter->first, merged_project));
+                merge_ok = true;
+                break;
+            }
+        }
+        if (!merge_ok) {
+            status.msg = "Fail to merge project list";
+            status.code = common::kPlanError;
+            LOG(WARNING) << status.msg;
+            return false;
+        }
+    }
+
+    return true;
 }
 
 bool TransformTableDef(const std::string &table_name,
