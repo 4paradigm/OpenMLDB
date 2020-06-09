@@ -640,6 +640,9 @@ bool RtidbClient::DeleteBlobs(const std::string& name,
     if (th == nullptr) {
         return false;
     }
+    if (th->blobSuffix.empty()) {
+        return true;
+    }
     std::string msg;
     auto blob = client_->GetBlobClient(th->blob_partition[0].leader, &msg);
     if (blob == nullptr) {
@@ -777,7 +780,7 @@ BlobInfoResult RtidbClient::GetBlobInfo(const std::string& name) {
     }
     std::string msg;
     std::shared_ptr<rtidb::client::BsClient> blob_server;
-    if (th->blob_partition.empty()) {
+    if (th->blobSuffix.empty()) {
         result.SetError(-1, "not found available blob endpoint");
         return result;
     }
