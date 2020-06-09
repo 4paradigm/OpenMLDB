@@ -96,7 +96,7 @@ void BlobProxyImpl::Get(RpcController* controller, const HttpRequest* request,
         response_writer.append("table not found");
         return;
     }
-    if (th->blobSuffix.empty()) {
+    if (th->blob_partition.empty()) {
         PDLOG(INFO, "table %s is not blob store", table.c_str());
         cntl->http_request().set_status_code(brpc::HTTP_STATUS_BAD_REQUEST);
         response_writer.append("table is not object store");
