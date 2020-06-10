@@ -16,13 +16,15 @@ public class LibraryLoader {
     private static final Logger logger = LoggerFactory.getLogger(LibraryLoader.class.getName());
 
     synchronized public static void loadLibrary(String libraryPath) {
+        logger.info("Try to load the library {}", libraryPath);
+
         boolean isPath = libraryPath.endsWith(".so") ||
                 libraryPath.endsWith(".dylib");
         if (!isPath) {
             // try load from environment
             try {
                 System.loadLibrary(libraryPath);
-                logger.info("Successfully load library %s", libraryPath);
+                logger.info("Successfully load library {}", libraryPath);
                 return;
             } catch (Throwable t) {
                 logger.debug(String.format("Failed to load %s", libraryPath), t);
