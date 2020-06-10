@@ -753,7 +753,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         Tablet.DeleteRequest request = builder.build();
         Tablet.GeneralResponse response = ts.delete(request);
         if (response != null && response.getCode() == 0) {
-            deleteBlobsByList(th, response.getAdditionalIdsList());
+            deleteBlobByList(th, response.getAdditionalIdsList());
             return new UpdateResult(true, response.getCount());
         }
         if (response != null) {
@@ -762,7 +762,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         return new UpdateResult(false);
     }
 
-    boolean deleteBlobSByMap(TableHandler th, Map<String, Object> row) {
+    boolean deleteBlobByMap(TableHandler th, Map<String, Object> row) {
         List<ColumnDesc> schema = th.getSchema();
         List<Long> keys = new ArrayList<Long>();
         for (Integer idx : th.getBlobIdxList()) {
@@ -776,10 +776,10 @@ public class TableSyncClientImpl implements TableSyncClient {
             }
             keys.add((Long)key);
         }
-        return deleteBlobsByList(th, keys);
+        return deleteBlobByList(th, keys);
     }
 
-    boolean deleteBlobsByList(TableHandler th, List<Long> keys) {
+    boolean deleteBlobByList(TableHandler th, List<Long> keys) {
         int tid = th.getTableInfo().getTid();
         BlobServer bs = th.getBlobServer();
         if (bs == null) {
@@ -1437,7 +1437,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         try {
             return putRelationTable(th.getTableInfo().getTid(), pid, buffer, th, wo);
         } catch (Exception e) {
-            deleteBlobSByMap(th, row);
+            deleteBlobByMap(th, row);
             throw e;
         }
 
@@ -1562,7 +1562,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         try {
             return updateRequest(th, 0, conditionColumns, newValueSchema, valueBuffer);
         } catch (Exception e) {
-            deleteBlobSByMap(th, valueColumns);
+            deleteBlobByMap(th, valueColumns);
             throw e;
         }
     }
