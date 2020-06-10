@@ -34,6 +34,7 @@ template <class V>
 class ColumnIterator;
 
 typedef ConstIterator<uint64_t, Row> RowIterator;
+
 class WindowIterator {
  public:
     WindowIterator() {}
@@ -63,7 +64,7 @@ class WrapListImpl : public ListV<V> {
  public:
     WrapListImpl() : ListV<V>() {}
     ~WrapListImpl() {}
-    virtual const V GetField(const R& row) const = 0;
+    virtual const V GetField(const R &row) const = 0;
 };
 
 template <class V>
@@ -76,7 +77,7 @@ class ColumnImpl : public WrapListImpl<V, Row> {
           offset_(offset) {}
 
     ~ColumnImpl() {}
-    const V GetField(const Row& row) const override {
+    const V GetField(const Row &row) const override {
         V value;
         const int8_t *ptr = row.buf(row_idx_) + offset_;
         value = *((const V *)ptr);
@@ -108,7 +109,7 @@ class TimestampColumnImpl : public ColumnImpl<Timestamp> {
     TimestampColumnImpl(ListV<Row> *impl, int32_t row_idx, uint32_t offset)
         : ColumnImpl(impl, row_idx, offset) {}
     ~TimestampColumnImpl() {}
-    const Timestamp GetField(const Row& row) const override {
+    const Timestamp GetField(const Row &row) const override {
         int64_t ts;
         const int8_t *ptr = row.buf(row_idx_) + offset_;
         ts = *((const int64_t *)ptr);
@@ -121,7 +122,7 @@ class DateColumnImpl : public ColumnImpl<Date> {
     DateColumnImpl(ListV<Row> *impl, int32_t row_idx, uint32_t offset)
         : ColumnImpl(impl, row_idx, offset) {}
     ~DateColumnImpl() {}
-    const Date GetField(const Row& row) const override {
+    const Date GetField(const Row &row) const override {
         int32_t days;
         const int8_t *ptr = row.buf(row_idx_) + offset_;
         days = *((const int32_t *)ptr);
@@ -139,7 +140,7 @@ class StringColumnImpl : public ColumnImpl<StringRef> {
           str_start_offset_(str_start_offset) {}
 
     ~StringColumnImpl() {}
-    const StringRef GetField(const Row& row) const override {
+    const StringRef GetField(const Row &row) const override {
         int32_t addr_space = v1::GetAddrSpace(row.size(row_idx_));
         StringRef value;
         v1::GetStrField(row.buf(row_idx_), str_field_offset_,
@@ -246,6 +247,70 @@ class ArrayListIterator : public ConstIterator<uint64_t, V> {
     const typename std::vector<V>::const_iterator iter_end_;
     typename std::vector<V>::const_iterator iter_;
     uint64_t key_;
+};
+
+template <class V>
+class InnerRowsIterator : public ConstIterator<uint64_t, V> {
+ public:
+    InnerRowsIterator(ListV<V> *list, uint64_t start, uint64_t end)
+        : ConstIterator<uint64_t, V>(),
+          root_(list->GetIterator()),
+          pos_(0),
+          start_(start),
+          end_(end) {}
+    ~InnerRowsIterator() {}
+    virtual bool Valid() const {
+        return root_->Valid() && pos_ < end_ && pos_ >= start_;
+    }
+    virtual void Next() { return root_->Next(); }
+    virtual const uint64_t &GetKey() const { return root_->GetKey(); }
+    virtual const V &GetValue() { return root_->GetValue(); }
+    virtual void Seek(const uint64_t &k) { root_->Seek(k); }
+    virtual void SeekToFirst() {
+        root_->SeekToFirst();
+        while (root_->Valid() && pos_++ < start_) {
+            root_->Next();
+        }
+    }
+    virtual bool IsSeekable() const { root_->IsSeekable(); }
+    std::unique_ptr<ConstIterator<uint64_t, V>> root_;
+    uint64_t pos_;
+    const uint64_t start_;
+    const uint64_t end_;
+};
+
+template <class V>
+class InnerRangeIterator : public ConstIterator<uint64_t, V> {
+ public:
+    InnerRangeIterator(ListV<V> *list, uint64_t start, uint64_t end)
+        : ConstIterator<uint64_t, V>(),
+          root_(list->GetIterator()),
+          start_key_(0),
+          start_(start),
+          end_(end) {
+        if (nullptr != root_) {
+            root_->SeekToFirst();
+            start_key_ = root_->Valid() ? root_->GetKey() : 0;
+        }
+    }
+    ~InnerRangeIterator() {}
+    virtual bool Valid() const {
+        return root_->Valid() && root_->GetKey() > start_ &&
+               root_->GetKey() < end_;
+    }
+    virtual void Next() { return root_->Next(); }
+    virtual const uint64_t &GetKey() const { return root_->GetKey(); }
+    virtual const V &GetValue() { return root_->GetValue(); }
+    virtual void Seek(const uint64_t &k) { root_->Seek(k); }
+    virtual void SeekToFirst() {
+        root_->SeekToFirst();
+        root_->Seek(start_);
+    }
+    virtual bool IsSeekable() const { root_->IsSeekable(); }
+    std::unique_ptr<ConstIterator<uint64_t, V>> root_;
+    uint64_t start_key_;
+    const uint64_t start_;
+    const uint64_t end_;
 };
 
 template <class V>

@@ -16,6 +16,7 @@ namespace vm {
 using codec::ArrayListIterator;
 using codec::ArrayListV;
 using codec::ColumnImpl;
+using codec::InnerRangeIterator;
 using codec::Row;
 using codec::v1::GetCol;
 
@@ -314,6 +315,59 @@ TEST_F(WindowIteratorTest, CurrentHistoryWindowTest) {
         ASSERT_EQ(1u, window.GetCount());
         window.BufferData(6000L, row);
         ASSERT_EQ(1u, window.GetCount());
+    }
+}
+
+void Check_Next_N(RowIterator* iter, int n) {
+    int i = 0;
+    while (i++ < n) {
+        ASSERT_TRUE(iter->Valid());
+        iter->Next();
+    }
+}
+
+void Check_Key(RowIterator* iter, uint64_t key) {
+    ASSERT_TRUE(iter->Valid());
+    ASSERT_EQ(key, iter->GetKey());
+}
+TEST_F(WindowIteratorTest, SubWindowTest) {
+    std::vector<std::pair<uint64_t, Row>> rows;
+    int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
+    *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
+    *(reinterpret_cast<int64_t*>(ptr + 2 + 4)) = 1;
+    Row row(base::RefCountedSlice::Create(ptr, 28));
+    CurrentHistoryWindow window(-3600000L);
+    window.BufferData(1590115410000, row);
+    window.BufferData(1590115420000, row);
+    window.BufferData(1590115430000, row);
+    window.BufferData(1590115440000, row);
+    window.BufferData(1590115450000, row);
+    window.BufferData(1590115460000, row);
+    window.BufferData(1590115470000, row);
+    window.BufferData(1590115480000, row);
+    window.BufferData(1590115490000, row);
+    window.BufferData(1590115500000, row);
+
+    // normal iterator check
+    {
+        auto iter = window.GetIterator();
+        iter->SeekToFirst();
+        ASSERT_TRUE(iter->Valid());
+        ASSERT_EQ(1590115410000, iter->GetKey());
+        Check_Next_N(iter.get(), 9);
+        ASSERT_TRUE(iter->Valid());
+        ASSERT_EQ(1590115500000, iter->GetKey());
+    }
+
+    {
+        uint64_t start = 1590115410000L + 30000L;
+        uint64_t end = 1590115410000L + 80000L;
+        auto iter = std::unique_ptr<RowIterator>(
+            new InnerRangeIterator<Row>(&window, start, end));
+        iter->SeekToFirst();
+        Check_Key(iter.get(), 1590115440000);
+        Check_Next_N(iter.get(), 5);
+        Check_Key(iter.get(), 1590115490000);
     }
 }
 
