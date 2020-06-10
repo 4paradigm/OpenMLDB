@@ -213,11 +213,12 @@ bool BufNativeIRBuilder::BuildGetStringField(
     ::llvm::Value* data_ptr_ptr =
         builder.CreateStructGEP(str_type, string_ref, 1);
     ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
+    ::llvm::Type* bool_ptr_ty = builder.getInt1Ty()->getPointerTo();
 
     // get str field declear
     ::llvm::FunctionCallee callee = block_->getModule()->getOrInsertFunction(
         "fesql_storage_get_str_field", i32_ty, i8_ptr_ty, i32_ty, i32_ty, i32_ty,
-        i32_ty, i32_ty, i8_ptr_ty->getPointerTo(), i32_ty->getPointerTo(), i8_ptr_ty);
+        i32_ty, i32_ty, i8_ptr_ty->getPointerTo(), i32_ty->getPointerTo(), bool_ptr_ty);
 
     ::llvm::Value* str_offset = builder.getInt32(offset);
     ::llvm::Value* val_col_idx = builder.getInt32(col_idx);
@@ -506,7 +507,7 @@ bool BufNativeEncoderIRBuilder::AppendPrimary(::llvm::Value* i8_ptr,
         ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
         ::llvm::Type* void_ty = builder.getVoidTy();
         auto callee = block_->getModule()->getOrInsertFunction(
-            "fesql_storage_encode_null",
+            "fesql_storage_encode_nullbit",
             void_ty, i8_ptr_ty, size_ty, bool_ty);
         builder.CreateCall(callee,
             {i8_ptr, builder.getInt32(field_idx),

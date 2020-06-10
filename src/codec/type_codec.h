@@ -176,6 +176,8 @@ namespace v1 {
 
 static constexpr uint8_t VERSION_LENGTH = 2;
 static constexpr uint8_t SIZE_LENGTH = 4;
+static constexpr uint8_t HEADER_LENGTH = VERSION_LENGTH + SIZE_LENGTH;
+
 // calc the total row size with primary_size, str field count and str_size
 inline uint32_t CalcTotalLength(uint32_t primary_size, uint32_t str_field_cnt,
                                 uint32_t str_size, uint32_t* str_addr_space) {
@@ -195,8 +197,7 @@ inline uint32_t CalcTotalLength(uint32_t primary_size, uint32_t str_field_cnt,
     }
 }
 
-inline void AppendNULL(int8_t* buf_ptr, uint32_t col_idx, int8_t is_null) {
-    constexpr uint8_t HEADER_LENGTH = 6;
+inline void AppendNullBit(int8_t* buf_ptr, uint32_t col_idx, int8_t is_null) {
     int8_t* ptr = buf_ptr + HEADER_LENGTH + (col_idx >> 3);
     if (is_null) {
         *(reinterpret_cast<uint8_t*>(ptr)) |= 1 << (col_idx & 0x07);
@@ -283,7 +284,6 @@ inline bool IsNullAt(const int8_t* row, uint32_t idx) {
     if (row == nullptr) {
         return true;
     }
-    constexpr uint8_t HEADER_LENGTH = 6;
     const int8_t* ptr = row + HEADER_LENGTH + (idx >> 3);
     return *(reinterpret_cast<const uint8_t*>(ptr)) & (1 << (idx & 0x07));
 }

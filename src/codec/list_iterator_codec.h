@@ -102,6 +102,7 @@ class ColumnImpl : public WrapListImpl<V, Row> {
         return buf == nullptr || v1::IsNullAt(buf, col_idx_);
     }
 
+    // TODO(xxx): iterator of nullable V
     std::unique_ptr<ConstIterator<uint64_t, V>> GetIterator() const override {
         auto iter = std::unique_ptr<ConstIterator<uint64_t, V>>(
             new ColumnIterator<V>(root_, this));

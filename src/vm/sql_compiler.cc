@@ -23,7 +23,9 @@
 #include "codec/type_codec.h"
 #include "codegen/ir_base_builder.h"
 #include "glog/logging.h"
+#include "llvm/IR/Verifier.h"
 #include "llvm/Bitcode/BitcodeWriter.h"
+#include "llvm/Bitcode/BitcodeReader.h"
 #include "llvm/Support/raw_ostream.h"
 #include "parser/parser.h"
 #include "plan/planner.h"
@@ -123,8 +125,8 @@ void InitCodecSymbol(::llvm::orc::JITDylib& jd,             // NOLINT
         jd, mi, "fesql_storage_encode_calc_size",
         reinterpret_cast<void*>(&codec::v1::CalcTotalLength));
     fesql::vm::FeSQLJIT::AddSymbol(
-        jd, mi, "fesql_storage_encode_null",
-        reinterpret_cast<void*>(&codec::v1::AppendNULL));
+        jd, mi, "fesql_storage_encode_nullbit",
+        reinterpret_cast<void*>(&codec::v1::AppendNullBit));
 
     // row iteration
     fesql::vm::FeSQLJIT::AddSymbol(
@@ -169,11 +171,11 @@ void SQLCompiler::KeepIR(SQLContext& ctx, llvm::Module* m) {
         LOG(WARNING) << "module is null";
         return;
     }
-    ctx.ir.reserve(1024);
+    ctx.ir.reserve(8192);
     llvm::raw_string_ostream buf(ctx.ir);
     llvm::WriteBitcodeToFile(*m, buf);
     buf.flush();
-    DLOG(INFO) << "keep ir length: " << ctx.ir.size();
+    LOG(INFO) << "keep ir length: " << ctx.ir.size();
 }
 
 bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
@@ -232,6 +234,12 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     if (plan_only_) {
         return true;
     }
+
+    if (llvm::verifyModule(*(m.get()), &llvm::errs(), nullptr)) {
+        LOG(WARNING) << "fail to verify codegen module";
+        return false;
+    }
+
     ::llvm::Expected<std::unique_ptr<FeSQLJIT>> jit_expected(
         FeSQLJITBuilder().create());
     {

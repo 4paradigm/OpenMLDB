@@ -120,25 +120,30 @@ bool RowBuilder::Check(::fesql::type::Type type) {
     return true;
 }
 
+void FillNullStringOffset(int8_t* buf, uint32_t start, uint32_t addr_length, 
+                          uint32_t str_idx, uint32_t str_offset) {
+    auto ptr = buf + start + addr_length * str_idx;
+    if (addr_length == 1) {
+        *(reinterpret_cast<uint8_t*>(ptr)) = (uint8_t)str_offset;
+    } else if (addr_length == 2) {
+        *(reinterpret_cast<uint16_t*>(ptr)) = (uint16_t)str_offset;
+    } else if (addr_length == 3) {
+        *(reinterpret_cast<uint8_t*>(ptr)) = str_offset >> 16;
+        *(reinterpret_cast<uint8_t*>(ptr + 1)) =
+            (str_offset & 0xFF00) >> 8;
+        *(reinterpret_cast<uint8_t*>(ptr + 2)) = str_offset & 0x00FF;
+    } else {
+        *(reinterpret_cast<uint32_t*>(ptr)) = str_offset;
+    }
+}
+
 bool RowBuilder::AppendNULL() {
     int8_t* ptr = buf_ + HEADER_LENGTH + (cnt_ >> 3);
     *(reinterpret_cast<uint8_t*>(ptr)) |= 1 << (cnt_ & 0x07);
     const ::fesql::type::ColumnDef& column = schema_.Get(cnt_);
     if (column.type() == ::fesql::type::kVarchar) {
-        ptr = buf_ + str_field_start_offset_ +
-              str_addr_length_ * offset_vec_[cnt_];
-        if (str_addr_length_ == 1) {
-            *(reinterpret_cast<uint8_t*>(ptr)) = (uint8_t)str_offset_;
-        } else if (str_addr_length_ == 2) {
-            *(reinterpret_cast<uint16_t*>(ptr)) = (uint16_t)str_offset_;
-        } else if (str_addr_length_ == 3) {
-            *(reinterpret_cast<uint8_t*>(ptr)) = str_offset_ >> 16;
-            *(reinterpret_cast<uint8_t*>(ptr + 1)) =
-                (str_offset_ & 0xFF00) >> 8;
-            *(reinterpret_cast<uint8_t*>(ptr + 2)) = str_offset_ & 0x00FF;
-        } else {
-            *(reinterpret_cast<uint32_t*>(ptr)) = str_offset_;
-        }
+        FillNullStringOffset(buf_, str_field_start_offset_, str_addr_length_,
+            offset_vec_[cnt_], str_offset_);
     }
     cnt_++;
     return true;
@@ -919,6 +924,16 @@ bool RowIOBufView::Reset(const butil::IOBuf& buf) {
     str_addr_length_ = GetAddrLength(size_);
     DLOG(INFO) << "size " << size_ << " addr length " << str_addr_length_;
     return true;
+}
+
+int32_t RowIOBufView::GetBool(uint32_t idx, bool* val) {
+    if (val == NULL) return -1;
+    if (IsNULL(idx)) {
+        return 1;
+    }
+    uint32_t offset = offset_vec_.at(idx);
+    *val = v1::GetBoolField(row_, offset) == 1 ? true : false;
+    return 0;
 }
 
 int32_t RowIOBufView::GetInt16(uint32_t idx, int16_t* val) {

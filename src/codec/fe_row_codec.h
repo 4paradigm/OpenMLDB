@@ -23,7 +23,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
-#include "codec/type_codec.h"
+#include "butil/iobuf.h"
 #include "base/raw_buffer.h"
 #include "proto/fe_type.pb.h"
 
@@ -49,7 +49,7 @@ static const std::unordered_map<::fesql::type::Type, uint8_t> TYPE_SIZE_MAP = {
     {::fesql::type::kDate, sizeof(int32_t)},
     {::fesql::type::kDouble, sizeof(double)}};
 
-static inline uint8_t GetAddrLength(uint32_t size) {
+inline uint8_t GetAddrLength(uint32_t size) {
     if (size <= UINT8_MAX) {
         return 1;
     } else if (size <= UINT16_MAX) {
@@ -64,6 +64,9 @@ static inline uint8_t GetAddrLength(uint32_t size) {
 inline uint32_t GetStartOffset(int32_t column_count) {
     return HEADER_LENGTH + BitMapSize(column_count);
 }
+
+void FillNullStringOffset(int8_t* buf, uint32_t start, uint32_t addr_length, 
+                          uint32_t str_idx, uint32_t str_offset);
 
 class RowBuilder {
  public:
@@ -130,16 +133,7 @@ class RowIOBufView : public RowBaseView {
     int32_t GetDate(uint32_t, int32_t *date);
     int32_t GetString(uint32_t idx, butil::IOBuf* buf);
     int32_t GetString(uint32_t idx, char** val, uint32_t* length) { return -1; }
-
-    inline int32_t GetBool(uint32_t idx, bool* val) {
-        if (val == NULL) return -1;
-        if (IsNULL(idx)) {
-            return 1;
-        }
-        uint32_t offset = offset_vec_.at(idx);
-        *val = v1::GetBoolField(row_, offset) == 1 ? true : false;
-        return 0;
-    }
+    int32_t GetBool(uint32_t idx, bool* val);
 
     inline bool IsNULL(uint32_t idx) {
         uint32_t offset = HEADER_LENGTH + (idx >> 3);

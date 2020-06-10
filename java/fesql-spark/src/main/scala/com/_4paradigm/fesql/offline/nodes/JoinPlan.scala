@@ -120,8 +120,13 @@ object JoinPlan {
           case (_, iter) =>
             val timeExtractor = SparkRowUtil.createOrderKeyExtractor(
               timeIdxInJoined, timeColType, nullable=false)
-
-            iter.maxBy(row => timeExtractor.apply(row))
+            iter.maxBy(row => {
+              if (row.isNullAt(timeIdxInJoined)) {
+                Long.MinValue
+              } else {
+                timeExtractor.apply(row)
+              }
+            })
 
         }(RowEncoder(joined.schema))
 

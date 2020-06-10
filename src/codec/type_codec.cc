@@ -19,6 +19,7 @@
 #include <string>
 #include <utility>
 #include "codec/list_iterator_codec.h"
+#include "codec/fe_row_codec.h"
 #include "glog/logging.h"
 #include "base/raw_buffer.h"
 #include "proto/fe_type.pb.h"
@@ -203,41 +204,18 @@ int32_t GetStrFieldUnsafe(const int8_t* row, uint32_t field_offset,
 }
 
 
-static inline uint8_t GetAddrLength(uint32_t size) {
-    constexpr uint32_t UINT24_MAX = (1 << 24) - 1;
-    if (size <= UINT8_MAX) {
-        return 1;
-    } else if (size <= UINT16_MAX) {
-        return 2;
-    } else if (size <= UINT24_MAX) {
-        return 3;
-    } else {
-        return 4;
-    }
-}
-
 int32_t AppendString(int8_t* buf_ptr, uint32_t buf_size, uint32_t col_idx,
                      int8_t* val, uint32_t size, int8_t is_null,
                      uint32_t str_start_offset,
                      uint32_t str_field_offset, uint32_t str_addr_space,
                      uint32_t str_body_offset, uint32_t str_field_cnt) {
     if (is_null) {
-        AppendNULL(buf_ptr, col_idx, true);
+        AppendNullBit(buf_ptr, col_idx, true);
         size_t str_addr_length = GetAddrLength(buf_size);
         size_t str_offset = str_start_offset + str_addr_length * str_field_cnt;
-        auto ptr = buf_ptr + str_start_offset + str_addr_length * str_field_offset;
-        if (str_addr_length == 1) {
-            *(reinterpret_cast<uint8_t*>(ptr)) = (uint8_t)str_offset;
-        } else if (str_addr_length == 2) {
-            *(reinterpret_cast<uint16_t*>(ptr)) = (uint16_t)str_offset;
-        } else if (str_addr_length == 3) {
-            *(reinterpret_cast<uint8_t*>(ptr)) = str_offset >> 16;
-            *(reinterpret_cast<uint8_t*>(ptr + 1)) =
-                (str_offset & 0xFF00) >> 8;
-            *(reinterpret_cast<uint8_t*>(ptr + 2)) = str_offset & 0x00FF;
-        } else {
-            *(reinterpret_cast<uint32_t*>(ptr)) = str_offset;
-        }
+        FillNullStringOffset(
+            buf_ptr, str_start_offset, str_addr_length, 
+            str_field_offset, str_offset);
         return str_body_offset;
     }
 
