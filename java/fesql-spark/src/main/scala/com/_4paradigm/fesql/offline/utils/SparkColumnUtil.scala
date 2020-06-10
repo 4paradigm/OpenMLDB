@@ -3,6 +3,7 @@ package com._4paradigm.fesql.offline.utils
 import com._4paradigm.fesql.node.{ColumnRefNode, ExprNode, ExprType}
 import com._4paradigm.fesql.offline.{FeSQLException, PlanContext}
 import com._4paradigm.fesql.vm.{CoreAPI, PhysicalJoinNode, PhysicalOpNode}
+import org.apache.spark.sql.types.{StructField, StructType}
 import org.apache.spark.sql.{Column, DataFrame}
 
 
@@ -46,7 +47,7 @@ object SparkColumnUtil {
   def resolveColumnIndex(expr: ExprNode, planNode: PhysicalOpNode): Int = {
     expr.getExpr_type_ match {
       case ExprType.kExprColumnRef =>
-        val index = CoreAPI.ResolveColumnIndex(planNode,  ColumnRefNode.CastFrom(expr))
+        val index = CoreAPI.ResolveColumnIndex(planNode, ColumnRefNode.CastFrom(expr))
         if (index < 0) {
           throw new FeSQLException(s"Fail to resolve ${expr.GetExprString()}")
         } else if (index >= planNode.GetOutputSchema().size()) {
@@ -59,7 +60,26 @@ object SparkColumnUtil {
     }
   }
 
+  def resolveColumnIndex(schema_idx: Int, column_idx: Int, planNode: PhysicalOpNode): Int = {
+    val index = CoreAPI.ResolveColumnIndex(planNode, schema_idx, column_idx)
+    if (index < 0) {
+      throw new FeSQLException(s"Fail to resolve schema_idx: $schema_idx, column_idx: $column_idx")
+    } else if (index >= planNode.GetOutputSchema().size()) {
+      throw new FeSQLException(s"Column index out of bounds: $index")
+    }
+    index
+  }
+
   def getCol(dataFrame: DataFrame, index: Int): Column = {
     new Column(dataFrame.queryExecution.analyzed.output(index))
   }
+
+  // Set the nullable property of the dataframe
+  def setDataframeNullable(df: DataFrame, nullable: Boolean) : DataFrame = {
+    val newSchema = StructType(df.schema.map {
+      case StructField(c, t, _, m) => StructField(c, t, nullable = nullable, m)
+    })
+    df.sqlContext.createDataFrame(df.rdd, newSchema)
+  }
+
 }

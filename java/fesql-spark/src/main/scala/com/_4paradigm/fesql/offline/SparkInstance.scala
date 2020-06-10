@@ -48,7 +48,7 @@ class SparkInstance {
 
 
 object SparkInstance {
-  def fromDataFrame(name: String, df: DataFrame): SparkInstance = {
+  def fromDataFrame(df: DataFrame): SparkInstance = {
     new SparkInstance(df)
   }
 

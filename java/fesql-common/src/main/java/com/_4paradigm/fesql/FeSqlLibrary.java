@@ -13,9 +13,9 @@ public class FeSqlLibrary {
     static synchronized public void init() {
 
         if (initialized) {
-            logger.info("The FeSql library has been initialized, skip reloading");
             return;
         }
+
         LibraryLoader.loadLibrary(FESQL_LIBRARY_NAME);
         initialized = true;
     }

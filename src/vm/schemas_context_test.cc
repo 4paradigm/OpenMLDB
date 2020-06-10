@@ -169,6 +169,26 @@ TEST_F(SchemasContextTest, ColumnResolvedTest) {
     }
 }
 
+TEST_F(SchemasContextTest, ColumnOffsetResolvedTest) {
+    vm::SchemaSourceList name_schemas;
+    type::TableDef t1;
+    type::TableDef t2;
+    {
+        BuildTableDef(t1);
+        name_schemas.AddSchemaSource("t1", &t1.columns());
+    }
+    {
+        BuildTableT2Def(t2);
+        name_schemas.AddSchemaSource("t2", &t2.columns());
+    }
+    SchemasContext ctx(name_schemas);
+    ASSERT_EQ(0, ctx.ColumnOffsetResolved(0, 0));
+    ASSERT_EQ(1, ctx.ColumnOffsetResolved(0, 1));
+    ASSERT_EQ(2, ctx.ColumnOffsetResolved(0, 2));
+    ASSERT_EQ(3, ctx.ColumnOffsetResolved(0, 3));
+    ASSERT_EQ(7, ctx.ColumnOffsetResolved(1, 0));
+    ASSERT_EQ(8, ctx.ColumnOffsetResolved(1, 1));
+}
 }  // namespace vm
 }  // namespace fesql
 int main(int argc, char** argv) {
