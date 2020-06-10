@@ -763,11 +763,13 @@ bool Planner::MergeProjectMap(
     Status &status) {
     if (map.empty()) {
         DLOG(INFO) << "Nothing to merge, project list map is empty";
+        *output = map;
         return true;
     }
 
     if (map.size() == 1) {
         DLOG(INFO) << "Nothing to merge, project list map size = 1";
+        *output = map;
         return true;
     }
     std::vector<const node::WindowDefNode *> windows;
