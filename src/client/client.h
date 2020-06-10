@@ -17,12 +17,10 @@
 
 struct WriteOption {
     WriteOption() {
-        update_if_equal = true;
         update_if_exist = true;
     }
 
     bool update_if_exist;
-    bool update_if_equal;
 };
 
 struct ReadFilter {

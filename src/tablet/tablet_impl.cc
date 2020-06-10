@@ -754,7 +754,14 @@ void TabletImpl::Put(RpcController* controller,
         }
     } else {
         int64_t auto_gen_pk = 0;
-        if (!r_table->Put(request->value(), &auto_gen_pk)) {
+        bool ok = false;
+        if (request->has_wo()) {
+            ok = r_table->Put(request->value(), &auto_gen_pk, request->wo());
+        } else {
+            ::rtidb::api::WriteOption wo;
+            ok = r_table->Put(request->value(), &auto_gen_pk, wo);
+        }
+        if (!ok) {
             response->set_code(::rtidb::base::ReturnCode::kPutFailed);
             response->set_msg("put failed");
             done->Run();
@@ -1606,10 +1613,11 @@ void TabletImpl::Traverse(RpcController* controller,
         if (request->has_read_option() &&
             request->read_option().index_size() > 0) {
             std::string combine_pk;
-            if (!r_table->GetCombinePk(request->read_option().index(),
-                                       &combine_pk)) {
-                response->set_code(::rtidb::base::ReturnCode::kIdxNameNotFound);
-                response->set_msg("index col name not found");
+            if (!r_table->GetCombinePk(
+                        request->read_option().index(), &combine_pk)) {
+                response->set_code(
+                        ::rtidb::base::ReturnCode::kIdxNameNotFound);
+                response->set_msg("pk index col name not found");
                 delete it;
                 return;
             }
@@ -2300,10 +2308,13 @@ void TabletImpl::GetTableStatus(
             if (request->has_pid() && request->pid() != pit->first) {
                 continue;
             }
+            std::shared_ptr<RelationalTable> r_table = pit->second;
             ::rtidb::api::TableStatus* status =
                 response->add_all_table_status();
             status->set_tid(it->first);
             status->set_pid(pit->first);
+            status->set_record_cnt(r_table->GetRecordCnt());
+            status->set_offset(r_table->GetOffset());
         }
     }
     response->set_code(::rtidb::base::ReturnCode::kOk);
@@ -3241,6 +3252,7 @@ int TabletImpl::LoadRelationalTableInternal(
         PDLOG(INFO, "create table success. tid %u pid %u ", table_meta.tid(),
               table_meta.pid());
         SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kDone);
+        return 0;
     } while (0);
     SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kFailed);
     return -1;

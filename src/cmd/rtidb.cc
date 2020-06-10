@@ -3528,7 +3528,6 @@ int SetColumnDesc(const ::rtidb::client::TableInfo& table_info,
     if (table_info.has_table_type() &&
         table_info.table_type() == "Relational") {
         ns_table_info.set_table_type(::rtidb::type::TableType::kRelational);
-        ns_table_info.set_storage_mode(::rtidb::common::kSSD);
         ns_table_info.set_replica_num(1);
         ns_table_info.set_partition_num(1);
         ns_table_info.clear_column_key();
@@ -3552,7 +3551,7 @@ int SetColumnDesc(const ::rtidb::client::TableInfo& table_info,
                 return -1;
             }
             if (idx_iter->second == ::rtidb::type::kAutoGen) {
-                auto_gen_pk_name = table_info.index(idx).index_name();
+                auto_gen_pk_name = table_info.index(idx).col_name(0);
             }
             column_key->set_index_type(idx_iter->second);
             index_set.insert(table_info.index(idx).index_name());
@@ -3655,7 +3654,7 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
     }
     std::string storage_mode = table_info.storage_mode();
     std::transform(storage_mode.begin(), storage_mode.end(),
-                   storage_mode.begin(), ::tolower);
+            storage_mode.begin(), ::tolower);
     if (storage_mode == "kmemory" || storage_mode == "memory") {
         ns_table_info.set_storage_mode(::rtidb::common::kMemory);
     } else if (storage_mode == "kssd" || storage_mode == "ssd") {
@@ -3664,7 +3663,7 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
         ns_table_info.set_storage_mode(::rtidb::common::kHDD);
     } else {
         printf("storage mode %s is invalid\n",
-               table_info.storage_mode().c_str());
+                table_info.storage_mode().c_str());
         return -1;
     }
     std::string table_type = table_info.table_type();
@@ -3682,6 +3681,13 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
         return -1;
     }
 
+    if (ns_table_info.has_table_type() && ns_table_info.table_type()
+            != rtidb::type::TableType::kTimeSeries) {
+        ns_table_info.set_storage_mode(::rtidb::common::kHDD);
+        if (storage_mode == "kssd" || storage_mode == "ssd") {
+            ns_table_info.set_storage_mode(::rtidb::common::kSSD);
+        }
+    }
     if (table_info.has_key_entry_max_height()) {
         if (table_info.key_entry_max_height() > FLAGS_skiplist_max_height) {
             printf(
@@ -4889,6 +4895,8 @@ void HandleClientDisConnectZK(const std::vector<std::string> parts,
 void HandleBsClientHelp(const std::vector<std::string>& parts) {
     if (parts.size() < 2) {
         printf("loadtable - load blob table\n");
+        printf("help - get cmd info\n");
+        printf("man - get cmd info\n");
     } else if (parts.size() == 2) {
         if (parts[1] == "loadtable") {
             printf("desc: create table and load data\n");
