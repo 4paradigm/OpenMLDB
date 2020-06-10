@@ -113,6 +113,8 @@ object JoinPlan {
       val timeIdxInJoined = timeColIdx + leftDf.schema.size
       val timeColType = rightDf.schema(timeColIdx).dataType
 
+      val isAsc = node.join.right_sort.is_asc
+
       import sess.implicits._
 
       val distinct = joined
@@ -124,7 +126,11 @@ object JoinPlan {
             val timeExtractor = SparkRowUtil.createOrderKeyExtractor(
               timeIdxInJoined, timeColType, nullable=false)
 
-            iter.maxBy(row => timeExtractor.apply(row))
+            if (isAsc) {
+              iter.maxBy(row => timeExtractor.apply(row))
+            } else {
+              iter.minBy(row => timeExtractor.apply(row))
+            }
 
         }(RowEncoder(joined.schema))
 
