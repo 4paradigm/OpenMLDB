@@ -105,7 +105,7 @@ object JoinPlan {
       // TODO: Support multiple order by columns
 
       // Resolve order by column index
-      val orderbyExprListNode = node.getJoin_.getRight_sort_.getOrders_.getOrder_by_
+      val orderbyExprListNode = node.join.right_sort.orders.order_by
       val planLeftSize = node.GetProducer(0).GetOutputSchema().size()
       val timeColIdx = SparkColumnUtil.resolveColumnIndex(orderbyExprListNode.GetChild(0), node) - planLeftSize
       assert(timeColIdx >= 0)
