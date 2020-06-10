@@ -432,14 +432,14 @@ INSTANTIATE_TEST_CASE_P(
 TEST_P(EngineTest, test_request_engine) {
     ParamType sql_case = GetParam();
     LOG(INFO) << sql_case.desc();
-    if (sql_case.mode() != "request-unsupport") {
+    if (!boost::contains(sql_case.mode(), "request-unsupport")) {
         RequestModeCheck(sql_case);
     }
 }
 TEST_P(EngineTest, test_batch_engine) {
     ParamType sql_case = GetParam();
     LOG(INFO) << sql_case.desc();
-    if (sql_case.mode() != "batch-unsupport") {
+    if (!boost::contains(sql_case.mode(), "batch-unsupport")) {
         BatchModeCheck(sql_case);
     }
 }

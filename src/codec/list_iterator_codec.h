@@ -260,16 +260,21 @@ class InnerRowsIterator : public ConstIterator<uint64_t, V> {
           end_(end) {}
     ~InnerRowsIterator() {}
     virtual bool Valid() const {
-        return root_->Valid() && pos_ < end_ && pos_ >= start_;
+        return root_->Valid() && pos_ <= end_ && pos_ >= start_;
     }
-    virtual void Next() { return root_->Next(); }
+    virtual void Next() {
+        pos_++;
+        return root_->Next();
+    }
     virtual const uint64_t &GetKey() const { return root_->GetKey(); }
     virtual const V &GetValue() { return root_->GetValue(); }
     virtual void Seek(const uint64_t &k) { root_->Seek(k); }
     virtual void SeekToFirst() {
         root_->SeekToFirst();
-        while (root_->Valid() && pos_++ < start_) {
+        pos_ = 0;
+        while (root_->Valid() && pos_ < start_) {
             root_->Next();
+            pos_++;
         }
     }
     virtual bool IsSeekable() const { root_->IsSeekable(); }
@@ -295,8 +300,8 @@ class InnerRangeIterator : public ConstIterator<uint64_t, V> {
     }
     ~InnerRangeIterator() {}
     virtual bool Valid() const {
-        return root_->Valid() && root_->GetKey() > start_ &&
-               root_->GetKey() < end_;
+        return root_->Valid() && root_->GetKey() <= start_ &&
+               root_->GetKey() >= end_;
     }
     virtual void Next() { return root_->Next(); }
     virtual const uint64_t &GetKey() const { return root_->GetKey(); }

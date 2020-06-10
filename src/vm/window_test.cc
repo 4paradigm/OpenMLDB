@@ -330,7 +330,8 @@ void Check_Key(RowIterator* iter, uint64_t key) {
     ASSERT_TRUE(iter->Valid());
     ASSERT_EQ(key, iter->GetKey());
 }
-TEST_F(WindowIteratorTest, SubWindowTest) {
+
+TEST_F(WindowIteratorTest, InnerRangeWindowTest) {
     std::vector<std::pair<uint64_t, Row>> rows;
     int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
     *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
@@ -353,21 +354,80 @@ TEST_F(WindowIteratorTest, SubWindowTest) {
         auto iter = window.GetIterator();
         iter->SeekToFirst();
         ASSERT_TRUE(iter->Valid());
-        ASSERT_EQ(1590115410000, iter->GetKey());
+        ASSERT_EQ(1590115500000, iter->GetKey());
         Check_Next_N(iter.get(), 9);
         ASSERT_TRUE(iter->Valid());
-        ASSERT_EQ(1590115500000, iter->GetKey());
+        ASSERT_EQ(1590115410000, iter->GetKey());
     }
 
+    // check w[30s:80s]
     {
-        uint64_t start = 1590115410000L + 30000L;
-        uint64_t end = 1590115410000L + 80000L;
+        uint64_t start = 1590115500000 - 30000L;
+        uint64_t end = 1590115500000 - 80000L;
         auto iter = std::unique_ptr<RowIterator>(
             new InnerRangeIterator<Row>(&window, start, end));
         iter->SeekToFirst();
-        Check_Key(iter.get(), 1590115440000);
-        Check_Next_N(iter.get(), 5);
-        Check_Key(iter.get(), 1590115490000);
+        ASSERT_TRUE(iter->Valid());
+        ASSERT_EQ(1590115470000, iter->GetKey());
+        Check_Next_N(iter.get(), 4);
+        ASSERT_TRUE(iter->Valid());
+        ASSERT_EQ(1590115430000, iter->GetKey());
+
+        iter->Next();
+        ASSERT_TRUE(iter->Valid());
+        ASSERT_EQ(1590115420000, iter->GetKey());
+        iter->Next();
+        ASSERT_FALSE(iter->Valid());
+    }
+}
+
+TEST_F(WindowIteratorTest, InnerRowsWindowTest) {
+    std::vector<std::pair<uint64_t, Row>> rows;
+    int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
+    *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
+    *(reinterpret_cast<int64_t*>(ptr + 2 + 4)) = 1;
+    Row row(base::RefCountedSlice::Create(ptr, 28));
+    CurrentHistoryWindow window(-3600000L);
+    window.BufferData(1590115410000, row);
+    window.BufferData(1590115420000, row);
+    window.BufferData(1590115430000, row);
+    window.BufferData(1590115440000, row);
+    window.BufferData(1590115450000, row);
+    window.BufferData(1590115460000, row);
+    window.BufferData(1590115470000, row);
+    window.BufferData(1590115480000, row);
+    window.BufferData(1590115490000, row);
+    window.BufferData(1590115500000, row);
+
+    // normal iterator check
+    {
+        auto iter = window.GetIterator();
+        iter->SeekToFirst();
+        ASSERT_TRUE(iter->Valid());
+        ASSERT_EQ(1590115500000, iter->GetKey());
+        Check_Next_N(iter.get(), 9);
+        ASSERT_TRUE(iter->Valid());
+        ASSERT_EQ(1590115410000, iter->GetKey());
+    }
+
+    // check w[3:8]
+    {
+        uint64_t start = 3;
+        uint64_t end = 8;
+        auto iter = std::unique_ptr<RowIterator>(
+            new codec::InnerRowsIterator<Row>(&window, start, end));
+        iter->SeekToFirst();
+        ASSERT_TRUE(iter->Valid());
+        ASSERT_EQ(1590115470000, iter->GetKey());
+        Check_Next_N(iter.get(), 4);
+        ASSERT_TRUE(iter->Valid());
+        ASSERT_EQ(1590115430000, iter->GetKey());
+
+        iter->Next();
+        ASSERT_TRUE(iter->Valid());
+        ASSERT_EQ(1590115420000, iter->GetKey());
+        iter->Next();
+        ASSERT_FALSE(iter->Valid());
     }
 }
 

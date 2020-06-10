@@ -435,10 +435,12 @@ TEST_F(UDFTest, GetWindowColTest) {
             reinterpret_cast<::fesql::codec::ColumnImpl<int32_t>*>(buf);
         auto col_iterator = col->GetIterator();
         ASSERT_TRUE(col_iterator->Valid());
-        ASSERT_EQ(11, col_iterator->GetValue());
+        ASSERT_EQ(111, col_iterator->GetValue());
         col_iterator->Next();
         ASSERT_TRUE(col_iterator->Valid());
-        ASSERT_EQ(111, col_iterator->GetValue());
+        ASSERT_EQ(11, col_iterator->GetValue());
+        col_iterator->Next();
+        ASSERT_EQ(1, col_iterator->GetValue());
         col_iterator->Next();
         ASSERT_FALSE(col_iterator->Valid());
     }

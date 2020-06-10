@@ -375,7 +375,7 @@ Row Runner::WindowProject(const int8_t* fn, const uint64_t key, const Row row,
         return Row();
     }
     if (window->instance_not_in_window()) {
-        window->PopBackData();
+        window->PopFrontData();
     }
     return Row(base::RefCountedSlice::CreateManaged(out_buf,
                                                     RowView::GetSize(out_buf)));
@@ -1535,7 +1535,7 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(RunnerContext& ctx) {
                                 : IteratorStatus::PickIteratorWithMaximizeKey(
                                       &union_segment_status);
     while (-1 != max_union_pos) {
-        if (union_segment_status[max_union_pos].key_ <= start) {
+        if (union_segment_status[max_union_pos].key_ < start) {
             break;
         }
 
