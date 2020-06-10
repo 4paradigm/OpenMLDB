@@ -1435,12 +1435,10 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         */
         try {
-
             return putRelationTable(th.getTableInfo().getTid(), pid, buffer, th, wo);
         } catch (Exception e) {
             deleteBlobS(th, row);
             throw e;
-
         }
 
 
