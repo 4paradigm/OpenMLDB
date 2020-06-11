@@ -447,7 +447,7 @@ GeneralResult RtidbClient::Init(const std::string& zk_cluster,
     std::string msg;
     bool ok = client_->Init(&msg);
     if (!ok) {
-        result.SetError(-1, msg);
+        result.SetError(-2, msg);
     }
     return result;
 }
@@ -470,7 +470,7 @@ TraverseResult RtidbClient::Traverse(const std::string& name,
         Traverse(name, ro, raw_data, &count, &pk, &is_finish, &snapshot_id);
     if (!ok) {
         delete raw_data;
-        result.code_ = -1;
+        result.code_ = -2;
         result.msg_ = "traverse data error";
         return result;
     }
@@ -532,10 +532,12 @@ UpdateResult RtidbClient::Update(
         result.SetError(-1, "table not found");
         return result;
     }
-    if (condition_map.empty() || value_map.empty()) {
-        result.SetError(-1,
-                        "condition_columns_map or value_columns_map is empty");
+    if (condition_map.empty()) {
+        result.SetError(-2, "condition columns map is empty");
         return result;
+    }
+    if (value_map.empty()) {
+        result.SetError(-3, "value map is empty");
     }
     uint32_t tid = th->table_info->tid();
     uint32_t pid = 0;
@@ -567,14 +569,14 @@ UpdateResult RtidbClient::Update(
     auto tablet_client =
         client_->GetTabletClient(th->partition[0].leader, &msg);
     if (tablet_client == nullptr) {
-        result.SetError(-1, msg);
+        result.SetError(-4, msg);
         return result;
     }
     uint32_t count = 0;
     bool ok = tablet_client->Update(tid, pid, cd_columns, new_value_schema,
                                     data, &count, &msg);
     if (!ok) {
-        result.SetError(-1, msg);
+        result.SetError(-5, msg);
     }
     result.SetAffectedCount(count);
     return result;
@@ -595,7 +597,7 @@ PutResult RtidbClient::Put(
     if (!th->auto_gen_pk.empty()) {
         auto iter = value.find(th->auto_gen_pk);
         if (iter != value.end()) {
-            result.SetError(-1, "should not input autoGenPk column");
+            result.SetError(-2, "should not input autoGenPk column");
             return result;
         } else {
             val = value;
@@ -618,20 +620,45 @@ PutResult RtidbClient::Put(
 
     auto tablet = client_->GetTabletClient(th->partition[0].leader, &err_msg);
     if (tablet == nullptr) {
-        result.SetError(-1, err_msg);
+        result.SetError(-3, err_msg);
         return result;
     }
     int64_t auto_key = 0;
     bool ok =
         tablet->Put(th->table_info->tid(), 0, buffer, &auto_key, &err_msg);
     if (!ok) {
-        result.SetError(-1, "put error, msg: " + err_msg);
+        result.SetError(-4, "put error, msg: " + err_msg);
         return result;
     }
     if (!th->auto_gen_pk.empty()) {
         result.SetAutoGenPk(auto_key);
     }
     return result;
+}
+
+bool RtidbClient::DeleteBlobs(const std::string& name,
+                              const std::vector<int64_t>& keys) {
+    std::shared_ptr<TableHandler> th = client_->GetTableHandler(name);
+    if (th == nullptr) {
+        return false;
+    }
+    if (th->blob_partition.empty()) {
+        return true;
+    }
+    if (th->blob_partition[0].leader.empty()) {
+        return false;
+    }
+    std::string msg;
+    auto blob = client_->GetBlobClient(th->blob_partition[0].leader, &msg);
+    if (blob == nullptr) {
+        return false;
+    }
+    uint32_t tid = th->table_info->tid();
+    uint32_t pid = 0;
+    for (auto& key : keys) {
+        blob->Delete(tid, pid, key, &msg);
+    }
+    return true;
 }
 
 UpdateResult RtidbClient::Delete(
@@ -645,7 +672,7 @@ UpdateResult RtidbClient::Delete(
     auto tablet =
         client_->GetTabletClient(th->partition[0].leader, &result.msg);
     if (tablet == nullptr) {
-        result.code = -1;
+        result.code = -2;
         return result;
     }
     uint32_t tid = th->table_info->tid();
@@ -658,10 +685,19 @@ UpdateResult RtidbClient::Delete(
         return result;
     }
     uint32_t count = 0;
-    bool ok = tablet->Delete(tid, pid, cd_columns, &count, &result.msg);
+    bool ok = false;
+    std::vector<int64_t> blobs;
+    if (th->blobSuffix.empty()) {
+        ok = tablet->Delete(tid, pid, cd_columns, &count, &result.msg);
+    } else {
+        ok = tablet->Delete(tid, pid, cd_columns, &count, &result.msg, &blobs);
+    }
     if (!ok) {
-        result.code = -1;
+        result.code = -3;
         return result;
+    }
+    if (!blobs.empty()) {
+        DeleteBlobs(name, blobs);
     }
     result.SetAffectedCount(count);
     return result;
@@ -681,7 +717,7 @@ BatchQueryResult RtidbClient::BatchQuery(const std::string& name,
         for (const auto& kv : ro.index) {
             auto iter = th->name_type_map.find(kv.first);
             if (iter == th->name_type_map.end()) {
-                result.code_ = -1;
+                result.code_ = -2;
                 result.msg_ = "col_name " + kv.first + " not exist";
                 return result;
             }
@@ -693,7 +729,7 @@ BatchQueryResult RtidbClient::BatchQuery(const std::string& name,
             ::rtidb::type::DataType type = iter->second;
             std::string* val = index->mutable_value();
             if (!rtidb::codec::Convert(kv.second, type, val)) {
-                result.code_ = -1;
+                result.code_ = -3;
                 result.msg_ = "convert str " + kv.second + " failed";
                 return result;
             }
@@ -704,7 +740,7 @@ BatchQueryResult RtidbClient::BatchQuery(const std::string& name,
     std::string msg;
     bool ok = BatchQuery(name, ros_pb, data, &count, &msg);
     if (!ok) {
-        result.SetError(-1, msg);
+        result.SetError(-4, msg);
         return result;
     }
     result.SetRv(th);
@@ -750,12 +786,16 @@ BlobInfoResult RtidbClient::GetBlobInfo(const std::string& name) {
     std::string msg;
     std::shared_ptr<rtidb::client::BsClient> blob_server;
     if (th->blob_partition.empty()) {
-        result.SetError(-1, "not found available blob endpoint");
+        result.SetError(-1, "blob partition is empty");
+        return result;
+    }
+    if (th->blob_partition[0].leader.empty()) {
+        result.SetError(-2, "not found available blob endpoint");
         return result;
     }
     blob_server = client_->GetBlobClient(th->blob_partition[0].leader, &msg);
     if (!blob_server) {
-        result.SetError(-1, "blob server is unavailable status");
+        result.SetError(-3, "blob server is unavailable status");
         return result;
     }
     result.client_ = blob_server;

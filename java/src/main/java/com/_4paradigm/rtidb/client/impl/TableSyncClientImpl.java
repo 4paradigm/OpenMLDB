@@ -833,20 +833,48 @@ public class TableSyncClientImpl implements TableSyncClient {
         Tablet.DeleteRequest request = builder.build();
         Tablet.GeneralResponse response = ts.delete(request);
         if (response != null && response.getCode() == 0) {
-            for (long key : response.getAdditionalIdsList()) {
-                OSS.DeleteRequest.Builder ossBuilder = OSS.DeleteRequest.newBuilder();
-                ossBuilder.setTid(tid);
-                ossBuilder.setPid(0);
-                ossBuilder.setKey(key);
-                OSS.DeleteRequest deleteRequest = ossBuilder.build();
-                bs.delete(deleteRequest);
-            }
+            deleteBlobByList(th, response.getAdditionalIdsList());
             return new UpdateResult(true, response.getCount());
         }
         if (response != null) {
             throw new TabletException(response.getCode(), response.getMsg());
         }
         return new UpdateResult(false);
+    }
+
+    boolean deleteBlobByMap(TableHandler th, Map<String, Object> row) {
+        List<ColumnDesc> schema = th.getSchema();
+        List<Long> keys = new ArrayList<Long>();
+        for (Integer idx : th.getBlobIdxList()) {
+            ColumnDesc col = schema.get(idx);
+            if (!row.containsKey(col.getName())) {
+                continue;
+            }
+            Object key = row.get(col.getName());
+            if (key == null) {
+                continue;
+            }
+            keys.add((Long)key);
+        }
+        return deleteBlobByList(th, keys);
+    }
+
+    boolean deleteBlobByList(TableHandler th, List<Long> keys) {
+        int tid = th.getTableInfo().getTid();
+        BlobServer bs = th.getBlobServer();
+        if (bs == null) {
+            return false;
+        }
+        for (Long key : keys) {
+            OSS.DeleteRequest.Builder builder = OSS.DeleteRequest.newBuilder();
+            builder.setTid(tid);
+            builder.setPid(0);
+            builder.setKey(key);
+
+            OSS.DeleteRequest request = builder.build();
+            bs.delete(request);
+        }
+        return true;
     }
 
     @Override
@@ -1489,7 +1517,13 @@ public class TableSyncClientImpl implements TableSyncClient {
             pid = new Random().nextInt() % th.getPartitions().length;
         }
         */
-        return putRelationTable(th.getTableInfo().getTid(), pid, buffer, th, wo);
+        try {
+            return putRelationTable(th.getTableInfo().getTid(), pid, buffer, th, wo);
+        } catch (Exception e) {
+            deleteBlobByMap(th, row);
+            throw e;
+        }
+
 
     }
 
@@ -1608,8 +1642,12 @@ public class TableSyncClientImpl implements TableSyncClient {
             putObjectStore(valueColumns, th);
         }
         ByteBuffer valueBuffer = RowBuilder.encode(valueColumns, newValueSchema);
-
-        return updateRequest(th, 0, conditionColumns, newValueSchema, valueBuffer);
+        try {
+            return updateRequest(th, 0, conditionColumns, newValueSchema, valueBuffer);
+        } catch (Exception e) {
+            deleteBlobByMap(th, valueColumns);
+            throw e;
+        }
     }
 
     @Override
