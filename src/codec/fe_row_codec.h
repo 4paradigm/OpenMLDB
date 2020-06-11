@@ -125,8 +125,8 @@ class RowIOBufView : public RowBaseView {
     int32_t GetFloat(uint32_t idx, float* val);
     int32_t GetDouble(uint32_t idx, double* val);
     int32_t GetTimestamp(uint32_t, int64_t* val);
-    int32_t GetDate(uint32_t, int32_t *year, int32_t *month, int32_t * day);
-    int32_t GetDate(uint32_t, int32_t *date);
+    int32_t GetDate(uint32_t, int32_t* year, int32_t* month, int32_t* day);
+    int32_t GetDate(uint32_t, int32_t* date);
     int32_t GetString(uint32_t idx, butil::IOBuf* buf);
     int32_t GetString(uint32_t idx, char** val, uint32_t* length) { return -1; }
 
@@ -203,6 +203,7 @@ class RowView {
     int32_t GetValue(const int8_t* row, uint32_t idx, ::fesql::type::Type type,
                      void* val);
 
+    int32_t GetPrimaryFieldOffset(uint32_t idx);
     int32_t GetInteger(const int8_t* row, uint32_t idx,
                        ::fesql::type::Type type, int64_t* val);
     int32_t GetValue(const int8_t* row, uint32_t idx, char** val,
