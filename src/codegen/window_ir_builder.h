@@ -38,6 +38,10 @@ class WindowDecodeIRBuilder {
 
     virtual ~WindowDecodeIRBuilder() {}
 
+    virtual bool BuildInnerRangeList(::llvm::Value* window_ptr, int64_t start,
+                                     int64_t end, ::llvm::Value** output) = 0;
+    virtual bool BuildInnerRowsList(::llvm::Value* window_ptr, int64_t start,
+                                    int64_t end, ::llvm::Value** output) = 0;
     virtual bool BuildGetCol(const std::string& name, ::llvm::Value* window_ptr,
                              ::llvm::Value** output) = 0;
     virtual bool BuildGetCol(const std::string& name, ::llvm::Value* window_ptr,
@@ -56,7 +60,10 @@ class MemoryWindowDecodeIRBuilder : public WindowDecodeIRBuilder {
         ::llvm::BasicBlock* block);
 
     ~MemoryWindowDecodeIRBuilder();
-
+    virtual bool BuildInnerRangeList(::llvm::Value* window_ptr, int64_t start,
+                                     int64_t end, ::llvm::Value** output);
+    virtual bool BuildInnerRowsList(::llvm::Value* window_ptr, int64_t start,
+                                     int64_t end, ::llvm::Value** output);
     virtual bool BuildGetCol(const std::string& name, ::llvm::Value* window_ptr,
                              ::llvm::Value** output);
     virtual bool BuildGetCol(const std::string& name, ::llvm::Value* window_ptr,

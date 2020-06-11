@@ -271,7 +271,11 @@ class InnerRowsIterator : public ConstIterator<uint64_t, V> {
           root_(list->GetIterator()),
           pos_(0),
           start_(start),
-          end_(end) {}
+          end_(end) {
+        if (nullptr != root_) {
+            SeekToFirst();
+        }
+    }
     ~InnerRowsIterator() {}
     virtual bool Valid() const {
         return root_->Valid() && pos_ <= end_ && pos_ >= start_;
@@ -349,7 +353,7 @@ class InnerRangeList : public ListV<V> {
         } else {
             return new (addr) InnerRangeIterator<V>(root_, start_, end_);
         }
-    };
+    }
 
     ListV<Row> *root_;
     uint64_t start_;
@@ -373,7 +377,7 @@ class InnerRowsList : public ListV<V> {
         } else {
             return new (addr) InnerRowsIterator<V>(root_, start_, end_);
         }
-    };
+    }
 
     ListV<Row> *root_;
     uint64_t start_;

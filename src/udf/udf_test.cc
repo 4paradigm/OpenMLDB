@@ -425,6 +425,7 @@ TEST_F(UDFTest, GetWindowColRangeTest) {
     vm::CurrentHistoryWindow table(-36000000);
     std::string schema = "col1:int,col2:timestamp";
     std::string data =
+        "0, 1590115410000\n"
         "1, 1590115420000\n"
         "2, 1590115430000\n"
         "3, 1590115440000\n"
@@ -445,30 +446,94 @@ TEST_F(UDFTest, GetWindowColRangeTest) {
         table.BufferData(row_view.GetTimestampUnsafe(1), row);
     }
 
-    codec::InnerRangeList<Row> inner_window(&table, 1590115500000,
-                                            1590115500000 - 20000);
+    const uint32_t inner_list_size = sizeof(codec::InnerRangeList<Row>);
+    int8_t* inner_list_buf = reinterpret_cast<int8_t*>(alloca(inner_list_size));
+    ASSERT_EQ(0, ::fesql::codec::v1::GetInnerRangeList(
+                     reinterpret_cast<int8_t*>(&table), -20000, -50000,
+                     inner_list_buf));
     int32_t offset = row_view.GetPrimaryFieldOffset(0);
     fesql::type::Type type = fesql::type::kInt32;
     const uint32_t size = sizeof(ColumnImpl<int32_t>);
     int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
     for (int i = 0; i < 100000; ++i) {
-        ASSERT_EQ(0, ::fesql::codec::v1::GetCol(
-                         reinterpret_cast<int8_t*>(&inner_window), 0, offset,
-                         type, buf));
+        ASSERT_EQ(0, ::fesql::codec::v1::GetCol(inner_list_buf, 0, offset, type,
+                                                buf));
         ::fesql::codec::ColumnImpl<int32_t>* col =
             reinterpret_cast<::fesql::codec::ColumnImpl<int32_t>*>(buf);
         auto col_iterator = col->GetIterator();
+        col_iterator->SeekToFirst();
         ASSERT_TRUE(col_iterator->Valid());
-        ASSERT_EQ(9, col_iterator->GetValue());
-        col_iterator->Next();
-        ASSERT_TRUE(col_iterator->Valid());
-        ASSERT_EQ(8, col_iterator->GetValue());
-        col_iterator->Next();
         ASSERT_EQ(7, col_iterator->GetValue());
+        col_iterator->Next();
+        ASSERT_TRUE(col_iterator->Valid());
+        ASSERT_EQ(6, col_iterator->GetValue());
+        col_iterator->Next();
+        ASSERT_EQ(5, col_iterator->GetValue());
+        col_iterator->Next();
+        ASSERT_EQ(4, col_iterator->GetValue());
         col_iterator->Next();
         ASSERT_FALSE(col_iterator->Valid());
     }
 }
+
+TEST_F(UDFTest, GetWindowColRowsTest) {
+    // w[0:20s]
+    vm::CurrentHistoryWindow table(-36000000);
+    std::string schema = "col1:int,col2:timestamp";
+    std::string data =
+        "0, 1590115410000\n"
+        "1, 1590115420000\n"
+        "2, 1590115430000\n"
+        "3, 1590115440000\n"
+        "4, 1590115450000\n"
+        "5, 1590115460000\n"
+        "6, 1590115470000\n"
+        "7, 1590115480000\n"
+        "8, 1590115490000\n"
+        "9, 1590115500000";
+    type::TableDef table_def;
+    std::vector<Row> rows;
+    ASSERT_TRUE(fesql::sqlcase::SQLCase::ExtractSchema(schema, table_def));
+    ASSERT_TRUE(
+        fesql::sqlcase::SQLCase::ExtractRows(table_def.columns(), data, rows));
+    codec::RowView row_view(table_def.columns());
+    for (auto row : rows) {
+        row_view.Reset(row.buf());
+        table.BufferData(row_view.GetTimestampUnsafe(1), row);
+    }
+
+    const uint32_t inner_list_size = sizeof(codec::InnerRowsList<Row>);
+    int8_t* inner_list_buf = reinterpret_cast<int8_t*>(alloca(inner_list_size));
+    ASSERT_EQ(0, ::fesql::codec::v1::GetInnerRowsList(
+                     reinterpret_cast<int8_t*>(&table), 3, 8, inner_list_buf));
+    int32_t offset = row_view.GetPrimaryFieldOffset(0);
+    fesql::type::Type type = fesql::type::kInt32;
+    const uint32_t size = sizeof(ColumnImpl<int32_t>);
+    int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
+    for (int i = 0; i < 100000; ++i) {
+        ASSERT_EQ(0, ::fesql::codec::v1::GetCol(inner_list_buf, 0, offset, type,
+                                                buf));
+        ::fesql::codec::ColumnImpl<int32_t>* col =
+            reinterpret_cast<::fesql::codec::ColumnImpl<int32_t>*>(buf);
+        auto col_iterator = col->GetIterator();
+        ASSERT_TRUE(col_iterator->Valid());
+        ASSERT_EQ(6, col_iterator->GetValue());
+        col_iterator->Next();
+        ASSERT_TRUE(col_iterator->Valid());
+        ASSERT_EQ(5, col_iterator->GetValue());
+        col_iterator->Next();
+        ASSERT_EQ(4, col_iterator->GetValue());
+        col_iterator->Next();
+        ASSERT_EQ(3, col_iterator->GetValue());
+        col_iterator->Next();
+        ASSERT_EQ(2, col_iterator->GetValue());
+        col_iterator->Next();
+        ASSERT_EQ(1, col_iterator->GetValue());
+        col_iterator->Next();
+        ASSERT_FALSE(col_iterator->Valid());
+    }
+}
+
 TEST_F(UDFTest, GetWindowColTest) {
     vm::CurrentHistoryWindow table(-2);
     uint64_t ts = 1000;

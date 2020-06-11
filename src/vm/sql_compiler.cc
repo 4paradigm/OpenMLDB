@@ -88,6 +88,13 @@ void InitCodecSymbol(::llvm::orc::JITDylib& jd,             // NOLINT
         jd, mi, "fesql_storage_get_str_col",
         reinterpret_cast<void*>(&codec::v1::GetStrCol));
 
+    fesql::vm::FeSQLJIT::AddSymbol(
+        jd, mi, "fesql_storage_get_inner_range_list",
+        reinterpret_cast<void*>(&codec::v1::GetInnerRangeList));
+    fesql::vm::FeSQLJIT::AddSymbol(
+        jd, mi, "fesql_storage_get_inner_rows_list",
+        reinterpret_cast<void*>(&codec::v1::GetInnerRowsList));
+
     // encode
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_encode_int16_field",
