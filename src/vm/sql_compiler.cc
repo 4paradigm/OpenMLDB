@@ -48,36 +48,36 @@ void InitCodecSymbol(::llvm::orc::JITDylib& jd,             // NOLINT
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_get_int16_field",
         reinterpret_cast<void*>(
-            static_cast<int16_t (*)(
+            static_cast<int16_t(*)(
                 const int8_t*, uint32_t, uint32_t, int8_t*)>(
                 &codec::v1::GetInt16Field)));
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_get_int32_field",
         reinterpret_cast<void*>(
-            static_cast<int32_t (*)(
+            static_cast<int32_t(*)(
                 const int8_t*, uint32_t, uint32_t, int8_t*)>(
                 &codec::v1::GetInt32Field)));
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_get_int64_field",
         reinterpret_cast<void*>(
-            static_cast<int64_t (*)(
+            static_cast<int64_t(*)(
                 const int8_t*, uint32_t, uint32_t, int8_t*)>(
                 &codec::v1::GetInt64Field)));
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_get_float_field",
-        reinterpret_cast<void*>(static_cast<float (*)(
+        reinterpret_cast<void*>(static_cast<float(*)(
             const int8_t*, uint32_t, uint32_t, int8_t*)>(
             &codec::v1::GetFloatField)));
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_get_double_field",
         reinterpret_cast<void*>(
-            static_cast<double (*)(
+            static_cast<double(*)(
                 const int8_t*, uint32_t, uint32_t, int8_t*)>(
                 &codec::v1::GetDoubleField)));
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_get_timestamp_field",
         reinterpret_cast<void*>(
-            static_cast<codec::Timestamp (*)(
+            static_cast<codec::Timestamp(*)(
                 const int8_t*, uint32_t, uint32_t, int8_t*)>(
                 &codec::v1::GetTimestampField)));
 
@@ -87,7 +87,7 @@ void InitCodecSymbol(::llvm::orc::JITDylib& jd,             // NOLINT
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_get_str_field",
         reinterpret_cast<void*>(
-            static_cast<int32_t (*)(
+            static_cast<int32_t(*)(
                 const int8_t*, uint32_t, uint32_t, uint32_t, uint32_t,
                       uint32_t, int8_t**, uint32_t*, int8_t*)>(
                 &codec::v1::GetStrField)));

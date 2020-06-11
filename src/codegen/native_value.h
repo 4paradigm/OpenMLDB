@@ -10,6 +10,8 @@
 #ifndef SRC_CODEGEN_NATIVE_VALUE_H_
 #define SRC_CODEGEN_NATIVE_VALUE_H_
 
+#include <string>
+
 #include "llvm/IR/Module.h"
 #include "llvm/IR/IRBuilder.h"
 #include "glog/logging.h"
@@ -49,7 +51,7 @@ class NativeValue {
 
     static NativeValue CreateWithFlag(
         ::llvm::Value*, ::llvm::Value*);
-    
+
     static NativeValue CreateMemWithFlag(
         ::llvm::Value*, ::llvm::Value*);
 
@@ -59,7 +61,7 @@ class NativeValue {
         raw_(nullptr), flag_(nullptr), type_(nullptr) {}
 
  private:
-    NativeValue(::llvm::Value* raw, ::llvm::Value* flag, 
+    NativeValue(::llvm::Value* raw, ::llvm::Value* flag,
                 ::llvm::Type* type);
 
     ::llvm::Value* raw_;

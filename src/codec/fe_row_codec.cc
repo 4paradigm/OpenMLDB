@@ -120,7 +120,7 @@ bool RowBuilder::Check(::fesql::type::Type type) {
     return true;
 }
 
-void FillNullStringOffset(int8_t* buf, uint32_t start, uint32_t addr_length, 
+void FillNullStringOffset(int8_t* buf, uint32_t start, uint32_t addr_length,
                           uint32_t str_idx, uint32_t str_offset) {
     auto ptr = buf + start + addr_length * str_idx;
     if (addr_length == 1) {
@@ -606,20 +606,25 @@ int32_t RowView::GetValue(const int8_t* row, uint32_t idx,
             break;
         }
         case ::fesql::type::kInt16:
-            *(reinterpret_cast<int16_t*>(val)) = v1::GetInt16FieldUnsafe(row, offset);
+            *(reinterpret_cast<int16_t*>(val)) =
+                v1::GetInt16FieldUnsafe(row, offset);
             break;
         case ::fesql::type::kInt32:
-            *(reinterpret_cast<int32_t*>(val)) = v1::GetInt32FieldUnsafe(row, offset);
+            *(reinterpret_cast<int32_t*>(val)) =
+                v1::GetInt32FieldUnsafe(row, offset);
             break;
         case ::fesql::type::kTimestamp:
         case ::fesql::type::kInt64:
-            *(reinterpret_cast<int64_t*>(val)) = v1::GetInt64FieldUnsafe(row, offset);
+            *(reinterpret_cast<int64_t*>(val)) =
+                v1::GetInt64FieldUnsafe(row, offset);
             break;
         case ::fesql::type::kFloat:
-            *(reinterpret_cast<float*>(val)) = v1::GetFloatFieldUnsafe(row, offset);
+            *(reinterpret_cast<float*>(val)) =
+                v1::GetFloatFieldUnsafe(row, offset);
             break;
         case ::fesql::type::kDouble:
-            *(reinterpret_cast<double*>(val)) = v1::GetDoubleFieldUnsafe(row, offset);
+            *(reinterpret_cast<double*>(val)) =
+                v1::GetDoubleFieldUnsafe(row, offset);
             break;
         default:
             return -1;
@@ -749,8 +754,8 @@ int32_t RowView::GetValue(const int8_t* row, uint32_t idx, char** val,
     const ::fesql::type::ColumnDef& column = schema_.Get(idx);
     if (column.type() != ::fesql::type::kVarchar) {
         LOG(WARNING) << "type mismatch required is "
-                     << ::fesql::type::Type_Name(::fesql::type::kVarchar)
-                     << " but is " << fesql::type::Type_Name(column.type());
+            << ::fesql::type::Type_Name(::fesql::type::kVarchar)
+            << " but is " << fesql::type::Type_Name(column.type());
         return false;
     }
     uint32_t size = GetSize(row);
@@ -864,7 +869,7 @@ bool RowDecoder::ResolveStringCol(const std::string& name, StringColInfo* res) {
     }
     DLOG(INFO) << "get string with offset " << offset << " next offset "
                << next_offset << " for col " << name;
-    *res = StringColInfo(name, ty, col_idx, offset, 
+    *res = StringColInfo(name, ty, col_idx, offset,
         next_offset, str_field_start_offset_);
     return true;
 }

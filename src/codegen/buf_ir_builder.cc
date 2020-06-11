@@ -61,12 +61,12 @@ bool BufNativeIRBuilder::BuildGetField(const std::string& name,
         case ::fesql::node::kInt16: {
             llvm::Type* i16_ty = builder.getInt16Ty();
             return BuildGetPrimaryField("fesql_storage_get_int16_field",
-                                        row_ptr, col_idx, offset, i16_ty, output);
+                row_ptr, col_idx, offset, i16_ty, output);
         }
         case ::fesql::node::kInt32: {
             llvm::Type* i32_ty = builder.getInt32Ty();
             return BuildGetPrimaryField("fesql_storage_get_int32_field",
-                                        row_ptr, col_idx, offset, i32_ty, output);
+                row_ptr, col_idx, offset, i32_ty, output);
         }
         case ::fesql::node::kTimestamp: {
             llvm::Type* ts_type;
@@ -75,7 +75,7 @@ bool BufNativeIRBuilder::BuildGetField(const std::string& name,
             }
             NativeValue int64_val;
             if (!BuildGetPrimaryField("fesql_storage_get_int64_field", row_ptr,
-                                      col_idx, offset, builder.getInt64Ty(), &int64_val)) {
+                    col_idx, offset, builder.getInt64Ty(), &int64_val)) {
                 return false;
             }
             codegen::TimestampIRBuilder timestamp_builder(block_->getModule());
@@ -94,7 +94,7 @@ bool BufNativeIRBuilder::BuildGetField(const std::string& name,
             }
             NativeValue int32_val;
             if (!BuildGetPrimaryField("fesql_storage_get_int32_field", row_ptr,
-                                      col_idx, offset, builder.getInt32Ty(), &int32_val)) {
+                    col_idx, offset, builder.getInt32Ty(), &int32_val)) {
                 return false;
             }
             codegen::DateIRBuilder date_ir_builder(block_->getModule());
@@ -109,17 +109,17 @@ bool BufNativeIRBuilder::BuildGetField(const std::string& name,
         case ::fesql::node::kInt64: {
             llvm::Type* i64_ty = builder.getInt64Ty();
             return BuildGetPrimaryField("fesql_storage_get_int64_field",
-                                        row_ptr, col_idx, offset, i64_ty, output);
+                row_ptr, col_idx, offset, i64_ty, output);
         }
         case ::fesql::node::kFloat: {
             llvm::Type* float_ty = builder.getFloatTy();
             return BuildGetPrimaryField("fesql_storage_get_float_field",
-                                        row_ptr, col_idx, offset, float_ty, output);
+                row_ptr, col_idx, offset, float_ty, output);
         }
         case ::fesql::node::kDouble: {
             llvm::Type* double_ty = builder.getDoubleTy();
             return BuildGetPrimaryField("fesql_storage_get_double_field",
-                                        row_ptr, col_idx, offset, double_ty, output);
+                row_ptr, col_idx, offset, double_ty, output);
         }
         case ::fesql::node::kVarchar: {
             codec::StringColInfo str_info;
@@ -217,8 +217,10 @@ bool BufNativeIRBuilder::BuildGetStringField(
 
     // get str field declear
     ::llvm::FunctionCallee callee = block_->getModule()->getOrInsertFunction(
-        "fesql_storage_get_str_field", i32_ty, i8_ptr_ty, i32_ty, i32_ty, i32_ty,
-        i32_ty, i32_ty, i8_ptr_ty->getPointerTo(), i32_ty->getPointerTo(), bool_ptr_ty);
+        "fesql_storage_get_str_field", i32_ty,
+        i8_ptr_ty, i32_ty, i32_ty, i32_ty,
+        i32_ty, i32_ty, i8_ptr_ty->getPointerTo(),
+        i32_ty->getPointerTo(), bool_ptr_ty);
 
     ::llvm::Value* str_offset = builder.getInt32(offset);
     ::llvm::Value* val_col_idx = builder.getInt32(col_idx);
@@ -292,9 +294,8 @@ BufNativeEncoderIRBuilder::BufNativeEncoderIRBuilder(
 
 BufNativeEncoderIRBuilder::~BufNativeEncoderIRBuilder() {}
 
-bool BufNativeEncoderIRBuilder::BuildEncodePrimaryField(::llvm::Value* i8_ptr,
-                                                        size_t idx,
-                                                        const NativeValue& val) {
+bool BufNativeEncoderIRBuilder::BuildEncodePrimaryField(
+    ::llvm::Value* i8_ptr, size_t idx, const NativeValue& val) {
     uint32_t offset = offset_vec_.at(idx);
     return AppendPrimary(i8_ptr, val, idx, offset);
 }
@@ -363,7 +364,8 @@ bool BufNativeEncoderIRBuilder::BuildEncode(::llvm::Value* output_ptr) {
                 } else if (codegen::TypeIRBuilder::IsTimestampPtr(
                         val.GetType())) {
                     ::llvm::Value* ts;
-                    timestamp_builder.GetTs(block_, val.GetValue(&builder), &ts);
+                    timestamp_builder.GetTs(block_,
+                        val.GetValue(&builder), &ts);
                     ok = AppendPrimary(i8_ptr, val.Replace(ts), idx, offset);
                     if (!ok) {
                         LOG(WARNING)
@@ -402,8 +404,9 @@ bool BufNativeEncoderIRBuilder::BuildEncode(::llvm::Value* output_ptr) {
                 }
                 uint32_t field_cnt = offset_vec_.at(idx);
                 ::llvm::Value* temp_body_size = NULL;
-                ok = AppendString(i8_ptr, row_size, idx, val, str_addr_space_val,
-                                  str_body_offset, field_cnt, &temp_body_size);
+                ok = AppendString(
+                    i8_ptr, row_size, idx, val, str_addr_space_val,
+                    str_body_offset, field_cnt, &temp_body_size);
                 if (!ok) {
                     LOG(WARNING) << "fail to append string for output col "
                                  << column.name();
@@ -423,7 +426,7 @@ bool BufNativeEncoderIRBuilder::BuildEncode(::llvm::Value* output_ptr) {
 }
 
 bool BufNativeEncoderIRBuilder::AppendString(
-    ::llvm::Value* i8_ptr, ::llvm::Value* buf_size, 
+    ::llvm::Value* i8_ptr, ::llvm::Value* buf_size,
     uint32_t field_idx, const NativeValue& str_val,
     ::llvm::Value* str_addr_space, ::llvm::Value* str_body_offset,
     uint32_t str_field_idx, ::llvm::Value** output) {
@@ -448,7 +451,8 @@ bool BufNativeEncoderIRBuilder::AppendString(
 
     // get fe.string char*
     ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
-    ::llvm::Value* data_ptr_ptr = builder.CreateStructGEP(str_ty, raw_str_st, 1);
+    ::llvm::Value* data_ptr_ptr = builder.CreateStructGEP(
+        str_ty, raw_str_st, 1);
     data_ptr_ptr =
         builder.CreatePointerCast(data_ptr_ptr, i8_ptr_ty->getPointerTo());
     ::llvm::Value* data_ptr =
@@ -476,7 +480,7 @@ bool BufNativeEncoderIRBuilder::AppendString(
             data_ptr, fe_str_size, is_null,
             builder.getInt32(str_field_start_offset_),
             builder.getInt32(str_field_idx),
-            str_addr_space, str_body_offset, 
+            str_addr_space, str_body_offset,
             builder.getInt32(str_field_cnt_)});
     return true;
 }
@@ -513,7 +517,7 @@ bool BufNativeEncoderIRBuilder::AppendPrimary(::llvm::Value* i8_ptr,
             {i8_ptr, builder.getInt32(field_idx),
             val.GetFlag(&builder)});
     }
-    return BuildStoreOffset(builder, i8_ptr, offset, 
+    return BuildStoreOffset(builder, i8_ptr, offset,
         val.GetValue(&builder));
 }
 
@@ -597,8 +601,8 @@ bool BufNativeEncoderIRBuilder::CalcTotalSize(::llvm::Value** output_ptr,
 
             ::llvm::Value* fe_str_size =
                 builder.CreateLoad(size_ty, size_i32_ptr, "load_str_length");
-            //fe_str_size = builder.CreateSelect(
-            //    fe_str.GetFlag(&builder), builder.getInt32(0), fe_str_size);
+            fe_str_size = builder.CreateSelect(
+                fe_str.GetFlag(&builder), builder.getInt32(0), fe_str_size);
 
             if (total_size == NULL) {
                 total_size = fe_str_size;

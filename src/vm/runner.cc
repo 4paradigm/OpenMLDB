@@ -114,7 +114,7 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                         op->GetLimitCnt(), op->window_, op->project_,
                         op->instance_not_in_window());
                     runner->AddProducer(input);
-                    size_t input_slices = 
+                    size_t input_slices =
                         input->output_schemas().GetSchemaSourceListSize();
 
                     if (!op->window_joins_.Empty()) {
@@ -1065,7 +1065,7 @@ bool JoinGenerator::TableJoin(std::shared_ptr<TableHandler> left,
     while (left_iter->Valid()) {
         const Row& left_row = left_iter->GetValue();
         output->AddRow(Runner::RowLastJoinTable(
-            left_slices_, left_row, 
+            left_slices_, left_row,
             right_slices_, right,
             right_sort_gen_, condition_gen_));
         left_iter->Next();
@@ -1125,7 +1125,7 @@ bool JoinGenerator::PartitionJoin(std::shared_ptr<PartitionHandler> left,
             output->AddRow(
                 key_str, left_iter->GetKey(),
                 Runner::RowLastJoinTable(
-                    left_slices_, left_row, 
+                    left_slices_, left_row,
                     right_slices_, right,
                     right_sort_gen_, condition_gen_));
             left_iter->Next();
@@ -1203,7 +1203,8 @@ const Row Runner::RowLastJoinTable(size_t left_slices,
         return Row(left_slices, left_row, right_slices, right_iter->GetValue());
     }
     while (right_iter->Valid()) {
-        Row joined_row(left_slices, left_row, right_slices, right_iter->GetValue());
+        Row joined_row(left_slices, left_row,
+            right_slices, right_iter->GetValue());
         if (cond_gen.Gen(joined_row)) {
             return joined_row;
         }
@@ -1405,18 +1406,19 @@ std::shared_ptr<DataHandler> ConcatRunner::Run(RunnerContext& ctx) {
         auto left_row = std::dynamic_pointer_cast<RowHandler>(left)->GetValue();
         auto right_row =
             std::dynamic_pointer_cast<RowHandler>(right)->GetValue();
-        return std::shared_ptr<RowHandler>(
-            new MemRowHandler(Row(left_slices, left_row, right_slices, right_row)));
+        return std::shared_ptr<RowHandler>(new MemRowHandler(
+            Row(left_slices, left_row, right_slices, right_row)));
     } else if (kTableHandler == right->GetHanlderType()) {
         auto left_row = std::dynamic_pointer_cast<RowHandler>(left)->GetValue();
         auto right_table = std::dynamic_pointer_cast<TableHandler>(right);
         auto right_iter = right_table->GetIterator();
         if (!right_iter) {
-            return std::shared_ptr<RowHandler>(
-                new MemRowHandler(Row(left_slices, left_row, right_slices, Row())));
+            return std::shared_ptr<RowHandler>(new MemRowHandler(
+                Row(left_slices, left_row, right_slices, Row())));
         }
         return std::shared_ptr<RowHandler>(
-            new MemRowHandler(Row(left_slices, left_row, right_slices, right_iter->GetValue())));
+            new MemRowHandler(Row(left_slices, left_row,
+                right_slices, right_iter->GetValue())));
     } else {
         return std::shared_ptr<DataHandler>();
     }

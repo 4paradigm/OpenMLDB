@@ -65,8 +65,10 @@ inline uint32_t GetStartOffset(int32_t column_count) {
     return HEADER_LENGTH + BitMapSize(column_count);
 }
 
-void FillNullStringOffset(int8_t* buf, uint32_t start, uint32_t addr_length, 
-                          uint32_t str_idx, uint32_t str_offset);
+void FillNullStringOffset(int8_t* buf, uint32_t start,
+                          uint32_t addr_length,
+                          uint32_t str_idx,
+                          uint32_t str_offset);
 
 class RowBuilder {
  public:
@@ -158,7 +160,8 @@ class RowIOBufView : public RowBaseView {
 
 class RowView {
  public:
-    RowView(const fesql::codec::Schema& schema, const int8_t* row, uint32_t size);
+    RowView(const fesql::codec::Schema& schema,
+            const int8_t* row, uint32_t size);
     explicit RowView(const fesql::codec::Schema& schema);
     ~RowView() = default;
     bool Reset(const int8_t* row, uint32_t size);

@@ -605,10 +605,10 @@ TEST_F(CodecTest, RowDecoderOffsetTest) {
         codec::ColInfo info;
         decoder.ResolveColumn("col6", &info);
         ASSERT_EQ(::fesql::type::kVarchar, info.type);
-        
+
         codec::StringColInfo str_info;
         decoder.ResolveStringCol("col6", &str_info);
-        LOG(INFO) << "offset: " << str_info.offset 
+        LOG(INFO) << "offset: " << str_info.offset
                   << " next_offset: " << str_info.str_next_offset
                   << " str_start_offset " << str_info.str_start_offset;
         ASSERT_EQ(0u, str_info.offset);
@@ -622,7 +622,7 @@ TEST_F(CodecTest, RowDecoderOffsetTest) {
 
         codec::StringColInfo str_info;
         decoder.ResolveStringCol("col7", &str_info);
-        LOG(INFO) << "offset: "<< str_info.offset 
+        LOG(INFO) << "offset: "<< str_info.offset
                   << " next_offset: " << str_info.str_next_offset
                   << " str_start_offset " << str_info.str_start_offset;
         ASSERT_EQ(1u, str_info.offset);

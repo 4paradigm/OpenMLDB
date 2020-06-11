@@ -170,7 +170,7 @@ bool BlockIRBuilder::BuildIfElseBlock(
 
             fesql::node::FnElifBlock *elif_block =
                 dynamic_cast<fesql::node::FnElifBlock *>(node);
-            
+
             NativeValue cond_wrapper;
             ExprIRBuilder expr_builder(builder.GetInsertBlock(), sv_);
             if (!expr_builder.Build(elif_block->elif_node_->expression_,

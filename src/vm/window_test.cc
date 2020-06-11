@@ -224,7 +224,8 @@ TEST_F(WindowIteratorTest, MemGetColTest) {
     const uint32_t size = sizeof(ColumnImpl<int32_t>);
     int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
     ASSERT_EQ(
-        0, GetCol(reinterpret_cast<int8_t*>(&table), 0, 0, 2, type::kInt32, buf));
+        0, GetCol(reinterpret_cast<int8_t*>(&table),
+            0, 0, 2, type::kInt32, buf));
 
     ListV<Row>* list = reinterpret_cast<ListV<Row>*>(&table);
     new (buf) ColumnImpl<int32_t>(list, 0, 0, 2);

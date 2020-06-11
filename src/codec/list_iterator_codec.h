@@ -71,7 +71,8 @@ class WrapListImpl : public ListV<V> {
 template <class V>
 class ColumnImpl : public WrapListImpl<V, Row> {
  public:
-    ColumnImpl(ListV<Row> *impl, int32_t row_idx, uint32_t col_idx, uint32_t offset)
+    ColumnImpl(ListV<Row> *impl, int32_t row_idx,
+               uint32_t col_idx, uint32_t offset)
         : WrapListImpl<V, Row>(),
           root_(impl),
           row_idx_(row_idx),
@@ -140,23 +141,27 @@ class StringColumnImpl : public ColumnImpl<StringRef> {
         int32_t addr_space = v1::GetAddrSpace(row.size(row_idx_));
         StringRef value;
         v1::GetStrFieldUnsafe(row.buf(row_idx_), str_field_offset_,
-                              next_str_field_offset_, str_start_offset_, addr_space,
+                              next_str_field_offset_,
+                              str_start_offset_, addr_space,
                               reinterpret_cast<int8_t **>(&(value.data_)),
                               &(value.size_));
         return value;
     }
 
-    void GetField(const Row& row, StringRef* res, int8_t* is_null) const override {
+    void GetField(const Row& row,
+                  StringRef* res,
+                  int8_t* is_null) const override {
         const int8_t* buf = row.buf(row_idx_);
         if (buf == nullptr || v1::IsNullAt(buf, col_idx_)) {
             *is_null = true;
         } else {
             int32_t addr_space = v1::GetAddrSpace(row.size(row_idx_));
             StringRef value;
-            v1::GetStrFieldUnsafe(buf, str_field_offset_,
-                                  next_str_field_offset_, str_start_offset_, addr_space,
-                                  reinterpret_cast<int8_t **>(&(value.data_)),
-                                  &(value.size_));
+            v1::GetStrFieldUnsafe(
+                buf, str_field_offset_,
+                next_str_field_offset_, str_start_offset_, addr_space,
+                reinterpret_cast<int8_t **>(&(value.data_)),
+                 &(value.size_));
             *res = value;
         }
     }

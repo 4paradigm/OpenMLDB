@@ -432,8 +432,10 @@ inline double GetDoubleField(const int8_t* row, uint32_t idx,
 
 // native get string field method
 int32_t GetStrFieldUnsafe(const int8_t* row, uint32_t str_field_offset,
-                          uint32_t next_str_field_offset, uint32_t str_start_offset,
-                          uint32_t addr_space, int8_t** data, uint32_t* size);
+                          uint32_t next_str_field_offset,
+                          uint32_t str_start_offset,
+                          uint32_t addr_space,
+                          int8_t** data, uint32_t* size);
 
 int32_t GetStrField(const int8_t* row, uint32_t idx,
                     uint32_t str_field_offset,
@@ -449,7 +451,7 @@ int32_t GetCol(int8_t* input, int32_t row_idx,
                uint32_t col_idx, int32_t offset, int32_t type_id,
                int8_t* data);
 
-int32_t GetStrCol(int8_t* input, int32_t row_idx, 
+int32_t GetStrCol(int8_t* input, int32_t row_idx,
                   uint32_t col_idx, int32_t str_field_offset,
                   int32_t next_str_field_offset, int32_t str_start_offset,
                   int32_t type_id, int8_t* data);

@@ -82,7 +82,7 @@ bool MemoryWindowDecodeIRBuilder::BuildGetCol(const std::string& name,
             DLOG(INFO) << "get string with offset " << str_col_info.offset
                        << " next offset " << str_col_info.str_next_offset
                        << " for col " << name;
-            return BuildGetStringCol(row_idx, 
+            return BuildGetStringCol(row_idx,
                                      str_col_info.idx,
                                      str_col_info.offset,
                                      str_col_info.str_next_offset,
@@ -148,17 +148,17 @@ bool MemoryWindowDecodeIRBuilder::BuildGetPrimaryCol(
         builder.getInt32(static_cast<int32_t>(schema_type));
     ::llvm::FunctionCallee callee = block_->getModule()->getOrInsertFunction(
         fn_name, i32_ty, i8_ptr_ty, i32_ty, i32_ty, i32_ty, i32_ty, i8_ptr_ty);
-    builder.CreateCall(callee, 
-        {row_ptr, val_row_idx, val_col_idx, 
+    builder.CreateCall(callee,
+        {row_ptr, val_row_idx, val_col_idx,
          val_offset, val_type_id, col_iter});
     *output = list_ref;
     return true;
 }
 
 bool MemoryWindowDecodeIRBuilder::BuildGetStringCol(
-    uint32_t row_idx, uint32_t col_idx, uint32_t offset, 
+    uint32_t row_idx, uint32_t col_idx, uint32_t offset,
     uint32_t next_str_field_offset,
-    uint32_t str_start_offset, 
+    uint32_t str_start_offset,
     const fesql::node::DataType& type,
     ::llvm::Value* window_ptr, ::llvm::Value** output) {
     if (window_ptr == NULL || output == NULL) {
@@ -214,7 +214,7 @@ bool MemoryWindowDecodeIRBuilder::BuildGetStringCol(
     ::llvm::Value* val_type_id =
         builder.getInt32(static_cast<int32_t>(schema_type));
     builder.CreateCall(callee,
-        {window_ptr, val_row_idx, val_col_idx, 
+        {window_ptr, val_row_idx, val_col_idx,
          str_offset, next_str_offset,
          builder.getInt32(str_start_offset),
          val_type_id, col_iter});

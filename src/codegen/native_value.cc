@@ -129,7 +129,8 @@ NativeValue NativeValue::Replace(::llvm::Value* val) const {
     }
 }
 
-NativeValue::NativeValue(::llvm::Value* raw, ::llvm::Value* flag, 
+NativeValue::NativeValue(::llvm::Value* raw,
+                         ::llvm::Value* flag,
                          ::llvm::Type* type):
     raw_(raw), flag_(flag), type_(type) {}
 

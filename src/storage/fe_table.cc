@@ -124,7 +124,8 @@ bool Table::Put(const char* row, uint32_t size) {
         } else {
             if (kv.second.keys[0].first == ::fesql::type::kVarchar) {
                 row_view_.GetValue(reinterpret_cast<const int8_t*>(row),
-                                   kv.second.keys[0].second, &spk_buf, &spk_size);
+                                   kv.second.keys[0].second,
+                                   &spk_buf, &spk_size);
             } else {
                 int64_t value = 0;
                 row_view_.GetInteger(reinterpret_cast<const int8_t*>(row),

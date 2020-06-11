@@ -128,7 +128,7 @@ bool fesql::codegen::VariableIRBuilder::StoreColumnItem(
     const std::string& relation_name, const std::string& name,
     const NativeValue& value, fesql::base::Status& status) {
     ::llvm::IRBuilder<> builder(block_);
-    return StoreValue("item." + relation_name + "." + name, 
+    return StoreValue("item." + relation_name + "." + name,
         value.GetValue(&builder), status);
 }
 bool fesql::codegen::VariableIRBuilder::LoadArrayIndex(

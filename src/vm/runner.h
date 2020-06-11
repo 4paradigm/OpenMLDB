@@ -447,7 +447,7 @@ class RequestWindowUnionGenerator : public InputsGenerator {
 };
 class JoinGenerator {
  public:
-    explicit JoinGenerator(const Join& join, 
+    explicit JoinGenerator(const Join& join,
                            size_t left_slices,
                            size_t right_slices)
         : condition_gen_(join.filter_.fn_info_),
@@ -494,7 +494,7 @@ class WindowJoinGenerator : public InputsGenerator {
  public:
     WindowJoinGenerator() : InputsGenerator() {}
     virtual ~WindowJoinGenerator() {}
-    void AddWindowJoin(const Join& join, 
+    void AddWindowJoin(const Join& join,
                        size_t left_slices,
                        Runner* runner) {
         size_t right_slices =
