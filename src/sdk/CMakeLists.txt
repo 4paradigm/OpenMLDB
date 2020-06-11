@@ -168,7 +168,6 @@ add_custom_command(OUTPUT
 
 add_custom_target(java_package ALL
   DEPENDS
-    ${java_libs}
     cp_java_native_so
     COMMAND ${MAVEN_EXECUTABLE} package -DskipTests=true -Dscalatest.skip=true
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/java
