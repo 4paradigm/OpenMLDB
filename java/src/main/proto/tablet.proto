@@ -178,10 +178,6 @@ message TSDimension {
     optional uint32 idx = 2;
 }
 
-message WriteOption {
-    optional bool update_if_exist = 1 [default = false];
-}
-
 message PutRequest {
     // the prefix key
     // abandoned
@@ -721,6 +717,10 @@ message ReadOption {
     repeated Columns read_filter = 2;
     repeated string col_set = 3;
     optional uint32 limit = 4;
+}
+
+message WriteOption {
+    optional bool update_if_exist = 1 [default = false];
 }
 
 message BatchQueryRequest {
