@@ -5,6 +5,7 @@
 
 #include "storage/object_store.h"
 
+#include <mutex>
 #include <utility>
 
 #include "codec/codec.h"

@@ -1,6 +1,6 @@
 include_directories(${INCLUDE_DIRECTORIES} ${PROJECT_SOURCE_DIR}/src)
 
-set(BIN_LIBS client nameserver tablet client blobserver blob_proxy zk_client replica  base beans storage log common rocksdb zookeeper_mt tcmalloc_minimal
+set(BIN_LIBS client nameserver tablet client blobserver blob_proxy zk_client replica  base beans storage codec log common rocksdb zookeeper_mt tcmalloc_minimal
     ${VM_LIBS}
     ${LLVM_LIBS}
     ${BRPC_LIBS})
@@ -11,6 +11,7 @@ add_library(nameserver STATIC proto/name_server.pb.cc nameserver/name_server_imp
 add_library(beans storage/beans/bitcask.c storage/beans/clock_gettime_stub.c storage/beans/codec.c storage/beans/common.c storage/beans/crc32.c storage/beans/diskmgr.c storage/beans/hint.c storage/beans/hstore.c storage/beans/htree.c storage/beans/mfile.c storage/beans/quicklz.c storage/beans/record.c)
 add_library(storage STATIC storage/object_store.cc storage/mem_table.cc storage/disk_table.cc storage/relational_table.cc storage/segment.cc storage/ticket.cc storage/mem_table_snapshot.cc storage/disk_table_snapshot.cc storage/snapshot.cc storage/table.cc storage/binlog.cc codec/codec.cc storage/schema.cc)
 add_library(client STATIC client/tablet_client.cc client/ns_client.cc client/bs_client.cc)
+add_library(codec STATIC codec/sdk_codec.cc codec/codec.cc)
 add_library(log STATIC log/crc32c.cc 
                        log/sequential_file.cc 
                        log/log_writer.cc 

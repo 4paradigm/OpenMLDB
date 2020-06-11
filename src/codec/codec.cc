@@ -16,10 +16,10 @@
  */
 
 #include "codec/codec.h"
-
+#include <algorithm>
 #include <unordered_set>
-
 #include "base/glog_wapper.h"
+#include "boost/lexical_cast.hpp"
 
 namespace rtidb {
 namespace codec {
@@ -333,6 +333,71 @@ bool RowBuilder::SetString(uint32_t index, const char* val, uint32_t length) {
     }
     str_offset_ += length;
     return true;
+}
+
+bool RowBuilder::AppendValue(const std::string& val) {
+    bool ok = false;
+    const ::rtidb::common::ColumnDesc& col = schema_.Get(cnt_);
+    try {
+        switch (col.data_type()) {
+            case rtidb::type::kString:
+            case rtidb::type::kVarchar:
+                ok = AppendString(val.c_str(), val.length());
+                break;
+            case rtidb::type::kBool: {
+                std::string b_val = val;
+                std::transform(b_val.begin(), b_val.end(),
+                               b_val.begin(), ::tolower);
+                if (b_val == "true") {
+                    ok = AppendBool(true);
+                } else if (b_val == "false") {
+                    ok = AppendBool(false);
+                } else {
+                    ok = false;
+                }
+                break;
+            }
+            case rtidb::type::kSmallInt:
+                ok = AppendInt16(boost::lexical_cast<int16_t>(val));
+                break;
+            case rtidb::type::kInt:
+                ok = AppendInt32(boost::lexical_cast<int32_t>(val));
+                break;
+            case rtidb::type::kBlob:
+                ok = AppendBlob(boost::lexical_cast<int64_t>(val));
+                break;
+            case rtidb::type::kBigInt:
+                ok = AppendInt64(boost::lexical_cast<int64_t>(val));
+                break;
+            case rtidb::type::kTimestamp:
+                ok = AppendTimestamp(boost::lexical_cast<int64_t>(val));
+                break;
+            case rtidb::type::kFloat:
+                ok = AppendFloat(boost::lexical_cast<float>(val));
+                break;
+            case rtidb::type::kDouble:
+                ok = AppendDouble(boost::lexical_cast<double>(val));
+                break;
+            case rtidb::type::kDate: {
+                std::vector<std::string> parts;
+                ::rtidb::base::SplitString(val, "-", parts);
+                if (parts.size() != 3) {
+                    ok = false;
+                    break;
+                }
+                uint32_t year = boost::lexical_cast<uint32_t>(parts[0]);
+                uint32_t mon = boost::lexical_cast<uint32_t>(parts[1]);
+                uint32_t day = boost::lexical_cast<uint32_t>(parts[2]);
+                ok = AppendDate(year, mon, day);
+                break;
+            }
+            default:
+                ok = false;
+        }
+    } catch (std::exception const& e) {
+        ok = false;
+    }
+    return ok;
 }
 
 RowView::RowView(const Schema& schema)
@@ -728,6 +793,10 @@ int32_t RowView::GetString(uint32_t idx, char** val, uint32_t* length) {
     return v1::GetStrField(row_, field_offset, next_str_field_offset,
                            str_field_start_offset_, str_addr_length_,
                            reinterpret_cast<int8_t**>(val), length);
+}
+
+int32_t RowView::GetStrValue(uint32_t idx, std::string* val) {
+    return GetStrValue(row_, idx, val);
 }
 
 int32_t RowView::GetStrValue(const int8_t* row, uint32_t idx,

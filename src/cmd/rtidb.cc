@@ -12,9 +12,9 @@
 #include <snappy.h>
 #include <unistd.h>
 
+#include <csignal>
 #include <iostream>
 #include <random>
-#include <csignal>
 
 #include "base/display.h"
 #include "base/file_util.h"
@@ -28,12 +28,13 @@
 #include "boost/algorithm/string.hpp"
 #include "boost/lexical_cast.hpp"
 #include "brpc/server.h"
+#include "client/bs_client.h"
 #include "client/ns_client.h"
 #include "client/tablet_client.h"
-#include "client/bs_client.h"
 #include "codec/flat_array.h"
 #include "codec/row_codec.h"
 #include "codec/schema_codec.h"
+#include "codec/sdk_codec.h"
 #include "nameserver/name_server_impl.h"
 #include "proto/client.pb.h"
 #include "proto/name_server.pb.h"
@@ -333,164 +334,6 @@ void StartBlob() {
     server.RunUntilAskedToQuit();
 }
 
-int SetDimensionData(
-    const std::map<std::string, std::string>& raw_data,
-    const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey>&
-        column_key_field,
-    uint32_t pid_num,
-    std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>&
-        dimensions) {
-    uint32_t dimension_idx = 0;
-    std::set<std::string> index_name_set;
-    for (const auto& column_key : column_key_field) {
-        if (column_key.flag() != 0) {
-            dimension_idx++;
-            continue;
-        }
-        std::string index_name = column_key.index_name();
-        if (index_name_set.find(index_name) != index_name_set.end()) {
-            continue;
-        }
-        index_name_set.insert(index_name);
-        std::string key;
-        for (int i = 0; i < column_key.col_name_size(); i++) {
-            auto pos = raw_data.find(column_key.col_name(i));
-            if (pos == raw_data.end()) {
-                return -1;
-            }
-            if (!key.empty()) {
-                key += "|";
-            }
-            key += pos->second;
-        }
-        if (key.empty()) {
-            auto pos = raw_data.find(index_name);
-            if (pos == raw_data.end()) {
-                return -1;
-            }
-            key = pos->second;
-        }
-        uint32_t pid = 0;
-        if (pid_num > 0) {
-            pid = (uint32_t)(::rtidb::base::hash64(key) % pid_num);
-        }
-        if (dimensions.find(pid) == dimensions.end()) {
-            dimensions.insert(std::make_pair(
-                pid, std::vector<std::pair<std::string, uint32_t>>()));
-        }
-        dimensions[pid].push_back(std::make_pair(key, dimension_idx));
-        dimension_idx++;
-    }
-    return 0;
-}
-
-int EncodeMultiDimensionDataForNewFormat(
-    const std::vector<std::string>& data, const Schema& schema,
-    uint32_t pid_num, std::string& value,  // NOLINT
-    std::map<uint32_t,
-             std::vector<std::pair<std::string, uint32_t>>>&  // NOLINT
-        dimensions,
-    std::vector<uint64_t>& ts_dimensions) {  // NOLINT
-    if (data.size() != (size_t)schema.size()) {
-        return -1;
-    }
-    ::rtidb::codec::RowBuilder rb(schema);
-    uint32_t str_size = 0;
-    for (int i = 0; i < schema.size(); i++) {
-        const ::rtidb::common::ColumnDesc& column = schema.Get(i);
-        if (column.data_type() == ::rtidb::type::kVarchar ||
-            column.data_type() == ::rtidb::type::kString) {
-            str_size += data[i].size();
-        }
-    }
-    uint32_t total_size = rb.CalTotalLength(str_size);
-    value.resize(total_size);
-    int8_t* ptr = reinterpret_cast<int8_t*>(&(value[0]));
-    bool ok = rb.SetBuffer(ptr, total_size);
-    if (!ok) {
-        return -1;
-    }
-    uint32_t idx_cnt = 0;
-    for (uint32_t i = 0; i < data.size(); i++) {
-        const ::rtidb::common::ColumnDesc& column = schema.Get(i);
-        if (column.add_ts_idx()) {
-            uint32_t pid = 0;
-            if (pid_num > 0) {
-                pid = (uint32_t)(::rtidb::base::hash64(data[i]) % pid_num);
-            }
-            if (dimensions.find(pid) == dimensions.end()) {
-                dimensions.insert(std::make_pair(
-                    pid, std::vector<std::pair<std::string, uint32_t>>()));
-            }
-            dimensions[pid].push_back(std::make_pair(data[i], idx_cnt));
-            idx_cnt++;
-        }
-        bool codec_ok = false;
-        try {
-            if (column.is_ts_col()) {
-                ts_dimensions.push_back(boost::lexical_cast<uint64_t>(data[i]));
-            }
-            if (column.data_type() == ::rtidb::type::kSmallInt) {
-                codec_ok =
-                    rb.AppendInt16(boost::lexical_cast<int16_t>(data[i]));
-            } else if (column.data_type() == ::rtidb::type::kInt) {
-                codec_ok =
-                    rb.AppendInt32(boost::lexical_cast<int32_t>(data[i]));
-            } else if (column.data_type() == ::rtidb::type::kBigInt) {
-                codec_ok =
-                    rb.AppendInt64(boost::lexical_cast<int64_t>(data[i]));
-            } else if (column.data_type() == ::rtidb::type::kBlob) {
-                codec_ok = rb.AppendBlob(boost::lexical_cast<int64_t>(data[i]));
-            } else if (column.data_type() == ::rtidb::type::kFloat) {
-                codec_ok = rb.AppendFloat(boost::lexical_cast<float>(data[i]));
-            } else if (column.data_type() == ::rtidb::type::kDouble) {
-                codec_ok =
-                    rb.AppendDouble(boost::lexical_cast<double>(data[i]));
-            } else if (column.data_type() == ::rtidb::type::kString ||
-                       column.data_type() == ::rtidb::type::kVarchar) {
-                codec_ok = rb.AppendString(data[i].c_str(), data[i].size());
-            } else if (column.data_type() == ::rtidb::type::kTimestamp) {
-                codec_ok =
-                    rb.AppendTimestamp(boost::lexical_cast<uint64_t>(data[i]));
-            } else if (column.data_type() == ::rtidb::type::kDate) {
-                std::string date_str = data[i];
-                std::vector<std::string> parts;
-                ::rtidb::base::SplitString(date_str, "-", parts);
-                if (parts.size() != 3) {
-                    std::cout << "bad data format " << date_str;
-                    return -1;
-                }
-                uint32_t year = boost::lexical_cast<uint32_t>(parts[0]);
-                uint32_t month = boost::lexical_cast<uint32_t>(parts[1]);
-                uint32_t day = boost::lexical_cast<uint32_t>(parts[2]);
-                codec_ok = rb.AppendDate(year, month, day);
-            } else if (column.data_type() == ::rtidb::type::kBool) {
-                bool value = false;
-                std::string raw_value = data[i];
-                std::transform(raw_value.begin(), raw_value.end(),
-                               raw_value.begin(), ::tolower);
-                if (raw_value == "true") {
-                    value = true;
-                } else if (raw_value == "false") {
-                    value = false;
-                } else {
-                    return -1;
-                }
-                codec_ok = rb.AppendBool(value);
-            } else {
-                codec_ok = rb.AppendNULL();
-            }
-        } catch (std::exception const& e) {
-            std::cout << e.what() << std::endl;
-            return -1;
-        }
-        if (!codec_ok) {
-            return -1;
-        }
-    }
-    return 0;
-}
-
 int EncodeMultiDimensionData(
     const std::vector<std::string>& data,
     const std::vector<::rtidb::codec::ColumnDesc>& columns, uint32_t pid_num,
@@ -603,21 +446,10 @@ int EncodeMultiDimensionData(
     const std::vector<::rtidb::codec::ColumnDesc>& columns, uint32_t pid_num,
     std::string& value,  // NOLINT
     std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>&
-        dimensions,
-    std::vector<uint64_t>& ts_dimensions) {  // NOLINT
-    return EncodeMultiDimensionData(data, columns, pid_num, value, dimensions,
-                                    ts_dimensions, 0);
-}
-
-int EncodeMultiDimensionData(
-    const std::vector<std::string>& data,
-    const std::vector<::rtidb::codec::ColumnDesc>& columns, uint32_t pid_num,
-    std::string& value,  // NOLINT
-    std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>&
         dimensions) {
     std::vector<uint64_t> ts_dimensions;
     return EncodeMultiDimensionData(data, columns, pid_num, value, dimensions,
-                                    ts_dimensions);
+                                    ts_dimensions, 0);
 }
 
 int EncodeMultiDimensionData(
@@ -1651,7 +1483,7 @@ void HandleNSDelete(const std::vector<std::string>& parts,
         }
         uint32_t count = 0;
         if (tablet_client->Delete(tid, pid, cd_columns, &count, &msg)) {
-            std::cout << "delete ok, affected count: " << count  << std::endl;
+            std::cout << "delete ok, affected count: " << count << std::endl;
         } else {
             std::cout << "delete failed. error msg: " << msg << std::endl;
         }
@@ -2712,8 +2544,8 @@ void HandleNSPreview(const std::vector<std::string>& parts,
                 tablet_client->Traverse(tid, pid, ro, limit, &pk, &snapshot_id,
                                         &data, &count, &is_finish, &err_msg);
             if (!ok) {
-                std::cerr << "Fail to preview table, msg: "
-                    <<  err_msg << std::endl;
+                std::cerr << "Fail to preview table, msg: " << err_msg
+                          << std::endl;
                 return;
             }
             if (tables[0].compress_type() == ::rtidb::nameserver::kSnappy) {
@@ -3090,68 +2922,25 @@ void HandleNSPut(const std::vector<std::string>& parts,
 
         if (!tables[0].has_table_type() ||
             tables[0].table_type() != ::rtidb::type::kRelational) {
-            std::vector<::rtidb::codec::ColumnDesc> columns;
-            if (modify_index > 0) {
-                if (::rtidb::codec::SchemaCodec::ConvertColumnDesc(
-                        column_desc_list_1, columns) < 0) {
-                    std::cout << "convert table column desc failed"
-                              << std::endl;
-                }
-            } else {
-                if (::rtidb::codec::SchemaCodec::ConvertColumnDesc(
-                        tables[0].column_desc_v1(), columns) < 0) {
-                    std::cout << "convert table column desc failed"
-                              << std::endl;
-                }
-            }
             std::string value;
-            std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>
-                dimensions;
-            std::vector<uint64_t> ts_dimensions;
-            if (modify_index > 0) {
-                if (EncodeMultiDimensionData(
-                        std::vector<std::string>(parts.begin() + start_index,
-                                                 parts.end()),
-                        columns, tables[0].table_partition_size(), value,
-                        dimensions, ts_dimensions, modify_index) < 0) {
-                    std::cout << "Encode data error" << std::endl;
-                    return;
-                }
-            } else {
-                if (tables[0].format_version() == 1) {
-                    int ret = EncodeMultiDimensionDataForNewFormat(
-                        std::vector<std::string>(parts.begin() + start_index,
-                                                 parts.end()),
-                        column_desc_list_1, tables[0].table_partition_size(),
-                        value, dimensions, ts_dimensions);
-                    if (ret < 0) {
-                        std::cout << "Encode data error" << std::endl;
-                        return;
-                    }
-                } else {
-                    if (EncodeMultiDimensionData(
-                            std::vector<std::string>(
-                                parts.begin() + start_index, parts.end()),
-                            columns, tables[0].table_partition_size(), value,
-                            dimensions, ts_dimensions) < 0) {
-                        std::cout << "Encode data error" << std::endl;
-                        return;
-                    }
-                }
+            ::rtidb::codec::SDKCodec codec(tables[0]);
+            std::map<uint32_t, ::rtidb::codec::Dimension> dimensions;
+            std::vector<std::string> input_value(parts.begin() + start_index,
+                                                 parts.end());
+            if (codec.EncodeDimension(input_value,
+                                      tables[0].table_partition_size(),
+                                      &dimensions) < 0) {
+                std::cout << "Encode dimension error" << std::endl;
+                return;
             }
-            if (tables[0].column_key_size() > 0) {
-                std::map<std::string, std::string> raw_value;
-                for (uint32_t idx = start_index; idx < parts.size(); idx++) {
-                    raw_value.insert(std::make_pair(
-                        columns.at(idx - start_index).name, parts[idx]));
-                }
-                dimensions.clear();
-                if (SetDimensionData(raw_value, tables[0].column_key(),
-                                     tables[0].table_partition_size(),
-                                     dimensions) < 0) {
-                    std::cout << "Set dimension data error" << std::endl;
-                    return;
-                }
+            if (codec.EncodeRow(input_value, &value) < 0) {
+                std::cout << "Encode data error" << std::endl;
+                return;
+            }
+            std::vector<uint64_t> ts_dimensions;
+            if (codec.EncodeTsDimension(input_value, &ts_dimensions) < 0) {
+                std::cout << "Encode ts dimension error" << std::endl;
+                return;
             }
             if (tables[0].compress_type() == ::rtidb::nameserver::kSnappy) {
                 std::string compressed;
@@ -3179,43 +2968,18 @@ void HandleNSPut(const std::vector<std::string>& parts,
             printf("put format error! input value does not match the schema\n");
             return;
         }
-        std::vector<::rtidb::codec::ColumnDesc> columns;
-        if (modify_index > 0) {
-            if (::rtidb::codec::SchemaCodec::ConvertColumnDesc(
-                    tables[0], columns, modify_index) < 0) {
-                std::cout << "convert table column desc failed" << std::endl;
-            }
-        } else {
-            if (::rtidb::codec::SchemaCodec::ConvertColumnDesc(tables[0],
-                                                               columns) < 0) {
-                std::cout << "convert table column desc failed" << std::endl;
-                return;
-            }
-        }
-        uint32_t cnt = parts.size() - 3;
-        if (cnt != columns.size()) {
-            std::cout << "Input value mismatch schema" << std::endl;
+        std::string value;
+        ::rtidb::codec::SDKCodec codec(tables[0]);
+        std::map<uint32_t, ::rtidb::codec::Dimension> dimensions;
+        std::vector<std::string> input_value(parts.begin() + 3, parts.end());
+        if (codec.EncodeDimension(input_value, tables[0].table_partition_size(),
+                                  &dimensions) < 0) {
+            std::cout << "Encode dimension error" << std::endl;
             return;
         }
-        std::string value;
-        std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>
-            dimensions;
-        if (modify_index > 0) {
-            if (EncodeMultiDimensionData(
-                    std::vector<std::string>(parts.begin() + 3, parts.end()),
-                    columns, tables[0].table_partition_size(), value,
-                    dimensions, modify_index) < 0) {
-                std::cout << "Encode data error" << std::endl;
-                return;
-            }
-        } else {
-            if (EncodeMultiDimensionData(
-                    std::vector<std::string>(parts.begin() + 3, parts.end()),
-                    columns, tables[0].table_partition_size(), value,
-                    dimensions) < 0) {
-                std::cout << "Encode data error" << std::endl;
-                return;
-            }
+        if (codec.EncodeRow(input_value, &value) < 0) {
+            std::cout << "Encode data error" << std::endl;
+            return;
         }
         if (tables[0].compress_type() == ::rtidb::nameserver::kSnappy) {
             std::string compressed;
@@ -3654,7 +3418,7 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
     }
     std::string storage_mode = table_info.storage_mode();
     std::transform(storage_mode.begin(), storage_mode.end(),
-            storage_mode.begin(), ::tolower);
+                   storage_mode.begin(), ::tolower);
     if (storage_mode == "kmemory" || storage_mode == "memory") {
         ns_table_info.set_storage_mode(::rtidb::common::kMemory);
     } else if (storage_mode == "kssd" || storage_mode == "ssd") {
@@ -3663,7 +3427,7 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
         ns_table_info.set_storage_mode(::rtidb::common::kHDD);
     } else {
         printf("storage mode %s is invalid\n",
-                table_info.storage_mode().c_str());
+               table_info.storage_mode().c_str());
         return -1;
     }
     std::string table_type = table_info.table_type();
@@ -3681,8 +3445,8 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
         return -1;
     }
 
-    if (ns_table_info.has_table_type() && ns_table_info.table_type()
-            != rtidb::type::TableType::kTimeSeries) {
+    if (ns_table_info.has_table_type() &&
+        ns_table_info.table_type() != rtidb::type::TableType::kTimeSeries) {
         ns_table_info.set_storage_mode(::rtidb::common::kHDD);
         if (storage_mode == "kssd" || storage_mode == "ssd") {
             ns_table_info.set_storage_mode(::rtidb::common::kSSD);
@@ -5269,20 +5033,20 @@ void HandleClientLoadTable(const std::vector<std::string> parts,
             std::string storage_str;
             storage_str.resize(parts[3].size());
             std::transform(parts[3].begin(), parts[3].end(),
-                    storage_str.begin(), ::tolower);
+                           storage_str.begin(), ::tolower);
             if (storage_str == "kssd" || storage_str == "ssd") {
                 storage_mode = ::rtidb::common::StorageMode::kSSD;
             } else if (storage_str == "khdd" || storage_str == "hdd") {
                 storage_mode = ::rtidb::common::StorageMode::kHDD;
             } else {
                 std::cout << "Bad LoadRelationalTable format, "
-                    "eg: loadtable tid pid [ssd]" << std::endl;
+                             "eg: loadtable tid pid [ssd]"
+                          << std::endl;
             }
             std::string msg;
-            bool ok =
-                client->LoadTable(boost::lexical_cast<uint32_t>(parts[1]),
-                        boost::lexical_cast<uint32_t>(parts[2]), storage_mode,
-                        &msg);
+            bool ok = client->LoadTable(boost::lexical_cast<uint32_t>(parts[1]),
+                                        boost::lexical_cast<uint32_t>(parts[2]),
+                                        storage_mode, &msg);
             if (ok) {
                 std::cout << "LoadTable ok" << std::endl;
             } else {
@@ -5290,7 +5054,8 @@ void HandleClientLoadTable(const std::vector<std::string> parts,
             }
         } catch (boost::bad_lexical_cast& e) {
             std::cout << "Bad LoadRelationalTable format, "
-                "eg: loadtable tid pid [ssd]" << std::endl;
+                         "eg: loadtable tid pid [ssd]"
+                      << std::endl;
         }
         return;
     }
@@ -5347,15 +5112,16 @@ void HandleClientLoadTable(const std::vector<std::string> parts,
 }
 
 void HandleBsClientLoadTable(const std::vector<std::string>& parts,
-                           ::rtidb::client::BsClient* client) {
+                             ::rtidb::client::BsClient* client) {
     if (parts.size() < 3) {
-        std::cout << "Bad LoadTable format eg loadtable tid pid "<< std::endl;
+        std::cout << "Bad LoadTable format eg loadtable tid pid " << std::endl;
         return;
     }
     try {
         std::string msg;
-        bool ok = client->LoadTable(boost::lexical_cast<uint32_t>(parts[1]),
-                boost::lexical_cast<uint32_t>(parts[2]), &msg);
+        bool ok =
+            client->LoadTable(boost::lexical_cast<uint32_t>(parts[1]),
+                              boost::lexical_cast<uint32_t>(parts[2]), &msg);
         if (ok) {
             std::cout << "LoadTable ok" << std::endl;
         } else {
@@ -6867,8 +6633,8 @@ int main(int argc, char* argv[]) {
         StartBsClient();
     } else {
         std::cout << "Start failed! FLAGS_role must be tablet, client, "
-            "nameserver, ns_client, blob, bs_client or blob_proxy"
-            << std::endl;
+                     "nameserver, ns_client, blob, bs_client or blob_proxy"
+                  << std::endl;
     }
     return 0;
 }

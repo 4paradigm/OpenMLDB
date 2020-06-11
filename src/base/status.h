@@ -15,6 +15,8 @@ namespace rtidb {
 namespace base {
 
 struct ResultMsg {
+    ResultMsg(int code_i, std::string msg_i) : code(code_i), msg(msg_i) {}
+    ResultMsg() : code(0), msg("ok") {}
     int code;
     std::string msg;
 };

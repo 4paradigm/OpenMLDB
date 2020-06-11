@@ -122,11 +122,11 @@ class CombineIterator {
 
  private:
     std::vector<QueryIt> q_its_;
-    uint64_t st_;
+    const uint64_t st_;
     ::rtidb::api::GetType st_type_;
     ::rtidb::api::TTLType ttl_type_;
-    uint64_t expire_time_;
-    uint32_t expire_cnt_;
+    const uint64_t expire_time_;
+    const uint32_t expire_cnt_;
     QueryIt* cur_qit_;
 };
 

@@ -689,7 +689,7 @@ __attribute__((unused)) static void PrintTableStatus(
 
 __attribute__((unused)) static void PrintTableInformation(
     std::vector<::rtidb::nameserver::TableInfo>& tables) {  // NOLINT
-    if (tables.size() < 1) {
+    if (tables.empty()) {
         return;
     }
     ::rtidb::nameserver::TableInfo table = tables[0];
@@ -771,6 +771,19 @@ __attribute__((unused)) static void PrintTableInformation(
     row.clear();
     row.push_back("format_version");
     row.push_back(std::to_string(table.format_version()));
+    tp.AddRow(row);
+    row.clear();
+    row.push_back("partition key");
+    if (table.partition_key_size() > 0) {
+        std::string partition_key;
+        for (int idx = 0; idx < table.partition_key_size(); idx++) {
+            if (idx > 0) partition_key.append(", ");
+            partition_key.append(table.partition_key(idx));
+        }
+        row.push_back(std::move(partition_key));
+    } else {
+        row.push_back("-");
+    }
     tp.AddRow(row);
     tp.Print(true);
 }
