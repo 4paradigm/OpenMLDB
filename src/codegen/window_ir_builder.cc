@@ -198,8 +198,9 @@ bool MemoryWindowDecodeIRBuilder::BuildGetStringCol(
 
     // get str field declear
     ::llvm::FunctionCallee callee = block_->getModule()->getOrInsertFunction(
-        "fesql_storage_get_str_col", i32_ty, i8_ptr_ty, i32_ty, i32_ty, i32_ty,
-        i32_ty, i32_ty, i8_ptr_ty);
+        "fesql_storage_get_str_col", i32_ty,
+        i8_ptr_ty, i32_ty, i32_ty, i32_ty,
+        i32_ty, i32_ty, i32_ty, i8_ptr_ty);
 
     ::llvm::Value* val_row_idx = builder.getInt32(row_idx);
     ::llvm::Value* val_col_idx = builder.getInt32(col_idx);

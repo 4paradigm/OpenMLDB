@@ -289,6 +289,9 @@ SQLCases:
       FROM t1
       last join t2 order by t2.std_ts on t1.col1=t2.col2 and t1.std_ts >= t2.std_ts;
     inputs:
+      - name: t1
+        resource: cases/resource/simple_t1_ts.yaml
+      - name: t2
         schema: col_short:int16, col_int:int32, col_long:int64,
                 col_float:float, col_double:double, col_date:date, col_str:string,
                 col2:int32, std_ts:timestamp

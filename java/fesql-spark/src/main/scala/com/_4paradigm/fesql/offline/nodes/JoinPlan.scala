@@ -137,7 +137,7 @@ object JoinPlan {
             } else {
               iter.minBy(row => {
                 if (row.isNullAt(timeIdxInJoined)) {
-                  Long.MinValue
+                  Long.MaxValue
                 } else {
                   timeExtractor.apply(row)
                 }
