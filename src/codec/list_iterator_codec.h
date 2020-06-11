@@ -55,8 +55,22 @@ class ListV {
     // TODO(chenjing): at 数组越界处理
     virtual std::unique_ptr<ConstIterator<uint64_t, V>> GetIterator() const = 0;
     virtual ConstIterator<uint64_t, V> *GetIterator(int8_t *addr) const = 0;
-    virtual const uint64_t GetCount() = 0;
-    virtual V At(uint64_t pos) = 0;
+    virtual const uint64_t GetCount() {
+        auto iter = GetIterator();
+        uint64_t cnt = 0;
+        while (iter->Valid()) {
+            iter->Next();
+            cnt++;
+        }
+        return cnt;
+    }
+    virtual V At(uint64_t pos) {
+        auto iter = GetIterator();
+        while (pos-- > 0 && iter->Valid()) {
+            iter->Next();
+        }
+        return iter->Valid() ? iter->GetValue() : V();
+    }
 };
 
 template <class V, class R>
@@ -107,7 +121,7 @@ class ColumnImpl : public WrapListImpl<V, Row> {
 class TimestampColumnImpl : public ColumnImpl<Timestamp> {
  public:
     TimestampColumnImpl(ListV<Row> *impl, int32_t row_idx, uint32_t offset)
-        : ColumnImpl(impl, row_idx, offset) {}
+        : ColumnImpl<Timestamp>(impl, row_idx, offset) {}
     ~TimestampColumnImpl() {}
     const Timestamp GetField(const Row &row) const override {
         int64_t ts;
@@ -181,7 +195,7 @@ class ArrayListV : public ListV<V> {
         }
     }
     virtual const uint64_t GetCount() { return end_ - start_; }
-    virtual V At(uint64_t pos) { return buffer_->at(start_ + pos); }
+    virtual V At(uint64_t pos) const { return buffer_->at(start_ + pos); }
 
  protected:
     uint64_t start_;
@@ -277,7 +291,7 @@ class InnerRowsIterator : public ConstIterator<uint64_t, V> {
             pos_++;
         }
     }
-    virtual bool IsSeekable() const { root_->IsSeekable(); }
+    bool IsSeekable() const { root_->IsSeekable(); }
     std::unique_ptr<ConstIterator<uint64_t, V>> root_;
     uint64_t pos_;
     const uint64_t start_;
@@ -318,6 +332,53 @@ class InnerRangeIterator : public ConstIterator<uint64_t, V> {
     const uint64_t end_;
 };
 
+template <class V>
+class InnerRangeList : public ListV<V> {
+ public:
+    InnerRangeList(ListV<Row> *root, uint64_t start, uint64_t end)
+        : ListV<V>(), root_(root), start_(start), end_(end) {}
+    virtual ~InnerRangeList() {}
+    // TODO(chenjing): at 数组越界处理
+    virtual std::unique_ptr<ConstIterator<uint64_t, V>> GetIterator() const {
+        return std::unique_ptr<InnerRangeIterator<V>>(
+            new InnerRangeIterator<V>(root_, start_, end_));
+    }
+    virtual ConstIterator<uint64_t, V> *GetIterator(int8_t *addr) const {
+        if (nullptr == addr) {
+            return new InnerRangeIterator<V>(root_, start_, end_);
+        } else {
+            return new (addr) InnerRangeIterator<V>(root_, start_, end_);
+        }
+    };
+
+    ListV<Row> *root_;
+    uint64_t start_;
+    uint64_t end_;
+};
+
+template <class V>
+class InnerRowsList : public ListV<V> {
+ public:
+    InnerRowsList(ListV<Row> *root, uint64_t start, uint64_t end)
+        : ListV<V>(), root_(root), start_(start), end_(end) {}
+    virtual ~InnerRowsList() {}
+    // TODO(chenjing): at 数组越界处理
+    virtual std::unique_ptr<ConstIterator<uint64_t, V>> GetIterator() const {
+        return std::unique_ptr<InnerRowsIterator<V>>(
+            new InnerRowsIterator<V>(root_, start_, end_));
+    }
+    virtual ConstIterator<uint64_t, V> *GetIterator(int8_t *addr) const {
+        if (nullptr == addr) {
+            return new InnerRowsIterator<V>(root_, start_, end_);
+        } else {
+            return new (addr) InnerRowsIterator<V>(root_, start_, end_);
+        }
+    };
+
+    ListV<Row> *root_;
+    uint64_t start_;
+    uint64_t end_;
+};
 template <class V>
 class ColumnIterator : public ConstIterator<uint64_t, V> {
  public:

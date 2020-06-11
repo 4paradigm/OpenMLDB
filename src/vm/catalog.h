@@ -210,8 +210,6 @@ class TableHandler : public DataHandler {
 
     virtual std::unique_ptr<WindowIterator> GetWindowIterator(
         const std::string& idx_name) = 0;
-    virtual const uint64_t GetCount() { return 0; }
-    virtual Row At(uint64_t pos) { return Row(); }
     const HandlerType GetHanlderType() override { return kTableHandler; }
     virtual std::shared_ptr<PartitionHandler> GetPartition(
         std::shared_ptr<TableHandler> table_hander,
