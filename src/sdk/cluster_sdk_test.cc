@@ -17,11 +17,13 @@
 
 #include "sdk/cluster_sdk.h"
 
-#include <unistd.h>
 #include <sched.h>
+#include <unistd.h>
+
 #include <memory>
 #include <string>
 #include <vector>
+
 #include "base/file_util.h"
 #include "base/glog_wapper.h"  // NOLINT
 #include "brpc/server.h"
@@ -78,6 +80,11 @@ TEST_F(ClusterSDKTest, smoke_empty_cluster) {
 }
 
 TEST_F(ClusterSDKTest, smoketest) {
+    ClusterOptions option;
+    option.zk_cluster = mc_.GetZkCluster();
+    option.zk_path = mc_.GetZkPath();
+    ClusterSDK sdk(option);
+    ASSERT_TRUE(sdk.Init());
     ::rtidb::nameserver::TableInfo table_info;
     table_info.set_format_version(1);
     std::string name = "test" + GenRand();
@@ -105,11 +112,7 @@ TEST_F(ClusterSDKTest, smoketest) {
     key1->add_ts_name("col2");
     ok = ns_client->CreateTable(table_info, error);
     ASSERT_TRUE(ok);
-    ClusterOptions option;
-    option.zk_cluster = mc_.GetZkCluster();
-    option.zk_path = mc_.GetZkPath();
-    ClusterSDK sdk(option);
-    ASSERT_TRUE(sdk.Init());
+    sleep(5);
     std::vector<std::shared_ptr<::rtidb::client::TabletClient>> tablet;
     ok = sdk.GetTabletByTable(db, name, &tablet);
     ASSERT_TRUE(ok);

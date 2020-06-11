@@ -18,14 +18,16 @@
 #ifndef SRC_SDK_CLUSTER_SDK_H_
 #define SRC_SDK_CLUSTER_SDK_H_
 
-#include <vector>
 #include <map>
-#include <string>
 #include <memory>
+#include <string>
+#include <vector>
+
 #include "base/spinlock.h"
 #include "catalog/sdk_catalog.h"
 #include "client/ns_client.h"
 #include "client/tablet_client.h"
+#include "thread_pool.h"  // NOLINT
 #include "vm/catalog.h"
 #include "zk/zk_client.h"
 
@@ -67,8 +69,8 @@ class ClusterSDK {
 
     std::shared_ptr<::rtidb::nameserver::TableInfo> GetTableInfo(
         const std::string& db, const std::string& tname);
-    std::vector<std::shared_ptr<::rtidb::nameserver::TableInfo>>
-        GetTables(const std::string& db);
+    std::vector<std::shared_ptr<::rtidb::nameserver::TableInfo>> GetTables(
+        const std::string& db);
 
     inline std::shared_ptr<::rtidb::client::NsClient> GetNsClient() {
         if (ns_client_) return ns_client_;
@@ -81,6 +83,8 @@ class ClusterSDK {
     bool RefreshCatalog(const std::vector<std::string>& table_datas);
     bool InitTabletClient();
     bool CreateNsClient();
+    void WatchNotify();
+    void CheckZk();
 
  private:
     std::atomic<uint64_t> cluster_version_;
@@ -98,6 +102,9 @@ class ClusterSDK {
         table_to_tablets_;
     std::shared_ptr<::rtidb::catalog::SDKCatalog> catalog_;
     std::shared_ptr<::rtidb::client::NsClient> ns_client_;
+    ::baidu::common::ThreadPool pool_;
+    uint64_t session_id_;
+    std::atomic<bool> running_;
 };
 
 }  // namespace sdk
