@@ -18,6 +18,7 @@
 #include <string>
 #include <vector>
 #include "codec/codec.h"
+#include "base/glog_wapper.h"
 #include "base/strings.h"
 #include "gtest/gtest.h"
 #include "proto/common.pb.h"
