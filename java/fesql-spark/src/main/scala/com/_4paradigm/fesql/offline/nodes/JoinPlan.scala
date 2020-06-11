@@ -102,13 +102,18 @@ object JoinPlan {
     val result = if (joinType == JoinType.kJoinTypeLast) {
       val indexColIdx = leftDf.schema.size - 1
 
-      val timeKey = node.join().right_key().keys().GetChild(0)
+      // TODO: Support multiple order by columns
+
+      // Resolve order by column index
+      val orderbyExprListNode = node.join.right_sort.orders.order_by
       val planLeftSize = node.GetProducer(0).GetOutputSchema().size()
-      val timeColIdx = SparkColumnUtil.resolveColumnIndex(timeKey, node) - planLeftSize
+      val timeColIdx = SparkColumnUtil.resolveColumnIndex(orderbyExprListNode.GetChild(0), node) - planLeftSize
       assert(timeColIdx >= 0)
 
       val timeIdxInJoined = timeColIdx + leftDf.schema.size
       val timeColType = rightDf.schema(timeColIdx).dataType
+
+      val isAsc = node.join.right_sort.is_asc
 
       import sess.implicits._
 
@@ -120,14 +125,24 @@ object JoinPlan {
           case (_, iter) =>
             val timeExtractor = SparkRowUtil.createOrderKeyExtractor(
               timeIdxInJoined, timeColType, nullable=false)
-            iter.maxBy(row => {
-              if (row.isNullAt(timeIdxInJoined)) {
-                Long.MinValue
-              } else {
-                timeExtractor.apply(row)
-              }
-            })
 
+            if (isAsc) {
+              iter.maxBy(row => {
+                if (row.isNullAt(timeIdxInJoined)) {
+                  Long.MinValue
+                } else {
+                  timeExtractor.apply(row)
+                }
+              })
+            } else {
+              iter.minBy(row => {
+                if (row.isNullAt(timeIdxInJoined)) {
+                  Long.MinValue
+                } else {
+                  timeExtractor.apply(row)
+                }
+              })
+            }
         }(RowEncoder(joined.schema))
 
       distinct.drop(indexName)
@@ -136,7 +151,7 @@ object JoinPlan {
       joined
     }
 
-    SparkInstance.fromDataFrame(null, result)
+    SparkInstance.fromDataFrame(result)
   }
 
 

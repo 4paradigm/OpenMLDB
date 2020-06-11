@@ -221,7 +221,6 @@ SQLCases:
   - id: 6
     desc: LAST JOIN 命中多个Key取Last Order
     db: db1
-    mode: offline-unsupport
     sql: |
       SELECT t1.col1 as id, t1.col0 as t1_col0, t1.col2 as t1_col2, t1.std_ts as t1_std_ts, t2.std_ts as t2_std_ts, str1 FROM t1
       last join t2 order by t2.std_ts on t1.col1=t2.col1 and t1.std_ts >= t2.std_ts;
@@ -250,6 +249,37 @@ SQLCases:
         5, 2, 55, 1590115424000, 1590115423900, FFFFFF
 
   - id: 7
+    desc: LAST JOIN 命中多个Key取Last Order，使用asc order
+    db: db1
+    sql: |
+      SELECT t1.col1 as id, t1.col0 as t1_col0, t2.std_ts as t2_std_ts FROM t1
+      last join t2 order by t2.std_ts asc on t1.col0=t2.col1;
+    inputs:
+      - name: t1
+        resource: cases/resource/simple_t1_ts.yaml
+      - name: t2
+
+        schema: str0:string, str1:string, col1:string, std_ts:timestamp
+        index: index1:col1:std_ts
+        data: |
+          2, GGGGGGG, 0, 1590115428000
+          2, FFFFFF, 2, 1590115423900
+          2, EEEEEE, 2, 1590115427000
+          1, DDDD, 4, 1590115423000
+          1, CCC, 3, 1590115422000
+          0, BB, 5, 1590115421000
+          0, A, 1, 1590115420000
+    output:
+      schema: id:int32, t1_col0:string, t2_std_ts:timestamp
+      order: id
+      data: |
+        1, 0, 1590115428000
+        2, 0, 1590115428000
+        3, 1, 1590115420000
+        4, 1, 1590115420000
+        5, 2, 1590115427000
+
+  - id: 8
     desc: LAST JOIN拼到空行
     db: db1
     sql: |
@@ -259,9 +289,6 @@ SQLCases:
       FROM t1
       last join t2 order by t2.std_ts on t1.col1=t2.col2 and t1.std_ts >= t2.std_ts;
     inputs:
-      - name: t1
-        resource: cases/resource/simple_t1_ts.yaml
-      - name: t2
         schema: col_short:int16, col_int:int32, col_long:int64,
                 col_float:float, col_double:double, col_date:date, col_str:string,
                 col2:int32, std_ts:timestamp

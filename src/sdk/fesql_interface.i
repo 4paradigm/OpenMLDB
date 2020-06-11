@@ -13,6 +13,7 @@ SWIG_JAVABODY_PROXY(public, public, SWIGTYPE)
 %include std_shared_ptr.i
 %include stl.i
 %include stdint.i
+
 namespace std {
     %template(StringVector) vector<string>;
 }
@@ -140,3 +141,10 @@ using fesql::sdk::ExplainInfo;
 %include "vm/physical_op.h"
 %include "vm/jit_wrapper.h"
 %include "vm/core_api.h"
+
+// Notice that make sure this is declared after including "vm/catalog.h"
+namespace fesql {
+    namespace vm {
+        %template(ColumnSourceList) ::std::vector<fesql::vm::ColumnSource>;
+    }
+}

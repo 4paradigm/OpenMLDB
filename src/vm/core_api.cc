@@ -8,17 +8,15 @@
  **/
 #include "vm/core_api.h"
 #include "codec/fe_row_codec.h"
-#include "vm/runner.h"
 #include "vm/mem_catalog.h"
+#include "vm/runner.h"
 #include "vm/schemas_context.h"
 
 namespace fesql {
 namespace vm {
 
-
 WindowInterface::WindowInterface(bool instance_not_in_window,
-                                 int64_t start_offset,
-                                 int64_t end_offset,
+                                 int64_t start_offset, int64_t end_offset,
                                  uint32_t max_size)
     : window_impl_(std::unique_ptr<Window>(
           new CurrentHistoryWindow(start_offset, max_size))) {
@@ -28,7 +26,11 @@ WindowInterface::WindowInterface(bool instance_not_in_window,
 void WindowInterface::BufferData(uint64_t key, const Row& row) {
     window_impl_->BufferData(key, row);
 }
-
+int CoreAPI::ResolveColumnIndex(fesql::vm::PhysicalOpNode* node,
+                                int32_t schema_idx, int32_t column_idx) {
+    SchemasContext schema_ctx(node->GetOutputNameSchemaList());
+    return schema_ctx.ColumnOffsetResolved(schema_idx, column_idx);
+}
 int CoreAPI::ResolveColumnIndex(fesql::vm::PhysicalOpNode* node,
                                 fesql::node::ColumnRefNode* expr) {
     SchemasContext schema_ctx(node->GetOutputNameSchemaList());
@@ -68,8 +70,8 @@ fesql::codec::Row CoreAPI::WindowProject(const RawPtrHandle fn,
                                  window->GetWindow());
 }
 
-bool CoreAPI::ComputeCondition(const fesql::vm::RawPtrHandle fn,
-                               const Row& row, fesql::codec::RowView* row_view,
+bool CoreAPI::ComputeCondition(const fesql::vm::RawPtrHandle fn, const Row& row,
+                               fesql::codec::RowView* row_view,
                                size_t out_idx) {
     Row cond_row = CoreAPI::RowProject(fn, row, true);
     row_view->Reset(cond_row.buf());

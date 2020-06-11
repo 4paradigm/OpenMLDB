@@ -14,6 +14,7 @@ public class FeSqlLibrary {
         if (initialized) {
             return;
         }
+
         LibraryLoader.loadLibrary(FESQL_LIBRARY_NAME);
         initialized = true;
     }
