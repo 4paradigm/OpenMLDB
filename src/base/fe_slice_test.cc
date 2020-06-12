@@ -26,7 +26,7 @@ TEST_F(SliceTest, ref_cnt_slice) {
     auto buf = reinterpret_cast<int8_t*>(malloc(1024));
     strcpy(reinterpret_cast<char*>(buf), "hello world");  // NOLINT
 
-    auto ref = RefCountedSlice::CreateEmpty();
+    RefCountedSlice ref;
     {
         auto slice = RefCountedSlice::CreateManaged(buf, 1024);
         ref = slice;

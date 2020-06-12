@@ -21,6 +21,7 @@
 #include <string>
 #include "llvm/IR/IRBuilder.h"
 #include "node/node_enum.h"
+#include "codegen/native_value.h"
 
 namespace fesql {
 namespace codegen {
@@ -29,7 +30,9 @@ class Decoder {
  public:
     Decoder() {}
     virtual ~Decoder() {}
-    virtual bool GetColOffsetType(const std::string& name, uint32_t* offset_ptr,
+    virtual bool GetColOffsetType(const std::string& name,
+                                  uint32_t* col_idx,
+                                  uint32_t* offset_ptr,
                                   node::DataType* type_ptr) = 0;
 };
 
@@ -46,7 +49,7 @@ class RowDecodeIRBuilder {
     // output, the output value
     virtual bool BuildGetField(const std::string& name, ::llvm::Value* row_ptr,
                                ::llvm::Value* row_size,
-                               ::llvm::Value** output) = 0;
+                               NativeValue* output) = 0;
 };
 
 class RowEncodeIRBuilder {

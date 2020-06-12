@@ -14,6 +14,7 @@
 #include "base/fe_status.h"
 #include "codegen/cast_expr_ir_builder.h"
 #include "codegen/scope_var.h"
+#include "codegen/native_value.h"
 #include "llvm/IR/IRBuilder.h"
 #include "proto/fe_type.pb.h"
 namespace fesql {
@@ -27,23 +28,23 @@ class VariableIRBuilder {
                        const std::string& name, ::llvm::Value** output,
                        base::Status& status);  // NOLINT (runtime/references)
     bool LoadColumnItem(const std::string& relation_name,
-                        const std::string& name, ::llvm::Value** output,
+                        const std::string& name, NativeValue* output,
                         base::Status& status);  // NOLINT (runtime/references)
     bool StoreColumnRef(const std::string& relation_name,
                         const std::string& name, ::llvm::Value* value,
                         base::Status& status);  // NOLINT (runtime/references)
     bool StoreColumnItem(const std::string& relation_name,
-                         const std::string& name, ::llvm::Value* value,
+                         const std::string& name, const NativeValue& value,
                          base::Status& status);  // NOLINT (runtime/references)
 
     bool LoadArrayIndex(std::string array_name, int32_t index,
                         ::llvm::Value** output,
                         base::Status& status);  // NOLINT (runtime/references)
-    bool LoadValue(std::string name, ::llvm::Value** output,
+    bool LoadValue(std::string name, NativeValue* output,
                    base::Status& status);  // NOLINT (runtime/references)
-    bool StoreValue(const std::string& name, ::llvm::Value* value,
+    bool StoreValue(const std::string& name, const NativeValue& value,
                     base::Status& status);  // NOLINT (runtime/references)
-    bool StoreValue(const std::string& name, ::llvm::Value* value,
+    bool StoreValue(const std::string& name, const NativeValue& value,
                     bool is_register,
                     base::Status& status);  // NOLINT (runtime/references)
 

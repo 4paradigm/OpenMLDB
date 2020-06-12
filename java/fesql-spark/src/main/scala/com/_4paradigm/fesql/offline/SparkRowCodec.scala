@@ -34,18 +34,16 @@ class SparkRowCodec(sliceSchemas: Array[StructType]) {
     var offset = 0
 
     val sliceSizes = getNativeRowSliceSizes(row)
-
     for (i <- 0 until sliceNum) {
       val sliceSize = sliceSizes(i)
-      val rowSlice = encodeSingle(row, sliceSize, i)
-
       if (i == 0) {
-        result = rowSlice
+        result = CoreAPI.NewRow(sliceSize)
+        val buf = CoreAPI.GetRowBuf(result, 0)
+        encodeSingle(row, buf, sliceSize, i)
       } else {
-        result.Append(rowSlice)
-        rowSlice.delete()
+        val buf = CoreAPI.AppendRow(result, sliceSize)
+        encodeSingle(row, buf, sliceSize, i)
       }
-
       offset += sliceSizes(i)
     }
     result
@@ -59,12 +57,11 @@ class SparkRowCodec(sliceSchemas: Array[StructType]) {
   }
 
 
-  def encodeSingle(row: Row, size: Int, sliceIndex: Int): NativeRow = {
+  def encodeSingle(row: Row, outBuf: Long, outSize: Int, sliceIndex: Int): Unit = {
     val rowBuilder = rowBuilders(sliceIndex)
     val schema = sliceSchemas(sliceIndex)
-    val nativeRow = CoreAPI.NewRow(size)
+    rowBuilder.SetBuffer(outBuf, outSize)
 
-    rowBuilder.SetBuffer(nativeRow.buf(), size)
     val fieldNum = schema.size
     var fieldOffset = sliceFieldOffsets(sliceIndex)
 
@@ -91,18 +88,15 @@ class SparkRowCodec(sliceSchemas: Array[StructType]) {
             rowBuilder.AppendString(str, str.length)
           case TimestampType =>
             rowBuilder.AppendTimestamp(row.getTimestamp(fieldOffset).getTime)
-          case DateType => {
+          case DateType =>
             val date = row.getDate(fieldOffset)
-            logger.info("Encode date: {}", date)
             rowBuilder.AppendDate(date.getYear+1900, date.getMonth, date.getDate)
-          }
           case _ => throw new IllegalArgumentException(
             s"Spark type ${field.dataType} not supported")
         }
       }
       fieldOffset += 1
     }
-    nativeRow
   }
 
 
@@ -138,13 +132,10 @@ class SparkRowCodec(sliceSchemas: Array[StructType]) {
             output(fieldOffset) = rowView.GetStringUnsafe(i)
           case TimestampType =>
             output(fieldOffset) = new Timestamp(rowView.GetTimestampUnsafe(i))
-          case DateType => {
-            val days = rowView.GetDateUnsafe(i);
-            logger.info("Date Type: date =  {} ", days)
+          case DateType =>
+            val days = rowView.GetDateUnsafe(i)
             output(fieldOffset) = new Date(rowView.GetYearUnsafe(days)-1900,
               rowView.GetMonthUnsafe(days), rowView.GetDayUnsafe(days))
-          }
-
           case _ => throw new IllegalArgumentException(
             s"Spark type ${field.dataType} not supported")
         }

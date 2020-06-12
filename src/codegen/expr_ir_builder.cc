@@ -84,7 +84,7 @@ ExprIRBuilder::~ExprIRBuilder() {}
 }
 
 bool ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
-                          ::llvm::Value** output,
+                          NativeValue* output,
                           ::fesql::base::Status& status) {  // NOLINT
     if (node == NULL || output == NULL) {
         status.msg = "node or output is null";
@@ -111,24 +111,47 @@ bool ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
 
             switch (const_node->GetDataType()) {
                 case ::fesql::node::kInt16:
-                    *output = builder.getInt16(const_node->GetSmallInt());
+                    *output = NativeValue::Create(
+                        builder.getInt16(const_node->GetSmallInt()));
                     return true;
                 case ::fesql::node::kInt32:
-                    *output = builder.getInt32(const_node->GetInt());
+                    *output = NativeValue::Create(
+                        builder.getInt32(const_node->GetInt()));
                     return true;
                 case ::fesql::node::kInt64:
-                    *output = builder.getInt64(const_node->GetLong());
+                    *output = NativeValue::Create(
+                        builder.getInt64(const_node->GetLong()));
                     return true;
-                case ::fesql::node::kFloat:
-                    return GetConstFloat(block_->getContext(),
-                                         const_node->GetFloat(), output);
-                case ::fesql::node::kDouble:
-                    return GetConstDouble(block_->getContext(),
-                                          const_node->GetDouble(), output);
+                case ::fesql::node::kFloat: {
+                    llvm::Value* raw_float = nullptr;
+                    if (GetConstFloat(block_->getContext(),
+                                      const_node->GetFloat(), &raw_float)) {
+                        *output = NativeValue::Create(raw_float);
+                        return true;
+                    } else {
+                        return false;
+                    }
+                }
+                case ::fesql::node::kDouble: {
+                    llvm::Value* raw_double = nullptr;
+                    if (GetConstDouble(block_->getContext(),
+                                       const_node->GetDouble(), &raw_double)) {
+                        *output = NativeValue::Create(raw_double);
+                        return true;
+                    } else {
+                        return false;
+                    }
+                }
                 case ::fesql::node::kVarchar: {
                     std::string val(const_node->GetStr(),
                                     strlen(const_node->GetStr()));
-                    return GetConstFeString(val, block_, output);
+                    llvm::Value* raw_str = nullptr;
+                    if (GetConstFeString(val, block_, &raw_str)) {
+                        *output = NativeValue::Create(raw_str);
+                        return true;
+                    } else {
+                        return false;
+                    }
                 }
                 default: {
                     status.msg =
@@ -143,16 +166,16 @@ bool ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
             ::fesql::node::ExprIdNode* id_node =
                 (::fesql::node::ExprIdNode*)node;
             DLOG(INFO) << "id node name " << id_node->GetName();
-            ::llvm::Value* ptr = NULL;
-            if (!variable_ir_builder_.LoadValue(id_node->GetName(), &ptr,
+            NativeValue val;
+            if (!variable_ir_builder_.LoadValue(id_node->GetName(), &val,
                                                 status) ||
-                nullptr == ptr) {
+                val.GetRaw() == nullptr) {
                 status.msg = "fail to find var " + id_node->GetName();
                 status.code = common::kCodegenError;
                 LOG(WARNING) << status.msg;
                 return false;
             }
-            *output = ptr;
+            *output = val;
             return true;
         }
         case ::fesql::node::kExprBinary: {
@@ -176,7 +199,7 @@ bool ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
 }
 
 bool ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call_fn,
-                                ::llvm::Value** output,
+                                NativeValue* output,
                                 ::fesql::base::Status& status) {  // NOLINT
     // TODO(chenjing): return status;
     if (call_fn == NULL || output == NULL) {
@@ -201,11 +224,12 @@ bool ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call_fn,
 
     for (; it != args->children_.cend(); ++it) {
         const ::fesql::node::ExprNode* arg = dynamic_cast<node::ExprNode*>(*it);
-        ::llvm::Value* llvm_arg = NULL;
+        NativeValue llvm_arg_wrapper;
         // TODO(chenjing): remove out_name
-        if (Build(arg, &llvm_arg, status)) {
+        if (Build(arg, &llvm_arg_wrapper, status)) {
             ::fesql::node::TypeNode value_type;
-            if (false == GetFullType(llvm_arg->getType(), &value_type)) {
+            if (false == GetFullType(
+                    llvm_arg_wrapper.GetType(), &value_type)) {
                 status.msg = "fail to handle arg type ";
                 status.code = common::kCodegenError;
                 return false;
@@ -218,6 +242,7 @@ bool ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call_fn,
                 fesql::node::kIterator == value_type.base_) {
                 generics_types.push_back(value_type);
             }
+            ::llvm::Value* llvm_arg = llvm_arg_wrapper.GetValue(&builder);
             llvm_args.push_back(llvm_arg);
         } else {
             LOG(WARNING) << "fail to build arg for " << status.msg;
@@ -240,7 +265,8 @@ bool ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call_fn,
 
     if (args->children_.size() == fn->arg_size()) {
         ::llvm::ArrayRef<::llvm::Value*> array_ref(llvm_args);
-        *output = builder.CreateCall(fn->getFunctionType(), fn, array_ref);
+        *output = NativeValue::Create(
+            builder.CreateCall(fn->getFunctionType(), fn, array_ref));
         return true;
     } else if (args->children_.size() == fn->arg_size() - 1) {
         auto it = fn->arg_end();
@@ -266,7 +292,7 @@ bool ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call_fn,
             LOG(WARNING) << status.msg;
             return false;
         }
-        *output = struct_value;
+        *output = NativeValue::Create(struct_value);
         return true;
 
     } else {
@@ -284,7 +310,7 @@ bool ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call_fn,
 // @param output
 // @return
 bool ExprIRBuilder::BuildStructExpr(const ::fesql::node::StructExpr* node,
-                                    ::llvm::Value** output,
+                                    NativeValue* output,
                                     base::Status& status) {  // NOLINT
     std::vector<::llvm::Type*> members;
     if (nullptr != node->GetFileds() && !node->GetFileds()->children.empty()) {
@@ -309,12 +335,12 @@ bool ExprIRBuilder::BuildStructExpr(const ::fesql::node::StructExpr* node,
         ::llvm::StructType::create(module_->getContext(), name);
     ::llvm::ArrayRef<::llvm::Type*> array_ref(members);
     llvm_struct->setBody(array_ref);
-    *output = (::llvm::Value*)llvm_struct;
+    *output = NativeValue::Create((::llvm::Value*)llvm_struct);
     return true;
 }
 
 bool ExprIRBuilder::BuildColumnRef(const ::fesql::node::ColumnRefNode* node,
-                                   ::llvm::Value** output,
+                                   NativeValue* output,
                                    base::Status& status) {  // NOLINT
     if (node == NULL || output == NULL) {
         status.msg = "column ref node is null";
@@ -326,14 +352,20 @@ bool ExprIRBuilder::BuildColumnRef(const ::fesql::node::ColumnRefNode* node,
         return BuildColumnItem(node->GetRelationName(), node->GetColumnName(),
                                output, status);
     } else {
-        return BuildColumnIterator(node->GetRelationName(),
-                                   node->GetColumnName(), output, status);
+        llvm::Value* iter = nullptr;
+        if (BuildColumnIterator(node->GetRelationName(),
+                                node->GetColumnName(), &iter, status)) {
+            *output = NativeValue::Create(iter);
+            return true;
+        } else {
+            return false;
+        }
     }
 }
 
 bool ExprIRBuilder::BuildColumnItem(const std::string& relation_name,
                                     const std::string& col,
-                                    ::llvm::Value** output,
+                                    NativeValue* output,
                                     base::Status& status) {
     const RowSchemaInfo* info;
     if (!FindRowSchemaInfo(relation_name, col, &info)) {
@@ -343,7 +375,7 @@ bool ExprIRBuilder::BuildColumnItem(const std::string& relation_name,
         return false;
     }
 
-    ::llvm::Value* value = NULL;
+    NativeValue value;
     DLOG(INFO) << "get table column " << col;
     // not found
     bool ok = variable_ir_builder_.LoadColumnItem(info->table_name_, col,
@@ -381,7 +413,7 @@ bool ExprIRBuilder::BuildColumnItem(const std::string& relation_name,
     // TODO(wangtaize) buf ir builder add build get field ptr
     ok = row_ir_builder_list_[info->idx_]->BuildGetField(col, row_ptr, row_size,
                                                          &value);
-    if (!ok || value == NULL) {
+    if (!ok || value.GetRaw() == nullptr) {
         status.msg = "fail to find column " + col;
         status.code = common::kCodegenError;
         LOG(WARNING) << status.msg;
@@ -392,6 +424,8 @@ bool ExprIRBuilder::BuildColumnItem(const std::string& relation_name,
                                               status);
     if (ok) {
         *output = value;
+        status.msg = "ok";
+        status.code = common::kOk;
         return true;
     } else {
         return false;
@@ -423,8 +457,11 @@ bool ExprIRBuilder::BuildColumnIterator(const std::string& relation_name,
         return true;
     }
 
-    ::llvm::Value* window_ptr = NULL;
-    ok = variable_ir_builder_.LoadValue("window_ptr", &window_ptr, status);
+    NativeValue window_ptr_value;
+    ok = variable_ir_builder_.LoadValue(
+        "window_ptr", &window_ptr_value, status);
+    ::llvm::IRBuilder<> builder(block_);
+    ::llvm::Value* window_ptr = window_ptr_value.GetValue(&builder);
 
     if (!ok || window_ptr == NULL) {
         status.msg = "fail to find window_ptr: " + status.msg;
@@ -446,6 +483,8 @@ bool ExprIRBuilder::BuildColumnIterator(const std::string& relation_name,
                                              status);
     if (ok) {
         *output = value;
+        status.msg = "ok";
+        status.code = common::kOk;
         return true;
     } else {
         LOG(WARNING) << "fail to store col for " << status.msg;
@@ -454,7 +493,7 @@ bool ExprIRBuilder::BuildColumnIterator(const std::string& relation_name,
 }
 
 bool ExprIRBuilder::BuildUnaryExpr(const ::fesql::node::UnaryExpr* node,
-                                   ::llvm::Value** output,
+                                   NativeValue* output,
                                    base::Status& status) {  // NOLINT
     if (node == NULL || output == NULL) {
         status.code = common::kCodegenError;
@@ -472,7 +511,7 @@ bool ExprIRBuilder::BuildUnaryExpr(const ::fesql::node::UnaryExpr* node,
 
     DLOG(INFO) << "build unary"
                << ::fesql::node::ExprTypeName(node->GetExprType());
-    ::llvm::Value* left = NULL;
+    NativeValue left;
     bool ok = Build(node->children_[0], &left, status);
     if (!ok) {
         status.code = common::kCodegenError;
@@ -485,7 +524,7 @@ bool ExprIRBuilder::BuildUnaryExpr(const ::fesql::node::UnaryExpr* node,
 }
 
 bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
-                                    ::llvm::Value** output,
+                                    NativeValue* output,
                                     base::Status& status) {
     if (node == NULL || output == NULL) {
         status.msg = "input node or output is null";
@@ -501,81 +540,85 @@ bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
         return false;
     }
 
+    ::llvm::IRBuilder<> builder(block_);
     DLOG(INFO) << "build binary "
                << ::fesql::node::ExprOpTypeName(node->GetOp());
-    ::llvm::Value* left = NULL;
-    bool ok = Build(node->children_[0], &left, status);
+    NativeValue left_wrapper;
+    bool ok = Build(node->children_[0], &left_wrapper, status);
     if (!ok) {
         LOG(WARNING) << "fail to build left node: " << status.msg;
         return false;
     }
+    ::llvm::Value* left = left_wrapper.GetValue(&builder);
 
-    ::llvm::Value* right = NULL;
-    ok = Build(node->children_[1], &right, status);
+    NativeValue right_wrapper;
+    ok = Build(node->children_[1], &right_wrapper, status);
     if (!ok) {
         LOG(WARNING) << "fail to build right node" << status.msg;
         return false;
     }
+    ::llvm::Value* right = right_wrapper.GetValue(&builder);
 
     // TODO(wangtaize) type check
+    llvm::Value* raw = nullptr;
     switch (node->GetOp()) {
         case ::fesql::node::kFnOpAdd: {
-            ok = arithmetic_ir_builder_.BuildAddExpr(left, right, output,
+            ok = arithmetic_ir_builder_.BuildAddExpr(left, right, &raw,
                                                      status);
             break;
         }
         case ::fesql::node::kFnOpMulti: {
-            ok = arithmetic_ir_builder_.BuildMultiExpr(left, right, output,
+            ok = arithmetic_ir_builder_.BuildMultiExpr(left, right, &raw,
                                                        status);
             break;
         }
         case ::fesql::node::kFnOpFDiv: {
-            ok = arithmetic_ir_builder_.BuildFDivExpr(left, right, output,
+            ok = arithmetic_ir_builder_.BuildFDivExpr(left, right, &raw,
                                                       status);
             break;
         }
         case ::fesql::node::kFnOpMinus: {
-            ok = arithmetic_ir_builder_.BuildSubExpr(left, right, output,
+            ok = arithmetic_ir_builder_.BuildSubExpr(left, right, &raw,
                                                      status);
             break;
         }
         case ::fesql::node::kFnOpMod: {
-            ok = arithmetic_ir_builder_.BuildModExpr(left, right, output,
+            ok = arithmetic_ir_builder_.BuildModExpr(left, right, &raw,
                                                      status);
             break;
         }
         case ::fesql::node::kFnOpAnd: {
             ok =
-                predicate_ir_builder_.BuildAndExpr(left, right, output, status);
+                predicate_ir_builder_.BuildAndExpr(left, right, &raw, status);
             break;
         }
         case ::fesql::node::kFnOpOr: {
-            ok = predicate_ir_builder_.BuildOrExpr(left, right, output, status);
+            ok = predicate_ir_builder_.BuildOrExpr(left, right, &raw, status);
             break;
         }
         case ::fesql::node::kFnOpEq: {
-            ok = predicate_ir_builder_.BuildEqExpr(left, right, output, status);
+            ok = predicate_ir_builder_.BuildEqExpr(left, right, &raw, status);
             break;
         }
         case ::fesql::node::kFnOpNeq: {
             ok =
-                predicate_ir_builder_.BuildNeqExpr(left, right, output, status);
+                predicate_ir_builder_.BuildNeqExpr(left, right, &raw, status);
             break;
         }
         case ::fesql::node::kFnOpGt: {
-            ok = predicate_ir_builder_.BuildGtExpr(left, right, output, status);
+            ok = predicate_ir_builder_.BuildGtExpr(left, right, &raw, status);
             break;
         }
         case ::fesql::node::kFnOpGe: {
-            ok = predicate_ir_builder_.BuildGeExpr(left, right, output, status);
+            ok = predicate_ir_builder_.BuildGeExpr(left, right, &raw, status);
             break;
         }
         case ::fesql::node::kFnOpLt: {
-            ok = predicate_ir_builder_.BuildLtExpr(left, right, output, status);
+            ok = predicate_ir_builder_.BuildLtExpr(left, right, &raw, status);
             break;
         }
         case ::fesql::node::kFnOpLe: {
-            ok = predicate_ir_builder_.BuildLeExpr(left, right, output, status);
+            ok = predicate_ir_builder_.BuildLeExpr(left, right, &raw, status);
             break;
         }
         case ::fesql::node::kFnOpAt: {
@@ -593,7 +636,7 @@ bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
                                                          status)) {
                         return false;
                     }
-                    *output = at_value;
+                    *output = NativeValue::Create(at_value);
                     return true;
                 }
                 default: {
@@ -614,10 +657,11 @@ bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
         }
     }
 
-    if (!ok) {
+    if (!ok || raw == nullptr) {
         LOG(WARNING) << "fail to codegen binary expression: " << status.msg;
         return false;
     }
+    *output = NativeValue::Create(raw);
     return true;
 }
 bool ExprIRBuilder::IsUADF(std::string function_name) {

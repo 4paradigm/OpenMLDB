@@ -1,7 +1,6 @@
 #!/bin/bash
 WORKSPACE=`pwd`
-mkdir -p build && cd build 
-cmake .. && make fesql_proto fesql_parser && make fesql java_package
+
 cd ${WORKSPACE}/onebox && sh start_all.sh
 cd ${WORKSPACE}/java
 mvn scoverage:report

@@ -96,14 +96,14 @@ bool AggregateIRBuilder::CollectAggColumn(const fesql::node::ExprNode* expr,
             size_t slice_idx = info->idx_;
 
             codec::RowDecoder decoder(*info->schema_);
-            uint32_t offset;
-            type::Type col_type;
-            if (!decoder.GetPrimayFieldOffsetType(
-                    col_name, &offset, &col_type)) {
+            codec::ColInfo col_info;
+            if (!decoder.ResolveColumn(col_name, &col_info)) {
                 LOG(ERROR) << "fail to resolve column " <<
                     rel_name + "." + col_name;
                 return false;
             }
+            auto col_type = col_info.type;
+            uint32_t offset = col_info.offset;
 
             // resolve llvm agg type
             node::DataType node_type;
@@ -575,19 +575,21 @@ bool AggregateIRBuilder::BuildMulti(
     auto int64_ty = llvm::Type::getInt64Ty(llvm_ctx);
 
     base::Status status;
-    llvm::Value* window_ptr = nullptr;
+    NativeValue window_ptr;
     bool ok = variable_ir_builder->LoadValue(
         "window_ptr", &window_ptr, status);
-    if (!ok || window_ptr == nullptr) {
+    if (!ok || window_ptr.GetRaw() == nullptr) {
         LOG(ERROR) << "fail to find window_ptr: " + status.msg;
         return false;
     }
-    llvm::Value* output_buf = nullptr;
-    ok = variable_ir_builder->LoadValue(output_ptr_name, &output_buf, status);
+    NativeValue output_buf_wrapper;
+    ok = variable_ir_builder->LoadValue(
+        output_ptr_name, &output_buf_wrapper, status);
     if (!ok) {
         LOG(ERROR) << "fail to get output row ptr";
         return false;
     }
+    ::llvm::Value* output_buf = output_buf_wrapper.GetValue(&builder);
 
     std::vector<codec::RowDecoder> decoders;
     for (auto& info : schema_context_->row_schema_info_list_) {
@@ -603,7 +605,7 @@ bool AggregateIRBuilder::BuildMulti(
         llvm::Function::ExternalLinkage, fn_name, module_);
     builder.SetInsertPoint(cur_block);
     builder.CreateCall(module_->getOrInsertFunction(fn_name, fnt),
-        {window_ptr, builder.CreateLoad(output_buf)});
+        {window_ptr.GetValue(&builder), builder.CreateLoad(output_buf)});
 
     ::llvm::BasicBlock* head_block =
         ::llvm::BasicBlock::Create(llvm_ctx, "head", fn);
@@ -687,7 +689,7 @@ bool AggregateIRBuilder::BuildMulti(
             BufNativeIRBuilder buf_builder(
                 *schema_context_->row_schema_info_list_[slice_idx].schema_,
                 body_block, &dummy_scope_var);
-            llvm::Value* field_value = nullptr;
+            NativeValue field_value;
             if (!buf_builder.BuildGetField(info.col->GetColumnName(),
                                            slice_info.first,
                                            slice_info.second,
@@ -695,7 +697,7 @@ bool AggregateIRBuilder::BuildMulti(
                 LOG(ERROR) << "fail to gen fetch column";
                 return false;
             }
-            cur_row_fields_dict[col_key] = field_value;
+            cur_row_fields_dict[col_key] = field_value.GetValue(&builder);
         }
     }
 
@@ -726,7 +728,7 @@ bool AggregateIRBuilder::BuildMulti(
     builder.CreateCall(delete_iter_func, {iter_ptr});
 
     // store results to output row
-    std::map<uint32_t, ::llvm::Value*> dummy_map;
+    std::map<uint32_t, NativeValue> dummy_map;
     BufNativeEncoderIRBuilder output_encoder(
         &dummy_map, *output_schema, exit_block);
     for (auto& agg_generator : generators) {
@@ -734,7 +736,8 @@ bool AggregateIRBuilder::BuildMulti(
         agg_generator.GenOutputs(&builder, &outputs);
         for (auto pair : outputs) {
             output_encoder.BuildEncodePrimaryField(
-                output_arg, pair.first, pair.second);
+                output_arg, pair.first,
+                NativeValue::Create(pair.second));
         }
     }
     builder.CreateRetVoid();

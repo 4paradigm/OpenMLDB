@@ -29,9 +29,7 @@ class SchemasContext {
  public:
     explicit SchemasContext(const vm::SchemaSourceList& table_schema_list);
     virtual ~SchemasContext() {}
-    const bool Empty() const {
-        return row_schema_info_list_.empty();
-    }
+    const bool Empty() const { return row_schema_info_list_.empty(); }
     bool ExprListResolvedFromSchema(
         const std::vector<node::ExprNode*>& expr_list,
         const RowSchemaInfo** info) const;
@@ -59,7 +57,9 @@ class SchemasContext {
     std::map<std::string, uint32_t> table_context_id_map_;
     int32_t ColumnOffsetResolved(const std::string& relation_name,
                                  const std::string& col_name) const;
-    int32_t ColumnIndexResolved(const std::string& column,
+    int32_t ColumnOffsetResolved(const int32_t schema_idx,
+                                 const int32_t column_idx) const;
+    int32_t ColumnIdxResolved(const std::string& column,
                                 const Schema* schema) const;
 };
 }  // namespace vm

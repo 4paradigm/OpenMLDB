@@ -62,7 +62,9 @@ bool FeSQLJITWrapper::AddModuleFromBuffer(const base::RawBuffer& buf) {
     llvm::MemoryBufferRef mem_buf_ref(buf_str, "fesql_module_buf");
     auto llvm_ctx = ::llvm::make_unique<::llvm::LLVMContext>();
     auto res = llvm::parseBitcodeFile(mem_buf_ref, *llvm_ctx);
-    if (res.takeError()) {
+    auto error = res.takeError();
+    if (error) {
+        llvm::errs() << error << "\n";
         LOG(WARNING) << "fail to parse module, module size: " << buf.size;
         return false;
     }

@@ -117,3 +117,28 @@ SQLCases:
         1, 1590115420001, 2020-05-20
         2, 1590115421001, 2020-05-21
         3, 1590115422001, 2020-05-22
+
+  - id: 6
+    desc: SELECT null列
+    mode: request
+    db: db1
+    sql: select int16, int32, int64, `float`, `double`, `ts`, dt, `string`, id + 1 as newid from t1;
+    inputs:
+      - name: t1
+        schema: id:int32, int16:int16, int32:int32, int64:int64, float:float, double:double,
+                ts:timestamp, dt:date, string:string
+        index: index:id:ts
+        data: |
+          1, NULL, NULL, NULL, 1.0, 1.0, 1590115420001, 2020-05-20, x
+          2, 1, 1, 1, NULL, NULL, 1590115420002, 2020-05-21, y
+          3, 2, 2, 2, 2.0, 2.0, NULL, NULL, z
+          4, 3, 3, 3, 3.0, 3.0, 1590115420003, 2020-05-22, NULL
+    output:
+      schema: int16:int16, int32:int32, int64:int64, float:float, double:double,
+              ts:timestamp, dt:date, string:string, newid:int32
+      order: newid
+      data: |
+          NULL, NULL, NULL, 1.0, 1.0, 1590115420001, 2020-05-20, x, 2
+          1, 1, 1, NULL, NULL, 1590115420002, 2020-05-21, y, 3
+          2, 2, 2, 2.0, 2.0, NULL, NULL, z, 4
+          3, 3, 3, 3.0, 3.0, 1590115420003, 2020-05-22, NULL, 5

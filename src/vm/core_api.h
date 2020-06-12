@@ -23,16 +23,12 @@ namespace vm {
 class CoreAPI;
 class Window;
 
-
 typedef const int8_t* RawPtrHandle;
-
 
 class WindowInterface {
  public:
-    WindowInterface(bool instance_not_in_window,
-                    int64_t start_offset,
-                    int64_t end_offset,
-                    uint32_t max_size);
+    WindowInterface(bool instance_not_in_window, int64_t start_offset,
+                    int64_t end_offset, uint32_t max_size);
 
     void BufferData(uint64_t key, const Row& row);
 
@@ -56,14 +52,16 @@ class RunnerContext {
     std::map<int32_t, std::shared_ptr<DataHandler>> cache_;
 };
 
-
 class CoreAPI {
  public:
     static fesql::codec::Row* NewRow(size_t bytes);
+    static RawPtrHandle GetRowBuf(fesql::codec::Row*, size_t idx);
+    static RawPtrHandle AppendRow(fesql::codec::Row*, size_t bytes);
 
     static int ResolveColumnIndex(fesql::vm::PhysicalOpNode* node,
                                   fesql::node::ColumnRefNode* expr);
-
+    static int ResolveColumnIndex(fesql::vm::PhysicalOpNode* node,
+                                  int32_t schema_idx, int32_t column_idx);
     static fesql::codec::Row RowProject(const fesql::vm::RawPtrHandle fn,
                                         const fesql::codec::Row row,
                                         const bool need_free = false);
