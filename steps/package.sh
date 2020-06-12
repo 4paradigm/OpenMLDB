@@ -9,6 +9,7 @@ fi
 sh ./steps/release.sh $1
 ln -sf /usr/workdir/thirdparty thirdparty 
 ln -sf /usr/workdir/thirdsrc thirdsrc
+sed -i /[:blank:]*version/s/1.0/$1/ python/setup.py
 sh ./steps/compile.sh
 package=rtidb-cluster-$1
 rm -rf ${package}
