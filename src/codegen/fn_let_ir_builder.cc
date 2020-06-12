@@ -183,13 +183,14 @@ bool RowFnLetIRBuilder::EncodeBuf(
     ::llvm::BasicBlock* block, const std::string& output_ptr_name) {
     base::Status status;
     BufNativeEncoderIRBuilder encoder(values, schema, block);
-    ::llvm::Value* row_ptr = NULL;
+    NativeValue row_ptr;
     bool ok = variable_ir_builder.LoadValue(output_ptr_name, &row_ptr, status);
     if (!ok) {
         LOG(WARNING) << "fail to get row ptr";
         return false;
     }
-    return encoder.BuildEncode(row_ptr);
+    ::llvm::IRBuilder<> ir_builder(block);
+    return encoder.BuildEncode(row_ptr.GetValue(&ir_builder));
 }
 
 bool RowFnLetIRBuilder::BuildFnHeader(
@@ -224,7 +225,7 @@ bool RowFnLetIRBuilder::FillArgs(const std::vector<std::string>& args,
     }
     ::llvm::Function::arg_iterator it = fn->arg_begin();
     for (auto arg : args) {
-        sv.AddVar(arg, &*it);
+        sv.AddVar(arg, NativeValue::Create(&*it));
         ++it;
     }
     return true;

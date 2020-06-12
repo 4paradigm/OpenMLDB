@@ -575,19 +575,21 @@ bool AggregateIRBuilder::BuildMulti(
     auto int64_ty = llvm::Type::getInt64Ty(llvm_ctx);
 
     base::Status status;
-    llvm::Value* window_ptr = nullptr;
+    NativeValue window_ptr;
     bool ok = variable_ir_builder->LoadValue(
         "window_ptr", &window_ptr, status);
-    if (!ok || window_ptr == nullptr) {
+    if (!ok || window_ptr.GetRaw() == nullptr) {
         LOG(ERROR) << "fail to find window_ptr: " + status.msg;
         return false;
     }
-    llvm::Value* output_buf = nullptr;
-    ok = variable_ir_builder->LoadValue(output_ptr_name, &output_buf, status);
+    NativeValue output_buf_wrapper;
+    ok = variable_ir_builder->LoadValue(
+        output_ptr_name, &output_buf_wrapper, status);
     if (!ok) {
         LOG(ERROR) << "fail to get output row ptr";
         return false;
     }
+    ::llvm::Value* output_buf = output_buf_wrapper.GetValue(&builder);
 
     std::vector<codec::RowDecoder> decoders;
     for (auto& info : schema_context_->row_schema_info_list_) {
@@ -603,7 +605,7 @@ bool AggregateIRBuilder::BuildMulti(
         llvm::Function::ExternalLinkage, fn_name, module_);
     builder.SetInsertPoint(cur_block);
     builder.CreateCall(module_->getOrInsertFunction(fn_name, fnt),
-        {window_ptr, builder.CreateLoad(output_buf)});
+        {window_ptr.GetValue(&builder), builder.CreateLoad(output_buf)});
 
     ::llvm::BasicBlock* head_block =
         ::llvm::BasicBlock::Create(llvm_ctx, "head", fn);

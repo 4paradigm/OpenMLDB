@@ -50,14 +50,15 @@ void MutableVariableCheck(::fesql::node::DataType type, V1 value1, V1 result) {
     Argument *arg0 = &(*iter);
     ScopeVar scope_var;
     scope_var.Enter("fn_base");
-    scope_var.AddVar("a", arg0);
+    scope_var.AddVar("a", NativeValue::Create(arg0));
     VariableIRBuilder ir_builder(entry_block, &scope_var);
-    llvm::Value *output;
+    NativeValue output;
     base::Status status;
 
-    ASSERT_TRUE(ir_builder.StoreValue("x", arg0, false, status));
+    ASSERT_TRUE(ir_builder.StoreValue("x",
+        NativeValue::Create(arg0), false, status));
     ASSERT_TRUE(ir_builder.LoadValue("x", &output, status));
-    builder.CreateRet(output);
+    builder.CreateRet(output.GetValue(&builder));
     m->print(::llvm::errs(), NULL, true, true);
     auto J = ExitOnErr(LLJITBuilder().create());
     ExitOnErr(J->addIRModule(
@@ -91,14 +92,16 @@ void ArrayVariableCheck(node::DataType type, V1 *array, int pos, V1 exp) {
     Argument *arg0 = &(*iter);
     ScopeVar scope_var;
     scope_var.Enter("fn_base");
-    scope_var.AddVar("array_arg", arg0);
+    scope_var.AddVar("array_arg", NativeValue::Create(arg0));
     VariableIRBuilder ir_builder(entry_block, &scope_var);
-    llvm::Value *output;
+    NativeValue output;
     base::Status status;
-
     ASSERT_TRUE(ir_builder.LoadValue("array_arg", &output, status));
-    ASSERT_TRUE(ir_builder.LoadArrayIndex("array_arg", pos, &output, status));
-    builder.CreateRet(output);
+
+    llvm::Value* output_elem = nullptr;
+    ASSERT_TRUE(ir_builder.LoadArrayIndex(
+        "array_arg", pos, &output_elem, status));
+    builder.CreateRet(output_elem);
     m->print(::llvm::errs(), NULL, true, true);
     auto J = ExitOnErr(LLJITBuilder().create());
     ExitOnErr(J->addIRModule(

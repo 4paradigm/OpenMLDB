@@ -2,9 +2,10 @@
 #
 # run_py3_ut.sh
 WORKDIR=`pwd`
-mkdir -p build && cd build 
-cmake .. && make fesql_proto fesql_parser && make -j8 fesql python_package
-cd python && pip install .
+mkdir -p build && cd build/python
+fesql_wheel=$(ls dist | grep .whl | head -1)
+pip install ./dist/${fesql_wheel}
+
 pip install nose
 cd ${WORKDIR}/onebox && sh start_all.sh
 sleep 20

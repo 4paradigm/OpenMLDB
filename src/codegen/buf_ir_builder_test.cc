@@ -268,7 +268,7 @@ void LoadValue(T* result, bool* is_null,
         llvm::BasicBlock* nonnull_branch_block = llvm::BasicBlock::Create(*ctx);
         nonnull_branch_block->insertInto(fn);
 
-        ::llvm::Value* flag = val.GetFlag(&builder);
+        ::llvm::Value* flag = val.GetIsNull(&builder);
         builder.CreateCondBr(flag, null_branch_block, nonnull_branch_block);
 
         builder.SetInsertPoint(null_branch_block);

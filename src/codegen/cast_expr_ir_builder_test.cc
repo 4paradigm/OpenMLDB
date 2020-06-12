@@ -54,7 +54,7 @@ void CastErrorCheck(::fesql::node::DataType src_type,
     Argument *arg0 = &*load_fn->arg_begin();
     ScopeVar scope_var;
     scope_var.Enter("fn_base");
-    scope_var.AddVar("a", arg0);
+    scope_var.AddVar("a", NativeValue::Create(arg0));
     CastExprIRBuilder cast_expr_ir_builder(entry_block);
     llvm::Value *output;
     base::Status status;
@@ -90,7 +90,7 @@ void CastCheck(::fesql::node::DataType src_type,
     Argument *arg0 = &*load_fn->arg_begin();
     ScopeVar scope_var;
     scope_var.Enter("fn_base");
-    scope_var.AddVar("a", arg0);
+    scope_var.AddVar("a", NativeValue::Create(arg0));
     CastExprIRBuilder cast_expr_ir_builder(entry_block);
     llvm::Value *output;
     base::Status status;
@@ -168,7 +168,7 @@ void BoolCastCheck(::fesql::node::DataType type, V value, bool result) {
     Argument *arg0 = &(*iter);
     ScopeVar scope_var;
     scope_var.Enter("fn_base");
-    scope_var.AddVar("a", arg0);
+    scope_var.AddVar("a", NativeValue::Create(arg0));
     CastExprIRBuilder ir_builder(entry_block);
     llvm::Value *output;
     base::Status status;

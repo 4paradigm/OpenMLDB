@@ -179,10 +179,12 @@ bool BufNativeIRBuilder::BuildGetStringField(
         return false;
     }
 
-    ::llvm::Value* str_addr_space = NULL;
-    bool ok = variable_ir_builder_.LoadValue("str_addr_space", &str_addr_space,
-                                             status);
     ::llvm::IRBuilder<> builder(block_);
+    NativeValue str_addr_space_val;
+    bool ok = variable_ir_builder_.LoadValue(
+        "str_addr_space", &str_addr_space_val, status);
+    ::llvm::Value* str_addr_space = str_addr_space_val.GetValue(&builder);
+
     ::llvm::Type* i32_ty = builder.getInt32Ty();
     ::llvm::Type* i8_ty = builder.getInt8Ty();
     if (!ok || str_addr_space == NULL) {
@@ -193,8 +195,8 @@ bool BufNativeIRBuilder::BuildGetStringField(
             builder.CreateCall(callee, ::llvm::ArrayRef<::llvm::Value*>{size});
         str_addr_space = builder.CreateIntCast(str_addr_space, i32_ty, true,
                                                "cast_i8_to_i32");
-        ok = variable_ir_builder_.StoreValue("str_addr_space", str_addr_space,
-                                             status);
+        ok = variable_ir_builder_.StoreValue(
+            "str_addr_space", NativeValue::Create(str_addr_space), status);
         if (!ok) {
             LOG(WARNING) << "fail to add str add space var";
             return false;
@@ -457,7 +459,7 @@ bool BufNativeEncoderIRBuilder::AppendString(
         builder.CreatePointerCast(data_ptr_ptr, i8_ptr_ty->getPointerTo());
     ::llvm::Value* data_ptr =
         builder.CreateLoad(i8_ptr_ty, data_ptr_ptr, "load_str_data_ptr");
-    ::llvm::Value* is_null = str_val.GetFlag(&builder);
+    ::llvm::Value* is_null = str_val.GetIsNull(&builder);
 
     ::llvm::FunctionCallee callee = block_->getModule()->getOrInsertFunction(
         "fesql_storage_encode_string_field",
@@ -515,7 +517,7 @@ bool BufNativeEncoderIRBuilder::AppendPrimary(::llvm::Value* i8_ptr,
             void_ty, i8_ptr_ty, size_ty, bool_ty);
         builder.CreateCall(callee,
             {i8_ptr, builder.getInt32(field_idx),
-            val.GetFlag(&builder)});
+            val.GetIsNull(&builder)});
     }
     return BuildStoreOffset(builder, i8_ptr, offset,
         val.GetValue(&builder));
@@ -602,7 +604,7 @@ bool BufNativeEncoderIRBuilder::CalcTotalSize(::llvm::Value** output_ptr,
             ::llvm::Value* fe_str_size =
                 builder.CreateLoad(size_ty, size_i32_ptr, "load_str_length");
             fe_str_size = builder.CreateSelect(
-                fe_str.GetFlag(&builder), builder.getInt32(0), fe_str_size);
+                fe_str.GetIsNull(&builder), builder.getInt32(0), fe_str_size);
 
             if (total_size == NULL) {
                 total_size = fe_str_size;

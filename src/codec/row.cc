@@ -27,11 +27,15 @@ Row::Row(size_t major_slices, const Row &major,
     : slice_(major.slice_), slices_(major_slices + secondary_slices - 1) {
 
     for (size_t offset = 0; offset < major_slices - 1; ++offset) {
-        slices_[offset] = major.slices_[offset];
+        if (major.slices_.size() > offset) {
+            slices_[offset] = major.slices_[offset];
+        }
     }
     slices_[major_slices - 1] = secondary.slice_;
     for (size_t offset = 0; offset < secondary_slices - 1; ++offset) {
-        slices_[offset + major_slices] = secondary.slices_[offset];
+        if (secondary.slices_.size() > offset) {
+            slices_[offset + major_slices] = secondary.slices_[offset];
+        }
     }
 }
 

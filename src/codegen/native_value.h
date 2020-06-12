@@ -21,7 +21,7 @@ namespace codegen {
 
 class NativeValue {
  public:
-    ::llvm::Value* GetFlag(::llvm::IRBuilder<>*) const;
+    ::llvm::Value* GetIsNull(::llvm::IRBuilder<>*) const;
 
     ::llvm::Value* GetValue(::llvm::IRBuilder<>*) const;
 
@@ -46,6 +46,8 @@ class NativeValue {
     void SetName(const std::string& name);
 
     static NativeValue Create(::llvm::Value*);
+
+    static NativeValue CreateMem(::llvm::Value*);
 
     static NativeValue CreateNull(::llvm::Type*);
 

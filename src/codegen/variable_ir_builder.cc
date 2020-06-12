@@ -15,43 +15,38 @@ fesql::codegen::VariableIRBuilder::VariableIRBuilder(::llvm::BasicBlock* block,
 fesql::codegen::VariableIRBuilder::~VariableIRBuilder() {}
 
 bool fesql::codegen::VariableIRBuilder::StoreValue(
-    const std::string& name, ::llvm::Value* value, bool is_register,
+    const std::string& name, const NativeValue& value, bool is_register,
     fesql::base::Status& status) {
-    if (nullptr == value) {
-        status.msg = "value is null";
-        status.code = common::kCodegenError;
-        return false;
-    }
 
     if (is_register) {
         // store value into register
-        bool is_reg;
-        if (sv_->FindVar(name, &value, &is_reg)) {
+        NativeValue exist;
+        if (sv_->FindVar(name, &exist)) {
             status.code = common::kCodegenError;
             status.msg =
                 "fail to store register value: register value already exist";
             return false;
         } else {
-            return sv_->AddVar(name, value, is_register);
+            return sv_->AddVar(name, value);
         }
     } else {
         // store value into memory address
         ::llvm::IRBuilder<> builder(block_);
         // get value addr
-        ::llvm::Value* addr = nullptr;
-        bool is_reg = false;
-        if (!sv_->FindVar(name, &addr, &is_reg)) {
-            addr = builder.CreateAlloca(value->getType());
-            sv_->AddVar(name, addr, false);
+        NativeValue addr;
+        if (!sv_->FindVar(name, &addr)) {
+            addr = NativeValue::CreateMem(
+                builder.CreateAlloca(value.GetType()));
+            sv_->AddVar(name, addr);
         }
 
-        if (nullptr == addr) {
+        if (nullptr == addr.GetRaw()) {
             status.msg = "fail to store value: addr is null";
             status.code = common::kCodegenError;
             return false;
         }
 
-        if (is_reg) {
+        if (!addr.IsMem()) {
             status.msg =
                 "fail to store mutable value: register value exists in scope";
             status.code = common::kCodegenError;
@@ -59,7 +54,8 @@ bool fesql::codegen::VariableIRBuilder::StoreValue(
             return false;
         }
         // store value on address
-        if (nullptr == builder.CreateStore(value, addr)) {
+        if (nullptr == builder.CreateStore(
+                value.GetValue(&builder), addr.GetAddr(&builder))) {
             status.msg = "fail to store value";
             status.code = common::kCodegenError;
             return false;
@@ -69,85 +65,69 @@ bool fesql::codegen::VariableIRBuilder::StoreValue(
 }
 
 bool fesql::codegen::VariableIRBuilder::LoadValue(std::string name,
-                                                  ::llvm::Value** output,
+                                                  NativeValue* output,
                                                   fesql::base::Status& status) {
-    ::llvm::Value* value = nullptr;
-    bool is_register;
-    if (!sv_->FindVar(name, &value, &is_register)) {
-        return false;
-    }
-
-    if (nullptr == value) {
-        status.msg = "fail to get value: value is null";
+    NativeValue value;
+    if (!sv_->FindVar(name, &value)) {
+        status.msg = "fail to get value " + name + ": value is null";
         status.code = common::kCodegenError;
         return false;
     }
-
-    if (is_register) {
-        // load value directly from register
-        *output = value;
-        return true;
-    } else {
-        ::llvm::IRBuilder<> builder(block_);
-        // load value from address
-        *output = builder.CreateLoad(value);
-        if (nullptr == *output) {
-            status.msg = "fail to load mutable value";
-            status.code = common::kCodegenError;
-            return false;
-        }
-        return true;
-    }
+    *output = value;
+    return true;
 }
 bool fesql::codegen::VariableIRBuilder::StoreValue(
-    const std::string& name, ::llvm::Value* value,
+    const std::string& name, const NativeValue& value,
     fesql::base::Status& status) {
     return StoreValue(name, value, true, status);
 }
 bool fesql::codegen::VariableIRBuilder::LoadColumnRef(
     const std::string& relation_name, const std::string& name,
     ::llvm::Value** output, fesql::base::Status& status) {
-    return LoadValue("col." + relation_name + "." + name, output, status);
+    NativeValue col_ref;
+    bool ok = LoadValue("col." + relation_name + "." + name, &col_ref, status);
+    *output = col_ref.GetRaw();
+    return ok;
 }
 bool fesql::codegen::VariableIRBuilder::LoadColumnItem(
     const std::string& relation_name, const std::string& name,
     NativeValue* output, fesql::base::Status& status) {
-    llvm::Value* raw = nullptr;
-    if (!LoadValue("item." + relation_name + "." + name, &raw, status)) {
-        return false;
-    }
-    *output = NativeValue::Create(raw);
-    return true;
+    return LoadValue("item." + relation_name + "." + name, output, status);
 }
 bool fesql::codegen::VariableIRBuilder::StoreColumnRef(
     const std::string& relation_name, const std::string& name,
     ::llvm::Value* value, fesql::base::Status& status) {
-    return StoreValue("col." + relation_name + "." + name, value, status);
+    return StoreValue("col." + relation_name + "." + name,
+        NativeValue::Create(value), status);
 }
 bool fesql::codegen::VariableIRBuilder::StoreColumnItem(
     const std::string& relation_name, const std::string& name,
     const NativeValue& value, fesql::base::Status& status) {
     ::llvm::IRBuilder<> builder(block_);
     return StoreValue("item." + relation_name + "." + name,
-        value.GetValue(&builder), status);
+        value, status);
 }
 bool fesql::codegen::VariableIRBuilder::LoadArrayIndex(
     std::string array_ptr_name, int32_t index, ::llvm::Value** output,
     base::Status& status) {
     std::string array_index_name = array_ptr_name;
     array_index_name.append("[").append(std::to_string(index)).append("]");
-    if (LoadValue(array_index_name, output, status)) {
+    ::llvm::IRBuilder<> builder(block_);
+
+    NativeValue output_wrapper;
+    if (LoadValue(array_index_name, &output_wrapper, status)) {
+        *output = output_wrapper.GetValue(&builder);
         return true;
     }
 
-    ::llvm::IRBuilder<> builder(block_);
-    ::llvm::Value* array_ptr;
-    if (!LoadValue(array_ptr_name, &array_ptr, status)) {
+    NativeValue array_ptr_wrapper;
+    if (!LoadValue(array_ptr_name, &array_ptr_wrapper, status)) {
         status.msg = "fail load array ptr" + array_ptr_name;
         status.code = common::kCodegenError;
         LOG(WARNING) << status.msg;
         return false;
     }
+    ::llvm::Value* array_ptr = array_ptr_wrapper.GetValue(&builder);
     ::llvm::Value* ptr = builder.CreateInBoundsGEP(
         array_ptr, ::llvm::ArrayRef<::llvm::Value*>(builder.getInt64(index)));
 
@@ -160,9 +140,11 @@ bool fesql::codegen::VariableIRBuilder::LoadArrayIndex(
         return false;
     }
 
-    if (!StoreValue(array_index_name, value, status)) {
+    if (!StoreValue(array_index_name, NativeValue::Create(value), status)) {
         LOG(WARNING) << "fail to cache " << array_index_name;
     }
     *output = value;
+    status.msg = "ok";
+    status.code = common::kOk;
     return true;
 }

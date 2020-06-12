@@ -107,6 +107,7 @@ class ColumnImpl : public WrapListImpl<V, Row> {
         if (buf == nullptr || v1::IsNullAt(buf, col_idx_)) {
             *is_null = true;
         } else {
+            *is_null = false;
             const int8_t *ptr = buf + offset_;
             *res = *((const V *)ptr);
         }

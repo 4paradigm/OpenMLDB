@@ -178,7 +178,7 @@ void SQLCompiler::KeepIR(SQLContext& ctx, llvm::Module* m) {
         LOG(WARNING) << "module is null";
         return;
     }
-    ctx.ir.reserve(8192);
+    ctx.ir.reserve(1024);
     llvm::raw_string_ostream buf(ctx.ir);
     llvm::WriteBitcodeToFile(*m, buf);
     buf.flush();
