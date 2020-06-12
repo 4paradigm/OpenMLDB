@@ -310,3 +310,33 @@ SQLCases:
         3, 1590115422000, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
         4, 1590115423000, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
         5, 1590115424000, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
+  - id: 9
+    desc: LAST JOIN 命中多个Key取Last Order，使用desc order
+    db: db1
+    sql: |
+      SELECT t1.col1 as id, t1.col0 as t1_col0, t2.std_ts as t2_std_ts FROM t1
+      last join t2 order by t2.std_ts desc on t1.col0=t2.col1;
+    inputs:
+      - name: t1
+        resource: cases/resource/simple_t1_ts.yaml
+      - name: t2
+        schema: str0:string, str1:string, col1:string, std_ts:timestamp
+        index: index1:col1:std_ts
+        data: |
+          2, GGGGGGG, 0, 1590115428000
+          2, FFFFFF, 2, 1590115423900
+          2, EEEEEE, 2, 1590115427000
+          1, DDDD, 4, 1590115423000
+          1, CCC, 3, 1590115422000
+          0, BB, 5, 1590115421000
+          0, A, 1, 1590115420000
+    output:
+      schema: id:int32, t1_col0:string, t2_std_ts:timestamp
+      order: id
+      data: |
+        1, 0, 1590115428000
+        2, 0, 1590115428000
+        3, 1, 1590115420000
+        4, 1, 1590115420000
+        5, 2, 1590115423900
+
