@@ -11,7 +11,6 @@ public class FeSqlLibrary {
     static private boolean initialized = false;
 
     static synchronized public void init() {
-
         if (initialized) {
             return;
         }

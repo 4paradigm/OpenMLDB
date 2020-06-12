@@ -94,7 +94,7 @@ bool RowFnLetIRBuilder::Build(
     }
     ExprIRBuilder expr_ir_builder(block, &sv, &schema_context_, true, module_);
     ::fesql::node::PlanNodeList::const_iterator it = projects.cbegin();
-    std::map<uint32_t, ::llvm::Value*> outputs;
+    std::map<uint32_t, NativeValue> outputs;
 
     // maybe collect agg expressions
     AggregateIRBuilder agg_builder(&schema_context_, module_);
@@ -178,18 +178,19 @@ bool RowFnLetIRBuilder::Build(
 }
 
 bool RowFnLetIRBuilder::EncodeBuf(
-    const std::map<uint32_t, ::llvm::Value*>* values, const vm::Schema& schema,
+    const std::map<uint32_t, NativeValue>* values, const vm::Schema& schema,
     VariableIRBuilder& variable_ir_builder,  // NOLINT (runtime/references)
     ::llvm::BasicBlock* block, const std::string& output_ptr_name) {
     base::Status status;
     BufNativeEncoderIRBuilder encoder(values, schema, block);
-    ::llvm::Value* row_ptr = NULL;
+    NativeValue row_ptr;
     bool ok = variable_ir_builder.LoadValue(output_ptr_name, &row_ptr, status);
     if (!ok) {
         LOG(WARNING) << "fail to get row ptr";
         return false;
     }
-    return encoder.BuildEncode(row_ptr);
+    ::llvm::IRBuilder<> ir_builder(block);
+    return encoder.BuildEncode(row_ptr.GetValue(&ir_builder));
 }
 
 bool RowFnLetIRBuilder::BuildFnHeader(
@@ -224,26 +225,26 @@ bool RowFnLetIRBuilder::FillArgs(const std::vector<std::string>& args,
     }
     ::llvm::Function::arg_iterator it = fn->arg_begin();
     for (auto arg : args) {
-        sv.AddVar(arg, &*it);
+        sv.AddVar(arg, NativeValue::Create(&*it));
         ++it;
     }
     return true;
 }
 bool RowFnLetIRBuilder::BuildProject(
     const uint32_t index, const node::ExprNode* expr,
-    const std::string& col_name, std::map<uint32_t, ::llvm::Value*>* outputs,
+    const std::string& col_name, std::map<uint32_t, NativeValue>* outputs,
     ExprIRBuilder& expr_ir_builder, vm::Schema* output_schema,  // NOLINT
     vm::ColumnSourceList* output_column_sources,
     base::Status& status) {  // NOLINT
-    ::llvm::Value* expr_out_val = NULL;
 
+    NativeValue expr_out_val;
     bool ok = expr_ir_builder.Build(expr, &expr_out_val, status);
     if (!ok) {
         LOG(WARNING) << "fail to codegen project expression: " << status.msg;
         return false;
     }
     ::fesql::node::DataType data_type;
-    ok = GetBaseType(expr_out_val->getType(), &data_type);
+    ok = GetBaseType(expr_out_val.GetType(), &data_type);
     if (!ok) {
         return false;
     }
@@ -251,6 +252,7 @@ bool RowFnLetIRBuilder::BuildProject(
     if (!DataType2SchemaType(data_type, &ctype)) {
         return false;
     }
+    llvm::IRBuilder<> builder(expr_ir_builder.GetCurrentBlock());
     outputs->insert(std::make_pair(index, expr_out_val));
 
     return AddOutputColumnInfo(col_name, ctype, expr,

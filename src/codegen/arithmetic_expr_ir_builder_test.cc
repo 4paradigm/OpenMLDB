@@ -84,8 +84,8 @@ void BinaryArithmeticExprCheck(::fesql::node::DataType left_type,
 
     ScopeVar scope_var;
     scope_var.Enter("fn_base");
-    scope_var.AddVar("a", arg0);
-    scope_var.AddVar("b", arg1);
+    scope_var.AddVar("a", NativeValue::Create(arg0));
+    scope_var.AddVar("b", NativeValue::Create(arg1));
     ArithmeticIRBuilder arithmetic_ir_builder(entry_block);
     llvm::Value *output;
     base::Status status;

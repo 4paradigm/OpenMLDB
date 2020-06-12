@@ -47,34 +47,38 @@ class ExprIRBuilder {
 
     ~ExprIRBuilder();
 
-    bool Build(const ::fesql::node::ExprNode* node, ::llvm::Value** output,
+    bool Build(const ::fesql::node::ExprNode* node, NativeValue* output,
                ::fesql::base::Status& status);  // NOLINT
+
+    ::llvm::BasicBlock* GetCurrentBlock() const {
+        return block_;
+    }
 
  private:
     bool BuildColumnIterator(const std::string& relation_name,
                              const std::string& col, ::llvm::Value** output,
                              ::fesql::base::Status& status);  // NOLINT
     bool BuildColumnItem(const std::string& relation_name,
-                         const std::string& col, ::llvm::Value** output,
+                         const std::string& col, NativeValue* output,
                          ::fesql::base::Status& status);  // NOLINT
     bool BuildColumnRef(const ::fesql::node::ColumnRefNode* node,
-                        ::llvm::Value** output,
+                        NativeValue* output,
                         ::fesql::base::Status& status);  // NOLINT
 
     bool BuildCallFn(const ::fesql::node::CallExprNode* fn,
-                     ::llvm::Value** output,
+                     NativeValue* output,
                      ::fesql::base::Status& status);  // NOLINT
 
     bool BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
-                         ::llvm::Value** output,
+                         NativeValue* output,
                          ::fesql::base::Status& status);  // NOLINT
 
     bool BuildUnaryExpr(const ::fesql::node::UnaryExpr* node,
-                        ::llvm::Value** output,
+                        NativeValue* output,
                         ::fesql::base::Status& status);  // NOLINT
 
     bool BuildStructExpr(const ::fesql::node::StructExpr* node,
-                         ::llvm::Value** output,
+                         NativeValue* output,
                          ::fesql::base::Status& status);  // NOLINT
     ::llvm::Function* GetFuncion(
         const std::string& col,

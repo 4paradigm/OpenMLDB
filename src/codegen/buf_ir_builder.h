@@ -36,7 +36,7 @@ namespace codegen {
 
 class BufNativeEncoderIRBuilder : public RowEncodeIRBuilder {
  public:
-    BufNativeEncoderIRBuilder(const std::map<uint32_t, ::llvm::Value*>* outputs,
+    BufNativeEncoderIRBuilder(const std::map<uint32_t, NativeValue>* outputs,
                               const vm::Schema& schema,
                               ::llvm::BasicBlock* block);
 
@@ -46,16 +46,17 @@ class BufNativeEncoderIRBuilder : public RowEncodeIRBuilder {
     bool BuildEncode(::llvm::Value* output_ptr);
 
     bool BuildEncodePrimaryField(
-      ::llvm::Value* buf, size_t idx, ::llvm::Value* val);
+      ::llvm::Value* buf, size_t idx, const NativeValue& val);
 
  private:
     bool CalcTotalSize(::llvm::Value** output, ::llvm::Value* str_addr_space);
     bool CalcStrBodyStart(::llvm::Value** output, ::llvm::Value* str_add_space);
-    bool AppendPrimary(::llvm::Value* i8_ptr, ::llvm::Value* val,
-                       uint32_t field_offset);
+    bool AppendPrimary(::llvm::Value* i8_ptr, const NativeValue& val,
+                       size_t field_idx, uint32_t field_offset);
 
     bool AppendString(::llvm::Value* i8_ptr, ::llvm::Value* buf_size,
-                      ::llvm::Value* str_val, ::llvm::Value* str_addr_space,
+                      uint32_t field_idx, const NativeValue& str_val,
+                      ::llvm::Value* str_addr_space,
                       ::llvm::Value* str_body_offset, uint32_t str_field_idx,
                       ::llvm::Value** output);
 
@@ -63,7 +64,7 @@ class BufNativeEncoderIRBuilder : public RowEncodeIRBuilder {
                       ::llvm::Value* bitmap_size);
 
  private:
-    const std::map<uint32_t, ::llvm::Value*>* outputs_;
+    const std::map<uint32_t, NativeValue>* outputs_;
     vm::Schema schema_;
     uint32_t str_field_start_offset_;
     std::vector<uint32_t> offset_vec_;
@@ -78,17 +79,20 @@ class BufNativeIRBuilder : public RowDecodeIRBuilder {
     ~BufNativeIRBuilder();
 
     bool BuildGetField(const std::string& name, ::llvm::Value* row_ptr,
-                       ::llvm::Value* row_size, ::llvm::Value** output);
+                       ::llvm::Value* row_size, NativeValue* output);
 
  private:
     bool BuildGetPrimaryField(const std::string& fn_name,
-                              ::llvm::Value* row_ptr, uint32_t offset,
-                              ::llvm::Type* type, ::llvm::Value** output);
-    bool BuildGetStringField(uint32_t offset, uint32_t next_str_field_offset,
+                              ::llvm::Value* row_ptr,
+                              uint32_t col_idx, uint32_t offset,
+                              ::llvm::Type* type, NativeValue* output);
+    bool BuildGetStringField(uint32_t col_idx, uint32_t offset,
+                             uint32_t next_str_field_offset,
                              uint32_t str_start_offset, ::llvm::Value* row_ptr,
-                             ::llvm::Value* size, ::llvm::Value** output);
-    bool GetFiledOffsetType(const std::string& name, uint32_t* offset_ptr,
-                            node::DataType* data_type_ptr);
+                             ::llvm::Value* size, NativeValue* output);
+    bool ResolveFieldInfo(const std::string& name,
+                          codec::ColInfo* info_ptr,
+                          node::DataType* data_type_ptr);
 
  private:
     ::llvm::BasicBlock* block_;

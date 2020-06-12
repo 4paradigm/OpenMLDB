@@ -88,5 +88,19 @@ fesql::codec::Row* CoreAPI::NewRow(size_t bytes) {
     return new fesql::codec::Row(slice);
 }
 
+RawPtrHandle CoreAPI::GetRowBuf(fesql::codec::Row* row, size_t idx) {
+    return row->buf(idx);
+}
+
+RawPtrHandle CoreAPI::AppendRow(fesql::codec::Row* row, size_t bytes) {
+    auto buf = reinterpret_cast<int8_t*>(malloc(bytes));
+    if (buf == nullptr) {
+        return nullptr;
+    }
+    auto slice = base::RefCountedSlice::CreateManaged(buf, bytes);
+    row->Append(slice);
+    return buf;
+}
+
 }  // namespace vm
 }  // namespace fesql

@@ -60,26 +60,27 @@ bool ScopeVar::AddIteratorValue(::llvm::Value* value) {
     return true;
 }
 
-bool ScopeVar::AddVar(const std::string& name, ::llvm::Value* value,
-                      bool is_register) {
+bool ScopeVar::AddVar(const std::string& name,
+                      const NativeValue& value) {
     if (scopes_.size() <= 0) {
         LOG(WARNING) << "no scope exists " << name;
         return false;
     }
     Scope& exist_scope = scopes_.back();
-    std::map<std::string, std::pair<::llvm::Value*, bool>>::iterator it =
+    std::map<std::string, NativeValue>::iterator it =
         exist_scope.scope_map.find(name);
     if (it != exist_scope.scope_map.end()) {
         LOG(WARNING) << "var with name " << name << " exists ";
         return false;
     }
     exist_scope.scope_map.insert(
-        std::make_pair(name, std::make_pair(value, is_register)));
+        std::make_pair(name, value));
     return true;
 }
 
-bool ScopeVar::FindVar(const std::string& name, ::llvm::Value** value,
-                       bool* is_register) {
+bool ScopeVar::FindVar(const std::string& name,
+                       NativeValue* value) {
+    LOG(INFO) << "try find1 " << name;
     if (value == NULL) {
         LOG(WARNING) << " input value is null";
         return false;
@@ -90,14 +91,14 @@ bool ScopeVar::FindVar(const std::string& name, ::llvm::Value** value,
         return false;
     }
 
+    LOG(INFO) << "try find " << name;
     for (auto scope_iter = scopes_.rbegin(); scope_iter != scopes_.rend();
          scope_iter++) {
         Scope& exist_scope = *scope_iter;
-        std::map<std::string, std::pair<::llvm::Value*, bool>>::iterator it =
+        std::map<std::string, NativeValue>::iterator it =
             exist_scope.scope_map.find(name);
         if (it != exist_scope.scope_map.end()) {
-            *value = it->second.first;
-            *is_register = it->second.second;
+            *value = it->second;
             return true;
         }
     }

@@ -153,7 +153,7 @@ bool CSVTableHandler::Init() {
         const type::ColumnDef& column = schema_.Get(i);
         ColInfo col_info;
         col_info.type = column.type();
-        col_info.pos = i;
+        col_info.idx = i;
         col_info.name = column.name();
         types_.insert(std::make_pair(column.name(), col_info));
     }
@@ -362,7 +362,7 @@ bool CSVTableHandler::InitIndex() {
 int32_t CSVTableHandler::GetColumnIndex(const std::string& name) {
     auto it = types_.find(name);
     if (it != types_.end()) {
-        return it->second.pos;
+        return it->second.idx;
     }
     return -1;
 }

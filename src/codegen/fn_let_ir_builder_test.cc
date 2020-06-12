@@ -348,7 +348,7 @@ TEST_F(FnLetIRBuilderTest, test_join_window_project_mix) {
     std::vector<Row> window_t12;
 
     for (size_t i = 0; i < window.size(); i++) {
-        window_t12.push_back(Row(window[i], window2[i]));
+        window_t12.push_back(Row(1, window[i], 1, window2[i]));
     }
 
     ArrayListV<Row>* w = new ArrayListV<Row>(&window_t12);

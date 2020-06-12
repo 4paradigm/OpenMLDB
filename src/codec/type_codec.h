@@ -85,7 +85,7 @@ static bool operator<(const StringRef& a, const StringRef& b) {
 
 struct Timestamp {
     Timestamp() : ts_(0) {}
-    explicit Timestamp(int64_t ts) : ts_(ts) {}
+    explicit Timestamp(int64_t ts) : ts_(ts < 0? 0 : ts) {}
     Timestamp& operator+=(const Timestamp& t1) {
         ts_ += t1.ts_;
         return *this;
@@ -127,7 +127,7 @@ static bool operator!=(const Timestamp& a, const Timestamp& b) {
 
 struct Date {
     Date() : date_(0) {}
-    explicit Date(int32_t date) : date_(date) {}
+    explicit Date(int32_t date) : date_(date < 0 ? 0 : date) {}
     Date(int32_t year, int32_t month, int32_t day) : date_(0) {
         if (year < 1900 || year > 9999) {
             return;
@@ -176,6 +176,8 @@ namespace v1 {
 
 static constexpr uint8_t VERSION_LENGTH = 2;
 static constexpr uint8_t SIZE_LENGTH = 4;
+static constexpr uint8_t HEADER_LENGTH = VERSION_LENGTH + SIZE_LENGTH;
+
 // calc the total row size with primary_size, str field count and str_size
 inline uint32_t CalcTotalLength(uint32_t primary_size, uint32_t str_field_cnt,
                                 uint32_t str_size, uint32_t* str_addr_space) {
@@ -192,6 +194,15 @@ inline uint32_t CalcTotalLength(uint32_t primary_size, uint32_t str_field_cnt,
     } else {
         *str_addr_space = 4;
         return total_size + str_field_cnt * 4;
+    }
+}
+
+inline void AppendNullBit(int8_t* buf_ptr, uint32_t col_idx, int8_t is_null) {
+    int8_t* ptr = buf_ptr + HEADER_LENGTH + (col_idx >> 3);
+    if (is_null) {
+        *(reinterpret_cast<uint8_t*>(ptr)) |= 1 << (col_idx & 0x07);
+    } else {
+        *(reinterpret_cast<uint8_t*>(ptr)) &= ~(1 << (col_idx & 0x07));
     }
 }
 
@@ -251,10 +262,11 @@ inline int32_t AppendDouble(int8_t* buf_ptr, uint32_t buf_size, double val,
     return 8;
 }
 
-int32_t AppendString(int8_t* buf_ptr, uint32_t buf_size, int8_t* val,
-                     uint32_t size, uint32_t str_start_offset,
+int32_t AppendString(int8_t* buf_ptr, uint32_t buf_size, uint32_t col_idx,
+                     int8_t* val, uint32_t size, int8_t is_null,
+                     uint32_t str_start_offset,
                      uint32_t str_field_offset, uint32_t str_addr_space,
-                     uint32_t str_body_offset);
+                     uint32_t str_body_offset, uint32_t str_field_cnt);
 
 inline int8_t GetAddrSpace(uint32_t size) {
     if (size <= UINT8_MAX) {
@@ -268,15 +280,34 @@ inline int8_t GetAddrSpace(uint32_t size) {
     }
 }
 
+inline bool IsNullAt(const int8_t* row, uint32_t idx) {
+    if (row == nullptr) {
+        return true;
+    }
+    const int8_t* ptr = row + HEADER_LENGTH + (idx >> 3);
+    return *(reinterpret_cast<const uint8_t*>(ptr)) & (1 << (idx & 0x07));
+}
+
 inline int8_t GetBoolField(const butil::IOBuf& row, uint32_t offset) {
     int8_t value = 0;
     row.copy_to(reinterpret_cast<void*>(&value), 1, offset);
     return value;
 }
 
-inline int8_t GetBoolField(const int8_t* row, uint32_t offset) {
+inline int8_t GetBoolFieldUnsafe(const int8_t* row, uint32_t offset) {
     int8_t value = *(row + offset);
     return value;
+}
+
+inline int8_t GetBoolField(const int8_t* row, uint32_t idx,
+                           uint32_t offset, int8_t* is_null) {
+    if (row == nullptr || IsNullAt(row, idx)) {
+        *is_null = true;
+        return 0;
+    } else {
+        *is_null = false;
+        return GetBoolFieldUnsafe(row, offset);
+    }
 }
 
 inline int16_t GetInt16Field(const butil::IOBuf& row, uint32_t offset) {
@@ -285,8 +316,19 @@ inline int16_t GetInt16Field(const butil::IOBuf& row, uint32_t offset) {
     return value;
 }
 
-inline int16_t GetInt16Field(const int8_t* row, uint32_t offset) {
+inline int16_t GetInt16FieldUnsafe(const int8_t* row, uint32_t offset) {
     return *(reinterpret_cast<const int16_t*>(row + offset));
+}
+
+inline int16_t GetInt16Field(const int8_t* row, uint32_t idx,
+                             uint32_t offset, int8_t* is_null) {
+    if (row == nullptr || IsNullAt(row, idx)) {
+        *is_null = true;
+        return 0;
+    } else {
+        *is_null = false;
+        return GetInt16FieldUnsafe(row, offset);
+    }
 }
 
 inline int32_t GetInt32Field(const butil::IOBuf& row, uint32_t offset) {
@@ -295,8 +337,19 @@ inline int32_t GetInt32Field(const butil::IOBuf& row, uint32_t offset) {
     return value;
 }
 
-inline int32_t GetInt32Field(const int8_t* row, uint32_t offset) {
+inline int32_t GetInt32FieldUnsafe(const int8_t* row, uint32_t offset) {
     return *(reinterpret_cast<const int32_t*>(row + offset));
+}
+
+inline int32_t GetInt32Field(const int8_t* row, uint32_t idx,
+                             uint32_t offset, int8_t* is_null) {
+    if (row == nullptr || IsNullAt(row, idx)) {
+        *is_null = true;
+        return 0;
+    } else {
+        *is_null = false;
+        return GetInt32FieldUnsafe(row, offset);
+    }
 }
 
 inline int64_t GetInt64Field(const butil::IOBuf& row, uint32_t offset) {
@@ -305,8 +358,19 @@ inline int64_t GetInt64Field(const butil::IOBuf& row, uint32_t offset) {
     return value;
 }
 
-inline int64_t GetInt64Field(const int8_t* row, uint32_t offset) {
+inline int64_t GetInt64FieldUnsafe(const int8_t* row, uint32_t offset) {
     return *(reinterpret_cast<const int64_t*>(row + offset));
+}
+
+inline int64_t GetInt64Field(const int8_t* row, uint32_t idx,
+                             uint32_t offset, int8_t* is_null) {
+    if (row == nullptr || IsNullAt(row, idx)) {
+        *is_null = true;
+        return 0;
+    } else {
+        *is_null = false;
+        return GetInt64FieldUnsafe(row, offset);
+    }
 }
 
 inline float GetFloatField(const butil::IOBuf& row, uint32_t offset) {
@@ -315,11 +379,34 @@ inline float GetFloatField(const butil::IOBuf& row, uint32_t offset) {
     return value;
 }
 
-inline float GetFloatField(const int8_t* row, uint32_t offset) {
+inline float GetFloatFieldUnsafe(const int8_t* row, uint32_t offset) {
     return *(reinterpret_cast<const float*>(row + offset));
 }
-inline Timestamp GetTimestampField(const int8_t* row, uint32_t offset) {
+
+inline float GetFloatField(const int8_t* row, uint32_t idx,
+                           uint32_t offset, int8_t* is_null) {
+    if (row == nullptr || IsNullAt(row, idx)) {
+        *is_null = true;
+        return 0;
+    } else {
+        *is_null = false;
+        return GetFloatFieldUnsafe(row, offset);
+    }
+}
+
+inline Timestamp GetTimestampFieldUnsafe(const int8_t* row, uint32_t offset) {
     return Timestamp(*(reinterpret_cast<const int64_t*>(row + offset)));
+}
+
+inline Timestamp GetTimestampField(const int8_t* row, uint32_t idx,
+                                   uint32_t offset, int8_t* is_null) {
+    if (row == nullptr || IsNullAt(row, idx)) {
+        *is_null = true;
+        return Timestamp();
+    } else {
+        *is_null = false;
+        return GetTimestampFieldUnsafe(row, offset);
+    }
 }
 
 inline double GetDoubleField(const butil::IOBuf& row, uint32_t offset) {
@@ -328,23 +415,44 @@ inline double GetDoubleField(const butil::IOBuf& row, uint32_t offset) {
     return value;
 }
 
-inline double GetDoubleField(const int8_t* row, uint32_t offset) {
+inline double GetDoubleFieldUnsafe(const int8_t* row, uint32_t offset) {
     return *(reinterpret_cast<const double*>(row + offset));
 }
 
+inline double GetDoubleField(const int8_t* row, uint32_t idx,
+                             uint32_t offset, int8_t* is_null) {
+    if (row == nullptr || IsNullAt(row, idx)) {
+        *is_null = true;
+        return 0.0;
+    } else {
+        *is_null = false;
+        return GetDoubleFieldUnsafe(row, offset);
+    }
+}
+
 // native get string field method
-int32_t GetStrField(const int8_t* row, uint32_t str_field_offset,
+int32_t GetStrFieldUnsafe(const int8_t* row, uint32_t str_field_offset,
+                          uint32_t next_str_field_offset,
+                          uint32_t str_start_offset,
+                          uint32_t addr_space,
+                          int8_t** data, uint32_t* size);
+
+int32_t GetStrField(const int8_t* row, uint32_t idx,
+                    uint32_t str_field_offset,
                     uint32_t next_str_field_offset, uint32_t str_start_offset,
-                    uint32_t addr_space, int8_t** data, uint32_t* size);
+                    uint32_t addr_space, int8_t** data, uint32_t* size,
+                    int8_t* is_null);
 
 int32_t GetStrField(const butil::IOBuf& row, uint32_t str_field_offset,
                     uint32_t next_str_field_offset, uint32_t str_start_offset,
                     uint32_t addr_space, butil::IOBuf* output);
 
-int32_t GetCol(int8_t* input, int32_t row_idx, int32_t offset, int32_t type_id,
+int32_t GetCol(int8_t* input, int32_t row_idx,
+               uint32_t col_idx, int32_t offset, int32_t type_id,
                int8_t* data);
 
-int32_t GetStrCol(int8_t* input, int32_t row_idx, int32_t str_field_offset,
+int32_t GetStrCol(int8_t* input, int32_t row_idx,
+                  uint32_t col_idx, int32_t str_field_offset,
                   int32_t next_str_field_offset, int32_t str_start_offset,
                   int32_t type_id, int8_t* data);
 

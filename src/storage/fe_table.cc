@@ -55,15 +55,14 @@ bool Table::Init() {
         }
         st.ts_pos = col_map[table_def_.indexes(idx).second_key()];
         st.index = idx;
-        std::vector<ColInfo> col_vec;
+        std::vector<std::pair<fesql::type::Type, size_t>> col_vec;
         for (int i = 0; i < table_def_.indexes(idx).first_keys_size(); i++) {
             std::string name = table_def_.indexes(idx).first_keys(i);
-            ColInfo col;
             auto iter = col_map.find(name);
             if (iter == col_map.end()) return false;
-            col.type = table_def_.columns(iter->second).type();
-            col.pos = iter->second;
-            col_vec.push_back(std::move(col));
+            col_vec.push_back(std::make_pair(
+                table_def_.columns(iter->second).type(),
+                iter->second));
         }
         if (col_vec.empty()) return false;
         st.keys = col_vec;
@@ -104,18 +103,18 @@ bool Table::Put(const char* row, uint32_t size) {
                 if (!key.empty()) {
                     key.append("|");
                 }
-                if (col.type == ::fesql::type::kVarchar) {
+                if (col.first == ::fesql::type::kVarchar) {
                     char* val = NULL;
                     uint32_t length = 0;
                     row_view_.GetValue(reinterpret_cast<const int8_t*>(row),
-                                       col.pos, &val, &length);
+                                       col.second, &val, &length);
                     if (length != 0) {
                         key.append(val, length);
                     }
                 } else {
                     int64_t value = 0;
                     row_view_.GetInteger(reinterpret_cast<const int8_t*>(row),
-                                         col.pos, col.type, &value);
+                                         col.second, col.first, &value);
                     key.append(std::to_string(value));
                 }
             }
@@ -123,14 +122,15 @@ bool Table::Put(const char* row, uint32_t size) {
             spk_size = key.length();
 
         } else {
-            if (kv.second.keys[0].type == ::fesql::type::kVarchar) {
+            if (kv.second.keys[0].first == ::fesql::type::kVarchar) {
                 row_view_.GetValue(reinterpret_cast<const int8_t*>(row),
-                                   kv.second.keys[0].pos, &spk_buf, &spk_size);
+                                   kv.second.keys[0].second,
+                                   &spk_buf, &spk_size);
             } else {
                 int64_t value = 0;
                 row_view_.GetInteger(reinterpret_cast<const int8_t*>(row),
-                                     kv.second.keys[0].pos,
-                                     kv.second.keys[0].type, &value);
+                                     kv.second.keys[0].second,
+                                     kv.second.keys[0].first, &value);
                 key = std::to_string(value);
                 spk_buf = const_cast<char*>(key.c_str());
                 spk_size = key.length();

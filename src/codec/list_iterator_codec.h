@@ -63,25 +63,48 @@ class WrapListImpl : public ListV<V> {
  public:
     WrapListImpl() : ListV<V>() {}
     ~WrapListImpl() {}
-    virtual const V GetField(const R& row) const = 0;
+    virtual const V GetFieldUnsafe(const R& row) const = 0;
+    virtual void GetField(const R& row, V*, int8_t*) const = 0;
+    virtual const bool IsNull(const R& row) const = 0;
 };
 
 template <class V>
 class ColumnImpl : public WrapListImpl<V, Row> {
  public:
-    ColumnImpl(ListV<Row> *impl, int32_t row_idx, uint32_t offset)
+    ColumnImpl(ListV<Row> *impl, int32_t row_idx,
+               uint32_t col_idx, uint32_t offset)
         : WrapListImpl<V, Row>(),
           root_(impl),
           row_idx_(row_idx),
+          col_idx_(col_idx),
           offset_(offset) {}
 
     ~ColumnImpl() {}
-    const V GetField(const Row& row) const override {
+
+    const V GetFieldUnsafe(const Row& row) const override {
         V value;
         const int8_t *ptr = row.buf(row_idx_) + offset_;
         value = *((const V *)ptr);
         return value;
     }
+
+    void GetField(const Row& row, V* res, int8_t* is_null) const override {
+        const int8_t* buf = row.buf(row_idx_);
+        if (buf == nullptr || v1::IsNullAt(buf, col_idx_)) {
+            *is_null = true;
+        } else {
+            *is_null = false;
+            const int8_t *ptr = buf + offset_;
+            *res = *((const V *)ptr);
+        }
+    }
+
+    const bool IsNull(const Row& row) const override {
+        const int8_t* buf = row.buf(row_idx_);
+        return buf == nullptr || v1::IsNullAt(buf, col_idx_);
+    }
+
+    // TODO(xxx): iterator of nullable V
     std::unique_ptr<ConstIterator<uint64_t, V>> GetIterator() const override {
         auto iter = std::unique_ptr<ConstIterator<uint64_t, V>>(
             new ColumnIterator<V>(root_, this));
@@ -95,58 +118,53 @@ class ColumnImpl : public WrapListImpl<V, Row> {
         }
     }
     const uint64_t GetCount() override { return root_->GetCount(); }
-    V At(uint64_t pos) override { return GetField(root_->At(pos)); }
+    V At(uint64_t pos) override { return GetFieldUnsafe(root_->At(pos)); }
 
  protected:
     ListV<Row> *root_;
     const uint32_t row_idx_;
+    const uint32_t col_idx_;
     const uint32_t offset_;
 };
 
-class TimestampColumnImpl : public ColumnImpl<Timestamp> {
- public:
-    TimestampColumnImpl(ListV<Row> *impl, int32_t row_idx, uint32_t offset)
-        : ColumnImpl(impl, row_idx, offset) {}
-    ~TimestampColumnImpl() {}
-    const Timestamp GetField(const Row& row) const override {
-        int64_t ts;
-        const int8_t *ptr = row.buf(row_idx_) + offset_;
-        ts = *((const int64_t *)ptr);
-        return ts > 0 ? Timestamp(ts) : Timestamp(0);
-    }
-};
-
-class DateColumnImpl : public ColumnImpl<Date> {
- public:
-    DateColumnImpl(ListV<Row> *impl, int32_t row_idx, uint32_t offset)
-        : ColumnImpl(impl, row_idx, offset) {}
-    ~DateColumnImpl() {}
-    const Date GetField(const Row& row) const override {
-        int32_t days;
-        const int8_t *ptr = row.buf(row_idx_) + offset_;
-        days = *((const int32_t *)ptr);
-        return days > 0 ? Date(days) : Date(0);
-    }
-};
 class StringColumnImpl : public ColumnImpl<StringRef> {
  public:
-    StringColumnImpl(ListV<Row> *impl, int32_t row_idx,
+    StringColumnImpl(ListV<Row> *impl, int32_t row_idx, uint32_t col_idx,
                      int32_t str_field_offset, int32_t next_str_field_offset,
                      int32_t str_start_offset)
-        : ColumnImpl<StringRef>(impl, row_idx, 0u),
+        : ColumnImpl<StringRef>(impl, row_idx, col_idx, 0u),
           str_field_offset_(str_field_offset),
           next_str_field_offset_(next_str_field_offset),
           str_start_offset_(str_start_offset) {}
 
     ~StringColumnImpl() {}
-    const StringRef GetField(const Row& row) const override {
+    const StringRef GetFieldUnsafe(const Row& row) const override {
         int32_t addr_space = v1::GetAddrSpace(row.size(row_idx_));
         StringRef value;
-        v1::GetStrField(row.buf(row_idx_), str_field_offset_,
-                        next_str_field_offset_, str_start_offset_, addr_space,
-                        reinterpret_cast<int8_t **>(&(value.data_)),
-                        &(value.size_));
+        v1::GetStrFieldUnsafe(row.buf(row_idx_), str_field_offset_,
+                              next_str_field_offset_,
+                              str_start_offset_, addr_space,
+                              reinterpret_cast<int8_t **>(&(value.data_)),
+                              &(value.size_));
         return value;
+    }
+
+    void GetField(const Row& row,
+                  StringRef* res,
+                  int8_t* is_null) const override {
+        const int8_t* buf = row.buf(row_idx_);
+        if (buf == nullptr || v1::IsNullAt(buf, col_idx_)) {
+            *is_null = true;
+        } else {
+            int32_t addr_space = v1::GetAddrSpace(row.size(row_idx_));
+            StringRef value;
+            v1::GetStrFieldUnsafe(
+                buf, str_field_offset_,
+                next_str_field_offset_, str_start_offset_, addr_space,
+                reinterpret_cast<int8_t **>(&(value.data_)),
+                 &(value.size_));
+            *res = value;
+        }
     }
 
  private:
@@ -249,7 +267,7 @@ class ArrayListIterator : public ConstIterator<uint64_t, V> {
 };
 
 template <class V>
-class ColumnIterator : public ConstIterator<uint64_t, V> {
+class ColumnIterator: public ConstIterator<uint64_t, V> {
  public:
     ColumnIterator(ListV<Row> *list, const ColumnImpl<V> *column_impl)
         : ConstIterator<uint64_t, V>(), column_impl_(column_impl) {
@@ -264,7 +282,7 @@ class ColumnIterator : public ConstIterator<uint64_t, V> {
     bool Valid() const override { return row_iter_->Valid(); }
     void Next() override { row_iter_->Next(); }
     const V &GetValue() override {
-        value_ = column_impl_->GetField(row_iter_->GetValue());
+        value_ = column_impl_->GetFieldUnsafe(row_iter_->GetValue());
         return value_;
     }
     const uint64_t &GetKey() const override { return row_iter_->GetKey(); }

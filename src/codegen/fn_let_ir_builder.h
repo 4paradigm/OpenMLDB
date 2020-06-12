@@ -53,14 +53,14 @@ class RowFnLetIRBuilder {
                   ScopeVar& sv);  // NOLINT
 
     bool EncodeBuf(
-        const std::map<uint32_t, ::llvm::Value*>* values,
+        const std::map<uint32_t, NativeValue>* values,
         const vm::Schema& schema,
         VariableIRBuilder& variable_ir_builder,  // NOLINT (runtime/references)
         ::llvm::BasicBlock* block, const std::string& output_ptr_name);
 
     bool BuildProject(
         const uint32_t index, const node::ExprNode* expr,
-        const std::string& col_name, std::map<uint32_t, ::llvm::Value*>* output,
+        const std::string& col_name, std::map<uint32_t, NativeValue>* output,
         ExprIRBuilder& expr_ir_builder,  // NOLINT (runtime/references)
         vm::Schema* output_schema,
         vm::ColumnSourceList* output_column_sources,

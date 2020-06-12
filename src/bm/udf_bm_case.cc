@@ -287,10 +287,10 @@ void SumArrayListCol(benchmark::State* state, MODE mode, int64_t data_size,
     codec::ArrayListV<Row> list_table(&buffer);
 
     codegen::MemoryWindowDecodeIRBuilder builder(table_def.columns(), nullptr);
-    uint32_t offset;
+    codec::ColInfo info;
     node::DataType type;
     uint32_t col_size;
-    ASSERT_TRUE(builder.GetColOffsetType(col_name, 0, &offset, &type));
+    ASSERT_TRUE(builder.ResolveFieldInfo(col_name, 0, &info, &type));
     ASSERT_TRUE(codegen::GetLLVMColumnSize(type, &col_size));
     int8_t* buf = reinterpret_cast<int8_t*>(alloca(col_size));
     ::fesql::codec::ListRef list_ref;
@@ -299,9 +299,9 @@ void SumArrayListCol(benchmark::State* state, MODE mode, int64_t data_size,
     int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
     type::Type storage_type;
     ASSERT_TRUE(codegen::DataType2SchemaType(type, &storage_type));
-    ASSERT_EQ(
-        0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&list_table), 0,
-                                      offset, storage_type, buf));
+    ASSERT_EQ(0, ::fesql::codec::v1::GetCol(
+        reinterpret_cast<int8_t*>(&list_table), 0,
+        info.idx, info.offset, storage_type, buf));
     {
         switch (mode) {
             case BENCHMARK: {
@@ -380,10 +380,10 @@ void SumMemTableCol(benchmark::State* state, MODE mode, int64_t data_size,
     BuildData(table_def, window, data_size);
 
     codegen::MemoryWindowDecodeIRBuilder builder(table_def.columns(), nullptr);
-    uint32_t offset;
+    codec::ColInfo info;
     node::DataType type;
     uint32_t col_size;
-    ASSERT_TRUE(builder.GetColOffsetType(col_name, 0, &offset, &type));
+    ASSERT_TRUE(builder.ResolveFieldInfo(col_name, 0, &info, &type));
     ASSERT_TRUE(codegen::GetLLVMColumnSize(type, &col_size));
     int8_t* buf = reinterpret_cast<int8_t*>(alloca(col_size));
     ::fesql::codec::ListRef list_ref;
@@ -392,8 +392,9 @@ void SumMemTableCol(benchmark::State* state, MODE mode, int64_t data_size,
     int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
     type::Type storage_type;
     ASSERT_TRUE(codegen::DataType2SchemaType(type, &storage_type));
-    ASSERT_EQ(0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&window),
-                                            0, offset, storage_type, buf));
+    ASSERT_EQ(0, ::fesql::codec::v1::GetCol(
+        reinterpret_cast<int8_t*>(&window),
+        0, info.idx, info.offset, storage_type, buf));
     {
         switch (mode) {
             case BENCHMARK: {

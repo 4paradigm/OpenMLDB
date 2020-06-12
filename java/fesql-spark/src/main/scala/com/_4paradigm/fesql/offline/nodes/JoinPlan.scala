@@ -127,11 +127,22 @@ object JoinPlan {
               timeIdxInJoined, timeColType, nullable=false)
 
             if (isAsc) {
-              iter.maxBy(row => timeExtractor.apply(row))
+              iter.maxBy(row => {
+                if (row.isNullAt(timeIdxInJoined)) {
+                  Long.MinValue
+                } else {
+                  timeExtractor.apply(row)
+                }
+              })
             } else {
-              iter.minBy(row => timeExtractor.apply(row))
+              iter.minBy(row => {
+                if (row.isNullAt(timeIdxInJoined)) {
+                  Long.MaxValue
+                } else {
+                  timeExtractor.apply(row)
+                }
+              })
             }
-
         }(RowEncoder(joined.schema))
 
       distinct.drop(indexName)

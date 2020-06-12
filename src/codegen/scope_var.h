@@ -23,6 +23,7 @@
 #include <utility>
 #include <vector>
 #include "llvm/IR/IRBuilder.h"
+#include "codegen/native_value.h"
 
 namespace fesql {
 namespace codegen {
@@ -30,7 +31,7 @@ struct Scope {
     std::string name;
     ::llvm::Value* ret_addr = nullptr;
     // the value is the pointer or  value
-    std::map<std::string, std::pair<::llvm::Value*, bool>> scope_map;
+    std::map<std::string, NativeValue> scope_map;
     std::vector<::llvm::Value*> scope_iterators;
 };
 
@@ -43,10 +44,8 @@ class ScopeVar {
 
     bool Enter(const std::string& name);
     bool Exit();
-    bool AddVar(const std::string& name, ::llvm::Value*,
-                bool is_register = true);
-    bool FindVar(const std::string& name, ::llvm::Value** value,
-                 bool* is_register);
+    bool AddVar(const std::string& name, const NativeValue& value);
+    bool FindVar(const std::string& name, NativeValue* value);
     // Register values to be destroyed before exit scope
     bool AddIteratorValue(::llvm::Value* value);
     std::vector<const std::vector<::llvm::Value*>*> GetIteratorValues();

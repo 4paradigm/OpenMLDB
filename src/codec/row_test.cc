@@ -60,7 +60,7 @@ TEST_F(RowTest, NewRowTest) {
         Row row3(base::RefCountedSlice::Create(ptr3, ptr_size3));
 
 
-        Row row12(row1, row2);
+        Row row12(1, row1, 1, row2);
         ASSERT_EQ(2, row12.GetRowPtrCnt());
         {
             RowView row_view1(table1.columns());
@@ -72,7 +72,7 @@ TEST_F(RowTest, NewRowTest) {
             ASSERT_EQ(data2, row_view2.GetRowString());
         }
 
-        Row row123(row12, row3);
+        Row row123(2, row12, 1, row3);
         ASSERT_EQ(3, row123.GetRowPtrCnt());
         {
             RowView row_view1(table1.columns());
@@ -88,6 +88,15 @@ TEST_F(RowTest, NewRowTest) {
             ASSERT_EQ(data3, row_view3.GetRowString());
         }
     }
+}
+
+TEST_F(RowTest, JoinRowTest) {
+    Row l, r;
+    Row join(2, l, 2, r);
+    ASSERT_EQ(join.buf(0), nullptr);
+    ASSERT_EQ(join.buf(1), nullptr);
+    ASSERT_EQ(join.buf(2), nullptr);
+    ASSERT_EQ(join.buf(3), nullptr);
 }
 
 }  // namespace codec

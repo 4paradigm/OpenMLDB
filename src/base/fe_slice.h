@@ -131,10 +131,8 @@ class RefCountedSlice : public Slice {
         return RefCountedSlice(buf, size, false);
     }
 
-    // Create empty slice
-    inline static RefCountedSlice CreateEmpty() {
-        return RefCountedSlice();
-    }
+    RefCountedSlice():
+        Slice(nullptr, 0), ref_cnt_(nullptr) {}
 
     RefCountedSlice(const RefCountedSlice& slice);
     RefCountedSlice(RefCountedSlice&&);
@@ -150,8 +148,6 @@ class RefCountedSlice : public Slice {
         Slice(data, size),
         ref_cnt_(managed ? new int(1) : nullptr) {}
 
-    RefCountedSlice():
-        Slice(nullptr, 0), ref_cnt_(nullptr) {}
     void Update(const RefCountedSlice& slice);
 
     int32_t* ref_cnt_;

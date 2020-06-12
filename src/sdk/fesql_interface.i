@@ -53,7 +53,7 @@ namespace std {
 %protobuf_enum(fesql::type::Type, com._4paradigm.fesql.type.TypeOuterClass.Type);
 %protobuf(fesql::type::Database, com._4paradigm.fesql.type.TypeOuterClass.Database);
 %protobuf(fesql::type::TableDef, com._4paradigm.fesql.type.TypeOuterClass.TableDef);
-%protobuf_repeated_typedef(fesql::vm::Schema, com._4paradigm.fesql.type.TypeOuterClass.ColumnDef);
+%protobuf_repeated_typedef(fesql::codec::Schema, com._4paradigm.fesql.type.TypeOuterClass.ColumnDef);
 
 // Enable direct buffer interfaces
 %include "swig_library/java/buffer.i"
