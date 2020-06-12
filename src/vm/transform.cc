@@ -1897,7 +1897,7 @@ bool ConditionOptimized::Transform(PhysicalOpNode* in,
 bool ConditionOptimized::TransfromAndConditionList(
     const node::ExprNode* condition, node::ExprListNode* and_condition_list) {
     if (nullptr == condition) {
-        LOG(WARNING) << "fail to transfron conditions: null condition";
+        LOG(WARNING) << "Skip ConditionOptimized: conditions: null condition";
         return false;
     }
 

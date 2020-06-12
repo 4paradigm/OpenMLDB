@@ -17,7 +17,7 @@
 #include "vm/mem_catalog.h"
 namespace fesql {
 namespace vm {
-#define MAX_DEBUG_LINES_CNT 10
+#define MAX_DEBUG_LINES_CNT 20
 #define MAX_DEBUG_COLUMN_MAX 20
 
 Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
