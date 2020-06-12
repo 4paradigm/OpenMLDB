@@ -221,7 +221,10 @@ inline const std::string BoundTypeName(const BoundType &type) {
             return "FOLLOWING";
         case fesql::node::kFollowingUnbound:
             return "FOLLOWING UNBOUND";
+        default:
+            return "UNKNOW";
     }
+    return "";
 }
 inline const std::string DataTypeName(const DataType &type) {
     switch (type) {
@@ -856,6 +859,7 @@ class FrameBound : public SQLNode {
             case node::kFollowingUnbound:
                 return INT64_MAX;
         }
+        return 0;
     }
     virtual bool Equals(const SQLNode *node) const;
     static int Compare(const FrameBound *bound1, const FrameBound *bound2);

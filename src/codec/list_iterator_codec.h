@@ -295,7 +295,7 @@ class InnerRowsIterator : public ConstIterator<uint64_t, V> {
             pos_++;
         }
     }
-    bool IsSeekable() const { root_->IsSeekable(); }
+    bool IsSeekable() const { return root_->IsSeekable(); }
     std::unique_ptr<ConstIterator<uint64_t, V>> root_;
     uint64_t pos_;
     const uint64_t start_;
@@ -329,7 +329,7 @@ class InnerRangeIterator : public ConstIterator<uint64_t, V> {
         root_->SeekToFirst();
         root_->Seek(start_);
     }
-    virtual bool IsSeekable() const { root_->IsSeekable(); }
+    virtual bool IsSeekable() const { return root_->IsSeekable(); }
     std::unique_ptr<ConstIterator<uint64_t, V>> root_;
     uint64_t start_key_;
     const uint64_t start_;

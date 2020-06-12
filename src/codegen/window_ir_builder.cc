@@ -56,7 +56,7 @@ bool MemoryWindowDecodeIRBuilder::BuildInnerRowsList(::llvm::Value* list_ptr,
     ::llvm::Type* i8_ty = builder.getInt8Ty();
     ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
     ::llvm::Type* i32_ty = builder.getInt32Ty();
-    ::llvm::Type* i64_ty = builder.getInt32Ty();
+    ::llvm::Type* i64_ty = builder.getInt64Ty();
     uint32_t inner_list_size =
         sizeof(::fesql::codec::InnerRowsList<fesql::codec::Row>);
     // alloca memory on stack for col iterator
