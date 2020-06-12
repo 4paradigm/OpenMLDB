@@ -5052,6 +5052,9 @@ void HandleClientHelp(const std::vector<std::string> parts,
                 "usage: loadtable table_name tid pid ttl segment_cnt is_leader "
                 "storage_mode\n");
             printf("ex: loadtable table1 1 0 144000 8 true memory\n");
+            printf("---------for relation table------\n");
+            printf("usage: loadtable tid pid storage_mode\n");
+            printf("ex: loadtable 1 0 hdd\n");
         } else if (parts[1] == "changerole") {
             printf("desc: change role\n");
             printf("usage: changerole tid pid role\n");
