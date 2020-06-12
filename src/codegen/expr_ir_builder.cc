@@ -398,8 +398,8 @@ bool ExprIRBuilder::BuildColumnItem(const std::string& relation_name,
     }
 
     ::llvm::Value* row_size = NULL;
-    if (!variable_ir_builder_.LoadArrayIndex("@row_sizes", info->idx_, &row_size,
-                                             status) ||
+    if (!variable_ir_builder_.LoadArrayIndex("@row_sizes", info->idx_,
+                                             &row_size, status) ||
         row_size == NULL) {
         std::ostringstream oss;
         oss << "fail to find row_sizes"
@@ -436,7 +436,6 @@ bool ExprIRBuilder::BuildColumnItem(const std::string& relation_name,
 bool ExprIRBuilder::BuildWindow(const node::FrameNode* frame_node,
                                 ::llvm::Value** output,
                                 ::fesql::base::Status& status) {  // NOLINT
-
     ::llvm::IRBuilder<> builder(block_);
     NativeValue window_ptr_value;
     const std::string frame_str =

@@ -91,7 +91,8 @@ bool RowFnLetIRBuilder::Build(
     NativeValue window;
     variable_ir_builder.LoadWindow("", &window, status);
     variable_ir_builder.StoreWindow(
-        nullptr == frame_ ? "" : frame_->GetExprString(), window.GetRaw(), status);
+        nullptr == frame_ ? "" : frame_->GetExprString(), window.GetRaw(),
+        status);
     if (schema_context_.row_schema_info_list_.empty()) {
         LOG(WARNING) << "fail to build fn: row info list is empty";
         return false;

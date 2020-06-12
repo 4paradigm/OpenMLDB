@@ -369,22 +369,21 @@ TEST_F(SqlNodeTest, WindowAndFrameNodeMergeTest) {
 
     {
         ASSERT_FALSE(dynamic_cast<WindowDefNode *>(
-                        node_manager_->MakeWindowDefNode(&unions1, pk1, orders1,
-                                                         rows_frame1, true))
-                        ->CanMergeWith(dynamic_cast<WindowDefNode *>(
-                                           node_manager_->MakeWindowDefNode(&unions3, pk1, orders1,
-                                                                            rows_frame1, true))));
+                         node_manager_->MakeWindowDefNode(
+                             &unions1, pk1, orders1, rows_frame1, true))
+                         ->CanMergeWith(dynamic_cast<WindowDefNode *>(
+                             node_manager_->MakeWindowDefNode(
+                                 &unions3, pk1, orders1, rows_frame1, true))));
     }
 
     {
         ASSERT_FALSE(dynamic_cast<WindowDefNode *>(
-                        node_manager_->MakeWindowDefNode(&unions1, pk1, orders1,
-                                                         rows_frame1, true))
-                        ->CanMergeWith(dynamic_cast<WindowDefNode *>(
-                                           node_manager_->MakeWindowDefNode(&unions1, pk1, orders1,
-                                                                            rows_frame1, false))));
+                         node_manager_->MakeWindowDefNode(
+                             &unions1, pk1, orders1, rows_frame1, true))
+                         ->CanMergeWith(dynamic_cast<WindowDefNode *>(
+                             node_manager_->MakeWindowDefNode(
+                                 &unions1, pk1, orders1, rows_frame1, false))));
     }
-
 
     // Window can't be merged when their frame can't be merge
     {

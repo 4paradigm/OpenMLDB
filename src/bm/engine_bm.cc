@@ -57,8 +57,10 @@ static void BM_EngineWindowSumFeature5(benchmark::State& state) {  // NOLINT
     EngineWindowSumFeature5(&state, BENCHMARK, state.range(0), state.range(1));
 }
 
-static void BM_EngineWindowSumFeature5Window5(benchmark::State& state) {  // NOLINT
-    EngineWindowSumFeature5Window5(&state, BENCHMARK, state.range(0), state.range(1));
+static void BM_EngineWindowSumFeature5Window5(
+    benchmark::State& state) {  // NOLINT
+    EngineWindowSumFeature5Window5(&state, BENCHMARK, state.range(0),
+                                   state.range(1));
 }
 static void BM_EngineWindowMultiAggFeature5(
     benchmark::State& state) {  // NOLINT
@@ -99,7 +101,7 @@ static void BM_EngineRunBatchWindowSumFeature5(
 static void BM_EngineRunBatchWindowSumFeature5Window5(
     benchmark::State& state) {  // NOLINT
     EngineRunBatchWindowSumFeature5Window5(&state, BENCHMARK, state.range(0),
-                                    state.range(1));
+                                           state.range(1));
 }
 
 // request engine simple bm
@@ -138,7 +140,7 @@ BENCHMARK(BM_EngineWindowSumFeature5)
     ->Args({1000, 1000})
     ->Args({10000, 10000});
 BENCHMARK(BM_EngineWindowSumFeature5Window5)
-->Args({1, 2})
+    ->Args({1, 2})
     ->Args({1, 10})
     ->Args({1, 100})
     ->Args({1, 1000})
