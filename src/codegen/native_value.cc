@@ -11,7 +11,7 @@
 namespace fesql {
 namespace codegen {
 
-::llvm::Value* NativeValue::GetFlag(::llvm::IRBuilder<>* builder) const {
+::llvm::Value* NativeValue::GetIsNull(::llvm::IRBuilder<>* builder) const {
     auto bool_ty = ::llvm::Type::getInt1Ty(builder->getContext());
     ::llvm::Value* is_null;
     if (IsConstNull()) {
@@ -103,6 +103,12 @@ void NativeValue::SetName(const std::string& name) {
 
 NativeValue NativeValue::Create(::llvm::Value* raw) {
     return NativeValue(raw, nullptr, raw->getType());
+}
+
+NativeValue NativeValue::CreateMem(::llvm::Value* raw) {
+    return NativeValue(raw, nullptr,
+        reinterpret_cast<::llvm::PointerType*>(
+            raw->getType())->getElementType());
 }
 
 NativeValue NativeValue::CreateNull(::llvm::Type* ty) {

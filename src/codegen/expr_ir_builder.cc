@@ -166,16 +166,16 @@ bool ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
             ::fesql::node::ExprIdNode* id_node =
                 (::fesql::node::ExprIdNode*)node;
             DLOG(INFO) << "id node name " << id_node->GetName();
-            ::llvm::Value* ptr = NULL;
-            if (!variable_ir_builder_.LoadValue(id_node->GetName(), &ptr,
+            NativeValue val;
+            if (!variable_ir_builder_.LoadValue(id_node->GetName(), &val,
                                                 status) ||
-                nullptr == ptr) {
+                val.GetRaw() == nullptr) {
                 status.msg = "fail to find var " + id_node->GetName();
                 status.code = common::kCodegenError;
                 LOG(WARNING) << status.msg;
                 return false;
             }
-            *output = NativeValue::Create(ptr);
+            *output = val;
             return true;
         }
         case ::fesql::node::kExprBinary: {
@@ -424,6 +424,8 @@ bool ExprIRBuilder::BuildColumnItem(const std::string& relation_name,
                                               status);
     if (ok) {
         *output = value;
+        status.msg = "ok";
+        status.code = common::kOk;
         return true;
     } else {
         return false;
@@ -455,8 +457,11 @@ bool ExprIRBuilder::BuildColumnIterator(const std::string& relation_name,
         return true;
     }
 
-    ::llvm::Value* window_ptr = NULL;
-    ok = variable_ir_builder_.LoadValue("window_ptr", &window_ptr, status);
+    NativeValue window_ptr_value;
+    ok = variable_ir_builder_.LoadValue(
+        "window_ptr", &window_ptr_value, status);
+    ::llvm::IRBuilder<> builder(block_);
+    ::llvm::Value* window_ptr = window_ptr_value.GetValue(&builder);
 
     if (!ok || window_ptr == NULL) {
         status.msg = "fail to find window_ptr: " + status.msg;
@@ -478,6 +483,8 @@ bool ExprIRBuilder::BuildColumnIterator(const std::string& relation_name,
                                              status);
     if (ok) {
         *output = value;
+        status.msg = "ok";
+        status.code = common::kOk;
         return true;
     } else {
         LOG(WARNING) << "fail to store col for " << status.msg;

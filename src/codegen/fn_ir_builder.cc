@@ -125,7 +125,7 @@ bool FnIRBuilder::FillArgs(const ::fesql::node::FnNodeList *node, ScopeVar *sv,
         ::fesql::node::FnParaNode *pnode =
             (::fesql::node::FnParaNode *)node->children[index];
         ::llvm::Argument *argu = &*it;
-        bool ok = sv->AddVar(pnode->GetName(), argu);
+        bool ok = sv->AddVar(pnode->GetName(), NativeValue::Create(argu));
         if (!ok) {
             status.code = common::kCodegenError;
             status.msg = "fail to define var " + pnode->GetName();

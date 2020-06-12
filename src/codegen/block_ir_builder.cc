@@ -272,8 +272,8 @@ bool BlockIRBuilder::BuildForInBlock(const ::fesql::node::FnForInBlock *node,
                          << status.msg;
             return false;
         }
-        if (!var_ir_builder.StoreValue(node->for_in_node_->var_name_, next,
-                                       false, status)) {
+        if (!var_ir_builder.StoreValue(node->for_in_node_->var_name_,
+                NativeValue::Create(next), false, status)) {
             return false;
         }
         // loop body
@@ -324,14 +324,12 @@ bool BlockIRBuilder::BuildAssignStmt(const ::fesql::node::FnAssignNode *node,
     }
     ExprIRBuilder builder(block, sv_);
     VariableIRBuilder variable_ir_builder(block, sv_);
-    NativeValue value_wrapper;
-    bool ok = builder.Build(node->expression_, &value_wrapper, status);
+    NativeValue value;
+    bool ok = builder.Build(node->expression_, &value, status);
     if (!ok) {
         LOG(WARNING) << "fail to codegen expr" << status.msg;
         return false;
     }
-    ::llvm::IRBuilder<> llvm_builder(block);
-    ::llvm::Value *value = value_wrapper.GetValue(&llvm_builder);
     return variable_ir_builder.StoreValue(node->name_, value, false, status);
 }
 

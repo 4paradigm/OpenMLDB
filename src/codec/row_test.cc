@@ -90,6 +90,15 @@ TEST_F(RowTest, NewRowTest) {
     }
 }
 
+TEST_F(RowTest, JoinRowTest) {
+    Row l, r;
+    Row join(2, l, 2, r);
+    ASSERT_EQ(join.buf(0), nullptr);
+    ASSERT_EQ(join.buf(1), nullptr);
+    ASSERT_EQ(join.buf(2), nullptr);
+    ASSERT_EQ(join.buf(3), nullptr);
+}
+
 }  // namespace codec
 }  // namespace fesql
 
