@@ -246,7 +246,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_sum_project) {
         "sum(col2) OVER w1 as w1_col2_sum,  "
         "sum(col5) OVER w1 as w1_col5_sum  "
         "FROM t1 WINDOW "
-        "w1 AS (PARTITION BY COL2 ORDER BY `TS` RANGE BETWEEN 3 PRECEDING AND "
+        "w1 AS (PARTITION BY COL2 ORDER BY `TS` ROWS_RANGE BETWEEN 3 PRECEDING AND "
         "3 "
         "FOLLOWING) limit 10;";
 

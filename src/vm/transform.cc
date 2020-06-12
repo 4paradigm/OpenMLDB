@@ -798,12 +798,13 @@ bool BatchModeTransformer::AddPass(PhysicalPlanPassType type) {
 bool BatchModeTransformer::GenProjects(
     const SchemaSourceList& input_name_schema_list,
     const node::PlanNodeList& projects, const bool row_project,
+    const node::FrameNode* frame,
     std::string& fn_name,   // NOLINT
     Schema* output_schema,  // NOLINT
     ColumnSourceList* output_column_sources,
     base::Status& status) {  // NOLINT
     // TODO(wangtaize) use ops end op output schema
-    ::fesql::codegen::RowFnLetIRBuilder builder(input_name_schema_list,
+    ::fesql::codegen::RowFnLetIRBuilder builder(input_name_schema_list, frame,
                                                 module_);
     fn_name = "__internal_sql_codegen_" + std::to_string(id_++);
     bool ok =
@@ -877,8 +878,8 @@ bool BatchModeTransformer::CreatePhysicalProjectNode(
         case kRowProject:
         case kTableProject: {
             if (!GenProjects((node->GetOutputNameSchemaList()), projects, true,
-                             fn_name, &output_schema, &output_column_sources,
-                             status)) {
+                             nullptr, fn_name, &output_schema,
+                             &output_column_sources, status)) {
                 return false;
             }
             break;
@@ -888,6 +889,9 @@ bool BatchModeTransformer::CreatePhysicalProjectNode(
         case kWindowAggregation: {
             // TODO(chenjing): gen window aggregation
             if (!GenProjects((node->GetOutputNameSchemaList()), projects, false,
+                             nullptr == project_list->GetW()
+                                 ? nullptr
+                                 : project_list->GetW()->frame_node(),
                              fn_name, &output_schema, &output_column_sources,
                              status)) {
                 return false;
@@ -1122,7 +1126,7 @@ bool BatchModeTransformer::CodeGenExprList(
             pos++, node::ExprString(expr), expr));
     }
     vm::ColumnSourceList column_sources;
-    return GenProjects(input_name_schema_list, projects, true,
+    return GenProjects(input_name_schema_list, projects, true, nullptr,
                        fn_info->fn_name_, &fn_info->fn_schema_, &column_sources,
                        status);
 }

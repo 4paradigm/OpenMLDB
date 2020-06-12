@@ -1015,6 +1015,10 @@ Row JoinGenerator::RowLastJoinTable(const Row& left_row,
         LOG(WARNING) << "Last Join right table is empty";
         return Row(left_slices_, left_row, right_slices_, Row());
     }
+
+    if (right_sort_gen_.Valid()) {
+        table = right_sort_gen_.Sort(table, true);
+    }
     auto right_iter = table->GetIterator();
     if (!right_iter) {
         LOG(WARNING) << "Last Join right table is empty";
@@ -1027,8 +1031,8 @@ Row JoinGenerator::RowLastJoinTable(const Row& left_row,
     }
 
     if (!left_key_gen_.Valid() && !condition_gen_.Valid()) {
-        return Row(
-            left_slices_, left_row, right_slices_, right_iter->GetValue());
+        return Row(left_slices_, left_row, right_slices_,
+                   right_iter->GetValue());
     }
 
     std::string left_key_str = "";
@@ -1045,8 +1049,8 @@ Row JoinGenerator::RowLastJoinTable(const Row& left_row,
             }
         }
 
-        Row joined_row(left_slices_, left_row,
-            right_slices_, right_iter->GetValue());
+        Row joined_row(left_slices_, left_row, right_slices_,
+                       right_iter->GetValue());
         if (!condition_gen_.Valid()) {
             return joined_row;
         }
@@ -1064,10 +1068,9 @@ bool JoinGenerator::TableJoin(std::shared_ptr<TableHandler> left,
     auto left_iter = left->GetIterator();
     while (left_iter->Valid()) {
         const Row& left_row = left_iter->GetValue();
-        output->AddRow(Runner::RowLastJoinTable(
-            left_slices_, left_row,
-            right_slices_, right,
-            right_sort_gen_, condition_gen_));
+        output->AddRow(
+            Runner::RowLastJoinTable(left_slices_, left_row, right_slices_,
+                                     right, right_sort_gen_, condition_gen_));
         left_iter->Next();
     }
     return true;
@@ -1101,9 +1104,8 @@ bool JoinGenerator::TableJoin(std::shared_ptr<TableHandler> left,
         DLOG(INFO) << "key_str " << key_str;
         auto right_table = right->GetSegment(right, key_str);
         output->AddRow(Runner::RowLastJoinTable(
-            left_slices_, left_row,
-            right_slices_, right_table,
-            right_sort_gen_, condition_gen_));
+            left_slices_, left_row, right_slices_, right_table, right_sort_gen_,
+            condition_gen_));
         left_iter->Next();
     }
     return true;
@@ -1122,12 +1124,10 @@ bool JoinGenerator::PartitionJoin(std::shared_ptr<PartitionHandler> left,
             const Row& left_row = left_iter->GetValue();
             auto key_str = std::string(
                 reinterpret_cast<const char*>(left_key.buf()), left_key.size());
-            output->AddRow(
-                key_str, left_iter->GetKey(),
-                Runner::RowLastJoinTable(
-                    left_slices_, left_row,
-                    right_slices_, right,
-                    right_sort_gen_, condition_gen_));
+            output->AddRow(key_str, left_iter->GetKey(),
+                           Runner::RowLastJoinTable(
+                               left_slices_, left_row, right_slices_, right,
+                               right_sort_gen_, condition_gen_));
             left_iter->Next();
         }
     }
@@ -1165,20 +1165,17 @@ bool JoinGenerator::PartitionJoin(std::shared_ptr<PartitionHandler> left,
             auto right_table = right->GetSegment(right, key_str);
             auto left_key_str = std::string(
                 reinterpret_cast<const char*>(left_key.buf()), left_key.size());
-            output->AddRow(
-                left_key_str, left_iter->GetKey(),
-                Runner::RowLastJoinTable(
-                    left_slices_, left_row,
-                    right_slices_, right_table,
-                    right_sort_gen_, condition_gen_));
+            output->AddRow(left_key_str, left_iter->GetKey(),
+                           Runner::RowLastJoinTable(
+                               left_slices_, left_row, right_slices_,
+                               right_table, right_sort_gen_, condition_gen_));
             left_iter->Next();
         }
         left_partition_iter->Next();
     }
     return true;
 }
-const Row Runner::RowLastJoinTable(size_t left_slices,
-                                   const Row& left_row,
+const Row Runner::RowLastJoinTable(size_t left_slices, const Row& left_row,
                                    size_t right_slices,
                                    std::shared_ptr<TableHandler> right_table,
                                    SortGenerator& right_sort,
@@ -1203,8 +1200,8 @@ const Row Runner::RowLastJoinTable(size_t left_slices,
         return Row(left_slices, left_row, right_slices, right_iter->GetValue());
     }
     while (right_iter->Valid()) {
-        Row joined_row(left_slices, left_row,
-            right_slices, right_iter->GetValue());
+        Row joined_row(left_slices, left_row, right_slices,
+                       right_iter->GetValue());
         if (cond_gen.Gen(joined_row)) {
             return joined_row;
         }
@@ -1416,9 +1413,8 @@ std::shared_ptr<DataHandler> ConcatRunner::Run(RunnerContext& ctx) {
             return std::shared_ptr<RowHandler>(new MemRowHandler(
                 Row(left_slices, left_row, right_slices, Row())));
         }
-        return std::shared_ptr<RowHandler>(
-            new MemRowHandler(Row(left_slices, left_row,
-                right_slices, right_iter->GetValue())));
+        return std::shared_ptr<RowHandler>(new MemRowHandler(
+            Row(left_slices, left_row, right_slices, right_iter->GetValue())));
     } else {
         return std::shared_ptr<DataHandler>();
     }
@@ -1512,21 +1508,22 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(RunnerContext& ctx) {
 
     auto request = std::dynamic_pointer_cast<RowHandler>(left)->GetValue();
     // build window with start and end offset
-    auto window_table = std::shared_ptr<MemTableHandler>(new MemTableHandler());
+    auto window_table =
+        std::shared_ptr<MemTimeTableHandler>(new MemTimeTableHandler());
     uint64_t start = 0;
     uint64_t end = UINT64_MAX;
+    int64_t request_key = range_gen_.ts_gen_.Gen(request);
+    DLOG(INFO) << "request key: " << request_key;
     if (range_gen_.Valid()) {
-        int64_t key = range_gen_.ts_gen_.Gen(request);
-        start = (key + range_gen_.start_offset_) < 0
+        start = (request_key + range_gen_.start_offset_) < 0
                     ? 0
-                    : (key + range_gen_.start_offset_);
-        end = (key + range_gen_.end_offset_) < 0
+                    : (request_key + range_gen_.start_offset_);
+        end = (request_key + range_gen_.end_offset_) < 0
                   ? 0
-                  : (key + range_gen_.end_offset_);
-        DLOG(INFO) << "request key: " << key;
+                  : (request_key + range_gen_.end_offset_);
     }
     DLOG(INFO) << " start " << start << " end " << end;
-    window_table->AddRow(request);
+    window_table->AddRow(request_key, request);
     // Prepare Union Window
     auto union_inputs = windows_union_gen_.RunInputs(ctx);
     auto union_segments =
@@ -1564,7 +1561,8 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(RunnerContext& ctx) {
             break;
         }
 
-        window_table->AddRow(union_segment_iters[max_union_pos]->GetValue());
+        window_table->AddRow(union_segment_status[max_union_pos].key_,
+                             union_segment_iters[max_union_pos]->GetValue());
         // Update Iterator Status
         union_segment_iters[max_union_pos]->Next();
         if (!union_segment_iters[max_union_pos]->Valid()) {

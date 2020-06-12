@@ -341,7 +341,7 @@ int32_t GetInnerRangeList(int8_t* input, int64_t start_offset,
     }
     ListV<Row>* w = reinterpret_cast<ListV<Row>*>(input);
 
-    uint64_t start_key = 0;
+    int64_t start_key = 0;
 
     if (nullptr != w) {
         auto iter = w->GetIterator();

@@ -346,6 +346,7 @@ class BatchModeTransformer {
                          base::Status& status);  // NOLINT
     bool GenProjects(const SchemaSourceList& input_name_schema_list,
                      const node::PlanNodeList& projects, const bool row_mode,
+                     const node::FrameNode* frame,
                      std::string& fn_name,   // NOLINT
                      Schema* output_schema,  // NOLINT
                      ColumnSourceList* output_column_sources,

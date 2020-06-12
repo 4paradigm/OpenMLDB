@@ -518,7 +518,12 @@ bool WindowDefNode::CanMergeWith(const WindowDefNode *that) const {
     if (Equals(that)) {
         return true;
     }
-    return ExprEquals(this->orders_, that->orders_) &&
+    if (nullptr == that) {
+        return false;
+    }
+    return SQLListEquals(this->union_tables_, that->union_tables_) &&
+           this->instance_not_in_window_ == that->instance_not_in_window_ &&
+           ExprEquals(this->orders_, that->orders_) &&
            ExprEquals(this->partitions_, that->partitions_) &&
            nullptr != frame_ptr_ &&
            this->frame_ptr_->CanMergeWith(that->frame_ptr_);
@@ -529,6 +534,8 @@ bool WindowDefNode::Equals(const SQLNode *node) const {
     }
     const WindowDefNode *that = dynamic_cast<const WindowDefNode *>(node);
     return this->window_name_ == that->window_name_ &&
+           this->instance_not_in_window_ == that->instance_not_in_window_ &&
+           SQLListEquals(this->union_tables_, that->union_tables_) &&
            ExprEquals(this->orders_, that->orders_) &&
            ExprEquals(this->partitions_, that->partitions_) &&
            SQLEquals(this->frame_ptr_, that->frame_ptr_);

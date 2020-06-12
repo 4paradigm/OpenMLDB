@@ -91,9 +91,8 @@ SQLNode *NodeManager::MakeLimitNode(int count) {
 }
 SQLNode *NodeManager::MakeWindowDefNode(ExprListNode *partitions,
                                         ExprNode *orders, SQLNode *frame) {
-    return MakeWindowDefNode(nullptr, partitions, orders, frame, true);
+    return MakeWindowDefNode(nullptr, partitions, orders, frame, false);
 }
-
 SQLNode *NodeManager::MakeWindowDefNode(SQLNodeList *union_tables,
                                         ExprListNode *partitions,
                                         ExprNode *orders, SQLNode *frame,
@@ -133,9 +132,10 @@ WindowDefNode *NodeManager::MergeWindow(const WindowDefNode *w1,
         LOG(WARNING) << "Fail to Merge Window: can't merge windows";
         return nullptr;
     }
-    return dynamic_cast<WindowDefNode *>(
-        MakeWindowDefNode(w1->GetPartitions(), w1->GetOrders(),
-                          MergeFrameNode(w1->GetFrame(), w2->GetFrame())));
+    return dynamic_cast<WindowDefNode *>(MakeWindowDefNode(
+        w1->union_tables(), w1->GetPartitions(), w1->GetOrders(),
+        MergeFrameNode(w1->GetFrame(), w2->GetFrame()),
+        w1->instance_not_in_window()));
 }
 
 FrameNode *NodeManager::MergeFrameNode(const FrameNode *frame1,

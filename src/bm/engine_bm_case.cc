@@ -183,6 +183,21 @@ void EngineRunBatchWindowSumFeature5(benchmark::State* state, MODE mode,
     EngineBatchMode(sql, mode, limit_cnt, size, state);
 }
 
+void EngineRunBatchWindowSumFeature5Window5(benchmark::State* state, MODE mode,
+                                     int64_t limit_cnt,
+                                     int64_t size) {  // NOLINT
+    const std::string sql =
+        "SELECT "
+        "sum(col1) OVER w1 as w1_col1_sum, "
+        "sum(col3) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 30d PRECEDING AND CURRENT ROW) as w2_col3_sum, "
+        "sum(col4) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 20d PRECEDING AND CURRENT ROW) as w3_col4_sum, "
+        "sum(col2) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 10d PRECEDING AND CURRENT ROW) as w4_col2_sum, "
+        "sum(col5) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 5d PRECEDING AND CURRENT ROW) as w5_col5_sum "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 30d PRECEDING AND CURRENT ROW) limit " +
+            std::to_string(limit_cnt) + ";";
+    EngineBatchMode(sql, mode, limit_cnt, size, state);
+}
+
 void EngineWindowSumFeature5(benchmark::State* state, MODE mode,
                              int64_t limit_cnt,
                              int64_t size) {  // NOLINT
@@ -201,6 +216,20 @@ void EngineWindowSumFeature5(benchmark::State* state, MODE mode,
     EngineRequestMode(sql, mode, limit_cnt, size, state);
 }
 
+void EngineWindowSumFeature5Window5(benchmark::State* state, MODE mode,
+                                            int64_t limit_cnt,
+                                            int64_t size) {  // NOLINT
+    const std::string sql =
+        "SELECT "
+        "sum(col1) OVER w1 as w1_col1_sum, "
+        "sum(col3) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 30d PRECEDING AND CURRENT ROW) as w2_col3_sum, "
+        "sum(col4) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 20d PRECEDING AND CURRENT ROW) as w3_col4_sum, "
+        "sum(col2) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 10d PRECEDING AND CURRENT ROW) as w4_col2_sum, "
+        "sum(col5) OVER (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 5d PRECEDING AND CURRENT ROW) as w5_col5_sum "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 30d PRECEDING AND CURRENT ROW) limit " +
+            std::to_string(limit_cnt) + ";";
+    EngineRequestMode(sql, mode, limit_cnt, size, state);
+}
 void EngineWindowMultiAggFeature5(benchmark::State* state, MODE mode,
                                   int64_t limit_cnt,
                                   int64_t size) {  // NOLINT

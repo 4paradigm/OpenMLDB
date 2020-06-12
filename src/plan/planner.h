@@ -13,13 +13,13 @@
 #include <string>
 #include <vector>
 #include "base/fe_status.h"
+#include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "node/node_manager.h"
 #include "node/plan_node.h"
 #include "node/sql_node.h"
 #include "parser/parser.h"
 #include "proto/fe_type.pb.h"
-#include "gflags/gflags.h"
 DECLARE_bool(enable_window_merge_opt);
 namespace fesql {
 namespace plan {
@@ -39,7 +39,13 @@ class Planner {
         if (FLAGS_enable_window_merge_opt) {
             window_merge_enable_ = true;
         } else {
-            window_merge_enable_ =  false;
+            window_merge_enable_ = false;
+        }
+        const char *env_name = "ENABLE_WINDOW_MERGE_OPT";
+        char *value = getenv(env_name);
+        if (value != nullptr && strcmp(value, "true") == 0) {
+            LOG(INFO) << "Multi column agg opt is enabled";
+            window_merge_enable_ = true;
         }
     }
     virtual ~Planner() {}

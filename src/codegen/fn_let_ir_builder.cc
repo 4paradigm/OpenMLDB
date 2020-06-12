@@ -16,20 +16,20 @@
  */
 
 #include "codegen/fn_let_ir_builder.h"
+#include "codegen/aggregate_ir_builder.h"
 #include "codegen/expr_ir_builder.h"
 #include "codegen/ir_base_builder.h"
 #include "codegen/variable_ir_builder.h"
-#include "codegen/aggregate_ir_builder.h"
 #include "glog/logging.h"
 
 namespace fesql {
 namespace codegen {
 
 RowFnLetIRBuilder::RowFnLetIRBuilder(const vm::SchemaSourceList& schema_sources,
+                                     const node::FrameNode* frame,
                                      ::llvm::Module* module)
-    : schema_context_(schema_sources), module_(module) {}
+    : schema_context_(schema_sources), frame_(frame), module_(module) {}
 RowFnLetIRBuilder::~RowFnLetIRBuilder() {}
-
 
 /**
  * Codegen For int32 RowFnLetUDF(int_8* row_ptrs, int8_t* window_ptr, int32 *
@@ -62,9 +62,9 @@ bool RowFnLetIRBuilder::Build(
     args_llvm_type.push_back(
         ::llvm::Type::getInt8PtrTy(module_->getContext())->getPointerTo());
 
-    args.push_back("row_ptrs");
-    args.push_back("window_ptr");
-    args.push_back("row_sizes");
+    args.push_back("@row_ptrs");
+    args.push_back("@window");
+    args.push_back("@row_sizes");
     args.push_back(output_ptr_name);
 
     base::Status status;
@@ -80,7 +80,6 @@ bool RowFnLetIRBuilder::Build(
     ScopeVar sv;
     sv.Enter(name);
     ok = FillArgs(args, fn, sv);
-
     if (!ok) {
         return false;
     }
@@ -88,6 +87,11 @@ bool RowFnLetIRBuilder::Build(
     ::llvm::BasicBlock* block =
         ::llvm::BasicBlock::Create(module_->getContext(), "entry", fn);
     VariableIRBuilder variable_ir_builder(block, &sv);
+
+    NativeValue window;
+    variable_ir_builder.LoadWindow("", &window, status);
+    variable_ir_builder.StoreWindow(
+        nullptr == frame_ ? "" : frame_->GetExprString(), window.GetRaw(), status);
     if (schema_context_.row_schema_info_list_.empty()) {
         LOG(WARNING) << "fail to build fn: row info list is empty";
         return false;
@@ -118,10 +122,8 @@ bool RowFnLetIRBuilder::Build(
 
         ::fesql::type::Type col_agg_type;
         if (agg_builder.CollectAggColumn(sql_node, index, &col_agg_type)) {
-            AddOutputColumnInfo(
-                pp_node->GetName(),
-                col_agg_type, sql_node,
-                output_schema, output_column_sources);
+            AddOutputColumnInfo(pp_node->GetName(), col_agg_type, sql_node,
+                                output_schema, output_column_sources);
             index++;
             continue;
         }
@@ -132,6 +134,7 @@ bool RowFnLetIRBuilder::Build(
                     dynamic_cast<const node::AllNode*>(sql_node);
                 for (auto expr : expr_all->children_) {
                     auto column_ref = dynamic_cast<node::ColumnRefNode*>(expr);
+                    expr_ir_builder.set_frame(pp_node->frame());
                     if (!BuildProject(index, column_ref,
                                       column_ref->GetColumnName(), &outputs,
                                       expr_ir_builder, output_schema,
@@ -144,6 +147,7 @@ bool RowFnLetIRBuilder::Build(
             }
             default: {
                 std::string col_name = pp_node->GetName();
+                expr_ir_builder.set_frame(pp_node->frame());
                 if (!BuildProject(index, sql_node, col_name, &outputs,
                                   expr_ir_builder, output_schema,
                                   output_column_sources, status)) {
@@ -163,9 +167,8 @@ bool RowFnLetIRBuilder::Build(
 
     if (!agg_builder.empty()) {
         if (!agg_builder.BuildMulti(name, &expr_ir_builder,
-                                    &variable_ir_builder,
-                                    block, output_ptr_name,
-                                    output_schema)) {
+                                    &variable_ir_builder, block,
+                                    output_ptr_name, output_schema)) {
             LOG(WARNING) << "Multi column sum codegen failed";
             return false;
         }
@@ -252,21 +255,17 @@ bool RowFnLetIRBuilder::BuildProject(
     if (!DataType2SchemaType(data_type, &ctype)) {
         return false;
     }
-    llvm::IRBuilder<> builder(expr_ir_builder.GetCurrentBlock());
+    llvm::IRBuilder<> builder(expr_ir_builder.block());
     outputs->insert(std::make_pair(index, expr_out_val));
 
-    return AddOutputColumnInfo(col_name, ctype, expr,
-        output_schema, output_column_sources);
+    return AddOutputColumnInfo(col_name, ctype, expr, output_schema,
+                               output_column_sources);
 }
 
-
 bool RowFnLetIRBuilder::AddOutputColumnInfo(
-    const std::string& col_name,
-    ::fesql::type::Type ctype,
-    const node::ExprNode* expr,
-    vm::Schema* output_schema,
+    const std::string& col_name, ::fesql::type::Type ctype,
+    const node::ExprNode* expr, vm::Schema* output_schema,
     vm::ColumnSourceList* output_column_sources) {
-
     ::fesql::type::ColumnDef* cdef = output_schema->Add();
     cdef->set_name(col_name);
     cdef->set_type(ctype);

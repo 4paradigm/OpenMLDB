@@ -75,12 +75,13 @@ bool ScopeVar::AddVar(const std::string& name,
     }
     exist_scope.scope_map.insert(
         std::make_pair(name, value));
+    DLOG(INFO) << "store var " << name;
     return true;
 }
 
 bool ScopeVar::FindVar(const std::string& name,
                        NativeValue* value) {
-    LOG(INFO) << "try find1 " << name;
+    DLOG(INFO) << "try find1 " << name;
     if (value == NULL) {
         LOG(WARNING) << " input value is null";
         return false;
@@ -91,7 +92,7 @@ bool ScopeVar::FindVar(const std::string& name,
         return false;
     }
 
-    LOG(INFO) << "try find " << name;
+    DLOG(INFO) << "try find " << name;
     for (auto scope_iter = scopes_.rbegin(); scope_iter != scopes_.rend();
          scope_iter++) {
         Scope& exist_scope = *scope_iter;

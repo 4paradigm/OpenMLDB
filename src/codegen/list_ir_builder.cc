@@ -288,10 +288,10 @@ bool ListIRBuilder::BuildStructTypeIteratorNext(::llvm::Value* iterator,
         LOG(WARNING) << status.msg;
         return false;
     }
-    LOG(INFO) << "fn name " << fn_name;
-    LOG(INFO) << "iterator type "
+    DLOG(INFO) << "fn name " << fn_name;
+    DLOG(INFO) << "iterator type "
               << TypeIRBuilder::IsStructPtr(iterator->getType());
-    LOG(INFO) << "next_value_ptr type "
+    DLOG(INFO) << "next_value_ptr type "
               << TypeIRBuilder::IsTimestampPtr(next_value_ptr->getType());
     ::llvm::Value* ret = builder.CreateCall(
         fn->getFunctionType(), fn,
