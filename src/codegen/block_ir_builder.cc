@@ -144,13 +144,14 @@ bool BlockIRBuilder::BuildIfElseBlock(
     builder.SetInsertPoint(if_else_start);
     ExprIRBuilder expr_builder(builder.GetInsertBlock(), sv_);
     // 进行条件的代码
-    llvm::Value *cond = nullptr;
+    NativeValue cond_wrapper;
     if (false ==
         expr_builder.Build(if_else_block->if_block_->if_node->expression_,
-                           &cond, status)) {
+                           &cond_wrapper, status)) {
         LOG(WARNING) << "fail to codegen condition expression: " << status.msg;
         return false;
     }
+    llvm::Value *cond = cond_wrapper.GetValue(&builder);
 
     builder.CreateCondBr(cond, cond_true, cond_false);
     builder.SetInsertPoint(cond_true);
@@ -169,15 +170,17 @@ bool BlockIRBuilder::BuildIfElseBlock(
 
             fesql::node::FnElifBlock *elif_block =
                 dynamic_cast<fesql::node::FnElifBlock *>(node);
-            llvm::Value *cond = nullptr;
 
+            NativeValue cond_wrapper;
             ExprIRBuilder expr_builder(builder.GetInsertBlock(), sv_);
-            if (!expr_builder.Build(elif_block->elif_node_->expression_, &cond,
-                                    status)) {
+            if (!expr_builder.Build(elif_block->elif_node_->expression_,
+                                    &cond_wrapper, status)) {
                 LOG(WARNING)
                     << "fail to codegen condition expression" << status.msg;
                 return false;
             }
+            llvm::Value *cond = cond_wrapper.GetValue(&builder);
+
             builder.CreateCondBr(cond, cond_true, cond_false);
             builder.SetInsertPoint(cond_true);
             if (!BuildBlock(elif_block->block_, builder.GetInsertBlock(),
@@ -221,13 +224,14 @@ bool BlockIRBuilder::BuildForInBlock(const ::fesql::node::FnForInBlock *node,
     ExprIRBuilder expr_builder(builder.GetInsertBlock(), sv_);
 
     // loop start
-    llvm::Value *container_value;
+    NativeValue container_value_wrapper;
     if (!expr_builder.Build(node->for_in_node_->in_expression_,
-                            &container_value, status)) {
+                            &container_value_wrapper, status)) {
         LOG(WARNING) << "fail to build for condition expression: "
                      << status.msg;
         return false;
     }
+    llvm::Value *container_value = container_value_wrapper.GetValue(&builder);
 
     llvm::Value *iterator = nullptr;
     if (false ==
@@ -293,12 +297,13 @@ bool BlockIRBuilder::BuildReturnStmt(const ::fesql::node::FnReturnStmt *node,
     ::llvm::IRBuilder<> builder(block);
     ExprIRBuilder expr_builder(block, sv_);
     VariableIRBuilder var_ir_builder(block, sv_);
-    ::llvm::Value *value = NULL;
-    bool ok = expr_builder.Build(node->return_expr_, &value, status);
+    NativeValue value_wrapper;
+    bool ok = expr_builder.Build(node->return_expr_, &value_wrapper, status);
     if (!ok) {
         LOG(WARNING) << "fail to codegen return expression: " << status.msg;
         return false;
     }
+    ::llvm::Value *value = value_wrapper.GetValue(&builder);
 
     if (!ClearAllScopeValues(block, status)) {
         LOG(WARNING) << "fail to clear all scopes values : " << status.msg;
@@ -319,12 +324,14 @@ bool BlockIRBuilder::BuildAssignStmt(const ::fesql::node::FnAssignNode *node,
     }
     ExprIRBuilder builder(block, sv_);
     VariableIRBuilder variable_ir_builder(block, sv_);
-    ::llvm::Value *value = NULL;
-    bool ok = builder.Build(node->expression_, &value, status);
+    NativeValue value_wrapper;
+    bool ok = builder.Build(node->expression_, &value_wrapper, status);
     if (!ok) {
         LOG(WARNING) << "fail to codegen expr" << status.msg;
         return false;
     }
+    ::llvm::IRBuilder<> llvm_builder(block);
+    ::llvm::Value *value = value_wrapper.GetValue(&llvm_builder);
     return variable_ir_builder.StoreValue(node->name_, value, false, status);
 }
 

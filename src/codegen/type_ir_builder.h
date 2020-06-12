@@ -22,6 +22,7 @@
 #include <vector>
 #include "codec/fe_row_codec.h"
 #include "node/node_enum.h"
+#include "node/sql_node.h"
 
 namespace fesql {
 namespace codegen {

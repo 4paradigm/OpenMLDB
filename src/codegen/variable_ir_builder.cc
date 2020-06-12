@@ -111,8 +111,13 @@ bool fesql::codegen::VariableIRBuilder::LoadColumnRef(
 }
 bool fesql::codegen::VariableIRBuilder::LoadColumnItem(
     const std::string& relation_name, const std::string& name,
-    ::llvm::Value** output, fesql::base::Status& status) {
-    return LoadValue("item." + relation_name + "." + name, output, status);
+    NativeValue* output, fesql::base::Status& status) {
+    llvm::Value* raw = nullptr;
+    if (!LoadValue("item." + relation_name + "." + name, &raw, status)) {
+        return false;
+    }
+    *output = NativeValue::Create(raw);
+    return true;
 }
 bool fesql::codegen::VariableIRBuilder::StoreColumnRef(
     const std::string& relation_name, const std::string& name,
@@ -121,8 +126,10 @@ bool fesql::codegen::VariableIRBuilder::StoreColumnRef(
 }
 bool fesql::codegen::VariableIRBuilder::StoreColumnItem(
     const std::string& relation_name, const std::string& name,
-    ::llvm::Value* value, fesql::base::Status& status) {
-    return StoreValue("item." + relation_name + "." + name, value, status);
+    const NativeValue& value, fesql::base::Status& status) {
+    ::llvm::IRBuilder<> builder(block_);
+    return StoreValue("item." + relation_name + "." + name,
+        value.GetValue(&builder), status);
 }
 bool fesql::codegen::VariableIRBuilder::LoadArrayIndex(
     std::string array_ptr_name, int32_t index, ::llvm::Value** output,

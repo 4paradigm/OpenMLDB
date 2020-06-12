@@ -190,22 +190,24 @@ class SQLBaseSuite extends SparkTestSuite {
       } else {
         Some(schema.zip(parts).map {
           case (field, str) =>
-            field.dataType match {
-              case ByteType => str.trim.toByte
-              case ShortType => str.trim.toShort
-              case IntegerType => str.trim.toInt
-              case LongType => str.trim.toLong
-              case FloatType => str.trim.toFloat
-              case DoubleType => str.trim.toDouble
-              case StringType => str
-              case TimestampType => new Timestamp(str.trim.toLong)
-              case DateType => {
-                logger.info("parser data date {}" ,new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").parse(str.trim+" 00:00:00"));
-                new Date(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").parse(str.trim+" 00:00:00").getTime)
+            if (str == "NULL" || str == "null") {
+              null
+            } else {
+              field.dataType match {
+                case ByteType => str.trim.toByte
+                case ShortType => str.trim.toShort
+                case IntegerType => str.trim.toInt
+                case LongType => str.trim.toLong
+                case FloatType => str.trim.toFloat
+                case DoubleType => str.trim.toDouble
+                case StringType => str
+                case TimestampType => new Timestamp(str.trim.toLong)
+                case DateType =>
+                  new Date(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").parse(str.trim + " 00:00:00").getTime)
+                case BooleanType => str.trim.toBoolean
+                case _ => throw new IllegalArgumentException(
+                  s"Unknown type ${field.dataType}")
               }
-              case BooleanType => str.trim.toBoolean
-              case _ => throw new IllegalArgumentException(
-                s"Unknown type ${field.dataType}")
             }
         }.toArray)
       }

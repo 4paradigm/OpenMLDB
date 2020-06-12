@@ -13,8 +13,7 @@ namespace fesql {
 namespace codec {
 
 
-Row::Row():
-    slice_(RefCountedSlice::CreateEmpty()) {}
+Row::Row(): slice_() {}
 
 Row::Row(const std::string& str):
     slice_(RefCountedSlice::Create(
@@ -23,9 +22,17 @@ Row::Row(const std::string& str):
 
 Row::Row(const Row &s) : slice_(s.slice_), slices_(s.slices_) {}
 
-Row::Row(const Row &major, const Row &secondary) : slice_(major.slice_) {
-    Append(major.slices_);
-    Append(secondary);
+Row::Row(size_t major_slices, const Row &major,
+         size_t secondary_slices, const Row &secondary)
+    : slice_(major.slice_), slices_(major_slices + secondary_slices - 1) {
+
+    for (size_t offset = 0; offset < major_slices - 1; ++offset) {
+        slices_[offset] = major.slices_[offset];
+    }
+    slices_[major_slices - 1] = secondary.slice_;
+    for (size_t offset = 0; offset < secondary_slices - 1; ++offset) {
+        slices_[offset + major_slices] = secondary.slices_[offset];
+    }
 }
 
 Row::Row(const RefCountedSlice& s): slice_(s) {}
@@ -46,10 +53,6 @@ void Row::Append(const Row &b) {
 
 int32_t Row::GetRowPtrCnt() const {
     return 1 + slices_.size();
-}
-
-void Row::AppendEmptyRow() {
-    slices_.push_back(RefCountedSlice::CreateEmpty());
 }
 
 // Return a string that contains the copy of the referenced data.

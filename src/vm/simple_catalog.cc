@@ -50,10 +50,7 @@ SimpleCatalogTableHandler::SimpleCatalogTableHandler(
     // build col info and index info
     for (int k = 0; k < table_def.columns_size(); ++k) {
         auto column = table_def.columns(k);
-        ColInfo col_info;
-        col_info.name = column.name();
-        col_info.type = column.type();
-        col_info.pos = k;
+        ColInfo col_info(column.name(), column.type(), k, 0);
         this->types_dict_[column.name()] = col_info;
     }
     for (int k = 0; k < table_def.indexes_size(); ++k) {
@@ -64,7 +61,7 @@ SimpleCatalogTableHandler::SimpleCatalogTableHandler(
         // set ts col
         auto iter = types_dict_.find(index.second_key());
         if (iter != types_dict_.end()) {
-            hint.ts_pos = iter->second.pos;
+            hint.ts_pos = iter->second.idx;
         } else {
             LOG(ERROR) << "Fail to find ts index: " << index.second_key();
         }

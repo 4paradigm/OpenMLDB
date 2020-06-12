@@ -130,7 +130,6 @@ SQLCases:
         5, 55, 3, 6
   - id: 3
     desc: LAST JOIN Window, Join成功命中索引, join条件匹配多行, 取Last Order
-    mode: offline-unsupport
     db: db1
     sql: |
       SELECT t1.col1 as id, t1.col2 as t1_col2, t1.col5 as t1_col5, t2.col5 as t2_col5, str1, sum(t1.col1) OVER w1 as w1_col1_sum

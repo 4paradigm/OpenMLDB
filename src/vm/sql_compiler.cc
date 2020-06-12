@@ -23,7 +23,9 @@
 #include "codec/type_codec.h"
 #include "codegen/ir_base_builder.h"
 #include "glog/logging.h"
+#include "llvm/IR/Verifier.h"
 #include "llvm/Bitcode/BitcodeWriter.h"
+#include "llvm/Bitcode/BitcodeReader.h"
 #include "llvm/Support/raw_ostream.h"
 #include "parser/parser.h"
 #include "plan/planner.h"
@@ -46,31 +48,37 @@ void InitCodecSymbol(::llvm::orc::JITDylib& jd,             // NOLINT
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_get_int16_field",
         reinterpret_cast<void*>(
-            static_cast<int16_t (*)(const int8_t*, uint32_t)>(
+            static_cast<int16_t(*)(
+                const int8_t*, uint32_t, uint32_t, int8_t*)>(
                 &codec::v1::GetInt16Field)));
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_get_int32_field",
         reinterpret_cast<void*>(
-            static_cast<int32_t (*)(const int8_t*, uint32_t)>(
+            static_cast<int32_t(*)(
+                const int8_t*, uint32_t, uint32_t, int8_t*)>(
                 &codec::v1::GetInt32Field)));
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_get_int64_field",
         reinterpret_cast<void*>(
-            static_cast<int64_t (*)(const int8_t*, uint32_t)>(
+            static_cast<int64_t(*)(
+                const int8_t*, uint32_t, uint32_t, int8_t*)>(
                 &codec::v1::GetInt64Field)));
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_get_float_field",
-        reinterpret_cast<void*>(static_cast<float (*)(const int8_t*, uint32_t)>(
+        reinterpret_cast<void*>(static_cast<float(*)(
+            const int8_t*, uint32_t, uint32_t, int8_t*)>(
             &codec::v1::GetFloatField)));
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_get_double_field",
         reinterpret_cast<void*>(
-            static_cast<double (*)(const int8_t*, uint32_t)>(
+            static_cast<double(*)(
+                const int8_t*, uint32_t, uint32_t, int8_t*)>(
                 &codec::v1::GetDoubleField)));
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_get_timestamp_field",
         reinterpret_cast<void*>(
-            static_cast<codec::Timestamp (*)(const int8_t*, uint32_t)>(
+            static_cast<codec::Timestamp(*)(
+                const int8_t*, uint32_t, uint32_t, int8_t*)>(
                 &codec::v1::GetTimestampField)));
 
     fesql::vm::FeSQLJIT::AddSymbol(
@@ -79,8 +87,9 @@ void InitCodecSymbol(::llvm::orc::JITDylib& jd,             // NOLINT
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_get_str_field",
         reinterpret_cast<void*>(
-            static_cast<int32_t (*)(const int8_t*, uint32_t, uint32_t, uint32_t,
-                                    uint32_t, int8_t**, uint32_t*)>(
+            static_cast<int32_t(*)(
+                const int8_t*, uint32_t, uint32_t, uint32_t, uint32_t,
+                      uint32_t, int8_t**, uint32_t*, int8_t*)>(
                 &codec::v1::GetStrField)));
     fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "fesql_storage_get_col",
                                    reinterpret_cast<void*>(&codec::v1::GetCol));
@@ -122,6 +131,9 @@ void InitCodecSymbol(::llvm::orc::JITDylib& jd,             // NOLINT
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_encode_calc_size",
         reinterpret_cast<void*>(&codec::v1::CalcTotalLength));
+    fesql::vm::FeSQLJIT::AddSymbol(
+        jd, mi, "fesql_storage_encode_nullbit",
+        reinterpret_cast<void*>(&codec::v1::AppendNullBit));
 
     // row iteration
     fesql::vm::FeSQLJIT::AddSymbol(
@@ -166,11 +178,11 @@ void SQLCompiler::KeepIR(SQLContext& ctx, llvm::Module* m) {
         LOG(WARNING) << "module is null";
         return;
     }
-    ctx.ir.reserve(1024);
+    ctx.ir.reserve(8192);
     llvm::raw_string_ostream buf(ctx.ir);
     llvm::WriteBitcodeToFile(*m, buf);
     buf.flush();
-    DLOG(INFO) << "keep ir length: " << ctx.ir.size();
+    LOG(INFO) << "keep ir length: " << ctx.ir.size();
 }
 
 bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
@@ -229,6 +241,12 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     if (plan_only_) {
         return true;
     }
+
+    if (llvm::verifyModule(*(m.get()), &llvm::errs(), nullptr)) {
+        LOG(WARNING) << "fail to verify codegen module";
+        return false;
+    }
+
     ::llvm::Expected<std::unique_ptr<FeSQLJIT>> jit_expected(
         FeSQLJITBuilder().create());
     {

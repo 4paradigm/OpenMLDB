@@ -158,21 +158,27 @@ void RunEncode(::fesql::type::TableDef& table, int8_t** output_ptr) {  // NOLINT
     IRBuilder<> builder(entry_block);
     ScopeVar sv;
     sv.Enter("enter row scope");
-    std::map<uint32_t, ::llvm::Value*> outputs;
-    outputs.insert(std::make_pair(0, builder.getInt32(32)));
-    outputs.insert(std::make_pair(1, builder.getInt16(16)));
+    std::map<uint32_t, NativeValue> outputs;
+    outputs.insert(std::make_pair(0,
+        NativeValue::Create(builder.getInt32(32))));
+    outputs.insert(std::make_pair(1,
+        NativeValue::Create(builder.getInt16(16))));
     outputs.insert(std::make_pair(
-        2, ::llvm::ConstantFP::get(*ctx, ::llvm::APFloat(32.1f))));
+        2, NativeValue::Create(
+            ::llvm::ConstantFP::get(*ctx, ::llvm::APFloat(32.1f)))));
     outputs.insert(std::make_pair(
-        3, ::llvm::ConstantFP::get(*ctx, ::llvm::APFloat(64.1))));
-    outputs.insert(std::make_pair(4, builder.getInt64(64)));
+        3, NativeValue::Create(
+            ::llvm::ConstantFP::get(*ctx, ::llvm::APFloat(64.1)))));
+    outputs.insert(std::make_pair(4,
+        NativeValue::Create(builder.getInt64(64))));
 
     std::string hello = "hello";
     ::llvm::Value* string_ref = NULL;
     bool ok = GetConstFeString(hello, entry_block, &string_ref);
     ASSERT_TRUE(ok);
-    outputs.insert(std::make_pair(5, string_ref));
-    outputs.insert(std::make_pair(6, builder.getInt64(1590115420000L)));
+    outputs.insert(std::make_pair(5, NativeValue::Create(string_ref)));
+    outputs.insert(std::make_pair(6,
+        NativeValue::Create(builder.getInt64(1590115420000L))));
 
     BufNativeEncoderIRBuilder buf_encoder_builder(&outputs, table.columns(),
                                                   entry_block);
@@ -194,7 +200,8 @@ void RunEncode(::fesql::type::TableDef& table, int8_t** output_ptr) {  // NOLINT
     decode(output_ptr);
 }
 template <class T>
-void LoadValue(T* result, ::fesql::type::TableDef& table,  // NOLINT
+void LoadValue(T* result, bool* is_null,
+               ::fesql::type::TableDef& table,  // NOLINT
                const ::fesql::type::Type& type, const std::string& col,
                int8_t* row, int32_t row_size) {
     auto ctx = llvm::make_unique<LLVMContext>();
@@ -232,7 +239,7 @@ void LoadValue(T* result, ::fesql::type::TableDef& table,  // NOLINT
             retTy = Type::getVoidTy(*ctx);
     }
     Function* fn = Function::Create(
-        FunctionType::get(llvm::Type::getVoidTy(*ctx),
+        FunctionType::get(llvm::Type::getInt1Ty(*ctx),
                           {Type::getInt8PtrTy(*ctx), Type::getInt32Ty(*ctx),
                            retTy->getPointerTo()},
                           false),
@@ -249,30 +256,48 @@ void LoadValue(T* result, ::fesql::type::TableDef& table,  // NOLINT
     ++it;
     Argument* arg2 = &*it;
 
-    ::llvm::Value* val = NULL;
+    NativeValue val;
     bool ok = buf_builder.BuildGetField(col, arg0, arg1, &val);
     ASSERT_TRUE(ok);
+
+    // if null
+    if (val.HasFlag()) {
+        llvm::BasicBlock* null_branch_block = llvm::BasicBlock::Create(*ctx);
+        null_branch_block->insertInto(fn);
+
+        llvm::BasicBlock* nonnull_branch_block = llvm::BasicBlock::Create(*ctx);
+        nonnull_branch_block->insertInto(fn);
+
+        ::llvm::Value* flag = val.GetFlag(&builder);
+        builder.CreateCondBr(flag, null_branch_block, nonnull_branch_block);
+
+        builder.SetInsertPoint(null_branch_block);
+        builder.CreateRet(llvm::ConstantInt::getTrue(*ctx));
+        builder.SetInsertPoint(nonnull_branch_block);
+    }
+
+    llvm::Value* raw = val.GetValue(&builder);
     switch (type) {
         case ::fesql::type::kVarchar: {
             codegen::StringIRBuilder string_builder(m.get());
             ASSERT_TRUE(
-                string_builder.CopyFrom(builder.GetInsertBlock(), val, arg2));
+                string_builder.CopyFrom(builder.GetInsertBlock(), raw, arg2));
             break;
         }
         case ::fesql::type::kTimestamp: {
             codegen::TimestampIRBuilder timestamp_builder(m.get());
             ::llvm::Value* ts_output;
-            ASSERT_TRUE(timestamp_builder.GetTs(builder.GetInsertBlock(), val,
+            ASSERT_TRUE(timestamp_builder.GetTs(builder.GetInsertBlock(), raw,
                                                 &ts_output));
             ASSERT_TRUE(timestamp_builder.SetTs(builder.GetInsertBlock(), arg2,
                                                 ts_output));
             break;
         }
         default: {
-            builder.CreateStore(val, arg2);
+            builder.CreateStore(raw, arg2);
         }
     }
-    builder.CreateRetVoid();
+    builder.CreateRet(llvm::ConstantInt::getFalse(*ctx));
     m->print(::llvm::errs(), NULL);
     auto J = ExitOnErr(::llvm::orc::LLJITBuilder().create());
     auto& jd = J->getMainJITDylib();
@@ -283,20 +308,28 @@ void LoadValue(T* result, ::fesql::type::TableDef& table,  // NOLINT
     ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
     auto load_fn_jit = ExitOnErr(J->lookup("fn"));
 
-    void (*decode)(int8_t*, int32_t, T*) =
-        reinterpret_cast<void (*)(int8_t*, int32_t, T*)>(
+    bool (*decode)(int8_t*, int32_t, T*) =
+        reinterpret_cast<bool (*)(int8_t*, int32_t, T*)>(
             load_fn_jit.getAddress());
-    decode(row, row_size, result);
+    bool n = decode(row, row_size, result);
+    if (is_null != nullptr) {
+        *is_null = n;
+    }
 }
 
+
 template <class T>
-void RunCaseV1(T expected, ::fesql::type::TableDef& table,  // NOLINT
+void RunCaseV1(T expected,
+               ::fesql::type::TableDef& table,  // NOLINT
                const ::fesql::type::Type& type, const std::string& col,
                int8_t* row, int32_t row_size) {
     T result;
-    LoadValue(&result, table, type, col, row, row_size);
+    bool is_null;
+    LoadValue(&result, &is_null, table, type, col, row, row_size);
+    ASSERT_EQ(is_null, false);
     ASSERT_EQ(result, expected);
 }
+
 template <class T>
 void RunColCase(T expected, type::TableDef& table,  // NOLINT
                 const ::fesql::type::Type& type, const std::string& col,

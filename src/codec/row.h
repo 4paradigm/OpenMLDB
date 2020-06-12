@@ -39,7 +39,8 @@ class Row {
     Row();
     explicit Row(const std::string& str);
     Row(const Row &s);
-    Row(const Row &major, const Row &secondary);
+    Row(size_t major_slices, const Row &major,
+        size_t secondary_slices, const Row &secondary);
 
     explicit Row(const fesql::base::RefCountedSlice& s);
 
@@ -64,14 +65,14 @@ class Row {
     //   >  0 iff "*this" >  "b"
     int compare(const Row &b) const;
 
-    void Append(const std::vector<fesql::base::RefCountedSlice> &slices);
-    void Append(const Row &b);
-
     int8_t **GetRowPtrs() const;
 
     int32_t GetRowPtrCnt() const;
     int32_t *GetRowSizes() const;
-    void AppendEmptyRow();
+
+    inline void Append(const fesql::base::RefCountedSlice& slice) {
+        slices_.emplace_back(slice);
+    }
 
     // Return a string that contains the copy of the referenced data.
     std::string ToString() const;
@@ -81,6 +82,9 @@ class Row {
     }
 
  private:
+    void Append(const std::vector<fesql::base::RefCountedSlice> &slices);
+    void Append(const Row &b);
+
     RefCountedSlice slice_;
     std::vector<RefCountedSlice> slices_;
 };

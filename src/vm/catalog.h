@@ -25,6 +25,7 @@
 #include <vector>
 #include "base/fe_slice.h"
 #include "codec/list_iterator_codec.h"
+#include "codec/fe_row_codec.h"
 #include "codec/row.h"
 #include "proto/fe_type.pb.h"
 
@@ -35,12 +36,8 @@ using fesql::codec::ListV;
 using fesql::codec::Row;
 using fesql::codec::RowIterator;
 using fesql::codec::WindowIterator;
-
-struct ColInfo {
-    ::fesql::type::Type type;
-    uint32_t pos;
-    std::string name;
-};
+using fesql::codec::ColInfo;
+using fesql::codec::Schema;
 
 enum SourceType { kSourceColumn, kSourceConst, kSourceNone };
 class ColumnSource;
@@ -100,7 +97,6 @@ struct IndexSt {
     std::vector<ColInfo> keys;
 };
 
-typedef ::google::protobuf::RepeatedPtrField<::fesql::type::ColumnDef> Schema;
 typedef ::google::protobuf::RepeatedPtrField<::fesql::type::IndexDef> IndexList;
 typedef std::map<std::string, ColInfo> Types;
 typedef std::map<std::string, IndexSt> IndexHint;

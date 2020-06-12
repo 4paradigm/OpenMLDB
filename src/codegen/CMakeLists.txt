@@ -20,7 +20,8 @@ add_library(fesql_codegen STATIC
         string_ir_builder.cc
         struct_ir_builder.cc
         list_ir_builder.cc
-        predicate_expr_ir_builder.cc)
+        predicate_expr_ir_builder.cc
+        native_value.cc)
 if (TESTING_ENABLE)
 set(vm_deps_libs
         fesql_case ${yaml_libs} boost_filesystem ${VM_LIBS} fesql_flags ${LLVM_LIBS} ${BRPC_LIBS} ${OS_LIB})

@@ -130,11 +130,11 @@ bool GetLLVMColumnSize(const ::fesql::node::DataType& v_type, uint32_t* size) {
             break;
         }
         case ::fesql::node::kTimestamp: {
-            *size = sizeof(::fesql::codec::TimestampColumnImpl);
+            *size = sizeof(::fesql::codec::ColumnImpl<codec::Timestamp>);
             break;
         }
         case ::fesql::node::kDate: {
-            *size = sizeof(::fesql::codec::DateColumnImpl);
+            *size = sizeof(::fesql::codec::ColumnImpl<codec::Date>);
             break;
         }
         default: {

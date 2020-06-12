@@ -80,7 +80,7 @@ TEST_F(UDFTest, UDF_mem_table_handler_sum_test) {
 
         ASSERT_EQ(
             0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&window), 0,
-                                          2, fesql::type::kInt32, buf));
+                                          0, 2, fesql::type::kInt32, buf));
         ASSERT_EQ(1 + 11 + 111, fesql::udf::v1::sum_list<int32_t>(col));
     }
 
@@ -92,7 +92,7 @@ TEST_F(UDFTest, UDF_mem_table_handler_sum_test) {
 
         ASSERT_EQ(
             0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&window), 0,
-                                          2 + 4, fesql::type::kInt16, buf));
+                                          1, 2 + 4, fesql::type::kInt16, buf));
         ASSERT_EQ(2 + 22 + 222, fesql::udf::v1::sum_list<int16_t>(col));
     }
 
@@ -102,9 +102,9 @@ TEST_F(UDFTest, UDF_mem_table_handler_sum_test) {
         list_ref.list = buf;
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
-        ASSERT_EQ(
-            0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&window), 0,
-                                          2 + 4 + 2, fesql::type::kFloat, buf));
+        ASSERT_EQ(0, ::fesql::codec::v1::GetCol(
+                         reinterpret_cast<int8_t*>(&window), 0, 2, 2 + 4 + 2,
+                         fesql::type::kFloat, buf));
         ASSERT_EQ(3.1f + 33.1f + 333.1f, fesql::udf::v1::sum_list<float>(col));
     }
 
@@ -115,8 +115,8 @@ TEST_F(UDFTest, UDF_mem_table_handler_sum_test) {
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
         ASSERT_EQ(0, ::fesql::codec::v1::GetCol(
-                         reinterpret_cast<int8_t*>(&window), 0, 2 + 4 + 2 + 4,
-                         fesql::type::kDouble, buf));
+                         reinterpret_cast<int8_t*>(&window), 0, 3,
+                         2 + 4 + 2 + 4, fesql::type::kDouble, buf));
         ASSERT_EQ(4.1 + 44.1 + 444.1, fesql::udf::v1::sum_list<double>(col));
     }
 
@@ -127,7 +127,7 @@ TEST_F(UDFTest, UDF_mem_table_handler_sum_test) {
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
         ASSERT_EQ(0, ::fesql::codec::v1::GetCol(
-                         reinterpret_cast<int8_t*>(&window), 0,
+                         reinterpret_cast<int8_t*>(&window), 0, 4,
                          2 + 4 + 2 + 4 + 8, fesql::type::kInt64, buf));
         ASSERT_EQ(5L + 55L + 555L, fesql::udf::v1::sum_list<int64_t>(col));
     }
@@ -149,7 +149,7 @@ TEST_F(UDFTest, UDF_mem_time_table_handler_sum_test) {
 
         ASSERT_EQ(
             0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&window), 0,
-                                          2, fesql::type::kInt32, buf));
+                                          0, 2, fesql::type::kInt32, buf));
         ASSERT_EQ(1 + 11 + 111, fesql::udf::v1::sum_list<int32_t>(col));
     }
 
@@ -161,7 +161,7 @@ TEST_F(UDFTest, UDF_mem_time_table_handler_sum_test) {
 
         ASSERT_EQ(
             0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&window), 0,
-                                          2 + 4, fesql::type::kInt16, buf));
+                                          1, 2 + 4, fesql::type::kInt16, buf));
         ASSERT_EQ(2 + 22 + 222, fesql::udf::v1::sum_list<int16_t>(col));
     }
 
@@ -171,9 +171,9 @@ TEST_F(UDFTest, UDF_mem_time_table_handler_sum_test) {
         list_ref.list = buf;
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
-        ASSERT_EQ(
-            0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&window), 0,
-                                          2 + 4 + 2, fesql::type::kFloat, buf));
+        ASSERT_EQ(0, ::fesql::codec::v1::GetCol(
+                         reinterpret_cast<int8_t*>(&window), 0, 2, 2 + 4 + 2,
+                         fesql::type::kFloat, buf));
         ASSERT_EQ(3.1f + 33.1f + 333.1f, fesql::udf::v1::sum_list<float>(col));
     }
 
@@ -184,8 +184,8 @@ TEST_F(UDFTest, UDF_mem_time_table_handler_sum_test) {
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
         ASSERT_EQ(0, ::fesql::codec::v1::GetCol(
-                         reinterpret_cast<int8_t*>(&window), 0, 2 + 4 + 2 + 4,
-                         fesql::type::kDouble, buf));
+                         reinterpret_cast<int8_t*>(&window), 0, 3,
+                         2 + 4 + 2 + 4, fesql::type::kDouble, buf));
         ASSERT_EQ(4.1 + 44.1 + 444.1, fesql::udf::v1::sum_list<double>(col));
     }
 
@@ -196,7 +196,7 @@ TEST_F(UDFTest, UDF_mem_time_table_handler_sum_test) {
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
         ASSERT_EQ(0, ::fesql::codec::v1::GetCol(
-                         reinterpret_cast<int8_t*>(&window), 0,
+                         reinterpret_cast<int8_t*>(&window), 0, 4,
                          2 + 4 + 2 + 4 + 8, fesql::type::kInt64, buf));
         ASSERT_EQ(5L + 55L + 555L, fesql::udf::v1::sum_list<int64_t>(col));
     }
@@ -213,7 +213,7 @@ TEST_F(UDFTest, UDF_sum_test) {
 
         ASSERT_EQ(
             0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&window), 0,
-                                          2, fesql::type::kInt32, buf));
+                                          0, 2, fesql::type::kInt32, buf));
         ASSERT_EQ(1 + 11 + 111, fesql::udf::v1::sum_list<int32_t>(col));
     }
 
@@ -225,7 +225,7 @@ TEST_F(UDFTest, UDF_sum_test) {
 
         ASSERT_EQ(
             0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&window), 0,
-                                          2 + 4, fesql::type::kInt16, buf));
+                                          1, 2 + 4, fesql::type::kInt16, buf));
         ASSERT_EQ(2 + 22 + 222, fesql::udf::v1::sum_list<int16_t>(col));
     }
 
@@ -235,9 +235,9 @@ TEST_F(UDFTest, UDF_sum_test) {
         list_ref.list = buf;
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
-        ASSERT_EQ(
-            0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&window), 0,
-                                          2 + 4 + 2, fesql::type::kFloat, buf));
+        ASSERT_EQ(0, ::fesql::codec::v1::GetCol(
+                         reinterpret_cast<int8_t*>(&window), 0, 2, 2 + 4 + 2,
+                         fesql::type::kFloat, buf));
         ASSERT_EQ(3.1f + 33.1f + 333.1f, fesql::udf::v1::sum_list<float>(col));
     }
 
@@ -248,8 +248,8 @@ TEST_F(UDFTest, UDF_sum_test) {
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
         ASSERT_EQ(0, ::fesql::codec::v1::GetCol(
-                         reinterpret_cast<int8_t*>(&window), 0, 2 + 4 + 2 + 4,
-                         fesql::type::kDouble, buf));
+                         reinterpret_cast<int8_t*>(&window), 0, 3,
+                         2 + 4 + 2 + 4, fesql::type::kDouble, buf));
         ASSERT_EQ(4.1 + 44.1 + 444.1, fesql::udf::v1::sum_list<double>(col));
     }
 
@@ -260,7 +260,7 @@ TEST_F(UDFTest, UDF_sum_test) {
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
         ASSERT_EQ(0, ::fesql::codec::v1::GetCol(
-                         reinterpret_cast<int8_t*>(&window), 0,
+                         reinterpret_cast<int8_t*>(&window), 0, 4,
                          2 + 4 + 2 + 4 + 8, fesql::type::kInt64, buf));
         ASSERT_EQ(5L + 55L + 555L, fesql::udf::v1::sum_list<int64_t>(col));
     }
@@ -277,7 +277,7 @@ TEST_F(UDFTest, UDF_max_test) {
 
         ASSERT_EQ(
             0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&impl), 0,
-                                          2, fesql::type::kInt32, buf));
+                                          0, 2, fesql::type::kInt32, buf));
         ASSERT_EQ(111, fesql::udf::v1::max_list<int32_t>(col));
     }
 
@@ -289,7 +289,7 @@ TEST_F(UDFTest, UDF_max_test) {
 
         ASSERT_EQ(
             0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&impl), 0,
-                                          2 + 4, fesql::type::kInt16, buf));
+                                          1, 2 + 4, fesql::type::kInt16, buf));
         ASSERT_EQ(222, fesql::udf::v1::max_list<int16_t>(col));
     }
 
@@ -299,9 +299,9 @@ TEST_F(UDFTest, UDF_max_test) {
         list_ref.list = buf;
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
-        ASSERT_EQ(
-            0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&impl), 0,
-                                          2 + 4 + 2, fesql::type::kFloat, buf));
+        ASSERT_EQ(0, ::fesql::codec::v1::GetCol(
+                         reinterpret_cast<int8_t*>(&impl), 0, 2, 2 + 4 + 2,
+                         fesql::type::kFloat, buf));
         ASSERT_EQ(333.1f, fesql::udf::v1::max_list<float>(col));
     }
 
@@ -312,7 +312,7 @@ TEST_F(UDFTest, UDF_max_test) {
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
         ASSERT_EQ(0, ::fesql::codec::v1::GetCol(
-                         reinterpret_cast<int8_t*>(&impl), 0, 2 + 4 + 2 + 4,
+                         reinterpret_cast<int8_t*>(&impl), 0, 3, 2 + 4 + 2 + 4,
                          fesql::type::kDouble, buf));
         ASSERT_EQ(444.1, fesql::udf::v1::max_list<double>(col));
     }
@@ -324,8 +324,8 @@ TEST_F(UDFTest, UDF_max_test) {
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
         ASSERT_EQ(0, ::fesql::codec::v1::GetCol(
-                         reinterpret_cast<int8_t*>(&impl), 0, 2 + 4 + 2 + 4 + 8,
-                         fesql::type::kInt64, buf));
+                         reinterpret_cast<int8_t*>(&impl), 0, 4,
+                         2 + 4 + 2 + 4 + 8, fesql::type::kInt64, buf));
         ASSERT_EQ(555L, fesql::udf::v1::max_list<int64_t>(col));
     }
 }
@@ -341,7 +341,7 @@ TEST_F(UDFTest, UDF_min_test) {
 
         ASSERT_EQ(
             0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&impl), 0,
-                                          2, fesql::type::kInt32, buf));
+                                          0, 2, fesql::type::kInt32, buf));
         ASSERT_EQ(1, fesql::udf::v1::min_list<int32_t>(col));
     }
 
@@ -353,7 +353,7 @@ TEST_F(UDFTest, UDF_min_test) {
 
         ASSERT_EQ(
             0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&impl), 0,
-                                          2 + 4, fesql::type::kInt16, buf));
+                                          1, 2 + 4, fesql::type::kInt16, buf));
         ASSERT_EQ(2, fesql::udf::v1::min_list<int16_t>(col));
     }
 
@@ -363,9 +363,9 @@ TEST_F(UDFTest, UDF_min_test) {
         list_ref.list = buf;
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
-        ASSERT_EQ(
-            0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&impl), 0,
-                                          2 + 4 + 2, fesql::type::kFloat, buf));
+        ASSERT_EQ(0, ::fesql::codec::v1::GetCol(
+                         reinterpret_cast<int8_t*>(&impl), 0, 2, 2 + 4 + 2,
+                         fesql::type::kFloat, buf));
         ASSERT_EQ(3.1f, fesql::udf::v1::min_list<float>(col));
     }
 
@@ -376,7 +376,7 @@ TEST_F(UDFTest, UDF_min_test) {
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
         ASSERT_EQ(0, ::fesql::codec::v1::GetCol(
-                         reinterpret_cast<int8_t*>(&impl), 0, 2 + 4 + 2 + 4,
+                         reinterpret_cast<int8_t*>(&impl), 0, 3, 2 + 4 + 2 + 4,
                          fesql::type::kDouble, buf));
         ASSERT_EQ(4.1, fesql::udf::v1::min_list<double>(col));
     }
@@ -388,8 +388,8 @@ TEST_F(UDFTest, UDF_min_test) {
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
         ASSERT_EQ(0, ::fesql::codec::v1::GetCol(
-                         reinterpret_cast<int8_t*>(&impl), 0, 2 + 4 + 2 + 4 + 8,
-                         fesql::type::kInt64, buf));
+                         reinterpret_cast<int8_t*>(&impl), 0, 4,
+                         2 + 4 + 2 + 4 + 8, fesql::type::kInt64, buf));
         ASSERT_EQ(5L, fesql::udf::v1::min_list<int64_t>(col));
     }
 }
@@ -402,7 +402,7 @@ TEST_F(UDFTest, GetColTest) {
         list_ref.list = buf;
         ASSERT_EQ(
             0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&impl), 0,
-                                          2, fesql::type::kInt32, buf));
+                                          0, 2, fesql::type::kInt32, buf));
         ::fesql::codec::ColumnImpl<int16_t>* col =
             reinterpret_cast<::fesql::codec::ColumnImpl<int16_t>*>(
                 list_ref.list);
@@ -456,8 +456,8 @@ TEST_F(UDFTest, GetWindowColRangeTest) {
     const uint32_t size = sizeof(ColumnImpl<int32_t>);
     int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
     for (int i = 0; i < 100000; ++i) {
-        ASSERT_EQ(0, ::fesql::codec::v1::GetCol(inner_list_buf, 0, offset, type,
-                                                buf));
+        ASSERT_EQ(0, ::fesql::codec::v1::GetCol(inner_list_buf, 0, 0, offset,
+                                                type, buf));
         ::fesql::codec::ColumnImpl<int32_t>* col =
             reinterpret_cast<::fesql::codec::ColumnImpl<int32_t>*>(buf);
         auto col_iterator = col->GetIterator();
@@ -511,8 +511,8 @@ TEST_F(UDFTest, GetWindowColRowsTest) {
     const uint32_t size = sizeof(ColumnImpl<int32_t>);
     int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
     for (int i = 0; i < 100000; ++i) {
-        ASSERT_EQ(0, ::fesql::codec::v1::GetCol(inner_list_buf, 0, offset, type,
-                                                buf));
+        ASSERT_EQ(0, ::fesql::codec::v1::GetCol(inner_list_buf, 0, 0, offset,
+                                                type, buf));
         ::fesql::codec::ColumnImpl<int32_t>* col =
             reinterpret_cast<::fesql::codec::ColumnImpl<int32_t>*>(buf);
         auto col_iterator = col->GetIterator();
@@ -546,7 +546,7 @@ TEST_F(UDFTest, GetWindowColTest) {
     for (int i = 0; i < 100000; ++i) {
         ASSERT_EQ(
             0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&table), 0,
-                                          2, fesql::type::kInt32, buf));
+                                          0, 2, fesql::type::kInt32, buf));
         ::fesql::codec::ColumnImpl<int32_t>* col =
             reinterpret_cast<::fesql::codec::ColumnImpl<int32_t>*>(buf);
         auto col_iterator = col->GetIterator();
@@ -572,7 +572,7 @@ TEST_F(UDFTest, GetTimeMemColTest) {
     for (int i = 0; i < 1000000; ++i) {
         ASSERT_EQ(
             0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&table), 0,
-                                          2, fesql::type::kInt32, buf));
+                                          0, 2, fesql::type::kInt32, buf));
         ColumnImpl<int32_t>* col = reinterpret_cast<ColumnImpl<int32_t>*>(buf);
         auto col_iterator = col->GetIterator();
         ASSERT_TRUE(col_iterator->Valid());
@@ -596,7 +596,7 @@ TEST_F(UDFTest, GetColHeapTest) {
         list_ref.list = buf;
         ASSERT_EQ(
             0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&impl), 0,
-                                          2, fesql::type::kInt32, buf));
+                                          0, 2, fesql::type::kInt32, buf));
         ::fesql::codec::ColumnImpl<int16_t>* impl =
             reinterpret_cast<::fesql::codec::ColumnImpl<int16_t>*>(
                 list_ref.list);

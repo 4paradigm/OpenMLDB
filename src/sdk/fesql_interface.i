@@ -13,6 +13,7 @@ SWIG_JAVABODY_PROXY(public, public, SWIGTYPE)
 %include std_shared_ptr.i
 %include stl.i
 %include stdint.i
+
 namespace std {
     %template(StringVector) vector<string>;
 }
@@ -52,7 +53,7 @@ namespace std {
 %protobuf_enum(fesql::type::Type, com._4paradigm.fesql.type.TypeOuterClass.Type);
 %protobuf(fesql::type::Database, com._4paradigm.fesql.type.TypeOuterClass.Database);
 %protobuf(fesql::type::TableDef, com._4paradigm.fesql.type.TypeOuterClass.TableDef);
-%protobuf_repeated_typedef(fesql::vm::Schema, com._4paradigm.fesql.type.TypeOuterClass.ColumnDef);
+%protobuf_repeated_typedef(fesql::codec::Schema, com._4paradigm.fesql.type.TypeOuterClass.ColumnDef);
 
 // Enable direct buffer interfaces
 %include "swig_library/java/buffer.i"
@@ -140,3 +141,10 @@ using fesql::sdk::ExplainInfo;
 %include "vm/physical_op.h"
 %include "vm/jit_wrapper.h"
 %include "vm/core_api.h"
+
+// Notice that make sure this is declared after including "vm/catalog.h"
+namespace fesql {
+    namespace vm {
+        %template(ColumnSourceList) ::std::vector<fesql::vm::ColumnSource>;
+    }
+}

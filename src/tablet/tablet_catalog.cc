@@ -47,10 +47,7 @@ bool TabletTableHandler::Init() {
     // init types var
     for (int32_t i = 0; i < schema_.size(); i++) {
         const type::ColumnDef& column = schema_.Get(i);
-        vm::ColInfo col_info;
-        col_info.type = column.type();
-        col_info.pos = i;
-        col_info.name = column.name();
+        codec::ColInfo col_info(column.name(), column.type(), i, 0);
         types_.insert(std::make_pair(column.name(), col_info));
     }
 
