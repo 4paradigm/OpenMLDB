@@ -74,10 +74,9 @@ void RelationalTable::initOptionTemplate() {
     ssd_option_template.level0_file_num_compaction_trigger = 10;
     ssd_option_template.level0_slowdown_writes_trigger = 20;
     ssd_option_template.level0_stop_writes_trigger = 40;
-    ssd_option_template.write_buffer_size = 64 << 20;
-    ssd_option_template.target_file_size_base = 64 << 20;
-    ssd_option_template.max_bytes_for_level_base = 512 << 20;
-
+    ssd_option_template.write_buffer_size = 256 << 20;
+    ssd_option_template.target_file_size_base = 256 << 20;
+    ssd_option_template.max_bytes_for_level_base = 1024 << 20;
     rocksdb::BlockBasedTableOptions table_options;
     table_options.cache_index_and_filter_blocks = true;
     table_options.pin_l0_filter_and_index_blocks_in_cache = true;
