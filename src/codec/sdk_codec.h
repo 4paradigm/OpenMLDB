@@ -6,11 +6,13 @@
 #pragma once
 
 #include <map>
-#include <vector>
 #include <string>
 #include <utility>
+#include <vector>
+
 #include "codec/schema_codec.h"
 #include "proto/common.pb.h"
+#include "proto/tablet.pb.h"
 
 namespace rtidb {
 namespace codec {
@@ -21,6 +23,9 @@ using Dimension = std::vector<std::pair<std::string, uint32_t>>;
 class SDKCodec {
  public:
     explicit SDKCodec(const ::rtidb::nameserver::TableInfo& table_info);
+
+    explicit SDKCodec(const ::rtidb::api::TableMeta& table_info);
+
     int EncodeDimension(const std::map<std::string, std::string>& raw_data,
                         uint32_t pid_num,
                         std::map<uint32_t, Dimension>* dimensions);
@@ -34,13 +39,24 @@ class SDKCodec {
 
     int EncodeRow(const std::vector<std::string>& raw_data, std::string* row);
 
+    int DecodeRow(const std::string& row, std::vector<std::string>* value);
+
+    int CombinePartitionKey(const std::vector<std::string>& raw_data,
+                            std::string* key);
+
+    inline bool HasTSCol() const { return !ts_idx_.empty(); }
+
+    std::vector<std::string> GetColNames();
+
  private:
     Schema schema_;
     Index index_;
     std::vector<::rtidb::codec::ColumnDesc> old_schema_;
     std::map<std::string, uint32_t> schema_idx_map_;
     std::vector<uint32_t> ts_idx_;
+    std::vector<uint32_t> partition_col_idx_;
     uint32_t format_version_;
+    uint32_t base_schema_size_;
     int modify_times_;
 };
 

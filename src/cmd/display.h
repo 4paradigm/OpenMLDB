@@ -16,10 +16,11 @@
 #include <utility>
 #include <vector>
 
-#include "base/kv_iterator.h"
+#include "cmd/sdk_iterator.h"
 #include "codec/flat_array.h"
 #include "codec/row_codec.h"
 #include "codec/schema_codec.h"
+#include "codec/sdk_codec.h"
 #include "proto/client.pb.h"
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
@@ -29,7 +30,7 @@
 DECLARE_uint32(max_col_display_length);
 
 namespace rtidb {
-namespace base {
+namespace cmd {
 
 static std::string DataTypeToStr(::rtidb::type::DataType data_type) {
     auto iter = ::rtidb::codec::DATA_TYPE_STR_MAP.find(data_type);
@@ -334,38 +335,31 @@ __attribute__((unused)) static void PrintColumnKey(
 }
 
 __attribute__((unused)) static void ShowTableRows(
-    const ::rtidb::codec::Schema& schema, ::rtidb::base::KvIterator* it,
-    const ::rtidb::nameserver::CompressType ctype) {
-    std::vector<std::string> row;
-    row.push_back("#");
-    bool has_ts_col = false;
-    for (int32_t i = 0; i < schema.size(); i++) {
-        row.push_back(schema.Get(i).name());
-        if (schema.Get(i).is_ts_col()) {
-            has_ts_col = true;
-        }
+    const ::rtidb::nameserver::TableInfo& table_info,
+    ::rtidb::cmd::SDKIterator* it) {
+    ::rtidb::codec::SDKCodec codec(table_info);
+    std::vector<std::string> row = codec.GetColNames();
+    if (!codec.HasTSCol()) {
+        row.insert(row.begin(), "ts");
     }
-    if (!has_ts_col) {
-        row.insert(row.begin() + 1, "ts");
-    }
+    row.insert(row.begin(), "#");
     ::baidu::common::TPrinter tp(row.size(), FLAGS_max_col_display_length);
     tp.AddRow(row);
     uint32_t index = 1;
     while (it->Valid()) {
         std::vector<std::string> vrow;
         vrow.push_back(boost::lexical_cast<std::string>(index));
-        if (!has_ts_col) {
+        if (!codec.HasTSCol()) {
             vrow.push_back(std::to_string(it->GetKey()));
         }
         std::string value;
-        if (ctype == ::rtidb::nameserver::kSnappy) {
+        if (table_info.compress_type() == ::rtidb::nameserver::kSnappy) {
             ::snappy::Uncompress(it->GetValue().data(), it->GetValue().size(),
                                  &value);
         } else {
             value.assign(it->GetValue().data(), it->GetValue().size());
         }
-        ::rtidb::codec::RowCodec::DecodeRow(schema, ::rtidb::base::Slice(value),
-                                            vrow);
+        codec.DecodeRow(value, &vrow);
         TransferString(&vrow);
         tp.AddRow(vrow);
         index++;
@@ -375,64 +369,7 @@ __attribute__((unused)) static void ShowTableRows(
 }
 
 __attribute__((unused)) static void ShowTableRows(
-    const std::vector<::rtidb::codec::ColumnDesc>& base_columns,
-    const std::vector<::rtidb::codec::ColumnDesc>& raw,
-    ::rtidb::base::KvIterator* it,
-    const ::rtidb::nameserver::CompressType compress_type) {
-    bool has_ts_col = ::rtidb::codec::SchemaCodec::HasTSCol(raw);
-    std::vector<std::string> row;
-    row.push_back("#");
-    if (!has_ts_col) {
-        row.push_back("ts");
-    }
-    for (uint32_t i = 0; i < raw.size(); i++) {
-        row.push_back(raw[i].name);
-    }
-    ::baidu::common::TPrinter tp(row.size(), FLAGS_max_col_display_length);
-    tp.AddRow(row);
-    uint32_t index = 1;
-    while (it->Valid()) {
-        std::vector<std::string> vrow;
-        vrow.push_back(boost::lexical_cast<std::string>(index));
-        if (!has_ts_col) {
-            vrow.push_back(boost::lexical_cast<std::string>(it->GetKey()));
-        }
-        const char* str = NULL;
-        uint32_t str_size = 0;
-        if (compress_type == ::rtidb::nameserver::kSnappy) {
-            std::string uncompressed;
-            ::snappy::Uncompress(it->GetValue().data(), it->GetValue().size(),
-                                 &uncompressed);
-            str = uncompressed.c_str();
-            str_size = uncompressed.size();
-        } else {
-            str = it->GetValue().data();
-            str_size = it->GetValue().size();
-        }
-        if (base_columns.size() == 0) {
-            ::rtidb::codec::FillTableRow(raw, str, str_size, vrow);
-        } else {
-            ::rtidb::codec::FillTableRow(raw.size(), base_columns, str,
-                                         str_size, vrow);
-        }
-        TransferString(&vrow);
-        tp.AddRow(vrow);
-        index++;
-        it->Next();
-    }
-    tp.Print(true);
-}
-
-__attribute__((unused)) static void ShowTableRows(
-    const std::vector<::rtidb::codec::ColumnDesc>& raw,
-    ::rtidb::base::KvIterator* it,
-    const ::rtidb::nameserver::CompressType compress_type) {
-    std::vector<::rtidb::codec::ColumnDesc> base_columns;
-    ShowTableRows(base_columns, raw, it, compress_type);
-}
-
-__attribute__((unused)) static void ShowTableRows(
-    const std::string& key, ::rtidb::base::KvIterator* it,
+    const std::string& key, ::rtidb::cmd::SDKIterator* it,
     const ::rtidb::nameserver::CompressType compress_type) {
     ::baidu::common::TPrinter tp(4, FLAGS_max_col_display_length);
     std::vector<std::string> row;
@@ -773,7 +710,7 @@ __attribute__((unused)) static void PrintTableInformation(
     row.push_back(std::to_string(table.format_version()));
     tp.AddRow(row);
     row.clear();
-    row.push_back("partition key");
+    row.push_back("partition_key");
     if (table.partition_key_size() > 0) {
         std::string partition_key;
         for (int idx = 0; idx < table.partition_key_size(); idx++) {
@@ -802,5 +739,5 @@ __attribute__((unused)) static void PrintDatabase(
     tp.Print(true);
 }
 
-}  // namespace base
+}  // namespace cmd
 }  // namespace rtidb

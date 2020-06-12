@@ -16,6 +16,7 @@
 
 #include "base/count_down_latch.h"
 #include "base/file_util.h"
+#include "base/glog_wapper.h"  // NOLINT
 #include "base/hash.h"
 #include "base/kv_iterator.h"
 #include "base/slice.h"
@@ -27,12 +28,9 @@
 #include "gflags/gflags.h"
 #include "log/log_reader.h"
 #include "log/sequential_file.h"
-#include "base/glog_wapper.h"  // NOLINT
 #include "proto/tablet.pb.h"
 #include "thread_pool.h"  // NOLINT
 #include "timer.h"        // NOLINT
-
-
 
 DECLARE_uint64(gc_on_table_recover_count);
 DECLARE_int32(binlog_name_length);
@@ -373,7 +371,7 @@ uint64_t MemTableSnapshot::CollectDeletedKey(uint64_t end_offset) {
                     std::to_string(entry.dimensions(0).idx());
                 deleted_keys_[combined_key] = cur_offset;
                 DEBUGLOG("insert key %s offset %lu. tid %u pid %u",
-                      combined_key.c_str(), cur_offset, tid_, pid_);
+                         combined_key.c_str(), cur_offset, tid_, pid_);
             }
         } else if (status.IsEof()) {
             continue;
@@ -493,8 +491,8 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table,
                 std::string combined_key = entry.pk() + "|0";
                 auto iter = deleted_keys_.find(combined_key);
                 if (iter != deleted_keys_.end() && cur_offset <= iter->second) {
-                    DEBUGLOG("delete key %s  offset %lu",
-                          entry.pk().c_str(), entry.log_index());
+                    DEBUGLOG("delete key %s  offset %lu", entry.pk().c_str(),
+                             entry.log_index());
                     deleted_key_num++;
                     continue;
                 }
@@ -591,7 +589,7 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table,
                 // delete old snapshot
                 if (manifest.has_name() && manifest.name() != snapshot_name) {
                     DEBUGLOG("old snapshot[%s] has deleted",
-                          manifest.name().c_str());
+                             manifest.name().c_str());
                     unlink((snapshot_path_ + manifest.name()).c_str());
                 }
                 uint64_t consumed =
@@ -721,8 +719,9 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(
                 ::snappy::Uncompress(entry.value().c_str(),
                                      entry.value().size(), &buff);
                 if (table_meta.format_version() == 0) {
-                    ::rtidb::codec::FillTableRow(
-                        max_idx + 1, columns, buff.c_str(), buff.size(), row);
+                    ::rtidb::codec::RowCodec::DecodeRow(
+                        columns.size(), max_idx + 1, ::rtidb::base::Slice(buff),
+                        &row);
                 } else {
                     ::rtidb::codec::RowCodec::DecodeRow(
                         table_meta.column_desc(), ::rtidb::base::Slice(buff),
@@ -730,9 +729,9 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(
                 }
             } else {
                 if (table_meta.format_version() == 0) {
-                    ::rtidb::codec::FillTableRow(max_idx + 1, columns,
-                                                 entry.value().c_str(),
-                                                 entry.value().size(), row);
+                    ::rtidb::codec::RowCodec::DecodeRow(
+                        columns.size(), max_idx + 1,
+                        ::rtidb::base::Slice(entry.value()), &row);
                 } else {
                     ::rtidb::codec::RowCodec::DecodeRow(
                         table_meta.column_desc(),
@@ -922,8 +921,8 @@ int MemTableSnapshot::ExtractIndexData(
                 std::string combined_key = entry.pk() + "|0";
                 auto iter = deleted_keys_.find(combined_key);
                 if (iter != deleted_keys_.end() && cur_offset <= iter->second) {
-                    DEBUGLOG("delete key %s  offset %lu",
-                          entry.pk().c_str(), entry.log_index());
+                    DEBUGLOG("delete key %s  offset %lu", entry.pk().c_str(),
+                             entry.log_index());
                     deleted_key_num++;
                     continue;
                 }
@@ -979,9 +978,9 @@ int MemTableSnapshot::ExtractIndexData(
                     ::snappy::Uncompress(entry.value().c_str(),
                                          entry.value().size(), &buff);
                     if (table_meta.format_version() == 0) {
-                        ::rtidb::codec::FillTableRow(max_idx + 1, columns,
-                                                     buff.c_str(), buff.size(),
-                                                     row);
+                        ::rtidb::codec::RowCodec::DecodeRow(
+                            columns.size(), max_idx + 1,
+                            ::rtidb::base::Slice(buff), &row);
                     } else {
                         ::rtidb::codec::RowCodec::DecodeRow(
                             table_meta.column_desc(),
@@ -990,9 +989,9 @@ int MemTableSnapshot::ExtractIndexData(
                     }
                 } else {
                     if (table_meta.format_version() == 0) {
-                        ::rtidb::codec::FillTableRow(max_idx + 1, columns,
-                                                     entry.value().c_str(),
-                                                     entry.value().size(), row);
+                        ::rtidb::codec::RowCodec::DecodeRow(
+                            columns.size(), max_idx + 1,
+                            ::rtidb::base::Slice(entry.value()), &row);
                     } else {
                         ::rtidb::codec::RowCodec::DecodeRow(
                             table_meta.column_desc(),
@@ -1079,7 +1078,7 @@ int MemTableSnapshot::ExtractIndexData(
                 // delete old snapshot
                 if (manifest.has_name() && manifest.name() != snapshot_name) {
                     DEBUGLOG("old snapshot[%s] has deleted",
-                          manifest.name().c_str());
+                             manifest.name().c_str());
                     unlink((snapshot_path_ + manifest.name()).c_str());
                 }
                 uint64_t consumed =
@@ -1143,8 +1142,8 @@ bool MemTableSnapshot::PackNewIndexEntry(
         ::snappy::Uncompress(entry->value().c_str(), entry->value().size(),
                              &buff);
         if (table_meta.format_version() == 0) {
-            ::rtidb::codec::FillTableRow(max_idx + 1, columns, buff.c_str(),
-                                         buff.size(), row);
+            ::rtidb::codec::RowCodec::DecodeRow(
+                columns.size(), max_idx + 1, ::rtidb::base::Slice(buff), &row);
         } else {
             ::rtidb::codec::RowCodec::DecodeRow(table_meta.column_desc(),
                                                 ::rtidb::base::Slice(buff),
@@ -1152,9 +1151,9 @@ bool MemTableSnapshot::PackNewIndexEntry(
         }
     } else {
         if (table_meta.format_version() == 0) {
-            ::rtidb::codec::FillTableRow(max_idx + 1, columns,
-                                         entry->value().c_str(),
-                                         entry->value().size(), row);
+            ::rtidb::codec::RowCodec::DecodeRow(
+                columns.size(), max_idx + 1,
+                ::rtidb::base::Slice(entry->value()), &row);
         } else {
             ::rtidb::codec::RowCodec::DecodeRow(
                 table_meta.column_desc(), ::rtidb::base::Slice(entry->value()),
@@ -1396,8 +1395,7 @@ bool MemTableSnapshot::DumpBinlogIndexData(
             continue;
         }
         if (cur_offset >= entry.log_index()) {
-            DEBUGLOG("offset %lu has been made snapshot",
-                  entry.log_index());
+            DEBUGLOG("offset %lu has been made snapshot", entry.log_index());
             continue;
         }
 

@@ -2,8 +2,10 @@
 // Copyright (C) 2017 4paradigm.com
 
 #include "codec/sdk_codec.h"
+
 #include <string>
 #include <utility>
+
 #include "base/hash.h"
 #include "codec/row_codec.h"
 
@@ -11,12 +13,13 @@ namespace rtidb {
 namespace codec {
 
 SDKCodec::SDKCodec(const ::rtidb::nameserver::TableInfo& table_info)
-    : modify_times_(0) {
+    : base_schema_size_(0), modify_times_(0) {
     format_version_ = table_info.format_version();
     if (table_info.column_key_size() > 0) {
         index_.CopyFrom(table_info.column_key());
     }
     if (table_info.column_desc_v1_size() > 0) {
+        base_schema_size_ = table_info.column_desc_v1_size();
         if (format_version_ == 1) {
             schema_.CopyFrom(table_info.column_desc_v1());
         }
@@ -45,9 +48,18 @@ SDKCodec::SDKCodec(const ::rtidb::nameserver::TableInfo& table_info)
             }
         }
     } else {
+        base_schema_size_ = table_info.column_desc_size();
         for (uint32_t idx = 0; idx < (uint32_t)table_info.column_desc_size();
              idx++) {
             const auto& cur_column_desc = table_info.column_desc(idx);
+            if (format_version_ == 1) {
+                auto col = schema_.Add();
+                col->set_name(cur_column_desc.name());
+                auto iter = DATA_TYPE_MAP.find(cur_column_desc.type());
+                if (iter != DATA_TYPE_MAP.end()) {
+                    col->set_data_type(iter->second);
+                }
+            }
             schema_idx_map_.emplace(cur_column_desc.name(), idx);
             ::rtidb::codec::ColumnDesc column_desc;
             ::rtidb::codec::ColType type =
@@ -77,8 +89,17 @@ SDKCodec::SDKCodec(const ::rtidb::nameserver::TableInfo& table_info)
         column_desc.is_ts_col = cur_column_desc.is_ts_col();
         old_schema_.push_back(std::move(column_desc));
     }
+    for (const auto& name : table_info.partition_key()) {
+        auto iter = schema_idx_map_.find(name);
+        if (iter != schema_idx_map_.end()) {
+            partition_col_idx_.push_back(iter->second);
+        }
+    }
     modify_times_ = table_info.added_column_desc_size();
 }
+
+SDKCodec::SDKCodec(const ::rtidb::api::TableMeta& table_info)
+    : base_schema_size_(0), modify_times_(0) {}
 
 int SDKCodec::EncodeDimension(
     const std::map<std::string, std::string>& raw_data, uint32_t pid_num,
@@ -112,7 +133,7 @@ int SDKCodec::EncodeDimension(
         if (pid_num > 0) {
             pid = (uint32_t)(::rtidb::base::hash64(key) % pid_num);
         }
-        auto pair = dimensions->insert(std::make_pair(pid, Dimension()));
+        auto pair = dimensions->emplace(pid, Dimension());
         pair.first->second.emplace_back(std::move(key), dimension_idx);
         dimension_idx++;
     }
@@ -153,7 +174,7 @@ int SDKCodec::EncodeDimension(const std::vector<std::string>& raw_data,
         if (pid_num > 0) {
             pid = (uint32_t)(::rtidb::base::hash64(key) % pid_num);
         }
-        auto pair = dimensions->insert(std::make_pair(pid, Dimension()));
+        auto pair = dimensions->emplace(pid, Dimension());
         pair.first->second.emplace_back(std::move(key), dimension_idx);
         dimension_idx++;
     }
@@ -186,6 +207,51 @@ int SDKCodec::EncodeRow(const std::vector<std::string>& raw_data,
             RowCodec::EncodeRow(raw_data, old_schema_, modify_times_, row);
         return ret.code;
     }
+}
+
+int SDKCodec::DecodeRow(const std::string& row,
+                        std::vector<std::string>* value) {
+    if (format_version_ == 1) {
+        if (!RowCodec::DecodeRow(schema_, ::rtidb::base::Slice(row), *value)) {
+            return -1;
+        }
+    } else {
+        if (!RowCodec::DecodeRow(base_schema_size_, ::rtidb::base::Slice(row),
+                                 value)) {
+            return -1;
+        }
+    }
+    return 0;
+}
+
+std::vector<std::string> SDKCodec::GetColNames() {
+    std::vector<std::string> cols;
+    if (format_version_ == 1) {
+        for (const auto& column_desc : schema_) {
+            cols.push_back(column_desc.name());
+        }
+    } else {
+        for (const auto& column_desc : old_schema_) {
+            cols.push_back(column_desc.name);
+        }
+    }
+    return cols;
+}
+
+int SDKCodec::CombinePartitionKey(const std::vector<std::string>& raw_data,
+                                  std::string* key) {
+    if (partition_col_idx_.empty()) {
+        return -1;
+    }
+    key->clear();
+    for (auto idx : partition_col_idx_) {
+        if (idx >= raw_data.size()) {
+            return -1;
+        }
+        if (!key->empty()) key->append("|");
+        key->append(raw_data[idx]);
+    }
+    return 0;
 }
 
 }  // namespace codec

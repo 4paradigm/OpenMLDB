@@ -287,6 +287,90 @@ class RowCodec {
         }
         return true;
     }
+
+    static bool DecodeRow(uint32_t base_schema_size,
+                          const ::rtidb::base::Slice& value,
+                          std::vector<std::string>* vrow) {
+        return DecodeRow(base_schema_size, base_schema_size, value, vrow);
+    }
+
+    static bool DecodeRow(uint32_t base_schema_size, uint32_t get_row_num,
+                          const ::rtidb::base::Slice& value,
+                          std::vector<std::string>* vrow) {
+        rtidb::codec::FlatArrayIterator fit(value.data(), value.size(),
+                                            base_schema_size);
+        while (get_row_num > 0) {
+            std::string col;
+            if (!fit.Valid()) {
+                get_row_num--;
+                vrow->emplace_back("");
+                continue;
+            }
+            ColType type = fit.GetType();
+            if (fit.IsNULL()) {
+                col = NONETOKEN;
+            } else if (type == ::rtidb::codec::ColType::kString ||
+                       type == ::rtidb::codec::ColType::kEmptyString) {
+                fit.GetString(&col);
+            } else if (type == ::rtidb::codec::ColType::kUInt16) {
+                uint16_t uint16_col = 0;
+                fit.GetUInt16(&uint16_col);
+                col = boost::lexical_cast<std::string>(uint16_col);
+            } else if (type == ::rtidb::codec::ColType::kInt16) {
+                int16_t int16_col = 0;
+                fit.GetInt16(&int16_col);
+                col = boost::lexical_cast<std::string>(int16_col);
+            } else if (type == ::rtidb::codec::ColType::kInt32) {
+                int32_t int32_col = 0;
+                fit.GetInt32(&int32_col);
+                col = boost::lexical_cast<std::string>(int32_col);
+            } else if (type == ::rtidb::codec::ColType::kInt64) {
+                int64_t int64_col = 0;
+                fit.GetInt64(&int64_col);
+                col = boost::lexical_cast<std::string>(int64_col);
+            } else if (type == ::rtidb::codec::ColType::kUInt32) {
+                uint32_t uint32_col = 0;
+                fit.GetUInt32(&uint32_col);
+                col = boost::lexical_cast<std::string>(uint32_col);
+            } else if (type == ::rtidb::codec::ColType::kUInt64) {
+                uint64_t uint64_col = 0;
+                fit.GetUInt64(&uint64_col);
+                col = boost::lexical_cast<std::string>(uint64_col);
+            } else if (type == ::rtidb::codec::ColType::kDouble) {
+                double double_col = 0.0;
+                fit.GetDouble(&double_col);
+                col = boost::lexical_cast<std::string>(double_col);
+            } else if (type == ::rtidb::codec::ColType::kFloat) {
+                float float_col = 0.0f;
+                fit.GetFloat(&float_col);
+                col = boost::lexical_cast<std::string>(float_col);
+            } else if (type == ::rtidb::codec::ColType::kTimestamp) {
+                uint64_t ts = 0;
+                fit.GetTimestamp(&ts);
+                col = boost::lexical_cast<std::string>(ts);
+            } else if (type == ::rtidb::codec::ColType::kDate) {
+                uint64_t dt = 0;
+                fit.GetDate(&dt);
+                time_t rawtime = (time_t)dt / 1000;
+                tm* timeinfo = localtime(&rawtime);  // NOLINT
+                char buf[20];
+                strftime(buf, 20, "%Y-%m-%d", timeinfo);
+                col.assign(buf);
+            } else if (type == ::rtidb::codec::ColType::kBool) {
+                bool value = false;
+                fit.GetBool(&value);
+                if (value) {
+                    col = "true";
+                } else {
+                    col = "false";
+                }
+            }
+            get_row_num--;
+            fit.Next();
+            vrow->emplace_back(std::move(col));
+        }
+        return true;
+    }
 };
 __attribute__((unused)) static bool DecodeRows(
     const std::string& data, uint32_t count, const Schema& schema,
@@ -318,89 +402,7 @@ __attribute__((unused)) static bool DecodeRows(
     }
     return true;
 }
-__attribute__((unused)) static void FillTableRow(
-    uint32_t full_schema_size,
-    const std::vector<::rtidb::codec::ColumnDesc>& base_schema, const char* row,
-    const uint32_t row_size, std::vector<std::string>& vrow) {  // NOLINT
-    rtidb::codec::FlatArrayIterator fit(row, row_size, base_schema.size());
-    while (full_schema_size > 0) {
-        std::string col;
-        if (!fit.Valid()) {
-            full_schema_size--;
-            vrow.emplace_back("");
-            continue;
-        }
-        ColType type = fit.GetType();
-        if (fit.IsNULL()) {
-            col = NONETOKEN;
-        } else if (type == ::rtidb::codec::ColType::kString ||
-                   type == ::rtidb::codec::ColType::kEmptyString) {
-            fit.GetString(&col);
-        } else if (type == ::rtidb::codec::ColType::kUInt16) {
-            uint16_t uint16_col = 0;
-            fit.GetUInt16(&uint16_col);
-            col = boost::lexical_cast<std::string>(uint16_col);
-        } else if (type == ::rtidb::codec::ColType::kInt16) {
-            int16_t int16_col = 0;
-            fit.GetInt16(&int16_col);
-            col = boost::lexical_cast<std::string>(int16_col);
-        } else if (type == ::rtidb::codec::ColType::kInt32) {
-            int32_t int32_col = 0;
-            fit.GetInt32(&int32_col);
-            col = boost::lexical_cast<std::string>(int32_col);
-        } else if (type == ::rtidb::codec::ColType::kInt64) {
-            int64_t int64_col = 0;
-            fit.GetInt64(&int64_col);
-            col = boost::lexical_cast<std::string>(int64_col);
-        } else if (type == ::rtidb::codec::ColType::kUInt32) {
-            uint32_t uint32_col = 0;
-            fit.GetUInt32(&uint32_col);
-            col = boost::lexical_cast<std::string>(uint32_col);
-        } else if (type == ::rtidb::codec::ColType::kUInt64) {
-            uint64_t uint64_col = 0;
-            fit.GetUInt64(&uint64_col);
-            col = boost::lexical_cast<std::string>(uint64_col);
-        } else if (type == ::rtidb::codec::ColType::kDouble) {
-            double double_col = 0.0;
-            fit.GetDouble(&double_col);
-            col = boost::lexical_cast<std::string>(double_col);
-        } else if (type == ::rtidb::codec::ColType::kFloat) {
-            float float_col = 0.0f;
-            fit.GetFloat(&float_col);
-            col = boost::lexical_cast<std::string>(float_col);
-        } else if (type == ::rtidb::codec::ColType::kTimestamp) {
-            uint64_t ts = 0;
-            fit.GetTimestamp(&ts);
-            col = boost::lexical_cast<std::string>(ts);
-        } else if (type == ::rtidb::codec::ColType::kDate) {
-            uint64_t dt = 0;
-            fit.GetDate(&dt);
-            time_t rawtime = (time_t)dt / 1000;
-            tm* timeinfo = localtime(&rawtime);  // NOLINT
-            char buf[20];
-            strftime(buf, 20, "%Y-%m-%d", timeinfo);
-            col.assign(buf);
-        } else if (type == ::rtidb::codec::ColType::kBool) {
-            bool value = false;
-            fit.GetBool(&value);
-            if (value) {
-                col = "true";
-            } else {
-                col = "false";
-            }
-        }
-        full_schema_size--;
-        fit.Next();
-        vrow.emplace_back(std::move(col));
-    }
-}
 
-__attribute__((unused)) static void FillTableRow(
-    const std::vector<::rtidb::codec::ColumnDesc>& schema, const char* row,
-    const uint32_t row_size,
-    std::vector<std::string>& vrow) {  // NOLINT
-    return FillTableRow(schema.size(), schema, row, row_size, vrow);
-}
 static inline void Encode(uint64_t time, const char* data, const size_t size,
                           char* buffer, uint32_t offset) {
     buffer += offset;
