@@ -32,3 +32,5 @@ DEFINE_string(default_db_name, "_fesql",
 
 DEFINE_bool(enable_column_sum_opt, false,
               "enable column sum merge");
+DEFINE_bool(enable_window_merge_opt, false,
+            "enable window merge");

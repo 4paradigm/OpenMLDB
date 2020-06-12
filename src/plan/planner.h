@@ -19,7 +19,8 @@
 #include "node/sql_node.h"
 #include "parser/parser.h"
 #include "proto/fe_type.pb.h"
-
+#include "gflags/gflags.h"
+DECLARE_bool(enable_window_merge_opt);
 namespace fesql {
 namespace plan {
 
@@ -35,7 +36,11 @@ class Planner {
         : is_batch_mode_(is_batch_mode),
           window_merge_enable_(false),
           node_manager_(manager) {
-        window_merge_enable_ = Planner::IsWindowMergeOptimizedEnable();
+        if (FLAGS_enable_window_merge_opt) {
+            window_merge_enable_ = true;
+        } else {
+            window_merge_enable_ =  false;
+        }
     }
     virtual ~Planner() {}
     virtual int CreatePlanTree(

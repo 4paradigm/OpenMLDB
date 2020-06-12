@@ -14,17 +14,10 @@
 #include <utility>
 #include <vector>
 #include "proto/fe_common.pb.h"
+
 namespace fesql {
 namespace plan {
-const bool Planner::IsWindowMergeOptimizedEnable() {
-    const char *env_name = "ENABLE_WINDOW_MERGE_OPT";
-    char *value = getenv(env_name);
-    if (value != nullptr && strcmp(value, "true") == 0) {
-        LOG(INFO) << "Window merge opt is enabled";
-        return true;
-    }
-    return false;
-}
+
 bool Planner::CreateQueryPlan(const node::QueryNode *root, PlanNode **plan_tree,
                               Status &status) {
     if (nullptr == root) {
