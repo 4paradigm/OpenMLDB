@@ -187,6 +187,9 @@ bool NsClient::AddTableField(const std::string& table_name,
     ::rtidb::nameserver::AddTableFieldRequest request;
     ::rtidb::nameserver::GeneralResponse response;
     request.set_name(table_name);
+    if (HasDb()) {
+        request.set_db(GetDb());
+    }
     ::rtidb::common::ColumnDesc* column_desc_ptr =
         request.mutable_column_desc();
     column_desc_ptr->CopyFrom(column_desc);
@@ -327,6 +330,9 @@ bool NsClient::AddReplica(const std::string& name,
     request.set_name(name);
     request.set_pid(*(pid_set.begin()));
     request.set_endpoint(endpoint);
+    if (HasDb()) {
+        request.set_db(GetDb());
+    }
     if (pid_set.size() > 1) {
         for (auto pid : pid_set) {
             request.add_pid_group(pid);
@@ -382,6 +388,9 @@ bool NsClient::DelReplica(const std::string& name,
     request.set_name(name);
     request.set_pid(*(pid_set.begin()));
     request.set_endpoint(endpoint);
+    if (HasDb()) {
+        request.set_db(GetDb());
+    }
     if (pid_set.size() > 1) {
         for (auto pid : pid_set) {
             request.add_pid_group(pid);
@@ -492,6 +501,9 @@ bool NsClient::Migrate(const std::string& src_endpoint, const std::string& name,
     request.set_src_endpoint(src_endpoint);
     request.set_name(name);
     request.set_des_endpoint(des_endpoint);
+    if (HasDb()) {
+        request.set_db(GetDb());
+    }
     for (auto pid : pid_set) {
         request.add_pid(pid);
     }
@@ -577,6 +589,9 @@ bool NsClient::SetTablePartition(
     ::rtidb::nameserver::SetTablePartitionRequest request;
     ::rtidb::nameserver::GeneralResponse response;
     request.set_name(name);
+    if (HasDb()) {
+        request.set_db(GetDb());
+    }
     ::rtidb::nameserver::TablePartition* cur_table_partition =
         request.mutable_table_partition();
     cur_table_partition->CopyFrom(table_partition);
@@ -597,6 +612,9 @@ bool NsClient::GetTablePartition(
     ::rtidb::nameserver::GetTablePartitionResponse response;
     request.set_name(name);
     request.set_pid(pid);
+    if (HasDb()) {
+        request.set_db(GetDb());
+    }
     bool ok = client_.SendRequest(
         &::rtidb::nameserver::NameServer_Stub::GetTablePartition, &request,
         &response, FLAGS_request_timeout_ms, 1);
@@ -649,6 +667,9 @@ bool NsClient::UpdateTTL(const std::string& name,
     }
     if (!ts_name.empty()) {
         request.set_ts_name(ts_name);
+    }
+    if (HasDb()) {
+        request.set_db(GetDb());
     }
     bool ok =
         client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::UpdateTTL,

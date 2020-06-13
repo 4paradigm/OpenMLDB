@@ -64,6 +64,7 @@ message UpdateTTLRequest {
     optional uint64 value = 3 [default = 0, deprecated = true];
     optional string ts_name = 4;
     optional rtidb.api.TTLDesc ttl_desc = 5;
+    optional string db = 6 [default = ""];
 }
 
 message UpdateTTLResponse {
@@ -107,7 +108,7 @@ message TableInfo {
     optional rtidb.type.TableType table_type = 17 [default = kTimeSeries];
     optional uint32 format_version = 18 [default = 0];
     optional BlobInfo blob_info = 19;
-    optional string db = 20;
+    optional string db = 20 [default = ""];
 }
 
 message CreateTableRequest {
@@ -120,7 +121,7 @@ message DropTableRequest {
     required string name = 1;
     optional ZoneInfo zone_info = 2;
     optional rtidb.api.TaskInfo task_info = 3;
-    optional string db = 4;
+    optional string db = 4 [default = ""];
 }
 
 message LoadTableRequest {
@@ -129,6 +130,7 @@ message LoadTableRequest {
     optional uint32 pid = 3;
     optional ZoneInfo zone_info = 4;
     optional rtidb.api.TaskInfo task_info = 5;
+    optional string db = 6 [default = ""];
 }
 
 message CreateTableInfoRequest {
@@ -138,7 +140,7 @@ message CreateTableInfoRequest {
 
 message ShowTableRequest {
     optional string name = 1;
-    optional string db = 2;
+    optional string db = 2 [default = ""];
 }
 
 message ShowTableResponse {
@@ -151,6 +153,7 @@ message MakeSnapshotNSRequest {
     required string name = 1;
     required uint32 pid = 2;
     optional uint64 offset = 3;
+    optional string db = 4 [default=""];
 }
 
 message AddReplicaData {
@@ -170,6 +173,7 @@ message AddReplicaNSRequest {
     repeated string endpoint_group = 5; //for remote
     optional ZoneInfo zone_info = 6; //for remote
     optional rtidb.api.TaskInfo task_info = 7; //for remote
+    optional string db = 8 [default = ""];
 }
 
 message Pair {
@@ -193,6 +197,7 @@ message ChangeLeaderRequest {
     required string name = 1;
     required uint32 pid = 2;
     optional string candidate_leader = 3;
+    optional string db = 4 [default = ""];
 }
 
 message OfflineEndpointRequest {
@@ -222,6 +227,7 @@ message ShowTabletRequest {}
 message AddTableFieldRequest {
     optional string name = 1;
     optional rtidb.common.ColumnDesc column_desc = 2;
+    optional string db = 3 [default = ""];
 }
 
 message TabletStatus {
@@ -240,6 +246,7 @@ message RecoverTableRequest {
     required string name = 1;
     required uint32 pid = 2;
     required string endpoint = 3;
+    required string db = 4 [default = ""];
 }
 
 message DelReplicaNSRequest {
@@ -247,6 +254,7 @@ message DelReplicaNSRequest {
     required uint32 pid = 2;
     required string endpoint = 3;
     repeated uint32 pid_group = 4;
+    optional string db = 5 [default = ""];
 }
 
 message MigrateRequest {
@@ -254,6 +262,7 @@ message MigrateRequest {
     required string name = 2;
     repeated uint32 pid = 3;
     required string des_endpoint = 4;
+    optional string db = 5 [default = ""];
 }
 
 message MigrateInfo {
@@ -290,6 +299,7 @@ message ChangeLeaderData {
     repeated string follower = 7;
     optional string candidate_leader = 8;
     repeated rtidb.common.EndpointAndTid remote_follower = 9;
+    optional string db = 10 [default = ""];
 }
 
 message OPStatus {
@@ -307,6 +317,7 @@ message OPStatus {
 message GetTablePartitionRequest {
     optional string name = 1;
     optional uint32 pid = 2;
+    optional string db = 3 [default = ""];
 }
 
 message GetTablePartitionResponse {
@@ -318,6 +329,7 @@ message GetTablePartitionResponse {
 message SetTablePartitionRequest {
     optional string name = 1;
     optional TablePartition table_partition = 2;
+    optional string db = 3 [default = ""];
 }
 
 message UpdateTableAliveRequest {
@@ -325,6 +337,7 @@ message UpdateTableAliveRequest {
     optional string endpoint = 2;
     optional uint32 pid = 3;
     optional bool is_alive = 4;
+    optional string db = 5 [default = ""];
 }
 
 message ShowOPStatusRequest{
@@ -401,19 +414,19 @@ message AddIndexMeta {
     optional uint32 pid = 2;
     optional rtidb.common.ColumnKey column_key = 3;
     optional uint32 idx = 4;
-    optional string db = 5;
+    optional string db = 5 [default = ""];
 }
 
 message AddIndexRequest {
     optional string name = 1;
     optional rtidb.common.ColumnKey column_key = 2;
-    optional string db = 3;
+    optional string db = 3 [default = ""];
 }
 
 message DeleteIndexRequest {
     optional string table_name = 1;
     optional string idx_name = 2;
-    optional string db_name = 3;
+    optional string db_name = 3  [default = ""];
 }
 
 message CreateDatabaseRequest {
