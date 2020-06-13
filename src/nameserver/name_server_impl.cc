@@ -8163,7 +8163,7 @@ int NameServerImpl::CreateReLoadTableTask(std::shared_ptr<OPData> op_data) {
         return -1;
     }
     std::shared_ptr<TableInfo> table_info;
-    if (!GetTableInfo(name, db, table_info)) {
+    if (!GetTableInfoUnlock(name, db, table_info)) {
         PDLOG(WARNING, "table[%s] is not exist!", name.c_str());
         return -1;
     }
