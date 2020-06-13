@@ -246,6 +246,9 @@ class NameServerImpl : public NameServer {
                          const OfflineEndpointRequest* request,
                          GeneralResponse* response, Closure* done);
 
+    void OfflineEndpointDBInternal(const std::string& endpoint,uint32_t concurrency,
+            const std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>>& table_info);
+
     void UpdateTTL(RpcController* controller,
                    const ::rtidb::nameserver::UpdateTTLRequest* request,
                    ::rtidb::nameserver::UpdateTTLResponse* response,
@@ -257,6 +260,11 @@ class NameServerImpl : public NameServer {
     void RecoverEndpoint(RpcController* controller,
                          const RecoverEndpointRequest* request,
                          GeneralResponse* response, Closure* done);
+    
+    void RecoverEndpointDBInternal(const std::string& endpoint,
+                                             bool need_restore,
+                                             uint32_t concurrency, 
+                                             const std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>>& table_info);
 
     void RecoverTable(RpcController* controller,
                       const RecoverTableRequest* request,
@@ -616,7 +624,7 @@ class NameServerImpl : public NameServer {
 
     std::shared_ptr<Task> CreateRecoverTableTask(
         uint64_t op_index, ::rtidb::api::OPType op_type,
-        const std::string& name, uint32_t pid, const std::string& endpoint,
+        const std::string& name, const std::string& db, uint32_t pid, const std::string& endpoint,
         uint64_t offset_delta, uint32_t concurrency);
 
     std::shared_ptr<Task> CreateTableRemoteTask(
@@ -696,14 +704,14 @@ class NameServerImpl : public NameServer {
     int CreateDelReplicaOP(const std::string& name, uint32_t pid,
                            const std::string& endpoint);
     int CreateChangeLeaderOP(
-        const std::string& name, uint32_t pid,
+        const std::string& name, const std::string& db, uint32_t pid,
         const std::string& candidate_leader, bool need_restore,
         uint32_t concurrency = FLAGS_name_server_task_concurrency);
 
     std::shared_ptr<rtidb::nameserver::ClusterInfo> GetHealthCluster(
         const std::string& alias);
 
-    int CreateRecoverTableOP(const std::string& name, uint32_t pid,
+    int CreateRecoverTableOP(const std::string& name, const std::string& db, uint32_t pid,
                              const std::string& endpoint, bool is_leader,
                              uint64_t offset_delta, uint32_t concurrency);
     void SelectLeader(const std::string& name, uint32_t tid, uint32_t pid,
@@ -715,7 +723,7 @@ class NameServerImpl : public NameServer {
                         const std::string& name, uint32_t pid,
                         const std::string& des_endpoint);
     void RecoverEndpointTable(
-        const std::string& name, uint32_t pid, std::string& endpoint,  // NOLINT
+        const std::string& name, const std::string& db, uint32_t pid, std::string& endpoint,  // NOLINT
         uint64_t offset_delta, uint32_t concurrency,
         std::shared_ptr<::rtidb::api::TaskInfo> task_info);
     int GetLeader(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
@@ -737,20 +745,19 @@ class NameServerImpl : public NameServer {
                                    const std::string& endpoint,
                                    uint64_t offset_delta, uint64_t parent_id,
                                    uint32_t concurrency);
-    int CreateReLoadTableOP(const std::string& name, uint32_t pid,
+    int CreateReLoadTableOP(const std::string& name, const std::string& db, uint32_t pid,
                             const std::string& endpoint, uint64_t parent_id,
                             uint32_t concurrency);
-    int CreateReLoadTableOP(const std::string& name, uint32_t pid,
+    int CreateReLoadTableOP(const std::string& name, const std::string& db, uint32_t pid,
                             const std::string& endpoint, uint64_t parent_id,
                             uint32_t concurrency, uint64_t remote_op_id,
                             uint64_t& rep_cluter_op_id);  // NOLINT
-    int CreateUpdatePartitionStatusOP(const std::string& name, uint32_t pid,
-
+    int CreateUpdatePartitionStatusOP(const std::string& name, const std::string& db, uint32_t pid,
                                       const std::string& endpoint,
                                       bool is_leader, bool is_alive,
                                       uint64_t parent_id, uint32_t concurrency);
     int CreateOfflineReplicaOP(
-        const std::string& name, uint32_t pid, const std::string& endpoint,
+        const std::string& name, const std::string& db, uint32_t pid, const std::string& endpoint,
         uint32_t concurrency = FLAGS_name_server_task_concurrency);
     int CreateTableRemoteOP(
         const ::rtidb::nameserver::TableInfo& table_info,
