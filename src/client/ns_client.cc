@@ -308,6 +308,9 @@ bool NsClient::SyncTable(const std::string& name,
     if (pid != INVALID_PID) {
         request.set_pid(pid);
     }
+    if (HasDb()) {
+        request.set_db(GetDb());
+    }
     ::rtidb::nameserver::GeneralResponse response;
     bool ok =
         client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::SyncTable,
@@ -719,6 +722,29 @@ bool NsClient::LoadTable(const std::string& name, const std::string& endpoint,
     if (HasDb()) {
         request.set_db(GetDb());
     }
+    ::rtidb::api::TaskInfo* task_info_p = request.mutable_task_info();
+    task_info_p->CopyFrom(task_info);
+    ::rtidb::nameserver::ZoneInfo* zone_info_p = request.mutable_zone_info();
+    zone_info_p->CopyFrom(zone_info);
+    bool ok =
+        client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::LoadTable,
+                            &request, &response, FLAGS_request_timeout_ms, 3);
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    return false;
+}
+
+bool NsClient::LoadTable(const std::string& name, const std::string& db,
+                         const std::string& endpoint, uint32_t pid,
+                         const ::rtidb::nameserver::ZoneInfo& zone_info,
+                         const ::rtidb::api::TaskInfo& task_info) {
+    ::rtidb::nameserver::LoadTableRequest request;
+    ::rtidb::nameserver::GeneralResponse response;
+    request.set_name(name);
+    request.set_endpoint(endpoint);
+    request.set_pid(pid);
+    request.set_db(db);
     ::rtidb::api::TaskInfo* task_info_p = request.mutable_task_info();
     task_info_p->CopyFrom(task_info);
     ::rtidb::nameserver::ZoneInfo* zone_info_p = request.mutable_zone_info();

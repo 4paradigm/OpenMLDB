@@ -204,12 +204,13 @@ class NameServerImpl : public NameServer {
                         GeneralResponse* response, Closure* done);
 
     int AddReplicaSimplyRemoteOP(const std::string& alias,
-                                 const std::string& name,
+                                 const std::string& name, const std::string& db,
                                  const std::string& endpoint, uint32_t tid,
                                  uint32_t pid);
 
     int AddReplicaRemoteOP(
         const std::string& alias, const std::string& name,
+        const std::string& db,
         const ::rtidb::nameserver::TablePartition& table_partition,
         uint32_t remote_tid, uint32_t pid);
 
@@ -348,6 +349,7 @@ class NameServerImpl : public NameServer {
 
     int SyncExistTable(
         const std::string& alias, const std::string& name,
+        const std::string& db,
         const std::vector<::rtidb::nameserver::TableInfo> tables_remote,
         const ::rtidb::nameserver::TableInfo& table_info_local, uint32_t pid,
         int& code, std::string& msg);  // NOLINT
@@ -527,8 +529,8 @@ class NameServerImpl : public NameServer {
 
     std::shared_ptr<Task> CreateLoadTableRemoteTask(
         const std::string& alias, const std::string& name,
-        const std::string& endpoint, uint32_t pid, uint64_t op_index,
-        ::rtidb::api::OPType op_type);
+        const std::string& db, const std::string& endpoint, uint32_t pid,
+        uint64_t op_index, ::rtidb::api::OPType op_type);
 
     std::shared_ptr<Task> CreateAddReplicaRemoteTask(
         const std::string& endpoint, uint64_t op_index,
@@ -549,22 +551,23 @@ class NameServerImpl : public NameServer {
 
     std::shared_ptr<Task> CreateAddTableInfoTask(
         const std::string& alias, const std::string& endpoint,
-        const std::string& name, uint32_t remote_tid, uint32_t pid,
-        uint64_t op_index, ::rtidb::api::OPType op_type);
+        const std::string& name, const std::string& db, uint32_t remote_tid,
+        uint32_t pid, uint64_t op_index, ::rtidb::api::OPType op_type);
 
     std::shared_ptr<Task> CreateAddTableInfoTask(const std::string& name,
+                                                 const std::string& db,
                                                  uint32_t pid,
                                                  const std::string& endpoint,
                                                  uint64_t op_index,
                                                  ::rtidb::api::OPType op_type);
 
     void AddTableInfo(const std::string& alias, const std::string& endpoint,
-                      const std::string& name, uint32_t pid,
-                      uint32_t remote_tid,
+                      const std::string& name, const std::string& db,
+                      uint32_t pid, uint32_t remote_tid,
                       std::shared_ptr<::rtidb::api::TaskInfo> task_info);
 
-    void AddTableInfo(const std::string& name, const std::string& endpoint,
-                      uint32_t pid,
+    void AddTableInfo(const std::string& name, const std::string& db,
+                      const std::string& endpoint, uint32_t pid,
                       std::shared_ptr<::rtidb::api::TaskInfo> task_info);
 
     std::shared_ptr<Task> CreateDelReplicaTask(
@@ -585,13 +588,13 @@ class NameServerImpl : public NameServer {
         ::rtidb::api::OPType op_type, uint32_t flag);
 
     std::shared_ptr<Task> CreateUpdateTableInfoTask(
-        const std::string& src_endpoint, const std::string& name, uint32_t pid,
-        const std::string& des_endpoint, uint64_t op_index,
-        ::rtidb::api::OPType op_type);
+        const std::string& src_endpoint, const std::string& name,
+        const std::string& db, uint32_t pid, const std::string& des_endpoint,
+        uint64_t op_index, ::rtidb::api::OPType op_type);
 
     void UpdateTableInfo(const std::string& src_endpoint,
-                         const std::string& name, uint32_t pid,
-                         const std::string& des_endpoint,
+                         const std::string& name, const std::string& db,
+                         uint32_t pid, const std::string& des_endpoint,
                          std::shared_ptr<::rtidb::api::TaskInfo> task_info);
 
     std::shared_ptr<Task> CreateUpdatePartitionStatusTask(

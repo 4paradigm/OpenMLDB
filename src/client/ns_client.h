@@ -104,6 +104,11 @@ class NsClient {
                    uint32_t pid, const ::rtidb::nameserver::ZoneInfo& zone_info,
                    const ::rtidb::api::TaskInfo& task_info);
 
+    bool LoadTable(const std::string& name, const std::string& db,
+                   const std::string& endpoint, uint32_t pid,
+                   const ::rtidb::nameserver::ZoneInfo& zone_info,
+                   const ::rtidb::api::TaskInfo& task_info);
+
     bool CreateRemoteTableInfo(
         const ::rtidb::nameserver::ZoneInfo& zone_info,
         ::rtidb::nameserver::TableInfo& table_info,  // NOLINT
