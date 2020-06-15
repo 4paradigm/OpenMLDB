@@ -27,14 +27,15 @@
 #include "codegen/variable_ir_builder.h"
 #include "glog/logging.h"
 
+
+
 namespace fesql {
 namespace codegen {
 
 
 AggregateIRBuilder::AggregateIRBuilder(const vm::SchemasContext* sc,
                                        ::llvm::Module* module):
-    schema_context_(sc), module_(module),
-    agg_enabled_(AggregateIRBuilder::EnableColumnAggOpt()) {
+    schema_context_(sc), module_(module){
     available_agg_func_set_.insert("sum");
     available_agg_func_set_.insert("avg");
     available_agg_func_set_.insert("count");
@@ -48,25 +49,9 @@ bool AggregateIRBuilder::IsAggFuncName(const std::string& fname) {
         available_agg_func_set_.end();
 }
 
-
-// TODO(someone): configurable codegen
-bool AggregateIRBuilder::EnableColumnAggOpt() {
-    const char* env_name = "ENABLE_COLUMN_AGG_OPT";
-    char* value = getenv(env_name);
-    if (value != nullptr && strcmp(value, "true") == 0) {
-        LOG(INFO) << "Multi column agg opt is enabled";
-        return true;
-    }
-    return false;
-}
-
-
 bool AggregateIRBuilder::CollectAggColumn(const fesql::node::ExprNode* expr,
                                           size_t output_idx,
                                           fesql::type::Type* res_agg_type) {
-    if (!agg_enabled_) {
-        return false;
-    }
     switch (expr->expr_type_) {
         case node::kExprCall: {
             auto call = dynamic_cast<const node::CallExprNode*>(expr);

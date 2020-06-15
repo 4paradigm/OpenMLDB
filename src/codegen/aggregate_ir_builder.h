@@ -114,8 +114,6 @@ class AggregateIRBuilder {
     const vm::SchemasContext* schema_context_;
     ::llvm::Module* module_;
 
-    bool agg_enabled_;
-
     std::set<std::string> available_agg_func_set_;
     std::unordered_map<std::string, AggColumnInfo> agg_col_infos_;
 };
