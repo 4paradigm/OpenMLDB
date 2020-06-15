@@ -102,7 +102,8 @@ bool RowFnLetIRBuilder::Build(
     std::map<uint32_t, NativeValue> outputs;
 
     // maybe collect agg expressions
-    AggregateIRBuilder agg_builder(&schema_context_, module_);
+    std::map<std::string, AggregateIRBuilder> window_agg_builder;
+    uint32_t agg_builder_id = 0;
 
     uint32_t index = 0;
     for (; it != projects.cend(); it++) {
@@ -120,9 +121,20 @@ bool RowFnLetIRBuilder::Build(
         const ::fesql::node::ProjectNode* pp_node =
             (const ::fesql::node::ProjectNode*)pn;
         const ::fesql::node::ExprNode* sql_node = pp_node->GetExpression();
-
         ::fesql::type::Type col_agg_type;
-        if (agg_builder.CollectAggColumn(sql_node, index, &col_agg_type)) {
+        const std::string frame_str = nullptr == pp_node->frame()
+                                          ? ""
+                                          : pp_node->frame()->GetExprString();
+        auto agg_iter = window_agg_builder.find(frame_str);
+
+        if (agg_iter == window_agg_builder.end()) {
+            window_agg_builder.insert(std::make_pair(
+                frame_str,
+                AggregateIRBuilder(&schema_context_, module_, pp_node->frame(),
+                                   agg_builder_id++)));
+            agg_iter = window_agg_builder.find(frame_str);
+        }
+        if (agg_iter->second.CollectAggColumn(sql_node, index, &col_agg_type)) {
             AddOutputColumnInfo(pp_node->GetName(), col_agg_type, sql_node,
                                 output_schema, output_column_sources);
             index++;
@@ -166,12 +178,17 @@ bool RowFnLetIRBuilder::Build(
         return false;
     }
 
-    if (!agg_builder.empty()) {
-        if (!agg_builder.BuildMulti(name, &expr_ir_builder,
-                                    &variable_ir_builder, block,
-                                    output_ptr_name, output_schema)) {
-            LOG(WARNING) << "Multi column sum codegen failed";
-            return false;
+    if (!window_agg_builder.empty()) {
+        for (auto iter = window_agg_builder.begin();
+             iter != window_agg_builder.end(); iter++) {
+            if (!iter->second.empty()) {
+                if (!iter->second.BuildMulti(name, &expr_ir_builder,
+                                             &variable_ir_builder, block,
+                                             output_ptr_name, output_schema)) {
+                    LOG(WARNING) << "Multi column sum codegen failed";
+                    return false;
+                }
+            }
         }
     }
 

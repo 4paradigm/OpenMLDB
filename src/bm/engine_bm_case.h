@@ -30,8 +30,11 @@ void EngineRunBatchWindowSumFeature1(benchmark::State* state, MODE mode,
                                      int64_t limit_cnt,
                                      int64_t size);  // NOLINT
 void EngineRunBatchWindowSumFeature5Window5(benchmark::State* state, MODE mode,
-                                     int64_t limit_cnt,
-                                     int64_t size);  // NOLINT
+                                            int64_t limit_cnt,
+                                            int64_t size);  // NOLINT
+void EngineRunBatchWindowMultiAggWindow25Feature25(benchmark::State* state,
+                                                   MODE mode, int64_t limit_cnt,
+                                                   int64_t size);  // NOLINT
 void EngineRunBatchWindowSumFeature5(benchmark::State* state, MODE mode,
                                      int64_t limit_cnt,
                                      int64_t size);  // NOLINT
@@ -40,12 +43,15 @@ void EngineWindowSumFeature5(benchmark::State* state, MODE mode,
                              int64_t limit_cnt,
                              int64_t size);  // NOLINT
 void EngineWindowSumFeature5Window5(benchmark::State* state, MODE mode,
-                             int64_t limit_cnt,
-                             int64_t size);  // NOLINT
+                                    int64_t limit_cnt,
+                                    int64_t size);  // NOLINT
 
 void EngineWindowMultiAggFeature5(benchmark::State* state, MODE mode,
                                   int64_t limit_cnt,
                                   int64_t size);  // NOLINT
+void EngineWindowMultiAggWindow25Feature25(benchmark::State* state, MODE mode,
+                                           int64_t limit_cnt,
+                                           int64_t size);  // NOLINT
 
 void EngineSimpleSelectDouble(benchmark::State* state, MODE mode);
 

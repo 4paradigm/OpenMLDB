@@ -49,14 +49,12 @@ class ExprIRBuilder {
 
     bool Build(const ::fesql::node::ExprNode* node, NativeValue* output,
                ::fesql::base::Status& status);  // NOLINT
-
+    bool BuildWindow(NativeValue* output,
+                     ::fesql::base::Status& status);  // NOLINT
     inline ::llvm::BasicBlock* block() const { return block_; }
-
     inline void set_frame(node::FrameNode* frame) { this->frame_ = frame; }
 
  private:
-    bool BuildWindow(const node::FrameNode* frame_node, ::llvm::Value** output,
-                     ::fesql::base::Status& status);  // NOLINT
     bool BuildColumnIterator(const std::string& relation_name,
                              const std::string& col, ::llvm::Value** output,
                              ::fesql::base::Status& status);  // NOLINT

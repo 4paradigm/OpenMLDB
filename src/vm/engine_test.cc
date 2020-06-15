@@ -297,6 +297,8 @@ void RequestModeCheck(SQLCase& sql_case) {  // NOLINT
     vm::Schema schema;
     schema = session.GetSchema();
     PrintSchema(schema);
+
+
     std::ostringstream oss;
     session.GetPhysicalPlan()->Print(oss, "");
     LOG(INFO) << "physical plan:\n" << oss.str() << std::endl;

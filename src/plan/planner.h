@@ -43,9 +43,13 @@ class Planner {
         }
         const char *env_name = "ENABLE_WINDOW_MERGE_OPT";
         char *value = getenv(env_name);
-        if (value != nullptr && strcmp(value, "true") == 0) {
-            LOG(INFO) << "Multi column agg opt is enabled";
-            window_merge_enable_ = true;
+        if (value != nullptr && strcmp(value, "false") == 0) {
+            window_merge_enable_ = false;
+        }
+        if (window_merge_enable_) {
+            LOG(INFO) << "Multi window merge opt is enable";
+        } else {
+            LOG(INFO) << "Multi window merge opt is disable";
         }
     }
     virtual ~Planner() {}

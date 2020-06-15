@@ -433,13 +433,12 @@ bool ExprIRBuilder::BuildColumnItem(const std::string& relation_name,
 }
 
 // Get inner window with given frame
-bool ExprIRBuilder::BuildWindow(const node::FrameNode* frame_node,
-                                ::llvm::Value** output,
+bool ExprIRBuilder::BuildWindow(NativeValue* output,
                                 ::fesql::base::Status& status) {  // NOLINT
     ::llvm::IRBuilder<> builder(block_);
     NativeValue window_ptr_value;
     const std::string frame_str =
-        nullptr == frame_node ? "" : frame_node->GetExprString();
+        nullptr == frame_ ? "" : frame_->GetExprString();
     // Load Inner Window If Exist
     bool ok =
         variable_ir_builder_.LoadWindow(frame_str, &window_ptr_value, status);
@@ -455,12 +454,20 @@ bool ExprIRBuilder::BuildWindow(const node::FrameNode* frame_node,
         }
 
         // Build Inner Window based on Big Window and frame info
-        ok = window_ir_builder_->BuildInnerRangeList(
-            window_ptr_value.GetValue(&builder),
-            frame_node->GetHistoryRangeEnd(),
-            frame_node->GetHistoryRangeStart(), &window_ptr);
+        if (frame_->frame_range() != nullptr) {
+            ok = window_ir_builder_->BuildInnerRangeList(
+                window_ptr_value.GetValue(&builder),
+                frame_->GetHistoryRangeEnd(), frame_->GetHistoryRangeStart(),
+                &window_ptr);
+        } else if (frame_->frame_rows() != nullptr) {
+            ok = window_ir_builder_->BuildInnerRowsList(
+                window_ptr_value.GetValue(&builder),
+                -1 * frame_->GetHistoryRowsEnd(),
+                -1 * frame_->GetHistoryRowsStart(), &window_ptr);
+        }
+
     } else {
-        *output = window_ptr;
+        *output = NativeValue::Create(window_ptr);
         return true;
     }
 
@@ -474,8 +481,10 @@ bool ExprIRBuilder::BuildWindow(const node::FrameNode* frame_node,
         LOG(WARNING) << "fail to store window " << frame_str << ": "
                      << status.msg;
         return false;
+    } else {
+        LOG(INFO) << "store window " << frame_str;
     }
-    *output = window_ptr;
+    *output = NativeValue::Create(window_ptr);
     return true;
 }
 // Get col with given col name, set list struct pointer into output
@@ -505,15 +514,16 @@ bool ExprIRBuilder::BuildColumnIterator(const std::string& relation_name,
         return true;
     }
 
-    ::llvm::Value* window_ptr = NULL;
-    if (!BuildWindow(frame_, &window_ptr, status)) {
+    NativeValue window;
+    if (!BuildWindow(&window, status)) {
         LOG(WARNING) << "fail to build window";
         return false;
     }
 
     DLOG(INFO) << "get table column " << col;
     // NOT reuse for iterator
-    ok = window_ir_builder_->BuildGetCol(col, window_ptr, info->idx_, &value);
+    ok = window_ir_builder_->BuildGetCol(col, window.GetRaw(), info->idx_,
+                                         &value);
 
     if (!ok || value == NULL) {
         status.msg = "fail to find column " + col;

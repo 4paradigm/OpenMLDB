@@ -212,8 +212,8 @@ TEST_F(PlannerTest, SelectPlanWithWindowProjectTest) {
     int ret = parser_->parse(
         "SELECT COL1, SUM(AMT) OVER w1 as w_amt_sum FROM t \n"
         "WINDOW w1 AS (PARTITION BY COL2\n"
-        "              ORDER BY `TS` RANGE BETWEEN 3 PRECEDING AND 3 "
-        "FOLLOWING) limit 10;",
+        "              ORDER BY `TS` RANGE BETWEEN 3 PRECEDING AND CURRENT ROW"
+        ") limit 10;",
         list, manager_, status);
     ASSERT_EQ(0, ret);
     ASSERT_EQ(1u, list.size());
@@ -250,7 +250,7 @@ TEST_F(PlannerTest, SelectPlanWithWindowProjectTest) {
 
     ASSERT_TRUE(nullptr != project_list->GetW());
     ASSERT_EQ(-3, project_list->GetW()->GetStartOffset());
-    ASSERT_EQ(3, project_list->GetW()->GetEndOffset());
+    ASSERT_EQ(0, project_list->GetW()->GetEndOffset());
 
     ASSERT_EQ("(COL2)", node::ExprString(project_list->GetW()->GetKeys()));
     ASSERT_TRUE(project_list->IsWindowAgg());

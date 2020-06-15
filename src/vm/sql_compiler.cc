@@ -268,7 +268,6 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     if (keep_ir_) {
         KeepIR(ctx, m.get());
     }
-
     ::llvm::Error e = ctx.jit->addIRModule(
         ::llvm::orc::ThreadSafeModule(std::move(m), std::move(llvm_ctx)));
     if (e) {

@@ -720,7 +720,6 @@ bool Planner::MergeWindows(
 
     for (auto iter = window_id_pairs.cbegin(); iter != window_id_pairs.cend();
          iter++) {
-        LOG(INFO) << "window id: " << iter->second;
         if (windows.empty()) {
             windows.push_back(iter->first);
             continue;
