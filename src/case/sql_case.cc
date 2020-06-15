@@ -324,7 +324,9 @@ bool SQLCase::ExtractRow(const vm::Schema& schema, const std::string& row_str,
         boost::trim(item_vec[i]);
         auto column = schema.Get(i);
         if (type::kVarchar == column.type()) {
-            str_size += strlen(item_vec[i].c_str());
+            if (item_vec[i] != "NULL" && item_vec[i] != "null") {
+                str_size += strlen(item_vec[i].c_str());
+            }
         }
     }
     codec::RowBuilder rb(schema);
