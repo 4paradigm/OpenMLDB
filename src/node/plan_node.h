@@ -219,7 +219,7 @@ class LimitPlanNode : public UnaryPlanNode {
 class ProjectNode : public LeafPlanNode {
  public:
     ProjectNode(int32_t pos, const std::string &name, const bool is_aggregation,
-                node::ExprNode *expression, node::FrameNode* frame)
+                node::ExprNode *expression, node::FrameNode *frame)
         : LeafPlanNode(kProjectNode),
           is_aggregation_(is_aggregation),
           pos_(pos),
@@ -256,8 +256,10 @@ class WindowPlanNode : public LeafPlanNode {
           orders_(nullptr) {}
     ~WindowPlanNode() {}
     void Print(std::ostream &output, const std::string &org_tab) const;
-    int64_t GetStartOffset() const { return frame_node_->GetRangeStart(); }
-    int64_t GetEndOffset() const { return frame_node_->GetRangeEnd(); }
+    int64_t GetStartOffset() const {
+        return frame_node_->GetHistoryRangeStart();
+    }
+    int64_t GetEndOffset() const { return frame_node_->GetHistoryRangeEnd(); }
     const FrameNode *frame_node() const { return frame_node_; }
     void set_frame_node(FrameNode *frame_node) { frame_node_ = frame_node; }
     const ExprListNode *GetKeys() const { return keys_; }

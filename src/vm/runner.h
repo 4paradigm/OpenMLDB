@@ -104,34 +104,9 @@ class ConditionGenerator : public FnGenerator {
 class RangeGenerator {
  public:
     explicit RangeGenerator(const Range& range) : ts_gen_(range.fn_info_) {
-        if (nullptr == range.range_frame_ ||
-            (nullptr == range.range_frame_->frame_range() &&
-                nullptr == range.range_frame_->frame_rows())) {
-            start_offset_ = INT64_MIN;
-            end_offset_ = 0;
-            rows_preceding_ = 0;
-            return;
-        }
-
-        if (nullptr == range.range_frame_->frame_range() &&
-            nullptr != range.range_frame_->frame_rows()) {
-            start_offset_ = 0;
-            end_offset_ = 0;
-            rows_preceding_ = (range.range_frame_->GetRowsStart() * -1);
-            return;
-        }
-
-        if (nullptr != range.range_frame_->frame_range() &&
-            nullptr == range.range_frame_->frame_rows()) {
-            start_offset_ = range.range_frame_->GetRangeStart();
-            end_offset_ = range.range_frame_->GetRangeEnd();
-            rows_preceding_ = 0;
-            return;
-        }
-
-        start_offset_ = range.range_frame_->GetRangeStart();
-        end_offset_ = range.range_frame_->GetRangeEnd();
-        rows_preceding_ = (range.range_frame_->GetRowsStart() * -1);
+        start_offset_ = range.frame_->GetHistoryRangeStart();
+        end_offset_ = range.frame_->GetHistoryRangeEnd();
+        rows_preceding_ = (-1 * range.frame_->GetHistoryRowsStart());
     }
     virtual ~RangeGenerator() {}
     const bool Valid() const { return ts_gen_.Valid(); }

@@ -28,7 +28,8 @@ typedef const int8_t* RawPtrHandle;
 class WindowInterface {
  public:
     WindowInterface(bool instance_not_in_window, int64_t start_offset,
-                    int64_t end_offset, uint32_t max_size);
+                    int64_t end_offset, uint64_t row_preceding,
+                    uint32_t max_size);
 
     void BufferData(uint64_t key, const Row& row);
 
@@ -36,7 +37,6 @@ class WindowInterface {
     friend CoreAPI;
 
     Window* GetWindow() { return window_impl_.get(); }
-
     std::unique_ptr<Window> window_impl_;
 };
 

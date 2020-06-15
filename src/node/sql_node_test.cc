@@ -213,6 +213,85 @@ TEST_F(SqlNodeTest, MakeInsertNodeTest) {
     ASSERT_EQ(dynamic_cast<ConstNode *>(value[2])->GetDouble(), 2.3);
 }
 
+TEST_F(SqlNodeTest, FrameHistoryStartEndTest) {
+    // RowsRange between preceding 1d and current
+    {
+        FrameNode *frame1 =
+            dynamic_cast<FrameNode *>(node_manager_->MakeFrameNode(
+                kFrameRowsRange,
+                node_manager_->MakeFrameExtent(
+                    node_manager_->MakeFrameBound(
+                        kPreceding,
+                        node_manager_->MakeConstNode(1, node::kDay)),
+                    node_manager_->MakeFrameBound(kCurrent)),
+                nullptr));
+        ASSERT_EQ(-86400000, frame1->GetHistoryRangeStart());
+        ASSERT_EQ(0, frame1->GetHistoryRangeEnd());
+        ASSERT_EQ(0, frame1->GetHistoryRowsStart());
+        ASSERT_EQ(0, frame1->GetHistoryRowsEnd());
+    }
+
+    // Range between preceding 1d and current
+    {
+        FrameNode *frame1 =
+            dynamic_cast<FrameNode *>(node_manager_->MakeFrameNode(
+                kFrameRange,
+                node_manager_->MakeFrameExtent(
+                    node_manager_->MakeFrameBound(
+                        kPreceding,
+                        node_manager_->MakeConstNode(1, node::kDay)),
+                    node_manager_->MakeFrameBound(kCurrent)),
+                nullptr));
+        ASSERT_EQ(-86400000, frame1->GetHistoryRangeStart());
+        ASSERT_EQ(0, frame1->GetHistoryRangeEnd());
+        ASSERT_EQ(0, frame1->GetHistoryRowsStart());
+        ASSERT_EQ(0, frame1->GetHistoryRowsEnd());
+    }
+
+    // Rows between preceding 1d and current
+    {
+        FrameNode *frame1 =
+            dynamic_cast<FrameNode *>(node_manager_->MakeFrameNode(
+                kFrameRows,
+                node_manager_->MakeFrameExtent(
+                    node_manager_->MakeFrameBound(
+                        kPreceding, node_manager_->MakeConstNode(100)),
+                    node_manager_->MakeFrameBound(kCurrent)),
+                nullptr));
+        ASSERT_EQ(0, frame1->GetHistoryRangeStart());
+        ASSERT_EQ(0, frame1->GetHistoryRangeEnd());
+        ASSERT_EQ(-100, frame1->GetHistoryRowsStart());
+        ASSERT_EQ(0, frame1->GetHistoryRowsEnd());
+    }
+
+    // Merge [-1d, 0] U [100, 0]
+    {
+        // RowsRange between preceding 1d and current
+        FrameNode *range_frame1 =
+            dynamic_cast<FrameNode *>(node_manager_->MakeFrameNode(
+                kFrameRowsRange,
+                node_manager_->MakeFrameExtent(
+                    node_manager_->MakeFrameBound(
+                        kPreceding,
+                        node_manager_->MakeConstNode(1, node::kDay)),
+                    node_manager_->MakeFrameBound(kCurrent)),
+                nullptr));
+        // Rows between preceding 1d and current
+        FrameNode *range_frame2 =
+            dynamic_cast<FrameNode *>(node_manager_->MakeFrameNode(
+                kFrameRows,
+                node_manager_->MakeFrameExtent(
+                    node_manager_->MakeFrameBound(
+                        kPreceding, node_manager_->MakeConstNode(100)),
+                    node_manager_->MakeFrameBound(kCurrent)),
+                nullptr));
+        auto frame3 = node_manager_->MergeFrameNode(range_frame1, range_frame2);
+        ASSERT_EQ(-86400000, frame3->GetHistoryRangeStart());
+        ASSERT_EQ(0, frame3->GetHistoryRangeEnd());
+        ASSERT_EQ(-100, frame3->GetHistoryRowsStart());
+        ASSERT_EQ(0, frame3->GetHistoryRowsEnd());
+    }
+}
 TEST_F(SqlNodeTest, WindowAndFrameNodeMergeTest) {
     // Range between preceding 1d and current
     FrameNode *range_frame1 =

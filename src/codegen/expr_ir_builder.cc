@@ -456,8 +456,9 @@ bool ExprIRBuilder::BuildWindow(const node::FrameNode* frame_node,
 
         // Build Inner Window based on Big Window and frame info
         ok = window_ir_builder_->BuildInnerRangeList(
-            window_ptr_value.GetValue(&builder), frame_node->GetRangeEnd(),
-            frame_node->GetRangeStart(), &window_ptr);
+            window_ptr_value.GetValue(&builder),
+            frame_node->GetHistoryRangeEnd(),
+            frame_node->GetHistoryRangeStart(), &window_ptr);
     } else {
         *output = window_ptr;
         return true;

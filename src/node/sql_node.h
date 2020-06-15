@@ -920,26 +920,65 @@ class FrameNode : public SQLNode {
     FrameExtent *frame_range() const { return frame_range_; }
     FrameExtent *frame_rows() const { return frame_rows_; }
     int64_t frame_maxsize() const { return frame_maxsize_; }
-    int64_t GetRangeStart() const {
-        return nullptr == frame_range_ || nullptr == frame_range_->start()
-                   ? INT64_MIN
-                   : frame_range_->start()->GetSignedOffset();
+    int64_t GetHistoryRangeStart() const {
+        if (nullptr == frame_rows_ && nullptr == frame_range_) {
+            return INT64_MIN;
+        }
+        if (nullptr == frame_rows_) {
+            return nullptr == frame_range_ || nullptr == frame_range_->start()
+                       ? INT64_MIN
+                       : frame_range_->start()->GetSignedOffset() > 0
+                             ? 0
+                             : frame_range_->start()->GetSignedOffset();
+        } else {
+            return nullptr == frame_range_ || nullptr == frame_range_->start()
+                       ? 0
+                       : frame_range_->start()->GetSignedOffset() > 0
+                             ? 0
+                             : frame_range_->start()->GetSignedOffset();
+        }
     }
-    int64_t GetRangeEnd() const {
+    int64_t GetHistoryRangeEnd() const {
         return nullptr == frame_range_ || nullptr == frame_range_->end()
-                   ? INT64_MAX
-                   : frame_range_->end()->GetSignedOffset();
+                   ? 0
+                   : frame_range_->end()->GetSignedOffset() > 0
+                         ? 0
+                         : frame_range_->end()->GetSignedOffset();
     }
 
-    int64_t GetRowsStart() const {
-        return nullptr == frame_rows_ || nullptr == frame_rows_->start()
-                   ? INT64_MIN
-                   : frame_rows_->start()->GetSignedOffset();
+    int64_t GetHistoryRowsStart() const {
+        if (nullptr == frame_rows_ && nullptr == frame_range_) {
+            return INT64_MIN;
+        }
+        if (nullptr == frame_range_) {
+            return nullptr == frame_rows_ || nullptr == frame_rows_->start()
+                       ? INT64_MIN
+                       : frame_rows_->start()->GetSignedOffset() > 0
+                             ? 0
+                             : frame_rows_->start()->GetSignedOffset();
+        } else {
+            return nullptr == frame_rows_ || nullptr == frame_rows_->start()
+                       ? 0
+                       : frame_rows_->start()->GetSignedOffset() > 0
+                             ? 0
+                             : frame_rows_->start()->GetSignedOffset();
+        }
     }
-    int64_t GetRowsEnd() const {
-        return nullptr == frame_rows_ || nullptr == frame_rows_->end()
-                   ? INT64_MAX
-                   : frame_rows_->end()->GetSignedOffset();
+    int64_t GetHistoryRowsEnd() const {
+        if (nullptr == frame_rows_ && nullptr == frame_range_) {
+            return INT64_MIN;
+        }
+        if (nullptr == frame_range_) {
+            return nullptr == frame_rows_ || nullptr == frame_rows_->start()
+                       ? INT64_MIN
+                       : frame_rows_->end()->GetSignedOffset();
+        } else {
+            return nullptr == frame_rows_ || nullptr == frame_rows_->start()
+                       ? 0
+                       : frame_rows_->end()->GetSignedOffset() > 0
+                             ? 0
+                             : frame_rows_->end()->GetSignedOffset();
+        }
     }
     void Print(std::ostream &output, const std::string &org_tab) const;
     virtual bool Equals(const SQLNode *node) const;

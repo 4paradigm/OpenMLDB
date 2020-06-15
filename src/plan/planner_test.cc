@@ -1165,8 +1165,8 @@ TEST_F(PlannerTest, MergeWindowsTest) {
         ASSERT_TRUE(planner_ptr.MergeWindows(map, &windows));
         ASSERT_EQ(1u, windows.size());
         std::cout << *windows[0] << std::endl;
-        ASSERT_EQ(-86400000, windows[0]->GetFrame()->GetRangeStart());
-        ASSERT_EQ(0, windows[0]->GetFrame()->GetRangeEnd());
+        ASSERT_EQ(-86400000, windows[0]->GetFrame()->GetHistoryRangeStart());
+        ASSERT_EQ(0, windows[0]->GetFrame()->GetHistoryRangeEnd());
     }
 
     // window:col2,ts,[-1d,0]
@@ -1197,11 +1197,11 @@ TEST_F(PlannerTest, MergeWindowsTest) {
         ASSERT_TRUE(planner_ptr.MergeWindows(map, &windows));
         ASSERT_EQ(2u, windows.size());
         std::cout << *(windows[0]) << std::endl;
-        ASSERT_EQ(-86400000, windows[0]->GetFrame()->GetRangeStart());
-        ASSERT_EQ(0, windows[0]->GetFrame()->GetRangeEnd());
+        ASSERT_EQ(-86400000, windows[0]->GetFrame()->GetHistoryRangeStart());
+        ASSERT_EQ(0, windows[0]->GetFrame()->GetHistoryRangeEnd());
         std::cout << *(windows[1]) << std::endl;
-        ASSERT_EQ(-3600000, windows[1]->GetFrame()->GetRangeStart());
-        ASSERT_EQ(0, windows[1]->GetFrame()->GetRangeEnd());
+        ASSERT_EQ(-3600000, windows[1]->GetFrame()->GetHistoryRangeStart());
+        ASSERT_EQ(0, windows[1]->GetFrame()->GetHistoryRangeEnd());
     }
 
     auto frame_100 = manager_->MakeFrameNode(
@@ -1242,9 +1242,9 @@ TEST_F(PlannerTest, MergeWindowsTest) {
         ASSERT_TRUE(planner_ptr.MergeWindows(map, &windows));
         ASSERT_EQ(1u, windows.size());
         std::cout << *windows[0] << std::endl;
-        ASSERT_EQ(-86400000, windows[0]->GetFrame()->GetRangeStart());
-        ASSERT_EQ(0, windows[0]->GetFrame()->GetRangeEnd());
-        ASSERT_EQ(-1000, windows[0]->GetFrame()->GetRowsStart());
+        ASSERT_EQ(-86400000, windows[0]->GetFrame()->GetHistoryRangeStart());
+        ASSERT_EQ(0, windows[0]->GetFrame()->GetHistoryRangeEnd());
+        ASSERT_EQ(-1000, windows[0]->GetFrame()->GetHistoryRowsStart());
     }
 
     // null window merge
@@ -1270,8 +1270,8 @@ TEST_F(PlannerTest, MergeWindowsTest) {
         ASSERT_EQ(2u, windows.size());
         ASSERT_TRUE(nullptr == windows[0]);
         std::cout << *windows[1] << std::endl;
-        ASSERT_EQ(-86400000, windows[1]->GetFrame()->GetRangeStart());
-        ASSERT_EQ(0, windows[1]->GetFrame()->GetRangeEnd());
+        ASSERT_EQ(-86400000, windows[1]->GetFrame()->GetHistoryRangeStart());
+        ASSERT_EQ(0, windows[1]->GetFrame()->GetHistoryRangeEnd());
     }
 
     // Merge Fail

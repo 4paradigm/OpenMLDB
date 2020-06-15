@@ -115,9 +115,9 @@ class Sort {
 
 class Range {
  public:
-    Range() : range_key_(nullptr), range_frame_(nullptr) {}
+    Range() : range_key_(nullptr), frame_(nullptr) {}
     Range(const node::OrderByNode *order, const node::FrameNode *frame)
-        : range_key_(nullptr), range_frame_(frame) {
+        : range_key_(nullptr), frame_(frame) {
         range_key_ = nullptr == order
                          ? nullptr
                          : node::ExprListNullOrEmpty(order->order_by_)
@@ -128,23 +128,23 @@ class Range {
     const bool Valid() const { return nullptr != range_key_; }
     const std::string ToString() const {
         std::ostringstream oss;
-        if (nullptr != range_key_ && nullptr != range_frame_) {
-            if (nullptr != range_frame_->frame_range()) {
+        if (nullptr != range_key_ && nullptr != frame_) {
+            if (nullptr != frame_->frame_range()) {
                 oss << "range=(" << range_key_->GetExprString() << ", "
-                    << range_frame_->frame_range()->start()->GetExprString()
+                    << frame_->frame_range()->start()->GetExprString()
                     << ", "
-                    << range_frame_->frame_range()->end()->GetExprString()
+                    << frame_->frame_range()->end()->GetExprString()
                     << ")";
             }
 
-            if (nullptr != range_frame_->frame_rows()) {
-                if (nullptr != range_frame_->frame_range()) {
+            if (nullptr != frame_->frame_rows()) {
+                if (nullptr != frame_->frame_range()) {
                     oss << ", ";
                 }
                 oss << "rows=(" << range_key_->GetExprString() << ", "
-                    << range_frame_->frame_rows()->start()->GetExprString()
+                    << frame_->frame_rows()->start()->GetExprString()
                     << ", "
-                    << range_frame_->frame_rows()->end()->GetExprString()
+                    << frame_->frame_rows()->end()->GetExprString()
                     << ")";
             }
         }
@@ -155,10 +155,11 @@ class Range {
         range_key_ = range_key;
     }
     const FnInfo &fn_info() const { return fn_info_; }
+    const node::FrameNode *frame() const { return frame_; }
     const std::string FnDetail() const { return "range=" + fn_info_.fn_name_; }
     FnInfo fn_info_;
     const node::ExprNode *range_key_;
-    const node::FrameNode *range_frame_;
+    const node::FrameNode *frame_;
 };
 
 class ConditionFilter {

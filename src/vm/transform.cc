@@ -404,11 +404,6 @@ bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
                 if (table) {
                     auto right = new PhysicalTableProviderNode(table);
                     node_manager_->RegisterNode(right);
-                    node::OrderByNode* request_orders =
-                        nullptr == orders ? nullptr
-                                          : dynamic_cast<node::OrderByNode*>(
-                                                node_manager_->MakeOrderByNode(
-                                                    orders->order_by_, false));
                     if (!CheckRequestWindowFrame(w_ptr, status)) {
                         return false;
                     }
@@ -495,12 +490,6 @@ bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
                     if (table) {
                         auto right = new PhysicalTableProviderNode(table);
                         node_manager_->RegisterNode(right);
-                        node::OrderByNode* request_orders =
-                            nullptr == orders
-                                ? nullptr
-                                : dynamic_cast<node::OrderByNode*>(
-                                      node_manager_->MakeOrderByNode(
-                                          orders->order_by_, false));
                         auto request_union_op = new PhysicalRequestUnionNode(
                             request_op, right, w_ptr);
                         node_manager_->RegisterNode(request_union_op);
@@ -560,11 +549,6 @@ bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
                     auto right_simple_project = new PhysicalSimpleProjectNode(
                         right, simple_project->output_schema_,
                         simple_project->project_.column_sources_);
-                    node::OrderByNode* request_orders =
-                        nullptr == orders ? nullptr
-                                          : dynamic_cast<node::OrderByNode*>(
-                                                node_manager_->MakeOrderByNode(
-                                                    orders->order_by_, false));
                     auto request_union_op = new PhysicalRequestUnionNode(
                         depend, right_simple_project, w_ptr);
                     node_manager_->RegisterNode(request_union_op);
@@ -1356,7 +1340,7 @@ bool BatchModeTransformer::CheckRequestWindowFrame(
         return false;
     }
     const node::FrameNode* frame = w_ptr->frame_node();
-    if (frame->GetRangeEnd() > 0 && frame->GetRowsEnd() > 0) {
+    if (frame->GetHistoryRangeEnd() > 0 && frame->GetHistoryRowsEnd() > 0) {
         status.code = common::kPlanError;
         status.msg =
             "Invalid Request Window: end frame can't exceed "
@@ -1364,7 +1348,7 @@ bool BatchModeTransformer::CheckRequestWindowFrame(
         LOG(WARNING) << status.msg;
         return false;
     }
-    if (frame->GetRangeStart() > 0 || frame->GetRowsStart() > 0) {
+    if (frame->GetHistoryRangeStart() > 0 || frame->GetHistoryRowsStart() > 0) {
         status.code = common::kPlanError;
         status.msg =
             "Invalid Request Window: start frame can't exceed "
