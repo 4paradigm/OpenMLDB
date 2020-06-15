@@ -35,7 +35,7 @@ namespace codegen {
 
 AggregateIRBuilder::AggregateIRBuilder(const vm::SchemasContext* sc,
                                        ::llvm::Module* module):
-    schema_context_(sc), module_(module){
+schema_context_(sc), module_(module) {
     available_agg_func_set_.insert("sum");
     available_agg_func_set_.insert("avg");
     available_agg_func_set_.insert("count");
