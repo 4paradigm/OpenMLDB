@@ -238,12 +238,14 @@ class Window : public MemTimeTableHandler {
         : MemTimeTableHandler(),
           start_offset_(start_offset),
           end_offset_(end_offset),
+          rows_preceding_(0),
           max_size_(0),
           instance_not_in_window_(false) {}
     Window(int64_t start_offset, int64_t end_offset, uint32_t max_size)
         : MemTimeTableHandler(),
           start_offset_(start_offset),
           end_offset_(end_offset),
+          rows_preceding_(0),
           max_size_(max_size),
           instance_not_in_window_(false) {}
     virtual ~Window() {}
@@ -281,9 +283,16 @@ class Window : public MemTimeTableHandler {
         instance_not_in_window_ = flag;
     }
 
+    void set_rows_preceding(uint64_t row_preceding) {
+        this->rows_preceding_ = row_preceding;
+    }
+
+    const uint64_t rows_preceding() const { return this->rows_preceding_; }
+
  protected:
     int64_t start_offset_;
     int32_t end_offset_;
+    uint64_t rows_preceding_;
     uint32_t max_size_;
     bool instance_not_in_window_;
 };
@@ -299,8 +308,6 @@ class CurrentHistoryWindow : public Window {
 
     void BufferData(uint64_t key, const Row& row) {
         AddFrontRow(key, row);
-        int64_t sub = (key + start_offset_);
-        uint64_t start_ts = sub < 0 ? 0u : static_cast<uint64_t>(sub);
 
         auto cur_size = table_.size();
         auto max_size = max_size_ > 0 ? max_size_ : 0;
@@ -308,7 +315,11 @@ class CurrentHistoryWindow : public Window {
             PopBackRow();
             --cur_size;
         }
-        while (cur_size > 0) {
+
+        int64_t sub = (key + start_offset_);
+        uint64_t start_ts = sub < 0 ? 0u : static_cast<uint64_t>(sub);
+        // Slice window when window size > rows_preceding
+        while (cur_size-1 > rows_preceding_) {
             const auto& pair = GetBackRow();
             if (pair.first < start_ts) {
                 PopBackRow();

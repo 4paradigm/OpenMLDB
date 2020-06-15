@@ -215,8 +215,8 @@ SQLCases:
     request_plan: |
       LIMIT(limit=10, optimized)
         PROJECT(type=Aggregation, limit=10)
-          REQUEST_UNION(partition_keys=(), orders=() DESC, range=(col5, -2, 0), index_keys=(col2))
-            +-UNION(partition_keys=(), orders=() DESC, range=(col5, -2, 0), index_keys=(col2))
+          REQUEST_UNION(partition_keys=(), orders=() ASC, range=(col5, -2, 0), index_keys=(col2))
+            +-UNION(partition_keys=(), orders=() ASC, range=(col5, -2, 0), index_keys=(col2))
                 SIMPLE_PROJECT(sources=([0]<-[0:0], [1]<-[0:1], [2]<-[0:2], [3]<-[0:3], [4]<-0.000000, [5]<-[0:5], [6]<-NA_STR)
                   DATA_PROVIDER(type=Partition, table=tb, index=index_c25)
             DATA_PROVIDER(request=t1)
@@ -280,8 +280,8 @@ SQLCases:
     request_plan: |
       LIMIT(limit=10, optimized)
         PROJECT(type=Aggregation, limit=10)
-          REQUEST_UNION(partition_keys=(), orders=() DESC, range=(col5, -2, 0), index_keys=(col2))
-            +-UNION(partition_keys=(), orders=() DESC, range=(col5, -2, 0), index_keys=(col2))
+          REQUEST_UNION(partition_keys=(), orders=() ASC, range=(col5, -2, 0), index_keys=(col2))
+            +-UNION(partition_keys=(), orders=() ASC, range=(col5, -2, 0), index_keys=(col2))
                 SIMPLE_PROJECT(sources=([0]<-[0:0], [1]<-[0:1], [2]<-[0:2], [3]<-[0:3], [4]<-0.000000, [5]<-[0:5], [6]<-NA_STR)
                   DATA_PROVIDER(type=Partition, table=tb, index=index_c25)
             SIMPLE_PROJECT(sources=([0]<-tx_col0, [1]<-[0:0], [2]<-[0:1], [3]<-[0:2], [4]<-[0:3], [5]<-[0:4], [6]<-[0:5])

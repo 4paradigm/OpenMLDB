@@ -412,10 +412,8 @@ bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
                     if (!CheckRequestWindowFrame(w_ptr, status)) {
                         return false;
                     }
-                    auto request_union_op = new PhysicalRequestUnionNode(
-                        depend, right, groups, request_orders,
-                        w_ptr->GetStartOffset(), w_ptr->GetEndOffset(),
-                        w_ptr->instance_not_in_window());
+                    auto request_union_op =
+                        new PhysicalRequestUnionNode(depend, right, w_ptr);
                     node_manager_->RegisterNode(request_union_op);
                     if (!w_ptr->union_tables().empty()) {
                         for (auto iter = w_ptr->union_tables().cbegin();
@@ -504,9 +502,7 @@ bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
                                       node_manager_->MakeOrderByNode(
                                           orders->order_by_, false));
                         auto request_union_op = new PhysicalRequestUnionNode(
-                            request_op, right, groups, request_orders,
-                            w_ptr->GetStartOffset(), w_ptr->GetEndOffset(),
-                            w_ptr->instance_not_in_window());
+                            request_op, right, w_ptr);
                         node_manager_->RegisterNode(request_union_op);
                         if (!w_ptr->union_tables().empty()) {
                             for (auto iter = w_ptr->union_tables().cbegin();
@@ -570,9 +566,7 @@ bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
                                                 node_manager_->MakeOrderByNode(
                                                     orders->order_by_, false));
                     auto request_union_op = new PhysicalRequestUnionNode(
-                        depend, right_simple_project, groups, request_orders,
-                        w_ptr->GetStartOffset(), w_ptr->GetEndOffset(),
-                        w_ptr->instance_not_in_window());
+                        depend, right_simple_project, w_ptr);
                     node_manager_->RegisterNode(request_union_op);
                     if (!w_ptr->union_tables().empty()) {
                         for (auto iter = w_ptr->union_tables().cbegin();
@@ -936,11 +930,8 @@ bool BatchModeTransformer::CreatePhysicalProjectNode(
         }
         case kWindowAggregation: {
             auto window_agg_op = new PhysicalWindowAggrerationNode(
-                node, project_list->w_ptr_->GetKeys(),
-                project_list->w_ptr_->GetOrders(), fn_name, output_schema,
-                output_column_sources, project_list->w_ptr_->GetStartOffset(),
-                project_list->w_ptr_->GetEndOffset(),
-                project_list->w_ptr_->instance_not_in_window());
+                node, project_list->w_ptr_, fn_name, output_schema,
+                output_column_sources);
 
             if (!project_list->w_ptr_->union_tables().empty()) {
                 for (auto iter = project_list->w_ptr_->union_tables().cbegin();
