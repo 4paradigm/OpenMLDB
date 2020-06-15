@@ -1015,7 +1015,6 @@ Row JoinGenerator::RowLastJoinTable(const Row& left_row,
         LOG(WARNING) << "Last Join right table is empty";
         return Row(left_slices_, left_row, right_slices_, Row());
     }
-
     if (right_sort_gen_.Valid()) {
         table = right_sort_gen_.Sort(table, true);
     }
