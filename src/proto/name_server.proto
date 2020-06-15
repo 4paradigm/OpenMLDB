@@ -247,7 +247,7 @@ message RecoverTableRequest {
     required string name = 1;
     required uint32 pid = 2;
     required string endpoint = 3;
-    required string db = 4 [default = ""];
+    optional string db = 4 [default = ""];
 }
 
 message DelReplicaNSRequest {
