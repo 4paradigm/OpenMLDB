@@ -470,16 +470,19 @@ TEST_F(EngineTest, EngineCacheTest) {
     {
         base::Status get_status;
         BatchRunSession bsession1;
-        ASSERT_TRUE(engine.Get(sql, table_def.catalog(), bsession1, get_status));
+        ASSERT_TRUE(
+            engine.Get(sql, table_def.catalog(), bsession1, get_status));
         ASSERT_EQ(get_status.code, common::kOk);
         BatchRunSession bsession2;
-        ASSERT_TRUE(engine.Get(sql, table_def.catalog(), bsession2, get_status));
+        ASSERT_TRUE(
+            engine.Get(sql, table_def.catalog(), bsession2, get_status));
         ASSERT_EQ(get_status.code, common::kOk);
-        ASSERT_EQ(bsession1.GetCompileInfo().get(), bsession2.GetCompileInfo().get());
+        ASSERT_EQ(bsession1.GetCompileInfo().get(),
+                  bsession2.GetCompileInfo().get());
         RequestRunSession rsession;
         ASSERT_TRUE(engine.Get(sql, table_def.catalog(), rsession, get_status));
-        ASSERT_NE(rsession.GetCompileInfo().get(), bsession2.GetCompileInfo().get());
-
+        ASSERT_NE(rsession.GetCompileInfo().get(),
+                  bsession2.GetCompileInfo().get());
     }
 }
 
