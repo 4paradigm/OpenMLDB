@@ -142,3 +142,29 @@ SQLCases:
           1, 1, 1, NULL, NULL, 1590115420002, 2020-05-21, y, 3
           2, 2, 2, 2.0, 2.0, NULL, NULL, z, 4
           3, 3, 3, 3.0, 3.0, 1590115420003, 2020-05-22, NULL, 5
+
+  - id: 7
+    desc: SELECT多个string列
+    db: db1
+    sql: |
+      SELECT c1, c2, c3, c4, c5, c6, c7, c8, id FROM t1;
+    inputs:
+      - name: t1
+        schema: c1:string, c2:string, c3:string, c4:string, id:int32,
+                c5:string, c6:string, c7:string, c8:string
+        index: index1:id:id
+        data: |
+          a, x, y, z, 0, r, s, t, u
+          b, NULL, yy, NULL, 1, rr, NULL, NULL, uu
+          c, NULL, NULL, NULL, 2, NULL, NULL, NULL, NULL
+          d, xx, NULL, zz, NULL, NULL, ss, tt, NULL
+    output:
+      schema: c1:string, c2:string, c3:string, c4:string,
+              c5:string, c6:string, c7:string, c8:string, id:int32
+      order: c1
+      data: |
+        a, x, y, z, r, s, t, u, 0
+        b, NULL, yy, NULL, rr, NULL, NULL, uu, 1
+        c, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 2
+        d, xx, NULL, zz, NULL, ss, tt, NULL, NULL
+

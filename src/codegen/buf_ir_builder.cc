@@ -473,8 +473,7 @@ bool BufNativeEncoderIRBuilder::AppendString(
         size_ty,    // str_start_offset
         size_ty,    // str_field_offset
         size_ty,    // str_addr_space
-        size_ty,    // str_body_offset
-        size_ty);   // str_field_cnt
+        size_ty);   // str_body_offset
     *output = builder.CreateCall(
         callee,
         ::llvm::ArrayRef<::llvm::Value*>{
@@ -482,8 +481,7 @@ bool BufNativeEncoderIRBuilder::AppendString(
             data_ptr, fe_str_size, is_null,
             builder.getInt32(str_field_start_offset_),
             builder.getInt32(str_field_idx),
-            str_addr_space, str_body_offset,
-            builder.getInt32(str_field_cnt_)});
+            str_addr_space, str_body_offset});
     return true;
 }
 
