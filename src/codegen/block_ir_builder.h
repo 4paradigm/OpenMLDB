@@ -13,6 +13,7 @@
 #include <vector>
 #include "base/fe_status.h"
 #include "codegen/scope_var.h"
+#include "codegen/context.h"
 #include "codegen/variable_ir_builder.h"
 #include "llvm/IR/Module.h"
 #include "node/sql_node.h"
@@ -52,6 +53,12 @@ class BlockIRBuilder {
                          base::Status& status);  // NOLINT
     bool ClearAllScopeValues(llvm::BasicBlock* block,
                              base::Status& status);  // NOLINT
+
+    bool DoBuildBranchBlock(const ::fesql::node::FnIfElseBlock* if_else_block,
+                            size_t branch_idx,
+                            CodeGenContext* ctx,
+                            ::llvm::BasicBlock* if_else_end);
+
     ScopeVar* sv_;
 };
 
