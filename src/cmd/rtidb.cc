@@ -335,136 +335,6 @@ void StartBlob() {
     server.RunUntilAskedToQuit();
 }
 
-int EncodeMultiDimensionData(
-    const std::vector<std::string>& data,
-    const std::vector<::rtidb::codec::ColumnDesc>& columns, uint32_t pid_num,
-    std::string& value,  // NOLINT
-    std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>&
-        dimensions,
-    std::vector<uint64_t>& ts_dimensions, int modify_times) {  // NOLINT
-    if (data.size() != columns.size()) {
-        return -1;
-    }
-    uint8_t cnt = (uint8_t)data.size();
-    ::rtidb::codec::FlatArrayCodec codec;
-    if (modify_times == 0) {
-        ::rtidb::codec::FlatArrayCodec codec_tmp(&value, cnt);
-        codec = codec_tmp;
-    } else {
-        ::rtidb::codec::FlatArrayCodec codec_tmp(&value, cnt, modify_times);
-        codec = codec_tmp;
-    }
-    uint32_t idx_cnt = 0;
-    for (uint32_t i = 0; i < data.size(); i++) {
-        if (columns[i].add_ts_idx) {
-            uint32_t pid = 0;
-            if (pid_num > 0) {
-                pid = (uint32_t)(::rtidb::base::hash64(data[i]) % pid_num);
-            }
-            if (dimensions.find(pid) == dimensions.end()) {
-                dimensions.insert(std::make_pair(
-                    pid, std::vector<std::pair<std::string, uint32_t>>()));
-            }
-            dimensions[pid].push_back(std::make_pair(data[i], idx_cnt));
-            idx_cnt++;
-        }
-        bool codec_ok = false;
-        try {
-            if (columns[i].is_ts_col) {
-                ts_dimensions.push_back(boost::lexical_cast<uint64_t>(data[i]));
-            }
-            if (columns[i].type == ::rtidb::codec::ColType::kInt32) {
-                codec_ok = codec.Append(boost::lexical_cast<int32_t>(data[i]));
-            } else if (columns[i].type == ::rtidb::codec::ColType::kInt64) {
-                codec_ok = codec.Append(boost::lexical_cast<int64_t>(data[i]));
-            } else if (columns[i].type == ::rtidb::codec::ColType::kUInt32) {
-                if (!boost::algorithm::starts_with(data[i], "-")) {
-                    codec_ok =
-                        codec.Append(boost::lexical_cast<uint32_t>(data[i]));
-                }
-            } else if (columns[i].type == ::rtidb::codec::ColType::kUInt64) {
-                if (!boost::algorithm::starts_with(data[i], "-")) {
-                    codec_ok =
-                        codec.Append(boost::lexical_cast<uint64_t>(data[i]));
-                }
-            } else if (columns[i].type == ::rtidb::codec::ColType::kFloat) {
-                codec_ok = codec.Append(boost::lexical_cast<float>(data[i]));
-            } else if (columns[i].type == ::rtidb::codec::ColType::kDouble) {
-                codec_ok = codec.Append(boost::lexical_cast<double>(data[i]));
-            } else if (columns[i].type == ::rtidb::codec::ColType::kString) {
-                codec_ok = codec.Append(data[i]);
-            } else if (columns[i].type == ::rtidb::codec::ColType::kTimestamp) {
-                codec_ok = codec.AppendTimestamp(
-                    boost::lexical_cast<uint64_t>(data[i]));
-            } else if (columns[i].type == ::rtidb::codec::ColType::kDate) {
-                std::string date = data[i] + " 00:00:00";
-                tm tm_s;
-                time_t time;
-                char buf[20] = {0};
-                strcpy(buf, date.c_str());  // NOLINT
-                char* result = strptime(buf, "%Y-%m-%d %H:%M:%S", &tm_s);
-                if (result == NULL) {
-                    printf("date format is YY-MM-DD. ex: 2018-06-01\n");
-                    return -1;
-                }
-                tm_s.tm_isdst = -1;
-                time = mktime(&tm_s) * 1000;
-                codec_ok = codec.AppendDate(uint64_t(time));
-            } else if (columns[i].type == ::rtidb::codec::ColType::kInt16) {
-                codec_ok = codec.Append(boost::lexical_cast<int16_t>(data[i]));
-            } else if (columns[i].type == ::rtidb::codec::ColType::kUInt16) {
-                codec_ok = codec.Append(boost::lexical_cast<uint16_t>(data[i]));
-            } else if (columns[i].type == ::rtidb::codec::ColType::kBool) {
-                bool value = false;
-                std::string raw_value = data[i];
-                std::transform(raw_value.begin(), raw_value.end(),
-                               raw_value.begin(), ::tolower);
-                if (raw_value == "true") {
-                    value = true;
-                } else if (raw_value == "false") {
-                    value = false;
-                } else {
-                    return -1;
-                }
-                codec_ok = codec.Append(value);
-            } else {
-                codec_ok = codec.AppendNull();
-            }
-        } catch (std::exception const& e) {
-            std::cout << e.what() << std::endl;
-            return -1;
-        }
-        if (!codec_ok) {
-            return -1;
-        }
-    }
-    codec.Build();
-    return 0;
-}
-
-int EncodeMultiDimensionData(
-    const std::vector<std::string>& data,
-    const std::vector<::rtidb::codec::ColumnDesc>& columns, uint32_t pid_num,
-    std::string& value,  // NOLINT
-    std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>&
-        dimensions) {
-    std::vector<uint64_t> ts_dimensions;
-    return EncodeMultiDimensionData(data, columns, pid_num, value, dimensions,
-                                    ts_dimensions, 0);
-}
-
-int EncodeMultiDimensionData(
-    const std::vector<std::string>& data,
-    const std::vector<::rtidb::codec::ColumnDesc>& columns, uint32_t pid_num,
-    std::string& value,  // NOLINT
-    std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>&
-        dimensions,
-    int modify_times) {
-    std::vector<uint64_t> ts_dimensions;
-    return EncodeMultiDimensionData(data, columns, pid_num, value, dimensions,
-                                    ts_dimensions, modify_times);
-}
-
 int PutData(
     uint32_t tid,
     const std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>&
@@ -6044,43 +5914,16 @@ void HandleClientSScan(const std::vector<std::string>& parts,
         std::cout << "Fail to scan table. error msg: " << msg << std::endl;
         return;
     }
-    ::rtidb::api::TableStatus table_status;
-    if (!client->GetTableStatus(tid, pid, table_status)) {
-        std::cout << "Fail to get table status" << std::endl;
-        return;
-    }
     ::rtidb::api::TableMeta table_meta;
     bool ok = client->GetTableSchema(tid, pid, table_meta);
     if (!ok) {
-        std::cout << "No schema for table, please use command scan"
-                  << std::endl;
+        std::cout << "table is not exist" << std::endl;
         return;
-    }
-    std::string schema = table_meta.schema();
-    std::vector<::rtidb::codec::ColumnDesc> raw;
-    ::rtidb::codec::SchemaCodec codec;
-    codec.Decode(schema, raw);
-    ::rtidb::nameserver::CompressType compress_type =
-        ::rtidb::nameserver::kNoCompress;
-    if (table_status.compress_type() == ::rtidb::api::CompressType::kSnappy) {
-        compress_type = ::rtidb::nameserver::kSnappy;
     }
     std::vector<std::shared_ptr<::rtidb::base::KvIterator>> iter_vec;
     iter_vec.push_back(std::move(it));
     ::rtidb::cmd::SDKIterator sdk_it(iter_vec, limit);
-    if (table_meta.added_column_desc_size() == 0) {
-        //  ::rtidb::cmd::ShowTableRows(raw, &sdk_it, compress_type);
-    } else {
-        std::vector<::rtidb::codec::ColumnDesc> columns_tmp;
-        for (int i = 0;
-             i < (int)(raw.size() -                           // NOLINT
-                       table_meta.added_column_desc_size());  // NOLINT
-             i++) {
-            columns_tmp.push_back(raw.at(i));
-        }
-        //  ::rtidb::cmd::ShowTableRows(columns_tmp, raw, &sdk_it,
-        //  compress_type);
-    }
+    ::rtidb::cmd::ShowTableRows(table_meta, &sdk_it);
 }
 
 void HandleClientSPut(const std::vector<std::string>& parts,
@@ -6098,56 +5941,26 @@ void HandleClientSPut(const std::vector<std::string>& parts,
             std::cout << "Fail to get table schema" << std::endl;
             return;
         }
-        std::string schema = table_meta.schema();
-        if (schema.empty()) {
-            std::cout << "No schema for table, please use put command"
-                      << std::endl;
+        ::rtidb::codec::SDKCodec codec(table_meta);
+        std::vector<std::string> input_value(parts.begin() + 4, parts.end());
+        std::map<uint32_t, ::rtidb::codec::Dimension> dimensions;
+        if (codec.EncodeDimension(input_value, 0, &dimensions) < 0) {
+            std::cout << "Encode dimension error" << std::endl;
             return;
         }
-        ::rtidb::api::TableStatus table_status;
-        if (!client->GetTableStatus(tid, pid, table_status)) {
-            std::cout << "Fail to get table status" << std::endl;
-            return;
+        std::string value;
+        if (codec.EncodeRow(input_value, &value) < 0) {
+            std::cout << "Encode data error" << std::endl;
         }
-        std::vector<::rtidb::codec::ColumnDesc> raw;
-        ::rtidb::codec::SchemaCodec scodec;
-        scodec.Decode(schema, raw);
-        int base_size =
-            (int)(raw.size() - table_meta.added_column_desc_size());  // NOLINT
-        int modify_index = (int)(parts.size() - 4 - base_size);       // NOLINT
-        if (modify_index > table_meta.added_column_desc_size() ||
-            modify_index < 0) {
-            std::cout << "Input value mismatch schema" << std::endl;
-            return;
-        }
-        raw.erase(raw.begin() + base_size + modify_index, raw.end());
-        std::string buffer;
-        std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>
-            dimensions;
-        if (modify_index > 0) {
-            if (EncodeMultiDimensionData(
-                    std::vector<std::string>(parts.begin() + 4, parts.end()),
-                    raw, 0, buffer, dimensions, modify_index) < 0) {
-                std::cout << "Encode data error" << std::endl;
-                return;
-            }
-        } else {
-            if (EncodeMultiDimensionData(
-                    std::vector<std::string>(parts.begin() + 4, parts.end()),
-                    raw, 0, buffer, dimensions) < 0) {
-                std::cout << "Encode data error" << std::endl;
-                return;
-            }
-        }
-        if (table_status.compress_type() ==
-            ::rtidb::api::CompressType::kSnappy) {
+
+        if (table_meta.compress_type() == ::rtidb::api::CompressType::kSnappy) {
             std::string compressed;
-            ::snappy::Compress(buffer.c_str(), buffer.length(), &compressed);
-            buffer = compressed;
+            ::snappy::Compress(value.c_str(), value.length(), &compressed);
+            value.swap(compressed);
         }
         ok = client->Put(boost::lexical_cast<uint32_t>(parts[1]),
                          boost::lexical_cast<uint32_t>(parts[2]),
-                         boost::lexical_cast<uint64_t>(parts[3]), buffer,
+                         boost::lexical_cast<uint64_t>(parts[3]), value,
                          dimensions[0]);
         if (ok) {
             std::cout << "Put ok" << std::endl;

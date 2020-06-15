@@ -335,11 +335,10 @@ __attribute__((unused)) static void PrintColumnKey(
 }
 
 __attribute__((unused)) static void ShowTableRows(
-    const ::rtidb::nameserver::TableInfo& table_info,
+    bool is_compress, ::rtidb::codec::SDKCodec* codec,
     ::rtidb::cmd::SDKIterator* it) {
-    ::rtidb::codec::SDKCodec codec(table_info);
-    std::vector<std::string> row = codec.GetColNames();
-    if (!codec.HasTSCol()) {
+    std::vector<std::string> row = codec->GetColNames();
+    if (!codec->HasTSCol()) {
         row.insert(row.begin(), "ts");
     }
     row.insert(row.begin(), "#");
@@ -349,23 +348,43 @@ __attribute__((unused)) static void ShowTableRows(
     while (it->Valid()) {
         std::vector<std::string> vrow;
         vrow.push_back(boost::lexical_cast<std::string>(index));
-        if (!codec.HasTSCol()) {
+        if (!codec->HasTSCol()) {
             vrow.push_back(std::to_string(it->GetKey()));
         }
         std::string value;
-        if (table_info.compress_type() == ::rtidb::nameserver::kSnappy) {
+        if (is_compress) {
             ::snappy::Uncompress(it->GetValue().data(), it->GetValue().size(),
                                  &value);
         } else {
             value.assign(it->GetValue().data(), it->GetValue().size());
         }
-        codec.DecodeRow(value, &vrow);
+        codec->DecodeRow(value, &vrow);
         TransferString(&vrow);
         tp.AddRow(vrow);
         index++;
         it->Next();
     }
     tp.Print(true);
+}
+
+__attribute__((unused)) static void ShowTableRows(
+    const ::rtidb::api::TableMeta& table_info, ::rtidb::cmd::SDKIterator* it) {
+    ::rtidb::codec::SDKCodec codec(table_info);
+    bool is_compress =
+        table_info.compress_type() == ::rtidb::api::CompressType::kSnappy
+            ? true
+            : false;
+    ShowTableRows(is_compress, &codec, it);
+}
+
+__attribute__((unused)) static void ShowTableRows(
+    const ::rtidb::nameserver::TableInfo& table_info,
+    ::rtidb::cmd::SDKIterator* it) {
+    ::rtidb::codec::SDKCodec codec(table_info);
+    bool is_compress =
+        table_info.compress_type() == ::rtidb::nameserver::kSnappy ? true
+                                                                   : false;
+    ShowTableRows(is_compress, &codec, it);
 }
 
 __attribute__((unused)) static void ShowTableRows(

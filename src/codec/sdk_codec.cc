@@ -13,40 +13,11 @@ namespace rtidb {
 namespace codec {
 
 SDKCodec::SDKCodec(const ::rtidb::nameserver::TableInfo& table_info)
-    : base_schema_size_(0), modify_times_(0) {
-    format_version_ = table_info.format_version();
-    if (table_info.column_key_size() > 0) {
-        index_.CopyFrom(table_info.column_key());
-    }
+    : format_version_(table_info.format_version()),
+      base_schema_size_(0),
+      modify_times_(0) {
     if (table_info.column_desc_v1_size() > 0) {
-        base_schema_size_ = table_info.column_desc_v1_size();
-        if (format_version_ == 1) {
-            schema_.CopyFrom(table_info.column_desc_v1());
-        }
-        for (uint32_t idx = 0; idx < (uint32_t)table_info.column_desc_v1_size();
-             idx++) {
-            const auto& cur_column_desc = table_info.column_desc_v1(idx);
-            schema_idx_map_.emplace(cur_column_desc.name(), idx);
-            if (cur_column_desc.is_ts_col()) {
-                ts_idx_.push_back(idx);
-            }
-            if (format_version_ == 0) {
-                ::rtidb::codec::ColumnDesc column_desc;
-                ::rtidb::codec::ColType type =
-                    SchemaCodec::ConvertType(cur_column_desc.type());
-                column_desc.type = type;
-                column_desc.name = cur_column_desc.name();
-                column_desc.add_ts_idx = cur_column_desc.add_ts_idx();
-                column_desc.is_ts_col = cur_column_desc.is_ts_col();
-                old_schema_.push_back(std::move(column_desc));
-            }
-            if (cur_column_desc.add_ts_idx() &&
-                table_info.column_key_size() == 0) {
-                auto col_key = index_.Add();
-                col_key->set_index_name(cur_column_desc.name());
-                col_key->add_col_name(cur_column_desc.name());
-            }
-        }
+        ParseColumnDesc(table_info.column_desc_v1());
     } else {
         base_schema_size_ = table_info.column_desc_size();
         for (uint32_t idx = 0; idx < (uint32_t)table_info.column_desc_size();
@@ -76,8 +47,68 @@ SDKCodec::SDKCodec(const ::rtidb::nameserver::TableInfo& table_info)
             }
         }
     }
+    if (table_info.column_key_size() > 0) {
+        index_.Clear();
+        index_.CopyFrom(table_info.column_key());
+    }
+    ParseAddedColumnDesc(table_info.added_column_desc());
+    for (const auto& name : table_info.partition_key()) {
+        auto iter = schema_idx_map_.find(name);
+        if (iter != schema_idx_map_.end()) {
+            partition_col_idx_.push_back(iter->second);
+        }
+    }
+}
+
+SDKCodec::SDKCodec(const ::rtidb::api::TableMeta& table_info)
+    : format_version_(table_info.format_version()),
+      base_schema_size_(0),
+      modify_times_(0) {
+    if (table_info.column_key_size() > 0) {
+        index_.CopyFrom(table_info.column_key());
+    }
+    if (table_info.column_desc_size() > 0) {
+        ParseColumnDesc(table_info.column_desc());
+    } else if (!table_info.schema().empty()) {
+        ::rtidb::codec::SchemaCodec scodec;
+        scodec.Decode(table_info.schema(), old_schema_);
+        base_schema_size_ = old_schema_.size();
+    }
+    ParseAddedColumnDesc(table_info.added_column_desc());
+}
+
+void SDKCodec::ParseColumnDesc(const Schema& column_desc) {
+    base_schema_size_ = column_desc.size();
+    if (format_version_ == 1) {
+        schema_.CopyFrom(column_desc);
+    }
+    for (uint32_t idx = 0; idx < (uint32_t)column_desc.size(); idx++) {
+        const auto& cur_column_desc = column_desc.Get(idx);
+        schema_idx_map_.emplace(cur_column_desc.name(), idx);
+        if (cur_column_desc.is_ts_col()) {
+            ts_idx_.push_back(idx);
+        }
+        if (format_version_ == 0) {
+            ::rtidb::codec::ColumnDesc column_desc;
+            ::rtidb::codec::ColType type =
+                SchemaCodec::ConvertType(cur_column_desc.type());
+            column_desc.type = type;
+            column_desc.name = cur_column_desc.name();
+            column_desc.add_ts_idx = cur_column_desc.add_ts_idx();
+            column_desc.is_ts_col = cur_column_desc.is_ts_col();
+            old_schema_.push_back(std::move(column_desc));
+        }
+        if (cur_column_desc.add_ts_idx()) {
+            auto col_key = index_.Add();
+            col_key->set_index_name(cur_column_desc.name());
+            col_key->add_col_name(cur_column_desc.name());
+        }
+    }
+}
+
+void SDKCodec::ParseAddedColumnDesc(const Schema& column_desc) {
     uint32_t idx = old_schema_.size();
-    for (const auto& cur_column_desc : table_info.added_column_desc()) {
+    for (const auto& cur_column_desc : column_desc) {
         schema_idx_map_.emplace(cur_column_desc.name(), idx);
         idx++;
         ::rtidb::codec::ColumnDesc column_desc;
@@ -89,17 +120,8 @@ SDKCodec::SDKCodec(const ::rtidb::nameserver::TableInfo& table_info)
         column_desc.is_ts_col = cur_column_desc.is_ts_col();
         old_schema_.push_back(std::move(column_desc));
     }
-    for (const auto& name : table_info.partition_key()) {
-        auto iter = schema_idx_map_.find(name);
-        if (iter != schema_idx_map_.end()) {
-            partition_col_idx_.push_back(iter->second);
-        }
-    }
-    modify_times_ = table_info.added_column_desc_size();
+    modify_times_ = column_desc.size();
 }
-
-SDKCodec::SDKCodec(const ::rtidb::api::TableMeta& table_info)
-    : base_schema_size_(0), modify_times_(0) {}
 
 int SDKCodec::EncodeDimension(
     const std::map<std::string, std::string>& raw_data, uint32_t pid_num,

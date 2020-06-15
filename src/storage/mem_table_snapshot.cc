@@ -16,7 +16,7 @@
 
 #include "base/count_down_latch.h"
 #include "base/file_util.h"
-#include "base/glog_wapper.h"  // NOLINT
+#include "base/glog_wapper.h"
 #include "base/hash.h"
 #include "base/kv_iterator.h"
 #include "base/slice.h"

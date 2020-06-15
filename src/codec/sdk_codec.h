@@ -49,6 +49,10 @@ class SDKCodec {
     std::vector<std::string> GetColNames();
 
  private:
+    void ParseColumnDesc(const Schema& column_desc);
+    void ParseAddedColumnDesc(const Schema& column_desc);
+
+ private:
     Schema schema_;
     Index index_;
     std::vector<::rtidb::codec::ColumnDesc> old_schema_;
