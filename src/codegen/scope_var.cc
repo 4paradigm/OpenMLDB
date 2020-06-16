@@ -81,7 +81,6 @@ bool ScopeVar::AddVar(const std::string& name,
 
 bool ScopeVar::FindVar(const std::string& name,
                        NativeValue* value) {
-    DLOG(INFO) << "try find1 " << name;
     if (value == NULL) {
         LOG(WARNING) << " input value is null";
         return false;
@@ -92,7 +91,6 @@ bool ScopeVar::FindVar(const std::string& name,
         return false;
     }
 
-    DLOG(INFO) << "try find " << name;
     for (auto scope_iter = scopes_.rbegin(); scope_iter != scopes_.rend();
          scope_iter++) {
         Scope& exist_scope = *scope_iter;

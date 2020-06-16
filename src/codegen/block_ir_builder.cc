@@ -11,6 +11,7 @@
 #include "codegen/list_ir_builder.h"
 #include "codegen/type_ir_builder.h"
 #include "codegen/variable_ir_builder.h"
+#include "codegen/context.h"
 #include "glog/logging.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/IR/CFG.h"
@@ -118,6 +119,64 @@ bool fesql::codegen::BlockIRBuilder::BuildBlock(
     return true;
 }
 
+
+bool BlockIRBuilder::DoBuildBranchBlock(
+        const ::fesql::node::FnIfElseBlock* if_else_block,
+        size_t branch_idx,
+        CodeGenContext* ctx,
+        ::llvm::BasicBlock* if_else_end) {
+    Status status;
+    ::llvm::BasicBlock* cur_block = ctx->GetCurrentBlock();
+
+    if (branch_idx == 0) {
+        // if () {}
+        return BuildBlock(if_else_block->if_block_->block_,
+            cur_block, if_else_end, status);
+
+    } else if (branch_idx <= if_else_block->elif_blocks_.size()) {
+        // else if () {}
+        auto node = if_else_block->elif_blocks_[branch_idx - 1];
+        auto elif_block = dynamic_cast<fesql::node::FnElifBlock*>(node);
+
+        NativeValue elif_condition;
+        ExprIRBuilder expr_builder(cur_block, sv_);
+        bool elif_ok = expr_builder.Build(elif_block->elif_node_->expression_,
+            &elif_condition, status);
+        if (!elif_ok) {
+            LOG(WARNING) << "fail to codegen else if condition: "
+                << status.msg;
+            return false;
+        }
+
+        status = ctx->CreateBranch(elif_condition, [&](){
+            elif_ok = BuildBlock(elif_block->block_, ctx->GetCurrentBlock(),
+                if_else_end, status);
+            CHECK_TRUE(elif_ok, "fail to codegen block:", status.msg);
+            return Status::OK();
+        }, [&](){
+            elif_ok = DoBuildBranchBlock(if_else_block,
+                branch_idx + 1, ctx, if_else_end);
+            CHECK_TRUE(elif_ok, "fail to codegen block:", status.msg);
+            return Status::OK();
+        });
+
+    } else {
+        // else {}
+        if (nullptr == if_else_block->else_block_) {
+            ctx->GetBuilder()->CreateBr(if_else_end);
+        } else {
+            bool else_ok = BuildBlock(if_else_block->else_block_->block_,
+                cur_block, if_else_end, status);
+            if (!else_ok) {
+                LOG(WARNING) << "fail to codegen else block: " << status.msg;
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+
 bool BlockIRBuilder::BuildIfElseBlock(
     const ::fesql::node::FnIfElseBlock *if_else_block,
     llvm::BasicBlock *if_else_start, llvm::BasicBlock *if_else_end,
@@ -126,80 +185,42 @@ bool BlockIRBuilder::BuildIfElseBlock(
         if_else_end == nullptr) {
         status.code = common::kCodegenError;
         status.msg =
-            "fail to codegen if else block: node or start block or end expr is "
-            "null";
+            "fail to codegen if else block: "
+            "node or start block or end expr is null";
         LOG(WARNING) << status.msg;
         return false;
     }
     llvm::Function *fn = if_else_start->getParent();
-    llvm::LLVMContext &ctx = if_else_start->getContext();
 
-    ::llvm::IRBuilder<> builder(if_else_start);
+    CodeGenContext ctx(fn->getParent());
+    FunctionScopeGuard func_guard(fn, &ctx);
 
-    llvm::BasicBlock *cond_true =
-        llvm::BasicBlock::Create(ctx, "cond_true", fn);
-    llvm::BasicBlock *cond_false =
-        llvm::BasicBlock::Create(ctx, "cond_false", fn);
+    BlockGroup root_group(if_else_start, &ctx);
+    BlockGroupGuard root_group_guard(&root_group);
 
-    builder.SetInsertPoint(if_else_start);
-    ExprIRBuilder expr_builder(builder.GetInsertBlock(), sv_);
-    // 进行条件的代码
-    NativeValue cond_wrapper;
-    if (false ==
-        expr_builder.Build(if_else_block->if_block_->if_node->expression_,
-                           &cond_wrapper, status)) {
+    // first condition
+    ExprIRBuilder expr_builder(ctx.GetCurrentBlock(), sv_);
+    NativeValue condition;
+    if (!expr_builder.Build(if_else_block->if_block_->if_node->expression_,
+                            &condition, status)) {
         LOG(WARNING) << "fail to codegen condition expression: " << status.msg;
         return false;
     }
-    llvm::Value *cond = cond_wrapper.GetValue(&builder);
 
-    builder.CreateCondBr(cond, cond_true, cond_false);
-    builder.SetInsertPoint(cond_true);
-    if (!BuildBlock(if_else_block->if_block_->block_, cond_true, if_else_end,
-                    status)) {
-        LOG(WARNING) << "fail to build block " << status.msg;
+    status = ctx.CreateBranch(condition, [&]() {
+        CHECK_TRUE(DoBuildBranchBlock(if_else_block, 0, &ctx, if_else_end));
+        return Status::OK();
+    }, [&]() {
+        CHECK_TRUE(DoBuildBranchBlock(if_else_block, 1, &ctx, if_else_end));
+        return Status::OK();
+    });
+
+    root_group.DropEmptyBlocks();
+    root_group.ReInsertTo(fn);
+
+    if (!status.isOK()) {
+        LOG(WARNING) << "fail to codegen if else block: " << status.msg;
         return false;
-    }
-    builder.SetInsertPoint(cond_false);
-    if (!if_else_block->elif_blocks_.empty()) {
-        for (fesql::node::FnNode *node : if_else_block->elif_blocks_) {
-            llvm::BasicBlock *cond_true =
-                llvm::BasicBlock::Create(ctx, "cond_true", fn);
-            llvm::BasicBlock *cond_false =
-                llvm::BasicBlock::Create(ctx, "cond_false", fn);
-
-            fesql::node::FnElifBlock *elif_block =
-                dynamic_cast<fesql::node::FnElifBlock *>(node);
-
-            NativeValue cond_wrapper;
-            ExprIRBuilder expr_builder(builder.GetInsertBlock(), sv_);
-            if (!expr_builder.Build(elif_block->elif_node_->expression_,
-                                    &cond_wrapper, status)) {
-                LOG(WARNING)
-                    << "fail to codegen condition expression" << status.msg;
-                return false;
-            }
-            llvm::Value *cond = cond_wrapper.GetValue(&builder);
-
-            builder.CreateCondBr(cond, cond_true, cond_false);
-            builder.SetInsertPoint(cond_true);
-            if (!BuildBlock(elif_block->block_, builder.GetInsertBlock(),
-                            if_else_end, status)) {
-                LOG(WARNING) << "fail to codegen block: " << status.msg;
-                return false;
-            }
-            builder.SetInsertPoint(cond_false);
-        }
-    }
-
-    if (nullptr == if_else_block->else_block_) {
-        builder.CreateBr(if_else_end);
-    } else {
-        if (!BuildBlock(if_else_block->else_block_->block_,
-                        builder.GetInsertBlock(), if_else_end, status)) {
-            LOG(WARNING) << "fail to codegen block: " << status.msg;
-            return false;
-        }
     }
     return true;
 }

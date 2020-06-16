@@ -209,14 +209,13 @@ int32_t AppendString(int8_t* buf_ptr, uint32_t buf_size, uint32_t col_idx,
                      int8_t* val, uint32_t size, int8_t is_null,
                      uint32_t str_start_offset,
                      uint32_t str_field_offset, uint32_t str_addr_space,
-                     uint32_t str_body_offset, uint32_t str_field_cnt) {
+                     uint32_t str_body_offset) {
     if (is_null) {
         AppendNullBit(buf_ptr, col_idx, true);
         size_t str_addr_length = GetAddrLength(buf_size);
-        size_t str_offset = str_start_offset + str_addr_length * str_field_cnt;
         FillNullStringOffset(
             buf_ptr, str_start_offset, str_addr_length,
-            str_field_offset, str_offset);
+            str_field_offset, str_body_offset);
         return str_body_offset;
     }
 
