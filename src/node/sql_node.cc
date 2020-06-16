@@ -370,17 +370,32 @@ bool OrderByNode::Equals(const ExprNode *node) const {
 void FrameNode::Print(std::ostream &output, const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
-
     output << "\n";
-    PrintValue(output, tab, NameOfSQLNodeType(frame_type_), "type", false);
-
+    PrintValue(output, tab, FrameTypeName(frame_type_), "frame_type", false);
+    if (nullptr != frame_range_) {
+        output << "\n";
+        PrintSQLNode(output, tab, frame_range_, "frame_range", false);
+    }
+    if (nullptr != frame_rows_) {
+        output << "\n";
+        PrintSQLNode(output, tab, frame_rows_, "frame_rows", false);
+    }
+    if (0 != frame_maxsize_) {
+        output << "\n";
+        PrintValue(output, tab, std::to_string(frame_maxsize_), "frame_maxsize",
+                   false);
+    }
+}
+void FrameExtent::Print(std::ostream &output,
+                        const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
     if (NULL == start_) {
         PrintValue(output, tab, "UNBOUNDED", "start", false);
     } else {
         PrintSQLNode(output, tab, start_, "start", false);
     }
-
     output << "\n";
     if (NULL == end_) {
         PrintValue(output, tab, "UNBOUNDED", "end", true);
@@ -388,15 +403,55 @@ void FrameNode::Print(std::ostream &output, const std::string &org_tab) const {
         PrintSQLNode(output, tab, end_, "end", true);
     }
 }
+bool FrameExtent::Equals(const SQLNode *node) const {
+    if (!SQLNode::Equals(node)) {
+        return false;
+    }
+    const FrameExtent *that = dynamic_cast<const FrameExtent *>(node);
+    return SQLEquals(this->start_, that->start_) &&
+           SQLEquals(this->end_, that->end_);
+}
 bool FrameNode::Equals(const SQLNode *node) const {
     if (!SQLNode::Equals(node)) {
         return false;
     }
     const FrameNode *that = dynamic_cast<const FrameNode *>(node);
-    return this->frame_type_ == that->frame_type_;
-    SQLEquals(this->start_, that->start_) && SQLEquals(this->end_, that->end_);
+    return this->frame_type_ == that->frame_type_ &&
+           SQLEquals(this->frame_range_, that->frame_range_) &&
+           SQLEquals(this->frame_rows_, that->frame_rows_) &&
+           (this->frame_maxsize_ == that->frame_maxsize_);
 }
 
+const std::string FrameNode::GetExprString() const {
+    std::string str = "";
+
+    if (nullptr != frame_range_) {
+        str.append("range").append(frame_range_->GetExprString());
+    }
+    if (nullptr != frame_rows_) {
+        if (!str.empty()) {
+            str.append(",");
+        }
+        str.append("rows").append(frame_rows_->GetExprString());
+    }
+    return str;
+}
+bool FrameNode::CanMergeWith(const FrameNode *that) const {
+    if (Equals(that)) {
+        return true;
+    }
+    if (nullptr == that) {
+        return false;
+    }
+    if (this->frame_type_ == that->frame_type_) {
+        return true;
+    }
+
+    if (this->frame_type_ == kFrameRange || that->frame_type_ == kFrameRange) {
+        return false;
+    }
+    return true;
+}
 void CallExprNode::Print(std::ostream &output,
                          const std::string &org_tab) const {
     ExprNode::Print(output, org_tab);
@@ -413,7 +468,11 @@ const std::string CallExprNode::GetExprString() const {
     str.append(nullptr == args_ ? "()" : args_->GetExprString());
 
     if (nullptr != over_) {
-        str.append("over ").append(over_->GetName());
+        if (over_->GetName().empty()) {
+            str.append("over ANONYMOUS_WINDOW ");
+        } else {
+            str.append("over ").append(over_->GetName());
+        }
     }
     return str;
 }
@@ -455,14 +514,30 @@ void WindowDefNode::Print(std::ostream &output,
     output << "\n";
     PrintSQLNode(output, tab, frame_ptr_, "frame", true);
 }
+bool WindowDefNode::CanMergeWith(const WindowDefNode *that) const {
+    if (Equals(that)) {
+        return true;
+    }
+    if (nullptr == that) {
+        return false;
+    }
+    return SQLListEquals(this->union_tables_, that->union_tables_) &&
+           this->instance_not_in_window_ == that->instance_not_in_window_ &&
+           ExprEquals(this->orders_, that->orders_) &&
+           ExprEquals(this->partitions_, that->partitions_) &&
+           nullptr != frame_ptr_ &&
+           this->frame_ptr_->CanMergeWith(that->frame_ptr_);
+}
 bool WindowDefNode::Equals(const SQLNode *node) const {
     if (!SQLNode::Equals(node)) {
         return false;
     }
     const WindowDefNode *that = dynamic_cast<const WindowDefNode *>(node);
     return this->window_name_ == that->window_name_ &&
-           this->orders_ == that->orders_ &&
-           this->partitions_ == that->partitions_ &&
+           this->instance_not_in_window_ == that->instance_not_in_window_ &&
+           SQLListEquals(this->union_tables_, that->union_tables_) &&
+           ExprEquals(this->orders_, that->orders_) &&
+           ExprEquals(this->partitions_, that->partitions_) &&
            SQLEquals(this->frame_ptr_, that->frame_ptr_);
 }
 
@@ -568,23 +643,11 @@ std::string NameOfSQLNodeType(const SQLNodeType &type) {
         case kFrames:
             output = "kFrame";
             break;
+        case kFrameExtent:
+            output = "kFrameExtent";
+            break;
         case kFrameBound:
             output = "kBound";
-            break;
-        case kPreceding:
-            output = "kPreceding";
-            break;
-        case kFollowing:
-            output = "kFollowing";
-            break;
-        case kCurrent:
-            output = "kCurrent";
-            break;
-        case kFrameRange:
-            output = "kFrameRange";
-            break;
-        case kFrameRows:
-            output = "kFrameRows";
             break;
         case kConst:
             output = "kConst";
@@ -666,22 +729,35 @@ void FillSQLNodeList2NodeVector(
     }
 }
 
-WindowDefNode *WindowOfExpression(
-    std::map<std::string, WindowDefNode *> windows, ExprNode *node_ptr) {
+const WindowDefNode *WindowOfExpression(
+    std::map<std::string, const WindowDefNode *> windows, ExprNode *node_ptr) {
     WindowDefNode *w_ptr = nullptr;
     switch (node_ptr->GetExprType()) {
         case kExprCall: {
             CallExprNode *func_node_ptr =
                 dynamic_cast<CallExprNode *>(node_ptr);
             if (nullptr != func_node_ptr->GetOver()) {
-                return windows.at(func_node_ptr->GetOver()->GetName());
+                if (func_node_ptr->GetOver()->GetName().empty()) {
+                    return func_node_ptr->GetOver();
+                } else {
+                    auto iter =
+                        windows.find(func_node_ptr->GetOver()->GetName());
+                    if (iter == windows.cend()) {
+                        LOG(WARNING)
+                            << "Fail to resolved window from expression: "
+                            << func_node_ptr->GetOver()->GetName()
+                            << " undefined";
+                        return nullptr;
+                    }
+                    return iter->second;
+                }
             }
             if (nullptr == func_node_ptr->GetArgs() ||
                 func_node_ptr->GetArgs()->IsEmpty()) {
                 return nullptr;
             }
             for (auto arg : func_node_ptr->GetArgs()->children_) {
-                WindowDefNode *ptr =
+                const WindowDefNode *ptr =
                     WindowOfExpression(windows, dynamic_cast<ExprNode *>(arg));
                 if (nullptr != ptr && nullptr != w_ptr) {
                     LOG(WARNING)
@@ -1185,13 +1261,29 @@ bool QueryRefNode::Equals(const SQLNode *node) const {
     const QueryRefNode *that = dynamic_cast<const QueryRefNode *>(node);
     return SQLEquals(this->query_, that->query_);
 }
+int FrameBound::Compare(const FrameBound *bound1, const FrameBound *bound2) {
+    if (SQLEquals(bound1, bound2)) {
+        return 0;
+    }
+
+    if (nullptr == bound1) {
+        return -1;
+    }
+
+    if (nullptr == bound2) {
+        return 1;
+    }
+    int64_t offset1 = bound1->GetSignedOffset();
+    int64_t offset2 = bound2->GetSignedOffset();
+    return offset1 == offset2 ? 0 : offset1 > offset2 ? 1 : -1;
+}
 bool FrameBound::Equals(const SQLNode *node) const {
     if (!SQLNode::Equals(node)) {
         return false;
     }
     const FrameBound *that = dynamic_cast<const FrameBound *>(node);
     return this->bound_type_ == that->bound_type_ &&
-           ExprEquals(this->offset_, that->offset_);
+           this->offset_ == that->offset_;
 }
 bool NameNode::Equals(const SQLNode *node) const {
     if (!SQLNode::Equals(node)) {

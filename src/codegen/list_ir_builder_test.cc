@@ -13,6 +13,7 @@
 #include <memory>
 #include <utility>
 #include <vector>
+#include "case/sql_case.h"
 #include "codec/fe_row_codec.h"
 #include "codec/list_iterator_codec.h"
 #include "codegen/arithmetic_expr_ir_builder.h"
@@ -45,6 +46,7 @@ using namespace llvm::orc;  // NOLINT
 ExitOnError ExitOnErr;
 
 using fesql::base::ConstIterator;
+using fesql::sqlcase::SQLCase;
 struct TestString {
     int32_t size;
     char* data = nullptr;
@@ -383,7 +385,186 @@ void GetListIterator(T expected, const type::TableDef& table,
     T(*decode)
     (int8_t*) = reinterpret_cast<T (*)(int8_t*)>(load_fn_jit.getAddress());
     T res = decode(window);
-    ASSERT_EQ(res, expected);
+    ASSERT_FLOAT_EQ(res, expected);
+}
+
+template <class T>
+void GetInnerListIterator(T expected, const type::TableDef& table,
+                          const ::fesql::type::Type& type,
+                          const std::string& col, int8_t* window,
+                          int64_t start_offset, int64_t end_offset,
+                          bool inner_range) {
+    auto ctx = llvm::make_unique<LLVMContext>();
+    auto m = make_unique<Module>("test_load_buf", *ctx);
+    ::fesql::udf::RegisterUDFToModule(m.get());
+    // Create the add1 function entry and insert this entry into module M.  The
+    // function will have a return type of "int" and take an argument of "int".
+    ::llvm::Type* retTy = NULL;
+    switch (type) {
+        case ::fesql::type::kInt16:
+            retTy = Type::getInt16Ty(*ctx);
+            break;
+        case ::fesql::type::kInt32:
+            retTy = Type::getInt32Ty(*ctx);
+            break;
+        case ::fesql::type::kInt64:
+            retTy = Type::getInt64Ty(*ctx);
+            break;
+        case ::fesql::type::kDouble:
+            retTy = Type::getDoubleTy(*ctx);
+            break;
+        case ::fesql::type::kFloat:
+            retTy = Type::getFloatTy(*ctx);
+            break;
+        case ::fesql::type::kVarchar:
+            retTy = Type::getInt8PtrTy(*ctx);
+            break;
+        case ::fesql::type::kTimestamp:
+            ASSERT_TRUE(GetLLVMType(m.get(), node::kTimestamp, &retTy));
+            break;
+        default:
+            LOG(WARNING) << "invalid test type";
+            FAIL();
+    }
+    Function* fn = Function::Create(
+        FunctionType::get(retTy, {Type::getInt8PtrTy(*ctx)}, false),
+        Function::ExternalLinkage, "fn", m.get());
+    BasicBlock* entry_block = BasicBlock::Create(*ctx, "EntryBlock", fn);
+    ScopeVar sv;
+    sv.Enter("enter row scope");
+
+    MemoryWindowDecodeIRBuilder buf_builder(table.columns(), entry_block);
+    ListIRBuilder list_builder(entry_block, &sv);
+
+    IRBuilder<> builder(entry_block);
+    Function::arg_iterator it = fn->arg_begin();
+    Argument* arg0 = &*it;
+
+    ::llvm::Value* inner_list = NULL;
+    if (inner_range) {
+        ASSERT_TRUE(buf_builder.BuildInnerRangeList(arg0, start_offset,
+                                                    end_offset, &inner_list));
+    } else {
+        ASSERT_TRUE(buf_builder.BuildInnerRowsList(arg0, start_offset,
+                                                   end_offset, &inner_list));
+    }
+    // build column
+    ::llvm::Value* column = NULL;
+    bool ok = buf_builder.BuildGetCol(col, inner_list, &column);
+    ASSERT_TRUE(ok);
+
+    ::llvm::Value* iterator = nullptr;
+    base::Status status;
+    ASSERT_TRUE(list_builder.BuildIterator(column, &iterator, status));
+    ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
+    ::llvm::Value* i8_ptr = builder.CreatePointerCast(iterator, i8_ptr_ty);
+    llvm::FunctionCallee callee;
+    switch (type) {
+        case fesql::type::kInt16:
+            callee =
+                m->getOrInsertFunction("iterator_sum_i16", retTy, i8_ptr_ty);
+            break;
+        case fesql::type::kInt32:
+            callee =
+                m->getOrInsertFunction("iterator_sum_i32", retTy, i8_ptr_ty);
+            break;
+        case fesql::type::kInt64:
+            callee =
+                m->getOrInsertFunction("iterator_sum_i64", retTy, i8_ptr_ty);
+            break;
+        case fesql::type::kFloat:
+            callee =
+                m->getOrInsertFunction("iterator_sum_float", retTy, i8_ptr_ty);
+            break;
+        case fesql::type::kDouble:
+            callee =
+                m->getOrInsertFunction("iterator_sum_double", retTy, i8_ptr_ty);
+            break;
+        case fesql::type::kTimestamp:
+            callee = m->getOrInsertFunction("iterator_sum_timestamp", retTy,
+                                            i8_ptr_ty);
+            break;
+        case fesql::type::kVarchar:
+            callee =
+                m->getOrInsertFunction("iterator_sum_string", retTy, i8_ptr_ty);
+            break;
+        default: {
+            FAIL();
+        }
+    }
+    ::llvm::Value* ret_val =
+        builder.CreateCall(callee, ::llvm::ArrayRef<Value*>(i8_ptr));
+
+    ::llvm::Value* ret_delete = nullptr;
+    list_builder.BuildIteratorDelete(iterator, &ret_delete, status);
+    builder.CreateRet(ret_val);
+
+    m->print(::llvm::errs(), NULL);
+    auto J = ExitOnErr(::llvm::orc::LLJITBuilder().create());
+    auto& jd = J->getMainJITDylib();
+    ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
+                                      J->getDataLayout());
+
+    ::llvm::StringRef symbol1("iterator_sum_i16");
+    ::llvm::StringRef symbol2("iterator_sum_i32");
+    ::llvm::StringRef symbol3("iterator_sum_i64");
+    ::llvm::StringRef symbol4("iterator_sum_float");
+    ::llvm::StringRef symbol5("iterator_sum_double");
+    ::llvm::StringRef symbol6("iterator_sum_timestamp");
+    //    ::llvm::StringRef symbol6("iterator_sum_string");
+    ::llvm::orc::SymbolMap symbol_map;
+
+    ::llvm::JITEvaluatedSymbol jit_symbol1(
+        ::llvm::pointerToJITTargetAddress(
+            reinterpret_cast<void*>(&IteratorSumInt16)),
+        ::llvm::JITSymbolFlags());
+    ::llvm::JITEvaluatedSymbol jit_symbol2(
+        ::llvm::pointerToJITTargetAddress(
+            reinterpret_cast<void*>(&IteratorSumInt32)),
+        ::llvm::JITSymbolFlags());
+
+    ::llvm::JITEvaluatedSymbol jit_symbol3(
+        ::llvm::pointerToJITTargetAddress(
+            reinterpret_cast<void*>(&IteratorSumInt64)),
+        ::llvm::JITSymbolFlags());
+    ::llvm::JITEvaluatedSymbol jit_symbol4(
+        ::llvm::pointerToJITTargetAddress(
+            reinterpret_cast<void*>(&IteratorSumFloat)),
+        ::llvm::JITSymbolFlags());
+    ::llvm::JITEvaluatedSymbol jit_symbol5(
+        ::llvm::pointerToJITTargetAddress(
+            reinterpret_cast<void*>(&IteratorSumDouble)),
+        ::llvm::JITSymbolFlags());
+    ::llvm::JITEvaluatedSymbol jit_symbol6(
+        ::llvm::pointerToJITTargetAddress(
+            reinterpret_cast<void*>(&IteratorSumTimestamp)),
+        ::llvm::JITSymbolFlags());
+
+    //    ::llvm::JITEvaluatedSymbol jit_symbol6(
+    //        ::llvm::pointerToJITTargetAddress(
+    //            reinterpret_cast<void*>(&PrintListString)),
+    //        ::llvm::JITSymbolFlags());
+
+    symbol_map.insert(std::make_pair(mi(symbol1), jit_symbol1));
+    symbol_map.insert(std::make_pair(mi(symbol2), jit_symbol2));
+    symbol_map.insert(std::make_pair(mi(symbol3), jit_symbol3));
+    symbol_map.insert(std::make_pair(mi(symbol4), jit_symbol4));
+    symbol_map.insert(std::make_pair(mi(symbol5), jit_symbol5));
+    symbol_map.insert(std::make_pair(mi(symbol6), jit_symbol6));
+
+    // add codec
+    auto err = jd.define(::llvm::orc::absoluteSymbols(symbol_map));
+    if (err) {
+        ASSERT_TRUE(false);
+    }
+    ::fesql::udf::InitUDFSymbol(jd, mi);
+    ::fesql::vm::InitCodecSymbol(jd, mi);
+    ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
+    auto load_fn_jit = ExitOnErr(J->lookup("fn"));
+    T(*decode)
+    (int8_t*) = reinterpret_cast<T (*)(int8_t*)>(load_fn_jit.getAddress());
+    T res = decode(window);
+    ASSERT_FLOAT_EQ(res, expected);
 }
 
 template <class T>
@@ -637,7 +818,21 @@ void RunListIteratorCase(V expected, const type::TableDef& table,
                          const std::string& col, int8_t* window) {
     GetListIterator(expected, table, type, col, window);
 }
+template <class V>
+void RunInnerRangeListIteratorCase(V expected, const type::TableDef& table,
+                                   const ::fesql::type::Type& type,
+                                   const std::string& col, int8_t* window,
+                                   int64_t start, int64_t end) {
+    GetInnerListIterator(expected, table, type, col, window, start, end, true);
+}
 
+template <class V>
+void RunInnerRowsListIteratorCase(V expected, const type::TableDef& table,
+                                  const ::fesql::type::Type& type,
+                                  const std::string& col, int8_t* window,
+                                  int64_t start, int64_t end) {
+    GetInnerListIterator(expected, table, type, col, window, start, end, false);
+}
 template <class V>
 void RunListIteratorNextCase(V expected, const type::TableDef& table,
                              const ::fesql::type::Type& type,
@@ -865,6 +1060,71 @@ TEST_F(ListIRBuilderTest, list_string_iterator_next_test) {
     RunListIteratorNextCase(str, table, ::fesql::type::kVarchar, "col6", ptr);
     free(ptr);
 }
+
+TEST_F(ListIRBuilderTest, list_double_inner_range_test) {
+    int8_t* ptr = NULL;
+    std::vector<Row> rows;
+    type::TableDef table;
+    BuildWindow(table, rows, &ptr);
+
+    vm::CurrentHistoryWindow window(-3600000);
+    codec::RowView row_view(table.columns());
+    for (auto row : rows) {
+        row_view.Reset(row.buf());
+        window.BufferData(row_view.GetTimestampUnsafe(6), row);
+    }
+    RunInnerRangeListIteratorCase<double>(
+        4.1 + 44.1 + 444.1 + 4444.1 + 44444.1, table, ::fesql::type::kDouble,
+        "col4", reinterpret_cast<int8_t*>(&window), 0, -3600000);
+
+    RunInnerRangeListIteratorCase<double>(
+        44444.1, table, ::fesql::type::kDouble, "col4",
+        reinterpret_cast<int8_t*>(&window), 0, -5000);
+    RunInnerRangeListIteratorCase<double>(
+        4444.1 + 44444.1, table, ::fesql::type::kDouble, "col4",
+        reinterpret_cast<int8_t*>(&window), 0, -10000);
+    RunInnerRangeListIteratorCase<double>(
+        444.1 + 4444.1 + 44444.1, table, ::fesql::type::kDouble, "col4",
+        reinterpret_cast<int8_t*>(&window), 0, -20000);
+
+    RunInnerRangeListIteratorCase<double>(
+        444.1 + 4444.1, table, ::fesql::type::kDouble, "col4",
+        reinterpret_cast<int8_t*>(&window), -10000, -20000);
+    free(ptr);
+}
+
+TEST_F(ListIRBuilderTest, list_double_inner_rows_test) {
+    int8_t* ptr = NULL;
+    std::vector<Row> rows;
+    type::TableDef table;
+    BuildWindow(table, rows, &ptr);
+
+    vm::CurrentHistoryWindow window(-3600000);
+    codec::RowView row_view(table.columns());
+    for (auto row : rows) {
+        row_view.Reset(row.buf());
+        window.BufferData(row_view.GetTimestampUnsafe(6), row);
+    }
+    RunInnerRowsListIteratorCase<double>(
+        4.1 + 44.1 + 444.1 + 4444.1 + 44444.1, table, ::fesql::type::kDouble,
+        "col4", reinterpret_cast<int8_t*>(&window), 0, 100);
+
+    RunInnerRowsListIteratorCase<double>(
+        44444.1, table, ::fesql::type::kDouble, "col4",
+        reinterpret_cast<int8_t*>(&window), 0, 0);
+    RunInnerRowsListIteratorCase<double>(
+        4444.1 + 44444.1, table, ::fesql::type::kDouble, "col4",
+        reinterpret_cast<int8_t*>(&window), 0, 1);
+    RunInnerRowsListIteratorCase<double>(
+        444.1 + 4444.1 + 44444.1, table, ::fesql::type::kDouble, "col4",
+        reinterpret_cast<int8_t*>(&window), 0, 2);
+
+    RunInnerRowsListIteratorCase<double>(
+        444.1 + 4444.1, table, ::fesql::type::kDouble, "col4",
+        reinterpret_cast<int8_t*>(&window), 1, 2);
+    free(ptr);
+}
+
 }  // namespace codegen
 }  // namespace fesql
 

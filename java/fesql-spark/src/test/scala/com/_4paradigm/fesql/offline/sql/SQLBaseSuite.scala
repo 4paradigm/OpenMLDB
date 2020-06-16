@@ -161,6 +161,7 @@ class SQLBaseSuite extends SparkTestSuite {
       val dataType = typeName match {
         case "i16" => ShortType
         case "int16" => ShortType
+        case "int" => IntegerType
         case "i32" => IntegerType
         case "int32" => IntegerType
         case "i64" => LongType

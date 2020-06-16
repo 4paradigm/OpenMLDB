@@ -392,6 +392,9 @@ bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
         LOG(WARNING) << status.msg;
         return false;
     }
+    if (!CheckHistoryWindowFrame(w_ptr, status)) {
+        return false;
+    }
     const node::OrderByNode* orders = w_ptr->GetOrders();
     const node::ExprListNode* groups = w_ptr->GetKeys();
 
@@ -404,15 +407,9 @@ bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
                 if (table) {
                     auto right = new PhysicalTableProviderNode(table);
                     node_manager_->RegisterNode(right);
-                    node::OrderByNode* request_orders =
-                        nullptr == orders ? nullptr
-                                          : dynamic_cast<node::OrderByNode*>(
-                                                node_manager_->MakeOrderByNode(
-                                                    orders->order_by_, false));
-                    auto request_union_op = new PhysicalRequestUnionNode(
-                        depend, right, groups, request_orders,
-                        w_ptr->GetStartOffset(), w_ptr->GetEndOffset(),
-                        w_ptr->instance_not_in_window());
+
+                    auto request_union_op =
+                        new PhysicalRequestUnionNode(depend, right, w_ptr);
                     node_manager_->RegisterNode(request_union_op);
                     if (!w_ptr->union_tables().empty()) {
                         for (auto iter = w_ptr->union_tables().cbegin();
@@ -494,16 +491,8 @@ bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
                     if (table) {
                         auto right = new PhysicalTableProviderNode(table);
                         node_manager_->RegisterNode(right);
-                        node::OrderByNode* request_orders =
-                            nullptr == orders
-                                ? nullptr
-                                : dynamic_cast<node::OrderByNode*>(
-                                      node_manager_->MakeOrderByNode(
-                                          orders->order_by_, false));
                         auto request_union_op = new PhysicalRequestUnionNode(
-                            request_op, right, groups, request_orders,
-                            w_ptr->GetStartOffset(), w_ptr->GetEndOffset(),
-                            w_ptr->instance_not_in_window());
+                            request_op, right, w_ptr);
                         node_manager_->RegisterNode(request_union_op);
                         if (!w_ptr->union_tables().empty()) {
                             for (auto iter = w_ptr->union_tables().cbegin();
@@ -561,15 +550,8 @@ bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
                     auto right_simple_project = new PhysicalSimpleProjectNode(
                         right, simple_project->output_schema_,
                         simple_project->project_.column_sources_);
-                    node::OrderByNode* request_orders =
-                        nullptr == orders ? nullptr
-                                          : dynamic_cast<node::OrderByNode*>(
-                                                node_manager_->MakeOrderByNode(
-                                                    orders->order_by_, false));
                     auto request_union_op = new PhysicalRequestUnionNode(
-                        depend, right_simple_project, groups, request_orders,
-                        w_ptr->GetStartOffset(), w_ptr->GetEndOffset(),
-                        w_ptr->instance_not_in_window());
+                        depend, right_simple_project, w_ptr);
                     node_manager_->RegisterNode(request_union_op);
                     if (!w_ptr->union_tables().empty()) {
                         for (auto iter = w_ptr->union_tables().cbegin();
@@ -795,12 +777,13 @@ bool BatchModeTransformer::AddPass(PhysicalPlanPassType type) {
 bool BatchModeTransformer::GenProjects(
     const SchemaSourceList& input_name_schema_list,
     const node::PlanNodeList& projects, const bool row_project,
+    const node::FrameNode* frame,
     std::string& fn_name,   // NOLINT
     Schema* output_schema,  // NOLINT
     ColumnSourceList* output_column_sources,
     base::Status& status) {  // NOLINT
     // TODO(wangtaize) use ops end op output schema
-    ::fesql::codegen::RowFnLetIRBuilder builder(input_name_schema_list,
+    ::fesql::codegen::RowFnLetIRBuilder builder(input_name_schema_list, frame,
                                                 module_);
     fn_name = "__internal_sql_codegen_" + std::to_string(id_++);
     bool ok =
@@ -874,8 +857,8 @@ bool BatchModeTransformer::CreatePhysicalProjectNode(
         case kRowProject:
         case kTableProject: {
             if (!GenProjects((node->GetOutputNameSchemaList()), projects, true,
-                             fn_name, &output_schema, &output_column_sources,
-                             status)) {
+                             nullptr, fn_name, &output_schema,
+                             &output_column_sources, status)) {
                 return false;
             }
             break;
@@ -885,6 +868,9 @@ bool BatchModeTransformer::CreatePhysicalProjectNode(
         case kWindowAggregation: {
             // TODO(chenjing): gen window aggregation
             if (!GenProjects((node->GetOutputNameSchemaList()), projects, false,
+                             nullptr == project_list->GetW()
+                                 ? nullptr
+                                 : project_list->GetW()->frame_node(),
                              fn_name, &output_schema, &output_column_sources,
                              status)) {
                 return false;
@@ -929,11 +915,8 @@ bool BatchModeTransformer::CreatePhysicalProjectNode(
         }
         case kWindowAggregation: {
             auto window_agg_op = new PhysicalWindowAggrerationNode(
-                node, project_list->w_ptr_->GetKeys(),
-                project_list->w_ptr_->GetOrders(), fn_name, output_schema,
-                output_column_sources, project_list->w_ptr_->GetStartOffset(),
-                project_list->w_ptr_->GetEndOffset(),
-                project_list->w_ptr_->instance_not_in_window());
+                node, project_list->w_ptr_, fn_name, output_schema,
+                output_column_sources);
 
             if (!project_list->w_ptr_->union_tables().empty()) {
                 for (auto iter = project_list->w_ptr_->union_tables().cbegin();
@@ -1119,7 +1102,7 @@ bool BatchModeTransformer::CodeGenExprList(
             pos++, node::ExprString(expr), expr));
     }
     vm::ColumnSourceList column_sources;
-    return GenProjects(input_name_schema_list, projects, true,
+    return GenProjects(input_name_schema_list, projects, true, nullptr,
                        fn_info->fn_name_, &fn_info->fn_schema_, &column_sources,
                        status);
 }
@@ -1348,6 +1331,33 @@ bool BatchModeTransformer::IsSimpleProject(const ColumnSourceList& sources) {
         }
     }
     return flag;
+}
+bool BatchModeTransformer::CheckHistoryWindowFrame(
+    const node::WindowPlanNode* w_ptr, base::Status& status) {
+    if (nullptr == w_ptr) {
+        status.code = common::kPlanError;
+        status.msg = "Invalid Request Window: null window";
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+    const node::FrameNode* frame = w_ptr->frame_node();
+    if (frame->GetHistoryRangeEnd() > 0 && frame->GetHistoryRowsEnd() > 0) {
+        status.code = common::kPlanError;
+        status.msg =
+            "Invalid Request Window: end frame can't exceed "
+            "CURRENT";
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+    if (frame->GetHistoryRangeStart() > 0 || frame->GetHistoryRowsStart() > 0) {
+        status.code = common::kPlanError;
+        status.msg =
+            "Invalid Request Window: start frame can't exceed "
+            "CURRENT";
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+    return true;
 }
 
 bool GroupAndSortOptimized::KeysFilterOptimized(
@@ -1867,7 +1877,7 @@ bool ConditionOptimized::Transform(PhysicalOpNode* in,
 bool ConditionOptimized::TransfromAndConditionList(
     const node::ExprNode* condition, node::ExprListNode* and_condition_list) {
     if (nullptr == condition) {
-        LOG(WARNING) << "fail to transfron conditions: null condition";
+        LOG(WARNING) << "Skip ConditionOptimized: conditions: null condition";
         return false;
     }
 

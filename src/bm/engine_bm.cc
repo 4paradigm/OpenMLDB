@@ -57,8 +57,24 @@ static void BM_EngineWindowSumFeature5(benchmark::State& state) {  // NOLINT
     EngineWindowSumFeature5(&state, BENCHMARK, state.range(0), state.range(1));
 }
 
-static void BM_EngineWindowMultiAggFeature5(benchmark::State& state) {  // NOLINT
-    EngineWindowMultiAggFeature5(
+static void BM_EngineWindowSumFeature5Window5(
+    benchmark::State& state) {  // NOLINT
+    EngineWindowSumFeature5Window5(&state, BENCHMARK, state.range(0),
+                                   state.range(1));
+}
+static void BM_EngineWindowMultiAggFeature5(
+    benchmark::State& state) {  // NOLINT
+    EngineWindowMultiAggFeature5(&state, BENCHMARK, state.range(0),
+                                 state.range(1));
+}
+static void BM_EngineWindowMultiAggWindow25Feature25(
+    benchmark::State& state) {  // NOLINT
+    EngineWindowMultiAggWindow25Feature25(&state, BENCHMARK, state.range(0),
+                                          state.range(1));
+}
+static void BM_EngineRunBatchWindowMultiAggWindow25Feature25(
+    benchmark::State& state) {  // NOLINT
+    EngineRunBatchWindowMultiAggWindow25Feature25(
         &state, BENCHMARK, state.range(0), state.range(1));
 }
 
@@ -91,6 +107,13 @@ static void BM_EngineRunBatchWindowSumFeature5(
     EngineRunBatchWindowSumFeature5(&state, BENCHMARK, state.range(0),
                                     state.range(1));
 }
+
+static void BM_EngineRunBatchWindowSumFeature5Window5(
+    benchmark::State& state) {  // NOLINT
+    EngineRunBatchWindowSumFeature5Window5(&state, BENCHMARK, state.range(0),
+                                           state.range(1));
+}
+
 // request engine simple bm
 BENCHMARK(BM_EngineRequestSimpleSelectVarchar);
 BENCHMARK(BM_EngineRequestSimpleSelectDouble);
@@ -126,6 +149,15 @@ BENCHMARK(BM_EngineWindowSumFeature5)
     ->Args({100, 100})
     ->Args({1000, 1000})
     ->Args({10000, 10000});
+BENCHMARK(BM_EngineWindowSumFeature5Window5)
+    ->Args({1, 2})
+    ->Args({1, 10})
+    ->Args({1, 100})
+    ->Args({1, 1000})
+    ->Args({1, 10000})
+    ->Args({100, 100})
+    ->Args({1000, 1000})
+    ->Args({10000, 10000});
 BENCHMARK(BM_EngineWindowMultiAggFeature5)
     ->Args({1, 2})
     ->Args({1, 10})
@@ -135,7 +167,15 @@ BENCHMARK(BM_EngineWindowMultiAggFeature5)
     ->Args({100, 100})
     ->Args({1000, 1000})
     ->Args({10000, 10000});
-
+BENCHMARK(BM_EngineWindowMultiAggWindow25Feature25)
+    ->Args({1, 2})
+    ->Args({1, 10})
+    ->Args({1, 100})
+    ->Args({1, 1000})
+    ->Args({1, 10000})
+    ->Args({100, 100})
+    ->Args({1000, 1000})
+    ->Args({10000, 10000});
 // batch engine window bm
 BENCHMARK(BM_EngineRunBatchWindowSumFeature1)
     ->Args({1, 2})
@@ -149,6 +189,25 @@ BENCHMARK(BM_EngineRunBatchWindowSumFeature1)
     ->Args({10000, 10000});
 BENCHMARK(BM_EngineRunBatchWindowSumFeature5)
     ->Args({1, 2})
+    ->Args({1, 2})
+    ->Args({1, 10})
+    ->Args({1, 100})
+    ->Args({1, 1000})
+    ->Args({1, 10000})
+    ->Args({100, 100})
+    ->Args({1000, 1000})
+    ->Args({10000, 10000});
+BENCHMARK(BM_EngineRunBatchWindowSumFeature5Window5)
+    ->Args({1, 2})
+    ->Args({1, 2})
+    ->Args({1, 10})
+    ->Args({1, 100})
+    ->Args({1, 1000})
+    ->Args({1, 10000})
+    ->Args({100, 100})
+    ->Args({1000, 1000})
+    ->Args({10000, 10000});
+BENCHMARK(BM_EngineRunBatchWindowMultiAggWindow25Feature25)
     ->Args({1, 2})
     ->Args({1, 10})
     ->Args({1, 100})

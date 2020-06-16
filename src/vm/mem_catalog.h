@@ -10,13 +10,13 @@
 #ifndef SRC_VM_MEM_CATALOG_H_
 #define SRC_VM_MEM_CATALOG_H_
 
+#include <deque>
 #include <functional>
 #include <map>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
-#include <deque>
 #include "base/fe_slice.h"
 #include "codec/list_iterator_codec.h"
 #include "glog/logging.h"
@@ -199,10 +199,17 @@ class MemTimeTableHandler : public TableHandler {
     std::unique_ptr<WindowIterator> GetWindowIterator(
         const std::string& idx_name);
     void AddRow(const uint64_t key, const Row& v);
+    void AddFrontRow(const uint64_t key, const Row& v);
     void PopBackRow();
     void PopFrontRow();
-    const Row& GetFrontRow() const;
+    virtual const std::pair<uint64_t, Row>& GetFrontRow() {
+        return table_.front();
+    }
+    virtual const std::pair<uint64_t, Row>& GetBackRow() {
+        return table_.back();
+    }
     void AddRow(const Row& v);
+    void AddFrontRow(const Row& v);
     void Sort(const bool is_asc);
     void Reverse();
     virtual const uint64_t GetCount() { return table_.size(); }
@@ -231,12 +238,14 @@ class Window : public MemTimeTableHandler {
         : MemTimeTableHandler(),
           start_offset_(start_offset),
           end_offset_(end_offset),
+          rows_preceding_(0),
           max_size_(0),
           instance_not_in_window_(false) {}
     Window(int64_t start_offset, int64_t end_offset, uint32_t max_size)
         : MemTimeTableHandler(),
           start_offset_(start_offset),
           end_offset_(end_offset),
+          rows_preceding_(0),
           max_size_(max_size),
           instance_not_in_window_(false) {}
     virtual ~Window() {}
@@ -251,17 +260,12 @@ class Window : public MemTimeTableHandler {
         if (nullptr == addr) {
             return new vm::MemTimeTableIterator(&table_, schema_);
         } else {
-            return new (addr)
-                vm::MemTimeTableIterator(&table_, schema_);
+            return new (addr) vm::MemTimeTableIterator(&table_, schema_);
         }
     }
     virtual void BufferData(uint64_t key, const Row& row) = 0;
     virtual void PopBackData() { PopBackRow(); }
     virtual void PopFrontData() { PopFrontRow(); }
-
-    virtual const std::pair<uint64_t, Row>& GetFrontData() const {
-        return table_.front();
-    }
 
     virtual const uint64_t GetCount() { return table_.size(); }
     virtual Row At(uint64_t pos) {
@@ -279,9 +283,16 @@ class Window : public MemTimeTableHandler {
         instance_not_in_window_ = flag;
     }
 
+    void set_rows_preceding(uint64_t row_preceding) {
+        this->rows_preceding_ = row_preceding;
+    }
+
+    const uint64_t rows_preceding() const { return this->rows_preceding_; }
+
  protected:
     int64_t start_offset_;
     int32_t end_offset_;
+    uint64_t rows_preceding_;
     uint32_t max_size_;
     bool instance_not_in_window_;
 };
@@ -296,16 +307,22 @@ class CurrentHistoryWindow : public Window {
     ~CurrentHistoryWindow() {}
 
     void BufferData(uint64_t key, const Row& row) {
-        AddRow(key, row);
-        int64_t sub = (key + start_offset_);
-        uint64_t start_ts = sub < 0 ? 0u : static_cast<uint64_t>(sub);
+        AddFrontRow(key, row);
 
         auto cur_size = table_.size();
         auto max_size = max_size_ > 0 ? max_size_ : 0;
-        while (cur_size > max_size) {
-            const auto& pair = GetFrontData();
-            if (start_ts > 0 && pair.first <= start_ts) {
-                PopFrontRow();
+        while (max_size > 0 && cur_size > max_size) {
+            PopBackRow();
+            --cur_size;
+        }
+
+        int64_t sub = (key + start_offset_);
+        uint64_t start_ts = sub < 0 ? 0u : static_cast<uint64_t>(sub);
+        // Slice window when window size > rows_preceding
+        while (cur_size-1 > rows_preceding_) {
+            const auto& pair = GetBackRow();
+            if (pair.first < start_ts) {
+                PopBackRow();
                 --cur_size;
             } else {
                 break;
@@ -316,22 +333,6 @@ class CurrentHistoryWindow : public Window {
  private:
     bool memory_own_;
 };
-
-
-class CurrentHistoryUnboundWindow : public Window {
- public:
-    CurrentHistoryUnboundWindow() : Window(INT64_MIN, 0) {}
-    explicit CurrentHistoryUnboundWindow(uint32_t max_size)
-        : Window(INT64_MIN, 0, max_size) {}
-    void BufferData(uint64_t key, const Row& row) {
-        AddRow(key, row);
-        auto max_size = max_size_ > 0 ? max_size_ : 0;
-        while (table_.size() > max_size) {
-            PopFrontRow();
-        }
-    }
-};
-
 typedef std::map<std::string,
                  std::map<std::string, std::shared_ptr<MemTimeTableHandler>>>
     MemTables;
@@ -404,8 +405,7 @@ class MemSegmentHandler : public TableHandler {
         while (pos-- > 0 && iter->Valid()) {
             iter->Next();
         }
-        return iter->Valid() ?
-            iter->GetValue() : Row();
+        return iter->Valid() ? iter->GetValue() : Row();
     }
     const std::string GetHandlerTypeName() override {
         return "MemSegmentHandler";
@@ -479,7 +479,6 @@ class MemCatalog : public Catalog {
     Databases dbs_;
 };
 
-
 // row iter interfaces for llvm
 void GetRowIter(int8_t* input, int8_t* iter);
 bool RowIterHasNext(int8_t* iter);
@@ -487,7 +486,6 @@ void RowIterNext(int8_t* iter);
 int8_t* RowIterGetCurSlice(int8_t* iter, size_t idx);
 size_t RowIterGetCurSliceSize(int8_t* iter, size_t idx);
 void RowIterDelete(int8_t* iter);
-
 
 }  // namespace vm
 }  // namespace fesql

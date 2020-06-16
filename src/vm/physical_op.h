@@ -115,11 +115,9 @@ class Sort {
 
 class Range {
  public:
-    Range(const node::OrderByNode *order, const int64_t start_offset,
-          const int64_t end_offset)
-        : range_key_(nullptr),
-          start_offset_(start_offset),
-          end_offset_(end_offset) {
+    Range() : range_key_(nullptr), frame_(nullptr) {}
+    Range(const node::OrderByNode *order, const node::FrameNode *frame)
+        : range_key_(nullptr), frame_(frame) {
         range_key_ = nullptr == order
                          ? nullptr
                          : node::ExprListNullOrEmpty(order->order_by_)
@@ -130,9 +128,25 @@ class Range {
     const bool Valid() const { return nullptr != range_key_; }
     const std::string ToString() const {
         std::ostringstream oss;
-        if (nullptr != range_key_) {
-            oss << "range=(" << node::ExprString(range_key_) << ", "
-                << start_offset_ << ", " << end_offset_ << ")";
+        if (nullptr != range_key_ && nullptr != frame_) {
+            if (nullptr != frame_->frame_range()) {
+                oss << "range=(" << range_key_->GetExprString() << ", "
+                    << frame_->frame_range()->start()->GetExprString()
+                    << ", "
+                    << frame_->frame_range()->end()->GetExprString()
+                    << ")";
+            }
+
+            if (nullptr != frame_->frame_rows()) {
+                if (nullptr != frame_->frame_range()) {
+                    oss << ", ";
+                }
+                oss << "rows=(" << range_key_->GetExprString() << ", "
+                    << frame_->frame_rows()->start()->GetExprString()
+                    << ", "
+                    << frame_->frame_rows()->end()->GetExprString()
+                    << ")";
+            }
         }
         return oss.str();
     }
@@ -140,14 +154,12 @@ class Range {
     void set_range_key(const node::ExprNode *range_key) {
         range_key_ = range_key;
     }
-    const int64_t start_offset() const { return start_offset_; }
-    const int64_t end_offset() const { return end_offset_; }
     const FnInfo &fn_info() const { return fn_info_; }
+    const node::FrameNode *frame() const { return frame_; }
     const std::string FnDetail() const { return "range=" + fn_info_.fn_name_; }
     FnInfo fn_info_;
     const node::ExprNode *range_key_;
-    int64_t start_offset_;
-    int64_t end_offset_;
+    const node::FrameNode *frame_;
 };
 
 class ConditionFilter {
@@ -599,12 +611,12 @@ class Project {
 };
 class WindowOp {
  public:
-    WindowOp(const node::ExprListNode *partition,
-             const node::OrderByNode *orders, const int64_t start_offset,
-             const int64_t end_offset)
-        : partition_(partition),
-          sort_(orders),
-          range_(orders, start_offset, end_offset) {}
+    explicit WindowOp(const node::ExprListNode *partitions)
+        : partition_(partitions), sort_(nullptr), range_() {}
+    explicit WindowOp(const node::WindowPlanNode *w_ptr)
+        : partition_(w_ptr->GetKeys()),
+          sort_(w_ptr->GetOrders()),
+          range_(w_ptr->GetOrders(), w_ptr->frame_node()) {}
     virtual ~WindowOp() {}
     const std::string ToString() const {
         std::ostringstream oss;
@@ -634,10 +646,10 @@ class WindowOp {
 
 class RequestWindowOp : public WindowOp {
  public:
-    RequestWindowOp(const node::ExprListNode *partition,
-                    const node::OrderByNode *orders, const int64_t start_offset,
-                    const int64_t end_offset)
-        : WindowOp(partition, orders, start_offset, end_offset), index_key_() {}
+    explicit RequestWindowOp(const node::ExprListNode *partitions)
+        : WindowOp(partitions), index_key_() {}
+    explicit RequestWindowOp(const node::WindowPlanNode *w_ptr)
+        : WindowOp(w_ptr), index_key_() {}
     virtual ~RequestWindowOp() {}
     const std::string ToString() const {
         std::ostringstream oss;
@@ -804,27 +816,23 @@ class RequestWindowUnionList {
 };
 class PhysicalWindowNode : public PhysicalUnaryNode, public WindowOp {
  public:
-    PhysicalWindowNode(PhysicalOpNode *node,
-                       const node::ExprListNode *partition,
-                       const node::OrderByNode *orders,
-                       const int64_t start_offset, const int64_t end_offset)
+    PhysicalWindowNode(PhysicalOpNode *node, const node::WindowPlanNode *w_ptr)
         : PhysicalUnaryNode(node, kPhysicalOpWindow, true, false),
-          WindowOp(partition, orders, start_offset, end_offset) {}
+          WindowOp(w_ptr) {}
     virtual ~PhysicalWindowNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
 };
 class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
  public:
-    PhysicalWindowAggrerationNode(
-        PhysicalOpNode *node, const node::ExprListNode *partition,
-        const node::OrderByNode *orders, const std::string &fn_name,
-        const Schema &schema, const ColumnSourceList &sources,
-        const int64_t start_offset, const int64_t end_offset,
-        const bool instance_not_in_window)
+    PhysicalWindowAggrerationNode(PhysicalOpNode *node,
+                                  const node::WindowPlanNode *w_ptr,
+                                  const std::string &fn_name,
+                                  const Schema &schema,
+                                  const ColumnSourceList &sources)
         : PhysicalProjectNode(node, fn_name, schema, sources,
                               kWindowAggregation, true, false),
-          instance_not_in_window_(instance_not_in_window),
-          window_(partition, orders, start_offset, end_offset),
+          instance_not_in_window_(w_ptr->instance_not_in_window()),
+          window_(w_ptr),
           window_unions_() {
         output_type_ = kSchemaTypeTable;
         InitSchema();
@@ -1022,7 +1030,7 @@ class PhysicalRequestUnionNode : public PhysicalBinaryNode {
     PhysicalRequestUnionNode(PhysicalOpNode *left, PhysicalOpNode *right,
                              const node::ExprListNode *partition)
         : PhysicalBinaryNode(left, right, kPhysicalOpRequestUnoin, true, true),
-          window_(partition, nullptr, -1, -1),
+          window_(partition),
           instance_not_in_window_(false) {
         output_type_ = kSchemaTypeTable;
         InitSchema();
@@ -1030,14 +1038,10 @@ class PhysicalRequestUnionNode : public PhysicalBinaryNode {
         fn_infos_.push_back(&window_.index_key_.fn_info_);
     }
     PhysicalRequestUnionNode(PhysicalOpNode *left, PhysicalOpNode *right,
-                             const node::ExprListNode *partition,
-                             const node::OrderByNode *orders,
-                             const int64_t start_offset,
-                             const int64_t end_offset,
-                             const bool instance_not_in_window)
+                             const node::WindowPlanNode *w_ptr)
         : PhysicalBinaryNode(left, right, kPhysicalOpRequestUnoin, true, true),
-          window_(partition, orders, start_offset, end_offset),
-          instance_not_in_window_(instance_not_in_window) {
+          window_(w_ptr),
+          instance_not_in_window_(w_ptr->instance_not_in_window()) {
         output_type_ = kSchemaTypeTable;
         InitSchema();
         fn_infos_.push_back(&window_.partition_.fn_info_);

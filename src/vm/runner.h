@@ -103,15 +103,17 @@ class ConditionGenerator : public FnGenerator {
 };
 class RangeGenerator {
  public:
-    explicit RangeGenerator(const Range& range)
-        : ts_gen_(range.fn_info_),
-          start_offset_(range.start_offset()),
-          end_offset_(range.end_offset()) {}
+    explicit RangeGenerator(const Range& range) : ts_gen_(range.fn_info_) {
+        start_offset_ = range.frame_->GetHistoryRangeStart();
+        end_offset_ = range.frame_->GetHistoryRangeEnd();
+        rows_preceding_ = (-1 * range.frame_->GetHistoryRowsStart());
+    }
     virtual ~RangeGenerator() {}
     const bool Valid() const { return ts_gen_.Valid(); }
     OrderGenerator ts_gen_;
     int64_t start_offset_;
     int64_t end_offset_;
+    uint64_t rows_preceding_;
 };
 class FilterGenerator {
  public:
@@ -206,13 +208,15 @@ class WindowGenerator {
         : window_op_(window),
           partition_gen_(window.partition_),
           sort_gen_(window.sort_),
-          range_gen_(window.range_.fn_info_) {}
+          range_gen_(window.range_) {}
     virtual ~WindowGenerator() {}
-    const int64_t OrderKey(const Row& row) { return range_gen_.Gen(row); }
+    const int64_t OrderKey(const Row& row) {
+        return range_gen_.ts_gen_.Gen(row);
+    }
     const WindowOp window_op_;
     PartitionGenerator partition_gen_;
     SortGenerator sort_gen_;
-    OrderGenerator range_gen_;
+    RangeGenerator range_gen_;
 };
 
 class RequestWindowGenertor {
@@ -233,7 +237,7 @@ class RequestWindowGenertor {
             segment = filter_gen_.Filter(segment, filter_key);
         }
         if (sort_gen_.Valid()) {
-            segment = sort_gen_.Sort(segment);
+            segment = sort_gen_.Sort(segment, true);
         }
         return segment;
     }
@@ -354,11 +358,10 @@ class Runner {
     static Row WindowProject(const int8_t* fn, const uint64_t key,
                              const Row row, const bool is_instance,
                              Window* window);
-    static const Row RowLastJoinTable(size_t left_slices,
-                                      const Row& left_row,
+    static const Row RowLastJoinTable(size_t left_slices, const Row& left_row,
                                       size_t right_slices,
                                       std::shared_ptr<TableHandler> right_table,
-                                      SortGenerator& right_sort, // NOLINT
+                                      SortGenerator& right_sort,    // NOLINT
                                       ConditionGenerator& filter);  // NOLINT
     static std::shared_ptr<TableHandler> TableReverse(
         std::shared_ptr<TableHandler> table);
@@ -447,8 +450,7 @@ class RequestWindowUnionGenerator : public InputsGenerator {
 };
 class JoinGenerator {
  public:
-    explicit JoinGenerator(const Join& join,
-                           size_t left_slices,
+    explicit JoinGenerator(const Join& join, size_t left_slices,
                            size_t right_slices)
         : condition_gen_(join.filter_.fn_info_),
           left_key_gen_(join.left_key_.fn_info_),
@@ -471,8 +473,7 @@ class JoinGenerator {
                        std::shared_ptr<PartitionHandler> right,
                        std::shared_ptr<MemPartitionHandler>);  // NOLINT
 
-    Row RowLastJoin(const Row& left_row,
-                    std::shared_ptr<DataHandler> right);
+    Row RowLastJoin(const Row& left_row, std::shared_ptr<DataHandler> right);
 
     ConditionGenerator condition_gen_;
     KeyGenerator left_key_gen_;
@@ -494,13 +495,10 @@ class WindowJoinGenerator : public InputsGenerator {
  public:
     WindowJoinGenerator() : InputsGenerator() {}
     virtual ~WindowJoinGenerator() {}
-    void AddWindowJoin(const Join& join,
-                       size_t left_slices,
-                       Runner* runner) {
+    void AddWindowJoin(const Join& join, size_t left_slices, Runner* runner) {
         size_t right_slices =
             runner->output_schemas().GetSchemaSourceListSize();
-        joins_gen_.push_back(JoinGenerator(
-            join, left_slices, right_slices));
+        joins_gen_.push_back(JoinGenerator(join, left_slices, right_slices));
         AddInput(runner);
     }
     std::vector<std::shared_ptr<DataHandler>> RunInputs(
@@ -620,9 +618,7 @@ class WindowAggRunner : public Runner {
           windows_join_gen_(),
           window_project_gen_(fn_info) {}
     ~WindowAggRunner() {}
-    void AddWindowJoin(const Join& join,
-                       size_t left_slices,
-                       Runner* runner) {
+    void AddWindowJoin(const Join& join, size_t left_slices, Runner* runner) {
         windows_join_gen_.AddWindowJoin(join, left_slices, runner);
     }
     void AddWindowUnion(const WindowOp& window, Runner* runner) {

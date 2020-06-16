@@ -9,16 +9,18 @@
 #ifndef SRC_PLAN_PLANNER_H_
 #define SRC_PLAN_PLANNER_H_
 
+#include <map>
 #include <string>
 #include <vector>
 #include "base/fe_status.h"
+#include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "node/node_manager.h"
 #include "node/plan_node.h"
 #include "node/sql_node.h"
 #include "parser/parser.h"
 #include "proto/fe_type.pb.h"
-
+DECLARE_bool(enable_window_merge_opt);
 namespace fesql {
 namespace plan {
 
@@ -31,13 +33,38 @@ using node::SQLNode;
 class Planner {
  public:
     Planner(node::NodeManager *manager, const bool is_batch_mode)
-        : is_batch_mode_(is_batch_mode), node_manager_(manager) {}
+        : is_batch_mode_(is_batch_mode),
+          window_merge_enable_(false),
+          node_manager_(manager) {
+        if (FLAGS_enable_window_merge_opt) {
+            window_merge_enable_ = true;
+        } else {
+            window_merge_enable_ = false;
+        }
+        const char *env_name = "ENABLE_WINDOW_MERGE_OPT";
+        char *value = getenv(env_name);
+        if (value != nullptr && strcmp(value, "false") == 0) {
+            window_merge_enable_ = false;
+        }
+        if (window_merge_enable_) {
+            LOG(INFO) << "Multi window merge opt is enable";
+        } else {
+            LOG(INFO) << "Multi window merge opt is disable";
+        }
+    }
     virtual ~Planner() {}
     virtual int CreatePlanTree(
         const NodePointVector &parser_trees,
         PlanNodeList &plan_trees,  // NOLINT (runtime/references)
         Status &status) = 0;       // NOLINT (runtime/references)
+    static const bool IsWindowMergeOptimizedEnable();
+    void set_window_merge_enable(bool flag) { window_merge_enable_ = flag; }
+    const bool window_merge_enable() const { return window_merge_enable_; }
+    bool MergeWindows(const std::map<const node::WindowDefNode *,
+                                     node::ProjectListNode *> &map,
+                      std::vector<const node::WindowDefNode *> *windows);
     const bool is_batch_mode_;
+    bool window_merge_enable_;
 
  protected:
     bool ValidatePrimaryPath(
@@ -66,16 +93,16 @@ class Planner {
 
     bool CreateFuncDefPlan(const SQLNode *root, node::PlanNode **output,
                            Status &status);  // NOLINT (runtime/references)
-    bool CreateWindowPlanNode(node::WindowDefNode *w_ptr,
+    bool CreateWindowPlanNode(const node::WindowDefNode *w_ptr,
                               node::WindowPlanNode *plan_node,
-                              Status &status);  // NOLINT (runtime/references)
-    int64_t CreateFrameOffset(const node::FrameBound *bound,
                               Status &status);  // NOLINT (runtime/references)
     node::NodeManager *node_manager_;
     std::string MakeTableName(const PlanNode *node) const;
-    bool MergeProjectList(node::ProjectListNode *project_list1,
-                          node::ProjectListNode *project_list2,
-                          node::ProjectListNode *merged_project);
+    bool MergeProjectMap(
+        const std::map<const node::WindowDefNode *, node::ProjectListNode *>
+            &map,
+        std::map<const node::WindowDefNode *, node::ProjectListNode *> *output,
+        Status &status);  // NOLINT (runtime/references)
 };
 
 class SimplePlanner : public Planner {

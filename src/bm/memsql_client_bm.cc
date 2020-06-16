@@ -375,7 +375,7 @@ static void BM_WINDOW_CASE0_QUERY(benchmark::State &state) {  // NOLINT
         "FROM tbl\n"
         "window w1 as (PARTITION BY col_str64 \n"
         "                  ORDER BY col_i64\n"
-        "                  ROWS BETWEEN 86400000 PRECEDING AND CURRENT ROW);";
+        "                  RANGE BETWEEN 86400000 PRECEDING AND CURRENT ROW);";
     std::string query_type = "sum_col_i32";
     std::string label = query_type + "/group " +
                         std::to_string(state.range(0)) + "/max window size " +
@@ -391,7 +391,7 @@ static void BM_WINDOW_CASE3_QUERY(benchmark::State &state) {  // NOLINT
         "FROM tbl\n"
         "window w1 as (PARTITION BY col_str64 \n"
         "                  ORDER BY col_i64\n"
-        "                  ROWS BETWEEN 86400000 PRECEDING AND CURRENT ROW);";
+        "                  RANGE BETWEEN 86400000 PRECEDING AND CURRENT ROW);";
     std::string query_type = "max_col_i32";
     std::string label = query_type + "/group " +
                         std::to_string(state.range(0)) + "/max window size " +
@@ -407,7 +407,7 @@ static void BM_WINDOW_CASE1_QUERY(benchmark::State &state) {  // NOLINT
         "FROM tbl\n"
         "window w1 as (PARTITION BY col_str64 \n"
         "                  ORDER BY col_i64\n"
-        "                  ROWS BETWEEN 86400000 PRECEDING AND CURRENT ROW);";
+        "                  RANGE BETWEEN 86400000 PRECEDING AND CURRENT ROW);";
     BM_WINDOW_CASE_QUERY(state, select_sql);
 }
 static void BM_WINDOW_CASE2_QUERY(benchmark::State &state) {  // NOLINT
@@ -420,7 +420,7 @@ static void BM_WINDOW_CASE2_QUERY(benchmark::State &state) {  // NOLINT
         "FROM tbl\n"
         "window w1 as (PARTITION BY col_str64 \n"
         "                  ORDER BY col_i64\n"
-        "                  ROWS BETWEEN 86400000 PRECEDING AND CURRENT ROW);";
+        "                  RANGE BETWEEN 86400000 PRECEDING AND CURRENT ROW);";
     std::string query_type = "sum 5 cols";
     std::string label = query_type + "/group " +
                         std::to_string(state.range(0)) + "/max window size " +

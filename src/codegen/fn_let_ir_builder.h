@@ -35,6 +35,7 @@ using fesql::vm::RowSchemaInfo;
 class RowFnLetIRBuilder {
  public:
     RowFnLetIRBuilder(const vm::SchemaSourceList& schema_sources,
+                      const node::FrameNode* frame,
                       ::llvm::Module* module);
 
     ~RowFnLetIRBuilder();
@@ -76,6 +77,7 @@ class RowFnLetIRBuilder {
  private:
     // input schema
     const vm::SchemasContext schema_context_;
+    const node::FrameNode* frame_;
     ::llvm::Module* module_;
 };
 

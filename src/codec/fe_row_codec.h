@@ -23,6 +23,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include "butil/iobuf.h"
 #include "base/raw_buffer.h"
 #include "proto/fe_type.pb.h"
 
@@ -103,7 +104,6 @@ class RowBuilder {
     std::vector<uint32_t> offset_vec_;
 };
 
-
 class RowView {
  public:
     RowView(const fesql::codec::Schema& schema,
@@ -153,6 +153,7 @@ class RowView {
                      uint32_t* length);
     std::string GetAsString(uint32_t idx);
     std::string GetRowString();
+    int32_t GetPrimaryFieldOffset(uint32_t idx);
     const Schema* GetSchema() const { return &schema_; }
 
  private:

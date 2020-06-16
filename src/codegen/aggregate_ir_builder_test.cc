@@ -32,8 +32,6 @@ class AggregateIRBuilderTest : public ::testing::Test {
     ~AggregateIRBuilderTest() {}
 };
 
-
-
 TEST_F(AggregateIRBuilderTest, test_mixed_multiple_agg) {
     std::string sql =
         "SELECT "
@@ -69,8 +67,8 @@ TEST_F(AggregateIRBuilderTest, test_mixed_multiple_agg) {
 
         "FROM t1 WINDOW "
         "w1 AS "
-        "(PARTITION BY COL2 ORDER BY `TS` ROWS BETWEEN 3 PRECEDING AND 3 "
-        "FOLLOWING) limit 10;";
+        "(PARTITION BY COL2 ORDER BY `TS` RANGE BETWEEN 3 PRECEDING AND "
+        "CURRENT ROW) limit 10;";
 
     int8_t* ptr = NULL;
     std::vector<Row> window;
@@ -87,47 +85,46 @@ TEST_F(AggregateIRBuilderTest, test_mixed_multiple_agg) {
 
     codec::RowView view(schema);
     view.Reset(output, view.GetSize(output));
-    ASSERT_EQ(view.GetInt32Unsafe(0),
-        1 + 11 + 111 + 1111 + 11111);
-    ASSERT_DOUBLE_EQ(view.GetDoubleUnsafe(1),
-        (1 + 11 + 111 + 1111 + 11111) / 5.0);
+    ASSERT_EQ(view.GetInt32Unsafe(0), 1 + 11 + 111 + 1111 + 11111);
+    ASSERT_FLOAT_EQ(view.GetDoubleUnsafe(1),
+                    (1 + 11 + 111 + 1111 + 11111) / 5.0);
     ASSERT_EQ(view.GetInt64Unsafe(2), 5);
     ASSERT_EQ(view.GetInt32Unsafe(3), 1);
     ASSERT_EQ(view.GetInt32Unsafe(4), 11111);
 
     ASSERT_FLOAT_EQ(view.GetFloatUnsafe(5),
-        3.1f + 33.1f + 333.1f + 3333.1f + 33333.1f);
-    ASSERT_DOUBLE_EQ(view.GetDoubleUnsafe(6),
-        (0.0 + 3.1f + 33.1f + 333.1f + 3333.1f + 33333.1f) / 5.0);
+                    3.1f + 33.1f + 333.1f + 3333.1f + 33333.1f);
+    ASSERT_FLOAT_EQ(view.GetDoubleUnsafe(6),
+                    (0.0 + 3.1f + 33.1f + 333.1f + 3333.1f + 33333.1f) / 5.0);
     ASSERT_EQ(view.GetInt64Unsafe(7), 5);
     ASSERT_FLOAT_EQ(view.GetFloatUnsafe(8), 3.1f);
     ASSERT_FLOAT_EQ(view.GetFloatUnsafe(9), 33333.1f);
 
     ASSERT_EQ(view.GetInt16Unsafe(10), 2 + 22 + 222 + 2222 + 22222);
     ASSERT_DOUBLE_EQ(view.GetDoubleUnsafe(11),
-        (2 + 22 + 222 + 2222 + 22222) / 5.0);
+                     (2 + 22 + 222 + 2222 + 22222) / 5.0);
     ASSERT_EQ(view.GetInt64Unsafe(12), 5);
     ASSERT_EQ(view.GetInt16Unsafe(13), 2);
     ASSERT_EQ(view.GetInt16Unsafe(14), 22222);
 
     ASSERT_DOUBLE_EQ(view.GetDoubleUnsafe(15),
-        4.1 + 44.1 + 444.1 + 4444.1 + 44444.1);
+                     4.1 + 44.1 + 444.1 + 4444.1 + 44444.1);
     ASSERT_DOUBLE_EQ(view.GetDoubleUnsafe(16),
-        (4.1 + 44.1 + 444.1 + 4444.1 + 44444.1) / 5.0);
+                     (4.1 + 44.1 + 444.1 + 4444.1 + 44444.1) / 5.0);
     ASSERT_EQ(view.GetInt64Unsafe(17), 5);
     ASSERT_DOUBLE_EQ(view.GetDoubleUnsafe(18), 4.1);
     ASSERT_DOUBLE_EQ(view.GetDoubleUnsafe(19), 44444.1);
 
-    ASSERT_EQ(view.GetInt64Unsafe(20),
-        5L + 55L + 555L + 5555L + 55555L);
+    ASSERT_EQ(view.GetInt64Unsafe(20), 5L + 55L + 555L + 5555L + 55555L);
     ASSERT_DOUBLE_EQ(view.GetDoubleUnsafe(21),
-        (5L + 55L + 555L + 5555L + 55555L) / 5.0);
+                     (5L + 55L + 555L + 5555L + 55555L) / 5.0);
     ASSERT_EQ(view.GetInt64Unsafe(22), 5);
     ASSERT_EQ(view.GetInt64Unsafe(23), 5L);
     ASSERT_EQ(view.GetInt64Unsafe(24), 55555L);
 
     free(ptr);
 }
+
 
 }  // namespace codegen
 }  // namespace fesql

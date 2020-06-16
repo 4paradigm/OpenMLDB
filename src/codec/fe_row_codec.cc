@@ -572,6 +572,9 @@ int32_t RowView::GetInteger(const int8_t* row, uint32_t idx,
     return ret;
 }
 
+int32_t RowView::GetPrimaryFieldOffset(uint32_t idx) {
+    return offset_vec_.at(idx);
+}
 int32_t RowView::GetValue(const int8_t* row, uint32_t idx,
                           ::fesql::type::Type type, void* val) {
     if (schema_.size() == 0 || row == NULL) {

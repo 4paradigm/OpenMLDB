@@ -229,6 +229,7 @@ LOOP	{ return LOOP; }
 LOW_PRIORITY	{ return LOW_PRIORITY; }
 MATCH	{ return MATCH; }
 MAP     { return MAP; }
+MAXSIZE { return MAXSIZE;}
 MEDIUMBLOB	{ return MEDIUMBLOB; }
 MIDDLEINT|MEDIUMINT	{ return MEDIUMINT; }
 MEDIUMTEXT	{ return MEDIUMTEXT; }
@@ -255,6 +256,7 @@ OVER    { return OVER; }
 RANGE   {return RANGE;  }
 ROW   {return ROW;  }
 ROWS   {return ROWS;  }
+ROWS_RANGE   {return ROWS_RANGE;  }
 PARTITION   { return PARTITION; }
 PRECISION	{ return PRECISION; }
 PRECEDING   {return PRECEDING;  }
