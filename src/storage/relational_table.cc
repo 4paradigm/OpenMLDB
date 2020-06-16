@@ -74,10 +74,9 @@ void RelationalTable::initOptionTemplate() {
     ssd_option_template.level0_file_num_compaction_trigger = 10;
     ssd_option_template.level0_slowdown_writes_trigger = 20;
     ssd_option_template.level0_stop_writes_trigger = 40;
-    ssd_option_template.write_buffer_size = 64 << 20;
-    ssd_option_template.target_file_size_base = 64 << 20;
-    ssd_option_template.max_bytes_for_level_base = 512 << 20;
-
+    ssd_option_template.write_buffer_size = 256 << 20;
+    ssd_option_template.target_file_size_base = 256 << 20;
+    ssd_option_template.max_bytes_for_level_base = 1024 << 20;
     rocksdb::BlockBasedTableOptions table_options;
     table_options.cache_index_and_filter_blocks = true;
     table_options.pin_l0_filter_and_index_blocks_in_cache = true;
@@ -307,8 +306,9 @@ bool RelationalTable::LoadTable() {
     return true;
 }
 
-bool RelationalTable::Put(const std::string& value, int64_t* auto_gen_pk,
-        const ::rtidb::api::WriteOption& wo) {
+bool RelationalTable::Put(const std::string& value,
+        const ::rtidb::api::WriteOption& wo,
+        int64_t* auto_gen_pk, std::string* msg) {
     ::rtidb::base::Slice slice(value);
     std::string new_value;
     if (table_meta_.compress_type() == ::rtidb::api::kSnappy) {
@@ -332,6 +332,7 @@ bool RelationalTable::Put(const std::string& value, int64_t* auto_gen_pk,
         if (!builder.SetInt64(column_def.GetId(), *auto_gen_pk)) {
             PDLOG(WARNING, "SetInt64 failed, idx %d, tid %u pid %u",
                   column_def.GetId(), id_, pid_);
+            *msg = "SetInt64 failed";
             return false;
         }
         pk.resize(sizeof(int64_t));
@@ -342,12 +343,13 @@ bool RelationalTable::Put(const std::string& value, int64_t* auto_gen_pk,
                 index_def,
                 reinterpret_cast<int8_t*>(const_cast<char*>(slice.data())),
                 &pk)) {
+            *msg = "GetCombineStr failed";
             return false;
         }
     }
     rocksdb::WriteBatch batch;
     if (!PutDB(rocksdb::Slice(pk), slice.data(), slice.size(),
-                true, true, &batch)) {
+                true, true, &batch, msg)) {
         return false;
     }
     rocksdb::Status s = db_->Write(write_opts_, &batch);
@@ -357,13 +359,14 @@ bool RelationalTable::Put(const std::string& value, int64_t* auto_gen_pk,
     } else {
         DEBUGLOG("Put failed. tid %u pid %u msg %s", id_, pid_,
               s.ToString().c_str());
+        *msg = "write failed";
         return false;
     }
 }
 
 bool RelationalTable::PutDB(const rocksdb::Slice& spk, const char* data,
         uint32_t size, bool pk_check, bool unique_check,
-        rocksdb::WriteBatch* batch) {
+        rocksdb::WriteBatch* batch, std::string* msg) {
     std::shared_ptr<IndexDef> pk_index_def = table_index_.GetPkIndex();
     if (pk_check) {
         std::unique_ptr<rocksdb::Iterator> pk_it(
@@ -373,8 +376,9 @@ bool RelationalTable::PutDB(const rocksdb::Slice& spk, const char* data,
         } else {
             pk_it->Seek(spk);
             if (pk_it->Valid() && pk_it->key() == spk) {
-                DEBUGLOG("Put failed, pk %s repeated. tid %u pid %u",
+                DEBUGLOG("Put failed, duplicate pk %s. tid %u pid %u",
                         spk.ToString().c_str(), id_, pid_);
+                *msg = "duplicate pk";
                 return false;
             }
         }
@@ -394,6 +398,7 @@ bool RelationalTable::PutDB(const rocksdb::Slice& spk, const char* data,
         if (!GetCombineStr(index_def,
                            reinterpret_cast<int8_t*>(const_cast<char*>(data)),
                            &key)) {
+            *msg = "GetCombineStr failed";
             return false;
         }
         if (index_def->GetType() == ::rtidb::type::kUnique) {
@@ -403,10 +408,10 @@ bool RelationalTable::PutDB(const rocksdb::Slice& spk, const char* data,
                 if (it) {
                     it->Seek(rocksdb::Slice(key));
                     if (it->Valid() && it->key() == rocksdb::Slice(key)) {
-                        DEBUGLOG(
-                              "Put failed because"
-                              "unique key %s repeated. tid %u pid %u",
+                        DEBUGLOG("Put failed because"
+                              "duplicate unique key %s. tid %u pid %u",
                               key.c_str(), id_, pid_);
+                        *msg = "duplicate unique key";
                         return false;
                     }
                 }
@@ -919,7 +924,7 @@ bool RelationalTable::Update(const ::google::protobuf::RepeatedPtrField<
         return false;
     }
     return UpdateDB(index_def, combine_value, col_idx_map, value_schema,
-                    col_value, count);
+                    col_value, count, msg);
 }
 
 bool RelationalTable::CreateSchema(const ::rtidb::api::Columns& columns,
@@ -946,7 +951,7 @@ bool RelationalTable::UpdateDB(const std::shared_ptr<IndexDef> index_def,
                                const std::map<std::string, int>& col_idx_map,
                                const Schema& value_schema,
                                const std::string& col_value,
-                               uint32_t* count) {
+                               uint32_t* count, std::string* msg) {
     ::rtidb::base::Slice slice(col_value);
     std::string uncompressed;
     if (table_meta_.compress_type() == ::rtidb::api::kSnappy) {
@@ -960,6 +965,7 @@ bool RelationalTable::UpdateDB(const std::shared_ptr<IndexDef> index_def,
     if (!ok) {
         PDLOG(WARNING, "query failed, update table tid %u pid %u failed", id_,
               pid_);
+        *msg = "query failed";
         return true;
     }
 
@@ -986,6 +992,7 @@ bool RelationalTable::UpdateDB(const std::shared_ptr<IndexDef> index_def,
                                reinterpret_cast<int8_t*>(
                                    const_cast<char*>(iter->value().data())),
                                &pk)) {
+                *msg = "GetCombineStr failed";
                 return false;
             }
             pk_slice.reset(pk.data(), pk.size());
@@ -1029,6 +1036,7 @@ bool RelationalTable::UpdateDB(const std::shared_ptr<IndexDef> index_def,
                                     == ::rtidb::type::kAutoGen) {
                                 PDLOG(WARNING, "no support update AutoGen"
                                         "tid %u pid %u", id_, pid_);
+                                *msg = "no support update AutoGen";
                                 return false;
                             }
                             is_update_pk = true;
@@ -1043,13 +1051,16 @@ bool RelationalTable::UpdateDB(const std::shared_ptr<IndexDef> index_def,
                         (is_update_pk || is_update_unique)) {
                     DEBUGLOG("duplicate pk or unique key"
                             "tid %u pid %u", id_, pid_);
+                    *msg = "duplicate pk or unique key";
                     return false;
                 }
                 if (schema.Get(i).not_null() &&
-                    value_view.IsNULL(col_iter->second)) {
-                    PDLOG(WARNING,
-                          "not_null is true but value is null, update table "
-                          "tid %u pid %u failed", id_, pid_);
+                        value_view.IsNULL(col_iter->second)) {
+                    const std::string& tmp_name = schema.Get(i).name();
+                    PDLOG(WARNING, "%s not_null is true but value is null,"
+                            "update table tid %u pid %u failed",
+                            tmp_name.c_str(), id_, pid_);
+                    *msg = tmp_name + "not_null is true but value is null";
                     return false;
                 } else if (value_view.IsNULL(col_iter->second)) {
                     builder.AppendNULL();
@@ -1189,13 +1200,17 @@ bool RelationalTable::UpdateDB(const std::shared_ptr<IndexDef> index_def,
                 default: {
                     PDLOG(WARNING, "unsupported data type %s",
                           rtidb::type::DataType_Name(cur_type).c_str());
+                    *msg = "unsupported data type " +
+                        rtidb::type::DataType_Name(cur_type);
                     return false;
                 }
             }
             if (get_value_ret < 0) {
-                PDLOG(WARNING, "getValue failed,_type %s, tid %u pid %u",
+                PDLOG(WARNING, "getValue failed, type %s, tid %u pid %u",
                         rtidb::type::DataType_Name(cur_type).c_str(),
                         id_, pid_);
+                *msg = "getValue failed, type " +
+                    rtidb::type::DataType_Name(cur_type);
                 return false;
             }
         }
@@ -1217,12 +1232,13 @@ bool RelationalTable::UpdateDB(const std::shared_ptr<IndexDef> index_def,
                         table_index_.GetPkIndex(),
                         reinterpret_cast<int8_t*>(
                             const_cast<char*>(row.data())), &new_pk)) {
+                *msg = "GetCombineStr failed";
                 return false;
             }
             pk_slice.reset(new_pk.data(), new_pk.size());
         }
         ok = PutDB(rocksdb::Slice(pk_slice.data(), pk_slice.size()),
-                   row.c_str(), row.length(), false, false, &batch);
+                   row.c_str(), row.length(), false, false, &batch, msg);
         if (!ok) {
             PDLOG(WARNING, "put failed, update table tid %u pid %u failed", id_,
                   pid_);
@@ -1237,6 +1253,7 @@ bool RelationalTable::UpdateDB(const std::shared_ptr<IndexDef> index_def,
     } else {
         DEBUGLOG("update failed. tid %u pid %u msg %s", id_, pid_,
               s.ToString().c_str());
+        *msg = "write failed";
         return false;
     }
     return true;

@@ -609,10 +609,10 @@ void TabletImpl::Update(RpcController* controller,
             response->set_msg(msg);
         } else {
             response->set_code(::rtidb::base::ReturnCode::kUpdateFailed);
-            response->set_msg("update failed");
+            response->set_msg("update failed: " + msg);
         }
-        PDLOG(WARNING, "update failed. tid %u, pid %u", request->tid(),
-              request->pid());
+        PDLOG(WARNING, "update failed, msg: %s. tid %u, pid %u",
+                msg.c_str(), request->tid(), request->pid());
         return;
     }
     response->set_code(::rtidb::base::ReturnCode::kOk);
@@ -755,15 +755,17 @@ void TabletImpl::Put(RpcController* controller,
     } else {
         int64_t auto_gen_pk = 0;
         bool ok = false;
+        std::string msg;
         if (request->has_wo()) {
-            ok = r_table->Put(request->value(), &auto_gen_pk, request->wo());
+            ok = r_table->Put(request->value(), request->wo(),
+                    &auto_gen_pk, &msg);
         } else {
             ::rtidb::api::WriteOption wo;
-            ok = r_table->Put(request->value(), &auto_gen_pk, wo);
+            ok = r_table->Put(request->value(), wo, &auto_gen_pk, &msg);
         }
         if (!ok) {
             response->set_code(::rtidb::base::ReturnCode::kPutFailed);
-            response->set_msg("put failed");
+            response->set_msg("put failed: " + msg);
             done->Run();
             return;
         }
