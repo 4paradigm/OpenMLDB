@@ -13,12 +13,12 @@ import libs.conf as conf
 
 @ddt.ddt
 @multi_dimension(True)
-class TestSchema(TestCaseBase):
+class TestPartitionKey(TestCaseBase):
 
     leader, slave1, slave2 = (i for i in conf.tb_endpoints)
 
     @ddt.data(0, 1)
-    def test_showschema(self, format_version):
+    def test_partitionkey(self, format_version):
         name = 'tname{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         table_meta = {
@@ -56,4 +56,4 @@ class TestSchema(TestCaseBase):
 
 
 if __name__ == "__main__":
-    load(TestSchema)
+    load(TestPartitionKey)
