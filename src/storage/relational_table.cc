@@ -37,6 +37,7 @@ RelationalTable::RelationalTable(const ::rtidb::api::TableMeta& table_meta,
       last_make_snapshot_time_(0),
       write_opts_(),
       offset_(0),
+      record_cnt_(0),
       db_root_path_(db_root_path),
       snapshots_(),
       snapshot_index_(1),
@@ -354,6 +355,7 @@ bool RelationalTable::Put(const std::string& value,
     }
     rocksdb::Status s = db_->Write(write_opts_, &batch);
     if (s.ok()) {
+        record_cnt_.fetch_add(1, std::memory_order_relaxed);
         offset_.fetch_add(1, std::memory_order_relaxed);
         return true;
     } else {
@@ -627,6 +629,7 @@ bool RelationalTable::Delete(
     }
     rocksdb::Status s = db_->Write(write_opts_, &batch);
     if (s.ok()) {
+        record_cnt_.fetch_sub(1, std::memory_order_relaxed);
         offset_.fetch_add(1, std::memory_order_relaxed);
         return true;
     } else {

@@ -144,13 +144,7 @@ class RelationalTable {
     }
 
     uint64_t GetRecordCnt() const {
-        uint64_t count = 0;
-        if (cf_hs_.size() == 1) {
-            db_->GetIntProperty(cf_hs_[0], "rocksdb.estimate-num-keys", &count);
-        } else {
-            db_->GetIntProperty(cf_hs_[1], "rocksdb.estimate-num-keys", &count);
-        }
-        return count;
+        return record_cnt_.load(std::memory_order_relaxed);
     }
 
     uint64_t GetOffset() { return offset_.load(std::memory_order_relaxed); }
@@ -244,6 +238,7 @@ class RelationalTable {
     std::vector<rocksdb::ColumnFamilyHandle*> cf_hs_;
     rocksdb::Options options_;
     std::atomic<uint64_t> offset_;
+    std::atomic<uint64_t> record_cnt_;
     std::string db_root_path_;
 
     ::rtidb::base::IdGenerator id_generator_;
