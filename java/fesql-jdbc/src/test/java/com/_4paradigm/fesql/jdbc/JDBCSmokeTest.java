@@ -8,7 +8,7 @@ import org.testng.annotations.Test;
 
 public class JDBCSmokeTest {
     static {
-        FeSqlLibrary.init();
+        FeSqlLibrary.initComplete();
     }
 
     @Test

@@ -26,6 +26,7 @@
 #include "proto/fe_tablet.pb.h"
 #include "sdk/base_impl.h"
 #include "sdk/result_set.h"
+#include "sdk/codec_sdk.h"
 
 namespace fesql {
 namespace sdk {
@@ -79,7 +80,7 @@ class ResultSetImpl : public ResultSet {
     int32_t index_;
     int32_t byte_size_;
     uint32_t position_;
-    std::unique_ptr<codec::RowIOBufView> row_view_;
+    std::unique_ptr<sdk::RowIOBufView> row_view_;
     vm::Schema internal_schema_;
     SchemaImpl schema_;
     std::unique_ptr<brpc::Controller> cntl_;

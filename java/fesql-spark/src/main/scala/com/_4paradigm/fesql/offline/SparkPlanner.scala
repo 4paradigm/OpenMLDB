@@ -16,7 +16,7 @@ class SparkPlanner(session: SparkSession, config: Map[String, Any]) {
   private val logger = LoggerFactory.getLogger(this.getClass)
 
   // Ensure native initialized
-  FeSqlLibrary.init()
+  FeSqlLibrary.initCore()
   Engine.InitializeGlobalLLVM()
 
   def this(session: SparkSession) = {
