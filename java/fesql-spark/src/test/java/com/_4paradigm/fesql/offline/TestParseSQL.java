@@ -18,7 +18,7 @@ public class TestParseSQL {
 
     @Test
     public void testParseSQL() {
-        LibraryLoader.loadLibrary("fesql_jsdk");
+        LibraryLoader.loadLibrary("fesql_jsdk_core");
         ColumnDef col1 = ColumnDef.newBuilder()
                 .setName("col_1").setType(TypeOuterClass.Type.kDouble).build();
         ColumnDef col2 = ColumnDef.newBuilder()

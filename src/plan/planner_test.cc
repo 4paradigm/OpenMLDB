@@ -144,7 +144,7 @@ TEST_P(PlannerTest, PlannerWindowOptTest) {
     //    ASSERT_EQ(1, trees.size());
     //    std::cout << *(trees.front()) << std::endl;
     Planner *planner_ptr = new SimplePlanner(manager_);
-    planner_ptr->set_window_merge_enable(true);
+    planner_ptr->set_window_merge_enable(false);
     node::PlanNodeList plan_trees;
     ASSERT_EQ(0, planner_ptr->CreatePlanTree(trees, plan_trees, status));
     LOG(INFO) << "logical plan:\n";

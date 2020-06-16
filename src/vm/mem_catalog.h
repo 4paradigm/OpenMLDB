@@ -333,21 +333,6 @@ class CurrentHistoryWindow : public Window {
  private:
     bool memory_own_;
 };
-
-class CurrentHistoryUnboundWindow : public Window {
- public:
-    CurrentHistoryUnboundWindow() : Window(INT64_MIN, 0) {}
-    explicit CurrentHistoryUnboundWindow(uint32_t max_size)
-        : Window(INT64_MIN, 0, max_size) {}
-    void BufferData(uint64_t key, const Row& row) {
-        AddFrontRow(key, row);
-        auto max_size = max_size_ > 0 ? max_size_ : 0;
-        while (max_size > 0 && table_.size() > max_size) {
-            PopBackRow();
-        }
-    }
-};
-
 typedef std::map<std::string,
                  std::map<std::string, std::shared_ptr<MemTimeTableHandler>>>
     MemTables;

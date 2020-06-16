@@ -392,6 +392,9 @@ bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
         LOG(WARNING) << status.msg;
         return false;
     }
+    if (!CheckHistoryWindowFrame(w_ptr, status)) {
+        return false;
+    }
     const node::OrderByNode* orders = w_ptr->GetOrders();
     const node::ExprListNode* groups = w_ptr->GetKeys();
 
@@ -404,9 +407,7 @@ bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
                 if (table) {
                     auto right = new PhysicalTableProviderNode(table);
                     node_manager_->RegisterNode(right);
-                    if (!CheckRequestWindowFrame(w_ptr, status)) {
-                        return false;
-                    }
+
                     auto request_union_op =
                         new PhysicalRequestUnionNode(depend, right, w_ptr);
                     node_manager_->RegisterNode(request_union_op);
@@ -1331,7 +1332,7 @@ bool BatchModeTransformer::IsSimpleProject(const ColumnSourceList& sources) {
     }
     return flag;
 }
-bool BatchModeTransformer::CheckRequestWindowFrame(
+bool BatchModeTransformer::CheckHistoryWindowFrame(
     const node::WindowPlanNode* w_ptr, base::Status& status) {
     if (nullptr == w_ptr) {
         status.code = common::kPlanError;

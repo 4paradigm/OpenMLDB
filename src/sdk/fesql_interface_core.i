@@ -18,13 +18,6 @@ namespace std {
     %template(StringVector) vector<string>;
 }
 
-%shared_ptr(fesql::sdk::DBMSSdk);
-%shared_ptr(fesql::sdk::TabletSdk);
-%shared_ptr(fesql::sdk::Schema);
-%shared_ptr(fesql::sdk::Table);
-%shared_ptr(fesql::sdk::TableSet);
-%shared_ptr(fesql::sdk::ResultSet);
-%shared_ptr(fesql::sdk::RequestRow);
 %shared_ptr(fesql::vm::Catalog);
 %shared_ptr(fesql::vm::SimpleCatalog);
 %shared_ptr(fesql::vm::CompileInfo);
@@ -67,12 +60,7 @@ namespace std {
 %{
 #include "node/plan_node.h"
 #include "node/sql_node.h"
-#include "sdk/base.h"
 #include "base/iterator.h"
-#include "sdk/request_row.h"
-#include "sdk/result_set.h"
-#include "sdk/tablet_sdk.h"
-#include "sdk/dbms_sdk.h"
 #include "vm/catalog.h"
 #include "vm/engine.h"
 #include "vm/jit_wrapper.h"
@@ -80,13 +68,6 @@ namespace std {
 #include "vm/simple_catalog.h"
 
 using namespace fesql;
-using fesql::sdk::Schema;
-using fesql::sdk::ResultSet;
-using fesql::sdk::Table;
-using fesql::sdk::TableSet;
-using fesql::sdk::RequestRow;
-using fesql::sdk::DBMSSdk;
-using fesql::sdk::TabletSdk;
 using namespace fesql::node;
 using fesql::vm::SQLContext;
 using fesql::vm::Catalog;
@@ -107,7 +88,6 @@ using fesql::codec::RowIterator;
 using fesql::codec::Row;
 using fesql::vm::ColumnSource;
 using fesql::node::PlanType;
-using fesql::sdk::ExplainInfo;
 %}
 
 
@@ -127,11 +107,6 @@ using fesql::sdk::ExplainInfo;
 %include "base/fe_status.h"
 %include "codec/row.h"
 %include "codec/fe_row_codec.h"
-%include "sdk/base.h"
-%include "sdk/result_set.h"
-%include "sdk/request_row.h"
-%include "sdk/dbms_sdk.h"
-%include "sdk/tablet_sdk.h"
 %include "node/node_enum.h"
 %include "node/plan_node.h"
 %include "node/sql_node.h"

@@ -22,7 +22,6 @@
 #include <cstddef>
 #include <string>
 #include <vector>
-#include "butil/iobuf.h"
 #include "glog/logging.h"
 
 namespace fesql {
@@ -288,12 +287,6 @@ inline bool IsNullAt(const int8_t* row, uint32_t idx) {
     return *(reinterpret_cast<const uint8_t*>(ptr)) & (1 << (idx & 0x07));
 }
 
-inline int8_t GetBoolField(const butil::IOBuf& row, uint32_t offset) {
-    int8_t value = 0;
-    row.copy_to(reinterpret_cast<void*>(&value), 1, offset);
-    return value;
-}
-
 inline int8_t GetBoolFieldUnsafe(const int8_t* row, uint32_t offset) {
     int8_t value = *(row + offset);
     return value;
@@ -308,12 +301,6 @@ inline int8_t GetBoolField(const int8_t* row, uint32_t idx,
         *is_null = false;
         return GetBoolFieldUnsafe(row, offset);
     }
-}
-
-inline int16_t GetInt16Field(const butil::IOBuf& row, uint32_t offset) {
-    int16_t value = 0;
-    row.copy_to(reinterpret_cast<void*>(&value), 2, offset);
-    return value;
 }
 
 inline int16_t GetInt16FieldUnsafe(const int8_t* row, uint32_t offset) {
@@ -331,12 +318,6 @@ inline int16_t GetInt16Field(const int8_t* row, uint32_t idx,
     }
 }
 
-inline int32_t GetInt32Field(const butil::IOBuf& row, uint32_t offset) {
-    int32_t value = 0;
-    row.copy_to(reinterpret_cast<void*>(&value), 4, offset);
-    return value;
-}
-
 inline int32_t GetInt32FieldUnsafe(const int8_t* row, uint32_t offset) {
     return *(reinterpret_cast<const int32_t*>(row + offset));
 }
@@ -352,12 +333,6 @@ inline int32_t GetInt32Field(const int8_t* row, uint32_t idx,
     }
 }
 
-inline int64_t GetInt64Field(const butil::IOBuf& row, uint32_t offset) {
-    int64_t value = 0;
-    row.copy_to(reinterpret_cast<void*>(&value), 8, offset);
-    return value;
-}
-
 inline int64_t GetInt64FieldUnsafe(const int8_t* row, uint32_t offset) {
     return *(reinterpret_cast<const int64_t*>(row + offset));
 }
@@ -371,12 +346,6 @@ inline int64_t GetInt64Field(const int8_t* row, uint32_t idx,
         *is_null = false;
         return GetInt64FieldUnsafe(row, offset);
     }
-}
-
-inline float GetFloatField(const butil::IOBuf& row, uint32_t offset) {
-    float value = 0;
-    row.copy_to(reinterpret_cast<void*>(&value), 4, offset);
-    return value;
 }
 
 inline float GetFloatFieldUnsafe(const int8_t* row, uint32_t offset) {
@@ -409,12 +378,6 @@ inline Timestamp GetTimestampField(const int8_t* row, uint32_t idx,
     }
 }
 
-inline double GetDoubleField(const butil::IOBuf& row, uint32_t offset) {
-    double value = 0;
-    row.copy_to(reinterpret_cast<void*>(&value), 8, offset);
-    return value;
-}
-
 inline double GetDoubleFieldUnsafe(const int8_t* row, uint32_t offset) {
     return *(reinterpret_cast<const double*>(row + offset));
 }
@@ -442,10 +405,6 @@ int32_t GetStrField(const int8_t* row, uint32_t idx,
                     uint32_t next_str_field_offset, uint32_t str_start_offset,
                     uint32_t addr_space, int8_t** data, uint32_t* size,
                     int8_t* is_null);
-
-int32_t GetStrField(const butil::IOBuf& row, uint32_t str_field_offset,
-                    uint32_t next_str_field_offset, uint32_t str_start_offset,
-                    uint32_t addr_space, butil::IOBuf* output);
 
 int32_t GetCol(int8_t* input, int32_t row_idx,
                      uint32_t col_idx, int32_t offset, int32_t type_id,

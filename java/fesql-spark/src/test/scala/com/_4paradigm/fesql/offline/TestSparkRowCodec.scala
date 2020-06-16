@@ -12,7 +12,7 @@ import scala.util.Random
 
 class TestSparkRowCodec extends FunSuite {
 
-  FeSqlLibrary.init()
+  FeSqlLibrary.initCore()
 
   private val baseSchema = StructType(Seq(
     StructField("short", ShortType),

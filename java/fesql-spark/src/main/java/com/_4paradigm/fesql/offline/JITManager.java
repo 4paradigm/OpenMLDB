@@ -18,7 +18,7 @@ public class JITManager {
     static private Logger logger = LoggerFactory.getLogger(JITManager.class);
 
     static {
-        FeSqlLibrary.init();
+        FeSqlLibrary.initCore();
         Engine.InitializeGlobalLLVM();
     }
 
@@ -53,7 +53,7 @@ public class JITManager {
     synchronized static public void initJITModule(String tag, ByteBuffer moduleBuffer) {
 
         // ensure worker native
-        FeSqlLibrary.init();
+        FeSqlLibrary.initCore();
 
         // ensure worker side module
         if (!JITManager.hasModule(tag)) {
