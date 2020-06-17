@@ -35,13 +35,33 @@ TEST_F(EngineBMCaseTest, EngineWindowSumFeature5_TEST) {
     EngineWindowSumFeature5(nullptr, TEST, 100L, 100L);
     EngineWindowSumFeature5(nullptr, TEST, 1000L, 1000L);
 }
-
+TEST_F(EngineBMCaseTest, EngineWindowSumFeature5Window5_TEST) {
+    EngineWindowSumFeature5Window5(nullptr, TEST, 1L, 100L);
+    EngineWindowSumFeature5Window5(nullptr, TEST, 1L, 1000L);
+    EngineWindowSumFeature5Window5(nullptr, TEST, 100L, 100L);
+    EngineWindowSumFeature5Window5(nullptr, TEST, 1000L, 1000L);
+}
+TEST_F(EngineBMCaseTest, EngineWindowMultiAggWindow25Feature25_TEST) {
+    EngineWindowMultiAggWindow25Feature25(nullptr, TEST, 1L, 100L);
+    EngineWindowMultiAggWindow25Feature25(nullptr, TEST, 1L, 1000L);
+    EngineWindowMultiAggWindow25Feature25(nullptr, TEST, 100L, 100L);
+    EngineWindowMultiAggWindow25Feature25(nullptr, TEST, 1000L, 1000L);
+}
+TEST_F(EngineBMCaseTest, EngineRunBatchWindowMultiAggWindow25Feature25_TEST) {
+    EngineRunBatchWindowMultiAggWindow25Feature25(nullptr, TEST, 1L, 100L);
+    EngineRunBatchWindowMultiAggWindow25Feature25(nullptr, TEST, 1L, 1000L);
+    EngineRunBatchWindowMultiAggWindow25Feature25(nullptr, TEST, 100L, 100L);
+    EngineRunBatchWindowMultiAggWindow25Feature25(nullptr, TEST, 1000L, 1000L);
+}
 TEST_F(EngineBMCaseTest, EngineRunBatchWindowSumFeature1_TEST) {
     EngineRunBatchWindowSumFeature1(nullptr, TEST, 1L, 2L);
     EngineRunBatchWindowSumFeature1(nullptr, TEST, 1L, 10L);
     EngineRunBatchWindowSumFeature1(nullptr, TEST, 1L, 100L);
     EngineRunBatchWindowSumFeature1(nullptr, TEST, 100L, 100L);
     EngineRunBatchWindowSumFeature1(nullptr, TEST, 1000L, 1000L);
+}
+TEST_F(EngineBMCaseTest, EngineRunBatchWindowSumFeature5Window5_TEST) {
+    EngineRunBatchWindowSumFeature5Window5(nullptr, TEST, 100L, 100L);
 }
 TEST_F(EngineBMCaseTest, EngineWindowMultiAggFeature5_TEST) {
     EngineWindowMultiAggFeature5(nullptr, TEST, 100L, 100L);

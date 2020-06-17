@@ -138,6 +138,12 @@ void ProjectNode::Print(std::ostream &output, const std::string &orgTab) const {
     output << "\n";
     PrintValue(output, orgTab + INDENT, expression_->GetExprString(),
                "[" + std::to_string(pos_) + "]" + name_, false);
+
+    if (nullptr != frame_) {
+        output << "\n";
+        PrintValue(output, orgTab + INDENT, frame_->GetExprString(), "frame",
+                   true);
+    }
 }
 bool ProjectNode::Equals(const PlanNode *node) const {
     if (nullptr == node) {
@@ -154,6 +160,7 @@ bool ProjectNode::Equals(const PlanNode *node) const {
     const ProjectNode *that = dynamic_cast<const ProjectNode *>(node);
     return this->name_ == that->name_ &&
            node::ExprEquals(this->expression_, that->expression_) &&
+           node::SQLEquals(this->frame_, that->frame_) &&
            LeafPlanNode::Equals(node);
 }
 
@@ -259,6 +266,43 @@ void ProjectListNode::Print(std::ostream &output,
         PrintPlanVector(output, org_tab + INDENT, projects,
                         "projects on window ", false);
     }
+}
+
+bool ProjectListNode::MergeProjectList(node::ProjectListNode *project_list1,
+                                       node::ProjectListNode *project_list2,
+                                       node::ProjectListNode *merged_project) {
+    if (nullptr == project_list1 || nullptr == project_list2 ||
+        nullptr == merged_project) {
+        LOG(WARNING) << "can't merge project list: input projects or output "
+                        "projects is null";
+        return false;
+    }
+    auto iter1 = project_list1->GetProjects().cbegin();
+    auto end1 = project_list1->GetProjects().cend();
+    auto iter2 = project_list2->GetProjects().cbegin();
+    auto end2 = project_list2->GetProjects().cend();
+    while (iter1 != end1 && iter2 != end2) {
+        auto project1 = dynamic_cast<node::ProjectNode *>(*iter1);
+        auto project2 = dynamic_cast<node::ProjectNode *>(*iter2);
+        if (project1->GetPos() < project2->GetPos()) {
+            merged_project->AddProject(project1);
+            iter1++;
+        } else {
+            merged_project->AddProject(project2);
+            iter2++;
+        }
+    }
+    while (iter1 != end1) {
+        auto project1 = dynamic_cast<node::ProjectNode *>(*iter1);
+        merged_project->AddProject(project1);
+        iter1++;
+    }
+    while (iter2 != end2) {
+        auto project2 = dynamic_cast<node::ProjectNode *>(*iter2);
+        merged_project->AddProject(project2);
+        iter2++;
+    }
+    return true;
 }
 bool ProjectListNode::Equals(const PlanNode *node) const {
     if (nullptr == node) {
@@ -433,11 +477,9 @@ bool WindowPlanNode::Equals(const PlanNode *node) const {
     }
     const WindowPlanNode *that = dynamic_cast<const WindowPlanNode *>(node);
     return this->name == that->name &&
-           this->is_range_between_ == that->is_range_between_ &&
-           this->start_offset_ == that->start_offset_ &&
-           this->end_offset_ == that->end_offset_ &&
-           this->start_offset_ == that->end_offset_ &&
+           SQLEquals(this->frame_node_, that->frame_node_) &&
            this->orders_ == that->orders_ && this->keys_ == that->keys_ &&
+           PlanListEquals(this->union_tables_, that->union_tables_) &&
            LeafPlanNode::Equals(node);
 }
 
@@ -527,8 +569,8 @@ bool JoinPlanNode::Equals(const PlanNode *node) const {
     const JoinPlanNode *that = dynamic_cast<const JoinPlanNode *>(node);
     return join_type_ == that->join_type_ &&
            node::ExprEquals(this->condition_, that->condition_) &&
-        node::ExprEquals(this->orders_, that->orders_) &&
-        BinaryPlanNode::Equals(that);
+           node::ExprEquals(this->orders_, that->orders_) &&
+           BinaryPlanNode::Equals(that);
 }
 
 void UnionPlanNode::Print(std::ostream &output,

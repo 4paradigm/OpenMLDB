@@ -31,93 +31,6 @@ namespace v1 {
 using fesql::codec::ListV;
 using fesql::codec::Row;
 
-int32_t GetStrField(const butil::IOBuf& row, uint32_t field_offset,
-                    uint32_t next_str_field_offset, uint32_t str_start_offset,
-                    uint32_t addr_space, butil::IOBuf* output) {
-    if (output == NULL) return -1;
-    uint32_t str_offset = 0;
-    uint32_t next_str_offset = 0;
-    switch (addr_space) {
-        case 1: {
-            int32_t i8_str_pos = str_start_offset + field_offset;
-            uint8_t i8_tmp_offset = 0;
-            row.copy_to(reinterpret_cast<void*>(&i8_tmp_offset), 1, i8_str_pos);
-            str_offset = i8_tmp_offset;
-            if (next_str_field_offset > 0) {
-                i8_str_pos = str_start_offset + next_str_field_offset;
-                row.copy_to(reinterpret_cast<void*>(&i8_tmp_offset), 1,
-                            i8_str_pos);
-                next_str_offset = i8_tmp_offset;
-            }
-            break;
-        }
-        case 2: {
-            int32_t i16_str_pos = str_start_offset + field_offset * 2;
-            uint16_t i16_tmp_offset = 0;
-            row.copy_to(reinterpret_cast<void*>(&i16_tmp_offset), 2,
-                        i16_str_pos);
-            str_offset = i16_tmp_offset;
-            if (next_str_field_offset > 0) {
-                i16_str_pos = str_start_offset + next_str_field_offset * 2;
-                row.copy_to(reinterpret_cast<void*>(&i16_tmp_offset), 2,
-                            i16_str_pos);
-                next_str_offset = i16_tmp_offset;
-            }
-            break;
-        }
-        case 3: {
-            uint8_t i8_tmp_offset = 0;
-            int32_t i8_str_pos = str_start_offset + field_offset * 3;
-            row.copy_to(reinterpret_cast<void*>(&i8_tmp_offset), 1, i8_str_pos);
-            str_offset = i8_tmp_offset;
-            row.copy_to(reinterpret_cast<void*>(&i8_tmp_offset), 1,
-                        i8_str_pos + 1);
-            str_offset = (str_offset << 8) + i8_tmp_offset;
-            row.copy_to(reinterpret_cast<void*>(&i8_tmp_offset), 1,
-                        i8_str_pos + 2);
-            str_offset = (str_offset << 8) + i8_tmp_offset;
-            if (next_str_field_offset > 0) {
-                i8_str_pos = str_start_offset + next_str_field_offset * 3;
-                row.copy_to(reinterpret_cast<void*>(&i8_tmp_offset), 1,
-                            i8_str_pos);
-                next_str_offset = i8_tmp_offset;
-                row.copy_to(reinterpret_cast<void*>(&i8_tmp_offset), 1,
-                            i8_str_pos + 1);
-                next_str_offset = (next_str_offset << 8) + i8_tmp_offset;
-                row.copy_to(reinterpret_cast<void*>(&i8_tmp_offset), 1,
-                            i8_str_pos + 2);
-                next_str_offset = (next_str_offset << 8) + i8_tmp_offset;
-            }
-            break;
-        }
-        case 4: {
-            int32_t i32_str_pos = str_start_offset + field_offset * 4;
-            row.copy_to(reinterpret_cast<void*>(&str_offset), 4, i32_str_pos);
-            if (next_str_field_offset > 0) {
-                i32_str_pos = str_start_offset + next_str_field_offset * 4;
-                row.copy_to(reinterpret_cast<void*>(&next_str_offset), 4,
-                            i32_str_pos);
-            }
-            break;
-        }
-        default: {
-            return -2;
-        }
-    }
-    if (next_str_field_offset <= 0) {
-        uint32_t tmp_size = 0;
-        row.copy_to(reinterpret_cast<void*>(&tmp_size), SIZE_LENGTH,
-                    VERSION_LENGTH);
-        uint32_t size = tmp_size - str_offset;
-        row.append_to(output, size, str_offset);
-
-    } else {
-        uint32_t size = next_str_offset - str_offset;
-        row.append_to(output, size, str_offset);
-    }
-    return 0;
-}
-
 int32_t GetStrField(const int8_t* row, uint32_t idx,
                     uint32_t str_field_offset,
                     uint32_t next_str_field_offset, uint32_t str_start_offset,
@@ -330,6 +243,42 @@ int32_t GetCol(int8_t* input, int32_t row_idx,
             return -2;
         }
     }
+    return 0;
+}
+
+int32_t GetInnerRangeList(int8_t* input, int64_t start_offset,
+                          int64_t end_offset, int8_t* data) {
+    if (nullptr == input || nullptr == data) {
+        return -2;
+    }
+    ListV<Row>* w = reinterpret_cast<ListV<Row>*>(input);
+
+    int64_t start_key = 0;
+
+    if (nullptr != w) {
+        auto iter = w->GetIterator();
+        if (iter) {
+            iter->SeekToFirst();
+            start_key = iter->Valid() ? iter->GetKey() : 0;
+        }
+    }
+    uint64_t start =
+        start_key + start_offset < 0 ? 0 : start_key + start_offset;
+    uint64_t end = start_key + end_offset < 0 ? 0 : start_key + end_offset;
+    new (data) InnerRangeList<Row>(w, start, end);
+    return 0;
+}
+
+int32_t GetInnerRowsList(int8_t* input, int64_t start_rows, int64_t end_rows,
+                         int8_t* data) {
+    if (nullptr == input || nullptr == data) {
+        return -2;
+    }
+    ListV<Row>* w = reinterpret_cast<ListV<Row>*>(input);
+
+    uint64_t start = start_rows < 0 ? 0 : start_rows;
+    uint64_t end = end_rows < 0 ? 0 : end_rows;
+    new (data) InnerRowsList<Row>(w, start, end);
     return 0;
 }
 

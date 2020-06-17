@@ -118,7 +118,8 @@ object WindowAggPlan {
     val flagIdx = if (node.window_unions().Empty()) -1 else inputSchema.size
 
     WindowAggConfig(
-      startOffset = node.window.range.start_offset,
+      startOffset = node.window.range.frame.GetHistoryRangeStart(),
+      rowPreceding = -1 * node.window.range.frame.GetHistoryRowsStart(),
       orderIdx = orderIdx,
       groupIdxs = groupIdxs.toArray,
       functionName = node.project.fn_name,
@@ -213,14 +214,14 @@ object WindowAggPlan {
     })
 
     AutoDestructibleIterator(resIter) {
-        computer.delete()
+      computer.delete()
     }
   }
 
 
   def createGroupKeyComparator(keyIdxs: Array[Int], schema: StructType): (Row, Row) => Boolean = {
     if (keyIdxs.length == 1) {
-       val idx = keyIdxs(0)
+      val idx = keyIdxs(0)
       (row1, row2) => {
         row1.get(idx) != row2.get(idx)
       }
@@ -233,9 +234,10 @@ object WindowAggPlan {
 
 
   /**
-    * Spark closure class for window compute information
-    */
+   * Spark closure class for window compute information
+   */
   case class WindowAggConfig(startOffset: Long,
+                             rowPreceding: Long,
                              orderIdx: Int,
                              groupIdxs: Array[Int],
                              functionName: String,
@@ -249,8 +251,8 @@ object WindowAggPlan {
 
 
   /**
-    * Stateful class for window computation during row iteration
-    */
+   * Stateful class for window computation during row iteration
+   */
   class WindowComputer(config: WindowAggConfig, jit: FeSQLJITWrapper) {
 
     // reuse spark output row backed array
@@ -275,7 +277,7 @@ object WindowAggPlan {
 
     // window state
     private var window = new WindowInterface(
-      config.instanceNotInWindow, config.startOffset, 0, 0)
+      config.instanceNotInWindow, config.startOffset, 0, config.rowPreceding, 0)
 
 
     def compute(row: Row): Row = {
@@ -296,7 +298,7 @@ object WindowAggPlan {
       nativeInputRow.delete()
       outputNativeRow.delete()
 
-      Row.fromSeq(outputArr)  // can reuse backed array
+      Row.fromSeq(outputArr) // can reuse backed array
     }
 
 
@@ -313,7 +315,7 @@ object WindowAggPlan {
         // TODO: wrap iter to hook iter end; now last window is leak
         window.delete()
         window = new WindowInterface(
-          config.instanceNotInWindow, config.startOffset, 0, 0)
+          config.instanceNotInWindow, config.startOffset, 0, config.rowPreceding, 0)
       }
     }
 
@@ -329,4 +331,5 @@ object WindowAggPlan {
       window = null
     }
   }
+
 }

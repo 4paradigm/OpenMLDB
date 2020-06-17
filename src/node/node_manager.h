@@ -78,11 +78,12 @@ class NodeManager {
     ProjectNode *MakeRowProjectNode(const int32_t pos, const std::string &name,
                                     node::ExprNode *expression);
     ProjectNode *MakeAggProjectNode(const int32_t pos, const std::string &name,
-                                    node::ExprNode *expression);
+                                    node::ExprNode *expression,
+                                    node::FrameNode *frame);
     PlanNode *MakeTablePlanNode(const std::string &node);
-    PlanNode *MakeJoinNode(PlanNode *left, PlanNode *right,
-                               JoinType join_type, const OrderByNode *order_by,
-                               const ExprNode *condition);
+    PlanNode *MakeJoinNode(PlanNode *left, PlanNode *right, JoinType join_type,
+                           const OrderByNode *order_by,
+                           const ExprNode *condition);
     // Make SQLxxx Node
     QueryNode *MakeSelectQueryNode(
         bool is_distinct, SQLNodeList *select_list_ptr,
@@ -114,12 +115,21 @@ class NodeManager {
     SQLNode *MakeWindowDefNode(SQLNodeList *union_tables,
                                ExprListNode *partitions, ExprNode *orders,
                                SQLNode *frame, bool instance_not_in_window);
+    WindowDefNode *MergeWindow(const WindowDefNode *w1,
+                               const WindowDefNode *w2);
     ExprNode *MakeOrderByNode(const ExprListNode *node_ptr, const bool is_asc);
-    SQLNode *MakeFrameNode(SQLNode *start, SQLNode *end);
-    SQLNode *MakeFrameBound(SQLNodeType bound_type);
-    SQLNode *MakeFrameBound(SQLNodeType bound_type, ExprNode *offset);
-    SQLNode *MakeRangeFrameNode(SQLNode *node_ptr);
-    SQLNode *MakeRowsFrameNode(SQLNode *node_ptr);
+    SQLNode *MakeFrameExtent(SQLNode *start, SQLNode *end);
+    SQLNode *MakeFrameBound(BoundType bound_type);
+    SQLNode *MakeFrameBound(BoundType bound_type, ExprNode *offset);
+    SQLNode *MakeFrameBound(BoundType bound_type, int64_t offset);
+    SQLNode *MakeFrameNode(FrameType frame_type, SQLNode *node_ptr,
+                           ExprNode *frame_size);
+    SQLNode *MakeFrameNode(FrameType frame_type, SQLNode *node_ptr);
+    SQLNode *MakeFrameNode(FrameType frame_type, SQLNode *node_ptr,
+                           int64_t maxsize);
+    SQLNode *MakeFrameNode(FrameType frame_type, FrameExtent *frame_range,
+                           FrameExtent *frame_rows, int64_t maxsize);
+    FrameNode *MergeFrameNode(const FrameNode *frame1, const FrameNode *frame2);
     SQLNode *MakeLimitNode(int count);
 
     SQLNode *MakeNameNode(const std::string &name);
@@ -270,7 +280,8 @@ class NodeManager {
  private:
     ProjectNode *MakeProjectNode(const int32_t pos, const std::string &name,
                                  const bool is_aggregation,
-                                 node::ExprNode *expression);
+                                 node::ExprNode *expression,
+                                 node::FrameNode *frame);
 
     SQLNode *RegisterNode(SQLNode *node_ptr) {
         parser_node_list_.push_back(node_ptr);

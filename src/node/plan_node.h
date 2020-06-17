@@ -219,25 +219,30 @@ class LimitPlanNode : public UnaryPlanNode {
 class ProjectNode : public LeafPlanNode {
  public:
     ProjectNode(int32_t pos, const std::string &name, const bool is_aggregation,
-                node::ExprNode *expression)
+                node::ExprNode *expression, node::FrameNode *frame)
         : LeafPlanNode(kProjectNode),
           is_aggregation_(is_aggregation),
           pos_(pos),
           name_(name),
-          expression_(expression) {}
+          expression_(expression),
+          frame_(frame) {}
 
     ~ProjectNode() {}
     void Print(std::ostream &output, const std::string &orgTab) const;
     const uint32_t GetPos() const { return pos_; }
     std::string GetName() const { return name_; }
     node::ExprNode *GetExpression() const { return expression_; }
+    node::FrameNode *frame() const { return frame_; }
+    void set_frame(node::FrameNode *frame) { frame_ = frame; }
     virtual bool Equals(const PlanNode *node) const;
+
     const bool is_aggregation_;
 
  private:
     uint32_t pos_;
     std::string name_;
     node::ExprNode *expression_;
+    node::FrameNode *frame_;
 };
 
 class WindowPlanNode : public LeafPlanNode {
@@ -247,21 +252,16 @@ class WindowPlanNode : public LeafPlanNode {
           id(id),
           instance_not_in_window_(false),
           name(""),
-          start_offset_(0L),
-          end_offset_(0L),
-          is_range_between_(true),
           keys_(nullptr),
           orders_(nullptr) {}
     ~WindowPlanNode() {}
     void Print(std::ostream &output, const std::string &org_tab) const;
-    int64_t GetStartOffset() const { return start_offset_; }
-    void SetStartOffset(int64_t startOffset) { start_offset_ = startOffset; }
-    int64_t GetEndOffset() const { return end_offset_; }
-    void SetEndOffset(int64_t endOffset) { end_offset_ = endOffset; }
-    bool IsRangeBetween() const { return is_range_between_; }
-    void SetIsRangeBetween(bool isRangeBetween) {
-        is_range_between_ = isRangeBetween;
+    int64_t GetStartOffset() const {
+        return frame_node_->GetHistoryRangeStart();
     }
+    int64_t GetEndOffset() const { return frame_node_->GetHistoryRangeEnd(); }
+    const FrameNode *frame_node() const { return frame_node_; }
+    void set_frame_node(FrameNode *frame_node) { frame_node_ = frame_node; }
     const ExprListNode *GetKeys() const { return keys_; }
     const OrderByNode *GetOrders() const { return orders_; }
     void SetKeys(ExprListNode *keys) { keys_ = keys; }
@@ -283,9 +283,7 @@ class WindowPlanNode : public LeafPlanNode {
     int id;
     bool instance_not_in_window_;
     std::string name;
-    int64_t start_offset_;
-    int64_t end_offset_;
-    bool is_range_between_;
+    FrameNode *frame_node_;
     ExprListNode *keys_;
     OrderByNode *orders_;
     PlanNodeList union_tables_;
@@ -312,9 +310,11 @@ class ProjectListNode : public LeafPlanNode {
     const WindowPlanNode *GetW() const { return w_ptr_; }
 
     const bool IsWindowAgg() const { return is_window_agg_; }
-
     virtual bool Equals(const PlanNode *node) const;
 
+    static bool MergeProjectList(node::ProjectListNode *project_list1,
+                                 node::ProjectListNode *project_list2,
+                                 node::ProjectListNode *merged_project);
     const bool is_window_agg_;
     const WindowPlanNode *w_ptr_;
 

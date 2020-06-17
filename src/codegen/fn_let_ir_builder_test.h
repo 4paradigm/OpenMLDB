@@ -18,15 +18,16 @@
 #ifndef SRC_CODEGEN_FN_LET_IR_BUILDER_TEST_H_
 #define SRC_CODEGEN_FN_LET_IR_BUILDER_TEST_H_
 
-#include "codegen/fn_let_ir_builder.h"
 #include <memory>
 #include <string>
-#include <vector>
 #include <utility>
+#include <vector>
 #include "case/sql_case.h"
 #include "codec/fe_row_codec.h"
 #include "codec/list_iterator_codec.h"
+#include "codegen/codegen_base_test.h"
 #include "codegen/fn_ir_builder.h"
+#include "codegen/fn_let_ir_builder.h"
 #include "gtest/gtest.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/IR/Function.h"
@@ -46,11 +47,9 @@
 #include "udf/udf.h"
 #include "vm/jit.h"
 #include "vm/sql_compiler.h"
-#include "codegen/codegen_base_test.h"
 
 using namespace llvm;       // NOLINT
 using namespace llvm::orc;  // NOLINT
-
 
 namespace fesql {
 namespace codegen {
@@ -84,7 +83,7 @@ node::ProjectListNode* GetPlanNodeList(node::PlanNodeList trees) {
 }
 
 void AddFunc(const std::string& fn, ::fesql::node::NodeManager* manager,
-    ::llvm::Module* m) {
+             ::llvm::Module* m) {
     if (fn.empty()) {
         return;
     }
@@ -126,7 +125,11 @@ void CheckFnLetBuilder(::fesql::node::NodeManager* manager,
     ASSERT_EQ(0, ret);
     fesql::node::ProjectListNode* pp_node_ptr = GetPlanNodeList(plan);
 
-    RowFnLetIRBuilder ir_builder(name_schemas, m.get());
+    RowFnLetIRBuilder ir_builder(name_schemas,
+                                 nullptr == pp_node_ptr->GetW()
+                                     ? nullptr
+                                     : pp_node_ptr->GetW()->frame_node(),
+                                 m.get());
     bool ok = ir_builder.Build("test_at_fn", pp_node_ptr->GetProjects(),
                                output_schema, column_sources);
     ASSERT_TRUE(ok);
@@ -178,4 +181,3 @@ void CheckFnLetBuilder(::fesql::node::NodeManager* manager,
 }  // namespace fesql
 
 #endif  // SRC_CODEGEN_FN_LET_IR_BUILDER_TEST_H_
-

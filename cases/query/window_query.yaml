@@ -1,6 +1,6 @@
 SQLCases:
-  - id: 1
-    desc: Window SQL
+  - id: 0
+    desc: Window SQL ROWS_RANGE Between
     db: db1
     sql: |
       %%fun
@@ -15,7 +15,7 @@ SQLCases:
       sum(col4) OVER w1 as w1_col4_sum, sum(col2) OVER w1 as w1_col2_sum,
       sum(col5) OVER w1 as w1_col5_sum,
       col6 as col6 FROM t1
-      WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.col5 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
+      WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
     inputs:
       - name: t1
         resource: cases/resource/simple_t1.yaml
@@ -29,6 +29,42 @@ SQLCases:
         3, 55, 1, 3, 3.3, 33.3, 55, 1, 333
         4, 55, 2, 7, 7.7, 77.7, 110, 3, 4444
         5, 55, 3, 12, 13.2, 133.2, 165, 6, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  - id: 1
+    desc: window ROWS Between
+    sql: |
+      SELECT id, pk1, col1, std_ts,
+      sum(col1) OVER w1 as w1_col1_sum
+      FROM t1
+      WINDOW w1 AS (PARTITION BY pk1 ORDER BY std_ts ROWS BETWEEN 1 PRECEDING AND CURRENT ROW);
+    inputs:
+      - name: t1
+        schema: id:int, pk1:string, col1:int32, std_ts:timestamp
+        index: index2:pk1:std_ts
+        data: |
+          1, A, 1, 1590115420000
+          2, B, 1, 1590115420000
+          3, A, 2, 1590115430000
+          4, B, 2, 1590115430000
+          5, A, 3, 1590115440000
+          6, B, 3, 1590115440000
+          7, A, 4, 1590115450000
+          8, B, 4, 1590115450000
+          9, A, 5, 1590115460000
+
+    output:
+      schema: id:int, pk1:string, col1:int, std_ts:timestamp, w1_col1_sum:int
+      order: id
+      data: |
+        1, A, 1, 1590115420000, 1
+        2, B, 1, 1590115420000, 1
+        3, A, 2, 1590115430000, 3
+        4, B, 2, 1590115430000, 3
+        5, A, 3, 1590115440000, 5
+        6, B, 3, 1590115440000, 5
+        7, A, 4, 1590115450000, 7
+        8, B, 4, 1590115450000, 7
+        9, A, 5, 1590115460000, 9
+
   - id: 2
     desc: Window SQL PK是字符串
     db: db1
@@ -45,7 +81,7 @@ SQLCases:
       sum(col4) OVER w1 as w1_col4_sum, sum(col2) OVER w1 as w1_col2_sum,
       sum(col5) OVER w1 as w1_col5_sum,
       col6 as col6 FROM t1
-      WINDOW w1 AS (PARTITION BY t1.col0 ORDER BY t1.col5 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
+      WINDOW w1 AS (PARTITION BY t1.col0 ORDER BY t1.col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
     inputs:
       - name: t1
         resource: cases/resource/simple_t1.yaml
@@ -73,7 +109,7 @@ SQLCases:
       SELECT col1 as id, col2, col0, col5, test_sum(col1) OVER w1 as w1_col1_sum, sum(col3) OVER w1 as w1_col3_sum,
       sum(col4) OVER w2 as w2_col4_sum, sum(col2) OVER w2 as w2_col2_sum, sum(col5) OVER w2 as w2_col5_sum,
       col6 as col6 FROM t1 WINDOW
-      w1 AS (PARTITION BY col2 ORDER BY col5 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW),
+      w1 AS (PARTITION BY col2 ORDER BY col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW),
       w2 AS (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
     inputs:
       - name: t1
@@ -102,7 +138,7 @@ SQLCases:
       SELECT col2, col0, col5, test_sum(col1) OVER w1 as w1_col1_sum, sum(col3) OVER w1 as w1_col3_sum,
       sum(col4) OVER w2 as w2_col4_sum, sum(col2) OVER w2 as w2_col2_sum, sum(col5) OVER w2 as w2_col5_sum,
       col1, col6 as col6 FROM t1 WINDOW
-      w1 AS (PARTITION BY col2 ORDER BY col5 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW),
+      w1 AS (PARTITION BY col2 ORDER BY col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW),
       w2 AS (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
     inputs:
       - name: t1
@@ -131,7 +167,7 @@ SQLCases:
       SELECT col2, col0, col5, test_sum(col1) OVER w1 as w1_col1_sum, sum(col3) OVER w1 as w1_col3_sum,
       sum(col4) OVER w3 as w3_col4_sum, sum(col2) OVER w2 as w2_col2_sum, sum(col5) OVER w2 as w2_col5_sum,
       col1, col6 as col6 FROM t1 WINDOW
-      w1 AS (PARTITION BY col2 ORDER BY col5 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW),
+      w1 AS (PARTITION BY col2 ORDER BY col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW),
       w2 AS (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN 3 PRECEDING AND CURRENT ROW),
       w3 AS (PARTITION BY col1 ORDER BY col5 RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
     inputs:
@@ -163,7 +199,7 @@ SQLCases:
       sum(col4) OVER w1 as w1_col4_sum, sum(col2) OVER w1 as w1_col2_sum,
       sum(col5) OVER w1 as w1_col5_sum, col1,
       col6 as col6 FROM t1
-      WINDOW w1 AS (PARTITION BY t1.col0, t1.col2 ORDER BY t1.col5 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
+      WINDOW w1 AS (PARTITION BY t1.col0, t1.col2 ORDER BY t1.col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
     inputs:
       - name: t1
         schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
@@ -207,7 +243,7 @@ SQLCases:
       sum(col4) OVER w1 as w1_col4_sum, sum(col2) OVER w1 as w1_col2_sum,
       sum(col5) OVER w1 as w1_col5_sum, col1,
       col6 as col6 FROM t1
-      WINDOW w1 AS (PARTITION BY t1.col0, t1.col2 ORDER BY t1.col5 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
+      WINDOW w1 AS (PARTITION BY t1.col0, t1.col2 ORDER BY t1.col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
     inputs:
       - name: t1
         schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
@@ -235,12 +271,12 @@ SQLCases:
         2, 555, 3, 7, 7.7, 77.7, 555, 3, 7, ccccccc
         2, 555, 4, 15, 16.5, 166.5, 1110, 7,  8, dddddddd
         2, 555, 5, 24, 26.4, 266.4, 1665, 12, 9, eeeeeeeee
-  - id: 7
+  - id: 8
     desc: Window SQL Order By Timestamp
     db: db1
     sql: |
       SELECT col1 as id, col2, std_ts, sum(col3) OVER w1 as w1_col3_sum FROM t1
-      WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.std_ts ROWS BETWEEN 3s PRECEDING AND CURRENT ROW) limit 10;
+      WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.std_ts ROWS_RANGE BETWEEN 3s PRECEDING AND CURRENT ROW) limit 10;
     inputs:
       - name: t1
         resource: cases/resource/simple_t1_ts.yaml
@@ -254,7 +290,7 @@ SQLCases:
         3, 55, 1590115422000, 3.3
         4, 55, 1590115423000, 7.7
         5, 55, 1590115424000, 13.2
-  - id: 8
+  - id: 9
     desc: Window SQL Order By Timestamp, timestamp列聚合
     db: db1
     sql: |
@@ -262,7 +298,7 @@ SQLCases:
       min(std_ts) OVER w1 as w1_ts_min,
       max(std_ts) OVER w1 as w1_ts_max
       FROM t1
-      WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.std_ts ROWS BETWEEN 3s PRECEDING AND CURRENT ROW) limit 10;
+      WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.std_ts ROWS_RANGE BETWEEN 3s PRECEDING AND CURRENT ROW) limit 10;
     inputs:
       - name: t1
         resource: cases/resource/simple_t1_ts.yaml
@@ -277,7 +313,7 @@ SQLCases:
         4, 55, 1590115423000, 3180230845000, 1590115422000, 1590115423000
         5, 55, 1590115424000, 4770346269000, 1590115422000, 1590115424000
 
-  - id: 8
+  - id: 10
     desc: Window SQL Order By Timestamp, Date列聚合
     db: db1
     sql: |
@@ -285,7 +321,7 @@ SQLCases:
       min(std_date) OVER w1 as w1_date_min,
       max(std_date) OVER w1 as w1_date_max
       FROM t1
-      WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.std_ts ROWS BETWEEN 3s PRECEDING AND CURRENT ROW) limit 10;
+      WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.std_ts ROWS_RANGE BETWEEN 3s PRECEDING AND CURRENT ROW) limit 10;
     inputs:
       - name: t1
         schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string, std_ts:timestamp, std_date:date
@@ -306,3 +342,308 @@ SQLCases:
         3, 55, 1590115422000, 2020-05-20,  2020-05-20
         4, 55, 1590115423000,  2020-05-20,  2020-05-21
         5, 55, 1590115424000,  2020-05-20,  2020-05-22
+  - id: 11
+    desc: 匿名Window ROWS_RANGE
+    db: db1
+    sql: |
+      SELECT col1 as id, col2, std_ts, sum(col3) OVER
+      (PARTITION BY t1.col2 ORDER BY t1.std_ts ROWS_RANGE BETWEEN 3s PRECEDING AND CURRENT ROW) as w1_col3_sum FROM t1 limit 10;
+    inputs:
+      - name: t1
+        resource: cases/resource/simple_t1_ts.yaml
+        index: index2:col2:std_ts
+    output:
+      schema: id:int32, col2:int16, std_ts:timestamp, w1_col3_sum:float
+      order: id
+      data: |
+        1, 5, 1590115420000, 1.1
+        2, 5, 1590115421000, 3.3
+        3, 55, 1590115422000, 3.3
+        4, 55, 1590115423000, 7.7
+        5, 55, 1590115424000, 13.2
+
+  - id: 12
+    desc: window ROWS_RANGE merge
+    sql: |
+      SELECT id, pk1, col1, std_ts,
+      sum(col1) OVER (PARTITION BY pk1 ORDER BY std_ts ROWS_RANGE BETWEEN 10s PRECEDING AND CURRENT ROW) as w1_col1_sum,
+      sum(col1) OVER w2 as w2_col1_sum,
+      sum(col1) OVER (PARTITION BY pk1 ORDER BY std_ts ROWS_RANGE BETWEEN 30s PRECEDING AND CURRENT ROW) as w3_col1_sum
+      FROM t1
+      WINDOW w2 AS (PARTITION BY pk1 ORDER BY std_ts ROWS_RANGE BETWEEN 20s PRECEDING AND CURRENT ROW);
+    inputs:
+      - name: t1
+        schema: id:int, pk1:string, col1:int32, std_ts:timestamp
+        index: index2:pk1:std_ts
+        data: |
+          1, A, 1, 1590115420000
+          2, B, 1, 1590115420000
+          3, A, 2, 1590115430000
+          4, B, 2, 1590115430000
+          5, A, 3, 1590115440000
+          6, B, 3, 1590115440000
+          7, A, 4, 1590115450000
+          8, B, 4, 1590115450000
+          9, A, 5, 1590115460000
+          10, B, 5, 1590115460000
+          11, A, 6, 1590115470000
+          12, A, 7, 1590115480000
+          13, A, 8, 1590115490000
+          14, A, 9, 1590115500000
+
+    output:
+      schema: id:int, pk1:string, col1:int, std_ts:timestamp, w1_col1_sum:int, w2_col1_sum:int, w3_col1_sum:int
+      order: id
+      data: |
+        1, A, 1, 1590115420000, 1, 1, 1
+        2, B, 1, 1590115420000, 1, 1, 1
+        3, A, 2, 1590115430000, 3, 3, 3
+        4, B, 2, 1590115430000, 3, 3, 3
+        5, A, 3, 1590115440000, 5, 6, 6
+        6, B, 3, 1590115440000, 5, 6, 6
+        7, A, 4, 1590115450000, 7, 9, 10
+        8, B, 4, 1590115450000, 7, 9, 10
+        9, A, 5, 1590115460000, 9, 12, 14
+        10, B, 5, 1590115460000, 9, 12, 14
+        11, A, 6, 1590115470000, 11, 15, 18
+        12, A, 7, 1590115480000, 13, 18, 22
+        13, A, 8, 1590115490000, 15, 21, 26
+        14, A, 9, 1590115500000, 17, 24, 30
+  - id: 13
+    desc: window ROWS merge
+    sql: |
+      SELECT id, pk1, col1, std_ts,
+      sum(col1) OVER (PARTITION BY pk1 ORDER BY std_ts ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) as w1_col1_sum,
+      sum(col1) OVER w2 as w2_col1_sum,
+      sum(col1) OVER (PARTITION BY pk1 ORDER BY std_ts ROWS BETWEEN 3 PRECEDING AND CURRENT ROW) as w3_col1_sum
+      FROM t1
+      WINDOW w2 AS (PARTITION BY pk1 ORDER BY std_ts ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    inputs:
+      - name: t1
+        schema: id:int, pk1:string, col1:int32, std_ts:timestamp
+        index: index2:pk1:std_ts
+        data: |
+          1, A, 1, 1590115420000
+          2, B, 1, 1590115420000
+          3, A, 2, 1590115430000
+          4, B, 2, 1590115430000
+          5, A, 3, 1590115440000
+          6, B, 3, 1590115440000
+          7, A, 4, 1590115450000
+          8, B, 4, 1590115450000
+          9, A, 5, 1590115460000
+          10, B, 5, 1590115460000
+          11, A, 6, 1590115470000
+          12, A, 7, 1590115480000
+          13, A, 8, 1590115490000
+          14, A, 9, 1590115500000
+
+    output:
+      schema: id:int, pk1:string, col1:int, std_ts:timestamp, w1_col1_sum:int, w2_col1_sum:int, w3_col1_sum:int
+      order: id
+      data: |
+        1, A, 1, 1590115420000, 1, 1, 1
+        2, B, 1, 1590115420000, 1, 1, 1
+        3, A, 2, 1590115430000, 3, 3, 3
+        4, B, 2, 1590115430000, 3, 3, 3
+        5, A, 3, 1590115440000, 5, 6, 6
+        6, B, 3, 1590115440000, 5, 6, 6
+        7, A, 4, 1590115450000, 7, 9, 10
+        8, B, 4, 1590115450000, 7, 9, 10
+        9, A, 5, 1590115460000, 9, 12, 14
+        10, B, 5, 1590115460000, 9, 12, 14
+        11, A, 6, 1590115470000, 11, 15, 18
+        12, A, 7, 1590115480000, 13, 18, 22
+        13, A, 8, 1590115490000, 15, 21, 26
+        14, A, 9, 1590115500000, 17, 24, 30
+  - id: 14
+    desc: window ROWS and ROWS_RANGE merge
+    sql: |
+      SELECT id, pk1, col1, std_ts,
+      sum(col1) OVER (PARTITION BY pk1 ORDER BY std_ts ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) as w1_col1_sum,
+      sum(col1) OVER w2 as w2_col1_sum,
+      sum(col1) OVER (PARTITION BY pk1 ORDER BY std_ts ROWS_RANGE BETWEEN 30s PRECEDING AND CURRENT ROW) as w3_col1_sum
+      FROM t1
+      WINDOW w2 AS (PARTITION BY pk1 ORDER BY std_ts ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    inputs:
+      - name: t1
+        schema: id:int, pk1:string, col1:int32, std_ts:timestamp
+        index: index2:pk1:std_ts
+        data: |
+          1, A, 1, 1590115420000
+          2, B, 1, 1590115420000
+          3, A, 2, 1590115430000
+          4, B, 2, 1590115430000
+          5, A, 3, 1590115440000
+          6, B, 3, 1590115440000
+          7, A, 4, 1590115450000
+          8, B, 4, 1590115450000
+          9, A, 5, 1590115460000
+          10, B, 5, 1590115460000
+          11, A, 6, 1590115470000
+          12, A, 7, 1590115480000
+          13, A, 8, 1590115490000
+          14, A, 9, 1590115500000
+
+    output:
+      schema: id:int, pk1:string, col1:int, std_ts:timestamp, w1_col1_sum:int, w2_col1_sum:int, w3_col1_sum:int
+      order: id
+      data: |
+        1, A, 1, 1590115420000, 1, 1, 1
+        2, B, 1, 1590115420000, 1, 1, 1
+        3, A, 2, 1590115430000, 3, 3, 3
+        4, B, 2, 1590115430000, 3, 3, 3
+        5, A, 3, 1590115440000, 5, 6, 6
+        6, B, 3, 1590115440000, 5, 6, 6
+        7, A, 4, 1590115450000, 7, 9, 10
+        8, B, 4, 1590115450000, 7, 9, 10
+        9, A, 5, 1590115460000, 9, 12, 14
+        10, B, 5, 1590115460000, 9, 12, 14
+        11, A, 6, 1590115470000, 11, 15, 18
+        12, A, 7, 1590115480000, 13, 18, 22
+        13, A, 8, 1590115490000, 15, 21, 26
+        14, A, 9, 1590115500000, 17, 24, 30
+  - id: 15
+    desc: window ROWS_RANGE 包含纯历史小窗口(不包含CURRENT ROW)
+    sql: |
+      SELECT id, pk1, col1, std_ts,
+      sum(col1) OVER (PARTITION BY pk1 ORDER BY std_ts ROWS_RANGE BETWEEN 10s PRECEDING AND CURRENT ROW) as w1_col1_sum,
+      sum(col1) OVER w2 as w2_col1_sum,
+      sum(col1) OVER (PARTITION BY pk1 ORDER BY std_ts ROWS_RANGE BETWEEN 40s PRECEDING AND 21s PRECEDING) as w3_col1_sum
+      FROM t1
+      WINDOW w2 AS (PARTITION BY pk1 ORDER BY std_ts ROWS_RANGE BETWEEN 20s PRECEDING AND CURRENT ROW);
+    inputs:
+      - name: t1
+        schema: id:int, pk1:string, col1:int32, std_ts:timestamp
+        index: index2:pk1:std_ts
+        data: |
+          1, A, 1, 1590115420000
+          2, B, 1, 1590115420000
+          3, A, 2, 1590115430000
+          4, B, 2, 1590115430000
+          5, A, 3, 1590115440000
+          6, B, 3, 1590115440000
+          7, A, 4, 1590115450000
+          8, B, 4, 1590115450000
+          9, A, 5, 1590115460000
+          10, B, 5, 1590115460000
+          11, A, 6, 1590115470000
+          12, A, 7, 1590115480000
+          13, A, 8, 1590115490000
+          14, A, 9, 1590115500000
+
+    output:
+      schema: id:int, pk1:string, col1:int, std_ts:timestamp, w1_col1_sum:int, w2_col1_sum:int, w3_col1_sum:int
+      order: id
+      data: |
+        1, A, 1, 1590115420000, 1, 1, 0
+        2, B, 1, 1590115420000, 1, 1, 0
+        3, A, 2, 1590115430000, 3, 3, 0
+        4, B, 2, 1590115430000, 3, 3, 0
+        5, A, 3, 1590115440000, 5, 6, 0
+        6, B, 3, 1590115440000, 5, 6, 0
+        7, A, 4, 1590115450000, 7, 9, 1
+        8, B, 4, 1590115450000, 7, 9, 1
+        9, A, 5, 1590115460000, 9, 12, 3
+        10, B, 5, 1590115460000, 9, 12, 3
+        11, A, 6, 1590115470000, 11, 15, 5
+        12, A, 7, 1590115480000, 13, 18, 7
+        13, A, 8, 1590115490000, 15, 21, 9
+        14, A, 9, 1590115500000, 17, 24, 11
+
+  - id: 16
+    desc: window ROWS merge, 包含纯历史小窗口
+    sql: |
+      SELECT id, pk1, col1, std_ts,
+      sum(col1) OVER (PARTITION BY pk1 ORDER BY std_ts ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) as w1_col1_sum,
+      sum(col1) OVER w2 as w2_col1_sum,
+      sum(col1) OVER (PARTITION BY pk1 ORDER BY std_ts ROWS BETWEEN 3 PRECEDING AND 2 PRECEDING) as w3_col1_sum
+      FROM t1
+      WINDOW w2 AS (PARTITION BY pk1 ORDER BY std_ts ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    inputs:
+      - name: t1
+        schema: id:int, pk1:string, col1:int32, std_ts:timestamp
+        index: index2:pk1:std_ts
+        data: |
+          1, A, 1, 1590115420000
+          2, B, 1, 1590115420000
+          3, A, 2, 1590115430000
+          4, B, 2, 1590115430000
+          5, A, 3, 1590115440000
+          6, B, 3, 1590115440000
+          7, A, 4, 1590115450000
+          8, B, 4, 1590115450000
+          9, A, 5, 1590115460000
+          10, B, 5, 1590115460000
+          11, A, 6, 1590115470000
+          12, A, 7, 1590115480000
+          13, A, 8, 1590115490000
+          14, A, 9, 1590115500000
+
+    output:
+      schema: id:int, pk1:string, col1:int, std_ts:timestamp, w1_col1_sum:int, w2_col1_sum:int, w3_col1_sum:int
+      order: id
+      data: |
+        1, A, 1, 1590115420000, 1, 1, 0
+        2, B, 1, 1590115420000, 1, 1, 0
+        3, A, 2, 1590115430000, 3, 3, 0
+        4, B, 2, 1590115430000, 3, 3, 0
+        5, A, 3, 1590115440000, 5, 6, 1
+        6, B, 3, 1590115440000, 5, 6, 1
+        7, A, 4, 1590115450000, 7, 9, 3
+        8, B, 4, 1590115450000, 7, 9, 3
+        9, A, 5, 1590115460000, 9, 12, 5
+        10, B, 5, 1590115460000, 9, 12, 5
+        11, A, 6, 1590115470000, 11, 15, 7
+        12, A, 7, 1590115480000, 13, 18, 9
+        13, A, 8, 1590115490000, 15, 21, 11
+        14, A, 9, 1590115500000, 17, 24, 13
+  - id: 17
+    desc: window ROWS and ROWS_RANGE merge, 包含纯历史小窗口
+    sql: |
+      SELECT id, pk1, col1, std_ts,
+      sum(col1) OVER (PARTITION BY pk1 ORDER BY std_ts ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) as w1_col1_sum,
+      sum(col1) OVER w2 as w2_col1_sum,
+      sum(col1) OVER (PARTITION BY pk1 ORDER BY std_ts ROWS_RANGE BETWEEN 30s PRECEDING AND CURRENT ROW) as w3_col1_sum,
+      sum(col1) OVER (PARTITION BY pk1 ORDER BY std_ts ROWS BETWEEN 3 PRECEDING AND 2 PRECEDING) as w4_col1_sum,
+      sum(col1) OVER (PARTITION BY pk1 ORDER BY std_ts ROWS_RANGE BETWEEN 40s PRECEDING AND 21s PRECEDING) as w5_col1_sum
+      FROM t1
+      WINDOW w2 AS (PARTITION BY pk1 ORDER BY std_ts ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    inputs:
+      - name: t1
+        schema: id:int, pk1:string, col1:int32, std_ts:timestamp
+        index: index2:pk1:std_ts
+        data: |
+          1, A, 1, 1590115420000
+          2, B, 1, 1590115420000
+          3, A, 2, 1590115430000
+          4, B, 2, 1590115430000
+          5, A, 3, 1590115440000
+          6, B, 3, 1590115440000
+          7, A, 4, 1590115450000
+          8, B, 4, 1590115450000
+          9, A, 5, 1590115460000
+          10, B, 5, 1590115460000
+          11, A, 6, 1590115470000
+          12, A, 7, 1590115480000
+          13, A, 8, 1590115490000
+          14, A, 9, 1590115500000
+
+    output:
+      schema: id:int, pk1:string, col1:int, std_ts:timestamp, w1_col1_sum:int, w2_col1_sum:int, w3_col1_sum:int, w4_col1_sum:int, w5_col1_sum:int
+      order: id
+      data: |
+        1, A, 1, 1590115420000, 1, 1, 1, 0, 0
+        2, B, 1, 1590115420000, 1, 1, 1, 0, 0
+        3, A, 2, 1590115430000, 3, 3, 3, 0, 0
+        4, B, 2, 1590115430000, 3, 3, 3, 0, 0
+        5, A, 3, 1590115440000, 5, 6, 6, 1, 0
+        6, B, 3, 1590115440000, 5, 6, 6, 1, 0
+        7, A, 4, 1590115450000, 7, 9, 10, 3, 1
+        8, B, 4, 1590115450000, 7, 9, 10, 3, 1
+        9, A, 5, 1590115460000, 9, 12, 14, 5, 3
+        10, B, 5, 1590115460000, 9, 12, 14, 5, 3
+        11, A, 6, 1590115470000, 11, 15, 18, 7, 5
+        12, A, 7, 1590115480000, 13, 18, 22, 9, 7
+        13, A, 8, 1590115490000, 15, 21, 26, 11, 9
+        14, A, 9, 1590115500000, 17, 24, 30, 13, 11

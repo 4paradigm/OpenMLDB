@@ -34,6 +34,7 @@ namespace codegen {
 ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var)
     : block_(block),
       sv_(scope_var),
+      frame_(nullptr),
       row_mode_(true),
       variable_ir_builder_(block, scope_var),
       arithmetic_ir_builder_(block),
@@ -46,6 +47,7 @@ ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
                              const bool row_mode, ::llvm::Module* module)
     : block_(block),
       sv_(scope_var),
+      frame_(nullptr),
       row_mode_(row_mode),
       variable_ir_builder_(block, scope_var),
       arithmetic_ir_builder_(block),
@@ -228,8 +230,7 @@ bool ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call_fn,
         // TODO(chenjing): remove out_name
         if (Build(arg, &llvm_arg_wrapper, status)) {
             ::fesql::node::TypeNode value_type;
-            if (false == GetFullType(
-                    llvm_arg_wrapper.GetType(), &value_type)) {
+            if (false == GetFullType(llvm_arg_wrapper.GetType(), &value_type)) {
                 status.msg = "fail to handle arg type ";
                 status.code = common::kCodegenError;
                 return false;
@@ -353,8 +354,8 @@ bool ExprIRBuilder::BuildColumnRef(const ::fesql::node::ColumnRefNode* node,
                                output, status);
     } else {
         llvm::Value* iter = nullptr;
-        if (BuildColumnIterator(node->GetRelationName(),
-                                node->GetColumnName(), &iter, status)) {
+        if (BuildColumnIterator(node->GetRelationName(), node->GetColumnName(),
+                                &iter, status)) {
             *output = NativeValue::Create(iter);
             return true;
         } else {
@@ -364,8 +365,7 @@ bool ExprIRBuilder::BuildColumnRef(const ::fesql::node::ColumnRefNode* node,
 }
 
 bool ExprIRBuilder::BuildColumnItem(const std::string& relation_name,
-                                    const std::string& col,
-                                    NativeValue* output,
+                                    const std::string& col, NativeValue* output,
                                     base::Status& status) {
     const RowSchemaInfo* info;
     if (!FindRowSchemaInfo(relation_name, col, &info)) {
@@ -386,7 +386,7 @@ bool ExprIRBuilder::BuildColumnItem(const std::string& relation_name,
     }
 
     ::llvm::Value* row_ptr = NULL;
-    if (!variable_ir_builder_.LoadArrayIndex("row_ptrs", info->idx_, &row_ptr,
+    if (!variable_ir_builder_.LoadArrayIndex("@row_ptrs", info->idx_, &row_ptr,
                                              status) ||
         row_ptr == NULL) {
         std::ostringstream oss;
@@ -398,8 +398,8 @@ bool ExprIRBuilder::BuildColumnItem(const std::string& relation_name,
     }
 
     ::llvm::Value* row_size = NULL;
-    if (!variable_ir_builder_.LoadArrayIndex("row_sizes", info->idx_, &row_size,
-                                             status) ||
+    if (!variable_ir_builder_.LoadArrayIndex("@row_sizes", info->idx_,
+                                             &row_size, status) ||
         row_size == NULL) {
         std::ostringstream oss;
         oss << "fail to find row_sizes"
@@ -432,6 +432,61 @@ bool ExprIRBuilder::BuildColumnItem(const std::string& relation_name,
     }
 }
 
+// Get inner window with given frame
+bool ExprIRBuilder::BuildWindow(NativeValue* output,
+                                ::fesql::base::Status& status) {  // NOLINT
+    ::llvm::IRBuilder<> builder(block_);
+    NativeValue window_ptr_value;
+    const std::string frame_str =
+        nullptr == frame_ ? "" : frame_->GetExprString();
+    // Load Inner Window If Exist
+    bool ok =
+        variable_ir_builder_.LoadWindow(frame_str, &window_ptr_value, status);
+    ::llvm::Value* window_ptr = window_ptr_value.GetValue(&builder);
+
+    if (!ok || nullptr == window_ptr) {
+        // Load Big Window, throw error if big window not exist
+        ok = variable_ir_builder_.LoadWindow("", &window_ptr_value, status);
+        if (!ok || nullptr == window_ptr_value.GetValue(&builder)) {
+            status.msg = "fail to find window " + status.msg;
+            LOG(WARNING) << status.msg;
+            return false;
+        }
+
+        // Build Inner Window based on Big Window and frame info
+        if (frame_->frame_range() != nullptr) {
+            ok = window_ir_builder_->BuildInnerRangeList(
+                window_ptr_value.GetValue(&builder),
+                frame_->GetHistoryRangeEnd(), frame_->GetHistoryRangeStart(),
+                &window_ptr);
+        } else if (frame_->frame_rows() != nullptr) {
+            ok = window_ir_builder_->BuildInnerRowsList(
+                window_ptr_value.GetValue(&builder),
+                -1 * frame_->GetHistoryRowsEnd(),
+                -1 * frame_->GetHistoryRowsStart(), &window_ptr);
+        }
+
+    } else {
+        *output = NativeValue::Create(window_ptr);
+        return true;
+    }
+
+    if (!ok || nullptr == window_ptr) {
+        status.msg = "fail to build inner window " + frame_str;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+
+    if (!variable_ir_builder_.StoreWindow(frame_str, window_ptr, status)) {
+        LOG(WARNING) << "fail to store window " << frame_str << ": "
+                     << status.msg;
+        return false;
+    } else {
+        LOG(INFO) << "store window " << frame_str;
+    }
+    *output = NativeValue::Create(window_ptr);
+    return true;
+}
 // Get col with given col name, set list struct pointer into output
 // param col
 // param output
@@ -448,30 +503,27 @@ bool ExprIRBuilder::BuildColumnIterator(const std::string& relation_name,
     }
 
     ::llvm::Value* value = NULL;
+    const std::string frame_str =
+        nullptr == frame_ ? "" : frame_->GetExprString();
     DLOG(INFO) << "get table column " << col;
     // not found
-    bool ok = variable_ir_builder_.LoadColumnRef(info->table_name_, col, &value,
-                                                 status);
+    bool ok = variable_ir_builder_.LoadColumnRef(info->table_name_, col,
+                                                 frame_str, &value, status);
     if (ok) {
         *output = value;
         return true;
     }
 
-    NativeValue window_ptr_value;
-    ok = variable_ir_builder_.LoadValue(
-        "window_ptr", &window_ptr_value, status);
-    ::llvm::IRBuilder<> builder(block_);
-    ::llvm::Value* window_ptr = window_ptr_value.GetValue(&builder);
-
-    if (!ok || window_ptr == NULL) {
-        status.msg = "fail to find window_ptr: " + status.msg;
-        LOG(WARNING) << status.msg;
+    NativeValue window;
+    if (!BuildWindow(&window, status)) {
+        LOG(WARNING) << "fail to build window";
         return false;
     }
 
     DLOG(INFO) << "get table column " << col;
     // NOT reuse for iterator
-    ok = window_ir_builder_->BuildGetCol(col, window_ptr, info->idx_, &value);
+    ok = window_ir_builder_->BuildGetCol(col, window.GetRaw(), info->idx_,
+                                         &value);
 
     if (!ok || value == NULL) {
         status.msg = "fail to find column " + col;
@@ -479,8 +531,8 @@ bool ExprIRBuilder::BuildColumnIterator(const std::string& relation_name,
         LOG(WARNING) << status.msg;
         return false;
     }
-    ok = variable_ir_builder_.StoreColumnRef(info->table_name_, col, value,
-                                             status);
+    ok = variable_ir_builder_.StoreColumnRef(info->table_name_, col, frame_str,
+                                             value, status);
     if (ok) {
         *output = value;
         status.msg = "ok";
@@ -524,8 +576,7 @@ bool ExprIRBuilder::BuildUnaryExpr(const ::fesql::node::UnaryExpr* node,
 }
 
 bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
-                                    NativeValue* output,
-                                    base::Status& status) {
+                                    NativeValue* output, base::Status& status) {
     if (node == NULL || output == NULL) {
         status.msg = "input node or output is null";
         status.code = common::kCodegenError;
@@ -563,8 +614,7 @@ bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
     llvm::Value* raw = nullptr;
     switch (node->GetOp()) {
         case ::fesql::node::kFnOpAdd: {
-            ok = arithmetic_ir_builder_.BuildAddExpr(left, right, &raw,
-                                                     status);
+            ok = arithmetic_ir_builder_.BuildAddExpr(left, right, &raw, status);
             break;
         }
         case ::fesql::node::kFnOpMulti: {
@@ -573,23 +623,20 @@ bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
             break;
         }
         case ::fesql::node::kFnOpFDiv: {
-            ok = arithmetic_ir_builder_.BuildFDivExpr(left, right, &raw,
-                                                      status);
+            ok =
+                arithmetic_ir_builder_.BuildFDivExpr(left, right, &raw, status);
             break;
         }
         case ::fesql::node::kFnOpMinus: {
-            ok = arithmetic_ir_builder_.BuildSubExpr(left, right, &raw,
-                                                     status);
+            ok = arithmetic_ir_builder_.BuildSubExpr(left, right, &raw, status);
             break;
         }
         case ::fesql::node::kFnOpMod: {
-            ok = arithmetic_ir_builder_.BuildModExpr(left, right, &raw,
-                                                     status);
+            ok = arithmetic_ir_builder_.BuildModExpr(left, right, &raw, status);
             break;
         }
         case ::fesql::node::kFnOpAnd: {
-            ok =
-                predicate_ir_builder_.BuildAndExpr(left, right, &raw, status);
+            ok = predicate_ir_builder_.BuildAndExpr(left, right, &raw, status);
             break;
         }
         case ::fesql::node::kFnOpOr: {
@@ -601,8 +648,7 @@ bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
             break;
         }
         case ::fesql::node::kFnOpNeq: {
-            ok =
-                predicate_ir_builder_.BuildNeqExpr(left, right, &raw, status);
+            ok = predicate_ir_builder_.BuildNeqExpr(left, right, &raw, status);
             break;
         }
         case ::fesql::node::kFnOpGt: {

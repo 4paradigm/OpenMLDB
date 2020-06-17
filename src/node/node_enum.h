@@ -36,6 +36,7 @@ enum SQLNodeType {
     kWindowFunc,
     kWindowDef,
     kFrameBound,
+    kFrameExtent,
     kFrames,
     kColumnDesc,
     kColumnIndex,
@@ -47,14 +48,6 @@ enum SQLNodeType {
     kName,
     kConst,
     kLimit,
-
-    kFrameRange,
-    kFrameRows,
-
-    kPreceding,
-    kFollowing,
-    kCurrent,
-
     kFn,
     kFnDef,
     kFnHeader,
@@ -160,6 +153,14 @@ enum FnOperator {
     kFnOpNone
 };
 
+enum FrameType { kFrameRange, kFrameRows, kFrameRowsRange };
+enum BoundType {
+    kPrecedingUnbound = 0,
+    kPreceding,
+    kCurrent,
+    kFollowing,
+    kFollowingUnbound,
+};
 enum JoinType {
     kJoinTypeFull,
     kJoinTypeLast,
@@ -169,9 +170,7 @@ enum JoinType {
     kJoinTypeConcat,
 };
 
-enum UnionType {
-    kUnionTypeLeft
-};
+enum UnionType { kUnionTypeLeft };
 enum UnoinType { kUnionTypeDistinct, kUnionTypeAll };
 enum CmdType {
     kCmdCreateGroup,

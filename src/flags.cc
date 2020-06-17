@@ -29,6 +29,3 @@ DEFINE_bool(enable_keep_alive, true, "config if tablet keep alive with dbms");
 // batch config
 DEFINE_string(default_db_name, "_fesql",
               "config the default batch catalog db name");
-
-DEFINE_bool(enable_column_sum_opt, false,
-              "enable column sum merge");

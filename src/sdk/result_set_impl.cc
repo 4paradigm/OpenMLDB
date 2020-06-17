@@ -50,8 +50,8 @@ bool ResultSetImpl::Init() {
         LOG(WARNING) << "fail to decode response schema ";
         return false;
     }
-    std::unique_ptr<codec::RowIOBufView> row_view(
-        new codec::RowIOBufView(internal_schema_));
+    std::unique_ptr<sdk::RowIOBufView> row_view(
+        new sdk::RowIOBufView(internal_schema_));
     row_view_ = std::move(row_view);
     schema_.SetSchema(internal_schema_);
     return true;

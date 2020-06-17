@@ -16,6 +16,7 @@ namespace vm {
 using codec::ArrayListIterator;
 using codec::ArrayListV;
 using codec::ColumnImpl;
+using codec::InnerRangeIterator;
 using codec::Row;
 using codec::v1::GetCol;
 
@@ -267,25 +268,25 @@ TEST_F(WindowIteratorTest, CurrentHistoryWindowTest) {
         window.BufferData(1000L, row);
         ASSERT_EQ(6u, window.GetCount());
         window.BufferData(1001L, row);
-        ASSERT_EQ(6u, window.GetCount());
+        ASSERT_EQ(7u, window.GetCount());
         window.BufferData(1002L, row);
-        ASSERT_EQ(6u, window.GetCount());
+        ASSERT_EQ(7u, window.GetCount());
         window.BufferData(1003L, row);
-        ASSERT_EQ(6u, window.GetCount());
+        ASSERT_EQ(7u, window.GetCount());
         window.BufferData(1004L, row);
         ASSERT_EQ(7u, window.GetCount());
         window.BufferData(1005L, row);
         ASSERT_EQ(8u, window.GetCount());
         window.BufferData(1500L, row);
-        ASSERT_EQ(7u, window.GetCount());
+        ASSERT_EQ(8u, window.GetCount());
         window.BufferData(2004L, row);
-        ASSERT_EQ(3u, window.GetCount());
+        ASSERT_EQ(4u, window.GetCount());
         window.BufferData(3000L, row);
         ASSERT_EQ(2u, window.GetCount());
         window.BufferData(5000L, row);
         ASSERT_EQ(1u, window.GetCount());
         window.BufferData(6000L, row);
-        ASSERT_EQ(1u, window.GetCount());
+        ASSERT_EQ(2u, window.GetCount());
     }
 
     // history current_ts -1000 ~ current_ts max_size = 5
@@ -306,7 +307,7 @@ TEST_F(WindowIteratorTest, CurrentHistoryWindowTest) {
         window.BufferData(1001L, row);
         ASSERT_EQ(5u, window.GetCount());
         window.BufferData(1500L, row);
-        ASSERT_EQ(3u, window.GetCount());
+        ASSERT_EQ(4u, window.GetCount());
         window.BufferData(2004L, row);
         ASSERT_EQ(2u, window.GetCount());
         window.BufferData(3000L, row);
@@ -314,52 +315,258 @@ TEST_F(WindowIteratorTest, CurrentHistoryWindowTest) {
         window.BufferData(5000L, row);
         ASSERT_EQ(1u, window.GetCount());
         window.BufferData(6000L, row);
-        ASSERT_EQ(1u, window.GetCount());
+        ASSERT_EQ(2u, window.GetCount());
     }
 }
 
-TEST_F(WindowIteratorTest, CurrentHistoryUnboundWindowTest) {
+void Check_Next_N(RowIterator* iter, int n) {
+    int i = 0;
+    while (i++ < n) {
+        ASSERT_TRUE(iter->Valid());
+        iter->Next();
+    }
+}
+
+void Check_Key(RowIterator* iter, uint64_t key) {
+    ASSERT_TRUE(iter->Valid());
+    ASSERT_EQ(key, iter->GetKey());
+}
+
+
+TEST_F(WindowIteratorTest, InnerRangeWindowTest) {
     std::vector<std::pair<uint64_t, Row>> rows;
     int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
     *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
     *(reinterpret_cast<int64_t*>(ptr + 2 + 4)) = 1;
     Row row(base::RefCountedSlice::Create(ptr, 28));
+    CurrentHistoryWindow window(-3600000L);
+    window.BufferData(1590115410000, row);
+    window.BufferData(1590115420000, row);
+    window.BufferData(1590115430000, row);
+    window.BufferData(1590115440000, row);
+    window.BufferData(1590115450000, row);
+    window.BufferData(1590115460000, row);
+    window.BufferData(1590115470000, row);
+    window.BufferData(1590115480000, row);
+    window.BufferData(1590115490000, row);
+    window.BufferData(1590115500000, row);
 
-    // history current_ts -1000 ~ current_ts
-    CurrentHistoryUnboundWindow window;
-    window.BufferData(1L, row);
-    ASSERT_EQ(1u, window.GetCount());
-    window.BufferData(2L, row);
-    ASSERT_EQ(2u, window.GetCount());
-    window.BufferData(3L, row);
-    ASSERT_EQ(3u, window.GetCount());
-    window.BufferData(40L, row);
-    ASSERT_EQ(4u, window.GetCount());
-    window.BufferData(500L, row);
-    ASSERT_EQ(5u, window.GetCount());
-    window.BufferData(1000L, row);
-    ASSERT_EQ(6u, window.GetCount());
-    window.BufferData(1001L, row);
-    ASSERT_EQ(7u, window.GetCount());
-    window.BufferData(1002L, row);
-    ASSERT_EQ(8u, window.GetCount());
-    window.BufferData(1003L, row);
-    ASSERT_EQ(9u, window.GetCount());
-    window.BufferData(1004L, row);
-    ASSERT_EQ(10u, window.GetCount());
-    window.BufferData(1005L, row);
-    ASSERT_EQ(11u, window.GetCount());
-    window.BufferData(1500L, row);
-    ASSERT_EQ(12u, window.GetCount());
-    window.BufferData(2004L, row);
-    ASSERT_EQ(13u, window.GetCount());
-    window.BufferData(3000L, row);
-    ASSERT_EQ(14u, window.GetCount());
-    window.BufferData(5000L, row);
-    ASSERT_EQ(15u, window.GetCount());
-    window.BufferData(6000L, row);
-    ASSERT_EQ(16u, window.GetCount());
+    // check w[30s:80s]
+    {
+        uint64_t start = 1590115500000 - 30000L;
+        uint64_t end = 1590115500000 - 80000L;
+        auto inner_window = std::unique_ptr<codec::InnerRangeList<Row>>(
+            new codec::InnerRangeList<Row>(&window, start, end));
+        auto iter = inner_window->GetIterator();
+        iter->SeekToFirst();
+        ASSERT_TRUE(iter->Valid());
+        ASSERT_EQ(1590115470000, iter->GetKey());
+        Check_Next_N(iter.get(), 4);
+        ASSERT_TRUE(iter->Valid());
+        ASSERT_EQ(1590115430000, iter->GetKey());
+
+        iter->Next();
+        ASSERT_TRUE(iter->Valid());
+        ASSERT_EQ(1590115420000, iter->GetKey());
+        iter->Next();
+        ASSERT_FALSE(iter->Valid());
+    }
 }
+TEST_F(WindowIteratorTest, InnerRangeIteratorTest) {
+    std::vector<std::pair<uint64_t, Row>> rows;
+    int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
+    *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
+    *(reinterpret_cast<int64_t*>(ptr + 2 + 4)) = 1;
+    Row row(base::RefCountedSlice::Create(ptr, 28));
+    CurrentHistoryWindow window(-3600000L);
+    window.BufferData(1590115410000, row);
+    window.BufferData(1590115420000, row);
+    window.BufferData(1590115430000, row);
+    window.BufferData(1590115440000, row);
+    window.BufferData(1590115450000, row);
+    window.BufferData(1590115460000, row);
+    window.BufferData(1590115470000, row);
+    window.BufferData(1590115480000, row);
+    window.BufferData(1590115490000, row);
+    window.BufferData(1590115500000, row);
+
+    // normal iterator check
+    {
+        auto iter = window.GetIterator();
+        iter->SeekToFirst();
+        ASSERT_TRUE(iter->Valid());
+        ASSERT_EQ(1590115500000, iter->GetKey());
+        Check_Next_N(iter.get(), 9);
+        ASSERT_TRUE(iter->Valid());
+        ASSERT_EQ(1590115410000, iter->GetKey());
+    }
+
+    // check w[30s:80s]
+    {
+        uint64_t start = 1590115500000 - 30000L;
+        uint64_t end = 1590115500000 - 80000L;
+        auto iter = std::unique_ptr<RowIterator>(
+            new InnerRangeIterator<Row>(&window, start, end));
+        iter->SeekToFirst();
+        ASSERT_TRUE(iter->Valid());
+        ASSERT_EQ(1590115470000, iter->GetKey());
+        Check_Next_N(iter.get(), 4);
+        ASSERT_TRUE(iter->Valid());
+        ASSERT_EQ(1590115430000, iter->GetKey());
+
+        iter->Next();
+        ASSERT_TRUE(iter->Valid());
+        ASSERT_EQ(1590115420000, iter->GetKey());
+        iter->Next();
+        ASSERT_FALSE(iter->Valid());
+    }
+}
+
+TEST_F(WindowIteratorTest, InnerRowsWindowTest) {
+    std::vector<std::pair<uint64_t, Row>> rows;
+    int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
+    *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
+    *(reinterpret_cast<int64_t*>(ptr + 2 + 4)) = 1;
+    Row row(base::RefCountedSlice::Create(ptr, 28));
+    CurrentHistoryWindow window(-3600000L);
+    window.BufferData(1590115410000, row);
+    window.BufferData(1590115420000, row);
+    window.BufferData(1590115430000, row);
+    window.BufferData(1590115440000, row);
+    window.BufferData(1590115450000, row);
+    window.BufferData(1590115460000, row);
+    window.BufferData(1590115470000, row);
+    window.BufferData(1590115480000, row);
+    window.BufferData(1590115490000, row);
+    window.BufferData(1590115500000, row);
+    // check w[3:8]
+    {
+        uint64_t start = 3;
+        uint64_t end = 8;
+
+        auto inner_window = std::unique_ptr<codec::InnerRowsList<Row>>(
+            new codec::InnerRowsList<Row>(&window, start, end));
+        auto iter = inner_window->GetIterator();
+        iter->SeekToFirst();
+        ASSERT_TRUE(iter->Valid());
+        ASSERT_EQ(1590115470000, iter->GetKey());
+        Check_Next_N(iter.get(), 4);
+        ASSERT_TRUE(iter->Valid());
+        ASSERT_EQ(1590115430000, iter->GetKey());
+
+        iter->Next();
+        ASSERT_TRUE(iter->Valid());
+        ASSERT_EQ(1590115420000, iter->GetKey());
+        iter->Next();
+        ASSERT_FALSE(iter->Valid());
+    }
+}
+
+TEST_F(WindowIteratorTest, InnerRowsIteratorTest) {
+    std::vector<std::pair<uint64_t, Row>> rows;
+    int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
+    *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
+    *(reinterpret_cast<int64_t*>(ptr + 2 + 4)) = 1;
+    Row row(base::RefCountedSlice::Create(ptr, 28));
+    CurrentHistoryWindow window(-3600000L);
+    window.BufferData(1590115410000, row);
+    window.BufferData(1590115420000, row);
+    window.BufferData(1590115430000, row);
+    window.BufferData(1590115440000, row);
+    window.BufferData(1590115450000, row);
+    window.BufferData(1590115460000, row);
+    window.BufferData(1590115470000, row);
+    window.BufferData(1590115480000, row);
+    window.BufferData(1590115490000, row);
+    window.BufferData(1590115500000, row);
+
+    // normal iterator check
+    {
+        auto iter = window.GetIterator();
+        iter->SeekToFirst();
+        ASSERT_TRUE(iter->Valid());
+        ASSERT_EQ(1590115500000, iter->GetKey());
+        Check_Next_N(iter.get(), 9);
+        ASSERT_TRUE(iter->Valid());
+        ASSERT_EQ(1590115410000, iter->GetKey());
+    }
+
+    // check w[3:8]
+    {
+        uint64_t start = 3;
+        uint64_t end = 8;
+        auto iter = std::unique_ptr<RowIterator>(
+            new codec::InnerRowsIterator<Row>(&window, start, end));
+        iter->SeekToFirst();
+        ASSERT_TRUE(iter->Valid());
+        ASSERT_EQ(1590115470000, iter->GetKey());
+        Check_Next_N(iter.get(), 4);
+        ASSERT_TRUE(iter->Valid());
+        ASSERT_EQ(1590115430000, iter->GetKey());
+
+        iter->Next();
+        ASSERT_TRUE(iter->Valid());
+        ASSERT_EQ(1590115420000, iter->GetKey());
+        iter->Next();
+        ASSERT_FALSE(iter->Valid());
+    }
+}
+
+
+TEST_F(WindowIteratorTest, CurrentHistoryRowsWindowTest) {
+    std::vector<std::pair<uint64_t, Row>> rows;
+    int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
+    *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
+    *(reinterpret_cast<int64_t*>(ptr + 2 + 4)) = 1;
+    Row row(base::RefCountedSlice::Create(ptr, 28));
+    CurrentHistoryWindow window(-20000);
+    window.set_rows_preceding(9);
+    window.BufferData(1590115400000, row);
+    window.BufferData(1590115410000, row);
+    window.BufferData(1590115420000, row);
+    window.BufferData(1590115430000, row);
+    window.BufferData(1590115440000, row);
+    window.BufferData(1590115450000, row);
+    window.BufferData(1590115460000, row);
+    window.BufferData(1590115470000, row);
+    window.BufferData(1590115480000, row);
+    window.BufferData(1590115490000, row);
+    window.BufferData(1590115500000, row);
+
+    // normal iterator check
+    {
+        auto iter = window.GetIterator();
+        iter->SeekToFirst();
+        ASSERT_TRUE(iter->Valid());
+        ASSERT_EQ(1590115500000, iter->GetKey());
+        Check_Next_N(iter.get(), 9);
+        ASSERT_TRUE(iter->Valid());
+        ASSERT_EQ(1590115410000, iter->GetKey());
+        iter->Next();
+        ASSERT_FALSE(iter->Valid());
+    }
+
+    // check w[3:8]
+    {
+        uint64_t start = 3;
+        uint64_t end = 8;
+        auto iter = std::unique_ptr<RowIterator>(
+            new codec::InnerRowsIterator<Row>(&window, start, end));
+        iter->SeekToFirst();
+        ASSERT_TRUE(iter->Valid());
+        ASSERT_EQ(1590115470000, iter->GetKey());
+        Check_Next_N(iter.get(), 4);
+        ASSERT_TRUE(iter->Valid());
+        ASSERT_EQ(1590115430000, iter->GetKey());
+
+        iter->Next();
+        ASSERT_TRUE(iter->Valid());
+        ASSERT_EQ(1590115420000, iter->GetKey());
+        iter->Next();
+        ASSERT_FALSE(iter->Valid());
+    }
+}
+
 
 }  // namespace vm
 }  // namespace fesql

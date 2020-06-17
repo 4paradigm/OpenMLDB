@@ -17,9 +17,10 @@ namespace vm {
 
 WindowInterface::WindowInterface(bool instance_not_in_window,
                                  int64_t start_offset, int64_t end_offset,
-                                 uint32_t max_size)
+                                 uint64_t row_preceding, uint32_t max_size)
     : window_impl_(std::unique_ptr<Window>(
           new CurrentHistoryWindow(start_offset, max_size))) {
+    window_impl_->set_rows_preceding(row_preceding);
     window_impl_->set_instance_not_in_window(instance_not_in_window);
 }
 

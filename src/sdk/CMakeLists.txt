@@ -2,7 +2,7 @@ include_directories(${INCLUDE_DIRECTORIES}
         ${PROJECT_SOURCE_DIR}/src
         ${PROJECT_BINARY_DIR}/src)
 
-add_library(fesql_sdk STATIC base_impl.cc dbms_sdk.cc tablet_sdk.cc result_set_impl.cc request_row.cc)
+add_library(fesql_sdk STATIC base_impl.cc dbms_sdk.cc tablet_sdk.cc result_set_impl.cc request_row.cc codec_sdk.cc)
 
 
 #set(sdk_deps_libs fesql_sdk fesql_simple_catalog ${VM_LIBS} fesql_flags ${LLVM_LIBS} ${BRPC_LIBS} ${OS_LIB})
@@ -34,14 +34,22 @@ target_link_libraries(result_set_impl_test
          gtest fesql_dbms fesql_tablet fesql_flags ${sdk_deps_libs})
 add_test(result_set_impl_test result_set_impl_test --gtest_output=xml:${CMAKE_BINARY_DIR}/result_set_impl_test.xml)
 list(APPEND test_list result_set_impl_test)
+
+add_executable(codec_sdk_test codec_sdk_test.cc)
+target_link_libraries(codec_sdk_test
+         gtest fesql_dbms fesql_tablet fesql_flags ${sdk_deps_libs})
+add_test(codec_sdk_test codec_sdk_test --gtest_output=xml:${CMAKE_BINARY_DIR}/codec_sdk_test.xml)
+list(APPEND test_list codec_sdk_test)
 endif()
 
+set_property(SOURCE fesql_interface_core.i PROPERTY CPLUSPLUS ON)
+set_property(SOURCE fesql_interface_complete.i PROPERTY CPLUSPLUS ON)
+
 if(PYSDK_ENABLE)
-set_property(SOURCE fesql_interface.i PROPERTY CPLUSPLUS ON)
 if (CMAKE_SYSTEM_NAME MATCHES "Darwin")
-    set_property(SOURCE fesql_interface.i PROPERTY COMPILE_OPTIONS -python)
+    set_property(SOURCE fesql_interface_complete.i PROPERTY COMPILE_OPTIONS -python)
 else ()
-    set_property(SOURCE fesql_interface.i PROPERTY COMPILE_OPTIONS -py3)
+    set_property(SOURCE fesql_interface_complete.i PROPERTY COMPILE_OPTIONS -py3)
 endif ()
 
 set(UseSWIG_TARGET_NAME_PREFERENCE STANDARD)
@@ -49,28 +57,44 @@ swig_add_library(fesql_pysdk
         TYPE SHARED
         LANGUAGE python
         OUTPUT_DIR ${CMAKE_BINARY_DIR}/python/fesql/
-        SOURCES fesql_interface.i)
+        SOURCES fesql_interface_complete.i)
 target_include_directories(fesql_pysdk PRIVATE ${PYTHON_INCLUDE_DIRS})
 target_link_libraries(fesql_pysdk ${sdk_deps_libs})
 endif()
+
 if(JAVASDK_ENABLE)
-set_property(SOURCE fesql_interface.i PROPERTY COMPILE_OPTIONS -package com._4paradigm)
-swig_add_library(fesql_jsdk
+set_property(SOURCE fesql_interface_core.i PROPERTY COMPILE_OPTIONS -package com._4paradigm)
+swig_add_library(fesql_jsdk_core
         TYPE SHARED
         LANGUAGE java
         OUTPUT_DIR ${PROJECT_SOURCE_DIR}/java/fesql-native/src/main/java/com/_4paradigm/
-        SOURCES fesql_interface.i)
-target_include_directories(fesql_jsdk PRIVATE ${JNI_INCLUDE_DIRS})
-target_compile_options(fesql_jsdk PRIVATE -w)
-target_link_libraries(fesql_jsdk PRIVATE glog ${sdk_deps_libs})
+        SOURCES fesql_interface_core.i)
+target_include_directories(fesql_jsdk_core PRIVATE ${JNI_INCLUDE_DIRS})
+target_compile_options(fesql_jsdk_core PRIVATE -w)
+set(sdk_core_deps_libs
+	fesql_case ${yaml_libs} fesql_simple_catalog ${VM_LIBS} fesql_flags ${LLVM_LIBS} ${COMMON_LIBS})
+target_link_libraries(fesql_jsdk_core PRIVATE glog ${sdk_core_deps_libs})
+
+set_property(SOURCE fesql_interface_complete.i PROPERTY COMPILE_OPTIONS -package com._4paradigm)
+swig_add_library(fesql_jsdk_complete
+        TYPE SHARED
+        LANGUAGE java
+        OUTPUT_DIR ${PROJECT_SOURCE_DIR}/java/fesql-native/src/main/java/com/_4paradigm/
+        SOURCES fesql_interface_complete.i)
+target_include_directories(fesql_jsdk_complete PRIVATE ${JNI_INCLUDE_DIRS})
+target_compile_options(fesql_jsdk_complete PRIVATE -w)
+target_link_libraries(fesql_jsdk_complete PRIVATE glog ${sdk_deps_libs})
+add_dependencies(fesql_jsdk_complete fesql_jsdk_core)
 
 if(APPLE)
-  set_target_properties(fesql_jsdk PROPERTIES
+	set_target_properties(fesql_jsdk_core PROPERTIES
            SUFFIX ".dylib")
-  set_target_properties(fesql_pysdk PROPERTIES
+  	set_target_properties(fesql_jsdk_complete PROPERTIES
+           SUFFIX ".dylib")
+  	set_target_properties(fesql_pysdk PROPERTIES
            SUFFIX ".so")
-  set_property(TARGET fesql_pysdk APPEND PROPERTY
-    LINK_FLAGS "-flat_namespace -undefined suppress")
+  	set_property(TARGET fesql_pysdk APPEND PROPERTY
+    			 LINK_FLAGS "-flat_namespace -undefined suppress")
 endif()
 endif()
 
@@ -165,7 +189,10 @@ endif()
 if(JAVASDK_ENABLE)
 add_custom_command(OUTPUT
     cp_java_native_so
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:fesql_jsdk> ${PROJECT_SOURCE_DIR}/java/fesql-native/src/main/resources/)
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:fesql_jsdk_core>
+    	${PROJECT_SOURCE_DIR}/java/fesql-native/src/main/resources/
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:fesql_jsdk_complete>
+    	${PROJECT_SOURCE_DIR}/java/fesql-native/src/main/resources/)
 
 add_custom_target(java_package ALL
   DEPENDS

@@ -42,7 +42,7 @@
 #include "parser/parser.h"
 #include "plan/planner.h"
 #include "vm/test_base.h"
-#define MAX_DEBUG_LINES_CNT 10
+#define MAX_DEBUG_LINES_CNT 20
 #define MAX_DEBUG_COLUMN_CNT 20
 using namespace llvm;       // NOLINT (build/namespaces)
 using namespace llvm::orc;  // NOLINT (build/namespaces)
@@ -135,14 +135,17 @@ const std::vector<Row> SortRows(const vm::Schema& schema,
         return rows;
     }
 
-    std::vector<std::pair<std::string, Row>> sort_rows;
+    std::vector<std::pair<int64_t, Row>> sort_rows;
     for (auto row : rows) {
         row_view.Reset(row.buf());
         row_view.GetAsString(idx);
-        sort_rows.push_back(std::make_pair(row_view.GetAsString(idx), row));
+        sort_rows.push_back(std::make_pair(
+            boost::lexical_cast<int64_t>(row_view.GetAsString(idx)), row));
     }
-    vm::AscKeyComparor comparor;
-    std::sort(sort_rows.begin(), sort_rows.end(), comparor);
+    std::sort(sort_rows.begin(), sort_rows.end(),
+              [](std::pair<int64_t, Row>& a, std::pair<int64_t, Row>& b) {
+                  return a.first < b.first;
+              });
     std::vector<Row> output_rows;
     for (auto row : sort_rows) {
         output_rows.push_back(row.second);
@@ -294,6 +297,8 @@ void RequestModeCheck(SQLCase& sql_case) {  // NOLINT
     vm::Schema schema;
     schema = session.GetSchema();
     PrintSchema(schema);
+
+
     std::ostringstream oss;
     session.GetPhysicalPlan()->Print(oss, "");
     LOG(INFO) << "physical plan:\n" << oss.str() << std::endl;
@@ -432,14 +437,14 @@ INSTANTIATE_TEST_CASE_P(
 TEST_P(EngineTest, test_request_engine) {
     ParamType sql_case = GetParam();
     LOG(INFO) << sql_case.desc();
-    if (sql_case.mode() != "request-unsupport") {
+    if (!boost::contains(sql_case.mode(), "request-unsupport")) {
         RequestModeCheck(sql_case);
     }
 }
 TEST_P(EngineTest, test_batch_engine) {
     ParamType sql_case = GetParam();
     LOG(INFO) << sql_case.desc();
-    if (sql_case.mode() != "batch-unsupport") {
+    if (!boost::contains(sql_case.mode(), "batch-unsupport")) {
         BatchModeCheck(sql_case);
     }
 }

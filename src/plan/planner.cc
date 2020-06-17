@@ -14,6 +14,7 @@
 #include <utility>
 #include <vector>
 #include "proto/fe_common.pb.h"
+
 namespace fesql {
 namespace plan {
 
@@ -110,11 +111,11 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
     }
 
     // group by
-    bool need_agg = false;
+    bool group_by_agg = false;
     if (nullptr != root->group_clause_ptr_) {
         current_node = node_manager_->MakeGroupPlanNode(
             current_node, root->group_clause_ptr_);
-        need_agg = true;
+        group_by_agg = true;
     }
 
     // select target_list
@@ -130,13 +131,15 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
         root->GetSelectList()->GetList();
 
     // prepare window list
-    std::map<node::WindowDefNode *, node::ProjectListNode *> project_list_map;
+    std::map<const node::WindowDefNode *, node::ProjectListNode *>
+        project_list_map;
     // prepare window def
     int w_id = 1;
-    std::map<std::string, node::WindowDefNode *> windows;
+    std::map<std::string, const node::WindowDefNode *> windows;
     if (nullptr != root->GetWindowList() && !root->GetWindowList()->IsEmpty()) {
         for (auto node : root->GetWindowList()->GetList()) {
-            node::WindowDefNode *w = dynamic_cast<node::WindowDefNode *>(node);
+            const node::WindowDefNode *w =
+                dynamic_cast<node::WindowDefNode *>(node);
             windows[w->GetName()] = w;
         }
     }
@@ -166,13 +169,14 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
             }
         }
 
-        node::WindowDefNode *w_ptr =
+        const node::WindowDefNode *w_ptr =
             node::WindowOfExpression(windows, project_expr);
 
         if (project_list_map.find(w_ptr) == project_list_map.end()) {
             if (w_ptr == nullptr) {
                 project_list_map[w_ptr] =
-                    node_manager_->MakeProjectListPlanNode(nullptr, need_agg);
+                    node_manager_->MakeProjectListPlanNode(nullptr,
+                                                           group_by_agg);
 
             } else {
                 node::WindowPlanNode *w_node_ptr =
@@ -185,16 +189,26 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
             }
         }
         node::ProjectNode *project_node_ptr =
-            nullptr == w_ptr ? node_manager_->MakeRowProjectNode(
-                                   pos, project_name, project_expr)
-                             : node_manager_->MakeAggProjectNode(
-                                   pos, project_name, project_expr);
+            nullptr == w_ptr
+                ? node_manager_->MakeRowProjectNode(pos, project_name,
+                                                    project_expr)
+                : node_manager_->MakeAggProjectNode(
+                      pos, project_name, project_expr, w_ptr->GetFrame());
 
         project_list_map[w_ptr]->AddProject(project_node_ptr);
     }
+
+    // merge window map
+    std::map<const node::WindowDefNode *, node::ProjectListNode *>
+        merged_project_list_map;
+    if (!MergeProjectMap(project_list_map, &merged_project_list_map,
+                         status)) {
+        LOG(WARNING) << "Fail t merge window project";
+        return false;
+    }
     // add MergeNode if multi ProjectionLists exist
     PlanNodeList project_list_vec(w_id);
-    for (auto &v : project_list_map) {
+    for (auto &v : merged_project_list_map) {
         node::ProjectListNode *project_list = v.second;
         int pos =
             nullptr == project_list->GetW() ? 0 : project_list->GetW()->GetId();
@@ -210,9 +224,8 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
         node::ProjectListNode *merged_project =
             node_manager_->MakeProjectListPlanNode(first_window_project->GetW(),
                                                    true);
-
-        if (MergeProjectList(simple_project, first_window_project,
-                             merged_project)) {
+        if (node::ProjectListNode::MergeProjectList(
+                simple_project, first_window_project, merged_project)) {
             project_list_vec[0] = nullptr;
             project_list_vec[1] = merged_project;
         }
@@ -296,132 +309,51 @@ bool Planner::CreateUnionQueryPlan(const node::UnionQueryNode *root,
         node_manager_->MakeUnionPlanNode(left_plan, right_plan, root->is_all_);
     return true;
 }
-
-int64_t Planner::CreateFrameOffset(const node::FrameBound *bound,
-                                   Status &status) {
-    bool negtive = false;
-    switch (bound->GetBoundType()) {
-        case node::kCurrent: {
-            return 0;
-        }
-        case node::kPreceding: {
-            negtive = true;
-            break;
-        }
-        case node::kFollowing: {
-            negtive = false;
-            break;
-        }
-        default: {
-            status.msg =
-                "cannot create window frame with unrecognized bound type, "
-                "only "
-                "support CURRENT|PRECEDING|FOLLOWING";
-            status.code = common::kUnSupport;
-            return INT64_MAX;
-        }
-    }
-    if (nullptr == bound->GetOffset()) {
-        return negtive ? INT64_MIN : INT64_MAX;
-    }
-    if (node::kExprPrimary != bound->GetOffset()->GetExprType()) {
-        status.msg =
-            "cannot create window frame, only support "
-            "primary frame";
-        status.code = common::kTypeError;
-        return INT64_MAX;
-    }
-
-    int64_t offset = 0;
-    node::ConstNode *primary =
-        dynamic_cast<node::ConstNode *>(bound->GetOffset());
-    switch (primary->GetDataType()) {
-        case node::DataType::kInt16:
-            offset = static_cast<int64_t>(primary->GetSmallInt());
-            break;
-        case node::DataType::kInt32:
-            offset = static_cast<int64_t>(primary->GetInt());
-            break;
-        case node::DataType::kInt64:
-            offset = (primary->GetLong());
-            break;
-        case node::DataType::kDay:
-        case node::DataType::kHour:
-        case node::DataType::kMinute:
-        case node::DataType::kSecond:
-            offset = (primary->GetMillis());
-            break;
-        default: {
-            status.msg =
-                "cannot create window frame, only support "
-                "smallint|int|bigint offset of frame";
-            status.code = common::kTypeError;
-            return INT64_MAX;
-        }
-    }
-    return negtive ? -1 * offset : offset;
-}
-
 bool Planner::CreateWindowPlanNode(
-    node::WindowDefNode *w_ptr, node::WindowPlanNode *w_node_ptr,
+    const node::WindowDefNode *w_ptr, node::WindowPlanNode *w_node_ptr,
     Status &status) {  // NOLINT (runtime/references)
 
     if (nullptr != w_ptr) {
-        int64_t start_offset = 0;
-        int64_t end_offset = 0;
-        if (nullptr != w_ptr->GetFrame()) {
-            node::FrameNode *frame =
-                dynamic_cast<node::FrameNode *>(w_ptr->GetFrame());
-            node::FrameBound *start = frame->GetStart();
-            node::FrameBound *end = frame->GetEnd();
-
-            start_offset = CreateFrameOffset(start, status);
-            if (common::kOk != status.code) {
-                LOG(WARNING)
-                    << "fail to create project list node: " << status.msg;
-                return false;
-            }
-            end_offset = CreateFrameOffset(end, status);
-            if (common::kOk != status.code) {
-                LOG(WARNING)
-                    << "fail to create project list node: " << status.msg;
-                return false;
-            }
-
-            if (w_ptr->GetName().empty()) {
-                w_node_ptr->SetName(
-                    GenerateName("anonymous_w_", w_node_ptr->GetId()));
-            } else {
-                w_node_ptr->SetName(w_ptr->GetName());
-            }
-            w_node_ptr->SetStartOffset(start_offset);
-            w_node_ptr->SetEndOffset(end_offset);
-            w_node_ptr->SetIsRangeBetween(node::kFrameRange ==
-                                          frame->GetFrameType());
-            w_node_ptr->SetKeys(w_ptr->GetPartitions());
-            w_node_ptr->SetOrders(w_ptr->GetOrders());
-            if (nullptr != w_ptr->union_tables() &&
-                !w_ptr->union_tables()->GetList().empty()) {
-                for (auto node : w_ptr->union_tables()->GetList()) {
-                    node::PlanNode *table_plan = nullptr;
-                    if (!CreateTableReferencePlanNode(
-                            dynamic_cast<node::TableRefNode *>(node),
-                            &table_plan, status)) {
-                        return false;
-                    }
-                    w_node_ptr->AddUnionTable(table_plan);
-                }
-            }
-            w_node_ptr->set_instance_not_in_window(
-                w_ptr->instance_not_in_window());
-        } else {
+        // Prepare Window Frame
+        if (nullptr == w_ptr->GetFrame()) {
             status.code = common::kPlanError;
             status.msg =
-                "fail to create project list node: right frame "
+                "fail to create project list node: frame "
                 "can't be unbound ";
             LOG(WARNING) << status.msg;
             return false;
         }
+
+        node::FrameNode *frame =
+            dynamic_cast<node::FrameNode *>(w_ptr->GetFrame());
+        w_node_ptr->set_frame_node(frame);
+
+        // Prepare Window Name
+        if (w_ptr->GetName().empty()) {
+            w_node_ptr->SetName(
+                GenerateName("anonymous_w", w_node_ptr->GetId()));
+        } else {
+            w_node_ptr->SetName(w_ptr->GetName());
+        }
+
+        // Prepare Window partitions and orders
+        w_node_ptr->SetKeys(w_ptr->GetPartitions());
+        w_node_ptr->SetOrders(w_ptr->GetOrders());
+
+        // Prepare Window Union Info
+        if (nullptr != w_ptr->union_tables() &&
+            !w_ptr->union_tables()->GetList().empty()) {
+            for (auto node : w_ptr->union_tables()->GetList()) {
+                node::PlanNode *table_plan = nullptr;
+                if (!CreateTableReferencePlanNode(
+                        dynamic_cast<node::TableRefNode *>(node), &table_plan,
+                        status)) {
+                    return false;
+                }
+                w_node_ptr->AddUnionTable(table_plan);
+            }
+        }
+        w_node_ptr->set_instance_not_in_window(w_ptr->instance_not_in_window());
     }
     return true;
 }
@@ -757,40 +689,123 @@ bool Planner::CreateTableReferencePlanNode(const node::TableRefNode *root,
 
     return true;
 }
-bool Planner::MergeProjectList(node::ProjectListNode *project_list1,
-                               node::ProjectListNode *project_list2,
-                               node::ProjectListNode *merged_project) {
-    if (nullptr == project_list1 || nullptr == project_list2 ||
-        nullptr == merged_project) {
-        LOG(WARNING) << "can't merge project list: input projects or output "
-                        "projects is null";
+bool Planner::MergeWindows(
+    const std::map<const node::WindowDefNode *, node::ProjectListNode *> &map,
+    std::vector<const node::WindowDefNode *> *windows_ptr) {
+    if (nullptr == windows_ptr) {
         return false;
     }
-    auto iter1 = project_list1->GetProjects().cbegin();
-    auto end1 = project_list1->GetProjects().cend();
-    auto iter2 = project_list2->GetProjects().cbegin();
-    auto end2 = project_list2->GetProjects().cend();
-    while (iter1 != end1 && iter2 != end2) {
-        auto project1 = dynamic_cast<node::ProjectNode *>(*iter1);
-        auto project2 = dynamic_cast<node::ProjectNode *>(*iter2);
-        if (project1->GetPos() < project2->GetPos()) {
-            merged_project->AddProject(project1);
-            iter1++;
-        } else {
-            merged_project->AddProject(project2);
-            iter2++;
+    bool has_window_merged = false;
+    auto &windows = *windows_ptr;
+
+    std::vector<std::pair<const node::WindowDefNode *, int32_t>>
+        window_id_pairs;
+    for (auto it = map.begin(); it != map.end(); it++) {
+        window_id_pairs.push_back(std::make_pair(
+            it->first,
+            nullptr == it->second->GetW() ? 0 : it->second->GetW()->GetId()));
+    }
+    std::sort(
+        window_id_pairs.begin(), window_id_pairs.end(),
+        [](const std::pair<const node::WindowDefNode *, int32_t> &p1,
+           const std::pair<const node::WindowDefNode *, int32_t> &p2) -> bool {
+            return p1.second < p2.second;
+        });
+
+
+    for (auto iter = window_id_pairs.cbegin(); iter != window_id_pairs.cend();
+         iter++) {
+        if (windows.empty()) {
+            windows.push_back(iter->first);
+            continue;
+        }
+        bool can_be_merged = false;
+        for (auto iter_w = windows.begin(); iter_w != windows.end(); iter_w++) {
+            if (node::SQLEquals(iter->first, *iter_w)) {
+                can_be_merged = true;
+                has_window_merged = true;
+                break;
+            }
+            if (nullptr == *iter_w) {
+                continue;
+            }
+            if (iter->first->CanMergeWith(*iter_w)) {
+                can_be_merged = true;
+                *iter_w = node_manager_->MergeWindow(iter->first, *iter_w);
+                has_window_merged = true;
+                break;
+            }
+        }
+
+        if (!can_be_merged) {
+            windows.push_back(iter->first);
         }
     }
-    while (iter1 != end1) {
-        auto project1 = dynamic_cast<node::ProjectNode *>(*iter1);
-        merged_project->AddProject(project1);
-        iter1++;
+    return has_window_merged;
+}
+
+bool Planner::MergeProjectMap(
+    const std::map<const node::WindowDefNode *, node::ProjectListNode *> &map,
+    std::map<const node::WindowDefNode *, node::ProjectListNode *> *output,
+    Status &status) {
+    if (map.empty()) {
+        DLOG(INFO) << "Nothing to merge, project list map is empty";
+        *output = map;
+        return true;
     }
-    while (iter2 != end2) {
-        auto project2 = dynamic_cast<node::ProjectNode *>(*iter2);
-        merged_project->AddProject(project2);
-        iter2++;
+
+    if (map.size() == 1) {
+        DLOG(INFO) << "Nothing to merge, project list map size = 1";
+        *output = map;
+        return true;
     }
+    std::vector<const node::WindowDefNode *> windows;
+    if (!MergeWindows(map, &windows)) {
+        DLOG(INFO) << "No window can be merged";
+        *output = map;
+        return true;
+    }
+    int32_t w_id = 1;
+    for (auto iter = windows.cbegin(); iter != windows.cend(); iter++) {
+        if (nullptr == *iter) {
+            output->insert(std::make_pair(
+                nullptr,
+                node_manager_->MakeProjectListPlanNode(nullptr, false)));
+            continue;
+        }
+        node::WindowPlanNode *w_node_ptr =
+            node_manager_->MakeWindowPlanNode(w_id++);
+        if (!CreateWindowPlanNode(*iter, w_node_ptr, status)) {
+            return false;
+        }
+        output->insert(std::make_pair(
+            *iter, node_manager_->MakeProjectListPlanNode(w_node_ptr, true)));
+    }
+
+    for (auto map_iter = map.cbegin(); map_iter != map.cend(); map_iter++) {
+        bool merge_ok = false;
+        for (auto iter = output->begin(); iter != output->end(); iter++) {
+            if (node::SQLEquals(map_iter->first, iter->first) ||
+                (nullptr != map_iter->first &&
+                 map_iter->first->CanMergeWith(iter->first))) {
+                node::ProjectListNode *merged_project =
+                    node_manager_->MakeProjectListPlanNode(iter->second->GetW(),
+                                                           true);
+                node::ProjectListNode::MergeProjectList(
+                    iter->second, map_iter->second, merged_project);
+                iter->second = merged_project;
+                merge_ok = true;
+                break;
+            }
+        }
+        if (!merge_ok) {
+            status.msg = "Fail to merge project list";
+            status.code = common::kPlanError;
+            LOG(WARNING) << status.msg;
+            return false;
+        }
+    }
+
     return true;
 }
 

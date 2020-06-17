@@ -75,6 +75,7 @@ bool ScopeVar::AddVar(const std::string& name,
     }
     exist_scope.scope_map.insert(
         std::make_pair(name, value));
+    DLOG(INFO) << "store var " << name;
     return true;
 }
 

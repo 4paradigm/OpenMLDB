@@ -223,7 +223,7 @@ void WindowSumFeature1_RequestUnion(benchmark::State* state, MODE mode,
     const std::string sql =
         "SELECT "
         "sum(col4) OVER w1 as w1_col4_sum "
-        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 ROWS "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 RANGE "
         "BETWEEN "
         "30d "
         "PRECEDING AND CURRENT ROW) limit " +
@@ -237,7 +237,7 @@ void WindowSumFeature1_Aggregation(benchmark::State* state, MODE mode,
     const std::string sql =
         "SELECT "
         "sum(col4) OVER w1 as w1_col4_sum "
-        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 ROWS "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 RANGE "
         "BETWEEN "
         "30d "
         "PRECEDING AND CURRENT ROW) limit " +

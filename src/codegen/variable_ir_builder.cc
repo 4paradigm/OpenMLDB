@@ -17,7 +17,6 @@ fesql::codegen::VariableIRBuilder::~VariableIRBuilder() {}
 bool fesql::codegen::VariableIRBuilder::StoreValue(
     const std::string& name, const NativeValue& value, bool is_register,
     fesql::base::Status& status) {
-
     if (is_register) {
         // store value into register
         NativeValue exist;
@@ -35,8 +34,8 @@ bool fesql::codegen::VariableIRBuilder::StoreValue(
         // get value addr
         NativeValue addr;
         if (!sv_->FindVar(name, &addr)) {
-            addr = NativeValue::CreateMem(
-                builder.CreateAlloca(value.GetType()));
+            addr =
+                NativeValue::CreateMem(builder.CreateAlloca(value.GetType()));
             sv_->AddVar(name, addr);
         }
 
@@ -54,8 +53,8 @@ bool fesql::codegen::VariableIRBuilder::StoreValue(
             return false;
         }
         // store value on address
-        if (nullptr == builder.CreateStore(
-                value.GetValue(&builder), addr.GetAddr(&builder))) {
+        if (nullptr == builder.CreateStore(value.GetValue(&builder),
+                                           addr.GetAddr(&builder))) {
             status.msg = "fail to store value";
             status.code = common::kCodegenError;
             return false;
@@ -81,31 +80,50 @@ bool fesql::codegen::VariableIRBuilder::StoreValue(
     fesql::base::Status& status) {
     return StoreValue(name, value, true, status);
 }
+bool fesql::codegen::VariableIRBuilder::LoadWindow(
+    const std::string& frame_str, NativeValue* output,
+    fesql::base::Status& status) {
+    bool ok =
+        LoadValue("@window" + (frame_str.empty() ? "" : ("." + frame_str)),
+                  output, status);
+    return ok;
+}
 bool fesql::codegen::VariableIRBuilder::LoadColumnRef(
     const std::string& relation_name, const std::string& name,
-    ::llvm::Value** output, fesql::base::Status& status) {
+    const std::string& frame_str, ::llvm::Value** output,
+    fesql::base::Status& status) {
     NativeValue col_ref;
-    bool ok = LoadValue("col." + relation_name + "." + name, &col_ref, status);
+    bool ok = LoadValue("@col." + relation_name + "." + name +
+                            (frame_str.empty() ? "" : ("." + frame_str)),
+                        &col_ref, status);
     *output = col_ref.GetRaw();
     return ok;
 }
 bool fesql::codegen::VariableIRBuilder::LoadColumnItem(
     const std::string& relation_name, const std::string& name,
     NativeValue* output, fesql::base::Status& status) {
-    return LoadValue("item." + relation_name + "." + name, output, status);
+    return LoadValue("@item." + relation_name + "." + name, output, status);
+}
+
+bool fesql::codegen::VariableIRBuilder::StoreWindow(
+    const std::string& frame_str, ::llvm::Value* value,
+    fesql::base::Status& status) {
+    return StoreValue("@window" + (frame_str.empty() ? "" : ("." + frame_str)),
+                      NativeValue::Create(value), status);
 }
 bool fesql::codegen::VariableIRBuilder::StoreColumnRef(
     const std::string& relation_name, const std::string& name,
-    ::llvm::Value* value, fesql::base::Status& status) {
-    return StoreValue("col." + relation_name + "." + name,
-        NativeValue::Create(value), status);
+    const std::string& frame_str, ::llvm::Value* value,
+    fesql::base::Status& status) {
+    return StoreValue("@col." + relation_name + "." + name +
+                          (frame_str.empty() ? "" : ("." + frame_str)),
+                      NativeValue::Create(value), status);
 }
 bool fesql::codegen::VariableIRBuilder::StoreColumnItem(
     const std::string& relation_name, const std::string& name,
     const NativeValue& value, fesql::base::Status& status) {
     ::llvm::IRBuilder<> builder(block_);
-    return StoreValue("item." + relation_name + "." + name,
-        value, status);
+    return StoreValue("@item." + relation_name + "." + name, value, status);
 }
 bool fesql::codegen::VariableIRBuilder::LoadArrayIndex(
     std::string array_ptr_name, int32_t index, ::llvm::Value** output,

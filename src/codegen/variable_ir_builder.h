@@ -13,8 +13,8 @@
 #include <string>
 #include "base/fe_status.h"
 #include "codegen/cast_expr_ir_builder.h"
-#include "codegen/scope_var.h"
 #include "codegen/native_value.h"
+#include "codegen/scope_var.h"
 #include "llvm/IR/IRBuilder.h"
 #include "proto/fe_type.pb.h"
 namespace fesql {
@@ -24,14 +24,21 @@ class VariableIRBuilder {
     VariableIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var);
     ~VariableIRBuilder();
 
+    bool LoadWindow(const std::string& frame_str, NativeValue* output,
+                    base::Status& status);  // NOLINT
     bool LoadColumnRef(const std::string& relation_name,
-                       const std::string& name, ::llvm::Value** output,
+                       const std::string& name, const std::string& frame_str,
+                       ::llvm::Value** output,
                        base::Status& status);  // NOLINT (runtime/references)
     bool LoadColumnItem(const std::string& relation_name,
                         const std::string& name, NativeValue* output,
                         base::Status& status);  // NOLINT (runtime/references)
+
+    bool StoreWindow(const std::string& frame_str, ::llvm::Value* value,
+                     base::Status& status);  // NOLINT
     bool StoreColumnRef(const std::string& relation_name,
-                        const std::string& name, ::llvm::Value* value,
+                        const std::string& name, const std::string& frame_str,
+                        ::llvm::Value* value,
                         base::Status& status);  // NOLINT (runtime/references)
     bool StoreColumnItem(const std::string& relation_name,
                          const std::string& name, const NativeValue& value,

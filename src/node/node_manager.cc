@@ -91,9 +91,8 @@ SQLNode *NodeManager::MakeLimitNode(int count) {
 }
 SQLNode *NodeManager::MakeWindowDefNode(ExprListNode *partitions,
                                         ExprNode *orders, SQLNode *frame) {
-    return MakeWindowDefNode(nullptr, partitions, orders, frame, true);
+    return MakeWindowDefNode(nullptr, partitions, orders, frame, false);
 }
-
 SQLNode *NodeManager::MakeWindowDefNode(SQLNodeList *union_tables,
                                         ExprListNode *partitions,
                                         ExprNode *orders, SQLNode *frame,
@@ -122,31 +121,174 @@ SQLNode *NodeManager::MakeWindowDefNode(const std::string &name) {
     return RegisterNode(node_ptr);
 }
 
-SQLNode *NodeManager::MakeFrameBound(SQLNodeType bound_type) {
+WindowDefNode *NodeManager::MergeWindow(const WindowDefNode *w1,
+                                        const WindowDefNode *w2) {
+    if (nullptr == w1 || nullptr == w2) {
+        LOG(WARNING) << "Fail to Merge Window: input windows are null";
+        return nullptr;
+    }
+
+    if (!w1->CanMergeWith(w2)) {
+        LOG(WARNING) << "Fail to Merge Window: can't merge windows";
+        return nullptr;
+    }
+    return dynamic_cast<WindowDefNode *>(MakeWindowDefNode(
+        w1->union_tables(), w1->GetPartitions(), w1->GetOrders(),
+        MergeFrameNode(w1->GetFrame(), w2->GetFrame()),
+        w1->instance_not_in_window()));
+}
+
+FrameNode *NodeManager::MergeFrameNode(const FrameNode *frame1,
+                                       const FrameNode *frame2) {
+    if (nullptr == frame1 || nullptr == frame2) {
+        LOG(WARNING) << "Fail to Merge Frame: input frames are null";
+        return nullptr;
+    }
+
+    if (!frame1->CanMergeWith(frame2)) {
+        LOG(WARNING) << "Fail to Merge Frame: can't merge frames";
+        return nullptr;
+    }
+
+    FrameType frame_type = frame1->frame_type() == frame2->frame_type()
+                               ? frame1->frame_type()
+                               : kFrameRowsRange;
+    FrameExtent *frame_range = nullptr;
+    if (nullptr == frame1->frame_range()) {
+        frame_range = frame2->frame_range();
+    } else if (nullptr == frame2->frame_range()) {
+        frame_range = frame1->frame_range();
+    } else {
+        FrameBound *start1 = frame1->frame_range()->start();
+        FrameBound *start2 = frame2->frame_range()->start();
+        int start_compared = FrameBound::Compare(start1, start2);
+        FrameBound *start = start_compared < 1 ? start1 : start2;
+
+        FrameBound *end1 = frame1->frame_range()->end();
+        FrameBound *end2 = frame2->frame_range()->end();
+        int end_compared = FrameBound::Compare(end1, end2);
+        FrameBound *end = end_compared >= 1 ? end1 : end2;
+        frame_range = dynamic_cast<FrameExtent *>(MakeFrameExtent(start, end));
+    }
+
+    FrameExtent *frame_rows = nullptr;
+    if (nullptr == frame1->frame_rows()) {
+        frame_rows = frame2->frame_rows();
+    } else if (nullptr == frame2->frame_rows()) {
+        frame_rows = frame1->frame_rows();
+    } else {
+        FrameBound *start1 = frame1->frame_rows()->start();
+        FrameBound *start2 = frame2->frame_rows()->start();
+        int start_compared = FrameBound::Compare(start1, start2);
+        FrameBound *start = start_compared < 1 ? start1 : start2;
+
+        FrameBound *end1 = frame1->frame_rows()->end();
+        FrameBound *end2 = frame2->frame_rows()->end();
+        int end_compared = FrameBound::Compare(end1, end2);
+        FrameBound *end = end_compared >= 1 ? end1 : end2;
+        frame_rows = dynamic_cast<FrameExtent *>(MakeFrameExtent(start, end));
+    }
+    int64_t maxsize = frame1->frame_maxsize() > frame2->frame_maxsize()
+                          ? frame1->frame_maxsize()
+                          : frame2->frame_maxsize();
+
+    return dynamic_cast<FrameNode *>(
+        MakeFrameNode(frame_type, frame_range, frame_rows, maxsize));
+}
+SQLNode *NodeManager::MakeFrameBound(BoundType bound_type) {
     FrameBound *node_ptr = new FrameBound(bound_type);
     return RegisterNode(node_ptr);
 }
 
-SQLNode *NodeManager::MakeFrameBound(SQLNodeType bound_type, ExprNode *offset) {
+SQLNode *NodeManager::MakeFrameBound(BoundType bound_type, ExprNode *expr) {
+    ConstNode *primary = dynamic_cast<ConstNode *>(expr);
+    int64_t offset;
+    switch (primary->GetDataType()) {
+        case node::DataType::kFloat:
+        case node::DataType::kDouble:
+        case node::DataType::kInt16:
+        case node::DataType::kInt32:
+        case node::DataType::kInt64:
+            offset = primary->GetAsInt64();
+            break;
+        case node::DataType::kDay:
+        case node::DataType::kHour:
+        case node::DataType::kMinute:
+        case node::DataType::kSecond:
+            offset = (primary->GetMillis());
+            break;
+        default: {
+            LOG(WARNING) << "cannot create window frame, only support "
+                            "number and time offset of frame";
+            return nullptr;
+        }
+    }
     FrameBound *node_ptr = new FrameBound(bound_type, offset);
     return RegisterNode(node_ptr);
 }
-SQLNode *NodeManager::MakeFrameNode(SQLNode *start, SQLNode *end) {
-    FrameNode *node_ptr =
-        new FrameNode(kFrameRange, dynamic_cast<FrameBound *>(start),
-                      dynamic_cast<FrameBound *>(end));
+SQLNode *NodeManager::MakeFrameBound(BoundType bound_type, int64_t offset) {
+    FrameBound *node_ptr = new FrameBound(bound_type, offset);
     return RegisterNode(node_ptr);
 }
-SQLNode *NodeManager::MakeRangeFrameNode(SQLNode *node_ptr) {
-    dynamic_cast<FrameNode *>(node_ptr)->SetFrameType(kFrameRange);
-    return node_ptr;
+SQLNode *NodeManager::MakeFrameExtent(SQLNode *start, SQLNode *end) {
+    FrameExtent *node_ptr = new FrameExtent(dynamic_cast<FrameBound *>(start),
+                                            dynamic_cast<FrameBound *>(end));
+    return RegisterNode(node_ptr);
+}
+SQLNode *NodeManager::MakeFrameNode(FrameType frame_type,
+                                    SQLNode *frame_extent) {
+    int64_t max_size = 0;
+    return MakeFrameNode(frame_type, frame_extent, max_size);
+}
+SQLNode *NodeManager::MakeFrameNode(FrameType frame_type, SQLNode *frame_extent,
+                                    ExprNode *frame_size) {
+    if (nullptr != frame_extent && node::kFrameExtent != frame_extent->type_) {
+        LOG(WARNING) << "Fail Make Frame Node: 2nd arg isn't frame extent";
+        return nullptr;
+    }
+
+    if (nullptr != frame_size && node::kExprPrimary != frame_size->expr_type_) {
+        LOG(WARNING) << "Fail Make Frame Node: 3nd arg isn't const expression";
+        return nullptr;
+    }
+    return MakeFrameNode(
+        frame_type, frame_extent,
+        nullptr == frame_size
+            ? 0L
+            : dynamic_cast<ConstNode *>(frame_size)->GetAsInt64());
 }
 
-SQLNode *NodeManager::MakeRowsFrameNode(SQLNode *node_ptr) {
-    dynamic_cast<FrameNode *>(node_ptr)->SetFrameType(kFrameRows);
-    return node_ptr;
+SQLNode *NodeManager::MakeFrameNode(FrameType frame_type, SQLNode *frame_extent,
+                                    int64_t maxsize) {
+    if (nullptr != frame_extent && node::kFrameExtent != frame_extent->type_) {
+        LOG(WARNING) << "Fail Make Frame Node: 2nd arg isn't frame extent";
+        return nullptr;
+    }
+
+    switch (frame_type) {
+        case kFrameRows: {
+            FrameNode *node_ptr = new FrameNode(
+                frame_type, nullptr, dynamic_cast<FrameExtent *>(frame_extent),
+                maxsize);
+            return RegisterNode(node_ptr);
+        }
+        case kFrameRange:
+        case kFrameRowsRange: {
+            FrameNode *node_ptr = new FrameNode(
+                frame_type, dynamic_cast<FrameExtent *>(frame_extent), nullptr,
+                maxsize);
+            return RegisterNode(node_ptr);
+        }
+    }
 }
 
+SQLNode *NodeManager::MakeFrameNode(FrameType frame_type,
+                                    FrameExtent *frame_range,
+                                    FrameExtent *frame_rows, int64_t maxsize) {
+    FrameNode *node_ptr =
+        new FrameNode(frame_type, frame_range, frame_rows, maxsize);
+    return RegisterNode(node_ptr);
+}
 ExprNode *NodeManager::MakeOrderByNode(const ExprListNode *order,
                                        const bool is_asc) {
     OrderByNode *node_ptr = new OrderByNode(order, is_asc);
@@ -614,9 +756,9 @@ FnForInBlock *NodeManager::MakeForInBlock(FnForInNode *for_in_node,
     return node_ptr;
 }
 PlanNode *NodeManager::MakeJoinNode(PlanNode *left, PlanNode *right,
-                                        JoinType join_type,
-                                        const OrderByNode *order_by,
-                                        const ExprNode *condition) {
+                                    JoinType join_type,
+                                    const OrderByNode *order_by,
+                                    const ExprNode *condition) {
     node::JoinPlanNode *node_ptr =
         new JoinPlanNode(left, right, join_type, order_by, condition);
     return RegisterNode(node_ptr);
@@ -645,9 +787,10 @@ PlanNode *NodeManager::MakeLimitPlanNode(PlanNode *node, int limit_cnt) {
 ProjectNode *NodeManager::MakeProjectNode(const int32_t pos,
                                           const std::string &name,
                                           const bool is_aggregation,
-                                          node::ExprNode *expression) {
+                                          node::ExprNode *expression,
+                                          node::FrameNode *frame) {
     node::ProjectNode *node_ptr =
-        new ProjectNode(pos, name, is_aggregation, expression);
+        new ProjectNode(pos, name, is_aggregation, expression, frame);
     RegisterNode(node_ptr);
     return node_ptr;
 }
@@ -700,13 +843,14 @@ SQLNode *NodeManager::MakeExplainNode(const QueryNode *query,
 }
 ProjectNode *NodeManager::MakeAggProjectNode(const int32_t pos,
                                              const std::string &name,
-                                             node::ExprNode *expression) {
-    return MakeProjectNode(pos, name, true, expression);
+                                             node::ExprNode *expression,
+                                             node::FrameNode *frame) {
+    return MakeProjectNode(pos, name, true, expression, frame);
 }
 ProjectNode *NodeManager::MakeRowProjectNode(const int32_t pos,
                                              const std::string &name,
                                              node::ExprNode *expression) {
-    return MakeProjectNode(pos, name, false, expression);
+    return MakeProjectNode(pos, name, false, expression, nullptr);
 }
 ExprNode *NodeManager::MakeEqualCondition(const std::string &db1,
                                           const std::string &table1,

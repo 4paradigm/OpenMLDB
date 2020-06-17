@@ -64,9 +64,7 @@ std::unique_ptr<RowIterator> MemWindowIterator::GetValue() {
     return std::unique_ptr<RowIterator>(
         new MemTimeTableIterator(&(iter_->second), schema_));
 }
-const Row MemWindowIterator::GetKey() {
-  return Row(iter_->first);
-}
+const Row MemWindowIterator::GetKey() { return Row(iter_->first); }
 
 MemTimeTableHandler::MemTimeTableHandler()
     : TableHandler(),
@@ -112,12 +110,19 @@ std::unique_ptr<WindowIterator> MemTimeTableHandler::GetWindowIterator(
 void MemTimeTableHandler::AddRow(const uint64_t key, const Row& row) {
     table_.emplace_back(std::make_pair(key, row));
 }
+
+void MemTimeTableHandler::AddFrontRow(const uint64_t key, const Row& row) {
+    table_.emplace_front(std::make_pair(key, row));
+}
 void MemTimeTableHandler::PopBackRow() { table_.pop_back(); }
 
 void MemTimeTableHandler::PopFrontRow() { table_.pop_front(); }
 
 void MemTimeTableHandler::AddRow(const Row& row) {
     table_.emplace_back(std::make_pair(0, row));
+}
+void MemTimeTableHandler::AddFrontRow(const Row& row) {
+    table_.emplace_front(std::make_pair(0, row));
 }
 const Types& MemTimeTableHandler::GetTypes() { return types_; }
 
@@ -301,42 +306,40 @@ void MemTableIterator::Next() {
 const Row& MemTableIterator::GetValue() { return *iter_; }
 bool MemTableIterator::IsSeekable() const { return true; }
 
-
 // row iter interfaces for llvm
 void GetRowIter(int8_t* input, int8_t* iter_addr) {
     auto handler = reinterpret_cast<ListV<Row>*>(input);
-    auto local_iter = new (iter_addr) std::unique_ptr<RowIterator>(
-        handler->GetIterator());
+    auto local_iter =
+        new (iter_addr) std::unique_ptr<RowIterator>(handler->GetIterator());
     (*local_iter)->SeekToFirst();
 }
 bool RowIterHasNext(int8_t* iter_ptr) {
-    auto& local_iter = *reinterpret_cast<std::unique_ptr<RowIterator>*>(
-        iter_ptr);
+    auto& local_iter =
+        *reinterpret_cast<std::unique_ptr<RowIterator>*>(iter_ptr);
     return local_iter->Valid();
 }
 void RowIterNext(int8_t* iter_ptr) {
-    auto& local_iter = *reinterpret_cast<std::unique_ptr<RowIterator>*>(
-        iter_ptr);
+    auto& local_iter =
+        *reinterpret_cast<std::unique_ptr<RowIterator>*>(iter_ptr);
     local_iter->Next();
 }
 int8_t* RowIterGetCurSlice(int8_t* iter_ptr, size_t idx) {
-    auto& local_iter = *reinterpret_cast<std::unique_ptr<RowIterator>*>(
-        iter_ptr);
+    auto& local_iter =
+        *reinterpret_cast<std::unique_ptr<RowIterator>*>(iter_ptr);
     const Row& row = local_iter->GetValue();
     return row.buf(idx);
 }
 size_t RowIterGetCurSliceSize(int8_t* iter_ptr, size_t idx) {
-    auto& local_iter = *reinterpret_cast<std::unique_ptr<RowIterator>*>(
-        iter_ptr);
+    auto& local_iter =
+        *reinterpret_cast<std::unique_ptr<RowIterator>*>(iter_ptr);
     const Row& row = local_iter->GetValue();
     return row.size(idx);
 }
 void RowIterDelete(int8_t* iter_ptr) {
-    auto& local_iter = *reinterpret_cast<std::unique_ptr<RowIterator>*>(
-        iter_ptr);
+    auto& local_iter =
+        *reinterpret_cast<std::unique_ptr<RowIterator>*>(iter_ptr);
     local_iter = nullptr;
 }
-
 
 }  // namespace vm
 }  // namespace fesql
