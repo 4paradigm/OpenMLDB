@@ -46,7 +46,7 @@ class FesqlBackend(object):
             raise FesqlException("The gateway has been initialized")
 
         if "PYSPARK_GATEWAY_PORT" in os.environ: # Run with spark-submit
-            logginf.info("Run with spark-submit to re-use jvm gateway")
+            logging.info("Run with spark-submit to re-use jvm gateway")
             # Get the port of running jvm from pyspark
             jvm_port = os.environ.get("PYSPARK_GATEWAY_PORT")
             logging.info("Get PySpark JVM port: {}".format(jvm_port))
