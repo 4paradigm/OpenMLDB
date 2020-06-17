@@ -381,7 +381,7 @@ int32_t TabletImpl::GetIndex(const ::rtidb::api::GetRequest* request,
         enable_project = true;
     }
     if (st > 0 && st < et) {
-        PDLOG(WARNING,
+        DEBUGLOG(
               "invalid args for st %lu less than et %lu or expire time %lu", st,
               et, expire_time);
         return -1;
