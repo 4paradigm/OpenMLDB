@@ -1,4 +1,4 @@
-image: develop-registry.4pd.io/centos6_gcc7_build_env:0.4.0
+image: develop-registry.4pd.io/centos6_gcc7_build_env:0.5.0
 services:
     - docker:dind
 variables:
@@ -188,3 +188,4 @@ docker-image:
     only:
         - tags
         - develop
+        - feat/deploy-k8s-blob-proxy
