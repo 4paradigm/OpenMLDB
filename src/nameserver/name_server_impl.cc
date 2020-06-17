@@ -6460,7 +6460,7 @@ void NameServerImpl::SchedMakeSnapshot() {
             }
             std::string msg;
             for (const auto& ns : ns_client) {
-                ns.second->MakeSnapshot(table.second->name(), part.pid(),
+                ns.second->MakeSnapshot(table.second->name(), table.second->db(), part.pid(),
                                         part_iter->second, msg);
             }
         }

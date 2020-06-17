@@ -72,6 +72,9 @@ class NsClient {
     bool MakeSnapshot(const std::string& name, uint32_t pid,
                       uint64_t end_offset, std::string& msg);  // NOLINT
 
+    bool MakeSnapshot(const std::string& name, const std::string& db, uint32_t pid,
+                    uint64_t end_offset, std::string& msg);  // NOLINT
+
     bool ShowOPStatus(
         ::rtidb::nameserver::ShowOPStatusResponse& response,       // NOLINT
         const std::string& name, uint32_t pid, std::string& msg);  // NOLINT
