@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com._4paradigm</groupId>
     <artifactId>rtidb-client</artifactId>
-	<version>1.5.1.0-SNAPSHOT</version>
+	<version>1.6.0.1-SNAPSHOT</version>
     <packaging>jar</packaging>
     <dependencies>
 
@@ -52,12 +52,24 @@
             <artifactId>logback-classic</artifactId>
             <version>1.1.2</version>
             <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <artifactId>slf4j-api</artifactId>
+                    <groupId>org.slf4j</groupId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <dependency>
             <groupId>io.brpc</groupId>
             <artifactId>brpc-java</artifactId>
             <version>1.3.6-RELEASE</version>
+            <exclusions>
+                <exclusion>
+                    <artifactId>slf4j-api</artifactId>
+                    <groupId>org.slf4j</groupId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <!-- https://mvnrepository.com/artifact/org.xerial.snappy/snappy-java -->
@@ -71,6 +83,12 @@
             <groupId>org.apache.zookeeper</groupId>
             <artifactId>zookeeper</artifactId>
             <version>3.4.10</version>
+            <exclusions>
+                <exclusion>
+                    <artifactId>slf4j-api</artifactId>
+                    <groupId>org.slf4j</groupId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
     </dependencies>
@@ -90,7 +108,7 @@
                 <artifactId>protobuf-maven-plugin</artifactId>
                 <version>0.5.0</version>
                 <configuration>
-<protocExecutable>/rtidb/thirdparty/bin/protoc</protocExecutable>
+<protocExecutable>/usr/local/bin/protoc</protocExecutable>
                 </configuration>
                 <executions>
                     <execution>
@@ -169,6 +187,10 @@
                                 <relocation>
                                     <pattern>io.netty</pattern>
                                     <shadedPattern>shade.netty</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>org.slf4j</pattern>
+                                    <shadedPattern>shade.slf4j</shadedPattern>
                                 </relocation>
                             </relocations>
                         </configuration>
