@@ -148,8 +148,17 @@ class FesqlSession {
    * @param name
    * @param df
    */
-  def registeredTable(name: String, df: DataFrame): Unit = {
+  def registerTable(name: String, df: DataFrame): Unit = {
     registeredTables.put(name, df)
+  }
+
+  /**
+   * Return the string of Spark session.
+   *
+   * @return
+   */
+  override def toString: String = {
+    sparkSession.toString()
   }
 
 }

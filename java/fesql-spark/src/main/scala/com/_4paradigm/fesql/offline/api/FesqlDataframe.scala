@@ -18,7 +18,7 @@ case class FesqlDataframe(fesqlSession: FesqlSession, sparkDf: DataFrame) {
     sparkDf.createOrReplaceTempView(name)
 
     // Register for FESQL
-    fesqlSession.registeredTable(name, sparkDf)
+    fesqlSession.registerTable(name, sparkDf)
   }
 
   /**
