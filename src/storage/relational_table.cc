@@ -629,7 +629,7 @@ bool RelationalTable::Delete(
     }
     rocksdb::Status s = db_->Write(write_opts_, &batch);
     if (s.ok()) {
-        record_cnt_.fetch_sub(1, std::memory_order_relaxed);
+        record_cnt_.fetch_sub((uint64_t)*count, std::memory_order_relaxed);
         offset_.fetch_add(1, std::memory_order_relaxed);
         return true;
     } else {
