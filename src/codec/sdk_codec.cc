@@ -69,7 +69,7 @@ SDKCodec::SDKCodec(const ::rtidb::api::TableMeta& table_info)
     } else if (!table_info.schema().empty()) {
         ::rtidb::codec::SchemaCodec scodec;
         scodec.Decode(table_info.schema(), old_schema_);
-        for(uint32_t idx = 0; idx < old_schema_.size(); idx++) {
+        for (uint32_t idx = 0; idx < old_schema_.size(); idx++) {
             schema_idx_map_.emplace(old_schema_[idx].name, idx);
             if (old_schema_[idx].add_ts_idx) {
                 auto col_key = index_.Add();
