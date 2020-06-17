@@ -162,8 +162,8 @@ TEST_F(TabletCatalogTest, sql_last_join_smoke_test) {
         ASSERT_TRUE(handler->Init());
         ASSERT_TRUE(catalog->AddTable(handler));
     }
+    TestArgs* args1 = PrepareTable("t2");
     {
-        TestArgs* args1 = PrepareTable("t2");
         std::shared_ptr<TabletTableHandler> handler(
             new TabletTableHandler(args1->meta, "db1", args1->table));
         ASSERT_TRUE(handler->Init());
@@ -173,7 +173,7 @@ TEST_F(TabletCatalogTest, sql_last_join_smoke_test) {
     std::string sql =
         "select t1.col1 as c1, t1.col2 as c2 , t2.col1 as c3, t2.col2 as c4 "
         "from t1 last join t2 order by t2.col2 "
-        "on t1.col1 = t2.col1 and t1.col2 >= t2.col2;";
+        "on t1.col1 = t2.col1 and t1.col2 > t2.col2;";
      ::fesql::vm::ExplainOutput explain;
     ::fesql::base::Status status;
     engine.Explain(sql, "db1", true, &explain, &status);
@@ -198,11 +198,7 @@ TEST_F(TabletCatalogTest, sql_last_join_smoke_test) {
     ASSERT_TRUE(it->Valid());
     const ::fesql::codec::Row& row = it->GetValue();
     rv.Reset(row.buf(), row.size());
-    char* data = NULL;
-    uint32_t data_size = 0;
-    ASSERT_EQ(0, rv.GetString(0, &data, &data_size));
-    std::string pk(data, data_size);
-    ASSERT_EQ(args->pk, pk);
+    ASSERT_EQ(args->pk, rv.GetStringUnsafe(0));
 }
 
 TEST_F(TabletCatalogTest, sql_last_join_smoke_test2) {
@@ -215,8 +211,9 @@ TEST_F(TabletCatalogTest, sql_last_join_smoke_test2) {
         ASSERT_TRUE(handler->Init());
         ASSERT_TRUE(catalog->AddTable(handler));
     }
+
+    TestArgs* args1 = PrepareTable("t2");
     {
-        TestArgs* args1 = PrepareTable("t2");
         std::shared_ptr<TabletTableHandler> handler(
             new TabletTableHandler(args1->meta, "db1", args1->table));
         ASSERT_TRUE(handler->Init());

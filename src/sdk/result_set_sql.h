@@ -23,7 +23,7 @@
 
 #include "brpc/controller.h"
 #include "butil/iobuf.h"
-#include "codec/fe_row_codec.h"
+#include "sdk/codec_sdk.h"
 #include "proto/tablet.pb.h"
 #include "sdk/base_impl.h"
 #include "sdk/result_set.h"
@@ -78,9 +78,9 @@ class ResultSetSQL : public ::fesql::sdk::ResultSet {
  private:
     std::unique_ptr<::rtidb::api::QueryResponse> response_;
     int32_t index_;
-    int32_t byte_size_;
+    uint32_t byte_size_;
     uint32_t position_;
-    std::unique_ptr<::fesql::codec::RowIOBufView> row_view_;
+    std::unique_ptr<::fesql::sdk::RowIOBufView> row_view_;
     ::fesql::vm::Schema internal_schema_;
     ::fesql::sdk::SchemaImpl schema_;
     std::unique_ptr<brpc::Controller> cntl_;
