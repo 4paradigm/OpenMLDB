@@ -2230,7 +2230,8 @@ void HandleNSScan(const std::vector<std::string>& parts,
             std::vector<std::shared_ptr<::rtidb::base::KvIterator>> iter_vec;
             iter_vec.push_back(std::move(it));
             ::rtidb::cmd::SDKIterator sdk_it(iter_vec, limit);
-            ::rtidb::cmd::ShowTableRows(key, &sdk_it, tables[0].compress_type());
+            ::rtidb::cmd::ShowTableRows(key, &sdk_it,
+                                        tables[0].compress_type());
         }
     } else {
         if (parts.size() < 6) {
