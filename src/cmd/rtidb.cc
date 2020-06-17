@@ -5962,6 +5962,7 @@ void HandleClientSPut(const std::vector<std::string>& parts,
         std::string value;
         if (codec.EncodeRow(input_value, &value) < 0) {
             std::cout << "Encode data error" << std::endl;
+            return;
         }
 
         if (table_meta.compress_type() == ::rtidb::api::CompressType::kSnappy) {
