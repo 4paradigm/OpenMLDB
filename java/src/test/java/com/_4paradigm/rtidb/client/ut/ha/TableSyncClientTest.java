@@ -2888,6 +2888,14 @@ public class TableSyncClientTest extends TestCaseBase {
                 it = tableSyncClient.query(name, ro);
                 Assert.assertFalse(it.valid());
 
+                Thread.currentThread().sleep(3000);
+                TableInfo tableInfo = nsc.showTable(name).get(0);
+                long countA[] = new long[1];
+                long countB[] = new long[1];
+                getRecordCount(tableInfo, countA, countB);
+                Assert.assertEquals(countA[0], 2);
+                Assert.assertEquals(countA[0], countB[0]);
+
                 Map<String, Object> conditionColumns2 = new HashMap<>();
                 conditionColumns2.put("memory", 13);
                 ro = new ReadOption(conditionColumns2, null, null, 1);
@@ -2902,6 +2910,8 @@ public class TableSyncClientTest extends TestCaseBase {
             Assert.assertTrue(it.valid());
             queryMap = it.getDecodedValue();
             Assert.assertEquals(queryMap.get("memory"), 11);
+
+
 
         } catch (Exception e) {
             e.printStackTrace();
