@@ -456,7 +456,7 @@ SQLCases:
         12, A, 7, 1590115480000, 13, 18, 22
         13, A, 8, 1590115490000, 15, 21, 26
         14, A, 9, 1590115500000, 17, 24, 30
-  - id: 13
+  - id: 14
     desc: window ROWS and ROWS_RANGE merge
     sql: |
       SELECT id, pk1, col1, std_ts,
@@ -503,3 +503,147 @@ SQLCases:
         12, A, 7, 1590115480000, 13, 18, 22
         13, A, 8, 1590115490000, 15, 21, 26
         14, A, 9, 1590115500000, 17, 24, 30
+  - id: 15
+    desc: window ROWS_RANGE 包含纯历史小窗口(不包含CURRENT ROW)
+    sql: |
+      SELECT id, pk1, col1, std_ts,
+      sum(col1) OVER (PARTITION BY pk1 ORDER BY std_ts ROWS_RANGE BETWEEN 10s PRECEDING AND CURRENT ROW) as w1_col1_sum,
+      sum(col1) OVER w2 as w2_col1_sum,
+      sum(col1) OVER (PARTITION BY pk1 ORDER BY std_ts ROWS_RANGE BETWEEN 40s PRECEDING AND 21s PRECEDING) as w3_col1_sum
+      FROM t1
+      WINDOW w2 AS (PARTITION BY pk1 ORDER BY std_ts ROWS_RANGE BETWEEN 20s PRECEDING AND CURRENT ROW);
+    inputs:
+      - name: t1
+        schema: id:int, pk1:string, col1:int32, std_ts:timestamp
+        index: index2:pk1:std_ts
+        data: |
+          1, A, 1, 1590115420000
+          2, B, 1, 1590115420000
+          3, A, 2, 1590115430000
+          4, B, 2, 1590115430000
+          5, A, 3, 1590115440000
+          6, B, 3, 1590115440000
+          7, A, 4, 1590115450000
+          8, B, 4, 1590115450000
+          9, A, 5, 1590115460000
+          10, B, 5, 1590115460000
+          11, A, 6, 1590115470000
+          12, A, 7, 1590115480000
+          13, A, 8, 1590115490000
+          14, A, 9, 1590115500000
+
+    output:
+      schema: id:int, pk1:string, col1:int, std_ts:timestamp, w1_col1_sum:int, w2_col1_sum:int, w3_col1_sum:int
+      order: id
+      data: |
+        1, A, 1, 1590115420000, 1, 1, 0
+        2, B, 1, 1590115420000, 1, 1, 0
+        3, A, 2, 1590115430000, 3, 3, 0
+        4, B, 2, 1590115430000, 3, 3, 0
+        5, A, 3, 1590115440000, 5, 6, 0
+        6, B, 3, 1590115440000, 5, 6, 0
+        7, A, 4, 1590115450000, 7, 9, 1
+        8, B, 4, 1590115450000, 7, 9, 1
+        9, A, 5, 1590115460000, 9, 12, 3
+        10, B, 5, 1590115460000, 9, 12, 3
+        11, A, 6, 1590115470000, 11, 15, 5
+        12, A, 7, 1590115480000, 13, 18, 7
+        13, A, 8, 1590115490000, 15, 21, 9
+        14, A, 9, 1590115500000, 17, 24, 11
+
+  - id: 16
+    desc: window ROWS merge, 包含纯历史小窗口
+    sql: |
+      SELECT id, pk1, col1, std_ts,
+      sum(col1) OVER (PARTITION BY pk1 ORDER BY std_ts ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) as w1_col1_sum,
+      sum(col1) OVER w2 as w2_col1_sum,
+      sum(col1) OVER (PARTITION BY pk1 ORDER BY std_ts ROWS BETWEEN 3 PRECEDING AND 2 PRECEDING) as w3_col1_sum
+      FROM t1
+      WINDOW w2 AS (PARTITION BY pk1 ORDER BY std_ts ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    inputs:
+      - name: t1
+        schema: id:int, pk1:string, col1:int32, std_ts:timestamp
+        index: index2:pk1:std_ts
+        data: |
+          1, A, 1, 1590115420000
+          2, B, 1, 1590115420000
+          3, A, 2, 1590115430000
+          4, B, 2, 1590115430000
+          5, A, 3, 1590115440000
+          6, B, 3, 1590115440000
+          7, A, 4, 1590115450000
+          8, B, 4, 1590115450000
+          9, A, 5, 1590115460000
+          10, B, 5, 1590115460000
+          11, A, 6, 1590115470000
+          12, A, 7, 1590115480000
+          13, A, 8, 1590115490000
+          14, A, 9, 1590115500000
+
+    output:
+      schema: id:int, pk1:string, col1:int, std_ts:timestamp, w1_col1_sum:int, w2_col1_sum:int, w3_col1_sum:int
+      order: id
+      data: |
+        1, A, 1, 1590115420000, 1, 1, 0
+        2, B, 1, 1590115420000, 1, 1, 0
+        3, A, 2, 1590115430000, 3, 3, 0
+        4, B, 2, 1590115430000, 3, 3, 0
+        5, A, 3, 1590115440000, 5, 6, 1
+        6, B, 3, 1590115440000, 5, 6, 1
+        7, A, 4, 1590115450000, 7, 9, 3
+        8, B, 4, 1590115450000, 7, 9, 3
+        9, A, 5, 1590115460000, 9, 12, 5
+        10, B, 5, 1590115460000, 9, 12, 5
+        11, A, 6, 1590115470000, 11, 15, 7
+        12, A, 7, 1590115480000, 13, 18, 9
+        13, A, 8, 1590115490000, 15, 21, 11
+        14, A, 9, 1590115500000, 17, 24, 13
+  - id: 17
+    desc: window ROWS and ROWS_RANGE merge, 包含纯历史小窗口
+    sql: |
+      SELECT id, pk1, col1, std_ts,
+      sum(col1) OVER (PARTITION BY pk1 ORDER BY std_ts ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) as w1_col1_sum,
+      sum(col1) OVER w2 as w2_col1_sum,
+      sum(col1) OVER (PARTITION BY pk1 ORDER BY std_ts ROWS_RANGE BETWEEN 30s PRECEDING AND CURRENT ROW) as w3_col1_sum,
+      sum(col1) OVER (PARTITION BY pk1 ORDER BY std_ts ROWS BETWEEN 3 PRECEDING AND 2 PRECEDING) as w4_col1_sum,
+      sum(col1) OVER (PARTITION BY pk1 ORDER BY std_ts ROWS_RANGE BETWEEN 40s PRECEDING AND 21s PRECEDING) as w5_col1_sum
+      FROM t1
+      WINDOW w2 AS (PARTITION BY pk1 ORDER BY std_ts ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    inputs:
+      - name: t1
+        schema: id:int, pk1:string, col1:int32, std_ts:timestamp
+        index: index2:pk1:std_ts
+        data: |
+          1, A, 1, 1590115420000
+          2, B, 1, 1590115420000
+          3, A, 2, 1590115430000
+          4, B, 2, 1590115430000
+          5, A, 3, 1590115440000
+          6, B, 3, 1590115440000
+          7, A, 4, 1590115450000
+          8, B, 4, 1590115450000
+          9, A, 5, 1590115460000
+          10, B, 5, 1590115460000
+          11, A, 6, 1590115470000
+          12, A, 7, 1590115480000
+          13, A, 8, 1590115490000
+          14, A, 9, 1590115500000
+
+    output:
+      schema: id:int, pk1:string, col1:int, std_ts:timestamp, w1_col1_sum:int, w2_col1_sum:int, w3_col1_sum:int, w4_col1_sum:int, w5_col1_sum:int
+      order: id
+      data: |
+        1, A, 1, 1590115420000, 1, 1, 1, 0, 0
+        2, B, 1, 1590115420000, 1, 1, 1, 0, 0
+        3, A, 2, 1590115430000, 3, 3, 3, 0, 0
+        4, B, 2, 1590115430000, 3, 3, 3, 0, 0
+        5, A, 3, 1590115440000, 5, 6, 6, 1, 0
+        6, B, 3, 1590115440000, 5, 6, 6, 1, 0
+        7, A, 4, 1590115450000, 7, 9, 10, 3, 1
+        8, B, 4, 1590115450000, 7, 9, 10, 3, 1
+        9, A, 5, 1590115460000, 9, 12, 14, 5, 3
+        10, B, 5, 1590115460000, 9, 12, 14, 5, 3
+        11, A, 6, 1590115470000, 11, 15, 18, 7, 5
+        12, A, 7, 1590115480000, 13, 18, 22, 9, 7
+        13, A, 8, 1590115490000, 15, 21, 26, 11, 9
+        14, A, 9, 1590115500000, 17, 24, 30, 13, 11
