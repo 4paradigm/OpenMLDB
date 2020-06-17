@@ -64,15 +64,27 @@ SDKCodec::SDKCodec(const ::rtidb::api::TableMeta& table_info)
     : format_version_(table_info.format_version()),
       base_schema_size_(0),
       modify_times_(0) {
-    if (table_info.column_key_size() > 0) {
-        index_.CopyFrom(table_info.column_key());
-    }
     if (table_info.column_desc_size() > 0) {
         ParseColumnDesc(table_info.column_desc());
     } else if (!table_info.schema().empty()) {
         ::rtidb::codec::SchemaCodec scodec;
         scodec.Decode(table_info.schema(), old_schema_);
+        for(uint32_t idx = 0; idx < old_schema_.size(); idx++) {
+            schema_idx_map_.emplace(old_schema_[idx].name, idx);
+            if (old_schema_[idx].add_ts_idx) {
+                auto col_key = index_.Add();
+                col_key->set_index_name(old_schema_[idx].name);
+                col_key->add_col_name(old_schema_[idx].name);
+            }
+            if (old_schema_[idx].is_ts_col) {
+                ts_idx_.push_back(idx);
+            }
+        }
         base_schema_size_ = old_schema_.size();
+    }
+    if (table_info.column_key_size() > 0) {
+        index_.Clear();
+        index_.CopyFrom(table_info.column_key());
     }
     ParseAddedColumnDesc(table_info.added_column_desc());
 }
