@@ -13,16 +13,20 @@ import java.util.List;
 
 public class ReadStrategyTest {
     private static PartitionHandler partitionHandler = new PartitionHandler();
-    private static TabletServerWapper leader;
-    private static TabletServerWapper follower1;
-    private static TabletServerWapper follower2;
+    private static TabletServer leader;
+    private static TabletServer follower1;
+    private static TabletServer follower2;
+
+    private static TabletServerWapper leaderW = new TabletServerWapper("leader", leader);
+    private static TabletServerWapper follower1W = new TabletServerWapper("follower1", follower1);
+    private static TabletServerWapper follower2W = new TabletServerWapper("follower2", follower2);
     private static List<TabletServerWapper> followers = new ArrayList<>();
 
     @BeforeClass
     public static void init() {
-        partitionHandler.setLeader(leader);
-        followers.add(follower1);
-        followers.add(follower2);
+        partitionHandler.setLeader(leaderW);
+        followers.add(follower1W);
+        followers.add(follower2W);
         partitionHandler.setFollowers(followers);
     }
 
@@ -42,12 +46,12 @@ public class ReadStrategyTest {
         partitionHandler.getFollowers().remove(follower1);
         TabletServer tabletServer1 = partitionHandler.getReadHandler(TableHandler.ReadStrategy.kReadFollower);
         Assert.assertTrue(tabletServer1 == follower2);
-        partitionHandler.getFollowers().add(follower1);
+        partitionHandler.getFollowers().add(follower1W);
 
-        partitionHandler.getFollowers().remove(follower2);
+        partitionHandler.getFollowers().remove(follower2W);
         TabletServer tabletServer2 = partitionHandler.getReadHandler(TableHandler.ReadStrategy.kReadFollower);
         Assert.assertTrue(tabletServer2 == follower1);
-        partitionHandler.getFollowers().add(follower2);
+        partitionHandler.getFollowers().add(follower2W);
         //followers.size()==0
         partitionHandler.setFollowers(new ArrayList<TabletServerWapper>());
         Assert.assertTrue(tabletServer1 == leader);
@@ -58,7 +62,7 @@ public class ReadStrategyTest {
     @Test
     public void testReadLocalForThree() {
         //fastTablet != null
-        partitionHandler.setFastTablet(follower1);
+        partitionHandler.setFastTablet(follower1W);
         TabletServer tabletServer = partitionHandler.getReadHandler(TableHandler.ReadStrategy.kReadLocal);
         Assert.assertTrue(tabletServer == follower1);
         //fastTablet == null && followers.size() > 0
@@ -135,7 +139,7 @@ public class ReadStrategyTest {
     @Test
     public void testReadLocalForTwo() {
         //fastTablet != null
-        partitionHandler.setFastTablet(follower1);
+        partitionHandler.setFastTablet(follower1W);
         TabletServer tabletServer = partitionHandler.getReadHandler(TableHandler.ReadStrategy.kReadLocal);
         Assert.assertTrue(tabletServer == follower1);
         //fastTablet == null && followers.size() > 0
