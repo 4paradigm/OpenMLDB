@@ -1329,6 +1329,7 @@ void HandleNSDelete(const std::vector<std::string>& parts,
                 std::cout << "delete failed. error msg: " << msg << std::endl;
             }
         } else {
+            int failed_cnt = 0;
             for (uint32_t cur_pid = 0;
                  cur_pid < (uint32_t)tables[0].table_partition_size();
                  cur_pid++) {
@@ -1338,13 +1339,15 @@ void HandleNSDelete(const std::vector<std::string>& parts,
                               << std::endl;
                     return;
                 }
-                if (!tablet_client->Delete(tid, pid, key, idx_name, msg)) {
-                    std::cout << "delete failed. error msg: " << msg
-                              << std::endl;
-                    return;
+                if (!tablet_client->Delete(tid, cur_pid, key, idx_name, msg)) {
+                    failed_cnt++;
                 }
             }
-            std::cout << "delete ok" << std::endl;
+            if (failed_cnt == tables[0].table_partition_size()) {
+                std::cout << "delete failed" << std::endl;
+            } else {
+                std::cout << "delete ok" << std::endl;
+            }
         }
     } else {
         if (parts.size() < 4) {
@@ -2042,6 +2045,7 @@ void HandleNSGet(const std::vector<std::string>& parts,
                 return;
             }
         } else {
+            int failed_cnt = 0;
             for (uint32_t cur_pid = 0;
                  cur_pid < (size_t)tables[0].table_partition_size();
                  cur_pid++) {
@@ -2057,13 +2061,17 @@ void HandleNSGet(const std::vector<std::string>& parts,
                 if (!tablet_client->Get(tid, cur_pid, key, timestamp,
                                         index_name, ts_name, cur_value, cur_ts,
                                         msg)) {
-                    std::cout << "Fail to get value! error msg: " << msg
-                              << std::endl;
-                    return;
+                    failed_cnt++;
+                    continue;
                 }
                 if (cur_ts > ts) {
                     value.swap(cur_value);
                 }
+            }
+            if (failed_cnt == tables[0].table_partition_size()) {
+                std::cout << "Fail to get value! error msg: " << msg
+                          << std::endl;
+                return;
             }
         }
         if (tables[0].compress_type() == ::rtidb::nameserver::kSnappy) {
