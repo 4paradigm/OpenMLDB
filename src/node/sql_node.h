@@ -980,6 +980,18 @@ class FrameNode : public SQLNode {
                              : frame_rows_->end()->GetSignedOffset();
         }
     }
+    inline const bool IsHistoryFrame() const {
+        switch (frame_type_) {
+            case kFrameRows:
+                return GetHistoryRowsEnd() < 0;
+            case kFrameRange: {
+                return GetHistoryRangeEnd() < 0;
+            }
+            case kFrameRowsRange: {
+                return GetHistoryRangeEnd() < 0;
+            }
+        }
+    }
     void Print(std::ostream &output, const std::string &org_tab) const;
     virtual bool Equals(const SQLNode *node) const;
     const std::string GetExprString() const;
