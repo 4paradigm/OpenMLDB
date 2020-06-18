@@ -63,6 +63,8 @@ class Planner {
     bool MergeWindows(const std::map<const node::WindowDefNode *,
                                      node::ProjectListNode *> &map,
                       std::vector<const node::WindowDefNode *> *windows);
+    bool ExpandCurrentHistoryWindow(
+        std::vector<const node::WindowDefNode *> *windows);
     const bool is_batch_mode_;
     bool window_merge_enable_;
 

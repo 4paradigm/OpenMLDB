@@ -203,6 +203,23 @@ bool ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
 bool ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call_fn,
                                 NativeValue* output,
                                 ::fesql::base::Status& status) {  // NOLINT
+    const node::FnDefNode* fn_def = call_fn->GetFnDef();
+    switch (fn_def->GetType()) {
+        case node::kExternalFnDef:
+            return BuildCallFnLegacy(call_fn, output, status);
+        default: {
+            LOG(WARNING) << "Unknown fn def " << fn_def->GetSimpleName();
+            return false;
+        }
+    }
+}
+
+
+bool ExprIRBuilder::BuildCallFnLegacy(
+    const ::fesql::node::CallExprNode* call_fn,
+    NativeValue* output,
+    ::fesql::base::Status& status) {  // NOLINT
+
     // TODO(chenjing): return status;
     if (call_fn == NULL || output == NULL) {
         status.code = common::kNullPointer;
@@ -210,11 +227,14 @@ bool ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call_fn,
         LOG(WARNING) << status.msg;
         return false;
     }
+    auto named_fn = dynamic_cast<const node::ExternalFnDefNode*>(
+        call_fn->GetFnDef());
+    std::string function_name = named_fn->function_name();
 
     ::llvm::IRBuilder<> builder(block_);
-    ::llvm::StringRef name(call_fn->GetFunctionName());
+    ::llvm::StringRef name(function_name);
 
-    bool is_udaf = IsUADF(call_fn->GetFunctionName());
+    bool is_udaf = IsUADF(function_name);
     std::vector<::llvm::Value*> llvm_args;
     const fesql::node::ExprListNode* args = call_fn->GetArgs();
     std::vector<::fesql::node::ExprNode*>::const_iterator it =
@@ -257,8 +277,7 @@ bool ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call_fn,
 
     row_mode_ = old_mode;
 
-    ::llvm::Function* fn =
-        GetFuncion(call_fn->GetFunctionName(), generics_types, status);
+    ::llvm::Function* fn = GetFuncion(function_name, generics_types, status);
 
     if (common::kOk != status.code) {
         return false;

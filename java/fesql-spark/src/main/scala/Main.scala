@@ -37,7 +37,6 @@ object Main {
       }
     }
     val sess = sessionBuilder.getOrCreate()
-    val planner = new SparkPlanner(sess, configs.toMap)
 
     logger.info("Resolve input tables...")
     val tables = mutable.HashMap[String, DataFrame]()
@@ -62,6 +61,7 @@ object Main {
       sess.sql(sql)
 
     } else {
+      val planner = new SparkPlanner(sess, configs.toMap)
       if (! sql.trim.endsWith(";")) {
         sql = sql.trim + ";"
       }

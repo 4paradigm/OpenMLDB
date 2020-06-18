@@ -137,7 +137,43 @@ WindowDefNode *NodeManager::MergeWindow(const WindowDefNode *w1,
         MergeFrameNode(w1->GetFrame(), w2->GetFrame()),
         w1->instance_not_in_window()));
 }
+FrameNode *NodeManager::MergeFrameNodeWithCurrentHistoryFrame(
+    FrameNode *frame1) {
+    if (nullptr == frame1) {
+        return nullptr;
+    }
 
+    switch (frame1->frame_type()) {
+        case kFrameRows: {
+            return MergeFrameNode(
+                frame1,
+                dynamic_cast<FrameNode *>(MakeFrameNode(
+                    kFrameRows, nullptr,
+                    dynamic_cast<FrameExtent *>(MakeFrameExtent(
+                        MakeFrameBound(kCurrent), MakeFrameBound(kCurrent))),
+                    0)));
+        }
+        case kFrameRange: {
+            return MergeFrameNode(
+                frame1,
+                dynamic_cast<FrameNode *>(MakeFrameNode(
+                    kFrameRange,
+                    dynamic_cast<FrameExtent *>(MakeFrameExtent(
+                        MakeFrameBound(kCurrent), MakeFrameBound(kCurrent))),
+                    nullptr, 0)));
+        }
+        case kFrameRowsRange: {
+            return MergeFrameNode(
+                frame1,
+                dynamic_cast<FrameNode *>(MakeFrameNode(
+                    kFrameRowsRange,
+                    dynamic_cast<FrameExtent *>(MakeFrameExtent(
+                        MakeFrameBound(kCurrent), MakeFrameBound(kCurrent))),
+                    nullptr, 0)));
+        }
+    }
+    return nullptr;
+}
 FrameNode *NodeManager::MergeFrameNode(const FrameNode *frame1,
                                        const FrameNode *frame2) {
     if (nullptr == frame1 || nullptr == frame2) {
@@ -312,10 +348,21 @@ ExprNode *NodeManager::MakeColumnRefNode(const std::string &column_name,
 ExprNode *NodeManager::MakeFuncNode(const std::string &name,
                                     const ExprListNode *list_ptr,
                                     const SQLNode *over) {
+    FnDefNode* def_node = dynamic_cast<FnDefNode*>(
+        MakeExternalFnDefNode(name));
     CallExprNode *node_ptr = new CallExprNode(
-        name, list_ptr, dynamic_cast<const WindowDefNode *>(over));
+        def_node, list_ptr, dynamic_cast<const WindowDefNode *>(over));
     return RegisterNode(node_ptr);
 }
+
+ExprNode *NodeManager::MakeFuncNode(const FnDefNode* fn,
+                                    const ExprListNode *list_ptr,
+                                    const SQLNode *over) {
+    CallExprNode *node_ptr = new CallExprNode(
+        fn, list_ptr, dynamic_cast<const WindowDefNode *>(over));
+    return RegisterNode(node_ptr);
+}
+
 ExprNode *NodeManager::MakeConstNode(int value) {
     ExprNode *node_ptr = new ConstNode(value);
     return RegisterNode(node_ptr);
@@ -925,7 +972,7 @@ ExprNode *NodeManager::MakeExprFrom(const node::ExprNode *expr,
         case kExprCall: {
             auto expr_call = dynamic_cast<const CallExprNode *>(expr);
             return MakeFuncNode(
-                expr_call->GetFunctionName(),
+                expr_call->GetFnDef(),
                 dynamic_cast<node::ExprListNode *>(
                     MakeExprFrom(expr_call->GetArgs(), relation_name, db_name)),
                 expr_call->GetOver());
@@ -1019,5 +1066,25 @@ node::ExprListNode *NodeManager::BuildExprListFromSchemaSource(
     }
     return output;
 }
+
+
+node::SQLNode* NodeManager::MakeExternalFnDefNode(
+    const std::string& function_name) {
+    return RegisterNode(
+        new node::ExternalFnDefNode(function_name));
+}
+
+node::SQLNode* NodeManager::MakeUDFDefNode(const FnNodeFnDef* def) {
+    return RegisterNode(new node::UDFDefNode(def));
+}
+
+node::SQLNode* NodeManager::MakeUDAFDefNode(const ExprNode* init,
+                                            const FnDefNode* update_func,
+                                            const FnDefNode* merge_func,
+                                            const FnDefNode* output_func) {
+    return RegisterNode(new node::UDAFDefNode(
+        init, update_func, merge_func, output_func));
+}
+
 }  // namespace node
 }  // namespace fesql
