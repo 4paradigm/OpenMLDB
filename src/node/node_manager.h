@@ -106,8 +106,12 @@ class NodeManager {
                                    const std::string alias);
     TableRefNode *MakeQueryRefNode(const QueryNode *sub_query,
                                    const std::string &alias);
+
     ExprNode *MakeFuncNode(const std::string &name, const ExprListNode *args,
                            const SQLNode *over);
+    ExprNode *MakeFuncNode(const FnDefNode* fn, const ExprListNode *args,
+                           const SQLNode *over);
+
     ExprNode *MakeQueryExprNode(const QueryNode *query);
     SQLNode *MakeWindowDefNode(const std::string &name);
     SQLNode *MakeWindowDefNode(ExprListNode *partitions, ExprNode *orders,
@@ -277,7 +281,17 @@ class NodeManager {
         const vm::ColumnSourceList column_sources,
         const vm::SchemaSourceList &schema_souces);
 
+
     node::FrameNode *MergeFrameNodeWithCurrentHistoryFrame(FrameNode *frame1);
+
+    SQLNode* MakeExternalFnDefNode(const std::string& function_name);
+
+    SQLNode* MakeUDFDefNode(const FnNodeFnDef* def);
+
+    SQLNode* MakeUDAFDefNode(const ExprNode* init,
+                             const FnDefNode* update_func,
+                             const FnDefNode* merge_func,
+                             const FnDefNode* output_func);
 
  private:
     ProjectNode *MakeProjectNode(const int32_t pos, const std::string &name,

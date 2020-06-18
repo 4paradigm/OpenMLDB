@@ -66,6 +66,9 @@ enum SQLNodeType {
     kFnPara,
     kFnParaList,
     kFnList,
+    kExternalFnDef,
+    kUDFDef,
+    kUDAFDef,
     kUnknow
 };
 

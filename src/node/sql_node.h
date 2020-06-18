@@ -1079,13 +1079,23 @@ class AllNode : public ExprNode {
     std::string relation_name_;
     std::string db_name_;
 };
+
+class FnDefNode : public SQLNode {
+ public:
+    explicit FnDefNode(const SQLNodeType &type):
+        SQLNode(type, 0, 0) {}
+    virtual TypeNode* GetReturnType() const { return nullptr; }
+    virtual size_t GetArgsSize() const { return 0; }
+    virtual TypeNode* GetArgType(size_t i) const { return nullptr; }
+    virtual const std::string GetSimpleName() const = 0;
+};
+
 class CallExprNode : public ExprNode {
  public:
-    explicit CallExprNode(const std::string &function_name,
+    explicit CallExprNode(const FnDefNode* fn_def,
                           const ExprListNode *args, const WindowDefNode *over)
         : ExprNode(kExprCall),
-          is_agg_(true),
-          function_name_(function_name),
+          fn_def_(fn_def),
           over_(over),
           args_(args) {}
 
@@ -1095,24 +1105,27 @@ class CallExprNode : public ExprNode {
     const std::string GetExprString() const;
     virtual bool Equals(const ExprNode *that) const;
 
-    std::string GetFunctionName() const { return function_name_; }
+    // std::string GetFunctionName() const { return function_name_; }
 
     const WindowDefNode *GetOver() const { return over_; }
 
     void SetOver(WindowDefNode *over) { over_ = over; }
 
-    bool GetIsAgg() const { return is_agg_; }
+    // bool GetIsAgg() const { return is_agg_; }
 
-    void SetAgg(bool is_agg) { is_agg_ = is_agg; }
+    // void SetAgg(bool is_agg) { is_agg_ = is_agg; }
     const ExprListNode *GetArgs() const { return args_; }
 
     const int GetArgsSize() const {
         return nullptr == args_ ? 0 : args_->children_.size();
     }
 
+    const FnDefNode* GetFnDef() const { return fn_def_; }
+
  private:
-    bool is_agg_;
-    const std::string function_name_;
+    // bool is_agg_;
+    // const std::string function_name_;
+    const FnDefNode* fn_def_;
     const WindowDefNode *over_;
     const ExprListNode *args_;
 };
@@ -1677,12 +1690,78 @@ class StructExpr : public ExprNode {
     FnNodeList *methods_;
 };
 
+class ExternalFnDefNode : public FnDefNode {
+ public:
+    explicit ExternalFnDefNode(const std::string& name):
+        FnDefNode(kExternalFnDef), function_name_(name) {}
+
+    const std::string function_name() const { return function_name_; }
+
+    const std::string GetSimpleName() const override {
+        return function_name_;
+    }
+
+    void Print(std::ostream &output, const std::string &tab) const override;
+    bool Equals(const SQLNode *node) const override;
+
+ private:
+    std::string function_name_;
+};
+
+class UDFDefNode : public FnDefNode {
+ public:
+    explicit UDFDefNode(const FnNodeFnDef* def):
+        FnDefNode(kUDFDef), def_(def) {}
+    const FnNodeFnDef* def() { return def_; }
+
+    const std::string GetSimpleName() const override {
+        return "UDF";
+    }
+
+    void Print(std::ostream &output, const std::string &tab) const override;
+    bool Equals(const SQLNode *node) const override;
+
+ private:
+    const FnNodeFnDef* def_;
+};
+
+class UDAFDefNode : public FnDefNode {
+ public:
+    UDAFDefNode(const ExprNode* init, const FnDefNode* update_func,
+                const FnDefNode* merge_func, const FnDefNode* output_func):
+        FnDefNode(kUDAFDef),
+        init_(init), update_(update_func),
+        merge_(merge_func), output_(output_func) {}
+
+    const std::string GetSimpleName() const override {
+        return "UDAF";
+    }
+
+    bool Equals(const SQLNode *node) const override;
+    void Print(std::ostream &output, const std::string &tab) const override;
+
+    const ExprNode* init_expr() const { return init_; }
+    const FnDefNode* update_func() const { return update_; }
+    const FnDefNode* merge_func() const { return merge_; }
+    const FnDefNode* output_func() const { return output_; }
+
+    bool AllowMerge() const { return merge_ != nullptr; }
+    bool Validate() const { return true; }
+
+ private:
+    const ExprNode* init_;
+    const FnDefNode* update_;
+    const FnDefNode* merge_;
+    const FnDefNode* output_;
+};
+
 std::string ExprString(const ExprNode *expr);
 std::string MakeExprWithTable(const ExprNode *expr, const std::string db);
 bool ExprListNullOrEmpty(const ExprListNode *expr);
 bool SQLEquals(const SQLNode *left, const SQLNode *right);
 bool SQLListEquals(const SQLNodeList *left, const SQLNodeList *right);
 bool ExprEquals(const ExprNode *left, const ExprNode *right);
+bool FnDefEquals(const FnDefNode *left, const FnDefNode *right);
 const WindowDefNode *WindowOfExpression(
     std::map<std::string, const WindowDefNode *> windows, ExprNode *node_ptr);
 void FillSQLNodeList2NodeVector(
