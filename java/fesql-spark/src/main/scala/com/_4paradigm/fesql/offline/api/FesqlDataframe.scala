@@ -47,9 +47,9 @@ case class FesqlDataframe(fesqlSession: FesqlSession, sparkDf: DataFrame) {
 
     format.toLowerCase match {
       case "parquet" => df.write.mode(mode).parquet(path)
-      case "text" => df.write.mode(mode).text(path)
-      case "json" => df.write.mode(mode).json(path)
       case "csv" => df.write.mode(mode).csv(path)
+      case "json" => df.write.mode(mode).json(path)
+      case "text" => df.write.mode(mode).text(path)
       case "orc" => df.write.mode(mode).orc(path)
       case _ => Unit
     }

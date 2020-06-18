@@ -83,10 +83,10 @@ class FesqlSession {
 
     val sparkDf = format match {
       case "parquet" => spark.read.parquet(filePath)
-      case "json" => spark.read.json(filePath)
       case "csv" => spark.read.csv(filePath)
-      case "orc" => spark.read.orc(filePath)
+      case "json" => spark.read.json(filePath)
       case "text" => spark.read.text(filePath)
+      case "orc" => spark.read.orc(filePath)
       case _ => null
     }
 
