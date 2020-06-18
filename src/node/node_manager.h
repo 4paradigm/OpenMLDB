@@ -277,6 +277,8 @@ class NodeManager {
         const vm::ColumnSourceList column_sources,
         const vm::SchemaSourceList &schema_souces);
 
+    node::FrameNode *MergeFrameNodeWithCurrentHistoryFrame(FrameNode *frame1);
+
  private:
     ProjectNode *MakeProjectNode(const int32_t pos, const std::string &name,
                                  const bool is_aggregation,

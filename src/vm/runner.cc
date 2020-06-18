@@ -674,7 +674,7 @@ void WindowAggRunner::RunWindowAggOnKey(
     int32_t cnt = output_table->GetCount();
     CurrentHistoryWindow window(instance_window_gen_.range_gen_.start_offset_);
     window.set_instance_not_in_window(instance_not_in_window_);
-    window.set_rows_preceding(instance_window_gen_.range_gen_.rows_preceding_);
+    window.set_rows_preceding(instance_window_gen_.range_gen_.start_row_);
 
     while (instance_segment_iter->Valid()) {
         if (limit_cnt_ > 0 && cnt >= limit_cnt_) {
@@ -1511,7 +1511,8 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(RunnerContext& ctx) {
         std::shared_ptr<MemTimeTableHandler>(new MemTimeTableHandler());
     uint64_t start = 0;
     uint64_t end = UINT64_MAX;
-    uint64_t rows_preceding = 0;
+    uint64_t rows_start_preceding = 0;
+    uint64_t rows_end_preceding = 0;
     int64_t request_key = range_gen_.ts_gen_.Gen(request);
     DLOG(INFO) << "request key: " << request_key;
     if (range_gen_.Valid()) {
@@ -1521,7 +1522,8 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(RunnerContext& ctx) {
         end = (request_key + range_gen_.end_offset_) < 0
                   ? 0
                   : (request_key + range_gen_.end_offset_);
-        rows_preceding = range_gen_.rows_preceding_;
+        rows_start_preceding = range_gen_.start_row_;
+        rows_end_preceding = range_gen_.end_row_;
     }
     DLOG(INFO) << " start " << start << " end " << end;
     window_table->AddRow(request_key, request);
@@ -1559,7 +1561,7 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(RunnerContext& ctx) {
                                       &union_segment_status);
     uint64_t cnt = 1;
     while (-1 != max_union_pos) {
-        if (cnt > rows_preceding &&
+        if (cnt > rows_start_preceding &&
             union_segment_status[max_union_pos].key_ < start) {
             break;
         }

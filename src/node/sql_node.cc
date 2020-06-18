@@ -514,6 +514,7 @@ void WindowDefNode::Print(std::ostream &output,
     output << "\n";
     PrintSQLNode(output, tab, frame_ptr_, "frame", true);
 }
+
 bool WindowDefNode::CanMergeWith(const WindowDefNode *that) const {
     if (Equals(that)) {
         return true;

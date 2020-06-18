@@ -647,3 +647,75 @@ SQLCases:
         12, A, 7, 1590115480000, 13, 18, 22, 9, 7
         13, A, 8, 1590115490000, 15, 21, 26, 11, 9
         14, A, 9, 1590115500000, 17, 24, 30, 13, 11
+  - id: 18
+    desc: window ROWS Between N PRECEDING and M PRECEDING
+    sql: |
+      SELECT id, pk1, col1, std_ts,
+      sum(col1) OVER w1 as w1_col1_sum
+      FROM t1
+      WINDOW w1 AS (PARTITION BY pk1 ORDER BY std_ts ROWS BETWEEN 2 PRECEDING AND 1 PRECEDING);
+    inputs:
+      - name: t1
+        schema: id:int, pk1:string, col1:int32, std_ts:timestamp
+        index: index2:pk1:std_ts
+        data: |
+          1, A, 1, 1590115420000
+          2, B, 1, 1590115420000
+          3, A, 2, 1590115430000
+          4, B, 2, 1590115430000
+          5, A, 3, 1590115440000
+          6, B, 3, 1590115440000
+          7, A, 4, 1590115450000
+          8, B, 4, 1590115450000
+          9, A, 5, 1590115460000
+
+    output:
+      schema: id:int, pk1:string, col1:int, std_ts:timestamp, w1_col1_sum:int
+      order: id
+      data: |
+        1, A, 1, 1590115420000, 0
+        2, B, 1, 1590115420000, 0
+        3, A, 2, 1590115430000, 1
+        4, B, 2, 1590115430000, 1
+        5, A, 3, 1590115440000, 3
+        6, B, 3, 1590115440000, 3
+        7, A, 4, 1590115450000, 5
+        8, B, 4, 1590115450000, 5
+        9, A, 5, 1590115460000, 7
+  - id: 19
+    desc: window ROWS_RANGE Between N PRECEDING and M PRECEDING
+    sql: |
+      SELECT id, pk1, col1, std_ts,
+      sum(col1) OVER w1 as w1_col1_sum
+      FROM t1
+      WINDOW w1 AS (PARTITION BY pk1 ORDER BY std_ts ROWS_RANGE BETWEEN 20s PRECEDING AND 10s PRECEDING);
+    inputs:
+      - name: t1
+        schema: id:int, pk1:string, col1:int32, std_ts:timestamp
+        index: index2:pk1:std_ts
+        data: |
+          1, A, 1, 1590115420000
+          2, B, 1, 1590115420000
+          3, A, 2, 1590115430000
+          4, B, 2, 1590115430000
+          5, A, 3, 1590115440000
+          6, B, 3, 1590115440000
+          7, A, 4, 1590115450000
+          8, B, 4, 1590115450000
+          9, A, 5, 1590115460000
+
+    output:
+      schema: id:int, pk1:string, col1:int, std_ts:timestamp, w1_col1_sum:int
+      order: id
+      data: |
+        1, A, 1, 1590115420000, 0
+        2, B, 1, 1590115420000, 0
+        3, A, 2, 1590115430000, 1
+        4, B, 2, 1590115430000, 1
+        5, A, 3, 1590115440000, 3
+        6, B, 3, 1590115440000, 3
+        7, A, 4, 1590115450000, 5
+        8, B, 4, 1590115450000, 5
+        9, A, 5, 1590115460000, 7
+
+
