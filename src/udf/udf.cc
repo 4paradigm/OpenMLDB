@@ -15,6 +15,7 @@
 #include "codec/list_iterator_codec.h"
 #include "codec/type_codec.h"
 #include "codegen/ir_base_builder.h"
+#include "codegen/udf_ir_builder.h"
 #include "proto/fe_type.pb.h"
 
 namespace fesql {
@@ -479,6 +480,8 @@ bool AddSymbol(::llvm::orc::JITDylib &jd,           // NOLINT
 }
 
 void RegisterUDFToModule(::llvm::Module *m) {
+    base::Status status;
+    codegen::UDFIRBuilder::BuildTimeUDF(m, status);
     ::llvm::Type *v_ty = ::llvm::Type::getVoidTy(m->getContext());
     ::llvm::Type *i1_ty = ::llvm::Type::getInt1Ty(m->getContext());
     ::llvm::Type *i16_ty = ::llvm::Type::getInt16Ty(m->getContext());

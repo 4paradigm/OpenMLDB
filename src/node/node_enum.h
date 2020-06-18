@@ -117,6 +117,7 @@ enum DataType {
     kDay,
     kMap,
     kIterator,
+    kPointer,
     kInt8Ptr,
     kRow,
     kVoid = 100,

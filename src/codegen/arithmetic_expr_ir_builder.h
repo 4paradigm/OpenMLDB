@@ -21,6 +21,14 @@ class ArithmeticIRBuilder {
     explicit ArithmeticIRBuilder(::llvm::BasicBlock* block);
     ~ArithmeticIRBuilder();
 
+    bool BuildAnd(::llvm::Value* left, ::llvm::Value* right,
+                  ::llvm::Value** output, base::Status& status);  // NOLINT
+    bool BuildLShiftLeft(::llvm::Value* left, ::llvm::Value* right,
+                         ::llvm::Value** output,
+                         base::Status& status);  // NOLINT
+    bool BuildLShiftRight(::llvm::Value* left, ::llvm::Value* right,
+                          ::llvm::Value** output,
+                          base::Status& status);  // NOLINT
     bool BuildAddExpr(::llvm::Value* left, ::llvm::Value* right,
                       ::llvm::Value** output, base::Status& status);  // NOLINT
     bool BuildSubExpr(::llvm::Value* left, ::llvm::Value* right,

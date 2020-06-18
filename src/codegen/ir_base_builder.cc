@@ -279,6 +279,22 @@ bool GetLLVMType(::llvm::Module* m, const fesql::node::TypeNode* data_type,
         return false;
     }
     switch (data_type->base_) {
+        case fesql::node::kPointer: {
+            if (data_type->generics_.size() != 1) {
+                LOG(WARNING)
+                    << "fail to convert data type: pointer generic types "
+                       "number is "
+                    << data_type->generics_.size();
+                return false;
+            }
+            ::llvm::Type* type = nullptr;
+
+            if (false == GetLLVMType(m, data_type->generics_[0], &type)) {
+                return false;
+            }
+            *llvm_type = type->getPointerTo();
+            return true;
+        }
         case fesql::node::kList: {
             if (data_type->generics_.size() != 1) {
                 LOG(WARNING) << "fail to convert data type: list generic types "

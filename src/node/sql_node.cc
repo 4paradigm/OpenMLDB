@@ -998,6 +998,7 @@ const std::string ExprListNode::GetExprString() const {
         return str;
     }
 }
+
 void FnParaNode::Print(std::ostream &output, const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
@@ -1017,6 +1018,7 @@ void FnNodeFnHeander::Print(std::ostream &output,
     PrintSQLNode(output, tab, reinterpret_cast<const SQLNode *>(parameters_),
                  "parameters", true);
 }
+
 const std::string FnNodeFnHeander::GetCodegenFunctionName() const {
     std::string fn_name = name_;
     if (!parameters_->children.empty()) {

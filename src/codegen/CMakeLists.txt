@@ -6,6 +6,7 @@ add_library(fesql_codegen STATIC
         scope_var.cc
         expr_ir_builder.cc
         fn_ir_builder.cc
+        udf_ir_builder.cc
         buf_ir_builder.cc
         ir_base_builder.cc
         window_ir_builder.cc
@@ -82,6 +83,10 @@ add_executable(block_ir_builder_test block_ir_builder_test.cc)
 target_link_libraries(block_ir_builder_test gtest ${vm_deps_libs} fesql_vm)
 add_test(block_ir_builder_test block_ir_builder_test --gtest_output=xml:${CMAKE_BINARY_DIR}/block_ir_builder_test.xml)
 list(APPEND test_list block_ir_builder_test)
+
+add_executable(udf_ir_builder_test udf_ir_builder_test.cc codegen_base_test)
+target_link_libraries(udf_ir_builder_test gtest
+        ${vm_deps_libs} )
 
 add_executable(fn_ir_builder_test fn_ir_builder_test.cc codegen_base_test)
 target_link_libraries(fn_ir_builder_test gtest

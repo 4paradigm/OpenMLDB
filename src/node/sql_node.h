@@ -252,6 +252,8 @@ inline const std::string DataTypeName(const DataType &type) {
             return "map";
         case fesql::node::kIterator:
             return "iterator";
+        case fesql::node::kPointer:
+            return "pointer";
         case fesql::node::kRow:
             return "row";
         case fesql::node::kSecond:
@@ -1514,7 +1516,7 @@ class FnParaNode : public FnNode {
 
     const TypeNode *GetParaType() const { return para_type_; }
     void Print(std::ostream &output, const std::string &org_tab) const;
-
+    const std::string GetSignature() const;
  private:
     std::string name_;
     const TypeNode *para_type_;

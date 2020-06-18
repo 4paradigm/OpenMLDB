@@ -56,6 +56,31 @@ class Int64IRBuilder : public TypeIRBuilder {
     }
 };
 
+class Int32IRBuilder : public TypeIRBuilder {
+ public:
+    Int32IRBuilder() : TypeIRBuilder() {}
+    ~Int32IRBuilder() {}
+    static ::llvm::Type* GetType(::llvm::Module* m) {
+        return ::llvm::Type::getInt32Ty(m->getContext());
+    }
+};
+class Int16IRBuilder : public TypeIRBuilder {
+ public:
+    Int16IRBuilder() : TypeIRBuilder() {}
+    ~Int16IRBuilder() {}
+    static ::llvm::Type* GetType(::llvm::Module* m) {
+        return ::llvm::Type::getInt16Ty(m->getContext());
+    }
+};
+
+class BoolIRBuilder : public TypeIRBuilder {
+ public:
+    BoolIRBuilder() : TypeIRBuilder() {}
+    ~BoolIRBuilder() {}
+    static ::llvm::Type* GetType(::llvm::Module* m) {
+        return ::llvm::Type::getInt1Ty(m->getContext());
+    }
+};
 inline const bool ConvertFeSQLType2LLVMType(const node::TypeNode* data_type,
                                             ::llvm::Module* m,  // NOLINT
                                             ::llvm::Type** llvm_type) {
