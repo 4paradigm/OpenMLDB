@@ -79,7 +79,7 @@ class NameServerImplRemoteTest : public ::testing::Test {
         std::string db);
 };
 
-void StartNameServer(brpc::Server& server,
+void StartNameServer(brpc::Server& server,  // NOLINT
                      NameServerImpl* nameserver) {  // NOLINT
     bool ok = nameserver->Init();
     ASSERT_TRUE(ok);
