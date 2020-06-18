@@ -16,8 +16,9 @@ import java.util.concurrent.TimeUnit;
 @BenchmarkMode(Mode.All)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
 @State(Scope.Benchmark)
-@Fork(value = 1, jvmArgs = {"-Xms4G", "-Xmx4G"})
-@Warmup(iterations = 2)
+@Threads(2)
+@Fork(value = 1, jvmArgs = {"-Xms32G", "-Xmx32G"})
+@Warmup(iterations = 1)
 public class FESQLGroupByBenchmark {
     private ArrayList<String> dataset = new ArrayList<>();
     private SqlExecutor executor;
@@ -26,7 +27,7 @@ public class FESQLGroupByBenchmark {
     private String ddl = "";
     private String query = "";
     private boolean setupOk = false;
-    private int recordSize = 3000;
+    private int recordSize = 1000;
     private String format = "insert into %s values('%s', %d,";
     private long counter = 0;
     public FESQLGroupByBenchmark() {

@@ -423,6 +423,7 @@ class RtidbClient {
         const WriteOption& wo);
     std::vector<std::string>& GetBlobSchema(const std::string& name);
     BlobInfoResult GetBlobInfo(const std::string& name);
+    bool DeleteBlobs(const std::string& name, const std::vector<int64_t>& keys);
 
  private:
     BaseClient* client_;

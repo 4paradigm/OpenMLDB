@@ -1108,7 +1108,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.size(), 3);
                 Assert.assertEquals(queryMap.get("id"), 12l);
                 Assert.assertEquals(queryMap.get("attribute"), "a2");
-                Assert.assertTrue(buf2.equals(((BlobData)queryMap.get("image")).getData()));
+                Assert.assertTrue(buf2.equals(((BlobData) queryMap.get("image")).getData()));
             }
             // query error
             {
@@ -1311,7 +1311,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.size(), 3);
                 Assert.assertEquals(queryMap.get("id"), 11l);
                 Assert.assertEquals(queryMap.get("attribute"), "a3");
-                Assert.assertTrue(buf3.equals(((BlobData)queryMap.get("image")).getData()));
+                Assert.assertTrue(buf3.equals(((BlobData) queryMap.get("image")).getData()));
             }
             {
                 //update empty
@@ -1472,7 +1472,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 queryMap = it.getDecodedValue();
                 Assert.assertEquals(queryMap.size(), 3);
                 Assert.assertEquals(queryMap.get("id"), 11l);
-                Assert.assertTrue(buf1.equals(((BlobData)queryMap.get("image")).getData()));
+                Assert.assertTrue(buf1.equals(((BlobData) queryMap.get("image")).getData()));
                 Assert.assertEquals(queryMap.get("price"), 11.1);
             }
             // query error
@@ -1498,7 +1498,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.size(), 5);
                 Assert.assertEquals(queryMap.get("id"), 12l);
                 Assert.assertEquals(queryMap.get("attribute"), "a2");
-                Assert.assertTrue(buf2.equals(((BlobData)queryMap.get("image")).getData()));
+                Assert.assertTrue(buf2.equals(((BlobData) queryMap.get("image")).getData()));
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 12.2);
             }
@@ -1514,7 +1514,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.size(), 5);
                 Assert.assertEquals(queryMap.get("id"), 12l);
                 Assert.assertEquals(queryMap.get("attribute"), "a2");
-                Assert.assertTrue(buf2.equals(((BlobData)queryMap.get("image")).getData()));
+                Assert.assertTrue(buf2.equals(((BlobData) queryMap.get("image")).getData()));
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 12.2);
             }
@@ -1544,7 +1544,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.size(), 5);
                 Assert.assertEquals(queryMap.get("id"), 12l);
                 Assert.assertEquals(queryMap.get("attribute"), "a2");
-                Assert.assertTrue(buf2.equals(((BlobData)queryMap.get("image")).getData()));
+                Assert.assertTrue(buf2.equals(((BlobData) queryMap.get("image")).getData()));
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 12.2);
 
@@ -1587,7 +1587,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.size(), 5);
                 Assert.assertEquals(queryMap.get("id"), 12l);
                 Assert.assertEquals(queryMap.get("attribute"), "a2");
-                Assert.assertTrue(buf2.equals(((BlobData)queryMap.get("image")).getData()));
+                Assert.assertTrue(buf2.equals(((BlobData) queryMap.get("image")).getData()));
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 12.2);
 
@@ -1597,7 +1597,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.size(), 5);
                 Assert.assertEquals(queryMap.get("id"), 13l);
                 Assert.assertEquals(queryMap.get("attribute"), "a3");
-                Assert.assertTrue(buf2.equals(((BlobData)queryMap.get("image")).getData()));
+                Assert.assertTrue(buf2.equals(((BlobData) queryMap.get("image")).getData()));
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 12.2);
 
@@ -1628,7 +1628,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.size(), 5);
                 Assert.assertEquals(queryMap.get("id"), 12l);
                 Assert.assertEquals(queryMap.get("attribute"), "a2");
-                Assert.assertTrue(buf2.equals(((BlobData)queryMap.get("image")).getData()));
+                Assert.assertTrue(buf2.equals(((BlobData) queryMap.get("image")).getData()));
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 12.2);
 
@@ -1638,7 +1638,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.size(), 5);
                 Assert.assertEquals(queryMap.get("id"), 12l);
                 Assert.assertEquals(queryMap.get("attribute"), "a2");
-                Assert.assertTrue(buf2.equals(((BlobData)queryMap.get("image")).getData()));
+                Assert.assertTrue(buf2.equals(((BlobData) queryMap.get("image")).getData()));
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 12.2);
 
@@ -1648,7 +1648,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.size(), 5);
                 Assert.assertEquals(queryMap.get("id"), 13l);
                 Assert.assertEquals(queryMap.get("attribute"), "a3");
-                Assert.assertTrue(buf2.equals(((BlobData)queryMap.get("image")).getData()));
+                Assert.assertTrue(buf2.equals(((BlobData) queryMap.get("image")).getData()));
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 12.2);
 
@@ -1743,7 +1743,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.size(), 5);
                 Assert.assertEquals(queryMap.get("id"), 12l);
                 Assert.assertEquals(queryMap.get("attribute"), "a2");
-                Assert.assertEquals(((BlobData)queryMap.get("image")).getData(), buf3);
+                Assert.assertEquals(((BlobData) queryMap.get("image")).getData(), buf3);
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 13.3);
             }
@@ -1795,7 +1795,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.size(), 5);
                 Assert.assertEquals(queryMap.get("id"), 12l);
                 Assert.assertEquals(queryMap.get("attribute"), "a2");
-                Assert.assertTrue(buf4.equals(((BlobData)queryMap.get("image")).getData()));
+                Assert.assertTrue(buf4.equals(((BlobData) queryMap.get("image")).getData()));
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 14.4);
             }
@@ -1834,7 +1834,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.size(), 5);
                 Assert.assertEquals(queryMap.get("id"), 12l);
                 Assert.assertEquals(queryMap.get("attribute"), "a2");
-                Assert.assertTrue(buf5.equals(((BlobData)queryMap.get("image")).getData()));
+                Assert.assertTrue(buf5.equals(((BlobData) queryMap.get("image")).getData()));
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 15.5);
 
@@ -1844,7 +1844,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.size(), 5);
                 Assert.assertEquals(queryMap.get("id"), 13l);
                 Assert.assertEquals(queryMap.get("attribute"), "a3");
-                Assert.assertTrue(buf5.equals(((BlobData)queryMap.get("image")).getData()));
+                Assert.assertTrue(buf5.equals(((BlobData) queryMap.get("image")).getData()));
                 Assert.assertEquals(queryMap.get("memory"), 12);
                 Assert.assertEquals(queryMap.get("price"), 15.5);
             }
@@ -2302,7 +2302,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(queryMap.get("name"), "n1");
                 Assert.assertEquals(queryMap.get("sex"), true);
                 Assert.assertEquals(queryMap.get("attribute"), "a1");
-                Assert.assertTrue(StringToBB("i1").equals(((BlobData)queryMap.get("image")).getData()));
+                Assert.assertTrue(StringToBB("i1").equals(((BlobData) queryMap.get("image")).getData()));
                 Assert.assertEquals(queryMap.get("memory"), 11);
                 Assert.assertEquals(queryMap.get("price"), 11.1);
                 Assert.assertEquals(queryMap.get("attribute2"), new Date(2020, 5, 1));
@@ -2888,6 +2888,14 @@ public class TableSyncClientTest extends TestCaseBase {
                 it = tableSyncClient.query(name, ro);
                 Assert.assertFalse(it.valid());
 
+                Thread.currentThread().sleep(3000);
+                TableInfo tableInfo = nsc.showTable(name).get(0);
+                long countA[] = new long[1];
+                long countB[] = new long[1];
+                getRecordCount(tableInfo, countA, countB);
+                Assert.assertEquals(countA[0], 2);
+                Assert.assertEquals(countA[0], countB[0]);
+
                 Map<String, Object> conditionColumns2 = new HashMap<>();
                 conditionColumns2.put("memory", 13);
                 ro = new ReadOption(conditionColumns2, null, null, 1);
@@ -2902,6 +2910,8 @@ public class TableSyncClientTest extends TestCaseBase {
             Assert.assertTrue(it.valid());
             queryMap = it.getDecodedValue();
             Assert.assertEquals(queryMap.get("memory"), 11);
+
+
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -2949,7 +2959,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(TraverseMap.get("name"), "n" + i);
                 Assert.assertEquals(TraverseMap.get("sex"), true);
                 Assert.assertEquals(TraverseMap.get("attribute"), "a" + i);
-                Assert.assertTrue(StringToBB(String.format("i%d", i)).equals(((BlobData)TraverseMap.get("image")).getData()));
+                Assert.assertTrue(StringToBB(String.format("i%d", i)).equals(((BlobData) TraverseMap.get("image")).getData()));
                 Assert.assertEquals(TraverseMap.get("memory"), 10 + i);
                 Assert.assertEquals(TraverseMap.get("price"), 11.1 + i);
                 Assert.assertEquals(TraverseMap.get("attribute2"), new Date(2020, 5, 2));
@@ -3034,7 +3044,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Map<String, Object> TraverseMap = trit.getDecodedValue();
                 Assert.assertEquals(TraverseMap.size(), 2);
                 Assert.assertEquals(TraverseMap.get("id"), i);
-                Assert.assertEquals(StringToBB("i"+i), ((BlobData)TraverseMap.get("image")).getData());
+                Assert.assertEquals(StringToBB("i" + i), ((BlobData) TraverseMap.get("image")).getData());
                 trit.next();
             }
             Assert.assertEquals(trit.getCount(), 1000);
@@ -3263,7 +3273,7 @@ public class TableSyncClientTest extends TestCaseBase {
             Assert.assertEquals(map.size(), 3);
             Assert.assertEquals(map.get("id"), pr.getAutoGenPk());
             Assert.assertEquals(map.get("attribute"), "a1");
-            Assert.assertTrue(StringToBB("i1").equals(((BlobData)map.get("image")).getData()));
+            Assert.assertTrue(StringToBB("i1").equals(((BlobData) map.get("image")).getData()));
 
             //traverse by pk
             Map<String, Object> index = new HashMap<>();
@@ -3275,7 +3285,7 @@ public class TableSyncClientTest extends TestCaseBase {
             Assert.assertEquals(map.size(), 3);
             Assert.assertEquals(map.get("id"), pr.getAutoGenPk());
             Assert.assertEquals(map.get("attribute"), "a1");
-            Assert.assertTrue(StringToBB("i1").equals(((BlobData)map.get("image")).getData()));
+            Assert.assertTrue(StringToBB("i1").equals(((BlobData) map.get("image")).getData()));
 
             //update
             UpdateResult updateResult;
@@ -3308,7 +3318,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertEquals(valueMap.size(), 3);
                 Assert.assertEquals(valueMap.get("id"), pr.getAutoGenPk());
                 Assert.assertEquals(valueMap.get("attribute"), "a2");
-                Assert.assertEquals(((BlobData)valueMap.get("image")).getData(), StringToBB("i2"));
+                Assert.assertEquals(((BlobData) valueMap.get("image")).getData(), StringToBB("i2"));
             }
             //delete
             {
@@ -3363,13 +3373,73 @@ public class TableSyncClientTest extends TestCaseBase {
             Assert.assertEquals(map.size(), 3);
             Assert.assertEquals(map.get("id"), pr.getAutoGenPk());
             Assert.assertEquals(map.get("attribute"), 12l);
-            Assert.assertEquals(((BlobData)map.get("image")).getData(), StringToBB("i1"));
+            Assert.assertEquals(((BlobData) map.get("image")).getData(), StringToBB("i1"));
 
         } catch (Exception e) {
             e.printStackTrace();
             Assert.assertTrue(false);
         } finally {
             nsc.dropTable(name);
+        }
+    }
+
+    @Test
+    public void testRelationalTableRecordCnt() {
+        String name = createRelationalTable(DataType.Varchar);
+        try {
+            List<com._4paradigm.rtidb.client.schema.ColumnDesc> schema = tableSyncClient.getSchema(name);
+            Assert.assertEquals(schema.size(), 3);
+            //put
+            WriteOption wo = new WriteOption();
+            Map<String, Object> data = new HashMap<String, Object>();
+            for (int i = 0; i < 10; i++) {
+                data.put("id", String.format("%d", i));
+                data.put("attribute", "a" + i);
+                data.put("image", "i" + i);
+                Assert.assertTrue(tableSyncClient.put(name, data, wo).isSuccess());
+                data.clear();
+            }
+            Thread.currentThread().sleep(3000);
+            TableInfo tableInfo = nsc.showTable(name).get(0);
+            long countA[] = new long[1];
+            long countB[] = new long[1];
+            getRecordCount(tableInfo, countA, countB);
+            Assert.assertEquals(countA[0], 10);
+            Assert.assertEquals(countA[0], countB[0]);
+
+            // delete
+            for (int i = 0; i < 3; i++) {
+                Map<String, Object> idxMap = new HashMap<>();
+                idxMap.put("id", String.format("%d", i));
+                UpdateResult updateResult = tableSyncClient.delete(name, idxMap);
+                Assert.assertTrue(updateResult.isSuccess());
+                Assert.assertEquals(updateResult.getAffectedCount(), 1);
+            }
+            Thread.currentThread().sleep(3000);
+            countA[0] = 0;
+            countB[0] = 0;
+            tableInfo = nsc.showTable(name).get(0);
+            getRecordCount(tableInfo, countA, countB);
+            Assert.assertEquals(countA[0], 7);
+            Assert.assertEquals(countA[0], countB[0]);
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.assertTrue(false);
+        } finally {
+            nsc.dropTable(name);
+        }
+    }
+
+    private void getRecordCount(TableInfo tableInfo, long[] countA, long[] countB) {
+        for (int i = 0; i < tableInfo.getTablePartitionList().size(); i++) {
+            TablePartition tablePartition = tableInfo.getTablePartition(i);
+            countA[0] += tablePartition.getRecordCnt();
+            for (int j = 0; j < tablePartition.getPartitionMetaList().size(); j++) {
+                PartitionMeta partitionMeta = tablePartition.getPartitionMeta(j);
+                if (partitionMeta.getIsAlive() && partitionMeta.getIsLeader()) {
+                    countB[0] += partitionMeta.getRecordCnt();
+                }
+            }
         }
     }
 

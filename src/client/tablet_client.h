@@ -20,8 +20,9 @@
 #include "proto/tablet.pb.h"
 #include "rpc/rpc_client.h"
 
-using Schema =
-    ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
+using Schema = ::google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>;
+using Cond_Column = ::google::protobuf::RepeatedPtrField<rtidb::api::Columns>;
+
 namespace rtidb {
 
 const uint32_t INVALID_TID = UINT32_MAX;
@@ -122,9 +123,13 @@ class TabletClient {
 
 
     bool Delete(uint32_t tid, uint32_t pid,
-            const ::google::protobuf::RepeatedPtrField<
-            ::rtidb::api::Columns>& cd_columns,
-            uint32_t* count, std::string* msg);
+                const Cond_Column& cd_columns,
+                uint32_t* count, std::string* msg);
+
+    bool Delete(uint32_t tid, uint32_t pid,
+                const Cond_Column& cd_columns,
+                uint32_t* count, std::string* msg,
+                std::vector<int64_t>* additions);
 
     bool Count(uint32_t tid, uint32_t pid, const std::string& pk,
                const std::string& idx_name, bool filter_expired_data,

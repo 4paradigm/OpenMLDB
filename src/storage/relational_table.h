@@ -87,8 +87,9 @@ class RelationalTable {
     bool Init();
     bool LoadTable();
 
-    bool Put(const std::string& value, int64_t* auto_gen_pk,
-            const ::rtidb::api::WriteOption& wo);
+    bool Put(const std::string& value,
+            const ::rtidb::api::WriteOption& wo,
+            int64_t* auto_gen_pk, std::string* msg);
 
     bool Query(const ::google::protobuf::RepeatedPtrField<
             ::rtidb::api::ReadOption>& ros,
@@ -143,13 +144,7 @@ class RelationalTable {
     }
 
     uint64_t GetRecordCnt() const {
-        uint64_t count = 0;
-        if (cf_hs_.size() == 1) {
-            db_->GetIntProperty(cf_hs_[0], "rocksdb.estimate-num-keys", &count);
-        } else {
-            db_->GetIntProperty(cf_hs_[1], "rocksdb.estimate-num-keys", &count);
-        }
-        return count;
+        return record_cnt_.load(std::memory_order_relaxed);
     }
 
     uint64_t GetOffset() { return offset_.load(std::memory_order_relaxed); }
@@ -198,14 +193,15 @@ class RelationalTable {
                                           const rocksdb::Slice& key_slice);
     rocksdb::Iterator* GetRocksdbIterator(uint32_t idx);
     bool PutDB(const rocksdb::Slice& spk, const char* data, uint32_t size,
-               bool pk_check, bool unique_check, rocksdb::WriteBatch* batch);
+               bool pk_check, bool unique_check, rocksdb::WriteBatch* batch,
+               std::string* msg);
     bool CreateSchema(const ::rtidb::api::Columns& columns,
                       std::map<std::string, int>* idx_map, Schema* new_schema);
     bool UpdateDB(const std::shared_ptr<IndexDef> index_def,
                   const std::string& comparable_key,
                   const std::map<std::string, int>& col_idx_map,
                   const Schema& value_schema, const std::string& col_value,
-                  uint32_t* count);
+                  uint32_t* count, std::string* msg);
     bool GetPackedField(const int8_t* row, uint32_t idx,
                         ::rtidb::type::DataType data_type,
                         ::rtidb::type::IndexType idx_type,
@@ -242,6 +238,7 @@ class RelationalTable {
     std::vector<rocksdb::ColumnFamilyHandle*> cf_hs_;
     rocksdb::Options options_;
     std::atomic<uint64_t> offset_;
+    std::atomic<uint64_t> record_cnt_;
     std::string db_root_path_;
 
     ::rtidb::base::IdGenerator id_generator_;
