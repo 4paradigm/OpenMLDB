@@ -887,6 +887,13 @@ class NameServerImpl : public NameServer {
         const std::map<std::string, std::shared_ptr<TableInfo>>& table_infos,
         const ShowTableRequest* request, ShowTableResponse* response);
 
+    void TableInfoToVec(
+        const std::map<std::string,
+                       std::shared_ptr<::rtidb::nameserver::TableInfo>>&
+            table_infos,
+        const std::vector<uint32_t>& table_tid_vec,
+        std::vector<::rtidb::nameserver::TableInfo>* local_table_info_vec);
+
  private:
     std::mutex mu_;
     Tablets tablets_;

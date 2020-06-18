@@ -266,13 +266,54 @@ void NameServerImpl::CheckSyncExistTable(
     }
 }
 
+void NameServerImpl::TableInfoToVec(
+    const std::map<std::string,
+                   std::shared_ptr<::rtidb::nameserver::TableInfo>>&
+        table_infos,
+    const std::vector<uint32_t>& table_tid_vec,
+    std::vector<::rtidb::nameserver::TableInfo>* local_table_info_vec) {
+    std::lock_guard<std::mutex> lock(mu_);
+    for (const auto& kv : table_infos) {
+        if (std::find(table_tid_vec.begin(), table_tid_vec.end(),
+                      kv.second->tid()) == table_tid_vec.end()) {
+            bool has_no_alive_leader_partition = false;
+            for (int idx = 0; idx < kv.second->table_partition_size(); idx++) {
+                const ::rtidb::nameserver::TablePartition&
+                    table_partition_local = kv.second->table_partition(idx);
+                for (int midx = 0;
+                     midx < table_partition_local.partition_meta_size();
+                     midx++) {
+                    if (table_partition_local.partition_meta(midx)
+                            .is_leader() &&
+                        (!table_partition_local.partition_meta(midx)
+                              .is_alive())) {
+                        has_no_alive_leader_partition = true;
+                        PDLOG(WARNING,
+                              "table [%s] pid [%u] has a no alive leader "
+                              "partition",
+                              kv.second->name().c_str(),
+                              table_partition_local.pid());
+                        break;
+                    }
+                }
+                if (has_no_alive_leader_partition) {
+                    break;
+                }
+            }
+            if (!has_no_alive_leader_partition) {
+                local_table_info_vec->push_back(*(kv.second));
+            }
+        }
+    }
+}
+
 void NameServerImpl::CheckSyncTable(
     const std::string& alias,
     const std::vector<::rtidb::nameserver::TableInfo> tables,
     const std::shared_ptr<::rtidb::client::NsClient> ns_client) {
     {
         std::lock_guard<std::mutex> lock(mu_);
-        if (table_info_.empty()) {
+        if (table_info_.empty() && db_table_info_.empty()) {
             PDLOG(INFO, "leader cluster has no table");
             return;
         }
@@ -282,41 +323,9 @@ void NameServerImpl::CheckSyncTable(
         table_tid_vec.push_back(rkv.tid());
     }
     std::vector<::rtidb::nameserver::TableInfo> local_table_info_vec;
-    {
-        std::lock_guard<std::mutex> lock(mu_);
-        for (const auto& kv : table_info_) {
-            if (std::find(table_tid_vec.begin(), table_tid_vec.end(),
-                          kv.second->tid()) == table_tid_vec.end()) {
-                bool has_no_alive_leader_partition = false;
-                for (int idx = 0; idx < kv.second->table_partition_size();
-                     idx++) {
-                    const ::rtidb::nameserver::TablePartition&
-                        table_partition_local = kv.second->table_partition(idx);
-                    for (int midx = 0;
-                         midx < table_partition_local.partition_meta_size();
-                         midx++) {
-                        if (table_partition_local.partition_meta(midx)
-                                .is_leader() &&
-                            (!table_partition_local.partition_meta(midx)
-                                  .is_alive())) {
-                            has_no_alive_leader_partition = true;
-                            PDLOG(WARNING,
-                                  "table [%s] pid [%u] has a no alive leader "
-                                  "partition",
-                                  kv.second->name().c_str(),
-                                  table_partition_local.pid());
-                            break;
-                        }
-                    }
-                    if (has_no_alive_leader_partition) {
-                        break;
-                    }
-                }
-                if (!has_no_alive_leader_partition) {
-                    local_table_info_vec.push_back(*(kv.second));
-                }
-            }
-        }
+    TableInfoToVec(table_info_, table_tid_vec, &local_table_info_vec);
+    for (const auto& kv : db_table_info_) {
+        TableInfoToVec(kv.second, table_tid_vec, &local_table_info_vec);
     }
     for (const auto& table_tmp : local_table_info_vec) {
         ::rtidb::nameserver::TableInfo table_info(table_tmp);
