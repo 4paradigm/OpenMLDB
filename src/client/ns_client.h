@@ -48,8 +48,6 @@ class NsClient {
 
     const std::string& GetDb();
 
-    bool HasDb();
-
     void ClearDb();
 
     bool Use(std::string db, std::string& msg);  // NOLINT
@@ -69,11 +67,21 @@ class NsClient {
         std::vector<::rtidb::nameserver::TableInfo>& tables,  // NOLINT
         std::string& msg);                                    // NOLINT
 
+    bool ShowTable(
+        const std::string& name, const std::string& db, bool show_all,
+        std::vector<::rtidb::nameserver::TableInfo>& tables,  // NOLINT
+        std::string& msg);                                    // NOLINT
+
+    bool ShowAllTable(
+        std::vector<::rtidb::nameserver::TableInfo>& tables,  // NOLINT
+        std::string& msg);                                    // NOLINT
+
     bool MakeSnapshot(const std::string& name, uint32_t pid,
                       uint64_t end_offset, std::string& msg);  // NOLINT
 
-    bool MakeSnapshot(const std::string& name, const std::string& db, uint32_t pid,
-                    uint64_t end_offset, std::string& msg);  // NOLINT
+    bool MakeSnapshot(const std::string& name, const std::string& db,
+                      uint32_t pid, uint64_t end_offset,
+                      std::string& msg);  // NOLINT
 
     bool ShowOPStatus(
         ::rtidb::nameserver::ShowOPStatusResponse& response,       // NOLINT
@@ -123,7 +131,7 @@ class NsClient {
         std::string& msg);                           // NOLINT
 
     bool DropTableRemote(const ::rtidb::api::TaskInfo& task_info,
-                         const std::string& name,
+                         const std::string& name, const std::string& db,
                          const ::rtidb::nameserver::ZoneInfo& zone_info,
                          std::string& msg);  // NOLINT
 

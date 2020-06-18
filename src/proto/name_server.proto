@@ -141,6 +141,7 @@ message CreateTableInfoRequest {
 message ShowTableRequest {
     optional string name = 1;
     optional string db = 2 [default = ""];
+    optional bool show_all = 3 [default = false];
 }
 
 message ShowTableResponse {

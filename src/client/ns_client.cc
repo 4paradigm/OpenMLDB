@@ -25,8 +25,6 @@ std::string NsClient::GetEndpoint() { return endpoint_; }
 
 const std::string& NsClient::GetDb() { return db_; }
 
-bool NsClient::HasDb() { return !db_.empty(); }
-
 void NsClient::ClearDb() { db_.clear(); }
 
 bool NsClient::Use(std::string db, std::string& msg) {
@@ -101,16 +99,16 @@ bool NsClient::ShowTablet(std::vector<TabletInfo>& tablets, std::string& msg) {
     return false;
 }
 
-bool NsClient::ShowTable(const std::string& name,
+bool NsClient::ShowTable(const std::string& name, const std::string& db,
+                         bool show_all,
                          std::vector<::rtidb::nameserver::TableInfo>& tables,
                          std::string& msg) {
     ::rtidb::nameserver::ShowTableRequest request;
     if (!name.empty()) {
         request.set_name(name);
     }
-    if (!db_.empty()) {
-        request.set_db(db_);
-    }
+    request.set_db(db);
+    request.set_show_all(show_all);
     ::rtidb::nameserver::ShowTableResponse response;
     bool ok =
         client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::ShowTable,
@@ -127,13 +125,25 @@ bool NsClient::ShowTable(const std::string& name,
     return false;
 }
 
-bool NsClient::MakeSnapshot(const std::string& name, uint32_t pid,
-                            uint64_t end_offset, std::string& msg) {
-    return MakeSnapshot(name, HasDb() ? GetDb() : "", pid, end_offset, msg);
+bool NsClient::ShowTable(const std::string& name,
+                         std::vector<::rtidb::nameserver::TableInfo>& tables,
+                         std::string& msg) {
+    return ShowTable(name, GetDb(), false, tables, msg);
 }
 
-bool NsClient::MakeSnapshot(const std::string& name, const std::string& db, uint32_t pid,
-                uint64_t end_offset, std::string& msg) {
+bool NsClient::ShowAllTable(std::vector<::rtidb::nameserver::TableInfo>& tables,
+                            std::string& msg) {
+    return ShowTable("", "", true, tables, msg);
+}
+
+bool NsClient::MakeSnapshot(const std::string& name, uint32_t pid,
+                            uint64_t end_offset, std::string& msg) {
+    return MakeSnapshot(name, GetDb(), pid, end_offset, msg);
+}
+
+bool NsClient::MakeSnapshot(const std::string& name, const std::string& db,
+                            uint32_t pid, uint64_t end_offset,
+                            std::string& msg) {
     ::rtidb::nameserver::MakeSnapshotNSRequest request;
     request.set_name(name);
     request.set_pid(pid);
@@ -190,9 +200,7 @@ bool NsClient::AddTableField(const std::string& table_name,
     ::rtidb::nameserver::AddTableFieldRequest request;
     ::rtidb::nameserver::GeneralResponse response;
     request.set_name(table_name);
-    if (HasDb()) {
-        request.set_db(GetDb());
-    }
+    request.set_db(GetDb());
     ::rtidb::common::ColumnDesc* column_desc_ptr =
         request.mutable_column_desc();
     column_desc_ptr->CopyFrom(column_desc);
@@ -288,9 +296,7 @@ bool NsClient::CreateTable(const ::rtidb::nameserver::TableInfo& table_info,
 bool NsClient::DropTable(const std::string& name, std::string& msg) {
     ::rtidb::nameserver::DropTableRequest request;
     request.set_name(name);
-    if (HasDb()) {
-        request.set_db(GetDb());
-    }
+    request.set_db(GetDb());
     ::rtidb::nameserver::GeneralResponse response;
     bool ok =
         client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::DropTable,
@@ -311,9 +317,7 @@ bool NsClient::SyncTable(const std::string& name,
     if (pid != INVALID_PID) {
         request.set_pid(pid);
     }
-    if (HasDb()) {
-        request.set_db(GetDb());
-    }
+    request.set_db(GetDb());
     ::rtidb::nameserver::GeneralResponse response;
     bool ok =
         client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::SyncTable,
@@ -336,9 +340,7 @@ bool NsClient::AddReplica(const std::string& name,
     request.set_name(name);
     request.set_pid(*(pid_set.begin()));
     request.set_endpoint(endpoint);
-    if (HasDb()) {
-        request.set_db(GetDb());
-    }
+    request.set_db(GetDb());
     if (pid_set.size() > 1) {
         for (auto pid : pid_set) {
             request.add_pid_group(pid);
@@ -394,9 +396,7 @@ bool NsClient::DelReplica(const std::string& name,
     request.set_name(name);
     request.set_pid(*(pid_set.begin()));
     request.set_endpoint(endpoint);
-    if (HasDb()) {
-        request.set_db(GetDb());
-    }
+    request.set_db(GetDb());
     if (pid_set.size() > 1) {
         for (auto pid : pid_set) {
             request.add_pid_group(pid);
@@ -468,9 +468,7 @@ bool NsClient::ChangeLeader(const std::string& name, uint32_t pid,
     if (!candidate_leader.empty()) {
         request.set_candidate_leader(candidate_leader);
     }
-    if (HasDb()) {
-        request.set_db(GetDb());
-    }
+    request.set_db(GetDb());
     bool ok =
         client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::ChangeLeader,
                             &request, &response, FLAGS_request_timeout_ms, 1);
@@ -507,9 +505,7 @@ bool NsClient::Migrate(const std::string& src_endpoint, const std::string& name,
     request.set_src_endpoint(src_endpoint);
     request.set_name(name);
     request.set_des_endpoint(des_endpoint);
-    if (HasDb()) {
-        request.set_db(GetDb());
-    }
+    request.set_db(GetDb());
     for (auto pid : pid_set) {
         request.add_pid(pid);
     }
@@ -549,9 +545,7 @@ bool NsClient::RecoverTable(const std::string& name, uint32_t pid,
     request.set_name(name);
     request.set_pid(pid);
     request.set_endpoint(endpoint);
-    if (HasDb()) {
-        request.set_db(GetDb());
-    }
+    request.set_db(GetDb());
     bool ok =
         client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::RecoverTable,
                             &request, &response, FLAGS_request_timeout_ms, 1);
@@ -595,9 +589,7 @@ bool NsClient::SetTablePartition(
     ::rtidb::nameserver::SetTablePartitionRequest request;
     ::rtidb::nameserver::GeneralResponse response;
     request.set_name(name);
-    if (HasDb()) {
-        request.set_db(GetDb());
-    }
+    request.set_db(GetDb());
     ::rtidb::nameserver::TablePartition* cur_table_partition =
         request.mutable_table_partition();
     cur_table_partition->CopyFrom(table_partition);
@@ -618,9 +610,7 @@ bool NsClient::GetTablePartition(
     ::rtidb::nameserver::GetTablePartitionResponse response;
     request.set_name(name);
     request.set_pid(pid);
-    if (HasDb()) {
-        request.set_db(GetDb());
-    }
+    request.set_db(GetDb());
     bool ok = client_.SendRequest(
         &::rtidb::nameserver::NameServer_Stub::GetTablePartition, &request,
         &response, FLAGS_request_timeout_ms, 1);
@@ -674,9 +664,7 @@ bool NsClient::UpdateTTL(const std::string& name,
     if (!ts_name.empty()) {
         request.set_ts_name(ts_name);
     }
-    if (HasDb()) {
-        request.set_db(GetDb());
-    }
+    request.set_db(GetDb());
     bool ok =
         client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::UpdateTTL,
                             &request, &response, FLAGS_request_timeout_ms, 1);
@@ -717,7 +705,7 @@ bool NsClient::LoadTable(const std::string& name, const std::string& endpoint,
                          uint32_t pid,
                          const ::rtidb::nameserver::ZoneInfo& zone_info,
                          const ::rtidb::api::TaskInfo& task_info) {
-    return LoadTable(name, HasDb() ? GetDb() : "", endpoint, pid, zone_info, task_info);
+    return LoadTable(name, GetDb(), endpoint, pid, zone_info, task_info);
 }
 
 bool NsClient::LoadTable(const std::string& name, const std::string& db,
@@ -784,7 +772,7 @@ bool NsClient::CreateRemoteTableInfoSimply(
 }
 
 bool NsClient::DropTableRemote(const ::rtidb::api::TaskInfo& task_info,
-                               const std::string& name,
+                               const std::string& name, const std::string& db,
                                const ::rtidb::nameserver::ZoneInfo& zone_info,
                                std::string& msg) {
     ::rtidb::nameserver::DropTableRequest request;
@@ -794,6 +782,7 @@ bool NsClient::DropTableRemote(const ::rtidb::api::TaskInfo& task_info,
     ::rtidb::nameserver::ZoneInfo* zone_info_p = request.mutable_zone_info();
     zone_info_p->CopyFrom(zone_info);
     request.set_name(name);
+    request.set_db(db);
     bool ok =
         client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::DropTable,
                             &request, &response, FLAGS_request_timeout_ms, 3);
@@ -951,9 +940,7 @@ bool NsClient::AddIndex(const std::string& table_name,
     ::rtidb::common::ColumnKey* cur_column_key = request.mutable_column_key();
     request.set_name(table_name);
     cur_column_key->CopyFrom(column_key);
-    if (HasDb()) {
-        request.set_db(GetDb());
-    }
+    request.set_db(GetDb());
     bool ok =
         client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::AddIndex,
                             &request, &response, FLAGS_request_timeout_ms, 1);
@@ -970,9 +957,7 @@ bool NsClient::DeleteIndex(const std::string& table_name,
     ::rtidb::nameserver::GeneralResponse response;
     request.set_table_name(table_name);
     request.set_idx_name(idx_name);
-    if (HasDb()) {
-        request.set_db_name(GetDb());
-    }
+    request.set_db_name(GetDb());
     bool ok =
         client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::DeleteIndex,
                             &request, &response, FLAGS_request_timeout_ms, 1);

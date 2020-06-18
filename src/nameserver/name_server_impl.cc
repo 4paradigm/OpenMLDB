@@ -152,10 +152,10 @@ int ClusterInfo::Init(std::string& msg) {
 
 bool ClusterInfo::DropTableRemote(
     const ::rtidb::api::TaskInfo& task_info, const std::string& name,
-    const ::rtidb::nameserver::ZoneInfo& zone_info) {
+    const std::string& db, const ::rtidb::nameserver::ZoneInfo& zone_info) {
     std::string msg;
     if (!std::atomic_load_explicit(&client_, std::memory_order_relaxed)
-             ->DropTableRemote(task_info, name, zone_info, msg)) {
+             ->DropTableRemote(task_info, name, db, zone_info, msg)) {
         PDLOG(WARNING, "drop table for replica cluster failed!, msg is: %s",
               msg.c_str());
         return false;
@@ -344,12 +344,12 @@ void NameServerImpl::CheckTableInfo(
     for (const auto& table : tables) {
         std::shared_ptr<::rtidb::nameserver::TableInfo> table_info;
         if (!GetTableInfoUnlock(table.name(), table.db(), table_info)) {
-            PDLOG(WARNING, "talbe [%s] not found in table_info",
-                  table.name().c_str());
+            PDLOG(WARNING, "talbe [%u][%s] not found in table_info",
+                  table.tid(), table.name().c_str());
             continue;
         }
-        auto status_iter = ci->last_status.find(table.name());
-        if (status_iter == ci->last_status.end()) {
+        auto status_iter = ci->last_status[table.db()].find(table.name());
+        if (status_iter == ci->last_status[table.db()].end()) {
             std::vector<TablePartition> tbs;
             for (const auto& part : table_info->table_partition()) {
                 for (const auto& meta : part.remote_partition_meta()) {
@@ -366,7 +366,8 @@ void NameServerImpl::CheckTableInfo(
             if (tbs.size() != table.partition_num()) {
                 continue;
             }
-            ci->last_status.insert(std::make_pair(table.name(), tbs));
+            ci->last_status[table.db()].insert(
+                std::make_pair(table.name(), tbs));
         } else {
             // cache endpoint
             std::set<uint32_t> parts;
@@ -415,7 +416,8 @@ void NameServerImpl::CheckTableInfo(
                         PDLOG(
                             INFO, "table [%s] pid[%u] will remove endpoint %s",
                             table.name().c_str(), part.pid(), endpoint.c_str());
-                        DelReplicaRemoteOP(endpoint, table.name(), part.pid());
+                        DelReplicaRemoteOP(endpoint, table.name(), table.db(),
+                                           part.pid());
                         iter->second->clear_partition_meta();
                         iter->second->add_partition_meta()->CopyFrom(meta);
 
@@ -3660,6 +3662,25 @@ void NameServerImpl::ShowOPStatus(RpcController* controller,
     response->set_msg("ok");
 }
 
+void NameServerImpl::ShowDbTable(
+    const std::map<std::string, std::shared_ptr<TableInfo>>& table_infos,
+    const ShowTableRequest* request, ShowTableResponse* response) {
+    for (const auto& kv : table_infos) {
+        if (request->has_name() && request->name() != kv.first) {
+            continue;
+        }
+        ::rtidb::nameserver::TableInfo* table_info = response->add_table_info();
+        table_info->CopyFrom(*(kv.second));
+        table_info->clear_column_key();
+        for (const auto& column_key : kv.second->column_key()) {
+            if (!column_key.flag()) {
+                ::rtidb::common::ColumnKey* ck = table_info->add_column_key();
+                ck->CopyFrom(column_key);
+            }
+        }
+    }
+}
+
 void NameServerImpl::ShowTable(RpcController* controller,
                                const ShowTableRequest* request,
                                ShowTableResponse* response, Closure* done) {
@@ -3685,25 +3706,14 @@ void NameServerImpl::ShowTable(RpcController* controller,
             }
         }
     }
-    if (!request->db().empty()) {
+    if (request->show_all()) {
+        for (const auto& db_it : db_table_info_) {
+            ShowDbTable(db_it.second, request, response);
+        }
+    } else if (!request->db().empty()) {
         auto db_it = db_table_info_.find(request->db());
         if (db_it != db_table_info_.end()) {
-            for (const auto& kv : (*db_it).second) {
-                if (request->has_name() && request->name() != kv.first) {
-                    continue;
-                }
-                ::rtidb::nameserver::TableInfo* table_info =
-                    response->add_table_info();
-                table_info->CopyFrom(*(kv.second));
-                table_info->clear_column_key();
-                for (const auto& column_key : kv.second->column_key()) {
-                    if (!column_key.flag()) {
-                        ::rtidb::common::ColumnKey* ck =
-                            table_info->add_column_key();
-                        ck->CopyFrom(column_key);
-                    }
-                }
-            }
+            ShowDbTable(db_it->second, request, response);
         }
     }
     response->set_code(::rtidb::base::ReturnCode::kOk);
@@ -3797,6 +3807,7 @@ void NameServerImpl::DropTableInternel(
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
     std::shared_ptr<::rtidb::api::TaskInfo> task_ptr) {
     std::string name = request.name();
+    std::string db = request.db();
     std::map<uint32_t, std::map<std::string, std::shared_ptr<TabletClient>>>
         pid_endpoint_map;
     uint32_t tid = table_info->tid();
@@ -3892,7 +3903,7 @@ void NameServerImpl::DropTableInternel(
                     continue;
                 }
                 if (DropTableRemoteOP(
-                        name, kv.first, INVALID_PARENT_ID,
+                        name, db, kv.first, INVALID_PARENT_ID,
                         FLAGS_name_server_task_concurrency_for_replica_cluster) <  // NOLINT
                     0) {
                     PDLOG(WARNING,
@@ -6073,11 +6084,12 @@ void NameServerImpl::DelReplicaNS(RpcController* controller,
 }
 
 int NameServerImpl::DelReplicaRemoteOP(const std::string& endpoint,
-                                       const std::string name, uint32_t pid) {
+                                       const std::string& name,
+                                       const std::string& db, uint32_t pid) {
     std::string value = endpoint;
     std::shared_ptr<OPData> op_data;
     if (CreateOPData(::rtidb::api::OPType::kDelReplicaRemoteOP, value, op_data,
-                     name, pid) < 0) {
+                     name, db, pid) < 0) {
         PDLOG(WARNING, "create op data error. table[%s] pid[%u]", name.c_str(),
               pid);
         return -1;
@@ -6155,33 +6167,6 @@ NameServerImpl::GetHealthCluster(const std::string& alias) {
         return std::shared_ptr<rtidb::nameserver::ClusterInfo>();
     }
     return iter->second;
-}
-
-int NameServerImpl::CreateOPData(::rtidb::api::OPType op_type,
-                                 const std::string& value,
-                                 std::shared_ptr<OPData>& op_data,
-                                 const std::string& name, uint32_t pid,
-                                 uint64_t parent_id, uint64_t remote_op_id) {
-    if (!zk_client_->SetNodeValue(zk_op_index_node_,
-                                  std::to_string(op_index_ + 1))) {
-        PDLOG(WARNING, "set op index node failed! op_index[%lu]", op_index_);
-        return -1;
-    }
-    op_index_++;
-    op_data = std::make_shared<OPData>();
-    op_data->op_info_.set_op_id(op_index_);
-    op_data->op_info_.set_op_type(op_type);
-    op_data->op_info_.set_task_index(0);
-    op_data->op_info_.set_data(value);
-    op_data->op_info_.set_task_status(::rtidb::api::kInited);
-    op_data->op_info_.set_name(name);
-    op_data->op_info_.set_db("");
-    op_data->op_info_.set_pid(pid);
-    op_data->op_info_.set_parent_id(parent_id);
-    if (remote_op_id != INVALID_PARENT_ID) {
-        op_data->op_info_.set_remote_op_id(remote_op_id);
-    }
-    return 0;
 }
 
 int NameServerImpl::CreateOPData(::rtidb::api::OPType op_type,
@@ -6358,7 +6343,7 @@ void NameServerImpl::SchedMakeSnapshot() {
         std::vector<std::string> delete_map;
         std::string msg;
         for (const auto& ns : ns_client) {
-            if (!ns.second->ShowTable("", tables, msg)) {
+            if (!ns.second->ShowAllTable(tables, msg)) {
                 delete_map.push_back(ns.first);
                 continue;
             }
@@ -6460,7 +6445,8 @@ void NameServerImpl::SchedMakeSnapshot() {
             }
             std::string msg;
             for (const auto& ns : ns_client) {
-                ns.second->MakeSnapshot(table.second->name(), table.second->db(), part.pid(),
+                ns.second->MakeSnapshot(table.second->name(),
+                                        table.second->db(), part.pid(),
                                         part_iter->second, msg);
             }
         }
@@ -7322,7 +7308,7 @@ void NameServerImpl::RecoverEndpointTable(
           offset, manifest.offset(), name.c_str(), tid, pid);
     if (has_table) {
         if (ret_code == 0 && offset >= manifest.offset()) {
-            CreateReAddReplicaSimplifyOP(name, pid, endpoint, offset_delta,
+            CreateReAddReplicaSimplifyOP(name, db, pid, endpoint, offset_delta,
                                          task_info->op_id(), concurrency);
         } else {
             CreateReAddReplicaWithDropOP(name, db, pid, endpoint, offset_delta,
@@ -7330,10 +7316,10 @@ void NameServerImpl::RecoverEndpointTable(
         }
     } else {
         if (ret_code == 0 && offset >= manifest.offset()) {
-            CreateReAddReplicaNoSendOP(name, pid, endpoint, offset_delta,
+            CreateReAddReplicaNoSendOP(name, db, pid, endpoint, offset_delta,
                                        task_info->op_id(), concurrency);
         } else {
-            CreateReAddReplicaOP(name, pid, endpoint, offset_delta,
+            CreateReAddReplicaOP(name, db, pid, endpoint, offset_delta,
                                  task_info->op_id(), concurrency);
         }
     }
@@ -7347,7 +7333,8 @@ void NameServerImpl::RecoverEndpointTable(
         ::rtidb::api::TaskType_Name(task_info->task_type()).c_str());
 }
 
-int NameServerImpl::CreateReAddReplicaOP(const std::string& name, uint32_t pid,
+int NameServerImpl::CreateReAddReplicaOP(const std::string& name,
+                                         const std::string& db, uint32_t pid,
                                          const std::string& endpoint,
                                          uint64_t offset_delta,
                                          uint64_t parent_id,
@@ -7365,7 +7352,7 @@ int NameServerImpl::CreateReAddReplicaOP(const std::string& name, uint32_t pid,
     std::string value;
     recover_table_data.SerializeToString(&value);
     if (CreateOPData(::rtidb::api::OPType::kReAddReplicaOP, value, op_data,
-                     name, pid, parent_id) < 0) {
+                     name, db, pid, parent_id) < 0) {
         PDLOG(
             WARNING,
             "create ReAddReplicaOP data error. table[%s] pid[%u] endpoint[%s]",
@@ -7644,8 +7631,9 @@ int NameServerImpl::CreateReAddReplicaWithDropTask(
 }
 
 int NameServerImpl::CreateReAddReplicaNoSendOP(
-    const std::string& name, uint32_t pid, const std::string& endpoint,
-    uint64_t offset_delta, uint64_t parent_id, uint32_t concurrency) {
+    const std::string& name, const std::string& db, uint32_t pid,
+    const std::string& endpoint, uint64_t offset_delta, uint64_t parent_id,
+    uint32_t concurrency) {
     auto it = tablets_.find(endpoint);
     if (it == tablets_.end() ||
         it->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
@@ -7659,7 +7647,7 @@ int NameServerImpl::CreateReAddReplicaNoSendOP(
     std::string value;
     recover_table_data.SerializeToString(&value);
     if (CreateOPData(::rtidb::api::OPType::kReAddReplicaNoSendOP, value,
-                     op_data, name, pid, parent_id) < 0) {
+                     op_data, name, db, pid, parent_id) < 0) {
         PDLOG(WARNING,
               "create ReAddReplicaNoSendOP data failed. table[%s] pid[%u] "
               "endpoint[%s]",
@@ -7807,8 +7795,9 @@ int NameServerImpl::GetLeader(
 }
 
 int NameServerImpl::CreateReAddReplicaSimplifyOP(
-    const std::string& name, uint32_t pid, const std::string& endpoint,
-    uint64_t offset_delta, uint64_t parent_id, uint32_t concurrency) {
+    const std::string& name, const std::string& db, uint32_t pid,
+    const std::string& endpoint, uint64_t offset_delta, uint64_t parent_id,
+    uint32_t concurrency) {
     std::shared_ptr<OPData> op_data;
     RecoverTableData recover_table_data;
     recover_table_data.set_endpoint(endpoint);
@@ -7816,7 +7805,7 @@ int NameServerImpl::CreateReAddReplicaSimplifyOP(
     std::string value;
     recover_table_data.SerializeToString(&value);
     if (CreateOPData(::rtidb::api::OPType::kReAddReplicaSimplifyOP, value,
-                     op_data, name, pid, parent_id) < 0) {
+                     op_data, name, db, pid, parent_id) < 0) {
         PDLOG(WARNING,
               "create ReAddReplicaSimplifyOP data error. table[%s] pid[%u] "
               "endpoint[%s]",
@@ -7912,6 +7901,7 @@ int NameServerImpl::CreateReAddReplicaSimplifyTask(
 }
 
 int NameServerImpl::DropTableRemoteOP(const std::string& name,
+                                      const std::string& db,
                                       const std::string& alias,
                                       uint64_t parent_id,
                                       uint32_t concurrency) {
@@ -7919,7 +7909,7 @@ int NameServerImpl::DropTableRemoteOP(const std::string& name,
     uint32_t pid = INVALID_PID;
     std::shared_ptr<OPData> op_data;
     if (CreateOPData(::rtidb::api::OPType::kDropTableRemoteOP, value, op_data,
-                     name, pid, parent_id) < 0) {
+                     name, db, pid, parent_id) < 0) {
         PDLOG(
             WARNING,
             "create DropTableRemoteOP data error. table[%s] pid[%u] alias[%s]",
@@ -7946,6 +7936,7 @@ int NameServerImpl::DropTableRemoteOP(const std::string& name,
 
 int NameServerImpl::DropTableRemoteTask(std::shared_ptr<OPData> op_data) {
     std::string name = op_data->op_info_.name();
+    std::string db = op_data->op_info_.db();
     std::string alias = op_data->op_info_.data();
     std::shared_ptr<rtidb::nameserver::ClusterInfo> cluster =
         GetHealthCluster(alias);
@@ -7954,7 +7945,7 @@ int NameServerImpl::DropTableRemoteTask(std::shared_ptr<OPData> op_data) {
         return -1;
     }
     std::shared_ptr<Task> task =
-        DropTableRemoteTask(name, alias, op_data->op_info_.op_id(),
+        DropTableRemoteTask(name, db, alias, op_data->op_info_.op_id(),
                             ::rtidb::api::OPType::kDropTableRemoteOP);
     if (!task) {
         PDLOG(WARNING, "create DropTableRemote task failed. table[%s] pid[%u]",
@@ -7982,10 +7973,11 @@ int NameServerImpl::CreateTableRemoteOP(
     std::string value;
     create_table_data.SerializeToString(&value);
     std::string name = table_info.name();
+    std::string db = table_info.db();
     uint32_t pid = INVALID_PID;
     std::shared_ptr<OPData> op_data;
     if (CreateOPData(::rtidb::api::OPType::kCreateTableRemoteOP, value, op_data,
-                     name, pid, parent_id) < 0) {
+                     name, db, pid, parent_id) < 0) {
         PDLOG(WARNING,
               "create CreateTableRemoteOP data error. table[%s] pid[%u] "
               "alias[%s]",
@@ -8465,8 +8457,8 @@ std::shared_ptr<Task> NameServerImpl::CreateSendSnapshotTask(
 }
 
 std::shared_ptr<Task> NameServerImpl::DropTableRemoteTask(
-    const std::string& name, const std::string& alias, uint64_t op_index,
-    ::rtidb::api::OPType op_type) {
+    const std::string& name, const std::string& db, const std::string& alias,
+    uint64_t op_index, ::rtidb::api::OPType op_type) {
     std::shared_ptr<rtidb::nameserver::ClusterInfo> cluster =
         GetHealthCluster(alias);
     if (!cluster) {
@@ -8487,7 +8479,7 @@ std::shared_ptr<Task> NameServerImpl::DropTableRemoteTask(
 
     boost::function<bool()> fun =
         boost::bind(&NameServerImpl::DropTableRemote, this, *(task->task_info_),
-                    name, cluster);
+                    name, db, cluster);
     task->fun_ =
         boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
     return task;
@@ -9875,20 +9867,6 @@ void NameServerImpl::NotifyTableChanged() {
           value.c_str(), counter);
 }
 
-std::shared_ptr<TableInfo> NameServerImpl::GetTableInfo(
-    const std::string& name) {
-    std::lock_guard<std::mutex> lock(mu_);
-    std::shared_ptr<TableInfo> table;
-    std::map<std::string,
-             std::shared_ptr<::rtidb::nameserver::TableInfo>>::iterator it =
-        table_info_.find(name);
-    if (it == table_info_.end()) {
-        return table;
-    }
-    table = it->second;
-    return table;
-}
-
 bool NameServerImpl::GetTableInfo(const std::string& table_name,
                                   const std::string& db_name,
                                   std::shared_ptr<TableInfo>& table_info) {
@@ -10005,7 +9983,7 @@ void NameServerImpl::AddReplicaCluster(RpcController* controller,
         std::vector<::rtidb::nameserver::TableInfo> tables;
         if (!std::atomic_load_explicit(&cluster_info->client_,
                                        std::memory_order_relaxed)
-                 ->ShowTable("", tables, rpc_msg)) {
+                 ->ShowAllTable(tables, rpc_msg)) {
             rpc_msg = "showtable error when add replica cluster";
             code = 455;
             break;
@@ -10241,16 +10219,19 @@ void NameServerImpl::RemoveReplicaCluster(
             break;
         }
         state = it->second->state_.load(std::memory_order_relaxed);
-        for (auto iter = it->second->last_status.begin();
-             iter != it->second->last_status.end(); iter++) {
-            for (auto part_iter = iter->second.begin();
-                 part_iter != iter->second.end(); part_iter++) {
-                for (auto meta : part_iter->partition_meta()) {
-                    if (meta.endpoint().empty()) {
-                        break;
+        for (auto db_iter = it->second->last_status.begin();
+             db_iter != it->second->last_status.end(); db_iter++) {
+            for (auto iter = db_iter->second.begin();
+                 iter != db_iter->second.end(); iter++) {
+                for (auto part_iter = iter->second.begin();
+                     part_iter != iter->second.end(); part_iter++) {
+                    for (auto meta : part_iter->partition_meta()) {
+                        if (meta.endpoint().empty()) {
+                            break;
+                        }
+                        DelReplicaRemoteOP(meta.endpoint(), iter->first,
+                                           db_iter->first, part_iter->pid());
                     }
-                    DelReplicaRemoteOP(meta.endpoint(), iter->first,
-                                       part_iter->pid());
                 }
             }
         }
@@ -10370,7 +10351,7 @@ void NameServerImpl::CheckClusterInfo() {
             std::vector<::rtidb::nameserver::TableInfo> tables;
             if (!std::atomic_load_explicit(&i.second->client_,
                                            std::memory_order_relaxed)
-                     ->ShowTable("", tables, msg)) {
+                     ->ShowAllTable(tables, msg)) {
                 PDLOG(WARNING, "check %s showtable has error: %s",
                       i.first.c_str(), msg.c_str());
                 continue;
@@ -10516,7 +10497,7 @@ void NameServerImpl::SyncTable(RpcController* controller,
                                                std::memory_order_relaxed);
         }
         std::vector<::rtidb::nameserver::TableInfo> tables;
-        if (!client->ShowTable("", tables, msg)) {
+        if (!client->ShowTable(name, db, false, tables, msg)) {
             code = 455;
             msg = "showtable error when synctable";
             PDLOG(WARNING,
@@ -10806,15 +10787,19 @@ bool NameServerImpl::CreateTableRemote(
 
 bool NameServerImpl::DropTableRemote(
     const ::rtidb::api::TaskInfo& task_info, const std::string& name,
+    const std::string& db,
     const std::shared_ptr<::rtidb::nameserver::ClusterInfo> cluster_info) {
     {
         std::lock_guard<std::mutex> lock(mu_);
-        auto iter = cluster_info->last_status.find(name);
-        if (iter != cluster_info->last_status.end()) {
-            cluster_info->last_status.erase(iter);
+        auto db_iter = cluster_info->last_status.find(db);
+        if (db_iter != cluster_info->last_status.end()) {
+            auto iter = db_iter->second.find(db);
+            if (iter != db_iter->second.end()) {
+                db_iter->second.erase(iter);
+            }
         }
     }
-    return cluster_info->DropTableRemote(task_info, name, zone_info_);
+    return cluster_info->DropTableRemote(task_info, name, db, zone_info_);
 }
 
 void NameServerImpl::MakeTablePartitionSnapshot(
