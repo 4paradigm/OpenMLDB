@@ -375,7 +375,7 @@ class SchemaCodec {
         return rm;
     }
 
-    static void AddTypeToColumnDesc(
+    static bool AddTypeToColumnDesc(
             std::shared_ptr<::rtidb::nameserver::TableInfo> table_info) {
         for (int i = 0; i < table_info->column_desc_v1_size(); i++) {
             ::rtidb::common::ColumnDesc* col_desc =
@@ -420,8 +420,12 @@ class SchemaCodec {
                     col_desc->set_type("string");
                     break;
                 }
+                default: {
+                    return false;
+                }
             }
         }
+        return true;
     }
 
  private:

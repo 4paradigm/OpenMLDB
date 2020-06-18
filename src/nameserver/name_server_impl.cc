@@ -4719,7 +4719,6 @@ void NameServerImpl::CreateTable(RpcController* controller,
         cur_term = term_;
     }
     if (table_info->table_type() == ::rtidb::type::kObjectStore) {
-        ::rtidb::codec::SchemaCodec::AddTypeToColumnDesc(table_info);
         int ret = CreateBlobTable(table_info);
         if (ret != 0) {
             if (ret == 1) {
@@ -4747,7 +4746,12 @@ void NameServerImpl::CreateTable(RpcController* controller,
         response->set_msg("ok");
         return;
     } else if (table_info->table_type() == rtidb::type::kRelational) {
-        ::rtidb::codec::SchemaCodec::AddTypeToColumnDesc(table_info);
+        if (!rtidb::codec::SchemaCodec::AddTypeToColumnDesc(table_info)) {
+            response->set_code(
+                    ::rtidb::base::ReturnCode::kAddTypeToColumnDescFailed);
+            response->set_msg("add type to ColumnDesc failed");
+            return;
+        }
         bool has_blob = false;
         for (const auto& col : table_info->column_desc_v1()) {
             if (col.data_type() == rtidb::type::kBlob) {
