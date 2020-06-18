@@ -24,21 +24,21 @@ build:
             - build/src/sdk/libsql_jsdk.so
             - build/sql_pysdk/dist/
 
-mac_build:
-    variables:
-        CICD_RUNNER_TAG: "rtidb_mac"
-    tags:
-        - rtidb_mac
-    stage: build
-    script:
-        - bash steps/simple_compile_mac.sh
-        - mv build/bin/rtidb build/bin/rtidb_mac
-    artifacts:
-        expire_in: 4h
-        paths:
-            - build/bin/rtidb_mac
-            - build/src/sdk/libsql_jsdk.dylib
-            - build/sql_pysdk/dist/
+# mac_build:
+#     variables:
+#         CICD_RUNNER_TAG: "rtidb_mac"
+#     tags:
+#         - rtidb_mac
+#     stage: build
+#     script:
+#         - bash steps/simple_compile_mac.sh
+#         - mv build/bin/rtidb build/bin/rtidb_mac
+#     artifacts:
+#         expire_in: 4h
+#         paths:
+#             - build/bin/rtidb_mac
+#             - build/src/sdk/libsql_jsdk.dylib
+#             - build/sql_pysdk/dist/
 
 style_check:
     stage: build

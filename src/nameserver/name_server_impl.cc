@@ -6145,26 +6145,8 @@ int NameServerImpl::CreateOPData(::rtidb::api::OPType op_type,
                                  std::shared_ptr<OPData>& op_data,
                                  const std::string& name, uint32_t pid,
                                  uint64_t parent_id, uint64_t remote_op_id) {
-    if (!zk_client_->SetNodeValue(zk_op_index_node_,
-                                  std::to_string(op_index_ + 1))) {
-        PDLOG(WARNING, "set op index node failed! op_index[%lu]", op_index_);
-        return -1;
-    }
-    op_index_++;
-    op_data = std::make_shared<OPData>();
-    op_data->op_info_.set_op_id(op_index_);
-    op_data->op_info_.set_op_type(op_type);
-    op_data->op_info_.set_task_index(0);
-    op_data->op_info_.set_data(value);
-    op_data->op_info_.set_task_status(::rtidb::api::kInited);
-    op_data->op_info_.set_name(name);
-    op_data->op_info_.set_db("");
-    op_data->op_info_.set_pid(pid);
-    op_data->op_info_.set_parent_id(parent_id);
-    if (remote_op_id != INVALID_PARENT_ID) {
-        op_data->op_info_.set_remote_op_id(remote_op_id);
-    }
-    return 0;
+    return CreateOPData(op_type, value, op_data, name, "", pid, parent_id,
+                        remote_op_id);
 }
 
 int NameServerImpl::CreateOPData(::rtidb::api::OPType op_type,
@@ -9955,14 +9937,14 @@ std::shared_ptr<TableInfo> NameServerImpl::GetTableInfo(
 
 bool NameServerImpl::GetTableInfo(const std::string& table_name,
                                   const std::string& db_name,
-                                  std::shared_ptr<TableInfo>& table_info) {
+                                  std::shared_ptr<TableInfo> table_info) {
     std::lock_guard<std::mutex> lock(mu_);
     return GetTableInfoUnlock(table_name, db_name, table_info);
 }
 
-bool NameServerImpl::GetTableInfoUnlock(
-    const std::string& table_name, const std::string& db_name,
-    std::shared_ptr<TableInfo>& table_info) {
+bool NameServerImpl::GetTableInfoUnlock(const std::string& table_name,
+                                        const std::string& db_name,
+                                        std::shared_ptr<TableInfo> table_info) {
     if (db_name.empty()) {
         auto it = table_info_.find(table_name);
         if (it == table_info_.end()) {
@@ -11037,7 +11019,7 @@ bool NameServerImpl::UpdateZkTableNode(
     std::shared_ptr<::rtidb::nameserver::TableInfo>& table_info) {
     std::string table_value;
     table_info->SerializeToString(&table_value);
-    if (table_info->has_db()) {
+    if (!table_info->has_db()) {
         if (!zk_client_->SetNodeValue(
                 zk_table_data_path_ + "/" + table_info->name(), table_value)) {
             PDLOG(WARNING, "update table node[%s/%s] failed! value[%s]",
@@ -11202,7 +11184,6 @@ bool NameServerImpl::AddIndexToTableInfo(
         cur_column_key->CopyFrom(column_key);
     }
     UpdateZkTableNode(table_info);
-    NotifyTableChanged();
     PDLOG(INFO, "add index ok. table[%s] index[%s]", name.c_str(),
           column_key.index_name().c_str());
     return true;
