@@ -59,9 +59,9 @@ class FesqlBackend(object):
         else: # Run with local script
             logging.info("Run as local script to create jvm gateway")
             if "JAVA_HOME" not in os.environ:
-                raise FerrariException("Make sure to set JAVA_HOME before running")
+                raise FeqlException("Make sure to set JAVA_HOME before running")
             if "SPARK_HOME" not in os.environ:
-                raise FerrariException("Make sure to set SPARK_HOME before running")
+                raise FeqlException("Make sure to set SPARK_HOME before running")
 
             java_path = os.path.join(os.environ["JAVA_HOME"], "bin/java")
             classpath_list = [
@@ -73,7 +73,7 @@ class FesqlBackend(object):
             for jar_name in os.listdir(os.path.join(os.environ["SPARK_HOME"], "jars")):
                 classpath_list.append(os.path.join(os.environ["SPARK_HOME"], "jars", jar_name))
             classpath = ":".join(classpath_list)
-            logging.debug("Use the ferrari jar: {}".format(self.FESQL_JAR_PATH))
+            logging.debug("Use the fesql-spark jar: {}".format(self.FESQL_JAR_PATH))
             logging.debug("Use the classpath: {}".format(classpath))
 
             # fileno() should be available to redirect stderr
