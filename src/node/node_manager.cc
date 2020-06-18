@@ -137,7 +137,43 @@ WindowDefNode *NodeManager::MergeWindow(const WindowDefNode *w1,
         MergeFrameNode(w1->GetFrame(), w2->GetFrame()),
         w1->instance_not_in_window()));
 }
+FrameNode *NodeManager::MergeFrameNodeWithCurrentHistoryFrame(
+    FrameNode *frame1) {
+    if (nullptr == frame1) {
+        return nullptr;
+    }
 
+    switch (frame1->frame_type()) {
+        case kFrameRows: {
+            return MergeFrameNode(
+                frame1,
+                dynamic_cast<FrameNode *>(MakeFrameNode(
+                    kFrameRows, nullptr,
+                    dynamic_cast<FrameExtent *>(MakeFrameExtent(
+                        MakeFrameBound(kCurrent), MakeFrameBound(kCurrent))),
+                    0)));
+        }
+        case kFrameRange: {
+            return MergeFrameNode(
+                frame1,
+                dynamic_cast<FrameNode *>(MakeFrameNode(
+                    kFrameRange,
+                    dynamic_cast<FrameExtent *>(MakeFrameExtent(
+                        MakeFrameBound(kCurrent), MakeFrameBound(kCurrent))),
+                    nullptr, 0)));
+        }
+        case kFrameRowsRange: {
+            return MergeFrameNode(
+                frame1,
+                dynamic_cast<FrameNode *>(MakeFrameNode(
+                    kFrameRowsRange,
+                    dynamic_cast<FrameExtent *>(MakeFrameExtent(
+                        MakeFrameBound(kCurrent), MakeFrameBound(kCurrent))),
+                    nullptr, 0)));
+        }
+    }
+    return nullptr;
+}
 FrameNode *NodeManager::MergeFrameNode(const FrameNode *frame1,
                                        const FrameNode *frame2) {
     if (nullptr == frame1 || nullptr == frame2) {
@@ -1019,5 +1055,6 @@ node::ExprListNode *NodeManager::BuildExprListFromSchemaSource(
     }
     return output;
 }
+
 }  // namespace node
 }  // namespace fesql

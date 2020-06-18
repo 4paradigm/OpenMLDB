@@ -106,14 +106,16 @@ class RangeGenerator {
     explicit RangeGenerator(const Range& range) : ts_gen_(range.fn_info_) {
         start_offset_ = range.frame_->GetHistoryRangeStart();
         end_offset_ = range.frame_->GetHistoryRangeEnd();
-        rows_preceding_ = (-1 * range.frame_->GetHistoryRowsStart());
+        start_row_ = (-1 * range.frame_->GetHistoryRowsStart());
+        end_row_ = (-1 * range.frame_->GetHistoryRowsEnd());
     }
     virtual ~RangeGenerator() {}
     const bool Valid() const { return ts_gen_.Valid(); }
     OrderGenerator ts_gen_;
     int64_t start_offset_;
     int64_t end_offset_;
-    uint64_t rows_preceding_;
+    uint64_t start_row_;
+    uint64_t end_row_;
 };
 class FilterGenerator {
  public:

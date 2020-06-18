@@ -712,7 +712,6 @@ bool Planner::MergeWindows(
             return p1.second < p2.second;
         });
 
-
     for (auto iter = window_id_pairs.cbegin(); iter != window_id_pairs.cend();
          iter++) {
         if (windows.empty()) {
@@ -741,6 +740,7 @@ bool Planner::MergeWindows(
             windows.push_back(iter->first);
         }
     }
+
     return has_window_merged;
 }
 
@@ -753,18 +753,15 @@ bool Planner::MergeProjectMap(
         *output = map;
         return true;
     }
-
-    if (map.size() == 1) {
-        DLOG(INFO) << "Nothing to merge, project list map size = 1";
-        *output = map;
-        return true;
-    }
     std::vector<const node::WindowDefNode *> windows;
-    if (!MergeWindows(map, &windows)) {
-        DLOG(INFO) << "No window can be merged";
+    bool flag_merge = MergeWindows(map, &windows);
+    bool flag_expand = ExpandCurrentHistoryWindow(&windows);
+    if (!flag_merge && !flag_expand) {
+        DLOG(INFO) << "No window can be merged or expand";
         *output = map;
         return true;
     }
+
     int32_t w_id = 1;
     for (auto iter = windows.cbegin(); iter != windows.cend(); iter++) {
         if (nullptr == *iter) {
@@ -807,6 +804,31 @@ bool Planner::MergeProjectMap(
     }
 
     return true;
+}
+bool Planner::ExpandCurrentHistoryWindow(
+    std::vector<const node::WindowDefNode *> *windows_ptr) {
+    if (nullptr == windows_ptr) {
+        return false;
+    }
+    auto &windows = *windows_ptr;
+    bool has_window_expand = false;
+    // merge big history window with current history window
+    for (auto iter = windows.begin(); iter != windows.end(); iter++) {
+        const node::WindowDefNode *w_ptr = *iter;
+        if (nullptr != w_ptr && nullptr != w_ptr->GetFrame() &&
+            w_ptr->GetFrame()->IsHistoryFrame()) {
+            node::FrameNode *current_frame =
+                node_manager_->MergeFrameNodeWithCurrentHistoryFrame(
+                    w_ptr->GetFrame());
+            *iter = dynamic_cast<node::WindowDefNode *>(
+                node_manager_->MakeWindowDefNode(
+                    w_ptr->union_tables(), w_ptr->GetPartitions(),
+                    w_ptr->GetOrders(), current_frame,
+                    w_ptr->instance_not_in_window()));
+            has_window_expand = true;
+        }
+    }
+    return has_window_expand;
 }
 
 bool TransformTableDef(const std::string &table_name,
