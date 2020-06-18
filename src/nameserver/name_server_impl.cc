@@ -9937,14 +9937,14 @@ std::shared_ptr<TableInfo> NameServerImpl::GetTableInfo(
 
 bool NameServerImpl::GetTableInfo(const std::string& table_name,
                                   const std::string& db_name,
-                                  std::shared_ptr<TableInfo> table_info) {
+                                  std::shared_ptr<TableInfo>& table_info) {
     std::lock_guard<std::mutex> lock(mu_);
     return GetTableInfoUnlock(table_name, db_name, table_info);
 }
 
 bool NameServerImpl::GetTableInfoUnlock(const std::string& table_name,
                                         const std::string& db_name,
-                                        std::shared_ptr<TableInfo> table_info) {
+                                        std::shared_ptr<TableInfo>& table_info) {
     if (db_name.empty()) {
         auto it = table_info_.find(table_name);
         if (it == table_info_.end()) {
