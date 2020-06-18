@@ -26,6 +26,9 @@ bool SQLListEquals(const SQLNodeList *left, const SQLNodeList *right) {
 bool ExprEquals(const ExprNode *left, const ExprNode *right) {
     return left == right ? true : nullptr == left ? false : left->Equals(right);
 }
+bool FnDefEquals(const FnDefNode *left, const FnDefNode *right) {
+    return left == right ? true : nullptr == left ? false : left->Equals(right);
+}
 void PrintSQLNode(std::ostream &output, const std::string &org_tab,
                   const SQLNode *node_ptr, const std::string &item_name,
                   bool last_child) {
@@ -457,14 +460,14 @@ void CallExprNode::Print(std::ostream &output,
     ExprNode::Print(output, org_tab);
     output << "\n";
     const std::string tab = org_tab + INDENT + SPACE_ED;
-    output << tab << "function_name: " << function_name_;
+    output << tab << "function_name: " << GetFnDef()->GetSimpleName();
     output << "\n";
     PrintSQLNode(output, tab, args_, "args", false);
     output << "\n";
     PrintSQLNode(output, tab, over_, "over", true);
 }
 const std::string CallExprNode::GetExprString() const {
-    std::string str = function_name_;
+    std::string str = GetFnDef()->GetSimpleName();
     str.append(nullptr == args_ ? "()" : args_->GetExprString());
 
     if (nullptr != over_) {
@@ -484,8 +487,7 @@ bool CallExprNode::Equals(const ExprNode *node) const {
         return false;
     }
     const CallExprNode *that = dynamic_cast<const CallExprNode *>(node);
-    return this->is_agg_ == that->is_agg_ &&
-           this->function_name_ == that->function_name_ &&
+    return FnDefEquals(this->GetFnDef(), that->GetFnDef()) &&
            ExprEquals(this->args_, that->args_) &&
            SQLEquals(this->over_, that->over_) && ExprNode::Equals(node);
 }
@@ -1321,5 +1323,54 @@ bool BetweenExpr::Equals(const ExprNode *node) const {
     return ExprEquals(expr_, that->expr_) && ExprEquals(left_, that->left_) &&
            ExprEquals(right_, that->right_);
 }
+
+void ExternalFnDefNode::Print(std::ostream &output,
+                              const std::string &tab) const {
+    output << tab << "ExternalFnDefNode(" << function_name_ << ")";
+}
+
+bool ExternalFnDefNode::Equals(const SQLNode *node) const {
+    auto other = dynamic_cast<const ExternalFnDefNode*>(node);
+    return other != nullptr &&
+        other->function_name() == function_name();
+}
+
+void UDFDefNode::Print(std::ostream &output, const std::string &tab) const {
+    output << tab << "UDFDefNode {\n";
+    def_->Print(output, tab + INDENT);
+    output << tab << "\n}";
+}
+
+bool UDFDefNode::Equals(const SQLNode *node) const {
+    auto other = dynamic_cast<const UDFDefNode*>(node);
+    return other != nullptr && def_->Equals(other->def_);
+}
+
+bool UDAFDefNode::Equals(const SQLNode *node) const {
+    auto other = dynamic_cast<const UDAFDefNode*>(node);
+    return other != nullptr &&
+        init_->Equals(other->init_) &&
+        update_->Equals(other->update_) &&
+        FnDefEquals(merge_, other->merge_) &&
+        FnDefEquals(output_, other->output_);
+}
+
+void UDAFDefNode::Print(std::ostream &output, const std::string &tab) const {
+    output << tab << "UDAFDefNode {\n";
+    init_->Print(output, tab + INDENT);
+    output << "\n";
+    update_->Print(output, tab + INDENT);
+    output << "\n";
+    if (merge_ != nullptr) {
+        merge_->Print(output, tab + INDENT);
+        output << "\n";
+    }
+    if (output_ != nullptr) {
+        output_->Print(output, tab + INDENT);
+    }
+    output << tab << "\n}";
+}
+
+
 }  // namespace node
 }  // namespace fesql

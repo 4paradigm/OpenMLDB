@@ -76,8 +76,13 @@ bool AggregateIRBuilder::CollectAggColumn(const fesql::node::ExprNode* expr,
     switch (expr->expr_type_) {
         case node::kExprCall: {
             auto call = dynamic_cast<const node::CallExprNode*>(expr);
-            auto agg_func_name = call->GetFunctionName();
-            if (!call->GetIsAgg() || !IsAggFuncName(agg_func_name)) {
+            auto fn_def = dynamic_cast<const node::ExternalFnDefNode*>(
+                call->GetFnDef());
+            if (fn_def == nullptr) {
+                break;
+            }
+            auto agg_func_name = fn_def->function_name();
+            if (!IsAggFuncName(agg_func_name)) {
                 break;
             }
             auto args = call->GetArgs();
