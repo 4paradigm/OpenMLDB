@@ -24,6 +24,7 @@ public class TableHandler {
     private boolean hasTsCol = false;
     private String autoGenPkName = "";
     private int formatVersion = 0;
+    private List<Integer> partitionKeyList = new ArrayList<>();
     private boolean isObjectStore = false;
     private BlobServer blobServer = null;
     private List<Integer> blobIdxList = new ArrayList<Integer>();
@@ -175,6 +176,13 @@ public class TableHandler {
                 this.isObjectStore = true;
             }
         }
+
+        for (int idx = 0; idx < tableInfo.getPartitionKeyCount(); idx++) {
+            Object value = schemaPos.get(tableInfo.getPartitionKey(idx));
+            if (value != null) {
+                partitionKeyList.add((Integer) value);
+            }
+        }
     }
     
     public ReadStrategy getReadStrategy() {
@@ -222,6 +230,10 @@ public class TableHandler {
 
     public  boolean IsObjectTable() {
         return this.isObjectStore;
+    }
+
+    public List<Integer> GetPartitionKeyList() {
+        return this.partitionKeyList;
     }
 
     public TableInfo getTableInfo() {

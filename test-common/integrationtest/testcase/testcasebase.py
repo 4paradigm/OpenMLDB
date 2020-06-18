@@ -343,6 +343,18 @@ class TestCaseBase(unittest.TestCase):
         cmd = 'delete {} {} {}'.format(name, key, idx_name);
         return self.run_client(endpoint, cmd, 'ns_client')
 
+    def ns_info(self, endpoint, name):
+        cmd = 'info {}'.format(name);
+        result = self.run_client(endpoint, cmd, 'ns_client')
+        lines = result.split("\n")
+        kv = {}
+        for line_num in xrange(2, len(lines)):
+            arr = lines[line_num].strip().split(" ")
+            key = arr[0]
+            value = lines[line_num].strip().lstrip(key).strip()
+            kv[key] = value
+        return kv
+
     def ns_get_kv(self, endpoint, name, key, ts):
         cmd = 'get ' + name + ' ' + key+ ' ' + ts
         return self.run_client(endpoint, cmd, 'ns_client')

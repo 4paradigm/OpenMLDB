@@ -274,6 +274,7 @@ public class RowBuilder {
             boolean ok = false;
             switch (columnDesc.getDataType()) {
                 case Varchar:
+                case String:
                     ok = builder.appendString((String) column);
                     break;
                 case Bool:
