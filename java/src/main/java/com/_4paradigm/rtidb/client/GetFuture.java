@@ -21,12 +21,9 @@ public class GetFuture implements Future<ByteString>{
 	private Future<Tablet.GetResponse> f;
 	private TableHandler th;
 	private RowView rv;
-	private List<ColumnDesc> projection;
+	private ProjectionInfo projectionInfo = null;
+	private GetResponse response = null;
 
-	// the legacy format var
-	private List<Integer> projectionIdx;
-	private int maxProjectIndex;
-	private BitSet bitSet;
 	private int rowLength;
 	public static GetFuture wrappe(Future<Tablet.GetResponse> f, RTIDBClientConfig config) {
 		return new GetFuture(f, config);
@@ -35,16 +32,24 @@ public class GetFuture implements Future<ByteString>{
 	public static GetFuture wrappe(Future<Tablet.GetResponse> f, TableHandler t, RTIDBClientConfig config) {
 		return new GetFuture(f, t);
 	}
-	// for legacy format
-	public GetFuture(Future<Tablet.GetResponse> f, TableHandler t,
-					 List<Integer> projectionIdx,
-					 BitSet bitSet, int maxProjectIndex) {
+
+	public GetFuture(Future<Tablet.GetResponse> f, TableHandler t, ProjectionInfo projectionInfo) {
 		this.f = f;
 		this.th = t;
-		this.projectionIdx = projectionIdx;
-		this.maxProjectIndex = maxProjectIndex;
-		this.bitSet = bitSet;
-		this.rowLength = projectionIdx.size();
+		rowLength = t.getSchema().size();
+		this.projectionInfo = projectionInfo;
+		if (t.getTableInfo().getFormatVersion() == 1) {
+			if (projectionInfo != null && projectionInfo.getProjectionSchema() != null) {
+				rv = new RowView(projectionInfo.getProjectionSchema());
+				rowLength = projectionInfo.getProjectionSchema().size();
+			} else {
+				rv = new RowView(t.getSchema());
+			}
+		} else {
+			if (projectionInfo != null && projectionInfo.getProjectionCol() != null) {
+				this.rowLength = projectionInfo.getProjectionCol().size();
+			}
+		}
 	}
 
 	public GetFuture(Future<Tablet.GetResponse> f, TableHandler t) {
@@ -57,22 +62,6 @@ public class GetFuture implements Future<ByteString>{
 		if (th.getSchemaMap().size() > 0) {
 			rowLength += th.getSchemaMap().size();
 		}
-	}
-
-	public GetFuture(Future<Tablet.GetResponse> f, TableHandler t, RTIDBClientConfig config, List<ColumnDesc> projection) {
-		this.f = f;
-		this.th = t;
-		rowLength = t.getSchema().size();
-		if (t != null && t.getTableInfo().getFormatVersion() == 1) {
-			if (projection != null) {
-				rv = new RowView(projection);
-				rowLength = projection.size();
-			}else {
-				rv = new RowView(t.getSchema());
-			}
-			this.projection = projection;
-		}
-
 	}
 
 	public GetFuture(Future<Tablet.GetResponse> f,  RTIDBClientConfig config) {
@@ -138,6 +127,19 @@ public class GetFuture implements Future<ByteString>{
 		return row;
 	}
 
+	public Object[] getRowWithNoWait() throws ExecutionException, TabletException{
+		if (th.getSchema() == null || th.getSchema().isEmpty()) {
+			throw new TabletException("no schema for table " + th.getTableInfo().getName());
+		}
+		ByteString raw = getByteString();
+		if (raw == null || raw.isEmpty()) {
+			return null;
+		}
+		Object[] row = new Object[rowLength];
+		decode(raw, row, 0, row.length);
+		return row;
+	}
+
 	@Deprecated
 	public void getRow(Object[] row, int start, int length) throws TabletException, InterruptedException, ExecutionException {
 		if (th.getSchema() == null || th.getSchema().isEmpty()) {
@@ -156,8 +158,9 @@ public class GetFuture implements Future<ByteString>{
 				rv.read(raw.asReadOnlyByteBuffer().order(ByteOrder.LITTLE_ENDIAN), row, start, length);
 				break;
 			default:
-			    if (projectionIdx != null && projectionIdx.size() > 0) {
-					RowCodec.decode(raw.asReadOnlyByteBuffer(), th.getSchema(), bitSet, projectionIdx, maxProjectIndex, row, start, length);
+			    if (projectionInfo != null && projectionInfo.getProjectionCol() != null &&
+						!projectionInfo.getProjectionCol().isEmpty()) {
+					RowCodec.decode(raw.asReadOnlyByteBuffer(), th.getSchema(), projectionInfo, row, start, length);
 				}else {
 					RowCodec.decode(raw.asReadOnlyByteBuffer(), th.getSchema(), row, start, length);
 				}
@@ -166,7 +169,11 @@ public class GetFuture implements Future<ByteString>{
 
 	@Override
 	public ByteString get() throws InterruptedException, ExecutionException {
-		GetResponse response = f.get();
+		response = f.get();
+		return getByteString();
+	}
+
+	private ByteString getByteString() throws ExecutionException {
 		if (response != null && response.getCode() == 0) {
 			if (th.getTableInfo().hasCompressType()  && th.getTableInfo().getCompressType() == NS.CompressType.kSnappy) {
 				byte[] uncompressed = Compress.snappyUnCompress(response.getValue().toByteArray());
@@ -184,28 +191,18 @@ public class GetFuture implements Future<ByteString>{
 		} else {
 			throw new ExecutionException("response is null", null);
 		}
+
+	}
+
+	public GetResponse getResponse() throws InterruptedException, ExecutionException {
+		response = f.get();
+		return response;
 	}
 
 	@Override
 	public ByteString get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
-		GetResponse response = f.get(timeout, unit);
-		if (response != null && response.getCode() == 0) {
-			if (th.getTableInfo().hasCompressType()  && th.getTableInfo().getCompressType() == NS.CompressType.kSnappy) {
-				byte[] uncompressed = Compress.snappyUnCompress(response.getValue().toByteArray());
-				return ByteString.copyFrom(uncompressed);
-			} else {
-				return response.getValue();
-			}
-		}
-		if (response.getCode() == 109) {
-			return null;
-		}
-		if (response != null) {
-			String msg = String.format("Bad request with error %s code %d", response.getMsg(), response.getCode());
-			throw new ExecutionException(msg, null);
-		} else {
-			throw new ExecutionException("response is null", null);
-		}
+		response = f.get(timeout, unit);
+		return getByteString();
 	}
 
 }

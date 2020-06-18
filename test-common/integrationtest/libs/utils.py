@@ -113,19 +113,22 @@ def gen_table_meta_file(meta, filepath):
             s += key + ": " + str(value) + "\n"
         elif isinstance(value, list):
             for item in value:
-                s += key + " {\n"
-                for k, v in item.items():
-                    if isinstance(v, str):
-                        if v == "true" or v == "false":
-                            s += "  " + k + ": " + v + "\n"
-                        else:
-                            s += "  " + k + ": \"" + v + "\"\n"
-                    elif isinstance(v, int):
-                        s += "  " + k + ": " + str(v) + "\n"
-                    elif isinstance(v, list):
-                        for value in v:
-                            s += "  " + k + ": \"" + str(value) + "\"\n"
-                s += "}\n"
+                if isinstance(item, dict):
+                    s += key + " {\n"
+                    for k, v in item.items():
+                        if isinstance(v, str):
+                            if v == "true" or v == "false":
+                                s += "  " + k + ": " + v + "\n"
+                            else:
+                                s += "  " + k + ": \"" + v + "\"\n"
+                        elif isinstance(v, int):
+                            s += "  " + k + ": " + str(v) + "\n"
+                        elif isinstance(v, list):
+                            for value in v:
+                                s += "  " + k + ": \"" + str(value) + "\"\n"
+                    s += "}\n"
+                else:
+                    s += key + ": \"" + item + "\"\n"
 
     write(s, filepath, 'w')
     infoLogger.info(read(filepath))

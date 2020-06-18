@@ -19,16 +19,8 @@
 #include <sstream>
 
 #include "base/endianconv.h"
-#include "base/glog_wapper.h" // NOLINT
 #include "base/strings.h"
-#include "boost/container/deque.hpp"
-#include "base/glog_wapper.h"  // NOLINT
-#include "storage/segment.h"
-
-using ::rtidb::storage::DataBlock;
-
-
-
+#include "proto/common.pb.h"
 
 namespace rtidb {
 namespace codec {
@@ -89,6 +81,7 @@ class RowBuilder {
     bool AppendDate(uint32_t year, uint32_t month, uint32_t day);
     // append the date that encoded
     bool AppendDate(int32_t date);
+    bool AppendValue(const std::string& val);
 
     bool SetBool(uint32_t index, bool val);
     bool SetInt32(uint32_t index, int32_t val);
@@ -160,6 +153,7 @@ class RowView {
                      uint32_t* length);
 
     int32_t GetStrValue(const int8_t* row, uint32_t idx, std::string* val);
+    int32_t GetStrValue(uint32_t idx, std::string* val);
 
  private:
     bool Init();
