@@ -893,14 +893,21 @@ public class TableSyncClientImpl implements TableSyncClient {
             int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
             return delete(th.getTableInfo().getTid(), pid, key, idxName, th);
         } else {
+            int failed_cnt = 0;
             for (int pid = 0; pid < th.getPartitions().length; pid++) {
-                if (!delete(th.getTableInfo().getTid(), pid, key, idxName, th)) {
-                    return  false;
+                try {
+                    if (!delete(th.getTableInfo().getTid(), pid, key, idxName, th)) {
+                        failed_cnt++;
+                    }
+                } catch (TabletException e) {
+                    failed_cnt++;
                 }
             }
-            return true;
+            if (failed_cnt != th.getPartitions().length) {
+                return true;
+            }
+            return false;
         }
-
     }
 
     @Override

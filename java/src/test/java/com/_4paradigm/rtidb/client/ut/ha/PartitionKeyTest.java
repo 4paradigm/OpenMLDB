@@ -5,8 +5,10 @@ import com._4paradigm.rtidb.client.KvIterator;
 import com._4paradigm.rtidb.client.PutFuture;
 import com._4paradigm.rtidb.client.ScanFuture;
 import com._4paradigm.rtidb.client.base.TestCaseBase;
+import com._4paradigm.rtidb.client.impl.TableClientCommon;
 import com._4paradigm.rtidb.common.Common;
 import com._4paradigm.rtidb.ns.NS;
+import com._4paradigm.rtidb.tablet.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
@@ -36,24 +38,32 @@ public class PartitionKeyTest extends TestCaseBase {
     @DataProvider(name = "FormatVersion")
     public Object[][] FormatVersion() {
         return new Object[][] {
-                new Object[] { 1 },
-                new Object[] { 0 },
+                new Object[] { 1, new String[] {"card"}},
+                new Object[] { 0, new String[] {"card"}},
+                new Object[] { 1, new String[] {"mcc"}},
+                new Object[] { 0, new String[] {"mcc"}},
+                new Object[] { 1, new String[] {"amt"}},
+                new Object[] { 0, new String[] {"amt"}},
+                new Object[] { 1, new String[] {"card", "mcc"}},
+                new Object[] { 0, new String[] {"card", "mcc"}},
         };
     }
 
     @Test (dataProvider = "FormatVersion")
-    public void testPartitionKey(int formatVersion) {
+    public void testPartitionKey(int formatVersion, String[] partitionKey) {
         String name = String.valueOf(id.incrementAndGet());
         nsc.dropTable(name);
         Common.ColumnDesc col0 = Common.ColumnDesc.newBuilder().setName("card").setAddTsIdx(true).setType("string").build();
         Common.ColumnDesc col1 = Common.ColumnDesc.newBuilder().setName("mcc").setAddTsIdx(false).setType("string").build();
         Common.ColumnDesc col2 = Common.ColumnDesc.newBuilder().setName("amt").setAddTsIdx(false).setType("double").build();
-        NS.TableInfo table = NS.TableInfo.newBuilder()
+        NS.TableInfo.Builder builder = NS.TableInfo.newBuilder()
                 .setName(name).setTtl(0)
                 .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2)
-                .addPartitionKey("mcc")
-                .setFormatVersion(formatVersion)
-                .build();
+                .setFormatVersion(formatVersion);
+        for (String key : partitionKey) {
+            builder.addPartitionKey(key);
+        }
+        NS.TableInfo table = builder.build();
         boolean ok = nsc.createTable(table);
         Assert.assertTrue(ok);
         client.refreshRouteTable();
@@ -97,26 +107,27 @@ public class PartitionKeyTest extends TestCaseBase {
             GetFuture gf = tableAsyncClient.get(name, "card0", "card", 0);
             Assert.assertTrue(false);
         } catch (Exception e) {
-            Assert.assertTrue(true);
+            Assert.fail();
         }
         nsc.dropTable(name);
     }
 
     @Test (dataProvider = "FormatVersion")
-    public void testIndexIsPartitionKey(int formatVersion) {
+    public void testIndexIsPartitionKey(int formatVersion, String[] partitionKey) {
         String name = String.valueOf(id.incrementAndGet());
         nsc.dropTable(name);
         Common.ColumnDesc col0 = Common.ColumnDesc.newBuilder().setName("card").setAddTsIdx(true).setType("string").build();
         Common.ColumnDesc col1 = Common.ColumnDesc.newBuilder().setName("mcc").setAddTsIdx(true).setType("string").build();
         Common.ColumnDesc col2 = Common.ColumnDesc.newBuilder().setName("amt").setAddTsIdx(false).setType("double").build();
-        NS.TableInfo table = NS.TableInfo.newBuilder()
+        NS.TableInfo.Builder builder = NS.TableInfo.newBuilder()
                 .setName(name).setTtl(0)
                 .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2)
-                .addPartitionKey("mcc")
-                .setFormatVersion(formatVersion)
-                .build();
-        boolean ok = nsc.createTable(table);
-        Assert.assertTrue(ok);
+                .setFormatVersion(formatVersion);
+        for (String key : partitionKey) {
+            builder.addPartitionKey(key);
+        }
+        NS.TableInfo table = builder.build();
+        Assert.assertTrue(nsc.createTable(table));
         client.refreshRouteTable();
         try {
             Map<String, Object> data = new HashMap<String, Object>();
@@ -150,25 +161,28 @@ public class PartitionKeyTest extends TestCaseBase {
             Assert.assertEquals(row[1], "mcc0");
         } catch (Exception e) {
             e.printStackTrace();
-            Assert.assertTrue(false);
+            Assert.fail();
+        } finally {
+            nsc.dropTable(name);
         }
     }
 
     @Test (dataProvider = "FormatVersion")
-    public void testBigData(int formatVersion) {
+    public void testBigData(int formatVersion, String[] partitionKey) {
         String name = String.valueOf(id.incrementAndGet());
         nsc.dropTable(name);
         Common.ColumnDesc col0 = Common.ColumnDesc.newBuilder().setName("card").setAddTsIdx(true).setType("string").build();
         Common.ColumnDesc col1 = Common.ColumnDesc.newBuilder().setName("mcc").setAddTsIdx(true).setType("string").build();
         Common.ColumnDesc col2 = Common.ColumnDesc.newBuilder().setName("amt").setAddTsIdx(false).setType("double").build();
-        NS.TableInfo table = NS.TableInfo.newBuilder()
+        NS.TableInfo.Builder builder = NS.TableInfo.newBuilder()
                 .setName(name).setTtl(0)
                 .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2)
-                .addPartitionKey("mcc")
-                .setFormatVersion(formatVersion)
-                .build();
-        boolean ok = nsc.createTable(table);
-        Assert.assertTrue(ok);
+                .setFormatVersion(formatVersion);
+        for (String key : partitionKey) {
+            builder.addPartitionKey(key);
+        }
+        NS.TableInfo table = builder.build();
+        Assert.assertTrue(nsc.createTable(table));
         client.refreshRouteTable();
         try {
             long ts = System.currentTimeMillis();
@@ -199,23 +213,263 @@ public class PartitionKeyTest extends TestCaseBase {
                 cur_ts--;
                 it.next();
             }
-            Assert.assertTrue(tableSyncClient.delete(name, "card10"));
-            Assert.assertTrue(tableSyncClient.delete(name, "mcc10", "mcc"));
-            Assert.assertEquals(0, tableSyncClient.count(name, "card10"));
-            Assert.assertEquals(0, tableSyncClient.count(name, "mcc10", "mcc"));
             it = tableSyncClient.traverse(name);
             int count = 0;
             while(it.valid()) {
                 it.next();
+                count++;
             }
             Assert.assertEquals(5000, count);
             it = tableSyncClient.traverse(name, "mcc");
+            count = 0;
             while(it.valid()) {
                 it.next();
+                count++;
             }
             Assert.assertEquals(5000, count);
+            Assert.assertTrue(tableSyncClient.delete(name, "card10"));
+            Assert.assertEquals(0, tableSyncClient.count(name, "card10"));
+            Assert.assertEquals(100, tableSyncClient.count(name, "mcc10", "mcc"));
+            it = tableSyncClient.traverse(name);
+            count = 0;
+            while(it.valid()) {
+                it.next();
+                count++;
+            }
+            Assert.assertEquals(4900, count);
+            it = tableSyncClient.traverse(name, "mcc");
+            count = 0;
+            while(it.valid()) {
+                it.next();
+                count++;
+            }
+            Assert.assertEquals(5000, count);
+            Assert.assertTrue(tableSyncClient.delete(name, "mcc10", "mcc"));
+            it = tableSyncClient.traverse(name, "mcc");
+            count = 0;
+            while(it.valid()) {
+                it.next();
+                count++;
+            }
+            Assert.assertEquals(4900, count);
         } catch (Exception e) {
             e.printStackTrace();
+            Assert.fail();
+        } finally {
+            nsc.dropTable(name);
+        }
+    }
+
+    @DataProvider(name = "PartitionKey")
+    public Object[][] PartitionKey() {
+        return new Object[][] {
+                new Object[] { 1, new String[] {"col1"}, new String[] {"col1"}},
+                new Object[] { 0, new String[] {"col1"}, new String[] {"col1"}},
+                new Object[] { 0, new String[] {"col2"}, new String[] {"col1"}},
+                new Object[] { 1, new String[] {"col2"}, new String[] {"col1"}},
+                new Object[] { 0, new String[] {"col1", "col2"}, new String[] {"col1"}},
+                new Object[] { 1, new String[] {"col1", "col2"}, new String[] {"col1"}},
+                new Object[] { 1, new String[] {"col1"}, new String[] {"col5"}},
+                new Object[] { 0, new String[] {"col1"}, new String[] {"col5"}},
+                new Object[] { 1, new String[] {"col1", "col2"}, new String[] {"col1", "col2"}},
+                new Object[] { 0, new String[] {"col1", "col2"}, new String[] {"col1", "col2"}},
+                new Object[] { 1, new String[] {"col1"}, new String[] {"col1", "col2"}},
+                new Object[] { 0, new String[] {"col1"}, new String[] {"col1", "col2"}},
+                new Object[] { 1, new String[] {"col1"}, new String[] {"col1", "col2", "col5"}},
+                new Object[] { 0, new String[] {"col1"}, new String[] {"col1", "col2", "col5"}},
+        };
+    }
+
+    private void CreateAndPut(String name, int formatVersion, Common.ColumnKey[] columnKeys, String[] partitionKey) {
+        nsc.dropTable(name);
+        NS.TableInfo.Builder builder = NS.TableInfo.newBuilder()
+                .setName(name).setTtl(0)
+                .addColumnDescV1(Common.ColumnDesc.newBuilder().setName("col1").setType("string").build())
+                .addColumnDescV1(Common.ColumnDesc.newBuilder().setName("col2").setType("string").build())
+                .addColumnDescV1(Common.ColumnDesc.newBuilder().setName("col3").setType("string").build())
+                .addColumnDescV1(Common.ColumnDesc.newBuilder().setName("col4").setType("int64").build())
+                .addColumnDescV1(Common.ColumnDesc.newBuilder().setName("col5").setType("int64").setIsTsCol(true).build())
+                .setFormatVersion(formatVersion);
+        for (Common.ColumnKey columnKey : columnKeys) {
+            builder.addColumnKey(columnKey);
+        }
+        for (String key : partitionKey) {
+            builder.addPartitionKey(key);
+        }
+        NS.TableInfo table = builder.build();
+        Assert.assertTrue(nsc.createTable(table));
+        client.refreshRouteTable();
+        try {
+            for (int idx = 0; idx < 10; idx++) {
+                Map<String, Object> data = new HashMap<String, Object>();
+                data.put("col1", "col1" + String.valueOf(idx));
+                data.put("col2", "col2" + String.valueOf(idx));
+                data.put("col3", "col3" + String.valueOf(idx));
+                for (int j = 0; j < 5; j++) {
+                    data.put("col4", 100l + j);
+                    data.put("col5", 1000l + j);
+                    Assert.assertTrue(tableSyncClient.put(name, data));
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.fail();
+        }
+    }
+
+    @Test (dataProvider = "PartitionKey")
+    public void testParitionKey(int formatVersion, String[] columnKey, String[] partitionKey) {
+        String name = String.valueOf(id.incrementAndGet());
+        Common.ColumnKey.Builder builder = Common.ColumnKey.newBuilder();
+        String indexName = "";
+        for (String col : columnKey) {
+            indexName += col;
+            builder.addColName(col);
+        }
+        builder.setIndexName(indexName);
+        CreateAndPut(name, formatVersion, new Common.ColumnKey[] { builder.build()}, partitionKey);
+        try {
+            Map<String, Object> scanMap = new HashMap<>();
+            Object[] keyRow = new Object[columnKey.length];
+            int idx = 0;
+            for (String col : columnKey) {
+                scanMap.put(col, col + String.valueOf(1));
+                keyRow[idx++] = col + String.valueOf(1);
+            }
+            KvIterator it = tableSyncClient.scan(name, scanMap, indexName, 0, 0, "col5", 0);
+            Assert.assertTrue(it.valid());
+            Assert.assertTrue(it.getCount() == 5);
+            Object[] value = it.getDecodedValue();
+            Assert.assertEquals(value[0], "col11");
+            Assert.assertEquals(value[1], "col21");
+
+            Object[] row = tableSyncClient.getRow(name, scanMap, indexName, 0, "col5", Tablet.GetType.kSubKeyEq);
+            Assert.assertEquals(row.length, 5);
+            Assert.assertEquals(row[0], "col11");
+            Assert.assertEquals(row[1], "col21");
+
+            it = tableSyncClient.traverse(name);
+            int count = 0;
+            while(it.valid()) {
+                it.next();
+                count++;
+            }
+            Assert.assertEquals(50, count);
+            Assert.assertEquals(5, tableSyncClient.count(name, scanMap, indexName, "col5", true));
+            String key = TableClientCommon.getCombinedKey(keyRow, true);
+            tableSyncClient.delete(name, key, indexName);
+            Assert.assertEquals(0, tableSyncClient.count(name, scanMap, indexName, "col5", true));
+            it = tableSyncClient.traverse(name);
+            count = 0;
+            while(it.valid()) {
+                it.next();
+                count++;
+            }
+            Assert.assertEquals(45, count);
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.fail();
+        } finally {
+            nsc.dropTable(name);
+        }
+    }
+
+    @DataProvider(name = "MultiColumnKey")
+    public Object[][] MultiColumnKey() {
+        return new Object[][] {
+                new Object[] { 1, new Object[] {new String[] {"col1"}, new String[] {"col2"} }, new String[] {"col1"}},
+                new Object[] { 0, new Object[] {new String[] {"col1"}, new String[] {"col2"} }, new String[] {"col1"}},
+                new Object[] { 1, new Object[] {new String[] {"col1", "col3"}, new String[] {"col2"} }, new String[] {"col1"}},
+                new Object[] { 0, new Object[] {new String[] {"col1", "col3"}, new String[] {"col2"} }, new String[] {"col1"}},
+                new Object[] { 1, new Object[] {new String[] {"col1", "col3"}, new String[] {"col2"} }, new String[] {"col2"}},
+                new Object[] { 0, new Object[] {new String[] {"col1", "col3"}, new String[] {"col2"} }, new String[] {"col2"}},
+                new Object[] { 1, new Object[] {new String[] {"col1", "col3"}, new String[] {"col2"} }, new String[] {"col1", "col3"}},
+                new Object[] { 0, new Object[] {new String[] {"col1", "col3"}, new String[] {"col2"} }, new String[] {"col1", "col3"}},
+                new Object[] { 1, new Object[] {new String[] {"col1", "col3"}, new String[] {"col2"} }, new String[] {"col5"}},
+                new Object[] { 0, new Object[] {new String[] {"col1", "col3"}, new String[] {"col2"} }, new String[] {"col5"}},
+                new Object[] { 1, new Object[] {new String[] {"col1"}, new String[] {"col2"}, new String[] {"col3"} }, new String[] {"col1"}},
+                new Object[] { 0, new Object[] {new String[] {"col1"}, new String[] {"col2"}, new String[] {"col3"} }, new String[] {"col1"}},
+                new Object[] { 1, new Object[] {new String[] {"col1"}, new String[] {"col2"}, new String[] {"col3"} }, new String[] {"col1", "col2", "col3"}},
+                new Object[] { 0, new Object[] {new String[] {"col1"}, new String[] {"col2"}, new String[] {"col3"} }, new String[] {"col1", "col2", "col3"}},
+                new Object[] { 1, new Object[] {new String[] {"col1"}, new String[] {"col2"}, new String[] {"col3"} }, new String[] {"col1", "col2", "col5"}},
+                new Object[] { 0, new Object[] {new String[] {"col1"}, new String[] {"col2"}, new String[] {"col3"} }, new String[] {"col1", "col2", "col5"}},
+                new Object[] { 1, new Object[] {new String[] {"col1", "col2", "col3"}}, new String[] {"col1", "col2", "col5"}},
+                new Object[] { 0, new Object[] {new String[] {"col1", "col2", "col3"}}, new String[] {"col1", "col2", "col5"}},
+        };
+    }
+
+    @Test (dataProvider = "MultiColumnKey")
+    public void testParitionKeyMultiColumnKey(int formatVersion, Object[] columnKey, String[] partitionKey) {
+        String name = String.valueOf(id.incrementAndGet());
+        Common.ColumnKey[] keys = new Common.ColumnKey[columnKey.length];
+        int idx = 0;
+        for (Object arr : columnKey) {
+            Common.ColumnKey.Builder builder = Common.ColumnKey.newBuilder();
+            String indexName = "";
+            for (String col : (String[])arr) {
+                indexName += col;
+                builder.addColName(col);
+            }
+            builder.setIndexName(indexName);
+            keys[idx++] = builder.build();
+        }
+        CreateAndPut(name, formatVersion, keys, partitionKey);
+        try {
+            for (int i = 0; i < columnKey.length; i++) {
+                Map<String, Object> scanMap = new HashMap<>();
+                Object[] keyRow = new Object[((String[]) columnKey[0]).length];
+                idx = 0;
+                String indexName = "";
+                for (String col : (String[]) (columnKey[i])) {
+                    indexName += col;
+                    scanMap.put(col, col + String.valueOf(1));
+                }
+                KvIterator it = tableSyncClient.scan(name, scanMap, indexName, 0, 0, "col5", 0);
+                Assert.assertTrue(it.valid());
+                Assert.assertTrue(it.getCount() == 5);
+                Object[] value = it.getDecodedValue();
+                Assert.assertEquals(value[0], "col11");
+                Assert.assertEquals(value[1], "col21");
+
+                Object[] row = tableSyncClient.getRow(name, scanMap, indexName, 0, "col5", Tablet.GetType.kSubKeyEq);
+                Assert.assertEquals(row.length, 5);
+                Assert.assertEquals(row[0], "col11");
+                Assert.assertEquals(row[1], "col21");
+                Assert.assertEquals(5, tableSyncClient.count(name, scanMap, indexName, "col5", true));
+            }
+
+            Map<String, Object> scanMap = new HashMap<>();
+            Object[] keyRow = new Object[((String[]) columnKey[0]).length];
+            idx = 0;
+            String indexName = "";
+            for (String col : (String[]) (columnKey[0])) {
+                indexName += col;
+                scanMap.put(col, col + String.valueOf(1));
+                keyRow[idx++] = col + String.valueOf(1);
+            }
+
+            KvIterator it = tableSyncClient.traverse(name);
+            int count = 0;
+            while(it.valid()) {
+                it.next();
+                count++;
+            }
+            Assert.assertEquals(50, count);
+            String key = TableClientCommon.getCombinedKey(keyRow, true);
+            tableSyncClient.delete(name, key, indexName);
+            Assert.assertEquals(0, tableSyncClient.count(name, scanMap, indexName, "col5", true));
+            it = tableSyncClient.traverse(name);
+            count = 0;
+            while(it.valid()) {
+                it.next();
+                count++;
+            }
+            Assert.assertEquals(45, count);
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.fail();
+        } finally {
+            nsc.dropTable(name);
         }
     }
 }
