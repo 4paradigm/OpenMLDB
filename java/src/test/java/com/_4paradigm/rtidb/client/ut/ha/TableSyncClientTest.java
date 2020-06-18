@@ -2910,9 +2910,6 @@ public class TableSyncClientTest extends TestCaseBase {
             Assert.assertTrue(it.valid());
             queryMap = it.getDecodedValue();
             Assert.assertEquals(queryMap.get("memory"), 11);
-
-
-
         } catch (Exception e) {
             e.printStackTrace();
             Assert.assertTrue(false);
