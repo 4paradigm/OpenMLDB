@@ -22,11 +22,11 @@
 #include "base/kv_iterator.h"
 #include "base/linenoise.h"
 #include "base/strings.h"
-#include "blob_proxy/blob_proxy_impl.h"
 #if __linux__
 #include "blobserver/blobserver_impl.h"
 #include "nameserver/name_server_impl.h"
 #include "tablet/tablet_impl.h"
+#include "blob_proxy/blob_proxy_impl.h"
 #endif
 #include "boost/algorithm/string.hpp"
 #include "boost/lexical_cast.hpp"
@@ -34,7 +34,6 @@
 #include "client/bs_client.h"
 #include "client/ns_client.h"
 #include "client/tablet_client.h"
-#include "client/bs_client.h"
 #include "codec/flat_array.h"
 #include "codec/row_codec.h"
 #include "codec/schema_codec.h"
@@ -42,7 +41,6 @@
 #include "cmd/display.h"
 #include "cmd/sdk_iterator.h"
 #include "cmd/sql_cmd.h"
-#include "nameserver/name_server_impl.h"
 #include "proto/client.pb.h"
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
