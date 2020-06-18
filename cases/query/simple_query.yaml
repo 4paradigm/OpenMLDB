@@ -4,6 +4,7 @@ SQLCases:
     mode: request
     db: db1
     sql: select * from t1;
+    standard_sql: true
     inputs:
       - name: t1
         resource: cases/resource/simple_t1_ts.yaml
@@ -23,6 +24,7 @@ SQLCases:
     mode: request
     db: db1
     sql: select col0, col1 as id, col2, col3, col4, col5, col6, std_ts from t1;
+    standard_sql: true
     inputs:
       - name: t1
         resource: cases/resource/simple_t1_ts.yaml
