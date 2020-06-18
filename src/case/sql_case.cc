@@ -632,7 +632,8 @@ bool SQLCase::CreateSQLCasesFromYaml(
             }
 
             if (sql_case_node["standard_sql"]) {
-                sql_case.standard_sql_ = sql_case_node["standard_sql"].as<bool>();
+                sql_case.standard_sql_ =
+                    sql_case_node["standard_sql"].as<bool>();
             } else {
                 sql_case.standard_sql_ = false;
             }
