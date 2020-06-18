@@ -140,6 +140,30 @@ TEST_F(UDFIRBuilderTest, day_udf_test) {
     }
 }
 
+TEST_F(UDFIRBuilderTest, day_i64_udf_test) {
+    base::Status status;
+    auto ctx = llvm::make_unique<LLVMContext>();
+    auto m = make_unique<Module>("udf_test", *ctx);
+    fesql::udf::RegisterUDFToModule(m.get());
+    m->print(::llvm::errs(), NULL, true, true);
+
+    auto J = ExitOnErr(LLJITBuilder().create());
+    auto &jd = J->getMainJITDylib();
+    ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
+                                      J->getDataLayout());
+    ::fesql::vm::InitCodecSymbol(jd, mi);
+    ::fesql::udf::InitUDFSymbol(jd, mi);
+    ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
+    // Day
+    {
+        auto fn = ExitOnErr(J->lookup("day"));
+        int32_t (*day)(int64_t) =
+        (int32_t(*)(int64_t))fn.getAddress();
+        codec::Date d1(2020, 05, 27);
+        ASSERT_EQ(27, day(1590581279000L));
+    }
+}
+
 }  // namespace codegen
 }  // namespace fesql
 

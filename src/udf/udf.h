@@ -61,6 +61,9 @@ bool max_strcut_list(int8_t *input, V *v);
 template <class V>
 bool min_struct_list(int8_t *input, V *v);
 
+int32_t day(int64_t ts);
+int32_t month(int64_t ts);
+int32_t year(int64_t ts);
 }  // namespace v1
 void InitUDFSymbol(vm::FeSQLJIT *jit_ptr);                // NOLINT
 void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT

@@ -42,7 +42,6 @@ TEST_F(UDFBMCaseTest, CopyMemTable_TEST) {
     CopyMemTable(nullptr, TEST, 1000L);
 }
 
-
 TEST_F(UDFBMCaseTest, CopyArrayList_TEST) {
     CopyArrayList(nullptr, TEST, 10L);
     CopyArrayList(nullptr, TEST, 100L);
@@ -56,9 +55,9 @@ TEST_F(UDFBMCaseTest, TabletTableIterate_TEST) {
 }
 
 TEST_F(UDFBMCaseTest, TabletWindowIterate_TEST) {
-//    TabletWindowIterate(nullptr, TEST, 10L);
+    //    TabletWindowIterate(nullptr, TEST, 10L);
     TabletWindowIterate(nullptr, TEST, 100L);
-//    TabletWindowIterate(nullptr, TEST, 1000L);
+    //    TabletWindowIterate(nullptr, TEST, 1000L);
 }
 
 TEST_F(UDFBMCaseTest, MemSegmentIterate_TEST) {
@@ -72,6 +71,9 @@ TEST_F(UDFBMCaseTest, MemTableIterate_TEST) {
     MemTableIterate(nullptr, TEST, 100L);
     MemTableIterate(nullptr, TEST, 1000L);
 }
+TEST_F(UDFBMCaseTest, CTimeDay_TEST) { CTimeDay(nullptr, TEST, 1); }
+TEST_F(UDFBMCaseTest, CTimeMonth) { CTimeMonth(nullptr, TEST, 1); }
+TEST_F(UDFBMCaseTest, CTimeYear_TEST) { CTimeYear(nullptr, TEST, 1); }
 }  // namespace bm
 }  // namespace fesql
 int main(int argc, char** argv) {

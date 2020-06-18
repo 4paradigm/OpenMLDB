@@ -611,6 +611,22 @@ TEST_F(UDFTest, GetColHeapTest) {
     }
 }
 
+TEST_F(UDFTest, TimeDayTest) {
+    for(time_t t = 0; t < INT64_MAX; t+=3600000) {
+        ASSERT_EQ(udf::v1::ctime_day(t), udf::v1::my_day(t)) << "Timestamp: " << t;
+    }
+}
+TEST_F(UDFTest, TimeYearTest) {
+    ASSERT_EQ(2101, udf::v1::my_year(4133980800000));
+    for(time_t t = 0; t < INT64_MAX; t+=3600000) {
+        ASSERT_EQ(udf::v1::ctime_year(t), udf::v1::my_year(t)) << "Timestamp: " << t;
+    }
+}
+TEST_F(UDFTest, TimeMonthTest) {
+    for(time_t t = 0; t < INT64_MAX; t+=3600000) {
+        ASSERT_EQ(udf::v1::ctime_month(t), udf::v1::my_month(t)) << "Timestamp: " << t;
+    }
+}
 }  // namespace udf
 }  // namespace fesql
 int main(int argc, char** argv) {

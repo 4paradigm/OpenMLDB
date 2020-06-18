@@ -8,8 +8,12 @@
  **/
 #include "udf/udf.h"
 #include <stdint.h>
+#include <time.h>
+#include <ctime>
 #include <utility>
 #include <vector>
+#include "absl/time/civil_time.h"
+#include "absl/time/time.h"
 #include "base/fe_slice.h"
 #include "base/iterator.h"
 #include "codec/list_iterator_codec.h"
@@ -17,7 +21,6 @@
 #include "codegen/ir_base_builder.h"
 #include "codegen/udf_ir_builder.h"
 #include "proto/fe_type.pb.h"
-
 namespace fesql {
 namespace udf {
 namespace v1 {
@@ -30,6 +33,8 @@ using fesql::codec::Row;
 using fesql::codec::StringColumnImpl;
 using fesql::codec::StringRef;
 
+const int32_t TZ = 8;
+const time_t TZ_OFFSET = TZ * 3600000;
 template <class V>
 int32_t current_time() {
     return 5;
@@ -40,7 +45,24 @@ inline V inc(V i) {
     return i + 1;
 }
 int32_t inc_int32(int32_t i) { return inc<int32_t>(i); }
-
+int32_t day(int64_t ts) {
+    time_t time = (ts + TZ_OFFSET) / 1000;
+    struct tm t;
+    gmtime_r(&time, &t);
+    return t.tm_mday;
+}
+int32_t month(int64_t ts) {
+    time_t time = (ts + TZ_OFFSET) / 1000;
+    struct tm t;
+    gmtime_r(&time, &t);
+    return t.tm_mon+1;
+}
+int32_t year(int64_t ts) {
+    time_t time = (ts + TZ_OFFSET) / 1000;
+    struct tm t;
+    gmtime_r(&time, &t);
+    return t.tm_year + 1900;
+}
 template <class V>
 V sum_list(int8_t *input) {
     V result = V();
@@ -260,7 +282,7 @@ V minimum(V l, V r) {
 }
 template <class V>
 V maximum(V l, V r) {
-  return l > r ? l : r;
+    return l > r ? l : r;
 }
 
 }  // namespace v1
@@ -272,6 +294,9 @@ void InitUDFSymbol(vm::FeSQLJIT *jit_ptr) {
 void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
                    ::llvm::orc::MangleAndInterner &mi) {  // NOLINT
     AddSymbol(jd, mi, "inc_int32", reinterpret_cast<void *>(&v1::inc_int32));
+    AddSymbol(jd, mi, "day", reinterpret_cast<void *>(&v1::day));
+    AddSymbol(jd, mi, "month", reinterpret_cast<void *>(&v1::month));
+    AddSymbol(jd, mi, "year", reinterpret_cast<void *>(&v1::year));
     AddSymbol(jd, mi, "sum_list_int16",
               reinterpret_cast<void *>(&v1::sum_list<int16_t>));
     AddSymbol(jd, mi, "sum_list_int32",
@@ -300,9 +325,8 @@ void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
     AddSymbol(
         jd, mi, "count_list_timestamp",
         reinterpret_cast<void *>(&v1::count_list<fesql::codec::Timestamp>));
-    AddSymbol(
-        jd, mi, "count_list_date",
-        reinterpret_cast<void *>(&v1::count_list<fesql::codec::Date>));
+    AddSymbol(jd, mi, "count_list_date",
+              reinterpret_cast<void *>(&v1::count_list<fesql::codec::Date>));
     AddSymbol(
         jd, mi, "count_list_string",
         reinterpret_cast<void *>(&v1::count_list<fesql::codec::StringRef>));
@@ -333,9 +357,9 @@ void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
     AddSymbol(jd, mi, "max_list_timestamp",
               reinterpret_cast<void *>(
                   &v1::max_struct_list<fesql::codec::Timestamp>));
-    AddSymbol(jd, mi, "max_list_date",
-              reinterpret_cast<void *>(
-                  &v1::max_struct_list<fesql::codec::Date>));
+    AddSymbol(
+        jd, mi, "max_list_date",
+        reinterpret_cast<void *>(&v1::max_struct_list<fesql::codec::Date>));
     AddSymbol(jd, mi, "max_list_string",
               reinterpret_cast<void *>(
                   &v1::max_struct_list<fesql::codec::StringRef>));
@@ -353,9 +377,9 @@ void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
     AddSymbol(jd, mi, "min_list_timestamp",
               reinterpret_cast<void *>(
                   &v1::min_struct_list<fesql::codec::Timestamp>));
-    AddSymbol(jd, mi, "min_list_date",
-              reinterpret_cast<void *>(
-                  &v1::min_struct_list<fesql::codec::Date>));
+    AddSymbol(
+        jd, mi, "min_list_date",
+        reinterpret_cast<void *>(&v1::min_struct_list<fesql::codec::Date>));
     AddSymbol(jd, mi, "min_list_string",
               reinterpret_cast<void *>(
                   &v1::min_struct_list<fesql::codec::StringRef>));
@@ -407,9 +431,8 @@ void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
     AddSymbol(
         jd, mi, "has_next_iterator_timestamp",
         reinterpret_cast<void *>(&v1::has_next_iterator<codec::Timestamp>));
-    AddSymbol(
-        jd, mi, "has_next_iterator_date",
-        reinterpret_cast<void *>(&v1::has_next_iterator<codec::Date>));
+    AddSymbol(jd, mi, "has_next_iterator_date",
+              reinterpret_cast<void *>(&v1::has_next_iterator<codec::Date>));
     AddSymbol(
         jd, mi, "has_next_iterator_string",
         reinterpret_cast<void *>(&v1::has_next_iterator<codec::StringRef>));
@@ -427,9 +450,8 @@ void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
     AddSymbol(
         jd, mi, "next_iterator_timestamp",
         reinterpret_cast<void *>(&v1::next_struct_iterator<codec::Timestamp>));
-    AddSymbol(
-        jd, mi, "next_iterator_date",
-        reinterpret_cast<void *>(&v1::next_struct_iterator<codec::Date>));
+    AddSymbol(jd, mi, "next_iterator_date",
+              reinterpret_cast<void *>(&v1::next_struct_iterator<codec::Date>));
     AddSymbol(
         jd, mi, "next_iterator_string",
         reinterpret_cast<void *>(&v1::next_struct_iterator<codec::StringRef>));
@@ -525,6 +547,9 @@ void RegisterUDFToModule(::llvm::Module *m) {
     struct_time_types.push_back(std::make_pair(fesql::node::kTimestamp, ts_ty));
 
     m->getOrInsertFunction("inc_int32", i32_ty, i32_ty);
+    m->getOrInsertFunction("day", i32_ty, i64_ty);
+    m->getOrInsertFunction("year", i32_ty, i64_ty);
+    m->getOrInsertFunction("month", i32_ty, i64_ty);
 
     {
         std::string prefix =
