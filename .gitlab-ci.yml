@@ -189,3 +189,4 @@ docker-image:
         - tags
         - develop
         - feat/deploy-k8s-blob-proxy
+        - release/*
