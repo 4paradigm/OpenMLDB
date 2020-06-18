@@ -89,25 +89,25 @@ public class PartitionKeyTest extends TestCaseBase {
             Assert.assertEquals(row[1], "mcc1");
         } catch (Exception e) {
             e.printStackTrace();
-            Assert.assertTrue(false);
+            Assert.fail();
         }
         try {
             PutFuture pf = tableAsyncClient.put(name, 1133, new Object[]{"card0", "mcc1", 1.2});
-            Assert.assertTrue(false);
+            Assert.fail();
         } catch (Exception e) {
             Assert.assertTrue(true);
         }
         try {
             ScanFuture sf = tableAsyncClient.scan(name, "card0", "card", 0, 0);
-            Assert.assertTrue(false);
+            Assert.fail();
         } catch (Exception e) {
             Assert.assertTrue(true);
         }
         try {
             GetFuture gf = tableAsyncClient.get(name, "card0", "card", 0);
-            Assert.assertTrue(false);
-        } catch (Exception e) {
             Assert.fail();
+        } catch (Exception e) {
+            Assert.assertTrue(true);
         }
         nsc.dropTable(name);
     }
