@@ -49,6 +49,7 @@ public class TtlCreateTest extends TestCaseBase {
             schema.add(desc);
         }
         int tid = id.incrementAndGet();
+        tabletClient.dropTable(tid, 0);
         Boolean okMultiDimension = tabletClient.createTable("tj0", tid, 0, ttl, TTLType.kLatestTime, 8, schema);
         Assert.assertEquals(okMultiDimension, createOk);
         tabletClient.dropTable(tid, 0);
@@ -69,6 +70,7 @@ public class TtlCreateTest extends TestCaseBase {
             schema.add(desc);
         }
         int tid = id.incrementAndGet();
+        tabletClient.dropTable(tid, 0);
         Boolean okOneDimension = tabletClient.createTable("tj0", tid, 0, ttl, TTLType.kLatestTime, 8);
         Assert.assertEquals(okOneDimension, createOk);
         tabletClient.dropTable(tid, 0);
@@ -148,11 +150,13 @@ public class TtlCreateTest extends TestCaseBase {
             System.out.println("data ready failed!");
             Assert.fail();
         }
+        tabletClient.dropTable(tid, 0);
     }
 
 
     @Test(dataProvider = "ttl")
     public void testTtl(boolean multiDimention, int tid, long ttl, TTLType ttlType, String ttlValues) {
+        tabletClient.dropTable(tid, 0);
         try {
 
             if (ttlType == TTLType.kLatestTime) {
@@ -207,6 +211,7 @@ public class TtlCreateTest extends TestCaseBase {
 
     @Test(dataProvider = "ttl")
     public void testLatest(boolean multiDimention, int tid, long ttl, TTLType ttlType, String ttlValues) {
+        tabletClient.dropTable(tid, 0);
         try {
             if (ttlType == TTLType.kAbsoluteTime) {
                 return;
