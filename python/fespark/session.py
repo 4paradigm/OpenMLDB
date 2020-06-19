@@ -9,17 +9,16 @@ class FesqlSession(object):
     def __init__(self, pySparkSession=None):
         self.jsession = None
 
-        # Init the py4j jvm from local or spark-submit
+        # Init existing JVM for spark-submit and start new JVM for local run
         GlobalBackend.init()
-
-        if pySparkSession is not None:
-            self.jsession = GlobalBackend.get().fesql_api.FesqlSession(pySparkSession._jsparkSession)
 
         if "PYSPARK_GATEWAY_PORT" not in os.environ: # Run with spark-submit
             from pyspark.sql import SparkSession
             pySparkSession = SparkSession.builder.getOrCreate()
             self.jsession = GlobalBackend.get().fesql_api.FesqlSession(pySparkSession._jsparkSession)
         else: # Run with local script
+            # Always create new SparkSession with Scala API, notice that do \
+            # not use pySparkSession._jsparkSession which is in another JVM
             self.jsession = GlobalBackend.get().fesql_api.FesqlSession()
 
     @property
@@ -43,3 +42,6 @@ class FesqlSession(object):
 
     def __str__(self):
         return self.jsession.toString()
+
+    def getSparkSession(self):
+        return self.jsession.getSparkSession()

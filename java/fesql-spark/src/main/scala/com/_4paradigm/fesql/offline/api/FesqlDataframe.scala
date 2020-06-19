@@ -1,7 +1,7 @@
 package com._4paradigm.fesql.offline.api
 
 import com._4paradigm.fesql.offline.SchemaUtil
-import org.apache.spark.sql.{DataFrame, Row}
+import org.apache.spark.sql.{DataFrame, SparkSession, Row}
 import org.slf4j.LoggerFactory
 
 case class FesqlDataframe(fesqlSession: FesqlSession, sparkDf: DataFrame) {
@@ -156,6 +156,24 @@ case class FesqlDataframe(fesqlSession: FesqlSession, sparkDf: DataFrame) {
    */
   def getSparkDf(): DataFrame = {
     sparkDf
+  }
+
+  /**
+   * Get fesql session object.
+   *
+   * @return
+   */
+  def getFesqlSession(): FesqlSession = {
+    fesqlSession
+  }
+
+  /**
+   * Get Spark session object.
+   *
+   * @return
+   */
+  def getSparkSession(): SparkSession = {
+    fesqlSession.getSparkSession
   }
 
   /**

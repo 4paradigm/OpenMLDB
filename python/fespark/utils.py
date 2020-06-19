@@ -50,4 +50,4 @@ def _to_corrected_pandas_type(dt):
     elif type(dt) == FloatType:
         return np.float32
     else:
-        return None    
+        return None
