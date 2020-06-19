@@ -43,6 +43,8 @@ using Schema =
     ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
 using google::protobuf::RepeatedPtrField;
 using google::protobuf::RepeatedField;
+using PbInt64List =
+    ::google::protobuf::RepeatedField<::google::protobuf::int64>;
 
 namespace rtidb {
 namespace storage {
@@ -89,7 +91,9 @@ class RelationalTable {
 
     bool Put(const std::string& value,
             const ::rtidb::api::WriteOption& wo,
-            int64_t* auto_gen_pk, std::string* msg);
+            int64_t* auto_gen_pk,
+            RepeatedField<google::protobuf::int64_t>* blob_keys,
+            std::string* msg);
 
     bool Query(const ::google::protobuf::RepeatedPtrField<
             ::rtidb::api::ReadOption>& ros,
@@ -193,8 +197,13 @@ class RelationalTable {
                                           const rocksdb::Slice& key_slice);
     rocksdb::Iterator* GetRocksdbIterator(uint32_t idx);
     bool PutDB(const rocksdb::Slice& spk, const char* data, uint32_t size,
-               bool pk_check, bool unique_check, rocksdb::WriteBatch* batch,
+               bool update_pk, bool unique_check, rocksdb::WriteBatch* batch,
+               RepeatedField<google::protobuf::int64_t>* blob_keys,
                std::string* msg);
+    bool CheckPk(const rocksdb::Slice& spk, bool update_pk,
+            rocksdb::WriteBatch* batch,
+            RepeatedField<google::protobuf::int64_t>* blob_keys,
+            std::string* msg);
     bool CreateSchema(const ::rtidb::api::Columns& columns,
                       std::map<std::string, int>* idx_map, Schema* new_schema);
     bool UpdateDB(const std::shared_ptr<IndexDef> index_def,
