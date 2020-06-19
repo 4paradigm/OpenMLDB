@@ -1537,7 +1537,6 @@ class FnParaNode : public FnNode {
 
     const TypeNode *GetParaType() const { return para_type_; }
     void Print(std::ostream &output, const std::string &org_tab) const;
-    const std::string GetSignature() const;
 
  private:
     std::string name_;
