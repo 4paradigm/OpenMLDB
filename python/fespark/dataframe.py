@@ -76,3 +76,6 @@ class FesqlDataframe(object):
         for f, t in dtype.items():
             pdf[f] = pdf[f].astype(t, copy=False)
         return pdf
+
+    def toNumpy(self):
+        return self.toPandas().to_numpy()
