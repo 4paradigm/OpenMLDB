@@ -67,6 +67,9 @@ class ExprIRBuilder {
 
     bool BuildCallFn(const ::fesql::node::CallExprNode* fn, NativeValue* output,
                      ::fesql::base::Status& status);  // NOLINT
+    bool BuildCallFnLegacy(const ::fesql::node::CallExprNode* fn,
+                           NativeValue* output,
+                           ::fesql::base::Status& status);  // NOLINT
 
     bool BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
                          NativeValue* output,

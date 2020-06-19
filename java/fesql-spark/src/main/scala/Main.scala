@@ -1,6 +1,7 @@
 import java.io.File
 
 import com._4paradigm.fesql.offline.SparkPlanner
+import com._4paradigm.fesql.offline.api.{FesqlDataframe, FesqlSession}
 import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
 import org.slf4j.LoggerFactory
 
@@ -36,14 +37,15 @@ object Main {
         sessionBuilder.config(k, v.toString)
       }
     }
-    val sess = sessionBuilder.getOrCreate()
+    val sparkSession = sessionBuilder.getOrCreate()
+
+    val sess = new FesqlSession(sparkSession)
 
     logger.info("Resolve input tables...")
     val tables = mutable.HashMap[String, DataFrame]()
     for ((name, path) <- inputSpecs) {
       logger.info(s"Try load table $name from: $path")
-      val df = sess.read.parquet(path)
-      tables += name -> df
+      sess.read(path).createOrReplaceTempView(name)
     }
 
     if (sql == null) {
@@ -57,15 +59,9 @@ object Main {
 
     var startTime = System.currentTimeMillis()
     val outputDf = if (useSparkSQL) {
-      tables.foreach { case (name, df) => df.createOrReplaceTempView(name) }
-      sess.sql(sql)
-
+      sess.sparksql(sql)
     } else {
-      val planner = new SparkPlanner(sess, configs.toMap)
-      if (! sql.trim.endsWith(";")) {
-        sql = sql.trim + ";"
-      }
-      planner.plan(sql, tables.toMap).getDf(sess)
+      sess.sql(sql)
     }
     var endTime = System.currentTimeMillis()
     logger.info(f"Compile SQL time cost: ${(endTime - startTime) / 1000.0}%.2f seconds")
@@ -73,10 +69,9 @@ object Main {
     startTime = System.currentTimeMillis()
     if (outputPath != null) {
       logger.info(s"Save result to: $outputPath")
-      outputDf.write.mode(SaveMode.Overwrite).parquet(outputPath)
-
+      outputDf.write(outputPath)
     } else {
-      val count = outputDf.queryExecution.toRdd.count()
+      val count = outputDf.getSparkDf.queryExecution.toRdd.count()
       logger.info(s"Result records count: $count")
     }
     endTime = System.currentTimeMillis()

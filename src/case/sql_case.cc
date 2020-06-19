@@ -631,6 +631,13 @@ bool SQLCase::CreateSQLCasesFromYaml(
                 boost::trim(sql_case.sql_str_);
             }
 
+            if (sql_case_node["standard_sql"]) {
+                sql_case.standard_sql_ =
+                    sql_case_node["standard_sql"].as<bool>();
+            } else {
+                sql_case.standard_sql_ = false;
+            }
+
             if (sql_case_node["inputs"]) {
                 auto inputs = sql_case_node["inputs"];
                 for (auto iter = inputs.begin(); iter != inputs.end(); iter++) {
