@@ -149,4 +149,22 @@ case class FesqlDataframe(fesqlSession: FesqlSession, sparkDf: DataFrame) {
     sparkDf.toString()
   }
 
+  /**
+   * Get Spark dataframe object.
+   *
+   * @return
+   */
+  def getSparkDf(): DataFrame = {
+    sparkDf
+  }
+
+  /**
+   * Get Spark dataframe scheme json string.
+   *
+   * @return
+   */
+  def schemaJson: String = {
+    sparkDf.queryExecution.analyzed.schema.json
+  }
+
 }
