@@ -215,76 +215,80 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
             }
 
             for (TableInfo table : newTableList) {
-                TableHandler handler = new TableHandler(table);
-                if (config.getReadStrategies().containsKey(table.getName())) {
-                    handler.setReadStrategy(config.getReadStrategies().get(table.getName()));
-                } else {
-                    handler.setReadStrategy(config.getGlobalReadStrategies());
-                }
-                PartitionHandler[] partitionHandlerGroup = new PartitionHandler[table.getTablePartitionList().size()];
-                for (TablePartition partition : table.getTablePartitionList()) {
-                    PartitionHandler ph = partitionHandlerGroup[partition.getPid()];
-                    if (ph == null) {
-                        ph = new PartitionHandler();
-                        partitionHandlerGroup[partition.getPid()] = ph;
+                try {
+                    TableHandler handler = new TableHandler(table);
+                    if (config.getReadStrategies().containsKey(table.getName())) {
+                        handler.setReadStrategy(config.getReadStrategies().get(table.getName()));
+                    } else {
+                        handler.setReadStrategy(config.getGlobalReadStrategies());
                     }
-                    for (PartitionMeta pm : partition.getPartitionMetaList()) {
-                        if (!pm.getIsAlive()) {
-                            logger.warn("table {} partition {} with endpoint {} is dead", table.getName(), partition.getPid(), pm.getEndpoint());
-                            continue;
+                    PartitionHandler[] partitionHandlerGroup = new PartitionHandler[table.getTablePartitionList().size()];
+                    for (TablePartition partition : table.getTablePartitionList()) {
+                        PartitionHandler ph = partitionHandlerGroup[partition.getPid()];
+                        if (ph == null) {
+                            ph = new PartitionHandler();
+                            partitionHandlerGroup[partition.getPid()] = ph;
                         }
-                        EndPoint endpoint = new EndPoint(pm.getEndpoint());
-                        BrpcChannelGroup bcg = nodeManager.getChannel(endpoint);
-                        if (bcg == null) {
-                            logger.warn("no alive endpoint for table {}, expect endpoint {}", table.getName(),
-                                    endpoint);
-                            continue;
-                        }
-                        SingleEndpointRpcClient client = new SingleEndpointRpcClient(baseClient);
-                        client.updateEndpoint(endpoint, bcg);
-                        TabletServer ts = (TabletServer) RpcProxy.getProxy(client, TabletServer.class);
-                        TabletServerWapper tabletServerWapper = new TabletServerWapper(pm.getEndpoint(), ts);
-                        if (pm.getIsLeader()) {
-                            ph.setLeader(tabletServerWapper);
-                        } else {
-                            ph.getFollowers().add(tabletServerWapper);
-                        }
-                        if (localIpAddr.contains(endpoint.getIp().toLowerCase())) {
-                            ph.setFastTablet(tabletServerWapper);
-                        }
-                    }
-                }
-                if (table.hasTableType()) {
-                    List<String> blobs = new ArrayList<String>();
-                    if (table.hasBlobInfo()) {
-                        NS.BlobInfo blobInfo = table.getBlobInfo();
-                        for (NS.BlobPartition part : blobInfo.getBlobPartitionList()) {
-                            for (NS.BlobPartitionMeta meta : part.getPartitionMetaList()) {
-                                if (!meta.getIsAlive()) {
-                                    continue;
-                                }
-                                blobs.add(meta.getEndpoint());
+                        for (PartitionMeta pm : partition.getPartitionMetaList()) {
+                            if (!pm.getIsAlive()) {
+                                logger.warn("table {} partition {} with endpoint {} is dead", table.getName(), partition.getPid(), pm.getEndpoint());
+                                continue;
+                            }
+                            EndPoint endpoint = new EndPoint(pm.getEndpoint());
+                            BrpcChannelGroup bcg = nodeManager.getChannel(endpoint);
+                            if (bcg == null) {
+                                logger.warn("no alive endpoint for table {}, expect endpoint {}", table.getName(),
+                                        endpoint);
+                                continue;
+                            }
+                            SingleEndpointRpcClient client = new SingleEndpointRpcClient(baseClient);
+                            client.updateEndpoint(endpoint, bcg);
+                            TabletServer ts = (TabletServer) RpcProxy.getProxy(client, TabletServer.class);
+                            TabletServerWapper tabletServerWapper = new TabletServerWapper(pm.getEndpoint(), ts);
+                            if (pm.getIsLeader()) {
+                                ph.setLeader(tabletServerWapper);
+                            } else {
+                                ph.getFollowers().add(tabletServerWapper);
+                            }
+                            if (localIpAddr.contains(endpoint.getIp().toLowerCase())) {
+                                ph.setFastTablet(tabletServerWapper);
                             }
                         }
                     }
-                    if (blobs.size() > 0) {
-                        EndPoint endPoint = new EndPoint(blobs.get(0));
-                        BrpcChannelGroup bcg = nodeManager.getChannel(endPoint);
-                        if (bcg == null) {
-                            logger.warn("no alive endpoint for table {}, expect endpoint {}", table.getName(),
-                                    endPoint);
-                        } else {
-                            SingleEndpointRpcClient client = new SingleEndpointRpcClient(baseClient);
-                            client.updateEndpoint(endPoint, bcg);
-                            BlobServer bs = (BlobServer) RpcProxy.getProxy(client, BlobServer.class);
-                            handler.setBlobServer(bs);
+                    if (table.hasTableType()) {
+                        List<String> blobs = new ArrayList<String>();
+                        if (table.hasBlobInfo()) {
+                            NS.BlobInfo blobInfo = table.getBlobInfo();
+                            for (NS.BlobPartition part : blobInfo.getBlobPartitionList()) {
+                                for (NS.BlobPartitionMeta meta : part.getPartitionMetaList()) {
+                                    if (!meta.getIsAlive()) {
+                                        continue;
+                                    }
+                                    blobs.add(meta.getEndpoint());
+                                }
+                            }
+                        }
+                        if (blobs.size() > 0) {
+                            EndPoint endPoint = new EndPoint(blobs.get(0));
+                            BrpcChannelGroup bcg = nodeManager.getChannel(endPoint);
+                            if (bcg == null) {
+                                logger.warn("no alive endpoint for table {}, expect endpoint {}", table.getName(),
+                                        endPoint);
+                            } else {
+                                SingleEndpointRpcClient client = new SingleEndpointRpcClient(baseClient);
+                                client.updateEndpoint(endPoint, bcg);
+                                BlobServer bs = (BlobServer) RpcProxy.getProxy(client, BlobServer.class);
+                                handler.setBlobServer(bs);
+                            }
                         }
                     }
-                }
 
-                handler.setPartitions(partitionHandlerGroup);
-                newTables.put(table.getName(), handler);
-                newid2tables.put(table.getTid(), handler);
+                    handler.setPartitions(partitionHandlerGroup);
+                    newTables.put(table.getName(), handler);
+                    newid2tables.put(table.getTid(), handler);
+                } catch (Exception e) {
+                    logger.warn("refresh table {} failed", table.getName());
+                }
             }
             // swap
             name2tables = newTables;
