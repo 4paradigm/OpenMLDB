@@ -2,9 +2,10 @@
 import os
 from .dataframe import FesqlDataframe
 from .dataframe_reader import DataframeReader
-from .backend import GlobalBackend
+from .gateway import GlobalGateway
 
 class SessionBuilder(object):
+    # Notice that this is used to be compatible with pyspark session and the options are not used yet
     _options = {}
 
     def config(self, key=None, value=None):
@@ -24,23 +25,24 @@ class SessionBuilder(object):
         return FesqlSession()
 
 class FesqlSession(object):
-    # Compatible with PySpark API
+    # Use to be compatible with PySpark API
     builder = SessionBuilder()
 
-    def __init__(self, pySparkSession=None):
+    def __init__(self, pysparkSession=None):
         self.jsession = None
+        self.pysparkSession = None
 
-        # Init existing JVM for spark-submit and start new JVM for local run
-        GlobalBackend.init()
+        # Init global gateway so that we can access fesql jvm objects
+        GlobalGateway.init()
 
-        if "PYSPARK_GATEWAY_PORT" not in os.environ: # Run with spark-submit
-            from pyspark.sql import SparkSession
-            pySparkSession = SparkSession.builder.getOrCreate()
-            self.jsession = GlobalBackend.get().fesql_api.FesqlSession(pySparkSession._jsparkSession)
-        else: # Run with local script
-            # Always create new SparkSession with Scala API, notice that do \
-            # not use pySparkSession._jsparkSession which is in another JVM
-            self.jsession = GlobalBackend.get().fesql_api.FesqlSession()
+        # Use the given pysaprk session or create the new one which will load fesql jar
+        if pysparkSession is None:
+            self.pysparkSession = GlobalGateway.get().getOrCreatePysparkSession()
+        else:
+            self.pysparkSession = pysparkSession
+
+        # Create scala FesqlSession object
+        self.jsession = GlobalGateway.get().fesql_api.FesqlSession(self.pysparkSession._jsparkSession)
 
     @property
     def read(self):

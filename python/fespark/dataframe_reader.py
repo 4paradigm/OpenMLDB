@@ -1,6 +1,6 @@
 
 from .dataframe import FesqlDataframe
-from .backend import GlobalBackend
+from .gateway import GlobalGateway
 
 class DataframeReader(object):
 
