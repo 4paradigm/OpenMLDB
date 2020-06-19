@@ -1512,7 +1512,6 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(RunnerContext& ctx) {
     uint64_t start = 0;
     uint64_t end = UINT64_MAX;
     uint64_t rows_start_preceding = 0;
-    uint64_t rows_end_preceding = 0;
     int64_t request_key = range_gen_.ts_gen_.Gen(request);
     DLOG(INFO) << "request key: " << request_key;
     if (range_gen_.Valid()) {
@@ -1523,7 +1522,6 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(RunnerContext& ctx) {
                   ? 0
                   : (request_key + range_gen_.end_offset_);
         rows_start_preceding = range_gen_.start_row_;
-        rows_end_preceding = range_gen_.end_row_;
     }
     DLOG(INFO) << " start " << start << " end " << end;
     window_table->AddRow(request_key, request);

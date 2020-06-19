@@ -17,7 +17,7 @@
 namespace fesql {
 namespace udf {
 namespace v1 {
-int32_t inc_int32(int32_t i);
+
 template <class V>
 int64_t count_list(int8_t *input);
 
@@ -40,7 +40,7 @@ template <class V>
 V maximum(V l, V r);
 
 template <class V>
-bool has_next_iterator(int8_t *input);
+bool has_next(int8_t *input);
 
 template <class V>
 V next_iterator(int8_t *input);
@@ -60,7 +60,8 @@ template <class V>
 bool max_strcut_list(int8_t *input, V *v);
 template <class V>
 bool min_struct_list(int8_t *input, V *v);
-
+template <class V>
+inline V inc(V i);
 int32_t day(int64_t ts);
 int32_t month(int64_t ts);
 int32_t year(int64_t ts);
@@ -75,7 +76,7 @@ bool AddSymbol(::llvm::orc::JITDylib &jd,                 // NOLINT
                ::llvm::orc::MangleAndInterner &mi,        // NOLINT
                const std::string &fn_name, void *fn_ptr);
 void RegisterUDFToModule(::llvm::Module *m);
-
+void RegisterNativeUDFToModule(::llvm::Module *m);
 }  // namespace udf
 }  // namespace fesql
 

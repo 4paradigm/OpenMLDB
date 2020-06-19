@@ -109,7 +109,7 @@ class NodeManager {
 
     ExprNode *MakeFuncNode(const std::string &name, const ExprListNode *args,
                            const SQLNode *over);
-    ExprNode *MakeFuncNode(const FnDefNode* fn, const ExprListNode *args,
+    ExprNode *MakeFuncNode(const FnDefNode *fn, const ExprListNode *args,
                            const SQLNode *over);
 
     ExprNode *MakeQueryExprNode(const QueryNode *query);
@@ -160,6 +160,8 @@ class NodeManager {
     SQLNode *MakeResTargetNode(ExprNode *node_ptr, const std::string &name);
 
     TypeNode *MakeTypeNode(fesql::node::DataType base);
+    TypeNode *MakeTypeNode(fesql::node::DataType base,
+                           const fesql::node::TypeNode &v1);
     TypeNode *MakeTypeNode(fesql::node::DataType base,
                            fesql::node::DataType v1);
     TypeNode *MakeTypeNode(fesql::node::DataType base, fesql::node::DataType v1,
@@ -281,17 +283,15 @@ class NodeManager {
         const vm::ColumnSourceList column_sources,
         const vm::SchemaSourceList &schema_souces);
 
-
     node::FrameNode *MergeFrameNodeWithCurrentHistoryFrame(FrameNode *frame1);
 
-    SQLNode* MakeExternalFnDefNode(const std::string& function_name);
+    SQLNode *MakeExternalFnDefNode(const std::string &function_name);
 
-    SQLNode* MakeUDFDefNode(const FnNodeFnDef* def);
+    SQLNode *MakeUDFDefNode(const FnNodeFnDef *def);
 
-    SQLNode* MakeUDAFDefNode(const ExprNode* init,
-                             const FnDefNode* update_func,
-                             const FnDefNode* merge_func,
-                             const FnDefNode* output_func);
+    SQLNode *MakeUDAFDefNode(const ExprNode *init, const FnDefNode *update_func,
+                             const FnDefNode *merge_func,
+                             const FnDefNode *output_func);
 
  private:
     ProjectNode *MakeProjectNode(const int32_t pos, const std::string &name,

@@ -10,6 +10,7 @@
 #include <stdint.h>
 #include <time.h>
 #include <ctime>
+#include <map>
 #include <utility>
 #include <vector>
 #include "absl/time/civil_time.h"
@@ -20,6 +21,8 @@
 #include "codec/type_codec.h"
 #include "codegen/ir_base_builder.h"
 #include "codegen/udf_ir_builder.h"
+#include "node/node_manager.h"
+#include "node/sql_node.h"
 #include "proto/fe_type.pb.h"
 namespace fesql {
 namespace udf {
@@ -32,7 +35,6 @@ using fesql::codec::ListV;
 using fesql::codec::Row;
 using fesql::codec::StringColumnImpl;
 using fesql::codec::StringRef;
-
 const int32_t TZ = 8;
 const time_t TZ_OFFSET = TZ * 3600000;
 template <class V>
@@ -44,7 +46,6 @@ template <class V>
 inline V inc(V i) {
     return i + 1;
 }
-int32_t inc_int32(int32_t i) { return inc<int32_t>(i); }
 int32_t day(int64_t ts) {
     time_t time = (ts + TZ_OFFSET) / 1000;
     struct tm t;
@@ -55,7 +56,7 @@ int32_t month(int64_t ts) {
     time_t time = (ts + TZ_OFFSET) / 1000;
     struct tm t;
     gmtime_r(&time, &t);
-    return t.tm_mon+1;
+    return t.tm_mon + 1;
 }
 int32_t year(int64_t ts) {
     time_t time = (ts + TZ_OFFSET) / 1000;
@@ -234,7 +235,7 @@ bool iterator_list(int8_t *input, int8_t *output) {
 }
 
 template <class V>
-bool has_next_iterator(int8_t *input) {
+bool has_next(int8_t *input) {
     if (nullptr == input) {
         return false;
     }
@@ -286,6 +287,8 @@ V maximum(V l, V r) {
 }
 
 }  // namespace v1
+
+std::map<std::string, void *> NATIVE_UDF_PTRS;
 void InitUDFSymbol(vm::FeSQLJIT *jit_ptr) {
     ::llvm::orc::MangleAndInterner mi(jit_ptr->getExecutionSession(),
                                       jit_ptr->getDataLayout());
@@ -293,186 +296,10 @@ void InitUDFSymbol(vm::FeSQLJIT *jit_ptr) {
 }  // NOLINT
 void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
                    ::llvm::orc::MangleAndInterner &mi) {  // NOLINT
-    AddSymbol(jd, mi, "inc_int32", reinterpret_cast<void *>(&v1::inc_int32));
-    AddSymbol(jd, mi, "day", reinterpret_cast<void *>(&v1::day));
-    AddSymbol(jd, mi, "month", reinterpret_cast<void *>(&v1::month));
-    AddSymbol(jd, mi, "year", reinterpret_cast<void *>(&v1::year));
-    AddSymbol(jd, mi, "sum_list_int16",
-              reinterpret_cast<void *>(&v1::sum_list<int16_t>));
-    AddSymbol(jd, mi, "sum_list_int32",
-              reinterpret_cast<void *>(&v1::sum_list<int32_t>));
-    AddSymbol(jd, mi, "sum_list_int64",
-              reinterpret_cast<void *>(&v1::sum_list<int64_t>));
-    AddSymbol(jd, mi, "sum_list_double",
-              reinterpret_cast<void *>(&v1::sum_list<double>));
-    AddSymbol(jd, mi, "sum_list_float",
-              reinterpret_cast<void *>(&v1::sum_list<float>));
-    AddSymbol(jd, mi, "sum_list_timestamp",
-              reinterpret_cast<void *>(&v1::sum_struct_list<codec::Timestamp>));
-
-    AddSymbol(jd, mi, "count_list_int16",
-              reinterpret_cast<void *>(&v1::count_list<int16_t>));
-    AddSymbol(jd, mi, "count_list_int32",
-              reinterpret_cast<void *>(&v1::count_list<int32_t>));
-    AddSymbol(jd, mi, "count_list_int64",
-              reinterpret_cast<void *>(&v1::count_list<int64_t>));
-    AddSymbol(jd, mi, "count_list_double",
-              reinterpret_cast<void *>(&v1::count_list<double>));
-    AddSymbol(jd, mi, "count_list_float",
-              reinterpret_cast<void *>(&v1::count_list<float>));
-    AddSymbol(jd, mi, "count_list_row",
-              reinterpret_cast<void *>(&v1::count_list<fesql::codec::Row>));
-    AddSymbol(
-        jd, mi, "count_list_timestamp",
-        reinterpret_cast<void *>(&v1::count_list<fesql::codec::Timestamp>));
-    AddSymbol(jd, mi, "count_list_date",
-              reinterpret_cast<void *>(&v1::count_list<fesql::codec::Date>));
-    AddSymbol(
-        jd, mi, "count_list_string",
-        reinterpret_cast<void *>(&v1::count_list<fesql::codec::StringRef>));
-
-    AddSymbol(jd, mi, "avg_list_int16",
-              reinterpret_cast<void *>(&v1::avg_list<int16_t>));
-    AddSymbol(jd, mi, "avg_list_int32",
-              reinterpret_cast<void *>(&v1::avg_list<int32_t>));
-    AddSymbol(jd, mi, "avg_list_int64",
-              reinterpret_cast<void *>(&v1::avg_list<int64_t>));
-    AddSymbol(jd, mi, "avg_list_double",
-              reinterpret_cast<void *>(&v1::avg_list<double>));
-    AddSymbol(jd, mi, "avg_list_float",
-              reinterpret_cast<void *>(&v1::avg_list<float>));
-    AddSymbol(jd, mi, "avg_list_timestamp",
-              reinterpret_cast<void *>(&v1::avg_struct_list<codec::Timestamp>));
-
-    AddSymbol(jd, mi, "max_list_int16",
-              reinterpret_cast<void *>(&v1::max_list<int16_t>));
-    AddSymbol(jd, mi, "max_list_int32",
-              reinterpret_cast<void *>(&v1::max_list<int32_t>));
-    AddSymbol(jd, mi, "max_list_int64",
-              reinterpret_cast<void *>(&v1::max_list<int64_t>));
-    AddSymbol(jd, mi, "max_list_float",
-              reinterpret_cast<void *>(&v1::max_list<float>));
-    AddSymbol(jd, mi, "max_list_double",
-              reinterpret_cast<void *>(&v1::max_list<double>));
-    AddSymbol(jd, mi, "max_list_timestamp",
-              reinterpret_cast<void *>(
-                  &v1::max_struct_list<fesql::codec::Timestamp>));
-    AddSymbol(
-        jd, mi, "max_list_date",
-        reinterpret_cast<void *>(&v1::max_struct_list<fesql::codec::Date>));
-    AddSymbol(jd, mi, "max_list_string",
-              reinterpret_cast<void *>(
-                  &v1::max_struct_list<fesql::codec::StringRef>));
-
-    AddSymbol(jd, mi, "min_list_int16",
-              reinterpret_cast<void *>(&v1::min_list<int16_t>));
-    AddSymbol(jd, mi, "min_list_int32",
-              reinterpret_cast<void *>(&v1::min_list<int32_t>));
-    AddSymbol(jd, mi, "min_list_int64",
-              reinterpret_cast<void *>(&v1::min_list<int64_t>));
-    AddSymbol(jd, mi, "min_list_float",
-              reinterpret_cast<void *>(&v1::min_list<float>));
-    AddSymbol(jd, mi, "min_list_double",
-              reinterpret_cast<void *>(&v1::min_list<double>));
-    AddSymbol(jd, mi, "min_list_timestamp",
-              reinterpret_cast<void *>(
-                  &v1::min_struct_list<fesql::codec::Timestamp>));
-    AddSymbol(
-        jd, mi, "min_list_date",
-        reinterpret_cast<void *>(&v1::min_struct_list<fesql::codec::Date>));
-    AddSymbol(jd, mi, "min_list_string",
-              reinterpret_cast<void *>(
-                  &v1::min_struct_list<fesql::codec::StringRef>));
-
-    AddSymbol(jd, mi, "at_list_int16",
-              reinterpret_cast<void *>(&v1::at_list<int16_t>));
-    AddSymbol(jd, mi, "at_list_int32",
-              reinterpret_cast<void *>(&v1::at_list<int32_t>));
-    AddSymbol(jd, mi, "at_list_int64",
-              reinterpret_cast<void *>(&v1::at_list<int64_t>));
-    AddSymbol(jd, mi, "at_list_float",
-              reinterpret_cast<void *>(&v1::at_list<float>));
-    AddSymbol(jd, mi, "at_list_double",
-              reinterpret_cast<void *>(&v1::at_list<double>));
-    AddSymbol(jd, mi, "at_list_timestamp",
-              reinterpret_cast<void *>(&v1::at_struct_list<codec::Timestamp>));
-    AddSymbol(jd, mi, "at_list_date",
-              reinterpret_cast<void *>(&v1::at_struct_list<codec::Date>));
-    AddSymbol(jd, mi, "at_list_string",
-              reinterpret_cast<void *>(&v1::at_struct_list<codec::StringRef>));
-
-    AddSymbol(jd, mi, "iterator_list_int16",
-              reinterpret_cast<void *>(&v1::iterator_list<int16_t>));
-    AddSymbol(jd, mi, "iterator_list_int32",
-              reinterpret_cast<void *>(&v1::iterator_list<int32_t>));
-    AddSymbol(jd, mi, "iterator_list_int64",
-              reinterpret_cast<void *>(&v1::iterator_list<int64_t>));
-    AddSymbol(jd, mi, "iterator_list_float",
-              reinterpret_cast<void *>(&v1::iterator_list<float>));
-    AddSymbol(jd, mi, "iterator_list_double",
-              reinterpret_cast<void *>(&v1::iterator_list<double>));
-    AddSymbol(jd, mi, "iterator_list_timestamp",
-              reinterpret_cast<void *>(&v1::iterator_list<codec::Timestamp>));
-    AddSymbol(jd, mi, "iterator_list_date",
-              reinterpret_cast<void *>(&v1::iterator_list<codec::Date>));
-    AddSymbol(jd, mi, "iterator_list_string",
-              reinterpret_cast<void *>(&v1::iterator_list<codec::StringRef>));
-
-    AddSymbol(jd, mi, "has_next_iterator_int16",
-              reinterpret_cast<void *>(&v1::has_next_iterator<int16_t>));
-    AddSymbol(jd, mi, "has_next_iterator_int32",
-              reinterpret_cast<void *>(&v1::has_next_iterator<int32_t>));
-    AddSymbol(jd, mi, "has_next_iterator_int64",
-              reinterpret_cast<void *>(&v1::has_next_iterator<int64_t>));
-    AddSymbol(jd, mi, "has_next_iterator_float",
-              reinterpret_cast<void *>(&v1::has_next_iterator<float>));
-    AddSymbol(jd, mi, "has_next_iterator_double",
-              reinterpret_cast<void *>(&v1::has_next_iterator<double>));
-    AddSymbol(
-        jd, mi, "has_next_iterator_timestamp",
-        reinterpret_cast<void *>(&v1::has_next_iterator<codec::Timestamp>));
-    AddSymbol(jd, mi, "has_next_iterator_date",
-              reinterpret_cast<void *>(&v1::has_next_iterator<codec::Date>));
-    AddSymbol(
-        jd, mi, "has_next_iterator_string",
-        reinterpret_cast<void *>(&v1::has_next_iterator<codec::StringRef>));
-
-    AddSymbol(jd, mi, "next_iterator_int16",
-              reinterpret_cast<void *>(&v1::next_iterator<int16_t>));
-    AddSymbol(jd, mi, "next_iterator_int32",
-              reinterpret_cast<void *>(&v1::next_iterator<int32_t>));
-    AddSymbol(jd, mi, "next_iterator_int64",
-              reinterpret_cast<void *>(&v1::next_iterator<int64_t>));
-    AddSymbol(jd, mi, "next_iterator_float",
-              reinterpret_cast<void *>(&v1::next_iterator<float>));
-    AddSymbol(jd, mi, "next_iterator_double",
-              reinterpret_cast<void *>(&v1::next_iterator<double>));
-    AddSymbol(
-        jd, mi, "next_iterator_timestamp",
-        reinterpret_cast<void *>(&v1::next_struct_iterator<codec::Timestamp>));
-    AddSymbol(jd, mi, "next_iterator_date",
-              reinterpret_cast<void *>(&v1::next_struct_iterator<codec::Date>));
-    AddSymbol(
-        jd, mi, "next_iterator_string",
-        reinterpret_cast<void *>(&v1::next_struct_iterator<codec::StringRef>));
-
-    AddSymbol(jd, mi, "delete_iterator_int16",
-              reinterpret_cast<void *>(&v1::delete_iterator<int16_t>));
-    AddSymbol(jd, mi, "delete_iterator_int32",
-              reinterpret_cast<void *>(&v1::delete_iterator<int32_t>));
-    AddSymbol(jd, mi, "delete_iterator_int64",
-              reinterpret_cast<void *>(&v1::delete_iterator<int64_t>));
-    AddSymbol(jd, mi, "delete_iterator_float",
-              reinterpret_cast<void *>(&v1::delete_iterator<float>));
-    AddSymbol(jd, mi, "delete_iterator_double",
-              reinterpret_cast<void *>(&v1::delete_iterator<double>));
-    AddSymbol(jd, mi, "delete_iterator_timestamp",
-              reinterpret_cast<void *>(&v1::delete_iterator<codec::Timestamp>));
-    AddSymbol(jd, mi, "delete_iterator_date",
-              reinterpret_cast<void *>(&v1::delete_iterator<codec::Date>));
-    AddSymbol(jd, mi, "delete_iterator_string",
-              reinterpret_cast<void *>(&v1::delete_iterator<codec::StringRef>));
-
+    for (auto iter = NATIVE_UDF_PTRS.cbegin(); iter != NATIVE_UDF_PTRS.cend();
+         iter++) {
+        AddSymbol(jd, mi, iter->first, iter->second);
+    }
     AddSymbol(jd, mi, "max_int16",
               reinterpret_cast<void *>(&v1::maximum<int16_t>));
     AddSymbol(jd, mi, "max_int32",
@@ -501,207 +328,239 @@ bool AddSymbol(::llvm::orc::JITDylib &jd,           // NOLINT
     return ::fesql::vm::FeSQLJIT::AddSymbol(jd, mi, fn_name, fn_ptr);
 }
 
+bool RegisterMethod(::llvm::Module *module, const std::string &fn_name,
+                    fesql::node::TypeNode *ret,
+                    std::initializer_list<fesql::node::TypeNode *> args,
+                    void *fn) {
+    codegen::UDFIRBuilder udf_ir_builder(&NATIVE_UDF_PTRS);
+    node::NodeManager nm;
+    base::Status status;
+    auto fn_args = nm.MakeFnListNode();
+    for (auto &arg : args) {
+        fn_args->AddChild(nm.MakeFnParaNode("", arg));
+    }
+
+    auto header = dynamic_cast<node::FnNodeFnHeander *>(
+        nm.MakeFnHeaderNode(fn_name, fn_args, ret));
+    return udf_ir_builder.BuildNativeCUDF(module, header, fn, status);
+}
+void RegisterNativeUDFToModule(::llvm::Module *module) {
+    codegen::UDFIRBuilder udf_ir_builder(&NATIVE_UDF_PTRS);
+    node::NodeManager nm;
+    base::Status status;
+
+    auto bool_ty = nm.MakeTypeNode(node::kBool);
+    auto i32_ty = nm.MakeTypeNode(node::kInt32);
+    auto i64_ty = nm.MakeTypeNode(node::kInt64);
+    auto i16_ty = nm.MakeTypeNode(node::kInt16);
+    auto float_ty = nm.MakeTypeNode(node::kFloat);
+    auto double_ty = nm.MakeTypeNode(node::kDouble);
+    auto time_ty = nm.MakeTypeNode(node::kTimestamp);
+    auto date_ty = nm.MakeTypeNode(node::kDate);
+    auto string_ty = nm.MakeTypeNode(node::kVarchar);
+
+    auto list_i32_ty = nm.MakeTypeNode(node::kList, *i32_ty);
+    auto list_i64_ty = nm.MakeTypeNode(node::kList, *i64_ty);
+    auto list_i16_ty = nm.MakeTypeNode(node::kList, *i16_ty);
+    auto list_float_ty = nm.MakeTypeNode(node::kList, *float_ty);
+    auto list_double_ty = nm.MakeTypeNode(node::kList, *double_ty);
+    auto list_time_ty = nm.MakeTypeNode(node::kList, *time_ty);
+    auto list_date_ty = nm.MakeTypeNode(node::kList, *date_ty);
+    auto list_string_ty = nm.MakeTypeNode(node::kList, *string_ty);
+
+    auto iter_i32_ty = nm.MakeTypeNode(node::kIterator, *i32_ty);
+    auto iter_i64_ty = nm.MakeTypeNode(node::kIterator, *i64_ty);
+    auto iter_i16_ty = nm.MakeTypeNode(node::kIterator, *i16_ty);
+    auto iter_float_ty = nm.MakeTypeNode(node::kIterator, *float_ty);
+    auto iter_double_ty = nm.MakeTypeNode(node::kIterator, *double_ty);
+    auto iter_time_ty = nm.MakeTypeNode(node::kIterator, *time_ty);
+    auto iter_date_ty = nm.MakeTypeNode(node::kIterator, *date_ty);
+    auto iter_string_ty = nm.MakeTypeNode(node::kIterator, *string_ty);
+
+    // inc(int32):int32
+    RegisterMethod(module, "inc", i32_ty, {i32_ty},
+                   reinterpret_cast<void *>(v1::inc<int32_t>));
+    RegisterMethod(module, "year", i32_ty, {i64_ty},
+                   reinterpret_cast<void *>(v1::year));
+    RegisterMethod(module, "month", i32_ty, {i64_ty},
+                   reinterpret_cast<void *>(v1::month));
+    RegisterMethod(module, "day", i32_ty, {i64_ty},
+                   reinterpret_cast<void *>(v1::day));
+
+    RegisterMethod(module, "at", i16_ty, {list_i16_ty, i32_ty},
+                   reinterpret_cast<void *>(v1::at_list<int16_t>));
+    RegisterMethod(module, "at", i32_ty, {list_i32_ty, i32_ty},
+                   reinterpret_cast<void *>(v1::at_list<int32_t>));
+    RegisterMethod(module, "at", i64_ty, {list_i64_ty, i32_ty},
+                   reinterpret_cast<void *>(v1::at_list<int64_t>));
+    RegisterMethod(module, "at", float_ty, {list_float_ty, i32_ty},
+                   reinterpret_cast<void *>(v1::at_list<float>));
+    RegisterMethod(module, "at", double_ty, {list_double_ty, i32_ty},
+                   reinterpret_cast<void *>(v1::at_list<double>));
+
+    RegisterMethod(
+        module, "at", bool_ty, {list_time_ty, i32_ty, time_ty},
+        reinterpret_cast<void *>(v1::at_struct_list<codec::Timestamp>));
+    RegisterMethod(module, "at", bool_ty, {list_date_ty, i32_ty, date_ty},
+                   reinterpret_cast<void *>(v1::at_struct_list<codec::Date>));
+    RegisterMethod(
+        module, "at", bool_ty, {list_string_ty, i32_ty, string_ty},
+        reinterpret_cast<void *>(v1::at_struct_list<codec::StringRef>));
+
+    RegisterMethod(module, "sum", i16_ty, {list_i16_ty},
+                   reinterpret_cast<void *>(v1::sum_list<int16_t>));
+    RegisterMethod(module, "sum", i32_ty, {list_i32_ty},
+                   reinterpret_cast<void *>(v1::sum_list<int32_t>));
+    RegisterMethod(module, "sum", i64_ty, {list_i64_ty},
+                   reinterpret_cast<void *>(v1::sum_list<int64_t>));
+    RegisterMethod(module, "sum", float_ty, {list_float_ty},
+                   reinterpret_cast<void *>(v1::sum_list<float>));
+    RegisterMethod(module, "sum", double_ty, {list_double_ty},
+                   reinterpret_cast<void *>(v1::sum_list<double>));
+    RegisterMethod(
+        module, "sum", bool_ty, {list_time_ty, time_ty},
+        reinterpret_cast<void *>(v1::sum_struct_list<codec::Timestamp>));
+
+    RegisterMethod(module, "max", i16_ty, {list_i16_ty},
+                   reinterpret_cast<void *>(v1::max_list<int16_t>));
+    RegisterMethod(module, "max", i32_ty, {list_i32_ty},
+                   reinterpret_cast<void *>(v1::max_list<int32_t>));
+    RegisterMethod(module, "max", i64_ty, {list_i64_ty},
+                   reinterpret_cast<void *>(v1::max_list<int64_t>));
+    RegisterMethod(module, "max", float_ty, {list_float_ty},
+                   reinterpret_cast<void *>(v1::max_list<float>));
+    RegisterMethod(module, "max", double_ty, {list_double_ty},
+                   reinterpret_cast<void *>(v1::max_list<double>));
+    RegisterMethod(
+        module, "max", bool_ty, {list_time_ty, time_ty},
+        reinterpret_cast<void *>(v1::max_struct_list<codec::Timestamp>));
+
+    RegisterMethod(module, "max", bool_ty, {list_date_ty, date_ty},
+                   reinterpret_cast<void *>(v1::max_struct_list<codec::Date>));
+    RegisterMethod(
+        module, "max", bool_ty, {list_string_ty, string_ty},
+        reinterpret_cast<void *>(v1::max_struct_list<codec::StringRef>));
+
+    RegisterMethod(module, "min", i16_ty, {list_i16_ty},
+                   reinterpret_cast<void *>(v1::min_list<int16_t>));
+    RegisterMethod(module, "min", i32_ty, {list_i32_ty},
+                   reinterpret_cast<void *>(v1::min_list<int32_t>));
+    RegisterMethod(module, "min", i64_ty, {list_i64_ty},
+                   reinterpret_cast<void *>(v1::min_list<int64_t>));
+    RegisterMethod(module, "min", float_ty, {list_float_ty},
+                   reinterpret_cast<void *>(v1::min_list<float>));
+    RegisterMethod(module, "min", double_ty, {list_double_ty},
+                   reinterpret_cast<void *>(v1::min_list<double>));
+    RegisterMethod(
+        module, "min", bool_ty, {list_time_ty, time_ty},
+        reinterpret_cast<void *>(v1::min_struct_list<codec::Timestamp>));
+
+    RegisterMethod(module, "min", bool_ty, {list_date_ty, date_ty},
+                   reinterpret_cast<void *>(v1::min_struct_list<codec::Date>));
+    RegisterMethod(
+        module, "min", bool_ty, {list_string_ty, string_ty},
+        reinterpret_cast<void *>(v1::min_struct_list<codec::StringRef>));
+
+    RegisterMethod(module, "count", i64_ty, {list_i16_ty},
+                   reinterpret_cast<void *>(v1::count_list<int16_t>));
+    RegisterMethod(module, "count", i64_ty, {list_i32_ty},
+                   reinterpret_cast<void *>(v1::count_list<int32_t>));
+    RegisterMethod(module, "count", i64_ty, {list_i64_ty},
+                   reinterpret_cast<void *>(v1::count_list<int64_t>));
+    RegisterMethod(module, "count", i64_ty, {list_float_ty},
+                   reinterpret_cast<void *>(v1::count_list<float>));
+    RegisterMethod(module, "count", i64_ty, {list_double_ty},
+                   reinterpret_cast<void *>(v1::count_list<double>));
+    RegisterMethod(module, "count", i64_ty, {list_time_ty},
+                   reinterpret_cast<void *>(v1::count_list<codec::Timestamp>));
+    RegisterMethod(module, "count", i64_ty, {list_date_ty},
+                   reinterpret_cast<void *>(v1::count_list<codec::Date>));
+    RegisterMethod(module, "count", i64_ty, {list_string_ty},
+                   reinterpret_cast<void *>(v1::count_list<codec::StringRef>));
+
+    RegisterMethod(module, "iterator", bool_ty, {list_i16_ty, iter_i16_ty},
+                   reinterpret_cast<void *>(v1::iterator_list<int16_t>));
+    RegisterMethod(module, "iterator", bool_ty, {list_i32_ty, iter_i32_ty},
+                   reinterpret_cast<void *>(v1::iterator_list<int32_t>));
+    RegisterMethod(module, "iterator", bool_ty, {list_i64_ty, iter_i64_ty},
+                   reinterpret_cast<void *>(v1::iterator_list<int64_t>));
+    RegisterMethod(module, "iterator", bool_ty, {list_float_ty, iter_float_ty},
+                   reinterpret_cast<void *>(v1::iterator_list<float>));
+    RegisterMethod(module, "iterator", bool_ty,
+                   {list_double_ty, iter_double_ty},
+                   reinterpret_cast<void *>(v1::iterator_list<double>));
+    RegisterMethod(
+        module, "iterator", bool_ty, {list_time_ty, iter_time_ty},
+        reinterpret_cast<void *>(v1::iterator_list<codec::Timestamp>));
+    RegisterMethod(module, "iterator", bool_ty, {list_date_ty, iter_date_ty},
+                   reinterpret_cast<void *>(v1::iterator_list<codec::Date>));
+    RegisterMethod(
+        module, "iterator", bool_ty, {list_string_ty, iter_string_ty},
+        reinterpret_cast<void *>(v1::iterator_list<codec::StringRef>));
+
+    RegisterMethod(module, "next", i16_ty, {iter_i16_ty},
+                   reinterpret_cast<void *>(v1::next_iterator<int16_t>));
+    RegisterMethod(module, "next", i32_ty, {iter_i32_ty},
+                   reinterpret_cast<void *>(v1::next_iterator<int32_t>));
+    RegisterMethod(module, "next", i64_ty, {iter_i64_ty},
+                   reinterpret_cast<void *>(v1::next_iterator<int64_t>));
+    RegisterMethod(module, "next", float_ty, {iter_float_ty},
+                   reinterpret_cast<void *>(v1::next_iterator<float>));
+    RegisterMethod(module, "next", double_ty, {iter_double_ty},
+                   reinterpret_cast<void *>(v1::next_iterator<double>));
+    RegisterMethod(
+        module, "next", bool_ty, {iter_time_ty, time_ty},
+        reinterpret_cast<void *>(v1::next_struct_iterator<codec::Timestamp>));
+
+    RegisterMethod(
+        module, "next", bool_ty, {iter_date_ty, date_ty},
+        reinterpret_cast<void *>(v1::next_struct_iterator<codec::Date>));
+    RegisterMethod(
+        module, "next", bool_ty, {iter_string_ty, string_ty},
+        reinterpret_cast<void *>(v1::next_struct_iterator<codec::StringRef>));
+
+    RegisterMethod(module, "has_next", bool_ty, {iter_i16_ty},
+                   reinterpret_cast<void *>(v1::has_next<int16_t>));
+    RegisterMethod(module, "has_next", bool_ty, {iter_i32_ty},
+                   reinterpret_cast<void *>(v1::has_next<int32_t>));
+    RegisterMethod(module, "has_next", bool_ty, {iter_i64_ty},
+                   reinterpret_cast<void *>(v1::has_next<int64_t>));
+    RegisterMethod(module, "has_next", bool_ty, {iter_float_ty},
+                   reinterpret_cast<void *>(v1::has_next<float>));
+    RegisterMethod(module, "has_next", bool_ty, {iter_double_ty},
+                   reinterpret_cast<void *>(v1::has_next<double>));
+    RegisterMethod(module, "has_next", bool_ty, {iter_time_ty},
+                   reinterpret_cast<void *>(v1::has_next<codec::Timestamp>));
+    RegisterMethod(module, "has_next", bool_ty, {iter_date_ty},
+                   reinterpret_cast<void *>(v1::has_next<codec::Date>));
+    RegisterMethod(module, "has_next", bool_ty, {iter_string_ty},
+                   reinterpret_cast<void *>(v1::has_next<codec::StringRef>));
+
+    RegisterMethod(module, "delete_iterator", bool_ty, {iter_i16_ty},
+                   reinterpret_cast<void *>(v1::delete_iterator<int16_t>));
+    RegisterMethod(module, "delete_iterator", bool_ty, {iter_i32_ty},
+                   reinterpret_cast<void *>(v1::delete_iterator<int32_t>));
+    RegisterMethod(module, "delete_iterator", bool_ty, {iter_i64_ty},
+                   reinterpret_cast<void *>(v1::delete_iterator<int64_t>));
+    RegisterMethod(module, "delete_iterator", bool_ty, {iter_float_ty},
+                   reinterpret_cast<void *>(v1::delete_iterator<float>));
+    RegisterMethod(module, "delete_iterator", bool_ty, {iter_double_ty},
+                   reinterpret_cast<void *>(v1::delete_iterator<double>));
+    RegisterMethod(
+        module, "delete_iterator", bool_ty, {iter_time_ty},
+        reinterpret_cast<void *>(v1::delete_iterator<codec::Timestamp>));
+    RegisterMethod(module, "delete_iterator", bool_ty, {iter_date_ty},
+                   reinterpret_cast<void *>(v1::delete_iterator<codec::Date>));
+    RegisterMethod(
+        module, "delete_iterator", bool_ty, {iter_string_ty},
+        reinterpret_cast<void *>(v1::delete_iterator<codec::StringRef>));
+}  // namespace udf
 void RegisterUDFToModule(::llvm::Module *m) {
     base::Status status;
-    codegen::UDFIRBuilder::BuildTimeUDF(m, status);
-    ::llvm::Type *v_ty = ::llvm::Type::getVoidTy(m->getContext());
-    ::llvm::Type *i1_ty = ::llvm::Type::getInt1Ty(m->getContext());
-    ::llvm::Type *i16_ty = ::llvm::Type::getInt16Ty(m->getContext());
-    ::llvm::Type *i32_ty = ::llvm::Type::getInt32Ty(m->getContext());
-    ::llvm::Type *i64_ty = ::llvm::Type::getInt64Ty(m->getContext());
-    ::llvm::Type *float_ty = ::llvm::Type::getFloatTy(m->getContext());
-    ::llvm::Type *double_ty = ::llvm::Type::getDoubleTy(m->getContext());
-    ::llvm::Type *i8_ptr_ty = ::llvm::Type::getInt8PtrTy(m->getContext());
-    ::llvm::Type *ts_ty;
-    ::llvm::Type *date_ty;
-    ::llvm::Type *string_ty;
-    codegen::GetLLVMType(m, node::DataType::kTimestamp, &ts_ty);
-    codegen::GetLLVMType(m, node::DataType::kDate, &date_ty);
-    codegen::GetLLVMType(m, node::DataType::kVarchar, &string_ty);
-    ::llvm::Type::getDoubleTy(m->getContext());
-
-    std::vector<std::pair<fesql::node::DataType, ::llvm::Type *>> basic_types;
-    basic_types.push_back(std::make_pair(fesql::node::kInt16, i16_ty));
-    basic_types.push_back(std::make_pair(fesql::node::kInt32, i32_ty));
-    basic_types.push_back(std::make_pair(fesql::node::kInt64, i64_ty));
-    basic_types.push_back(std::make_pair(fesql::node::kFloat, float_ty));
-    basic_types.push_back(std::make_pair(fesql::node::kDouble, double_ty));
-    basic_types.push_back(
-        std::make_pair(fesql::node::kTimestamp, ts_ty->getPointerTo()));
-    basic_types.push_back(std::make_pair(fesql::node::kVarchar, string_ty));
-
-    std::vector<std::pair<fesql::node::DataType, ::llvm::Type *>> number_types;
-    number_types.push_back(std::make_pair(fesql::node::kInt16, i16_ty));
-    number_types.push_back(std::make_pair(fesql::node::kInt32, i32_ty));
-    number_types.push_back(std::make_pair(fesql::node::kInt64, i64_ty));
-    number_types.push_back(std::make_pair(fesql::node::kFloat, float_ty));
-    number_types.push_back(std::make_pair(fesql::node::kDouble, double_ty));
-
-    std::vector<std::pair<fesql::node::DataType, ::llvm::Type *>> struct_types;
-    struct_types.push_back(std::make_pair(fesql::node::kTimestamp, ts_ty));
-    struct_types.push_back(std::make_pair(fesql::node::kVarchar, string_ty));
-    struct_types.push_back(std::make_pair(fesql::node::kDate, date_ty));
-
-    std::vector<std::pair<fesql::node::DataType, ::llvm::Type *>>
-        struct_time_types;
-    struct_time_types.push_back(std::make_pair(fesql::node::kTimestamp, ts_ty));
-
-    m->getOrInsertFunction("inc_int32", i32_ty, i32_ty);
-    m->getOrInsertFunction("day", i32_ty, i64_ty);
-    m->getOrInsertFunction("year", i32_ty, i64_ty);
-    m->getOrInsertFunction("month", i32_ty, i64_ty);
-
-    {
-        std::string prefix =
-            "sum_" + node::DataTypeName(fesql::node::kList) + "_";
-        for (auto type : number_types) {
-            ::llvm::Type *llvm_type;
-            ::fesql::codegen::GetLLVMListType(m, type.first, &llvm_type);
-            m->getOrInsertFunction(prefix + node::DataTypeName(type.first),
-                                   type.second, llvm_type->getPointerTo());
-        }
-        for (auto type : struct_time_types) {
-            ::llvm::Type *llvm_type;
-            ::fesql::codegen::GetLLVMListType(m, type.first, &llvm_type);
-            m->getOrInsertFunction(prefix + node::DataTypeName(type.first),
-                                   i1_ty, llvm_type->getPointerTo(),
-                                   type.second->getPointerTo());
-        }
-    }
-
-    {
-        std::string prefix =
-            "count_" + node::DataTypeName(fesql::node::kList) + "_";
-
-        for (auto type : basic_types) {
-            ::llvm::Type *llvm_type;
-            ::fesql::codegen::GetLLVMListType(m, type.first, &llvm_type);
-            m->getOrInsertFunction(prefix + node::DataTypeName(type.first),
-                                   i64_ty, llvm_type->getPointerTo());
-        }
-    }
-
-    {
-        std::string prefix =
-            "avg_" + node::DataTypeName(fesql::node::kList) + "_";
-
-        for (auto type : number_types) {
-            ::llvm::Type *llvm_type;
-            ::fesql::codegen::GetLLVMListType(m, type.first, &llvm_type);
-            m->getOrInsertFunction(prefix + node::DataTypeName(type.first),
-                                   double_ty, llvm_type->getPointerTo());
-        }
-
-        for (auto type : struct_time_types) {
-            ::llvm::Type *llvm_type;
-            ::fesql::codegen::GetLLVMListType(m, type.first, &llvm_type);
-            m->getOrInsertFunction(prefix + node::DataTypeName(type.first),
-                                   i1_ty, llvm_type->getPointerTo(),
-                                   type.second->getPointerTo());
-        }
-    }
-    {
-        std::string prefix =
-            "min_" + node::DataTypeName(fesql::node::kList) + "_";
-        for (auto type : number_types) {
-            ::llvm::Type *llvm_type;
-            ::fesql::codegen::GetLLVMListType(m, type.first, &llvm_type);
-            m->getOrInsertFunction(prefix + node::DataTypeName(type.first),
-                                   type.second, llvm_type->getPointerTo());
-        }
-        for (auto type : struct_types) {
-            ::llvm::Type *llvm_type;
-            ::fesql::codegen::GetLLVMListType(m, type.first, &llvm_type);
-            m->getOrInsertFunction(prefix + node::DataTypeName(type.first),
-                                   i1_ty, llvm_type->getPointerTo(),
-                                   type.second->getPointerTo());
-        }
-    }
-
-    {
-        std::string prefix =
-            "max_" + node::DataTypeName(fesql::node::kList) + "_";
-        for (auto type : number_types) {
-            ::llvm::Type *llvm_type;
-            ::fesql::codegen::GetLLVMListType(m, type.first, &llvm_type);
-            m->getOrInsertFunction(prefix + node::DataTypeName(type.first),
-                                   type.second, llvm_type->getPointerTo());
-        }
-        for (auto type : struct_types) {
-            ::llvm::Type *llvm_type;
-            ::fesql::codegen::GetLLVMListType(m, type.first, &llvm_type);
-            m->getOrInsertFunction(prefix + node::DataTypeName(type.first),
-                                   i1_ty, llvm_type->getPointerTo(),
-                                   type.second->getPointerTo());
-        }
-    }
-
-    {
-        std::string prefix =
-            "at_" + node::DataTypeName(fesql::node::kList) + "_";
-        for (auto type : number_types) {
-            ::llvm::Type *llvm_type;
-            ::fesql::codegen::GetLLVMListType(m, type.first, &llvm_type);
-            m->getOrInsertFunction(prefix + node::DataTypeName(type.first),
-                                   type.second, llvm_type->getPointerTo(),
-                                   i32_ty);
-        }
-
-        for (auto type : struct_types) {
-            ::llvm::Type *llvm_type;
-            ::fesql::codegen::GetLLVMListType(m, type.first, &llvm_type);
-            m->getOrInsertFunction(prefix + node::DataTypeName(type.first),
-                                   i1_ty, llvm_type->getPointerTo(), i32_ty,
-                                   type.second->getPointerTo());
-        }
-    }
-
-    {
-        std::string prefix =
-            "iterator_" + node::DataTypeName(fesql::node::kList) + "_";
-        for (auto type : basic_types) {
-            ::llvm::Type *llvm_type;
-            ::fesql::codegen::GetLLVMListType(m, type.first, &llvm_type);
-            m->getOrInsertFunction(prefix + (node::DataTypeName(type.first)),
-                                   i1_ty, llvm_type->getPointerTo(), i8_ptr_ty);
-        }
-    }
-    {
-        std::string prefix =
-            "next_" + node::DataTypeName(fesql::node::kIterator) + "_";
-        for (auto type : number_types) {
-            ::llvm::Type *llvm_type;
-            ::fesql::codegen::GetLLVMIteratorType(m, type.first, &llvm_type);
-            m->getOrInsertFunction(prefix + (node::DataTypeName(type.first)),
-                                   type.second, llvm_type->getPointerTo());
-        }
-        for (auto type : struct_types) {
-            ::llvm::Type *llvm_type;
-            ::fesql::codegen::GetLLVMIteratorType(m, type.first, &llvm_type);
-            m->getOrInsertFunction(prefix + node::DataTypeName(type.first),
-                                   i1_ty, llvm_type->getPointerTo(),
-                                   type.second->getPointerTo());
-        }
-    }
-    {
-        std::string prefix =
-            "delete_" + node::DataTypeName(fesql::node::kIterator) + "_";
-        for (auto type : basic_types) {
-            ::llvm::Type *llvm_type;
-            ::fesql::codegen::GetLLVMIteratorType(m, type.first, &llvm_type);
-            m->getOrInsertFunction(prefix + (node::DataTypeName(type.first)),
-                                   v_ty, llvm_type->getPointerTo());
-        }
-    }
-    {
-        std::string prefix =
-            "has_next_" + node::DataTypeName(fesql::node::kIterator) + "_";
-        for (auto type : basic_types) {
-            ::llvm::Type *llvm_type;
-            ::fesql::codegen::GetLLVMIteratorType(m, type.first, &llvm_type);
-            m->getOrInsertFunction(prefix + (node::DataTypeName(type.first)),
-                                   i1_ty, llvm_type->getPointerTo());
-        }
+    RegisterNativeUDFToModule(m);
+    codegen::UDFIRBuilder udf_ir_builder(&NATIVE_UDF_PTRS);
+    if (!udf_ir_builder.BuildUDF(m, status)) {
+        LOG(WARNING) << status.msg;
     }
 }
 void InitCLibSymbol(::llvm::orc::JITDylib &jd,             // NOLINT

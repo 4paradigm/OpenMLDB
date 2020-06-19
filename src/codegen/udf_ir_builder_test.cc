@@ -49,8 +49,7 @@ TEST_F(UDFIRBuilderTest, year_udf_test) {
     base::Status status;
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("udf_test", *ctx);
-    UDFIRBuilder udf_ir_builder;
-    ASSERT_TRUE(UDFIRBuilder::BuildTimeUDF(m.get(), status));
+    ASSERT_TRUE(UDFIRBuilder::BuildYearDate(m.get(), status));
     m->print(::llvm::errs(), NULL, true, true);
 
     auto J = ExitOnErr(LLJITBuilder().create());
@@ -63,29 +62,11 @@ TEST_F(UDFIRBuilderTest, year_udf_test) {
 
     // Year
     {
-        auto fn = ExitOnErr(J->lookup("year"));
+        auto fn = ExitOnErr(J->lookup("year.ptr_date"));
         int32_t (*year)(codec::Date *) =
             (int32_t(*)(codec::Date *))fn.getAddress();
         codec::Date d1(2020, 05, 27);
         ASSERT_EQ(2020, year(&d1));
-    }
-
-    // Month
-    {
-        auto fn = ExitOnErr(J->lookup("month"));
-        int32_t (*month)(codec::Date *) =
-            (int32_t(*)(codec::Date *))fn.getAddress();
-        codec::Date d1(2020, 05, 27);
-        ASSERT_EQ(05, month(&d1));
-    }
-
-    // Day
-    {
-        auto fn = ExitOnErr(J->lookup("day"));
-        int32_t (*day)(codec::Date *) =
-            (int32_t(*)(codec::Date *))fn.getAddress();
-        codec::Date d1(2020, 05, 27);
-        ASSERT_EQ(27, day(&d1));
     }
 }
 
@@ -93,8 +74,7 @@ TEST_F(UDFIRBuilderTest, month_udf_test) {
     base::Status status;
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("udf_test", *ctx);
-    UDFIRBuilder udf_ir_builder;
-    ASSERT_TRUE(UDFIRBuilder::BuildTimeUDF(m.get(), status));
+    ASSERT_TRUE(UDFIRBuilder::BuildMonthDate(m.get(), status));
     m->print(::llvm::errs(), NULL, true, true);
 
     auto J = ExitOnErr(LLJITBuilder().create());
@@ -107,7 +87,7 @@ TEST_F(UDFIRBuilderTest, month_udf_test) {
 
     // Month
     {
-        auto fn = ExitOnErr(J->lookup("month"));
+        auto fn = ExitOnErr(J->lookup("month.ptr_date"));
         int32_t (*month)(codec::Date *) =
             (int32_t(*)(codec::Date *))fn.getAddress();
         codec::Date d1(2020, 05, 27);
@@ -119,8 +99,7 @@ TEST_F(UDFIRBuilderTest, day_udf_test) {
     base::Status status;
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("udf_test", *ctx);
-    UDFIRBuilder udf_ir_builder;
-    ASSERT_TRUE(UDFIRBuilder::BuildTimeUDF(m.get(), status));
+    ASSERT_TRUE(UDFIRBuilder::BuildDayDate(m.get(), status));
     m->print(::llvm::errs(), NULL, true, true);
 
     auto J = ExitOnErr(LLJITBuilder().create());
@@ -132,7 +111,7 @@ TEST_F(UDFIRBuilderTest, day_udf_test) {
     ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
     // Day
     {
-        auto fn = ExitOnErr(J->lookup("day"));
+        auto fn = ExitOnErr(J->lookup("day.ptr_date"));
         int32_t (*day)(codec::Date *) =
             (int32_t(*)(codec::Date *))fn.getAddress();
         codec::Date d1(2020, 05, 27);
@@ -156,7 +135,7 @@ TEST_F(UDFIRBuilderTest, day_i64_udf_test) {
     ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
     // Day
     {
-        auto fn = ExitOnErr(J->lookup("day"));
+        auto fn = ExitOnErr(J->lookup("day.int64"));
         int32_t (*day)(int64_t) =
         (int32_t(*)(int64_t))fn.getAddress();
         codec::Date d1(2020, 05, 27);
@@ -164,6 +143,28 @@ TEST_F(UDFIRBuilderTest, day_i64_udf_test) {
     }
 }
 
+TEST_F(UDFIRBuilderTest, inc_i32_udf_test) {
+    base::Status status;
+    auto ctx = llvm::make_unique<LLVMContext>();
+    auto m = make_unique<Module>("udf_test", *ctx);
+    fesql::udf::RegisterUDFToModule(m.get());
+    m->print(::llvm::errs(), NULL, true, true);
+
+    auto J = ExitOnErr(LLJITBuilder().create());
+    auto &jd = J->getMainJITDylib();
+    ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
+                                      J->getDataLayout());
+    ::fesql::vm::InitCodecSymbol(jd, mi);
+    ::fesql::udf::InitUDFSymbol(jd, mi);
+    ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
+    // Day
+    {
+        auto fn = ExitOnErr(J->lookup("inc.int32"));
+        int32_t (*inc)(int32_t) =
+        (int32_t(*)(int32_t))fn.getAddress();
+        ASSERT_EQ(12346, inc(12345));
+    }
+}
 }  // namespace codegen
 }  // namespace fesql
 

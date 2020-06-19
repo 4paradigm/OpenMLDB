@@ -11,13 +11,10 @@
 namespace fesql {
 namespace codegen {
 StructTypeIRBuilder::StructTypeIRBuilder(::llvm::Module* m)
-    : TypeIRBuilder(), m_(m), struct_type_(nullptr) {
-}
+    : TypeIRBuilder(), m_(m), struct_type_(nullptr) {}
 StructTypeIRBuilder::~StructTypeIRBuilder() {}
 
-::llvm::Type* StructTypeIRBuilder::GetType() {
-    return struct_type_;
-}
+::llvm::Type* StructTypeIRBuilder::GetType() { return struct_type_; }
 bool StructTypeIRBuilder::Create(::llvm::BasicBlock* block,
                                  ::llvm::Value** output) {
     if (block == NULL || output == NULL) {
@@ -43,6 +40,18 @@ bool StructTypeIRBuilder::Set(::llvm::BasicBlock* block,
                               ::llvm::Value* value) {
     if (block == NULL) {
         LOG(WARNING) << "the output ptr or block is NULL ";
+        return false;
+    }
+    if (!IsStructPtr(struct_value->getType())) {
+        LOG(WARNING) << "Fail set Struct value: struct pointer is required";
+        return false;
+    }
+    if (struct_value->getType()->getPointerElementType() != struct_type_) {
+        LOG(WARNING) << "Fail set Struct value: struct value type invalid "
+                     << struct_value->getType()
+                            ->getPointerElementType()
+                            ->getStructName()
+                            .str();
         return false;
     }
     ::llvm::IRBuilder<> builder(block);

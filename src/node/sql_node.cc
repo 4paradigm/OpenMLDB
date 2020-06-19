@@ -1022,19 +1022,23 @@ void FnNodeFnHeander::Print(std::ostream &output,
                  "parameters", true);
 }
 
-const std::string FnNodeFnHeander::GetCodegenFunctionName() const {
+const std::string FnNodeFnHeander::GeIRFunctionName() const {
     std::string fn_name = name_;
     if (!parameters_->children.empty()) {
         for (node::SQLNode *node : parameters_->children) {
             node::FnParaNode *para_node =
                 dynamic_cast<node::FnParaNode *>(node);
+
             switch (para_node->GetParaType()->base_) {
                 case fesql::node::kList:
                 case fesql::node::kIterator:
                 case fesql::node::kMap:
-                    fn_name.append("_").append(
+                    fn_name.append(".").append(
                         para_node->GetParaType()->GetName());
+                    break;
                 default: {
+                    fn_name.append(".").append(
+                        para_node->GetParaType()->GetName());
                 }
             }
         }
@@ -1169,7 +1173,12 @@ bool TypeNode::Equals(const SQLNode *node) const {
     }
 
     const TypeNode *that = dynamic_cast<const TypeNode *>(node);
-    return this->base_ == that->base_ && this->generics_ == that->generics_;
+    return this->base_ == that->base_ &&
+           std::equal(this->generics_.cbegin(), this->generics_.cend(),
+                      that->generics_.cbegin(),
+                      [&](fesql::node::TypeNode a, fesql::node::TypeNode b) {
+                          return a.Equals(&b);
+                      });
 }
 
 void JoinNode::Print(std::ostream &output, const std::string &org_tab) const {
@@ -1332,9 +1341,8 @@ void ExternalFnDefNode::Print(std::ostream &output,
 }
 
 bool ExternalFnDefNode::Equals(const SQLNode *node) const {
-    auto other = dynamic_cast<const ExternalFnDefNode*>(node);
-    return other != nullptr &&
-        other->function_name() == function_name();
+    auto other = dynamic_cast<const ExternalFnDefNode *>(node);
+    return other != nullptr && other->function_name() == function_name();
 }
 
 void UDFDefNode::Print(std::ostream &output, const std::string &tab) const {
@@ -1344,17 +1352,16 @@ void UDFDefNode::Print(std::ostream &output, const std::string &tab) const {
 }
 
 bool UDFDefNode::Equals(const SQLNode *node) const {
-    auto other = dynamic_cast<const UDFDefNode*>(node);
+    auto other = dynamic_cast<const UDFDefNode *>(node);
     return other != nullptr && def_->Equals(other->def_);
 }
 
 bool UDAFDefNode::Equals(const SQLNode *node) const {
-    auto other = dynamic_cast<const UDAFDefNode*>(node);
-    return other != nullptr &&
-        init_->Equals(other->init_) &&
-        update_->Equals(other->update_) &&
-        FnDefEquals(merge_, other->merge_) &&
-        FnDefEquals(output_, other->output_);
+    auto other = dynamic_cast<const UDAFDefNode *>(node);
+    return other != nullptr && init_->Equals(other->init_) &&
+           update_->Equals(other->update_) &&
+           FnDefEquals(merge_, other->merge_) &&
+           FnDefEquals(output_, other->output_);
 }
 
 void UDAFDefNode::Print(std::ostream &output, const std::string &tab) const {
@@ -1372,7 +1379,6 @@ void UDAFDefNode::Print(std::ostream &output, const std::string &tab) const {
     }
     output << tab << "\n}";
 }
-
 
 }  // namespace node
 }  // namespace fesql
