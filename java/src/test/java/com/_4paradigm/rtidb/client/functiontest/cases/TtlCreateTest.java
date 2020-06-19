@@ -134,13 +134,13 @@ public class TtlCreateTest extends TestCaseBase {
             for (String ele : data) {
                 String merchant = ele.split(",")[0];
                 Long ts = Long.valueOf(ele.split(",")[1].split(":")[0]);
-                Boolean putok = null;
+                Boolean putok = true;
                 if (multiDimention) {
                     putok = tabletSyncClient.put(tid, 0, ts, new Object[]{"pk", merchant});
                 } else {
                     putok = tabletSyncClient.put(tid, 0, "pk", ts, merchant);
                 }
-                Assert.assertFalse(!putok);
+                Assert.assertTrue(putok);
             }
             TableStatus ts = tabletClient.getTableStatus(tid, 0);
             Assert.assertNotNull(ts);
@@ -150,7 +150,6 @@ public class TtlCreateTest extends TestCaseBase {
             System.out.println("data ready failed!");
             Assert.fail();
         }
-        tabletClient.dropTable(tid, 0);
     }
 
 
