@@ -9316,12 +9316,11 @@ void NameServerImpl::UpdateTableAliveStatus(
         }
     }
     if (has_update) {
-        if (!UpdateZkTableNode(table_info)) {
+        if (UpdateZkTableNode(table_info)) {
             PDLOG(INFO, "update alive status ok. name[%s] endpoint[%s]",
                   name.c_str(), endpoint.c_str());
             response->set_code(::rtidb::base::ReturnCode::kOk);
             response->set_msg("ok");
-            return;
         } else {
             response->set_msg("set zk failed");
             response->set_code(::rtidb::base::ReturnCode::kSetZkFailed);
