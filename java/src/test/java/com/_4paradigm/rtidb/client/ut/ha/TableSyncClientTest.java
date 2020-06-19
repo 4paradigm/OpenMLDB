@@ -1787,6 +1787,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 Map<String, Object> valueColumns = new HashMap<>();
                 valueColumns.put("price", 14.4);
                 valueColumns.put("image", buf4);
+                valueColumns.put("memory", 12);
                 updateResult = tableSyncClient.update(name, conditionColumns, valueColumns, wo);
                 Assert.assertTrue(updateResult.isSuccess());
                 Assert.assertEquals(updateResult.getAffectedCount(), 1);
