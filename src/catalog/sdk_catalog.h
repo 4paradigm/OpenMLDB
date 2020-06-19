@@ -87,7 +87,7 @@ class SDKTableHandler : public ::fesql::vm::TableHandler {
     inline int32_t GetColumnIndex(const std::string& column) {
         auto it = types_.find(column);
         if (it != types_.end()) {
-            return it->second.pos;
+            return it->second.idx;
         }
         return -1;
     }
@@ -116,7 +116,9 @@ class SDKCatalog : public ::fesql::vm::Catalog {
 
     bool Init(const std::vector<::rtidb::nameserver::TableInfo>& tables);
 
-    bool Refresh(const std::vector<::rtidb::nameserver::TableInfo>& tables) {}
+    bool Refresh(const std::vector<::rtidb::nameserver::TableInfo>& tables) {
+        return false;
+    }
 
     std::shared_ptr<::fesql::type::Database> GetDatabase(
         const std::string& db) {

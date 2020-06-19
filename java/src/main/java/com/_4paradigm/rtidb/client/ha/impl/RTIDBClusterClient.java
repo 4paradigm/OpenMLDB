@@ -243,13 +243,14 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
                         SingleEndpointRpcClient client = new SingleEndpointRpcClient(baseClient);
                         client.updateEndpoint(endpoint, bcg);
                         TabletServer ts = (TabletServer) RpcProxy.getProxy(client, TabletServer.class);
+                        TabletServerWapper tabletServerWapper = new TabletServerWapper(pm.getEndpoint(), ts);
                         if (pm.getIsLeader()) {
-                            ph.setLeader(ts);
+                            ph.setLeader(tabletServerWapper);
                         } else {
-                            ph.getFollowers().add(ts);
+                            ph.getFollowers().add(tabletServerWapper);
                         }
                         if (localIpAddr.contains(endpoint.getIp().toLowerCase())) {
-                            ph.setFastTablet(ts);
+                            ph.setFastTablet(tabletServerWapper);
                         }
                     }
                 }

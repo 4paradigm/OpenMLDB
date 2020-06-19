@@ -118,8 +118,7 @@ void BlobProxyImpl::Get(RpcController* controller, const HttpRequest* request,
     butil::IOBuf buff;
     bool ok = blob->Get(th->table_info->tid(), 0, blob_id, &err_msg, &buff);
     if (!ok) {
-        cntl->http_response().set_status_code(
-            brpc::HTTP_STATUS_INTERNAL_SERVER_ERROR);
+        cntl->http_response().set_status_code(brpc::HTTP_STATUS_NOT_FOUND);
         response_writer.append(err_msg);
         return;
     }

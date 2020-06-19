@@ -150,7 +150,8 @@ public class TableSyncProjectionTest extends TestCaseBase {
         KvIterator it = tableSyncClient.scan(args.tableInfo.getName(), args.key, args.ts, 0l, option);
         Assert.assertEquals(1, it.getCount());
         Assert.assertTrue(it.valid());
-        Assert.assertEquals(args.expected, it.getDecodedValue());
+        Object[] row = it.getDecodedValue();
+        Assert.assertEquals(args.expected, row);
     }
 
     @Test(dataProvider = "projection_case")

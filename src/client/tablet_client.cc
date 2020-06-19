@@ -1210,23 +1210,9 @@ bool TabletClient::Delete(uint32_t tid, uint32_t pid, const std::string& pk,
 
 
 bool TabletClient::Delete(uint32_t tid, uint32_t pid,
-        const ::google::protobuf::RepeatedPtrField<
-        ::rtidb::api::Columns>& cd_columns,
-        uint32_t* count, std::string* msg) {
-    ::rtidb::api::DeleteRequest request;
-    ::rtidb::api::GeneralResponse response;
-    request.set_tid(tid);
-    request.set_pid(pid);
-    request.mutable_condition_columns()->CopyFrom(cd_columns);
-    bool ok =
-        client_.SendRequest(&::rtidb::api::TabletServer_Stub::Delete, &request,
-                            &response, FLAGS_request_timeout_ms, 1);
-    if (ok && response.code() == 0) {
-        *count = response.count();
-        return true;
-    }
-    *msg = response.msg();
-    return false;
+                          const Cond_Column& cd_columns, uint32_t* count,
+                          std::string* msg) {
+    return Delete(tid, pid, cd_columns, count, msg, nullptr);
 }
 
 bool TabletClient::ConnectZK() {
@@ -1532,6 +1518,32 @@ bool TabletClient::CancelOP(const uint64_t op_id) {
         return false;
     }
     return true;
+}
+bool TabletClient::Delete(uint32_t tid, uint32_t pid,
+                          const Cond_Column& cd_columns, uint32_t* count,
+                          std::string* msg, std::vector<int64_t>* additions) {
+    ::rtidb::api::DeleteRequest request;
+    ::rtidb::api::GeneralResponse response;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    request.mutable_condition_columns()->CopyFrom(cd_columns);
+    if (additions != nullptr) {
+        request.set_receive_blobs(true);
+    }
+    bool ok =
+        client_.SendRequest(&::rtidb::api::TabletServer_Stub::Delete, &request,
+                            &response, FLAGS_request_timeout_ms, 1);
+    if (ok && response.code() == 0) {
+        *count = response.count();
+        if (additions != nullptr) {
+            for (auto& add : response.additional_ids()) {
+                additions->push_back(add);
+            }
+        }
+        return true;
+    }
+    *msg = response.msg();
+    return false;
 }
 
 }  // namespace client

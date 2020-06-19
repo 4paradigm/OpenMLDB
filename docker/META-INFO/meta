@@ -20,3 +20,7 @@ template:
   type: file
   desc: nameserver port
   value: "6527"
+- key: blobproxy_port 
+  type: file
+  desc: blobproxy_port
+  value: "8080"

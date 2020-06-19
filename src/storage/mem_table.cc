@@ -7,15 +7,12 @@
 //
 #include "storage/mem_table.h"
 
-#include <gflags/gflags.h>
-
 #include <algorithm>
 #include <utility>
-
-#include "base/fe_slice.h"
-#include "base/glog_wapper.h"  // NOLINT
+#include "base/glog_wapper.h"
 #include "base/hash.h"
 #include "base/slice.h"
+#include "gflags/gflags.h"
 #include "storage/record.h"
 #include "timer.h"  // NOLINT
 

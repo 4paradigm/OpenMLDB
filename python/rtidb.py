@@ -194,6 +194,22 @@ class RTIDBClient:
         raise Exception("erred at put blob data: {}".format(blobOPResult.msg_))
       value.update({k: str(blobInfo.key_)})
 
+  def deleteBlob(self, name: str, value: map):
+    blobFields = self.__client.GetBlobSchema(name);
+    blobInfo = None
+    keys = interclient.VectorInt64()
+    for k in blobFields:
+      key = value.get(k, None)
+      if not isinstance(value[k], str):
+        continue
+      if blobInfo == None:
+        blobInfo = self.__client.GetBlobInfo(name)
+        if blobInfo.code_ != 0:
+          msg = blobInfo.GetMsg()
+          raise Exception("erred at get blobinfo: {}".format(msg.decode("UTF-8")))
+      keys.append(int(key))
+    self.__client.DeleteBlobs(name, keys)
+
   def put(self, table_name: str, columns: map, write_option: WriteOption = None):
     _wo = interclient.WriteOption()
     if WriteOption != None:
@@ -203,6 +219,7 @@ class RTIDBClient:
 
     putResult= self.__client.Put(table_name, value, _wo)
     if putResult.code != 0:
+      self.deleteBlob(table_name, value)
       raise Exception(putResult.code, putResult.msg)
     return PutResult(putResult)
 
@@ -215,6 +232,7 @@ class RTIDBClient:
     v = buildStrMap(value_columns)
     update_result = self.__client.Update(table_name, cond, v, _wo)
     if update_result.code != 0:
+      self.deleteBlob(table_name, v)
       raise Exception(update_result.code, update_result.msg)
     return UpdateResult(update_result)
 

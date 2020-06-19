@@ -260,6 +260,7 @@ message ScanRequest {
     optional bool enable_remove_ts = 13 [default = false];
     optional uint32 atleast = 14 [default = 0];
     repeated uint32 projection = 15;
+    repeated uint32 pid_group = 16;
 }
 
 message RpcMetric {
@@ -561,6 +562,7 @@ message GetRequest {
     optional uint64 et = 8;
     optional GetType et_type = 9 [default = kSubKeyGe];
     repeated uint32 projection = 10;
+    repeated uint32 pid_group = 11;
 }
 
 message GetResponse {

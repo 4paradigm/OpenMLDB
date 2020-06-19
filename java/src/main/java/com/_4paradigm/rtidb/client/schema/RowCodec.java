@@ -204,8 +204,7 @@ public class RowCodec {
                 throw new TabletException(ctype.toString() + " is not support on jvm platform");
         }
     }
-    public static void decode(ByteBuffer buffer, List<ColumnDesc> schema, BitSet bset,
-                              List<Integer> projection, Integer maxIndex,
+    public static void decode(ByteBuffer buffer, List<ColumnDesc> schema, ProjectionInfo projectionInfo,
                               Object[] row, int start, int length) throws TabletException {
         if (buffer.order() == ByteOrder.BIG_ENDIAN) {
             buffer = buffer.order(ByteOrder.LITTLE_ENDIAN);
@@ -230,6 +229,8 @@ public class RowCodec {
         }
         Object[] rawRow = new Object[colLength];
         int count = 0;
+        int maxIndex = projectionInfo.getMaxIndex();
+        BitSet bset = projectionInfo.getBitSet();
         while (buffer.position() < buffer.limit() && count <= maxIndex) {
             if (bset.get(count)) {
                 decodeColumn(buffer, rawRow, count);
@@ -255,7 +256,7 @@ public class RowCodec {
             count++;
         }
         int index = start;
-        for (Integer idx : projection) {
+        for (Integer idx : projectionInfo.getProjectionCol()) {
             if (index >= length) break;
             row[index] = rawRow[idx];
             index ++;
@@ -295,8 +296,8 @@ public class RowCodec {
             count++;
         }
     }
-    public static Object[] decode(ByteBuffer buffer, List<ColumnDesc> schema, BitSet bitSet,List<Integer> projection, int maxIndex) throws TabletException {
-        return decode(buffer, schema, bitSet, projection, maxIndex, 0);
+    public static Object[] decode(ByteBuffer buffer, List<ColumnDesc> schema, ProjectionInfo projectionInfo) throws TabletException {
+        return decode(buffer, schema, projectionInfo, 0);
     }
     public static Object[] decode(ByteBuffer buffer, List<ColumnDesc> schema) throws TabletException {
         return decode(buffer, schema, 0);
@@ -306,9 +307,9 @@ public class RowCodec {
         decode(buffer, schema, row, 0, row.length);
         return row;
     }
-    private static Object[] decode(ByteBuffer buffer, List<ColumnDesc> schema, BitSet bitset, List<Integer> projection, int maxIndex, int modifytimes) throws TabletException {
-        Object[] row = new Object[projection.size()];
-        decode(buffer, schema, bitset, projection, maxIndex, row, 0, row.length);
+    private static Object[] decode(ByteBuffer buffer, List<ColumnDesc> schema, ProjectionInfo projectionInfo, int modifytimes) throws TabletException {
+        Object[] row = new Object[projectionInfo.getProjectionCol().size()];
+        decode(buffer, schema, projectionInfo, row, 0, row.length);
         return row;
     }
     private static int getSize(Object[] row, List<ColumnDesc> schema, Object[] cache) {

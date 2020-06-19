@@ -14,36 +14,40 @@ import rtidb.api.TabletServer;
 public class PartitionHandler {
     private final static Logger logger = LoggerFactory.getLogger(PartitionHandler.class);
     private final static Random rand = new Random(System.currentTimeMillis());
-    private TabletServer leader = null;
-    private List<TabletServer> followers = new ArrayList<TabletServer>();
+    private TabletServerWapper leader = null;
+    private List<TabletServerWapper> followers = new ArrayList<TabletServerWapper>();
     // the fast server for tablet read
-    private TabletServer fastTablet = null;
+    private TabletServerWapper fastTablet = null;
 
     public TabletServer getLeader() {
-        return leader;
+        return leader.getServer();
     }
 
-    public void setLeader(TabletServer leader) {
+    public void setLeader(TabletServerWapper leader) {
         this.leader = leader;
     }
 
-    public List<TabletServer> getFollowers() {
+    public List<TabletServerWapper> getFollowers() {
         return followers;
     }
 
-    public void setFollowers(List<TabletServer> followers) {
+    public void setFollowers(List<TabletServerWapper> followers) {
         this.followers = followers;
     }
 
     public TabletServer getFastTablet() {
-        return fastTablet;
+        return fastTablet.getServer();
     }
 
-    public void setFastTablet(TabletServer fastTablet) {
+    public void setFastTablet(TabletServerWapper fastTablet) {
         this.fastTablet = fastTablet;
     }
 
     public TabletServer getReadHandler(ReadStrategy strategy) {
+        return getTabletServerWapper(strategy).getServer();
+    }
+
+    public TabletServerWapper getTabletServerWapper(ReadStrategy strategy) {
         // single node tablet
         if (followers.size() <= 0 || strategy == null) {
             return leader;

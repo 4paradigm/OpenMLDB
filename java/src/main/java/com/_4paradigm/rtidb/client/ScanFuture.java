@@ -4,6 +4,7 @@ import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.impl.DefaultKvIterator;
 import com._4paradigm.rtidb.client.impl.RowKvIterator;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
+import com._4paradigm.rtidb.client.schema.ProjectionInfo;
 import com._4paradigm.rtidb.tablet.Tablet;
 import com._4paradigm.rtidb.tablet.Tablet.ScanResponse;
 
@@ -18,25 +19,17 @@ public class ScanFuture implements Future<KvIterator> {
 
     private Future<Tablet.ScanResponse> f;
     private TableHandler t;
-    private List<ColumnDesc> projection;
-
-    private List<Integer> projectionIdx;
-    private BitSet bitSet;
-    private int maxProjectionIdx;
-
+    private ProjectionInfo projectionInfo = null;
 
     public ScanFuture(Future<Tablet.ScanResponse> f, TableHandler t) {
         this.f = f;
         this.t = t;
     }
 
-    public ScanFuture(Future<Tablet.ScanResponse> f, TableHandler t, List<Integer> projectionIdx,
-                      BitSet bitSet, int maxProjectionIdx) {
+    public ScanFuture(Future<Tablet.ScanResponse> f, TableHandler t, ProjectionInfo projectionInfo) {
         this.f = f;
         this.t = t;
-        this.projectionIdx = projectionIdx;
-        this.bitSet = bitSet;
-        this.maxProjectionIdx = maxProjectionIdx;
+        this.projectionInfo = projectionInfo;
     }
 
     public ScanFuture(Future<Tablet.ScanResponse> f, TableHandler t, Long startTime) {
@@ -45,11 +38,6 @@ public class ScanFuture implements Future<KvIterator> {
     }
 
     public ScanFuture() {}
-    public ScanFuture(Future<Tablet.ScanResponse> f, TableHandler t, List<ColumnDesc> projection) {
-        this.f = f;
-        this.t = t;
-        this.projection = projection;
-    }
 
     public static ScanFuture wrappe(Future<Tablet.ScanResponse> f, TableHandler t) {
         return new ScanFuture(f, t);
@@ -77,7 +65,6 @@ public class ScanFuture implements Future<KvIterator> {
     @Override
     public KvIterator get() throws InterruptedException, ExecutionException {
         ScanResponse response = f.get();
-        Long network = -1l;
         if (response == null) {
             throw new ExecutionException("Connection error", null);
         }
@@ -93,11 +80,16 @@ public class ScanFuture implements Future<KvIterator> {
         throw new ExecutionException(msg, null);
     }
 
+    public ProjectionInfo getProjectionInfo() {
+        return projectionInfo;
+    }
+
     private KvIterator getLegacyKvIterator(ScanResponse response) {
         DefaultKvIterator kit = null;
         if (t != null) {
-            if (projectionIdx != null && projectionIdx.size() >0) {
-                kit = new DefaultKvIterator(response.getPairs(), t.getSchema(), bitSet, projectionIdx, maxProjectionIdx);
+            if (projectionInfo != null && projectionInfo.getProjectionCol() != null &&
+                !projectionInfo.getProjectionCol().isEmpty()) {
+                kit = new DefaultKvIterator(response.getPairs(), t.getSchema(), projectionInfo);
             }else if (t.getSchemaMap().size() > 0) {
                 kit = new DefaultKvIterator(response.getPairs(), t);
             } else {
@@ -115,14 +107,19 @@ public class ScanFuture implements Future<KvIterator> {
 
     private KvIterator getNewKvIterator(ScanResponse response) {
         RowKvIterator kit = null;
-        if (projection != null) {
-            kit = new RowKvIterator(response.getPairs(), projection, response.getCount());
+        if (projectionInfo != null && projectionInfo.getProjectionSchema() != null) {
+            kit = new RowKvIterator(response.getPairs(), projectionInfo.getProjectionSchema(), response.getCount());
         }else {
             kit = new RowKvIterator(response.getPairs(), t.getSchema(), response.getCount());
         }
+        kit.setCount(response.getCount());
         kit.setCompressType(t.getTableInfo().getCompressType());
         return kit;
 
+    }
+
+    public ScanResponse getResponse() throws InterruptedException, ExecutionException {
+        return f.get();
     }
 
     @Override

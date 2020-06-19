@@ -50,7 +50,7 @@ bool SDKTableHandler::Init() {
         const ::fesql::type::ColumnDef& column = schema_.Get(i);
         ::fesql::vm::ColInfo col_info;
         col_info.type = column.type();
-        col_info.pos = i;
+        col_info.idx = i;
         col_info.name = column.name();
         types_.insert(std::make_pair(column.name(), col_info));
     }

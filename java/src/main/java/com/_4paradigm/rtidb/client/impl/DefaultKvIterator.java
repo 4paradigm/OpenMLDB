@@ -5,41 +5,33 @@ import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
+import com._4paradigm.rtidb.client.schema.ProjectionInfo;
 import com._4paradigm.rtidb.client.schema.RowCodec;
 import com._4paradigm.rtidb.ns.NS;
 import com._4paradigm.rtidb.utils.Compress;
 import com.google.protobuf.ByteString;
 
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.util.BitSet;
+import java.util.ArrayList;
 import java.util.List;
 
 public class DefaultKvIterator implements KvIterator {
 
-    private ByteString bs;
-    private int offset;
-    private ByteBuffer bb;
+    private List<ScanResultParser> dataList = new ArrayList<>();
     // no copy
-    private ByteBuffer slice;
-    private int length;
+    private ByteBuffer slice = null;
     private long time;
-    private int totalSize;
     private List<ColumnDesc> schema;
     private Long network = 0l;
     private int count;
+    private int iter_count = 0;
     private RTIDBClientConfig config = null;
     private NS.CompressType compressType = NS.CompressType.kNoCompress;
     private TableHandler th = null;
-    private List<Integer> projection;
-    private boolean hasProjection = false;
-    private BitSet bitSet;
-    private int maxIndex;
+    private ProjectionInfo projectionInfo = null;
+
     public DefaultKvIterator(ByteString bs) {
-        this.bs = bs;
-        this.bb = this.bs.asReadOnlyByteBuffer();
-        this.offset = 0;
-        this.totalSize = this.bs.size();
+        this.dataList.add(new ScanResultParser(bs));
         next();
     }
     
@@ -68,15 +60,10 @@ public class DefaultKvIterator implements KvIterator {
         this(bs);
         this.schema = schema;
     }
-    public DefaultKvIterator(ByteString bs, List<ColumnDesc> schema, BitSet bitSet, List<Integer> projection, int maxIndex) {
+    public DefaultKvIterator(ByteString bs, List<ColumnDesc> schema, ProjectionInfo projectionInfo) {
         this(bs);
         this.schema = schema;
-        this.projection = projection;
-        if (projection != null && projection.size() > 0) {
-            hasProjection = true;
-            this.bitSet = bitSet;
-            this.maxIndex = maxIndex;
-        }
+        this.projectionInfo = projectionInfo;
     }
 	public DefaultKvIterator(ByteString bs, List<ColumnDesc> schema, RTIDBClientConfig config) {
         this(bs, schema);
@@ -84,30 +71,30 @@ public class DefaultKvIterator implements KvIterator {
     }
     
     public DefaultKvIterator(ByteString bs, Long network) {
-        this.bs = bs;
-        this.bb = this.bs.asReadOnlyByteBuffer();
-        this.offset = 0;
-        this.totalSize = this.bs.size();
-        next();
+        this(bs);
         this.network = network;
     }
 
     public DefaultKvIterator(ByteString bs, TableHandler th) {
-        this.bs = bs;
-        this.bb = this.bs.asReadOnlyByteBuffer();
-        this.offset = 0;
-        this.totalSize = this.bs.size();
+        this(bs);
+        this.schema = th.getSchema();
+        this.th = th;
+    }
+
+    public DefaultKvIterator(List<ByteString> bsList, TableHandler th, ProjectionInfo projectionInfo) {
+        for (ByteString bs : bsList) {
+            if (!bs.isEmpty()) {
+                this.dataList.add(new ScanResultParser(bs));
+            }
+        }
+        this.projectionInfo = projectionInfo;
         next();
         this.schema = th.getSchema();
         this.th = th;
     }
 
     public DefaultKvIterator(ByteString bs, List<ColumnDesc> schema, Long network) {
-        this.bs = bs;
-        this.bb = this.bs.asReadOnlyByteBuffer();
-        this.offset = 0;
-        this.totalSize = this.bs.size();
-        next();
+        this(bs);
         this.schema = schema;
         if (network != null) {
             this.network = network;
@@ -122,11 +109,7 @@ public class DefaultKvIterator implements KvIterator {
 	}
 
 	public boolean valid() {
-        if (offset <= totalSize) {
-            return true;
-        }
-
-        return false;
+        return slice != null && iter_count <= count;
     }
 
     public long getKey() {
@@ -155,8 +138,8 @@ public class DefaultKvIterator implements KvIterator {
             throw new TabletException("get decoded value is not supported");
         }
         Object[] row;
-        if (hasProjection) {
-            row = new Object[projection.size()];
+        if (projectionInfo != null) {
+            row = new Object[projectionInfo.getProjectionCol().size()];
             getDecodedValue(row, 0, row.length);
             return row;
         }
@@ -170,21 +153,23 @@ public class DefaultKvIterator implements KvIterator {
     }
 
     public void next() {
-        if (offset + 4 > totalSize) {
-            offset += 4;
-            return;
+        int maxTsIndex = -1;
+        long ts = -1;
+        for (int i = 0; i < dataList.size(); i++) {
+            ScanResultParser queryResult = dataList.get(i);
+            if (queryResult.valid() && queryResult.GetTs() > ts) {
+                maxTsIndex = i;
+                ts = queryResult.GetTs();
+            }
         }
-        slice = this.bb.slice().asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN);
-        slice.position(offset);
-        int size = slice.getInt();
-        time = slice.getLong();
-        // calc the data size
-        length = size - 8;
-        if (length < 0) {
-            throw new RuntimeException("bad frame data");
+        if (maxTsIndex >= 0) {
+            ScanResultParser queryResult = dataList.get(maxTsIndex);
+            time = queryResult.GetTs();
+            slice = queryResult.fetchData();
+        } else {
+            slice = null;
         }
-        offset += (4 + size);
-        slice.limit(offset);
+        iter_count++;
     }
 
     @Override
@@ -199,14 +184,14 @@ public class DefaultKvIterator implements KvIterator {
             if (uncompressed == null) {
                 throw new TabletException("snappy uncompress error");
             }
-            if (hasProjection) {
-                RowCodec.decode(ByteBuffer.wrap(uncompressed), schema, bitSet, projection, maxIndex, row, 0, length);
+            if (projectionInfo != null) {
+                RowCodec.decode(ByteBuffer.wrap(uncompressed), schema, projectionInfo, row, 0, length);
             }else {
                 RowCodec.decode(ByteBuffer.wrap(uncompressed), schema, row, 0, length);
             }
         } else {
-            if (hasProjection) {
-                RowCodec.decode(slice, schema, bitSet, projection,maxIndex, row, start, length);
+            if (projectionInfo != null) {
+                RowCodec.decode(slice, schema, projectionInfo, row, start, length);
             }else {
                 RowCodec.decode(slice, schema, row, start, length);
             }
