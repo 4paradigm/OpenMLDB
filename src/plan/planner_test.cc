@@ -1346,7 +1346,6 @@ TEST_F(PlannerTest, WindowExpandTest) {
     int ret = parser_->parse(sql, parser_trees, manager_, status);
     ASSERT_EQ(0, ret);
     SimplePlanner planner_ptr(manager_, false);
-    planner_ptr.set_window_merge_enable(true);
     node::PlanNodeList plan_trees;
     ASSERT_EQ(common::kOk,
               planner_ptr.CreatePlanTree(parser_trees, plan_trees, status));
