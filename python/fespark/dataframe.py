@@ -1,5 +1,6 @@
 
 from .dataframe_writer import DataframeWriter
+from . import utils
 
 class FesqlDataframe(object):
 
@@ -43,5 +44,38 @@ class FesqlDataframe(object):
     def __str__(self):
         return self.jdf.toString()
 
+    def schema(self):
+      try:
+        return utils._parse_datatype_json_string(self.jdf.schemaJson())
+      except AttributeError as e:
+        raise Exception("Unable to parse datatype from schema. %s" % e)
+
+    def columns(self):
+        return [f.name for f in self.schema().fields]
+
+    def collect(self):
+        from pyspark.rdd import _load_from_socket
+        from pyspark.serializers import BatchedSerializer, PickleSerializer
+
+        port = self.jdf.getSparkDf().collectToPython()
+        return list(_load_from_socket(port, BatchedSerializer(PickleSerializer())))
+
     def toPandas(self):
-        pass
+        import pandas as pd
+        from pyspark.sql.types import IntegralType
+
+        pdf = pd.DataFrame.from_records(self.collect(), columns=self.columns())
+        dtype = {}
+        for field in self.schema():
+            pandas_type = utils._to_corrected_pandas_type(field.dataType)
+        if pandas_type is not None and \
+                not(isinstance(field.dataType, IntegralType) and field.nullable and
+                        pdf[field.name].isnull().any()):
+            dtype[field.name] = pandas_type
+
+        for f, t in dtype.items():
+            pdf[f] = pdf[f].astype(t, copy=False)
+        return pdf
+
+    def toNumpy(self):
+        return self.toPandas().to_numpy()

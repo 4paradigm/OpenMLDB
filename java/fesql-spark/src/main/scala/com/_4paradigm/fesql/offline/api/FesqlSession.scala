@@ -83,13 +83,24 @@ class FesqlSession {
 
     val sparkDf = format match {
       case "parquet" => spark.read.parquet(filePath)
-      case "json" => spark.read.json(filePath)
       case "csv" => spark.read.csv(filePath)
-      case "orc" => spark.read.orc(filePath)
+      case "json" => spark.read.json(filePath)
       case "text" => spark.read.text(filePath)
+      case "orc" => spark.read.orc(filePath)
       case _ => null
     }
 
+    new FesqlDataframe(this, sparkDf)
+  }
+
+  /**
+   * Read the Spark dataframe to Fesql dataframe.
+   *
+   * @param filePath
+   * @param format
+   * @return
+   */
+  def readSparkDataframe(sparkDf: DataFrame): FesqlDataframe = {
     new FesqlDataframe(this, sparkDf)
   }
 

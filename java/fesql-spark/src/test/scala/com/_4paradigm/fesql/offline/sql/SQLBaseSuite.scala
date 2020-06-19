@@ -3,7 +3,9 @@ package com._4paradigm.fesql.offline.sql
 import java.io.{File, FileInputStream}
 import java.sql.{Date, Timestamp}
 import java.text.SimpleDateFormat
-import com._4paradigm.fesql.offline.{SparkPlanner, SparkTestSuite}
+
+import com._4paradigm.fesql.offline.api.{FesqlDataframe, FesqlSession}
+import com._4paradigm.fesql.offline.SparkTestSuite
 import com._4paradigm.fesql.sqlcase.model._
 import org.apache.spark.sql.{DataFrame, Row}
 import org.apache.spark.sql.types._
@@ -40,23 +42,40 @@ class SQLBaseSuite extends SparkTestSuite {
   def testCase(sqlCase: SQLCase): Unit = {
     test(SQLBaseSuite.getTestName(sqlCase)) {
       logger.info(s"Test ${sqlCase.getId}:${sqlCase.getDesc}")
-      val inputDict = mutable.HashMap[String, DataFrame]()
+
+      // TODO: may set config of Map("fesql.group.partitions" -> 1)
+      val spark = new FesqlSession(getSparkSession)
+
+      //val inputDict = mutable.HashMap[String, DataFrame]()
       sqlCase.getInputs.asScala.foreach(desc => {
         val (name, df) = loadInputData(desc)
-        inputDict += name -> df
+        //inputDict += name -> df
+        FesqlDataframe(spark, df).createOrReplaceTempView(name)
       })
 
-      val planner = new SparkPlanner(getSparkSession, Map("fesql.group.partitions" -> 1))
-      val inst = planner.plan(sqlCase.getSql, inputDict.toMap)
-
-      val df = inst.getDf(getSparkSession)
+      val df = spark.sql(sqlCase.getSql).sparkDf
       df.cache()
       df.show()
 
       if (sqlCase.getOutput != null) {
         checkOutput(df, sqlCase.getOutput)
       }
+
+      // Run SparkSQL to test and compare the generated Spark dataframes
+      if (sqlCase.isStandard_sql) {
+        logger.info("Use the standard sql, test result with SparkSQL")
+        // Remove the ";" in sql text
+        var sqlText: String = sqlCase.getSql.trim
+        if (sqlText.endsWith(";")) {
+          sqlText = sqlText.substring(0, sqlText.length-1)
+        }
+        checkTwoDataframe(df, spark.sparksql(sqlText).sparkDf)
+      }
     }
+  }
+
+  def checkTwoDataframe(df1: DataFrame, df2: DataFrame): Unit = {
+    assert(df1.except(df2).count() == df2.except(df1).count())
   }
 
   def checkOutput(data: DataFrame, expect: OutputDesc): Unit = {

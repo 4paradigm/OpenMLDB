@@ -36,6 +36,7 @@ SQLCases:
       sum(col1) OVER w1 as w1_col1_sum
       FROM t1
       WINDOW w1 AS (PARTITION BY pk1 ORDER BY std_ts ROWS BETWEEN 1 PRECEDING AND CURRENT ROW);
+    standard_sql: true
     inputs:
       - name: t1
         schema: id:int, pk1:string, col1:int32, std_ts:timestamp
@@ -418,6 +419,7 @@ SQLCases:
       sum(col1) OVER (PARTITION BY pk1 ORDER BY std_ts ROWS BETWEEN 3 PRECEDING AND CURRENT ROW) as w3_col1_sum
       FROM t1
       WINDOW w2 AS (PARTITION BY pk1 ORDER BY std_ts ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    standard_sql: true
     inputs:
       - name: t1
         schema: id:int, pk1:string, col1:int32, std_ts:timestamp
@@ -560,6 +562,7 @@ SQLCases:
       sum(col1) OVER (PARTITION BY pk1 ORDER BY std_ts ROWS BETWEEN 3 PRECEDING AND 2 PRECEDING) as w3_col1_sum
       FROM t1
       WINDOW w2 AS (PARTITION BY pk1 ORDER BY std_ts ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    standard_sql: true
     inputs:
       - name: t1
         schema: id:int, pk1:string, col1:int32, std_ts:timestamp

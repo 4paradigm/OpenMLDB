@@ -11,6 +11,7 @@ public class SQLCase {
     String mode;
     String db;
     String sql;
+    boolean standard_sql;
     String create;
     String insert;
     String tag;
