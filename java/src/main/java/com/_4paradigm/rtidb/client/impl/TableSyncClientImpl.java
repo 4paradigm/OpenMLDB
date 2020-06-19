@@ -14,6 +14,7 @@ import com._4paradigm.rtidb.utils.Compress;
 import com.google.common.base.Charsets;
 import com.google.protobuf.ByteBufferNoCopy;
 import com.google.protobuf.ByteString;
+import io.netty.util.Timeout;
 import rtidb.api.TabletServer;
 import rtidb.blobserver.BlobServer;
 
@@ -1316,7 +1317,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         return put(tid, pid, key, time, null, null, ByteBuffer.wrap(bytes), th);
     }
 
-    private PutResult putRelationTable(int tid, int pid, ByteBuffer row, TableHandler th, WriteOption wo) throws TabletException {
+    private PutResult putRelationTable(int tid, int pid, ByteBuffer row, TableHandler th, WriteOption wo) throws TabletException, TimeoutException {
         PartitionHandler ph = th.getHandler(pid);
         if (th.getTableInfo().hasCompressType() && th.getTableInfo().getCompressType() == NS.CompressType.kSnappy) {
             byte[] data = row.array();
