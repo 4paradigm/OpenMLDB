@@ -184,6 +184,81 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
     ASSERT_EQ(0, response.code());
     ok = zk_client.GetNodeValue(table_data_node, value);
     ASSERT_FALSE(ok);
+
+    // snapshot with db
+    std::string db = "db" + GenRand();
+    CreateDatabaseRequest db_request;
+    db_request.set_db(db);
+    ok = name_server_client.SendRequest(
+        &::rtidb::nameserver::NameServer_Stub::CreateDatabase, &db_request,
+        &response, FLAGS_request_timeout_ms, 1);
+    ASSERT_TRUE(ok);
+    ASSERT_EQ(0, response.code());
+
+    table_info->set_db(db);
+    ok = name_server_client.SendRequest(
+        &::rtidb::nameserver::NameServer_Stub::CreateTable, &request, &response,
+        FLAGS_request_timeout_ms, 1);
+    ASSERT_TRUE(ok);
+    ASSERT_EQ(0, response.code());
+
+    m_request.set_db(db);
+    ok = name_server_client.SendRequest(
+        &::rtidb::nameserver::NameServer_Stub::MakeSnapshotNS, &m_request,
+        &response, FLAGS_request_timeout_ms, 1);
+    ASSERT_TRUE(ok);
+
+    sleep(5);
+
+    ShowTableRequest sr_request;
+    ShowTableResponse sr_response;
+    sr_request.set_name(name);
+    sr_request.set_db(db);
+    ok = name_server_client.SendRequest(
+        &::rtidb::nameserver::NameServer_Stub::ShowTable, &sr_request,
+        &sr_response, FLAGS_request_timeout_ms, 1);
+    ASSERT_TRUE(ok);
+    ASSERT_EQ(1, sr_response.table_info_size());
+    const TableInfo& table = sr_response.table_info(0);
+
+    op_index_node = FLAGS_zk_root_path + "/op/op_index";
+    value.clear();
+    ok = zk_client.GetNodeValue(op_index_node, value);
+    ASSERT_TRUE(ok);
+    op_node = FLAGS_zk_root_path + "/op/op_data/" + value;
+    ok = zk_client.GetNodeValue(op_node, value);
+    ASSERT_FALSE(ok);
+
+    value.clear();
+    table_index_node = FLAGS_zk_root_path + "/table/table_index";
+    ok = zk_client.GetNodeValue(table_index_node, value);
+    ASSERT_TRUE(ok);
+    snapshot_path =
+        FLAGS_db_root_path + "/" + value + "_0/snapshot/";
+    vec.clear();
+    cnt = ::rtidb::base::GetFileName(snapshot_path, vec);
+    ASSERT_EQ(0, cnt);
+    ASSERT_EQ(2, vec.size());
+
+    table_data_node =
+        FLAGS_zk_root_path + "/table/db_table_data/" + std::to_string(table.tid());
+    ok = zk_client.GetNodeValue(table_data_node, value);
+    ASSERT_TRUE(ok);
+    table_info1.ParseFromString(value);
+    ASSERT_STREQ(table_info->name().c_str(), table_info1.name().c_str());
+    ASSERT_EQ(table_info->table_partition_size(),
+              table_info1.table_partition_size());
+    
+    drop_request.set_db(db);
+    response.Clear();
+    ok = name_server_client.SendRequest(
+        &::rtidb::nameserver::NameServer_Stub::DropTable, &drop_request,
+        &response, FLAGS_request_timeout_ms, 1);
+    ASSERT_TRUE(ok);
+    ASSERT_EQ(0, response.code());
+    ok = zk_client.GetNodeValue(table_data_node, value);
+    ASSERT_FALSE(ok);
+
     delete nameserver;
     delete tablet;
     FLAGS_make_snapshot_threshold_offset = old_offset;

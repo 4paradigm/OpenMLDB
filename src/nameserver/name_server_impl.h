@@ -678,11 +678,11 @@ class NameServerImpl : public NameServer {
         const boost::function<bool()>& fun);
 
     bool GetTableInfo(const std::string& table_name, const std::string& db_name,
-                      std::shared_ptr<TableInfo>& table_info);  // NOLINT
+                      std::shared_ptr<TableInfo>* table_info);
 
     bool GetTableInfoUnlock(const std::string& table_name,
                             const std::string& db_name,
-                            std::shared_ptr<TableInfo>& table_info);  // NOLINT
+                            std::shared_ptr<TableInfo>* table_info);
 
     int AddOPTask(const ::rtidb::api::TaskInfo& task_info,
                   ::rtidb::api::TaskType task_type,
