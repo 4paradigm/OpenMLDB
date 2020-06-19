@@ -71,7 +71,8 @@ object Main {
       logger.info(s"Save result to: $outputPath")
       outputDf.write(outputPath)
     } else {
-      outputDf.run()
+      val count = outputDf.getSparkDf.queryExecution.toRdd.count()
+      logger.info(s"Result records count: $count")
     }
     endTime = System.currentTimeMillis()
     logger.info(f"Execution time cost: ${(endTime - startTime) / 1000.0}%.2f seconds")

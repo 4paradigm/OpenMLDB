@@ -33,7 +33,7 @@ The gateway to call JVM methods with py4j.
 class FesqlGateway(object):
     FESQL_PACKAGE_NAME = "com._4paradigm.fesql.offline.api"
     FESQL_HOME_DIR = os.environ.get("FESQL_HOME", os.path.abspath("./"))
-    FESQL_JAR_NAME = "fesql-spark-0.0.1-SNAPSHOT-with-dependencies.jar"
+    FESQL_JAR_NAME = os.environ.get("FESQL_JAR_FILE", "fesql-spark-0.0.1-SNAPSHOT-with-dependencies.jar")
     FESQL_JAR_PATH = os.path.join(FESQL_HOME_DIR, FESQL_JAR_NAME)
 
     def load_package(self, name):
