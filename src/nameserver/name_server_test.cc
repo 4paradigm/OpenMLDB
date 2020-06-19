@@ -9,17 +9,18 @@
 #include <gflags/gflags.h>
 #include <sched.h>
 #include <unistd.h>
+
 #include "base/file_util.h"
+#include "base/glog_wapper.h"  // NOLINT
 #include "client/ns_client.h"
 #include "gtest/gtest.h"
-#include "base/glog_wapper.h" // NOLINT
 #include "nameserver/name_server_impl.h"
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
 #include "proto/type.pb.h"
 #include "rpc/rpc_client.h"
 #include "tablet/tablet_impl.h"
-#include "timer.h" // NOLINT
+#include "timer.h"  // NOLINT
 
 DECLARE_string(endpoint);
 DECLARE_string(db_root_path);
@@ -45,7 +46,9 @@ using std::vector;
 namespace rtidb {
 namespace nameserver {
 
-inline std::string GenRand() { return std::to_string(rand() % 10000000 + 1); } // NOLINT
+inline std::string GenRand() {
+    return std::to_string(rand() % 10000000 + 1);
+}  // NOLINT
 
 class MockClosure : public ::google::protobuf::Closure {
  public:
@@ -233,22 +236,21 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
     table_index_node = FLAGS_zk_root_path + "/table/table_index";
     ok = zk_client.GetNodeValue(table_index_node, value);
     ASSERT_TRUE(ok);
-    snapshot_path =
-        FLAGS_db_root_path + "/" + value + "_0/snapshot/";
+    snapshot_path = FLAGS_db_root_path + "/" + value + "_0/snapshot/";
     vec.clear();
     cnt = ::rtidb::base::GetFileName(snapshot_path, vec);
     ASSERT_EQ(0, cnt);
     ASSERT_EQ(2, vec.size());
 
-    table_data_node =
-        FLAGS_zk_root_path + "/table/db_table_data/" + std::to_string(table.tid());
+    table_data_node = FLAGS_zk_root_path + "/table/db_table_data/" +
+                      std::to_string(table.tid());
     ok = zk_client.GetNodeValue(table_data_node, value);
     ASSERT_TRUE(ok);
     table_info1.ParseFromString(value);
     ASSERT_STREQ(table_info->name().c_str(), table_info1.name().c_str());
     ASSERT_EQ(table_info->table_partition_size(),
               table_info1.table_partition_size());
-    
+
     drop_request.set_db(db);
     response.Clear();
     ok = name_server_client.SendRequest(
