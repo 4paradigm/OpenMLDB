@@ -842,19 +842,14 @@ public class TableSyncClientImpl implements TableSyncClient {
         return new UpdateResult(false);
     }
 
-    boolean deleteBlobByMap(TableHandler th, Map<String, Object> row) {
-        List<ColumnDesc> schema = th.getSchema();
+    boolean deleteBlobByMap(TableHandler th, Map<String, Long> blobKeys) {
+        if (blobKeys.isEmpty()) {
+            return true;
+        }
         List<Long> keys = new ArrayList<Long>();
-        for (Integer idx : th.getBlobIdxList()) {
-            ColumnDesc col = schema.get(idx);
-            if (!row.containsKey(col.getName())) {
-                continue;
-            }
-            Object key = row.get(col.getName());
-            if (key == null) {
-                continue;
-            }
-            keys.add((Long)key);
+        for (String key : blobKeys.keySet()) {
+            Long blobKey = blobKeys.get(key);
+            keys.add(blobKey);
         }
         return deleteBlobByList(th, keys);
     }
@@ -1525,7 +1520,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         try {
             return putRelationTable(th.getTableInfo().getTid(), pid, buffer, th, wo);
         } catch (Exception e) {
-            deleteBlobByMap(th, row);
+            deleteBlobByMap(th, blobKeys);
             throw e;
         }
 
@@ -1656,7 +1651,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         try {
             return updateRequest(th, 0, conditionColumns, newValueSchema, valueBuffer);
         } catch (Exception e) {
-            deleteBlobByMap(th, valueColumns);
+            deleteBlobByMap(th, blobKeys);
             throw e;
         }
     }
