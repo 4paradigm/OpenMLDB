@@ -55,5 +55,7 @@ class FesqlGateway(object):
     """
     @staticmethod
     def getOrCreatePysparkSession():
-        return SparkSession.builder.config("spark.jars", FesqlGateway.FESQL_JAR_PATH).getOrCreate()
-
+        if "PYSPARK_GATEWAY_PORT" in os.environ: # Run with spark-submit
+            return SparkSession.builder.getOrCreate()
+        else: # Run with local script
+            return SparkSession.builder.config("spark.jars", FesqlGateway.FESQL_JAR_PATH).getOrCreate()

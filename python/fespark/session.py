@@ -48,6 +48,10 @@ class FesqlSession(object):
     def read(self):
         return DataframeReader(self.jsession)
 
+    @property
+    def sparkContext(self):
+        return self.pysparkSession.sparkContext
+
     def fesql(self, sqlText):
         return FesqlDataframe(self.jsession.fesql(sqlText))
 
@@ -68,3 +72,6 @@ class FesqlSession(object):
 
     def getSparkSession(self):
         return self.jsession.getSparkSession()
+
+    def createDataFrame(self, data, schema=None, samplingRatio=None, verifySchema=True):
+        return FesqlDataframe(self.pysparkSession.createDataFrame(data, schema, samplingRatio, verifySchema)._jdf)
