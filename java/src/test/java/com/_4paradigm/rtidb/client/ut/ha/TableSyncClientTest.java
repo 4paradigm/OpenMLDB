@@ -1079,6 +1079,13 @@ public class TableSyncClientTest extends TestCaseBase {
             } catch (Exception e) {
                 Assert.assertTrue(true);
             }
+            data.clear();
+            data.put("id", 12l);
+            data.put("attribute", "a2");
+            imageData2 = "i1";
+            buf2 = StringToBB(imageData2);
+            data.put("image", buf2);
+            Assert.assertTrue(tableSyncClient.put(name, data, new WriteOption(true)).isSuccess());
             ReadOption ro;
             RelationalIterator it;
             Map<String, Object> queryMap;

@@ -1346,6 +1346,15 @@ public class TableSyncClientImpl implements TableSyncClient {
         Tablet.PutResponse response = tablet.put(request);
         if (response != null) {
             if (response.getCode() == 0) {
+                if (!response.getBlobKeysList().isEmpty()) {
+                    List<Long> blobKeys = new ArrayList<>();
+                    for (int i = 0; i < response.getBlobKeysCount(); i++) {
+                        blobKeys.add(response.getBlobKeys(i));
+                    }
+                    if (!blobKeys.isEmpty() && !deleteBlobByList(th, blobKeys)) {
+                        throw new TabletException(response.getCode(), "deleteBlobByList failed");
+                    }
+                }
                 if (!th.getAutoGenPkName().isEmpty() && response.hasAutoGenPk()) {
                     return new PutResult(true, response.getAutoGenPk());
                 } else {
@@ -1479,8 +1488,6 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (row == null) {
             throw new TabletException("putting data is null");
         }
-        //TODO: resolve wo
-
         String indexName = th.getAutoGenPkName();
 
         if (!indexName.isEmpty() &&
@@ -1521,11 +1528,11 @@ public class TableSyncClientImpl implements TableSyncClient {
         try {
             return putRelationTable(th.getTableInfo().getTid(), pid, buffer, th, wo);
         } catch (Exception e) {
-            deleteBlobByMap(th, row);
+            if (!deleteBlobByMap(th, row)) {
+                throw new TabletException("deleteBlobByMap failed");
+            }
             throw e;
         }
-
-
     }
 
     private UpdateResult updateRequest(TableHandler th, int pid, Map<String, Object> conditionColumns, List<ColumnDesc> newValueSchema,
