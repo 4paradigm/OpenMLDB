@@ -3,11 +3,14 @@
 // Copyright 2017 4paradigm.com
 
 #include "base/kv_iterator.h"
+
 #include <iostream>
+
 #include "base/strings.h"
 #include "codec/row_codec.h"
 #include "gtest/gtest.h"
 #include "proto/tablet.pb.h"
+#include "storage/segment.h"
 
 namespace rtidb {
 namespace base {
@@ -29,7 +32,8 @@ TEST_F(KvIteratorTest, Iterator_ONE) {
     std::string* pairs = response->mutable_pairs();
     pairs->resize(17);
     char* data = reinterpret_cast<char*>(&((*pairs)[0]));
-    DataBlock* db1 = new DataBlock(1, "hello", 5);
+    ::rtidb::storage::DataBlock* db1 =
+        new ::rtidb::storage::DataBlock(1, "hello", 5);
     ::rtidb::codec::Encode(9527, db1, data, 0);
     KvIterator kv_it(response);
     ASSERT_TRUE(kv_it.Valid());
@@ -45,8 +49,10 @@ TEST_F(KvIteratorTest, Iterator) {
     std::string* pairs = response->mutable_pairs();
     pairs->resize(34);
     char* data = reinterpret_cast<char*>(&((*pairs)[0]));
-    DataBlock* db1 = new DataBlock(1, "hello", 5);
-    DataBlock* db2 = new DataBlock(1, "hell1", 5);
+    ::rtidb::storage::DataBlock* db1 =
+        new ::rtidb::storage::DataBlock(1, "hello", 5);
+    ::rtidb::storage::DataBlock* db2 =
+        new ::rtidb::storage::DataBlock(1, "hell1", 5);
     ::rtidb::codec::Encode(9527, db1, data, 0);
     ::rtidb::codec::Encode(9528, db2, data, 17);
     KvIterator kv_it(response);
@@ -68,8 +74,10 @@ TEST_F(KvIteratorTest, HasPK) {
     std::string* pairs = response->mutable_pairs();
     pairs->resize(52);
     char* data = reinterpret_cast<char*>(&((*pairs)[0]));
-    DataBlock* db1 = new DataBlock(1, "hello", 5);
-    DataBlock* db2 = new DataBlock(1, "hell1", 5);
+    ::rtidb::storage::DataBlock* db1 =
+        new ::rtidb::storage::DataBlock(1, "hello", 5);
+    ::rtidb::storage::DataBlock* db2 =
+        new ::rtidb::storage::DataBlock(1, "hell1", 5);
     ::rtidb::codec::EncodeFull("test1", 9527, db1, data, 0);
     ::rtidb::codec::EncodeFull("test2", 9528, db2, data, 26);
     KvIterator kv_it(response);

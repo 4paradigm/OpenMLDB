@@ -10,29 +10,35 @@ import com.google.protobuf.ByteString;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.ArrayList;
 import java.util.List;
 
 public class RowKvIterator implements KvIterator {
-
-    private ByteString bs;
-    private int offset;
-    private ByteBuffer bb;
+    private List<ScanResultParser> dataList = new ArrayList<>();
     // no copy
-    private ByteBuffer slice;
+    private ByteBuffer slice = null;
     private int length;
-    private int totalSize;
     private List<ColumnDesc> schema;
-    private int count;
+    private int count = 0;
+    private int iter_count = 0;
     private long key;
     private NS.CompressType compressType = NS.CompressType.kNoCompress;
     private RowView rv;
 
     public RowKvIterator(ByteString bs, List<ColumnDesc> schema, int count) {
-        this.bs = bs;
-        this.bb = this.bs.asReadOnlyByteBuffer().order(ByteOrder.LITTLE_ENDIAN);
-        ;
-        this.offset = 0;
-        this.totalSize = this.bs.size();
+        this.dataList.add(new ScanResultParser(bs));
+        this.count = count;
+        next();
+        this.schema = schema;
+        rv = new RowView(schema);
+    }
+
+    public RowKvIterator(List<ByteString> bsList, List<ColumnDesc> schema, int count) {
+        for (ByteString bs : bsList) {
+            if (!bs.isEmpty()) {
+                this.dataList.add(new ScanResultParser(bs));
+            }
+        }
         this.count = count;
         next();
         this.schema = schema;
@@ -60,10 +66,7 @@ public class RowKvIterator implements KvIterator {
     }
 
     public boolean valid() {
-        if (offset <= totalSize) {
-            return true;
-        }
-        return false;
+        return slice != null;
     }
 
     public long getKey() {
@@ -90,20 +93,27 @@ public class RowKvIterator implements KvIterator {
     }
 
     public void next() {
-        if (offset + 4 > totalSize) {
-            offset += 4;
+        if (count <= iter_count) {
+            slice = null;
             return;
         }
-        bb.position(offset);
-        int size = bb.getInt();
-        key = bb.getLong();
-        length = size - 8;
-        if (length < 0) {
-            throw new RuntimeException("bad frame data");
+        int maxTsIndex = -1;
+        long ts = -1;
+        for (int i = 0; i < dataList.size(); i++) {
+            ScanResultParser queryResult = dataList.get(i);
+            if (queryResult.valid() && queryResult.GetTs() > ts) {
+                maxTsIndex = i;
+                ts = queryResult.GetTs();
+            }
         }
-        offset += (4 + size);
-        slice = bb.slice();
-        slice.limit(length);
+        if (maxTsIndex >= 0) {
+            ScanResultParser queryResult = dataList.get(maxTsIndex);
+            key = queryResult.GetTs();
+            slice = queryResult.fetchData().slice();
+        } else {
+            slice = null;
+        }
+        iter_count++;
     }
 
     @Override
@@ -116,7 +126,7 @@ public class RowKvIterator implements KvIterator {
             slice.get(data);
             byte[] uncompressed = Compress.snappyUnCompress(data);
             rv.read(ByteBuffer.wrap(uncompressed).order(ByteOrder.LITTLE_ENDIAN), row, start, length);
-        }else {
+        } else {
             rv.read(slice.order(ByteOrder.LITTLE_ENDIAN), row, start, length);
         }
 

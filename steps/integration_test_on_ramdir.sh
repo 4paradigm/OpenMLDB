@@ -13,5 +13,6 @@ if [ -f "test-common/integrationtest/setup.sh" ]
 then
     export runlist=$2
     export norunlist=$3
+    sed -i 's/^datapath\=.*/datapath\=\/rambuild/g' test-common/integrationtest/setup.sh
     sh test-common/integrationtest/runall.sh $1 $2 $3
 fi

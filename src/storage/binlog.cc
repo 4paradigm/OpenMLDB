@@ -5,7 +5,6 @@
 #include <utility>
 #include <set>
 #include <vector>
-#include "base/display.h"
 #include "base/hash.h"
 #include "base/kv_iterator.h"
 #include "base/status.h"

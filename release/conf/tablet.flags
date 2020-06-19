@@ -37,7 +37,7 @@
 
 #--io_pool_size=2
 #--task_pool_size=8
-
+# 多个磁盘使用英文符号, 隔开
 --db_root_path=./db
 #--ssd_root_path=./db
 #--hdd_root_path=./db

@@ -238,7 +238,7 @@ class TabletTableHandler : public ::fesql::vm::TableHandler {
     inline int32_t GetColumnIndex(const std::string& column) {
         auto it = types_.find(column);
         if (it != types_.end()) {
-            return it->second.pos;
+            return it->second.idx;
         }
         return -1;
     }

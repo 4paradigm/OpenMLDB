@@ -47,8 +47,8 @@ namespace rtidb {
 namespace nameserver {
 
 inline std::string GenRand() {
-    return std::to_string(rand() % 10000000 + 1);
-}  // NOLINT
+    return std::to_string(rand() % 10000000 + 1);  // NOLINT
+}
 
 class MockClosure : public ::google::protobuf::Closure {
  public:

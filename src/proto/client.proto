@@ -31,4 +31,5 @@ message TableInfo {
     optional string table_type = 14 [default = "TimeSeries"];
     repeated IndexDef index = 15;
     optional uint32 format_version = 16 [default = 0];
+    repeated string partition_key = 17;
 }

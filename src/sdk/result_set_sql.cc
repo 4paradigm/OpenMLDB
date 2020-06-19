@@ -53,8 +53,8 @@ bool ResultSetSQL::Init() {
         LOG(WARNING) << "fail to decode response schema ";
         return false;
     }
-    std::unique_ptr<::fesql::codec::RowIOBufView> row_view(
-        new ::fesql::codec::RowIOBufView(internal_schema_));
+    std::unique_ptr<::fesql::sdk::RowIOBufView> row_view(
+        new ::fesql::sdk::RowIOBufView(internal_schema_));
     row_view_ = std::move(row_view);
     schema_.SetSchema(internal_schema_);
     return true;
