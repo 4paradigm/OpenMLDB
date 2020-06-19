@@ -52,7 +52,7 @@ def buildStrMap(m: map):
       mid_map.update({k: m[k]})
     else:
       mid_map.update({k: str(m[k])})
-  return  mid_map
+  return mid_map
 
 class WriteOption:
   def __init__(self, updateIfExist = False):
@@ -177,6 +177,7 @@ class RTIDBClient:
   def putBlob(self, name: str, value: map):
     blobFields = self.__client.GetBlobSchema(name);
     blobInfo = None
+    blobKeys = {}
     for k in blobFields:
       blobData = value.get(k, None)
       if blobData == None:
@@ -192,7 +193,8 @@ class RTIDBClient:
       ok = interclient_tools.PutBlob(blobInfo, blobOPResult, blobData, len(blobData))
       if not ok:
         raise Exception("erred at put blob data: {}".format(blobOPResult.msg_))
-      value.update({k: str(blobInfo.key_)})
+      blobKeys.update({k: str(blobInfo.key_)})
+    return blobKeys
 
   def deleteBlob(self, name: str, value: map):
     blobFields = self.__client.GetBlobSchema(name);
@@ -214,8 +216,10 @@ class RTIDBClient:
     _wo = interclient.WriteOption()
     if WriteOption != None:
       _wo.updateIfExist = defaultWriteOption.updateIfExist
-    self.putBlob(table_name, columns)
+    blobKeys = self.putBlob(table_name, columns)
     value = buildStrMap(columns)
+
+    value.update(blobKeys)
 
     putResult= self.__client.Put(table_name, value, _wo)
     if putResult.code != 0:
@@ -227,9 +231,10 @@ class RTIDBClient:
     _wo = interclient.WriteOption()
     if write_option != None:
       _wo.updateIfExist = defaultWriteOption.updateIfExist
-    self.putBlob(table_name, value_columns)
+    blobKeys = self.putBlob(table_name, value_columns)
     cond = buildStrMap(condition_columns)
     v = buildStrMap(value_columns)
+    v.update(blobKeys)
     update_result = self.__client.Update(table_name, cond, v, _wo)
     if update_result.code != 0:
       self.deleteBlob(table_name, v)

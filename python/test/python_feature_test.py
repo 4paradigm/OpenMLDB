@@ -38,6 +38,8 @@ class TestRtidb(unittest.TestCase):
     self.assertTrue(self.nsc.put("rt_ck", data, None).success())
     data = {"id":"2002","name":"n2","mcc":"2001","attribute":"a1", "image":b"i1"}
     self.assertTrue(self.nsc.put("rt_ck", data, None).success())
+    self.assertEqual(data["image"], b"i1")
+
     ro = rtidb.ReadOption()
     ro.index.update({"id":"2001"})
     ro.index.update({"name":"n1"})
