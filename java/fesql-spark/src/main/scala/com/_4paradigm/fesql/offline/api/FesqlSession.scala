@@ -94,6 +94,17 @@ class FesqlSession {
   }
 
   /**
+   * Read the Spark dataframe to Fesql dataframe.
+   *
+   * @param filePath
+   * @param format
+   * @return
+   */
+  def readSparkDataframe(sparkDf: DataFrame): FesqlDataframe = {
+    new FesqlDataframe(this, sparkDf)
+  }
+
+  /**
    * Run sql with FESQL.
    *
    * @param sqlText

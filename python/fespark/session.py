@@ -74,4 +74,4 @@ class FesqlSession(object):
         return self.jsession.getSparkSession()
 
     def createDataFrame(self, data, schema=None, samplingRatio=None, verifySchema=True):
-        return FesqlDataframe(self.pysparkSession.createDataFrame(data, schema, samplingRatio, verifySchema)._jdf)
+        return FesqlDataframe(self.jsession.readSparkDataframe(self.pysparkSession.createDataFrame(data, schema, samplingRatio, verifySchema)._jdf))
