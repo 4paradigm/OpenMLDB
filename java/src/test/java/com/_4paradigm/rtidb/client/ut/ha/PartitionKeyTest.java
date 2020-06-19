@@ -113,6 +113,92 @@ public class PartitionKeyTest extends TestCaseBase {
     }
 
     @Test (dataProvider = "FormatVersion")
+    public void testMerge(int formatVersion, String[] partitionKey) {
+        String name = String.valueOf(id.incrementAndGet());
+        nsc.dropTable(name);
+        Common.ColumnDesc col0 = Common.ColumnDesc.newBuilder().setName("card").setAddTsIdx(true).setType("string").build();
+        Common.ColumnDesc col1 = Common.ColumnDesc.newBuilder().setName("mcc").setAddTsIdx(true).setType("string").build();
+        Common.ColumnDesc col2 = Common.ColumnDesc.newBuilder().setName("amt").setAddTsIdx(false).setType("double").build();
+        NS.TableInfo.Builder builder = NS.TableInfo.newBuilder()
+                .setName(name).setTtl(0)
+                .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2)
+                .setFormatVersion(formatVersion);
+        for (String key : partitionKey) {
+            builder.addPartitionKey(key);
+        }
+        NS.TableInfo table = builder.build();
+        Assert.assertTrue(nsc.createTable(table));
+        client.refreshRouteTable();
+        try {
+            long ts = System.currentTimeMillis();
+            for (int i = 0; i < 3; i++) {
+                Map<String, Object> data = new HashMap<String, Object>();
+                data.put("mcc", "mcc" + String.valueOf(i));
+                data.put("amt", 1.5);
+                for (int j = 0; j < 1000; j++) {
+                    data.put("card", "card" + String.valueOf(i) + "_" + String.valueOf(j));
+                    Assert.assertTrue(tableSyncClient.put(name, ts + j, data));
+                }
+            }
+            Assert.assertEquals(1000, tableSyncClient.count(name, "mcc2", "mcc"));
+            KvIterator it = tableSyncClient.scan(name, "card1_1", "card", 0, 0);
+            Assert.assertEquals(1, it.getCount());
+            it = tableSyncClient.scan(name, "mcc2", "mcc", 0, 0);
+            Assert.assertEquals(1000, it.getCount());
+            long cur_ts = ts + 999;
+            for (int i = 0; i < 1000; i++) {
+                Assert.assertEquals(cur_ts, it.getKey());
+                cur_ts--;
+                it.next();
+            }
+            it = tableSyncClient.traverse(name);
+            int count = 0;
+            while(it.valid()) {
+                it.next();
+                count++;
+            }
+            Assert.assertEquals(3000, count);
+            it = tableSyncClient.traverse(name, "mcc");
+            count = 0;
+            while(it.valid()) {
+                it.next();
+                count++;
+            }
+            Assert.assertEquals(3000, count);
+            Assert.assertTrue(tableSyncClient.delete(name, "card1_1"));
+            Assert.assertEquals(0, tableSyncClient.count(name, "card1_1"));
+            Assert.assertEquals(1000, tableSyncClient.count(name, "mcc2", "mcc"));
+            it = tableSyncClient.traverse(name);
+            count = 0;
+            while(it.valid()) {
+                it.next();
+                count++;
+            }
+            Assert.assertEquals(2999, count);
+            it = tableSyncClient.traverse(name, "mcc");
+            count = 0;
+            while(it.valid()) {
+                it.next();
+                count++;
+            }
+            Assert.assertEquals(3000, count);
+            Assert.assertTrue(tableSyncClient.delete(name, "mcc2", "mcc"));
+            it = tableSyncClient.traverse(name, "mcc");
+            count = 0;
+            while(it.valid()) {
+                it.next();
+                count++;
+            }
+            Assert.assertEquals(2000, count);
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.fail();
+        } finally {
+            nsc.dropTable(name);
+        }
+    }
+
+    @Test (dataProvider = "FormatVersion")
     public void testIndexIsPartitionKey(int formatVersion, String[] partitionKey) {
         String name = String.valueOf(id.incrementAndGet());
         nsc.dropTable(name);
