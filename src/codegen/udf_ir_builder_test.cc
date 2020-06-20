@@ -44,82 +44,8 @@ class UDFIRBuilderTest : public ::testing::Test {
     UDFIRBuilderTest() {}
     ~UDFIRBuilderTest() {}
 };
-
-TEST_F(UDFIRBuilderTest, year_udf_test) {
-    base::Status status;
-    auto ctx = llvm::make_unique<LLVMContext>();
-    auto m = make_unique<Module>("udf_test", *ctx);
-    ASSERT_TRUE(UDFIRBuilder::BuildYearDate(m.get(), status));
-    m->print(::llvm::errs(), NULL, true, true);
-
-    auto J = ExitOnErr(LLJITBuilder().create());
-    auto &jd = J->getMainJITDylib();
-    ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
-                                      J->getDataLayout());
-    ::fesql::vm::InitCodecSymbol(jd, mi);
-    ::fesql::udf::InitUDFSymbol(jd, mi);
-    ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
-
-    // Year
-    {
-        auto fn = ExitOnErr(J->lookup("year.ptr_date"));
-        int32_t (*year)(codec::Date *) =
-            (int32_t(*)(codec::Date *))fn.getAddress();
-        codec::Date d1(2020, 05, 27);
-        ASSERT_EQ(2020, year(&d1));
-    }
-}
-
-TEST_F(UDFIRBuilderTest, month_udf_test) {
-    base::Status status;
-    auto ctx = llvm::make_unique<LLVMContext>();
-    auto m = make_unique<Module>("udf_test", *ctx);
-    ASSERT_TRUE(UDFIRBuilder::BuildMonthDate(m.get(), status));
-    m->print(::llvm::errs(), NULL, true, true);
-
-    auto J = ExitOnErr(LLJITBuilder().create());
-    auto &jd = J->getMainJITDylib();
-    ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
-                                      J->getDataLayout());
-    ::fesql::vm::InitCodecSymbol(jd, mi);
-    ::fesql::udf::InitUDFSymbol(jd, mi);
-    ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
-
-    // Month
-    {
-        auto fn = ExitOnErr(J->lookup("month.ptr_date"));
-        int32_t (*month)(codec::Date *) =
-            (int32_t(*)(codec::Date *))fn.getAddress();
-        codec::Date d1(2020, 05, 27);
-        ASSERT_EQ(05, month(&d1));
-    }
-}
-
-TEST_F(UDFIRBuilderTest, day_udf_test) {
-    base::Status status;
-    auto ctx = llvm::make_unique<LLVMContext>();
-    auto m = make_unique<Module>("udf_test", *ctx);
-    ASSERT_TRUE(UDFIRBuilder::BuildDayDate(m.get(), status));
-    m->print(::llvm::errs(), NULL, true, true);
-
-    auto J = ExitOnErr(LLJITBuilder().create());
-    auto &jd = J->getMainJITDylib();
-    ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
-                                      J->getDataLayout());
-    ::fesql::vm::InitCodecSymbol(jd, mi);
-    ::fesql::udf::InitUDFSymbol(jd, mi);
-    ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
-    // Day
-    {
-        auto fn = ExitOnErr(J->lookup("day.ptr_date"));
-        int32_t (*day)(codec::Date *) =
-            (int32_t(*)(codec::Date *))fn.getAddress();
-        codec::Date d1(2020, 05, 27);
-        ASSERT_EQ(27, day(&d1));
-    }
-}
-
-TEST_F(UDFIRBuilderTest, day_i64_udf_test) {
+template <class T, class... Args>
+void CheckNativeUDF(const std::string udf_name, T exp, Args... args) {
     base::Status status;
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("udf_test", *ctx);
@@ -133,37 +59,47 @@ TEST_F(UDFIRBuilderTest, day_i64_udf_test) {
     ::fesql::vm::InitCodecSymbol(jd, mi);
     ::fesql::udf::InitUDFSymbol(jd, mi);
     ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
-    // Day
-    {
-        auto fn = ExitOnErr(J->lookup("day.int64"));
-        int32_t (*day)(int64_t) =
-        (int32_t(*)(int64_t))fn.getAddress();
-        codec::Date d1(2020, 05, 27);
-        ASSERT_EQ(27, day(1590581279000L));
-    }
+    auto fn = ExitOnErr(J->lookup(udf_name));
+    T (*udf)(Args...) = (T(*)(Args...))fn.getAddress();
+    ASSERT_EQ(exp, udf(args...));
+}
+TEST_F(UDFIRBuilderTest, day_date_udf_test) {
+    codec::Date date(2020, 05, 22);
+    CheckNativeUDF<int32_t, codec::Date *>("day.date", 22, &date);
+}
+TEST_F(UDFIRBuilderTest, month_date_udf_test) {
+    codec::Date date(2020, 05, 22);
+    CheckNativeUDF<int32_t, codec::Date *>("month.date", 5, &date);
+}
+TEST_F(UDFIRBuilderTest, year_date_udf_test) {
+    codec::Date date(2020, 05, 22);
+    CheckNativeUDF<int32_t, codec::Date *>("year.date", 2020, &date);
 }
 
-TEST_F(UDFIRBuilderTest, inc_i32_udf_test) {
-    base::Status status;
-    auto ctx = llvm::make_unique<LLVMContext>();
-    auto m = make_unique<Module>("udf_test", *ctx);
-    fesql::udf::RegisterUDFToModule(m.get());
-    m->print(::llvm::errs(), NULL, true, true);
+TEST_F(UDFIRBuilderTest, day_timestamp_udf_test) {
+    codec::Timestamp time(1590115420000L);
+    CheckNativeUDF<int32_t, codec::Timestamp *>("day.timestamp", 22, &time);
+}
 
-    auto J = ExitOnErr(LLJITBuilder().create());
-    auto &jd = J->getMainJITDylib();
-    ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
-                                      J->getDataLayout());
-    ::fesql::vm::InitCodecSymbol(jd, mi);
-    ::fesql::udf::InitUDFSymbol(jd, mi);
-    ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
-    // Day
-    {
-        auto fn = ExitOnErr(J->lookup("inc.int32"));
-        int32_t (*inc)(int32_t) =
-        (int32_t(*)(int32_t))fn.getAddress();
-        ASSERT_EQ(12346, inc(12345));
-    }
+TEST_F(UDFIRBuilderTest, month_timestamp_udf_test) {
+    codec::Date date(2020, 05, 22);
+    CheckNativeUDF<int32_t, codec::Date *>("month.date", 5, &date);
+}
+TEST_F(UDFIRBuilderTest, year_timestamp_udf_test) {
+    codec::Date date(2020, 05, 22);
+    CheckNativeUDF<int32_t, codec::Date *>("year.date", 2020, &date);
+}
+TEST_F(UDFIRBuilderTest, day_int64_udf_test) {
+    CheckNativeUDF<int32_t, int64_t>("day.int64", 22, 1590115420000L);
+}
+TEST_F(UDFIRBuilderTest, month_int64_udf_test) {
+    CheckNativeUDF<int32_t, int64_t>("month.int64", 5, 1590115420000L);
+}
+TEST_F(UDFIRBuilderTest, year_int64_udf_test) {
+    CheckNativeUDF<int32_t, int64_t>("year.int64", 2020, 1590115420000L);
+}
+TEST_F(UDFIRBuilderTest, inc_int32_udf_test) {
+    CheckNativeUDF<int32_t, int32_t>("inc.int32", 2021, 2020);
 }
 }  // namespace codegen
 }  // namespace fesql

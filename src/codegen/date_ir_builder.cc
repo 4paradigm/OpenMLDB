@@ -94,14 +94,6 @@ bool DateIRBuilder::SetDate(::llvm::BasicBlock* block, ::llvm::Value* date,
     return Set(block, date, 0, code);
 }
 
-/**
-
- * @param block
- * @param date
- * @param output
- * @return
- */
-
 // return dayOfYear
 // *day = date & 0x0000000FF;
 bool DateIRBuilder::Day(::llvm::BasicBlock* block, ::llvm::Value* date,
