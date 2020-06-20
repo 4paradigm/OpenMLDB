@@ -8,6 +8,7 @@
  **/
 #include "codegen/udf_ir_builder.h"
 #include <memory>
+#include <vector>
 #include <string>
 #include <utility>
 #include "codec/list_iterator_codec.h"
@@ -145,6 +146,16 @@ TEST_F(UDFIRBuilderTest, weeekday_int64_udf_test) {
 }
 TEST_F(UDFIRBuilderTest, inc_int32_udf_test) {
     CheckNativeUDF<int32_t, int32_t>("inc.int32", 2021, 2020);
+}
+TEST_F(UDFIRBuilderTest, distinct_count_udf_test) {
+    std::vector<int32_t> vec = {1, 1, 3, 3, 5, 5, 7, 7, 9};
+    codec::ArrayListV<int32_t> list(&vec);
+    codec::ListRef list_ref;
+    list_ref.list = reinterpret_cast<int8_t *>(&list);
+
+    CheckNativeUDF<int32_t, codec::ListRef *>("count.list_int32", 9, &list_ref);
+    CheckNativeUDF<int32_t, codec::ListRef *>("distinct_count.list_int32", 5,
+                                              &list_ref);
 }
 }  // namespace codegen
 }  // namespace fesql

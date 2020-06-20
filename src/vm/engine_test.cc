@@ -409,6 +409,9 @@ INSTANTIATE_TEST_CASE_P(
     EngineUdfQuery, EngineTest,
     testing::ValuesIn(InitCases("/cases/query/udf_query.yaml")));
 INSTANTIATE_TEST_CASE_P(
+    EngineUdafQuery, EngineTest,
+    testing::ValuesIn(InitCases("/cases/query/udaf_query.yaml")));
+INSTANTIATE_TEST_CASE_P(
     EngineExtreamQuery, EngineTest,
     testing::ValuesIn(InitCases("/cases/query/extream_query.yaml")));
 

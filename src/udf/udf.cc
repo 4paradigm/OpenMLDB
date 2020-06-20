@@ -9,22 +9,19 @@
 #include "udf/udf.h"
 #include <stdint.h>
 #include <time.h>
-#include <ctime>
 #include <map>
+#include <set>
 #include <utility>
-#include <vector>
 #include "absl/time/civil_time.h"
 #include "absl/time/time.h"
-#include "base/fe_slice.h"
 #include "base/iterator.h"
+#include "boost/date_time.hpp"
 #include "codec/list_iterator_codec.h"
 #include "codec/type_codec.h"
-#include "codegen/ir_base_builder.h"
 #include "codegen/udf_ir_builder.h"
 #include "node/node_manager.h"
 #include "node/sql_node.h"
-#include "proto/fe_type.pb.h"
-#include <boost/date_time.hpp>
+
 namespace fesql {
 namespace udf {
 namespace v1 {
@@ -163,6 +160,27 @@ int64_t count_list(int8_t *input) {
     ::fesql::codec::ListRef *list_ref = (::fesql::codec::ListRef *)(input);
     ListV<V> *col = (ListV<V> *)(list_ref->list);
     return int64_t(col->GetCount());
+}
+
+template <typename V>
+int64_t distinct_count(::fesql::codec::ListRef *list_ref) {
+    if (nullptr == list_ref) {
+        return 0L;
+    }
+    ListV<V> *col = (ListV<V> *)(list_ref->list);
+    auto iter = col->GetIterator();
+    int64_t cnt = 0;
+    iter->SeekToFirst();
+    std::set<V> value_set;
+    while (iter->Valid()) {
+        auto v = iter->GetValue();
+        if (value_set.find(v) == value_set.cend()) {
+            cnt++;
+            value_set.insert(v);
+        }
+        iter->Next();
+    }
+    return cnt;
 }
 
 template <class V>
@@ -527,6 +545,28 @@ void RegisterNativeUDFToModule(::llvm::Module *module) {
     RegisterMethod(module, "count", i64_ty, {list_string_ty},
                    reinterpret_cast<void *>(v1::count_list<codec::StringRef>));
 
+    {
+        const std::string fn_name = "distinct_count";
+        RegisterMethod(module, fn_name, i64_ty, {list_i16_ty},
+                       reinterpret_cast<void *>(v1::distinct_count<int16_t>));
+        RegisterMethod(module, fn_name, i64_ty, {list_i32_ty},
+                       reinterpret_cast<void *>(v1::distinct_count<int32_t>));
+        RegisterMethod(module, fn_name, i64_ty, {list_i64_ty},
+                       reinterpret_cast<void *>(v1::distinct_count<int64_t>));
+        RegisterMethod(module, fn_name, i64_ty, {list_float_ty},
+                       reinterpret_cast<void *>(v1::distinct_count<float>));
+        RegisterMethod(module, fn_name, i64_ty, {list_double_ty},
+                       reinterpret_cast<void *>(v1::distinct_count<double>));
+        RegisterMethod(
+            module, fn_name, i64_ty, {list_time_ty},
+            reinterpret_cast<void *>(v1::distinct_count<codec::Timestamp>));
+        RegisterMethod(
+            module, fn_name, i64_ty, {list_date_ty},
+            reinterpret_cast<void *>(v1::distinct_count<codec::Date>));
+        RegisterMethod(
+            module, fn_name, i64_ty, {list_string_ty},
+            reinterpret_cast<void *>(v1::distinct_count<codec::StringRef>));
+    }
     RegisterMethod(module, "iterator", bool_ty, {list_i16_ty, iter_i16_ty},
                    reinterpret_cast<void *>(v1::iterator_list<int16_t>));
     RegisterMethod(module, "iterator", bool_ty, {list_i32_ty, iter_i32_ty},
