@@ -241,9 +241,9 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     if (plan_only_) {
         return true;
     }
-    m->print(::llvm::errs(), NULL);
     if (llvm::verifyModule(*(m.get()), &llvm::errs(), nullptr)) {
         LOG(WARNING) << "fail to verify codegen module";
+        m->print(::llvm::errs(), NULL);
         return false;
     }
 
