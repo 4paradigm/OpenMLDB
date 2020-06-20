@@ -243,7 +243,6 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     }
     if (llvm::verifyModule(*(m.get()), &llvm::errs(), nullptr)) {
         LOG(WARNING) << "fail to verify codegen module";
-        m->print(::llvm::errs(), NULL);
         return false;
     }
 

@@ -23,6 +23,18 @@ class UDFIRBuilder {
     explicit UDFIRBuilder(std::map<std::string, void*>* map)
         : name_function_map_(map) {}
     ~UDFIRBuilder() {}
+    static bool BuildMinuteTimestamp(::llvm::Module* module,
+                              base::Status& status);  // NOLINT
+    static bool BuildSecondTimestamp(::llvm::Module* module,
+                                     base::Status& status);  // NOLINT
+    static bool BuildHourTimestamp(::llvm::Module* module,
+                                     base::Status& status);  // NOLINT
+    static bool BuildMinuteInt64(::llvm::Module* module,
+                                     base::Status& status);  // NOLINT
+    static bool BuildSecondInt64(::llvm::Module* module,
+                                     base::Status& status);  // NOLINT
+    static bool BuildHourInt64(::llvm::Module* module,
+                                   base::Status& status);  // NOLINT
     static bool BuildDayDate(::llvm::Module* module,
                              base::Status& status);  // NOLINT
     static bool BuildMonthDate(::llvm::Module* module,

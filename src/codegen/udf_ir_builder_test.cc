@@ -75,10 +75,31 @@ TEST_F(UDFIRBuilderTest, year_date_udf_test) {
     codec::Date date(2020, 05, 22);
     CheckNativeUDF<int32_t, codec::Date *>("year.date", 2020, &date);
 }
+TEST_F(UDFIRBuilderTest, weekday_date_udf_test) {
+    codec::Date date(2020, 05, 22);
+    CheckNativeUDF<int32_t, codec::Date *>("weekday.date", 5, &date);
+}
 
+TEST_F(UDFIRBuilderTest, minute_timestamp_udf_test) {
+    codec::Timestamp time(1590115420000L);
+    CheckNativeUDF<int32_t, codec::Timestamp *>("minute.timestamp", 43, &time);
+}
+TEST_F(UDFIRBuilderTest, second_timestamp_udf_test) {
+    codec::Timestamp time(1590115420000L);
+    CheckNativeUDF<int32_t, codec::Timestamp *>("second.timestamp", 40, &time);
+}
+TEST_F(UDFIRBuilderTest, hour_timestamp_udf_test) {
+    codec::Timestamp time(1590115420000L);
+    CheckNativeUDF<int32_t, codec::Timestamp *>("hour.timestamp", 10, &time);
+}
 TEST_F(UDFIRBuilderTest, day_timestamp_udf_test) {
     codec::Timestamp time(1590115420000L);
     CheckNativeUDF<int32_t, codec::Timestamp *>("day.timestamp", 22, &time);
+}
+
+TEST_F(UDFIRBuilderTest, weekday_timestamp_udf_test) {
+    codec::Timestamp time(1590115420000L);
+    CheckNativeUDF<int32_t, codec::Timestamp *>("weekday.timestamp", 5, &time);
 }
 
 TEST_F(UDFIRBuilderTest, month_timestamp_udf_test) {
@@ -89,6 +110,19 @@ TEST_F(UDFIRBuilderTest, year_timestamp_udf_test) {
     codec::Date date(2020, 05, 22);
     CheckNativeUDF<int32_t, codec::Date *>("year.date", 2020, &date);
 }
+
+TEST_F(UDFIRBuilderTest, minute_int64_udf_test) {
+    CheckNativeUDF<int32_t, int64_t>("minute.int64", 43, 1590115420000L);
+}
+TEST_F(UDFIRBuilderTest, second_int64_udf_test) {
+    codec::Timestamp time(1590115420000L);
+    CheckNativeUDF<int32_t, int64_t>("second.int64", 40, 1590115420000L);
+}
+TEST_F(UDFIRBuilderTest, hour_int64_udf_test) {
+    codec::Timestamp time(1590115420000L);
+    CheckNativeUDF<int32_t, int64_t>("hour.int64", 10, 1590115420000L);
+}
+
 TEST_F(UDFIRBuilderTest, day_int64_udf_test) {
     CheckNativeUDF<int32_t, int64_t>("day.int64", 22, 1590115420000L);
 }
@@ -97,6 +131,17 @@ TEST_F(UDFIRBuilderTest, month_int64_udf_test) {
 }
 TEST_F(UDFIRBuilderTest, year_int64_udf_test) {
     CheckNativeUDF<int32_t, int64_t>("year.int64", 2020, 1590115420000L);
+}
+TEST_F(UDFIRBuilderTest, weeekday_int64_udf_test) {
+    CheckNativeUDF<int32_t, int64_t>("weekday.int64", 5, 1590115420000L);
+    CheckNativeUDF<int32_t, int64_t>("weekday.int64", 6,
+                                     1590115420000L + 86400000L);
+
+    // Sunday
+    CheckNativeUDF<int32_t, int64_t>("weekday.int64", 0,
+                                     1590115420000L + 2 * 86400000L);
+    CheckNativeUDF<int32_t, int64_t>("weekday.int64", 1,
+                                     1590115420000L + 3 * 86400000L);
 }
 TEST_F(UDFIRBuilderTest, inc_int32_udf_test) {
     CheckNativeUDF<int32_t, int32_t>("inc.int32", 2021, 2020);

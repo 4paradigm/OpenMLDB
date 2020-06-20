@@ -90,6 +90,97 @@ TEST_F(TimestampIRBuilderTest, GetTsTest) {
     ASSERT_EQ(decode(1590115420000L), 1590115420000L);
     ASSERT_EQ(decode(1L), 1L);
 }
+TEST_F(TimestampIRBuilderTest, MinuteTest) {
+    auto ctx = llvm::make_unique<LLVMContext>();
+    auto m = make_unique<Module>("timestamp_test", *ctx);
+    TimestampIRBuilder timestamp_builder(m.get());
+    Int64IRBuilder int64_builder;
+    Function *load_fn = Function::Create(
+        FunctionType::get(Int32IRBuilder::GetType(m.get()),
+                          {timestamp_builder.GetType()->getPointerTo()}, false),
+        Function::ExternalLinkage, "minute", m.get());
+    auto iter = load_fn->arg_begin();
+    Argument *arg0 = &(*iter);
+    iter++;
+    BasicBlock *entry_block = BasicBlock::Create(*ctx, "EntryBlock", load_fn);
+    IRBuilder<> builder(entry_block);
+    ::llvm::Value *timestamp = arg0;
+    ::llvm::Value *ret;
+    base::Status status;
+    ASSERT_TRUE(timestamp_builder.Minute(entry_block, timestamp, &ret, status));
+    builder.CreateRet(ret);
+
+    m->print(::llvm::errs(), NULL);
+    auto J = ExitOnErr(LLJITBuilder().create());
+    ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
+    auto load_fn_jit = ExitOnErr(J->lookup("minute"));
+    int32_t (*decode)(codec::Timestamp *) =
+        (int32_t(*)(codec::Timestamp *))load_fn_jit.getAddress();
+
+    codec::Timestamp time(1590115420000L);
+    ASSERT_EQ(43, decode(&time));
+}
+TEST_F(TimestampIRBuilderTest, SecondTest) {
+    auto ctx = llvm::make_unique<LLVMContext>();
+    auto m = make_unique<Module>("timestamp_test", *ctx);
+    TimestampIRBuilder timestamp_builder(m.get());
+    Int64IRBuilder int64_builder;
+    Function *load_fn = Function::Create(
+        FunctionType::get(Int32IRBuilder::GetType(m.get()),
+                          {timestamp_builder.GetType()->getPointerTo()}, false),
+        Function::ExternalLinkage, "second", m.get());
+    auto iter = load_fn->arg_begin();
+    Argument *arg0 = &(*iter);
+    iter++;
+    BasicBlock *entry_block = BasicBlock::Create(*ctx, "EntryBlock", load_fn);
+    IRBuilder<> builder(entry_block);
+    ::llvm::Value *timestamp = arg0;
+    ::llvm::Value *ret;
+    base::Status status;
+    ASSERT_TRUE(timestamp_builder.Second(entry_block, timestamp, &ret, status));
+    builder.CreateRet(ret);
+
+    m->print(::llvm::errs(), NULL);
+    auto J = ExitOnErr(LLJITBuilder().create());
+    ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
+    auto load_fn_jit = ExitOnErr(J->lookup("second"));
+    int32_t (*decode)(codec::Timestamp *) =
+    (int32_t(*)(codec::Timestamp *))load_fn_jit.getAddress();
+
+    codec::Timestamp time(1590115420000L);
+    ASSERT_EQ(40, decode(&time));
+}
+TEST_F(TimestampIRBuilderTest, HourTest) {
+    auto ctx = llvm::make_unique<LLVMContext>();
+    auto m = make_unique<Module>("timestamp_test", *ctx);
+    TimestampIRBuilder timestamp_builder(m.get());
+    Int64IRBuilder int64_builder;
+    Function *load_fn = Function::Create(
+        FunctionType::get(Int32IRBuilder::GetType(m.get()),
+                          {timestamp_builder.GetType()->getPointerTo()}, false),
+        Function::ExternalLinkage, "hour", m.get());
+
+    auto iter = load_fn->arg_begin();
+    Argument *arg0 = &(*iter);
+    iter++;
+    BasicBlock *entry_block = BasicBlock::Create(*ctx, "EntryBlock", load_fn);
+    IRBuilder<> builder(entry_block);
+    ::llvm::Value *timestamp = arg0;
+    ::llvm::Value *ret;
+    base::Status status;
+    ASSERT_TRUE(timestamp_builder.Hour(entry_block, timestamp, &ret, status));
+    builder.CreateRet(ret);
+
+    m->print(::llvm::errs(), NULL);
+    auto J = ExitOnErr(LLJITBuilder().create());
+    ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
+    auto load_fn_jit = ExitOnErr(J->lookup("hour"));
+    int32_t (*decode)(codec::Timestamp *) =
+    (int32_t(*)(codec::Timestamp *))load_fn_jit.getAddress();
+
+    codec::Timestamp time(1590115420000L);
+    ASSERT_EQ(10, decode(&time));
+}
 TEST_F(TimestampIRBuilderTest, SetTsTest) {
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("timestamp_test", *ctx);

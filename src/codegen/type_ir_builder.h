@@ -45,6 +45,8 @@ class TypeIRBuilder {
     static bool IsDatePtr(::llvm::Type* type);
     static bool IsStringPtr(::llvm::Type* type);
     static bool IsStructPtr(::llvm::Type* type);
+    static bool IsInt64(::llvm::Type* type);
+    static bool IsInterger(::llvm::Type* type);
 };
 
 class Int64IRBuilder : public TypeIRBuilder {

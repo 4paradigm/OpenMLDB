@@ -24,6 +24,7 @@
 #include "node/node_manager.h"
 #include "node/sql_node.h"
 #include "proto/fe_type.pb.h"
+#include <boost/date_time.hpp>
 namespace fesql {
 namespace udf {
 namespace v1 {
@@ -52,6 +53,12 @@ int32_t day(int64_t ts) {
     gmtime_r(&time, &t);
     return t.tm_mday;
 }
+int32_t weekday(int64_t ts) {
+    time_t time = (ts + TZ_OFFSET) / 1000;
+    struct tm t;
+    gmtime_r(&time, &t);
+    return t.tm_wday;
+}
 int32_t month(int64_t ts) {
     time_t time = (ts + TZ_OFFSET) / 1000;
     struct tm t;
@@ -64,6 +71,20 @@ int32_t year(int64_t ts) {
     gmtime_r(&time, &t);
     return t.tm_year + 1900;
 }
+
+int32_t day(codec::Timestamp *ts) { return day(ts->ts_); }
+int32_t month(codec::Timestamp *ts) { return month(ts->ts_); }
+int32_t year(codec::Timestamp *ts) { return year(ts->ts_); }
+int32_t weekday(codec::Timestamp *ts) { return weekday(ts->ts_); }
+int32_t weekday(codec::Date *date) {
+    int32_t day, month, year;
+    if (!codec::Date::Decode(date->date_, &year, &month, &day)) {
+        return 0;
+    }
+    boost::gregorian::date d(year, month, day);
+    return d.day_of_week();
+}
+
 template <class V>
 V sum_list(int8_t *input) {
     V result = V();
@@ -380,12 +401,40 @@ void RegisterNativeUDFToModule(::llvm::Module *module) {
     // inc(int32):int32
     RegisterMethod(module, "inc", i32_ty, {i32_ty},
                    reinterpret_cast<void *>(v1::inc<int32_t>));
-    RegisterMethod(module, "year", i32_ty, {i64_ty},
-                   reinterpret_cast<void *>(v1::year));
-    RegisterMethod(module, "month", i32_ty, {i64_ty},
-                   reinterpret_cast<void *>(v1::month));
-    RegisterMethod(module, "day", i32_ty, {i64_ty},
-                   reinterpret_cast<void *>(v1::day));
+
+    // day, year, month
+    RegisterMethod(
+        module, "year", i32_ty, {i64_ty},
+        reinterpret_cast<void *>(static_cast<int32_t (*)(int64_t)>(v1::year)));
+    RegisterMethod(
+        module, "month", i32_ty, {i64_ty},
+        reinterpret_cast<void *>(static_cast<int32_t (*)(int64_t)>(v1::month)));
+    RegisterMethod(
+        module, "day", i32_ty, {i64_ty},
+        reinterpret_cast<void *>(static_cast<int32_t (*)(int64_t)>(v1::day)));
+    RegisterMethod(module, "weekday", i32_ty, {i64_ty},
+                   reinterpret_cast<void *>(
+                       static_cast<int32_t (*)(int64_t)>(v1::weekday)));
+
+    RegisterMethod(module, "year", i32_ty, {time_ty},
+                   reinterpret_cast<void *>(
+                       static_cast<int32_t (*)(codec::Timestamp *)>(v1::year)));
+
+    RegisterMethod(
+        module, "month", i32_ty, {time_ty},
+        reinterpret_cast<void *>(
+            static_cast<int32_t (*)(codec::Timestamp *)>(v1::month)));
+    RegisterMethod(module, "day", i32_ty, {time_ty},
+                   reinterpret_cast<void *>(
+                       static_cast<int32_t (*)(codec::Timestamp *)>(v1::day)));
+    RegisterMethod(
+        module, "weekday", i32_ty, {time_ty},
+        reinterpret_cast<void *>(
+            static_cast<int32_t (*)(codec::Timestamp *)>(v1::weekday)));
+
+    RegisterMethod(module, "weekday", i32_ty, {date_ty},
+                   reinterpret_cast<void *>(
+                       static_cast<int32_t (*)(codec::Date *)>(v1::weekday)));
 
     RegisterMethod(module, "at", i16_ty, {list_i16_ty, i32_ty},
                    reinterpret_cast<void *>(v1::at_list<int16_t>));

@@ -133,6 +133,7 @@ bool ArithmeticIRBuilder::InferBaseDoubleTypes(::llvm::Value* left,
     }
     return true;
 }
+
 // Return left & right
 bool ArithmeticIRBuilder::BuildAnd(::llvm::Value* left, ::llvm::Value* right,
                                    ::llvm::Value** output,
@@ -308,6 +309,21 @@ bool ArithmeticIRBuilder::BuildFDivExpr(::llvm::Value* left,
         LOG(WARNING) << status.msg;
         return false;
     }
+    return true;
+}
+bool ArithmeticIRBuilder::BuildSDivExpr(::llvm::Value* left,
+                                        ::llvm::Value* right,
+                                        ::llvm::Value** output,
+                                        base::Status& status) {
+    if (!left->getType()->isIntegerTy() || !right->getType()->isIntegerTy()) {
+        status.msg =
+            "fail to codegen integer div expr: value types are invalid";
+        status.code = common::kCodegenError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+    ::llvm::IRBuilder<> builder(block_);
+    *output = builder.CreateSDiv(left, right);
     return true;
 }
 bool ArithmeticIRBuilder::BuildModExpr(llvm::Value* left, llvm::Value* right,

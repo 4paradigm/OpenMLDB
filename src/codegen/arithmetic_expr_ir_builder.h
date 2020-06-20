@@ -38,6 +38,8 @@ class ArithmeticIRBuilder {
                         base::Status& status);  // NOLINT
     bool BuildFDivExpr(::llvm::Value* left, ::llvm::Value* right,
                        ::llvm::Value** output, base::Status& status);  // NOLINT
+    bool BuildSDivExpr(::llvm::Value* left, ::llvm::Value* right,
+                       ::llvm::Value** output, base::Status& status);  // NOLINT
 
     bool BuildModExpr(llvm::Value* left, llvm::Value* right,
                       llvm::Value** output, base::Status status);
@@ -48,6 +50,7 @@ class ArithmeticIRBuilder {
                         ::llvm::Value** casted_left,
                         ::llvm::Value** casted_right,
                         ::fesql::base::Status& status);  // NOLINT
+
     bool InferBaseDoubleTypes(::llvm::Value* left, ::llvm::Value* right,
                               ::llvm::Value** casted_left,
                               ::llvm::Value** casted_right,

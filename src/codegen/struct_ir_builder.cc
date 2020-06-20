@@ -29,6 +29,22 @@ bool StructTypeIRBuilder::Create(::llvm::BasicBlock* block,
 bool StructTypeIRBuilder::Get(::llvm::BasicBlock* block,
                               ::llvm::Value* struct_value, unsigned int idx,
                               ::llvm::Value** output) {
+    if (block == NULL) {
+        LOG(WARNING) << "the output ptr or block is NULL ";
+        return false;
+    }
+    if (!IsStructPtr(struct_value->getType())) {
+        LOG(WARNING) << "Fail get Struct value: struct pointer is required";
+        return false;
+    }
+    if (struct_value->getType()->getPointerElementType() != struct_type_) {
+        LOG(WARNING) << "Fail get Struct value: struct value type invalid "
+                     << struct_value->getType()
+                         ->getPointerElementType()
+                         ->getStructName()
+                         .str();
+        return false;
+    }
     ::llvm::IRBuilder<> builder(block);
     ::llvm::Value* value_ptr =
         builder.CreateStructGEP(struct_type_, struct_value, idx);
