@@ -39,7 +39,8 @@ struct StringRef {
     char* data_;
 };
 
-inline static int compare(const StringRef& a, const StringRef& b) {
+__attribute__((unused)) static int compare(const StringRef& a,
+                                           const StringRef& b) {
     const size_t min_len = (a.size_ < b.size_) ? a.size_ : b.size_;
     int r = memcmp(a.data_, b.data_, min_len);
     if (r == 0) {
@@ -50,8 +51,8 @@ inline static int compare(const StringRef& a, const StringRef& b) {
     }
     return r;
 }
-inline static const StringRef operator+(const StringRef& a,
-                                        const StringRef& b) {
+__attribute__((unused)) static const StringRef operator+(const StringRef& a,
+                                                         const StringRef& b) {
     StringRef str;
     str.size_ = a.size_ + b.size_;
     str.data_ = static_cast<char*>(malloc(str.size_ + 1));
@@ -64,28 +65,34 @@ inline static const StringRef operator+(const StringRef& a,
     str.data_[str.size_] = '\0';
     return str;
 }
-inline static bool operator==(const StringRef& a, const StringRef& b) {
+__attribute__((unused)) static bool operator==(const StringRef& a,
+                                               const StringRef& b) {
     return 0 == compare(a, b);
 }
-inline static bool operator!=(const StringRef& a, const StringRef& b) {
+__attribute__((unused)) static bool operator!=(const StringRef& a,
+                                               const StringRef& b) {
     return 0 != compare(a, b);
 }
-inline static bool operator>=(const StringRef& a, const StringRef& b) {
+__attribute__((unused)) static bool operator>=(const StringRef& a,
+                                               const StringRef& b) {
     return compare(a, b) >= 0;
 }
-inline static bool operator>(const StringRef& a, const StringRef& b) {
+__attribute__((unused)) static bool operator>(const StringRef& a,
+                                              const StringRef& b) {
     return compare(a, b) > 0;
 }
-inline static bool operator<=(const StringRef& a, const StringRef& b) {
+__attribute__((unused)) static bool operator<=(const StringRef& a,
+                                               const StringRef& b) {
     return compare(a, b) <= 0;
 }
-inline static bool operator<(const StringRef& a, const StringRef& b) {
+__attribute__((unused)) static bool operator<(const StringRef& a,
+                                              const StringRef& b) {
     return compare(a, b) < 0;
 }
 
 struct Timestamp {
     Timestamp() : ts_(0) {}
-    explicit Timestamp(int64_t ts) : ts_(ts < 0? 0 : ts) {}
+    explicit Timestamp(int64_t ts) : ts_(ts < 0 ? 0 : ts) {}
     Timestamp& operator+=(const Timestamp& t1) {
         ts_ += t1.ts_;
         return *this;
@@ -97,33 +104,40 @@ struct Timestamp {
     int64_t ts_;
 };
 
-inline static const Timestamp operator+(const Timestamp& a,
-                                        const Timestamp& b) {
+__attribute__((unused)) static const Timestamp operator+(const Timestamp& a,
+                                                         const Timestamp& b) {
     return Timestamp(a.ts_ + b.ts_);
 }
-inline static const Timestamp operator-(const Timestamp& a,
-                                        const Timestamp& b) {
+__attribute__((unused)) static const Timestamp operator-(const Timestamp& a,
+                                                         const Timestamp& b) {
     return Timestamp(a.ts_ - b.ts_);
 }
-inline static const Timestamp operator/(const Timestamp& a, const int64_t b) {
+__attribute__((unused)) static const Timestamp operator/(const Timestamp& a,
+                                                         const int64_t b) {
     return Timestamp(static_cast<int64_t>(a.ts_ / b));
 }
-inline static bool operator>(const Timestamp& a, const Timestamp& b) {
+__attribute__((unused)) static bool operator>(const Timestamp& a,
+                                              const Timestamp& b) {
     return a.ts_ > b.ts_;
 }
-inline static bool operator<(const Timestamp& a, const Timestamp& b) {
+__attribute__((unused)) static bool operator<(const Timestamp& a,
+                                              const Timestamp& b) {
     return a.ts_ < b.ts_;
 }
-inline static bool operator>=(const Timestamp& a, const Timestamp& b) {
+__attribute__((unused)) static bool operator>=(const Timestamp& a,
+                                               const Timestamp& b) {
     return a.ts_ >= b.ts_;
 }
-inline static bool operator<=(const Timestamp& a, const Timestamp& b) {
+__attribute__((unused)) static bool operator<=(const Timestamp& a,
+                                               const Timestamp& b) {
     return a.ts_ <= b.ts_;
 }
-inline static bool operator==(const Timestamp& a, const Timestamp& b) {
+__attribute__((unused)) static bool operator==(const Timestamp& a,
+                                               const Timestamp& b) {
     return a.ts_ == b.ts_;
 }
-inline static bool operator!=(const Timestamp& a, const Timestamp& b) {
+__attribute__((unused)) static bool operator!=(const Timestamp& a,
+                                               const Timestamp& b) {
     return a.ts_ != b.ts_;
 }
 
@@ -147,22 +161,22 @@ struct Date {
     }
     int32_t date_;
 };
-inline static bool operator>(const Date& a, const Date& b) {
+__attribute__((unused)) static bool operator>(const Date& a, const Date& b) {
     return a.date_ > b.date_;
 }
-inline static bool operator<(const Date& a, const Date& b) {
+__attribute__((unused)) static bool operator<(const Date& a, const Date& b) {
     return a.date_ < b.date_;
 }
-inline static bool operator>=(const Date& a, const Date& b) {
+__attribute__((unused)) static bool operator>=(const Date& a, const Date& b) {
     return a.date_ >= b.date_;
 }
-inline static bool operator<=(const Date& a, const Date& b) {
+__attribute__((unused)) static bool operator<=(const Date& a, const Date& b) {
     return a.date_ <= b.date_;
 }
-inline static bool operator==(const Date& a, const Date& b) {
+__attribute__((unused)) static bool operator==(const Date& a, const Date& b) {
     return a.date_ == b.date_;
 }
-inline static bool operator!=(const Date& a, const Date& b) {
+__attribute__((unused)) static bool operator!=(const Date& a, const Date& b) {
     return a.date_ != b.date_;
 }
 
@@ -266,9 +280,8 @@ inline int32_t AppendDouble(int8_t* buf_ptr, uint32_t buf_size, double val,
 
 int32_t AppendString(int8_t* buf_ptr, uint32_t buf_size, uint32_t col_idx,
                      int8_t* val, uint32_t size, int8_t is_null,
-                     uint32_t str_start_offset,
-                     uint32_t str_field_offset, uint32_t str_addr_space,
-                     uint32_t str_body_offset);
+                     uint32_t str_start_offset, uint32_t str_field_offset,
+                     uint32_t str_addr_space, uint32_t str_body_offset);
 
 inline int8_t GetAddrSpace(uint32_t size) {
     if (size <= UINT8_MAX) {
@@ -295,8 +308,8 @@ inline int8_t GetBoolFieldUnsafe(const int8_t* row, uint32_t offset) {
     return value;
 }
 
-inline int8_t GetBoolField(const int8_t* row, uint32_t idx,
-                           uint32_t offset, int8_t* is_null) {
+inline int8_t GetBoolField(const int8_t* row, uint32_t idx, uint32_t offset,
+                           int8_t* is_null) {
     if (row == nullptr || IsNullAt(row, idx)) {
         *is_null = true;
         return 0;
@@ -310,8 +323,8 @@ inline int16_t GetInt16FieldUnsafe(const int8_t* row, uint32_t offset) {
     return *(reinterpret_cast<const int16_t*>(row + offset));
 }
 
-inline int16_t GetInt16Field(const int8_t* row, uint32_t idx,
-                             uint32_t offset, int8_t* is_null) {
+inline int16_t GetInt16Field(const int8_t* row, uint32_t idx, uint32_t offset,
+                             int8_t* is_null) {
     if (row == nullptr || IsNullAt(row, idx)) {
         *is_null = true;
         return 0;
@@ -325,8 +338,8 @@ inline int32_t GetInt32FieldUnsafe(const int8_t* row, uint32_t offset) {
     return *(reinterpret_cast<const int32_t*>(row + offset));
 }
 
-inline int32_t GetInt32Field(const int8_t* row, uint32_t idx,
-                             uint32_t offset, int8_t* is_null) {
+inline int32_t GetInt32Field(const int8_t* row, uint32_t idx, uint32_t offset,
+                             int8_t* is_null) {
     if (row == nullptr || IsNullAt(row, idx)) {
         *is_null = true;
         return 0;
@@ -340,8 +353,8 @@ inline int64_t GetInt64FieldUnsafe(const int8_t* row, uint32_t offset) {
     return *(reinterpret_cast<const int64_t*>(row + offset));
 }
 
-inline int64_t GetInt64Field(const int8_t* row, uint32_t idx,
-                             uint32_t offset, int8_t* is_null) {
+inline int64_t GetInt64Field(const int8_t* row, uint32_t idx, uint32_t offset,
+                             int8_t* is_null) {
     if (row == nullptr || IsNullAt(row, idx)) {
         *is_null = true;
         return 0;
@@ -355,8 +368,8 @@ inline float GetFloatFieldUnsafe(const int8_t* row, uint32_t offset) {
     return *(reinterpret_cast<const float*>(row + offset));
 }
 
-inline float GetFloatField(const int8_t* row, uint32_t idx,
-                           uint32_t offset, int8_t* is_null) {
+inline float GetFloatField(const int8_t* row, uint32_t idx, uint32_t offset,
+                           int8_t* is_null) {
     if (row == nullptr || IsNullAt(row, idx)) {
         *is_null = true;
         return 0;
@@ -385,8 +398,8 @@ inline double GetDoubleFieldUnsafe(const int8_t* row, uint32_t offset) {
     return *(reinterpret_cast<const double*>(row + offset));
 }
 
-inline double GetDoubleField(const int8_t* row, uint32_t idx,
-                             uint32_t offset, int8_t* is_null) {
+inline double GetDoubleField(const int8_t* row, uint32_t idx, uint32_t offset,
+                             int8_t* is_null) {
     if (row == nullptr || IsNullAt(row, idx)) {
         *is_null = true;
         return 0.0;
@@ -399,28 +412,24 @@ inline double GetDoubleField(const int8_t* row, uint32_t idx,
 // native get string field method
 int32_t GetStrFieldUnsafe(const int8_t* row, uint32_t str_field_offset,
                           uint32_t next_str_field_offset,
-                          uint32_t str_start_offset,
-                          uint32_t addr_space,
+                          uint32_t str_start_offset, uint32_t addr_space,
                           int8_t** data, uint32_t* size);
 
-int32_t GetStrField(const int8_t* row, uint32_t idx,
-                    uint32_t str_field_offset,
+int32_t GetStrField(const int8_t* row, uint32_t idx, uint32_t str_field_offset,
                     uint32_t next_str_field_offset, uint32_t str_start_offset,
                     uint32_t addr_space, int8_t** data, uint32_t* size,
                     int8_t* is_null);
 
-int32_t GetCol(int8_t* input, int32_t row_idx,
-                     uint32_t col_idx, int32_t offset, int32_t type_id,
-                     int8_t* data);
+int32_t GetCol(int8_t* input, int32_t row_idx, uint32_t col_idx, int32_t offset,
+               int32_t type_id, int8_t* data);
 int32_t GetInnerRangeList(int8_t* input, int64_t start_offset,
                           int64_t end_offset, int8_t* data);
 int32_t GetInnerRowsList(int8_t* input, int64_t start_offset,
-                          int64_t end_offset, int8_t* data);
+                         int64_t end_offset, int8_t* data);
 
-int32_t GetStrCol(int8_t* input, int32_t row_idx,
-                  uint32_t col_idx, int32_t str_field_offset,
-                  int32_t next_str_field_offset, int32_t str_start_offset,
-                  int32_t type_id, int8_t* data);
+int32_t GetStrCol(int8_t* input, int32_t row_idx, uint32_t col_idx,
+                  int32_t str_field_offset, int32_t next_str_field_offset,
+                  int32_t str_start_offset, int32_t type_id, int8_t* data);
 
 }  // namespace v1
 }  // namespace codec
