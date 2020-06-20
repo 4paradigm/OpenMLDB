@@ -4757,6 +4757,12 @@ void NameServerImpl::CreateTable(RpcController* controller,
         response->set_msg("ok");
         return;
     } else if (table_info->table_type() == rtidb::type::kRelational) {
+        if (!rtidb::codec::SchemaCodec::AddTypeToColumnDesc(table_info)) {
+            response->set_code(
+                    ::rtidb::base::ReturnCode::kAddTypeToColumnDescFailed);
+            response->set_msg("add type to ColumnDesc failed");
+            return;
+        }
         bool has_blob = false;
         for (const auto& col : table_info->column_desc_v1()) {
             if (col.data_type() == rtidb::type::kBlob) {
