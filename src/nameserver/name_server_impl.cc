@@ -3687,6 +3687,10 @@ void NameServerImpl::ShowOPStatus(RpcController* controller,
                 op_data->op_info_.name() != request->name()) {
                 continue;
             }
+            if (request->has_db() && 
+                op_data->op_info_.db() != request->db()) {
+                continue;
+            }
             if (request->has_pid() &&
                 op_data->op_info_.pid() != request->pid()) {
                 continue;
@@ -3700,6 +3704,7 @@ void NameServerImpl::ShowOPStatus(RpcController* controller,
         op_status->set_op_type(
             ::rtidb::api::OPType_Name(kv.second->op_info_.op_type()));
         op_status->set_name(kv.second->op_info_.name());
+        op_status->set_db(kv.second->op_info_.db());
         op_status->set_pid(kv.second->op_info_.pid());
         op_status->set_status(
             ::rtidb::api::TaskStatus_Name(kv.second->op_info_.task_status()));
@@ -7322,7 +7327,7 @@ void NameServerImpl::RecoverEndpointTable(
     PDLOG(INFO, "offset[%lu] manifest offset[%lu]. name[%s] tid[%u] pid[%u]",
           offset, manifest.offset(), name.c_str(), tid, pid);
     if (has_table) {
-        if (ret_code == 0 && offset >= manifest.offset()) {
+        if (ret_code == 0 && offset >= manifest.offset()) {  // todo(pxc): find why take this path
             CreateReAddReplicaSimplifyOP(name, db, pid, endpoint, offset_delta,
                                          task_info->op_id(), concurrency);
         } else {

@@ -166,6 +166,7 @@ bool NsClient::ShowOPStatus(::rtidb::nameserver::ShowOPStatusResponse& response,
     ::rtidb::nameserver::ShowOPStatusRequest request;
     if (!name.empty()) {
         request.set_name(name);
+        request.set_db(GetDb());
     }
     if (pid != INVALID_PID) {
         request.set_pid(pid);
