@@ -906,12 +906,11 @@ bool NameServerImpl::RecoverTableInfo() {
     if (!zk_client_->GetChildren(zk_table_data_path_, table_vec)) {
         if (zk_client_->IsExistNode(zk_table_data_path_) > 0) {
             PDLOG(WARNING, "table data node is not exist");
-            return true;
         }
         PDLOG(WARNING, "get table name failed!");
         return false;
     }
-    PDLOG(INFO, "need to recover table num[%d]", table_vec.size());
+    PDLOG(INFO, "need to recover default table num[%d]", table_vec.size());
     for (const auto& table_name : table_vec) {
         std::string table_name_node = zk_table_data_path_ + "/" + table_name;
         std::string value;
@@ -931,14 +930,11 @@ bool NameServerImpl::RecoverTableInfo() {
         table_info_.insert(std::make_pair(table_name, table_info));
         PDLOG(INFO, "recover table[%s] success", table_name.c_str());
     }
-    if (zk_client_->IsExistNode(zk_db_table_data_path_) > 0) {
-        bool ok = zk_client_->Mkdir(zk_db_table_data_path_);
-        if (!ok) {
-            LOG(WARNING) << "fail to mkdir " << zk_db_table_data_path_;
-            return false;
-        }
-    }
     if (!zk_client_->GetChildren(zk_db_table_data_path_, db_table_vec)) {
+        if (zk_client_->IsExistNode(zk_db_table_data_path_) > 0) {
+            PDLOG(WARNING, "db table data node is not exist");
+            return true;
+        }
         PDLOG(WARNING, "get db table id failed!");
         return false;
     }
@@ -1496,7 +1492,7 @@ void NameServerImpl::OnBlobOffline(const std::string& endpoint,
                   endpoint.c_str());
             return;
         }
-        if (table_info_.empty()) {
+        if (table_info_.empty() && db_table_info_.empty()) {
             PDLOG(INFO, "endpoint %s has no table, need not offline endpoint",
                   endpoint.c_str());
             return;
@@ -1541,7 +1537,7 @@ void NameServerImpl::OnTabletOffline(const std::string& endpoint,
                   endpoint.c_str());
             return;
         }
-        if (table_info_.empty()) {
+        if (table_info_.empty() && db_table_info_.empty()) {
             PDLOG(INFO, "endpoint %s has no table, need not offline endpoint",
                   endpoint.c_str());
             return;
@@ -1589,7 +1585,7 @@ void NameServerImpl::OnTabletOnline(const std::string& endpoint) {
             offline_endpoint_map_.erase(iter);
             return;
         }
-        if (table_info_.empty()) {
+        if (table_info_.empty() && db_table_info_.empty()) {
             PDLOG(INFO, "endpoint %s has no table, need not recover endpoint",
                   endpoint.c_str());
             offline_endpoint_map_.erase(iter);
@@ -10484,7 +10480,7 @@ void NameServerImpl::SyncTable(RpcController* controller,
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info;
     do {
         std::shared_ptr<::rtidb::client::NsClient>
-            client;  // todo(pxc): set db in ns client
+            client;
         {
             std::lock_guard<std::mutex> lock(mu_);
             if (!GetTableInfoUnlock(name, db, &table_info)) {

@@ -17,7 +17,7 @@ namespace rtidb {
 namespace client {
 
 NsClient::NsClient(const std::string& endpoint)
-    : endpoint_(endpoint), client_(endpoint) {}
+    : endpoint_(endpoint), client_(endpoint), db_("") {}
 
 int NsClient::Init() { return client_.Init(); }
 

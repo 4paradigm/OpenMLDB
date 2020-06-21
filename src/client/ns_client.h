@@ -237,8 +237,8 @@ class NsClient {
 
  private:
     std::string endpoint_;
-    std::string db_;
     ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> client_;
+    std::string db_;
 };
 
 }  // namespace client
