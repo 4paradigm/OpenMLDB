@@ -2743,8 +2743,7 @@ int NameServerImpl::CheckTableMeta(const TableInfo& table_info) {
                   "ttl is greater than conf value. ttl[%lu] ttl_type[%s] "
                   "max ttl[%u]",
                   ttl,
-                  ::rtidb::api::TTLType_Name(
-                      table_info.ttl_desc().ttl_type())
+                  ::rtidb::api::TTLType_Name(table_info.ttl_desc().ttl_type())
                       .c_str(),
                   max_ttl);
             return -1;
@@ -2760,8 +2759,7 @@ int NameServerImpl::CheckTableMeta(const TableInfo& table_info) {
             PDLOG(WARNING,
                   "ttl is greater than conf value. ttl[%lu] ttl_type[%s] "
                   "max ttl[%u]",
-                  table_info.ttl(), table_info.ttl_type().c_str(),
-                  max_ttl);
+                  table_info.ttl(), table_info.ttl_type().c_str(), max_ttl);
             return -1;
         }
     }
@@ -3687,8 +3685,7 @@ void NameServerImpl::ShowOPStatus(RpcController* controller,
                 op_data->op_info_.name() != request->name()) {
                 continue;
             }
-            if (request->has_db() && 
-                op_data->op_info_.db() != request->db()) {
+            if (request->has_db() && op_data->op_info_.db() != request->db()) {
                 continue;
             }
             if (request->has_pid() &&
@@ -7327,7 +7324,7 @@ void NameServerImpl::RecoverEndpointTable(
     PDLOG(INFO, "offset[%lu] manifest offset[%lu]. name[%s] tid[%u] pid[%u]",
           offset, manifest.offset(), name.c_str(), tid, pid);
     if (has_table) {
-        if (ret_code == 0 && offset >= manifest.offset()) {  // todo(pxc): find why take this path
+        if (ret_code == 0 && offset >= manifest.offset()) {
             CreateReAddReplicaSimplifyOP(name, db, pid, endpoint, offset_delta,
                                          task_info->op_id(), concurrency);
         } else {
@@ -7543,7 +7540,7 @@ int NameServerImpl::CreateReAddReplicaWithDropTask(
         return -1;
     }
     std::string name = op_data->op_info_.name();
-    std::string db = op_data->op_info_.name();
+    std::string db = op_data->op_info_.db();
     std::string endpoint = recover_table_data.endpoint();
     uint64_t offset_delta = recover_table_data.offset_delta();
     uint32_t pid = op_data->op_info_.pid();
@@ -10484,8 +10481,7 @@ void NameServerImpl::SyncTable(RpcController* controller,
     std::string cluster_alias = request->cluster_alias();
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info;
     do {
-        std::shared_ptr<::rtidb::client::NsClient>
-            client;
+        std::shared_ptr<::rtidb::client::NsClient> client;
         {
             std::lock_guard<std::mutex> lock(mu_);
             if (!GetTableInfoUnlock(name, db, &table_info)) {
