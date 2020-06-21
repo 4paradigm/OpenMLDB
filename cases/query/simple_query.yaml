@@ -122,7 +122,7 @@ SQLCases:
     desc: SELECT null列
     mode: request
     db: db1
-    sql: select int16, int32, int64, `float`, `double`, `ts`, dt, `string`, id + 1 as newid from t1;
+    sql: select `int16`, `int32`, `int64`, `float`, `double`, `ts`, dt, `string`, id + 1 as newid from t1;
     inputs:
       - name: t1
         schema: id:int32, int16:int16, int32:int32, int64:int64, float:float, double:double,

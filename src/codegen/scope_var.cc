@@ -79,6 +79,26 @@ bool ScopeVar::AddVar(const std::string& name,
     return true;
 }
 
+bool ScopeVar::ReplaceVar(const std::string& name,
+                       const NativeValue& value) {
+    if (scopes_.size() <= 0) {
+        LOG(WARNING) << "no scope exists " << name;
+        return false;
+    }
+
+    for (auto scope_iter = scopes_.rbegin(); scope_iter != scopes_.rend();
+         scope_iter++) {
+        Scope& exist_scope = *scope_iter;
+        std::map<std::string, NativeValue>::iterator it =
+            exist_scope.scope_map.find(name);
+        if (it != exist_scope.scope_map.end()) {
+            it->second = value;
+            return true;
+        }
+    }
+    DLOG(INFO) << "var with name " << name << " does not exist ";
+    return false;
+}
 bool ScopeVar::FindVar(const std::string& name,
                        NativeValue* value) {
     if (value == NULL) {

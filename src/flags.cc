@@ -30,7 +30,8 @@ DEFINE_bool(enable_keep_alive, true, "config if tablet keep alive with dbms");
 DEFINE_string(default_db_name, "_fesql",
               "config the default batch catalog db name");
 
-DEFINE_bool(enable_column_sum_opt, true,
-              "enable column sum merge");
-DEFINE_bool(enable_window_merge_opt, true,
-            "enable window merge");
+DEFINE_string(native_fesql_libs_path,
+              "/Users/chenjing/work/ce/nativeDB/fesql/libs/",
+              "config the native fesql libs path");
+DEFINE_bool(enable_column_sum_opt, true, "enable column sum merge");
+DEFINE_bool(enable_window_merge_opt, true, "enable window merge");

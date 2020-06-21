@@ -40,6 +40,7 @@ std::initializer_list<int> __output_literal_args(
                 "Internal api error: ", ##__VA_ARGS__);           \
             fesql::base::Status _status(                          \
                 common::kCodegenError, _ss.str());                \
+            return _status;                                       \
         } break; }                                                \
 
 struct Status {

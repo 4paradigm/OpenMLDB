@@ -81,7 +81,9 @@ bool ArithmeticIRBuilder::InferBaseTypes(::llvm::Value* left,
             }
         } else {
             status.msg =
-                "fail to codegen add expr: value type isn't compatible";
+                "fail to codegen add expr: value type isn't compatible: " +
+                TypeIRBuilder::TypeName(left_type) + " and  " +
+                TypeIRBuilder::TypeName(right_type);
             status.code = common::kCodegenError;
             LOG(WARNING) << status.msg;
             return false;
@@ -242,7 +244,6 @@ bool ArithmeticIRBuilder::BuildSubExpr(
                TypeIRBuilder::IsTimestampPtr(casted_right->getType())) {
         ::llvm::Value* ts1;
         ::llvm::Value* ts2;
-        ::llvm::Value* ts_add;
         TimestampIRBuilder ts_builder(block_->getModule());
         if (!ts_builder.GetTs(block_, casted_left, &ts1)) {
             return false;
@@ -250,10 +251,7 @@ bool ArithmeticIRBuilder::BuildSubExpr(
         if (!ts_builder.GetTs(block_, casted_right, &ts2)) {
             return false;
         }
-        BuildSubExpr(ts1, ts2, &ts_add, status);
-        if (!ts_builder.NewTimestamp(block_, ts_add, output)) {
-            return false;
-        }
+        return BuildSubExpr(ts1, ts2, output, status);
     } else {
         status.msg = "fail to codegen sub expr: value types are invalid";
         status.code = common::kCodegenError;

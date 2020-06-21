@@ -26,7 +26,7 @@ add_library(fesql_codegen STATIC
         context.cc)
 if (TESTING_ENABLE)
 set(vm_deps_libs
-        fesql_case ${yaml_libs} boost_filesystem ${VM_LIBS} fesql_flags ${LLVM_LIBS} ${BRPC_LIBS} ${OS_LIB})
+        fesql_case boost_filesystem ${yaml_libs} ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS} ${OS_LIB})
 
 add_executable(ir_base_builder_test ir_base_builder_test.cc)
 target_link_libraries(ir_base_builder_test gtest ${vm_deps_libs})
@@ -80,7 +80,7 @@ list(APPEND test_list expr_ir_builder_test)
 
 
 add_executable(block_ir_builder_test block_ir_builder_test.cc)
-target_link_libraries(block_ir_builder_test gtest ${vm_deps_libs} fesql_vm)
+target_link_libraries(block_ir_builder_test gtest ${vm_deps_libs} fesql_flags fesql_vm)
 add_test(block_ir_builder_test block_ir_builder_test --gtest_output=xml:${CMAKE_BINARY_DIR}/block_ir_builder_test.xml)
 list(APPEND test_list block_ir_builder_test)
 

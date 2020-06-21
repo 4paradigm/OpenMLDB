@@ -24,17 +24,17 @@ class UDFIRBuilder {
         : name_function_map_(map) {}
     ~UDFIRBuilder() {}
     static bool BuildMinuteTimestamp(::llvm::Module* module,
-                              base::Status& status);  // NOLINT
+                                     base::Status& status);  // NOLINT
     static bool BuildSecondTimestamp(::llvm::Module* module,
                                      base::Status& status);  // NOLINT
     static bool BuildHourTimestamp(::llvm::Module* module,
-                                     base::Status& status);  // NOLINT
-    static bool BuildMinuteInt64(::llvm::Module* module,
-                                     base::Status& status);  // NOLINT
-    static bool BuildSecondInt64(::llvm::Module* module,
-                                     base::Status& status);  // NOLINT
-    static bool BuildHourInt64(::llvm::Module* module,
                                    base::Status& status);  // NOLINT
+    static bool BuildMinuteInt64(::llvm::Module* module,
+                                 base::Status& status);  // NOLINT
+    static bool BuildSecondInt64(::llvm::Module* module,
+                                 base::Status& status);  // NOLINT
+    static bool BuildHourInt64(::llvm::Module* module,
+                               base::Status& status);  // NOLINT
     static bool BuildDayDate(::llvm::Module* module,
                              base::Status& status);  // NOLINT
     static bool BuildMonthDate(::llvm::Module* module,
@@ -46,6 +46,12 @@ class UDFIRBuilder {
     bool BuildNativeCUDF(::llvm::Module* module,
                          fesql::node::FnNodeFnHeander* header, void* fn_ptr,
                          base::Status& status);  // NOLINT
+    static bool GetLibsFiles(const std::string& dir_path,
+                             std::vector<std::string>& filenames,    // NOLINT
+                             base::Status& status);                  // NOLINT
+    static bool BuildFeLibs(llvm::Module* m, base::Status& status);  // NOLINT
+    static bool CompileFeScript(llvm::Module* m, const std::string& path,
+                                base::Status& status);  // NOLINT
     std::map<std::string, void*>* name_function_map_;
 };
 }  // namespace codegen
