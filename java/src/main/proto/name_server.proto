@@ -314,7 +314,8 @@ message OPStatus {
     required string task_type = 6;
     optional string name = 7;
     optional uint32 pid = 8;
-    optional int32 for_replica_cluster = 9 [default = 0];   
+    optional int32 for_replica_cluster = 9 [default = 0];
+    optional string db = 10 [default = ""];
 }
 
 message GetTablePartitionRequest {
@@ -346,6 +347,7 @@ message UpdateTableAliveRequest {
 message ShowOPStatusRequest{
     optional string name = 1;
     optional uint32 pid = 2;
+    optional string db = 3;
 }
 
 message ConnectZKRequest {}

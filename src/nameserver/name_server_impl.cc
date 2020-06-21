@@ -455,7 +455,7 @@ bool NameServerImpl::CompareSnapshotOffset(
         std::map<uint32_t, uint64_t> pid_offset;
         std::shared_ptr<::rtidb::nameserver::TableInfo> table_info;
         if (!GetTableInfoUnlock(table.name(), table.db(), &table_info)) {
-            PDLOG(WARNING, "table [%s] not found in table_info_",
+            PDLOG(WARNING, "table [%s] not found in table_info",
                   table.name().c_str());
             return false;
         }
@@ -3726,7 +3726,7 @@ void NameServerImpl::ShowDbTable(
     const std::map<std::string, std::shared_ptr<TableInfo>>& table_infos,
     const ShowTableRequest* request, ShowTableResponse* response) {
     for (const auto& kv : table_infos) {
-        if (request->has_name() && request->name() != kv.first) {
+        if (!request->show_all() && request->has_name() && request->name() != kv.first) {
             continue;
         }
         ::rtidb::nameserver::TableInfo* table_info = response->add_table_info();
