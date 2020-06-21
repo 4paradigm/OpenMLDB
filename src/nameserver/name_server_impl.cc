@@ -3726,7 +3726,7 @@ void NameServerImpl::ShowDbTable(
     const std::map<std::string, std::shared_ptr<TableInfo>>& table_infos,
     const ShowTableRequest* request, ShowTableResponse* response) {
     for (const auto& kv : table_infos) {
-        if (!request->show_all() && request->has_name() && request->name() != kv.first) {
+        if (request->has_name() && request->name() != kv.first) {
             continue;
         }
         ::rtidb::nameserver::TableInfo* table_info = response->add_table_info();
