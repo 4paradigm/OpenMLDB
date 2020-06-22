@@ -10583,14 +10583,14 @@ void NameServerImpl::SyncTable(RpcController* controller,
                       name.c_str(), cluster_alias.c_str());
                 ::rtidb::nameserver::TableInfo table_info_r(*table_info);
                 // get remote table_info: tid and leader partition info
-                std::string msg;
+                std::string error;
                 if (!client->CreateRemoteTableInfo(zone_info_, table_info_r,
-                                                   msg)) {
+                                                   error)) {
                     code = 510;
                     msg = "create remote table info failed";
                     PDLOG(WARNING,
                           "create remote table_info error, wrong msg is [%s]",
-                          msg.c_str());
+                          error.c_str());
                     break;
                 }
                 std::lock_guard<std::mutex> lock(mu_);
