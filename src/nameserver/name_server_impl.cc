@@ -6774,7 +6774,7 @@ int NameServerImpl::CreateOfflineReplicaOP(const std::string& name,
 
 int NameServerImpl::CreateOfflineReplicaTask(std::shared_ptr<OPData> op_data) {
     std::string name = op_data->op_info_.name();
-    std::string db = op_data->op_info_.name();
+    std::string db = op_data->op_info_.db();
     uint32_t pid = op_data->op_info_.pid();
     uint64_t op_index = op_data->op_info_.op_id();
     std::string endpoint = op_data->op_info_.data();
