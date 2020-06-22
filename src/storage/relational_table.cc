@@ -309,7 +309,9 @@ bool RelationalTable::LoadTable() {
 
 bool RelationalTable::Put(const std::string& value,
         const ::rtidb::api::WriteOption& wo,
-        int64_t* auto_gen_pk, std::string* msg) {
+        int64_t* auto_gen_pk,
+        RepeatedField<google::protobuf::int64_t>* blob_keys,
+        std::string* msg) {
     ::rtidb::base::Slice slice(value);
     std::string new_value;
     if (table_meta_.compress_type() == ::rtidb::api::kSnappy) {
@@ -350,7 +352,7 @@ bool RelationalTable::Put(const std::string& value,
     }
     rocksdb::WriteBatch batch;
     if (!PutDB(rocksdb::Slice(pk), slice.data(), slice.size(),
-                true, true, &batch, msg)) {
+                wo.update_if_exist(), true, &batch, blob_keys, msg)) {
         return false;
     }
     rocksdb::Status s = db_->Write(write_opts_, &batch);
@@ -367,23 +369,13 @@ bool RelationalTable::Put(const std::string& value,
 }
 
 bool RelationalTable::PutDB(const rocksdb::Slice& spk, const char* data,
-        uint32_t size, bool pk_check, bool unique_check,
-        rocksdb::WriteBatch* batch, std::string* msg) {
+        uint32_t size, bool update_pk, bool unique_check,
+        rocksdb::WriteBatch* batch,
+        RepeatedField<google::protobuf::int64_t>* blob_keys,
+        std::string* msg) {
     std::shared_ptr<IndexDef> pk_index_def = table_index_.GetPkIndex();
-    if (pk_check) {
-        std::unique_ptr<rocksdb::Iterator> pk_it(
-            GetRocksdbIterator(pk_index_def->GetId()));
-        if (!pk_it) {
-            return false;
-        } else {
-            pk_it->Seek(spk);
-            if (pk_it->Valid() && pk_it->key() == spk) {
-                DEBUGLOG("Put failed, duplicate pk %s. tid %u pid %u",
-                        spk.ToString().c_str(), id_, pid_);
-                *msg = "duplicate pk";
-                return false;
-            }
-        }
+    if (!CheckPk(spk, update_pk, batch, blob_keys, msg)) {
+        return false;
     }
     if (table_meta_.compress_type() == ::rtidb::api::kSnappy) {
         std::string compressed;
@@ -425,6 +417,63 @@ bool RelationalTable::PutDB(const rocksdb::Slice& spk, const char* data,
             CombineNoUniqueAndPk(key, spk.ToString(), &no_unique);
             batch->Put(cf_hs_[index_def->GetId() + 1],
                        rocksdb::Slice(no_unique), rocksdb::Slice());
+        }
+    }
+    return true;
+}
+
+bool RelationalTable::CheckPk(const rocksdb::Slice& spk,
+        bool update_pk, rocksdb::WriteBatch* batch,
+        RepeatedField<google::protobuf::int64_t>* blob_keys,
+        std::string* msg) {
+    std::shared_ptr<IndexDef> pk_index_def = table_index_.GetPkIndex();
+    std::unique_ptr<rocksdb::Iterator> pk_it(
+            GetRocksdbIterator(pk_index_def->GetId()));
+    if (!pk_it) {
+        *msg = "GetRocksdbIterator failed";
+        return false;
+    } else {
+        pk_it->Seek(spk);
+        if (pk_it->Valid() && pk_it->key() == spk) {
+            if (!update_pk) {
+                DEBUGLOG("Put failed, duplicate pk %s. tid %u pid %u",
+                        spk.ToString().c_str(), id_, pid_);
+                *msg = "duplicate pk";
+                return false;
+            } else {
+                std::vector<std::unique_ptr<rocksdb::Iterator>> iter_vec;
+                if (!Query(pk_index_def, spk, &iter_vec)) {
+                    DEBUGLOG("query of put failed. tid %u pid %u", id_, pid_);
+                    *msg = "query of put failed";
+                    return false;
+                }
+                const std::vector<uint32_t>& blob_idxs =
+                    table_column_.GetBlobIdxs();
+                for (auto& iter : iter_vec) {
+                    const int8_t* data = reinterpret_cast<int8_t*>(
+                            const_cast<char*>(iter->value().data()));
+                    for (auto i : blob_idxs) {
+                        int64_t val = 0;
+                        int ret = row_view_.GetValue(
+                                data, i, rtidb::type::kBlob, &val);
+                        if (ret != 0) {
+                            PDLOG(WARNING, "get blob failed."
+                            "errno %d tid %u pid %u", ret, id_, pid_);
+                            blob_keys->Clear();
+                            *msg = "get blob failed";
+                            return false;
+                        }
+                        int64_t* key = blob_keys->Add();
+                        *key = val;
+                    }
+                }
+                uint32_t count = 0;
+                if (!DeletePk(spk, batch, &count)) {
+                    DEBUGLOG("delete of put failed. tid %u pid %u", id_, pid_);
+                    *msg = "delete of put failed";
+                    return false;
+                }
+            }
         }
     }
     return true;
@@ -1240,8 +1289,10 @@ bool RelationalTable::UpdateDB(const std::shared_ptr<IndexDef> index_def,
             }
             pk_slice.reset(new_pk.data(), new_pk.size());
         }
+        RepeatedField<google::protobuf::int64_t> blob_keys;
         ok = PutDB(rocksdb::Slice(pk_slice.data(), pk_slice.size()),
-                   row.c_str(), row.length(), false, false, &batch, msg);
+                row.c_str(), row.length(), true, false,
+                &batch, &blob_keys, msg);
         if (!ok) {
             PDLOG(WARNING, "put failed, update table tid %u pid %u failed", id_,
                   pid_);
