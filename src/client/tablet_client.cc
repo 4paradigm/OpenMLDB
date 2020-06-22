@@ -241,7 +241,7 @@ bool TabletClient::Put(uint32_t tid, uint32_t pid, const std::string& value,
     msg->swap(*response.mutable_msg());
     if (ok && response.code() == 0) {
         *auto_gen_pk = response.auto_gen_pk();
-        if (blob_keys != nullptr && !blob_keys->empty()) {
+        if (blob_keys != nullptr) {
             for (int64_t key : response.blob_keys()) {
                 blob_keys->push_back(key);
             }

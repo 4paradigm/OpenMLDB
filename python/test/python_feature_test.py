@@ -16,7 +16,7 @@ class TestRtidb(unittest.TestCase):
     except:
       self.assertTrue(True)
     else:
-      self.assertTrue(False);
+      self.assertTrue(False)
     data = {"id":"2001","attribute":"a1", "image":"i1"}
     wo = rtidb.WriteOption()
     wo.updateIfExist = True
@@ -49,6 +49,17 @@ class TestRtidb(unittest.TestCase):
     self.assertTrue(self.nsc.put("rt_ck", data, None).success())
     data = {"id":"2002","name":"n2","mcc":"2001","attribute":"a1", "image":b"i1"}
     self.assertTrue(self.nsc.put("rt_ck", data, None).success())
+    data = {"id":"2002","name":"n2","mcc":"2001","attribute":"a1", "image":b"i1"}
+    try:
+      self.assertTrue(self.nsc.put("rt_ck", data, None).success())
+    except:
+      self.assertTrue(True)
+    else:
+      self.assertTrue(False)
+    data = {"id":"2002","name":"n2","mcc":"2001","attribute":"a1", "image":b"i1"}
+    wo = rtidb.WriteOption()
+    wo.updateIfExist = True
+    self.assertTrue(self.nsc.put("rt_ck", data, wo).success())
     ro = rtidb.ReadOption()
     ro.index.update({"id":"2001"})
     ro.index.update({"name":"n1"})
@@ -95,7 +106,7 @@ class TestRtidb(unittest.TestCase):
     resp = self.nsc.query("rt_ck", ro)
     self.assertTrue(True);
     self.assertEqual(0, resp.count())
-    
+
   def test_traverse(self):
     for i in range(1000) :
         data = {"id":"{:d}".format(i), "attribute":"a{}".format(i), "image":"i{}".format(i)}
