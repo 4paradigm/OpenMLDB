@@ -50,6 +50,8 @@ def buildStrMap(m: map):
       mid_map.update({k: NONETOKEN})
     elif isinstance(m[k], str):
       mid_map.update({k: m[k]})
+    elif isinstance(m[k], bytes):
+      continue
     else:
       mid_map.update({k: str(m[k])})
   return mid_map
