@@ -36,12 +36,12 @@ build_fesql_on_linux:
     script:
         - bash tools/compile_and_test.sh
         - bash tools/cicd/gen_intermediate_java_cicd_artifacts.sh linux
-        - tar cfz bm_cases.tar.gz build/src/bm/*_bm
-#    artifacts:
-#        paths:
-#            - java_intermediate_cicd_artifact_linux.tar.gz
-#            - build/python/dist/*.whl
-#            - build/src/fesql
+#        - tar cfz bm_cases.tar.gz build/src/bm/*_bm
+    artifacts:
+        paths:
+            - java_intermediate_cicd_artifact_linux.tar.gz
+            - build/python/dist/*.whl
+            - build/src/fesql
 #            - bm_cases.tar.gz
 
 # build_fesql_on_mac:
@@ -123,7 +123,7 @@ test_py3sdk_linux:
 micro_benchmark:
     stage: deploy
     script:
-        - tar xf bm_cases.tar.gz
+#        - tar xf bm_cases.tar.gz
         - bash tools/micro_bench.sh | tee micro_bench_report.txt
         - bash tools/gen_micro_bench_compare.sh
     dependencies:
