@@ -11659,6 +11659,7 @@ void NameServerImpl::DropDatabase(RpcController* controller,
     ::rtidb::nameserver::GeneralResponse dresponse;
     for (auto table : tables) {
         drequest.set_name(table->name());
+        drequest.set_db(request->db());
         DropTableFun(&drequest, &dresponse, table);
         if (dresponse.code() != 0) {
             response->set_code(::rtidb::base::ReturnCode::kDropTableError);
