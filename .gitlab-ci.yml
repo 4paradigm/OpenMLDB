@@ -37,7 +37,7 @@ java_ut:
   stage: test
   before_script:
       - mkdir /rambuild
-        #- mount -t tmpfs -o size=3G tmpfs /rambuild
+      - mount -t tmpfs -o size=3G tmpfs /rambuild
   script:
       - ln -sf /depends/thirdparty thirdparty
       - ln -sf /depends/thirdsrc thirdsrc

@@ -1,9 +1,6 @@
 package com._4paradigm.rtidb.client.ut.ha;
 
-import com._4paradigm.rtidb.client.GetFuture;
-import com._4paradigm.rtidb.client.KvIterator;
-import com._4paradigm.rtidb.client.PutFuture;
-import com._4paradigm.rtidb.client.ScanFuture;
+import com._4paradigm.rtidb.client.*;
 import com._4paradigm.rtidb.client.base.TestCaseBase;
 import com._4paradigm.rtidb.client.impl.TableClientCommon;
 import com._4paradigm.rtidb.common.Common;
@@ -87,6 +84,15 @@ public class PartitionKeyTest extends TestCaseBase {
             Assert.assertEquals(row.length, 3);
             Assert.assertEquals(row[0], "card0");
             Assert.assertEquals(row[1], "mcc1");
+            it = tableSyncClient.scan(name, "cardxxx", "card", 0, 0);
+            Assert.assertFalse(it.valid());
+            row = tableSyncClient.getRow(name, "cardxxx", "card", 0);
+            Assert.assertEquals(row, null);
+            Assert.assertEquals(0, tableSyncClient.count(name, "cardxxx", "card"));
+            Assert.assertTrue(tableSyncClient.delete(name, "card0", "card"));
+            Assert.assertFalse(tableSyncClient.delete(name, "card0", "card"));
+            Assert.assertFalse(tableSyncClient.delete(name, "cardxxx", "card"));
+            Assert.assertFalse(tableSyncClient.delete(name, "cardxxx", "mcc"));
         } catch (Exception e) {
             e.printStackTrace();
             Assert.fail();
@@ -109,6 +115,25 @@ public class PartitionKeyTest extends TestCaseBase {
         } catch (Exception e) {
             Assert.assertTrue(true);
         }
+        try {
+            KvIterator it = tableSyncClient.scan(name, "mccxxx", "mcc", 0, 0);
+            Assert.fail();
+        } catch (Exception e) {
+            Assert.assertTrue(true);
+        }
+        try {
+            Object[] row = tableSyncClient.getRow(name, "mccxxx", "mcc", 0);
+            Assert.fail();
+        } catch (Exception e) {
+            Assert.assertTrue(true);
+        }
+        try {
+            Assert.assertEquals(0, tableSyncClient.count(name, "mccxxx", "mcc"));
+            Assert.fail();
+        } catch (Exception e) {
+            Assert.assertTrue(true);
+        }
+
         nsc.dropTable(name);
     }
 
@@ -245,6 +270,21 @@ public class PartitionKeyTest extends TestCaseBase {
             Assert.assertEquals(row.length, 3);
             Assert.assertEquals(row[0], "card0");
             Assert.assertEquals(row[1], "mcc0");
+
+            it = tableSyncClient.scan(name, "cardxxx", "card", 0, 0);
+            Assert.assertFalse(it.valid());
+            it = tableSyncClient.scan(name, "mccxxx", "mcc", 0, 0);
+            Assert.assertFalse(it.valid());
+            row = tableSyncClient.getRow(name, "cardxxx", "card", 0);
+            Assert.assertEquals(row, null);
+            row = tableSyncClient.getRow(name, "mccxxx", "mcc", 0);
+            Assert.assertEquals(row, null);
+            Assert.assertEquals(0, tableSyncClient.count(name, "cardxxx", "card"));
+            Assert.assertEquals(0, tableSyncClient.count(name, "mccxxx", "mcc"));
+            Assert.assertTrue(tableSyncClient.delete(name, "card0", "card"));
+            Assert.assertFalse(tableSyncClient.delete(name, "card0", "card"));
+            Assert.assertFalse(tableSyncClient.delete(name, "cardxxx", "card"));
+            Assert.assertFalse(tableSyncClient.delete(name, "cardxxx", "mcc"));
         } catch (Exception e) {
             e.printStackTrace();
             Assert.fail();
