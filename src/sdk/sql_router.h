@@ -50,19 +50,18 @@ class SQLRouter {
     SQLRouter() {}
     virtual ~SQLRouter() {}
 
-
     virtual bool CreateDB(const std::string& db,
                           fesql::sdk::Status* status) = 0;
 
     virtual bool ExecuteDDL(const std::string& db, const std::string& sql,
-                           fesql::sdk::Status* status) = 0;
+                            fesql::sdk::Status* status) = 0;
 
     virtual bool ExecuteInsert(const std::string& db, const std::string& sql,
                                fesql::sdk::Status* status) = 0;
 
-    virtual std::shared_ptr<ExplainInfo> Explain(const std::string& db,
-                                                 const std::string& sql,
-                                                 ::fesql::sdk::Status* status) = 0;
+    virtual std::shared_ptr<ExplainInfo> Explain(
+        const std::string& db, const std::string& sql,
+        ::fesql::sdk::Status* status) = 0;
 
     virtual std::shared_ptr<rtidb::sdk::SQLRequestRow> GetRequestRow(
         const std::string& db, const std::string& sql,

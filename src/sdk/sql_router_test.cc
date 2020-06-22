@@ -219,13 +219,11 @@ TEST_F(SQLRouterTest, smoke_explain_on_sql) {
     auto explain = router->Explain(db, sql_select, &status);
     if (explain) {
         ASSERT_TRUE(true);
-    }else {
+    } else {
         ASSERT_TRUE(false);
     }
     std::cout << explain->GetPhysicalPlan() << std::endl;
 }
-
-
 
 TEST_F(SQLRouterTest, smoketimestamptest_on_sql) {
     SQLRouterOptions sql_opt;

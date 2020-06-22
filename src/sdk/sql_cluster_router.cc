@@ -124,7 +124,7 @@ std::shared_ptr<SQLRequestRow> SQLClusterRouter::GetRequestRow(
     }
     ::fesql::vm::ExplainOutput explain;
     ::fesql::base::Status vm_status;
-    bool ok = engine_->Explain(sql, db, false, &explain, &vm_status);
+    bool ok = engine_->Explain(sql, db, true, &explain, &vm_status);
     if (!ok) {
         status->code = -1;
         status->msg = vm_status.msg;
@@ -640,22 +640,21 @@ bool SQLClusterRouter::RefreshCatalog() {
     return ok;
 }
 
-std::shared_ptr<ExplainInfo> SQLClusterRouter::Explain(const std::string& db, const std::string& sql,
-        ::fesql::sdk::Status* status) {
+std::shared_ptr<ExplainInfo> SQLClusterRouter::Explain(
+    const std::string& db, const std::string& sql,
+    ::fesql::sdk::Status* status) {
     ::fesql::vm::ExplainOutput explain_output;
     ::fesql::base::Status vm_status;
-    bool ok = engine_->Explain(sql, db, true, &explain_output, &vm_status);
+    bool ok = engine_->Explain(sql, db, false, &explain_output, &vm_status);
     if (!ok) {
         LOG(WARNING) << "fail to explain sql " << sql;
         return std::shared_ptr<ExplainInfo>();
     }
     ::fesql::sdk::SchemaImpl input_schema(explain_output.input_schema);
     ::fesql::sdk::SchemaImpl output_schema(explain_output.output_schema);
-    std::shared_ptr<ExplainInfoImpl> impl(new ExplainInfoImpl(input_schema,
-                output_schema,
-                explain_output.logical_plan,
-                explain_output.physical_plan,
-                explain_output.ir));
+    std::shared_ptr<ExplainInfoImpl> impl(new ExplainInfoImpl(
+        input_schema, output_schema, explain_output.logical_plan,
+        explain_output.physical_plan, explain_output.ir));
     return impl;
 }
 
