@@ -2552,19 +2552,23 @@ void NameServerImpl::SetTablePartition(RpcController* controller,
         response->set_msg("table is not exist");
         return;
     }
-    for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
-        if (table_info->table_partition(idx).pid() != pid) {
+    std::shared_ptr<::rtidb::nameserver::TableInfo> cur_table_info(
+        table_info->New());
+    cur_table_info->CopyFrom(*table_info);
+    for (int idx = 0; idx < cur_table_info->table_partition_size(); idx++) {
+        if (cur_table_info->table_partition(idx).pid() != pid) {
             continue;
         }
         ::rtidb::nameserver::TablePartition* table_partition =
-            table_info->mutable_table_partition(idx);
+            cur_table_info->mutable_table_partition(idx);
         table_partition->Clear();
         table_partition->CopyFrom(request->table_partition());
-        if (!UpdateZkTableNode(table_info)) {
+        if (!UpdateZkTableNode(cur_table_info)) {
             response->set_code(::rtidb::base::ReturnCode::kSetZkFailed);
             response->set_msg("set zk failed");
             return;
         }
+        table_info->CopyFrom(*cur_table_info);
         break;
     }
     response->set_code(::rtidb::base::ReturnCode::kOk);
@@ -4140,28 +4144,18 @@ void NameServerImpl::AddTableField(RpcController* controller,
             it->first.c_str());
     }
     // update zk node
-    ::rtidb::nameserver::TableInfo table_info_zk;
-    table_info_zk.CopyFrom(*table_info);
+    std::shared_ptr<::rtidb::nameserver::TableInfo> table_info_zk(table_info->New());
+    table_info_zk->CopyFrom(*table_info);
     ::rtidb::common::ColumnDesc* added_column_desc_zk =
-        table_info_zk.add_added_column_desc();
+        table_info_zk->add_added_column_desc();
     added_column_desc_zk->CopyFrom(request->column_desc());
-    std::string table_value;
-    table_info_zk.SerializeToString(&table_value);
     {
         std::lock_guard<std::mutex> lock(mu_);
-        if (!zk_client_->SetNodeValue(
-                zk_table_data_path_ + "/" + table_info_zk.name(),
-                table_value)) {
+        if(!UpdateZkTableNodeWithoutNotify(table_info_zk)) {
             response->set_code(::rtidb::base::ReturnCode::kSetZkFailed);
             response->set_msg("set zk failed!");
-            PDLOG(WARNING, "update table node[%s/%s] failed! value[%s]",
-                  zk_table_data_path_.c_str(), table_info_zk.name().c_str(),
-                  table_value.c_str());
             return;
         }
-        PDLOG(INFO, "update table node[%s/%s]. value is [%s]",
-              zk_table_data_path_.c_str(), table_info_zk.name().c_str(),
-              table_value.c_str());
         // 2.update ns table_info_
         ::rtidb::common::ColumnDesc* added_column_desc =
             table_info->add_added_column_desc();
@@ -4897,14 +4891,26 @@ int NameServerImpl::CreateBlobTable(std::shared_ptr<TableInfo> table_info) {
 bool NameServerImpl::SaveTableInfo(std::shared_ptr<TableInfo> table_info) {
     std::string table_value;
     table_info->SerializeToString(&table_value);
-    if (!zk_client_->CreateNode(zk_table_data_path_ + "/" + table_info->name(),
-                                table_value)) {
-        PDLOG(WARNING, "create object table node[%s/%s] failed!",
-              zk_table_data_path_.c_str(), table_info->name().c_str());
-        return false;
-    }
-    PDLOG(INFO, "create table node[%s/%s] success!",
+    if (table_info->db().empty()) {
+        if (!zk_client_->CreateNode(zk_table_data_path_ + "/" + table_info->name(),
+                                    table_value)) {
+            PDLOG(WARNING, "create object table node[%s/%s] failed!",
+                zk_table_data_path_.c_str(), table_info->name().c_str());
+            return false;
+        }
+        PDLOG(INFO, "create table node[%s/%s] success!",
           zk_table_data_path_.c_str(), table_info->name().c_str());
+    } else {
+        if (!zk_client_->CreateNode(zk_db_table_data_path_ + "/" + std::to_string(table_info->tid()),
+                                    table_value)) {
+            PDLOG(WARNING, "create object db table node[%s/%s] failed!",
+                zk_db_table_data_path_.c_str(), table_info->name().c_str());
+            return false;
+        }
+        PDLOG(INFO, "create db table node[%s/%s] success!",
+          zk_db_table_data_path_.c_str(), table_info->name().c_str());
+    }
+
     return true;
 }
 void NameServerImpl::CreateTableInternel(
@@ -8736,10 +8742,12 @@ void NameServerImpl::AddTableInfo(
         task_info->set_status(::rtidb::api::TaskStatus::kFailed);
         return;
     }
-    for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
-        if (table_info->table_partition(idx).pid() == pid) {
+    std::shared_ptr<::rtidb::nameserver::TableInfo> cur_table_info(table_info->New());
+    cur_table_info->CopyFrom(*table_info);
+    for (int idx = 0; idx < cur_table_info->table_partition_size(); idx++) {
+        if (cur_table_info->table_partition(idx).pid() == pid) {
             ::rtidb::nameserver::TablePartition* table_partition =
-                table_info->mutable_table_partition(idx);
+                cur_table_info->mutable_table_partition(idx);
             for (int meta_idx = 0;
                  meta_idx < table_partition->partition_meta_size();
                  meta_idx++) {
@@ -8762,10 +8770,11 @@ void NameServerImpl::AddTableInfo(
             break;
         }
     }
-    if (!UpdateZkTableNode(table_info)) {
+    if (!UpdateZkTableNodeWithoutNotify(cur_table_info)) {
         task_info->set_status(::rtidb::api::TaskStatus::kFailed);
         return;
     }
+    table_info->CopyFrom(*cur_table_info);
     task_info->set_status(::rtidb::api::TaskStatus::kDone);
     PDLOG(
         INFO,
@@ -8819,7 +8828,7 @@ void NameServerImpl::AddTableInfo(
             break;
         }
     }
-    if (!UpdateZkTableNode(table_info)) {
+    if (!UpdateZkTableNodeWithoutNotify(table_info)) {
         task_info->set_status(::rtidb::api::TaskStatus::kFailed);
         return;
     }
@@ -9134,21 +9143,23 @@ void NameServerImpl::DelTableInfo(
         task_info->set_status(::rtidb::api::TaskStatus::kFailed);
         return;
     }
-    for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
-        if (table_info->table_partition(idx).pid() != pid) {
+    std::shared_ptr<::rtidb::nameserver::TableInfo> cur_table_info(table_info->New());
+    cur_table_info->CopyFrom(*table_info);
+    for (int idx = 0; idx < cur_table_info->table_partition_size(); idx++) {
+        if (cur_table_info->table_partition(idx).pid() != pid) {
             continue;
         }
         bool has_found = false;
         if (for_remote == 1) {
             for (int meta_idx = 0;
                  meta_idx <
-                 table_info->table_partition(idx).remote_partition_meta_size();
+                 cur_table_info->table_partition(idx).remote_partition_meta_size();
                  meta_idx++) {
-                if (table_info->table_partition(idx)
+                if (cur_table_info->table_partition(idx)
                         .remote_partition_meta(meta_idx)
                         .endpoint() == endpoint) {
                     ::rtidb::nameserver::TablePartition* table_partition =
-                        table_info->mutable_table_partition(idx);
+                        cur_table_info->mutable_table_partition(idx);
                     ::google::protobuf::RepeatedPtrField<
                         ::rtidb::nameserver::PartitionMeta>* partition_meta =
                         table_partition->mutable_remote_partition_meta();
@@ -9162,13 +9173,13 @@ void NameServerImpl::DelTableInfo(
         } else {
             for (int meta_idx = 0;
                  meta_idx <
-                 table_info->table_partition(idx).partition_meta_size();
+                 cur_table_info->table_partition(idx).partition_meta_size();
                  meta_idx++) {
-                if (table_info->table_partition(idx)
+                if (cur_table_info->table_partition(idx)
                         .partition_meta(meta_idx)
                         .endpoint() == endpoint) {
                     ::rtidb::nameserver::TablePartition* table_partition =
-                        table_info->mutable_table_partition(idx);
+                        cur_table_info->mutable_table_partition(idx);
                     ::google::protobuf::RepeatedPtrField<
                         ::rtidb::nameserver::PartitionMeta>* partition_meta =
                         table_partition->mutable_partition_meta();
@@ -9190,10 +9201,11 @@ void NameServerImpl::DelTableInfo(
         }
         break;
     }
-    if (!UpdateZkTableNode(table_info)) {
+    if (!UpdateZkTableNode(cur_table_info)) {
         task_info->set_status(::rtidb::api::TaskStatus::kFailed);
         return;
     }
+    table_info->CopyFrom(*cur_table_info);
     task_info->set_status(::rtidb::api::TaskStatus::kDone);
     PDLOG(
         INFO,
@@ -9287,36 +9299,40 @@ void NameServerImpl::UpdateTableAliveStatus(
         response->set_msg("table is not exist");
         return;
     }
+    std::shared_ptr<::rtidb::nameserver::TableInfo> cur_table_info(
+        table_info->New());
+    cur_table_info->CopyFrom(*table_info);
     bool has_update = false;
-    for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
+    for (int idx = 0; idx < cur_table_info->table_partition_size(); idx++) {
         if (request->has_pid() &&
-            table_info->table_partition(idx).pid() != request->pid()) {
+            cur_table_info->table_partition(idx).pid() != request->pid()) {
             continue;
         }
         for (int meta_idx = 0;
-             meta_idx < table_info->table_partition(idx).partition_meta_size();
+             meta_idx < cur_table_info->table_partition(idx).partition_meta_size();
              meta_idx++) {
-            if (table_info->table_partition(idx)
+            if (cur_table_info->table_partition(idx)
                     .partition_meta(meta_idx)
                     .endpoint() == endpoint) {
                 ::rtidb::nameserver::TablePartition* table_partition =
-                    table_info->mutable_table_partition(idx);
+                    cur_table_info->mutable_table_partition(idx);
                 ::rtidb::nameserver::PartitionMeta* partition_meta =
                     table_partition->mutable_partition_meta(meta_idx);
                 partition_meta->set_is_alive(request->is_alive());
                 std::string is_alive = request->is_alive() ? "true" : "false";
                 PDLOG(INFO, "update status[%s]. name[%s] endpoint[%s] pid[%u]",
                       is_alive.c_str(), name.c_str(), endpoint.c_str(),
-                      table_info->table_partition(idx).pid());
+                      cur_table_info->table_partition(idx).pid());
                 has_update = true;
                 break;
             }
         }
     }
     if (has_update) {
-        if (UpdateZkTableNode(table_info)) {
+        if (UpdateZkTableNode(cur_table_info)) {
             PDLOG(INFO, "update alive status ok. name[%s] endpoint[%s]",
                   name.c_str(), endpoint.c_str());
+            table_info->CopyFrom(*cur_table_info);
             response->set_code(::rtidb::base::ReturnCode::kOk);
             response->set_msg("ok");
         } else {
@@ -10991,6 +11007,9 @@ bool NameServerImpl::UpdateZkTableNodeWithoutNotify(
                   table_value.c_str());
             return false;
         }
+        PDLOG(INFO, "update table node[%s/%s]. value is [%s]",
+          zk_table_data_path_.c_str(), table_info->name().c_str(),
+          table_value.c_str());
     } else {
         if (!zk_client_->SetNodeValue(zk_db_table_data_path_ + "/" +
                                           std::to_string(table_info->tid()),
@@ -11001,10 +11020,10 @@ bool NameServerImpl::UpdateZkTableNodeWithoutNotify(
                   table_value.c_str(), table_value.length());
             return false;
         }
-    }
-    PDLOG(INFO, "update table node[%s/%s]. value is [%s]",
-          zk_table_data_path_.c_str(), table_info->name().c_str(),
+        PDLOG(INFO, "update db table node[%s/%s]. value is [%s]",
+          zk_db_table_data_path_.c_str(), table_info->name().c_str(),
           table_value.c_str());
+    }
     return true;
 }
 
