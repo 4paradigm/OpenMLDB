@@ -34,10 +34,22 @@ struct SQLRouterOptions {
     uint32_t session_timeout = 2000;
 };
 
+class ExplainInfo {
+ public:
+    ExplainInfo() {}
+    virtual ~ExplainInfo() {}
+    virtual const ::fesql::sdk::Schema& GetInputSchema() = 0;
+    virtual const ::fesql::sdk::Schema& GetOutputSchema() = 0;
+    virtual const std::string& GetLogicalPlan() = 0;
+    virtual const std::string& GetPhysicalPlan() = 0;
+    virtual const std::string& GetIR() = 0;
+};
+
 class SQLRouter {
  public:
     SQLRouter() {}
     virtual ~SQLRouter() {}
+
 
     virtual bool CreateDB(const std::string& db,
                           fesql::sdk::Status* status) = 0;
@@ -47,6 +59,10 @@ class SQLRouter {
 
     virtual bool ExecuteInsert(const std::string& db, const std::string& sql,
                                fesql::sdk::Status* status) = 0;
+
+    virtual std::shared_ptr<ExplainInfo> Explain(const std::string& db,
+                                                 const std::string& sql,
+                                                 ::fesql::sdk::Status* status) = 0;
 
     virtual std::shared_ptr<rtidb::sdk::SQLRequestRow> GetRequestRow(
         const std::string& db, const std::string& sql,

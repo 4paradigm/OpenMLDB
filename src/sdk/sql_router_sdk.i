@@ -8,6 +8,7 @@
 %shared_ptr(fesql::sdk::ResultSet);
 %shared_ptr(rtidb::sdk::SQLRouter);
 %shared_ptr(rtidb::sdk::SQLRequestRow);
+%shared_ptr(rtidb::sdk::ExplainInfo);
 
 %{
 #include "sdk/sql_router.h"
@@ -19,6 +20,7 @@ using fesql::sdk::ResultSet;
 using rtidb::sdk::SQLRouter;
 using rtidb::sdk::SQLRouterOptions;
 using rtidb::sdk::SQLRequestRow;
+using rtidb::sdk::ExplainInfo;
 %}
 
 %include "sdk/sql_router.h"

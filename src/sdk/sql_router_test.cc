@@ -192,6 +192,41 @@ TEST_F(SQLRouterTest, smoketest_on_sql) {
     ASSERT_EQ(100, rs->GetInt64Unsafe(0));
 }
 
+TEST_F(SQLRouterTest, smoke_explain_on_sql) {
+    SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc_.GetZkCluster();
+    sql_opt.zk_path = mc_.GetZkPath();
+    auto router = NewClusterSQLRouter(sql_opt);
+    if (!router) ASSERT_TRUE(false);
+    std::string name = "test" + GenRand();
+    std::string db = "db" + GenRand();
+    ::fesql::sdk::Status status;
+    bool ok = router->CreateDB(db, &status);
+    ASSERT_TRUE(ok);
+    std::string ddl = "create table " + name +
+                      "("
+                      "col1 string, col2 timestamp, col3 date,"
+                      "index(key=col1, ts=col2));";
+    ok = router->ExecuteDDL(db, ddl, &status);
+    ASSERT_TRUE(ok);
+    ASSERT_TRUE(router->RefreshCatalog());
+    std::string insert = "insert into " + name +
+                         " values('hello', 1591174600000l, '2020-06-03');";
+    ok = router->ExecuteInsert(db, insert, &status);
+    ASSERT_TRUE(ok);
+    ASSERT_TRUE(router->RefreshCatalog());
+    std::string sql_select = "select * from " + name + " ;";
+    auto explain = router->Explain(db, sql_select, &status);
+    if (explain) {
+        ASSERT_TRUE(true);
+    }else {
+        ASSERT_TRUE(false);
+    }
+    std::cout << explain->GetPhysicalPlan() << std::endl;
+}
+
+
+
 TEST_F(SQLRouterTest, smoketimestamptest_on_sql) {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_.GetZkCluster();

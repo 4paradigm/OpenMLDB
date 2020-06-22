@@ -215,6 +215,7 @@ void HandleCmd(const fesql::node::CmdNode *cmd_node) {
             return;
         }
 
+        
         case fesql::node::kCmdDescTable: {
             if (db.empty()) {
                 std::cout << "please enter database first" << std::endl;
@@ -348,6 +349,19 @@ void HandleSQL(const std::string &sql) {
                 dynamic_cast<fesql::node::CmdNode *>(node);
             HandleCmd(cmd);
             return;
+        }
+        case fesql::node::kExplainStmt: {
+            std::string empty;
+            std::string mu_script = sql;
+            mu_script.replace(0u, 7u, empty);
+            auto info =
+                sr->Explain(db, mu_script, &status);
+            if (!info) {
+                std::cout << "fail to get explain info" << std::endl;
+                return;
+            }
+            std::cout << info->GetPhysicalPlan() << std::endl;
+            return; 
         }
         case fesql::node::kCreateStmt: {
             if (db.empty()) {
