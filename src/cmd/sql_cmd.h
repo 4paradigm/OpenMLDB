@@ -136,6 +136,26 @@ void PrintResultSet(std::ostream &stream, ::fesql::sdk::ResultSet *result_set) {
     stream << t << std::endl;
     stream << result_set->Size() << " rows in set" << std::endl;
 }
+
+void PrintTableIndex(std::ostream &stream,
+                     const ::fesql::vm::IndexList &index_list) {
+    ::fesql::base::TextTable t('-', ' ', ' ');
+    t.add("#");
+    t.add("name");
+    t.add("keys");
+    t.add("ts");
+    t.endOfRow();
+    for (uint32_t i = 0; i < index_list.size(); i++) {
+        const ::fesql::type::IndexDef &index = index_list.Get(i);
+        t.add(std::to_string(i + 1));
+        t.add(index.name());
+        t.add(index.first_keys(0));
+        t.add(index.second_key());
+        t.endOfRow();
+    }
+    stream << t;
+}
+
 void PrintTableSchema(std::ostream &stream, const ::fesql::vm::Schema &schema) {
     if (schema.size() == 0) {
         stream << "Empty set" << std::endl;
@@ -143,6 +163,7 @@ void PrintTableSchema(std::ostream &stream, const ::fesql::vm::Schema &schema) {
     }
     uint32_t items_size = schema.size();
     ::fesql::base::TextTable t('-', ' ', ' ');
+    t.add("#");
     t.add("Field");
     t.add("Type");
     t.add("Null");
@@ -150,17 +171,13 @@ void PrintTableSchema(std::ostream &stream, const ::fesql::vm::Schema &schema) {
 
     for (uint32_t i = 0; i < items_size; i++) {
         auto column = schema.Get(i);
+        t.add(std::to_string(i + 1));
         t.add(column.name());
         t.add(::fesql::type::Type_Name(column.type()));
         t.add(column.is_not_null() ? "NO" : "YES");
         t.endOfRow();
     }
     stream << t;
-    if (items_size > 1) {
-        stream << items_size << " rows in set" << std::endl;
-    } else {
-        stream << items_size << " row in set" << std::endl;
-    }
 }
 
 void PrintItems(std::ostream &stream, const std::string &head,
@@ -215,7 +232,6 @@ void HandleCmd(const fesql::node::CmdNode *cmd_node) {
             return;
         }
 
-        
         case fesql::node::kCmdDescTable: {
             if (db.empty()) {
                 std::cout << "please enter database first" << std::endl;
@@ -226,6 +242,10 @@ void HandleCmd(const fesql::node::CmdNode *cmd_node) {
             ::rtidb::catalog::SchemaAdapter::ConvertSchema(
                 table->column_desc_v1(), &output_schema);
             PrintTableSchema(std::cout, output_schema);
+            ::fesql::vm::IndexList index_list;
+            ::rtidb::catalog::SchemaAdapter::ConvertIndex(table->column_key(),
+                                                          &index_list);
+            PrintTableIndex(std::cout, index_list);
             break;
         }
 
@@ -354,14 +374,14 @@ void HandleSQL(const std::string &sql) {
             std::string empty;
             std::string mu_script = sql;
             mu_script.replace(0u, 7u, empty);
-            auto info =
-                sr->Explain(db, mu_script, &status);
+            ::fesql::sdk::Status status;
+            auto info = sr->Explain(db, mu_script, &status);
             if (!info) {
                 std::cout << "fail to get explain info" << std::endl;
                 return;
             }
             std::cout << info->GetPhysicalPlan() << std::endl;
-            return; 
+            return;
         }
         case fesql::node::kCreateStmt: {
             if (db.empty()) {
