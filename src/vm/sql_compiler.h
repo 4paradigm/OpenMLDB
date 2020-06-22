@@ -65,6 +65,12 @@ void InitCodecSymbol(::llvm::orc::JITDylib& jd,            // NOLINT
                      ::llvm::orc::MangleAndInterner& mi);  // NOLINT
 void InitCodecSymbol(vm::FeSQLJIT* jit_ptr);
 
+bool RegisterFeLibs(llvm::Module* m, base::Status& status);  // NOLINT
+bool GetLibsFiles(const std::string& dir_path,
+                  std::vector<std::string>& filenames,  // NOLINT
+                  base::Status& status);                // NOLINT
+bool CompileFeScript(llvm::Module* m, const std::string& path,
+                     base::Status& status);  // NOLINT
 class SQLCompiler {
  public:
     SQLCompiler(const std::shared_ptr<Catalog>& cl, bool keep_ir = false,

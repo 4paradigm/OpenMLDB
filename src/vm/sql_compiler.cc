@@ -19,8 +19,12 @@
 #include <memory>
 #include <utility>
 #include <vector>
+#include "boost/filesystem.hpp"
+#include "boost/filesystem/string_file.hpp"
 #include "codec/fe_schema_codec.h"
 #include "codec/type_codec.h"
+#include "codegen/block_ir_builder.h"
+#include "codegen/fn_ir_builder.h"
 #include "codegen/ir_base_builder.h"
 #include "glog/logging.h"
 #include "llvm/Bitcode/BitcodeReader.h"
@@ -32,7 +36,6 @@
 #include "udf/udf.h"
 #include "vm/runner.h"
 #include "vm/transform.h"
-
 DECLARE_string(native_fesql_libs_path);
 namespace fesql {
 namespace vm {
@@ -168,7 +171,117 @@ SQLCompiler::SQLCompiler(const std::shared_ptr<Catalog>& cl, bool keep_ir,
       plan_only_(plan_only) {}
 
 SQLCompiler::~SQLCompiler() {}
+bool CompileFeScript(llvm::Module* m, const std::string& path_str,
+                                  base::Status& status) { // NOLINT
+    boost::filesystem::path path(path_str);
+    std::string script;
+    boost::filesystem::load_string_file(path, script);
+    DLOG(INFO) << "Script file : " << script << "\n" << script;
+    ::fesql::node::NodeManager node_mgr;
+    ::fesql::node::NodePointVector parser_trees;
+    ::fesql::parser::FeSQLParser parser;
+    ::fesql::plan::SimplePlanner planer(&node_mgr);
+    ::fesql::node::PlanNodeList plan_trees;
 
+    int ret = parser.parse(script, parser_trees, &node_mgr, status);
+    if (ret != 0) {
+        LOG(WARNING) << "fail to parse sql " << script << " with error "
+                     << status.msg;
+        return false;
+    }
+
+    ret = planer.CreatePlanTree(parser_trees, plan_trees, status);
+    if (ret != 0) {
+        LOG(WARNING) << "Fail create sql plan: " << status.msg;
+        return false;
+    }
+
+    auto it = plan_trees.begin();
+    for (; it != plan_trees.end(); ++it) {
+        const ::fesql::node::PlanNode* node = *it;
+        if (nullptr == node) {
+            status.msg = "Fail compile null plan";
+            LOG(WARNING) << status.msg;
+            return false;
+        }
+        switch (node->GetType()) {
+            case ::fesql::node::kPlanTypeFuncDef: {
+                const ::fesql::node::FuncDefPlanNode* func_def_plan =
+                    dynamic_cast<const ::fesql::node::FuncDefPlanNode*>(node);
+                if (nullptr == m || nullptr == func_def_plan ||
+                    nullptr == func_def_plan->fn_def_) {
+                    status.msg =
+                        "fail to codegen function: module or fn_def node is "
+                        "null";
+                    status.code = common::kOpGenError;
+                    LOG(WARNING) << status.msg;
+                    return false;
+                }
+
+                ::fesql::codegen::FnIRBuilder builder(m);
+                bool ok = builder.Build(func_def_plan->fn_def_, status);
+                if (!ok) {
+                    LOG(WARNING) << status.msg;
+                    return false;
+                }
+                break;
+            }
+            default: {
+                status.msg =
+                    "fail to codegen fe script: unrecognized plan type " +
+                    node::NameOfPlanNodeType(node->GetType());
+                status.code = common::kCodegenError;
+                LOG(WARNING) << status.msg;
+                return false;
+            }
+        }
+    }
+    return true;
+}
+bool GetLibsFiles(const std::string& dir_path,
+                               std::vector<std::string>& filenames,
+                               Status& status) { // NOLINT
+    boost::filesystem::path path(dir_path);
+    if (!boost::filesystem::exists(path)) {
+        status.msg = "Libs path " + dir_path + " not exist";
+        status.code = common::kSQLError;
+        return false;
+    }
+    boost::filesystem::directory_iterator end_iter;
+    for (boost::filesystem::directory_iterator iter(path); iter != end_iter;
+         ++iter) {
+        if (boost::filesystem::is_regular_file(iter->status())) {
+            filenames.push_back(iter->path().string());
+        }
+
+        if (boost::filesystem::is_directory(iter->status())) {
+            if (!GetLibsFiles(iter->path().string(), filenames, status)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+bool RegisterFeLibs(llvm::Module* m, Status& status) { // NOLINT
+    std::vector<std::string> filepaths;
+    if (!GetLibsFiles(FLAGS_native_fesql_libs_path, filepaths, status)) {
+        return false;
+    }
+    std::ostringstream runner_oss;
+    runner_oss << "Libs:\n";
+    for_each(filepaths.cbegin(), filepaths.cend(),
+             [&](const std::string item) { runner_oss << item << "\n"; });
+    DLOG(INFO) << runner_oss.str();
+
+    for (auto path_str : filepaths) {
+        if (!CompileFeScript(m, path_str, status)) {
+            LOG(WARNING) << status.msg;
+            return false;
+        }
+    }
+    return true;
+}
 void SQLCompiler::KeepIR(SQLContext& ctx, llvm::Module* m) {
     if (m == NULL) {
         LOG(WARNING) << "module is null";
@@ -197,6 +310,10 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     if (!::fesql::udf::RegisterUDFToModule(m.get())) {
         status.msg = "fail to generate native udf libs";
         status.code = common::kCodegenError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+    if (!RegisterFeLibs(m.get(), status)) {
         LOG(WARNING) << status.msg;
         return false;
     }

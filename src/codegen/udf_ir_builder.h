@@ -46,12 +46,6 @@ class UDFIRBuilder {
     bool BuildNativeCUDF(::llvm::Module* module,
                          fesql::node::FnNodeFnHeander* header, void* fn_ptr,
                          base::Status& status);  // NOLINT
-    static bool GetLibsFiles(const std::string& dir_path,
-                             std::vector<std::string>& filenames,    // NOLINT
-                             base::Status& status);                  // NOLINT
-    static bool BuildFeLibs(llvm::Module* m, base::Status& status);  // NOLINT
-    static bool CompileFeScript(llvm::Module* m, const std::string& path,
-                                base::Status& status);  // NOLINT
     std::map<std::string, void*>* name_function_map_;
 };
 }  // namespace codegen

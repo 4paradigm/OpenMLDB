@@ -51,6 +51,7 @@ void CheckNativeUDF(const std::string udf_name, T exp, Args... args) {
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("udf_test", *ctx);
     ASSERT_TRUE(fesql::udf::RegisterUDFToModule(m.get()));
+    ASSERT_TRUE(fesql::vm::RegisterFeLibs(m.get(), status));
     m->print(::llvm::errs(), NULL, true, true);
 
     auto J = ExitOnErr(LLJITBuilder().create());
@@ -170,16 +171,14 @@ TEST_F(UDFIRBuilderTest, min_udf_test) {
     codec::ArrayListV<int32_t> list(&vec);
     codec::ListRef list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
-    CheckNativeUDF<int32_t, codec::ListRef *>("min.list_int32",
-                                              1, &list_ref);
+    CheckNativeUDF<int32_t, codec::ListRef *>("min.list_int32", 1, &list_ref);
 }
 TEST_F(UDFIRBuilderTest, max_udf_test) {
     std::vector<int32_t> vec = {10, 8, 6, 4, 2, 1, 3, 5, 7, 9};
     codec::ArrayListV<int32_t> list(&vec);
     codec::ListRef list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
-    CheckNativeUDF<int32_t, codec::ListRef *>("max.list_int32",
-                                              10, &list_ref);
+    CheckNativeUDF<int32_t, codec::ListRef *>("max.list_int32", 10, &list_ref);
 }
 TEST_F(UDFIRBuilderTest, time_diff_udf_test) {
     codec::Timestamp t1(1590115420000L);
@@ -216,12 +215,13 @@ TEST_F(UDFIRBuilderTest, min_timestamp_udf_test) {
         "min.list_timestamp.timestamp", true, &list_ref, &max_time);
     ASSERT_EQ(codec::Timestamp(1590115390000L), max_time);
 }
-TEST_F(UDFIRBuilderTest, CompileNativeUDF_TEST) {
+TEST_F(UDFIRBuilderTest, RegisterFeLibs_TEST) {
     base::Status status;
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("udf_test", *ctx);
     fesql::udf::RegisterUDFToModule(m.get());
-    bool ok = UDFIRBuilder::BuildFeLibs(m.get(), status);
+    ASSERT_TRUE(vm::RegisterFeLibs(m.get(), status));
+    bool ok = vm::RegisterFeLibs(m.get(), status);
     if (!ok) {
         m->print(::llvm::errs(), NULL, true, true);
     }

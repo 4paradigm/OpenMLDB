@@ -33,7 +33,7 @@ using fesql::codec::ListV;
 using fesql::codec::Row;
 using fesql::codec::StringColumnImpl;
 using fesql::codec::StringRef;
-//TODO(chenjing): 时区统一配置
+// TODO(chenjing): 时区统一配置
 const int32_t TZ = 8;
 const time_t TZ_OFFSET = TZ * 3600000;
 template <class V>
@@ -648,10 +648,6 @@ void RegisterNativeUDFToModule(::llvm::Module *module) {
 bool RegisterUDFToModule(::llvm::Module *m) {
     base::Status status;
     RegisterNativeUDFToModule(m);
-    if (!codegen::UDFIRBuilder::BuildFeLibs(m, status)) {
-        LOG(WARNING) << status.msg;
-        return false;
-    }
     codegen::UDFIRBuilder udf_ir_builder(&NATIVE_UDF_PTRS);
     if (!udf_ir_builder.BuildUDF(m, status)) {
         LOG(WARNING) << status.msg;
