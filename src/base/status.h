@@ -180,6 +180,7 @@ enum ReturnCode {
     kUnkownTableType = 150,
     kColNameNotFound = 151,
     kEncodeError = 152,
+    kAddTypeToColumnDescFailed = 153,
     kNameserverIsNotLeader = 300,
     kAutoFailoverIsEnabled = 301,
     kEndpointIsNotExist = 302,
