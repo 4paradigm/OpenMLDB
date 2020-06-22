@@ -10541,13 +10541,13 @@ void NameServerImpl::SyncTable(RpcController* controller,
                   cluster_alias.c_str(), name.c_str());
             break;
         }
-        std::vector<uint32_t> table_tid_vec;
+        std::vector<std::string> table_name_vec;
         for (auto& rkv : tables) {
-            table_tid_vec.push_back(rkv.tid());
+            table_name_vec.push_back(rkv.name());
         }
         if (request->has_pid()) {
-            if (std::find(table_tid_vec.begin(), table_tid_vec.end(),
-                          table_info->tid()) != table_tid_vec.end()) {
+            if (std::find(table_name_vec.begin(), table_name_vec.end(),
+                          table_info->name()) != table_name_vec.end()) {
                 PDLOG(INFO,
                       "table [%s] [%u] already exists in replica cluster [%s]",
                       name.c_str(), table_info->tid(), cluster_alias.c_str());
@@ -10590,8 +10590,8 @@ void NameServerImpl::SyncTable(RpcController* controller,
                     }
                 }
             }
-            if (std::find(table_tid_vec.begin(), table_tid_vec.end(),
-                          table_info->tid()) != table_tid_vec.end()) {
+            if (std::find(table_name_vec.begin(), table_name_vec.end(),
+                          table_info->name()) != table_name_vec.end()) {
                 PDLOG(INFO,
                       "table [%s] [%u] already exists in replica cluster [%s]",
                       name.c_str(), table_info->tid(), cluster_alias.c_str());
