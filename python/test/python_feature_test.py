@@ -6,10 +6,21 @@ class TestRtidb(unittest.TestCase):
   
   def setUp(self):
     self.nsc = rtidb.RTIDBClient("127.0.0.1:6181", "/onebox")
-
+  
   def test_query(self):
     data = {"id":"2001","attribute":"a1", "image":"i1"}
     self.assertTrue(self.nsc.put("test1", data, None).success())
+    data = {"id":"2001","attribute":"a1", "image":"i1"}
+    try:
+      self.assertTrue(self.nsc.put("test1", data, None).success())
+    except:
+      self.assertTrue(True)
+    else:
+      self.assertTrue(False);
+    data = {"id":"2001","attribute":"a1", "image":"i1"}
+    wo = rtidb.WriteOption()
+    wo.updateIfExist = True
+    self.assertTrue(self.nsc.put("test1", data, wo).success())
     ro = rtidb.ReadOption()
     ro.index.update({"image":"i1"})
     try:

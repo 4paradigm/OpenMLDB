@@ -211,13 +211,15 @@ class RTIDBClient:
     self.__client.DeleteBlobs(name, keys)
 
   def put(self, table_name: str, columns: map, write_option: WriteOption = None):
-    _wo = interclient.WriteOption()
-    if WriteOption != None:
-      _wo.updateIfExist = defaultWriteOption.updateIfExist
+    wo = interclient.WriteOption()
+    if write_option == None:
+      wo.update_if_exist = defaultWriteOption.updateIfExist
+    else:
+      wo.update_if_exist = write_option.updateIfExist
     self.putBlob(table_name, columns)
     value = buildStrMap(columns)
 
-    putResult= self.__client.Put(table_name, value, _wo)
+    putResult= self.__client.Put(table_name, value, wo)
     if putResult.code != 0:
       self.deleteBlob(table_name, value)
       raise Exception(putResult.code, putResult.msg)

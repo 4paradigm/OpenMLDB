@@ -70,7 +70,8 @@ class TabletClient {
             const std::string& value, uint32_t* count, std::string* msg);
 
     bool Put(uint32_t tid, uint32_t pid, const std::string& value,
-             int64_t* auto_gen_pk, std::string* msg);
+            const ::rtidb::api::WriteOption& wo, int64_t* auto_gen_pk,
+            std::vector<int64_t>* blob_keys, std::string* msg);
 
     bool Put(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time,
              const std::string& value);

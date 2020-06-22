@@ -593,8 +593,11 @@ void PutRelational(
         ::snappy::Compress(value.c_str(), value.length(), &compressed);
         value = compressed;
     }
+    ::rtidb::api::WriteOption pb_wo;
     int64_t auto_gen_pk = 0;
-    bool ok = tablet_client->Put(tid, pid, value, &auto_gen_pk, &msg);
+    std::vector<int64_t> blob_keys;
+    bool ok = tablet_client->Put(tid, pid, value, pb_wo,
+            &auto_gen_pk, &blob_keys, &msg);
     if (!ok) {
         printf("put failed, msg: %s\n", msg.c_str());
     } else {
