@@ -364,8 +364,9 @@ class ExprNode : public SQLNode {
         : SQLNode(kExpr, 0, 0), expr_type_(expr_type) {}
     ~ExprNode() {}
     void AddChild(ExprNode *expr) { children_.push_back(expr); }
-    const ExprNode *GetChild(size_t idx) const { return children_[idx]; }
-    int GetChildNum() const { return children_.size(); }
+    void SetChild(size_t idx, ExprNode* expr) { children_[idx] = expr; }
+    ExprNode *GetChild(size_t idx) const { return children_[idx]; }
+    size_t GetChildNum() const { return children_.size(); }
 
     const ExprType GetExprType() const { return expr_type_; }
     void PushBack(ExprNode *node_ptr) { children_.push_back(node_ptr); }
@@ -377,7 +378,15 @@ class ExprNode : public SQLNode {
     virtual bool Equals(const ExprNode *that) const;
 
     const ExprType expr_type_;
+
+    const TypeNode* GetOutputType() const { return output_type_; }
+    void SetOutputType(const TypeNode* dtype) { output_type_ = dtype; }
+
+ private:
+    const TypeNode* output_type_ = nullptr;
+    bool nullable_ = true;
 };
+
 class ExprListNode : public ExprNode {
  public:
     ExprListNode() : ExprNode(kExprList) {}
@@ -501,7 +510,7 @@ class SelectQueryNode : public QueryNode {
           window_list_(window_list) {}
 
     ~SelectQueryNode() {}
-
+ 
     // Getter and Setter
     const SQLNodeList *GetSelectList() const { return select_list_; }
 
@@ -1084,9 +1093,9 @@ class FnDefNode : public SQLNode {
  public:
     explicit FnDefNode(const SQLNodeType &type):
         SQLNode(type, 0, 0) {}
-    virtual TypeNode* GetReturnType() const { return nullptr; }
+    virtual const TypeNode* GetReturnType() const { return nullptr; }
     virtual size_t GetArgsSize() const { return 0; }
-    virtual TypeNode* GetArgType(size_t i) const { return nullptr; }
+    virtual const TypeNode* GetArgType(size_t i) const { return nullptr; }
     virtual const std::string GetSimpleName() const = 0;
 };
 
@@ -1097,7 +1106,7 @@ class CallExprNode : public ExprNode {
         : ExprNode(kExprCall),
           fn_def_(fn_def),
           over_(over),
-          args_(args) {}
+          args_(args) { this->AddChild(args); }
 
     ~CallExprNode() {}
 
@@ -1110,6 +1119,10 @@ class CallExprNode : public ExprNode {
     const WindowDefNode *GetOver() const { return over_; }
 
     void SetOver(WindowDefNode *over) { over_ = over; }
+
+    bool IsRowWise() const { return is_row_wise_; }
+
+    void SetRowWise(bool flag) { is_row_wise_ = flag; }
 
     // bool GetIsAgg() const { return is_agg_; }
 
@@ -1128,6 +1141,9 @@ class CallExprNode : public ExprNode {
     const FnDefNode* fn_def_;
     const WindowDefNode *over_;
     const ExprListNode *args_;
+
+    // TODO(xxx): maybe remove this if high order expression supported
+    bool is_row_wise_ = false;
 };
 
 class QueryExpr : public ExprNode {
@@ -1692,8 +1708,15 @@ class StructExpr : public ExprNode {
 
 class ExternalFnDefNode : public FnDefNode {
  public:
-    explicit ExternalFnDefNode(const std::string& name):
-        FnDefNode(kExternalFnDef), function_name_(name) {}
+    explicit ExternalFnDefNode(const std::string& name,
+                               void* fn_ptr,
+                               const node::TypeNode* ret_type,
+                               const std::vector<
+                                    const node::TypeNode*>& arg_types,
+                               int variadic_pos = -1):
+        FnDefNode(kExternalFnDef), function_name_(name),
+        function_ptr_(fn_ptr), ret_type_(ret_type),
+        arg_types_(arg_types), variadic_pos_(variadic_pos) {}
 
     const std::string function_name() const { return function_name_; }
 
@@ -1701,18 +1724,39 @@ class ExternalFnDefNode : public FnDefNode {
         return function_name_;
     }
 
+    void* function_ptr() const { return function_ptr_; }
+    const node::TypeNode* ret_type() const { return ret_type_; }
+    const std::vector<const node::TypeNode*>& arg_types() const {
+        return arg_types_;
+    }
+    int variadic_pos() const { return variadic_pos_; }
+
     void Print(std::ostream &output, const std::string &tab) const override;
     bool Equals(const SQLNode *node) const override;
 
+    void SetRetType(const node::TypeNode* dtype) {
+        this->ret_type_ = dtype;
+    }
+
+    bool IsResolved() const { return ret_type_ != nullptr; }
+
  private:
     std::string function_name_;
+    void* function_ptr_;
+
+    const node::TypeNode* ret_type_;
+    std::vector<const node::TypeNode*> arg_types_;
+
+    // eg, variadic_pos_=1 for fn(x, ...);
+    // -1 denotes non-variadic
+    int variadic_pos_;
 };
 
 class UDFDefNode : public FnDefNode {
  public:
     explicit UDFDefNode(const FnNodeFnDef* def):
         FnDefNode(kUDFDef), def_(def) {}
-    const FnNodeFnDef* def() { return def_; }
+    const FnNodeFnDef* def() const { return def_; }
 
     const std::string GetSimpleName() const override {
         return "UDF";
@@ -1720,6 +1764,17 @@ class UDFDefNode : public FnDefNode {
 
     void Print(std::ostream &output, const std::string &tab) const override;
     bool Equals(const SQLNode *node) const override;
+
+    const TypeNode* GetReturnType() const override { 
+        return def()->header_->ret_type_;
+    }
+    size_t GetArgsSize() const override {
+        return def()->header_->parameters_->GetChildren().size();
+    }
+    const TypeNode* GetArgType(size_t i) const {
+        auto node = def()->header_->parameters_->GetChildren()[i];
+        return dynamic_cast<FnParaNode*>(node)->GetParaType();
+    }
 
  private:
     const FnNodeFnDef* def_;

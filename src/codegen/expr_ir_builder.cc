@@ -27,6 +27,7 @@
 #include "glog/logging.h"
 #include "proto/fe_common.pb.h"
 #include "vm/schemas_context.h"
+#include "udf/default_udf_library.h"
 
 namespace fesql {
 namespace codegen {
@@ -206,7 +207,22 @@ bool ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call_fn,
     const node::FnDefNode* fn_def = call_fn->GetFnDef();
     switch (fn_def->GetType()) {
         case node::kExternalFnDef:
-            return BuildCallFnLegacy(call_fn, output, status);
+            if (fn_def->GetReturnType() == nullptr) {
+                std::string fname = dynamic_cast<
+                    const node::ExternalFnDefNode*>(fn_def)->function_name();
+                auto& library = udf::DefaultUDFLibrary::instance();
+
+                node::ExprNode* new_expr = nullptr;
+                auto fn_status = library.Transform(
+                    fname, call_fn->GetArgs(), call_fn->GetOver(), nm_, &new_expr);
+                if (!fn_status.isOK() || new_expr == nullptr) {
+                    LOG(WARNING) << "Use new udf machanism failed: " << fn_status.msg;
+                    return BuildCallFnLegacy(call_fn, output, status);
+                }
+                return this->Build(new_expr, output, status);
+            } else {
+                return BuildCallFnLegacy(call_fn, output, status);
+            }
         default: {
             LOG(WARNING) << "Unknown fn def " << fn_def->GetSimpleName();
             return false;

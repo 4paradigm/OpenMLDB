@@ -28,7 +28,8 @@ std::initializer_list<int> __output_literal_args(
         auto _status = (call);                                    \
         if (!_status.isOK()) {                                    \
             fesql::base::__output_literal_args(LOG(WARNING),      \
-                "Internal api error: ", ##__VA_ARGS__);           \
+                "Internal api error: ", ##__VA_ARGS__,            \
+                " (at ", __FILE__, ":", __LINE__, ")");           \
             return _status;                                       \
         } break; }                                                \
 
@@ -37,9 +38,11 @@ std::initializer_list<int> __output_literal_args(
         if (!(call)) {                                            \
             std::stringstream _ss;                                \
             fesql::base::__output_literal_args(_ss,               \
-                "Internal api error: ", ##__VA_ARGS__);           \
+                "Internal api error: ", ##__VA_ARGS__,            \
+                " (at ", __FILE__, ":", __LINE__, ")");           \
             fesql::base::Status _status(                          \
                 common::kCodegenError, _ss.str());                \
+            return _status;                                       \
         } break; }                                                \
 
 struct Status {

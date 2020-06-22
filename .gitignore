@@ -1,3 +1,4 @@
+java/fesql-spark/src/main/scala/com/_4paradigm/fesql/offline/nodes/LastJoinPlan.scala
 build
 thirdparty
 thirdsrc
@@ -8,7 +9,7 @@ thirdsrc
 *.so
 *.a
 
-src/version.h
+src/fe_version.h
 
 # java ignore
 *.iml

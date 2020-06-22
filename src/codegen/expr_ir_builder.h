@@ -32,6 +32,7 @@
 #include "codegen/window_ir_builder.h"
 #include "llvm/IR/IRBuilder.h"
 #include "node/sql_node.h"
+#include "node/node_manager.h"
 #include "vm/schemas_context.h"
 
 namespace fesql {
@@ -99,6 +100,8 @@ class ExprIRBuilder {
     const vm::SchemasContext* schemas_context_;
     std::vector<std::unique_ptr<RowDecodeIRBuilder>> row_ir_builder_list_;
     std::unique_ptr<WindowDecodeIRBuilder> window_ir_builder_;
+    node::NodeManager* nm_;
+
     bool IsUADF(std::string function_name);
     bool FindRowSchemaInfo(const std::string& relation_name,
                            const std::string& col_name,

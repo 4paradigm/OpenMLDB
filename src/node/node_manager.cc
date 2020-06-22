@@ -349,7 +349,7 @@ ExprNode *NodeManager::MakeFuncNode(const std::string &name,
                                     const ExprListNode *list_ptr,
                                     const SQLNode *over) {
     FnDefNode* def_node = dynamic_cast<FnDefNode*>(
-        MakeExternalFnDefNode(name));
+        MakeExternalFnDefNode(name, nullptr, nullptr, {}, -1));
     CallExprNode *node_ptr = new CallExprNode(
         def_node, list_ptr, dynamic_cast<const WindowDefNode *>(over));
     return RegisterNode(node_ptr);
@@ -1069,9 +1069,14 @@ node::ExprListNode *NodeManager::BuildExprListFromSchemaSource(
 
 
 node::SQLNode* NodeManager::MakeExternalFnDefNode(
-    const std::string& function_name) {
-    return RegisterNode(
-        new node::ExternalFnDefNode(function_name));
+    const std::string& function_name,
+    void* function_ptr,
+    node::TypeNode* ret_type,
+    const std::vector<const node::TypeNode*>& arg_types,
+    int variadic_pos) {
+    return RegisterNode(new node::ExternalFnDefNode(
+        function_name, function_ptr, ret_type,
+        arg_types, variadic_pos));
 }
 
 node::SQLNode* NodeManager::MakeUDFDefNode(const FnNodeFnDef* def) {

@@ -25,6 +25,7 @@
 #include "codegen/variable_ir_builder.h"
 #include "llvm/IR/IRBuilder.h"
 #include "node/plan_node.h"
+#include "node/node_manager.h"
 #include "proto/fe_type.pb.h"
 #include "vm/catalog.h"
 #include "vm/schemas_context.h"
@@ -46,6 +47,8 @@ class RowFnLetIRBuilder {
                    output_column_sources);  // NOLINT (runtime/references)
 
  private:
+    bool AnalyzeExpressions(const node::PlanNodeList& projects);
+
     bool BuildFnHeader(const std::string& name,
                        const std::vector<::llvm::Type*>& args_type,
                        ::llvm::Type* ret_type, ::llvm::Function** fn);
@@ -79,6 +82,7 @@ class RowFnLetIRBuilder {
     const vm::SchemasContext schema_context_;
     const node::FrameNode* frame_;
     ::llvm::Module* module_;
+    node::NodeManager nm_;
 };
 
 }  // namespace codegen

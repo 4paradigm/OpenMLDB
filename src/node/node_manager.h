@@ -284,7 +284,12 @@ class NodeManager {
 
     node::FrameNode *MergeFrameNodeWithCurrentHistoryFrame(FrameNode *frame1);
 
-    SQLNode* MakeExternalFnDefNode(const std::string& function_name);
+    SQLNode* MakeExternalFnDefNode(
+        const std::string& function_name,
+        void* function_ptr,
+        node::TypeNode* ret_type,
+        const std::vector<const node::TypeNode*>& arg_types,
+        int variadic_pos);
 
     SQLNode* MakeUDFDefNode(const FnNodeFnDef* def);
 
