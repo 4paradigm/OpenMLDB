@@ -172,7 +172,7 @@ SQLCompiler::SQLCompiler(const std::shared_ptr<Catalog>& cl, bool keep_ir,
 
 SQLCompiler::~SQLCompiler() {}
 bool CompileFeScript(llvm::Module* m, const std::string& path_str,
-                                  base::Status& status) { // NOLINT
+                     base::Status& status) {  // NOLINT
     boost::filesystem::path path(path_str);
     std::string script;
     boost::filesystem::load_string_file(path, script);
@@ -239,8 +239,8 @@ bool CompileFeScript(llvm::Module* m, const std::string& path_str,
     return true;
 }
 bool GetLibsFiles(const std::string& dir_path,
-                               std::vector<std::string>& filenames,
-                               Status& status) { // NOLINT
+                  std::vector<std::string>& filenames,  // NOLINT
+                  Status& status) {                     // NOLINT
     boost::filesystem::path path(dir_path);
     if (!boost::filesystem::exists(path)) {
         status.msg = "Libs path " + dir_path + " not exist";
@@ -263,7 +263,7 @@ bool GetLibsFiles(const std::string& dir_path,
     return true;
 }
 
-bool RegisterFeLibs(llvm::Module* m, Status& status) { // NOLINT
+bool RegisterFeLibs(llvm::Module* m, Status& status) {  // NOLINT
     std::vector<std::string> filepaths;
     if (!GetLibsFiles(FLAGS_native_fesql_libs_path, filepaths, status)) {
         return false;
