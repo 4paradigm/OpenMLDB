@@ -4,6 +4,7 @@ SQLCases:
     mode: request
     db: db1
     sql: select * from t1;
+    standard_sql: true
     inputs:
       - name: t1
         resource: cases/resource/simple_t1_ts.yaml
@@ -23,6 +24,7 @@ SQLCases:
     mode: request
     db: db1
     sql: select col0, col1 as id, col2, col3, col4, col5, col6, std_ts from t1;
+    standard_sql: true
     inputs:
       - name: t1
         resource: cases/resource/simple_t1_ts.yaml
@@ -42,6 +44,7 @@ SQLCases:
     mode: request
     db: db1
     sql: select id, col0, col1+1 as f1, col2*2 as f2 from t1;
+    standard_sql: true
     inputs:
       - name: t1
         index: index1:col2:col5
@@ -84,6 +87,7 @@ SQLCases:
     mode: request
     db: db1
     sql: select col1 as id, std_ts+1 as inc_ts, std_ts+1 > 1590115422000 as flag from t1;
+    standard_sql: false
     inputs:
       - name: t1
         resource: cases/resource/simple_t1_ts.yaml
@@ -101,6 +105,7 @@ SQLCases:
     mode: request
     db: db1
     sql: select col1 as id, std_ts, std_date from t1;
+    standard_sql: true
     inputs:
       - name: t1
         schema: col1:int32, std_ts:timestamp, std_date:date
@@ -123,6 +128,7 @@ SQLCases:
     mode: request
     db: db1
     sql: select `int16`, `int32`, `int64`, `float`, `double`, `ts`, dt, `string`, id + 1 as newid from t1;
+    standard_sql: true
     inputs:
       - name: t1
         schema: id:int32, int16:int16, int32:int32, int64:int64, float:float, double:double,
@@ -148,6 +154,7 @@ SQLCases:
     db: db1
     sql: |
       SELECT c1, c2, c3, c4, c5, c6, c7, c8, id FROM t1;
+    standard_sql: true
     inputs:
       - name: t1
         schema: c1:string, c2:string, c3:string, c4:string, id:int32,

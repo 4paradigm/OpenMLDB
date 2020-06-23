@@ -57,6 +57,14 @@ int32_t weekday(int64_t ts) {
     gmtime_r(&time, &t);
     return t.tm_wday;
 }
+int32_t week(int64_t ts) {
+    time_t time = (ts + TZ_OFFSET) / 1000;
+    struct tm t;
+    gmtime_r(&time, &t);
+    int32_t wday_of_first_day = (t.tm_wday + 7 - (t.tm_yday) % 7) % 7;
+    int32_t days = t.tm_yday - (7 - wday_of_first_day) % 7 + 1;
+    return ceil(days / 7.0);
+}
 int32_t month(int64_t ts) {
     time_t time = (ts + TZ_OFFSET) / 1000;
     struct tm t;
@@ -71,6 +79,7 @@ int32_t year(int64_t ts) {
 }
 
 int32_t day(codec::Timestamp *ts) { return day(ts->ts_); }
+int32_t week(codec::Timestamp *ts) { return week(ts->ts_); }
 int32_t month(codec::Timestamp *ts) { return month(ts->ts_); }
 int32_t year(codec::Timestamp *ts) { return year(ts->ts_); }
 int32_t weekday(codec::Timestamp *ts) { return weekday(ts->ts_); }
@@ -81,6 +90,17 @@ int32_t weekday(codec::Date *date) {
     }
     boost::gregorian::date d(year, month, day);
     return d.day_of_week();
+}
+int32_t week(codec::Date *date) {
+    int32_t day, month, year;
+    if (!codec::Date::Decode(date->date_, &year, &month, &day)) {
+        return 0;
+    }
+    boost::gregorian::date d(year, month, day);
+    int32_t day_of_year = d.day_of_year();
+    int32_t wday_of_first_day = (d.day_of_week() + 7 - day_of_year % 7) % 7;
+    int32_t days = day_of_year - (7 - wday_of_first_day) % 7 + 1;
+    return ceil(days / 7.0);
 }
 
 template <class V>
@@ -434,6 +454,9 @@ void RegisterNativeUDFToModule(::llvm::Module *module) {
     RegisterMethod(module, "weekday", i32_ty, {i64_ty},
                    reinterpret_cast<void *>(
                        static_cast<int32_t (*)(int64_t)>(v1::weekday)));
+    RegisterMethod(
+        module, "week", i32_ty, {i64_ty},
+        reinterpret_cast<void *>(static_cast<int32_t (*)(int64_t)>(v1::week)));
 
     RegisterMethod(module, "year", i32_ty, {time_ty},
                    reinterpret_cast<void *>(
@@ -450,10 +473,17 @@ void RegisterNativeUDFToModule(::llvm::Module *module) {
         module, "weekday", i32_ty, {time_ty},
         reinterpret_cast<void *>(
             static_cast<int32_t (*)(codec::Timestamp *)>(v1::weekday)));
+    RegisterMethod(module, "week", i32_ty, {time_ty},
+                   reinterpret_cast<void *>(
+                       static_cast<int32_t (*)(codec::Timestamp *)>(v1::week)));
 
     RegisterMethod(module, "weekday", i32_ty, {date_ty},
                    reinterpret_cast<void *>(
                        static_cast<int32_t (*)(codec::Date *)>(v1::weekday)));
+
+    RegisterMethod(module, "week", i32_ty, {date_ty},
+                   reinterpret_cast<void *>(
+                       static_cast<int32_t (*)(codec::Date *)>(v1::week)));
 
     RegisterMethod(module, "at", i16_ty, {list_i16_ty, i32_ty},
                    reinterpret_cast<void *>(v1::at_list<int16_t>));

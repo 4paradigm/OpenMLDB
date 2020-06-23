@@ -81,6 +81,18 @@ TEST_F(UDFIRBuilderTest, weekday_date_udf_test) {
     codec::Date date(2020, 05, 22);
     CheckNativeUDF<int32_t, codec::Date *>("weekday.date", 5, &date);
 }
+TEST_F(UDFIRBuilderTest, week_date_udf_test) {
+    codec::Date date(2020, 05, 22);
+    CheckNativeUDF<int32_t, codec::Date *>("week.date", 20, &date);
+    {
+        codec::Date date(2020, 05, 23);
+        CheckNativeUDF<int32_t, codec::Date *>("week.date", 20, &date);
+    }
+    {
+        codec::Date date(2020, 05, 24);
+        CheckNativeUDF<int32_t, codec::Date *>("week.date", 21, &date);
+    }
+}
 
 TEST_F(UDFIRBuilderTest, minute_timestamp_udf_test) {
     codec::Timestamp time(1590115420000L);
@@ -102,6 +114,10 @@ TEST_F(UDFIRBuilderTest, day_timestamp_udf_test) {
 TEST_F(UDFIRBuilderTest, weekday_timestamp_udf_test) {
     codec::Timestamp time(1590115420000L);
     CheckNativeUDF<int32_t, codec::Timestamp *>("weekday.timestamp", 5, &time);
+}
+TEST_F(UDFIRBuilderTest, week_timestamp_udf_test) {
+    codec::Timestamp time(1590115420000L);
+    CheckNativeUDF<int32_t, codec::Timestamp *>("week.timestamp", 20, &time);
 }
 
 TEST_F(UDFIRBuilderTest, month_timestamp_udf_test) {
@@ -144,6 +160,32 @@ TEST_F(UDFIRBuilderTest, weeekday_int64_udf_test) {
                                      1590115420000L + 2 * 86400000L);
     CheckNativeUDF<int32_t, int64_t>("weekday.int64", 1,
                                      1590115420000L + 3 * 86400000L);
+}
+TEST_F(UDFIRBuilderTest, week_int64_udf_test) {
+    CheckNativeUDF<int32_t, int64_t>("week.int64", 20, 1590115420000L);
+    CheckNativeUDF<int32_t, int64_t>("week.int64", 20,
+                                     1590115420000L + 86400000L);
+
+//     Sunday
+    CheckNativeUDF<int32_t, int64_t>("day.int64", 24,
+                                     1590115420000L + 2 * 86400000L);
+    CheckNativeUDF<int32_t, int64_t>("week.int64", 21,
+                                     1590115420000L + 2 * 86400000L);
+    //     Monday
+    CheckNativeUDF<int32_t, int64_t>("week.int64", 21,
+                                     1590115420000L + 3 * 86400000L);
+    CheckNativeUDF<int32_t, int64_t>("week.int64", 21,
+                                     1590115420000L + 4 * 86400000L);
+    CheckNativeUDF<int32_t, int64_t>("week.int64", 21,
+                                     1590115420000L + 5 * 86400000L);
+    CheckNativeUDF<int32_t, int64_t>("week.int64", 21,
+                                     1590115420000L + 6 * 86400000L);
+    CheckNativeUDF<int32_t, int64_t>("week.int64", 21,
+                                     1590115420000L + 7 * 86400000L);
+    CheckNativeUDF<int32_t, int64_t>("week.int64", 21,
+                                     1590115420000L + 8 * 86400000L);
+    CheckNativeUDF<int32_t, int64_t>("week.int64", 22,
+                                     1590115420000L + 9 * 86400000L);
 }
 TEST_F(UDFIRBuilderTest, inc_int32_udf_test) {
     CheckNativeUDF<int32_t, int32_t>("inc.int32", 2021, 2020);

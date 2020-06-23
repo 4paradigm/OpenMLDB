@@ -1,7 +1,7 @@
 package com._4paradigm.fesql.offline.api
 
 import com._4paradigm.fesql.offline.SchemaUtil
-import org.apache.spark.sql.{DataFrame, Row}
+import org.apache.spark.sql.{DataFrame, SparkSession, Row}
 import org.slf4j.LoggerFactory
 
 case class FesqlDataframe(fesqlSession: FesqlSession, sparkDf: DataFrame) {
@@ -47,9 +47,9 @@ case class FesqlDataframe(fesqlSession: FesqlSession, sparkDf: DataFrame) {
 
     format.toLowerCase match {
       case "parquet" => df.write.mode(mode).parquet(path)
-      case "text" => df.write.mode(mode).text(path)
-      case "json" => df.write.mode(mode).json(path)
       case "csv" => df.write.mode(mode).csv(path)
+      case "json" => df.write.mode(mode).json(path)
+      case "text" => df.write.mode(mode).text(path)
       case "orc" => df.write.mode(mode).orc(path)
       case _ => Unit
     }
@@ -147,6 +147,42 @@ case class FesqlDataframe(fesqlSession: FesqlSession, sparkDf: DataFrame) {
    */
   override def toString: String = {
     sparkDf.toString()
+  }
+
+  /**
+   * Get Spark dataframe object.
+   *
+   * @return
+   */
+  def getSparkDf(): DataFrame = {
+    sparkDf
+  }
+
+  /**
+   * Get fesql session object.
+   *
+   * @return
+   */
+  def getFesqlSession(): FesqlSession = {
+    fesqlSession
+  }
+
+  /**
+   * Get Spark session object.
+   *
+   * @return
+   */
+  def getSparkSession(): SparkSession = {
+    fesqlSession.getSparkSession
+  }
+
+  /**
+   * Get Spark dataframe scheme json string.
+   *
+   * @return
+   */
+  def schemaJson: String = {
+    sparkDf.queryExecution.analyzed.schema.json
   }
 
 }
