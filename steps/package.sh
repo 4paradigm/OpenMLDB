@@ -6,7 +6,7 @@ if [ $# != 1 ] || [[ ! ($1 =~ ^[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}$) 
     echo "format error e.g. sh steps/package.sh 1.4.2.2"
     exit 1;
 fi
-sh ./steps/release.sh $1
+
 ln -sf /usr/workdir/thirdparty thirdparty 
 ln -sf /usr/workdir/thirdsrc thirdsrc
 sed -i /[:blank:]*version/s/1.0/$1/ python/setup.py
