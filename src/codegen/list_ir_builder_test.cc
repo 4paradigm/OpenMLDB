@@ -153,10 +153,13 @@ void GetListAtPos(const type::TableDef& table, T* result,
             LOG(WARNING) << "invalid test type";
             FAIL();
     }
+    if (!TypeIRBuilder::IsStructPtr(retTy)) {
+        retTy = retTy->getPointerTo();
+    }
     Function* fn = Function::Create(
         FunctionType::get(::llvm::Type::getVoidTy(*ctx),
                           {Type::getInt8PtrTy(*ctx), Type::getInt32Ty(*ctx),
-                           retTy->getPointerTo()},
+                           retTy},
                           false),
         Function::ExternalLinkage, "fn", m.get());
     BasicBlock* entry_block = BasicBlock::Create(*ctx, "EntryBlock", fn);
@@ -606,9 +609,12 @@ void RunListIteratorSumCase(T* result, const type::TableDef& table,
             LOG(WARNING) << "invalid test type";
             FAIL();
     }
+    if (!TypeIRBuilder::IsStructPtr(retTy)) {
+        retTy = retTy->getPointerTo();
+    }
     Function* fn = Function::Create(
         FunctionType::get(Type::getVoidTy(*ctx),
-                          {Type::getInt8PtrTy(*ctx), retTy->getPointerTo()},
+                          {Type::getInt8PtrTy(*ctx), retTy},
                           false),
         Function::ExternalLinkage, "fn", m.get());
     BasicBlock* entry_block = BasicBlock::Create(*ctx, "EntryBlock", fn);
@@ -725,9 +731,14 @@ void GetListIteratorNext(T* result, const type::TableDef& table,
             LOG(WARNING) << "invalid test type";
             FAIL();
     }
+
+    if (!TypeIRBuilder::IsStructPtr(retTy)) {
+        retTy = retTy->getPointerTo();
+    }
+
     Function* fn = Function::Create(
         FunctionType::get(Type::getVoidTy(*ctx),
-                          {Type::getInt8PtrTy(*ctx), retTy->getPointerTo()},
+                          {Type::getInt8PtrTy(*ctx), retTy},
                           false),
         Function::ExternalLinkage, "fn", m.get());
     BasicBlock* entry_block = BasicBlock::Create(*ctx, "EntryBlock", fn);

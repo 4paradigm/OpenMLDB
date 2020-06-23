@@ -10,14 +10,25 @@
 #include <stdio.h>
 #include <vector>
 
-float udf(long* long_ptrs[], float* float_ptrs[], int* int_ptrs[]) {
-    long res1 = (*long_ptrs[0]) + (*long_ptrs[4]);
-    float res2 = (*float_ptrs[0]) + (*float_ptrs[4]);
-    int res3 = (*int_ptrs[0]) + (*int_ptrs[4]);
-    return (float)res1 + (float)res2 + (float)res3;
+int GetDate(int64_t date, int32_t* year, int32_t* month, int32_t* day) {
+    *day = date & 255;
+    date = date << 4;
+    //    *month = 1 + (date & 0x0000FF);
+    //    *year = 1900 + (date >> 8);
+    return date;
+}
+
+int YearTime() {
+    time_t t;
+    time(&t);
+    struct tm* tmp_time = localtime(&t);
+    char s[100];
+    strftime(s, sizeof(s), "%04Y%02m%02d %H:%M:%S", tmp_time);
+    printf("%d: %s\n", (int)t, s);
+    return 0;
 }
 //
-//int main() {
+// int main() {
 //    long num1[5] = {1L, 2L, 3L, 4L, 5L};
 //    float num2[5] = {6.0f, 7.0f, 8.0f, 9.0f, 10.0f};
 //    int num3[5] = {11, 12, 13, 14, 15};

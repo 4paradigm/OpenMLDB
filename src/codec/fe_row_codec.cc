@@ -535,10 +535,7 @@ int32_t RowView::GetDate(uint32_t idx, int32_t* year, int32_t* month,
         return 1;
     }
     int32_t date = GetDateUnsafe(idx);
-    *day = date & 0x0000000FF;
-    date = date >> 8;
-    *month = 1 + (date & 0x0000FF);
-    *year = 1900 + (date >> 8);
+    codec::Date::Decode(date, year, month, day);
     return 0;
 }
 int32_t RowView::GetInteger(const int8_t* row, uint32_t idx,

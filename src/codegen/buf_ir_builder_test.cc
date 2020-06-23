@@ -238,10 +238,14 @@ void LoadValue(T* result, bool* is_null,
         default:
             retTy = Type::getVoidTy(*ctx);
     }
+
+    if (!retTy->isPointerTy()) {
+        retTy = retTy->getPointerTo();
+    }
     Function* fn = Function::Create(
         FunctionType::get(llvm::Type::getInt1Ty(*ctx),
                           {Type::getInt8PtrTy(*ctx), Type::getInt32Ty(*ctx),
-                           retTy->getPointerTo()},
+                           retTy},
                           false),
         Function::ExternalLinkage, "fn", m.get());
     BasicBlock* entry_block = BasicBlock::Create(*ctx, "EntryBlock", fn);

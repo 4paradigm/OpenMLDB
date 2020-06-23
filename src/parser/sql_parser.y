@@ -361,8 +361,6 @@ typedef void* yyscan_t;
 %token WITH
 %token WRITE
 %token XOR
-%token YEAR
-%token YEAR_MONTH
 %token ZEROFILL
 
  /* functions with special syntax */

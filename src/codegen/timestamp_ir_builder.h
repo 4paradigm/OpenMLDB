@@ -24,8 +24,7 @@ class TimestampIRBuilder : public StructTypeIRBuilder {
     explicit TimestampIRBuilder(::llvm::Module* m);
     ~TimestampIRBuilder();
     void InitStructType();
-    bool NewTimestamp(::llvm::BasicBlock* block,
-                      ::llvm::Value** output);
+    bool NewTimestamp(::llvm::BasicBlock* block, ::llvm::Value** output);
     bool NewTimestamp(::llvm::BasicBlock* block, ::llvm::Value* ts,
                       ::llvm::Value** output);
     bool CopyFrom(::llvm::BasicBlock* block, ::llvm::Value* src,
@@ -34,6 +33,14 @@ class TimestampIRBuilder : public StructTypeIRBuilder {
                ::llvm::Value** output);
     bool SetTs(::llvm::BasicBlock* block, ::llvm::Value* timestamp,
                ::llvm::Value* ts);
+    bool Minute(::llvm::BasicBlock* block, ::llvm::Value* ts,
+                ::llvm::Value** output, base::Status& status);  // NOLINT
+    bool Hour(::llvm::BasicBlock* block, ::llvm::Value* ts,
+              ::llvm::Value** output, base::Status& status);  // NOLINT
+
+    bool Second(::llvm::BasicBlock* block, ::llvm::Value* ts,
+                ::llvm::Value** output, base::Status& status);  // NOLINT
+    static int32_t TIME_ZONE;
 };
 }  // namespace codegen
 }  // namespace fesql

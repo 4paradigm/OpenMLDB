@@ -66,16 +66,34 @@ ExprIRBuilder::~ExprIRBuilder() {}
 
 // TODO(chenjing): 修改GetFunction, 直接根据参数生成signature
 ::llvm::Function* ExprIRBuilder::GetFuncion(
-    const std::string& name, const std::vector<node::TypeNode>& generic_types,
+    const std::string& name, const std::vector<node::TypeNode>& args_types,
     base::Status& status) {
     std::string fn_name = name;
-    if (!generic_types.empty()) {
-        for (node::TypeNode type_node : generic_types) {
-            fn_name.append("_").append(type_node.GetName());
+    if (!args_types.empty()) {
+        for (node::TypeNode type_node : args_types) {
+            fn_name.append(".").append(type_node.GetName());
         }
     }
 
     ::llvm::Function* fn = module_->getFunction(::llvm::StringRef(fn_name));
+    if (nullptr != fn) {
+        return fn;
+    }
+
+    if (!args_types.empty() && !args_types[0].generics_.empty()) {
+        switch (args_types[0].generics_[0].base_) {
+            case node::kTimestamp:
+            case node::kVarchar:
+            case node::kDate: {
+                fn_name.append(".").append(
+                    args_types[0].generics_[0].GetName());
+                fn = module_->getFunction(::llvm::StringRef(fn_name));
+                break;
+            }
+            default: {
+            }
+        }
+    }
     if (nullptr == fn) {
         status.code = common::kCallMethodError;
         status.msg = "fail to find func with name " + fn_name;
@@ -214,10 +232,8 @@ bool ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call_fn,
     }
 }
 
-
 bool ExprIRBuilder::BuildCallFnLegacy(
-    const ::fesql::node::CallExprNode* call_fn,
-    NativeValue* output,
+    const ::fesql::node::CallExprNode* call_fn, NativeValue* output,
     ::fesql::base::Status& status) {  // NOLINT
 
     // TODO(chenjing): return status;
@@ -227,8 +243,8 @@ bool ExprIRBuilder::BuildCallFnLegacy(
         LOG(WARNING) << status.msg;
         return false;
     }
-    auto named_fn = dynamic_cast<const node::ExternalFnDefNode*>(
-        call_fn->GetFnDef());
+    auto named_fn =
+        dynamic_cast<const node::ExternalFnDefNode*>(call_fn->GetFnDef());
     std::string function_name = named_fn->function_name();
 
     ::llvm::IRBuilder<> builder(block_);
@@ -240,6 +256,7 @@ bool ExprIRBuilder::BuildCallFnLegacy(
     std::vector<::fesql::node::ExprNode*>::const_iterator it =
         args->children_.cbegin();
     std::vector<::fesql::node::TypeNode> generics_types;
+    std::vector<::fesql::node::TypeNode> args_types;
 
     bool old_mode = row_mode_;
     row_mode_ = !is_udaf;
@@ -255,6 +272,7 @@ bool ExprIRBuilder::BuildCallFnLegacy(
                 status.code = common::kCodegenError;
                 return false;
             }
+            args_types.push_back(value_type);
             // TODO(chenjing): 直接使用list TypeNode
             // handle list type
             // 泛型类型还需要优化，目前是hard
@@ -277,7 +295,7 @@ bool ExprIRBuilder::BuildCallFnLegacy(
 
     row_mode_ = old_mode;
 
-    ::llvm::Function* fn = GetFuncion(function_name, generics_types, status);
+    ::llvm::Function* fn = GetFuncion(function_name, args_types, status);
 
     if (common::kOk != status.code) {
         return false;
@@ -736,7 +754,7 @@ bool ExprIRBuilder::IsUADF(std::string function_name) {
 
     for (auto iter = module_->getFunctionList().begin();
          iter != module_->getFunctionList().end(); iter++) {
-        if (iter->getName().startswith_lower(function_name + "_list")) {
+        if (iter->getName().startswith_lower(function_name + ".list")) {
             return true;
         }
     }

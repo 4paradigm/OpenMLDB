@@ -54,20 +54,30 @@ bool ListIRBuilder::BuilStructTypedAt(::llvm::Value* list, ::llvm::Value* pos,
         return false;
     }
     ::llvm::Type* struct_type = nullptr;
-    if (false == GetLLVMType(block_, type_node.generics_[0], &struct_type)) {
+    if (false == GetLLVMType(block_, &type_node.generics_[0], &struct_type)) {
         status.msg =
             "fail to codegen iterator.next(): invalid value type of iterator";
         status.code = common::kCodegenError;
         LOG(WARNING) << status.msg;
         return false;
     }
+    if (!TypeIRBuilder::IsStructPtr(struct_type)) {
+        status.msg =
+            "fail to codegen struct iterator.next(), invalid struct type";
+        status.code = common::kCodegenError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
 
-    ::std::string fn_name = "at_" + type_node.GetName();
+    struct_type = struct_type->getPointerElementType();
+    ::std::string fn_name = "at." + type_node.GetName() + "." +
+                            node::TypeNode(node::kInt32).GetName() + "." +
+                            type_node.generics_[0].GetName();
     ::llvm::Function* fn =
         block_->getModule()->getFunction(::llvm::StringRef(fn_name));
     if (nullptr == fn) {
         status.msg =
-            "faili to codegen list[pos]: can't find function " + fn_name;
+            "fail to codegen list[pos]: can't find function " + fn_name;
         status.code = common::kCodegenError;
         LOG(WARNING) << status.msg;
         return false;
@@ -122,7 +132,7 @@ bool ListIRBuilder::BuildAt(::llvm::Value* list, ::llvm::Value* pos,
         return false;
     }
     ::llvm::Type* v1_type = nullptr;
-    if (false == GetLLVMType(block_, type_node.generics_[0], &v1_type)) {
+    if (false == GetLLVMType(block_, &type_node.generics_[0], &v1_type)) {
         status.msg =
             "fail to codegen iterator.next(): invalid value type of iterator";
         status.code = common::kCodegenError;
@@ -130,16 +140,17 @@ bool ListIRBuilder::BuildAt(::llvm::Value* list, ::llvm::Value* pos,
         return false;
     }
 
-    if (v1_type->isStructTy()) {
+    if (TypeIRBuilder::IsStructPtr(v1_type)) {
         return BuilStructTypedAt(list, pos, output, status);
     }
 
-    ::std::string fn_name = "at_" + type_node.GetName();
+    ::std::string fn_name = "at." + type_node.GetName() + "." +
+                            node::TypeNode(node::kInt32).GetName();
     ::llvm::Function* fn =
         block_->getModule()->getFunction(::llvm::StringRef(fn_name));
     if (nullptr == fn) {
         status.msg =
-            "faili to codegen list[pos]: can't find function " + fn_name;
+            "fail to codegen list[pos]: can't find function " + fn_name;
         status.code = common::kCodegenError;
         LOG(WARNING) << status.msg;
         return false;
@@ -173,7 +184,9 @@ bool ListIRBuilder::BuildIterator(::llvm::Value* list, ::llvm::Value** output,
         LOG(WARNING) << status.msg;
         return false;
     }
-    ::std::string fn_name = "iterator_" + type_node.GetName();
+    ::std::string fn_name =
+        "iterator." + type_node.GetName() + "." +
+        node::TypeNode(node::kIterator, type_node.generics_[0]).GetName();
     ::llvm::Function* fn =
         block_->getModule()->getFunction(::llvm::StringRef(fn_name));
     if (nullptr == fn) {
@@ -184,7 +197,6 @@ bool ListIRBuilder::BuildIterator(::llvm::Value* list, ::llvm::Value** output,
     }
 
     ::llvm::IRBuilder<> builder(block_);
-    ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
     ::llvm::Type* iter_ref_type = NULL;
     if (!GetLLVMIteratorType(block_->getModule(), type_node.generics_[0],
                              &iter_ref_type)) {
@@ -192,11 +204,10 @@ bool ListIRBuilder::BuildIterator(::llvm::Value* list, ::llvm::Value** output,
         return false;
     }
     // alloca memory on stack
-    ::llvm::Value* iter_ref = builder.CreateAlloca(iter_ref_type);
-    ::llvm::Value* iter_i8_ptr = builder.CreatePointerCast(iter_ref, i8_ptr_ty);
-    ::llvm::Value* call_res =
-        builder.CreateCall(fn->getFunctionType(), fn,
-                           ::llvm::ArrayRef<::llvm::Value*>{list, iter_i8_ptr});
+    ::llvm::Value* iter_ref_ptr = builder.CreateAlloca(iter_ref_type);
+    ::llvm::Value* call_res = builder.CreateCall(
+        fn->getFunctionType(), fn,
+        ::llvm::ArrayRef<::llvm::Value*>{list, iter_ref_ptr});
     if (nullptr == call_res) {
         status.msg = "fail to codegen list.iterator(): call function error";
         status.code = common::kCodegenError;
@@ -205,7 +216,7 @@ bool ListIRBuilder::BuildIterator(::llvm::Value* list, ::llvm::Value** output,
     }
 
     // TODO(chenjing): check call res true
-    *output = iter_ref;
+    *output = iter_ref_ptr;
     return true;
 }
 bool ListIRBuilder::BuildIteratorHasNext(::llvm::Value* iterator,
@@ -227,12 +238,12 @@ bool ListIRBuilder::BuildIteratorHasNext(::llvm::Value* iterator,
         LOG(WARNING) << status.msg;
         return false;
     }
-    ::std::string fn_name = "has_next_" + type_node.GetName();
+    ::std::string fn_name = "has_next." + type_node.GetName();
     ::llvm::Function* fn =
         block_->getModule()->getFunction(::llvm::StringRef(fn_name));
     if (nullptr == fn) {
         status.msg =
-            "faili to codegen iterator.has_next(): can't find function " +
+            "fail to codegen iterator.has_next(): can't find function " +
             fn_name;
         status.code = common::kCodegenError;
         LOG(WARNING) << status.msg;
@@ -268,17 +279,27 @@ bool ListIRBuilder::BuildStructTypeIteratorNext(::llvm::Value* iterator,
         return false;
     }
     ::llvm::Type* struct_type = nullptr;
-    if (false == GetLLVMType(block_, type_node.generics_[0], &struct_type)) {
+    if (false == GetLLVMType(block_, &type_node.generics_[0], &struct_type)) {
         status.msg =
             "fail to codegen iterator.next(): invalid value type of iterator";
         status.code = common::kCodegenError;
         LOG(WARNING) << status.msg;
         return false;
     }
+    if (!TypeIRBuilder::IsStructPtr(struct_type)) {
+        status.msg =
+            "fail to codegen struct iterator.next(), invalid struct type";
+        status.code = common::kCodegenError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+
+    struct_type = struct_type->getPointerElementType();
     ::llvm::IRBuilder<> builder(block_);
     ::llvm::Value* next_value_ptr = builder.CreateAlloca(struct_type);
 
-    ::std::string fn_name = "next_" + type_node.GetName();
+    ::std::string fn_name =
+        "next." + type_node.GetName() + "." + type_node.generics_[0].GetName();
     ::llvm::Function* fn =
         block_->getModule()->getFunction(::llvm::StringRef(fn_name));
     if (nullptr == fn) {
@@ -290,9 +311,9 @@ bool ListIRBuilder::BuildStructTypeIteratorNext(::llvm::Value* iterator,
     }
     DLOG(INFO) << "fn name " << fn_name;
     DLOG(INFO) << "iterator type "
-              << TypeIRBuilder::IsStructPtr(iterator->getType());
+               << TypeIRBuilder::IsStructPtr(iterator->getType());
     DLOG(INFO) << "next_value_ptr type "
-              << TypeIRBuilder::IsTimestampPtr(next_value_ptr->getType());
+               << TypeIRBuilder::IsTimestampPtr(next_value_ptr->getType());
     ::llvm::Value* ret = builder.CreateCall(
         fn->getFunctionType(), fn,
         ::llvm::ArrayRef<::llvm::Value*>{iterator, next_value_ptr});
@@ -324,7 +345,7 @@ bool ListIRBuilder::BuildIteratorNext(::llvm::Value* iterator,
         return false;
     }
     ::llvm::Type* v1_type = nullptr;
-    if (false == GetLLVMType(block_, type_node.generics_[0], &v1_type)) {
+    if (false == GetLLVMType(block_, &type_node.generics_[0], &v1_type)) {
         status.msg =
             "fail to codegen iterator.next(): invalid value type of iterator";
         status.code = common::kCodegenError;
@@ -332,15 +353,15 @@ bool ListIRBuilder::BuildIteratorNext(::llvm::Value* iterator,
         return false;
     }
 
-    if (v1_type->isStructTy()) {
+    if (TypeIRBuilder::IsStructPtr(v1_type)) {
         return BuildStructTypeIteratorNext(iterator, output, status);
     }
-    ::std::string fn_name = "next_" + type_node.GetName();
+    ::std::string fn_name = "next." + type_node.GetName();
     ::llvm::Function* fn =
         block_->getModule()->getFunction(::llvm::StringRef(fn_name));
     if (nullptr == fn) {
         status.msg =
-            "faili to codegen iterator.next(): can't find function " + fn_name;
+            "fail to codegen iterator.next(): can't find function " + fn_name;
         status.code = common::kCodegenError;
         LOG(WARNING) << status.msg;
         return false;
@@ -376,7 +397,7 @@ bool ListIRBuilder::BuildIteratorDelete(::llvm::Value* iterator,
         return false;
     }
     ::llvm::Type* v1_type = nullptr;
-    if (false == GetLLVMType(block_, type_node.generics_[0], &v1_type)) {
+    if (false == GetLLVMType(block_, &type_node.generics_[0], &v1_type)) {
         status.msg =
             "fail to codegen iterator.delete(): invalid value type of iterator";
         status.code = common::kCodegenError;
@@ -384,12 +405,12 @@ bool ListIRBuilder::BuildIteratorDelete(::llvm::Value* iterator,
         return false;
     }
 
-    ::std::string fn_name = "delete_" + type_node.GetName();
+    ::std::string fn_name = "delete_iterator." + type_node.GetName();
     ::llvm::Function* fn =
         block_->getModule()->getFunction(::llvm::StringRef(fn_name));
     if (nullptr == fn) {
         status.msg =
-            "faili to codegen iterator.next(): can't find function " + fn_name;
+            "fail to codegen iterator.next(): can't find function " + fn_name;
         status.code = common::kCodegenError;
         LOG(WARNING) << status.msg;
         return false;

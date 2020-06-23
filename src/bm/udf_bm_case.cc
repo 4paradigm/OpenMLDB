@@ -288,7 +288,7 @@ void SumArrayListCol(benchmark::State* state, MODE mode, int64_t data_size,
 
     codegen::MemoryWindowDecodeIRBuilder builder(table_def.columns(), nullptr);
     codec::ColInfo info;
-    node::DataType type;
+    node::TypeNode type;
     uint32_t col_size;
     ASSERT_TRUE(builder.ResolveFieldInfo(col_name, 0, &info, &type));
     ASSERT_TRUE(codegen::GetLLVMColumnSize(type, &col_size));
@@ -300,12 +300,12 @@ void SumArrayListCol(benchmark::State* state, MODE mode, int64_t data_size,
     type::Type storage_type;
     ASSERT_TRUE(codegen::DataType2SchemaType(type, &storage_type));
     ASSERT_EQ(0, ::fesql::codec::v1::GetCol(
-        reinterpret_cast<int8_t*>(&list_table), 0,
-        info.idx, info.offset, storage_type, buf));
+                     reinterpret_cast<int8_t*>(&list_table), 0, info.idx,
+                     info.offset, storage_type, buf));
     {
         switch (mode) {
             case BENCHMARK: {
-                switch (type) {
+                switch (type.base_) {
                     case node::kInt32: {
                         for (auto _ : *state) {
                             benchmark::DoNotOptimize(
@@ -340,7 +340,7 @@ void SumArrayListCol(benchmark::State* state, MODE mode, int64_t data_size,
                 }
             }
             case TEST: {
-                switch (type) {
+                switch (type.base_) {
                     case node::kInt32: {
                         if (fesql::udf::v1::sum_list<int32_t>(col) <= 0) {
                             FAIL();
@@ -381,7 +381,7 @@ void SumMemTableCol(benchmark::State* state, MODE mode, int64_t data_size,
 
     codegen::MemoryWindowDecodeIRBuilder builder(table_def.columns(), nullptr);
     codec::ColInfo info;
-    node::DataType type;
+    node::TypeNode type;
     uint32_t col_size;
     ASSERT_TRUE(builder.ResolveFieldInfo(col_name, 0, &info, &type));
     ASSERT_TRUE(codegen::GetLLVMColumnSize(type, &col_size));
@@ -392,13 +392,13 @@ void SumMemTableCol(benchmark::State* state, MODE mode, int64_t data_size,
     int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
     type::Type storage_type;
     ASSERT_TRUE(codegen::DataType2SchemaType(type, &storage_type));
-    ASSERT_EQ(0, ::fesql::codec::v1::GetCol(
-        reinterpret_cast<int8_t*>(&window),
-        0, info.idx, info.offset, storage_type, buf));
+    ASSERT_EQ(0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&window),
+                                            0, info.idx, info.offset,
+                                            storage_type, buf));
     {
         switch (mode) {
             case BENCHMARK: {
-                switch (type) {
+                switch (type.base_) {
                     case node::kInt32: {
                         for (auto _ : *state) {
                             benchmark::DoNotOptimize(
@@ -433,7 +433,7 @@ void SumMemTableCol(benchmark::State* state, MODE mode, int64_t data_size,
                 }
             }
             case TEST: {
-                switch (type) {
+                switch (type.base_) {
                     case node::kInt32: {
                         if (fesql::udf::v1::sum_list<int32_t>(col) <= 0) {
                             FAIL();
@@ -463,6 +463,56 @@ void SumMemTableCol(benchmark::State* state, MODE mode, int64_t data_size,
                     }
                 }
             }
+        }
+    }
+}
+
+bool CTimeDays(int data_size) {
+    for (int i = 0; i < data_size; i++) {
+        udf::v1::day(1590115420000L + ((i)) * 86400000);
+    }
+    return true;
+}
+
+void CTimeDay(benchmark::State* state, MODE mode, const int32_t data_size) {
+    switch (mode) {
+        case BENCHMARK: {
+            for (auto _ : *state) {
+                benchmark::DoNotOptimize(CTimeDays(data_size));
+            }
+            break;
+        }
+        case TEST: {
+            ASSERT_EQ(22, udf::v1::day(1590115420000L));
+            break;
+        }
+    }
+}
+void CTimeMonth(benchmark::State* state, MODE mode, const int32_t data_size) {
+    switch (mode) {
+        case BENCHMARK: {
+            for (auto _ : *state) {
+                benchmark::DoNotOptimize(CTimeDays(data_size));
+            }
+            break;
+        }
+        case TEST: {
+            ASSERT_EQ(05, udf::v1::month(1590115420000L));
+            break;
+        }
+    }
+}
+void CTimeYear(benchmark::State* state, MODE mode, const int32_t data_size) {
+    switch (mode) {
+        case BENCHMARK: {
+            for (auto _ : *state) {
+                benchmark::DoNotOptimize(CTimeDays(data_size));
+            }
+            break;
+        }
+        case TEST: {
+            ASSERT_EQ(2020, udf::v1::year(1590115420000L));
+            break;
         }
     }
 }
