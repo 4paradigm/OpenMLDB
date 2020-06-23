@@ -1,4 +1,4 @@
-SQLCases:
+cases:
   - id: 0
     desc: Window SQL WITH UNION 样本表和UNION表的PK未命中
     db: db1
@@ -36,7 +36,7 @@ SQLCases:
           1, 4, 55, 4.0, 40.0, 3, yy
           2, 5, 55, 5.0, 50.0, 5, yyy
           2, 6, 55, 6.0, 60.0, 7, yyyy
-    output:
+    expect:
       schema: col2:int16, col5:int64, w1_col1_sum:int32, w1_col3_sum:float, w1_col4_sum:double, w1_col2_sum:int16, w1_col5_sum:int64, w1_col1_cnt:int64, col1:int32, col6:string
       order: col1
       data: |
@@ -82,7 +82,7 @@ SQLCases:
           1, 4, 55, 4.0, 40.0, 3, yy
           2, 5, 55, 5.0, 50.0, 5, yyy
           2, 6, 55, 6.0, 60.0, 7, yyyy
-    output:
+    expect:
       schema: col2:int16, col5:int64, w1_col1_sum:int32, w1_col3_sum:float, w1_col4_sum:double, w1_col2_sum:int16, w1_col5_sum:int64, w1_col1_cnt:int64, col1:int32, col6:string
       order: col1
       data: |
@@ -130,7 +130,7 @@ SQLCases:
           1, 4, 55, 4.0, 40.0, 3, yy
           2, 5, 55, 5.0, 50.0, 5, yyy
           2, 6, 55, 6.0, 60.0, 7, yyyy
-    output:
+    expect:
       schema: col2:int16, col5:int64, w1_col1_sum:int32, w1_col3_sum:float, w1_col4_sum:double, w1_col2_sum:int16, w1_col5_sum:int64, w1_col1_cnt:int64, col1:int32, col6:string
       order: col1
       data: |
@@ -177,7 +177,7 @@ SQLCases:
           1, 4, 55, 4.0, 40.0, 3, yy
           2, 5, 55, 5.0, 50.0, 5, yyy
           2, 6, 55, 6.0, 60.0, 7, yyyy
-    output:
+    expect:
       schema: col2:int16, col5:int64, w1_col1_sum:int32, w1_col3_sum:float, w1_col4_sum:double, w1_col2_sum:int16, w1_col5_sum:int64, w1_col1_cnt:int64, col1:int32, col6:string
       order: col1
       data: |
@@ -241,7 +241,7 @@ SQLCases:
           1, 4, 55, 4.0, 40.0, 3, yy
           2, 5, 55, 5.0, 50.0, 5, yyy
           2, 6, 55, 6.0, 60.0, 7, yyyy
-    output:
+    expect:
       schema: col2:int16, col5:int64, w1_col1_sum:int32, w1_col3_sum:float, w1_col4_sum:double, w1_col2_sum:int16, w1_col5_sum:int64, w1_col1_cnt:int64, col1:int32, col6:string
       order: col1
       data: |
@@ -308,7 +308,7 @@ SQLCases:
           1, 4, 55, 4.0, 40.0, 3, yy
           2, 5, 55, 5.0, 50.0, 5, yyy
           2, 6, 55, 6.0, 60.0, 7, yyyy
-    output:
+    expect:
       schema: col2:int16, col5:int64, w1_col1_sum:int32, w1_col3_sum:float, w1_col4_sum:double, w1_col2_sum:int16, w1_col5_sum:int64, w1_col1_cnt:int64, col1:int32, col6:string
       order: col1
       data: |

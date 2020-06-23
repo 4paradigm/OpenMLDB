@@ -1,4 +1,4 @@
-SQLCases:
+cases:
   - id: 0
     desc: Window SQL ROWS_RANGE Between
     db: db1
@@ -20,7 +20,7 @@ SQLCases:
       - name: t1
         resource: cases/resource/simple_t1.yaml
         index: index2:col2:col5
-    output:
+    expect:
       schema: id:int32, col2:int16, col5:int64, w1_col1_sum:int32, w1_col3_sum:float, w1_col4_sum:double, w1_col2_sum:int16, w1_col5_sum:int64, col6:string
       order: id
       data: |
@@ -52,7 +52,7 @@ SQLCases:
           8, B, 4, 1590115450000
           9, A, 5, 1590115460000
 
-    output:
+    expect:
       schema: id:int, pk1:string, col1:int, std_ts:timestamp, w1_col1_sum:int
       order: id
       data: |
@@ -87,7 +87,7 @@ SQLCases:
       - name: t1
         resource: cases/resource/simple_t1.yaml
         index: index2:col2:col5
-    output:
+    expect:
       schema: id:int32, col0:string, col5:int64, w1_col1_sum:int32, w1_col3_sum:float, w1_col4_sum:double, w1_col2_sum:int16, w1_col5_sum:int64, col6:string
       order: id
       data: |
@@ -116,7 +116,7 @@ SQLCases:
       - name: t1
         resource: cases/resource/simple_t1.yaml
         index: index2:col2:col5
-    output:
+    expect:
       schema: id:int32, col2:int16, col0:string, col5:int64, w1_col1_sum:int32, w1_col3_sum:float, w2_col4_sum:double, w2_col2_sum:int16, w2_col5_sum:int64, col6:string
       order: id
       data: |
@@ -145,7 +145,7 @@ SQLCases:
       - name: t1
         resource: cases/resource/simple_t1.yaml
         index: index2:col2:col5,index0:col0:col5
-    output:
+    expect:
       schema: col2:int16, col0:string, col5:int64, w1_col1_sum:int32, w1_col3_sum:float, w2_col4_sum:double, w2_col2_sum:int16, w2_col5_sum:int64, col1:int32, col6:string
       order: col1
       data: |
@@ -175,7 +175,7 @@ SQLCases:
       - name: t1
         resource: cases/resource/simple_t1.yaml
         index: index2:col2:col5,index0:col0:col5
-    output:
+    expect:
       schema: col2:int16, col0:string, col5:int64, w1_col1_sum:int32, w1_col3_sum:float, w3_col4_sum:double, w2_col2_sum:int16, w2_col5_sum:int64, col1:int32, col6:string
       order: col1
       data: |
@@ -215,7 +215,7 @@ SQLCases:
           2, 7, 555, 7.7, 77.7, 3, ccccccc
           2, 8, 555, 8.8, 88.8, 4, dddddddd
           2, 9, 555, 9.9, 99.9, 5, eeeeeeeee
-    output:
+    expect:
       schema: col0:string, col2:int16, col5:int64, w1_col1_sum:int32, w1_col3_sum:float, w1_col4_sum:double, w1_col2_sum:int16, w1_col5_sum:int64, col1:int32, col6:string
       order: col1
       data: |
@@ -259,7 +259,7 @@ SQLCases:
           2, 7, 555, 7.7, 77.7, 3, ccccccc
           2, 8, 555, 8.8, 88.8, 4, dddddddd
           2, 9, 555, 9.9, 99.9, 5, eeeeeeeee
-    output:
+    expect:
       schema: col0:string, col2:int16, col5:int64, w1_col1_sum:int32, w1_col3_sum:float, w1_col4_sum:double, w1_col2_sum:int16, w1_col5_sum:int64, col1:int32, col6:string
       order: col1
       data: |
@@ -282,7 +282,7 @@ SQLCases:
       - name: t1
         resource: cases/resource/simple_t1_ts.yaml
         index: index2:col2:std_ts
-    output:
+    expect:
       schema: id:int32, col2:int16, std_ts:timestamp, w1_col3_sum:float
       order: id
       data: |
@@ -304,7 +304,7 @@ SQLCases:
       - name: t1
         resource: cases/resource/simple_t1_ts.yaml
         index: index2:col2:std_ts
-    output:
+    expect:
       schema: id:int32, col2:int16, std_ts:timestamp, w1_ts_sum:timestamp, w1_ts_min:timestamp, w1_ts_max:timestamp
       order: id
       data: |
@@ -334,7 +334,7 @@ SQLCases:
           1, 4, 55, 4.4, 44.4, 2, 4444, 1590115423000, 2020-05-21
           2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa, 1590115424000 , 2020-05-22
 
-    output:
+    expect:
       schema: id:int32, col2:int16, std_ts:timestamp, w1_date_min:date, w1_date_max:date
       order: id
       data: |
@@ -353,7 +353,7 @@ SQLCases:
       - name: t1
         resource: cases/resource/simple_t1_ts.yaml
         index: index2:col2:std_ts
-    output:
+    expect:
       schema: id:int32, col2:int16, std_ts:timestamp, w1_col3_sum:float
       order: id
       data: |
@@ -392,7 +392,7 @@ SQLCases:
           13, A, 8, 1590115490000
           14, A, 9, 1590115500000
 
-    output:
+    expect:
       schema: id:int, pk1:string, col1:int, std_ts:timestamp, w1_col1_sum:int, w2_col1_sum:int, w3_col1_sum:int
       order: id
       data: |
@@ -440,7 +440,7 @@ SQLCases:
           13, A, 8, 1590115490000
           14, A, 9, 1590115500000
 
-    output:
+    expect:
       schema: id:int, pk1:string, col1:int, std_ts:timestamp, w1_col1_sum:int, w2_col1_sum:int, w3_col1_sum:int
       order: id
       data: |
@@ -487,7 +487,7 @@ SQLCases:
           13, A, 8, 1590115490000
           14, A, 9, 1590115500000
 
-    output:
+    expect:
       schema: id:int, pk1:string, col1:int, std_ts:timestamp, w1_col1_sum:int, w2_col1_sum:int, w3_col1_sum:int
       order: id
       data: |
@@ -534,7 +534,7 @@ SQLCases:
           13, A, 8, 1590115490000
           14, A, 9, 1590115500000
 
-    output:
+    expect:
       schema: id:int, pk1:string, col1:int, std_ts:timestamp, w1_col1_sum:int, w2_col1_sum:int, w3_col1_sum:int
       order: id
       data: |
@@ -583,7 +583,7 @@ SQLCases:
           13, A, 8, 1590115490000
           14, A, 9, 1590115500000
 
-    output:
+    expect:
       schema: id:int, pk1:string, col1:int, std_ts:timestamp, w1_col1_sum:int, w2_col1_sum:int, w3_col1_sum:int
       order: id
       data: |
@@ -632,7 +632,7 @@ SQLCases:
           13, A, 8, 1590115490000
           14, A, 9, 1590115500000
 
-    output:
+    expect:
       schema: id:int, pk1:string, col1:int, std_ts:timestamp, w1_col1_sum:int, w2_col1_sum:int, w3_col1_sum:int, w4_col1_sum:int, w5_col1_sum:int
       order: id
       data: |
@@ -672,7 +672,7 @@ SQLCases:
           8, B, 4, 1590115450000
           9, A, 5, 1590115460000
 
-    output:
+    expect:
       schema: id:int, pk1:string, col1:int, std_ts:timestamp, w1_col1_sum:int
       order: id
       data: |
@@ -707,7 +707,7 @@ SQLCases:
           8, B, 4, 1590115450000
           9, A, 5, 1590115460000
 
-    output:
+    expect:
       schema: id:int, pk1:string, col1:int, std_ts:timestamp, w1_col1_sum:int
       order: id
       data: |

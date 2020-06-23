@@ -1,4 +1,4 @@
-SQLCases:
+cases:
   - id: 1
     desc:
     sql: |

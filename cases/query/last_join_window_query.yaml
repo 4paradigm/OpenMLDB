@@ -1,4 +1,4 @@
-SQLCases:
+cases:
   - id: 0
     desc: LAST JOIN Window, Join未命中索引
     db: db1
@@ -37,7 +37,7 @@ SQLCases:
           1, CCC, 3.3, 330.3, 550, 3, 1
           0, BB, 2.2, 220.2, 50, 2, 2
           0, A, 1.1, 110.1, 50, 1, 1
-    output:
+    expect:
       schema: id:int32, t1_col2:int16, t1_col5:int64, w1_col1_sum:int32, w1_col3_sum:float, w1_t2_col4_sum:double, w1_t2_col2_sum:int16, w1_col5_sum:int64, t2_str1:string
       order: id
       data: |
@@ -84,7 +84,7 @@ SQLCases:
           1, CCC, 3.3, 330.3, 550, 3, 1
           0, BB, 2.2, 220.2, 50, 2, 2
           0, A, 1.1, 110.1, 50, 1, 1
-    output:
+    expect:
       schema: id:int32, t1_col2:int16, t1_col5:int64, w1_col1_sum:int32, w1_col3_sum:float, w1_t2_col4_sum:double, w1_t2_col2_sum:int16, w1_col5_sum:int64, t2_str1:string
       order: id
       data: |
@@ -119,7 +119,7 @@ SQLCases:
           1, CCC, 3.3, 330.3, 550, 3, 1
           0, BB, 2.2, 220.2, 50, 2, 2
           0, A, 1.1, 110.1, 50, 1, 1
-    output:
+    expect:
       schema: id:int32, t1_col2:i16, t1_col5:timestamp, w1_col5_sum:timestamp
       order: id
       data: |
@@ -156,7 +156,7 @@ SQLCases:
           1, CCC, 3.3, 330.3, 550, 3, 1590115420001
           0, BB, 2.2, 220.2, 50, 2, 1590115420002
           0, A, 1.1, 110.1, 50, 1, 1590115420001
-    output:
+    expect:
       schema: id:int32, t1_col2:i16, t1_col5:timestamp, t2_col5:timestamp, str1:string, w1_col1_sum:int32
       order: id
       data: |

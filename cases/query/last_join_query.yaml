@@ -1,4 +1,4 @@
-SQLCases:
+cases:
   - id: 0
     desc: LAST JOIN 右表未命中索引
     sql: |
@@ -30,7 +30,7 @@ SQLCases:
           1, CCC, 3.3, 33.3, 550, 3, 1
           0, BB, 2.2, 22.2, 50, 2, 2
           0, A, 1.1, 11.1, 50, 1, 1
-    output:
+    expect:
       schema: id:int32, t1_col0:string, test_col1:int32, t1_col2:int16, str1:string
       order: id
       data: |
@@ -72,7 +72,7 @@ SQLCases:
           1, CCC, 3.3, 33.3, 550, 3, 1
           0, BB, 2.2, 22.2, 50, 2, 2
           0, A, 1.1, 11.1, 50, 1, 1
-    output:
+    expect:
       schema: id:int32, t1_col0:string, test_col1:int32, t1_col2:int16, str1:string
       order: id
       data: |
@@ -115,7 +115,7 @@ SQLCases:
           1, CCC, 3.3, 33.3, 550, 3, 1
           0, BB, 2.2, 22.2, 50, 2, 2
           0, A, 1.1, 11.1, 50, 1, 1
-    output:
+    expect:
       schema: id:int32, t1_col0:string, test_col1:int32, t1_col2:int16, str1:string
       order: id
       data: |
@@ -142,7 +142,7 @@ SQLCases:
           1, CCC, 3, 1590115422000
           0, BB, 2, 1590115421000
           0, A, 1, 1590115420000
-    output:
+    expect:
       schema: id:int32, t1_col0:string, t1_col2:int16, t1_std_ts:timestamp, str1:string
       order: id
       data: |
@@ -184,7 +184,7 @@ SQLCases:
           Z, 3, 3
           U, 4, 4
           V, 5, 5
-    output:
+    expect:
       schema: id:int32, col0:string, c0:string, column0:string
       order: id
       data: |
@@ -209,7 +209,7 @@ SQLCases:
           1, CCC, 3, 3, 2020-05-22
           0, BB, 2, 2, 2020-05-21
           0, A, 1, 1, 2020-05-20
-    output:
+    expect:
       schema: id:int32, t1_col0:string, t1_col2:int16, t1_std_date:date, str1:string
       order: id
       data: |
@@ -238,7 +238,7 @@ SQLCases:
           1, CCC, 3, 1590115422000
           0, BB, 2, 1590115421000
           0, A, 1, 1590115420000
-    output:
+    expect:
       schema: id:int32, t1_col0:string, t1_col2:int16, t1_std_ts:timestamp, t2_std_ts:timestamp, str1:string
       order: id
       data: |
@@ -269,7 +269,7 @@ SQLCases:
           1, CCC, 3, 1590115422000
           0, BB, 5, 1590115421000
           0, A, 1, 1590115420000
-    output:
+    expect:
       schema: id:int32, t1_col0:string, t2_std_ts:timestamp
       order: id
       data: |
@@ -299,7 +299,7 @@ SQLCases:
         data: |
           1, 1, 1, 1.0, 1.0, 2020-05-20, Y, 2, 1590115422000
           0, 0, 0, 0.0, 0.0, 2020-05-19, X, 1, 1590115420000
-    output:
+    expect:
       schema: id:int32, t1_std_ts:timestamp, t2_std_ts:timestamp, 
               col_short:int16, col_int:int32, col_long:int64,
               col_float:float, col_double:double, col_date:date, col_str:string
@@ -330,7 +330,7 @@ SQLCases:
           1, CCC, 3, 1590115422000
           0, BB, 5, 1590115421000
           0, A, 1, 1590115420000
-    output:
+    expect:
       schema: id:int32, t1_col0:string, t2_std_ts:timestamp
       order: id
       data: |

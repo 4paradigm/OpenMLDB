@@ -1,4 +1,4 @@
-SQLCases:
+cases:
   - id: 1
     desc: CREATE DATABASE db1
     sql: CREATE DATABASE db1;

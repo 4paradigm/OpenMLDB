@@ -1,4 +1,4 @@
-SQLCases:
+cases:
   - id: 0
     desc: 单window聚合 ROWS Between
     sql: |

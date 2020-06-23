@@ -673,6 +673,13 @@ void RegisterNativeUDFToModule(::llvm::Module *module) {
     RegisterMethod(
         module, "delete_iterator", bool_ty, {iter_string_ty},
         reinterpret_cast<void *>(v1::delete_iterator<codec::StringRef>));
+
+    RegisterMethod(
+        module, "log", float_ty, {float_ty},
+        (reinterpret_cast<void *>(static_cast<float (*)(float)>(&log))));
+    RegisterMethod(
+        module, "log", double_ty, {double_ty},
+        (reinterpret_cast<void *>(static_cast<double (*)(double)>(&log))));
 }  // namespace udf
 void RegisterUDFToModule(::llvm::Module *m) {
     base::Status status;

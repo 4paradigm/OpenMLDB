@@ -398,7 +398,7 @@ void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
     // Check Output Data
     std::vector<Row> output;
     ASSERT_EQ(0, session.Run(output));
-    CheckRows(schema, SortRows(schema, output, sql_case.output().order_),
+    CheckRows(schema, SortRows(schema, output, sql_case.expect().order_),
               case_output_data);
 }
 
