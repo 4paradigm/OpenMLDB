@@ -290,8 +290,8 @@ bool RowFnLetIRBuilder::BuildProject(
         LOG(WARNING) << "fail to codegen project expression: " << status.msg;
         return false;
     }
-    ::fesql::node::DataType data_type;
-    ok = GetBaseType(expr_out_val.GetType(), &data_type);
+    ::fesql::node::TypeNode data_type;
+    ok = GetFullType(expr_out_val.GetType(), &data_type);
     if (!ok) {
         return false;
     }

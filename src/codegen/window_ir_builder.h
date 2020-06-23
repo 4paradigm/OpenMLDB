@@ -49,7 +49,7 @@ class WindowDecodeIRBuilder {
     virtual bool ResolveFieldInfo(const std::string& name,
                                   uint32_t row_idx,
                                   codec::ColInfo* info,
-                                  node::DataType* type_ptr) = 0;
+                                  node::TypeNode* type_ptr) = 0;
 };
 
 class MemoryWindowDecodeIRBuilder : public WindowDecodeIRBuilder {
@@ -71,18 +71,18 @@ class MemoryWindowDecodeIRBuilder : public WindowDecodeIRBuilder {
                              uint32_t row_idx, ::llvm::Value** output);
 
     bool ResolveFieldInfo(const std::string& name, uint32_t row_idx,
-                          codec::ColInfo* info, node::DataType* type_ptr);
+                          codec::ColInfo* info, node::TypeNode* type_ptr);
 
  private:
     bool BuildGetPrimaryCol(const std::string& fn_name, ::llvm::Value* row_ptr,
                             uint32_t row_idx, uint32_t col_idx, uint32_t offset,
-                            const fesql::node::DataType& type,
+                            const fesql::node::TypeNode& type,
                             ::llvm::Value** output);
 
     bool BuildGetStringCol(uint32_t row_idx, uint32_t col_idx, uint32_t offset,
                            uint32_t next_str_field_offset,
                            uint32_t str_start_offset,
-                           const fesql::node::DataType& type,
+                           const fesql::node::TypeNode& type,
                            ::llvm::Value* window_ptr, ::llvm::Value** output);
 
  private:

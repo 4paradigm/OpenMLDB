@@ -6,7 +6,7 @@ target_link_libraries(fesql_udf fesql_vm)
 
 if (TESTING_ENABLE)
 add_executable(udf_test udf_test.cc)
-target_link_libraries(udf_test gtest fesql_case ${yaml_libs} boost_filesystem ${VM_LIBS} fesql_vm ${LLVM_LIBS} ${BRPC_LIBS} ${OS_LIB})
+target_link_libraries(udf_test gtest fesql_case ${ABSL_LIBS} ${yaml_libs} boost_filesystem ${VM_LIBS} fesql_vm ${LLVM_LIBS} ${BRPC_LIBS} ${OS_LIB})
 add_test(udf_test udf_test --gtest_output=xml:${CMAKE_BINARY_DIR}/udf_test.xml)
 list(APPEND test_list udf_test)
 

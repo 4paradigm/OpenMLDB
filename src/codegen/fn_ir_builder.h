@@ -36,6 +36,8 @@ class FnIRBuilder {
     bool Build(const ::fesql::node::FnNodeFnDef* node,
                base::Status& status);  // NOLINT
 
+    bool CreateFunction(const ::fesql::node::FnNodeFnHeander* fn_def,
+                     ::llvm::Function** fn, base::Status& status);  // NOLINT
     bool BuildFnHead(const ::fesql::node::FnNodeFnHeander* fn_def, ScopeVar* sv,
                      ::llvm::Function** fn, base::Status& status);  // NOLINT
  private:

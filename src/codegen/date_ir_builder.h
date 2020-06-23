@@ -24,16 +24,21 @@ class DateIRBuilder : public StructTypeIRBuilder {
     explicit DateIRBuilder(::llvm::Module* m);
     ~DateIRBuilder();
     void InitStructType();
-    bool NewDate(::llvm::BasicBlock* block,
-                      ::llvm::Value** output);
+    bool NewDate(::llvm::BasicBlock* block, ::llvm::Value** output);
     bool NewDate(::llvm::BasicBlock* block, ::llvm::Value* date,
-                      ::llvm::Value** output);
+                 ::llvm::Value** output);
     bool CopyFrom(::llvm::BasicBlock* block, ::llvm::Value* src,
                   ::llvm::Value* dist);
-    bool GetDate(::llvm::BasicBlock* block, ::llvm::Value* timestamp,
-               ::llvm::Value** output);
-    bool SetDate(::llvm::BasicBlock* block, ::llvm::Value* timestamp,
-               ::llvm::Value* ts);
+    bool GetDate(::llvm::BasicBlock* block, ::llvm::Value* date,
+                 ::llvm::Value** output);
+    bool SetDate(::llvm::BasicBlock* block, ::llvm::Value* date,
+                 ::llvm::Value* code);
+    bool Day(::llvm::BasicBlock* block, ::llvm::Value* date,
+             ::llvm::Value** output, base::Status& status);  // NOLINT
+    bool Month(::llvm::BasicBlock* block, ::llvm::Value* date,
+               ::llvm::Value** output, base::Status& status);  // NOLINT
+    bool Year(::llvm::BasicBlock* block, ::llvm::Value* date,
+              ::llvm::Value** output, base::Status& status);  // NOLINT
 };
 }  // namespace codegen
 }  // namespace fesql

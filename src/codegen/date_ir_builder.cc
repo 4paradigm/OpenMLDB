@@ -10,6 +10,7 @@
 #include "codegen/date_ir_builder.h"
 #include <string>
 #include <vector>
+#include "codegen/arithmetic_expr_ir_builder.h"
 namespace fesql {
 namespace codegen {
 DateIRBuilder::DateIRBuilder(::llvm::Module* m) : StructTypeIRBuilder(m) {
@@ -66,7 +67,7 @@ bool DateIRBuilder::NewDate(::llvm::BasicBlock* block, ::llvm::Value* days,
     return true;
 }
 bool DateIRBuilder::CopyFrom(::llvm::BasicBlock* block, ::llvm::Value* src,
-              ::llvm::Value* dist) {
+                             ::llvm::Value* dist) {
     if (nullptr == src || nullptr == dist) {
         LOG(WARNING) << "Fail to copy string: src or dist is null";
         return false;
@@ -84,13 +85,97 @@ bool DateIRBuilder::CopyFrom(::llvm::BasicBlock* block, ::llvm::Value* src,
     }
     return true;
 }
-bool DateIRBuilder::GetDate(::llvm::BasicBlock* block, ::llvm::Value* timestamp,
+bool DateIRBuilder::GetDate(::llvm::BasicBlock* block, ::llvm::Value* date,
                             ::llvm::Value** output) {
-    return Get(block, timestamp, 0, output);
+    return Get(block, date, 0, output);
 }
-bool DateIRBuilder::SetDate(::llvm::BasicBlock* block, ::llvm::Value* timestamp,
-                            ::llvm::Value* ts) {
-    return Set(block, timestamp, 0, ts);
+bool DateIRBuilder::SetDate(::llvm::BasicBlock* block, ::llvm::Value* date,
+                            ::llvm::Value* code) {
+    return Set(block, date, 0, code);
 }
+
+// return dayOfYear
+// *day = date & 0x0000000FF;
+bool DateIRBuilder::Day(::llvm::BasicBlock* block, ::llvm::Value* date,
+                        ::llvm::Value** output, base::Status& status) {
+    ::llvm::Value* code;
+    if (!GetDate(block, date, &code)) {
+        LOG(WARNING) << "Fail to GetDate";
+        return false;
+    }
+
+    ::llvm::IRBuilder<> builder(block);
+    codegen::ArithmeticIRBuilder arithmetic_ir_builder(block);
+    if (!arithmetic_ir_builder.BuildAnd(code, builder.getInt32(255), &code,
+                                        status)) {
+        LOG(WARNING) << "Fail Compute Day of Date: " << status.msg;
+        return false;
+    }
+    *output = code;
+    return true;
+}
+// Return Month
+//    *day = date & 0x0000000FF;
+//    date = date >> 8;
+//    *month = 1 + (date & 0x0000FF);
+//    *year = 1900 + (date >> 8);
+bool DateIRBuilder::Month(::llvm::BasicBlock* block, ::llvm::Value* date,
+                          ::llvm::Value** output, base::Status& status) {
+    ::llvm::Value* code;
+    if (!GetDate(block, date, &code)) {
+        LOG(WARNING) << "Fail to GetDate";
+        return false;
+    }
+
+    ::llvm::IRBuilder<> builder(block);
+    codegen::ArithmeticIRBuilder arithmetic_ir_builder(block);
+
+    if (!arithmetic_ir_builder.BuildLShiftRight(code, builder.getInt32(8),
+                                                &code, status)) {
+        LOG(WARNING) << "Fail Compute Month of Date: " << status.msg;
+        return false;
+    }
+
+    if (!arithmetic_ir_builder.BuildAnd(code, builder.getInt32(255), &code,
+                                        status)) {
+        LOG(WARNING) << "Fail Compute Month of Date: " << status.msg;
+        return false;
+    }
+
+    if (!arithmetic_ir_builder.BuildAddExpr(code, builder.getInt32(1), &code,
+                                            status)) {
+        LOG(WARNING) << "Fail Compute Month of Date: " << status.msg;
+        return false;
+    }
+    *output = code;
+    return true;
+}
+// Return Year
+//    *year = 1900 + (date >> 16);
+bool DateIRBuilder::Year(::llvm::BasicBlock* block, ::llvm::Value* date,
+                         ::llvm::Value** output, base::Status& status) {
+    ::llvm::Value* code;
+    if (!GetDate(block, date, &code)) {
+        LOG(WARNING) << "Fail to GetDate";
+        return false;
+    }
+
+    ::llvm::IRBuilder<> builder(block);
+    codegen::ArithmeticIRBuilder arithmetic_ir_builder(block);
+
+    if (!arithmetic_ir_builder.BuildLShiftRight(code, builder.getInt32(16),
+                                                &code, status)) {
+        LOG(WARNING) << "Fail Compute Year of Date: " << status.msg;
+        return false;
+    }
+    if (!arithmetic_ir_builder.BuildAddExpr(code, builder.getInt32(1900), &code,
+                                            status)) {
+        LOG(WARNING) << "Fail Compute Year of Date: " << status.msg;
+        return false;
+    }
+    *output = code;
+    return true;
+}
+
 }  // namespace codegen
 }  // namespace fesql

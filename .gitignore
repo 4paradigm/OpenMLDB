@@ -3,6 +3,9 @@ build
 thirdparty
 thirdsrc
 
+.vscode/
+.idea/
+
 *.dylib
 *.jnilib
 *.dylib

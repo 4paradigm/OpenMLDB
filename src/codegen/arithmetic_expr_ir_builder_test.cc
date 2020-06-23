@@ -59,18 +59,14 @@ void BinaryArithmeticExprCheck(::fesql::node::DataType left_type,
     ASSERT_TRUE(
         ::fesql::codegen::GetLLVMType(m.get(), right_type, &right_llvm_type));
     ASSERT_TRUE(GetLLVMType(m.get(), dist_type, &dist_llvm_type));
-
-    if (left_llvm_type->isStructTy()) {
-        left_llvm_type = left_llvm_type->getPointerTo();
+    if (!dist_llvm_type->isPointerTy()) {
+        dist_llvm_type = dist_llvm_type->getPointerTo();
     }
 
-    if (right_llvm_type->isStructTy()) {
-        right_llvm_type = right_llvm_type->getPointerTo();
-    }
     Function *load_fn = Function::Create(
         FunctionType::get(
             ::llvm::Type::getVoidTy(*ctx),
-            {left_llvm_type, right_llvm_type, dist_llvm_type->getPointerTo()},
+            {left_llvm_type, right_llvm_type, dist_llvm_type},
             false),
         Function::ExternalLinkage, "load_fn", m.get());
     BasicBlock *entry_block = BasicBlock::Create(*ctx, "EntryBlock", load_fn);

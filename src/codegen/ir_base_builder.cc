@@ -37,6 +37,15 @@ bool GetLLVMType(::llvm::BasicBlock* block,
     return GetLLVMType(block->getModule(), type, output);
 }
 
+bool GetLLVMType(::llvm::BasicBlock* block,
+                 const ::fesql::node::TypeNode* type,  // NOLINT
+                 ::llvm::Type** output) {
+    if (output == NULL || block == NULL) {
+        LOG(WARNING) << "the output ptr is NULL ";
+        return false;
+    }
+    return GetLLVMType(block->getModule(), type, output);
+}
 bool GetLLVMType(::llvm::Module* m, const ::fesql::node::DataType& type,
                  ::llvm::Type** llvm_type) {
     if (nullptr == m) {
@@ -70,17 +79,18 @@ bool GetLLVMType(::llvm::Module* m, const ::fesql::node::DataType& type,
             break;
         case node::kVarchar: {
             StringIRBuilder string_ir_builder(m);
-            *llvm_type = string_ir_builder.GetType();
+            *llvm_type = string_ir_builder.GetType()->getPointerTo();
             break;
         }
         case node::kTimestamp: {
             TimestampIRBuilder timestamp_ir_builder(m);
-            *llvm_type = timestamp_ir_builder.GetType();
+            *llvm_type = timestamp_ir_builder.GetType()->getPointerTo();
             return true;
         }
         case node::kDate: {
             DateIRBuilder date_ir_builder(m);
-            *llvm_type = date_ir_builder.GetType();
+            *llvm_type = date_ir_builder.GetType()->getPointerTo();
+
             return true;
         }
         case node::kList:
@@ -98,13 +108,13 @@ bool GetLLVMType(::llvm::Module* m, const ::fesql::node::DataType& type,
     return true;
 }
 
-bool GetLLVMColumnSize(const ::fesql::node::DataType& v_type, uint32_t* size) {
+bool GetLLVMColumnSize(const ::fesql::node::TypeNode& v_type, uint32_t* size) {
     if (nullptr == size) {
         LOG(WARNING) << "the size ptr is NULL ";
         return false;
     }
 
-    switch (v_type) {
+    switch (v_type.base_) {
         case ::fesql::node::kInt16: {
             *size = sizeof(::fesql::codec::ColumnImpl<int16_t>);
             break;
@@ -138,23 +148,22 @@ bool GetLLVMColumnSize(const ::fesql::node::DataType& v_type, uint32_t* size) {
             break;
         }
         default: {
-            LOG(WARNING) << "not supported type "
-                         << ::fesql::node::DataTypeName(v_type);
+            LOG(WARNING) << "not supported type " << v_type.GetName();
             return false;
         }
     }
     return true;
-}
+}  // namespace codegen
 
 bool GetLLVMListType(::llvm::Module* m,
-                     const ::fesql::node::DataType& v_type,  // NOLINT
+                     const ::fesql::node::TypeNode& v_type,  // NOLINT
                      ::llvm::Type** output) {
     if (output == NULL) {
         LOG(WARNING) << "the output ptr is NULL ";
         return false;
     }
     std::string name;
-    switch (v_type) {
+    switch (v_type.base_) {
         case ::fesql::node::kInt16: {
             name = "fe.list_ref_int16";
             break;
@@ -189,7 +198,7 @@ bool GetLLVMListType(::llvm::Module* m,
         }
         default: {
             LOG(WARNING) << "not supported list<type> when type is  "
-                         << ::fesql::node::DataTypeName(v_type);
+                         << v_type.GetName();
             return false;
         }
     }
@@ -210,14 +219,14 @@ bool GetLLVMListType(::llvm::Module* m,
 }
 
 bool GetLLVMIteratorType(::llvm::Module* m,
-                         const ::fesql::node::DataType& v_type,  // NOLINT
+                         const ::fesql::node::TypeNode& v_type,  // NOLINT
                          ::llvm::Type** output) {
     if (output == NULL) {
         LOG(WARNING) << "the output ptr is NULL ";
         return false;
     }
     std::string name;
-    switch (v_type) {
+    switch (v_type.base_) {
         case ::fesql::node::kInt16: {
             name = "fe.iterator_ref_int16";
             break;
@@ -252,7 +261,7 @@ bool GetLLVMIteratorType(::llvm::Module* m,
         }
         default: {
             LOG(WARNING) << "not supported list<type> when type is  "
-                         << ::fesql::node::DataTypeName(v_type);
+                         << v_type.GetName();
             return false;
         }
     }
@@ -325,26 +334,8 @@ bool GetConstFeString(const std::string& val, ::llvm::BasicBlock* block,
         LOG(WARNING) << "the output ptr or block is NULL ";
         return false;
     }
-    ::llvm::Type* str_type = NULL;
-    bool ok = GetLLVMType(block, ::fesql::node::kVarchar, &str_type);
-    if (!ok) return false;
-    ::llvm::IRBuilder<> builder(block);
-    ::llvm::Value* string_ref = builder.CreateAlloca(str_type);
-    ::llvm::Value* data_ptr_ptr =
-        builder.CreateStructGEP(str_type, string_ref, 1);
-    ::llvm::StringRef val_ref(val);
-    ::llvm::Value* str_val = builder.CreateGlobalStringPtr(val_ref);
-    ::llvm::Value* cast_data_ptr_ptr = builder.CreatePointerCast(
-        data_ptr_ptr, str_val->getType()->getPointerTo());
-    builder.CreateStore(str_val, cast_data_ptr_ptr, false);
-
-    ::llvm::Value* size = builder.getInt32(val.size());
-    ::llvm::Value* size_ptr = builder.CreateStructGEP(str_type, string_ref, 0);
-    ::llvm::Value* cast_type_size_ptr =
-        builder.CreatePointerCast(size_ptr, size->getType()->getPointerTo());
-    builder.CreateStore(size, cast_type_size_ptr, false);
-    *output = string_ref;
-    return true;
+    StringIRBuilder string_ir_builder(block->getModule());
+    return string_ir_builder.NewString(block, val, output);
 }
 
 bool BuildGetPtrOffset(::llvm::IRBuilder<>& builder,  // NOLINT
@@ -387,6 +378,7 @@ bool GetFullType(::llvm::Type* type, ::fesql::node::TypeNode* type_node) {
     if (false == GetBaseType(type, &type_node->base_)) {
         return false;
     }
+
     switch (type_node->base_) {
         case fesql::node::kList: {
             if (type->getTypeID() == ::llvm::Type::PointerTyID) {
@@ -394,31 +386,40 @@ bool GetFullType(::llvm::Type* type, ::fesql::node::TypeNode* type_node) {
                            ->getElementType();
             }
             if (type->getStructName().equals("fe.list_ref_int16")) {
-                type_node->generics_.push_back(fesql::node::kInt16);
+                type_node->generics_.push_back(
+                    node::TypeNode(fesql::node::kInt16));
                 return true;
             } else if (type->getStructName().equals("fe.list_ref_int32")) {
-                type_node->generics_.push_back(fesql::node::kInt32);
+                type_node->generics_.push_back(
+                    node::TypeNode(fesql::node::kInt32));
                 return true;
             } else if (type->getStructName().equals("fe.list_ref_int64")) {
-                type_node->generics_.push_back(fesql::node::kInt64);
+                type_node->generics_.push_back(
+                    node::TypeNode(fesql::node::kInt64));
                 return true;
             } else if (type->getStructName().equals("fe.list_ref_timestamp")) {
-                type_node->generics_.push_back(fesql::node::kTimestamp);
+                type_node->generics_.push_back(
+                    node::TypeNode(fesql::node::kTimestamp));
                 return true;
             } else if (type->getStructName().equals("fe.list_ref_float")) {
-                type_node->generics_.push_back(fesql::node::kFloat);
+                type_node->generics_.push_back(
+                    node::TypeNode(fesql::node::kFloat));
                 return true;
             } else if (type->getStructName().equals("fe.list_ref_double")) {
-                type_node->generics_.push_back(fesql::node::kDouble);
+                type_node->generics_.push_back(
+                    node::TypeNode(fesql::node::kDouble));
                 return true;
             } else if (type->getStructName().equals("fe.list_ref_string")) {
-                type_node->generics_.push_back(fesql::node::kVarchar);
+                type_node->generics_.push_back(
+                    node::TypeNode(fesql::node::kVarchar));
                 return true;
             } else if (type->getStructName().equals("fe.list_ref_timestamp")) {
-                type_node->generics_.push_back(fesql::node::kTimestamp);
+                type_node->generics_.push_back(
+                    node::TypeNode(fesql::node::kTimestamp));
                 return true;
             } else if (type->getStructName().equals("fe.list_ref_date")) {
-                type_node->generics_.push_back(fesql::node::kDate);
+                type_node->generics_.push_back(
+                    node::TypeNode(fesql::node::kDate));
                 return true;
             }
             LOG(WARNING) << "fail to get type of llvm type for "
@@ -431,34 +432,45 @@ bool GetFullType(::llvm::Type* type, ::fesql::node::TypeNode* type_node) {
                            ->getElementType();
             }
             if (type->getStructName().equals("fe.iterator_ref_int16")) {
-                type_node->generics_.push_back(fesql::node::kInt16);
+                type_node->generics_.push_back(
+                    node::TypeNode(fesql::node::kInt16));
                 return true;
 
             } else if (type->getStructName().equals("fe.iterator_ref_int32")) {
-                type_node->generics_.push_back(fesql::node::kInt32);
+                type_node->generics_.push_back(
+                    node::TypeNode(fesql::node::kInt32));
                 return true;
 
             } else if (type->getStructName().equals("fe.iterator_ref_int64")) {
-                type_node->generics_.push_back(fesql::node::kInt64);
+                type_node->generics_.push_back(
+                    node::TypeNode(fesql::node::kInt64));
                 return true;
 
             } else if (type->getStructName().equals("fe.iterator_ref_float")) {
-                type_node->generics_.push_back(fesql::node::kFloat);
+                type_node->generics_.push_back(
+                    node::TypeNode(fesql::node::kFloat));
                 return true;
 
             } else if (type->getStructName().equals("fe.iterator_ref_double")) {
-                type_node->base_ = fesql::node::kIterator;
-                type_node->generics_.push_back(fesql::node::kDouble);
+                type_node->generics_.push_back(
+                    node::TypeNode(fesql::node::kDouble));
                 return true;
 
             } else if (type->getStructName().equals("fe.iterator_ref_string")) {
                 type_node->base_ = fesql::node::kIterator;
-                type_node->generics_.push_back(fesql::node::kVarchar);
+                type_node->generics_.push_back(
+                    node::TypeNode(fesql::node::kVarchar));
                 return true;
             } else if (type->getStructName().equals(
                            "fe.iterator_ref_timestamp")) {
                 type_node->base_ = fesql::node::kIterator;
-                type_node->generics_.push_back(fesql::node::kTimestamp);
+                type_node->generics_.push_back(
+                    node::TypeNode(fesql::node::kTimestamp));
+                return true;
+            } else if (type->getStructName().equals("fe.iterator_ref_date")) {
+                type_node->base_ = fesql::node::kIterator;
+                type_node->generics_.push_back(
+                    node::TypeNode(fesql::node::kDate));
                 return true;
             }
             LOG(WARNING) << "fail to get type of llvm type for "
@@ -520,12 +532,17 @@ bool GetBaseType(::llvm::Type* type, ::fesql::node::DataType* output) {
                 }
             }
         }
-        case ::llvm::Type::StructTyID:
         case ::llvm::Type::PointerTyID: {
             if (type->getTypeID() == ::llvm::Type::PointerTyID) {
                 type = reinterpret_cast<::llvm::PointerType*>(type)
                            ->getElementType();
             }
+
+            if (::llvm::Type::StructTyID != type->getTypeID()) {
+                LOG(WARNING) << "no mapping type for llvm type";
+                return false;
+            }
+
             if (type->getStructName().startswith("fe.list_ref_")) {
                 *output = fesql::node::kList;
                 return true;
@@ -602,9 +619,9 @@ bool BuildStoreOffset(::llvm::IRBuilder<>& builder,  // NOLINT
     builder.CreateStore(value, ptr_with_offset, false);
     return true;
 }
-bool DataType2SchemaType(const ::fesql::node::DataType type,
+bool DataType2SchemaType(const ::fesql::node::TypeNode& type,
                          ::fesql::type::Type* output) {
-    switch (type) {
+    switch (type.base_) {
         case ::fesql::node::kBool: {
             *output = ::fesql::type::kBool;
             break;
@@ -643,14 +660,26 @@ bool DataType2SchemaType(const ::fesql::node::DataType type,
         }
         default: {
             LOG(WARNING) << "can't convert to schema for type: "
-                         << ::fesql::node::DataTypeName(type);
+                         << type.GetName();
             return false;
         }
     }
     return true;
 }
 bool SchemaType2DataType(const ::fesql::type::Type type,
+                         ::fesql::node::TypeNode* output) {
+    if (nullptr == output) {
+        LOG(WARNING) << "Fail convert type: input is null";
+        return false;
+    }
+    return SchemaType2DataType(type, &output->base_);
+}
+bool SchemaType2DataType(const ::fesql::type::Type type,
                          ::fesql::node::DataType* output) {
+    if (nullptr == output) {
+        LOG(WARNING) << "Fail convert type: input is null";
+        return false;
+    }
     switch (type) {
         case ::fesql::type::kInt16: {
             *output = ::fesql::node::kInt16;
@@ -703,6 +732,16 @@ bool TypeIRBuilder::IsTimestampPtr(::llvm::Type* type) {
     }
     return data_type == node::kTimestamp;
 }
+bool TypeIRBuilder::IsInt64(::llvm::Type* type) {
+    ::fesql::node::DataType data_type;
+    if (!GetBaseType(type, &data_type)) {
+        return false;
+    }
+    return data_type == node::kInt64;
+}
+bool TypeIRBuilder::IsInterger(::llvm::Type* type) {
+    return type->isIntegerTy();
+}
 bool TypeIRBuilder::IsDatePtr(::llvm::Type* type) {
     ::fesql::node::DataType data_type;
     if (!IsStructPtr(type)) {
@@ -729,10 +768,14 @@ bool TypeIRBuilder::IsStructPtr(::llvm::Type* type) {
     if (type->getTypeID() == ::llvm::Type::PointerTyID) {
         type = reinterpret_cast<::llvm::PointerType*>(type)->getElementType();
         if (type->isStructTy()) {
-            LOG(WARNING) << "Struct Name " << type->getStructName().str();
+            DLOG(INFO) << "Struct Name " << type->getStructName().str();
+            return true;
+        } else {
+            DLOG(INFO) << "Isn't Struct Type";
+            return false;
         }
-        return type->isStructTy();
     }
+    DLOG(INFO) << "Isn't Pointer Type";
     return false;
 }
 

@@ -15,6 +15,7 @@
 #include "node/sql_node.h"
 namespace fesql {
 namespace codegen {
+int32_t TimestampIRBuilder::TIME_ZONE = 8;
 TimestampIRBuilder::TimestampIRBuilder(::llvm::Module* m)
     : StructTypeIRBuilder(m) {
     InitStructType();
@@ -37,7 +38,7 @@ void TimestampIRBuilder::InitStructType() {
     return;
 }
 bool TimestampIRBuilder::CopyFrom(::llvm::BasicBlock* block, ::llvm::Value* src,
-              ::llvm::Value* dist) {
+                                  ::llvm::Value* dist) {
     if (nullptr == src || nullptr == dist) {
         LOG(WARNING) << "Fail to copy string: src or dist is null";
         return false;
@@ -63,6 +64,118 @@ bool TimestampIRBuilder::GetTs(::llvm::BasicBlock* block,
 bool TimestampIRBuilder::SetTs(::llvm::BasicBlock* block,
                                ::llvm::Value* timestamp, ::llvm::Value* ts) {
     return Set(block, timestamp, 0, ts);
+}
+bool TimestampIRBuilder::Minute(::llvm::BasicBlock* block, ::llvm::Value* value,
+                                ::llvm::Value** output, base::Status& status) {
+    if (block == NULL || output == NULL) {
+        LOG(WARNING) << "the output ptr or block is NULL ";
+        return false;
+    }
+    ::llvm::Value* ts;
+    if (IsTimestampPtr(value->getType())) {
+        if (!GetTs(block, value, &ts)) {
+            return false;
+        }
+    } else {
+        ts = value;
+    }
+    if (!IsInterger(ts->getType())) {
+        LOG(WARNING)
+            << "fail Get Minute, input value should be timestamp or int";
+        return false;
+    }
+    ::llvm::IRBuilder<> builder(block);
+    ArithmeticIRBuilder arithmetic_builder(block);
+    if (!arithmetic_builder.BuildModExpr(ts, builder.getInt64(1000 * 60 * 60),
+                                         &ts, status)) {
+        LOG(WARNING) << "Fail Get Minute " << status.msg;
+        return false;
+    }
+    if (!arithmetic_builder.BuildSDivExpr(ts, builder.getInt64(1000 * 60),
+                                          output, status)) {
+        LOG(WARNING) << "Fail Get Minute " << status.msg;
+        return false;
+    }
+    CastExprIRBuilder cast_builder(block);
+    return cast_builder.UnSafeCast(*output, builder.getInt32Ty(), output,
+                                   status);
+}
+bool TimestampIRBuilder::Second(::llvm::BasicBlock* block, ::llvm::Value* value,
+                                ::llvm::Value** output, base::Status& status) {
+    if (block == NULL || output == NULL) {
+        LOG(WARNING) << "the output ptr or block is NULL ";
+        return false;
+    }
+    ::llvm::Value* ts;
+    if (IsTimestampPtr(value->getType())) {
+        if (!GetTs(block, value, &ts)) {
+            return false;
+        }
+    } else {
+        ts = value;
+    }
+    if (!IsInterger(ts->getType())) {
+        LOG(WARNING)
+            << "fail Get Second, input value should be timestamp or int";
+        return false;
+    }
+    ::llvm::IRBuilder<> builder(block);
+    ArithmeticIRBuilder arithmetic_builder(block);
+    if (!arithmetic_builder.BuildModExpr(ts, builder.getInt64(1000 * 60), &ts,
+                                         status)) {
+        LOG(WARNING) << "Fail Get Second " << status.msg;
+        return false;
+    }
+    if (!arithmetic_builder.BuildSDivExpr(ts, builder.getInt64(1000), output,
+                                          status)) {
+        LOG(WARNING) << "Fail Get Second " << status.msg;
+        return false;
+    }
+    CastExprIRBuilder cast_builder(block);
+    return cast_builder.UnSafeCast(*output, builder.getInt32Ty(), output,
+                                   status);
+}
+bool TimestampIRBuilder::Hour(::llvm::BasicBlock* block, ::llvm::Value* value,
+                              ::llvm::Value** output, base::Status& status) {
+    if (block == NULL || output == NULL) {
+        LOG(WARNING) << "the output ptr or block is NULL ";
+        return false;
+    }
+    ::llvm::Value* ts;
+    if (IsTimestampPtr(value->getType())) {
+        if (!GetTs(block, value, &ts)) {
+            return false;
+        }
+    } else {
+        ts = value;
+    }
+    if (!IsInterger(ts->getType())) {
+        LOG(WARNING)
+            << "fail Get Hour, input value should be timestamp or interger";
+        return false;
+    }
+    ::llvm::IRBuilder<> builder(block);
+    ::llvm::Value* day_ms = nullptr;
+    ArithmeticIRBuilder arithmetic_builder(block);
+    if (TIME_ZONE > 0 && !arithmetic_builder.BuildAddExpr(
+                             ts, builder.getInt64(1000 * 60 * 60 * TIME_ZONE),
+                             &day_ms, status)) {
+        LOG(WARNING) << "Fail Get Hour " << status.msg;
+        return false;
+    }
+    if (!arithmetic_builder.BuildModExpr(
+            day_ms, builder.getInt64(1000 * 60 * 60 * 24), &day_ms, status)) {
+        LOG(WARNING) << "Fail Get Hour " << status.msg;
+        return false;
+    }
+    if (!arithmetic_builder.BuildSDivExpr(
+            day_ms, builder.getInt64(1000 * 60 * 60), output, status)) {
+        LOG(WARNING) << "Fail Get Hour " << status.msg;
+        return false;
+    }
+    CastExprIRBuilder cast_builder(block);
+    return cast_builder.UnSafeCast(*output, builder.getInt32Ty(), output,
+                                   status);
 }
 bool TimestampIRBuilder::NewTimestamp(::llvm::BasicBlock* block,
                                       ::llvm::Value** output) {

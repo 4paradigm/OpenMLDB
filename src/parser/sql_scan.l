@@ -145,10 +145,6 @@ DATABASE	{ return DATABASE; }
 DATABASES	{ return DATABASES; }
 DATE	{ return DATE; }
 DATETIME	{ return DATETIME; }
-DAY_HOUR	{ return DAY_HOUR; }
-DAY_MICROSECOND	{ return DAY_MICROSECOND; }
-DAY_MINUTE	{ return DAY_MINUTE; }
-DAY_SECOND	{ return DAY_SECOND; }
 NUMERIC|DEC|DECIMAL	{ return DECIMAL; }
 DECLARE	{ return DECLARE; }
 DEFAULT	{ return DEFAULT; }
@@ -343,8 +339,6 @@ WITH	{ return WITH; }
 WRITE	{ return WRITE; }
 WINDOW  { return WINDOW; }
 XOR	{ return XOR; }
-YEAR	{ return YEAR; }
-YEAR_MONTH	{ return YEAR_MONTH; }
 ZEROFILL	{ return ZEROFILL; }
 
 

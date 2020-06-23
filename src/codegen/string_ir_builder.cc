@@ -33,6 +33,15 @@ void StringIRBuilder::InitStructType() {
     struct_type_ = stype;
 }
 bool StringIRBuilder::NewString(::llvm::BasicBlock* block,
+                                const std::string& val,
+                                ::llvm::Value** output) {
+    ::llvm::IRBuilder<> builder(block);
+    ::llvm::StringRef val_ref(val);
+    ::llvm::Value* str_val = builder.CreateGlobalStringPtr(val_ref);
+    ::llvm::Value* size = builder.getInt32(val.size());
+    return NewString(block, size, str_val, output);
+}
+bool StringIRBuilder::NewString(::llvm::BasicBlock* block,
                                 ::llvm::Value** output) {
     if (!Create(block, output)) {
         LOG(WARNING) << "Fail to Create Default String";
@@ -72,7 +81,7 @@ bool StringIRBuilder::GetSize(::llvm::BasicBlock* block, ::llvm::Value* str,
     return Get(block, str, 0, output);
 }
 bool StringIRBuilder::CopyFrom(::llvm::BasicBlock* block, ::llvm::Value* src,
-               ::llvm::Value* dist) {
+                               ::llvm::Value* dist) {
     if (nullptr == src || nullptr == dist) {
         LOG(WARNING) << "Fail to copy string: src or dist is null";
         return false;

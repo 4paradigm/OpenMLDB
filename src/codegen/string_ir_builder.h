@@ -9,6 +9,7 @@
 
 #ifndef SRC_CODEGEN_STRING_IR_BUILDER_H_
 #define SRC_CODEGEN_STRING_IR_BUILDER_H_
+#include <string>
 #include "base/fe_status.h"
 #include "codegen/cast_expr_ir_builder.h"
 #include "codegen/scope_var.h"
@@ -25,10 +26,12 @@ class StringIRBuilder : public StructTypeIRBuilder {
     ~StringIRBuilder();
     void InitStructType();
     bool NewString(::llvm::BasicBlock* block, ::llvm::Value** output);
+    bool NewString(::llvm::BasicBlock* block, const std::string& str,
+                   ::llvm::Value** output);
     bool NewString(::llvm::BasicBlock* block, ::llvm::Value* size,
                    ::llvm::Value* data, ::llvm::Value** output);
     bool CopyFrom(::llvm::BasicBlock* block, ::llvm::Value* src,
-                   ::llvm::Value* dist);
+                  ::llvm::Value* dist);
     bool GetSize(::llvm::BasicBlock* block, ::llvm::Value* str,
                  ::llvm::Value** output);
     bool SetSize(::llvm::BasicBlock* block, ::llvm::Value* str,
