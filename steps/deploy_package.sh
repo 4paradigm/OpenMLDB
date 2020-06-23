@@ -2,7 +2,7 @@
 #
 # deploy_package.sh
 #
-
+set -e # if have no-zero return command, direct quit script
 checkFile() {
     fileSize=`ls -l $2  | awk '{print $5}'`
     result=`curl -I $1$2`

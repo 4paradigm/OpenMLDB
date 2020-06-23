@@ -12,6 +12,15 @@ else
 fi
 
 [ -f "${WORK_DIR}/build/bin/rtidb" ] && exit 0
+VERSION=$(git tag --points-at HEAD)
+if [ -n "${VERSION}" ]; then
+    if [[ ! ($VERSION =~ ^[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}$) ]]; then
+        echo "$VERSION is not release version"
+        exit 1
+    fi
+    sh ./steps/release.sh ${VERSION}
+fi
+
 sh steps/gen_code.sh
 
 mkdir -p $WORK_DIR/build 
