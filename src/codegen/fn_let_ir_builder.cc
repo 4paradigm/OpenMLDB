@@ -33,22 +33,6 @@ RowFnLetIRBuilder::RowFnLetIRBuilder(const vm::SchemaSourceList& schema_sources,
 RowFnLetIRBuilder::~RowFnLetIRBuilder() {}
 
 
-bool RowFnLetIRBuilder::AnalyzeExpressions(const node::PlanNodeList& projects) {
-    bool is_in_window = false;
-    auto expr_group = nm_.MakeExprList();
-    for (auto pnode : projects) {
-        auto pp_node = dynamic_cast<const ::fesql::node::ProjectNode*>(pnode);
-        auto expr = pp_node->GetExpression();
-        expr_group->AddChild(expr);
-        if (pp_node->frame() != nullptr) {
-            is_in_window = true;
-        }
-    }
-    vm::ExpressionAnalyzer analyzer(is_in_window, &schema_context_, &nm_);
-    return analyzer.Visit(expr_group);
-}
-
-
 /**
  * Codegen For int32 RowFnLetUDF(int_8* row_ptrs, int8_t* window_ptr, int32 *
  * row_sizes, int8_t * output_ptr)
@@ -62,13 +46,6 @@ bool RowFnLetIRBuilder::Build(
     vm::Schema* output_schema,
     vm::ColumnSourceList*
         output_column_sources) {  // NOLINT (runtime/references)
-
-    // do expression analysis
-    // TODO(xxx): move it to other place
-    if (!AnalyzeExpressions(projects)) {
-        LOG(WARNING) << "expression analysis error";
-        return false;
-    }
 
     ::llvm::Function* fn = NULL;
     std::string output_ptr_name = "output_ptr_name";

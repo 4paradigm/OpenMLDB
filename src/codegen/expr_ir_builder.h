@@ -39,6 +39,8 @@ namespace fesql {
 namespace codegen {
 
 using fesql::vm::RowSchemaInfo;
+using fesql::base::Status;
+
 class ExprIRBuilder {
  public:
     ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var);
@@ -66,11 +68,22 @@ class ExprIRBuilder {
                         NativeValue* output,
                         ::fesql::base::Status& status);  // NOLINT
 
-    bool BuildCallFn(const ::fesql::node::CallExprNode* fn, NativeValue* output,
-                     ::fesql::base::Status& status);  // NOLINT
+    Status BuildCallFn(const ::fesql::node::CallExprNode* fn,
+                       NativeValue* output);
     bool BuildCallFnLegacy(const ::fesql::node::CallExprNode* fn,
                            NativeValue* output,
                            ::fesql::base::Status& status);  // NOLINT
+    Status BuildCallUDAF(const ::fesql::node::CallExprNode* fn,
+                         NativeValue* output);
+    Status ResolveLLVMFunction(const ::fesql::node::CallExprNode* fn,
+                               ::llvm::FunctionCallee* callsite,
+                               bool* return_by_arg);
+    Status ResolveLLVMUDFDef(const ::fesql::node::CallExprNode* fn,
+                             ::llvm::FunctionCallee* callsite,
+                             bool* return_by_arg);
+    Status ResolveLLVMExternalDef(const ::fesql::node::CallExprNode* fn,
+                                  ::llvm::FunctionCallee* callsite,
+                                  bool* return_by_arg);
 
     bool BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
                          NativeValue* output,
@@ -100,7 +113,6 @@ class ExprIRBuilder {
     const vm::SchemasContext* schemas_context_;
     std::vector<std::unique_ptr<RowDecodeIRBuilder>> row_ir_builder_list_;
     std::unique_ptr<WindowDecodeIRBuilder> window_ir_builder_;
-    node::NodeManager* nm_;
 
     bool IsUADF(std::string function_name);
     bool FindRowSchemaInfo(const std::string& relation_name,

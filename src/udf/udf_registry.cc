@@ -121,7 +121,7 @@ Status SimpleUDAFRegistry::ResolveFunction(UDFResolveContext* ctx,
 		arg_type->base_ == node::kList),
 		"Illegal input type for simple udaf: ",
 		arg_type == nullptr ? "null" : arg_type->GetName());
-	arg_type = arg_type->generics_[0]];
+	arg_type = arg_type->GetGenericType(0);
 
 	auto iter = reg_table_.find(arg_type->GetName());
 	CHECK_TRUE(iter != reg_table_.end(),
@@ -140,76 +140,6 @@ Status SimpleUDAFRegistry::Register(const std::string& input_arg,
 		name(), "'' for element type ", input_arg);
 	reg_table_.insert(iter, std::make_pair(input_arg, udaf_def));
 	return Status::OK();
-}
-
-
-std::shared_ptr<UDFTransformRegistry> UDFLibrary::Find(
-	const std::string& name) const {
-	auto iter = table_.find(name);
-	if (iter == table_.end()) {
-		return nullptr;
-	} else {
-		return iter->second;
-	}
-}
-
-template <typename Helper, typename RegistryT>
-Helper UDFLibrary::DoStartRegister(const std::string& name) {
-	std::shared_ptr<RegistryT> reg_item;
-	auto iter = table_.find(name);
-	if (iter == table_.end()) {
-		reg_item = std::make_shared<RegistryT>(name);
-		table_.insert(iter, std::make_pair(name, reg_item));
-	} else {
-		reg_item = std::dynamic_pointer_cast<RegistryT>(
-			iter->second);
-		if (reg_item == nullptr) {
-			LOG(WARNING) << "Override exist udf registry for " << name;
-			reg_item = std::make_shared<RegistryT>(name);
-			table_.insert(iter, std::make_pair(name, reg_item));
-		}
-	}
-	return Helper(reg_item);
-}
-
-
-ExprUDFRegistryHelper UDFLibrary::RegisterExprUDF(
-	const std::string& name) {
-	return DoStartRegister<
-		ExprUDFRegistryHelper, ExprUDFRegistry>(name);
-}
-
-
-ExternalFuncRegistryHelper UDFLibrary::RegisterExternal(
-	const std::string& name) {
-	return DoStartRegister<
-		ExternalFuncRegistryHelper, ExternalFuncRegistry>(name);
-}
-
-SimpleUDAFRegistryHelper UDFLibrary::RegisterSimpleUDAF(
-	const std::string& name) {
-	auto helper = DoStartRegister<
-		SimpleUDAFRegistryHelper, SimpleUDAFRegistry>(name);
-	helper.SetLibrary(this);
-	return helper;
-}
-
-Status UDFLibrary::Transform(const std::string& name,
-					    	 const ExprListNode* args,
-             				 const node::SQLNode* over,
-				    		 node::NodeManager* manager,
-				    		 ExprNode** result) const {
-	UDFResolveContext ctx(args, over, manager);
-	return this->Transform(name, &ctx, result);
-}
-
-Status UDFLibrary::Transform(const std::string& name,
-				 		     UDFResolveContext* ctx,
-	    		 			 ExprNode** result) const {
-	auto iter = table_.find(name);
-	CHECK_TRUE(iter != table_.end(),
-		"Fail to find registered function: ", name);
-	return iter->second->Transform(ctx, result);
 }
 
 

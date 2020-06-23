@@ -23,6 +23,7 @@
 #include "node/sql_node.h"
 #include "vm/physical_op.h"
 #include "vm/schemas_context.h"
+#include "udf/udf_library.h"
 
 namespace fesql {
 namespace vm {
@@ -255,7 +256,8 @@ class BatchModeTransformer {
  public:
     BatchModeTransformer(node::NodeManager* node_manager, const std::string& db,
                          const std::shared_ptr<Catalog>& catalog,
-                         ::llvm::Module* module);
+                         ::llvm::Module* module,
+                         udf::UDFLibrary* library);
     virtual ~BatchModeTransformer();
     bool AddDefaultPasses();
     bool TransformPhysicalPlan(const ::fesql::node::PlanNodeList& trees,
@@ -370,6 +372,7 @@ class BatchModeTransformer {
     uint32_t id_;
     std::vector<PhysicalPlanPassType> passes;
     LogicalOpMap op_map_;
+    udf::UDFLibrary* library_;
     bool IsSimpleProject(const ColumnSourceList& source);
     bool BuildExprListFromSchemaSource(const ColumnSourceList column_sources,
                                        const SchemaSourceList& schema_souces,
@@ -383,7 +386,8 @@ class RequestModeransformer : public BatchModeTransformer {
     RequestModeransformer(node::NodeManager* node_manager,
                           const std::string& db,
                           const std::shared_ptr<Catalog>& catalog,
-                          ::llvm::Module* module);
+                          ::llvm::Module* module,
+                          udf::UDFLibrary* library);
     virtual ~RequestModeransformer();
 
     const Schema& request_schema() const { return request_schema_; }
@@ -468,18 +472,19 @@ class FnDefResolver {
         }
         *output = expr;  // default
         switch(expr->GetExprType()) {
-            case node::kExprCall:
-                auto call = dynamic_cast<node::ExprCallNode*>(expr);
+            case node::kExprCall: {
+                auto call = dynamic_cast<node::CallExprNode*>(expr);
                 auto fn = call->GetFnDef();
                 if (fn->GetType() != node::kExternalFnDef) {
                     return false;
                 }
-                auto external_fn = dynamic_cast<node::ExternalFnDefNode*>(fn);
+                auto external_fn = dynamic_cast<
+                    const node::ExternalFnDefNode*>(fn);
                 if (external_fn->IsResolved()) {
                     return false;
                 }
                 node::ExprNode* result = nullptr;
-                auto status = library_.Transform(external_fn->function_name(),
+                auto status = library_->Transform(external_fn->function_name(),
                     call->GetArgs(), call->GetOver(), nm_, &result);
                 if (status.isOK() && result != nullptr) {
                     *output = result;
@@ -490,7 +495,7 @@ class FnDefResolver {
                         << "' failed: " << status.msg;
                     return false;  // fallback to legacy fn gen
                 }
-
+            }
             default:
                 return false;
         }
@@ -501,11 +506,11 @@ class FnDefResolver {
     node::NodeManager* nm_;
 };
 
-class ExpressionAnalyzer {
+class ExpressionTypeAnalyzer {
  public:
-    ExpressionAnalyzer(bool is_in_window,
-                       const vm::SchemasContext* schemas_context,
-                       node::NodeManager* nm):
+    ExpressionTypeAnalyzer(bool is_in_window,
+                           const vm::SchemasContext* schemas_context,
+                           node::NodeManager* nm):
         is_in_window_(is_in_window),
         schemas_context_(schemas_context),
         nm_(nm) {}

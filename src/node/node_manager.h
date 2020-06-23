@@ -107,9 +107,9 @@ class NodeManager {
     TableRefNode *MakeQueryRefNode(const QueryNode *sub_query,
                                    const std::string &alias);
 
-    ExprNode *MakeFuncNode(const std::string &name, const ExprListNode *args,
+    ExprNode *MakeFuncNode(const std::string &name, ExprListNode *args,
                            const SQLNode *over);
-    ExprNode *MakeFuncNode(const FnDefNode *fn, const ExprListNode *args,
+    ExprNode *MakeFuncNode(const FnDefNode *fn, ExprListNode *args,
                            const SQLNode *over);
 
     ExprNode *MakeQueryExprNode(const QueryNode *query);
@@ -161,7 +161,7 @@ class NodeManager {
 
     TypeNode *MakeTypeNode(fesql::node::DataType base);
     TypeNode *MakeTypeNode(fesql::node::DataType base,
-                           const fesql::node::TypeNode &v1);
+                           fesql::node::TypeNode *v1);
     TypeNode *MakeTypeNode(fesql::node::DataType base,
                            fesql::node::DataType v1);
     TypeNode *MakeTypeNode(fesql::node::DataType base, fesql::node::DataType v1,
@@ -292,6 +292,7 @@ class NodeManager {
         const std::vector<const node::TypeNode*>& arg_types,
         int variadic_pos);
 
+    SQLNode* MakeUnresolvedFnDefNode(const std::string& function_name);
 
     SQLNode *MakeUDFDefNode(const FnNodeFnDef *def);
 

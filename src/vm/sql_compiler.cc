@@ -30,6 +30,7 @@
 #include "parser/parser.h"
 #include "plan/planner.h"
 #include "udf/udf.h"
+#include "udf/default_udf_library.h"
 #include "vm/runner.h"
 #include "vm/transform.h"
 
@@ -198,9 +199,12 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     }
     auto llvm_ctx = ::llvm::make_unique<::llvm::LLVMContext>();
     auto m = ::llvm::make_unique<::llvm::Module>("sql", *llvm_ctx);
+
+    udf::DefaultUDFLibrary library;
     ::fesql::udf::RegisterUDFToModule(m.get());
     if (ctx.is_batch_mode) {
-        vm::BatchModeTransformer transformer(&(ctx.nm), ctx.db, cl_, m.get());
+        vm::BatchModeTransformer transformer(
+            &(ctx.nm), ctx.db, cl_, m.get(), &library);
         transformer.AddDefaultPasses();
         if (!transformer.TransformPhysicalPlan(trees, &ctx.plan, status)) {
             LOG(WARNING) << "fail to generate physical plan (batch mode): "
@@ -209,7 +213,8 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
             return false;
         }
     } else {
-        vm::RequestModeransformer transformer(&(ctx.nm), ctx.db, cl_, m.get());
+        vm::RequestModeransformer transformer(
+            &(ctx.nm), ctx.db, cl_, m.get(), &library);
         transformer.AddDefaultPasses();
         if (!transformer.TransformPhysicalPlan(trees, &ctx.plan, status)) {
             LOG(WARNING) << "fail to generate physical plan (request mode) "

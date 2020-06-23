@@ -24,6 +24,7 @@
 #include "codegen/list_ir_builder.h"
 #include "codegen/type_ir_builder.h"
 #include "codegen/window_ir_builder.h"
+#include "codegen/fn_ir_builder.h"
 #include "glog/logging.h"
 #include "proto/fe_common.pb.h"
 #include "vm/schemas_context.h"
@@ -82,12 +83,12 @@ ExprIRBuilder::~ExprIRBuilder() {}
     }
 
     if (!args_types.empty() && !args_types[0].generics_.empty()) {
-        switch (args_types[0].generics_[0].base_) {
+        switch (args_types[0].generics_[0]->base_) {
             case node::kTimestamp:
             case node::kVarchar:
             case node::kDate: {
                 fn_name.append(".").append(
-                    args_types[0].generics_[0].GetName());
+                    args_types[0].generics_[0]->GetName());
                 fn = module_->getFunction(::llvm::StringRef(fn_name));
                 break;
             }
@@ -124,7 +125,8 @@ bool ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
         case ::fesql::node::kExprCall: {
             const ::fesql::node::CallExprNode* fn =
                 (const ::fesql::node::CallExprNode*)node;
-            return BuildCallFn(fn, output, status);
+            status = BuildCallFn(fn, output);
+            return status.isOK();
         }
         case ::fesql::node::kExprPrimary: {
             ::fesql::node::ConstNode* const_node =
@@ -219,33 +221,69 @@ bool ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
     }
 }
 
-bool ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call_fn,
-                                NativeValue* output,
-                                ::fesql::base::Status& status) {  // NOLINT
-    const node::FnDefNode* fn_def = call_fn->GetFnDef();
+Status ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call,
+                                  NativeValue* output) {
+    Status status;
+    const node::FnDefNode* fn_def = call->GetFnDef();
     switch (fn_def->GetType()) {
         case node::kExternalFnDef:
-            if (fn_def->GetReturnType() == nullptr) {
-                std::string fname = dynamic_cast<
-                    const node::ExternalFnDefNode*>(fn_def)->function_name();
-                auto& library = udf::DefaultUDFLibrary::instance();
-
-                node::ExprNode* new_expr = nullptr;
-                auto fn_status = library.Transform(
-                    fname, call_fn->GetArgs(), call_fn->GetOver(), nm_, &new_expr);
-                if (!fn_status.isOK() || new_expr == nullptr) {
-                    LOG(WARNING) << "Use new udf machanism failed: " << fn_status.msg;
-                    return BuildCallFnLegacy(call_fn, output, status);
-                }
-                return this->Build(new_expr, output, status);
-            } else {
-                return BuildCallFnLegacy(call_fn, output, status);
+            if (!dynamic_cast<const node::ExternalFnDefNode*>(
+                    fn_def)->IsResolved()) {
+                BuildCallFnLegacy(call, output, status);
+                return status;
             }
-        default: {
-            LOG(WARNING) << "Unknown fn def " << fn_def->GetSimpleName();
-            return false;
-        }
+        case node::kUDAFDef:
+            return BuildCallUDAF(call, output);
+        default:
+            break;
     }
+
+    ::llvm::FunctionCallee callsite;
+    bool return_by_arg = false;
+    CHECK_STATUS(ResolveLLVMFunction(call, &callsite, &return_by_arg));
+
+    ::llvm::IRBuilder<> builder(block_);
+
+    ::llvm::FunctionType* function_ty = callsite.getFunctionType();
+    std::vector<::llvm::Value*> llvm_args;
+
+    for (size_t i = 0; i < call->GetArgsSize(); ++i) {
+        node::ExprNode* arg_expr = call->GetArgs()->GetChild(i);
+
+        NativeValue llvm_arg_wrapper;
+        CHECK_TRUE(Build(arg_expr, &llvm_arg_wrapper, status),
+            "Build argument ", arg_expr->GetExprString(),
+            " failed: ", status.msg);
+
+        ::llvm::Type* actual_llvm_ty = llvm_arg_wrapper.GetType();
+        if (i < function_ty->getNumParams()) {
+            ::llvm::Type* expect_llvm_ty = function_ty->params()[i];
+            CHECK_TRUE(expect_llvm_ty == actual_llvm_ty,
+                "LLVM argument type mismatch at ", i,
+                " expect ", GetLLVMObjectString(expect_llvm_ty),
+                " but get ", GetLLVMObjectString(actual_llvm_ty));
+        }
+        
+        llvm_args.push_back(llvm_arg_wrapper.GetValue(&builder));
+    }
+
+    if (return_by_arg) {
+        auto ret_alloca = builder.CreateAlloca(function_ty->getReturnType());
+        llvm_args.insert(llvm_args.begin() + function_ty->getNumParams(),
+            ret_alloca);
+    }
+
+    ::llvm::Value* call_res = builder.CreateCall(callsite, llvm_args);
+    if (return_by_arg) {
+        call_res = builder.CreateLoad(
+            llvm_args[function_ty->getNumParams() + 1]);
+    }
+
+    *output = NativeValue::Create(call_res);
+    return base::Status::OK();
+
+
+    return Status::OK();
 }
 
 bool ExprIRBuilder::BuildCallFnLegacy(
@@ -356,6 +394,87 @@ bool ExprIRBuilder::BuildCallFnLegacy(
         return false;
     }
     return false;
+}
+
+Status ExprIRBuilder::ResolveLLVMUDFDef(const node::CallExprNode* call,
+                                        ::llvm::FunctionCallee* callsite,
+                                        bool* return_by_arg) {
+    auto udf_node = dynamic_cast<const node::UDFDefNode*>(call->GetFnDef());
+    *return_by_arg = udf_node->return_by_arg();
+
+    std::string fn_name = udf_node->def()->header_->GeIRFunctionName();
+    ::llvm::Function* llvm_func = module_->getFunction(fn_name);
+    if (llvm_func != nullptr) {
+        *callsite = module_->getOrInsertFunction(
+            fn_name, llvm_func->getFunctionType());
+        return Status::OK();
+    }
+
+    FnIRBuilder fn_builder(module_);
+    Status status;
+    CHECK_TRUE(fn_builder.Build(udf_node->def(), status),
+        "Build udf failed: ", status.msg);
+
+    llvm_func = module_->getFunction(fn_name);
+    CHECK_TRUE(llvm_func != nullptr, 
+        "Fail to find built udf after ir builder success: ", fn_name);
+
+    *callsite = module_->getOrInsertFunction(
+        fn_name, llvm_func->getFunctionType());
+    return Status::OK();
+}
+
+Status ExprIRBuilder::ResolveLLVMExternalDef(const node::CallExprNode* call,
+                                             ::llvm::FunctionCallee* callsite,
+                                             bool* return_by_arg) {
+    auto external_fn =
+        dynamic_cast<const node::ExternalFnDefNode*>(call->GetFnDef());
+    std::string function_name = external_fn->function_name();
+    CHECK_TRUE(external_fn->Validate(call->GetArgs()),
+        "External function argument validation error: ", function_name);
+
+    std::vector<::llvm::Type*> llvm_arg_types;
+    for (size_t i = 0; i < call->GetArgsSize(); ++i) {
+        ::llvm::Type* expect_llvm_ty = nullptr;
+        CHECK_TRUE(GetLLVMType(
+            module_, external_fn->GetArgType(i), &expect_llvm_ty));
+        llvm_arg_types.push_back(expect_llvm_ty);
+    }
+
+    ::llvm::Type* ret_llvm_ty = nullptr;
+    CHECK_TRUE(GetLLVMType(
+            module_, external_fn->GetReturnType(), &ret_llvm_ty));
+
+    // external call convention for return_by_arg=true:
+    // R f(ARGS...) -> void f(ARGS, R*, ...)
+    // note that R should be trivally constructible
+    if (external_fn->return_by_arg()) {
+        llvm_arg_types.push_back(ret_llvm_ty);
+        ret_llvm_ty = ::llvm::Type::getVoidTy(ret_llvm_ty->getContext());
+    }
+    auto llvm_fn_ty = llvm::FunctionType::get(
+        ret_llvm_ty, llvm_arg_types, external_fn->variadic_pos() >= 0);
+    *callsite = module_->getOrInsertFunction(function_name, llvm_fn_ty);
+    return Status::OK();
+}
+
+Status ExprIRBuilder::BuildCallUDAF(
+    const ::fesql::node::CallExprNode* fn, NativeValue* output) {
+
+}
+
+Status ExprIRBuilder::ResolveLLVMFunction(const node::CallExprNode* call,
+                                          ::llvm::FunctionCallee* callsite,
+                                          bool* return_by_arg) {
+    switch (call->GetFnDef()->GetType()) {
+        case node::kExternalFnDef:
+            return ResolveLLVMExternalDef(call, callsite, return_by_arg);
+        case node::kUDFDef:
+            return ResolveLLVMUDFDef(call, callsite, return_by_arg);
+        default:
+            return Status(common::kCodegenError,
+                "Unknown function def type");
+    }
 }
 
 // Build Struct Expr IR:

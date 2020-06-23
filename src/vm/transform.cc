@@ -13,6 +13,7 @@
 #include "codegen/fn_ir_builder.h"
 #include "codegen/fn_let_ir_builder.h"
 #include "vm/physical_op.h"
+#include "vm/schemas_context.h"
 
 namespace fesql {
 namespace vm {
@@ -56,12 +57,14 @@ bool TransformLogicalTreeToLogicalGraph(
 
 BatchModeTransformer::BatchModeTransformer(
     node::NodeManager* node_manager, const std::string& db,
-    const std::shared_ptr<Catalog>& catalog, ::llvm::Module* module)
+    const std::shared_ptr<Catalog>& catalog, ::llvm::Module* module,
+    udf::UDFLibrary* library)
     : node_manager_(node_manager),
       db_(db),
       catalog_(catalog),
       module_(module),
-      id_(0) {}
+      id_(0),
+      library_(library) {}
 
 BatchModeTransformer::~BatchModeTransformer() {}
 
@@ -782,6 +785,33 @@ bool BatchModeTransformer::GenProjects(
     Schema* output_schema,  // NOLINT
     ColumnSourceList* output_column_sources,
     base::Status& status) {  // NOLINT
+
+    // type inference
+    vm::SchemasContext schema_context(input_name_schema_list);
+    ExpressionTypeAnalyzer type_analyzer(
+        frame != nullptr, &schema_context, node_manager_);
+    auto expr_group = node_manager_->MakeExprList();
+    for (auto pnode : projects) {
+        auto pp_node = dynamic_cast<const node::ProjectNode*>(pnode);
+        auto expr = pp_node->GetExpression();
+        expr_group->AddChild(expr);
+    }
+    if (!type_analyzer.Visit(expr_group)) {
+        LOG(WARNING) << "Expression type inference failed";
+        return false;
+    }
+    
+    // function resolve
+    node::ExprNode* new_expr_group = nullptr;
+    FnDefResolver fn_resolver(library_, node_manager_);
+    fn_resolver.Visit(expr_group, &new_expr_group);
+    size_t expr_idx = 0;
+    for (auto pnode : projects) {
+        auto pp_node = dynamic_cast<node::ProjectNode*>(pnode);
+        pp_node->SetExpression(new_expr_group->GetChild(expr_idx));
+        expr_idx += 1;
+    }
+
     // TODO(wangtaize) use ops end op output schema
     ::fesql::codegen::RowFnLetIRBuilder builder(input_name_schema_list, frame,
                                                 module_);
@@ -2309,8 +2339,9 @@ bool LeftJoinOptimized::CheckExprListFromSchema(
 
 RequestModeransformer::RequestModeransformer(
     node::NodeManager* node_manager, const std::string& db,
-    const std::shared_ptr<Catalog>& catalog, ::llvm::Module* module)
-    : BatchModeTransformer(node_manager, db, catalog, module) {}
+    const std::shared_ptr<Catalog>& catalog, ::llvm::Module* module,
+    udf::UDFLibrary* library)
+    : BatchModeTransformer(node_manager, db, catalog, module, library) {}
 
 RequestModeransformer::~RequestModeransformer() {}
 

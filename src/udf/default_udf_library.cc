@@ -7,11 +7,10 @@
  *--------------------------------------------------------------------------
  **/
 #include "udf/default_udf_library.h"
+#include "udf/udf_registry.h"
 
 namespace fesql {
 namespace udf {
-
-DefaultUDFLibrary DefaultUDFLibrary::instance_;
 
 void DefaultUDFLibrary::Init() {
 

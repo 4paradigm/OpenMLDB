@@ -336,11 +336,11 @@ class TypeNode : public SQLNode {
     TypeNode() : SQLNode(node::kType, 0, 0), base_(fesql::node::kNull) {}
     explicit TypeNode(fesql::node::DataType base)
         : SQLNode(node::kType, 0, 0), base_(base), generics_({}) {}
-    explicit TypeNode(fesql::node::DataType base, const TypeNode &v1)
+    explicit TypeNode(fesql::node::DataType base, TypeNode* v1)
         : SQLNode(node::kType, 0, 0), base_(base), generics_({v1}) {}
     explicit TypeNode(fesql::node::DataType base,
-                      const fesql::node::TypeNode &v1,
-                      const fesql::node::TypeNode v2)
+                      fesql::node::TypeNode *v1,
+                      fesql::node::TypeNode *v2)
         : SQLNode(node::kType, 0, 0), base_(base), generics_({v1, v2}) {}
     ~TypeNode() {}
     const std::string GetName() const {
@@ -348,14 +348,20 @@ class TypeNode : public SQLNode {
         if (!generics_.empty()) {
             for (auto type : generics_) {
                 type_name.append("_");
-                type_name.append(type.GetName());
+                type_name.append(type->GetName());
             }
         }
         return type_name;
     }
 
+    fesql::node::TypeNode* GetGenericType(size_t idx) const {
+        return generics_[idx];
+    }
+
+    size_t GetGenericSize() const { return generics_.size(); }
+
     fesql::node::DataType base_;
-    std::vector<fesql::node::TypeNode> generics_;
+    std::vector<fesql::node::TypeNode*> generics_;
     void Print(std::ostream &output, const std::string &org_tab) const override;
     virtual bool Equals(const SQLNode *node) const;
 };
@@ -1098,12 +1104,13 @@ class FnDefNode : public SQLNode {
     virtual size_t GetArgsSize() const { return 0; }
     virtual const TypeNode* GetArgType(size_t i) const { return nullptr; }
     virtual const std::string GetSimpleName() const = 0;
+    virtual bool Validate(node::ExprListNode* args) const = 0;
 };
 
 class CallExprNode : public ExprNode {
  public:
     explicit CallExprNode(const FnDefNode* fn_def,
-                          const ExprListNode *args, const WindowDefNode *over)
+                          ExprListNode *args, const WindowDefNode *over)
         : ExprNode(kExprCall), fn_def_(fn_def), over_(over), args_(args) {
             this->AddChild(args);
         }
@@ -1127,7 +1134,7 @@ class CallExprNode : public ExprNode {
     // bool GetIsAgg() const { return is_agg_; }
 
     // void SetAgg(bool is_agg) { is_agg_ = is_agg; }
-    const ExprListNode *GetArgs() const { return args_; }
+    ExprListNode *GetArgs() const { return args_; }
 
     const int GetArgsSize() const {
         return nullptr == args_ ? 0 : args_->children_.size();
@@ -1140,7 +1147,7 @@ class CallExprNode : public ExprNode {
     // const std::string function_name_;
     const FnDefNode *fn_def_;
     const WindowDefNode *over_;
-    const ExprListNode *args_;
+    ExprListNode *args_;
 
     // TODO(xxx): maybe remove this if high order expression supported
     bool is_row_wise_ = false;
@@ -1728,6 +1735,7 @@ class ExternalFnDefNode : public FnDefNode {
         return arg_types_;
     }
     int variadic_pos() const { return variadic_pos_; }
+    bool return_by_arg() const { return return_by_arg_; }
 
     void Print(std::ostream &output, const std::string &tab) const override;
     bool Equals(const SQLNode *node) const override;
@@ -1737,6 +1745,8 @@ class ExternalFnDefNode : public FnDefNode {
     }
 
     bool IsResolved() const { return ret_type_ != nullptr; }
+
+    bool Validate(node::ExprListNode* args) const override;
 
  private:
     std::string function_name_;
@@ -1748,6 +1758,8 @@ class ExternalFnDefNode : public FnDefNode {
     // eg, variadic_pos_=1 for fn(x, ...);
     // -1 denotes non-variadic
     int variadic_pos_;
+
+    bool return_by_arg_;
 };
 
 class UDFDefNode : public FnDefNode {
@@ -1772,8 +1784,13 @@ class UDFDefNode : public FnDefNode {
         return dynamic_cast<FnParaNode*>(node)->GetParaType();
     }
 
+    bool return_by_arg() const { return return_by_arg_; }
+
+    bool Validate(node::ExprListNode* args) const override { return true; }
+
  private:
     const FnNodeFnDef *def_;
+    bool return_by_arg_;
 };
 
 class UDAFDefNode : public FnDefNode {
@@ -1797,7 +1814,7 @@ class UDAFDefNode : public FnDefNode {
     const FnDefNode *output_func() const { return output_; }
 
     bool AllowMerge() const { return merge_ != nullptr; }
-    bool Validate() const { return true; }
+    bool Validate(node::ExprListNode* args) const override { return true; }
 
  private:
     const ExprNode *init_;

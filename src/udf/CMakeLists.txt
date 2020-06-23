@@ -1,7 +1,7 @@
 include_directories(${INCLUDE_DIRECTORIES}
         ${PROJECT_SOURCE_DIR}/src
         ${PROJECT_BINARY_DIR}/src)
-add_library(fesql_udf STATIC udf.cc udf_registry.cc default_udf_library.cc)
+add_library(fesql_udf STATIC udf.cc udf_registry.cc udf_library.cc default_udf_library.cc)
 target_link_libraries(fesql_udf fesql_vm)
 
 if (TESTING_ENABLE)

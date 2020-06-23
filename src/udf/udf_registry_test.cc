@@ -397,15 +397,15 @@ TEST_F(UDFRegistryTest, test_simple_udaf_register) {
         .finalize();
 
     fn_def = dynamic_cast<const node::UDAFDefNode*>(
-        GetFnDef<int32_t>(library, "sum", &nm));
+        GetFnDef<ListV<int32_t>>(library, "sum", &nm));
     ASSERT_TRUE(fn_def != nullptr && fn_def->GetType() == node::kUDAFDef);
 
     fn_def = dynamic_cast<const node::UDAFDefNode*>(
-        GetFnDef<int32_t>(library, "sum", &nm));
+        GetFnDef<ListV<int32_t>>(library, "sum", &nm));
     ASSERT_TRUE(fn_def != nullptr && fn_def->GetType() == node::kUDAFDef);
 
     fn_def = dynamic_cast<const node::UDAFDefNode*>(
-        GetFnDef<std::string>(library, "sum", &nm));
+        GetFnDef<ListV<std::string>>(library, "sum", &nm));
     ASSERT_TRUE(fn_def == nullptr);
 
 /*

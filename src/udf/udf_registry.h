@@ -14,8 +14,10 @@
 #include <utility>
 
 #include "base/fe_status.h"
+#include "codec/list_iterator_codec.h"
 #include "node/sql_node.h"
 #include "node/node_manager.h"
+#include "udf/udf_library.h"
 
 namespace fesql {
 namespace udf {
@@ -24,6 +26,9 @@ using fesql::base::Status;
 using fesql::node::ExprListNode;
 using fesql::node::ExprNode;
 using fesql::node::SQLNode;
+
+using fesql::codec::ListV;
+
 
 // Forward declarations
 class ExprUDFRegistryHelper;
@@ -36,12 +41,12 @@ class SimpleUDAFRegistryHelper;
   */
 class UDFResolveContext {
  public:
- 	UDFResolveContext(const ExprListNode* args,
+ 	UDFResolveContext(ExprListNode* args,
                       const node::SQLNode* over,
  		    		  node::NodeManager* manager):
  		args_(args), over_(over), manager_(manager) {}
 
- 	const ExprListNode* args() { return args_; }
+ 	ExprListNode* args() { return args_; }
  	const node::SQLNode* over() { return over_; }
  	node::NodeManager* node_manager() { return manager_; }
 
@@ -53,7 +58,7 @@ class UDFResolveContext {
  	bool HasError() const { return error_msg_ != ""; }
 
  private:
- 	const ExprListNode* args_;
+ 	ExprListNode* args_;
  	const SQLNode* over_;
  	node::NodeManager* manager_;
 
@@ -107,39 +112,6 @@ class UDFRegistry : public UDFTransformRegistry {
  			fn_def, ctx->args(), ctx->over());
  		return Status::OK();
  	}
-};
-
-
-/**
-  * Hold global udf registry entries.
-  * "fn(arg0, arg1, ...argN)" -> some expression
-  */
-class UDFLibrary {
- public:
- 	Status Transform(const std::string& name,
- 					 const ExprListNode* args,
-                     const node::SQLNode* over,
- 		    		 node::NodeManager* manager,
- 		    		 ExprNode** result) const;
-
- 	Status Transform(const std::string& name,
- 					 UDFResolveContext* ctx,
- 		    		 ExprNode** result) const;
-
- 	std::shared_ptr<UDFTransformRegistry> Find(
- 		const std::string& name) const;
-
- 	// register interfaces
- 	ExprUDFRegistryHelper RegisterExprUDF(const std::string& name);
- 	ExternalFuncRegistryHelper RegisterExternal(const std::string& name);
- 	SimpleUDAFRegistryHelper RegisterSimpleUDAF(const std::string& name);
-
- private:
- 	template <typename Helper, typename RegistryT>
-	Helper DoStartRegister(const std::string& name);
-
- 	std::unordered_map<std::string,
- 		std::shared_ptr<UDFTransformRegistry>> table_;
 };
 
 
@@ -358,6 +330,17 @@ struct ArgTypeTrait<std::string> {
 	static std::string to_string() { return "string"; }
 	static node::TypeNode* to_type_node(node::NodeManager* nm) {
 		return nm->MakeTypeNode(node::kVarchar);
+	}
+};
+
+template<typename T>
+struct ArgTypeTrait<ListV<T>> {
+	static std::string to_string() { 
+		return "list<" +  ArgTypeTrait<T>::to_string() + ">";
+	}
+	static node::TypeNode* to_type_node(node::NodeManager* nm) {
+		return nm->MakeTypeNode(
+			node::kList, ArgTypeTrait<T>::to_type_node(nm));
 	}
 };
 

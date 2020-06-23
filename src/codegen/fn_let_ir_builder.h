@@ -47,8 +47,6 @@ class RowFnLetIRBuilder {
                    output_column_sources);  // NOLINT (runtime/references)
 
  private:
-    bool AnalyzeExpressions(const node::PlanNodeList& projects);
-
     bool BuildFnHeader(const std::string& name,
                        const std::vector<::llvm::Type*>& args_type,
                        ::llvm::Type* ret_type, ::llvm::Function** fn);
@@ -82,7 +80,6 @@ class RowFnLetIRBuilder {
     const vm::SchemasContext schema_context_;
     const node::FrameNode* frame_;
     ::llvm::Module* module_;
-    node::NodeManager nm_;
 };
 
 }  // namespace codegen

@@ -54,7 +54,7 @@ bool ListIRBuilder::BuilStructTypedAt(::llvm::Value* list, ::llvm::Value* pos,
         return false;
     }
     ::llvm::Type* struct_type = nullptr;
-    if (false == GetLLVMType(block_, &type_node.generics_[0], &struct_type)) {
+    if (false == GetLLVMType(block_, type_node.generics_[0], &struct_type)) {
         status.msg =
             "fail to codegen iterator.next(): invalid value type of iterator";
         status.code = common::kCodegenError;
@@ -72,7 +72,7 @@ bool ListIRBuilder::BuilStructTypedAt(::llvm::Value* list, ::llvm::Value* pos,
     struct_type = struct_type->getPointerElementType();
     ::std::string fn_name = "at." + type_node.GetName() + "." +
                             node::TypeNode(node::kInt32).GetName() + "." +
-                            type_node.generics_[0].GetName();
+                            type_node.generics_[0]->GetName();
     ::llvm::Function* fn =
         block_->getModule()->getFunction(::llvm::StringRef(fn_name));
     if (nullptr == fn) {
@@ -132,7 +132,7 @@ bool ListIRBuilder::BuildAt(::llvm::Value* list, ::llvm::Value* pos,
         return false;
     }
     ::llvm::Type* v1_type = nullptr;
-    if (false == GetLLVMType(block_, &type_node.generics_[0], &v1_type)) {
+    if (false == GetLLVMType(block_, type_node.generics_[0], &v1_type)) {
         status.msg =
             "fail to codegen iterator.next(): invalid value type of iterator";
         status.code = common::kCodegenError;
@@ -279,7 +279,7 @@ bool ListIRBuilder::BuildStructTypeIteratorNext(::llvm::Value* iterator,
         return false;
     }
     ::llvm::Type* struct_type = nullptr;
-    if (false == GetLLVMType(block_, &type_node.generics_[0], &struct_type)) {
+    if (false == GetLLVMType(block_, type_node.generics_[0], &struct_type)) {
         status.msg =
             "fail to codegen iterator.next(): invalid value type of iterator";
         status.code = common::kCodegenError;
@@ -299,7 +299,7 @@ bool ListIRBuilder::BuildStructTypeIteratorNext(::llvm::Value* iterator,
     ::llvm::Value* next_value_ptr = builder.CreateAlloca(struct_type);
 
     ::std::string fn_name =
-        "next." + type_node.GetName() + "." + type_node.generics_[0].GetName();
+        "next." + type_node.GetName() + "." + type_node.generics_[0]->GetName();
     ::llvm::Function* fn =
         block_->getModule()->getFunction(::llvm::StringRef(fn_name));
     if (nullptr == fn) {
@@ -345,7 +345,7 @@ bool ListIRBuilder::BuildIteratorNext(::llvm::Value* iterator,
         return false;
     }
     ::llvm::Type* v1_type = nullptr;
-    if (false == GetLLVMType(block_, &type_node.generics_[0], &v1_type)) {
+    if (false == GetLLVMType(block_, type_node.generics_[0], &v1_type)) {
         status.msg =
             "fail to codegen iterator.next(): invalid value type of iterator";
         status.code = common::kCodegenError;
@@ -397,7 +397,7 @@ bool ListIRBuilder::BuildIteratorDelete(::llvm::Value* iterator,
         return false;
     }
     ::llvm::Type* v1_type = nullptr;
-    if (false == GetLLVMType(block_, &type_node.generics_[0], &v1_type)) {
+    if (false == GetLLVMType(block_, type_node.generics_[0], &v1_type)) {
         status.msg =
             "fail to codegen iterator.delete(): invalid value type of iterator";
         status.code = common::kCodegenError;

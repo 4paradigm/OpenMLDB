@@ -291,7 +291,7 @@ void SumArrayListCol(benchmark::State* state, MODE mode, int64_t data_size,
     node::TypeNode type;
     uint32_t col_size;
     ASSERT_TRUE(builder.ResolveFieldInfo(col_name, 0, &info, &type));
-    ASSERT_TRUE(codegen::GetLLVMColumnSize(type, &col_size));
+    ASSERT_TRUE(codegen::GetLLVMColumnSize(&type, &col_size));
     int8_t* buf = reinterpret_cast<int8_t*>(alloca(col_size));
     ::fesql::codec::ListRef list_ref;
 
@@ -384,7 +384,7 @@ void SumMemTableCol(benchmark::State* state, MODE mode, int64_t data_size,
     node::TypeNode type;
     uint32_t col_size;
     ASSERT_TRUE(builder.ResolveFieldInfo(col_name, 0, &info, &type));
-    ASSERT_TRUE(codegen::GetLLVMColumnSize(type, &col_size));
+    ASSERT_TRUE(codegen::GetLLVMColumnSize(&type, &col_size));
     int8_t* buf = reinterpret_cast<int8_t*>(alloca(col_size));
     ::fesql::codec::ListRef list_ref;
 

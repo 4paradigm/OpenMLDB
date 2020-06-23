@@ -1176,8 +1176,8 @@ bool TypeNode::Equals(const SQLNode *node) const {
     return this->base_ == that->base_ &&
            std::equal(this->generics_.cbegin(), this->generics_.cend(),
                       that->generics_.cbegin(),
-                      [&](fesql::node::TypeNode a, fesql::node::TypeNode b) {
-                          return a.Equals(&b);
+                      [&](fesql::node::TypeNode* a, fesql::node::TypeNode* b) {
+                          return a->Equals(b);
                       });
 }
 
@@ -1343,6 +1343,36 @@ void ExternalFnDefNode::Print(std::ostream &output,
 bool ExternalFnDefNode::Equals(const SQLNode *node) const {
     auto other = dynamic_cast<const ExternalFnDefNode *>(node);
     return other != nullptr && other->function_name() == function_name();
+}
+
+bool ExternalFnDefNode::Validate(node::ExprListNode* args) const { 
+    if (arg_types_.size() > args->GetChildNum()) {
+        LOG(WARNING) << function_name() << " take at least "
+            << arg_types_.size() << " arguments, but get "
+            << args->GetChildNum();
+        return false;
+    } else if (arg_types_.size() < args->GetChildNum() &&
+               variadic_pos_ != arg_types_.size()) {
+        LOG(WARNING) << function_name() << " take explicit "
+            << arg_types_.size() << " arguments, but get "
+            << args->GetChildNum();
+        return false;
+    }
+    for (size_t i = 0; i < arg_types_.size(); ++i) {
+        auto arg = args->GetChild(i);
+        if (arg->GetOutputType() == nullptr) {
+            LOG(WARNING) << function_name() << "'s "
+                << i << "th actual argument take unknown type";
+            return false;
+        } else if (arg_types_[i]->Equals(arg->GetOutputType())) {
+            LOG(WARNING) << function_name() << "'s "
+                << i << "th actual argument mismatch: get "
+                << arg->GetOutputType()->GetName()
+                << " but expect " << arg_types_[i]->GetName();
+            return false;
+        }
+    }
+    return true;
 }
 
 void UDFDefNode::Print(std::ostream &output, const std::string &tab) const {

@@ -76,13 +76,13 @@ class MemoryWindowDecodeIRBuilder : public WindowDecodeIRBuilder {
  private:
     bool BuildGetPrimaryCol(const std::string& fn_name, ::llvm::Value* row_ptr,
                             uint32_t row_idx, uint32_t col_idx, uint32_t offset,
-                            const fesql::node::TypeNode& type,
+                            fesql::node::TypeNode* type,
                             ::llvm::Value** output);
 
     bool BuildGetStringCol(uint32_t row_idx, uint32_t col_idx, uint32_t offset,
                            uint32_t next_str_field_offset,
                            uint32_t str_start_offset,
-                           const fesql::node::TypeNode& type,
+                           fesql::node::TypeNode* type,
                            ::llvm::Value* window_ptr, ::llvm::Value** output);
 
  private:

@@ -346,7 +346,7 @@ ExprNode *NodeManager::MakeColumnRefNode(const std::string &column_name,
 }
 
 ExprNode *NodeManager::MakeFuncNode(const std::string &name,
-                                    const ExprListNode *list_ptr,
+                                    ExprListNode *list_ptr,
                                     const SQLNode *over) {
 
     FnDefNode* def_node = dynamic_cast<FnDefNode*>(
@@ -357,7 +357,7 @@ ExprNode *NodeManager::MakeFuncNode(const std::string &name,
 }
 
 ExprNode *NodeManager::MakeFuncNode(const FnDefNode *fn,
-                                    const ExprListNode *list_ptr,
+                                    ExprListNode *list_ptr,
                                     const SQLNode *over) {
     CallExprNode *node_ptr = new CallExprNode(
         fn, list_ptr, dynamic_cast<const WindowDefNode *>(over));
@@ -777,21 +777,22 @@ TypeNode *NodeManager::MakeTypeNode(fesql::node::DataType base) {
     return node_ptr;
 }
 TypeNode *NodeManager::MakeTypeNode(fesql::node::DataType base,
-                                    const fesql::node::TypeNode& v1) {
+                                    fesql::node::TypeNode* v1) {
     TypeNode *node_ptr = new TypeNode(base, v1);
     RegisterNode(node_ptr);
     return node_ptr;
 }
 TypeNode *NodeManager::MakeTypeNode(fesql::node::DataType base,
                                     fesql::node::DataType v1) {
-    TypeNode *node_ptr = new TypeNode(base, TypeNode(v1));
+    TypeNode *node_ptr = new TypeNode(base, MakeTypeNode(v1));
     RegisterNode(node_ptr);
     return node_ptr;
 }
 TypeNode *NodeManager::MakeTypeNode(fesql::node::DataType base,
                                     fesql::node::DataType v1,
                                     fesql::node::DataType v2) {
-    TypeNode *node_ptr = new TypeNode(base, TypeNode(v1), TypeNode(v2));
+    TypeNode *node_ptr = new TypeNode(
+        base, MakeTypeNode(v1), MakeTypeNode(v2));
     RegisterNode(node_ptr);
     return node_ptr;
 }
@@ -1083,7 +1084,12 @@ node::SQLNode* NodeManager::MakeExternalFnDefNode(
     return RegisterNode(new node::ExternalFnDefNode(
         function_name, function_ptr, ret_type,
         arg_types, variadic_pos));
+}
 
+node::SQLNode* NodeManager::MakeUnresolvedFnDefNode(
+    const std::string& function_name) {
+    return RegisterNode(new node::ExternalFnDefNode(
+        function_name, nullptr, nullptr, {}, -1));
 }
 
 node::SQLNode *NodeManager::MakeUDFDefNode(const FnNodeFnDef *def) {
