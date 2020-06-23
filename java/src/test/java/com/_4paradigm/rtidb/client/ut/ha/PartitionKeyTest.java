@@ -1,9 +1,6 @@
 package com._4paradigm.rtidb.client.ut.ha;
 
-import com._4paradigm.rtidb.client.GetFuture;
-import com._4paradigm.rtidb.client.KvIterator;
-import com._4paradigm.rtidb.client.PutFuture;
-import com._4paradigm.rtidb.client.ScanFuture;
+import com._4paradigm.rtidb.client.*;
 import com._4paradigm.rtidb.client.base.TestCaseBase;
 import com._4paradigm.rtidb.client.impl.TableClientCommon;
 import com._4paradigm.rtidb.common.Common;
@@ -87,6 +84,15 @@ public class PartitionKeyTest extends TestCaseBase {
             Assert.assertEquals(row.length, 3);
             Assert.assertEquals(row[0], "card0");
             Assert.assertEquals(row[1], "mcc1");
+            it = tableSyncClient.scan(name, "cardxxx", "card", 0, 0);
+            Assert.assertFalse(it.valid());
+            row = tableSyncClient.getRow(name, "cardxxx", "card", 0);
+            Assert.assertEquals(row, null);
+            Assert.assertEquals(0, tableSyncClient.count(name, "cardxxx", "card"));
+            Assert.assertTrue(tableSyncClient.delete(name, "card0", "card"));
+            Assert.assertFalse(tableSyncClient.delete(name, "card0", "card"));
+            Assert.assertFalse(tableSyncClient.delete(name, "cardxxx", "card"));
+            Assert.assertFalse(tableSyncClient.delete(name, "cardxxx", "mcc"));
         } catch (Exception e) {
             e.printStackTrace();
             Assert.fail();
@@ -105,6 +111,88 @@ public class PartitionKeyTest extends TestCaseBase {
         }
         try {
             GetFuture gf = tableAsyncClient.get(name, "card0", "card", 0);
+            Assert.fail();
+        } catch (Exception e) {
+            Assert.assertTrue(true);
+        }
+        try {
+            KvIterator it = tableSyncClient.scan(name, "mccxxx", "mcc", 0, 0);
+            Assert.fail();
+        } catch (Exception e) {
+            Assert.assertTrue(true);
+        }
+        try {
+            Object[] row = tableSyncClient.getRow(name, "mccxxx", "mcc", 0);
+            Assert.fail();
+        } catch (Exception e) {
+            Assert.assertTrue(true);
+        }
+        try {
+            Assert.assertEquals(0, tableSyncClient.count(name, "mccxxx", "mcc"));
+            Assert.fail();
+        } catch (Exception e) {
+            Assert.assertTrue(true);
+        }
+
+        nsc.dropTable(name);
+    }
+
+    @Test (dataProvider = "FormatVersion")
+    public void testPartitionKeyTTL(int formatVersion, String[] partitionKey) {
+        String name = String.valueOf(id.incrementAndGet());
+        nsc.dropTable(name);
+        Common.ColumnDesc col0 = Common.ColumnDesc.newBuilder().setName("card").setAddTsIdx(true).setType("string").build();
+        Common.ColumnDesc col1 = Common.ColumnDesc.newBuilder().setName("mcc").setAddTsIdx(false).setType("string").build();
+        Common.ColumnDesc col2 = Common.ColumnDesc.newBuilder().setName("amt").setAddTsIdx(false).setType("double").build();
+        NS.TableInfo.Builder builder = NS.TableInfo.newBuilder()
+                .setName(name).setTtl(10)
+                .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2)
+                .setFormatVersion(formatVersion);
+        for (String key : partitionKey) {
+            builder.addPartitionKey(key);
+        }
+        NS.TableInfo table = builder.build();
+        boolean ok = nsc.createTable(table);
+        Assert.assertTrue(ok);
+        client.refreshRouteTable();
+        long ts = System.currentTimeMillis();
+        try {
+            Map<String, Object> data = new HashMap<String, Object>();
+            data.put("card", "card0");
+            data.put("mcc", "mcc0");
+            data.put("amt", 1.5);
+            tableSyncClient.put(name, ts - 100, data);
+            data.clear();
+            data.put("card", "card0");
+            data.put("mcc", "mcc1");
+            data.put("amt", 1.6);
+            tableSyncClient.put(name, ts, data);
+            data.clear();
+            data.put("card", "card0");
+            data.put("mcc", "mcc2");
+            data.put("amt", 1.7);
+            tableSyncClient.put(name, ts - 11 * 60 * 1000, data);
+            KvIterator it = tableSyncClient.scan(name, "card0", "card", ts, 0);
+            Assert.assertTrue(it.valid());
+            Assert.assertEquals(it.getCount(), 2);
+            Object[] value = it.getDecodedValue();
+            Assert.assertEquals(value[1], "mcc1");
+            Object[] row = tableSyncClient.getRow(name, "card0", "card", 0);
+            Assert.assertEquals(row.length, 3);
+            Assert.assertEquals(row[0], "card0");
+            Assert.assertEquals(row[1], "mcc1");
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.fail();
+        }
+        try {
+            KvIterator it = tableSyncClient.scan(name, "card0", "card", ts - 11 * 60 * 1000, 0);
+            Assert.fail();
+        } catch (Exception e) {
+            Assert.assertTrue(true);
+        }
+        try {
+            Object[] row = tableSyncClient.getRow(name, "card0", "card", ts - 11 * 60 * 1000);
             Assert.fail();
         } catch (Exception e) {
             Assert.assertTrue(true);
@@ -245,6 +333,21 @@ public class PartitionKeyTest extends TestCaseBase {
             Assert.assertEquals(row.length, 3);
             Assert.assertEquals(row[0], "card0");
             Assert.assertEquals(row[1], "mcc0");
+
+            it = tableSyncClient.scan(name, "cardxxx", "card", 0, 0);
+            Assert.assertFalse(it.valid());
+            it = tableSyncClient.scan(name, "mccxxx", "mcc", 0, 0);
+            Assert.assertFalse(it.valid());
+            row = tableSyncClient.getRow(name, "cardxxx", "card", 0);
+            Assert.assertEquals(row, null);
+            row = tableSyncClient.getRow(name, "mccxxx", "mcc", 0);
+            Assert.assertEquals(row, null);
+            Assert.assertEquals(0, tableSyncClient.count(name, "cardxxx", "card"));
+            Assert.assertEquals(0, tableSyncClient.count(name, "mccxxx", "mcc"));
+            Assert.assertTrue(tableSyncClient.delete(name, "card0", "card"));
+            Assert.assertFalse(tableSyncClient.delete(name, "card0", "card"));
+            Assert.assertFalse(tableSyncClient.delete(name, "cardxxx", "card"));
+            Assert.assertFalse(tableSyncClient.delete(name, "cardxxx", "mcc"));
         } catch (Exception e) {
             e.printStackTrace();
             Assert.fail();

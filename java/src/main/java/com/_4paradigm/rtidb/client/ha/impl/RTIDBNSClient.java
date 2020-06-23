@@ -113,7 +113,7 @@ public class RTIDBNSClient implements RTIDBClient{
                         }
                         if (localIpAddr.contains(endpoint.getIp().toLowerCase())) {
                             ph.setFastTablet(tabletServerWapper);
-                            logger.info("find fast tablet[{}] server for table {} local read", endpoint, table.getName());
+                            logger.debug("find fast tablet[{}] server for table {} local read", endpoint, table.getName());
                         }
                     }
                 }
@@ -138,7 +138,7 @@ public class RTIDBNSClient implements RTIDBClient{
                 if (path.isEmpty()) {
                     continue;
                 }
-                logger.info("alive endpoint {}", path);
+                logger.debug("alive endpoint {}", path);
                 String[] parts = path.split(":");
                 if (parts.length != 2) {
                     logger.warn("invalid endpoint {}", path);
