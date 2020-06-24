@@ -848,11 +848,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (blobKeys.isEmpty()) {
             return true;
         }
-        List<Long> keys = new ArrayList<Long>();
-        for (String key : blobKeys.keySet()) {
-            Long blobKey = blobKeys.get(key);
-            keys.add(blobKey);
-        }
+        List<Long> keys = new ArrayList<Long>(blobKeys.values());
         return deleteBlobByList(th, keys);
     }
 
@@ -1647,8 +1643,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (th.getBlobServer() != null && !th.IsObjectTable()) {
             putObjectStore(valueColumns, th, blobKeys);
         }
-        ByteBuffer valueBuffer;
-        valueBuffer = RowBuilder.encode(valueColumns, newValueSchema, blobKeys);
+        ByteBuffer valueBuffer = RowBuilder.encode(valueColumns, newValueSchema, blobKeys);
         try {
             return updateRequest(th, 0, conditionColumns, newValueSchema, valueBuffer);
         } catch (Exception e) {
