@@ -352,7 +352,19 @@ ExprNode *NodeManager::MakeCastNode(const node::DataType cast_type,
 
 ExprNode *NodeManager::MakeTimeFuncNode(const TimeUnit time_unit,
                                         const ExprListNode *list_ptr) {
-    std::string fn_name = TimeUnitName(time_unit);
+    std::string fn_name = "";
+    switch (time_unit) {
+        case kTimeUnitWeek:
+            fn_name = "weekofyear";
+            break;
+        case kTimeUnitDay: {
+            fn_name = "dayofmonth";
+            break;
+        }
+        default: {
+            fn_name = TimeUnitName(time_unit);
+        }
+    }
 
     if (fn_name.empty() || fn_name == "unknow") {
         LOG(WARNING) << "Fail to build time function node";

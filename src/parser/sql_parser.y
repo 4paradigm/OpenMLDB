@@ -379,6 +379,7 @@ typedef void* yyscan_t;
 %token WHERE
 %token WHILE
 %token WITH
+%token WEEK
 %token WRITE
 %token XOR
 %token YEAR
@@ -1641,6 +1642,10 @@ time_unit:
 			|MONTH
 			{
 				$$ = fesql::node::kTimeUnitMonth;
+			}
+			|WEEK
+			{
+				$$ = fesql::node::kTimeUnitWeek;
 			}
 			|DAY
 			{

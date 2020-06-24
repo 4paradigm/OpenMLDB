@@ -129,6 +129,7 @@ enum DataType {
 enum TimeUnit {
     kTimeUnitYear,
     kTimeUnitMonth,
+    kTimeUnitWeek,
     kTimeUnitDay,
     kTimeUnitHour,
     kTimeUnitMinute,

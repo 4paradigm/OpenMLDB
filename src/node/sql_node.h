@@ -199,12 +199,11 @@ inline const std::string ExprTypeName(const ExprType &type) {
 }
 
 inline const std::string TimeUnitName(const TimeUnit &time_unit) {
-    switch(time_unit) {
+    switch (time_unit) {
         case kTimeUnitYear:
             return "year";
         case kTimeUnitMonth:
             return "month";
-            break;
         case kTimeUnitDay:
             return "dayofmonth";
         case kTimeUnitHour:
