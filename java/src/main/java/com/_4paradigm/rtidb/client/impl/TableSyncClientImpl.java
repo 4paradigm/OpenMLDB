@@ -122,24 +122,25 @@ public class TableSyncClientImpl implements TableSyncClient {
         List<ByteString> byteStrings = new ArrayList<>();
         int count = 0;
         ProjectionInfo projectionInfo = null;
-        try {
-            for (ScanFuture scanFuture : futureList) {
-                Tablet.ScanResponse response = scanFuture.getResponse();
-                if (response == null) {
-                    throw new TabletException("Connection error");
-                }
-                if (response.getCode() != 0) {
-                    throw new TabletException(response.getCode(), response.getMsg());
-                } else if (response.getCount() > 0) {
-                    count += response.getCount();
-                    byteStrings.add(response.getPairs());
-                    if (projectionInfo == null) {
-                        projectionInfo = scanFuture.getProjectionInfo();
-                    }
+        for (ScanFuture scanFuture : futureList) {
+            Tablet.ScanResponse response = null;
+            try {
+                response = scanFuture.getResponse();
+            } catch (Exception e) {
+                throw new TabletException("rtidb internal server error");
+            }
+            if (response == null) {
+                throw new TabletException("Connection error");
+            }
+            if (response.getCode() != 0) {
+                throw new TabletException(response.getCode(), response.getMsg());
+            } else if (response.getCount() > 0) {
+                count += response.getCount();
+                byteStrings.add(response.getPairs());
+                if (projectionInfo == null) {
+                    projectionInfo = scanFuture.getProjectionInfo();
                 }
             }
-        } catch (Exception e) {
-            throw new TabletException("rtidb internal server error");
         }
         if (option.getLimit() != 0) {
             count = Math.min(option.getLimit(), count);
@@ -397,8 +398,9 @@ public class TableSyncClientImpl implements TableSyncClient {
                     }
                 } else if (response.getCode() == 109) {
                     notFountCnt++;
+                } else {
+                    throw new TabletException(response.getCode(), response.getMsg());
                 }
-
             }
             if (realFuture == null) {
                 if (notFountCnt == futureList.size()) {
@@ -888,14 +890,21 @@ public class TableSyncClientImpl implements TableSyncClient {
             int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
             return delete(th.getTableInfo().getTid(), pid, key, idxName, th);
         } else {
+            int failed_cnt = 0;
             for (int pid = 0; pid < th.getPartitions().length; pid++) {
-                if (!delete(th.getTableInfo().getTid(), pid, key, idxName, th)) {
-                    return  false;
+                try {
+                    if (!delete(th.getTableInfo().getTid(), pid, key, idxName, th)) {
+                        failed_cnt++;
+                    }
+                } catch (TabletException e) {
+                    failed_cnt++;
                 }
             }
-            return true;
+            if (failed_cnt != th.getPartitions().length) {
+                return true;
+            }
+            return false;
         }
-
     }
 
     @Override

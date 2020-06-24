@@ -17,6 +17,12 @@ class TestPartitionKey(TestCaseBase):
 
     leader, slave1, slave2 = (i for i in conf.tb_endpoints)
 
+    def convert_partition_key(self, raw_key):
+        partition_key = raw_key.split(",")
+        if len(partition_key) == 1:
+            partition_key = raw_key
+        return partition_key
+
     @ddt.data(
             ("col1", "Create table ok"),
             ("col2", "Create table ok"),
@@ -31,9 +37,6 @@ class TestPartitionKey(TestCaseBase):
     def test_partitionkey_create(self, args):
         name = 'tname{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
-        partition_key = args[0].split(",")
-        if len(partition_key) == 1:
-            partition_key = args[0]
         table_meta = {
                 "name": name,
                 "ttl": 0,
@@ -42,7 +45,7 @@ class TestPartitionKey(TestCaseBase):
                     {"name": "col2", "type": "string", "add_ts_idx": "false"},
                     {"name": "col3", "type": "double", "add_ts_idx": "false"},
                     ],
-                "partition_key": partition_key
+                "partition_key": self.convert_partition_key(args[0])
                 }
         utils.gen_table_meta_file(table_meta, metadata_path)
         rs = self.ns_create(self.ns_leader, metadata_path)
@@ -66,9 +69,6 @@ class TestPartitionKey(TestCaseBase):
     def test_partitionkey_create_by_column_key(self, args):
         name = 'tname{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
-        partition_key = args[0].split(",")
-        if len(partition_key) == 1:
-            partition_key = args[0]
         table_meta = {
                 "name": name,
                 "ttl": 0,
@@ -77,7 +77,7 @@ class TestPartitionKey(TestCaseBase):
                     {"name": "col2", "type": "string", "add_ts_idx": "false"},
                     {"name": "col3", "type": "int64", "add_ts_idx": "false", "is_ts_col": "true"},
                     ],
-                "partition_key": partition_key,
+                "partition_key": self.convert_partition_key(args[0]),
                 "column_key": [
                     {"index_name":"col1", "ts_name":["col3"]},
                     ]
@@ -90,20 +90,29 @@ class TestPartitionKey(TestCaseBase):
             self.assertEqual(result["partition_key"].replace(" ", ""), args[0]);
         self.ns_drop(self.ns_leader, name)
 
-    @ddt.data(0, 1)
-    def test_partitionkey_all(self, format_version):
+    @ddt.data(
+            (0, "card"),
+            (1, "card"),
+            (0, "mcc"),
+            (1, "mcc"),
+            (0, "amt"),
+            (1, "amt"),
+            (0, "card,mcc"),
+            (1, "card,mcc"),
+            )
+    def test_partitionkey_all(self, args):
         name = 'tname{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         table_meta = {
                 "name": name,
                 "ttl": 0,
-                "format_version": format_version,
+                "format_version": args[0],
                 "column_desc":[
                     {"name": "card", "type": "string", "add_ts_idx": "true"},
                     {"name": "mcc", "type": "string", "add_ts_idx": "true"},
                     {"name": "amt", "type": "double", "add_ts_idx": "false"},
                     ],
-                "partition_key": "card"
+                "partition_key": self.convert_partition_key(args[1])
                 }
         utils.gen_table_meta_file(table_meta, metadata_path)
         rs = self.ns_create(self.ns_leader, metadata_path)

@@ -316,7 +316,7 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
                 if (path.startsWith(blobPrefix)) {
                     path = path.substring(blobPrefix.length());
                 }
-                logger.info("alive endpoint {}", path);
+                logger.debug("alive endpoint {}", path);
                 String[] parts = path.split(":");
                 if (parts.length != 2) {
                     logger.warn("invalid endpoint {}", path);
