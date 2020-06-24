@@ -11,7 +11,6 @@ else
     sed -i '/set(CMAKE_BUILD_TYPE/c\set(CMAKE_BUILD_TYPE RelWithDebInfo)' CMakeLists.txt 
 fi
 
-[ -f "${WORK_DIR}/build/bin/rtidb" ] && exit 0
 VERSION=$(git tag --points-at HEAD)
 if [ -n "${VERSION}" ]; then
     if [[ ! ($VERSION =~ ^[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}$) ]]; then

@@ -10,7 +10,15 @@ fi
 ln -sf /usr/workdir/thirdparty thirdparty 
 ln -sf /usr/workdir/thirdsrc thirdsrc
 sed -i /[:blank:]*version/s/1.0/$1/ python/setup.py
-sh ./steps/compile.sh
+if [ -f "build/bin/rtidb" ]; then
+    ./build/bin/rtidb --version | grep -qw ${1}
+    if [ $? -ne 0 ]; then
+        rm -f build/bin/rtidb
+        sh ./steps/compile.sh
+    fi
+else
+    sh ./steps/compile.sh
+fi
 package=rtidb-cluster-$1
 rm -rf ${package}
 mkdir ${package}
