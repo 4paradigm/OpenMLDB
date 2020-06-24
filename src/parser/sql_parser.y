@@ -114,7 +114,6 @@ typedef void* yyscan_t;
 
 
 
-%token <intval> I32
 %token <strval> NEWLINES
 %token <intval> INDENT
 %token <strval> DEF
@@ -208,6 +207,19 @@ typedef void* yyscan_t;
 %token HOUR_MICROSECOND
 %token HOUR_MINUTE
 %token HOUR_SECOND
+%token I16
+%token I32
+%token I64
+%token I16_MAX
+%token I32_MAX
+%token I64_MAX
+%token I16_MIN
+%token I32_MIN
+%token I64_MIN
+%token FLOAT_MAX
+%token DOUBLE_MAX
+%token FLOAT_MIN
+%token DOUBLE_MIN
 %token IF
 %token IGNORE
 %token IN
@@ -587,9 +599,17 @@ for_in_stmt:
 		}
 		;
 
-types:  I32
+types:  I16
         {
-            $$ = ::fesql::node::kInt32;
+            $$ = ::fesql::node::kInt16;
+        }
+        |I32
+        {
+        	$$ = ::fesql::node::kInt32;
+        }
+        |I64
+        {
+            $$ = ::fesql::node::kInt64;
         }
         |SMALLINT
         {
@@ -1201,6 +1221,9 @@ sql_id_list:
 fun_expr:
 	 var   	{ $$ = $1; }
      | expr_const 	{ $$ = $1; }
+     | types '(' fun_expr ')' {
+     	$$ = node_manager->MakeCastNode($1, $3);
+     }
      | function_name '(' ')'  	{
      	$$ = node_manager->MakeFuncNode($1, NULL, NULL);
      }
@@ -1384,7 +1407,6 @@ sql_expr:
      	$$ = node_manager->MakeQueryExprNode($2);
      }
      ;
-
 expr_const:
     STRING
         {
@@ -1403,6 +1425,36 @@ expr_const:
         { $$ = (node_manager->MakeConstNode($1)); }
   	| NULLX
         { $$ = (node_manager->MakeConstNode()); }
+    | I16_MAX {
+    	$$ = node_manager->MakeConstNodeINT16MAX();
+    }
+    | I32_MAX {
+    	$$ = node_manager->MakeConstNodeINT32MAX();
+    }
+    | I64_MAX {
+    	$$ = node_manager->MakeConstNodeINT64MAX();
+    }
+    | FLOAT_MAX {
+    	$$ = node_manager->MakeConstNodeFLOATMAX();
+    }
+    | DOUBLE_MAX {
+    	$$ = node_manager->MakeConstNodeDOUBLEMAX();
+    }
+    | I16_MIN {
+    	$$ = node_manager->MakeConstNodeINT16MIN();
+    }
+    | I32_MIN {
+    	$$ = node_manager->MakeConstNodeINT32MIN();
+    }
+    | I64_MIN {
+    	$$ = node_manager->MakeConstNodeINT64MIN();
+    }
+    | FLOAT_MIN {
+    	$$ = node_manager->MakeConstNodeFLOATMIN();
+    }
+    | DOUBLE_MIN {
+    	$$ = node_manager->MakeConstNodeDOUBLEMIN();
+    }
   	;
 
 sql_call_expr:

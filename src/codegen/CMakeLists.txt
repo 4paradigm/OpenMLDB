@@ -26,7 +26,7 @@ add_library(fesql_codegen STATIC
         context.cc)
 if (TESTING_ENABLE)
 set(vm_deps_libs
-        fesql_case ${yaml_libs} boost_filesystem ${VM_LIBS} fesql_flags ${LLVM_LIBS} ${BRPC_LIBS} ${OS_LIB})
+        fesql_case boost_filesystem ${yaml_libs} ${VM_LIBS} fesql_flags ${LLVM_LIBS} ${BRPC_LIBS} ${OS_LIB})
 
 add_executable(ir_base_builder_test ir_base_builder_test.cc)
 target_link_libraries(ir_base_builder_test gtest ${vm_deps_libs})

@@ -232,18 +232,18 @@ TEST_F(ArithmeticIRBuilderTest, test_add_timestamp_expr) {
 TEST_F(ArithmeticIRBuilderTest, test_sub_timestamp_expr) {
     Timestamp t1(8000000000L);
     Timestamp t2(1L);
-    BinaryArithmeticExprCheck<Timestamp *, Timestamp *, Timestamp>(
+    BinaryArithmeticExprCheck<Timestamp *, Timestamp *, int64_t>(
         ::fesql::node::kTimestamp, ::fesql::node::kTimestamp,
-        ::fesql::node::kTimestamp, &t1, &t2, Timestamp(7999999999L),
+        ::fesql::node::kInt64, &t1, &t2, 7999999999L,
         ::fesql::node::kFnOpMinus);
 
-    BinaryArithmeticExprCheck<Timestamp *, int64_t, Timestamp>(
+    BinaryArithmeticExprCheck<Timestamp *, int64_t, int64_t>(
         ::fesql::node::kTimestamp, ::fesql::node::kInt64,
-        ::fesql::node::kTimestamp, &t1, 1L, Timestamp(7999999999L),
+        ::fesql::node::kInt64, &t1, 1L, 7999999999L,
         ::fesql::node::kFnOpMinus);
-    BinaryArithmeticExprCheck<Timestamp *, int32_t, Timestamp>(
+    BinaryArithmeticExprCheck<Timestamp *, int32_t, int64_t>(
         ::fesql::node::kTimestamp, ::fesql::node::kInt32,
-        ::fesql::node::kTimestamp, &t1, 1, Timestamp(7999999999L),
+        ::fesql::node::kInt64, &t1, 1, 7999999999L,
         ::fesql::node::kFnOpMinus);
 }
 TEST_F(ArithmeticIRBuilderTest, test_add_float_x_expr) {

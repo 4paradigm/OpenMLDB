@@ -107,6 +107,8 @@ class NodeManager {
     TableRefNode *MakeQueryRefNode(const QueryNode *sub_query,
                                    const std::string &alias);
 
+    ExprNode *MakeCastNode(const node::DataType cast_type,
+                           const ExprNode *expr);
     ExprNode *MakeTimeFuncNode(const TimeUnit time_unit,
                                const ExprListNode *args);
     ExprNode *MakeFuncNode(const std::string &name, const ExprListNode *args,
@@ -183,6 +185,7 @@ class NodeManager {
                            const std::string db_name);
     ExprNode *MakeExprIdNode(const std::string &name);
     // Make Fn Node
+    ExprNode *MakeConstNode(int16_t value);
     ExprNode *MakeConstNode(int value);
     ExprNode *MakeConstNode(int64_t value, DataType unit);
     ExprNode *MakeConstNode(int64_t value);
@@ -191,6 +194,16 @@ class NodeManager {
     ExprNode *MakeConstNode(const std::string &value);
     ExprNode *MakeConstNode(const char *value);
     ExprNode *MakeConstNode();
+    ExprNode *MakeConstNodeINT16MAX();
+    ExprNode *MakeConstNodeINT32MAX();
+    ExprNode *MakeConstNodeINT64MAX();
+    ExprNode *MakeConstNodeFLOATMAX();
+    ExprNode *MakeConstNodeDOUBLEMAX();
+    ExprNode *MakeConstNodeINT16MIN();
+    ExprNode *MakeConstNodeINT32MIN();
+    ExprNode *MakeConstNodeINT64MIN();
+    ExprNode *MakeConstNodeFLOATMIN();
+    ExprNode *MakeConstNodeDOUBLEMIN();
 
     ExprNode *MakeAllNode(const std::string &relation_name);
     ExprNode *MakeAllNode(const std::string &relation_name,

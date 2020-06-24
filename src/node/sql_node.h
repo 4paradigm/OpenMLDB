@@ -1115,7 +1115,19 @@ class FnDefNode : public SQLNode {
     virtual TypeNode *GetArgType(size_t i) const { return nullptr; }
     virtual const std::string GetSimpleName() const = 0;
 };
+class CastExprNode : public ExprNode {
+ public:
+    explicit CastExprNode(const node::DataType cast_type,
+                          const node::ExprNode *expr)
+        : ExprNode(kExprCast), cast_type_(cast_type), expr_(expr) {}
 
+    ~CastExprNode() {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const std::string GetExprString() const;
+    virtual bool Equals(const ExprNode *that) const;
+    DataType cast_type_;
+    const node::ExprNode *expr_;
+};
 class CallExprNode : public ExprNode {
  public:
     explicit CallExprNode(const FnDefNode *fn_def, const ExprListNode *args,

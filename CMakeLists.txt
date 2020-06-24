@@ -39,7 +39,7 @@ message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 llvm_map_components_to_libnames(LLVM_LIBS support core orcjit nativecodegen)
 
 find_package(Threads)
-set(VM_LIBS fesql_vm fesql_udf fesql_parser fesql_planner fesql_codegen fesql_storage fesql_codec fesql_proto
+set(VM_LIBS fesql_vm fesql_udf fesql_parser fesql_planner fesql_flags fesql_codegen fesql_storage fesql_codec fesql_proto
         fesql_node fesql_base)
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
