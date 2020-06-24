@@ -320,74 +320,6 @@ public class RowBuilder {
         return buffer;
     }
 
-    public static ByteBuffer encode(Map<String, Object> row, List<ColumnDesc> schema) throws TabletException {
-        if (row == null || row.size() == 0 || schema == null || schema.size() == 0 || row.size() != schema.size()) {
-            throw new TabletException("input error");
-        }
-        int strLength = RowCodecCommon.calStrLength(row, schema);
-        RowBuilder builder = new RowBuilder(schema);
-        int size = builder.calTotalLength(strLength);
-        ByteBuffer buffer = ByteBuffer.allocate(size).order(ByteOrder.LITTLE_ENDIAN);
-        buffer = builder.setBuffer(buffer, size);
-        for (int i = 0; i < schema.size(); i++) {
-            ColumnDesc columnDesc = schema.get(i);
-            Object column = row.get(columnDesc.getName());
-            if (columnDesc.isNotNull()
-                && column == null) {
-                throw new TabletException("col " + columnDesc.getName() + " should not be null");
-            } else if (column == null) {
-                builder.appendNULL();
-                continue;
-            }
-            boolean ok = false;
-            switch (columnDesc.getDataType()) {
-                case String:
-                case Varchar:
-                    ok = builder.appendString((String) column);
-                    break;
-                case Bool:
-                    ok = builder.appendBool((Boolean) column);
-                    break;
-                case SmallInt:
-                    ok = builder.appendInt16((Short) column);
-                    break;
-                case Int:
-                    ok = builder.appendInt32((Integer) column);
-                    break;
-                case Timestamp:
-                    if (column instanceof DateTime) {
-                        ok = builder.appendTimestamp(((DateTime) column).getMillis());
-                    }else if (column instanceof Timestamp) {
-                        ok = builder.appendTimestamp(((Timestamp) column).getTime());
-                    }else {
-                        ok = builder.appendTimestamp((Long) column);
-                    }
-                    break;
-                case Blob:
-                    ok = builder.appendBlob((Long) column);
-                    break;
-                case BigInt:
-                    ok = builder.appendInt64((Long) column);
-                    break;
-                case Float:
-                    ok = builder.appendFloat((Float) column);
-                    break;
-                case Date:
-                    ok = builder.appendDate((Date)column);
-                    break;
-                case Double:
-                    ok = builder.appendDouble((Double) column);
-                    break;
-                default:
-                    throw new TabletException("unsupported data type");
-            }
-            if (!ok) {
-                throw new TabletException("append " + columnDesc.getDataType().toString() + " error");
-            }
-        }
-        return buffer;
-    }
-
     public static ByteBuffer encode(Map<String, Object> row, List<ColumnDesc> schema, Map<String, Long> blobKeys) throws TabletException {
         if (row == null || row.size() == 0 || schema == null || schema.size() == 0 || row.size() != schema.size()) {
             throw new TabletException("input error");
@@ -432,12 +364,16 @@ public class RowBuilder {
                     }
                     break;
                 case Blob:
-                    Long key = blobKeys.get(columnDesc.getName());
-                    if (key == null) {
-                        ok = false;
-                        break;
+                    if (blobKeys == null || blobKeys.isEmpty()) {
+                        ok = builder.appendBlob((Long) column);
+                    } else {
+                        Long key = blobKeys.get(columnDesc.getName());
+                        if (key == null) {
+                            ok = false;
+                            break;
+                        }
+                        ok = builder.appendBlob(key);
                     }
-                    ok = builder.appendBlob(key);
                     break;
                 case BigInt:
                     ok = builder.appendInt64((Long) column);

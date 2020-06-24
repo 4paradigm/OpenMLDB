@@ -1510,11 +1510,7 @@ public class TableSyncClientImpl implements TableSyncClient {
                 putObjectStore(row, th, blobKeys);
             }
         }
-        if (blobKeys.isEmpty()) {
-            buffer = RowBuilder.encode(row, schema);
-        } else {
-            buffer = RowBuilder.encode(row, schema, blobKeys);
-        }
+        buffer = RowBuilder.encode(row, schema, blobKeys);
 
         int pid = 0;
         /*
@@ -1652,11 +1648,7 @@ public class TableSyncClientImpl implements TableSyncClient {
             putObjectStore(valueColumns, th, blobKeys);
         }
         ByteBuffer valueBuffer;
-        if (blobKeys.isEmpty()) {
-            valueBuffer = RowBuilder.encode(valueColumns, newValueSchema);
-        } else {
-            valueBuffer = RowBuilder.encode(valueColumns, newValueSchema, blobKeys);
-        }
+        valueBuffer = RowBuilder.encode(valueColumns, newValueSchema, blobKeys);
         try {
             return updateRequest(th, 0, conditionColumns, newValueSchema, valueBuffer);
         } catch (Exception e) {
