@@ -127,10 +127,14 @@ enum DataType {
 };
 
 enum TimeUnit {
-    kTimeUnitHour,
+    kTimeUnitYear,
+    kTimeUnitMonth,
     kTimeUnitDay,
+    kTimeUnitHour,
     kTimeUnitMinute,
     kTimeUnitSecond,
+    kTimeUnitMilliSecond,
+    kTimeUnitMicroSecond
 };
 enum FnOperator {
     kFnOpAdd,

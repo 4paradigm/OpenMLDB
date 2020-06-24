@@ -107,6 +107,8 @@ class NodeManager {
     TableRefNode *MakeQueryRefNode(const QueryNode *sub_query,
                                    const std::string &alias);
 
+    ExprNode *MakeTimeFuncNode(const TimeUnit time_unit,
+                               const ExprListNode *args);
     ExprNode *MakeFuncNode(const std::string &name, const ExprListNode *args,
                            const SQLNode *over);
     ExprNode *MakeFuncNode(const FnDefNode *fn, const ExprListNode *args,

@@ -198,6 +198,31 @@ inline const std::string ExprTypeName(const ExprType &type) {
     }
 }
 
+inline const std::string TimeUnitName(const TimeUnit &time_unit) {
+    switch(time_unit) {
+        case kTimeUnitYear:
+            return "year";
+        case kTimeUnitMonth:
+            return "month";
+            break;
+        case kTimeUnitDay:
+            return "dayofmonth";
+        case kTimeUnitHour:
+            return "hour";
+        case kTimeUnitMinute:
+            return "minute";
+        case kTimeUnitSecond:
+            return "second";
+        case kTimeUnitMilliSecond:
+            return "millisecond";
+        case kTimeUnitMicroSecond:
+            return "microsecond";
+        default: {
+            return "unknow";
+        }
+    }
+    return "unknow";
+}
 inline const std::string FrameTypeName(const FrameType &type) {
     switch (type) {
         case fesql::node::kFrameRange:
