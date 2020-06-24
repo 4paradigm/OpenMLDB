@@ -47,6 +47,7 @@ class SQLRequestRow {
     inline const std::shared_ptr<fesql::sdk::Schema> GetSchema() {
         return schema_;
     }
+
  private:
     bool Check(fesql::sdk::DataType type);
 

@@ -172,7 +172,6 @@ TEST_F(SQLRouterTest, smoketest_on_sql) {
     ASSERT_TRUE(rs->Next());
     ASSERT_EQ(1590, rs->GetInt64Unsafe(0));
     {
-    
         std::shared_ptr<SQLRequestRow> row =
             router->GetRequestRow(db, sql_window_batch, &status);
         if (!row) ASSERT_FALSE(true);
@@ -192,10 +191,8 @@ TEST_F(SQLRouterTest, smoketest_on_sql) {
         ASSERT_EQ(1, rs->Size());
         ASSERT_TRUE(rs->Next());
         ASSERT_EQ(100, rs->GetInt64Unsafe(0));
-
     }
     {
-    
         std::shared_ptr<SQLRequestRow> row =
             router->GetRequestRow(db, sql_window_batch, &status);
         if (!row) ASSERT_FALSE(true);
@@ -215,7 +212,6 @@ TEST_F(SQLRouterTest, smoketest_on_sql) {
         ASSERT_EQ(1, rs->Size());
         ASSERT_TRUE(rs->Next());
         ASSERT_EQ(100, rs->GetInt64Unsafe(0));
-
     }
 }
 
