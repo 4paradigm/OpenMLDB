@@ -6440,7 +6440,6 @@ void StartBsClient() {
 
 int main(int argc, char* argv[]) {
     {
-
         std::ostringstream ss;
         ss << RTIDB_VERSION_MAJOR << ".";
         ss << RTIDB_VERSION_MEDIUM << ".";
