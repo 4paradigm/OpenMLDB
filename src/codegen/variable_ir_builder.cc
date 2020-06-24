@@ -8,12 +8,47 @@
  **/
 #include "codegen/variable_ir_builder.h"
 #include <glog/logging.h>
-
+#include "codegen/struct_ir_builder.h"
+namespace fesql {
+namespace codegen {
 fesql::codegen::VariableIRBuilder::VariableIRBuilder(::llvm::BasicBlock* block,
                                                      ScopeVar* scope_var)
     : block_(block), sv_(scope_var) {}
 fesql::codegen::VariableIRBuilder::~VariableIRBuilder() {}
+bool VariableIRBuilder::StoreStruct(const std::string& name,
+                                    const NativeValue& value,
+                                    base::Status& status) {
+    // store value into memory address
+    ::llvm::IRBuilder<> builder(block_);
+    // get value addr
+    NativeValue addr;
+    if (!sv_->FindVar(name, &addr)) {
+        addr = NativeValue::Create(
+            builder.CreateAlloca(value.GetType()->getPointerElementType()));
+        sv_->AddVar(name, addr);
+    }
 
+    if (addr.GetType() != value.GetType()) {
+        status.msg =
+            "fail to store value: src and dist value type aren't match";
+        status.code = common::kCodegenError;
+        return false;
+    }
+
+    if (nullptr == addr.GetRaw()) {
+        status.msg = "fail to store value: addr is null";
+        status.code = common::kCodegenError;
+        return false;
+    }
+
+    if (!StructTypeIRBuilder::StructCopyFrom(block_, value.GetValue(&builder),
+                                             addr.GetValue(&builder))) {
+        status.msg = "fail to store struct: copy from struct fail";
+        status.code = common::kCodegenError;
+        return false;
+    }
+    return true;
+}
 bool fesql::codegen::VariableIRBuilder::StoreValue(
     const std::string& name, const NativeValue& value, bool is_register,
     fesql::base::Status& status) {
@@ -29,6 +64,9 @@ bool fesql::codegen::VariableIRBuilder::StoreValue(
             return sv_->AddVar(name, value);
         }
     } else {
+        if (TypeIRBuilder::IsStructPtr(value.GetType())) {
+            return StoreStruct(name, value, status);
+        }
         // store value into memory address
         ::llvm::IRBuilder<> builder(block_);
         // get value addr
@@ -37,6 +75,13 @@ bool fesql::codegen::VariableIRBuilder::StoreValue(
             addr =
                 NativeValue::CreateMem(builder.CreateAlloca(value.GetType()));
             sv_->AddVar(name, addr);
+        }
+
+        if (addr.GetType() != value.GetType()) {
+            status.msg =
+                "fail to store value: src and dist value type aren't match";
+            status.code = common::kCodegenError;
+            return false;
         }
 
         if (nullptr == addr.GetRaw()) {
@@ -80,6 +125,16 @@ bool fesql::codegen::VariableIRBuilder::StoreValue(
     fesql::base::Status& status) {
     return StoreValue(name, value, true, status);
 }
+
+bool VariableIRBuilder::StoreRetStruct(const NativeValue& value,
+                                       base::Status& status) {
+    return StoreValue("@ret_struct", value, status);
+}
+bool VariableIRBuilder::LoadRetStruct(NativeValue* output,
+                                      base::Status& status) {
+    return LoadValue("@ret_struct", output, status);
+}
+
 bool fesql::codegen::VariableIRBuilder::LoadWindow(
     const std::string& frame_str, NativeValue* output,
     fesql::base::Status& status) {
@@ -166,3 +221,5 @@ bool fesql::codegen::VariableIRBuilder::LoadArrayIndex(
     status.code = common::kOk;
     return true;
 }
+}  // namespace codegen
+}  // namespace fesql

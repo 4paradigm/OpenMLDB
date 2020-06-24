@@ -344,7 +344,11 @@ ExprNode *NodeManager::MakeColumnRefNode(const std::string &column_name,
                                          const std::string &relation_name) {
     return MakeColumnRefNode(column_name, relation_name, "");
 }
-
+ExprNode *NodeManager::MakeCastNode(const node::DataType cast_type,
+                                    const ExprNode *expr) {
+    CastExprNode *node_ptr = new CastExprNode(cast_type, expr);
+    return RegisterNode(node_ptr);
+}
 ExprNode *NodeManager::MakeFuncNode(const std::string &name,
                                     const ExprListNode *list_ptr,
                                     const SQLNode *over) {
@@ -362,7 +366,10 @@ ExprNode *NodeManager::MakeFuncNode(const FnDefNode *fn,
         fn, list_ptr, dynamic_cast<const WindowDefNode *>(over));
     return RegisterNode(node_ptr);
 }
-
+ExprNode *NodeManager::MakeConstNode(int16_t value) {
+    ExprNode *node_ptr = new ConstNode(value);
+    return RegisterNode(node_ptr);
+}
 ExprNode *NodeManager::MakeConstNode(int value) {
     ExprNode *node_ptr = new ConstNode(value);
     return RegisterNode(node_ptr);
@@ -399,7 +406,36 @@ ExprNode *NodeManager::MakeConstNode() {
     ExprNode *node_ptr = new ConstNode();
     return RegisterNode(node_ptr);
 }
-
+ExprNode *NodeManager::MakeConstNodeINT16MAX() {
+    return MakeConstNode(static_cast<int16_t>(INT16_MAX));
+}
+ExprNode *NodeManager::MakeConstNodeINT32MAX() {
+    return MakeConstNode(static_cast<int32_t>(INT32_MAX));
+}
+ExprNode *NodeManager::MakeConstNodeINT64MAX() {
+    return MakeConstNode(static_cast<int64_t>(INT64_MAX));
+}
+ExprNode *NodeManager::MakeConstNodeFLOATMAX() {
+    return MakeConstNode(static_cast<float>(FLT_MAX));
+}
+ExprNode *NodeManager::MakeConstNodeDOUBLEMAX() {
+    return MakeConstNode(static_cast<double>(DBL_MAX));
+}
+ExprNode *NodeManager::MakeConstNodeINT16MIN() {
+    return MakeConstNode(static_cast<int16_t>(INT16_MIN));
+}
+ExprNode *NodeManager::MakeConstNodeINT32MIN() {
+    return MakeConstNode(static_cast<int32_t>(INT32_MIN));
+}
+ExprNode *NodeManager::MakeConstNodeINT64MIN() {
+    return MakeConstNode(static_cast<int64_t>(INT64_MIN));
+}
+ExprNode *NodeManager::MakeConstNodeFLOATMIN() {
+    return MakeConstNode(static_cast<float>(FLT_MIN));
+}
+ExprNode *NodeManager::MakeConstNodeDOUBLEMIN() {
+    return MakeConstNode(static_cast<double>(DBL_MIN));
+}
 ExprNode *NodeManager::MakeExprIdNode(const std::string &name) {
     ::fesql::node::ExprNode *id_node = new ::fesql::node::ExprIdNode(name);
     return RegisterNode(id_node);
@@ -776,7 +812,7 @@ TypeNode *NodeManager::MakeTypeNode(fesql::node::DataType base) {
     return node_ptr;
 }
 TypeNode *NodeManager::MakeTypeNode(fesql::node::DataType base,
-                                    const fesql::node::TypeNode& v1) {
+                                    const fesql::node::TypeNode &v1) {
     TypeNode *node_ptr = new TypeNode(base, v1);
     RegisterNode(node_ptr);
     return node_ptr;
