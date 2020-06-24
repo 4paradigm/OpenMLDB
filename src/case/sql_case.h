@@ -87,6 +87,10 @@ class SQLCase {
     static bool ExtractRows(const vm::Schema& schema,
                             const std::string& data_str,
                             std::vector<fesql::codec::Row>& rows);  // NOLINT
+    static bool ExtractRows(
+        const vm::Schema& schema,
+        const std::vector<std::vector<std::string>>& row_vec,
+        std::vector<fesql::codec::Row>& rows);
     static bool BuildInsertSQLFromRow(const type::TableDef& table,
                                       const std::string& row_str,
                                       std::string* create_sql);

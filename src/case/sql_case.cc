@@ -263,7 +263,7 @@ bool SQLCase::AddInput(const TableInfo& table_data) {
     return true;
 }
 bool SQLCase::ExtractInputData(std::vector<Row>& rows, int32_t input_idx) {
-    if (inputs_[input_idx].data_.empty()) {
+    if (inputs_[input_idx].data_.empty() && inputs_[input_idx].rows_.empty()) {
         LOG(WARNING) << "Empty Data String";
         return false;
     }
@@ -272,12 +272,24 @@ bool SQLCase::ExtractInputData(std::vector<Row>& rows, int32_t input_idx) {
         LOG(WARNING) << "Invalid Schema";
         return false;
     }
-    return ExtractRows(table.columns(), inputs_[input_idx].data_, rows);
+
+    if (!inputs_[input_idx].data_.empty()) {
+        if (!ExtractRows(table.columns(), inputs_[input_idx].data_, rows)) {
+            return false;
+        }
+    } else if (!inputs_[input_idx].columns_.empty()) {
+        if (!ExtractRows(table.columns(), inputs_[input_idx].rows_, rows)) {
+            return false;
+        }
+    } else {
+        return false;
+    }
+    return true;
 }
 
 bool SQLCase::ExtractOutputData(std::vector<Row>& rows) {
-    if (expect_.data_.empty()) {
-        LOG(WARNING) << "Empty Data String";
+    if (expect_.data_.empty() && expect_.rows_.empty()) {
+        LOG(WARNING) << "Empty Data";
         return false;
     }
     type::TableDef table;
@@ -285,7 +297,17 @@ bool SQLCase::ExtractOutputData(std::vector<Row>& rows) {
         LOG(WARNING) << "Invalid Schema";
         return false;
     }
-    return ExtractRows(table.columns(), expect_.data_, rows);
+
+    if (!expect_.data_.empty()){
+        if (!ExtractRows(table.columns(), expect_.data_, rows)) {
+            return false;
+        }
+    } else if (!expect_.rows_.empty()) {
+        if (!ExtractRows(table.columns(), expect_.rows_, rows)) {
+            return false;
+        }
+    }
+    return true;
 }
 bool SQLCase::BuildInsertSQLFromRow(const type::TableDef& table,
                                     const std::string& row_str,
@@ -473,6 +495,24 @@ bool SQLCase::ExtractRow(const vm::Schema& schema,
     }
     *out_ptr = ptr;
     *out_size = row_size;
+    return true;
+}
+bool SQLCase::ExtractRows(const vm::Schema& schema,
+                          const std::vector<std::vector<std::string>>& row_vec,
+                          std::vector<fesql::codec::Row>& rows) {
+    if (row_vec.empty()) {
+        LOG(WARNING) << "Invalid Data Format";
+        return false;
+    }
+
+    for (auto row_item_vec : row_vec) {
+        int8_t* row_ptr = nullptr;
+        int32_t row_size = 0;
+        if (!ExtractRow(schema, row_item_vec, &row_ptr, &row_size)) {
+            return false;
+        }
+        rows.push_back(Row(base::RefCountedSlice::Create(row_ptr, row_size)));
+    }
     return true;
 }
 bool SQLCase::ExtractRows(const vm::Schema& schema, const std::string& data_str,
