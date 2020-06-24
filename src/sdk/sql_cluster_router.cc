@@ -124,7 +124,7 @@ std::shared_ptr<SQLRequestRow> SQLClusterRouter::GetRequestRow(
     }
     ::fesql::vm::ExplainOutput explain;
     ::fesql::base::Status vm_status;
-    bool ok = engine_->Explain(sql, db, true, &explain, &vm_status);
+    bool ok = engine_->Explain(sql, db, false, &explain, &vm_status);
     if (!ok) {
         status->code = -1;
         status->msg = vm_status.msg;

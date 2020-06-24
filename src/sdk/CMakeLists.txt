@@ -105,6 +105,7 @@ if(SQL_PYSDK_ENABLE)
 		DEPENDS setup.py
 		COMMAND ${CMAKE_COMMAND} -E remove_directory dist
 		COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/sdk/python/fedb/__init__.py fedb/__init__.py
+		COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/sdk/python/fedb/driver.py fedb/driver.py
 		COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:sql_pysdk> ${CMAKE_BINARY_DIR}/sql_pysdk/fedb
 		COMMAND ${Python3_EXECUTABLE} setup.py bdist_wheel
 		BYPRODUCTS
