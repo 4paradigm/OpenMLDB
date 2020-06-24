@@ -298,7 +298,6 @@ void RequestModeCheck(SQLCase& sql_case) {  // NOLINT
     schema = session.GetSchema();
     PrintSchema(schema);
 
-
     std::ostringstream oss;
     session.GetPhysicalPlan()->Print(oss, "");
     LOG(INFO) << "physical plan:\n" << oss.str() << std::endl;
@@ -343,6 +342,9 @@ void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
     for (int32_t i = 0; i < input_cnt; i++) {
         type::TableDef table_def;
         sql_case.ExtractInputTableDef(table_def, i);
+        if (table_def.name().empty()) {
+            table_def.set_name("t" + std::to_string(i));
+        }
         std::shared_ptr<::fesql::storage::Table> table(
             new ::fesql::storage::Table(i + 1, 1, table_def));
         name_table_map[table_def.name()] = table;
@@ -350,7 +352,15 @@ void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
     }
 
     // Init engine and run session
-    std::cout << sql_case.sql_str() << std::endl;
+    std::string sql_str = sql_case.sql_str();
+    for (int j = 0; j < input_cnt; ++j) {
+        std::string placeholder = "{" + std::to_string(j) + "}";
+        std::string tname = sql_case.inputs()[j].name_.empty()
+                                ? ("t" + std::to_string(j))
+                                : sql_case.inputs()[j].name_;
+        boost::replace_all(sql_str, placeholder, tname);
+    }
+    std::cout << sql_str << std::endl;
     base::Status get_status;
 
     Engine engine(catalog);
@@ -359,8 +369,7 @@ void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
         session.EnableDebug();
     }
 
-    bool ok =
-        engine.Get(sql_case.sql_str(), sql_case.db(), session, get_status);
+    bool ok = engine.Get(sql_str, sql_case.db(), session, get_status);
     ASSERT_TRUE(ok);
     std::vector<Row> request_data;
     for (int32_t i = 0; i < input_cnt; i++) {
@@ -401,7 +410,9 @@ void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
     CheckRows(schema, SortRows(schema, output, sql_case.expect().order_),
               case_output_data);
 }
-
+INSTANTIATE_TEST_CASE_P(
+    EngineBugQuery, EngineTest,
+    testing::ValuesIn(InitCases("/cases/query/bug_query.yaml")));
 INSTANTIATE_TEST_CASE_P(
     EngineSimpleQuery, EngineTest,
     testing::ValuesIn(InitCases("/cases/query/simple_query.yaml")));
