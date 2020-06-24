@@ -17,6 +17,7 @@
 //
 
 #pragma once
+#include <atomic>
 #include <thread> // NOLINT
 
 namespace rtidb {

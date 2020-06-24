@@ -500,7 +500,7 @@ static void init_buckets(Bitcask *bc)
 
 Bitcask* bc_open2(Mgr *mgr, int depth, int pos, time_t before)
 {
-    Bitcask* bc = (Bitcask*)safe_malloc(sizeof(Bitcask));
+    Bitcask* bc = (Bitcask*)beans_safe_malloc(sizeof(Bitcask));
     /*if (bc == NULL) return NULL;*/
 
     memset(bc, 0, sizeof(Bitcask));
@@ -514,7 +514,7 @@ Bitcask* bc_open2(Mgr *mgr, int depth, int pos, time_t before)
     bc->last_snapshot = -1;
     bc->curr_tree = ht_new(depth, pos, true);
     bc->wbuf_size = 1024 * 4;
-    bc->write_buffer = (char*)safe_malloc(bc->wbuf_size);
+    bc->write_buffer = (char*)beans_safe_malloc(bc->wbuf_size);
     bc->last_flush_time = time(NULL);
     bc->flush_buffer = NULL;
     bc->fbuf_start_pos = 0;
@@ -1131,7 +1131,7 @@ void bc_rotate(Bitcask *bc)
     // build in new thread
     char datapath[MAX_PATH_LEN], hintpath[MAX_PATH_LEN];
     new_path(hintpath, MAX_PATH_LEN, bc->mgr, HINT_FILE, bc->curr);
-    struct build_thread_args *args = (struct build_thread_args*)safe_malloc(
+    struct build_thread_args *args = (struct build_thread_args*)beans_safe_malloc(
                                          sizeof(struct build_thread_args));
     args->tree = bc->curr_tree;
     args->path = strdup(hintpath);
@@ -1168,7 +1168,7 @@ void bc_flush(Bitcask *bc, unsigned int limit, int flush_period)
     {
         bc->flushing_bucket = bc->curr;
         uint32_t size = bc->wbuf_curr_pos;
-        bc->flush_buffer = (char*)safe_malloc(size);
+        bc->flush_buffer = (char*)beans_safe_malloc(size);
         memcpy(bc->flush_buffer, bc->write_buffer, size); // safe
         bc->fbuf_size = size;
 
@@ -1177,13 +1177,13 @@ void bc_flush(Bitcask *bc, unsigned int limit, int flush_period)
         {
             bc->wbuf_size *= 2;
             free(bc->write_buffer);
-            bc->write_buffer = (char*)safe_malloc(bc->wbuf_size);
+            bc->write_buffer = (char*)beans_safe_malloc(bc->wbuf_size);
         }
         else if (bc->wbuf_size > WRITE_BUFFER_SIZE * 2)
         {
             bc->wbuf_size = WRITE_BUFFER_SIZE;
             free(bc->write_buffer);
-            bc->write_buffer = (char*)safe_malloc(bc->wbuf_size);
+            bc->write_buffer = (char*)beans_safe_malloc(bc->wbuf_size);
         }
 
         bc->bytes += size;
@@ -1317,7 +1317,7 @@ bool bc_set(Bitcask *bc, const char *key, char *value, size_t vlen, int flag, in
     }
 
     int klen = strlen(key);
-    DataRecord *r = (DataRecord*)safe_malloc(sizeof(DataRecord) + klen);
+    DataRecord *r = (DataRecord*)beans_safe_malloc(sizeof(DataRecord) + klen);
     r->ksz = klen;
     memcpy(r->key, key, klen); // safe
     r->vsz = vlen;
@@ -1348,7 +1348,7 @@ bool bc_set(Bitcask *bc, const char *key, char *value, size_t vlen, int flag, in
         {
             bc->wbuf_size *= 2;
             free(bc->write_buffer);
-            bc->write_buffer = (char*)safe_malloc(bc->wbuf_size);
+            bc->write_buffer = (char*)beans_safe_malloc(bc->wbuf_size);
         }
         if (bc->wbuf_start_pos + bc->wbuf_size > settings.max_bucket_size)
         {

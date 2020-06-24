@@ -22,29 +22,33 @@
 #include "base/kv_iterator.h"
 #include "base/linenoise.h"
 #include "base/strings.h"
-#include "blob_proxy/blob_proxy_impl.h"
+#if __linux__
 #include "blobserver/blobserver_impl.h"
+#include "nameserver/name_server_impl.h"
+#include "tablet/tablet_impl.h"
+#include "blob_proxy/blob_proxy_impl.h"
+#endif
 #include "boost/algorithm/string.hpp"
 #include "boost/lexical_cast.hpp"
 #include "brpc/server.h"
 #include "client/bs_client.h"
 #include "client/ns_client.h"
 #include "client/tablet_client.h"
-#include "cmd/display.h"
-#include "cmd/sdk_iterator.h"
 #include "codec/flat_array.h"
 #include "codec/row_codec.h"
 #include "codec/schema_codec.h"
 #include "codec/sdk_codec.h"
-#include "nameserver/name_server_impl.h"
+#include "cmd/display.h"
+#include "cmd/sdk_iterator.h"
+#include "cmd/sql_cmd.h"
 #include "proto/client.pb.h"
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
 #include "proto/type.pb.h"
-#include "tablet/tablet_impl.h"
 #include "timer.h"     // NOLINT
 #include "tprinter.h"  // NOLINT
 #include "version.h"   // NOLINT
+#include "vm/engine.h"
 
 using Schema =
     ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
@@ -57,7 +61,7 @@ DECLARE_int32(thread_pool_size);
 DECLARE_int32(put_concurrency_limit);
 DECLARE_int32(scan_concurrency_limit);
 DECLARE_int32(get_concurrency_limit);
-DEFINE_string(role, "tablet | nameserver | client | ns_client",
+DEFINE_string(role, "tablet | nameserver | client | ns_client | sql_client",
               "Set the rtidb role for start");
 DEFINE_string(cmd, "", "Set the command");
 DEFINE_bool(interactive, true, "Set the interactive");
@@ -92,6 +96,7 @@ void SetupLog() {
     }
 }
 
+#if __linux__
 void StartNameServer() {
     SetupLog();
     ::rtidb::nameserver::NameServerImpl* name_server =
@@ -200,6 +205,7 @@ void StartTablet() {
               "To fix this issue run the command 'swapoff -a' as root");
     }
     SetupLog();
+    ::fesql::vm::Engine::InitializeGlobalLLVM();
     ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
     bool ok = tablet->Init();
     if (!ok) {
@@ -286,7 +292,9 @@ void StartBlobProxy() {
     server.set_version(oss.str());
     server.RunUntilAskedToQuit();
 }
+#endif
 
+#if __linux__
 void StartBlob() {
     SetupLog();
     ::rtidb::blobserver::BlobServerImpl* server_impl =
@@ -334,6 +342,7 @@ void StartBlob() {
     server.set_version(oss.str());
     server.RunUntilAskedToQuit();
 }
+#endif
 
 int PutData(
     uint32_t tid,
@@ -6353,18 +6362,9 @@ void StartNsClient() {
             HandleNSUpdate(parts, &client);
         } else if (parts[0] == "query") {
             HandleNSQuery(parts, &client);
-        } else if (parts[0] == "use") {
-            HandleNsUseDb(parts, &client);
-            display_prefix = endpoint + " " + client.GetDb() + "> ";
-        } else if (parts[0] == "createdb") {
-            HandleNsCreateDb(parts, &client);
-        } else if (parts[0] == "showdb") {
-            HandleNsShowDb(parts, &client);
-        } else if (parts[0] == "dropdb") {
-            HandleNsDropDb(parts, &client);
         } else if (parts[0] == "sql") {
             use_sql = true;
-            display_prefix = endpoint + " " + client.GetDb() + " SQL> ";
+            display_prefix = endpoint + " " + client.GetDb() + " sql> ";
             multi_line_perfix =
                 std::string(display_prefix.length() - 3, ' ') + "-> ";
             ::rtidb::base::linenoiseSetMultiLine(1);
@@ -6439,7 +6439,12 @@ void StartBsClient() {
 
 int main(int argc, char* argv[]) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    if (FLAGS_role == "tablet") {
+    if (FLAGS_role == "ns_client") {
+        StartNsClient();
+    } else if (FLAGS_role == "sql_client") {
+        ::rtidb::cmd::HandleCli();
+#if __linux__
+    } else if (FLAGS_role == "tablet") {
         StartTablet();
     } else if (FLAGS_role == "blob_proxy") {
         StartBlobProxy();
@@ -6449,6 +6454,7 @@ int main(int argc, char* argv[]) {
         StartNameServer();
     } else if (FLAGS_role == "blob") {
         StartBlob();
+#endif
     } else if (FLAGS_role == "ns_client") {
         StartNsClient();
     } else if (FLAGS_role == "bs_client") {

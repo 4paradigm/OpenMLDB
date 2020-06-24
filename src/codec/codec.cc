@@ -16,6 +16,7 @@
  */
 
 #include "codec/codec.h"
+#include <array>
 #include <algorithm>
 #include <unordered_set>
 #include "base/glog_wapper.h"

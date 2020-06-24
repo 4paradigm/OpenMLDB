@@ -40,6 +40,7 @@ struct TabletInfo {
 class NsClient {
  public:
     explicit NsClient(const std::string& endpoint);
+    ~NsClient() {}
 
     int Init();
 
@@ -84,9 +85,15 @@ class NsClient {
     bool CreateTable(const ::rtidb::nameserver::TableInfo& table_info,
                      std::string& msg);  // NOLINT
 
-    std::shared_ptr<fesql::sdk::ResultSet> ExecuteSQL(
+    bool ExecuteSQL(
         const std::string& script,
         std::string& msg);  // NOLINT
+
+    bool ExecuteSQL(
+        const std::string& db,
+        const std::string& script,
+        std::string& msg);  // NOLINT
+
 
     bool DropTable(const std::string& name, std::string& msg);  // NOLINT
 

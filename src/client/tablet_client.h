@@ -13,7 +13,9 @@
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "base/kv_iterator.h"
+#include "brpc/channel.h"
 #include "codec/schema_codec.h"
 #include "proto/tablet.pb.h"
 #include "rpc/rpc_client.h"
@@ -63,6 +65,13 @@ class TabletClient {
         uint32_t tid, const ::rtidb::common::ColumnDesc& column_desc,
         const std::string& schema, std::string& msg);  // NOLINT
 
+    bool Query(const std::string& db, const std::string& sql,
+               brpc::Controller* cntl, ::rtidb::api::QueryResponse* response);
+
+    bool Query(const std::string& db, const std::string& sql,
+               const std::string& row,
+               brpc::Controller* cntl,
+               ::rtidb::api::QueryResponse* response);
     bool Update(uint32_t tid, uint32_t pid,
             const ::google::protobuf::RepeatedPtrField<
             ::rtidb::api::Columns>& cd_columns,
@@ -73,34 +82,30 @@ class TabletClient {
              int64_t* auto_gen_pk, std::string* msg);
 
     bool Put(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time,
-             const std::string& value);
+             const std::string& value, uint32_t format_version = 0);
 
     bool Put(uint32_t tid, uint32_t pid, const char* pk, uint64_t time,
-             const char* value, uint32_t size);
+             const char* value, uint32_t size, uint32_t format_version = 0);
 
     bool Put(uint32_t tid, uint32_t pid, uint64_t time,
              const std::string& value,
              const std::vector<std::pair<std::string, uint32_t>>& dimensions);
 
-    bool Put(uint32_t tid,
-             uint32_t pid,
-             uint64_t time,
+    bool Put(uint32_t tid, uint32_t pid, uint64_t time,
              const std::string& value,
-             const std::vector<std::pair<std::string, uint32_t> >& dimensions,
+             const std::vector<std::pair<std::string, uint32_t>>& dimensions,
              uint32_t format_version);
 
-    bool Put(uint32_t tid,
-             uint32_t pid,
+    bool Put(uint32_t tid, uint32_t pid,
              const std::vector<std::pair<std::string, uint32_t>>& dimensions,
              const std::vector<uint64_t>& ts_dimensions,
              const std::string& value);
 
-    bool Put(uint32_t tid,
-             uint32_t pid,
+    bool Put(uint32_t tid, uint32_t pid,
              const std::vector<std::pair<std::string, uint32_t>>& dimensions,
              const std::vector<uint64_t>& ts_dimensions,
-             const std::string& value,
-             uint32_t format_version);
+             const std::string& value, uint32_t format_version);
+
     bool Get(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time,
              std::string& value, uint64_t& ts, std::string& msg);  // NOLINT
 
@@ -115,6 +120,7 @@ class TabletClient {
 
     bool Delete(uint32_t tid, uint32_t pid, const std::string& pk,
                 const std::string& idx_name, std::string& msg);  // NOLINT
+
 
     bool Delete(uint32_t tid, uint32_t pid,
                 const Cond_Column& cd_columns,
@@ -259,11 +265,11 @@ class TabletClient {
     bool GetAllSnapshotOffset(std::map<uint32_t, std::map<uint32_t, uint64_t>>&
                                   tid_pid_offset);  // NOLINT
 
-    bool BatchQuery(uint32_t tid, uint32_t pid,
-            const ::google::protobuf::RepeatedPtrField<
-            ::rtidb::api::ReadOption>& ros,
-            std::string* data,
-            uint32_t* count, std::string* msg);
+    bool BatchQuery(
+        uint32_t tid, uint32_t pid,
+        const ::google::protobuf::RepeatedPtrField<::rtidb::api::ReadOption>&
+            ros,
+        std::string* data, uint32_t* count, std::string* msg);
 
     bool SetExpire(uint32_t tid, uint32_t pid, bool is_expire);
     bool SetTTLClock(uint32_t tid, uint32_t pid, uint64_t timestamp);
@@ -277,10 +283,9 @@ class TabletClient {
                                         uint32_t& count);  // NOLINT
 
     bool Traverse(uint32_t tid, uint32_t pid,
-            const ::rtidb::api::ReadOption& ro,
-            uint32_t limit, std::string* pk, uint64_t* snapshot_id,
-            std::string* data, uint32_t* count,
-            bool* is_finish, std::string* msg);
+                  const ::rtidb::api::ReadOption& ro, uint32_t limit,
+                  std::string* pk, uint64_t* snapshot_id, std::string* data,
+                  uint32_t* count, bool* is_finish, std::string* msg);
 
     void ShowTp();
 

@@ -46,7 +46,7 @@ MFile *open_mfile(const char *path)
     curr_mmap_size += mb;
     pthread_mutex_unlock(&mmap_lock);
 
-    MFile *f = (MFile*) safe_malloc(sizeof(MFile));
+    MFile *f = (MFile*) beans_safe_malloc(sizeof(MFile));
     f->fd = fd;
     f->size = sb.st_size;
 

@@ -117,8 +117,8 @@ static void parallelize(HStore *store, BC_FUNC func)
     pthread_attr_init(&attr);
 
     int i, ret;
-    pthread_t *thread_ids = (pthread_t*)safe_malloc(sizeof(pthread_t) * store->scan_threads);
-    struct scan_args *args = (struct scan_args *) safe_malloc(sizeof(struct scan_args) * store->scan_threads);
+    pthread_t *thread_ids = (pthread_t*)beans_safe_malloc(sizeof(pthread_t) * store->scan_threads);
+    struct scan_args *args = (struct scan_args *) beans_safe_malloc(sizeof(struct scan_args) * store->scan_threads);
     for (i = 0; i < store->scan_threads; i++)
     {
         args[i].store = store;
@@ -203,7 +203,7 @@ HStore *hs_open(char *path, int height, time_t before, int scan_threads)
 
     int i, j, count = 1 << (height * 4);
     printf("current height %d, count is %d\n", height, count);
-    HStore *store = (HStore*) safe_malloc(sizeof(HStore) + sizeof(Bitcask*) * count);
+    HStore *store = (HStore*) beans_safe_malloc(sizeof(HStore) + sizeof(Bitcask*) * count);
     if (!store) return NULL;
     memset(store, 0, sizeof(HStore) + sizeof(Bitcask*) * count);
     store->height = height;
@@ -227,7 +227,7 @@ HStore *hs_open(char *path, int height, time_t before, int scan_threads)
     char *buf[20] = {0};
     for (i = 0; i < npath; i++)
     {
-        buf[i] = (char*)safe_malloc(MAX_PATH_LEN);
+        buf[i] = (char*)beans_safe_malloc(MAX_PATH_LEN);
     }
     for (i = 0; i<count; i++)
     {
@@ -361,7 +361,7 @@ static char *hs_list(HStore *store, char *key)
     else
     {
         int i, bsize = 1024, used = 0;
-        char *buf = (char*)try_malloc(bsize);
+        char *buf = (char*)beans_try_malloc(bsize);
         if (!buf) return NULL;
         for (i = 0; i < 16; ++i)
         {
@@ -405,7 +405,7 @@ char *hs_get(HStore *store, char *key, unsigned int *vlen, uint32_t *flag)
     char *res = NULL;
     if (info)
     {
-        res = (char*)try_malloc(META_BUF_SIZE);
+        res = (char*)beans_try_malloc(META_BUF_SIZE);
 
         uint16_t hash = 0;
         if (r->version > 0)
@@ -457,7 +457,7 @@ bool hs_append(HStore *store, char *key, char *value, unsigned int vlen)
         printf("try to append %s with flag=%x", key, flag);
         goto APPEND_END;
     }
-    body = (char*)safe_realloc(body, rlen + vlen);
+    body = (char*)beans_safe_realloc(body, rlen + vlen);
     memcpy(body + rlen, value, vlen); // safe
     suc = hs_set(store, key, body, rlen + vlen, flag, 0); // TODO: use timestamp
 
@@ -489,7 +489,7 @@ int64_t hs_incr(HStore *store, char *key, int64_t value)
             goto INCR_END;
         }
 
-        body = safe_realloc(body, rlen + 1);
+        body = beans_safe_realloc(body, rlen + 1);
         body[rlen] = 0;
         result = strtoll(body, NULL, 10);
         if (result == 0 && errno == EINVAL)
