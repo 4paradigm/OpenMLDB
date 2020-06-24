@@ -2608,6 +2608,19 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller,
           op_data->op_info_.op_id(), request->name().c_str(), request->pid());
 }
 
+void NameServerImpl::AddDataType(std::shared_ptr<TableInfo> table_info) {
+    for (int i = 0; i < table_info->column_desc_v1_size(); i++) {
+        auto desc = table_info->column_desc_v1(i);
+        if (desc.has_data_type()) {
+            continue;
+        }
+        auto type = rtidb::codec::DATA_TYPE_MAP.find(desc.type());
+        if (type != rtidb::codec::DATA_TYPE_MAP.end()) {
+            desc.set_data_type(type->second);
+        }
+    }
+}
+
 int NameServerImpl::CheckTableMeta(const TableInfo& table_info) {
     bool has_index = false;
     std::map<std::string, std::string> column_map;
@@ -4659,6 +4672,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
     }
     if (!table_info->has_table_type() ||
         table_info->table_type() == ::rtidb::type::kTimeSeries) {
+        AddDataType(table_info);
         if (CheckTableMeta(*table_info) < 0) {
             response->set_code(::rtidb::base::ReturnCode::kInvalidParameter);
             response->set_msg("check TableMeta failed");
