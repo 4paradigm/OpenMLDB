@@ -36,7 +36,8 @@
 #include "udf/udf.h"
 #include "vm/runner.h"
 #include "vm/transform.h"
-DECLARE_string(native_fesql_libs_dir);
+DECLARE_string(native_fesql_libs_name);
+DECLARE_string(native_fesql_libs_prefix);
 namespace fesql {
 namespace vm {
 
@@ -282,19 +283,25 @@ const std::string FindFesqlDirPath() {
     return std::string();
 }
 bool RegisterFeLibs(llvm::Module* m, Status& status) {  // NOLINT
-    if (FLAGS_native_fesql_libs_dir.empty()) {
+    if (FLAGS_native_fesql_libs_name.empty()) {
         LOG(WARNING) << "fail register fe libs: No fesql libs config exist";
         return false;
     }
 
     std::vector<std::string> filepaths;
-    std::string fesql_libs_dir_path =
-        FindFesqlDirPath() + "/" + FLAGS_native_fesql_libs_dir;
-    if (!GetLibsFiles(fesql_libs_dir_path, filepaths, status)) {
-        status.msg = "fail to get libs file " + fesql_libs_dir_path;
+    std::string fesql_libs_path = "";
+    if (FLAGS_native_fesql_libs_prefix.empty()) {
+        fesql_libs_path = FindFesqlDirPath();
+    } else {
+        fesql_libs_path = FLAGS_native_fesql_libs_prefix;
+    }
+    fesql_libs_path.append("/").append(FLAGS_native_fesql_libs_name);
+    if (!GetLibsFiles(fesql_libs_path, filepaths, status)) {
+        status.msg = "fail to get libs file " + fesql_libs_path;
         LOG(WARNING) << status.msg;
         return false;
     }
+
     std::ostringstream runner_oss;
     runner_oss << "Libs:\n";
     for_each(filepaths.cbegin(), filepaths.cend(),
