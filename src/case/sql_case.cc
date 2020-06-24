@@ -298,7 +298,7 @@ bool SQLCase::ExtractOutputData(std::vector<Row>& rows) {
         return false;
     }
 
-    if (!expect_.data_.empty()){
+    if (!expect_.data_.empty()) {
         if (!ExtractRows(table.columns(), expect_.data_, rows)) {
             return false;
         }
