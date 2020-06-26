@@ -3,7 +3,7 @@ include_directories(${INCLUDE_DIRECTORIES}
         ${PROJECT_BINARY_DIR}/src)
 
 if (TESTING_ENABLE)
-    set(BM_LIBS fesql_sdk fesql_dbms fesql_tablet fesql_case ${yaml_libs} boost_filesystem ${VM_LIBS} fesql_flags ${LLVM_LIBS} ${BRPC_LIBS} tcmalloc ${OS_LIB})
+    set(BM_LIBS fesql_sdk fesql_dbms fesql_tablet fesql_case ${ABSL_LIBS} ${yaml_libs} boost_filesystem ${VM_LIBS} fesql_flags ${LLVM_LIBS} ${BRPC_LIBS}  tcmalloc ${OS_LIB})
     add_executable(base_bm_test base_bm_test.cc)
 
 
@@ -24,7 +24,7 @@ if (TESTING_ENABLE)
     add_library(udf_bm_case STATIC udf_bm_case.cc)
     add_executable(udf_bm_case_test udf_bm_case_test.cc)
     target_link_libraries(udf_bm_case_test udf_bm_case 
-        benchmark gtest fesql_udf ${BM_LIBS})
+        benchmark gtest  fesql_udf ${BM_LIBS})
     add_test(udf_bm_case_test udf_bm_case_test --gtest_output=xml:${CMAKE_BINARY_DIR}/udf_bm_case_test.xml)
     list(APPEND test_list udf_bm_case_test)
 

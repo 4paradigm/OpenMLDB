@@ -123,7 +123,7 @@ TEST_F(JITTest, test_udf_invoke_module) {
         ::llvm::Type *i32_ty = builder.getInt32Ty();
         // int32 inc_int32(int32)
         ::llvm::FunctionCallee callee =
-            m->getOrInsertFunction("inc_int32", i32_ty, i32_ty);
+            m->getOrInsertFunction("inc.int32", i32_ty, i32_ty);
         ::llvm::Value *ret =
             builder.CreateCall(callee, ::llvm::ArrayRef<Value *>{Add});
         builder.CreateRet(ret);
@@ -133,8 +133,8 @@ TEST_F(JITTest, test_udf_invoke_module) {
         if (e) {
             ASSERT_TRUE(false);
         }
-        jit->AddSymbol(jd, "inc_int32",
-                       reinterpret_cast<void *>(&fesql::udf::v1::inc_int32));
+        jit->AddSymbol(jd, "inc.int32",
+                       reinterpret_cast<void *>(&fesql::udf::v1::inc<int32_t>));
         auto Add1Sym = FeCheck((jit->lookup(jd, "add1")));
         jit->getExecutionSession().dump(::llvm::errs());
         Add1 = (int (*)(int))Add1Sym.getAddress();

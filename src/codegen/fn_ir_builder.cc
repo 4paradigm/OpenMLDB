@@ -18,8 +18,8 @@
 #include "codegen/fn_ir_builder.h"
 #include <stack>
 #include <string>
-#include "codegen/ir_base_builder.h"
 #include "codegen/block_ir_builder.h"
+#include "codegen/ir_base_builder.h"
 #include "codegen/type_ir_builder.h"
 #include "codegen/variable_ir_builder.h"
 #include "glog/logging.h"
@@ -33,6 +33,7 @@ namespace codegen {
 FnIRBuilder::FnIRBuilder(::llvm::Module *module) : module_(module) {}
 
 FnIRBuilder::~FnIRBuilder() {}
+
 bool FnIRBuilder::Build(const ::fesql::node::FnNodeFnDef *root,
                         base::Status &status) {  // NOLINT
     if (root == NULL || root->GetType() != ::fesql::node::kFnDef) {
@@ -65,9 +66,58 @@ bool FnIRBuilder::Build(const ::fesql::node::FnNodeFnDef *root,
     return true;
 }
 
-bool FnIRBuilder::BuildFnHead(const ::fesql::node::FnNodeFnHeander *fn_def,
+bool FnIRBuilder::BuildFnHead(const ::fesql::node::FnNodeFnHeander *header,
                               ScopeVar *sv, ::llvm::Function **fn,
                               base::Status &status) {  // NOLINE
+    ::llvm::Type *ret_type = NULL;
+    bool ok = GetLLVMType(module_, header->ret_type_, &ret_type);
+    if (!ok) {
+        status.code = common::kCodegenError;
+        status.msg = "fail to get llvm type";
+        return false;
+    }
+
+    if (TypeIRBuilder::IsStructPtr(ret_type)) {
+        return BuildFnHeadWithRetStruct(header, sv, fn, status);
+    }
+
+    if (!CreateFunction(header, fn, status)) {
+        LOG(WARNING) << "Fail Build Function Header: " << status.msg;
+        return false;
+    }
+    auto fn_name = sv->Enter((*fn)->getName().str());
+    if (header->parameters_) {
+        bool ok = FillArgs(header->parameters_, sv, *fn, status);
+        if (!ok) {
+            return false;
+        }
+    }
+    DLOG(INFO) << "build fn " << fn_name << " header done";
+    return true;
+}
+bool FnIRBuilder::BuildFnHeadWithRetStruct(
+    const ::fesql::node::FnNodeFnHeander *fn_def, ScopeVar *sv,
+    ::llvm::Function **fn,
+    base::Status &status) {  // NOLINE
+    if (fn_def == NULL || fn == NULL) {
+        status.code = common::kCodegenError;
+        status.msg = "input is null";
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+    node::FnNodeList new_parameters;
+    for_each(fn_def->parameters_->children.cbegin(),
+             fn_def->parameters_->children.cend(),
+             [&](node::FnNode *node) { new_parameters.AddChild(node); });
+    node::FnParaNode ret_arg("@ret_struct", fn_def->ret_type_);
+    new_parameters.AddChild(&ret_arg);
+    node::TypeNode ret(node::kBool);
+    node::FnNodeFnHeander header(fn_def->name_, &new_parameters, &ret);
+    return BuildFnHead(&header, sv, fn, status);
+}
+bool FnIRBuilder::CreateFunction(const ::fesql::node::FnNodeFnHeander *fn_def,
+                                 ::llvm::Function **fn,
+                                 base::Status &status) {  // NOLINE
     if (fn_def == NULL || fn == NULL) {
         status.code = common::kCodegenError;
         status.msg = "input is null";
@@ -82,7 +132,6 @@ bool FnIRBuilder::BuildFnHead(const ::fesql::node::FnNodeFnHeander *fn_def,
         status.msg = "fail to get llvm type";
         return false;
     }
-
     std::vector<::llvm::Type *> paras;
     if (nullptr != fn_def->parameters_) {
         bool ok = BuildParas(fn_def->parameters_, paras, status);
@@ -91,21 +140,12 @@ bool FnIRBuilder::BuildFnHead(const ::fesql::node::FnNodeFnHeander *fn_def,
         }
     }
 
-    std::string fn_name = fn_def->GetCodegenFunctionName();
+    std::string fn_name = fn_def->GeIRFunctionName();
     ::llvm::ArrayRef<::llvm::Type *> array_ref(paras);
     ::llvm::FunctionType *fnt =
         ::llvm::FunctionType::get(ret_type, array_ref, false);
-
-    *fn = ::llvm::Function::Create(fnt, ::llvm::Function::ExternalLinkage,
-                                   fn_name, module_);
-    sv->Enter(fn_name);
-    if (fn_def->parameters_) {
-        bool ok = FillArgs(fn_def->parameters_, sv, *fn, status);
-        if (!ok) {
-            return false;
-        }
-    }
-    DLOG(INFO) << "build fn " << fn_name << " header done";
+    auto callee = module_->getOrInsertFunction(fn_name, fnt);
+    *fn = reinterpret_cast<::llvm::Function *>(callee.getCallee());
     return true;
 }
 
@@ -125,6 +165,7 @@ bool FnIRBuilder::FillArgs(const ::fesql::node::FnNodeList *node, ScopeVar *sv,
         ::fesql::node::FnParaNode *pnode =
             (::fesql::node::FnParaNode *)node->children[index];
         ::llvm::Argument *argu = &*it;
+
         bool ok = sv->AddVar(pnode->GetName(), NativeValue::Create(argu));
         if (!ok) {
             status.code = common::kCodegenError;

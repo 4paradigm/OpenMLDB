@@ -31,13 +31,15 @@ bool GetLLVMType(::llvm::Module* m, const ::fesql::node::TypeNode* type,
                  ::llvm::Type** output);
 bool GetLLVMType(::llvm::BasicBlock* block, const ::fesql::node::DataType& type,
                  ::llvm::Type** output);
+bool GetLLVMType(::llvm::BasicBlock* block, const ::fesql::node::TypeNode* type,
+                 ::llvm::Type** output);
 bool GetLLVMType(::llvm::Module* m, const ::fesql::node::DataType& type,
                  ::llvm::Type** output);
-bool GetLLVMListType(::llvm::Module* m, const ::fesql::node::DataType& type,
+bool GetLLVMListType(::llvm::Module* m, const ::fesql::node::TypeNode& type,
                      ::llvm::Type** output);
-bool GetLLVMIteratorType(::llvm::Module* m, const ::fesql::node::DataType& type,
+bool GetLLVMIteratorType(::llvm::Module* m, const ::fesql::node::TypeNode& type,
                          ::llvm::Type** output);
-bool GetLLVMColumnSize(const ::fesql::node::DataType& v_type, uint32_t* size);
+bool GetLLVMColumnSize(const ::fesql::node::TypeNode& v_type, uint32_t* size);
 
 bool GetBaseType(::llvm::Type* type, ::fesql::node::DataType* output);
 bool IsStringType(::llvm::Type* type);
@@ -46,7 +48,9 @@ bool GetFullType(::llvm::Type* type, ::fesql::node::TypeNode* type_node);
 
 bool SchemaType2DataType(const ::fesql::type::Type type,
                          ::fesql::node::DataType* output);
-bool DataType2SchemaType(const ::fesql::node::DataType type,
+bool SchemaType2DataType(const ::fesql::type::Type type,
+                         ::fesql::node::TypeNode* output);
+bool DataType2SchemaType(const ::fesql::node::TypeNode& type,
                          ::fesql::type::Type* output);
 
 bool GetConstFeString(const std::string& val, ::llvm::BasicBlock* block,

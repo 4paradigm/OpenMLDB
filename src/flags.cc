@@ -29,3 +29,10 @@ DEFINE_bool(enable_keep_alive, true, "config if tablet keep alive with dbms");
 // batch config
 DEFINE_string(default_db_name, "_fesql",
               "config the default batch catalog db name");
+DEFINE_string(native_fesql_libs_prefix,
+              "",
+              "config the native fesql libs prefix");
+DEFINE_string(native_fesql_libs_name,
+              "felibs",
+              "config the native fesql libs name");
+

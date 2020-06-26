@@ -307,7 +307,7 @@ class SQLNode {
 
     virtual bool Equals(const SQLNode *node) const;
     friend std::ostream &operator<<(std::ostream &output, const SQLNode &thiz);
-    const SQLNodeType type_;
+    SQLNodeType type_;
 
  private:
     uint32_t line_num_;
@@ -336,24 +336,26 @@ class TypeNode : public SQLNode {
     TypeNode() : SQLNode(node::kType, 0, 0), base_(fesql::node::kNull) {}
     explicit TypeNode(fesql::node::DataType base)
         : SQLNode(node::kType, 0, 0), base_(base), generics_({}) {}
-    explicit TypeNode(fesql::node::DataType base, DataType v1)
+    explicit TypeNode(fesql::node::DataType base, const TypeNode &v1)
         : SQLNode(node::kType, 0, 0), base_(base), generics_({v1}) {}
-    explicit TypeNode(fesql::node::DataType base, fesql::node::DataType v1,
-                      fesql::node::DataType v2)
+    explicit TypeNode(fesql::node::DataType base,
+                      const fesql::node::TypeNode &v1,
+                      const fesql::node::TypeNode v2)
         : SQLNode(node::kType, 0, 0), base_(base), generics_({v1, v2}) {}
     ~TypeNode() {}
     const std::string GetName() const {
         std::string type_name = DataTypeName(base_);
         if (!generics_.empty()) {
-            for (DataType type : generics_) {
+            for (auto type : generics_) {
                 type_name.append("_");
-                type_name.append(DataTypeName(type));
+                type_name.append(type.GetName());
             }
         }
         return type_name;
     }
+
     fesql::node::DataType base_;
-    std::vector<fesql::node::DataType> generics_;
+    std::vector<fesql::node::TypeNode> generics_;
     void Print(std::ostream &output, const std::string &org_tab) const override;
     virtual bool Equals(const SQLNode *node) const;
 };
@@ -1082,22 +1084,30 @@ class AllNode : public ExprNode {
 
 class FnDefNode : public SQLNode {
  public:
-    explicit FnDefNode(const SQLNodeType &type):
-        SQLNode(type, 0, 0) {}
-    virtual TypeNode* GetReturnType() const { return nullptr; }
+    explicit FnDefNode(const SQLNodeType &type) : SQLNode(type, 0, 0) {}
+    virtual TypeNode *GetReturnType() const { return nullptr; }
     virtual size_t GetArgsSize() const { return 0; }
-    virtual TypeNode* GetArgType(size_t i) const { return nullptr; }
+    virtual TypeNode *GetArgType(size_t i) const { return nullptr; }
     virtual const std::string GetSimpleName() const = 0;
 };
+class CastExprNode : public ExprNode {
+ public:
+    explicit CastExprNode(const node::DataType cast_type,
+                          const node::ExprNode *expr)
+        : ExprNode(kExprCast), cast_type_(cast_type), expr_(expr) {}
 
+    ~CastExprNode() {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const std::string GetExprString() const;
+    virtual bool Equals(const ExprNode *that) const;
+    DataType cast_type_;
+    const node::ExprNode *expr_;
+};
 class CallExprNode : public ExprNode {
  public:
-    explicit CallExprNode(const FnDefNode* fn_def,
-                          const ExprListNode *args, const WindowDefNode *over)
-        : ExprNode(kExprCall),
-          fn_def_(fn_def),
-          over_(over),
-          args_(args) {}
+    explicit CallExprNode(const FnDefNode *fn_def, const ExprListNode *args,
+                          const WindowDefNode *over)
+        : ExprNode(kExprCall), fn_def_(fn_def), over_(over), args_(args) {}
 
     ~CallExprNode() {}
 
@@ -1120,12 +1130,12 @@ class CallExprNode : public ExprNode {
         return nullptr == args_ ? 0 : args_->children_.size();
     }
 
-    const FnDefNode* GetFnDef() const { return fn_def_; }
+    const FnDefNode *GetFnDef() const { return fn_def_; }
 
  private:
     // bool is_agg_;
     // const std::string function_name_;
-    const FnDefNode* fn_def_;
+    const FnDefNode *fn_def_;
     const WindowDefNode *over_;
     const ExprListNode *args_;
 };
@@ -1554,7 +1564,7 @@ class FnNodeFnHeander : public FnNode {
           ret_type_(ret_type) {}
 
     void Print(std::ostream &output, const std::string &org_tab) const;
-    const std::string GetCodegenFunctionName() const;
+    const std::string GeIRFunctionName() const;
     const std::string name_;
     const FnNodeList *parameters_;
     const TypeNode *ret_type_;
@@ -1692,14 +1702,12 @@ class StructExpr : public ExprNode {
 
 class ExternalFnDefNode : public FnDefNode {
  public:
-    explicit ExternalFnDefNode(const std::string& name):
-        FnDefNode(kExternalFnDef), function_name_(name) {}
+    explicit ExternalFnDefNode(const std::string &name)
+        : FnDefNode(kExternalFnDef), function_name_(name) {}
 
     const std::string function_name() const { return function_name_; }
 
-    const std::string GetSimpleName() const override {
-        return function_name_;
-    }
+    const std::string GetSimpleName() const override { return function_name_; }
 
     void Print(std::ostream &output, const std::string &tab) const override;
     bool Equals(const SQLNode *node) const override;
@@ -1710,49 +1718,47 @@ class ExternalFnDefNode : public FnDefNode {
 
 class UDFDefNode : public FnDefNode {
  public:
-    explicit UDFDefNode(const FnNodeFnDef* def):
-        FnDefNode(kUDFDef), def_(def) {}
-    const FnNodeFnDef* def() { return def_; }
+    explicit UDFDefNode(const FnNodeFnDef *def)
+        : FnDefNode(kUDFDef), def_(def) {}
+    const FnNodeFnDef *def() { return def_; }
 
-    const std::string GetSimpleName() const override {
-        return "UDF";
-    }
+    const std::string GetSimpleName() const override { return "UDF"; }
 
     void Print(std::ostream &output, const std::string &tab) const override;
     bool Equals(const SQLNode *node) const override;
 
  private:
-    const FnNodeFnDef* def_;
+    const FnNodeFnDef *def_;
 };
 
 class UDAFDefNode : public FnDefNode {
  public:
-    UDAFDefNode(const ExprNode* init, const FnDefNode* update_func,
-                const FnDefNode* merge_func, const FnDefNode* output_func):
-        FnDefNode(kUDAFDef),
-        init_(init), update_(update_func),
-        merge_(merge_func), output_(output_func) {}
+    UDAFDefNode(const ExprNode *init, const FnDefNode *update_func,
+                const FnDefNode *merge_func, const FnDefNode *output_func)
+        : FnDefNode(kUDAFDef),
+          init_(init),
+          update_(update_func),
+          merge_(merge_func),
+          output_(output_func) {}
 
-    const std::string GetSimpleName() const override {
-        return "UDAF";
-    }
+    const std::string GetSimpleName() const override { return "UDAF"; }
 
     bool Equals(const SQLNode *node) const override;
     void Print(std::ostream &output, const std::string &tab) const override;
 
-    const ExprNode* init_expr() const { return init_; }
-    const FnDefNode* update_func() const { return update_; }
-    const FnDefNode* merge_func() const { return merge_; }
-    const FnDefNode* output_func() const { return output_; }
+    const ExprNode *init_expr() const { return init_; }
+    const FnDefNode *update_func() const { return update_; }
+    const FnDefNode *merge_func() const { return merge_; }
+    const FnDefNode *output_func() const { return output_; }
 
     bool AllowMerge() const { return merge_ != nullptr; }
     bool Validate() const { return true; }
 
  private:
-    const ExprNode* init_;
-    const FnDefNode* update_;
-    const FnDefNode* merge_;
-    const FnDefNode* output_;
+    const ExprNode *init_;
+    const FnDefNode *update_;
+    const FnDefNode *merge_;
+    const FnDefNode *output_;
 };
 
 std::string ExprString(const ExprNode *expr);

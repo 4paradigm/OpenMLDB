@@ -72,7 +72,7 @@ swig_add_library(fesql_jsdk_core
 target_include_directories(fesql_jsdk_core PRIVATE ${JNI_INCLUDE_DIRS})
 target_compile_options(fesql_jsdk_core PRIVATE -w)
 set(sdk_core_deps_libs
-	fesql_case ${yaml_libs} fesql_simple_catalog ${VM_LIBS} fesql_flags ${LLVM_LIBS} ${COMMON_LIBS})
+	fesql_case ${yaml_libs} boost_filesystem fesql_simple_catalog ${VM_LIBS} fesql_flags ${LLVM_LIBS} ${COMMON_LIBS})
 target_link_libraries(fesql_jsdk_core PRIVATE glog ${sdk_core_deps_libs})
 
 set_property(SOURCE fesql_interface_complete.i PROPERTY COMPILE_OPTIONS -package com._4paradigm)

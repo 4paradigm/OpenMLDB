@@ -159,6 +159,17 @@ struct Date {
         data = data | day;
         date_ = data;
     }
+    static bool Decode(int32_t date, int32_t* year, int32_t* month,
+                       int32_t* day) {
+        if (date < 0) {
+            return false;
+        }
+        *day = date & 0x0000000FF;
+        date = date >> 8;
+        *month = 1 + (date & 0x0000FF);
+        *year = 1900 + (date >> 8);
+        return true;
+    }
     int32_t date_;
 };
 __attribute__((unused)) static bool operator>(const Date& a, const Date& b) {

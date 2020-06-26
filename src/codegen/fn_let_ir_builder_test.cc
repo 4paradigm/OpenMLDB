@@ -218,7 +218,7 @@ TEST_F(FnLetIRBuilderTest, test_simple_project) {
 }
 
 TEST_F(FnLetIRBuilderTest, test_extern_udf_project) {
-    std::string sql = "SELECT inc_int32(col1) FROM t1 limit 10;";
+    std::string sql = "SELECT inc(col1) FROM t1 limit 10;";
     int8_t* ptr = NULL;
     uint32_t size = 0;
     type::TableDef table1;
@@ -236,6 +236,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_udf_project) {
     ASSERT_EQ(33u, *reinterpret_cast<uint32_t*>(output + 7));
     free(ptr);
 }
+
 
 TEST_F(FnLetIRBuilderTest, test_extern_agg_sum_project) {
     std::string sql =

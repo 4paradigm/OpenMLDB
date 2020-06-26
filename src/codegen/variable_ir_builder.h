@@ -23,7 +23,10 @@ class VariableIRBuilder {
  public:
     VariableIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var);
     ~VariableIRBuilder();
-
+    bool StoreRetStruct(const NativeValue& value,
+                        base::Status& status);  // NOLINT
+    bool LoadRetStruct(NativeValue* output,
+                       base::Status& status);  // NOLINT
     bool LoadWindow(const std::string& frame_str, NativeValue* output,
                     base::Status& status);  // NOLINT
     bool LoadColumnRef(const std::string& relation_name,
@@ -54,6 +57,9 @@ class VariableIRBuilder {
     bool StoreValue(const std::string& name, const NativeValue& value,
                     bool is_register,
                     base::Status& status);  // NOLINT (runtime/references)
+
+    bool StoreStruct(const std::string& name, const NativeValue& value,
+                     base::Status& status);  // NOLINT
 
  private:
     ::llvm::BasicBlock* block_;

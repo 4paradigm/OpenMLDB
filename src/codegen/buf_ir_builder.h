@@ -92,7 +92,7 @@ class BufNativeIRBuilder : public RowDecodeIRBuilder {
                              ::llvm::Value* size, NativeValue* output);
     bool ResolveFieldInfo(const std::string& name,
                           codec::ColInfo* info_ptr,
-                          node::DataType* data_type_ptr);
+                          node::TypeNode* data_type_ptr);
 
  private:
     ::llvm::BasicBlock* block_;

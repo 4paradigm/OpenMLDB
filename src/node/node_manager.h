@@ -107,9 +107,11 @@ class NodeManager {
     TableRefNode *MakeQueryRefNode(const QueryNode *sub_query,
                                    const std::string &alias);
 
+    ExprNode *MakeCastNode(const node::DataType cast_type,
+                           const ExprNode *expr);
     ExprNode *MakeFuncNode(const std::string &name, const ExprListNode *args,
                            const SQLNode *over);
-    ExprNode *MakeFuncNode(const FnDefNode* fn, const ExprListNode *args,
+    ExprNode *MakeFuncNode(const FnDefNode *fn, const ExprListNode *args,
                            const SQLNode *over);
 
     ExprNode *MakeQueryExprNode(const QueryNode *query);
@@ -161,6 +163,8 @@ class NodeManager {
 
     TypeNode *MakeTypeNode(fesql::node::DataType base);
     TypeNode *MakeTypeNode(fesql::node::DataType base,
+                           const fesql::node::TypeNode &v1);
+    TypeNode *MakeTypeNode(fesql::node::DataType base,
                            fesql::node::DataType v1);
     TypeNode *MakeTypeNode(fesql::node::DataType base, fesql::node::DataType v1,
                            fesql::node::DataType v2);
@@ -179,6 +183,7 @@ class NodeManager {
                            const std::string db_name);
     ExprNode *MakeExprIdNode(const std::string &name);
     // Make Fn Node
+    ExprNode *MakeConstNode(int16_t value);
     ExprNode *MakeConstNode(int value);
     ExprNode *MakeConstNode(int64_t value, DataType unit);
     ExprNode *MakeConstNode(int64_t value);
@@ -187,6 +192,16 @@ class NodeManager {
     ExprNode *MakeConstNode(const std::string &value);
     ExprNode *MakeConstNode(const char *value);
     ExprNode *MakeConstNode();
+    ExprNode *MakeConstNodeINT16MAX();
+    ExprNode *MakeConstNodeINT32MAX();
+    ExprNode *MakeConstNodeINT64MAX();
+    ExprNode *MakeConstNodeFLOATMAX();
+    ExprNode *MakeConstNodeDOUBLEMAX();
+    ExprNode *MakeConstNodeINT16MIN();
+    ExprNode *MakeConstNodeINT32MIN();
+    ExprNode *MakeConstNodeINT64MIN();
+    ExprNode *MakeConstNodeFLOATMIN();
+    ExprNode *MakeConstNodeDOUBLEMIN();
 
     ExprNode *MakeAllNode(const std::string &relation_name);
     ExprNode *MakeAllNode(const std::string &relation_name,
@@ -281,17 +296,15 @@ class NodeManager {
         const vm::ColumnSourceList column_sources,
         const vm::SchemaSourceList &schema_souces);
 
-
     node::FrameNode *MergeFrameNodeWithCurrentHistoryFrame(FrameNode *frame1);
 
-    SQLNode* MakeExternalFnDefNode(const std::string& function_name);
+    SQLNode *MakeExternalFnDefNode(const std::string &function_name);
 
-    SQLNode* MakeUDFDefNode(const FnNodeFnDef* def);
+    SQLNode *MakeUDFDefNode(const FnNodeFnDef *def);
 
-    SQLNode* MakeUDAFDefNode(const ExprNode* init,
-                             const FnDefNode* update_func,
-                             const FnDefNode* merge_func,
-                             const FnDefNode* output_func);
+    SQLNode *MakeUDAFDefNode(const ExprNode *init, const FnDefNode *update_func,
+                             const FnDefNode *merge_func,
+                             const FnDefNode *output_func);
 
  private:
     ProjectNode *MakeProjectNode(const int32_t pos, const std::string &name,
