@@ -33,6 +33,7 @@ using fesql::codec::ListV;
 using fesql::codec::Row;
 using fesql::codec::StringColumnImpl;
 using fesql::codec::StringRef;
+// TODO(chenjing): 时区统一配置
 const int32_t TZ = 8;
 const time_t TZ_OFFSET = TZ * 3600000;
 template <class V>
@@ -518,19 +519,19 @@ void RegisterNativeUDFToModule(::llvm::Module *module) {
         module, "sum", bool_ty, {list_time_ty, time_ty},
         reinterpret_cast<void *>(v1::sum_struct_list<codec::Timestamp>));
 
-    RegisterMethod(module, "max", i16_ty, {list_i16_ty},
-                   reinterpret_cast<void *>(v1::max_list<int16_t>));
-    RegisterMethod(module, "max", i32_ty, {list_i32_ty},
-                   reinterpret_cast<void *>(v1::max_list<int32_t>));
-    RegisterMethod(module, "max", i64_ty, {list_i64_ty},
-                   reinterpret_cast<void *>(v1::max_list<int64_t>));
-    RegisterMethod(module, "max", float_ty, {list_float_ty},
-                   reinterpret_cast<void *>(v1::max_list<float>));
-    RegisterMethod(module, "max", double_ty, {list_double_ty},
-                   reinterpret_cast<void *>(v1::max_list<double>));
-    RegisterMethod(
-        module, "max", bool_ty, {list_time_ty, time_ty},
-        reinterpret_cast<void *>(v1::max_struct_list<codec::Timestamp>));
+    //    RegisterMethod(module, "max", i16_ty, {list_i16_ty},
+    //                   reinterpret_cast<void *>(v1::max_list<int16_t>));
+    //    RegisterMethod(module, "max", i32_ty, {list_i32_ty},
+    //                   reinterpret_cast<void *>(v1::max_list<int32_t>));
+    //    RegisterMethod(module, "max", i64_ty, {list_i64_ty},
+    //                   reinterpret_cast<void *>(v1::max_list<int64_t>));
+    //    RegisterMethod(module, "max", float_ty, {list_float_ty},
+    //                   reinterpret_cast<void *>(v1::max_list<float>));
+    //    RegisterMethod(module, "max", double_ty, {list_double_ty},
+    //                   reinterpret_cast<void *>(v1::max_list<double>));
+    //    RegisterMethod(
+    //        module, "max", bool_ty, {list_time_ty, time_ty},
+    //        reinterpret_cast<void *>(v1::max_struct_list<codec::Timestamp>));
 
     RegisterMethod(module, "max", bool_ty, {list_date_ty, date_ty},
                    reinterpret_cast<void *>(v1::max_struct_list<codec::Date>));
@@ -538,19 +539,19 @@ void RegisterNativeUDFToModule(::llvm::Module *module) {
         module, "max", bool_ty, {list_string_ty, string_ty},
         reinterpret_cast<void *>(v1::max_struct_list<codec::StringRef>));
 
-    RegisterMethod(module, "min", i16_ty, {list_i16_ty},
-                   reinterpret_cast<void *>(v1::min_list<int16_t>));
-    RegisterMethod(module, "min", i32_ty, {list_i32_ty},
-                   reinterpret_cast<void *>(v1::min_list<int32_t>));
-    RegisterMethod(module, "min", i64_ty, {list_i64_ty},
-                   reinterpret_cast<void *>(v1::min_list<int64_t>));
-    RegisterMethod(module, "min", float_ty, {list_float_ty},
-                   reinterpret_cast<void *>(v1::min_list<float>));
-    RegisterMethod(module, "min", double_ty, {list_double_ty},
-                   reinterpret_cast<void *>(v1::min_list<double>));
-    RegisterMethod(
-        module, "min", bool_ty, {list_time_ty, time_ty},
-        reinterpret_cast<void *>(v1::min_struct_list<codec::Timestamp>));
+    //    RegisterMethod(module, "min", i16_ty, {list_i16_ty},
+    //                   reinterpret_cast<void *>(v1::min_list<int16_t>));
+    //    RegisterMethod(module, "min", i32_ty, {list_i32_ty},
+    //                   reinterpret_cast<void *>(v1::min_list<int32_t>));
+    //    RegisterMethod(module, "min", i64_ty, {list_i64_ty},
+    //                   reinterpret_cast<void *>(v1::min_list<int64_t>));
+    //    RegisterMethod(module, "min", float_ty, {list_float_ty},
+    //                   reinterpret_cast<void *>(v1::min_list<float>));
+    //    RegisterMethod(module, "min", double_ty, {list_double_ty},
+    //                   reinterpret_cast<void *>(v1::min_list<double>));
+    //    RegisterMethod(
+    //        module, "min", bool_ty, {list_time_ty, time_ty},
+    //        reinterpret_cast<void *>(v1::min_struct_list<codec::Timestamp>));
 
     RegisterMethod(module, "min", bool_ty, {list_date_ty, date_ty},
                    reinterpret_cast<void *>(v1::min_struct_list<codec::Date>));
@@ -681,13 +682,15 @@ void RegisterNativeUDFToModule(::llvm::Module *module) {
         module, "log", double_ty, {double_ty},
         (reinterpret_cast<void *>(static_cast<double (*)(double)>(&log))));
 }  // namespace udf
-void RegisterUDFToModule(::llvm::Module *m) {
+bool RegisterUDFToModule(::llvm::Module *m) {
     base::Status status;
     RegisterNativeUDFToModule(m);
     codegen::UDFIRBuilder udf_ir_builder(&NATIVE_UDF_PTRS);
     if (!udf_ir_builder.BuildUDF(m, status)) {
         LOG(WARNING) << status.msg;
+        return false;
     }
+    return true;
 }
 void InitCLibSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
                     ::llvm::orc::MangleAndInterner &mi) {  // NOLINT

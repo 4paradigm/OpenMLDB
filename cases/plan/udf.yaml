@@ -1,11 +1,17 @@
-cases:
-  - id: 1
+SQLCases:
+  - id: 0
     desc: 简单UDF定义
     sql: |
       %%fun
-      def test(x:i32,y:i32):i32
-          c=x+y
-          return c
+      def test(x:i32, y:i32):i32
+          return x+y
+      end
+  - id: 1
+    desc: UDF多个参数
+    sql: |
+      %%fun
+      def test(x:i16, y:i16, z:i16, a:i16, b:i16):i16
+          return a+b+x+y+z
       end
   - id: 2
     desc: fun后换行
@@ -174,4 +180,45 @@ cases:
                   sum = sum + x
           return sum
       end
-
+  - id: 16
+    desc: 简单UDF定义-I32
+    sql: |
+      %%fun
+      def test(x:i32):i32
+          return x+1
+      end
+  - id: 17
+    desc: 简单UDF定义-I16
+    sql: |
+      %%fun
+      def test(x:i16):i16
+          return x+1
+      end
+  - id: 18
+    desc: 简单UDF定义-I64
+    sql: |
+      %%fun
+      def test(x:i64):i64
+          return x+1
+      end
+  - id: 19
+    desc: 强制类型转换 I64
+    sql: |
+      %%fun
+      def test(x:i32):i64
+          return i64(x)
+      end
+  - id: 20
+    desc: 强制类型转换 Int32
+    sql: |
+      %%fun
+      def test(x:bigint):int32
+          return int32(x)
+      end
+  - id: 21
+    desc: 强制类型转换 Int64
+    sql: |
+      %%fun
+      def test(x:int):int64
+          return int64(x)
+      end

@@ -127,7 +127,7 @@ cases:
     desc: SELECT null列
     mode: request
     db: db1
-    sql: select int16, int32, int64, `float`, `double`, `ts`, dt, `string`, id + 1 as newid from t1;
+    sql: select `int16`, `int32`, `int64`, `float`, `double`, `ts`, dt, `string`, id + 1 as newid from t1;
     standard_sql: true
     inputs:
       - name: t1

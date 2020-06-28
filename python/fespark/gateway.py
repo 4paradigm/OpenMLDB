@@ -58,4 +58,8 @@ class FesqlGateway(object):
         if "PYSPARK_GATEWAY_PORT" in os.environ: # Run with spark-submit
             return SparkSession.builder.getOrCreate()
         else: # Run with local script
+            if not os.path.isfile(FesqlGateway.FESQL_JAR_PATH):
+                raise FesqlException("Fail to load fesql jar in {}".format(FesqlGateway.FESQL_JAR_PATH))
+
+            logging.info("Load the fesql jar in {}".format(FesqlGateway.FESQL_JAR_PATH))
             return SparkSession.builder.config("spark.jars", FesqlGateway.FESQL_JAR_PATH).getOrCreate()

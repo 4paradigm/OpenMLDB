@@ -114,11 +114,12 @@ ASC	{ return ASC; }
 AUTO_INCREMENT	{ return AUTO_INCREMENT; }
 BEFORE	{ return BEFORE; }
 <INITIAL>BETWEEN	{ BEGIN BTWMODE; return BETWEEN; }
-INT8|BIGINT	{ return BIGINT; }
+INT64|BIGINT	{ return BIGINT; }
 BINARY	{ return BINARY; }
 BIT	{ return BIT; }
 BLOB	{ return BLOB; }
 BOTH	{ return BOTH; }
+INT1|BOOL   {return BOOL;}
 BY	{ return BY; }
 CALL	{ return CALL; }
 CASCADE	{ return CASCADE; }
@@ -156,7 +157,7 @@ DETERMINISTIC	{ return DETERMINISTIC; }
 DISTINCT	{ return DISTINCT; }
 DISTINCTROW	{ return DISTINCTROW; }
 DIV	{ return DIV; }
-FLOAT8|DOUBLE	{ return DOUBLE; }
+FLOAT64|DOUBLE	{ return DOUBLE; }
 DROP	{ return DROP; }
 DUAL	{ return DUAL; }
 EACH	{ return EACH; }
@@ -171,7 +172,7 @@ EXISTS	{ return EXISTS; }
 EXIT	{ return EXIT; }
 EXPLAIN	{ return EXPLAIN; }
 FETCH	{ return FETCH; }
-FLOAT4|FLOAT?	{ return FLOAT; }
+FLOAT32|FLOAT?	{ return FLOAT; }
 FOLLOWING   {return FOLLOWING;  }
 FOR	{ return FOR; }
 FORCE	{ return FORCE; }
@@ -195,7 +196,7 @@ INOUT	{ return INOUT; }
 INSENSITIVE	{ return INSENSITIVE; }
 INSERT	{ return INSERT; }
 INSTANCE_NOT_IN_WINDOW  { return INSTANCE_NOT_IN_WINDOW; }
-INT4?|INTEGER	{ return INTEGER; }
+INT32|INT|INTEGER	{ return INTEGER; }
 INTERVAL	{ return INTERVAL; }
 INTO	{ return INTO; }
 IS	{ return IS; }
@@ -282,7 +283,7 @@ SENSITIVE	{ return SENSITIVE; }
 SEPARATOR	{ return SEPARATOR; }
 SET	{ return SET; }
 SHOW	{ return SHOW; }
-INT2|SMALLINT	{ return SMALLINT; }
+INT16|SMALLINT	{ return SMALLINT; }
 SOME	{ return SOME; }
 SPATIAL	{ return SPATIAL; }
 SPECIFIC	{ return SPECIFIC; }
@@ -305,7 +306,7 @@ TEXT	{ return TEXT; }
 THEN	{ return THEN; }
 TIME	{ return TIME; }
 TIMESTAMP	{ return TIMESTAMP; }
-INT1|TINYINT	{ return TINYINT; }
+INT4|TINYINT	{ return TINYINT; }
 TINYTEXT	{ return TINYTEXT; }
 TO	{ return TO; }
 TS  { return TS; }
@@ -341,7 +342,16 @@ WINDOW  { return WINDOW; }
 XOR	{ return XOR; }
 ZEROFILL	{ return ZEROFILL; }
 
-
+I32_MAX { return I32_MAX; }
+I64_MAX { return I64_MAX; }
+I16_MAX { return I16_MAX; }
+FLOAT_MAX { return FLOAT_MAX; }
+DOUBLE_MAX { return DOUBLE_MAX; }
+I32_MAX { return I32_MIN; }
+I64_MIN { return I64_MIN; }
+I16_MIN { return I16_MIN; }
+FLOAT_MIN { return FLOAT_MIN; }
+DOUBLE_MIN { return DOUBLE_MIN; }
  /* function definition */
 <FUN_INDENT>"def" {
             BEGIN FUN;
@@ -353,6 +363,16 @@ ZEROFILL	{ return ZEROFILL; }
     yylval->intval = 1;
     return I32;
     }
+<FUN>"i16" {
+    yylval->intval = 1;
+    return I16;
+    }
+<FUN>"i64" {
+    yylval->intval = 1;
+    return I64;
+    }
+
+
 
 
 <FUN>{newlines} { columnpos = 1; BEGIN FUN_INDENT; return NEWLINES;}

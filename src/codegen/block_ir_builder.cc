@@ -7,11 +7,12 @@
  *--------------------------------------------------------------------------
  **/
 #include "codegen/block_ir_builder.h"
+#include "codegen/context.h"
 #include "codegen/expr_ir_builder.h"
 #include "codegen/list_ir_builder.h"
+#include "codegen/struct_ir_builder.h"
 #include "codegen/type_ir_builder.h"
 #include "codegen/variable_ir_builder.h"
-#include "codegen/context.h"
 #include "glog/logging.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/IR/CFG.h"
@@ -119,46 +120,44 @@ bool fesql::codegen::BlockIRBuilder::BuildBlock(
     return true;
 }
 
-
 bool BlockIRBuilder::DoBuildBranchBlock(
-        const ::fesql::node::FnIfElseBlock* if_else_block,
-        size_t branch_idx,
-        CodeGenContext* ctx,
-        ::llvm::BasicBlock* if_else_end) {
-    Status status;
-    ::llvm::BasicBlock* cur_block = ctx->GetCurrentBlock();
+    const ::fesql::node::FnIfElseBlock *if_else_block, size_t branch_idx,
+    CodeGenContext *ctx, ::llvm::BasicBlock *if_else_end, Status &status) {
+    ::llvm::BasicBlock *cur_block = ctx->GetCurrentBlock();
 
     if (branch_idx == 0) {
         // if () {}
-        return BuildBlock(if_else_block->if_block_->block_,
-            cur_block, if_else_end, status);
+        return BuildBlock(if_else_block->if_block_->block_, cur_block,
+                          if_else_end, status);
 
     } else if (branch_idx <= if_else_block->elif_blocks_.size()) {
         // else if () {}
         auto node = if_else_block->elif_blocks_[branch_idx - 1];
-        auto elif_block = dynamic_cast<fesql::node::FnElifBlock*>(node);
+        auto elif_block = dynamic_cast<fesql::node::FnElifBlock *>(node);
 
         NativeValue elif_condition;
         ExprIRBuilder expr_builder(cur_block, sv_);
         bool elif_ok = expr_builder.Build(elif_block->elif_node_->expression_,
-            &elif_condition, status);
+                                          &elif_condition, status);
         if (!elif_ok) {
-            LOG(WARNING) << "fail to codegen else if condition: "
-                << status.msg;
+            LOG(WARNING) << "fail to codegen else if condition: " << status.msg;
             return false;
         }
 
-        status = ctx->CreateBranch(elif_condition, [&](){
-            elif_ok = BuildBlock(elif_block->block_, ctx->GetCurrentBlock(),
-                if_else_end, status);
-            CHECK_TRUE(elif_ok, "fail to codegen block:", status.msg);
-            return Status::OK();
-        }, [&](){
-            elif_ok = DoBuildBranchBlock(if_else_block,
-                branch_idx + 1, ctx, if_else_end);
-            CHECK_TRUE(elif_ok, "fail to codegen block:", status.msg);
-            return Status::OK();
-        });
+        status = ctx->CreateBranch(
+            elif_condition,
+            [&]() {
+                elif_ok = BuildBlock(elif_block->block_, ctx->GetCurrentBlock(),
+                                     if_else_end, status);
+                CHECK_TRUE(elif_ok, "fail to codegen block: ", status.msg);
+                return Status::OK();
+            },
+            [&]() {
+                elif_ok = DoBuildBranchBlock(if_else_block, branch_idx + 1, ctx,
+                                             if_else_end, status);
+                CHECK_TRUE(elif_ok, "fail to codegen block: ", status.msg);
+                return Status::OK();
+            });
 
     } else {
         // else {}
@@ -166,7 +165,7 @@ bool BlockIRBuilder::DoBuildBranchBlock(
             ctx->GetBuilder()->CreateBr(if_else_end);
         } else {
             bool else_ok = BuildBlock(if_else_block->else_block_->block_,
-                cur_block, if_else_end, status);
+                                      cur_block, if_else_end, status);
             if (!else_ok) {
                 LOG(WARNING) << "fail to codegen else block: " << status.msg;
                 return false;
@@ -175,7 +174,6 @@ bool BlockIRBuilder::DoBuildBranchBlock(
     }
     return true;
 }
-
 
 bool BlockIRBuilder::BuildIfElseBlock(
     const ::fesql::node::FnIfElseBlock *if_else_block,
@@ -207,13 +205,20 @@ bool BlockIRBuilder::BuildIfElseBlock(
         return false;
     }
 
-    status = ctx.CreateBranch(condition, [&]() {
-        CHECK_TRUE(DoBuildBranchBlock(if_else_block, 0, &ctx, if_else_end));
-        return Status::OK();
-    }, [&]() {
-        CHECK_TRUE(DoBuildBranchBlock(if_else_block, 1, &ctx, if_else_end));
-        return Status::OK();
-    });
+    status = ctx.CreateBranch(
+        condition,
+        [&]() {
+            CHECK_TRUE(
+                DoBuildBranchBlock(if_else_block, 0, &ctx, if_else_end, status),
+                "fail to codegen block:", status.msg);
+            return Status::OK();
+        },
+        [&]() {
+            CHECK_TRUE(
+                DoBuildBranchBlock(if_else_block, 1, &ctx, if_else_end, status),
+                "fail to codegen block:", status.msg);
+            return Status::OK();
+        });
 
     root_group.DropEmptyBlocks();
     root_group.ReInsertTo(fn);
@@ -294,7 +299,8 @@ bool BlockIRBuilder::BuildForInBlock(const ::fesql::node::FnForInBlock *node,
             return false;
         }
         if (!var_ir_builder.StoreValue(node->for_in_node_->var_name_,
-                NativeValue::Create(next), false, status)) {
+                                       NativeValue::Create(next), false,
+                                       status)) {
             return false;
         }
         // loop body
@@ -326,6 +332,21 @@ bool BlockIRBuilder::BuildReturnStmt(const ::fesql::node::FnReturnStmt *node,
     }
     ::llvm::Value *value = value_wrapper.GetValue(&builder);
 
+    if (TypeIRBuilder::IsStructPtr(value->getType())) {
+        StructTypeIRBuilder *struct_builder =
+            StructTypeIRBuilder::CreateStructTypeIRBuilder(block->getModule(),
+                                                           value->getType());
+        NativeValue ret_value;
+        if (!var_ir_builder.LoadRetStruct(&ret_value, status)) {
+            LOG(WARNING) << "fail to load ret struct address";
+            return false;
+        }
+        if (!struct_builder->CopyFrom(block, value,
+                                      ret_value.GetValue(&builder))) {
+            return false;
+        }
+        value = builder.getInt1(true);
+    }
     if (!ClearAllScopeValues(block, status)) {
         LOG(WARNING) << "fail to clear all scopes values : " << status.msg;
         return false;

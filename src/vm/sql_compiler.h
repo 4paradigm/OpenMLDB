@@ -57,31 +57,32 @@ struct SQLContext {
     std::string encoded_schema;
     std::string encoded_request_schema;
     ::fesql::node::NodeManager nm;
-    SQLContext() {
-        runner = NULL;
-    }
-    ~SQLContext() {
-        delete runner;
-    }
+    SQLContext() { runner = NULL; }
+    ~SQLContext() { delete runner; }
 };
 
 void InitCodecSymbol(::llvm::orc::JITDylib& jd,            // NOLINT
                      ::llvm::orc::MangleAndInterner& mi);  // NOLINT
 void InitCodecSymbol(vm::FeSQLJIT* jit_ptr);
 
+bool RegisterFeLibs(llvm::Module* m, base::Status& status);  // NOLINT
+bool GetLibsFiles(const std::string& dir_path,
+                  std::vector<std::string>& filenames,  // NOLINT
+                  base::Status& status);                // NOLINT
+const std::string FindFesqlDirPath();
+bool CompileFeScript(llvm::Module* m, const std::string& path,
+                     base::Status& status);  // NOLINT
 class SQLCompiler {
  public:
-    SQLCompiler(const std::shared_ptr<Catalog>& cl,
-                bool keep_ir = false,
-                bool dump_plan = false,
-                bool plan_only = false);
+    SQLCompiler(const std::shared_ptr<Catalog>& cl, bool keep_ir = false,
+                bool dump_plan = false, bool plan_only = false);
 
     ~SQLCompiler();
 
-    bool Compile(SQLContext& ctx,  // NOLINT
-                 Status& status);  // NOLINT
+    bool Compile(SQLContext& ctx,      // NOLINT
+                 Status& status);      // NOLINT
     bool BuildRunner(SQLContext& ctx,  // NOLINT
-                 Status& status);  // NOLINT
+                     Status& status);  // NOLINT
 
  private:
     void KeepIR(SQLContext& ctx, llvm::Module* m);                     // NOLINT
