@@ -123,6 +123,7 @@ void PrintRows(const vm::Schema& schema, const std::vector<Row>& rows) {
 const std::vector<Row> SortRows(const vm::Schema& schema,
                                 const std::vector<Row>& rows,
                                 const std::string& order_col) {
+    DLOG(INFO) << "sort rows start";
     RowView row_view(schema);
     int idx = -1;
     for (int i = 0; i < schema.size(); i++) {
@@ -135,22 +136,43 @@ const std::vector<Row> SortRows(const vm::Schema& schema,
         return rows;
     }
 
-    std::vector<std::pair<int64_t, Row>> sort_rows;
-    for (auto row : rows) {
-        row_view.Reset(row.buf());
-        row_view.GetAsString(idx);
-        sort_rows.push_back(std::make_pair(
-            boost::lexical_cast<int64_t>(row_view.GetAsString(idx)), row));
+    if (schema.Get(idx).type() == fesql::type::kVarchar) {
+        std::vector<std::pair<std::string, Row>> sort_rows;
+        for (auto row : rows) {
+            row_view.Reset(row.buf());
+            row_view.GetAsString(idx);
+            sort_rows.push_back(std::make_pair(row_view.GetAsString(idx), row));
+        }
+        std::sort(
+            sort_rows.begin(), sort_rows.end(),
+            [](std::pair<std::string, Row>& a, std::pair<std::string, Row>& b) {
+                return a.first < b.first;
+            });
+        std::vector<Row> output_rows;
+        for (auto row : sort_rows) {
+            output_rows.push_back(row.second);
+        }
+        DLOG(INFO) << "sort rows done!";
+        return output_rows;
+    } else {
+        std::vector<std::pair<int64_t, Row>> sort_rows;
+        for (auto row : rows) {
+            row_view.Reset(row.buf());
+            row_view.GetAsString(idx);
+            sort_rows.push_back(std::make_pair(
+                boost::lexical_cast<int64_t>(row_view.GetAsString(idx)), row));
+        }
+        std::sort(sort_rows.begin(), sort_rows.end(),
+                  [](std::pair<int64_t, Row>& a, std::pair<int64_t, Row>& b) {
+                      return a.first < b.first;
+                  });
+        std::vector<Row> output_rows;
+        for (auto row : sort_rows) {
+            output_rows.push_back(row.second);
+        }
+        DLOG(INFO) << "sort rows done!";
+        return output_rows;
     }
-    std::sort(sort_rows.begin(), sort_rows.end(),
-              [](std::pair<int64_t, Row>& a, std::pair<int64_t, Row>& b) {
-                  return a.first < b.first;
-              });
-    std::vector<Row> output_rows;
-    for (auto row : sort_rows) {
-        output_rows.push_back(row.second);
-    }
-    return output_rows;
 }
 void CheckRows(const vm::Schema& schema, const std::vector<Row>& rows,
                const std::vector<Row>& exp_rows) {
@@ -244,6 +266,7 @@ class EngineTest : public ::testing::TestWithParam<SQLCase> {
     EngineTest() {}
     virtual ~EngineTest() {}
 };
+
 const std::vector<Row> SortRows(const vm::Schema& schema,
                                 const std::vector<Row>& rows,
                                 const std::string& order_col);
@@ -263,7 +286,15 @@ void RequestModeCheck(SQLCase& sql_case) {  // NOLINT
     }
 
     // Init engine and run session
-    std::cout << sql_case.sql_str() << std::endl;
+    std::string sql_str = sql_case.sql_str();
+    for (int j = 0; j < input_cnt; ++j) {
+        std::string placeholder = "{" + std::to_string(j) + "}";
+        std::string tname = sql_case.inputs()[j].name_.empty()
+                                ? ("t" + std::to_string(j))
+                                : sql_case.inputs()[j].name_;
+        boost::replace_all(sql_str, placeholder, tname);
+    }
+    std::cout << sql_str << std::endl;
     base::Status get_status;
 
     Engine engine(catalog);
@@ -272,8 +303,7 @@ void RequestModeCheck(SQLCase& sql_case) {  // NOLINT
         session.EnableDebug();
     }
 
-    bool ok =
-        engine.Get(sql_case.sql_str(), sql_case.db(), session, get_status);
+    bool ok = engine.Get(sql_str, sql_case.db(), session, get_status);
     ASSERT_TRUE(ok);
 
     const std::string& request_name = session.GetRequestName();
@@ -297,7 +327,6 @@ void RequestModeCheck(SQLCase& sql_case) {  // NOLINT
     vm::Schema schema;
     schema = session.GetSchema();
     PrintSchema(schema);
-
 
     std::ostringstream oss;
     session.GetPhysicalPlan()->Print(oss, "");
@@ -343,6 +372,9 @@ void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
     for (int32_t i = 0; i < input_cnt; i++) {
         type::TableDef table_def;
         sql_case.ExtractInputTableDef(table_def, i);
+        if (table_def.name().empty()) {
+            table_def.set_name("t" + std::to_string(i));
+        }
         std::shared_ptr<::fesql::storage::Table> table(
             new ::fesql::storage::Table(i + 1, 1, table_def));
         name_table_map[table_def.name()] = table;
@@ -350,7 +382,15 @@ void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
     }
 
     // Init engine and run session
-    std::cout << sql_case.sql_str() << std::endl;
+    std::string sql_str = sql_case.sql_str();
+    for (int j = 0; j < input_cnt; ++j) {
+        std::string placeholder = "{" + std::to_string(j) + "}";
+        std::string tname = sql_case.inputs()[j].name_.empty()
+                                ? ("t" + std::to_string(j))
+                                : sql_case.inputs()[j].name_;
+        boost::replace_all(sql_str, placeholder, tname);
+    }
+    std::cout << sql_str << std::endl;
     base::Status get_status;
 
     Engine engine(catalog);
@@ -359,8 +399,7 @@ void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
         session.EnableDebug();
     }
 
-    bool ok =
-        engine.Get(sql_case.sql_str(), sql_case.db(), session, get_status);
+    bool ok = engine.Get(sql_str, sql_case.db(), session, get_status);
     ASSERT_TRUE(ok);
     std::vector<Row> request_data;
     for (int32_t i = 0; i < input_cnt; i++) {
@@ -398,10 +437,12 @@ void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
     // Check Output Data
     std::vector<Row> output;
     ASSERT_EQ(0, session.Run(output));
-    CheckRows(schema, SortRows(schema, output, sql_case.output().order_),
+    CheckRows(schema, SortRows(schema, output, sql_case.expect().order_),
               case_output_data);
 }
-
+INSTANTIATE_TEST_CASE_P(
+    EngineBugQuery, EngineTest,
+    testing::ValuesIn(InitCases("/cases/query/bug_query.yaml")));
 INSTANTIATE_TEST_CASE_P(
     EngineSimpleQuery, EngineTest,
     testing::ValuesIn(InitCases("/cases/query/simple_query.yaml")));

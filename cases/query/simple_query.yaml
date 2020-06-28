@@ -1,4 +1,4 @@
-SQLCases:
+cases:
   - id: 0
     desc: SELECT ALL
     mode: request
@@ -8,7 +8,7 @@ SQLCases:
     inputs:
       - name: t1
         resource: cases/resource/simple_t1_ts.yaml
-    output:
+    expect:
       schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string, std_ts:timestamp
       order: col1
       data: |
@@ -28,7 +28,7 @@ SQLCases:
     inputs:
       - name: t1
         resource: cases/resource/simple_t1_ts.yaml
-    output:
+    expect:
       schema: col0:string, id:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string, std_ts:timestamp
       order: id
       data: |
@@ -52,7 +52,7 @@ SQLCases:
         data: |
           1, 0, 3, 55, 3.3, 33.3, 1, 333
           2, 0, 1, 5, 1.1, 11.1, 1, 1
-    output:
+    expect:
       schema: id:int32, col0:string, f1:int32, f2:int32
       data: |
         1, 0, 4, 110
@@ -73,7 +73,7 @@ SQLCases:
     inputs:
       - name: t1
         resource: cases/resource/simple_t1.yaml
-    output:
+    expect:
       schema: id:int32, col0:string, test_col1:int32, col2:int16, col6:string
       order: id
       data: |
@@ -91,7 +91,7 @@ SQLCases:
     inputs:
       - name: t1
         resource: cases/resource/simple_t1_ts.yaml
-    output:
+    expect:
       schema: id:int32, inc_ts:timestamp, flag:bool
       order: id
       data: |
@@ -115,7 +115,7 @@ SQLCases:
           2, 1590115421001, 2020-05-21
           3, 1590115422001, 2020-05-22
 
-    output:
+    expect:
       schema: id:int32, std_ts:timestamp, std_date:date
       order: id
       data: |
@@ -139,7 +139,7 @@ SQLCases:
           2, 1, 1, 1, NULL, NULL, 1590115420002, 2020-05-21, y
           3, 2, 2, 2, 2.0, 2.0, NULL, NULL, z
           4, 3, 3, 3, 3.0, 3.0, 1590115420003, 2020-05-22, NULL
-    output:
+    expect:
       schema: int16:int16, int32:int32, int64:int64, float:float, double:double,
               ts:timestamp, dt:date, string:string, newid:int32
       order: newid
@@ -165,7 +165,7 @@ SQLCases:
           2, NULL, yy, NULL, 1, rr, NULL, NULL, uu
           3, NULL, NULL, NULL, 2, NULL, NULL, NULL, NULL
           4, xx, NULL, zz, NULL, NULL, ss, tt, NULL
-    output:
+    expect:
       schema: c1:string, c2:string, c3:string, c4:string,
               c5:string, c6:string, c7:string, c8:string, id:int32
       order: c1

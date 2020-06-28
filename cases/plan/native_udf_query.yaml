@@ -1,4 +1,4 @@
-SQLCases:
+cases:
   - id: 1
     desc: Trim函数
     sql: SELECT TRIM(COL1) FROM t1;

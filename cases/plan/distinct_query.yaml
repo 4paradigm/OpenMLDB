@@ -1,4 +1,4 @@
-SQLCases:
+cases:
   - id: 1
     desc: SELECT 去重后过滤
     mode: physical-plan-unsupport

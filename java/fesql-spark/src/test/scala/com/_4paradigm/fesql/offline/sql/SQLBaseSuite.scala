@@ -33,7 +33,7 @@ class SQLBaseSuite extends SparkTestSuite {
 
   def testCases(yamlPath: String) {
     val caseFile = loadYaml[CaseFile](yamlPath)
-    caseFile.getSQLCases.asScala.filter(c => needFilter(c)).foreach(c => testCase(c))
+    caseFile.getCases.asScala.filter(c => needFilter(c)).foreach(c => testCase(c))
   }
 
   def needFilter(sqlCase: SQLCase) : Boolean = {
@@ -57,8 +57,8 @@ class SQLBaseSuite extends SparkTestSuite {
       df.cache()
       df.show()
 
-      if (sqlCase.getOutput != null) {
-        checkOutput(df, sqlCase.getOutput)
+      if (sqlCase.getExpect!= null) {
+        checkOutput(df, sqlCase.getExpect)
       }
 
       // Run SparkSQL to test and compare the generated Spark dataframes

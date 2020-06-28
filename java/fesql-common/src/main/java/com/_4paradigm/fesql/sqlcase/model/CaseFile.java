@@ -10,5 +10,7 @@ import java.util.List;
 @Setter
 @ToString
 public class CaseFile {
-    List<SQLCase> SQLCases;
+    String db;
+    List<String> debugs;
+    List<SQLCase> cases;
 }

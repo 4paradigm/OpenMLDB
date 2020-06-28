@@ -708,7 +708,7 @@ TEST_P(DBMSSdkTest, ExecuteQueryTest) {
         sql_case.ExtractOutputData(rows);
         type::TableDef output_table;
         sql_case.ExtractOutputSchema(output_table);
-        CheckRows(output_table.columns(), sql_case.output().order_, rows, rs);
+        CheckRows(output_table.columns(), sql_case.expect().order_, rows, rs);
     }
 }
 

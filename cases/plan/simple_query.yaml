@@ -1,4 +1,4 @@
-SQLCases:
+cases:
   - id: 0
     desc: SELECT ALL
     sql: SELECT * FROM t1;
