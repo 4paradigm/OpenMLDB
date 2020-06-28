@@ -11,6 +11,7 @@ public class SQLCase {
     String mode;
     String db;
     String sql;
+    List<String> sqls;
     boolean standard_sql;
     String create;
     String insert;
@@ -18,5 +19,5 @@ public class SQLCase {
     String batch_plan;
     String request_plan;
     List<InputDesc> inputs;
-    OutputDesc output;
+    OutputDesc expect;
 }
