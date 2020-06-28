@@ -456,7 +456,7 @@ bool RelationalTable::CheckPk(const rocksdb::Slice& spk,
                         int64_t val = 0;
                         int ret = row_view_.GetValue(
                                 data, i, rtidb::type::kBlob, &val);
-                        if (ret != 0) {
+                        if (ret < 0) {
                             PDLOG(WARNING, "get blob failed."
                             "errno %d tid %u pid %u", ret, id_, pid_);
                             blob_keys->Clear();
@@ -706,7 +706,7 @@ bool RelationalTable::Delete(
         for (auto i : blob_suffix) {
             int64_t val = 0;
             int ret = row_view_.GetValue(data, i, rtidb::type::kBlob, &val);
-            if (ret != 0) {
+            if (ret < 0) {
                 PDLOG(WARNING, "get blob failed. errno %d tid %u pid %u",
                       ret, id_, pid_);
                 blob_keys->Clear();
