@@ -20,7 +20,7 @@
 #include <memory>
 #include <string>
 #include <utility>
-#include "timer.h" //NOLINT
+
 #include "brpc/channel.h"
 #include "glog/logging.h"
 #include "parser/parser.h"
@@ -29,6 +29,7 @@
 #include "sdk/base.h"
 #include "sdk/base_impl.h"
 #include "sdk/result_set_sql.h"
+#include "timer.h"  //NOLINT
 
 namespace rtidb {
 namespace sdk {
@@ -70,7 +71,7 @@ SQLClusterRouter::SQLClusterRouter(const SQLRouterOptions& options)
       engine_(NULL),
       input_schema_map_(),
       mu_(),
-rand_(::baidu::common::timer::now_time()){}
+      rand_(::baidu::common::timer::now_time()) {}
 
 SQLClusterRouter::SQLClusterRouter(ClusterSDK* sdk)
     : options_(),
@@ -78,7 +79,7 @@ SQLClusterRouter::SQLClusterRouter(ClusterSDK* sdk)
       engine_(NULL),
       input_schema_map_(),
       mu_(),
-      rand_(::baidu::common::timer::now_time()){}
+      rand_(::baidu::common::timer::now_time()) {}
 
 SQLClusterRouter::~SQLClusterRouter() {
     delete cluster_sdk_;
@@ -489,7 +490,6 @@ bool SQLClusterRouter::EncodeFullColumns(
     }
     return true;
 }
-
 
 bool SQLClusterRouter::EncodeFormat(
     const catalog::RtiDBSchema& schema,

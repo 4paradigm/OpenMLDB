@@ -50,6 +50,7 @@ class SQLRequestRow {
 
  private:
     bool Check(fesql::sdk::DataType type);
+
  private:
     std::shared_ptr<fesql::sdk::Schema> schema_;
     uint32_t cnt_;
