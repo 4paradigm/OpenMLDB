@@ -1179,11 +1179,11 @@ const Row Runner::RowLastJoinTable(size_t left_slices, const Row& left_row,
                                    std::shared_ptr<TableHandler> right_table,
                                    SortGenerator& right_sort,
                                    ConditionGenerator& cond_gen) {
+    right_table = right_sort.Sort(right_table, true);
     if (!right_table) {
         LOG(WARNING) << "Last Join right table is empty";
         return Row(left_slices, left_row, right_slices, Row());
     }
-    right_table = right_sort.Sort(right_table, true);
     auto right_iter = right_table->GetIterator();
     if (!right_iter) {
         LOG(WARNING) << "Last Join right table is empty";

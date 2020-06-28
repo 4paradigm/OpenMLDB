@@ -123,6 +123,7 @@ void PrintRows(const vm::Schema& schema, const std::vector<Row>& rows) {
 const std::vector<Row> SortRows(const vm::Schema& schema,
                                 const std::vector<Row>& rows,
                                 const std::string& order_col) {
+    DLOG(INFO) << "sort rows start";
     RowView row_view(schema);
     int idx = -1;
     for (int i = 0; i < schema.size(); i++) {
@@ -135,22 +136,23 @@ const std::vector<Row> SortRows(const vm::Schema& schema,
         return rows;
     }
 
-    if (schema.Get(idx).type() != fesql::type::kVarchar) {
+    if (schema.Get(idx).type() == fesql::type::kVarchar) {
         std::vector<std::pair<std::string, Row>> sort_rows;
         for (auto row : rows) {
             row_view.Reset(row.buf());
             row_view.GetAsString(idx);
-            sort_rows.push_back(std::make_pair(
-                row_view.GetAsString(idx), row));
+            sort_rows.push_back(std::make_pair(row_view.GetAsString(idx), row));
         }
-        std::sort(sort_rows.begin(), sort_rows.end(),
-                  [](std::pair<std::string, Row>& a, std::pair<std::string, Row>& b) {
-                    return a.first < b.first;
-                  });
+        std::sort(
+            sort_rows.begin(), sort_rows.end(),
+            [](std::pair<std::string, Row>& a, std::pair<std::string, Row>& b) {
+                return a.first < b.first;
+            });
         std::vector<Row> output_rows;
         for (auto row : sort_rows) {
             output_rows.push_back(row.second);
         }
+        DLOG(INFO) << "sort rows done!";
         return output_rows;
     } else {
         std::vector<std::pair<int64_t, Row>> sort_rows;
@@ -162,12 +164,13 @@ const std::vector<Row> SortRows(const vm::Schema& schema,
         }
         std::sort(sort_rows.begin(), sort_rows.end(),
                   [](std::pair<int64_t, Row>& a, std::pair<int64_t, Row>& b) {
-                    return a.first < b.first;
+                      return a.first < b.first;
                   });
         std::vector<Row> output_rows;
         for (auto row : sort_rows) {
             output_rows.push_back(row.second);
         }
+        DLOG(INFO) << "sort rows done!";
         return output_rows;
     }
 }
@@ -287,8 +290,8 @@ void RequestModeCheck(SQLCase& sql_case) {  // NOLINT
     for (int j = 0; j < input_cnt; ++j) {
         std::string placeholder = "{" + std::to_string(j) + "}";
         std::string tname = sql_case.inputs()[j].name_.empty()
-                            ? ("t" + std::to_string(j))
-                            : sql_case.inputs()[j].name_;
+                                ? ("t" + std::to_string(j))
+                                : sql_case.inputs()[j].name_;
         boost::replace_all(sql_str, placeholder, tname);
     }
     std::cout << sql_str << std::endl;
@@ -300,8 +303,7 @@ void RequestModeCheck(SQLCase& sql_case) {  // NOLINT
         session.EnableDebug();
     }
 
-    bool ok =
-        engine.Get(sql_str, sql_case.db(), session, get_status);
+    bool ok = engine.Get(sql_str, sql_case.db(), session, get_status);
     ASSERT_TRUE(ok);
 
     const std::string& request_name = session.GetRequestName();
