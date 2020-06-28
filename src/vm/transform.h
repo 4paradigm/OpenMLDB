@@ -21,9 +21,9 @@
 #include "node/node_manager.h"
 #include "node/plan_node.h"
 #include "node/sql_node.h"
+#include "udf/udf_library.h"
 #include "vm/physical_op.h"
 #include "vm/schemas_context.h"
-#include "udf/udf_library.h"
 
 namespace fesql {
 namespace vm {
@@ -256,8 +256,7 @@ class BatchModeTransformer {
  public:
     BatchModeTransformer(node::NodeManager* node_manager, const std::string& db,
                          const std::shared_ptr<Catalog>& catalog,
-                         ::llvm::Module* module,
-                         udf::UDFLibrary* library);
+                         ::llvm::Module* module, udf::UDFLibrary* library);
     virtual ~BatchModeTransformer();
     bool AddDefaultPasses();
     bool TransformPhysicalPlan(const ::fesql::node::PlanNodeList& trees,
@@ -386,8 +385,7 @@ class RequestModeransformer : public BatchModeTransformer {
     RequestModeransformer(node::NodeManager* node_manager,
                           const std::string& db,
                           const std::shared_ptr<Catalog>& catalog,
-                          ::llvm::Module* module,
-                          udf::UDFLibrary* library);
+                          ::llvm::Module* module, udf::UDFLibrary* library);
     virtual ~RequestModeransformer();
 
     const Schema& request_schema() const { return request_schema_; }
@@ -414,7 +412,7 @@ class RequestModeransformer : public BatchModeTransformer {
 };
 
 inline bool SchemaType2DataType(const ::fesql::type::Type type,
-                         ::fesql::node::DataType* output) {
+                                ::fesql::node::DataType* output) {
     switch (type) {
         case ::fesql::type::kInt16: {
             *output = ::fesql::node::kInt16;
@@ -459,8 +457,8 @@ inline bool SchemaType2DataType(const ::fesql::type::Type type,
 
 class FnDefResolver {
  public:
-    FnDefResolver(udf::UDFLibrary* library, node::NodeManager* nm):
-        library_(library), nm_(nm) {}
+    FnDefResolver(udf::UDFLibrary* library, node::NodeManager* nm)
+        : library_(library), nm_(nm) {}
 
     bool Visit(node::ExprNode* expr, node::ExprNode** output) {
         for (size_t i = 0; i < expr->GetChildNum(); ++i) {
@@ -471,27 +469,28 @@ class FnDefResolver {
             }
         }
         *output = expr;  // default
-        switch(expr->GetExprType()) {
+        switch (expr->GetExprType()) {
             case node::kExprCall: {
                 auto call = dynamic_cast<node::CallExprNode*>(expr);
                 auto fn = call->GetFnDef();
                 if (fn->GetType() != node::kExternalFnDef) {
                     return false;
                 }
-                auto external_fn = dynamic_cast<
-                    const node::ExternalFnDefNode*>(fn);
+                auto external_fn =
+                    dynamic_cast<const node::ExternalFnDefNode*>(fn);
                 if (external_fn->IsResolved()) {
                     return false;
                 }
                 node::ExprNode* result = nullptr;
-                auto status = library_->Transform(external_fn->function_name(),
-                    call->GetArgs(), call->GetOver(), nm_, &result);
+                auto status = library_->Transform(
+                    external_fn->function_name(), call->GetArgs(),
+                    call->GetOver(), nm_, &result);
                 if (status.isOK() && result != nullptr) {
                     *output = result;
                     return true;
                 } else {
-                    LOG(WARNING) << "Resolve function '"
-                        << external_fn->function_name()
+                    LOG(WARNING)
+                        << "Resolve function '" << external_fn->function_name()
                         << "' failed: " << status.msg;
                     return false;  // fallback to legacy fn gen
                 }
@@ -510,19 +509,18 @@ class ExpressionTypeAnalyzer {
  public:
     ExpressionTypeAnalyzer(bool is_in_window,
                            const vm::SchemasContext* schemas_context,
-                           node::NodeManager* nm):
-        is_in_window_(is_in_window),
-        schemas_context_(schemas_context),
-        nm_(nm) {}
+                           node::NodeManager* nm)
+        : is_in_window_(is_in_window),
+          schemas_context_(schemas_context),
+          nm_(nm) {}
 
     bool Visit(node::ExprNode* expr) {
         for (size_t i = 0; i < expr->GetChildNum(); ++i) {
             if (!Visit(expr->GetChild(i))) return false;
         }
-        switch(expr->GetExprType()) {
+        switch (expr->GetExprType()) {
             case node::kExprColumnRef:
-                return VisitColumnRef(
-                    dynamic_cast<node::ColumnRefNode*>(expr));
+                return VisitColumnRef(dynamic_cast<node::ColumnRefNode*>(expr));
             default:
                 return true;
         }
@@ -531,19 +529,20 @@ class ExpressionTypeAnalyzer {
  protected:
     bool VisitColumnRef(node::ColumnRefNode* column) {
         const vm::RowSchemaInfo* schema_info = nullptr;
-        if (!schemas_context_->ColumnRefResolved(
-                column->GetRelationName(),
-                column->GetColumnName(),
-                &schema_info)) {
+        if (!schemas_context_->ColumnRefResolved(column->GetRelationName(),
+                                                 column->GetColumnName(),
+                                                 &schema_info)) {
             LOG(WARNING) << "Fail to resolve column "
-                << column->GetRelationName() << "." << column->GetColumnName();
+                         << column->GetRelationName() << "."
+                         << column->GetColumnName();
             return false;
         }
         codec::RowDecoder decoder(*schema_info->schema_);
         codec::ColInfo col_info;
         if (!decoder.ResolveColumn(column->GetColumnName(), &col_info)) {
             LOG(WARNING) << "Fail to resolve column "
-                << column->GetRelationName() << "." << column->GetColumnName();
+                         << column->GetRelationName() << "."
+                         << column->GetColumnName();
             return false;
         }
         node::DataType dtype;

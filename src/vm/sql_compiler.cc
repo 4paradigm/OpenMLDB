@@ -23,14 +23,14 @@
 #include "codec/type_codec.h"
 #include "codegen/ir_base_builder.h"
 #include "glog/logging.h"
-#include "llvm/IR/Verifier.h"
-#include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvm/Bitcode/BitcodeReader.h"
+#include "llvm/Bitcode/BitcodeWriter.h"
+#include "llvm/IR/Verifier.h"
 #include "llvm/Support/raw_ostream.h"
 #include "parser/parser.h"
 #include "plan/planner.h"
-#include "udf/udf.h"
 #include "udf/default_udf_library.h"
+#include "udf/udf.h"
 #include "vm/runner.h"
 #include "vm/transform.h"
 
@@ -49,37 +49,33 @@ void InitCodecSymbol(::llvm::orc::JITDylib& jd,             // NOLINT
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_get_int16_field",
         reinterpret_cast<void*>(
-            static_cast<int16_t(*)(
-                const int8_t*, uint32_t, uint32_t, int8_t*)>(
-                &codec::v1::GetInt16Field)));
+            static_cast<int16_t (*)(const int8_t*, uint32_t, uint32_t,
+                                    int8_t*)>(&codec::v1::GetInt16Field)));
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_get_int32_field",
         reinterpret_cast<void*>(
-            static_cast<int32_t(*)(
-                const int8_t*, uint32_t, uint32_t, int8_t*)>(
-                &codec::v1::GetInt32Field)));
+            static_cast<int32_t (*)(const int8_t*, uint32_t, uint32_t,
+                                    int8_t*)>(&codec::v1::GetInt32Field)));
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_get_int64_field",
         reinterpret_cast<void*>(
-            static_cast<int64_t(*)(
-                const int8_t*, uint32_t, uint32_t, int8_t*)>(
-                &codec::v1::GetInt64Field)));
+            static_cast<int64_t (*)(const int8_t*, uint32_t, uint32_t,
+                                    int8_t*)>(&codec::v1::GetInt64Field)));
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_get_float_field",
-        reinterpret_cast<void*>(static_cast<float(*)(
-            const int8_t*, uint32_t, uint32_t, int8_t*)>(
-            &codec::v1::GetFloatField)));
+        reinterpret_cast<void*>(
+            static_cast<float (*)(const int8_t*, uint32_t, uint32_t, int8_t*)>(
+                &codec::v1::GetFloatField)));
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_get_double_field",
         reinterpret_cast<void*>(
-            static_cast<double(*)(
-                const int8_t*, uint32_t, uint32_t, int8_t*)>(
+            static_cast<double (*)(const int8_t*, uint32_t, uint32_t, int8_t*)>(
                 &codec::v1::GetDoubleField)));
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_get_timestamp_field",
         reinterpret_cast<void*>(
-            static_cast<codec::Timestamp(*)(
-                const int8_t*, uint32_t, uint32_t, int8_t*)>(
+            static_cast<codec::Timestamp (*)(const int8_t*, uint32_t, uint32_t,
+                                             int8_t*)>(
                 &codec::v1::GetTimestampField)));
 
     fesql::vm::FeSQLJIT::AddSymbol(
@@ -88,10 +84,9 @@ void InitCodecSymbol(::llvm::orc::JITDylib& jd,             // NOLINT
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_get_str_field",
         reinterpret_cast<void*>(
-            static_cast<int32_t(*)(
-                const int8_t*, uint32_t, uint32_t, uint32_t, uint32_t,
-                      uint32_t, int8_t**, uint32_t*, int8_t*)>(
-                &codec::v1::GetStrField)));
+            static_cast<int32_t (*)(const int8_t*, uint32_t, uint32_t, uint32_t,
+                                    uint32_t, uint32_t, int8_t**, uint32_t*,
+                                    int8_t*)>(&codec::v1::GetStrField)));
     fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "fesql_storage_get_col",
                                    reinterpret_cast<void*>(&codec::v1::GetCol));
     fesql::vm::FeSQLJIT::AddSymbol(
@@ -203,8 +198,8 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     udf::DefaultUDFLibrary library;
     ::fesql::udf::RegisterUDFToModule(m.get());
     if (ctx.is_batch_mode) {
-        vm::BatchModeTransformer transformer(
-            &(ctx.nm), ctx.db, cl_, m.get(), &library);
+        vm::BatchModeTransformer transformer(&(ctx.nm), ctx.db, cl_, m.get(),
+                                             &library);
         transformer.AddDefaultPasses();
         if (!transformer.TransformPhysicalPlan(trees, &ctx.plan, status)) {
             LOG(WARNING) << "fail to generate physical plan (batch mode): "
@@ -213,8 +208,8 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
             return false;
         }
     } else {
-        vm::RequestModeransformer transformer(
-            &(ctx.nm), ctx.db, cl_, m.get(), &library);
+        vm::RequestModeransformer transformer(&(ctx.nm), ctx.db, cl_, m.get(),
+                                              &library);
         transformer.AddDefaultPasses();
         if (!transformer.TransformPhysicalPlan(trees, &ctx.plan, status)) {
             LOG(WARNING) << "fail to generate physical plan (request mode) "
@@ -269,7 +264,6 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         return false;
     }
 
-
     if (keep_ir_) {
         KeepIR(ctx, m.get());
     }
@@ -281,6 +275,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         return false;
     }
 
+    library.InitJITSymbols(ctx.jit.get());
     InitCodecSymbol(ctx.jit.get());
     udf::InitUDFSymbol(ctx.jit.get());
 

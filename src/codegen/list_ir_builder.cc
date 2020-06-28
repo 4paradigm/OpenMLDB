@@ -68,32 +68,19 @@ bool ListIRBuilder::BuilStructTypedAt(::llvm::Value* list, ::llvm::Value* pos,
         LOG(WARNING) << status.msg;
         return false;
     }
-
+    ::llvm::IRBuilder<> builder(block_);
     struct_type = struct_type->getPointerElementType();
     ::std::string fn_name = "at." + type_node.GetName() + "." +
-                            node::TypeNode(node::kInt32).GetName() + "." +
-                            type_node.generics_[0]->GetName();
-    ::llvm::Function* fn =
-        block_->getModule()->getFunction(::llvm::StringRef(fn_name));
-    if (nullptr == fn) {
-        status.msg =
-            "fail to codegen list[pos]: can't find function " + fn_name;
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
-        return false;
-    }
-    ::llvm::IRBuilder<> builder(block_);
+                            node::TypeNode(node::kInt32).GetName();
+    ::llvm::FunctionType* fn_type = ::llvm::FunctionType::get(
+        builder.getVoidTy(),
+        {list->getType(), builder.getInt32Ty(), struct_type->getPointerTo()},
+        false);
+    ::llvm::FunctionCallee fn =
+        block_->getModule()->getOrInsertFunction(fn_name, fn_type);
     ::llvm::Value* at_value_ptr = builder.CreateAlloca(struct_type);
 
-    ::llvm::Value* ret = builder.CreateCall(
-        fn->getFunctionType(), fn,
-        ::llvm::ArrayRef<::llvm::Value*>{list, casted_pos, at_value_ptr});
-    if (nullptr == ret) {
-        status.msg = "fail to codegen list[pos]: call function error";
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
-        return false;
-    }
+    builder.CreateCall(fn, {list, casted_pos, at_value_ptr});
     *output = at_value_ptr;
     return true;
 }
@@ -143,28 +130,14 @@ bool ListIRBuilder::BuildAt(::llvm::Value* list, ::llvm::Value* pos,
     if (TypeIRBuilder::IsStructPtr(v1_type)) {
         return BuilStructTypedAt(list, pos, output, status);
     }
-
+    ::llvm::IRBuilder<> builder(block_);
     ::std::string fn_name = "at." + type_node.GetName() + "." +
                             node::TypeNode(node::kInt32).GetName();
-    ::llvm::Function* fn =
-        block_->getModule()->getFunction(::llvm::StringRef(fn_name));
-    if (nullptr == fn) {
-        status.msg =
-            "fail to codegen list[pos]: can't find function " + fn_name;
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
-        return false;
-    }
-    ::llvm::IRBuilder<> builder(block_);
-    *output =
-        builder.CreateCall(fn->getFunctionType(), fn,
-                           ::llvm::ArrayRef<::llvm::Value*>{list, casted_pos});
-    if (nullptr == *output) {
-        status.msg = "fail to codegen list[pos]: call function error";
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
-        return false;
-    }
+    ::llvm::FunctionType* fn_type = ::llvm::FunctionType::get(
+        v1_type, {list->getType(), builder.getInt32Ty()}, false);
+    ::llvm::FunctionCallee fn =
+        block_->getModule()->getOrInsertFunction(fn_name, fn_type);
+    *output = builder.CreateCall(fn, {list, casted_pos});
     return true;
 }
 

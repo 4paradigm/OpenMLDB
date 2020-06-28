@@ -73,7 +73,7 @@ TEST_F(UDFTest, UDF_mem_table_handler_sum_test) {
     const uint32_t size = sizeof(ColumnImpl<int16_t>);
     {
         int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
-        ::fesql::codec::ListRef list_ref;
+        ::fesql::codec::ListRef<> list_ref;
 
         list_ref.list = buf;
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
@@ -86,7 +86,7 @@ TEST_F(UDFTest, UDF_mem_table_handler_sum_test) {
 
     {
         int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
-        ::fesql::codec::ListRef list_ref;
+        ::fesql::codec::ListRef<> list_ref;
         list_ref.list = buf;
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
@@ -98,7 +98,7 @@ TEST_F(UDFTest, UDF_mem_table_handler_sum_test) {
 
     {
         int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
-        ::fesql::codec::ListRef list_ref;
+        ::fesql::codec::ListRef<> list_ref;
         list_ref.list = buf;
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
@@ -110,7 +110,7 @@ TEST_F(UDFTest, UDF_mem_table_handler_sum_test) {
 
     {
         int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
-        ::fesql::codec::ListRef list_ref;
+        ::fesql::codec::ListRef<> list_ref;
         list_ref.list = buf;
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
@@ -122,7 +122,7 @@ TEST_F(UDFTest, UDF_mem_table_handler_sum_test) {
 
     {
         int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
-        ::fesql::codec::ListRef list_ref;
+        ::fesql::codec::ListRef<> list_ref;
         list_ref.list = buf;
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
@@ -142,7 +142,7 @@ TEST_F(UDFTest, UDF_mem_time_table_handler_sum_test) {
     const uint32_t size = sizeof(ColumnImpl<int16_t>);
     {
         int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
-        ::fesql::codec::ListRef list_ref;
+        ::fesql::codec::ListRef<> list_ref;
 
         list_ref.list = buf;
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
@@ -155,7 +155,7 @@ TEST_F(UDFTest, UDF_mem_time_table_handler_sum_test) {
 
     {
         int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
-        ::fesql::codec::ListRef list_ref;
+        ::fesql::codec::ListRef<> list_ref;
         list_ref.list = buf;
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
@@ -167,7 +167,7 @@ TEST_F(UDFTest, UDF_mem_time_table_handler_sum_test) {
 
     {
         int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
-        ::fesql::codec::ListRef list_ref;
+        ::fesql::codec::ListRef<> list_ref;
         list_ref.list = buf;
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
@@ -179,7 +179,7 @@ TEST_F(UDFTest, UDF_mem_time_table_handler_sum_test) {
 
     {
         int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
-        ::fesql::codec::ListRef list_ref;
+        ::fesql::codec::ListRef<> list_ref;
         list_ref.list = buf;
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
@@ -191,7 +191,7 @@ TEST_F(UDFTest, UDF_mem_time_table_handler_sum_test) {
 
     {
         int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
-        ::fesql::codec::ListRef list_ref;
+        ::fesql::codec::ListRef<> list_ref;
         list_ref.list = buf;
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
@@ -207,7 +207,7 @@ TEST_F(UDFTest, UDF_sum_test) {
     const uint32_t size = sizeof(::fesql::codec::ColumnImpl<int16_t>);
     {
         int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
-        ::fesql::codec::ListRef list_ref;
+        ::fesql::codec::ListRef<> list_ref;
         list_ref.list = buf;
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
@@ -219,7 +219,7 @@ TEST_F(UDFTest, UDF_sum_test) {
 
     {
         int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
-        ::fesql::codec::ListRef list_ref;
+        ::fesql::codec::ListRef<> list_ref;
         list_ref.list = buf;
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
@@ -231,7 +231,7 @@ TEST_F(UDFTest, UDF_sum_test) {
 
     {
         int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
-        ::fesql::codec::ListRef list_ref;
+        ::fesql::codec::ListRef<> list_ref;
         list_ref.list = buf;
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
@@ -243,7 +243,7 @@ TEST_F(UDFTest, UDF_sum_test) {
 
     {
         int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
-        ::fesql::codec::ListRef list_ref;
+        ::fesql::codec::ListRef<> list_ref;
         list_ref.list = buf;
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
@@ -255,7 +255,7 @@ TEST_F(UDFTest, UDF_sum_test) {
 
     {
         int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
-        ::fesql::codec::ListRef list_ref;
+        ::fesql::codec::ListRef<> list_ref;
         list_ref.list = buf;
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
@@ -271,7 +271,7 @@ TEST_F(UDFTest, UDF_max_test) {
     const uint32_t size = sizeof(::fesql::codec::ColumnImpl<int16_t>);
     {
         int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
-        ::fesql::codec::ListRef list_ref;
+        ::fesql::codec::ListRef<> list_ref;
         list_ref.list = buf;
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
@@ -283,7 +283,7 @@ TEST_F(UDFTest, UDF_max_test) {
 
     {
         int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
-        ::fesql::codec::ListRef list_ref;
+        ::fesql::codec::ListRef<> list_ref;
         list_ref.list = buf;
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
@@ -295,7 +295,7 @@ TEST_F(UDFTest, UDF_max_test) {
 
     {
         int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
-        ::fesql::codec::ListRef list_ref;
+        ::fesql::codec::ListRef<> list_ref;
         list_ref.list = buf;
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
@@ -307,7 +307,7 @@ TEST_F(UDFTest, UDF_max_test) {
 
     {
         int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
-        ::fesql::codec::ListRef list_ref;
+        ::fesql::codec::ListRef<> list_ref;
         list_ref.list = buf;
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
@@ -319,7 +319,7 @@ TEST_F(UDFTest, UDF_max_test) {
 
     {
         int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
-        ::fesql::codec::ListRef list_ref;
+        ::fesql::codec::ListRef<> list_ref;
         list_ref.list = buf;
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
@@ -335,7 +335,7 @@ TEST_F(UDFTest, UDF_min_test) {
     const uint32_t size = sizeof(ColumnImpl<int16_t>);
     {
         int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
-        ::fesql::codec::ListRef list_ref;
+        ::fesql::codec::ListRef<> list_ref;
         list_ref.list = buf;
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
@@ -347,7 +347,7 @@ TEST_F(UDFTest, UDF_min_test) {
 
     {
         int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
-        ::fesql::codec::ListRef list_ref;
+        ::fesql::codec::ListRef<> list_ref;
         list_ref.list = buf;
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
@@ -359,7 +359,7 @@ TEST_F(UDFTest, UDF_min_test) {
 
     {
         int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
-        ::fesql::codec::ListRef list_ref;
+        ::fesql::codec::ListRef<> list_ref;
         list_ref.list = buf;
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
@@ -371,7 +371,7 @@ TEST_F(UDFTest, UDF_min_test) {
 
     {
         int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
-        ::fesql::codec::ListRef list_ref;
+        ::fesql::codec::ListRef<> list_ref;
         list_ref.list = buf;
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
@@ -383,7 +383,7 @@ TEST_F(UDFTest, UDF_min_test) {
 
     {
         int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
-        ::fesql::codec::ListRef list_ref;
+        ::fesql::codec::ListRef<> list_ref;
         list_ref.list = buf;
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
@@ -398,7 +398,7 @@ TEST_F(UDFTest, GetColTest) {
     const uint32_t size = sizeof(ColumnImpl<int16_t>);
     for (int i = 0; i < 10; ++i) {
         int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
-        ::fesql::codec::ListRef list_ref;
+        ::fesql::codec::ListRef<> list_ref;
         list_ref.list = buf;
         ASSERT_EQ(
             0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&impl), 0,
@@ -592,7 +592,7 @@ TEST_F(UDFTest, GetColHeapTest) {
     const uint32_t size = sizeof(ColumnImpl<int16_t>);
     for (int i = 0; i < 1000; ++i) {
         int8_t buf[size];  // NOLINT
-        ::fesql::codec::ListRef list_ref;
+        ::fesql::codec::ListRef<> list_ref;
         list_ref.list = buf;
         ASSERT_EQ(
             0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&impl), 0,

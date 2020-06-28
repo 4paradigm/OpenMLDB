@@ -45,6 +45,7 @@
 #include "parser/parser.h"
 #include "plan/planner.h"
 #include "udf/udf.h"
+#include "udf/default_udf_library.h"
 #include "vm/jit.h"
 #include "vm/sql_compiler.h"
 
@@ -140,7 +141,8 @@ void CheckFnLetBuilder(::fesql::node::NodeManager* manager,
     auto& jd = J->getMainJITDylib();
     ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
                                       J->getDataLayout());
-
+    udf::DefaultUDFLibrary lib;
+    lib.InitJITSymbols(J.get());
     ::fesql::vm::InitCodecSymbol(jd, mi);
     ::fesql::udf::InitUDFSymbol(jd, mi);
 

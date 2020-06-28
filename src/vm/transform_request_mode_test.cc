@@ -31,8 +31,8 @@
 #include "node/node_manager.h"
 #include "parser/parser.h"
 #include "plan/planner.h"
-#include "udf/udf.h"
 #include "udf/default_udf_library.h"
+#include "udf/udf.h"
 #include "vm/test_base.h"
 #include "vm/transform.h"
 

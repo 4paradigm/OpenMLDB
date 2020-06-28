@@ -38,6 +38,7 @@
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/GVN.h"
 #include "udf/udf.h"
+#include "udf/default_udf_library.h"
 #include "vm/sql_compiler.h"
 
 using namespace llvm;       // NOLINT
@@ -211,7 +212,8 @@ void GetListAtPos(const type::TableDef& table, T* result,
     auto& jd = J->getMainJITDylib();
     ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
                                       J->getDataLayout());
-
+    udf::DefaultUDFLibrary lib;
+    lib.InitJITSymbols(J.get());
     ::fesql::udf::InitUDFSymbol(jd, mi);
     // add codec
     ::fesql::vm::InitCodecSymbol(jd, mi);

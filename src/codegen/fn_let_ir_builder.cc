@@ -20,8 +20,8 @@
 #include "codegen/expr_ir_builder.h"
 #include "codegen/ir_base_builder.h"
 #include "codegen/variable_ir_builder.h"
-#include "vm/transform.h"
 #include "glog/logging.h"
+#include "vm/transform.h"
 
 namespace fesql {
 namespace codegen {
@@ -31,7 +31,6 @@ RowFnLetIRBuilder::RowFnLetIRBuilder(const vm::SchemaSourceList& schema_sources,
                                      ::llvm::Module* module)
     : schema_context_(schema_sources), frame_(frame), module_(module) {}
 RowFnLetIRBuilder::~RowFnLetIRBuilder() {}
-
 
 /**
  * Codegen For int32 RowFnLetUDF(int_8* row_ptrs, int8_t* window_ptr, int32 *
@@ -46,7 +45,6 @@ bool RowFnLetIRBuilder::Build(
     vm::Schema* output_schema,
     vm::ColumnSourceList*
         output_column_sources) {  // NOLINT (runtime/references)
-
     ::llvm::Function* fn = NULL;
     std::string output_ptr_name = "output_ptr_name";
     ::llvm::StringRef name_ref(name);

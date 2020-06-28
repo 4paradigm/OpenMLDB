@@ -150,7 +150,7 @@ TEST_F(SqlNodeTest, MakeWindowDefNodetWithNameTest) {
 }
 
 TEST_F(SqlNodeTest, MakeExternalFnDefNodeTest) {
-    auto *node_ptr = dynamic_cast<ExternalFnDefNode*>(
+    auto *node_ptr = dynamic_cast<ExternalFnDefNode *>(
         node_manager_->MakeUnresolvedFnDefNode("extern_f"));
     ASSERT_EQ(kExternalFnDef, node_ptr->GetType());
     ASSERT_EQ("extern_f", node_ptr->function_name());
@@ -158,13 +158,13 @@ TEST_F(SqlNodeTest, MakeExternalFnDefNodeTest) {
 
 TEST_F(SqlNodeTest, MakeUDAFDefNodeTest) {
     auto zero = node_manager_->MakeConstNode(1);
-    auto f1 = dynamic_cast<ExternalFnDefNode*>(
+    auto f1 = dynamic_cast<ExternalFnDefNode *>(
         node_manager_->MakeUnresolvedFnDefNode("f1"));
-    auto f2 = dynamic_cast<ExternalFnDefNode*>(
+    auto f2 = dynamic_cast<ExternalFnDefNode *>(
         node_manager_->MakeUnresolvedFnDefNode("f2"));
-    auto f3 = dynamic_cast<ExternalFnDefNode*>(
+    auto f3 = dynamic_cast<ExternalFnDefNode *>(
         node_manager_->MakeUnresolvedFnDefNode("f3"));
-    auto *udaf = dynamic_cast<UDAFDefNode*>(
+    auto *udaf = dynamic_cast<UDAFDefNode *>(
         node_manager_->MakeUDAFDefNode(zero, f1, f2, f3));
     ASSERT_EQ(kUDAFDef, udaf->GetType());
     ASSERT_EQ(true, udaf->init_expr()->Equals(zero));

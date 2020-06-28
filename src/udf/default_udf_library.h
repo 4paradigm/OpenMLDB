@@ -15,15 +15,13 @@ namespace udf {
 
 class DefaultUDFLibrary : public UDFLibrary {
  public:
- 	DefaultUDFLibrary() { Init(); }
+    DefaultUDFLibrary() { Init(); }
 
  private:
- 	void Init();
+    void Init();
 };
-
 
 }  // namespace udf
 }  // namespace fesql
-
 
 #endif  // SRC_UDF_DEFAULT_UDF_LIBRARY_H_

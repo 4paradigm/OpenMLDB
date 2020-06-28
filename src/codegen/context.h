@@ -98,11 +98,11 @@ class CodeGenContext {
 
     ::llvm::IRBuilder<>* GetBuilder();
 
+    ::llvm::Module* GetModule() { return llvm_module_; }
+
     Status CreateBranch(const NativeValue& cond,
                         const std::function<Status()>& left,
                         const std::function<Status()>& right);
-
-
 
     ::llvm::BasicBlock* AppendNewBlock(const std::string& name = "");
 

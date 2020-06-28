@@ -788,8 +788,8 @@ bool BatchModeTransformer::GenProjects(
 
     // type inference
     vm::SchemasContext schema_context(input_name_schema_list);
-    ExpressionTypeAnalyzer type_analyzer(
-        frame != nullptr, &schema_context, node_manager_);
+    ExpressionTypeAnalyzer type_analyzer(frame != nullptr, &schema_context,
+                                         node_manager_);
     auto expr_group = node_manager_->MakeExprList();
     for (auto pnode : projects) {
         auto pp_node = dynamic_cast<const node::ProjectNode*>(pnode);
@@ -800,7 +800,7 @@ bool BatchModeTransformer::GenProjects(
         LOG(WARNING) << "Expression type inference failed";
         return false;
     }
-    
+
     // function resolve
     node::ExprNode* new_expr_group = nullptr;
     FnDefResolver fn_resolver(library_, node_manager_);

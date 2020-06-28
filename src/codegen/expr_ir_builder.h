@@ -31,15 +31,15 @@
 #include "codegen/variable_ir_builder.h"
 #include "codegen/window_ir_builder.h"
 #include "llvm/IR/IRBuilder.h"
-#include "node/sql_node.h"
 #include "node/node_manager.h"
+#include "node/sql_node.h"
 #include "vm/schemas_context.h"
 
 namespace fesql {
 namespace codegen {
 
-using fesql::vm::RowSchemaInfo;
 using fesql::base::Status;
+using fesql::vm::RowSchemaInfo;
 
 class ExprIRBuilder {
  public:
@@ -75,6 +75,8 @@ class ExprIRBuilder {
                            ::fesql::base::Status& status);  // NOLINT
     Status BuildCallUDAF(const ::fesql::node::CallExprNode* fn,
                          NativeValue* output);
+    Status BuildCallUDFByCodeGen(const ::fesql::node::CallExprNode* fn,
+                                 NativeValue* output);
     Status ResolveLLVMFunction(const ::fesql::node::CallExprNode* fn,
                                ::llvm::FunctionCallee* callsite,
                                bool* return_by_arg);
