@@ -844,20 +844,11 @@ public class TableSyncClientImpl implements TableSyncClient {
         return new UpdateResult(false);
     }
 
-    boolean deleteBlobByMap(TableHandler th, Map<String, Object> row) {
-        List<ColumnDesc> schema = th.getSchema();
-        List<Long> keys = new ArrayList<Long>();
-        for (Integer idx : th.getBlobIdxList()) {
-            ColumnDesc col = schema.get(idx);
-            if (!row.containsKey(col.getName())) {
-                continue;
-            }
-            Object key = row.get(col.getName());
-            if (key == null) {
-                continue;
-            }
-            keys.add((Long)key);
+    boolean deleteBlobByMap(TableHandler th, Map<String, Long> blobKeys) {
+        if (blobKeys.isEmpty()) {
+            return true;
         }
+        List<Long> keys = new ArrayList<Long>(blobKeys.values());
         return deleteBlobByList(th, keys);
     }
 
@@ -1509,12 +1500,13 @@ public class TableSyncClientImpl implements TableSyncClient {
                 throw new TabletException("no schema for column count " + row.size());
             }
         }
+        Map<String, Long> blobKeys = new HashMap<String, Long>();
         if (th.getBlobServer() != null) {
             if (!th.IsObjectTable()) {
-                putObjectStore(row, th);
+                putObjectStore(row, th, blobKeys);
             }
         }
-        buffer = RowBuilder.encode(row, schema);
+        buffer = RowBuilder.encode(row, schema, blobKeys);
 
         int pid = 0;
         /*
@@ -1529,7 +1521,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         try {
             return putRelationTable(th.getTableInfo().getTid(), pid, buffer, th, wo);
         } catch (Exception e) {
-            deleteBlobByMap(th, row);
+            deleteBlobByMap(th, blobKeys);
             throw e;
         }
 
@@ -1609,7 +1601,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         return newSchema;
     }
 
-    public void putObjectStore(Map<String, Object> row, TableHandler th) throws TimeoutException, TabletException {
+    public void putObjectStore(Map<String, Object> row, TableHandler th, Map<String, Long> blobKeys) throws TimeoutException, TabletException {
         List<ColumnDesc> schema = th.getSchema();
         for (Integer idx : th.getBlobIdxList()) {
 
@@ -1629,7 +1621,7 @@ public class TableSyncClientImpl implements TableSyncClient {
             if (!ok) {
                 throw new TabletException("put blob failed");
             }
-            row.put(colDesc.getName(), keys[0]);
+            blobKeys.put(colDesc.getName(), keys[0]);
         }
     }
 
@@ -1647,14 +1639,15 @@ public class TableSyncClientImpl implements TableSyncClient {
             throw new TabletException("valueColumns is null or empty");
         }
         List<ColumnDesc> newValueSchema = getSchemaData(valueColumns, th.getSchema());
+        Map<String, Long> blobKeys = new HashMap<String, Long>();
         if (th.getBlobServer() != null && !th.IsObjectTable()) {
-            putObjectStore(valueColumns, th);
+            putObjectStore(valueColumns, th, blobKeys);
         }
-        ByteBuffer valueBuffer = RowBuilder.encode(valueColumns, newValueSchema);
+        ByteBuffer valueBuffer = RowBuilder.encode(valueColumns, newValueSchema, blobKeys);
         try {
             return updateRequest(th, 0, conditionColumns, newValueSchema, valueBuffer);
         } catch (Exception e) {
-            deleteBlobByMap(th, valueColumns);
+            deleteBlobByMap(th, blobKeys);
             throw e;
         }
     }
