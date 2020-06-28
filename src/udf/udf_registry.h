@@ -1172,7 +1172,8 @@ class SimpleUDAFRegistryHelperImpl {
 
     SimpleUDAFRegistryHelperImpl& init(const std::string& fname, void* fn_ptr) {
         auto fn = dynamic_cast<node::ExternalFnDefNode*>(
-            nm_->MakeExternalFnDefNode(fname, fn_ptr, state_ty_, {}, -1, false));
+            nm_->MakeExternalFnDefNode(
+                fname, fn_ptr, state_ty_, {}, -1, false));
         this->init_ = nm_->MakeFuncNode(fn, nm_->MakeExprList(), nullptr);
         return *this;
     }
