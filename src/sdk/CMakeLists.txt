@@ -54,7 +54,7 @@ if(SQL_PYSDK_ENABLE)
 		COMMAND ${CMAKE_COMMAND} -E echo "        self.install_lib=self.install_platlib" >> setup.py
 		COMMAND ${CMAKE_COMMAND} -E echo "" >> setup.py
 		COMMAND ${CMAKE_COMMAND} -E echo "setup(" >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "  name='${PROJECT_NAME}_sql'," >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "  name='fedb'," >> setup.py
 		COMMAND ${CMAKE_COMMAND} -E echo "  version='${RTIDB_VERSION_MAJOR}.${RTIDB_VERSION_MEDIUM}.${RTIDB_VERSION_MINOR}.${RTIDB_VERSION_BUG}'," >> setup.py
 		COMMAND ${CMAKE_COMMAND} -E echo "  author='4pd'," >> setup.py
 		COMMAND ${CMAKE_COMMAND} -E echo "  url='4paradigm.com'," >> setup.py
@@ -134,6 +134,7 @@ if(SQL_JAVASDK_ENABLE)
 	target_include_directories(sql_jsdk PRIVATE ${JNI_INCLUDE_DIRS})
 	target_compile_options(sql_jsdk PRIVATE -w)
     target_link_libraries(sql_jsdk PRIVATE ${SDK_LIBS})
+
 	if(APPLE)
 	  set_target_properties(sql_jsdk PROPERTIES
 			   SUFFIX ".dylib")
@@ -153,4 +154,3 @@ if(SQL_JAVASDK_ENABLE)
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src/sdk/java
 	)
 endif()
-
