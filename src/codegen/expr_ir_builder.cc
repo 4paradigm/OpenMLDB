@@ -271,7 +271,7 @@ Status ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call,
     ExprIRBuilder sub_builder(
         block_, sv_, schemas_context_, !is_udaf, module_);
 
-    for (size_t i = 0; i < call->GetArgSize(); ++i) {
+    for (int i = 0; i < call->GetArgSize(); ++i) {
         node::ExprNode* arg_expr = call->GetArgs()->GetChild(i);
 
         NativeValue llvm_arg_wrapper;
@@ -280,7 +280,7 @@ Status ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call,
             " failed: ", status.msg);
 
         ::llvm::Type* actual_llvm_ty = llvm_arg_wrapper.GetType();
-        if (i < function_ty->getNumParams()) {
+        if (static_cast<size_t>(i) < function_ty->getNumParams()) {
             ::llvm::Type* expect_llvm_ty = function_ty->params()[i];
             CHECK_TRUE(expect_llvm_ty == actual_llvm_ty,
                        "LLVM argument type mismatch at ", i, " expect ",
@@ -486,7 +486,7 @@ Status ExprIRBuilder::ResolveLLVMExternalDef(const node::CallExprNode* call,
                "External function argument validation error: ", function_name);
 
     std::vector<::llvm::Type*> llvm_arg_types;
-    for (size_t i = 0; i < call->GetArgSize(); ++i) {
+    for (int i = 0; i < call->GetArgSize(); ++i) {
         ::llvm::Type* expect_llvm_ty = nullptr;
         CHECK_TRUE(
             GetLLVMType(module_, external_fn->GetArgType(i), &expect_llvm_ty));
@@ -518,7 +518,7 @@ Status ExprIRBuilder::BuildCallUDAF(const ::fesql::node::CallExprNode* fn,
 Status ExprIRBuilder::BuildCallUDFByCodeGen(
     const ::fesql::node::CallExprNode* call, NativeValue* output) {
     std::vector<NativeValue> arg_values;
-    for (size_t i = 0; i < call->GetArgSize(); ++i) {
+    for (int i = 0; i < call->GetArgSize(); ++i) {
         node::ExprNode* arg_expr = call->GetArgs()->GetChild(i);
 
         Status status;

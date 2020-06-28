@@ -3,7 +3,7 @@ include_directories(${INCLUDE_DIRECTORIES}
         ${PROJECT_BINARY_DIR}/src)
 
 add_library(fesql_vm STATIC jit.cc jit_wrapper.cc runner.cc sql_compiler.cc engine.cc core_api.cc mem_catalog.cc catalog_wrapper.cc schemas_context.cc transform.cc physical_op.cc)
-target_link_libraries(fesql_vm fesql_base)
+target_link_libraries(fesql_vm fesql_base ${LLVM_LIBS})
 
 add_library(fesql_csv_catalog STATIC csv_catalog.cc csv_table_iterator.cc
         csv_window_iterator.cc)

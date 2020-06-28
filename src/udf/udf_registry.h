@@ -169,10 +169,11 @@ class ArgSignatureTable {
                 bool match = true;
                 bool placeholder_match = false;
                 int non_variadic_arg_num = def_args.size() - 1;
-                if (input_args.size() < non_variadic_arg_num) {
+                if (input_args.size() <
+                    static_cast<size_t>(non_variadic_arg_num)) {
                     continue;
                 }
-                for (size_t j = 0; j < non_variadic_arg_num; ++j) {
+                for (int j = 0; j < non_variadic_arg_num; ++j) {
                     if (def_args[j] == "?") {
                         placeholder_match = true;
                         match = false;
@@ -1171,7 +1172,7 @@ class SimpleUDAFRegistryHelperImpl {
 
     SimpleUDAFRegistryHelperImpl& init(const std::string& fname, void* fn_ptr) {
         auto fn = dynamic_cast<node::ExternalFnDefNode*>(
-            nm_->MakeExternalFnDefNode(fname, fn_ptr, state_ty_, {}, -1));
+            nm_->MakeExternalFnDefNode(fname, fn_ptr, state_ty_, {}, -1, false));
         this->init_ = nm_->MakeFuncNode(fn, nm_->MakeExprList(), nullptr);
         return *this;
     }
@@ -1193,7 +1194,7 @@ class SimpleUDAFRegistryHelperImpl {
                                          void* fn_ptr) {
         auto fn =
             dynamic_cast<node::ExternalFnDefNode*>(nm_->MakeExternalFnDefNode(
-                fname, fn_ptr, state_ty_, {state_ty_, input_ty_}, -1));
+                fname, fn_ptr, state_ty_, {state_ty_, input_ty_}, -1, false));
         this->update_ = fn;
         return *this;
     }
@@ -1210,7 +1211,7 @@ class SimpleUDAFRegistryHelperImpl {
                                         void* fn_ptr) {
         auto fn =
             dynamic_cast<node::ExternalFnDefNode*>(nm_->MakeExternalFnDefNode(
-                fname, fn_ptr, state_ty_, {state_ty_, state_ty_}, -1));
+                fname, fn_ptr, state_ty_, {state_ty_, state_ty_}, -1, false));
         this->merge_ = fn;
         return *this;
     }
@@ -1227,7 +1228,7 @@ class SimpleUDAFRegistryHelperImpl {
                                          void* fn_ptr) {
         auto fn =
             dynamic_cast<node::ExternalFnDefNode*>(nm_->MakeExternalFnDefNode(
-                fname, fn_ptr, output_ty_, {state_ty_}, -1));
+                fname, fn_ptr, output_ty_, {state_ty_}, -1, false));
         this->output_ = fn;
         return *this;
     }
