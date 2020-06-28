@@ -135,22 +135,41 @@ const std::vector<Row> SortRows(const vm::Schema& schema,
         return rows;
     }
 
-    std::vector<std::pair<int64_t, Row>> sort_rows;
-    for (auto row : rows) {
-        row_view.Reset(row.buf());
-        row_view.GetAsString(idx);
-        sort_rows.push_back(std::make_pair(
-            boost::lexical_cast<int64_t>(row_view.GetAsString(idx)), row));
+    if (schema.Get(idx).type() != fesql::type::kVarchar) {
+        std::vector<std::pair<std::string, Row>> sort_rows;
+        for (auto row : rows) {
+            row_view.Reset(row.buf());
+            row_view.GetAsString(idx);
+            sort_rows.push_back(std::make_pair(
+                row_view.GetAsString(idx), row));
+        }
+        std::sort(sort_rows.begin(), sort_rows.end(),
+                  [](std::pair<std::string, Row>& a, std::pair<std::string, Row>& b) {
+                    return a.first < b.first;
+                  });
+        std::vector<Row> output_rows;
+        for (auto row : sort_rows) {
+            output_rows.push_back(row.second);
+        }
+        return output_rows;
+    } else {
+        std::vector<std::pair<int64_t, Row>> sort_rows;
+        for (auto row : rows) {
+            row_view.Reset(row.buf());
+            row_view.GetAsString(idx);
+            sort_rows.push_back(std::make_pair(
+                boost::lexical_cast<int64_t>(row_view.GetAsString(idx)), row));
+        }
+        std::sort(sort_rows.begin(), sort_rows.end(),
+                  [](std::pair<int64_t, Row>& a, std::pair<int64_t, Row>& b) {
+                    return a.first < b.first;
+                  });
+        std::vector<Row> output_rows;
+        for (auto row : sort_rows) {
+            output_rows.push_back(row.second);
+        }
+        return output_rows;
     }
-    std::sort(sort_rows.begin(), sort_rows.end(),
-              [](std::pair<int64_t, Row>& a, std::pair<int64_t, Row>& b) {
-                  return a.first < b.first;
-              });
-    std::vector<Row> output_rows;
-    for (auto row : sort_rows) {
-        output_rows.push_back(row.second);
-    }
-    return output_rows;
 }
 void CheckRows(const vm::Schema& schema, const std::vector<Row>& rows,
                const std::vector<Row>& exp_rows) {

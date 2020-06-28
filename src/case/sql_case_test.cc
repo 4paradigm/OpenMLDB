@@ -819,11 +819,11 @@ TEST_F(SQLCaseTest, ExtractRtidbYamlSQLCase) {
             ASSERT_EQ(input.index_, "");
             ASSERT_EQ(input.indexs_, indexs);
             std::vector<std::vector<std::string>> rows = {
-                {"aa", "2", "3", "1590738989000L"}};
+                {"aa", "null", "3", "1590738989000L"}};
             ASSERT_EQ(sql_case.inputs()[0].rows_, rows);
         }
         std::vector<std::string> expect_columns = {"c1 string", "c2 int"};
-        std::vector<std::vector<std::string>> expect_rows = {{"aa", "2"}};
+        std::vector<std::vector<std::string>> expect_rows = {{"aa", "null"}};
 
         ASSERT_EQ(sql_case.expect().schema_, "");
         ASSERT_EQ(sql_case.expect().data_, "");
