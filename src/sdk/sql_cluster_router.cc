@@ -20,7 +20,7 @@
 #include <memory>
 #include <string>
 #include <utility>
-
+#include "timer.h" //NOLINT
 #include "brpc/channel.h"
 #include "glog/logging.h"
 #include "parser/parser.h"
@@ -69,14 +69,16 @@ SQLClusterRouter::SQLClusterRouter(const SQLRouterOptions& options)
       cluster_sdk_(NULL),
       engine_(NULL),
       input_schema_map_(),
-      mu_() {}
+      mu_(),
+rand_(::baidu::common::timer::now_time()){}
 
 SQLClusterRouter::SQLClusterRouter(ClusterSDK* sdk)
     : options_(),
       cluster_sdk_(sdk),
       engine_(NULL),
       input_schema_map_(),
-      mu_() {}
+      mu_(),
+      rand_(::baidu::common::timer::now_time()){}
 
 SQLClusterRouter::~SQLClusterRouter() {
     delete cluster_sdk_;
@@ -386,6 +388,9 @@ bool SQLClusterRouter::EncodeFullColumns(
         const ::fesql::node::ConstNode* primary =
             dynamic_cast<const ::fesql::node::ConstNode*>(row->children_.at(i));
         if (primary->IsNull()) {
+            if (column.not_null()) {
+                return false;
+            }
             rb.AppendNULL();
             continue;
         }
@@ -484,6 +489,7 @@ bool SQLClusterRouter::EncodeFullColumns(
     }
     return true;
 }
+
 
 bool SQLClusterRouter::EncodeFormat(
     const catalog::RtiDBSchema& schema,

@@ -32,7 +32,7 @@ class SQLRequestRow {
     SQLRequestRow() {}
     explicit SQLRequestRow(std::shared_ptr<fesql::sdk::Schema> schema);
     ~SQLRequestRow() {}
-    bool Init(int str_length);
+    bool Init(int32_t str_length);
     bool AppendBool(bool val);
     bool AppendInt32(int32_t val);
     bool AppendInt16(int16_t val);
@@ -50,7 +50,6 @@ class SQLRequestRow {
 
  private:
     bool Check(fesql::sdk::DataType type);
-
  private:
     std::shared_ptr<fesql::sdk::Schema> schema_;
     uint32_t cnt_;
@@ -62,6 +61,9 @@ class SQLRequestRow {
     std::vector<uint32_t> offset_vec_;
     std::string val_;
     int8_t* buf_;
+    uint32_t str_length_expect_;
+    uint32_t str_length_current_;
+    bool has_error_;
 };
 
 }  // namespace sdk
