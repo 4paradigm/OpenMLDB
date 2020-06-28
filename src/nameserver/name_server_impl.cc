@@ -2610,13 +2610,23 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller,
 
 void NameServerImpl::AddDataType(std::shared_ptr<TableInfo> table_info) {
     for (int i = 0; i < table_info->column_desc_v1_size(); i++) {
-        auto desc = table_info->column_desc_v1(i);
-        if (desc.has_data_type()) {
+        auto desc = table_info->mutable_column_desc_v1(i);
+        if (desc->has_data_type()) {
             continue;
         }
-        auto type = rtidb::codec::DATA_TYPE_MAP.find(desc.type());
+        auto type = rtidb::codec::DATA_TYPE_MAP.find(desc->type());
         if (type != rtidb::codec::DATA_TYPE_MAP.end()) {
-            desc.set_data_type(type->second);
+            desc->set_data_type(type->second);
+        }
+    }
+    for (int i = 0; i < table_info->added_column_desc_size(); i++) {
+        auto desc = table_info->mutable_added_column_desc(i);
+        if (desc->has_data_type()) {
+            continue;
+        }
+        auto type = rtidb::codec::DATA_TYPE_MAP.find(desc->type());
+        if (type != rtidb::codec::DATA_TYPE_MAP.end()) {
+            desc->set_data_type(type->second);
         }
     }
 }
