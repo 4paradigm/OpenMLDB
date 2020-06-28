@@ -96,8 +96,9 @@ void AddFunc(const std::string& fn, ::fesql::node::NodeManager* manager,
     FnIRBuilder fn_ir_builder(m);
     for (node::SQLNode* node : trees) {
         LOG(INFO) << "Add Func: " << *node;
-        bool ok =
-            fn_ir_builder.Build(dynamic_cast<node::FnNodeFnDef*>(node), status);
+        ::llvm::Function* func = nullptr;
+        bool ok = fn_ir_builder.Build(
+              dynamic_cast<node::FnNodeFnDef*>(node), &func, status);
         ASSERT_TRUE(ok);
     }
 }
@@ -115,7 +116,8 @@ void CheckFnLetBuilder(::fesql::node::NodeManager* manager,
     ::fesql::parser::FeSQLParser parser;
     ::fesql::base::Status status;
     ::fesql::udf::RegisterUDFToModule(m.get());
-    ASSERT_TRUE(vm::RegisterFeLibs(m.get(), status));
+    udf::DefaultUDFLibrary lib;
+    ASSERT_TRUE(vm::RegisterFeLibs(&lib, status));
     AddFunc(udf_str, manager, m.get());
     m->print(::llvm::errs(), NULL);
     int ret = parser.parse(sql, list, manager, status);
@@ -142,7 +144,6 @@ void CheckFnLetBuilder(::fesql::node::NodeManager* manager,
     auto& jd = J->getMainJITDylib();
     ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
                                       J->getDataLayout());
-    udf::DefaultUDFLibrary lib;
     lib.InitJITSymbols(J.get());
     ::fesql::vm::InitCodecSymbol(jd, mi);
     ::fesql::udf::InitUDFSymbol(jd, mi);

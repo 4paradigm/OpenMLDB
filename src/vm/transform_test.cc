@@ -204,8 +204,8 @@ TEST_P(TransformTest, transform_physical_plan) {
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
     ::fesql::udf::RegisterUDFToModule(m.get());
-    ASSERT_TRUE(vm::RegisterFeLibs(m.get(), base_status));
     ::fesql::udf::DefaultUDFLibrary lib;
+    ASSERT_TRUE(vm::RegisterFeLibs(&lib, base_status));
     BatchModeTransformer transform(&manager, "db", catalog, m.get(), &lib);
 
     transform.AddDefaultPasses();
@@ -251,8 +251,8 @@ void PhysicalPlanCheck(const std::shared_ptr<Catalog>& catalog, std::string sql,
     auto m = make_unique<Module>("test_op_generator", *ctx);
     ::fesql::udf::RegisterUDFToModule(m.get());
     base::Status status;
-    ASSERT_TRUE(vm::RegisterFeLibs(m.get(), status));
     ::fesql::udf::DefaultUDFLibrary lib;
+    ASSERT_TRUE(vm::RegisterFeLibs(&lib, status));
     BatchModeTransformer transform(&manager, "db", catalog, m.get(), &lib);
 
     transform.AddDefaultPasses();
@@ -495,8 +495,8 @@ TEST_P(TransformTest, window_merge_opt_test) {
     auto m = make_unique<Module>("test_op_generator", *ctx);
     ::fesql::udf::RegisterUDFToModule(m.get());
     base::Status status;
-    ASSERT_TRUE(vm::RegisterFeLibs(m.get(), status));
     ::fesql::udf::DefaultUDFLibrary lib;
+    ASSERT_TRUE(vm::RegisterFeLibs(&lib, status));
     BatchModeTransformer transform(&manager, "db", catalog, m.get(), &lib);
 
     transform.AddDefaultPasses();
@@ -551,8 +551,8 @@ TEST_P(KeyGenTest, GenTest) {
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
     ::fesql::udf::RegisterUDFToModule(m.get());
-    ASSERT_TRUE(vm::RegisterFeLibs(m.get(), status));
     ::fesql::udf::DefaultUDFLibrary lib;
+    ASSERT_TRUE(vm::RegisterFeLibs(&lib, status));
     BatchModeTransformer transformer(&nm, "db", catalog, m.get(), &lib);
 
     ASSERT_TRUE(transformer.GenKey(
@@ -602,8 +602,8 @@ TEST_P(FilterGenTest, GenFilter) {
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
     ::fesql::udf::RegisterUDFToModule(m.get());
-    ASSERT_TRUE(vm::RegisterFeLibs(m.get(), status));
     ::fesql::udf::DefaultUDFLibrary lib;
+    ASSERT_TRUE(vm::RegisterFeLibs(&lib, status));
     BatchModeTransformer transformer(&nm, "db", catalog, m.get(), &lib);
 
     ASSERT_TRUE(transformer.GenFilter(

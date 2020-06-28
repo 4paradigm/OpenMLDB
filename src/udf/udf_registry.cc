@@ -173,6 +173,25 @@ Status ExternalFuncRegistry::Register(const std::vector<std::string>& args,
     return reg_table_.Register(args, func);
 }
 
+
+
+Status SimpleUDFRegistry::ResolveFunction(UDFResolveContext* ctx,
+                                          node::FnDefNode** result) {
+    int variadic_pos = -1;
+    std::string signature;
+    node::UDFDefNode* udf_def = nullptr;
+    CHECK_STATUS(reg_table_.Find(ctx, &udf_def, &signature, &variadic_pos));
+    *result = udf_def;
+    return Status::OK();
+}
+
+Status SimpleUDFRegistry::Register(const std::vector<std::string>& args,
+                                   node::UDFDefNode* udaf_def) {
+    return reg_table_.Register(args, udaf_def);
+}
+
+
+
 Status SimpleUDAFRegistry::ResolveFunction(UDFResolveContext* ctx,
                                            node::FnDefNode** result) {
     CHECK_TRUE(ctx->arg_size() == 1,

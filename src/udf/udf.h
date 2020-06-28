@@ -80,22 +80,22 @@ inline V inc(V i) {
     return i + 1;
 }
 
-int32_t dayofmonth(int64_t ts);
-int32_t dayofmonth(fesql::codec::Timestamp ts);
-
 int32_t month(int64_t ts);
 int32_t month(fesql::codec::Timestamp *ts);
 
 int32_t year(int64_t ts);
 int32_t year(fesql::codec::Timestamp *ts);
 
-int32_t week(int64_t ts);
-int32_t week(fesql::codec::Timestamp *ts);
-int32_t week(fesql::codec::Date *ts);
+int32_t dayofmonth(int64_t ts);
+int32_t dayofmonth(fesql::codec::Timestamp* ts);
 
-int32_t weekday(int64_t ts);
-int32_t weekday(fesql::codec::Timestamp *ts);
-int32_t weekday(fesql::codec::Date *ts);
+int32_t dayofweek(int64_t ts);
+int32_t dayofweek(fesql::codec::Timestamp *ts);
+int32_t dayofweek(fesql::codec::Date *ts);
+
+int32_t weekofyear(int64_t ts);
+int32_t weekofyear(fesql::codec::Timestamp *ts);
+int32_t weekofyear(fesql::codec::Date *ts);
 
 }  // namespace v1
 void InitUDFSymbol(vm::FeSQLJIT *jit_ptr);                // NOLINT

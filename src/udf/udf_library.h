@@ -62,7 +62,9 @@ class UDFLibrary {
     LLVMUDFRegistryHelper RegisterCodeGenUDF(const std::string& name);
     ExternalFuncRegistryHelper RegisterExternal(const std::string& name);
     SimpleUDAFRegistryHelper RegisterSimpleUDAF(const std::string& name);
-    void RegisterAlias(const std::string& alias, const std::string& name);
+
+    Status RegisterAlias(const std::string& alias, const std::string& name);
+    Status RegisterFromFile(const std::string& path);
 
     template <template <typename> class FTemplate>
     auto RegisterExternalTemplate(const std::string& name) {
@@ -82,10 +84,13 @@ class UDFLibrary {
     template <typename Helper, typename RegistryT>
     Helper DoStartRegister(const std::string& name);
 
+    void InsertRegistry(std::shared_ptr<UDFTransformRegistry> reg_item);
+
     std::unordered_map<std::string, std::shared_ptr<CompositeRegistry>> table_;
 
     node::NodeManager nm_;
 };
+
 
 }  // namespace udf
 }  // namespace fesql

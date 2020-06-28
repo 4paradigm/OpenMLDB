@@ -1130,7 +1130,7 @@ class FnDefNode : public SQLNode {
  public:
     explicit FnDefNode(const SQLNodeType &type) : SQLNode(type, 0, 0) {}
     virtual const TypeNode *GetReturnType() const { return nullptr; }
-    virtual size_t GetArgsSize() const { return 0; }
+    virtual size_t GetArgSize() const { return 0; }
     virtual const TypeNode *GetArgType(size_t i) const { return nullptr; }
     virtual const std::string GetSimpleName() const = 0;
     virtual bool Validate(node::ExprListNode *args) const = 0;
@@ -1177,7 +1177,7 @@ class CallExprNode : public ExprNode {
     // void SetAgg(bool is_agg) { is_agg_ = is_agg; }
     ExprListNode *GetArgs() const { return args_; }
 
-    const int GetArgsSize() const {
+    const int GetArgSize() const {
         return nullptr == args_ ? 0 : args_->children_.size();
     }
 
@@ -1792,7 +1792,7 @@ class ExternalFnDefNode : public FnDefNode {
     bool Validate(node::ExprListNode *args) const override;
 
     const TypeNode *GetReturnType() const override { return ret_type_; }
-    size_t GetArgsSize() const override { return arg_types_.size(); }
+    size_t GetArgSize() const override { return arg_types_.size(); }
     const TypeNode *GetArgType(size_t i) const { return arg_types_[i]; }
 
  private:
@@ -1823,7 +1823,7 @@ class UDFDefNode : public FnDefNode {
     const TypeNode *GetReturnType() const override {
         return def()->header_->ret_type_;
     }
-    size_t GetArgsSize() const override {
+    size_t GetArgSize() const override {
         return def()->header_->parameters_->GetChildren().size();
     }
     const TypeNode *GetArgType(size_t i) const {
@@ -1831,15 +1831,10 @@ class UDFDefNode : public FnDefNode {
         return dynamic_cast<FnParaNode *>(node)->GetParaType();
     }
 
-    bool return_by_arg() const { return return_by_arg_; }
-
-    void SetReturnByArg(bool flag) { this->return_by_arg_ = flag; }
-
     bool Validate(node::ExprListNode *args) const override { return true; }
 
  private:
     const FnNodeFnDef *def_;
-    bool return_by_arg_;
 };
 
 class UDFByCodeGenDefNode : public FnDefNode {
@@ -1861,7 +1856,7 @@ class UDFByCodeGenDefNode : public FnDefNode {
     }
 
     const TypeNode *GetReturnType() const override { return ret_type_; }
-    size_t GetArgsSize() const override { return arg_types_.size(); }
+    size_t GetArgSize() const override { return arg_types_.size(); }
     const TypeNode *GetArgType(size_t i) const { return arg_types_[i]; }
 
     bool Validate(node::ExprListNode *args) const override { return true; };

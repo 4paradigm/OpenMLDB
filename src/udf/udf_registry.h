@@ -15,6 +15,7 @@
 #include <tuple>
 #include <unordered_map>
 #include <memory>
+#include <sstream>
 
 #include "base/fe_status.h"
 #include "codec/list_iterator_codec.h"
@@ -1095,6 +1096,24 @@ class ExternalTemplateFuncRegistryHelper {
     bool return_by_arg_ = false;
     std::vector<node::ExternalFnDefNode*> cur_defs_;
 };
+
+
+class SimpleUDFRegistry : public UDFRegistry {
+ public:
+    explicit SimpleUDFRegistry(const std::string& name) : UDFRegistry(name) {}
+
+    Status Register(const std::vector<std::string>& input_args,
+                    node::UDFDefNode* udaf_def);
+
+    Status ResolveFunction(UDFResolveContext* ctx,
+                           node::FnDefNode** result) override;
+
+ private:
+    // input arg type -> udaf def
+    ArgSignatureTable<node::UDFDefNode*> reg_table_;
+};
+
+
 
 class SimpleUDAFRegistry : public UDFRegistry {
  public:

@@ -1106,7 +1106,8 @@ bool BatchModeTransformer::GenFnDef(const node::FuncDefPlanNode* fn_plan,
     }
 
     ::fesql::codegen::FnIRBuilder builder(module_);
-    bool ok = builder.Build(fn_plan->fn_def_, status);
+    ::llvm::Function* fn = nullptr;
+    bool ok = builder.Build(fn_plan->fn_def_, &fn, status);
     if (!ok) {
         status.msg = "fail to codegen function: " + status.msg;
         status.code = common::kCodegenError;

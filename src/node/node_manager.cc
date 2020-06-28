@@ -351,7 +351,7 @@ ExprNode *NodeManager::MakeCastNode(const node::DataType cast_type,
 }
 
 ExprNode *NodeManager::MakeTimeFuncNode(const TimeUnit time_unit,
-                                        const ExprListNode *list_ptr) {
+                                        ExprListNode *list_ptr) {
     std::string fn_name = "";
     switch (time_unit) {
         case kTimeUnitWeek:
@@ -838,7 +838,6 @@ TypeNode *NodeManager::MakeTypeNode(fesql::node::DataType base) {
 }
 TypeNode *NodeManager::MakeTypeNode(fesql::node::DataType base,
                                     fesql::node::TypeNode *v1) {
-
     TypeNode *node_ptr = new TypeNode(base, v1);
     RegisterNode(node_ptr);
     return node_ptr;

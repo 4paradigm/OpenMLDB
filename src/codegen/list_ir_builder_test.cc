@@ -122,7 +122,8 @@ void GetListAtPos(const type::TableDef& table, T* result,
     auto m = make_unique<Module>("test_load_buf", *ctx);
     ::fesql::udf::RegisterUDFToModule(m.get());
     base::Status status;
-    ASSERT_TRUE(vm::RegisterFeLibs(m.get(), status));
+    udf::DefaultUDFLibrary lib;
+    ASSERT_TRUE(vm::RegisterFeLibs(&lib, status));
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
     ::llvm::Type* retTy = NULL;
@@ -213,7 +214,6 @@ void GetListAtPos(const type::TableDef& table, T* result,
     auto& jd = J->getMainJITDylib();
     ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
                                       J->getDataLayout());
-    udf::DefaultUDFLibrary lib;
     lib.InitJITSymbols(J.get());
     ::fesql::udf::InitUDFSymbol(jd, mi);
     // add codec
@@ -233,7 +233,8 @@ void GetListIterator(T expected, const type::TableDef& table,
     auto m = make_unique<Module>("test_load_buf", *ctx);
     ::fesql::udf::RegisterUDFToModule(m.get());
     base::Status status;
-    ASSERT_TRUE(vm::RegisterFeLibs(m.get(), status));
+    udf::DefaultUDFLibrary lib;
+    ASSERT_TRUE(vm::RegisterFeLibs(&lib, status));
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
     ::llvm::Type* retTy = NULL;
@@ -405,7 +406,8 @@ void GetInnerListIterator(T expected, const type::TableDef& table,
     auto m = make_unique<Module>("test_load_buf", *ctx);
     ::fesql::udf::RegisterUDFToModule(m.get());
     base::Status status;
-    ASSERT_TRUE(vm::RegisterFeLibs(m.get(), status));
+    udf::DefaultUDFLibrary lib;
+    ASSERT_TRUE(vm::RegisterFeLibs(&lib, status));
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
     ::llvm::Type* retTy = NULL;
@@ -583,7 +585,8 @@ void RunListIteratorSumCase(T* result, const type::TableDef& table,
     auto m = make_unique<Module>("test_load_iterator_next", *ctx);
     ::fesql::udf::RegisterUDFToModule(m.get());
     base::Status status;
-    ASSERT_TRUE(vm::RegisterFeLibs(m.get(), status));
+    udf::DefaultUDFLibrary lib;
+    ASSERT_TRUE(vm::RegisterFeLibs(&lib, status));
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
     ::llvm::Type* retTy = NULL;

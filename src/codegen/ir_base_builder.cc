@@ -564,7 +564,8 @@ bool GetBaseType(::llvm::Type* type, ::fesql::node::DataType* output) {
             return false;
         }
         default: {
-            LOG(WARNING) << "no mapping type for llvm type";
+            LOG(WARNING) << "no mapping type for llvm type: "
+                << GetLLVMObjectString(type);
             return false;
         }
     }

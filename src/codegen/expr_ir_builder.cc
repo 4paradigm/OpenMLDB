@@ -259,13 +259,25 @@ Status ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call,
     ::llvm::FunctionType* function_ty = callsite.getFunctionType();
     std::vector<::llvm::Value*> llvm_args;
 
-    for (size_t i = 0; i < call->GetArgsSize(); ++i) {
+    // TODO(xxx): remove this
+    bool is_udaf = false;
+    if (call->GetArgSize() > 0) {
+        auto first_node_type = call->GetArgs()->GetChild(0)->GetOutputType();
+        if (first_node_type != nullptr &&
+            first_node_type->base_ == node::kList) {
+            is_udaf = true;
+        }
+    }
+    ExprIRBuilder sub_builder(
+        block_, sv_, schemas_context_, !is_udaf, module_);
+
+    for (size_t i = 0; i < call->GetArgSize(); ++i) {
         node::ExprNode* arg_expr = call->GetArgs()->GetChild(i);
 
         NativeValue llvm_arg_wrapper;
-        CHECK_TRUE(Build(arg_expr, &llvm_arg_wrapper, status),
-                   "Build argument ", arg_expr->GetExprString(),
-                   " failed: ", status.msg);
+        CHECK_TRUE(sub_builder.Build(arg_expr, &llvm_arg_wrapper, status),
+            "Build argument ", arg_expr->GetExprString(),
+            " failed: ", status.msg);
 
         ::llvm::Type* actual_llvm_ty = llvm_arg_wrapper.GetType();
         if (i < function_ty->getNumParams()) {
@@ -273,24 +285,30 @@ Status ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call,
             CHECK_TRUE(expect_llvm_ty == actual_llvm_ty,
                        "LLVM argument type mismatch at ", i, " expect ",
                        GetLLVMObjectString(expect_llvm_ty), " but get ",
-                       GetLLVMObjectString(actual_llvm_ty));
+                       GetLLVMObjectString(actual_llvm_ty), ", arg expr is ",
+                       call->GetArgs()->GetChild(i)->GetExprString());
         }
 
         llvm_args.push_back(llvm_arg_wrapper.GetValue(&builder));
     }
-
     if (return_by_arg) {
-        auto ret_alloca = builder.CreateAlloca(function_ty->getReturnType());
-        llvm_args.insert(llvm_args.begin() + function_ty->getNumParams(),
-                         ret_alloca);
+        int ret_pos = function_ty->getNumParams() - 1;
+        CHECK_TRUE(ret_pos >= 0);
+
+        auto ret_ptr_ty = function_ty->getParamType(ret_pos);
+        CHECK_TRUE(ret_ptr_ty->isPointerTy());
+
+        auto ret_alloca = builder.CreateAlloca(
+            reinterpret_cast<llvm::PointerType*>(
+                ret_ptr_ty)->getElementType());
+        llvm_args.insert(llvm_args.begin() + ret_pos, ret_alloca);
     }
 
     ::llvm::Value* call_res = builder.CreateCall(callsite, llvm_args);
     if (return_by_arg) {
-        call_res =
-            builder.CreateLoad(llvm_args[function_ty->getNumParams() + 1]);
+        int ret_pos = function_ty->getNumParams() - 1;
+        call_res = llvm_args[ret_pos];
     }
-
     *output = NativeValue::Create(call_res);
     return Status::OK();
 }
@@ -422,9 +440,26 @@ Status ExprIRBuilder::ResolveLLVMUDFDef(const node::CallExprNode* call,
                                         ::llvm::FunctionCallee* callsite,
                                         bool* return_by_arg) {
     auto udf_node = dynamic_cast<const node::UDFDefNode*>(call->GetFnDef());
-    *return_by_arg = udf_node->return_by_arg();
+
+    ::llvm::Type *llvm_ret_ty = nullptr;
+    bool ok = GetLLVMType(module_, udf_node->GetReturnType(), &llvm_ret_ty);
+    if (ok && TypeIRBuilder::IsStructPtr(llvm_ret_ty)) {
+        *return_by_arg = true;
+    } else {
+        *return_by_arg = false;
+    }
 
     std::string fn_name = udf_node->def()->header_->GeIRFunctionName();
+    if (udf_node->def()->header_->ret_type_ != nullptr) {
+        switch (udf_node->def()->header_->ret_type_->base_) {
+            case node::kDate:
+            case node::kTimestamp:
+            case node::kVarchar:
+                fn_name.append(".").append(
+                    udf_node->def()->header_->ret_type_->GetName());
+            default: break;
+        }
+    }
     ::llvm::Function* llvm_func = module_->getFunction(fn_name);
     if (llvm_func != nullptr) {
         *callsite =
@@ -434,13 +469,8 @@ Status ExprIRBuilder::ResolveLLVMUDFDef(const node::CallExprNode* call,
 
     FnIRBuilder fn_builder(module_);
     Status status;
-    CHECK_TRUE(fn_builder.Build(udf_node->def(), status),
+    CHECK_TRUE(fn_builder.Build(udf_node->def(), &llvm_func, status),
                "Build udf failed: ", status.msg);
-
-    llvm_func = module_->getFunction(fn_name);
-    CHECK_TRUE(llvm_func != nullptr,
-               "Fail to find built udf after ir builder success: ", fn_name);
-
     *callsite =
         module_->getOrInsertFunction(fn_name, llvm_func->getFunctionType());
     return Status::OK();
@@ -456,7 +486,7 @@ Status ExprIRBuilder::ResolveLLVMExternalDef(const node::CallExprNode* call,
                "External function argument validation error: ", function_name);
 
     std::vector<::llvm::Type*> llvm_arg_types;
-    for (size_t i = 0; i < call->GetArgsSize(); ++i) {
+    for (size_t i = 0; i < call->GetArgSize(); ++i) {
         ::llvm::Type* expect_llvm_ty = nullptr;
         CHECK_TRUE(
             GetLLVMType(module_, external_fn->GetArgType(i), &expect_llvm_ty));
@@ -488,7 +518,7 @@ Status ExprIRBuilder::BuildCallUDAF(const ::fesql::node::CallExprNode* fn,
 Status ExprIRBuilder::BuildCallUDFByCodeGen(
     const ::fesql::node::CallExprNode* call, NativeValue* output) {
     std::vector<NativeValue> arg_values;
-    for (size_t i = 0; i < call->GetArgsSize(); ++i) {
+    for (size_t i = 0; i < call->GetArgSize(); ++i) {
         node::ExprNode* arg_expr = call->GetArgs()->GetChild(i);
 
         Status status;

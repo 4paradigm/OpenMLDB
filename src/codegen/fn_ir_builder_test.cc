@@ -75,11 +75,13 @@ void CheckResult(std::string test, R exp, V1 a, V2 b) {
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("custom_fn", *ctx);
     ::fesql::udf::RegisterUDFToModule(m.get());
-    ASSERT_TRUE(vm::RegisterFeLibs(m.get(), status));
+    udf::DefaultUDFLibrary lib;
+    ASSERT_TRUE(vm::RegisterFeLibs(&lib, status));
     FnIRBuilder fn_ir_builder(m.get());
     node::FnNodeFnDef *fn_def = dynamic_cast<node::FnNodeFnDef *>(trees[0]);
     LOG(INFO) << *fn_def;
-    bool ok = fn_ir_builder.Build(fn_def, status);
+    ::llvm::Function* func = nullptr;
+    bool ok = fn_ir_builder.Build(fn_def, &func, status);
     ASSERT_TRUE(ok);
     m->print(::llvm::errs(), NULL, true, true);
     LOG(INFO) << "before opt with ins cnt " << m->getInstructionCount();
@@ -97,7 +99,6 @@ void CheckResult(std::string test, R exp, V1 a, V2 b) {
     auto &jd = J->getMainJITDylib();
     ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
                                       J->getDataLayout());
-    udf::DefaultUDFLibrary lib;
     lib.InitJITSymbols(J.get());
     ::fesql::vm::InitCodecSymbol(jd, mi);
     ::fesql::udf::InitUDFSymbol(jd, mi);

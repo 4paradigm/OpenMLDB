@@ -109,11 +109,11 @@ void DefaultUDFLibrary::Init() {
             })
         .returns<int32_t>();
 
-    RegisterExternal("day")
-        .args<int64_t>(static_cast<int32_t (*)(int64_t)>(v1::day))
-        .args<Timestamp>(static_cast<int32_t (*)(Timestamp*)>(v1::day));
+    RegisterExternal("dayofmonth")
+        .args<int64_t>(static_cast<int32_t (*)(int64_t)>(v1::dayofmonth))
+        .args<Timestamp>(static_cast<int32_t (*)(Timestamp*)>(v1::dayofmonth));
 
-    RegisterCodeGenUDF("day")
+    RegisterCodeGenUDF("dayofmonth")
         .args<Date>(
             [](CodeGenContext* ctx, NativeValue date, NativeValue* out) {
                 codegen::DateIRBuilder date_ir_builder(ctx->GetModule());
@@ -127,15 +127,15 @@ void DefaultUDFLibrary::Init() {
             })
         .returns<int32_t>();
 
-    RegisterExternal("week")
-        .args<int64_t>(static_cast<int32_t (*)(int64_t)>(v1::week))
-        .args<Timestamp>(static_cast<int32_t (*)(Timestamp*)>(v1::week))
-        .args<Date>(static_cast<int32_t (*)(Date*)>(v1::week));
+    RegisterExternal("dayofweek")
+        .args<int64_t>(static_cast<int32_t (*)(int64_t)>(v1::dayofweek))
+        .args<Timestamp>(static_cast<int32_t (*)(Timestamp*)>(v1::dayofweek))
+        .args<Date>(static_cast<int32_t (*)(Date*)>(v1::dayofweek));
 
-    RegisterExternal("weekday")
-        .args<int64_t>(static_cast<int32_t (*)(int64_t)>(v1::weekday))
-        .args<Timestamp>(static_cast<int32_t (*)(Timestamp*)>(v1::weekday))
-        .args<Date>(static_cast<int32_t (*)(Date*)>(v1::weekday));
+    RegisterExternal("weekofyear")
+        .args<int64_t>(static_cast<int32_t (*)(int64_t)>(v1::weekofyear))
+        .args<Timestamp>(static_cast<int32_t (*)(Timestamp*)>(v1::weekofyear))
+        .args<Date>(static_cast<int32_t (*)(Date*)>(v1::weekofyear));
 
     RegisterCodeGenUDFTemplate<BuildGetHourUDF>("hour")
         .args_in<int64_t, Timestamp>()

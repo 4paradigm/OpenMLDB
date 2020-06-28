@@ -424,81 +424,6 @@ void RegisterNativeUDFToModule(::llvm::Module *module) {
     RegisterMethod(module, "inc", i32_ty, {i32_ty},
                    reinterpret_cast<void *>(v1::inc<int32_t>));
 
-    // dayofmonth, year, month
-    RegisterMethod(
-        module, "year", i32_ty, {i64_ty},
-        reinterpret_cast<void *>(static_cast<int32_t (*)(int64_t)>(v1::year)));
-    RegisterMethod(
-        module, "month", i32_ty, {i64_ty},
-        reinterpret_cast<void *>(static_cast<int32_t (*)(int64_t)>(v1::month)));
-    RegisterMethod(module, "dayofmonth", i32_ty, {i64_ty},
-                   reinterpret_cast<void *>(
-                       static_cast<int32_t (*)(int64_t)>(v1::dayofmonth)));
-    RegisterMethod(module, "dayofweek", i32_ty, {i64_ty},
-                   reinterpret_cast<void *>(
-                       static_cast<int32_t (*)(int64_t)>(v1::dayofweek)));
-    RegisterMethod(module, "dayofweek", i32_ty, {i64_ty},
-                   reinterpret_cast<void *>(
-                       static_cast<int32_t (*)(int64_t)>(v1::dayofweek)));
-    RegisterMethod(module, "weekofyear", i32_ty, {i64_ty},
-                   reinterpret_cast<void *>(
-                       static_cast<int32_t (*)(int64_t)>(v1::weekofyear)));
-
-    RegisterMethod(module, "year", i32_ty, {time_ty},
-                   reinterpret_cast<void *>(
-                       static_cast<int32_t (*)(codec::Timestamp *)>(v1::year)));
-
-    RegisterMethod(
-        module, "month", i32_ty, {time_ty},
-        reinterpret_cast<void *>(
-            static_cast<int32_t (*)(codec::Timestamp *)>(v1::month)));
-    RegisterMethod(
-        module, "dayofmonth", i32_ty, {time_ty},
-        reinterpret_cast<void *>(
-            static_cast<int32_t (*)(codec::Timestamp *)>(v1::dayofmonth)));
-    RegisterMethod(
-        module, "dayofweek", i32_ty, {time_ty},
-        reinterpret_cast<void *>(
-            static_cast<int32_t (*)(codec::Timestamp *)>(v1::dayofweek)));
-    RegisterMethod(
-        module, "weekofyear", i32_ty, {time_ty},
-        reinterpret_cast<void *>(
-            static_cast<int32_t (*)(codec::Timestamp *)>(v1::weekofyear)));
-
-    RegisterMethod(module, "dayofweek", i32_ty, {date_ty},
-                   reinterpret_cast<void *>(
-                       static_cast<int32_t (*)(codec::Date *)>(v1::dayofweek)));
-
-    RegisterMethod(module, "dayofweek", i32_ty, {date_ty},
-                   reinterpret_cast<void *>(
-                       static_cast<int32_t (*)(codec::Date *)>(v1::dayofweek)));
-
-    RegisterMethod(
-        module, "weekofyear", i32_ty, {date_ty},
-        reinterpret_cast<void *>(
-            static_cast<int32_t (*)(codec::Date *)>(v1::weekofyear)));
-
-    RegisterMethod(module, "at", i16_ty, {list_i16_ty, i32_ty},
-                   reinterpret_cast<void *>(v1::at_list<int16_t>));
-    RegisterMethod(module, "at", i32_ty, {list_i32_ty, i32_ty},
-                   reinterpret_cast<void *>(v1::at_list<int32_t>));
-    RegisterMethod(module, "at", i64_ty, {list_i64_ty, i32_ty},
-                   reinterpret_cast<void *>(v1::at_list<int64_t>));
-    RegisterMethod(module, "at", float_ty, {list_float_ty, i32_ty},
-                   reinterpret_cast<void *>(v1::at_list<float>));
-    RegisterMethod(module, "at", double_ty, {list_double_ty, i32_ty},
-                   reinterpret_cast<void *>(v1::at_list<double>));
-
-    RegisterMethod(
-        module, "at", bool_ty, {list_time_ty, i32_ty, time_ty},
-        reinterpret_cast<void *>(v1::at_struct_list<codec::Timestamp>));
-    RegisterMethod(module, "at", bool_ty, {list_date_ty, i32_ty, date_ty},
-                   reinterpret_cast<void *>(v1::at_struct_list<codec::Date>));
-    RegisterMethod(
-        module, "at", bool_ty, {list_string_ty, i32_ty, string_ty},
-        reinterpret_cast<void *>(v1::at_struct_list<codec::StringRef>));
-
->>>>>>> develop
     RegisterMethod(module, "sum", i16_ty, {list_i16_ty},
                    reinterpret_cast<void *>(v1::sum_list<int16_t>));
     RegisterMethod(module, "sum", i32_ty, {list_i32_ty},
@@ -672,11 +597,6 @@ void RegisterNativeUDFToModule(::llvm::Module *module) {
 bool RegisterUDFToModule(::llvm::Module *m) {
     base::Status status;
     RegisterNativeUDFToModule(m);
-    codegen::UDFIRBuilder udf_ir_builder(&NATIVE_UDF_PTRS);
-    if (!udf_ir_builder.BuildUDF(m, status)) {
-        LOG(WARNING) << status.msg;
-        return false;
-    }
     return true;
 }
 void InitCLibSymbol(::llvm::orc::JITDylib &jd,             // NOLINT

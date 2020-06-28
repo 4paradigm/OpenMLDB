@@ -30,6 +30,7 @@
 #include "node/node_manager.h"
 #include "parser/parser.h"
 #include "udf/udf.h"
+#include "udf/default_udf_library.h"
 #include "vm/sql_compiler.h"
 
 using namespace llvm;       // NOLINT (build/namespaces)
@@ -50,8 +51,9 @@ void CheckNativeUDF(const std::string udf_name, T exp, Args... args) {
     base::Status status;
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("udf_test", *ctx);
+    udf::DefaultUDFLibrary lib;
     ASSERT_TRUE(fesql::udf::RegisterUDFToModule(m.get()));
-    ASSERT_TRUE(fesql::vm::RegisterFeLibs(m.get(), status));
+    ASSERT_TRUE(fesql::vm::RegisterFeLibs(&lib, status));
     m->print(::llvm::errs(), NULL, true, true);
 
     auto J = ExitOnErr(LLJITBuilder().create());
@@ -241,24 +243,25 @@ TEST_F(UDFIRBuilderTest, distinct_count_udf_test) {
 TEST_F(UDFIRBuilderTest, sum_udf_test) {
     std::vector<int32_t> vec = {1, 3, 5, 7, 9};
     codec::ArrayListV<int32_t> list(&vec);
-    codec::ListRef list_ref;
+    codec::ListRef<> list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
-    CheckNativeUDF<int32_t, codec::ListRef *>("sum.list_int32",
+    CheckNativeUDF<int32_t, codec::ListRef<> *>("sum.list_int32",
                                               1 + 3 + 5 + 7 + 9, &list_ref);
 }
 TEST_F(UDFIRBuilderTest, min_udf_test) {
     std::vector<int32_t> vec = {10, 8, 6, 4, 2, 1, 3, 5, 7, 9};
     codec::ArrayListV<int32_t> list(&vec);
-    codec::ListRef list_ref;
+    codec::ListRef<> list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
-    CheckNativeUDF<int32_t, codec::ListRef *>("min.list_int32", 1, &list_ref);
+    CheckNativeUDF<int32_t, codec::ListRef<> *>("min.list_int32", 1, &list_ref);
 }
 TEST_F(UDFIRBuilderTest, max_udf_test) {
     std::vector<int32_t> vec = {10, 8, 6, 4, 2, 1, 3, 5, 7, 9};
     codec::ArrayListV<int32_t> list(&vec);
-    codec::ListRef list_ref;
+    codec::ListRef<> list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
-    CheckNativeUDF<int32_t, codec::ListRef *>("max.list_int32", 10, &list_ref);
+    CheckNativeUDF<int32_t, codec::ListRef<> *>(
+        "max.list_int32", 10, &list_ref);
 }
 TEST_F(UDFIRBuilderTest, time_diff_udf_test) {
     codec::Timestamp t1(1590115420000L);
@@ -273,11 +276,11 @@ TEST_F(UDFIRBuilderTest, max_timestamp_udf_test) {
         codec::Timestamp(1590115420000L), codec::Timestamp(1590115430000L),
         codec::Timestamp(1590115400000L)};
     codec::ArrayListV<codec::Timestamp> list(&vec);
-    codec::ListRef list_ref;
+    codec::ListRef<> list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
 
     codec::Timestamp max_time;
-    CheckNativeUDF<bool, codec::ListRef *, codec::Timestamp *>(
+    CheckNativeUDF<bool, codec::ListRef<> *, codec::Timestamp *>(
         "max.list_timestamp.timestamp", true, &list_ref, &max_time);
     ASSERT_EQ(codec::Timestamp(1590115430000L), max_time);
 }
@@ -287,25 +290,18 @@ TEST_F(UDFIRBuilderTest, min_timestamp_udf_test) {
         codec::Timestamp(1590115420000L), codec::Timestamp(1590115430000L),
         codec::Timestamp(1590115400000L)};
     codec::ArrayListV<codec::Timestamp> list(&vec);
-    codec::ListRef list_ref;
+    codec::ListRef<> list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
 
     codec::Timestamp max_time;
-    CheckNativeUDF<bool, codec::ListRef *, codec::Timestamp *>(
+    CheckNativeUDF<bool, codec::ListRef<> *, codec::Timestamp *>(
         "min.list_timestamp.timestamp", true, &list_ref, &max_time);
     ASSERT_EQ(codec::Timestamp(1590115390000L), max_time);
 }
 TEST_F(UDFIRBuilderTest, RegisterFeLibs_TEST) {
     base::Status status;
-    auto ctx = llvm::make_unique<LLVMContext>();
-    auto m = make_unique<Module>("udf_test", *ctx);
-    fesql::udf::RegisterUDFToModule(m.get());
-    ASSERT_TRUE(vm::RegisterFeLibs(m.get(), status));
-    bool ok = vm::RegisterFeLibs(m.get(), status);
-    if (!ok) {
-        m->print(::llvm::errs(), NULL, true, true);
-    }
-    ASSERT_TRUE(ok);
+    udf::DefaultUDFLibrary lib;
+    ASSERT_TRUE(vm::RegisterFeLibs(&lib, status));
 }
 
 }  // namespace codegen

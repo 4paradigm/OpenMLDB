@@ -34,6 +34,7 @@ class FnIRBuilder {
     explicit FnIRBuilder(::llvm::Module* module);
     ~FnIRBuilder();
     bool Build(const ::fesql::node::FnNodeFnDef* node,
+               ::llvm::Function** result,
                base::Status& status);  // NOLINT
 
     bool CreateFunction(const ::fesql::node::FnNodeFnHeander* fn_def,
@@ -43,6 +44,7 @@ class FnIRBuilder {
                                   base::Status& status);  // NOLINT
     bool BuildFnHead(const ::fesql::node::FnNodeFnHeander* fn_def, ScopeVar* sv,
                      ::llvm::Function** fn, base::Status& status);  // NOLINT
+
  private:
     bool BuildParas(const ::fesql::node::FnNodeList* node,
                     std::vector<::llvm::Type*>& paras,  // NOLINT
