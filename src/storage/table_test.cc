@@ -451,13 +451,11 @@ TEST_F(TableTest, DecodeKeysAndTsTest) {
     }
 
     auto index_map = table.GetIndexMap();
-    char* spk_buf = nullptr;
-    uint32_t spk_size = 0;
     int64_t time = 1;
+    std::string key;
     ASSERT_TRUE(table.DecodeKeysAndTs(index_map["index1"], row.c_str(),
-                                      row.length(), &spk_buf, &spk_size,
-                                      &time));
-    ASSERT_EQ("i1_k1|21", std::string(spk_buf, spk_size));
+                                      row.length(), key, &time));
+    ASSERT_EQ("i1_k1|21", key);
     ASSERT_EQ(11L, time);
 }
 }  // namespace storage
