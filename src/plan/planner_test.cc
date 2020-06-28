@@ -144,7 +144,6 @@ TEST_P(PlannerTest, PlannerWindowOptTest) {
     //    ASSERT_EQ(1, trees.size());
     //    std::cout << *(trees.front()) << std::endl;
     Planner *planner_ptr = new SimplePlanner(manager_);
-    planner_ptr->set_window_merge_enable(false);
     node::PlanNodeList plan_trees;
     ASSERT_EQ(0, planner_ptr->CreatePlanTree(trees, plan_trees, status));
     LOG(INFO) << "logical plan:\n";
@@ -1309,7 +1308,6 @@ TEST_F(PlannerTest, WindowMergeOptTest) {
     int ret = parser_->parse(sql, parser_trees, manager_, status);
     ASSERT_EQ(0, ret);
     SimplePlanner planner_ptr(manager_, false);
-    planner_ptr.set_window_merge_enable(true);
     node::PlanNodeList plan_trees;
     ASSERT_EQ(common::kOk,
               planner_ptr.CreatePlanTree(parser_trees, plan_trees, status));
@@ -1348,7 +1346,6 @@ TEST_F(PlannerTest, WindowExpandTest) {
     int ret = parser_->parse(sql, parser_trees, manager_, status);
     ASSERT_EQ(0, ret);
     SimplePlanner planner_ptr(manager_, false);
-    planner_ptr.set_window_merge_enable(true);
     node::PlanNodeList plan_trees;
     ASSERT_EQ(common::kOk,
               planner_ptr.CreatePlanTree(parser_trees, plan_trees, status));

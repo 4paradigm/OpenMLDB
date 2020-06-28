@@ -35,5 +35,4 @@ DEFINE_string(native_fesql_libs_prefix,
 DEFINE_string(native_fesql_libs_name,
               "felibs",
               "config the native fesql libs name");
-DEFINE_bool(enable_column_sum_opt, true, "enable column sum merge");
-DEFINE_bool(enable_window_merge_opt, true, "enable window merge");
+

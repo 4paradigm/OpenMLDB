@@ -27,7 +27,6 @@
 #include "codegen/variable_ir_builder.h"
 #include "gflags/gflags.h"
 #include "glog/logging.h"
-DECLARE_bool(enable_column_sum_opt);
 namespace fesql {
 namespace codegen {
 
@@ -37,8 +36,7 @@ AggregateIRBuilder::AggregateIRBuilder(const vm::SchemasContext* sc,
     : schema_context_(sc),
       module_(module),
       frame_node_(frame_node),
-      id_(id),
-      agg_enabled_(AggregateIRBuilder::EnableColumnAggOpt()) {
+      id_(id) {
     available_agg_func_set_.insert("sum");
     available_agg_func_set_.insert("avg");
     available_agg_func_set_.insert("count");
@@ -50,29 +48,9 @@ bool AggregateIRBuilder::IsAggFuncName(const std::string& fname) {
     return available_agg_func_set_.find(fname) != available_agg_func_set_.end();
 }
 
-// TODO(someone): configurable codegen
-bool AggregateIRBuilder::EnableColumnAggOpt() {
-    const char* env_name = "ENABLE_COLUMN_AGG_OPT";
-    char* value = getenv(env_name);
-    if (value != nullptr && strcmp(value, "false") == 0) {
-        LOG(INFO) << "Multi column agg opt is disable";
-        return false;
-    }
-    if (FLAGS_enable_column_sum_opt) {
-        LOG(INFO) << "Multi column agg opt is enable";
-        return true;
-    } else {
-        LOG(INFO) << "Multi column agg opt is disable";
-        return false;
-    }
-}
-
 bool AggregateIRBuilder::CollectAggColumn(const fesql::node::ExprNode* expr,
                                           size_t output_idx,
                                           fesql::type::Type* res_agg_type) {
-    if (!agg_enabled_) {
-        return false;
-    }
     switch (expr->expr_type_) {
         case node::kExprCall: {
             auto call = dynamic_cast<const node::CallExprNode*>(expr);

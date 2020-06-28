@@ -105,8 +105,6 @@ class AggregateIRBuilder {
     ::llvm::Module* module_;
     node::FrameNode* frame_node_;
     uint32_t id_;
-    bool agg_enabled_;
-
     std::set<std::string> available_agg_func_set_;
     std::unordered_map<std::string, AggColumnInfo> agg_col_infos_;
 };

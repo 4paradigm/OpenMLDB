@@ -897,8 +897,11 @@ std::shared_ptr<PartitionHandler> SortGenerator::Sort(
     }
     if (!order_gen().Valid() &&
         is_asc == (partition->GetOrderType() == kAscOrder)) {
+        DLOG(INFO) << "match the order redirect the table";
         return partition;
     }
+
+    DLOG(INFO) << "mismatch the order and sort it";
     auto output =
         std::shared_ptr<MemPartitionHandler>(new MemPartitionHandler());
 
@@ -1190,6 +1193,7 @@ const Row Runner::RowLastJoinTable(size_t left_slices, const Row& left_row,
         return Row(left_slices, left_row, right_slices, Row());
     }
     right_iter->SeekToFirst();
+
     if (!right_iter->Valid()) {
         LOG(WARNING) << "Last Join right table is empty";
         return Row(left_slices, left_row, right_slices, Row());
@@ -1198,6 +1202,7 @@ const Row Runner::RowLastJoinTable(size_t left_slices, const Row& left_row,
     if (!cond_gen.Valid()) {
         return Row(left_slices, left_row, right_slices, right_iter->GetValue());
     }
+
     while (right_iter->Valid()) {
         Row joined_row(left_slices, left_row, right_slices,
                        right_iter->GetValue());

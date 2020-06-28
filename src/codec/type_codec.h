@@ -39,7 +39,8 @@ struct StringRef {
     char* data_;
 };
 
-inline static int compare(const StringRef& a, const StringRef& b) {
+__attribute__((unused)) static int compare(const StringRef& a,
+                                           const StringRef& b) {
     const size_t min_len = (a.size_ < b.size_) ? a.size_ : b.size_;
     int r = memcmp(a.data_, b.data_, min_len);
     if (r == 0) {
@@ -50,7 +51,8 @@ inline static int compare(const StringRef& a, const StringRef& b) {
     }
     return r;
 }
-static const StringRef operator+(const StringRef& a, const StringRef& b) {
+__attribute__((unused)) static const StringRef operator+(const StringRef& a,
+                                                         const StringRef& b) {
     StringRef str;
     str.size_ = a.size_ + b.size_;
     str.data_ = static_cast<char*>(malloc(str.size_ + 1));
@@ -63,22 +65,28 @@ static const StringRef operator+(const StringRef& a, const StringRef& b) {
     str.data_[str.size_] = '\0';
     return str;
 }
-static bool operator==(const StringRef& a, const StringRef& b) {
+__attribute__((unused)) static bool operator==(const StringRef& a,
+                                               const StringRef& b) {
     return 0 == compare(a, b);
 }
-static bool operator!=(const StringRef& a, const StringRef& b) {
+__attribute__((unused)) static bool operator!=(const StringRef& a,
+                                               const StringRef& b) {
     return 0 != compare(a, b);
 }
-static bool operator>=(const StringRef& a, const StringRef& b) {
+__attribute__((unused)) static bool operator>=(const StringRef& a,
+                                               const StringRef& b) {
     return compare(a, b) >= 0;
 }
-static bool operator>(const StringRef& a, const StringRef& b) {
+__attribute__((unused)) static bool operator>(const StringRef& a,
+                                              const StringRef& b) {
     return compare(a, b) > 0;
 }
-static bool operator<=(const StringRef& a, const StringRef& b) {
+__attribute__((unused)) static bool operator<=(const StringRef& a,
+                                               const StringRef& b) {
     return compare(a, b) <= 0;
 }
-static bool operator<(const StringRef& a, const StringRef& b) {
+__attribute__((unused)) static bool operator<(const StringRef& a,
+                                              const StringRef& b) {
     return compare(a, b) < 0;
 }
 
@@ -96,31 +104,40 @@ struct Timestamp {
     int64_t ts_;
 };
 
-static const Timestamp operator+(const Timestamp& a, const Timestamp& b) {
+__attribute__((unused)) static const Timestamp operator+(const Timestamp& a,
+                                                         const Timestamp& b) {
     return Timestamp(a.ts_ + b.ts_);
 }
-static const Timestamp operator-(const Timestamp& a, const Timestamp& b) {
+__attribute__((unused)) static const Timestamp operator-(const Timestamp& a,
+                                                         const Timestamp& b) {
     return Timestamp(a.ts_ - b.ts_);
 }
-static const Timestamp operator/(const Timestamp& a, const int64_t b) {
+__attribute__((unused)) static const Timestamp operator/(const Timestamp& a,
+                                                         const int64_t b) {
     return Timestamp(static_cast<int64_t>(a.ts_ / b));
 }
-static bool operator>(const Timestamp& a, const Timestamp& b) {
+__attribute__((unused)) static bool operator>(const Timestamp& a,
+                                              const Timestamp& b) {
     return a.ts_ > b.ts_;
 }
-static bool operator<(const Timestamp& a, const Timestamp& b) {
+__attribute__((unused)) static bool operator<(const Timestamp& a,
+                                              const Timestamp& b) {
     return a.ts_ < b.ts_;
 }
-static bool operator>=(const Timestamp& a, const Timestamp& b) {
+__attribute__((unused)) static bool operator>=(const Timestamp& a,
+                                               const Timestamp& b) {
     return a.ts_ >= b.ts_;
 }
-static bool operator<=(const Timestamp& a, const Timestamp& b) {
+__attribute__((unused)) static bool operator<=(const Timestamp& a,
+                                               const Timestamp& b) {
     return a.ts_ <= b.ts_;
 }
-static bool operator==(const Timestamp& a, const Timestamp& b) {
+__attribute__((unused)) static bool operator==(const Timestamp& a,
+                                               const Timestamp& b) {
     return a.ts_ == b.ts_;
 }
-static bool operator!=(const Timestamp& a, const Timestamp& b) {
+__attribute__((unused)) static bool operator!=(const Timestamp& a,
+                                               const Timestamp& b) {
     return a.ts_ != b.ts_;
 }
 
@@ -155,22 +172,22 @@ struct Date {
     }
     int32_t date_;
 };
-static bool operator>(const Date& a, const Date& b) {
+__attribute__((unused)) static bool operator>(const Date& a, const Date& b) {
     return a.date_ > b.date_;
 }
-static bool operator<(const Date& a, const Date& b) {
+__attribute__((unused)) static bool operator<(const Date& a, const Date& b) {
     return a.date_ < b.date_;
 }
-static bool operator>=(const Date& a, const Date& b) {
+__attribute__((unused)) static bool operator>=(const Date& a, const Date& b) {
     return a.date_ >= b.date_;
 }
-static bool operator<=(const Date& a, const Date& b) {
+__attribute__((unused)) static bool operator<=(const Date& a, const Date& b) {
     return a.date_ <= b.date_;
 }
-static bool operator==(const Date& a, const Date& b) {
+__attribute__((unused)) static bool operator==(const Date& a, const Date& b) {
     return a.date_ == b.date_;
 }
-static bool operator!=(const Date& a, const Date& b) {
+__attribute__((unused)) static bool operator!=(const Date& a, const Date& b) {
     return a.date_ != b.date_;
 }
 

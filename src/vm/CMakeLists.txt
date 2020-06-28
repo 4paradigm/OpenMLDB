@@ -5,10 +5,11 @@ include_directories(${INCLUDE_DIRECTORIES}
 add_library(fesql_vm STATIC jit.cc jit_wrapper.cc runner.cc sql_compiler.cc engine.cc core_api.cc mem_catalog.cc catalog_wrapper.cc schemas_context.cc transform.cc physical_op.cc)
 target_link_libraries(fesql_vm fesql_base)
 
-add_library(fesql_csv_catalog STATIC csv_catalog.cc csv_table_iterator.cc
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    add_library(fesql_csv_catalog STATIC csv_catalog.cc csv_table_iterator.cc
         csv_window_iterator.cc)
+endif()
 add_library(fesql_simple_catalog STATIC simple_catalog.cc)
-
 
 if (TESTING_ENABLE)
 set(vm_deps_libs fesql_case ${yaml_libs} boost_filesystem fesql_dbms fesql_tablet  ${VM_LIBS} fesql_flags ${LLVM_LIBS} ${BRPC_LIBS} ${OS_LIB})
@@ -89,6 +90,9 @@ add_test(engine_test engine_test
         --gtest_output=xml:${CMAKE_BINARY_DIR}/engine_test.xml)
 list(APPEND test_list engine_test)
 
-add_executable(csv_db csv_db.cc)
-target_link_libraries(csv_db fesql_csv_catalog gtest ${ARROW_LIBS} ${vm_deps_libs})
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    add_executable(csv_db csv_db.cc)
+    target_link_libraries(csv_db fesql_csv_catalog gtest ${ARROW_LIBS} ${vm_deps_libs})
+endif()
+
 endif()

@@ -285,9 +285,8 @@ const std::string FindFesqlDirPath() {
 bool RegisterFeLibs(llvm::Module* m, Status& status) {  // NOLINT
     if (FLAGS_native_fesql_libs_name.empty()) {
         LOG(WARNING) << "fail register fe libs: No fesql libs config exist";
-        return false;
+        return true;
     }
-
     std::vector<std::string> filepaths;
     std::string fesql_libs_path = "";
     if (FLAGS_native_fesql_libs_prefix.empty()) {
