@@ -455,6 +455,31 @@ bool FrameNode::CanMergeWith(const FrameNode *that) const {
     }
     return true;
 }
+void CastExprNode::Print(std::ostream &output,
+                         const std::string &org_tab) const {
+    ExprNode::Print(output, org_tab);
+    output << "\n";
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    PrintValue(output, tab, DataTypeName(cast_type_), "cast_type", false);
+    output << "\n";
+    PrintSQLNode(output, tab, expr_, "expr", true);
+}
+const std::string CastExprNode::GetExprString() const {
+    std::string str = DataTypeName(cast_type_);
+    str.append("(").append(ExprString(expr_)).append(")");
+    return str;
+}
+bool CastExprNode::Equals(const ExprNode *node) const {
+    if (this == node) {
+        return true;
+    }
+    if (nullptr == node || expr_type_ != node->expr_type_) {
+        return false;
+    }
+    const CastExprNode *that = dynamic_cast<const CastExprNode *>(node);
+    return this->cast_type_ == that->cast_type_ &&
+           ExprEquals(expr_, that->expr_);
+}
 void CallExprNode::Print(std::ostream &output,
                          const std::string &org_tab) const {
     ExprNode::Print(output, org_tab);

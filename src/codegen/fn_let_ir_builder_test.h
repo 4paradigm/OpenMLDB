@@ -111,12 +111,13 @@ void CheckFnLetBuilder(::fesql::node::NodeManager* manager,
     // Create an LLJIT instance.
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_project", *ctx);
-    ::fesql::udf::RegisterUDFToModule(m.get());
-    AddFunc(udf_str, manager, m.get());
     ::fesql::node::NodePointVector list;
     ::fesql::parser::FeSQLParser parser;
     ::fesql::base::Status status;
-
+    ::fesql::udf::RegisterUDFToModule(m.get());
+    ASSERT_TRUE(vm::RegisterFeLibs(m.get(), status));
+    AddFunc(udf_str, manager, m.get());
+    m->print(::llvm::errs(), NULL);
     int ret = parser.parse(sql, list, manager, status);
     ASSERT_EQ(0, ret);
     ASSERT_EQ(1u, list.size());

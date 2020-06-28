@@ -75,6 +75,7 @@ void CheckResult(std::string test, R exp, V1 a, V2 b) {
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("custom_fn", *ctx);
     ::fesql::udf::RegisterUDFToModule(m.get());
+    ASSERT_TRUE(vm::RegisterFeLibs(m.get(), status));
     FnIRBuilder fn_ir_builder(m.get());
     node::FnNodeFnDef *fn_def = dynamic_cast<node::FnNodeFnDef *>(trees[0]);
     LOG(INFO) << *fn_def;

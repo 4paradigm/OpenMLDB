@@ -742,6 +742,17 @@ bool TypeIRBuilder::IsInt64(::llvm::Type* type) {
 bool TypeIRBuilder::IsInterger(::llvm::Type* type) {
     return type->isIntegerTy();
 }
+const std::string TypeIRBuilder::TypeName(::llvm::Type* type) {
+    node::TypeNode type_node;
+    if (!GetTypeNode(type, &type_node)) {
+        return "unknow";
+    }
+    return type_node.GetName();
+}
+const bool TypeIRBuilder::GetTypeNode(::llvm::Type* type,
+                                   node::TypeNode* type_node) {
+    return GetFullType(type, type_node);
+}
 bool TypeIRBuilder::IsDatePtr(::llvm::Type* type) {
     ::fesql::node::DataType data_type;
     if (!IsStructPtr(type)) {
@@ -775,7 +786,6 @@ bool TypeIRBuilder::IsStructPtr(::llvm::Type* type) {
             return false;
         }
     }
-    DLOG(INFO) << "Isn't Pointer Type";
     return false;
 }
 

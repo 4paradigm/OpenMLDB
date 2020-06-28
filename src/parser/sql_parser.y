@@ -59,6 +59,7 @@ typedef void* yyscan_t;
 	::fesql::node::TableRefNode* table_ref;
 	::fesql::node::JoinType join_type;
 	::fesql::node::FrameType frame_type;
+	::fesql::node::TimeUnit time_unit;
 	::fesql::node::DataType type;
 	::fesql::node::TypeNode* typenode;
 	::fesql::node::FnNodeList* fnlist;
@@ -113,7 +114,6 @@ typedef void* yyscan_t;
 
 
 
-%token <intval> I32
 %token <strval> NEWLINES
 %token <intval> INDENT
 %token <strval> DEF
@@ -159,6 +159,7 @@ typedef void* yyscan_t;
 %token DATABASE
 %token DATABASES
 %token DATE
+%token DAY
 %token DATETIME
 %token DAY_HOUR
 %token DAY_MICROSECOND
@@ -202,9 +203,23 @@ typedef void* yyscan_t;
 %token GROUP
 %token HAVING
 %token HIGH_PRIORITY
+%token HOUR
 %token HOUR_MICROSECOND
 %token HOUR_MINUTE
 %token HOUR_SECOND
+%token I16
+%token I32
+%token I64
+%token I16_MAX
+%token I32_MAX
+%token I64_MAX
+%token I16_MIN
+%token I32_MIN
+%token I64_MIN
+%token FLOAT_MAX
+%token DOUBLE_MAX
+%token FLOAT_MIN
+%token DOUBLE_MIN
 %token IF
 %token IGNORE
 %token IN
@@ -250,8 +265,12 @@ typedef void* yyscan_t;
 %token MEDIUMTEXT
 %token MINUTE_MICROSECOND
 %token MINUTE_SECOND
+%token MINUTE
+%token MILLISECOND
+%token MICROSECOND
 %token MOD
 %token MODIFIES
+%token MONTH
 %token NATURAL
 %token NOT
 %token NO_WRITE_TO_BINLOG
@@ -296,6 +315,7 @@ typedef void* yyscan_t;
 %token ROWS_RANGE
 %token SCHEMA
 %token SCHEMAS
+%token SECOND
 %token SECOND_MICROSECOND
 %token SELECT
 %token SENSITIVE
@@ -359,8 +379,10 @@ typedef void* yyscan_t;
 %token WHERE
 %token WHILE
 %token WITH
+%token WEEK
 %token WRITE
 %token XOR
+%token YEAR
 %token ZEROFILL
 
  /* functions with special syntax */
@@ -372,6 +394,7 @@ typedef void* yyscan_t;
  /* udf */
 %type <type> types
 %type <join_type> join_type
+%type <time_unit> time_unit
 %type <frame_type> frame_unit
 %type <typenode> complex_types
 %type <fnnode> grammar line_list
@@ -577,9 +600,17 @@ for_in_stmt:
 		}
 		;
 
-types:  I32
+types:  I16
         {
-            $$ = ::fesql::node::kInt32;
+            $$ = ::fesql::node::kInt16;
+        }
+        |I32
+        {
+        	$$ = ::fesql::node::kInt32;
+        }
+        |I64
+        {
+            $$ = ::fesql::node::kInt64;
         }
         |SMALLINT
         {
@@ -1191,8 +1222,15 @@ sql_id_list:
 fun_expr:
 	 var   	{ $$ = $1; }
      | expr_const 	{ $$ = $1; }
+     | types '(' fun_expr ')' {
+     	$$ = node_manager->MakeCastNode($1, $3);
+     }
      | function_name '(' ')'  	{
      	$$ = node_manager->MakeFuncNode($1, NULL, NULL);
+     }
+     | time_unit '(' fun_expr_list ')'
+     {
+    	$$ = node_manager->MakeTimeFuncNode($1, $3);
      }
      | function_name '(' fun_expr_list ')'
      {
@@ -1370,7 +1408,6 @@ sql_expr:
      	$$ = node_manager->MakeQueryExprNode($2);
      }
      ;
-
 expr_const:
     STRING
         {
@@ -1389,6 +1426,36 @@ expr_const:
         { $$ = (node_manager->MakeConstNode($1)); }
   	| NULLX
         { $$ = (node_manager->MakeConstNode()); }
+    | I16_MAX {
+    	$$ = node_manager->MakeConstNodeINT16MAX();
+    }
+    | I32_MAX {
+    	$$ = node_manager->MakeConstNodeINT32MAX();
+    }
+    | I64_MAX {
+    	$$ = node_manager->MakeConstNodeINT64MAX();
+    }
+    | FLOAT_MAX {
+    	$$ = node_manager->MakeConstNodeFLOATMAX();
+    }
+    | DOUBLE_MAX {
+    	$$ = node_manager->MakeConstNodeDOUBLEMAX();
+    }
+    | I16_MIN {
+    	$$ = node_manager->MakeConstNodeINT16MIN();
+    }
+    | I32_MIN {
+    	$$ = node_manager->MakeConstNodeINT32MIN();
+    }
+    | I64_MIN {
+    	$$ = node_manager->MakeConstNodeINT64MIN();
+    }
+    | FLOAT_MIN {
+    	$$ = node_manager->MakeConstNodeFLOATMIN();
+    }
+    | DOUBLE_MIN {
+    	$$ = node_manager->MakeConstNodeDOUBLEMIN();
+    }
   	;
 
 sql_call_expr:
@@ -1407,6 +1474,10 @@ sql_call_expr:
     | function_name '(' sql_expr_list ')' over_clause
     {
         $$ = node_manager->MakeFuncNode($1, $3, $5);
+    }
+    | time_unit '(' sql_expr_list ')'
+    {
+    	$$ = node_manager->MakeTimeFuncNode($1, $3);
     }
     ;
 
@@ -1562,6 +1633,44 @@ frame_unit:
 				$$ = fesql::node::kFrameRowsRange;
 			}
 			;
+
+time_unit:
+			YEAR
+			{
+				$$ = fesql::node::kTimeUnitYear;
+			}
+			|MONTH
+			{
+				$$ = fesql::node::kTimeUnitMonth;
+			}
+			|WEEK
+			{
+				$$ = fesql::node::kTimeUnitWeek;
+			}
+			|DAY
+			{
+				$$ = fesql::node::kTimeUnitDay;
+			}
+			|HOUR
+			{
+				$$ = fesql::node::kTimeUnitHour;
+			}
+			|MINUTE
+			{
+				$$ = fesql::node::kTimeUnitMinute;
+			}
+			|SECOND
+			{
+				$$ = fesql::node::kTimeUnitSecond;
+			}
+			|MILLISECOND
+			{
+				$$ = fesql::node::kTimeUnitMilliSecond;
+			}
+			|MICROSECOND
+			{
+				$$ = fesql::node::kTimeUnitMicroSecond;
+			}
 
 opt_frame_size:
 			MAXSIZE expr_const

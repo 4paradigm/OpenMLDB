@@ -204,6 +204,30 @@ inline const std::string ExprTypeName(const ExprType &type) {
     }
 }
 
+inline const std::string TimeUnitName(const TimeUnit &time_unit) {
+    switch (time_unit) {
+        case kTimeUnitYear:
+            return "year";
+        case kTimeUnitMonth:
+            return "month";
+        case kTimeUnitDay:
+            return "dayofmonth";
+        case kTimeUnitHour:
+            return "hour";
+        case kTimeUnitMinute:
+            return "minute";
+        case kTimeUnitSecond:
+            return "second";
+        case kTimeUnitMilliSecond:
+            return "millisecond";
+        case kTimeUnitMicroSecond:
+            return "microsecond";
+        default: {
+            return "unknow";
+        }
+    }
+    return "unknow";
+}
 inline const std::string FrameTypeName(const FrameType &type) {
     switch (type) {
         case fesql::node::kFrameRange:
@@ -1111,7 +1135,19 @@ class FnDefNode : public SQLNode {
     virtual const std::string GetSimpleName() const = 0;
     virtual bool Validate(node::ExprListNode *args) const = 0;
 };
+class CastExprNode : public ExprNode {
+ public:
+    explicit CastExprNode(const node::DataType cast_type,
+                          const node::ExprNode *expr)
+        : ExprNode(kExprCast), cast_type_(cast_type), expr_(expr) {}
 
+    ~CastExprNode() {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const std::string GetExprString() const;
+    virtual bool Equals(const ExprNode *that) const;
+    DataType cast_type_;
+    const node::ExprNode *expr_;
+};
 class CallExprNode : public ExprNode {
  public:
     explicit CallExprNode(const FnDefNode *fn_def, ExprListNode *args,

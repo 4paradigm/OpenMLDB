@@ -7,8 +7,8 @@
  *--------------------------------------------------------------------------
  **/
 #include "codegen/udf_ir_builder.h"
+#include <iostream>
 #include <utility>
-#include "codegen/block_ir_builder.h"
 #include "codegen/date_ir_builder.h"
 #include "codegen/fn_ir_builder.h"
 #include "codegen/timestamp_ir_builder.h"
@@ -216,14 +216,14 @@ bool UDFIRBuilder::BuildDayDate(::llvm::Module* module, base::Status& status) {
     fn_args->AddChild(
         nm.MakeFnParaNode("date", nm.MakeTypeNode(fesql::node::kDate)));
     auto header = dynamic_cast<node::FnNodeFnHeander*>(nm.MakeFnHeaderNode(
-        "day", fn_args, nm.MakeTypeNode(fesql::node::kInt32)));
+        "dayofmonth", fn_args, nm.MakeTypeNode(fesql::node::kInt32)));
 
     ScopeVar sv;
     sv.Enter("module");
     ::llvm::Function* fn;
 
     if (!fn_ir_builder.BuildFnHead(header, &sv, &fn, status)) {
-        LOG(WARNING) << "Fail build udf: day(date): " << status.msg;
+        LOG(WARNING) << "Fail build udf: dayofmonth(date): " << status.msg;
         return false;
     }
     auto block = ::llvm::BasicBlock::Create(module->getContext(), "entry", fn);
@@ -233,7 +233,7 @@ bool UDFIRBuilder::BuildDayDate(::llvm::Module* module, base::Status& status) {
     codegen::DateIRBuilder date_ir_builder(module);
     ::llvm::Value* ret;
     if (!date_ir_builder.Day(block, date, &ret, status)) {
-        LOG(WARNING) << "Fail build udf: day(date): " << status.msg;
+        LOG(WARNING) << "Fail build udf: dayofmonth(date): " << status.msg;
         return false;
     }
     ::llvm::IRBuilder<> builder(block);
@@ -337,5 +337,6 @@ bool UDFIRBuilder::BuildNativeCUDF(::llvm::Module* module,
     DLOG(INFO) << "register native udf: " << fn->getName().str();
     return true;
 }
+
 }  // namespace codegen
 }  // namespace fesql

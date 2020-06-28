@@ -266,6 +266,7 @@ TEST_F(UDFTest, UDF_sum_test) {
     }
 }
 
+<<<<<<< HEAD
 TEST_F(UDFTest, UDF_max_test) {
     ArrayListV<Row> impl(&rows);
     const uint32_t size = sizeof(::fesql::codec::ColumnImpl<int16_t>);
@@ -393,6 +394,7 @@ TEST_F(UDFTest, UDF_min_test) {
         ASSERT_EQ(5L, fesql::udf::v1::min_list<int64_t>(col));
     }
 }
+
 TEST_F(UDFTest, GetColTest) {
     ArrayListV<Row> impl(&rows);
     const uint32_t size = sizeof(ColumnImpl<int16_t>);

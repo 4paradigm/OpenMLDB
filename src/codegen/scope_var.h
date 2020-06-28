@@ -45,6 +45,7 @@ class ScopeVar {
     bool Enter(const std::string& name);
     bool Exit();
     bool AddVar(const std::string& name, const NativeValue& value);
+    bool ReplaceVar(const std::string& name, const NativeValue& value);
     bool FindVar(const std::string& name, NativeValue* value);
     // Register values to be destroyed before exit scope
     bool AddIteratorValue(::llvm::Value* value);

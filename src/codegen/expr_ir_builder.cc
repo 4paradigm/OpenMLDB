@@ -24,6 +24,7 @@
 #include "codegen/fn_ir_builder.h"
 #include "codegen/ir_base_builder.h"
 #include "codegen/list_ir_builder.h"
+#include "codegen/struct_ir_builder.h"
 #include "codegen/type_ir_builder.h"
 #include "codegen/window_ir_builder.h"
 #include "glog/logging.h"
@@ -202,6 +203,10 @@ bool ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
             }
             *output = val;
             return true;
+        }
+        case ::fesql::node::kExprCast: {
+            return BuildCastExpr((::fesql::node::CastExprNode*)node, output,
+                                 status);
         }
         case ::fesql::node::kExprBinary: {
             return BuildBinaryExpr((::fesql::node::BinaryExpr*)node, output,
@@ -774,6 +779,52 @@ bool ExprIRBuilder::BuildUnaryExpr(const ::fesql::node::UnaryExpr* node,
     return false;
 }
 
+bool ExprIRBuilder::BuildCastExpr(const ::fesql::node::CastExprNode* node,
+                                  NativeValue* output, base::Status& status) {
+    if (node == NULL || output == NULL) {
+        status.msg = "input node or output is null";
+        status.code = common::kCodegenError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+    ::llvm::IRBuilder<> builder(block_);
+    DLOG(INFO) << "build cast expr: " << node::ExprString(node);
+    NativeValue left_wrapper;
+    bool ok = Build(node->expr_, &left_wrapper, status);
+    if (!ok) {
+        LOG(WARNING) << "fail to build left node: " << status.msg;
+        return false;
+    }
+    ::llvm::Value* left = left_wrapper.GetValue(&builder);
+
+    CastExprIRBuilder cast_builder(block_);
+    ::llvm::Type* cast_type = NULL;
+    if (!GetLLVMType(block_->getModule(), node->cast_type_, &cast_type)) {
+        status.code = common::kCodegenError;
+        status.msg = "fail to cast expr: dist type invalid";
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+
+    ::llvm::Value* dist = NULL;
+    if (TypeIRBuilder::IsStructPtr(cast_type)) {
+        if (!StructTypeIRBuilder::StructCastFrom(block_, left, cast_type,
+                                                 &dist)) {
+            status.code = common::kCodegenError;
+            status.msg = "fail to cast expr";
+            LOG(WARNING) << status.msg;
+            return false;
+        } else {
+            *output = NativeValue::Create(dist);
+            return true;
+        }
+    }
+    if (!cast_builder.UnSafeCast(left, cast_type, &dist, status)) {
+        return false;
+    }
+    *output = NativeValue::Create(dist);
+    return true;
+}
 bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
                                     NativeValue* output, base::Status& status) {
     if (node == NULL || output == NULL) {

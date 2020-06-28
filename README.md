@@ -180,7 +180,7 @@ insert into t1 values(11, 4, 5.5, 3000, 7, "string1");
 insert into t1 values(11, 5, 6.6, 4000, 8, "string2");
 insert into t1 values(11, 6, 7.7, 5000, 9, "string3");
 %%fun
-def test(a:i32,b:i32):i32
+def test(a:int32,b:int32):int32
     c=a+b
     d=c+1
     return d

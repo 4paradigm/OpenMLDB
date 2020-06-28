@@ -80,8 +80,8 @@ inline V inc(V i) {
     return i + 1;
 }
 
-int32_t day(int64_t ts);
-int32_t day(fesql::codec::Timestamp *ts);
+int32_t dayofmonth(int64_t ts);
+int32_t dayofmonth(fesql::codec::Timestamp ts);
 
 int32_t month(int64_t ts);
 int32_t month(fesql::codec::Timestamp *ts);
@@ -107,7 +107,7 @@ void InitCLibSymbol(::llvm::orc::JITDylib &jd,            // NOLINT
 bool AddSymbol(::llvm::orc::JITDylib &jd,                 // NOLINT
                ::llvm::orc::MangleAndInterner &mi,        // NOLINT
                const std::string &fn_name, void *fn_ptr);
-void RegisterUDFToModule(::llvm::Module *m);
+bool RegisterUDFToModule(::llvm::Module *m);
 void RegisterNativeUDFToModule(::llvm::Module *m);
 }  // namespace udf
 }  // namespace fesql
