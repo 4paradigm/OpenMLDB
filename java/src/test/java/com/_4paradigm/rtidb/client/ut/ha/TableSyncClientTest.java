@@ -22,6 +22,7 @@ import com._4paradigm.rtidb.ns.NS.PartitionMeta;
 import com._4paradigm.rtidb.ns.NS.TableInfo;
 import com._4paradigm.rtidb.ns.NS.TablePartition;
 import com._4paradigm.rtidb.tablet.Tablet;
+import com._4paradigm.rtidb.type.Type;
 import com.google.protobuf.ByteString;
 import org.joda.time.DateTime;
 import org.testng.Assert;
@@ -553,6 +554,43 @@ public class TableSyncClientTest extends TestCaseBase {
         client.refreshRouteTable();
 
         return name;
+    }
+
+    @Test
+    public void testSchemaNsSetDataType() {
+        String name = String.valueOf(id.incrementAndGet());
+        nsc.dropTable(name);
+        Common.ColumnDesc col0 =  Common.ColumnDesc.newBuilder().setName("card").setAddTsIdx(true).setType("string").build();
+        Common.ColumnDesc col1 = Common.ColumnDesc.newBuilder().setName("mcc").setAddTsIdx(false).setType("int16").build();
+        Common.ColumnDesc col2 = Common.ColumnDesc.newBuilder().setName("amt").setAddTsIdx(false).setType("double").build();
+        Common.ColumnDesc col3 = Common.ColumnDesc.newBuilder().setName("ant").setAddTsIdx(false).setType("float").build();
+        Common.ColumnDesc col4 = Common.ColumnDesc.newBuilder().setName("bee").setAddTsIdx(false).setType("date").build();
+        TableInfo table = TableInfo.newBuilder().addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2).addAddedColumnDesc(col3).addAddedColumnDesc(col4).setName(name).build();
+        boolean ok = nsc.createTable(table);
+        Assert.assertTrue(ok);
+        client.refreshRouteTable();
+        List<TableInfo> tbs = nsc.showTable(name);
+        try {
+            Assert.assertEquals(tbs.size(), 1);
+            TableInfo tb = tbs.get(0);
+            Assert.assertEquals(tb.getColumnDescV1Count(), 3);
+            Common.ColumnDesc c0 = tb.getColumnDescV1(0);
+            Assert.assertTrue(c0.getDataType() == Type.DataType.kString);
+            Common.ColumnDesc c1 = tb.getColumnDescV1(1);
+            Assert.assertTrue(c1.getDataType() == Type.DataType.kSmallInt);
+            Common.ColumnDesc c2 = tb.getColumnDescV1(2);
+            Assert.assertTrue(c2.getDataType() == Type.DataType.kDouble);
+            Assert.assertEquals(tb.getAddedColumnDescCount(), 2);
+            Common.ColumnDesc c3 = tb.getAddedColumnDesc(0);
+            Assert.assertTrue(c3.getDataType() == Type.DataType.kFloat);
+            Common.ColumnDesc c4 = tb.getAddedColumnDesc(1);
+            Assert.assertTrue(c4.getDataType() == Type.DataType.kDate);
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.assertTrue(false);
+        } finally {
+            nsc.dropTable(name);
+        }
     }
 
     @Test
