@@ -82,10 +82,9 @@ bool Table::Init() {
     DLOG(INFO) << "table " << table_def_.name() << " init ok";
     return true;
 }
-bool Table::DecodeKeysAndTs(const IndexSt& index,
-                            const char* row, uint32_t size, char** spk_buf_ptr,
-                            uint32_t* spk_size_ptr, int64_t* time_ptr) {
-    std::string key;
+bool Table::DecodeKeysAndTs(const IndexSt& index, const char* row,
+                            uint32_t size, std::string& key,
+                            int64_t* time_ptr) {
     if (index.keys.size() > 1) {
         key.reserve(COMBINE_KEY_RESERVE_SIZE);
         for (const auto& col : index.keys) {
@@ -107,22 +106,19 @@ bool Table::DecodeKeysAndTs(const IndexSt& index,
                 key.append(std::to_string(value));
             }
         }
-        *spk_buf_ptr = const_cast<char*>(key.c_str());
-        *spk_size_ptr = key.length();
-
     } else {
         if (index.keys[0].first == ::fesql::type::kVarchar) {
-            row_view_.GetValue(reinterpret_cast<const int8_t*>(row),
-                               index.keys[0].second, spk_buf_ptr,
-                               spk_size_ptr);
+            char* buf = nullptr;
+            uint32_t size = 0;
+            key = row_view_.GetValue(reinterpret_cast<const int8_t*>(row),
+                                     index.keys[0].second, &buf, &size);
+            key = std::string(buf, size);
         } else {
             int64_t value = 0;
             row_view_.GetInteger(reinterpret_cast<const int8_t*>(row),
-                                 index.keys[0].second,
-                                 index.keys[0].first, &value);
+                                 index.keys[0].second, index.keys[0].first,
+                                 &value);
             key = std::to_string(value);
-            *spk_buf_ptr = const_cast<char*>(key.c_str());
-            *spk_size_ptr = key.length();
         }
     }
 
@@ -139,18 +135,18 @@ bool Table::Put(const char* row, uint32_t size) {
     block->ref_cnt = table_def_.indexes_size();
     memcpy(block->data, row, size);
     for (const auto& kv : index_map_) {
-        char* spk_buf = nullptr;
-        uint32_t spk_size = 0;
+        std::string key;
         uint32_t seg_index = 0;
         int64_t time = 1;
-        if (!DecodeKeysAndTs(kv.second, row, size, &spk_buf, &seg_index, &time)) {
+        if (!DecodeKeysAndTs(kv.second, row, size, key, &time)) {
             return false;
         }
         if (seg_cnt_ > 1) {
-            seg_index = ::fesql::base::hash(spk_buf, spk_size, SEED) % seg_cnt_;
+            seg_index =
+                ::fesql::base::hash(key.c_str(), key.length(), SEED) % seg_cnt_;
         }
         Segment* segment = segments_[kv.second.index][seg_index];
-        Slice spk(spk_buf, spk_size);
+        Slice spk(key);
         segment->Put(spk, (uint64_t)time, block);
     }
     return true;

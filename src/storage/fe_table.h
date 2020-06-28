@@ -101,9 +101,9 @@ class Table {
     inline Segment*** GetSegments() { return segments_; }
 
     inline uint32_t GetSegCnt() { return seg_cnt_; }
-    bool DecodeKeysAndTs(const IndexSt& index,
-                         const char* row, uint32_t size, char** spk_buf_ptr,
-                         uint32_t* spk_size_ptr, int64_t* time_ptr);
+    bool DecodeKeysAndTs(const IndexSt& index, const char* row, uint32_t size,
+                         std::string& key,  // NOLINT
+                         int64_t* time_ptr);
 
  private:
     std::unique_ptr<TableIterator> NewIndexIterator(const std::string& pk,
