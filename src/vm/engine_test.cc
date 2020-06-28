@@ -244,6 +244,7 @@ class EngineTest : public ::testing::TestWithParam<SQLCase> {
     EngineTest() {}
     virtual ~EngineTest() {}
 };
+
 const std::vector<Row> SortRows(const vm::Schema& schema,
                                 const std::vector<Row>& rows,
                                 const std::string& order_col);
@@ -263,7 +264,15 @@ void RequestModeCheck(SQLCase& sql_case) {  // NOLINT
     }
 
     // Init engine and run session
-    std::cout << sql_case.sql_str() << std::endl;
+    std::string sql_str = sql_case.sql_str();
+    for (int j = 0; j < input_cnt; ++j) {
+        std::string placeholder = "{" + std::to_string(j) + "}";
+        std::string tname = sql_case.inputs()[j].name_.empty()
+                            ? ("t" + std::to_string(j))
+                            : sql_case.inputs()[j].name_;
+        boost::replace_all(sql_str, placeholder, tname);
+    }
+    std::cout << sql_str << std::endl;
     base::Status get_status;
 
     Engine engine(catalog);
@@ -273,7 +282,7 @@ void RequestModeCheck(SQLCase& sql_case) {  // NOLINT
     }
 
     bool ok =
-        engine.Get(sql_case.sql_str(), sql_case.db(), session, get_status);
+        engine.Get(sql_str, sql_case.db(), session, get_status);
     ASSERT_TRUE(ok);
 
     const std::string& request_name = session.GetRequestName();
