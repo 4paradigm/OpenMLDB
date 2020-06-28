@@ -32,3 +32,9 @@ do
         break
     fi
 done
+
+cp -rf src/proto/tablet.proto java/src/main/proto/
+cp -rf src/proto/name_server.proto java/src/main/proto/
+cp -rf src/proto/common.proto java/src/main/proto/
+cp -rf src/proto/type.proto java/src/main/proto/
+cp -rf src/proto/blob_server.proto java/src/main/proto/

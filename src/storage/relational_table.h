@@ -43,8 +43,6 @@ using Schema =
     ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
 using google::protobuf::RepeatedPtrField;
 using google::protobuf::RepeatedField;
-using PbInt64List =
-    ::google::protobuf::RepeatedField<::google::protobuf::int64>;
 
 namespace rtidb {
 namespace storage {
