@@ -4,7 +4,6 @@ include_directories(${INCLUDE_DIRECTORIES}
 
 add_library(fesql_sdk STATIC base_impl.cc dbms_sdk.cc tablet_sdk.cc result_set_impl.cc request_row.cc codec_sdk.cc)
 
-
 #set(sdk_deps_libs fesql_sdk fesql_simple_catalog ${VM_LIBS} fesql_flags ${LLVM_LIBS} ${BRPC_LIBS} ${OS_LIB})
 set(sdk_deps_libs fesql_case ${yaml_libs} boost_filesystem fesql_sdk fesql_simple_catalog ${VM_LIBS} fesql_flags ${LLVM_LIBS} ${BRPC_LIBS} ${OS_LIB})
 
@@ -74,6 +73,7 @@ target_compile_options(fesql_jsdk_core PRIVATE -w)
 set(sdk_core_deps_libs
 	fesql_case ${yaml_libs} boost_filesystem fesql_simple_catalog ${VM_LIBS} fesql_flags ${LLVM_LIBS} ${COMMON_LIBS})
 target_link_libraries(fesql_jsdk_core PRIVATE glog ${sdk_core_deps_libs})
+
 
 set_property(SOURCE fesql_interface_complete.i PROPERTY COMPILE_OPTIONS -package com._4paradigm)
 swig_add_library(fesql_jsdk_complete
