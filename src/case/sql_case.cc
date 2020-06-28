@@ -893,21 +893,37 @@ bool SQLCase::CreateSQLCasesFromYaml(
     }
     return true;
 }
+
 std::string FindFesqlDirPath() {
     boost::filesystem::path current_path(boost::filesystem::current_path());
     boost::filesystem::path fesql_path;
+    bool find_fesql_dir = false;
 
     while (current_path.has_parent_path()) {
         current_path = current_path.parent_path();
         if (current_path.filename().string() == "fesql") {
+            fesql_path = current_path;
+            find_fesql_dir = true;
+            break;
+        }
+        boost::filesystem::directory_iterator endIter;
+        for (boost::filesystem::directory_iterator iter(current_path);
+             iter != endIter; iter++) {
+            if (boost::filesystem::is_directory(*iter) &&
+                iter->path().filename() == "fesql") {
+                fesql_path = iter->path();
+                find_fesql_dir = true;
+                break;
+            }
+        }
+        if (find_fesql_dir) {
             break;
         }
     }
 
-    if (current_path.filename().string() == "fesql") {
-        LOG(INFO) << "Fesql Dir Path is : " << current_path.string()
-                  << std::endl;
-        return current_path.string();
+    if (find_fesql_dir) {
+        LOG(INFO) << "Fesql Dir Path is : " << fesql_path.string() << std::endl;
+        return fesql_path.string();
     }
     return std::string();
 }
