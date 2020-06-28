@@ -11,7 +11,6 @@ cases:
       WINDOW w1 as (PARTITION BY t1.col2 ORDER BY t1.std_ts ROWS_RANGE BETWEEN 3s PRECEDING AND CURRENT ROW) limit 10;
     inputs:
       - name: t1
-        name: t1
         schema: col0:string, col1:int32, col2:int16, col6:string, std_ts:timestamp
         index: index2:col2:std_ts
         data: |

@@ -1011,12 +1011,12 @@ Row JoinGenerator::RowLastJoinPartition(
 }
 Row JoinGenerator::RowLastJoinTable(const Row& left_row,
                                     std::shared_ptr<TableHandler> table) {
+    if (right_sort_gen_.Valid()) {
+        table = right_sort_gen_.Sort(table, true);
+    }
     if (!table) {
         LOG(WARNING) << "Last Join right table is empty";
         return Row(left_slices_, left_row, right_slices_, Row());
-    }
-    if (right_sort_gen_.Valid()) {
-        table = right_sort_gen_.Sort(table, true);
     }
     auto right_iter = table->GetIterator();
     if (!right_iter) {
@@ -1179,11 +1179,11 @@ const Row Runner::RowLastJoinTable(size_t left_slices, const Row& left_row,
                                    std::shared_ptr<TableHandler> right_table,
                                    SortGenerator& right_sort,
                                    ConditionGenerator& cond_gen) {
+    right_table = right_sort.Sort(right_table, true);
     if (!right_table) {
         LOG(WARNING) << "Last Join right table is empty";
         return Row(left_slices, left_row, right_slices, Row());
     }
-    right_table = right_sort.Sort(right_table, true);
     auto right_iter = right_table->GetIterator();
     if (!right_iter) {
         LOG(WARNING) << "Last Join right table is empty";

@@ -570,7 +570,11 @@ std::ostream& operator<<(std::ostream& output, const SQLCase& thiz) {
 bool SQLCase::CreateStringListFromYamlNode(const YAML::Node& node,
                                            std::vector<std::string>& rows) {
     for (int i = 0; i < node.size(); i++) {
-        rows.push_back(node[i].as<std::string>());
+        if (node[i].IsNull()) {
+            rows.push_back("null");
+        } else {
+            rows.push_back(node[i].as<std::string>());
+        }
     }
     return true;
 }
