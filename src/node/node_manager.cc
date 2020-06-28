@@ -349,6 +349,32 @@ ExprNode *NodeManager::MakeCastNode(const node::DataType cast_type,
     CastExprNode *node_ptr = new CastExprNode(cast_type, expr);
     return RegisterNode(node_ptr);
 }
+
+ExprNode *NodeManager::MakeTimeFuncNode(const TimeUnit time_unit,
+                                        const ExprListNode *list_ptr) {
+    std::string fn_name = "";
+    switch (time_unit) {
+        case kTimeUnitWeek:
+            fn_name = "weekofyear";
+            break;
+        case kTimeUnitDay: {
+            fn_name = "dayofmonth";
+            break;
+        }
+        default: {
+            fn_name = TimeUnitName(time_unit);
+        }
+    }
+
+    if (fn_name.empty() || fn_name == "unknow") {
+        LOG(WARNING) << "Fail to build time function node";
+        return nullptr;
+    }
+    FnDefNode *def_node =
+        dynamic_cast<FnDefNode *>(MakeExternalFnDefNode(fn_name));
+    CallExprNode *node_ptr = new CallExprNode(def_node, list_ptr, NULL);
+    return RegisterNode(node_ptr);
+}
 ExprNode *NodeManager::MakeFuncNode(const std::string &name,
                                     const ExprListNode *list_ptr,
                                     const SQLNode *over) {

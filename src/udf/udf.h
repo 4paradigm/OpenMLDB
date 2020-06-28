@@ -62,7 +62,7 @@ template <class V>
 bool min_struct_list(int8_t *input, V *v);
 template <class V>
 inline V inc(V i);
-int32_t day(int64_t ts);
+int32_t dayofmonth(int64_t ts);
 int32_t month(int64_t ts);
 int32_t year(int64_t ts);
 }  // namespace v1

@@ -469,7 +469,7 @@ void SumMemTableCol(benchmark::State* state, MODE mode, int64_t data_size,
 
 bool CTimeDays(int data_size) {
     for (int i = 0; i < data_size; i++) {
-        udf::v1::day(1590115420000L + ((i)) * 86400000);
+        udf::v1::dayofmonth(1590115420000L + ((i)) * 86400000);
     }
     return true;
 }
@@ -483,7 +483,7 @@ void CTimeDay(benchmark::State* state, MODE mode, const int32_t data_size) {
             break;
         }
         case TEST: {
-            ASSERT_EQ(22, udf::v1::day(1590115420000L));
+            ASSERT_EQ(22, udf::v1::dayofmonth(1590115420000L));
             break;
         }
     }

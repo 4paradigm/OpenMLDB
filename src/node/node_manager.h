@@ -109,6 +109,8 @@ class NodeManager {
 
     ExprNode *MakeCastNode(const node::DataType cast_type,
                            const ExprNode *expr);
+    ExprNode *MakeTimeFuncNode(const TimeUnit time_unit,
+                               const ExprListNode *args);
     ExprNode *MakeFuncNode(const std::string &name, const ExprListNode *args,
                            const SQLNode *over);
     ExprNode *MakeFuncNode(const FnDefNode *fn, const ExprListNode *args,

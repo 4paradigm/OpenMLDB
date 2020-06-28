@@ -3,7 +3,7 @@ cases:
     desc: SELECT Day(date列)
     mode: request
     db: db1
-    sql: select col1 as id, std_ts, std_date, day(std_date) as day from t1;
+    sql: select col1 as id, std_ts, std_date, day(std_date) as mday from t1;
     inputs:
       - name: t1
         schema: col1:int32, std_ts:timestamp, std_date:date
@@ -14,7 +14,7 @@ cases:
           3, 1590115422001, 2020-05-22
 
     expect:
-      schema: id:int32, std_ts:timestamp, std_date:date, day:int32
+      schema: id:int32, std_ts:timestamp, std_date:date, mday:int32
       order: id
       data: |
         1, 1590115420001, 2020-05-20, 20
@@ -24,7 +24,7 @@ cases:
     desc: SELECT Month(date列)
     mode: request
     db: db1
-    sql: select col1 as id, std_ts, std_date, month(std_date) as month from t1;
+    sql: select col1 as id, std_ts, std_date, month(std_date) as `month` from t1;
     inputs:
       - name: t1
         schema: col1:int32, std_ts:timestamp, std_date:date
@@ -45,7 +45,7 @@ cases:
     desc: SELECT Year(date列)
     mode: request
     db: db1
-    sql: select col1 as id, std_ts, std_date, year(std_date) as year from t1;
+    sql: select col1 as id, std_ts, std_date, year(std_date) as `year` from t1;
     inputs:
       - name: t1
         schema: col1:int32, std_ts:timestamp, std_date:date
@@ -64,7 +64,7 @@ cases:
     desc: SELECT Weekday(date列)
     mode: request
     db: db1
-    sql: select col1 as id, std_ts, std_date, weekday(std_date) as wday from t1;
+    sql: select col1 as id, std_ts, std_date, dayofweek(std_date) as wday from t1;
     inputs:
       - name: t1
         schema: col1:int32, std_ts:timestamp, std_date:date
@@ -77,13 +77,13 @@ cases:
       schema: id:int32, std_ts:timestamp, std_date:date, wday:int32
       order: id
       data: |
-        1, 1590115420001, 2020-05-20, 3
-        2, 1590115421001, 1900-06-21, 4
+        1, 1590115420001, 2020-05-20, 4
+        2, 1590115421001, 1900-06-21, 5
   - id: 4
     desc: SELECT Week(date列)
     mode: request
     db: db1
-    sql: select col1 as id, std_date, week(std_date) as week from t1;
+    sql: select col1 as id, std_date, week(std_date) as `week` from t1;
     inputs:
       - name: t1
         schema: col1:int32, std_ts:timestamp, std_date:date
@@ -98,10 +98,10 @@ cases:
       schema: id:int32, std_date:date, week:int32
       order: id
       data: |
-        1, 2020-05-22, 20
-        2, 2020-05-23, 20
+        1, 2020-05-22, 21
+        2, 2020-05-23, 21
         3, 2020-05-24, 21
-        4, 2020-05-25, 21
+        4, 2020-05-25, 22
 
   - id: 5
     desc: SELECT Day, Month, Year, Weekday, Week, Hour, Minute, Second Of Timestamp
@@ -109,9 +109,9 @@ cases:
     db: db1
     sql: |
       select col1 as id, std_ts,
-      day(std_ts) as day, month(std_ts) as month, year(std_ts) as year,
-      weekday(std_ts) as weekday, week(std_ts) as week,
-      hour(std_ts) as hour, minute(std_ts) as minute, second(std_ts) as second
+      day(std_ts) as mday, month(std_ts) as `month`, year(std_ts) as `year`,
+      dayofweek(std_ts) as wday, weekofyear(std_ts) as yweek,
+      hour(std_ts) as `hour`, minute(std_ts) as `minute`, second(std_ts) as `second`
       from t1;
     inputs:
       - name: t1
@@ -122,8 +122,52 @@ cases:
 
     expect:
       schema: |
-        id:int32, std_ts:timestamp, day:int32, month:int32, year:int32, weekday:int32, week:int32
+        id:int32, std_ts:timestamp, mday:int32, month:int32, year:int32, wday:int32, yweek:int32
         hour:int32, minute:int32, second:int32
       order: id
       data: |
-        1, 1590115420000, 22, 5, 2020, 5, 20, 10, 43, 40
+        1, 1590115420000, 22, 5, 2020, 6, 21, 10, 43, 40
+  - id: 6
+    desc: SELECT DayOfMonth(date列)
+    mode: request
+    db: db1
+    sql: select col1 as id, std_ts, std_date, dayofmonth(std_date) as mday from t1;
+    inputs:
+      - name: t1
+        schema: col1:int32, std_ts:timestamp, std_date:date
+        index: index2:col1:std_ts
+        data: |
+          1, 1590115420001, 2020-05-20
+          2, 1590115421001, 2020-05-21
+          3, 1590115422001, 2020-05-22
+
+    output:
+      schema: id:int32, std_ts:timestamp, std_date:date, mday:int32
+      order: id
+      data: |
+        1, 1590115420001, 2020-05-20, 20
+        2, 1590115421001, 2020-05-21, 21
+        3, 1590115422001, 2020-05-22, 22
+  - id: 7
+    desc: SELECT WeekOfYear(date列)
+    mode: request
+    db: db1
+    sql: select col1 as id, std_date, weekofyear(std_date) as yweek from t1;
+    inputs:
+      - name: t1
+        schema: col1:int32, std_ts:timestamp, std_date:date
+        index: index2:col1:std_ts
+        data: |
+          1, 1, 2020-05-22
+          2, 2, 2020-05-23
+          3, 3, 2020-05-24
+          4, 4, 2020-05-25
+
+    output:
+      schema: id:int32, std_date:date, yweek:int32
+      order: id
+      data: |
+        1, 2020-05-22, 21
+        2, 2020-05-23, 21
+        3, 2020-05-24, 21
+        4, 2020-05-25, 22
