@@ -344,10 +344,10 @@ public class TableClientCommon {
             Object[] partitionRow = new Object[partitionKeyList.size()];
             int pos = 0;
             for (Integer idx : partitionKeyList) {
-                if (partitionKeyList.get(idx) >= row.length) {
+                if (idx >= row.length) {
                     throw new TabletException("out of index");
                 }
-                partitionRow[pos] = row[partitionKeyList.get(idx)];
+                partitionRow[pos] = row[idx];
                 pos++;
             }
             return getCombinedKey(partitionRow, true);
@@ -455,9 +455,9 @@ public class TableClientCommon {
         if (idxName == null || th.GetPartitionKeyList().isEmpty()) {
             return false;
         }
-        Object obj = th.getKeyMap().get(idxName);
-        if (obj != null) {
-            for (String col : (List<String>)obj) {
+        List<String> list = th.getKeyMap().get(idxName);
+        if (list != null && list.size() == th.GetPartitionKeyList().size()) {
+            for (String col : list) {
                 Integer colPos = th.getSchemaPos().get(col);
                 if (colPos == null || !th.GetPartitionKeyList().contains(colPos)) {
                     return false;

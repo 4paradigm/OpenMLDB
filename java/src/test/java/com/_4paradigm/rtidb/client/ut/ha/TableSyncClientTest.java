@@ -1058,6 +1058,7 @@ public class TableSyncClientTest extends TestCaseBase {
             ByteBuffer buf1 = StringToBB(imageData1);
             data.put("image", buf1);
             Assert.assertTrue(tableSyncClient.put(name, data, wo).isSuccess());
+            Assert.assertEquals((ByteBuffer)data.get("image"), buf1);
 
             data.clear();
             data.put("id", 12l);
@@ -1738,6 +1739,7 @@ public class TableSyncClientTest extends TestCaseBase {
                 updateResult = tableSyncClient.update(name, conditionColumns, valueColumns, wo);
                 Assert.assertTrue(updateResult.isSuccess());
                 Assert.assertEquals(updateResult.getAffectedCount(), 1);
+                Assert.assertEquals((ByteBuffer) valueColumns.get("image"), buf3);
 
                 //query pk
                 Map<String, Object> index3 = new HashMap<>();

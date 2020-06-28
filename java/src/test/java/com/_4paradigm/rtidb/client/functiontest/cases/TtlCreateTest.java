@@ -49,6 +49,7 @@ public class TtlCreateTest extends TestCaseBase {
             schema.add(desc);
         }
         int tid = id.incrementAndGet();
+        tabletClient.dropTable(tid, 0);
         Boolean okMultiDimension = tabletClient.createTable("tj0", tid, 0, ttl, TTLType.kLatestTime, 8, schema);
         Assert.assertEquals(okMultiDimension, createOk);
         tabletClient.dropTable(tid, 0);
@@ -69,6 +70,7 @@ public class TtlCreateTest extends TestCaseBase {
             schema.add(desc);
         }
         int tid = id.incrementAndGet();
+        tabletClient.dropTable(tid, 0);
         Boolean okOneDimension = tabletClient.createTable("tj0", tid, 0, ttl, TTLType.kLatestTime, 8);
         Assert.assertEquals(okOneDimension, createOk);
         tabletClient.dropTable(tid, 0);
@@ -132,13 +134,13 @@ public class TtlCreateTest extends TestCaseBase {
             for (String ele : data) {
                 String merchant = ele.split(",")[0];
                 Long ts = Long.valueOf(ele.split(",")[1].split(":")[0]);
-                Boolean putok = null;
+                Boolean putok = true;
                 if (multiDimention) {
                     putok = tabletSyncClient.put(tid, 0, ts, new Object[]{"pk", merchant});
                 } else {
                     putok = tabletSyncClient.put(tid, 0, "pk", ts, merchant);
                 }
-                Assert.assertFalse(!putok);
+                Assert.assertTrue(putok);
             }
             TableStatus ts = tabletClient.getTableStatus(tid, 0);
             Assert.assertNotNull(ts);
@@ -153,6 +155,7 @@ public class TtlCreateTest extends TestCaseBase {
 
     @Test(dataProvider = "ttl")
     public void testTtl(boolean multiDimention, int tid, long ttl, TTLType ttlType, String ttlValues) {
+        tabletClient.dropTable(tid, 0);
         try {
 
             if (ttlType == TTLType.kLatestTime) {
@@ -207,6 +210,7 @@ public class TtlCreateTest extends TestCaseBase {
 
     @Test(dataProvider = "ttl")
     public void testLatest(boolean multiDimention, int tid, long ttl, TTLType ttlType, String ttlValues) {
+        tabletClient.dropTable(tid, 0);
         try {
             if (ttlType == TTLType.kAbsoluteTime) {
                 return;

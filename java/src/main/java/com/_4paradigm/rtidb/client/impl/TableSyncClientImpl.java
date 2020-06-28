@@ -123,24 +123,25 @@ public class TableSyncClientImpl implements TableSyncClient {
         List<ByteString> byteStrings = new ArrayList<>();
         int count = 0;
         ProjectionInfo projectionInfo = null;
-        try {
-            for (ScanFuture scanFuture : futureList) {
-                Tablet.ScanResponse response = scanFuture.getResponse();
-                if (response == null) {
-                    throw new TabletException("Connection error");
-                }
-                if (response.getCode() != 0) {
-                    throw new TabletException(response.getCode(), response.getMsg());
-                } else if (response.getCount() > 0) {
-                    count += response.getCount();
-                    byteStrings.add(response.getPairs());
-                    if (projectionInfo == null) {
-                        projectionInfo = scanFuture.getProjectionInfo();
-                    }
+        for (ScanFuture scanFuture : futureList) {
+            Tablet.ScanResponse response = null;
+            try {
+                response = scanFuture.getResponse();
+            } catch (Exception e) {
+                throw new TabletException("rtidb internal server error");
+            }
+            if (response == null) {
+                throw new TabletException("Connection error");
+            }
+            if (response.getCode() != 0) {
+                throw new TabletException(response.getCode(), response.getMsg());
+            } else if (response.getCount() > 0) {
+                count += response.getCount();
+                byteStrings.add(response.getPairs());
+                if (projectionInfo == null) {
+                    projectionInfo = scanFuture.getProjectionInfo();
                 }
             }
-        } catch (Exception e) {
-            throw new TabletException("rtidb internal server error");
         }
         if (option.getLimit() != 0) {
             count = Math.min(option.getLimit(), count);
@@ -398,8 +399,9 @@ public class TableSyncClientImpl implements TableSyncClient {
                     }
                 } else if (response.getCode() == 109) {
                     notFountCnt++;
+                } else {
+                    throw new TabletException(response.getCode(), response.getMsg());
                 }
-
             }
             if (realFuture == null) {
                 if (notFountCnt == futureList.size()) {
@@ -843,20 +845,11 @@ public class TableSyncClientImpl implements TableSyncClient {
         return new UpdateResult(false);
     }
 
-    boolean deleteBlobByMap(TableHandler th, Map<String, Object> row) {
-        List<ColumnDesc> schema = th.getSchema();
-        List<Long> keys = new ArrayList<Long>();
-        for (Integer idx : th.getBlobIdxList()) {
-            ColumnDesc col = schema.get(idx);
-            if (!row.containsKey(col.getName())) {
-                continue;
-            }
-            Object key = row.get(col.getName());
-            if (key == null) {
-                continue;
-            }
-            keys.add((Long)key);
+    boolean deleteBlobByMap(TableHandler th, Map<String, Long> blobKeys) {
+        if (blobKeys.isEmpty()) {
+            return true;
         }
+        List<Long> keys = new ArrayList<Long>(blobKeys.values());
         return deleteBlobByList(th, keys);
     }
 
@@ -894,14 +887,21 @@ public class TableSyncClientImpl implements TableSyncClient {
             int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
             return delete(th.getTableInfo().getTid(), pid, key, idxName, th);
         } else {
+            int failed_cnt = 0;
             for (int pid = 0; pid < th.getPartitions().length; pid++) {
-                if (!delete(th.getTableInfo().getTid(), pid, key, idxName, th)) {
-                    return  false;
+                try {
+                    if (!delete(th.getTableInfo().getTid(), pid, key, idxName, th)) {
+                        failed_cnt++;
+                    }
+                } catch (TabletException e) {
+                    failed_cnt++;
                 }
             }
-            return true;
+            if (failed_cnt != th.getPartitions().length) {
+                return true;
+            }
+            return false;
         }
-
     }
 
     @Override
@@ -1508,12 +1508,13 @@ public class TableSyncClientImpl implements TableSyncClient {
                 throw new TabletException("no schema for column count " + row.size());
             }
         }
+        Map<String, Long> blobKeys = new HashMap<String, Long>();
         if (th.getBlobServer() != null) {
             if (!th.IsObjectTable()) {
-                putObjectStore(row, th);
+                putObjectStore(row, th, blobKeys);
             }
         }
-        buffer = RowBuilder.encode(row, schema);
+        buffer = RowBuilder.encode(row, schema, blobKeys);
 
         int pid = 0;
         /*
@@ -1528,7 +1529,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         try {
             return putRelationTable(th.getTableInfo().getTid(), pid, buffer, th, wo);
         } catch (Exception e) {
-            if (!deleteBlobByMap(th, row)) {
+            if (!deleteBlobByMap(th, blobKeys)) {
                 throw new TabletException("deleteBlobByMap failed");
             }
             throw e;
@@ -1608,7 +1609,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         return newSchema;
     }
 
-    public void putObjectStore(Map<String, Object> row, TableHandler th) throws TimeoutException, TabletException {
+    public void putObjectStore(Map<String, Object> row, TableHandler th, Map<String, Long> blobKeys) throws TimeoutException, TabletException {
         List<ColumnDesc> schema = th.getSchema();
         for (Integer idx : th.getBlobIdxList()) {
 
@@ -1628,7 +1629,7 @@ public class TableSyncClientImpl implements TableSyncClient {
             if (!ok) {
                 throw new TabletException("put blob failed");
             }
-            row.put(colDesc.getName(), keys[0]);
+            blobKeys.put(colDesc.getName(), keys[0]);
         }
     }
 
@@ -1646,14 +1647,15 @@ public class TableSyncClientImpl implements TableSyncClient {
             throw new TabletException("valueColumns is null or empty");
         }
         List<ColumnDesc> newValueSchema = getSchemaData(valueColumns, th.getSchema());
+        Map<String, Long> blobKeys = new HashMap<String, Long>();
         if (th.getBlobServer() != null && !th.IsObjectTable()) {
-            putObjectStore(valueColumns, th);
+            putObjectStore(valueColumns, th, blobKeys);
         }
-        ByteBuffer valueBuffer = RowBuilder.encode(valueColumns, newValueSchema);
+        ByteBuffer valueBuffer = RowBuilder.encode(valueColumns, newValueSchema, blobKeys);
         try {
             return updateRequest(th, 0, conditionColumns, newValueSchema, valueBuffer);
         } catch (Exception e) {
-            deleteBlobByMap(th, valueColumns);
+            deleteBlobByMap(th, blobKeys);
             throw e;
         }
     }

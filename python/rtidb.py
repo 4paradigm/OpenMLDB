@@ -50,9 +50,11 @@ def buildStrMap(m: map):
       mid_map.update({k: NONETOKEN})
     elif isinstance(m[k], str):
       mid_map.update({k: m[k]})
+    elif isinstance(m[k], bytes):
+      continue
     else:
       mid_map.update({k: str(m[k])})
-  return  mid_map
+  return mid_map
 
 class WriteOption:
   def __init__(self, updateIfExist = False):
@@ -177,6 +179,7 @@ class RTIDBClient:
   def putBlob(self, name: str, value: map):
     blobFields = self.__client.GetBlobSchema(name);
     blobInfo = None
+    blobKeys = {}
     for k in blobFields:
       blobData = value.get(k, None)
       if blobData == None:
@@ -192,22 +195,19 @@ class RTIDBClient:
       ok = interclient_tools.PutBlob(blobInfo, blobOPResult, blobData, len(blobData))
       if not ok:
         raise Exception("erred at put blob data: {}".format(blobOPResult.msg_))
-      value.update({k: str(blobInfo.key_)})
+      blobKeys.update({k: str(blobInfo.key_)})
+    return blobKeys
 
   def deleteBlob(self, name: str, value: map):
-    blobFields = self.__client.GetBlobSchema(name);
     blobInfo = None
     keys = interclient.VectorInt64()
-    for k in blobFields:
-      key = value.get(k, None)
-      if not isinstance(value[k], str):
-        continue
+    for k in value:
       if blobInfo == None:
         blobInfo = self.__client.GetBlobInfo(name)
         if blobInfo.code_ != 0:
           msg = blobInfo.GetMsg()
           raise Exception("erred at get blobinfo: {}".format(msg.decode("UTF-8")))
-      keys.append(int(key))
+      keys.append(int(value[k]))
     self.__client.DeleteBlobs(name, keys)
 
   def put(self, table_name: str, columns: map, write_option: WriteOption = None):
@@ -216,12 +216,14 @@ class RTIDBClient:
       wo.update_if_exist = defaultWriteOption.updateIfExist
     else:
       wo.update_if_exist = write_option.updateIfExist
-    self.putBlob(table_name, columns)
+    blobKeys = self.putBlob(table_name, columns)
     value = buildStrMap(columns)
+
+    value.update(blobKeys)
 
     putResult= self.__client.Put(table_name, value, wo)
     if putResult.code != 0:
-      self.deleteBlob(table_name, value)
+      self.deleteBlob(table_name, blobKeys)
       raise Exception(putResult.code, putResult.msg)
     return PutResult(putResult)
 
@@ -229,12 +231,13 @@ class RTIDBClient:
     _wo = interclient.WriteOption()
     if write_option != None:
       _wo.updateIfExist = defaultWriteOption.updateIfExist
-    self.putBlob(table_name, value_columns)
+    blobKeys = self.putBlob(table_name, value_columns)
     cond = buildStrMap(condition_columns)
     v = buildStrMap(value_columns)
+    v.update(blobKeys)
     update_result = self.__client.Update(table_name, cond, v, _wo)
     if update_result.code != 0:
-      self.deleteBlob(table_name, v)
+      self.deleteBlob(table_name, blobKeys)
       raise Exception(update_result.code, update_result.msg)
     return UpdateResult(update_result)
 
