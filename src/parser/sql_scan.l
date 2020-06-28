@@ -342,6 +342,17 @@ WINDOW  { return WINDOW; }
 XOR	{ return XOR; }
 ZEROFILL	{ return ZEROFILL; }
 
+YEAR    { return YEAR; }
+MONTH    { return MONTH; }
+WEEK    { return WEEK; }
+DAY    { return DAY; }
+HOUR    { return HOUR; }
+MINUTE    { return MINUTE; }
+SECOND    { return SECOND; }
+MILLISECOND    { return MILLISECOND; }
+MICROSECOND { return MICROSECOND; }
+
+
 I32_MAX { return I32_MAX; }
 I64_MAX { return I64_MAX; }
 I16_MAX { return I16_MAX; }
