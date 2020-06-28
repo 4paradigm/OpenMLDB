@@ -21,9 +21,9 @@
 namespace fesql {
 namespace storage {
 
+using ::fesql::base::ConstIterator;
 using ::fesql::type::IndexDef;
 using ::fesql::type::TableDef;
-using ::fesql::base::ConstIterator;
 static constexpr uint32_t SEG_CNT = 8;
 
 class TableIterator : public ConstIterator<uint64_t, base::Slice> {
@@ -101,6 +101,9 @@ class Table {
     inline Segment*** GetSegments() { return segments_; }
 
     inline uint32_t GetSegCnt() { return seg_cnt_; }
+    bool DecodeKeysAndTs(const IndexSt& index,
+                         const char* row, uint32_t size, char** spk_buf_ptr,
+                         uint32_t* spk_size_ptr, int64_t* time_ptr);
 
  private:
     std::unique_ptr<TableIterator> NewIndexIterator(const std::string& pk,
