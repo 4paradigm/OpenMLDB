@@ -44,7 +44,7 @@ typedef unsigned char uint8_t;
 /* Use these macros after a % in a printf format string
    to get correct 32/64 bit behavior, like this:
    size_t size = records.size();
-   printf("%"PRIuS"\n\n", size); */
+   printf("%"PRIuS"\n", size); */
 
 #define PRIdS __PRIS_PREFIX "d"
 #define PRIxS __PRIS_PREFIX "x"

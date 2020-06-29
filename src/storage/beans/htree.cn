@@ -100,7 +100,7 @@ static inline bool check_version(Item *oldit, Item *newit, HTree *tree, uint32_t
     {
         char key[KEY_BUF_LEN];
         dc_decode(tree->dc, key, KEY_BUF_LEN, oldit->key, oldit->ksz);
-        printf("BUG: bad version, oldv=%d, newv=%d, key=%s, keyhash = 0x%x, oldpos = %u\n",  oldit->ver, newit->ver, key, keyhash, oldit->pos);
+        printf("BUG: bad version, oldv=%d, newv=%d, key=%s, keyhash = 0x%x, oldpos = %u",  oldit->ver, newit->ver, key, keyhash, oldit->pos);
         return false;
     }
 }
@@ -171,7 +171,7 @@ static void enlarge_pool(HTree *tree)
     int old_size = g_index[tree->height];
     int new_size = g_index[tree->height + 1];
 
-    printf("enlarge pool %d -> %d, new_height = %d\n", old_size, new_size, tree->height + 1);
+    printf("enlarge pool %d -> %d, new_height = %d", old_size, new_size, tree->height + 1);
 
     tree->root = (Node*)safe_realloc(tree->root, sizeof(Node) * new_size);
     memset(tree->root + old_size, 0, sizeof(Node) * (new_size - old_size));
@@ -638,14 +638,14 @@ HTree *ht_open(int depth, int pos, const char *path)
     FILE *f = fopen(path, "rb");
     if (f == NULL)
     {
-        printf("open %s failed\n", path);
+        printf("open %s failed", path);
         return NULL;
     }
 
     if (fread(version, sizeof(HTREE_VERSION), 1, f) != 1
             || memcmp(version, HTREE_VERSION, sizeof(HTREE_VERSION)) != 0)
     {
-        printf("the version %s is not expected\n", version);
+        printf("the version %s is not expected", version);
         fclose(f);
         return NULL;
     }
@@ -654,7 +654,7 @@ HTree *ht_open(int depth, int pos, const char *path)
     if (fread(&fsize, sizeof(fsize), 1, f) != 1 ||
             fseeko(f, 0, 2) != 0 || ftello(f) != fsize)
     {
-        printf("the size %lld is not expected\n", (long long int)fsize);
+        printf("the size %lld is not expected", (long long int)fsize);
         fclose(f);
         return NULL;
     }
@@ -677,7 +677,7 @@ HTree *ht_open(int depth, int pos, const char *path)
     if (fread(&tree->height, sizeof(int), 1, f) != 1 ||
             tree->height + depth < 0 || tree->height + depth > 9)
     {
-        printf("invalid height: %d\n", tree->height);
+        printf("invalid height: %d", tree->height);
         goto FAIL;
     }
 
@@ -705,12 +705,12 @@ HTree *ht_open(int depth, int pos, const char *path)
             data = (Data*)safe_malloc(size + sizeof(Data*));
             if (fread(DATA_file_start(data), size, 1, f) != 1)
             {
-                printf("load data: size %d fail\n", size);
+                printf("load data: size %d fail", size);
                 goto FAIL;
             }
             if (data->used != size)
             {
-                printf("broken data: %d != %d\n", data->used, size);
+                printf("broken data: %d != %d", data->used, size);
                 goto FAIL;
             }
             data->used = data->size = size + sizeof(Data*);
@@ -722,7 +722,7 @@ HTree *ht_open(int depth, int pos, const char *path)
         }
         else
         {
-            printf("unexpected size: %d\n", size);
+            printf("unexpected size: %d", size);
             goto FAIL;
         }
         tree->root[i].data = data;
@@ -734,7 +734,7 @@ HTree *ht_open(int depth, int pos, const char *path)
     if (fread(&size, sizeof(int), 1, f) != 1
             || size < 0 || size > (10<<20))
     {
-        printf("bad codec size: %d\n", size);
+        printf("bad codec size: %d", size);
         goto FAIL;
     }
     buf = (char*)safe_malloc(size);
@@ -879,7 +879,7 @@ int ht_save(HTree *tree, const char *path)
     FILE *f = fopen(tmp, "wb");
     if (f == NULL)
     {
-        printf("open %s failed\n", tmp);
+        printf("open %s failed", tmp);
         return -1;
     }
 
@@ -907,7 +907,7 @@ int ht_save(HTree *tree, const char *path)
     {
         gettimeofday(&save_end, NULL);
         float save_secs = (save_end.tv_sec - save_start.tv_sec) + (save_end.tv_usec - save_start.tv_usec) / 1e6;
-        printf("save HTree to %s, size = %"PRIu64", in %f secs\n", path, file_size, save_secs);
+        printf("save HTree to %s, size = %"PRIu64", in %f secs", path, file_size, save_secs);
         mgr_rename(tmp, path);
     }
     else
@@ -944,12 +944,12 @@ bool check_key(const char *key, int len)
     if (!key) return false;
     if (len == 0 || len > MAX_KEY_LEN)
     {
-        printf("bad key len=%d\n\n", len);
+        printf("bad key len=%d\n", len);
         return false;
     }
     if (key[0] <= ' ')
     {
-        printf("bad key len=%d %x\n\n", len, key[0]);
+        printf("bad key len=%d %x\n", len, key[0]);
         return false;
     }
     int k;
@@ -957,7 +957,7 @@ bool check_key(const char *key, int len)
     {
         if (isspace(key[k]) || iscntrl(key[k]))
         {
-            printf("bad key len=%d %s\n\n", len, key);
+            printf("bad key len=%d %s\n", len, key);
             return false;
         }
     }
@@ -969,7 +969,7 @@ bool check_bucket(HTree *tree, const char* key, int len)
     uint32_t h = keyhash(key, len);
     if (tree->depth > 0 && h >> ((8-tree->depth) * 4) != (unsigned int)(tree->pos))
     {
-        printf("key %s (#%x) should not in this tree (%d:%0x)\n", key, h >> ((8-tree->depth) * 4), tree->depth, tree->pos);
+        printf("key %s (#%x) should not in this tree (%d:%0x)", key, h >> ((8-tree->depth) * 4), tree->depth, tree->pos);
         return false;
     }
 
@@ -1070,7 +1070,7 @@ void ht_visit2(HTree *tree, fun_visitor visitor, void *param)
 
 void ht_set_updating_bucket(HTree *tree, int bucket, HTree *updating_tree)
 {
-    printf("updating bucket %d for htree 0x%x\n", bucket, tree->pos);
+    printf("updating bucket %d for htree 0x%x", bucket, tree->pos);
     pthread_mutex_lock(&tree->lock);
     tree->updating_bucket = bucket;
     tree->updating_tree = updating_tree;
@@ -1112,13 +1112,13 @@ Item *ht_get_maybe_tmp(HTree *tree, const char *key, int *is_tmp, char *buf)
             pthread_mutex_lock(&tree->lock);
             if (tree->updating_bucket == bucket)
             {
-                printf("get tmp for %s\n", key);
+                printf("get tmp for %s", key);
                 *is_tmp = 1;
                 item = ht_get_withbuf(tree->updating_tree, key, strlen(key), buf, false);
             }
             else
             {
-                printf("get again for %s\n", key);
+                printf("get again for %s", key);
                 item = ht_get_withbuf(tree, key, strlen(key), buf, false);
             }
             pthread_mutex_unlock(&tree->lock);
