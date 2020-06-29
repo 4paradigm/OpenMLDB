@@ -390,7 +390,7 @@ bool ZkClient::WatchItem(const std::string& path,
                    NULL, buffer_, &buffer_len, NULL);
     if (ret != ZOK) {
         PDLOG(WARNING,
-              "fail to watch item %s errno %d", nodes_root_path_.c_str(), ret);
+              "fail to watch item %s errno %d", path.c_str(), ret);
         return false;
     }
     return true;
