@@ -102,7 +102,6 @@ void PhysicalPlanCheck(const std::shared_ptr<tablet::TabletCatalog>& catalog,
     auto m = make_unique<Module>("test_op_generator", *ctx);
     ::fesql::udf::RegisterUDFToModule(m.get());
     ::fesql::udf::DefaultUDFLibrary lib;
-    ASSERT_TRUE(vm::RegisterFeLibs(&lib, base_status));
     RequestModeransformer transform(&manager, "db", catalog, m.get(), &lib);
 
     transform.AddDefaultPasses();
@@ -250,7 +249,6 @@ TEST_P(TransformRequestModeTest, transform_physical_plan) {
     auto m = make_unique<Module>("test_op_generator", *ctx);
     ::fesql::udf::RegisterUDFToModule(m.get());
     ::fesql::udf::DefaultUDFLibrary lib;
-    ASSERT_TRUE(fesql::vm::RegisterFeLibs(&lib, base_status));
     RequestModeransformer transform(&manager, "db", catalog, m.get(), &lib);
 
     PhysicalOpNode* physical_plan = nullptr;

@@ -53,7 +53,6 @@ void CheckNativeUDF(const std::string udf_name, T exp, Args... args) {
     auto m = make_unique<Module>("udf_test", *ctx);
     udf::DefaultUDFLibrary lib;
     ASSERT_TRUE(fesql::udf::RegisterUDFToModule(m.get()));
-    ASSERT_TRUE(fesql::vm::RegisterFeLibs(&lib, status));
     m->print(::llvm::errs(), NULL, true, true);
 
     auto J = ExitOnErr(LLJITBuilder().create());
@@ -263,12 +262,12 @@ TEST_F(UDFIRBuilderTest, max_udf_test) {
     CheckNativeUDF<int32_t, codec::ListRef<> *>(
         "max.list_int32", 10, &list_ref);
 }
-TEST_F(UDFIRBuilderTest, time_diff_udf_test) {
-    codec::Timestamp t1(1590115420000L);
-    codec::Timestamp t2(1590115410000L);
-    CheckNativeUDF<int64_t, codec::Timestamp *, codec::Timestamp *>(
-        "timestampdiff.timestamp.timestamp", 10000L, &t1, &t2);
-}
+// TEST_F(UDFIRBuilderTest, time_diff_udf_test) {
+//    codec::Timestamp t1(1590115420000L);
+//    codec::Timestamp t2(1590115410000L);
+//    CheckNativeUDF<int64_t, codec::Timestamp *, codec::Timestamp *>(
+//        "timestampdiff.timestamp.timestamp", 10000L, &t1, &t2);
+//}
 
 TEST_F(UDFIRBuilderTest, max_timestamp_udf_test) {
     std::vector<codec::Timestamp> vec = {
@@ -301,7 +300,7 @@ TEST_F(UDFIRBuilderTest, min_timestamp_udf_test) {
 TEST_F(UDFIRBuilderTest, RegisterFeLibs_TEST) {
     base::Status status;
     udf::DefaultUDFLibrary lib;
-    ASSERT_TRUE(vm::RegisterFeLibs(&lib, status));
+    ASSERT_TRUE(vm::RegisterFeLibs(&lib, status, "", "felibs"));
 }
 
 }  // namespace codegen

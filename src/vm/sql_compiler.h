@@ -66,7 +66,9 @@ void InitCodecSymbol(::llvm::orc::JITDylib& jd,            // NOLINT
                      ::llvm::orc::MangleAndInterner& mi);  // NOLINT
 void InitCodecSymbol(vm::FeSQLJIT* jit_ptr);
 
-bool RegisterFeLibs(udf::UDFLibrary* lib, base::Status& status);  // NOLINT
+bool RegisterFeLibs(udf::UDFLibrary* lib, base::Status& status,  // NOLINT
+                    const std::string& libs_home = "",
+                    const std::string& libs_name = "");
 bool GetLibsFiles(const std::string& dir_path,
                   std::vector<std::string>& filenames,  // NOLINT
                   base::Status& status);                // NOLINT
