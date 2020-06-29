@@ -168,7 +168,6 @@ bool RowBuilder::AppendDate(uint32_t year, uint32_t month, uint32_t day) {
 
 bool RowBuilder::SetDate(uint32_t index, uint32_t year, uint32_t month,
                          uint32_t day) {
-    SetFiled(index);
     if (year < 1900 || year > 9999) return false;
     if (month < 1 || month > 12) return false;
     if (day < 1 || day > 31) return false;
@@ -178,6 +177,7 @@ bool RowBuilder::SetDate(uint32_t index, uint32_t year, uint32_t month,
     data = data | ((month - 1) << 8);
     data = data | day;
     *(reinterpret_cast<int32_t*>(ptr)) = data;
+    SetFiled(index);
     return true;
 }
 
@@ -351,7 +351,6 @@ bool RowBuilder::SetString(uint32_t index, const char* val, uint32_t length) {
                         !Check(index, rtidb::type::kString))) {
         return false;
     }
-    SetFiled(index);
     if (str_offset_ + length > size_) return false;
     uint32_t str_pos = offset_vec_[index];
     if (str_set_pos_ + 1 != (int32_t)str_pos) {
@@ -370,6 +369,7 @@ bool RowBuilder::SetString(uint32_t index, const char* val, uint32_t length) {
     }
     str_offset_ += length;
     SetStrOffset(str_pos + 1);
+    SetFiled(index);
     return true;
 }
 

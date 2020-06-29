@@ -560,6 +560,37 @@ TEST_F(CodecTest, SeqNotSetString) {
     }
 }
 
+TEST_F(CodecTest, NotSeqSet) {
+    Schema schema;
+    for (int i = 0; i < 10; i++) {
+        ::rtidb::common::ColumnDesc* col = schema.Add();
+        col->set_name("col" + std::to_string(i));
+        col->set_data_type(::rtidb::type::kVarchar);
+    }
+    RowBuilder builder(schema);
+    uint32_t size = builder.CalTotalLength(100);
+    std::string row;
+    row.resize(size);
+    builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
+    for (int i = 5; i < 10; i++) {
+        std::string str(10, 'a' + i);
+        ASSERT_TRUE(builder.SetString(i, str.c_str(), str.length()));
+    }
+    ASSERT_FALSE(builder.SetString(0, "aaaaaaaaaa", 10));
+    RowView view(schema, reinterpret_cast<int8_t*>(&(row[0])), size);
+    for (int i = 0; i < 10; i++) {
+        if (i < 5) {
+            ASSERT_TRUE(view.IsNULL(i));
+            continue;
+        }
+        char* ch = NULL;
+        uint32_t length = 0;
+        ASSERT_EQ(view.GetString(i, &ch, &length), 0);
+        std::string str(ch, length);
+        ASSERT_STREQ(str.c_str(), std::string(10, 'a' + i).c_str());
+    }
+}
+
 }  // namespace codec
 }  // namespace rtidb
 
