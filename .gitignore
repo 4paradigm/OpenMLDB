@@ -64,3 +64,6 @@ src/sdk/java/sql-native/src/main/java
 src/sdk/java/sql-native/target/
 src/sdk/java/sql-jdbc/target/
 src/sdk/java/sql-jmh/target/
+src/sdk/feql-auto-test-java/allure-results
+src/sdk/feql-auto-test-java/logs
+src/sdk/feql-auto-test-java/target

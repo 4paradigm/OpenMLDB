@@ -1,0 +1,369 @@
+db: test_zw
+debugs: ["样本表不进入window"]
+cases:
+  -
+    id: 0
+    desc: 正常union
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
+          - [4,"dd",20,33,1.4,2.4,1590738993000,"2020-05-04"]
+          - [5,"ee",21,34,1.5,2.5,1590738994000,"2020-05-05"]
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [2,"bb",20,31,1.2,2.2,1590738991000,"2020-05-02"]
+          - [3,"cc",20,32,1.3,2.3,1590738992000,"2020-05-03"]
+    sql: |
+      SELECT id, c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (UNION {1} PARTITION BY {0}.c3 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","c3 int","w1_c4_sum bigint"]
+      rows:
+        - [1,"aa",20,30]
+        - [4,"dd",20,96]
+        - [5,"ee",21,34]
+  -
+    id: 1
+    desc: union的表列个数不一致
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
+          - [4,"dd",20,33,1.4,2.4,1590738993000,"2020-05-04"]
+          - [5,"ee",21,34,1.5,2.5,1590738994000,"2020-05-05"]
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [2,"bb",20,31,1.2,2.2,1590738991000]
+          - [3,"cc",20,32,1.3,2.3,1590738992000]
+    sql: |
+      SELECT id, c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (UNION {1} PARTITION BY {0}.c3 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      success: false
+  -
+    id: 2
+    desc: 列类型不一致
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
+          - [4,"dd",20,33,1.4,2.4,1590738993000,"2020-05-04"]
+          - [5,"ee",21,34,1.5,2.5,1590738994000,"2020-05-05"]
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 string"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [2,"bb",20,31,1.2,2.2,1590738991000,"2020-05-02"]
+          - [3,"cc",20,32,1.3,2.3,1590738992000,"2020-05-03"]
+    sql: |
+      SELECT id, c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (UNION {1} PARTITION BY {0}.c3 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      success: false
+  -
+    id: 3
+    desc: 列名不一致
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
+          - [4,"dd",20,33,1.4,2.4,1590738993000,"2020-05-04"]
+          - [5,"ee",21,34,1.5,2.5,1590738994000,"2020-05-05"]
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c9 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [2,"bb",20,31,1.2,2.2,1590738991000,"2020-05-02"]
+          - [3,"cc",20,32,1.3,2.3,1590738992000,"2020-05-03"]
+    sql: |
+      SELECT id, c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (UNION {1} PARTITION BY {0}.c3 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      success: false
+  -
+    id: 4
+    desc: 使用列别名后schema一致
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
+          - [4,"dd",20,33,1.4,2.4,1590738993000,"2020-05-04"]
+          - [5,"ee",21,34,1.5,2.5,1590738994000,"2020-05-05"]
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c9 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [2,"bb",20,31,1.2,2.2,1590738991000,"2020-05-02"]
+          - [3,"cc",20,32,1.3,2.3,1590738992000,"2020-05-03"]
+    sql: |
+      SELECT id, c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW
+      w1 AS (UNION (select c1,c3,c4,c5,c6,c7,c9 as c8 from {1})
+      PARTITION BY {0}.c3 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","c3 int","w1_c4_sum bigint"]
+      rows:
+        - [1,"aa",20,30]
+        - [4,"dd",20,96]
+        - [5,"ee",21,34]
+  -
+    id: 5
+    desc: 样本表使用索引
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c3:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
+          - [4,"dd",20,33,1.4,2.4,1590738993000,"2020-05-04"]
+          - [5,"ee",21,34,1.5,2.5,1590738994000,"2020-05-05"]
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [2,"bb",20,31,1.2,2.2,1590738991000,"2020-05-02"]
+          - [3,"cc",20,32,1.3,2.3,1590738992000,"2020-05-03"]
+    sql: |
+      SELECT id, c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (UNION {1} PARTITION BY {0}.c3 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","c3 int","w1_c4_sum bigint"]
+      rows:
+        - [1,"aa",20,30]
+        - [4,"dd",20,96]
+        - [5,"ee",21,34]
+  -
+    id: 6
+    desc: union表使用索引
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
+          - [4,"dd",20,33,1.4,2.4,1590738993000,"2020-05-04"]
+          - [5,"ee",21,34,1.5,2.5,1590738994000,"2020-05-05"]
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c3:c7"]
+        rows:
+          - [2,"bb",20,31,1.2,2.2,1590738991000,"2020-05-02"]
+          - [3,"cc",20,32,1.3,2.3,1590738992000,"2020-05-03"]
+    sql: |
+      SELECT id, c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (UNION {1} PARTITION BY {0}.c3 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","c3 int","w1_c4_sum bigint"]
+      rows:
+        - [1,"aa",20,30]
+        - [4,"dd",20,96]
+        - [5,"ee",21,34]
+  -
+    id: 7
+    desc: 样本表union表都使用索引
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c3:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
+          - [4,"dd",20,33,1.4,2.4,1590738993000,"2020-05-04"]
+          - [5,"ee",21,34,1.5,2.5,1590738994000,"2020-05-05"]
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c3:c7"]
+        rows:
+          - [2,"bb",20,31,1.2,2.2,1590738991000,"2020-05-02"]
+          - [3,"cc",20,32,1.3,2.3,1590738992000,"2020-05-03"]
+    sql: |
+      SELECT id, c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (UNION {1} PARTITION BY {0}.c3 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","c3 int","w1_c4_sum bigint"]
+      rows:
+        - [1,"aa",20,30]
+        - [4,"dd",20,96]
+        - [5,"ee",21,34]
+  -
+    id: 8
+    desc: union多表
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
+          - [4,"dd",20,33,1.4,2.4,1590738993000,"2020-05-04"]
+          - [5,"dd",20,33,1.4,2.4,1590738994000,"2020-05-04"]
+          - [6,"ee",21,34,1.5,2.5,1590738995000,"2020-05-05"]
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [3,"cc",20,32,1.3,2.3,1590738992000,"2020-05-03"]
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [2,"bb",20,31,1.2,2.2,1590738991000,"2020-05-02"]
+    sql: |
+      SELECT id, c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (UNION {1},{2} PARTITION BY {0}.c3 ORDER BY {0}.c7 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","c3 int","w1_c4_sum bigint"]
+      rows:
+        - [1,"aa",20,30]
+        - [4,"dd",20,126]
+        - [5,"dd",20,129]
+        - [6,"ee",21,34]
+  -
+    id: 9
+    desc: 结合limit
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
+          - [4,"dd",20,33,1.4,2.4,1590738993000,"2020-05-04"]
+          - [5,"ee",21,34,1.5,2.5,1590738994000,"2020-05-05"]
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [2,"bb",20,31,1.2,2.2,1590738991000,"2020-05-02"]
+          - [3,"cc",20,32,1.3,2.3,1590738992000,"2020-05-03"]
+    sql: |
+      SELECT id, c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW
+      w1 AS (UNION {1} PARTITION BY {0}.c3 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) limit 2;
+    expect:
+      order: id
+      columns: ["id int","c1 string","c3 int","w1_c4_sum bigint"]
+      rows:
+        - [1,"aa",20,30]
+        - [5,"ee",21,34]
+  -
+    id: 10
+    desc: 使用两个pk
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c4:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
+          - [4,"aa",20,33,1.4,2.4,1590738993000,"2020-05-04"]
+          - [5,"ee",21,34,1.5,2.5,1590738994000,"2020-05-05"]
+          - [6,"ee",21,33,1.4,2.4,1590738995000,"2020-05-04"]
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c4:c7"]
+        rows:
+          - [2,"aa",20,31,1.2,2.2,1590738991000,"2020-05-02"]
+          - [3,"aa",20,32,1.3,2.3,1590738992000,"2020-05-03"]
+    sql: |
+      SELECT id, c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (UNION {1} PARTITION BY {0}.c1,{0}.c3 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","c3 int","w1_c4_sum bigint"]
+      rows:
+        - [1,"aa",20,30]
+        - [4,"aa",20,96]
+        - [5,"ee",21,34]
+        - [6,"ee",21,67]
+  -
+    id: 11
+    desc: 样本表和union表都使用子查询
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
+          - [4,"dd",20,33,1.4,2.4,1590738993000,"2020-05-04"]
+          - [5,"ee",21,34,1.5,2.5,1590738994000,"2020-05-05"]
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [2,"bb",20,31,1.2,2.2,1590738991000,"2020-05-02"]
+          - [3,"cc",20,32,1.3,2.3,1590738992000,"2020-05-03"]
+    sql: |
+      SELECT id, c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM (select * from {0}) WINDOW w1 AS (UNION (select * from {1}) PARTITION BY {0}.c3 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","c3 int","w1_c4_sum bigint"]
+      rows:
+        - [1,"aa",20,30]
+        - [4,"dd",20,96]
+        - [5,"ee",21,34]
+  -
+    id: 12
+    desc: union多表,其中一个子查询
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
+          - [4,"dd",20,33,1.4,2.4,1590738993000,"2020-05-04"]
+          - [5,"dd",20,33,1.4,2.4,1590738994000,"2020-05-04"]
+          - [6,"ee",21,34,1.5,2.5,1590738995000,"2020-05-05"]
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [3,"cc",20,32,1.3,2.3,1590738992000,"2020-05-03"]
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [2,"bb",20,31,1.2,2.2,1590738991000,"2020-05-02"]
+    sql: |
+      SELECT id, c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (UNION (select * from {1}),{2} PARTITION BY {0}.c3 ORDER BY {0}.c7 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","c3 int","w1_c4_sum bigint"]
+      rows:
+        - [1,"aa",20,30]
+        - [4,"dd",20,126]
+        - [5,"dd",20,129]
+        - [6,"ee",21,34]
+  -
+    id: 13
+    desc: 样本表不进入window
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1590738993000,"2020-05-01"]
+          - [4,"dd",20,33,1.4,2.4,1590738994000,"2020-05-04"]
+          - [5,"ee",21,34,1.5,2.5,1590738995000,"2020-05-05"]
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [2,"bb",20,31,1.2,2.2,1590738991000,"2020-05-02"]
+          - [3,"cc",20,32,1.3,2.3,1590738992000,"2020-05-03"]
+    sql: |
+      SELECT id, c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW
+      w1 AS (UNION {1} PARTITION BY {0}.c3 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW INSTANCE_NOT_IN_WINDOW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","c3 int","w1_c4_sum bigint"]
+      rows:
+        - [1,"aa",20,93]
+        - [4,"dd",20,96]
+        - [5,"ee",21,34]
