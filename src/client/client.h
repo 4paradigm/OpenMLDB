@@ -16,8 +16,11 @@
 #include "zk/zk_client.h"
 
 struct WriteOption {
-    WriteOption() {
-        update_if_exist = true;
+    WriteOption() : update_if_exist(false) {
+    }
+
+    explicit WriteOption(bool flag) {
+        update_if_exist = flag;
     }
 
     bool update_if_exist;

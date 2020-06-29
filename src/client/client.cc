@@ -623,12 +623,21 @@ PutResult RtidbClient::Put(
         result.SetError(-3, err_msg);
         return result;
     }
+    ::rtidb::api::WriteOption pb_wo;
+    pb_wo.set_update_if_exist(wo.update_if_exist);
     int64_t auto_key = 0;
-    bool ok =
-        tablet->Put(th->table_info->tid(), 0, buffer, &auto_key, &err_msg);
+    std::vector<int64_t> blob_keys;
+    bool ok = tablet->Put(th->table_info->tid(), 0, buffer, pb_wo, &auto_key,
+            &blob_keys, &err_msg);
     if (!ok) {
         result.SetError(-4, "put error, msg: " + err_msg);
         return result;
+    }
+    if (!blob_keys.empty()) {
+        if (!DeleteBlobs(name, blob_keys)) {
+            result.SetError(-5, "deleteBlob of put error");
+            return result;
+        }
     }
     if (!th->auto_gen_pk.empty()) {
         result.SetAutoGenPk(auto_key);

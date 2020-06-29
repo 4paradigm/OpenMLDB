@@ -6,10 +6,21 @@ class TestRtidb(unittest.TestCase):
   
   def setUp(self):
     self.nsc = rtidb.RTIDBClient("127.0.0.1:6181", "/onebox")
-
+  
   def test_query(self):
     data = {"id":"2001","attribute":"a1", "image":"i1"}
     self.assertTrue(self.nsc.put("test1", data, None).success())
+    data = {"id":"2001","attribute":"a1", "image":"i1"}
+    try:
+      self.assertTrue(self.nsc.put("test1", data, None).success())
+    except:
+      self.assertTrue(True)
+    else:
+      self.assertTrue(False)
+    data = {"id":"2001","attribute":"a1", "image":"i1"}
+    wo = rtidb.WriteOption()
+    wo.updateIfExist = True
+    self.assertTrue(self.nsc.put("test1", data, wo).success())
     ro = rtidb.ReadOption()
     ro.index.update({"image":"i1"})
     try:
@@ -39,6 +50,17 @@ class TestRtidb(unittest.TestCase):
     data = {"id":"2002","name":"n2","mcc":"2001","attribute":"a1", "image":b"i1"}
     self.assertTrue(self.nsc.put("rt_ck", data, None).success())
     self.assertEqual(data["image"], b"i1")
+    data = {"id":"2002","name":"n2","mcc":"2001","attribute":"a1", "image":b"i1"}
+    try:
+      self.assertTrue(self.nsc.put("rt_ck", data, None).success())
+    except:
+      self.assertTrue(True)
+    else:
+      self.assertTrue(False)
+    data = {"id":"2002","name":"n2","mcc":"2001","attribute":"a1", "image":b"i1"}
+    wo = rtidb.WriteOption()
+    wo.updateIfExist = True
+    self.assertTrue(self.nsc.put("rt_ck", data, wo).success())
 
     ro = rtidb.ReadOption()
     ro.index.update({"id":"2001"})
@@ -86,7 +108,7 @@ class TestRtidb(unittest.TestCase):
     resp = self.nsc.query("rt_ck", ro)
     self.assertTrue(True);
     self.assertEqual(0, resp.count())
-    
+
   def test_traverse(self):
     for i in range(1000) :
         data = {"id":"{:d}".format(i), "attribute":"a{}".format(i), "image":"i{}".format(i)}

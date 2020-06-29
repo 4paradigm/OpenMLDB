@@ -14,6 +14,7 @@ import com._4paradigm.rtidb.utils.Compress;
 import com.google.common.base.Charsets;
 import com.google.protobuf.ByteBufferNoCopy;
 import com.google.protobuf.ByteString;
+import io.netty.util.Timeout;
 import rtidb.api.TabletServer;
 import rtidb.blobserver.BlobServer;
 
@@ -1316,7 +1317,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         return put(tid, pid, key, time, null, null, ByteBuffer.wrap(bytes), th);
     }
 
-    private PutResult putRelationTable(int tid, int pid, ByteBuffer row, TableHandler th, WriteOption wo) throws TabletException {
+    private PutResult putRelationTable(int tid, int pid, ByteBuffer row, TableHandler th, WriteOption wo) throws TabletException, TimeoutException {
         PartitionHandler ph = th.getHandler(pid);
         if (th.getTableInfo().hasCompressType() && th.getTableInfo().getCompressType() == NS.CompressType.kSnappy) {
             byte[] data = row.array();
@@ -1345,6 +1346,15 @@ public class TableSyncClientImpl implements TableSyncClient {
         Tablet.PutResponse response = tablet.put(request);
         if (response != null) {
             if (response.getCode() == 0) {
+                if (!response.getBlobKeysList().isEmpty()) {
+                    List<Long> blobKeys = new ArrayList<>();
+                    for (int i = 0; i < response.getBlobKeysCount(); i++) {
+                        blobKeys.add(response.getBlobKeys(i));
+                    }
+                    if (!blobKeys.isEmpty() && !deleteBlobByList(th, blobKeys)) {
+                        throw new TabletException(response.getCode(), "deleteBlobByList failed");
+                    }
+                }
                 if (!th.getAutoGenPkName().isEmpty() && response.hasAutoGenPk()) {
                     return new PutResult(true, response.getAutoGenPk());
                 } else {
@@ -1478,8 +1488,6 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (row == null) {
             throw new TabletException("putting data is null");
         }
-        //TODO: resolve wo
-
         String indexName = th.getAutoGenPkName();
 
         if (!indexName.isEmpty() &&
@@ -1521,11 +1529,11 @@ public class TableSyncClientImpl implements TableSyncClient {
         try {
             return putRelationTable(th.getTableInfo().getTid(), pid, buffer, th, wo);
         } catch (Exception e) {
-            deleteBlobByMap(th, blobKeys);
+            if (!deleteBlobByMap(th, blobKeys)) {
+                throw new TabletException("deleteBlobByMap failed");
+            }
             throw e;
         }
-
-
     }
 
     private UpdateResult updateRequest(TableHandler th, int pid, Map<String, Object> conditionColumns, List<ColumnDesc> newValueSchema,
