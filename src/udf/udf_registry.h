@@ -863,8 +863,8 @@ class ExternalFuncRegistry : public UDFRegistry {
 
 struct ImplicitFuncPtr {
     template <typename Ret, typename... Args>
-    explicit ImplicitFuncPtr(Ret (*fn)(Args...))
-        :  // NOLINT
+    explicit ImplicitFuncPtr(Ret (*fn)(Args...))  // NOLINT
+        :
           ptr(reinterpret_cast<void*>(fn)),
           get_ret_func([](node::NodeManager* nm) {
               return ArgTypeTrait<Ret>::to_type_node(nm);
