@@ -26,6 +26,8 @@ public class RowBuilder {
     private int strFieldStartOffset = 0;
     private int strAddrLength = 0;
     private int strOffset = 0;
+    private int strSetPos = -1;
+    private int schemaVersion = 1;
     private List<Integer> offsetVec = new ArrayList<>();
 
     public RowBuilder(List<ColumnDesc> schema) {
@@ -45,6 +47,10 @@ public class RowBuilder {
                 }
             }
         }
+    }
+
+    public void SetSchemaVersion(int version) {
+        schemaVersion = version;
     }
 
     public int calTotalLength(int string_length) throws TabletException {
@@ -77,12 +83,21 @@ public class RowBuilder {
         }
         this.size = size;
         buffer.put((byte) 1); // FVersion
-        buffer.put((byte) 1); // SVersion
+        buffer.put((byte) schemaVersion); // SVersion
         buffer.putInt(size); // size
+        for (int idx = 0; idx < RowCodecCommon.getBitMapSize(schema.size()); idx++) {
+            buffer.put((byte)0xFF);
+        }
         this.buf = buffer;
         strAddrLength = RowCodecCommon.getAddrLength(size);
         strOffset = strFieldStartOffset + strAddrLength * strFieldCnt;
         return this.buf;
+    }
+
+    private void setField(int index) {
+        int pos = RowCodecCommon.HEADER_LENGTH + (index >> 3);
+        byte bt = buf.get(pos);
+        buf.put(pos, (byte) (bt & (~(1 << (cnt & 0x07)))));
     }
 
     private boolean check(DataType type) {
@@ -101,25 +116,38 @@ public class RowBuilder {
         return true;
     }
 
+    private void setStrOffset(int strPos) {
+        if (strPos >= strFieldCnt) {
+            return;
+        }
+        int index = strFieldStartOffset + strAddrLength * strPos;
+        buf.position(index);
+        if (strAddrLength == 1) {
+            buf.put((byte) (strOffset & 0xFF));
+        } else if (strAddrLength == 2) {
+            buf.putShort((short) (strOffset & 0xFFFF));
+        } else if (strAddrLength == 3) {
+            buf.put((byte) (strOffset >> 16));
+            buf.put((byte) ((strOffset & 0xFF00) >> 8));
+            buf.put((byte) (strOffset & 0x00FF));
+        } else {
+            buf.putInt(strOffset);
+        }
+    }
+
     public boolean appendNULL() {
-        int index = RowCodecCommon.HEADER_LENGTH + (cnt >> 3);
-        byte bt = buf.get(index);
-        buf.put(index, (byte) (bt | (1 << (cnt & 0x07))));
         ColumnDesc column = schema.get(cnt);
         if (column.getDataType() == DataType.Varchar || column.getDataType() == DataType.String) {
-            index = strFieldStartOffset + strAddrLength * offsetVec.get(cnt);
-            buf.position(index);
-            if (strAddrLength == 1) {
-                buf.put((byte) (strOffset & 0xFF));
-            } else if (strAddrLength == 2) {
-                buf.putShort((short) (strOffset & 0xFFFF));
-            } else if (strAddrLength == 3) {
-                buf.put((byte) (strOffset >> 16));
-                buf.put((byte) ((strOffset & 0xFF00) >> 8));
-                buf.put((byte) (strOffset & 0x00FF));
-            } else {
-                buf.putInt(strOffset);
+            int strPos = offsetVec.get(cnt);
+            if (strSetPos + 1 != strPos) {
+                if (strSetPos >= strPos) {
+                    return false;
+                } else {
+                    setStrOffset(strPos);
+                }
             }
+            setStrOffset(strPos + 1);
+            strSetPos = strPos;
         }
         cnt++;
         return true;
@@ -129,6 +157,7 @@ public class RowBuilder {
         if (!check(DataType.Bool)) {
             return false;
         }
+        setField(cnt);
         buf.position(offsetVec.get(cnt));
         if (val) {
             buf.put((byte) 1);
@@ -143,6 +172,7 @@ public class RowBuilder {
         if (!check(DataType.Int)) {
             return false;
         }
+        setField(cnt);
         buf.position(offsetVec.get(cnt));
         buf.putInt(val);
         cnt++;
@@ -153,6 +183,7 @@ public class RowBuilder {
         if (!check(DataType.SmallInt)) {
             return false;
         }
+        setField(cnt);
         buf.position(offsetVec.get(cnt));
         buf.putShort(val);
         cnt++;
@@ -163,6 +194,7 @@ public class RowBuilder {
         if (!check(DataType.Timestamp)) {
             return false;
         }
+        setField(cnt);
         buf.position(offsetVec.get(cnt));
         buf.putLong(val);
         cnt++;
@@ -173,6 +205,7 @@ public class RowBuilder {
         if (!check(DataType.BigInt)) {
             return false;
         }
+        setField(cnt);
         buf.position(offsetVec.get(cnt));
         buf.putLong(val);
         cnt++;
@@ -183,6 +216,7 @@ public class RowBuilder {
         if (!check(DataType.Blob)) {
             return false;
         }
+        setField(cnt);
         buf.position(offsetVec.get(cnt));
         buf.putLong(val);
         cnt++;
@@ -193,6 +227,7 @@ public class RowBuilder {
         if (!check(DataType.Float)) {
             return false;
         }
+        setField(cnt);
         buf.position(offsetVec.get(cnt));
         buf.putFloat(val);
         cnt++;
@@ -203,6 +238,7 @@ public class RowBuilder {
         if (!check(DataType.Double)) {
             return false;
         }
+        setField(cnt);
         buf.position(offsetVec.get(cnt));
         buf.putDouble(val);
         cnt++;
@@ -218,6 +254,7 @@ public class RowBuilder {
         data = data | day;
         buf.position(offsetVec.get(cnt));
         buf.putInt(data);
+        setField(cnt);
         cnt++;
         return true;
     }
@@ -230,24 +267,24 @@ public class RowBuilder {
         if (strOffset + length > size) {
             return false;
         }
-        int index = strFieldStartOffset + strAddrLength * offsetVec.get(cnt);
-        buf.position(index);
-        if (strAddrLength == 1) {
-            buf.put((byte) (strOffset & 0xFF));
-        } else if (strAddrLength == 2) {
-            buf.putShort((short) (strOffset & 0xFFFF));
-        } else if (strAddrLength == 3) {
-            buf.put((byte) (strOffset >> 16));
-            buf.put((byte) ((strOffset & 0xFF00) >> 8));
-            buf.put((byte) (strOffset & 0x00FF));
-        } else {
-            buf.putInt(strOffset);
+        int strPos = offsetVec.get(cnt);
+        if (strSetPos + 1 != strPos) {
+            if (strSetPos >= strPos) {
+                return false;
+            }
+            setStrOffset(strPos);
         }
+        if (strPos == 0) {
+            setStrOffset(strPos);
+        }
+        strSetPos = strPos;
         if (length != 0) {
             buf.position(strOffset);
             buf.put(val.getBytes(RowCodecCommon.CHARSET), 0, length);
         }
         strOffset += length;
+        setStrOffset(strPos + 1);
+        setField(cnt);
         cnt++;
         return true;
     }
