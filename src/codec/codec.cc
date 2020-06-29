@@ -154,7 +154,7 @@ bool RowBuilder::AppendDate(int32_t date) {
 
 bool RowBuilder::SetDate(uint32_t index, int32_t date) {
     if (!Check(index, ::rtidb::type::kDate)) return false;
-    SetFiled(index);
+    SetField(index);
     int8_t* ptr = buf_ + offset_vec_[index];
     *(reinterpret_cast<int32_t*>(ptr)) = date;
     return true;
@@ -177,11 +177,11 @@ bool RowBuilder::SetDate(uint32_t index, uint32_t year, uint32_t month,
     data = data | ((month - 1) << 8);
     data = data | day;
     *(reinterpret_cast<int32_t*>(ptr)) = data;
-    SetFiled(index);
+    SetField(index);
     return true;
 }
 
-void RowBuilder::SetFiled(uint32_t index) {
+void RowBuilder::SetField(uint32_t index) {
     int8_t* ptr = buf_ + HEADER_LENGTH + (index >> 3);
     *(reinterpret_cast<uint8_t*>(ptr)) &= ~(1 << (index & 0x07));
 }
@@ -236,7 +236,7 @@ bool RowBuilder::AppendBool(bool val) {
 
 bool RowBuilder::SetBool(uint32_t index, bool val) {
     if (!Check(index, ::rtidb::type::kBool)) return false;
-    SetFiled(index);
+    SetField(index);
     int8_t* ptr = buf_ + offset_vec_[index];
     *(reinterpret_cast<uint8_t*>(ptr)) = val ? 1 : 0;
     return true;
@@ -250,7 +250,7 @@ bool RowBuilder::AppendInt32(int32_t val) {
 
 bool RowBuilder::SetInt32(uint32_t index, int32_t val) {
     if (!Check(index, ::rtidb::type::kInt)) return false;
-    SetFiled(index);
+    SetField(index);
     int8_t* ptr = buf_ + offset_vec_[index];
     *(reinterpret_cast<int32_t*>(ptr)) = val;
     return true;
@@ -264,7 +264,7 @@ bool RowBuilder::AppendInt16(int16_t val) {
 
 bool RowBuilder::SetInt16(uint32_t index, int16_t val) {
     if (!Check(index, ::rtidb::type::kSmallInt)) return false;
-    SetFiled(index);
+    SetField(index);
     int8_t* ptr = buf_ + offset_vec_[index];
     *(reinterpret_cast<int16_t*>(ptr)) = val;
     return true;
@@ -278,7 +278,7 @@ bool RowBuilder::AppendTimestamp(int64_t val) {
 
 bool RowBuilder::SetTimestamp(uint32_t index, int64_t val) {
     if (!Check(index, ::rtidb::type::kTimestamp)) return false;
-    SetFiled(index);
+    SetField(index);
     int8_t* ptr = buf_ + offset_vec_[index];
     *(reinterpret_cast<int64_t*>(ptr)) = val;
     return true;
@@ -292,7 +292,7 @@ bool RowBuilder::AppendInt64(int64_t val) {
 
 bool RowBuilder::SetInt64(uint32_t index, int64_t val) {
     if (!Check(index, ::rtidb::type::kBigInt)) return false;
-    SetFiled(index);
+    SetField(index);
     int8_t* ptr = buf_ + offset_vec_[index];
     *(reinterpret_cast<int64_t*>(ptr)) = val;
     return true;
@@ -306,7 +306,7 @@ bool RowBuilder::AppendBlob(int64_t val) {
 
 bool RowBuilder::SetBlob(uint32_t index, int64_t val) {
     if (!Check(index, ::rtidb::type::kBlob)) return false;
-    SetFiled(index);
+    SetField(index);
     int8_t* ptr = buf_ + offset_vec_[index];
     *(reinterpret_cast<int64_t*>(ptr)) = val;
     return true;
@@ -320,7 +320,7 @@ bool RowBuilder::AppendFloat(float val) {
 
 bool RowBuilder::SetFloat(uint32_t index, float val) {
     if (!Check(index, ::rtidb::type::kFloat)) return false;
-    SetFiled(index);
+    SetField(index);
     int8_t* ptr = buf_ + offset_vec_[index];
     *(reinterpret_cast<float*>(ptr)) = val;
     return true;
@@ -334,7 +334,7 @@ bool RowBuilder::AppendDouble(double val) {
 
 bool RowBuilder::SetDouble(uint32_t index, double val) {
     if (!Check(index, ::rtidb::type::kDouble)) return false;
-    SetFiled(index);
+    SetField(index);
     int8_t* ptr = buf_ + offset_vec_[index];
     *(reinterpret_cast<double*>(ptr)) = val;
     return true;
@@ -369,7 +369,7 @@ bool RowBuilder::SetString(uint32_t index, const char* val, uint32_t length) {
     }
     str_offset_ += length;
     SetStrOffset(str_pos + 1);
-    SetFiled(index);
+    SetField(index);
     return true;
 }
 

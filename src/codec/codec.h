@@ -100,7 +100,7 @@ class RowBuilder {
 
  private:
     bool Check(uint32_t index, ::rtidb::type::DataType type);
-    inline void SetFiled(uint32_t index);
+    inline void SetField(uint32_t index);
     inline void SetStrOffset(uint32_t str_pos);
 
  private:
