@@ -72,6 +72,7 @@ DECLARE_uint32(skiplist_max_height);
 DECLARE_uint32(preview_limit_max_num);
 DECLARE_uint32(preview_default_limit);
 DECLARE_uint32(max_col_display_length);
+DECLARE_bool(version);
 
 void shutdown_signal_handler(int signal) {
     std::cout << "catch signal: " << signal << std::endl;
@@ -6441,6 +6442,15 @@ void StartBsClient() {
 }
 
 int main(int argc, char* argv[]) {
+    {
+        std::ostringstream ss;
+        ss << RTIDB_VERSION_MAJOR << ".";
+        ss << RTIDB_VERSION_MEDIUM << ".";
+        ss << RTIDB_VERSION_MINOR << ".";
+        ss << RTIDB_VERSION_BUG;
+        std::string version = ss.str();
+        ::google::SetVersionString(version);
+    }
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     if (FLAGS_role == "tablet") {
         StartTablet();
