@@ -386,6 +386,180 @@ TEST_F(CodecTest, ManyCol) {
     }
 }
 
+TEST_F(CodecTest, NotAppendCol) {
+    Schema schema;
+    for (int i = 0; i < 10; i++) {
+        ::rtidb::common::ColumnDesc* col = schema.Add();
+        col->set_name("col" + std::to_string(i));
+        if (i % 3 == 0) {
+            col->set_data_type(::rtidb::type::kSmallInt);
+        } else if (i % 3 == 1) {
+            col->set_data_type(::rtidb::type::kDouble);
+        } else {
+            col->set_data_type(::rtidb::type::kVarchar);
+        }
+    }
+    RowBuilder builder(schema);
+    uint32_t size = builder.CalTotalLength(30);
+    std::string row;
+    row.resize(size);
+    builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
+    for (int i = 0; i < 7; i++) {
+        if (i % 3 == 0) {
+            ASSERT_TRUE(builder.AppendInt16(i));
+        } else if (i % 3 == 1) {
+            ASSERT_TRUE(builder.AppendDouble(2.3));
+        } else {
+            std::string str(10, 'a' + i);
+            ASSERT_TRUE(builder.AppendString(str.c_str(), str.length()));
+        }
+    }
+    ASSERT_FALSE(builder.AppendInt16(1234));
+    RowView view(schema, reinterpret_cast<int8_t*>(&(row[0])), size);
+    for (int i = 0; i < 10; i++) {
+        if (i >= 7) {
+            ASSERT_TRUE(view.IsNULL(i));
+            continue;
+        }
+        if (i % 3 == 0) {
+            int16_t val = 0;
+            ASSERT_EQ(view.GetInt16(i, &val), 0);
+            ASSERT_EQ(val, i);
+        } else if (i % 3 == 1) {
+            double val = 0.0;
+            ASSERT_EQ(view.GetDouble(i, &val), 0);
+            ASSERT_EQ(val, 2.3);
+        } else {
+            char* ch = NULL;
+            uint32_t length = 0;
+            ASSERT_EQ(view.GetString(i, &ch, &length), 0);
+            ASSERT_EQ(10, length);
+            std::string str(ch, length);
+            ASSERT_STREQ(str.c_str(), std::string(10, 'a' + i).c_str());
+        }
+    }
+    int16_t val = 0;
+    ASSERT_EQ(view.GetInt16(10, &val), -1);
+}
+
+TEST_F(CodecTest, NotAppendString) {
+    Schema schema;
+    for (int i = 0; i < 10; i++) {
+        ::rtidb::common::ColumnDesc* col = schema.Add();
+        col->set_name("col" + std::to_string(i));
+        col->set_data_type(::rtidb::type::kVarchar);
+    }
+    RowBuilder builder(schema);
+    uint32_t size = builder.CalTotalLength(100);
+    std::string row;
+    row.resize(size);
+    builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
+    for (int i = 0; i < 8; i++) {
+        if (i > 2 && i < 6) {
+            builder.AppendNULL();
+            continue;
+        }
+        std::string str(10, 'a' + i);
+        ASSERT_TRUE(builder.AppendString(str.c_str(), str.length()));
+    }
+    ASSERT_FALSE(builder.AppendInt16(1234));
+    RowView view(schema, reinterpret_cast<int8_t*>(&(row[0])), size);
+    for (int i = 0; i < 10; i++) {
+        if (i >= 8 || (i > 2 && i < 6)) {
+            ASSERT_TRUE(view.IsNULL(i));
+            continue;
+        }
+        char* ch = NULL;
+        uint32_t length = 0;
+        ASSERT_EQ(view.GetString(i, &ch, &length), 0);
+        ASSERT_EQ(10, length);
+        std::string str(ch, length);
+        ASSERT_STREQ(str.c_str(), std::string(10, 'a' + i).c_str());
+    }
+    int16_t val = 0;
+    ASSERT_EQ(view.GetInt16(10, &val), -1);
+}
+
+TEST_F(CodecTest, NotSetString) {
+    Schema schema;
+    for (int i = 0; i < 10; i++) {
+        ::rtidb::common::ColumnDesc* col = schema.Add();
+        col->set_name("col" + std::to_string(i));
+        col->set_data_type(::rtidb::type::kVarchar);
+    }
+    RowBuilder builder(schema);
+    uint32_t size = builder.CalTotalLength(100);
+    std::string row;
+    row.resize(size);
+    builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
+    for (int i = 0; i < 10; i++) {
+        if (i % 2 == 0) {
+            continue;
+        }
+        std::string str(10, 'a' + i);
+        ASSERT_TRUE(builder.SetString(i, str.c_str(), str.length()));
+    }
+    ASSERT_FALSE(builder.AppendInt16(1234));
+    RowView view(schema, reinterpret_cast<int8_t*>(&(row[0])), size);
+    for (int i = 0; i < 10; i++) {
+        if (i % 2 == 0) {
+            ASSERT_TRUE(view.IsNULL(i));
+            continue;
+        }
+        char* ch = NULL;
+        uint32_t length = 0;
+        ASSERT_EQ(view.GetString(i, &ch, &length), 0);
+        if (i == 9) {
+            // if not set some string filed, the last filed will be large than real
+            ASSERT_EQ(60, length);
+        } else {
+            ASSERT_EQ(10, length);
+        }
+        std::string str(ch, length);
+        ASSERT_STREQ(str.c_str(), std::string(10, 'a' + i).c_str());
+    }
+    int16_t val = 0;
+    ASSERT_EQ(view.GetInt16(10, &val), -1);
+}
+
+TEST_F(CodecTest, SeqNotSetString) {
+    Schema schema;
+    for (int i = 0; i < 10; i++) {
+        ::rtidb::common::ColumnDesc* col = schema.Add();
+        col->set_name("col" + std::to_string(i));
+        col->set_data_type(::rtidb::type::kVarchar);
+    }
+    for (int len = 3; len < 8; len++) {
+        RowBuilder builder(schema);
+        uint32_t size = builder.CalTotalLength(100);
+        std::string row;
+        row.resize(size);
+        builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
+        for (int i = 0; i < 10; i++) {
+            if (i > 2 && i < len) {
+                continue;
+            }
+            std::string str(10, 'a' + i);
+            ASSERT_TRUE(builder.SetString(i, str.c_str(), str.length()));
+        }
+        ASSERT_FALSE(builder.AppendInt16(1234));
+        RowView view(schema, reinterpret_cast<int8_t*>(&(row[0])), size);
+        for (int i = 0; i < 10; i++) {
+            if (i > 2 && i < len) {
+                ASSERT_TRUE(view.IsNULL(i));
+                continue;
+            }
+            char* ch = NULL;
+            uint32_t length = 0;
+            ASSERT_EQ(view.GetString(i, &ch, &length), 0);
+            std::string str(ch, length);
+            ASSERT_STREQ(str.c_str(), std::string(10, 'a' + i).c_str());
+        }
+        int16_t val = 0;
+        ASSERT_EQ(view.GetInt16(10, &val), -1);
+    }
+}
+
 }  // namespace codec
 }  // namespace rtidb
 

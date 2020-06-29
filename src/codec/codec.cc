@@ -196,16 +196,19 @@ bool RowBuilder::SetNULL(uint32_t index) {
             if (str_set_pos_ >= (int32_t)str_pos) {
                 return false;
             } else {
-                SetStrOffset((uint32_t)(str_set_pos_ + 1));
+                SetStrOffset(str_pos);
             }
         }
-        SetStrOffset(str_pos);
+        SetStrOffset(str_pos + 1);
         str_set_pos_ = str_pos;
     }
     return true;
 }
 
 void RowBuilder::SetStrOffset(uint32_t str_pos) {
+    if (str_pos >= str_field_cnt_ ) {
+        return;
+    }
     int8_t* ptr = buf_ + str_field_start_offset_ + str_addr_length_ * str_pos;
     if (str_addr_length_ == 1) {
         *(reinterpret_cast<uint8_t*>(ptr)) = (uint8_t)str_offset_;
@@ -350,15 +353,18 @@ bool RowBuilder::SetString(uint32_t index, const char* val, uint32_t length) {
         if (str_set_pos_ >= (int32_t)str_pos) {
             return false;
         } else {
-            SetStrOffset((uint32_t)(str_set_pos_ + 1));
+            SetStrOffset(str_pos);
         }
     }
-    SetStrOffset(str_pos);
+    if (str_pos == 0) {
+        SetStrOffset(str_pos);
+    }
     str_set_pos_ = str_pos;
     if (length != 0) {
         memcpy(reinterpret_cast<char*>(buf_ + str_offset_), val, length);
     }
     str_offset_ += length;
+    SetStrOffset(str_pos + 1);
     return true;
 }
 
