@@ -67,7 +67,8 @@ RowBuilder::RowBuilder(const Schema& schema)
       str_addr_length_(0),
       str_field_start_offset_(0),
       str_offset_(0),
-      str_set_pos_(-1) {
+      str_set_pos_(-1),
+      schema_version_(1) {
     str_field_start_offset_ = HEADER_LENGTH + BitMapSize(schema.size());
     for (int idx = 0; idx < schema.size(); idx++) {
         const ::rtidb::common::ColumnDesc& column = schema.Get(idx);
@@ -90,6 +91,10 @@ RowBuilder::RowBuilder(const Schema& schema)
     }
 }
 
+void RowBuilder::SetSchemaVersion(uint8_t version) {
+    schema_version_ = version;
+}
+
 bool RowBuilder::SetBuffer(int8_t* buf, uint32_t size) {
     if (buf == NULL || size == 0 ||
         size < str_field_start_offset_ + str_field_cnt_) {
@@ -98,7 +103,7 @@ bool RowBuilder::SetBuffer(int8_t* buf, uint32_t size) {
     buf_ = buf;
     size_ = size;
     *(buf_) = 1;      // FVersion
-    *(buf_ + 1) = 1;  // SVersion
+    *(buf_ + 1) = schema_version_;  // SVersion
     *(reinterpret_cast<uint32_t*>(buf_ + VERSION_LENGTH)) = size;
     uint32_t bitmap_size = BitMapSize(schema_.size());
     memset(buf_ + HEADER_LENGTH, 0xFF, bitmap_size);

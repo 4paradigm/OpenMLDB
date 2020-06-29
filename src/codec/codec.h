@@ -96,6 +96,8 @@ class RowBuilder {
     // set the date that encoded
     bool SetDate(uint32_t index, int32_t date);
 
+    void SetSchemaVersion(uint8_t version);
+
  private:
     bool Check(uint32_t index, ::rtidb::type::DataType type);
     inline void SetFiled(uint32_t index);
@@ -111,6 +113,7 @@ class RowBuilder {
     uint32_t str_field_start_offset_;
     uint32_t str_offset_;
     int32_t str_set_pos_;
+    uint8_t schema_version_;
     std::vector<uint32_t> offset_vec_;
 };
 
@@ -121,6 +124,10 @@ class RowView {
     ~RowView() = default;
     bool Reset(const int8_t* row, uint32_t size);
     bool Reset(const int8_t* row);
+
+    static uint8_t GetSchemaVersion(const int8_t* row) {
+        return *(reinterpret_cast<const uint8_t*>(row + 1));
+    }
 
     int32_t GetBool(uint32_t idx, bool* val);
     int32_t GetInt32(uint32_t idx, int32_t* val);
