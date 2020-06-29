@@ -203,7 +203,6 @@ TEST_P(TransformTest, transform_physical_plan) {
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
     ::fesql::udf::RegisterUDFToModule(m.get());
-    ASSERT_TRUE(vm::RegisterFeLibs(m.get(), base_status));
     BatchModeTransformer transform(&manager, "db", catalog, m.get());
     transform.AddDefaultPasses();
     PhysicalOpNode* physical_plan = nullptr;
@@ -248,7 +247,6 @@ void PhysicalPlanCheck(const std::shared_ptr<Catalog>& catalog, std::string sql,
     auto m = make_unique<Module>("test_op_generator", *ctx);
     ::fesql::udf::RegisterUDFToModule(m.get());
     base::Status status;
-    ASSERT_TRUE(vm::RegisterFeLibs(m.get(), status));
     BatchModeTransformer transform(&manager, "db", catalog, m.get());
     transform.AddDefaultPasses();
     PhysicalOpNode* physical_plan = nullptr;
@@ -489,7 +487,6 @@ TEST_P(TransformTest, window_merge_opt_test) {
     auto m = make_unique<Module>("test_op_generator", *ctx);
     ::fesql::udf::RegisterUDFToModule(m.get());
     base::Status status;
-    ASSERT_TRUE(vm::RegisterFeLibs(m.get(), status));
     BatchModeTransformer transform(&manager, "db", catalog, m.get());
     transform.AddDefaultPasses();
     PhysicalOpNode* physical_plan = nullptr;
@@ -543,7 +540,6 @@ TEST_P(KeyGenTest, GenTest) {
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
     ::fesql::udf::RegisterUDFToModule(m.get());
-    ASSERT_TRUE(vm::RegisterFeLibs(m.get(), status));
     BatchModeTransformer transformer(&nm, "db", catalog, m.get());
     ASSERT_TRUE(transformer.GenKey(
         &group, table_provider.GetOutputNameSchemaList(), status));
@@ -592,7 +588,6 @@ TEST_P(FilterGenTest, GenFilter) {
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
     ::fesql::udf::RegisterUDFToModule(m.get());
-    ASSERT_TRUE(vm::RegisterFeLibs(m.get(), status));
     BatchModeTransformer transformer(&nm, "db", catalog, m.get());
     ASSERT_TRUE(transformer.GenFilter(
         &filter, join_node.GetOutputNameSchemaList(), status));

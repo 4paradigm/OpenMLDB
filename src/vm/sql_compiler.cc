@@ -36,8 +36,6 @@
 #include "udf/udf.h"
 #include "vm/runner.h"
 #include "vm/transform.h"
-DECLARE_string(native_fesql_libs_name);
-DECLARE_string(native_fesql_libs_prefix);
 namespace fesql {
 namespace vm {
 
@@ -282,19 +280,21 @@ const std::string FindFesqlDirPath() {
     }
     return std::string();
 }
-bool RegisterFeLibs(llvm::Module* m, Status& status) {  // NOLINT
-    if (FLAGS_native_fesql_libs_name.empty()) {
+bool RegisterFeLibs(llvm::Module* m, Status& status,  // NOLINT
+                    const std::string& libs_home,
+                    const std::string& libs_name) {
+    if (libs_name.empty()) {
         LOG(WARNING) << "fail register fe libs: No fesql libs config exist";
         return true;
     }
     std::vector<std::string> filepaths;
     std::string fesql_libs_path = "";
-    if (FLAGS_native_fesql_libs_prefix.empty()) {
+    if (libs_home.empty()) {
         fesql_libs_path = FindFesqlDirPath();
     } else {
-        fesql_libs_path = FLAGS_native_fesql_libs_prefix;
+        fesql_libs_path = libs_home;
     }
-    fesql_libs_path.append("/").append(FLAGS_native_fesql_libs_name);
+    fesql_libs_path.append("/").append(libs_name);
     if (!GetLibsFiles(fesql_libs_path, filepaths, status)) {
         status.msg = "fail to get libs file " + fesql_libs_path;
         LOG(WARNING) << status.msg;
@@ -343,10 +343,6 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     if (!::fesql::udf::RegisterUDFToModule(m.get())) {
         status.msg = "fail to generate native udf libs";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
-        return false;
-    }
-    if (!RegisterFeLibs(m.get(), status)) {
         LOG(WARNING) << status.msg;
         return false;
     }

@@ -114,7 +114,6 @@ void CheckFnLetBuilder(::fesql::node::NodeManager* manager,
     ::fesql::parser::FeSQLParser parser;
     ::fesql::base::Status status;
     ::fesql::udf::RegisterUDFToModule(m.get());
-    ASSERT_TRUE(vm::RegisterFeLibs(m.get(), status));
     AddFunc(udf_str, manager, m.get());
     m->print(::llvm::errs(), NULL);
     int ret = parser.parse(sql, list, manager, status);
