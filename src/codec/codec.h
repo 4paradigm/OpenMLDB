@@ -64,7 +64,6 @@ class RowProject {
 class RowBuilder {
  public:
     explicit RowBuilder(const Schema& schema);
-    ~RowBuilder() = default;
 
     uint32_t CalTotalLength(uint32_t string_length);
     bool SetBuffer(int8_t* buf, uint32_t size);
@@ -99,6 +98,8 @@ class RowBuilder {
 
  private:
     bool Check(uint32_t index, ::rtidb::type::DataType type);
+    inline void SetFiled(uint32_t index);
+    inline void SetStrOffset(uint32_t str_pos);
 
  private:
     const Schema& schema_;
@@ -109,6 +110,7 @@ class RowBuilder {
     uint32_t str_addr_length_;
     uint32_t str_field_start_offset_;
     uint32_t str_offset_;
+    int32_t str_set_pos_;
     std::vector<uint32_t> offset_vec_;
 };
 

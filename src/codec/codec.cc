@@ -64,7 +64,8 @@ RowBuilder::RowBuilder(const Schema& schema)
       str_field_cnt_(0),
       str_addr_length_(0),
       str_field_start_offset_(0),
-      str_offset_(0) {
+      str_offset_(0),
+      str_set_pos_(-1) {
     str_field_start_offset_ = HEADER_LENGTH + BitMapSize(schema.size());
     for (int idx = 0; idx < schema.size(); idx++) {
         const ::rtidb::common::ColumnDesc& column = schema.Get(idx);
@@ -98,10 +99,11 @@ bool RowBuilder::SetBuffer(int8_t* buf, uint32_t size) {
     *(buf_ + 1) = 1;  // SVersion
     *(reinterpret_cast<uint32_t*>(buf_ + VERSION_LENGTH)) = size;
     uint32_t bitmap_size = BitMapSize(schema_.size());
-    memset(buf_ + HEADER_LENGTH, 0, bitmap_size);
+    memset(buf_ + HEADER_LENGTH, 1, bitmap_size);
     cnt_ = 0;
     str_addr_length_ = GetAddrLength(size);
     str_offset_ = str_field_start_offset_ + str_addr_length_ * str_field_cnt_;
+    str_set_pos_ = -1;
     return true;
 }
 
@@ -158,6 +160,7 @@ bool RowBuilder::AppendDate(uint32_t year, uint32_t month, uint32_t day) {
 
 bool RowBuilder::SetDate(uint32_t index, uint32_t year, uint32_t month,
                          uint32_t day) {
+    SetFiled(index);
     if (year < 1900 || year > 9999) return false;
     if (month < 1 || month > 12) return false;
     if (day < 1 || day > 31) return false;
@@ -170,6 +173,11 @@ bool RowBuilder::SetDate(uint32_t index, uint32_t year, uint32_t month,
     return true;
 }
 
+void RowBuilder::SetFiled(uint32_t index) {
+    int8_t* ptr = buf_ + HEADER_LENGTH + (index >> 3);
+    *(reinterpret_cast<uint8_t*>(ptr)) |= 0 << (index & 0x07);
+}
+
 bool RowBuilder::AppendNULL() {
     if (!SetNULL(cnt_)) return false;
     cnt_++;
@@ -177,27 +185,40 @@ bool RowBuilder::AppendNULL() {
 }
 
 bool RowBuilder::SetNULL(uint32_t index) {
-    int8_t* ptr = buf_ + HEADER_LENGTH + (index >> 3);
-    *(reinterpret_cast<uint8_t*>(ptr)) |= 1 << (index & 0x07);
     const ::rtidb::common::ColumnDesc& column = schema_.Get(index);
     if (column.data_type() == ::rtidb::type::kVarchar ||
         column.data_type() == rtidb::type::kString) {
-        ptr = buf_ + str_field_start_offset_ +
-              str_addr_length_ * offset_vec_[index];
-        if (str_addr_length_ == 1) {
-            *(reinterpret_cast<uint8_t*>(ptr)) = (uint8_t)str_offset_;
-        } else if (str_addr_length_ == 2) {
-            *(reinterpret_cast<uint16_t*>(ptr)) = (uint16_t)str_offset_;
-        } else if (str_addr_length_ == 3) {
-            *(reinterpret_cast<uint8_t*>(ptr)) = str_offset_ >> 16;
-            *(reinterpret_cast<uint8_t*>(ptr + 1)) =
-                (str_offset_ & 0xFF00) >> 8;
-            *(reinterpret_cast<uint8_t*>(ptr + 2)) = str_offset_ & 0x00FF;
-        } else {
-            *(reinterpret_cast<uint32_t*>(ptr)) = str_offset_;
+        uint32_t str_pos = offset_vec_[index];
+        if (str_set_pos_ + 1 != (int32_t)str_pos) {
+            if (str_set_pos_ >= (int32_t)str_pos) {
+                return false;
+            } else {
+                for (uint32_t pos = (uint32_t)(str_set_pos_ + 1); pos < str_pos; pos++) {
+                    SetStrOffset(pos);
+                }
+            }
         }
+        SetStrOffset(str_pos);
+        str_set_pos_ = str_pos;
     }
     return true;
+}
+
+void RowBuilder::SetStrOffset(uint32_t str_pos) {
+    int8_t* ptr = buf_ + str_field_start_offset_ +
+          str_addr_length_ * str_pos;
+    if (str_addr_length_ == 1) {
+        *(reinterpret_cast<uint8_t*>(ptr)) = (uint8_t)str_offset_;
+    } else if (str_addr_length_ == 2) {
+        *(reinterpret_cast<uint16_t*>(ptr)) = (uint16_t)str_offset_;
+    } else if (str_addr_length_ == 3) {
+        *(reinterpret_cast<uint8_t*>(ptr)) = str_offset_ >> 16;
+        *(reinterpret_cast<uint8_t*>(ptr + 1)) =
+            (str_offset_ & 0xFF00) >> 8;
+        *(reinterpret_cast<uint8_t*>(ptr + 2)) = str_offset_ & 0x00FF;
+    } else {
+        *(reinterpret_cast<uint32_t*>(ptr)) = str_offset_;
+    }
 }
 
 bool RowBuilder::AppendBool(bool val) {
@@ -208,6 +229,7 @@ bool RowBuilder::AppendBool(bool val) {
 
 bool RowBuilder::SetBool(uint32_t index, bool val) {
     if (!Check(index, ::rtidb::type::kBool)) return false;
+    SetFiled(index);
     int8_t* ptr = buf_ + offset_vec_[index];
     *(reinterpret_cast<uint8_t*>(ptr)) = val ? 1 : 0;
     return true;
@@ -221,6 +243,7 @@ bool RowBuilder::AppendInt32(int32_t val) {
 
 bool RowBuilder::SetInt32(uint32_t index, int32_t val) {
     if (!Check(index, ::rtidb::type::kInt)) return false;
+    SetFiled(index);
     int8_t* ptr = buf_ + offset_vec_[index];
     *(reinterpret_cast<int32_t*>(ptr)) = val;
     return true;
@@ -234,6 +257,7 @@ bool RowBuilder::AppendInt16(int16_t val) {
 
 bool RowBuilder::SetInt16(uint32_t index, int16_t val) {
     if (!Check(index, ::rtidb::type::kSmallInt)) return false;
+    SetFiled(index);
     int8_t* ptr = buf_ + offset_vec_[index];
     *(reinterpret_cast<int16_t*>(ptr)) = val;
     return true;
@@ -247,6 +271,7 @@ bool RowBuilder::AppendTimestamp(int64_t val) {
 
 bool RowBuilder::SetTimestamp(uint32_t index, int64_t val) {
     if (!Check(index, ::rtidb::type::kTimestamp)) return false;
+    SetFiled(index);
     int8_t* ptr = buf_ + offset_vec_[index];
     *(reinterpret_cast<int64_t*>(ptr)) = val;
     return true;
@@ -260,6 +285,7 @@ bool RowBuilder::AppendInt64(int64_t val) {
 
 bool RowBuilder::SetInt64(uint32_t index, int64_t val) {
     if (!Check(index, ::rtidb::type::kBigInt)) return false;
+    SetFiled(index);
     int8_t* ptr = buf_ + offset_vec_[index];
     *(reinterpret_cast<int64_t*>(ptr)) = val;
     return true;
@@ -273,6 +299,7 @@ bool RowBuilder::AppendBlob(int64_t val) {
 
 bool RowBuilder::SetBlob(uint32_t index, int64_t val) {
     if (!Check(index, ::rtidb::type::kBlob)) return false;
+    SetFiled(index);
     int8_t* ptr = buf_ + offset_vec_[index];
     *(reinterpret_cast<int64_t*>(ptr)) = val;
     return true;
@@ -286,6 +313,7 @@ bool RowBuilder::AppendFloat(float val) {
 
 bool RowBuilder::SetFloat(uint32_t index, float val) {
     if (!Check(index, ::rtidb::type::kFloat)) return false;
+    SetFiled(index);
     int8_t* ptr = buf_ + offset_vec_[index];
     *(reinterpret_cast<float*>(ptr)) = val;
     return true;
@@ -299,6 +327,7 @@ bool RowBuilder::AppendDouble(double val) {
 
 bool RowBuilder::SetDouble(uint32_t index, double val) {
     if (!Check(index, ::rtidb::type::kDouble)) return false;
+    SetFiled(index);
     int8_t* ptr = buf_ + offset_vec_[index];
     *(reinterpret_cast<double*>(ptr)) = val;
     return true;
@@ -312,22 +341,23 @@ bool RowBuilder::AppendString(const char* val, uint32_t length) {
 
 bool RowBuilder::SetString(uint32_t index, const char* val, uint32_t length) {
     if (val == NULL || (!Check(index, ::rtidb::type::kVarchar) &&
-                        !Check(index, rtidb::type::kString)))
+                        !Check(index, rtidb::type::kString))) {
         return false;
-    if (str_offset_ + length > size_) return false;
-    int8_t* ptr =
-        buf_ + str_field_start_offset_ + str_addr_length_ * offset_vec_[index];
-    if (str_addr_length_ == 1) {
-        *(reinterpret_cast<uint8_t*>(ptr)) = (uint8_t)str_offset_;
-    } else if (str_addr_length_ == 2) {
-        *(reinterpret_cast<uint16_t*>(ptr)) = (uint16_t)str_offset_;
-    } else if (str_addr_length_ == 3) {
-        *(reinterpret_cast<uint8_t*>(ptr)) = str_offset_ >> 16;
-        *(reinterpret_cast<uint8_t*>(ptr + 1)) = (str_offset_ & 0xFF00) >> 8;
-        *(reinterpret_cast<uint8_t*>(ptr + 2)) = str_offset_ & 0x00FF;
-    } else {
-        *(reinterpret_cast<uint32_t*>(ptr)) = str_offset_;
     }
+    SetFiled(index);
+    if (str_offset_ + length > size_) return false;
+    uint32_t str_pos = offset_vec_[index];
+    if (str_set_pos_ + 1 != (int32_t)str_pos) {
+        if (str_set_pos_ >= (int32_t)str_pos) {
+            return false;
+        } else {
+            for (uint32_t pos = (uint32_t)(str_set_pos_ + 1); pos < str_pos; pos++) {
+                SetStrOffset(pos);
+            }
+        }
+    }
+    SetStrOffset(str_pos);
+    str_set_pos_ = str_pos;
     if (length != 0) {
         memcpy(reinterpret_cast<char*>(buf_ + str_offset_), val, length);
     }
