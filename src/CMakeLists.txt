@@ -32,10 +32,10 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     target_link_libraries(mem_table_iterator_test gtest ${BIN_LIBS})
 
     add_executable(tablet_catalog_test catalog/tablet_catalog_test.cc)
-    target_link_libraries(tablet_catalog_test gtest gflags ${BIN_LIBS} ${FESQL_CASE_LIBS})
+    target_link_libraries(tablet_catalog_test gtest ${BIN_LIBS})
 
     add_executable(tablet_engine_test catalog/tablet_engine_test.cc)
-    target_link_libraries(tablet_engine_test gtest gflags ${BIN_LIBS} ${FESQL_CASE_LIBS})
+    target_link_libraries(tablet_engine_test gtest ${BIN_LIBS} ${FESQL_CASE_LIBS})
 
     add_executable(sdk_catalog_test catalog/sdk_catalog_test.cc flags.cc)
     target_link_libraries(sdk_catalog_test gtest ${BIN_LIBS})
