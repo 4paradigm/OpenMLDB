@@ -143,7 +143,7 @@ bool MemoryWindowDecodeIRBuilder::BuildGetCol(const std::string& name,
         case ::fesql::node::kDate: {
             return BuildGetPrimaryCol("fesql_storage_get_col", window_ptr,
                                       row_idx, col_info.idx, col_info.offset,
-                                      data_type, output);
+                                      &data_type, output);
         }
         case ::fesql::node::kVarchar: {
             codec::StringColInfo str_col_info;
@@ -158,7 +158,7 @@ bool MemoryWindowDecodeIRBuilder::BuildGetCol(const std::string& name,
             return BuildGetStringCol(
                 row_idx, str_col_info.idx, str_col_info.offset,
                 str_col_info.str_next_offset, str_col_info.str_start_offset,
-                data_type, window_ptr, output);
+                &data_type, window_ptr, output);
         }
         default: {
             LOG(WARNING) << "Fail get col, invalid data type "
@@ -170,7 +170,7 @@ bool MemoryWindowDecodeIRBuilder::BuildGetCol(const std::string& name,
 
 bool MemoryWindowDecodeIRBuilder::BuildGetPrimaryCol(
     const std::string& fn_name, ::llvm::Value* row_ptr, uint32_t row_idx,
-    uint32_t col_idx, uint32_t offset, const fesql::node::TypeNode& type,
+    uint32_t col_idx, uint32_t offset, fesql::node::TypeNode* type,
     ::llvm::Value** output) {
     if (row_ptr == NULL || output == NULL) {
         LOG(WARNING) << "input args have null ptr";
@@ -210,9 +210,9 @@ bool MemoryWindowDecodeIRBuilder::BuildGetPrimaryCol(
     ::llvm::Value* val_col_idx = builder.getInt32(col_idx);
     ::llvm::Value* val_offset = builder.getInt32(offset);
     ::fesql::type::Type schema_type;
-    if (!DataType2SchemaType(type, &schema_type)) {
+    if (!DataType2SchemaType(*type, &schema_type)) {
         LOG(WARNING) << "fail to convert data type to schema type: "
-                     << type.GetName();
+                     << type->GetName();
         return false;
     }
 
@@ -229,7 +229,7 @@ bool MemoryWindowDecodeIRBuilder::BuildGetPrimaryCol(
 bool MemoryWindowDecodeIRBuilder::BuildGetStringCol(
     uint32_t row_idx, uint32_t col_idx, uint32_t offset,
     uint32_t next_str_field_offset, uint32_t str_start_offset,
-    const fesql::node::TypeNode& type, ::llvm::Value* window_ptr,
+    fesql::node::TypeNode* type, ::llvm::Value* window_ptr,
     ::llvm::Value** output) {
     if (window_ptr == NULL || output == NULL) {
         LOG(WARNING) << "input args have null ptr";
@@ -276,9 +276,9 @@ bool MemoryWindowDecodeIRBuilder::BuildGetStringCol(
     ::llvm::Value* str_offset = builder.getInt32(offset);
     ::llvm::Value* next_str_offset = builder.getInt32(next_str_field_offset);
     ::fesql::type::Type schema_type;
-    if (!DataType2SchemaType(type, &schema_type)) {
+    if (!DataType2SchemaType(*type, &schema_type)) {
         LOG(WARNING) << "fail to convert data type to schema type: "
-                     << type.GetName();
+                     << type->GetName();
         return false;
     }
     ::llvm::Value* val_type_id =

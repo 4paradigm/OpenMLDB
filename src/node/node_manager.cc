@@ -351,7 +351,7 @@ ExprNode *NodeManager::MakeCastNode(const node::DataType cast_type,
 }
 
 ExprNode *NodeManager::MakeTimeFuncNode(const TimeUnit time_unit,
-                                        const ExprListNode *list_ptr) {
+                                        ExprListNode *list_ptr) {
     std::string fn_name = "";
     switch (time_unit) {
         case kTimeUnitWeek:
@@ -371,22 +371,21 @@ ExprNode *NodeManager::MakeTimeFuncNode(const TimeUnit time_unit,
         return nullptr;
     }
     FnDefNode *def_node =
-        dynamic_cast<FnDefNode *>(MakeExternalFnDefNode(fn_name));
+        dynamic_cast<FnDefNode *>(MakeUnresolvedFnDefNode(fn_name));
     CallExprNode *node_ptr = new CallExprNode(def_node, list_ptr, NULL);
     return RegisterNode(node_ptr);
 }
 ExprNode *NodeManager::MakeFuncNode(const std::string &name,
-                                    const ExprListNode *list_ptr,
+                                    ExprListNode *list_ptr,
                                     const SQLNode *over) {
     FnDefNode *def_node =
-        dynamic_cast<FnDefNode *>(MakeExternalFnDefNode(name));
+        dynamic_cast<FnDefNode *>(MakeUnresolvedFnDefNode(name));
     CallExprNode *node_ptr = new CallExprNode(
         def_node, list_ptr, dynamic_cast<const WindowDefNode *>(over));
     return RegisterNode(node_ptr);
 }
 
-ExprNode *NodeManager::MakeFuncNode(const FnDefNode *fn,
-                                    const ExprListNode *list_ptr,
+ExprNode *NodeManager::MakeFuncNode(const FnDefNode *fn, ExprListNode *list_ptr,
                                     const SQLNode *over) {
     CallExprNode *node_ptr = new CallExprNode(
         fn, list_ptr, dynamic_cast<const WindowDefNode *>(over));
@@ -838,21 +837,21 @@ TypeNode *NodeManager::MakeTypeNode(fesql::node::DataType base) {
     return node_ptr;
 }
 TypeNode *NodeManager::MakeTypeNode(fesql::node::DataType base,
-                                    const fesql::node::TypeNode &v1) {
+                                    fesql::node::TypeNode *v1) {
     TypeNode *node_ptr = new TypeNode(base, v1);
     RegisterNode(node_ptr);
     return node_ptr;
 }
 TypeNode *NodeManager::MakeTypeNode(fesql::node::DataType base,
                                     fesql::node::DataType v1) {
-    TypeNode *node_ptr = new TypeNode(base, TypeNode(v1));
+    TypeNode *node_ptr = new TypeNode(base, MakeTypeNode(v1));
     RegisterNode(node_ptr);
     return node_ptr;
 }
 TypeNode *NodeManager::MakeTypeNode(fesql::node::DataType base,
                                     fesql::node::DataType v1,
                                     fesql::node::DataType v2) {
-    TypeNode *node_ptr = new TypeNode(base, TypeNode(v1), TypeNode(v2));
+    TypeNode *node_ptr = new TypeNode(base, MakeTypeNode(v1), MakeTypeNode(v2));
     RegisterNode(node_ptr);
     return node_ptr;
 }
@@ -1135,12 +1134,28 @@ node::ExprListNode *NodeManager::BuildExprListFromSchemaSource(
 }
 
 node::SQLNode *NodeManager::MakeExternalFnDefNode(
+    const std::string &function_name, void *function_ptr,
+    node::TypeNode *ret_type,
+    const std::vector<const node::TypeNode *> &arg_types, int variadic_pos,
+    bool return_by_arg) {
+    return RegisterNode(
+        new node::ExternalFnDefNode(function_name, function_ptr, ret_type,
+                                    arg_types, variadic_pos, return_by_arg));
+}
+
+node::SQLNode *NodeManager::MakeUnresolvedFnDefNode(
     const std::string &function_name) {
-    return RegisterNode(new node::ExternalFnDefNode(function_name));
+    return RegisterNode(new node::ExternalFnDefNode(function_name, nullptr,
+                                                    nullptr, {}, -1, false));
 }
 
 node::SQLNode *NodeManager::MakeUDFDefNode(const FnNodeFnDef *def) {
     return RegisterNode(new node::UDFDefNode(def));
+}
+
+node::SQLNode *NodeManager::MakeUDFByCodeGenDefNode(
+    const std::vector<node::TypeNode *> &arg_types, node::TypeNode *ret_type) {
+    return RegisterNode(new node::UDFByCodeGenDefNode(arg_types, ret_type));
 }
 
 node::SQLNode *NodeManager::MakeUDAFDefNode(const ExprNode *init,

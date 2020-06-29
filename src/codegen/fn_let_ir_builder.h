@@ -24,6 +24,7 @@
 #include "codegen/expr_ir_builder.h"
 #include "codegen/variable_ir_builder.h"
 #include "llvm/IR/IRBuilder.h"
+#include "node/node_manager.h"
 #include "node/plan_node.h"
 #include "proto/fe_type.pb.h"
 #include "vm/catalog.h"
@@ -35,8 +36,7 @@ using fesql::vm::RowSchemaInfo;
 class RowFnLetIRBuilder {
  public:
     RowFnLetIRBuilder(const vm::SchemaSourceList& schema_sources,
-                      const node::FrameNode* frame,
-                      ::llvm::Module* module);
+                      const node::FrameNode* frame, ::llvm::Module* module);
 
     ~RowFnLetIRBuilder();
 
@@ -54,8 +54,7 @@ class RowFnLetIRBuilder {
                   ScopeVar& sv);  // NOLINT
 
     bool EncodeBuf(
-        const std::map<uint32_t, NativeValue>* values,
-        const vm::Schema& schema,
+        const std::map<uint32_t, NativeValue>* values, const vm::Schema& schema,
         VariableIRBuilder& variable_ir_builder,  // NOLINT (runtime/references)
         ::llvm::BasicBlock* block, const std::string& output_ptr_name);
 
@@ -63,16 +62,14 @@ class RowFnLetIRBuilder {
         const uint32_t index, const node::ExprNode* expr,
         const std::string& col_name, std::map<uint32_t, NativeValue>* output,
         ExprIRBuilder& expr_ir_builder,  // NOLINT (runtime/references)
-        vm::Schema* output_schema,
-        vm::ColumnSourceList* output_column_sources,
+        vm::Schema* output_schema, vm::ColumnSourceList* output_column_sources,
         base::Status& status);  // NOLINT (runtime/references)
 
-    bool AddOutputColumnInfo(
-      const std::string& col_name,
-      ::fesql::type::Type ctype,
-      const node::ExprNode* expr,
-      vm::Schema* output_schema,
-      vm::ColumnSourceList* output_column_sources);
+    bool AddOutputColumnInfo(const std::string& col_name,
+                             ::fesql::type::Type ctype,
+                             const node::ExprNode* expr,
+                             vm::Schema* output_schema,
+                             vm::ColumnSourceList* output_column_sources);
 
  private:
     // input schema

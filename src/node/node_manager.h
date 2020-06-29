@@ -106,14 +106,13 @@ class NodeManager {
                                    const std::string alias);
     TableRefNode *MakeQueryRefNode(const QueryNode *sub_query,
                                    const std::string &alias);
-
     ExprNode *MakeCastNode(const node::DataType cast_type,
                            const ExprNode *expr);
     ExprNode *MakeTimeFuncNode(const TimeUnit time_unit,
-                               const ExprListNode *args);
-    ExprNode *MakeFuncNode(const std::string &name, const ExprListNode *args,
+                               ExprListNode *args);
+    ExprNode *MakeFuncNode(const std::string &name, ExprListNode *args,
                            const SQLNode *over);
-    ExprNode *MakeFuncNode(const FnDefNode *fn, const ExprListNode *args,
+    ExprNode *MakeFuncNode(const FnDefNode *fn, ExprListNode *args,
                            const SQLNode *over);
 
     ExprNode *MakeQueryExprNode(const QueryNode *query);
@@ -165,7 +164,7 @@ class NodeManager {
 
     TypeNode *MakeTypeNode(fesql::node::DataType base);
     TypeNode *MakeTypeNode(fesql::node::DataType base,
-                           const fesql::node::TypeNode &v1);
+                           fesql::node::TypeNode *v1);
     TypeNode *MakeTypeNode(fesql::node::DataType base,
                            fesql::node::DataType v1);
     TypeNode *MakeTypeNode(fesql::node::DataType base, fesql::node::DataType v1,
@@ -300,9 +299,19 @@ class NodeManager {
 
     node::FrameNode *MergeFrameNodeWithCurrentHistoryFrame(FrameNode *frame1);
 
-    SQLNode *MakeExternalFnDefNode(const std::string &function_name);
+    SQLNode *MakeExternalFnDefNode(
+        const std::string &function_name, void *function_ptr,
+        node::TypeNode *ret_type,
+        const std::vector<const node::TypeNode *> &arg_types, int variadic_pos,
+        bool return_by_arg);
+
+    SQLNode *MakeUnresolvedFnDefNode(const std::string &function_name);
 
     SQLNode *MakeUDFDefNode(const FnNodeFnDef *def);
+
+    SQLNode *MakeUDFByCodeGenDefNode(
+        const std::vector<node::TypeNode *> &arg_types,
+        node::TypeNode *ret_type);
 
     SQLNode *MakeUDAFDefNode(const ExprNode *init, const FnDefNode *update_func,
                              const FnDefNode *merge_func,

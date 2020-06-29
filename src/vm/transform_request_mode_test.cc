@@ -31,6 +31,7 @@
 #include "node/node_manager.h"
 #include "parser/parser.h"
 #include "plan/planner.h"
+#include "udf/default_udf_library.h"
 #include "udf/udf.h"
 #include "vm/test_base.h"
 #include "vm/transform.h"
@@ -100,8 +101,10 @@ void PhysicalPlanCheck(const std::shared_ptr<tablet::TabletCatalog>& catalog,
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
     ::fesql::udf::RegisterUDFToModule(m.get());
-    ASSERT_TRUE(vm::RegisterFeLibs(m.get(), base_status));
-    RequestModeransformer transform(&manager, "db", catalog, m.get());
+    ::fesql::udf::DefaultUDFLibrary lib;
+    ASSERT_TRUE(vm::RegisterFeLibs(&lib, base_status));
+    RequestModeransformer transform(&manager, "db", catalog, m.get(), &lib);
+
     transform.AddDefaultPasses();
     PhysicalOpNode* physical_plan = nullptr;
     ASSERT_TRUE(transform.TransformPhysicalPlan(plan_trees, &physical_plan,
@@ -246,8 +249,10 @@ TEST_P(TransformRequestModeTest, transform_physical_plan) {
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
     ::fesql::udf::RegisterUDFToModule(m.get());
-    ASSERT_TRUE(fesql::vm::RegisterFeLibs(m.get(), base_status));
-    RequestModeransformer transform(&manager, "db", catalog, m.get());
+    ::fesql::udf::DefaultUDFLibrary lib;
+    ASSERT_TRUE(fesql::vm::RegisterFeLibs(&lib, base_status));
+    RequestModeransformer transform(&manager, "db", catalog, m.get(), &lib);
+
     PhysicalOpNode* physical_plan = nullptr;
     ASSERT_TRUE(transform.TransformPhysicalPlan(plan_trees, &physical_plan,
                                                 base_status));

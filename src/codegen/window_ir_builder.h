@@ -46,8 +46,7 @@ class WindowDecodeIRBuilder {
                              ::llvm::Value** output) = 0;
     virtual bool BuildGetCol(const std::string& name, ::llvm::Value* window_ptr,
                              uint32_t row_idx, ::llvm::Value** output) = 0;
-    virtual bool ResolveFieldInfo(const std::string& name,
-                                  uint32_t row_idx,
+    virtual bool ResolveFieldInfo(const std::string& name, uint32_t row_idx,
                                   codec::ColInfo* info,
                                   node::TypeNode* type_ptr) = 0;
 };
@@ -64,7 +63,7 @@ class MemoryWindowDecodeIRBuilder : public WindowDecodeIRBuilder {
     virtual bool BuildInnerRangeList(::llvm::Value* window_ptr, int64_t start,
                                      int64_t end, ::llvm::Value** output);
     virtual bool BuildInnerRowsList(::llvm::Value* window_ptr, int64_t start,
-                                     int64_t end, ::llvm::Value** output);
+                                    int64_t end, ::llvm::Value** output);
     virtual bool BuildGetCol(const std::string& name, ::llvm::Value* window_ptr,
                              ::llvm::Value** output);
     virtual bool BuildGetCol(const std::string& name, ::llvm::Value* window_ptr,
@@ -76,13 +75,13 @@ class MemoryWindowDecodeIRBuilder : public WindowDecodeIRBuilder {
  private:
     bool BuildGetPrimaryCol(const std::string& fn_name, ::llvm::Value* row_ptr,
                             uint32_t row_idx, uint32_t col_idx, uint32_t offset,
-                            const fesql::node::TypeNode& type,
+                            fesql::node::TypeNode* type,
                             ::llvm::Value** output);
 
     bool BuildGetStringCol(uint32_t row_idx, uint32_t col_idx, uint32_t offset,
                            uint32_t next_str_field_offset,
                            uint32_t str_start_offset,
-                           const fesql::node::TypeNode& type,
+                           fesql::node::TypeNode* type,
                            ::llvm::Value* window_ptr, ::llvm::Value** output);
 
  private:

@@ -21,7 +21,10 @@
 #include "node/node_manager.h"
 #include "node/plan_node.h"
 #include "node/sql_node.h"
+#include "udf/udf_library.h"
 #include "vm/physical_op.h"
+#include "vm/schemas_context.h"
+
 namespace fesql {
 namespace vm {
 class LogicalOp {
@@ -253,7 +256,7 @@ class BatchModeTransformer {
  public:
     BatchModeTransformer(node::NodeManager* node_manager, const std::string& db,
                          const std::shared_ptr<Catalog>& catalog,
-                         ::llvm::Module* module);
+                         ::llvm::Module* module, udf::UDFLibrary* library);
     virtual ~BatchModeTransformer();
     bool AddDefaultPasses();
     bool TransformPhysicalPlan(const ::fesql::node::PlanNodeList& trees,
@@ -368,6 +371,7 @@ class BatchModeTransformer {
     uint32_t id_;
     std::vector<PhysicalPlanPassType> passes;
     LogicalOpMap op_map_;
+    udf::UDFLibrary* library_;
     bool IsSimpleProject(const ColumnSourceList& source);
     bool BuildExprListFromSchemaSource(const ColumnSourceList column_sources,
                                        const SchemaSourceList& schema_souces,
@@ -381,7 +385,7 @@ class RequestModeransformer : public BatchModeTransformer {
     RequestModeransformer(node::NodeManager* node_manager,
                           const std::string& db,
                           const std::shared_ptr<Catalog>& catalog,
-                          ::llvm::Module* module);
+                          ::llvm::Module* module, udf::UDFLibrary* library);
     virtual ~RequestModeransformer();
 
     const Schema& request_schema() const { return request_schema_; }
@@ -406,6 +410,159 @@ class RequestModeransformer : public BatchModeTransformer {
     vm::Schema request_schema_;
     std::string request_name_;
 };
+
+inline bool SchemaType2DataType(const ::fesql::type::Type type,
+                                ::fesql::node::DataType* output) {
+    switch (type) {
+        case ::fesql::type::kInt16: {
+            *output = ::fesql::node::kInt16;
+            break;
+        }
+        case ::fesql::type::kInt32: {
+            *output = ::fesql::node::kInt32;
+            break;
+        }
+        case ::fesql::type::kInt64: {
+            *output = ::fesql::node::kInt64;
+            break;
+        }
+        case ::fesql::type::kFloat: {
+            *output = ::fesql::node::kFloat;
+            break;
+        }
+        case ::fesql::type::kDouble: {
+            *output = ::fesql::node::kDouble;
+            break;
+        }
+        case ::fesql::type::kVarchar: {
+            *output = ::fesql::node::kVarchar;
+            break;
+        }
+        case ::fesql::type::kTimestamp: {
+            *output = ::fesql::node::kTimestamp;
+            break;
+        }
+        case ::fesql::type::kDate: {
+            *output = ::fesql::node::kDate;
+            break;
+        }
+        default: {
+            LOG(WARNING) << "unrecognized schema type "
+                         << ::fesql::type::Type_Name(type);
+            return false;
+        }
+    }
+    return true;
+}
+
+class FnDefResolver {
+ public:
+    FnDefResolver(udf::UDFLibrary* library, node::NodeManager* nm)
+        : library_(library), nm_(nm) {}
+
+    bool Visit(node::ExprNode* expr, node::ExprNode** output) {
+        for (size_t i = 0; i < expr->GetChildNum(); ++i) {
+            node::ExprNode* new_child = nullptr;
+            bool updated = Visit(expr->GetChild(i), &new_child);
+            if (updated && new_child != nullptr) {
+                expr->SetChild(i, new_child);
+            }
+        }
+        *output = expr;  // default
+        switch (expr->GetExprType()) {
+            case node::kExprCall: {
+                auto call = dynamic_cast<node::CallExprNode*>(expr);
+                auto fn = call->GetFnDef();
+                if (fn->GetType() != node::kExternalFnDef) {
+                    return false;
+                }
+                auto external_fn =
+                    dynamic_cast<const node::ExternalFnDefNode*>(fn);
+                if (external_fn->IsResolved()) {
+                    return false;
+                }
+                node::ExprNode* result = nullptr;
+                auto status = library_->Transform(
+                    external_fn->function_name(), call->GetArgs(),
+                    call->GetOver(), nm_, &result);
+                if (status.isOK() && result != nullptr) {
+                    *output = result;
+                    return true;
+                } else {
+                    LOG(WARNING)
+                        << "Resolve function '" << external_fn->function_name()
+                        << "' failed: " << status.msg;
+                    return false;  // fallback to legacy fn gen
+                }
+            }
+            default:
+                return false;
+        }
+    }
+
+ private:
+    udf::UDFLibrary* library_;
+    node::NodeManager* nm_;
+};
+
+class ExpressionTypeAnalyzer {
+ public:
+    ExpressionTypeAnalyzer(bool is_in_window,
+                           const vm::SchemasContext* schemas_context,
+                           node::NodeManager* nm)
+        : is_in_window_(is_in_window),
+          schemas_context_(schemas_context),
+          nm_(nm) {}
+
+    bool Visit(node::ExprNode* expr) {
+        for (size_t i = 0; i < expr->GetChildNum(); ++i) {
+            if (!Visit(expr->GetChild(i))) return false;
+        }
+        switch (expr->GetExprType()) {
+            case node::kExprColumnRef:
+                return VisitColumnRef(dynamic_cast<node::ColumnRefNode*>(expr));
+            default:
+                return true;
+        }
+    }
+
+ protected:
+    bool VisitColumnRef(node::ColumnRefNode* column) {
+        const vm::RowSchemaInfo* schema_info = nullptr;
+        if (!schemas_context_->ColumnRefResolved(column->GetRelationName(),
+                                                 column->GetColumnName(),
+                                                 &schema_info)) {
+            LOG(WARNING) << "Fail to resolve column "
+                         << column->GetRelationName() << "."
+                         << column->GetColumnName();
+            return false;
+        }
+        codec::RowDecoder decoder(*schema_info->schema_);
+        codec::ColInfo col_info;
+        if (!decoder.ResolveColumn(column->GetColumnName(), &col_info)) {
+            LOG(WARNING) << "Fail to resolve column "
+                         << column->GetRelationName() << "."
+                         << column->GetColumnName();
+            return false;
+        }
+        node::DataType dtype;
+        if (!SchemaType2DataType(col_info.type, &dtype)) {
+            return false;
+        }
+        if (is_in_window_) {
+            column->SetOutputType(nm_->MakeTypeNode(node::kList, dtype));
+        } else {
+            column->SetOutputType(nm_->MakeTypeNode(dtype));
+        }
+        return true;
+    }
+
+ private:
+    bool is_in_window_;
+    const vm::SchemasContext* schemas_context_;
+    node::NodeManager* nm_;
+};
+
 bool TransformLogicalTreeToLogicalGraph(const ::fesql::node::PlanNode* node,
                                         LogicalGraph* graph,
                                         fesql::base::Status& status);  // NOLINT

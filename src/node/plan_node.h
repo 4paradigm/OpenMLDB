@@ -232,6 +232,9 @@ class ProjectNode : public LeafPlanNode {
     const uint32_t GetPos() const { return pos_; }
     std::string GetName() const { return name_; }
     node::ExprNode *GetExpression() const { return expression_; }
+    void SetExpression(node::ExprNode* expr) {
+        expression_ = expr;
+    }
     node::FrameNode *frame() const { return frame_; }
     void set_frame(node::FrameNode *frame) { frame_ = frame; }
     virtual bool Equals(const PlanNode *node) const;

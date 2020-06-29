@@ -41,10 +41,6 @@ int32_t current_time() {
     return 5;
 }
 
-template <class V>
-inline V inc(V i) {
-    return i + 1;
-}
 int32_t dayofmonth(int64_t ts) {
     time_t time = (ts + TZ_OFFSET) / 1000;
     struct tm t;
@@ -106,7 +102,7 @@ V sum_list(int8_t *input) {
     if (nullptr == input) {
         return result;
     }
-    ::fesql::codec::ListRef *list_ref = (::fesql::codec::ListRef *)(input);
+    ::fesql::codec::ListRef<> *list_ref = (::fesql::codec::ListRef<> *)(input);
     ::fesql::codec::ListV<V> *col =
         (::fesql::codec::ListV<V> *)(list_ref->list);
     auto iter = col->GetIterator();
@@ -133,7 +129,7 @@ double avg_list(int8_t *input) {
     if (nullptr == input) {
         return true;
     }
-    ::fesql::codec::ListRef *list_ref = (::fesql::codec::ListRef *)(input);
+    ::fesql::codec::ListRef<> *list_ref = (::fesql::codec::ListRef<> *)(input);
     ListV<V> *col = (ListV<V> *)(list_ref->list);
     auto iter = col->GetIterator();
     int32_t cnt = 0;
@@ -152,7 +148,7 @@ bool avg_struct_list(int8_t *input, V *v) {
         return false;
     }
     V result = V();
-    ::fesql::codec::ListRef *list_ref = (::fesql::codec::ListRef *)(input);
+    ::fesql::codec::ListRef<> *list_ref = (::fesql::codec::ListRef<> *)(input);
     ::fesql::codec::ListV<V> *col =
         (::fesql::codec::ListV<V> *)(list_ref->list);
     auto iter = col->GetIterator();
@@ -175,13 +171,13 @@ int64_t count_list(int8_t *input) {
         return 0L;
     }
 
-    ::fesql::codec::ListRef *list_ref = (::fesql::codec::ListRef *)(input);
+    ::fesql::codec::ListRef<> *list_ref = (::fesql::codec::ListRef<> *)(input);
     ListV<V> *col = (ListV<V> *)(list_ref->list);
     return int64_t(col->GetCount());
 }
 
 template <typename V>
-int64_t distinct_count(::fesql::codec::ListRef *list_ref) {
+int64_t distinct_count(::fesql::codec::ListRef<> *list_ref) {
     if (nullptr == list_ref) {
         return 0L;
     }
@@ -207,7 +203,7 @@ V max_list(int8_t *input) {
     if (nullptr == input) {
         return result;
     }
-    ::fesql::codec::ListRef *list_ref = (::fesql::codec::ListRef *)(input);
+    ::fesql::codec::ListRef<> *list_ref = (::fesql::codec::ListRef<> *)(input);
     ListV<V> *col = (ListV<V> *)(list_ref->list);
     auto iter = col->GetIterator();
     iter->SeekToFirst();
@@ -239,7 +235,7 @@ V min_list(int8_t *input) {
     if (nullptr == input) {
         return result;
     }
-    ::fesql::codec::ListRef *list_ref = (::fesql::codec::ListRef *)(input);
+    ::fesql::codec::ListRef<> *list_ref = (::fesql::codec::ListRef<> *)(input);
     ListV<V> *col = (ListV<V> *)(list_ref->list);
     auto iter = col->GetIterator();
 
@@ -265,23 +261,13 @@ bool min_struct_list(int8_t *input, V *v) {
     *v = min_list<V>(input);
     return true;
 }
-template <class V>
-V at_list(int8_t *input, int32_t pos) {
-    ::fesql::codec::ListRef *list_ref = (::fesql::codec::ListRef *)(input);
-    ListV<V> *list = (ListV<V> *)(list_ref->list);
-    return list->At(pos);
-}
-template <class V>
-bool at_struct_list(int8_t *input, int32_t pos, V *v) {
-    *v = at_list<V>(input, pos);
-    return true;
-}
+
 template <class V>
 bool iterator_list(int8_t *input, int8_t *output) {
     if (nullptr == input || nullptr == output) {
         return false;
     }
-    ::fesql::codec::ListRef *list_ref = (::fesql::codec::ListRef *)(input);
+    ::fesql::codec::ListRef<> *list_ref = (::fesql::codec::ListRef<> *)(input);
     ::fesql::codec::IteratorRef *iterator_ref =
         (::fesql::codec::IteratorRef *)(output);
     ListV<V> *col = (ListV<V> *)(list_ref->list);
@@ -416,101 +402,27 @@ void RegisterNativeUDFToModule(::llvm::Module *module) {
     auto date_ty = nm.MakeTypeNode(node::kDate);
     auto string_ty = nm.MakeTypeNode(node::kVarchar);
 
-    auto list_i32_ty = nm.MakeTypeNode(node::kList, *i32_ty);
-    auto list_i64_ty = nm.MakeTypeNode(node::kList, *i64_ty);
-    auto list_i16_ty = nm.MakeTypeNode(node::kList, *i16_ty);
-    auto list_float_ty = nm.MakeTypeNode(node::kList, *float_ty);
-    auto list_double_ty = nm.MakeTypeNode(node::kList, *double_ty);
-    auto list_time_ty = nm.MakeTypeNode(node::kList, *time_ty);
-    auto list_date_ty = nm.MakeTypeNode(node::kList, *date_ty);
-    auto list_string_ty = nm.MakeTypeNode(node::kList, *string_ty);
+    auto list_i32_ty = nm.MakeTypeNode(node::kList, i32_ty);
+    auto list_i64_ty = nm.MakeTypeNode(node::kList, i64_ty);
+    auto list_i16_ty = nm.MakeTypeNode(node::kList, i16_ty);
+    auto list_float_ty = nm.MakeTypeNode(node::kList, float_ty);
+    auto list_double_ty = nm.MakeTypeNode(node::kList, double_ty);
+    auto list_time_ty = nm.MakeTypeNode(node::kList, time_ty);
+    auto list_date_ty = nm.MakeTypeNode(node::kList, date_ty);
+    auto list_string_ty = nm.MakeTypeNode(node::kList, string_ty);
 
-    auto iter_i32_ty = nm.MakeTypeNode(node::kIterator, *i32_ty);
-    auto iter_i64_ty = nm.MakeTypeNode(node::kIterator, *i64_ty);
-    auto iter_i16_ty = nm.MakeTypeNode(node::kIterator, *i16_ty);
-    auto iter_float_ty = nm.MakeTypeNode(node::kIterator, *float_ty);
-    auto iter_double_ty = nm.MakeTypeNode(node::kIterator, *double_ty);
-    auto iter_time_ty = nm.MakeTypeNode(node::kIterator, *time_ty);
-    auto iter_date_ty = nm.MakeTypeNode(node::kIterator, *date_ty);
-    auto iter_string_ty = nm.MakeTypeNode(node::kIterator, *string_ty);
+    auto iter_i32_ty = nm.MakeTypeNode(node::kIterator, i32_ty);
+    auto iter_i64_ty = nm.MakeTypeNode(node::kIterator, i64_ty);
+    auto iter_i16_ty = nm.MakeTypeNode(node::kIterator, i16_ty);
+    auto iter_float_ty = nm.MakeTypeNode(node::kIterator, float_ty);
+    auto iter_double_ty = nm.MakeTypeNode(node::kIterator, double_ty);
+    auto iter_time_ty = nm.MakeTypeNode(node::kIterator, time_ty);
+    auto iter_date_ty = nm.MakeTypeNode(node::kIterator, date_ty);
+    auto iter_string_ty = nm.MakeTypeNode(node::kIterator, string_ty);
 
     // inc(int32):int32
     RegisterMethod(module, "inc", i32_ty, {i32_ty},
                    reinterpret_cast<void *>(v1::inc<int32_t>));
-
-    // dayofmonth, year, month
-    RegisterMethod(
-        module, "year", i32_ty, {i64_ty},
-        reinterpret_cast<void *>(static_cast<int32_t (*)(int64_t)>(v1::year)));
-    RegisterMethod(
-        module, "month", i32_ty, {i64_ty},
-        reinterpret_cast<void *>(static_cast<int32_t (*)(int64_t)>(v1::month)));
-    RegisterMethod(module, "dayofmonth", i32_ty, {i64_ty},
-                   reinterpret_cast<void *>(
-                       static_cast<int32_t (*)(int64_t)>(v1::dayofmonth)));
-    RegisterMethod(module, "dayofweek", i32_ty, {i64_ty},
-                   reinterpret_cast<void *>(
-                       static_cast<int32_t (*)(int64_t)>(v1::dayofweek)));
-    RegisterMethod(module, "dayofweek", i32_ty, {i64_ty},
-                   reinterpret_cast<void *>(
-                       static_cast<int32_t (*)(int64_t)>(v1::dayofweek)));
-    RegisterMethod(module, "weekofyear", i32_ty, {i64_ty},
-                   reinterpret_cast<void *>(
-                       static_cast<int32_t (*)(int64_t)>(v1::weekofyear)));
-
-    RegisterMethod(module, "year", i32_ty, {time_ty},
-                   reinterpret_cast<void *>(
-                       static_cast<int32_t (*)(codec::Timestamp *)>(v1::year)));
-
-    RegisterMethod(
-        module, "month", i32_ty, {time_ty},
-        reinterpret_cast<void *>(
-            static_cast<int32_t (*)(codec::Timestamp *)>(v1::month)));
-    RegisterMethod(
-        module, "dayofmonth", i32_ty, {time_ty},
-        reinterpret_cast<void *>(
-            static_cast<int32_t (*)(codec::Timestamp *)>(v1::dayofmonth)));
-    RegisterMethod(
-        module, "dayofweek", i32_ty, {time_ty},
-        reinterpret_cast<void *>(
-            static_cast<int32_t (*)(codec::Timestamp *)>(v1::dayofweek)));
-    RegisterMethod(
-        module, "weekofyear", i32_ty, {time_ty},
-        reinterpret_cast<void *>(
-            static_cast<int32_t (*)(codec::Timestamp *)>(v1::weekofyear)));
-
-    RegisterMethod(module, "dayofweek", i32_ty, {date_ty},
-                   reinterpret_cast<void *>(
-                       static_cast<int32_t (*)(codec::Date *)>(v1::dayofweek)));
-
-    RegisterMethod(module, "dayofweek", i32_ty, {date_ty},
-                   reinterpret_cast<void *>(
-                       static_cast<int32_t (*)(codec::Date *)>(v1::dayofweek)));
-
-    RegisterMethod(
-        module, "weekofyear", i32_ty, {date_ty},
-        reinterpret_cast<void *>(
-            static_cast<int32_t (*)(codec::Date *)>(v1::weekofyear)));
-
-    RegisterMethod(module, "at", i16_ty, {list_i16_ty, i32_ty},
-                   reinterpret_cast<void *>(v1::at_list<int16_t>));
-    RegisterMethod(module, "at", i32_ty, {list_i32_ty, i32_ty},
-                   reinterpret_cast<void *>(v1::at_list<int32_t>));
-    RegisterMethod(module, "at", i64_ty, {list_i64_ty, i32_ty},
-                   reinterpret_cast<void *>(v1::at_list<int64_t>));
-    RegisterMethod(module, "at", float_ty, {list_float_ty, i32_ty},
-                   reinterpret_cast<void *>(v1::at_list<float>));
-    RegisterMethod(module, "at", double_ty, {list_double_ty, i32_ty},
-                   reinterpret_cast<void *>(v1::at_list<double>));
-
-    RegisterMethod(
-        module, "at", bool_ty, {list_time_ty, i32_ty, time_ty},
-        reinterpret_cast<void *>(v1::at_struct_list<codec::Timestamp>));
-    RegisterMethod(module, "at", bool_ty, {list_date_ty, i32_ty, date_ty},
-                   reinterpret_cast<void *>(v1::at_struct_list<codec::Date>));
-    RegisterMethod(
-        module, "at", bool_ty, {list_string_ty, i32_ty, string_ty},
-        reinterpret_cast<void *>(v1::at_struct_list<codec::StringRef>));
 
     RegisterMethod(module, "sum", i16_ty, {list_i16_ty},
                    reinterpret_cast<void *>(v1::sum_list<int16_t>));
@@ -692,11 +604,6 @@ void RegisterNativeUDFToModule(::llvm::Module *module) {
 bool RegisterUDFToModule(::llvm::Module *m) {
     base::Status status;
     RegisterNativeUDFToModule(m);
-    codegen::UDFIRBuilder udf_ir_builder(&NATIVE_UDF_PTRS);
-    if (!udf_ir_builder.BuildUDF(m, status)) {
-        LOG(WARNING) << status.msg;
-        return false;
-    }
     return true;
 }
 void InitCLibSymbol(::llvm::orc::JITDylib &jd,             // NOLINT

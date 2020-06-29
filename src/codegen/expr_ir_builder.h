@@ -31,13 +31,16 @@
 #include "codegen/variable_ir_builder.h"
 #include "codegen/window_ir_builder.h"
 #include "llvm/IR/IRBuilder.h"
+#include "node/node_manager.h"
 #include "node/sql_node.h"
 #include "vm/schemas_context.h"
 
 namespace fesql {
 namespace codegen {
 
+using fesql::base::Status;
 using fesql::vm::RowSchemaInfo;
+
 class ExprIRBuilder {
  public:
     ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var);
@@ -65,11 +68,24 @@ class ExprIRBuilder {
                         NativeValue* output,
                         ::fesql::base::Status& status);  // NOLINT
 
-    bool BuildCallFn(const ::fesql::node::CallExprNode* fn, NativeValue* output,
-                     ::fesql::base::Status& status);  // NOLINT
+    Status BuildCallFn(const ::fesql::node::CallExprNode* fn,
+                       NativeValue* output);
     bool BuildCallFnLegacy(const ::fesql::node::CallExprNode* fn,
                            NativeValue* output,
                            ::fesql::base::Status& status);  // NOLINT
+    Status BuildCallUDAF(const ::fesql::node::CallExprNode* fn,
+                         NativeValue* output);
+    Status BuildCallUDFByCodeGen(const ::fesql::node::CallExprNode* fn,
+                                 NativeValue* output);
+    Status ResolveLLVMFunction(const ::fesql::node::CallExprNode* fn,
+                               ::llvm::FunctionCallee* callsite,
+                               bool* return_by_arg);
+    Status ResolveLLVMUDFDef(const ::fesql::node::CallExprNode* fn,
+                             ::llvm::FunctionCallee* callsite,
+                             bool* return_by_arg);
+    Status ResolveLLVMExternalDef(const ::fesql::node::CallExprNode* fn,
+                                  ::llvm::FunctionCallee* callsite,
+                                  bool* return_by_arg);
 
     bool BuildCastExpr(const ::fesql::node::CastExprNode* node,
                          NativeValue* output,
@@ -102,6 +118,7 @@ class ExprIRBuilder {
     const vm::SchemasContext* schemas_context_;
     std::vector<std::unique_ptr<RowDecodeIRBuilder>> row_ir_builder_list_;
     std::unique_ptr<WindowDecodeIRBuilder> window_ir_builder_;
+
     bool IsUADF(std::string function_name);
     bool FindRowSchemaInfo(const std::string& relation_name,
                            const std::string& col_name,

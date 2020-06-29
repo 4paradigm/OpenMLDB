@@ -35,11 +35,11 @@ bool GetLLVMType(::llvm::BasicBlock* block, const ::fesql::node::TypeNode* type,
                  ::llvm::Type** output);
 bool GetLLVMType(::llvm::Module* m, const ::fesql::node::DataType& type,
                  ::llvm::Type** output);
-bool GetLLVMListType(::llvm::Module* m, const ::fesql::node::TypeNode& type,
+bool GetLLVMListType(::llvm::Module* m, ::fesql::node::TypeNode* type,
                      ::llvm::Type** output);
-bool GetLLVMIteratorType(::llvm::Module* m, const ::fesql::node::TypeNode& type,
+bool GetLLVMIteratorType(::llvm::Module* m, ::fesql::node::TypeNode* type,
                          ::llvm::Type** output);
-bool GetLLVMColumnSize(const ::fesql::node::TypeNode& v_type, uint32_t* size);
+bool GetLLVMColumnSize(::fesql::node::TypeNode* v_type, uint32_t* size);
 
 bool GetBaseType(::llvm::Type* type, ::fesql::node::DataType* output);
 bool IsStringType(::llvm::Type* type);
@@ -56,6 +56,13 @@ bool DataType2SchemaType(const ::fesql::node::TypeNode& type,
 bool GetConstFeString(const std::string& val, ::llvm::BasicBlock* block,
                       ::llvm::Value** output);
 
+template <typename T>
+std::string GetLLVMObjectString(T* obj) {
+    std::string res;
+    llvm::raw_string_ostream ss(res);
+    ss << *obj;
+    return res;
+}
 
 inline bool GetConstFloat(::llvm::LLVMContext& ctx, float val,  // NOLINT
                           ::llvm::Value** output) {
