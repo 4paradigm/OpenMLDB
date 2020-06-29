@@ -191,6 +191,7 @@ __attribute__((unused)) static bool operator!=(const Date& a, const Date& b) {
     return a.date_ != b.date_;
 }
 
+template <typename V = void>
 struct ListRef {
     int8_t* list;
 };

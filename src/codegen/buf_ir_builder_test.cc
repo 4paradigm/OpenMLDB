@@ -74,8 +74,8 @@ T PrintList(int8_t* input) {
     } else {
         std::cout << "list ptr is ok" << std::endl;
     }
-    ::fesql::codec::ListRef* list_ref =
-        reinterpret_cast<::fesql::codec::ListRef*>(input);
+    ::fesql::codec::ListRef<>* list_ref =
+        reinterpret_cast<::fesql::codec::ListRef<>*>(input);
     ::fesql::codec::ColumnImpl<T>* column =
         reinterpret_cast<::fesql::codec::ColumnImpl<T>*>(list_ref->list);
     auto col = column->GetIterator();
@@ -103,8 +103,8 @@ int32_t PrintListString(int8_t* input) {
     } else {
         std::cout << "list ptr is ok" << std::endl;
     }
-    ::fesql::codec::ListRef* list_ref =
-        reinterpret_cast<::fesql::codec::ListRef*>(input);
+    ::fesql::codec::ListRef<>* list_ref =
+        reinterpret_cast<::fesql::codec::ListRef<>*>(input);
     ::fesql::codec::StringColumnImpl* column =
         reinterpret_cast<::fesql::codec::StringColumnImpl*>(list_ref->list);
     auto col = column->GetIterator();
