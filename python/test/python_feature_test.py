@@ -8,8 +8,17 @@ class TestRtidb(unittest.TestCase):
     self.nsc = rtidb.RTIDBClient("127.0.0.1:6181", "/onebox")
   
   def test_query(self):
-    data = {"id":"2001","attribute":"a1", "image":"i1"}
+    data = {"id":"2001","attribute":"a1", "image":None}
     self.assertTrue(self.nsc.put("test1", data, None).success())
+    ro = rtidb.ReadOption()
+    ro.index.update({"id":"2001"})
+    resp = self.nsc.query("test1", ro)
+    self.assertEqual(1, resp.count())
+    for l in resp:
+      self.assertEqual(2001, l["id"])
+      self.assertEqual("a1", l["attribute"])
+      self.assertEqual(None, l["image"])
+
     data = {"id":"2001","attribute":"a1", "image":"i1"}
     try:
       self.assertTrue(self.nsc.put("test1", data, None).success())
@@ -232,6 +241,7 @@ class TestRtidb(unittest.TestCase):
     update_result = self.nsc.update("test1", condition_columns, value_columns, None);
     self.assertEqual(True, update_result.success())
     self.assertEqual(1, update_result.affected_count())
+    self.assertEqual("i1", data["image"])
     ro = rtidb.ReadOption()
     ro.index.update({"id":"3001"})
     resp = self.nsc.query("test1", ro)
@@ -415,7 +425,7 @@ class TestRtidb(unittest.TestCase):
     self.assertEqual(0, resp.count())
     
   def test_index_null(self):
-    data = {"id": 6001,"name":"n1","mcc": None,"attribute":"a1", "image":b"i1"}
+    data = {"id": 6001,"name":"n1","mcc": None,"attribute":"a1", "image":None}
     self.assertTrue(self.nsc.put("rt_ck", data, None).success())
     ro = rtidb.ReadOption()
     ro.index.update({"mcc":None})
@@ -427,9 +437,12 @@ class TestRtidb(unittest.TestCase):
       self.assertEqual("n{}".format(id+1), l["name"])
       self.assertEqual(None, l["mcc"])
       self.assertEqual("a1", l["attribute"])
-      self.assertEqual(b"i1", l["image"].getData())
+      self.assertEqual(None, l["image"])
       id += 1;
     self.assertEqual(1, id);
+    wo = rtidb.WriteOption(True)
+    data = {"id": 6001,"name":"n1","mcc": None,"attribute":"a1", "image":b"i1"}
+    self.assertTrue(self.nsc.put("rt_ck", data, wo).success())
     # update
     condition_columns = {"mcc":None} 
     value_columns = {"attribute":"a2"}

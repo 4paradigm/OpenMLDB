@@ -218,7 +218,7 @@ class ViewResult {
         return result;
     }
 
-    ViewResult() : rv_(), columns_(), initialed_(false), curr_blob_key_(),
+    ViewResult() : rv_(), columns_(), initialed_(false), curr_blob_key_(0),
                     table_name_(), client_(nullptr) {}
 
     ~ViewResult() = default;
