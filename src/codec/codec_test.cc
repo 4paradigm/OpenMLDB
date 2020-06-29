@@ -3,17 +3,17 @@
  * Copyright (C) 4paradigm.com 2019
  */
 
-
+#include <memory>
 #include <string>
 #include <vector>
-#include <memory>
+
 #include "base/kv_iterator.h"
+#include "boost/container/deque.hpp"
 #include "codec/row_codec.h"
 #include "gtest/gtest.h"
 #include "proto/common.pb.h"
 #include "proto/tablet.pb.h"
 #include "storage/segment.h"
-#include "boost/container/deque.hpp"
 
 namespace rtidb {
 namespace codec {
@@ -25,23 +25,20 @@ class CodecTest : public ::testing::Test {
 };
 
 TEST_F(CodecTest, EncodeRows_empty) {
-    boost::container::deque<std::pair<uint64_t, ::rtidb::base::Slice>>
-        data;
+    boost::container::deque<std::pair<uint64_t, ::rtidb::base::Slice>> data;
     std::string pairs;
     int32_t size = ::rtidb::codec::EncodeRows(data, 0, &pairs);
     ASSERT_EQ(size, 0);
 }
 
 TEST_F(CodecTest, EncodeRows_invalid) {
-    boost::container::deque<std::pair<uint64_t, ::rtidb::base::Slice>>
-        data;
+    boost::container::deque<std::pair<uint64_t, ::rtidb::base::Slice>> data;
     int32_t size = ::rtidb::codec::EncodeRows(data, 0, NULL);
     ASSERT_EQ(size, -1);
 }
 
 TEST_F(CodecTest, EncodeRows) {
-    boost::container::deque<std::pair<uint64_t, ::rtidb::base::Slice>>
-        data;
+    boost::container::deque<std::pair<uint64_t, ::rtidb::base::Slice>> data;
     std::string test1 = "value1";
     std::string test2 = "value2";
     std::string empty;
@@ -510,7 +507,8 @@ TEST_F(CodecTest, NotSetString) {
         uint32_t length = 0;
         ASSERT_EQ(view.GetString(i, &ch, &length), 0);
         if (i == 9) {
-            // if not set some string filed, the last filed will be large than real
+            // if not set some string filed, the last filed will be large than
+            // real
             ASSERT_EQ(60, length);
         } else {
             ASSERT_EQ(10, length);

@@ -102,7 +102,7 @@ bool RowBuilder::SetBuffer(int8_t* buf, uint32_t size) {
     }
     buf_ = buf;
     size_ = size;
-    *(buf_) = 1;      // FVersion
+    *(buf_) = 1;                    // FVersion
     *(buf_ + 1) = schema_version_;  // SVersion
     *(reinterpret_cast<uint32_t*>(buf_ + VERSION_LENGTH)) = size;
     uint32_t bitmap_size = BitMapSize(schema_.size());
@@ -211,7 +211,7 @@ bool RowBuilder::SetNULL(uint32_t index) {
 }
 
 void RowBuilder::SetStrOffset(uint32_t str_pos) {
-    if (str_pos >= str_field_cnt_ ) {
+    if (str_pos >= str_field_cnt_) {
         return;
     }
     int8_t* ptr = buf_ + str_field_start_offset_ + str_addr_length_ * str_pos;
