@@ -145,7 +145,7 @@ TEST_F(TimestampIRBuilderTest, SecondTest) {
     ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
     auto load_fn_jit = ExitOnErr(J->lookup("second"));
     int32_t (*decode)(codec::Timestamp *) =
-    (int32_t(*)(codec::Timestamp *))load_fn_jit.getAddress();
+        (int32_t(*)(codec::Timestamp *))load_fn_jit.getAddress();
 
     codec::Timestamp time(1590115420000L);
     ASSERT_EQ(40, decode(&time));
@@ -176,7 +176,7 @@ TEST_F(TimestampIRBuilderTest, HourTest) {
     ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
     auto load_fn_jit = ExitOnErr(J->lookup("hour"));
     int32_t (*decode)(codec::Timestamp *) =
-    (int32_t(*)(codec::Timestamp *))load_fn_jit.getAddress();
+        (int32_t(*)(codec::Timestamp *))load_fn_jit.getAddress();
 
     codec::Timestamp time(1590115420000L);
     ASSERT_EQ(10, decode(&time));

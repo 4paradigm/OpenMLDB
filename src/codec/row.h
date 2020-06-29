@@ -24,8 +24,8 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
-#include "base/raw_buffer.h"
 #include "base/fe_slice.h"
+#include "base/raw_buffer.h"
 #include "proto/fe_type.pb.h"
 
 namespace fesql {
@@ -37,17 +37,17 @@ using fesql::base::Slice;
 class Row {
  public:
     Row();
-    explicit Row(const std::string& str);
+    explicit Row(const std::string &str);
     Row(const Row &s);
-    Row(size_t major_slices, const Row &major,
-        size_t secondary_slices, const Row &secondary);
+    Row(size_t major_slices, const Row &major, size_t secondary_slices,
+        const Row &secondary);
 
-    explicit Row(const fesql::base::RefCountedSlice& s);
+    explicit Row(const fesql::base::RefCountedSlice &s);
 
     virtual ~Row();
 
-    inline int8_t* buf() const { return slice_.buf(); }
-    inline int8_t* buf(int32_t pos) const {
+    inline int8_t *buf() const { return slice_.buf(); }
+    inline int8_t *buf(int32_t pos) const {
         return 0 == pos ? slice_.buf() : slices_[pos - 1].buf();
     }
 
@@ -70,15 +70,15 @@ class Row {
     int32_t GetRowPtrCnt() const;
     int32_t *GetRowSizes() const;
 
-    inline void Append(const fesql::base::RefCountedSlice& slice) {
+    inline void Append(const fesql::base::RefCountedSlice &slice) {
         slices_.emplace_back(slice);
     }
 
     // Return a string that contains the copy of the referenced data.
     std::string ToString() const;
 
-    void Reset(const int8_t* buf, size_t size) {
-        slice_.reset(reinterpret_cast<const char*>(buf), size);
+    void Reset(const int8_t *buf, size_t size) {
+        slice_.reset(reinterpret_cast<const char *>(buf), size);
     }
 
  private:

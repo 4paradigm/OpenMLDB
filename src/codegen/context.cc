@@ -13,18 +13,17 @@
 namespace fesql {
 namespace codegen {
 
-BlockGroup::BlockGroup(CodeGenContext* ctx):
-        ctx_(ctx), name_("") {
+BlockGroup::BlockGroup(CodeGenContext* ctx) : ctx_(ctx), name_("") {
     blocks_.push_back(ctx->AppendNewBlock(name_));
 }
 
-BlockGroup::BlockGroup(const std::string& name, CodeGenContext* ctx):
-        ctx_(ctx), name_(name) {
+BlockGroup::BlockGroup(const std::string& name, CodeGenContext* ctx)
+    : ctx_(ctx), name_(name) {
     blocks_.push_back(ctx->AppendNewBlock(name_));
 }
 
-BlockGroup::BlockGroup(::llvm::BasicBlock* entry, CodeGenContext* ctx):
-        ctx_(ctx), name_("") {
+BlockGroup::BlockGroup(::llvm::BasicBlock* entry, CodeGenContext* ctx)
+    : ctx_(ctx), name_("") {
     blocks_.push_back(entry);
 }
 
@@ -57,13 +56,9 @@ void BlockGroup::ReInsertTo(::llvm::Function* fn) {
     }
 }
 
-llvm::BasicBlock* BlockGroup::first() const {
-    return blocks_[0];
-}
+llvm::BasicBlock* BlockGroup::first() const { return blocks_[0]; }
 
-llvm::BasicBlock* BlockGroup::last() const {
-    return blocks_.back();
-}
+llvm::BasicBlock* BlockGroup::last() const { return blocks_.back(); }
 
 const llvm::Instruction* BlockGroup::last_inst() const {
     for (auto iter = blocks_.rbegin(); iter != blocks_.rend(); iter++) {
@@ -96,9 +91,8 @@ void BlockGroup::Add(llvm::BasicBlock* block) {
     }
 }
 
-
-BlockGroupGuard::BlockGroupGuard(BlockGroup* group):
-        ctx_(group->ctx()), prev_(ctx_->GetCurrentBlockGroup()) {
+BlockGroupGuard::BlockGroupGuard(BlockGroup* group)
+    : ctx_(group->ctx()), prev_(ctx_->GetCurrentBlockGroup()) {
     ctx_->SetCurrentBlockGroup(group);
     auto cur = group->last();
     ctx_->SetCurrentBlock(cur);
@@ -114,9 +108,8 @@ BlockGroupGuard::~BlockGroupGuard() {
     }
 }
 
-
-BlockGuard::BlockGuard(llvm::BasicBlock* block, CodeGenContext* ctx):
-        ctx_(ctx), prev_(ctx->GetCurrentBlock()) {
+BlockGuard::BlockGuard(llvm::BasicBlock* block, CodeGenContext* ctx)
+    : ctx_(ctx), prev_(ctx->GetCurrentBlock()) {
     ctx_->SetCurrentBlock(block);
     if (block != nullptr) {
         ctx_->GetBuilder()->SetInsertPoint(block);
@@ -130,10 +123,9 @@ BlockGuard::~BlockGuard() {
     }
 }
 
-
 FunctionScopeGuard::FunctionScopeGuard(llvm::Function* function,
-                                       CodeGenContext* ctx):
-        ctx_(ctx), prev_function_(ctx->GetCurrentFunction()) {
+                                       CodeGenContext* ctx)
+    : ctx_(ctx), prev_function_(ctx->GetCurrentFunction()) {
     ctx_->SetCurrentFunction(function);
 }
 
@@ -141,12 +133,10 @@ FunctionScopeGuard::~FunctionScopeGuard() {
     ctx_->SetCurrentFunction(prev_function_);
 }
 
-
-
-CodeGenContext::CodeGenContext(::llvm::Module* module):
-    llvm_ctx_(&module->getContext()),
-    llvm_module_(module),
-    llvm_ir_builder_(*llvm_ctx_) {}
+CodeGenContext::CodeGenContext(::llvm::Module* module)
+    : llvm_ctx_(&module->getContext()),
+      llvm_module_(module),
+      llvm_ir_builder_(*llvm_ctx_) {}
 
 ::llvm::Function* CodeGenContext::GetCurrentFunction() const {
     return current_llvm_function_;
@@ -172,17 +162,14 @@ void CodeGenContext::SetCurrentBlock(::llvm::BasicBlock* block) {
     this->current_llvm_block_ = block;
 }
 
-::llvm::IRBuilder<>* CodeGenContext::GetBuilder() {
-    return &llvm_ir_builder_;
-}
+::llvm::IRBuilder<>* CodeGenContext::GetBuilder() { return &llvm_ir_builder_; }
 
 ::llvm::BasicBlock* CodeGenContext::AppendNewBlock(const std::string& name) {
     if (GetCurrentFunction() == nullptr) {
         LOG(WARNING) << "Create block out side of any llvm function, "
-            "this may cause ir builder errors";
+                        "this may cause ir builder errors";
     }
-    return ::llvm::BasicBlock::Create(
-        *llvm_ctx_, name, GetCurrentFunction());
+    return ::llvm::BasicBlock::Create(*llvm_ctx_, name, GetCurrentFunction());
 }
 
 Status CodeGenContext::CreateBranch(const NativeValue& cond,
@@ -230,7 +217,6 @@ Status CodeGenContext::CreateBranch(const NativeValue& cond,
     cur_block_group->Add(exit_block);
     return Status::OK();
 }
-
 
 }  // namespace codegen
 }  // namespace fesql

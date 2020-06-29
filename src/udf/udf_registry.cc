@@ -173,8 +173,6 @@ Status ExternalFuncRegistry::Register(const std::vector<std::string>& args,
     return reg_table_.Register(args, func);
 }
 
-
-
 Status SimpleUDFRegistry::ResolveFunction(UDFResolveContext* ctx,
                                           node::FnDefNode** result) {
     int variadic_pos = -1;
@@ -189,8 +187,6 @@ Status SimpleUDFRegistry::Register(const std::vector<std::string>& args,
                                    node::UDFDefNode* udaf_def) {
     return reg_table_.Register(args, udaf_def);
 }
-
-
 
 Status SimpleUDAFRegistry::ResolveFunction(UDFResolveContext* ctx,
                                            node::FnDefNode** result) {

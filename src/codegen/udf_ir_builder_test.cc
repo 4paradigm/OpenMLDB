@@ -29,8 +29,8 @@
 #include "llvm/Transforms/Utils.h"
 #include "node/node_manager.h"
 #include "parser/parser.h"
-#include "udf/udf.h"
 #include "udf/default_udf_library.h"
+#include "udf/udf.h"
 #include "vm/sql_compiler.h"
 
 using namespace llvm;       // NOLINT (build/namespaces)
@@ -235,10 +235,10 @@ TEST_F(UDFIRBuilderTest, distinct_count_udf_test) {
     codec::ListRef<> list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
 
-    CheckNativeUDF<int32_t, codec::ListRef<> *>(
-        "count.list_int32", 9, &list_ref);
-    CheckNativeUDF<int32_t, codec::ListRef<> *>(
-        "distinct_count.list_int32", 5, &list_ref);
+    CheckNativeUDF<int32_t, codec::ListRef<> *>("count.list_int32", 9,
+                                                &list_ref);
+    CheckNativeUDF<int32_t, codec::ListRef<> *>("distinct_count.list_int32", 5,
+                                                &list_ref);
 }
 TEST_F(UDFIRBuilderTest, sum_udf_test) {
     std::vector<int32_t> vec = {1, 3, 5, 7, 9};
@@ -246,7 +246,7 @@ TEST_F(UDFIRBuilderTest, sum_udf_test) {
     codec::ListRef<> list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
     CheckNativeUDF<int32_t, codec::ListRef<> *>("sum.list_int32",
-                                              1 + 3 + 5 + 7 + 9, &list_ref);
+                                                1 + 3 + 5 + 7 + 9, &list_ref);
 }
 TEST_F(UDFIRBuilderTest, min_udf_test) {
     std::vector<int32_t> vec = {10, 8, 6, 4, 2, 1, 3, 5, 7, 9};
@@ -260,8 +260,8 @@ TEST_F(UDFIRBuilderTest, max_udf_test) {
     codec::ArrayListV<int32_t> list(&vec);
     codec::ListRef<> list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
-    CheckNativeUDF<int32_t, codec::ListRef<> *>(
-        "max.list_int32", 10, &list_ref);
+    CheckNativeUDF<int32_t, codec::ListRef<> *>("max.list_int32", 10,
+                                                &list_ref);
 }
 TEST_F(UDFIRBuilderTest, time_diff_udf_test) {
     codec::Timestamp t1(1590115420000L);

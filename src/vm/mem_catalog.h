@@ -319,7 +319,7 @@ class CurrentHistoryWindow : public Window {
         int64_t sub = (key + start_offset_);
         uint64_t start_ts = sub < 0 ? 0u : static_cast<uint64_t>(sub);
         // Slice window when window size > rows_preceding
-        while (cur_size-1 > rows_preceding_) {
+        while (cur_size - 1 > rows_preceding_) {
             const auto& pair = GetBackRow();
             if (pair.first < start_ts) {
                 PopBackRow();

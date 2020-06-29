@@ -18,16 +18,16 @@
 #include <sys/time.h>
 #include <iostream>
 #include <string>
+#include "codec/row.h"
 #include "gtest/gtest.h"
 #include "storage/fe_table.h"
 #include "storage/fe_table_iterator.h"
-#include "codec/row.h"
 
 namespace fesql {
 namespace storage {
+using codec::Row;
 using codec::RowBuilder;
 using codec::RowView;
-using codec::Row;
 
 void BuildTableSchema(type::TableDef& table_def) {  // NOLINT
     ::fesql::type::ColumnDef* col = table_def.add_columns();
@@ -95,13 +95,11 @@ TEST_F(TableIteratorTest, it_full_table) {
     ASSERT_TRUE(it.Valid());
     char* ch = nullptr;
     uint32_t length = 0;
-    view.GetValue(it.GetValue().buf(), 2, &ch,
-                  &length);
+    view.GetValue(it.GetValue().buf(), 2, &ch, &length);
     ASSERT_STREQ("value1", std::string(ch, length).c_str());
     it.Next();
     ASSERT_TRUE(it.Valid());
-    view.GetValue(it.GetValue().buf(), 2, &ch,
-                  &length);
+    view.GetValue(it.GetValue().buf(), 2, &ch, &length);
     ASSERT_STREQ("value2", std::string(ch, length).c_str());
     it.Next();
     ASSERT_FALSE(it.Valid());

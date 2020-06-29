@@ -40,7 +40,6 @@ class RowBaseView {
     virtual bool IsNULL(uint32_t idx) = 0;
 };
 
-
 class RowIOBufView : public RowBaseView {
  public:
     explicit RowIOBufView(const fesql::codec::Schema& schema);
@@ -52,8 +51,8 @@ class RowIOBufView : public RowBaseView {
     int32_t GetFloat(uint32_t idx, float* val);
     int32_t GetDouble(uint32_t idx, double* val);
     int32_t GetTimestamp(uint32_t, int64_t* val);
-    int32_t GetDate(uint32_t, int32_t *year, int32_t *month, int32_t * day);
-    int32_t GetDate(uint32_t, int32_t *date);
+    int32_t GetDate(uint32_t, int32_t* year, int32_t* month, int32_t* day);
+    int32_t GetDate(uint32_t, int32_t* date);
     int32_t GetString(uint32_t idx, butil::IOBuf* buf);
     int32_t GetString(uint32_t idx, char** val, uint32_t* length) { return -1; }
     int32_t GetBool(uint32_t idx, bool* val);
@@ -78,7 +77,6 @@ class RowIOBufView : public RowBaseView {
     const fesql::codec::Schema schema_;
     std::vector<uint32_t> offset_vec_;
 };
-
 
 namespace v1 {
 

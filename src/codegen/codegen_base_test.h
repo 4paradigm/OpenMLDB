@@ -11,8 +11,8 @@
 #define SRC_CODEGEN_CODEGEN_BASE_TEST_H_
 
 #include <cstdint>
-#include <vector>
 #include <string>
+#include <vector>
 #include "codec/list_iterator_codec.h"
 
 namespace fesql {

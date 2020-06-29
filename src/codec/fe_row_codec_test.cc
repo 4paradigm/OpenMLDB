@@ -15,9 +15,9 @@
  * limitations under the License.
  */
 
+#include "codec/fe_row_codec.h"
 #include <string>
 #include <vector>
-#include "codec/fe_row_codec.h"
 #include "gtest/gtest.h"
 
 namespace fesql {
@@ -424,22 +424,22 @@ TEST_F(CodecTest, RowDecoderTest) {
         for (int i = 0; i < col_num; i++) {
             if (i % 3 == 0) {
                 codec::ColInfo info;
-                ASSERT_TRUE(decoder.ResolveColumn(
-                    "col" + std::to_string(i), &info));
+                ASSERT_TRUE(
+                    decoder.ResolveColumn("col" + std::to_string(i), &info));
                 ASSERT_EQ(::fesql::type::kVarchar, info.type);
 
                 codec::StringColInfo str_info;
-                ASSERT_TRUE(decoder.ResolveStringCol(
-                    "col" + std::to_string(i), &str_info));
+                ASSERT_TRUE(decoder.ResolveStringCol("col" + std::to_string(i),
+                                                     &str_info));
             } else if (i % 3 == 1) {
                 codec::ColInfo info;
-                ASSERT_TRUE(decoder.ResolveColumn(
-                    "col" + std::to_string(i), &info));
+                ASSERT_TRUE(
+                    decoder.ResolveColumn("col" + std::to_string(i), &info));
                 ASSERT_EQ(::fesql::type::kInt64, info.type);
             } else if (i % 3 == 2) {
                 codec::ColInfo info;
-                ASSERT_TRUE(decoder.ResolveColumn(
-                    "col" + std::to_string(i), &info));
+                ASSERT_TRUE(
+                    decoder.ResolveColumn("col" + std::to_string(i), &info));
                 ASSERT_EQ(::fesql::type::kDouble, info.type);
             }
         }
@@ -544,7 +544,7 @@ TEST_F(CodecTest, RowDecoderOffsetTest) {
 
         codec::StringColInfo str_info;
         decoder.ResolveStringCol("col7", &str_info);
-        LOG(INFO) << "offset: "<< str_info.offset
+        LOG(INFO) << "offset: " << str_info.offset
                   << " next_offset: " << str_info.str_next_offset
                   << " str_start_offset " << str_info.str_start_offset;
         ASSERT_EQ(1u, str_info.offset);

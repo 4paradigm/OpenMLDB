@@ -44,8 +44,8 @@
 #include "llvm/Transforms/Scalar/GVN.h"
 #include "parser/parser.h"
 #include "plan/planner.h"
-#include "udf/udf.h"
 #include "udf/default_udf_library.h"
+#include "udf/udf.h"
 #include "vm/jit.h"
 #include "vm/sql_compiler.h"
 
@@ -97,8 +97,8 @@ void AddFunc(const std::string& fn, ::fesql::node::NodeManager* manager,
     for (node::SQLNode* node : trees) {
         LOG(INFO) << "Add Func: " << *node;
         ::llvm::Function* func = nullptr;
-        bool ok = fn_ir_builder.Build(
-              dynamic_cast<node::FnNodeFnDef*>(node), &func, status);
+        bool ok = fn_ir_builder.Build(dynamic_cast<node::FnNodeFnDef*>(node),
+                                      &func, status);
         ASSERT_TRUE(ok);
     }
 }

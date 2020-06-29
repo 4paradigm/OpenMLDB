@@ -201,8 +201,7 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
     // merge window map
     std::map<const node::WindowDefNode *, node::ProjectListNode *>
         merged_project_list_map;
-    if (!MergeProjectMap(project_list_map, &merged_project_list_map,
-                         status)) {
+    if (!MergeProjectMap(project_list_map, &merged_project_list_map, status)) {
         LOG(WARNING) << "Fail t merge window project";
         return false;
     }

@@ -61,8 +61,7 @@ bool Table::Init() {
             auto iter = col_map.find(name);
             if (iter == col_map.end()) return false;
             col_vec.push_back(std::make_pair(
-                table_def_.columns(iter->second).type(),
-                iter->second));
+                table_def_.columns(iter->second).type(), iter->second));
         }
         if (col_vec.empty()) return false;
         st.keys = col_vec;
@@ -124,8 +123,8 @@ bool Table::Put(const char* row, uint32_t size) {
         } else {
             if (kv.second.keys[0].first == ::fesql::type::kVarchar) {
                 row_view_.GetValue(reinterpret_cast<const int8_t*>(row),
-                                   kv.second.keys[0].second,
-                                   &spk_buf, &spk_size);
+                                   kv.second.keys[0].second, &spk_buf,
+                                   &spk_size);
             } else {
                 int64_t value = 0;
                 row_view_.GetInteger(reinterpret_cast<const int8_t*>(row),
@@ -138,8 +137,7 @@ bool Table::Put(const char* row, uint32_t size) {
         }
         uint32_t seg_index = 0;
         if (seg_cnt_ > 1) {
-            seg_index =
-                ::fesql::base::hash(spk_buf, spk_size, SEED) % seg_cnt_;
+            seg_index = ::fesql::base::hash(spk_buf, spk_size, SEED) % seg_cnt_;
         }
         int64_t time = 1;
         row_view_.GetInteger(
@@ -330,8 +328,8 @@ void TableIterator::Next() {
 
 const base::Slice& TableIterator::GetValue() {
     value_ = base::Slice(ts_it_->GetValue()->data,
-                   codec::RowView::GetSize(
-                       reinterpret_cast<int8_t*>(ts_it_->GetValue()->data)));
+                         codec::RowView::GetSize(reinterpret_cast<int8_t*>(
+                             ts_it_->GetValue()->data)));
     return value_;
 }
 

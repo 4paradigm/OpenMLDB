@@ -5,11 +5,10 @@
 // Date 2019-11-01
 //
 
-
 #include <sys/time.h>
 #include <string>
-#include "gtest/gtest.h"
 #include "codec/fe_row_codec.h"
+#include "gtest/gtest.h"
 #include "storage/fe_table.h"
 
 namespace fesql {

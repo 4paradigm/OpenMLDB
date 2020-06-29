@@ -224,9 +224,8 @@ TEST_F(WindowIteratorTest, MemGetColTest) {
 
     const uint32_t size = sizeof(ColumnImpl<int32_t>);
     int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
-    ASSERT_EQ(
-        0, GetCol(reinterpret_cast<int8_t*>(&table),
-            0, 0, 2, type::kInt32, buf));
+    ASSERT_EQ(0, GetCol(reinterpret_cast<int8_t*>(&table), 0, 0, 2,
+                        type::kInt32, buf));
 
     ListV<Row>* list = reinterpret_cast<ListV<Row>*>(&table);
     new (buf) ColumnImpl<int32_t>(list, 0, 0, 2);
@@ -331,7 +330,6 @@ void Check_Key(RowIterator* iter, uint64_t key) {
     ASSERT_TRUE(iter->Valid());
     ASSERT_EQ(key, iter->GetKey());
 }
-
 
 TEST_F(WindowIteratorTest, InnerRangeWindowTest) {
     std::vector<std::pair<uint64_t, Row>> rows;
@@ -512,7 +510,6 @@ TEST_F(WindowIteratorTest, InnerRowsIteratorTest) {
     }
 }
 
-
 TEST_F(WindowIteratorTest, CurrentHistoryRowsWindowTest) {
     std::vector<std::pair<uint64_t, Row>> rows;
     int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
@@ -566,7 +563,6 @@ TEST_F(WindowIteratorTest, CurrentHistoryRowsWindowTest) {
         ASSERT_FALSE(iter->Valid());
     }
 }
-
 
 }  // namespace vm
 }  // namespace fesql

@@ -33,9 +33,9 @@
 #include "plan/planner.h"
 #include "udf/default_udf_library.h"
 #include "udf/udf.h"
+#include "vm/sql_compiler.h"
 #include "vm/test_base.h"
 #include "vm/transform.h"
-#include "vm/sql_compiler.h"
 
 using namespace llvm;       // NOLINT
 using namespace llvm::orc;  // NOLINT

@@ -49,9 +49,7 @@ bool CSVWindowIterator::Valid() {
 
 void CSVWindowIterator::Next() { ++first_it_; }
 
-const Row CSVWindowIterator::GetKey() {
-    return Row(first_it_->first);
-}
+const Row CSVWindowIterator::GetKey() { return Row(first_it_->first); }
 
 std::unique_ptr<RowIterator> CSVWindowIterator::GetValue() {
     std::unique_ptr<CSVSegmentIterator> segment_it(new CSVSegmentIterator(

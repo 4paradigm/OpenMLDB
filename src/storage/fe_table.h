@@ -21,9 +21,9 @@
 namespace fesql {
 namespace storage {
 
+using ::fesql::base::ConstIterator;
 using ::fesql::type::IndexDef;
 using ::fesql::type::TableDef;
-using ::fesql::base::ConstIterator;
 static constexpr uint32_t SEG_CNT = 8;
 
 class TableIterator : public ConstIterator<uint64_t, base::Slice> {

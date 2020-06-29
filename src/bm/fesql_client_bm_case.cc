@@ -45,9 +45,9 @@ static std::shared_ptr<fesql::sdk::DBMSSdk> feql_dbms_sdk_init() {
 }
 
 static bool FeSqlServerInit(brpc::Server &tablet_server,  // NOLINT
-                              brpc::Server &dbms_server,    // NOLINT
-                              ::fesql::tablet::TabletServerImpl *tablet,
-                              ::fesql::dbms::DBMSServerImpl *dbms) {
+                            brpc::Server &dbms_server,    // NOLINT
+                            ::fesql::tablet::TabletServerImpl *tablet,
+                            ::fesql::dbms::DBMSServerImpl *dbms) {
     FLAGS_enable_keep_alive = false;
     DLOG(INFO) << ("Start FeSQL tablet server...");
     if (!tablet->Init()) {
@@ -82,7 +82,7 @@ static bool FeSqlServerInit(brpc::Server &tablet_server,  // NOLINT
 }
 
 static bool InitDB(std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk,
-                    std::string db_name) {
+                   std::string db_name) {
     LOG(INFO) << "Creating database " << db_name;
     // create database
     fesql::sdk::Status status;
@@ -96,8 +96,7 @@ static bool InitDB(std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk,
 }
 
 static bool InitTBL(std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk,
-                     const std::string &db_name,
-                     const std::string &schema_sql) {
+                    const std::string &db_name, const std::string &schema_sql) {
     DLOG(INFO) << ("Creating table 'tbl' in database 'test'...\n");
     // create table db1
     fesql::sdk::Status status;
@@ -402,8 +401,8 @@ void WINDOW_CASE0_QUERY(benchmark::State *state_ptr, MODE mode,
                       window_max_size);
 }
 void GROUPBY_CASE0_QUERY(benchmark::State *state_ptr, MODE mode,
-                        bool is_batch_mode, int64_t group_size,
-                        int64_t window_max_size) {
+                         bool is_batch_mode, int64_t group_size,
+                         int64_t window_max_size) {
     std::string select_sql =
         "SELECT "
         "sum(col_i32) \n"

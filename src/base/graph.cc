@@ -8,7 +8,5 @@
  **/
 #include "base/graph.h"
 namespace fesql {
-namespace base {
-
-}  // namespace base
+namespace base {}  // namespace base
 }  // namespace fesql

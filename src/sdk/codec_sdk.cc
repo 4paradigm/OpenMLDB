@@ -187,7 +187,6 @@ int32_t RowIOBufView::GetString(uint32_t idx, butil::IOBuf* buf) {
                            str_field_start_offset_, str_addr_length_, buf);
 }
 
-
 namespace v1 {
 
 int32_t GetStrField(const butil::IOBuf& row, uint32_t field_offset,

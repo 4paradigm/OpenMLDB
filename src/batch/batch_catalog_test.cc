@@ -66,7 +66,7 @@ TEST_F(BatchCatalogTest, test_init) {
     std::shared_ptr<::arrow::fs::FileSystem> fs(
         new arrow::fs::LocalFileSystem());
     InputTables tables;
-    int id = rand() % 1000; //NOLINT
+    int id = rand() % 1000;  // NOLINT
     std::stringstream ss;
     ss << "batch_catalog_test" << id << ".parquet";
     std::string file_path = ss.str();

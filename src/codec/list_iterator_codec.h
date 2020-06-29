@@ -77,16 +77,16 @@ class WrapListImpl : public ListV<V> {
  public:
     WrapListImpl() : ListV<V>() {}
     ~WrapListImpl() {}
-    virtual const V GetFieldUnsafe(const R& row) const = 0;
-    virtual void GetField(const R& row, V*, int8_t*) const = 0;
-    virtual const bool IsNull(const R& row) const = 0;
+    virtual const V GetFieldUnsafe(const R &row) const = 0;
+    virtual void GetField(const R &row, V *, int8_t *) const = 0;
+    virtual const bool IsNull(const R &row) const = 0;
 };
 
 template <class V>
 class ColumnImpl : public WrapListImpl<V, Row> {
  public:
-    ColumnImpl(ListV<Row> *impl, int32_t row_idx,
-               uint32_t col_idx, uint32_t offset)
+    ColumnImpl(ListV<Row> *impl, int32_t row_idx, uint32_t col_idx,
+               uint32_t offset)
         : WrapListImpl<V, Row>(),
           root_(impl),
           row_idx_(row_idx),
@@ -95,15 +95,15 @@ class ColumnImpl : public WrapListImpl<V, Row> {
 
     ~ColumnImpl() {}
 
-    const V GetFieldUnsafe(const Row& row) const override {
+    const V GetFieldUnsafe(const Row &row) const override {
         V value;
         const int8_t *ptr = row.buf(row_idx_) + offset_;
         value = *((const V *)ptr);
         return value;
     }
 
-    void GetField(const Row& row, V* res, int8_t* is_null) const override {
-        const int8_t* buf = row.buf(row_idx_);
+    void GetField(const Row &row, V *res, int8_t *is_null) const override {
+        const int8_t *buf = row.buf(row_idx_);
         if (buf == nullptr || v1::IsNullAt(buf, col_idx_)) {
             *is_null = true;
         } else {
@@ -113,8 +113,8 @@ class ColumnImpl : public WrapListImpl<V, Row> {
         }
     }
 
-    const bool IsNull(const Row& row) const override {
-        const int8_t* buf = row.buf(row_idx_);
+    const bool IsNull(const Row &row) const override {
+        const int8_t *buf = row.buf(row_idx_);
         return buf == nullptr || v1::IsNullAt(buf, col_idx_);
     }
 
@@ -152,31 +152,28 @@ class StringColumnImpl : public ColumnImpl<StringRef> {
           str_start_offset_(str_start_offset) {}
 
     ~StringColumnImpl() {}
-    const StringRef GetFieldUnsafe(const Row& row) const override {
+    const StringRef GetFieldUnsafe(const Row &row) const override {
         int32_t addr_space = v1::GetAddrSpace(row.size(row_idx_));
         StringRef value;
-        v1::GetStrFieldUnsafe(row.buf(row_idx_), str_field_offset_,
-                              next_str_field_offset_,
-                              str_start_offset_, addr_space,
-                              reinterpret_cast<int8_t **>(&(value.data_)),
-                              &(value.size_));
+        v1::GetStrFieldUnsafe(
+            row.buf(row_idx_), str_field_offset_, next_str_field_offset_,
+            str_start_offset_, addr_space,
+            reinterpret_cast<int8_t **>(&(value.data_)), &(value.size_));
         return value;
     }
 
-    void GetField(const Row& row,
-                  StringRef* res,
-                  int8_t* is_null) const override {
-        const int8_t* buf = row.buf(row_idx_);
+    void GetField(const Row &row, StringRef *res,
+                  int8_t *is_null) const override {
+        const int8_t *buf = row.buf(row_idx_);
         if (buf == nullptr || v1::IsNullAt(buf, col_idx_)) {
             *is_null = true;
         } else {
             int32_t addr_space = v1::GetAddrSpace(row.size(row_idx_));
             StringRef value;
             v1::GetStrFieldUnsafe(
-                buf, str_field_offset_,
-                next_str_field_offset_, str_start_offset_, addr_space,
-                reinterpret_cast<int8_t **>(&(value.data_)),
-                 &(value.size_));
+                buf, str_field_offset_, next_str_field_offset_,
+                str_start_offset_, addr_space,
+                reinterpret_cast<int8_t **>(&(value.data_)), &(value.size_));
             *res = value;
         }
     }
@@ -401,7 +398,7 @@ class InnerRowsList : public ListV<V> {
     uint64_t end_;
 };
 template <class V>
-class ColumnIterator: public ConstIterator<uint64_t, V> {
+class ColumnIterator : public ConstIterator<uint64_t, V> {
  public:
     ColumnIterator(ListV<Row> *list, const ColumnImpl<V> *column_impl)
         : ConstIterator<uint64_t, V>(), column_impl_(column_impl) {

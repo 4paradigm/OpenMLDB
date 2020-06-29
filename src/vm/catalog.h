@@ -24,20 +24,20 @@
 #include <utility>
 #include <vector>
 #include "base/fe_slice.h"
-#include "codec/list_iterator_codec.h"
 #include "codec/fe_row_codec.h"
+#include "codec/list_iterator_codec.h"
 #include "codec/row.h"
 #include "proto/fe_type.pb.h"
 
 namespace fesql {
 namespace vm {
 
+using fesql::codec::ColInfo;
 using fesql::codec::ListV;
 using fesql::codec::Row;
 using fesql::codec::RowIterator;
-using fesql::codec::WindowIterator;
-using fesql::codec::ColInfo;
 using fesql::codec::Schema;
+using fesql::codec::WindowIterator;
 
 enum SourceType { kSourceColumn, kSourceConst, kSourceNone };
 class ColumnSource;
@@ -136,9 +136,7 @@ struct SchemaSourceList {
         }
     }
 
-    const bool Empty() const {
-        return schema_source_list_.empty();
-    }
+    const bool Empty() const { return schema_source_list_.empty(); }
     const std::vector<SchemaSource>& schema_source_list() const {
         return schema_source_list_;
     }

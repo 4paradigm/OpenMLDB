@@ -33,10 +33,7 @@ namespace codegen {
 AggregateIRBuilder::AggregateIRBuilder(const vm::SchemasContext* sc,
                                        ::llvm::Module* module,
                                        node::FrameNode* frame_node, uint32_t id)
-    : schema_context_(sc),
-      module_(module),
-      frame_node_(frame_node),
-      id_(id) {
+    : schema_context_(sc), module_(module), frame_node_(frame_node), id_(id) {
     available_agg_func_set_.insert("sum");
     available_agg_func_set_.insert("avg");
     available_agg_func_set_.insert("count");
@@ -54,8 +51,8 @@ bool AggregateIRBuilder::CollectAggColumn(const fesql::node::ExprNode* expr,
     switch (expr->expr_type_) {
         case node::kExprCall: {
             auto call = dynamic_cast<const node::CallExprNode*>(expr);
-            auto fn_def = dynamic_cast<const node::ExternalFnDefNode*>(
-                call->GetFnDef());
+            auto fn_def =
+                dynamic_cast<const node::ExternalFnDefNode*>(call->GetFnDef());
             if (fn_def == nullptr) {
                 break;
             }

@@ -19,9 +19,9 @@
 #define SRC_CODEGEN_ROW_IR_BUILDER_H_
 
 #include <string>
+#include "codegen/native_value.h"
 #include "llvm/IR/IRBuilder.h"
 #include "node/node_enum.h"
-#include "codegen/native_value.h"
 
 namespace fesql {
 namespace codegen {
@@ -30,8 +30,7 @@ class Decoder {
  public:
     Decoder() {}
     virtual ~Decoder() {}
-    virtual bool GetColOffsetType(const std::string& name,
-                                  uint32_t* col_idx,
+    virtual bool GetColOffsetType(const std::string& name, uint32_t* col_idx,
                                   uint32_t* offset_ptr,
                                   node::DataType* type_ptr) = 0;
 };

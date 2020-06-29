@@ -12,12 +12,12 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include "base/iterator.h"
 #include "base/fe_slice.h"
+#include "base/iterator.h"
 #include "base/spin_lock.h"
 #include "proto/fe_type.pb.h"
-#include "storage/list.h"
 #include "storage/fe_skiplist.h"
+#include "storage/list.h"
 
 namespace fesql {
 namespace storage {
@@ -60,9 +60,7 @@ class Segment {
     ~Segment();
 
     void Put(const Slice& key, uint64_t time, DataBlock* row);
-    inline KeyEntry* GetEntries() {
-        return entries_;
-    }
+    inline KeyEntry* GetEntries() { return entries_; }
 
  private:
     KeyEntry* entries_;

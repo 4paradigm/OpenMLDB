@@ -110,9 +110,7 @@ class SimpleWrapperFun : public WrapperFun {
  public:
     SimpleWrapperFun() : WrapperFun() {}
     ~SimpleWrapperFun() {}
-    Row operator()(const Row& row) const override {
-        return project(row);
-    }
+    Row operator()(const Row& row) const override { return project(row); }
 };
 
 TEST_F(MemCataLogTest, table_hander_wrapper_test) {

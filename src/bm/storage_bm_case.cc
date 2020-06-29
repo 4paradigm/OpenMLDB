@@ -20,8 +20,8 @@
 namespace fesql {
 namespace bm {
 
-using codec::RowView;
 using codec::Row;
+using codec::RowView;
 using ::fesql::base::DefaultComparator;
 using storage::ArrayList;
 DefaultComparator cmp;

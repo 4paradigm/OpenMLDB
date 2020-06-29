@@ -25,10 +25,10 @@
 #include "llvm/IR/Module.h"
 #include "parser/parser.h"
 #include "proto/fe_common.pb.h"
+#include "udf/udf_library.h"
 #include "vm/catalog.h"
 #include "vm/jit.h"
 #include "vm/runner.h"
-#include "udf/udf_library.h"
 
 namespace fesql {
 namespace vm {

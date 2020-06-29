@@ -565,7 +565,7 @@ bool GetBaseType(::llvm::Type* type, ::fesql::node::DataType* output) {
         }
         default: {
             LOG(WARNING) << "no mapping type for llvm type: "
-                << GetLLVMObjectString(type);
+                         << GetLLVMObjectString(type);
             return false;
         }
     }
@@ -751,7 +751,7 @@ const std::string TypeIRBuilder::TypeName(::llvm::Type* type) {
     return type_node.GetName();
 }
 const bool TypeIRBuilder::GetTypeNode(::llvm::Type* type,
-                                   node::TypeNode* type_node) {
+                                      node::TypeNode* type_node) {
     return GetFullType(type, type_node);
 }
 bool TypeIRBuilder::IsDatePtr(::llvm::Type* type) {

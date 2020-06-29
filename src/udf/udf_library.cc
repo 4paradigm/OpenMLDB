@@ -8,15 +8,15 @@
  **/
 #include "udf/udf_library.h"
 
-#include <vector>
 #include <unordered_set>
+#include <vector>
 #include "boost/filesystem.hpp"
 #include "boost/filesystem/string_file.hpp"
 
-#include "plan/planner.h"
-#include "parser/parser.h"
-#include "udf/udf_registry.h"
 #include "codegen/type_ir_builder.h"
+#include "parser/parser.h"
+#include "plan/planner.h"
+#include "udf/udf_registry.h"
 
 namespace fesql {
 namespace udf {
@@ -73,19 +73,17 @@ SimpleUDAFRegistryHelper UDFLibrary::RegisterSimpleUDAF(
     return helper;
 }
 
-
 Status UDFLibrary::RegisterAlias(const std::string& alias,
                                  const std::string& name) {
     auto iter = table_.find(alias);
-    CHECK_TRUE(iter == table_.end(),
-        "Function name '", alias, "' is duplicated");
+    CHECK_TRUE(iter == table_.end(), "Function name '", alias,
+               "' is duplicated");
     iter = table_.find(name);
-    CHECK_TRUE(iter != table_.end(),
-        "Alias target Function name '", name, "' not found");
+    CHECK_TRUE(iter != table_.end(), "Alias target Function name '", name,
+               "' not found");
     table_[alias] = iter->second;
     return Status::OK();
 }
-
 
 Status UDFLibrary::RegisterFromFile(const std::string& path_str) {
     boost::filesystem::path path(path_str);
@@ -100,9 +98,9 @@ Status UDFLibrary::RegisterFromFile(const std::string& path_str) {
 
     Status status;
     CHECK_TRUE(0 == parser.parse(script, parser_trees, node_manager(), status),
-        "Fail to parse script:", status.msg);
+               "Fail to parse script:", status.msg);
     CHECK_TRUE(0 == planer.CreatePlanTree(parser_trees, plan_trees, status),
-        "Fail to create sql plan: ", status.msg);
+               "Fail to create sql plan: ", status.msg);
 
     std::unordered_map<std::string, std::shared_ptr<SimpleUDFRegistry>> dict;
     auto it = plan_trees.begin();
@@ -114,14 +112,14 @@ Status UDFLibrary::RegisterFromFile(const std::string& path_str) {
                 auto func_def_plan =
                     dynamic_cast<const ::fesql::node::FuncDefPlanNode*>(node);
                 CHECK_TRUE(func_def_plan->fn_def_ != nullptr,
-                    "fn_def node is null");
+                           "fn_def node is null");
 
                 auto header = func_def_plan->fn_def_->header_;
                 std::shared_ptr<SimpleUDFRegistry> registry;
                 auto iter = dict.find(header->name_);
                 if (iter == dict.end()) {
-                    registry = std::make_shared<SimpleUDFRegistry>(
-                        header->name_);
+                    registry =
+                        std::make_shared<SimpleUDFRegistry>(header->name_);
                     dict.insert(iter, std::make_pair(header->name_, registry));
                 } else {
                     registry = iter->second;
@@ -137,9 +135,10 @@ Status UDFLibrary::RegisterFromFile(const std::string& path_str) {
                 break;
             }
             default:
-                return Status(common::kCodegenError,
+                return Status(
+                    common::kCodegenError,
                     "fail to codegen fe script: unrecognized plan type " +
-                    node::NameOfPlanNodeType(node->GetType()));
+                        node::NameOfPlanNodeType(node->GetType()));
         }
     }
     for (auto& pair : dict) {
@@ -147,7 +146,6 @@ Status UDFLibrary::RegisterFromFile(const std::string& path_str) {
     }
     return Status::OK();
 }
-
 
 Status UDFLibrary::Transform(const std::string& name, ExprListNode* args,
                              const node::SQLNode* over,
@@ -180,8 +178,8 @@ void UDFLibrary::InitJITSymbols(llvm::orc::LLJIT* jit_ptr) {
                 node::ExternalFnDefNode* def_node = pair2.second.first;
                 if (def_node->IsResolved() &&
                     def_node->function_ptr() != nullptr &&
-                    symbol_names.find(def_node->function_name())
-                        == symbol_names.end()) {
+                    symbol_names.find(def_node->function_name()) ==
+                        symbol_names.end()) {
                     fesql::vm::FeSQLJIT::AddSymbol(
                         jit_ptr->getMainJITDylib(), mi,
                         def_node->function_name(), def_node->function_ptr());
@@ -191,7 +189,6 @@ void UDFLibrary::InitJITSymbols(llvm::orc::LLJIT* jit_ptr) {
         }
     }
 }
-
 
 }  // namespace udf
 }  // namespace fesql

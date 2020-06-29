@@ -36,9 +36,7 @@ class TextTable {
 
     void add(std::string const& content) { _current.push_back(content); }
 
-    size_t current_columns_size() const {
-        return _current.size();
-    }
+    size_t current_columns_size() const { return _current.size(); }
     void endOfRow() {
         _rows.push_back(_current);
         _current.assign(0, "");

@@ -131,10 +131,8 @@ class Range {
         if (nullptr != range_key_ && nullptr != frame_) {
             if (nullptr != frame_->frame_range()) {
                 oss << "range=(" << range_key_->GetExprString() << ", "
-                    << frame_->frame_range()->start()->GetExprString()
-                    << ", "
-                    << frame_->frame_range()->end()->GetExprString()
-                    << ")";
+                    << frame_->frame_range()->start()->GetExprString() << ", "
+                    << frame_->frame_range()->end()->GetExprString() << ")";
             }
 
             if (nullptr != frame_->frame_rows()) {
@@ -142,10 +140,8 @@ class Range {
                     oss << ", ";
                 }
                 oss << "rows=(" << range_key_->GetExprString() << ", "
-                    << frame_->frame_rows()->start()->GetExprString()
-                    << ", "
-                    << frame_->frame_rows()->end()->GetExprString()
-                    << ")";
+                    << frame_->frame_rows()->start()->GetExprString() << ", "
+                    << frame_->frame_rows()->end()->GetExprString() << ")";
             }
         }
         return oss.str();

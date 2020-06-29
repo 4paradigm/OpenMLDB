@@ -1,17 +1,16 @@
 // Copyright (C) 2019, 4paradigm
 #pragma once
 #include <assert.h>
+#include <memory.h>
 #include <stddef.h>
 #include <string.h>
-#include <memory.h>
-#include <string>
-#include <memory>
 #include <boost/smart_ptr/local_shared_ptr.hpp>
+#include <memory>
+#include <string>
 #include "base/raw_buffer.h"
 
 namespace fesql {
 namespace base {
-
 
 class Slice {
  public:
@@ -36,19 +35,17 @@ class Slice {
     Slice() : size_(0), data_("") {}
 
     // Create a slice that refers to d[0,n-1].
-    Slice(const char* d, size_t n): size_(n), data_(d) {}
+    Slice(const char* d, size_t n) : size_(n), data_(d) {}
 
     // Create slice from string
-    explicit Slice(const std::string& s)
-        : size_(s.size()), data_(s.data()) {}
+    explicit Slice(const std::string& s) : size_(s.size()), data_(s.data()) {}
 
     // Create slice from buffer
     explicit Slice(const fesql::base::RawBuffer& buf)
         : size_(buf.size), data_(buf.addr) {}
 
     // Create slice from c string
-    explicit Slice(const char* s)
-        : size_(strlen(s)), data_(s) {}
+    explicit Slice(const char* s) : size_(strlen(s)), data_(s) {}
 
     ~Slice() {}
 
@@ -110,8 +107,6 @@ inline int Slice::compare(const Slice& b) const {
     return r;
 }
 
-
-
 class RefCountedSlice : public Slice {
  public:
     ~RefCountedSlice();
@@ -131,8 +126,7 @@ class RefCountedSlice : public Slice {
         return RefCountedSlice(buf, size, false);
     }
 
-    RefCountedSlice():
-        Slice(nullptr, 0), ref_cnt_(nullptr) {}
+    RefCountedSlice() : Slice(nullptr, 0), ref_cnt_(nullptr) {}
 
     RefCountedSlice(const RefCountedSlice& slice);
     RefCountedSlice(RefCountedSlice&&);
@@ -140,19 +134,17 @@ class RefCountedSlice : public Slice {
     RefCountedSlice& operator=(RefCountedSlice&&);
 
  private:
-    RefCountedSlice(int8_t* data, size_t size, bool managed):
-        Slice(reinterpret_cast<const char*>(data), size),
-        ref_cnt_(managed ? new int(1) : nullptr) {}
+    RefCountedSlice(int8_t* data, size_t size, bool managed)
+        : Slice(reinterpret_cast<const char*>(data), size),
+          ref_cnt_(managed ? new int(1) : nullptr) {}
 
-    RefCountedSlice(const char* data, size_t size, bool managed):
-        Slice(data, size),
-        ref_cnt_(managed ? new int(1) : nullptr) {}
+    RefCountedSlice(const char* data, size_t size, bool managed)
+        : Slice(data, size), ref_cnt_(managed ? new int(1) : nullptr) {}
 
     void Update(const RefCountedSlice& slice);
 
     int32_t* ref_cnt_;
 };
-
 
 }  // namespace base
 }  // namespace fesql

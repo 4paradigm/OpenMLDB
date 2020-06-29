@@ -45,8 +45,8 @@ class BufNativeEncoderIRBuilder : public RowEncodeIRBuilder {
     // the output_ptr like int8_t**
     bool BuildEncode(::llvm::Value* output_ptr);
 
-    bool BuildEncodePrimaryField(
-      ::llvm::Value* buf, size_t idx, const NativeValue& val);
+    bool BuildEncodePrimaryField(::llvm::Value* buf, size_t idx,
+                                 const NativeValue& val);
 
  private:
     bool CalcTotalSize(::llvm::Value** output, ::llvm::Value* str_addr_space);
@@ -83,15 +83,14 @@ class BufNativeIRBuilder : public RowDecodeIRBuilder {
 
  private:
     bool BuildGetPrimaryField(const std::string& fn_name,
-                              ::llvm::Value* row_ptr,
-                              uint32_t col_idx, uint32_t offset,
-                              ::llvm::Type* type, NativeValue* output);
+                              ::llvm::Value* row_ptr, uint32_t col_idx,
+                              uint32_t offset, ::llvm::Type* type,
+                              NativeValue* output);
     bool BuildGetStringField(uint32_t col_idx, uint32_t offset,
                              uint32_t next_str_field_offset,
                              uint32_t str_start_offset, ::llvm::Value* row_ptr,
                              ::llvm::Value* size, NativeValue* output);
-    bool ResolveFieldInfo(const std::string& name,
-                          codec::ColInfo* info_ptr,
+    bool ResolveFieldInfo(const std::string& name, codec::ColInfo* info_ptr,
                           node::TypeNode* data_type_ptr);
 
  private:

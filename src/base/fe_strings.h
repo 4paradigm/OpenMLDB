@@ -31,7 +31,7 @@ static const char* TIME_LABEL[] = {"ms", "s", "m", "h", "d"};
 
 static inline void SplitString(const std::string& full,
                                const std::string& delim,
-                               std::vector<std::string>& result) {//NOLINT
+                               std::vector<std::string>& result) {  // NOLINT
     result.clear();
     if (full.empty()) {
         return;

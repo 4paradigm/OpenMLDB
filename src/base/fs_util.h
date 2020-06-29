@@ -24,7 +24,8 @@
 namespace fesql {
 namespace base {
 
-bool ListDir(const std::string& path, std::vector<std::string>& files); // NOLINT
+bool ListDir(const std::string& path,
+             std::vector<std::string>& files);  // NOLINT
 
 }  // namespace base
 }  // namespace fesql

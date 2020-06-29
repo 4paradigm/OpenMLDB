@@ -64,10 +64,9 @@ void BinaryArithmeticExprCheck(::fesql::node::DataType left_type,
     }
 
     Function *load_fn = Function::Create(
-        FunctionType::get(
-            ::llvm::Type::getVoidTy(*ctx),
-            {left_llvm_type, right_llvm_type, dist_llvm_type},
-            false),
+        FunctionType::get(::llvm::Type::getVoidTy(*ctx),
+                          {left_llvm_type, right_llvm_type, dist_llvm_type},
+                          false),
         Function::ExternalLinkage, "load_fn", m.get());
     BasicBlock *entry_block = BasicBlock::Create(*ctx, "EntryBlock", load_fn);
     IRBuilder<> builder(entry_block);
@@ -118,7 +117,7 @@ void BinaryArithmeticExprCheck(::fesql::node::DataType left_type,
         case node::kTimestamp: {
             codegen::TimestampIRBuilder timestamp_builder(m.get());
             ASSERT_TRUE(timestamp_builder.CopyFrom(builder.GetInsertBlock(),
-                                                output, arg2));
+                                                   output, arg2));
             break;
         }
         case node::kVarchar: {
@@ -238,13 +237,11 @@ TEST_F(ArithmeticIRBuilderTest, test_sub_timestamp_expr) {
         ::fesql::node::kFnOpMinus);
 
     BinaryArithmeticExprCheck<Timestamp *, int64_t, int64_t>(
-        ::fesql::node::kTimestamp, ::fesql::node::kInt64,
-        ::fesql::node::kInt64, &t1, 1L, 7999999999L,
-        ::fesql::node::kFnOpMinus);
+        ::fesql::node::kTimestamp, ::fesql::node::kInt64, ::fesql::node::kInt64,
+        &t1, 1L, 7999999999L, ::fesql::node::kFnOpMinus);
     BinaryArithmeticExprCheck<Timestamp *, int32_t, int64_t>(
-        ::fesql::node::kTimestamp, ::fesql::node::kInt32,
-        ::fesql::node::kInt64, &t1, 1, 7999999999L,
-        ::fesql::node::kFnOpMinus);
+        ::fesql::node::kTimestamp, ::fesql::node::kInt32, ::fesql::node::kInt64,
+        &t1, 1, 7999999999L, ::fesql::node::kFnOpMinus);
 }
 TEST_F(ArithmeticIRBuilderTest, test_add_float_x_expr) {
     BinaryArithmeticExprCheck<float, int16_t, float>(

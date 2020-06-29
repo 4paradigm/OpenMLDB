@@ -17,10 +17,11 @@
 
 #include "vm/csv_catalog.h"
 
-#include <vector>
 #include <memory>
 #include <string>
+#include <vector>
 #include "arrow/filesystem/localfs.h"
+#include "codec/fe_row_codec.h"
 #include "gtest/gtest.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/IR/Function.h"
@@ -31,7 +32,6 @@
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/raw_ostream.h"
-#include "codec/fe_row_codec.h"
 #include "vm/engine.h"
 
 using namespace llvm;       // NOLINT (build/namespaces)

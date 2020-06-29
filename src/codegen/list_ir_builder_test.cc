@@ -37,8 +37,8 @@
 #include "llvm/Transforms/InstCombine/InstCombine.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/GVN.h"
-#include "udf/udf.h"
 #include "udf/default_udf_library.h"
+#include "udf/udf.h"
 #include "vm/sql_compiler.h"
 
 using namespace llvm;       // NOLINT
@@ -161,10 +161,9 @@ void GetListAtPos(const type::TableDef& table, T* result,
         retTy = retTy->getPointerTo();
     }
     Function* fn = Function::Create(
-        FunctionType::get(::llvm::Type::getVoidTy(*ctx),
-                          {Type::getInt8PtrTy(*ctx), Type::getInt32Ty(*ctx),
-                           retTy},
-                          false),
+        FunctionType::get(
+            ::llvm::Type::getVoidTy(*ctx),
+            {Type::getInt8PtrTy(*ctx), Type::getInt32Ty(*ctx), retTy}, false),
         Function::ExternalLinkage, "fn", m.get());
     BasicBlock* entry_block = BasicBlock::Create(*ctx, "EntryBlock", fn);
     ScopeVar sv;
@@ -624,8 +623,7 @@ void RunListIteratorSumCase(T* result, const type::TableDef& table,
     }
     Function* fn = Function::Create(
         FunctionType::get(Type::getVoidTy(*ctx),
-                          {Type::getInt8PtrTy(*ctx), retTy},
-                          false),
+                          {Type::getInt8PtrTy(*ctx), retTy}, false),
         Function::ExternalLinkage, "fn", m.get());
     BasicBlock* entry_block = BasicBlock::Create(*ctx, "EntryBlock", fn);
     ScopeVar sv;
@@ -747,8 +745,7 @@ void GetListIteratorNext(T* result, const type::TableDef& table,
 
     Function* fn = Function::Create(
         FunctionType::get(Type::getVoidTy(*ctx),
-                          {Type::getInt8PtrTy(*ctx), retTy},
-                          false),
+                          {Type::getInt8PtrTy(*ctx), retTy}, false),
         Function::ExternalLinkage, "fn", m.get());
     BasicBlock* entry_block = BasicBlock::Create(*ctx, "EntryBlock", fn);
     ScopeVar sv;

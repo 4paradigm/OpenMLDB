@@ -11,9 +11,7 @@
 #define SRC_VM_TEST_BASE_SCHEMA_H_
 #include "vm/catalog.h"
 namespace fesql {
-namespace vm {
-
-}  // namespace vm
+namespace vm {}  // namespace vm
 }  // namespace fesql
 
 #endif  // SRC_VM_TEST_BASE_SCHEMA_H_
