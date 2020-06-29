@@ -16,8 +16,10 @@
  */
 
 #include "codec/codec.h"
+
 #include <algorithm>
 #include <unordered_set>
+
 #include "base/glog_wapper.h"
 #include "boost/lexical_cast.hpp"
 
@@ -34,14 +36,14 @@ static const std::unordered_set<::rtidb::type::DataType> TYPE_SET(
 
 static constexpr std::array<uint32_t, 9> TYPE_SIZE_ARRAY = {
     0,
-    sizeof(bool),      // kBool
-    sizeof(int16_t),   // kSmallInt
-    sizeof(int32_t),   // kInt
-    sizeof(int64_t),   // kBigInt
-    sizeof(float),     // kFloat
-    sizeof(double),    // kDouble
+    sizeof(bool),     // kBool
+    sizeof(int16_t),  // kSmallInt
+    sizeof(int32_t),  // kInt
+    sizeof(int64_t),  // kBigInt
+    sizeof(float),    // kFloat
+    sizeof(double),   // kDouble
     sizeof(int32_t),  // kDate
-    sizeof(int64_t),   // kTimestamp
+    sizeof(int64_t),  // kTimestamp
 };
 
 static inline uint8_t GetAddrLength(uint32_t size) {
@@ -99,7 +101,7 @@ bool RowBuilder::SetBuffer(int8_t* buf, uint32_t size) {
     *(buf_ + 1) = 1;  // SVersion
     *(reinterpret_cast<uint32_t*>(buf_ + VERSION_LENGTH)) = size;
     uint32_t bitmap_size = BitMapSize(schema_.size());
-    memset(buf_ + HEADER_LENGTH, 1, bitmap_size);
+    memset(buf_ + HEADER_LENGTH, 0xFF, bitmap_size);
     cnt_ = 0;
     str_addr_length_ = GetAddrLength(size);
     str_offset_ = str_field_start_offset_ + str_addr_length_ * str_field_cnt_;
@@ -147,6 +149,7 @@ bool RowBuilder::AppendDate(int32_t date) {
 
 bool RowBuilder::SetDate(uint32_t index, int32_t date) {
     if (!Check(index, ::rtidb::type::kDate)) return false;
+    SetFiled(index);
     int8_t* ptr = buf_ + offset_vec_[index];
     *(reinterpret_cast<int32_t*>(ptr)) = date;
     return true;
@@ -175,7 +178,7 @@ bool RowBuilder::SetDate(uint32_t index, uint32_t year, uint32_t month,
 
 void RowBuilder::SetFiled(uint32_t index) {
     int8_t* ptr = buf_ + HEADER_LENGTH + (index >> 3);
-    *(reinterpret_cast<uint8_t*>(ptr)) |= 0 << (index & 0x07);
+    *(reinterpret_cast<uint8_t*>(ptr)) &= ~(1 << (index & 0x07));
 }
 
 bool RowBuilder::AppendNULL() {
@@ -193,9 +196,7 @@ bool RowBuilder::SetNULL(uint32_t index) {
             if (str_set_pos_ >= (int32_t)str_pos) {
                 return false;
             } else {
-                for (uint32_t pos = (uint32_t)(str_set_pos_ + 1); pos < str_pos; pos++) {
-                    SetStrOffset(pos);
-                }
+                SetStrOffset((uint32_t)(str_set_pos_ + 1));
             }
         }
         SetStrOffset(str_pos);
@@ -205,16 +206,14 @@ bool RowBuilder::SetNULL(uint32_t index) {
 }
 
 void RowBuilder::SetStrOffset(uint32_t str_pos) {
-    int8_t* ptr = buf_ + str_field_start_offset_ +
-          str_addr_length_ * str_pos;
+    int8_t* ptr = buf_ + str_field_start_offset_ + str_addr_length_ * str_pos;
     if (str_addr_length_ == 1) {
         *(reinterpret_cast<uint8_t*>(ptr)) = (uint8_t)str_offset_;
     } else if (str_addr_length_ == 2) {
         *(reinterpret_cast<uint16_t*>(ptr)) = (uint16_t)str_offset_;
     } else if (str_addr_length_ == 3) {
         *(reinterpret_cast<uint8_t*>(ptr)) = str_offset_ >> 16;
-        *(reinterpret_cast<uint8_t*>(ptr + 1)) =
-            (str_offset_ & 0xFF00) >> 8;
+        *(reinterpret_cast<uint8_t*>(ptr + 1)) = (str_offset_ & 0xFF00) >> 8;
         *(reinterpret_cast<uint8_t*>(ptr + 2)) = str_offset_ & 0x00FF;
     } else {
         *(reinterpret_cast<uint32_t*>(ptr)) = str_offset_;
@@ -351,9 +350,7 @@ bool RowBuilder::SetString(uint32_t index, const char* val, uint32_t length) {
         if (str_set_pos_ >= (int32_t)str_pos) {
             return false;
         } else {
-            for (uint32_t pos = (uint32_t)(str_set_pos_ + 1); pos < str_pos; pos++) {
-                SetStrOffset(pos);
-            }
+            SetStrOffset((uint32_t)(str_set_pos_ + 1));
         }
     }
     SetStrOffset(str_pos);
@@ -376,8 +373,8 @@ bool RowBuilder::AppendValue(const std::string& val) {
                 break;
             case rtidb::type::kBool: {
                 std::string b_val = val;
-                std::transform(b_val.begin(), b_val.end(),
-                               b_val.begin(), ::tolower);
+                std::transform(b_val.begin(), b_val.end(), b_val.begin(),
+                               ::tolower);
                 if (b_val == "true") {
                     ok = AppendBool(true);
                 } else if (b_val == "false") {
