@@ -96,6 +96,10 @@ void RowBuilder::SetSchemaVersion(uint8_t version) {
 }
 
 bool RowBuilder::SetBuffer(int8_t* buf, uint32_t size) {
+    return SetBuffer(buf, size, true);
+}
+
+bool RowBuilder::SetBuffer(int8_t* buf, uint32_t size, bool need_clear) {
     if (buf == NULL || size == 0 ||
         size < str_field_start_offset_ + str_field_cnt_) {
         return false;
@@ -105,8 +109,10 @@ bool RowBuilder::SetBuffer(int8_t* buf, uint32_t size) {
     *(buf_) = 1;                    // FVersion
     *(buf_ + 1) = schema_version_;  // SVersion
     *(reinterpret_cast<uint32_t*>(buf_ + VERSION_LENGTH)) = size;
-    uint32_t bitmap_size = BitMapSize(schema_.size());
-    memset(buf_ + HEADER_LENGTH, 0xFF, bitmap_size);
+    if (need_clear) {
+        uint32_t bitmap_size = BitMapSize(schema_.size());
+        memset(buf_ + HEADER_LENGTH, 0xFF, bitmap_size);
+    }
     cnt_ = 0;
     str_addr_length_ = GetAddrLength(size);
     str_offset_ = str_field_start_offset_ + str_addr_length_ * str_field_cnt_;

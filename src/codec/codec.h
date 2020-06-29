@@ -67,6 +67,7 @@ class RowBuilder {
 
     uint32_t CalTotalLength(uint32_t string_length);
     bool SetBuffer(int8_t* buf, uint32_t size);
+    bool SetBuffer(int8_t* buf, uint32_t size, bool need_clear);
     bool AppendBool(bool val);
     bool AppendInt32(int32_t val);
     bool AppendInt16(int16_t val);
