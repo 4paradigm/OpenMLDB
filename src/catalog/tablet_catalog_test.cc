@@ -15,8 +15,10 @@
  * limitations under the License.
  */
 
-#include <vector>
 #include "catalog/tablet_catalog.h"
+
+#include <vector>
+
 #include "base/fe_status.h"
 #include "catalog/schema_adapter.h"
 #include "codec/fe_row_codec.h"
@@ -96,7 +98,7 @@ TEST_F(TabletCatalogTest, tablet_smoke_test) {
     ASSERT_TRUE(it->Valid());
     auto row = it->GetValue();
     ASSERT_EQ(row.ToString(), args->row);
-    auto wit = handler.GetWindowIterator(args->idx_name + std::to_string(0));
+    auto wit = handler.GetWindowIterator(args->idx_name);
     if (!wit) {
         ASSERT_TRUE(false);
     }
@@ -174,7 +176,7 @@ TEST_F(TabletCatalogTest, sql_last_join_smoke_test) {
         "select t1.col1 as c1, t1.col2 as c2 , t2.col1 as c3, t2.col2 as c4 "
         "from t1 last join t2 order by t2.col2 "
         "on t1.col1 = t2.col1 and t1.col2 > t2.col2;";
-     ::fesql::vm::ExplainOutput explain;
+    ::fesql::vm::ExplainOutput explain;
     ::fesql::base::Status status;
     engine.Explain(sql, "db1", true, &explain, &status);
     std::cout << "logical_plan \n" << explain.logical_plan << std::endl;

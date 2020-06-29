@@ -36,9 +36,69 @@ class SchemaAdapter {
 
     static bool ConvertSchema(const ::fesql::vm::Schema& sql_schema,
                               RtiDBSchema* output) {
-        return false;
+        if (output == NULL) {
+            LOG(WARNING) << "output ptr is null";
+            return false;
+        }
+        for (int32_t i = 0; i < sql_schema.size(); i++) {
+            auto& sql_column = sql_schema.Get(i);
+            auto rtidb_column = output->Add();
+            rtidb_column->set_name(sql_column.name());
+            rtidb_column->set_not_null(sql_column.is_not_null());
+            switch (sql_column.type()) {
+                case fesql::type::kBool:
+                    rtidb_column->set_data_type(::rtidb::type::kBool);
+                    break;
+                case fesql::type::kInt16:
+                    rtidb_column->set_data_type(::rtidb::type::kSmallInt);
+                    break;
+                case fesql::type::kInt32:
+                    rtidb_column->set_data_type(::rtidb::type::kInt);
+                    break;
+                case fesql::type::kInt64:
+                    rtidb_column->set_data_type(::rtidb::type::kBigInt);
+                    break;
+                case fesql::type::kFloat:
+                    rtidb_column->set_data_type(::rtidb::type::kFloat);
+                    break;
+                case fesql::type::kDouble:
+                    rtidb_column->set_data_type(::rtidb::type::kDouble);
+                    break;
+                case fesql::type::kDate:
+                    rtidb_column->set_data_type(::rtidb::type::kDate);
+                    break;
+                case fesql::type::kTimestamp:
+                    rtidb_column->set_data_type(::rtidb::type::kTimestamp);
+                    break;
+                case fesql::type::kVarchar:
+                    rtidb_column->set_data_type(::rtidb::type::kVarchar);
+                    break;
+                default:
+                    LOG(WARNING) << "type "
+                                 << ::fesql::type::Type_Name(sql_column.type())
+                                 << " is not supported";
+                    return false;
+            }
+        }
+        return true;
     }
-
+    static bool ConvertIndex(const ::fesql::vm::IndexList& index,
+                             RtiDBIndex* output) {
+        if (output == NULL) {
+            LOG(WARNING) << "output ptr is null";
+            return false;
+        }
+        for (int32_t i = 0; i < index.size(); i++) {
+            auto& sql_key = index.Get(i);
+            auto index = output->Add();
+            index->set_index_name(sql_key.name());
+            for (int32_t k = 0; k < sql_key.first_keys_size(); k++) {
+                index->add_col_name(sql_key.first_keys(k));
+            }
+            index->add_ts_name(sql_key.second_key());
+        }
+        return true;
+    }
     static bool ConvertIndex(const RtiDBIndex& index,
                              ::fesql::vm::IndexList* output) {
         if (output == NULL) {
@@ -50,7 +110,11 @@ class SchemaAdapter {
             const ::rtidb::common::ColumnKey& key = index.Get(i);
             for (int32_t k = 0; k < key.ts_name_size(); k++) {
                 ::fesql::type::IndexDef* index = output->Add();
-                index->set_name(key.index_name() + std::to_string(k));
+                if (k > 0) {
+                    index->set_name(key.index_name() + std::to_string(k));
+                } else {
+                    index->set_name(key.index_name());
+                }
                 auto keys = index->mutable_first_keys();
                 keys->CopyFrom(key.col_name());
                 index->set_second_key(key.ts_name(k));
