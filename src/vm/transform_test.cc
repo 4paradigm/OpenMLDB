@@ -492,6 +492,7 @@ TEST_P(TransformTest, window_merge_opt_test) {
     auto m = make_unique<Module>("test_op_generator", *ctx);
     ::fesql::udf::RegisterUDFToModule(m.get());
     base::Status status;
+    ::fesql::udf::DefaultUDFLibrary lib;
     BatchModeTransformer transform(&manager, "db", catalog, m.get(), &lib);
     transform.AddDefaultPasses();
     PhysicalOpNode* physical_plan = nullptr;

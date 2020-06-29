@@ -287,7 +287,6 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         return false;
     }
     if (ctx.is_batch_mode) {
-
         vm::BatchModeTransformer transformer(&(ctx.nm), ctx.db, cl_, m.get(),
                                              &library);
         transformer.AddDefaultPasses();
