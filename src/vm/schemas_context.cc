@@ -247,7 +247,7 @@ vm::ColumnSource SchemasContext::ColumnSourceResolved(
 }
 
 int32_t SchemasContext::ColumnIdxResolved(const std::string& column,
-                                            const Schema* schema) const {
+                                          const Schema* schema) const {
     int32_t column_idx = -1;
     for (int i = 0; i < schema->size(); ++i) {
         if (schema->Get(i).name() == column) {

@@ -40,14 +40,13 @@ std::initializer_list<int> __output_literal_args(STREAM& stream,  // NOLINT
         if (!(call)) {                                                        \
             std::stringstream _ss;                                            \
             fesql::base::__output_literal_args(                               \
-                _ss, "Internal api error: ", ##__VA_ARGS__,                   \
-                "(at ", __FILE__, ":", __LINE__, ")");                        \
+                _ss, "Internal api error: ", ##__VA_ARGS__, "(at ", __FILE__, \
+                ":", __LINE__, ")");                                          \
             fesql::base::Status _status(common::kCodegenError, _ss.str());    \
             return _status;                                                   \
         }                                                                     \
         break;                                                                \
     }
-
 
 struct Status {
     Status() : code(common::kOk), msg("ok") {}

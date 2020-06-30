@@ -54,7 +54,7 @@ void CheckResult(std::string test, int32_t res, int32_t a, int32_t b) {
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("custom_fn", *ctx);
     FnIRBuilder fn_ir_builder(m.get());
-    ::llvm::Function* func = nullptr;
+    ::llvm::Function *func = nullptr;
     bool ok = fn_ir_builder.Build(dynamic_cast<node::FnNodeFnDef *>(trees[0]),
                                   &func, status);
     ASSERT_TRUE(ok);

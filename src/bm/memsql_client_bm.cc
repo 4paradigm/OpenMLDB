@@ -16,12 +16,12 @@
 
 namespace fesql {
 namespace bm {
-//const static std::string host = "172.17.0.2";  // NOLINT
+// const static std::string host = "172.17.0.2";  // NOLINT
 const static std::string host = "127.0.0.1";  // NOLINT
-const static std::string user = "root";  // NOLINT
-const static std::string passwd = "";    // NOLINT
-const static size_t port = 3306;         // NOLINT
-static bool Init(MYSQL &conn) {          // NOLINT
+const static std::string user = "root";       // NOLINT
+const static std::string passwd = "";         // NOLINT
+const static size_t port = 3306;              // NOLINT
+static bool Init(MYSQL &conn) {               // NOLINT
     mysql_init(&conn);
     mysql_options(&conn, MYSQL_DEFAULT_AUTH, "mysql_native_password");
 
@@ -477,7 +477,6 @@ BENCHMARK(BM_GROUPBY_CASE1_QUERY)
     ->Args({10, 10})
     ->Args({10, 100})
     ->Args({10, 1000});
-
 
 BENCHMARK(BM_WINDOW_CASE0_QUERY)
     ->Args({1, 100})

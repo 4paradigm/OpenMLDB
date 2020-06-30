@@ -25,8 +25,8 @@
 #include "codec/fe_row_codec.h"
 #include "proto/fe_tablet.pb.h"
 #include "sdk/base_impl.h"
-#include "sdk/result_set.h"
 #include "sdk/codec_sdk.h"
+#include "sdk/result_set.h"
 
 namespace fesql {
 namespace sdk {

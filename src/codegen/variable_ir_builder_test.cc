@@ -55,14 +55,13 @@ void MutableVariableCheck(::fesql::node::DataType type, V1 value1, V1 result) {
     NativeValue output;
     base::Status status;
 
-    ASSERT_TRUE(ir_builder.StoreValue("x",
-        NativeValue::Create(arg0), false, status));
+    ASSERT_TRUE(
+        ir_builder.StoreValue("x", NativeValue::Create(arg0), false, status));
     ASSERT_TRUE(ir_builder.LoadValue("x", &output, status));
     builder.CreateRet(output.GetValue(&builder));
     m->print(::llvm::errs(), NULL, true, true);
     auto J = ExitOnErr(LLJITBuilder().create());
-    ExitOnErr(J->addIRModule(
-        ThreadSafeModule(std::move(m), std::move(ctx))));
+    ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
     auto load_fn_jit = ExitOnErr(J->lookup("load_fn"));
     V1 (*decode)(V1) = (V1(*)(V1))load_fn_jit.getAddress();
     V1 ret = decode(value1);
@@ -98,14 +97,13 @@ void ArrayVariableCheck(node::DataType type, V1 *array, int pos, V1 exp) {
     base::Status status;
     ASSERT_TRUE(ir_builder.LoadValue("array_arg", &output, status));
 
-    llvm::Value* output_elem = nullptr;
-    ASSERT_TRUE(ir_builder.LoadArrayIndex(
-        "array_arg", pos, &output_elem, status));
+    llvm::Value *output_elem = nullptr;
+    ASSERT_TRUE(
+        ir_builder.LoadArrayIndex("array_arg", pos, &output_elem, status));
     builder.CreateRet(output_elem);
     m->print(::llvm::errs(), NULL, true, true);
     auto J = ExitOnErr(LLJITBuilder().create());
-    ExitOnErr(J->addIRModule(
-        ThreadSafeModule(std::move(m), std::move(ctx))));
+    ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
     auto load_fn_jit = ExitOnErr(J->lookup("load_fn"));
     V1 (*decode)(V1[]) = (V1(*)(V1 *))load_fn_jit.getAddress();
     V1 ret = decode(array);
@@ -144,10 +142,10 @@ TEST_F(VariableIRBuilderTest, test_int8ptr_array_variable) {
     }
     ArrayVariableCheck<int8_t *>(::fesql::node::DataType::kInt8Ptr, int_num, 0,
                                  reinterpret_cast<int8_t *>(&strs[0]));
-    ArrayVariableCheck<int8_t*>(::fesql::node::DataType::kInt8Ptr, int_num, 1,
-                               reinterpret_cast<int8_t *>(&strs[1]));
-    ArrayVariableCheck<int8_t*>(::fesql::node::DataType::kInt8Ptr, int_num, 7,
-                               reinterpret_cast<int8_t *>(&strs[7]));
+    ArrayVariableCheck<int8_t *>(::fesql::node::DataType::kInt8Ptr, int_num, 1,
+                                 reinterpret_cast<int8_t *>(&strs[1]));
+    ArrayVariableCheck<int8_t *>(::fesql::node::DataType::kInt8Ptr, int_num, 7,
+                                 reinterpret_cast<int8_t *>(&strs[7]));
 }
 
 }  // namespace codegen

@@ -268,16 +268,15 @@ Status ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call,
             is_udaf = true;
         }
     }
-    ExprIRBuilder sub_builder(
-        block_, sv_, schemas_context_, !is_udaf, module_);
+    ExprIRBuilder sub_builder(block_, sv_, schemas_context_, !is_udaf, module_);
 
     for (int i = 0; i < call->GetArgSize(); ++i) {
         node::ExprNode* arg_expr = call->GetArgs()->GetChild(i);
 
         NativeValue llvm_arg_wrapper;
         CHECK_TRUE(sub_builder.Build(arg_expr, &llvm_arg_wrapper, status),
-            "Build argument ", arg_expr->GetExprString(),
-            " failed: ", status.msg);
+                   "Build argument ", arg_expr->GetExprString(),
+                   " failed: ", status.msg);
 
         ::llvm::Type* actual_llvm_ty = llvm_arg_wrapper.GetType();
         if (static_cast<size_t>(i) < function_ty->getNumParams()) {
@@ -299,8 +298,7 @@ Status ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call,
         CHECK_TRUE(ret_ptr_ty->isPointerTy());
 
         auto ret_alloca = builder.CreateAlloca(
-            reinterpret_cast<llvm::PointerType*>(
-                ret_ptr_ty)->getElementType());
+            reinterpret_cast<llvm::PointerType*>(ret_ptr_ty)->getElementType());
         llvm_args.insert(llvm_args.begin() + ret_pos, ret_alloca);
     }
 
@@ -441,7 +439,7 @@ Status ExprIRBuilder::ResolveLLVMUDFDef(const node::CallExprNode* call,
                                         bool* return_by_arg) {
     auto udf_node = dynamic_cast<const node::UDFDefNode*>(call->GetFnDef());
 
-    ::llvm::Type *llvm_ret_ty = nullptr;
+    ::llvm::Type* llvm_ret_ty = nullptr;
     bool ok = GetLLVMType(module_, udf_node->GetReturnType(), &llvm_ret_ty);
     if (ok && TypeIRBuilder::IsStructPtr(llvm_ret_ty)) {
         *return_by_arg = true;
@@ -457,7 +455,8 @@ Status ExprIRBuilder::ResolveLLVMUDFDef(const node::CallExprNode* call,
             case node::kVarchar:
                 fn_name.append(".").append(
                     udf_node->def()->header_->ret_type_->GetName());
-            default: break;
+            default:
+                break;
         }
     }
     ::llvm::Function* llvm_func = module_->getFunction(fn_name);

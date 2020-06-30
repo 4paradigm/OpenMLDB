@@ -63,7 +63,6 @@ static void BM_MemSegmentIterate(benchmark::State& state) {  // NOLINT
     MemSegmentIterate(&state, BENCHMARK, state.range(0));
 }
 
-
 static void BM_Day(benchmark::State& state) {  // NOLINT
     CTimeDay(&state, BENCHMARK, state.range(0));
 }
@@ -137,24 +136,12 @@ BENCHMARK(BM_MemSumColDouble)
     ->Args({100})
     ->Args({1000})
     ->Args({10000});
-BENCHMARK(BM_Day)
-    ->Args({1})
-    ->Args({10})
-    ->Args({100})
-    ->Args({1000})
-    ->Args({10000});
-BENCHMARK(BM_Month)
-->Args({1})
-    ->Args({10})
-    ->Args({100})
-    ->Args({1000})
-    ->Args({10000});
-BENCHMARK(BM_Year)
-->Args({1})
-    ->Args({10})
-    ->Args({100})
-    ->Args({1000})
-    ->Args({10000});
+BENCHMARK(BM_Day)->Args({1})->Args({10})->Args({100})->Args({1000})->Args(
+    {10000});
+BENCHMARK(BM_Month)->Args({1})->Args({10})->Args({100})->Args({1000})->Args(
+    {10000});
+BENCHMARK(BM_Year)->Args({1})->Args({10})->Args({100})->Args({1000})->Args(
+    {10000});
 
 }  // namespace bm
 }  // namespace fesql

@@ -9,13 +9,13 @@
 #ifndef SRC_UDF_UDF_REGISTRY_H_
 #define SRC_UDF_UDF_REGISTRY_H_
 
-#include <string>
-#include <utility>
-#include <vector>
-#include <tuple>
-#include <unordered_map>
 #include <memory>
 #include <sstream>
+#include <string>
+#include <tuple>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 #include "base/fe_status.h"
 #include "codec/list_iterator_codec.h"
@@ -863,11 +863,11 @@ class ExternalFuncRegistry : public UDFRegistry {
 
 struct ImplicitFuncPtr {
     template <typename Ret, typename... Args>
-    ImplicitFuncPtr(Ret (*fn)(Args...)):  // NOLINT
-        ptr(reinterpret_cast<void*>(fn)),
-        get_ret_func([](node::NodeManager* nm) {
-            return ArgTypeTrait<Ret>::to_type_node(nm);
-        }) {}
+    ImplicitFuncPtr(Ret (*fn)(Args...))  // NOLINT
+        : ptr(reinterpret_cast<void*>(fn)),
+          get_ret_func([](node::NodeManager* nm) {
+              return ArgTypeTrait<Ret>::to_type_node(nm);
+          }) {}
 
     void* ptr;
     std::function<node::TypeNode*(node::NodeManager*)> get_ret_func;
@@ -1027,7 +1027,7 @@ class ExternalTemplateFuncRegistryHelper {
 
     template <typename T, typename FTemplateRet, typename A1>
     node::ExternalFnDefNode* RegisterSingle(
-        ExternalFuncRegistryHelper& helper,  // NOLINT
+        ExternalFuncRegistryHelper& helper,       // NOLINT
         FTemplateRet (FTemplate<T>::*fn)(A1*)) {  // NOLINT
         helper.args<>(reinterpret_cast<void*>(FTemplateInst<T, A1*>::fcompute))
             .template returns<LiteralTag<A1>>()
@@ -1037,7 +1037,7 @@ class ExternalTemplateFuncRegistryHelper {
 
     template <typename T, typename FTemplateRet, typename A1>
     node::ExternalFnDefNode* RegisterSingle(
-        ExternalFuncRegistryHelper& helper,  // NOLINT
+        ExternalFuncRegistryHelper& helper,      // NOLINT
         FTemplateRet (FTemplate<T>::*fn)(A1)) {  // NOLINT
         helper.args<LiteralTag<A1>>(FTemplateInst<T, A1>::fcompute)
             .template returns<LiteralTag<A1>>;
@@ -1046,7 +1046,7 @@ class ExternalTemplateFuncRegistryHelper {
 
     template <typename T, typename FTemplateRet, typename A1, typename A2>
     node::ExternalFnDefNode* RegisterSingle(
-        ExternalFuncRegistryHelper& helper,  // NOLINT
+        ExternalFuncRegistryHelper& helper,           // NOLINT
         FTemplateRet (FTemplate<T>::*fn)(A1, A2*)) {  // NOLINT
         helper
             .args<LiteralTag<A1>>(
@@ -1058,7 +1058,7 @@ class ExternalTemplateFuncRegistryHelper {
 
     template <typename T, typename FTemplateRet, typename A1, typename A2>
     node::ExternalFnDefNode* RegisterSingle(
-        ExternalFuncRegistryHelper& helper,  // NOLINT
+        ExternalFuncRegistryHelper& helper,          // NOLINT
         FTemplateRet (FTemplate<T>::*fn)(A1, A2)) {  // NOLINT
         helper
             .args<LiteralTag<A1>, LiteralTag<A2>>(
@@ -1070,7 +1070,7 @@ class ExternalTemplateFuncRegistryHelper {
     template <typename T, typename FTemplateRet, typename A1, typename A2,
               typename A3>
     node::ExternalFnDefNode* RegisterSingle(
-        ExternalFuncRegistryHelper& helper,  // NOLINT
+        ExternalFuncRegistryHelper& helper,               // NOLINT
         FTemplateRet (FTemplate<T>::*fn)(A1, A2, A3*)) {  // NOLINT
         helper
             .args<LiteralTag<A1>, LiteralTag<A2>>(reinterpret_cast<void*>(
@@ -1083,7 +1083,7 @@ class ExternalTemplateFuncRegistryHelper {
     template <typename T, typename FTemplateRet, typename A1, typename A2,
               typename A3>
     node::ExternalFnDefNode* RegisterSingle(
-        ExternalFuncRegistryHelper& helper,  // NOLINT
+        ExternalFuncRegistryHelper& helper,              // NOLINT
         FTemplateRet (FTemplate<T>::*fn)(A1, A2, A3)) {  // NOLINT
         helper
             .args<LiteralTag<A1>, LiteralTag<A2>, LiteralTag<A3>>(
@@ -1097,7 +1097,6 @@ class ExternalTemplateFuncRegistryHelper {
     bool return_by_arg_ = false;
     std::vector<node::ExternalFnDefNode*> cur_defs_;
 };
-
 
 class SimpleUDFRegistry : public UDFRegistry {
  public:
@@ -1113,8 +1112,6 @@ class SimpleUDFRegistry : public UDFRegistry {
     // input arg type -> udaf def
     ArgSignatureTable<node::UDFDefNode*> reg_table_;
 };
-
-
 
 class SimpleUDAFRegistry : public UDFRegistry {
  public:
@@ -1171,8 +1168,8 @@ class SimpleUDAFRegistryHelperImpl {
     }
 
     SimpleUDAFRegistryHelperImpl& init(const std::string& fname, void* fn_ptr) {
-        auto fn = dynamic_cast<node::ExternalFnDefNode*>(
-            nm_->MakeExternalFnDefNode(
+        auto fn =
+            dynamic_cast<node::ExternalFnDefNode*>(nm_->MakeExternalFnDefNode(
                 fname, fn_ptr, state_ty_, {}, -1, false));
         this->init_ = nm_->MakeFuncNode(fn, nm_->MakeExprList(), nullptr);
         return *this;

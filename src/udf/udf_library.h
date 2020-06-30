@@ -91,7 +91,6 @@ class UDFLibrary {
     node::NodeManager nm_;
 };
 
-
 }  // namespace udf
 }  // namespace fesql
 

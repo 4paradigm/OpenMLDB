@@ -237,7 +237,6 @@ TEST_F(FnLetIRBuilderTest, test_extern_udf_project) {
     free(ptr);
 }
 
-
 TEST_F(FnLetIRBuilderTest, test_extern_agg_sum_project) {
     std::string sql =
         "SELECT "

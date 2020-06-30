@@ -17,6 +17,7 @@
 
 #include "arrow/filesystem/localfs.h"
 #include "base/texttable.h"
+#include "codec/fe_row_codec.h"
 #include "gflags/gflags.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/IR/Function.h"
@@ -29,7 +30,6 @@
 #include "llvm/Support/raw_ostream.h"
 #include "vm/csv_catalog.h"
 #include "vm/engine.h"
-#include "codec/fe_row_codec.h"
 
 DEFINE_string(format, "", "config the format of output, csv or nothing");
 DEFINE_string(db_dir, "", "config the dir of database");

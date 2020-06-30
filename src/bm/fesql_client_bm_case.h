@@ -32,8 +32,8 @@ void WINDOW_CASE0_QUERY(benchmark::State *state_ptr, MODE mode,
                         int64_t max_window_size);
 
 void GROUPBY_CASE0_QUERY(benchmark::State *state_ptr, MODE mode,
-                        bool is_batch_mode, int64_t group_size,
-                        int64_t max_window_size);
+                         bool is_batch_mode, int64_t group_size,
+                         int64_t max_window_size);
 
 }  // namespace bm
 }  // namespace fesql

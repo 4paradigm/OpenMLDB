@@ -85,7 +85,7 @@ int32_t year(int64_t ts);
 int32_t year(fesql::codec::Timestamp *ts);
 
 int32_t dayofmonth(int64_t ts);
-int32_t dayofmonth(fesql::codec::Timestamp* ts);
+int32_t dayofmonth(fesql::codec::Timestamp *ts);
 
 int32_t dayofweek(int64_t ts);
 int32_t dayofweek(fesql::codec::Timestamp *ts);

@@ -60,8 +60,7 @@ bool ScopeVar::AddIteratorValue(::llvm::Value* value) {
     return true;
 }
 
-bool ScopeVar::AddVar(const std::string& name,
-                      const NativeValue& value) {
+bool ScopeVar::AddVar(const std::string& name, const NativeValue& value) {
     if (scopes_.size() <= 0) {
         LOG(WARNING) << "no scope exists " << name;
         return false;
@@ -73,14 +72,12 @@ bool ScopeVar::AddVar(const std::string& name,
         LOG(WARNING) << "var with name " << name << " exists ";
         return false;
     }
-    exist_scope.scope_map.insert(
-        std::make_pair(name, value));
+    exist_scope.scope_map.insert(std::make_pair(name, value));
     DLOG(INFO) << "store var " << name;
     return true;
 }
 
-bool ScopeVar::ReplaceVar(const std::string& name,
-                       const NativeValue& value) {
+bool ScopeVar::ReplaceVar(const std::string& name, const NativeValue& value) {
     if (scopes_.size() <= 0) {
         LOG(WARNING) << "no scope exists " << name;
         return false;
@@ -99,8 +96,7 @@ bool ScopeVar::ReplaceVar(const std::string& name,
     DLOG(INFO) << "var with name " << name << " does not exist ";
     return false;
 }
-bool ScopeVar::FindVar(const std::string& name,
-                       NativeValue* value) {
+bool ScopeVar::FindVar(const std::string& name, NativeValue* value) {
     if (value == NULL) {
         LOG(WARNING) << " input value is null";
         return false;

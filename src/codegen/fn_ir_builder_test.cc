@@ -37,8 +37,8 @@
 #include "llvm/Transforms/Utils.h"
 #include "node/node_manager.h"
 #include "parser/parser.h"
-#include "udf/udf.h"
 #include "udf/default_udf_library.h"
+#include "udf/udf.h"
 #include "vm/sql_compiler.h"
 
 using namespace llvm;       // NOLINT (build/namespaces)
@@ -79,7 +79,7 @@ void CheckResult(std::string test, R exp, V1 a, V2 b) {
     FnIRBuilder fn_ir_builder(m.get());
     node::FnNodeFnDef *fn_def = dynamic_cast<node::FnNodeFnDef *>(trees[0]);
     LOG(INFO) << *fn_def;
-    ::llvm::Function* func = nullptr;
+    ::llvm::Function *func = nullptr;
     bool ok = fn_ir_builder.Build(fn_def, &func, status);
     ASSERT_TRUE(ok);
     m->print(::llvm::errs(), NULL, true, true);
@@ -103,8 +103,7 @@ void CheckResult(std::string test, R exp, V1 a, V2 b) {
     ::fesql::udf::InitUDFSymbol(jd, mi);
 
     ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
-    auto test_jit =
-        ExitOnErr(J->lookup(fn_def->header_->GeIRFunctionName()));
+    auto test_jit = ExitOnErr(J->lookup(fn_def->header_->GeIRFunctionName()));
     R (*test_fn)(V1, V2) = (R(*)(V1, V2))test_jit.getAddress();
     R result = test_fn(a, b);
     LOG(INFO) << "exp: " << std::to_string(exp)
@@ -243,15 +242,15 @@ TEST_F(FnIRBuilderTest, test_list_at_pos) {
     fesql::codec::ListRef<> list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
     CheckResult<int32_t, fesql::codec::ListRef<> *, int32_t>(test, 1, &list_ref,
-                                                           0);
+                                                             0);
     CheckResult<int32_t, fesql::codec::ListRef<> *, int32_t>(test, 3, &list_ref,
-                                                           1);
+                                                             1);
     CheckResult<int32_t, fesql::codec::ListRef<> *, int32_t>(test, 5, &list_ref,
-                                                           2);
+                                                             2);
     CheckResult<int32_t, fesql::codec::ListRef<> *, int32_t>(test, 7, &list_ref,
-                                                           3);
+                                                             3);
     CheckResult<int32_t, fesql::codec::ListRef<> *, int32_t>(test, 9, &list_ref,
-                                                           4);
+                                                             4);
 }
 
 TEST_F(FnIRBuilderTest, test_for_in_sum) {
@@ -314,8 +313,8 @@ TEST_F(FnIRBuilderTest, test_for_in_condition_sum) {
         test, 3 + 5 + 7 + 9, &list_ref, 1);
     CheckResult<int32_t, fesql::codec::ListRef<> *, int32_t>(
         test, 3 + 5 + 7 + 9, &list_ref, 2);
-    CheckResult<int32_t, fesql::codec::ListRef<> *, int32_t>(
-        test, 5 + 7 + 9, &list_ref, 3);
+    CheckResult<int32_t, fesql::codec::ListRef<> *, int32_t>(test, 5 + 7 + 9,
+                                                             &list_ref, 3);
 }
 
 TEST_F(FnIRBuilderTest, test_for_in_condition2_sum) {

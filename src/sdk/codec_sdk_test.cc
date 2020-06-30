@@ -15,9 +15,9 @@
  * limitations under the License.
  */
 
+#include "sdk/codec_sdk.h"
 #include <string>
 #include <vector>
-#include "sdk/codec_sdk.h"
 #include "gtest/gtest.h"
 
 namespace fesql {

@@ -88,8 +88,8 @@ class ExprIRBuilder {
                                   bool* return_by_arg);
 
     bool BuildCastExpr(const ::fesql::node::CastExprNode* node,
-                         NativeValue* output,
-                         ::fesql::base::Status& status);  // NOLINT
+                       NativeValue* output,
+                       ::fesql::base::Status& status);  // NOLINT
     bool BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
                          NativeValue* output,
                          ::fesql::base::Status& status);  // NOLINT

@@ -6,17 +6,16 @@
  * Date: 2020/3/12
  *--------------------------------------------------------------------------
  **/
-#include "codec/fe_row_codec.h"
 #include "vm/jit_wrapper.h"
+#include "codec/fe_row_codec.h"
+#include "gtest/gtest.h"
 #include "vm/engine.h"
 #include "vm/simple_catalog.h"
-#include "gtest/gtest.h"
 
 namespace fesql {
 namespace vm {
 
 class JITWrapperTest : public ::testing::Test {};
-
 
 std::shared_ptr<SimpleCatalog> GetTestCatalog() {
     fesql::type::Database db;
@@ -40,7 +39,6 @@ std::shared_ptr<SimpleCatalog> GetTestCatalog() {
     return catalog;
 }
 
-
 std::string GetModuleString(std::shared_ptr<SimpleCatalog> catalog) {
     EngineOptions options;
     options.set_keep_ir(true);
@@ -53,7 +51,6 @@ std::string GetModuleString(std::shared_ptr<SimpleCatalog> catalog) {
     return compile_info->get_sql_context().ir;
 }
 
-
 TEST_F(JITWrapperTest, test) {
     auto catalog = GetTestCatalog();
     std::string ir_str = GetModuleString(catalog);
@@ -61,7 +58,7 @@ TEST_F(JITWrapperTest, test) {
     FeSQLJITWrapper jit;
     ASSERT_TRUE(jit.Init());
 
-    base::RawBuffer ir_buf(const_cast<char*>(ir_str.data()), ir_str.size());
+    base::RawBuffer ir_buf(const_cast<char *>(ir_str.data()), ir_str.size());
     ASSERT_TRUE(jit.AddModuleFromBuffer(ir_buf));
 
     auto fn = jit.FindFunction("__internal_sql_codegen_0");

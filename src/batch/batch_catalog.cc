@@ -17,9 +17,9 @@
 
 #include "batch/batch_catalog.h"
 
-#include <vector>
-#include <utility>
 #include <string>
+#include <utility>
+#include <vector>
 #include "arrow/filesystem/api.h"
 #include "arrow/io/api.h"
 #include "arrow/status.h"

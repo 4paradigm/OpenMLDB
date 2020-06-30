@@ -22,8 +22,8 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include "llvm/IR/IRBuilder.h"
 #include "codegen/native_value.h"
+#include "llvm/IR/IRBuilder.h"
 
 namespace fesql {
 namespace codegen {

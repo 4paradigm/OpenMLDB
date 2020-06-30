@@ -18,11 +18,11 @@
 #ifndef SRC_VM_OP_H_
 #define SRC_VM_OP_H_
 
+#include <memory>
 #include <set>
 #include <string>
 #include <utility>
 #include <vector>
-#include <memory>
 #include "proto/fe_type.pb.h"
 #include "vm/catalog.h"
 
@@ -30,7 +30,6 @@ namespace fesql {
 namespace vm {
 
 enum OpType { kOpProject = 1, kOpScan, kOpLimit, kOpMerge };
-
 
 struct OpNode {
     virtual ~OpNode() {}

@@ -116,9 +116,8 @@ class WindowTableIterator : public WindowIterator {
 // the full table iterator
 class FullTableIterator : public ConstIterator<uint64_t, Row> {
  public:
-    FullTableIterator():
-        seg_cnt_(0), seg_idx_(0), segments_(NULL),
-        value_(), key_(0) {}
+    FullTableIterator()
+        : seg_cnt_(0), seg_idx_(0), segments_(NULL), value_(), key_(0) {}
 
     explicit FullTableIterator(Segment*** segments, uint32_t seg_cnt,
                                std::shared_ptr<Table> table);

@@ -215,7 +215,7 @@ const std::string FindFesqlDirPath() {
     }
     return std::string();
 }
-bool RegisterFeLibs(udf::UDFLibrary* library,Status& status,  // NOLINT
+bool RegisterFeLibs(udf::UDFLibrary* library, Status& status,  // NOLINT
                     const std::string& libs_home,
                     const std::string& libs_name) {
     if (libs_name.empty()) {

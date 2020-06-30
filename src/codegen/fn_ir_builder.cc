@@ -35,7 +35,7 @@ FnIRBuilder::FnIRBuilder(::llvm::Module *module) : module_(module) {}
 FnIRBuilder::~FnIRBuilder() {}
 
 bool FnIRBuilder::Build(const ::fesql::node::FnNodeFnDef *root,
-                        ::llvm::Function** result,
+                        ::llvm::Function **result,
                         base::Status &status) {  // NOLINT
     if (root == NULL || root->GetType() != ::fesql::node::kFnDef) {
         status.code = common::kCodegenError;

@@ -68,8 +68,8 @@ class FeSQLJITBuilder
                                               ::llvm::orc::LLJITBuilderState> {
 };
 
-bool InitBasicSymbol(::llvm::orc::JITDylib& jd,  // NOLINT
-                     ::llvm::orc::MangleAndInterner& mi); //NOLINT
+bool InitBasicSymbol(::llvm::orc::JITDylib& jd,            // NOLINT
+                     ::llvm::orc::MangleAndInterner& mi);  // NOLINT
 }  // namespace vm
 }  // namespace fesql
 #endif  // SRC_VM_JIT_H_

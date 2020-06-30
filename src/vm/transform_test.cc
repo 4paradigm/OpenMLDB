@@ -35,8 +35,8 @@
 #include "udf/default_udf_library.h"
 #include "udf/udf.h"
 #include "vm/simple_catalog.h"
-#include "vm/test_base.h"
 #include "vm/sql_compiler.h"
+#include "vm/test_base.h"
 
 using namespace llvm;       // NOLINT
 using namespace llvm::orc;  // NOLINT

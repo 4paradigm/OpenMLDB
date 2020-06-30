@@ -18,8 +18,8 @@
 #ifndef SRC_SDK_REQUEST_ROW_H_
 #define SRC_SDK_REQUEST_ROW_H_
 
-#include <vector>
 #include <string>
+#include <vector>
 #include "sdk/base.h"
 
 namespace fesql {

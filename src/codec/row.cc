@@ -12,20 +12,18 @@
 namespace fesql {
 namespace codec {
 
+Row::Row() : slice_() {}
 
-Row::Row(): slice_() {}
-
-Row::Row(const std::string& str):
-    slice_(RefCountedSlice::Create(
-        reinterpret_cast<int8_t*>(
-            const_cast<char*>(str.data())), str.length())) {}
+Row::Row(const std::string &str)
+    : slice_(RefCountedSlice::Create(
+          reinterpret_cast<int8_t *>(const_cast<char *>(str.data())),
+          str.length())) {}
 
 Row::Row(const Row &s) : slice_(s.slice_), slices_(s.slices_) {}
 
-Row::Row(size_t major_slices, const Row &major,
-         size_t secondary_slices, const Row &secondary)
+Row::Row(size_t major_slices, const Row &major, size_t secondary_slices,
+         const Row &secondary)
     : slice_(major.slice_), slices_(major_slices + secondary_slices - 1) {
-
     for (size_t offset = 0; offset < major_slices - 1; ++offset) {
         if (major.slices_.size() > offset) {
             slices_[offset] = major.slices_[offset];
@@ -39,7 +37,7 @@ Row::Row(size_t major_slices, const Row &major,
     }
 }
 
-Row::Row(const RefCountedSlice& s): slice_(s) {}
+Row::Row(const RefCountedSlice &s) : slice_(s) {}
 
 Row::~Row() {}
 
@@ -55,9 +53,7 @@ void Row::Append(const Row &b) {
     Append(b.slices_);
 }
 
-int32_t Row::GetRowPtrCnt() const {
-    return 1 + slices_.size();
-}
+int32_t Row::GetRowPtrCnt() const { return 1 + slices_.size(); }
 
 // Return a string that contains the copy of the referenced data.
 std::string Row::ToString() const { return slice_.ToString(); }

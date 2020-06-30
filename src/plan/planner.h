@@ -32,9 +32,7 @@ using node::SQLNode;
 class Planner {
  public:
     Planner(node::NodeManager *manager, const bool is_batch_mode)
-        : is_batch_mode_(is_batch_mode),
-          node_manager_(manager) {
-    }
+        : is_batch_mode_(is_batch_mode), node_manager_(manager) {}
     virtual ~Planner() {}
     virtual int CreatePlanTree(
         const NodePointVector &parser_trees,

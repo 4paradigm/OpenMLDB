@@ -21,16 +21,13 @@
 
 namespace fesql {
 namespace bm {
-using namespace ::llvm;                                 // NOLINT
+using namespace ::llvm;  // NOLINT
 
 static void BM_ArrayListIterate(benchmark::State& state) {  // NOLINT
     ArrayListIterate(&state, BENCHMARK, state.range(0));
 }
 
-BENCHMARK(BM_ArrayListIterate)
-    ->Args({100})
-    ->Args({1000})
-    ->Args({10000});
+BENCHMARK(BM_ArrayListIterate)->Args({100})->Args({1000})->Args({10000});
 
 }  // namespace bm
 }  // namespace fesql

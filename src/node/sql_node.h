@@ -20,8 +20,8 @@
 #include <glog/logging.h>
 #include <iostream>
 #include <map>
-#include <string>
 #include <memory>
+#include <string>
 #include <vector>
 #include "boost/algorithm/string.hpp"
 #include "boost/filesystem/operations.hpp"

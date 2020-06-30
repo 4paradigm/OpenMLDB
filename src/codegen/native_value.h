@@ -12,9 +12,9 @@
 
 #include <string>
 
-#include "llvm/IR/Module.h"
-#include "llvm/IR/IRBuilder.h"
 #include "glog/logging.h"
+#include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/Module.h"
 
 namespace fesql {
 namespace codegen {
@@ -51,20 +51,16 @@ class NativeValue {
 
     static NativeValue CreateNull(::llvm::Type*);
 
-    static NativeValue CreateWithFlag(
-        ::llvm::Value*, ::llvm::Value*);
+    static NativeValue CreateWithFlag(::llvm::Value*, ::llvm::Value*);
 
-    static NativeValue CreateMemWithFlag(
-        ::llvm::Value*, ::llvm::Value*);
+    static NativeValue CreateMemWithFlag(::llvm::Value*, ::llvm::Value*);
 
     NativeValue Replace(::llvm::Value*) const;
 
-    NativeValue():
-        raw_(nullptr), flag_(nullptr), type_(nullptr) {}
+    NativeValue() : raw_(nullptr), flag_(nullptr), type_(nullptr) {}
 
  private:
-    NativeValue(::llvm::Value* raw, ::llvm::Value* flag,
-                ::llvm::Type* type);
+    NativeValue(::llvm::Value* raw, ::llvm::Value* flag, ::llvm::Type* type);
 
     ::llvm::Value* raw_;
     ::llvm::Value* flag_;

@@ -125,7 +125,6 @@ TEST_F(AggregateIRBuilderTest, test_mixed_multiple_agg) {
     free(ptr);
 }
 
-
 }  // namespace codegen
 }  // namespace fesql
 

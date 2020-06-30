@@ -18,8 +18,8 @@
 #ifndef SRC_SDK_BASE_IMPL_H_
 #define SRC_SDK_BASE_IMPL_H_
 
-#include <string>
 #include <memory>
+#include <string>
 #include "sdk/base.h"
 #include "vm/catalog.h"
 
