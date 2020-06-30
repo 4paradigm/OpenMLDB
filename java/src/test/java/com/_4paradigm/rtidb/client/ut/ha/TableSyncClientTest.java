@@ -560,7 +560,7 @@ public class TableSyncClientTest extends TestCaseBase {
     public void testSchemaNsSetDataType() {
         String name = String.valueOf(id.incrementAndGet());
         nsc.dropTable(name);
-        Common.ColumnDesc col0 =  Common.ColumnDesc.newBuilder().setName("card").setAddTsIdx(true).setType("string").build();
+        Common.ColumnDesc col0 = Common.ColumnDesc.newBuilder().setName("card").setAddTsIdx(true).setType("string").build();
         Common.ColumnDesc col1 = Common.ColumnDesc.newBuilder().setName("mcc").setAddTsIdx(false).setType("int16").build();
         Common.ColumnDesc col2 = Common.ColumnDesc.newBuilder().setName("amt").setAddTsIdx(false).setType("double").build();
         Common.ColumnDesc col3 = Common.ColumnDesc.newBuilder().setName("ant").setAddTsIdx(false).setType("float").build();
@@ -1096,7 +1096,7 @@ public class TableSyncClientTest extends TestCaseBase {
             ByteBuffer buf1 = StringToBB(imageData1);
             data.put("image", buf1);
             Assert.assertTrue(tableSyncClient.put(name, data, wo).isSuccess());
-            Assert.assertEquals((ByteBuffer)data.get("image"), buf1);
+            Assert.assertEquals((ByteBuffer) data.get("image"), buf1);
 
             data.clear();
             data.put("id", 12l);
@@ -1459,12 +1459,16 @@ public class TableSyncClientTest extends TestCaseBase {
             WriteOption wo = new WriteOption();
             Map<String, Object> data = new HashMap<String, Object>();
             data.put("id", 11l);
-            data.put("attribute", "a1");
+            data.put("attribute", "a0");
             ByteBuffer buf1 = StringToBB("i1");
             data.put("image", buf1);
             data.put("memory", 11);
             data.put("price", 11.1);
             Assert.assertTrue(tableSyncClient.put(name, data, wo).isSuccess());
+
+            Assert.assertEquals((ByteBuffer) data.get("image"), buf1);
+            data.put("attribute", "a1");
+            Assert.assertTrue(tableSyncClient.put(name, data, new WriteOption(true)).isSuccess());
 
             data.clear();
             data.put("id", 12l);
@@ -2207,7 +2211,6 @@ public class TableSyncClientTest extends TestCaseBase {
         ByteBuffer buf4 = StringToBB("i4");
 
         {
-
             Map data = new HashMap<String, Object>();
             data.put("id", 11l);
             data.put("name", "n1");
@@ -2330,10 +2333,14 @@ public class TableSyncClientTest extends TestCaseBase {
             Assert.assertEquals(schema.size(), 9);
             //put
             WriteOption wo = new WriteOption();
-            Assert.assertTrue(tableSyncClient.put(name, (Map) (args.row[0]), wo).isSuccess());
+            Map map = new HashMap((Map) (args.row[0]));
+            map.put("attribute", "a0");
+            Assert.assertTrue(tableSyncClient.put(name, map, wo).isSuccess());
+            Assert.assertTrue(tableSyncClient.put(name, (Map) (args.row[0]), new WriteOption(true)).isSuccess());
             Assert.assertTrue(tableSyncClient.put(name, (Map) (args.row[1]), wo).isSuccess());
             Assert.assertTrue(tableSyncClient.put(name, (Map) (args.row[2]), wo).isSuccess());
             Assert.assertTrue(tableSyncClient.put(name, (Map) (args.row[3]), wo).isSuccess());
+
             //query
             ReadOption ro;
             RelationalIterator it;
@@ -2785,6 +2792,71 @@ public class TableSyncClientTest extends TestCaseBase {
 
                 it.next();
                 Assert.assertFalse(it.valid());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.assertTrue(false);
+        } finally {
+            nsc.dropTable(name);
+        }
+    }
+
+    @Test(dataProvider = "relational_combine_key_case")
+    public void testRelationalTablePutCover(RelationTestArgs args) {
+        nsc.dropTable(args.tableDesc.getName());
+        boolean ok = nsc.createTable(args.tableDesc);
+        Assert.assertTrue(ok);
+        client.refreshRouteTable();
+        String name = args.tableDesc.getName();
+        try {
+            List<com._4paradigm.rtidb.client.schema.ColumnDesc> schema = tableSyncClient.getSchema(name);
+            Assert.assertEquals(schema.size(), 9);
+            //put
+            WriteOption wo = new WriteOption();
+            Map map = new HashMap((Map) (args.row[0]));
+            map.put("attribute", "a0");
+            map.put("image", null);
+            Assert.assertTrue(tableSyncClient.put(name, map, wo).isSuccess());
+            //query
+            ReadOption ro;
+            RelationalIterator it;
+            Map<String, Object> queryMap;
+            {
+                //query pk
+                ro = new ReadOption((Map) args.conditionList.get(0), null, null, 1);
+                it = tableSyncClient.query(name, ro);
+                Assert.assertTrue(it.valid());
+                Assert.assertEquals(it.getCount(), args.expected[0]);
+                queryMap = it.getDecodedValue();
+                Assert.assertEquals(queryMap.size(), 9);
+                Assert.assertEquals(queryMap.get("id"), 11l);
+                Assert.assertEquals(queryMap.get("name"), "n1");
+                Assert.assertEquals(queryMap.get("sex"), true);
+                Assert.assertEquals(queryMap.get("attribute"), "a0");
+                Assert.assertEquals(queryMap.get("image"),null);
+                Assert.assertEquals(queryMap.get("memory"), 11);
+                Assert.assertEquals(queryMap.get("price"), 11.1);
+                Assert.assertEquals(queryMap.get("attribute2"), new Date(2020, 5, 1));
+                Assert.assertEquals(queryMap.get("ts"), new DateTime(1588756531));
+            }
+            Assert.assertTrue(tableSyncClient.put(name, (Map) (args.row[0]), new WriteOption(true)).isSuccess());
+            {
+                //query pk
+                ro = new ReadOption((Map) args.conditionList.get(0), null, null, 1);
+                it = tableSyncClient.query(name, ro);
+                Assert.assertTrue(it.valid());
+                Assert.assertEquals(it.getCount(), args.expected[0]);
+                queryMap = it.getDecodedValue();
+                Assert.assertEquals(queryMap.size(), 9);
+                Assert.assertEquals(queryMap.get("id"), 11l);
+                Assert.assertEquals(queryMap.get("name"), "n1");
+                Assert.assertEquals(queryMap.get("sex"), true);
+                Assert.assertEquals(queryMap.get("attribute"), "a1");
+                Assert.assertTrue(StringToBB("i1").equals(((BlobData) queryMap.get("image")).getData()));
+                Assert.assertEquals(queryMap.get("memory"), 11);
+                Assert.assertEquals(queryMap.get("price"), 11.1);
+                Assert.assertEquals(queryMap.get("attribute2"), new Date(2020, 5, 1));
+                Assert.assertEquals(queryMap.get("ts"), new DateTime(1588756531));
             }
         } catch (Exception e) {
             e.printStackTrace();
