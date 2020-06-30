@@ -8,22 +8,22 @@ if [ $# != 1 ] || [[ ! ($1 =~ ^[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}$) 
     exit 1;
 fi
 
-ln -sf /usr/workdir/thirdparty thirdparty 
-ln -sf /usr/workdir/thirdsrc thirdsrc
-sed -i /[:blank:]*version/s/1.0/$1/ python/setup.py
+ln -sf /usr/workdir/thirdparty thirdparty  || :
+ln -sf /usr/workdir/thirdsrc thirdsrc || :
+sed -i /[:blank:]*version/s/1.0/$1/ python/setup.py || :
 if [ -f "build/bin/rtidb" ]; then
     ./build/bin/rtidb --version | grep -qw ${1} || { rm -f build/bin/rtidb; sh ./steps/compile.sh; }
 else
     sh ./steps/compile.sh
 fi
 package=rtidb-cluster-$1
-rm -rf ${package}
-mkdir ${package}
+rm -rf ${package} || :
+mkdir ${package} || :
 cp -r release/conf ${package}/conf
 cp -r release/bin ${package}/bin
 cp -r tools ${package}/tools
-rm -rf ${package}/tools/dataImporter
-rm -rf ${package}/tools/rtidbCmdUtil
+rm -rf ${package}/tools/dataImporter || :
+rm -rf ${package}/tools/rtidbCmdUtil || :
 cp -r build/bin/rtidb ${package}/bin/rtidb
 cd ${package}/bin
 wget http://pkg.4paradigm.com/rtidb/dev/node_exporter
