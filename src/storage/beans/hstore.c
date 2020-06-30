@@ -170,8 +170,8 @@ HStore *hs_open(char *path, int height, time_t before, int scan_threads)
 
     char *paths[20], *rpath = path;
     int npath = 0;
-    printf("path is %s\n\n", path);
-    printf("rpath is %s\n\n", rpath);
+    printf("path is %s\n", path);
+    printf("rpath is %s\n", rpath);
     while ((paths[npath] = strsep(&rpath, ",:")) != NULL)
     {
         if (npath >= MAX_PATHS) return NULL;
