@@ -245,7 +245,8 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
         status->msg = "not tablet found";
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
-    ok = tablets[0]->Query(db, sql, row->GetRow(), cntl.get(), response.get());
+    uint32_t idx = rand_.Uniform(tablets.size());
+    ok = tablets[idx]->Query(db, sql, row->GetRow(), cntl.get(), response.get());
     if (!ok) {
         status->msg = "request server error";
         return std::shared_ptr<::fesql::sdk::ResultSet>();
