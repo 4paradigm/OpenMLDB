@@ -2,6 +2,7 @@
 #
 # package.sh
 #
+set -e
 if [ $# != 1 ] || [[ ! ($1 =~ ^[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}$) ]]; then
     echo "format error e.g. sh steps/package.sh 1.4.2.2"
     exit 1;
@@ -11,11 +12,7 @@ ln -sf /usr/workdir/thirdparty thirdparty
 ln -sf /usr/workdir/thirdsrc thirdsrc
 sed -i /[:blank:]*version/s/1.0/$1/ python/setup.py
 if [ -f "build/bin/rtidb" ]; then
-    ./build/bin/rtidb --version | grep -qw ${1}
-    if [ $? -ne 0 ]; then
-        rm -f build/bin/rtidb
-        sh ./steps/compile.sh
-    fi
+    ./build/bin/rtidb --version | grep -qw ${1} || { rm -f build/bin/rtidb; sh ./steps/compile.sh; }
 else
     sh ./steps/compile.sh
 fi
