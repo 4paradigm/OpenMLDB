@@ -431,9 +431,9 @@ void BatchModeCheck(fesql::sqlcase::SQLCase &sql_case) {  // NOLINT
 INSTANTIATE_TEST_CASE_P(
     EngineWindowWithUnionQuery, TabletEngineTest,
     testing::ValuesIn(InitCases("/cases/query/window_with_union_query.yaml")));
-//INSTANTIATE_TEST_CASE_P(
-//    EngineSimpleQuery, TabletEngineTest,
-//    testing::ValuesIn(InitCases("/cases/query/simple_query.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineSimpleQuery, TabletEngineTest,
+    testing::ValuesIn(InitCases("/cases/query/simple_query.yaml")));
 TEST_P(TabletEngineTest, batch_query_test) {
     ParamType sql_case = GetParam();
     std::cout << "desc: " << sql_case.desc();
