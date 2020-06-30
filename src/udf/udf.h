@@ -76,9 +76,7 @@ template <class V>
 bool min_struct_list(int8_t *input, V *v);
 
 template <class V>
-inline V inc(V i) {
-    return i + 1;
-}
+inline V inc(V i);
 
 int32_t month(int64_t ts);
 int32_t month(fesql::codec::Timestamp *ts);

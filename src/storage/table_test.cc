@@ -408,7 +408,56 @@ TEST_F(TableTest, FullTableTest) {
     }
     ASSERT_EQ(count, 1000);
 }
+TEST_F(TableTest, DecodeKeysAndTsTest) {
+    ::fesql::type::TableDef def;
+    ::fesql::type::ColumnDef* col = def.add_columns();
+    col->set_name("col1");
+    col->set_type(::fesql::type::kVarchar);
+    col = def.add_columns();
+    col->set_name("col2");
+    col->set_type(::fesql::type::kInt64);
+    col = def.add_columns();
+    col->set_name("col3");
+    col->set_type(::fesql::type::kVarchar);
+    col = def.add_columns();
+    col->set_name("col4");
+    col->set_type(::fesql::type::kInt64);
 
+    ::fesql::type::IndexDef* index = def.add_indexes();
+    index->set_name("index1");
+    index->add_first_keys("col1");
+    index->add_first_keys("col4");
+    index->set_second_key("col2");
+
+    Table table(1, 1, def);
+    table.Init();
+
+    RowBuilder builder(def.columns());
+    uint32_t size = builder.CalTotalLength(10);
+
+    // test empty table
+    std::unique_ptr<TableIterator> iter = table.NewIterator("i1_k2");
+    iter->SeekToFirst();
+    ASSERT_FALSE(iter->Valid());
+
+    std::string row;
+    {
+        row.resize(size);
+        builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
+        builder.AppendString("i1_k1", 5);
+        builder.AppendInt64(11);
+        builder.AppendString("i2_k1", 5);
+        builder.AppendInt64(21);
+    }
+
+    auto index_map = table.GetIndexMap();
+    int64_t time = 1;
+    std::string key;
+    ASSERT_TRUE(table.DecodeKeysAndTs(index_map["index1"], row.c_str(),
+                                      row.length(), key, &time));
+    ASSERT_EQ("i1_k1|21", key);
+    ASSERT_EQ(11L, time);
+}
 }  // namespace storage
 }  // namespace fesql
 int main(int argc, char** argv) {
