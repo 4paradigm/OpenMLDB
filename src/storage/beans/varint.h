@@ -12,7 +12,7 @@ void printbuf(const char *buf, int n)
     int i;
     printf("%d[", n);
     for (i = 0; i< n;i++)
-       printf("(%x,%x)\n", buf[i] & 0x7f, buf[i] & 0x80);
+       printf("(%x,%x)", buf[i] & 0x7f, buf[i] & 0x80);
     printf("]\n");
 }
 
