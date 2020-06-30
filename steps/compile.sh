@@ -12,6 +12,7 @@ else
 fi
 
 VERSION=$(git tag --points-at HEAD)
+VERSION=${VERSION:1}
 if [ -n "${VERSION}" ]; then
     if [[ ! ($VERSION =~ ^[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}$) ]]; then
         echo "$VERSION is not release version"
