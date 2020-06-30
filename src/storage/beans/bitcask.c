@@ -172,7 +172,7 @@ int load_buckets(const char *base, int64_t *buckets, int *last)
         long long size = strtoll(p, &endptr, 10);
         if (p == endptr)
         {
-            printf("bad file %s\n\n", path);
+            printf("bad file %s\n", path);
             return -1;
         }
         printf("buckets[%ld] = %lld\n", bucket, size);
@@ -421,7 +421,7 @@ static void print_buckets(int64_t *buckets)
     {
         if (buckets[i] >= 0)
         {
-            printf("%d : %"PRIu64"\n\n", i, buckets[i]);
+            printf("%d : %"PRIu64"\n", i, buckets[i]);
         }
     }
     printf("\n");
@@ -1245,13 +1245,13 @@ bool bc_set(Bitcask *bc, const char *key, char *value, size_t vlen, int flag, in
 {
     if ((version < 0 && vlen > 0) || vlen > MAX_VALUE_LEN || !check_key(key, strlen(key)))
     {
-        printf("invalid set cmd, key %s, version %d, vlen %ld\n\n", key, version, vlen);
+        printf("invalid set cmd, key %s, version %d, vlen %ld\n", key, version, vlen);
         return false;
     }
     else
     {
         if (vlen > MAX_VALUE_LEN_WARN)
-            printf("set large value for key %s, version %d, vlen %ld\n\n", key, version, vlen);
+            printf("set large value for key %s, version %d, vlen %ld\n", key, version, vlen);
     }
 
     bool suc = false;

@@ -137,7 +137,7 @@ HintFile *open_hint(const char *path, const char *new_path)
         int vsize = qlz_decompress(hint->buf, buf, wbuf);
         if (vsize != size)
         {
-            printf("decompress %s failed: %d < %d, remove it\n\n", path, vsize, size);
+            printf("decompress %s failed: %d < %d, remove it\n", path, vsize, size);
             mgr_unlink(path);
             exit(1);
         }

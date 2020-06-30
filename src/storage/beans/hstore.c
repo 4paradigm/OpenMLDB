@@ -175,7 +175,7 @@ HStore *hs_open(char *path, int height, time_t before, int scan_threads)
     while ((paths[npath] = strsep(&rpath, ",:")) != NULL)
     {
         if (npath >= MAX_PATHS) return NULL;
-        printf("%d path %s\n\n", npath, paths[npath]);
+        printf("%d path %s\n", npath, paths[npath]);
         path = paths[npath];
         if (strlen(path) > MAX_HOME_PATH_LEN)
         {
@@ -202,7 +202,7 @@ HStore *hs_open(char *path, int height, time_t before, int scan_threads)
     }
 
     int i, j, count = 1 << (height * 4);
-    printf("current height %d, count is %d\n\n", height, count);
+    printf("current height %d, count is %d\n", height, count);
     HStore *store = (HStore*) safe_malloc(sizeof(HStore) + sizeof(Bitcask*) * count);
     if (!store) return NULL;
     memset(store, 0, sizeof(HStore) + sizeof(Bitcask*) * count);
