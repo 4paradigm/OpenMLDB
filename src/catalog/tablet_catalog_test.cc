@@ -42,14 +42,14 @@ struct TestArgs {
     uint64_t ts;
 };
 
-TestArgs* PrepareTable(const std::string& tname) {
-    TestArgs* args = new TestArgs();
+TestArgs *PrepareTable(const std::string &tname) {
+    TestArgs *args = new TestArgs();
     args->meta.set_name(tname);
     args->meta.set_tid(1);
     args->meta.set_pid(0);
     args->meta.set_seg_cnt(8);
     args->meta.set_mode(::rtidb::api::TableMode::kTableLeader);
-    RtiDBSchema* schema = args->meta.mutable_column_desc();
+    RtiDBSchema *schema = args->meta.mutable_column_desc();
     auto col1 = schema->Add();
     col1->set_name("col1");
     col1->set_data_type(::rtidb::type::kVarchar);
@@ -57,14 +57,14 @@ TestArgs* PrepareTable(const std::string& tname) {
     col2->set_name("col2");
     col2->set_data_type(::rtidb::type::kBigInt);
 
-    RtiDBIndex* index = args->meta.mutable_column_key();
+    RtiDBIndex *index = args->meta.mutable_column_key();
     auto key1 = index->Add();
     key1->set_index_name("index0");
     key1->add_col_name("col1");
     key1->add_ts_name("col2");
     args->idx_name = "index0";
 
-    ::rtidb::storage::MemTable* table =
+    ::rtidb::storage::MemTable *table =
         new ::rtidb::storage::MemTable(args->meta);
     table->Init();
     ::fesql::vm::Schema fe_schema;
@@ -75,7 +75,7 @@ TestArgs* PrepareTable(const std::string& tname) {
     uint32_t size = rb.CalTotalLength(pk.size());
     std::string value;
     value.resize(size);
-    rb.SetBuffer(reinterpret_cast<int8_t*>(&(value[0])), size);
+    rb.SetBuffer(reinterpret_cast<int8_t *>(&(value[0])), size);
     rb.AppendString(pk.c_str(), pk.size());
     rb.AppendInt64(1589780888000l);
     table->Put(pk, 1589780888000l, value.c_str(), value.size());
@@ -87,7 +87,7 @@ TestArgs* PrepareTable(const std::string& tname) {
 }
 
 TEST_F(TabletCatalogTest, tablet_smoke_test) {
-    TestArgs* args = PrepareTable("t1");
+    TestArgs *args = PrepareTable("t1");
     TabletTableHandler handler(args->meta, "db1", args->table);
     ASSERT_TRUE(handler.Init());
     auto it = handler.GetIterator();
@@ -114,10 +114,45 @@ TEST_F(TabletCatalogTest, tablet_smoke_test) {
     delete args;
 }
 
+TEST_F(TabletCatalogTest, segment_handler_test) {
+    TestArgs *args = PrepareTable("t1");
+    auto handler = std::shared_ptr<TabletTableHandler>(
+        new TabletTableHandler(args->meta, "db1", args->table));
+    ASSERT_TRUE(handler->Init());
+    // Seek key not exist
+    {
+        auto partition = handler->GetPartition(handler, args->idx_name);
+        auto segment = partition->GetSegment(partition, args->pk);
+        auto iter = segment->GetIterator();
+        if (!iter) {
+            FAIL();
+        }
+        iter->SeekToFirst();
+        ASSERT_TRUE(iter->Valid());
+    }
+    delete args;
+}
+
+TEST_F(TabletCatalogTest, segment_handler_pk_not_exist_test) {
+    TestArgs *args = PrepareTable("t1");
+    auto handler = std::shared_ptr<TabletTableHandler>(
+        new TabletTableHandler(args->meta, "db1", args->table));
+    ASSERT_TRUE(handler->Init());
+    // Seek key not exist
+    {
+        auto partition = handler->GetPartition(handler, args->idx_name);
+        auto segment = partition->GetSegment(partition, "KEY_NOT_EXIST");
+        auto iter = segment->GetIterator();
+        if (iter) {
+            FAIL();
+        }
+    }
+    delete args;
+}
 TEST_F(TabletCatalogTest, sql_smoke_test) {
     std::shared_ptr<TabletCatalog> catalog(new TabletCatalog());
     ASSERT_TRUE(catalog->Init());
-    TestArgs* args = PrepareTable("t1");
+    TestArgs *args = PrepareTable("t1");
     std::shared_ptr<TabletTableHandler> handler(
         new TabletTableHandler(args->meta, "db1", args->table));
     ASSERT_TRUE(handler->Init());
@@ -132,7 +167,7 @@ TEST_F(TabletCatalogTest, sql_smoke_test) {
         std::cout << status.msg << std::endl;
     }
     ASSERT_EQ(::fesql::common::kOk, status.code);
-    std::vector<int8_t*> output;
+    std::vector<int8_t *> output;
     std::shared_ptr<::fesql::vm::TableHandler> result = session.Run();
     if (!result) {
         ASSERT_TRUE(false);
@@ -141,13 +176,13 @@ TEST_F(TabletCatalogTest, sql_smoke_test) {
     ASSERT_EQ(2, session.GetSchema().size());
     auto it = result->GetIterator();
     ASSERT_TRUE(it->Valid());
-    const ::fesql::codec::Row& row = it->GetValue();
+    const ::fesql::codec::Row &row = it->GetValue();
     rv.Reset(row.buf(), row.size());
     int64_t val = 0;
     ASSERT_EQ(0, rv.GetInt64(1, &val));
     int64_t exp = args->ts + 1;
     ASSERT_EQ(val, exp);
-    char* data = NULL;
+    char *data = NULL;
     uint32_t data_size = 0;
     ASSERT_EQ(0, rv.GetString(0, &data, &data_size));
     std::string pk(data, data_size);
@@ -157,14 +192,14 @@ TEST_F(TabletCatalogTest, sql_smoke_test) {
 TEST_F(TabletCatalogTest, sql_last_join_smoke_test) {
     std::shared_ptr<TabletCatalog> catalog(new TabletCatalog());
     ASSERT_TRUE(catalog->Init());
-    TestArgs* args = PrepareTable("t1");
+    TestArgs *args = PrepareTable("t1");
     {
         std::shared_ptr<TabletTableHandler> handler(
             new TabletTableHandler(args->meta, "db1", args->table));
         ASSERT_TRUE(handler->Init());
         ASSERT_TRUE(catalog->AddTable(handler));
     }
-    TestArgs* args1 = PrepareTable("t2");
+    TestArgs *args1 = PrepareTable("t2");
     {
         std::shared_ptr<TabletTableHandler> handler(
             new TabletTableHandler(args1->meta, "db1", args1->table));
@@ -189,7 +224,7 @@ TEST_F(TabletCatalogTest, sql_last_join_smoke_test) {
         std::cout << status.msg << std::endl;
     }
     ASSERT_EQ(::fesql::common::kOk, status.code);
-    std::vector<int8_t*> output;
+    std::vector<int8_t *> output;
     std::shared_ptr<::fesql::vm::TableHandler> result = session.Run();
     if (!result) {
         ASSERT_TRUE(false);
@@ -198,7 +233,7 @@ TEST_F(TabletCatalogTest, sql_last_join_smoke_test) {
     ASSERT_EQ(4, session.GetSchema().size());
     auto it = result->GetIterator();
     ASSERT_TRUE(it->Valid());
-    const ::fesql::codec::Row& row = it->GetValue();
+    const ::fesql::codec::Row &row = it->GetValue();
     rv.Reset(row.buf(), row.size());
     ASSERT_EQ(args->pk, rv.GetStringUnsafe(0));
 }
@@ -206,7 +241,7 @@ TEST_F(TabletCatalogTest, sql_last_join_smoke_test) {
 TEST_F(TabletCatalogTest, sql_last_join_smoke_test2) {
     std::shared_ptr<TabletCatalog> catalog(new TabletCatalog());
     ASSERT_TRUE(catalog->Init());
-    TestArgs* args = PrepareTable("t1");
+    TestArgs *args = PrepareTable("t1");
     {
         std::shared_ptr<TabletTableHandler> handler(
             new TabletTableHandler(args->meta, "db1", args->table));
@@ -214,7 +249,7 @@ TEST_F(TabletCatalogTest, sql_last_join_smoke_test2) {
         ASSERT_TRUE(catalog->AddTable(handler));
     }
 
-    TestArgs* args1 = PrepareTable("t2");
+    TestArgs *args1 = PrepareTable("t2");
     {
         std::shared_ptr<TabletTableHandler> handler(
             new TabletTableHandler(args1->meta, "db1", args1->table));
@@ -239,7 +274,7 @@ TEST_F(TabletCatalogTest, sql_last_join_smoke_test2) {
         std::cout << status.msg << std::endl;
     }
     ASSERT_EQ(::fesql::common::kOk, status.code);
-    std::vector<int8_t*> output;
+    std::vector<int8_t *> output;
     std::shared_ptr<::fesql::vm::TableHandler> result = session.Run();
     if (!result) {
         ASSERT_TRUE(false);
@@ -248,9 +283,9 @@ TEST_F(TabletCatalogTest, sql_last_join_smoke_test2) {
     ASSERT_EQ(4, session.GetSchema().size());
     auto it = result->GetIterator();
     ASSERT_TRUE(it->Valid());
-    const ::fesql::codec::Row& row = it->GetValue();
+    const ::fesql::codec::Row &row = it->GetValue();
     rv.Reset(row.buf(), row.size());
-    char* data = NULL;
+    char *data = NULL;
     uint32_t data_size = 0;
     ASSERT_EQ(0, rv.GetString(0, &data, &data_size));
     std::string pk(data, data_size);
@@ -260,7 +295,7 @@ TEST_F(TabletCatalogTest, sql_last_join_smoke_test2) {
 TEST_F(TabletCatalogTest, sql_window_smoke_500_test) {
     std::shared_ptr<TabletCatalog> catalog(new TabletCatalog());
     ASSERT_TRUE(catalog->Init());
-    TestArgs* args = PrepareTable("t1");
+    TestArgs *args = PrepareTable("t1");
 
     std::shared_ptr<TabletTableHandler> handler(
         new TabletTableHandler(args->meta, "db1", args->table));
@@ -283,7 +318,7 @@ TEST_F(TabletCatalogTest, sql_window_smoke_500_test) {
         std::cout << status.msg << std::endl;
     }
     ASSERT_EQ(::fesql::common::kOk, status.code);
-    std::vector<int8_t*> output;
+    std::vector<int8_t *> output;
     std::shared_ptr<::fesql::vm::TableHandler> result = session.Run();
     if (!result) {
         ASSERT_TRUE(false);
@@ -295,7 +330,7 @@ TEST_F(TabletCatalogTest, sql_window_smoke_500_test) {
 TEST_F(TabletCatalogTest, sql_window_smoke_test) {
     std::shared_ptr<TabletCatalog> catalog(new TabletCatalog());
     ASSERT_TRUE(catalog->Init());
-    TestArgs* args = PrepareTable("t1");
+    TestArgs *args = PrepareTable("t1");
 
     std::shared_ptr<TabletTableHandler> handler(
         new TabletTableHandler(args->meta, "db1", args->table));
@@ -314,7 +349,7 @@ TEST_F(TabletCatalogTest, sql_window_smoke_test) {
         std::cout << status.msg << std::endl;
     }
     ASSERT_EQ(::fesql::common::kOk, status.code);
-    std::vector<int8_t*> output;
+    std::vector<int8_t *> output;
     std::shared_ptr<::fesql::vm::TableHandler> result = session.Run();
     if (!result) {
         ASSERT_TRUE(false);
@@ -323,13 +358,13 @@ TEST_F(TabletCatalogTest, sql_window_smoke_test) {
     ASSERT_EQ(3, session.GetSchema().size());
     auto it = result->GetIterator();
     ASSERT_TRUE(it->Valid());
-    const ::fesql::codec::Row& row = it->GetValue();
+    const ::fesql::codec::Row &row = it->GetValue();
     rv.Reset(row.buf(), row.size());
     int64_t val = 0;
     ASSERT_EQ(0, rv.GetInt64(0, &val));
     int64_t exp = args->ts;
     ASSERT_EQ(val, exp);
-    char* data = NULL;
+    char *data = NULL;
     uint32_t data_size = 0;
     ASSERT_EQ(0, rv.GetString(1, &data, &data_size));
     std::string pk(data, data_size);
@@ -341,7 +376,7 @@ TEST_F(TabletCatalogTest, sql_window_smoke_test) {
 }  // namespace catalog
 }  // namespace rtidb
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     ::fesql::vm::Engine::InitializeGlobalLLVM();
     return RUN_ALL_TESTS();

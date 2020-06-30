@@ -88,7 +88,7 @@ void InitCases(std::string yaml_path,
 void InitCases(std::string yaml_path,
                std::vector<fesql::sqlcase::SQLCase> &cases) {  // NOLINT
     if (!fesql::sqlcase::SQLCase::CreateSQLCasesFromYaml(
-        FindRtidbDirPath("rtidb") + "/fesql/" + yaml_path, cases)) {
+            FindRtidbDirPath("rtidb") + "/fesql/" + yaml_path, cases)) {
         FAIL();
     }
 }
@@ -252,55 +252,55 @@ void CheckRows(const fesql::vm::Schema &schema,
                 case fesql::type::kInt32: {
                     ASSERT_EQ(row_view.GetInt32Unsafe(i),
                               row_view_exp.GetInt32Unsafe(i))
-                                        << " At " << i;
+                        << " At " << i;
                     break;
                 }
                 case fesql::type::kInt64: {
                     ASSERT_EQ(row_view.GetInt64Unsafe(i),
                               row_view_exp.GetInt64Unsafe(i))
-                                        << " At " << i;
+                        << " At " << i;
                     break;
                 }
                 case fesql::type::kInt16: {
                     ASSERT_EQ(row_view.GetInt16Unsafe(i),
                               row_view_exp.GetInt16Unsafe(i))
-                                        << " At " << i;
+                        << " At " << i;
                     break;
                 }
                 case fesql::type::kFloat: {
                     ASSERT_FLOAT_EQ(row_view.GetFloatUnsafe(i),
                                     row_view_exp.GetFloatUnsafe(i))
-                                        << " At " << i;
+                        << " At " << i;
                     break;
                 }
                 case fesql::type::kDouble: {
                     ASSERT_DOUBLE_EQ(row_view.GetDoubleUnsafe(i),
                                      row_view_exp.GetDoubleUnsafe(i))
-                                        << " At " << i;
+                        << " At " << i;
                     break;
                 }
                 case fesql::type::kVarchar: {
                     ASSERT_EQ(row_view.GetStringUnsafe(i),
                               row_view_exp.GetStringUnsafe(i))
-                                        << " At " << i;
+                        << " At " << i;
                     break;
                 }
                 case fesql::type::kDate: {
                     ASSERT_EQ(row_view.GetDateUnsafe(i),
                               row_view_exp.GetDateUnsafe(i))
-                                        << " At " << i;
+                        << " At " << i;
                     break;
                 }
                 case fesql::type::kTimestamp: {
                     ASSERT_EQ(row_view.GetTimestampUnsafe(i),
                               row_view_exp.GetTimestampUnsafe(i))
-                                        << " At " << i;
+                        << " At " << i;
                     break;
                 }
                 case fesql::type::kBool: {
                     ASSERT_EQ(row_view.GetBoolUnsafe(i),
                               row_view_exp.GetBoolUnsafe(i))
-                                        << " At " << i;
+                        << " At " << i;
                     break;
                 }
                 default: {
@@ -391,14 +391,23 @@ void BatchModeCheck(fesql::sqlcase::SQLCase &sql_case) {  // NOLINT
             std::make_pair(table_def.name(), std::make_pair(args, sql_table)));
     }
 
-    //    Init engine and run session
-    std::cout << sql_case.sql_str() << std::endl;
+    // Init engine and run session
+    std::string sql_str = sql_case.sql_str();
+    for (int j = 0; j < input_cnt; ++j) {
+        std::string placeholder = "{" + std::to_string(j) + "}";
+        std::string tname = sql_case.inputs()[j].name_.empty()
+                            ? ("t" + std::to_string(j))
+                            : sql_case.inputs()[j].name_;
+        boost::replace_all(sql_str, placeholder, tname);
+    }
+    std::cout << sql_str << std::endl;
+
     fesql::base::Status get_status;
     fesql::vm::Engine engine(catalog);
     fesql::vm::BatchRunSession session;
     session.EnableDebug();
     bool ok =
-        engine.Get(sql_case.sql_str(), sql_case.db(), session, get_status);
+        engine.Get(sql_str, sql_case.db(), session, get_status);
     ASSERT_TRUE(ok);
     std::cout << "RUN IN MODE BATCH";
     fesql::vm::Schema schema;
@@ -472,14 +481,22 @@ void RequestModeCheck(fesql::sqlcase::SQLCase &sql_case) {  // NOLINT
             std::make_pair(table_def.name(), std::make_pair(args, sql_table)));
     }
 
-    //    Init engine and run session
-    std::cout << sql_case.sql_str() << std::endl;
+    // Init engine and run session
+    std::string sql_str = sql_case.sql_str();
+    for (int j = 0; j < input_cnt; ++j) {
+        std::string placeholder = "{" + std::to_string(j) + "}";
+        std::string tname = sql_case.inputs()[j].name_.empty()
+                            ? ("t" + std::to_string(j))
+                            : sql_case.inputs()[j].name_;
+        boost::replace_all(sql_str, placeholder, tname);
+    }
+    std::cout << sql_str << std::endl;
     fesql::base::Status get_status;
     fesql::vm::Engine engine(catalog);
     fesql::vm::RequestRunSession session;
     session.EnableDebug();
     bool ok =
-        engine.Get(sql_case.sql_str(), sql_case.db(), session, get_status);
+        engine.Get(sql_str, sql_case.db(), session, get_status);
     ASSERT_TRUE(ok);
     std::cout << "RUN IN MODE BATCH";
     fesql::vm::Schema schema;
@@ -489,8 +506,8 @@ void RequestModeCheck(fesql::sqlcase::SQLCase &sql_case) {  // NOLINT
     session.GetPhysicalPlan()->Print(oss, "");
     LOG(INFO) << "physical plan:\n" << oss.str() << std::endl;
 
-    if (!sql_case.batch_plan().empty()) {
-        ASSERT_EQ(oss.str(), sql_case.batch_plan());
+    if (!sql_case.request_plan().empty()) {
+        ASSERT_EQ(oss.str(), sql_case.request_plan());
     }
 
     std::ostringstream runner_oss;
@@ -534,16 +551,18 @@ void RequestModeCheck(fesql::sqlcase::SQLCase &sql_case) {  // NOLINT
         int ret = session.Run(in_row, &out_row);
         ASSERT_EQ(0, ret);
         LOG(INFO) << "store request row into db"
-                  << ", index size: " << request_sql_table->GetIndexMap().size();
+                  << ", index size: "
+                  << request_sql_table->GetIndexMap().size();
         for (auto iter = request_sql_table->GetIndexMap().cbegin();
              iter != request_sql_table->GetIndexMap().cend(); iter++) {
             std::string key;
             int64_t time = 1;
             ASSERT_TRUE(request_sql_table->DecodeKeysAndTs(
-                iter->second, reinterpret_cast<char *>(in_row.buf()), in_row.size(),
-                key, &time));
+                iter->second, reinterpret_cast<char *>(in_row.buf()),
+                in_row.size(), key, &time));
             LOG(INFO) << "store row for key: " << key << "ts: " << time;
-            bool ok = request_table->Put(key, time, reinterpret_cast<char *>(in_row.buf()),
+            bool ok = request_table->Put(key, time,
+                                         reinterpret_cast<char *>(in_row.buf()),
                                          in_row.size());
             ASSERT_TRUE(ok);
         }
@@ -596,14 +615,16 @@ INSTANTIATE_TEST_CASE_P(
 TEST_P(TabletEngineTest, batch_query_test) {
     ParamType sql_case = GetParam();
     std::cout << "desc: " << sql_case.desc();
-    if (!boost::contains(sql_case.mode(), "rtidb-unsupport")) {
+    if (!boost::contains(sql_case.mode(), "rtidb-unsupport") &&
+        !boost::contains(sql_case.mode(), "batch-unsupport")) {
         BatchModeCheck(sql_case);
     }
 }
 TEST_P(TabletEngineTest, request_query_test) {
     ParamType sql_case = GetParam();
     std::cout << "desc: " << sql_case.desc();
-    if (!boost::contains(sql_case.mode(), "rtidb-unsupport")) {
+    if (!boost::contains(sql_case.mode(), "rtidb-unsupport") &&
+        !boost::contains(sql_case.mode(), "request-unsupport")) {
         RequestModeCheck(sql_case);
     }
 }

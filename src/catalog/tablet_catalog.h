@@ -73,9 +73,12 @@ class TabletSegmentHandler : public ::fesql::vm::TableHandler {
         if (iter) {
             DLOG(INFO) << "seek to pk " << key_;
             iter->Seek(key_);
-            DLOG(INFO) << "seek to pk " << (iter->Valid() ? iter->GetKey().ToString() : "invalid seek");
-            return iter->Valid() ? std::move(iter->GetValue())
-                                 : std::unique_ptr<::fesql::vm::RowIterator>();
+            if (iter->Valid() &&
+                0 == iter->GetKey().compare(fesql::codec::Row(key_))) {
+                return std::move(iter->GetValue());
+            } else {
+                return std::unique_ptr<::fesql::vm::RowIterator>();
+            }
         }
         return std::unique_ptr<::fesql::vm::RowIterator>();
     }
