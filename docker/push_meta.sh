@@ -88,7 +88,7 @@ cd .ci_push_temp/
 bash ${SELFDIR}/upload-meta-to-nexus 'link' $lat_prefix
 bash ${SELFDIR}/upload-meta-to-nexus "${module}.k8s.meta" $tag_prefix
 if [ $skipDeploy -eq 0 ];then
-    bash upload-meta-to-nexus "${module}.meta.tar.gz" $tag_prefix
+    bash ${SELFDIR}/upload-meta-to-nexus "${module}.meta.tar.gz" $tag_prefix
 fi
 cd ..
 rm -rf .ci_push_temp
