@@ -67,7 +67,6 @@ RowBuilder::RowBuilder(const Schema& schema)
       str_addr_length_(0),
       str_field_start_offset_(0),
       str_offset_(0),
-      str_set_pos_(-1),
       schema_version_(1) {
     str_field_start_offset_ = HEADER_LENGTH + BitMapSize(schema.size());
     for (int idx = 0; idx < schema.size(); idx++) {
@@ -116,7 +115,6 @@ bool RowBuilder::SetBuffer(int8_t* buf, uint32_t size, bool need_clear) {
     cnt_ = 0;
     str_addr_length_ = GetAddrLength(size);
     str_offset_ = str_field_start_offset_ + str_addr_length_ * str_field_cnt_;
-    str_set_pos_ = -1;
     return true;
 }
 
@@ -203,15 +201,7 @@ bool RowBuilder::SetNULL(uint32_t index) {
     if (column.data_type() == ::rtidb::type::kVarchar ||
         column.data_type() == rtidb::type::kString) {
         uint32_t str_pos = offset_vec_[index];
-        if (str_set_pos_ + 1 != (int32_t)str_pos) {
-            if (str_set_pos_ >= (int32_t)str_pos) {
-                return false;
-            } else {
-                SetStrOffset(str_pos);
-            }
-        }
         SetStrOffset(str_pos + 1);
-        str_set_pos_ = str_pos;
     }
     return true;
 }
@@ -359,17 +349,9 @@ bool RowBuilder::SetString(uint32_t index, const char* val, uint32_t length) {
     }
     if (str_offset_ + length > size_) return false;
     uint32_t str_pos = offset_vec_[index];
-    if (str_set_pos_ + 1 != (int32_t)str_pos) {
-        if (str_set_pos_ >= (int32_t)str_pos) {
-            return false;
-        } else {
-            SetStrOffset(str_pos);
-        }
-    }
     if (str_pos == 0) {
         SetStrOffset(str_pos);
     }
-    str_set_pos_ = str_pos;
     if (length != 0) {
         memcpy(reinterpret_cast<char*>(buf_ + str_offset_), val, length);
     }
