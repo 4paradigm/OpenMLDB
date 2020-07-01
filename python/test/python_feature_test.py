@@ -8,7 +8,7 @@ class TestRtidb(unittest.TestCase):
   
   def setUp(self):
     self.nsc = rtidb.RTIDBClient("127.0.0.1:6181", "/onebox")
-    self.parent = pathlib.Path(__file__).partent.absolute()
+    self.parent = pathlib.Path(__file__).parent.absolute()
     os.chdir(self.parent)
   
   def test_query(self):
