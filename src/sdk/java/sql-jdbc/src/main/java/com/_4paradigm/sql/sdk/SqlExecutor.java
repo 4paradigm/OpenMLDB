@@ -7,8 +7,9 @@ public interface SqlExecutor {
     boolean createDB(String db);
     boolean executeDDL(String db, String sql);
     boolean executeInsert(String db, String sql);
-    boolean executeInsert(String db, String sql, Object[] data);
+    boolean executeInsert(String db, String sql, SQLRequestRow row);
     ResultSet executeSQL(String db, String sql);
     SQLRequestRow getRequestRow(String db, String sql);
+    SQLRequestRow getInsertRow(String db, String sql);
     ResultSet executeSQL(String db, String sql, SQLRequestRow row);
 }

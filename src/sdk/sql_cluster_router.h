@@ -18,9 +18,9 @@
 #ifndef SRC_SDK_SQL_CLUSTER_ROUTER_H_
 #define SRC_SDK_SQL_CLUSTER_ROUTER_H_
 
+#include <map>
 #include <memory>
 #include <set>
-#include <map>
 #include <string>
 #include <utility>
 #include <vector>
@@ -53,9 +53,17 @@ class SQLClusterRouter : public SQLRouter {
     bool ExecuteInsert(const std::string& db, const std::string& sql,
                        ::fesql::sdk::Status* status);
 
+    bool ExecuteInsert(const std::string& db, const std::string& sql,
+                       std::shared_ptr<SQLRequestRow> row,
+                       fesql::sdk::Status* status);
+
     std::shared_ptr<SQLRequestRow> GetRequestRow(const std::string& db,
                                                  const std::string& sql,
                                                  ::fesql::sdk::Status* status);
+
+    std::shared_ptr<SQLRequestRow> GetInsertRow(const std::string& db,
+                                                const std::string& sql,
+                                                ::fesql::sdk::Status* status);
 
     std::shared_ptr<fesql::sdk::ResultSet> ExecuteSQL(
         const std::string& db, const std::string& sql,
@@ -80,11 +88,11 @@ class SQLClusterRouter : public SQLRouter {
                       std::string* value,
                       std::vector<std::pair<std::string, uint32_t>>* dimensions,
                       std::vector<uint64_t>* ts_dimensions);
-    bool EncodeFullColumns(const catalog::RtiDBSchema& schema,
-            const ::fesql::node::InsertPlanNode* plan,
-            std::string* value,
-            std::vector<std::pair<std::string, uint32_t>>* dimensions,
-            std::vector<uint64_t>* ts_dimensions);
+    bool EncodeFullColumns(
+        const catalog::RtiDBSchema& schema,
+        const ::fesql::node::InsertPlanNode* plan, std::string* value,
+        std::vector<std::pair<std::string, uint32_t>>* dimensions,
+        std::vector<uint64_t>* ts_dimensions);
 
     bool GetSQLPlan(const std::string& sql, ::fesql::node::NodeManager* nm,
                     ::fesql::node::PlanNodeList* plan);

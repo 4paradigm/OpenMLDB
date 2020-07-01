@@ -43,7 +43,7 @@ class SQLRouter {
                           fesql::sdk::Status* status) = 0;
 
     virtual bool ExecuteDDL(const std::string& db, const std::string& sql,
-                           fesql::sdk::Status* status) = 0;
+                            fesql::sdk::Status* status) = 0;
 
     virtual bool ExecuteInsert(const std::string& db, const std::string& sql,
                                fesql::sdk::Status* status) = 0;
