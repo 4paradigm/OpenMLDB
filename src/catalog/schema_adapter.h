@@ -21,6 +21,7 @@
 #include "glog/logging.h"
 #include "proto/common.pb.h"
 #include "vm/catalog.h"
+#include <set>
 
 namespace rtidb {
 namespace catalog {
@@ -34,17 +35,37 @@ class SchemaAdapter {
     SchemaAdapter() {}
     ~SchemaAdapter() {}
 
-    static bool ConvertSchema(const ::fesql::vm::Schema& sql_schema,
-                              RtiDBSchema* output) {
-        if (output == NULL) {
-            LOG(WARNING) << "output ptr is null";
+    static bool ConvertSchemaAndIndex(const ::fesql::vm::Schema& sql_schema,
+                              const ::fesql::vm::IndexList& index,
+                              RtiDBSchema* schema_output,
+                              RtiDBIndex* index_output) {
+        if (nullptr == schema_output || nullptr == index_output) {
+            LOG(WARNING) << "schema or index output ptr is null";
             return false;
         }
+
+        std::set<std::string> ts_cols;
+        // Conver Index
+        for (int32_t i = 0; i < index.size(); i++) {
+            auto& sql_key = index.Get(i);
+            auto index = index_output->Add();
+            index->set_index_name(sql_key.name());
+            for (int32_t k = 0; k < sql_key.first_keys_size(); k++) {
+                index->add_col_name(sql_key.first_keys(k));
+            }
+            index->add_ts_name(sql_key.second_key());
+            ts_cols.insert(sql_key.second_key());
+        }
+
         for (int32_t i = 0; i < sql_schema.size(); i++) {
             auto& sql_column = sql_schema.Get(i);
-            auto rtidb_column = output->Add();
+            auto rtidb_column = schema_output->Add();
             rtidb_column->set_name(sql_column.name());
             rtidb_column->set_not_null(sql_column.is_not_null());
+
+            if (ts_cols.find(sql_column.name()) != ts_cols.cend()) {
+                rtidb_column->set_is_ts_col(true);
+            }
             switch (sql_column.type()) {
                 case fesql::type::kBool:
                     rtidb_column->set_data_type(::rtidb::type::kBool);
@@ -80,25 +101,10 @@ class SchemaAdapter {
                     return false;
             }
         }
+
         return true;
     }
-    static bool ConvertIndex(const ::fesql::vm::IndexList& index,
-                             RtiDBIndex* output) {
-        if (output == NULL) {
-            LOG(WARNING) << "output ptr is null";
-            return false;
-        }
-        for (int32_t i = 0; i < index.size(); i++) {
-            auto& sql_key = index.Get(i);
-            auto index = output->Add();
-            index->set_index_name(sql_key.name());
-            for (int32_t k = 0; k < sql_key.first_keys_size(); k++) {
-                index->add_col_name(sql_key.first_keys(k));
-            }
-            index->add_ts_name(sql_key.second_key());
-        }
-        return true;
-    }
+
     static bool ConvertIndex(const RtiDBIndex& index,
                              ::fesql::vm::IndexList* output) {
         if (output == NULL) {

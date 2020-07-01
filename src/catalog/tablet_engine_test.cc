@@ -23,6 +23,7 @@
 #include "catalog/schema_adapter.h"
 #include "catalog/tablet_catalog.h"
 #include "codec/fe_row_codec.h"
+#include "codec/sdk_codec.h"
 #include "gtest/gtest.h"
 #include "gtest/internal/gtest-param-util.h"
 #include "proto/fe_common.pb.h"
@@ -88,7 +89,7 @@ void InitCases(std::string yaml_path,
 void InitCases(std::string yaml_path,
                std::vector<fesql::sqlcase::SQLCase> &cases) {  // NOLINT
     if (!fesql::sqlcase::SQLCase::CreateSQLCasesFromYaml(
-            FindRtidbDirPath("rtidb") + "/fesql/" + yaml_path, cases)) {
+            FindRtidbDirPath("rtidb") + "/fesql/", yaml_path, cases)) {
         FAIL();
     }
 }
@@ -318,22 +319,38 @@ void StoreData(std::shared_ptr<TestArgs> args,
     auto table = args->table;
     ASSERT_TRUE(sql_table->Init());
     ASSERT_TRUE(table->Init());
-
+    rtidb::codec::SDKCodec sdk_codec(meta);
     LOG(INFO) << "store data start: rows size " << rows.size()
               << ", index size: " << sql_table->GetIndexMap().size();
+    fesql::codec::RowView row_view(sql_table->GetTableDef().columns());
+    int column_size = sql_table->GetTableDef().columns_size();
     for (auto row : rows) {
-        for (auto iter = sql_table->GetIndexMap().cbegin();
-             iter != sql_table->GetIndexMap().cend(); iter++) {
-            std::string key;
-            int64_t time = 1;
-            ASSERT_TRUE(sql_table->DecodeKeysAndTs(
-                iter->second, reinterpret_cast<char *>(row.buf()), row.size(),
-                key, &time));
-            LOG(INFO) << "store row for key: " << key << "ts: " << time;
-            bool ok = table->Put(key, time, reinterpret_cast<char *>(row.buf()),
-                                 row.size());
-            ASSERT_TRUE(ok);
+        std::map<uint32_t, rtidb::codec::Dimension> dimensions;
+        std::vector<uint64_t> ts_dimensions;
+        std::vector<std::string> raw_data;
+        row_view.Reset(row.buf());
+        for (int i = 0; i < column_size; i++) {
+            raw_data.push_back(row_view.GetAsString(i));
         }
+        ASSERT_EQ(0, sdk_codec.EncodeDimension(raw_data, 1, &dimensions));
+        ASSERT_EQ(0, sdk_codec.EncodeTsDimension(raw_data, &ts_dimensions));
+
+        rtidb::storage::Dimensions dims;
+        rtidb::storage::TSDimensions ts_dims;
+
+        auto iter = dimensions.find(0);
+        for (auto dimension : iter->second) {
+            auto dim = dims.Add();
+            dim->set_key(dimension.first);
+            dim->set_idx(dimension.second);
+        }
+        for (size_t i = 0; i < ts_dimensions.size(); i++) {
+            auto ts_dim = ts_dims.Add();
+            ts_dim->set_ts(ts_dimensions[i]);
+            ts_dim->set_idx(i);
+        }
+        bool ok = table->Put(dims, ts_dims, row.ToString());
+        ASSERT_TRUE(ok);
     }
     LOG(INFO) << "store data done!";
 }
@@ -347,15 +364,14 @@ std::shared_ptr<TestArgs> PrepareTableWithTableDef(
     args->meta.set_mode(::rtidb::api::TableMode::kTableLeader);
     args->meta.set_ttl_type(api::TTLType::kAbsoluteTime);
     args->meta.set_ttl(0);
+
+    RtiDBIndex *index = args->meta.mutable_column_key();
     RtiDBSchema *schema = args->meta.mutable_column_desc();
-    if (!SchemaAdapter::ConvertSchema(table_def.columns(), schema)) {
+    if (!SchemaAdapter::ConvertSchemaAndIndex(
+            table_def.columns(), table_def.indexes(), schema, index)) {
         return std::shared_ptr<TestArgs>();
     }
 
-    RtiDBIndex *index = args->meta.mutable_column_key();
-    if (!SchemaAdapter::ConvertIndex(table_def.indexes(), index)) {
-        return std::shared_ptr<TestArgs>();
-    }
     args->table = std::shared_ptr<::rtidb::storage::MemTable>(
         new ::rtidb::storage::MemTable(args->meta));
     args->table->Init();
@@ -396,8 +412,8 @@ void BatchModeCheck(fesql::sqlcase::SQLCase &sql_case) {  // NOLINT
     for (int j = 0; j < input_cnt; ++j) {
         std::string placeholder = "{" + std::to_string(j) + "}";
         std::string tname = sql_case.inputs()[j].name_.empty()
-                            ? ("t" + std::to_string(j))
-                            : sql_case.inputs()[j].name_;
+                                ? ("t" + std::to_string(j))
+                                : sql_case.inputs()[j].name_;
         boost::replace_all(sql_str, placeholder, tname);
     }
     std::cout << sql_str << std::endl;
@@ -406,8 +422,7 @@ void BatchModeCheck(fesql::sqlcase::SQLCase &sql_case) {  // NOLINT
     fesql::vm::Engine engine(catalog);
     fesql::vm::BatchRunSession session;
     session.EnableDebug();
-    bool ok =
-        engine.Get(sql_str, sql_case.db(), session, get_status);
+    bool ok = engine.Get(sql_str, sql_case.db(), session, get_status);
     ASSERT_TRUE(ok);
     std::cout << "RUN IN MODE BATCH";
     fesql::vm::Schema schema;
@@ -486,8 +501,8 @@ void RequestModeCheck(fesql::sqlcase::SQLCase &sql_case) {  // NOLINT
     for (int j = 0; j < input_cnt; ++j) {
         std::string placeholder = "{" + std::to_string(j) + "}";
         std::string tname = sql_case.inputs()[j].name_.empty()
-                            ? ("t" + std::to_string(j))
-                            : sql_case.inputs()[j].name_;
+                                ? ("t" + std::to_string(j))
+                                : sql_case.inputs()[j].name_;
         boost::replace_all(sql_str, placeholder, tname);
     }
     std::cout << sql_str << std::endl;
@@ -495,8 +510,7 @@ void RequestModeCheck(fesql::sqlcase::SQLCase &sql_case) {  // NOLINT
     fesql::vm::Engine engine(catalog);
     fesql::vm::RequestRunSession session;
     session.EnableDebug();
-    bool ok =
-        engine.Get(sql_str, sql_case.db(), session, get_status);
+    bool ok = engine.Get(sql_str, sql_case.db(), session, get_status);
     ASSERT_TRUE(ok);
     std::cout << "RUN IN MODE BATCH";
     fesql::vm::Schema schema;
