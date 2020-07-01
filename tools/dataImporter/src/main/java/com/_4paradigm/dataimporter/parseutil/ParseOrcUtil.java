@@ -74,63 +74,71 @@ public class ParseOrcUtil {
             TypeDescription.Category columnType = schema.getChildren().get(i).getCategory();
             Object value = valueList.get(columnIndex);
             String s;
-            switch (columnType) {
-                case BINARY:
-                    map.put(columnName, new String(((BytesWritable) value).copyBytes()));
-                    break;
-                case BOOLEAN:
-                    s = StringUtils.isBlank(String.valueOf(value)) ? null : String.valueOf(value);
-                    if (s == null) {
-                        map.put(columnName, false);
-                    } else {
-                        map.put(columnName, Boolean.parseBoolean(s));
-                    }
-                    break;
-                case BYTE:
-                    s = StringUtils.isBlank(String.valueOf(value)) ? "0" : String.valueOf(value);
-                    map.put(columnName, Short.valueOf(s));
-                    break;
-                case DATE:
-                    map.put(columnName, ((DateWritable) value).get());
-                    break;
-                case DOUBLE:
-                    s = StringUtils.isBlank(String.valueOf(value)) ? "0.0" : String.valueOf(value);
-                    map.put(columnName, Double.valueOf(s));
-                    break;
-                case FLOAT:
-                    s = StringUtils.isBlank(String.valueOf(value)) ? "0.0" : String.valueOf(value);
-                    map.put(columnName, Float.valueOf(s));
-                    break;
-                case INT:
-                    s = StringUtils.isBlank(String.valueOf(value)) ? "0" : String.valueOf(value);
-                    map.put(columnName, Integer.valueOf(s));
-                    break;
-                case LONG:
-                    s = StringUtils.isBlank(String.valueOf(value)) ? "0" : String.valueOf(value);
-                    map.put(columnName, Long.valueOf(s));
-                    break;
-                case SHORT:
-                    s = StringUtils.isBlank(String.valueOf(value)) ? "0" : String.valueOf(value);
-                    map.put(columnName, Short.valueOf(s));
-                    break;
-                case STRING:
-                    map.put(columnName, String.valueOf(value));
-                    break;
-                case TIMESTAMP:
-                    s = StringUtils.isBlank(String.valueOf(value)) ? "0000-00-00 00:00:00" : String.valueOf(value);
-                    map.put(columnName, Timestamp.valueOf(s));
-                    break;
-                case CHAR:
-                    map.put(columnName, String.valueOf(value));
-                    break;
-                case VARCHAR:
-                    map.put(columnName, String.valueOf(value));
-                    break;
-                case DECIMAL:
-                    s = StringUtils.isBlank(String.valueOf(value)) ? "0.0" : String.valueOf(value);
-                    map.put(columnName, Double.valueOf(s));
-                    break;
-                default:
+            try {
+                switch (columnType) {
+                    case BINARY:
+                        map.put(columnName, new String(((BytesWritable) value).copyBytes()));
+                        break;
+                    case BOOLEAN:
+                        s = StringUtils.isBlank(String.valueOf(value)) ? null : String.valueOf(value);
+                        if (s == null) {
+                            map.put(columnName, false);
+                        } else {
+                            map.put(columnName, Boolean.parseBoolean(s));
+                        }
+                        break;
+                    case BYTE:
+                        s = StringUtils.isBlank(String.valueOf(value)) ? "0" : String.valueOf(value);
+                        map.put(columnName, Short.valueOf(s));
+                        break;
+                    case DATE:
+                        map.put(columnName, ((DateWritable) value).get());
+                        break;
+                    case DOUBLE:
+                        s = StringUtils.isBlank(String.valueOf(value)) ? "0.0" : String.valueOf(value);
+                        map.put(columnName, Double.valueOf(s));
+                        break;
+                    case FLOAT:
+                        s = StringUtils.isBlank(String.valueOf(value)) ? "0.0" : String.valueOf(value);
+                        map.put(columnName, Float.valueOf(s));
+                        break;
+                    case INT:
+                        s = StringUtils.isBlank(String.valueOf(value)) ? "0" : String.valueOf(value);
+                        map.put(columnName, Integer.valueOf(s));
+                        break;
+                    case LONG:
+                        s = StringUtils.isBlank(String.valueOf(value)) ? "0" : String.valueOf(value);
+                        map.put(columnName, Long.valueOf(s));
+                        break;
+                    case SHORT:
+                        s = StringUtils.isBlank(String.valueOf(value)) ? "0" : String.valueOf(value);
+                        map.put(columnName, Short.valueOf(s));
+                        break;
+                    case STRING:
+                        map.put(columnName, String.valueOf(value));
+                        break;
+                    case TIMESTAMP:
+                        s = StringUtils.isBlank(String.valueOf(value)) ? "0000-00-00 00:00:00" : String.valueOf(value);
+                        map.put(columnName, Timestamp.valueOf(s));
+                        break;
+                    case CHAR:
+                        map.put(columnName, String.valueOf(value));
+                        break;
+                    case VARCHAR:
+                        map.put(columnName, String.valueOf(value));
+                        break;
+                    case DECIMAL:
+                        s = StringUtils.isBlank(String.valueOf(value)) ? "0.0" : String.valueOf(value);
+                        map.put(columnName, Double.valueOf(s));
+                        break;
+                    default:
+                }
+            } catch (Exception e) {
+                if (InitClient.contains(";", TIMESTAMP, columnName)) {
+                    logger.error("ts column is null");
+                    return new HashMap<>();
+                }
+                map.put(columnName, null);
             }
             if (!hasTs && InitClient.contains(";", TIMESTAMP, columnName)) {
                 hasTs = true;
