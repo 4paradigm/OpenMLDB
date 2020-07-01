@@ -1,13 +1,19 @@
 import unittest
 import rtidb 
 from datetime import date
+import pathlib
+import os
 
 class TestRtidb(unittest.TestCase):
   
   def setUp(self):
     self.nsc = rtidb.RTIDBClient("127.0.0.1:6181", "/onebox")
+    self.parent = pathlib.Paht(__file__).partent.absolute()
+    os.chdir(self.parent)
   
   def test_query(self):
+    table_name = "test1"
+    os.system("create_table/drop_and_create.sh {}".format(table_name))
     data = {"id":"2001","attribute":"a1", "image":None}
     self.assertTrue(self.nsc.put("test1", data, None).success())
     ro = rtidb.ReadOption()
@@ -53,6 +59,9 @@ class TestRtidb(unittest.TestCase):
     resp = self.nsc.query("test1", ro)
     self.assertTrue(True);
     self.assertEqual(0, resp.count())
+
+  def test_query_multi_index(self):
+    os.system("create_table/drop_and_create.sh rt_ck")
     # multi index
     data = {"id":"2001","name":"n1","mcc":"2001","attribute":"a1", "image":b"i1"}
     self.assertTrue(self.nsc.put("rt_ck", data, None).success())
@@ -119,6 +128,7 @@ class TestRtidb(unittest.TestCase):
     self.assertEqual(0, resp.count())
 
   def test_traverse(self):
+    os.system("create_table/drop_and_create.sh test1")
     for i in range(1000) :
         data = {"id":"{:d}".format(i), "attribute":"a{}".format(i), "image":"i{}".format(i)}
         self.assertTrue(self.nsc.put("test1", data, None).success())
@@ -160,6 +170,8 @@ class TestRtidb(unittest.TestCase):
       id+=1
     self.assertEqual(1000, id);
 
+  def test_traverse_multi_index(self):
+    os.system("create_table/drop_and_create.sh rt_ck")
     # multi index
     for i in range(1000) :
         data = {"id":"{:d}".format(i), "name":"n{}".format(i), "mcc":"{:d}".format(i), 
@@ -192,6 +204,7 @@ class TestRtidb(unittest.TestCase):
     self.assertEqual(1000, id);
 
   def test_batchQuery(self):
+    os.system("create_table/drop_and_create.sh rt_ck")
     # multi index
     data = {"id":"1","name":"n1","mcc":"1","attribute":"a1", "image":b"i1"}
     self.assertTrue(self.nsc.put("rt_ck", data, None).success())
@@ -234,6 +247,7 @@ class TestRtidb(unittest.TestCase):
     self.assertEqual(1, update_result.affected_count())
 
   def test_update(self):
+    os.system("create_table/drop_and_create.sh test1")
     data = {"id":"3001","attribute":"a1", "image":"i1"}
     self.assertTrue(self.nsc.put("test1", data, None).success())
     condition_columns = {"id":"3001"} 
@@ -265,6 +279,9 @@ class TestRtidb(unittest.TestCase):
       self.assertTrue(True)
     else:
       self.assertTrue(False)
+
+  def test_update_multi_index(self):
+    os.system("create_table/drop_and_create.sh rt_ck")
     # multi index
     data = {"id":"3001","name":"n1","mcc":"3001","attribute":"a1", "image":b"i1"}
     self.assertTrue(self.nsc.put("rt_ck", data, None).success())
@@ -323,6 +340,7 @@ class TestRtidb(unittest.TestCase):
     self.assertEqual(2, id);
 
   def test_auto_gen(self):
+    os.system("create_table/drop_and_create.sh auto")
     data = {"id":4001, "attribute":"a1", "image":"i1"}
     try:
       self.nsc.put("auto", data, None);
@@ -344,6 +362,7 @@ class TestRtidb(unittest.TestCase):
     self.assertEqual(1, id);
 
   def test_date_index(self):
+    os.system("create_table/drop_and_create.sh date")
     data = {"id":"5001","attribute":"a1", "image":"i1", "male":True, "date":date(2020,1,1), "ts":1588756531}
     self.assertTrue(self.nsc.put("date", data, None).success())
     ro = rtidb.ReadOption()
@@ -425,6 +444,7 @@ class TestRtidb(unittest.TestCase):
     self.assertEqual(0, resp.count())
     
   def test_index_null(self):
+    os.system("create_table/drop_and_create.sh rt_ck")
     data = {"id": 6001,"name":"n1","mcc": None,"attribute":"a1", "image":None}
     self.assertTrue(self.nsc.put("rt_ck", data, None).success())
     ro = rtidb.ReadOption()
