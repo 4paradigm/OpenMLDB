@@ -2,7 +2,7 @@
 # from https://gitlab.4pd.io/inf/base-images/blob/build/shells/push_meta
 set +e
 
-SELFDIR=$(dirname $0)
+SELFDIR=$(dirname $(readlink -f $0))
 
 skipDeploy=0
 if  [[ "$1"  == "skipDeploy" ]];then
