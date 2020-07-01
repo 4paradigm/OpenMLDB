@@ -684,26 +684,31 @@ bool SQLCase::CreateExpectFromYamlNode(const YAML::Node& schema_data,
     }
     return true;
 }
-bool SQLCase::CreateSQLCasesFromYaml(const std::string& yaml_path,
+bool SQLCase::CreateSQLCasesFromYaml(const std::string& cases_dir,
+                                     const std::string& yaml_path,
                                      std::vector<SQLCase>& sql_cases,
                                      const std::string filter_mode) {
     std::vector<std::string> filter_modes;
     if (filter_mode.empty()) {
-        return CreateSQLCasesFromYaml(yaml_path, sql_cases, filter_modes);
+        return CreateSQLCasesFromYaml(cases_dir, yaml_path, sql_cases,
+                                      filter_modes);
     } else {
         filter_modes.push_back(filter_mode);
-        return CreateSQLCasesFromYaml(yaml_path, sql_cases, filter_modes);
+        return CreateSQLCasesFromYaml(cases_dir, yaml_path, sql_cases,
+                                      filter_modes);
     }
 }
 
-bool SQLCase::CreateTableInfoFromYaml(const std::string& yaml_path,
+bool SQLCase::CreateTableInfoFromYaml(const std::string& cases_dir,
+                                      const std::string& yaml_path,
                                       TableInfo* table_info) {
-    LOG(INFO) << "Resource path: " << yaml_path;
-    if (!boost::filesystem::is_regular_file(yaml_path)) {
+    auto resouces_path = cases_dir + yaml_path;
+    LOG(INFO) << "Resource path: " << resouces_path;
+    if (!boost::filesystem::is_regular_file(resouces_path)) {
         LOG(WARNING) << yaml_path << ": No such file";
         return false;
     }
-    YAML::Node table_config = YAML::LoadFile(yaml_path);
+    YAML::Node table_config = YAML::LoadFile(resouces_path);
     if (table_config["table"]) {
         if (!CreateTableInfoFromYamlNode(table_config["table"], table_info)) {
             return false;
@@ -715,11 +720,12 @@ bool SQLCase::CreateTableInfoFromYaml(const std::string& yaml_path,
     return true;
 }
 
-bool SQLCase::LoadSchemaAndRowsFromYaml(const std::string& resource_path,
+bool SQLCase::LoadSchemaAndRowsFromYaml(const std::string& cases_dir,
+                                        const std::string& resource_path,
                                         type::TableDef& table,
                                         std::vector<fesql::codec::Row>& rows) {
     TableInfo table_info;
-    if (!CreateTableInfoFromYaml(resource_path, &table_info)) {
+    if (!CreateTableInfoFromYaml(cases_dir, resource_path, &table_info)) {
         return false;
     }
     if (!SQLCase::ExtractTableDef(table_info.schema_, table_info.index_,
@@ -733,14 +739,16 @@ bool SQLCase::LoadSchemaAndRowsFromYaml(const std::string& resource_path,
     return true;
 }
 bool SQLCase::CreateSQLCasesFromYaml(
-    const std::string& yaml_path, std::vector<SQLCase>& sql_cases,
+    const std::string& cases_dir, const std::string& yaml_path,
+    std::vector<SQLCase>& sql_cases,
     const std::vector<std::string>& filter_modes) {
-    LOG(INFO) << "SQL Cases Path: " << yaml_path;
-    if (!boost::filesystem::is_regular_file(yaml_path)) {
-        LOG(WARNING) << yaml_path << ": No such file";
+    auto sql_case_path = cases_dir + yaml_path;
+    LOG(INFO) << "SQL Cases Path: " << sql_case_path;
+    if (!boost::filesystem::is_regular_file(sql_case_path)) {
+        LOG(WARNING) << sql_case_path << ": No such file";
         return false;
     }
-    YAML::Node config = YAML::LoadFile(yaml_path);
+    YAML::Node config = YAML::LoadFile(sql_case_path);
     std::string global_db = "";
     if (config["db"]) {
         global_db = config["db"].as<std::string>();
@@ -863,9 +871,7 @@ bool SQLCase::CreateSQLCasesFromYaml(
                     std::string resource =
                         schema_data["resource"].as<std::string>();
                     boost::trim(resource);
-                    std::string resource_path =
-                        FindFesqlDirPath() + "/" + resource;
-                    if (!CreateTableInfoFromYaml(resource_path, &table)) {
+                    if (!CreateTableInfoFromYaml(cases_dir, resource, &table)) {
                         return false;
                     }
                 } else {

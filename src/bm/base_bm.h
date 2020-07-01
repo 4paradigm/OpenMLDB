@@ -149,9 +149,8 @@ void BuildTableDef(::fesql::type::TableDef& table) {  // NOLINT
 bool LoadResource(const std::string& resource_path,
                   type::TableDef& table_def,  // NOLINT
                   std::vector<Row>& rows) {   // NOLINT
-    if (!SQLCase::LoadSchemaAndRowsFromYaml(
-            fesql::sqlcase::FindFesqlDirPath() + "/" + resource_path, table_def,
-            rows)) {
+    if (!SQLCase::LoadSchemaAndRowsFromYaml(fesql::sqlcase::FindFesqlDirPath(),
+                                            resource_path, table_def, rows)) {
         return false;
     }
     return true;

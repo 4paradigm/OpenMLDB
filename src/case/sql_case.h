@@ -104,18 +104,19 @@ class SQLCase {
     static bool CreateExpectFromYamlNode(const YAML::Node& schema_data,
                                          SQLCase::ExpectInfo* table);
     static bool LoadSchemaAndRowsFromYaml(
-        const std::string& resource_path,
+        const std::string& cases_dir, const std::string& resource_path,
         type::TableDef& table,                  // NOLINT
         std::vector<fesql::codec::Row>& rows);  // NOLINT
     static bool CreateSQLCasesFromYaml(
-        const std::string& yaml_path,
+        const std::string& cases_dir, const std::string& yaml_path,
         std::vector<SQLCase>& sql_case_ptr,  // NOLINT
         const std::string filter_mode = "");
     static bool CreateSQLCasesFromYaml(
-        const std::string& yaml_path,
+        const std::string& cases_dir, const std::string& yaml_path,
         std::vector<SQLCase>& sql_case_ptr,  // NOLINT
         const std::vector<std::string>& filter_modes);
-    static bool CreateTableInfoFromYaml(const std::string& yaml_path,
+    static bool CreateTableInfoFromYaml(const std::string& cases_dir,
+                                        const std::string& yaml_path,
                                         TableInfo* table_info);
     static bool CreateStringListFromYamlNode(
         const YAML::Node& node,
