@@ -2,6 +2,8 @@
 # from https://gitlab.4pd.io/inf/base-images/blob/build/shells/push_meta
 set +e
 
+SELFDIR=$(dirname $0)
+
 skipDeploy=0
 if  [[ "$1"  == "skipDeploy" ]];then
     skipDeploy=1
@@ -83,8 +85,8 @@ gen_link ./.ci_push_temp/link
 gen_meta ./.ci_push_temp/${module}.k8s.meta
 
 cd .ci_push_temp/
-bash upload-meta-to-nexus 'link' $lat_prefix
-bash upload-meta-to-nexus "${module}.k8s.meta" $tag_prefix
+bash ${SELFDIR}/upload-meta-to-nexus 'link' $lat_prefix
+bash ${SELFDIR}/upload-meta-to-nexus "${module}.k8s.meta" $tag_prefix
 if [ $skipDeploy -eq 0 ];then
     bash upload-meta-to-nexus "${module}.meta.tar.gz" $tag_prefix
 fi
