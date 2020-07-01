@@ -1,5 +1,5 @@
 db: test_zw
-debugs: ["样本表不进入window"]
+debugs: []
 cases:
   -
     id: 0

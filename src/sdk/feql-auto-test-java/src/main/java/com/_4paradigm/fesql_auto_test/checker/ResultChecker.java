@@ -45,17 +45,28 @@ public class ResultChecker extends BaseChecker {
             log.info("order expect:{}",expect);
             log.info("order actual:{}",actual);
         }
-        Assert.assertEquals(actual,expect);
-//        for(int i=0;i<actual.size();i++){
-//            List actualList = actual.get(i);
-//            List expectList = expect.get(i);
-//            checkListAsString(actualList,expectList);
-//        }
+        if(columns!=null&&columns.size()>0) {
+//            for(int i=0;i<actual.size();i++){
+//                List actualList = actual.get(i);
+//                List expectList = expect.get(i);
+//                checkListAsString(actualList,expectList);
+//            }
+            Assert.assertEquals(actual, expect);
+        }else{
+            for(int i=0;i<actual.size();i++){
+                List actualList = actual.get(i);
+                List expectList = expect.get(i);
+                checkListAsString(actualList,expectList);
+            }
+        }
     }
     private void checkListAsString(List actual,List expect){
         Assert.assertEquals(actual.size(),expect.size());
         for(int i=0;i<actual.size();i++){
             Object actualObj = actual.get(i);
+//            System.out.println(actualObj);
+//            System.out.println("》》："+(actualObj instanceof String));
+//            System.out.println(actualObj.getClass());
             Object expectObj = expect.get(i);
             Assert.assertEquals(actualObj+"",expectObj+"");
         }

@@ -2,7 +2,6 @@ package com._4paradigm.fesql_auto_test.checker;
 
 import com._4paradigm.fesql_auto_test.entity.FesqlCase;
 import com._4paradigm.fesql_auto_test.entity.FesqlResult;
-import com.sun.tools.javac.code.Lint;
 import lombok.extern.slf4j.Slf4j;
 import org.testng.Assert;
 

@@ -1,5 +1,5 @@
 db: test_zw
-debugs: ["查询所有列"]
+debugs: []
 cases:
   -
     id: 1
@@ -51,7 +51,7 @@ cases:
           - ["aa",2,3,1590738989000]
     sql: select c1 as name,c2,c3,c4 from {0};
     expect:
-      rows_column_name: [name,c2,c3,c4]
+      columns: ["name string","c2 int","c3 bigint","c4 timestamp"]
       rows:
         - ["aa",2,3,1590738989000]
   -
@@ -65,7 +65,7 @@ cases:
           - ["aa",2,3,1590738989000]
     sql: select c1 as name,c2 as v2,c3 as v3 ,c4 as v4 from {0};
     expect:
-      rows_column_name: [name,v2,v3,v4]
+      columns: ["name string","v2 int","v3 bigint","v4 timestamp"]
       rows:
         - ["aa",2,3,1590738989000]
   -
@@ -79,7 +79,7 @@ cases:
           - ["aa",2,3,1590738989000]
     sql: select c1 as name,{0}.c2,c3,c4 from {0};
     expect:
-      rows_column_name: [name,c2,c3,c4]
+      columns: ["name string","c2 int","c3 bigint","c4 timestamp"]
       rows:
         - ["aa",2,3,1590738989000]
   -
@@ -131,7 +131,7 @@ cases:
     sql: select c1,c2,c3,c4 from {0};
     expect:
       rows:
-        - [null,2,null,1590738989000]
+        - [NULL,2,NULL,1590738989000]
   -
     id: 11
     desc: 结合limit
@@ -147,7 +147,7 @@ cases:
     expect:
       rows:
         - ["aa",2,3,1590738989000]
-        - ["cc",21,31,1590738991000]
+        - ["cc",41,51,1590738991000]
   -
     id: 11
     desc: limit 1
@@ -178,7 +178,7 @@ cases:
     expect:
       rows:
         - ["aa",2,3,1590738989000]
-        - ["cc",21,31,1590738991000]
+        - ["cc",41,51,1590738991000]
         - ["bb",21,31,1590738990000]
   -
     id: 13
@@ -190,12 +190,12 @@ cases:
         rows:
           - ["aa",2,3,1590738989000]
           - ["bb",21,31,1590738990000]
-          - ["cc",41,51,1590738991000]
+           - ["cc",41,51,1590738991000]
     sql: select c1,c2,c3,c4 from {0} limit 4;
     expect:
       rows:
         - ["aa",2,3,1590738989000]
-        - ["cc",21,31,1590738991000]
+        - ["cc",41,51,1590738991000]
         - ["bb",21,31,1590738990000]
   -
     id: 14
@@ -208,6 +208,6 @@ cases:
           - ["aa",2,3,1590738989000]
     sql: select c1 as name,c2,c3,c4,1 from {0};
     expect:
-      rows_column_name: [name,c2,c3,c4,"1"]
+      columns: ["name string","c2 int","c3 bigint","c4 timestamp","1 int"]
       rows:
         - ["aa",2,3,1590738989000,1]

@@ -1,5 +1,5 @@
 db: test_zw
-debugs: ["window使用的列名不存在"]
+debugs: []
 cases:
   -
     id: 0

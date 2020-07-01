@@ -1,5 +1,5 @@
 db: test_zw
-debugs: ["创建两个相同时间列的索引的表"]
+debugs: []
 cases:
   -
     id: 1

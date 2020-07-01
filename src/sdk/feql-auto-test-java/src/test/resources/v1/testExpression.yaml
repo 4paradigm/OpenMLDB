@@ -1,5 +1,5 @@
 db: test_zw
-debugs: ["布尔表达式"]
+debugs: []
 cases:
   -
     id: 1

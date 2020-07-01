@@ -1,5 +1,5 @@
 db: test_zw
-debugs: ["字符串类型插入空串"]
+debugs: []
 cases:
   -
     id: 1

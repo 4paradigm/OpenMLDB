@@ -1,5 +1,5 @@
 db: test_zw
-debugs: ["avg-string"]
+debugs: []
 cases:
   -
     id: 0
