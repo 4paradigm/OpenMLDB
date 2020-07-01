@@ -12,7 +12,7 @@ netstat -anp | grep 6181 | awk '{print $NF}' | awk -F '/' '{print $1}'| xargs ki
 ./bin/zkServer.sh start && cd ${WORKDIR}
 sleep 5
 cd onebox && sh start_onebox_on_rambuild.sh && cd ${WORKDIR}
-WORKDIR=${WORKDIR} bash ${WORKDIR}/python/test/create_table/drop_and_create.sh
+#WORKDIR=${WORKDIR} bash ${WORKDIR}/python/test/create_table/drop_and_create.sh
 cd ${WORKDIR}/python/test
 nosetests --with-xunit
 code=$?
