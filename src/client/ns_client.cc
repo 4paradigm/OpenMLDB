@@ -223,7 +223,6 @@ bool NsClient::ExecuteSQL(const std::string& db, const std::string& script,
                           std::string& msg) {
     fesql::node::NodeManager node_manager;
     fesql::parser::FeSQLParser parser;
-    fesql::plan::SimplePlanner planner(&node_manager);
     DLOG(INFO) << "start to execute script from dbms:\n" << script;
     fesql::base::Status sql_status;
     fesql::node::NodePointVector parser_trees;
@@ -232,17 +231,77 @@ bool NsClient::ExecuteSQL(const std::string& db, const std::string& script,
         msg = sql_status.msg;
         return false;
     }
-    fesql::node::PlanNodeList plan_trees;
-    planner.CreatePlanTree(parser_trees, plan_trees, sql_status);
+    fesql::node::SQLNode* node = parser_trees[0];
+    switch (node->GetType()) {
+        case fesql::node::kCmdStmt: {
+            fesql::node::CmdNode* cmd =
+                dynamic_cast<fesql::node::CmdNode*>(node);
+            bool ok = HandleSQLCmd(cmd, db, &sql_status);
+            if (!ok) {
+                std::cout << sql_status.msg << std::endl;
+            }
+            break;
+        }
+        case fesql::node::kCreateStmt: {
+            return HandleSQLCreateTable(parser_trees, db, &node_manager,
+                                        &sql_status);
+        }
+        default: {
+            msg = "fail to execute script with unSuppurt type";
+            std::cout << msg << std::endl;
+            return false;
+        }
+    }
+}
 
-    if (0 != sql_status.code) {
-        msg = sql_status.msg;
+bool NsClient::HandleSQLCmd(const fesql::node::CmdNode* cmd_node,
+                            const std::string& db,
+                            fesql::base::Status* sql_status) {
+    switch (cmd_node->GetCmdType()) {
+        case fesql::node::kCmdDropTable: {
+            std::string name = cmd_node->GetArgs()[0];
+            std::string error;
+            bool ok = DropTable(name, error);
+            if (ok) {
+                return true;
+            } else {
+                sql_status->msg = error;
+                return false;
+            }
+        }
+        case fesql::node::kCmdDropIndex: {
+            std::string index_name = cmd_node->GetArgs()[0];
+            std::string table_name = cmd_node->GetArgs()[1];
+            std::string error;
+
+            bool ok = DeleteIndex(table_name, index_name, error);
+            if (ok) {
+                return true;
+            } else {
+                sql_status->msg = error;
+                return false;
+            }
+        }
+        default: {
+            sql_status->msg = "fail to execute script with unSuppurt type";
+            return false;
+        }
+    }
+}
+
+bool NsClient::HandleSQLCreateTable(
+    const fesql::node::NodePointVector& parser_trees, const std::string& db,
+    fesql::node::NodeManager* node_manager, fesql::base::Status* sql_status) {
+    fesql::plan::SimplePlanner planner(node_manager);
+    fesql::node::PlanNodeList plan_trees;
+    planner.CreatePlanTree(parser_trees, plan_trees, *sql_status);
+    if (0 != sql_status->code) {
         return false;
     }
 
     fesql::node::PlanNode* plan = plan_trees[0];
     if (nullptr == plan) {
-        msg = "fail to execute plan : plan null";
+        sql_status->msg = "fail to execute plan : plan null";
         return false;
     }
 
@@ -257,21 +316,19 @@ bool NsClient::ExecuteSQL(const std::string& db, const std::string& script,
             table_info->set_db(db);
             TransformToTableDef(create->GetTableName(),
                                 create->GetColumnDescList(), table_info,
-                                &sql_status);
-            if (0 != sql_status.code) {
-                msg = sql_status.msg;
-                std::cout << msg << std::endl;
+                                sql_status);
+            if (0 != sql_status->code) {
                 return false;
             }
             client_.SendRequest(
                 &::rtidb::nameserver::NameServer_Stub::CreateTable, &request,
                 &response, FLAGS_request_timeout_ms, 1);
-            msg = response.msg();
+            sql_status->msg = response.msg();
             break;
         }
         default: {
-            msg = "fail to execute script with unSuppurt type" +
-                  fesql::node::NameOfPlanNodeType(plan->GetType());
+            sql_status->msg = "fail to execute script with unSuppurt type" +
+                              fesql::node::NameOfPlanNodeType(plan->GetType());
             return false;
         }
     }

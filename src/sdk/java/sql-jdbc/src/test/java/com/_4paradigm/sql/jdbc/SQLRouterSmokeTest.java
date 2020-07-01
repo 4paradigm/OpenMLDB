@@ -33,10 +33,12 @@ public class SQLRouterSmokeTest {
             String select = "select col1 from tsql1010 limit 1;";
             ResultSet rs = router.executeSQL(dbname, select);
             Assert.assertEquals(1, rs.Size());
+            String drop = "drop table tsql1010;";
+            ok = router.executeDDL(dbname, drop);
+            Assert.assertTrue(ok);
         } catch (Exception e) {
             e.printStackTrace();
             Assert.fail();
         }
-
     }
 }
