@@ -34,7 +34,7 @@ if [[ ! ($VERSION =~ ^[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}$) ]]; then
     exit 0
 fi
 
-sh -x steps/package.sh $VERSION
+sh -x steps/package.sh $VERSION || exit 1
 sh -x steps/package_whl.sh
 
 URL="http://pkg.4paradigm.com:81/rtidb/"

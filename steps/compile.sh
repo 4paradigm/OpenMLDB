@@ -12,6 +12,7 @@ else
 fi
 
 VERSION=$(git tag --points-at HEAD)
+VERSION=${VERSION:1}
 if [ -n "${VERSION}" ]; then
     if [[ ! ($VERSION =~ ^[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}$) ]]; then
         echo "$VERSION is not release version"
@@ -22,7 +23,7 @@ fi
 
 sh steps/gen_code.sh
 
-mkdir -p $WORK_DIR/build 
+mkdir -p $WORK_DIR/build  || :
 cd $WORK_DIR/build && cmake .. && make -j10
 code=$?
 cd $WORK_DIR

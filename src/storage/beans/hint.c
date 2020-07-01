@@ -84,7 +84,7 @@ void write_hint_file(char *buf, int size, const char *path)
     FILE *hf = fopen(tmp, "wb");
     if (NULL == hf)
     {
-        printf("open %s failed", tmp);
+        printf("open %s failed\n", tmp);
         return;
     }
     int n = fwrite(dst, 1, size, hf);
@@ -98,7 +98,7 @@ void write_hint_file(char *buf, int size, const char *path)
     }
     else
     {
-        printf("write to %s failed", tmp);
+        printf("write to %s failed\n", tmp);
     }
 }
 
@@ -168,7 +168,7 @@ void scanHintFile(HTree *tree, int bucket, const char *path, const char *new_pat
     HintFile *hint = open_hint(path, new_path);
     if (hint == NULL) return;
 
-    printf("scan hint: %s", path);
+    printf("scan hint: %s\n", path);
 
     char *p = hint->buf, *end = hint->buf + hint->size;
     while (p < end)
@@ -177,7 +177,7 @@ void scanHintFile(HTree *tree, int bucket, const char *path, const char *new_pat
         p += sizeof(HintRecord) - NAME_IN_RECORD + r->ksize + 1;
         if (p > end)
         {
-            printf("scan %s: unexpected end, need %ld byte", path, p - end);
+            printf("scan %s: unexpected end, need %ld byte\n", path, p - end);
             break;
         }
         uint32_t pos = (r->pos << 8) | (bucket & 0xff);
@@ -208,7 +208,7 @@ int count_deleted_record(HTree *tree, int bucket, const char *path, int *total, 
         p += sizeof(HintRecord) - NAME_IN_RECORD + r->ksize + 1;
         if (p > end)
         {
-            printf("scan %s: unexpected end, need %ld byte", path, p - end);
+            printf("scan %s: unexpected end, need %ld byte\n", path, p - end);
             break;
         }
         (*total)++;
