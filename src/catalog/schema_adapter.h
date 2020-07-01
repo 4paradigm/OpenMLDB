@@ -18,10 +18,12 @@
 #ifndef SRC_CATALOG_SCHEMA_ADAPTER_H_
 #define SRC_CATALOG_SCHEMA_ADAPTER_H_
 
+#include <set>
+#include <string>
+
 #include "glog/logging.h"
 #include "proto/common.pb.h"
 #include "vm/catalog.h"
-#include <set>
 
 namespace rtidb {
 namespace catalog {
@@ -36,9 +38,9 @@ class SchemaAdapter {
     ~SchemaAdapter() {}
 
     static bool ConvertSchemaAndIndex(const ::fesql::vm::Schema& sql_schema,
-                              const ::fesql::vm::IndexList& index,
-                              RtiDBSchema* schema_output,
-                              RtiDBIndex* index_output) {
+                                      const ::fesql::vm::IndexList& index,
+                                      RtiDBSchema* schema_output,
+                                      RtiDBIndex* index_output) {
         if (nullptr == schema_output || nullptr == index_output) {
             LOG(WARNING) << "schema or index output ptr is null";
             return false;
