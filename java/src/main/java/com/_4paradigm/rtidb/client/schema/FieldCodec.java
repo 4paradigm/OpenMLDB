@@ -62,8 +62,9 @@ public class FieldCodec {
     }
 
     public static ByteBuffer convert(String data) {
-        ByteBuffer buffer = ByteBuffer.allocate(data.length()).order(ByteOrder.LITTLE_ENDIAN);
-        buffer.put(data.getBytes(RowCodecCommon.CHARSET));
+        byte[] BytesData = data.getBytes(RowCodecCommon.CHARSET);
+        ByteBuffer buffer = ByteBuffer.allocate(BytesData.length).order(ByteOrder.LITTLE_ENDIAN);
+        buffer.put(BytesData);
         buffer.rewind();
         return buffer;
     }
