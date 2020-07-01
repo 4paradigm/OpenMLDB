@@ -764,7 +764,7 @@ void HandleNSSwitchMode(const std::vector<std::string>& parts,
 
 void HandleNSShowNameServer(const std::vector<std::string>& parts,
                             ::rtidb::client::NsClient* client,
-                            std::shared_ptr<ZkClient> zk_client) {
+                            std::shared_ptr<::rtidb::zk::ZkClient> zk_client) {
     if (FLAGS_zk_cluster.empty() || !zk_client) {
         std::cout << "Show nameserver failed. zk_cluster is empty" << std::endl;
         return;
@@ -6196,9 +6196,9 @@ void StartNsClient() {
                   << "." << RTIDB_VERSION_MEDIUM << "." << RTIDB_VERSION_MINOR
                   << "." << RTIDB_VERSION_BUG << std::endl;
     }
-    std::shared_ptr<ZkClient> zk_client;
+    std::shared_ptr<::rtidb::zk::ZkClient> zk_client;
     if (!FLAGS_zk_cluster.empty()) {
-        zk_client = std::make_shared<ZkClient>(FLAGS_zk_cluster, 1000, "",
+        zk_client = std::make_shared<::rtidb::zk::ZkClient>(FLAGS_zk_cluster, 1000, "",
                                                FLAGS_zk_root_path);
         if (!zk_client->Init()) {
             std::cout << "zk client init failed" << std::endl;

@@ -246,7 +246,8 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
     uint32_t idx = rand_.Uniform(tablets.size());
-    ok = tablets[idx]->Query(db, sql, row->GetRow(), cntl.get(), response.get());
+    ok =
+        tablets[idx]->Query(db, sql, row->GetRow(), cntl.get(), response.get());
     if (!ok) {
         status->msg = "request server error";
         return std::shared_ptr<::fesql::sdk::ResultSet>();
