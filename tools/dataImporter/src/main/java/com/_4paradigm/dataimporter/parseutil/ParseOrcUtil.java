@@ -178,6 +178,9 @@ public class ParseOrcUtil {
             while (records.hasNext()) {
                 row = records.next(row);
                 HashMap<String, Object> map = read(inspector, row);
+                if (map.size() == 0) {
+                    continue;
+                }
                 if (clientIndex == InitClient.MAX_THREAD_NUM) {
                     clientIndex = 0;
                 }

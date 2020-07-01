@@ -128,6 +128,9 @@ public class ParseCsvUtil {
             while (reader.readRecord()) {
                 logger.debug("read data：{}", reader.getRawRecord());
                 HashMap<String, Object> map = read(reader);
+                if (map.size() == 0) {
+                    continue;
+                }
                 if (clientIndex == InitClient.MAX_THREAD_NUM) {
                     clientIndex = 0;
                 }
