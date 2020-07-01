@@ -1,0 +1,9 @@
+echo $0
+SELFDIR=$(dirname $0)
+WORKDIR=$(dirname ${SELFDIR})
+echo $WORKDIR
+cd $WORKDIR
+ls bin
+sleep 1
+cd ..
+ls bin
