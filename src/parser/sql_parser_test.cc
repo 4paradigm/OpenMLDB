@@ -30,8 +30,8 @@ std::vector<SQLCase> InitCases(std::string yaml_path);
 void InitCases(std::string yaml_path, std::vector<SQLCase> &cases);  // NOLINT
 
 void InitCases(std::string yaml_path, std::vector<SQLCase> &cases) {  // NOLINT
-    if (!SQLCase::CreateSQLCasesFromYaml(
-            fesql::sqlcase::FindFesqlDirPath(), yaml_path, cases)) {
+    if (!SQLCase::CreateSQLCasesFromYaml(fesql::sqlcase::FindFesqlDirPath(),
+                                         yaml_path, cases)) {
         FAIL();
     }
 }

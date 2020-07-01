@@ -58,8 +58,7 @@ bool BuildT1Buf(type::TableDef& table_def, int8_t** buf,  // NOLINT
     std::vector<Row> rows;
     if (!SQLCase::LoadSchemaAndRowsFromYaml(
             fesql::sqlcase::FindFesqlDirPath(),
-                "cases/resource/codegen_t1_one_row.yaml",
-            table_def, rows)) {
+            "cases/resource/codegen_t1_one_row.yaml", table_def, rows)) {
         return false;
     }
     *buf = rows[0].buf();
@@ -72,8 +71,7 @@ bool BuildT2Buf(type::TableDef& table_def, int8_t** buf,  // NOLINT
 
     if (!SQLCase::LoadSchemaAndRowsFromYaml(
             fesql::sqlcase::FindFesqlDirPath(),
-                "cases/resource/codegen_t2_one_row.yaml",
-            table_def, rows)) {
+            "cases/resource/codegen_t2_one_row.yaml", table_def, rows)) {
         return false;
     }
     *buf = rows[0].buf();

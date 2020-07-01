@@ -622,8 +622,8 @@ TEST_F(SQLCaseTest, ExtractYamlSQLCase) {
     std::string case_path = "/cases/yaml/demo.yaml";
     std::vector<SQLCase> cases;
 
-    ASSERT_TRUE(
-        fesql::sqlcase::SQLCase::CreateSQLCasesFromYaml(fesql_dir, case_path, cases));
+    ASSERT_TRUE(fesql::sqlcase::SQLCase::CreateSQLCasesFromYaml(
+        fesql_dir, case_path, cases));
     ASSERT_EQ(4, cases.size());
     {
         SQLCase& sql_case = cases[0];
@@ -747,8 +747,8 @@ TEST_F(SQLCaseTest, ExtractRtidbYamlSQLCase) {
     std::string case_path = "/cases/yaml/rtidb_demo.yaml";
     std::vector<SQLCase> cases;
 
-    ASSERT_TRUE(
-        fesql::sqlcase::SQLCase::CreateSQLCasesFromYaml(fesql_dir, case_path, cases));
+    ASSERT_TRUE(fesql::sqlcase::SQLCase::CreateSQLCasesFromYaml(
+        fesql_dir, case_path, cases));
     ASSERT_EQ(2, cases.size());
     {
         SQLCase& sql_case = cases[0];
@@ -838,8 +838,8 @@ TEST_F(SQLCaseTest, ExtractRtidbYamlWithDebugSQLCase) {
     std::string case_path = "/cases/yaml/rtidb_demo_debug.yaml";
     std::vector<SQLCase> cases;
 
-    ASSERT_TRUE(
-        fesql::sqlcase::SQLCase::CreateSQLCasesFromYaml(fesql_dir, case_path, cases));
+    ASSERT_TRUE(fesql::sqlcase::SQLCase::CreateSQLCasesFromYaml(
+        fesql_dir, case_path, cases));
     ASSERT_EQ(1, cases.size());
     {
         SQLCase& sql_case = cases[0];
