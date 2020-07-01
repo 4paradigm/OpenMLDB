@@ -1,6 +1,6 @@
 .PHONY: all
 docker_tag := $(shell export LC_CTYPE=C && LANG=C cat /dev/urandom | tr -cd 'a-f0-9' | head -c 32) 
-REF = $(shell echo ${CI_COMMIT_REF_NAME} | tr '[A-Z]' '[a-z]' | sed 's/^v//')
+REF = $(shell echo ${CI_COMMIT_REF_NAME} | tr '[A-Z]' '[a-z]')
 module = rtidb
 commit_sha_prefix = $(shell v='${CI_COMMIT_SHA}'; echo $${v:0:8})
 tag = "pipe-$(shell echo ${CI_PIPELINE_IID} | sed 's/(//g' | sed 's/)//g')-commit-${commit_sha_prefix}"
