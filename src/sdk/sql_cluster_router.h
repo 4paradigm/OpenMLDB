@@ -47,6 +47,8 @@ class SQLClusterRouter : public SQLRouter {
 
     bool CreateDB(const std::string& db, fesql::sdk::Status* status);
 
+    bool DropDB(const std::string& db, fesql::sdk::Status* status);
+
     bool ExecuteDDL(const std::string& db, const std::string& sql,
                     fesql::sdk::Status* status);
 

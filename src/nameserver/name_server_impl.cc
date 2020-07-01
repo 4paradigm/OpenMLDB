@@ -11673,21 +11673,10 @@ void NameServerImpl::DropDatabase(RpcController* controller,
             response->set_msg("database not found");
             return;
         }
-        for (const auto& table_info : table_info_) {
-            if (table_info.second->db() == request->db()) {
-                tables.push_back(table_info.second);
-            }
-        }
-    }
-    ::rtidb::nameserver::DropTableRequest drequest;
-    ::rtidb::nameserver::GeneralResponse dresponse;
-    for (auto table : tables) {
-        drequest.set_name(table->name());
-        drequest.set_db(request->db());
-        DropTableFun(&drequest, &dresponse, table);
-        if (dresponse.code() != 0) {
-            response->set_code(::rtidb::base::ReturnCode::kDropTableError);
-            response->set_msg("drop table in database fail");
+        if (db_table_info_.find(request->db())->second.size() != 0) {
+            response->set_code(::rtidb::base::ReturnCode::kDatabaseNotEmpty);
+            response->set_msg("database not empty");
+            return;
         }
     }
     {

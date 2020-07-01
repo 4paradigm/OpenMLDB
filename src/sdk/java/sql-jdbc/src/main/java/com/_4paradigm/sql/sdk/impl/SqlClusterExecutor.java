@@ -85,4 +85,10 @@ public class SqlClusterExecutor implements SqlExecutor {
         Status status = new Status();
         return sqlRouter.CreateDB(db, status);
     }
+
+    @Override
+    public boolean dropDB(String db) {
+        Status status = new Status();
+        return sqlRouter.DropDB(db, status);
+    }
 }

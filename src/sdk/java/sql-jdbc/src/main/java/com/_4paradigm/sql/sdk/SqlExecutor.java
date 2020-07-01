@@ -5,6 +5,7 @@ import com._4paradigm.sql.SQLRequestRow;
 
 public interface SqlExecutor {
     boolean createDB(String db);
+    boolean dropDB(String db);
     boolean executeDDL(String db, String sql);
     boolean executeInsert(String db, String sql);
     boolean executeInsert(String db, String sql, SQLRequestRow row);

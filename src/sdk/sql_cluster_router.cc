@@ -226,6 +226,22 @@ bool SQLClusterRouter::CreateDB(const std::string& db,
     return true;
 }
 
+bool SQLClusterRouter::DropDB(const std::string& db,
+                                fesql::sdk::Status* status) {
+    auto ns_ptr = cluster_sdk_->GetNsClient();
+    if (!ns_ptr) {
+        LOG(WARNING) << "no nameserver exist";
+        return false;
+    }
+    std::string err;
+    bool ok = ns_ptr->DropDatabase(db, err);
+    if (!ok) {
+        LOG(WARNING) << "fail to drop db " << db << " for error " << err;
+        return false;
+    }
+    return true;
+}
+
 bool SQLClusterRouter::GetTablet(
     const std::string& db, const std::string& sql,
     std::vector<std::shared_ptr<::rtidb::client::TabletClient>>* tablets) {
