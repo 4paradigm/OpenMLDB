@@ -20,5 +20,5 @@ docker-image:
     only:
         - tags
         - develop
-        - feat/deploy-k8s-blob-proxy
+        - feat/push-nexus-meta
         - release/*
