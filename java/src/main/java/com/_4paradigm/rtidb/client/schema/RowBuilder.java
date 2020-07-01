@@ -26,7 +26,6 @@ public class RowBuilder {
     private int strFieldStartOffset = 0;
     private int strAddrLength = 0;
     private int strOffset = 0;
-    private int strSetPos = -1;
     private int schemaVersion = 1;
     private List<Integer> offsetVec = new ArrayList<>();
 
@@ -139,15 +138,7 @@ public class RowBuilder {
         ColumnDesc column = schema.get(cnt);
         if (column.getDataType() == DataType.Varchar || column.getDataType() == DataType.String) {
             int strPos = offsetVec.get(cnt);
-            if (strSetPos + 1 != strPos) {
-                if (strSetPos >= strPos) {
-                    return false;
-                } else {
-                    setStrOffset(strPos);
-                }
-            }
             setStrOffset(strPos + 1);
-            strSetPos = strPos;
         }
         cnt++;
         return true;
@@ -268,16 +259,9 @@ public class RowBuilder {
             return false;
         }
         int strPos = offsetVec.get(cnt);
-        if (strSetPos + 1 != strPos) {
-            if (strSetPos >= strPos) {
-                return false;
-            }
-            setStrOffset(strPos);
-        }
         if (strPos == 0) {
             setStrOffset(strPos);
         }
-        strSetPos = strPos;
         if (length != 0) {
             buf.position(strOffset);
             buf.put(val.getBytes(RowCodecCommon.CHARSET), 0, length);

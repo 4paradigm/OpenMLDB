@@ -791,4 +791,44 @@ public class RowCodecTest {
             Assert.assertEquals(FieldCodec.GetDate(ByteBufferNoCopy.wrap(list.get(11))), date);
         }
     }
+
+    @Test
+    public void testNotAppendString() {
+        try {
+            List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
+            for (int i = 0; i < 10; i++) {
+                ColumnDesc col = new ColumnDesc();
+                col.setDataType(DataType.Varchar);
+                schema.add(col);
+            }
+            RowBuilder builder = new RowBuilder(schema);
+            int size = builder.calTotalLength(100);
+            ByteBuffer buffer = ByteBuffer.allocate(size).order(ByteOrder.LITTLE_ENDIAN);
+            buffer = builder.setBuffer(buffer, size);
+
+            for (int i = 0; i < 7; i++) {
+                if (i == 0) {
+                    Assert.assertTrue(builder.appendNULL());
+                } else {
+                    String s = String.join("", Collections.nCopies(10, String.valueOf(i % 10)));
+                    Assert.assertTrue(builder.appendString(s));
+                }
+            }
+            Assert.assertFalse(builder.appendInt16((short) 1));
+
+            RowView rowView = new RowView(schema, buffer, size);
+            for (int i = 0; i < 10; i++) {
+                if (i == 0) {
+                    Assert.assertTrue(rowView.isNull(i));
+                } else if (i < 7){
+                    String s = String.join("", Collections.nCopies(10, String.valueOf(i % 10)));
+                    Assert.assertEquals(rowView.getString(i), s);
+                } else {
+                    Assert.assertTrue(rowView.isNull(i));
+                }
+            }
+        } catch (TabletException e) {
+            Assert.assertTrue(false);
+        }
+    }
 }
