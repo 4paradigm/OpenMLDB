@@ -1,6 +1,6 @@
 .PHONY: all
 docker_tag := $(shell export LC_CTYPE=C && LANG=C cat /dev/urandom | tr -cd 'a-f0-9' | head -c 32) 
-REF = $(shell echo ${CI_COMMIT_REF_NAME} | tr '[A-Z]' '[a-z]')
+REF = $(shell echo ${CI_COMMIT_REF_NAME} | tr '[A-Z]' '[a-z]' | sed 's/^v//')
 module = rtidb
 commit_sha_prefix = $(shell v='${CI_COMMIT_SHA}'; echo $${v:0:8})
 tag = "pipe-$(shell echo ${CI_PIPELINE_IID} | sed 's/(//g' | sed 's/)//g')-commit-${commit_sha_prefix}"
@@ -21,5 +21,5 @@ blob_proxy:
 	rm -rfv release/blob_proxy.tar
 	[ -f "${HOME}/.docker/config.json" ] || mkdir ~/.docker/ && echo ewogICJhdXRocyI6IHsKICAgICJkb2NrZXItc2VhcmNoLjRwZC5pbyI6IHsKICAgICAgImF1dGgiOiAiWkdWd2JHOTVPa2RzVnpWVFVtOHhWRU16Y1E9PSIKICAgIH0sCiAgICAiZG9ja2VyLjRwZC5pbyI6IHsKICAgICAgImF1dGgiOiAiWkdWd2JHOTVPa2RzVnpWVFVtOHhWRU16Y1E9PSIKICAgIH0sCiAgICAiZG9ja2VyMDI6MzUwMDAiOiB7CiAgICAgICJhdXRoIjogImRHVnpkSFZ6WlhJNmRHVnpkSEJoYzNOM2IzSmsiCiAgICB9LAogICAgInJlZ2lzdHJ5LjRwYXJhZGlnbS5jb20iOiB7CiAgICAgICJhdXRoIjogIlpHOWphMlZ5TFhKbFoybHpkSEo1T2pGeFlYbzViMnd1IgogICAgfQogIH0KfQo= | base64 -d > "${HOME}/.docker/config.json"
 	wget -P /bin http://pkg-plus.4paradigm.com/software/docker/docker && chmod +x /bin/docker
-	cd docker && tar -zcvf ../release/blob_proxy.meta.tar.gz META-INFO/meta META-INFO/k8s/blob_proxy.yaml
+	cd docker && tar -zcvf ../release/rtidb.meta.tar.gz META-INFO/meta META-INFO/k8s/blob_proxy.yaml
 	cd docker/blob_proxy && docker build -t docker.4pd.io/env/tag/${REF}/rtidb/blob_proxy:${tag}  . && docker push docker.4pd.io/env/tag/${REF}/rtidb/blob_proxy:${tag}
