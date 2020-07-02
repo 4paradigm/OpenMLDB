@@ -19,6 +19,7 @@ namespace codegen {
 PredicateIRBuilder::PredicateIRBuilder(::llvm::BasicBlock* block)
     : block_(block), cast_expr_ir_builder_(block) {}
 PredicateIRBuilder::~PredicateIRBuilder() {}
+
 bool PredicateIRBuilder::BuildAndExpr(::llvm::Value* left, ::llvm::Value* right,
                                       ::llvm::Value** output,
                                       base::Status& status) {
@@ -72,6 +73,37 @@ bool PredicateIRBuilder::BuildOrExpr(::llvm::Value* left, ::llvm::Value* right,
     }
     if (nullptr == *output) {
         status.msg = "fail to codegen ||(or) expr";
+        status.code = common::kCodegenError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+
+    return true;
+}
+
+bool PredicateIRBuilder::BuildXorExpr(::llvm::Value* left, ::llvm::Value* right,
+                                      ::llvm::Value** output,
+                                      base::Status& status) {
+    ::llvm::Value* casted_left = NULL;
+    ::llvm::Value* casted_right = NULL;
+
+    if (false == InferBoolTypes(left, &casted_left, status)) {
+        return false;
+    }
+    if (false == InferBoolTypes(right, &casted_right, status)) {
+        return false;
+    }
+    ::llvm::IRBuilder<> builder(block_);
+    if (casted_left->getType()->isIntegerTy(1)) {
+        *output = builder.CreateXor(casted_left, casted_right);
+    } else {
+        status.msg = "fail to codegen xor expr: value types are invalid";
+        status.code = common::kCodegenError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+    if (nullptr == *output) {
+        status.msg = "fail to codegen xor expr";
         status.code = common::kCodegenError;
         LOG(WARNING) << status.msg;
         return false;

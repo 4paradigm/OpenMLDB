@@ -1288,6 +1288,10 @@ fun_expr:
      {
         $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpOr);
      }
+     | fun_expr XOR fun_expr
+     {
+     	$$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpXor);
+     }
      | fun_expr '[' fun_expr ']'
 	 {
 	 	$$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpAt);
@@ -1362,6 +1366,10 @@ sql_expr:
      | sql_expr OR sql_expr
      {
         $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpOr);
+     }
+     | sql_expr XOR sql_expr
+     {
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpXor);
      }
      | sql_expr '[' sql_expr ']'
 	 {

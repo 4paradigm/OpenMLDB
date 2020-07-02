@@ -139,6 +139,9 @@ void BinaryPredicateExprCheck(::fesql::node::DataType left_type,
         case fesql::node::kFnOpOr:
             ok = ir_builder.BuildOrExpr(arg0, arg1, &output, status);
             break;
+        case fesql::node::kFnOpXor:
+            ok = ir_builder.BuildXorExpr(arg0, arg1, &output, status);
+            break;
         case fesql::node::kFnOpEq:
             ok = ir_builder.BuildEqExpr(arg0, arg1, &output, status);
             break;
@@ -625,10 +628,54 @@ TEST_F(PredicateIRBuilderTest, test_or_expr_false) {
         false, false, ::fesql::node::kFnOpOr);
 }
 
+TEST_F(PredicateIRBuilderTest, test_xor_expr_true) {
+    BinaryPredicateExprCheck<bool, bool, bool>(
+        ::fesql::node::kBool, ::fesql::node::kBool, ::fesql::node::kBool, true,
+        false, true, ::fesql::node::kFnOpXor);
+    BinaryPredicateExprCheck<bool, bool, bool>(
+        ::fesql::node::kBool, ::fesql::node::kBool, ::fesql::node::kBool, true,
+        false, true, ::fesql::node::kFnOpXor);
+}
+
+TEST_F(PredicateIRBuilderTest, test_xor_expr_false) {
+    BinaryPredicateExprCheck<bool, bool, bool>(
+        ::fesql::node::kBool, ::fesql::node::kBool, ::fesql::node::kBool, true,
+        true, false, ::fesql::node::kFnOpXor);
+    BinaryPredicateExprCheck<bool, bool, bool>(
+        ::fesql::node::kBool, ::fesql::node::kBool, ::fesql::node::kBool, false,
+        false, false, ::fesql::node::kFnOpXor);
+}
+
 TEST_F(PredicateIRBuilderTest, test_not_expr_false) {
     UnaryPredicateExprCheck<bool, bool>(::fesql::node::kBool,
                                         ::fesql::node::kBool, true, false,
                                         ::fesql::node::kFnOpNot);
+
+    UnaryPredicateExprCheck<int32_t, bool>(::fesql::node::kInt32,
+                                           ::fesql::node::kBool, 1, false,
+                                           ::fesql::node::kFnOpNot);
+    UnaryPredicateExprCheck<float, bool>(::fesql::node::kFloat,
+                                         ::fesql::node::kBool, 1.0, false,
+                                         ::fesql::node::kFnOpNot);
+
+    UnaryPredicateExprCheck<double, bool>(::fesql::node::kDouble,
+                                          ::fesql::node::kBool, 1.0, false,
+                                          ::fesql::node::kFnOpNot);
+
+    UnaryPredicateExprCheck<bool, bool>(::fesql::node::kBool,
+                                        ::fesql::node::kBool, false, true,
+                                        ::fesql::node::kFnOpNot);
+
+    UnaryPredicateExprCheck<int32_t, bool>(::fesql::node::kInt32,
+                                           ::fesql::node::kBool, 0, true,
+                                           ::fesql::node::kFnOpNot);
+    UnaryPredicateExprCheck<float, bool>(::fesql::node::kFloat,
+                                         ::fesql::node::kBool, 0, true,
+                                         ::fesql::node::kFnOpNot);
+
+    UnaryPredicateExprCheck<double, bool>(::fesql::node::kDouble,
+                                          ::fesql::node::kBool, 0, true,
+                                          ::fesql::node::kFnOpNot);
 }
 
 }  // namespace codegen

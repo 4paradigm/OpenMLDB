@@ -142,8 +142,7 @@ void RunEncode(::fesql::type::TableDef& table, int8_t** output_ptr) {  // NOLINT
     SQLCase::TableInfo table_info;
     ASSERT_TRUE(SQLCase::CreateTableInfoFromYaml(
         fesql::sqlcase::FindFesqlDirPath(),
-            "cases/resource/codegen_t1_one_row.yaml",
-        &table_info));
+        "cases/resource/codegen_t1_one_row.yaml", &table_info));
     ASSERT_TRUE(
         SQLCase::ExtractTableDef(table_info.schema_, table_info.index_, table));
     auto ctx = llvm::make_unique<LLVMContext>();

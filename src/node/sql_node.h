@@ -113,6 +113,8 @@ inline const std::string ExprOpTypeName(const FnOperator &op) {
             return "AND";
         case kFnOpOr:
             return "OR";
+        case kFnOpXor:
+            return "XOR";
         case kFnOpNot:
             return "NOT";
         case kFnOpEq:

@@ -85,3 +85,12 @@ cases:
   - id: 28
     desc: SELECT 逻辑关系表达式非
     sql: SELECT !(COL1 >= COL2 or COL1 != COL2) as col12 FROM t1;
+  - id: 29
+    desc: SELECT 逻辑关系表达式非NOT
+    sql: SELECT NOT(COL1 >= COL2 or COL1 != COL2) as col12 FROM t1;
+  - id: 30
+    desc: SELECT 逻辑关系表达式XOR
+    sql: SELECT COL1 >= COL2 XOR COL1 != COL2 as col12 FROM t1;
+  - id: 31
+    desc: SELECT Bool表达式不等于<>
+    sql: SELECT COL1 <> COL2 as col12 FROM t1;
