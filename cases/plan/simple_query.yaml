@@ -94,3 +94,9 @@ cases:
   - id: 31
     desc: SELECT Bool表达式不等于<>
     sql: SELECT COL1 <> COL2 as col12 FROM t1;
+  - id: 32
+    desc: SELECT 算术表达式DIV
+    sql: SELECT COL1 DIV COL2 as col12 FROM t1;
+  - id: 33
+    desc: SELECT 算术表达式MOD
+    sql: SELECT COL1 MOD COL2 as col12 FROM t1;

@@ -929,6 +929,11 @@ bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
                 arithmetic_ir_builder_.BuildFDivExpr(left, right, &raw, status);
             break;
         }
+        case ::fesql::node::kFnOpDiv: {
+            ok =
+                arithmetic_ir_builder_.BuildSDivExpr(left, right, &raw, status);
+            break;
+        }
         case ::fesql::node::kFnOpMinus: {
             ok = arithmetic_ir_builder_.BuildSubExpr(left, right, &raw, status);
             break;
