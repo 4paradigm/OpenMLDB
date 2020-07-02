@@ -455,9 +455,9 @@ public class TableClientCommon {
         if (idxName == null || th.GetPartitionKeyList().isEmpty()) {
             return false;
         }
-        Object obj = th.getKeyMap().get(idxName);
-        if (obj != null && ((List<String>)obj).size() == th.GetPartitionKeyList().size()) {
-            for (String col : (List<String>)obj) {
+        List<String> list = th.getKeyMap().get(idxName);
+        if (list != null && list.size() == th.GetPartitionKeyList().size()) {
+            for (String col : list) {
                 Integer colPos = th.getSchemaPos().get(col);
                 if (colPos == null || !th.GetPartitionKeyList().contains(colPos)) {
                     return false;

@@ -14,6 +14,7 @@ import com._4paradigm.rtidb.utils.Compress;
 import com.google.common.base.Charsets;
 import com.google.protobuf.ByteBufferNoCopy;
 import com.google.protobuf.ByteString;
+import io.netty.util.Timeout;
 import rtidb.api.TabletServer;
 import rtidb.blobserver.BlobServer;
 
@@ -122,24 +123,25 @@ public class TableSyncClientImpl implements TableSyncClient {
         List<ByteString> byteStrings = new ArrayList<>();
         int count = 0;
         ProjectionInfo projectionInfo = null;
-        try {
-            for (ScanFuture scanFuture : futureList) {
-                Tablet.ScanResponse response = scanFuture.getResponse();
-                if (response == null) {
-                    throw new TabletException("Connection error");
-                }
-                if (response.getCode() != 0) {
-                    throw new TabletException(response.getCode(), response.getMsg());
-                } else if (response.getCount() > 0) {
-                    count += response.getCount();
-                    byteStrings.add(response.getPairs());
-                    if (projectionInfo == null) {
-                        projectionInfo = scanFuture.getProjectionInfo();
-                    }
+        for (ScanFuture scanFuture : futureList) {
+            Tablet.ScanResponse response = null;
+            try {
+                response = scanFuture.getResponse();
+            } catch (Exception e) {
+                throw new TabletException("rtidb internal server error");
+            }
+            if (response == null) {
+                throw new TabletException("Connection error");
+            }
+            if (response.getCode() != 0) {
+                throw new TabletException(response.getCode(), response.getMsg());
+            } else if (response.getCount() > 0) {
+                count += response.getCount();
+                byteStrings.add(response.getPairs());
+                if (projectionInfo == null) {
+                    projectionInfo = scanFuture.getProjectionInfo();
                 }
             }
-        } catch (Exception e) {
-            throw new TabletException("rtidb internal server error");
         }
         if (option.getLimit() != 0) {
             count = Math.min(option.getLimit(), count);
@@ -397,8 +399,9 @@ public class TableSyncClientImpl implements TableSyncClient {
                     }
                 } else if (response.getCode() == 109) {
                     notFountCnt++;
+                } else {
+                    throw new TabletException(response.getCode(), response.getMsg());
                 }
-
             }
             if (realFuture == null) {
                 if (notFountCnt == futureList.size()) {
@@ -842,20 +845,11 @@ public class TableSyncClientImpl implements TableSyncClient {
         return new UpdateResult(false);
     }
 
-    boolean deleteBlobByMap(TableHandler th, Map<String, Object> row) {
-        List<ColumnDesc> schema = th.getSchema();
-        List<Long> keys = new ArrayList<Long>();
-        for (Integer idx : th.getBlobIdxList()) {
-            ColumnDesc col = schema.get(idx);
-            if (!row.containsKey(col.getName())) {
-                continue;
-            }
-            Object key = row.get(col.getName());
-            if (key == null) {
-                continue;
-            }
-            keys.add((Long)key);
+    boolean deleteBlobByMap(TableHandler th, Map<String, Long> blobKeys) {
+        if (blobKeys.isEmpty()) {
+            return true;
         }
+        List<Long> keys = new ArrayList<Long>(blobKeys.values());
         return deleteBlobByList(th, keys);
     }
 
@@ -1323,7 +1317,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         return put(tid, pid, key, time, null, null, ByteBuffer.wrap(bytes), th);
     }
 
-    private PutResult putRelationTable(int tid, int pid, ByteBuffer row, TableHandler th, WriteOption wo) throws TabletException {
+    private PutResult putRelationTable(int tid, int pid, ByteBuffer row, TableHandler th, WriteOption wo) throws TabletException, TimeoutException {
         PartitionHandler ph = th.getHandler(pid);
         if (th.getTableInfo().hasCompressType() && th.getTableInfo().getCompressType() == NS.CompressType.kSnappy) {
             byte[] data = row.array();
@@ -1352,6 +1346,15 @@ public class TableSyncClientImpl implements TableSyncClient {
         Tablet.PutResponse response = tablet.put(request);
         if (response != null) {
             if (response.getCode() == 0) {
+                if (!response.getBlobKeysList().isEmpty()) {
+                    List<Long> blobKeys = new ArrayList<>();
+                    for (int i = 0; i < response.getBlobKeysCount(); i++) {
+                        blobKeys.add(response.getBlobKeys(i));
+                    }
+                    if (!blobKeys.isEmpty() && !deleteBlobByList(th, blobKeys)) {
+                        throw new TabletException(response.getCode(), "deleteBlobByList failed");
+                    }
+                }
                 if (!th.getAutoGenPkName().isEmpty() && response.hasAutoGenPk()) {
                     return new PutResult(true, response.getAutoGenPk());
                 } else {
@@ -1485,8 +1488,6 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (row == null) {
             throw new TabletException("putting data is null");
         }
-        //TODO: resolve wo
-
         String indexName = th.getAutoGenPkName();
 
         if (!indexName.isEmpty() &&
@@ -1507,12 +1508,13 @@ public class TableSyncClientImpl implements TableSyncClient {
                 throw new TabletException("no schema for column count " + row.size());
             }
         }
+        Map<String, Long> blobKeys = new HashMap<String, Long>();
         if (th.getBlobServer() != null) {
             if (!th.IsObjectTable()) {
-                putObjectStore(row, th);
+                putObjectStore(row, th, blobKeys);
             }
         }
-        buffer = RowBuilder.encode(row, schema);
+        buffer = RowBuilder.encode(row, schema, blobKeys);
 
         int pid = 0;
         /*
@@ -1527,11 +1529,11 @@ public class TableSyncClientImpl implements TableSyncClient {
         try {
             return putRelationTable(th.getTableInfo().getTid(), pid, buffer, th, wo);
         } catch (Exception e) {
-            deleteBlobByMap(th, row);
+            if (!deleteBlobByMap(th, blobKeys)) {
+                throw new TabletException("deleteBlobByMap failed");
+            }
             throw e;
         }
-
-
     }
 
     private UpdateResult updateRequest(TableHandler th, int pid, Map<String, Object> conditionColumns, List<ColumnDesc> newValueSchema,
@@ -1607,7 +1609,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         return newSchema;
     }
 
-    public void putObjectStore(Map<String, Object> row, TableHandler th) throws TimeoutException, TabletException {
+    public void putObjectStore(Map<String, Object> row, TableHandler th, Map<String, Long> blobKeys) throws TimeoutException, TabletException {
         List<ColumnDesc> schema = th.getSchema();
         for (Integer idx : th.getBlobIdxList()) {
 
@@ -1627,7 +1629,7 @@ public class TableSyncClientImpl implements TableSyncClient {
             if (!ok) {
                 throw new TabletException("put blob failed");
             }
-            row.put(colDesc.getName(), keys[0]);
+            blobKeys.put(colDesc.getName(), keys[0]);
         }
     }
 
@@ -1645,14 +1647,15 @@ public class TableSyncClientImpl implements TableSyncClient {
             throw new TabletException("valueColumns is null or empty");
         }
         List<ColumnDesc> newValueSchema = getSchemaData(valueColumns, th.getSchema());
+        Map<String, Long> blobKeys = new HashMap<String, Long>();
         if (th.getBlobServer() != null && !th.IsObjectTable()) {
-            putObjectStore(valueColumns, th);
+            putObjectStore(valueColumns, th, blobKeys);
         }
-        ByteBuffer valueBuffer = RowBuilder.encode(valueColumns, newValueSchema);
+        ByteBuffer valueBuffer = RowBuilder.encode(valueColumns, newValueSchema, blobKeys);
         try {
             return updateRequest(th, 0, conditionColumns, newValueSchema, valueBuffer);
         } catch (Exception e) {
-            deleteBlobByMap(th, valueColumns);
+            deleteBlobByMap(th, blobKeys);
             throw e;
         }
     }
