@@ -31,7 +31,7 @@ class SQLRequestRow {
  public:
     SQLRequestRow() {}
     explicit SQLRequestRow(std::shared_ptr<fesql::sdk::Schema> schema);
-    ~SQLRequestRow() = default;
+    ~SQLRequestRow() {}
     bool Init(int str_length);
     bool AppendBool(bool val);
     bool AppendInt32(int32_t val);
@@ -44,7 +44,7 @@ class SQLRequestRow {
     bool AppendNULL();
     bool Build();
     inline const std::string& GetRow() { return val_; }
-    inline const std::shared_ptr<::fesql::sdk::Schema> GetSchema() {
+    inline const std::shared_ptr<fesql::sdk::Schema> GetSchema() {
         return schema_;
     }
 

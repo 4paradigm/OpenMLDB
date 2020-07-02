@@ -40,6 +40,7 @@ struct ClusterOptions {
     int32_t session_timeout = 2000;
 };
 
+
 class ClusterSDK {
  public:
     explicit ClusterSDK(const ClusterOptions& options);

@@ -33,6 +33,37 @@
 namespace rtidb {
 namespace sdk {
 
+class ExplainInfoImpl : public ExplainInfo {
+ public:
+    ExplainInfoImpl(const ::fesql::sdk::SchemaImpl& input_schema,
+                    const ::fesql::sdk::SchemaImpl& output_schema,
+                    const std::string& logical_plan,
+                    const std::string& physical_plan, const std::string& ir)
+        : input_schema_(input_schema),
+          output_schema_(output_schema),
+          logical_plan_(logical_plan),
+          physical_plan_(physical_plan),
+          ir_(ir) {}
+    ~ExplainInfoImpl() {}
+
+    const ::fesql::sdk::Schema& GetInputSchema() { return input_schema_; }
+
+    const ::fesql::sdk::Schema& GetOutputSchema() { return output_schema_; }
+
+    const std::string& GetLogicalPlan() { return logical_plan_; }
+
+    const std::string& GetPhysicalPlan() { return physical_plan_; }
+
+    const std::string& GetIR() { return ir_; }
+
+ private:
+    ::fesql::sdk::SchemaImpl input_schema_;
+    ::fesql::sdk::SchemaImpl output_schema_;
+    std::string logical_plan_;
+    std::string physical_plan_;
+    std::string ir_;
+};
+
 SQLClusterRouter::SQLClusterRouter(const SQLRouterOptions& options)
     : options_(options),
       cluster_sdk_(NULL),
@@ -841,6 +872,24 @@ bool SQLClusterRouter::RefreshCatalog() {
         engine_->UpdateCatalog(cluster_sdk_->GetCatalog());
     }
     return ok;
+}
+
+std::shared_ptr<ExplainInfo> SQLClusterRouter::Explain(
+    const std::string& db, const std::string& sql,
+    ::fesql::sdk::Status* status) {
+    ::fesql::vm::ExplainOutput explain_output;
+    ::fesql::base::Status vm_status;
+    bool ok = engine_->Explain(sql, db, false, &explain_output, &vm_status);
+    if (!ok) {
+        LOG(WARNING) << "fail to explain sql " << sql;
+        return std::shared_ptr<ExplainInfo>();
+    }
+    ::fesql::sdk::SchemaImpl input_schema(explain_output.input_schema);
+    ::fesql::sdk::SchemaImpl output_schema(explain_output.output_schema);
+    std::shared_ptr<ExplainInfoImpl> impl(new ExplainInfoImpl(
+        input_schema, output_schema, explain_output.logical_plan,
+        explain_output.physical_plan, explain_output.ir));
+    return impl;
 }
 
 }  // namespace sdk

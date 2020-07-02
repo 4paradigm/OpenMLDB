@@ -6,19 +6,23 @@
 %include stdint.i
 
 %shared_ptr(fesql::sdk::ResultSet);
+%shared_ptr(fesql::sdk::Schema);
 %shared_ptr(rtidb::sdk::SQLRouter);
 %shared_ptr(rtidb::sdk::SQLRequestRow);
+%shared_ptr(rtidb::sdk::ExplainInfo);
 
 %{
 #include "sdk/sql_router.h"
 #include "sdk/result_set.h"
 #include "sdk/base.h"
 #include "sdk/sql_request_row.h"
+
 using fesql::sdk::Schema;
 using fesql::sdk::ResultSet;
 using rtidb::sdk::SQLRouter;
 using rtidb::sdk::SQLRouterOptions;
 using rtidb::sdk::SQLRequestRow;
+using rtidb::sdk::ExplainInfo;
 %}
 
 %include "sdk/sql_router.h"
