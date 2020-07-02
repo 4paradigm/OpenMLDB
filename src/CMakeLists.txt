@@ -19,10 +19,11 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
                        log/log_reader.cc
                        log/writable_file.cc flags.cc)
 
-    set(BIN_LIBS client nameserver tablet rtidb_sdk client blobserver blob_proxy rtidb_catalog zk_client replica  base beans storage rtidb_codec rtidb_proto log common rocksdb zookeeper_mt tcmalloc_minimal
+    set(BIN_LIBS client nameserver tablet rtidb_sdk client blobserver blob_proxy rtidb_catalog zk_client replica  base beans storage rtidb_codec rtidb_proto log common rocksdb zookeeper_mt tcmalloc_minimal boost_filesystem
     ${VM_LIBS}
     ${LLVM_LIBS}
     ${BRPC_LIBS})
+    set(FESQL_CASE_LIBS fesql_case yaml-cpp boost_filesystem)
     add_executable(blobserver_impl_test blobserver/blobserver_impl_test.cc proto/common.pb.cc proto/tablet.pb.cc flags.cc)
     target_link_libraries(blobserver_impl_test gtest ${BIN_LIBS})
     add_library(replica STATIC replica/replicate_node.cc
@@ -32,6 +33,9 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
 
     add_executable(tablet_catalog_test catalog/tablet_catalog_test.cc)
     target_link_libraries(tablet_catalog_test gtest ${BIN_LIBS})
+
+    add_executable(tablet_engine_test catalog/tablet_engine_test.cc)
+    target_link_libraries(tablet_engine_test gtest ${BIN_LIBS} ${FESQL_CASE_LIBS})
 
     add_executable(sdk_catalog_test catalog/sdk_catalog_test.cc flags.cc)
     target_link_libraries(sdk_catalog_test gtest ${BIN_LIBS})
