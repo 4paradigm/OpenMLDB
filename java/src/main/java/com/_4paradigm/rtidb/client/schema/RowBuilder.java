@@ -60,7 +60,11 @@ public class RowBuilder {
         }
         int stringLength = 0;
         for (Integer idx : strIdx) {
-            stringLength += ((String)row.get(idx)).getBytes(RowCodecCommon.CHARSET).length;
+            Object obj = row.get(idx);
+            if (obj == null) {
+                continue;
+            }
+            stringLength += ((String)obj).getBytes(RowCodecCommon.CHARSET).length;
         }
         return calTotalLength(stringLength);
     }
