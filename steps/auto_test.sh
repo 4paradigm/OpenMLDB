@@ -34,6 +34,7 @@ cd $ROOT_DIR
 rm -rf auto-test-rtidb
 echo "AAAAAA"
 ls -al
+
 git submodule add https://gitlab.4pd.io/FeatureEngineering/rtidb-auto-test-java.git auto-test-rtidb
 cd auto-test-rtidb
 git checkout ${rtidb_auto_test_branch}
