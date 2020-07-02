@@ -23,10 +23,10 @@
 #include "base/linenoise.h"
 #include "base/strings.h"
 #if __linux__
+#include "blob_proxy/blob_proxy_impl.h"
 #include "blobserver/blobserver_impl.h"
 #include "nameserver/name_server_impl.h"
 #include "tablet/tablet_impl.h"
-#include "blob_proxy/blob_proxy_impl.h"
 #endif
 #include "boost/algorithm/string.hpp"
 #include "boost/lexical_cast.hpp"
@@ -34,13 +34,13 @@
 #include "client/bs_client.h"
 #include "client/ns_client.h"
 #include "client/tablet_client.h"
+#include "cmd/display.h"
+#include "cmd/sdk_iterator.h"
+#include "cmd/sql_cmd.h"
 #include "codec/flat_array.h"
 #include "codec/row_codec.h"
 #include "codec/schema_codec.h"
 #include "codec/sdk_codec.h"
-#include "cmd/display.h"
-#include "cmd/sdk_iterator.h"
-#include "cmd/sql_cmd.h"
 #include "proto/client.pb.h"
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
@@ -6198,8 +6198,8 @@ void StartNsClient() {
     }
     std::shared_ptr<::rtidb::zk::ZkClient> zk_client;
     if (!FLAGS_zk_cluster.empty()) {
-        zk_client = std::make_shared<::rtidb::zk::ZkClient>(FLAGS_zk_cluster, 1000, "",
-                                               FLAGS_zk_root_path);
+        zk_client = std::make_shared<::rtidb::zk::ZkClient>(
+            FLAGS_zk_cluster, 1000, "", FLAGS_zk_root_path);
         if (!zk_client->Init()) {
             std::cout << "zk client init failed" << std::endl;
             return;
