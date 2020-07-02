@@ -1,6 +1,5 @@
 #! /bin/sh
 
-
 ROOT_DIR=`pwd`
 
 PROTO_BIN=$ROOT_DIR/thirdparty/bin/protoc
