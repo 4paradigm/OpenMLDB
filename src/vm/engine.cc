@@ -144,6 +144,12 @@ bool Engine::Explain(const std::string& sql, const std::string& db,
     return true;
 }
 
+void Engine::ClearCacheLocked(const std::string& db) {
+    std::lock_guard<base::SpinMutex> lock(mu_);
+    batch_cache_.erase(db);
+    request_cache_.erase(db);
+}
+
 std::shared_ptr<CompileInfo> Engine::GetCacheLocked(const std::string& db,
                                                     const std::string& sql,
                                                     bool is_batch) {
