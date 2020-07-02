@@ -144,6 +144,7 @@ message OPInfo {
     optional uint32 vec_idx = 11;   // the index in task_vec
     optional uint64 remote_op_id = 12;//for multi cluster
     optional int32 for_replica_cluster = 13 [default = 0];//for multi cluster, default 0. if 1, for multi cluster
+    optional string db = 14;
 }
 
 message PartSnapshotOffset {
@@ -356,12 +357,12 @@ message TableMeta {
 message CreateTableRequest {
     optional TableMeta table_meta = 1;
 }
-
 message UpdateTableMetaForAddFieldRequest {
     optional uint32 tid = 1;
     optional rtidb.common.ColumnDesc column_desc = 2;
     optional string schema = 3;
 }
+
 message CreateTableResponse {
     optional int32 code = 1;
     optional string msg = 2;
@@ -743,6 +744,36 @@ message CancelOPRequest {
     optional uint64 op_id = 1;
 }
 
+message QueryRequest {
+    optional string sql = 1;
+    optional string db = 2;
+    optional bool is_batch = 3;
+    optional bytes input_row = 4;
+}
+
+message QueryResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+    optional uint32 count = 3;
+    optional uint32 byte_size = 4;
+    optional bytes schema = 5;
+}
+
+message ExplainRequest {
+    optional string sql = 1;
+    optional string db = 2;
+    optional bool is_batch = 3;
+}
+
+message ExplainResponse {
+    optional bytes input_schema = 1;
+    optional string logical_plan = 3;
+    optional string physical_plan = 4;
+    optional string ir = 5;
+    optional bytes output_schema = 6;
+    optional bool is_batch = 7;
+}
+
 service TabletServer {
 
     // write and read api for client
@@ -754,6 +785,7 @@ service TabletServer {
     rpc Traverse(TraverseRequest) returns (TraverseResponse);
     rpc Update(UpdateRequest) returns (UpdateResponse);
     rpc BatchQuery(BatchQueryRequest) returns (BatchQueryResponse);
+    rpc Query(QueryRequest) returns(QueryResponse);
 
     // table api for master
     rpc CreateTable(CreateTableRequest) returns (CreateTableResponse);
