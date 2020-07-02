@@ -380,8 +380,6 @@ bool ZkClient::WatchItem(const std::string& path,
     auto it = item_callbacks_.find(path);
     if (it == item_callbacks_.end()) {
         item_callbacks_.insert(std::make_pair(path, callback));
-    } else {
-        return false;
     }
     deallocate_String_vector(&data_);
     int buffer_len = ZK_MAX_BUFFER_SIZE;
