@@ -283,6 +283,9 @@ class RowCodec {
             }
             std::string col;
             rv.GetStrValue(i, &col);
+            if (replace_empty_str && col.empty()) {
+                col = EMPTY_STRING;
+            }
             value_vec->emplace_back(std::move(col));
         }
         return true;
