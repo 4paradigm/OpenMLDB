@@ -1240,7 +1240,7 @@ public class TableSyncClientTest extends TestCaseBase {
             e.printStackTrace();
             Assert.assertTrue(false);
         } finally {
-            //nsc.dropTable(name);
+            nsc.dropTable(name);
         }
     }
 
