@@ -177,6 +177,53 @@ public class TableSyncClientTest extends TestCaseBase {
         return name;
     }
 
+    private String createRelationalTableStringPk() throws TabletException {
+        String name = String.valueOf(id.incrementAndGet());
+        nsc.dropTable(name);
+        TableDesc tableDesc = new TableDesc();
+        tableDesc.setName(name);
+        tableDesc.setTableType(TableType.kRelational);
+        List<com._4paradigm.rtidb.client.schema.ColumnDesc> list = new ArrayList<>();
+        {
+            com._4paradigm.rtidb.client.schema.ColumnDesc col = new com._4paradigm.rtidb.client.schema.ColumnDesc();
+            col.setName("desc");
+            col.setDataType(DataType.String);
+            col.setNotNull(true);
+            list.add(col);
+        }
+        {
+            com._4paradigm.rtidb.client.schema.ColumnDesc col = new com._4paradigm.rtidb.client.schema.ColumnDesc();
+            col.setName("attribute");
+            col.setDataType(DataType.Varchar);
+            col.setNotNull(true);
+            list.add(col);
+        }
+        {
+            com._4paradigm.rtidb.client.schema.ColumnDesc col = new com._4paradigm.rtidb.client.schema.ColumnDesc();
+            col.setName("image");
+            col.setDataType(DataType.Blob);
+            col.setNotNull(false);
+            list.add(col);
+        }
+        tableDesc.setColumnDescList(list);
+
+        List<IndexDef> indexs = new ArrayList<>();
+        IndexDef indexDef = new IndexDef();
+        indexDef.setIndexName("idx1");
+        indexDef.setIndexType(IndexType.PrimaryKey);
+        List<String> colNameList = new ArrayList<>();
+        colNameList.add("desc");
+        indexDef.setColNameList(colNameList);
+        indexs.add(indexDef);
+
+        tableDesc.setIndexs(indexs);
+        boolean ok = nsc.createTable(tableDesc);
+        Assert.assertTrue(ok);
+        client.refreshRouteTable();
+
+        return name;
+    }
+
     private String createRelationalTablePkNotFirstIndex() throws TabletException {
         String name = String.valueOf(id.incrementAndGet());
         nsc.dropTable(name);
@@ -1071,6 +1118,124 @@ public class TableSyncClientTest extends TestCaseBase {
             tableDesc.setIndexs(indexs);
             boolean ok = nsc.createTable(tableDesc);
             Assert.assertFalse(ok);
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.assertTrue(false);
+        } finally {
+            nsc.dropTable(name);
+        }
+    }
+
+    @Test
+    public void testRelationTableChineseString() {
+        String name = "";
+        try {
+            name = createRelationalTableStringPk();
+            List<com._4paradigm.rtidb.client.schema.ColumnDesc> schema = tableSyncClient.getSchema(name);
+            Assert.assertEquals(schema.size(), 3);
+
+            //put
+            WriteOption wo = new WriteOption();
+            Map<String, Object> data = new HashMap<String, Object>();
+            data.put("desc", "赵钱孙李zqsl");
+            data.put("attribute", "zqsl");
+            String imageData1 = "zqsl";
+            ByteBuffer buf1 = StringToBB(imageData1);
+            data.put("image", buf1);
+            Assert.assertTrue(tableSyncClient.put(name, data, wo).isSuccess());
+
+            data.clear();
+            data.put("desc", "zwzw");
+            data.put("attribute", "zwzw");
+            String imageData2 = "zwzw";
+            ByteBuffer buf2 = StringToBB(imageData2);
+            data.put("image", buf2);
+            tableSyncClient.put(name, data, wo);
+
+            data.clear();
+            data.put("desc", "冯陈诸卫（fczw");
+            data.put("attribute", "fczw");
+            String imageData3 = "fczw";
+            ByteBuffer buf3 = StringToBB(imageData3);
+            data.put("image", buf3);
+            tableSyncClient.put(name, data, wo);
+            ReadOption ro;
+            RelationalIterator it;
+            Map<String, Object> queryMap;
+            //query
+            {
+                Map<String, Object> index = new HashMap<>();
+                index.put("desc", "赵钱孙李zqsl");
+                Set<String> colSet = new HashSet<>();
+                colSet.add("desc");
+                colSet.add("image");
+                ro = new ReadOption(index, null, colSet, 1);
+                it = tableSyncClient.query(name, ro);
+                Assert.assertTrue(it.valid());
+                queryMap = it.getDecodedValue();
+                Assert.assertEquals(queryMap.size(), 2);
+                Assert.assertEquals(queryMap.get("desc"), "赵钱孙李zqsl");
+                Assert.assertTrue(buf1.equals(((BlobData) queryMap.get("image")).getData()));
+            }
+            //batch query
+            {
+                List<ReadOption> ros = new ArrayList<ReadOption>();
+                {
+                    Map<String, Object> index = new HashMap<>();
+                    index.put("desc", "赵钱孙李zqsl");
+                    Set<String> colSet = new HashSet<>();
+                    colSet.add("desc");
+                    colSet.add("attribute");
+                    colSet.add("image");
+                    ro = new ReadOption(index, null, colSet, 1);
+                    ros.add(ro);
+                }
+                {
+                    Map<String, Object> index2 = new HashMap<>();
+                    index2.put("desc", "zwzw");
+                    Set<String> colSet = new HashSet<>();
+                    colSet.add("desc");
+                    colSet.add("attribute");
+                    colSet.add("image");
+                    ro = new ReadOption(index2, null, colSet, 1);
+                    ros.add(ro);
+                }
+                {
+                    Map<String, Object> index2 = new HashMap<>();
+                    index2.put("desc", "冯陈诸卫（fczw");
+                    Set<String> colSet = new HashSet<>();
+                    colSet.add("desc");
+                    colSet.add("attribute");
+                    colSet.add("image");
+                    ro = new ReadOption(index2, null, colSet, 1);
+                    ros.add(ro);
+                }
+                it = tableSyncClient.batchQuery(name, ros);
+                Assert.assertEquals(it.getCount(), 3);
+
+                Assert.assertTrue(it.valid());
+                queryMap = it.getDecodedValue();
+                Assert.assertEquals(queryMap.size(), 3);
+                Assert.assertEquals(queryMap.get("desc"), "赵钱孙李zqsl");
+                Assert.assertEquals(queryMap.get("attribute"), "zqsl");
+                Assert.assertTrue(buf1.equals(((BlobData) queryMap.get("image")).getData()));
+
+                it.next();
+                queryMap = it.getDecodedValue();
+                Assert.assertEquals(queryMap.size(), 3);
+                Assert.assertEquals(queryMap.get("desc"), "zwzw");
+                Assert.assertEquals(queryMap.get("attribute"), "zwzw");
+                Assert.assertTrue(buf2.equals(((BlobData) queryMap.get("image")).getData()));
+                it.next();
+                queryMap = it.getDecodedValue();
+                Assert.assertEquals(queryMap.size(), 3);
+                Assert.assertEquals(queryMap.get("desc"), "冯陈诸卫（fczw");
+                Assert.assertEquals(queryMap.get("attribute"), "fczw");
+                Assert.assertTrue(buf3.equals(((BlobData) queryMap.get("image")).getData()));
+                it.next();
+                Assert.assertFalse(it.valid());
+
+            }
         } catch (Exception e) {
             e.printStackTrace();
             Assert.assertTrue(false);
