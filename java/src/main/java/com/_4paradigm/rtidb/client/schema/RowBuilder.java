@@ -28,6 +28,7 @@ public class RowBuilder {
     private int strOffset = 0;
     private int schemaVersion = 1;
     private List<Integer> offsetVec = new ArrayList<>();
+    private List<Integer> strIdx = new ArrayList<>();
 
     public RowBuilder(List<ColumnDesc> schema) {
         strFieldStartOffset = RowCodecCommon.HEADER_LENGTH + RowCodecCommon.getBitMapSize(schema.size());
@@ -36,6 +37,7 @@ public class RowBuilder {
             ColumnDesc column = schema.get(idx);
             if (column.getDataType() == DataType.Varchar || column.getDataType() == DataType.String) {
                 offsetVec.add(strFieldCnt);
+                strIdx.add(idx);
                 strFieldCnt++;
             } else {
                 if (RowCodecCommon.TYPE_SIZE_MAP.get(column.getDataType()) == null) {
@@ -52,11 +54,22 @@ public class RowBuilder {
         schemaVersion = version;
     }
 
-    public int calTotalLength(int string_length) throws TabletException {
+    public int calTotalLength(List<Object> row) throws TabletException {
+        if (row.size() != schema.size()) {
+            throw new TabletException("row size is not equal schema size");
+        }
+        int stringLength = 0;
+        for (Integer idx : strIdx) {
+            stringLength += ((String)row.get(idx)).getBytes(RowCodecCommon.CHARSET).length;
+        }
+        return calTotalLength(stringLength);
+    }
+
+    public int calTotalLength(int stringLength) throws TabletException {
         if (schema.size() == 0) {
             return 0;
         }
-        long totalLength = strFieldStartOffset + string_length;
+        long totalLength = strFieldStartOffset + stringLength;
         if (totalLength + strFieldCnt <= RowCodecCommon.UINT8_MAX) {
             totalLength += strFieldCnt;
         } else if (totalLength + strFieldCnt * 2 <= RowCodecCommon.UINT16_MAX) {

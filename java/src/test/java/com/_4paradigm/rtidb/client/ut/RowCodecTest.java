@@ -831,4 +831,54 @@ public class RowCodecTest {
             Assert.assertTrue(false);
         }
     }
+
+    @Test
+    public void testEncodeRow() {
+        try {
+            List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
+            for (int i = 0; i < 10; i++) {
+                ColumnDesc col = new ColumnDesc();
+                col.setName("col" + String.valueOf(i));
+                if (i % 2 == 0) {
+                    col.setDataType(DataType.BigInt);
+                } else {
+                    col.setDataType(DataType.Varchar);
+                }
+                schema.add(col);
+            }
+            List<Object> row = new ArrayList<>();
+            for (int i = 0; i < 10; i++) {
+                if (i % 2 == 0) {
+                    row.add(Long.valueOf(i));
+                } else {
+                    row.add(new String("aaa") + String.valueOf(i));
+                }
+            }
+            RowBuilder builder = new RowBuilder(schema);
+            int size = builder.calTotalLength(row);
+            ByteBuffer buffer = ByteBuffer.allocate(size).order(ByteOrder.LITTLE_ENDIAN);
+            buffer = builder.setBuffer(buffer, size);
+
+            for (int i = 0; i < 10; i++) {
+                if (i % 2 == 0) {
+                    Assert.assertTrue(builder.appendInt64((Long)row.get(i)));
+                } else {
+                    Assert.assertTrue(builder.appendString((String)row.get(i)));
+                }
+            }
+            Assert.assertFalse(builder.appendInt16((short) 1));
+
+            RowView rowView = new RowView(schema, buffer, size);
+            for (int i = 0; i < 10; i++) {
+                if (i % 2 == 0) {
+                    Assert.assertTrue(rowView.getInt64(i) == i);
+                } else {
+                    Assert.assertEquals(new String("aaa") + String.valueOf(i), rowView.getString(i));
+                }
+            }
+        } catch (TabletException e) {
+            Assert.fail();
+        }
+    }
+
 }
