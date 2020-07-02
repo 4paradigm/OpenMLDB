@@ -141,7 +141,7 @@ class BufIRBuilderTest : public ::testing::Test {
 void RunEncode(::fesql::type::TableDef& table, int8_t** output_ptr) {  // NOLINT
     SQLCase::TableInfo table_info;
     ASSERT_TRUE(SQLCase::CreateTableInfoFromYaml(
-        fesql::sqlcase::FindFesqlDirPath() + "/" +
+        fesql::sqlcase::FindFesqlDirPath(),
             "cases/resource/codegen_t1_one_row.yaml",
         &table_info));
     ASSERT_TRUE(

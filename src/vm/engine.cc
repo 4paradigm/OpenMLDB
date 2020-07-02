@@ -193,6 +193,10 @@ int32_t RequestRunSession::Run(const Row& in_row, Row* out_row) {
         case kTableHandler: {
             auto iter =
                 std::dynamic_pointer_cast<TableHandler>(output)->GetIterator();
+            if (!iter) {
+                return 0;
+            }
+            iter->SeekToFirst();
             if (iter->Valid()) {
                 *out_row = iter->GetValue();
             }
@@ -247,6 +251,10 @@ int32_t BatchRunSession::Run(std::vector<Row>& rows, uint64_t limit) {
         case kTableHandler: {
             auto iter =
                 std::dynamic_pointer_cast<TableHandler>(output)->GetIterator();
+            if (!iter) {
+                return 0;
+            }
+            iter->SeekToFirst();
             while (iter->Valid()) {
                 rows.push_back(iter->GetValue());
                 iter->Next();

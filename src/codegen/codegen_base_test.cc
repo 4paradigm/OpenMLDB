@@ -21,9 +21,8 @@ bool BuildWindowFromResource(const std::string& resource_path,
                              ::fesql::type::TableDef& table_def,  // NOLINT
                              std::vector<Row>& rows,              // NOLINT
                              int8_t** buf) {
-    if (!SQLCase::LoadSchemaAndRowsFromYaml(
-            fesql::sqlcase::FindFesqlDirPath() + "/" + resource_path, table_def,
-            rows)) {
+    if (!SQLCase::LoadSchemaAndRowsFromYaml(fesql::sqlcase::FindFesqlDirPath(),
+                                            resource_path, table_def, rows)) {
         return false;
     }
     ArrayListV<Row>* w = new ArrayListV<Row>(&rows);
@@ -34,9 +33,8 @@ bool BuildWindow(::fesql::type::TableDef& table_def,  // NOLINT
                  std::vector<Row>& rows,              // NOLINT
                  int8_t** buf) {
     if (!SQLCase::LoadSchemaAndRowsFromYaml(
-            fesql::sqlcase::FindFesqlDirPath() + "/" +
-                "cases/resource/codegen_t1_rows.yaml",
-            table_def, rows)) {
+            fesql::sqlcase::FindFesqlDirPath(),
+            "cases/resource/codegen_t1_rows.yaml", table_def, rows)) {
         return false;
     }
     ArrayListV<Row>* w = new ArrayListV<Row>(&rows);
@@ -47,9 +45,8 @@ bool BuildWindow2(::fesql::type::TableDef& table_def,  // NOLINT
                   std::vector<Row>& rows,              // NOLINT
                   int8_t** buf) {
     if (!SQLCase::LoadSchemaAndRowsFromYaml(
-            fesql::sqlcase::FindFesqlDirPath() + "/" +
-                "cases/resource/codegen_t2_rows.yaml",
-            table_def, rows)) {
+            fesql::sqlcase::FindFesqlDirPath(),
+            "cases/resource/codegen_t2_rows.yaml", table_def, rows)) {
         return false;
     }
     ArrayListV<Row>* w = new ArrayListV<Row>(&rows);
@@ -60,9 +57,8 @@ bool BuildT1Buf(type::TableDef& table_def, int8_t** buf,  // NOLINT
                 uint32_t* size) {
     std::vector<Row> rows;
     if (!SQLCase::LoadSchemaAndRowsFromYaml(
-            fesql::sqlcase::FindFesqlDirPath() + "/" +
-                "cases/resource/codegen_t1_one_row.yaml",
-            table_def, rows)) {
+            fesql::sqlcase::FindFesqlDirPath(),
+            "cases/resource/codegen_t1_one_row.yaml", table_def, rows)) {
         return false;
     }
     *buf = rows[0].buf();
@@ -74,9 +70,8 @@ bool BuildT2Buf(type::TableDef& table_def, int8_t** buf,  // NOLINT
     std::vector<Row> rows;
 
     if (!SQLCase::LoadSchemaAndRowsFromYaml(
-            fesql::sqlcase::FindFesqlDirPath() + "/" +
-                "cases/resource/codegen_t2_one_row.yaml",
-            table_def, rows)) {
+            fesql::sqlcase::FindFesqlDirPath(),
+            "cases/resource/codegen_t2_one_row.yaml", table_def, rows)) {
         return false;
     }
     *buf = rows[0].buf();
