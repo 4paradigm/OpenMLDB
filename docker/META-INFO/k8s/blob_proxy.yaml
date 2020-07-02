@@ -25,6 +25,8 @@ spec:
           value: "{{.zk_root_path}}"
         - name: blobproxy_port
           value: "8080"
+        - name: ROLE
+          value: blob_proxy
         - name: MY_NODE_NAME
           valueFrom:
             fieldRef:
