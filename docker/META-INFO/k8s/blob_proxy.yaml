@@ -51,7 +51,6 @@ spec:
       imagePullSecrets:
       - name: docker-secret
       securityContext: {}
------
 apiVersion: v1
 kind: Service
 metadata:
@@ -65,7 +64,7 @@ spec:
   ports:
   - name: blobproxy
     port: 80
-    protocol: tcp
+    protocol: TCP
     targetPort: 8080
   selector:
     rtidb: blobproxy
