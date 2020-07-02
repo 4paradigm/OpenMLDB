@@ -144,6 +144,7 @@ message OPInfo {
     optional uint32 vec_idx = 11;   // the index in task_vec
     optional uint64 remote_op_id = 12;//for multi cluster
     optional int32 for_replica_cluster = 13 [default = 0];//for multi cluster, default 0. if 1, for multi cluster
+    optional string db = 14;
 }
 
 message PartSnapshotOffset {
