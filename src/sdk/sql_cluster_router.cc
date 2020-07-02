@@ -138,9 +138,9 @@ std::shared_ptr<SQLRequestRow> SQLClusterRouter::GetRequestRow(
         std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
         auto it = input_schema_map_.find(db);
         if (it == input_schema_map_.end()) {
-            std::map<std::string, ::rtidb::sdk::RouterCacheSchema>
-                sql_schema;
-            sql_schema.insert(std::make_pair(sql, ::rtidb::sdk::RouterCacheSchema(schema)));
+            std::map<std::string, ::rtidb::sdk::RouterCacheSchema> sql_schema;
+            sql_schema.insert(
+                std::make_pair(sql, ::rtidb::sdk::RouterCacheSchema(schema)));
             input_schema_map_.insert(std::make_pair(db, sql_schema));
         } else {
             it->second.insert(std::make_pair(sql, schema));
@@ -212,12 +212,15 @@ std::shared_ptr<SQLRequestRow> SQLClusterRouter::GetInsertRow(
         std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
         auto it = input_schema_map_.find(db);
         if (it == input_schema_map_.end()) {
-            std::map<std::string, ::rtidb::sdk::RouterCacheSchema>
-                sql_schema;
-            sql_schema.insert(std::make_pair(sql, ::rtidb::sdk::RouterCacheSchema(insert_stmt->table_name_, sdk_schema)));
+            std::map<std::string, ::rtidb::sdk::RouterCacheSchema> sql_schema;
+            sql_schema.insert(
+                std::make_pair(sql, ::rtidb::sdk::RouterCacheSchema(
+                                        insert_stmt->table_name_, sdk_schema)));
             input_schema_map_.insert(std::make_pair(db, sql_schema));
         } else {
-            it->second.insert(std::make_pair(sql, ::rtidb::sdk::RouterCacheSchema(insert_stmt->table_name_, sdk_schema)));
+            it->second.insert(
+                std::make_pair(sql, ::rtidb::sdk::RouterCacheSchema(
+                                        insert_stmt->table_name_, sdk_schema)));
         }
     }
     std::shared_ptr<SQLRequestRow> row(new SQLRequestRow(sdk_schema));
@@ -258,7 +261,7 @@ bool SQLClusterRouter::CreateDB(const std::string& db,
 }
 
 bool SQLClusterRouter::DropDB(const std::string& db,
-                                fesql::sdk::Status* status) {
+                              fesql::sdk::Status* status) {
     auto ns_ptr = cluster_sdk_->GetNsClient();
     if (!ns_ptr) {
         LOG(WARNING) << "no nameserver exist";
@@ -445,8 +448,7 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db,
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info =
         cluster_sdk_->GetTableInfo(db, table_name);
     if (!table_info) {
-        LOG(WARNING) << "table with name " << table_name
-                     << " does not exist";
+        LOG(WARNING) << "table with name " << table_name << " does not exist";
         return false;
     }
     // std::string value;
@@ -478,8 +480,7 @@ bool SQLClusterRouter::GetDimension(
     const ::fesql::node::InsertPlanNode* plan,
     std::vector<std::pair<std::string, uint32_t>>* dimensions,
     std::vector<uint64_t>* ts_dimensions) {
-    if (plan == NULL || dimensions == NULL ||
-        ts_dimensions == NULL)
+    if (plan == NULL || dimensions == NULL || ts_dimensions == NULL)
         return false;
     auto insert_stmt = plan->GetInsertNode();
     if (nullptr == insert_stmt || insert_stmt->values_.size() <= 0) {

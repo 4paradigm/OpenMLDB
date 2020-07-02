@@ -115,11 +115,10 @@ class SQLClusterRouter : public SQLRouter {
     bool GetSQLPlan(const std::string& sql, ::fesql::node::NodeManager* nm,
                     ::fesql::node::PlanNodeList* plan);
 
-    bool GetDimension(
-        const catalog::RtiDBSchema& schema,
-        const ::fesql::node::InsertPlanNode* plan,
-        std::vector<std::pair<std::string, uint32_t>>* dimensions,
-        std::vector<uint64_t>* ts_dimensions);
+    bool GetDimension(const catalog::RtiDBSchema& schema,
+                      const ::fesql::node::InsertPlanNode* plan,
+                      std::vector<std::pair<std::string, uint32_t>>* dimensions,
+                      std::vector<uint64_t>* ts_dimensions);
 
  private:
     SQLRouterOptions options_;

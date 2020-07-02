@@ -213,7 +213,8 @@ bool TabletCatalog::AddDB(const ::fesql::type::Database& db) {
     return true;
 }
 
-bool TabletCatalog::DeleteTable(const std::string& db, const std::string& table_name){
+bool TabletCatalog::DeleteTable(const std::string& db,
+                                const std::string& table_name) {
     std::lock_guard<::rtidb::base::SpinMutex> spin_lock(mu_);
     auto db_it = tables_.find(db);
     if (db_it == tables_.end()) {
