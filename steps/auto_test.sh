@@ -31,7 +31,9 @@ fi
 echo "rtidb_version:$rtidb_version"
 
 cd $ROOT_DIR
-source /root/.bashrc && rm -rf auto-test-rtidb-java
+rm -rf auto-test-rtidb-java
+echo "AAAAAAA"
+ls -a
 git submodule add https://gitlab.4pd.io/FeatureEngineering/rtidb-auto-test-java.git auto-test-rtidb-java
 cd auto-test-rtidb-java
 git checkout ${rtidb_auto_test_branch}
