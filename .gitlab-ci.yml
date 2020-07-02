@@ -1,4 +1,4 @@
-image: develop-registry.4pd.io/centos6_gcc7_build_env:0.5.0
+image: develop-registry.4pd.io/centos6_gcc7_build_env:0.5.1
 services:
     - docker:dind
 variables:
@@ -37,6 +37,7 @@ java_ut:
   stage: test
   before_script:
       - mkdir /rambuild
+      - mount -t tmpfs -o size=3G tmpfs /rambuild
   script:
       - ln -sf /depends/thirdparty thirdparty
       - ln -sf /depends/thirdsrc thirdsrc
@@ -174,15 +175,19 @@ deploy-package:
         - source /root/.bashrc && bash steps/deploy_package.sh
     only:
         - tags
+
 docker-image:
     stage: make_docker
     script:
         - source /root/.bashrc && sh tools/install_fesql.sh
         - ln -sf /depends/thirdparty thirdparty
         - ln -sf /depends/thirdsrc thirdsrc
-        - sh steps/compile.sh
+        - sh steps/simple_compile.sh
         - sh docker/copy_file.sh
         - make blob_proxy
+        - bash docker/push_meta.sh
     only:
         - tags
         - develop
+        - feat/push-nexus-meta
+        - release/*

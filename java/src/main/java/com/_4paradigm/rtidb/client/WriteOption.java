@@ -7,7 +7,7 @@ public class WriteOption {
     public WriteOption() {
     }
 
-    public WriteOption(boolean updateIfExist, boolean updateIfEqual) {
+    public WriteOption(boolean updateIfExist) {
         this.updateIfExist = updateIfExist;
     }
 

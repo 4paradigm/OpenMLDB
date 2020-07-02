@@ -398,6 +398,8 @@ class NameServerImpl : public NameServer {
 
     int SetPartitionInfo(TableInfo& table_info);  // NOLINT
 
+    void AddDataType(std::shared_ptr<TableInfo> table_info);
+
     int CheckTableMeta(const TableInfo& table_info);
 
     int FillColumnKey(TableInfo& table_info);  // NOLINT
