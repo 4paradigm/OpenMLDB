@@ -1,5 +1,5 @@
 db: test_zw
-debugs: ["多个window指定相不同的pk"]
+debugs: ["window名不存在"]
 cases:
   -
     id: 0
@@ -487,7 +487,7 @@ cases:
       order: id
       columns: ["id int","c1 string","c3 int","w1_c4_sum bigint","w2_c4_count bigint"]
       rows:
-        - [1,"aa",20,30,3]
+        - [1,"aa",20,30,4]
         - [2,"bb",20,61,2]
         - [3,"cc",20,93,1]
         - [4,"dd",20,96,3]
