@@ -9,7 +9,7 @@
     <version>1.0-SNAPSHOT</version>
 
     <properties>
-        <fesql.version>2.0.0.0-beta4</fesql.version>
+        <fesql.version>2.0.0.0-beta5</fesql.version>
         <suiteXmlFile>test_suite/test_v1.xml</suiteXmlFile>
         <aspectj.version>1.8.9</aspectj.version>
     </properties>
