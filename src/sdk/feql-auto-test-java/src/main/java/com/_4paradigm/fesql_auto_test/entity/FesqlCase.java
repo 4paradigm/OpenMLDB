@@ -11,7 +11,7 @@ import java.util.Map;
  */
 @Data
 public class FesqlCase {
-    private long id;
+    private String id;
     private String db;
     private String sql;
     private String check_sql;

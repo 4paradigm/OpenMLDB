@@ -1,5 +1,5 @@
 db: test_zw
-debugs: ["bigint为partition by"]
+debugs: ["bigint为order by-不加单位"]
 cases:
   -
     id: 0
@@ -177,13 +177,13 @@ cases:
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
         indexs: ["index1:c1:c7"]
         rows:
-          - [2,"bb",20,30,1.1,2.1,1590738990000,"2020-05-01"]
-          - [3,"cc",20,30,1.1,2.1,1590738990000,"2020-05-01"]
-          - [4,"dd",20,30,1.1,2.1,1590738990000,"2020-05-01"]
-          - [5,"ee",21,31,1.2,2.2,1590738991000,"2020-05-02"]
+          - [2,"bb",20,30,1.1,2.1,1590738991000,"2020-05-01"]
+          - [3,"cc",20,30,1.1,2.1,1590738992000,"2020-05-01"]
+          - [4,"dd",20,30,1.1,2.1,1590738993000,"2020-05-01"]
+          - [5,"ee",21,31,1.2,2.2,1590738994000,"2020-05-02"]
           - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
     sql: |
-      SELECT id, c1, c4, count(c4) OVER w1 as w1_c4_count FROM {0} WINDOW w1 AS (PARTITION BY {0}.c7 ORDER BY {0}.c1 ROWS_RANGE BETWEEN 2s PRECEDING AND CURRENT ROW);
+      SELECT id, c1, c4, count(c4) OVER w1 as w1_c4_count FROM {0} WINDOW w1 AS (PARTITION BY {0}.c3 ORDER BY {0}.c1 ROWS_RANGE BETWEEN 2s PRECEDING AND CURRENT ROW);
     expect:
       order: id
       columns: ["id int","c1 string","c4 bigint","w1_c4_count bigint"]
@@ -195,7 +195,7 @@ cases:
         - [5,"ee",31,1]
   -
     id: 8
-    desc: bigint为order by
+    desc: bigint为order by-不加单位
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -207,7 +207,7 @@ cases:
           - [5,"ee",21,34,1.2,2.2,1590738991000,"2020-05-02"]
           - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
     sql: |
-      SELECT id, c1, c4, count(c4) OVER w1 as w1_c4_count FROM {0} WINDOW w1 AS (PARTITION BY {0}.c8 ORDER BY {0}.c4 ROWS_RANGE BETWEEN 2s PRECEDING AND CURRENT ROW);
+      SELECT id, c1, c4, count(c4) OVER w1 as w1_c4_count FROM {0} WINDOW w1 AS (PARTITION BY {0}.c3 ORDER BY {0}.c4 ROWS_RANGE BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id
       columns: ["id int","c1 string","c4 bigint","w1_c4_count bigint"]
@@ -216,6 +216,78 @@ cases:
         - [2,"bb",31,2]
         - [3,"cc",32,3]
         - [4,"dd",33,3]
+        - [5,"ee",34,1]
+  -
+    id: 8-2
+    desc: int为order by-不加单位
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [2,"bb",21,31,1.1,2.1,1590738990000,"2020-05-01"]
+          - [3,"cc",22,32,1.1,2.1,1590738990000,"2020-05-01"]
+          - [4,"dd",23,33,1.1,2.1,1590738990000,"2020-05-01"]
+          - [5,"ee",24,34,1.2,2.2,1590738991000,"2020-05-02"]
+          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
+    sql: |
+      SELECT id, c1, c4, count(c4) OVER w1 as w1_c4_count FROM {0} WINDOW w1 AS (PARTITION BY {0}.c8 ORDER BY {0}.c3 ROWS_RANGE BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","c4 bigint","w1_c4_count bigint"]
+      rows:
+        - [1,"aa",30,1]
+        - [2,"bb",31,2]
+        - [3,"cc",32,3]
+        - [4,"dd",33,3]
+        - [5,"ee",34,1]
+  -
+    id: 8-3
+    desc: bigint为order by-加单位
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [2,"bb",20,31,1.1,2.1,1590738990000,"2020-05-01"]
+          - [3,"cc",20,32,1.1,2.1,1590738990000,"2020-05-01"]
+          - [4,"dd",20,33,1.1,2.1,1590738990000,"2020-05-01"]
+          - [5,"ee",21,34,1.2,2.2,1590738991000,"2020-05-02"]
+          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
+    sql: |
+      SELECT id, c1, c4, count(c4) OVER w1 as w1_c4_count FROM {0} WINDOW w1 AS (PARTITION BY {0}.c3 ORDER BY {0}.c4 ROWS_RANGE BETWEEN 2s PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","c4 bigint","w1_c4_count bigint"]
+      rows:
+        - [1,"aa",30,1]
+        - [2,"bb",31,2]
+        - [3,"cc",32,3]
+        - [4,"dd",33,4]
+        - [5,"ee",34,1]
+  -
+    id: 8-4
+    desc: int为order by-加单位
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [2,"bb",21,31,1.1,2.1,1590738990000,"2020-05-01"]
+          - [3,"cc",22,32,1.1,2.1,1590738990000,"2020-05-01"]
+          - [4,"dd",23,33,1.1,2.1,1590738990000,"2020-05-01"]
+          - [5,"ee",24,34,1.2,2.2,1590738991000,"2020-05-02"]
+          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
+    sql: |
+      SELECT id, c1, c4, count(c4) OVER w1 as w1_c4_count FROM {0} WINDOW w1 AS (PARTITION BY {0}.c8 ORDER BY {0}.c3 ROWS_RANGE BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","c4 bigint","w1_c4_count bigint"]
+      rows:
+        - [1,"aa",30,1]
+        - [2,"bb",31,2]
+        - [3,"cc",32,3]
+        - [4,"dd",33,4]
         - [5,"ee",34,1]
   -
     id: 9
