@@ -3478,6 +3478,8 @@ int32_t TabletImpl::DeleteTableInternal(
         std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
         {
             std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+            catalog_->DeleteTable(table->GetTableMeta().db(), table->GetName());
+            engine_.ClearCacheLocked(table->GetTableMeta().db());
             tables_[tid].erase(pid);
             replicators_[tid].erase(pid);
             snapshots_[tid].erase(pid);
@@ -3717,6 +3719,7 @@ void TabletImpl::CreateTable(RpcController* controller,
             bool ok = handler->Init();
             if (ok) {
                 ok = catalog_->AddTable(handler);
+                engine_.ClearCacheLocked(table_meta->db());
                 if (ok) {
                     LOG(INFO) << "add table " << table_meta->name()
                               << " to catalog with db " << table_meta->db();

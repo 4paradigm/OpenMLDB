@@ -86,7 +86,7 @@ std::shared_ptr<SQLRequestRow> SQLClusterRouter::GetRequestRow(
             if (iit != it->second.end()) {
                 status->code = 0;
                 std::shared_ptr<SQLRequestRow> row(
-                    new SQLRequestRow(iit->second));
+                    new SQLRequestRow(iit->second.column_schema));
                 return row;
             }
         }
@@ -107,9 +107,9 @@ std::shared_ptr<SQLRequestRow> SQLClusterRouter::GetRequestRow(
         std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
         auto it = input_schema_map_.find(db);
         if (it == input_schema_map_.end()) {
-            std::map<std::string, std::shared_ptr<::fesql::sdk::Schema>>
+            std::map<std::string, ::rtidb::sdk::RouterCacheSchema>
                 sql_schema;
-            sql_schema.insert(std::make_pair(sql, schema));
+            sql_schema.insert(std::make_pair(sql, ::rtidb::sdk::RouterCacheSchema(schema)));
             input_schema_map_.insert(std::make_pair(db, sql_schema));
         } else {
             it->second.insert(std::make_pair(sql, schema));
@@ -131,7 +131,7 @@ std::shared_ptr<SQLRequestRow> SQLClusterRouter::GetInsertRow(
             if (iit != it->second.end()) {
                 status->code = 0;
                 std::shared_ptr<SQLRequestRow> row(
-                    new SQLRequestRow(iit->second));
+                    new SQLRequestRow(iit->second.column_schema));
                 return row;
             }
         }
@@ -181,12 +181,12 @@ std::shared_ptr<SQLRequestRow> SQLClusterRouter::GetInsertRow(
         std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
         auto it = input_schema_map_.find(db);
         if (it == input_schema_map_.end()) {
-            std::map<std::string, std::shared_ptr<::fesql::sdk::Schema>>
+            std::map<std::string, ::rtidb::sdk::RouterCacheSchema>
                 sql_schema;
-            sql_schema.insert(std::make_pair(sql, sdk_schema));
+            sql_schema.insert(std::make_pair(sql, ::rtidb::sdk::RouterCacheSchema(insert_stmt->table_name_, sdk_schema)));
             input_schema_map_.insert(std::make_pair(db, sql_schema));
         } else {
-            it->second.insert(std::make_pair(sql, sdk_schema));
+            it->second.insert(std::make_pair(sql, ::rtidb::sdk::RouterCacheSchema(insert_stmt->table_name_, sdk_schema)));
         }
     }
     std::shared_ptr<SQLRequestRow> row(new SQLRequestRow(sdk_schema));
@@ -396,7 +396,144 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db,
                                      const std::string& sql,
                                      std::shared_ptr<SQLRequestRow> row,
                                      fesql::sdk::Status* status) {
-    return false;
+    if (!row || status == NULL) {
+        LOG(WARNING) << "input is invalid";
+        return false;
+    }
+    std::string table_name;
+    {
+        std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
+        auto it = input_schema_map_.find(db);
+        if (it != input_schema_map_.end()) {
+            auto iit = it->second.find(sql);
+            if (iit != it->second.end()) {
+                table_name = iit->second.table_name;
+            }
+        }
+    }
+    std::shared_ptr<::rtidb::nameserver::TableInfo> table_info =
+        cluster_sdk_->GetTableInfo(db, table_name);
+    if (!table_info) {
+        LOG(WARNING) << "table with name " << table_name
+                     << " does not exist";
+        return false;
+    }
+    // std::string value;
+    // std::vector<std::pair<std::string, uint32_t>> dimensions;
+    // std::vector<uint64_t> ts;
+    // ok = EncodeFullColumns(table_info->column_desc_v1(), iplan, &value,
+    //                        &dimensions, &ts);
+    // if (!ok) {
+    //     LOG(WARNING) << "fail to encode row for table "
+    //                  << insert_stmt->table_name_;
+    //     return false;
+    // }
+    // std::shared_ptr<::rtidb::client::TabletClient> tablet =
+    //     cluster_sdk_->GetLeaderTabletByTable(db, table_name);
+    // if (!tablet) {
+    //     LOG(WARNING) << "fail to get table " << table_name
+    //                  << " tablet";
+    //     return false;
+    // }
+    // DLOG(INFO) << "put data to endpoint " << tablet->GetEndpoint()
+    //            << " with dimensions size " << dimensions.size();
+    // ok = tablet->Put(table_info->tid(), 0, dimensions, ts, value, 1);
+    // if (!ok) return false;
+    return true;
+}
+
+bool SQLClusterRouter::GetDimension(
+    const catalog::RtiDBSchema& schema,
+    const ::fesql::node::InsertPlanNode* plan,
+    std::vector<std::pair<std::string, uint32_t>>* dimensions,
+    std::vector<uint64_t>* ts_dimensions) {
+    if (plan == NULL || dimensions == NULL ||
+        ts_dimensions == NULL)
+        return false;
+    auto insert_stmt = plan->GetInsertNode();
+    if (nullptr == insert_stmt || insert_stmt->values_.size() <= 0) {
+        LOG(WARNING) << "insert stmt is null";
+        return false;
+    }
+    ::fesql::node::ExprListNode* row =
+        dynamic_cast<::fesql::node::ExprListNode*>(insert_stmt->values_[0]);
+    if (row->children_.size() != schema.size()) {
+        LOG(WARNING) << "schema mismatch";
+        return false;
+    }
+    int32_t idx_cnt = 0;
+    for (int32_t i = 0; i < schema.size(); i++) {
+        const ::rtidb::common::ColumnDesc& column = schema.Get(i);
+        const ::fesql::node::ConstNode* primary =
+            dynamic_cast<const ::fesql::node::ConstNode*>(row->children_.at(i));
+        switch (column.data_type()) {
+            case ::rtidb::type::kSmallInt: {
+                DLOG(INFO) << "parse column " << column.name();
+                if (column.add_ts_idx()) {
+                    dimensions->push_back(std::make_pair(
+                        std::to_string(primary->GetSmallInt()), idx_cnt));
+                    idx_cnt++;
+                }
+                break;
+            }
+            case ::rtidb::type::kInt: {
+                DLOG(INFO) << "parse column " << column.name();
+                if (column.add_ts_idx()) {
+                    dimensions->push_back(std::make_pair(
+                        std::to_string(primary->GetInt()), idx_cnt));
+                    idx_cnt++;
+                }
+                break;
+            }
+            case ::rtidb::type::kBigInt: {
+                if (column.is_ts_col()) {
+                    ts_dimensions->push_back(primary->GetAsInt64());
+                } else if (column.add_ts_idx()) {
+                    dimensions->push_back(std::make_pair(
+                        std::to_string(primary->GetAsInt64()), idx_cnt));
+                    idx_cnt++;
+                }
+                DLOG(INFO) << "parse column " << column.name();
+                break;
+            }
+            case ::rtidb::type::kFloat: {
+                DLOG(INFO) << "parse column " << column.name();
+                break;
+            }
+            case ::rtidb::type::kDouble: {
+                DLOG(INFO) << "parse column " << column.name();
+                break;
+            }
+            case ::rtidb::type::kVarchar:
+            case ::rtidb::type::kString: {
+                DLOG(INFO) << "parse column " << column.name();
+                if (column.add_ts_idx()) {
+                    dimensions->push_back(
+                        std::make_pair(std::string(primary->GetStr(),
+                                                   strlen(primary->GetStr())),
+                                       idx_cnt));
+                    idx_cnt++;
+                }
+                break;
+            }
+            case ::rtidb::type::kTimestamp: {
+                DLOG(INFO) << "parse column " << column.name();
+                if (column.is_ts_col()) {
+                    ts_dimensions->push_back(primary->GetAsInt64());
+                }
+                break;
+            }
+            case ::rtidb::type::kDate: {
+                DLOG(INFO) << "parse column " << column.name();
+                break;
+            }
+            default: {
+                LOG(WARNING) << " not supported type";
+                return false;
+            }
+        }
+    }
+    return true;
 }
 
 bool SQLClusterRouter::EncodeFullColumns(

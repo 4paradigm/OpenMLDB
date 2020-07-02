@@ -437,7 +437,6 @@ void HandleCli() {
         }
         if (line[0] != '\0' && line[0] != '/') {
             buffer.assign(line);
-            boost::trim(buffer);
             if (!buffer.empty()) {
                 ::rtidb::base::linenoiseHistoryAdd(line);
             }

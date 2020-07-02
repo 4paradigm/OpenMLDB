@@ -213,6 +213,32 @@ bool TabletCatalog::AddDB(const ::fesql::type::Database& db) {
     return true;
 }
 
+bool TabletCatalog::DeleteTable(const std::string& db, const std::string& table_name){
+    std::lock_guard<::rtidb::base::SpinMutex> spin_lock(mu_);
+    auto db_it = tables_.find(db);
+    if (db_it == tables_.end()) {
+        LOG(WARNING) << "can't find db in catalog";
+        return false;
+    }
+    auto it = db_it->second.find(table_name);
+    if (it != db_it->second.end()) {
+        LOG(INFO) << "delete " << db << " " << table_name << " in catalog";
+        db_it->second.erase(it);
+        return true;
+    }
+    return false;
+}
+
+bool TabletCatalog::DeleteDB(const std::string& db) {
+    std::lock_guard<::rtidb::base::SpinMutex> spin_lock(mu_);
+    TabletDB::iterator it = db_.find(db);
+    if (it != db_.end()) {
+        db_.erase(it);
+        return true;
+    }
+    return false;
+}
+
 bool TabletCatalog::IndexSupport() { return true; }
 
 }  // namespace catalog

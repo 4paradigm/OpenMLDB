@@ -36,6 +36,18 @@
 namespace rtidb {
 namespace sdk {
 
+struct RouterCacheSchema {
+    RouterCacheSchema(std::string table_name,
+                      std::shared_ptr<::fesql::sdk::Schema> column_schema)
+        : table_name(table_name), column_schema(column_schema) {}
+
+    RouterCacheSchema(std::shared_ptr<::fesql::sdk::Schema> column_schema)
+        : table_name(), column_schema(column_schema) {}
+
+    std::string table_name;
+    std::shared_ptr<::fesql::sdk::Schema> column_schema;
+};
+
 class SQLClusterRouter : public SQLRouter {
  public:
     explicit SQLClusterRouter(const SQLRouterOptions& options);
@@ -99,13 +111,18 @@ class SQLClusterRouter : public SQLRouter {
     bool GetSQLPlan(const std::string& sql, ::fesql::node::NodeManager* nm,
                     ::fesql::node::PlanNodeList* plan);
 
+    bool GetDimension(
+        const catalog::RtiDBSchema& schema,
+        const ::fesql::node::InsertPlanNode* plan,
+        std::vector<std::pair<std::string, uint32_t>>* dimensions,
+        std::vector<uint64_t>* ts_dimensions);
+
  private:
     SQLRouterOptions options_;
     ClusterSDK* cluster_sdk_;
     ::fesql::vm::Engine* engine_;
     // TODO(wangtaize) add update strategy
-    std::map<std::string,
-             std::map<std::string, std::shared_ptr<::fesql::sdk::Schema>>>
+    std::map<std::string, std::map<std::string, RouterCacheSchema>>
         input_schema_map_;
     ::rtidb::base::SpinMutex mu_;
 };
