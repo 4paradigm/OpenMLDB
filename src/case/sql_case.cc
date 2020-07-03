@@ -682,6 +682,9 @@ bool SQLCase::CreateExpectFromYamlNode(const YAML::Node& schema_data,
             return false;
         }
     }
+    if (schema_data["success"]) {
+        expect->success_ = schema_data["success"].as<bool>();
+    }
     return true;
 }
 bool SQLCase::CreateSQLCasesFromYaml(const std::string& cases_dir,
