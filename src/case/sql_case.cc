@@ -793,9 +793,9 @@ bool SQLCase::CreateSQLCasesFromYaml(
             }
         }
         if (sql_case_node["id"]) {
-            sql_case.id_ = sql_case_node["id"].as<int32_t>();
+            sql_case.id_ = sql_case_node["id"].as<std::string>();
         } else {
-            sql_case.id_ = -1;
+            sql_case.id_ = "-1";
         }
         if (sql_case_node["mode"]) {
             sql_case.mode_ = sql_case_node["mode"].as<std::string>();

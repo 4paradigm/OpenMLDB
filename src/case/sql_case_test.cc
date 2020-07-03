@@ -627,7 +627,7 @@ TEST_F(SQLCaseTest, ExtractYamlSQLCase) {
     ASSERT_EQ(4, cases.size());
     {
         SQLCase& sql_case = cases[0];
-        ASSERT_EQ(sql_case.id(), 1);
+        ASSERT_EQ(sql_case.id(), "1");
         ASSERT_EQ("batch", sql_case.mode());
         ASSERT_EQ("SELECT所有列", sql_case.desc());
         ASSERT_EQ(sql_case.inputs()[0].name_, "t1");
@@ -659,7 +659,7 @@ TEST_F(SQLCaseTest, ExtractYamlSQLCase) {
     }
     {
         SQLCase& sql_case = cases[1];
-        ASSERT_EQ(sql_case.id(), 2);
+        ASSERT_EQ(sql_case.id(), "2");
         ASSERT_EQ("batch", sql_case.mode());
         ASSERT_EQ("SELECT所有列使用resource输入", sql_case.desc());
         ASSERT_EQ(sql_case.inputs()[0].name_, "t1");
@@ -692,7 +692,7 @@ TEST_F(SQLCaseTest, ExtractYamlSQLCase) {
 
     {
         SQLCase& sql_case = cases[2];
-        ASSERT_EQ(sql_case.id(), 3);
+        ASSERT_EQ(sql_case.id(), "3");
         ASSERT_EQ("SELECT UDF", sql_case.desc());
         ASSERT_EQ("request", sql_case.mode());
         ASSERT_EQ(sql_case.inputs()[0].name_, "t1");
@@ -722,7 +722,7 @@ TEST_F(SQLCaseTest, ExtractYamlSQLCase) {
 
     {
         SQLCase& sql_case = cases[3];
-        ASSERT_EQ(sql_case.id(), 4);
+        ASSERT_EQ(sql_case.id(), "4");
         ASSERT_EQ("简单INSERT", sql_case.desc());
         ASSERT_EQ(sql_case.db(), "test");
         ASSERT_EQ(
@@ -752,7 +752,7 @@ TEST_F(SQLCaseTest, ExtractRtidbYamlSQLCase) {
     ASSERT_EQ(3, cases.size());
     {
         SQLCase& sql_case = cases[0];
-        ASSERT_EQ(sql_case.id(), 0);
+        ASSERT_EQ(sql_case.id(), "0");
         ASSERT_EQ("正常拼接", sql_case.desc());
         ASSERT_EQ(2u, sql_case.inputs().size());
         ASSERT_EQ(sql_case.db(), "test_zw");
@@ -805,7 +805,7 @@ TEST_F(SQLCaseTest, ExtractRtidbYamlSQLCase) {
 
     {
         SQLCase& sql_case = cases[1];
-        ASSERT_EQ(sql_case.id(), 1);
+        ASSERT_EQ(sql_case.id(), "1");
         ASSERT_EQ("普通select", sql_case.desc());
         ASSERT_EQ(1u, sql_case.inputs().size());
         ASSERT_EQ(sql_case.db(), "test_zw");
@@ -836,7 +836,7 @@ TEST_F(SQLCaseTest, ExtractRtidbYamlSQLCase) {
 
     {
         SQLCase& sql_case = cases[2];
-        ASSERT_EQ(sql_case.id(), 2);
+        ASSERT_EQ(sql_case.id(), "2");
         ASSERT_EQ("普通select,Sucess false", sql_case.desc());
         ASSERT_EQ(1u, sql_case.inputs().size());
         ASSERT_EQ(sql_case.db(), "test_zw");
@@ -876,7 +876,7 @@ TEST_F(SQLCaseTest, ExtractRtidbYamlWithDebugSQLCase) {
     ASSERT_EQ(1, cases.size());
     {
         SQLCase& sql_case = cases[0];
-        ASSERT_EQ(sql_case.id(), 1);
+        ASSERT_EQ(sql_case.id(), "1");
         ASSERT_EQ("普通select", sql_case.desc());
         ASSERT_EQ(1u, sql_case.inputs().size());
         ASSERT_EQ(sql_case.db(), "test_zw");

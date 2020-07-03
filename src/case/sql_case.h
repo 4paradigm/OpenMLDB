@@ -43,7 +43,7 @@ class SQLCase {
     SQLCase() {}
     virtual ~SQLCase() {}
 
-    const int32_t id() const { return id_; }
+    const std::string id() const { return id_; }
     const std::string& desc() const { return desc_; }
     const std::string& mode() const { return mode_; }
     const std::string& request_plan() const { return request_plan_; }
@@ -129,7 +129,7 @@ class SQLCase {
     friend std::ostream& operator<<(std::ostream& output, const SQLCase& thiz);
 
  private:
-    int32_t id_;
+    std::string id_;
     std::string mode_;
     std::string desc_;
     std::string db_;
