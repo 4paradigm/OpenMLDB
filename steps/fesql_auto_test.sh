@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
 
 ROOT_DIR=`pwd`
-
-PROTO_BIN=$ROOT_DIR/thirdparty/bin/protoc
-ulimit -c unlimited
-sed -i "/protocExecutable/c\<protocExecutable>${PROTO_BIN}<\/protocExecutable>" java/pom.xml
-mkdir -p java/src/main/proto/
-cp -rf src/proto/tablet.proto java/src/main/proto/
-cp -rf src/proto/name_server.proto java/src/main/proto/
-cp -rf src/proto/common.proto java/src/main/proto/
-
+test -d /rambuild/ut_zookeeper && rm -rf /rambuild/ut_zookeeper/*
+cp steps/zoo.cfg thirdsrc/zookeeper-3.4.14/conf
+cd thirdsrc/zookeeper-3.4.14
+netstat -anp | grep 6181 | awk '{print $NF}' | awk -F '/' '{print $1}'| xargs kill -9
+./bin/zkServer.sh start && cd $ROOT_DIR
+sleep 5
+cd onebox && sh start_onebox_on_rambuild.sh && cd $ROOT_DIR
+sleep 5
 echo "ROOT_DIR:${ROOT_DIR}"
 sh steps/gen_code.sh
-mkdir -p build  && cd build && cmake .. && make sql_javasdk_package
+sh tools/install_fesql.sh
+mkdir -p ${ROOT_DIR}/build  && cd ${ROOT_DIR}/build && cmake .. && make sql_javasdk_package
 case_xml=test_v1.xml
-cd ${ROOT_DIR}/src/sdk/feql-auto-test-java
+cd ${ROOT_DIR}/src/sdk/java/
 mvn clean test -DsuiteXmlFile=test_suite/${case_xml}

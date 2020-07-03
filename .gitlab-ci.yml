@@ -6,10 +6,10 @@ variables:
 stages:
     - build
     - test
-    - ts_integration_test
-    - ns_integration_test
-    - deploy
-    - make_docker
+#    - ts_integration_test
+#    - ns_integration_test
+#    - deploy
+#    - make_docker
 
 build:
     stage: build
@@ -33,6 +33,7 @@ style_check:
         reports:
             junit:
                 - ./reports/style.xml
+<<<<<<< HEAD
 java_ut:
   stage: test
   before_script:
@@ -59,6 +60,34 @@ java_ut:
               - rtidb-auto-test/target/surefire-reports/TEST-*.xml
               - rtidb-auto-test/target/failsafe-reports/junitreports/TEST-*.xml
               - rtidb-auto-test/target/failsafe-reports/TEST-*.xml
+=======
+#java_ut:
+#  stage: test
+#  before_script:
+#      - mkdir /rambuild
+#        #- mount -t tmpfs -o size=3G tmpfs /rambuild
+#  script:
+#      - ln -sf /depends/thirdparty thirdparty
+#      - ln -sf /depends/thirdsrc thirdsrc
+#      - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/java_ut.sh
+#      - source /root/.bashrc && bash steps/auto_test.sh
+#  after_script:
+#      - tar czvf $CI_COMMIT_SHA  auto-test-rtidb/target/allure-results
+#      - bash steps/upload-nexus.sh $CI_COMMIT_SHA
+#      - curl -s "http://auto.4paradigm.com/job/rtidb-test-report/buildWithParameters?token=gitlab&pkg=$CI_COMMIT_SHA&buildname=$CI_PIPELINE_ID"-"$CI_JOB_ID"
+#      - bash steps/get-report-url.sh rtidb-test-report $CI_PIPELINE_ID"-"$CI_JOB_ID
+#  artifacts:
+#      reports:
+#          junit:
+#              - java/target/surefire-reports/junitreports/TEST-*.xml
+#              - java/target/surefire-reports/TEST-*.xml
+#              - java/target/failsafe-reports/junitreports/TEST-*.xml
+#              - java/target/failsafe-reports/TEST-*.xml
+#              - rtidb-auto-test/target/surefire-reports/junitreports/TEST-*.xml
+#              - rtidb-auto-test/target/surefire-reports/TEST-*.xml
+#              - rtidb-auto-test/target/failsafe-reports/junitreports/TEST-*.xml
+#              - rtidb-auto-test/target/failsafe-reports/TEST-*.xml
+>>>>>>> 98e81e8a8706b5e595598d297785581966d7befa
 
 fesql_auto_test:
   stage: test
@@ -69,9 +98,9 @@ fesql_auto_test:
       - ln -sf /depends/thirdsrc thirdsrc
       - source /root/.bashrc && bash steps/fesql_auto_test.sh
   after_script:
-      - tar czvf $CI_COMMIT_SHA  src/sdk/feql-auto-test-java/target/allure-results
+      - tar czvf $CI_COMMIT_SHA  src/sdk/java/feql-auto-test-java/target/allure-results
       - bash steps/upload-nexus.sh $CI_COMMIT_SHA
-      - curl -s "http://auto.4paradigm.com/job/fesql-test-report/buildWithParameters?token=gitlab&pkg=$CI_COMMIT_SHA&allure_path=src/sdk/feql-auto-test-java/target/allure-results&buildname=$CI_PIPELINE_ID"-"$CI_JOB_ID"
+      - curl -s "http://auto.4paradigm.com/job/fesql-test-report/buildWithParameters?token=gitlab&pkg=$CI_COMMIT_SHA&allure_path=src/sdk/java/feql-auto-test-java/target/allure-results&buildname=$CI_PIPELINE_ID"-"$CI_JOB_ID"
       - bash steps/get-report-url.sh rtidb-test-report $CI_PIPELINE_ID"-"$CI_JOB_ID
   artifacts:
       reports:
@@ -85,114 +114,35 @@ fesql_auto_test:
               - rtidb-auto-test/target/failsafe-reports/junitreports/TEST-*.xml
               - rtidb-auto-test/target/failsafe-reports/TEST-*.xml
 
-c++_ut:
-  stage: test
-  script:
-      - source /root/.bashrc && sh tools/install_fesql.sh
-      - ln -sf /depends/thirdparty thirdparty
-      - ln -sf /depends/thirdsrc thirdsrc
-      - source /root/.bashrc && bash steps/compile.sh
-      - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/ut.sh
-  artifacts:
-      reports:
-          junit:
-              - reports/*.xml
+#c++_ut:
+#  stage: test
+#  script:
+#      - source /root/.bashrc && sh tools/install_fesql.sh
+#      - ln -sf /depends/thirdparty thirdparty
+#      - ln -sf /depends/thirdsrc thirdsrc
+#      - source /root/.bashrc && bash steps/compile.sh
+#      - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/ut.sh
+#  artifacts:
+#      reports:
+#          junit:
+#              - reports/*.xml
+#
+#py3_ut:
+#  stage: test
+#  before_script:
+#    - mkdir /rambuild
+#    - mount -t tmpfs -o size=3G tmpfs /rambuild
+#  script:
+#    - ln -sf /depends/thirdparty thirdparty
+#    - ln -sf /depends/thirdsrc thirdsrc
+#    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/run_py3_ut.sh
+#  artifacts:
+#    reports:
+#      junit:
+#        - ./python/test/*xml
 
-py3_ut:
-  stage: test
-  before_script:
-    - mkdir /rambuild
-    - mount -t tmpfs -o size=3G tmpfs /rambuild
-  script:
-    - ln -sf /depends/thirdparty thirdparty
-    - ln -sf /depends/thirdsrc thirdsrc
-    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/run_py3_ut.sh
-  artifacts:
-    reports:
-      junit:
-        - ./python/test/*xml
 
-
-tablet_one_demension:
-    stage: ts_integration_test
-    before_script:
-        - mkdir /rambuild
-        - mount -t tmpfs -o size=3G tmpfs /rambuild
-    script:
-        - ln -sf /depends/thirdparty thirdparty
-        - ln -sf /depends/thirdsrc thirdsrc
-        - rm -rf ./test-output/integrationtest/test-reports/
-        - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
-        - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 0 "test" "ns_client"
-    artifacts:
-        reports:
-            junit:
-                - ./test-output/integrationtest/test-reports/*.xml
-
-tablet_multi_demension:
-    stage: ts_integration_test
-    before_script:
-        - mkdir /rambuild
-        - mount -t tmpfs -o size=3G tmpfs /rambuild
-    script:
-        - ln -sf /depends/thirdparty thirdparty
-        - ln -sf /depends/thirdsrc thirdsrc
-        - rm -rf ./test-output/integrationtest/test-reports/
-        - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
-        - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 1 "test" "ns_client"
-    artifacts:
-        reports:
-            junit:
-                - ./test-output/integrationtest/test-reports/*.xml
-
-ns_one_demension:
-    stage: ns_integration_test
-    before_script:
-        - mkdir /rambuild
-        - mount -t tmpfs -o size=3G tmpfs /rambuild
-    script:
-        - ln -sf /depends/thirdparty thirdparty
-        - ln -sf /depends/thirdsrc thirdsrc
-        - rm -rf ./test-output/integrationtest/test-reports/
-        - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
-        - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 0 "ns_client" "disk"
-    artifacts:
-        reports:
-            junit:
-                - ./test-output/integrationtest/test-reports/*.xml
-
-ns_multi_demension:
-    stage: ns_integration_test
-    before_script:
-        - mkdir /rambuild
-        - mount -t tmpfs -o size=3G tmpfs /rambuild
-    script:
-        - ln -sf /depends/thirdparty thirdparty
-        - ln -sf /depends/thirdsrc thirdsrc
-        - rm -rf ./test-output/integrationtest/test-reports/
-        - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
-        - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 1 "ns_client" "disk"
-    artifacts:
-        reports:
-            junit:
-                - ./test-output/integrationtest/test-reports/*.xml
-
-disk_table:
-    stage: ns_integration_test
-    before_script:
-        - mkdir /rambuild
-        - mount -t tmpfs -o size=3G tmpfs /rambuild
-    script:
-        - ln -sf /depends/thirdparty thirdparty
-        - ln -sf /depends/thirdsrc thirdsrc
-        - rm -rf ./test-output/integrationtest/test-reports/
-        - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
-        - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 0 "disk"
-    artifacts:
-        reports:
-            junit:
-                - ./test-output/integrationtest/test-reports/*.xml
-
+<<<<<<< HEAD
 deploy-package:
     stage: deploy
     script:
@@ -217,3 +167,105 @@ docker-image:
         - develop
         - feat/push-nexus-meta
         - release/*
+=======
+#tablet_one_demension:
+#    stage: ts_integration_test
+#    before_script:
+#        - mkdir /rambuild
+#        - mount -t tmpfs -o size=3G tmpfs /rambuild
+#    script:
+#        - ln -sf /depends/thirdparty thirdparty
+#        - ln -sf /depends/thirdsrc thirdsrc
+#        - rm -rf ./test-output/integrationtest/test-reports/
+#        - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
+#        - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 0 "test" "ns_client"
+#    artifacts:
+#        reports:
+#            junit:
+#                - ./test-output/integrationtest/test-reports/*.xml
+#
+#tablet_multi_demension:
+#    stage: ts_integration_test
+#    before_script:
+#        - mkdir /rambuild
+#        - mount -t tmpfs -o size=3G tmpfs /rambuild
+#    script:
+#        - ln -sf /depends/thirdparty thirdparty
+#        - ln -sf /depends/thirdsrc thirdsrc
+#        - rm -rf ./test-output/integrationtest/test-reports/
+#        - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
+#        - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 1 "test" "ns_client"
+#    artifacts:
+#        reports:
+#            junit:
+#                - ./test-output/integrationtest/test-reports/*.xml
+#
+#ns_one_demension:
+#    stage: ns_integration_test
+#    before_script:
+#        - mkdir /rambuild
+#        - mount -t tmpfs -o size=3G tmpfs /rambuild
+#    script:
+#        - ln -sf /depends/thirdparty thirdparty
+#        - ln -sf /depends/thirdsrc thirdsrc
+#        - rm -rf ./test-output/integrationtest/test-reports/
+#        - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
+#        - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 0 "ns_client" "disk"
+#    artifacts:
+#        reports:
+#            junit:
+#                - ./test-output/integrationtest/test-reports/*.xml
+#
+#ns_multi_demension:
+#    stage: ns_integration_test
+#    before_script:
+#        - mkdir /rambuild
+#        - mount -t tmpfs -o size=3G tmpfs /rambuild
+#    script:
+#        - ln -sf /depends/thirdparty thirdparty
+#        - ln -sf /depends/thirdsrc thirdsrc
+#        - rm -rf ./test-output/integrationtest/test-reports/
+#        - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
+#        - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 1 "ns_client" "disk"
+#    artifacts:
+#        reports:
+#            junit:
+#                - ./test-output/integrationtest/test-reports/*.xml
+#
+#disk_table:
+#    stage: ns_integration_test
+#    before_script:
+#        - mkdir /rambuild
+#        - mount -t tmpfs -o size=3G tmpfs /rambuild
+#    script:
+#        - ln -sf /depends/thirdparty thirdparty
+#        - ln -sf /depends/thirdsrc thirdsrc
+#        - rm -rf ./test-output/integrationtest/test-reports/
+#        - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
+#        - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 0 "disk"
+#    artifacts:
+#        reports:
+#            junit:
+#                - ./test-output/integrationtest/test-reports/*.xml
+#
+#deploy-package:
+#    stage: deploy
+#    script:
+#        - ln -sf /depends/thirdparty thirdparty
+#        - ln -sf /depends/thirdsrc thirdsrc
+#        - source /root/.bashrc && bash steps/deploy_package.sh
+#    only:
+#        - tags
+#docker-image:
+#    stage: make_docker
+#    script:
+#        - source /root/.bashrc && sh tools/install_fesql.sh
+#        - ln -sf /depends/thirdparty thirdparty
+#        - ln -sf /depends/thirdsrc thirdsrc
+#        - sh steps/compile.sh
+#        - sh docker/copy_file.sh
+#        - make blob_proxy
+#    only:
+#        - tags
+#        - develop
+>>>>>>> 98e81e8a8706b5e595598d297785581966d7befa
