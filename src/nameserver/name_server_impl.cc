@@ -908,6 +908,7 @@ bool NameServerImpl::RecoverTableInfo() {
     if (!zk_client_->GetChildren(zk_table_data_path_, table_vec)) {
         if (zk_client_->IsExistNode(zk_table_data_path_) > 0) {
             PDLOG(WARNING, "table data node is not exist");
+            return true;
         }
         PDLOG(WARNING, "get table name failed!");
         return false;
@@ -2638,6 +2639,29 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller,
     response->set_msg("ok");
     PDLOG(INFO, "add makesnapshot op ok. op_id[%lu] name[%s] pid[%u]",
           op_data->op_info_.op_id(), request->name().c_str(), request->pid());
+}
+
+void NameServerImpl::AddDataType(std::shared_ptr<TableInfo> table_info) {
+    for (int i = 0; i < table_info->column_desc_v1_size(); i++) {
+        auto desc = table_info->mutable_column_desc_v1(i);
+        if (desc->has_data_type()) {
+            continue;
+        }
+        auto type = rtidb::codec::DATA_TYPE_MAP.find(desc->type());
+        if (type != rtidb::codec::DATA_TYPE_MAP.end()) {
+            desc->set_data_type(type->second);
+        }
+    }
+    for (int i = 0; i < table_info->added_column_desc_size(); i++) {
+        auto desc = table_info->mutable_added_column_desc(i);
+        if (desc->has_data_type()) {
+            continue;
+        }
+        auto type = rtidb::codec::DATA_TYPE_MAP.find(desc->type());
+        if (type != rtidb::codec::DATA_TYPE_MAP.end()) {
+            desc->set_data_type(type->second);
+        }
+    }
 }
 
 int NameServerImpl::CheckTableMeta(const TableInfo& table_info) {
@@ -4701,6 +4725,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
     }
     if (!table_info->has_table_type() ||
         table_info->table_type() == ::rtidb::type::kTimeSeries) {
+        AddDataType(table_info);
         if (CheckTableMeta(*table_info) < 0) {
             response->set_code(::rtidb::base::ReturnCode::kInvalidParameter);
             response->set_msg("check TableMeta failed");
@@ -4788,6 +4813,12 @@ void NameServerImpl::CreateTable(RpcController* controller,
         response->set_msg("ok");
         return;
     } else if (table_info->table_type() == rtidb::type::kRelational) {
+        if (!rtidb::codec::SchemaCodec::AddTypeToColumnDesc(table_info)) {
+            response->set_code(
+                ::rtidb::base::ReturnCode::kAddTypeToColumnDescFailed);
+            response->set_msg("add type to ColumnDesc failed");
+            return;
+        }
         bool has_blob = false;
         for (const auto& col : table_info->column_desc_v1()) {
             if (col.data_type() == rtidb::type::kBlob) {
@@ -9786,7 +9817,7 @@ void NameServerImpl::UpdateTTL(
         }
     }
     // update zookeeper
-    if (!UpdateZkTableNode(
+    if (!UpdateZkTableNodeWithoutNotify(
             std::make_shared<::rtidb::nameserver::TableInfo>(table_info))) {
         response->set_code(::rtidb::base::ReturnCode::kSetZkFailed);
         response->set_msg("set zk failed");

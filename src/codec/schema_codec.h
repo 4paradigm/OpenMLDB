@@ -14,6 +14,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <memory>
 
 #include "base/status.h"
 #include "boost/lexical_cast.hpp"
@@ -372,6 +373,59 @@ class SchemaCodec {
         rm.code = 0;
         rm.msg = "ok";
         return rm;
+    }
+
+    static bool AddTypeToColumnDesc(
+            std::shared_ptr<::rtidb::nameserver::TableInfo> table_info) {
+        for (int i = 0; i < table_info->column_desc_v1_size(); i++) {
+            ::rtidb::common::ColumnDesc* col_desc =
+                table_info->mutable_column_desc_v1(i);
+            ::rtidb::type::DataType data_type = col_desc->data_type();
+            switch (data_type) {
+                case rtidb::type::kBool: {
+                    col_desc->set_type("bool");
+                    break;
+                }
+                case rtidb::type::kSmallInt: {
+                    col_desc->set_type("int16");
+                    break;
+                }
+                case rtidb::type::kInt: {
+                    col_desc->set_type("int32");
+                    break;
+                }
+                case rtidb::type::kBlob:
+                case rtidb::type::kBigInt: {
+                    col_desc->set_type("int64");
+                    break;
+                }
+                case rtidb::type::kDate: {
+                    col_desc->set_type("date");
+                    break;
+                }
+                case rtidb::type::kTimestamp: {
+                    col_desc->set_type("timestamp");
+                    break;
+                }
+                case rtidb::type::kFloat: {
+                    col_desc->set_type("float");
+                    break;
+                }
+                case rtidb::type::kDouble: {
+                    col_desc->set_type("double");
+                    break;
+                }
+                case rtidb::type::kVarchar:
+                case rtidb::type::kString: {
+                    col_desc->set_type("string");
+                    break;
+                }
+                default: {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
  private:
