@@ -781,6 +781,7 @@ bool WindowOfExpression(std::map<std::string, const WindowDefNode *> windows,
             } else {
                 *output = nullptr;
             }
+            break;
         }
         default: {
             *output = nullptr;
