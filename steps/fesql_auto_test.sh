@@ -14,7 +14,7 @@ echo "ROOT_DIR:${ROOT_DIR}"
 
 cd $ROOT_DIR
 
-ls -al
+ls -al src/sdk/java
 
 case_xml=test_v1.xml
 
