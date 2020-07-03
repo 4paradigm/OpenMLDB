@@ -44,7 +44,7 @@ _safe_malloc(size_t s, const char *file, int line, const char *func)
     void *p = malloc(s);
     if (unlikely(p == NULL))
     {
-        printf("Out of memory: %d, %zu bytes in %s (%s:%i)", errno, s, func, file, line);
+        printf("Out of memory: %d, %zu bytes in %s (%s:%i)\n", errno, s, func, file, line);
         /*
         * memset will make debug easier
         */
@@ -62,7 +62,7 @@ _try_malloc(size_t s, const char *file, int line, const char *func)
     void *p = malloc(s);
     if (unlikely(p == NULL))
     {
-        printf("Out of memory: %d, %zu bytes in %s (%s:%i) but continue working.", errno, s, func, file, line);
+        printf("Out of memory: %d, %zu bytes in %s (%s:%i) but continue working.\n", errno, s, func, file, line);
     }
     return p;
 }
@@ -76,7 +76,7 @@ _safe_realloc(void *ptr, size_t s, const char *file, int line, const char *func)
     if (unlikely(p == NULL))
     {
         free(p);
-        printf("Realloc failed: %d, %zu bytes in %s (%s:%i)", errno, s, func, file, line);
+        printf("Realloc failed: %d, %zu bytes in %s (%s:%i)\n", errno, s, func, file, line);
         exit(1);
     }
     return p;
@@ -91,7 +91,7 @@ _try_realloc(void *ptr, size_t s, const char *file, int line, const char *func)
     if (unlikely(p == NULL))
     {
         free(p);
-        printf("Realloc failed: %d, %zu bytes in %s (%s:%i), but continue working", errno, s, func, file, line);
+        printf("Realloc failed: %d, %zu bytes in %s (%s:%i), but continue working\n", errno, s, func, file, line);
     }
     return p;
 }
@@ -104,7 +104,7 @@ _safe_calloc(size_t num, size_t size, const char *file, int line, const char *fu
     void *p = calloc(num, size);
     if (unlikely(p == NULL))
     {
-        printf("Calloc failed: %d, %zu bytes in %s (%s:%i)", errno, num * size, func, file, line);
+        printf("Calloc failed: %d, %zu bytes in %s (%s:%i)\n", errno, num * size, func, file, line);
         exit(1);
     }
     return p;
@@ -118,7 +118,7 @@ _try_calloc(size_t num, size_t size, const char *file, int line, const char *fun
     void *p = calloc(num, size);
     if (unlikely(p == NULL))
     {
-        printf("Calloc failed: %d, %zu bytes in %s (%s:%i)", errno, num * size, func, file, line);
+        printf("Calloc failed: %d, %zu bytes in %s (%s:%i)\n", errno, num * size, func, file, line);
     }
     return p;
 }

@@ -16,8 +16,11 @@
 #include "zk/zk_client.h"
 
 struct WriteOption {
-    WriteOption() {
-        update_if_exist = true;
+    WriteOption() : update_if_exist(false) {
+    }
+
+    explicit WriteOption(bool flag) {
+        update_if_exist = flag;
     }
 
     bool update_if_exist;
@@ -215,13 +218,9 @@ class ViewResult {
         return result;
     }
 
-    ViewResult()
-        : rv_(),
-          columns_(),
-          initialed_(false),
-          curr_blob_key_(),
-          table_name_(),
-          client_(nullptr) {}
+
+    ViewResult() : rv_(), columns_(), initialed_(false), curr_blob_key_(0),
+                    table_name_(), client_(nullptr) {}
 
     ~ViewResult() = default;
 
