@@ -33,7 +33,6 @@ style_check:
         reports:
             junit:
                 - ./reports/style.xml
-<<<<<<< HEAD
 java_ut:
   stage: test
   before_script:
@@ -60,7 +59,6 @@ java_ut:
               - rtidb-auto-test/target/surefire-reports/TEST-*.xml
               - rtidb-auto-test/target/failsafe-reports/junitreports/TEST-*.xml
               - rtidb-auto-test/target/failsafe-reports/TEST-*.xml
-=======
 #java_ut:
 #  stage: test
 #  before_script:
@@ -87,7 +85,6 @@ java_ut:
 #              - rtidb-auto-test/target/surefire-reports/TEST-*.xml
 #              - rtidb-auto-test/target/failsafe-reports/junitreports/TEST-*.xml
 #              - rtidb-auto-test/target/failsafe-reports/TEST-*.xml
->>>>>>> 98e81e8a8706b5e595598d297785581966d7befa
 
 fesql_auto_test:
   stage: test
@@ -268,4 +265,3 @@ docker-image:
 #    only:
 #        - tags
 #        - develop
->>>>>>> 98e81e8a8706b5e595598d297785581966d7befa
