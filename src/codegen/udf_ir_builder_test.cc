@@ -299,8 +299,10 @@ TEST_F(UDFIRBuilderTest, min_timestamp_udf_test) {
 TEST_F(UDFIRBuilderTest, log_udf_test) {
     CheckExternalUDF<float, float>("log.float", log(2.0f), 2.0f);
     CheckExternalUDF<double, double>("log.double", log(2.0), 2.0);
-    CheckExternalUDF<int32_t, float>("log2.int32", log2(65536), 65536);
+    CheckExternalUDF<double, int32_t>("log2.int32", log2(65536), 65536);
     CheckExternalUDF<double, double>("log2.double", log2(2.0), 2.0);
+    CheckExternalUDF<double, int32_t>("log10.int32", log10(65536), 65536);
+    CheckExternalUDF<double, double>("log10.double", log10(2.0), 2.0);
 }
 
 }  // namespace codegen
