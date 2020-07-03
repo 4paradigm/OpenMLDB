@@ -4,3 +4,6 @@
 [submodule "sql3"]
 	path = fesql
 	url = ../../ai-native-db/fesql.git
+[submodule "rtidb-auto-test-java"]
+	path = rtidb-auto-test-java
+	url = https://gitlab.4pd.io/FeatureEngineering/rtidb-auto-test-java.git
