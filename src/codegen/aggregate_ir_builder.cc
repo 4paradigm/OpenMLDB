@@ -34,11 +34,11 @@ AggregateIRBuilder::AggregateIRBuilder(const vm::SchemasContext* sc,
                                        ::llvm::Module* module,
                                        node::FrameNode* frame_node, uint32_t id)
     : schema_context_(sc), module_(module), frame_node_(frame_node), id_(id) {
-    available_agg_func_set_.insert("sum");
+    // available_agg_func_set_.insert("sum");
     available_agg_func_set_.insert("avg");
-    available_agg_func_set_.insert("count");
-    available_agg_func_set_.insert("min");
-    available_agg_func_set_.insert("max");
+    // available_agg_func_set_.insert("count");
+    // available_agg_func_set_.insert("min");
+    // available_agg_func_set_.insert("max");
 }
 
 bool AggregateIRBuilder::IsAggFuncName(const std::string& fname) {
@@ -60,11 +60,10 @@ bool AggregateIRBuilder::CollectAggColumn(const fesql::node::ExprNode* expr,
             if (!IsAggFuncName(agg_func_name)) {
                 break;
             }
-            auto args = call->GetArgs();
-            if (args->GetChildNum() != 1) {
+            if (call->GetChildNum() != 1) {
                 break;
             }
-            auto input_expr = args->GetChild(0);
+            auto input_expr = call->GetChild(0);
             if (input_expr->expr_type_ != node::kExprColumnRef) {
                 break;
             }

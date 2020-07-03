@@ -16,6 +16,7 @@
 #include "codegen/window_ir_builder.h"
 #include "gtest/gtest.h"
 #include "udf/udf.h"
+#include "udf/udf_test.h"
 #include "vm/mem_catalog.h"
 namespace fesql {
 namespace bm {
@@ -272,6 +273,15 @@ const int64_t PartitionHandlerIterateTest(
     }
     return cnt;
 }
+
+template <typename V>
+auto CreateSumFunc() {
+    return udf::UDFFunctionBuilder("sum")
+        .args<codec::ListRef<V>>()
+        .template returns<V>()
+        .build();
+}
+
 void SumArrayListCol(benchmark::State* state, MODE mode, int64_t data_size,
                      const std::string& col_name) {
     vm::MemTimeTableHandler window;
@@ -293,44 +303,45 @@ void SumArrayListCol(benchmark::State* state, MODE mode, int64_t data_size,
     ASSERT_TRUE(builder.ResolveFieldInfo(col_name, 0, &info, &type));
     ASSERT_TRUE(codegen::GetLLVMColumnSize(&type, &col_size));
     int8_t* buf = reinterpret_cast<int8_t*>(alloca(col_size));
-    ::fesql::codec::ListRef<> list_ref;
-
-    list_ref.list = buf;
-    int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
     type::Type storage_type;
     ASSERT_TRUE(codegen::DataType2SchemaType(type, &storage_type));
     ASSERT_EQ(0, ::fesql::codec::v1::GetCol(
                      reinterpret_cast<int8_t*>(&list_table), 0, info.idx,
                      info.offset, storage_type, buf));
+
     {
         switch (mode) {
             case BENCHMARK: {
                 switch (type.base_) {
                     case node::kInt32: {
+                        auto sum = CreateSumFunc<int32_t>();
+                        ::fesql::codec::ListRef<int32_t> list_ref({buf});
                         for (auto _ : *state) {
-                            benchmark::DoNotOptimize(
-                                fesql::udf::v1::sum_list<int32_t>(col));
+                            benchmark::DoNotOptimize(sum(list_ref));
                         }
                         break;
                     }
                     case node::kInt64: {
+                        auto sum = CreateSumFunc<int64_t>();
+                        ::fesql::codec::ListRef<int64_t> list_ref({buf});
                         for (auto _ : *state) {
-                            benchmark::DoNotOptimize(
-                                fesql::udf::v1::sum_list<int64_t>(col));
+                            benchmark::DoNotOptimize(sum(list_ref));
                         }
                         break;
                     }
                     case node::kDouble: {
+                        auto sum = CreateSumFunc<double>();
+                        ::fesql::codec::ListRef<double> list_ref({buf});
                         for (auto _ : *state) {
-                            benchmark::DoNotOptimize(
-                                fesql::udf::v1::sum_list<double>(col));
+                            benchmark::DoNotOptimize(sum(list_ref));
                         }
                         break;
                     }
                     case node::kFloat: {
+                        auto sum = CreateSumFunc<float>();
+                        ::fesql::codec::ListRef<float> list_ref({buf});
                         for (auto _ : *state) {
-                            benchmark::DoNotOptimize(
-                                fesql::udf::v1::sum_list<float>(col));
+                            benchmark::DoNotOptimize(sum(list_ref));
                         }
                         break;
                     }
@@ -342,25 +353,33 @@ void SumArrayListCol(benchmark::State* state, MODE mode, int64_t data_size,
             case TEST: {
                 switch (type.base_) {
                     case node::kInt32: {
-                        if (fesql::udf::v1::sum_list<int32_t>(col) <= 0) {
+                        auto sum = CreateSumFunc<int32_t>();
+                        ::fesql::codec::ListRef<int32_t> list_ref({buf});
+                        if (sum(list_ref) <= 0) {
                             FAIL();
                         }
                         break;
                     }
                     case node::kInt64: {
-                        if (fesql::udf::v1::sum_list<int64_t>(col) <= 0) {
+                        auto sum = CreateSumFunc<int64_t>();
+                        ::fesql::codec::ListRef<int64_t> list_ref({buf});
+                        if (sum(list_ref) <= 0) {
                             FAIL();
                         }
                         break;
                     }
                     case node::kDouble: {
-                        if (fesql::udf::v1::sum_list<double>(col) <= 0) {
+                        auto sum = CreateSumFunc<double>();
+                        ::fesql::codec::ListRef<double> list_ref({buf});
+                        if (sum(list_ref) <= 0) {
                             FAIL();
                         }
                         break;
                     }
                     case node::kFloat: {
-                        if (fesql::udf::v1::sum_list<float>(col) <= 0) {
+                        auto sum = CreateSumFunc<float>();
+                        ::fesql::codec::ListRef<float> list_ref({buf});
+                        if (sum(list_ref) <= 0) {
                             FAIL();
                         }
                         break;
@@ -386,10 +405,6 @@ void SumMemTableCol(benchmark::State* state, MODE mode, int64_t data_size,
     ASSERT_TRUE(builder.ResolveFieldInfo(col_name, 0, &info, &type));
     ASSERT_TRUE(codegen::GetLLVMColumnSize(&type, &col_size));
     int8_t* buf = reinterpret_cast<int8_t*>(alloca(col_size));
-    ::fesql::codec::ListRef<> list_ref;
-
-    list_ref.list = buf;
-    int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
     type::Type storage_type;
     ASSERT_TRUE(codegen::DataType2SchemaType(type, &storage_type));
     ASSERT_EQ(0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&window),
@@ -400,30 +415,34 @@ void SumMemTableCol(benchmark::State* state, MODE mode, int64_t data_size,
             case BENCHMARK: {
                 switch (type.base_) {
                     case node::kInt32: {
+                        auto sum = CreateSumFunc<int32_t>();
+                        ::fesql::codec::ListRef<int32_t> list_ref({buf});
                         for (auto _ : *state) {
-                            benchmark::DoNotOptimize(
-                                fesql::udf::v1::sum_list<int32_t>(col));
+                            benchmark::DoNotOptimize(sum(list_ref));
                         }
                         break;
                     }
                     case node::kInt64: {
+                        auto sum = CreateSumFunc<int64_t>();
+                        ::fesql::codec::ListRef<int64_t> list_ref({buf});
                         for (auto _ : *state) {
-                            benchmark::DoNotOptimize(
-                                fesql::udf::v1::sum_list<int64_t>(col));
+                            benchmark::DoNotOptimize(sum(list_ref));
                         }
                         break;
                     }
                     case node::kDouble: {
+                        auto sum = CreateSumFunc<double>();
+                        ::fesql::codec::ListRef<double> list_ref({buf});
                         for (auto _ : *state) {
-                            benchmark::DoNotOptimize(
-                                fesql::udf::v1::sum_list<double>(col));
+                            benchmark::DoNotOptimize(sum(list_ref));
                         }
                         break;
                     }
                     case node::kFloat: {
+                        auto sum = CreateSumFunc<float>();
+                        ::fesql::codec::ListRef<float> list_ref({buf});
                         for (auto _ : *state) {
-                            benchmark::DoNotOptimize(
-                                fesql::udf::v1::sum_list<float>(col));
+                            benchmark::DoNotOptimize(sum(list_ref));
                         }
                         break;
                     }
@@ -435,25 +454,33 @@ void SumMemTableCol(benchmark::State* state, MODE mode, int64_t data_size,
             case TEST: {
                 switch (type.base_) {
                     case node::kInt32: {
-                        if (fesql::udf::v1::sum_list<int32_t>(col) <= 0) {
+                        auto sum = CreateSumFunc<int32_t>();
+                        ::fesql::codec::ListRef<int32_t> list_ref({buf});
+                        if (sum(list_ref) <= 0) {
                             FAIL();
                         }
                         break;
                     }
                     case node::kInt64: {
-                        if (fesql::udf::v1::sum_list<int64_t>(col) <= 0) {
+                        auto sum = CreateSumFunc<int64_t>();
+                        ::fesql::codec::ListRef<int64_t> list_ref({buf});
+                        if (sum(list_ref) <= 0) {
                             FAIL();
                         }
                         break;
                     }
                     case node::kDouble: {
-                        if (fesql::udf::v1::sum_list<double>(col) <= 0) {
+                        auto sum = CreateSumFunc<double>();
+                        ::fesql::codec::ListRef<double> list_ref({buf});
+                        if (sum(list_ref) <= 0) {
                             FAIL();
                         }
                         break;
                     }
                     case node::kFloat: {
-                        if (fesql::udf::v1::sum_list<float>(col) <= 0) {
+                        auto sum = CreateSumFunc<float>();
+                        ::fesql::codec::ListRef<float> list_ref({buf});
+                        if (sum(list_ref) <= 0) {
                             FAIL();
                         }
                         break;

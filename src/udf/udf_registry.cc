@@ -116,7 +116,7 @@ Status LLVMUDFRegistry::ResolveFunction(UDFResolveContext* ctx,
     LOG(INFO) << "Resolve llvm codegen udf \"" << name() << "\" -> " << name()
               << "(" << signature << ")";
 
-    std::vector<node::TypeNode*> arg_types;
+    std::vector<const node::TypeNode*> arg_types;
     for (size_t i = 0; i < ctx->arg_size(); ++i) {
         auto arg_type = ctx->arg(i)->GetOutputType();
         CHECK_TRUE(arg_type != nullptr, i,

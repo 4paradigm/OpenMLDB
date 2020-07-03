@@ -20,6 +20,7 @@ using fesql::codec::StringRef;
 using fesql::codec::Timestamp;
 using fesql::codegen::CodeGenContext;
 using fesql::codegen::NativeValue;
+using fesql::node::TypeNode;
 
 namespace fesql {
 namespace udf {
@@ -71,6 +72,68 @@ struct BuildGetSecondUDF {
         return status;
     }
 };
+
+template <typename T>
+struct SumUDAFDef {
+    void operator()(SimpleUDAFRegistryHelper& helper) {  // NOLINT
+        helper.templates<T, T, T>()
+            .const_init(T(0))
+            .update("add")
+            .merge("add")
+            .output("identity");
+    }
+};
+
+template <typename T>
+struct MinUDAFDef {
+    void operator()(SimpleUDAFRegistryHelper& helper) {  // NOLINT
+        helper.templates<T, T, T>().update("min").merge("min").output(
+            "identity");
+    }
+};
+
+template <typename T>
+struct MaxUDAFDef {
+    void operator()(SimpleUDAFRegistryHelper& helper) {  // NOLINT
+        helper.templates<T, T, T>().update("max").merge("max").output(
+            "identity");
+    }
+};
+
+template <typename T>
+struct CountUDAFDef {                                    // NOLINT
+    void operator()(SimpleUDAFRegistryHelper& helper) {  // NOLINT
+        helper.templates<T, int64_t, int64_t>()
+            .const_init(0)
+            .update([](UDFResolveContext* ctx, const TypeNode* s,
+                       const TypeNode*) { return s; },
+                    [](CodeGenContext* ctx, NativeValue cnt, NativeValue elem,
+                       NativeValue* out) {
+                        auto builder = ctx->GetBuilder();
+                        *out = NativeValue::Create(builder->CreateAdd(
+                            cnt.GetValue(builder), builder->getInt64(1)));
+                        return Status::OK();
+                    })
+            .merge("add")
+            .output("identity");
+    }
+};
+
+/* template <typename T>
+struct AvgUDAFDef {
+    void operator()(SimpleUDAFRegistryHelper& helper) {
+        helper.templates<T, TupleArg<T, int64_t>, T>
+            .update([](CodeGenContext* ctx,
+                       const std::tuple<NativeValue, NativeValue>& state,
+                       NativeValue elem,
+                       std::tuple<NativeValue, NativeValue>* out) {
+                auto builder = ctx->GetBuilder();
+                *out = NativeValue::Create(builder->CreateAdd(
+                    cnt.GetValue(builder), builder->getInt64(1)));
+                return Status::OK();
+            })
+    }
+};*/
 
 void DefaultUDFLibrary::Init() {
     RegisterExternal("year")
@@ -157,6 +220,46 @@ void DefaultUDFLibrary::Init() {
         .args_in<Timestamp, Date, StringRef>();
 
     RegisterAlias("lead", "at");
+
+    RegisterCodeGenUDF("identity")
+        .args<AnyArg>(
+            [](UDFResolveContext* ctx, const node::TypeNode* in) { return in; },
+            [](CodeGenContext* ctx, NativeValue in, NativeValue* out) {
+                *out = in;
+                return Status::OK();
+            });
+
+    RegisterExprUDF("add").args<AnyArg, AnyArg>(
+        [](UDFResolveContext* ctx, ExprNode* x, ExprNode* y) {
+            auto res =
+                ctx->node_manager()->MakeBinaryExprNode(x, y, node::kFnOpAdd);
+            res->SetOutputType(x->GetOutputType());
+            return res;
+        });
+
+    RegisterUDAFTemplate<SumUDAFDef>("sum")
+        .args_in<int16_t, int32_t, int64_t, float, double, Timestamp, Date>();
+
+    RegisterExternalTemplate<v1::Minimum>("min")
+        .args_in<int16_t, int32_t, int64_t, float, double>();
+    RegisterExternalTemplate<v1::StructMinimum>("min")
+        .args_in<Timestamp, Date, StringRef>();
+
+    RegisterUDAFTemplate<MinUDAFDef>("min")
+        .args_in<int16_t, int32_t, int64_t, float, double, Timestamp, Date,
+                 StringRef>();
+
+    RegisterExternalTemplate<v1::Maximum>("max")
+        .args_in<int16_t, int32_t, int64_t, float, double>();
+    RegisterExternalTemplate<v1::StructMaximum>("max")
+        .args_in<Timestamp, Date, StringRef>();
+
+    RegisterUDAFTemplate<MaxUDAFDef>("max")
+        .args_in<int16_t, int32_t, int64_t, float, double, Timestamp, Date,
+                 StringRef>();
+
+    RegisterUDAFTemplate<CountUDAFDef>("count")
+        .args_in<int16_t, int32_t, int64_t, float, double, Timestamp, Date>();
 }
 
 }  // namespace udf

@@ -304,6 +304,9 @@ void RequestModeCheck(SQLCase& sql_case) {  // NOLINT
     }
 
     bool ok = engine.Get(sql_str, sql_case.db(), session, get_status);
+    if (!ok) {
+        LOG(WARNING) << get_status.msg;
+    }
     ASSERT_TRUE(ok);
 
     const std::string& request_name = session.GetRequestName();

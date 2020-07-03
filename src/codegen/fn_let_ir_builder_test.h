@@ -48,6 +48,7 @@
 #include "udf/udf.h"
 #include "vm/jit.h"
 #include "vm/sql_compiler.h"
+#include "vm/transform.h"
 
 using namespace llvm;       // NOLINT
 using namespace llvm::orc;  // NOLINT
@@ -127,6 +128,10 @@ void CheckFnLetBuilder(::fesql::node::NodeManager* manager,
     ret = planner.CreatePlanTree(list, plan, status);
     ASSERT_EQ(0, ret);
     fesql::node::ProjectListNode* pp_node_ptr = GetPlanNodeList(plan);
+
+    bool is_multi_row = pp_node_ptr->GetW() != nullptr;
+    ASSERT_TRUE(vm::ResolveProjects(name_schemas, pp_node_ptr->GetProjects(),
+                                    !is_multi_row, manager, &lib, status));
 
     RowFnLetIRBuilder ir_builder(name_schemas,
                                  nullptr == pp_node_ptr->GetW()

@@ -165,7 +165,7 @@ TEST_F(SqlNodeTest, MakeUDAFDefNodeTest) {
     auto f3 = dynamic_cast<ExternalFnDefNode *>(
         node_manager_->MakeUnresolvedFnDefNode("f3"));
     auto *udaf = dynamic_cast<UDAFDefNode *>(
-        node_manager_->MakeUDAFDefNode(zero, f1, f2, f3));
+        node_manager_->MakeUDAFDefNode("udaf", nullptr, zero, f1, f2, f3));
     ASSERT_EQ(kUDAFDef, udaf->GetType());
     ASSERT_EQ(true, udaf->init_expr()->Equals(zero));
     ASSERT_EQ(true, udaf->update_func()->Equals(f1));

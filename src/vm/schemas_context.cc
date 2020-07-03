@@ -114,10 +114,8 @@ bool SchemasContext::ExprRefResolved(const node::ExprNode* expr,
         case node::kExprCall: {
             std::vector<node::ExprNode*> expr_list;
             auto call_expr = dynamic_cast<const node::CallExprNode*>(expr);
-            if (!node::ExprListNullOrEmpty(call_expr->GetArgs())) {
-                for (auto expr : call_expr->GetArgs()->children_) {
-                    expr_list.push_back(expr);
-                }
+            for (auto expr : call_expr->children_) {
+                expr_list.push_back(expr);
             }
             if (nullptr != call_expr->GetOver()) {
                 if (nullptr != call_expr->GetOver()->GetOrders()) {

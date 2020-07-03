@@ -27,6 +27,7 @@
 
 namespace fesql {
 namespace vm {
+
 class LogicalOp {
  public:
     explicit LogicalOp(const node::PlanNode* node) : node_(node) {}
@@ -455,112 +456,33 @@ inline bool SchemaType2DataType(const ::fesql::type::Type type,
     return true;
 }
 
-class FnDefResolver {
+// TODO(xxx): make it common step before all codegen
+bool ResolveProjects(const SchemaSourceList& schema_list,
+                     const node::PlanNodeList& projects, const bool row_project,
+                     node::NodeManager* node_manager, udf::UDFLibrary* library,
+                     base::Status& status);  // NOLINT
+
+class ResolveFnAndAttrs {
  public:
-    FnDefResolver(udf::UDFLibrary* library, node::NodeManager* nm)
-        : library_(library), nm_(nm) {}
-
-    bool Visit(node::ExprNode* expr, node::ExprNode** output) {
-        for (size_t i = 0; i < expr->GetChildNum(); ++i) {
-            node::ExprNode* new_child = nullptr;
-            bool updated = Visit(expr->GetChild(i), &new_child);
-            if (updated && new_child != nullptr) {
-                expr->SetChild(i, new_child);
-            }
-        }
-        *output = expr;  // default
-        switch (expr->GetExprType()) {
-            case node::kExprCall: {
-                auto call = dynamic_cast<node::CallExprNode*>(expr);
-                auto fn = call->GetFnDef();
-                if (fn->GetType() != node::kExternalFnDef) {
-                    return false;
-                }
-                auto external_fn =
-                    dynamic_cast<const node::ExternalFnDefNode*>(fn);
-                if (external_fn->IsResolved()) {
-                    return false;
-                }
-                node::ExprNode* result = nullptr;
-                auto status = library_->Transform(
-                    external_fn->function_name(), call->GetArgs(),
-                    call->GetOver(), nm_, &result);
-                if (status.isOK() && result != nullptr) {
-                    *output = result;
-                    return true;
-                } else {
-                    LOG(WARNING)
-                        << "Resolve function '" << external_fn->function_name()
-                        << "' failed: " << status.msg;
-                    return false;  // fallback to legacy fn gen
-                }
-            }
-            default:
-                return false;
-        }
-    }
-
- private:
-    udf::UDFLibrary* library_;
-    node::NodeManager* nm_;
-};
-
-class ExpressionTypeAnalyzer {
- public:
-    ExpressionTypeAnalyzer(bool is_in_window,
-                           const vm::SchemasContext* schemas_context,
-                           node::NodeManager* nm)
-        : is_in_window_(is_in_window),
+    ResolveFnAndAttrs(bool is_multi_row,
+                      const vm::SchemasContext* schemas_context,
+                      node::NodeManager* nm, udf::UDFLibrary* library)
+        : is_multi_row_(is_multi_row),
           schemas_context_(schemas_context),
-          nm_(nm) {}
+          nm_(nm),
+          library_(library),
+          analysis_context_(nm, schemas_context, is_multi_row) {}
 
-    bool Visit(node::ExprNode* expr) {
-        for (size_t i = 0; i < expr->GetChildNum(); ++i) {
-            if (!Visit(expr->GetChild(i))) return false;
-        }
-        switch (expr->GetExprType()) {
-            case node::kExprColumnRef:
-                return VisitColumnRef(dynamic_cast<node::ColumnRefNode*>(expr));
-            default:
-                return true;
-        }
-    }
-
- protected:
-    bool VisitColumnRef(node::ColumnRefNode* column) {
-        const vm::RowSchemaInfo* schema_info = nullptr;
-        if (!schemas_context_->ColumnRefResolved(column->GetRelationName(),
-                                                 column->GetColumnName(),
-                                                 &schema_info)) {
-            LOG(WARNING) << "Fail to resolve column "
-                         << column->GetRelationName() << "."
-                         << column->GetColumnName();
-            return false;
-        }
-        codec::RowDecoder decoder(*schema_info->schema_);
-        codec::ColInfo col_info;
-        if (!decoder.ResolveColumn(column->GetColumnName(), &col_info)) {
-            LOG(WARNING) << "Fail to resolve column "
-                         << column->GetRelationName() << "."
-                         << column->GetColumnName();
-            return false;
-        }
-        node::DataType dtype;
-        if (!SchemaType2DataType(col_info.type, &dtype)) {
-            return false;
-        }
-        if (is_in_window_) {
-            column->SetOutputType(nm_->MakeTypeNode(node::kList, dtype));
-        } else {
-            column->SetOutputType(nm_->MakeTypeNode(dtype));
-        }
-        return true;
-    }
+    base::Status Visit(node::ExprNode* expr, node::ExprNode** output);
 
  private:
-    bool is_in_window_;
+    bool is_multi_row_;
     const vm::SchemasContext* schemas_context_;
     node::NodeManager* nm_;
+    udf::UDFLibrary* library_;
+    node::ExprAnalysisContext analysis_context_;
+
+    std::unordered_map<node::ExprNode*, node::ExprNode*> cache_;
 };
 
 bool TransformLogicalTreeToLogicalGraph(const ::fesql::node::PlanNode* node,

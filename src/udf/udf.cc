@@ -18,7 +18,7 @@
 #include "boost/date_time.hpp"
 #include "codec/list_iterator_codec.h"
 #include "codec/type_codec.h"
-#include "codegen/udf_ir_builder.h"
+#include "codegen/fn_ir_builder.h"
 #include "node/node_manager.h"
 #include "node/sql_node.h"
 
@@ -95,86 +95,6 @@ int32_t weekofyear(codec::Date *date) {
     return d.week_number();
 }
 
-template <class V>
-V sum_list(int8_t *input) {
-    V result = V();
-    if (nullptr == input) {
-        return result;
-    }
-    ::fesql::codec::ListRef<> *list_ref = (::fesql::codec::ListRef<> *)(input);
-    ::fesql::codec::ListV<V> *col =
-        (::fesql::codec::ListV<V> *)(list_ref->list);
-    auto iter = col->GetIterator();
-    iter->SeekToFirst();
-    while (iter->Valid()) {
-        result += iter->GetValue();
-        iter->Next();
-    }
-    return result;
-}
-
-template <class V>
-bool sum_struct_list(int8_t *input, V *v) {
-    if (nullptr == input) {
-        return false;
-    }
-    *v = sum_list<V>(input);
-    return true;
-}
-
-template <class V>
-double avg_list(int8_t *input) {
-    V result = 0;
-    if (nullptr == input) {
-        return true;
-    }
-    ::fesql::codec::ListRef<> *list_ref = (::fesql::codec::ListRef<> *)(input);
-    ListV<V> *col = (ListV<V> *)(list_ref->list);
-    auto iter = col->GetIterator();
-    int32_t cnt = 0;
-    iter->SeekToFirst();
-    while (iter->Valid()) {
-        result += iter->GetValue();
-        iter->Next();
-        cnt++;
-    }
-    return static_cast<double>(result) / cnt;
-}
-
-template <class V>
-bool avg_struct_list(int8_t *input, V *v) {
-    if (nullptr == input) {
-        return false;
-    }
-    V result = V();
-    ::fesql::codec::ListRef<> *list_ref = (::fesql::codec::ListRef<> *)(input);
-    ::fesql::codec::ListV<V> *col =
-        (::fesql::codec::ListV<V> *)(list_ref->list);
-    auto iter = col->GetIterator();
-    iter->SeekToFirst();
-    int32_t cnt = 0;
-    while (iter->Valid()) {
-        result += iter->GetValue();
-        iter->Next();
-        cnt++;
-    }
-    if (cnt == 0) {
-        return false;
-    }
-    *v = result / cnt;
-    return true;
-}
-template <class V>
-int64_t count_list(int8_t *input) {
-    if (nullptr == input) {
-        return 0L;
-    }
-
-    ::fesql::codec::ListRef<> *list_ref = (::fesql::codec::ListRef<> *)(input);
-    ListV<V> *col = (ListV<V> *)(list_ref->list);
-    return int64_t(col->GetCount());
-}
-
 template <typename V>
 int64_t distinct_count(::fesql::codec::ListRef<> *list_ref) {
     if (nullptr == list_ref) {
@@ -194,71 +114,6 @@ int64_t distinct_count(::fesql::codec::ListRef<> *list_ref) {
         iter->Next();
     }
     return cnt;
-}
-
-template <class V>
-V max_list(int8_t *input) {
-    V result = V();
-    if (nullptr == input) {
-        return result;
-    }
-    ::fesql::codec::ListRef<> *list_ref = (::fesql::codec::ListRef<> *)(input);
-    ListV<V> *col = (ListV<V> *)(list_ref->list);
-    auto iter = col->GetIterator();
-    iter->SeekToFirst();
-    if (iter->Valid()) {
-        result = iter->GetValue();
-        iter->Next();
-    }
-    while (iter->Valid()) {
-        V v = iter->GetValue();
-        iter->Next();
-        if (v > result) {
-            result = v;
-        }
-    }
-    return result;
-}
-template <class V>
-bool max_struct_list(int8_t *input, V *v) {
-    if (nullptr == input) {
-        return false;
-    }
-    *v = max_list<V>(input);
-    return true;
-}
-
-template <class V>
-V min_list(int8_t *input) {
-    V result = V();
-    if (nullptr == input) {
-        return result;
-    }
-    ::fesql::codec::ListRef<> *list_ref = (::fesql::codec::ListRef<> *)(input);
-    ListV<V> *col = (ListV<V> *)(list_ref->list);
-    auto iter = col->GetIterator();
-
-    if (iter->Valid()) {
-        result = iter->GetValue();
-        iter->Next();
-    }
-    iter->SeekToFirst();
-    while (iter->Valid()) {
-        V v = iter->GetValue();
-        iter->Next();
-        if (v < result) {
-            result = v;
-        }
-    }
-    return result;
-}
-template <class V>
-bool min_struct_list(int8_t *input, V *v) {
-    if (nullptr == input) {
-        return false;
-    }
-    *v = min_list<V>(input);
-    return true;
 }
 
 template <class V>
@@ -319,15 +174,6 @@ void delete_iterator(int8_t *input) {
     }
 }
 
-template <class V>
-V minimum(V l, V r) {
-    return l < r ? l : r;
-}
-template <class V>
-V maximum(V l, V r) {
-    return l > r ? l : r;
-}
-
 }  // namespace v1
 
 std::map<std::string, void *> NATIVE_UDF_PTRS;
@@ -342,27 +188,6 @@ void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
          iter++) {
         AddSymbol(jd, mi, iter->first, iter->second);
     }
-    AddSymbol(jd, mi, "max_int16",
-              reinterpret_cast<void *>(&v1::maximum<int16_t>));
-    AddSymbol(jd, mi, "max_int32",
-              reinterpret_cast<void *>(&v1::maximum<int32_t>));
-    AddSymbol(jd, mi, "max_int64",
-              reinterpret_cast<void *>(&v1::maximum<int64_t>));
-    AddSymbol(jd, mi, "max_float",
-              reinterpret_cast<void *>(&v1::maximum<float>));
-    AddSymbol(jd, mi, "max_double",
-              reinterpret_cast<void *>(&v1::maximum<double>));
-
-    AddSymbol(jd, mi, "min_int16",
-              reinterpret_cast<void *>(&v1::minimum<int16_t>));
-    AddSymbol(jd, mi, "min_int32",
-              reinterpret_cast<void *>(&v1::minimum<int32_t>));
-    AddSymbol(jd, mi, "min_int64",
-              reinterpret_cast<void *>(&v1::minimum<int64_t>));
-    AddSymbol(jd, mi, "min_float",
-              reinterpret_cast<void *>(&v1::minimum<float>));
-    AddSymbol(jd, mi, "min_double",
-              reinterpret_cast<void *>(&v1::minimum<double>));
 }
 bool AddSymbol(::llvm::orc::JITDylib &jd,           // NOLINT
                ::llvm::orc::MangleAndInterner &mi,  // NOLINT
@@ -373,8 +198,7 @@ bool AddSymbol(::llvm::orc::JITDylib &jd,           // NOLINT
 bool RegisterMethod(::llvm::Module *module, const std::string &fn_name,
                     fesql::node::TypeNode *ret,
                     std::initializer_list<fesql::node::TypeNode *> args,
-                    void *fn) {
-    codegen::UDFIRBuilder udf_ir_builder(&NATIVE_UDF_PTRS);
+                    void *fn_ptr) {
     node::NodeManager nm;
     base::Status status;
     auto fn_args = nm.MakeFnListNode();
@@ -384,10 +208,24 @@ bool RegisterMethod(::llvm::Module *module, const std::string &fn_name,
 
     auto header = dynamic_cast<node::FnNodeFnHeander *>(
         nm.MakeFnHeaderNode(fn_name, fn_args, ret));
-    return udf_ir_builder.BuildNativeCUDF(module, header, fn, status);
+
+    codegen::FnIRBuilder fn_ir_builder(module);
+    ::llvm::Function *fn;
+    if (!fn_ir_builder.CreateFunction(header, &fn, status)) {
+        LOG(WARNING) << "Fail to register native udf: "
+                     << header->GeIRFunctionName();
+        return false;
+    }
+
+    if (NATIVE_UDF_PTRS.find(fn->getName().str()) != NATIVE_UDF_PTRS.cend()) {
+        return false;
+    }
+    NATIVE_UDF_PTRS.insert(std::make_pair(fn->getName().str(), fn_ptr));
+    DLOG(INFO) << "register native udf: " << fn->getName().str();
+    return true;
 }
+
 void RegisterNativeUDFToModule(::llvm::Module *module) {
-    codegen::UDFIRBuilder udf_ir_builder(&NATIVE_UDF_PTRS);
     node::NodeManager nm;
     base::Status status;
 
@@ -422,77 +260,6 @@ void RegisterNativeUDFToModule(::llvm::Module *module) {
     // inc(int32):int32
     RegisterMethod(module, "inc", i32_ty, {i32_ty},
                    reinterpret_cast<void *>(v1::inc<int32_t>));
-
-    RegisterMethod(module, "sum", i16_ty, {list_i16_ty},
-                   reinterpret_cast<void *>(v1::sum_list<int16_t>));
-    RegisterMethod(module, "sum", i32_ty, {list_i32_ty},
-                   reinterpret_cast<void *>(v1::sum_list<int32_t>));
-    RegisterMethod(module, "sum", i64_ty, {list_i64_ty},
-                   reinterpret_cast<void *>(v1::sum_list<int64_t>));
-    RegisterMethod(module, "sum", float_ty, {list_float_ty},
-                   reinterpret_cast<void *>(v1::sum_list<float>));
-    RegisterMethod(module, "sum", double_ty, {list_double_ty},
-                   reinterpret_cast<void *>(v1::sum_list<double>));
-    RegisterMethod(
-        module, "sum", bool_ty, {list_time_ty, time_ty},
-        reinterpret_cast<void *>(v1::sum_struct_list<codec::Timestamp>));
-
-    RegisterMethod(module, "max", i16_ty, {list_i16_ty},
-                   reinterpret_cast<void *>(v1::max_list<int16_t>));
-    RegisterMethod(module, "max", i32_ty, {list_i32_ty},
-                   reinterpret_cast<void *>(v1::max_list<int32_t>));
-    RegisterMethod(module, "max", i64_ty, {list_i64_ty},
-                   reinterpret_cast<void *>(v1::max_list<int64_t>));
-    RegisterMethod(module, "max", float_ty, {list_float_ty},
-                   reinterpret_cast<void *>(v1::max_list<float>));
-    RegisterMethod(module, "max", double_ty, {list_double_ty},
-                   reinterpret_cast<void *>(v1::max_list<double>));
-    RegisterMethod(
-        module, "max", bool_ty, {list_time_ty, time_ty},
-        reinterpret_cast<void *>(v1::max_struct_list<codec::Timestamp>));
-
-    RegisterMethod(module, "max", bool_ty, {list_date_ty, date_ty},
-                   reinterpret_cast<void *>(v1::max_struct_list<codec::Date>));
-    RegisterMethod(
-        module, "max", bool_ty, {list_string_ty, string_ty},
-        reinterpret_cast<void *>(v1::max_struct_list<codec::StringRef>));
-
-    RegisterMethod(module, "min", i16_ty, {list_i16_ty},
-                   reinterpret_cast<void *>(v1::min_list<int16_t>));
-    RegisterMethod(module, "min", i32_ty, {list_i32_ty},
-                   reinterpret_cast<void *>(v1::min_list<int32_t>));
-    RegisterMethod(module, "min", i64_ty, {list_i64_ty},
-                   reinterpret_cast<void *>(v1::min_list<int64_t>));
-    RegisterMethod(module, "min", float_ty, {list_float_ty},
-                   reinterpret_cast<void *>(v1::min_list<float>));
-    RegisterMethod(module, "min", double_ty, {list_double_ty},
-                   reinterpret_cast<void *>(v1::min_list<double>));
-    RegisterMethod(
-        module, "min", bool_ty, {list_time_ty, time_ty},
-        reinterpret_cast<void *>(v1::min_struct_list<codec::Timestamp>));
-
-    RegisterMethod(module, "min", bool_ty, {list_date_ty, date_ty},
-                   reinterpret_cast<void *>(v1::min_struct_list<codec::Date>));
-    RegisterMethod(
-        module, "min", bool_ty, {list_string_ty, string_ty},
-        reinterpret_cast<void *>(v1::min_struct_list<codec::StringRef>));
-
-    RegisterMethod(module, "count", i64_ty, {list_i16_ty},
-                   reinterpret_cast<void *>(v1::count_list<int16_t>));
-    RegisterMethod(module, "count", i64_ty, {list_i32_ty},
-                   reinterpret_cast<void *>(v1::count_list<int32_t>));
-    RegisterMethod(module, "count", i64_ty, {list_i64_ty},
-                   reinterpret_cast<void *>(v1::count_list<int64_t>));
-    RegisterMethod(module, "count", i64_ty, {list_float_ty},
-                   reinterpret_cast<void *>(v1::count_list<float>));
-    RegisterMethod(module, "count", i64_ty, {list_double_ty},
-                   reinterpret_cast<void *>(v1::count_list<double>));
-    RegisterMethod(module, "count", i64_ty, {list_time_ty},
-                   reinterpret_cast<void *>(v1::count_list<codec::Timestamp>));
-    RegisterMethod(module, "count", i64_ty, {list_date_ty},
-                   reinterpret_cast<void *>(v1::count_list<codec::Date>));
-    RegisterMethod(module, "count", i64_ty, {list_string_ty},
-                   reinterpret_cast<void *>(v1::count_list<codec::StringRef>));
 
     {
         const std::string fn_name = "distinct_count";

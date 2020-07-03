@@ -31,6 +31,7 @@
 #include "parser/parser.h"
 #include "udf/default_udf_library.h"
 #include "udf/udf.h"
+#include "udf/udf_test.h"
 #include "vm/sql_compiler.h"
 
 using namespace llvm;       // NOLINT (build/namespaces)
@@ -46,6 +47,7 @@ class UDFIRBuilderTest : public ::testing::Test {
     UDFIRBuilderTest() {}
     ~UDFIRBuilderTest() {}
 };
+
 template <class T, class... Args>
 void CheckNativeUDF(const std::string udf_name, T exp, Args... args) {
     base::Status status;

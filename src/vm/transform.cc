@@ -777,6 +777,37 @@ bool BatchModeTransformer::AddPass(PhysicalPlanPassType type) {
     passes.push_back(type);
     return true;
 }
+
+bool ResolveProjects(const SchemaSourceList& schema_list,
+                     const node::PlanNodeList& projects, const bool row_project,
+                     node::NodeManager* node_manager, udf::UDFLibrary* library,
+                     base::Status& status) {  // NOLINT
+    // type inference and udf function resolve
+    vm::SchemasContext schema_context(schema_list);
+    ResolveFnAndAttrs resolve_pass(!row_project, &schema_context, node_manager,
+                                   library);
+    auto expr_group = node_manager->MakeExprList();
+    for (auto pnode : projects) {
+        auto pp_node = dynamic_cast<const node::ProjectNode*>(pnode);
+        auto expr = pp_node->GetExpression();
+        expr_group->AddChild(expr);
+    }
+    node::ExprNode* new_expr_group = nullptr;
+    auto pass_status = resolve_pass.Visit(expr_group, &new_expr_group);
+    if (!pass_status.isOK()) {
+        LOG(WARNING) << "Expression type inference failed, "
+                     << "all udfs fallback to legacy: " << pass_status.msg;
+        return true;
+    }
+    size_t expr_idx = 0;
+    for (auto pnode : projects) {
+        auto pp_node = dynamic_cast<node::ProjectNode*>(pnode);
+        pp_node->SetExpression(new_expr_group->GetChild(expr_idx));
+        expr_idx += 1;
+    }
+    return true;
+}
+
 bool BatchModeTransformer::GenProjects(
     const SchemaSourceList& input_name_schema_list,
     const node::PlanNodeList& projects, const bool row_project,
@@ -786,30 +817,10 @@ bool BatchModeTransformer::GenProjects(
     ColumnSourceList* output_column_sources,
     base::Status& status) {  // NOLINT
 
-    // type inference
-    vm::SchemasContext schema_context(input_name_schema_list);
-    ExpressionTypeAnalyzer type_analyzer(frame != nullptr, &schema_context,
-                                         node_manager_);
-    auto expr_group = node_manager_->MakeExprList();
-    for (auto pnode : projects) {
-        auto pp_node = dynamic_cast<const node::ProjectNode*>(pnode);
-        auto expr = pp_node->GetExpression();
-        expr_group->AddChild(expr);
-    }
-    if (!type_analyzer.Visit(expr_group)) {
-        LOG(WARNING) << "Expression type inference failed";
+    // type inference and udf function resolve
+    if (!ResolveProjects(input_name_schema_list, projects, row_project,
+                         node_manager_, library_, status)) {
         return false;
-    }
-
-    // function resolve
-    node::ExprNode* new_expr_group = nullptr;
-    FnDefResolver fn_resolver(library_, node_manager_);
-    fn_resolver.Visit(expr_group, &new_expr_group);
-    size_t expr_idx = 0;
-    for (auto pnode : projects) {
-        auto pp_node = dynamic_cast<node::ProjectNode*>(pnode);
-        pp_node->SetExpression(new_expr_group->GetChild(expr_idx));
-        expr_idx += 1;
     }
 
     // TODO(wangtaize) use ops end op output schema
@@ -2540,5 +2551,64 @@ bool SimpleProjectOptimized::Transform(PhysicalOpNode* in,
         }
     }
 }
+
+base::Status ResolveFnAndAttrs::Visit(node::ExprNode* expr,
+                                      node::ExprNode** output) {
+    auto iter = cache_.find(expr);
+    if (iter != cache_.end()) {
+        *output = iter->second;
+        return base::Status::OK();
+    }
+    for (size_t i = 0; i < expr->GetChildNum(); ++i) {
+        node::ExprNode* new_child = nullptr;
+        CHECK_STATUS(Visit(expr->GetChild(i), &new_child));
+        if (new_child != nullptr && new_child != expr->GetChild(i)) {
+            expr->SetChild(i, new_child);
+        }
+    }
+    *output = expr;  // default
+    switch (expr->GetExprType()) {
+        case node::kExprCall: {
+            auto call = dynamic_cast<node::CallExprNode*>(expr);
+            auto external_fn =
+                dynamic_cast<const node::ExternalFnDefNode*>(call->GetFnDef());
+            if (external_fn == nullptr || external_fn->IsResolved()) {
+                break;
+            }
+            node::ExprNode* result = nullptr;
+            node::ExprListNode arg_list;
+            for (size_t i = 0; i < call->GetChildNum(); ++i) {
+                arg_list.AddChild(call->GetChild(i));
+            }
+
+            auto status = library_->Transform(external_fn->function_name(),
+                                              &arg_list, call->GetOver(),
+                                              &analysis_context_, &result);
+            if (status.isOK() && result != nullptr) {
+                *output = result;
+            } else {
+                // fallback to legacy fn gen with warning
+                LOG(WARNING)
+                    << "Resolve function '" << external_fn->function_name()
+                    << "' failed, fallback to legacy: " << status.msg;
+            }
+        }
+        default:
+            break;
+    }
+
+    // Infer attr for non-group expr
+    if (expr->GetExprType() != node::kExprList &&
+        expr->GetExprType() != node::kExprAll) {
+        auto status = (*output)->InferAttr(&analysis_context_);
+        if (!status.isOK()) {
+            LOG(WARNING) << "Fail to infer " << (*output)->GetExprString()
+                         << ": " << status.msg;
+        }
+    }
+    cache_.insert(iter, std::make_pair(expr, *output));
+    return base::Status::OK();
+}
+
 }  // namespace vm
 }  // namespace fesql
