@@ -51,6 +51,10 @@ class ArithmeticIRBuilder {
                         ::llvm::Value** casted_right,
                         ::fesql::base::Status& status);  // NOLINT
 
+    bool InferBaseIntegerTypes(::llvm::Value* left, ::llvm::Value* right,
+                               ::llvm::Value** casted_left,
+                               ::llvm::Value** casted_right,
+                               ::fesql::base::Status& status);  // NOLINT
     bool InferBaseDoubleTypes(::llvm::Value* left, ::llvm::Value* right,
                               ::llvm::Value** casted_left,
                               ::llvm::Value** casted_right,
