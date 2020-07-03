@@ -180,7 +180,6 @@ void UDFLibrary::InitJITSymbols(llvm::orc::LLJIT* jit_ptr) {
                     def_node->function_ptr() != nullptr &&
                     symbol_names.find(def_node->function_name()) ==
                         symbol_names.end()) {
-                    LOG(INFO) << "AddSymbol: " << def_node->function_name();
                     fesql::vm::FeSQLJIT::AddSymbol(
                         jit_ptr->getMainJITDylib(), mi,
                         def_node->function_name(), def_node->function_ptr());
