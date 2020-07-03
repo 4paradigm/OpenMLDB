@@ -16,9 +16,9 @@
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<scala.version>2.11.8</scala.version>
-		<scala.binary.version>2.11</scala.binary.version>
-		<spark.version>2.3.0</spark.version>
+		<scala.version>2.12.8</scala.version>
+		<scala.binary.version>2.12</scala.binary.version>
+		<spark.version>3.0.0</spark.version>
 		<scalaCompatVersion>${scala.binary.version}</scalaCompatVersion>
 		<scalatest.skip>false</scalatest.skip>
 	</properties>
@@ -218,6 +218,7 @@
 									<shadedArtifactAttached>true</shadedArtifactAttached>
 									<shadedClassifierName>with-dependencies</shadedClassifierName>
 									<minimizeJar>true</minimizeJar>
+
 									<!-- Exclude the jars which are in Spark libraries -->
 									<artifactSet>
 										<excludes>
@@ -326,13 +327,13 @@
 			</build>
 		</profile>
 
-		<!-- Build with Spark 3.0.0 -->
+		<!-- Build with Spark 2.3.0 -->
 		<profile>
-			<id>spark3.0.0</id>
+			<id>spark2.3.0</id>
 			<properties>
-				<spark.version>3.0.0</spark.version>
-				<scala.version>2.12.8</scala.version>
-				<scala.binary.version>2.12</scala.binary.version>
+				<spark.version>2.3.0</spark.version>
+				<scala.version>2.11.8</scala.version>
+				<scala.binary.version>2.11</scala.binary.version>
 			</properties>
 			<activation>
 				<activeByDefault>false</activeByDefault>
