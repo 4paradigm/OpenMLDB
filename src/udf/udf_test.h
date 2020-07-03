@@ -211,7 +211,7 @@ UDFFunctionBuilderWithFullInfo<Ret, Args...>::build() {
                           ->getElementType();
     }
 
-    std::string fn_name = state->name;
+    std::string fn_name = "__udf_wrapper_" + state->name;
     for (auto type_node : arg_types) {
         fn_name.append(".").append(type_node->GetName());
     }
@@ -233,8 +233,8 @@ UDFFunctionBuilderWithFullInfo<Ret, Args...>::build() {
             auto alloca = builder.CreateAlloca(raw_arg->getType());
             builder.CreateStore(raw_arg, alloca);
             raw_arg = alloca;
-            sv.AddVar(arg_name, codegen::NativeValue::Create(raw_arg));
         }
+        sv.AddVar(arg_name, codegen::NativeValue::Create(raw_arg));
     }
 
     vm::SchemaSourceList empty_schema;

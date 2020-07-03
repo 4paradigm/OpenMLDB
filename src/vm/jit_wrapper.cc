@@ -20,6 +20,7 @@
 #include "llvm/Bitcode/BitcodeReader.h"
 
 #include "glog/logging.h"
+#include "udf/default_udf_library.h"
 #include "udf/udf.h"
 #include "vm/jit.h"
 #include "vm/jit_wrapper.h"
@@ -54,6 +55,8 @@ bool FeSQLJITWrapper::AddModule(std::unique_ptr<llvm::Module> module,
     }
     InitCodecSymbol(jit_.get());
     udf::InitUDFSymbol(jit_.get());
+    udf::DefaultUDFLibrary library;
+    library.InitJITSymbols(jit_.get());
     return true;
 }
 

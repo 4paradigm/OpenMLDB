@@ -200,6 +200,9 @@ void DefaultUDFLibrary::Init() {
         .args<Timestamp>(static_cast<int32_t (*)(Timestamp*)>(v1::weekofyear))
         .args<Date>(static_cast<int32_t (*)(Date*)>(v1::weekofyear));
 
+    RegisterExternalTemplate<v1::IncOne>("inc")
+        .args_in<int16_t, int32_t, int64_t, float, double>();
+
     RegisterCodeGenUDFTemplate<BuildGetHourUDF>("hour")
         .args_in<int64_t, Timestamp>()
         .returns<int32_t>();

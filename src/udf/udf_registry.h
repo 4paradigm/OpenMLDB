@@ -907,7 +907,7 @@ class ExternalTemplateFuncRegistryHelper {
         ExternalFuncRegistryHelper& helper,      // NOLINT
         FTemplateRet (FTemplate<T>::*fn)(A1)) {  // NOLINT
         helper.args<LiteralTag<A1>>(FTemplateInst<T, A1>::fcompute)
-            .template returns<LiteralTag<A1>>;
+            .template returns<LiteralTag<FTemplateRet>>();
         return helper.cur_def();
     }
 

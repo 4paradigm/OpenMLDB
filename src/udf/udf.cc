@@ -36,10 +36,7 @@ using fesql::codec::StringRef;
 // TODO(chenjing): 时区统一配置
 const int32_t TZ = 8;
 const time_t TZ_OFFSET = TZ * 3600000;
-template <class V>
-inline V inc(V i) {
-    return i + 1;
-}
+
 int32_t dayofmonth(int64_t ts) {
     time_t time = (ts + TZ_OFFSET) / 1000;
     struct tm t;
@@ -256,10 +253,6 @@ void RegisterNativeUDFToModule(::llvm::Module *module) {
     auto iter_time_ty = nm.MakeTypeNode(node::kIterator, time_ty);
     auto iter_date_ty = nm.MakeTypeNode(node::kIterator, date_ty);
     auto iter_string_ty = nm.MakeTypeNode(node::kIterator, string_ty);
-
-    // inc(int32):int32
-    RegisterMethod(module, "inc", i32_ty, {i32_ty},
-                   reinterpret_cast<void *>(v1::inc<int32_t>));
 
     {
         const std::string fn_name = "distinct_count";

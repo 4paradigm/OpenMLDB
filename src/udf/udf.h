@@ -74,7 +74,9 @@ template <class V>
 bool next_struct_iterator(int8_t *input, V *v);
 
 template <class V>
-inline V inc(V i);
+struct IncOne {
+    V operator()(V i) { return i + 1; }
+};
 
 int32_t month(int64_t ts);
 int32_t month(fesql::codec::Timestamp *ts);

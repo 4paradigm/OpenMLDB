@@ -68,206 +68,208 @@ void CheckNativeUDF(const std::string udf_name, T exp, Args... args) {
     T (*udf)(Args...) = (T(*)(Args...))fn.getAddress();
     ASSERT_EQ(exp, udf(args...));
 }
+
+template <class T, class... Args>
+void CheckUDF(const std::string &name, T expect, Args... args) {
+    auto function = udf::UDFFunctionBuilder(name)
+                        .args<Args...>()
+                        .template returns<T>()
+                        .build();
+    auto result = function(args...);
+    ASSERT_EQ(expect, result);
+}
+
 TEST_F(UDFIRBuilderTest, dayofmonth_date_udf_test) {
     codec::Date date(2020, 05, 22);
-    CheckNativeUDF<int32_t, codec::Date *>("dayofmonth.date", 22, &date);
+    CheckUDF<int32_t, codec::Date>("dayofmonth", 22, date);
 }
 TEST_F(UDFIRBuilderTest, month_date_udf_test) {
     codec::Date date(2020, 05, 22);
-    CheckNativeUDF<int32_t, codec::Date *>("month.date", 5, &date);
+    CheckUDF<int32_t, codec::Date>("month", 5, date);
 }
 TEST_F(UDFIRBuilderTest, year_date_udf_test) {
     codec::Date date(2020, 05, 22);
-    CheckNativeUDF<int32_t, codec::Date *>("year.date", 2020, &date);
+    CheckUDF<int32_t, codec::Date>("year", 2020, date);
 }
 TEST_F(UDFIRBuilderTest, dayofweek_date_udf_test) {
     codec::Date date(2020, 05, 22);
-    CheckNativeUDF<int32_t, codec::Date *>("dayofweek.date", 6, &date);
+    CheckUDF<int32_t, codec::Date>("dayofweek", 6, date);
 }
 TEST_F(UDFIRBuilderTest, weekofyear_date_udf_test) {
     {
         codec::Date date(2020, 01, 01);
-        CheckNativeUDF<int32_t, codec::Date *>("weekofyear.date", 1, &date);
+        CheckUDF<int32_t, codec::Date>("weekofyear", 1, date);
     }
     {
         codec::Date date(2020, 01, 02);
-        CheckNativeUDF<int32_t, codec::Date *>("weekofyear.date", 1, &date);
+        CheckUDF<int32_t, codec::Date>("weekofyear", 1, date);
     }
     {
         codec::Date date(2020, 01, 03);
-        CheckNativeUDF<int32_t, codec::Date *>("weekofyear.date", 1, &date);
+        CheckUDF<int32_t, codec::Date>("weekofyear", 1, date);
     }
     {
         codec::Date date(2020, 01, 04);
-        CheckNativeUDF<int32_t, codec::Date *>("weekofyear.date", 1, &date);
+        CheckUDF<int32_t, codec::Date>("weekofyear", 1, date);
     }
     {
         codec::Date date(2020, 01, 05);
-        CheckNativeUDF<int32_t, codec::Date *>("weekofyear.date", 1, &date);
+        CheckUDF<int32_t, codec::Date>("weekofyear", 1, date);
     }
     {
         codec::Date date(2020, 01, 06);
-        CheckNativeUDF<int32_t, codec::Date *>("weekofyear.date", 2, &date);
+        CheckUDF<int32_t, codec::Date>("weekofyear", 2, date);
     }
     {
         codec::Date date(2020, 05, 22);
-        CheckNativeUDF<int32_t, codec::Date *>("weekofyear.date", 21, &date);
+        CheckUDF<int32_t, codec::Date>("weekofyear", 21, date);
     }
     {
         codec::Date date(2020, 05, 23);
-        CheckNativeUDF<int32_t, codec::Date *>("weekofyear.date", 21, &date);
+        CheckUDF<int32_t, codec::Date>("weekofyear", 21, date);
     }
     {
         codec::Date date(2020, 05, 24);
-        CheckNativeUDF<int32_t, codec::Date *>("weekofyear.date", 21, &date);
+        CheckUDF<int32_t, codec::Date>("weekofyear", 21, date);
     }
     {
         codec::Date date(2020, 05, 25);
-        CheckNativeUDF<int32_t, codec::Date *>("weekofyear.date", 22, &date);
+        CheckUDF<int32_t, codec::Date>("weekofyear", 22, date);
     }
 }
 
 TEST_F(UDFIRBuilderTest, minute_timestamp_udf_test) {
     codec::Timestamp time(1590115420000L);
-    CheckNativeUDF<int32_t, codec::Timestamp *>("minute.timestamp", 43, &time);
+    CheckUDF<int32_t, codec::Timestamp>("minute", 43, time);
 }
 TEST_F(UDFIRBuilderTest, second_timestamp_udf_test) {
     codec::Timestamp time(1590115420000L);
-    CheckNativeUDF<int32_t, codec::Timestamp *>("second.timestamp", 40, &time);
+    CheckUDF<int32_t, codec::Timestamp>("second", 40, time);
 }
 TEST_F(UDFIRBuilderTest, hour_timestamp_udf_test) {
     codec::Timestamp time(1590115420000L);
-    CheckNativeUDF<int32_t, codec::Timestamp *>("hour.timestamp", 10, &time);
+    CheckUDF<int32_t, codec::Timestamp>("hour", 10, time);
 }
 TEST_F(UDFIRBuilderTest, dayofmonth_timestamp_udf_test) {
     codec::Timestamp time(1590115420000L);
-    CheckNativeUDF<int32_t, codec::Timestamp *>("dayofmonth.timestamp", 22,
-                                                &time);
+    CheckUDF<int32_t, codec::Timestamp>("dayofmonth", 22, time);
 }
 
 TEST_F(UDFIRBuilderTest, dayofweek_timestamp_udf_test) {
     codec::Timestamp time(1590115420000L);
-    CheckNativeUDF<int32_t, codec::Timestamp *>("dayofweek.timestamp", 6,
-                                                &time);
+    CheckUDF<int32_t, codec::Timestamp>("dayofweek", 6, time);
 }
 TEST_F(UDFIRBuilderTest, weekofyear_timestamp_udf_test) {
     codec::Timestamp time(1590115420000L);
-    CheckNativeUDF<int32_t, codec::Timestamp *>("weekofyear.timestamp", 21,
-                                                &time);
+    CheckUDF<int32_t, codec::Timestamp>("weekofyear", 21, time);
 }
 
 TEST_F(UDFIRBuilderTest, month_timestamp_udf_test) {
     codec::Date date(2020, 05, 22);
-    CheckNativeUDF<int32_t, codec::Date *>("month.date", 5, &date);
+    CheckUDF<int32_t, codec::Date>("month", 5, date);
 }
 TEST_F(UDFIRBuilderTest, year_timestamp_udf_test) {
     codec::Date date(2020, 05, 22);
-    CheckNativeUDF<int32_t, codec::Date *>("year.date", 2020, &date);
+    CheckUDF<int32_t, codec::Date>("year", 2020, date);
 }
 
 TEST_F(UDFIRBuilderTest, minute_int64_udf_test) {
-    CheckNativeUDF<int32_t, int64_t>("minute.int64", 43, 1590115420000L);
+    CheckUDF<int32_t, int64_t>("minute", 43, 1590115420000L);
 }
 TEST_F(UDFIRBuilderTest, second_int64_udf_test) {
     codec::Timestamp time(1590115420000L);
-    CheckNativeUDF<int32_t, int64_t>("second.int64", 40, 1590115420000L);
+    CheckUDF<int32_t, int64_t>("second", 40, 1590115420000L);
 }
 TEST_F(UDFIRBuilderTest, hour_int64_udf_test) {
     codec::Timestamp time(1590115420000L);
-    CheckNativeUDF<int32_t, int64_t>("hour.int64", 10, 1590115420000L);
+    CheckUDF<int32_t, int64_t>("hour", 10, 1590115420000L);
 }
 
 TEST_F(UDFIRBuilderTest, dayofmonth_int64_udf_test) {
-    CheckNativeUDF<int32_t, int64_t>("dayofmonth.int64", 22, 1590115420000L);
+    CheckUDF<int32_t, int64_t>("dayofmonth", 22, 1590115420000L);
 }
 TEST_F(UDFIRBuilderTest, month_int64_udf_test) {
-    CheckNativeUDF<int32_t, int64_t>("month.int64", 5, 1590115420000L);
+    CheckUDF<int32_t, int64_t>("month", 5, 1590115420000L);
 }
 TEST_F(UDFIRBuilderTest, year_int64_udf_test) {
-    CheckNativeUDF<int32_t, int64_t>("year.int64", 2020, 1590115420000L);
+    CheckUDF<int32_t, int64_t>("year", 2020, 1590115420000L);
 }
 TEST_F(UDFIRBuilderTest, dayofweek_int64_udf_test) {
-    CheckNativeUDF<int32_t, int64_t>("dayofweek.int64", 6, 1590115420000L);
-    CheckNativeUDF<int32_t, int64_t>("dayofweek.int64", 7,
-                                     1590115420000L + 86400000L);
+    CheckUDF<int32_t, int64_t>("dayofweek", 6, 1590115420000L);
+    CheckUDF<int32_t, int64_t>("dayofweek", 7, 1590115420000L + 86400000L);
 
     // Sunday
-    CheckNativeUDF<int32_t, int64_t>("dayofweek.int64", 1,
-                                     1590115420000L + 2 * 86400000L);
-    CheckNativeUDF<int32_t, int64_t>("dayofweek.int64", 2,
-                                     1590115420000L + 3 * 86400000L);
+    CheckUDF<int32_t, int64_t>("dayofweek", 1, 1590115420000L + 2 * 86400000L);
+    CheckUDF<int32_t, int64_t>("dayofweek", 2, 1590115420000L + 3 * 86400000L);
 }
 TEST_F(UDFIRBuilderTest, weekofyear_int64_udf_test) {
-    CheckNativeUDF<int32_t, int64_t>("weekofyear.int64", 21, 1590115420000L);
-    CheckNativeUDF<int32_t, int64_t>("weekofyear.int64", 21,
-                                     1590115420000L + 86400000L);
+    CheckUDF<int32_t, int64_t>("weekofyear", 21, 1590115420000L);
+    CheckUDF<int32_t, int64_t>("weekofyear", 21, 1590115420000L + 86400000L);
 
     //     Sunday
-    CheckNativeUDF<int32_t, int64_t>("dayofmonth.int64", 24,
-                                     1590115420000L + 2 * 86400000L);
-    CheckNativeUDF<int32_t, int64_t>("weekofyear.int64", 21,
-                                     1590115420000L + 2 * 86400000L);
+    CheckUDF<int32_t, int64_t>("dayofmonth", 24,
+                               1590115420000L + 2 * 86400000L);
+    CheckUDF<int32_t, int64_t>("weekofyear", 21,
+                               1590115420000L + 2 * 86400000L);
     //     Monday
-    CheckNativeUDF<int32_t, int64_t>("weekofyear.int64", 22,
-                                     1590115420000L + 3 * 86400000L);
-    CheckNativeUDF<int32_t, int64_t>("weekofyear.int64", 22,
-                                     1590115420000L + 4 * 86400000L);
-    CheckNativeUDF<int32_t, int64_t>("weekofyear.int64", 22,
-                                     1590115420000L + 5 * 86400000L);
-    CheckNativeUDF<int32_t, int64_t>("weekofyear.int64", 22,
-                                     1590115420000L + 6 * 86400000L);
-    CheckNativeUDF<int32_t, int64_t>("weekofyear.int64", 22,
-                                     1590115420000L + 7 * 86400000L);
-    CheckNativeUDF<int32_t, int64_t>("weekofyear.int64", 22,
-                                     1590115420000L + 8 * 86400000L);
-    CheckNativeUDF<int32_t, int64_t>("weekofyear.int64", 22,
-                                     1590115420000L + 9 * 86400000L);
+    CheckUDF<int32_t, int64_t>("weekofyear", 22,
+                               1590115420000L + 3 * 86400000L);
+    CheckUDF<int32_t, int64_t>("weekofyear", 22,
+                               1590115420000L + 4 * 86400000L);
+    CheckUDF<int32_t, int64_t>("weekofyear", 22,
+                               1590115420000L + 5 * 86400000L);
+    CheckUDF<int32_t, int64_t>("weekofyear", 22,
+                               1590115420000L + 6 * 86400000L);
+    CheckUDF<int32_t, int64_t>("weekofyear", 22,
+                               1590115420000L + 7 * 86400000L);
+    CheckUDF<int32_t, int64_t>("weekofyear", 22,
+                               1590115420000L + 8 * 86400000L);
+    CheckUDF<int32_t, int64_t>("weekofyear", 22,
+                               1590115420000L + 9 * 86400000L);
 
     // Monday
-    CheckNativeUDF<int32_t, int64_t>("weekofyear.int64", 23,
-                                     1590115420000L + 10 * 86400000L);
+    CheckUDF<int32_t, int64_t>("weekofyear", 23,
+                               1590115420000L + 10 * 86400000L);
 }
 TEST_F(UDFIRBuilderTest, inc_int32_udf_test) {
-    CheckNativeUDF<int32_t, int32_t>("inc.int32", 2021, 2020);
+    CheckUDF<int32_t, int32_t>("inc", 2021, 2020);
 }
 TEST_F(UDFIRBuilderTest, distinct_count_udf_test) {
     std::vector<int32_t> vec = {1, 1, 3, 3, 5, 5, 7, 7, 9};
     codec::ArrayListV<int32_t> list(&vec);
-    codec::ListRef<> list_ref;
+    codec::ListRef<int32_t> list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
 
-    CheckNativeUDF<int32_t, codec::ListRef<> *>("count.list_int32", 9,
-                                                &list_ref);
-    CheckNativeUDF<int32_t, codec::ListRef<> *>("distinct_count.list_int32", 5,
-                                                &list_ref);
+    CheckUDF<int32_t, codec::ListRef<int32_t>>("count", 9, list_ref);
+    CheckNativeUDF<int32_t, codec::ListRef<int32_t> *>(
+        "distinct_count.list_int32", 5, &list_ref);
 }
 TEST_F(UDFIRBuilderTest, sum_udf_test) {
     std::vector<int32_t> vec = {1, 3, 5, 7, 9};
     codec::ArrayListV<int32_t> list(&vec);
-    codec::ListRef<> list_ref;
+    codec::ListRef<int32_t> list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
-    CheckNativeUDF<int32_t, codec::ListRef<> *>("sum.list_int32",
-                                                1 + 3 + 5 + 7 + 9, &list_ref);
+    CheckUDF<int32_t, codec::ListRef<int32_t>>("sum", 1 + 3 + 5 + 7 + 9,
+                                               list_ref);
 }
 TEST_F(UDFIRBuilderTest, min_udf_test) {
     std::vector<int32_t> vec = {10, 8, 6, 4, 2, 1, 3, 5, 7, 9};
     codec::ArrayListV<int32_t> list(&vec);
-    codec::ListRef<> list_ref;
+    codec::ListRef<int32_t> list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
-    CheckNativeUDF<int32_t, codec::ListRef<> *>("min.list_int32", 1, &list_ref);
+    CheckUDF<int32_t, codec::ListRef<int32_t>>("min", 1, list_ref);
 }
 TEST_F(UDFIRBuilderTest, max_udf_test) {
     std::vector<int32_t> vec = {10, 8, 6, 4, 2, 1, 3, 5, 7, 9};
     codec::ArrayListV<int32_t> list(&vec);
-    codec::ListRef<> list_ref;
+    codec::ListRef<int32_t> list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
-    CheckNativeUDF<int32_t, codec::ListRef<> *>("max.list_int32", 10,
-                                                &list_ref);
+    CheckUDF<int32_t, codec::ListRef<int32_t>>("max", 10, list_ref);
 }
 // TEST_F(UDFIRBuilderTest, time_diff_udf_test) {
 //    codec::Timestamp t1(1590115420000L);
 //    codec::Timestamp t2(1590115410000L);
-//    CheckNativeUDF<int64_t, codec::Timestamp *, codec::Timestamp *>(
+//    CheckUDF<int64_t, codec::Timestamp, codec::Timestamp>(
 //        "timestampdiff.timestamp.timestamp", 10000L, &t1, &t2);
 //}
 
@@ -277,13 +279,12 @@ TEST_F(UDFIRBuilderTest, max_timestamp_udf_test) {
         codec::Timestamp(1590115420000L), codec::Timestamp(1590115430000L),
         codec::Timestamp(1590115400000L)};
     codec::ArrayListV<codec::Timestamp> list(&vec);
-    codec::ListRef<> list_ref;
+    codec::ListRef<codec::Timestamp> list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
 
     codec::Timestamp max_time;
-    CheckNativeUDF<bool, codec::ListRef<> *, codec::Timestamp *>(
-        "max.list_timestamp.timestamp", true, &list_ref, &max_time);
-    ASSERT_EQ(codec::Timestamp(1590115430000L), max_time);
+    CheckUDF<codec::Timestamp, codec::ListRef<codec::Timestamp>>(
+        "max", codec::Timestamp(1590115430000L), list_ref);
 }
 TEST_F(UDFIRBuilderTest, min_timestamp_udf_test) {
     std::vector<codec::Timestamp> vec = {
@@ -291,13 +292,12 @@ TEST_F(UDFIRBuilderTest, min_timestamp_udf_test) {
         codec::Timestamp(1590115420000L), codec::Timestamp(1590115430000L),
         codec::Timestamp(1590115400000L)};
     codec::ArrayListV<codec::Timestamp> list(&vec);
-    codec::ListRef<> list_ref;
+    codec::ListRef<codec::Timestamp> list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
 
     codec::Timestamp max_time;
-    CheckNativeUDF<bool, codec::ListRef<> *, codec::Timestamp *>(
-        "min.list_timestamp.timestamp", true, &list_ref, &max_time);
-    ASSERT_EQ(codec::Timestamp(1590115390000L), max_time);
+    CheckUDF<codec::Timestamp, codec::ListRef<codec::Timestamp>>(
+        "min", codec::Timestamp(1590115390000L), list_ref);
 }
 TEST_F(UDFIRBuilderTest, RegisterFeLibs_TEST) {
     base::Status status;
