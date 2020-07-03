@@ -757,16 +757,15 @@ void FillSQLNodeList2NodeVector(
     }
 }
 
-const WindowDefNode *WindowOfExpression(
-    std::map<std::string, const WindowDefNode *> windows, ExprNode *node_ptr) {
-    WindowDefNode *w_ptr = nullptr;
+bool WindowOfExpression(std::map<std::string, const WindowDefNode *> windows,
+                        ExprNode *node_ptr, const WindowDefNode **output) {
     switch (node_ptr->GetExprType()) {
         case kExprCall: {
             CallExprNode *func_node_ptr =
                 dynamic_cast<CallExprNode *>(node_ptr);
             if (nullptr != func_node_ptr->GetOver()) {
                 if (func_node_ptr->GetOver()->GetName().empty()) {
-                    return func_node_ptr->GetOver();
+                    *output = func_node_ptr->GetOver();
                 } else {
                     auto iter =
                         windows.find(func_node_ptr->GetOver()->GetName());
@@ -775,30 +774,19 @@ const WindowDefNode *WindowOfExpression(
                             << "Fail to resolved window from expression: "
                             << func_node_ptr->GetOver()->GetName()
                             << " undefined";
-                        return nullptr;
+                        return false;
                     }
-                    return iter->second;
+                    *output = iter->second;
                 }
+            } else {
+                *output = nullptr;
             }
-            if (nullptr == func_node_ptr->GetArgs() ||
-                func_node_ptr->GetArgs()->IsEmpty()) {
-                return nullptr;
-            }
-            for (auto arg : func_node_ptr->GetArgs()->children_) {
-                const WindowDefNode *ptr =
-                    WindowOfExpression(windows, dynamic_cast<ExprNode *>(arg));
-                if (nullptr != ptr && nullptr != w_ptr) {
-                    LOG(WARNING)
-                        << "Cannot handle more than 1 windows in an expression";
-                    return nullptr;
-                }
-            }
-
-            return w_ptr;
         }
-        default:
-            return w_ptr;
+        default: {
+            *output = nullptr;
+        }
     }
+    return true;
 }
 std::string ExprString(const ExprNode *expr) {
     return nullptr == expr ? std::string() : expr->GetExprString();

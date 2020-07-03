@@ -304,8 +304,10 @@ void RequestModeCheck(SQLCase& sql_case) {  // NOLINT
     }
 
     bool ok = engine.Get(sql_str, sql_case.db(), session, get_status);
-    ASSERT_TRUE(ok);
-
+    ASSERT_EQ(sql_case.expect().success_, ok);
+    if (!sql_case.expect().success_) {
+        return;
+    }
     const std::string& request_name = session.GetRequestName();
     std::vector<Row> request_data;
     for (int32_t i = 0; i < input_cnt; i++) {
@@ -400,7 +402,10 @@ void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
     }
 
     bool ok = engine.Get(sql_str, sql_case.db(), session, get_status);
-    ASSERT_TRUE(ok);
+    ASSERT_EQ(sql_case.expect().success_, ok);
+    if (!sql_case.expect().success_) {
+        return;
+    }
     std::vector<Row> request_data;
     for (int32_t i = 0; i < input_cnt; i++) {
         auto input = sql_case.inputs()[i];
@@ -443,6 +448,9 @@ void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
 INSTANTIATE_TEST_CASE_P(
     EngineBugQuery, EngineTest,
     testing::ValuesIn(InitCases("/cases/query/bug_query.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineFailQuery, EngineTest,
+    testing::ValuesIn(InitCases("/cases/query/fail_query.yaml")));
 INSTANTIATE_TEST_CASE_P(
     EngineSimpleQuery, EngineTest,
     testing::ValuesIn(InitCases("/cases/query/simple_query.yaml")));

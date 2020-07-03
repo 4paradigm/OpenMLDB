@@ -169,8 +169,12 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
             }
         }
 
-        const node::WindowDefNode *w_ptr =
-            node::WindowOfExpression(windows, project_expr);
+        const node::WindowDefNode *w_ptr = nullptr;
+        if (!node::WindowOfExpression(windows, project_expr, &w_ptr)) {
+            status.msg = "fail to resolved window";
+            status.code = common::kPlanError;
+            return false;
+        }
 
         if (project_list_map.find(w_ptr) == project_list_map.end()) {
             if (w_ptr == nullptr) {

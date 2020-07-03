@@ -1904,8 +1904,8 @@ bool SQLEquals(const SQLNode *left, const SQLNode *right);
 bool SQLListEquals(const SQLNodeList *left, const SQLNodeList *right);
 bool ExprEquals(const ExprNode *left, const ExprNode *right);
 bool FnDefEquals(const FnDefNode *left, const FnDefNode *right);
-const WindowDefNode *WindowOfExpression(
-    std::map<std::string, const WindowDefNode *> windows, ExprNode *node_ptr);
+bool WindowOfExpression(std::map<std::string, const WindowDefNode *> windows,
+                        ExprNode *node_ptr, const WindowDefNode **output);
 void FillSQLNodeList2NodeVector(
     SQLNodeList *node_list_ptr,
     std::vector<SQLNode *> &node_list);  // NOLINT (runtime/references)
