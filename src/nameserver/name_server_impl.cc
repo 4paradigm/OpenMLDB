@@ -272,7 +272,6 @@ void NameServerImpl::TableInfoToVec(
         table_infos,
     const std::vector<uint32_t>& table_tid_vec,
     std::vector<::rtidb::nameserver::TableInfo>* local_table_info_vec) {
-    std::lock_guard<std::mutex> lock(mu_);
     for (const auto& kv : table_infos) {
         if (std::find(table_tid_vec.begin(), table_tid_vec.end(),
                       kv.second->tid()) == table_tid_vec.end()) {
@@ -323,9 +322,12 @@ void NameServerImpl::CheckSyncTable(
         table_tid_vec.push_back(rkv.tid());
     }
     std::vector<::rtidb::nameserver::TableInfo> local_table_info_vec;
-    TableInfoToVec(table_info_, table_tid_vec, &local_table_info_vec);
-    for (const auto& kv : db_table_info_) {
-        TableInfoToVec(kv.second, table_tid_vec, &local_table_info_vec);
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        TableInfoToVec(table_info_, table_tid_vec, &local_table_info_vec);
+        for (const auto& kv : db_table_info_) {
+            TableInfoToVec(kv.second, table_tid_vec, &local_table_info_vec);
+        }
     }
     for (const auto& table_tmp : local_table_info_vec) {
         ::rtidb::nameserver::TableInfo table_info(table_tmp);
@@ -10829,7 +10831,7 @@ bool NameServerImpl::DropTableRemote(
         std::lock_guard<std::mutex> lock(mu_);
         auto db_iter = cluster_info->last_status.find(db);
         if (db_iter != cluster_info->last_status.end()) {
-            auto iter = db_iter->second.find(db);
+            auto iter = db_iter->second.find(name);
             if (iter != db_iter->second.end()) {
                 db_iter->second.erase(iter);
             }
@@ -11025,9 +11027,9 @@ bool NameServerImpl::UpdateZkTableNodeWithoutNotify(
                   table_value.c_str(), table_value.length());
             return false;
         }
-        PDLOG(INFO, "update db table node[%s/%s]. value is [%s]",
-              zk_db_table_data_path_.c_str(), table_info->name().c_str(),
-              table_value.c_str());
+        PDLOG(INFO, "update db[%s] table node[%s/%s]. value is [%s]",
+              table_info->db().c_str(), zk_db_table_data_path_.c_str(),
+              table_info->name().c_str(), table_value.c_str());
     }
     return true;
 }
