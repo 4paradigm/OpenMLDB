@@ -157,6 +157,8 @@ void DefaultUDFLibrary::Init() {
         .args_in<Timestamp, Date, StringRef>();
 
     RegisterAlias("lead", "at");
+    RegisterAlias("day", "dayofmonth");
+    RegisterAlias("week", "weekofyear");
 }
 
 }  // namespace udf

@@ -212,6 +212,8 @@ inline const std::string TimeUnitName(const TimeUnit &time_unit) {
             return "year";
         case kTimeUnitMonth:
             return "month";
+        case kTimeUnitWeek:
+            return "week";
         case kTimeUnitDay:
             return "dayofmonth";
         case kTimeUnitHour:
