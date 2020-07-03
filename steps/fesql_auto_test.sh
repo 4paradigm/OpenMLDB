@@ -12,6 +12,10 @@ cp -rf src/proto/common.proto java/src/main/proto/
 
 echo "ROOT_DIR:${ROOT_DIR}"
 
+cd $ROOT_DIR
+
+ls -al
+
 case_xml=test_v1.xml
 
 cd src/sdk/java/feql-auto-test-java
