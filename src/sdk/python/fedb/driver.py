@@ -40,6 +40,15 @@ class Driver(object):
         else:
             return False, status.msg
 
+    def dropDB(self, db):
+        if not self.sdk:
+            return False, "please init driver first"
+        status = sql_router_sdk.Status()
+        if self.sdk.DropDB(db, status):
+            return True, "ok"
+        else:
+            return False, status.msg
+
     def executeDDL(self, db, ddl):
         if not self.sdk:
             return False, "please init driver first"

@@ -48,7 +48,7 @@ public class SqlClusterExecutor implements SqlExecutor {
     }
 
     @Override
-    public boolean executeInsert(String db, String sql, SQLRequestRow row) {
+    public boolean executeInsert(String db, String sql, SQLInsertRow row) {
         Status status = new Status();
         boolean ok = sqlRouter.ExecuteInsert(db, sql, row, status);
         return ok;
@@ -68,7 +68,7 @@ public class SqlClusterExecutor implements SqlExecutor {
     }
 
     @Override
-    public SQLRequestRow getInsertRow(String db, String sql) {
+    public SQLInsertRow getInsertRow(String db, String sql) {
         Status status = new Status();
         return sqlRouter.GetInsertRow(db, sql, status);
     }

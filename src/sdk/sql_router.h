@@ -24,6 +24,7 @@
 #include "sdk/base.h"
 #include "sdk/result_set.h"
 #include "sdk/sql_request_row.h"
+#include "sdk/sql_insert_row.h"
 
 namespace rtidb {
 namespace sdk {
@@ -63,7 +64,7 @@ class SQLRouter {
                                fesql::sdk::Status* status) = 0;
 
     virtual bool ExecuteInsert(const std::string& db, const std::string& sql,
-                    std::shared_ptr<rtidb::sdk::SQLRequestRow> row,
+                    std::shared_ptr<rtidb::sdk::SQLInsertRow> row,
                     fesql::sdk::Status* status) = 0;
 
     virtual std::shared_ptr<ExplainInfo> Explain(
@@ -74,7 +75,7 @@ class SQLRouter {
         const std::string& db, const std::string& sql,
         fesql::sdk::Status* status) = 0;
 
-    virtual std::shared_ptr<rtidb::sdk::SQLRequestRow> GetInsertRow(
+    virtual std::shared_ptr<rtidb::sdk::SQLInsertRow> GetInsertRow(
         const std::string& db, const std::string& sql,
         ::fesql::sdk::Status* status) = 0;
 

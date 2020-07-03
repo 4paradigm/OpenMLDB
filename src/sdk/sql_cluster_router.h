@@ -37,14 +37,17 @@ namespace rtidb {
 namespace sdk {
 
 struct RouterCacheSchema {
-    RouterCacheSchema(std::string table_name,
-                      std::shared_ptr<::fesql::sdk::Schema> column_schema)
-        : table_name(table_name), column_schema(column_schema) {}
+    RouterCacheSchema(
+        std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
+        std::shared_ptr<std::map<uint32_t, DefaultValue>> default_map)
+        : table_info(table_info), default_map(default_map), column_schema() {}
 
-    RouterCacheSchema(std::shared_ptr<::fesql::sdk::Schema> column_schema)
-        : table_name(), column_schema(column_schema) {}
+    explicit RouterCacheSchema(
+        std::shared_ptr<::fesql::sdk::Schema> column_schema)
+        : table_info(), default_map(), column_schema(column_schema) {}
 
-    std::string table_name;
+    std::shared_ptr<::rtidb::nameserver::TableInfo> table_info;
+    std::shared_ptr<std::map<uint32_t, DefaultValue>> default_map;
     std::shared_ptr<::fesql::sdk::Schema> column_schema;
 };
 
@@ -68,7 +71,7 @@ class SQLClusterRouter : public SQLRouter {
                        ::fesql::sdk::Status* status);
 
     bool ExecuteInsert(const std::string& db, const std::string& sql,
-                       std::shared_ptr<SQLRequestRow> row,
+                       std::shared_ptr<SQLInsertRow> row,
                        fesql::sdk::Status* status);
 
     std::shared_ptr<ExplainInfo> Explain(const std::string& db,
@@ -79,9 +82,9 @@ class SQLClusterRouter : public SQLRouter {
                                                  const std::string& sql,
                                                  ::fesql::sdk::Status* status);
 
-    std::shared_ptr<SQLRequestRow> GetInsertRow(const std::string& db,
-                                                const std::string& sql,
-                                                ::fesql::sdk::Status* status);
+    std::shared_ptr<SQLInsertRow> GetInsertRow(const std::string& db,
+                                               const std::string& sql,
+                                               ::fesql::sdk::Status* status);
 
     std::shared_ptr<fesql::sdk::ResultSet> ExecuteSQL(
         const std::string& db, const std::string& sql,
@@ -114,11 +117,6 @@ class SQLClusterRouter : public SQLRouter {
 
     bool GetSQLPlan(const std::string& sql, ::fesql::node::NodeManager* nm,
                     ::fesql::node::PlanNodeList* plan);
-
-    bool GetDimension(const catalog::RtiDBSchema& schema,
-                      const ::fesql::node::InsertPlanNode* plan,
-                      std::vector<std::pair<std::string, uint32_t>>* dimensions,
-                      std::vector<uint64_t>* ts_dimensions);
 
  private:
     SQLRouterOptions options_;

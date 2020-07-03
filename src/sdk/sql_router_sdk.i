@@ -9,6 +9,7 @@
 %shared_ptr(fesql::sdk::Schema);
 %shared_ptr(rtidb::sdk::SQLRouter);
 %shared_ptr(rtidb::sdk::SQLRequestRow);
+%shared_ptr(rtidb::sdk::SQLInsertRow);
 %shared_ptr(rtidb::sdk::ExplainInfo);
 
 %{
@@ -16,12 +17,14 @@
 #include "sdk/result_set.h"
 #include "sdk/base.h"
 #include "sdk/sql_request_row.h"
+#include "sdk/sql_insert_row.h"
 
 using fesql::sdk::Schema;
 using fesql::sdk::ResultSet;
 using rtidb::sdk::SQLRouter;
 using rtidb::sdk::SQLRouterOptions;
 using rtidb::sdk::SQLRequestRow;
+using rtidb::sdk::SQLInsertRow;
 using rtidb::sdk::ExplainInfo;
 %}
 
@@ -29,4 +32,5 @@ using rtidb::sdk::ExplainInfo;
 %include "sdk/base.h"
 %include "sdk/result_set.h"
 %include "sdk/sql_request_row.h"
+%include "sdk/sql_insert_row.h"
 
