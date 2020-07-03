@@ -150,7 +150,7 @@ if(SQL_JAVASDK_ENABLE)
 	  DEPENDS
         sql_jsdk
         cp_sql_resource
-		COMMAND ${MAVEN_EXECUTABLE} package -DskipTests=true -Dscalatest.skip=true
+		COMMAND ${MAVEN_EXECUTABLE} install -DskipTests=true -Dscalatest.skip=true
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src/sdk/java
 	)
 endif()

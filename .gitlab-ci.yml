@@ -131,103 +131,103 @@ fesql_auto_test:
 #        - ./python/test/*xml
 
 
-tablet_one_demension:
-    stage: ts_integration_test
-    before_script:
-        - mkdir /rambuild
-        - mount -t tmpfs -o size=3G tmpfs /rambuild
-    script:
-        - ln -sf /depends/thirdparty thirdparty
-        - ln -sf /depends/thirdsrc thirdsrc
-        - rm -rf ./test-output/integrationtest/test-reports/
-        - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
-        - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 0 "test" "ns_client"
-    artifacts:
-        reports:
-            junit:
-                - ./test-output/integrationtest/test-reports/*.xml
-
-tablet_multi_demension:
-    stage: ts_integration_test
-    before_script:
-        - mkdir /rambuild
-        - mount -t tmpfs -o size=3G tmpfs /rambuild
-    script:
-        - ln -sf /depends/thirdparty thirdparty
-        - ln -sf /depends/thirdsrc thirdsrc
-        - rm -rf ./test-output/integrationtest/test-reports/
-        - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
-        - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 1 "test" "ns_client"
-    artifacts:
-        reports:
-            junit:
-                - ./test-output/integrationtest/test-reports/*.xml
-
-ns_one_demension:
-    stage: ns_integration_test
-    before_script:
-        - mkdir /rambuild
-        - mount -t tmpfs -o size=3G tmpfs /rambuild
-    script:
-        - ln -sf /depends/thirdparty thirdparty
-        - ln -sf /depends/thirdsrc thirdsrc
-        - rm -rf ./test-output/integrationtest/test-reports/
-        - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
-        - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 0 "ns_client" "disk"
-    artifacts:
-        reports:
-            junit:
-                - ./test-output/integrationtest/test-reports/*.xml
-
-ns_multi_demension:
-    stage: ns_integration_test
-    before_script:
-        - mkdir /rambuild
-        - mount -t tmpfs -o size=3G tmpfs /rambuild
-    script:
-        - ln -sf /depends/thirdparty thirdparty
-        - ln -sf /depends/thirdsrc thirdsrc
-        - rm -rf ./test-output/integrationtest/test-reports/
-        - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
-        - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 1 "ns_client" "disk"
-    artifacts:
-        reports:
-            junit:
-                - ./test-output/integrationtest/test-reports/*.xml
-
-disk_table:
-    stage: ns_integration_test
-    before_script:
-        - mkdir /rambuild
-        - mount -t tmpfs -o size=3G tmpfs /rambuild
-    script:
-        - ln -sf /depends/thirdparty thirdparty
-        - ln -sf /depends/thirdsrc thirdsrc
-        - rm -rf ./test-output/integrationtest/test-reports/
-        - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
-        - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 0 "disk"
-    artifacts:
-        reports:
-            junit:
-                - ./test-output/integrationtest/test-reports/*.xml
-
-deploy-package:
-    stage: deploy
-    script:
-        - ln -sf /depends/thirdparty thirdparty
-        - ln -sf /depends/thirdsrc thirdsrc
-        - source /root/.bashrc && bash steps/deploy_package.sh
-    only:
-        - tags
-docker-image:
-    stage: make_docker
-    script:
-        - source /root/.bashrc && sh tools/install_fesql.sh
-        - ln -sf /depends/thirdparty thirdparty
-        - ln -sf /depends/thirdsrc thirdsrc
-        - sh steps/compile.sh
-        - sh docker/copy_file.sh
-        - make blob_proxy
-    only:
-        - tags
-        - develop
+#tablet_one_demension:
+#    stage: ts_integration_test
+#    before_script:
+#        - mkdir /rambuild
+#        - mount -t tmpfs -o size=3G tmpfs /rambuild
+#    script:
+#        - ln -sf /depends/thirdparty thirdparty
+#        - ln -sf /depends/thirdsrc thirdsrc
+#        - rm -rf ./test-output/integrationtest/test-reports/
+#        - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
+#        - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 0 "test" "ns_client"
+#    artifacts:
+#        reports:
+#            junit:
+#                - ./test-output/integrationtest/test-reports/*.xml
+#
+#tablet_multi_demension:
+#    stage: ts_integration_test
+#    before_script:
+#        - mkdir /rambuild
+#        - mount -t tmpfs -o size=3G tmpfs /rambuild
+#    script:
+#        - ln -sf /depends/thirdparty thirdparty
+#        - ln -sf /depends/thirdsrc thirdsrc
+#        - rm -rf ./test-output/integrationtest/test-reports/
+#        - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
+#        - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 1 "test" "ns_client"
+#    artifacts:
+#        reports:
+#            junit:
+#                - ./test-output/integrationtest/test-reports/*.xml
+#
+#ns_one_demension:
+#    stage: ns_integration_test
+#    before_script:
+#        - mkdir /rambuild
+#        - mount -t tmpfs -o size=3G tmpfs /rambuild
+#    script:
+#        - ln -sf /depends/thirdparty thirdparty
+#        - ln -sf /depends/thirdsrc thirdsrc
+#        - rm -rf ./test-output/integrationtest/test-reports/
+#        - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
+#        - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 0 "ns_client" "disk"
+#    artifacts:
+#        reports:
+#            junit:
+#                - ./test-output/integrationtest/test-reports/*.xml
+#
+#ns_multi_demension:
+#    stage: ns_integration_test
+#    before_script:
+#        - mkdir /rambuild
+#        - mount -t tmpfs -o size=3G tmpfs /rambuild
+#    script:
+#        - ln -sf /depends/thirdparty thirdparty
+#        - ln -sf /depends/thirdsrc thirdsrc
+#        - rm -rf ./test-output/integrationtest/test-reports/
+#        - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
+#        - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 1 "ns_client" "disk"
+#    artifacts:
+#        reports:
+#            junit:
+#                - ./test-output/integrationtest/test-reports/*.xml
+#
+#disk_table:
+#    stage: ns_integration_test
+#    before_script:
+#        - mkdir /rambuild
+#        - mount -t tmpfs -o size=3G tmpfs /rambuild
+#    script:
+#        - ln -sf /depends/thirdparty thirdparty
+#        - ln -sf /depends/thirdsrc thirdsrc
+#        - rm -rf ./test-output/integrationtest/test-reports/
+#        - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
+#        - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 0 "disk"
+#    artifacts:
+#        reports:
+#            junit:
+#                - ./test-output/integrationtest/test-reports/*.xml
+#
+#deploy-package:
+#    stage: deploy
+#    script:
+#        - ln -sf /depends/thirdparty thirdparty
+#        - ln -sf /depends/thirdsrc thirdsrc
+#        - source /root/.bashrc && bash steps/deploy_package.sh
+#    only:
+#        - tags
+#docker-image:
+#    stage: make_docker
+#    script:
+#        - source /root/.bashrc && sh tools/install_fesql.sh
+#        - ln -sf /depends/thirdparty thirdparty
+#        - ln -sf /depends/thirdsrc thirdsrc
+#        - sh steps/compile.sh
+#        - sh docker/copy_file.sh
+#        - make blob_proxy
+#    only:
+#        - tags
+#        - develop
