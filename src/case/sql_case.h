@@ -56,6 +56,11 @@ class SQLCase {
     const std::vector<TableInfo>& inputs() const { return inputs_; }
     const ExpectInfo& expect() const { return expect_; }
     void set_expect(const ExpectInfo& data) { expect_ = data; }
+    void set_input_name(const std::string name, int32_t idx) {
+        if (idx < inputs_.size()) {
+            inputs_[idx].name_ = name;
+        }
+    }
     const int32_t CountInputs() const { return inputs_.size(); }
     // extract schema from schema string
     // name:type|name:type|name:type|

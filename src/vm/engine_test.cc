@@ -270,6 +270,9 @@ class EngineTest : public ::testing::TestWithParam<SQLCase> {
 const std::vector<Row> SortRows(const vm::Schema& schema,
                                 const std::vector<Row>& rows,
                                 const std::string& order_col);
+const std::string GenerateTableName(int32_t id) {
+    return "auto_t" + std::to_string(id);
+}
 void RequestModeCheck(SQLCase& sql_case) {  // NOLINT
     int32_t input_cnt = sql_case.CountInputs();
     // Init catalog
@@ -277,6 +280,9 @@ void RequestModeCheck(SQLCase& sql_case) {  // NOLINT
         name_table_map;
     auto catalog = BuildCommonCatalog();
     for (int32_t i = 0; i < input_cnt; i++) {
+        if (sql_case.inputs()[i].name_.empty()) {
+            sql_case.set_input_name(GenerateTableName(i), i);
+        }
         type::TableDef table_def;
         sql_case.ExtractInputTableDef(table_def, i);
         std::shared_ptr<::fesql::storage::Table> table(
@@ -289,9 +295,7 @@ void RequestModeCheck(SQLCase& sql_case) {  // NOLINT
     std::string sql_str = sql_case.sql_str();
     for (int j = 0; j < input_cnt; ++j) {
         std::string placeholder = "{" + std::to_string(j) + "}";
-        std::string tname = sql_case.inputs()[j].name_.empty()
-                                ? ("t" + std::to_string(j))
-                                : sql_case.inputs()[j].name_;
+        std::string tname = sql_case.inputs()[j].name_;
         boost::replace_all(sql_str, placeholder, tname);
     }
     std::cout << sql_str << std::endl;
@@ -372,11 +376,11 @@ void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
         name_table_map;
     auto catalog = BuildCommonCatalog();
     for (int32_t i = 0; i < input_cnt; i++) {
+        if (sql_case.inputs()[i].name_.empty()) {
+            sql_case.set_input_name(GenerateTableName(i), i);
+        }
         type::TableDef table_def;
         sql_case.ExtractInputTableDef(table_def, i);
-        if (table_def.name().empty()) {
-            table_def.set_name("t" + std::to_string(i));
-        }
         std::shared_ptr<::fesql::storage::Table> table(
             new ::fesql::storage::Table(i + 1, 1, table_def));
         name_table_map[table_def.name()] = table;
