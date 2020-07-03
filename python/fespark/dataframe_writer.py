@@ -18,3 +18,7 @@ class DataframeWriter(object):
 
     def orc(self, path, mode="overwrite", renameDuplicateColumns=True, partitionNum=-1):
         self.jdf.write(path, "orc", mode, renameDuplicateColumns, partitionNum)
+
+    def mode(self, mode):
+        # TODO: Not use pyspark mode yet
+        return self

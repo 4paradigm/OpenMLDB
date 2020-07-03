@@ -185,4 +185,11 @@ case class FesqlDataframe(fesqlSession: FesqlSession, sparkDf: DataFrame) {
     sparkDf.queryExecution.analyzed.schema.json
   }
 
+  /**
+   * Print Spark codegen string.
+   */
+  def printCodegen: Unit = {
+    sparkDf.queryExecution.debug.codegen
+  }
+
 }
