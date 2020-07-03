@@ -217,8 +217,7 @@
 								<configuration>
 									<shadedArtifactAttached>true</shadedArtifactAttached>
 									<shadedClassifierName>with-dependencies</shadedClassifierName>
-									<minimizeJar>true</minimizeJar>
-
+									<!-- <minimizeJar>true</minimizeJar> -->
 									<!-- Exclude the jars which are in Spark libraries -->
 									<artifactSet>
 										<excludes>
