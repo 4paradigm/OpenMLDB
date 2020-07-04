@@ -223,7 +223,8 @@ public class RowBuilder {
     }
 
     public boolean appendString(String val) {
-        int length = val.length();
+        byte[] bytes = val.getBytes(RowCodecCommon.CHARSET);
+        int length = bytes.length;
         if (val == null || (!check(DataType.Varchar) && !check(DataType.String))) {
             return false;
         }
