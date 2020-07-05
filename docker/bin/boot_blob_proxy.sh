@@ -11,4 +11,4 @@ Endpoint="$(hostname -i):${blobproxy_port}"
 SELFDIR=$(dirname $(readlink -f $0))
 WORKDIR=$(dirname ${SELFDIR})
 cd ${WORKDIR}
-./bin/rtidb --flagfile=./conf/blob_proxy.flags --endpoint=$Endpoint --zk_cluster=$zk_cluster --zk_root_path=$zk_root_path
+./bin/rtidb --flagfile=./conf/blob_proxy.flags --endpoint=$Endpoint --zk_cluster=$zk_cluster --zk_root_path=$zk_root_path --enable_status_service=true
