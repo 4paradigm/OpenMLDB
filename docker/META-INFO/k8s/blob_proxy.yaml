@@ -63,7 +63,7 @@ items:
     labels:
       enable-on-api-gw: "true"
     annotations:
-      api-gw-conf: '{"gw-api-confs": [{"listen-paths": "/rtidbblobproxy", "enable-auth": false, "stripe-url": false}]}'
+      api-gw-conf: '{"gw-api-confs": [{"listen-paths": "/rtidbblobproxy", "enable-auth": false, "stripe-url": true}]}'
   spec:
     ports:
     - name: blobproxy
