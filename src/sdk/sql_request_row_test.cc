@@ -25,7 +25,58 @@
 
 namespace rtidb {
 namespace sdk {
+
 class SQLRequestRowTest : public ::testing::Test {};
+
+TEST_F(SQLRequestRowTest, str_null) {
+    ::fesql::vm::Schema schema;
+    {
+        ::fesql::type::ColumnDef* column = schema.Add();
+        column->set_type(::fesql::type::kVarchar);
+        column->set_name("col0");
+    }
+    ::fesql::sdk::SchemaImpl* schema_impl =
+        new ::fesql::sdk::SchemaImpl(schema);
+    std::shared_ptr<::fesql::sdk::Schema> schema_shared(schema_impl);
+    SQLRequestRow rr(schema_shared);
+    rr.Init(0);
+    ASSERT_TRUE(rr.AppendNULL());
+    ASSERT_TRUE(rr.Build());
+}
+
+TEST_F(SQLRequestRowTest, not_null) {
+    ::fesql::vm::Schema schema;
+    {
+        ::fesql::type::ColumnDef* column = schema.Add();
+        column->set_type(::fesql::type::kVarchar);
+        column->set_name("col0");
+        column->set_is_not_null(true);
+    }
+    ::fesql::sdk::SchemaImpl* schema_impl =
+        new ::fesql::sdk::SchemaImpl(schema);
+    std::shared_ptr<::fesql::sdk::Schema> schema_shared(schema_impl);
+    SQLRequestRow rr(schema_shared);
+    rr.Init(0);
+    ASSERT_FALSE(rr.AppendNULL());
+    ASSERT_FALSE(rr.Build());
+}
+
+TEST_F(SQLRequestRowTest, invalid_str_len) {
+    ::fesql::vm::Schema schema;
+    {
+        ::fesql::type::ColumnDef* column = schema.Add();
+        column->set_type(::fesql::type::kVarchar);
+        column->set_name("col0");
+    }
+    ::fesql::sdk::SchemaImpl* schema_impl =
+        new ::fesql::sdk::SchemaImpl(schema);
+    std::shared_ptr<::fesql::sdk::Schema> schema_shared(schema_impl);
+    SQLRequestRow rr(schema_shared);
+    rr.Init(1);
+    std::string hello = "hello";
+    ASSERT_FALSE(rr.AppendString(hello));
+    ASSERT_FALSE(rr.Build());
+}
 
 TEST_F(SQLRequestRowTest, normal_test) {
     ::fesql::vm::Schema schema;
@@ -44,6 +95,7 @@ TEST_F(SQLRequestRowTest, normal_test) {
         column->set_type(::fesql::type::kInt64);
         column->set_name("col2");
     }
+
     ::fesql::sdk::SchemaImpl* schema_impl =
         new ::fesql::sdk::SchemaImpl(schema);
     std::shared_ptr<::fesql::sdk::Schema> schema_shared(schema_impl);
@@ -53,7 +105,6 @@ TEST_F(SQLRequestRowTest, normal_test) {
     ASSERT_TRUE(rr.AppendString("hello"));
     ASSERT_TRUE(rr.AppendInt64(64));
     ASSERT_TRUE(rr.Build());
-
     ::fesql::codec::RowView rv(schema);
     bool ok = rv.Reset(reinterpret_cast<const int8_t*>(rr.GetRow().c_str()),
                        rr.GetRow().size());
