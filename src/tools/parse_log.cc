@@ -38,13 +38,13 @@ void ReadLog(const std::string& full_path) {
     Status status;
     uint64_t success_cnt = 0;
     do {
-        Slice value2;
-        status = reader.ReadRecord(&value2, &scratch);
+        Slice value;
+        status = reader.ReadRecord(&value, &scratch);
         if (!status.ok()) {
             break;
         }
         ::rtidb::api::LogEntry entry;
-        entry.ParseFromString(value2.ToString());
+        entry.ParseFromString(value.ToString());
         if (entry.ts_dimensions_size() == 0) {
             my_count << entry.ts() << std::endl;
         } else {
