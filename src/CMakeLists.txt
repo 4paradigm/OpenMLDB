@@ -136,6 +136,9 @@ target_link_libraries(field_codec_test  glog gtest gflags unwind pthread common)
 add_executable(glog_wapper_test base/glog_wapper_test.cc)
 target_link_libraries(glog_wapper_test glog gtest gflags unwind pthread common)
 
+add_executable(parse_log tools/parse_log.cc)
+target_link_libraries(parse_log ${BIN_LIBS})
+
 add_executable(rtidb cmd/rtidb.cc base/status.cc proto/client.pb.cc base/linenoise.cc)
 
 target_link_libraries(rtidb ${BIN_LIBS})
