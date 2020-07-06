@@ -192,6 +192,7 @@ class NodeManager {
     ExprNode *MakeConstNode(const std::string &value);
     ExprNode *MakeConstNode(const char *value);
     ExprNode *MakeConstNode();
+    ExprNode *MakeConstNode(DataType type);
     ExprNode *MakeConstNodeINT16MAX();
     ExprNode *MakeConstNodeINT32MAX();
     ExprNode *MakeConstNodeINT64MAX();

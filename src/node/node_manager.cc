@@ -431,6 +431,10 @@ ExprNode *NodeManager::MakeConstNode() {
     ExprNode *node_ptr = new ConstNode();
     return RegisterNode(node_ptr);
 }
+ExprNode *NodeManager::MakeConstNode(DataType type) {
+    ExprNode *node_ptr = new ConstNode(type);
+    return RegisterNode(node_ptr);
+}
 ExprNode *NodeManager::MakeConstNodeINT16MAX() {
     return MakeConstNode(static_cast<int16_t>(INT16_MAX));
 }

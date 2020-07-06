@@ -256,6 +256,8 @@ const std::string ConstNode::GetExprString() const {
             break;
         case fesql::node::kVoid:
             return "void";
+        case fesql::node::kPlaceholder:
+            return "placeholder";
         default:
             return "unknow";
     }
