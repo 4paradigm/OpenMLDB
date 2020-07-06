@@ -990,6 +990,85 @@ TEST_F(SnapshotTest, MakeSnapshot_with_delete_index) {
     ASSERT_EQ(7, manifest.term());
 }
 
+TEST_F(SnapshotTest, MakeSnapshotAbsOrLat) {
+    ::rtidb::api::TableMeta* table_meta = new ::rtidb::api::TableMeta();
+    table_meta->set_name("absorlat");
+    table_meta->set_tid(10);
+    table_meta->set_pid(0);
+    table_meta->set_seg_cnt(8);
+    ::rtidb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
+    ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsOrLat);
+    ttl_desc->set_abs_ttl(0);
+    ttl_desc->set_lat_ttl(1);
+
+    ::rtidb::common::ColumnDesc* desc = table_meta->add_column_desc();
+    desc->set_name("card");
+    desc->set_type("string");
+    desc = table_meta->add_column_desc();
+    desc->set_name("merchant");
+    desc->set_type("string");
+    desc = table_meta->add_column_desc();
+    desc->set_name("ts");
+    desc->set_type("timestamp");
+    desc = table_meta->add_column_desc();
+    desc->set_name("date");
+    desc->set_type("string");
+    ::rtidb::common::ColumnKey* ck = table_meta->add_column_key();
+    ck->set_index_name("index1");
+    ck->add_col_name("card");
+    ck->add_col_name("merchant");
+    std::shared_ptr<MemTable> table = std::make_shared<MemTable>(*table_meta);
+    table->Init();
+
+    LogParts* log_part = new LogParts(12, 4, scmp);
+    MemTableSnapshot snapshot(10, 0, log_part, FLAGS_db_root_path);
+    snapshot.Init();
+    uint64_t offset = 0;
+    uint32_t binlog_index = 0;
+    std::string log_path = FLAGS_db_root_path + "/10_0/binlog/";
+    std::string snapshot_path = FLAGS_db_root_path + "/10_0/snapshot/";
+    WriteHandle* wh = NULL;
+    RollWLogFile(&wh, log_part, log_path, binlog_index, offset);
+    for (uint64_t i = 0; i < 3; i++) {
+        offset++;
+        ::rtidb::api::Dimension dimensions;
+        dimensions.set_key("c0|m0");
+        dimensions.set_idx(0);
+
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(offset);
+        ::rtidb::api::Dimension* d_ptr = entry.add_dimensions();
+        d_ptr->CopyFrom(dimensions);
+        entry.set_ts(i);
+        entry.set_value("value");
+        std::string buffer;
+        entry.SerializeToString(&buffer);
+        ::rtidb::base::Slice slice(buffer);
+        ::rtidb::base::Status status = wh->Write(slice);
+
+        google::protobuf::RepeatedPtrField<::rtidb::api::Dimension> d_list;
+        ::rtidb::api::Dimension* d_ptr2 = d_list.Add();
+        d_ptr2->CopyFrom(dimensions);
+        ASSERT_EQ(table->Put(i, "value", d_list), true);
+    }
+
+    table->SchedGc();
+    uint64_t offset_value;
+    int ret = snapshot.MakeSnapshot(table, offset_value, 0);
+    ASSERT_EQ(0, ret);
+
+    std::string full_path = snapshot_path + "MANIFEST";
+    ::rtidb::api::Manifest manifest;
+    {
+        int fd = open(full_path.c_str(), O_RDONLY);
+        google::protobuf::io::FileInputStream fileInput(fd);
+        fileInput.SetCloseOnDelete(true);
+        google::protobuf::TextFormat::Parse(&fileInput, &manifest);
+    }
+    ASSERT_EQ(1, manifest.count());
+    ASSERT_EQ(3, manifest.offset());
+}
+
 TEST_F(SnapshotTest, MakeSnapshotLatest) {
     LogParts* log_part = new LogParts(12, 4, scmp);
     MemTableSnapshot snapshot(5, 1, log_part, FLAGS_db_root_path);
