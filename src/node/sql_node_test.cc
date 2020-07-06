@@ -241,7 +241,8 @@ TEST_F(SqlNodeTest, MakeInsertNodeTest) {
     ASSERT_EQ(dynamic_cast<ConstNode *>(value[0])->GetInt(), 1);
     ASSERT_EQ(dynamic_cast<ConstNode *>(value[1])->GetFloat(), 2.3f);
     ASSERT_EQ(dynamic_cast<ConstNode *>(value[2])->GetDouble(), 2.3);
-    ASSERT_EQ(dynamic_cast<ConstNode *>(value[3])->GetDataType(), fesql::node::kPlaceholder);
+    ASSERT_EQ(dynamic_cast<ConstNode *>(value[3])->GetDataType(),
+              fesql::node::kPlaceholder);
 }
 
 TEST_F(SqlNodeTest, FrameHistoryStartEndTest) {
