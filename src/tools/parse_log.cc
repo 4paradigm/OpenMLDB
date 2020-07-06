@@ -16,64 +16,65 @@
 #include "log/log_writer.h"
 #include "proto/tablet.pb.h"
 
+using ::rtidb::log::SequentialFile;
+using ::rtidb::log::Reader;
 using ::rtidb::base::Slice;
 using ::rtidb::base::Status;
+using ::rtidb::log::NewSeqFile;
 
 namespace rtidb {
-namespace log {
+namespace tools {
 
-void ReadLog(const std::string& log_dir,
-        const std::string& fname) {
-    std::ofstream my_count_1("result.txt");
-    std::string full_path = log_dir + "/" + fname;
-    printf("--------full_path: %s\n", full_path.c_str());
+void ReadLog(const std::string& full_path) {
+    std::ofstream my_count(full_path + "_result.txt");
     FILE* fd_r = fopen(full_path.c_str(), "rb");
     if (fd_r == NULL) {
         printf("fopen failed: %s\n", full_path.c_str());
         return;
     }
-    SequentialFile* rf = NewSeqFile(fname, fd_r);
-    std::string scratch2;
+    SequentialFile* rf = NewSeqFile(full_path, fd_r);
+    std::string scratch;
     Reader reader(rf, NULL, true, 0);
     Status status;
     uint64_t success_cnt = 0;
     do {
         Slice value2;
-        status = reader.ReadRecord(&value2, &scratch2);
+        status = reader.ReadRecord(&value2, &scratch);
         if (!status.ok()) {
             break;
         }
-        ::rtidb::api::LogEntry entry2;
-        entry2.ParseFromString(value2.ToString());
-        if (entry2.ts_dimensions_size() == 0) {
-            my_count_1 << entry2.ts() << std::endl;
+        ::rtidb::api::LogEntry entry;
+        entry.ParseFromString(value2.ToString());
+        if (entry.ts_dimensions_size() == 0) {
+            my_count << entry.ts() << std::endl;
         } else {
-            for (int i = 0; i < entry2.ts_dimensions_size(); i++) {
-                my_count_1 << entry2.ts_dimensions(i).idx() << ":" <<
-                    entry2.ts_dimensions(i).ts() << std::endl;
+            for (int i = 0; i < entry.ts_dimensions_size(); i++) {
+                my_count << entry.ts_dimensions(i).idx() << "\t" <<
+                    entry.ts_dimensions(i).ts() << std::endl;
             }
         }
-        if (entry2.dimensions_size() == 0) {
-            my_count_1 << entry2.pk() << std::endl;
+        if (entry.dimensions_size() == 0) {
+            my_count << entry.pk() << std::endl;
         } else {
-            for (int i = 0; i < entry2.dimensions_size(); i++) {
-                my_count_1 << entry2.dimensions(i).idx() << ":"
-                    << entry2.dimensions(i).key().c_str() << std::endl;
+            for (int i = 0; i < entry.dimensions_size(); i++) {
+                my_count << entry.dimensions(i).idx() << "\t"
+                    << entry.dimensions(i).key().c_str() << std::endl;
             }
         }
         success_cnt++;
     } while (status.ok());
-    my_count_1.close();
+    my_count.close();
     printf("--------success_cnt: %lu\n", success_cnt);
 }
 
-}  // namespace log
+}  // namespace tools
 }  // namespace rtidb
 
 int main(int argc, char** argv) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     printf("--------start readlog--------\n");
-    rtidb::log::ReadLog(argv[1], argv[2]);
+    printf("--------full_path: %s\n", argv[1]);
+    rtidb::tools::ReadLog(argv[1]);
     printf("--------end readlog--------\n");
     return 0;
 }
