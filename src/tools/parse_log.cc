@@ -21,12 +21,14 @@ using ::rtidb::log::Reader;
 using ::rtidb::base::Slice;
 using ::rtidb::base::Status;
 using ::rtidb::log::NewSeqFile;
+using ::rtidb::base::ParseFileNameFromPath;
 
 namespace rtidb {
 namespace tools {
 
 void ReadLog(const std::string& full_path) {
-    std::ofstream my_count(full_path + "_result.txt");
+    std::string fname = ParseFileNameFromPath(full_path);
+    std::ofstream my_count(fname + "_result.txt");
     FILE* fd_r = fopen(full_path.c_str(), "rb");
     if (fd_r == NULL) {
         printf("fopen failed: %s\n", full_path.c_str());
