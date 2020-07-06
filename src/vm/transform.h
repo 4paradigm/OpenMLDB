@@ -378,6 +378,9 @@ class BatchModeTransformer {
                                        node::ExprListNode* expr_list);
     bool CheckHistoryWindowFrame(const node::WindowPlanNode* w_ptr,
                                  base::Status& status);  // NOLINT
+    base::Status CheckWindowOrderColumn(
+        const node::WindowPlanNode* w_ptr,
+        const vm::SchemaSourceList& schema_source_list);  // NOLINT
 };
 
 class RequestModeransformer : public BatchModeTransformer {

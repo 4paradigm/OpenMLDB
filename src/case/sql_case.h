@@ -57,7 +57,7 @@ class SQLCase {
     const ExpectInfo& expect() const { return expect_; }
     void set_expect(const ExpectInfo& data) { expect_ = data; }
     void set_input_name(const std::string name, int32_t idx) {
-        if (idx < inputs_.size()) {
+        if (idx < static_cast<int32_t>(inputs_.size())) {
             inputs_[idx].name_ = name;
         }
     }
@@ -137,6 +137,7 @@ class SQLCase {
     std::string id_;
     std::string mode_;
     std::string desc_;
+    std::vector<std::string> tags_;
     std::string db_;
     std::string create_str_;
     std::string insert_str_;

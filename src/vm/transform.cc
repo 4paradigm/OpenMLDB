@@ -153,7 +153,8 @@ bool BatchModeTransformer::TransformPlanOp(const ::fesql::node::PlanNode* node,
     }
     if (!ok) {
         LOG(WARNING) << "fail to tranform physical plan: fail node " +
-                            node::NameOfPlanNodeType(node->type_);
+                            node::NameOfPlanNodeType(node->type_) + ": " +
+                            status.msg;
         return false;
     }
     op_map_[logical_op] = op;
@@ -396,6 +397,13 @@ bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
         return false;
     }
     if (!CheckHistoryWindowFrame(w_ptr, status)) {
+        return false;
+    }
+
+    auto check_status =
+        CheckWindowOrderColumn(w_ptr, depend->GetOutputNameSchemaList());
+    if (!check_status.isOK()) {
+        status = check_status;
         return false;
     }
     const node::OrderByNode* orders = w_ptr->GetOrders();
@@ -985,6 +993,16 @@ bool BatchModeTransformer::TransformProjectOp(
                                              project_list, output, status);
         case kSchemaTypeTable:
             if (project_list->is_window_agg_) {
+                if (!CheckHistoryWindowFrame(project_list->w_ptr_, status)) {
+                    return false;
+                }
+
+                auto check_status = CheckWindowOrderColumn(
+                    project_list->w_ptr_, depend->GetOutputNameSchemaList());
+                if (!check_status.isOK()) {
+                    status = check_status;
+                    return false;
+                }
                 return CreatePhysicalProjectNode(kWindowAggregation, depend,
                                                  project_list, output, status);
             } else {
@@ -1362,6 +1380,48 @@ bool BatchModeTransformer::IsSimpleProject(const ColumnSourceList& sources) {
         }
     }
     return flag;
+}
+base::Status BatchModeTransformer::CheckWindowOrderColumn(
+    const node::WindowPlanNode* w_ptr,
+    const vm::SchemaSourceList& schema_source_list) {
+    if (nullptr == w_ptr) {
+        return base::Status(common::kPlanError, "Invalid Window: null window");
+    }
+
+    auto orders = w_ptr->GetOrders();
+    if (nullptr != orders && !node::ExprListNullOrEmpty(orders->order_by_)) {
+        if (1u != orders->order_by_->children_.size()) {
+            return base::Status(common::kPlanError,
+                                "Invalid Window: can't support multi order");
+        }
+
+        auto order = orders->order_by_->children_[0];
+        if (node::kExprColumnRef != order->expr_type_) {
+            return base::Status(common::kPlanError,
+                                "Invalid Window: support expression order");
+        }
+
+        SchemasContext ctx(schema_source_list);
+        fesql::type::Type type;
+        CHECK_STATUS(ctx.ColumnTypeResolved(
+            dynamic_cast<node::ColumnRefNode*>(order)->GetRelationName(),
+            dynamic_cast<node::ColumnRefNode*>(order)->GetColumnName(), &type));
+        switch (type) {
+            case type::kInt16:
+            case type::kInt32:
+            case type::kInt64:
+            case type::kTimestamp: {
+                return base::Status();
+            }
+            default: {
+                return base::Status(
+                    common::kPlanError,
+                    "Invalid Window: order column type invalid: " +
+                        fesql::type::Type_Name(type));
+            }
+        }
+    }
+    return base::Status();
 }
 bool BatchModeTransformer::CheckHistoryWindowFrame(
     const node::WindowPlanNode* w_ptr, base::Status& status) {

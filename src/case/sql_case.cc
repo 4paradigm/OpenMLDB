@@ -178,8 +178,9 @@ bool SQLCase::ExtractSchema(const std::vector<std::string>& columns,
     }
     for (auto col : columns) {
         boost::trim(col);
+        boost::replace_last(col, " ", ":");
         std::vector<std::string> name_type_vec;
-        boost::split(name_type_vec, col, boost::is_any_of(": "),
+        boost::split(name_type_vec, col, boost::is_any_of(":"),
                      boost::token_compress_on);
         if (2 != name_type_vec.size()) {
             LOG(WARNING) << "Invalid Schema Format:"
@@ -780,6 +781,13 @@ bool SQLCase::CreateSQLCasesFromYaml(
          case_iter != sql_cases_node.end(); case_iter++) {
         SQLCase sql_case;
         auto sql_case_node = *case_iter;
+
+        if (sql_case_node["id"]) {
+            sql_case.id_ = sql_case_node["id"].as<std::string>();
+        } else {
+            sql_case.id_ = "-1";
+        }
+
         if (sql_case_node["desc"]) {
             sql_case.desc_ = sql_case_node["desc"].as<std::string>();
             boost::trim(sql_case.desc_);
@@ -792,27 +800,11 @@ bool SQLCase::CreateSQLCasesFromYaml(
                 continue;
             }
         }
-        if (sql_case_node["id"]) {
-            sql_case.id_ = sql_case_node["id"].as<std::string>();
-        } else {
-            sql_case.id_ = "-1";
-        }
         if (sql_case_node["mode"]) {
             sql_case.mode_ = sql_case_node["mode"].as<std::string>();
             boost::trim(sql_case.mode_);
         } else {
             sql_case.mode_ = "batch";
-        }
-
-        if (sql_case_node["batch_plan"]) {
-            sql_case.batch_plan_ =
-                sql_case_node["batch_plan"].as<std::string>();
-            boost::trim(sql_case.batch_plan_);
-        }
-        if (sql_case_node["request_plan"]) {
-            sql_case.request_plan_ =
-                sql_case_node["request_plan"].as<std::string>();
-            boost::trim(sql_case.request_plan_);
         }
         if (!filter_modes.empty()) {
             bool need_filter = false;
@@ -827,6 +819,34 @@ bool SQLCase::CreateSQLCasesFromYaml(
                 LOG(INFO) << "SKIP SQL Case " << sql_case.desc();
                 continue;
             }
+        }
+        if (sql_case_node["tags"]) {
+            if (!CreateStringListFromYamlNode(sql_case_node["tags"],
+                                              sql_case.tags_)) {
+                LOG(WARNING) << "Fail to parse tags";
+                return false;
+            }
+            std::set<std::string> tags(sql_case.tags_.begin(),
+                                       sql_case.tags_.end());
+
+            if (tags.find("todo") != tags.cend()) {
+                continue;
+            }
+
+            if (tags.find("TODO") != tags.cend()) {
+                continue;
+            }
+        }
+
+        if (sql_case_node["batch_plan"]) {
+            sql_case.batch_plan_ =
+                sql_case_node["batch_plan"].as<std::string>();
+            boost::trim(sql_case.batch_plan_);
+        }
+        if (sql_case_node["request_plan"]) {
+            sql_case.request_plan_ =
+                sql_case_node["request_plan"].as<std::string>();
+            boost::trim(sql_case.request_plan_);
         }
 
         if (sql_case_node["db"]) {
@@ -931,7 +951,8 @@ std::string FindFesqlDirPath() {
     }
 
     if (find_fesql_dir) {
-        LOG(INFO) << "Fesql Dir Path is : " << fesql_path.string() << std::endl;
+        DLOG(INFO) << "Fesql Dir Path is : " << fesql_path.string()
+                   << std::endl;
         return fesql_path.string();
     }
     return std::string();

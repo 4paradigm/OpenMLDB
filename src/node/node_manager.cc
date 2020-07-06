@@ -237,33 +237,38 @@ SQLNode *NodeManager::MakeFrameBound(BoundType bound_type) {
 }
 
 SQLNode *NodeManager::MakeFrameBound(BoundType bound_type, ExprNode *expr) {
+    if (kExprPrimary != expr->expr_type_) {
+        LOG(WARNING) << "cannot create window frame, only support "
+                        "const number and const time offset of frame";
+        return nullptr;
+    }
     ConstNode *primary = dynamic_cast<ConstNode *>(expr);
     int64_t offset;
     switch (primary->GetDataType()) {
-        case node::DataType::kFloat:
-        case node::DataType::kDouble:
         case node::DataType::kInt16:
         case node::DataType::kInt32:
-        case node::DataType::kInt64:
+        case node::DataType::kInt64: {
             offset = primary->GetAsInt64();
-            break;
+            FrameBound *node_ptr = new FrameBound(bound_type, offset, false);
+            return RegisterNode(node_ptr);
+        }
         case node::DataType::kDay:
         case node::DataType::kHour:
         case node::DataType::kMinute:
-        case node::DataType::kSecond:
+        case node::DataType::kSecond: {
             offset = (primary->GetMillis());
-            break;
+            FrameBound *node_ptr = new FrameBound(bound_type, offset, true);
+            return RegisterNode(node_ptr);
+        } break;
         default: {
             LOG(WARNING) << "cannot create window frame, only support "
-                            "number and time offset of frame";
+                            "integer and time offset of frame";
             return nullptr;
         }
     }
-    FrameBound *node_ptr = new FrameBound(bound_type, offset);
-    return RegisterNode(node_ptr);
 }
 SQLNode *NodeManager::MakeFrameBound(BoundType bound_type, int64_t offset) {
-    FrameBound *node_ptr = new FrameBound(bound_type, offset);
+    FrameBound *node_ptr = new FrameBound(bound_type, offset, false);
     return RegisterNode(node_ptr);
 }
 SQLNode *NodeManager::MakeFrameExtent(SQLNode *start, SQLNode *end) {
