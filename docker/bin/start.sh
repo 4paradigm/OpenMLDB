@@ -11,7 +11,7 @@ WORKDIR=$(dirname ${SELFDIR})
 cd ${WORKDIR}
 case "${ROLE}" in
     'blob_proxy')
-        ./bin/mon ./bin/boot_blob_proxy.sh -l ./logs/rtidb_mon.log
+        ./bin/mon ./bin/boot_blob_proxy.sh
         ;;
     *)
         echo "muset set role"
