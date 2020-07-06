@@ -578,14 +578,16 @@ bool MemTable::IsExpire(const LogEntry& entry) {
          iter != entry.ts_dimensions().end(); iter++) {
         ts_dimemsions_map.insert(std::make_pair(iter->idx(), iter->ts()));
     }
-    if (ttl_type_ == ::rtidb::api::TTLType::kLatestTime ||
-        ttl_type_ == ::rtidb::api::TTLType::kAbsAndLat) {
+    if (ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
         return CheckLatest(entry, ts_dimemsions_map);
-    } else if (ttl_type_ == ::rtidb::api::TTLType::kAbsOrLat) {
-        return CheckAbsolute(entry, ts_dimemsions_map) &&
-               CheckLatest(entry, ts_dimemsions_map);
-    } else {
+    } else if (ttl_type_ == ::rtidb::api::TTLType::kAbsoluteTime) {
         return CheckAbsolute(entry, ts_dimemsions_map);
+    } else if (ttl_type_ == ::rtidb::api::TTLType::kAbsOrLat) {
+        return CheckAbsolute(entry, ts_dimemsions_map) ||
+            CheckLatest(entry, ts_dimemsions_map);
+    } else {
+        return CheckAbsolute(entry, ts_dimemsions_map) &&
+            CheckLatest(entry, ts_dimemsions_map);
     }
     return true;
 }
