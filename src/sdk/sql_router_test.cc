@@ -154,23 +154,37 @@ TEST_F(SQLRouterTest, smoketest_on_sql) {
     ASSERT_TRUE(ok);
     ASSERT_TRUE(router->RefreshCatalog());
     std::string insert = "insert into " + name + " values('hello', 1590);";
+    std::string insert_placeholder = "insert into " + name + " values(?, ?);";
     ok = router->ExecuteInsert(db, insert, &status);
+    ASSERT_TRUE(ok);
+    std::shared_ptr<SQLInsertRow> insert_row =
+        router->GetInsertRow(db, insert_placeholder, &status);
+    ASSERT_EQ(status.code, 0);
+    ASSERT_TRUE(insert_row->Init(5));
+    ASSERT_TRUE(insert_row->AppendString("world"));
+    ASSERT_TRUE(insert_row->AppendInt64(1591));
+    ASSERT_TRUE(insert_row->Build());
+    ok = router->ExecuteInsert(db, insert_placeholder, insert_row, &status);
     ASSERT_TRUE(ok);
     ASSERT_TRUE(router->RefreshCatalog());
     std::string sql_select = "select col1 from " + name + " ;";
     auto rs = router->ExecuteSQL(db, sql_select, &status);
     if (!rs) ASSERT_TRUE(false);
-    ASSERT_EQ(1, rs->Size());
+    ASSERT_EQ(2, rs->Size());
     ASSERT_TRUE(rs->Next());
     ASSERT_EQ("hello", rs->GetStringUnsafe(0));
+    ASSERT_TRUE(rs->Next());
+    ASSERT_EQ("world", rs->GetStringUnsafe(0));
     std::string sql_window_batch =
         "select sum(col2) over w from " + name + " window w as (partition by " +
         name + ".col1 order by " + name +
         ".col2 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);";
     rs = router->ExecuteSQL(db, sql_window_batch, &status);
-    ASSERT_EQ(1, rs->Size());
+    ASSERT_EQ(2, rs->Size());
     ASSERT_TRUE(rs->Next());
     ASSERT_EQ(1590, rs->GetInt64Unsafe(0));
+    ASSERT_TRUE(rs->Next());
+    ASSERT_EQ(1591, rs->GetInt64Unsafe(0));
     {
         std::shared_ptr<SQLRequestRow> row =
             router->GetRequestRow(db, sql_window_batch, &status);

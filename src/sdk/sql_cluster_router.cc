@@ -207,7 +207,7 @@ std::shared_ptr<SQLInsertRow> SQLClusterRouter::GetInsertRow(
         const ::fesql::node::ConstNode* primary =
             dynamic_cast<const ::fesql::node::ConstNode*>(
                 row->children_.at(idx));
-        if (primary->GetStr() != "?") {
+        if (!primary->IsPlaceholder()) {
             default_map->insert(std::make_pair(
                 idx, DefaultValue{::rtidb::sdk::ConvertType(column.data_type()),
                                   primary->GetStr()}));
@@ -381,28 +381,30 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db,
     ::fesql::plan::PlanNodeList plans;
     bool ok = GetSQLPlan(sql, &nm, &plans);
     if (!ok || plans.size() == 0) {
-        LOG(WARNING) << "fail to get sql plan with sql " << sql;
-        status->msg = "fail to get sql plan with";
+        status->msg = "fail to get sql plan with " + sql;
+        LOG(WARNING) << status->msg;
         return false;
     }
     ::fesql::node::PlanNode* plan = plans[0];
     if (plan->GetType() != fesql::node::kPlanTypeInsert) {
         status->msg = "invalid sql node expect insert";
-        LOG(WARNING) << "invalid sql node expect insert";
+        LOG(WARNING) << status->msg;
         return false;
     }
     ::fesql::node::InsertPlanNode* iplan =
         dynamic_cast<::fesql::node::InsertPlanNode*>(plan);
     const ::fesql::node::InsertStmt* insert_stmt = iplan->GetInsertNode();
     if (insert_stmt == NULL) {
+        status->msg = "insert stmt is null";
         LOG(WARNING) << "insert stmt is null";
         return false;
     }
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info =
         cluster_sdk_->GetTableInfo(db, insert_stmt->table_name_);
     if (!table_info) {
-        LOG(WARNING) << "table with name " << insert_stmt->table_name_
-                     << " does not exist";
+        status->msg =
+            "table with name " + insert_stmt->table_name_ + " does not exist";
+        LOG(WARNING) << status->msg;
         return false;
     }
     std::string value;
@@ -411,21 +413,28 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db,
     ok = EncodeFullColumns(table_info->column_desc_v1(), iplan, &value,
                            &dimensions, &ts);
     if (!ok) {
-        LOG(WARNING) << "fail to encode row for table "
-                     << insert_stmt->table_name_;
+        status->msg =
+            "fail to encode row for table " + insert_stmt->table_name_;
+        LOG(WARNING) << status->msg;
         return false;
     }
     std::shared_ptr<::rtidb::client::TabletClient> tablet =
         cluster_sdk_->GetLeaderTabletByTable(db, insert_stmt->table_name_);
     if (!tablet) {
-        LOG(WARNING) << "fail to get table " << insert_stmt->table_name_
-                     << " tablet";
+        status->msg =
+            "fail to get table " + insert_stmt->table_name_ + " tablet";
+        LOG(WARNING) << status->msg;
         return false;
     }
     DLOG(INFO) << "put data to endpoint " << tablet->GetEndpoint()
                << " with dimensions size " << dimensions.size();
     ok = tablet->Put(table_info->tid(), 0, dimensions, ts, value, 1);
-    if (!ok) return false;
+    if (!ok) {
+        status->msg =
+            "fail to get table " + insert_stmt->table_name_ + " tablet";
+        LOG(WARNING) << status->msg;
+        return false;
+    }
     return true;
 }
 

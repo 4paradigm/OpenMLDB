@@ -142,7 +142,9 @@ bool SQLInsertRow::Check(fesql::sdk::DataType type) {
     auto expected_type =
         ConvertType(table_info_->column_desc_v1(cnt_).data_type());
     if (expected_type != type) {
-        LOG(WARNING) << "type mismatch required";
+        LOG(WARNING) << "type mismatch required "
+                     << fesql::sdk::DataTypeName(expected_type) << " get "
+                     << fesql::sdk::DataTypeName(type);
         return false;
     }
     if (type != ::fesql::sdk::kTypeString) {
@@ -200,8 +202,11 @@ bool SQLInsertRow::MakeDefault() {
                 return AppendInt64(it->second.value);
             case ::fesql::sdk::kTypeString:
                 return AppendString(it->second.value);
+            default:
+                return false;
         }
     }
+    return true;
 }
 
 bool SQLInsertRow::AppendBool(bool val) {

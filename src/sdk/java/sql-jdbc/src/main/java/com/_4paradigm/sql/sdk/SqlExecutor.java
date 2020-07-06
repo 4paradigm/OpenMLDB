@@ -3,6 +3,8 @@ package com._4paradigm.sql.sdk;
 import com._4paradigm.sql.ResultSet;
 import com._4paradigm.sql.SQLRequestRow;
 import com._4paradigm.sql.SQLInsertRow;
+import com._4paradigm.sql.SQLInsertRow;
+import com._4paradigm.sql.Status;
 
 public interface SqlExecutor {
     boolean createDB(String db);
