@@ -29,6 +29,7 @@
 #include "sdk/base.h"
 #include "sdk/base_impl.h"
 #include "sdk/result_set_sql.h"
+#include "timer.h"  //NOLINT
 
 namespace rtidb {
 namespace sdk {
@@ -69,14 +70,16 @@ SQLClusterRouter::SQLClusterRouter(const SQLRouterOptions& options)
       cluster_sdk_(NULL),
       engine_(NULL),
       input_schema_map_(),
-      mu_() {}
+      mu_(),
+      rand_(::baidu::common::timer::now_time()) {}
 
 SQLClusterRouter::SQLClusterRouter(ClusterSDK* sdk)
     : options_(),
       cluster_sdk_(sdk),
       engine_(NULL),
       input_schema_map_(),
-      mu_() {}
+      mu_(),
+      rand_(::baidu::common::timer::now_time()) {}
 
 SQLClusterRouter::~SQLClusterRouter() {
     delete cluster_sdk_;
@@ -242,7 +245,9 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
         status->msg = "not tablet found";
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
-    ok = tablets[0]->Query(db, sql, row->GetRow(), cntl.get(), response.get());
+    uint32_t idx = rand_.Uniform(tablets.size());
+    ok =
+        tablets[idx]->Query(db, sql, row->GetRow(), cntl.get(), response.get());
     if (!ok) {
         status->msg = "request server error";
         return std::shared_ptr<::fesql::sdk::ResultSet>();
@@ -386,6 +391,9 @@ bool SQLClusterRouter::EncodeFullColumns(
         const ::fesql::node::ConstNode* primary =
             dynamic_cast<const ::fesql::node::ConstNode*>(row->children_.at(i));
         if (primary->IsNull()) {
+            if (column.not_null()) {
+                return false;
+            }
             rb.AppendNULL();
             continue;
         }
