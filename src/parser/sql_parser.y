@@ -275,6 +275,7 @@ typedef void* yyscan_t;
 %token NOT
 %token NO_WRITE_TO_BINLOG
 %token NULLX
+%token PLACEHOLDER
 %token NUMBER
 %token ON
 %token ONDUPLICATE
@@ -1455,6 +1456,9 @@ expr_const:
     }
     | DOUBLE_MIN {
     	$$ = node_manager->MakeConstNodeDOUBLEMIN();
+    }
+    | PLACEHOLDER {
+        $$ = node_manager->MakeConstNodePLACEHODLER();
     }
   	;
 
