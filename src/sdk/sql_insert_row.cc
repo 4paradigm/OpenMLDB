@@ -62,7 +62,8 @@ inline uint32_t SDKGetStartOffset(int32_t column_count) {
 
 SQLInsertRow::SQLInsertRow(
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
-    std::shared_ptr<std::map<uint32_t, DefaultValue>> default_map)
+    std::shared_ptr<std::map<uint32_t, DefaultValue>> default_map,
+    uint32_t str_size)
     : table_info_(table_info),
       default_map_(default_map),
       cnt_(0),
@@ -74,8 +75,9 @@ SQLInsertRow::SQLInsertRow(
       offset_vec_(),
       val_(),
       buf_(NULL) {
-    str_field_start_offset_ =
-        SDK_HEADER_LENGTH + BitMapSize(table_info_->column_desc_v1_size());
+    str_field_start_offset_ = SDK_HEADER_LENGTH +
+                              BitMapSize(table_info_->column_desc_v1_size()) +
+                              str_size;
     for (int idx = 0; idx < table_info_->column_desc_v1_size(); idx++) {
         auto type = ConvertType(table_info_->column_desc_v1(idx).data_type());
         if (type == ::fesql::sdk::kTypeString) {

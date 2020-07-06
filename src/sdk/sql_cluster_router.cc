@@ -162,7 +162,8 @@ std::shared_ptr<SQLInsertRow> SQLClusterRouter::GetInsertRow(
             if (iit != it->second.end()) {
                 status->code = 0;
                 std::shared_ptr<SQLInsertRow> row(new SQLInsertRow(
-                    iit->second.table_info, iit->second.default_map));
+                    iit->second.table_info, iit->second.default_map,
+                    iit->second.str_size));
                 return row;
             }
         }
@@ -202,6 +203,7 @@ std::shared_ptr<SQLInsertRow> SQLClusterRouter::GetInsertRow(
         new std::map<uint32_t, DefaultValue>());
     ::fesql::node::ExprListNode* row =
         dynamic_cast<::fesql::node::ExprListNode*>(insert_stmt->values_[0]);
+    uint32_t str_size = 0;
     for (int32_t idx = 0; idx < table_info->column_desc_v1_size(); idx++) {
         auto column = table_info->column_desc_v1(idx);
         const ::fesql::node::ConstNode* primary =
@@ -211,6 +213,9 @@ std::shared_ptr<SQLInsertRow> SQLClusterRouter::GetInsertRow(
             default_map->insert(std::make_pair(
                 idx, DefaultValue{::rtidb::sdk::ConvertType(column.data_type()),
                                   primary->GetStr()}));
+            if (primary->GetDataType() == ::fesql::node::kVarchar) {
+                str_size += strlen(primary->GetStr());
+            }
         }
     }
     {
@@ -218,16 +223,18 @@ std::shared_ptr<SQLInsertRow> SQLClusterRouter::GetInsertRow(
         auto it = input_schema_map_.find(db);
         if (it == input_schema_map_.end()) {
             std::map<std::string, ::rtidb::sdk::RouterCacheSchema> sql_schema;
-            sql_schema.insert(std::make_pair(
-                sql, ::rtidb::sdk::RouterCacheSchema(table_info, default_map)));
+            sql_schema.insert(
+                std::make_pair(sql, ::rtidb::sdk::RouterCacheSchema(
+                                        table_info, default_map, str_size)));
             input_schema_map_.insert(std::make_pair(db, sql_schema));
         } else {
-            it->second.insert(std::make_pair(
-                sql, ::rtidb::sdk::RouterCacheSchema(table_info, default_map)));
+            it->second.insert(
+                std::make_pair(sql, ::rtidb::sdk::RouterCacheSchema(
+                                        table_info, default_map, str_size)));
         }
     }
     return std::shared_ptr<SQLInsertRow>(
-        new SQLInsertRow(table_info, default_map));
+        new SQLInsertRow(table_info, default_map, str_size));
 }
 
 bool SQLClusterRouter::ExecuteDDL(const std::string& db, const std::string& sql,
@@ -465,16 +472,18 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db,
         std::shared_ptr<::rtidb::client::TabletClient> tablet =
             cluster_sdk_->GetLeaderTabletByTable(db, table_info->name());
         if (!tablet) {
-            LOG(WARNING) << "fail to get table " << table_info->name()
-                         << " tablet";
+            status->msg = "fail to get table " + table_info->name() + " tablet";
+            LOG(WARNING) << status->msg;
             return false;
         }
         DLOG(INFO) << "put data to endpoint " << tablet->GetEndpoint();
         return tablet->Put(table_info->tid(), 0, row->GetDimensions(),
                            row->GetTs(), row->GetRow(), 1);
+    } else {
+        status->msg = "please use getInsertRow with " + sql + " first";
+        LOG(WARNING) << status->msg;
+        return false;
     }
-    // todo(pxc): user use this function directly
-    return false;
 }
 
 bool SQLClusterRouter::EncodeFullColumns(

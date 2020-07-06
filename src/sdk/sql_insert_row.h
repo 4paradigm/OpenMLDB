@@ -66,7 +66,8 @@ class SQLInsertRow {
     SQLInsertRow() {}
     explicit SQLInsertRow(
         std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
-        std::shared_ptr<std::map<uint32_t, DefaultValue>> default_map);
+        std::shared_ptr<std::map<uint32_t, DefaultValue>> default_map,
+        uint32_t str_size);
     ~SQLInsertRow() = default;
     bool Init(int str_length);
     bool AppendBool(bool val);

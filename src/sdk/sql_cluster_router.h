@@ -39,16 +39,24 @@ namespace sdk {
 struct RouterCacheSchema {
     RouterCacheSchema(
         std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
-        std::shared_ptr<std::map<uint32_t, DefaultValue>> default_map)
-        : table_info(table_info), default_map(default_map), column_schema() {}
+        std::shared_ptr<std::map<uint32_t, DefaultValue>> default_map,
+        uint32_t str_size)
+        : table_info(table_info),
+          default_map(default_map),
+          column_schema(),
+          str_size(str_size) {}
 
     explicit RouterCacheSchema(
         std::shared_ptr<::fesql::sdk::Schema> column_schema)
-        : table_info(), default_map(), column_schema(column_schema) {}
+        : table_info(),
+          default_map(),
+          column_schema(column_schema),
+          str_size(0) {}
 
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info;
     std::shared_ptr<std::map<uint32_t, DefaultValue>> default_map;
     std::shared_ptr<::fesql::sdk::Schema> column_schema;
+    uint32_t str_size;
 };
 
 class SQLClusterRouter : public SQLRouter {
