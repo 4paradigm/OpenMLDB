@@ -681,6 +681,7 @@ class ConstNode : public ExprNode {
     virtual bool Equals(const ExprNode *node) const;
 
     const bool IsNull() const { return kNull == data_type_; }
+    const bool IsPlaceholder() const { return kPlaceholder == data_type_; }
     const std::string GetExprString() const;
     int16_t GetSmallInt() const { return val_.vsmallint; }
 
