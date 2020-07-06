@@ -24,7 +24,7 @@ rtidb_log = {
             }
         },
         {
-            "file_name": "/tablet.warning.log",
+            "file_name": "/tablet.WARNING",
             "offset": 0,
             "item": {
                 "name": "reconnect_num",
@@ -43,7 +43,7 @@ rtidb_log = {
             }
         },
         {
-            "file_name": "/nameserver.warning.log",
+            "file_name": "/nameserver.WARNING",
             "offset": 0,
             "item": {
                 "name": "reconnect_num",

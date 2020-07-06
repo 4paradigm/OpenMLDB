@@ -223,7 +223,8 @@ public class RowBuilder {
     }
 
     public boolean appendString(String val) {
-        int length = val.length();
+        byte[] bytes = val.getBytes(RowCodecCommon.CHARSET);
+        int length = bytes.length;
         if (val == null || (!check(DataType.Varchar) && !check(DataType.String))) {
             return false;
         }
@@ -320,7 +321,7 @@ public class RowBuilder {
         return buffer;
     }
 
-    public static ByteBuffer encode(Map<String, Object> row, List<ColumnDesc> schema) throws TabletException {
+    public static ByteBuffer encode(Map<String, Object> row, List<ColumnDesc> schema, Map<String, Long> blobKeys) throws TabletException {
         if (row == null || row.size() == 0 || schema == null || schema.size() == 0 || row.size() != schema.size()) {
             throw new TabletException("input error");
         }
@@ -333,7 +334,7 @@ public class RowBuilder {
             ColumnDesc columnDesc = schema.get(i);
             Object column = row.get(columnDesc.getName());
             if (columnDesc.isNotNull()
-                && column == null) {
+                    && column == null) {
                 throw new TabletException("col " + columnDesc.getName() + " should not be null");
             } else if (column == null) {
                 builder.appendNULL();
@@ -364,7 +365,16 @@ public class RowBuilder {
                     }
                     break;
                 case Blob:
-                    ok = builder.appendBlob((Long) column);
+                    if (blobKeys == null || blobKeys.isEmpty()) {
+                        ok = builder.appendBlob((Long) column);
+                    } else {
+                        Long key = blobKeys.get(columnDesc.getName());
+                        if (key == null) {
+                            ok = false;
+                            break;
+                        }
+                        ok = builder.appendBlob(key);
+                    }
                     break;
                 case BigInt:
                     ok = builder.appendInt64((Long) column);

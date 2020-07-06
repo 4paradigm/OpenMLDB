@@ -117,7 +117,7 @@ TabletTableHandler::GetWindowIterator(const std::string& idx_name) {
     return std::move(it);
 }
 
-// TODP(chenjing): 基于segment 优化Get(int pos) 操作
+// TODO(chenjing): 基于segment 优化Get(int pos) 操作
 const ::fesql::codec::Row TabletTableHandler::Get(int32_t pos) {
     auto iter = GetIterator();
     while (pos-- > 0 && iter->Valid()) {

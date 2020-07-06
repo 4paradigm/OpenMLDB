@@ -53,6 +53,10 @@ class SQLClusterRouter : public SQLRouter {
     bool ExecuteInsert(const std::string& db, const std::string& sql,
                        ::fesql::sdk::Status* status);
 
+    std::shared_ptr<ExplainInfo> Explain(const std::string& db,
+                                         const std::string& sql,
+                                         ::fesql::sdk::Status* status);
+
     std::shared_ptr<SQLRequestRow> GetRequestRow(const std::string& db,
                                                  const std::string& sql,
                                                  ::fesql::sdk::Status* status);

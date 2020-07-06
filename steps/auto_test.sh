@@ -1,15 +1,12 @@
 #! /bin/sh
-
-
+set -x
 ROOT_DIR=`pwd`
 
 PROTO_BIN=$ROOT_DIR/thirdparty/bin/protoc
 ulimit -c unlimited
 sed -i "/protocExecutable/c\<protocExecutable>${PROTO_BIN}<\/protocExecutable>" java/pom.xml
 mkdir -p java/src/main/proto/
-cp -rf src/proto/tablet.proto java/src/main/proto/
-cp -rf src/proto/name_server.proto java/src/main/proto/
-cp -rf src/proto/common.proto java/src/main/proto/
+cp -a src/proto/{tablet,name_server,common}.proto java/src/main/proto/
 
 ls -al build/bin
 rtidb_path=$ROOT_DIR/build/bin/rtidb
@@ -32,9 +29,10 @@ fi
 echo "rtidb_version:$rtidb_version"
 
 cd $ROOT_DIR
-source /root/.bashrc && rm -rf auto-test-rtidb
-git submodule add https://gitlab.4pd.io/FeatureEngineering/rtidb-auto-test-java.git auto-test-rtidb
-cd auto-test-rtidb
+#source /root/.bashrc && rm -rf rtidb-auto-test-java
+rm -rf rtidb-auto-test-java || : 
+git clone https://gitlab.4pd.io/FeatureEngineering/rtidb-auto-test-java.git
+cd rtidb-auto-test-java
 git checkout ${rtidb_auto_test_branch}
 git pull
 

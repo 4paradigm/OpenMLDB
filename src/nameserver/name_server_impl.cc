@@ -4815,7 +4815,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
     } else if (table_info->table_type() == rtidb::type::kRelational) {
         if (!rtidb::codec::SchemaCodec::AddTypeToColumnDesc(table_info)) {
             response->set_code(
-                ::rtidb::base::ReturnCode::kAddTypeToColumnDescFailed);
+                    ::rtidb::base::ReturnCode::kAddTypeToColumnDescFailed);
             response->set_msg("add type to ColumnDesc failed");
             return;
         }

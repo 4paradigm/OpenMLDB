@@ -1,10 +1,7 @@
-from rtidb_sql import sql_router_sdk
-
-
+from fedb import driver
 def test_create_db():
-    options = sql_router_sdk.SQLRouterOptions()
-    options.zk_cluster = "172.27.128.37:4181"
-    options.zk_path = "/onebox"
-    sdk = sql_router_sdk.NewClusterSQLRouter(options)
-    status = sql_router_sdk.Status()
-    assert sdk.CreateDB("dx", status)
+    options = driver.DriverOptions("172.12.128.37:4181", "/onebox")
+    driver = driver.Driver(options)
+    assert driver.init()
+    assert driver.createDB("dx")[0]
+

@@ -27,7 +27,7 @@ if(SQL_PYSDK_ENABLE)
 	swig_add_library(sql_pysdk
 			TYPE SHARED
 			LANGUAGE python
-			OUTPUT_DIR ${CMAKE_BINARY_DIR}/sql_pysdk/rtidb_sql
+			OUTPUT_DIR ${CMAKE_BINARY_DIR}/sql_pysdk/fedb
 			SOURCES sql_router_sdk.i)
 	target_include_directories(sql_pysdk PRIVATE ${Python3_INCLUDE_DIRS})
 	target_link_libraries(sql_pysdk ${SDK_LIBS})
@@ -63,7 +63,7 @@ if(SQL_PYSDK_ENABLE)
 		COMMAND ${CMAKE_COMMAND} -E echo "  cmdclass={'install': InstallPlatlib}," >> setup.py
 		COMMAND ${CMAKE_COMMAND} -E echo "  packages=find_packages()," >> setup.py
 		COMMAND ${CMAKE_COMMAND} -E echo "  package_data={" >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "  'rtidb_sql':['$<TARGET_FILE_NAME:sql_pysdk>']," >> setup.py
+		COMMAND ${CMAKE_COMMAND} -E echo "  'fedb':['$<TARGET_FILE_NAME:sql_pysdk>']," >> setup.py
 		COMMAND ${CMAKE_COMMAND} -E echo "  }," >> setup.py
 		COMMAND ${CMAKE_COMMAND} -E echo "  include_package_data=True," >> setup.py
 		COMMAND ${CMAKE_COMMAND} -E echo "  classifiers=[" >> setup.py
@@ -104,14 +104,15 @@ if(SQL_PYSDK_ENABLE)
 	add_custom_target(sql_pysdk_package ALL
 		DEPENDS setup.py
 		COMMAND ${CMAKE_COMMAND} -E remove_directory dist
-		COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/sdk/python/rtidb_sql/__init__.py rtidb_sql/__init__.py
-		COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:sql_pysdk> ${CMAKE_BINARY_DIR}/sql_pysdk/rtidb_sql
+		COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/sdk/python/fedb/__init__.py fedb/__init__.py
+		COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/sdk/python/fedb/driver.py fedb/driver.py
+		COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:sql_pysdk> ${CMAKE_BINARY_DIR}/sql_pysdk/fedb
 		COMMAND ${Python3_EXECUTABLE} setup.py bdist_wheel
 		BYPRODUCTS
-		  python/${PROJECT_NAME}
+		  python/fedb
 		  python/build
 		  python/dist
-		  python/${PROJECT_NAME}_sql.egg-info
+		  python/fedb.egg-info
 		WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/sql_pysdk
 		)
 

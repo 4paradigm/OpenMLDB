@@ -197,6 +197,7 @@ message PutResponse {
     optional int32 code = 1;
     optional string msg = 2;
     optional int64 auto_gen_pk = 3;
+    repeated int64 blob_keys = 4;
 }
 
 message DeleteRequest {

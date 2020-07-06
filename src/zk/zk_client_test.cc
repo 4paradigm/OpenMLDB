@@ -127,6 +127,16 @@ TEST_F(ZkClientTest, ZkNodeChange) {
         sleep(1);
     }
     ASSERT_TRUE(detect);
+    detect = false;
+    ok = client.SetNodeValue(node, "3");
+    ASSERT_TRUE(ok);
+    for (int i = 0 ; i < 10; i++) {
+        if (detect) {
+            break;
+        }
+        sleep(1);
+    }
+    ASSERT_TRUE(detect);
 }
 
 }  // namespace zk
