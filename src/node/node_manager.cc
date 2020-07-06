@@ -461,6 +461,9 @@ ExprNode *NodeManager::MakeConstNodeFLOATMIN() {
 ExprNode *NodeManager::MakeConstNodeDOUBLEMIN() {
     return MakeConstNode(static_cast<double>(DBL_MIN));
 }
+ExprNode *NodeManager::MakeConstNodePLACEHOLDER() {
+    return MakeConstNode(fesql::node::kPlaceholder);
+}
 ExprNode *NodeManager::MakeExprIdNode(const std::string &name) {
     ::fesql::node::ExprNode *id_node = new ::fesql::node::ExprIdNode(name);
     return RegisterNode(id_node);
