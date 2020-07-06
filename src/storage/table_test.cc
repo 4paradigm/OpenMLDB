@@ -1132,7 +1132,7 @@ TEST_F(TableTest, GcAbsOrLat) {
         entry.set_pk("test1");
         entry.set_ts(now - 1 * (60 * 1000) - 1000);
         entry.set_value("value1");
-        ASSERT_FALSE(table.IsExpire(entry));
+        ASSERT_TRUE(table.IsExpire(entry));
     }
     table.SchedGc();
     ASSERT_EQ(0, table.GetRecordCnt());

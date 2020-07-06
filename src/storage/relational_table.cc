@@ -330,7 +330,7 @@ bool RelationalTable::Put(const std::string& value,
         ::rtidb::codec::RowBuilder builder(schema);
         builder.SetBuffer(
             reinterpret_cast<int8_t*>(const_cast<char*>(slice.data())),
-            slice.size());
+            slice.size(), false);
         *auto_gen_pk = id_generator_.Next();
         if (!builder.SetInt64(column_def.GetId(), *auto_gen_pk)) {
             PDLOG(WARNING, "SetInt64 failed, idx %d, tid %u pid %u",
