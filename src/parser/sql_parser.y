@@ -1458,7 +1458,7 @@ expr_const:
     	$$ = node_manager->MakeConstNodeDOUBLEMIN();
     }
     | PLACEHOLDER {
-        $$ = node_manager->MakeConstNodePLACEHODLER();
+        $$ = node_manager->MakeConstNodePLACEHOLDER();
     }
   	;
 

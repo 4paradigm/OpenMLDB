@@ -620,7 +620,8 @@ class ConstNode : public ExprNode {
 
  public:
     ConstNode() : ExprNode(kExprPrimary), data_type_(fesql::node::kNull) {}
-    explicit ConstNode(DataType data_type) : ExprNode(kExprPrimary), data_type_(data_type) {}
+    explicit ConstNode(DataType data_type)
+        : ExprNode(kExprPrimary), data_type_(data_type) {}
     explicit ConstNode(int16_t val)
         : ExprNode(kExprPrimary), data_type_(fesql::node::kInt16) {
         val_.vsmallint = val;

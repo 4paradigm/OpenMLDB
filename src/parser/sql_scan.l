@@ -80,6 +80,7 @@ fdiv_assign "/="
 assign  "="
 and "&&"
 or  "||"
+placeholder "?"
 self [,()\[\].\:\+\-\*\/\%\^\<\>]
 
 %x COMMENT
