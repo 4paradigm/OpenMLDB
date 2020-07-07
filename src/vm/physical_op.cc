@@ -112,7 +112,9 @@ void PhysicalProjectNode::Print(std::ostream& output,
     PrintChildren(output, tab);
 }
 bool PhysicalProjectNode::InitSchema() {
-    output_name_schema_list_.AddSchemaSource("", &output_schema_, &sources_);
+    output_schema_.CopyFrom(project_.fn_schema_);
+    output_name_schema_list_.AddSchemaSource("", &project_.fn_schema_,
+                                             &sources_);
     PrintSchema();
     return true;
 }
@@ -176,6 +178,9 @@ void PhysicalWindowAggrerationNode::Print(std::ostream& output,
     if (instance_not_in_window_) {
         output << ", INSTANCE_NOT_IN_WINDOW";
     }
+    if (need_append_input_) {
+        output << ", NEED_APPEND_INPUT";
+    }
     if (limit_cnt_ > 0) {
         output << ", limit=" << limit_cnt_;
     }
@@ -202,10 +207,6 @@ void PhysicalWindowAggrerationNode::Print(std::ostream& output,
     }
     output << "\n";
     PrintChildren(output, tab);
-}
-bool PhysicalWindowAggrerationNode::InitSchema() {
-    // TODO(chenjing): Init Schema with window Join
-    return false;
 }
 
 void PhysicalJoinNode::Print(std::ostream& output,

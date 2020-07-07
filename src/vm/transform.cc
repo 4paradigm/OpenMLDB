@@ -325,6 +325,7 @@ bool BatchModeTransformer::TransformProjecPlantOp(
                                   depend, output, status);
     }
 
+    // 处理project_list_vec_[1...N-1], 串联执行windowAggWithAppendInput
     std::vector<PhysicalOpNode*> ops;
     int32_t project_cnt = 0;
     for (size_t i = node->project_list_vec_.size() - 1; i > 0; i--) {
@@ -332,16 +333,11 @@ bool BatchModeTransformer::TransformProjecPlantOp(
             dynamic_cast<fesql::node::ProjectListNode*>(
                 node->project_list_vec_[i]);
         project_cnt++;
-        // append oringinal table column after project columns
-        // if there is multi
-        project_list->AddProject(node_manager_->MakeRowProjectNode(
-            project_list->GetProjects().size(), "*",
-            node_manager_->MakeAllNode("")));
-
         PhysicalOpNode* project_op = nullptr;
         if (!TransformProjectOp(project_list, depend, &project_op, status)) {
             return false;
         }
+        dynamic_cast<PhysicalWindowAggrerationNode*>(project_op)->AppendInput();
         depend = project_op;
     }
 
@@ -978,7 +974,7 @@ bool BatchModeTransformer::CreatePhysicalProjectNode(
     node_manager_->RegisterNode(op);
     *output = op;
     return true;
-}  // namespace vm
+}
 
 bool BatchModeTransformer::TransformProjectOp(
     node::ProjectListNode* project_list, PhysicalOpNode* node,

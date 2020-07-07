@@ -36,7 +36,16 @@ Row::Row(size_t major_slices, const Row &major, size_t secondary_slices,
         }
     }
 }
-
+Row::Row(const fesql::base::RefCountedSlice &s, size_t secondary_slices,
+         const Row &secondary)
+    : slice_(s), slices_(secondary_slices) {
+    slices_[0] = secondary.slice_;
+    for (size_t offset = 0; offset < secondary_slices - 1; ++offset) {
+        if (secondary.slices_.size() > offset) {
+            slices_[1 + offset] = secondary.slices_[offset];
+        }
+    }
+}
 Row::Row(const RefCountedSlice &s) : slice_(s) {}
 
 Row::~Row() {}

@@ -11,4 +11,5 @@ public class OutputDesc {
     List<String> indexs;
     List<String> columns;
     List<List<String>> rows;
+    Boolean success = true;
 }

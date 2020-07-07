@@ -295,8 +295,7 @@ void RequestModeCheck(SQLCase& sql_case) {  // NOLINT
     std::string sql_str = sql_case.sql_str();
     for (int j = 0; j < input_cnt; ++j) {
         std::string placeholder = "{" + std::to_string(j) + "}";
-        std::string tname = sql_case.inputs()[j].name_;
-        boost::replace_all(sql_str, placeholder, tname);
+        boost::replace_all(sql_str, placeholder, sql_case.inputs()[j].name_);
     }
     std::cout << sql_str << std::endl;
     base::Status get_status;
@@ -365,7 +364,8 @@ void RequestModeCheck(SQLCase& sql_case) {  // NOLINT
         output.push_back(out_row);
     }
 
-    CheckRows(schema, output, case_output_data);
+    CheckRows(schema, SortRows(schema, output, sql_case.expect().order_),
+              case_output_data);
 }
 
 void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
@@ -391,10 +391,7 @@ void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
     std::string sql_str = sql_case.sql_str();
     for (int j = 0; j < input_cnt; ++j) {
         std::string placeholder = "{" + std::to_string(j) + "}";
-        std::string tname = sql_case.inputs()[j].name_.empty()
-                                ? ("t" + std::to_string(j))
-                                : sql_case.inputs()[j].name_;
-        boost::replace_all(sql_str, placeholder, tname);
+        boost::replace_all(sql_str, placeholder, sql_case.inputs()[j].name_);
     }
     std::cout << sql_str << std::endl;
     base::Status get_status;
@@ -450,9 +447,6 @@ void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
               case_output_data);
 }
 INSTANTIATE_TEST_CASE_P(
-    EngineBugQuery, EngineTest,
-    testing::ValuesIn(InitCases("/cases/query/bug_query.yaml")));
-INSTANTIATE_TEST_CASE_P(
     EngineFailQuery, EngineTest,
     testing::ValuesIn(InitCases("/cases/query/fail_query.yaml")));
 INSTANTIATE_TEST_CASE_P(
@@ -492,18 +486,26 @@ INSTANTIATE_TEST_CASE_P(
     EngineBatchGroupQuery, EngineTest,
     testing::ValuesIn(InitCases("/cases/query/group_query.yaml")));
 
+INSTANTIATE_TEST_CASE_P(
+    EngineTestWindowRowQuery, EngineTest,
+    testing::ValuesIn(InitCases("/cases/integration/v1/test_window_row.yaml")));
+
 TEST_P(EngineTest, test_request_engine) {
     ParamType sql_case = GetParam();
-    LOG(INFO) << sql_case.desc();
+    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!boost::contains(sql_case.mode(), "request-unsupport")) {
         RequestModeCheck(sql_case);
+    } else {
+        LOG(INFO) << "Skip mode " << sql_case.mode();
     }
 }
 TEST_P(EngineTest, test_batch_engine) {
     ParamType sql_case = GetParam();
-    LOG(INFO) << sql_case.desc();
+    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!boost::contains(sql_case.mode(), "batch-unsupport")) {
         BatchModeCheck(sql_case);
+    } else {
+        LOG(INFO) << "Skip mode " << sql_case.mode();
     }
 }
 

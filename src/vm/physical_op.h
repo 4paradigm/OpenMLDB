@@ -320,6 +320,9 @@ class PhysicalOpNode {
         return output_name_schema_list_.GetSchemaSlice(idx);
     }
 
+    void SetOutputNameSchemaList(vm::SchemaSourceList &schema_sources) {
+        output_name_schema_list_ = schema_sources;
+    }
     void SetLimitCnt(int32_t limit_cnt) { limit_cnt_ = limit_cnt; }
 
     const int32_t GetLimitCnt() const { return limit_cnt_; }
@@ -508,9 +511,8 @@ class PhysicalProjectNode : public PhysicalUnaryNode {
           project_type_(project_type),
           project_({fn_name, nullptr, schema}),
           sources_(sources) {
-        fn_infos_.push_back(&project_);
-        output_schema_ = schema;
         InitSchema();
+        fn_infos_.push_back(&project_);
     }
     virtual ~PhysicalProjectNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
@@ -818,6 +820,7 @@ class PhysicalWindowNode : public PhysicalUnaryNode, public WindowOp {
     virtual ~PhysicalWindowNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
 };
+
 class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
  public:
     PhysicalWindowAggrerationNode(PhysicalOpNode *node,
@@ -827,17 +830,16 @@ class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
                                   const ColumnSourceList &sources)
         : PhysicalProjectNode(node, fn_name, schema, sources,
                               kWindowAggregation, true, false),
+          need_append_input_(false),
           instance_not_in_window_(w_ptr->instance_not_in_window()),
           window_(w_ptr),
           window_unions_() {
         output_type_ = kSchemaTypeTable;
-        InitSchema();
         fn_infos_.push_back(&window_.partition_.fn_info_);
         fn_infos_.push_back(&window_.sort_.fn_info_);
         fn_infos_.push_back(&window_.range_.fn_info_);
     }
     virtual ~PhysicalWindowAggrerationNode() {}
-    bool InitSchema() override;
     virtual void Print(std::ostream &output, const std::string &tab) const;
     static PhysicalWindowAggrerationNode *CastFrom(PhysicalOpNode *node);
     const bool Valid() { return true; }
@@ -873,9 +875,21 @@ class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
         fn_infos_.push_back(&window_union.range_.fn_info_);
         return true;
     }
+    void AppendInput() {
+        if (!need_append_input_) {
+            need_append_input_ = true;
+            output_schema_.MergeFrom(producers_[0]->output_schema_);
+            output_name_schema_list_.AddSchemaSources(
+                producers_[0]->GetOutputNameSchemaList());
+            PrintSchema();
+        }
+    }
     const bool instance_not_in_window() const {
         return instance_not_in_window_;
     }
+
+    const bool need_append_input() const { return need_append_input_; }
+    bool need_append_input_;
     const bool instance_not_in_window_;
     WindowOp &window() { return window_; }
     WindowJoinList &window_joins() { return window_joins_; }

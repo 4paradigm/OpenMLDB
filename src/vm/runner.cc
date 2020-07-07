@@ -112,7 +112,7 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                     auto runner = new WindowAggRunner(
                         id_++, node->GetOutputNameSchemaList(),
                         op->GetLimitCnt(), op->window_, op->project_,
-                        op->instance_not_in_window());
+                        op->instance_not_in_window(), op->need_append_input());
                     runner->AddProducer(input);
                     size_t input_slices =
                         input->output_schemas().GetSchemaSourceListSize();
@@ -361,7 +361,8 @@ bool Runner::GetColumnBool(RowView* row_view, int idx, type::Type type) {
 }
 
 Row Runner::WindowProject(const int8_t* fn, const uint64_t key, const Row row,
-                          const bool is_instance, Window* window) {
+                          const bool is_instance, size_t append_slices,
+                          Window* window) {
     if (row.empty()) {
         return row;
     }
@@ -384,8 +385,14 @@ Row Runner::WindowProject(const int8_t* fn, const uint64_t key, const Row row,
     if (window->instance_not_in_window()) {
         window->PopFrontData();
     }
-    return Row(base::RefCountedSlice::CreateManaged(out_buf,
-                                                    RowView::GetSize(out_buf)));
+    if (append_slices > 0) {
+        return Row(base::RefCountedSlice::CreateManaged(
+                       out_buf, RowView::GetSize(out_buf)),
+                   append_slices, row);
+    } else {
+        return Row(base::RefCountedSlice::CreateManaged(
+            out_buf, RowView::GetSize(out_buf)));
+    }
 }
 
 int64_t Runner::GetColumnInt64(RowView* row_view, int key_idx,
@@ -690,7 +697,7 @@ void WindowAggRunner::RunWindowAggOnKey(
             }
             window_project_gen_.Gen(
                 union_segment_iters[min_union_pos]->GetKey(), row, false,
-                &window);
+                append_slices_, &window);
 
             // Update Iterator Status
             union_segment_iters[min_union_pos]->Next();
@@ -707,11 +714,13 @@ void WindowAggRunner::RunWindowAggOnKey(
         if (windows_join_gen_.Valid()) {
             Row row = instance_row;
             row = windows_join_gen_.Join(instance_row, join_right_tables);
-            output_table->AddRow(window_project_gen_.Gen(
-                instance_segment_iter->GetKey(), row, true, &window));
+            output_table->AddRow(
+                window_project_gen_.Gen(instance_segment_iter->GetKey(), row,
+                                        true, append_slices_, &window));
         } else {
             output_table->AddRow(window_project_gen_.Gen(
-                instance_segment_iter->GetKey(), instance_row, true, &window));
+                instance_segment_iter->GetKey(), instance_row, true,
+                append_slices_, &window));
         }
 
         cnt++;
@@ -1652,8 +1661,10 @@ const Row AggGenerator::Gen(std::shared_ptr<TableHandler> table) {
 }
 
 const Row WindowProjectGenerator::Gen(const uint64_t key, const Row row,
-                                      bool is_instance, Window* window) {
-    return Runner::WindowProject(fn_, key, row, is_instance, window);
+                                      bool is_instance, size_t append_slices,
+                                      Window* window) {
+    return Runner::WindowProject(fn_, key, row, is_instance, append_slices,
+                                 window);
 }
 
 std::vector<std::shared_ptr<DataHandler>> InputsGenerator::RunInputs(
