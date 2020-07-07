@@ -685,6 +685,8 @@ bool SQLCase::CreateExpectFromYamlNode(const YAML::Node& schema_data,
     }
     if (schema_data["success"]) {
         expect->success_ = schema_data["success"].as<bool>();
+    } else {
+        expect->success_ = true;
     }
     return true;
 }
