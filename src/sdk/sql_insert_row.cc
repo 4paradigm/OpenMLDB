@@ -62,7 +62,7 @@ inline uint32_t SDKGetStartOffset(int32_t column_count) {
 
 SQLInsertRows::SQLInsertRows(
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
-    std::shared_ptr<std::map<uint32_t, DefaultValue>> default_map,
+    std::shared_ptr<std::map<uint32_t, ::fesql::node::ConstNode*>> default_map,
     uint32_t default_str_length)
     : table_info_(table_info),
       default_map_(default_map),
@@ -80,37 +80,16 @@ std::shared_ptr<SQLInsertRow> SQLInsertRows::NewRow() {
 
 SQLInsertRow::SQLInsertRow(
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
-    std::shared_ptr<std::map<uint32_t, DefaultValue>> default_map,
-    uint32_t default_str_length)
+    std::shared_ptr<std::map<uint32_t, ::fesql::node::ConstNode*>> default_map,
+    uint32_t default_string_length)
     : table_info_(table_info),
       default_map_(default_map),
-      cnt_(0),
-      size_(0),
-      str_field_cnt_(0),
-      str_addr_length_(0),
-      str_field_start_offset_(0),
-      str_offset_(0),
-      offset_vec_(),
+      default_string_length_(default_string_length),
+      rb_(table_info->column_desc_v1()),
       val_(),
       buf_(NULL) {
-    str_field_start_offset_ = SDK_HEADER_LENGTH +
-                              BitMapSize(table_info_->column_desc_v1_size()) +
-                              default_str_length;
     for (int idx = 0; idx < table_info_->column_desc_v1_size(); idx++) {
         auto type = ConvertType(table_info_->column_desc_v1(idx).data_type());
-        if (type == ::fesql::sdk::kTypeString) {
-            offset_vec_.push_back(str_field_cnt_);
-            str_field_cnt_++;
-        } else {
-            auto iter = SDK_TYPE_SIZE_MAP.find(type);
-            if (iter == SDK_TYPE_SIZE_MAP.end()) {
-                LOG(WARNING)
-                    << fesql::sdk::DataTypeName(type) << " is not supported";
-            } else {
-                offset_vec_.push_back(str_field_start_offset_);
-                str_field_start_offset_ += iter->second;
-            }
-        }
         if (table_info_->column_desc_v1(idx).is_ts_col()) {
             ts_set_.insert(idx);
         } else if (table_info_->column_desc_v1(idx).add_ts_idx()) {
@@ -120,75 +99,28 @@ SQLInsertRow::SQLInsertRow(
 }
 
 bool SQLInsertRow::Init(int str_length) {
-    if (table_info_->column_desc_v1_size() == 0) {
-        return true;
-    }
-    uint32_t total_length = str_field_start_offset_;
-    total_length += str_length;
-    if (total_length + str_field_cnt_ <= UINT8_MAX) {
-        total_length += str_field_cnt_;
-    } else if (total_length + str_field_cnt_ * 2 <= UINT16_MAX) {
-        total_length += str_field_cnt_ * 2;
-    } else if (total_length + str_field_cnt_ * 3 <= SDK_UINT24_MAX) {
-        total_length += str_field_cnt_ * 3;
-    } else if (total_length + str_field_cnt_ * 4 <= UINT32_MAX) {
-        total_length += str_field_cnt_ * 4;
-    }
-    val_.resize(total_length);
+    uint32_t row_size = rb_.CalTotalLength(str_length + default_string_length_);
+    val_.resize(row_size);
     buf_ = reinterpret_cast<int8_t*>(&(val_[0]));
-    size_ = total_length;
-    *(buf_) = 1;      // FVersion
-    *(buf_ + 1) = 1;  // SVersion
-    *(reinterpret_cast<uint32_t*>(buf_ + SDK_VERSION_LENGTH)) = total_length;
-    uint32_t bitmap_size = BitMapSize(table_info_->column_desc_v1_size());
-    memset(buf_ + SDK_HEADER_LENGTH, 0, bitmap_size);
-    cnt_ = 0;
-    str_addr_length_ = SDKGetAddrLength(total_length);
-    str_offset_ = str_field_start_offset_ + str_addr_length_ * str_field_cnt_;
+    bool ok = rb_.SetBuffer(reinterpret_cast<int8_t*>(buf_), row_size);
+    if (!ok) {
+        return false;
+    }
     MakeDefault();
     return true;
 }
 
-bool SQLInsertRow::Check(fesql::sdk::DataType type) {
-    if (buf_ == NULL) {
-        LOG(WARNING) << "please init this object";
-        return false;
-    }
-    if ((int32_t)cnt_ >= table_info_->column_desc_v1_size()) {
-        LOG(WARNING) << "idx out of index: " << cnt_
-                     << " size=" << table_info_->column_desc_v1_size();
-        return false;
-    }
-    auto expected_type =
-        ConvertType(table_info_->column_desc_v1(cnt_).data_type());
-    if (expected_type != type) {
-        LOG(WARNING) << "type mismatch required "
-                     << fesql::sdk::DataTypeName(expected_type) << " get "
-                     << fesql::sdk::DataTypeName(type);
-        return false;
-    }
-    if (type != ::fesql::sdk::kTypeString) {
-        auto iter = SDK_TYPE_SIZE_MAP.find(type);
-        if (iter == SDK_TYPE_SIZE_MAP.end()) {
-            LOG(WARNING) << fesql::sdk::DataTypeName(type)
-                         << " is not supported";
-            return false;
-        }
-    }
-    return true;
-}
-
 bool SQLInsertRow::GetIndex(const std::string& val) {
-    auto index_it = index_set_.find(cnt_);
+    auto index_it = index_set_.find(rb_.GetCnt());
     if (index_it != index_set_.end()) {
-        dimensions_.push_back(std::make_pair(val, cnt_));
+        dimensions_.push_back(std::make_pair(val, rb_.GetCnt()));
         return true;
     }
     return false;
 }
 
 bool SQLInsertRow::GetTs(uint64_t ts) {
-    auto ts_it = ts_set_.find(cnt_);
+    auto ts_it = ts_set_.find(rb_.GetCnt());
     if (ts_it != ts_set_.end()) {
         ts_.push_back(ts);
         return true;
@@ -197,31 +129,40 @@ bool SQLInsertRow::GetTs(uint64_t ts) {
 }
 
 bool SQLInsertRow::MakeDefault() {
-    auto it = default_map_->find(cnt_);
+    auto it = default_map_->find(rb_.GetCnt());
     if (it != default_map_->end()) {
-        switch (it->second.type) {
-            case ::fesql::sdk::kTypeBool:
-                if (it->second.value == "true") {
+        switch (it->second->GetDataType()) {
+            case ::fesql::node::kBool:
+                if (it->second->GetInt()) {
                     return AppendBool(true);
-                } else if (it->second.value == "false") {
-                    return AppendBool(false);
                 } else {
-                    return false;
+                    return AppendBool(false);
                 }
-            case ::fesql::sdk::kTypeInt16:
-                return AppendInt16(it->second.value);
-            case ::fesql::sdk::kTypeInt32:
-                return AppendInt32(it->second.value);
-            case ::fesql::sdk::kTypeInt64:
-                return AppendInt64(it->second.value);
-            case ::fesql::sdk::kTypeFloat:
-                return AppendFloat(it->second.value);
-            case ::fesql::sdk::kTypeDouble:
-                return AppendDouble(it->second.value);
-            case ::fesql::sdk::kTypeTimestamp:
-                return AppendInt64(it->second.value);
-            case ::fesql::sdk::kTypeString:
-                return AppendString(it->second.value);
+            case ::fesql::node::kInt16:
+                return AppendInt16(it->second->GetSmallInt());
+            case ::fesql::node::kInt32:
+                return AppendInt32(it->second->GetInt());
+            case ::fesql::node::kInt64:
+                return AppendInt64(it->second->GetAsInt64());
+            case ::fesql::node::kFloat:
+                return AppendFloat(static_cast<float>(it->second->GetDouble()));
+            case ::fesql::node::kDouble:
+                return AppendDouble(it->second->GetDouble());
+            case ::fesql::node::kTimestamp:
+                return AppendInt64(it->second->GetAsInt64());
+            case ::fesql::node::kVarchar:
+                return AppendString(it->second->GetStr());
+            case ::fesql::node::kDate: {
+                int32_t year;
+                int32_t month;
+                int32_t day;
+                if (!it->second->GetAsDate(&year, &month, &day)) {
+                    return false;
+                } else {
+                    return AppendDate(year, month, day);
+                }
+                break;
+            }
             default:
                 return false;
         }
@@ -230,203 +171,95 @@ bool SQLInsertRow::MakeDefault() {
 }
 
 bool SQLInsertRow::AppendBool(bool val) {
-    if (!Check(::fesql::sdk::kTypeBool)) return false;
-    GetIndex(val ? "true" : "false");
-    int8_t* ptr = buf_ + offset_vec_[cnt_];
-    *(reinterpret_cast<uint8_t*>(ptr)) = val ? 1 : 0;
-    cnt_++;
-    return MakeDefault();
-}
-
-bool SQLInsertRow::AppendBool(const std::string& val) {
-    if (!Check(::fesql::sdk::kTypeBool)) return false;
-    int8_t* ptr = buf_ + offset_vec_[cnt_];
-    if (val == "true") {
-        *(reinterpret_cast<uint8_t*>(ptr)) = 1;
-        GetIndex("true");
-    } else if (val == "false") {
-        *(reinterpret_cast<uint8_t*>(ptr)) = 0;
-        GetIndex("false");
-    } else {
-        return false;
+    if (rb_.AppendBool(val)) {
+        GetIndex(val ? "true" : "false");
+        return MakeDefault();
     }
-    cnt_++;
-    return MakeDefault();
-}
-
-bool SQLInsertRow::AppendInt32(int32_t val) {
-    if (!Check(::fesql::sdk::kTypeInt32)) return false;
-    GetIndex(std::to_string(val));
-    int8_t* ptr = buf_ + offset_vec_[cnt_];
-    *(reinterpret_cast<int32_t*>(ptr)) = val;
-    cnt_++;
-    return MakeDefault();
-}
-
-bool SQLInsertRow::AppendInt32(const std::string& val) {
-    if (!Check(::fesql::sdk::kTypeInt32)) return false;
-    GetIndex(val);
-    int8_t* ptr = buf_ + offset_vec_[cnt_];
-    *(reinterpret_cast<int32_t*>(ptr)) = boost::lexical_cast<int32_t>(val);
-    cnt_++;
-    return MakeDefault();
+    return false;
 }
 
 bool SQLInsertRow::AppendInt16(int16_t val) {
-    if (!Check(::fesql::sdk::kTypeInt16)) return false;
-    GetIndex(std::to_string(val));
-    int8_t* ptr = buf_ + offset_vec_[cnt_];
-    *(reinterpret_cast<int16_t*>(ptr)) = val;
-    cnt_++;
-    return MakeDefault();
+    if (rb_.AppendInt16(val)) {
+        GetIndex(std::to_string(val));
+        return MakeDefault();
+    }
+    return false;
 }
 
-bool SQLInsertRow::AppendInt16(const std::string& val) {
-    if (!Check(::fesql::sdk::kTypeInt16)) return false;
-    GetIndex(val);
-    int8_t* ptr = buf_ + offset_vec_[cnt_];
-    *(reinterpret_cast<int16_t*>(ptr)) = boost::lexical_cast<int16_t>(val);
-    cnt_++;
-    return MakeDefault();
+bool SQLInsertRow::AppendInt32(int32_t val) {
+    if (rb_.AppendInt32(val)) {
+        GetIndex(std::to_string(val));
+        return MakeDefault();
+    }
+    return false;
 }
 
 bool SQLInsertRow::AppendInt64(int64_t val) {
-    if (!Check(::fesql::sdk::kTypeInt64)) return false;
-    GetIndex(std::to_string(val));
-    GetTs(val);
-    int8_t* ptr = buf_ + offset_vec_[cnt_];
-    *(reinterpret_cast<int64_t*>(ptr)) = val;
-    cnt_++;
-    return MakeDefault();
-}
-
-bool SQLInsertRow::AppendInt64(const std::string& val) {
-    if (!Check(::fesql::sdk::kTypeInt64)) return false;
-    GetIndex(val);
-    GetTs(boost::lexical_cast<int64_t>(val));
-    int8_t* ptr = buf_ + offset_vec_[cnt_];
-    *(reinterpret_cast<int64_t*>(ptr)) = boost::lexical_cast<int64_t>(val);
-    cnt_++;
-    return MakeDefault();
+    if (rb_.AppendInt64(val)) {
+        GetIndex(std::to_string(val));
+        GetTs(val);
+        return MakeDefault();
+    }
+    return false;
 }
 
 bool SQLInsertRow::AppendTimestamp(int64_t val) {
-    if (!Check(::fesql::sdk::kTypeTimestamp)) return false;
-    GetIndex(std::to_string(val));
-    GetTs(val);
-    int8_t* ptr = buf_ + offset_vec_[cnt_];
-    *(reinterpret_cast<int64_t*>(ptr)) = val;
-    cnt_++;
-    return MakeDefault();
-}
-
-bool SQLInsertRow::AppendTimestamp(const std::string& val) {
-    if (!Check(::fesql::sdk::kTypeTimestamp)) return false;
-    GetIndex(val);
-    GetTs(boost::lexical_cast<int64_t>(val));
-    int8_t* ptr = buf_ + offset_vec_[cnt_];
-    *(reinterpret_cast<int64_t*>(ptr)) = boost::lexical_cast<int64_t>(val);
-    cnt_++;
-    return MakeDefault();
+    if (rb_.AppendTimestamp(val)) {
+        GetIndex(std::to_string(val));
+        GetTs(val);
+        return MakeDefault();
+    }
+    return false;
 }
 
 bool SQLInsertRow::AppendFloat(float val) {
-    if (!Check(::fesql::sdk::kTypeFloat)) return false;
-    int8_t* ptr = buf_ + offset_vec_[cnt_];
-    *(reinterpret_cast<float*>(ptr)) = val;
-    cnt_++;
-    return MakeDefault();
-}
-
-bool SQLInsertRow::AppendFloat(const std::string& val) {
-    if (!Check(::fesql::sdk::kTypeFloat)) return false;
-    int8_t* ptr = buf_ + offset_vec_[cnt_];
-    *(reinterpret_cast<float*>(ptr)) = boost::lexical_cast<float>(val);
-    cnt_++;
-    return MakeDefault();
+    if (rb_.AppendFloat(val)) {
+        return MakeDefault();
+    }
+    return false;
 }
 
 bool SQLInsertRow::AppendDouble(double val) {
-    if (!Check(::fesql::sdk::kTypeDouble)) return false;
-    int8_t* ptr = buf_ + offset_vec_[cnt_];
-    *(reinterpret_cast<double*>(ptr)) = val;
-    cnt_++;
-    return MakeDefault();
-}
-
-bool SQLInsertRow::AppendDouble(const std::string& val) {
-    if (!Check(::fesql::sdk::kTypeDouble)) return false;
-    int8_t* ptr = buf_ + offset_vec_[cnt_];
-    *(reinterpret_cast<double*>(ptr)) = boost::lexical_cast<double>(val);
-    cnt_++;
-    return MakeDefault();
+    if (rb_.AppendDouble(val)) {
+        return MakeDefault();
+    }
+    return false;
 }
 
 bool SQLInsertRow::AppendString(const std::string& val) {
-    if (!Check(::fesql::sdk::kTypeString)) return false;
-    if (str_offset_ + val.size() > size_) return false;
-    GetIndex(val);
-    int8_t* ptr =
-        buf_ + str_field_start_offset_ + str_addr_length_ * offset_vec_[cnt_];
-    if (str_addr_length_ == 1) {
-        *(reinterpret_cast<uint8_t*>(ptr)) = (uint8_t)str_offset_;
-    } else if (str_addr_length_ == 2) {
-        *(reinterpret_cast<uint16_t*>(ptr)) = (uint16_t)str_offset_;
-    } else if (str_addr_length_ == 3) {
-        *(reinterpret_cast<uint8_t*>(ptr)) = str_offset_ >> 16;
-        *(reinterpret_cast<uint8_t*>(ptr + 1)) = (str_offset_ & 0xFF00) >> 8;
-        *(reinterpret_cast<uint8_t*>(ptr + 2)) = str_offset_ & 0x00FF;
-    } else {
-        *(reinterpret_cast<uint32_t*>(ptr)) = str_offset_;
+    if (rb_.AppendString(val.c_str(), val.size())) {
+        GetIndex(val);
+        return MakeDefault();
     }
-    if (val.size() != 0) {
-        memcpy(reinterpret_cast<char*>(buf_ + str_offset_), val.c_str(),
-               val.size());
+    return false;
+}
+
+bool SQLInsertRow::AppendString(const char* val, uint32_t length) {
+    if (rb_.AppendString(val, length)) {
+        GetIndex(std::string(val, length));
+        return MakeDefault();
     }
-    str_offset_ += val.size();
-    cnt_++;
-    return MakeDefault();
+    return false;
+}
+
+bool SQLInsertRow::AppendDate(uint32_t year, uint32_t month, uint32_t day) {
+    if (rb_.AppendDate(year, month, day)) {
+        return MakeDefault();
+    }
+    return false;
 }
 
 bool SQLInsertRow::AppendNULL() {
-    // todo: deal with null index and ts
-    if (GetIndex("")) return false;
-    if (GetTs(0)) return false;
-    int8_t* ptr = buf_ + SDK_HEADER_LENGTH + (cnt_ >> 3);
-    *(reinterpret_cast<uint8_t*>(ptr)) |= 1 << (cnt_ & 0x07);
-    auto type = ConvertType(table_info_->column_desc_v1(cnt_).data_type());
-    if (type == ::fesql::sdk::kTypeString) {
-        ptr = buf_ + str_field_start_offset_ +
-              str_addr_length_ * offset_vec_[cnt_];
-        if (str_addr_length_ == 1) {
-            *(reinterpret_cast<uint8_t*>(ptr)) = (uint8_t)str_offset_;
-        } else if (str_addr_length_ == 2) {
-            *(reinterpret_cast<uint16_t*>(ptr)) = (uint16_t)str_offset_;
-        } else if (str_addr_length_ == 3) {
-            *(reinterpret_cast<uint8_t*>(ptr)) = str_offset_ >> 16;
-            *(reinterpret_cast<uint8_t*>(ptr + 1)) =
-                (str_offset_ & 0xFF00) >> 8;
-            *(reinterpret_cast<uint8_t*>(ptr + 2)) = str_offset_ & 0x00FF;
-        } else {
-            *(reinterpret_cast<uint32_t*>(ptr)) = str_offset_;
-        }
+    // todo: deal with null
+    if (rb_.AppendNULL()) {
+        return MakeDefault();
     }
-    cnt_++;
-    return MakeDefault();
+    return false;
 }
 
-bool SQLInsertRow::Build() {
-    int32_t cnt = cnt_;
-    for (; cnt < table_info_->column_desc_v1_size(); cnt++) {
-        bool ok = AppendNULL();
-        if (!ok) return false;
-    }
-    return true;
-}
+bool SQLInsertRow::Build() { return rb_.Build(); }
 
-bool SQLInsertRow::IsComplete() {
-    return cnt_ == (uint32_t)table_info_->column_desc_v1_size();
-}
+bool SQLInsertRow::IsComplete() { return rb_.IsComplete(); }
 
 }  // namespace sdk
 }  // namespace rtidb

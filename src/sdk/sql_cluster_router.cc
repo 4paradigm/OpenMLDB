@@ -168,26 +168,9 @@ std::shared_ptr<SQLInsertRow> SQLClusterRouter::GetInsertRow(
             }
         }
     }
-    ::fesql::node::NodeManager nm;
-    ::fesql::plan::PlanNodeList plans;
-    bool ok = GetSQLPlan(sql, &nm, &plans);
-    if (!ok || plans.size() == 0) {
-        LOG(WARNING) << "fail to get sql plan with sql " << sql;
-        status->msg = "fail to get sql plan with";
-        return std::shared_ptr<SQLInsertRow>();
-    }
-    ::fesql::node::PlanNode* plan = plans[0];
-    if (plan->GetType() != fesql::node::kPlanTypeInsert) {
-        status->msg = "invalid sql node expect insert";
-        LOG(WARNING) << "invalid sql node expect insert";
-        return std::shared_ptr<SQLInsertRow>();
-    }
-    ::fesql::node::InsertPlanNode* iplan =
-        dynamic_cast<::fesql::node::InsertPlanNode*>(plan);
-    const ::fesql::node::InsertStmt* insert_stmt = iplan->GetInsertNode();
+    const ::fesql::node::InsertStmt* insert_stmt =
+        GetInsertPlan(db, sql, status);
     if (insert_stmt == NULL) {
-        LOG(WARNING) << "insert stmt is null";
-        status->msg = "insert stmt is null";
         return std::shared_ptr<SQLInsertRow>();
     }
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info =
@@ -199,25 +182,12 @@ std::shared_ptr<SQLInsertRow> SQLClusterRouter::GetInsertRow(
             "table with name " + insert_stmt->table_name_ + " does not exist";
         return std::shared_ptr<SQLInsertRow>();
     }
-    std::shared_ptr<std::map<uint32_t, DefaultValue>> default_map(
-        new std::map<uint32_t, DefaultValue>());
-    ::fesql::node::ExprListNode* row =
-        dynamic_cast<::fesql::node::ExprListNode*>(insert_stmt->values_[0]);
-    uint32_t str_size = 0;
-    for (int32_t idx = 0; idx < table_info->column_desc_v1_size(); idx++) {
-        auto column = table_info->column_desc_v1(idx);
-        const ::fesql::node::ConstNode* primary =
-            dynamic_cast<const ::fesql::node::ConstNode*>(
-                row->children_.at(idx));
-        if (!primary->IsPlaceholder()) {
-            default_map->insert(std::make_pair(
-                idx, DefaultValue{::rtidb::sdk::ConvertType(column.data_type()),
-                                  primary->GetStr()}));
-            if (primary->GetDataType() == ::fesql::node::kVarchar) {
-                str_size += strlen(primary->GetStr());
-            }
-        }
-    }
+    uint32_t str_length = 0;
+    std::shared_ptr<std::map<uint32_t, ::fesql::node::ConstNode*>> default_map =
+        GetDefaultMap(
+            table_info,
+            dynamic_cast<::fesql::node::ExprListNode*>(insert_stmt->values_[0]),
+            &str_length);
     {
         std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
         auto it = input_schema_map_.find(db);
@@ -225,16 +195,98 @@ std::shared_ptr<SQLInsertRow> SQLClusterRouter::GetInsertRow(
             std::map<std::string, ::rtidb::sdk::RouterCacheSchema> sql_schema;
             sql_schema.insert(
                 std::make_pair(sql, ::rtidb::sdk::RouterCacheSchema(
-                                        table_info, default_map, str_size)));
+                                        table_info, default_map, str_length)));
             input_schema_map_.insert(std::make_pair(db, sql_schema));
         } else {
             it->second.insert(
                 std::make_pair(sql, ::rtidb::sdk::RouterCacheSchema(
-                                        table_info, default_map, str_size)));
+                                        table_info, default_map, str_length)));
         }
     }
     return std::shared_ptr<SQLInsertRow>(
-        new SQLInsertRow(table_info, default_map, str_size));
+        new SQLInsertRow(table_info, default_map, str_length));
+}
+
+const ::fesql::node::InsertStmt* SQLClusterRouter::GetInsertPlan(
+    const std::string& db, const std::string& sql,
+    ::fesql::sdk::Status* status) {
+    ::fesql::node::NodeManager nm;
+    ::fesql::plan::PlanNodeList plans;
+    bool ok = GetSQLPlan(sql, &nm, &plans);
+    if (!ok || plans.size() == 0) {
+        LOG(WARNING) << "fail to get sql plan with sql " << sql;
+        status->msg = "fail to get sql plan with";
+        return NULL;
+    }
+    ::fesql::node::PlanNode* plan = plans[0];
+    if (plan->GetType() != fesql::node::kPlanTypeInsert) {
+        status->msg = "invalid sql node expect insert";
+        LOG(WARNING) << "invalid sql node expect insert";
+        return NULL;
+    }
+    ::fesql::node::InsertPlanNode* iplan =
+        dynamic_cast<::fesql::node::InsertPlanNode*>(plan);
+    const ::fesql::node::InsertStmt* insert_stmt = iplan->GetInsertNode();
+    if (insert_stmt == NULL) {
+        LOG(WARNING) << "insert stmt is null";
+        status->msg = "insert stmt is null";
+        return NULL;
+    }
+    return insert_stmt;
+}
+
+bool SQLClusterRouter::CheckType(fesql::node::DataType node_type,
+                                 rtidb::type::DataType column_type) {
+    switch (column_type) {
+        case rtidb::type::kBool:
+            return node_type == fesql::node::kBool ||
+                   node_type == fesql::node::kInt32;
+        case rtidb::type::kSmallInt:
+            return node_type == fesql::node::kInt16;
+        case rtidb::type::kInt:
+            return node_type == fesql::node::kInt32;
+        case rtidb::type::kBigInt:
+            return node_type == fesql::node::kInt64;
+        case rtidb::type::kFloat:
+            return node_type == fesql::node::kFloat;
+        case rtidb::type::kDouble:
+            return node_type == fesql::node::kDouble;
+        case rtidb::type::kDate:
+            return node_type == fesql::node::kDate;
+        case rtidb::type::kTimestamp:
+            return node_type == fesql::node::kInt64 ||
+                   node_type == fesql::node::kTimestamp;
+        case rtidb::type::kVarchar:
+        case rtidb::type::kString:
+            return node_type == fesql::node::kVarchar;
+        default:
+            return false;
+    }
+}
+
+std::shared_ptr<std::map<uint32_t, ::fesql::node::ConstNode*>>
+SQLClusterRouter::GetDefaultMap(
+    std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
+    ::fesql::node::ExprListNode* row, uint32_t* str_length) {
+    std::shared_ptr<std::map<uint32_t, ::fesql::node::ConstNode*>> default_map(
+        new std::map<uint32_t, ::fesql::node::ConstNode*>());
+    for (int32_t idx = 0; idx < table_info->column_desc_v1_size(); idx++) {
+        auto column = table_info->column_desc_v1(idx);
+        ::fesql::node::ConstNode* primary =
+            dynamic_cast<::fesql::node::ConstNode*>(row->children_.at(idx));
+        if (!primary->IsPlaceholder()) {
+            if (!CheckType(primary->GetDataType(), column.data_type())) {
+                LOG(WARNING) << "default value type mismatch";
+                return std::shared_ptr<
+                    std::map<uint32_t, ::fesql::node::ConstNode*>>();
+            }
+            default_map->insert(std::make_pair(idx, primary));
+            if (primary->GetDataType() == ::fesql::node::kVarchar) {
+                *str_length += strlen(primary->GetStr());
+            }
+        }
+    }
+    return default_map;
 }
 
 std::shared_ptr<SQLInsertRows> SQLClusterRouter::GetInsertRows(
@@ -254,26 +306,9 @@ std::shared_ptr<SQLInsertRows> SQLClusterRouter::GetInsertRows(
             }
         }
     }
-    ::fesql::node::NodeManager nm;
-    ::fesql::plan::PlanNodeList plans;
-    bool ok = GetSQLPlan(sql, &nm, &plans);
-    if (!ok || plans.size() == 0) {
-        LOG(WARNING) << "fail to get sql plan with sql " << sql;
-        status->msg = "fail to get sql plan with";
-        return std::shared_ptr<SQLInsertRows>();
-    }
-    ::fesql::node::PlanNode* plan = plans[0];
-    if (plan->GetType() != fesql::node::kPlanTypeInsert) {
-        status->msg = "invalid sql node expect insert";
-        LOG(WARNING) << "invalid sql node expect insert";
-        return std::shared_ptr<SQLInsertRows>();
-    }
-    ::fesql::node::InsertPlanNode* iplan =
-        dynamic_cast<::fesql::node::InsertPlanNode*>(plan);
-    const ::fesql::node::InsertStmt* insert_stmt = iplan->GetInsertNode();
+    const ::fesql::node::InsertStmt* insert_stmt =
+        GetInsertPlan(db, sql, status);
     if (insert_stmt == NULL) {
-        LOG(WARNING) << "insert stmt is null";
-        status->msg = "insert stmt is null";
         return std::shared_ptr<SQLInsertRows>();
     }
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info =
@@ -285,25 +320,12 @@ std::shared_ptr<SQLInsertRows> SQLClusterRouter::GetInsertRows(
             "table with name " + insert_stmt->table_name_ + " does not exist";
         return std::shared_ptr<SQLInsertRows>();
     }
-    std::shared_ptr<std::map<uint32_t, DefaultValue>> default_map(
-        new std::map<uint32_t, DefaultValue>());
-    ::fesql::node::ExprListNode* row =
-        dynamic_cast<::fesql::node::ExprListNode*>(insert_stmt->values_[0]);
-    uint32_t str_size = 0;
-    for (int32_t idx = 0; idx < table_info->column_desc_v1_size(); idx++) {
-        auto column = table_info->column_desc_v1(idx);
-        const ::fesql::node::ConstNode* primary =
-            dynamic_cast<const ::fesql::node::ConstNode*>(
-                row->children_.at(idx));
-        if (!primary->IsPlaceholder()) {
-            default_map->insert(std::make_pair(
-                idx, DefaultValue{::rtidb::sdk::ConvertType(column.data_type()),
-                                  primary->GetStr()}));
-            if (primary->GetDataType() == ::fesql::node::kVarchar) {
-                str_size += strlen(primary->GetStr());
-            }
-        }
-    }
+    uint32_t str_length = 0;
+    std::shared_ptr<std::map<uint32_t, ::fesql::node::ConstNode*>> default_map =
+        GetDefaultMap(
+            table_info,
+            dynamic_cast<::fesql::node::ExprListNode*>(insert_stmt->values_[0]),
+            &str_length);
     {
         std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
         auto it = input_schema_map_.find(db);
@@ -311,16 +333,16 @@ std::shared_ptr<SQLInsertRows> SQLClusterRouter::GetInsertRows(
             std::map<std::string, ::rtidb::sdk::RouterCacheSchema> sql_schema;
             sql_schema.insert(
                 std::make_pair(sql, ::rtidb::sdk::RouterCacheSchema(
-                                        table_info, default_map, str_size)));
+                                        table_info, default_map, str_length)));
             input_schema_map_.insert(std::make_pair(db, sql_schema));
         } else {
             it->second.insert(
                 std::make_pair(sql, ::rtidb::sdk::RouterCacheSchema(
-                                        table_info, default_map, str_size)));
+                                        table_info, default_map, str_length)));
         }
     }
     return std::shared_ptr<SQLInsertRows>(
-        new SQLInsertRows(table_info, default_map, str_size));
+        new SQLInsertRows(table_info, default_map, str_length));
 }
 
 bool SQLClusterRouter::ExecuteDDL(const std::string& db, const std::string& sql,
@@ -540,7 +562,7 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db,
         return false;
     }
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info;
-    std::shared_ptr<std::map<uint32_t, DefaultValue>> default_map;
+    std::shared_ptr<std::map<uint32_t, ::fesql::node::ConstNode*>> default_map;
     bool cache_hit = false;
     {
         std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
@@ -585,7 +607,7 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db,
         return false;
     }
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info;
-    std::shared_ptr<std::map<uint32_t, DefaultValue>> default_map;
+    std::shared_ptr<std::map<uint32_t, ::fesql::node::ConstNode*>> default_map;
     bool cache_hit = false;
     {
         std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
@@ -674,6 +696,17 @@ bool SQLClusterRouter::EncodeFullColumns(
             continue;
         }
         switch (column.data_type()) {
+            case ::rtidb::type::kBool: {
+                ok = rb.AppendBool(primary->GetInt());
+                DLOG(INFO) << "parse column " << column.name() << " with value "
+                           << primary->GetInt();
+                if (column.add_ts_idx()) {
+                    dimensions->push_back(std::make_pair(
+                        primary->GetInt() ? "true" : "false", idx_cnt));
+                    idx_cnt++;
+                }
+                break;
+            }
             case ::rtidb::type::kSmallInt: {
                 ok = rb.AppendInt16(primary->GetSmallInt());
                 DLOG(INFO) << "parse column " << column.name() << " with value "

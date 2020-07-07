@@ -26,6 +26,8 @@
 #include <vector>
 
 #include "boost/lexical_cast.hpp"
+#include "codec/codec.h"
+#include "node/sql_node.h"
 #include "proto/name_server.pb.h"
 #include "sdk/base.h"
 
@@ -56,17 +58,12 @@ static inline ::fesql::sdk::DataType ConvertType(::rtidb::type::DataType type) {
     }
 }
 
-struct DefaultValue {
-    ::fesql::sdk::DataType type;
-    std::string value;
-};
-
 class SQLInsertRow {
  public:
-    SQLInsertRow() {}
     explicit SQLInsertRow(
         std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
-        std::shared_ptr<std::map<uint32_t, DefaultValue>> default_map,
+        std::shared_ptr<std::map<uint32_t, ::fesql::node::ConstNode*>>
+            default_map,
         uint32_t default_str_length);
     ~SQLInsertRow() = default;
     bool Init(int str_length);
@@ -78,6 +75,7 @@ class SQLInsertRow {
     bool AppendFloat(float val);
     bool AppendDouble(double val);
     bool AppendString(const std::string& val);
+    bool AppendDate(uint32_t year, uint32_t month, uint32_t day);
     bool AppendNULL();
     bool Build();
     bool IsComplete();
@@ -93,32 +91,20 @@ class SQLInsertRow {
     }
 
  private:
-    bool Check(fesql::sdk::DataType type);
+    bool AppendString(const char* val, uint32_t length);
     bool MakeDefault();
     bool GetIndex(const std::string& val);
     bool GetTs(uint64_t ts);
-    bool AppendBool(const std::string& val);
-    bool AppendInt32(const std::string& val);
-    bool AppendInt16(const std::string& val);
-    bool AppendInt64(const std::string& val);
-    bool AppendTimestamp(const std::string& val);
-    bool AppendFloat(const std::string& val);
-    bool AppendDouble(const std::string& val);
 
  private:
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info_;
-    std::shared_ptr<std::map<uint32_t, DefaultValue>> default_map_;
+    std::shared_ptr<std::map<uint32_t, ::fesql::node::ConstNode*>> default_map_;
+    uint32_t default_string_length_;
     std::set<uint32_t> index_set_;
     std::set<uint32_t> ts_set_;
     std::vector<std::pair<std::string, uint32_t>> dimensions_;
     std::vector<uint64_t> ts_;
-    uint32_t cnt_;
-    uint32_t size_;
-    uint32_t str_field_cnt_;
-    uint32_t str_addr_length_;
-    uint32_t str_field_start_offset_;
-    uint32_t str_offset_;
-    std::vector<uint32_t> offset_vec_;
+    ::rtidb::codec::RowBuilder rb_;
     std::string val_;
     int8_t* buf_;
 };
@@ -126,7 +112,8 @@ class SQLInsertRow {
 class SQLInsertRows {
  public:
     SQLInsertRows(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
-                  std::shared_ptr<std::map<uint32_t, DefaultValue>> default_map,
+                  std::shared_ptr<std::map<uint32_t, ::fesql::node::ConstNode*>>
+                      default_map,
                   uint32_t str_size);
     ~SQLInsertRows() = default;
     std::shared_ptr<SQLInsertRow> NewRow();
@@ -140,7 +127,7 @@ class SQLInsertRows {
 
  private:
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info_;
-    std::shared_ptr<std::map<uint32_t, DefaultValue>> default_map_;
+    std::shared_ptr<std::map<uint32_t, ::fesql::node::ConstNode*>> default_map_;
     uint32_t default_str_length_;
     std::vector<std::shared_ptr<SQLInsertRow>> rows_;
 };

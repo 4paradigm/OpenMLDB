@@ -191,6 +191,50 @@ TEST_F(SQLRouterTest, smoketest_on_sql) {
     ok = router->ExecuteInsert(db, insert_placeholder3, insert_row3, &status);
     ASSERT_TRUE(ok);
 
+    std::shared_ptr<SQLInsertRows> insert_rows1 =
+        router->GetInsertRows(db, insert_placeholder1, &status);
+    ASSERT_EQ(status.code, 0);
+    std::shared_ptr<SQLInsertRow> insert_rows1_1 = insert_rows1->NewRow();
+    ASSERT_TRUE(insert_rows1_1->Init(2));
+    ASSERT_TRUE(insert_rows1_1->AppendString("11"));
+    ASSERT_TRUE(insert_rows1_1->AppendInt64(1594));
+    ASSERT_TRUE(insert_rows1_1->Build());
+    std::shared_ptr<SQLInsertRow> insert_rows1_2 = insert_rows1->NewRow();
+    ASSERT_TRUE(insert_rows1_2->Init(2));
+    ASSERT_TRUE(insert_rows1_2->AppendString("12"));
+    ASSERT_TRUE(insert_rows1_2->AppendInt64(1595));
+    ASSERT_TRUE(insert_rows1_2->Build());
+    ok = router->ExecuteInsert(db, insert_placeholder1, insert_rows1, &status);
+    ASSERT_TRUE(ok);
+
+    std::shared_ptr<SQLInsertRows> insert_rows2 =
+        router->GetInsertRows(db, insert_placeholder2, &status);
+    ASSERT_EQ(status.code, 0);
+    std::shared_ptr<SQLInsertRow> insert_rows2_1 = insert_rows2->NewRow();
+    ASSERT_TRUE(insert_rows2_1->Init(2));
+    ASSERT_TRUE(insert_rows2_1->AppendString("21"));
+    ASSERT_TRUE(insert_rows2_1->Build());
+    std::shared_ptr<SQLInsertRow> insert_rows2_2 = insert_rows2->NewRow();
+    ASSERT_TRUE(insert_rows2_2->Init(2));
+    ASSERT_TRUE(insert_rows2_2->AppendString("22"));
+    ASSERT_TRUE(insert_rows2_2->Build());
+    ok = router->ExecuteInsert(db, insert_placeholder2, insert_rows2, &status);
+    ASSERT_TRUE(ok);
+
+    std::shared_ptr<SQLInsertRows> insert_rows3 =
+        router->GetInsertRows(db, insert_placeholder3, &status);
+    ASSERT_EQ(status.code, 0);
+    std::shared_ptr<SQLInsertRow> insert_rows3_1 = insert_rows3->NewRow();
+    ASSERT_TRUE(insert_rows3_1->Init(2));
+    ASSERT_TRUE(insert_rows3_1->AppendInt64(1596));
+    ASSERT_TRUE(insert_rows3_1->Build());
+    std::shared_ptr<SQLInsertRow> insert_rows3_2 = insert_rows3->NewRow();
+    ASSERT_TRUE(insert_rows3_2->Init(2));
+    ASSERT_TRUE(insert_rows3_2->AppendInt64(1597));
+    ASSERT_TRUE(insert_rows3_2->Build());
+    ok = router->ExecuteInsert(db, insert_placeholder3, insert_rows3, &status);
+    ASSERT_TRUE(ok);
+
     ASSERT_TRUE(router->RefreshCatalog());
     std::string sql_select = "select col1 from " + name + " ;";
     auto rs = router->ExecuteSQL(db, sql_select, &status);
@@ -203,7 +247,20 @@ TEST_F(SQLRouterTest, smoketest_on_sql) {
     ASSERT_TRUE(rs->Next());
     ASSERT_EQ("word", rs->GetStringUnsafe(0));
     ASSERT_TRUE(rs->Next());
+    ASSERT_EQ("21", rs->GetStringUnsafe(0));
+    ASSERT_TRUE(rs->Next());
+    ASSERT_EQ("22", rs->GetStringUnsafe(0));
+    ASSERT_TRUE(rs->Next());
     ASSERT_EQ("hi", rs->GetStringUnsafe(0));
+    ASSERT_TRUE(rs->Next());
+    ASSERT_EQ("11", rs->GetStringUnsafe(0));
+    ASSERT_TRUE(rs->Next());
+    ASSERT_EQ("12", rs->GetStringUnsafe(0));
+    ASSERT_TRUE(rs->Next());
+    ASSERT_EQ("hi", rs->GetStringUnsafe(0));
+    ASSERT_TRUE(rs->Next());
+    ASSERT_EQ("hi", rs->GetStringUnsafe(0));
+
     std::string sql_window_batch =
         "select sum(col2) over w from " + name + " window w as (partition by " +
         name + ".col1 order by " + name +

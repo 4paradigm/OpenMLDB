@@ -97,6 +97,10 @@ class RowBuilder {
     // set the date that encoded
     bool SetDate(uint32_t index, int32_t date);
 
+    bool Build();
+    inline bool IsComplete() { return cnt_ == schema_.size(); }
+    inline uint32_t GetCnt() { return cnt_; }
+
  private:
     bool Check(uint32_t index, ::rtidb::type::DataType type);
 

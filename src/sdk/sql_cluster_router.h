@@ -39,7 +39,8 @@ namespace sdk {
 struct RouterCacheSchema {
     RouterCacheSchema(
         std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
-        std::shared_ptr<std::map<uint32_t, DefaultValue>> default_map,
+        std::shared_ptr<std::map<uint32_t, ::fesql::node::ConstNode*>>
+            default_map,
         uint32_t str_size)
         : table_info(table_info),
           default_map(default_map),
@@ -54,7 +55,7 @@ struct RouterCacheSchema {
           str_size(0) {}
 
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info;
-    std::shared_ptr<std::map<uint32_t, DefaultValue>> default_map;
+    std::shared_ptr<std::map<uint32_t, ::fesql::node::ConstNode*>> default_map;
     std::shared_ptr<::fesql::sdk::Schema> column_schema;
     uint32_t str_size;
 };
@@ -133,6 +134,17 @@ class SQLClusterRouter : public SQLRouter {
 
     bool GetSQLPlan(const std::string& sql, ::fesql::node::NodeManager* nm,
                     ::fesql::node::PlanNodeList* plan);
+
+    const ::fesql::node::InsertStmt* GetInsertPlan(
+        const std::string& db, const std::string& sql,
+        ::fesql::sdk::Status* status);
+
+    bool CheckType(fesql::node::DataType node_type,
+                   rtidb::type::DataType column_type);
+
+    std::shared_ptr<std::map<uint32_t, ::fesql::node::ConstNode*>>
+    GetDefaultMap(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
+                  ::fesql::node::ExprListNode* row, uint32_t* str_length);
 
  private:
     SQLRouterOptions options_;

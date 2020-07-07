@@ -401,6 +401,15 @@ bool RowBuilder::AppendValue(const std::string& val) {
     return ok;
 }
 
+bool RowBuilder::Build() {
+    int32_t cnt = cnt_;
+    for (; cnt < schema_.size(); cnt++) {
+        bool ok = AppendNULL();
+        if (!ok) return false;
+    }
+    return true;
+}
+
 RowView::RowView(const Schema& schema)
     : str_addr_length_(0),
       is_valid_(true),
