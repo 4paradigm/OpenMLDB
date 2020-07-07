@@ -34,11 +34,11 @@ AggregateIRBuilder::AggregateIRBuilder(const vm::SchemasContext* sc,
                                        ::llvm::Module* module,
                                        node::FrameNode* frame_node, uint32_t id)
     : schema_context_(sc), module_(module), frame_node_(frame_node), id_(id) {
-    // available_agg_func_set_.insert("sum");
+    available_agg_func_set_.insert("sum");
     available_agg_func_set_.insert("avg");
-    // available_agg_func_set_.insert("count");
-    // available_agg_func_set_.insert("min");
-    // available_agg_func_set_.insert("max");
+    available_agg_func_set_.insert("count");
+    available_agg_func_set_.insert("min");
+    available_agg_func_set_.insert("max");
 }
 
 bool AggregateIRBuilder::IsAggFuncName(const std::string& fname) {

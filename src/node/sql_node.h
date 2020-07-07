@@ -649,7 +649,6 @@ class ConstNode : public ExprNode {
     }
     explicit ConstNode(float val)
         : ExprNode(kExprPrimary), data_type_(fesql::node::kFloat) {
-        std::cout << val << std::endl;
         val_.vfloat = val;
     }
 
