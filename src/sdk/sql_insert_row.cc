@@ -60,10 +60,29 @@ inline uint32_t SDKGetStartOffset(int32_t column_count) {
     return SDK_HEADER_LENGTH + BitMapSize(column_count);
 }
 
+SQLInsertRows::SQLInsertRows(
+    std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
+    std::shared_ptr<std::map<uint32_t, DefaultValue>> default_map,
+    uint32_t default_str_length)
+    : table_info_(table_info),
+      default_map_(default_map),
+      default_str_length_(default_str_length) {}
+
+std::shared_ptr<SQLInsertRow> SQLInsertRows::NewRow() {
+    if (row_cnt_ != 0 && !rows_.back()->IsComplete()) {
+        return std::shared_ptr<SQLInsertRow>();
+    }
+    row_cnt_++;
+    std::shared_ptr<SQLInsertRow> row = std::make_shared<SQLInsertRow>(
+        table_info_, default_map_, default_str_length_);
+    rows_.push_back(row);
+    return row;
+}
+
 SQLInsertRow::SQLInsertRow(
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
     std::shared_ptr<std::map<uint32_t, DefaultValue>> default_map,
-    uint32_t str_size)
+    uint32_t default_str_length)
     : table_info_(table_info),
       default_map_(default_map),
       cnt_(0),
@@ -77,7 +96,7 @@ SQLInsertRow::SQLInsertRow(
       buf_(NULL) {
     str_field_start_offset_ = SDK_HEADER_LENGTH +
                               BitMapSize(table_info_->column_desc_v1_size()) +
-                              str_size;
+                              default_str_length;
     for (int idx = 0; idx < table_info_->column_desc_v1_size(); idx++) {
         auto type = ConvertType(table_info_->column_desc_v1(idx).data_type());
         if (type == ::fesql::sdk::kTypeString) {
@@ -404,6 +423,10 @@ bool SQLInsertRow::Build() {
         if (!ok) return false;
     }
     return true;
+}
+
+bool SQLInsertRow::IsComplete() {
+    return cnt_ == (uint32_t)table_info_->column_desc_v1_size();
 }
 
 }  // namespace sdk

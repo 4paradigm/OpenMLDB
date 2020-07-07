@@ -22,8 +22,8 @@
 #include <memory>
 #include <set>
 #include <string>
-#include <vector>
 #include <utility>
+#include <vector>
 
 #include "boost/lexical_cast.hpp"
 #include "proto/name_server.pb.h"
@@ -67,7 +67,7 @@ class SQLInsertRow {
     explicit SQLInsertRow(
         std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
         std::shared_ptr<std::map<uint32_t, DefaultValue>> default_map,
-        uint32_t str_size);
+        uint32_t default_str_length);
     ~SQLInsertRow() = default;
     bool Init(int str_length);
     bool AppendBool(bool val);
@@ -80,6 +80,7 @@ class SQLInsertRow {
     bool AppendString(const std::string& val);
     bool AppendNULL();
     bool Build();
+    bool IsComplete();
     inline const std::string& GetRow() { return val_; }
     inline const std::vector<std::pair<std::string, uint32_t>>&
     GetDimensions() {
@@ -120,6 +121,21 @@ class SQLInsertRow {
     std::vector<uint32_t> offset_vec_;
     std::string val_;
     int8_t* buf_;
+};
+
+class SQLInsertRows {
+    SQLInsertRows(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
+                  std::shared_ptr<std::map<uint32_t, DefaultValue>> default_map,
+                  uint32_t str_size);
+    ~SQLInsertRows() = default;
+    std::shared_ptr<SQLInsertRow> NewRow();
+
+ private:
+    std::shared_ptr<::rtidb::nameserver::TableInfo> table_info_;
+    std::shared_ptr<std::map<uint32_t, DefaultValue>> default_map_;
+    uint32_t default_str_length_;
+    std::vector<std::shared_ptr<SQLInsertRow>> rows_;
+    uint32_t row_cnt_;
 };
 
 }  // namespace sdk
