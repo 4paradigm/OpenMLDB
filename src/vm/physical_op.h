@@ -320,9 +320,6 @@ class PhysicalOpNode {
         return output_name_schema_list_.GetSchemaSlice(idx);
     }
 
-    void SetOutputNameSchemaList(vm::SchemaSourceList &schema_sources) {
-        output_name_schema_list_ = schema_sources;
-    }
     void SetLimitCnt(int32_t limit_cnt) { limit_cnt_ = limit_cnt; }
 
     const int32_t GetLimitCnt() const { return limit_cnt_; }
