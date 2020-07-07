@@ -10,6 +10,7 @@
 %shared_ptr(rtidb::sdk::SQLRouter);
 %shared_ptr(rtidb::sdk::SQLRequestRow);
 %shared_ptr(rtidb::sdk::SQLInsertRow);
+%shared_ptr(rtidb::sdk::SQLInsertRows);
 %shared_ptr(rtidb::sdk::ExplainInfo);
 
 %{
@@ -25,6 +26,7 @@ using rtidb::sdk::SQLRouter;
 using rtidb::sdk::SQLRouterOptions;
 using rtidb::sdk::SQLRequestRow;
 using rtidb::sdk::SQLInsertRow;
+using rtidb::sdk::SQLInsertRows;
 using rtidb::sdk::ExplainInfo;
 %}
 

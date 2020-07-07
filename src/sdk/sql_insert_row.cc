@@ -69,10 +69,9 @@ SQLInsertRows::SQLInsertRows(
       default_str_length_(default_str_length) {}
 
 std::shared_ptr<SQLInsertRow> SQLInsertRows::NewRow() {
-    if (row_cnt_ != 0 && !rows_.back()->IsComplete()) {
+    if (!rows_.empty() && !rows_.back()->IsComplete()) {
         return std::shared_ptr<SQLInsertRow>();
     }
-    row_cnt_++;
     std::shared_ptr<SQLInsertRow> row = std::make_shared<SQLInsertRow>(
         table_info_, default_map_, default_str_length_);
     rows_.push_back(row);

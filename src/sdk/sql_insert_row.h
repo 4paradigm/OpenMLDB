@@ -124,18 +124,25 @@ class SQLInsertRow {
 };
 
 class SQLInsertRows {
+ public:
     SQLInsertRows(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
                   std::shared_ptr<std::map<uint32_t, DefaultValue>> default_map,
                   uint32_t str_size);
     ~SQLInsertRows() = default;
     std::shared_ptr<SQLInsertRow> NewRow();
+    inline uint32_t GetCnt() { return rows_.size(); }
+    inline std::shared_ptr<SQLInsertRow> GetRow(uint32_t i) {
+        if (i >= rows_.size()) {
+            return std::shared_ptr<SQLInsertRow>();
+        }
+        return rows_[i];
+    }
 
  private:
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info_;
     std::shared_ptr<std::map<uint32_t, DefaultValue>> default_map_;
     uint32_t default_str_length_;
     std::vector<std::shared_ptr<SQLInsertRow>> rows_;
-    uint32_t row_cnt_;
 };
 
 }  // namespace sdk

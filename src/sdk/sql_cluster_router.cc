@@ -237,6 +237,92 @@ std::shared_ptr<SQLInsertRow> SQLClusterRouter::GetInsertRow(
         new SQLInsertRow(table_info, default_map, str_size));
 }
 
+std::shared_ptr<SQLInsertRows> SQLClusterRouter::GetInsertRows(
+    const std::string& db, const std::string& sql,
+    ::fesql::sdk::Status* status) {
+    if (status == NULL) return std::shared_ptr<SQLInsertRows>();
+    {
+        std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
+        auto it = input_schema_map_.find(db);
+        if (it != input_schema_map_.end()) {
+            auto iit = it->second.find(sql);
+            if (iit != it->second.end()) {
+                status->code = 0;
+                return std::shared_ptr<SQLInsertRows>(new SQLInsertRows(
+                    iit->second.table_info, iit->second.default_map,
+                    iit->second.str_size));
+            }
+        }
+    }
+    ::fesql::node::NodeManager nm;
+    ::fesql::plan::PlanNodeList plans;
+    bool ok = GetSQLPlan(sql, &nm, &plans);
+    if (!ok || plans.size() == 0) {
+        LOG(WARNING) << "fail to get sql plan with sql " << sql;
+        status->msg = "fail to get sql plan with";
+        return std::shared_ptr<SQLInsertRows>();
+    }
+    ::fesql::node::PlanNode* plan = plans[0];
+    if (plan->GetType() != fesql::node::kPlanTypeInsert) {
+        status->msg = "invalid sql node expect insert";
+        LOG(WARNING) << "invalid sql node expect insert";
+        return std::shared_ptr<SQLInsertRows>();
+    }
+    ::fesql::node::InsertPlanNode* iplan =
+        dynamic_cast<::fesql::node::InsertPlanNode*>(plan);
+    const ::fesql::node::InsertStmt* insert_stmt = iplan->GetInsertNode();
+    if (insert_stmt == NULL) {
+        LOG(WARNING) << "insert stmt is null";
+        status->msg = "insert stmt is null";
+        return std::shared_ptr<SQLInsertRows>();
+    }
+    std::shared_ptr<::rtidb::nameserver::TableInfo> table_info =
+        cluster_sdk_->GetTableInfo(db, insert_stmt->table_name_);
+    if (!table_info) {
+        LOG(WARNING) << "table with name " << insert_stmt->table_name_
+                     << " does not exist";
+        status->msg =
+            "table with name " + insert_stmt->table_name_ + " does not exist";
+        return std::shared_ptr<SQLInsertRows>();
+    }
+    std::shared_ptr<std::map<uint32_t, DefaultValue>> default_map(
+        new std::map<uint32_t, DefaultValue>());
+    ::fesql::node::ExprListNode* row =
+        dynamic_cast<::fesql::node::ExprListNode*>(insert_stmt->values_[0]);
+    uint32_t str_size = 0;
+    for (int32_t idx = 0; idx < table_info->column_desc_v1_size(); idx++) {
+        auto column = table_info->column_desc_v1(idx);
+        const ::fesql::node::ConstNode* primary =
+            dynamic_cast<const ::fesql::node::ConstNode*>(
+                row->children_.at(idx));
+        if (!primary->IsPlaceholder()) {
+            default_map->insert(std::make_pair(
+                idx, DefaultValue{::rtidb::sdk::ConvertType(column.data_type()),
+                                  primary->GetStr()}));
+            if (primary->GetDataType() == ::fesql::node::kVarchar) {
+                str_size += strlen(primary->GetStr());
+            }
+        }
+    }
+    {
+        std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
+        auto it = input_schema_map_.find(db);
+        if (it == input_schema_map_.end()) {
+            std::map<std::string, ::rtidb::sdk::RouterCacheSchema> sql_schema;
+            sql_schema.insert(
+                std::make_pair(sql, ::rtidb::sdk::RouterCacheSchema(
+                                        table_info, default_map, str_size)));
+            input_schema_map_.insert(std::make_pair(db, sql_schema));
+        } else {
+            it->second.insert(
+                std::make_pair(sql, ::rtidb::sdk::RouterCacheSchema(
+                                        table_info, default_map, str_size)));
+        }
+    }
+    return std::shared_ptr<SQLInsertRows>(
+        new SQLInsertRows(table_info, default_map, str_size));
+}
+
 bool SQLClusterRouter::ExecuteDDL(const std::string& db, const std::string& sql,
                                   fesql::sdk::Status* status) {
     auto ns_ptr = cluster_sdk_->GetNsClient();
@@ -443,6 +529,51 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db,
         return false;
     }
     return true;
+}
+
+bool SQLClusterRouter::ExecuteInsert(const std::string& db,
+                                     const std::string& sql,
+                                     std::shared_ptr<SQLInsertRows> rows,
+                                     fesql::sdk::Status* status) {
+    if (!rows || status == NULL) {
+        LOG(WARNING) << "input is invalid";
+        return false;
+    }
+    std::shared_ptr<::rtidb::nameserver::TableInfo> table_info;
+    std::shared_ptr<std::map<uint32_t, DefaultValue>> default_map;
+    bool cache_hit = false;
+    {
+        std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
+        auto it = input_schema_map_.find(db);
+        if (it != input_schema_map_.end()) {
+            auto iit = it->second.find(sql);
+            if (iit != it->second.end()) {
+                table_info = iit->second.table_info;
+                default_map = iit->second.default_map;
+                cache_hit = true;
+            }
+        }
+    }
+    if (cache_hit) {
+        std::shared_ptr<::rtidb::client::TabletClient> tablet =
+            cluster_sdk_->GetLeaderTabletByTable(db, table_info->name());
+        if (!tablet) {
+            status->msg = "fail to get table " + table_info->name() + " tablet";
+            LOG(WARNING) << status->msg;
+            return false;
+        }
+        DLOG(INFO) << "put data to endpoint " << tablet->GetEndpoint();
+        for (uint32_t i = 0; i < rows->GetCnt(); ++i) {
+            std::shared_ptr<SQLInsertRow> row = rows->GetRow(i);
+            bool ok = tablet->Put(table_info->tid(), 0, row->GetDimensions(),
+                                  row->GetTs(), row->GetRow(), 1);
+        }
+        return true;
+    } else {
+        status->msg = "please use getInsertRow with " + sql + " first";
+        LOG(WARNING) << status->msg;
+        return false;
+    }
 }
 
 bool SQLClusterRouter::ExecuteInsert(const std::string& db,

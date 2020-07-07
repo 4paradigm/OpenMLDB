@@ -23,8 +23,8 @@
 
 #include "sdk/base.h"
 #include "sdk/result_set.h"
-#include "sdk/sql_request_row.h"
 #include "sdk/sql_insert_row.h"
+#include "sdk/sql_request_row.h"
 
 namespace rtidb {
 namespace sdk {
@@ -54,8 +54,7 @@ class SQLRouter {
     virtual bool CreateDB(const std::string& db,
                           fesql::sdk::Status* status) = 0;
 
-    virtual bool DropDB(const std::string& db,
-                          fesql::sdk::Status* status) = 0;
+    virtual bool DropDB(const std::string& db, fesql::sdk::Status* status) = 0;
 
     virtual bool ExecuteDDL(const std::string& db, const std::string& sql,
                             fesql::sdk::Status* status) = 0;
@@ -64,8 +63,12 @@ class SQLRouter {
                                fesql::sdk::Status* status) = 0;
 
     virtual bool ExecuteInsert(const std::string& db, const std::string& sql,
-                    std::shared_ptr<rtidb::sdk::SQLInsertRow> row,
-                    fesql::sdk::Status* status) = 0;
+                               std::shared_ptr<rtidb::sdk::SQLInsertRow> row,
+                               fesql::sdk::Status* status) = 0;
+
+    virtual bool ExecuteInsert(const std::string& db, const std::string& sql,
+                               std::shared_ptr<rtidb::sdk::SQLInsertRows> row,
+                               fesql::sdk::Status* status) = 0;
 
     virtual std::shared_ptr<ExplainInfo> Explain(
         const std::string& db, const std::string& sql,
@@ -76,6 +79,10 @@ class SQLRouter {
         fesql::sdk::Status* status) = 0;
 
     virtual std::shared_ptr<rtidb::sdk::SQLInsertRow> GetInsertRow(
+        const std::string& db, const std::string& sql,
+        ::fesql::sdk::Status* status) = 0;
+
+    virtual std::shared_ptr<rtidb::sdk::SQLInsertRows> GetInsertRows(
         const std::string& db, const std::string& sql,
         ::fesql::sdk::Status* status) = 0;
 
