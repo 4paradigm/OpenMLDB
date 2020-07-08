@@ -103,6 +103,10 @@ void BinaryArithmeticExprCheck(::fesql::node::DataType left_type,
             ok = arithmetic_ir_builder.BuildFDivExpr(arg0, arg1, &output,
                                                      status);
             break;
+        case fesql::node::kFnOpDiv:
+            ok = arithmetic_ir_builder.BuildSDivExpr(arg0, arg1, &output,
+                                                     status);
+            break;
         case fesql::node::kFnOpMod:
             ok =
                 arithmetic_ir_builder.BuildModExpr(arg0, arg1, &output, status);

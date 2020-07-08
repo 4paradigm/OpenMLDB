@@ -147,6 +147,7 @@ enum FnOperator {
     kFnOpMod,
     kFnOpAnd,
     kFnOpOr,
+    kFnOpXor,
     kFnOpNot,
     kFnOpEq,
     kFnOpNeq,

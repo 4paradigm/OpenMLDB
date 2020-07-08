@@ -450,6 +450,9 @@ INSTANTIATE_TEST_CASE_P(
     EngineUdfQuery, EngineTest,
     testing::ValuesIn(InitCases("/cases/query/udf_query.yaml")));
 INSTANTIATE_TEST_CASE_P(
+    EngineOperatorQuery, EngineTest,
+    testing::ValuesIn(InitCases("/cases/query/operator_query.yaml")));
+INSTANTIATE_TEST_CASE_P(
     EngineUdafQuery, EngineTest,
     testing::ValuesIn(InitCases("/cases/query/udaf_query.yaml")));
 INSTANTIATE_TEST_CASE_P(

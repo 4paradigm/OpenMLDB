@@ -213,7 +213,9 @@ bool ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
                                    status);
         }
         case ::fesql::node::kExprUnary: {
-            return Build(node->children_[0], output, status);
+            return BuildUnaryExpr(
+                dynamic_cast<const ::fesql::node::UnaryExpr*>(node), output,
+                status);
         }
         case ::fesql::node::kExprStruct: {
             return BuildStructExpr((fesql::node::StructExpr*)node, output,
@@ -781,31 +783,52 @@ bool ExprIRBuilder::BuildUnaryExpr(const ::fesql::node::UnaryExpr* node,
                                    NativeValue* output,
                                    base::Status& status) {  // NOLINT
     if (node == NULL || output == NULL) {
-        status.code = common::kCodegenError;
         status.msg = "input node or output is null";
+        status.code = common::kCodegenError;
         LOG(WARNING) << status.msg;
         return false;
     }
 
     if (node->children_.size() != 1) {
         status.code = common::kCodegenError;
-        status.msg = "invalid unary expr node ";
+        status.msg = "invalid binary expr node ";
         LOG(WARNING) << status.msg;
         return false;
     }
 
-    DLOG(INFO) << "build unary"
-               << ::fesql::node::ExprTypeName(node->GetExprType());
-    NativeValue left;
-    bool ok = Build(node->children_[0], &left, status);
+    ::llvm::IRBuilder<> builder(block_);
+    DLOG(INFO) << "build unary "
+               << ::fesql::node::ExprOpTypeName(node->GetOp());
+    NativeValue left_wrapper;
+    bool ok = Build(node->children_[0], &left_wrapper, status);
     if (!ok) {
-        status.code = common::kCodegenError;
-        status.msg = "fail to build unary child";
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << "fail to build left node: " << status.msg;
         return false;
     }
-    LOG(WARNING) << "can't support unary yet";
-    return false;
+    ::llvm::Value* left = left_wrapper.GetValue(&builder);
+    llvm::Value* raw = nullptr;
+    switch (node->GetOp()) {
+        case ::fesql::node::kFnOpNot: {
+            ok = predicate_ir_builder_.BuildNotExpr(left, &raw, status);
+            break;
+        }
+        case ::fesql::node::kFnOpBracket: {
+            raw = left;
+            break;
+        }
+        default: {
+            ok = false;
+            status.msg = "invalid op " + ExprOpTypeName(node->GetOp());
+            status.code = ::fesql::common::kCodegenError;
+            LOG(WARNING) << status.msg;
+        }
+    }
+    if (!ok || raw == nullptr) {
+        LOG(WARNING) << "fail to codegen binary expression: " << status.msg;
+        return false;
+    }
+    *output = NativeValue::Create(raw);
+    return true;
 }
 
 bool ExprIRBuilder::BuildCastExpr(const ::fesql::node::CastExprNode* node,
@@ -906,6 +929,11 @@ bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
                 arithmetic_ir_builder_.BuildFDivExpr(left, right, &raw, status);
             break;
         }
+        case ::fesql::node::kFnOpDiv: {
+            ok =
+                arithmetic_ir_builder_.BuildSDivExpr(left, right, &raw, status);
+            break;
+        }
         case ::fesql::node::kFnOpMinus: {
             ok = arithmetic_ir_builder_.BuildSubExpr(left, right, &raw, status);
             break;
@@ -920,6 +948,10 @@ bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
         }
         case ::fesql::node::kFnOpOr: {
             ok = predicate_ir_builder_.BuildOrExpr(left, right, &raw, status);
+            break;
+        }
+        case ::fesql::node::kFnOpXor: {
+            ok = predicate_ir_builder_.BuildXorExpr(left, right, &raw, status);
             break;
         }
         case ::fesql::node::kFnOpEq: {

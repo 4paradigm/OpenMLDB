@@ -104,7 +104,7 @@ typedef void* yyscan_t;
 %left '&'
 %left <subtok> SHIFT /* << >> */
 %left '+' '-'
-%left '*' '/' '%' MOD
+%left '*' '/' '%' MOD DIV
 %left '^'
 %left '(' ')' '[' ']' LPARENT RPARENT
 %left NOT '!'
@@ -1252,7 +1252,15 @@ fun_expr:
      {
         $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpFDiv);
      }
+     | fun_expr DIV fun_expr
+     {
+     	$$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpDiv);
+     }
      | fun_expr '%' fun_expr
+     {
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpMod);
+     }
+     | fun_expr MOD fun_expr
      {
         $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpMod);
      }
@@ -1287,6 +1295,10 @@ fun_expr:
      | fun_expr OR fun_expr
      {
         $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpOr);
+     }
+     | fun_expr XOR fun_expr
+     {
+     	$$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpXor);
      }
      | fun_expr '[' fun_expr ']'
 	 {
@@ -1327,7 +1339,15 @@ sql_expr:
      {
         $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpFDiv);
      }
+     | sql_expr DIV sql_expr
+     {
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpDiv);
+     }
      | sql_expr '%' sql_expr
+     {
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpMod);
+     }
+     | sql_expr MOD sql_expr
      {
         $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpMod);
      }
@@ -1362,6 +1382,10 @@ sql_expr:
      | sql_expr OR sql_expr
      {
         $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpOr);
+     }
+     | sql_expr XOR sql_expr
+     {
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpXor);
      }
      | sql_expr '[' sql_expr ']'
 	 {
