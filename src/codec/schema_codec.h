@@ -394,6 +394,7 @@ class SchemaCodec {
                     col_desc->set_type("int32");
                     break;
                 }
+                case rtidb::type::kBlob:
                 case rtidb::type::kBigInt: {
                     col_desc->set_type("int64");
                     break;
@@ -414,7 +415,6 @@ class SchemaCodec {
                     col_desc->set_type("double");
                     break;
                 }
-                case rtidb::type::kBlob:
                 case rtidb::type::kVarchar:
                 case rtidb::type::kString: {
                     col_desc->set_type("string");

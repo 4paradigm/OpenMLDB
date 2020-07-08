@@ -781,14 +781,17 @@ void TabletImpl::Put(RpcController* controller,
         }
     } else {
         int64_t auto_gen_pk = 0;
+        ::google::protobuf::RepeatedField<::google::protobuf::int64>* blob_keys
+            = response->mutable_blob_keys();
         bool ok = false;
         std::string msg;
         if (request->has_wo()) {
             ok = r_table->Put(request->value(), request->wo(),
-                    &auto_gen_pk, &msg);
+                    &auto_gen_pk, blob_keys, &msg);
         } else {
             ::rtidb::api::WriteOption wo;
-            ok = r_table->Put(request->value(), wo, &auto_gen_pk, &msg);
+            ok = r_table->Put(request->value(), wo, &auto_gen_pk, blob_keys,
+                    &msg);
         }
         if (!ok) {
             response->set_code(::rtidb::base::ReturnCode::kPutFailed);

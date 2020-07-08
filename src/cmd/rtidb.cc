@@ -23,10 +23,10 @@
 #include "base/linenoise.h"
 #include "base/strings.h"
 #if __linux__
+#include "blob_proxy/blob_proxy_impl.h"
 #include "blobserver/blobserver_impl.h"
 #include "nameserver/name_server_impl.h"
 #include "tablet/tablet_impl.h"
-#include "blob_proxy/blob_proxy_impl.h"
 #endif
 #include "boost/algorithm/string.hpp"
 #include "boost/lexical_cast.hpp"
@@ -34,13 +34,13 @@
 #include "client/bs_client.h"
 #include "client/ns_client.h"
 #include "client/tablet_client.h"
+#include "cmd/display.h"
+#include "cmd/sdk_iterator.h"
+#include "cmd/sql_cmd.h"
 #include "codec/flat_array.h"
 #include "codec/row_codec.h"
 #include "codec/schema_codec.h"
 #include "codec/sdk_codec.h"
-#include "cmd/display.h"
-#include "cmd/sdk_iterator.h"
-#include "cmd/sql_cmd.h"
 #include "proto/client.pb.h"
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
@@ -76,6 +76,7 @@ DECLARE_uint32(skiplist_max_height);
 DECLARE_uint32(preview_limit_max_num);
 DECLARE_uint32(preview_default_limit);
 DECLARE_uint32(max_col_display_length);
+DECLARE_bool(version);
 
 void shutdown_signal_handler(int signal) {
     std::cout << "catch signal: " << signal << std::endl;
@@ -602,8 +603,11 @@ void PutRelational(
         ::snappy::Compress(value.c_str(), value.length(), &compressed);
         value = compressed;
     }
+    ::rtidb::api::WriteOption pb_wo;
     int64_t auto_gen_pk = 0;
-    bool ok = tablet_client->Put(tid, pid, value, &auto_gen_pk, &msg);
+    std::vector<int64_t> blob_keys;
+    bool ok = tablet_client->Put(tid, pid, value, pb_wo,
+            &auto_gen_pk, &blob_keys, &msg);
     if (!ok) {
         printf("put failed, msg: %s\n", msg.c_str());
     } else {
@@ -764,7 +768,7 @@ void HandleNSSwitchMode(const std::vector<std::string>& parts,
 
 void HandleNSShowNameServer(const std::vector<std::string>& parts,
                             ::rtidb::client::NsClient* client,
-                            std::shared_ptr<ZkClient> zk_client) {
+                            std::shared_ptr<::rtidb::zk::ZkClient> zk_client) {
     if (FLAGS_zk_cluster.empty() || !zk_client) {
         std::cout << "Show nameserver failed. zk_cluster is empty" << std::endl;
         return;
@@ -6194,10 +6198,10 @@ void StartNsClient() {
                   << "." << RTIDB_VERSION_MEDIUM << "." << RTIDB_VERSION_MINOR
                   << "." << RTIDB_VERSION_BUG << std::endl;
     }
-    std::shared_ptr<ZkClient> zk_client;
+    std::shared_ptr<::rtidb::zk::ZkClient> zk_client;
     if (!FLAGS_zk_cluster.empty()) {
-        zk_client = std::make_shared<ZkClient>(FLAGS_zk_cluster, 1000, "",
-                                               FLAGS_zk_root_path);
+        zk_client = std::make_shared<::rtidb::zk::ZkClient>(
+            FLAGS_zk_cluster, 1000, "", FLAGS_zk_root_path);
         if (!zk_client->Init()) {
             std::cout << "zk client init failed" << std::endl;
             return;
@@ -6438,6 +6442,15 @@ void StartBsClient() {
 }
 
 int main(int argc, char* argv[]) {
+    {
+        std::ostringstream ss;
+        ss << RTIDB_VERSION_MAJOR << ".";
+        ss << RTIDB_VERSION_MEDIUM << ".";
+        ss << RTIDB_VERSION_MINOR << ".";
+        ss << RTIDB_VERSION_BUG;
+        std::string version = ss.str();
+        ::google::SetVersionString(version);
+    }
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     if (FLAGS_role == "ns_client") {
         StartNsClient();

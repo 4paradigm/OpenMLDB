@@ -21,5 +21,5 @@ blob_proxy:
 	rm -rfv release/blob_proxy.tar
 	[ -f "${HOME}/.docker/config.json" ] || mkdir ~/.docker/ && echo ewogICJhdXRocyI6IHsKICAgICJkb2NrZXItc2VhcmNoLjRwZC5pbyI6IHsKICAgICAgImF1dGgiOiAiWkdWd2JHOTVPa2RzVnpWVFVtOHhWRU16Y1E9PSIKICAgIH0sCiAgICAiZG9ja2VyLjRwZC5pbyI6IHsKICAgICAgImF1dGgiOiAiWkdWd2JHOTVPa2RzVnpWVFVtOHhWRU16Y1E9PSIKICAgIH0sCiAgICAiZG9ja2VyMDI6MzUwMDAiOiB7CiAgICAgICJhdXRoIjogImRHVnpkSFZ6WlhJNmRHVnpkSEJoYzNOM2IzSmsiCiAgICB9LAogICAgInJlZ2lzdHJ5LjRwYXJhZGlnbS5jb20iOiB7CiAgICAgICJhdXRoIjogIlpHOWphMlZ5TFhKbFoybHpkSEo1T2pGeFlYbzViMnd1IgogICAgfQogIH0KfQo= | base64 -d > "${HOME}/.docker/config.json"
 	wget -P /bin http://pkg-plus.4paradigm.com/software/docker/docker && chmod +x /bin/docker
-	cd docker && tar -zcvf ../release/blob_proxy.meta.tar.gz META-INFO/meta META-INFO/k8s/blob_proxy.yaml
-	cd docker/blob_proxy && docker build -t docker.4pd.io/env/${REF}/rtidb/blob_proxy:${tag}  . && docker push docker.4pd.io/env/${REF}/rtidb/blob_proxy:${tag}
+	cd docker && tar -zcvf ../rtidb.meta.tar.gz META-INFO/meta META-INFO/k8s/blob_proxy.yaml
+	cd docker && docker build -t docker.4pd.io/env/${REF}/prophet/app/rtidb.tar:${tag}  . && docker push docker.4pd.io/env/${REF}/prophet/app/rtidb.tar:${tag}

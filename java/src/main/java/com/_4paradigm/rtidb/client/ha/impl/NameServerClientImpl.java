@@ -271,8 +271,7 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
                 }
             }
         }
-        TableInfo newTableInfo = addDataType(tableInfo);
-        CreateTableRequest request = CreateTableRequest.newBuilder().setTableInfo(newTableInfo).build();
+        CreateTableRequest request = CreateTableRequest.newBuilder().setTableInfo(tableInfo).build();
         GeneralResponse response = ns.createTable(request);
         if (response != null && response.getCode() == 0) {
             return true;
@@ -282,23 +281,9 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         return false;
     }
 
-    private TableInfo addDataType(TableInfo tableInfo) {
-        TableInfo.Builder builder = TableInfo.newBuilder(tableInfo);
-        for (int i = 0; i < tableInfo.getColumnDescV1List().size(); i++) {
-            Common.ColumnDesc desc = tableInfo.getColumnDescV1(i);
-            Type.DataType type = TYPE_MAPING.get(desc.getType().toLowerCase());
-            Common.ColumnDesc.Builder descBuilder =Common.ColumnDesc.newBuilder(desc);
-            if (type!=null)
-            descBuilder.setDataType(type);
-            builder.setColumnDescV1(i, descBuilder.build());
-        }
-        return builder.build();
-    }
-
     @Override
     public boolean createTable(TableInfo tableInfo) {
-        TableInfo newTableInfo = addDataType(tableInfo);
-        CreateTableRequest request = CreateTableRequest.newBuilder().setTableInfo(newTableInfo).build();
+        CreateTableRequest request = CreateTableRequest.newBuilder().setTableInfo(tableInfo).build();
         GeneralResponse response = ns.createTable(request);
         if (response != null && response.getCode() == 0) {
             return true;

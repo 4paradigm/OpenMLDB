@@ -146,7 +146,7 @@ DataRecord *decompress_record(DataRecord *r)
         unsigned int csize = qlz_size_compressed(r->value);
         if (csize != r->vsz)
         {
-            printf("broken compressed data: %d != %d, flag=%x", csize, r->vsz, r->flag);
+            printf("broken compressed data: %d != %d, flag=%x\n", csize, r->vsz, r->flag);
             goto DECOMP_END;
         }
         unsigned int size = qlz_size_decompressed(r->value);
@@ -154,7 +154,7 @@ DataRecord *decompress_record(DataRecord *r)
         unsigned int ret = qlz_decompress(r->value, v, scratch);
         if (ret != size)
         {
-            printf("decompress %s failed: %d != %d", r->key, ret, size);
+            printf("decompress %s failed: %d != %d\n", r->key, ret, size);
             goto DECOMP_END;
         }
         if (r->free_value)
@@ -180,7 +180,7 @@ DataRecord *decode_record(char *buf, uint32_t size, bool decomp, const char *pat
     if (bad_kv_size(ksz, vsz))
     {
         if (do_logging)
-            printf("invalid ksz=%u, vsz=%u, %s @%u, key = (%s)", ksz, vsz, path, pos, key);
+            printf("invalid ksz=%u, vsz=%u, %s @%u, key = (%s)\n", ksz, vsz, path, pos, key);
         if (fail_reason)
             *fail_reason = BAD_REC_SIZE;
         return NULL;
@@ -190,7 +190,7 @@ DataRecord *decode_record(char *buf, uint32_t size, bool decomp, const char *pat
     if (size < need)
     {
         if (do_logging)
-            printf("not enough data in buffer %d < %d, %s @%u,  key = (%s) ", size, need, path, pos, key);
+            printf("not enough data in buffer %d < %d, %s @%u,  key = (%s) \n", size, need, path, pos, key);
         if (fail_reason)
             *fail_reason = BAD_REC_END;
         return NULL;
@@ -199,7 +199,7 @@ DataRecord *decode_record(char *buf, uint32_t size, bool decomp, const char *pat
     if (r->crc != crc)
     {
         if (do_logging)
-            printf("CHECKSUM %u != %u, %s @%u, get (%s) got (%s)", crc, r->crc,  path, pos, key, r->key);
+            printf("CHECKSUM %u != %u, %s @%u, get (%s) got (%s)\n", crc, r->crc,  path, pos, key, r->key);
         if (fail_reason)
             *fail_reason = BAD_REC_CRC;
         return NULL;
@@ -238,7 +238,7 @@ static inline DataRecord *scan_record(char *begin, char *end,  char **curr,
         {
             if (num_broken_curr > 0)
             {
-                printf("END_BROKEN in %s after %d PADDING, total %d", path, num_broken_curr, *num_broken_total);
+                printf("END_BROKEN in %s after %d PADDING, total %d\n", path, num_broken_curr, *num_broken_total);
                 num_broken_curr = 0;
             }
             return r;
@@ -248,7 +248,7 @@ static inline DataRecord *scan_record(char *begin, char *end,  char **curr,
             if (num_broken_curr == 0)
             {
                 DataRecord *ro = (DataRecord *) (p - sizeof(char*));
-                printf("START_BROKEN in %s at %ld", path, p - begin);
+                printf("START_BROKEN in %s at %ld\n", path, p - begin);
                 uint32_t ksz = ro->ksz;
                 if (ksz > 0 && ksz <= MAX_KEY_LEN && sizeof(DataRecord) - sizeof(char*) + ksz < end - p)
                 {
@@ -258,7 +258,7 @@ static inline DataRecord *scan_record(char *begin, char *end,  char **curr,
                         char key[KEY_BUF_LEN];
                         memcpy(key, ro->key, ksz);
                         key[ksz] = 0;
-                        printf("REMOVE_BROKEN key %s in %s at %ld", key, path, p - begin);
+                        printf("REMOVE_BROKEN key %s in %s at %ld\n", key, path, p - begin);
                         ht_remove2(tree, ro->key, ksz);
                         free(it);
                     }
@@ -276,7 +276,7 @@ static inline DataRecord *scan_record(char *begin, char *end,  char **curr,
                         jump /= PADDING;
                         num_broken_curr += jump;
                         (*num_broken_total) += jump;
-                        printf("JUMP_BROKEN in %s, jump %d PADDING, total %d", path, jump, *num_broken_total);
+                        printf("JUMP_BROKEN in %s, jump %d PADDING, total %d\n", path, jump, *num_broken_total);
                         return rn;
                     }
                     else
@@ -291,7 +291,7 @@ static inline DataRecord *scan_record(char *begin, char *end,  char **curr,
             if (num_broken_curr > MAX_VALUE_LEN/PADDING)   // 100M
             {
                 // TODO: delete broken keys from htree
-                printf("GIVEUP_BROKEN in %s after %d PADDING, total %d", path, num_broken_curr, *num_broken_total);
+                printf("GIVEUP_BROKEN in %s after %d PADDING, total %d\n", path, num_broken_curr, *num_broken_total);
                 break;
             }
             *curr += PADDING;
@@ -299,7 +299,7 @@ static inline DataRecord *scan_record(char *begin, char *end,  char **curr,
     }
     if (*curr >= end && num_broken_curr > 0)
     {
-        printf("FILE_END_BROKEN in %s after %d PADDING, total %d", path, num_broken_curr, *num_broken_total);
+        printf("FILE_END_BROKEN in %s after %d PADDING, total %d\n", path, num_broken_curr, *num_broken_total);
     }
     return NULL;
 }
@@ -313,7 +313,7 @@ DataRecord *read_record(FILE *f, bool decomp, const char *path, const char *key)
 
     if (fread(&r->crc, 1, PADDING, f) != PADDING)
     {
-        printf("read file fail, %s @%lld, key = (%s)",  path, (long long int)ftello(f), key);
+        printf("read file fail, %s @%lld, key = (%s)\n",  path, (long long int)ftello(f), key);
         goto READ_END;
     }
 
@@ -342,7 +342,7 @@ DataRecord *read_record(FILE *f, bool decomp, const char *path, const char *key)
         if (need > 0 && need != (ret = fread(r->value + read_size, 1, need, f)))
         {
             r->key[ksz] = 0; // c str
-            printf("PREAD %d < %d, %s @%lld, key = (%s)", ret, need, path, (long long int)ftello(f), key);
+            printf("PREAD %d < %d, %s @%lld, key = (%s)\n", ret, need, path, (long long int)ftello(f), key);
             goto READ_END;
         }
     }
@@ -353,7 +353,7 @@ DataRecord *read_record(FILE *f, bool decomp, const char *path, const char *key)
     crc = beans_crc32(crc, (unsigned char*)r->value, vsz);
     if (crc != crc_old)
     {
-        printf("CHECKSUM %u != %u, %s @%lld, get key (%s) got(%s)", crc, r->crc, path, (long long int)ftello(f), key, r->key);
+        printf("CHECKSUM %u != %u, %s @%lld, get key (%s) got(%s)\n", crc, r->crc, path, (long long int)ftello(f), key, r->key);
         goto READ_END;
     }
 
@@ -375,14 +375,14 @@ DataRecord *fast_read_record(int fd, off_t offset, bool decomp, const char *path
 
     if (pread(fd, &r->crc, PADDING, offset) != PADDING)
     {
-        printf("read file fail, %s @%lld, file size = %lld, key = %s",  
+        printf("read file fail, %s @%lld, file size = %lld, key = %s\n",  
                 path, (long long)offset, (long long)lseek(fd, 0L, SEEK_END), key);
         goto READ_END;
     }
 
     if (bad_kv_size(r->ksz, r->vsz))
     {
-        printf("invalid ksz=%u, vsz=%u, %s @%lld, key = (%s)", 
+        printf("invalid ksz=%u, vsz=%u, %s @%lld, key = (%s)\n", 
                 r->ksz, r->vsz, path, (long long)offset, key);
         goto READ_END;
     }
@@ -401,12 +401,12 @@ DataRecord *fast_read_record(int fd, off_t offset, bool decomp, const char *path
         r->value = (char*)beans_safe_malloc(vsz + key_more);
         r->free_value = true;
         int ret = 0;
-        printf("long key ksz %d key_more, vsz %d, read_more %d",
+        printf("long key ksz %d key_more, vsz %d, read_more %d\n",
                 ksz, key_more, vsz, read_more);
         if (read_more != (ret=pread(fd, r->value, read_more, offset + PADDING)))
         {
             r->key[ksz] = 0; // c str
-            printf("PREAD %d < %d, %s @%lld, get key (%s) got(%s)", ret, read_more, path, (long long int) offset, key, r->key);
+            printf("PREAD %d < %d, %s @%lld, get key (%s) got(%s)\n", ret, read_more, path, (long long int) offset, key, r->key);
             goto READ_END;
         }
         memcpy(r->key + ksz - key_more, r->value, key_more);
@@ -422,7 +422,7 @@ DataRecord *fast_read_record(int fd, off_t offset, bool decomp, const char *path
         if (read_more != (ret=pread(fd, r->value + vreadn, read_more, offset + PADDING)))
         {
             r->key[ksz] = 0; // c str
-            printf("PREAD %d < %d, %s @%lld, get key (%s) got(%s)", ret, read_more, path, (long long int) offset, key, r->key);
+            printf("PREAD %d < %d, %s @%lld, get key (%s) got(%s)\n", ret, read_more, path, (long long int) offset, key, r->key);
             goto READ_END;
         }
     }
@@ -433,7 +433,7 @@ DataRecord *fast_read_record(int fd, off_t offset, bool decomp, const char *path
     crc = beans_crc32(crc, (unsigned char*)r->value, vsz);
     if (crc != crc_old)
     {
-        printf("CHECKSUM %u != %u, %s @%lld, get key (%s) got(%s)", crc, r->crc, path, (long long int)offset, key, r->key);
+        printf("CHECKSUM %u != %u, %s @%lld, get key (%s) got(%s)\n", crc, r->crc, path, (long long int)offset, key, r->key);
         goto READ_END;
     }
 
@@ -480,7 +480,7 @@ int write_record(FILE *f, DataRecord *r)
     char *data = encode_record(r, &size);
     if (fwrite(data, 1, size, f) < size)
     {
-        printf("write %d byte failed", size);
+        printf("write %d byte failed\n", size);
         free(data);
         return -1;
     }
@@ -494,7 +494,7 @@ void scanDataFile(HTree *tree, int bucket, const char *path, const char *hintpat
     MFile *f = open_mfile(path);
     if (f == NULL) return;
 
-    printf("scan datafile %s", path);
+    printf("scan datafile %s\n", path);
     HTree *cur_tree = ht_new(0, 0, true);
     char *p = f->addr, *end = f->addr + f->size;
     int num_broken_total = 0;
@@ -511,7 +511,7 @@ void scanDataFile(HTree *tree, int bucket, const char *path, const char *hintpat
         r = decompress_record(r);
         if (r == NULL)
         {
-            printf("decompress_record fail, %s @%u size = %ld", path, pos, p - (pos + f->addr));
+            printf("decompress_record fail, %s @%u size = %ld\n", path, pos, p - (pos + f->addr));
             continue;
         }
         uint16_t hash = gen_hash(r->value, r->vsz);
@@ -539,7 +539,7 @@ void scanDataFileBefore(HTree *tree, int bucket, const char *path, time_t before
     MFile *f = open_mfile(path);
     if (f == NULL) return;
 
-    printf("scan datafile %s before %ld", path, before);
+    printf("scan datafile %s before %ld\n", path, before);
     char *p = f->addr, *end = f->addr + f->size;
     int num_broken_total = 0;
     size_t last_advise = 0;
@@ -555,7 +555,7 @@ void scanDataFileBefore(HTree *tree, int bucket, const char *path, time_t before
         r = decompress_record(r);
         if (r == NULL)
         {
-            printf("decompress_record fail, %s @%u size = %ld", path, pos, p - (pos + f->addr));
+            printf("decompress_record fail, %s @%u size = %ld\n", path, pos, p - (pos + f->addr));
             continue;
         }
 
@@ -611,7 +611,7 @@ int optimizeDataFile(HTree *tree, Mgr *mgr, int bucket, const char *path, const 
     gettimeofday(&opt_start, NULL);
 
     int err = -1;
-    printf("begin optimize %s -> %s, use_tmp = %s", path, lastdata, use_tmp ? "true" : "false");
+    printf("begin optimize %s -> %s, use_tmp = %s\n", path, lastdata, use_tmp ? "true" : "false");
 
 //to destroy:
     FILE *new_df = NULL;
@@ -639,10 +639,10 @@ int optimizeDataFile(HTree *tree, Mgr *mgr, int bucket, const char *path, const 
         {
             char bytes[256];
             int size = 256 - end;
-            printf("size of %s is 0x%llx, add padding", lastdata, (long long)new_df_orig_size);
+            printf("size of %s is 0x%llx, add padding\n", lastdata, (long long)new_df_orig_size);
             if (fwrite(bytes, 1, size, new_df) < size)
             {
-                printf("write error when padding %s", lastdata);
+                printf("write error when padding %s\n", lastdata);
                 goto  OPT_FAIL;
             }
         }
@@ -652,7 +652,7 @@ int optimizeDataFile(HTree *tree, Mgr *mgr, int bucket, const char *path, const 
             HintFile *hint = open_hint(lasthint_real, NULL);
             if (hint == NULL)
             {
-                printf("open last hint file %s failed", lasthint_real);
+                printf("open last hint file %s failed\n", lasthint_real);
                 err = 1;
                 goto  OPT_FAIL;
             }
@@ -673,7 +673,7 @@ int optimizeDataFile(HTree *tree, Mgr *mgr, int bucket, const char *path, const 
         new_df = fopen(tmp, "wb");
         if (new_df == NULL)
         {
-            printf("open tmp datafile failed, %s", tmp);
+            printf("open tmp datafile failed, %s\n", tmp);
             goto  OPT_FAIL;
         }
     }
@@ -709,15 +709,15 @@ int optimizeDataFile(HTree *tree, Mgr *mgr, int bucket, const char *path, const 
             {
                 if (use_tmp)
                 {
-                    printf("Bug: optimize %s into tmp %s overflow", path, tmp);
+                    printf("Bug: optimize %s into tmp %s overflow\n", path, tmp);
                 }
                 else
                 {
-                    printf("optimize %s into %s overflow, ftruncate to %u", path, lastdata, new_df_orig_size);
+                    printf("optimize %s into %s overflow, ftruncate to %u\n", path, lastdata, new_df_orig_size);
                     fflush(new_df);
                     if (0 != ftruncate(fileno(new_df), new_df_orig_size))
                     {
-                        printf("ftruncate failed for  %s old size = %u", path, new_df_orig_size);
+                        printf("ftruncate failed for  %s old size = %u\n", path, new_df_orig_size);
                     }
                     rewind(new_df);
                 }
@@ -746,7 +746,7 @@ int optimizeDataFile(HTree *tree, Mgr *mgr, int bucket, const char *path, const 
             r->version = it->ver;
             if (write_record(new_df, r) != 0)
             {
-                printf("write error: %s -> %d", path, last_bucket);
+                printf("write error: %s -> %d\n", path, last_bucket);
                 free(it);
                 free_record(&r);
                 goto  OPT_FAIL;
@@ -802,12 +802,12 @@ int optimizeDataFile(HTree *tree, Mgr *mgr, int bucket, const char *path, const 
     gettimeofday(&opt_end, NULL);
     float update_secs = (update_end.tv_sec - update_start.tv_sec) + (update_end.tv_usec - update_start.tv_usec) / 1e6;
     float opt_secs = (opt_end.tv_sec - opt_start.tv_sec) + (opt_end.tv_usec - opt_start.tv_usec) / 1e6;
-    printf("optimize %s -> %d (%u B) complete, %d/%d records released, %d deleted, %u/%u bytes released, %d bytes broken, use %fs/%fs",
+    printf("optimize %s -> %d (%u B) complete, %d/%d records released, %d deleted, %u/%u bytes released, %d bytes broken, use %fs/%fs\n",
             path, last_bucket, (last_bucket == bucket) ? old_srcdata_size : new_df_orig_size, released, nrecord, deleted, *deleted_bytes, old_srcdata_size, broken, update_secs, opt_secs);
     return 0;
 
 OPT_FAIL:
-    printf("optimize %s -> %d (%u B) failed,   %d/%d records released, %d deleted, %u/%u bytes released, %d bytes broken, use %fs/%fs, err = %d",
+    printf("optimize %s -> %d (%u B) failed,   %d/%d records released, %d deleted, %u/%u bytes released, %d bytes broken, use %fs/%fs, err = %d\n",
             path, last_bucket, (last_bucket == bucket) ? old_srcdata_size : new_df_orig_size, released, nrecord, deleted, *deleted_bytes, old_srcdata_size, broken, update_secs, opt_secs, err);
     if (hintdata) free(hintdata);
     if (cur_tree)  ht_destroy(cur_tree);

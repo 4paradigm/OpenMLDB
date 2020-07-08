@@ -272,7 +272,6 @@ void NameServerImpl::TableInfoToVec(
         table_infos,
     const std::vector<uint32_t>& table_tid_vec,
     std::vector<::rtidb::nameserver::TableInfo>* local_table_info_vec) {
-    std::lock_guard<std::mutex> lock(mu_);
     for (const auto& kv : table_infos) {
         if (std::find(table_tid_vec.begin(), table_tid_vec.end(),
                       kv.second->tid()) == table_tid_vec.end()) {
@@ -323,9 +322,12 @@ void NameServerImpl::CheckSyncTable(
         table_tid_vec.push_back(rkv.tid());
     }
     std::vector<::rtidb::nameserver::TableInfo> local_table_info_vec;
-    TableInfoToVec(table_info_, table_tid_vec, &local_table_info_vec);
-    for (const auto& kv : db_table_info_) {
-        TableInfoToVec(kv.second, table_tid_vec, &local_table_info_vec);
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        TableInfoToVec(table_info_, table_tid_vec, &local_table_info_vec);
+        for (const auto& kv : db_table_info_) {
+            TableInfoToVec(kv.second, table_tid_vec, &local_table_info_vec);
+        }
     }
     for (const auto& table_tmp : local_table_info_vec) {
         ::rtidb::nameserver::TableInfo table_info(table_tmp);
@@ -906,6 +908,7 @@ bool NameServerImpl::RecoverTableInfo() {
     if (!zk_client_->GetChildren(zk_table_data_path_, table_vec)) {
         if (zk_client_->IsExistNode(zk_table_data_path_) > 0) {
             PDLOG(WARNING, "table data node is not exist");
+            return true;
         }
         PDLOG(WARNING, "get table name failed!");
         return false;
@@ -2636,6 +2639,29 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller,
     response->set_msg("ok");
     PDLOG(INFO, "add makesnapshot op ok. op_id[%lu] name[%s] pid[%u]",
           op_data->op_info_.op_id(), request->name().c_str(), request->pid());
+}
+
+void NameServerImpl::AddDataType(std::shared_ptr<TableInfo> table_info) {
+    for (int i = 0; i < table_info->column_desc_v1_size(); i++) {
+        auto desc = table_info->mutable_column_desc_v1(i);
+        if (desc->has_data_type()) {
+            continue;
+        }
+        auto type = rtidb::codec::DATA_TYPE_MAP.find(desc->type());
+        if (type != rtidb::codec::DATA_TYPE_MAP.end()) {
+            desc->set_data_type(type->second);
+        }
+    }
+    for (int i = 0; i < table_info->added_column_desc_size(); i++) {
+        auto desc = table_info->mutable_added_column_desc(i);
+        if (desc->has_data_type()) {
+            continue;
+        }
+        auto type = rtidb::codec::DATA_TYPE_MAP.find(desc->type());
+        if (type != rtidb::codec::DATA_TYPE_MAP.end()) {
+            desc->set_data_type(type->second);
+        }
+    }
 }
 
 int NameServerImpl::CheckTableMeta(const TableInfo& table_info) {
@@ -4699,6 +4725,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
     }
     if (!table_info->has_table_type() ||
         table_info->table_type() == ::rtidb::type::kTimeSeries) {
+        AddDataType(table_info);
         if (CheckTableMeta(*table_info) < 0) {
             response->set_code(::rtidb::base::ReturnCode::kInvalidParameter);
             response->set_msg("check TableMeta failed");
@@ -9790,7 +9817,7 @@ void NameServerImpl::UpdateTTL(
         }
     }
     // update zookeeper
-    if (!UpdateZkTableNode(
+    if (!UpdateZkTableNodeWithoutNotify(
             std::make_shared<::rtidb::nameserver::TableInfo>(table_info))) {
         response->set_code(::rtidb::base::ReturnCode::kSetZkFailed);
         response->set_msg("set zk failed");
@@ -10835,7 +10862,7 @@ bool NameServerImpl::DropTableRemote(
         std::lock_guard<std::mutex> lock(mu_);
         auto db_iter = cluster_info->last_status.find(db);
         if (db_iter != cluster_info->last_status.end()) {
-            auto iter = db_iter->second.find(db);
+            auto iter = db_iter->second.find(name);
             if (iter != db_iter->second.end()) {
                 db_iter->second.erase(iter);
             }
@@ -11031,9 +11058,9 @@ bool NameServerImpl::UpdateZkTableNodeWithoutNotify(
                   table_value.c_str(), table_value.length());
             return false;
         }
-        PDLOG(INFO, "update db table node[%s/%s]. value is [%s]",
-              zk_db_table_data_path_.c_str(), table_info->name().c_str(),
-              table_value.c_str());
+        PDLOG(INFO, "update db[%s] table node[%s/%s]. value is [%s]",
+              table_info->db().c_str(), zk_db_table_data_path_.c_str(),
+              table_info->name().c_str(), table_value.c_str());
     }
     return true;
 }
