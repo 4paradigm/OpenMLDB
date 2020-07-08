@@ -22,18 +22,17 @@
 #include "codegen/context.h"
 #include "node/node_manager.h"
 #include "node/sql_node.h"
+#include "udf/literal_traits.h"
 #include "udf/udf_library.h"
 
 namespace fesql {
 namespace udf {
 
 using fesql::base::Status;
+using fesql::codec::StringRef;
 using fesql::node::ExprListNode;
 using fesql::node::ExprNode;
 using fesql::node::SQLNode;
-
-using fesql::codec::ListV;
-using fesql::codec::StringRef;
 
 /**
  * Overall information to resolve a sql function call.
@@ -41,8 +40,11 @@ using fesql::codec::StringRef;
 class UDFResolveContext {
  public:
     UDFResolveContext(ExprListNode* args, const node::SQLNode* over,
-                      node::NodeManager* manager)
-        : args_(args), over_(over), manager_(manager) {}
+                      node::ExprAnalysisContext* analysis_ctx)
+        : args_(args),
+          over_(over),
+          manager_(analysis_ctx->node_manager()),
+          analysis_ctx_(analysis_ctx) {}
 
     ExprListNode* args() { return args_; }
     const node::SQLNode* over() { return over_; }
@@ -55,11 +57,16 @@ class UDFResolveContext {
     void SetError(const std::string& err) { error_msg_ = err; }
     bool HasError() const { return error_msg_ != ""; }
 
+    node::ExprAnalysisContext* analysis_context() const {
+        return analysis_ctx_;
+    }
+
  private:
     ExprListNode* args_;
     const SQLNode* over_;
     node::NodeManager* manager_;
 
+    node::ExprAnalysisContext* analysis_ctx_;
     std::string error_msg_;
 };
 
@@ -265,152 +272,6 @@ class ArgSignatureTable {
     TableType table_;
 };
 
-template <typename T>
-struct ArgTypeTrait {
-    static std::string to_string();
-    static node::TypeNode* to_type_node(node::NodeManager* nm);
-    static node::ExprNode* to_const(node::NodeManager* nm, const T&);
-};
-
-struct AnyArg {
-    AnyArg() = delete;
-};
-
-template <>
-struct ArgTypeTrait<AnyArg> {
-    static std::string to_string() { return "?"; }
-    static node::TypeNode* to_type_node(node::NodeManager* nm) {
-        return nullptr;
-    }
-};
-
-template <>
-struct ArgTypeTrait<bool> {
-    static std::string to_string() { return "bool"; }
-    static node::TypeNode* to_type_node(node::NodeManager* nm) {
-        return nm->MakeTypeNode(node::kBool);
-    }
-};
-
-template <>
-struct ArgTypeTrait<int16_t> {
-    static std::string to_string() { return "int16"; }
-    static node::TypeNode* to_type_node(node::NodeManager* nm) {
-        return nm->MakeTypeNode(node::kInt16);
-    }
-};
-
-template <>
-struct ArgTypeTrait<int32_t> {
-    static std::string to_string() { return "int32"; }
-    static node::TypeNode* to_type_node(node::NodeManager* nm) {
-        return nm->MakeTypeNode(node::kInt32);
-    }
-    static node::ExprNode* to_const(node::NodeManager* nm, const int32_t& v) {
-        return nm->MakeConstNode(v);
-    }
-};
-
-template <>
-struct ArgTypeTrait<int64_t> {
-    static std::string to_string() { return "int64"; }
-    static node::TypeNode* to_type_node(node::NodeManager* nm) {
-        return nm->MakeTypeNode(node::kInt64);
-    }
-};
-
-template <>
-struct ArgTypeTrait<float> {
-    static std::string to_string() { return "float"; }
-    static node::TypeNode* to_type_node(node::NodeManager* nm) {
-        return nm->MakeTypeNode(node::kFloat);
-    }
-    static node::ExprNode* to_const(node::NodeManager* nm, const float& v) {
-        return nm->MakeConstNode(v);
-    }
-};
-
-template <>
-struct ArgTypeTrait<double> {
-    static std::string to_string() { return "double"; }
-    static node::TypeNode* to_type_node(node::NodeManager* nm) {
-        return nm->MakeTypeNode(node::kDouble);
-    }
-    static node::ExprNode* to_const(node::NodeManager* nm, const double& v) {
-        return nm->MakeConstNode(v);
-    }
-};
-
-template <>
-struct ArgTypeTrait<codec::Timestamp> {
-    static std::string to_string() { return "timestamp"; }
-    static node::TypeNode* to_type_node(node::NodeManager* nm) {
-        return nm->MakeTypeNode(node::kTimestamp);
-    }
-};
-
-template <>
-struct ArgTypeTrait<codec::Date> {
-    static std::string to_string() { return "date"; }
-    static node::TypeNode* to_type_node(node::NodeManager* nm) {
-        return nm->MakeTypeNode(node::kDate);
-    }
-};
-
-template <>
-struct ArgTypeTrait<codec::StringRef> {
-    static std::string to_string() { return "string"; }
-    static node::TypeNode* to_type_node(node::NodeManager* nm) {
-        return nm->MakeTypeNode(node::kVarchar);
-    }
-};
-
-template <typename T>
-struct ArgTypeTrait<ListV<T>> {
-    static std::string to_string() {
-        return "list<" + ArgTypeTrait<T>::to_string() + ">";
-    }
-    static node::TypeNode* to_type_node(node::NodeManager* nm) {
-        return nm->MakeTypeNode(node::kList, ArgTypeTrait<T>::to_type_node(nm));
-    }
-};
-
-template <typename T>
-struct CCallArgTypeTrait {
-    using LiteralTag = T;
-};
-
-template <>
-struct CCallArgTypeTrait<codec::Timestamp*> {
-    using LiteralTag = codec::Timestamp;
-};
-template <>
-struct CCallArgTypeTrait<codec::Date*> {
-    using LiteralTag = codec::Date;
-};
-template <>
-struct CCallArgTypeTrait<codec::StringRef*> {
-    using LiteralTag = codec::StringRef;
-};
-template <typename V>
-struct CCallArgTypeTrait<codec::ListRef<V>*> {
-    using LiteralTag = ListV<V>;
-};
-
-template <typename... LiteralArgTypes>
-const std::string LiteralToArgTypesSignature() {
-    std::stringstream ss;
-    size_t idx = 0;
-    for (auto type_str : {ArgTypeTrait<LiteralArgTypes>::to_string()...}) {
-        ss << type_str;
-        if (idx < sizeof...(LiteralArgTypes) - 1) {
-            ss << ", ";
-        }
-        idx += 1;
-    }
-    return ss.str();
-}
-
 struct ExprUDFGenBase {
     virtual ExprNode* gen(UDFResolveContext* ctx,
                           const std::vector<ExprNode*>& args) = 0;
@@ -519,7 +380,7 @@ class ExprUDFRegistryHelper : public UDFRegistryHelper<ExprUDFRegistry> {
     ExprUDFRegistryHelper& args(
         const typename ExprUDFGen<LiteralArgTypes...>::FType& func) {
         auto gen_ptr = std::make_shared<ExprUDFGen<LiteralArgTypes...>>(func);
-        registry()->Register({ArgTypeTrait<LiteralArgTypes>::to_string()...},
+        registry()->Register({DataTypeTrait<LiteralArgTypes>::to_string()...},
                              gen_ptr);
         return *this;
     }
@@ -530,7 +391,7 @@ class ExprUDFRegistryHelper : public UDFRegistryHelper<ExprUDFRegistry> {
         auto gen_ptr =
             std::make_shared<VariadicExprUDFGen<LiteralArgTypes...>>(func);
         registry()->Register(
-            {ArgTypeTrait<LiteralArgTypes>::to_string()..., "..."}, gen_ptr);
+            {DataTypeTrait<LiteralArgTypes>::to_string()..., "..."}, gen_ptr);
         return *this;
     }
 
@@ -551,8 +412,9 @@ class LLVMUDFGenBase {
                        const std::vector<codegen::NativeValue>& args,
                        codegen::NativeValue* res) = 0;
 
-    virtual node::TypeNode* infer(UDFResolveContext* ctx,
-                                  const std::vector<node::TypeNode*>& args) = 0;
+    virtual const node::TypeNode* infer(
+        UDFResolveContext* ctx,
+        const std::vector<const node::TypeNode*>& args) = 0;
 
     node::TypeNode* fixed_ret_type() const { return fixed_ret_type_; }
 
@@ -572,9 +434,10 @@ struct LLVMUDFGen : public LLVMUDFGenBase {
                            codegen::NativeValue>::second_type...,
         codegen::NativeValue*)>;
 
-    using InferFType = std::function<node::TypeNode*(
+    using InferFType = std::function<const node::TypeNode*(
         UDFResolveContext*,
-        typename std::pair<LiteralArgTypes, node::TypeNode*>::second_type...)>;
+        typename std::pair<LiteralArgTypes,
+                           const node::TypeNode*>::second_type...)>;
 
     Status gen(codegen::CodeGenContext* ctx,
                const std::vector<codegen::NativeValue>& args,
@@ -591,16 +454,17 @@ struct LLVMUDFGen : public LLVMUDFGenBase {
         return gen_func(ctx, args[I]..., result);
     }
 
-    node::TypeNode* infer(UDFResolveContext* ctx,
-                          const std::vector<node::TypeNode*>& args) override {
+    const node::TypeNode* infer(
+        UDFResolveContext* ctx,
+        const std::vector<const node::TypeNode*>& args) override {
         return infer_internal(ctx, args,
                               std::index_sequence_for<LiteralArgTypes...>());
     }
 
     template <std::size_t... I>
-    node::TypeNode* infer_internal(UDFResolveContext* ctx,
-                                   const std::vector<node::TypeNode*>& args,
-                                   const std::index_sequence<I...>&) {
+    const node::TypeNode* infer_internal(
+        UDFResolveContext* ctx, const std::vector<const node::TypeNode*>& args,
+        const std::index_sequence<I...>&) {
         return infer_func(ctx, args[I]...);
     }
 
@@ -623,9 +487,10 @@ struct VariadicLLVMUDFGen : public LLVMUDFGenBase {
                            codegen::NativeValue>::second_type...,
         const std::vector<codegen::NativeValue>&, codegen::NativeValue*)>;
 
-    using InferFType = std::function<node::TypeNode*(
+    using InferFType = std::function<const node::TypeNode*(
         UDFResolveContext*,
-        typename std::pair<LiteralArgTypes, node::TypeNode*>::second_type...,
+        typename std::pair<LiteralArgTypes,
+                           const node::TypeNode*>::second_type...,
         const std::vector<codegen::NativeValue>&)>;
 
     Status gen(codegen::CodeGenContext* ctx,
@@ -647,16 +512,17 @@ struct VariadicLLVMUDFGen : public LLVMUDFGenBase {
         return this->gen_func(ctx, args[I]..., variadic_args, result);
     }
 
-    node::TypeNode* infer(UDFResolveContext* ctx,
-                          const std::vector<node::TypeNode*>& args) override {
+    const node::TypeNode* infer(
+        UDFResolveContext* ctx,
+        const std::vector<const node::TypeNode*>& args) override {
         return infer_internal(ctx, args,
                               std::index_sequence_for<LiteralArgTypes...>());
     }
 
     template <std::size_t... I>
-    node::TypeNode* infer_internal(UDFResolveContext* ctx,
-                                   const std::vector<node::TypeNode*>& args,
-                                   const std::index_sequence<I...>&) {
+    const node::TypeNode* infer_internal(
+        UDFResolveContext* ctx, const std::vector<const node::TypeNode*>& args,
+        const std::index_sequence<I...>&) {
         std::vector<node::TypeNode*> variadic_args;
         for (size_t i = sizeof...(I); i < args.size(); ++i) {
             variadic_args.emplace_back(args[i]);
@@ -721,7 +587,7 @@ class LLVMUDFRegistryHelper : public UDFRegistryHelper<LLVMUDFRegistry> {
     template <typename RetType>
     LLVMUDFRegistryHelper& returns() {
         fixed_ret_type_ =
-            ArgTypeTrait<RetType>::to_type_node(library()->node_manager());
+            DataTypeTrait<RetType>::to_type_node(library()->node_manager());
         if (cur_def_ != nullptr) {
             cur_def_->SetFixedReturnType(fixed_ret_type_);
         }
@@ -739,7 +605,7 @@ class LLVMUDFRegistryHelper : public UDFRegistryHelper<LLVMUDFRegistry> {
         const typename LLVMUDFGen<LiteralArgTypes...>::InferFType& infer,
         const typename LLVMUDFGen<LiteralArgTypes...>::FType& gen) {
         cur_def_ = std::make_shared<LLVMUDFGen<LiteralArgTypes...>>(gen, infer);
-        registry()->Register({ArgTypeTrait<LiteralArgTypes>::to_string()...},
+        registry()->Register({DataTypeTrait<LiteralArgTypes>::to_string()...},
                              cur_def_);
         if (fixed_ret_type_ != nullptr) {
             cur_def_->SetFixedReturnType(fixed_ret_type_);
@@ -765,7 +631,7 @@ class LLVMUDFRegistryHelper : public UDFRegistryHelper<LLVMUDFRegistry> {
         cur_def_ = std::make_shared<VariadicLLVMUDFGen<LiteralArgTypes...>>(
             gen, infer);
         registry()->Register(
-            {ArgTypeTrait<LiteralArgTypes>::to_string()..., "..."}, cur_def_);
+            {DataTypeTrait<LiteralArgTypes>::to_string()..., "..."}, cur_def_);
         if (fixed_ret_type_ != nullptr) {
             cur_def_->SetFixedReturnType(fixed_ret_type_);
         }
@@ -803,7 +669,7 @@ class CodeGenUDFTemplateRegistryHelper {
     template <typename RetType>
     CodeGenUDFTemplateRegistryHelper& returns() {
         fixed_ret_type_ =
-            ArgTypeTrait<RetType>::to_type_node(helper_.node_manager());
+            DataTypeTrait<RetType>::to_type_node(helper_.node_manager());
         for (auto def : cur_defs_) {
             def->SetFixedReturnType(fixed_ret_type_);
         }
@@ -867,7 +733,8 @@ struct ImplicitFuncPtr {
     ImplicitFuncPtr(Ret (*fn)(Args...))  // NOLINT
         : ptr(reinterpret_cast<void*>(fn)),
           get_ret_func([](node::NodeManager* nm) {
-              return ArgTypeTrait<Ret>::to_type_node(nm);
+              return DataTypeTrait<typename CCallDataTypeTrait<
+                  Ret>::LiteralTag>::to_type_node(nm);
           }) {}
 
     void* ptr;
@@ -899,7 +766,7 @@ class ExternalFuncRegistryHelper
                          << " udf registry " << registry()->name();
             return *this;
         }
-        auto ret_type = ArgTypeTrait<RetType>::to_type_node(node_manager());
+        auto ret_type = DataTypeTrait<RetType>::to_type_node(node_manager());
         cur_def_->SetRetType(ret_type);
         return *this;
     }
@@ -927,10 +794,10 @@ class ExternalFuncRegistryHelper
                          << " udf registry " << registry()->name();
         }
         std::vector<std::string> type_args(
-            {ArgTypeTrait<LiteralArgTypes>::to_string()...});
+            {DataTypeTrait<LiteralArgTypes>::to_string()...});
 
         std::vector<const node::TypeNode*> type_nodes(
-            {ArgTypeTrait<LiteralArgTypes>::to_type_node(node_manager())...});
+            {DataTypeTrait<LiteralArgTypes>::to_type_node(node_manager())...});
 
         cur_def_ = dynamic_cast<node::ExternalFnDefNode*>(
             node_manager()->MakeExternalFnDefNode(name, fn_ptr, nullptr,
@@ -943,7 +810,7 @@ class ExternalFuncRegistryHelper
     ExternalFuncRegistryHelper& args(void* fn_ptr) {
         std::string fn_name = registry()->name();
         for (auto param_name :
-             {ArgTypeTrait<LiteralArgTypes>::to_type_node(node_manager())
+             {DataTypeTrait<LiteralArgTypes>::to_type_node(node_manager())
                   ->GetName()...}) {
             fn_name.append(".").append(param_name);
         }
@@ -959,11 +826,11 @@ class ExternalFuncRegistryHelper
                          << " udf registry " << registry()->name();
         }
         std::vector<std::string> type_args(
-            {ArgTypeTrait<LiteralArgTypes>::to_string()...});
+            {DataTypeTrait<LiteralArgTypes>::to_string()...});
         type_args.emplace_back("...");
 
         std::vector<const node::TypeNode*> type_nodes(
-            {ArgTypeTrait<LiteralArgTypes>::to_type_node(node_manager())...});
+            {DataTypeTrait<LiteralArgTypes>::to_type_node(node_manager())...});
 
         cur_def_ = dynamic_cast<node::ExternalFnDefNode*>(
             node_manager()->MakeExternalFnDefNode(
@@ -1017,7 +884,7 @@ class ExternalTemplateFuncRegistryHelper {
 
  private:
     template <typename T>
-    using LiteralTag = typename CCallArgTypeTrait<T>::LiteralTag;
+    using LiteralTag = typename CCallDataTypeTrait<T>::LiteralTag;
 
     template <typename T, typename... LiteralArgTypes>
     struct FTemplateInst {
@@ -1026,10 +893,10 @@ class ExternalTemplateFuncRegistryHelper {
         }
     };
 
-    template <typename T, typename FTemplateRet, typename A1>
+    template <typename T, typename A1>
     node::ExternalFnDefNode* RegisterSingle(
-        ExternalFuncRegistryHelper& helper,       // NOLINT
-        FTemplateRet (FTemplate<T>::*fn)(A1*)) {  // NOLINT
+        ExternalFuncRegistryHelper& helper,  // NOLINT
+        void (FTemplate<T>::*fn)(A1*)) {     // NOLINT
         helper.args<>(reinterpret_cast<void*>(FTemplateInst<T, A1*>::fcompute))
             .template returns<LiteralTag<A1>>()
             .return_by_arg(true);
@@ -1041,14 +908,14 @@ class ExternalTemplateFuncRegistryHelper {
         ExternalFuncRegistryHelper& helper,      // NOLINT
         FTemplateRet (FTemplate<T>::*fn)(A1)) {  // NOLINT
         helper.args<LiteralTag<A1>>(FTemplateInst<T, A1>::fcompute)
-            .template returns<LiteralTag<A1>>;
+            .template returns<LiteralTag<FTemplateRet>>();
         return helper.cur_def();
     }
 
-    template <typename T, typename FTemplateRet, typename A1, typename A2>
+    template <typename T, typename A1, typename A2>
     node::ExternalFnDefNode* RegisterSingle(
-        ExternalFuncRegistryHelper& helper,           // NOLINT
-        FTemplateRet (FTemplate<T>::*fn)(A1, A2*)) {  // NOLINT
+        ExternalFuncRegistryHelper& helper,   // NOLINT
+        void (FTemplate<T>::*fn)(A1, A2*)) {  // NOLINT
         helper
             .args<LiteralTag<A1>>(
                 reinterpret_cast<void*>(FTemplateInst<T, A1, A2*>::fcompute))
@@ -1068,11 +935,11 @@ class ExternalTemplateFuncRegistryHelper {
         return helper.cur_def();
     }
 
-    template <typename T, typename FTemplateRet, typename A1, typename A2,
+    template <typename T, typename A1, typename A2,
               typename A3>
     node::ExternalFnDefNode* RegisterSingle(
-        ExternalFuncRegistryHelper& helper,               // NOLINT
-        FTemplateRet (FTemplate<T>::*fn)(A1, A2, A3*)) {  // NOLINT
+        ExternalFuncRegistryHelper& helper,       // NOLINT
+        void (FTemplate<T>::*fn)(A1, A2, A3*)) {  // NOLINT
         helper
             .args<LiteralTag<A1>, LiteralTag<A2>>(reinterpret_cast<void*>(
                 FTemplateInst<T, A1, A2, A3*>::fcompute))
@@ -1149,9 +1016,11 @@ class SimpleUDAFRegistryHelperImpl {
         : registry_(registry),
           library_(library),
           nm_(library->node_manager()),
-          input_ty_(ArgTypeTrait<IN>::to_type_node(nm_)),
-          state_ty_(ArgTypeTrait<ST>::to_type_node(nm_)),
-          output_ty_(ArgTypeTrait<OUT>::to_type_node(nm_)) {}
+          input_ty_(DataTypeTrait<IN>::to_type_node(nm_)),
+          state_ty_(DataTypeTrait<ST>::to_type_node(nm_)),
+          output_ty_(DataTypeTrait<OUT>::to_type_node(nm_)) {}
+
+    ~SimpleUDAFRegistryHelperImpl() { finalize(); }
 
     template <typename NewIN, typename NewST, typename NewOUT>
     SimpleUDAFRegistryHelperImpl<NewIN, NewST, NewOUT> templates() {
@@ -1177,12 +1046,30 @@ class SimpleUDAFRegistryHelperImpl {
     }
 
     SimpleUDAFRegistryHelperImpl& const_init(const ST& value) {
-        this->init_ = ArgTypeTrait<ST>::to_const(nm_, value);
+        this->init_ = DataTypeTrait<ST>::to_const(nm_, value);
         return *this;
     }
 
     SimpleUDAFRegistryHelperImpl& update(const std::string& fname) {
         node::FnDefNode* fn = fn_spec_by_name(fname, {state_ty_, input_ty_});
+        if (check_fn_ret_type(fname, fn, state_ty_)) {
+            this->update_ = fn;
+        }
+        return *this;
+    }
+
+    SimpleUDAFRegistryHelperImpl& update(
+        const std::function<
+            const node::TypeNode*(UDFResolveContext* ctx, const node::TypeNode*,
+                                  const node::TypeNode*)>& infer,
+        const std::function<Status(codegen::CodeGenContext*,
+                                   codegen::NativeValue, codegen::NativeValue,
+                                   codegen::NativeValue*)>& gen) {
+        auto fn = dynamic_cast<node::UDFByCodeGenDefNode*>(
+            nm_->MakeUDFByCodeGenDefNode({state_ty_, input_ty_}, state_ty_));
+        fn->SetGenImpl(std::make_shared<LLVMUDFGen<ST, IN>>(gen, infer));
+
+        auto fname = "anonymous<" + registry_->name() + "::update>";
         if (check_fn_ret_type(fname, fn, state_ty_)) {
             this->update_ = fn;
         }
@@ -1233,19 +1120,35 @@ class SimpleUDAFRegistryHelperImpl {
     }
 
     void finalize() {
-        if (init_ == nullptr) {
-            LOG(WARNING) << "Init expr not specified for " << registry_->name()
-                         << "<" << input_ty_->GetName() << ", "
-                         << state_ty_->GetName() << ", "
-                         << output_ty_->GetName() << ">";
-        } else if (update_ == nullptr) {
+        if (update_ == nullptr) {
             LOG(WARNING) << "Update function not specified for "
                          << registry_->name() << "<" << input_ty_->GetName()
                          << ", " << state_ty_->GetName() << ", "
                          << output_ty_->GetName() << ">";
+            return;
         }
-        auto udaf = dynamic_cast<node::UDAFDefNode*>(
-            nm_->MakeUDAFDefNode(init_, update_, merge_, output_));
+        if (init_ == nullptr) {
+            if (!std::is_same<IN, ST>::value) {
+                LOG(WARNING) << "No init expr provided but input "
+                             << "type does not equal to state type";
+                return;
+            }
+        }
+        auto input_type = nm_->MakeTypeNode(node::kList, input_ty_);
+
+        // infer init expr
+        if (init_ != nullptr) {
+            node::ExprAnalysisContext analysis_ctx(nm_, nullptr, false);
+            auto status = init_->InferAttr(&analysis_ctx);
+            if (!status.isOK()) {
+                LOG(WARNING)
+                    << "Fail to resolve init expr: " << init_->GetExprString();
+                return;
+            }
+        }
+
+        auto udaf = dynamic_cast<node::UDAFDefNode*>(nm_->MakeUDAFDefNode(
+            registry_->name(), input_type, init_, update_, merge_, output_));
         registry_->Register(input_ty_->GetName(), udaf);
     }
 
@@ -1280,21 +1183,32 @@ class SimpleUDAFRegistryHelperImpl {
             arg_list->AddChild(arg);
         }
 
-        auto registry =
-            std::dynamic_pointer_cast<UDFRegistry>(library_->Find(name));
-        if (registry == nullptr) {
-            LOG(WARNING) << "Fail to find sub function def '" << name
-                         << "'' for simple udaf " << registry_->name() << "'";
+        auto registries =
+            std::dynamic_pointer_cast<CompositeRegistry>(library_->Find(name));
+        if (registries == nullptr) {
+            LOG(WARNING) << "Fail to find registry '" << name
+                         << "' for simple udaf '" << registry_->name() << "'";
             return nullptr;
         }
-        node::FnDefNode* res = nullptr;
-        UDFResolveContext ctx(arg_list, nullptr, nm_);
-        auto status = registry->ResolveFunction(&ctx, &res);
-        if (!status.isOK() || res == nullptr) {
-            LOG(WARNING) << "Fail to resolve sub function def '" << name
-                         << "'' for simple udaf " << registry_->name() << "'";
+        std::shared_ptr<UDFRegistry> udf_registry = nullptr;
+        for (auto sub_reg : registries->GetSubRegistries()) {
+            udf_registry = std::dynamic_pointer_cast<UDFRegistry>(sub_reg);
+            if (udf_registry == nullptr) {
+                continue;
+            }
+            node::FnDefNode* res = nullptr;
+            node::ExprAnalysisContext analysis_ctx(nm_, nullptr, false);
+            UDFResolveContext ctx(arg_list, nullptr, &analysis_ctx);
+            auto status = udf_registry->ResolveFunction(&ctx, &res);
+            if (!status.isOK() || res == nullptr) {
+                LOG(WARNING) << status.msg;
+                continue;
+            }
+            return res;
         }
-        return res;
+        LOG(WARNING) << "Fail to resolve sub function def '" << name
+                     << "' for simple udaf '" << registry_->name() << "'";
+        return nullptr;
     }
 
     std::shared_ptr<SimpleUDAFRegistry> registry_;
@@ -1315,6 +1229,32 @@ SimpleUDAFRegistryHelperImpl<IN, ST, OUT>
 SimpleUDAFRegistryHelper::templates() {
     return SimpleUDAFRegistryHelperImpl<IN, ST, OUT>(library(), registry());
 }
+
+template <template <typename> typename FTemplate>
+class UDAFTemplateRegistryHelper
+    : public UDFRegistryHelper<SimpleUDAFRegistry> {
+ public:
+    UDAFTemplateRegistryHelper(std::shared_ptr<SimpleUDAFRegistry> registry,
+                               UDFLibrary* library)
+        : UDFRegistryHelper<SimpleUDAFRegistry>(registry, library) {}
+
+    template <typename... LiteralArgTypes>
+    UDAFTemplateRegistryHelper& args_in() {
+        SimpleUDAFRegistryHelper helper(registry(), library());
+        results_ = {RegisterSingle<LiteralArgTypes>(helper)...};
+        return *this;
+    }
+
+ private:
+    template <typename T>
+    int RegisterSingle(SimpleUDAFRegistryHelper& helper) {  // NOLINT
+        FTemplate<T> inst;
+        inst(helper);
+        return 0;
+    }
+
+    std::vector<int> results_;
+};
 
 }  // namespace udf
 }  // namespace fesql

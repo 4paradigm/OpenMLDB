@@ -7,6 +7,9 @@
  *--------------------------------------------------------------------------
  **/
 #include "codegen/native_value.h"
+#include <dlfcn.h>
+#include <execinfo.h>
+#include <signal.h>
 
 namespace fesql {
 namespace codegen {

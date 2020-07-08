@@ -183,7 +183,10 @@ bool BufNativeIRBuilder::BuildGetStringField(uint32_t col_idx, uint32_t offset,
     NativeValue str_addr_space_val;
     bool ok = variable_ir_builder_.LoadValue("str_addr_space",
                                              &str_addr_space_val, status);
-    ::llvm::Value* str_addr_space = str_addr_space_val.GetValue(&builder);
+    ::llvm::Value* str_addr_space = nullptr;
+    if (!str_addr_space_val.IsConstNull()) {
+        str_addr_space = str_addr_space_val.GetValue(&builder);
+    }
 
     ::llvm::Type* i32_ty = builder.getInt32Ty();
     ::llvm::Type* i8_ty = builder.getInt8Ty();

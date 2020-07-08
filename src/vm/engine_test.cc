@@ -311,6 +311,7 @@ void RequestModeCheck(SQLCase& sql_case) {  // NOLINT
     if (!sql_case.expect().success_) {
         return;
     }
+
     const std::string& request_name = session.GetRequestName();
     std::vector<Row> request_data;
     for (int32_t i = 0; i < input_cnt; i++) {

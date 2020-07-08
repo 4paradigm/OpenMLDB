@@ -33,6 +33,7 @@ class LLVMUDFRegistryHelper;
 class ExternalFuncRegistryHelper;
 class SimpleUDAFRegistryHelper;
 class UDFTransformRegistry;
+class SimpleUDAFRegistry;
 class CompositeRegistry;
 class UDFResolveContext;
 
@@ -42,6 +43,9 @@ class ExternalTemplateFuncRegistryHelper;
 template <template <typename> typename FTemplate>
 class CodeGenUDFTemplateRegistryHelper;
 
+template <template <typename> typename FTemplate>
+class UDAFTemplateRegistryHelper;
+
 /**
  * Hold global udf registry entries.
  * "fn(arg0, arg1, ...argN)" -> some expression
@@ -49,7 +53,8 @@ class CodeGenUDFTemplateRegistryHelper;
 class UDFLibrary {
  public:
     Status Transform(const std::string& name, ExprListNode* args,
-                     const node::SQLNode* over, node::NodeManager* manager,
+                     const node::SQLNode* over,
+                     node::ExprAnalysisContext* analysis_ctx,
                      ExprNode** result) const;
 
     Status Transform(const std::string& name, UDFResolveContext* ctx,
@@ -76,13 +81,23 @@ class UDFLibrary {
         return CodeGenUDFTemplateRegistryHelper<FTemplate>(name, this);
     }
 
+    template <template <typename> class FTemplate>
+    auto RegisterUDAFTemplate(const std::string& name) {
+        return DoStartRegister<UDAFTemplateRegistryHelper<FTemplate>,
+                               SimpleUDAFRegistry>(name);
+    }
+
     void InitJITSymbols(::llvm::orc::LLJIT* jit_ptr);
 
     node::NodeManager* node_manager() { return &nm_; }
 
  private:
     template <typename Helper, typename RegistryT>
-    Helper DoStartRegister(const std::string& name);
+    Helper DoStartRegister(const std::string& name) {
+        auto reg_item = std::make_shared<RegistryT>(name);
+        InsertRegistry(reg_item);
+        return Helper(reg_item, this);
+    }
 
     void InsertRegistry(std::shared_ptr<UDFTransformRegistry> reg_item);
 

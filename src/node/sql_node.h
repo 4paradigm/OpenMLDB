@@ -26,6 +26,7 @@
 #include "boost/algorithm/string.hpp"
 #include "boost/filesystem/operations.hpp"
 #include "boost/lexical_cast.hpp"
+#include "node/expr_node.h"
 #include "node/node_enum.h"
 
 // fwd
@@ -422,11 +423,25 @@ class ExprNode : public SQLNode {
 
     const ExprType expr_type_;
 
-    TypeNode *GetOutputType() const { return output_type_; }
-    void SetOutputType(TypeNode *dtype) { output_type_ = dtype; }
+    const TypeNode *GetOutputType() const { return output_type_; }
+    void SetOutputType(const TypeNode *dtype) { output_type_ = dtype; }
+
+    bool nullable() { return nullable_; }
+    void SetNullable(bool flag) { nullable_ = flag; }
+
+    /**
+     * Infer static attributes of expression; Including
+     *
+     * - output type: abstract type node of expression output
+     * - nullable: whether output can be null
+     */
+    virtual Status InferAttr(ExprAnalysisContext *ctx) {
+        return Status(common::kUnSupport,
+                      "Not implemented: " + GetExprString());
+    }
 
  private:
-    TypeNode *output_type_ = nullptr;
+    const TypeNode *output_type_ = nullptr;
     bool nullable_ = true;
 };
 
@@ -642,7 +657,6 @@ class ConstNode : public ExprNode {
     }
     explicit ConstNode(float val)
         : ExprNode(kExprPrimary), data_type_(fesql::node::kFloat) {
-        std::cout << val << std::endl;
         val_.vfloat = val;
     }
 
@@ -831,6 +845,8 @@ class ConstNode : public ExprNode {
             }
         }
     }
+
+    Status InferAttr(ExprAnalysisContext *ctx) override;
 
  private:
     DataType data_type_;
@@ -1151,7 +1167,8 @@ class FnDefNode : public SQLNode {
     virtual size_t GetArgSize() const { return 0; }
     virtual const TypeNode *GetArgType(size_t i) const { return nullptr; }
     virtual const std::string GetSimpleName() const = 0;
-    virtual bool Validate(node::ExprListNode *args) const = 0;
+    virtual bool Validate(
+        const std::vector<const TypeNode *> &arg_types) const = 0;
 };
 class CastExprNode : public ExprNode {
  public:
@@ -1170,8 +1187,12 @@ class CallExprNode : public ExprNode {
  public:
     explicit CallExprNode(const FnDefNode *fn_def, ExprListNode *args,
                           const WindowDefNode *over)
-        : ExprNode(kExprCall), fn_def_(fn_def), over_(over), args_(args) {
-        this->AddChild(args);
+        : ExprNode(kExprCall), fn_def_(fn_def), over_(over) {
+        if (args != nullptr) {
+            for (size_t i = 0; i < args->GetChildNum(); ++i) {
+                this->AddChild(args->GetChild(i));
+            }
+        }
     }
 
     ~CallExprNode() {}
@@ -1179,8 +1200,6 @@ class CallExprNode : public ExprNode {
     void Print(std::ostream &output, const std::string &org_tab) const;
     const std::string GetExprString() const;
     virtual bool Equals(const ExprNode *that) const;
-
-    // std::string GetFunctionName() const { return function_name_; }
 
     const WindowDefNode *GetOver() const { return over_; }
 
@@ -1190,23 +1209,15 @@ class CallExprNode : public ExprNode {
 
     void SetRowWise(bool flag) { is_row_wise_ = flag; }
 
-    // bool GetIsAgg() const { return is_agg_; }
-
-    // void SetAgg(bool is_agg) { is_agg_ = is_agg; }
-    ExprListNode *GetArgs() const { return args_; }
-
-    const int GetArgSize() const {
-        return nullptr == args_ ? 0 : args_->children_.size();
-    }
-
     const FnDefNode *GetFnDef() const { return fn_def_; }
+
+    Status InferAttr(ExprAnalysisContext *ctx) override;
 
  private:
     // bool is_agg_;
     // const std::string function_name_;
     const FnDefNode *fn_def_;
     const WindowDefNode *over_;
-    ExprListNode *args_;
 
     // TODO(xxx): maybe remove this if high order expression supported
     bool is_row_wise_ = false;
@@ -1301,6 +1312,8 @@ class ColumnRefNode : public ExprNode {
     const std::string GetExprString() const;
     const std::string GenerateExpressionName() const;
     virtual bool Equals(const ExprNode *node) const;
+
+    Status InferAttr(ExprAnalysisContext *ctx) override;
 
  private:
     std::string column_name_;
@@ -1807,7 +1820,8 @@ class ExternalFnDefNode : public FnDefNode {
 
     bool IsResolved() const { return ret_type_ != nullptr; }
 
-    bool Validate(node::ExprListNode *args) const override;
+    bool Validate(
+        const std::vector<const TypeNode *> &arg_types) const override;
 
     const TypeNode *GetReturnType() const override { return ret_type_; }
     size_t GetArgSize() const override { return arg_types_.size(); }
@@ -1849,7 +1863,10 @@ class UDFDefNode : public FnDefNode {
         return dynamic_cast<FnParaNode *>(node)->GetParaType();
     }
 
-    bool Validate(node::ExprListNode *args) const override { return true; }
+    bool Validate(
+        const std::vector<const TypeNode *> &arg_types) const override {
+        return true;
+    }
 
  private:
     const FnNodeFnDef *def_;
@@ -1857,8 +1874,8 @@ class UDFDefNode : public FnDefNode {
 
 class UDFByCodeGenDefNode : public FnDefNode {
  public:
-    UDFByCodeGenDefNode(const std::vector<node::TypeNode *> &arg_types,
-                        node::TypeNode *ret_type)
+    UDFByCodeGenDefNode(const std::vector<const node::TypeNode *> &arg_types,
+                        const node::TypeNode *ret_type)
         : FnDefNode(kUDFByCodeGenDef),
           arg_types_(arg_types),
           ret_type_(ret_type) {}
@@ -1877,25 +1894,31 @@ class UDFByCodeGenDefNode : public FnDefNode {
     size_t GetArgSize() const override { return arg_types_.size(); }
     const TypeNode *GetArgType(size_t i) const { return arg_types_[i]; }
 
-    bool Validate(node::ExprListNode *args) const override { return true; };
+    bool Validate(
+        const std::vector<const TypeNode *> &arg_types) const override {
+        return true;
+    }
 
  private:
     std::shared_ptr<udf::LLVMUDFGenBase> gen_impl_;
-    std::vector<node::TypeNode *> arg_types_;
-    node::TypeNode *ret_type_;
+    std::vector<const node::TypeNode *> arg_types_;
+    const node::TypeNode *ret_type_;
 };
 
 class UDAFDefNode : public FnDefNode {
  public:
-    UDAFDefNode(const ExprNode *init, const FnDefNode *update_func,
+    UDAFDefNode(const std::string &name, const TypeNode *input_type,
+                const ExprNode *init, const FnDefNode *update_func,
                 const FnDefNode *merge_func, const FnDefNode *output_func)
         : FnDefNode(kUDAFDef),
+          name_(name),
+          input_type_(input_type),
           init_(init),
           update_(update_func),
           merge_(merge_func),
           output_(output_func) {}
 
-    const std::string GetSimpleName() const override { return "UDAF"; }
+    const std::string GetSimpleName() const override { return name_; }
 
     bool Equals(const SQLNode *node) const override;
     void Print(std::ostream &output, const std::string &tab) const override;
@@ -1906,9 +1929,38 @@ class UDAFDefNode : public FnDefNode {
     const FnDefNode *output_func() const { return output_; }
 
     bool AllowMerge() const { return merge_ != nullptr; }
-    bool Validate(node::ExprListNode *args) const override { return true; }
+    bool Validate(
+        const std::vector<const TypeNode *> &arg_types) const override {
+        return true;
+    }
+
+    const TypeNode *GetInputElementType() const {
+        return update_->GetArgType(1);
+    }
+
+    const TypeNode *GetStateType() const { return update_->GetReturnType(); }
+
+    const TypeNode *GetReturnType() const override {
+        if (output_ != nullptr) {
+            return output_->GetReturnType();
+        } else {
+            return GetStateType();
+        }
+    }
+
+    size_t GetArgSize() const override { return 1; }
+
+    const TypeNode *GetArgType(size_t i) const {
+        if (i == 0) {
+            return input_type_;
+        } else {
+            return nullptr;
+        }
+    }
 
  private:
+    std::string name_;
+    const TypeNode *input_type_;
     const ExprNode *init_;
     const FnDefNode *update_;
     const FnDefNode *merge_;

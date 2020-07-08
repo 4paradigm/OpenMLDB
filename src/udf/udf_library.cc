@@ -31,13 +31,6 @@ std::shared_ptr<UDFTransformRegistry> UDFLibrary::Find(
     }
 }
 
-template <typename Helper, typename RegistryT>
-Helper UDFLibrary::DoStartRegister(const std::string& name) {
-    auto reg_item = std::make_shared<RegistryT>(name);
-    InsertRegistry(reg_item);
-    return Helper(reg_item, this);
-}
-
 void UDFLibrary::InsertRegistry(
     std::shared_ptr<UDFTransformRegistry> reg_item) {
     auto name = reg_item->name();
@@ -149,9 +142,9 @@ Status UDFLibrary::RegisterFromFile(const std::string& path_str) {
 
 Status UDFLibrary::Transform(const std::string& name, ExprListNode* args,
                              const node::SQLNode* over,
-                             node::NodeManager* manager,
+                             node::ExprAnalysisContext* analysis_ctx,
                              ExprNode** result) const {
-    UDFResolveContext ctx(args, over, manager);
+    UDFResolveContext ctx(args, over, analysis_ctx);
     return this->Transform(name, &ctx, result);
 }
 

@@ -311,10 +311,12 @@ class NodeManager {
     SQLNode *MakeUDFDefNode(const FnNodeFnDef *def);
 
     SQLNode *MakeUDFByCodeGenDefNode(
-        const std::vector<node::TypeNode *> &arg_types,
-        node::TypeNode *ret_type);
+        const std::vector<const node::TypeNode *> &arg_types,
+        const node::TypeNode *ret_type);
 
-    SQLNode *MakeUDAFDefNode(const ExprNode *init, const FnDefNode *update_func,
+    SQLNode *MakeUDAFDefNode(const std::string &name,
+                             const TypeNode *input_type, const ExprNode *init,
+                             const FnDefNode *update_func,
                              const FnDefNode *merge_func,
                              const FnDefNode *output_func);
 
