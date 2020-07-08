@@ -535,6 +535,50 @@ TEST_F(EngineTest, EngineCacheTest) {
         ASSERT_NE(rsession.GetCompileInfo().get(),
                   bsession2.GetCompileInfo().get());
     }
+    {
+        base::Status get_status;
+        BatchRunSession bsession1;
+        ASSERT_TRUE(
+            engine.Get(sql, table_def.catalog(), bsession1, get_status));
+        ASSERT_EQ(get_status.code, common::kOk);
+
+        RequestRunSession rsession1;
+        ASSERT_TRUE(
+            engine.Get(sql, table_def.catalog(), rsession1, get_status));
+        ASSERT_EQ(get_status.code, common::kOk);
+
+        // clear wrong db
+        engine.ClearCacheLocked("wrong_db");
+        BatchRunSession bsession2;
+        ASSERT_TRUE(
+            engine.Get(sql, table_def.catalog(), bsession2, get_status));
+        ASSERT_EQ(get_status.code, common::kOk);
+        RequestRunSession rsession2;
+        ASSERT_TRUE(
+            engine.Get(sql, table_def.catalog(), rsession2, get_status));
+        ASSERT_EQ(get_status.code, common::kOk);
+
+        ASSERT_EQ(bsession1.GetCompileInfo().get(),
+                  bsession2.GetCompileInfo().get());
+        ASSERT_EQ(rsession1.GetCompileInfo().get(),
+                  rsession2.GetCompileInfo().get());
+
+        // clear right db
+        engine.ClearCacheLocked(table_def.catalog());
+
+        BatchRunSession bsession3;
+        ASSERT_TRUE(
+            engine.Get(sql, table_def.catalog(), bsession3, get_status));
+        ASSERT_EQ(get_status.code, common::kOk);
+        RequestRunSession rsession3;
+        ASSERT_TRUE(
+            engine.Get(sql, table_def.catalog(), rsession3, get_status));
+        ASSERT_EQ(get_status.code, common::kOk);
+        ASSERT_NE(bsession1.GetCompileInfo().get(),
+                  bsession3.GetCompileInfo().get());
+        ASSERT_NE(rsession1.GetCompileInfo().get(),
+                  rsession3.GetCompileInfo().get());
+    }
 }
 
 TEST_F(EngineTest, EngineCompileOnlyTest) {
