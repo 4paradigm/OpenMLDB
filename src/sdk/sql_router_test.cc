@@ -158,7 +158,8 @@ TEST_F(SQLRouterTest, smoketest_on_sql) {
     std::string insert_placeholder1 = "insert into " + name + " values(?, ?);";
     std::string insert_placeholder2 =
         "insert into " + name + " values(?, 1592);";
-    std::string insert_placeholder3 = "insert into " + name + " values('hi', ?);";
+    std::string insert_placeholder3 =
+        "insert into " + name + " values('hi', ?);";
 
     ok = router->ExecuteInsert(db, insert, &status);
     ASSERT_TRUE(ok);
