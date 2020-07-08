@@ -28,38 +28,6 @@
 namespace rtidb {
 namespace sdk {
 
-#define BitMapSize(size) (((size) >> 3) + !!((size)&0x07))
-static constexpr uint8_t SDK_VERSION_LENGTH = 2;
-static constexpr uint8_t SDK_SIZE_LENGTH = 4;
-static constexpr uint8_t SDK_HEADER_LENGTH =
-    SDK_VERSION_LENGTH + SDK_SIZE_LENGTH;
-static constexpr uint32_t SDK_UINT24_MAX = (1 << 24) - 1;
-static const std::unordered_map<::fesql::sdk::DataType, uint8_t>
-    SDK_TYPE_SIZE_MAP = {{::fesql::sdk::kTypeBool, sizeof(bool)},
-                         {::fesql::sdk::kTypeInt16, sizeof(int16_t)},
-                         {::fesql::sdk::kTypeInt32, sizeof(int32_t)},
-                         {::fesql::sdk::kTypeDate, sizeof(int32_t)},
-                         {::fesql::sdk::kTypeFloat, sizeof(float)},
-                         {::fesql::sdk::kTypeInt64, sizeof(int64_t)},
-                         {::fesql::sdk::kTypeTimestamp, sizeof(int64_t)},
-                         {::fesql::sdk::kTypeDouble, sizeof(double)}};
-
-static inline uint8_t SDKGetAddrLength(uint32_t size) {
-    if (size <= UINT8_MAX) {
-        return 1;
-    } else if (size <= UINT16_MAX) {
-        return 2;
-    } else if (size <= SDK_UINT24_MAX) {
-        return 3;
-    } else {
-        return 4;
-    }
-}
-
-inline uint32_t SDKGetStartOffset(int32_t column_count) {
-    return SDK_HEADER_LENGTH + BitMapSize(column_count);
-}
-
 SQLInsertRows::SQLInsertRows(
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
     DefaultValueMap default_map, uint32_t default_str_length)

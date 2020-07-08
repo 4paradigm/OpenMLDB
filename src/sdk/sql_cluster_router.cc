@@ -254,13 +254,15 @@ bool SQLClusterRouter::CheckType(fesql::node::DataType node_type,
             return node_type == fesql::node::kInt16 ||
                    node_type == fesql::node::kInt32;
         case rtidb::type::kInt:
-            return node_type == fesql::node::kInt32;
+            return node_type == fesql::node::kInt16 ||
+                   node_type == fesql::node::kInt32;
         case rtidb::type::kBigInt:
             return node_type == fesql::node::kInt64 ||
                    node_type == fesql::node::kInt32 ||
                    node_type == fesql::node::kInt16;
         case rtidb::type::kFloat:
-            return node_type == fesql::node::kFloat;
+            return node_type == fesql::node::kFloat ||
+                   node_type == fesql::node::kDouble;
         case rtidb::type::kDouble:
             return node_type == fesql::node::kDouble ||
                    node_type == fesql::node::kFloat;
