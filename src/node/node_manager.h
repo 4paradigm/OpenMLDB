@@ -203,7 +203,7 @@ class NodeManager {
     ExprNode *MakeConstNodeINT64MIN();
     ExprNode *MakeConstNodeFLOATMIN();
     ExprNode *MakeConstNodeDOUBLEMIN();
-    ExprNode *MakeConstNodePLACEHOLDER();
+    ExprNode *MakeConstNodePlaceHolder();
 
     ExprNode *MakeAllNode(const std::string &relation_name);
     ExprNode *MakeAllNode(const std::string &relation_name,

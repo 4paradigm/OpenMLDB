@@ -220,7 +220,7 @@ TEST_F(SqlNodeTest, MakeInsertNodeTest) {
     ExprNode *value1 = node_manager_->MakeConstNode(1);
     ExprNode *value2 = node_manager_->MakeConstNode(2.3f);
     ExprNode *value3 = node_manager_->MakeConstNode(2.3);
-    ExprNode *value4 = node_manager_->MakeConstNodePLACEHOLDER();
+    ExprNode *value4 = node_manager_->MakeConstNodePlaceHolder();
     value_expr_list->PushBack(value1);
     value_expr_list->PushBack(value2);
     value_expr_list->PushBack(value3);

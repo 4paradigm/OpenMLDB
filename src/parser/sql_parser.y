@@ -813,8 +813,13 @@ insert_expr_list:	insert_expr
 						$$->PushBack($3);
 					}
 					;
-insert_expr:	expr_const
+insert_expr:	expr_const 
+				| PLACEHOLDER
+				{
+						$$ = node_manager->MakeConstNodePlaceHolder();
+				}
 				;
+
 cmd_stmt:
 			CREATE GROUP group_name
 			{
@@ -1457,10 +1462,7 @@ expr_const:
     | DOUBLE_MIN {
     	$$ = node_manager->MakeConstNodeDOUBLEMIN();
     }
-    | PLACEHOLDER {
-        $$ = node_manager->MakeConstNodePLACEHOLDER();
-    }
-  	;
+    ;
 
 sql_call_expr:
     function_name '(' '*' ')' over_clause
