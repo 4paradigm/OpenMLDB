@@ -18,9 +18,27 @@ build:
         - ln -sf /depends/thirdsrc thirdsrc
         - source /root/.bashrc && bash steps/simple_compile.sh
     artifacts:
-        expire_in: 2h
+        expire_in: 4h
         paths:
             - build/bin/rtidb
+            - build/src/sdk/libsql_jsdk.so
+            - build/sql_pysdk/dist/
+
+mac_build:
+  variables:
+      CICD_RUNNER_TAG: "rtidb_mac"
+  tags:
+      - rtidb_mac
+  stage: build
+  script:
+      - bash steps/simple_compile_mac.sh
+      - mv build/bin/rtidb build/bin/rtidb_mac
+  artifacts:
+      expire_in: 4h
+      paths:
+          - build/bin/rtidb_mac
+          - build/src/sdk/libsql_jsdk.dylib
+          - build/sql_pysdk/dist/
 
 style_check:
     stage: build
@@ -29,8 +47,7 @@ style_check:
     artifacts:
         reports:
             junit:
-                - ./style.xml
-
+                - ./reports/style.xml
 java_ut:
   stage: test
   before_script:

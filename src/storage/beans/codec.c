@@ -38,14 +38,14 @@ const int MAX_DICT_SIZE = 16384;
 
 Codec *dc_new()
 {
-    Codec *dc = (Codec*)safe_malloc(sizeof(struct t_codec));
+    Codec *dc = (Codec*)beans_safe_malloc(sizeof(struct t_codec));
 
     dc->dict_size = DEFAULT_DICT_SIZE;
-    dc->dict = (Fmt**)safe_malloc(sizeof(Fmt*) * dc->dict_size);
+    dc->dict = (Fmt**)beans_safe_malloc(sizeof(Fmt*) * dc->dict_size);
     memset(dc->dict, 0, sizeof(Fmt*) * dc->dict_size);
 
     dc->rdict_size = RDICT_SIZE(dc->dict_size);
-    dc->rdict = (short*)safe_malloc(sizeof(short) * dc->rdict_size);
+    dc->rdict = (short*)beans_safe_malloc(sizeof(short) * dc->rdict_size);
     memset(dc->rdict, 0, sizeof(short) * dc->rdict_size);
 
     dc->dict_used = 1;
@@ -92,7 +92,7 @@ void dc_rebuild(Codec *dc)
     int i;
     dc->rdict_size = RDICT_SIZE(dc->dict_size);
     free(dc->rdict);
-    dc->rdict = (short*) safe_malloc(sizeof(short) * dc->rdict_size);
+    dc->rdict = (short*) beans_safe_malloc(sizeof(short) * dc->rdict_size);
     memset(dc->rdict, 0, sizeof(short) * dc->rdict_size);
 
     for (i = 1; i < dc->dict_used; ++i)
@@ -110,7 +110,7 @@ void dc_rebuild(Codec *dc)
 void dc_enlarge(Codec *dc)
 {
     dc->dict_size = calc_min(dc->dict_size * 2, MAX_DICT_SIZE);
-    dc->dict = (Fmt**)safe_realloc(dc->dict, sizeof(Fmt*) * dc->dict_size);
+    dc->dict = (Fmt**)beans_safe_realloc(dc->dict, sizeof(Fmt*) * dc->dict_size);
     printf("enlare codec to %zu\n", dc->dict_size);
     dc_rebuild(dc);
 }
@@ -133,7 +133,7 @@ int dc_load(Codec *dc, const char *buf, int size)
     unsigned int dict_size = calc_min(used * 2, MAX_DICT_SIZE);
     if (dc->dict_size < dict_size)
     {
-        dc->dict = (Fmt**) safe_realloc(dc->dict, sizeof(Fmt*) * dict_size);
+        dc->dict = (Fmt**) beans_safe_realloc(dc->dict, sizeof(Fmt*) * dict_size);
         dc->dict_size = dict_size;
     }
 
@@ -143,7 +143,7 @@ int dc_load(Codec *dc, const char *buf, int size)
         int s = *(unsigned char*)buf++;
         offset += sizeof(unsigned char);
         if (offset > size) return -1;
-        dc->dict[i] = (Fmt*)try_malloc(s);
+        dc->dict[i] = (Fmt*)beans_try_malloc(s);
         if (dc->dict[i] == NULL)
         {
             printf("try_malloc failed: %d\n", s);
@@ -337,7 +337,7 @@ static inline int dc_decode_key_with_fmt(Codec *dc, char *buf, int buf_size, con
     if (f == NULL)
     {
         int key_buf_len = sizeof(char) * len * 2 + 1;
-        char *key_hex_buf = (char*)safe_malloc(key_buf_len);
+        char *key_hex_buf = (char*)beans_safe_malloc(key_buf_len);
         *(key_hex_buf + key_buf_len - 1) = 0;
         printf("invalid fmt index: %d\n", idx);
         int i;
@@ -447,7 +447,7 @@ int dc_encode(Codec *dc, char *buf, int buf_size, const char *src, int len)
         {
             if ((unsigned int)(dc->dict_used) < dc->dict_size)
             {
-                dict[dc->dict_used] = (Fmt*) safe_malloc(sizeof(Fmt) + flen - 7 + 1);
+                dict[dc->dict_used] = (Fmt*) beans_safe_malloc(sizeof(Fmt) + flen - 7 + 1);
                 dict[dc->dict_used]->nargs = narg;
                 memcpy(dict[dc->dict_used]->fmt, fmt, flen + 1);
                 printf("new fmt %d: %s <= %s\n", dc->dict_used, fmt, src);

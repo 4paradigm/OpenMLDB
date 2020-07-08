@@ -40,7 +40,11 @@ class PosixWritableFile : public WritableFile {
     }
 
     virtual Status Append(const Slice& data) {
+#if __linux__
         size_t r = fwrite_unlocked(data.data(), 1, data.size(), file_);
+#else
+        size_t r = fwrite(data.data(), 1, data.size(), file_);
+#endif
         if (r != data.size()) {
             return IOError(filename_, errno);
         }
@@ -58,17 +62,30 @@ class PosixWritableFile : public WritableFile {
     }
 
     virtual Status Flush() {
+#if __linux__
         if (fflush_unlocked(file_) != 0) {
             return IOError(filename_, errno);
         }
+#else
+        if (fflush(file_) != 0) {
+            return IOError(filename_, errno);
+        }
+#endif
         return Status::OK();
     }
 
     virtual Status Sync() {
+#if __linux__
         // Ensure new files referred to by the manifest are in the filesystem.
         if (fflush_unlocked(file_) != 0 || fdatasync(fileno(file_)) != 0) {
             return IOError(filename_, errno);
         }
+#else
+        // Ensure new files referred to by the manifest are in the filesystem.
+        if (fflush(file_) != 0 || fsync(fileno(file_)) != 0) {
+            return IOError(filename_, errno);
+        }
+#endif
         return Status::OK();
     }
 

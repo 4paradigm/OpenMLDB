@@ -37,7 +37,11 @@ class PosixSequentialFile : public SequentialFile {
 
     virtual Status Read(size_t n, Slice* result, char* scratch) {
         Status s;
+#if __linux__
         size_t r = fread_unlocked(scratch, 1, n, file_);
+#else
+        size_t r = fread(scratch, 1, n, file_);
+#endif
         *result = Slice(scratch, r);
         if (r < n) {
             if (feof(file_)) {

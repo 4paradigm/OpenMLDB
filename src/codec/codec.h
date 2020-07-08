@@ -82,7 +82,6 @@ class RowBuilder {
     // append the date that encoded
     bool AppendDate(int32_t date);
     bool AppendValue(const std::string& val);
-
     bool SetBool(uint32_t index, bool val);
     bool SetInt32(uint32_t index, int32_t val);
     bool SetInt16(uint32_t index, int16_t val);
