@@ -312,6 +312,9 @@ class PhysicalOpNode {
         return output_name_schema_list_;
     }
 
+    void SetOutputNameSchemaList(const vm::SchemaSourceList &sources) {
+        output_name_schema_list_ = sources;
+    }
     const size_t GetOutputSchemaListSize() const {
         return output_name_schema_list_.GetSchemaSourceListSize();
     }
@@ -447,12 +450,13 @@ class PhysicalRequestProviderNode : public PhysicalDataProviderNode {
 
 class PhysicalPartitionProviderNode : public PhysicalDataProviderNode {
  public:
-    PhysicalPartitionProviderNode(
-        const std::shared_ptr<TableHandler> table_handler,
-        const std::string &index_name)
-        : PhysicalDataProviderNode(table_handler, kProviderTypePartition),
+    PhysicalPartitionProviderNode(PhysicalDataProviderNode *depend,
+                                  const std::string &index_name)
+        : PhysicalDataProviderNode(depend->table_handler_,
+                                   kProviderTypePartition),
           index_name_(index_name) {
         output_type_ = kSchemaTypeGroup;
+        SetOutputNameSchemaList(depend->GetOutputNameSchemaList());
     }
     virtual ~PhysicalPartitionProviderNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
