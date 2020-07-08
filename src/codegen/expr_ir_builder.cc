@@ -812,6 +812,10 @@ bool ExprIRBuilder::BuildUnaryExpr(const ::fesql::node::UnaryExpr* node,
             ok = predicate_ir_builder_.BuildNotExpr(left, &raw, status);
             break;
         }
+        case ::fesql::node::kFnOpMinus: {
+            ok = arithmetic_ir_builder_.BuildSubExpr(builder.getInt16(0) ,left, &raw, status);
+            break;
+        }
         case ::fesql::node::kFnOpBracket: {
             raw = left;
             break;

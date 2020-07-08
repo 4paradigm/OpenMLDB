@@ -1616,7 +1616,9 @@ const std::string KeyGenerator::Gen(const Row& row) {
     row_view_.Reset(key_row.buf());
     std::string keys = "";
     for (auto pos : idxs_) {
-        std::string key = row_view_.GetAsString(pos);
+        std::string key = fn_schema_.Get(pos).type() == fesql::type::kDate
+                              ? std::to_string(row_view_.GetDateUnsafe(pos))
+                              : row_view_.GetAsString(pos);
         if (!keys.empty()) {
             keys.append("|");
         }

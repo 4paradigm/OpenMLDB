@@ -59,6 +59,11 @@ INSTANTIATE_TEST_CASE_P(
     SqlSimpleQueryParse, PlannerTest,
     testing::ValuesIn(InitCases("cases/plan/simple_query.yaml")));
 
+
+INSTANTIATE_TEST_CASE_P(
+    SqlRenameQueryParse, PlannerTest,
+    testing::ValuesIn(InitCases("cases/plan/rename_query.yaml")));
+
 INSTANTIATE_TEST_CASE_P(
     SqlWindowQueryParse, PlannerTest,
     testing::ValuesIn(InitCases("cases/plan/window_query.yaml")));

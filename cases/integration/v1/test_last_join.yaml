@@ -193,7 +193,6 @@ cases:
   -
     id: 9
     desc: orderby-date
-    tags: ["TODO", "@chenjing"]
     inputs:
       -
         columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
@@ -211,11 +210,7 @@ cases:
           - ["bb",2.4,3.1,1590738992000,"2020-05-02","bb"]
     sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} ORDER BY {1}.c5 on {0}.c1={1}.c1;
     expect:
-      columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
-      order: c1
-      rows:
-        - ["aa",2,3.1,1590738989000]
-        - ["bb",21,3.6,1590738991000]
+      success: false
   -
     id: 10
     desc: orderby-string
@@ -340,7 +335,6 @@ cases:
   -
     id: 14
     desc: 拼接条件-date
-    tags: ["TODO", "@chenjing"]
     inputs:
       -
         columns : ["c1 string","c2 float","c3 double","c4 timestamp","c5 date","c6 string"]
@@ -654,7 +648,6 @@ cases:
   -
     id: 23
     desc: 使用表别名
-    tags: ["TODO", "@chenjing", "feature:支持别名"]
     inputs:
       -
         columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]

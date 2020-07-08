@@ -689,7 +689,25 @@ primary_time:
     }
     |INTNUM {
         $$ = node_manager->MakeConstNode($1);
-    };
+    }
+	|'-' DAYNUM {
+		$$ = node_manager->MakeConstNode(-1*$2, fesql::node::kDay);
+	}
+	|'-' HOURNUM {
+		$$ = node_manager->MakeConstNode(-1*$2, fesql::node::kHour);
+	}
+	|'-' MINUTENUM {
+		$$ = node_manager->MakeConstNode(-1*$2, fesql::node::kMinute);
+	}
+	|'-' SECONDNUM{
+		$$ = node_manager->MakeConstNode(-1*$2, fesql::node::kSecond);
+	}
+	|'-' LONGNUM {
+		$$ = node_manager->MakeConstNode(-1*$2);
+	}
+	|'-' INTNUM {
+		$$ = node_manager->MakeConstNode(-1*$2);
+	};
 var: FUN_IDENTIFIER {
         $$ = node_manager->MakeExprIdNode($1);
      };
@@ -1308,6 +1326,10 @@ fun_expr:
      {
         $$ = node_manager->MakeUnaryExprNode($2, ::fesql::node::kFnOpNot);
      }
+     | '-' fun_expr
+     {
+        $$ = node_manager->MakeUnaryExprNode($2, ::fesql::node::kFnOpMinus);
+     }
      | NOT fun_expr
      {
         $$ = node_manager->MakeUnaryExprNode($2, ::fesql::node::kFnOpNot);
@@ -1399,6 +1421,10 @@ sql_expr:
      {
         $$ = node_manager->MakeUnaryExprNode($2, ::fesql::node::kFnOpNot);
      }
+     | '-' sql_expr
+     {
+        $$ = node_manager->MakeUnaryExprNode($2, ::fesql::node::kFnOpMinus);
+     }
      | sql_expr LIKE sql_expr
      {
      	$$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpLike);
@@ -1446,6 +1472,14 @@ expr_const:
         { $$ = (node_manager->MakeConstNode($1)); }
   	| FLOATNUM
         { $$ = (node_manager->MakeConstNode($1)); }
+	| '-' INTNUM
+		{ $$ = (node_manager->MakeConstNode(-1*$2)); }
+	| '-' LONGNUM
+		{ $$ = (node_manager->MakeConstNode(-1*$2)); }
+	| '-' DOUBLENUM
+		{ $$ = (node_manager->MakeConstNode(-1*$2)); }
+	| '-' FLOATNUM
+		{ $$ = (node_manager->MakeConstNode(-1*$2)); }
   	| BOOL
         { $$ = (node_manager->MakeConstNode($1)); }
   	| NULLX

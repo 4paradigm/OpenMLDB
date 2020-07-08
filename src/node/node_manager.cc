@@ -384,6 +384,7 @@ ExprNode *NodeManager::MakeFuncNode(const FnDefNode *fn, ExprListNode *list_ptr,
         fn, list_ptr, dynamic_cast<const WindowDefNode *>(over));
     return RegisterNode(node_ptr);
 }
+
 ExprNode *NodeManager::MakeConstNode(int16_t value) {
     ExprNode *node_ptr = new ConstNode(value);
     return RegisterNode(node_ptr);

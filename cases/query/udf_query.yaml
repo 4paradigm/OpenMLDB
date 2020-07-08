@@ -173,7 +173,7 @@ cases:
         4, 2020-05-25, 22
   - id: 8
     desc: SELECT day(null)
-    tags: ["TODO", null还不支持"]
+    tags: ["TODO", "null还不支持"]
     mode: request
     db: db1
     sql: select col1 as id, std_date, day(std_date) as m from t1;

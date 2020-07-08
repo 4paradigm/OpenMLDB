@@ -749,8 +749,13 @@ bool BatchModeTransformer::TransformRenameOp(const node::RenamePlanNode* node,
     if (!TransformPlanOp(node->GetChildren()[0], &left, status)) {
         return false;
     }
-    *output = new PhysicalRenameNode(left, node->table_);
-    node_manager_->RegisterNode(*output);
+    vm::SchemaSourceList new_sources;
+
+    for (auto source : left->GetOutputNameSchemaList().schema_source_list_) {
+        new_sources.AddSchemaSource(node->table_, source.schema_,
+                                    source.sources_);
+    }
+    left->SetOutputNameSchemaList(new_sources);
     return true;
 }
 

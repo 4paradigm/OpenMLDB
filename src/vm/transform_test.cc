@@ -74,6 +74,9 @@ INSTANTIATE_TEST_CASE_P(
     SqlSimpleQueryParse, TransformTest,
     testing::ValuesIn(InitCases("cases/plan/simple_query.yaml")));
 INSTANTIATE_TEST_CASE_P(
+    SqlReanmeQueryParse, TransformTest,
+    testing::ValuesIn(InitCases("cases/plan/rename_query.yaml")));
+INSTANTIATE_TEST_CASE_P(
     SqlWindowQueryParse, TransformTest,
     testing::ValuesIn(InitCases("cases/plan/window_query.yaml")));
 
