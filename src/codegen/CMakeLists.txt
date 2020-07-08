@@ -87,16 +87,21 @@ list(APPEND test_list block_ir_builder_test)
 add_executable(udf_ir_builder_test udf_ir_builder_test.cc codegen_base_test)
 target_link_libraries(udf_ir_builder_test gtest
         ${vm_deps_libs} )
+add_test(udf_ir_builder_test udf_ir_builder_test --gtest_output=xml:${CMAKE_BINARY_DIR}/udf_ir_builder_test.xml)
+list(APPEND test_list udf_ir_builder_test)
+
 
 add_executable(fn_ir_builder_test fn_ir_builder_test.cc codegen_base_test)
 target_link_libraries(fn_ir_builder_test gtest
         ${vm_deps_libs} )
+add_test(fn_ir_builder_test fn_ir_builder_test --gtest_output=xml:${CMAKE_BINARY_DIR}/fn_ir_builder_test.xml)
+list(APPEND test_list fn_ir_builder_test)
 
 add_executable(aggregate_ir_builder_test aggregate_ir_builder_test.cc codegen_base_test)
 target_link_libraries(aggregate_ir_builder_test gtest ${vm_deps_libs} )
+add_test(aggregate_ir_builder_test aggregate_ir_builder_test --gtest_output=xml:${CMAKE_BINARY_DIR}/aggregate_ir_builder_test.xml)
+list(APPEND test_list aggregate_ir_builder_test)
 
-add_test(fn_ir_builder_test fn_ir_builder_test --gtest_output=xml:${CMAKE_BINARY_DIR}/fn_ir_builder_test.xml)
-list(APPEND test_list fn_ir_builder_test)
 
 add_executable(buf_ir_builder_test buf_ir_builder_test.cc codegen_base_test.cc)
 target_link_libraries(buf_ir_builder_test gtest

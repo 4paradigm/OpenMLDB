@@ -153,7 +153,8 @@ bool BatchModeTransformer::TransformPlanOp(const ::fesql::node::PlanNode* node,
     }
     if (!ok) {
         LOG(WARNING) << "fail to tranform physical plan: fail node " +
-                            node::NameOfPlanNodeType(node->type_);
+                            node::NameOfPlanNodeType(node->type_) + ": " +
+                            status.msg;
         return false;
     }
     op_map_[logical_op] = op;
@@ -324,6 +325,7 @@ bool BatchModeTransformer::TransformProjecPlantOp(
                                   depend, output, status);
     }
 
+    // 处理project_list_vec_[1...N-1], 串联执行windowAggWithAppendInput
     std::vector<PhysicalOpNode*> ops;
     int32_t project_cnt = 0;
     for (size_t i = node->project_list_vec_.size() - 1; i > 0; i--) {
@@ -331,16 +333,11 @@ bool BatchModeTransformer::TransformProjecPlantOp(
             dynamic_cast<fesql::node::ProjectListNode*>(
                 node->project_list_vec_[i]);
         project_cnt++;
-        // append oringinal table column after project columns
-        // if there is multi
-        project_list->AddProject(node_manager_->MakeRowProjectNode(
-            project_list->GetProjects().size(), "*",
-            node_manager_->MakeAllNode("")));
-
         PhysicalOpNode* project_op = nullptr;
         if (!TransformProjectOp(project_list, depend, &project_op, status)) {
             return false;
         }
+        dynamic_cast<PhysicalWindowAggrerationNode*>(project_op)->AppendInput();
         depend = project_op;
     }
 
@@ -396,6 +393,13 @@ bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
         return false;
     }
     if (!CheckHistoryWindowFrame(w_ptr, status)) {
+        return false;
+    }
+
+    auto check_status = CheckTimeOrIntegerOrderColumn(
+        w_ptr->GetOrders(), depend->GetOutputNameSchemaList());
+    if (!check_status.isOK()) {
+        status = check_status;
         return false;
     }
     const node::OrderByNode* orders = w_ptr->GetOrders();
@@ -612,6 +616,12 @@ bool BatchModeTransformer::TransformJoinOp(const node::JoinPlanNode* node,
     *output = new PhysicalJoinNode(left, right, node->join_type_, node->orders_,
                                    node->condition_);
     node_manager_->RegisterNode(*output);
+    auto check_status = CheckTimeOrIntegerOrderColumn(
+        node->orders_, (*output)->GetOutputNameSchemaList());
+    if (!check_status.isOK()) {
+        status = check_status;
+        return false;
+    }
     return true;
 }
 bool BatchModeTransformer::TransformUnionOp(const node::UnionPlanNode* node,
@@ -981,7 +991,7 @@ bool BatchModeTransformer::CreatePhysicalProjectNode(
     node_manager_->RegisterNode(op);
     *output = op;
     return true;
-}  // namespace vm
+}
 
 bool BatchModeTransformer::TransformProjectOp(
     node::ProjectListNode* project_list, PhysicalOpNode* node,
@@ -996,6 +1006,17 @@ bool BatchModeTransformer::TransformProjectOp(
                                              project_list, output, status);
         case kSchemaTypeTable:
             if (project_list->is_window_agg_) {
+                if (!CheckHistoryWindowFrame(project_list->w_ptr_, status)) {
+                    return false;
+                }
+
+                auto check_status = CheckTimeOrIntegerOrderColumn(
+                    project_list->w_ptr_->GetOrders(),
+                    depend->GetOutputNameSchemaList());
+                if (!check_status.isOK()) {
+                    status = check_status;
+                    return false;
+                }
                 return CreatePhysicalProjectNode(kWindowAggregation, depend,
                                                  project_list, output, status);
             } else {
@@ -1373,6 +1394,44 @@ bool BatchModeTransformer::IsSimpleProject(const ColumnSourceList& sources) {
         }
     }
     return flag;
+}
+base::Status BatchModeTransformer::CheckTimeOrIntegerOrderColumn(
+    const node::OrderByNode* orders,
+    const vm::SchemaSourceList& schema_source_list) {
+    if (nullptr != orders && !node::ExprListNullOrEmpty(orders->order_by_)) {
+        if (1u != orders->order_by_->children_.size()) {
+            return base::Status(
+                common::kPlanError,
+                "Invalid Order Column: can't support multi order");
+        }
+
+        auto order = orders->order_by_->children_[0];
+        if (node::kExprColumnRef != order->expr_type_) {
+            return base::Status(
+                common::kPlanError,
+                "Invalid Order Column: can't support expression order");
+        }
+
+        SchemasContext ctx(schema_source_list);
+        fesql::type::Type type;
+        CHECK_STATUS(ctx.ColumnTypeResolved(
+            dynamic_cast<node::ColumnRefNode*>(order)->GetRelationName(),
+            dynamic_cast<node::ColumnRefNode*>(order)->GetColumnName(), &type));
+        switch (type) {
+            case type::kInt16:
+            case type::kInt32:
+            case type::kInt64:
+            case type::kTimestamp: {
+                return base::Status();
+            }
+            default: {
+                return base::Status(common::kPlanError,
+                                    "Invalid Order column type : " +
+                                        fesql::type::Type_Name(type));
+            }
+        }
+    }
+    return base::Status();
 }
 bool BatchModeTransformer::CheckHistoryWindowFrame(
     const node::WindowPlanNode* w_ptr, base::Status& status) {
@@ -2466,6 +2525,12 @@ bool RequestModeransformer::TransformJoinOp(const node::JoinPlanNode* node,
                                           node->orders_, node->condition_);
 
     node_manager_->RegisterNode(*output);
+    auto check_status = CheckTimeOrIntegerOrderColumn(
+        node->orders_, (*output)->GetOutputNameSchemaList());
+    if (!check_status.isOK()) {
+        status = check_status;
+        return false;
+    }
     return true;
 }
 bool RequestModeransformer::TransformScanOp(const node::TablePlanNode* node,

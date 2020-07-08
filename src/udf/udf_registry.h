@@ -474,6 +474,7 @@ struct LLVMUDFGen : public LLVMUDFGenBase {
     explicit LLVMUDFGen(const FType& f)
         : gen_func(f), infer_func([this](...) { return fixed_ret_type(); }) {}
 
+    virtual ~LLVMUDFGen() {}
     const FType gen_func;
     const InferFType infer_func;
 };

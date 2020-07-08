@@ -171,3 +171,27 @@ cases:
         2, 2020-05-23, 21
         3, 2020-05-24, 21
         4, 2020-05-25, 22
+  - id: 8
+    desc: SELECT day(null)
+    tags: ["TODO", null还不支持"]
+    mode: request
+    db: db1
+    sql: select col1 as id, std_date, day(std_date) as m from t1;
+    inputs:
+      - name: t1
+        schema: col1:int32, std_ts:timestamp, std_date:date
+        index: index2:col1:std_ts
+        data: |
+          1, 1, 2020-05-22
+          2, 2, 2020-05-23
+          3, 3, 2020-05-24
+          4, 4, NULL
+
+    output:
+      schema: id:int32, std_date:date, m:int32
+      order: id
+      data: |
+        1, 2020-05-22, 22
+        2, 2020-05-23, 23
+        3, 2020-05-24, 24
+        4, NULL, NULL

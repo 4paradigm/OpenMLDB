@@ -79,3 +79,6 @@ class FesqlDataframe(object):
 
     def toNumpy(self):
         return self.toPandas().to_numpy()
+
+    def printCodegen(self):
+        self.jdf.printCodegen()

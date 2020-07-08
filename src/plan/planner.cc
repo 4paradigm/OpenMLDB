@@ -169,8 +169,12 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
             }
         }
 
-        const node::WindowDefNode *w_ptr =
-            node::WindowOfExpression(windows, project_expr);
+        const node::WindowDefNode *w_ptr = nullptr;
+        if (!node::WindowOfExpression(windows, project_expr, &w_ptr)) {
+            status.msg = "fail to resolved window";
+            status.code = common::kPlanError;
+            return false;
+        }
 
         if (project_list_map.find(w_ptr) == project_list_map.end()) {
             if (w_ptr == nullptr) {
@@ -308,21 +312,48 @@ bool Planner::CreateUnionQueryPlan(const node::UnionQueryNode *root,
         node_manager_->MakeUnionPlanNode(left_plan, right_plan, root->is_all_);
     return true;
 }
+bool Planner::CheckWindowFrame(const node::WindowDefNode *w_ptr,
+                               base::Status &status) {
+    if (nullptr == w_ptr->GetFrame()) {
+        status.code = common::kPlanError;
+        status.msg =
+            "fail to create project list node: frame "
+            "can't be unbound ";
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+
+    if (w_ptr->GetFrame()->frame_type() == node::kFrameRows) {
+        auto extent =
+            dynamic_cast<node::FrameExtent *>(w_ptr->GetFrame()->frame_rows());
+        if ((extent->start()->bound_type() == node::kPreceding ||
+             extent->start()->bound_type() == node::kFollowing) &&
+            extent->start()->is_time_offset()) {
+            status.code = common::kPlanError;
+            status.msg = "Fail Make Rows Frame Node: time offset un-support";
+            LOG(WARNING) << status.msg;
+            return false;
+        }
+        if ((extent->end()->bound_type() == node::kPreceding ||
+             extent->end()->bound_type() == node::kFollowing) &&
+            extent->end()->is_time_offset()) {
+            status.code = common::kPlanError;
+            status.msg = "Fail Make Rows Frame Node: time offset un-support";
+            LOG(WARNING) << status.msg;
+            return false;
+        }
+    }
+    return true;
+}
 bool Planner::CreateWindowPlanNode(
     const node::WindowDefNode *w_ptr, node::WindowPlanNode *w_node_ptr,
     Status &status) {  // NOLINT (runtime/references)
 
     if (nullptr != w_ptr) {
         // Prepare Window Frame
-        if (nullptr == w_ptr->GetFrame()) {
-            status.code = common::kPlanError;
-            status.msg =
-                "fail to create project list node: frame "
-                "can't be unbound ";
-            LOG(WARNING) << status.msg;
+        if (!CheckWindowFrame(w_ptr, status)) {
             return false;
         }
-
         node::FrameNode *frame =
             dynamic_cast<node::FrameNode *>(w_ptr->GetFrame());
         w_node_ptr->set_frame_node(frame);

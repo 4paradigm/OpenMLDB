@@ -627,7 +627,7 @@ TEST_F(SQLCaseTest, ExtractYamlSQLCase) {
     ASSERT_EQ(4, cases.size());
     {
         SQLCase& sql_case = cases[0];
-        ASSERT_EQ(sql_case.id(), 1);
+        ASSERT_EQ(sql_case.id(), "1");
         ASSERT_EQ("batch", sql_case.mode());
         ASSERT_EQ("SELECT所有列", sql_case.desc());
         ASSERT_EQ(sql_case.inputs()[0].name_, "t1");
@@ -659,7 +659,7 @@ TEST_F(SQLCaseTest, ExtractYamlSQLCase) {
     }
     {
         SQLCase& sql_case = cases[1];
-        ASSERT_EQ(sql_case.id(), 2);
+        ASSERT_EQ(sql_case.id(), "2");
         ASSERT_EQ("batch", sql_case.mode());
         ASSERT_EQ("SELECT所有列使用resource输入", sql_case.desc());
         ASSERT_EQ(sql_case.inputs()[0].name_, "t1");
@@ -692,7 +692,7 @@ TEST_F(SQLCaseTest, ExtractYamlSQLCase) {
 
     {
         SQLCase& sql_case = cases[2];
-        ASSERT_EQ(sql_case.id(), 3);
+        ASSERT_EQ(sql_case.id(), "3");
         ASSERT_EQ("SELECT UDF", sql_case.desc());
         ASSERT_EQ("request", sql_case.mode());
         ASSERT_EQ(sql_case.inputs()[0].name_, "t1");
@@ -722,7 +722,7 @@ TEST_F(SQLCaseTest, ExtractYamlSQLCase) {
 
     {
         SQLCase& sql_case = cases[3];
-        ASSERT_EQ(sql_case.id(), 4);
+        ASSERT_EQ(sql_case.id(), "4");
         ASSERT_EQ("简单INSERT", sql_case.desc());
         ASSERT_EQ(sql_case.db(), "test");
         ASSERT_EQ(
@@ -749,10 +749,10 @@ TEST_F(SQLCaseTest, ExtractRtidbYamlSQLCase) {
 
     ASSERT_TRUE(fesql::sqlcase::SQLCase::CreateSQLCasesFromYaml(
         fesql_dir, case_path, cases));
-    ASSERT_EQ(2, cases.size());
+    ASSERT_EQ(3, cases.size());
     {
         SQLCase& sql_case = cases[0];
-        ASSERT_EQ(sql_case.id(), 0);
+        ASSERT_EQ(sql_case.id(), "0");
         ASSERT_EQ("正常拼接", sql_case.desc());
         ASSERT_EQ(2u, sql_case.inputs().size());
         ASSERT_EQ(sql_case.db(), "test_zw");
@@ -800,11 +800,12 @@ TEST_F(SQLCaseTest, ExtractRtidbYamlSQLCase) {
         ASSERT_EQ(sql_case.expect().count_, 3);
         ASSERT_EQ(sql_case.expect().columns_, expect_columns);
         ASSERT_EQ(sql_case.expect().rows_, expect_rows);
+        ASSERT_TRUE(sql_case.expect().success_);
     }
 
     {
         SQLCase& sql_case = cases[1];
-        ASSERT_EQ(sql_case.id(), 1);
+        ASSERT_EQ(sql_case.id(), "1");
         ASSERT_EQ("普通select", sql_case.desc());
         ASSERT_EQ(1u, sql_case.inputs().size());
         ASSERT_EQ(sql_case.db(), "test_zw");
@@ -830,6 +831,38 @@ TEST_F(SQLCaseTest, ExtractRtidbYamlSQLCase) {
         ASSERT_EQ(sql_case.expect().count_, -1);
         ASSERT_EQ(sql_case.expect().columns_, expect_columns);
         ASSERT_EQ(sql_case.expect().rows_, expect_rows);
+        ASSERT_TRUE(sql_case.expect().success_);
+    }
+
+    {
+        SQLCase& sql_case = cases[2];
+        ASSERT_EQ(sql_case.id(), "2");
+        ASSERT_EQ("普通select,Sucess false", sql_case.desc());
+        ASSERT_EQ(1u, sql_case.inputs().size());
+        ASSERT_EQ(sql_case.db(), "test_zw");
+        {
+            auto input = sql_case.inputs()[0];
+            ASSERT_EQ(input.name_, "");
+            ASSERT_EQ(input.schema_, "");
+            std::vector<std::string> columns = {"c1 string", "c2 int",
+                                                "c3 bigint", "c4 timestamp"};
+            ASSERT_EQ(input.columns_, columns);
+            std::vector<std::string> indexs = {"index1:c1:c4"};
+            ASSERT_EQ(input.index_, "");
+            ASSERT_EQ(input.indexs_, indexs);
+            std::vector<std::vector<std::string>> rows = {
+                {"aa", "null", "3", "1590738989000L"}};
+            ASSERT_EQ(sql_case.inputs()[0].rows_, rows);
+        }
+        std::vector<std::string> expect_columns = {"c1 string", "c2 int"};
+        std::vector<std::vector<std::string>> expect_rows = {{"aa", "null"}};
+
+        ASSERT_EQ(sql_case.expect().schema_, "");
+        ASSERT_EQ(sql_case.expect().data_, "");
+        ASSERT_EQ(sql_case.expect().count_, -1);
+        ASSERT_TRUE(sql_case.expect().columns_.empty());
+        ASSERT_TRUE(sql_case.expect().rows_.empty());
+        ASSERT_FALSE(sql_case.expect().success_);
     }
 }
 
@@ -843,7 +876,7 @@ TEST_F(SQLCaseTest, ExtractRtidbYamlWithDebugSQLCase) {
     ASSERT_EQ(1, cases.size());
     {
         SQLCase& sql_case = cases[0];
-        ASSERT_EQ(sql_case.id(), 1);
+        ASSERT_EQ(sql_case.id(), "1");
         ASSERT_EQ("普通select", sql_case.desc());
         ASSERT_EQ(1u, sql_case.inputs().size());
         ASSERT_EQ(sql_case.db(), "test_zw");

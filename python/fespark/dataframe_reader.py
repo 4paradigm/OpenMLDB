@@ -21,3 +21,7 @@ class DataframeReader(object):
 
     def orc(self, filePath):
         return FesqlDataframe(self.jsession.read(filePath, "orc"))
+
+    def mode(self, mode):
+        # TODO: Not use pyspark mode yet
+        return self

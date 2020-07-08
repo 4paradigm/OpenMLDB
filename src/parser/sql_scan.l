@@ -71,6 +71,7 @@ comment ("#"{non_newline}*)
 indent {space}*
 less_equals		"<="
 greater_equals	">="
+greater_less    "<>"
 not_equals		"!="
 equals  "=="
 add_assign "+="
@@ -474,6 +475,10 @@ B'[01]+'     { yylval->strval = strdup(yytext); return STRING; }
 					return GREATER_EQUALS;
 				}
 
+{greater_less}  {
+                    /* We accept both "<>" and "!=" as meaning NOT_EQUALS */
+                    return NOT_EQUALS;
+                }
 {not_equals}	{
 					/* We accept both "<>" and "!=" as meaning NOT_EQUALS */
 					return NOT_EQUALS;

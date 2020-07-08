@@ -38,11 +38,12 @@ class SQLCase {
         std::string schema_;
         std::string data_;
         std::string order_;
+        bool success_ = true;
     };
     SQLCase() {}
     virtual ~SQLCase() {}
 
-    const int32_t id() const { return id_; }
+    const std::string id() const { return id_; }
     const std::string& desc() const { return desc_; }
     const std::string& mode() const { return mode_; }
     const std::string& request_plan() const { return request_plan_; }
@@ -55,6 +56,11 @@ class SQLCase {
     const std::vector<TableInfo>& inputs() const { return inputs_; }
     const ExpectInfo& expect() const { return expect_; }
     void set_expect(const ExpectInfo& data) { expect_ = data; }
+    void set_input_name(const std::string name, int32_t idx) {
+        if (idx < static_cast<int32_t>(inputs_.size())) {
+            inputs_[idx].name_ = name;
+        }
+    }
     const int32_t CountInputs() const { return inputs_.size(); }
     // extract schema from schema string
     // name:type|name:type|name:type|
@@ -128,9 +134,10 @@ class SQLCase {
     friend std::ostream& operator<<(std::ostream& output, const SQLCase& thiz);
 
  private:
-    int32_t id_;
+    std::string id_;
     std::string mode_;
     std::string desc_;
+    std::vector<std::string> tags_;
     std::string db_;
     std::string create_str_;
     std::string insert_str_;

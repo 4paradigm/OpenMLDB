@@ -49,7 +49,7 @@ class UDFIRBuilderTest : public ::testing::Test {
 };
 
 template <class T, class... Args>
-void CheckNativeUDF(const std::string udf_name, T exp, Args... args) {
+void CheckExternalUDF(const std::string udf_name, T exp, Args... args) {
     base::Status status;
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("udf_test", *ctx);
@@ -61,6 +61,7 @@ void CheckNativeUDF(const std::string udf_name, T exp, Args... args) {
     auto &jd = J->getMainJITDylib();
     ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
                                       J->getDataLayout());
+    lib.InitJITSymbols(J.get());
     ::fesql::vm::InitCodecSymbol(jd, mi);
     ::fesql::udf::InitUDFSymbol(jd, mi);
     ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
@@ -241,7 +242,7 @@ TEST_F(UDFIRBuilderTest, distinct_count_udf_test) {
     list_ref.list = reinterpret_cast<int8_t *>(&list);
 
     CheckUDF<int32_t, codec::ListRef<int32_t>>("count", 9, list_ref);
-    CheckNativeUDF<int32_t, codec::ListRef<int32_t> *>(
+    CheckExternalUDF<int32_t, codec::ListRef<int32_t> *>(
         "distinct_count.list_int32", 5, &list_ref);
 }
 TEST_F(UDFIRBuilderTest, sum_udf_test) {
@@ -266,12 +267,6 @@ TEST_F(UDFIRBuilderTest, max_udf_test) {
     list_ref.list = reinterpret_cast<int8_t *>(&list);
     CheckUDF<int32_t, codec::ListRef<int32_t>>("max", 10, list_ref);
 }
-// TEST_F(UDFIRBuilderTest, time_diff_udf_test) {
-//    codec::Timestamp t1(1590115420000L);
-//    codec::Timestamp t2(1590115410000L);
-//    CheckUDF<int64_t, codec::Timestamp, codec::Timestamp>(
-//        "timestampdiff.timestamp.timestamp", 10000L, &t1, &t2);
-//}
 
 TEST_F(UDFIRBuilderTest, max_timestamp_udf_test) {
     std::vector<codec::Timestamp> vec = {
@@ -299,10 +294,14 @@ TEST_F(UDFIRBuilderTest, min_timestamp_udf_test) {
     CheckUDF<codec::Timestamp, codec::ListRef<codec::Timestamp>>(
         "min", codec::Timestamp(1590115390000L), list_ref);
 }
-TEST_F(UDFIRBuilderTest, RegisterFeLibs_TEST) {
-    base::Status status;
-    udf::DefaultUDFLibrary lib;
-    ASSERT_TRUE(vm::RegisterFeLibs(&lib, status, "", "felibs"));
+
+TEST_F(UDFIRBuilderTest, log_udf_test) {
+    CheckExternalUDF<float, float>("log.float", log(2.0f), 2.0f);
+    CheckExternalUDF<double, double>("log.double", log(2.0), 2.0);
+    CheckExternalUDF<double, int32_t>("log2.int32", log2(65536), 65536);
+    CheckExternalUDF<double, double>("log2.double", log2(2.0), 2.0);
+    CheckExternalUDF<double, int32_t>("log10.int32", log10(65536), 65536);
+    CheckExternalUDF<double, double>("log10.double", log10(2.0), 2.0);
 }
 
 }  // namespace codegen

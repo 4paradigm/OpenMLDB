@@ -135,6 +135,27 @@ struct AvgUDAFDef {
     }
 };*/
 
+void DefaultUDFLibrary::IniMathUDF() {
+    RegisterExternal("log")
+        .args<float>(static_cast<float (*)(float)>(log))
+        .args<double>(static_cast<double (*)(double)>(log))
+        .args<int16_t>(static_cast<double (*)(int16_t)>(log))
+        .args<int32_t>(static_cast<double (*)(int32_t)>(log))
+        .args<int64_t>(static_cast<double (*)(int64_t)>(log));
+    RegisterExternal("log10")
+        .args<float>(static_cast<float (*)(float)>(log10))
+        .args<double>(static_cast<double (*)(double)>(log10))
+        .args<int16_t>(static_cast<double (*)(int16_t)>(log10))
+        .args<int32_t>(static_cast<double (*)(int32_t)>(log10))
+        .args<int64_t>(static_cast<double (*)(int64_t)>(log10));
+    RegisterExternal("log2")
+        .args<float>(static_cast<float (*)(float)>(log2))
+        .args<double>(static_cast<double (*)(double)>(log2))
+        .args<int16_t>(static_cast<double (*)(int16_t)>(log2))
+        .args<int32_t>(static_cast<double (*)(int32_t)>(log2))
+        .args<int64_t>(static_cast<double (*)(int64_t)>(log2));
+}
+
 void DefaultUDFLibrary::Init() {
     RegisterExternal("year")
         .args<int64_t>(static_cast<int32_t (*)(int64_t)>(v1::year))
@@ -263,6 +284,10 @@ void DefaultUDFLibrary::Init() {
 
     RegisterUDAFTemplate<CountUDAFDef>("count")
         .args_in<int16_t, int32_t, int64_t, float, double, Timestamp, Date>();
+
+    RegisterAlias("day", "dayofmonth");
+    RegisterAlias("week", "weekofyear");
+    IniMathUDF();
 }
 
 }  // namespace udf

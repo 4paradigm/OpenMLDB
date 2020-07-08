@@ -19,6 +19,7 @@ class DefaultUDFLibrary : public UDFLibrary {
 
  private:
     void Init();
+    void IniMathUDF();
 };
 
 }  // namespace udf
