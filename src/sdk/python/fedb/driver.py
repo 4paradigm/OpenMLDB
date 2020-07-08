@@ -58,14 +58,38 @@ class Driver(object):
         else:
             return True, "ok"
 
-    def executeInsert(self, db, sql):
+    def getInsertBuilder(self, db, sql):
         if not self.sdk:
             return False, "please init driver first"
         status = sql_router_sdk.Status()
-        if self.sdk.ExecuteInsert(db, sql, status):
-            return True, "ok"
-        else:
+        row_builder = self.sdk.GetInsertRow(db, sql, status)
+        if not row_builder:
             return False, status.msg
+        return True, row_builder
+    
+    def getInsertBatchBuilder(self, db, sql):
+        if not self.sdk:
+            return False, "please init driver first"
+        status = sql_router_sdk.Status()
+        row_builders = self.sdk.GetInsertRows(db, sql, status)
+        if not rows_builder:
+            return False, status.msg
+        return True, rows_builder
+
+    def executeInsert(self, db, sql, row_builder = None):
+        if not self.sdk:
+            return False, "please init driver first"
+        status = sql_router_sdk.Status()
+        if row_builder:
+            if self.sdk.ExecuteInsert(db, sql, row_builder, status):
+                return True, "ok"
+            else:
+                return False, status.msg
+        else:
+            if self.sdk.ExecuteInsert(db, sql, status):
+                return True, "ok"
+            else:
+                return False, status.msg
 
     def getRequestBuilder(self, db, sql):
         if not self.sdk:
