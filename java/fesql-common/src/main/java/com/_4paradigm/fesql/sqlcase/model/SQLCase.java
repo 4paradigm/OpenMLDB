@@ -6,7 +6,7 @@ import java.util.List;
 
 @Data
 public class SQLCase {
-    int id;
+    String id;
     String desc;
     String mode;
     String db;

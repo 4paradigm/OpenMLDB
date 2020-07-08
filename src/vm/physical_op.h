@@ -334,7 +334,9 @@ class PhysicalOpNode {
     bool IsSameSchema(const vm::Schema &schema,
                       const vm::Schema &exp_schema) const {
         if (schema.size() != exp_schema.size()) {
-            LOG(WARNING) << "Schemas aren't consistent";
+            LOG(WARNING) << "Schemas size aren't consistent: "
+                         << "expect size " << exp_schema.size()
+                         << ", real size " << schema.size();
             return false;
         }
         for (int i = 0; i < schema.size(); i++) {

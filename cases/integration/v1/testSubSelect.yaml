@@ -1,5 +1,5 @@
 db: test_zw
-debugs: ["子查询中有null"]
+debugs: []
 cases:
   -
     id: 1

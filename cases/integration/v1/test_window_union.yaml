@@ -109,7 +109,7 @@ cases:
           - [3,"cc",20,32,1.3,2.3,1590738992000,"2020-05-03"]
     sql: |
       SELECT id, c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW
-      w1 AS (UNION (select c1,c3,c4,c5,c6,c7,c9 as c8 from {1})
+      w1 AS (UNION (select id, c1,c3,c4,c5,c6,c7,c9 as c8 from {1})
       PARTITION BY {0}.c3 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id
@@ -231,6 +231,7 @@ cases:
   -
     id: 9
     desc: 结合limit
+    tags: ["TODO", "@zhaowei remove limit case here"]
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]

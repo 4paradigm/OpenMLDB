@@ -396,8 +396,8 @@ bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
         return false;
     }
 
-    auto check_status =
-        CheckWindowOrderColumn(w_ptr, depend->GetOutputNameSchemaList());
+    auto check_status = CheckTimeOrIntegerOrderColumn(
+        w_ptr->GetOrders(), depend->GetOutputNameSchemaList());
     if (!check_status.isOK()) {
         status = check_status;
         return false;
@@ -616,6 +616,12 @@ bool BatchModeTransformer::TransformJoinOp(const node::JoinPlanNode* node,
     *output = new PhysicalJoinNode(left, right, node->join_type_, node->orders_,
                                    node->condition_);
     node_manager_->RegisterNode(*output);
+    auto check_status = CheckTimeOrIntegerOrderColumn(
+        node->orders_, (*output)->GetOutputNameSchemaList());
+    if (!check_status.isOK()) {
+        status = check_status;
+        return false;
+    }
     return true;
 }
 bool BatchModeTransformer::TransformUnionOp(const node::UnionPlanNode* node,
@@ -993,8 +999,9 @@ bool BatchModeTransformer::TransformProjectOp(
                     return false;
                 }
 
-                auto check_status = CheckWindowOrderColumn(
-                    project_list->w_ptr_, depend->GetOutputNameSchemaList());
+                auto check_status = CheckTimeOrIntegerOrderColumn(
+                    project_list->w_ptr_->GetOrders(),
+                    depend->GetOutputNameSchemaList());
                 if (!check_status.isOK()) {
                     status = check_status;
                     return false;
@@ -1377,24 +1384,21 @@ bool BatchModeTransformer::IsSimpleProject(const ColumnSourceList& sources) {
     }
     return flag;
 }
-base::Status BatchModeTransformer::CheckWindowOrderColumn(
-    const node::WindowPlanNode* w_ptr,
+base::Status BatchModeTransformer::CheckTimeOrIntegerOrderColumn(
+    const node::OrderByNode* orders,
     const vm::SchemaSourceList& schema_source_list) {
-    if (nullptr == w_ptr) {
-        return base::Status(common::kPlanError, "Invalid Window: null window");
-    }
-
-    auto orders = w_ptr->GetOrders();
     if (nullptr != orders && !node::ExprListNullOrEmpty(orders->order_by_)) {
         if (1u != orders->order_by_->children_.size()) {
-            return base::Status(common::kPlanError,
-                                "Invalid Window: can't support multi order");
+            return base::Status(
+                common::kPlanError,
+                "Invalid Order Column: can't support multi order");
         }
 
         auto order = orders->order_by_->children_[0];
         if (node::kExprColumnRef != order->expr_type_) {
-            return base::Status(common::kPlanError,
-                                "Invalid Window: support expression order");
+            return base::Status(
+                common::kPlanError,
+                "Invalid Order Column: can't support expression order");
         }
 
         SchemasContext ctx(schema_source_list);
@@ -1410,10 +1414,9 @@ base::Status BatchModeTransformer::CheckWindowOrderColumn(
                 return base::Status();
             }
             default: {
-                return base::Status(
-                    common::kPlanError,
-                    "Invalid Window: order column type invalid: " +
-                        fesql::type::Type_Name(type));
+                return base::Status(common::kPlanError,
+                                    "Invalid Order column type : " +
+                                        fesql::type::Type_Name(type));
             }
         }
     }
@@ -2511,6 +2514,12 @@ bool RequestModeransformer::TransformJoinOp(const node::JoinPlanNode* node,
                                           node->orders_, node->condition_);
 
     node_manager_->RegisterNode(*output);
+    auto check_status = CheckTimeOrIntegerOrderColumn(
+        node->orders_, (*output)->GetOutputNameSchemaList());
+    if (!check_status.isOK()) {
+        status = check_status;
+        return false;
+    }
     return true;
 }
 bool RequestModeransformer::TransformScanOp(const node::TablePlanNode* node,

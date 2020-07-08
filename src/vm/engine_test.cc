@@ -495,6 +495,17 @@ INSTANTIATE_TEST_CASE_P(
     testing::ValuesIn(
         InitCases("/cases/integration/v1/test_window_row_range.yaml")));
 
+INSTANTIATE_TEST_CASE_P(EngineTestWindowUnion, EngineTest,
+                        testing::ValuesIn(InitCases(
+                            "/cases/integration/v1/test_window_union.yaml")));
+
+INSTANTIATE_TEST_CASE_P(
+    EngineTestLastJoin, EngineTest,
+    testing::ValuesIn(InitCases("/cases/integration/v1/test_last_join.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestExpression, EngineTest,
+    testing::ValuesIn(InitCases("/cases/integration/v1/testExpression.yaml")));
+
 TEST_P(EngineTest, test_request_engine) {
     ParamType sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
