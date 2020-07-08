@@ -6,7 +6,7 @@ import java.util.List;
 
 @Data
 public class SQLCase {
-    int id;
+    String id;
     String desc;
     String mode;
     String db;
@@ -15,7 +15,7 @@ public class SQLCase {
     boolean standard_sql;
     String create;
     String insert;
-    String tag;
+    List<String> tags;
     String batch_plan;
     String request_plan;
     List<InputDesc> inputs;

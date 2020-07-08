@@ -49,6 +49,8 @@ class Planner {
     bool ValidatePrimaryPath(
         node::PlanNode *node, node::PlanNode **output,
         base::Status &status);  // NOLINT (runtime/references)
+    bool CheckWindowFrame(const node::WindowDefNode *w_ptr,
+                          base::Status &status);  // NOLINT (runtime/references)
     void CreatePlanRecurse(const node::SQLNode *root, PlanNode *plan_tree,
                            Status &status);  // NOLINT (runtime/references)
     bool CreateQueryPlan(const node::QueryNode *root, PlanNode **plan_tree,

@@ -270,6 +270,9 @@ class EngineTest : public ::testing::TestWithParam<SQLCase> {
 const std::vector<Row> SortRows(const vm::Schema& schema,
                                 const std::vector<Row>& rows,
                                 const std::string& order_col);
+const std::string GenerateTableName(int32_t id) {
+    return "auto_t" + std::to_string(id);
+}
 void RequestModeCheck(SQLCase& sql_case) {  // NOLINT
     int32_t input_cnt = sql_case.CountInputs();
     // Init catalog
@@ -277,6 +280,9 @@ void RequestModeCheck(SQLCase& sql_case) {  // NOLINT
         name_table_map;
     auto catalog = BuildCommonCatalog();
     for (int32_t i = 0; i < input_cnt; i++) {
+        if (sql_case.inputs()[i].name_.empty()) {
+            sql_case.set_input_name(GenerateTableName(i), i);
+        }
         type::TableDef table_def;
         sql_case.ExtractInputTableDef(table_def, i);
         std::shared_ptr<::fesql::storage::Table> table(
@@ -289,10 +295,7 @@ void RequestModeCheck(SQLCase& sql_case) {  // NOLINT
     std::string sql_str = sql_case.sql_str();
     for (int j = 0; j < input_cnt; ++j) {
         std::string placeholder = "{" + std::to_string(j) + "}";
-        std::string tname = sql_case.inputs()[j].name_.empty()
-                                ? ("t" + std::to_string(j))
-                                : sql_case.inputs()[j].name_;
-        boost::replace_all(sql_str, placeholder, tname);
+        boost::replace_all(sql_str, placeholder, sql_case.inputs()[j].name_);
     }
     std::cout << sql_str << std::endl;
     base::Status get_status;
@@ -304,8 +307,10 @@ void RequestModeCheck(SQLCase& sql_case) {  // NOLINT
     }
 
     bool ok = engine.Get(sql_str, sql_case.db(), session, get_status);
-    ASSERT_TRUE(ok);
-
+    ASSERT_EQ(sql_case.expect().success_, ok);
+    if (!sql_case.expect().success_) {
+        return;
+    }
     const std::string& request_name = session.GetRequestName();
     std::vector<Row> request_data;
     for (int32_t i = 0; i < input_cnt; i++) {
@@ -359,7 +364,8 @@ void RequestModeCheck(SQLCase& sql_case) {  // NOLINT
         output.push_back(out_row);
     }
 
-    CheckRows(schema, output, case_output_data);
+    CheckRows(schema, SortRows(schema, output, sql_case.expect().order_),
+              case_output_data);
 }
 
 void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
@@ -370,11 +376,11 @@ void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
         name_table_map;
     auto catalog = BuildCommonCatalog();
     for (int32_t i = 0; i < input_cnt; i++) {
+        if (sql_case.inputs()[i].name_.empty()) {
+            sql_case.set_input_name(GenerateTableName(i), i);
+        }
         type::TableDef table_def;
         sql_case.ExtractInputTableDef(table_def, i);
-        if (table_def.name().empty()) {
-            table_def.set_name("t" + std::to_string(i));
-        }
         std::shared_ptr<::fesql::storage::Table> table(
             new ::fesql::storage::Table(i + 1, 1, table_def));
         name_table_map[table_def.name()] = table;
@@ -385,10 +391,7 @@ void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
     std::string sql_str = sql_case.sql_str();
     for (int j = 0; j < input_cnt; ++j) {
         std::string placeholder = "{" + std::to_string(j) + "}";
-        std::string tname = sql_case.inputs()[j].name_.empty()
-                                ? ("t" + std::to_string(j))
-                                : sql_case.inputs()[j].name_;
-        boost::replace_all(sql_str, placeholder, tname);
+        boost::replace_all(sql_str, placeholder, sql_case.inputs()[j].name_);
     }
     std::cout << sql_str << std::endl;
     base::Status get_status;
@@ -400,7 +403,10 @@ void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
     }
 
     bool ok = engine.Get(sql_str, sql_case.db(), session, get_status);
-    ASSERT_TRUE(ok);
+    ASSERT_EQ(sql_case.expect().success_, ok);
+    if (!sql_case.expect().success_) {
+        return;
+    }
     std::vector<Row> request_data;
     for (int32_t i = 0; i < input_cnt; i++) {
         auto input = sql_case.inputs()[i];
@@ -441,8 +447,8 @@ void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
               case_output_data);
 }
 INSTANTIATE_TEST_CASE_P(
-    EngineBugQuery, EngineTest,
-    testing::ValuesIn(InitCases("/cases/query/bug_query.yaml")));
+    EngineFailQuery, EngineTest,
+    testing::ValuesIn(InitCases("/cases/query/fail_query.yaml")));
 INSTANTIATE_TEST_CASE_P(
     EngineSimpleQuery, EngineTest,
     testing::ValuesIn(InitCases("/cases/query/simple_query.yaml")));
@@ -483,18 +489,42 @@ INSTANTIATE_TEST_CASE_P(
     EngineBatchGroupQuery, EngineTest,
     testing::ValuesIn(InitCases("/cases/query/group_query.yaml")));
 
+INSTANTIATE_TEST_CASE_P(
+    EngineTestWindowRowQuery, EngineTest,
+    testing::ValuesIn(InitCases("/cases/integration/v1/test_window_row.yaml")));
+
+INSTANTIATE_TEST_CASE_P(
+    EngineTestWindowRowsRangeQuery, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/test_window_row_range.yaml")));
+
+INSTANTIATE_TEST_CASE_P(EngineTestWindowUnion, EngineTest,
+                        testing::ValuesIn(InitCases(
+                            "/cases/integration/v1/test_window_union.yaml")));
+
+INSTANTIATE_TEST_CASE_P(
+    EngineTestLastJoin, EngineTest,
+    testing::ValuesIn(InitCases("/cases/integration/v1/test_last_join.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestExpression, EngineTest,
+    testing::ValuesIn(InitCases("/cases/integration/v1/testExpression.yaml")));
+
 TEST_P(EngineTest, test_request_engine) {
     ParamType sql_case = GetParam();
-    LOG(INFO) << sql_case.desc();
+    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!boost::contains(sql_case.mode(), "request-unsupport")) {
         RequestModeCheck(sql_case);
+    } else {
+        LOG(INFO) << "Skip mode " << sql_case.mode();
     }
 }
 TEST_P(EngineTest, test_batch_engine) {
     ParamType sql_case = GetParam();
-    LOG(INFO) << sql_case.desc();
+    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!boost::contains(sql_case.mode(), "batch-unsupport")) {
         BatchModeCheck(sql_case);
+    } else {
+        LOG(INFO) << "Skip mode " << sql_case.mode();
     }
 }
 

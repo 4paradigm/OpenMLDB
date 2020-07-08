@@ -66,8 +66,9 @@ fesql::codec::Row CoreAPI::RowProject(const RawPtrHandle fn,
 fesql::codec::Row CoreAPI::WindowProject(const RawPtrHandle fn,
                                          const uint64_t key, const Row row,
                                          const bool is_instance,
+                                         size_t append_slices,
                                          WindowInterface* window) {
-    return Runner::WindowProject(fn, key, row, is_instance,
+    return Runner::WindowProject(fn, key, row, is_instance, append_slices,
                                  window->GetWindow());
 }
 

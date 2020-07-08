@@ -362,6 +362,15 @@ class BatchModeTransformer {
     bool GenRequestWindowUnionList(RequestWindowUnionList* window_unions,
                                    PhysicalOpNode* in,
                                    base::Status& status);  // NOLINT
+    bool IsSimpleProject(const ColumnSourceList& source);
+    bool BuildExprListFromSchemaSource(const ColumnSourceList column_sources,
+                                       const SchemaSourceList& schema_souces,
+                                       node::ExprListNode* expr_list);
+    bool CheckHistoryWindowFrame(const node::WindowPlanNode* w_ptr,
+                                 base::Status& status);  // NOLINT
+    base::Status CheckTimeOrIntegerOrderColumn(
+        const node::OrderByNode* orders,
+        const vm::SchemaSourceList& schema_source_list);  // NOLINT
     node::NodeManager* node_manager_;
     const std::string db_;
     const std::shared_ptr<Catalog> catalog_;
@@ -372,12 +381,6 @@ class BatchModeTransformer {
     std::vector<PhysicalPlanPassType> passes;
     LogicalOpMap op_map_;
     udf::UDFLibrary* library_;
-    bool IsSimpleProject(const ColumnSourceList& source);
-    bool BuildExprListFromSchemaSource(const ColumnSourceList column_sources,
-                                       const SchemaSourceList& schema_souces,
-                                       node::ExprListNode* expr_list);
-    bool CheckHistoryWindowFrame(const node::WindowPlanNode* w_ptr,
-                                 base::Status& status);  // NOLINT
 };
 
 class RequestModeransformer : public BatchModeTransformer {

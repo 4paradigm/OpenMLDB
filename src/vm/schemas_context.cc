@@ -246,6 +246,24 @@ vm::ColumnSource SchemasContext::ColumnSourceResolved(
     return ColumnSource(row_schema_info->idx_, column_idx, col_name);
 }
 
+base::Status SchemasContext::ColumnTypeResolved(
+    const std::string& relation_name, const std::string& col_name,
+    fesql::type::Type* type) {
+    const RowSchemaInfo* row_schema_info;
+    if (!ColumnRefResolved(relation_name, col_name, &row_schema_info)) {
+        return base::Status(common::kSchemaCodecError,
+                            "Column Resolved failed");
+    }
+
+    for (int i = 0; i < row_schema_info->schema_->size(); ++i) {
+        if (row_schema_info->schema_->Get(i).name() == col_name) {
+            *type = row_schema_info->schema_->Get(i).type();
+            return base::Status();
+        }
+    }
+    return base::Status(common::kSchemaCodecError,
+                        "Column Type Resolved failed");
+}
 int32_t SchemasContext::ColumnIdxResolved(const std::string& column,
                                           const Schema* schema) const {
     int32_t column_idx = -1;

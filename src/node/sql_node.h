@@ -857,14 +857,21 @@ class LimitNode : public SQLNode {
 class FrameBound : public SQLNode {
  public:
     FrameBound()
-        : SQLNode(kFrameBound, 0, 0), bound_type_(kPreceding), offset_(0) {}
+        : SQLNode(kFrameBound, 0, 0),
+          bound_type_(kPreceding),
+          is_time_offset_(false),
+          offset_(0) {}
 
     explicit FrameBound(BoundType bound_type)
-        : SQLNode(kFrameBound, 0, 0), bound_type_(bound_type), offset_(0) {}
-
-    FrameBound(BoundType bound_type, int64_t offset)
         : SQLNode(kFrameBound, 0, 0),
           bound_type_(bound_type),
+          is_time_offset_(false),
+          offset_(0) {}
+
+    FrameBound(BoundType bound_type, int64_t offset, bool is_time_offet)
+        : SQLNode(kFrameBound, 0, 0),
+          bound_type_(bound_type),
+          is_time_offset_(is_time_offet),
           offset_(offset) {}
 
     ~FrameBound() {}
@@ -895,6 +902,7 @@ class FrameBound : public SQLNode {
     }
 
     BoundType bound_type() const { return bound_type_; }
+    const bool is_time_offset() const { return is_time_offset_; }
     int64_t GetOffset() const { return offset_; }
     int64_t GetSignedOffset() const {
         switch (bound_type_) {
@@ -916,6 +924,7 @@ class FrameBound : public SQLNode {
 
  private:
     BoundType bound_type_;
+    bool is_time_offset_;
     int64_t offset_;
 };
 
@@ -1908,8 +1917,8 @@ bool SQLEquals(const SQLNode *left, const SQLNode *right);
 bool SQLListEquals(const SQLNodeList *left, const SQLNodeList *right);
 bool ExprEquals(const ExprNode *left, const ExprNode *right);
 bool FnDefEquals(const FnDefNode *left, const FnDefNode *right);
-const WindowDefNode *WindowOfExpression(
-    std::map<std::string, const WindowDefNode *> windows, ExprNode *node_ptr);
+bool WindowOfExpression(std::map<std::string, const WindowDefNode *> windows,
+                        ExprNode *node_ptr, const WindowDefNode **output);
 void FillSQLNodeList2NodeVector(
     SQLNodeList *node_list_ptr,
     std::vector<SQLNode *> &node_list);  // NOLINT (runtime/references)
