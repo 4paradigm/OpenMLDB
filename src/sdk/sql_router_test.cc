@@ -158,7 +158,7 @@ TEST_F(SQLRouterTest, smoketest_on_sql) {
     std::string insert_placeholder1 = "insert into " + name + " values(?, ?);";
     std::string insert_placeholder2 =
         "insert into " + name + " values(?, 1592);";
-    std::string insert_placeholder3 = "insert into " + name + " values(hi, ?);";
+    std::string insert_placeholder3 = "insert into " + name + " values('hi', ?);";
 
     ok = router->ExecuteInsert(db, insert, &status);
     ASSERT_TRUE(ok);
@@ -225,48 +225,58 @@ TEST_F(SQLRouterTest, smoketest_on_sql) {
         router->GetInsertRows(db, insert_placeholder3, &status);
     ASSERT_EQ(status.code, 0);
     std::shared_ptr<SQLInsertRow> insert_rows3_1 = insert_rows3->NewRow();
-    ASSERT_TRUE(insert_rows3_1->Init(2));
+    ASSERT_TRUE(insert_rows3_1->Init(0));
     ASSERT_TRUE(insert_rows3_1->AppendInt64(1596));
     ASSERT_TRUE(insert_rows3_1->Build());
     std::shared_ptr<SQLInsertRow> insert_rows3_2 = insert_rows3->NewRow();
-    ASSERT_TRUE(insert_rows3_2->Init(2));
+    ASSERT_TRUE(insert_rows3_2->Init(0));
     ASSERT_TRUE(insert_rows3_2->AppendInt64(1597));
     ASSERT_TRUE(insert_rows3_2->Build());
     ok = router->ExecuteInsert(db, insert_placeholder3, insert_rows3, &status);
     ASSERT_TRUE(ok);
 
     ASSERT_TRUE(router->RefreshCatalog());
-    std::string sql_select = "select col1 from " + name + " ;";
+    std::string sql_select = "select col1, col2 from " + name + ";";
     auto rs = router->ExecuteSQL(db, sql_select, &status);
     if (!rs) ASSERT_TRUE(false);
-    ASSERT_EQ(4, rs->Size());
+    ASSERT_EQ(10, rs->Size());
     ASSERT_TRUE(rs->Next());
     ASSERT_EQ("hello", rs->GetStringUnsafe(0));
+    ASSERT_EQ(1590, rs->GetInt64Unsafe(1));
     ASSERT_TRUE(rs->Next());
     ASSERT_EQ("world", rs->GetStringUnsafe(0));
-    ASSERT_TRUE(rs->Next());
-    ASSERT_EQ("word", rs->GetStringUnsafe(0));
-    ASSERT_TRUE(rs->Next());
-    ASSERT_EQ("21", rs->GetStringUnsafe(0));
+    ASSERT_EQ(1591, rs->GetInt64Unsafe(1));
     ASSERT_TRUE(rs->Next());
     ASSERT_EQ("22", rs->GetStringUnsafe(0));
-    ASSERT_TRUE(rs->Next());
-    ASSERT_EQ("hi", rs->GetStringUnsafe(0));
+    ASSERT_EQ(1592, rs->GetInt64Unsafe(1));
     ASSERT_TRUE(rs->Next());
     ASSERT_EQ("11", rs->GetStringUnsafe(0));
+    ASSERT_EQ(1594, rs->GetInt64Unsafe(1));
+    ASSERT_TRUE(rs->Next());
+    ASSERT_EQ("hi", rs->GetStringUnsafe(0));
+    ASSERT_EQ(1597, rs->GetInt64Unsafe(1));
+    ASSERT_TRUE(rs->Next());
+    ASSERT_EQ("hi", rs->GetStringUnsafe(0));
+    ASSERT_EQ(1596, rs->GetInt64Unsafe(1));
+    ASSERT_TRUE(rs->Next());
+    ASSERT_EQ("hi", rs->GetStringUnsafe(0));
+    ASSERT_EQ(1593, rs->GetInt64Unsafe(1));
     ASSERT_TRUE(rs->Next());
     ASSERT_EQ("12", rs->GetStringUnsafe(0));
+    ASSERT_EQ(1595, rs->GetInt64Unsafe(1));
     ASSERT_TRUE(rs->Next());
-    ASSERT_EQ("hi", rs->GetStringUnsafe(0));
+    ASSERT_EQ("21", rs->GetStringUnsafe(0));
+    ASSERT_EQ(1592, rs->GetInt64Unsafe(1));
     ASSERT_TRUE(rs->Next());
-    ASSERT_EQ("hi", rs->GetStringUnsafe(0));
+    ASSERT_EQ("word", rs->GetStringUnsafe(0));
+    ASSERT_EQ(1592, rs->GetInt64Unsafe(1));
 
     std::string sql_window_batch =
         "select sum(col2) over w from " + name + " window w as (partition by " +
         name + ".col1 order by " + name +
         ".col2 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);";
     rs = router->ExecuteSQL(db, sql_window_batch, &status);
-    ASSERT_EQ(2, rs->Size());
+    ASSERT_EQ(10, rs->Size());
     ASSERT_TRUE(rs->Next());
     ASSERT_EQ(1590, rs->GetInt64Unsafe(0));
     ASSERT_TRUE(rs->Next());

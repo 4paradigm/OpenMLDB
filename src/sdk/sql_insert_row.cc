@@ -62,8 +62,7 @@ inline uint32_t SDKGetStartOffset(int32_t column_count) {
 
 SQLInsertRows::SQLInsertRows(
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
-    std::shared_ptr<std::map<uint32_t, ::fesql::node::ConstNode*>> default_map,
-    uint32_t default_str_length)
+    DefaultValueMap default_map, uint32_t default_str_length)
     : table_info_(table_info),
       default_map_(default_map),
       default_str_length_(default_str_length) {}
@@ -80,8 +79,7 @@ std::shared_ptr<SQLInsertRow> SQLInsertRows::NewRow() {
 
 SQLInsertRow::SQLInsertRow(
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
-    std::shared_ptr<std::map<uint32_t, ::fesql::node::ConstNode*>> default_map,
-    uint32_t default_string_length)
+    DefaultValueMap default_map, uint32_t default_string_length)
     : table_info_(table_info),
       default_map_(default_map),
       default_string_length_(default_string_length),
@@ -120,8 +118,7 @@ bool SQLInsertRow::GetIndex(const std::string& val) {
 }
 
 bool SQLInsertRow::GetTs(uint64_t ts) {
-    auto ts_it = ts_set_.find(rb_.GetCnt());
-    if (ts_it != ts_set_.end()) {
+    if (ts_set_.count(rb_.GetCnt())) {
         ts_.push_back(ts);
         return true;
     }
@@ -131,28 +128,24 @@ bool SQLInsertRow::GetTs(uint64_t ts) {
 bool SQLInsertRow::MakeDefault() {
     auto it = default_map_->find(rb_.GetCnt());
     if (it != default_map_->end()) {
-        switch (it->second->GetDataType()) {
-            case ::fesql::node::kBool:
-                if (it->second->GetInt()) {
+        switch (table_info_->column_desc_v1(rb_.GetCnt()).data_type()) {
+            case rtidb::type::kBool:
+                if (it->second->GetAsInt32()) {
                     return AppendBool(true);
                 } else {
                     return AppendBool(false);
                 }
-            case ::fesql::node::kInt16:
+            case rtidb::type::kSmallInt:
                 return AppendInt16(it->second->GetSmallInt());
-            case ::fesql::node::kInt32:
+            case rtidb::type::kInt:
                 return AppendInt32(it->second->GetInt());
-            case ::fesql::node::kInt64:
+            case rtidb::type::kBigInt:
                 return AppendInt64(it->second->GetAsInt64());
-            case ::fesql::node::kFloat:
+            case rtidb::type::kFloat:
                 return AppendFloat(static_cast<float>(it->second->GetDouble()));
-            case ::fesql::node::kDouble:
+            case rtidb::type::kDouble:
                 return AppendDouble(it->second->GetDouble());
-            case ::fesql::node::kTimestamp:
-                return AppendInt64(it->second->GetAsInt64());
-            case ::fesql::node::kVarchar:
-                return AppendString(it->second->GetStr());
-            case ::fesql::node::kDate: {
+            case rtidb::type::kDate: {
                 int32_t year;
                 int32_t month;
                 int32_t day;
@@ -161,8 +154,12 @@ bool SQLInsertRow::MakeDefault() {
                 } else {
                     return AppendDate(year, month, day);
                 }
-                break;
             }
+            case rtidb::type::kTimestamp:
+                return AppendInt64(it->second->GetAsInt64());
+            case rtidb::type::kVarchar:
+            case rtidb::type::kString:
+                return AppendString(it->second->GetStr());
             default:
                 return false;
         }
@@ -171,42 +168,42 @@ bool SQLInsertRow::MakeDefault() {
 }
 
 bool SQLInsertRow::AppendBool(bool val) {
+    GetIndex(val ? "true" : "false");
     if (rb_.AppendBool(val)) {
-        GetIndex(val ? "true" : "false");
         return MakeDefault();
     }
     return false;
 }
 
 bool SQLInsertRow::AppendInt16(int16_t val) {
+    GetIndex(std::to_string(val));
     if (rb_.AppendInt16(val)) {
-        GetIndex(std::to_string(val));
         return MakeDefault();
     }
     return false;
 }
 
 bool SQLInsertRow::AppendInt32(int32_t val) {
+    GetIndex(std::to_string(val));
     if (rb_.AppendInt32(val)) {
-        GetIndex(std::to_string(val));
         return MakeDefault();
     }
     return false;
 }
 
 bool SQLInsertRow::AppendInt64(int64_t val) {
+    GetIndex(std::to_string(val));
+    GetTs(val);
     if (rb_.AppendInt64(val)) {
-        GetIndex(std::to_string(val));
-        GetTs(val);
         return MakeDefault();
     }
     return false;
 }
 
 bool SQLInsertRow::AppendTimestamp(int64_t val) {
+    GetIndex(std::to_string(val));
+    GetTs(val);
     if (rb_.AppendTimestamp(val)) {
-        GetIndex(std::to_string(val));
-        GetTs(val);
         return MakeDefault();
     }
     return false;
@@ -227,16 +224,16 @@ bool SQLInsertRow::AppendDouble(double val) {
 }
 
 bool SQLInsertRow::AppendString(const std::string& val) {
+    GetIndex(val);
     if (rb_.AppendString(val.c_str(), val.size())) {
-        GetIndex(val);
         return MakeDefault();
     }
     return false;
 }
 
 bool SQLInsertRow::AppendString(const char* val, uint32_t length) {
+    GetIndex(std::string(val, length));
     if (rb_.AppendString(val, length)) {
-        GetIndex(std::string(val, length));
         return MakeDefault();
     }
     return false;

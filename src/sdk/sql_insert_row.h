@@ -34,6 +34,10 @@
 namespace rtidb {
 namespace sdk {
 
+typedef std::shared_ptr<
+    std::map<uint32_t, std::shared_ptr<::fesql::node::ConstNode>>>
+    DefaultValueMap;
+
 static inline ::fesql::sdk::DataType ConvertType(::rtidb::type::DataType type) {
     switch (type) {
         case rtidb::type::kBool:
@@ -62,9 +66,7 @@ class SQLInsertRow {
  public:
     explicit SQLInsertRow(
         std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
-        std::shared_ptr<std::map<uint32_t, ::fesql::node::ConstNode*>>
-            default_map,
-        uint32_t default_str_length);
+        DefaultValueMap default_map, uint32_t default_str_length);
     ~SQLInsertRow() = default;
     bool Init(int str_length);
     bool AppendBool(bool val);
@@ -98,7 +100,7 @@ class SQLInsertRow {
 
  private:
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info_;
-    std::shared_ptr<std::map<uint32_t, ::fesql::node::ConstNode*>> default_map_;
+    DefaultValueMap default_map_;
     uint32_t default_string_length_;
     std::set<uint32_t> index_set_;
     std::set<uint32_t> ts_set_;
@@ -112,9 +114,7 @@ class SQLInsertRow {
 class SQLInsertRows {
  public:
     SQLInsertRows(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
-                  std::shared_ptr<std::map<uint32_t, ::fesql::node::ConstNode*>>
-                      default_map,
-                  uint32_t str_size);
+                  DefaultValueMap default_map, uint32_t str_size);
     ~SQLInsertRows() = default;
     std::shared_ptr<SQLInsertRow> NewRow();
     inline uint32_t GetCnt() { return rows_.size(); }
@@ -127,7 +127,7 @@ class SQLInsertRows {
 
  private:
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info_;
-    std::shared_ptr<std::map<uint32_t, ::fesql::node::ConstNode*>> default_map_;
+    DefaultValueMap default_map_;
     uint32_t default_str_length_;
     std::vector<std::shared_ptr<SQLInsertRow>> rows_;
 };
