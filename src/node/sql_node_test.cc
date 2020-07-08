@@ -212,13 +212,19 @@ TEST_F(SqlNodeTest, MakeInsertNodeTest) {
 
     ExprNode *ptr3 = node_manager_->MakeColumnRefNode("col3", "");
     column_expr_list->PushBack(ptr3);
+
+    ExprNode *ptr4 = node_manager_->MakeColumnRefNode("col4", "");
+    column_expr_list->PushBack(ptr4);
+
     ExprListNode *value_expr_list = node_manager_->MakeExprList();
     ExprNode *value1 = node_manager_->MakeConstNode(1);
     ExprNode *value2 = node_manager_->MakeConstNode(2.3f);
     ExprNode *value3 = node_manager_->MakeConstNode(2.3);
+    ExprNode *value4 = node_manager_->MakeConstNodePlaceHolder();
     value_expr_list->PushBack(value1);
     value_expr_list->PushBack(value2);
     value_expr_list->PushBack(value3);
+    value_expr_list->PushBack(value4);
     ExprListNode *insert_values = node_manager_->MakeExprList();
     insert_values->PushBack(value_expr_list);
     SQLNode *node_ptr = node_manager_->MakeInsertTableNode(
@@ -227,7 +233,7 @@ TEST_F(SqlNodeTest, MakeInsertNodeTest) {
     ASSERT_EQ(kInsertStmt, node_ptr->GetType());
     InsertStmt *insert_stmt = dynamic_cast<InsertStmt *>(node_ptr);
     ASSERT_EQ(false, insert_stmt->is_all_);
-    ASSERT_EQ(std::vector<std::string>({"col1", "col2", "col3"}),
+    ASSERT_EQ(std::vector<std::string>({"col1", "col2", "col3", "col4"}),
               insert_stmt->columns_);
 
     auto value =
@@ -235,6 +241,8 @@ TEST_F(SqlNodeTest, MakeInsertNodeTest) {
     ASSERT_EQ(dynamic_cast<ConstNode *>(value[0])->GetInt(), 1);
     ASSERT_EQ(dynamic_cast<ConstNode *>(value[1])->GetFloat(), 2.3f);
     ASSERT_EQ(dynamic_cast<ConstNode *>(value[2])->GetDouble(), 2.3);
+    ASSERT_EQ(dynamic_cast<ConstNode *>(value[3])->GetDataType(),
+              fesql::node::kPlaceholder);
 }
 
 TEST_F(SqlNodeTest, FrameHistoryStartEndTest) {

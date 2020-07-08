@@ -424,6 +424,10 @@ ExprNode *NodeManager::MakeConstNode() {
     ExprNode *node_ptr = new ConstNode();
     return RegisterNode(node_ptr);
 }
+ExprNode *NodeManager::MakeConstNode(DataType type) {
+    ExprNode *node_ptr = new ConstNode(type);
+    return RegisterNode(node_ptr);
+}
 ExprNode *NodeManager::MakeConstNodeINT16MAX() {
     return MakeConstNode(static_cast<int16_t>(INT16_MAX));
 }
@@ -453,6 +457,9 @@ ExprNode *NodeManager::MakeConstNodeFLOATMIN() {
 }
 ExprNode *NodeManager::MakeConstNodeDOUBLEMIN() {
     return MakeConstNode(static_cast<double>(DBL_MIN));
+}
+ExprNode *NodeManager::MakeConstNodePlaceHolder() {
+    return MakeConstNode(fesql::node::kPlaceholder);
 }
 ExprNode *NodeManager::MakeExprIdNode(const std::string &name) {
     ::fesql::node::ExprNode *id_node = new ::fesql::node::ExprIdNode(name);

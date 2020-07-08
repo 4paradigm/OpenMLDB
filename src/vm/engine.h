@@ -179,6 +179,8 @@ class Engine {
         cl_ = cl;
     }
 
+    void ClearCacheLocked(const std::string& db);
+
  private:
     std::shared_ptr<CompileInfo> GetCacheLocked(const std::string& db,
                                                 const std::string& sql,

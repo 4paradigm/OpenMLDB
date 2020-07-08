@@ -81,6 +81,7 @@ fdiv_assign "/="
 assign  "="
 and "&&"
 or  "||"
+placeholder "?"
 self [,()\[\].\:\+\-\*\/\%\^\<\>]
 
 %x COMMENT
@@ -239,6 +240,7 @@ NATURAL	{ return NATURAL; }
 NOT	{ return NOT; }
 NO_WRITE_TO_BINLOG	{ return NO_WRITE_TO_BINLOG; }
 NULL	{ return NULLX; }
+PLACEHOLDER { return PLACEHOLDER; }
 NUMBER	{ return NUMBER; }
 ON	{ return ON; }
 ON[ \t\n]+DUPLICATE { return ONDUPLICATE; } /* hack due to limited lookahead */
@@ -483,6 +485,8 @@ B'[01]+'     { yylval->strval = strdup(yytext); return STRING; }
 					/* We accept both "<>" and "!=" as meaning NOT_EQUALS */
 					return NOT_EQUALS;
 				}
+
+{placeholder} { return PLACEHOLDER; }
 
 <INITIAL>":="     { return ASSIGN; }
 <FUN>{assign} { return ASSIGN; }

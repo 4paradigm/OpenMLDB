@@ -298,6 +298,8 @@ inline const std::string DataTypeName(const DataType &type) {
             return "null";
         case fesql::node::kVoid:
             return "void";
+        case fesql::node::kPlaceholder:
+            return "placeholder";
         default:
             return "unknown";
     }
@@ -624,6 +626,8 @@ class ConstNode : public ExprNode {
 
  public:
     ConstNode() : ExprNode(kExprPrimary), data_type_(fesql::node::kNull) {}
+    explicit ConstNode(DataType data_type)
+        : ExprNode(kExprPrimary), data_type_(data_type) {}
     explicit ConstNode(int16_t val)
         : ExprNode(kExprPrimary), data_type_(fesql::node::kInt16) {
         val_.vsmallint = val;
@@ -681,6 +685,7 @@ class ConstNode : public ExprNode {
     virtual bool Equals(const ExprNode *node) const;
 
     const bool IsNull() const { return kNull == data_type_; }
+    const bool IsPlaceholder() const { return kPlaceholder == data_type_; }
     const std::string GetExprString() const;
     int16_t GetSmallInt() const { return val_.vsmallint; }
 

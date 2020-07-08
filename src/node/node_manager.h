@@ -192,6 +192,7 @@ class NodeManager {
     ExprNode *MakeConstNode(const std::string &value);
     ExprNode *MakeConstNode(const char *value);
     ExprNode *MakeConstNode();
+    ExprNode *MakeConstNode(DataType type);
     ExprNode *MakeConstNodeINT16MAX();
     ExprNode *MakeConstNodeINT32MAX();
     ExprNode *MakeConstNodeINT64MAX();
@@ -202,6 +203,7 @@ class NodeManager {
     ExprNode *MakeConstNodeINT64MIN();
     ExprNode *MakeConstNodeFLOATMIN();
     ExprNode *MakeConstNodeDOUBLEMIN();
+    ExprNode *MakeConstNodePlaceHolder();
 
     ExprNode *MakeAllNode(const std::string &relation_name);
     ExprNode *MakeAllNode(const std::string &relation_name,
