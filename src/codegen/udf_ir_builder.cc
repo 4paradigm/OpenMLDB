@@ -72,8 +72,8 @@ Status UDFIRBuilder::BuildUDFCall(
     for (auto arg : args) {
         raw_args.push_back(arg.GetValue(&builder));
     }
-    CHECK_STATUS(
-        BuildCallWithLLVMCallee(callee, raw_args, return_by_arg, &raw_output));
+    CHECK_STATUS(BuildCallWithLLVMCallee(fn, callee, raw_args, return_by_arg,
+                                         &raw_output));
     *output = NativeValue::Create(raw_output);
     return Status::OK();
 }
@@ -93,8 +93,8 @@ Status UDFIRBuilder::BuildExternCall(
     for (auto arg : args) {
         raw_args.push_back(arg.GetValue(&builder));
     }
-    CHECK_STATUS(
-        BuildCallWithLLVMCallee(callee, raw_args, return_by_arg, &raw_output));
+    CHECK_STATUS(BuildCallWithLLVMCallee(fn, callee, raw_args, return_by_arg,
+                                         &raw_output));
     *output = NativeValue::Create(raw_output);
     return Status::OK();
 }
@@ -341,12 +341,14 @@ Status UDFIRBuilder::GetExternCallee(
     auto llvm_fn_ty = llvm::FunctionType::get(ret_llvm_ty, llvm_arg_types,
                                               fn->variadic_pos() >= 0);
     *callee = module_->getOrInsertFunction(fn_name, llvm_fn_ty);
+    *return_by_arg = fn->return_by_arg();
     return Status::OK();
 }
 
 Status UDFIRBuilder::BuildCallWithLLVMCallee(
-    ::llvm::FunctionCallee callee, const std::vector<llvm::Value*>& input_args,
-    bool return_by_arg, ::llvm::Value** output) {
+    const node::FnDefNode* fn, ::llvm::FunctionCallee callee,
+    const std::vector<llvm::Value*>& input_args, bool return_by_arg,
+    ::llvm::Value** output) {
     ::llvm::IRBuilder<> builder(block_);
     std::vector<llvm::Value*> all_args = input_args;
     auto function_ty = callee.getFunctionType();
@@ -358,8 +360,18 @@ Status UDFIRBuilder::BuildCallWithLLVMCallee(
         CHECK_TRUE(ret_ptr_ty->isPointerTy(), "Return by arg but arg at ",
                    ret_pos, " is not pointer type");
 
-        auto ret_alloca = builder.CreateAlloca(
-            reinterpret_cast<llvm::PointerType*>(ret_ptr_ty)->getElementType());
+        ::llvm::Value* ret_alloca;
+        auto opaque_ret_type =
+            dynamic_cast<const node::OpaqueTypeNode*>(fn->GetReturnType());
+        if (opaque_ret_type != nullptr) {
+            ret_alloca = builder.CreateAlloca(
+                ::llvm::Type::getInt8Ty(builder.getContext()),
+                builder.getInt64(opaque_ret_type->bytes()));
+        } else {
+            ret_alloca = builder.CreateAlloca(
+                reinterpret_cast<llvm::PointerType*>(ret_ptr_ty)
+                    ->getElementType());
+        }
         all_args.insert(all_args.begin() + ret_pos, ret_alloca);
     }
 

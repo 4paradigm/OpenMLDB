@@ -254,7 +254,7 @@ class ColumnProject {
     ColumnSourceList column_sources_;
 };
 
-class PhysicalOpNode {
+class PhysicalOpNode : public node::NodeBase {
  public:
     PhysicalOpNode(PhysicalOpType type, bool is_block, bool is_lazy)
         : type_(type),

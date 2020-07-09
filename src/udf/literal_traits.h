@@ -44,6 +44,11 @@ struct AnyArg {
     AnyArg() = delete;
 };
 
+template <typename T>
+struct Opaque {
+    Opaque() = delete;
+};
+
 template <>
 struct DataTypeTrait<AnyArg> {
     static std::string to_string() { return "?"; }
@@ -206,7 +211,7 @@ struct DataTypeTrait<codec::StringRef> {
 template <typename T>
 struct DataTypeTrait<codec::ListRef<T>> {
     static std::string to_string() {
-        return "list<" + DataTypeTrait<T>::to_string() + ">";
+        return "list_" + DataTypeTrait<T>::to_string();
     }
     static node::DataType to_type_enum() { return node::kList; }
     static node::TypeNode* to_type_node(node::NodeManager* nm) {
@@ -216,10 +221,24 @@ struct DataTypeTrait<codec::ListRef<T>> {
 };
 
 template <typename T>
+struct DataTypeTrait<Opaque<T>> {
+    static std::string to_string() {
+        return "opaque<" + std::to_string(sizeof(T)) + ">";
+    }
+    static node::DataType to_type_enum() { return node::kOpaque; }
+    static node::TypeNode* to_type_node(node::NodeManager* nm) {
+        return nm->MakeOpaqueType(sizeof(T));
+    }
+};
+
+template <typename T>
 struct CCallDataTypeTrait {
     using LiteralTag = T;
 };
-
+template <typename V>
+struct CCallDataTypeTrait<V*> {
+    using LiteralTag = Opaque<V>;
+};
 template <>
 struct CCallDataTypeTrait<codec::Timestamp*> {
     using LiteralTag = codec::Timestamp;

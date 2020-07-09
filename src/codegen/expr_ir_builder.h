@@ -33,6 +33,7 @@
 #include "llvm/IR/IRBuilder.h"
 #include "node/node_manager.h"
 #include "node/sql_node.h"
+#include "node/type_node.h"
 #include "vm/schemas_context.h"
 
 namespace fesql {

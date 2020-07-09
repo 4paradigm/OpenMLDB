@@ -446,4 +446,29 @@ int32_t GetStrCol(int8_t* input, int32_t row_idx, uint32_t col_idx,
 }  // namespace v1
 }  // namespace codec
 }  // namespace fesql
+
+// custom specialization of std::hash for timestamp, date and string
+namespace std {
+template <>
+struct hash<fesql::codec::Timestamp> {
+    std::size_t operator()(const fesql::codec::Timestamp& t) const {
+        return std::hash<int64_t>()(t.ts_);
+    }
+};
+
+template <>
+struct hash<fesql::codec::Date> {
+    std::size_t operator()(const fesql::codec::Date& t) const {
+        return std::hash<int32_t>()(t.date_);
+    }
+};
+
+template <>
+struct hash<fesql::codec::StringRef> {
+    std::size_t operator()(const fesql::codec::StringRef& t) const {
+        return std::hash<std::string>()(t.ToString());
+    }
+};
+}  // namespace std
+
 #endif  // SRC_CODEC_TYPE_CODEC_H_

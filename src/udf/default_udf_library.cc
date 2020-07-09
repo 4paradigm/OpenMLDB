@@ -8,8 +8,9 @@
  **/
 #include "udf/default_udf_library.h"
 
+#include <string>
 #include <tuple>
-
+#include <unordered_set>
 #include "codegen/date_ir_builder.h"
 #include "codegen/timestamp_ir_builder.h"
 #include "udf/udf.h"
@@ -101,7 +102,7 @@ struct MaxUDAFDef {
 };
 
 template <typename T>
-struct CountUDAFDef {                                    // NOLINT
+struct CountUDAFDef {
     void operator()(SimpleUDAFRegistryHelper& helper) {  // NOLINT
         helper.templates<T, int64_t, int64_t>()
             .const_init(0)
@@ -119,41 +120,89 @@ struct CountUDAFDef {                                    // NOLINT
     }
 };
 
-/* template <typename T>
+template <typename T>
 struct AvgUDAFDef {
-    void operator()(SimpleUDAFRegistryHelper& helper) {
-        helper.templates<T, TupleArg<T, int64_t>, T>
-            .update([](CodeGenContext* ctx,
-                       const std::tuple<NativeValue, NativeValue>& state,
-                       NativeValue elem,
-                       std::tuple<NativeValue, NativeValue>* out) {
-                auto builder = ctx->GetBuilder();
-                *out = NativeValue::Create(builder->CreateAdd(
-                    cnt.GetValue(builder), builder->getInt64(1)));
-                return Status::OK();
-            })
+    using LiteralArgTypes = std::tuple<codec::ListRef<T>>;
+
+    ExprNode* operator()(UDFResolveContext* ctx, ExprNode* input) {
+        auto nm = ctx->node_manager();
+        auto sum = nm->MakeFuncNode("sum", {input}, ctx->over());
+        auto cnt = nm->MakeFuncNode("count", {input}, ctx->over());
+        sum = nm->MakeCastNode(node::kDouble, sum);
+        auto avg = nm->MakeBinaryExprNode(sum, cnt, node::kFnOpFDiv);
+        avg->SetOutputType(nm->MakeTypeNode(node::kDouble));
+        return avg;
     }
-};*/
+};
+
+template <typename T>
+struct DistinctCountDef {
+    void operator()(SimpleUDAFRegistryHelper& helper) {  // NOLINT
+        std::string suffix = ".opaque_std_set_" + DataTypeTrait<T>::to_string();
+        helper.templates<T, Opaque<std::unordered_set<T>>, int64_t>()
+            .init("distinct_count_init" + suffix, init_set)
+            .update("distinct_count_update" + suffix, update_set)
+            .output("distinct_count_output" + suffix, set_size);
+    }
+
+    static void init_set(std::unordered_set<T>* addr) {
+        new (addr) std::unordered_set<T>();
+    }
+
+    static std::unordered_set<T>* update_set(std::unordered_set<T>* set,
+                                             T value) {
+        set->insert(value);
+        return set;
+    }
+
+    static int64_t set_size(std::unordered_set<T>* set) { return set->size(); }
+};
 
 void DefaultUDFLibrary::IniMathUDF() {
     RegisterExternal("log")
         .args<float>(static_cast<float (*)(float)>(log))
-        .args<double>(static_cast<double (*)(double)>(log))
-        .args<int16_t>(static_cast<double (*)(int16_t)>(log))
-        .args<int32_t>(static_cast<double (*)(int32_t)>(log))
-        .args<int64_t>(static_cast<double (*)(int64_t)>(log));
-    RegisterExternal("log10")
-        .args<float>(static_cast<float (*)(float)>(log10))
-        .args<double>(static_cast<double (*)(double)>(log10))
-        .args<int16_t>(static_cast<double (*)(int16_t)>(log10))
-        .args<int32_t>(static_cast<double (*)(int32_t)>(log10))
-        .args<int64_t>(static_cast<double (*)(int64_t)>(log10));
+        .args<double>(static_cast<double (*)(double)>(log));
+    RegisterExprUDF("log").args<AnyArg>(
+        [](UDFResolveContext* ctx, ExprNode* x) -> ExprNode* {
+            if (!x->GetOutputType()->IsArithmetic()) {
+                ctx->SetError("log do not support type " +
+                              x->GetOutputType()->GetName());
+                return nullptr;
+            }
+            auto nm = ctx->node_manager();
+            auto cast = nm->MakeCastNode(node::kDouble, x);
+            return nm->MakeFuncNode("log", {cast}, nullptr);
+        });
+
     RegisterExternal("log2")
         .args<float>(static_cast<float (*)(float)>(log2))
-        .args<double>(static_cast<double (*)(double)>(log2))
-        .args<int16_t>(static_cast<double (*)(int16_t)>(log2))
-        .args<int32_t>(static_cast<double (*)(int32_t)>(log2))
-        .args<int64_t>(static_cast<double (*)(int64_t)>(log2));
+        .args<double>(static_cast<double (*)(double)>(log2));
+    RegisterExprUDF("log2").args<AnyArg>(
+        [](UDFResolveContext* ctx, ExprNode* x) -> ExprNode* {
+            if (!x->GetOutputType()->IsArithmetic()) {
+                ctx->SetError("log do not support type " +
+                              x->GetOutputType()->GetName());
+                return nullptr;
+            }
+            auto nm = ctx->node_manager();
+            auto cast = nm->MakeCastNode(node::kDouble, x);
+            return nm->MakeFuncNode("log2", {cast}, nullptr);
+        });
+
+    RegisterExternal("log10")
+        .args<float>(static_cast<float (*)(float)>(log10))
+        .args<double>(static_cast<double (*)(double)>(log10));
+    RegisterExprUDF("log10").args<AnyArg>(
+        [](UDFResolveContext* ctx, ExprNode* x) -> ExprNode* {
+            if (!x->GetOutputType()->IsArithmetic()) {
+                ctx->SetError("log do not support type " +
+                              x->GetOutputType()->GetName());
+                return nullptr;
+            }
+            auto nm = ctx->node_manager();
+            auto cast = nm->MakeCastNode(node::kDouble, x);
+            return nm->MakeFuncNode("log10", {cast}, nullptr);
+        });
 }
 
 void DefaultUDFLibrary::Init() {
@@ -211,6 +260,8 @@ void DefaultUDFLibrary::Init() {
             })
         .returns<int32_t>();
 
+    RegisterAlias("day", "dayofmonth");
+
     RegisterExternal("dayofweek")
         .args<int64_t>(static_cast<int32_t (*)(int64_t)>(v1::dayofweek))
         .args<Timestamp>(static_cast<int32_t (*)(Timestamp*)>(v1::dayofweek))
@@ -220,6 +271,8 @@ void DefaultUDFLibrary::Init() {
         .args<int64_t>(static_cast<int32_t (*)(int64_t)>(v1::weekofyear))
         .args<Timestamp>(static_cast<int32_t (*)(Timestamp*)>(v1::weekofyear))
         .args<Date>(static_cast<int32_t (*)(Date*)>(v1::weekofyear));
+
+    RegisterAlias("week", "weekofyear");
 
     RegisterExternalTemplate<v1::IncOne>("inc")
         .args_in<int16_t, int32_t, int64_t, float, double>();
@@ -283,10 +336,16 @@ void DefaultUDFLibrary::Init() {
                  StringRef>();
 
     RegisterUDAFTemplate<CountUDAFDef>("count")
+        .args_in<int16_t, int32_t, int64_t, float, double, Timestamp, Date,
+                 StringRef>();
+
+    RegisterExprUDFTemplate<AvgUDAFDef>("avg")
         .args_in<int16_t, int32_t, int64_t, float, double, Timestamp, Date>();
 
-    RegisterAlias("day", "dayofmonth");
-    RegisterAlias("week", "weekofyear");
+    RegisterUDAFTemplate<DistinctCountDef>("distinct_count")
+        .args_in<int16_t, int32_t, int64_t, float, double, Timestamp, Date,
+                 StringRef>();
+
     IniMathUDF();
 }
 

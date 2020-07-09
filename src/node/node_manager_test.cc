@@ -31,8 +31,7 @@ TEST_F(NodeManagerTest, MakeSQLNode) {
     manager->MakeTablePlanNode("t2");
     manager->MakeTablePlanNode("t3");
 
-    ASSERT_EQ(3, manager->GetParserNodeListSize());
-    ASSERT_EQ(3, manager->GetPlanNodeListSize());
+    ASSERT_EQ(6, manager->GetNodeListSize());
     delete manager;
 }
 TEST_F(NodeManagerTest, MakeAndExprTest) {
