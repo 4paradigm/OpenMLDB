@@ -124,6 +124,8 @@ Status UDFIRBuilder::BuildUDAFCall(
     CHECK_TRUE(state_type != nullptr, "Missing state type");
     const node::TypeNode* elem_type = udaf->GetInputElementType();
     CHECK_TRUE(elem_type != nullptr, "Missing elem type");
+    const node::TypeNode* output_type = udaf->GetReturnType();
+    CHECK_TRUE(output_type != nullptr, "Missing return type");
 
     Status status;
     ::llvm::IRBuilder<> builder(block_);
@@ -134,12 +136,20 @@ Status UDFIRBuilder::BuildUDAFCall(
     llvm::Type* state_llvm_ty = nullptr;
     CHECK_TRUE(GetLLVMType(module_, state_type, &state_llvm_ty),
                "Fail to get llvm type for " + state_type->GetName());
+    bool is_struct_ptr_state = TypeIRBuilder::IsStructPtr(state_llvm_ty);
+
+    // infer output llvm type
+    llvm::Type* output_llvm_ty = nullptr;
+    CHECK_TRUE(GetLLVMType(module_, output_type, &output_llvm_ty),
+               "Fail to get llvm type for " + output_type->GetName());
+    bool is_struct_ptr_out = TypeIRBuilder::IsStructPtr(output_llvm_ty);
 
     // for type stored as struct ptr, do not use T** state
-    bool is_struct_ptr_state = TypeIRBuilder::IsStructPtr(state_llvm_ty);
-    if (is_struct_ptr_state) {
-        state_llvm_ty = reinterpret_cast<::llvm::PointerType*>(state_llvm_ty)
-                            ->getElementType();
+    ::llvm::PointerType* output_ptr_ty;
+    if (is_struct_ptr_out) {
+        output_ptr_ty = reinterpret_cast<::llvm::PointerType*>(output_llvm_ty);
+    } else {
+        output_ptr_ty = output_llvm_ty->getPointerTo();
     }
 
     // iter update in sub-function
@@ -150,12 +160,11 @@ Status UDFIRBuilder::BuildUDAFCall(
     std::string sub_function_name = ss.str();
     auto bool_ty = ::llvm::Type::getInt1Ty(llvm_ctx);
     auto fn_ty = ::llvm::FunctionType::get(
-        bool_ty, {input_value->getType(), state_llvm_ty->getPointerTo()},
-        false);
+        bool_ty, {input_value->getType(), output_ptr_ty}, false);
     ::llvm::Function* fn = ::llvm::Function::Create(
         fn_ty, llvm::Function::ExternalLinkage, sub_function_name, module_);
     auto list_ptr = fn->arg_begin();
-    auto state_ptr = fn->arg_begin() + 1;
+    auto output_ptr = fn->arg_begin() + 1;
 
     ::llvm::BasicBlock* head_block =
         ::llvm::BasicBlock::Create(llvm_ctx, "head", fn);
@@ -251,24 +260,37 @@ Status UDFIRBuilder::BuildUDAFCall(
     builder.CreateBr(enter_block);
 
     builder.SetInsertPoint(exit_block);
-    builder.CreateStore(builder.CreateLoad(local_state), state_ptr);
+    ::llvm::Value* final_state_value;
+    if (is_struct_ptr_state) {
+        final_state_value = local_state;
+    } else {
+        final_state_value = builder.CreateLoad(local_state);
+    }
+    UDFIRBuilder sub_udf_builder_exit(exit_block, sv_, schemas_context_,
+                                      module_);
+    NativeValue local_output;
+    CHECK_STATUS(sub_udf_builder_exit.BuildCall(
+                     udaf->output_func(), {state_type},
+                     {NativeValue::Create(final_state_value)}, &local_output),
+                 "Build output function call failed");
+    ::llvm::Value* raw_output = local_output.GetValue(&builder);
+    if (is_struct_ptr_out) {
+        builder.CreateStore(builder.CreateLoad(raw_output), output_ptr);
+    } else {
+        builder.CreateStore(raw_output, output_ptr);
+    }
     builder.CreateRet(::llvm::ConstantInt::getFalse(llvm_ctx));
 
     // call udaf under root function
     builder.SetInsertPoint(block_);
-    ::llvm::Value* state = builder.CreateAlloca(state_llvm_ty);
+    ::llvm::Value* output_value =
+        builder.CreateAlloca(output_ptr_ty->getElementType());
     auto callee = module_->getOrInsertFunction(sub_function_name, fn_ty);
-    auto is_null = builder.CreateCall(callee, {input_value, state});
-
-    // output state at current stack
-    if (!is_struct_ptr_state) {
-        // load value from alloca for primitive type
-        state = builder.CreateLoad(state);
+    auto is_null = builder.CreateCall(callee, {input_value, output_value});
+    if (!is_struct_ptr_out) {
+        output_value = builder.CreateLoad(output_value);
     }
-    CHECK_STATUS(
-        BuildCall(udaf->output_func(), {state_type},
-                  {NativeValue::CreateWithFlag(state, is_null)}, output),
-        "Build output function call failed");
+    *output = NativeValue::CreateWithFlag(output_value, is_null);
     return Status::OK();
 }
 

@@ -155,7 +155,13 @@ struct DistinctCountDef {
         return set;
     }
 
-    static int64_t set_size(std::unordered_set<T>* set) { return set->size(); }
+    static int64_t set_size(std::unordered_set<T>* set) {
+        int64_t size = set->size();
+        set->clear();
+        using SetT = std::unordered_set<T>;
+        set->~SetT();
+        return size;
+    }
 };
 
 void DefaultUDFLibrary::IniMathUDF() {
@@ -173,6 +179,7 @@ void DefaultUDFLibrary::IniMathUDF() {
             auto cast = nm->MakeCastNode(node::kDouble, x);
             return nm->MakeFuncNode("log", {cast}, nullptr);
         });
+    RegisterAlias("ln", "log");
 
     RegisterExternal("log2")
         .args<float>(static_cast<float (*)(float)>(log2))
