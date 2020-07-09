@@ -72,6 +72,7 @@ std::string FindRtidbDirPath(const std::string dirname) {
     return std::string();
 }
 std::vector<fesql::sqlcase::SQLCase> InitCases(std::string yaml_path);
+std::vector<fesql::sqlcase::SQLCase> InitJavaSDKCases(std::string yaml_path);
 void CheckSchema(const fesql::vm::Schema &schema,
                  const fesql::vm::Schema &exp_schema);
 void CheckRows(const fesql::vm::Schema &schema,
@@ -80,22 +81,22 @@ void CheckRows(const fesql::vm::Schema &schema,
 void PrintRows(const fesql::vm::Schema &schema,
                const std::vector<fesql::codec::Row> &rows);
 void PrintSchema(const fesql::vm::Schema &schema);
-void StoreData(::fesql::storage::Table *table,
+void StoreData(std::shared_ptr<TestArgs> args,
+               std::shared_ptr<fesql::storage::Table> sql_table,
                const std::vector<fesql::codec::Row> &rows);
 
 void InitCases(std::string yaml_path,
                std::vector<fesql::sqlcase::SQLCase> &cases);  // NOLINT
-
-void InitCases(std::string yaml_path,
+void InitCases(std::string dir_path, std::string yaml_path,
                std::vector<fesql::sqlcase::SQLCase> &cases) {  // NOLINT
-    if (!fesql::sqlcase::SQLCase::CreateSQLCasesFromYaml(
-            FindRtidbDirPath("rtidb") + "/fesql/", yaml_path, cases)) {
+    if (!fesql::sqlcase::SQLCase::CreateSQLCasesFromYaml(dir_path, yaml_path,
+                                                         cases)) {
         FAIL();
     }
 }
 std::vector<fesql::sqlcase::SQLCase> InitCases(std::string yaml_path) {
     std::vector<fesql::sqlcase::SQLCase> cases;
-    InitCases(yaml_path, cases);
+    InitCases(FindRtidbDirPath("rtidb") + "/fesql/", yaml_path, cases);
     return cases;
 }
 
@@ -314,23 +315,32 @@ void CheckRows(const fesql::vm::Schema &schema,
 }
 void StoreData(std::shared_ptr<TestArgs> args,
                std::shared_ptr<fesql::storage::Table> sql_table,
+               const fesql::codec::Row &row) {}
+void StoreData(std::shared_ptr<TestArgs> args,
+               std::shared_ptr<fesql::storage::Table> sql_table,
                const std::vector<fesql::codec::Row> &rows) {
     auto meta = args->meta;
     auto table = args->table;
-    ASSERT_TRUE(sql_table->Init());
-    ASSERT_TRUE(table->Init());
     rtidb::codec::SDKCodec sdk_codec(meta);
     LOG(INFO) << "store data start: rows size " << rows.size()
               << ", index size: " << sql_table->GetIndexMap().size();
     fesql::codec::RowView row_view(sql_table->GetTableDef().columns());
     int column_size = sql_table->GetTableDef().columns_size();
+    auto sql_schema = sql_table->GetTableDef().columns();
     for (auto row : rows) {
         std::map<uint32_t, rtidb::codec::Dimension> dimensions;
         std::vector<uint64_t> ts_dimensions;
         std::vector<std::string> raw_data;
         row_view.Reset(row.buf());
         for (int i = 0; i < column_size; i++) {
-            raw_data.push_back(row_view.GetAsString(i));
+            std::string key_str =
+                sql_schema.Get(i).type() == fesql::type::kDate
+                    ? std::to_string(row_view.GetDateUnsafe(i))
+                    : row_view.GetAsString(i);
+            if (key_str == "") {
+                key_str = rtidb::codec::EMPTY_STRING;
+            }
+            raw_data.push_back(key_str);
         }
         ASSERT_EQ(0, sdk_codec.EncodeDimension(raw_data, 1, &dimensions));
         ASSERT_EQ(0, sdk_codec.EncodeTsDimension(raw_data, &ts_dimensions));
@@ -377,6 +387,11 @@ std::shared_ptr<TestArgs> PrepareTableWithTableDef(
     args->table->Init();
     return args;
 }
+
+const std::string GenerateTableName(int32_t id) {
+    return "auto_t" + std::to_string(id);
+}
+
 void BatchModeCheck(fesql::sqlcase::SQLCase &sql_case) {  // NOLINT
     int32_t input_cnt = sql_case.CountInputs();
 
@@ -388,6 +403,9 @@ void BatchModeCheck(fesql::sqlcase::SQLCase &sql_case) {  // NOLINT
                                     std::shared_ptr<::fesql::storage::Table>>>
         name_table_map;
     for (int32_t i = 0; i < input_cnt; i++) {
+        if (sql_case.inputs()[i].name_.empty()) {
+            sql_case.set_input_name(GenerateTableName(i), i);
+        }
         fesql::type::TableDef table_def;
         sql_case.ExtractInputTableDef(table_def, i);
         LOG(INFO) << "input " << i << " index size "
@@ -423,7 +441,10 @@ void BatchModeCheck(fesql::sqlcase::SQLCase &sql_case) {  // NOLINT
     fesql::vm::BatchRunSession session;
     session.EnableDebug();
     bool ok = engine.Get(sql_str, sql_case.db(), session, get_status);
-    ASSERT_TRUE(ok);
+    ASSERT_EQ(sql_case.expect().success_, ok);
+    if (!sql_case.expect().success_) {
+        return;
+    }
     std::cout << "RUN IN MODE BATCH";
     fesql::vm::Schema schema;
     schema = session.GetSchema();
@@ -445,6 +466,8 @@ void BatchModeCheck(fesql::sqlcase::SQLCase &sql_case) {  // NOLINT
         std::vector<fesql::codec::Row> rows;
         sql_case.ExtractInputData(rows, i);
         if (!rows.empty()) {
+            name_table_map[input.name_].first->table->Init();
+            name_table_map[input.name_].second->Init();
             StoreData(name_table_map[input.name_].first,
                       name_table_map[input.name_].second, rows);
         } else {
@@ -477,6 +500,9 @@ void RequestModeCheck(fesql::sqlcase::SQLCase &sql_case) {  // NOLINT
                                     std::shared_ptr<::fesql::storage::Table>>>
         name_table_map;
     for (int32_t i = 0; i < input_cnt; i++) {
+        if (sql_case.inputs()[i].name_.empty()) {
+            sql_case.set_input_name(GenerateTableName(i), i);
+        }
         fesql::type::TableDef table_def;
         sql_case.ExtractInputTableDef(table_def, i);
         LOG(INFO) << "input " << i << " index size "
@@ -511,7 +537,10 @@ void RequestModeCheck(fesql::sqlcase::SQLCase &sql_case) {  // NOLINT
     fesql::vm::RequestRunSession session;
     session.EnableDebug();
     bool ok = engine.Get(sql_str, sql_case.db(), session, get_status);
-    ASSERT_TRUE(ok);
+    ASSERT_EQ(sql_case.expect().success_, ok);
+    if (!sql_case.expect().success_) {
+        return;
+    }
     std::cout << "RUN IN MODE BATCH";
     fesql::vm::Schema schema;
     schema = session.GetSchema();
@@ -538,6 +567,8 @@ void RequestModeCheck(fesql::sqlcase::SQLCase &sql_case) {  // NOLINT
         std::vector<fesql::codec::Row> rows;
         sql_case.ExtractInputData(rows, i);
         if (!rows.empty()) {
+            name_table_map[input.name_].first->table->Init();
+            name_table_map[input.name_].second->Init();
             StoreData(name_table_map[input.name_].first,
                       name_table_map[input.name_].second, rows);
         } else {
@@ -556,9 +587,9 @@ void RequestModeCheck(fesql::sqlcase::SQLCase &sql_case) {  // NOLINT
     DLOG(INFO) << "RUN IN MODE REQUEST";
     std::vector<fesql::codec::Row> output;
 
-    auto request_table = name_table_map[request_name].first->table;
+    auto request_table = name_table_map[request_name].first;
     auto request_sql_table = name_table_map[request_name].second;
-    ASSERT_TRUE(request_table->Init());
+    ASSERT_TRUE(request_table->table->Init());
     ASSERT_TRUE(request_sql_table->Init());
     for (auto in_row : request_data) {
         fesql::codec::Row out_row;
@@ -567,28 +598,14 @@ void RequestModeCheck(fesql::sqlcase::SQLCase &sql_case) {  // NOLINT
         LOG(INFO) << "store request row into db"
                   << ", index size: "
                   << request_sql_table->GetIndexMap().size();
-        for (auto iter = request_sql_table->GetIndexMap().cbegin();
-             iter != request_sql_table->GetIndexMap().cend(); iter++) {
-            std::string key;
-            int64_t time = 1;
-            ASSERT_TRUE(request_sql_table->DecodeKeysAndTs(
-                iter->second, reinterpret_cast<char *>(in_row.buf()),
-                in_row.size(), key, &time));
-            LOG(INFO) << "store row for key: " << key << "ts: " << time;
-            bool ok = request_table->Put(key, time,
-                                         reinterpret_cast<char *>(in_row.buf()),
-                                         in_row.size());
-            ASSERT_TRUE(ok);
-        }
+        StoreData(request_table, request_sql_table,
+                  std::vector<fesql::codec::Row>{in_row});
         output.push_back(out_row);
     }
     CheckRows(schema, SortRows(schema, output, sql_case.expect().order_),
               case_output_data);
 }
 
-INSTANTIATE_TEST_CASE_P(
-    EngineBugQuery, TabletEngineTest,
-    testing::ValuesIn(InitCases("/cases/query/bug_query.yaml")));
 INSTANTIATE_TEST_CASE_P(
     EngineSimpleQuery, TabletEngineTest,
     testing::ValuesIn(InitCases("/cases/query/simple_query.yaml")));
@@ -626,9 +643,38 @@ INSTANTIATE_TEST_CASE_P(
     EngineBatchGroupQuery, TabletEngineTest,
     testing::ValuesIn(InitCases("/cases/query/group_query.yaml")));
 
+INSTANTIATE_TEST_CASE_P(
+    EngineTestWindowRow, TabletEngineTest,
+    testing::ValuesIn(InitCases("/cases/integration/v1/test_window_row.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestWindowRowRange, TabletEngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/test_window_row_range.yaml")));
+
+INSTANTIATE_TEST_CASE_P(EngineTestWindowUnion, TabletEngineTest,
+                        testing::ValuesIn(InitCases(
+                            "/cases/integration/v1/test_window_union.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestLastJoin, TabletEngineTest,
+    testing::ValuesIn(InitCases("/cases/integration/v1/test_last_join.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestExpression, TabletEngineTest,
+    testing::ValuesIn(InitCases("/cases/integration/v1/test_expression.yaml")));
+
+INSTANTIATE_TEST_CASE_P(EngineTestSelectSample, TabletEngineTest,
+                        testing::ValuesIn(InitCases(
+                            "/cases/integration/v1/test_select_sample.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestSubSelect, TabletEngineTest,
+    testing::ValuesIn(InitCases("/cases/integration/v1/test_sub_select.yaml")));
+
+INSTANTIATE_TEST_CASE_P(EngineTestUdafFunction, TabletEngineTest,
+                        testing::ValuesIn(InitCases(
+                            "/cases/integration/v1/test_udaf_function.yaml")));
+
 TEST_P(TabletEngineTest, batch_query_test) {
     ParamType sql_case = GetParam();
-    std::cout << "desc: " << sql_case.desc();
+    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!boost::contains(sql_case.mode(), "rtidb-unsupport") &&
         !boost::contains(sql_case.mode(), "batch-unsupport")) {
         BatchModeCheck(sql_case);
@@ -636,7 +682,7 @@ TEST_P(TabletEngineTest, batch_query_test) {
 }
 TEST_P(TabletEngineTest, request_query_test) {
     ParamType sql_case = GetParam();
-    std::cout << "desc: " << sql_case.desc();
+    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!boost::contains(sql_case.mode(), "rtidb-unsupport") &&
         !boost::contains(sql_case.mode(), "request-unsupport")) {
         RequestModeCheck(sql_case);
