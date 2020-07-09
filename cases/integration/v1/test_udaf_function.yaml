@@ -130,6 +130,7 @@ cases:
         - [3,"aa",4772216973000]
   -
     id: 6
+    tags: ["TODO", "@baoxinqi:bug"]
     desc: avg-timestamp
     inputs:
       -
@@ -147,6 +148,7 @@ cases:
   -
     id: 7
     desc: sum-date
+    tags: ["TODO", "@baoxinqi:bug"]
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string"]
@@ -179,6 +181,7 @@ cases:
   -
     id: 9
     desc: avg-date
+    tags: ["TODO", "@baoxinqi:bug"]
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string"]
@@ -195,6 +198,7 @@ cases:
   -
     id: 10
     desc: avg-string
+    tags: ["TODO", "@baoxinqi:bug"]
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string"]
