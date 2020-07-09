@@ -61,13 +61,19 @@ ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
       predicate_ir_builder_(block),
       module_(module),
       schemas_context_(schemas_context) {
-    for (auto info : schemas_context->row_schema_info_list_) {
-        row_ir_builder_list_.push_back(std::unique_ptr<RowDecodeIRBuilder>(
-            new BufNativeIRBuilder(*info.schema_, block, sv_)));
+    if (schemas_context != nullptr) {
+        for (auto info : schemas_context->row_schema_info_list_) {
+            row_ir_builder_list_.push_back(std::unique_ptr<RowDecodeIRBuilder>(
+                new BufNativeIRBuilder(*info.schema_, block, sv_)));
+        }
+        window_ir_builder_ = std::unique_ptr<WindowDecodeIRBuilder>(
+            new MemoryWindowDecodeIRBuilder(
+                schemas_context->row_schema_info_list_, block));
+    } else {
+        window_ir_builder_ = std::unique_ptr<WindowDecodeIRBuilder>(
+            new MemoryWindowDecodeIRBuilder(std::vector<vm::RowSchemaInfo>(),
+                                            block));
     }
-    window_ir_builder_ =
-        std::unique_ptr<WindowDecodeIRBuilder>(new MemoryWindowDecodeIRBuilder(
-            schemas_context->row_schema_info_list_, block));
 }
 ExprIRBuilder::~ExprIRBuilder() {}
 
@@ -720,7 +726,7 @@ bool ExprIRBuilder::BuildCastExpr(const ::fesql::node::CastExprNode* node,
     ::llvm::IRBuilder<> builder(block_);
     DLOG(INFO) << "build cast expr: " << node::ExprString(node);
     NativeValue left_wrapper;
-    bool ok = Build(node->expr_, &left_wrapper, status);
+    bool ok = Build(node->expr(), &left_wrapper, status);
     if (!ok) {
         LOG(WARNING) << "fail to build left node: " << status.msg;
         return false;

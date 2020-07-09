@@ -26,7 +26,7 @@
 namespace fesql {
 namespace node {
 
-class BatchPlanNode {
+class BatchPlanNode : public node::NodeBase {
  public:
     explicit BatchPlanNode(const BatchPlanNodeType& type)
         : type_(type), children_() {}

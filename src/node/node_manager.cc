@@ -350,7 +350,7 @@ ExprNode *NodeManager::MakeColumnRefNode(const std::string &column_name,
     return MakeColumnRefNode(column_name, relation_name, "");
 }
 ExprNode *NodeManager::MakeCastNode(const node::DataType cast_type,
-                                    const ExprNode *expr) {
+                                    ExprNode *expr) {
     CastExprNode *node_ptr = new CastExprNode(cast_type, expr);
     return RegisterNode(node_ptr);
 }
@@ -368,6 +368,21 @@ ExprNode *NodeManager::MakeTimeFuncNode(const TimeUnit time_unit,
     CallExprNode *node_ptr = new CallExprNode(def_node, list_ptr, NULL);
     return RegisterNode(node_ptr);
 }
+
+ExprNode *NodeManager::MakeFuncNode(const std::string &name,
+                                    const std::vector<ExprNode *> &args,
+                                    const SQLNode *over) {
+    ExprListNode args_node;
+    for (auto child : args) {
+        args_node.AddChild(child);
+    }
+    FnDefNode *def_node =
+        dynamic_cast<FnDefNode *>(MakeUnresolvedFnDefNode(name));
+    CallExprNode *node_ptr = new CallExprNode(
+        def_node, &args_node, dynamic_cast<const WindowDefNode *>(over));
+    return RegisterNode(node_ptr);
+}
+
 ExprNode *NodeManager::MakeFuncNode(const std::string &name,
                                     ExprListNode *list_ptr,
                                     const SQLNode *over) {
@@ -821,15 +836,11 @@ SQLNode *NodeManager::MakeInsertTableNode(const std::string &table_name,
 }
 
 DatasetNode *NodeManager::MakeDataset(const std::string &table) {
-    DatasetNode *db = new DatasetNode(table);
-    batch_plan_node_list_.push_back(db);
-    return db;
+    return RegisterNode(new DatasetNode(table));
 }
 
 MapNode *NodeManager::MakeMapNode(const NodePointVector &nodes) {
-    MapNode *mn = new MapNode(nodes);
-    batch_plan_node_list_.push_back(mn);
-    return mn;
+    return RegisterNode(new MapNode(nodes));
 }
 
 TypeNode *NodeManager::MakeTypeNode(fesql::node::DataType base) {
@@ -855,6 +866,9 @@ TypeNode *NodeManager::MakeTypeNode(fesql::node::DataType base,
     TypeNode *node_ptr = new TypeNode(base, MakeTypeNode(v1), MakeTypeNode(v2));
     RegisterNode(node_ptr);
     return node_ptr;
+}
+OpaqueTypeNode *NodeManager::MakeOpaqueType(size_t bytes) {
+    return RegisterNode(new OpaqueTypeNode(bytes));
 }
 
 FnNode *NodeManager::MakeForInStmtNode(const std::string &var_name,
@@ -1136,7 +1150,7 @@ node::ExprListNode *NodeManager::BuildExprListFromSchemaSource(
     return output;
 }
 
-node::SQLNode *NodeManager::MakeExternalFnDefNode(
+ExternalFnDefNode *NodeManager::MakeExternalFnDefNode(
     const std::string &function_name, void *function_ptr,
     node::TypeNode *ret_type,
     const std::vector<const node::TypeNode *> &arg_types, int variadic_pos,

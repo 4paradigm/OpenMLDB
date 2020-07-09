@@ -242,8 +242,7 @@ TEST_F(UDFIRBuilderTest, distinct_count_udf_test) {
     list_ref.list = reinterpret_cast<int8_t *>(&list);
 
     CheckUDF<int32_t, codec::ListRef<int32_t>>("count", 9, list_ref);
-    CheckExternalUDF<int32_t, codec::ListRef<int32_t> *>(
-        "distinct_count.list_int32", 5, &list_ref);
+    CheckUDF<int32_t, codec::ListRef<int32_t>>("distinct_count", 5, list_ref);
 }
 TEST_F(UDFIRBuilderTest, sum_udf_test) {
     std::vector<int32_t> vec = {1, 3, 5, 7, 9};
@@ -296,12 +295,12 @@ TEST_F(UDFIRBuilderTest, min_timestamp_udf_test) {
 }
 
 TEST_F(UDFIRBuilderTest, log_udf_test) {
-    CheckExternalUDF<float, float>("log.float", log(2.0f), 2.0f);
-    CheckExternalUDF<double, double>("log.double", log(2.0), 2.0);
-    CheckExternalUDF<double, int32_t>("log2.int32", log2(65536), 65536);
-    CheckExternalUDF<double, double>("log2.double", log2(2.0), 2.0);
-    CheckExternalUDF<double, int32_t>("log10.int32", log10(65536), 65536);
-    CheckExternalUDF<double, double>("log10.double", log10(2.0), 2.0);
+    CheckUDF<float, float>("log", log(2.0f), 2.0f);
+    CheckUDF<double, double>("log", log(2.0), 2.0);
+    CheckUDF<double, int32_t>("log2", log2(65536), 65536);
+    CheckUDF<double, double>("log2", log2(2.0), 2.0);
+    CheckUDF<double, int32_t>("log10", log10(65536), 65536);
+    CheckUDF<double, double>("log10", log10(2.0), 2.0);
 }
 
 }  // namespace codegen

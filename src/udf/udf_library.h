@@ -46,6 +46,9 @@ class CodeGenUDFTemplateRegistryHelper;
 template <template <typename> typename FTemplate>
 class UDAFTemplateRegistryHelper;
 
+template <template <typename> typename FTemplate>
+class ExprUDFTemplateRegistryHelper;
+
 /**
  * Hold global udf registry entries.
  * "fn(arg0, arg1, ...argN)" -> some expression
@@ -55,10 +58,10 @@ class UDFLibrary {
     Status Transform(const std::string& name, ExprListNode* args,
                      const node::SQLNode* over,
                      node::ExprAnalysisContext* analysis_ctx,
-                     ExprNode** result) const;
+                     ExprNode** result);
 
     Status Transform(const std::string& name, UDFResolveContext* ctx,
-                     ExprNode** result) const;
+                     ExprNode** result);
 
     std::shared_ptr<UDFTransformRegistry> Find(const std::string& name) const;
 
@@ -87,6 +90,12 @@ class UDFLibrary {
                                SimpleUDAFRegistry>(name);
     }
 
+    template <template <typename> class FTemplate>
+    auto RegisterExprUDFTemplate(const std::string& name) {
+        return ExprUDFTemplateRegistryHelper<FTemplate>(name, this);
+    }
+
+    void AddExternalSymbol(const std::string& name, void* addr);
     void InitJITSymbols(::llvm::orc::LLJIT* jit_ptr);
 
     node::NodeManager* node_manager() { return &nm_; }
@@ -102,6 +111,7 @@ class UDFLibrary {
     void InsertRegistry(std::shared_ptr<UDFTransformRegistry> reg_item);
 
     std::unordered_map<std::string, std::shared_ptr<CompositeRegistry>> table_;
+    std::unordered_map<std::string, void*> external_symbols_;
 
     node::NodeManager nm_;
 };

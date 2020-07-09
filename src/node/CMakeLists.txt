@@ -2,7 +2,7 @@ include_directories(${INCLUDE_DIRECTORIES}
         ${PROJECT_SOURCE_DIR}/src
         ${PROJECT_BINARY_DIR}/src)
 
-add_library(fesql_node STATIC node_manager.cc sql_node.cc plan_node.cc expr_node.cc)
+add_library(fesql_node STATIC node_manager.cc sql_node.cc plan_node.cc expr_node.cc type_node.cc)
 target_link_libraries(fesql_node ${LLVM_LIBS} fesql_codec fesql_vm)
 
 if (TESTING_ENABLE)

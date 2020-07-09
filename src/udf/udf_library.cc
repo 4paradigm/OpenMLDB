@@ -143,43 +143,29 @@ Status UDFLibrary::RegisterFromFile(const std::string& path_str) {
 Status UDFLibrary::Transform(const std::string& name, ExprListNode* args,
                              const node::SQLNode* over,
                              node::ExprAnalysisContext* analysis_ctx,
-                             ExprNode** result) const {
-    UDFResolveContext ctx(args, over, analysis_ctx);
+                             ExprNode** result) {
+    UDFResolveContext ctx(args, over, this, analysis_ctx);
     return this->Transform(name, &ctx, result);
 }
 
 Status UDFLibrary::Transform(const std::string& name, UDFResolveContext* ctx,
-                             ExprNode** result) const {
+                             ExprNode** result) {
     auto iter = table_.find(name);
     CHECK_TRUE(iter != table_.end(),
                "Fail to find registered function: ", name);
     return iter->second->Transform(ctx, result);
 }
 
+void UDFLibrary::AddExternalSymbol(const std::string& name, void* addr) {
+    external_symbols_.insert(std::make_pair(name, addr));
+}
+
 void UDFLibrary::InitJITSymbols(llvm::orc::LLJIT* jit_ptr) {
     ::llvm::orc::MangleAndInterner mi(jit_ptr->getExecutionSession(),
                                       jit_ptr->getDataLayout());
-    std::unordered_set<std::string> symbol_names;
-    for (auto& pair : table_) {
-        for (auto registry : pair.second->GetSubRegistries()) {
-            auto extern_reg =
-                std::dynamic_pointer_cast<ExternalFuncRegistry>(registry);
-            if (extern_reg == nullptr) {
-                continue;
-            }
-            for (auto& pair2 : extern_reg->GetTable().GetTable()) {
-                node::ExternalFnDefNode* def_node = pair2.second.first;
-                if (def_node->IsResolved() &&
-                    def_node->function_ptr() != nullptr &&
-                    symbol_names.find(def_node->function_name()) ==
-                        symbol_names.end()) {
-                    fesql::vm::FeSQLJIT::AddSymbol(
-                        jit_ptr->getMainJITDylib(), mi,
-                        def_node->function_name(), def_node->function_ptr());
-                    symbol_names.insert(def_node->function_name());
-                }
-            }
-        }
+    for (auto& pair : external_symbols_) {
+        fesql::vm::FeSQLJIT::AddSymbol(jit_ptr->getMainJITDylib(), mi,
+                                       pair.first, pair.second);
     }
 }
 

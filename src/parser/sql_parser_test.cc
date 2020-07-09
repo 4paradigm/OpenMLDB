@@ -314,8 +314,7 @@ TEST_F(SqlParserTest, Parser_Insert_ALL_Stmt) {
 }
 
 TEST_F(SqlParserTest, Parser_Insert_All_Placeholder) {
-    const std::string sqlstr =
-        "insert into t1 values(?, ?, ?, ?);";
+    const std::string sqlstr = "insert into t1 values(?, ?, ?, ?);";
     NodePointVector trees;
     base::Status status;
     int ret = parser_->parse(sqlstr.c_str(), trees, manager_, status);
@@ -343,8 +342,7 @@ TEST_F(SqlParserTest, Parser_Insert_All_Placeholder) {
 }
 
 TEST_F(SqlParserTest, Parser_Insert_Part_Placeholder) {
-    const std::string sqlstr =
-        "insert into t1 values(1, ?, 3.1, ?);";
+    const std::string sqlstr = "insert into t1 values(1, ?, 3.1, ?);";
     NodePointVector trees;
     base::Status status;
     int ret = parser_->parse(sqlstr.c_str(), trees, manager_, status);

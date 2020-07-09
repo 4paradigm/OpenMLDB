@@ -54,5 +54,15 @@ Status CallExprNode::InferAttr(ExprAnalysisContext* ctx) {
     return Status::OK();
 }
 
+Status ExprIdNode::InferAttr(ExprAnalysisContext* ctx) {
+    // var node should be bind outside
+    return Status::OK();
+}
+
+Status CastExprNode::InferAttr(ExprAnalysisContext* ctx) {
+    SetOutputType(ctx->node_manager()->MakeTypeNode(cast_type_));
+    return Status::OK();
+}
+
 }  // namespace node
 }  // namespace fesql

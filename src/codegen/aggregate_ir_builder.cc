@@ -423,12 +423,6 @@ class StatisticalAggGenerator {
 llvm::Type* AggregateIRBuilder::GetOutputLLVMType(
     ::llvm::LLVMContext& llvm_ctx, const std::string& fname,
     const node::DataType& node_type) {
-    if (fname == "count") {
-        return ::llvm::Type::getInt64Ty(llvm_ctx);
-    } else if (fname == "avg") {
-        return ::llvm::Type::getDoubleTy(llvm_ctx);
-    }
-
     ::llvm::Type* llvm_ty = nullptr;
     switch (node_type) {
         case ::fesql::node::kInt16:
@@ -450,6 +444,11 @@ llvm::Type* AggregateIRBuilder::GetOutputLLVMType(
             LOG(ERROR) << "Unknown data type: " << DataTypeName(node_type);
             return nullptr;
         }
+    }
+    if (fname == "count") {
+        return ::llvm::Type::getInt64Ty(llvm_ctx);
+    } else if (fname == "avg") {
+        return ::llvm::Type::getDoubleTy(llvm_ctx);
     }
     return llvm_ty;
 }

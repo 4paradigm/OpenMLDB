@@ -24,7 +24,7 @@ using fesql::node::TypeNode;
 class UDFRegistryTest : public ::testing::Test {};
 
 template <typename... LiteralArgTypes>
-const node::FnDefNode* GetFnDef(const UDFLibrary& lib, const std::string& name,
+const node::FnDefNode* GetFnDef(UDFLibrary* lib, const std::string& name,
                                 node::NodeManager* nm,
                                 const node::SQLNode* over = nullptr) {
     std::vector<node::TypeNode*> arg_types(
@@ -39,7 +39,7 @@ const node::FnDefNode* GetFnDef(const UDFLibrary& lib, const std::string& name,
     node::ExprNode* transformed = nullptr;
     node::ExprAnalysisContext analysis_ctx(nm, nullptr, over != nullptr);
     auto status =
-        lib.Transform(name, arg_list, over, &analysis_ctx, &transformed);
+        lib->Transform(name, arg_list, over, &analysis_ctx, &transformed);
     if (!status.isOK()) {
         LOG(WARNING) << status.msg;
         return nullptr;
@@ -88,31 +88,31 @@ TEST_F(UDFRegistryTest, test_expr_udf_register) {
 
     // resolve "add"
     // match placeholder
-    fn_def = GetFnDef<int32_t, int32_t>(library, "add", &nm);
+    fn_def = GetFnDef<int32_t, int32_t>(&library, "add", &nm);
     ASSERT_TRUE(fn_def != nullptr && fn_def->GetType() == node::kUDFDef);
 
     // allow_window(false)
-    fn_def = GetFnDef<int32_t, int32_t>(library, "add", &nm, over);
+    fn_def = GetFnDef<int32_t, int32_t>(&library, "add", &nm, over);
     ASSERT_TRUE(fn_def == nullptr);
 
     // match argument num
-    fn_def = GetFnDef<int32_t, int32_t, int32_t>(library, "add", &nm);
+    fn_def = GetFnDef<int32_t, int32_t, int32_t>(&library, "add", &nm);
     ASSERT_TRUE(fn_def == nullptr);
 
     // match but impl logic error
-    fn_def = GetFnDef<int32_t, float>(library, "add", &nm);
+    fn_def = GetFnDef<int32_t, float>(&library, "add", &nm);
     ASSERT_TRUE(fn_def == nullptr);
 
     // match explicit
-    fn_def = GetFnDef<double, int32_t>(library, "add", &nm);
+    fn_def = GetFnDef<double, int32_t>(&library, "add", &nm);
     ASSERT_TRUE(fn_def != nullptr && fn_def->GetType() == node::kUDFDef);
 
     // match with unknown input arg type
-    fn_def = GetFnDef<int32_t, AnyArg>(library, "add", &nm);
+    fn_def = GetFnDef<int32_t, AnyArg>(&library, "add", &nm);
     ASSERT_TRUE(fn_def != nullptr && fn_def->GetType() == node::kUDFDef);
 
     // match different argument num
-    fn_def = GetFnDef<StringRef, int64_t, bool>(library, "add", &nm);
+    fn_def = GetFnDef<StringRef, int64_t, bool>(&library, "add", &nm);
     ASSERT_TRUE(fn_def != nullptr && fn_def->GetType() == node::kUDFDef);
 }
 
@@ -152,31 +152,31 @@ TEST_F(UDFRegistryTest, test_variadic_expr_udf_register) {
 
     // resolve "join"
     // illegal arg types
-    fn_def = GetFnDef<int32_t, int32_t>(library, "join", &nm);
+    fn_def = GetFnDef<int32_t, int32_t>(&library, "join", &nm);
     ASSERT_TRUE(fn_def == nullptr);
 
     // prefer match non-variadic, prefer explicit match
-    fn_def = GetFnDef<StringRef, StringRef>(library, "join", &nm);
+    fn_def = GetFnDef<StringRef, StringRef>(&library, "join", &nm);
     ASSERT_TRUE(fn_def != nullptr && fn_def->GetType() == node::kUDFDef);
 
     // prefer match non-variadic, allow placeholder
-    fn_def = GetFnDef<StringRef, int32_t>(library, "join", &nm);
+    fn_def = GetFnDef<StringRef, int32_t>(&library, "join", &nm);
     ASSERT_TRUE(fn_def != nullptr && fn_def->GetType() == node::kUDFDef);
 
     // prefer match non-variadic, but placeholder check failed
-    fn_def = GetFnDef<StringRef, int64_t>(library, "join", &nm);
+    fn_def = GetFnDef<StringRef, int64_t>(&library, "join", &nm);
     ASSERT_TRUE(fn_def == nullptr);
 
     // match variadic, prefer no-placeholder match
-    fn_def = GetFnDef<StringRef, bool, bool, bool>(library, "join", &nm);
+    fn_def = GetFnDef<StringRef, bool, bool, bool>(&library, "join", &nm);
     ASSERT_TRUE(fn_def != nullptr && fn_def->GetType() == node::kUDFDef);
 
     // match variadic, prefer no-placeholder match, buf impl logic failed
-    fn_def = GetFnDef<StringRef, StringRef, StringRef>(library, "join", &nm);
+    fn_def = GetFnDef<StringRef, StringRef, StringRef>(&library, "join", &nm);
     ASSERT_TRUE(fn_def == nullptr);
 
     // match variadic with placeholder
-    fn_def = GetFnDef<int16_t, StringRef, StringRef>(library, "join", &nm);
+    fn_def = GetFnDef<int16_t, StringRef, StringRef>(&library, "join", &nm);
     ASSERT_TRUE(fn_def != nullptr && fn_def->GetType() == node::kUDFDef);
 }
 
@@ -202,13 +202,13 @@ TEST_F(UDFRegistryTest, test_variadic_expr_udf_register_order) {
 
     // resolve "concat"
     // prefer long non-variadic parameters part
-    fn_def = GetFnDef<int32_t, StringRef, StringRef>(library, "concat", &nm);
+    fn_def = GetFnDef<int32_t, StringRef, StringRef>(&library, "concat", &nm);
     ASSERT_TRUE(fn_def != nullptr && fn_def->GetType() == node::kUDFDef);
-    fn_def = GetFnDef<int32_t, bool, bool, bool>(library, "concat", &nm);
+    fn_def = GetFnDef<int32_t, bool, bool, bool>(&library, "concat", &nm);
     ASSERT_TRUE(fn_def == nullptr);
 
     // empty variadic args
-    fn_def = GetFnDef<>(library, "concat", &nm);
+    fn_def = GetFnDef<>(&library, "concat", &nm);
     ASSERT_TRUE(fn_def != nullptr && fn_def->GetType() == node::kUDFDef);
 }
 
@@ -236,38 +236,38 @@ TEST_F(UDFRegistryTest, test_external_udf_register) {
     // resolve "add"
     // match placeholder
     fn_def = dynamic_cast<const node::ExternalFnDefNode*>(
-        GetFnDef<int32_t, int32_t>(library, "add", &nm));
+        GetFnDef<int32_t, int32_t>(&library, "add", &nm));
     ASSERT_TRUE(fn_def != nullptr && fn_def->GetType() == node::kExternalFnDef);
     ASSERT_EQ("add_any", fn_def->function_name());
     ASSERT_EQ("int32", fn_def->ret_type()->GetName());
 
     // allow_window(false)
     fn_def = dynamic_cast<const node::ExternalFnDefNode*>(
-        GetFnDef<int32_t, int32_t>(library, "add", &nm, over));
+        GetFnDef<int32_t, int32_t>(&library, "add", &nm, over));
     ASSERT_TRUE(fn_def == nullptr);
 
     // match argument num
     fn_def = dynamic_cast<const node::ExternalFnDefNode*>(
-        GetFnDef<int32_t, int32_t, int32_t>(library, "add", &nm));
+        GetFnDef<int32_t, int32_t, int32_t>(&library, "add", &nm));
     ASSERT_TRUE(fn_def == nullptr);
 
     // match explicit
     fn_def = dynamic_cast<const node::ExternalFnDefNode*>(
-        GetFnDef<double, double>(library, "add", &nm));
+        GetFnDef<double, double>(&library, "add", &nm));
     ASSERT_TRUE(fn_def != nullptr && fn_def->GetType() == node::kExternalFnDef);
     ASSERT_EQ("add_double", fn_def->function_name());
     ASSERT_EQ("double", fn_def->ret_type()->GetName());
 
     // match with unknown input arg type
     fn_def = dynamic_cast<const node::ExternalFnDefNode*>(
-        GetFnDef<int32_t, AnyArg>(library, "add", &nm));
+        GetFnDef<int32_t, AnyArg>(&library, "add", &nm));
     ASSERT_TRUE(fn_def != nullptr && fn_def->GetType() == node::kExternalFnDef);
     ASSERT_EQ("add_any", fn_def->function_name());
     ASSERT_EQ("int32", fn_def->ret_type()->GetName());
 
     // match different argument num
     fn_def = dynamic_cast<const node::ExternalFnDefNode*>(
-        GetFnDef<StringRef, int64_t, bool>(library, "add", &nm));
+        GetFnDef<StringRef, int64_t, bool>(&library, "add", &nm));
     ASSERT_TRUE(fn_def != nullptr && fn_def->GetType() == node::kExternalFnDef);
     ASSERT_EQ("add_string", fn_def->function_name());
     ASSERT_EQ("string", fn_def->ret_type()->GetName());
@@ -295,26 +295,26 @@ TEST_F(UDFRegistryTest, test_variadic_external_udf_register) {
     // resolve "join"
     // prefer match non-variadic, prefer explicit match
     fn_def = dynamic_cast<const node::ExternalFnDefNode*>(
-        GetFnDef<StringRef, StringRef>(library, "join", &nm));
+        GetFnDef<StringRef, StringRef>(&library, "join", &nm));
     ASSERT_TRUE(fn_def != nullptr && fn_def->GetType() == node::kExternalFnDef);
     ASSERT_EQ("join2", fn_def->function_name());
     ASSERT_EQ("string", fn_def->ret_type()->GetName());
 
     // prefer match non-variadic, allow placeholder
     fn_def = dynamic_cast<const node::ExternalFnDefNode*>(
-        GetFnDef<StringRef, int32_t>(library, "join", &nm));
+        GetFnDef<StringRef, int32_t>(&library, "join", &nm));
     ASSERT_TRUE(fn_def != nullptr && fn_def->GetType() == node::kExternalFnDef);
     ASSERT_EQ("join22", fn_def->function_name());
 
     // match variadic, prefer no-placeholder match
     fn_def = dynamic_cast<const node::ExternalFnDefNode*>(
-        GetFnDef<StringRef, bool, bool, bool>(library, "join", &nm));
+        GetFnDef<StringRef, bool, bool, bool>(&library, "join", &nm));
     ASSERT_TRUE(fn_def != nullptr && fn_def->GetType() == node::kExternalFnDef);
     ASSERT_EQ("join_many", fn_def->function_name());
 
     // match variadic with placeholder
     fn_def = dynamic_cast<const node::ExternalFnDefNode*>(
-        GetFnDef<int16_t, StringRef, StringRef>(library, "join", &nm));
+        GetFnDef<int16_t, StringRef, StringRef>(&library, "join", &nm));
     ASSERT_TRUE(fn_def != nullptr && fn_def->GetType() == node::kExternalFnDef);
     ASSERT_EQ("join_many2", fn_def->function_name());
 }
@@ -334,14 +334,14 @@ TEST_F(UDFRegistryTest, test_variadic_external_udf_register_order) {
     // resolve "concat"
     // prefer long non-variadic parameters part
     fn_def = dynamic_cast<const node::ExternalFnDefNode*>(
-        GetFnDef<int32_t, StringRef, StringRef>(library, "concat", &nm));
+        GetFnDef<int32_t, StringRef, StringRef>(&library, "concat", &nm));
     ASSERT_TRUE(fn_def != nullptr && fn_def->GetType() == node::kExternalFnDef);
     ASSERT_EQ("concat1", fn_def->function_name());
     ASSERT_EQ(1, fn_def->variadic_pos());
 
     // empty variadic args
     fn_def = dynamic_cast<const node::ExternalFnDefNode*>(
-        GetFnDef<>(library, "concat", &nm));
+        GetFnDef<>(&library, "concat", &nm));
     ASSERT_TRUE(fn_def != nullptr && fn_def->GetType() == node::kExternalFnDef);
     ASSERT_EQ("concat0", fn_def->function_name());
     ASSERT_EQ(0, fn_def->variadic_pos());
@@ -377,15 +377,15 @@ TEST_F(UDFRegistryTest, test_simple_udaf_register) {
         .finalize();
 
     fn_def = dynamic_cast<const node::UDAFDefNode*>(
-        GetFnDef<codec::ListRef<int32_t>>(library, "sum", &nm));
+        GetFnDef<codec::ListRef<int32_t>>(&library, "sum", &nm));
     ASSERT_TRUE(fn_def != nullptr && fn_def->GetType() == node::kUDAFDef);
 
     fn_def = dynamic_cast<const node::UDAFDefNode*>(
-        GetFnDef<codec::ListRef<int32_t>>(library, "sum", &nm));
+        GetFnDef<codec::ListRef<int32_t>>(&library, "sum", &nm));
     ASSERT_TRUE(fn_def != nullptr && fn_def->GetType() == node::kUDAFDef);
 
     fn_def = dynamic_cast<const node::UDAFDefNode*>(
-        GetFnDef<codec::ListRef<StringRef>>(library, "sum", &nm));
+        GetFnDef<codec::ListRef<StringRef>>(&library, "sum", &nm));
     ASSERT_TRUE(fn_def == nullptr);
 }
 
@@ -408,7 +408,7 @@ TEST_F(UDFRegistryTest, test_codegen_udf_register) {
             });
 
     fn_def = dynamic_cast<const node::UDFByCodeGenDefNode*>(
-        GetFnDef<int32_t, int32_t>(library, "add", &nm));
+        GetFnDef<int32_t, int32_t>(&library, "add", &nm));
     ASSERT_TRUE(fn_def != nullptr &&
                 fn_def->GetType() == node::kUDFByCodeGenDef);
 }

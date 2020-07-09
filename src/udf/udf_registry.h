@@ -40,15 +40,18 @@ using fesql::node::SQLNode;
 class UDFResolveContext {
  public:
     UDFResolveContext(ExprListNode* args, const node::SQLNode* over,
+                      udf::UDFLibrary* library,
                       node::ExprAnalysisContext* analysis_ctx)
         : args_(args),
           over_(over),
           manager_(analysis_ctx->node_manager()),
+          library_(library),
           analysis_ctx_(analysis_ctx) {}
 
     ExprListNode* args() { return args_; }
     const node::SQLNode* over() { return over_; }
     node::NodeManager* node_manager() { return manager_; }
+    udf::UDFLibrary* library() { return library_; }
 
     size_t arg_size() const { return args_->GetChildNum(); }
     const ExprNode* arg(size_t i) const { return args_->GetChild(i); }
@@ -65,6 +68,7 @@ class UDFResolveContext {
     ExprListNode* args_;
     const SQLNode* over_;
     node::NodeManager* manager_;
+    udf::UDFLibrary* library_;
 
     node::ExprAnalysisContext* analysis_ctx_;
     std::string error_msg_;
@@ -406,6 +410,46 @@ class ExprUDFRegistryHelper : public UDFRegistryHelper<ExprUDFRegistry> {
     }
 };
 
+template <template <typename> typename FTemplate>
+class ExprUDFTemplateRegistryHelper {
+ public:
+    ExprUDFTemplateRegistryHelper(const std::string& name, UDFLibrary* library)
+        : helper_(library->RegisterExprUDF(name)) {}
+
+    template <typename... LiteralArgTypes>
+    std::initializer_list<int> args_in() {
+        return {RegisterSingle<
+            LiteralArgTypes,
+            typename FTemplate<LiteralArgTypes>::LiteralArgTypes>()(
+            helper_)...};
+    }
+
+ private:
+    template <typename T, typename... LiteralArgTypes>
+    struct FTemplateInst {
+        static ExprNode* fcompute(
+            UDFResolveContext* ctx,
+            typename std::pair<LiteralArgTypes,
+                               ExprNode*>::second_type... args) {
+            return FTemplate<T>()(ctx, args...);
+        }
+    };
+
+    template <typename T, typename X>
+    struct RegisterSingle;
+
+    template <typename T, typename... LiteralArgTypes>
+    struct RegisterSingle<T, std::tuple<LiteralArgTypes...>> {
+        int operator()(ExprUDFRegistryHelper& helper) {  // NOLINT
+            helper.args<LiteralArgTypes...>(
+                FTemplateInst<T, LiteralArgTypes...>::fcompute);
+            return 0;
+        }
+    };
+
+    ExprUDFRegistryHelper helper_;
+};
+
 class LLVMUDFGenBase {
  public:
     virtual Status gen(codegen::CodeGenContext* ctx,
@@ -728,17 +772,70 @@ class ExternalFuncRegistry : public UDFRegistry {
     bool allow_project_;
 };
 
-struct ImplicitFuncPtr {
+struct TypeAnnotatedFuncPtr {
+    using GetTypeF = typename std::function<void(
+        node::NodeManager*, node::TypeNode**, std::vector<node::TypeNode*>*)>;
+
     template <typename Ret, typename... Args>
-    ImplicitFuncPtr(Ret (*fn)(Args...))  // NOLINT
+    TypeAnnotatedFuncPtr(Ret (*fn)(Args...))  // NOLINT
         : ptr(reinterpret_cast<void*>(fn)),
-          get_ret_func([](node::NodeManager* nm) {
-              return DataTypeTrait<typename CCallDataTypeTrait<
-                  Ret>::LiteralTag>::to_type_node(nm);
+          return_by_arg(false),
+          get_type_func([](node::NodeManager* nm, node::TypeNode** ret,
+                           std::vector<node::TypeNode*>* args) {
+              *ret =
+                  DataTypeTrait<typename CCallDataTypeTrait<Ret>::LiteralTag>::
+                      to_type_node(nm);
+              *args = {
+                  DataTypeTrait<typename CCallDataTypeTrait<Args>::LiteralTag>::
+                      to_type_node(nm)...};
+              return;
+          }) {}
+
+    template <typename T1>
+    TypeAnnotatedFuncPtr(void (*fn)(T1*))  // NOLINT
+        : ptr(reinterpret_cast<void*>(fn)),
+          return_by_arg(true),
+          get_type_func([](node::NodeManager* nm, node::TypeNode** ret,
+                           std::vector<node::TypeNode*>* args) {
+              *ret =
+                  DataTypeTrait<typename CCallDataTypeTrait<T1*>::LiteralTag>::
+                      to_type_node(nm);
+              *args = {};
+          }) {}
+
+    template <typename T1, typename T2>
+    TypeAnnotatedFuncPtr(void (*fn)(T1, T2*))  // NOLINT
+        : ptr(reinterpret_cast<void*>(fn)),
+          return_by_arg(true),
+          get_type_func([](node::NodeManager* nm, node::TypeNode** ret,
+                           std::vector<node::TypeNode*>* args) {
+              *ret =
+                  DataTypeTrait<typename CCallDataTypeTrait<T2*>::LiteralTag>::
+                      to_type_node(nm);
+              *args = {
+                  DataTypeTrait<typename CCallDataTypeTrait<T1>::LiteralTag>::
+                      to_type_node(nm)};
+          }) {}
+
+    template <typename T1, typename T2, typename T3>
+    TypeAnnotatedFuncPtr(void (*fn)(T1, T2, T3*))  // NOLINT
+        : ptr(reinterpret_cast<void*>(fn)),
+          return_by_arg(true),
+          get_type_func([](node::NodeManager* nm, node::TypeNode** ret,
+                           std::vector<node::TypeNode*>* args) {
+              *ret =
+                  DataTypeTrait<typename CCallDataTypeTrait<T3*>::LiteralTag>::
+                      to_type_node(nm);
+              *args = {
+                  DataTypeTrait<typename CCallDataTypeTrait<T1>::LiteralTag>::
+                      to_type_node(nm),
+                  DataTypeTrait<typename CCallDataTypeTrait<T2>::LiteralTag>::
+                      to_type_node(nm)};
           }) {}
 
     void* ptr;
-    std::function<node::TypeNode*(node::NodeManager*)> get_ret_func;
+    bool return_by_arg;
+    GetTypeF get_type_func;
 };
 
 class ExternalFuncRegistryHelper
@@ -773,16 +870,22 @@ class ExternalFuncRegistryHelper
 
     template <typename... LiteralArgTypes>
     ExternalFuncRegistryHelper& args(const std::string& name,
-                                     const ImplicitFuncPtr& fn_ptr) {
+                                     const TypeAnnotatedFuncPtr& fn_ptr) {
+        std::vector<node::TypeNode*> arg_types;
+        node::TypeNode* ret_type = nullptr;
+        fn_ptr.get_type_func(node_manager(), &ret_type, &arg_types);
         args<LiteralArgTypes...>(name, fn_ptr.ptr);
-        cur_def_->SetRetType(fn_ptr.get_ret_func(node_manager()));
+        cur_def_->SetRetType(ret_type);
         return *this;
     }
 
     template <typename... LiteralArgTypes>
-    ExternalFuncRegistryHelper& args(const ImplicitFuncPtr& fn_ptr) {
+    ExternalFuncRegistryHelper& args(const TypeAnnotatedFuncPtr& fn_ptr) {
+        std::vector<node::TypeNode*> arg_types;
+        node::TypeNode* ret_type = nullptr;
+        fn_ptr.get_type_func(node_manager(), &ret_type, &arg_types);
         args<LiteralArgTypes...>(fn_ptr.ptr);
-        cur_def_->SetRetType(fn_ptr.get_ret_func(node_manager()));
+        cur_def_->SetRetType(ret_type);
         return *this;
     }
 
@@ -802,6 +905,7 @@ class ExternalFuncRegistryHelper
         cur_def_ = dynamic_cast<node::ExternalFnDefNode*>(
             node_manager()->MakeExternalFnDefNode(name, fn_ptr, nullptr,
                                                   type_nodes, -1, false));
+        library()->AddExternalSymbol(name, fn_ptr);
         registry()->Register(type_args, cur_def_);
         return *this;
     }
@@ -836,6 +940,7 @@ class ExternalFuncRegistryHelper
             node_manager()->MakeExternalFnDefNode(
                 name, fn_ptr, nullptr, type_nodes, sizeof...(LiteralArgTypes),
                 false));
+        library()->AddExternalSymbol(name, fn_ptr);
         registry()->Register(type_args, cur_def_);
         return *this;
     }
@@ -1042,6 +1147,33 @@ class SimpleUDAFRegistryHelperImpl {
             dynamic_cast<node::ExternalFnDefNode*>(nm_->MakeExternalFnDefNode(
                 fname, fn_ptr, state_ty_, {}, -1, false));
         this->init_ = nm_->MakeFuncNode(fn, nm_->MakeExprList(), nullptr);
+        library_->AddExternalSymbol(fname, fn_ptr);
+        return *this;
+    }
+
+    SimpleUDAFRegistryHelperImpl& init(const std::string& fname,
+                                       const TypeAnnotatedFuncPtr& fn_ptr) {
+        node::TypeNode* ret_type = nullptr;
+        std::vector<node::TypeNode*> arg_types;
+        fn_ptr.get_type_func(nm_, &ret_type, &arg_types);
+
+        if (arg_types.size() != 0) {
+            LOG(WARNING) << "Illegal external init typed function '" << fname
+                         << "': 0 argument expected but get "
+                         << arg_types.size();
+            return *this;
+        }
+        if (!ret_type->Equals(state_ty_)) {
+            LOG(WARNING)
+                << "Illegal input type of external init typed function '"
+                << fname << "': expected " << state_ty_->GetName()
+                << " but get " << ret_type->GetName();
+            return *this;
+        }
+        auto fn_def = nm_->MakeExternalFnDefNode(fname, fn_ptr.ptr, state_ty_,
+                                                 {}, -1, fn_ptr.return_by_arg);
+        this->init_ = nm_->MakeFuncNode(fn_def, {}, nullptr);
+        library_->AddExternalSymbol(fname, fn_ptr.ptr);
         return *this;
     }
 
@@ -1082,6 +1214,42 @@ class SimpleUDAFRegistryHelperImpl {
             dynamic_cast<node::ExternalFnDefNode*>(nm_->MakeExternalFnDefNode(
                 fname, fn_ptr, state_ty_, {state_ty_, input_ty_}, -1, false));
         this->update_ = fn;
+        this->library_->AddExternalSymbol(fname, fn_ptr);
+        return *this;
+    }
+
+    SimpleUDAFRegistryHelperImpl& update(const std::string& fname,
+                                         const TypeAnnotatedFuncPtr& fn_ptr) {
+        node::TypeNode* ret_type = nullptr;
+        std::vector<node::TypeNode*> arg_types;
+        fn_ptr.get_type_func(nm_, &ret_type, &arg_types);
+
+        if (arg_types.size() != 2) {
+            LOG(WARNING) << "Illegal external update typed function '" << fname
+                         << "': 2 argument expected but get "
+                         << arg_types.size();
+            return *this;
+        }
+        if (!arg_types[0]->Equals(state_ty_) ||
+            !arg_types[1]->Equals(input_ty_)) {
+            LOG(WARNING) << "Illegal input argument types for "
+                         << "update typed function '" << fname << "', expect <"
+                         << state_ty_->GetName() << ", " << input_ty_->GetName()
+                         << "> but get <" << arg_types[0]->GetName() << " ,"
+                         << arg_types[1]->GetName() << ">";
+            return *this;
+        }
+        if (!ret_type->Equals(state_ty_)) {
+            LOG(WARNING)
+                << "Illegal return type of external update typed function '"
+                << fname << "': expected " << state_ty_->GetName()
+                << " but get " << ret_type->GetName();
+            return *this;
+        }
+        this->update_ = nm_->MakeExternalFnDefNode(fname, fn_ptr.ptr, state_ty_,
+                                                   {state_ty_, input_ty_}, -1,
+                                                   fn_ptr.return_by_arg);
+        this->library_->AddExternalSymbol(fname, fn_ptr.ptr);
         return *this;
     }
 
@@ -1099,6 +1267,7 @@ class SimpleUDAFRegistryHelperImpl {
             dynamic_cast<node::ExternalFnDefNode*>(nm_->MakeExternalFnDefNode(
                 fname, fn_ptr, state_ty_, {state_ty_, state_ty_}, -1, false));
         this->merge_ = fn;
+        this->library_->AddExternalSymbol(fname, fn_ptr);
         return *this;
     }
 
@@ -1116,6 +1285,40 @@ class SimpleUDAFRegistryHelperImpl {
             dynamic_cast<node::ExternalFnDefNode*>(nm_->MakeExternalFnDefNode(
                 fname, fn_ptr, output_ty_, {state_ty_}, -1, false));
         this->output_ = fn;
+        this->library_->AddExternalSymbol(fname, fn_ptr);
+        return *this;
+    }
+
+    SimpleUDAFRegistryHelperImpl& output(const std::string& fname,
+                                         const TypeAnnotatedFuncPtr& fn_ptr) {
+        node::TypeNode* ret_type = nullptr;
+        std::vector<node::TypeNode*> arg_types;
+        fn_ptr.get_type_func(nm_, &ret_type, &arg_types);
+
+        if (arg_types.size() != 1) {
+            LOG(WARNING) << "Illegal external output typed function '" << fname
+                         << "': 1 argument expected but get "
+                         << arg_types.size();
+            return *this;
+        }
+        if (!arg_types[0]->Equals(state_ty_)) {
+            LOG(WARNING) << "Illegal input argument types for "
+                         << "output typed function '" << fname << "', expect <"
+                         << state_ty_->GetName() << "> but get <"
+                         << arg_types[0]->GetName();
+            return *this;
+        }
+        if (!ret_type->Equals(output_ty_)) {
+            LOG(WARNING)
+                << "Illegal return type of external update typed function '"
+                << fname << "': expected " << state_ty_->GetName()
+                << " but get " << ret_type->GetName();
+            return *this;
+        }
+        this->output_ =
+            nm_->MakeExternalFnDefNode(fname, fn_ptr.ptr, output_ty_,
+                                       {state_ty_}, -1, fn_ptr.return_by_arg);
+        this->library_->AddExternalSymbol(fname, fn_ptr.ptr);
         return *this;
     }
 
@@ -1198,7 +1401,7 @@ class SimpleUDAFRegistryHelperImpl {
             }
             node::FnDefNode* res = nullptr;
             node::ExprAnalysisContext analysis_ctx(nm_, nullptr, false);
-            UDFResolveContext ctx(arg_list, nullptr, &analysis_ctx);
+            UDFResolveContext ctx(arg_list, nullptr, library_, &analysis_ctx);
             auto status = udf_registry->ResolveFunction(&ctx, &res);
             if (!status.isOK() || res == nullptr) {
                 LOG(WARNING) << status.msg;
