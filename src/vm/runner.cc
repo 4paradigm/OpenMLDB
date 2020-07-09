@@ -1624,6 +1624,9 @@ const std::string KeyGenerator::Gen(const Row& row) {
         std::string key = fn_schema_.Get(pos).type() == fesql::type::kDate
                               ? std::to_string(row_view_.GetDateUnsafe(pos))
                               : row_view_.GetAsString(pos);
+        if (key == "") {
+            key = codec::EMPTY_STRING;
+        }
         if (!keys.empty()) {
             keys.append("|");
         }
