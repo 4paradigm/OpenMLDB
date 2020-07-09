@@ -100,6 +100,10 @@ bool GetLLVMType(::llvm::Module* m, const ::fesql::node::DataType& type,
                          << "without generic types";
             return false;
         }
+        case node::kOpaque: {
+            *llvm_type = (::llvm::Type::getInt8PtrTy(m->getContext()));
+            return true;
+        }
         default: {
             LOG(WARNING) << "fail to convert fesql datatype to llvm type: ";
             return false;

@@ -301,6 +301,8 @@ inline const std::string DataTypeName(const DataType &type) {
             return "void";
         case fesql::node::kPlaceholder:
             return "placeholder";
+        case fesql::node::kOpaque:
+            return "opaque";
         default:
             return "unknown";
     }
@@ -327,7 +329,12 @@ inline const std::string FnNodeName(const SQLNodeType &type) {
     }
 }
 
-class SQLNode {
+class NodeBase {
+ public:
+    virtual ~NodeBase() {}
+};
+
+class SQLNode : public NodeBase {
  public:
     SQLNode(const SQLNodeType &type, uint32_t line_num, uint32_t location)
         : type_(type), line_num_(line_num), location_(location) {}
@@ -353,7 +360,7 @@ class SQLNode {
 
 typedef std::vector<SQLNode *> NodePointVector;
 
-class SQLNodeList {
+class SQLNodeList : public NodeBase {
  public:
     SQLNodeList() {}
     virtual ~SQLNodeList() {}
@@ -368,39 +375,7 @@ class SQLNodeList {
     std::vector<SQLNode *> list_;
 };
 
-class TypeNode : public SQLNode {
- public:
-    TypeNode() : SQLNode(node::kType, 0, 0), base_(fesql::node::kNull) {}
-    explicit TypeNode(fesql::node::DataType base)
-        : SQLNode(node::kType, 0, 0), base_(base), generics_({}) {}
-    explicit TypeNode(fesql::node::DataType base, TypeNode *v1)
-        : SQLNode(node::kType, 0, 0), base_(base), generics_({v1}) {}
-    explicit TypeNode(fesql::node::DataType base, fesql::node::TypeNode *v1,
-                      fesql::node::TypeNode *v2)
-        : SQLNode(node::kType, 0, 0), base_(base), generics_({v1, v2}) {}
-    ~TypeNode() {}
-    const std::string GetName() const {
-        std::string type_name = DataTypeName(base_);
-        if (!generics_.empty()) {
-            for (auto type : generics_) {
-                type_name.append("_");
-                type_name.append(type->GetName());
-            }
-        }
-        return type_name;
-    }
-
-    fesql::node::TypeNode *GetGenericType(size_t idx) const {
-        return generics_[idx];
-    }
-
-    size_t GetGenericSize() const { return generics_.size(); }
-
-    fesql::node::DataType base_;
-    std::vector<fesql::node::TypeNode *> generics_;
-    void Print(std::ostream &output, const std::string &org_tab) const override;
-    virtual bool Equals(const SQLNode *node) const;
-};
+class TypeNode;
 
 class ExprNode : public SQLNode {
  public:
@@ -1172,16 +1147,19 @@ class FnDefNode : public SQLNode {
 };
 class CastExprNode : public ExprNode {
  public:
-    explicit CastExprNode(const node::DataType cast_type,
-                          const node::ExprNode *expr)
-        : ExprNode(kExprCast), cast_type_(cast_type), expr_(expr) {}
+    explicit CastExprNode(const node::DataType cast_type, node::ExprNode *expr)
+        : ExprNode(kExprCast), cast_type_(cast_type) {
+        this->AddChild(expr);
+    }
 
     ~CastExprNode() {}
     void Print(std::ostream &output, const std::string &org_tab) const;
     const std::string GetExprString() const;
     virtual bool Equals(const ExprNode *that) const;
+    ExprNode *expr() const { return GetChild(0); }
     DataType cast_type_;
-    const node::ExprNode *expr_;
+
+    Status InferAttr(ExprAnalysisContext *ctx) override;
 };
 class CallExprNode : public ExprNode {
  public:
@@ -1267,6 +1245,8 @@ class ExprIdNode : public ExprNode {
     void Print(std::ostream &output, const std::string &org_tab) const override;
     const std::string GetExprString() const override;
     bool Equals(const ExprNode *node) const override;
+
+    Status InferAttr(ExprAnalysisContext *ctx) override;
 
  private:
     std::string name_;

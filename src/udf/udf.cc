@@ -92,27 +92,6 @@ int32_t weekofyear(codec::Date *date) {
     return d.week_number();
 }
 
-template <typename V>
-int64_t distinct_count(::fesql::codec::ListRef<> *list_ref) {
-    if (nullptr == list_ref) {
-        return 0L;
-    }
-    ListV<V> *col = (ListV<V> *)(list_ref->list);
-    auto iter = col->GetIterator();
-    int64_t cnt = 0;
-    iter->SeekToFirst();
-    std::set<V> value_set;
-    while (iter->Valid()) {
-        auto v = iter->GetValue();
-        if (value_set.find(v) == value_set.cend()) {
-            cnt++;
-            value_set.insert(v);
-        }
-        iter->Next();
-    }
-    return cnt;
-}
-
 template <class V>
 bool iterator_list(int8_t *input, int8_t *output) {
     if (nullptr == input || nullptr == output) {
@@ -254,28 +233,6 @@ void RegisterNativeUDFToModule(::llvm::Module *module) {
     auto iter_date_ty = nm.MakeTypeNode(node::kIterator, date_ty);
     auto iter_string_ty = nm.MakeTypeNode(node::kIterator, string_ty);
 
-    {
-        const std::string fn_name = "distinct_count";
-        RegisterMethod(module, fn_name, i64_ty, {list_i16_ty},
-                       reinterpret_cast<void *>(v1::distinct_count<int16_t>));
-        RegisterMethod(module, fn_name, i64_ty, {list_i32_ty},
-                       reinterpret_cast<void *>(v1::distinct_count<int32_t>));
-        RegisterMethod(module, fn_name, i64_ty, {list_i64_ty},
-                       reinterpret_cast<void *>(v1::distinct_count<int64_t>));
-        RegisterMethod(module, fn_name, i64_ty, {list_float_ty},
-                       reinterpret_cast<void *>(v1::distinct_count<float>));
-        RegisterMethod(module, fn_name, i64_ty, {list_double_ty},
-                       reinterpret_cast<void *>(v1::distinct_count<double>));
-        RegisterMethod(
-            module, fn_name, i64_ty, {list_time_ty},
-            reinterpret_cast<void *>(v1::distinct_count<codec::Timestamp>));
-        RegisterMethod(
-            module, fn_name, i64_ty, {list_date_ty},
-            reinterpret_cast<void *>(v1::distinct_count<codec::Date>));
-        RegisterMethod(
-            module, fn_name, i64_ty, {list_string_ty},
-            reinterpret_cast<void *>(v1::distinct_count<codec::StringRef>));
-    }
     RegisterMethod(module, "iterator", bool_ty, {list_i16_ty, iter_i16_ty},
                    reinterpret_cast<void *>(v1::iterator_list<int16_t>));
     RegisterMethod(module, "iterator", bool_ty, {list_i32_ty, iter_i32_ty},

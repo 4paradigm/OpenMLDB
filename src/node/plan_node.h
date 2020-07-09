@@ -22,7 +22,7 @@ namespace node {
 
 std::string NameOfPlanNodeType(const PlanType &type);
 
-class PlanNode {
+class PlanNode : public NodeBase {
  public:
     explicit PlanNode(PlanType type) : type_(type) {}
 

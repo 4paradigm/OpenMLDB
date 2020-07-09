@@ -468,11 +468,11 @@ void CastExprNode::Print(std::ostream &output,
     const std::string tab = org_tab + INDENT + SPACE_ED;
     PrintValue(output, tab, DataTypeName(cast_type_), "cast_type", false);
     output << "\n";
-    PrintSQLNode(output, tab, expr_, "expr", true);
+    PrintSQLNode(output, tab, expr(), "expr", true);
 }
 const std::string CastExprNode::GetExprString() const {
     std::string str = DataTypeName(cast_type_);
-    str.append("(").append(ExprString(expr_)).append(")");
+    str.append("(").append(ExprString(expr())).append(")");
     return str;
 }
 bool CastExprNode::Equals(const ExprNode *node) const {
@@ -484,7 +484,7 @@ bool CastExprNode::Equals(const ExprNode *node) const {
     }
     const CastExprNode *that = dynamic_cast<const CastExprNode *>(node);
     return this->cast_type_ == that->cast_type_ &&
-           ExprEquals(expr_, that->expr_);
+           ExprEquals(expr(), that->expr());
 }
 void CallExprNode::Print(std::ostream &output,
                          const std::string &org_tab) const {

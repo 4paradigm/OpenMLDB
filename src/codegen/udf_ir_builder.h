@@ -64,9 +64,12 @@ class UDFIRBuilder {
                            const std::vector<const node::TypeNode*>& arg_types,
                            ::llvm::FunctionCallee* callee, bool* return_by_arg);
 
-    Status BuildCallWithLLVMCallee(::llvm::FunctionCallee callee,
+    Status BuildCallWithLLVMCallee(const node::FnDefNode* fn,
+                                   ::llvm::FunctionCallee callee,
                                    const std::vector<llvm::Value*>& args,
                                    bool return_by_arg, ::llvm::Value** output);
+
+    static bool IsReturnByArg(node::TypeNode* type);
 
  private:
     ::llvm::BasicBlock* block_;

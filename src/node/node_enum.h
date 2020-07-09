@@ -123,6 +123,7 @@ enum DataType {
     kIterator,
     kInt8Ptr,
     kRow,
+    kOpaque,
     kVoid = 100,
     kNull = 101,
     kPlaceholder = 102

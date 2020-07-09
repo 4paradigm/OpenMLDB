@@ -23,6 +23,7 @@
 #include "codec/fe_row_codec.h"
 #include "node/node_enum.h"
 #include "node/sql_node.h"
+#include "node/type_node.h"
 
 namespace fesql {
 namespace codegen {

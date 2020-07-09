@@ -9,6 +9,7 @@
 #include "udf/udf_registry.h"
 #include <memory>
 #include <sstream>
+#include "vm/transform.h"
 
 namespace fesql {
 namespace udf {
@@ -25,6 +26,7 @@ Status CompositeRegistry::Transform(UDFResolveContext* ctx,
         auto status = registry->Transform(ctx, &cand);
         if (status.isOK()) {
             candidates.push_back(cand);
+            break;
         } else {
             errs.append("\n --> ").append(status.msg);
         }
@@ -77,11 +79,20 @@ Status ExprUDFRegistry::ResolveFunction(UDFResolveContext* ctx,
     CHECK_TRUE(ret_expr != nullptr && !ctx->HasError(),
                "Fail to create expr udf: ", ctx->GetError());
 
-    auto ret_stmt = nm->MakeReturnStmtNode(ret_expr);
+    vm::SchemaSourceList empty;
+    vm::SchemasContext empty_schema(empty);
+    vm::ResolveFnAndAttrs resolver(false, &empty_schema, nm, ctx->library());
+    node::ExprNode* new_ret_expr = nullptr;
+    auto status = resolver.Visit(ret_expr, &new_ret_expr);
+    if (!status.isOK()) {
+        LOG(WARNING) << status.msg;
+    }
+
+    auto ret_stmt = nm->MakeReturnStmtNode(new_ret_expr);
     auto body = nm->MakeFnListNode();
     body->AddChild(ret_stmt);
     auto header = nm->MakeFnHeaderNode(name(), func_header_param_list,
-                                       ret_expr->GetOutputType());
+                                       new_ret_expr->GetOutputType());
     auto fn_def = nm->MakeFnDefNode(header, body);
 
     *result = reinterpret_cast<node::FnDefNode*>(
