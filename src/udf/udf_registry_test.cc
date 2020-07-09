@@ -13,13 +13,13 @@
 namespace fesql {
 namespace udf {
 
-using fesql::node::ExprNode;
-using fesql::node::NodeManager;
-using fesql::node::TypeNode;
-
 using fesql::base::Status;
 using fesql::codegen::CodeGenContext;
 using fesql::codegen::NativeValue;
+using fesql::node::ExprAnalysisContext;
+using fesql::node::ExprNode;
+using fesql::node::NodeManager;
+using fesql::node::TypeNode;
 
 class UDFRegistryTest : public ::testing::Test {};
 
@@ -28,7 +28,7 @@ const node::FnDefNode* GetFnDef(const UDFLibrary& lib, const std::string& name,
                                 node::NodeManager* nm,
                                 const node::SQLNode* over = nullptr) {
     std::vector<node::TypeNode*> arg_types(
-        {ArgTypeTrait<LiteralArgTypes>::to_type_node(nm)...});
+        {DataTypeTrait<LiteralArgTypes>::to_type_node(nm)...});
     auto arg_list = reinterpret_cast<node::ExprListNode*>(nm->MakeExprList());
     for (size_t i = 0; i < arg_types.size(); ++i) {
         std::string arg_name = "arg_" + std::to_string(i);
@@ -37,7 +37,9 @@ const node::FnDefNode* GetFnDef(const UDFLibrary& lib, const std::string& name,
         arg_list->AddChild(expr);
     }
     node::ExprNode* transformed = nullptr;
-    auto status = lib.Transform(name, arg_list, over, nm, &transformed);
+    node::ExprAnalysisContext analysis_ctx(nm, nullptr, over != nullptr);
+    auto status =
+        lib.Transform(name, arg_list, over, &analysis_ctx, &transformed);
     if (!status.isOK()) {
         LOG(WARNING) << status.msg;
         return nullptr;
@@ -375,15 +377,15 @@ TEST_F(UDFRegistryTest, test_simple_udaf_register) {
         .finalize();
 
     fn_def = dynamic_cast<const node::UDAFDefNode*>(
-        GetFnDef<ListV<int32_t>>(library, "sum", &nm));
+        GetFnDef<codec::ListRef<int32_t>>(library, "sum", &nm));
     ASSERT_TRUE(fn_def != nullptr && fn_def->GetType() == node::kUDAFDef);
 
     fn_def = dynamic_cast<const node::UDAFDefNode*>(
-        GetFnDef<ListV<int32_t>>(library, "sum", &nm));
+        GetFnDef<codec::ListRef<int32_t>>(library, "sum", &nm));
     ASSERT_TRUE(fn_def != nullptr && fn_def->GetType() == node::kUDAFDef);
 
     fn_def = dynamic_cast<const node::UDAFDefNode*>(
-        GetFnDef<ListV<StringRef>>(library, "sum", &nm));
+        GetFnDef<codec::ListRef<StringRef>>(library, "sum", &nm));
     ASSERT_TRUE(fn_def == nullptr);
 }
 
@@ -396,8 +398,8 @@ TEST_F(UDFRegistryTest, test_codegen_udf_register) {
         .allow_window(false)
         .allow_project(true)
         .args<AnyArg, AnyArg>(
-            /* infer */ [](UDFResolveContext* ctx, TypeNode* x,
-                           TypeNode* y) { return x; },
+            /* infer */ [](UDFResolveContext* ctx, const TypeNode* x,
+                           const TypeNode* y) { return x; },
             /* gen */
             [](CodeGenContext* ctx, NativeValue x, NativeValue y,
                NativeValue* out) {

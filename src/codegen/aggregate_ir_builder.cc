@@ -51,20 +51,31 @@ bool AggregateIRBuilder::CollectAggColumn(const fesql::node::ExprNode* expr,
     switch (expr->expr_type_) {
         case node::kExprCall: {
             auto call = dynamic_cast<const node::CallExprNode*>(expr);
-            auto fn_def =
-                dynamic_cast<const node::ExternalFnDefNode*>(call->GetFnDef());
-            if (fn_def == nullptr) {
-                break;
+            std::string agg_func_name = "";
+            switch (call->GetFnDef()->GetType()) {
+                case node::kExternalFnDef: {
+                    agg_func_name =
+                        dynamic_cast<const node::ExternalFnDefNode*>(
+                            call->GetFnDef())
+                            ->function_name();
+                    break;
+                }
+                case node::kUDAFDef: {
+                    agg_func_name =
+                        dynamic_cast<const node::UDAFDefNode*>(call->GetFnDef())
+                            ->GetSimpleName();
+                    break;
+                }
+                default:
+                    break;
             }
-            auto agg_func_name = fn_def->function_name();
             if (!IsAggFuncName(agg_func_name)) {
                 break;
             }
-            auto args = call->GetArgs();
-            if (args->GetChildNum() != 1) {
+            if (call->GetChildNum() != 1) {
                 break;
             }
-            auto input_expr = args->GetChild(0);
+            auto input_expr = call->GetChild(0);
             if (input_expr->expr_type_ != node::kExprColumnRef) {
                 break;
             }
@@ -290,25 +301,29 @@ class StatisticalAggGenerator {
 
     void GenMinUpdate(size_t i, ::llvm::Value* input,
                       ::llvm::IRBuilder<>* builder) {
-        ::llvm::Module* module = builder->GetInsertBlock()->getModule();
         ::llvm::Value* accum = builder->CreateLoad(min_states_[i]);
         ::llvm::Type* min_ty = accum->getType();
-        ::llvm::FunctionCallee callee = module->getOrInsertFunction(
-            std::string("min_") + DataTypeName(col_type_), min_ty, min_ty,
-            min_ty);
-        ::llvm::Value* min = builder->CreateCall(callee, {accum, input});
+        ::llvm::Value* cmp;
+        if (min_ty->isIntegerTy()) {
+            cmp = builder->CreateICmpSLT(accum, input);
+        } else {
+            cmp = builder->CreateFCmpOLT(accum, input);
+        }
+        ::llvm::Value* min = builder->CreateSelect(cmp, accum, input);
         builder->CreateStore(min, min_states_[i]);
     }
 
     void GenMaxUpdate(size_t i, ::llvm::Value* input,
                       ::llvm::IRBuilder<>* builder) {
-        ::llvm::Module* module = builder->GetInsertBlock()->getModule();
         ::llvm::Value* accum = builder->CreateLoad(max_states_[i]);
         ::llvm::Type* max_ty = accum->getType();
-        ::llvm::FunctionCallee callee = module->getOrInsertFunction(
-            std::string("max_") + DataTypeName(col_type_), max_ty, max_ty,
-            max_ty);
-        ::llvm::Value* max = builder->CreateCall(callee, {accum, input});
+        ::llvm::Value* cmp;
+        if (max_ty->isIntegerTy()) {
+            cmp = builder->CreateICmpSLT(accum, input);
+        } else {
+            cmp = builder->CreateFCmpOLT(accum, input);
+        }
+        ::llvm::Value* max = builder->CreateSelect(cmp, input, accum);
         builder->CreateStore(max, max_states_[i]);
     }
 
@@ -473,7 +488,7 @@ bool ScheduleAggGenerators(
     // try best to find contiguous input cols of same type
     size_t idx = 0;
     int64_t cur_offset = -1;
-    node::DataType cur_col_type;
+    node::DataType cur_col_type = node::kNull;
     std::vector<std::string> agg_gen_col_seq;
 
     while (!agg_gen_col_seq.empty() || idx < col_keys.size()) {

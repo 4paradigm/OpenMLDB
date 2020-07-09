@@ -124,7 +124,8 @@ enum DataType {
     kInt8Ptr,
     kRow,
     kVoid = 100,
-    kNull = 101
+    kNull = 101,
+    kPlaceholder = 102
 };
 
 enum TimeUnit {

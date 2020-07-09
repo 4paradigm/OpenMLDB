@@ -251,11 +251,17 @@ const std::string ConstNode::GetExprString() const {
             return std::to_string(val_.vlong).append("m");
         case fesql::node::kSecond:
             return std::to_string(val_.vlong).append("s");
+        case fesql::node::kDate:
+            return "Date(" + std::to_string(val_.vlong) + ")";
+        case fesql::node::kTimestamp:
+            return "Timestamp(" + std::to_string(val_.vlong) + ")";
         case fesql::node::kNull:
             return "null";
             break;
         case fesql::node::kVoid:
             return "void";
+        case fesql::node::kPlaceholder:
+            return "placeholder";
         default:
             return "unknow";
     }
@@ -487,14 +493,23 @@ void CallExprNode::Print(std::ostream &output,
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << tab << "function_name: " << GetFnDef()->GetSimpleName();
     output << "\n";
-    PrintSQLNode(output, tab, args_, "args", false);
+    output << "args: ";
+    for (auto child : children_) {
+        output << child->GetExprString() << ", ";
+    }
     output << "\n";
     PrintSQLNode(output, tab, over_, "over", true);
 }
 const std::string CallExprNode::GetExprString() const {
     std::string str = GetFnDef()->GetSimpleName();
-    str.append(nullptr == args_ ? "()" : args_->GetExprString());
-
+    str.append("(");
+    for (size_t i = 0; i < children_.size(); ++i) {
+        str.append(children_[i]->GetExprString());
+        if (i < children_.size() - 1) {
+            str.append(", ");
+        }
+    }
+    str.append(")");
     if (nullptr != over_) {
         if (over_->GetName().empty()) {
             str.append("over ANONYMOUS_WINDOW ");
@@ -511,9 +526,16 @@ bool CallExprNode::Equals(const ExprNode *node) const {
     if (nullptr == node || expr_type_ != node->expr_type_) {
         return false;
     }
+    if (GetChildNum() != node->GetChildNum()) {
+        return false;
+    }
+    for (size_t i = 0; i < GetChildNum(); ++i) {
+        if (!ExprEquals(GetChild(i), node->GetChild(i))) {
+            return false;
+        }
+    }
     const CallExprNode *that = dynamic_cast<const CallExprNode *>(node);
     return FnDefEquals(this->GetFnDef(), that->GetFnDef()) &&
-           ExprEquals(this->args_, that->args_) &&
            SQLEquals(this->over_, that->over_) && ExprNode::Equals(node);
 }
 
@@ -1359,29 +1381,31 @@ bool ExternalFnDefNode::Equals(const SQLNode *node) const {
     return other != nullptr && other->function_name() == function_name();
 }
 
-bool ExternalFnDefNode::Validate(node::ExprListNode *args) const {
-    if (arg_types_.size() > args->GetChildNum()) {
+bool ExternalFnDefNode::Validate(
+    const std::vector<const TypeNode *> &actual_types) const {
+    size_t actual_arg_num = actual_types.size();
+    if (arg_types_.size() > actual_arg_num) {
         LOG(WARNING) << function_name() << " take at least "
                      << arg_types_.size() << " arguments, but get "
-                     << args->GetChildNum();
+                     << actual_arg_num;
         return false;
-    } else if (arg_types_.size() < args->GetChildNum() &&
+    } else if (arg_types_.size() < actual_arg_num &&
                variadic_pos_ != arg_types_.size()) {
         LOG(WARNING) << function_name() << " take explicit "
                      << arg_types_.size() << " arguments, but get "
-                     << args->GetChildNum();
+                     << actual_arg_num;
         return false;
     }
     for (size_t i = 0; i < arg_types_.size(); ++i) {
-        auto arg = args->GetChild(i);
-        if (arg->GetOutputType() == nullptr) {
+        auto actual_ty = actual_types[i];
+        if (actual_ty == nullptr) {
             LOG(WARNING) << function_name() << "'s " << i
                          << "th actual argument take unknown type";
             return false;
-        } else if (!arg_types_[i]->Equals(arg->GetOutputType())) {
+        } else if (!arg_types_[i]->Equals(actual_ty)) {
             LOG(WARNING) << function_name() << "'s " << i
                          << "th actual argument mismatch: get "
-                         << arg->GetOutputType()->GetName() << " but expect "
+                         << actual_ty->GetName() << " but expect "
                          << arg_types_[i]->GetName();
             return false;
         }

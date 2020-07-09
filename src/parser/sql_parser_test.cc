@@ -313,6 +313,63 @@ TEST_F(SqlParserTest, Parser_Insert_ALL_Stmt) {
                  "string");
 }
 
+TEST_F(SqlParserTest, Parser_Insert_All_Placeholder) {
+    const std::string sqlstr =
+        "insert into t1 values(?, ?, ?, ?);";
+    NodePointVector trees;
+    base::Status status;
+    int ret = parser_->parse(sqlstr.c_str(), trees, manager_, status);
+
+    if (0 != ret) {
+        std::cout << status.msg << std::endl;
+    }
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(1u, trees.size());
+    std::cout << *(trees.front()) << std::endl;
+    ASSERT_EQ(node::kInsertStmt, trees[0]->GetType());
+    node::InsertStmt *insert_stmt = dynamic_cast<node::InsertStmt *>(trees[0]);
+
+    ASSERT_EQ(true, insert_stmt->is_all_);
+    auto insert_value = insert_stmt->values_[0]->children_;
+
+    ASSERT_EQ(dynamic_cast<node::ConstNode *>(insert_value[0])->GetDataType(),
+              fesql::node::kPlaceholder);
+    ASSERT_EQ(dynamic_cast<node::ConstNode *>(insert_value[1])->GetDataType(),
+              fesql::node::kPlaceholder);
+    ASSERT_EQ(dynamic_cast<node::ConstNode *>(insert_value[2])->GetDataType(),
+              fesql::node::kPlaceholder);
+    ASSERT_EQ(dynamic_cast<node::ConstNode *>(insert_value[3])->GetDataType(),
+              fesql::node::kPlaceholder);
+}
+
+TEST_F(SqlParserTest, Parser_Insert_Part_Placeholder) {
+    const std::string sqlstr =
+        "insert into t1 values(1, ?, 3.1, ?);";
+    NodePointVector trees;
+    base::Status status;
+    int ret = parser_->parse(sqlstr.c_str(), trees, manager_, status);
+
+    if (0 != ret) {
+        std::cout << status.msg << std::endl;
+    }
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(1u, trees.size());
+    std::cout << *(trees.front()) << std::endl;
+    ASSERT_EQ(node::kInsertStmt, trees[0]->GetType());
+    node::InsertStmt *insert_stmt = dynamic_cast<node::InsertStmt *>(trees[0]);
+
+    ASSERT_EQ(true, insert_stmt->is_all_);
+    auto insert_value = insert_stmt->values_[0]->children_;
+
+    ASSERT_EQ(dynamic_cast<node::ConstNode *>(insert_value[0])->GetInt(), 1);
+    ASSERT_EQ(dynamic_cast<node::ConstNode *>(insert_value[1])->GetDataType(),
+              fesql::node::kPlaceholder);
+    ASSERT_EQ(dynamic_cast<node::ConstNode *>(insert_value[2])->GetDouble(),
+              3.1);
+    ASSERT_EQ(dynamic_cast<node::ConstNode *>(insert_value[3])->GetDataType(),
+              fesql::node::kPlaceholder);
+}
+
 TEST_F(SqlParserTest, Parser_Insert_Stmt) {
     const std::string sqlstr =
         "insert into t1(col1, c2, column3, item4) values(1, 2.3, 3.1, "

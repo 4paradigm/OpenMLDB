@@ -21,16 +21,7 @@ namespace udf {
 namespace v1 {
 
 template <class V>
-int64_t count_list(int8_t *input);
-
-template <class V>
-V sum_list(int8_t *input);
-template <class V>
 double avg_list(int8_t *input);
-template <class V>
-V max_list(int8_t *input);
-template <class V>
-V min_list(int8_t *input);
 
 template <class V>
 struct AtList {
@@ -48,12 +39,27 @@ struct AtStructList {
 };
 
 template <class V>
-bool iterator_list(int8_t *input, int8_t *output);
+struct Minimum {
+    V operator()(V l, V r) { return l < r ? l : r; }
+};
 
 template <class V>
-V minimum(V l, V r);
+struct Maximum {
+    V operator()(V l, V r) { return l > r ? l : r; }
+};
+
 template <class V>
-V maximum(V l, V r);
+struct StructMinimum {
+    V *operator()(V *l, V *r) { return *l < *r ? l : r; }
+};
+
+template <class V>
+struct StructMaximum {
+    V *operator()(V *l, V *r) { return *l > *r ? l : r; }
+};
+
+template <class V>
+bool iterator_list(int8_t *input, int8_t *output);
 
 template <class V>
 bool has_next(int8_t *input);
@@ -66,17 +72,11 @@ void delete_iterator(int8_t *input);
 
 template <class V>
 bool next_struct_iterator(int8_t *input, V *v);
-template <class V>
-bool sum_struct_list(int8_t *input, V *v);
-template <class V>
-bool avg_struct_list(int8_t *input, V *v);
-template <class V>
-bool max_strcut_list(int8_t *input, V *v);
-template <class V>
-bool min_struct_list(int8_t *input, V *v);
 
 template <class V>
-inline V inc(V i);
+struct IncOne {
+    V operator()(V i) { return i + 1; }
+};
 
 int32_t month(int64_t ts);
 int32_t month(fesql::codec::Timestamp *ts);

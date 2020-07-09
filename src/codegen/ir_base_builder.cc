@@ -376,6 +376,8 @@ bool GetFullType(::llvm::Type* type, ::fesql::node::TypeNode* type_node) {
         return false;
     }
     if (false == GetBaseType(type, &type_node->base_)) {
+        LOG(WARNING) << "Fail to get base type of "
+                     << GetLLVMObjectString(type);
         return false;
     }
 

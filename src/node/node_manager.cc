@@ -425,6 +425,10 @@ ExprNode *NodeManager::MakeConstNode() {
     ExprNode *node_ptr = new ConstNode();
     return RegisterNode(node_ptr);
 }
+ExprNode *NodeManager::MakeConstNode(DataType type) {
+    ExprNode *node_ptr = new ConstNode(type);
+    return RegisterNode(node_ptr);
+}
 ExprNode *NodeManager::MakeConstNodeINT16MAX() {
     return MakeConstNode(static_cast<int16_t>(INT16_MAX));
 }
@@ -454,6 +458,9 @@ ExprNode *NodeManager::MakeConstNodeFLOATMIN() {
 }
 ExprNode *NodeManager::MakeConstNodeDOUBLEMIN() {
     return MakeConstNode(static_cast<double>(DBL_MIN));
+}
+ExprNode *NodeManager::MakeConstNodePlaceHolder() {
+    return MakeConstNode(fesql::node::kPlaceholder);
 }
 ExprNode *NodeManager::MakeExprIdNode(const std::string &name) {
     ::fesql::node::ExprNode *id_node = new ::fesql::node::ExprIdNode(name);
@@ -1031,11 +1038,13 @@ ExprNode *NodeManager::MakeExprFrom(const node::ExprNode *expr,
         }
         case kExprCall: {
             auto expr_call = dynamic_cast<const CallExprNode *>(expr);
-            return MakeFuncNode(
-                expr_call->GetFnDef(),
-                dynamic_cast<node::ExprListNode *>(
-                    MakeExprFrom(expr_call->GetArgs(), relation_name, db_name)),
-                expr_call->GetOver());
+            node::ExprListNode empty;
+            for (size_t i = 0; i < expr_call->GetChildNum(); ++i) {
+                auto child = expr_call->GetChild(i);
+                empty.AddChild(MakeExprFrom(child, relation_name, db_name));
+            }
+            return MakeFuncNode(expr_call->GetFnDef(), &empty,
+                                expr_call->GetOver());
         }
 
         case kExprPrimary: {
@@ -1148,16 +1157,19 @@ node::SQLNode *NodeManager::MakeUDFDefNode(const FnNodeFnDef *def) {
 }
 
 node::SQLNode *NodeManager::MakeUDFByCodeGenDefNode(
-    const std::vector<node::TypeNode *> &arg_types, node::TypeNode *ret_type) {
+    const std::vector<const node::TypeNode *> &arg_types,
+    const node::TypeNode *ret_type) {
     return RegisterNode(new node::UDFByCodeGenDefNode(arg_types, ret_type));
 }
 
-node::SQLNode *NodeManager::MakeUDAFDefNode(const ExprNode *init,
+node::SQLNode *NodeManager::MakeUDAFDefNode(const std::string &name,
+                                            const TypeNode *input_type,
+                                            const ExprNode *init,
                                             const FnDefNode *update_func,
                                             const FnDefNode *merge_func,
                                             const FnDefNode *output_func) {
-    return RegisterNode(
-        new node::UDAFDefNode(init, update_func, merge_func, output_func));
+    return RegisterNode(new node::UDAFDefNode(
+        name, input_type, init, update_func, merge_func, output_func));
 }
 
 }  // namespace node

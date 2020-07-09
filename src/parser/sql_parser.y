@@ -275,6 +275,7 @@ typedef void* yyscan_t;
 %token NOT
 %token NO_WRITE_TO_BINLOG
 %token NULLX
+%token PLACEHOLDER
 %token NUMBER
 %token ON
 %token ONDUPLICATE
@@ -830,8 +831,13 @@ insert_expr_list:	insert_expr
 						$$->PushBack($3);
 					}
 					;
-insert_expr:	expr_const
+insert_expr:	expr_const 
+				| PLACEHOLDER
+				{
+						$$ = node_manager->MakeConstNodePlaceHolder();
+				}
 				;
+
 cmd_stmt:
 			CREATE GROUP group_name
 			{
@@ -1514,7 +1520,7 @@ expr_const:
     | DOUBLE_MIN {
     	$$ = node_manager->MakeConstNodeDOUBLEMIN();
     }
-  	;
+    ;
 
 sql_call_expr:
     function_name '(' '*' ')' over_clause

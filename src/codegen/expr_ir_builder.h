@@ -73,19 +73,6 @@ class ExprIRBuilder {
     bool BuildCallFnLegacy(const ::fesql::node::CallExprNode* fn,
                            NativeValue* output,
                            ::fesql::base::Status& status);  // NOLINT
-    Status BuildCallUDAF(const ::fesql::node::CallExprNode* fn,
-                         NativeValue* output);
-    Status BuildCallUDFByCodeGen(const ::fesql::node::CallExprNode* fn,
-                                 NativeValue* output);
-    Status ResolveLLVMFunction(const ::fesql::node::CallExprNode* fn,
-                               ::llvm::FunctionCallee* callsite,
-                               bool* return_by_arg);
-    Status ResolveLLVMUDFDef(const ::fesql::node::CallExprNode* fn,
-                             ::llvm::FunctionCallee* callsite,
-                             bool* return_by_arg);
-    Status ResolveLLVMExternalDef(const ::fesql::node::CallExprNode* fn,
-                                  ::llvm::FunctionCallee* callsite,
-                                  bool* return_by_arg);
 
     bool BuildCastExpr(const ::fesql::node::CastExprNode* node,
                        NativeValue* output,
