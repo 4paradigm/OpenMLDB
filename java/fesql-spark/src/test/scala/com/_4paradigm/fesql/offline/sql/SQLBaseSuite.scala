@@ -34,18 +34,25 @@ class SQLBaseSuite extends SparkTestSuite {
 
   def testCases(yamlPath: String) {
     val caseFile = loadYaml[CaseFile](yamlPath)
-    caseFile.getCases.asScala.filter(c => needFilter(c)).foreach(c => testCase(c))
+    val debugs = caseFile.getDebugs
+    caseFile.getCases.asScala.filter(c => needFilter(c)).filter(c => needDebug(c, debugs)).foreach(c => testCase(c))
   }
 
+  def needDebug(sqlCase: SQLCase, debugs: java.util.List[String]): Boolean = {
+    if (debugs == null || debugs.isEmpty)
+      true
+    else
+      debugs.contains(sqlCase.getDesc)
+  }
   def needFilter(sqlCase: SQLCase): Boolean = {
-    sqlCase.getMode != ("offline-unsupport") &&
+    sqlCase.getMode != ("offline-unsupport")&&
       (sqlCase.getTags == null || ((!sqlCase.getTags.asScala.contains("TODO")) && (!sqlCase.getTags.asScala.contains("todo"))))
   }
 
   def createSQLString(sql: String, inputNames: ListBuffer[(Int, String)]): String = {
     var new_sql = sql
     inputNames.foreach(item => {
-      new_sql = sql.replaceAll("\\{" + item._1 + "\\}", item._2)
+      new_sql = new_sql.replaceAll("\\{" + item._1 + "\\}", item._2)
     })
     new_sql
   }
@@ -63,6 +70,7 @@ class SQLBaseSuite extends SparkTestSuite {
         val (name, df) = loadInputData(desc, table_id)
         FesqlDataframe(spark, df).createOrReplaceTempView(name)
         inputNames += Tuple2[Int, String](table_id, name)
+        table_id += 1
       })
 
       val sql = createSQLString(sqlCase.getSql, inputNames)
@@ -235,7 +243,7 @@ class SQLBaseSuite extends SparkTestSuite {
 
   def parseData(rows: java.util.List[java.util.List[String]], schema: StructType): Array[Array[Any]] = {
 
-    val data = rows.asScala.map(_.asInstanceOf[java.util.List[Object]].asScala.map(_.toString()).toArray).toArray
+    val data = rows.asScala.map(_.asInstanceOf[java.util.List[Object]].asScala.map(x => if (null == x) "null" else x.toString()).toArray).toArray
     parseData(data, schema)
   }
 

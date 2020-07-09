@@ -507,7 +507,19 @@ INSTANTIATE_TEST_CASE_P(
     testing::ValuesIn(InitCases("/cases/integration/v1/test_last_join.yaml")));
 INSTANTIATE_TEST_CASE_P(
     EngineTestExpression, EngineTest,
-    testing::ValuesIn(InitCases("/cases/integration/v1/testExpression.yaml")));
+    testing::ValuesIn(InitCases("/cases/integration/v1/test_expression.yaml")));
+
+INSTANTIATE_TEST_CASE_P(EngineTestSelectSample, EngineTest,
+                        testing::ValuesIn(InitCases(
+                            "/cases/integration/v1/test_select_sample.yaml")));
+
+INSTANTIATE_TEST_CASE_P(
+    EngineTestSubSelect, EngineTest,
+    testing::ValuesIn(InitCases("/cases/integration/v1/test_sub_select.yaml")));
+
+INSTANTIATE_TEST_CASE_P(EngineTestUdafFunction, EngineTest,
+                        testing::ValuesIn(InitCases(
+                            "/cases/integration/v1/test_udaf_function.yaml")));
 
 TEST_P(EngineTest, test_request_engine) {
     ParamType sql_case = GetParam();

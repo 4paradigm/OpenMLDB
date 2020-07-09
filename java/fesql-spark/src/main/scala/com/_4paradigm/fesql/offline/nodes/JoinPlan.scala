@@ -44,17 +44,21 @@ object JoinPlan {
 
     // get left index
     val leftKeys = node.join().left_key().keys()
+    val leftKeysCnt = if (null == leftKeys) 0 else leftKeys.GetChildNum()
     val leftKeyCols = mutable.ArrayBuffer[Column]()
-    for (i <- 0 until leftKeys.GetChildNum()) {
-      val expr = leftKeys.GetChild(i)
-      val column = SparkColumnUtil.resolveLeftColumn(expr, node, leftDf, ctx)
-      leftKeyCols += column
+    if (null != leftKeys) {
+      for (i <- 0 until leftKeysCnt) {
+        val expr = leftKeys.GetChild(i)
+        val column = SparkColumnUtil.resolveLeftColumn(expr, node, leftDf, ctx)
+        leftKeyCols += column
+      }
     }
 
     // get right index
     val rightKeys = node.join().right_key().keys()
+    val rightKeysCnt = if (null == rightKeys) 0 else rightKeys.GetChildNum
     val rightKeyCols = mutable.ArrayBuffer[Column]()
-    for (i <- 0 until rightKeys.GetChildNum()) {
+    for (i <- 0 until rightKeysCnt) {
       val expr = rightKeys.GetChild(i)
       val column = SparkColumnUtil.resolveRightColumn(expr, node, rightDf, ctx)
       rightKeyCols += column
