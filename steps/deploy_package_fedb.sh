@@ -40,7 +40,7 @@ if [ $? -ne 0 ]; then
     echo "upload package failed"
     exit 1
 fi
-FILE_PYSDK=fedb-pysdk-$1.tar.gz
+FILE_PYSDK=fedb-pysdk-$VERSION.tar.gz
 
 sh -x steps/upload_to_pkg.sh $URL $FILE_PYSDK
 checkFile $CHECKURL $FILE_PYSDK
