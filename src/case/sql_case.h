@@ -50,8 +50,8 @@ class SQLCase {
     const std::string& batch_plan() const { return batch_plan_; }
     const std::string& sql_str() const { return sql_str_; }
     const bool standard_sql() const { return standard_sql_; }
-    const std::string& create_str() const { return create_str_; }
-    const std::string& insert_str() const { return insert_str_; }
+    const std::vector<std::string>& create_strs() const { return create_strs_; }
+    const std::vector<std::string>& insert_strs() const { return insert_strs_; }
     const std::string& db() const { return db_; }
     const std::vector<TableInfo>& inputs() const { return inputs_; }
     const ExpectInfo& expect() const { return expect_; }
@@ -66,6 +66,8 @@ class SQLCase {
     // name:type|name:type|name:type|
     bool ExtractInputTableDef(type::TableDef& table,  // NOLINT
                               int32_t input_idx = 0);
+    bool BuildCreateSQLFromInput(int32_t input_idx, std::string* sql);
+    bool BuildInsertSQLFromInput(int32_t input_idx, std::string* sql);
     bool ExtractOutputSchema(type::TableDef& table);             // NOLINT
     bool ExtractInputData(std::vector<fesql::codec::Row>& rows,  // NOLINT
                           int32_t input_idx = 0);
@@ -97,9 +99,16 @@ class SQLCase {
         const vm::Schema& schema,
         const std::vector<std::vector<std::string>>& row_vec,
         std::vector<fesql::codec::Row>& rows);  // NOLINT
-    static bool BuildInsertSQLFromRow(const type::TableDef& table,
-                                      const std::string& row_str,
-                                      std::string* create_sql);
+    static bool BuildInsertSQLFromData(const type::TableDef& table,
+                                       std::string data,
+                                       std::string* insert_sql);
+    static bool BuildInsertValueStringFromRow(
+        const type::TableDef& table, const std::vector<std::string>& item_vec,
+        std::string* create_sql);
+    static bool BuildInsertSQLFromRows(
+        const type::TableDef& table,
+        const std::vector<std::vector<std::string>>& rows,
+        std::string* insert_sql);
     static bool ExtractRow(const vm::Schema& schema, const std::string& row_str,
                            int8_t** out_ptr, int32_t* out_size);
     static bool ExtractRow(const vm::Schema& schema,
@@ -139,8 +148,8 @@ class SQLCase {
     std::string desc_;
     std::vector<std::string> tags_;
     std::string db_;
-    std::string create_str_;
-    std::string insert_str_;
+    std::vector<std::string> create_strs_;
+    std::vector<std::string> insert_strs_;
     std::string sql_str_;
     std::vector<std::string> sql_strs_;
     bool standard_sql_;

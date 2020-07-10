@@ -310,21 +310,62 @@ bool SQLCase::ExtractOutputData(std::vector<Row>& rows) {
     }
     return true;
 }
-bool SQLCase::BuildInsertSQLFromRow(const type::TableDef& table,
-                                    const std::string& row_str,
-                                    std::string* insert_sql) {
+bool SQLCase::BuildInsertSQLFromRows(
+    const type::TableDef& table,
+    const std::vector<std::vector<std::string>>& rows,
+    std::string* insert_sql) {
     std::string sql = "";
     sql.append("Insert into ").append(table.name()).append(" values(");
-    auto schema = table.columns();
-    std::vector<std::string> item_vec;
-    boost::split(item_vec, row_str, boost::is_any_of(","),
+
+    for (auto item_vec : rows) {
+        std::string values = "";
+        if (!BuildInsertValueStringFromRow(table, item_vec, &values)) {
+            return false;
+        }
+        sql.append("\n").append(values);
+    }
+    sql.append(");");
+    *insert_sql = sql;
+    return true;
+}
+bool SQLCase::BuildInsertSQLFromData(const type::TableDef& table,
+                                     std::string data,
+                                     std::string* insert_sql) {
+    std::string sql = "";
+    sql.append("Insert into ").append(table.name()).append(" values(");
+
+    std::vector<std::string> row_vec;
+
+    boost::trim(data);
+    boost::split(row_vec, data, boost::is_any_of("\n"),
                  boost::token_compress_on);
+
+    for (auto row_str : row_vec) {
+        std::string values = "";
+        std::vector<std::string> item_vec;
+        boost::split(item_vec, row_str, boost::is_any_of(","),
+                     boost::token_compress_on);
+        if (!BuildInsertValueStringFromRow(table, item_vec, &values)) {
+            LOG(WARNING) << "Fail to build insert sql from row: " << row_str;
+            return false;
+        }
+        sql.append("\n").append(values);
+    }
+    sql.append(");");
+    *insert_sql = sql;
+    return true;
+}
+
+bool SQLCase::BuildInsertValueStringFromRow(
+    const type::TableDef& table, const std::vector<std::string>& item_vec,
+    std::string* values) {
+    std::string sql = "";
+    auto schema = table.columns();
     if (item_vec.size() != static_cast<size_t>(schema.size())) {
-        LOG(WARNING) << "Invalid Row: Row doesn't match with schema : "
-                     << row_str;
+        LOG(WARNING) << "Invalid Row: Row doesn't match with schema : exp "
+                     << schema.size() << " but " << item_vec.size();
         return false;
     }
-
     auto it = schema.begin();
     uint32_t index = 0;
     for (; it != schema.end(); ++it) {
@@ -335,7 +376,8 @@ bool SQLCase::BuildInsertSQLFromRow(const type::TableDef& table,
         if (index > 0) {
             sql.append(", ");
         }
-        boost::trim(item_vec[index]);
+        auto item = item_vec[index];
+        boost::trim(item);
         switch (it->type()) {
             case type::kInt16:
             case type::kInt32:
@@ -343,11 +385,11 @@ bool SQLCase::BuildInsertSQLFromRow(const type::TableDef& table,
             case type::kFloat:
             case type::kDouble:
             case type::kTimestamp: {
-                sql.append(item_vec[index]);
+                sql.append(item);
                 break;
             }
             case type::kVarchar: {
-                sql.append("'").append(item_vec[index]).append("'");
+                sql.append("'").append(item).append("'");
                 break;
             }
             default: {
@@ -357,8 +399,7 @@ bool SQLCase::BuildInsertSQLFromRow(const type::TableDef& table,
         }
         index++;
     }
-    sql.append(")");
-    *insert_sql = sql;
+    *values = sql;
     return true;
 }
 bool SQLCase::ExtractRow(const vm::Schema& schema, const std::string& row_str,
@@ -551,6 +592,43 @@ bool SQLCase::ExtractInputTableDef(type::TableDef& table, int32_t input_idx) {
 
     table.set_catalog(db_);
     table.set_name(inputs_[input_idx].name_);
+    return true;
+}
+
+// Build Create SQL
+// schema + index --> create sql
+// columns + indexs --> create sql
+bool SQLCase::BuildCreateSQLFromInput(int32_t input_idx, std::string* sql) {
+    type::TableDef table;
+    if (!ExtractInputTableDef(table, input_idx)) {
+        LOG(WARNING) << "Fail to extract table schema";
+        return false;
+    }
+    if (!BuildCreateSQLFromSchema(table, sql)) {
+        LOG(WARNING) << "Fail to build create sql string";
+        return false;
+    }
+    return true;
+}
+
+bool SQLCase::BuildInsertSQLFromInput(int32_t input_idx, std::string* sql) {
+    type::TableDef table;
+    if (!ExtractInputTableDef(table, input_idx)) {
+        LOG(WARNING) << "Fail to extract table schema";
+        return false;
+    }
+
+    if (!inputs_[input_idx].data_.empty()) {
+        if (!BuildInsertSQLFromData(table, inputs_[input_idx].data_, sql)) {
+            LOG(WARNING) << "Fail to build create sql string";
+            return false;
+        }
+    } else if (!inputs_[input_idx].rows_.empty()) {
+        if (!BuildInsertSQLFromRows(table, inputs_[input_idx].rows_, sql)) {
+            LOG(WARNING) << "Fail to build create sql string";
+            return false;
+        }
+    }
     return true;
 }
 bool SQLCase::ExtractOutputSchema(type::TableDef& table) {
@@ -857,14 +935,18 @@ bool SQLCase::CreateSQLCasesFromYaml(
             sql_case.db_ = global_db;
         }
 
-        if (sql_case_node["create"]) {
-            sql_case.create_str_ = sql_case_node["create"].as<std::string>();
-            boost::trim(sql_case.create_str_);
+        if (sql_case_node["creates"]) {
+            if (!CreateStringListFromYamlNode(sql_case_node["creates"],
+                                              sql_case.create_strs_)) {
+                return false;
+            }
         }
 
-        if (sql_case_node["insert"]) {
-            sql_case.insert_str_ = sql_case_node["insert"].as<std::string>();
-            boost::trim(sql_case.insert_str_);
+        if (sql_case_node["inserts"]) {
+            if (!CreateStringListFromYamlNode(sql_case_node["inserts"],
+                                              sql_case.insert_strs_)) {
+                return false;
+            }
         }
 
         if (sql_case_node["sql"]) {

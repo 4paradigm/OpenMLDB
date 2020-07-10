@@ -38,8 +38,8 @@ static constexpr uint8_t VERSION_LENGTH = 2;
 static constexpr uint8_t SIZE_LENGTH = 4;
 static constexpr uint8_t HEADER_LENGTH = VERSION_LENGTH + SIZE_LENGTH;
 static constexpr uint32_t UINT24_MAX = (1 << 24) - 1;
-const std::string NONETOKEN = "!N@U#L$L%"; // NOLINT
-const std::string EMPTY_STRING = "!@#$%";  // NOLINT
+const std::string NONETOKEN = "!N@U#L$L%";  // NOLINT
+const std::string EMPTY_STRING = "!@#$%";   // NOLINT
 
 static const std::unordered_map<::fesql::type::Type, uint8_t> TYPE_SIZE_MAP = {
     {::fesql::type::kBool, sizeof(bool)},

@@ -2,7 +2,8 @@ cases:
   - id: 0
     desc: 简单INSERT
     db: db_1
-    create: |
+    creates:
+    - |
       create table t1 (
         col0 string not null,
         col1 int not null,
@@ -13,7 +14,8 @@ cases:
         col6 string not null,
         index(key=(col2), ts=col5)
         );
-    insert: insert into t1 values("hello", 1, 2, 3.3f, 4.4, 5L, "world");
+    inserts:
+      - insert into t1 values("hello", 1, 2, 3.3f, 4.4, 5L, "world");
     sql: select * from t1;
     output:
       schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
@@ -23,8 +25,9 @@ cases:
   - id: 1
     desc: 简单INSERT 多行
     db: db_1
-    create: |
-      create table t1 (
+    creates:
+      - |
+        create table t1 (
         col0 string not null,
         col1 int not null,
         col2 smallint not null,
@@ -34,10 +37,11 @@ cases:
         col6 string not null,
         index(key=(col2), ts=col5)
         );
-    insert: |
-      insert into t1 values
-      ("hello", 1, 2, 3.3, 4.4, 5, "world"),
-      ("hello", 11, 22, 33.3, 44.4, 55, "fesql");
+    inserts:
+      - |
+        insert into t1 values
+        ("hello", 1, 2, 3.3, 4.4, 5, "world"),
+        ("hello", 11, 22, 33.3, 44.4, 55, "fesql");
     sql: select * from t1;
     output:
       schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
@@ -49,17 +53,19 @@ cases:
   - id: 2
     desc: 简单INSERT timestamp
     db: db_1
-    create: |
-      create table t1 (
+    creates:
+      - |
+        create table t1 (
         col1 int not null,
         col5 bigint not null,
         std_ts timestamp not null,
         index(key=(col1), ts=col5)
         );
-    insert: |
-      insert into t1 values
-      (1, 10000L, 1590738987000L),
-      (2, 20000L, 1590738988000L);
+    inserts:
+      - |
+        insert into t1 values
+        (1, 10000L, 1590738987000L),
+        (2, 20000L, 1590738988000L);
     sql: select * from t1;
     output:
       schema: col1:int, col5:bigint, std_ts:timestamp
@@ -71,8 +77,9 @@ cases:
   - id: 3
     desc: insert 指定列,其他列默认为NULL
     db: db_1
-    create: |
-      create table t1 (
+    creates:
+      - |
+        create table t1 (
         col1 int not null,
         col2 smallint,
         col3 float,
@@ -82,10 +89,11 @@ cases:
         str string,
         index(key=(col1), ts=col5)
         );
-    insert: |
-      insert into t1(col1, col5, std_ts) values
-      (1, 10000L, 1590738987000L),
-      (2, 20000L, 1590738988000L);
+    inserts:
+      - |
+        insert into t1(col1, col5, std_ts) values
+        (1, 10000L, 1590738987000L),
+        (2, 20000L, 1590738988000L);
     sql: select * from t1;
     output:
       schema: col1:int, col2:int16, col3:float, col4:double, col5:bigint, std_ts:timestamp, str:string
@@ -96,8 +104,9 @@ cases:
   - id: 4
     desc: Insert date
     db: db_1
-    create: |
-      create table t1 (
+    creates:
+      - |
+        create table t1 (
         col1 int not null,
         col2 smallint,
         col3 float,
@@ -107,10 +116,11 @@ cases:
         str string,
         index(key=(col1), ts=col5)
         );
-    insert: |
-      insert into t1(col1, col5, std_date) values
-      (1, 10000L, '2020-05-27'),
-      (2, 20000L, '2020-05-28');
+    inserts:
+      - |
+        insert into t1(col1, col5, std_date) values
+        (1, 10000L, '2020-05-27'),
+        (2, 20000L, '2020-05-28');
     sql: select * from t1;
     output:
       schema: col1:int, col2:int16, col3:float, col4:double, col5:bigint, std_ts:date, str:string
@@ -121,8 +131,9 @@ cases:
   - id: 5
     desc: 简单INSERT NULL value
     db: db_1
-    create: |
-      create table t1 (
+    creates:
+      - |
+        create table t1 (
         col0 string not null,
         col1 int not null,
         col2 smallint not null,
@@ -132,7 +143,8 @@ cases:
         col6 string not null,
         index(key=(col2), ts=col5)
         );
-    insert: insert into t1 values("hello", 1, NULL, 3.3f, 4.4, 5L, "world");
+    inserts:
+      - insert into t1 values("hello", 1, NULL, 3.3f, 4.4, 5L, "world");
     sql: select * from t1;
     output:
       schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string

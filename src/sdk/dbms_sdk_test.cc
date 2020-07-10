@@ -687,20 +687,27 @@ TEST_P(DBMSSdkTest, ExecuteQueryTest) {
     {
         // create table db1
         std::string name = sql_case.db();
-        Status status;
-        dbms_sdk->ExecuteQuery(name, sql_case.create_str(), &status);
-        ASSERT_EQ(0, static_cast<int>(status.code));
+        for (auto create_str : sql_case.create_strs()) {
+            Status status;
+            LOG(INFO) << create_str;
+            dbms_sdk->ExecuteQuery(name, create_str, &status);
+            ASSERT_EQ(0, static_cast<int>(status.code));
+        }
     }
 
     {
         std::string name = sql_case.db();
-        Status status;
-        dbms_sdk->ExecuteQuery(name, sql_case.insert_str(), &status);
-        ASSERT_EQ(0, static_cast<int>(status.code));
+        for (auto insert_str : sql_case.insert_strs()) {
+            Status status;
+            LOG(INFO) << insert_str;
+            dbms_sdk->ExecuteQuery(name, insert_str, &status);
+            ASSERT_EQ(0, static_cast<int>(status.code));
+        }
     }
     {
         std::string name = sql_case.db();
         Status status;
+        LOG(INFO) << sql_case.sql_str();
         std::shared_ptr<ResultSet> rs =
             dbms_sdk->ExecuteQuery(name, sql_case.sql_str(), &status);
         ASSERT_EQ(0, static_cast<int>(status.code));

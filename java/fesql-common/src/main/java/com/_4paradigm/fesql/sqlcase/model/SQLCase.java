@@ -13,8 +13,8 @@ public class SQLCase {
     String sql;
     List<String> sqls;
     boolean standard_sql;
-    String create;
-    String insert;
+    List<String> creates;
+    List<String> inserts;
     List<String> tags;
     String batch_plan;
     String request_plan;

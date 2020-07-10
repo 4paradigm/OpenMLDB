@@ -253,16 +253,38 @@ TEST_F(SQLCaseTest, ExtractInsertSqlTest) {
     const std::string schema_str =
         "col0:string, col1:int32, col2:int16, col3:float, col4:double, "
         "col5:int64, col6:string, col7:timestamp";
-
-    std::string row_str = "0, 1, 5, 1.1, 11.1, 1, 1, 1587647803000\n";
     type::TableDef output_table;
     ASSERT_TRUE(SQLCase::ExtractSchema(schema_str, output_table));
-    std::string create_sql;
-    ASSERT_TRUE(
-        SQLCase::BuildInsertSQLFromRow(output_table, row_str, &create_sql));
-    ASSERT_EQ(
-        "Insert into  values('0', 1, 5, 1.1, 11.1, 1, '1', 1587647803000)",
-        create_sql);
+    {
+        std::string row_str =
+            "0, 1, 5, 1.1, 11.1, 1, 1, 1587647803000\n1, 10, 50, 10.1, 110.1, "
+            "11, "
+            "111, 1587647804000\n";
+        std::string create_sql;
+        ASSERT_TRUE(SQLCase::BuildInsertSQLFromData(output_table, row_str,
+                                                    &create_sql));
+        ASSERT_EQ(
+            "Insert into  values(\n'0', 1, 5, 1.1, 11.1, 1, '1', "
+            "1587647803000\n'1', 10, 50, 10.1, 110.1, 11, '111', "
+            "1587647804000);",
+            create_sql);
+    }
+
+    {
+        std::vector<std::vector<std::string>> rows;
+        rows.push_back(std::vector<std::string>{"0", "1", "5", "1.1", "11.1",
+                                                "1", "1", "1587647803000"});
+        rows.push_back(std::vector<std::string>{
+            "1", "10", "50", "10.1", "110.1", "11", "111", "1587647804000"});
+        std::string create_sql;
+        ASSERT_TRUE(
+            SQLCase::BuildInsertSQLFromRows(output_table, rows, &create_sql));
+        ASSERT_EQ(
+            "Insert into  values(\n'0', 1, 5, 1.1, 11.1, 1, '1', "
+            "1587647803000\n'1', 10, 50, 10.1, 110.1, 11, '111', "
+            "1587647804000);",
+            create_sql);
+    }
 }
 TEST_F(SQLCaseTest, ExtractRowTest) {
     const std::string schema_str =
@@ -725,15 +747,30 @@ TEST_F(SQLCaseTest, ExtractYamlSQLCase) {
         ASSERT_EQ(sql_case.id(), "4");
         ASSERT_EQ("简单INSERT", sql_case.desc());
         ASSERT_EQ(sql_case.db(), "test");
-        ASSERT_EQ(
-            sql_case.create_str(),
-            "create table t1 (\n  col0 string not null,\n  col1 int not "
-            "null,\n  col2 smallint not null,\n  col3 float not null,\n  col4 "
-            "double not null,\n  col5 bigint not null,\n  col6 string not "
-            "null,\n  index(name=index1, key=(col2), ts=col5)\n);");
-        ASSERT_EQ(sql_case.insert_str(),
+        ASSERT_EQ(2, sql_case.create_strs().size());
+        ASSERT_EQ(sql_case.create_strs()[0],
+                  "create table t1 (\n"
+                  "col0 string not null,\n"
+                  "col1 int not null,\n"
+                  "col2 smallint not null,\n"
+                  "col3 float not null,\n"
+                  "col4 double not null,\n"
+                  "col5 bigint not null,\n"
+                  "col6 string not null,\n"
+                  "index(name=index1, key=(col2), ts=col5)\n"
+                  ");\n");
+        ASSERT_EQ(sql_case.create_strs()[1],
+                  "create table t2 (\n"
+                  "c1 string not null,\n"
+                  "c2 bigint not null,\n"
+                  "index(name=index2, key=(c1), ts=c2)\n"
+                  ");\n");
+        ASSERT_EQ(2u, sql_case.insert_strs().size());
+        ASSERT_EQ(sql_case.insert_strs()[0],
                   "insert into t1 values(\"hello\", 1, 2, 3.3f, 4.4, 5L, "
                   "\"world\");");
+        ASSERT_EQ(sql_case.insert_strs()[1],
+                  "insert into t2 values(\"hello\", 1);");
         ASSERT_EQ(sql_case.expect().schema_,
                   "col0:string, col1:int32, col2:int16, col3:float, "
                   "col4:double, col5:int64, col6:string");
