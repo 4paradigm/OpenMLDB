@@ -172,4 +172,11 @@ class FesqlSession {
     sparkSession.toString()
   }
 
+  /**
+   * Stop the Spark session.
+   */
+  def stop(): Unit = {
+    sparkSession.stop()
+  }
+
 }

@@ -44,9 +44,11 @@
 #include "llvm/Transforms/Scalar/GVN.h"
 #include "parser/parser.h"
 #include "plan/planner.h"
+#include "udf/default_udf_library.h"
 #include "udf/udf.h"
 #include "vm/jit.h"
 #include "vm/sql_compiler.h"
+#include "vm/transform.h"
 
 using namespace llvm;       // NOLINT
 using namespace llvm::orc;  // NOLINT
@@ -95,8 +97,9 @@ void AddFunc(const std::string& fn, ::fesql::node::NodeManager* manager,
     FnIRBuilder fn_ir_builder(m);
     for (node::SQLNode* node : trees) {
         LOG(INFO) << "Add Func: " << *node;
-        bool ok =
-            fn_ir_builder.Build(dynamic_cast<node::FnNodeFnDef*>(node), status);
+        ::llvm::Function* func = nullptr;
+        bool ok = fn_ir_builder.Build(dynamic_cast<node::FnNodeFnDef*>(node),
+                                      &func, status);
         ASSERT_TRUE(ok);
     }
 }
@@ -110,12 +113,13 @@ void CheckFnLetBuilder(::fesql::node::NodeManager* manager,
     // Create an LLJIT instance.
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_project", *ctx);
-    ::fesql::udf::RegisterUDFToModule(m.get());
-    AddFunc(udf_str, manager, m.get());
     ::fesql::node::NodePointVector list;
     ::fesql::parser::FeSQLParser parser;
     ::fesql::base::Status status;
-
+    ::fesql::udf::RegisterUDFToModule(m.get());
+    udf::DefaultUDFLibrary lib;
+    AddFunc(udf_str, manager, m.get());
+    m->print(::llvm::errs(), NULL);
     int ret = parser.parse(sql, list, manager, status);
     ASSERT_EQ(0, ret);
     ASSERT_EQ(1u, list.size());
@@ -124,6 +128,10 @@ void CheckFnLetBuilder(::fesql::node::NodeManager* manager,
     ret = planner.CreatePlanTree(list, plan, status);
     ASSERT_EQ(0, ret);
     fesql::node::ProjectListNode* pp_node_ptr = GetPlanNodeList(plan);
+
+    bool is_multi_row = pp_node_ptr->GetW() != nullptr;
+    ASSERT_TRUE(vm::ResolveProjects(name_schemas, pp_node_ptr->GetProjects(),
+                                    !is_multi_row, manager, &lib, status));
 
     RowFnLetIRBuilder ir_builder(name_schemas,
                                  nullptr == pp_node_ptr->GetW()
@@ -140,7 +148,7 @@ void CheckFnLetBuilder(::fesql::node::NodeManager* manager,
     auto& jd = J->getMainJITDylib();
     ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
                                       J->getDataLayout());
-
+    lib.InitJITSymbols(J.get());
     ::fesql::vm::InitCodecSymbol(jd, mi);
     ::fesql::udf::InitUDFSymbol(jd, mi);
 

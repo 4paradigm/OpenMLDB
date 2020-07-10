@@ -31,7 +31,9 @@
 #include "node/node_manager.h"
 #include "parser/parser.h"
 #include "plan/planner.h"
+#include "udf/default_udf_library.h"
 #include "udf/udf.h"
+#include "vm/sql_compiler.h"
 #include "vm/test_base.h"
 #include "vm/transform.h"
 
@@ -49,7 +51,7 @@ void InitCases(std::string yaml_path, std::vector<SQLCase>& cases);  // NOLINT
 
 void InitCases(std::string yaml_path, std::vector<SQLCase>& cases) {  // NOLINT
     if (!SQLCase::CreateSQLCasesFromYaml(
-            fesql::sqlcase::FindFesqlDirPath() + "/" + yaml_path, cases,
+            fesql::sqlcase::FindFesqlDirPath(), yaml_path, cases,
             std::vector<std::string>({"physical-plan-unsupport",
                                       "plan-unsupport", "parser-unsupport"}))) {
         FAIL();
@@ -99,7 +101,9 @@ void PhysicalPlanCheck(const std::shared_ptr<tablet::TabletCatalog>& catalog,
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
     ::fesql::udf::RegisterUDFToModule(m.get());
-    RequestModeransformer transform(&manager, "db", catalog, m.get());
+    ::fesql::udf::DefaultUDFLibrary lib;
+    RequestModeransformer transform(&manager, "db", catalog, m.get(), &lib);
+
     transform.AddDefaultPasses();
     PhysicalOpNode* physical_plan = nullptr;
     ASSERT_TRUE(transform.TransformPhysicalPlan(plan_trees, &physical_plan,
@@ -120,13 +124,13 @@ INSTANTIATE_TEST_CASE_P(
     SqlWindowQueryParse, TransformRequestModeTest,
     testing::ValuesIn(InitCases("cases/plan/window_query.yaml")));
 
-INSTANTIATE_TEST_CASE_P(
-    SqlWherePlan, TransformRequestModeTest,
-    testing::ValuesIn(InitCases("cases/plan/where_query.yaml")));
+// INSTANTIATE_TEST_CASE_P(
+//    SqlWherePlan, TransformRequestModeTest,
+//    testing::ValuesIn(InitCases("cases/plan/where_query.yaml")));
 
-INSTANTIATE_TEST_CASE_P(
-    SqlGroupPlan, TransformRequestModeTest,
-    testing::ValuesIn(InitCases("cases/plan/group_query.yaml")));
+// INSTANTIATE_TEST_CASE_P(
+//   SqlGroupPlan, TransformRequestModeTest,
+//    testing::ValuesIn(InitCases("cases/plan/group_query.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
     SqlHavingPlan, TransformRequestModeTest,
@@ -244,7 +248,9 @@ TEST_P(TransformRequestModeTest, transform_physical_plan) {
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
     ::fesql::udf::RegisterUDFToModule(m.get());
-    RequestModeransformer transform(&manager, "db", catalog, m.get());
+    ::fesql::udf::DefaultUDFLibrary lib;
+    RequestModeransformer transform(&manager, "db", catalog, m.get(), &lib);
+
     PhysicalOpNode* physical_plan = nullptr;
     ASSERT_TRUE(transform.TransformPhysicalPlan(plan_trees, &physical_plan,
                                                 base_status));

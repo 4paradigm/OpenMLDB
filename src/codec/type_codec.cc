@@ -18,10 +18,10 @@
 #include "codec/type_codec.h"
 #include <string>
 #include <utility>
-#include "codec/list_iterator_codec.h"
-#include "codec/fe_row_codec.h"
-#include "glog/logging.h"
 #include "base/raw_buffer.h"
+#include "codec/fe_row_codec.h"
+#include "codec/list_iterator_codec.h"
+#include "glog/logging.h"
 #include "proto/fe_type.pb.h"
 
 namespace fesql {
@@ -31,8 +31,7 @@ namespace v1 {
 using fesql::codec::ListV;
 using fesql::codec::Row;
 
-int32_t GetStrField(const int8_t* row, uint32_t idx,
-                    uint32_t str_field_offset,
+int32_t GetStrField(const int8_t* row, uint32_t idx, uint32_t str_field_offset,
                     uint32_t next_str_field_offset, uint32_t str_start_offset,
                     uint32_t addr_space, int8_t** data, uint32_t* size,
                     int8_t* is_null) {
@@ -41,16 +40,15 @@ int32_t GetStrField(const int8_t* row, uint32_t idx,
         return 0;
     } else {
         *is_null = false;
-        return GetStrFieldUnsafe(row, str_field_offset,
-            next_str_field_offset, str_start_offset,
-            addr_space, data, size);
+        return GetStrFieldUnsafe(row, str_field_offset, next_str_field_offset,
+                                 str_start_offset, addr_space, data, size);
     }
 }
 
 int32_t GetStrFieldUnsafe(const int8_t* row, uint32_t field_offset,
                           uint32_t next_str_field_offset,
-                          uint32_t str_start_offset,
-                          uint32_t addr_space, int8_t** data, uint32_t* size) {
+                          uint32_t str_start_offset, uint32_t addr_space,
+                          int8_t** data, uint32_t* size) {
     if (row == NULL || data == NULL || size == NULL) return -1;
     const int8_t* row_with_offset = row + str_start_offset;
     uint32_t str_offset = 0;
@@ -117,18 +115,15 @@ int32_t GetStrFieldUnsafe(const int8_t* row, uint32_t field_offset,
     return 0;
 }
 
-
 int32_t AppendString(int8_t* buf_ptr, uint32_t buf_size, uint32_t col_idx,
                      int8_t* val, uint32_t size, int8_t is_null,
-                     uint32_t str_start_offset,
-                     uint32_t str_field_offset, uint32_t str_addr_space,
-                     uint32_t str_body_offset) {
+                     uint32_t str_start_offset, uint32_t str_field_offset,
+                     uint32_t str_addr_space, uint32_t str_body_offset) {
     if (is_null) {
         AppendNullBit(buf_ptr, col_idx, true);
         size_t str_addr_length = GetAddrLength(buf_size);
-        FillNullStringOffset(
-            buf_ptr, str_start_offset, str_addr_length,
-            str_field_offset, str_body_offset);
+        FillNullStringOffset(buf_ptr, str_start_offset, str_addr_length,
+                             str_field_offset, str_body_offset);
         return str_body_offset;
     }
 
@@ -174,9 +169,8 @@ int32_t AppendString(int8_t* buf_ptr, uint32_t buf_size, uint32_t col_idx,
 }
 
 int32_t GetStrCol(int8_t* input, int32_t row_idx, uint32_t col_idx,
-                  int32_t str_field_offset,
-                  int32_t next_str_field_offset, int32_t str_start_offset,
-                  int32_t type_id, int8_t* data) {
+                  int32_t str_field_offset, int32_t next_str_field_offset,
+                  int32_t str_start_offset, int32_t type_id, int8_t* data) {
     if (nullptr == input || nullptr == data) {
         return -2;
     }
@@ -197,9 +191,8 @@ int32_t GetStrCol(int8_t* input, int32_t row_idx, uint32_t col_idx,
     return 0;
 }
 
-int32_t GetCol(int8_t* input, int32_t row_idx,
-               uint32_t col_idx, int32_t offset, int32_t type_id,
-               int8_t* data) {
+int32_t GetCol(int8_t* input, int32_t row_idx, uint32_t col_idx, int32_t offset,
+               int32_t type_id, int8_t* data) {
     fesql::type::Type type = static_cast<fesql::type::Type>(type_id);
     if (nullptr == input || nullptr == data) {
         return -2;
@@ -227,13 +220,12 @@ int32_t GetCol(int8_t* input, int32_t row_idx,
             break;
         }
         case fesql::type::kTimestamp: {
-            new (data) ColumnImpl<codec::Timestamp>(
-                w, row_idx, col_idx, offset);
+            new (data)
+                ColumnImpl<codec::Timestamp>(w, row_idx, col_idx, offset);
             break;
         }
         case fesql::type::kDate: {
-            new (data) ColumnImpl<codec::Date>(
-                w, row_idx, col_idx, offset);
+            new (data) ColumnImpl<codec::Date>(w, row_idx, col_idx, offset);
             break;
         }
         default: {

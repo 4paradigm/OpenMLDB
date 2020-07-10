@@ -20,7 +20,6 @@
 #include "node/sql_node.h"
 #include "parser/parser.h"
 #include "proto/fe_type.pb.h"
-DECLARE_bool(enable_window_merge_opt);
 namespace fesql {
 namespace plan {
 
@@ -33,45 +32,26 @@ using node::SQLNode;
 class Planner {
  public:
     Planner(node::NodeManager *manager, const bool is_batch_mode)
-        : is_batch_mode_(is_batch_mode),
-          window_merge_enable_(false),
-          node_manager_(manager) {
-        if (FLAGS_enable_window_merge_opt) {
-            window_merge_enable_ = true;
-        } else {
-            window_merge_enable_ = false;
-        }
-        const char *env_name = "ENABLE_WINDOW_MERGE_OPT";
-        char *value = getenv(env_name);
-        if (value != nullptr && strcmp(value, "false") == 0) {
-            window_merge_enable_ = false;
-        }
-        if (window_merge_enable_) {
-            LOG(INFO) << "Multi window merge opt is enable";
-        } else {
-            LOG(INFO) << "Multi window merge opt is disable";
-        }
-    }
+        : is_batch_mode_(is_batch_mode), node_manager_(manager) {}
     virtual ~Planner() {}
     virtual int CreatePlanTree(
         const NodePointVector &parser_trees,
         PlanNodeList &plan_trees,  // NOLINT (runtime/references)
         Status &status) = 0;       // NOLINT (runtime/references)
-    static const bool IsWindowMergeOptimizedEnable();
-    void set_window_merge_enable(bool flag) { window_merge_enable_ = flag; }
-    const bool window_merge_enable() const { return window_merge_enable_; }
     bool MergeWindows(const std::map<const node::WindowDefNode *,
                                      node::ProjectListNode *> &map,
                       std::vector<const node::WindowDefNode *> *windows);
     bool ExpandCurrentHistoryWindow(
         std::vector<const node::WindowDefNode *> *windows);
     const bool is_batch_mode_;
-    bool window_merge_enable_;
 
  protected:
+    bool IsTable(node::PlanNode *node);
     bool ValidatePrimaryPath(
         node::PlanNode *node, node::PlanNode **output,
         base::Status &status);  // NOLINT (runtime/references)
+    bool CheckWindowFrame(const node::WindowDefNode *w_ptr,
+                          base::Status &status);  // NOLINT (runtime/references)
     void CreatePlanRecurse(const node::SQLNode *root, PlanNode *plan_tree,
                            Status &status);  // NOLINT (runtime/references)
     bool CreateQueryPlan(const node::QueryNode *root, PlanNode **plan_tree,

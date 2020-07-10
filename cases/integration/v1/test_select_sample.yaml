@@ -1,0 +1,195 @@
+db: test_zw
+debugs: []
+cases:
+  - id: 1
+    desc: 查询所有列
+    inputs:
+      - columns: ["c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - ["aa",2,3,1.1,2.1,1590738989000,"2020-05-01"]
+    sql: select c1,c3,c4,c5,c6,c7,c8 from {0};
+    expect:
+      columns: ["c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+      rows:
+        - ["aa",2,3,1.1,2.1,1590738989000,"2020-05-01"]
+  - id: 2
+    desc: 查询部分列
+    inputs:
+      - columns: ["c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - ["aa",2,3,1.1,2.1,1590738989000,"2020-05-01"]
+    sql: select c1,c3,c4 from {0};
+    expect:
+      columns: ["c1 string","c3 int","c4 bigint"]
+      rows:
+        - ["aa",2,3]
+  - id: 3
+    desc: 查询*
+    inputs:
+      - columns: ["c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - ["aa",2,3,1.1,2.1,1590738989000,"2020-05-01"]
+    sql: select * from {0};
+    expect:
+      columns: ["c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+      rows:
+        - ["aa",2,3,1.1,2.1,1590738989000,"2020-05-01"]
+  - id: 4
+    desc: 查询列中部分重命名
+    inputs:
+      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,3,1590738989000]
+    sql: select c1 as name,c2,c3,c4 from {0};
+    expect:
+      columns: ["name string","c2 int","c3 bigint","c4 timestamp"]
+      rows:
+        - ["aa",2,3,1590738989000]
+  - id: 5
+    desc: 查询列中全部重命名
+    inputs:
+      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,3,1590738989000]
+    sql: select c1 as name,c2 as v2,c3 as v3 ,c4 as v4 from {0};
+    expect:
+      columns: ["name string","v2 int","v3 bigint","v4 timestamp"]
+      rows:
+        - ["aa",2,3,1590738989000]
+  - id: 6
+    desc: 查询的列部分带表名
+    inputs:
+      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,3,1590738989000]
+    sql: select c1 as name,{0}.c2,c3,c4 from {0};
+    expect:
+      columns: ["name string","c2 int","c3 bigint","c4 timestamp"]
+      rows:
+        - ["aa",2,3,1590738989000]
+  - id: 7
+    desc: 查询的表不存在
+    inputs:
+      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,3,1590738989000]
+    sql: select c1,c2,c3,c4 from {0}1;
+    expect:
+      success: false
+  - id: 8
+    desc: 查询的列不存在
+    inputs:
+      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,3,1590738989000]
+    sql: select c1,c2,c3,c5 from {0};
+    expect:
+      success: false
+  - id: 9
+    desc: 查询的数据中有空串
+    inputs:
+      - columns: ["c1 string","c2 int","c3 string","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["",2,"",1590738989000]
+    sql: select c1,c2,c3,c4 from {0};
+    expect:
+      columns: ["c1 string","c2 int","c3 string","c4 timestamp"]
+      rows:
+        - ["",2,"",1590738989000]
+  - id: 10
+    desc: 查询的数据中有null
+    inputs:
+      - columns: ["c1 string","c2 int","c3 string","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["NULL",2,"NULL",1590738989000]
+    sql: select c1,c2,c3,c4 from {0};
+    expect:
+      columns: ["c1 string","c2 int","c3 string","c4 timestamp"]
+      rows:
+        - [NULL,2,NULL,1590738989000]
+  - id: 11
+    desc: 结合limit
+    tags: ["TODO", "@zhaowei"]
+    inputs:
+      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,3,1590738989000]
+          - ["bb",21,31,1590738990000]
+          - ["cc",41,51,1590738991000]
+    sql: select c1,c2,c3,c4 from {0} limit 2;
+    expect:
+      rows:
+        - ["aa",2,3,1590738989000]
+        - ["cc",41,51,1590738991000]
+  - id: 11
+    desc: limit 1
+    tags: ["TODO", "@zhaowei"]
+    inputs:
+      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,3,1590738989000]
+          - ["bb",21,31,1590738990000]
+          - ["cc",41,51,1590738991000]
+    sql: select c1,c2,c3,c4 from {0} limit 1;
+    expect:
+      rows:
+        - ["aa",2,3,1590738989000]
+  - id: 12
+    desc: limit 0
+    inputs:
+      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,3,1590738989000]
+          - ["bb",21,31,1590738990000]
+          - ["cc",41,51,1590738991000]
+    sql: select c1,c2,c3,c4 from {0} limit 0;
+    expect:
+      columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+      order: c1
+      rows:
+        - ["aa",2,3,1590738989000]
+        - ["bb",21,31,1590738990000]
+        - ["cc",41,51,1590738991000]
+  - id: 13
+    desc: limit条数大于表的条数
+    tags: ["TODO","@zhaoweiLIMIT单独测，现在先别测"]
+    inputs:
+      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,3,1590738989000]
+          - ["bb",21,31,1590738990000]
+          - ["cc",41,51,1590738991000]
+    sql: select c1,c2,c3,c4 from {0} limit 4;
+    expect:
+      columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+      order: c1
+      rows:
+        - ["aa",2,3,1590738989000]
+        - ["bb",21,31,1590738990000]
+        - ["cc",41,51,1590738991000]
+  - id: 14
+    desc: 查询常量
+    inputs:
+      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,3,1590738989000]
+    sql: select c1 as name,c2,c3,c4,1 from {0};
+    expect:
+      columns: ["name string","c2 int","c3 bigint","c4 timestamp","1 int"]
+      rows:
+        - ["aa",2,3,1590738989000,1]

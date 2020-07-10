@@ -59,9 +59,7 @@ class BatchTableHandler : public vm::TableHandler {
     virtual std::unique_ptr<RowIterator> GetIterator() const {
         return std::unique_ptr<RowIterator>();
     }
-    virtual RowIterator* GetIterator(int8_t* addr) const {
-        return nullptr;
-    }
+    virtual RowIterator* GetIterator(int8_t* addr) const { return nullptr; }
     std::unique_ptr<vm::WindowIterator> GetWindowIterator(
         const std::string& idx_name) override {
         return std::unique_ptr<vm::WindowIterator>();

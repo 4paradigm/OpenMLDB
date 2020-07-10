@@ -100,6 +100,8 @@ TEST_F(JITTest, test_release_module) {
     }
 }
 
+static int32_t inc_for_test(int32_t x) { return x + 1; }
+
 TEST_F(JITTest, test_udf_invoke_module) {
     auto jit = FeCheck((FeSQLJITBuilder().create()));
     ::llvm::orc::JITDylib &jd = jit->createJITDylib("test");
@@ -134,7 +136,7 @@ TEST_F(JITTest, test_udf_invoke_module) {
             ASSERT_TRUE(false);
         }
         jit->AddSymbol(jd, "inc.int32",
-                       reinterpret_cast<void *>(&fesql::udf::v1::inc<int32_t>));
+                       reinterpret_cast<void *>(&inc_for_test));
         auto Add1Sym = FeCheck((jit->lookup(jd, "add1")));
         jit->getExecutionSession().dump(::llvm::errs());
         Add1 = (int (*)(int))Add1Sym.getAddress();

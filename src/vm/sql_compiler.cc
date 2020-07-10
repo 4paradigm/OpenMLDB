@@ -19,20 +19,24 @@
 #include <memory>
 #include <utility>
 #include <vector>
+#include "boost/filesystem.hpp"
+#include "boost/filesystem/string_file.hpp"
 #include "codec/fe_schema_codec.h"
 #include "codec/type_codec.h"
+#include "codegen/block_ir_builder.h"
+#include "codegen/fn_ir_builder.h"
 #include "codegen/ir_base_builder.h"
 #include "glog/logging.h"
-#include "llvm/IR/Verifier.h"
-#include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvm/Bitcode/BitcodeReader.h"
+#include "llvm/Bitcode/BitcodeWriter.h"
+#include "llvm/IR/Verifier.h"
 #include "llvm/Support/raw_ostream.h"
 #include "parser/parser.h"
 #include "plan/planner.h"
+#include "udf/default_udf_library.h"
 #include "udf/udf.h"
 #include "vm/runner.h"
 #include "vm/transform.h"
-
 namespace fesql {
 namespace vm {
 
@@ -48,37 +52,33 @@ void InitCodecSymbol(::llvm::orc::JITDylib& jd,             // NOLINT
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_get_int16_field",
         reinterpret_cast<void*>(
-            static_cast<int16_t(*)(
-                const int8_t*, uint32_t, uint32_t, int8_t*)>(
-                &codec::v1::GetInt16Field)));
+            static_cast<int16_t (*)(const int8_t*, uint32_t, uint32_t,
+                                    int8_t*)>(&codec::v1::GetInt16Field)));
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_get_int32_field",
         reinterpret_cast<void*>(
-            static_cast<int32_t(*)(
-                const int8_t*, uint32_t, uint32_t, int8_t*)>(
-                &codec::v1::GetInt32Field)));
+            static_cast<int32_t (*)(const int8_t*, uint32_t, uint32_t,
+                                    int8_t*)>(&codec::v1::GetInt32Field)));
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_get_int64_field",
         reinterpret_cast<void*>(
-            static_cast<int64_t(*)(
-                const int8_t*, uint32_t, uint32_t, int8_t*)>(
-                &codec::v1::GetInt64Field)));
+            static_cast<int64_t (*)(const int8_t*, uint32_t, uint32_t,
+                                    int8_t*)>(&codec::v1::GetInt64Field)));
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_get_float_field",
-        reinterpret_cast<void*>(static_cast<float(*)(
-            const int8_t*, uint32_t, uint32_t, int8_t*)>(
-            &codec::v1::GetFloatField)));
+        reinterpret_cast<void*>(
+            static_cast<float (*)(const int8_t*, uint32_t, uint32_t, int8_t*)>(
+                &codec::v1::GetFloatField)));
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_get_double_field",
         reinterpret_cast<void*>(
-            static_cast<double(*)(
-                const int8_t*, uint32_t, uint32_t, int8_t*)>(
+            static_cast<double (*)(const int8_t*, uint32_t, uint32_t, int8_t*)>(
                 &codec::v1::GetDoubleField)));
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_get_timestamp_field",
         reinterpret_cast<void*>(
-            static_cast<codec::Timestamp(*)(
-                const int8_t*, uint32_t, uint32_t, int8_t*)>(
+            static_cast<codec::Timestamp (*)(const int8_t*, uint32_t, uint32_t,
+                                             int8_t*)>(
                 &codec::v1::GetTimestampField)));
 
     fesql::vm::FeSQLJIT::AddSymbol(
@@ -87,10 +87,9 @@ void InitCodecSymbol(::llvm::orc::JITDylib& jd,             // NOLINT
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_get_str_field",
         reinterpret_cast<void*>(
-            static_cast<int32_t(*)(
-                const int8_t*, uint32_t, uint32_t, uint32_t, uint32_t,
-                      uint32_t, int8_t**, uint32_t*, int8_t*)>(
-                &codec::v1::GetStrField)));
+            static_cast<int32_t (*)(const int8_t*, uint32_t, uint32_t, uint32_t,
+                                    uint32_t, uint32_t, int8_t**, uint32_t*,
+                                    int8_t*)>(&codec::v1::GetStrField)));
     fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "fesql_storage_get_col",
                                    reinterpret_cast<void*>(&codec::v1::GetCol));
     fesql::vm::FeSQLJIT::AddSymbol(
@@ -173,6 +172,85 @@ SQLCompiler::SQLCompiler(const std::shared_ptr<Catalog>& cl, bool keep_ir,
 
 SQLCompiler::~SQLCompiler() {}
 
+bool GetLibsFiles(const std::string& dir_path,
+                  std::vector<std::string>& filenames,  // NOLINT
+                  Status& status) {                     // NOLINT
+    boost::filesystem::path path(dir_path);
+    if (!boost::filesystem::exists(path)) {
+        status.msg = "Libs path " + dir_path + " not exist";
+        status.code = common::kSQLError;
+        return false;
+    }
+    boost::filesystem::directory_iterator end_iter;
+    for (boost::filesystem::directory_iterator iter(path); iter != end_iter;
+         ++iter) {
+        if (boost::filesystem::is_regular_file(iter->status())) {
+            filenames.push_back(iter->path().string());
+        }
+
+        if (boost::filesystem::is_directory(iter->status())) {
+            if (!GetLibsFiles(iter->path().string(), filenames, status)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+const std::string FindFesqlDirPath() {
+    boost::filesystem::path current_path(boost::filesystem::current_path());
+    boost::filesystem::path fesql_path;
+
+    while (current_path.has_parent_path()) {
+        current_path = current_path.parent_path();
+        if (current_path.filename().string() == "fesql") {
+            break;
+        }
+    }
+
+    if (current_path.filename().string() == "fesql") {
+        LOG(INFO) << "Fesql Dir Path is : " << current_path.string()
+                  << std::endl;
+        return current_path.string();
+    }
+    return std::string();
+}
+bool RegisterFeLibs(udf::UDFLibrary* library, Status& status,  // NOLINT
+                    const std::string& libs_home,
+                    const std::string& libs_name) {
+    if (libs_name.empty()) {
+        LOG(WARNING) << "fail register fe libs: No fesql libs config exist";
+        return true;
+    }
+    std::vector<std::string> filepaths;
+    std::string fesql_libs_path = "";
+    if (libs_home.empty()) {
+        fesql_libs_path = FindFesqlDirPath();
+    } else {
+        fesql_libs_path = libs_home;
+    }
+    fesql_libs_path.append("/").append(libs_name);
+    if (!GetLibsFiles(fesql_libs_path, filepaths, status)) {
+        status.msg = "fail to get libs file " + fesql_libs_path;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+
+    std::ostringstream runner_oss;
+    runner_oss << "Libs:\n";
+    for_each(filepaths.cbegin(), filepaths.cend(),
+             [&](const std::string item) { runner_oss << item << "\n"; });
+    DLOG(INFO) << runner_oss.str();
+
+    for (auto path_str : filepaths) {
+        status = library->RegisterFromFile(path_str);
+        if (!status.isOK()) {
+            LOG(WARNING) << status.msg;
+            return false;
+        }
+    }
+    return true;
+}
 void SQLCompiler::KeepIR(SQLContext& ctx, llvm::Module* m) {
     if (m == NULL) {
         LOG(WARNING) << "module is null";
@@ -198,9 +276,19 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     }
     auto llvm_ctx = ::llvm::make_unique<::llvm::LLVMContext>();
     auto m = ::llvm::make_unique<::llvm::Module>("sql", *llvm_ctx);
+
+    udf::DefaultUDFLibrary library;
     ::fesql::udf::RegisterUDFToModule(m.get());
+
+    if (!::fesql::udf::RegisterUDFToModule(m.get())) {
+        status.msg = "fail to generate native udf libs";
+        status.code = common::kCodegenError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
     if (ctx.is_batch_mode) {
-        vm::BatchModeTransformer transformer(&(ctx.nm), ctx.db, cl_, m.get());
+        vm::BatchModeTransformer transformer(&(ctx.nm), ctx.db, cl_, m.get(),
+                                             &library);
         transformer.AddDefaultPasses();
         if (!transformer.TransformPhysicalPlan(trees, &ctx.plan, status)) {
             LOG(WARNING) << "fail to generate physical plan (batch mode): "
@@ -209,7 +297,8 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
             return false;
         }
     } else {
-        vm::RequestModeransformer transformer(&(ctx.nm), ctx.db, cl_, m.get());
+        vm::RequestModeransformer transformer(&(ctx.nm), ctx.db, cl_, m.get(),
+                                              &library);
         transformer.AddDefaultPasses();
         if (!transformer.TransformPhysicalPlan(trees, &ctx.plan, status)) {
             LOG(WARNING) << "fail to generate physical plan (request mode) "
@@ -243,6 +332,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     }
     if (llvm::verifyModule(*(m.get()), &llvm::errs(), nullptr)) {
         LOG(WARNING) << "fail to verify codegen module";
+        m->print(::llvm::errs(), NULL, true, true);
         return false;
     }
 
@@ -264,7 +354,6 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         return false;
     }
 
-
     if (keep_ir_) {
         KeepIR(ctx, m.get());
     }
@@ -276,6 +365,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         return false;
     }
 
+    library.InitJITSymbols(ctx.jit.get());
     InitCodecSymbol(ctx.jit.get());
     udf::InitUDFSymbol(ctx.jit.get());
 

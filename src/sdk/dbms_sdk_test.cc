@@ -38,8 +38,8 @@ std::vector<SQLCase> InitCases(std::string yaml_path);
 void InitCases(std::string yaml_path, std::vector<SQLCase> &cases);  // NOLINT
 
 void InitCases(std::string yaml_path, std::vector<SQLCase> &cases) {  // NOLINT
-    if (!SQLCase::CreateSQLCasesFromYaml(
-            fesql::sqlcase::FindFesqlDirPath() + "/" + yaml_path, cases)) {
+    if (!SQLCase::CreateSQLCasesFromYaml(fesql::sqlcase::FindFesqlDirPath(),
+                                         yaml_path, cases)) {
         FAIL();
     }
 }
@@ -708,7 +708,7 @@ TEST_P(DBMSSdkTest, ExecuteQueryTest) {
         sql_case.ExtractOutputData(rows);
         type::TableDef output_table;
         sql_case.ExtractOutputSchema(output_table);
-        CheckRows(output_table.columns(), sql_case.output().order_, rows, rs);
+        CheckRows(output_table.columns(), sql_case.expect().order_, rows, rs);
     }
 }
 

@@ -169,8 +169,12 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
             }
         }
 
-        const node::WindowDefNode *w_ptr =
-            node::WindowOfExpression(windows, project_expr);
+        const node::WindowDefNode *w_ptr = nullptr;
+        if (!node::WindowOfExpression(windows, project_expr, &w_ptr)) {
+            status.msg = "fail to resolved window";
+            status.code = common::kPlanError;
+            return false;
+        }
 
         if (project_list_map.find(w_ptr) == project_list_map.end()) {
             if (w_ptr == nullptr) {
@@ -201,16 +205,10 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
     // merge window map
     std::map<const node::WindowDefNode *, node::ProjectListNode *>
         merged_project_list_map;
-    if (this->window_merge_enable_) {
-        if (!MergeProjectMap(project_list_map, &merged_project_list_map,
-                             status)) {
-            LOG(WARNING) << "Fail t merge window project";
-            return false;
-        }
-    } else {
-        merged_project_list_map = project_list_map;
+    if (!MergeProjectMap(project_list_map, &merged_project_list_map, status)) {
+        LOG(WARNING) << "Fail t merge window project";
+        return false;
     }
-
     // add MergeNode if multi ProjectionLists exist
     PlanNodeList project_list_vec(w_id);
     for (auto &v : merged_project_list_map) {
@@ -314,21 +312,48 @@ bool Planner::CreateUnionQueryPlan(const node::UnionQueryNode *root,
         node_manager_->MakeUnionPlanNode(left_plan, right_plan, root->is_all_);
     return true;
 }
+bool Planner::CheckWindowFrame(const node::WindowDefNode *w_ptr,
+                               base::Status &status) {
+    if (nullptr == w_ptr->GetFrame()) {
+        status.code = common::kPlanError;
+        status.msg =
+            "fail to create project list node: frame "
+            "can't be unbound ";
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+
+    if (w_ptr->GetFrame()->frame_type() == node::kFrameRows) {
+        auto extent =
+            dynamic_cast<node::FrameExtent *>(w_ptr->GetFrame()->frame_rows());
+        if ((extent->start()->bound_type() == node::kPreceding ||
+             extent->start()->bound_type() == node::kFollowing) &&
+            extent->start()->is_time_offset()) {
+            status.code = common::kPlanError;
+            status.msg = "Fail Make Rows Frame Node: time offset un-support";
+            LOG(WARNING) << status.msg;
+            return false;
+        }
+        if ((extent->end()->bound_type() == node::kPreceding ||
+             extent->end()->bound_type() == node::kFollowing) &&
+            extent->end()->is_time_offset()) {
+            status.code = common::kPlanError;
+            status.msg = "Fail Make Rows Frame Node: time offset un-support";
+            LOG(WARNING) << status.msg;
+            return false;
+        }
+    }
+    return true;
+}
 bool Planner::CreateWindowPlanNode(
     const node::WindowDefNode *w_ptr, node::WindowPlanNode *w_node_ptr,
     Status &status) {  // NOLINT (runtime/references)
 
     if (nullptr != w_ptr) {
         // Prepare Window Frame
-        if (nullptr == w_ptr->GetFrame()) {
-            status.code = common::kPlanError;
-            status.msg =
-                "fail to create project list node: frame "
-                "can't be unbound ";
-            LOG(WARNING) << status.msg;
+        if (!CheckWindowFrame(w_ptr, status)) {
             return false;
         }
-
         node::FrameNode *frame =
             dynamic_cast<node::FrameNode *>(w_ptr->GetFrame());
         w_node_ptr->set_frame_node(frame);
@@ -371,7 +396,24 @@ bool Planner::CreateCreateTablePlan(
         create_tree->GetTableName(), create_tree->GetColumnDefList());
     return true;
 }
+bool Planner::IsTable(node::PlanNode *node) {
+    if (nullptr == node) {
+        return false;
+    }
 
+    switch (node->type_) {
+        case node::kPlanTypeTable: {
+            return true;
+        }
+        case node::kPlanTypeRename: {
+            return IsTable(node->GetChildren()[0]);
+        }
+        default: {
+            return false;
+        }
+    }
+    return false;
+}
 bool Planner::ValidatePrimaryPath(node::PlanNode *node, node::PlanNode **output,
                                   base::Status &status) {
     if (nullptr == node) {
@@ -395,10 +437,11 @@ bool Planner::ValidatePrimaryPath(node::PlanNode *node, node::PlanNode **output,
                 return false;
             }
 
-            if (node::kPlanTypeTable == binary_op->GetRight()->type_) {
+            if (IsTable(binary_op->GetRight())) {
                 *output = left_primary_table;
                 return true;
             }
+
             node::PlanNode *right_primary_table = nullptr;
             if (!ValidatePrimaryPath(binary_op->GetRight(),
                                      &right_primary_table, status)) {

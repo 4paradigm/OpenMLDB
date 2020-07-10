@@ -16,51 +16,22 @@
 #include "node/batch_plan_node.h"
 #include "node/plan_node.h"
 #include "node/sql_node.h"
+#include "node/type_node.h"
 #include "vm/physical_op.h"
 
 namespace fesql {
 namespace node {
 class NodeManager {
  public:
-    NodeManager()
-        : parser_node_list_(),
-          sql_node_list_list_(),
-          plan_node_list_(),
-          batch_plan_node_list_(),
-          physical_plan_node_list_() {}
+    NodeManager() {}
 
     ~NodeManager() {
-        for (auto sql_node_ite = parser_node_list_.begin();
-             sql_node_ite != parser_node_list_.end(); ++sql_node_ite) {
-            delete (*sql_node_ite);
-            sql_node_ite = parser_node_list_.erase(sql_node_ite);
-        }
-
-        for (auto sql_node_list_iter = sql_node_list_list_.begin();
-             sql_node_list_iter != sql_node_list_list_.end();
-             ++sql_node_list_iter) {
-            delete (*sql_node_list_iter);
-            sql_node_list_iter = sql_node_list_list_.erase(sql_node_list_iter);
-        }
-
-        for (auto plan_node_ite = plan_node_list_.begin();
-             plan_node_ite != plan_node_list_.end(); ++plan_node_ite) {
-            delete (*plan_node_ite);
-            plan_node_ite = plan_node_list_.erase(plan_node_ite);
-        }
-
-        for (auto physical_node_list_iter = physical_plan_node_list_.begin();
-             physical_node_list_iter != physical_plan_node_list_.end();
-             ++physical_node_list_iter) {
-            delete (*physical_node_list_iter);
-            physical_node_list_iter =
-                physical_plan_node_list_.erase(physical_node_list_iter);
+        for (auto node : node_list_) {
+            delete node;
         }
     }
 
-    int GetParserNodeListSize() { return parser_node_list_.size(); }
-
-    int GetPlanNodeListSize() { return plan_node_list_.size(); }
+    int GetNodeListSize() { return node_list_.size(); }
 
     // Make xxxPlanNode
     //    PlanNode *MakePlanNode(const PlanType &type);
@@ -106,10 +77,14 @@ class NodeManager {
                                    const std::string alias);
     TableRefNode *MakeQueryRefNode(const QueryNode *sub_query,
                                    const std::string &alias);
-
-    ExprNode *MakeFuncNode(const std::string &name, const ExprListNode *args,
+    ExprNode *MakeCastNode(const node::DataType cast_type, ExprNode *expr);
+    ExprNode *MakeTimeFuncNode(const TimeUnit time_unit, ExprListNode *args);
+    ExprNode *MakeFuncNode(const std::string &name, ExprListNode *args,
                            const SQLNode *over);
-    ExprNode *MakeFuncNode(const FnDefNode *fn, const ExprListNode *args,
+    ExprNode *MakeFuncNode(const FnDefNode *fn, ExprListNode *args,
+                           const SQLNode *over);
+    ExprNode *MakeFuncNode(const std::string &name,
+                           const std::vector<ExprNode *> &args,
                            const SQLNode *over);
 
     ExprNode *MakeQueryExprNode(const QueryNode *query);
@@ -161,11 +136,12 @@ class NodeManager {
 
     TypeNode *MakeTypeNode(fesql::node::DataType base);
     TypeNode *MakeTypeNode(fesql::node::DataType base,
-                           const fesql::node::TypeNode &v1);
+                           fesql::node::TypeNode *v1);
     TypeNode *MakeTypeNode(fesql::node::DataType base,
                            fesql::node::DataType v1);
     TypeNode *MakeTypeNode(fesql::node::DataType base, fesql::node::DataType v1,
                            fesql::node::DataType v2);
+    OpaqueTypeNode *MakeOpaqueType(size_t bytes);
 
     ExprNode *MakeColumnRefNode(const std::string &column_name,
                                 const std::string &relation_name,
@@ -181,6 +157,7 @@ class NodeManager {
                            const std::string db_name);
     ExprNode *MakeExprIdNode(const std::string &name);
     // Make Fn Node
+    ExprNode *MakeConstNode(int16_t value);
     ExprNode *MakeConstNode(int value);
     ExprNode *MakeConstNode(int64_t value, DataType unit);
     ExprNode *MakeConstNode(int64_t value);
@@ -189,6 +166,18 @@ class NodeManager {
     ExprNode *MakeConstNode(const std::string &value);
     ExprNode *MakeConstNode(const char *value);
     ExprNode *MakeConstNode();
+    ExprNode *MakeConstNode(DataType type);
+    ExprNode *MakeConstNodeINT16MAX();
+    ExprNode *MakeConstNodeINT32MAX();
+    ExprNode *MakeConstNodeINT64MAX();
+    ExprNode *MakeConstNodeFLOATMAX();
+    ExprNode *MakeConstNodeDOUBLEMAX();
+    ExprNode *MakeConstNodeINT16MIN();
+    ExprNode *MakeConstNodeINT32MIN();
+    ExprNode *MakeConstNodeINT64MIN();
+    ExprNode *MakeConstNodeFLOATMIN();
+    ExprNode *MakeConstNodeDOUBLEMIN();
+    ExprNode *MakeConstNodePlaceHolder();
 
     ExprNode *MakeAllNode(const std::string &relation_name);
     ExprNode *MakeAllNode(const std::string &relation_name,
@@ -267,11 +256,6 @@ class NodeManager {
 
     PlanNode *MakeDistinctPlanNode(PlanNode *node);
 
-    vm::PhysicalOpNode *RegisterNode(vm::PhysicalOpNode *node_ptr) {
-        physical_plan_node_list_.push_back(node_ptr);
-        return node_ptr;
-    }
-
     node::ExprNode *MakeEqualCondition(const std::string &db1,
                                        const std::string &table1,
                                        const std::string &db2,
@@ -285,13 +269,31 @@ class NodeManager {
 
     node::FrameNode *MergeFrameNodeWithCurrentHistoryFrame(FrameNode *frame1);
 
-    SQLNode *MakeExternalFnDefNode(const std::string &function_name);
+    ExternalFnDefNode *MakeExternalFnDefNode(
+        const std::string &function_name, void *function_ptr,
+        node::TypeNode *ret_type,
+        const std::vector<const node::TypeNode *> &arg_types, int variadic_pos,
+        bool return_by_arg);
+
+    SQLNode *MakeUnresolvedFnDefNode(const std::string &function_name);
 
     SQLNode *MakeUDFDefNode(const FnNodeFnDef *def);
 
-    SQLNode *MakeUDAFDefNode(const ExprNode *init, const FnDefNode *update_func,
+    SQLNode *MakeUDFByCodeGenDefNode(
+        const std::vector<const node::TypeNode *> &arg_types,
+        const node::TypeNode *ret_type);
+
+    SQLNode *MakeUDAFDefNode(const std::string &name,
+                             const TypeNode *input_type, const ExprNode *init,
+                             const FnDefNode *update_func,
                              const FnDefNode *merge_func,
                              const FnDefNode *output_func);
+
+    template <typename T>
+    T *RegisterNode(T *node_ptr) {
+        node_list_.push_back(node_ptr);
+        return node_ptr;
+    }
 
  private:
     ProjectNode *MakeProjectNode(const int32_t pos, const std::string &name,
@@ -299,35 +301,7 @@ class NodeManager {
                                  node::ExprNode *expression,
                                  node::FrameNode *frame);
 
-    SQLNode *RegisterNode(SQLNode *node_ptr) {
-        parser_node_list_.push_back(node_ptr);
-        return node_ptr;
-    }
-
-    ExprNode *RegisterNode(ExprNode *node_ptr) {
-        parser_node_list_.push_back(node_ptr);
-        return node_ptr;
-    }
-
-    FnNode *RegisterNode(FnNode *node_ptr) {
-        parser_node_list_.push_back(node_ptr);
-        return node_ptr;
-    }
-    PlanNode *RegisterNode(PlanNode *node_ptr) {
-        plan_node_list_.push_back(node_ptr);
-        return node_ptr;
-    }
-
-    SQLNodeList *RegisterNode(SQLNodeList *node_ptr) {
-        sql_node_list_list_.push_back(node_ptr);
-        return node_ptr;
-    }
-
-    std::list<SQLNode *> parser_node_list_;
-    std::list<SQLNodeList *> sql_node_list_list_;
-    std::list<node::PlanNode *> plan_node_list_;
-    std::list<node::BatchPlanNode *> batch_plan_node_list_;
-    std::list<vm::PhysicalOpNode *> physical_plan_node_list_;
+    std::list<NodeBase *> node_list_;
 };
 
 }  // namespace node

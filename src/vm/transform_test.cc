@@ -32,8 +32,10 @@
 #include "node/node_manager.h"
 #include "parser/parser.h"
 #include "plan/planner.h"
+#include "udf/default_udf_library.h"
 #include "udf/udf.h"
 #include "vm/simple_catalog.h"
+#include "vm/sql_compiler.h"
 #include "vm/test_base.h"
 
 using namespace llvm;       // NOLINT
@@ -50,7 +52,7 @@ void InitCases(std::string yaml_path, std::vector<SQLCase>& cases);  // NOLINT
 
 void InitCases(std::string yaml_path, std::vector<SQLCase>& cases) {  // NOLINT
     if (!SQLCase::CreateSQLCasesFromYaml(
-            fesql::sqlcase::FindFesqlDirPath() + "/" + yaml_path, cases,
+            fesql::sqlcase::FindFesqlDirPath(), yaml_path, cases,
             std::vector<std::string>({"physical-plan-unsupport",
                                       "logical-plan-unsupport",
                                       "parser-unsupport"}))) {
@@ -71,6 +73,9 @@ class TransformTest : public ::testing::TestWithParam<SQLCase> {
 INSTANTIATE_TEST_CASE_P(
     SqlSimpleQueryParse, TransformTest,
     testing::ValuesIn(InitCases("cases/plan/simple_query.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    SqlReanmeQueryParse, TransformTest,
+    testing::ValuesIn(InitCases("cases/plan/rename_query.yaml")));
 INSTANTIATE_TEST_CASE_P(
     SqlWindowQueryParse, TransformTest,
     testing::ValuesIn(InitCases("cases/plan/window_query.yaml")));
@@ -202,7 +207,9 @@ TEST_P(TransformTest, transform_physical_plan) {
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
     ::fesql::udf::RegisterUDFToModule(m.get());
-    BatchModeTransformer transform(&manager, "db", catalog, m.get());
+    ::fesql::udf::DefaultUDFLibrary lib;
+    BatchModeTransformer transform(&manager, "db", catalog, m.get(), &lib);
+
     transform.AddDefaultPasses();
     PhysicalOpNode* physical_plan = nullptr;
     ASSERT_TRUE(transform.TransformPhysicalPlan(plan_trees, &physical_plan,
@@ -245,7 +252,10 @@ void PhysicalPlanCheck(const std::shared_ptr<Catalog>& catalog, std::string sql,
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
     ::fesql::udf::RegisterUDFToModule(m.get());
-    BatchModeTransformer transform(&manager, "db", catalog, m.get());
+    base::Status status;
+    ::fesql::udf::DefaultUDFLibrary lib;
+    BatchModeTransformer transform(&manager, "db", catalog, m.get(), &lib);
+
     transform.AddDefaultPasses();
     PhysicalOpNode* physical_plan = nullptr;
 
@@ -466,7 +476,6 @@ TEST_P(TransformTest, window_merge_opt_test) {
     ::fesql::base::Status base_status;
     {
         ::fesql::plan::SimplePlanner planner(&manager);
-        planner.set_window_merge_enable(true);
         ::fesql::parser::FeSQLParser parser;
         ::fesql::node::NodePointVector parser_trees;
         parser.parse(sqlstr, parser_trees, &manager, base_status);
@@ -485,7 +494,9 @@ TEST_P(TransformTest, window_merge_opt_test) {
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
     ::fesql::udf::RegisterUDFToModule(m.get());
-    BatchModeTransformer transform(&manager, "db", catalog, m.get());
+    base::Status status;
+    ::fesql::udf::DefaultUDFLibrary lib;
+    BatchModeTransformer transform(&manager, "db", catalog, m.get(), &lib);
     transform.AddDefaultPasses();
     PhysicalOpNode* physical_plan = nullptr;
     ASSERT_TRUE(transform.TransformPhysicalPlan(plan_trees, &physical_plan,
@@ -538,7 +549,9 @@ TEST_P(KeyGenTest, GenTest) {
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
     ::fesql::udf::RegisterUDFToModule(m.get());
-    BatchModeTransformer transformer(&nm, "db", catalog, m.get());
+    ::fesql::udf::DefaultUDFLibrary lib;
+    BatchModeTransformer transformer(&nm, "db", catalog, m.get(), &lib);
+
     ASSERT_TRUE(transformer.GenKey(
         &group, table_provider.GetOutputNameSchemaList(), status));
     m->print(::llvm::errs(), NULL);
@@ -586,7 +599,9 @@ TEST_P(FilterGenTest, GenFilter) {
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
     ::fesql::udf::RegisterUDFToModule(m.get());
-    BatchModeTransformer transformer(&nm, "db", catalog, m.get());
+    ::fesql::udf::DefaultUDFLibrary lib;
+    BatchModeTransformer transformer(&nm, "db", catalog, m.get(), &lib);
+
     ASSERT_TRUE(transformer.GenFilter(
         &filter, join_node.GetOutputNameSchemaList(), status));
     m->print(::llvm::errs(), NULL);

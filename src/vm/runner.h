@@ -81,7 +81,7 @@ class WindowProjectGenerator : public FnGenerator {
     explicit WindowProjectGenerator(const FnInfo& info) : FnGenerator(info) {}
     virtual ~WindowProjectGenerator() {}
     const Row Gen(const uint64_t key, const Row row, const bool is_instance,
-                  Window* window);
+                  size_t append_slices, Window* window);
 };
 class KeyGenerator : public FnGenerator {
  public:
@@ -359,7 +359,7 @@ class Runner {
     static bool GetColumnBool(RowView* view, int idx, type::Type type);
     static Row WindowProject(const int8_t* fn, const uint64_t key,
                              const Row row, const bool is_instance,
-                             Window* window);
+                             size_t append_slices, Window* window);
     static const Row RowLastJoinTable(size_t left_slices, const Row& left_row,
                                       size_t right_slices,
                                       std::shared_ptr<TableHandler> right_table,
@@ -612,9 +612,13 @@ class WindowAggRunner : public Runner {
  public:
     WindowAggRunner(const int32_t id, const SchemaSourceList& schema,
                     const int32_t limit_cnt, const WindowOp& window_op,
-                    const FnInfo& fn_info, const bool instance_not_in_window)
+                    const FnInfo& fn_info, const bool instance_not_in_window,
+                    const bool need_append_input)
         : Runner(id, kRunnerWindowAgg, schema, limit_cnt),
           instance_not_in_window_(instance_not_in_window),
+          need_append_input_(need_append_input),
+          append_slices_(need_append_input ? schema.GetSchemaSourceListSize()
+                                           : 0),
           instance_window_gen_(window_op),
           windows_union_gen_(),
           windows_join_gen_(),
@@ -634,6 +638,8 @@ class WindowAggRunner : public Runner {
         std::shared_ptr<MemTableHandler> output_table);
 
     const bool instance_not_in_window_;
+    const bool need_append_input_;
+    const size_t append_slices_;
     WindowGenerator instance_window_gen_;
     WindowUnionGenerator windows_union_gen_;
     WindowJoinGenerator windows_join_gen_;

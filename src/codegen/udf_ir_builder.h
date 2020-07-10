@@ -12,42 +12,72 @@
 
 #include <map>
 #include <string>
+#include <vector>
 #include "base/fe_status.h"
+#include "codegen/expr_ir_builder.h"
 #include "codegen/scope_var.h"
 #include "llvm/IR/Module.h"
+
 #include "node/sql_node.h"
 namespace fesql {
 namespace codegen {
+
+using base::Status;
+
 class UDFIRBuilder {
  public:
-    explicit UDFIRBuilder(std::map<std::string, void*>* map)
-        : name_function_map_(map) {}
+    UDFIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
+                 const vm::SchemasContext* schemas_context,
+                 ::llvm::Module* module);
+
     ~UDFIRBuilder() {}
-    static bool BuildMinuteTimestamp(::llvm::Module* module,
-                              base::Status& status);  // NOLINT
-    static bool BuildSecondTimestamp(::llvm::Module* module,
-                                     base::Status& status);  // NOLINT
-    static bool BuildHourTimestamp(::llvm::Module* module,
-                                     base::Status& status);  // NOLINT
-    static bool BuildMinuteInt64(::llvm::Module* module,
-                                     base::Status& status);  // NOLINT
-    static bool BuildSecondInt64(::llvm::Module* module,
-                                     base::Status& status);  // NOLINT
-    static bool BuildHourInt64(::llvm::Module* module,
-                                   base::Status& status);  // NOLINT
-    static bool BuildDayDate(::llvm::Module* module,
-                             base::Status& status);  // NOLINT
-    static bool BuildMonthDate(::llvm::Module* module,
-                               base::Status& status);  // NOLINT
-    static bool BuildYearDate(::llvm::Module* module,
-                              base::Status& status);  // NOLINT
-    bool BuildUDF(::llvm::Module* module,
-                  base::Status& status);  // NOLINT
-    bool BuildNativeCUDF(::llvm::Module* module,
-                         fesql::node::FnNodeFnHeander* header, void* fn_ptr,
-                         base::Status& status);  // NOLINT
-    std::map<std::string, void*>* name_function_map_;
+
+    Status BuildCall(const node::FnDefNode* fn,
+                     const std::vector<const node::TypeNode*>& arg_types,
+                     const std::vector<NativeValue>& args, NativeValue* output);
+
+    Status BuildUDFCall(const node::UDFDefNode* fn,
+                        const std::vector<const node::TypeNode*>& arg_types,
+                        const std::vector<NativeValue>& args,
+                        NativeValue* output);
+
+    Status BuildExternCall(const node::ExternalFnDefNode* fn,
+                           const std::vector<const node::TypeNode*>& arg_types,
+                           const std::vector<NativeValue>& args,
+                           NativeValue* output);
+
+    Status BuildCodeGenUDFCall(
+        const node::UDFByCodeGenDefNode* fn,
+        const std::vector<const node::TypeNode*>& arg_types,
+        const std::vector<NativeValue>& args, NativeValue* output);
+
+    Status BuildUDAFCall(const node::UDAFDefNode* fn,
+                         const std::vector<const node::TypeNode*>& arg_types,
+                         const std::vector<NativeValue>& args,
+                         NativeValue* output);
+
+    Status GetUDFCallee(const node::UDFDefNode* fn,
+                        const std::vector<const node::TypeNode*>& arg_types,
+                        ::llvm::FunctionCallee* callee, bool* return_by_arg);
+
+    Status GetExternCallee(const node::ExternalFnDefNode* fn,
+                           const std::vector<const node::TypeNode*>& arg_types,
+                           ::llvm::FunctionCallee* callee, bool* return_by_arg);
+
+    Status BuildCallWithLLVMCallee(const node::FnDefNode* fn,
+                                   ::llvm::FunctionCallee callee,
+                                   const std::vector<llvm::Value*>& args,
+                                   bool return_by_arg, ::llvm::Value** output);
+
+    static bool IsReturnByArg(node::TypeNode* type);
+
+ private:
+    ::llvm::BasicBlock* block_;
+    ScopeVar* sv_;
+    ::llvm::Module* module_;
+    const vm::SchemasContext* schemas_context_;
 };
+
 }  // namespace codegen
 }  // namespace fesql
 #endif  // SRC_CODEGEN_UDF_IR_BUILDER_H_

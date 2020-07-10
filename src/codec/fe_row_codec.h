@@ -23,8 +23,8 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
-#include "butil/iobuf.h"
 #include "base/raw_buffer.h"
+#include "butil/iobuf.h"
 #include "proto/fe_type.pb.h"
 
 namespace fesql {
@@ -38,6 +38,8 @@ static constexpr uint8_t VERSION_LENGTH = 2;
 static constexpr uint8_t SIZE_LENGTH = 4;
 static constexpr uint8_t HEADER_LENGTH = VERSION_LENGTH + SIZE_LENGTH;
 static constexpr uint32_t UINT24_MAX = (1 << 24) - 1;
+const std::string NONETOKEN = "!N@U#L$L%"; // NOLINT
+const std::string EMPTY_STRING = "!@#$%";  // NOLINT
 
 static const std::unordered_map<::fesql::type::Type, uint8_t> TYPE_SIZE_MAP = {
     {::fesql::type::kBool, sizeof(bool)},
@@ -65,10 +67,8 @@ inline uint32_t GetStartOffset(int32_t column_count) {
     return HEADER_LENGTH + BitMapSize(column_count);
 }
 
-void FillNullStringOffset(int8_t* buf, uint32_t start,
-                          uint32_t addr_length,
-                          uint32_t str_idx,
-                          uint32_t str_offset);
+void FillNullStringOffset(int8_t* buf, uint32_t start, uint32_t addr_length,
+                          uint32_t str_idx, uint32_t str_offset);
 
 class RowBuilder {
  public:
@@ -106,8 +106,8 @@ class RowBuilder {
 
 class RowView {
  public:
-    RowView(const fesql::codec::Schema& schema,
-            const int8_t* row, uint32_t size);
+    RowView(const fesql::codec::Schema& schema, const int8_t* row,
+            uint32_t size);
     explicit RowView(const fesql::codec::Schema& schema);
     ~RowView() = default;
     bool Reset(const int8_t* row, uint32_t size);
@@ -176,7 +176,6 @@ class RowView {
     std::vector<uint32_t> offset_vec_;
 };
 
-
 struct ColInfo {
     ::fesql::type::Type type;
     uint32_t idx;
@@ -184,25 +183,23 @@ struct ColInfo {
     std::string name;
 
     ColInfo() {}
-    ColInfo(const std::string& name, ::fesql::type::Type type,
-            uint32_t idx, uint32_t offset):
-        type(type), idx(idx), offset(offset), name(name) {}
+    ColInfo(const std::string& name, ::fesql::type::Type type, uint32_t idx,
+            uint32_t offset)
+        : type(type), idx(idx), offset(offset), name(name) {}
 };
 
-
-struct StringColInfo: public ColInfo {
+struct StringColInfo : public ColInfo {
     uint32_t str_next_offset;
     uint32_t str_start_offset;
 
     StringColInfo() {}
     StringColInfo(const std::string& name, ::fesql::type::Type type,
-                  uint32_t idx, uint32_t offset,
-                  uint32_t str_next_offset, uint32_t str_start_offset):
-        ColInfo(name, type, idx, offset),
-        str_next_offset(str_next_offset),
-        str_start_offset(str_start_offset) {}
+                  uint32_t idx, uint32_t offset, uint32_t str_next_offset,
+                  uint32_t str_start_offset)
+        : ColInfo(name, type, idx, offset),
+          str_next_offset(str_next_offset),
+          str_start_offset(str_start_offset) {}
 };
-
 
 class RowDecoder {
  public:
@@ -211,8 +208,7 @@ class RowDecoder {
 
     virtual bool ResolveColumn(const std::string& name, ColInfo* res);
 
-    virtual bool ResolveStringCol(const std::string& name,
-                                  StringColInfo* res);
+    virtual bool ResolveStringCol(const std::string& name, StringColInfo* res);
 
  private:
     fesql::codec::Schema schema_;

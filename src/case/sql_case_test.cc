@@ -300,9 +300,54 @@ TEST_F(SQLCaseTest, ExtractRowTest) {
     }
 }
 
+TEST_F(SQLCaseTest, ExtractRowFromStringListTest) {
+    const std::vector<std::string> columns = {
+        "col0:string", "col1:int32",     "col2:int16",
+        "col3:float",  "col4:double",    "col5:int64",
+        "col6:string", "col7:timestamp", "col8:date"};
+
+    std::vector<std::string> str_list = {
+        "0", "1", "5", "1.1", "11.1", "1", "1", "1587647803000", "2020-05-28"};
+    type::TableDef output_table;
+    ASSERT_TRUE(SQLCase::ExtractSchema(columns, output_table));
+    std::vector<fesql::codec::Row> rows;
+    int8_t* row_ptr = nullptr;
+    int32_t row_size = 0;
+    ASSERT_TRUE(SQLCase::ExtractRow(output_table.columns(), str_list, &row_ptr,
+                                    &row_size));
+    fesql::codec::RowView row_view(output_table.columns());
+
+    {
+        row_view.Reset(row_ptr);
+        ASSERT_EQ("0", row_view.GetAsString(0));
+        ASSERT_EQ(1, row_view.GetInt32Unsafe(1));
+        ASSERT_EQ(5, row_view.GetInt16Unsafe(2));
+        ASSERT_EQ(1.1f, row_view.GetFloatUnsafe(3));
+        ASSERT_EQ(11.1, row_view.GetDoubleUnsafe(4));
+        ASSERT_EQ(1L, row_view.GetInt64Unsafe(5));
+        ASSERT_EQ("1", row_view.GetStringUnsafe(6));
+        ASSERT_EQ(1587647803000, row_view.GetTimestampUnsafe(7));
+        int32_t year;
+        int32_t month;
+        int32_t day;
+        ASSERT_EQ(0, row_view.GetDate(8, &year, &month, &day));
+        ASSERT_EQ(2020, year);
+        ASSERT_EQ(5, month);
+        ASSERT_EQ(28, day);
+    }
+}
+TEST_F(SQLCaseTest, ExtractColumnsTest) {
+    const std::vector<std::string> columns = {"col0 string", "col1 int32"};
+    type::TableDef output_table;
+    ASSERT_TRUE(SQLCase::ExtractSchema(columns, output_table));
+    ASSERT_EQ(2, output_table.columns_size());
+    ASSERT_EQ("col0", output_table.columns(0).name());
+    ASSERT_EQ(fesql::type::kVarchar, output_table.columns(0).type());
+    ASSERT_EQ("col1", output_table.columns(1).name());
+    ASSERT_EQ(fesql::type::kInt32, output_table.columns(1).type());
+}
 TEST_F(SQLCaseTest, ExtractRowWithNullTest) {
     const std::string schema_str = "col0:string, col1:int32";
-
     std::string row_str = "0, NULL\n";
     type::TableDef output_table;
     ASSERT_TRUE(SQLCase::ExtractSchema(schema_str, output_table));
@@ -345,15 +390,14 @@ TEST_F(SQLCaseTest, ExtractSQLCase) {
     }
 
     {
-        SQLCase::TableInfo table_data;
-        table_data.name_ = "";
+        SQLCase::ExpectInfo table_data;
         table_data.schema_ =
             "f0:string, f1:float, f2:double, f3:int16, f4:int32, f5:int64, "
             "f6:timestamp";
         table_data.data_ =
             "A, 1.1, 2.2, 3, 4, 5, 1587647803000\n"
             "BB, 11.1, 22.2, 30, 40, 50, 1587647804000";
-        sql_case.set_output(table_data);
+        sql_case.set_expect(table_data);
     }
 
     // Check Data Schema
@@ -575,15 +619,15 @@ TEST_F(SQLCaseTest, ExtractSQLCase) {
 
 TEST_F(SQLCaseTest, ExtractYamlSQLCase) {
     std::string fesql_dir = fesql::sqlcase::FindFesqlDirPath();
-    std::string case_path = fesql_dir + "/cases/yaml/demo.yaml";
+    std::string case_path = "/cases/yaml/demo.yaml";
     std::vector<SQLCase> cases;
 
-    ASSERT_TRUE(
-        fesql::sqlcase::SQLCase::CreateSQLCasesFromYaml(case_path, cases));
+    ASSERT_TRUE(fesql::sqlcase::SQLCase::CreateSQLCasesFromYaml(
+        fesql_dir, case_path, cases));
     ASSERT_EQ(4, cases.size());
     {
         SQLCase& sql_case = cases[0];
-        ASSERT_EQ(sql_case.id(), 1);
+        ASSERT_EQ(sql_case.id(), "1");
         ASSERT_EQ("batch", sql_case.mode());
         ASSERT_EQ("SELECT所有列", sql_case.desc());
         ASSERT_EQ(sql_case.inputs()[0].name_, "t1");
@@ -601,11 +645,11 @@ TEST_F(SQLCaseTest, ExtractYamlSQLCase) {
                   "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
                   "aaaaaa");
         ASSERT_EQ(
-            sql_case.output().schema_,
+            sql_case.expect().schema_,
             "col0:string, col1:int32, col2:int16, col3:float, col4:double, "
             "col5:int64, col6:string");
-        ASSERT_EQ(sql_case.output().order_, "col1");
-        ASSERT_EQ(sql_case.output().data_,
+        ASSERT_EQ(sql_case.expect().order_, "col1");
+        ASSERT_EQ(sql_case.expect().data_,
                   "0, 1, 5, 1.1, 11.1, 1, 1\n0, 2, 5, 2.2, 22.2, 2, 22\n0, 3, "
                   "55, 3.3, "
                   "33.3, 1, 333\n0, 4, 55, 4.4, 44.4, 2, 4444\n0, 5, 55, 5.5, "
@@ -615,7 +659,7 @@ TEST_F(SQLCaseTest, ExtractYamlSQLCase) {
     }
     {
         SQLCase& sql_case = cases[1];
-        ASSERT_EQ(sql_case.id(), 2);
+        ASSERT_EQ(sql_case.id(), "2");
         ASSERT_EQ("batch", sql_case.mode());
         ASSERT_EQ("SELECT所有列使用resource输入", sql_case.desc());
         ASSERT_EQ(sql_case.inputs()[0].name_, "t1");
@@ -633,11 +677,11 @@ TEST_F(SQLCaseTest, ExtractYamlSQLCase) {
                   "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
                   "aaaaaa");
         ASSERT_EQ(
-            sql_case.output().schema_,
+            sql_case.expect().schema_,
             "col0:string, col1:int32, col2:int16, col3:float, col4:double, "
             "col5:int64, col6:string");
-        ASSERT_EQ(sql_case.output().order_, "");
-        ASSERT_EQ(sql_case.output().data_,
+        ASSERT_EQ(sql_case.expect().order_, "");
+        ASSERT_EQ(sql_case.expect().data_,
                   "0, 1, 5, 1.1, 11.1, 1, 1\n0, 2, 5, 2.2, 22.2, 2, 22\n0, 3, "
                   "55, 3.3, "
                   "33.3, 1, 333\n0, 4, 55, 4.4, 44.4, 2, 4444\n0, 5, 55, 5.5, "
@@ -648,7 +692,7 @@ TEST_F(SQLCaseTest, ExtractYamlSQLCase) {
 
     {
         SQLCase& sql_case = cases[2];
-        ASSERT_EQ(sql_case.id(), 3);
+        ASSERT_EQ(sql_case.id(), "3");
         ASSERT_EQ("SELECT UDF", sql_case.desc());
         ASSERT_EQ("request", sql_case.mode());
         ASSERT_EQ(sql_case.inputs()[0].name_, "t1");
@@ -670,15 +714,15 @@ TEST_F(SQLCaseTest, ExtractYamlSQLCase) {
                   "index1:col1|col2:col5, index2:col1:col5");
         ASSERT_EQ(sql_case.inputs()[0].data_,
                   "0, 1, 5, 1.1, 11.1, 1, 1\n0, 2, 5, 2.2, 22.2, 2, 22");
-        ASSERT_EQ(sql_case.output().schema_,
+        ASSERT_EQ(sql_case.expect().schema_,
                   "col0:string, col1:int32, col2:int16, col6:string");
-        ASSERT_EQ(sql_case.output().order_, "");
-        ASSERT_EQ(sql_case.output().data_, "0, 3, 5, 1\n0, 4, 5, 22");
+        ASSERT_EQ(sql_case.expect().order_, "");
+        ASSERT_EQ(sql_case.expect().data_, "0, 3, 5, 1\n0, 4, 5, 22");
     }
 
     {
         SQLCase& sql_case = cases[3];
-        ASSERT_EQ(sql_case.id(), 4);
+        ASSERT_EQ(sql_case.id(), "4");
         ASSERT_EQ("简单INSERT", sql_case.desc());
         ASSERT_EQ(sql_case.db(), "test");
         ASSERT_EQ(
@@ -690,11 +734,152 @@ TEST_F(SQLCaseTest, ExtractYamlSQLCase) {
         ASSERT_EQ(sql_case.insert_str(),
                   "insert into t1 values(\"hello\", 1, 2, 3.3f, 4.4, 5L, "
                   "\"world\");");
-        ASSERT_EQ(sql_case.output().schema_,
+        ASSERT_EQ(sql_case.expect().schema_,
                   "col0:string, col1:int32, col2:int16, col3:float, "
                   "col4:double, col5:int64, col6:string");
-        ASSERT_EQ(sql_case.output().order_, "col1");
-        ASSERT_EQ(sql_case.output().data_, "hello, 1, 2, 3.3, 4.4, 5, world");
+        ASSERT_EQ(sql_case.expect().order_, "col1");
+        ASSERT_EQ(sql_case.expect().data_, "hello, 1, 2, 3.3, 4.4, 5, world");
+    }
+}
+
+TEST_F(SQLCaseTest, ExtractRtidbYamlSQLCase) {
+    std::string fesql_dir = fesql::sqlcase::FindFesqlDirPath();
+    std::string case_path = "/cases/yaml/rtidb_demo.yaml";
+    std::vector<SQLCase> cases;
+
+    ASSERT_TRUE(fesql::sqlcase::SQLCase::CreateSQLCasesFromYaml(
+        fesql_dir, case_path, cases));
+    ASSERT_EQ(3, cases.size());
+    {
+        SQLCase& sql_case = cases[0];
+        ASSERT_EQ(sql_case.id(), "0");
+        ASSERT_EQ("正常拼接", sql_case.desc());
+        ASSERT_EQ(2u, sql_case.inputs().size());
+        ASSERT_EQ(sql_case.db(), "test_zw");
+        {
+            auto input = sql_case.inputs()[0];
+            ASSERT_EQ(input.name_, "");
+            ASSERT_EQ(input.schema_, "");
+            std::vector<std::string> columns = {"c1 string", "c2 int",
+                                                "c3 bigint", "c4 timestamp"};
+            ASSERT_EQ(input.columns_, columns);
+            std::vector<std::string> indexs = {"index1:c1:c4"};
+            ASSERT_EQ(input.index_, "");
+            ASSERT_EQ(input.indexs_, indexs);
+            std::vector<std::vector<std::string>> rows = {
+                {"aa", "2", "3", "1590738989000L"},
+                {"bb", "21", "31", "1590738990000L"},
+                {"cc", "41", "51", "1590738991000L"}};
+            ASSERT_EQ(sql_case.inputs()[0].rows_, rows);
+        }
+        {
+            auto input = sql_case.inputs()[1];
+            ASSERT_EQ(input.name_, "");
+            ASSERT_EQ(input.schema_, "");
+            std::vector<std::string> columns = {"col1 string", "col2 int",
+                                                "c3 bigint", "c4 timestamp"};
+            ASSERT_EQ(input.columns_, columns);
+            std::vector<std::string> indexs = {"index1:col1:c4"};
+            ASSERT_EQ(input.index_, "");
+            ASSERT_EQ(input.indexs_, indexs);
+            std::vector<std::vector<std::string>> rows = {
+                {"aa", "2", "13", "1590738989000L"},
+                {"bb", "21", "131", "1590738990000L"},
+                {"cc", "41", "151", "1590738992000L"},
+            };
+            ASSERT_EQ(input.rows_, rows);
+        }
+        std::vector<std::string> expect_columns = {"c1 string", "c2 int",
+                                                   "c3 bigint"};
+        std::vector<std::vector<std::string>> expect_rows = {
+            {"aa", "2", "13"}, {"cc", "41", "151"}, {"bb", "21", "131"}};
+
+        ASSERT_EQ(sql_case.expect().schema_, "");
+        ASSERT_EQ(sql_case.expect().data_, "");
+        ASSERT_EQ(sql_case.expect().order_, "c1");
+        ASSERT_EQ(sql_case.expect().count_, 3);
+        ASSERT_EQ(sql_case.expect().columns_, expect_columns);
+        ASSERT_EQ(sql_case.expect().rows_, expect_rows);
+        ASSERT_TRUE(sql_case.expect().success_);
+    }
+
+    {
+        SQLCase& sql_case = cases[1];
+        ASSERT_EQ(sql_case.id(), "1");
+        ASSERT_EQ("普通select", sql_case.desc());
+        ASSERT_EQ(1u, sql_case.inputs().size());
+        ASSERT_EQ(sql_case.db(), "test_zw");
+        {
+            auto input = sql_case.inputs()[0];
+            ASSERT_EQ(input.name_, "");
+            ASSERT_EQ(input.schema_, "");
+            std::vector<std::string> columns = {"c1 string", "c2 int",
+                                                "c3 bigint", "c4 timestamp"};
+            ASSERT_EQ(input.columns_, columns);
+            std::vector<std::string> indexs = {"index1:c1:c4"};
+            ASSERT_EQ(input.index_, "");
+            ASSERT_EQ(input.indexs_, indexs);
+            std::vector<std::vector<std::string>> rows = {
+                {"aa", "null", "3", "1590738989000L"}};
+            ASSERT_EQ(sql_case.inputs()[0].rows_, rows);
+        }
+        std::vector<std::string> expect_columns = {"c1 string", "c2 int"};
+        std::vector<std::vector<std::string>> expect_rows = {{"aa", "null"}};
+
+        ASSERT_EQ(sql_case.expect().schema_, "");
+        ASSERT_EQ(sql_case.expect().data_, "");
+        ASSERT_EQ(sql_case.expect().count_, -1);
+        ASSERT_EQ(sql_case.expect().columns_, expect_columns);
+        ASSERT_EQ(sql_case.expect().rows_, expect_rows);
+        ASSERT_TRUE(sql_case.expect().success_);
+    }
+
+    {
+        SQLCase& sql_case = cases[2];
+        ASSERT_EQ(sql_case.id(), "2");
+        ASSERT_EQ("普通select,Sucess false", sql_case.desc());
+        ASSERT_EQ(1u, sql_case.inputs().size());
+        ASSERT_EQ(sql_case.db(), "test_zw");
+        {
+            auto input = sql_case.inputs()[0];
+            ASSERT_EQ(input.name_, "");
+            ASSERT_EQ(input.schema_, "");
+            std::vector<std::string> columns = {"c1 string", "c2 int",
+                                                "c3 bigint", "c4 timestamp"};
+            ASSERT_EQ(input.columns_, columns);
+            std::vector<std::string> indexs = {"index1:c1:c4"};
+            ASSERT_EQ(input.index_, "");
+            ASSERT_EQ(input.indexs_, indexs);
+            std::vector<std::vector<std::string>> rows = {
+                {"aa", "null", "3", "1590738989000L"}};
+            ASSERT_EQ(sql_case.inputs()[0].rows_, rows);
+        }
+        std::vector<std::string> expect_columns = {"c1 string", "c2 int"};
+        std::vector<std::vector<std::string>> expect_rows = {{"aa", "null"}};
+
+        ASSERT_EQ(sql_case.expect().schema_, "");
+        ASSERT_EQ(sql_case.expect().data_, "");
+        ASSERT_EQ(sql_case.expect().count_, -1);
+        ASSERT_TRUE(sql_case.expect().columns_.empty());
+        ASSERT_TRUE(sql_case.expect().rows_.empty());
+        ASSERT_FALSE(sql_case.expect().success_);
+    }
+}
+
+TEST_F(SQLCaseTest, ExtractRtidbYamlWithDebugSQLCase) {
+    std::string fesql_dir = fesql::sqlcase::FindFesqlDirPath();
+    std::string case_path = "/cases/yaml/rtidb_demo_debug.yaml";
+    std::vector<SQLCase> cases;
+
+    ASSERT_TRUE(fesql::sqlcase::SQLCase::CreateSQLCasesFromYaml(
+        fesql_dir, case_path, cases));
+    ASSERT_EQ(1, cases.size());
+    {
+        SQLCase& sql_case = cases[0];
+        ASSERT_EQ(sql_case.id(), "1");
+        ASSERT_EQ("普通select", sql_case.desc());
+        ASSERT_EQ(1u, sql_case.inputs().size());
+        ASSERT_EQ(sql_case.db(), "test_zw");
     }
 }
 }  // namespace sqlcase

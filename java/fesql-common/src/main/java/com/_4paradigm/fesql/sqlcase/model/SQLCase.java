@@ -6,17 +6,18 @@ import java.util.List;
 
 @Data
 public class SQLCase {
-    int id;
+    String id;
     String desc;
     String mode;
     String db;
     String sql;
+    List<String> sqls;
     boolean standard_sql;
     String create;
     String insert;
-    String tag;
+    List<String> tags;
     String batch_plan;
     String request_plan;
     List<InputDesc> inputs;
-    OutputDesc output;
+    OutputDesc expect;
 }

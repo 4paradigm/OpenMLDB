@@ -75,3 +75,6 @@ class FesqlSession(object):
 
     def createDataFrame(self, data, schema=None, samplingRatio=None, verifySchema=True):
         return FesqlDataframe(self.jsession.readSparkDataframe(self.pysparkSession.createDataFrame(data, schema, samplingRatio, verifySchema)._jdf))
+
+    def stop(self):
+        self.jsession.stop()

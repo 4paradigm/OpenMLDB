@@ -2,8 +2,8 @@
 // skip_list_test.cc
 // Copyright 2017 4paradigm.com
 
-#include <vector>
 #include <string>
+#include <vector>
 #include "base/fe_slice.h"
 #include "gtest/gtest.h"
 #include "storage/fe_skiplist.h"

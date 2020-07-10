@@ -1,24 +1,23 @@
 // Copyright (C) 2019, 4paradigm
 #pragma once
 #include <assert.h>
+#include <memory.h>
 #include <stddef.h>
 #include <string.h>
-#include <memory.h>
-#include <string>
 #include <memory>
-#include <boost/smart_ptr/local_shared_ptr.hpp>
+#include <string>
 #include "base/raw_buffer.h"
+#include "boost/smart_ptr/local_shared_ptr.hpp"
 
 namespace fesql {
 namespace base {
 
-
 class Slice {
  public:
     // Return a pointer to the beginning of the referenced data
-    inline const char* data() const { return data_; }
-    inline int8_t* buf() const {
-        return reinterpret_cast<int8_t*>(const_cast<char*>(data_));
+    inline const char *data() const { return data_; }
+    inline int8_t *buf() const {
+        return reinterpret_cast<int8_t *>(const_cast<char *>(data_));
     }
 
     // Return the length (in bytes) of the referenced data
@@ -27,7 +26,7 @@ class Slice {
     // Return true if the length of the referenced data is zero
     inline bool empty() const { return 0 == size_; }
 
-    inline void reset(const char* d, size_t size) {
+    inline void reset(const char *d, size_t size) {
         data_ = d;
         size_ = size;
     }
@@ -36,19 +35,17 @@ class Slice {
     Slice() : size_(0), data_("") {}
 
     // Create a slice that refers to d[0,n-1].
-    Slice(const char* d, size_t n): size_(n), data_(d) {}
+    Slice(const char *d, size_t n) : size_(n), data_(d) {}
 
     // Create slice from string
-    explicit Slice(const std::string& s)
-        : size_(s.size()), data_(s.data()) {}
+    explicit Slice(const std::string &s) : size_(s.size()), data_(s.data()) {}
 
     // Create slice from buffer
-    explicit Slice(const fesql::base::RawBuffer& buf)
+    explicit Slice(const fesql::base::RawBuffer &buf)
         : size_(buf.size), data_(buf.addr) {}
 
     // Create slice from c string
-    explicit Slice(const char* s)
-        : size_(strlen(s)), data_(s) {}
+    explicit Slice(const char *s) : size_(strlen(s)), data_(s) {}
 
     ~Slice() {}
 
@@ -79,26 +76,26 @@ class Slice {
     //   <  0 iff "*this" <  "b",
     //   == 0 iff "*this" == "b",
     //   >  0 iff "*this" >  "b"
-    int compare(const Slice& b) const;
+    int compare(const Slice &b) const;
 
     // Return true iff "x" is a prefix of "*this"
-    bool starts_with(const Slice& x) const {
+    bool starts_with(const Slice &x) const {
         return ((size_ >= x.size_) && (memcmp(data_, x.data_, x.size_) == 0));
     }
 
  private:
     uint32_t size_;
-    const char* data_;
+    const char *data_;
 };
 
-inline bool operator==(const Slice& x, const Slice& y) {
+inline bool operator==(const Slice &x, const Slice &y) {
     return ((x.size() == y.size()) &&
             (memcmp(x.data(), y.data(), x.size()) == 0));
 }
 
-inline bool operator!=(const Slice& x, const Slice& y) { return !(x == y); }
+inline bool operator!=(const Slice &x, const Slice &y) { return !(x == y); }
 
-inline int Slice::compare(const Slice& b) const {
+inline int Slice::compare(const Slice &b) const {
     const size_t min_len = (size_ < b.size_) ? size_ : b.size_;
     int r = memcmp(data_, b.data_, min_len);
     if (r == 0) {
@@ -110,49 +107,44 @@ inline int Slice::compare(const Slice& b) const {
     return r;
 }
 
-
-
 class RefCountedSlice : public Slice {
  public:
     ~RefCountedSlice();
 
     // Create slice own the buffer
-    inline static RefCountedSlice CreateManaged(int8_t* buf, size_t size) {
+    inline static RefCountedSlice CreateManaged(int8_t *buf, size_t size) {
         return RefCountedSlice(buf, size, true);
     }
 
     // Create slice without ownership
-    inline static RefCountedSlice Create(int8_t* buf, size_t size) {
+    inline static RefCountedSlice Create(int8_t *buf, size_t size) {
         return RefCountedSlice(buf, size, false);
     }
 
     // Create slice without ownership
-    inline static RefCountedSlice Create(const char* buf, size_t size) {
+    inline static RefCountedSlice Create(const char *buf, size_t size) {
         return RefCountedSlice(buf, size, false);
     }
 
-    RefCountedSlice():
-        Slice(nullptr, 0), ref_cnt_(nullptr) {}
+    RefCountedSlice() : Slice(nullptr, 0), ref_cnt_(nullptr) {}
 
-    RefCountedSlice(const RefCountedSlice& slice);
-    RefCountedSlice(RefCountedSlice&&);
-    RefCountedSlice& operator=(const RefCountedSlice&);
-    RefCountedSlice& operator=(RefCountedSlice&&);
+    RefCountedSlice(const RefCountedSlice &slice);
+    RefCountedSlice(RefCountedSlice &&);
+    RefCountedSlice &operator=(const RefCountedSlice &);
+    RefCountedSlice &operator=(RefCountedSlice &&);
 
  private:
-    RefCountedSlice(int8_t* data, size_t size, bool managed):
-        Slice(reinterpret_cast<const char*>(data), size),
-        ref_cnt_(managed ? new int(1) : nullptr) {}
+    RefCountedSlice(int8_t *data, size_t size, bool managed)
+        : Slice(reinterpret_cast<const char *>(data), size),
+          ref_cnt_(managed ? new int(1) : nullptr) {}
 
-    RefCountedSlice(const char* data, size_t size, bool managed):
-        Slice(data, size),
-        ref_cnt_(managed ? new int(1) : nullptr) {}
+    RefCountedSlice(const char *data, size_t size, bool managed)
+        : Slice(data, size), ref_cnt_(managed ? new int(1) : nullptr) {}
 
-    void Update(const RefCountedSlice& slice);
+    void Update(const RefCountedSlice &slice);
 
-    int32_t* ref_cnt_;
+    int32_t *ref_cnt_;
 };
-
 
 }  // namespace base
 }  // namespace fesql

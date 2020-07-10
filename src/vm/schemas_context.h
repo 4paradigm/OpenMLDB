@@ -13,6 +13,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include "base/fe_status.h"
 #include "node/sql_node.h"
 #include "vm/catalog.h"
 namespace fesql {
@@ -47,6 +48,9 @@ class SchemasContext {
     ColumnSource ColumnSourceResolved(const std::string& relation_name,
                                       const std::string& col_name) const;
     const std::string SourceColumnNameResolved(node::ColumnRefNode* column);
+    base::Status ColumnTypeResolved(const std::string& relation_name,
+                                    const std::string& col_name,
+                                    fesql::type::Type* type);
 
  public:
     // row ir context list
@@ -60,7 +64,7 @@ class SchemasContext {
     int32_t ColumnOffsetResolved(const int32_t schema_idx,
                                  const int32_t column_idx) const;
     int32_t ColumnIdxResolved(const std::string& column,
-                                const Schema* schema) const;
+                              const Schema* schema) const;
 };
 }  // namespace vm
 }  // namespace fesql

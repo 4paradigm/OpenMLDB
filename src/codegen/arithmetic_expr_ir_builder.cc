@@ -81,7 +81,58 @@ bool ArithmeticIRBuilder::InferBaseTypes(::llvm::Value* left,
             }
         } else {
             status.msg =
-                "fail to codegen add expr: value type isn't compatible";
+                "fail to codegen add expr: value type isn't compatible: " +
+                TypeIRBuilder::TypeName(left_type) + " and  " +
+                TypeIRBuilder::TypeName(right_type);
+            status.code = common::kCodegenError;
+            LOG(WARNING) << status.msg;
+            return false;
+        }
+    }
+    return true;
+}
+bool ArithmeticIRBuilder::InferBaseIntegerTypes(::llvm::Value* left,
+                                                ::llvm::Value* right,
+                                                ::llvm::Value** casted_left,
+                                                ::llvm::Value** casted_right,
+                                                ::fesql::base::Status& status) {
+    if (NULL == left || NULL == right) {
+        status.msg = "left or right value is null";
+        status.code = common::kCodegenError;
+        return false;
+    }
+
+    ::llvm::Type* left_type = left->getType();
+    ::llvm::Type* right_type = right->getType();
+
+    if (!left_type->isIntegerTy() || !right_type->isIntegerTy()) {
+        status.msg = "invalid type for integer expression";
+        status.code = common::kCodegenError;
+        return false;
+    }
+    *casted_left = left;
+    *casted_right = right;
+
+    if (left_type != right_type) {
+        if (cast_expr_ir_builder_.IsSafeCast(left_type, right_type)) {
+            if (!cast_expr_ir_builder_.SafeCast(left, right_type, casted_left,
+                                                status)) {
+                status.msg = "fail to codegen add expr: " + status.msg;
+                LOG(WARNING) << status.msg;
+                return false;
+            }
+        } else if (cast_expr_ir_builder_.IsSafeCast(right_type, left_type)) {
+            if (!cast_expr_ir_builder_.SafeCast(right, left_type, casted_right,
+                                                status)) {
+                status.msg = "fail to codegen add expr: " + status.msg;
+                LOG(WARNING) << status.msg;
+                return false;
+            }
+        } else {
+            status.msg =
+                "fail to codegen add expr: value type isn't compatible: " +
+                TypeIRBuilder::TypeName(left_type) + " and  " +
+                TypeIRBuilder::TypeName(right_type);
             status.code = common::kCodegenError;
             LOG(WARNING) << status.msg;
             return false;
@@ -242,7 +293,6 @@ bool ArithmeticIRBuilder::BuildSubExpr(
                TypeIRBuilder::IsTimestampPtr(casted_right->getType())) {
         ::llvm::Value* ts1;
         ::llvm::Value* ts2;
-        ::llvm::Value* ts_add;
         TimestampIRBuilder ts_builder(block_->getModule());
         if (!ts_builder.GetTs(block_, casted_left, &ts1)) {
             return false;
@@ -250,10 +300,7 @@ bool ArithmeticIRBuilder::BuildSubExpr(
         if (!ts_builder.GetTs(block_, casted_right, &ts2)) {
             return false;
         }
-        BuildSubExpr(ts1, ts2, &ts_add, status);
-        if (!ts_builder.NewTimestamp(block_, ts_add, output)) {
-            return false;
-        }
+        return BuildSubExpr(ts1, ts2, output, status);
     } else {
         status.msg = "fail to codegen sub expr: value types are invalid";
         status.code = common::kCodegenError;
@@ -317,13 +364,20 @@ bool ArithmeticIRBuilder::BuildSDivExpr(::llvm::Value* left,
                                         base::Status& status) {
     if (!left->getType()->isIntegerTy() || !right->getType()->isIntegerTy()) {
         status.msg =
-            "fail to codegen integer div expr: value types are invalid";
+            "fail to codegen integer sdiv expr: value types are invalid";
         status.code = common::kCodegenError;
         LOG(WARNING) << status.msg;
         return false;
     }
+    ::llvm::Value* casted_left = NULL;
+    ::llvm::Value* casted_right = NULL;
+
+    if (false == InferBaseIntegerTypes(left, right, &casted_left, &casted_right,
+                                       status)) {
+        return false;
+    }
     ::llvm::IRBuilder<> builder(block_);
-    *output = builder.CreateSDiv(left, right);
+    *output = builder.CreateSDiv(casted_left, casted_right);
     return true;
 }
 bool ArithmeticIRBuilder::BuildModExpr(llvm::Value* left, llvm::Value* right,

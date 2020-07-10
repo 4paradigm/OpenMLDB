@@ -8,8 +8,8 @@
 #include <stdint.h>
 #include <atomic>
 #include <iostream>
-#include "base/iterator.h"
 #include "base/fe_random.h"
+#include "base/iterator.h"
 
 namespace fesql {
 namespace storage {
@@ -21,7 +21,7 @@ template <class K, class V>
 class Node {
  public:
     // Set data reference and Node height
-    Node(const K& key, V& value, uint8_t height) // NOLINT
+    Node(const K& key, V& value, uint8_t height)  // NOLINT
         : height_(height), key_(key), value_(value) {
         nexts_ = new std::atomic<Node<K, V>*>[height];
     }
@@ -288,7 +288,7 @@ class SkipList {
 
         virtual bool Valid() const { return node_ != NULL; }
 
-        virtual void Next()  {
+        virtual void Next() {
             assert(Valid());
             node_ = node_->GetNext(0);
         }

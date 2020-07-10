@@ -74,8 +74,8 @@ T PrintList(int8_t* input) {
     } else {
         std::cout << "list ptr is ok" << std::endl;
     }
-    ::fesql::codec::ListRef* list_ref =
-        reinterpret_cast<::fesql::codec::ListRef*>(input);
+    ::fesql::codec::ListRef<>* list_ref =
+        reinterpret_cast<::fesql::codec::ListRef<>*>(input);
     ::fesql::codec::ColumnImpl<T>* column =
         reinterpret_cast<::fesql::codec::ColumnImpl<T>*>(list_ref->list);
     auto col = column->GetIterator();
@@ -103,8 +103,8 @@ int32_t PrintListString(int8_t* input) {
     } else {
         std::cout << "list ptr is ok" << std::endl;
     }
-    ::fesql::codec::ListRef* list_ref =
-        reinterpret_cast<::fesql::codec::ListRef*>(input);
+    ::fesql::codec::ListRef<>* list_ref =
+        reinterpret_cast<::fesql::codec::ListRef<>*>(input);
     ::fesql::codec::StringColumnImpl* column =
         reinterpret_cast<::fesql::codec::StringColumnImpl*>(list_ref->list);
     auto col = column->GetIterator();
@@ -141,9 +141,8 @@ class BufIRBuilderTest : public ::testing::Test {
 void RunEncode(::fesql::type::TableDef& table, int8_t** output_ptr) {  // NOLINT
     SQLCase::TableInfo table_info;
     ASSERT_TRUE(SQLCase::CreateTableInfoFromYaml(
-        fesql::sqlcase::FindFesqlDirPath() + "/" +
-            "cases/resource/codegen_t1_one_row.yaml",
-        &table_info));
+        fesql::sqlcase::FindFesqlDirPath(),
+        "cases/resource/codegen_t1_one_row.yaml", &table_info));
     ASSERT_TRUE(
         SQLCase::ExtractTableDef(table_info.schema_, table_info.index_, table));
     auto ctx = llvm::make_unique<LLVMContext>();
@@ -159,26 +158,26 @@ void RunEncode(::fesql::type::TableDef& table, int8_t** output_ptr) {  // NOLINT
     ScopeVar sv;
     sv.Enter("enter row scope");
     std::map<uint32_t, NativeValue> outputs;
-    outputs.insert(std::make_pair(0,
-        NativeValue::Create(builder.getInt32(32))));
-    outputs.insert(std::make_pair(1,
-        NativeValue::Create(builder.getInt16(16))));
-    outputs.insert(std::make_pair(
-        2, NativeValue::Create(
-            ::llvm::ConstantFP::get(*ctx, ::llvm::APFloat(32.1f)))));
-    outputs.insert(std::make_pair(
-        3, NativeValue::Create(
-            ::llvm::ConstantFP::get(*ctx, ::llvm::APFloat(64.1)))));
-    outputs.insert(std::make_pair(4,
-        NativeValue::Create(builder.getInt64(64))));
+    outputs.insert(
+        std::make_pair(0, NativeValue::Create(builder.getInt32(32))));
+    outputs.insert(
+        std::make_pair(1, NativeValue::Create(builder.getInt16(16))));
+    outputs.insert(
+        std::make_pair(2, NativeValue::Create(::llvm::ConstantFP::get(
+                              *ctx, ::llvm::APFloat(32.1f)))));
+    outputs.insert(
+        std::make_pair(3, NativeValue::Create(::llvm::ConstantFP::get(
+                              *ctx, ::llvm::APFloat(64.1)))));
+    outputs.insert(
+        std::make_pair(4, NativeValue::Create(builder.getInt64(64))));
 
     std::string hello = "hello";
     ::llvm::Value* string_ref = NULL;
     bool ok = GetConstFeString(hello, entry_block, &string_ref);
     ASSERT_TRUE(ok);
     outputs.insert(std::make_pair(5, NativeValue::Create(string_ref)));
-    outputs.insert(std::make_pair(6,
-        NativeValue::Create(builder.getInt64(1590115420000L))));
+    outputs.insert(std::make_pair(
+        6, NativeValue::Create(builder.getInt64(1590115420000L))));
 
     BufNativeEncoderIRBuilder buf_encoder_builder(&outputs, table.columns(),
                                                   entry_block);
@@ -243,10 +242,9 @@ void LoadValue(T* result, bool* is_null,
         retTy = retTy->getPointerTo();
     }
     Function* fn = Function::Create(
-        FunctionType::get(llvm::Type::getInt1Ty(*ctx),
-                          {Type::getInt8PtrTy(*ctx), Type::getInt32Ty(*ctx),
-                           retTy},
-                          false),
+        FunctionType::get(
+            llvm::Type::getInt1Ty(*ctx),
+            {Type::getInt8PtrTy(*ctx), Type::getInt32Ty(*ctx), retTy}, false),
         Function::ExternalLinkage, "fn", m.get());
     BasicBlock* entry_block = BasicBlock::Create(*ctx, "EntryBlock", fn);
     ScopeVar sv;
@@ -320,7 +318,6 @@ void LoadValue(T* result, bool* is_null,
         *is_null = n;
     }
 }
-
 
 template <class T>
 void RunCaseV1(T expected,

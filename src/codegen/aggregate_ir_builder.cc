@@ -27,18 +27,13 @@
 #include "codegen/variable_ir_builder.h"
 #include "gflags/gflags.h"
 #include "glog/logging.h"
-DECLARE_bool(enable_column_sum_opt);
 namespace fesql {
 namespace codegen {
 
 AggregateIRBuilder::AggregateIRBuilder(const vm::SchemasContext* sc,
                                        ::llvm::Module* module,
                                        node::FrameNode* frame_node, uint32_t id)
-    : schema_context_(sc),
-      module_(module),
-      frame_node_(frame_node),
-      id_(id),
-      agg_enabled_(AggregateIRBuilder::EnableColumnAggOpt()) {
+    : schema_context_(sc), module_(module), frame_node_(frame_node), id_(id) {
     available_agg_func_set_.insert("sum");
     available_agg_func_set_.insert("avg");
     available_agg_func_set_.insert("count");
@@ -50,46 +45,37 @@ bool AggregateIRBuilder::IsAggFuncName(const std::string& fname) {
     return available_agg_func_set_.find(fname) != available_agg_func_set_.end();
 }
 
-// TODO(someone): configurable codegen
-bool AggregateIRBuilder::EnableColumnAggOpt() {
-    const char* env_name = "ENABLE_COLUMN_AGG_OPT";
-    char* value = getenv(env_name);
-    if (value != nullptr && strcmp(value, "false") == 0) {
-        LOG(INFO) << "Multi column agg opt is disable";
-        return false;
-    }
-    if (FLAGS_enable_column_sum_opt) {
-        LOG(INFO) << "Multi column agg opt is enable";
-        return true;
-    } else {
-        LOG(INFO) << "Multi column agg opt is disable";
-        return false;
-    }
-}
-
 bool AggregateIRBuilder::CollectAggColumn(const fesql::node::ExprNode* expr,
                                           size_t output_idx,
                                           fesql::type::Type* res_agg_type) {
-    if (!agg_enabled_) {
-        return false;
-    }
     switch (expr->expr_type_) {
         case node::kExprCall: {
             auto call = dynamic_cast<const node::CallExprNode*>(expr);
-            auto fn_def = dynamic_cast<const node::ExternalFnDefNode*>(
-                call->GetFnDef());
-            if (fn_def == nullptr) {
-                break;
+            std::string agg_func_name = "";
+            switch (call->GetFnDef()->GetType()) {
+                case node::kExternalFnDef: {
+                    agg_func_name =
+                        dynamic_cast<const node::ExternalFnDefNode*>(
+                            call->GetFnDef())
+                            ->function_name();
+                    break;
+                }
+                case node::kUDAFDef: {
+                    agg_func_name =
+                        dynamic_cast<const node::UDAFDefNode*>(call->GetFnDef())
+                            ->GetSimpleName();
+                    break;
+                }
+                default:
+                    break;
             }
-            auto agg_func_name = fn_def->function_name();
             if (!IsAggFuncName(agg_func_name)) {
                 break;
             }
-            auto args = call->GetArgs();
-            if (args->GetChildNum() != 1) {
+            if (call->GetChildNum() != 1) {
                 break;
             }
-            auto input_expr = args->GetChild(0);
+            auto input_expr = call->GetChild(0);
             if (input_expr->expr_type_ != node::kExprColumnRef) {
                 break;
             }
@@ -315,25 +301,29 @@ class StatisticalAggGenerator {
 
     void GenMinUpdate(size_t i, ::llvm::Value* input,
                       ::llvm::IRBuilder<>* builder) {
-        ::llvm::Module* module = builder->GetInsertBlock()->getModule();
         ::llvm::Value* accum = builder->CreateLoad(min_states_[i]);
         ::llvm::Type* min_ty = accum->getType();
-        ::llvm::FunctionCallee callee = module->getOrInsertFunction(
-            std::string("min_") + DataTypeName(col_type_), min_ty, min_ty,
-            min_ty);
-        ::llvm::Value* min = builder->CreateCall(callee, {accum, input});
+        ::llvm::Value* cmp;
+        if (min_ty->isIntegerTy()) {
+            cmp = builder->CreateICmpSLT(accum, input);
+        } else {
+            cmp = builder->CreateFCmpOLT(accum, input);
+        }
+        ::llvm::Value* min = builder->CreateSelect(cmp, accum, input);
         builder->CreateStore(min, min_states_[i]);
     }
 
     void GenMaxUpdate(size_t i, ::llvm::Value* input,
                       ::llvm::IRBuilder<>* builder) {
-        ::llvm::Module* module = builder->GetInsertBlock()->getModule();
         ::llvm::Value* accum = builder->CreateLoad(max_states_[i]);
         ::llvm::Type* max_ty = accum->getType();
-        ::llvm::FunctionCallee callee = module->getOrInsertFunction(
-            std::string("max_") + DataTypeName(col_type_), max_ty, max_ty,
-            max_ty);
-        ::llvm::Value* max = builder->CreateCall(callee, {accum, input});
+        ::llvm::Value* cmp;
+        if (max_ty->isIntegerTy()) {
+            cmp = builder->CreateICmpSLT(accum, input);
+        } else {
+            cmp = builder->CreateFCmpOLT(accum, input);
+        }
+        ::llvm::Value* max = builder->CreateSelect(cmp, input, accum);
         builder->CreateStore(max, max_states_[i]);
     }
 
@@ -433,12 +423,6 @@ class StatisticalAggGenerator {
 llvm::Type* AggregateIRBuilder::GetOutputLLVMType(
     ::llvm::LLVMContext& llvm_ctx, const std::string& fname,
     const node::DataType& node_type) {
-    if (fname == "count") {
-        return ::llvm::Type::getInt64Ty(llvm_ctx);
-    } else if (fname == "avg") {
-        return ::llvm::Type::getDoubleTy(llvm_ctx);
-    }
-
     ::llvm::Type* llvm_ty = nullptr;
     switch (node_type) {
         case ::fesql::node::kInt16:
@@ -460,6 +444,11 @@ llvm::Type* AggregateIRBuilder::GetOutputLLVMType(
             LOG(ERROR) << "Unknown data type: " << DataTypeName(node_type);
             return nullptr;
         }
+    }
+    if (fname == "count") {
+        return ::llvm::Type::getInt64Ty(llvm_ctx);
+    } else if (fname == "avg") {
+        return ::llvm::Type::getDoubleTy(llvm_ctx);
     }
     return llvm_ty;
 }
@@ -498,7 +487,7 @@ bool ScheduleAggGenerators(
     // try best to find contiguous input cols of same type
     size_t idx = 0;
     int64_t cur_offset = -1;
-    node::DataType cur_col_type;
+    node::DataType cur_col_type = node::kNull;
     std::vector<std::string> agg_gen_col_seq;
 
     while (!agg_gen_col_seq.empty() || idx < col_keys.size()) {

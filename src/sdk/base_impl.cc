@@ -17,13 +17,13 @@
 
 #include "sdk/base_impl.h"
 
-#include <string>
 #include <memory>
+#include <string>
 
 namespace fesql {
 namespace sdk {
 
-static const std::string EMPTY_STR;  //NOLINT
+static const std::string EMPTY_STR;  // NOLINT
 
 SchemaImpl::SchemaImpl(const vm::Schema& schema) : schema_(schema) {}
 

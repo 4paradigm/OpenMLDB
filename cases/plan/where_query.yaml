@@ -1,4 +1,4 @@
-SQLCases:
+cases:
   - id: 1
     desc: SELECT简单过滤
     sql: SELECT COL1 FROM t1 where COL1 > 10;
@@ -8,6 +8,7 @@ SQLCases:
   - id: 3
     desc: SELECT 过滤后统计条数
     sql: SELECT COUNT(COL1) FROM t1 where COL1 > 10 and COL2 = 20;
+    mode: physical-plan-unsupport
   - id: 4
     desc: SELECT 过滤后分组聚合条数
     sql: SELECT col1, COUNT(COL1) FROM t1 where COL1 > 10 and COL2 = 20 group by col1;

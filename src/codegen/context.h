@@ -10,13 +10,13 @@
 #ifndef SRC_CODEGEN_CONTEXT_H_
 #define SRC_CODEGEN_CONTEXT_H_
 
-#include <vector>
 #include <string>
-#include "llvm/IR/Module.h"
+#include <vector>
 #include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/Module.h"
 
-#include "codegen/native_value.h"
 #include "base/fe_status.h"
+#include "codegen/native_value.h"
 
 namespace fesql {
 namespace codegen {
@@ -45,9 +45,7 @@ class BlockGroup {
         return this->blocks_;
     }
 
-    CodeGenContext* ctx() const {
-        return this->ctx_;
-    }
+    CodeGenContext* ctx() const { return this->ctx_; }
 
  private:
     CodeGenContext* ctx_;
@@ -59,6 +57,7 @@ class BlockGroupGuard {
  public:
     explicit BlockGroupGuard(BlockGroup* group);
     ~BlockGroupGuard();
+
  private:
     CodeGenContext* ctx_;
     BlockGroup* prev_;
@@ -68,6 +67,7 @@ class BlockGuard {
  public:
     BlockGuard(llvm::BasicBlock* block, CodeGenContext* ctx);
     ~BlockGuard();
+
  private:
     CodeGenContext* ctx_;
     llvm::BasicBlock* prev_;
@@ -75,9 +75,9 @@ class BlockGuard {
 
 class FunctionScopeGuard {
  public:
-    FunctionScopeGuard(llvm::Function* function,
-                       CodeGenContext* ctx);
+    FunctionScopeGuard(llvm::Function* function, CodeGenContext* ctx);
     ~FunctionScopeGuard();
+
  private:
     CodeGenContext* ctx_;
     llvm::Function* prev_function_;
@@ -98,11 +98,11 @@ class CodeGenContext {
 
     ::llvm::IRBuilder<>* GetBuilder();
 
+    ::llvm::Module* GetModule() { return llvm_module_; }
+
     Status CreateBranch(const NativeValue& cond,
                         const std::function<Status()>& left,
                         const std::function<Status()>& right);
-
-
 
     ::llvm::BasicBlock* AppendNewBlock(const std::string& name = "");
 

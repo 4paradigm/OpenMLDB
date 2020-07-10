@@ -7,6 +7,9 @@
  *--------------------------------------------------------------------------
  **/
 #include "codegen/native_value.h"
+#include <dlfcn.h>
+#include <execinfo.h>
+#include <signal.h>
 
 namespace fesql {
 namespace codegen {
@@ -54,41 +57,29 @@ namespace codegen {
     }
 }
 
-::llvm::Type* NativeValue::GetType() const {
-    return type_;
-}
+::llvm::Type* NativeValue::GetType() const { return type_; }
 
-::llvm::Value* NativeValue::GetRaw() const {
-    return raw_;
-}
+::llvm::Value* NativeValue::GetRaw() const { return raw_; }
 
 bool NativeValue::IsMem() const {
-    return raw_ != nullptr &&
-        raw_->getType() == type_->getPointerTo();
+    return raw_ != nullptr && raw_->getType() == type_->getPointerTo();
 }
 
 bool NativeValue::IsReg() const {
-    return raw_ != nullptr &&
-        raw_->getType() == type_;
+    return raw_ != nullptr && raw_->getType() == type_;
 }
 
-bool NativeValue::HasFlag() const {
-    return flag_ != nullptr;
-}
+bool NativeValue::HasFlag() const { return flag_ != nullptr; }
 
 bool NativeValue::IsMemFlag() const {
-    return HasFlag() &&
-        flag_->getType()->isPointerTy();
+    return HasFlag() && flag_->getType()->isPointerTy();
 }
 
 bool NativeValue::IsRegFlag() const {
-    return HasFlag() &&
-        !flag_->getType()->isPointerTy();
+    return HasFlag() && !flag_->getType()->isPointerTy();
 }
 
-bool NativeValue::IsConstNull() const {
-    return raw_ == nullptr;
-}
+bool NativeValue::IsConstNull() const { return raw_ == nullptr; }
 
 void NativeValue::SetName(const std::string& name) {
     if (raw_ == nullptr) {
@@ -107,24 +98,24 @@ NativeValue NativeValue::Create(::llvm::Value* raw) {
 
 NativeValue NativeValue::CreateMem(::llvm::Value* raw) {
     return NativeValue(raw, nullptr,
-        reinterpret_cast<::llvm::PointerType*>(
-            raw->getType())->getElementType());
+                       reinterpret_cast<::llvm::PointerType*>(raw->getType())
+                           ->getElementType());
 }
 
 NativeValue NativeValue::CreateNull(::llvm::Type* ty) {
     return NativeValue(nullptr, nullptr, ty);
 }
 
-NativeValue NativeValue::CreateWithFlag(
-    ::llvm::Value* raw, ::llvm::Value* flag) {
+NativeValue NativeValue::CreateWithFlag(::llvm::Value* raw,
+                                        ::llvm::Value* flag) {
     return NativeValue(raw, flag, raw->getType());
 }
 
-NativeValue NativeValue::CreateMemWithFlag(
-    ::llvm::Value* raw, ::llvm::Value* flag) {
+NativeValue NativeValue::CreateMemWithFlag(::llvm::Value* raw,
+                                           ::llvm::Value* flag) {
     return NativeValue(raw, flag,
-        reinterpret_cast<::llvm::PointerType*>(
-            raw->getType())->getElementType());
+                       reinterpret_cast<::llvm::PointerType*>(raw->getType())
+                           ->getElementType());
 }
 
 NativeValue NativeValue::Replace(::llvm::Value* val) const {
@@ -135,11 +126,9 @@ NativeValue NativeValue::Replace(::llvm::Value* val) const {
     }
 }
 
-NativeValue::NativeValue(::llvm::Value* raw,
-                         ::llvm::Value* flag,
-                         ::llvm::Type* type):
-    raw_(raw), flag_(flag), type_(type) {}
-
+NativeValue::NativeValue(::llvm::Value* raw, ::llvm::Value* flag,
+                         ::llvm::Type* type)
+    : raw_(raw), flag_(flag), type_(type) {}
 
 }  // namespace codegen
 }  // namespace fesql

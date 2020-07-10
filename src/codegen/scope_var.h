@@ -22,8 +22,8 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include "llvm/IR/IRBuilder.h"
 #include "codegen/native_value.h"
+#include "llvm/IR/IRBuilder.h"
 
 namespace fesql {
 namespace codegen {
@@ -45,6 +45,7 @@ class ScopeVar {
     bool Enter(const std::string& name);
     bool Exit();
     bool AddVar(const std::string& name, const NativeValue& value);
+    bool ReplaceVar(const std::string& name, const NativeValue& value);
     bool FindVar(const std::string& name, NativeValue* value);
     // Register values to be destroyed before exit scope
     bool AddIteratorValue(::llvm::Value* value);

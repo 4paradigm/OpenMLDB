@@ -59,8 +59,8 @@ std::vector<SQLCase> InitCases(std::string yaml_path);
 void InitCases(std::string yaml_path, std::vector<SQLCase>& cases);  // NOLINT
 
 void InitCases(std::string yaml_path, std::vector<SQLCase>& cases) {  // NOLINT
-    if (!SQLCase::CreateSQLCasesFromYaml(
-            fesql::sqlcase::FindFesqlDirPath() + "/" + yaml_path, cases)) {
+    if (!SQLCase::CreateSQLCasesFromYaml(fesql::sqlcase::FindFesqlDirPath(),
+                                         yaml_path, cases)) {
         FAIL();
     }
 }
@@ -139,6 +139,7 @@ void PrintRows(const vm::Schema& schema, const std::vector<Row>& rows) {
 const std::vector<Row> SortRows(const vm::Schema& schema,
                                 const std::vector<Row>& rows,
                                 const std::string& order_col) {
+    DLOG(INFO) << "sort rows start";
     RowView row_view(schema);
     int idx = -1;
     for (int i = 0; i < schema.size(); i++) {
@@ -151,22 +152,43 @@ const std::vector<Row> SortRows(const vm::Schema& schema,
         return rows;
     }
 
-    std::vector<std::pair<int64_t, Row>> sort_rows;
-    for (auto row : rows) {
-        row_view.Reset(row.buf());
-        row_view.GetAsString(idx);
-        sort_rows.push_back(std::make_pair(
-            boost::lexical_cast<int64_t>(row_view.GetAsString(idx)), row));
+    if (schema.Get(idx).type() == fesql::type::kVarchar) {
+        std::vector<std::pair<std::string, Row>> sort_rows;
+        for (auto row : rows) {
+            row_view.Reset(row.buf());
+            row_view.GetAsString(idx);
+            sort_rows.push_back(std::make_pair(row_view.GetAsString(idx), row));
+        }
+        std::sort(
+            sort_rows.begin(), sort_rows.end(),
+            [](std::pair<std::string, Row>& a, std::pair<std::string, Row>& b) {
+                return a.first < b.first;
+            });
+        std::vector<Row> output_rows;
+        for (auto row : sort_rows) {
+            output_rows.push_back(row.second);
+        }
+        DLOG(INFO) << "sort rows done!";
+        return output_rows;
+    } else {
+        std::vector<std::pair<int64_t, Row>> sort_rows;
+        for (auto row : rows) {
+            row_view.Reset(row.buf());
+            row_view.GetAsString(idx);
+            sort_rows.push_back(std::make_pair(
+                boost::lexical_cast<int64_t>(row_view.GetAsString(idx)), row));
+        }
+        std::sort(sort_rows.begin(), sort_rows.end(),
+                  [](std::pair<int64_t, Row>& a, std::pair<int64_t, Row>& b) {
+                      return a.first < b.first;
+                  });
+        std::vector<Row> output_rows;
+        for (auto row : sort_rows) {
+            output_rows.push_back(row.second);
+        }
+        DLOG(INFO) << "sort rows done!";
+        return output_rows;
     }
-    std::sort(sort_rows.begin(), sort_rows.end(),
-              [](std::pair<int64_t, Row>& a, std::pair<int64_t, Row>& b) {
-                  return a.first < b.first;
-              });
-    std::vector<Row> output_rows;
-    for (auto row : sort_rows) {
-        output_rows.push_back(row.second);
-    }
-    return output_rows;
 }
 void CheckRows(const vm::Schema& schema, const std::vector<Row>& rows,
                const std::vector<Row>& exp_rows) {
@@ -260,9 +282,13 @@ class EngineTest : public ::testing::TestWithParam<SQLCase> {
     EngineTest() {}
     virtual ~EngineTest() {}
 };
+
 const std::vector<Row> SortRows(const vm::Schema& schema,
                                 const std::vector<Row>& rows,
                                 const std::string& order_col);
+const std::string GenerateTableName(int32_t id) {
+    return "auto_t" + std::to_string(id);
+}
 void RequestModeCheck(SQLCase& sql_case) {  // NOLINT
     int32_t input_cnt = sql_case.CountInputs();
     // Init catalog
@@ -270,6 +296,9 @@ void RequestModeCheck(SQLCase& sql_case) {  // NOLINT
         name_table_map;
     auto catalog = BuildCommonCatalog();
     for (int32_t i = 0; i < input_cnt; i++) {
+        if (sql_case.inputs()[i].name_.empty()) {
+            sql_case.set_input_name(GenerateTableName(i), i);
+        }
         type::TableDef table_def;
         sql_case.ExtractInputTableDef(table_def, i);
         std::shared_ptr<::fesql::storage::Table> table(
@@ -279,7 +308,12 @@ void RequestModeCheck(SQLCase& sql_case) {  // NOLINT
     }
 
     // Init engine and run session
-    std::cout << sql_case.sql_str() << std::endl;
+    std::string sql_str = sql_case.sql_str();
+    for (int j = 0; j < input_cnt; ++j) {
+        std::string placeholder = "{" + std::to_string(j) + "}";
+        boost::replace_all(sql_str, placeholder, sql_case.inputs()[j].name_);
+    }
+    std::cout << sql_str << std::endl;
     base::Status get_status;
 
     Engine engine(catalog);
@@ -288,9 +322,11 @@ void RequestModeCheck(SQLCase& sql_case) {  // NOLINT
         session.EnableDebug();
     }
 
-    bool ok =
-        engine.Get(sql_case.sql_str(), sql_case.db(), session, get_status);
-    ASSERT_TRUE(ok);
+    bool ok = engine.Get(sql_str, sql_case.db(), session, get_status);
+    ASSERT_EQ(sql_case.expect().success_, ok);
+    if (!sql_case.expect().success_) {
+        return;
+    }
 
     const std::string& request_name = session.GetRequestName();
     std::vector<Row> request_data;
@@ -313,7 +349,6 @@ void RequestModeCheck(SQLCase& sql_case) {  // NOLINT
     vm::Schema schema;
     schema = session.GetSchema();
     PrintSchema(schema);
-
 
     std::ostringstream oss;
     session.GetPhysicalPlan()->Print(oss, "");
@@ -346,7 +381,8 @@ void RequestModeCheck(SQLCase& sql_case) {  // NOLINT
         output.push_back(out_row);
     }
 
-    CheckRows(schema, output, case_output_data);
+    CheckRows(schema, SortRows(schema, output, sql_case.expect().order_),
+              case_output_data);
 }
 
 void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
@@ -357,6 +393,9 @@ void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
         name_table_map;
     auto catalog = BuildCommonCatalog();
     for (int32_t i = 0; i < input_cnt; i++) {
+        if (sql_case.inputs()[i].name_.empty()) {
+            sql_case.set_input_name(GenerateTableName(i), i);
+        }
         type::TableDef table_def;
         sql_case.ExtractInputTableDef(table_def, i);
         std::shared_ptr<::fesql::storage::Table> table(
@@ -366,7 +405,12 @@ void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
     }
 
     // Init engine and run session
-    std::cout << sql_case.sql_str() << std::endl;
+    std::string sql_str = sql_case.sql_str();
+    for (int j = 0; j < input_cnt; ++j) {
+        std::string placeholder = "{" + std::to_string(j) + "}";
+        boost::replace_all(sql_str, placeholder, sql_case.inputs()[j].name_);
+    }
+    std::cout << sql_str << std::endl;
     base::Status get_status;
 
     Engine engine(catalog);
@@ -375,9 +419,11 @@ void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
         session.EnableDebug();
     }
 
-    bool ok =
-        engine.Get(sql_case.sql_str(), sql_case.db(), session, get_status);
-    ASSERT_TRUE(ok);
+    bool ok = engine.Get(sql_str, sql_case.db(), session, get_status);
+    ASSERT_EQ(sql_case.expect().success_, ok);
+    if (!sql_case.expect().success_) {
+        return;
+    }
     std::vector<Row> request_data;
     for (int32_t i = 0; i < input_cnt; i++) {
         auto input = sql_case.inputs()[i];
@@ -414,7 +460,7 @@ void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
     // Check Output Data
     std::vector<Row> output;
     ASSERT_EQ(0, session.Run(output));
-    CheckRows(schema, SortRows(schema, output, sql_case.output().order_),
+    CheckRows(schema, SortRows(schema, output, sql_case.expect().order_),
               case_output_data);
 
     /* Compare with SQLite*/
@@ -495,13 +541,18 @@ void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
               SortRows(schema, output, sql_case.output().order_));
     }          
 }
-
+INSTANTIATE_TEST_CASE_P(
+    EngineFailQuery, EngineTest,
+    testing::ValuesIn(InitCases("/cases/query/fail_query.yaml")));
 INSTANTIATE_TEST_CASE_P(
     EngineSimpleQuery, EngineTest,
     testing::ValuesIn(InitCases("/cases/query/simple_query.yaml")));
 INSTANTIATE_TEST_CASE_P(
     EngineUdfQuery, EngineTest,
     testing::ValuesIn(InitCases("/cases/query/udf_query.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineOperatorQuery, EngineTest,
+    testing::ValuesIn(InitCases("/cases/query/operator_query.yaml")));
 INSTANTIATE_TEST_CASE_P(
     EngineUdafQuery, EngineTest,
     testing::ValuesIn(InitCases("/cases/query/udaf_query.yaml")));
@@ -533,33 +584,151 @@ INSTANTIATE_TEST_CASE_P(
     EngineBatchGroupQuery, EngineTest,
     testing::ValuesIn(InitCases("/cases/query/group_query.yaml")));
 
+INSTANTIATE_TEST_CASE_P(
+    EngineTestWindowRowQuery, EngineTest,
+    testing::ValuesIn(InitCases("/cases/integration/v1/test_window_row.yaml")));
+
+INSTANTIATE_TEST_CASE_P(
+    EngineTestWindowRowsRangeQuery, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/test_window_row_range.yaml")));
+
+INSTANTIATE_TEST_CASE_P(EngineTestWindowUnion, EngineTest,
+                        testing::ValuesIn(InitCases(
+                            "/cases/integration/v1/test_window_union.yaml")));
+
+INSTANTIATE_TEST_CASE_P(
+    EngineTestLastJoin, EngineTest,
+    testing::ValuesIn(InitCases("/cases/integration/v1/test_last_join.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestExpression, EngineTest,
+    testing::ValuesIn(InitCases("/cases/integration/v1/test_expression.yaml")));
+
+INSTANTIATE_TEST_CASE_P(EngineTestSelectSample, EngineTest,
+                        testing::ValuesIn(InitCases(
+                            "/cases/integration/v1/test_select_sample.yaml")));
+
+INSTANTIATE_TEST_CASE_P(
+    EngineTestSubSelect, EngineTest,
+    testing::ValuesIn(InitCases("/cases/integration/v1/test_sub_select.yaml")));
+
+INSTANTIATE_TEST_CASE_P(EngineTestUdafFunction, EngineTest,
+                        testing::ValuesIn(InitCases(
+                            "/cases/integration/v1/test_udaf_function.yaml")));
+
 TEST_P(EngineTest, test_request_engine) {
     ParamType sql_case = GetParam();
-    LOG(INFO) << sql_case.desc();
+    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!boost::contains(sql_case.mode(), "request-unsupport")) {
         RequestModeCheck(sql_case);
+    } else {
+        LOG(INFO) << "Skip mode " << sql_case.mode();
     }
 }
 TEST_P(EngineTest, test_batch_engine) {
     ParamType sql_case = GetParam();
-    LOG(INFO) << sql_case.desc();
+    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!boost::contains(sql_case.mode(), "batch-unsupport")) {
         BatchModeCheck(sql_case);
+    } else {
+        LOG(INFO) << "Skip mode " << sql_case.mode();
+    }
+}
+
+TEST_F(EngineTest, EngineCacheTest) {
+    const fesql::base::Status exp_status(::fesql::common::kOk, "ok");
+    fesql::type::TableDef table_def;
+    fesql::type::TableDef table_def2;
+    BuildTableDef(table_def);
+    BuildTableDef(table_def2);
+    table_def.set_name("t1");
+    table_def2.set_name("t2");
+    std::shared_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, table_def));
+    std::shared_ptr<::fesql::storage::Table> table2(
+        new ::fesql::storage::Table(2, 1, table_def2));
+    ::fesql::type::IndexDef* index = table_def.add_indexes();
+    index->set_name("index12");
+    index->add_first_keys("col1");
+    index->add_first_keys("col2");
+    index->set_second_key("col5");
+    auto catalog = BuildCommonCatalog(table_def, table);
+    AddTable(catalog, table_def2, table2);
+    EngineOptions options;
+    options.set_compile_only(true);
+    Engine engine(catalog, options);
+    std::string sql = "select col1, col2 from t1;";
+    {
+        base::Status get_status;
+        BatchRunSession bsession1;
+        ASSERT_TRUE(
+            engine.Get(sql, table_def.catalog(), bsession1, get_status));
+        ASSERT_EQ(get_status.code, common::kOk);
+        BatchRunSession bsession2;
+        ASSERT_TRUE(
+            engine.Get(sql, table_def.catalog(), bsession2, get_status));
+        ASSERT_EQ(get_status.code, common::kOk);
+        ASSERT_EQ(bsession1.GetCompileInfo().get(),
+                  bsession2.GetCompileInfo().get());
+        RequestRunSession rsession;
+        ASSERT_TRUE(engine.Get(sql, table_def.catalog(), rsession, get_status));
+        ASSERT_NE(rsession.GetCompileInfo().get(),
+                  bsession2.GetCompileInfo().get());
+    }
+    {
+        base::Status get_status;
+        BatchRunSession bsession1;
+        ASSERT_TRUE(
+            engine.Get(sql, table_def.catalog(), bsession1, get_status));
+        ASSERT_EQ(get_status.code, common::kOk);
+
+        RequestRunSession rsession1;
+        ASSERT_TRUE(
+            engine.Get(sql, table_def.catalog(), rsession1, get_status));
+        ASSERT_EQ(get_status.code, common::kOk);
+
+        // clear wrong db
+        engine.ClearCacheLocked("wrong_db");
+        BatchRunSession bsession2;
+        ASSERT_TRUE(
+            engine.Get(sql, table_def.catalog(), bsession2, get_status));
+        ASSERT_EQ(get_status.code, common::kOk);
+        RequestRunSession rsession2;
+        ASSERT_TRUE(
+            engine.Get(sql, table_def.catalog(), rsession2, get_status));
+        ASSERT_EQ(get_status.code, common::kOk);
+
+        ASSERT_EQ(bsession1.GetCompileInfo().get(),
+                  bsession2.GetCompileInfo().get());
+        ASSERT_EQ(rsession1.GetCompileInfo().get(),
+                  rsession2.GetCompileInfo().get());
+
+        // clear right db
+        engine.ClearCacheLocked(table_def.catalog());
+
+        BatchRunSession bsession3;
+        ASSERT_TRUE(
+            engine.Get(sql, table_def.catalog(), bsession3, get_status));
+        ASSERT_EQ(get_status.code, common::kOk);
+        RequestRunSession rsession3;
+        ASSERT_TRUE(
+            engine.Get(sql, table_def.catalog(), rsession3, get_status));
+        ASSERT_EQ(get_status.code, common::kOk);
+        ASSERT_NE(bsession1.GetCompileInfo().get(),
+                  bsession3.GetCompileInfo().get());
+        ASSERT_NE(rsession1.GetCompileInfo().get(),
+                  rsession3.GetCompileInfo().get());
     }
 }
 
 TEST_F(EngineTest, EngineCompileOnlyTest) {
     const fesql::base::Status exp_status(::fesql::common::kOk, "ok");
-
     fesql::type::TableDef table_def;
     fesql::type::TableDef table_def2;
-
     BuildTableDef(table_def);
     BuildTableDef(table_def2);
-
     table_def.set_name("t1");
     table_def2.set_name("t2");
-
     std::shared_ptr<::fesql::storage::Table> table(
         new ::fesql::storage::Table(1, 1, table_def));
     std::shared_ptr<::fesql::storage::Table> table2(

@@ -61,8 +61,7 @@ bool Table::Init() {
             auto iter = col_map.find(name);
             if (iter == col_map.end()) return false;
             col_vec.push_back(std::make_pair(
-                table_def_.columns(iter->second).type(),
-                iter->second));
+                table_def_.columns(iter->second).type(), iter->second));
         }
         if (col_vec.empty()) return false;
         st.keys = col_vec;
@@ -83,7 +82,55 @@ bool Table::Init() {
     DLOG(INFO) << "table " << table_def_.name() << " init ok";
     return true;
 }
+bool Table::DecodeKeysAndTs(const IndexSt& index, const char* row,
+                            uint32_t size, std::string& key,
+                            int64_t* time_ptr) {
+    if (index.keys.size() > 1) {
+        key.reserve(COMBINE_KEY_RESERVE_SIZE);
+        for (const auto& col : index.keys) {
+            if (!key.empty()) {
+                key.append("|");
+            }
+            if (col.first == ::fesql::type::kVarchar) {
+                char* val = NULL;
+                uint32_t length = 0;
+                row_view_.GetValue(reinterpret_cast<const int8_t*>(row),
+                                   col.second, &val, &length);
+                if (length != 0) {
+                    key.append(val, length);
+                } else {
+                    key.append(codec::EMPTY_STRING);
+                }
+            } else {
+                int64_t value = 0;
+                row_view_.GetInteger(reinterpret_cast<const int8_t*>(row),
+                                     col.second, col.first, &value);
+                key.append(std::to_string(value));
+            }
+        }
+    } else {
+        if (index.keys[0].first == ::fesql::type::kVarchar) {
+            char* buf = nullptr;
+            uint32_t size = 0;
+            key = row_view_.GetValue(reinterpret_cast<const int8_t*>(row),
+                                     index.keys[0].second, &buf, &size);
+            key = std::string(buf, size);
+            if (key == "") {
+                key = codec::EMPTY_STRING;
+            }
+        } else {
+            int64_t value = 0;
+            row_view_.GetInteger(reinterpret_cast<const int8_t*>(row),
+                                 index.keys[0].second, index.keys[0].first,
+                                 &value);
+            key = std::to_string(value);
+        }
+    }
 
+    row_view_.GetInteger(reinterpret_cast<const int8_t*>(row), index.ts_pos,
+                         table_def_.columns(index.ts_pos).type(), time_ptr);
+    return true;
+}
 bool Table::Put(const char* row, uint32_t size) {
     if (row_view_.GetSize(reinterpret_cast<const int8_t*>(row)) != size) {
         return false;
@@ -94,59 +141,17 @@ bool Table::Put(const char* row, uint32_t size) {
     memcpy(block->data, row, size);
     for (const auto& kv : index_map_) {
         std::string key;
-        char* spk_buf = nullptr;
-        uint32_t spk_size = 0;
-
-        if (kv.second.keys.size() > 1) {
-            key.reserve(COMBINE_KEY_RESERVE_SIZE);
-            for (const auto& col : kv.second.keys) {
-                if (!key.empty()) {
-                    key.append("|");
-                }
-                if (col.first == ::fesql::type::kVarchar) {
-                    char* val = NULL;
-                    uint32_t length = 0;
-                    row_view_.GetValue(reinterpret_cast<const int8_t*>(row),
-                                       col.second, &val, &length);
-                    if (length != 0) {
-                        key.append(val, length);
-                    }
-                } else {
-                    int64_t value = 0;
-                    row_view_.GetInteger(reinterpret_cast<const int8_t*>(row),
-                                         col.second, col.first, &value);
-                    key.append(std::to_string(value));
-                }
-            }
-            spk_buf = const_cast<char*>(key.c_str());
-            spk_size = key.length();
-
-        } else {
-            if (kv.second.keys[0].first == ::fesql::type::kVarchar) {
-                row_view_.GetValue(reinterpret_cast<const int8_t*>(row),
-                                   kv.second.keys[0].second,
-                                   &spk_buf, &spk_size);
-            } else {
-                int64_t value = 0;
-                row_view_.GetInteger(reinterpret_cast<const int8_t*>(row),
-                                     kv.second.keys[0].second,
-                                     kv.second.keys[0].first, &value);
-                key = std::to_string(value);
-                spk_buf = const_cast<char*>(key.c_str());
-                spk_size = key.length();
-            }
-        }
         uint32_t seg_index = 0;
+        int64_t time = 1;
+        if (!DecodeKeysAndTs(kv.second, row, size, key, &time)) {
+            return false;
+        }
         if (seg_cnt_ > 1) {
             seg_index =
-                ::fesql::base::hash(spk_buf, spk_size, SEED) % seg_cnt_;
+                ::fesql::base::hash(key.c_str(), key.length(), SEED) % seg_cnt_;
         }
-        int64_t time = 1;
-        row_view_.GetInteger(
-            reinterpret_cast<const int8_t*>(row), kv.second.ts_pos,
-            table_def_.columns(kv.second.ts_pos).type(), &time);
         Segment* segment = segments_[kv.second.index][seg_index];
-        Slice spk(spk_buf, spk_size);
+        Slice spk(key);
         segment->Put(spk, (uint64_t)time, block);
     }
     return true;
@@ -330,8 +335,8 @@ void TableIterator::Next() {
 
 const base::Slice& TableIterator::GetValue() {
     value_ = base::Slice(ts_it_->GetValue()->data,
-                   codec::RowView::GetSize(
-                       reinterpret_cast<int8_t*>(ts_it_->GetValue()->data)));
+                         codec::RowView::GetSize(reinterpret_cast<int8_t*>(
+                             ts_it_->GetValue()->data)));
     return value_;
 }
 

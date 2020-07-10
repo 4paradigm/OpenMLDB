@@ -23,6 +23,7 @@
 #include "codec/fe_row_codec.h"
 #include "node/node_enum.h"
 #include "node/sql_node.h"
+#include "node/type_node.h"
 
 namespace fesql {
 namespace codegen {
@@ -47,6 +48,9 @@ class TypeIRBuilder {
     static bool IsStructPtr(::llvm::Type* type);
     static bool IsInt64(::llvm::Type* type);
     static bool IsInterger(::llvm::Type* type);
+    static const std::string TypeName(::llvm::Type* type);
+    static const bool GetTypeNode(::llvm::Type* type,
+                                  node::TypeNode* type_node);
 };
 
 class Int64IRBuilder : public TypeIRBuilder {

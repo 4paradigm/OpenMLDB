@@ -12,7 +12,6 @@
 #include "glog/logging.h"
 #include "llvm/Support/TargetSelect.h"
 
-
 using namespace ::llvm;  // NOLINT
 namespace fesql {
 namespace bm {
@@ -53,7 +52,7 @@ static void BM_GROUPBY_CASE0_QUERY(benchmark::State &state) {  // NOLINT
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
     ::fesql::bm::GROUPBY_CASE0_QUERY(&state, BENCHMARK, true, state.range(0),
-                                    state.range(1));
+                                     state.range(1));
 }
 
 BENCHMARK(BM_GROUPBY_CASE0_QUERY)

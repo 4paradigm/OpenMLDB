@@ -112,7 +112,7 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                     auto runner = new WindowAggRunner(
                         id_++, node->GetOutputNameSchemaList(),
                         op->GetLimitCnt(), op->window_, op->project_,
-                        op->instance_not_in_window());
+                        op->instance_not_in_window(), op->need_append_input());
                     runner->AddProducer(input);
                     size_t input_slices =
                         input->output_schemas().GetSchemaSourceListSize();
@@ -361,7 +361,8 @@ bool Runner::GetColumnBool(RowView* row_view, int idx, type::Type type) {
 }
 
 Row Runner::WindowProject(const int8_t* fn, const uint64_t key, const Row row,
-                          const bool is_instance, Window* window) {
+                          const bool is_instance, size_t append_slices,
+                          Window* window) {
     if (row.empty()) {
         return row;
     }
@@ -384,8 +385,14 @@ Row Runner::WindowProject(const int8_t* fn, const uint64_t key, const Row row,
     if (window->instance_not_in_window()) {
         window->PopFrontData();
     }
-    return Row(base::RefCountedSlice::CreateManaged(out_buf,
-                                                    RowView::GetSize(out_buf)));
+    if (append_slices > 0) {
+        return Row(base::RefCountedSlice::CreateManaged(
+                       out_buf, RowView::GetSize(out_buf)),
+                   append_slices, row);
+    } else {
+        return Row(base::RefCountedSlice::CreateManaged(
+            out_buf, RowView::GetSize(out_buf)));
+    }
 }
 
 int64_t Runner::GetColumnInt64(RowView* row_view, int key_idx,
@@ -690,7 +697,7 @@ void WindowAggRunner::RunWindowAggOnKey(
             }
             window_project_gen_.Gen(
                 union_segment_iters[min_union_pos]->GetKey(), row, false,
-                &window);
+                append_slices_, &window);
 
             // Update Iterator Status
             union_segment_iters[min_union_pos]->Next();
@@ -707,11 +714,13 @@ void WindowAggRunner::RunWindowAggOnKey(
         if (windows_join_gen_.Valid()) {
             Row row = instance_row;
             row = windows_join_gen_.Join(instance_row, join_right_tables);
-            output_table->AddRow(window_project_gen_.Gen(
-                instance_segment_iter->GetKey(), row, true, &window));
+            output_table->AddRow(
+                window_project_gen_.Gen(instance_segment_iter->GetKey(), row,
+                                        true, append_slices_, &window));
         } else {
             output_table->AddRow(window_project_gen_.Gen(
-                instance_segment_iter->GetKey(), instance_row, true, &window));
+                instance_segment_iter->GetKey(), instance_row, true,
+                append_slices_, &window));
         }
 
         cnt++;
@@ -897,8 +906,11 @@ std::shared_ptr<PartitionHandler> SortGenerator::Sort(
     }
     if (!order_gen().Valid() &&
         is_asc == (partition->GetOrderType() == kAscOrder)) {
+        DLOG(INFO) << "match the order redirect the table";
         return partition;
     }
+
+    DLOG(INFO) << "mismatch the order and sort it";
     auto output =
         std::shared_ptr<MemPartitionHandler>(new MemPartitionHandler());
 
@@ -1011,12 +1023,12 @@ Row JoinGenerator::RowLastJoinPartition(
 }
 Row JoinGenerator::RowLastJoinTable(const Row& left_row,
                                     std::shared_ptr<TableHandler> table) {
+    if (right_sort_gen_.Valid()) {
+        table = right_sort_gen_.Sort(table, true);
+    }
     if (!table) {
         LOG(WARNING) << "Last Join right table is empty";
         return Row(left_slices_, left_row, right_slices_, Row());
-    }
-    if (right_sort_gen_.Valid()) {
-        table = right_sort_gen_.Sort(table, true);
     }
     auto right_iter = table->GetIterator();
     if (!right_iter) {
@@ -1065,6 +1077,11 @@ bool JoinGenerator::TableJoin(std::shared_ptr<TableHandler> left,
                               std::shared_ptr<TableHandler> right,
                               std::shared_ptr<MemTableHandler> output) {
     auto left_iter = left->GetIterator();
+    if (!left_iter) {
+        LOG(WARNING) << "Table Join with empty left table";
+        return false;
+    }
+    left_iter->SeekToFirst();
     while (left_iter->Valid()) {
         const Row& left_row = left_iter->GetValue();
         output->AddRow(
@@ -1179,17 +1196,18 @@ const Row Runner::RowLastJoinTable(size_t left_slices, const Row& left_row,
                                    std::shared_ptr<TableHandler> right_table,
                                    SortGenerator& right_sort,
                                    ConditionGenerator& cond_gen) {
+    right_table = right_sort.Sort(right_table, true);
     if (!right_table) {
         LOG(WARNING) << "Last Join right table is empty";
         return Row(left_slices, left_row, right_slices, Row());
     }
-    right_table = right_sort.Sort(right_table, true);
     auto right_iter = right_table->GetIterator();
     if (!right_iter) {
         LOG(WARNING) << "Last Join right table is empty";
         return Row(left_slices, left_row, right_slices, Row());
     }
     right_iter->SeekToFirst();
+
     if (!right_iter->Valid()) {
         LOG(WARNING) << "Last Join right table is empty";
         return Row(left_slices, left_row, right_slices, Row());
@@ -1198,6 +1216,7 @@ const Row Runner::RowLastJoinTable(size_t left_slices, const Row& left_row,
     if (!cond_gen.Valid()) {
         return Row(left_slices, left_row, right_slices, right_iter->GetValue());
     }
+
     while (right_iter->Valid()) {
         Row joined_row(left_slices, left_row, right_slices,
                        right_iter->GetValue());
@@ -1602,7 +1621,12 @@ const std::string KeyGenerator::Gen(const Row& row) {
     row_view_.Reset(key_row.buf());
     std::string keys = "";
     for (auto pos : idxs_) {
-        std::string key = row_view_.GetAsString(pos);
+        std::string key = fn_schema_.Get(pos).type() == fesql::type::kDate
+                              ? std::to_string(row_view_.GetDateUnsafe(pos))
+                              : row_view_.GetAsString(pos);
+        if (key == "") {
+            key = codec::EMPTY_STRING;
+        }
         if (!keys.empty()) {
             keys.append("|");
         }
@@ -1625,6 +1649,10 @@ const Row ProjectGenerator::Gen(const Row& row) {
 
 const Row AggGenerator::Gen(std::shared_ptr<TableHandler> table) {
     auto iter = table->GetIterator();
+    if (!iter) {
+        LOG(WARNING) << "Agg table is empty";
+        return Row();
+    }
     iter->SeekToFirst();
     if (!iter->Valid()) {
         return Row();
@@ -1647,8 +1675,10 @@ const Row AggGenerator::Gen(std::shared_ptr<TableHandler> table) {
 }
 
 const Row WindowProjectGenerator::Gen(const uint64_t key, const Row row,
-                                      bool is_instance, Window* window) {
-    return Runner::WindowProject(fn_, key, row, is_instance, window);
+                                      bool is_instance, size_t append_slices,
+                                      Window* window) {
+    return Runner::WindowProject(fn_, key, row, is_instance, append_slices,
+                                 window);
 }
 
 std::vector<std::shared_ptr<DataHandler>> InputsGenerator::RunInputs(

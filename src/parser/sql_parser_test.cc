@@ -30,8 +30,8 @@ std::vector<SQLCase> InitCases(std::string yaml_path);
 void InitCases(std::string yaml_path, std::vector<SQLCase> &cases);  // NOLINT
 
 void InitCases(std::string yaml_path, std::vector<SQLCase> &cases) {  // NOLINT
-    if (!SQLCase::CreateSQLCasesFromYaml(
-            fesql::sqlcase::FindFesqlDirPath() + "/" + yaml_path, cases)) {
+    if (!SQLCase::CreateSQLCasesFromYaml(fesql::sqlcase::FindFesqlDirPath(),
+                                         yaml_path, cases)) {
         FAIL();
     }
 }
@@ -60,6 +60,10 @@ class SqlParserTest : public ::testing::TestWithParam<SQLCase> {
 INSTANTIATE_TEST_CASE_P(
     SqlSimpleQueryParse, SqlParserTest,
     testing::ValuesIn(InitCases("cases/plan/simple_query.yaml")));
+
+INSTANTIATE_TEST_CASE_P(
+    SqlRenameQueryParse, SqlParserTest,
+    testing::ValuesIn(InitCases("cases/plan/rename_query.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
     SqlWindowQueryParse, SqlParserTest,
@@ -148,43 +152,53 @@ TEST_F(SqlParserTest, ConstExprTest) {
     }
     iter++;
     {
-        ASSERT_EQ(node::kInt32, dynamic_cast<node::ConstNode *>(
-            dynamic_cast<node::ResTarget *>(*iter)->GetVal())
-            ->GetDataType());
+        ASSERT_EQ(node::kInt32,
+                  dynamic_cast<node::ConstNode *>(
+                      dynamic_cast<node::ResTarget *>(*iter)->GetVal())
+                      ->GetDataType());
         ASSERT_EQ(1, dynamic_cast<node::ConstNode *>(
-            dynamic_cast<node::ResTarget *>(*iter)->GetVal())->GetInt());
+                         dynamic_cast<node::ResTarget *>(*iter)->GetVal())
+                         ->GetInt());
     }
     iter++;
     {
-        ASSERT_EQ(node::kInt64, dynamic_cast<node::ConstNode *>(
-            dynamic_cast<node::ResTarget *>(*iter)->GetVal())
-            ->GetDataType());
+        ASSERT_EQ(node::kInt64,
+                  dynamic_cast<node::ConstNode *>(
+                      dynamic_cast<node::ResTarget *>(*iter)->GetVal())
+                      ->GetDataType());
         ASSERT_EQ(1L, dynamic_cast<node::ConstNode *>(
-            dynamic_cast<node::ResTarget *>(*iter)->GetVal())->GetLong());
+                          dynamic_cast<node::ResTarget *>(*iter)->GetVal())
+                          ->GetLong());
     }
     iter++;
     {
-        ASSERT_EQ(node::kFloat, dynamic_cast<node::ConstNode *>(
-            dynamic_cast<node::ResTarget *>(*iter)->GetVal())
-            ->GetDataType());
+        ASSERT_EQ(node::kFloat,
+                  dynamic_cast<node::ConstNode *>(
+                      dynamic_cast<node::ResTarget *>(*iter)->GetVal())
+                      ->GetDataType());
         ASSERT_EQ(1.0f, dynamic_cast<node::ConstNode *>(
-            dynamic_cast<node::ResTarget *>(*iter)->GetVal())->GetFloat());
+                            dynamic_cast<node::ResTarget *>(*iter)->GetVal())
+                            ->GetFloat());
     }
     iter++;
     {
-        ASSERT_EQ(node::kDouble, dynamic_cast<node::ConstNode *>(
-            dynamic_cast<node::ResTarget *>(*iter)->GetVal())
-            ->GetDataType());
+        ASSERT_EQ(node::kDouble,
+                  dynamic_cast<node::ConstNode *>(
+                      dynamic_cast<node::ResTarget *>(*iter)->GetVal())
+                      ->GetDataType());
         ASSERT_EQ(1.0, dynamic_cast<node::ConstNode *>(
-            dynamic_cast<node::ResTarget *>(*iter)->GetVal())->GetDouble());
+                           dynamic_cast<node::ResTarget *>(*iter)->GetVal())
+                           ->GetDouble());
     }
     iter++;
     {
-        ASSERT_EQ(node::kVarchar, dynamic_cast<node::ConstNode *>(
-            dynamic_cast<node::ResTarget *>(*iter)->GetVal())
-            ->GetDataType());
+        ASSERT_EQ(node::kVarchar,
+                  dynamic_cast<node::ConstNode *>(
+                      dynamic_cast<node::ResTarget *>(*iter)->GetVal())
+                      ->GetDataType());
         const char *str = dynamic_cast<node::ConstNode *>(
-            dynamic_cast<node::ResTarget *>(*iter)->GetVal())->GetStr();
+                              dynamic_cast<node::ResTarget *>(*iter)->GetVal())
+                              ->GetStr();
         ASSERT_EQ("abc", std::string(str));
     }
     iter++;
@@ -290,17 +304,68 @@ TEST_F(SqlParserTest, Parser_Insert_ALL_Stmt) {
     ASSERT_EQ(true, insert_stmt->is_all_);
     auto insert_value = insert_stmt->values_[0]->children_;
 
-    ASSERT_EQ(
-        dynamic_cast<node::ConstNode *>(insert_value[0])->GetInt(), 1);
-    ASSERT_EQ(
-        dynamic_cast<node::ConstNode *>(insert_value[1])->GetDouble(),
-        2.3);
-    ASSERT_EQ(
-        dynamic_cast<node::ConstNode *>(insert_value[2])->GetDouble(),
-        3.1);
-    ASSERT_STREQ(
-        dynamic_cast<node::ConstNode *>(insert_value[3])->GetStr(),
-        "string");
+    ASSERT_EQ(dynamic_cast<node::ConstNode *>(insert_value[0])->GetInt(), 1);
+    ASSERT_EQ(dynamic_cast<node::ConstNode *>(insert_value[1])->GetDouble(),
+              2.3);
+    ASSERT_EQ(dynamic_cast<node::ConstNode *>(insert_value[2])->GetDouble(),
+              3.1);
+    ASSERT_STREQ(dynamic_cast<node::ConstNode *>(insert_value[3])->GetStr(),
+                 "string");
+}
+
+TEST_F(SqlParserTest, Parser_Insert_All_Placeholder) {
+    const std::string sqlstr = "insert into t1 values(?, ?, ?, ?);";
+    NodePointVector trees;
+    base::Status status;
+    int ret = parser_->parse(sqlstr.c_str(), trees, manager_, status);
+
+    if (0 != ret) {
+        std::cout << status.msg << std::endl;
+    }
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(1u, trees.size());
+    std::cout << *(trees.front()) << std::endl;
+    ASSERT_EQ(node::kInsertStmt, trees[0]->GetType());
+    node::InsertStmt *insert_stmt = dynamic_cast<node::InsertStmt *>(trees[0]);
+
+    ASSERT_EQ(true, insert_stmt->is_all_);
+    auto insert_value = insert_stmt->values_[0]->children_;
+
+    ASSERT_EQ(dynamic_cast<node::ConstNode *>(insert_value[0])->GetDataType(),
+              fesql::node::kPlaceholder);
+    ASSERT_EQ(dynamic_cast<node::ConstNode *>(insert_value[1])->GetDataType(),
+              fesql::node::kPlaceholder);
+    ASSERT_EQ(dynamic_cast<node::ConstNode *>(insert_value[2])->GetDataType(),
+              fesql::node::kPlaceholder);
+    ASSERT_EQ(dynamic_cast<node::ConstNode *>(insert_value[3])->GetDataType(),
+              fesql::node::kPlaceholder);
+}
+
+TEST_F(SqlParserTest, Parser_Insert_Part_Placeholder) {
+    const std::string sqlstr = "insert into t1 values(1, ?, 3.1, ?);";
+    NodePointVector trees;
+    base::Status status;
+    int ret = parser_->parse(sqlstr.c_str(), trees, manager_, status);
+
+    if (0 != ret) {
+        std::cout << status.msg << std::endl;
+    }
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(1u, trees.size());
+    std::cout << *(trees.front()) << std::endl;
+    ASSERT_EQ(node::kInsertStmt, trees[0]->GetType());
+    node::InsertStmt *insert_stmt = dynamic_cast<node::InsertStmt *>(trees[0]);
+
+    ASSERT_EQ(true, insert_stmt->is_all_);
+    auto insert_value = insert_stmt->values_[0]->children_;
+
+    ASSERT_EQ(dynamic_cast<node::ConstNode *>(insert_value[0])->GetInt(), 1);
+    ASSERT_EQ(dynamic_cast<node::ConstNode *>(insert_value[1])->GetDataType(),
+              fesql::node::kPlaceholder);
+    ASSERT_EQ(dynamic_cast<node::ConstNode *>(insert_value[2])->GetDouble(),
+              3.1);
+    ASSERT_EQ(dynamic_cast<node::ConstNode *>(insert_value[3])->GetDataType(),
+              fesql::node::kPlaceholder);
 }
 
 TEST_F(SqlParserTest, Parser_Insert_Stmt) {
@@ -325,17 +390,13 @@ TEST_F(SqlParserTest, Parser_Insert_Stmt) {
     ASSERT_EQ(false, insert_stmt->is_all_);
     ASSERT_EQ(std::vector<std::string>({"col1", "c2", "column3", "item4"}),
               insert_stmt->columns_);
-    ASSERT_EQ(
-        dynamic_cast<node::ConstNode *>(insert_value[0])->GetInt(), 1);
-    ASSERT_EQ(
-        dynamic_cast<node::ConstNode *>(insert_value[1])->GetDouble(),
-        2.3);
-    ASSERT_EQ(
-        dynamic_cast<node::ConstNode *>(insert_value[2])->GetDouble(),
-        3.1);
-    ASSERT_STREQ(
-        dynamic_cast<node::ConstNode *>(insert_value[3])->GetStr(),
-        "string");
+    ASSERT_EQ(dynamic_cast<node::ConstNode *>(insert_value[0])->GetInt(), 1);
+    ASSERT_EQ(dynamic_cast<node::ConstNode *>(insert_value[1])->GetDouble(),
+              2.3);
+    ASSERT_EQ(dynamic_cast<node::ConstNode *>(insert_value[2])->GetDouble(),
+              3.1);
+    ASSERT_STREQ(dynamic_cast<node::ConstNode *>(insert_value[3])->GetStr(),
+                 "string");
 }
 TEST_F(SqlParserTest, Parser_Insert_Stmt_values) {
     const std::string sqlstr =
@@ -362,34 +423,28 @@ TEST_F(SqlParserTest, Parser_Insert_Stmt_values) {
         ASSERT_EQ(false, insert_stmt->is_all_);
         ASSERT_EQ(std::vector<std::string>({"col1", "c2", "column3", "item4"}),
                   insert_stmt->columns_);
-        ASSERT_EQ(
-            dynamic_cast<node::ConstNode *>(insert_value[0])->GetInt(), 1);
-        ASSERT_EQ(
-            dynamic_cast<node::ConstNode *>(insert_value[1])->GetDouble(),
-            2.3);
-        ASSERT_EQ(
-            dynamic_cast<node::ConstNode *>(insert_value[2])->GetDouble(),
-            3.1);
-        ASSERT_STREQ(
-            dynamic_cast<node::ConstNode *>(insert_value[3])->GetStr(),
-            "string");
+        ASSERT_EQ(dynamic_cast<node::ConstNode *>(insert_value[0])->GetInt(),
+                  1);
+        ASSERT_EQ(dynamic_cast<node::ConstNode *>(insert_value[1])->GetDouble(),
+                  2.3);
+        ASSERT_EQ(dynamic_cast<node::ConstNode *>(insert_value[2])->GetDouble(),
+                  3.1);
+        ASSERT_STREQ(dynamic_cast<node::ConstNode *>(insert_value[3])->GetStr(),
+                     "string");
     }
     {
         auto insert_value = insert_stmt->values_[1]->children_;
         ASSERT_EQ(false, insert_stmt->is_all_);
         ASSERT_EQ(std::vector<std::string>({"col1", "c2", "column3", "item4"}),
                   insert_stmt->columns_);
-        ASSERT_EQ(
-            dynamic_cast<node::ConstNode *>(insert_value[0])->GetInt(), 2);
-        ASSERT_EQ(
-            dynamic_cast<node::ConstNode *>(insert_value[1])->GetDouble(),
-            3.3);
-        ASSERT_EQ(
-            dynamic_cast<node::ConstNode *>(insert_value[2])->GetDouble(),
-            4.1);
-        ASSERT_STREQ(
-            dynamic_cast<node::ConstNode *>(insert_value[3])->GetStr(),
-            "hello");
+        ASSERT_EQ(dynamic_cast<node::ConstNode *>(insert_value[0])->GetInt(),
+                  2);
+        ASSERT_EQ(dynamic_cast<node::ConstNode *>(insert_value[1])->GetDouble(),
+                  3.3);
+        ASSERT_EQ(dynamic_cast<node::ConstNode *>(insert_value[2])->GetDouble(),
+                  4.1);
+        ASSERT_STREQ(dynamic_cast<node::ConstNode *>(insert_value[3])->GetStr(),
+                     "hello");
     }
 }
 

@@ -31,9 +31,8 @@ using fesql::vm::RowIterator;
 static constexpr uint32_t SEED = 0xe17a1465;
 
 WindowInternalIterator::WindowInternalIterator(
-    std::unique_ptr<base::Iterator<uint64_t, DataBlock*>> ts_it):
-    ts_it_(std::move(ts_it)),
-    value_() {}
+    std::unique_ptr<base::Iterator<uint64_t, DataBlock*>> ts_it)
+    : ts_it_(std::move(ts_it)), value_() {}
 WindowInternalIterator::~WindowInternalIterator() {}
 
 void WindowInternalIterator::Seek(const uint64_t& ts) { ts_it_->Seek(ts); }
@@ -234,8 +233,8 @@ void FullTableIterator::Next() { GoToNext(); }
 
 const Row& FullTableIterator::GetValue() {
     auto buf = reinterpret_cast<int8_t*>(ts_it_->GetValue()->data);
-    value_ = Row(base::RefCountedSlice::Create(
-        buf, codec::RowView::GetSize(buf)));
+    value_ =
+        Row(base::RefCountedSlice::Create(buf, codec::RowView::GetSize(buf)));
     return value_;
 }
 bool FullTableIterator::IsSeekable() const { return false; }

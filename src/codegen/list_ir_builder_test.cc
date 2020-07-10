@@ -37,6 +37,7 @@
 #include "llvm/Transforms/InstCombine/InstCombine.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/GVN.h"
+#include "udf/default_udf_library.h"
 #include "udf/udf.h"
 #include "vm/sql_compiler.h"
 
@@ -120,6 +121,9 @@ void GetListAtPos(const type::TableDef& table, T* result,
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_load_buf", *ctx);
     ::fesql::udf::RegisterUDFToModule(m.get());
+    base::Status status;
+    udf::DefaultUDFLibrary lib;
+    ASSERT_TRUE(vm::RegisterFeLibs(&lib, status));
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
     ::llvm::Type* retTy = NULL;
@@ -157,10 +161,9 @@ void GetListAtPos(const type::TableDef& table, T* result,
         retTy = retTy->getPointerTo();
     }
     Function* fn = Function::Create(
-        FunctionType::get(::llvm::Type::getVoidTy(*ctx),
-                          {Type::getInt8PtrTy(*ctx), Type::getInt32Ty(*ctx),
-                           retTy},
-                          false),
+        FunctionType::get(
+            ::llvm::Type::getVoidTy(*ctx),
+            {Type::getInt8PtrTy(*ctx), Type::getInt32Ty(*ctx), retTy}, false),
         Function::ExternalLinkage, "fn", m.get());
     BasicBlock* entry_block = BasicBlock::Create(*ctx, "EntryBlock", fn);
     ScopeVar sv;
@@ -181,7 +184,6 @@ void GetListAtPos(const type::TableDef& table, T* result,
     ASSERT_TRUE(ok);
 
     ::llvm::Value* val = nullptr;
-    base::Status status;
     ASSERT_TRUE(list_builder.BuildAt(column, arg1, &val, status));
 
     switch (type) {
@@ -211,7 +213,7 @@ void GetListAtPos(const type::TableDef& table, T* result,
     auto& jd = J->getMainJITDylib();
     ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
                                       J->getDataLayout());
-
+    lib.InitJITSymbols(J.get());
     ::fesql::udf::InitUDFSymbol(jd, mi);
     // add codec
     ::fesql::vm::InitCodecSymbol(jd, mi);
@@ -229,6 +231,9 @@ void GetListIterator(T expected, const type::TableDef& table,
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_load_buf", *ctx);
     ::fesql::udf::RegisterUDFToModule(m.get());
+    base::Status status;
+    udf::DefaultUDFLibrary lib;
+    ASSERT_TRUE(vm::RegisterFeLibs(&lib, status));
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
     ::llvm::Type* retTy = NULL;
@@ -278,7 +283,6 @@ void GetListIterator(T expected, const type::TableDef& table,
     ASSERT_TRUE(ok);
 
     ::llvm::Value* iterator = nullptr;
-    base::Status status;
     ASSERT_TRUE(list_builder.BuildIterator(column, &iterator, status));
     ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
     ::llvm::Value* i8_ptr = builder.CreatePointerCast(iterator, i8_ptr_ty);
@@ -400,6 +404,9 @@ void GetInnerListIterator(T expected, const type::TableDef& table,
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_load_buf", *ctx);
     ::fesql::udf::RegisterUDFToModule(m.get());
+    base::Status status;
+    udf::DefaultUDFLibrary lib;
+    ASSERT_TRUE(vm::RegisterFeLibs(&lib, status));
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
     ::llvm::Type* retTy = NULL;
@@ -457,7 +464,6 @@ void GetInnerListIterator(T expected, const type::TableDef& table,
     ASSERT_TRUE(ok);
 
     ::llvm::Value* iterator = nullptr;
-    base::Status status;
     ASSERT_TRUE(list_builder.BuildIterator(column, &iterator, status));
     ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
     ::llvm::Value* i8_ptr = builder.CreatePointerCast(iterator, i8_ptr_ty);
@@ -577,6 +583,9 @@ void RunListIteratorSumCase(T* result, const type::TableDef& table,
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_load_iterator_next", *ctx);
     ::fesql::udf::RegisterUDFToModule(m.get());
+    base::Status status;
+    udf::DefaultUDFLibrary lib;
+    ASSERT_TRUE(vm::RegisterFeLibs(&lib, status));
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
     ::llvm::Type* retTy = NULL;
@@ -614,8 +623,7 @@ void RunListIteratorSumCase(T* result, const type::TableDef& table,
     }
     Function* fn = Function::Create(
         FunctionType::get(Type::getVoidTy(*ctx),
-                          {Type::getInt8PtrTy(*ctx), retTy},
-                          false),
+                          {Type::getInt8PtrTy(*ctx), retTy}, false),
         Function::ExternalLinkage, "fn", m.get());
     BasicBlock* entry_block = BasicBlock::Create(*ctx, "EntryBlock", fn);
     ScopeVar sv;
@@ -636,7 +644,6 @@ void RunListIteratorSumCase(T* result, const type::TableDef& table,
     ASSERT_TRUE(ok);
 
     ::llvm::Value* iter = nullptr;
-    base::Status status;
     ASSERT_TRUE(list_builder.BuildIterator(column, &iter, status));
     ::llvm::Value* next1;
     ASSERT_TRUE(list_builder.BuildIteratorNext(iter, &next1, status));
@@ -738,8 +745,7 @@ void GetListIteratorNext(T* result, const type::TableDef& table,
 
     Function* fn = Function::Create(
         FunctionType::get(Type::getVoidTy(*ctx),
-                          {Type::getInt8PtrTy(*ctx), retTy},
-                          false),
+                          {Type::getInt8PtrTy(*ctx), retTy}, false),
         Function::ExternalLinkage, "fn", m.get());
     BasicBlock* entry_block = BasicBlock::Create(*ctx, "EntryBlock", fn);
     ScopeVar sv;

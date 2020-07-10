@@ -1,4 +1,4 @@
-SQLCases:
+cases:
   - id: 0
     desc: 单window聚合 ROWS Between
     sql: |
@@ -159,7 +159,7 @@ SQLCases:
       sum(col3) OVER (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 1000 PRECEDING AND CURRENT ROW) as w_col3_sum
       FROM t1
       WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW) limit 10;
-  - id: 18
+  - id: 19
     desc: simple query + window ROWS, ROWS_RANGE
     sql: |
       SELECT col1, col2, col3,

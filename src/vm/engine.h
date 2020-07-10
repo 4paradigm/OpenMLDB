@@ -179,13 +179,17 @@ class Engine {
         cl_ = cl;
     }
 
+    void ClearCacheLocked(const std::string& db);
+
  private:
     std::shared_ptr<CompileInfo> GetCacheLocked(const std::string& db,
-                                                const std::string& sql);
+                                                const std::string& sql,
+                                                bool is_batch);
     std::shared_ptr<Catalog> cl_;
     EngineOptions options_;
     base::SpinMutex mu_;
-    EngineCache cache_;
+    EngineCache batch_cache_;
+    EngineCache request_cache_;
 };
 
 }  // namespace vm

@@ -17,16 +17,15 @@ struct RawBuffer {
 
     bool CopyFrom(const char* buf, size_t buf_size) const {
         if (size < buf_size) {
-            LOG(WARNING) << "Buffer size too small"
-                << size << " , require >=" << buf_size;
+            LOG(WARNING) << "Buffer size too small" << size
+                         << " , require >=" << buf_size;
             return false;
         }
         memcpy(addr, buf, buf_size);
         return true;
     }
 
-    RawBuffer(char* addr, size_t size):
-        addr(addr), size(size) {}
+    RawBuffer(char* addr, size_t size) : addr(addr), size(size) {}
 };
 
 }  // namespace base

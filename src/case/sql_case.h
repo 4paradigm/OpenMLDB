@@ -27,11 +27,23 @@ class SQLCase {
         std::string index_;
         std::string data_;
         std::string order_;
+        std::vector<std::string> indexs_;
+        std::vector<std::string> columns_;
+        std::vector<std::vector<std::string>> rows_;
+    };
+    struct ExpectInfo {
+        int64_t count_ = -1;
+        std::vector<std::string> columns_;
+        std::vector<std::vector<std::string>> rows_;
+        std::string schema_;
+        std::string data_;
+        std::string order_;
+        bool success_ = true;
     };
     SQLCase() {}
     virtual ~SQLCase() {}
 
-    const int32_t id() const { return id_; }
+    const std::string id() const { return id_; }
     const std::string& desc() const { return desc_; }
     const std::string& mode() const { return mode_; }
     const std::string& request_plan() const { return request_plan_; }
@@ -42,8 +54,13 @@ class SQLCase {
     const std::string& insert_str() const { return insert_str_; }
     const std::string& db() const { return db_; }
     const std::vector<TableInfo>& inputs() const { return inputs_; }
-    const TableInfo& output() const { return output_; }
-    void set_output(const TableInfo& data) { output_ = data; }
+    const ExpectInfo& expect() const { return expect_; }
+    void set_expect(const ExpectInfo& data) { expect_ = data; }
+    void set_input_name(const std::string name, int32_t idx) {
+        if (idx < static_cast<int32_t>(inputs_.size())) {
+            inputs_[idx].name_ = name;
+        }
+    }
     const int32_t CountInputs() const { return inputs_.size(); }
     // extract schema from schema string
     // name:type|name:type|name:type|
@@ -57,6 +74,8 @@ class SQLCase {
     bool AddInput(const TableInfo& table_data);
     static bool TypeParse(const std::string& row_str, fesql::type::Type* type);
     static const std::string TypeString(fesql::type::Type type);
+    static bool ExtractSchema(const std::vector<std::string>& columns,
+                              type::TableDef& table);  // NOLINT
     static bool ExtractSchema(const std::string& schema_str,
                               type::TableDef& table);  // NOLINT
     static bool BuildCreateSQLFromSchema(const type::TableDef& table,
@@ -64,52 +83,80 @@ class SQLCase {
                                          bool index = true);  // NOLINT
     static bool ExtractIndex(const std::string& index_str,
                              type::TableDef& table);  // NOLINT
+    static bool ExtractIndex(const std::vector<std::string>& indexs,
+                             type::TableDef& table);  // NOLINT
+    static bool ExtractTableDef(const std::vector<std::string>& columns,
+                                const std::vector<std::string>& indexs,
+                                type::TableDef& table);  // NOLINT
     static bool ExtractTableDef(const std::string& schema_str,
                                 const std::string& index_str,
                                 type::TableDef& table);  // NOLINT
     static bool ExtractRows(const vm::Schema& schema,
                             const std::string& data_str,
                             std::vector<fesql::codec::Row>& rows);  // NOLINT
+    static bool ExtractRows(
+        const vm::Schema& schema,
+        const std::vector<std::vector<std::string>>& row_vec,
+        std::vector<fesql::codec::Row>& rows);  // NOLINT
     static bool BuildInsertSQLFromRow(const type::TableDef& table,
+<<<<<<< HEAD
                                         const std::string& row_str,
                                         std::string* create_sql);
     static bool BuildInsertSQLFromMultipleRows(const type::TableDef& table,
                                         const std::string& row_str,
                                         std::string* create_sql);                                      
+=======
+                                      const std::string& row_str,
+                                      std::string* create_sql);
+>>>>>>> bef1c75b65839387afe5a795d2123f27b238d7ef
     static bool ExtractRow(const vm::Schema& schema, const std::string& row_str,
+                           int8_t** out_ptr, int32_t* out_size);
+    static bool ExtractRow(const vm::Schema& schema,
+                           const std::vector<std::string>& item_vec,
                            int8_t** out_ptr, int32_t* out_size);
     static bool CreateTableInfoFromYamlNode(const YAML::Node& node,
                                             SQLCase::TableInfo* output);
+    static bool CreateExpectFromYamlNode(const YAML::Node& schema_data,
+                                         SQLCase::ExpectInfo* table);
     static bool LoadSchemaAndRowsFromYaml(
-        const std::string& resource_path,
+        const std::string& cases_dir, const std::string& resource_path,
         type::TableDef& table,                  // NOLINT
         std::vector<fesql::codec::Row>& rows);  // NOLINT
     static bool CreateSQLCasesFromYaml(
-        const std::string& yaml_path,
+        const std::string& cases_dir, const std::string& yaml_path,
         std::vector<SQLCase>& sql_case_ptr,  // NOLINT
         const std::string filter_mode = "");
     static bool CreateSQLCasesFromYaml(
-        const std::string& yaml_path,
+        const std::string& cases_dir, const std::string& yaml_path,
         std::vector<SQLCase>& sql_case_ptr,  // NOLINT
         const std::vector<std::string>& filter_modes);
-    static bool CreateTableInfoFromYaml(const std::string& yaml_path,
+    static bool CreateTableInfoFromYaml(const std::string& cases_dir,
+                                        const std::string& yaml_path,
                                         TableInfo* table_info);
+    static bool CreateStringListFromYamlNode(
+        const YAML::Node& node,
+        std::vector<std::string>& rows);  // NOLINT
+    static bool CreateRowsFromYamlNode(
+        const YAML::Node& node,
+        std::vector<std::vector<std::string>>& rows);  // NOLINT
     friend SQLCaseBuilder;
     friend std::ostream& operator<<(std::ostream& output, const SQLCase& thiz);
 
  private:
-    int32_t id_;
+    std::string id_;
     std::string mode_;
     std::string desc_;
+    std::vector<std::string> tags_;
     std::string db_;
     std::string create_str_;
     std::string insert_str_;
     std::string sql_str_;
+    std::vector<std::string> sql_strs_;
     bool standard_sql_;
     std::string batch_plan_;
     std::string request_plan_;
     std::vector<TableInfo> inputs_;
-    TableInfo output_;
+    ExpectInfo expect_;
 };
 std::string FindFesqlDirPath();
 

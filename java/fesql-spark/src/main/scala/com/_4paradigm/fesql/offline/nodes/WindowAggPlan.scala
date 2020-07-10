@@ -129,7 +129,8 @@ object WindowAggPlan {
       inputSchemaSlices = inputSchemaSlices,
       outputSchemaSlices = outputSchemaSlices,
       unionFlagIdx = flagIdx,
-      instanceNotInWindow = node.instance_not_in_window()
+      instanceNotInWindow = node.instance_not_in_window(),
+      needAppendInput = node.need_append_input()
     )
   }
 
@@ -232,7 +233,6 @@ object WindowAggPlan {
     }
   }
 
-
   /**
    * Spark closure class for window compute information
    */
@@ -247,7 +247,8 @@ object WindowAggPlan {
                              inputSchemaSlices: Array[StructType],
                              outputSchemaSlices: Array[StructType],
                              unionFlagIdx: Int,
-                             instanceNotInWindow: Boolean)
+                             instanceNotInWindow: Boolean,
+                             needAppendInput: Boolean)
 
 
   /**
@@ -268,6 +269,8 @@ object WindowAggPlan {
     private val orderKeyExtractor = SparkRowUtil.createOrderKeyExtractor(
       config.orderIdx, orderField.dataType, orderField.nullable)
 
+    // append slices cnt = needAppendInput ? inputSchemaSlices.size : 0
+    private val appendSlices = if (config.needAppendInput) config.inputSchemaSlices.size else 0
     // group key comparation
     private val groupKeyComparator = createGroupKeyComparator(
       config.groupIdxs, config.inputSchema)
@@ -289,7 +292,7 @@ object WindowAggPlan {
 
       // call native compute
       // note: row is buffered automatically by core api
-      val outputNativeRow = CoreAPI.WindowProject(fn, key, nativeInputRow, true, window)
+      val outputNativeRow = CoreAPI.WindowProject(fn, key, nativeInputRow, true, appendSlices, window)
 
       // call decode
       decoder.decode(outputNativeRow, outputArr)

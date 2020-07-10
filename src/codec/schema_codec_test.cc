@@ -15,10 +15,9 @@
  * limitations under the License.
  */
 
-
 #include <utility>
-#include "gtest/gtest.h"
 #include "codec/fe_schema_codec.h"
+#include "gtest/gtest.h"
 
 namespace fesql {
 namespace codec {

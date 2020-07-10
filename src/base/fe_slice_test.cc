@@ -31,8 +31,7 @@ TEST_F(SliceTest, ref_cnt_slice) {
         auto slice = RefCountedSlice::CreateManaged(buf, 1024);
         ref = slice;
     }
-    ASSERT_EQ(0, strcmp(
-        reinterpret_cast<char*>(ref.buf()), "hello world"));
+    ASSERT_EQ(0, strcmp(reinterpret_cast<char*>(ref.buf()), "hello world"));
 }
 
 }  // namespace base

@@ -13,6 +13,7 @@
 #include "codegen/fn_ir_builder.h"
 #include "codegen/fn_let_ir_builder.h"
 #include "vm/physical_op.h"
+#include "vm/schemas_context.h"
 
 namespace fesql {
 namespace vm {
@@ -56,12 +57,14 @@ bool TransformLogicalTreeToLogicalGraph(
 
 BatchModeTransformer::BatchModeTransformer(
     node::NodeManager* node_manager, const std::string& db,
-    const std::shared_ptr<Catalog>& catalog, ::llvm::Module* module)
+    const std::shared_ptr<Catalog>& catalog, ::llvm::Module* module,
+    udf::UDFLibrary* library)
     : node_manager_(node_manager),
       db_(db),
       catalog_(catalog),
       module_(module),
-      id_(0) {}
+      id_(0),
+      library_(library) {}
 
 BatchModeTransformer::~BatchModeTransformer() {}
 
@@ -150,7 +153,8 @@ bool BatchModeTransformer::TransformPlanOp(const ::fesql::node::PlanNode* node,
     }
     if (!ok) {
         LOG(WARNING) << "fail to tranform physical plan: fail node " +
-                            node::NameOfPlanNodeType(node->type_);
+                            node::NameOfPlanNodeType(node->type_) + ": " +
+                            status.msg;
         return false;
     }
     op_map_[logical_op] = op;
@@ -321,6 +325,7 @@ bool BatchModeTransformer::TransformProjecPlantOp(
                                   depend, output, status);
     }
 
+    // 处理project_list_vec_[1...N-1], 串联执行windowAggWithAppendInput
     std::vector<PhysicalOpNode*> ops;
     int32_t project_cnt = 0;
     for (size_t i = node->project_list_vec_.size() - 1; i > 0; i--) {
@@ -328,16 +333,11 @@ bool BatchModeTransformer::TransformProjecPlantOp(
             dynamic_cast<fesql::node::ProjectListNode*>(
                 node->project_list_vec_[i]);
         project_cnt++;
-        // append oringinal table column after project columns
-        // if there is multi
-        project_list->AddProject(node_manager_->MakeRowProjectNode(
-            project_list->GetProjects().size(), "*",
-            node_manager_->MakeAllNode("")));
-
         PhysicalOpNode* project_op = nullptr;
         if (!TransformProjectOp(project_list, depend, &project_op, status)) {
             return false;
         }
+        dynamic_cast<PhysicalWindowAggrerationNode*>(project_op)->AppendInput();
         depend = project_op;
     }
 
@@ -393,6 +393,13 @@ bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
         return false;
     }
     if (!CheckHistoryWindowFrame(w_ptr, status)) {
+        return false;
+    }
+
+    auto check_status = CheckTimeOrIntegerOrderColumn(
+        w_ptr->GetOrders(), depend->GetOutputNameSchemaList());
+    if (!check_status.isOK()) {
+        status = check_status;
         return false;
     }
     const node::OrderByNode* orders = w_ptr->GetOrders();
@@ -609,6 +616,12 @@ bool BatchModeTransformer::TransformJoinOp(const node::JoinPlanNode* node,
     *output = new PhysicalJoinNode(left, right, node->join_type_, node->orders_,
                                    node->condition_);
     node_manager_->RegisterNode(*output);
+    auto check_status = CheckTimeOrIntegerOrderColumn(
+        node->orders_, (*output)->GetOutputNameSchemaList());
+    if (!check_status.isOK()) {
+        status = check_status;
+        return false;
+    }
     return true;
 }
 bool BatchModeTransformer::TransformUnionOp(const node::UnionPlanNode* node,
@@ -736,8 +749,14 @@ bool BatchModeTransformer::TransformRenameOp(const node::RenamePlanNode* node,
     if (!TransformPlanOp(node->GetChildren()[0], &left, status)) {
         return false;
     }
-    *output = new PhysicalRenameNode(left, node->table_);
-    node_manager_->RegisterNode(*output);
+    vm::SchemaSourceList new_sources;
+
+    for (auto source : left->GetOutputNameSchemaList().schema_source_list_) {
+        new_sources.AddSchemaSource(node->table_, source.schema_,
+                                    source.sources_);
+    }
+    left->SetOutputNameSchemaList(new_sources);
+    *output = left;
     return true;
 }
 
@@ -774,6 +793,37 @@ bool BatchModeTransformer::AddPass(PhysicalPlanPassType type) {
     passes.push_back(type);
     return true;
 }
+
+bool ResolveProjects(const SchemaSourceList& schema_list,
+                     const node::PlanNodeList& projects, const bool row_project,
+                     node::NodeManager* node_manager, udf::UDFLibrary* library,
+                     base::Status& status) {  // NOLINT
+    // type inference and udf function resolve
+    vm::SchemasContext schema_context(schema_list);
+    ResolveFnAndAttrs resolve_pass(!row_project, &schema_context, node_manager,
+                                   library);
+    auto expr_group = node_manager->MakeExprList();
+    for (auto pnode : projects) {
+        auto pp_node = dynamic_cast<const node::ProjectNode*>(pnode);
+        auto expr = pp_node->GetExpression();
+        expr_group->AddChild(expr);
+    }
+    node::ExprNode* new_expr_group = nullptr;
+    auto pass_status = resolve_pass.Visit(expr_group, &new_expr_group);
+    if (!pass_status.isOK()) {
+        LOG(WARNING) << "Expression type inference failed, "
+                     << "all udfs fallback to legacy: " << pass_status.msg;
+        return true;
+    }
+    size_t expr_idx = 0;
+    for (auto pnode : projects) {
+        auto pp_node = dynamic_cast<node::ProjectNode*>(pnode);
+        pp_node->SetExpression(new_expr_group->GetChild(expr_idx));
+        expr_idx += 1;
+    }
+    return true;
+}
+
 bool BatchModeTransformer::GenProjects(
     const SchemaSourceList& input_name_schema_list,
     const node::PlanNodeList& projects, const bool row_project,
@@ -782,6 +832,13 @@ bool BatchModeTransformer::GenProjects(
     Schema* output_schema,  // NOLINT
     ColumnSourceList* output_column_sources,
     base::Status& status) {  // NOLINT
+
+    // type inference and udf function resolve
+    if (!ResolveProjects(input_name_schema_list, projects, row_project,
+                         node_manager_, library_, status)) {
+        return false;
+    }
+
     // TODO(wangtaize) use ops end op output schema
     ::fesql::codegen::RowFnLetIRBuilder builder(input_name_schema_list, frame,
                                                 module_);
@@ -940,7 +997,7 @@ bool BatchModeTransformer::CreatePhysicalProjectNode(
     node_manager_->RegisterNode(op);
     *output = op;
     return true;
-}  // namespace vm
+}
 
 bool BatchModeTransformer::TransformProjectOp(
     node::ProjectListNode* project_list, PhysicalOpNode* node,
@@ -955,6 +1012,17 @@ bool BatchModeTransformer::TransformProjectOp(
                                              project_list, output, status);
         case kSchemaTypeTable:
             if (project_list->is_window_agg_) {
+                if (!CheckHistoryWindowFrame(project_list->w_ptr_, status)) {
+                    return false;
+                }
+
+                auto check_status = CheckTimeOrIntegerOrderColumn(
+                    project_list->w_ptr_->GetOrders(),
+                    depend->GetOutputNameSchemaList());
+                if (!check_status.isOK()) {
+                    status = check_status;
+                    return false;
+                }
                 return CreatePhysicalProjectNode(kWindowAggregation, depend,
                                                  project_list, output, status);
             } else {
@@ -1076,7 +1144,8 @@ bool BatchModeTransformer::GenFnDef(const node::FuncDefPlanNode* fn_plan,
     }
 
     ::fesql::codegen::FnIRBuilder builder(module_);
-    bool ok = builder.Build(fn_plan->fn_def_, status);
+    ::llvm::Function* fn = nullptr;
+    bool ok = builder.Build(fn_plan->fn_def_, &fn, status);
     if (!ok) {
         status.msg = "fail to codegen function: " + status.msg;
         status.code = common::kCodegenError;
@@ -1332,6 +1401,44 @@ bool BatchModeTransformer::IsSimpleProject(const ColumnSourceList& sources) {
     }
     return flag;
 }
+base::Status BatchModeTransformer::CheckTimeOrIntegerOrderColumn(
+    const node::OrderByNode* orders,
+    const vm::SchemaSourceList& schema_source_list) {
+    if (nullptr != orders && !node::ExprListNullOrEmpty(orders->order_by_)) {
+        if (1u != orders->order_by_->children_.size()) {
+            return base::Status(
+                common::kPlanError,
+                "Invalid Order Column: can't support multi order");
+        }
+
+        auto order = orders->order_by_->children_[0];
+        if (node::kExprColumnRef != order->expr_type_) {
+            return base::Status(
+                common::kPlanError,
+                "Invalid Order Column: can't support expression order");
+        }
+
+        SchemasContext ctx(schema_source_list);
+        fesql::type::Type type;
+        CHECK_STATUS(ctx.ColumnTypeResolved(
+            dynamic_cast<node::ColumnRefNode*>(order)->GetRelationName(),
+            dynamic_cast<node::ColumnRefNode*>(order)->GetColumnName(), &type));
+        switch (type) {
+            case type::kInt16:
+            case type::kInt32:
+            case type::kInt64:
+            case type::kTimestamp: {
+                return base::Status();
+            }
+            default: {
+                return base::Status(common::kPlanError,
+                                    "Invalid Order column type : " +
+                                        fesql::type::Type_Name(type));
+            }
+        }
+    }
+    return base::Status();
+}
 bool BatchModeTransformer::CheckHistoryWindowFrame(
     const node::WindowPlanNode* w_ptr, base::Status& status) {
     if (nullptr == w_ptr) {
@@ -1380,8 +1487,7 @@ bool GroupAndSortOptimized::KeysFilterOptimized(
                 return false;
             }
             PhysicalPartitionProviderNode* scan_index_op =
-                new PhysicalPartitionProviderNode(scan_op->table_handler_,
-                                                  index_name);
+                new PhysicalPartitionProviderNode(scan_op, index_name);
             group->set_keys(new_groups);
             hash->set_keys(keys);
             *new_in = scan_index_op;
@@ -1427,8 +1533,7 @@ bool GroupAndSortOptimized::JoinKeysOptimized(
                 return false;
             }
             PhysicalPartitionProviderNode* partition_op =
-                new PhysicalPartitionProviderNode(scan_op->table_handler_,
-                                                  index_name);
+                new PhysicalPartitionProviderNode(scan_op, index_name);
             node_manager_->RegisterNode(partition_op);
             *new_in = partition_op;
             left_index_keys = node_manager_->MakeExprList();
@@ -1490,8 +1595,7 @@ bool GroupAndSortOptimized::GroupOptimized(
                 return false;
             }
             PhysicalPartitionProviderNode* partition_op =
-                new PhysicalPartitionProviderNode(scan_op->table_handler_,
-                                                  index_name);
+                new PhysicalPartitionProviderNode(scan_op, index_name);
             node_manager_->RegisterNode(partition_op);
             *new_in = partition_op;
             group->set_keys(new_groups);
@@ -2309,8 +2413,9 @@ bool LeftJoinOptimized::CheckExprListFromSchema(
 
 RequestModeransformer::RequestModeransformer(
     node::NodeManager* node_manager, const std::string& db,
-    const std::shared_ptr<Catalog>& catalog, ::llvm::Module* module)
-    : BatchModeTransformer(node_manager, db, catalog, module) {}
+    const std::shared_ptr<Catalog>& catalog, ::llvm::Module* module,
+    udf::UDFLibrary* library)
+    : BatchModeTransformer(node_manager, db, catalog, module, library) {}
 
 RequestModeransformer::~RequestModeransformer() {}
 
@@ -2423,6 +2528,12 @@ bool RequestModeransformer::TransformJoinOp(const node::JoinPlanNode* node,
                                           node->orders_, node->condition_);
 
     node_manager_->RegisterNode(*output);
+    auto check_status = CheckTimeOrIntegerOrderColumn(
+        node->orders_, (*output)->GetOutputNameSchemaList());
+    if (!check_status.isOK()) {
+        status = check_status;
+        return false;
+    }
     return true;
 }
 bool RequestModeransformer::TransformScanOp(const node::TablePlanNode* node,
@@ -2508,5 +2619,64 @@ bool SimpleProjectOptimized::Transform(PhysicalOpNode* in,
         }
     }
 }
+
+base::Status ResolveFnAndAttrs::Visit(node::ExprNode* expr,
+                                      node::ExprNode** output) {
+    auto iter = cache_.find(expr);
+    if (iter != cache_.end()) {
+        *output = iter->second;
+        return base::Status::OK();
+    }
+    for (size_t i = 0; i < expr->GetChildNum(); ++i) {
+        node::ExprNode* new_child = nullptr;
+        CHECK_STATUS(Visit(expr->GetChild(i), &new_child));
+        if (new_child != nullptr && new_child != expr->GetChild(i)) {
+            expr->SetChild(i, new_child);
+        }
+    }
+    *output = expr;  // default
+    switch (expr->GetExprType()) {
+        case node::kExprCall: {
+            auto call = dynamic_cast<node::CallExprNode*>(expr);
+            auto external_fn =
+                dynamic_cast<const node::ExternalFnDefNode*>(call->GetFnDef());
+            if (external_fn == nullptr || external_fn->IsResolved()) {
+                break;
+            }
+            node::ExprNode* result = nullptr;
+            node::ExprListNode arg_list;
+            for (size_t i = 0; i < call->GetChildNum(); ++i) {
+                arg_list.AddChild(call->GetChild(i));
+            }
+
+            auto status = library_->Transform(external_fn->function_name(),
+                                              &arg_list, call->GetOver(),
+                                              &analysis_context_, &result);
+            if (status.isOK() && result != nullptr) {
+                *output = result;
+            } else {
+                // fallback to legacy fn gen with warning
+                LOG(WARNING)
+                    << "Resolve function '" << external_fn->function_name()
+                    << "' failed, fallback to legacy: " << status.msg;
+            }
+        }
+        default:
+            break;
+    }
+
+    // Infer attr for non-group expr
+    if (expr->GetExprType() != node::kExprList &&
+        expr->GetExprType() != node::kExprAll) {
+        auto status = (*output)->InferAttr(&analysis_context_);
+        if (!status.isOK()) {
+            LOG(WARNING) << "Fail to infer " << (*output)->GetExprString()
+                         << ": " << status.msg;
+        }
+    }
+    cache_.insert(iter, std::make_pair(expr, *output));
+    return base::Status::OK();
+}
+
 }  // namespace vm
 }  // namespace fesql

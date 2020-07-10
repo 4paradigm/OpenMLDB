@@ -54,8 +54,9 @@ void CheckResult(std::string test, int32_t res, int32_t a, int32_t b) {
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("custom_fn", *ctx);
     FnIRBuilder fn_ir_builder(m.get());
+    ::llvm::Function *func = nullptr;
     bool ok = fn_ir_builder.Build(dynamic_cast<node::FnNodeFnDef *>(trees[0]),
-                                  status);
+                                  &func, status);
     ASSERT_TRUE(ok);
     m->print(::llvm::errs(), NULL, true, true);
     LOG(INFO) << "before opt with ins cnt " << m->getInstructionCount();

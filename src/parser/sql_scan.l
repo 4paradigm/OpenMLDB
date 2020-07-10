@@ -71,6 +71,7 @@ comment ("#"{non_newline}*)
 indent {space}*
 less_equals		"<="
 greater_equals	">="
+greater_less    "<>"
 not_equals		"!="
 equals  "=="
 add_assign "+="
@@ -80,6 +81,7 @@ fdiv_assign "/="
 assign  "="
 and "&&"
 or  "||"
+placeholder "?"
 self [,()\[\].\:\+\-\*\/\%\^\<\>]
 
 %x COMMENT
@@ -114,11 +116,12 @@ ASC	{ return ASC; }
 AUTO_INCREMENT	{ return AUTO_INCREMENT; }
 BEFORE	{ return BEFORE; }
 <INITIAL>BETWEEN	{ BEGIN BTWMODE; return BETWEEN; }
-INT8|BIGINT	{ return BIGINT; }
+INT64|BIGINT	{ return BIGINT; }
 BINARY	{ return BINARY; }
 BIT	{ return BIT; }
 BLOB	{ return BLOB; }
 BOTH	{ return BOTH; }
+INT1|BOOL   {return BOOL;}
 BY	{ return BY; }
 CALL	{ return CALL; }
 CASCADE	{ return CASCADE; }
@@ -156,7 +159,7 @@ DETERMINISTIC	{ return DETERMINISTIC; }
 DISTINCT	{ return DISTINCT; }
 DISTINCTROW	{ return DISTINCTROW; }
 DIV	{ return DIV; }
-FLOAT8|DOUBLE	{ return DOUBLE; }
+FLOAT64|DOUBLE	{ return DOUBLE; }
 DROP	{ return DROP; }
 DUAL	{ return DUAL; }
 EACH	{ return EACH; }
@@ -171,7 +174,7 @@ EXISTS	{ return EXISTS; }
 EXIT	{ return EXIT; }
 EXPLAIN	{ return EXPLAIN; }
 FETCH	{ return FETCH; }
-FLOAT4|FLOAT?	{ return FLOAT; }
+FLOAT32|FLOAT?	{ return FLOAT; }
 FOLLOWING   {return FOLLOWING;  }
 FOR	{ return FOR; }
 FORCE	{ return FORCE; }
@@ -195,7 +198,7 @@ INOUT	{ return INOUT; }
 INSENSITIVE	{ return INSENSITIVE; }
 INSERT	{ return INSERT; }
 INSTANCE_NOT_IN_WINDOW  { return INSTANCE_NOT_IN_WINDOW; }
-INT4?|INTEGER	{ return INTEGER; }
+INT32|INT|INTEGER	{ return INTEGER; }
 INTERVAL	{ return INTERVAL; }
 INTO	{ return INTO; }
 IS	{ return IS; }
@@ -237,6 +240,7 @@ NATURAL	{ return NATURAL; }
 NOT	{ return NOT; }
 NO_WRITE_TO_BINLOG	{ return NO_WRITE_TO_BINLOG; }
 NULL	{ return NULLX; }
+PLACEHOLDER { return PLACEHOLDER; }
 NUMBER	{ return NUMBER; }
 ON	{ return ON; }
 ON[ \t\n]+DUPLICATE { return ONDUPLICATE; } /* hack due to limited lookahead */
@@ -282,7 +286,7 @@ SENSITIVE	{ return SENSITIVE; }
 SEPARATOR	{ return SEPARATOR; }
 SET	{ return SET; }
 SHOW	{ return SHOW; }
-INT2|SMALLINT	{ return SMALLINT; }
+INT16|SMALLINT	{ return SMALLINT; }
 SOME	{ return SOME; }
 SPATIAL	{ return SPATIAL; }
 SPECIFIC	{ return SPECIFIC; }
@@ -305,7 +309,7 @@ TEXT	{ return TEXT; }
 THEN	{ return THEN; }
 TIME	{ return TIME; }
 TIMESTAMP	{ return TIMESTAMP; }
-INT1|TINYINT	{ return TINYINT; }
+INT4|TINYINT	{ return TINYINT; }
 TINYTEXT	{ return TINYTEXT; }
 TO	{ return TO; }
 TS  { return TS; }
@@ -341,7 +345,27 @@ WINDOW  { return WINDOW; }
 XOR	{ return XOR; }
 ZEROFILL	{ return ZEROFILL; }
 
+YEAR    { return YEAR; }
+MONTH    { return MONTH; }
+WEEK    { return WEEK; }
+DAY    { return DAY; }
+HOUR    { return HOUR; }
+MINUTE    { return MINUTE; }
+SECOND    { return SECOND; }
+MILLISECOND    { return MILLISECOND; }
+MICROSECOND { return MICROSECOND; }
 
+
+I32_MAX { return I32_MAX; }
+I64_MAX { return I64_MAX; }
+I16_MAX { return I16_MAX; }
+FLOAT_MAX { return FLOAT_MAX; }
+DOUBLE_MAX { return DOUBLE_MAX; }
+I32_MAX { return I32_MIN; }
+I64_MIN { return I64_MIN; }
+I16_MIN { return I16_MIN; }
+FLOAT_MIN { return FLOAT_MIN; }
+DOUBLE_MIN { return DOUBLE_MIN; }
  /* function definition */
 <FUN_INDENT>"def" {
             BEGIN FUN;
@@ -353,6 +377,16 @@ ZEROFILL	{ return ZEROFILL; }
     yylval->intval = 1;
     return I32;
     }
+<FUN>"i16" {
+    yylval->intval = 1;
+    return I16;
+    }
+<FUN>"i64" {
+    yylval->intval = 1;
+    return I64;
+    }
+
+
 
 
 <FUN>{newlines} { columnpos = 1; BEGIN FUN_INDENT; return NEWLINES;}
@@ -376,7 +410,7 @@ ZEROFILL	{ return ZEROFILL; }
  /* operator */
 
  /* numbers */
--?[0-9]+	        {
+[0-9]+	        {
                         long value = atol(yytext);
                         if (value <= INT32_MAX && value >= INT32_MIN) {
                             yylval->intval = static_cast<int>(value);
@@ -387,21 +421,21 @@ ZEROFILL	{ return ZEROFILL; }
                         }
 
                     }
--?[0-9]+['l']	        { yylval->longval = atol(yytext); return LONGNUM; }
--?[0-9]+['d']	        { yylval->longval = atoi(yytext); return DAYNUM; }
--?[0-9]+['h']	        { yylval->longval = atoi(yytext); return HOURNUM; }
--?[0-9]+['m']	        { yylval->longval = atoi(yytext); return MINUTENUM; }
--?[0-9]+['s']	        { yylval->longval = atoi(yytext); return SECONDNUM; }
+[0-9]+['l']	        { yylval->longval = atol(yytext); return LONGNUM; }
+[0-9]+['d']	        { yylval->longval = atoi(yytext); return DAYNUM; }
+[0-9]+['h']	        { yylval->longval = atoi(yytext); return HOURNUM; }
+[0-9]+['m']	        { yylval->longval = atoi(yytext); return MINUTENUM; }
+[0-9]+['s']	        { yylval->longval = atoi(yytext); return SECONDNUM; }
 
--?[0-9]+"."[0-9]* |
--?"."[0-9]+	|
--?[0-9]+E[-+]?[0-9]+	|
--?[0-9]+"."[0-9]*E[-+]?[0-9]+ |
--?"."[0-9]*E[-+]?[0-9]+	{ yylval->doubleval = atof(yytext) ;
+[0-9]+"."[0-9]* |
+"."[0-9]+	|
+[0-9]+E[-+]?[0-9]+	|
+[0-9]+"."[0-9]*E[-+]?[0-9]+ |
+"."[0-9]*E[-+]?[0-9]+	{ yylval->doubleval = atof(yytext) ;
                                   return DOUBLENUM; }
 
--?[0-9]+"."[0-9]*['f'] |
--?"."[0-9]+['f']    { yylval->floatval = (float)(atof(yytext)) ;
+[0-9]+"."[0-9]*['f'] |
+"."[0-9]+['f']    { yylval->floatval = (float)(atof(yytext)) ;
                                   return FLOATNUM; }
  /* booleans */
 TRUE	{ yylval->intval = 1; return BOOL; }
@@ -443,10 +477,16 @@ B'[01]+'     { yylval->strval = strdup(yytext); return STRING; }
 					return GREATER_EQUALS;
 				}
 
+{greater_less}  {
+                    /* We accept both "<>" and "!=" as meaning NOT_EQUALS */
+                    return NOT_EQUALS;
+                }
 {not_equals}	{
 					/* We accept both "<>" and "!=" as meaning NOT_EQUALS */
 					return NOT_EQUALS;
 				}
+
+{placeholder} { return PLACEHOLDER; }
 
 <INITIAL>":="     { return ASSIGN; }
 <FUN>{assign} { return ASSIGN; }

@@ -8,6 +8,5 @@
  **/
 #include "codec/list_iterator_codec.h"
 namespace fesql {
-namespace codec {
-}  // namespace codec
+namespace codec {}  // namespace codec
 }  // namespace fesql

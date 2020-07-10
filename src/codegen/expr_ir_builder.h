@@ -31,13 +31,17 @@
 #include "codegen/variable_ir_builder.h"
 #include "codegen/window_ir_builder.h"
 #include "llvm/IR/IRBuilder.h"
+#include "node/node_manager.h"
 #include "node/sql_node.h"
+#include "node/type_node.h"
 #include "vm/schemas_context.h"
 
 namespace fesql {
 namespace codegen {
 
+using fesql::base::Status;
 using fesql::vm::RowSchemaInfo;
+
 class ExprIRBuilder {
  public:
     ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var);
@@ -65,12 +69,15 @@ class ExprIRBuilder {
                         NativeValue* output,
                         ::fesql::base::Status& status);  // NOLINT
 
-    bool BuildCallFn(const ::fesql::node::CallExprNode* fn, NativeValue* output,
-                     ::fesql::base::Status& status);  // NOLINT
+    Status BuildCallFn(const ::fesql::node::CallExprNode* fn,
+                       NativeValue* output);
     bool BuildCallFnLegacy(const ::fesql::node::CallExprNode* fn,
                            NativeValue* output,
                            ::fesql::base::Status& status);  // NOLINT
 
+    bool BuildCastExpr(const ::fesql::node::CastExprNode* node,
+                       NativeValue* output,
+                       ::fesql::base::Status& status);  // NOLINT
     bool BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
                          NativeValue* output,
                          ::fesql::base::Status& status);  // NOLINT
@@ -99,6 +106,7 @@ class ExprIRBuilder {
     const vm::SchemasContext* schemas_context_;
     std::vector<std::unique_ptr<RowDecodeIRBuilder>> row_ir_builder_list_;
     std::unique_ptr<WindowDecodeIRBuilder> window_ir_builder_;
+
     bool IsUADF(std::string function_name);
     bool FindRowSchemaInfo(const std::string& relation_name,
                            const std::string& col_name,

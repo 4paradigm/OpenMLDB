@@ -42,27 +42,6 @@ bool BatchPlanner::MakePlan(GraphDesc* graph) {
     }
     graph->set_ir(ctx.ir);
     uint64_t id_counter = 0;
-    // TODO(wangtaize): remove
-    // a simple logic plan to physic plan transform
-    //    if (ctx.ops.size() == 2 && ctx.ops[0].type == vm::kOpScan &&
-    //        ctx.ops[1].type == vm::kOpProject) {
-    //        vm::ScanOP* sop = reinterpret_cast<vm::ScanOP>(ctx.ops[0]);
-    //        // add datasource node
-    //        DataSource ds;
-    //        ds.set_db(sop->db);
-    //        ds.set_name(sop->table_handler->GetName());
-    //        ds.mutable_schema()->CopyFrom(sop->table_handler->GetSchema());
-    //        NodeDesc* ds_node = graph->add_nodes();
-    //        NodeValue* ds_value = graph->add_values();
-    //        ds_value->set_id(id_counter++);
-    //        ds_value->set_type(kDataSource);
-    //        ds.SerializeToString(ds_value->mutable_value());
-    //        ds_node->set_id(ds_value->id());
-    //        ds_node->set_op(PlanOpType_Name(kDataSource));
-    //        // add map node
-    //        vm::ProjectOp* project =
-    //        reinterpret_cast<vm::ProjectOp>(ctx.ops[1]);
-    //    }
     return true;
 }
 

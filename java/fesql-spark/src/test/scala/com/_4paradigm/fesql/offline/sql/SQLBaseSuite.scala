@@ -15,6 +15,7 @@ import org.yaml.snakeyaml.constructor.Constructor
 
 import scala.collection.mutable
 import scala.collection.JavaConverters._
+import scala.collection.mutable.ListBuffer
 import scala.reflect.ClassTag
 
 
@@ -33,12 +34,29 @@ class SQLBaseSuite extends SparkTestSuite {
 
   def testCases(yamlPath: String) {
     val caseFile = loadYaml[CaseFile](yamlPath)
-    caseFile.getSQLCases.asScala.filter(c => needFilter(c)).foreach(c => testCase(c))
+    val debugs = caseFile.getDebugs
+    caseFile.getCases.asScala.filter(c => needFilter(c)).filter(c => needDebug(c, debugs)).foreach(c => testCase(c))
   }
 
-  def needFilter(sqlCase: SQLCase) : Boolean = {
-    sqlCase.getMode != ("offline-unsupport")
+  def needDebug(sqlCase: SQLCase, debugs: java.util.List[String]): Boolean = {
+    if (debugs == null || debugs.isEmpty)
+      true
+    else
+      debugs.contains(sqlCase.getDesc)
   }
+  def needFilter(sqlCase: SQLCase): Boolean = {
+    sqlCase.getMode != ("offline-unsupport")&&
+      (sqlCase.getTags == null || ((!sqlCase.getTags.asScala.contains("TODO")) && (!sqlCase.getTags.asScala.contains("todo"))))
+  }
+
+  def createSQLString(sql: String, inputNames: ListBuffer[(Int, String)]): String = {
+    var new_sql = sql
+    inputNames.foreach(item => {
+      new_sql = new_sql.replaceAll("\\{" + item._1 + "\\}", item._2)
+    })
+    new_sql
+  }
+
   def testCase(sqlCase: SQLCase): Unit = {
     test(SQLBaseSuite.getTestName(sqlCase)) {
       logger.info(s"Test ${sqlCase.getId}:${sqlCase.getDesc}")
@@ -46,30 +64,38 @@ class SQLBaseSuite extends SparkTestSuite {
       // TODO: may set config of Map("fesql.group.partitions" -> 1)
       val spark = new FesqlSession(getSparkSession)
 
-      //val inputDict = mutable.HashMap[String, DataFrame]()
+      var table_id = 0
+      val inputNames = mutable.ListBuffer[(Int, String)]()
       sqlCase.getInputs.asScala.foreach(desc => {
-        val (name, df) = loadInputData(desc)
-        //inputDict += name -> df
+        val (name, df) = loadInputData(desc, table_id)
         FesqlDataframe(spark, df).createOrReplaceTempView(name)
+        inputNames += Tuple2[Int, String](table_id, name)
+        table_id += 1
       })
 
-      val df = spark.sql(sqlCase.getSql).sparkDf
-      df.cache()
-      df.show()
-
-      if (sqlCase.getOutput != null) {
-        checkOutput(df, sqlCase.getOutput)
-      }
-
-      // Run SparkSQL to test and compare the generated Spark dataframes
-      if (sqlCase.isStandard_sql) {
-        logger.info("Use the standard sql, test result with SparkSQL")
-        // Remove the ";" in sql text
-        var sqlText: String = sqlCase.getSql.trim
-        if (sqlText.endsWith(";")) {
-          sqlText = sqlText.substring(0, sqlText.length-1)
+      val sql = createSQLString(sqlCase.getSql, inputNames)
+      if (sqlCase.getExpect != null && !sqlCase.getExpect.getSuccess) {
+        assertThrows[java.lang.RuntimeException] {
+          spark.sql(sql).sparkDf
         }
-        checkTwoDataframe(df, spark.sparksql(sqlText).sparkDf)
+      } else {
+        val df = spark.sql(sql).sparkDf
+        df.cache()
+        df.show()
+        if (sqlCase.getExpect != null) {
+          checkOutput(df, sqlCase.getExpect)
+        }
+
+        // Run SparkSQL to test and compare the generated Spark dataframes
+        if (sqlCase.isStandard_sql) {
+          logger.info("Use the standard sql, test result with SparkSQL")
+          // Remove the ";" in sql text
+          var sqlText: String = sqlCase.getSql.trim
+          if (sqlText.endsWith(";")) {
+            sqlText = sqlText.substring(0, sqlText.length - 1)
+          }
+          checkTwoDataframe(df, spark.sparksql(sqlText).sparkDf)
+        }
       }
     }
   }
@@ -79,10 +105,10 @@ class SQLBaseSuite extends SparkTestSuite {
   }
 
   def checkOutput(data: DataFrame, expect: OutputDesc): Unit = {
-    val expectSchema = parseSchema(expect.getSchema)
+    val expectSchema = if (expect.getSchema != null) parseSchema(expect.getSchema) else parseSchema(expect.getColumns)
     assert(data.schema == expectSchema)
 
-    val expectData = parseData(expect.getData, expectSchema)
+    val expectData = (if (expect.getData != null) parseData(expect.getData, expectSchema) else parseData(expect.getRows, expectSchema))
       .zipWithIndex.sortBy(_._1.mkString(","))
 
     val actualData = data.collect().map(_.toSeq.toArray)
@@ -145,16 +171,15 @@ class SQLBaseSuite extends SparkTestSuite {
     }
   }
 
-  def loadInputData(inputDesc: InputDesc): (String, DataFrame) = {
+  def loadInputData(inputDesc: InputDesc, table_id: Int): (String, DataFrame) = {
     val sess = getSparkSession
-    val name = inputDesc.getName
-
+    val name = if (inputDesc.getName == null) "auto_t" + table_id else inputDesc.getName
     if (inputDesc.getResource != null) {
       val (_, df) = loadTable(inputDesc.getResource)
       name -> df
     } else {
-      val schema = parseSchema(inputDesc.getSchema)
-      val data = parseData(inputDesc.getData, schema)
+      val schema = if (inputDesc.getSchema != null) parseSchema(inputDesc.getSchema) else parseSchema(inputDesc.getColumns)
+      val data = (if (inputDesc.getData != null) parseData(inputDesc.getData, schema) else parseData(inputDesc.getRows, schema))
         .map(arr => Row.fromSeq(arr)).toList.asJava
       val df = sess.createDataFrame(data, schema)
       name -> df
@@ -165,7 +190,7 @@ class SQLBaseSuite extends SparkTestSuite {
     val absPath = if (path.startsWith("/")) path else rootDir.getAbsolutePath + "/" + path
     val caseFile = loadYaml[TableFile](absPath)
     val tbl = caseFile.getTable
-    val schema = parseSchema(tbl.getSchema)
+    val schema = if (tbl.getSchema != null) parseSchema(tbl.getSchema) else parseSchema(tbl.getColumns)
     val data = parseData(tbl.getData, schema)
       .map(arr => Row.fromSeq(arr)).toList.asJava
     val df = getSparkSession.createDataFrame(data, schema)
@@ -174,6 +199,17 @@ class SQLBaseSuite extends SparkTestSuite {
 
   def parseSchema(schema: String): StructType = {
     val parts = schema.split(",").map(_.trim).filter(_ != "").map(_.split(":"))
+    parseSchema(parts);
+  }
+
+  def parseSchema(columns: java.util.List[String]): StructType = {
+
+    val parts = columns.toArray.map(_.toString()).map(_.trim).filter(_ != "").map(_.reverse.replaceFirst(" ", ":").reverse.split(":"))
+    parseSchema(parts);
+  }
+
+
+  def parseSchema(parts: Array[Array[String]]): StructType = {
     val fields = parts.map(part => {
       val colName = part(0)
       val typeName = part(1)
@@ -201,11 +237,21 @@ class SQLBaseSuite extends SparkTestSuite {
   }
 
   def parseData(data: String, schema: StructType): Array[Array[Any]] = {
-    val lines = data.split("\n").map(_.trim).filter(_ != "")
-    lines.flatMap(line => {
-      val parts = line.split(",").map(_.trim)
+    val rows = data.split("\n").map(_.trim).filter(_ != "").map(_.split(",").map(_.trim))
+    parseData(rows, schema)
+  }
+
+  def parseData(rows: java.util.List[java.util.List[String]], schema: StructType): Array[Array[Any]] = {
+
+    val data = rows.asScala.map(_.asInstanceOf[java.util.List[Object]].asScala.map(x => if (null == x) "null" else x.toString()).toArray).toArray
+    parseData(data, schema)
+  }
+
+  def parseData(rows: Array[Array[String]], schema: StructType): Array[Array[Any]] = {
+
+    rows.flatMap(parts => {
       if (parts.length != schema.size) {
-        logger.error(s"Broken line: $line")
+        logger.error(s"Broken line: $parts")
         None
       } else {
         Some(schema.zip(parts).map {

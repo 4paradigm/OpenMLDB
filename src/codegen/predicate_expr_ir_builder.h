@@ -26,6 +26,8 @@ class PredicateIRBuilder {
                       ::llvm::Value** output, base::Status& status);  // NOLINT
     bool BuildOrExpr(::llvm::Value* left, ::llvm::Value* right,
                      ::llvm::Value** output, base::Status& status);  // NOLINT
+    bool BuildXorExpr(::llvm::Value* left, ::llvm::Value* right,
+                      ::llvm::Value** output, base::Status& status);  // NOLINT
     bool BuildNotExpr(::llvm::Value* left, ::llvm::Value** output,
                       base::Status& status);  // NOLINT
 

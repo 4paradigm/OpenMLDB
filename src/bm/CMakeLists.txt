@@ -7,7 +7,7 @@ if (TESTING_ENABLE)
     add_executable(base_bm_test base_bm_test.cc)
 
 
-    target_link_libraries(base_bm_test gtest fesql_dbms fesql_tablet fesql_flags ${BM_LIBS})
+    target_link_libraries(base_bm_test gtest fesql_dbms fesql_tablet  ${BM_LIBS})
     add_test(base_bm_test base_bm_test --gtest_output=xml:${CMAKE_BINARY_DIR}/base_bm_test.xml)
     list(APPEND test_list base_bm_test)
 
@@ -47,7 +47,7 @@ if (TESTING_ENABLE)
 
     add_library(engine_bm_case STATIC engine_bm_case.cc)
     add_executable(engine_bm_case_test engine_bm_case_test.cc)
-    target_link_libraries(engine_bm_case_test engine_bm_case  fesql_dbms fesql_tablet fesql_flags
+    target_link_libraries(engine_bm_case_test engine_bm_case  fesql_dbms fesql_tablet
         benchmark gtest ${BM_LIBS})
 
     add_test(engine_bm_case_test engine_bm_case_test --gtest_output=xml:${CMAKE_BINARY_DIR}/engine_bm_case_test.xml)

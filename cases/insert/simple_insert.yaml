@@ -1,4 +1,4 @@
-SQLCases:
+cases:
   - id: 0
     desc: 简单INSERT
     db: db_1

@@ -59,7 +59,6 @@ TEST_F(RowTest, NewRowTest) {
                                                         &ptr3, &ptr_size3));
         Row row3(base::RefCountedSlice::Create(ptr3, ptr_size3));
 
-
         Row row12(1, row1, 1, row2);
         ASSERT_EQ(2, row12.GetRowPtrCnt());
         {

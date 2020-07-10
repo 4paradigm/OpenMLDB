@@ -21,9 +21,13 @@
 #include "node/node_manager.h"
 #include "node/plan_node.h"
 #include "node/sql_node.h"
+#include "udf/udf_library.h"
 #include "vm/physical_op.h"
+#include "vm/schemas_context.h"
+
 namespace fesql {
 namespace vm {
+
 class LogicalOp {
  public:
     explicit LogicalOp(const node::PlanNode* node) : node_(node) {}
@@ -253,7 +257,7 @@ class BatchModeTransformer {
  public:
     BatchModeTransformer(node::NodeManager* node_manager, const std::string& db,
                          const std::shared_ptr<Catalog>& catalog,
-                         ::llvm::Module* module);
+                         ::llvm::Module* module, udf::UDFLibrary* library);
     virtual ~BatchModeTransformer();
     bool AddDefaultPasses();
     bool TransformPhysicalPlan(const ::fesql::node::PlanNodeList& trees,
@@ -359,6 +363,15 @@ class BatchModeTransformer {
     bool GenRequestWindowUnionList(RequestWindowUnionList* window_unions,
                                    PhysicalOpNode* in,
                                    base::Status& status);  // NOLINT
+    bool IsSimpleProject(const ColumnSourceList& source);
+    bool BuildExprListFromSchemaSource(const ColumnSourceList column_sources,
+                                       const SchemaSourceList& schema_souces,
+                                       node::ExprListNode* expr_list);
+    bool CheckHistoryWindowFrame(const node::WindowPlanNode* w_ptr,
+                                 base::Status& status);  // NOLINT
+    base::Status CheckTimeOrIntegerOrderColumn(
+        const node::OrderByNode* orders,
+        const vm::SchemaSourceList& schema_source_list);  // NOLINT
     node::NodeManager* node_manager_;
     const std::string db_;
     const std::shared_ptr<Catalog> catalog_;
@@ -368,12 +381,7 @@ class BatchModeTransformer {
     uint32_t id_;
     std::vector<PhysicalPlanPassType> passes;
     LogicalOpMap op_map_;
-    bool IsSimpleProject(const ColumnSourceList& source);
-    bool BuildExprListFromSchemaSource(const ColumnSourceList column_sources,
-                                       const SchemaSourceList& schema_souces,
-                                       node::ExprListNode* expr_list);
-    bool CheckHistoryWindowFrame(const node::WindowPlanNode* w_ptr,
-                                 base::Status& status);  // NOLINT
+    udf::UDFLibrary* library_;
 };
 
 class RequestModeransformer : public BatchModeTransformer {
@@ -381,7 +389,7 @@ class RequestModeransformer : public BatchModeTransformer {
     RequestModeransformer(node::NodeManager* node_manager,
                           const std::string& db,
                           const std::shared_ptr<Catalog>& catalog,
-                          ::llvm::Module* module);
+                          ::llvm::Module* module, udf::UDFLibrary* library);
     virtual ~RequestModeransformer();
 
     const Schema& request_schema() const { return request_schema_; }
@@ -406,6 +414,80 @@ class RequestModeransformer : public BatchModeTransformer {
     vm::Schema request_schema_;
     std::string request_name_;
 };
+
+inline bool SchemaType2DataType(const ::fesql::type::Type type,
+                                ::fesql::node::DataType* output) {
+    switch (type) {
+        case ::fesql::type::kInt16: {
+            *output = ::fesql::node::kInt16;
+            break;
+        }
+        case ::fesql::type::kInt32: {
+            *output = ::fesql::node::kInt32;
+            break;
+        }
+        case ::fesql::type::kInt64: {
+            *output = ::fesql::node::kInt64;
+            break;
+        }
+        case ::fesql::type::kFloat: {
+            *output = ::fesql::node::kFloat;
+            break;
+        }
+        case ::fesql::type::kDouble: {
+            *output = ::fesql::node::kDouble;
+            break;
+        }
+        case ::fesql::type::kVarchar: {
+            *output = ::fesql::node::kVarchar;
+            break;
+        }
+        case ::fesql::type::kTimestamp: {
+            *output = ::fesql::node::kTimestamp;
+            break;
+        }
+        case ::fesql::type::kDate: {
+            *output = ::fesql::node::kDate;
+            break;
+        }
+        default: {
+            LOG(WARNING) << "unrecognized schema type "
+                         << ::fesql::type::Type_Name(type);
+            return false;
+        }
+    }
+    return true;
+}
+
+// TODO(xxx): make it common step before all codegen
+bool ResolveProjects(const SchemaSourceList& schema_list,
+                     const node::PlanNodeList& projects, const bool row_project,
+                     node::NodeManager* node_manager, udf::UDFLibrary* library,
+                     base::Status& status);  // NOLINT
+
+class ResolveFnAndAttrs {
+ public:
+    ResolveFnAndAttrs(bool is_multi_row,
+                      const vm::SchemasContext* schemas_context,
+                      node::NodeManager* nm, udf::UDFLibrary* library)
+        : is_multi_row_(is_multi_row),
+          schemas_context_(schemas_context),
+          nm_(nm),
+          library_(library),
+          analysis_context_(nm, schemas_context, is_multi_row) {}
+
+    base::Status Visit(node::ExprNode* expr, node::ExprNode** output);
+
+ private:
+    bool is_multi_row_;
+    const vm::SchemasContext* schemas_context_;
+    node::NodeManager* nm_;
+    udf::UDFLibrary* library_;
+    node::ExprAnalysisContext analysis_context_;
+
+    std::unordered_map<node::ExprNode*, node::ExprNode*> cache_;
+};
+
 bool TransformLogicalTreeToLogicalGraph(const ::fesql::node::PlanNode* node,
                                         LogicalGraph* graph,
                                         fesql::base::Status& status);  // NOLINT

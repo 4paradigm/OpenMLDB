@@ -37,6 +37,7 @@
 #include "llvm/Transforms/Utils.h"
 #include "node/node_manager.h"
 #include "parser/parser.h"
+#include "udf/default_udf_library.h"
 #include "udf/udf.h"
 #include "vm/sql_compiler.h"
 
@@ -74,10 +75,12 @@ void CheckResult(std::string test, R exp, V1 a, V2 b) {
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("custom_fn", *ctx);
     ::fesql::udf::RegisterUDFToModule(m.get());
+    udf::DefaultUDFLibrary lib;
     FnIRBuilder fn_ir_builder(m.get());
     node::FnNodeFnDef *fn_def = dynamic_cast<node::FnNodeFnDef *>(trees[0]);
     LOG(INFO) << *fn_def;
-    bool ok = fn_ir_builder.Build(fn_def, status);
+    ::llvm::Function *func = nullptr;
+    bool ok = fn_ir_builder.Build(fn_def, &func, status);
     ASSERT_TRUE(ok);
     m->print(::llvm::errs(), NULL, true, true);
     LOG(INFO) << "before opt with ins cnt " << m->getInstructionCount();
@@ -95,13 +98,12 @@ void CheckResult(std::string test, R exp, V1 a, V2 b) {
     auto &jd = J->getMainJITDylib();
     ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
                                       J->getDataLayout());
-
+    lib.InitJITSymbols(J.get());
     ::fesql::vm::InitCodecSymbol(jd, mi);
     ::fesql::udf::InitUDFSymbol(jd, mi);
 
     ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
-    auto test_jit =
-        ExitOnErr(J->lookup(fn_def->header_->GeIRFunctionName()));
+    auto test_jit = ExitOnErr(J->lookup(fn_def->header_->GeIRFunctionName()));
     R (*test_fn)(V1, V2) = (R(*)(V1, V2))test_jit.getAddress();
     R result = test_fn(a, b);
     LOG(INFO) << "exp: " << std::to_string(exp)
@@ -237,18 +239,18 @@ TEST_F(FnIRBuilderTest, test_list_at_pos) {
 
     std::vector<int32_t> vec = {1, 3, 5, 7, 9};
     fesql::codec::ArrayListV<int32_t> list(&vec);
-    fesql::codec::ListRef list_ref;
+    fesql::codec::ListRef<> list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
-    CheckResult<int32_t, fesql::codec::ListRef *, int32_t>(test, 1, &list_ref,
-                                                           0);
-    CheckResult<int32_t, fesql::codec::ListRef *, int32_t>(test, 3, &list_ref,
-                                                           1);
-    CheckResult<int32_t, fesql::codec::ListRef *, int32_t>(test, 5, &list_ref,
-                                                           2);
-    CheckResult<int32_t, fesql::codec::ListRef *, int32_t>(test, 7, &list_ref,
-                                                           3);
-    CheckResult<int32_t, fesql::codec::ListRef *, int32_t>(test, 9, &list_ref,
-                                                           4);
+    CheckResult<int32_t, fesql::codec::ListRef<> *, int32_t>(test, 1, &list_ref,
+                                                             0);
+    CheckResult<int32_t, fesql::codec::ListRef<> *, int32_t>(test, 3, &list_ref,
+                                                             1);
+    CheckResult<int32_t, fesql::codec::ListRef<> *, int32_t>(test, 5, &list_ref,
+                                                             2);
+    CheckResult<int32_t, fesql::codec::ListRef<> *, int32_t>(test, 7, &list_ref,
+                                                             3);
+    CheckResult<int32_t, fesql::codec::ListRef<> *, int32_t>(test, 9, &list_ref,
+                                                             4);
 }
 
 TEST_F(FnIRBuilderTest, test_for_in_sum) {
@@ -263,9 +265,9 @@ TEST_F(FnIRBuilderTest, test_for_in_sum) {
 
     std::vector<int32_t> vec = {1, 3, 5, 7, 9};
     fesql::codec::ArrayListV<int32_t> list(&vec);
-    fesql::codec::ListRef list_ref;
+    fesql::codec::ListRef<> list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
-    CheckResult<int32_t, fesql::codec::ListRef *, int32_t>(
+    CheckResult<int32_t, fesql::codec::ListRef<> *, int32_t>(
         test, 1 + 3 + 5 + 7 + 9, &list_ref, 0);
 }
 
@@ -284,10 +286,10 @@ TEST_F(FnIRBuilderTest, test_for_in_sum_ret) {
 
     std::vector<int32_t> vec = {1, 3, 5, 7, 9};
     fesql::codec::ArrayListV<int32_t> list(&vec);
-    fesql::codec::ListRef list_ref;
+    fesql::codec::ListRef<> list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
-    CheckResult<int32_t, fesql::codec::ListRef *, int32_t>(test, 1 + 3 + 5 + 7,
-                                                           &list_ref, 0);
+    CheckResult<int32_t, fesql::codec::ListRef<> *, int32_t>(
+        test, 1 + 3 + 5 + 7, &list_ref, 0);
 }
 
 TEST_F(FnIRBuilderTest, test_for_in_condition_sum) {
@@ -303,16 +305,16 @@ TEST_F(FnIRBuilderTest, test_for_in_condition_sum) {
 
     std::vector<int32_t> vec = {1, 3, 5, 7, 9};
     fesql::codec::ArrayListV<int32_t> list(&vec);
-    fesql::codec::ListRef list_ref;
+    fesql::codec::ListRef<> list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
-    CheckResult<int32_t, fesql::codec::ListRef *, int32_t>(
+    CheckResult<int32_t, fesql::codec::ListRef<> *, int32_t>(
         test, 1 + 3 + 5 + 7 + 9, &list_ref, 0);
-    CheckResult<int32_t, fesql::codec::ListRef *, int32_t>(test, 3 + 5 + 7 + 9,
-                                                           &list_ref, 1);
-    CheckResult<int32_t, fesql::codec::ListRef *, int32_t>(test, 3 + 5 + 7 + 9,
-                                                           &list_ref, 2);
-    CheckResult<int32_t, fesql::codec::ListRef *, int32_t>(test, 5 + 7 + 9,
-                                                           &list_ref, 3);
+    CheckResult<int32_t, fesql::codec::ListRef<> *, int32_t>(
+        test, 3 + 5 + 7 + 9, &list_ref, 1);
+    CheckResult<int32_t, fesql::codec::ListRef<> *, int32_t>(
+        test, 3 + 5 + 7 + 9, &list_ref, 2);
+    CheckResult<int32_t, fesql::codec::ListRef<> *, int32_t>(test, 5 + 7 + 9,
+                                                             &list_ref, 3);
 }
 
 TEST_F(FnIRBuilderTest, test_for_in_condition2_sum) {
@@ -332,13 +334,13 @@ TEST_F(FnIRBuilderTest, test_for_in_condition2_sum) {
 
     std::vector<int32_t> vec = {-4, -2, 1, 3, 5, 7, 9};
     fesql::codec::ArrayListV<int32_t> list(&vec);
-    fesql::codec::ListRef list_ref;
+    fesql::codec::ListRef<> list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
-    CheckResult<int32_t, fesql::codec::ListRef *, int32_t>(
+    CheckResult<int32_t, fesql::codec::ListRef<> *, int32_t>(
         test, 4 + 2 + 1 + 3 + 5 + 5 + 5, &list_ref, 5);
-    CheckResult<int32_t, fesql::codec::ListRef *, int32_t>(
+    CheckResult<int32_t, fesql::codec::ListRef<> *, int32_t>(
         test, 4 + 2 + 1 + 1 + 1 + 1 + 1, &list_ref, 1);
-    CheckResult<int32_t, fesql::codec::ListRef *, int32_t>(
+    CheckResult<int32_t, fesql::codec::ListRef<> *, int32_t>(
         test, 4 + 2 + 1 + 2 + 2 + 2 + 2, &list_ref, 2);
 }
 
@@ -354,9 +356,9 @@ TEST_F(FnIRBuilderTest, test_for_in_sum_add_assign) {
 
     std::vector<int32_t> vec = {1, 3, 5, 7, 9};
     fesql::codec::ArrayListV<int32_t> list(&vec);
-    fesql::codec::ListRef list_ref;
+    fesql::codec::ListRef<> list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
-    CheckResult<int32_t, fesql::codec::ListRef *, int32_t>(
+    CheckResult<int32_t, fesql::codec::ListRef<> *, int32_t>(
         test, 1 + 3 + 5 + 7 + 9, &list_ref, 0);
 }
 TEST_F(FnIRBuilderTest, test_for_in_sum_minus_assign) {
@@ -371,9 +373,9 @@ TEST_F(FnIRBuilderTest, test_for_in_sum_minus_assign) {
 
     std::vector<int32_t> vec = {1, 3, 5, 7, 9};
     fesql::codec::ArrayListV<int32_t> list(&vec);
-    fesql::codec::ListRef list_ref;
+    fesql::codec::ListRef<> list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
-    CheckResult<int32_t, fesql::codec::ListRef *, int32_t>(
+    CheckResult<int32_t, fesql::codec::ListRef<> *, int32_t>(
         test, -1 - 3 - 5 - 7 - 9, &list_ref, 0);
 }
 
@@ -389,9 +391,9 @@ TEST_F(FnIRBuilderTest, test_for_in_sum_multi_assign) {
 
     std::vector<int32_t> vec = {1, 3, 5, 7, 9};
     fesql::codec::ArrayListV<int32_t> list(&vec);
-    fesql::codec::ListRef list_ref;
+    fesql::codec::ListRef<> list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
-    CheckResult<int32_t, fesql::codec::ListRef *, int32_t>(
+    CheckResult<int32_t, fesql::codec::ListRef<> *, int32_t>(
         test, 1 * 3 * 5 * 7 * 9, &list_ref, 0);
 }
 
@@ -407,9 +409,9 @@ TEST_F(FnIRBuilderTest, test_for_in_sum_fdiv_assign) {
 
     std::vector<int32_t> vec = {1, 3, 5, 7, 9};
     fesql::codec::ArrayListV<int32_t> list(&vec);
-    fesql::codec::ListRef list_ref;
+    fesql::codec::ListRef<> list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
-    CheckResult<double, fesql::codec::ListRef *, int32_t>(
+    CheckResult<double, fesql::codec::ListRef<> *, int32_t>(
         test, 1.0 / 3.0 / 5.0 / 7.0 / 9.0, &list_ref, 0);
 }
 }  // namespace codegen

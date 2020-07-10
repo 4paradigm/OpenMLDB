@@ -69,6 +69,7 @@ class CoreAPI {
     static fesql::codec::Row WindowProject(const fesql::vm::RawPtrHandle fn,
                                            const uint64_t key, const Row row,
                                            const bool is_instance,
+                                           size_t append_slices,
                                            WindowInterface* window);
 
     static bool ComputeCondition(const fesql::vm::RawPtrHandle fn,

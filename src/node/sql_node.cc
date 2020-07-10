@@ -251,11 +251,17 @@ const std::string ConstNode::GetExprString() const {
             return std::to_string(val_.vlong).append("m");
         case fesql::node::kSecond:
             return std::to_string(val_.vlong).append("s");
+        case fesql::node::kDate:
+            return "Date(" + std::to_string(val_.vlong) + ")";
+        case fesql::node::kTimestamp:
+            return "Timestamp(" + std::to_string(val_.vlong) + ")";
         case fesql::node::kNull:
             return "null";
             break;
         case fesql::node::kVoid:
             return "void";
+        case fesql::node::kPlaceholder:
+            return "placeholder";
         default:
             return "unknow";
     }
@@ -455,6 +461,31 @@ bool FrameNode::CanMergeWith(const FrameNode *that) const {
     }
     return true;
 }
+void CastExprNode::Print(std::ostream &output,
+                         const std::string &org_tab) const {
+    ExprNode::Print(output, org_tab);
+    output << "\n";
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    PrintValue(output, tab, DataTypeName(cast_type_), "cast_type", false);
+    output << "\n";
+    PrintSQLNode(output, tab, expr(), "expr", true);
+}
+const std::string CastExprNode::GetExprString() const {
+    std::string str = DataTypeName(cast_type_);
+    str.append("(").append(ExprString(expr())).append(")");
+    return str;
+}
+bool CastExprNode::Equals(const ExprNode *node) const {
+    if (this == node) {
+        return true;
+    }
+    if (nullptr == node || expr_type_ != node->expr_type_) {
+        return false;
+    }
+    const CastExprNode *that = dynamic_cast<const CastExprNode *>(node);
+    return this->cast_type_ == that->cast_type_ &&
+           ExprEquals(expr(), that->expr());
+}
 void CallExprNode::Print(std::ostream &output,
                          const std::string &org_tab) const {
     ExprNode::Print(output, org_tab);
@@ -462,14 +493,23 @@ void CallExprNode::Print(std::ostream &output,
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << tab << "function_name: " << GetFnDef()->GetSimpleName();
     output << "\n";
-    PrintSQLNode(output, tab, args_, "args", false);
+    output << "args: ";
+    for (auto child : children_) {
+        output << child->GetExprString() << ", ";
+    }
     output << "\n";
     PrintSQLNode(output, tab, over_, "over", true);
 }
 const std::string CallExprNode::GetExprString() const {
     std::string str = GetFnDef()->GetSimpleName();
-    str.append(nullptr == args_ ? "()" : args_->GetExprString());
-
+    str.append("(");
+    for (size_t i = 0; i < children_.size(); ++i) {
+        str.append(children_[i]->GetExprString());
+        if (i < children_.size() - 1) {
+            str.append(", ");
+        }
+    }
+    str.append(")");
     if (nullptr != over_) {
         if (over_->GetName().empty()) {
             str.append("over ANONYMOUS_WINDOW ");
@@ -486,9 +526,16 @@ bool CallExprNode::Equals(const ExprNode *node) const {
     if (nullptr == node || expr_type_ != node->expr_type_) {
         return false;
     }
+    if (GetChildNum() != node->GetChildNum()) {
+        return false;
+    }
+    for (size_t i = 0; i < GetChildNum(); ++i) {
+        if (!ExprEquals(GetChild(i), node->GetChild(i))) {
+            return false;
+        }
+    }
     const CallExprNode *that = dynamic_cast<const CallExprNode *>(node);
     return FnDefEquals(this->GetFnDef(), that->GetFnDef()) &&
-           ExprEquals(this->args_, that->args_) &&
            SQLEquals(this->over_, that->over_) && ExprNode::Equals(node);
 }
 
@@ -732,16 +779,15 @@ void FillSQLNodeList2NodeVector(
     }
 }
 
-const WindowDefNode *WindowOfExpression(
-    std::map<std::string, const WindowDefNode *> windows, ExprNode *node_ptr) {
-    WindowDefNode *w_ptr = nullptr;
+bool WindowOfExpression(std::map<std::string, const WindowDefNode *> windows,
+                        ExprNode *node_ptr, const WindowDefNode **output) {
     switch (node_ptr->GetExprType()) {
         case kExprCall: {
             CallExprNode *func_node_ptr =
                 dynamic_cast<CallExprNode *>(node_ptr);
             if (nullptr != func_node_ptr->GetOver()) {
                 if (func_node_ptr->GetOver()->GetName().empty()) {
-                    return func_node_ptr->GetOver();
+                    *output = func_node_ptr->GetOver();
                 } else {
                     auto iter =
                         windows.find(func_node_ptr->GetOver()->GetName());
@@ -750,30 +796,20 @@ const WindowDefNode *WindowOfExpression(
                             << "Fail to resolved window from expression: "
                             << func_node_ptr->GetOver()->GetName()
                             << " undefined";
-                        return nullptr;
+                        return false;
                     }
-                    return iter->second;
+                    *output = iter->second;
                 }
+            } else {
+                *output = nullptr;
             }
-            if (nullptr == func_node_ptr->GetArgs() ||
-                func_node_ptr->GetArgs()->IsEmpty()) {
-                return nullptr;
-            }
-            for (auto arg : func_node_ptr->GetArgs()->children_) {
-                const WindowDefNode *ptr =
-                    WindowOfExpression(windows, dynamic_cast<ExprNode *>(arg));
-                if (nullptr != ptr && nullptr != w_ptr) {
-                    LOG(WARNING)
-                        << "Cannot handle more than 1 windows in an expression";
-                    return nullptr;
-                }
-            }
-
-            return w_ptr;
+            break;
         }
-        default:
-            return w_ptr;
+        default: {
+            *output = nullptr;
+        }
     }
+    return true;
 }
 std::string ExprString(const ExprNode *expr) {
     return nullptr == expr ? std::string() : expr->GetExprString();
@@ -1176,8 +1212,8 @@ bool TypeNode::Equals(const SQLNode *node) const {
     return this->base_ == that->base_ &&
            std::equal(this->generics_.cbegin(), this->generics_.cend(),
                       that->generics_.cbegin(),
-                      [&](fesql::node::TypeNode a, fesql::node::TypeNode b) {
-                          return a.Equals(&b);
+                      [&](fesql::node::TypeNode *a, fesql::node::TypeNode *b) {
+                          return a->Equals(b);
                       });
 }
 
@@ -1343,6 +1379,38 @@ void ExternalFnDefNode::Print(std::ostream &output,
 bool ExternalFnDefNode::Equals(const SQLNode *node) const {
     auto other = dynamic_cast<const ExternalFnDefNode *>(node);
     return other != nullptr && other->function_name() == function_name();
+}
+
+bool ExternalFnDefNode::Validate(
+    const std::vector<const TypeNode *> &actual_types) const {
+    size_t actual_arg_num = actual_types.size();
+    if (arg_types_.size() > actual_arg_num) {
+        LOG(WARNING) << function_name() << " take at least "
+                     << arg_types_.size() << " arguments, but get "
+                     << actual_arg_num;
+        return false;
+    } else if (arg_types_.size() < actual_arg_num &&
+               variadic_pos_ != arg_types_.size()) {
+        LOG(WARNING) << function_name() << " take explicit "
+                     << arg_types_.size() << " arguments, but get "
+                     << actual_arg_num;
+        return false;
+    }
+    for (size_t i = 0; i < arg_types_.size(); ++i) {
+        auto actual_ty = actual_types[i];
+        if (actual_ty == nullptr) {
+            LOG(WARNING) << function_name() << "'s " << i
+                         << "th actual argument take unknown type";
+            return false;
+        } else if (!arg_types_[i]->Equals(actual_ty)) {
+            LOG(WARNING) << function_name() << "'s " << i
+                         << "th actual argument mismatch: get "
+                         << actual_ty->GetName() << " but expect "
+                         << arg_types_[i]->GetName();
+            return false;
+        }
+    }
+    return true;
 }
 
 void UDFDefNode::Print(std::ostream &output, const std::string &tab) const {

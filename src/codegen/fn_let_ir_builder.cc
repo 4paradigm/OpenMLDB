@@ -21,6 +21,7 @@
 #include "codegen/ir_base_builder.h"
 #include "codegen/variable_ir_builder.h"
 #include "glog/logging.h"
+#include "vm/transform.h"
 
 namespace fesql {
 namespace codegen {

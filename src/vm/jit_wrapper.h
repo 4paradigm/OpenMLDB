@@ -21,8 +21,8 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include "base/raw_buffer.h"
 #include "base/fe_status.h"
+#include "base/raw_buffer.h"
 #include "llvm/IR/Module.h"
 #include "vm/catalog.h"
 #include "vm/core_api.h"
@@ -30,7 +30,6 @@
 
 namespace fesql {
 namespace vm {
-
 
 class FeSQLJITWrapper {
  public:
