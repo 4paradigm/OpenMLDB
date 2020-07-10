@@ -22,7 +22,7 @@ build:
         paths:
             - build/bin/rtidb
             - build/src/sdk/libsql_jsdk.so
-            - build/sql_pysdk/dist/
+            - build/sql_pysdk/dist/*.whl
 
 mac_build:
   variables:
@@ -38,7 +38,7 @@ mac_build:
       paths:
           - build/bin/rtidb_mac
           - build/src/sdk/libsql_jsdk.dylib
-          - build/sql_pysdk/dist/
+          - build/sql_pysdk/dist/*.whl
 
 style_check:
     stage: build
@@ -207,6 +207,13 @@ disk_table:
         reports:
             junit:
                 - ./test-output/integrationtest/test-reports/*.xml
+deploy-fedb:
+    stage: deploy
+    script:
+        - ln -sf /depends/thirdparty thirdparty
+        - ln -sf /depends/thirdsrc thirdsrc
+        - source /root/.bashrc && bash steps/deploy_package_fedb.sh
+
 
 deploy-package:
     stage: deploy
