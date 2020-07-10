@@ -28,9 +28,10 @@ class SQLCaseTest : public ::testing::TestWithParam<fesql::sqlcase::SQLCase> {
     SQLCaseTest() {}
     virtual ~SQLCaseTest() {}
 };
-std::string FindRtidbDirPath(const std::string dirname);
-std::vector<fesql::sqlcase::SQLCase> InitCases(std::string yaml_path);
-std::vector<fesql::sqlcase::SQLCase> InitJavaSDKCases(std::string yaml_path);
+std::string FindRtidbDirPath(const std::string &dirname);
+std::vector<fesql::sqlcase::SQLCase> InitCases(const std::string &yaml_path);
+void InitCases(const std::string &dir_path, const std::string &yaml_path,
+               std::vector<fesql::sqlcase::SQLCase> &cases);  // NOLINT
 void CheckSchema(const fesql::vm::Schema &schema,
                  const fesql::vm::Schema &exp_schema);
 void CheckRows(const fesql::vm::Schema &schema,
@@ -39,24 +40,23 @@ void CheckRows(const fesql::vm::Schema &schema,
 void PrintRows(const fesql::vm::Schema &schema,
                const std::vector<fesql::codec::Row> &rows);
 void PrintSchema(const fesql::vm::Schema &schema);
+const std::vector<fesql::codec::Row> SortRows(
+    const fesql::vm::Schema &schema, const std::vector<fesql::codec::Row> &rows,
+    const std::string &order_col);
 
-void InitCases(std::string yaml_path,
-               std::vector<fesql::sqlcase::SQLCase> &cases);  // NOLINT
-std::vector<fesql::sqlcase::SQLCase> InitCases(std::string yaml_path);
-
-void InitCases(std::string dir_path, std::string yaml_path,
+void InitCases(const std::string &dir_path, const std::string &yaml_path,
                std::vector<fesql::sqlcase::SQLCase> &cases) {  // NOLINT
     if (!fesql::sqlcase::SQLCase::CreateSQLCasesFromYaml(dir_path, yaml_path,
                                                          cases)) {
         FAIL();
     }
 }
-std::vector<fesql::sqlcase::SQLCase> InitCases(std::string yaml_path) {
+std::vector<fesql::sqlcase::SQLCase> InitCases(const std::string &yaml_path) {
     std::vector<fesql::sqlcase::SQLCase> cases;
     InitCases(FindRtidbDirPath("rtidb") + "/fesql/", yaml_path, cases);
     return cases;
 }
-std::string FindRtidbDirPath(const std::string dirname) {
+std::string FindRtidbDirPath(const std::string &dirname) {
     boost::filesystem::path current_path(boost::filesystem::current_path());
     boost::filesystem::path fesql_path;
 
@@ -88,7 +88,6 @@ void CheckSchema(const fesql::vm::Schema &schema,
         ASSERT_EQ(schema.Get(i).type(), exp_schema.Get(i).type());
     }
 }
-
 void PrintSchema(const fesql::vm::Schema &schema) {
     std::ostringstream oss;
     fesql::codec::RowView row_view(schema);
