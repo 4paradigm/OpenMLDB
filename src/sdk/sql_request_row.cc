@@ -70,7 +70,10 @@ SQLRequestRow::SQLRequestRow(std::shared_ptr<fesql::sdk::Schema> schema)
       str_offset_(0),
       offset_vec_(),
       val_(),
-      buf_(NULL) {
+      buf_(NULL),
+      str_length_expect_(0),
+      str_length_current_(0),
+      has_error_(false) {
     str_field_start_offset_ =
         SDK_HEADER_LENGTH + BitMapSize(schema->GetColumnCnt());
     for (int idx = 0; idx < schema->GetColumnCnt(); idx++) {
@@ -91,10 +94,11 @@ SQLRequestRow::SQLRequestRow(std::shared_ptr<fesql::sdk::Schema> schema)
     }
 }
 
-bool SQLRequestRow::Init(int str_length) {
+bool SQLRequestRow::Init(int32_t str_length) {
     if (schema_->GetColumnCnt() == 0) {
         return true;
     }
+    str_length_expect_ = str_length;
     uint32_t total_length = str_field_start_offset_;
     total_length += str_length;
     if (total_length + str_field_cnt_ <= UINT8_MAX) {
@@ -225,10 +229,15 @@ bool SQLRequestRow::AppendString(const std::string& val) {
     }
     str_offset_ += val.size();
     cnt_++;
+    str_length_current_ += val.size();
     return true;
 }
 
 bool SQLRequestRow::AppendNULL() {
+    if (schema_->IsColumnNotNull(cnt_)) {
+        has_error_ = true;
+        return false;
+    }
     int8_t* ptr = buf_ + SDK_HEADER_LENGTH + (cnt_ >> 3);
     *(reinterpret_cast<uint8_t*>(ptr)) |= 1 << (cnt_ & 0x07);
     auto type = schema_->GetColumnType(cnt_);
@@ -253,6 +262,8 @@ bool SQLRequestRow::AppendNULL() {
 }
 
 bool SQLRequestRow::Build() {
+    if (has_error_) return false;
+    if (str_length_current_ != str_length_expect_) return false;
     int32_t cnt = cnt_;
     for (; cnt < schema_->GetColumnCnt(); cnt++) {
         bool ok = AppendNULL();

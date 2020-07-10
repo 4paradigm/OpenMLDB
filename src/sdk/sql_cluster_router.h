@@ -26,6 +26,7 @@
 #include <vector>
 
 #include "base/spinlock.h"
+#include "base/random.h"
 #include "catalog/schema_adapter.h"
 #include "client/tablet_client.h"
 #include "parser/parser.h"
@@ -102,6 +103,7 @@ class SQLClusterRouter : public SQLRouter {
              std::map<std::string, std::shared_ptr<::fesql::sdk::Schema>>>
         input_schema_map_;
     ::rtidb::base::SpinMutex mu_;
+    ::rtidb::base::Random rand_;
 };
 
 }  // namespace sdk

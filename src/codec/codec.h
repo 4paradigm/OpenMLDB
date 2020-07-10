@@ -13,10 +13,10 @@
 
 #include <map>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
-#include <sstream>
 
 #include "base/endianconv.h"
 #include "base/strings.h"
@@ -64,10 +64,10 @@ class RowProject {
 class RowBuilder {
  public:
     explicit RowBuilder(const Schema& schema);
-    ~RowBuilder() = default;
 
     uint32_t CalTotalLength(uint32_t string_length);
     bool SetBuffer(int8_t* buf, uint32_t size);
+    bool SetBuffer(int8_t* buf, uint32_t size, bool need_clear);
     bool AppendBool(bool val);
     bool AppendInt32(int32_t val);
     bool AppendInt16(int16_t val);
@@ -82,7 +82,6 @@ class RowBuilder {
     // append the date that encoded
     bool AppendDate(int32_t date);
     bool AppendValue(const std::string& val);
-
     bool SetBool(uint32_t index, bool val);
     bool SetInt32(uint32_t index, int32_t val);
     bool SetInt16(uint32_t index, int16_t val);
@@ -91,14 +90,18 @@ class RowBuilder {
     bool SetTimestamp(uint32_t index, int64_t val);
     bool SetFloat(uint32_t index, float val);
     bool SetDouble(uint32_t index, double val);
-    bool SetString(uint32_t index, const char* val, uint32_t length);
-    bool SetNULL(uint32_t index);
     bool SetDate(uint32_t index, uint32_t year, uint32_t month, uint32_t day);
     // set the date that encoded
     bool SetDate(uint32_t index, int32_t date);
 
+    void SetSchemaVersion(uint8_t version);
+
  private:
     bool Check(uint32_t index, ::rtidb::type::DataType type);
+    inline void SetField(uint32_t index);
+    inline void SetStrOffset(uint32_t str_pos);
+    bool SetString(uint32_t index, const char* val, uint32_t length);
+    bool SetNULL(uint32_t index);
 
  private:
     const Schema& schema_;
@@ -109,6 +112,7 @@ class RowBuilder {
     uint32_t str_addr_length_;
     uint32_t str_field_start_offset_;
     uint32_t str_offset_;
+    uint8_t schema_version_;
     std::vector<uint32_t> offset_vec_;
 };
 
@@ -119,6 +123,10 @@ class RowView {
     ~RowView() = default;
     bool Reset(const int8_t* row, uint32_t size);
     bool Reset(const int8_t* row);
+
+    static uint8_t GetSchemaVersion(const int8_t* row) {
+        return *(reinterpret_cast<const uint8_t*>(row + 1));
+    }
 
     int32_t GetBool(uint32_t idx, bool* val);
     int32_t GetInt32(uint32_t idx, int32_t* val);

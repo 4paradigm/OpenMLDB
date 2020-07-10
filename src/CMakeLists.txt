@@ -147,9 +147,9 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
 
     add_executable(glog_wapper_test base/glog_wapper_test.cc)
     target_link_libraries(glog_wapper_test  gtest ${BIN_LIBS})
-
+    add_executable(parse_log tools/parse_log.cc)
+    target_link_libraries(parse_log ${BIN_LIBS})
     add_library(blob_proxy STATIC proto/blob_proxy.pb.cc blob_proxy/blob_proxy_impl.cc flags.cc client/client.cc)
-
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set(BIN_LIBS client  rtidb_sdk client  rtidb_catalog zk_client  rtidb_flags base rtidb_codec common rtidb_proto zookeeper_mt
     ${VM_LIBS}

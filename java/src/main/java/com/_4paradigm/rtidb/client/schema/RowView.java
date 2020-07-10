@@ -52,6 +52,14 @@ public class RowView {
         }
     }
 
+    public static int getSchemaVersion(ByteBuffer row) {
+        if (row.order() == ByteOrder.BIG_ENDIAN) {
+            row = row.order(ByteOrder.LITTLE_ENDIAN);
+        }
+        byte bt = row.get(1);
+        return bt;
+    }
+
     private boolean init() {
         strFieldStartOffset = RowCodecCommon.HEADER_LENGTH + RowCodecCommon.getBitMapSize(schema.size());
         for (int idx = 0; idx < schema.size(); idx++) {

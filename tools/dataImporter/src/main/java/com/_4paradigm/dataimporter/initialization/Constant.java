@@ -1,6 +1,7 @@
 package com._4paradigm.dataimporter.initialization;
 
-import java.util.LinkedList;
+
+import org.apache.logging.log4j.util.Strings;
 
 public class Constant {
     public static final String FILEPATH = InitProperties.getProperties().getProperty("filePath");
@@ -23,6 +24,8 @@ public class Constant {
     public static final String TTL_TYPE = InitProperties.getProperties().getProperty("ttlType");
     public static final int COMPRESS_TPYE = Integer.parseInt(InitProperties.getProperties().getProperty("compressType"));
     public static final long TTL = Long.parseLong(InitProperties.getProperties().getProperty("ttl"));
+    public static final int FORMAT_VERSION = Strings.isBlank(InitProperties.getProperties().getProperty("formatVersion"))
+            ? 0 : Integer.parseInt(InitProperties.getProperties().getProperty("formatVersion"));
 
     public static final int MAXIMUMPOOLSIZE = Integer.parseInt(InitProperties.getProperties().getProperty("maximumPoolSize"));
     public static final int BLOCKINGQUEUESIZE = Integer.parseInt(InitProperties.getProperties().getProperty("blockingQueueSize"));

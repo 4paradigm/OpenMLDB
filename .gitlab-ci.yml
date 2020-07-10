@@ -9,7 +9,6 @@ stages:
     - ts_integration_test
     - ns_integration_test
     - deploy
-    - make_docker
 
 build:
     stage: build
@@ -24,6 +23,22 @@ build:
             - build/bin/rtidb
             - build/src/sdk/libsql_jsdk.so
             - build/sql_pysdk/dist/
+
+mac_build:
+  variables:
+      CICD_RUNNER_TAG: "rtidb_mac"
+  tags:
+      - rtidb_mac
+  stage: build
+  script:
+      - bash steps/simple_compile_mac.sh
+      - mv build/bin/rtidb build/bin/rtidb_mac
+  artifacts:
+      expire_in: 4h
+      paths:
+          - build/bin/rtidb_mac
+          - build/src/sdk/libsql_jsdk.dylib
+          - build/sql_pysdk/dist/
 
 style_check:
     stage: build
@@ -84,6 +99,31 @@ fesql_auto_test:
               - rtidb-auto-test/target/failsafe-reports/junitreports/TEST-*.xml
               - rtidb-auto-test/target/failsafe-reports/TEST-*.xml
 
+auto_test:
+  stage: test
+  before_script:
+      - mkdir /rambuild
+      - mount -t tmpfs -o size=3G tmpfs /rambuild
+  script:
+      - ln -sf /depends/thirdparty thirdparty
+      - ln -sf /depends/thirdsrc thirdsrc
+      - source /root/.bashrc && bash steps/auto_test.sh
+  after_script:
+      - tar czvf $CI_COMMIT_SHA rtidb-auto-test-java/target/allure-results
+      - bash steps/upload-nexus.sh $CI_COMMIT_SHA
+      - curl -s "http://auto.4paradigm.com/job/rtidb-test-report/buildWithParameters?token=gitlab&allure_path=rtidb-auto-test-java/target/allure-results&pkg=$CI_COMMIT_SHA&buildname=$CI_PIPELINE_ID"-"$CI_JOB_ID"
+      - bash steps/get-report-url.sh rtidb-test-report $CI_PIPELINE_ID"-"$CI_JOB_ID
+  artifacts:
+      reports:
+          junit:
+              - java/target/surefire-reports/junitreports/TEST-*.xml
+              - java/target/surefire-reports/TEST-*.xml
+              - java/target/failsafe-reports/junitreports/TEST-*.xml
+              - java/target/failsafe-reports/TEST-*.xml
+              - rtidb-auto-test/target/surefire-reports/junitreports/TEST-*.xml
+              - rtidb-auto-test/target/surefire-reports/TEST-*.xml
+              - rtidb-auto-test/target/failsafe-reports/junitreports/TEST-*.xml
+              - rtidb-auto-test/target/failsafe-reports/TEST-*.xml
 c++_ut:
   stage: test
   script:
@@ -225,7 +265,7 @@ deploy-package:
     only:
         - tags
 docker-image:
-    stage: make_docker
+    stage: deploy
     script:
         - source /root/.bashrc && sh tools/install_fesql.sh
         - ln -sf /depends/thirdparty thirdparty
@@ -236,3 +276,5 @@ docker-image:
     only:
         - tags
         - develop
+        - release/*
+        - feat/push-nexus-meta
