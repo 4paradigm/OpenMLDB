@@ -3558,9 +3558,7 @@ void HandleNSCreateTable(const std::vector<std::string>& parts,
             }
         }
     }
-    if (client->HasDb()) {
-        ns_table_info.set_db(client->GetDb());
-    }
+    ns_table_info.set_db(client->GetDb());
     std::string msg;
     if (!client->CreateTable(ns_table_info, msg)) {
         std::cout << "Fail to create table. error msg: " << msg << std::endl;
