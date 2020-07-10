@@ -46,6 +46,7 @@ class Planner {
     const bool is_batch_mode_;
 
  protected:
+    bool IsTable(node::PlanNode *node);
     bool ValidatePrimaryPath(
         node::PlanNode *node, node::PlanNode **output,
         base::Status &status);  // NOLINT (runtime/references)

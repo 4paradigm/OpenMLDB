@@ -547,6 +547,7 @@ int32_t RowView::GetInteger(const int8_t* row, uint32_t idx,
             if (ret == 0) *val = tmp_val;
             break;
         }
+        case ::fesql::type::kDate:
         case ::fesql::type::kInt32: {
             int32_t tmp_val = 0;
             GetValue(row, idx, type, &tmp_val);
@@ -608,6 +609,7 @@ int32_t RowView::GetValue(const int8_t* row, uint32_t idx,
             *(reinterpret_cast<int16_t*>(val)) =
                 v1::GetInt16FieldUnsafe(row, offset);
             break;
+        case ::fesql::type::kDate:
         case ::fesql::type::kInt32:
             *(reinterpret_cast<int32_t*>(val)) =
                 v1::GetInt32FieldUnsafe(row, offset);

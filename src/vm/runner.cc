@@ -1077,6 +1077,11 @@ bool JoinGenerator::TableJoin(std::shared_ptr<TableHandler> left,
                               std::shared_ptr<TableHandler> right,
                               std::shared_ptr<MemTableHandler> output) {
     auto left_iter = left->GetIterator();
+    if (!left_iter) {
+        LOG(WARNING) << "Table Join with empty left table";
+        return false;
+    }
+    left_iter->SeekToFirst();
     while (left_iter->Valid()) {
         const Row& left_row = left_iter->GetValue();
         output->AddRow(
@@ -1616,7 +1621,12 @@ const std::string KeyGenerator::Gen(const Row& row) {
     row_view_.Reset(key_row.buf());
     std::string keys = "";
     for (auto pos : idxs_) {
-        std::string key = row_view_.GetAsString(pos);
+        std::string key = fn_schema_.Get(pos).type() == fesql::type::kDate
+                              ? std::to_string(row_view_.GetDateUnsafe(pos))
+                              : row_view_.GetAsString(pos);
+        if (key == "") {
+            key = codec::EMPTY_STRING;
+        }
         if (!keys.empty()) {
             keys.append("|");
         }
@@ -1639,6 +1649,10 @@ const Row ProjectGenerator::Gen(const Row& row) {
 
 const Row AggGenerator::Gen(std::shared_ptr<TableHandler> table) {
     auto iter = table->GetIterator();
+    if (!iter) {
+        LOG(WARNING) << "Agg table is empty";
+        return Row();
+    }
     iter->SeekToFirst();
     if (!iter->Valid()) {
         return Row();

@@ -98,6 +98,8 @@ bool Table::DecodeKeysAndTs(const IndexSt& index, const char* row,
                                    col.second, &val, &length);
                 if (length != 0) {
                     key.append(val, length);
+                } else {
+                    key.append(codec::EMPTY_STRING);
                 }
             } else {
                 int64_t value = 0;
@@ -113,6 +115,9 @@ bool Table::DecodeKeysAndTs(const IndexSt& index, const char* row,
             key = row_view_.GetValue(reinterpret_cast<const int8_t*>(row),
                                      index.keys[0].second, &buf, &size);
             key = std::string(buf, size);
+            if (key == "") {
+                key = codec::EMPTY_STRING;
+            }
         } else {
             int64_t value = 0;
             row_view_.GetInteger(reinterpret_cast<const int8_t*>(row),

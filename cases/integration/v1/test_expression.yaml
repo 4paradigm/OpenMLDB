@@ -3,7 +3,6 @@ debugs: []
 cases:
   - id: 1
     desc: 算术表达式
-    tags: ["TODO", "@chenjing"]
     inputs:
       - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
         indexs: ["index1:c1:c4"]
@@ -11,7 +10,7 @@ cases:
           - ["aa",2,3,1590738989000]
     sql: select c1,c2+1,c3*1,c2-1,c3/2,c3%2 from {0};
     expect:
-      columns: ["c1 string","c2+1 int","c3*1 bigint","c2-1 int","c3/2 double","c3%2 int"]
+      columns: ["c1 string","c2 + 1 int","c3 * 1 bigint","c2 - 1 int","c3 / 2 double","c3 % 2 bigint"]
       rows:
         - ["aa",3,3,1,1.5,1]
   - id: 2
@@ -28,7 +27,6 @@ cases:
         - ["aa",false,true,true,false,true,true,false]
   - id: 3
     desc: 逻辑表达式
-    tags: ["TODO", "NOT bug fix @chenjing"]
     inputs:
       - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
         indexs: ["index1:c1:c4"]
@@ -108,29 +106,32 @@ cases:
         indexs: ["index1:c1:c4"]
         rows:
           - ["aa",2,3,1590738989000,"2020-05-01"]
-    sql: select c2=2 and (c2-1) from {0};
+    sql: select c2=2 and (c2-1) as f1 from {0};
     expect:
-      success: false
+      columns: ["f1 bool"]
+      rows:
+        - [true]
   - id: 10
     desc: 逻辑表达式不使用布尔表达式!
-    tags: ["TODO", "@chenjing"]
     inputs:
       - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp","c5 date"]
         indexs: ["index1:c1:c4"]
         rows:
           - ["aa",2,3,1590738989000,"2020-05-01"]
-    sql: select !c2 from {0};
+    sql: select !c2 as not_c2 from {0};
     expect:
-      success: false
+      columns: ["not_c2 bool"]
+      rows:
+        - [false]
   - id: 11
     desc: 逻辑表达式不使用布尔表达式-常量
-    tags: ["TODO", "@chenjing"]
     inputs:
       - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp","c5 date"]
         indexs: ["index1:c1:c4"]
         rows:
           - ["aa",2,3,1590738989000,"2020-05-01"]
-    sql: select c2==2 and false,!true from {0};
+    sql: select c2==2 and false as flag1,!true as flag2 from {0};
     expect:
+      columns: ["flag1 bool", "flag2 bool"]
       rows:
         - [false,false]

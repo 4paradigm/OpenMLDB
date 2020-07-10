@@ -30,7 +30,7 @@ cases:
         5, 55, 1590115424000, 3, 1, 2
 
   - id: 1
-    desc: Count of different types
+    desc: Count of string types
     db: db1
     sql: |
       SELECT col1 as id,

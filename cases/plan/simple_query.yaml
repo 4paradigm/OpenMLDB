@@ -4,7 +4,7 @@ cases:
     sql: SELECT * FROM t1;
   - id: 1
     desc: SELECT列
-    sql: SELECT COL1 FROM t1;
+    sql: SELECT COL1, -COL1 FROM t1;
   - id: 2
     desc: SELECT列重命名
     sql: SELECT COL1 as c1 FROM t1;
@@ -39,7 +39,7 @@ cases:
     sql: SELECT COL1 + COL2 as col12 FROM t1;
   - id: 12
     desc: SELECT 算术表达式-
-    sql: SELECT COL1 - COL2 as col12 FROM t1;
+    sql: SELECT COL1 - COL2 as col12, COL1-1 FROM t1;
   - id: 13
     desc: SELECT 算术表达式*
     sql: SELECT COL1 * COL2 as col12 FROM t1;

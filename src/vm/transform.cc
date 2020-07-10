@@ -749,8 +749,14 @@ bool BatchModeTransformer::TransformRenameOp(const node::RenamePlanNode* node,
     if (!TransformPlanOp(node->GetChildren()[0], &left, status)) {
         return false;
     }
-    *output = new PhysicalRenameNode(left, node->table_);
-    node_manager_->RegisterNode(*output);
+    vm::SchemaSourceList new_sources;
+
+    for (auto source : left->GetOutputNameSchemaList().schema_source_list_) {
+        new_sources.AddSchemaSource(node->table_, source.schema_,
+                                    source.sources_);
+    }
+    left->SetOutputNameSchemaList(new_sources);
+    *output = left;
     return true;
 }
 
@@ -1481,8 +1487,7 @@ bool GroupAndSortOptimized::KeysFilterOptimized(
                 return false;
             }
             PhysicalPartitionProviderNode* scan_index_op =
-                new PhysicalPartitionProviderNode(scan_op->table_handler_,
-                                                  index_name);
+                new PhysicalPartitionProviderNode(scan_op, index_name);
             group->set_keys(new_groups);
             hash->set_keys(keys);
             *new_in = scan_index_op;
@@ -1528,8 +1533,7 @@ bool GroupAndSortOptimized::JoinKeysOptimized(
                 return false;
             }
             PhysicalPartitionProviderNode* partition_op =
-                new PhysicalPartitionProviderNode(scan_op->table_handler_,
-                                                  index_name);
+                new PhysicalPartitionProviderNode(scan_op, index_name);
             node_manager_->RegisterNode(partition_op);
             *new_in = partition_op;
             left_index_keys = node_manager_->MakeExprList();
@@ -1591,8 +1595,7 @@ bool GroupAndSortOptimized::GroupOptimized(
                 return false;
             }
             PhysicalPartitionProviderNode* partition_op =
-                new PhysicalPartitionProviderNode(scan_op->table_handler_,
-                                                  index_name);
+                new PhysicalPartitionProviderNode(scan_op, index_name);
             node_manager_->RegisterNode(partition_op);
             *new_in = partition_op;
             group->set_keys(new_groups);

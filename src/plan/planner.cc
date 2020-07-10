@@ -396,7 +396,24 @@ bool Planner::CreateCreateTablePlan(
         create_tree->GetTableName(), create_tree->GetColumnDefList());
     return true;
 }
+bool Planner::IsTable(node::PlanNode *node) {
+    if (nullptr == node) {
+        return false;
+    }
 
+    switch (node->type_) {
+        case node::kPlanTypeTable: {
+            return true;
+        }
+        case node::kPlanTypeRename: {
+            return IsTable(node->GetChildren()[0]);
+        }
+        default: {
+            return false;
+        }
+    }
+    return false;
+}
 bool Planner::ValidatePrimaryPath(node::PlanNode *node, node::PlanNode **output,
                                   base::Status &status) {
     if (nullptr == node) {
@@ -420,10 +437,11 @@ bool Planner::ValidatePrimaryPath(node::PlanNode *node, node::PlanNode **output,
                 return false;
             }
 
-            if (node::kPlanTypeTable == binary_op->GetRight()->type_) {
+            if (IsTable(binary_op->GetRight())) {
                 *output = left_primary_table;
                 return true;
             }
+
             node::PlanNode *right_primary_table = nullptr;
             if (!ValidatePrimaryPath(binary_op->GetRight(),
                                      &right_primary_table, status)) {
