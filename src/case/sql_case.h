@@ -60,7 +60,8 @@ class SQLCase {
     static bool ExtractSchema(const std::string& schema_str,
                               type::TableDef& table);  // NOLINT
     static bool BuildCreateSQLFromSchema(const type::TableDef& table,
-                                         std::string* create_sql);  // NOLINT
+                                         std::string* create_sql,
+                                         bool index = true);  // NOLINT
     static bool ExtractIndex(const std::string& index_str,
                              type::TableDef& table);  // NOLINT
     static bool ExtractTableDef(const std::string& schema_str,
@@ -72,6 +73,9 @@ class SQLCase {
     static bool BuildInsertSQLFromRow(const type::TableDef& table,
                                         const std::string& row_str,
                                         std::string* create_sql);
+    static bool BuildInsertSQLFromMultipleRows(const type::TableDef& table,
+                                        const std::string& row_str,
+                                        std::string* create_sql);                                      
     static bool ExtractRow(const vm::Schema& schema, const std::string& row_str,
                            int8_t** out_ptr, int32_t* out_size);
     static bool CreateTableInfoFromYamlNode(const YAML::Node& node,

@@ -261,7 +261,7 @@ TEST_F(SQLCaseTest, ExtractInsertSqlTest) {
     ASSERT_TRUE(
         SQLCase::BuildInsertSQLFromRow(output_table, row_str, &create_sql));
     ASSERT_EQ(
-        "Insert into  values('0', 1, 5, 1.1, 11.1, 1, '1', 1587647803000)",
+        "Insert into values('0', 1, 5, 1.1, 11.1, 1, '1', 1587647803000);",
         create_sql);
 }
 TEST_F(SQLCaseTest, ExtractRowTest) {
@@ -424,7 +424,7 @@ TEST_F(SQLCaseTest, ExtractSQLCase) {
                 "col5 bigint,\n"
                 "col6 string,\n"
                 "index(key=(col1), ts=col5)\n"
-                ")",
+                ");",
                 create_sql);
         }
     }

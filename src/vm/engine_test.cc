@@ -70,6 +70,22 @@ std::vector<SQLCase> InitCases(std::string yaml_path) {
     return cases;
 }
 
+std::string sqliteStr = "";
+
+int callback(void *NotUsed, int argc, char **argv, char **azColName){
+    int i;
+    for(i = 0; i < argc; i++){
+        sqliteStr +=  NULL == argv[i] ? "NULL" : argv[i];
+        sqliteStr += ", ";
+        std::cout<<sqliteStr<<std::endl;
+    }
+
+    sqliteStr.pop_back();
+    sqliteStr.pop_back();
+    sqliteStr+="\n";
+    return 0;
+}
+
 void CheckSchema(const vm::Schema& schema, const vm::Schema& exp_schema);
 void CheckRows(const vm::Schema& schema, const std::vector<Row>& rows,
                const std::vector<Row>& exp_rows);
@@ -400,6 +416,84 @@ void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
     ASSERT_EQ(0, session.Run(output));
     CheckRows(schema, SortRows(schema, output, sql_case.output().order_),
               case_output_data);
+
+    /* Compare with SQLite*/
+    
+    //Determine whether to compare with SQLite
+    if (sql_case.standard_sql()) {
+
+        // Use SQLite to get output
+        sqlite3 *db;
+        char *zErrMsg = 0;
+        int rc;
+
+        // Create database in the memory
+        rc = sqlite3_open(":memory:", &db);
+        if( rc ){
+            fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+            exit(0);
+        }else{
+            fprintf(stderr, "Database Create successfully\n");
+        }
+
+        // Create SQL statement to create a table schema
+        type::TableDef output_table;
+        sql_case.ExtractInputTableDef(output_table);
+        std::string create_table_sql;
+        SQLCase::BuildCreateSQLFromSchema(output_table, &create_table_sql, false);
+        //LOG(INFO) << create_table_sql;
+
+        //Create a table schema
+        const char* create_table_sql_ch = create_table_sql.c_str();
+        rc = sqlite3_exec(db, create_table_sql_ch, callback, 0, &zErrMsg);
+        if( rc != SQLITE_OK ){
+        fprintf(stderr, "SQL error: %s\n", zErrMsg);
+            sqlite3_free(zErrMsg);
+        }else{
+            fprintf(stdout, "Table schema created successfully\n");
+        }
+
+        //Create SQL statements to insert data to the table (One insert)
+        std::string create_insert_sql = "";
+        std::vector<std::string> data_line;
+        SQLCase::BuildInsertSQLFromMultipleRows(output_table, sql_case.inputs()[0].data_, &create_insert_sql);
+
+        // Insert data into the table
+        const char* create_insert_sql_ch = create_insert_sql.c_str();
+
+        std::cout << create_insert_sql_ch <<std::endl;
+        rc = sqlite3_exec(db, create_insert_sql_ch, callback, 0, &zErrMsg);
+        if( rc != SQLITE_OK ){
+            fprintf(stderr, "SQL error: %s\n", zErrMsg);
+            sqlite3_free(zErrMsg);
+        }else{
+            fprintf(stdout, "Records created successfully\n");
+        }
+
+        // Execute SQL statement 
+        const char* create_execute_sql_ch = sql_case.sql_str().c_str();
+        
+        sqliteStr = "";
+        
+        rc = sqlite3_exec(db, create_execute_sql_ch, callback, 0, &zErrMsg);
+        if( rc != SQLITE_OK ){
+            fprintf(stderr, "SQL error: %s\n", zErrMsg);
+            sqlite3_free(zErrMsg);
+        }else{
+            fprintf(stdout, "Operation done successfully\n");
+        }
+        sqlite3_close(db);
+
+        sqliteStr.pop_back();
+
+        // Transfer Sqlite outcome to Fesql row
+        std::vector<fesql::codec::Row> sqliteRows;
+        SQLCase::ExtractRows(schema, sqliteStr, sqliteRows);
+
+        // Compare Fesql output with SQLite output. 
+        CheckRows(schema, SortRows(schema, sqliteRows, sql_case.output().order_),
+              SortRows(schema, output, sql_case.output().order_));
+    }          
 }
 
 INSTANTIATE_TEST_CASE_P(
@@ -534,3 +628,61 @@ int main(int argc, char** argv) {
     InitializeNativeTargetAsmPrinter();
     return RUN_ALL_TESTS();
 }
+/*
+    // Callback function in "SELECT"
+    static int callback(void *data, int argc, char **argv, char **azColName){
+        int i;
+        fprintf(stderr, "%s: ", (const char*)data);
+        for(i=0; i<argc; i++){
+            printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
+        }
+        printf("\n");
+        return 0;
+    }
+    
+    // Determine whether to compare with SQLite
+    if (sql_case.standard_sql_) {
+
+        // Use SQLite to get output
+        sqlite3 *db;
+        char *zErrMsg = 0;
+        int rc;
+        char const *table;
+        char const *sql;
+        char const *sql3;
+        const char* data = "Callback function called";
+
+        // Create database in memory
+        rc = sqlite3_open(":memory:", &db);
+        if( rc ){
+            fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+            exit(0);
+        }else{
+            fprintf(stderr, "Opened database successfully\n");
+        }
+
+        table = ;
+
+        sql = "SELECT * from COMPANY";
+
+        // Insert data into database
+        rc = sqlite3_exec(db, table, callback, (void*)data, &zErrMsg);
+        if( rc != SQLITE_OK ){
+            fprintf(stderr, "SQL error: %s\n", zErrMsg);
+            sqlite3_free(zErrMsg);
+        }else{
+            fprintf(stdout, "1 Operation done successfully\n");
+        }
+
+        // Execute SQL statement 
+        rc = sqlite3_exec(db, sql, callback, (void*)data, &zErrMsg);
+        if( rc != SQLITE_OK ){
+            fprintf(stderr, "SQL error: %s\n", zErrMsg);
+            sqlite3_free(zErrMsg);
+        }else{
+            fprintf(stdout, "2 Operation done successfully\n");
+        }
+
+        sqlite3_close(db);
+
+    }*/

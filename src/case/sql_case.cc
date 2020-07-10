@@ -173,7 +173,8 @@ bool SQLCase::ExtractSchema(const std::string& schema_str,
 }
 
 bool SQLCase::BuildCreateSQLFromSchema(const type::TableDef& table,
-                                       std::string* create_sql) {
+                                       std::string* create_sql,
+                                       bool index) {
     std::string sql = "CREATE TABLE " + table.name() + "(\n";
     for (int i = 0; i < table.columns_size(); i++) {
         auto column = table.columns(i);
@@ -185,7 +186,8 @@ bool SQLCase::BuildCreateSQLFromSchema(const type::TableDef& table,
         sql.append(",\n");
     }
 
-    for (int i = 0; i < table.indexes_size(); i++) {
+    if (index){
+        for (int i = 0; i < table.indexes_size(); i++) {
         auto index = table.indexes(i);
         sql.append("index(");
 
@@ -224,8 +226,12 @@ bool SQLCase::BuildCreateSQLFromSchema(const type::TableDef& table,
 
         sql.append(")\n");
         // end each index
-    }
-    sql.append(")");
+        }
+    } else {
+        sql = sql.substr(0, sql.length() - 2);
+    };
+    
+    sql.append(");");
     *create_sql = sql;
     return true;
 }
@@ -262,11 +268,12 @@ bool SQLCase::BuildInsertSQLFromRow(const type::TableDef& table,
                                     const std::string& row_str,
                                     std::string* insert_sql) {
     std::string sql = "";
-    sql.append("Insert into ").append(table.name()).append(" values(");
+    sql.append("Insert into ").append(table.name()).append("values(");
     auto schema = table.columns();
     std::vector<std::string> item_vec;
     boost::split(item_vec, row_str, boost::is_any_of(","),
                  boost::token_compress_on);
+
     if (item_vec.size() != static_cast<size_t>(schema.size())) {
         LOG(WARNING) << "Invalid Row: Row doesn't match with schema : "
                      << row_str;
@@ -276,7 +283,7 @@ bool SQLCase::BuildInsertSQLFromRow(const type::TableDef& table,
     auto it = schema.begin();
     uint32_t index = 0;
     for (; it != schema.end(); ++it) {
-        if (index >= item_vec.size()) {
+        if (0 >= item_vec.size()) {
             LOG(WARNING) << "Invalid Row: Row doesn't match with schema";
             return false;
         }
@@ -294,6 +301,7 @@ bool SQLCase::BuildInsertSQLFromRow(const type::TableDef& table,
                 sql.append(item_vec[index]);
                 break;
             }
+            case type::kDate:
             case type::kVarchar: {
                 sql.append("'").append(item_vec[index]).append("'");
                 break;
@@ -305,21 +313,88 @@ bool SQLCase::BuildInsertSQLFromRow(const type::TableDef& table,
         }
         index++;
     }
-    sql.append(")");
+    sql.append(");");
+    *insert_sql = sql;
+    return true;
+}
+
+// INSERT INTO table_name VALUES (value1,value2,value3,...)，(value1,value2,value3,...);
+bool SQLCase::BuildInsertSQLFromMultipleRows(const type::TableDef& table,
+                                    const std::string& rows_str,
+                                    std::string* insert_sql) {
+    std::vector<std::string> data_line;
+    boost::split(data_line, rows_str, boost::is_any_of("\n"), boost::token_compress_on);
+    std::string sql = "";
+    sql.append("Insert into ").append(table.name()).append(" values(");
+    auto schema = table.columns();
+    
+    //std::vector<string>::iterator row_str = data_line.begin()
+    for(auto row_str = data_line.begin(); row_str != data_line.end(); ++ row_str){
+        std::vector<std::string> item_vec;
+        boost::split(item_vec, *row_str, boost::is_any_of(","), boost::token_compress_on);
+
+        if (item_vec.size() != static_cast<size_t>(schema.size())) {
+            LOG(WARNING) << "Invalid Row: Row doesn't match with schema : " << *row_str;
+            return false;
+        }
+
+        auto it = schema.begin();
+        uint32_t index = 0;
+        for (; it != schema.end(); ++it) {
+            if (0 >= item_vec.size()) {
+                LOG(WARNING) << "Invalid Row: Row doesn't match with schema";
+                return false;
+            }
+            if (index > 0) {
+                sql.append(", ");
+            }
+            boost::trim(item_vec[index]);
+            switch (it->type()) {
+                case type::kInt16:
+                case type::kInt32:
+                case type::kInt64:
+                case type::kFloat:
+                case type::kDouble:
+                
+                case type::kTimestamp: {
+                    sql.append(item_vec[index]);
+                    break;
+                }
+                case type::kDate:
+                case type::kVarchar: {
+                    sql.append("'").append(item_vec[index]).append("'");
+                    break;
+                }
+                default: {
+                    LOG(WARNING) << "Invalid Column Type";
+                    return false;
+                }
+            }
+            index++;
+        }
+
+        if (row_str != (data_line.end() - 1)){
+            sql.append("), (");
+        } 
+    }        
+    sql.append(");");
     *insert_sql = sql;
     return true;
 }
 bool SQLCase::ExtractRow(const vm::Schema& schema, const std::string& row_str,
                          int8_t** out_ptr, int32_t* out_size) {
+    
     std::vector<std::string> item_vec;
     boost::split(item_vec, row_str, boost::is_any_of(","),
                  boost::token_compress_on);
+    
     if (item_vec.size() != static_cast<size_t>(schema.size())) {
         LOG(WARNING) << "Invalid Row: Row doesn't match with schema : "
                      << row_str;
         return false;
     }
     int str_size = 0;
+    
     for (size_t i = 0; i < item_vec.size(); i++) {
         boost::trim(item_vec[i]);
         auto column = schema.Get(i);
@@ -329,14 +404,17 @@ bool SQLCase::ExtractRow(const vm::Schema& schema, const std::string& row_str,
             }
         }
     }
+    
     codec::RowBuilder rb(schema);
     uint32_t row_size = rb.CalTotalLength(str_size);
     int8_t* ptr = static_cast<int8_t*>(malloc(row_size));
     rb.SetBuffer(ptr, row_size);
     auto it = schema.begin();
     uint32_t index = 0;
-
+    
+    int i=0;
     for (; it != schema.end(); ++it) {
+        i++;
         if (index >= item_vec.size()) {
             LOG(WARNING) << "Invalid Row: Row doesn't match with schema";
             return false;
@@ -446,7 +524,7 @@ bool SQLCase::ExtractRows(const vm::Schema& schema, const std::string& data_str,
         LOG(WARNING) << "Invalid Data Format";
         return false;
     }
-
+    
     for (auto row_str : row_vec) {
         int8_t* row_ptr = nullptr;
         int32_t row_size = 0;
