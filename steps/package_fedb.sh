@@ -31,8 +31,8 @@ sed -i "s/#--zk_root_path=.*/--zk_root_path=\/fedb/g" ${package}/conf/tablet.fla
 cp -r tools ${package}/tools
 rm -rf ${package}/tools/dataImporter || :
 rm -rf ${package}/tools/rtidbCmdUtil || :
-cp -r build/bin/parse_log ${package}/tools/
 cp -r build/bin/rtidb ${package}/bin/fedb
+cp -r build/bin/rtidb_mac ${package}/bin/fedb_mac_cli
 cd ${package}/bin
 wget http://pkg.4paradigm.com/rtidb/dev/node_exporter
 wget http://pkg.4paradigm.com/rtidb/metricbeat
