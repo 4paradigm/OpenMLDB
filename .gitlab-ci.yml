@@ -22,6 +22,7 @@ build:
         expire_in: 4h
         paths:
             - build/bin/rtidb
+            - build/bin/parse_log
             - build/src/sdk/libsql_jsdk.so
             - build/sql_pysdk/dist/*.whl
 
