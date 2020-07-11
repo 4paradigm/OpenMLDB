@@ -22,5 +22,5 @@ include_directories(${INCLUDE_DIRECTORIES}
 add_library(fesql_flags STATIC flags.cc)
 add_executable(fesql cmd/fesql.cc)
 target_link_libraries(fesql fesql_dbms fesql_tablet fesql_sdk 
-    fesql_flags boost_filesystem
-    ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS} tcmalloc ${OS_LIB})
+    fesql_flags 
+    ${VM_LIBS} boost_filesystem ${LLVM_LIBS} ${BRPC_LIBS} tcmalloc ${OS_LIB})
