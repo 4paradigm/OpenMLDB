@@ -388,12 +388,14 @@ bool SQLCase::BuildInsertValueStringFromRow(
                 sql.append(item);
                 break;
             }
+            case type::kDate:
             case type::kVarchar: {
                 sql.append("'").append(item).append("'");
                 break;
             }
             default: {
-                LOG(WARNING) << "Invalid Column Type";
+                LOG(WARNING)
+                    << "Invalid Column Type " << TypeString(it->type());
                 return false;
             }
         }
