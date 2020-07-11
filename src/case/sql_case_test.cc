@@ -490,7 +490,7 @@ TEST_F(SQLCaseTest, ExtractSQLCase) {
                 "col5 bigint,\n"
                 "col6 string,\n"
                 "index(key=(col1), ts=col5)\n"
-                ")",
+                ");",
                 create_sql);
         }
     }

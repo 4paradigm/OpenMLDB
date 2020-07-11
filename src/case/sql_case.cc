@@ -255,7 +255,7 @@ bool SQLCase::BuildCreateSQLFromSchema(const type::TableDef& table,
         sql.append(")\n");
         // end each index
     }
-    sql.append(")");
+    sql.append(");");
     *create_sql = sql;
     return true;
 }
