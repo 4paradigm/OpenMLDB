@@ -15,6 +15,9 @@
  * limitations under the License.
  */
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <sqlite3.h>
 #include "vm/engine.h"
 #include <algorithm>
 #include <utility>
@@ -537,8 +540,8 @@ void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
         SQLCase::ExtractRows(schema, sqliteStr, sqliteRows);
 
         // Compare Fesql output with SQLite output. 
-        CheckRows(schema, SortRows(schema, sqliteRows, sql_case.output().order_),
-              SortRows(schema, output, sql_case.output().order_));
+        CheckRows(schema, SortRows(schema, sqliteRows, sql_case.expect().order_),
+              SortRows(schema, output, sql_case.expect().order_));
     }          
 }
 INSTANTIATE_TEST_CASE_P(
