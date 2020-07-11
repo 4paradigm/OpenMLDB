@@ -172,17 +172,31 @@ bool SQLClusterRouter::ExecuteDDL(const std::string& db, const std::string& sql,
 
 bool SQLClusterRouter::CreateDB(const std::string& db,
                                 fesql::sdk::Status* status) {
+    if (status == NULL) {
+        return false;
+    }
+
     auto ns_ptr = cluster_sdk_->GetNsClient();
     if (!ns_ptr) {
         LOG(WARNING) << "no nameserver exist";
+        status->msg = "no nameserver exist";
+        status->code = -1;
+        return false;
+    }
+    if (db.empty()) {
+        LOG(WARNING) << "db is empty";
+        status->msg = "db is emtpy";
+        status->code = -2;
         return false;
     }
     std::string err;
     bool ok = ns_ptr->CreateDatabase(db, err);
     if (!ok) {
         LOG(WARNING) << "fail to create db " << db << " for error " << err;
+        status->msg = err;
         return false;
     }
+    status->code = 0;
     return true;
 }
 
