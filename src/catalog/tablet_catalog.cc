@@ -221,7 +221,7 @@ bool TabletCatalog::DeleteTable(const std::string& db,
         return false;
     }
     auto it = db_it->second.find(table_name);
-    if (it != db_it->second.end()) {
+    if (it == db_it->second.end()) {
         return false;
     }
     db_it->second.erase(it);
@@ -230,12 +230,7 @@ bool TabletCatalog::DeleteTable(const std::string& db,
 
 bool TabletCatalog::DeleteDB(const std::string& db) {
     std::lock_guard<::rtidb::base::SpinMutex> spin_lock(mu_);
-    TabletDB::iterator it = db_.find(db);
-    if (it != db_.end()) {
-        db_.erase(it);
-        return true;
-    }
-    return false;
+    return db_.erase(db) > 0;
 }
 
 bool TabletCatalog::IndexSupport() { return true; }

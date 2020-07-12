@@ -97,7 +97,7 @@ class RowBuilder {
     void SetSchemaVersion(uint8_t version);
     bool Build();
     inline bool IsComplete() { return cnt_ == schema_.size(); }
-    inline uint32_t GetCnt() { return cnt_; }
+    inline uint32_t GetAppendPos() { return cnt_; }
 
  private:
     bool Check(uint32_t index, ::rtidb::type::DataType type);

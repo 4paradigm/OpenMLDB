@@ -25,8 +25,8 @@
 #include <utility>
 #include <vector>
 
-#include "base/spinlock.h"
 #include "base/random.h"
+#include "base/spinlock.h"
 #include "catalog/schema_adapter.h"
 #include "client/tablet_client.h"
 #include "parser/parser.h"
@@ -37,26 +37,24 @@
 namespace rtidb {
 namespace sdk {
 
-struct RouterCacheSchema {
-    RouterCacheSchema(
-        std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
-        DefaultValueMap default_map, uint32_t str_size)
+struct RouterCache {
+    RouterCache(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
+                DefaultValueMap default_map, uint32_t str_length)
         : table_info(table_info),
           default_map(default_map),
           column_schema(),
-          str_size(str_size) {}
+          str_length(str_length) {}
 
-    explicit RouterCacheSchema(
-        std::shared_ptr<::fesql::sdk::Schema> column_schema)
+    explicit RouterCache(std::shared_ptr<::fesql::sdk::Schema> column_schema)
         : table_info(),
           default_map(),
           column_schema(column_schema),
-          str_size(0) {}
+          str_length(0) {}
 
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info;
     DefaultValueMap default_map;
     std::shared_ptr<::fesql::sdk::Schema> column_schema;
-    uint32_t str_size;
+    uint32_t str_length;
 };
 
 class SQLClusterRouter : public SQLRouter {
@@ -120,6 +118,12 @@ class SQLClusterRouter : public SQLRouter {
     void GetTables(::fesql::vm::PhysicalOpNode* node,
                    std::set<std::string>* tables);
 
+    std::shared_ptr<RouterCache> GetCache(const std::string& db,
+                                          const std::string& sql);
+
+    void SetCache(const std::string& db, const std::string& sql,
+                  std::shared_ptr<RouterCache> router_cache);
+
     bool EncodeFormat(const catalog::RtiDBSchema& schema,
                       const ::fesql::node::InsertPlanNode* plan,
                       std::string* value,
@@ -152,8 +156,8 @@ class SQLClusterRouter : public SQLRouter {
     ClusterSDK* cluster_sdk_;
     ::fesql::vm::Engine* engine_;
     // TODO(wangtaize) add update strategy
-    std::map<std::string, std::map<std::string, RouterCacheSchema>>
-        input_schema_map_;
+    std::map<std::string, std::map<std::string, std::shared_ptr<RouterCache>>>
+        input_cache_;
     ::rtidb::base::SpinMutex mu_;
     ::rtidb::base::Random rand_;
 };

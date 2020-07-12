@@ -77,16 +77,16 @@ bool SQLInsertRow::Init(int str_length) {
 }
 
 bool SQLInsertRow::GetIndex(const std::string& val) {
-    auto index_it = index_set_.find(rb_.GetCnt());
+    auto index_it = index_set_.find(rb_.GetAppendPos());
     if (index_it != index_set_.end()) {
-        dimensions_.push_back(std::make_pair(val, rb_.GetCnt()));
+        dimensions_.push_back(std::make_pair(val, rb_.GetAppendPos()));
         return true;
     }
     return false;
 }
 
 bool SQLInsertRow::GetTs(uint64_t ts) {
-    if (ts_set_.count(rb_.GetCnt())) {
+    if (ts_set_.count(rb_.GetAppendPos())) {
         ts_.push_back(ts);
         return true;
     }
@@ -94,9 +94,9 @@ bool SQLInsertRow::GetTs(uint64_t ts) {
 }
 
 bool SQLInsertRow::MakeDefault() {
-    auto it = default_map_->find(rb_.GetCnt());
+    auto it = default_map_->find(rb_.GetAppendPos());
     if (it != default_map_->end()) {
-        switch (table_info_->column_desc_v1(rb_.GetCnt()).data_type()) {
+        switch (table_info_->column_desc_v1(rb_.GetAppendPos()).data_type()) {
             case rtidb::type::kBool:
                 if (it->second->GetAsInt32()) {
                     return AppendBool(true);

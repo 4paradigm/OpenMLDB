@@ -236,11 +236,7 @@ bool NsClient::ExecuteSQL(const std::string& db, const std::string& script,
         case fesql::node::kCmdStmt: {
             fesql::node::CmdNode* cmd =
                 dynamic_cast<fesql::node::CmdNode*>(node);
-            bool ok = HandleSQLCmd(cmd, db, &sql_status);
-            if (!ok) {
-                std::cout << sql_status.msg << std::endl;
-            }
-            break;
+            return HandleSQLCmd(cmd, db, &sql_status);
         }
         case fesql::node::kCreateStmt: {
             return HandleSQLCreateTable(parser_trees, db, &node_manager,
@@ -248,7 +244,6 @@ bool NsClient::ExecuteSQL(const std::string& db, const std::string& script,
         }
         default: {
             msg = "fail to execute script with unSuppurt type";
-            std::cout << msg << std::endl;
             return false;
         }
     }

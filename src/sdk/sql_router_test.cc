@@ -135,7 +135,7 @@ TEST_F(SQLRouterTest, smoketest) {
     ASSERT_EQ(pk, rs->GetStringUnsafe(0));
 }
 
-TEST_F(SQLRouterTest, smoketest_on_sql) {
+TEST_F(SQLRouterTest, test_sql_insert) {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_.GetZkCluster();
     sql_opt.zk_path = mc_.GetZkPath();
@@ -271,17 +271,45 @@ TEST_F(SQLRouterTest, smoketest_on_sql) {
     ASSERT_TRUE(rs->Next());
     ASSERT_EQ("word", rs->GetStringUnsafe(0));
     ASSERT_EQ(1592, rs->GetInt64Unsafe(1));
+    ASSERT_FALSE(rs->Next());
+}
 
+TEST_F(SQLRouterTest, smoketest_on_sql) {
+    SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc_.GetZkCluster();
+    sql_opt.zk_path = mc_.GetZkPath();
+    auto router = NewClusterSQLRouter(sql_opt);
+    if (!router) ASSERT_TRUE(false);
+    std::string name = "test" + GenRand();
+    std::string db = "db" + GenRand();
+    ::fesql::sdk::Status status;
+    bool ok = router->CreateDB(db, &status);
+    ASSERT_TRUE(ok);
+    std::string ddl = "create table " + name +
+                      "("
+                      "col1 string, col2 bigint,"
+                      "index(key=col1, ts=col2));";
+    ok = router->ExecuteDDL(db, ddl, &status);
+    ASSERT_TRUE(ok);
+    ASSERT_TRUE(router->RefreshCatalog());
+    std::string insert = "insert into " + name + " values('hello', 1590);";
+    ok = router->ExecuteInsert(db, insert, &status);
+    ASSERT_TRUE(ok);
+    ASSERT_TRUE(router->RefreshCatalog());
+    std::string sql_select = "select col1 from " + name + " ;";
+    auto rs = router->ExecuteSQL(db, sql_select, &status);
+    if (!rs) ASSERT_TRUE(false);
+    ASSERT_EQ(1, rs->Size());
+    ASSERT_TRUE(rs->Next());
+    ASSERT_EQ("hello", rs->GetStringUnsafe(0));
     std::string sql_window_batch =
         "select sum(col2) over w from " + name + " window w as (partition by " +
         name + ".col1 order by " + name +
         ".col2 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);";
     rs = router->ExecuteSQL(db, sql_window_batch, &status);
-    ASSERT_EQ(10, rs->Size());
+    ASSERT_EQ(1, rs->Size());
     ASSERT_TRUE(rs->Next());
     ASSERT_EQ(1590, rs->GetInt64Unsafe(0));
-    ASSERT_TRUE(rs->Next());
-    ASSERT_EQ(1591, rs->GetInt64Unsafe(0));
     {
         std::shared_ptr<SQLRequestRow> row =
             router->GetRequestRow(db, sql_window_batch, &status);
@@ -376,8 +404,8 @@ TEST_F(SQLRouterTest, smoke_not_null) {
     ok = router->ExecuteDDL(db, ddl, &status);
     ASSERT_TRUE(ok);
     ASSERT_TRUE(router->RefreshCatalog());
-    std::string insert = "insert into " + name +
-                         " values('hello', 1591174600000l, null);";
+    std::string insert =
+        "insert into " + name + " values('hello', 1591174600000l, null);";
     ok = router->ExecuteInsert(db, insert, &status);
     ASSERT_FALSE(ok);
 }

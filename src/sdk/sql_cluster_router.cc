@@ -69,7 +69,7 @@ SQLClusterRouter::SQLClusterRouter(const SQLRouterOptions& options)
     : options_(options),
       cluster_sdk_(NULL),
       engine_(NULL),
-      input_schema_map_(),
+      input_cache_(),
       mu_(),
       rand_(::baidu::common::timer::now_time()) {}
 
@@ -77,7 +77,7 @@ SQLClusterRouter::SQLClusterRouter(ClusterSDK* sdk)
     : options_(),
       cluster_sdk_(sdk),
       engine_(NULL),
-      input_schema_map_(),
+      input_cache_(),
       mu_(),
       rand_(::baidu::common::timer::now_time()) {}
 
@@ -112,18 +112,10 @@ std::shared_ptr<SQLRequestRow> SQLClusterRouter::GetRequestRow(
     const std::string& db, const std::string& sql,
     ::fesql::sdk::Status* status) {
     if (status == NULL) return std::shared_ptr<SQLRequestRow>();
-    {
-        std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
-        auto it = input_schema_map_.find(db);
-        if (it != input_schema_map_.end()) {
-            auto iit = it->second.find(sql);
-            if (iit != it->second.end()) {
-                status->code = 0;
-                std::shared_ptr<SQLRequestRow> row(
-                    new SQLRequestRow(iit->second.column_schema));
-                return row;
-            }
-        }
+    std::shared_ptr<RouterCache> cache = GetCache(db, sql);
+    if (cache) {
+        status->code = 0;
+        return std::make_shared<SQLRequestRow>(cache->column_schema);
     }
     ::fesql::vm::ExplainOutput explain;
     ::fesql::base::Status vm_status;
@@ -135,41 +127,21 @@ std::shared_ptr<SQLRequestRow> SQLClusterRouter::GetRequestRow(
                      << vm_status.msg;
         return std::shared_ptr<SQLRequestRow>();
     }
-    std::shared_ptr<::fesql::sdk::SchemaImpl> schema(
-        new ::fesql::sdk::SchemaImpl(explain.input_schema));
-    {
-        std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
-        auto it = input_schema_map_.find(db);
-        if (it == input_schema_map_.end()) {
-            std::map<std::string, ::rtidb::sdk::RouterCacheSchema> sql_schema;
-            sql_schema.insert(
-                std::make_pair(sql, ::rtidb::sdk::RouterCacheSchema(schema)));
-            input_schema_map_.insert(std::make_pair(db, sql_schema));
-        } else {
-            it->second.insert(std::make_pair(sql, schema));
-        }
-    }
-    std::shared_ptr<SQLRequestRow> row(new SQLRequestRow(schema));
-    return row;
+    std::shared_ptr<::fesql::sdk::SchemaImpl> schema =
+        std::make_shared<::fesql::sdk::SchemaImpl>(explain.input_schema);
+    SetCache(db, sql, std::make_shared<RouterCache>(schema));
+    return std::make_shared<SQLRequestRow>(schema);
 }
 
 std::shared_ptr<SQLInsertRow> SQLClusterRouter::GetInsertRow(
     const std::string& db, const std::string& sql,
     ::fesql::sdk::Status* status) {
     if (status == NULL) return std::shared_ptr<SQLInsertRow>();
-    {
-        std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
-        auto it = input_schema_map_.find(db);
-        if (it != input_schema_map_.end()) {
-            auto iit = it->second.find(sql);
-            if (iit != it->second.end()) {
-                status->code = 0;
-                std::shared_ptr<SQLInsertRow> row(new SQLInsertRow(
-                    iit->second.table_info, iit->second.default_map,
-                    iit->second.str_size));
-                return row;
-            }
-        }
+    std::shared_ptr<RouterCache> cache = GetCache(db, sql);
+    if (cache) {
+        status->code = 0;
+        return std::make_shared<SQLInsertRow>(
+            cache->table_info, cache->default_map, cache->str_length);
     }
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info;
     DefaultValueMap default_map;
@@ -180,23 +152,10 @@ std::shared_ptr<SQLInsertRow> SQLClusterRouter::GetInsertRow(
         LOG(WARNING) << "get insert information failed";
         return std::shared_ptr<SQLInsertRow>();
     }
-    {
-        std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
-        auto it = input_schema_map_.find(db);
-        if (it == input_schema_map_.end()) {
-            std::map<std::string, ::rtidb::sdk::RouterCacheSchema> sql_schema;
-            sql_schema.insert(
-                std::make_pair(sql, ::rtidb::sdk::RouterCacheSchema(
-                                        table_info, default_map, str_length)));
-            input_schema_map_.insert(std::make_pair(db, sql_schema));
-        } else {
-            it->second.insert(
-                std::make_pair(sql, ::rtidb::sdk::RouterCacheSchema(
-                                        table_info, default_map, str_length)));
-        }
-    }
-    return std::shared_ptr<SQLInsertRow>(
-        new SQLInsertRow(table_info, default_map, str_length));
+    SetCache(
+        db, sql,
+        std::make_shared<RouterCache>(table_info, default_map, str_length));
+    return std::make_shared<SQLInsertRow>(table_info, default_map, str_length);
 }
 
 bool SQLClusterRouter::GetInsertInfo(
@@ -306,22 +265,42 @@ DefaultValueMap SQLClusterRouter::GetDefaultMap(
     return default_map;
 }
 
+std::shared_ptr<RouterCache> SQLClusterRouter::GetCache(
+    const std::string& db, const std::string& sql) {
+    std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
+    auto it = input_cache_.find(db);
+    if (it != input_cache_.end()) {
+        auto iit = it->second.find(sql);
+        if (iit != it->second.end()) {
+            return iit->second;
+        }
+    }
+    return std::shared_ptr<RouterCache>();
+}
+
+void SQLClusterRouter::SetCache(const std::string& db, const std::string& sql,
+                                std::shared_ptr<RouterCache> router_cache) {
+    std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
+    auto it = input_cache_.find(db);
+    if (it == input_cache_.end()) {
+        std::map<std::string, std::shared_ptr<::rtidb::sdk::RouterCache>>
+            sql_cache;
+        sql_cache.insert(std::make_pair(sql, router_cache));
+        input_cache_.insert(std::make_pair(db, sql_cache));
+    } else {
+        it->second.insert(std::make_pair(sql, router_cache));
+    }
+}
+
 std::shared_ptr<SQLInsertRows> SQLClusterRouter::GetInsertRows(
     const std::string& db, const std::string& sql,
     ::fesql::sdk::Status* status) {
     if (status == NULL) return std::shared_ptr<SQLInsertRows>();
-    {
-        std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
-        auto it = input_schema_map_.find(db);
-        if (it != input_schema_map_.end()) {
-            auto iit = it->second.find(sql);
-            if (iit != it->second.end()) {
-                status->code = 0;
-                return std::shared_ptr<SQLInsertRows>(new SQLInsertRows(
-                    iit->second.table_info, iit->second.default_map,
-                    iit->second.str_size));
-            }
-        }
+    std::shared_ptr<RouterCache> cache = GetCache(db, sql);
+    if (cache) {
+        status->code = 0;
+        return std::make_shared<SQLInsertRows>(
+            cache->table_info, cache->default_map, cache->str_length);
     }
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info;
     DefaultValueMap default_map;
@@ -330,23 +309,10 @@ std::shared_ptr<SQLInsertRows> SQLClusterRouter::GetInsertRows(
                        &str_length)) {
         return std::shared_ptr<SQLInsertRows>();
     }
-    {
-        std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
-        auto it = input_schema_map_.find(db);
-        if (it == input_schema_map_.end()) {
-            std::map<std::string, ::rtidb::sdk::RouterCacheSchema> sql_schema;
-            sql_schema.insert(
-                std::make_pair(sql, ::rtidb::sdk::RouterCacheSchema(
-                                        table_info, default_map, str_length)));
-            input_schema_map_.insert(std::make_pair(db, sql_schema));
-        } else {
-            it->second.insert(
-                std::make_pair(sql, ::rtidb::sdk::RouterCacheSchema(
-                                        table_info, default_map, str_length)));
-        }
-    }
-    return std::shared_ptr<SQLInsertRows>(
-        new SQLInsertRows(table_info, default_map, str_length));
+    SetCache(
+        db, sql,
+        std::make_shared<RouterCache>(table_info, default_map, str_length));
+    return std::make_shared<SQLInsertRows>(table_info, default_map, str_length);
 }
 
 bool SQLClusterRouter::ExecuteDDL(const std::string& db, const std::string& sql,
@@ -567,22 +533,11 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db,
         LOG(WARNING) << "input is invalid";
         return false;
     }
-    std::shared_ptr<::rtidb::nameserver::TableInfo> table_info;
-    DefaultValueMap default_map;
-    bool cache_hit = false;
-    {
-        std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
-        auto it = input_schema_map_.find(db);
-        if (it != input_schema_map_.end()) {
-            auto iit = it->second.find(sql);
-            if (iit != it->second.end()) {
-                table_info = iit->second.table_info;
-                default_map = iit->second.default_map;
-                cache_hit = true;
-            }
-        }
-    }
-    if (cache_hit) {
+    std::shared_ptr<RouterCache> cache = GetCache(db, sql);
+    if (cache) {
+        std::shared_ptr<::rtidb::nameserver::TableInfo> table_info =
+            cache->table_info;
+        DefaultValueMap default_map = cache->default_map;
         std::shared_ptr<::rtidb::client::TabletClient> tablet =
             cluster_sdk_->GetLeaderTabletByTable(db, table_info->name());
         if (!tablet) {
@@ -619,22 +574,11 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db,
         LOG(WARNING) << "input is invalid";
         return false;
     }
-    std::shared_ptr<::rtidb::nameserver::TableInfo> table_info;
-    DefaultValueMap default_map;
-    bool cache_hit = false;
-    {
-        std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
-        auto it = input_schema_map_.find(db);
-        if (it != input_schema_map_.end()) {
-            auto iit = it->second.find(sql);
-            if (iit != it->second.end()) {
-                table_info = iit->second.table_info;
-                default_map = iit->second.default_map;
-                cache_hit = true;
-            }
-        }
-    }
-    if (cache_hit) {
+    std::shared_ptr<RouterCache> cache = GetCache(db, sql);
+    if (cache) {
+        std::shared_ptr<::rtidb::nameserver::TableInfo> table_info =
+            cache->table_info;
+        DefaultValueMap default_map = cache->default_map;
         std::shared_ptr<::rtidb::client::TabletClient> tablet =
             cluster_sdk_->GetLeaderTabletByTable(db, table_info->name());
         if (!tablet) {

@@ -11711,9 +11711,6 @@ void NameServerImpl::DropDatabase(RpcController* controller,
             response->set_msg("database not empty");
             return;
         }
-    }
-    {
-        std::lock_guard<std::mutex> lock(mu_);
         databases_.erase(request->db());
     }
     if (!zk_client_->DeleteNode(zk_db_path_ + "/" + request->db())) {
