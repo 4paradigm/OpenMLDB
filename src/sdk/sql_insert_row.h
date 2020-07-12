@@ -79,7 +79,6 @@ class SQLInsertRow {
     bool AppendString(const std::string& val);
     bool AppendDate(uint32_t year, uint32_t month, uint32_t day);
     bool AppendNULL();
-    bool Build();
     bool IsComplete();
     inline const std::string& GetRow() { return val_; }
     inline const std::vector<std::pair<std::string, uint32_t>>&

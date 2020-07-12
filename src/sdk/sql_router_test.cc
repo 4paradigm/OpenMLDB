@@ -170,7 +170,6 @@ TEST_F(SQLRouterTest, test_sql_insert) {
     ASSERT_TRUE(insert_row1->Init(5));
     ASSERT_TRUE(insert_row1->AppendString("world"));
     ASSERT_TRUE(insert_row1->AppendInt64(1591));
-    ASSERT_TRUE(insert_row1->Build());
     ok = router->ExecuteInsert(db, insert_placeholder1, insert_row1, &status);
     ASSERT_TRUE(ok);
 
@@ -179,7 +178,6 @@ TEST_F(SQLRouterTest, test_sql_insert) {
     ASSERT_EQ(status.code, 0);
     ASSERT_TRUE(insert_row2->Init(4));
     ASSERT_TRUE(insert_row2->AppendString("word"));
-    ASSERT_TRUE(insert_row2->Build());
     ok = router->ExecuteInsert(db, insert_placeholder2, insert_row2, &status);
     ASSERT_TRUE(ok);
 
@@ -188,7 +186,6 @@ TEST_F(SQLRouterTest, test_sql_insert) {
     ASSERT_EQ(status.code, 0);
     ASSERT_TRUE(insert_row3->Init(0));
     ASSERT_TRUE(insert_row3->AppendInt64(1593));
-    ASSERT_TRUE(insert_row3->Build());
     ok = router->ExecuteInsert(db, insert_placeholder3, insert_row3, &status);
     ASSERT_TRUE(ok);
 
@@ -199,12 +196,10 @@ TEST_F(SQLRouterTest, test_sql_insert) {
     ASSERT_TRUE(insert_rows1_1->Init(2));
     ASSERT_TRUE(insert_rows1_1->AppendString("11"));
     ASSERT_TRUE(insert_rows1_1->AppendInt64(1594));
-    ASSERT_TRUE(insert_rows1_1->Build());
     std::shared_ptr<SQLInsertRow> insert_rows1_2 = insert_rows1->NewRow();
     ASSERT_TRUE(insert_rows1_2->Init(2));
     ASSERT_TRUE(insert_rows1_2->AppendString("12"));
     ASSERT_TRUE(insert_rows1_2->AppendInt64(1595));
-    ASSERT_TRUE(insert_rows1_2->Build());
     ok = router->ExecuteInsert(db, insert_placeholder1, insert_rows1, &status);
     ASSERT_TRUE(ok);
 
@@ -214,11 +209,9 @@ TEST_F(SQLRouterTest, test_sql_insert) {
     std::shared_ptr<SQLInsertRow> insert_rows2_1 = insert_rows2->NewRow();
     ASSERT_TRUE(insert_rows2_1->Init(2));
     ASSERT_TRUE(insert_rows2_1->AppendString("21"));
-    ASSERT_TRUE(insert_rows2_1->Build());
     std::shared_ptr<SQLInsertRow> insert_rows2_2 = insert_rows2->NewRow();
     ASSERT_TRUE(insert_rows2_2->Init(2));
     ASSERT_TRUE(insert_rows2_2->AppendString("22"));
-    ASSERT_TRUE(insert_rows2_2->Build());
     ok = router->ExecuteInsert(db, insert_placeholder2, insert_rows2, &status);
     ASSERT_TRUE(ok);
 
@@ -228,11 +221,9 @@ TEST_F(SQLRouterTest, test_sql_insert) {
     std::shared_ptr<SQLInsertRow> insert_rows3_1 = insert_rows3->NewRow();
     ASSERT_TRUE(insert_rows3_1->Init(0));
     ASSERT_TRUE(insert_rows3_1->AppendInt64(1596));
-    ASSERT_TRUE(insert_rows3_1->Build());
     std::shared_ptr<SQLInsertRow> insert_rows3_2 = insert_rows3->NewRow();
     ASSERT_TRUE(insert_rows3_2->Init(0));
     ASSERT_TRUE(insert_rows3_2->AppendInt64(1597));
-    ASSERT_TRUE(insert_rows3_2->Build());
     ok = router->ExecuteInsert(db, insert_placeholder3, insert_rows3, &status);
     ASSERT_TRUE(ok);
 

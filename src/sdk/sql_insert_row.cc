@@ -222,8 +222,6 @@ bool SQLInsertRow::AppendNULL() {
     return false;
 }
 
-bool SQLInsertRow::Build() { return rb_.Build(); }
-
 bool SQLInsertRow::IsComplete() { return rb_.IsComplete(); }
 
 }  // namespace sdk
