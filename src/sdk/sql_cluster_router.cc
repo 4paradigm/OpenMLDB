@@ -250,7 +250,13 @@ DefaultValueMap SQLClusterRouter::GetDefaultMap(
         ::fesql::node::ConstNode* primary =
             dynamic_cast<::fesql::node::ConstNode*>(row->children_.at(idx));
         if (!primary->IsPlaceholder()) {
-            if (!CheckType(primary->GetDataType(), column.data_type())) {
+            if (primary->IsNull()) {
+                if (column.not_null()) {
+                    LOG(WARNING)
+                        << "column " << column.name() << " can't be null";
+                    return DefaultValueMap();
+                }
+            } else if (!CheckType(primary->GetDataType(), column.data_type())) {
                 LOG(WARNING)
                     << "default value type mismatch, column " << column.name();
                 return DefaultValueMap();

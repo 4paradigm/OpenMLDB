@@ -96,6 +96,9 @@ bool SQLInsertRow::GetTs(uint64_t ts) {
 bool SQLInsertRow::MakeDefault() {
     auto it = default_map_->find(rb_.GetAppendPos());
     if (it != default_map_->end()) {
+        if (it->second->IsNull()) {
+            return AppendNULL();
+        }
         switch (table_info_->column_desc_v1(rb_.GetAppendPos()).data_type()) {
             case rtidb::type::kBool:
                 if (it->second->GetAsInt32()) {
