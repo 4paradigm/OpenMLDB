@@ -35,7 +35,6 @@ public class SQLRouterSmokeTest {
             insertRow.Init(5);
             insertRow.AppendInt64(1001);
             insertRow.AppendString("world");
-            insertRow.Build();
             ok = router.executeInsert(dbname, insertPlaceholder, insertRow);
             Assert.assertTrue(ok);
             String select1 = "select * from tsql1010;";
