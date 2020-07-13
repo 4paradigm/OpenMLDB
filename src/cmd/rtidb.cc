@@ -74,6 +74,7 @@ DECLARE_uint32(preview_limit_max_num);
 DECLARE_uint32(preview_default_limit);
 DECLARE_uint32(max_col_display_length);
 DECLARE_bool(version);
+DECLARE_bool(use_name);
 
 void shutdown_signal_handler(int signal) {
     std::cout << "catch signal: " << signal << std::endl;
@@ -202,6 +203,23 @@ void StartTablet() {
               "To fix this issue run the command 'swapoff -a' as root");
     }
     SetupLog();
+    std::string real_endpoint;
+    if (FLAGS_endpoint.empty() && FLAGS_port > 0) {
+        std::string ip;
+        if (::rtidb::base::GetLocalIp(&ip)) {
+            PDLOG(INFO, "local ip is: %s", ip.c_str());
+        } else {
+            PDLOG(WARNING, "fail to get local ip: %s", ip.c_str());
+            exit(1);
+        }
+        real_endpoint = ip + std::to_string(FLAGS_port);
+        if (FLAGS_use_name) {
+            // TODO: read name.txt
+            FLAGS_endpoint = "name";
+        } else {
+            FLAGS_endpoint = real_endpoint;
+        }
+    }
     ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
     bool ok = tablet->Init();
     if (!ok) {
@@ -220,23 +238,22 @@ void StartTablet() {
     tablet->SetServer(&server);
     server.MaxConcurrencyOf(tablet, "Get") = FLAGS_get_concurrency_limit;
     if (FLAGS_endpoint.empty() && FLAGS_port > 0) {
-        std::string ip;
-        if (::rtidb::base::GetLocalIp(&ip)) {
-            PDLOG(INFO, "local ip is: %s", ip.c_str());
-        } else {
-            PDLOG(WARNING, "fail to get local ip: %s", ip.c_str());
+        if (server.Start(real_endpoint.c_str(), &options) != 0) {
+            PDLOG(WARNING, "Fail to start server");
             exit(1);
         }
-        FLAGS_endpoint = ip + std::to_string(FLAGS_port);
+        PDLOG(INFO, "start tablet on endpoint %s with version %d.%d.%d.%d",
+                real_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
+                RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
+    } else {
+        if (server.Start(FLAGS_endpoint.c_str(), &options) != 0) {
+            PDLOG(WARNING, "Fail to start server");
+            exit(1);
+        }
+        PDLOG(INFO, "start tablet on endpoint %s with version %d.%d.%d.%d",
+                FLAGS_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
+                RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
     }
-    if (server.Start(FLAGS_endpoint.c_str(), &options) != 0) {
-        PDLOG(WARNING, "Fail to start server");
-        exit(1);
-    }
-    PDLOG(INFO, "start tablet on endpoint %s with version %d.%d.%d.%d",
-            FLAGS_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
-            RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
-
     if (!tablet->RegisterZK()) {
         PDLOG(WARNING, "Fail to register zk");
         exit(1);
