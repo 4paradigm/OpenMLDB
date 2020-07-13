@@ -1,4 +1,3 @@
-
 add_library(rtidb_sdk STATIC cluster_sdk.cc sql_cluster_router.cc sql_router.cc result_set_sql.cc sql_request_row.cc)
 
 add_executable(cluster_sdk_test cluster_sdk_test.cc)
@@ -17,23 +16,23 @@ target_link_libraries(mini_cluster_bm benchmark_main benchmark ${BIN_LIBS})
 if(SQL_PYSDK_ENABLE)
 	find_package(Python3 COMPONENTS Interpreter Development)
 	set_property(SOURCE sql_router_sdk.i PROPERTY CPLUSPLUS ON)
-	if (CMAKE_SYSTEM_NAME MATCHES "Darwin")
+	if (APPLE)
 		set_property(SOURCE sql_router_sdk.i PROPERTY COMPILE_OPTIONS -python)
 	else ()
 		set_property(SOURCE sql_router_sdk.i PROPERTY COMPILE_OPTIONS -py3)
 	endif ()
 	set(UseSWIG_TARGET_NAME_PREFERENCE STANDARD)
-	swig_add_library(sql_pysdk
+	swig_add_library(sql_router_sdk
 			TYPE SHARED
 			LANGUAGE python
 			OUTPUT_DIR ${CMAKE_BINARY_DIR}/sql_pysdk/fedb
 			SOURCES sql_router_sdk.i)
-	target_include_directories(sql_pysdk PRIVATE ${Python3_INCLUDE_DIRS})
-	target_link_libraries(sql_pysdk ${SDK_LIBS})
+	target_include_directories(sql_router_sdk PRIVATE ${Python3_INCLUDE_DIRS})
+	target_link_libraries(sql_router_sdk ${SDK_LIBS})
     if(APPLE)
-      set_target_properties(sql_pysdk PROPERTIES
+      set_target_properties(sql_router_sdk PROPERTIES
                SUFFIX ".so")
-      set_property(TARGET sql_pysdk APPEND PROPERTY
+      set_property(TARGET sql_router_sdk APPEND PROPERTY
         LINK_FLAGS "-flat_namespace -undefined suppress")
         add_custom_command(OUTPUT
 		setup.py
@@ -61,7 +60,7 @@ if(SQL_PYSDK_ENABLE)
 		COMMAND ${CMAKE_COMMAND} -E echo "  cmdclass={'install': InstallPlatlib}," >> setup.py
 		COMMAND ${CMAKE_COMMAND} -E echo "  packages=find_packages()," >> setup.py
 		COMMAND ${CMAKE_COMMAND} -E echo "  package_data={" >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "  'fedb':['$<TARGET_FILE_NAME:sql_pysdk>']," >> setup.py
+		COMMAND ${CMAKE_COMMAND} -E echo "  'fedb':['$<TARGET_FILE_NAME:sql_router_sdk>']," >> setup.py
 		COMMAND ${CMAKE_COMMAND} -E echo "  }," >> setup.py
 		COMMAND ${CMAKE_COMMAND} -E echo "  include_package_data=True," >> setup.py
 		COMMAND ${CMAKE_COMMAND} -E echo "  classifiers=[" >> setup.py
@@ -99,7 +98,7 @@ if(SQL_PYSDK_ENABLE)
 		COMMAND ${CMAKE_COMMAND} -E echo "  cmdclass={'install': InstallPlatlib}," >> setup.py
 		COMMAND ${CMAKE_COMMAND} -E echo "  packages=find_packages()," >> setup.py
 		COMMAND ${CMAKE_COMMAND} -E echo "  package_data={" >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "  'fedb':['$<TARGET_FILE_NAME:sql_pysdk>']," >> setup.py
+		COMMAND ${CMAKE_COMMAND} -E echo "  'fedb':['$<TARGET_FILE_NAME:sql_router_sdk>']," >> setup.py
 		COMMAND ${CMAKE_COMMAND} -E echo "  }," >> setup.py
 		COMMAND ${CMAKE_COMMAND} -E echo "  include_package_data=True," >> setup.py
 		COMMAND ${CMAKE_COMMAND} -E echo "  classifiers=[" >> setup.py
@@ -111,7 +110,7 @@ if(SQL_PYSDK_ENABLE)
 		WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/sql_pysdk
 		VERBATIM)
     endif()
-	
+
 	# Find if python module MODULE_NAME is available,
 	# if not install it to the Python user install directory.
 	function(search_python_module MODULE_NAME)
@@ -141,7 +140,7 @@ if(SQL_PYSDK_ENABLE)
 		COMMAND ${CMAKE_COMMAND} -E remove_directory dist
 		COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/sdk/python/fedb/__init__.py fedb/__init__.py
 		COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/sdk/python/fedb/driver.py fedb/driver.py
-		COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:sql_pysdk> ${CMAKE_BINARY_DIR}/sql_pysdk/fedb
+		COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:sql_router_sdk> ${CMAKE_BINARY_DIR}/sql_pysdk/fedb
 		COMMAND ${Python3_EXECUTABLE} setup.py bdist_wheel
 		BYPRODUCTS
 		  python/fedb
