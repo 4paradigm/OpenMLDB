@@ -162,7 +162,8 @@ bool SQLClusterRouter::GetInsertInfo(
     const std::string& db, const std::string& sql, ::fesql::sdk::Status* status,
     std::shared_ptr<::rtidb::nameserver::TableInfo>* table_info,
     DefaultValueMap* default_map, uint32_t* str_length) {
-    if (status == NULL || table_info == NULL || default_map == NULL || str_length == NULL) {
+    if (status == NULL || table_info == NULL || default_map == NULL ||
+        str_length == NULL) {
         LOG(WARNING) << "insert info is null" << sql;
         return false;
     }
