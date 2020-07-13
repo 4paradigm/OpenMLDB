@@ -23,6 +23,7 @@
 #include "base/linenoise.h"
 #include "base/strings.h"
 #include "base/ip.h"
+#include "base/server_name.h"
 #include "blob_proxy/blob_proxy_impl.h"
 #include "blobserver/blobserver_impl.h"
 #include "boost/algorithm/string.hpp"
@@ -214,8 +215,12 @@ void StartTablet() {
         }
         real_endpoint = ip + std::to_string(FLAGS_port);
         if (FLAGS_use_name) {
-            // TODO: read name.txt
-            FLAGS_endpoint = "name";
+            std::string server_name;
+            if (!::rtidb::base::GetNameFromTxt(&server_name)) {
+                PDLOG(WARNING, "GetNameFromTxt failed");
+                exit(1);
+            }
+            FLAGS_endpoint = server_name;
         } else {
             FLAGS_endpoint = real_endpoint;
         }
