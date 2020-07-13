@@ -1,4 +1,4 @@
-image: develop-registry.4pd.io/centos6_gcc7_fesql:0.0.11
+image: develop-registry.4pd.io/centos6_gcc7_fesql:0.0.12
 variables:
     GIT_SUBMODULE_STRATEGY: normal
     CICD_RUNNER_THIRDPARTY_PATH: "/depends/thirdparty"
