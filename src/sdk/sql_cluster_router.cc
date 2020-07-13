@@ -162,6 +162,10 @@ bool SQLClusterRouter::GetInsertInfo(
     const std::string& db, const std::string& sql, ::fesql::sdk::Status* status,
     std::shared_ptr<::rtidb::nameserver::TableInfo>* table_info,
     DefaultValueMap* default_map, uint32_t* str_length) {
+    if (status == NULL || table_info == NULL || default_map == NULL || str_length == NULL) {
+        LOG(WARNING) << "insert info is null" << sql;
+        return false;
+    }
     ::fesql::node::NodeManager nm;
     ::fesql::plan::PlanNodeList plans;
     bool ok = GetSQLPlan(sql, &nm, &plans);
@@ -204,37 +208,37 @@ bool SQLClusterRouter::GetInsertInfo(
 }
 
 std::shared_ptr<fesql::node::ConstNode> SQLClusterRouter::GetDefaultMapValue(
-    fesql::node::ConstNode* node, rtidb::type::DataType column_type) {
-    fesql::node::DataType node_type = node->GetDataType();
+    const fesql::node::ConstNode& node, rtidb::type::DataType column_type) {
+    fesql::node::DataType node_type = node.GetDataType();
     switch (column_type) {
         case rtidb::type::kBool:
             if (node_type == fesql::node::kInt32) {
-                return std::make_shared<fesql::node::ConstNode>(*node);
+                return std::make_shared<fesql::node::ConstNode>(node);
             }
             break;
         case rtidb::type::kSmallInt:
             if (node_type == fesql::node::kInt16) {
-                return std::make_shared<fesql::node::ConstNode>(*node);
+                return std::make_shared<fesql::node::ConstNode>(node);
             } else if (node_type == fesql::node::kInt32) {
                 return std::make_shared<fesql::node::ConstNode>(
-                    node->GetAsInt16());
+                    node.GetAsInt16());
             }
             break;
         case rtidb::type::kInt:
             if (node_type == fesql::node::kInt16) {
                 return std::make_shared<fesql::node::ConstNode>(
-                    node->GetAsInt32());
+                    node.GetAsInt32());
             } else if (node_type == fesql::node::kInt32) {
-                return std::make_shared<fesql::node::ConstNode>(*node);
+                return std::make_shared<fesql::node::ConstNode>(node);
             }
             break;
         case rtidb::type::kBigInt:
             if (node_type == fesql::node::kInt16 ||
                 node_type == fesql::node::kInt32) {
                 return std::make_shared<fesql::node::ConstNode>(
-                    node->GetAsInt64());
+                    node.GetAsInt64());
             } else if (node_type == fesql::node::kInt64) {
-                return std::make_shared<fesql::node::ConstNode>(*node);
+                return std::make_shared<fesql::node::ConstNode>(node);
             }
             break;
         case rtidb::type::kFloat:
@@ -242,9 +246,9 @@ std::shared_ptr<fesql::node::ConstNode> SQLClusterRouter::GetDefaultMapValue(
                 node_type == fesql::node::kInt32 ||
                 node_type == fesql::node::kInt16) {
                 return std::make_shared<fesql::node::ConstNode>(
-                    node->GetAsFloat());
+                    node.GetAsFloat());
             } else if (node_type == fesql::node::kFloat) {
-                return std::make_shared<fesql::node::ConstNode>(*node);
+                return std::make_shared<fesql::node::ConstNode>(node);
             }
             break;
         case rtidb::type::kDouble:
@@ -252,9 +256,9 @@ std::shared_ptr<fesql::node::ConstNode> SQLClusterRouter::GetDefaultMapValue(
                 node_type == fesql::node::kInt32 ||
                 node_type == fesql::node::kInt16) {
                 return std::make_shared<fesql::node::ConstNode>(
-                    node->GetAsDouble());
+                    node.GetAsDouble());
             } else if (node_type == fesql::node::kDouble) {
-                return std::make_shared<fesql::node::ConstNode>(*node);
+                return std::make_shared<fesql::node::ConstNode>(node);
             }
             break;
         case rtidb::type::kDate:
@@ -262,7 +266,7 @@ std::shared_ptr<fesql::node::ConstNode> SQLClusterRouter::GetDefaultMapValue(
                 int32_t year;
                 int32_t month;
                 int32_t day;
-                if (node->GetAsDate(&year, &month, &day)) {
+                if (node.GetAsDate(&year, &month, &day)) {
                     if (year < 1900 || year > 9999) break;
                     if (month < 1 || month > 12) break;
                     if (day < 1 || day > 31) break;
@@ -273,7 +277,7 @@ std::shared_ptr<fesql::node::ConstNode> SQLClusterRouter::GetDefaultMapValue(
                 }
                 break;
             } else if (node_type == fesql::node::kDate) {
-                return std::make_shared<fesql::node::ConstNode>(*node);
+                return std::make_shared<fesql::node::ConstNode>(node);
             }
             break;
         case rtidb::type::kTimestamp:
@@ -281,15 +285,15 @@ std::shared_ptr<fesql::node::ConstNode> SQLClusterRouter::GetDefaultMapValue(
                 node_type == fesql::node::kInt32 ||
                 node_type == fesql::node::kTimestamp) {
                 return std::make_shared<fesql::node::ConstNode>(
-                    node->GetAsInt64());
+                    node.GetAsInt64());
             } else if (node_type == fesql::node::kInt64) {
-                return std::make_shared<fesql::node::ConstNode>(*node);
+                return std::make_shared<fesql::node::ConstNode>(node);
             }
             break;
         case rtidb::type::kVarchar:
         case rtidb::type::kString:
             if (node_type == fesql::node::kVarchar) {
-                return std::make_shared<fesql::node::ConstNode>(*node);
+                return std::make_shared<fesql::node::ConstNode>(node);
             }
             break;
         default:
@@ -301,6 +305,10 @@ std::shared_ptr<fesql::node::ConstNode> SQLClusterRouter::GetDefaultMapValue(
 DefaultValueMap SQLClusterRouter::GetDefaultMap(
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
     ::fesql::node::ExprListNode* row, uint32_t* str_length) {
+    if (row == NULL || str_length == NULL) {
+        LOG(WARNING) << "row or str length is NULL";
+        return DefaultValueMap();
+    }
     DefaultValueMap default_map(
         new std::map<uint32_t, std::shared_ptr<::fesql::node::ConstNode>>());
     for (int32_t idx = 0; idx < table_info->column_desc_v1_size(); idx++) {
@@ -317,7 +325,7 @@ DefaultValueMap SQLClusterRouter::GetDefaultMap(
                 }
                 val = std::make_shared<::fesql::node::ConstNode>(*primary);
             } else {
-                val = GetDefaultMapValue(primary, column.data_type());
+                val = GetDefaultMapValue(*primary, column.data_type());
                 if (!val) {
                     LOG(WARNING) << "default value type mismatch, column "
                                  << column.name();
