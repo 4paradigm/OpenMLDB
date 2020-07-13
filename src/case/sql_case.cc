@@ -201,7 +201,6 @@ bool SQLCase::ExtractSchema(const std::vector<std::string>& columns,
     }
     return true;
 }
-
 bool SQLCase::BuildCreateSQLFromSchema(const type::TableDef& table,
                                        std::string* create_sql) {
     std::string sql = "CREATE TABLE " + table.name() + "(\n";
@@ -315,44 +314,40 @@ bool SQLCase::BuildInsertSQLFromRows(
     const std::vector<std::vector<std::string>>& rows,
     std::string* insert_sql) {
     std::string sql = "";
-    sql.append("Insert into ").append(table.name()).append(" values ");
+    sql.append("Insert into ").append(table.name()).append(" values");
 
+    int32_t i = 0;
     for (auto item_vec : rows) {
         std::string values = "";
-        sql.append("\n").append(values);
         if (!BuildInsertValueStringFromRow(table, item_vec, &values)) {
             return false;
         }
+        sql.append("\n").append(values);
+        i++;
+        if (i < rows.size()) {
+            sql.append(",");
+        } else {
+            sql.append(";");
+        }
     }
-    sql.append(";");
     *insert_sql = sql;
     return true;
 }
 bool SQLCase::BuildInsertSQLFromData(const type::TableDef& table,
                                      std::string data,
                                      std::string* insert_sql) {
-    std::string sql = "";
-    sql.append("Insert into ").append(table.name()).append(" values(");
-
-    std::vector<std::string> row_vec;
-
     boost::trim(data);
+    std::vector<std::string> row_vec;
     boost::split(row_vec, data, boost::is_any_of("\n"),
                  boost::token_compress_on);
-
+    std::vector<std::vector<std::string>> rows;
     for (auto row_str : row_vec) {
-        std::string values = "";
         std::vector<std::string> item_vec;
         boost::split(item_vec, row_str, boost::is_any_of(","),
                      boost::token_compress_on);
-        if (!BuildInsertValueStringFromRow(table, item_vec, &values)) {
-            LOG(WARNING) << "Fail to build insert sql from row: " << row_str;
-            return false;
-        }
-        sql.append("\n").append(values);
+        rows.push_back(item_vec);
     }
-    sql.append(");");
-    *insert_sql = sql;
+    BuildInsertSQLFromRows(table, rows, insert_sql);
     return true;
 }
 
@@ -607,6 +602,10 @@ bool SQLCase::ExtractInputTableDef(type::TableDef& table, int32_t input_idx) {
 // schema + index --> create sql
 // columns + indexs --> create sql
 bool SQLCase::BuildCreateSQLFromInput(int32_t input_idx, std::string* sql) {
+    if (!inputs_[input_idx].create_.empty()) {
+        *sql = inputs_[input_idx].create_;
+        return true;
+    }
     type::TableDef table;
     if (!ExtractInputTableDef(table, input_idx)) {
         LOG(WARNING) << "Fail to extract table schema";
@@ -620,6 +619,10 @@ bool SQLCase::BuildCreateSQLFromInput(int32_t input_idx, std::string* sql) {
 }
 
 bool SQLCase::BuildInsertSQLFromInput(int32_t input_idx, std::string* sql) {
+    if (!inputs_[input_idx].insert_.empty()) {
+        *sql = inputs_[input_idx].insert_;
+        return true;
+    }
     type::TableDef table;
     if (!ExtractInputTableDef(table, input_idx)) {
         LOG(WARNING) << "Fail to extract table schema";
@@ -724,6 +727,16 @@ bool SQLCase::CreateTableInfoFromYamlNode(const YAML::Node& schema_data,
             LOG(WARNING) << "Fail to parse columns";
             return false;
         }
+    }
+
+    if (schema_data["create"]) {
+        table->create_ = schema_data["create"].as<std::string>();
+        boost::trim(table->create_);
+    }
+
+    if (schema_data["insert"]) {
+        table->insert_ = schema_data["insert"].as<std::string>();
+        boost::trim(table->insert_);
     }
     return true;
 }
@@ -941,20 +954,6 @@ bool SQLCase::CreateSQLCasesFromYaml(
             sql_case.db_ = sql_case_node["db"].as<std::string>();
         } else {
             sql_case.db_ = global_db;
-        }
-
-        if (sql_case_node["creates"]) {
-            if (!CreateStringListFromYamlNode(sql_case_node["creates"],
-                                              sql_case.create_strs_)) {
-                return false;
-            }
-        }
-
-        if (sql_case_node["inserts"]) {
-            if (!CreateStringListFromYamlNode(sql_case_node["inserts"],
-                                              sql_case.insert_strs_)) {
-                return false;
-            }
         }
 
         if (sql_case_node["sql"]) {

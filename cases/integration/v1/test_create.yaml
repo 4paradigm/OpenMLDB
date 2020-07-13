@@ -18,22 +18,22 @@ cases:
   -
     id: 2
     desc: 创建两个相同时间列的索引的表
-    inputs:
+    inputs: 
       -
-        columns: ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
-        sql: |
-          create table {ran}(
-          c1 string,
-          c2 int,
-          c3 timestamp,
-          c4 timestamp,
-          index(key=(c1),ts=c4),
-          index(key=(c2),ts=c4));
-        rows:
-          - ["aa",1,1590738990000,1590738989000]
+        create: |
+            create table {0} (
+            c1 string,
+            c2 int,
+            c3 timestamp,
+            c4 timestamp,
+            index(key=(c1),ts=c4),
+            index(key=(c2),ts=c4));
+        insert: |
+          insert into {0} values ("aa", 1, 1590738990000, 1590738989000);
     sql: select * from {0};
     expect:
       columns: ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
+      rows: ["aa", 1, 1590738990000, 1590738990000]
   -
     id: 3
     desc: 创建两个不同时间列的索引的表
