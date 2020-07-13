@@ -315,16 +315,16 @@ bool SQLCase::BuildInsertSQLFromRows(
     const std::vector<std::vector<std::string>>& rows,
     std::string* insert_sql) {
     std::string sql = "";
-    sql.append("Insert into ").append(table.name()).append(" values(");
+    sql.append("Insert into ").append(table.name()).append(" values ");
 
     for (auto item_vec : rows) {
         std::string values = "";
+        sql.append("\n").append(values);
         if (!BuildInsertValueStringFromRow(table, item_vec, &values)) {
             return false;
         }
-        sql.append("\n").append(values);
     }
-    sql.append(");");
+    sql.append(";");
     *insert_sql = sql;
     return true;
 }
@@ -359,7 +359,7 @@ bool SQLCase::BuildInsertSQLFromData(const type::TableDef& table,
 bool SQLCase::BuildInsertValueStringFromRow(
     const type::TableDef& table, const std::vector<std::string>& item_vec,
     std::string* values) {
-    std::string sql = "";
+    std::string sql = "(";
     auto schema = table.columns();
     if (item_vec.size() != static_cast<size_t>(schema.size())) {
         LOG(WARNING) << "Invalid Row: Row doesn't match with schema : exp "
@@ -378,6 +378,11 @@ bool SQLCase::BuildInsertValueStringFromRow(
         }
         auto item = item_vec[index];
         boost::trim(item);
+        if (item == "null" || item == "NULL") {
+            sql.append("null");
+            index++;
+            continue;
+        }
         switch (it->type()) {
             case type::kInt16:
             case type::kInt32:
@@ -401,6 +406,7 @@ bool SQLCase::BuildInsertValueStringFromRow(
         }
         index++;
     }
+    sql.append(")");
     *values = sql;
     return true;
 }

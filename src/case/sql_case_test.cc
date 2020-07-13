@@ -264,8 +264,8 @@ TEST_F(SQLCaseTest, ExtractInsertSqlTest) {
         ASSERT_TRUE(SQLCase::BuildInsertSQLFromData(output_table, row_str,
                                                     &create_sql));
         ASSERT_EQ(
-            "Insert into  values(\n'0', 1, 5, 1.1, 11.1, 1, '1', "
-            "1587647803000\n'1', 10, 50, 10.1, 110.1, 11, '111', "
+            "Insert into  values\n('0', 1, 5, 1.1, 11.1, 1, '1', "
+            "1587647803000)\n('1', 10, 50, 10.1, 110.1, 11, '111', "
             "1587647804000);",
             create_sql);
     }
