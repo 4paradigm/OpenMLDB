@@ -4,6 +4,8 @@
 // Date 2020-07-06
 //
 
+#pragma once
+
 #include <gflags/gflags.h>
 #include <sched.h>
 #include <unistd.h>

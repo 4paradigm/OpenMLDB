@@ -22,6 +22,7 @@
 #include "base/kv_iterator.h"
 #include "base/linenoise.h"
 #include "base/strings.h"
+#include "base/ip.h"
 #include "blob_proxy/blob_proxy_impl.h"
 #include "blobserver/blobserver_impl.h"
 #include "boost/algorithm/string.hpp"
@@ -218,23 +219,24 @@ void StartTablet() {
     server.MaxConcurrencyOf(tablet, "Put") = FLAGS_put_concurrency_limit;
     tablet->SetServer(&server);
     server.MaxConcurrencyOf(tablet, "Get") = FLAGS_get_concurrency_limit;
-    if (FLAGS_port > 0) {
-        if (server.Start(FLAGS_port, &options) != 0) {
-            PDLOG(WARNING, "Fail to start server");
+    if (FLAGS_endpoint.empty() && FLAGS_port > 0) {
+        std::string ip;
+        if (::rtidb::base::GetLocalIp(&ip)) {
+            PDLOG(INFO, "local ip is: %s", ip.c_str());
+        } else {
+            PDLOG(WARNING, "fail to get local ip: %s", ip.c_str());
             exit(1);
         }
-        PDLOG(INFO, "start tablet on port %d with version %d.%d.%d.%d",
-              FLAGS_port, RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
-              RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
-    } else {
-        if (server.Start(FLAGS_endpoint.c_str(), &options) != 0) {
-            PDLOG(WARNING, "Fail to start server");
-            exit(1);
-        }
-        PDLOG(INFO, "start tablet on endpoint %s with version %d.%d.%d.%d",
-              FLAGS_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
-              RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
+        FLAGS_endpoint = ip + std::to_string(FLAGS_port);
     }
+    if (server.Start(FLAGS_endpoint.c_str(), &options) != 0) {
+        PDLOG(WARNING, "Fail to start server");
+        exit(1);
+    }
+    PDLOG(INFO, "start tablet on endpoint %s with version %d.%d.%d.%d",
+            FLAGS_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
+            RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
+
     if (!tablet->RegisterZK()) {
         PDLOG(WARNING, "Fail to register zk");
         exit(1);
