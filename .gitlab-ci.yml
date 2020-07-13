@@ -1,4 +1,4 @@
-image: develop-registry.4pd.io/centos6_gcc7_build_env:0.6.0
+image: develop-registry.4pd.io/centos6_gcc7_fesql:0.0.12
 services:
     - docker:dind
 variables:
